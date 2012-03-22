@@ -1,192 +1,307 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:30622 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964937Ab2CSOap (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Mar 2012 10:30:45 -0400
-Date: Mon, 19 Mar 2012 10:31:05 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: David Howells <dhowells@redhat.com>
-Cc: steved@redhat.com, jmorris@namei.org,
-        linux-security-module@vger.kernel.org, keyrings@linux-nfs.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [Keyrings] [PATCH 6/9] KEYS: Perform RCU synchronisation on
- keys prior to key destruction
-Message-ID: <20120319103105.6a3a174c@redhat.com>
-In-Reply-To: <20120208110349.4050.57462.stgit@warthog.procyon.org.uk>
-References: <20120208110254.4050.8856.stgit@warthog.procyon.org.uk>
-	<20120208110349.4050.57462.stgit@warthog.procyon.org.uk>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from natasha.panasas.com ([67.152.220.90]:60661 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964854Ab2CVDB5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Mar 2012 23:01:57 -0400
+Message-ID: <4F6A92FC.6060702@panasas.com>
+Date: Wed, 21 Mar 2012 19:48:28 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Andrew Morton <akpm@linux-foundation.org>,
+        Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
+        Oleg Nesterov <oleg@redhat.com>
+CC: "Rafael J. Wysocki" <rjw@sisk.pl>, <keyrings@linux-nfs.org>,
+        <linux-security-module@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "Bhamare, Sachin" <sbhamare@panasas.com>,
+        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
+        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
+        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        Rusty Russell <rusty@rustcorp.com.au>, Tejun Heo <tj@kernel.org>,
+        David Rientjes <rientjes@google.com>
+Subject: Re: [RFC 4/4] {RFC} kmod.c: Add new call_usermodehelper_timeout()
+ API
+References: <4F691059.30405@panasas.com> <4F691383.5040506@panasas.com>
+In-Reply-To: <4F691383.5040506@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 08 Feb 2012 11:03:49 +0000
-David Howells <dhowells@redhat.com> wrote:
-
-> Make the keys garbage collector invoke synchronize_rcu() prior to destroying
-> keys with a zero usage count.  This means that a key can be examined under the
-> RCU read lock in the safe knowledge that it won't get deallocated until after
-> the lock is released - even if its usage count becomes zero whilst we're
-> looking at it.
+On 03/20/2012 04:32 PM, Boaz Harrosh wrote:
 > 
-> This is useful in keyring search vs key link.  Consider a keyring containing a
-> link to a key.  That link can be replaced in-place in the keyring without
-> requiring an RCU copy-and-replace on the keyring contents without breaking a
-> search underway on that keyring when the displaced key is released, provided
-> the key is actually destroyed only after the RCU read lock held by the search
-> algorithm is released.
+> In the blasphemous occasions that a the Kernel must call a user-mode program
+> half of the times it is more robust to not wait forever but limit the wait
+> for a specified timeout.
 > 
-> This permits __key_link() to replace a key without having to reallocate the key
-> payload.  A key gets replaced if a new key being linked into a keyring has the
-> same type and description.
+> So add a new  call_usermodehelper_timeout() that implements that.
+> (Users of this new API will be added once this API is in mainline)
 > 
-> Signed-off-by: David Howells <dhowells@redhat.com>
+> call_usermodehelper_fns() is added an extra timeout parameter which
+> is then implemented in call_usermodehelper_exec. The few users of
+> call_usermodehelper_fns() are also changed in this patch.
+> 
+> Since now the executing threads might come back after the waiting
+> thread has returned, do to a timeout. I used a simple kref pattern
+> to govern the life time of the subprocess_info struct.
+> 
+> Should some wait-forever callers today, be converted to this new
+> schema?
+> 
+> CC: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 > ---
+>  fs/exec.c                   |    2 +-
+>  include/linux/kmod.h        |   15 +++++++++++++--
+>  kernel/kmod.c               |   29 +++++++++++++++++++++--------
+>  kernel/sys.c                |    2 +-
+>  security/keys/request_key.c |    2 +-
+>  5 files changed, 37 insertions(+), 13 deletions(-)
 > 
->  include/linux/key.h |    5 +++
->  security/keys/gc.c  |   73 +++++++++++++++++++++++++++++++--------------------
->  2 files changed, 48 insertions(+), 30 deletions(-)
-> 
-> diff --git a/include/linux/key.h b/include/linux/key.h
-> index 1600ebf..9832399 100644
-> --- a/include/linux/key.h
-> +++ b/include/linux/key.h
-> @@ -124,7 +124,10 @@ static inline unsigned long is_key_possessed(const key_ref_t key_ref)
->  struct key {
->  	atomic_t		usage;		/* number of references */
->  	key_serial_t		serial;		/* key serial number */
-> -	struct rb_node		serial_node;
-> +	union {
-> +		struct list_head graveyard_link;
-> +		struct rb_node	serial_node;
-> +	};
->  	struct key_type		*type;		/* type of key */
->  	struct rw_semaphore	sem;		/* change vs change sem */
->  	struct key_user		*user;		/* owner of this key */
-> diff --git a/security/keys/gc.c b/security/keys/gc.c
-> index a42b455..27610bf 100644
-> --- a/security/keys/gc.c
-> +++ b/security/keys/gc.c
-> @@ -168,38 +168,45 @@ do_gc:
+> diff --git a/fs/exec.c b/fs/exec.c
+> index 92ce83a..e696081 100644
+> --- a/fs/exec.c
+> +++ b/fs/exec.c
+> @@ -2197,7 +2197,7 @@ void do_coredump(long signr, int exit_code, struct pt_regs *regs)
+>  		}
+>  
+>  		retval = call_usermodehelper_fns(helper_argv[0], helper_argv,
+> -					NULL, UMH_WAIT_EXEC, umh_pipe_setup,
+> +					NULL, UMH_WAIT_EXEC, 0, umh_pipe_setup,
+>  					NULL, &cprm);
+>  		argv_free(helper_argv);
+>  		if (retval) {
+> diff --git a/include/linux/kmod.h b/include/linux/kmod.h
+> index 5a89c00..eccc3f5 100644
+> --- a/include/linux/kmod.h
+> +++ b/include/linux/kmod.h
+> @@ -25,6 +25,7 @@
+>  #include <linux/compiler.h>
+>  #include <linux/workqueue.h>
+>  #include <linux/sysctl.h>
+> +#include <linux/kref.h>
+>  
+>  #define KMOD_PATH_LEN 256
+>  
+> @@ -55,12 +56,14 @@ enum umh_wait {
+>  };
+>  
+>  struct subprocess_info {
+> +	struct kref kref;
+>  	struct work_struct work;
+>  	struct completion *complete;
+>  	char *path;
+>  	char **argv;
+>  	char **envp;
+>  	enum umh_wait wait;
+> +	unsigned long wait_timeout;
+>  	int retval;
+>  	int (*init)(struct subprocess_info *info, struct cred *new);
+>  	void (*cleanup)(struct subprocess_info *info);
+> @@ -69,14 +72,22 @@ struct subprocess_info {
+>  
+>  extern int
+>  call_usermodehelper_fns(char *path, char **argv, char **envp,
+> -			enum umh_wait wait,
+> +			enum umh_wait wait, unsigned long timeout,
+>  			int (*init)(struct subprocess_info *info, struct cred *new),
+>  			void (*cleanup)(struct subprocess_info *), void *data);
+>  
+>  static inline int
+>  call_usermodehelper(char *path, char **argv, char **envp, enum umh_wait wait)
+>  {
+> -	return call_usermodehelper_fns(path, argv, envp, wait,
+> +	return call_usermodehelper_fns(path, argv, envp, wait, 0,
+> +				       NULL, NULL, NULL);
+> +}
+> +
+> +static inline int
+> +call_usermodehelper_timeout(char *path, char **argv, char **envp,
+> +			    enum umh_wait wait, unsigned long timeout)
+> +{
+> +	return call_usermodehelper_fns(path, argv, envp, wait, timeout,
+>  				       NULL, NULL, NULL);
 >  }
 >  
->  /*
-> - * Garbage collect an unreferenced, detached key
-> + * Garbage collect a list of unreferenced, detached keys
->   */
-> -static noinline void key_gc_unused_key(struct key *key)
-> +static noinline void key_gc_unused_keys(struct list_head *keys)
->  {
-> -	key_check(key);
-> -
-> -	security_key_free(key);
-> -
-> -	/* deal with the user's key tracking and quota */
-> -	if (test_bit(KEY_FLAG_IN_QUOTA, &key->flags)) {
-> -		spin_lock(&key->user->lock);
-> -		key->user->qnkeys--;
-> -		key->user->qnbytes -= key->quotalen;
-> -		spin_unlock(&key->user->lock);
-> -	}
-> +	while (!list_empty(keys)) {
-> +		struct key *key =
-> +			list_entry(keys->next, struct key, graveyard_link);
-> +		list_del(&key->graveyard_link);
-> +
-> +		kdebug("- %u", key->serial);
-> +		key_check(key);
-> +
-> +		security_key_free(key);
-> +
-> +		/* deal with the user's key tracking and quota */
-> +		if (test_bit(KEY_FLAG_IN_QUOTA, &key->flags)) {
-> +			spin_lock(&key->user->lock);
-> +			key->user->qnkeys--;
-> +			key->user->qnbytes -= key->quotalen;
-> +			spin_unlock(&key->user->lock);
-> +		}
+> diff --git a/kernel/kmod.c b/kernel/kmod.c
+> index 3cb7457..a72eefa 100644
+> --- a/kernel/kmod.c
+> +++ b/kernel/kmod.c
+> @@ -129,7 +129,7 @@ int __request_module(bool wait, const char *fmt, ...)
+>  	trace_module_request(module_name, wait, _RET_IP_);
 >  
-> -	atomic_dec(&key->user->nkeys);
-> -	if (test_bit(KEY_FLAG_INSTANTIATED, &key->flags))
-> -		atomic_dec(&key->user->nikeys);
-> +		atomic_dec(&key->user->nkeys);
-> +		if (test_bit(KEY_FLAG_INSTANTIATED, &key->flags))
-> +			atomic_dec(&key->user->nikeys);
+>  	ret = call_usermodehelper_fns(modprobe_path, argv, envp,
+> -			wait ? UMH_WAIT_PROC : UMH_WAIT_EXEC,
+> +			wait ? UMH_WAIT_PROC : UMH_WAIT_EXEC, 0,
+>  			NULL, NULL, NULL);
 >  
-> -	key_user_put(key->user);
-> +		key_user_put(key->user);
->  
-> -	/* now throw away the key memory */
-> -	if (key->type->destroy)
-> -		key->type->destroy(key);
-> +		/* now throw away the key memory */
-> +		if (key->type->destroy)
-> +			key->type->destroy(key);
->  
-> -	kfree(key->description);
-> +		kfree(key->description);
->  
->  #ifdef KEY_DEBUGGING
-> -	key->magic = KEY_DEBUG_MAGIC_X;
-> +		key->magic = KEY_DEBUG_MAGIC_X;
->  #endif
-> -	kmem_cache_free(key_jar, key);
-> +		kmem_cache_free(key_jar, key);
-> +	}
+>  	atomic_dec(&kmod_concurrent);
+> @@ -191,8 +191,11 @@ fail:
+>  	do_exit(0);
 >  }
 >  
->  /*
-> @@ -211,6 +218,7 @@ static noinline void key_gc_unused_key(struct key *key)
->   */
->  static void key_garbage_collector(struct work_struct *work)
+> -static void call_usermodehelper_freeinfo(struct subprocess_info *info)
+> +static void call_usermodehelper_freeinfo(struct kref *kref)
 >  {
-> +	static LIST_HEAD(graveyard);
->  	static u8 gc_state;		/* Internal persistent state */
->  #define KEY_GC_REAP_AGAIN	0x01	/* - Need another cycle */
->  #define KEY_GC_REAPING_LINKS	0x02	/* - We need to reap links */
-> @@ -316,15 +324,22 @@ maybe_resched:
->  		key_schedule_gc(new_timer);
->  	}
->  
-> -	if (unlikely(gc_state & KEY_GC_REAPING_DEAD_2)) {
-> -		/* Make sure everyone revalidates their keys if we marked a
-> -		 * bunch as being dead and make sure all keyring ex-payloads
-> -		 * are destroyed.
-> +	if (unlikely(gc_state & KEY_GC_REAPING_DEAD_2) ||
-> +	    !list_empty(&graveyard)) {
-> +		/* Make sure that all pending keyring payload destructions are
-> +		 * fulfilled and that people aren't now looking at dead or
-> +		 * dying keys that they don't have a reference upon or a link
-> +		 * to.
->  		 */
-> -		kdebug("dead sync");
-> +		kdebug("gc sync");
->  		synchronize_rcu();
->  	}
->  
-> +	if (!list_empty(&graveyard)) {
-> +		kdebug("gc keys");
-> +		key_gc_unused_keys(&graveyard);
-> +	}
+> +	struct subprocess_info *info =
+> +		container_of(kref, struct subprocess_info, kref);
 > +
->  	if (unlikely(gc_state & (KEY_GC_REAPING_DEAD_1 |
->  				 KEY_GC_REAPING_DEAD_2))) {
->  		if (!(gc_state & KEY_GC_FOUND_DEAD_KEY)) {
-> @@ -359,7 +374,7 @@ found_unreferenced_key:
->  	rb_erase(&key->serial_node, &key_serial_tree);
->  	spin_unlock(&key_serial_lock);
+>  	if (info->cleanup)
+>  		(*info->cleanup)(info);
+>  	kfree(info);
+> @@ -235,6 +238,7 @@ static int wait_for_helper(void *data)
+>  	}
 >  
-> -	key_gc_unused_key(key);
-> +	list_add_tail(&key->graveyard_link, &graveyard);
->  	gc_state |= KEY_GC_REAP_AGAIN;
->  	goto maybe_resched;
+>  	complete(sub_info->complete);
+> +	kref_put(&sub_info->kref, call_usermodehelper_freeinfo);
+>  	return 0;
+>  }
 >  
-> 
-> _______________________________________________
-> Keyrings mailing list
-> Keyrings@linux-nfs.org
-> To change your subscription to this list, please see http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings
+> @@ -258,7 +262,8 @@ static void __call_usermodehelper(struct work_struct *work)
+>  
+>  	switch (wait) {
+>  	case UMH_NO_WAIT:
+> -		call_usermodehelper_freeinfo(sub_info);
+> +		kref_put(&sub_info->kref,  call_usermodehelper_freeinfo);
+> +		kref_put(&sub_info->kref,  call_usermodehelper_freeinfo);
+>  		break;
+>  
+>  	case UMH_WAIT_PROC:
+> @@ -269,6 +274,7 @@ static void __call_usermodehelper(struct work_struct *work)
+>  		if (pid < 0)
+>  			sub_info->retval = pid;
+>  		complete(sub_info->complete);
+> +		kref_put(&sub_info->kref, call_usermodehelper_freeinfo);
+>  	}
+>  }
+>  
+> @@ -387,6 +393,7 @@ struct subprocess_info *call_usermodehelper_setup(char *path, char **argv,
+>  	if (!sub_info)
+>  		goto out;
+>  
+> +	kref_init(&sub_info->kref);
+>  	INIT_WORK(&sub_info->work, __call_usermodehelper);
+>  	sub_info->path = path;
+>  	sub_info->argv = argv;
+> @@ -452,22 +459,27 @@ int call_usermodehelper_exec(struct subprocess_info *sub_info,
+>  
+>  	sub_info->complete = &done;
+>  	sub_info->wait = wait;
+> +	if (!sub_info->wait_timeout)
+> +		sub_info->wait_timeout = MAX_SCHEDULE_TIMEOUT;
+>  
+> +	/* Balanced in __call_usermodehelper or wait_for_helper */
+> +	kref_get(&sub_info->kref);
+>  	queue_work(khelper_wq, &sub_info->work);
+>  	if (wait == UMH_NO_WAIT)	/* task has freed sub_info */
+>  		goto unlock;
+> -	wait_for_completion(&done);
+> -	retval = sub_info->retval;
+> -
+> +	if (likely(wait_for_completion_timeout(&done, sub_info->wait_timeout)))
+> +		retval = sub_info->retval;
+> +	else
+> +		retval = -ETIMEDOUT;
+>  out:
+> -	call_usermodehelper_freeinfo(sub_info);
+> +	kref_put(&sub_info->kref, call_usermodehelper_freeinfo);
+>  unlock:
+>  	helper_unlock();
+>  	return retval;
+>  }
+>  
+>  int call_usermodehelper_fns(char *path, char **argv, char **envp,
+> -			enum umh_wait wait,
+> +			enum umh_wait wait, unsigned long timeout,
+>  			int (*init)(struct subprocess_info *info, struct cred *new),
+>  			void (*cleanup)(struct subprocess_info *), void *data)
+>  {
+> @@ -480,6 +492,7 @@ int call_usermodehelper_fns(char *path, char **argv, char **envp,
+>  		return -ENOMEM;
+>  
+>  	call_usermodehelper_setfns(info, init, cleanup, data);
+> +	info->wait_timeout = timeout;
+>  
+>  	return call_usermodehelper_exec(info, wait);
+>  }
+> diff --git a/kernel/sys.c b/kernel/sys.c
+> index 9947fb0..a9079d1 100644
+> --- a/kernel/sys.c
+> +++ b/kernel/sys.c
+> @@ -2013,7 +2013,7 @@ int orderly_poweroff(bool force)
+>  		goto out;
+>  	}
+>  
+> -	ret = call_usermodehelper_fns(argv[0], argv, envp, UMH_NO_WAIT,
+> +	ret = call_usermodehelper_fns(argv[0], argv, envp, UMH_NO_WAIT, 0,
+>  				      NULL, argv_cleanup, NULL);
+>  
+>    out:
+> diff --git a/security/keys/request_key.c b/security/keys/request_key.c
+> index b8cc38c..28050ea 100644
+> --- a/security/keys/request_key.c
+> +++ b/security/keys/request_key.c
+> @@ -93,7 +93,7 @@ static void umh_keys_cleanup(struct subprocess_info *info)
+>  static int call_usermodehelper_keys(char *path, char **argv, char **envp,
+>  			 struct key *session_keyring, enum umh_wait wait)
+>  {
+> -	return call_usermodehelper_fns(path, argv, envp, wait,
+> +	return call_usermodehelper_fns(path, argv, envp, wait, 0,
+>  				       umh_keys_init, umh_keys_cleanup,
+>  				       key_get(session_keyring));
+>  }
 
-Not what I'd call straightforward code, but I think it looks correct...
+Hi Oleg, Tetsuo, and Andrew
 
-Acked-by: Jeff Layton <jlayton@redhat.com>
+Tetsuo Handa has brought to my attention the existence of this patch:
+	http://git.kernel.org/?p=linux/kernel/git/next/linux-next.git;a=commitdiff;h=ccc7cdcf6ecf7d92300dc83315dde0efb2907f39
+
+Author: Oleg Nesterov <oleg@redhat.com>
+Date:   Wed Mar 21 10:57:41 2012 +1100
+
+    usermodehelper: implement UMH_KILLABLE
+    
+    Implement UMH_KILLABLE, should be used along with UMH_WAIT_EXEC/PROC.  The
+    caller must ensure that subprocess_info->path/etc can not go away until
+    call_usermodehelper_freeinfo().
+    
+    call_usermodehelper_exec(UMH_KILLABLE) does wait_for_completion_killable.
+    If it fails, it uses xchg(&sub_info->complete, NULL) to serialize with
+    umh_complete() which does the same xhcg() to access sub_info->complete.
+    
+    If call_usermodehelper_exec wins, it can safely return.  umh_complete()
+    should get NULL and call call_usermodehelper_freeinfo().
+    
+    Otherwise we know that umh_complete() was already called, in this case
+    call_usermodehelper_exec() falls back to wait_for_completion() which
+    should succeed "very soon".
+    
+    Note: UMH_NO_WAIT == -1 but it obviously should not be used with
+    UMH_KILLABLE.  We delay the neccessary cleanup to simplify the back
+    porting.
+    
+    Signed-off-by: Oleg Nesterov <oleg@redhat.com>
+    Cc: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
+    Cc: Rusty Russell <rusty@rustcorp.com.au>
+    Cc: Tejun Heo <tj@kernel.org>
+    Cc: David Rientjes <rientjes@google.com>
+    Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+
+And it's surrounding patchset.
+
+I think that my patch above does a much better/cleaner lifetime management of the 
+subprocess_info struct, with the use of a kref. Anyway I thought that we are not
+suppose to use xhcg() since it is not portable to all ARCHs. ;-)
+
+Please review my patchset above, and comment. If you guys want I can combine
+the two sets into one patchset ASAP. (Will try to finish an RFC tomorrow)
+Since we are inventing the same mechanisms for slightly different needs.
+But basically we both need support for the waiter to be returning before
+the child has completed.
+
+Thanks
+Boaz
