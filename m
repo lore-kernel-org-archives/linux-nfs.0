@@ -1,76 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36056 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1031568Ab2CFXO4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Mar 2012 18:14:56 -0500
-Date: Tue, 6 Mar 2012 18:14:54 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] nfsd: convert nfs4_client->cl_cb_flags to a
- generic flags field
-Message-ID: <20120306231454.GA26981@fieldses.org>
-References: <1330965756-24180-1-git-send-email-jlayton@redhat.com>
- <1330965756-24180-2-git-send-email-jlayton@redhat.com>
- <20120306201119.GA24741@fieldses.org>
- <20120306201438.GB24741@fieldses.org>
+Received: from natasha.panasas.com ([67.152.220.90]:58172 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754855Ab2CVATP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Mar 2012 20:19:15 -0400
+Message-ID: <4F6A6FB9.7010508@panasas.com>
+Date: Wed, 21 Mar 2012 17:18:01 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120306201438.GB24741@fieldses.org>
+To: Greg KH <gregkh@linuxfoundation.org>
+CC: Andrew Morton <akpm@linux-foundation.org>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>, <keyrings@linux-nfs.org>,
+        <linux-security-module@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "Bhamare, Sachin" <sbhamare@panasas.com>,
+        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
+        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
+        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Greg Kroah-Hartman <gregkh@suse.de>
+Subject: Re: [PATCHSET 0/4] kmod: Optional timeout on the wait in call_usermodehelper_exec
+References: <4F691059.30405@panasas.com> <20120321153519.GB30250@kroah.com>
+In-Reply-To: <20120321153519.GB30250@kroah.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 06, 2012 at 03:14:38PM -0500, J. Bruce Fields wrote:
-> On Tue, Mar 06, 2012 at 03:11:19PM -0500, J. Bruce Fields wrote:
-> > On Mon, Mar 05, 2012 at 11:42:35AM -0500, Jeff Layton wrote:
-> > > We'll need a way to flag the nfs4_client as already being recorded on
-> > > stable storage so that we don't continually upcall. Currently, that's
-> > > recorded in the cl_firststate field of the client struct. Using an
-> > > entire u32 to store a flag is rather wasteful though.
-> > > 
-> > > The cl_cb_flags field is only using 2 bits right now, so repurpose that
-> > > to a generic flags field. Rename NFSD4_CLIENT_KILL to
-> > > NFSD4_CLIENT_CB_KILL to make it evident that it's part of the callback
-> > > flags. Add a mask that we can use for existing checks that look to see
-> > > whether any flags are set, so that the new flags don't interfere.
-> > > 
-> > > Convert all references to cl_firstate to the NFSD4_CLIENT_STABLE flag,
-> > > and add a new NFSD4_CLIENT_RECLAIM_COMPLETE flag. I believe there's an
-> > > existing bug here too that this should fix:
-> > > 
-> > > nfs4_set_claim_prev sets cl_firststate on the first CLAIM_PREV open.
-> > > nfsd4_reclaim_complete looks for that flag though, and returns
-> > > NFS4ERR_COMPLETE_ALREADY if it's set. The upshot here is that once a
-> > > client does a CLAIM_PREV open, the RECLAIM_COMPLETE call will fail.
-> > > Let's fix this by adding a new RECLAIM_COMPLETE flag on the client to
-> > > indicate that that's already been done.
-> > 
-> > I think this is right, and agree that flags make more sense.  But as a
-> > quick bugfix only, how about this?
+On 03/21/2012 08:35 AM, Greg KH wrote:
+> On Tue, Mar 20, 2012 at 04:18:49PM -0700, Boaz Harrosh wrote:
+>> Andrew Hi
+>>
+>> I'm picking on you because I don't have any one else to pick on.
+>> The 3 first patches here, are just good for today. Please see if
+>> you would like to take them? or tell me who should take them?
+>>
+>> The 4th patch is an RFC, which got me looking into this.
+>>
+>> My motivation is that I added yet another Kernel dependency on the
+>> call_usermodehelper() function and am not completely happy with the
+>> error case of having the user-mode program stuck forever. In such
+>> case I would like the Kernel part to timeout and properly error recover
+>> and clean up. So therefor the proposed 4th patch.
 > 
-> Also I think there's another preexisting bug here.  Yuch.
+> What is this new use of call_usermodhelper that you are doing this work
+> for?  Ideally, you never want to make this call, as it's slow and messy,
+> as you have found out.  Is there an in-kernel user that you have
+> recently added?
+> 
+> thanks,
+> 
+> greg k-h
 
-And one more minor leak on error.
+I agree hence my comment in the 4th patch:
+	"In the blasphemous occasions that a the Kernel must call a user-mode program"
 
-commit a8ae08ebf1f336808e20c1c275f68d36d88e0682
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Tue Mar 6 15:52:04 2012 -0500
+I have added a new caller, to the nfs/objectlayoutdriver.ko that uses this
+facility for auto-login into osd-targets (iscsi-targets) when new are requested
+by the filesystem. This auto-login facility is mandated by the pnfs-objects
+standard because in a large cluster filesystems for which pnfs was invented, storage
+devices break and changed everyday, and a manual login by every client is not
+feasible.
 
-    nfsd4: fix recovery-entry leak nfsd startup failure
-    
-    Another leak on error
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+You can see this patch as posted to the mailing list here:
+	http://article.gmane.org/gmane.linux.nfs/48024/match=login
+	[title: pnfs-obj: autologin: Add support for protocol autologin]
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index ffb46d6..90c7e06 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4706,6 +4706,7 @@ nfs4_state_start(void)
- out_free_laundry:
- 	destroy_workqueue(laundry_wq);
- out_recovery:
-+	nfs4_release_reclaim();
- 	nfsd4_shutdown_recdir();
- 	return ret;
- }
+It works very well and was heavily tested, with all error scenarios, but
+the theoretical possibility that the user-mode program can be stuck forever
+bothers me and I would like to do something about it. With this patch the
+Kernel can recover cleanly and continue. I have actually tested this part
+and it works as expected.
+
+Thanks
+Boaz
