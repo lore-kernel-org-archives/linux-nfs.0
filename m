@@ -1,97 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:47783 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965009Ab2CSSaU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Mar 2012 14:30:20 -0400
-Subject: Re: [nfsv4] NFS4 over VPN hangs when connecting > 2 clients
-Mime-Version: 1.0 (Apple Message framework v1257)
+Received: from fieldses.org ([174.143.236.118]:34909 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751283Ab2CVK7j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Mar 2012 06:59:39 -0400
+Date: Thu, 22 Mar 2012 06:59:38 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] RFC: export options for junctions
+Message-ID: <20120322105938.GB17569@fieldses.org>
+References: <20120302195451.18167.81861.stgit@degas.1015granger.net>
+ <20120320195607.GD1431@fieldses.org>
+ <FD566AE0-4B3E-413B-AA04-AD3BDB97A6E9@oracle.com>
+ <20120321212937.GG12309@fieldses.org>
+ <0F4CD350-9CAE-47B8-9FA3-FE80C5742A7F@oracle.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20120319182712.GB23670@fieldses.org>
-Date: Mon, 19 Mar 2012 14:29:46 -0400
-Cc: Rick Macklem <rmacklem@uoguelph.ca>, Nikolaus Rath <Nikolaus@rath.org>,
-        linux-nfs@vger.kernel.org, nfsv4@ietf.org
-Message-Id: <A39DDC79-274A-427F-9887-28DD74BA56ED@oracle.com>
-References: <1085412836.1228438.1332175460830.JavaMail.root@erie.cs.uoguelph.ca> <1802632483.1230802.1332176807484.JavaMail.root@erie.cs.uoguelph.ca> <20120319173656.GA23670@fieldses.org> <126867CF-7CAA-4E3D-A9D6-2A5FE30A7DB4@oracle.com> <20120319182712.GB23670@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <0F4CD350-9CAE-47B8-9FA3-FE80C5742A7F@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Mar 19, 2012, at 2:27 PM, J. Bruce Fields wrote:
-
-> On Mon, Mar 19, 2012 at 01:47:14PM -0400, Chuck Lever wrote:
->> 
->> On Mar 19, 2012, at 1:36 PM, J. Bruce Fields wrote:
->> 
->>> On Mon, Mar 19, 2012 at 01:06:47PM -0400, Rick Macklem wrote:
->>>> I wrote:
->>>>> J. Bruce Fields wrote:
->>>>>> On Mon, Mar 12, 2012 at 05:27:08PM -0400, J. Bruce Fields wrote:
->>>>>>> On Mon, Mar 12, 2012 at 05:14:16PM -0400, Chuck Lever wrote:
->>>>>>>> IMO, the server should do a comparison of the nfs_client_id4
->>>>>>>> strings,
->>>>>>>> and nothing else.
->>>>>>> 
->>>>>>> We're supposed to return CLID_INUSE when we see a setclientid from
->>>>>>> a
->>>>>>> "different" client using the same string, to keep clients from
->>>>>>> doing
->>>>>>> mischief with other clients' state (either maliciously or, as in
->>>>>>> this
->>>>>>> case, accidentally).
->>>>>>> 
->>>>>>> "Different" here is defined as "not having the same principal". I
->>>>>>> know
->>>>>>> what that means in the krb5 case, but I'm less certain in the
->>>>>>> auth_sys
->>>>>>> case.
->>>>>> 
->>>>>> Cc'ing the ietf list. Is it reasonable for a server to expect
->>>>>> setclientid's to come from the same client IP address at least in
->>>>>> the
->>>>>> auth_sys case, or could that break multi-homed clients?
->>>>>> 
->>>>> I think that even a dhcp lease renewal might result in a different
->>>>> client
->>>>> IP, if the client has been partitioned from the dhcp server for a
->>>>> while.
->>> 
->>> Yeah, but by that point the client's v4 lease is probably expired anyway
->>> so the client's not likely to be bothered by the NFS4ERR_INUSE.
->>> 
->>>>> I'm not convinced that different client IP# implies different client.
->>>>> (Even "same ip# implies same client" might not be true, if the dhcp
->>>>> server assigned the IP# to another machine while the client was
->>>>> partitioned
->>>>> from the dhcp server, I think? I haven't looked at current dhcp
->>>>> implementations, but it seems conceivable to me.)
->>>>> 
->>>> Oh, and what about the case of 2 clients that are sitting behind
->>>> the same NAT gateway? (I think they'd both be seen as having the
->>>> client host ip# of the gateway, but with different TCP connections
->>>> on different client port#s.)
->>> 
->>> Well, sure, but all I'm proposing here is returning NFS4ERR_INUSE in the
->>> case where we get setclientid's with the same client-provided id.
->>> There'd be no change of behavior in the case of multiple clients sharing
->>> an IP (which is fine, of course).
->> 
->> The migration draft proposes that clients use the same nfs_client_id4 string for all of a server's IP addresses.  Would a server then be obliged to return NFS4ERR_CLID_IN_USE if a client attempts a SETCLIENTID with the same boot verifier and nfs_client_id4 on more than one IP address for the same server?
+On Wed, Mar 21, 2012 at 05:35:17PM -0400, Chuck Lever wrote:
 > 
-> That's also not this case, sorry, this time with all the conditions:
+> On Mar 21, 2012, at 5:29 PM, J. Bruce Fields wrote:
 > 
-> 	- if the nfs_client_id4 is the same, and
-> 	- if the flavor is auth_sys, and
-> 	- if the client IP address is different,
-> 	- then return NFS4ERR_INUSE.
+> > On Wed, Mar 21, 2012 at 05:11:40PM -0400, Chuck Lever wrote:
+> >>  1.  We have to create a version of lookup_export() that does exactly what's needed to find the junction's parent.
+> >> 
+> >>  2.  Once we find the parent's exportent, we have to reverse parse the data in that exportent to get an options string, and concatenate that to the options string we're building for the junction itself.
+> >> 
+> >>  3.  Once we have the full options string for the junction, we use mkexportent() to convert it all back into another exportent.  (or is there a simple way to merge the exportents?)
 
-This still breaks for multi-homed servers and UCS clients.  The client IP address can be different depending on what server IP address the client is accessing, but all the other parameters are the same.
+You should be able to skip steps 2 and 3 and use dupexportent.
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Does that sound doable?
 
+--b.
 
-
-
+> >> 
+> >>  4.  Then, we send the referral data to the kernel by converting that exportent back into a string with dump_to_cache().
+> >> 
+> >> For the time being, though a kludge, it seems easiest by far to simply stick the "insecure" option on all junctions.  I don't think this is otherwise terribly risky.
+> >> 
+> >> Maybe at some later point we can think of a cleaner way to approach this?  Is there a possible kernel solution for this (ie something that can be done in the kernel's export cache only for referrals)?
+> >> 
+> >>> --b.
+> >>> 
+> >>>> 
+> >>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> >>>> ---
+> >>>> 
+> >>>> utils/mountd/cache.c |    2 +-
+> >>>> 1 files changed, 1 insertions(+), 1 deletions(-)
+> >>>> 
+> >>>> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+> >>>> index ac9cdbd..35bc2e9 100644
+> >>>> --- a/utils/mountd/cache.c
+> >>>> +++ b/utils/mountd/cache.c
+> >>>> @@ -853,7 +853,7 @@ locations_to_options(struct jp_ops *ops, nfs_fsloc_set_t locations,
+> >>>> 			ptr += len;
+> >>>> 		} else {
+> >>>> 			if (last_path == NULL)
+> >>>> -				len = snprintf(ptr, remaining, "refer=%s@%s",
+> >>>> +				len = snprintf(ptr, remaining, "insecure,refer=%s@%s",
+> >>>> 							rootpath, server);
+> >>>> 			else
+> >>>> 				len = snprintf(ptr, remaining, ":%s@%s",
+> >>>> 
+> >>> --
+> >>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >>> the body of a message to majordomo@vger.kernel.org
+> >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >> 
+> >> -- 
+> >> Chuck Lever
+> >> chuck[dot]lever[at]oracle[dot]com
+> >> 
+> >> 
+> >> 
+> >> 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> -- 
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
+> 
