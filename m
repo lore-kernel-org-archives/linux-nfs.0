@@ -1,71 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56034 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:33292 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757345Ab2CLV1L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Mar 2012 17:27:11 -0400
-Date: Mon, 12 Mar 2012 17:27:08 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Nikolaus Rath <Nikolaus@rath.org>, linux-nfs@vger.kernel.org
-Subject: Re: NFS4 over VPN hangs when connecting > 2 clients
-Message-ID: <20120312212708.GC8991@fieldses.org>
-References: <878vj7x6mj.fsf@vostro.rath.org>
- <87pqchn64e.fsf@inspiron.ap.columbia.edu>
- <20120312193115.GA7203@fieldses.org>
- <4F5E5241.7070008@rath.org>
- <20120312201505.GC7203@fieldses.org>
- <4F5E5CF2.50309@rath.org>
- <20120312204238.GA8991@fieldses.org>
- <7C4C12AF-5820-4BF3-8262-3BF5C201DA8C@oracle.com>
- <20120312210414.GB8991@fieldses.org>
- <D62C59BB-D68B-42FD-A916-78B86C1133F7@oracle.com>
+	id S1753267Ab2CVRHM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Mar 2012 13:07:12 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: DENIEL Philippe <philippe.deniel@cea.fr>
+CC: NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: READDIRPLUS3 and NFS3ERR_BAD_COOKIE
+Date: Thu, 22 Mar 2012 17:07:07 +0000
+Message-ID: <1332436029.8976.2.camel@lade.trondhjem.org>
+References: <4F6B1EF3.2000200@cea.fr>
+In-Reply-To: <4F6B1EF3.2000200@cea.fr>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <D62C59BB-D68B-42FD-A916-78B86C1133F7@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 12, 2012 at 05:14:16PM -0400, Chuck Lever wrote:
-> IMO, the server should do a comparison of the nfs_client_id4 strings,
-> and nothing else.
-
-We're supposed to return CLID_INUSE when we see a setclientid from a
-"different" client using the same string, to keep clients from doing
-mischief with other clients' state (either maliciously or, as in this
-case, accidentally).
-
-"Different" here is defined as "not having the same principal".  I know
-what that means in the krb5 case, but I'm less certain in the auth_sys
-case.
-
-> The client IP addresses are unreliable.  Otherwise,
-> why have an nfs_client_id4 string to begin with?  And how could a
-> multi-homed client ever word?
-
-I don't know.  Is it expected that such clients would do setclientid's
-over different interfaces and expect it to work?
-
-(I'm trying to remember now how we identify clients for the purposes of
-NSM.  In the auth_sys case maybe the goal should be to keep things
-working more or less as they did with auth_sys under v2/v3.)
-
-> Maybe I don't understand what you mean.
-> 
-> But, anyway, if the clients are all using the same nfs_client_id4
-> string, that's going to cause no end of trouble, since the boot
-> verifier for each of these clients is bound to be different.  When the
-> server sees a boot verifier change, it will just drop all the client's
-> state.  Each client's SETCLIENTID will trash the state of anything
-> that came before attached to that nfs_client_id4.  That will result in
-> the clients all constantly trying to recover state.
-
-Yes, looks like something like that is happening.
-
-This is probably a case of a slightly exotic (and possibly broken in
-some sense) client network setup--but those may turn out to be more
-common than we'd like.
-
---b.
-
-> I suppose the
-> server could watch for a boot verifier replay (cel ducks)
+T24gVGh1LCAyMDEyLTAzLTIyIGF0IDEzOjQ1ICswMTAwLCBERU5JRUwgUGhpbGlwcGUgd3JvdGU6
+DQo+IEhpLA0KPiANCj4gd2hhdCBpcyB0aGUgY2xpZW50J3MgYmVoYXZpb3IgaWYgTkZTM0VSUl9C
+QURfQ09PS0lFIGlzIHJlcGxpZWQgYnkgDQo+IFJFQURESVJQTFVTMyA/DQo+IEkgaGF2ZSB0aGlz
+IGVycm9yIHdoZW4gcnVubmluZyBib25uaWUrKyBvbiB0b3Agb2YgbXkgKG5vbiBrbmZzZCkgc2Vy
+dmVyLiANCj4gQXQgdGhpcyBzdGVwIGJvbm5pZSsrIHJlYWRkaXJzIGFsbCBkZW50cmllcyBhbmQg
+ZXJhc2UgdGhlbS4gT25lIG9mIHRoZSANCj4gcmVhZGRpciBjYWxscyBlbmRzIHdpdGggTkZTM0VS
+Ul9CQURfQ09PS0lFIGFuZCBpbW1lZGlhdGx5IGFmdGVyLCB0aGUgDQo+IGNsaWVudCBpcyBjYWxs
+aW5nIFJNRElSMywgd2l0aG91dCBoYXZpbmcgcmVtb3ZlZCBhbnkgb2YgdGhlIGZvdW5kIA0KPiBk
+ZW50cmllcy4gT2YgY291cnNlIFJNRElSMyByZXBsaWVzIE5GUzNFUlJfTk9UX0VNUFRZLCBidXQg
+SSBkbyBub3QgDQo+IHVuZGVyc3RhbmQgd2h5IFJFTU9WRSBpcyBub3QgY2FsbGVkLiBJdCBsb29r
+cyBsaWtlIHRoZSBjbGllbnRzIGJlaGF2ZXMgDQo+IHRoYXQgdGhlIGRpcmVjdG9yeSBpcyBlbXB0
+eSBhZnRlciBoYXZpbmcgcmVjZWl2ZWQgTkZTM0VSUl9CQURfQ09PS0lFIA0KPiAodGhhdCBqdXN0
+IGFuIGh5cG90aGVzaXMsIEkgYW0gbm90IGp1c3QgdGhpcyBpcyB3aGF0IGFjdHVhbGx5IGhhcHBl
+bnMpLg0KPiBEbyB5b3UgaGF2ZSBhbnkgaWRlYSA/DQoNCkRvZXMgYm9ubmllKysgY2hlY2sgdGhl
+IHJldHVybiB2YWx1ZSBvZiByZWFkZGlyPyBUaGVyZSBpcyBubyBlYXN5IHdheQ0KZm9yIHRoZSBj
+bGllbnQgdG8gcmVjb3ZlciB3aGVuIHRoZSBzZXJ2ZXIgcmV0dXJucyBCQURfQ09PS0lFLCBzbyB3
+ZQ0Kc2hvdWxkIGJlIHBhc3NpbmcgdGhhdCBlcnJvciBiYWNrIHRvIHRoZSBhcHBsaWNhdGlvbi4N
+Cg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpO
+ZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
