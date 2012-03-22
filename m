@@ -1,58 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:36985 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752920Ab2CLThJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Mar 2012 15:37:09 -0400
-Message-ID: <4F5E5054.3000304@panasas.com>
-Date: Mon, 12 Mar 2012 12:36:52 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from sainfoin-out.extra.cea.fr ([132.167.192.144]:45291 "EHLO
+	sainfoin-out.extra.cea.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750801Ab2CVROS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Mar 2012 13:14:18 -0400
+Received: from pisaure.intra.cea.fr (pisaure.intra.cea.fr [132.166.88.21])
+	by sainfoin.extra.cea.fr (8.14.2/8.14.2/CEAnet-Internet-out-2.3) with ESMTP id q2MHEGVx020489
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
+	for <linux-nfs@vger.kernel.org>; Thu, 22 Mar 2012 18:14:16 +0100
+Received: from muguet1.intra.cea.fr (muguet1.intra.cea.fr [132.166.192.6])
+	by pisaure.intra.cea.fr (8.14.4/8.14.4) with ESMTP id q2MHEGPF028617
+	for <linux-nfs@vger.kernel.org>; Thu, 22 Mar 2012 18:14:16 +0100
+	(envelope-from philippe.deniel@cea.fr)
+Received: from zia2.esteban.ctsi (esteban.dam.intra.cea.fr [132.165.76.10])
+	by muguet1.intra.cea.fr (8.13.8/8.13.8/CEAnet-Intranet-out-1.2) with SMTP id q2MHEFuc007528
+	for <linux-nfs@vger.kernel.org>; Thu, 22 Mar 2012 18:14:15 +0100
+Message-ID: <4F6B5DE7.5070900@cea.fr>
+Date: Thu, 22 Mar 2012 18:14:15 +0100
+From: DENIEL Philippe <philippe.deniel@cea.fr>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: <lsf-pc@lists.linux-foundation.org>, <linux-nfs@vger.kernel.org>,
-        <linux-fsdevel@vger.kernel.org>
-Subject: Re: [bfields: [LSF/MM TOPIC] fileservers' filesystem wishlist]
-References: <20120312151707.GD4752@fieldses.org>
-In-Reply-To: <20120312151707.GD4752@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: READDIRPLUS3 and NFS3ERR_BAD_COOKIE
+References: <4F6B1EF3.2000200@cea.fr> <1332436029.8976.2.camel@lade.trondhjem.org>
+In-Reply-To: <1332436029.8976.2.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/12/2012 08:17 AM, J. Bruce Fields wrote:
-> Apologies, this is late for a topic proposal--and I'm not really certain
-> whether it merits a separate "topic" or whether it's really just an
-> add-on to Ric's "linux servers as a storage server - what's missing?".
-> 
-> In any case, I'd love to have a slot to run through a file servers'
-> filesystem wishlist; probably a slide or two each for features such as:
-> 
-> 	- change attributes
-> 	- delegations/opLocks
-> 	- share locks
-> 	- deleted-file recovery/server-side sillyrename
-> 	- lock recovery
-> 
-> with a brief summary of each (and of current status in cases where we
-> have a partial solution already).
-> 
-> Plus a little time to discuss each feature, depending on interest.
-> 
-> My main interest is knfsd, but I'd also like to look at what we could do
-> for userspace (SMB and NFS) servers.
-> 
-> I recall doing something like this (five years ago?) at the first LSF,
-> and it was quite helpful (though some of the same problems remain).
-> 
+Myklebust, Trond a écrit :
+>
+> Does bonnie++ check the return value of readdir? There is no easy way
+> for the client to recover when the server returns BAD_COOKIE, so we
+> should be passing that error back to the application
+Thanks for your reply, Trond.
+No, it does not. It uses the readdir() call that takes a directory as 
+argument and returns a pointer to an array of struct dirents.
+When bad cookie is sent back to the application, which error will it be. 
+I saw errno = 523 ? Is this correct ?
 
-All these topics are very important for me too
+    Regards
 
-Thanks
-Boaz
-
-> --b.
-> 
-> (Resent to correct cc: list, sorry!)
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+       Philippe
