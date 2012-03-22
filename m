@@ -1,43 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:44724 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932376Ab2C1S0F convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Mar 2012 14:26:05 -0400
-Message-ID: <1332959140.2528.39.camel@twins>
-Subject: Re: [PATCH 4/6 OPTION-A version 3] completion: Add new
- wait_for_completion_timeout_state
-From: Peter Zijlstra <a.p.zijlstra@chello.nl>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Andrew Morton <akpm@linux-foundation.org>, Oleg Nesterov <oleg@redhat.com>,
-        Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
-        linux-security-module@vger.kernel.org, Ingo Molnar <mingo@elte.hu>,
-        Paul Turner <pjt@google.com>, Thomas Gleixner <tglx@linutronix.de>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "Bhamare, Sachin" <sbhamare@panasas.com>,
-        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
-        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
-        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        "keyrings@linux-nfs.org" <keyrings@linux-nfs.org>
-Date: Wed, 28 Mar 2012 20:25:40 +0200
-In-Reply-To: <4F735642.9030905@panasas.com>
-References: <4F691059.30405@panasas.com> <4F711EA2.4030608@panasas.com>
-	  <4F7120B6.2090509@panasas.com> <4F7126E0.5080700@panasas.com>
-	 <1332835919.16159.195.camel@twins> <4F735642.9030905@panasas.com>
-Content-Type: text/plain; charset=US-ASCII
-Mime-Version: 1.0
+Received: from fieldses.org ([174.143.236.118]:43679 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753511Ab2CVV0S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Mar 2012 17:26:18 -0400
+Date: Thu, 22 Mar 2012 17:26:17 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: Change the default setting of the
+ nfs4_disable_idmapping parameter
+Message-ID: <20120322212616.GD23737@fieldses.org>
+References: <1326138354-8138-1-git-send-email-Trond.Myklebust@netapp.com>
+ <20120322204705.GA23737@fieldses.org>
+ <1332449607.8976.9.camel@lade.trondhjem.org>
+ <1332450074.8976.13.camel@lade.trondhjem.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1332450074.8976.13.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2012-03-28 at 11:19 -0700, Boaz Harrosh wrote:
-> Should I add a BUG_ON if state is not one of:
->         TASK_UNINTERRUPTIBLE
->         TASK_KILLABLE
->         TASK_INTERRUPTIBLE 
+On Thu, Mar 22, 2012 at 09:01:12PM +0000, Myklebust, Trond wrote:
+> On Thu, 2012-03-22 at 16:53 -0400, Trond Myklebust wrote:
+> > Does the idmapper do the right thing for numeric ids these days? If the
+> > older clients are running a newer idmapper that can deal with numeric
+> > ids, then even the legacy clients should be able to work cleanly.
+> 
+> If this isn't the case, then the older clients are broken anyway. The
+> server has always had the option of returning numeric ids if it has no
+> mapping from a uid/gid into an owner/group string.
 
-Nah, it'd be the only such site doing so, seems pointless.
+Hm, yes, but I was worried that the id<->name mapping might just be
+different on the two sides--but if that's so, and they were using
+auth_sys, then they likely already had problems.
+
+So, maybe we could default this to on.
+
+If that's the case then I'd rather not bother making this per export:
+just an option to get the server back to its previous behavior would
+seem enough.
+
+--b.
+
+> IOW: the only difference between older and newer clients should really
+> be that the newer ones handle numeric strings more efficiently without
+> requiring an upcall, and that the newer clients will also try to _send_
+> numeric ids in SETATTR calls.
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
