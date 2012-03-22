@@ -1,53 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55498 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:6406 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753084Ab2CUUu1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Mar 2012 16:50:27 -0400
-Date: Wed, 21 Mar 2012 16:50:24 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: krb5 failures in recent nfs-for-next
-Message-ID: <20120321205023.GC12309@fieldses.org>
-References: <20120321192448.GB11222@fieldses.org>
- <4F6A2DE8.6060403@netapp.com>
- <20120321194544.GC11222@fieldses.org>
- <1332359824.12332.2.camel@lade.trondhjem.org>
+	id S1752485Ab2CVTVZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Mar 2012 15:21:25 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q2MJLPlJ008079
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 22 Mar 2012 15:21:25 -0400
+Message-ID: <4F6B7BAF.1070900@RedHat.com>
+Date: Thu, 22 Mar 2012 15:21:19 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1332359824.12332.2.camel@lade.trondhjem.org>
+To: Steve Dickson <steved@redhat.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] rpc.gssd: Links directly with libgssapi_krb5 which not
+ needed.
+References: <1327608461-15305-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1327608461-15305-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 21, 2012 at 07:57:03PM +0000, Myklebust, Trond wrote:
-> On Wed, 2012-03-21 at 15:45 -0400, J. Bruce Fields wrote:
-> > On Wed, Mar 21, 2012 at 03:37:12PM -0400, Bryan Schumaker wrote:
-> > > On 03/21/2012 03:24 PM, J. Bruce Fields wrote:
-> > > 
-> > > > Have you been doing any krb5 testing?
-> > > 
-> > > 
-> > > Not yet.  It's still on my Jenkins todo list, but I haven't gotten around to it yet.  Sounds like we need it, though, so I'll try working on it soon.
-> > 
-> > Actually, I've since seen the failure over nfsv4 and auth_sys.  All
-> > that's left on the console is enough to tell me it's happening in
-> > nfs4_free_lock_state, called from __rpc_execute in a kthread.  (Well,
-> > assuming that's actually the first backtrace.)
+
+
+On 01/26/2012 03:07 PM, Steve Dickson wrote:
+> rpc.gssd and rpc.svcgssd both link with the libgssapi_krb5 and
+> libgssglue libraries which is not needed since libgssglue
+> will dynamically load the gssapi interface defined in the
+> /etc/gssapi_mech.conf. Most likely the libgssapi_krb5 library.
 > 
-> I've just been slow to update nfs-for-next. There has been a fix for
-> this in the 'devel' and 'linux-next' branches for a while. Pushed out
-> now...
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed... 
+
+> ---
+>  aclocal/kerberos5.m4 |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
 > 
-> The actual commitdiff is here:
->   http://git.linux-nfs.org/?p=trondmy/linux-nfs.git;a=commitdiff;h=5ae67c4fee869c9b3c87b727a9ea511b6326b834
-
-Thanks!
-
-And that tree's stable, right?
-
-In which case if you've no objection I'll likely merge it with a note
-that I need it (well, some of the container changes) for jlayton's
-reboot recovery patches.
-
---b.
+> diff --git a/aclocal/kerberos5.m4 b/aclocal/kerberos5.m4
+> index dfa5738..7574e2d 100644
+> --- a/aclocal/kerberos5.m4
+> +++ b/aclocal/kerberos5.m4
+> @@ -31,7 +31,7 @@ AC_DEFUN([AC_KERBEROS_V5],[
+>      fi
+>      if test "$K5CONFIG" != ""; then
+>        KRBCFLAGS=`$K5CONFIG --cflags`
+> -      KRBLIBS=`$K5CONFIG --libs gssapi`
+> +      KRBLIBS=`$K5CONFIG --libs`
+>        K5VERS=`$K5CONFIG --version | head -n 1 | awk '{split($(4),v,"."); if (v@<:@"3"@:>@ == "") v@<:@"3"@:>@ = "0"; print v@<:@"1"@:>@v@<:@"2"@:>@v@<:@"3"@:>@ }'`
+>        AC_DEFINE_UNQUOTED(KRB5_VERSION, $K5VERS, [Define this as the Kerberos version number])
+>        if test -f $dir/include/gssapi/gssapi_krb5.h -a \
