@@ -1,113 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:49376 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756749Ab2CLUuC convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Mar 2012 16:50:02 -0400
-Subject: Re: NFS4 over VPN hangs when connecting > 2 clients
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20120312204238.GA8991@fieldses.org>
-Date: Mon, 12 Mar 2012 16:49:29 -0400
-Cc: Nikolaus Rath <Nikolaus@rath.org>, linux-nfs@vger.kernel.org
-Message-Id: <7C4C12AF-5820-4BF3-8262-3BF5C201DA8C@oracle.com>
-References: <878vj7x6mj.fsf@vostro.rath.org> <87pqchn64e.fsf@inspiron.ap.columbia.edu> <20120312193115.GA7203@fieldses.org> <4F5E5241.7070008@rath.org> <20120312201505.GC7203@fieldses.org> <4F5E5CF2.50309@rath.org> <20120312204238.GA8991@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-wi0-f178.google.com ([209.85.212.178]:50139 "EHLO
+	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753957Ab2CWRVp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Mar 2012 13:21:45 -0400
+Received: by wibhq7 with SMTP id hq7so2273612wib.1
+        for <linux-nfs@vger.kernel.org>; Fri, 23 Mar 2012 10:21:44 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <CAOdHTRB5tfXvdEprnUpfswdr7Afq-cOvsqj2VicLipKc2sOK9w@mail.gmail.com>
+References: <CAAJC9VbxAcE+DqjqaZ-9K4HKpAWKgg0_B9_QFk64b5V-QdotQA@mail.gmail.com>
+	<CAOdHTRB5tfXvdEprnUpfswdr7Afq-cOvsqj2VicLipKc2sOK9w@mail.gmail.com>
+Date: Fri, 23 Mar 2012 14:21:43 -0300
+Message-ID: <CAAJC9VbvRm49iW2jFUfVqw4k20hPbLfrUr_Wm=pHLmD_23WJew@mail.gmail.com>
+Subject: Re: About pNFS installation process.
+From: Bruno Silva <bs@cin.ufpe.br>
+To: Lev Solomonov <solo@tonian.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Fist of all, thanks for your replies.
 
-On Mar 12, 2012, at 4:42 PM, J. Bruce Fields wrote:
+I still have a few questions:
 
-> On Mon, Mar 12, 2012 at 04:30:42PM -0400, Nikolaus Rath wrote:
->> On 03/12/2012 04:15 PM, J. Bruce Fields wrote:
->>> On Mon, Mar 12, 2012 at 03:45:05PM -0400, Nikolaus Rath wrote:
->>>> On 03/12/2012 03:31 PM, J. Bruce Fields wrote:
->>>>> On Mon, Mar 12, 2012 at 12:20:17PM -0400, Nikolaus Rath wrote:
->>>>>> Nikolaus Rath <Nikolaus-BTH8mxji4b0@public.gmane.org> writes:
->>>>>>> The problem is that as soon as more than three clients are accessing the
->>>>>>> NFS shares, any operations on the NFS mountpoints by the clients hang.
->>>>>>> At the same time, CPU usage of the VPN processes becomes very high. If I
->>>>>>> run the VPN in debug mode, all I can see is that it is busy forwarding
->>>>>>> lots of packets. I also ran a packet sniffer which showed me that 90% of
->>>>>>> the packets were NFS related, but I am not familiar enough with NFS to
->>>>>>> be able to tell anything from the packets themselves. I can provide an
->>>>>>> example of the dump if that helps.
->>>>>> 
->>>>>> I have put a screenshot of the dump on
->>>>>> http://www.rath.org/res/wireshark.png (the full dump is 18 MB, and I'm
->>>>>> not sure which parts are important).
->>>>> 
->>>>> Looks like they're doing SETCLIENTID, SETCLIENTID_CONFIRM, OPEN,
->>>>> OPEN_CONFIRM repeatedly.
->>>>> 
->>>>>> Any suggestions how I could further debug this?
->>>>> 
->>>>> Could the clients be stepping on each others' state if they all think
->>>>> they have the same IP address (because of something to do with the VPN
->>>>> networking?)
->>>> 
->>>> That sounds like promising path of investigation. What determines the IP
->>>> of a client as far as NFS is concerned?
->>> 
->>> I don't remember where it gets the ip it uses to construct clientid's
->>> from....  But there is a mount option (clientaddr=) that will let you
->>> change what it uses.  So it *might* be worth checking whether using a
->>> clientaddr= option on each client (giving it a different ipaddr on each
->>> client) would change the behavior.
->> 
->> I'll try that.
->> 
->> Since there seems to be some problem with client identity: all the
->> clients are generated using the same disk image. This image also
->> includes some stuff in /var/lib/nfs. I already tried emptying this on
->> every client and did not help, but maybe there is another directory with
->> state data that could cause problems?
-> 
-> The state in there is used by the v2/v3 client, and by the server with
-> v4 as well, but not by the v4 client, so I wouldn't expect that to be an
-> issue.
-> 
->>>>> It'd be interesting to know the fields of the setclientid call, and the
->>>>> errors that the server is responding with to these calls.  If you look
->>>>> at the packet details you'll probably see the same thing happening
->>>>> over and over again.
->>>>> 
->>>>> Filtering to look at traffic between server and one client at a time
->>>>> might help to see the pattern.
->>>> 
->>>> Hmm. I'm looking at the fields, but I just have no idea what any of
->>>> those mean. Would you possibly be willing to take a look? I uploaded a
->>>> pcap dump of a few packets to http://www.rath.org/res/sample.pcap.
->>> 
->>> Looking at the packet details, under the client id field, the clients
->>> are all using:
->>> 
->>> 	"0.0.0.0/192.168.1.2 tcp UNIX 0"
->> 
->> Hmm. 192.168.1.2 is the server's address on the VPN. Is that supposed to
->> be there?
-> 
-> Yes,and the first ip is usually the ip of the client, which does suggest
-> the client is guessing it's ip wrong; so the "clientaddr=" option will
-> likely help.
+1. What file system do you suggest? Why ext4 is not recommended?
+2. How know whether the pNFS is correctly set? Follows the blkmapd output:
 
-I thought 0.0.0.0 was a legal callback address, and means "don't send me CB requests".
+[bruno@fedora blkmapd]$ sudo ./blkmapd -f
+blkmapd: process_deviceinfo: 2 vols  *****   POINT 1    *******
+blkmapd: decode_blk_signature: si_comps[0]: bs_length 16, bs_string
+%�c,�kkG�+ΉJ�2
+blkmapd: read_cmp_blk_sig: /dev/sde sig %�c,�kkG�+ΉJ�2� at 568
+blkmapd: decode_blk_volume: simple 0
+blkmapd: decode_blk_volume: slice 1
+device-mapper: reload ioctl failed: Invalid argument *****   POINT 2    *******
+blkmapd: Create device pnfs_vol_0 failed
+blkmapd: dm_device_create: 1 pnfs_vol_0 0:0
+blkmapd: process_deviceinfo: 2 vols
+blkmapd: decode_blk_signature: si_comps[0]: bs_length 16, bs_string
+%�c,�kkG�+ΉJ�2
+blkmapd: read_cmp_blk_sig: /dev/sde sig %�c,�kkG�+ΉJ�2� at 568
+blkmapd: decode_blk_volume: simple 0
+blkmapd: decode_blk_volume: slice 1
+device-mapper: reload ioctl failed: Invalid argument
+blkmapd: Create device pnfs_vol_1 failed
+blkmapd: dm_device_create: 1 pnfs_vol_1 0:0
+blkmapd: process_deviceinfo: 2 vols
+blkmapd: decode_blk_signature: si_comps[0]: bs_length 16, bs_string
+%�c,�kkG�+ΉJ�2
+blkmapd: read_cmp_blk_sig: /dev/sde sig %�c,�kkG�+ΉJ�2� at 568
+blkmapd: decode_blk_volume: simple 0
+blkmapd: decode_blk_volume: slice 1
+device-mapper: reload ioctl failed: Invalid argument
+blkmapd: Create device pnfs_vol_2 failed
+blkmapd: dm_device_create: 1 pnfs_vol_2 0:0
 
-But if all the clients are using the same nfs_client_id4 string, then no, the server can't distinguish between them, and they will tromp on each other's state.
+*****   POINT 1    ******* I connected with four data servers using
+the command iscsiadm-m discovery-t-p SendTargets <IP DATE OF
+server>-l. But, note the output blkmapd "blkmapd: process_deviceinfo:
+2 vols". I believe that should be listed four volumes, not two;
 
-The question is why can't the clients tell what their own IP address is?  mount.nfs is supposed to figure that out automatically.  Could be a bug in mount.nfs.
+*****   POINT 2   ******* What means this message? "device-mapper:
+reload ioctl failed: Invalid argument"
 
-> Hm, perhaps the server should be rejecting these SETCLIENTID's with
-> INUSE.  It used to do that, and the client would likely recover from
-> that more easily.
+Follows the output of command of "grep nfs /proc/self/mountstats"
 
-INUSE means the client is using multiple authentication flavors when performing RENEW or SETCLIENTID.  I can't think of a reason the server should reject these; it's not supposed to look at the contents of the nfs_client_id4 string.
+[bruno@fedora ~]$ grep nfs /proc/self/mountstats
+device sunrpc mounted on /var/lib/nfs/rpc_pipefs with fstype rpc_pipefs
+device 192.168.0.203:/ mounted on /home/bruno/shared with fstype nfs4
+statvers=1.0
+	nfsv4:	bm0=0xfdffbfff,bm1=0x40f9be3e,acl=0x3,sessions,pnfs=not configured
+	RPC iostats version: 1.0  p/v: 100003/4 (nfs)
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+My question is: How can i add other data servers in the structure and
+how do I find out where the problem is?
+
+Thanks in advance.
+
+[]'s
+
+Em 18 de março de 2012 07:51, Lev Solomonov <solo@tonian.com> escreveu:
+>
+> On Thu, Mar 15, 2012 at 22:23, Bruno Silva <bs@cin.ufpe.br> wrote:
+>    <snip>
+> > 1      17.4kB  53.7GB  53.7GB  ext3         1     msftres
+> > I have tested with ext4 file system, create ext4 file system with
+> > 4K block size.
+> >
+> > # mkfs.ext4 -b 4096 /dev/sdb1
+> > -----------------------------------------------------------------
+>
+> i suspect you might encounter some issues with ext4, once you get past
+> the initial setup problems.
+>
+> > The steps 1, 2 and 3 i did to all machines (data servers, metadata
+> > server and client).
+>
+> assuming iSCSI as the underlying storage model, generally speaking:
+> * blkmapd and blocklayoutdriver are client-specific (as jim mentioned).
+> * ctl daemon is MDS-specific.
+> * iSCSI target is DS-specific.
+> * both MDS and client will need iSCSI initiator.
+>
+> you'll need to discover and login to the iSCSI target on the DS from
+> both the MDS and the client for proper pNFS operation.
+>
+> security often gets in the way, mind the ACLs on the iSCSI targets and
+> firewall settings on all three (client/MDS/DS) and between them.
+>
+> > I adopted the export option in metadata server exports file.
+> > /mnt *(rw,sync,fsid=0,insecure,no_subtree_check,no_root_squash,pnfs)
+>    <snip>
+> > If the data server and metadata server have been run on the same
+> > machine everything works normally.
+>
+> see above. once you set everything up make sure you're actually running
+> in pNFS mode, i.e. that client sends/receives file data directly from
+> the DS over iSCSI, not as a fallback through MDS.
+>
+> solo.
 
 
 
 
+--
+Bruno Silva
+Computer Engineer
+Modcs Group
+---------------------------------------------------------------------
+Facebook goo.gl/QHaZx
+Twitter goo.gl/yk4jf
+Google+ goo.gl/xIbgk
