@@ -1,78 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from postman.teamix.net ([194.150.191.120]:37699 "EHLO
-	rproxy.teamix.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755000Ab2CLN2C (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Mar 2012 09:28:02 -0400
-From: Martin Steigerwald <ms@teamix.de>
-To: David Howells <dhowells@redhat.com>
-Subject: FS-Cache questions: Delayed writing / aliasing
-Date: Mon, 12 Mar 2012 14:18:06 +0100
-Cc: linux-fsdevel@vger.kernel.org, linux-cachefs@redhat.com,
-        linux-nfs@vger.kernel.org
-MIME-Version: 1.0
-Content-Type: Text/Plain;
-  charset="us-ascii"
-Message-Id: <201203121418.07100.ms@teamix.de>
+Received: from mx1.redhat.com ([209.132.183.28]:22264 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758881Ab2CWPxL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Mar 2012 11:53:11 -0400
+Date: Fri, 23 Mar 2012 11:53:37 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v10 3/8] sunrpc: create nfsd dir in rpc_pipefs
+Message-ID: <20120323115337.28bff808@corrin.poochiereds.net>
+In-Reply-To: <1332516863.3087.10.camel@lade.trondhjem.org>
+References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
+	<1332337929-18580-4-git-send-email-jlayton@redhat.com>
+	<20120323121208.GA3219@fieldses.org>
+	<20120323133111.GA2991@fieldses.org>
+	<1332516024.3087.1.camel@lade.trondhjem.org>
+	<20120323152220.GA4953@fieldses.org>
+	<1332516863.3087.10.camel@lade.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi David, hi everyone,
+On Fri, 23 Mar 2012 15:34:21 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-I am currently preparing some slides about FS-Cache regarding our Linux 
-Performance Analysis & Tuning training.
+> On Fri, 2012-03-23 at 11:22 -0400, J. Bruce Fields wrote:
+> > On Fri, Mar 23, 2012 at 03:20:21PM +0000, Myklebust, Trond wrote:
+> > > On Fri, 2012-03-23 at 09:31 -0400, J. Bruce Fields wrote:
+> > > > On Fri, Mar 23, 2012 at 08:12:08AM -0400, J. Bruce Fields wrote:
+> > > > > On Wed, Mar 21, 2012 at 09:52:04AM -0400, Jeff Layton wrote:
+> > > > > > Add a new top-level dir in rpc_pipefs to hold the pipe for the clientid
+> > > > > > upcall.
+> > > > > 
+> > > > > After applying this patch, my tests consistently hang.  The hang happens
+> > > > > in excltest (of the special connectaton tests), over nfs4.1 and krb5.
+> > > > > Looking at the wire traffic, I'm seeing DELAY returned from a setattr
+> > > > > for mode on a newly-created (with EXCLUSIVE4_1) file.  That open got a
+> > > > > delegation, so presumably that's what's causing the DELAY, though I'm
+> > > > > not seeing the server send a recall.  That could be a krb5 bug.
+> > > > > 
+> > > > > Whatever bug there is here, it's hard to tell why this patch in
+> > > > > particular would make it more likely.
+> > > > > 
+> > > > > So, still investigating!
+> > > > 
+> > > > Reproduceable by:
+> > > > 
+> > > > 	mount -osec=krb5,minorversion=1 server:/export/ /mnt/
+> > > > 	cp cthon04/special/excltest /mnt/
+> > > > 	cd /mnt
+> > > > 	./excltest
+> > > 
+> > > Umm... When would you ever get a DELAY in the above scenario? I can see
+> > > getting an NFS4ERR_OPENMODE, but not DELAY.
+> > 
+> > There's a setattr for mode right after the open.  Is that unexpected?
+> 
+> Well yes, it is. The NFSv4.1 exclusive open should always be sending a
+> full set of attributes as part of the OPEN operation. The session replay
+> cache is now supposed to guarantee the only-once semantics that the
+> verifier used to provide.
+> 
+> > The server doesn't really have to recall the delegation in that case (it
+> > only needs to recall *other* clients' delegations) but I don't think
+> > it's wrong to.
+> 
+> Then why isn't it allowing the operation? Any sane client would normally
+> interpret NFS4ERR_DELAY to mean that the server is doing something to
+> fix whatever situation is preventing the operation from completing
+> (presumably by recalling delegations in this case). Just replying DELAY
+> and doing nothing is not helpful...
+> 
 
-I do have some questions:
+Yeah, this seems like a clear bug in the server code. I think it's
+replying DELAY in order to recall the delegation, but the delegation
+isn't getting recalled for some reason. We arguably don't actually need
+to recall it here, but I don't see any recall go out at all either...
 
+As to why this patch seems to uncover this bug -- that's a complete
+mystery at this point...
 
-1) What kind of caching does FS-Cache do?
-
-I understand that FS-Cache does read caching.
-
-I understand that FS-Cache can do write-through caching and should do so via 
-NFS and CIFS. Thus when I write something into the NetFS it will be in the 
-cache (unless purged in the meanwhile). Does the AFS support support write-
-through caching?
-
-Does it also do delayed writing? I.e. writes go to the cache at cache writing 
-speed and are then synchronized with the NetFS in the background?
-
-I didn't found a definite answer in [1] or [2].
-
-
-2) Your paper about FS-Cache [2] mentions cache aliasing issues when accessing 
-the same cache through different NetFS like NFS / CIFS or withing NFS as well.
-
-What is the current status about this?
-
-I understand that it should be safe when I obey the following rules:
-
-- NFS: Each directory tree on the server is only mounted once on the client
-- NFS: Sub directories of an already mounted directory on the server are not 
-mounted on the client - i.e. no overlapping of server directory trees by the 
-client
-- Each directory tree is only mounted via one NetFS on the client
-
-Are all these still valid?
-
-Are there any other issues to consider?
-
-
-3) What is the current state of NFS, CIFS and AFS integration? Are these 
-suitable for production use in your oppinion? I have NFS FS-Cache via 
-Cachefiles in testing on my workstation since a week and it seems to work.
-
-
-4) What has happened to CacheFS? Is it still stalled? It does not seem to be 
-integrated in mainline kernel.
-
-
-I am willing to provide a patch for fscache.txt with includes some information 
-about these topics.
-
-[1] Documentation/filesystems/caching/fscache.txt
-[2] http://people.redhat.com/.../fscache/FS-Cache.pdf
-
-Thanks,
 -- 
-Martin Steigerwald - teamix GmbH - http://www.teamix.de
-gpg: 19E3 8D42 896F D004 08AC A0CA 1E10 C593 0399 AE90
+Jeff Layton <jlayton@redhat.com>
