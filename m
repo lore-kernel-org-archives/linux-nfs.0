@@ -1,43 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:47382 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965046Ab2CVTTn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Mar 2012 15:19:43 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 3 06/11] NFSv4.1: send filelayout DS commits to the MDS on invalid deviceid
-Date: Thu, 22 Mar 2012 15:19:34 -0400
-Message-Id: <1332443979-2302-7-git-send-email-andros@netapp.com>
-In-Reply-To: <1332443979-2302-1-git-send-email-andros@netapp.com>
-References: <1332443979-2302-1-git-send-email-andros@netapp.com>
+Received: from smtp.mail.umich.edu ([141.211.12.86]:60067 "EHLO
+	tombraider.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755677Ab2CWSCw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Mar 2012 14:02:52 -0400
+Date: Fri, 23 Mar 2012 14:02:47 -0400
+From: Jim Rees <rees@umich.edu>
+To: Bruno Silva <bs@cin.ufpe.br>
+Cc: Lev Solomonov <solo@tonian.com>, linux-nfs@vger.kernel.org
+Subject: Re: About pNFS installation process.
+Message-ID: <20120323180247.GA2815@umich.edu>
+References: <CAAJC9VbxAcE+DqjqaZ-9K4HKpAWKgg0_B9_QFk64b5V-QdotQA@mail.gmail.com>
+ <CAOdHTRB5tfXvdEprnUpfswdr7Afq-cOvsqj2VicLipKc2sOK9w@mail.gmail.com>
+ <CAAJC9VbvRm49iW2jFUfVqw4k20hPbLfrUr_Wm=pHLmD_23WJew@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAAJC9VbvRm49iW2jFUfVqw4k20hPbLfrUr_Wm=pHLmD_23WJew@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+Blkmapd is finding your iscsi devices, but can't create the mapped device
+for some reason.  I suspect the geometry is wrong but you'd have to do some
+debugging to figure out exactly why.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4filelayout.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+I guess we should fix or get rid of pretty_sig.
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 869ce26..04d9445 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -848,10 +848,11 @@ filelayout_choose_commit_list(struct nfs_page *req,
- 			      struct pnfs_layout_segment *lseg)
- {
- 	struct nfs4_filelayout_segment *fl = FILELAYOUT_LSEG(lseg);
-+	struct nfs4_deviceid_node *devid = FILELAYOUT_DEVID_NODE(lseg);
- 	u32 i, j;
- 	struct list_head *list;
- 
--	if (fl->commit_through_mds)
-+	if (fl->commit_through_mds || filelayout_test_devid_invalid(devid))
- 		return &NFS_I(req->wb_context->dentry->d_inode)->commit_list;
- 
- 	/* Note that we are calling nfs4_fl_calc_j_index on each page
--- 
-1.7.6.4
+Date: Thu, 2 Dec 2010 09:41:26 -0500
+From: Jim Rees <rees@umich.edu>
+Subject: Re: [PATCH 4/5] various minor cleanups
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
 
+...
+
+I am glad you are paying attention!  I am aware of the shortcomings of
+pretty_sig().  In addition to the problems you noted, it also assumes that a
+signature over 8 bytes long is representable as a text string, which is not
+guaranteed.  The code it replaced was worse.
+
+I put this in because for debugging I need to be able to follow a signature
+all the way from my EMC server to the devmapper.  pretty_sig() simply prints
+the signature in a way that I can match it up with the signature on the
+server.
+
+I don't want to spend a lot of time on this, but I also am uneasy leaving
+EMC-specific code in nfs-utils, especially since it can blow up if you use
+it against a non-EMC server.  My inclination is to remove this debugging
+code when I no longer need it.  I guess at the very least I should put in a
+comment.  I am open to suggestions.
