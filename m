@@ -1,95 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:51867 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:56972 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751623Ab2CQQrN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 17 Mar 2012 12:47:13 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH] NFS: Use cond_resched_lock() to reduce latencies in the commit scans
-Date: Sat, 17 Mar 2012 12:47:05 -0400
-Message-Id: <1332002825-8557-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1754136Ab2CWPWW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Mar 2012 11:22:22 -0400
+Date: Fri, 23 Mar 2012 11:22:20 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v10 3/8] sunrpc: create nfsd dir in rpc_pipefs
+Message-ID: <20120323152220.GA4953@fieldses.org>
+References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
+ <1332337929-18580-4-git-send-email-jlayton@redhat.com>
+ <20120323121208.GA3219@fieldses.org>
+ <20120323133111.GA2991@fieldses.org>
+ <1332516024.3087.1.camel@lade.trondhjem.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1332516024.3087.1.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that we conditionally drop the inode->i_lock when it is safe
-to do so in the commit loops.
-We do so after locking the nfs_page, but before removing it from the
-commit list. We can then use list_safe_reset_next to recover the loop
-after the lock is retaken.
+On Fri, Mar 23, 2012 at 03:20:21PM +0000, Myklebust, Trond wrote:
+> On Fri, 2012-03-23 at 09:31 -0400, J. Bruce Fields wrote:
+> > On Fri, Mar 23, 2012 at 08:12:08AM -0400, J. Bruce Fields wrote:
+> > > On Wed, Mar 21, 2012 at 09:52:04AM -0400, Jeff Layton wrote:
+> > > > Add a new top-level dir in rpc_pipefs to hold the pipe for the clientid
+> > > > upcall.
+> > > 
+> > > After applying this patch, my tests consistently hang.  The hang happens
+> > > in excltest (of the special connectaton tests), over nfs4.1 and krb5.
+> > > Looking at the wire traffic, I'm seeing DELAY returned from a setattr
+> > > for mode on a newly-created (with EXCLUSIVE4_1) file.  That open got a
+> > > delegation, so presumably that's what's causing the DELAY, though I'm
+> > > not seeing the server send a recall.  That could be a krb5 bug.
+> > > 
+> > > Whatever bug there is here, it's hard to tell why this patch in
+> > > particular would make it more likely.
+> > > 
+> > > So, still investigating!
+> > 
+> > Reproduceable by:
+> > 
+> > 	mount -osec=krb5,minorversion=1 server:/export/ /mnt/
+> > 	cp cthon04/special/excltest /mnt/
+> > 	cd /mnt
+> > 	./excltest
+> 
+> Umm... When would you ever get a DELAY in the above scenario? I can see
+> getting an NFS4ERR_OPENMODE, but not DELAY.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4filelayout.c |    8 ++++++--
- fs/nfs/write.c          |    8 ++++++--
- 2 files changed, 12 insertions(+), 4 deletions(-)
+There's a setattr for mode right after the open.  Is that unexpected?
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index e0bdbf4..7a162ad 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -936,7 +936,8 @@ static struct pnfs_layout_segment *find_only_write_lseg(struct inode *inode)
- }
- 
- static int
--filelayout_scan_ds_commit_list(struct nfs4_fl_commit_bucket *bucket, int max)
-+filelayout_scan_ds_commit_list(struct nfs4_fl_commit_bucket *bucket, int max,
-+		spinlock_t *lock)
- {
- 	struct list_head *src = &bucket->written;
- 	struct list_head *dst = &bucket->committing;
-@@ -946,6 +947,8 @@ filelayout_scan_ds_commit_list(struct nfs4_fl_commit_bucket *bucket, int max)
- 	list_for_each_entry_safe(req, tmp, src, wb_list) {
- 		if (!nfs_lock_request(req))
- 			continue;
-+		if (cond_resched_lock(lock))
-+			list_safe_reset_next(req, tmp, wb_list);
- 		nfs_request_remove_commit_list(req);
- 		clear_bit(PG_COMMIT_TO_DS, &req->wb_flags);
- 		nfs_list_add_request(req, dst);
-@@ -972,7 +975,8 @@ static int filelayout_scan_commit_lists(struct inode *inode, int max)
- 	if (fl->commit_through_mds)
- 		goto out_done;
- 	for (i = 0; i < fl->number_of_buckets && max != 0; i++) {
--		cnt = filelayout_scan_ds_commit_list(&fl->commit_buckets[i], max);
-+		cnt = filelayout_scan_ds_commit_list(&fl->commit_buckets[i],
-+				max, &inode->i_lock);
- 		max -= cnt;
- 		rv += cnt;
- 	}
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 0de19f4..83e0027 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -561,7 +561,8 @@ nfs_need_commit(struct nfs_inode *nfsi)
- 
- /* i_lock held by caller */
- static int
--nfs_scan_commit_list(struct list_head *src, struct list_head *dst, int max)
-+nfs_scan_commit_list(struct list_head *src, struct list_head *dst, int max,
-+		spinlock_t *lock)
- {
- 	struct nfs_page *req, *tmp;
- 	int ret = 0;
-@@ -569,6 +570,8 @@ nfs_scan_commit_list(struct list_head *src, struct list_head *dst, int max)
- 	list_for_each_entry_safe(req, tmp, src, wb_list) {
- 		if (!nfs_lock_request(req))
- 			continue;
-+		if (cond_resched_lock(lock))
-+			list_safe_reset_next(req, tmp, wb_list);
- 		nfs_request_remove_commit_list(req);
- 		nfs_list_add_request(req, dst);
- 		ret++;
-@@ -597,7 +600,8 @@ nfs_scan_commit(struct inode *inode, struct list_head *dst)
- 		const int max = INT_MAX;
- 		int pnfs_ret;
- 
--		ret = nfs_scan_commit_list(&nfsi->commit_list, dst, max);
-+		ret = nfs_scan_commit_list(&nfsi->commit_list, dst, max,
-+				&inode->i_lock);
- 		pnfs_ret = pnfs_scan_commit_lists(inode, max - ret);
- 		ret += pnfs_ret;
- 		nfsi->ncommit -= ret;
--- 
-1.7.7.6
+The server doesn't really have to recall the delegation in that case (it
+only needs to recall *other* clients' delegations) but I don't think
+it's wrong to.
 
+--b.
