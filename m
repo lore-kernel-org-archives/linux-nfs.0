@@ -1,147 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:20751 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:52265 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758045Ab2CFA1S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 19:27:18 -0500
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q260RIL2016725
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 19:27:18 -0500
-Received: from badhat.bos.devel.redhat.com (vpn-9-158.rdu.redhat.com [10.11.9.158])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q260RHhj022767
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 19:27:18 -0500
-Message-ID: <4F5559EA.7010206@RedHat.com>
-Date: Mon, 05 Mar 2012 19:27:22 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1754958Ab2CWPUl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Mar 2012 11:20:41 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v10 3/8] sunrpc: create nfsd dir in rpc_pipefs
+Date: Fri, 23 Mar 2012 15:20:21 +0000
+Message-ID: <1332516024.3087.1.camel@lade.trondhjem.org>
+References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
+	 <1332337929-18580-4-git-send-email-jlayton@redhat.com>
+	 <20120323121208.GA3219@fieldses.org> <20120323133111.GA2991@fieldses.org>
+In-Reply-To: <20120323133111.GA2991@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] umount.nfs: normalize path names during umounts.
-References: <1330976165-19849-1-git-send-email-steved@redhat.com> <1330976165-19849-2-git-send-email-steved@redhat.com> <20120305212015.GA21904@us.ibm.com>
-In-Reply-To: <20120305212015.GA21904@us.ibm.com>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 03/05/2012 04:20 PM, Malahal Naineni wrote:
-> Steve Dickson [steved@redhat.com] wrote:
->> So path names are found during umounts, normalize
->> path names by removing any extra slashes and add
->> a lead slash if one does not exist.
->>
->> This normalization only has to occur when the mtab
->> and /proc/mounts are not the same file.
->>
->> Signed-off-by: Steve Dickson <steved@redhat.com>
->> ---
->>  utils/mount/nfsumount.c |   64 +++++++++++++++++++++++++++++++++++++++++++++-
->>  1 files changed, 62 insertions(+), 2 deletions(-)
->>
->> diff --git a/utils/mount/nfsumount.c b/utils/mount/nfsumount.c
->> index 3538d88..0f77261 100644
->> --- a/utils/mount/nfsumount.c
->> +++ b/utils/mount/nfsumount.c
->> @@ -140,6 +140,52 @@ static int del_mtab(const char *spec, const char *node)
->>  }
->>
->>  /*
->> + * To ensure the path is found during unmounts, strip
->> + * off the multiple '/' or add a '/' if one does not exist.
->> + */
->> +static inline char *
->> +normalize_path(char *spec) 
->> +{
->> +	char *colen, *ptr, *str, *dev;
->> +
->> +	if ((colen = strchr(spec, ':')) == NULL)
->> +		return NULL;
->> +
->> +	if (*(colen + 1) != '/') {
->> +		dev = str = malloc(strlen(spec) + 2);
->> +		if (dev == NULL) 
->> +			return NULL;
->> +
->> +		ptr = spec;
->> +		while (ptr <= colen)
->> +			*(str++) = *(ptr++);
->> +		*str++='/';
->> +		while (*ptr)
->> +			*(str++) = *(ptr++);
->> +		*str='\0';
->> +
->> +		return dev;
->> +	}
->> +
->> +	if (strstr(spec, "//") != NULL) {
->> +		dev = strdup(spec);
->> +		if (dev == NULL)
->> +			return NULL;
->> +
->> +		colen = strchr(dev, ':');
->> +		ptr = (colen +1);
->> +		while (*ptr && *(ptr+1) == '/')
->> +			ptr++;
->> +		while (*ptr)
->> +			*(++colen) = *(ptr++);
->> +		*(colen+1) = '\0';
->> +
->> +		return dev;
->> +	} 
->> +	return NULL;
->> +}
->> +
->> +/*
->>   * Detect NFSv4 mounts.
->>   *
->>   * Consult /proc/mounts to determine if the mount point
->> @@ -154,6 +200,7 @@ static int nfs_umount_is_vers4(const struct mntentchn *mc)
->>  	struct mntentchn *pmc;
->>  	struct mount_options *options;
->>  	int retval;
->> +	char *normpath=NULL;
->>
->>  	retval = -1;
->>  	pmc = getprocmntdirbackward(mc->m.mnt_dir, NULL);
->> @@ -171,8 +218,20 @@ static int nfs_umount_is_vers4(const struct mntentchn *mc)
->>  		 */
->>  		while (pmc->m.mnt_fsname[nlen - 1] == '/')
->>  			nlen--;
->> -		if (strncmp(pmc->m.mnt_fsname, mc->m.mnt_fsname, nlen) != 0)
->> -			continue;
->> +		/*
->> +		 * When the mtab and /proc/mounts are not the same
->> +		 * file, normalize the path in the mtab if needed.
->> +		 */
->> +		if (mtab_is_writable())
->> +			normpath = normalize_path(mc->m.mnt_fsname);
->> +
->> +		if (strncmp(pmc->m.mnt_fsname, mc->m.mnt_fsname, nlen) != 0) {
->> +			/* Is there a normalized path, if so compare that one too */
->> +			if (normpath == NULL)
->> +				continue;
->> +			if (strncmp(pmc->m.mnt_fsname, normpath, nlen) != 0)
->> +				continue;
-> 
-> You need to free normpath here before the "continue".
-> 
-> Also, when you normalize, why not go the extra mile of doing it all the
-> way as the patch I posted? I wanted to cover specs like
-> "host:/server/../home/./blah". This patch only does partial
-> normalization. The original patch also normalizes /proc/mount entry's
-> pathname (this avoids dealing with trailing '/' hack that exists now).
-I just do not see the need for that type of complexity... Maybe I'm
-being a bit naive, but I see two problems here. One, v4 mounts 
-with multiple slashes and two v4 mounts without any slashes... 
-
-Now both of our patches do address those issues but mine only
-addresses those issues and no, it does not go the "extra mile" 
-of addressing '..' in path names, but does it need to? Is 
-there really an use case where people export things with ".."
-in the path? 
-
-Sometimes going the just extra mile just brings more pain... 
-for no reason... and believe me I'm no runner...  8-) 
-
-steved.
-
+T24gRnJpLCAyMDEyLTAzLTIzIGF0IDA5OjMxIC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIEZyaSwgTWFyIDIzLCAyMDEyIGF0IDA4OjEyOjA4QU0gLTA0MDAsIEouIEJydWNlIEZp
+ZWxkcyB3cm90ZToNCj4gPiBPbiBXZWQsIE1hciAyMSwgMjAxMiBhdCAwOTo1MjowNEFNIC0wNDAw
+LCBKZWZmIExheXRvbiB3cm90ZToNCj4gPiA+IEFkZCBhIG5ldyB0b3AtbGV2ZWwgZGlyIGluIHJw
+Y19waXBlZnMgdG8gaG9sZCB0aGUgcGlwZSBmb3IgdGhlIGNsaWVudGlkDQo+ID4gPiB1cGNhbGwu
+DQo+ID4gDQo+ID4gQWZ0ZXIgYXBwbHlpbmcgdGhpcyBwYXRjaCwgbXkgdGVzdHMgY29uc2lzdGVu
+dGx5IGhhbmcuICBUaGUgaGFuZyBoYXBwZW5zDQo+ID4gaW4gZXhjbHRlc3QgKG9mIHRoZSBzcGVj
+aWFsIGNvbm5lY3RhdG9uIHRlc3RzKSwgb3ZlciBuZnM0LjEgYW5kIGtyYjUuDQo+ID4gTG9va2lu
+ZyBhdCB0aGUgd2lyZSB0cmFmZmljLCBJJ20gc2VlaW5nIERFTEFZIHJldHVybmVkIGZyb20gYSBz
+ZXRhdHRyDQo+ID4gZm9yIG1vZGUgb24gYSBuZXdseS1jcmVhdGVkICh3aXRoIEVYQ0xVU0lWRTRf
+MSkgZmlsZS4gIFRoYXQgb3BlbiBnb3QgYQ0KPiA+IGRlbGVnYXRpb24sIHNvIHByZXN1bWFibHkg
+dGhhdCdzIHdoYXQncyBjYXVzaW5nIHRoZSBERUxBWSwgdGhvdWdoIEknbQ0KPiA+IG5vdCBzZWVp
+bmcgdGhlIHNlcnZlciBzZW5kIGEgcmVjYWxsLiAgVGhhdCBjb3VsZCBiZSBhIGtyYjUgYnVnLg0K
+PiA+IA0KPiA+IFdoYXRldmVyIGJ1ZyB0aGVyZSBpcyBoZXJlLCBpdCdzIGhhcmQgdG8gdGVsbCB3
+aHkgdGhpcyBwYXRjaCBpbg0KPiA+IHBhcnRpY3VsYXIgd291bGQgbWFrZSBpdCBtb3JlIGxpa2Vs
+eS4NCj4gPiANCj4gPiBTbywgc3RpbGwgaW52ZXN0aWdhdGluZyENCj4gDQo+IFJlcHJvZHVjZWFi
+bGUgYnk6DQo+IA0KPiAJbW91bnQgLW9zZWM9a3JiNSxtaW5vcnZlcnNpb249MSBzZXJ2ZXI6L2V4
+cG9ydC8gL21udC8NCj4gCWNwIGN0aG9uMDQvc3BlY2lhbC9leGNsdGVzdCAvbW50Lw0KPiAJY2Qg
+L21udA0KPiAJLi9leGNsdGVzdA0KDQpVbW0uLi4gV2hlbiB3b3VsZCB5b3UgZXZlciBnZXQgYSBE
+RUxBWSBpbiB0aGUgYWJvdmUgc2NlbmFyaW8/IEkgY2FuIHNlZQ0KZ2V0dGluZyBhbiBORlM0RVJS
+X09QRU5NT0RFLCBidXQgbm90IERFTEFZLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
+TkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
+b20NCnd3dy5uZXRhcHAuY29tDQoNCg==
