@@ -1,67 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:53095 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932411Ab2C1SVL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Mar 2012 14:21:11 -0400
-Message-ID: <4F735642.9030905@panasas.com>
-Date: Wed, 28 Mar 2012 11:19:46 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from fieldses.org ([174.143.236.118]:47817 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752791Ab2CWQAG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Mar 2012 12:00:06 -0400
+Date: Fri, 23 Mar 2012 12:00:04 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v10 3/8] sunrpc: create nfsd dir in rpc_pipefs
+Message-ID: <20120323160003.GA5675@fieldses.org>
+References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
+ <1332337929-18580-4-git-send-email-jlayton@redhat.com>
+ <20120323121208.GA3219@fieldses.org>
+ <20120323133111.GA2991@fieldses.org>
+ <1332516024.3087.1.camel@lade.trondhjem.org>
+ <20120323152220.GA4953@fieldses.org>
+ <1332516863.3087.10.camel@lade.trondhjem.org>
 MIME-Version: 1.0
-To: Peter Zijlstra <a.p.zijlstra@chello.nl>
-CC: Andrew Morton <akpm@linux-foundation.org>, Oleg Nesterov <oleg@redhat.com>,
-        Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
-        <linux-security-module@vger.kernel.org>, Ingo Molnar <mingo@elte.hu>,
-        Paul Turner <pjt@google.com>, Thomas Gleixner <tglx@linutronix.de>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "Bhamare, Sachin" <sbhamare@panasas.com>,
-        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
-        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
-        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        "keyrings@linux-nfs.org" <keyrings@linux-nfs.org>
-Subject: Re: [PATCH 4/6 OPTION-A version 3] completion: Add new wait_for_completion_timeout_state
-References: <4F691059.30405@panasas.com> <4F711EA2.4030608@panasas.com>  <4F7120B6.2090509@panasas.com> <4F7126E0.5080700@panasas.com> <1332835919.16159.195.camel@twins>
-In-Reply-To: <1332835919.16159.195.camel@twins>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1332516863.3087.10.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/27/2012 01:11 AM, Peter Zijlstra wrote:
-
-> On Mon, 2012-03-26 at 19:33 -0700, Boaz Harrosh wrote:
+On Fri, Mar 23, 2012 at 03:34:21PM +0000, Myklebust, Trond wrote:
+> On Fri, 2012-03-23 at 11:22 -0400, J. Bruce Fields wrote:
+> > On Fri, Mar 23, 2012 at 03:20:21PM +0000, Myklebust, Trond wrote:
+> > > On Fri, 2012-03-23 at 09:31 -0400, J. Bruce Fields wrote:
+> > > > On Fri, Mar 23, 2012 at 08:12:08AM -0400, J. Bruce Fields wrote:
+> > > > > On Wed, Mar 21, 2012 at 09:52:04AM -0400, Jeff Layton wrote:
+> > > > > > Add a new top-level dir in rpc_pipefs to hold the pipe for the clientid
+> > > > > > upcall.
+> > > > > 
+> > > > > After applying this patch, my tests consistently hang.  The hang happens
+> > > > > in excltest (of the special connectaton tests), over nfs4.1 and krb5.
+> > > > > Looking at the wire traffic, I'm seeing DELAY returned from a setattr
+> > > > > for mode on a newly-created (with EXCLUSIVE4_1) file.  That open got a
+> > > > > delegation, so presumably that's what's causing the DELAY, though I'm
+> > > > > not seeing the server send a recall.  That could be a krb5 bug.
+> > > > > 
+> > > > > Whatever bug there is here, it's hard to tell why this patch in
+> > > > > particular would make it more likely.
+> > > > > 
+> > > > > So, still investigating!
+> > > > 
+> > > > Reproduceable by:
+> > > > 
+> > > > 	mount -osec=krb5,minorversion=1 server:/export/ /mnt/
+> > > > 	cp cthon04/special/excltest /mnt/
+> > > > 	cd /mnt
+> > > > 	./excltest
+> > > 
+> > > Umm... When would you ever get a DELAY in the above scenario? I can see
+> > > getting an NFS4ERR_OPENMODE, but not DELAY.
+> > 
+> > There's a setattr for mode right after the open.  Is that unexpected?
 > 
+> Well yes, it is. The NFSv4.1 exclusive open should always be sending a
+> full set of attributes as part of the OPEN operation. The session replay
+> cache is now supposed to guarantee the only-once semantics that the
+> verifier used to provide.
+
+Looking at the trace.... The client is passing a zero attribute set on
+the EXCLUSIVE4_1 open.
+
+Hm, I wonder if our support for suppattr_exclreat has a bug.  On a quick
+check, the code looks like it should do the right thing.
+
+> > The server doesn't really have to recall the delegation in that case (it
+> > only needs to recall *other* clients' delegations) but I don't think
+> > it's wrong to.
 > 
-> So I'm fine with adding wait_for_completion_timeout_state(), but make it
-> look and smell like wait_for_completion_timeout() and use a proper
-> state, like wake_up_state().
-> 
-> IOW:
-> 
-> unsigned long __sched 
-> wait_for_completion_timeout_state(struct completion *x, 
-> 				  unsigned long timeout,
-> 				  unsigned int state)
-> {
-> 	return wait_for_common(x, timeout, state);
-> }
-> EXPORT_SYMBOL(wait_for_completion_timeout_state);
-> 
+> Then why isn't it allowing the operation?  Any sane client would normally
+> interpret NFS4ERR_DELAY to mean that the server is doing something to
+> fix whatever situation is preventing the operation from completing
+> (presumably by recalling delegations in this case). Just replying DELAY
+> and doing nothing is not helpful...
 
+Yes, there's a backchannel bug of some kind.
 
+Actually I doubt the server's 4.1 krb5 implementation handles the
+backchannel correctly at all.
 
-Looks good thanks It's what I had at first, and went
-overboard with it. KISS right?
-
-I'll resend and use it as is? Should I add a BUG_ON
-if state is not one of:
-	TASK_UNINTERRUPTIBLE
-	TASK_KILLABLE
-	TASK_INTERRUPTIBLE
-
-Thanks Peter, this will help me a lot
-Boaz
+--b.
