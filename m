@@ -1,49 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:39353 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S936042Ab2C3VaL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Mar 2012 17:30:11 -0400
-Message-ID: <4F7625D7.8070801@panasas.com>
-Date: Fri, 30 Mar 2012 14:29:59 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from smtp.mail.umich.edu ([141.211.14.82]:57652 "EHLO
+	hellskitchen.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1758153Ab2CWLtR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Mar 2012 07:49:17 -0400
+Date: Fri, 23 Mar 2012 07:49:13 -0400
+From: Jim Rees <rees@umich.edu>
+To: Vivek Trivedi <vtrivedi018@gmail.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Namjae Jeon <linkinjeon@gmail.com>,
+        amit.sahrawat83@gmail.com
+Subject: Re: NFS: low read/stat performance on small files
+Message-ID: <20120323114913.GB24489@umich.edu>
+References: <CAKX=r8A90b25VKXC1qtAota9DqDrj37xFT511DuvrZ=1Eux6Xw@mail.gmail.com>
 MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Subject: [PATCH] pnfs-obj: Remove unused variable from objlayout_get_deviceinfo()
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAKX=r8A90b25VKXC1qtAota9DqDrj37xFT511DuvrZ=1Eux6Xw@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Sachin Bhamare <sbhamare@panasas.com>
+Vivek Trivedi wrote:
 
-Local variable 'sb' was not being used in objlayout_get_deviceinfo().
+  204800 bytes (200.0KB) copied, 0.027074 seconds, 7.2MB/s
+  Read speed for 200KB file is 7.2 MB
 
-Signed-off-by: Sachin Bhamare <sbhamare@panasas.com>
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/nfs/objlayout/objlayout.c |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
+  104857600 bytes (100.0MB) copied, 9.351221 seconds, 10.7MB/s
+  Read speed for 100MB file is 10.7 MB
+  
+  As you see read speed for 200KB file is only 7.2MB/sec while it is
+  10.7 MB/sec when we read 100MB file.
+  Why there is so much difference in read performance ?
+  Is there any way to achieve high read speed for small files ?
 
-diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
-index 1ae53eb..b158d1b 100644
---- a/fs/nfs/objlayout/objlayout.c
-+++ b/fs/nfs/objlayout/objlayout.c
-@@ -604,7 +604,6 @@ int objlayout_get_deviceinfo(struct pnfs_layout_hdr *pnfslay,
- {
- 	struct objlayout_deviceinfo *odi;
- 	struct pnfs_device pd;
--	struct super_block *sb;
- 	struct page *page, **pages;
- 	u32 *p;
- 	int err;
-@@ -623,7 +622,6 @@ int objlayout_get_deviceinfo(struct pnfs_layout_hdr *pnfslay,
- 	pd.pglen = PAGE_SIZE;
- 	pd.mincount = 0;
- 
--	sb = pnfslay->plh_inode->i_sb;
- 	err = nfs4_proc_getdeviceinfo(NFS_SERVER(pnfslay->plh_inode), &pd);
- 	dprintk("%s nfs_getdeviceinfo returned %d\n", __func__, err);
- 	if (err)
--- 
-1.7.6.5
-
+That seems excellent to me.  204800 bytes at 11213252 per sec would be 18.2
+msec, so your per-file overhead is around 9 msec.  The disk latency alone
+would normally be more than that.
