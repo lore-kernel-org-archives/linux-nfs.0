@@ -1,85 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from www262.sakura.ne.jp ([202.181.97.72]:51276 "EHLO
-	www262.sakura.ne.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751020Ab2CVWRf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Mar 2012 18:17:35 -0400
-To: bharrosh@panasas.com
-Cc: oleg@redhat.com, akpm@linux-foundation.org, rjw@sisk.pl,
-        keyrings@linux-nfs.org, linux-security-module@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        sbhamare@panasas.com, dhowells@redhat.com, eparis@redhat.com,
-        srivatsa.bhat@linux.vnet.ibm.com, kay.sievers@vrfy.org,
-        jmorris@namei.org, ebiederm@xmission.com, gregkh@linuxfoundation.org,
-        rusty@rustcorp.com.au, tj@kernel.org, rientjes@google.com
-Subject: Re: [RFC 4/4] {RFC} kmod.c: Add new call_usermodehelper_timeout()API
-From: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
-References: <4F691059.30405@panasas.com>
-	<4F691383.5040506@panasas.com>
-	<4F6A92FC.6060702@panasas.com>
-	<20120322142758.GA12370@redhat.com>
-	<4F6B789C.8020201@panasas.com>
-In-Reply-To: <4F6B789C.8020201@panasas.com>
-Message-Id: <201203230716.GFE32712.StOJOVFHMQOFFL@I-love.SAKURA.ne.jp>
-Date: Fri, 23 Mar 2012 07:16:14 +0900
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from mx2.netapp.com ([216.240.18.37]:35046 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756043Ab2CWMQp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Mar 2012 08:16:45 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jim Rees <rees@umich.edu>
+CC: Vivek Trivedi <vtrivedi018@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        Namjae Jeon <linkinjeon@gmail.com>,
+        "amit.sahrawat83@gmail.com" <amit.sahrawat83@gmail.com>
+Subject: Re: NFS: low read/stat performance on small files
+Date: Fri, 23 Mar 2012 12:16:40 +0000
+Message-ID: <1332505002.20500.14.camel@lade.trondhjem.org>
+References: <CAKX=r8A90b25VKXC1qtAota9DqDrj37xFT511DuvrZ=1Eux6Xw@mail.gmail.com>
+	 <20120323114913.GB24489@umich.edu>
+In-Reply-To: <20120323114913.GB24489@umich.edu>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Boaz Harrosh wrote:
-> > And please explain the use-case for the new API.
-> > 
-> 
-> The reason I need a timeout, is because: Calling from Kernel to
-> user-mode gives me the creeps. I don't trust user-mode programs,
-
-If you can't trust user-mode programs executed via call_usermodehelper(),
-you should not use call_usermodehelper(). It is executed with full privileges.
-What if the program executed via call_usermodehelper() was
-
-  #! /bin/sh
-  exec /bin/rm -fr /
-
-?
-
-> specially when in final Control by a Distribution. Bugs can happen
-> and deadlocks are a possibility.
-
-Userspace process can be killed at any time.
-Deadlock in userspace is less problematic than deadlock in kernel.
-
-> An operation that should take
-> 1/2 second and could max to at most 1.5 seconds, I can say in
-> confidence that after 15 seconds, a dmesg and a clean error recovery
-> is better.
-
-Userspace process can block for long time. For example, under heavy load and
-memory slashing. It is hardly possible to embed appropriate timeout value into
-kernel code.
-
-> I don't want any chance of D stating IO operations.
-> (My code is in the IO path, either fsync or write-back. There is not
->  always a killable target)
-
-Then, isn't UMH_NO_WAIT better than UMH_WAIT_PROC?
-
-> The code path I have is easily recoverable, and if not for the scary
-> message in dmesg the user will not notice.
-
-What does your code path do if it raced with timeout (i.e. kernel code begins
-recovery operation (thinking that the request failed) while userspace code
-completes what the userspace code was asked to do (thinking that the request
-succeeded))?
-
-I think you should use a fork()ed wrapper in userspace for implementing
-timeout.
-
-  Userspace process - Create child and wait for appropriate timeout and exit.
-    Child of userspace process - Create grandchild and wait for completion of
-                                 grandchild. Tell (or recreate) grandchild to
-                                 undo what the grandchild was supposed to do
-                                 if parent dies before grandchild dies.
-
-      Grandchild of userspace process - Do what parent told me to do. Undo if
-                                        parent told me to undo.
+T24gRnJpLCAyMDEyLTAzLTIzIGF0IDA3OjQ5IC0wNDAwLCBKaW0gUmVlcyB3cm90ZToNCj4gVml2
+ZWsgVHJpdmVkaSB3cm90ZToNCj4gDQo+ICAgMjA0ODAwIGJ5dGVzICgyMDAuMEtCKSBjb3BpZWQs
+IDAuMDI3MDc0IHNlY29uZHMsIDcuMk1CL3MNCj4gICBSZWFkIHNwZWVkIGZvciAyMDBLQiBmaWxl
+IGlzIDcuMiBNQg0KPiANCj4gICAxMDQ4NTc2MDAgYnl0ZXMgKDEwMC4wTUIpIGNvcGllZCwgOS4z
+NTEyMjEgc2Vjb25kcywgMTAuN01CL3MNCj4gICBSZWFkIHNwZWVkIGZvciAxMDBNQiBmaWxlIGlz
+IDEwLjcgTUINCj4gICANCj4gICBBcyB5b3Ugc2VlIHJlYWQgc3BlZWQgZm9yIDIwMEtCIGZpbGUg
+aXMgb25seSA3LjJNQi9zZWMgd2hpbGUgaXQgaXMNCj4gICAxMC43IE1CL3NlYyB3aGVuIHdlIHJl
+YWQgMTAwTUIgZmlsZS4NCj4gICBXaHkgdGhlcmUgaXMgc28gbXVjaCBkaWZmZXJlbmNlIGluIHJl
+YWQgcGVyZm9ybWFuY2UgPw0KPiAgIElzIHRoZXJlIGFueSB3YXkgdG8gYWNoaWV2ZSBoaWdoIHJl
+YWQgc3BlZWQgZm9yIHNtYWxsIGZpbGVzID8NCj4gDQo+IFRoYXQgc2VlbXMgZXhjZWxsZW50IHRv
+IG1lLiAgMjA0ODAwIGJ5dGVzIGF0IDExMjEzMjUyIHBlciBzZWMgd291bGQgYmUgMTguMg0KPiBt
+c2VjLCBzbyB5b3VyIHBlci1maWxlIG92ZXJoZWFkIGlzIGFyb3VuZCA5IG1zZWMuICBUaGUgZGlz
+ayBsYXRlbmN5IGFsb25lDQo+IHdvdWxkIG5vcm1hbGx5IGJlIG1vcmUgdGhhbiB0aGF0Lg0KDQou
+Li5hbmQgdGhlIHJlYXNvbiB3aHkgdGhlIHBlcmZvcm1hbmNlIGlzIHdvcnNlIGZvciB0aGUgMjAw
+SyBmaWxlDQpjb21wYXJlZCB0byB0aGUgMTAwTSBvbmUgaXMgZWFzaWx5IGV4cGxhaW5lZC4NCg0K
+V2hlbiBvcGVuaW5nIHRoZSBmaWxlIGZvciByZWFkaW5nLCB0aGUgY2xpZW50IGhhcyBhIG51bWJl
+ciBvZg0Kc3luY2hyb25vdXMgUlBDIGNhbGxzIHRvIG1ha2U6IGl0IG5lZWRzIHRvIGxvb2sgdXAg
+dGhlIGZpbGUsIGNoZWNrDQphY2Nlc3MgcGVybWlzc2lvbnMgYW5kIHBvc3NpYmx5IHJldmFsaWRh
+dGUgaXRzIGNhY2hlLiBBbGwgdGhlc2UgdGFza3MNCmhhdmUgdG8gYmUgZG9uZSBpbiBzZXJpZXMg
+KHlvdSBjYW5ub3QgZG8gdGhlbSBpbiBwYXJhbGxlbCksIGFuZCBzbyB0aGUNCmxhdGVuY3kgb2Yg
+ZWFjaCB0YXNrIGlzIGxpbWl0ZWQgYnkgdGhlIHJvdW5kLXRyaXAgdGltZSB0byB0aGUgc2VydmVy
+Lg0KDQpPbiB0aGUgb3RoZXIgaGFuZCwgb25jZSB5b3UgZ2V0IHRvIGRvaW5nIFJFQURzLCB0aGUg
+Y2xpZW50IGNhbiBzZW5kIGENCmJ1bmNoIG9mIHJlYWRhaGVhZCByZXF1ZXN0cyBpbiBwYXJhbGxl
+bCwgdGh1cyBlbnN1cmluZyB0aGF0IHRoZSBzZXJ2ZXINCmNhbiB1c2UgYWxsIHRoZSBiYW5kd2lk
+dGggYXZhaWxhYmxlIHRvIHRoZSBUQ1AgY29ubmVjdGlvbi4NCg0KU28geW91ciByZXN1bHQgaXMg
+YmFzaWNhbGx5IHNob3dpbmcgdGhhdCBmb3Igc21hbGwgZmlsZXMsIHRoZSBwcm9wb3J0aW9uDQpv
+ZiAocmVhZGFoZWFkKSB0YXNrcyB0aGF0IGNhbiBiZSBkb25lIGluIHBhcmFsbGVsIGlzIHNtYWxs
+ZXIuIFRoaXMgaXMgYXMNCmV4cGVjdGVkLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
+TkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
+b20NCnd3dy5uZXRhcHAuY29tDQoNCg==
