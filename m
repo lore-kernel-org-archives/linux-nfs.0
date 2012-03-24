@@ -1,54 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:21821 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753880Ab2CHKFZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Mar 2012 05:05:25 -0500
-Date: Thu, 8 Mar 2012 13:05:17 +0300
-From: Dan Carpenter <dan.carpenter@oracle.com>
-To: andros@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: re: NFSv4.1 handle DS stateid errors
-Message-ID: <20120308100517.GA31881@elgon.mountain>
+Received: from aa.linuxbox.com ([134.215.213.37]:2479 "EHLO aa.linuxbox.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755481Ab2CXRnn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 24 Mar 2012 13:43:43 -0400
+Date: Sat, 24 Mar 2012 13:43:02 -0400 (EDT)
+From: "Matt W. Benjamin" <matt@linuxbox.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>, Boaz Harrosh <bharrosh@panasas.com>
+Message-ID: <1047181415.10.1332610982379.JavaMail.root@thunderbeast.private.linuxbox.com>
+In-Reply-To: <1332609149.25346.12.camel@lade.trondhjem.org>
+Subject: Re: unlink within an open directory stream
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello Andy Adamson,
+Hi,
 
-This is a semi-automatic email about new static checker warnings.
+Thanks.  I'm pretty sure that's not happening (haven't seen any such message from Linux 3.3.0-rc7, for example), but I'll retest.
 
-The patch 9cb8196839ab: "NFSv4.1 handle DS stateid errors" from Mar 
-7, 2012, leads to the following Smatch complaint:
+Matt
 
-fs/nfs/nfs4filelayout.c:102 filelayout_async_handle_error()
-	 warn: variable dereferenced before check 'state' (see line 90)
+----- "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
 
-fs/nfs/nfs4filelayout.c
-    89	{
-    90		struct nfs_server *mds_server = NFS_SERVER(state->inode);
-                                                           ^^^^^^^^^^^^
-new dereference.
+-- 
+Matt Benjamin
+The Linux Box
+206 South Fifth Ave. Suite 150
+Ann Arbor, MI  48104
 
-    91		struct nfs_client *mds_client = mds_server->nfs_client;
-    92	
-    93		if (task->tk_status >= 0)
-    94			return 0;
-    95		*reset = 0;
-    96	
-    97		switch (task->tk_status) {
-    98		/* MDS state errors */
-    99		case -NFS4ERR_DELEG_REVOKED:
-   100		case -NFS4ERR_ADMIN_REVOKED:
-   101		case -NFS4ERR_BAD_STATEID:
-   102			if (state != NULL)
-                            ^^^^^^^^^^^^^
+http://linuxbox.com
 
-new check.
-
-   103				nfs_remove_bad_delegation(state->inode);
-   104		case -NFS4ERR_OPENMODE:
-
-regards,
-dan carpenter
-
+tel. 734-761-4689
+fax. 734-769-8938
+cel. 734-216-5309
