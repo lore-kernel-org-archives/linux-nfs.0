@@ -1,51 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:59197 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756658Ab2CGC6W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Mar 2012 21:58:22 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] NFS: add fh_crc to debug output
-Date: Tue,  6 Mar 2012 21:58:20 -0500
-Message-Id: <1331089100-22297-1-git-send-email-dros@netapp.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:56828 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751236Ab2CXHC4 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 24 Mar 2012 03:02:56 -0400
+MIME-Version: 1.0
+In-Reply-To: <1332505002.20500.14.camel@lade.trondhjem.org>
+References: <CAKX=r8A90b25VKXC1qtAota9DqDrj37xFT511DuvrZ=1Eux6Xw@mail.gmail.com>
+	<20120323114913.GB24489@umich.edu>
+	<1332505002.20500.14.camel@lade.trondhjem.org>
+Date: Sat, 24 Mar 2012 16:02:55 +0900
+Message-ID: <CAKYAXd9us6rA03NMk8af_-2FNEhm5BBA2=Qb4cJ+YsivBgQM2Q@mail.gmail.com>
+Subject: Re: NFS: low read/stat performance on small files
+From: Namjae Jeon <linkinjeon@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Jim Rees <rees@umich.edu>, Vivek Trivedi <vtrivedi018@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "amit.sahrawat83@gmail.com" <amit.sahrawat83@gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Print the filehandle crc in two debug messages
+2012/3/23 Myklebust, Trond <Trond.Myklebust@netapp.com>:
+> On Fri, 2012-03-23 at 07:49 -0400, Jim Rees wrote:
+>> Vivek Trivedi wrote:
+>>
+>>   204800 bytes (200.0KB) copied, 0.027074 seconds, 7.2MB/s
+>>   Read speed for 200KB file is 7.2 MB
+>>
+>>   104857600 bytes (100.0MB) copied, 9.351221 seconds, 10.7MB/s
+>>   Read speed for 100MB file is 10.7 MB
+>>
+>>   As you see read speed for 200KB file is only 7.2MB/sec while it is
+>>   10.7 MB/sec when we read 100MB file.
+>>   Why there is so much difference in read performance ?
+>>   Is there any way to achieve high read speed for small files ?
+>>
+>> That seems excellent to me.  204800 bytes at 11213252 per sec would be 18.2
+>> msec, so your per-file overhead is around 9 msec.  The disk latency alone
+>> would normally be more than that.
+>
+> ...and the reason why the performance is worse for the 200K file
+> compared to the 100M one is easily explained.
+>
+> When opening the file for reading, the client has a number of
+> synchronous RPC calls to make: it needs to look up the file, check
+> access permissions and possibly revalidate its cache. All these tasks
+> have to be done in series (you cannot do them in parallel), and so the
+> latency of each task is limited by the round-trip time to the server.
+>
+> On the other hand, once you get to doing READs, the client can send a
+> bunch of readahead requests in parallel, thus ensuring that the server
+> can use all the bandwidth available to the TCP connection.
+>
+> So your result is basically showing that for small files, the proportion
+> of (readahead) tasks that can be done in parallel is smaller. This is as
+> expected.
+>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+>
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+>
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- fs/nfs/inode.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 3919ceb..5dc6425 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -390,9 +390,10 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 		unlock_new_inode(inode);
- 	} else
- 		nfs_refresh_inode(inode, fattr);
--	dprintk("NFS: nfs_fhget(%s/%Ld ct=%d)\n",
-+	dprintk("NFS: nfs_fhget(%s/%Ld fh_crc=0x%08x ct=%d)\n",
- 		inode->i_sb->s_id,
- 		(long long)NFS_FILEID(inode),
-+		nfs_display_fhandle_hash(fh),
- 		atomic_read(&inode->i_count));
- 
- out:
-@@ -1274,8 +1275,9 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 	unsigned long now = jiffies;
- 	unsigned long save_cache_validity;
- 
--	dfprintk(VFS, "NFS: %s(%s/%ld ct=%d info=0x%x)\n",
-+	dfprintk(VFS, "NFS: %s(%s/%ld fh_crc=0x%08x ct=%d info=0x%x)\n",
- 			__func__, inode->i_sb->s_id, inode->i_ino,
-+			nfs_display_fhandle_hash(NFS_FH(inode)),
- 			atomic_read(&inode->i_count), fattr->valid);
- 
- 	if ((fattr->valid & NFS_ATTR_FATTR_FILEID) && nfsi->fileid != fattr->fileid)
--- 
-1.7.4.4
-
+Dear Trond.
+I agree your answer.
+Thanks a lot for your specific explaination.
