@@ -1,76 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail1.windriver.com ([147.11.146.13]:44980 "EHLO
-	mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760965Ab2COPw7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Mar 2012 11:52:59 -0400
-Message-ID: <4F621059.7040106@windriver.com>
-Date: Thu, 15 Mar 2012 11:52:57 -0400
-From: Paul Gortmaker <paul.gortmaker@windriver.com>
+Received: from mx2.netapp.com ([216.240.18.37]:53250 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754310Ab2CXRMq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 24 Mar 2012 13:12:46 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Matt W. Benjamin" <matt@linuxbox.com>
+CC: linux-nfs <linux-nfs@vger.kernel.org>, Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: unlink within an open directory stream
+Date: Sat, 24 Mar 2012 17:12:26 +0000
+Message-ID: <1332609149.25346.12.camel@lade.trondhjem.org>
+References: <275611967.8.1332608027370.JavaMail.root@thunderbeast.private.linuxbox.com>
+In-Reply-To: <275611967.8.1332608027370.JavaMail.root@thunderbeast.private.linuxbox.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFS related randconfig failure on powerpc ('nfs_debug' undeclared)
-References: <CAP=VYLoNpAU7YAvy+3KrqpBErbJtE9i4_3uCyv-QaMgHiD6evw@mail.gmail.com> <1331778292.9623.22.camel@lade.trondhjem.org>
-In-Reply-To: <1331778292.9623.22.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12-03-14 10:24 PM, Myklebust, Trond wrote:
-> On Wed, 2012-03-14 at 19:25 -0400, Paul Gortmaker wrote:
->> Just a heads up that linux-next builds found this;
->>
->> fs/nfs/nfs4xdr.c:3443:27: error: 'nfs_debug' undeclared (first use in
->> this function)
->> make[3]: *** [fs/nfs/nfs4xdr.o] Error 1
->> make[2]: *** [fs/nfs] Error 2
->> make[1]: *** [fs] Error 2
->> make: *** [sub-make] Error 2
->>
->> Full build log at:
->>
->> http://kisskb.ellerman.id.au/kisskb/buildresult/5871973/
->>
->> Paul.
-> 
-> Hi Paul,
-> 
-> Does the following fix work for you?
-
-Yes. (compile tested, that is).
-
-Thanks,
-Paul.
-
-> 
-> Thanks!
->   Trond
-> 8<------------------------------------------------------
-> From 95a13f7b33be87d85d8e6652126a3f4d64d164db Mon Sep 17 00:00:00 2001
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date: Wed, 14 Mar 2012 21:55:01 -0400
-> Subject: [PATCH] NFS: Fix a compile error when !defined NFS_DEBUG
-> 
-> We should use the 'ifdebug' wrapper rather than trying to inline
-> tests of nfs_debug, so that the code compiles correctly when we
-> don't define NFS_DEBUG.
-> 
-> Reported-by: Paul Gortmaker <paul.gortmaker@windriver.com>
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
->  fs/nfs/nfs4xdr.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index f7e064d..c74fdb1 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -3440,7 +3440,7 @@ static int decode_pathname(struct xdr_stream *xdr, struct nfs4_pathname *path)
->  		status = decode_opaque_inline(xdr, &component->len, &component->data);
->  		if (unlikely(status != 0))
->  			goto out_eio;
-> -		if (unlikely(nfs_debug & NFSDBG_XDR))
-> +		ifdebug (XDR)
->  			pr_cont("%s%.*s ",
->  				(path->ncomponents != n ? "/ " : ""),
->  				component->len, component->data);
+T24gU2F0LCAyMDEyLTAzLTI0IGF0IDEyOjUzIC0wNDAwLCBNYXR0IFcuIEJlbmphbWluIHdyb3Rl
+Og0KPiBIaSwNCj4gDQo+IEkgZG9uJ3QgdGhpbmsgYW55dGhpbmcgaXMuICBPciwgcGVvcGxlIG9y
+aWdpbmFsbHkgcmVwb3J0ZWQgdGhlIGJlaGF2aW9yIGFnYWluc3Qga25mc2QuDQo+IA0KPiBNYXR0
+DQoNClRoZXJlIGlzIGEga25vd24gaXNzdWUgd2l0aCBleHQyLzMvNCBnZW5lcmF0aW5nIG5vbi11
+bmlxdWUgcmVhZGRpcg0KY29va2llcy4gSXQgcmFyZWx5IGhpdHMgeW91IHdoZW4geW91IGFyZSBj
+cmVhdGluZyBzbWFsbCBkaXJlY3RvcmllcywgYnV0DQppdCBmcmVxdWVudGx5IGhpdHMgeW91IHdp
+dGggbGFyZ2VyIG9uZXMuIEEgZml4IGlzIHVuZGVyd2F5IHRoYXQgc2hvdWxkDQpzaWduaWZpY2Fu
+dGx5IHJlZHVjZSB0aGUgZnJlcXVlbmN5IG9mIGNvb2tpZSBjb2xsaXNpb25zLg0KDQpSZWNlbnQg
+TkZTIGNsaWVudHMgd2lsbCBhY3R1YWxseSBkZXRlY3QgdGhlIHByZXNlbmNlIG9mIHRob3NlIGNv
+b2tpZQ0KbG9vcHMsIGFuZCBsb2cgdGhlbSBpbiB0aGUga2VybmVsIHN5c2xvZy4gVGhhdCB3b3Vs
+ZCB0aGVyZWZvcmUgYmUgdGhlDQpmaXJzdCB0aGluZyB0aGF0IEknZCBjaGVjayBpZiBjb25mcm9u
+dGVkIHdpdGggdGhpcyBraW5kIG9mIHByb2JsZW0uDQoNCkNoZWVycw0KICBUcm9uZA0KDQo+IC0t
+LS0tICJUcm9uZCBNeWtsZWJ1c3QiIDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6
+DQo+IA0KPiA+IE9uIFNhdCwgMjAxMi0wMy0yNCBhdCAxMjozNCAtMDQwMCwgTWF0dCBXLiBCZW5q
+YW1pbiB3cm90ZToNCj4gPiA+IEhpLA0KPiA+ID4gDQo+ID4gPiBGb2xrcyB0ZXN0aW5nIGxpbnV4
+IG5mcyArIEdhbmVzaGEgd2l0aCBib25uaWUrKyBoYXZlIG5vdGljZWQgdGhlDQo+ID4gaXNzdWUg
+ZGVzY3JpYmVkIGhlcmUgKGJ1dCBJIGRpZG4ndCBzZWUgdHJhZmZpYyBvbiB0aGlzIGxpc3QpOg0K
+PiA+ID4gDQo+ID4gPiBodHRwOi8vYnVncy5jZW50b3Mub3JnL3ZpZXcucGhwP2lkPTU0OTYNCj4g
+PiA+IGh0dHBzOi8vYnVnemlsbGEucmVkaGF0LmNvbS9zaG93X2J1Zy5jZ2k/aWQ9Nzg5NDUyDQo+
+ID4gPiANCj4gPiA+IEllLCBhbiBhcHBsaWNhdGlvbiB3aGljaCB1bmxpbmtzIG9uIGFuIG9wZW4g
+KG5mcykgZGlyZWN0b3J5IHN0cmVhbSwNCj4gPiBhbmQgY29udGludWVzIHRvIHJlYWQgYW5kIHVu
+bGluayBwcm9ncmVzc2l2ZWx5LCB3aWxsIGdlbmVyYWxseSBub3Qgc2VlDQo+ID4gYWxsIHRoZSBl
+bnRyaWVzIG9yaWdpbmFsbHkgaW4gdGhlIHN0cmVhbS4gIFJlb3BlbmluZyB0aGUgc3RyZWFtIGl2
+ZXMNCj4gPiB0aGUgImNvcnJlY3QiIHJlc3VsdC4gIFNvLCBhcHBhcmVudGx5IG9sZGVyIGNsaWVu
+dHMgd2VyZSBtb3JlDQo+ID4gZm9yZ2l2aW5nLCBhcyBtZW50aW9uZWQgaW4gdGhlIGxpbmtzLiAg
+SXMgdGhlIGN1cnJlbnQgYmVoYXZpb3Igb25lIHRoZQ0KPiA+IGNsaWVudCBpcyBpbnRlbmRpbmc/
+DQo+ID4gPiANCj4gPiA+IFRoYW5rcywNCj4gPiA+IA0KPiA+ID4gTWF0dA0KPiA+IA0KPiA+IFdo
+YXQgaXMgc28gcGFydGljdWxhciBhYm91dCB0aGUgZ2FuZXNoYSByZWFkZGlyIGltcGxlbWVudGF0
+aW9uPw0KPiA+IA0KPiA+IC0tIA0KPiA+IFRyb25kIE15a2xlYnVzdA0KPiA+IExpbnV4IE5GUyBj
+bGllbnQgbWFpbnRhaW5lcg0KPiA+IA0KPiA+IE5ldEFwcA0KPiA+IFRyb25kLk15a2xlYnVzdEBu
+ZXRhcHAuY29tDQo+ID4gd3d3Lm5ldGFwcC5jb20NCj4gDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0
+DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RA
+bmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
