@@ -1,40 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:2566 "EHLO mx2.netapp.com"
+Received: from aa.linuxbox.com ([134.215.213.37]:2894 "EHLO aa.linuxbox.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755931Ab2CTNzy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Mar 2012 09:55:54 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Nikolaus Rath <Nikolaus@rath.org>
-CC: Rick Macklem <rmacklem@uoguelph.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "nfsv4@ietf.org" <nfsv4@ietf.org>
-Subject: Re: [nfsv4] NFS4 over VPN hangs when connecting > 2 clients
-Date: Tue, 20 Mar 2012 13:55:52 +0000
-Message-ID: <1332251753.2963.17.camel@lade.trondhjem.org>
-References: <716104306.1267694.1332195933869.JavaMail.root@erie.cs.uoguelph.ca>
-	 <4F688655.1090703@rath.org>
-In-Reply-To: <4F688655.1090703@rath.org>
-Content-Type: text/plain; charset="utf-8"
+	id S1754270Ab2CXQk0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 24 Mar 2012 12:40:26 -0400
+Date: Sat, 24 Mar 2012 12:34:46 -0400 (EDT)
+From: "Matt W. Benjamin" <matt@linuxbox.com>
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Cc: Boaz Harrosh <bharrosh@panasas.com>
+Message-ID: <1886390911.6.1332606886333.JavaMail.root@thunderbeast.private.linuxbox.com>
+In-Reply-To: <209745840.4.1332606289405.JavaMail.root@thunderbeast.private.linuxbox.com>
+Subject: unlink within an open directory stream
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTAzLTIwIGF0IDA5OjI5IC0wNDAwLCBOaWtvbGF1cyBSYXRoIHdyb3RlOg0K
-PiBPbiAwMy8xOS8yMDEyIDA2OjI1IFBNLCBSaWNrIE1hY2tsZW0gd3JvdGU6DQo+ID4gTmlrb2xh
-dXMgUmF0aCB3cm90ZToNCj4gPiBwczogQWxzbywgYWx0aG91Z2ggaXQncyBub3QgdmVyeSByZWxl
-dmFudCwgZ2V0dGluZyB0aGUgTUFDIGFkZHJlc3Mgb2YNCj4gPiAgICAgdGhlIGZpcnN0IGV0aGVy
-bmV0IGludGVyZmFjZSBpc24ndCBlYXN5IGluIEZyZWVCU0QuIEkgaGF2ZSBubyBpZGVhDQo+ID4g
-ICAgIGlmIHRoZSBzYW1lIGlzIHRydWUgb2YgTGludXguIChJJ2QgYWxzbyBiZSB3b3JyaWVkIHRo
-YXQgImZpcnN0Ig0KPiA+ICAgICBtaWdodCBub3QgYmUgZml4ZWQ/KQ0KPiANCj4gSXQgZG9lc24n
-dCBuZWVkIHRvIGJlIHRoZSBzYW1lIGludGVyZmFjZSBhbGwgdGhlIHRpbWUsIEkganVzdCBtZWFu
-dCB0aGUNCj4gZmlyc3QgYXMgaW4gbm90IGEgc3BlY2lmaWMgb25lLg0KDQpZZXMgaXQgZG9lcyBo
-YXZlIHRvIGJlIHRoZSBzYW1lIGludGVyZmFjZSBhbGwgdGhlIHRpbWUuIE90aGVyd2lzZSB0aGUN
-CnNlcnZlciBjYW5ub3QgdGVsbCB0aGF0IHRoaXMgaXMgdGhlIHNhbWUgY2xpZW50IGJvb3Rpbmcg
-dXAgYWdhaW4uDQoNCi4uLmFuZCB5ZXMsIHRoaXMgaXMgYSBwcm9ibGVtIG5vdCBvbmx5IG9uIEZy
-ZWVCU0QsIGJ1dCBmb3IgTGludXggdG9vLg0KVGhlIGZhY3QgdGhhdCBkZXZpY2VzIGNhbiBjb21l
-IHVwIChhbmQgZ28gZG93biB0b28gaW4gdGhlIGNhc2Ugb2YNCmhvdHBsdWdnaW5nKSBpbiBhbnkg
-b3JkZXIgaXMgdGhlIG1haW4gcmVhc29uIHdoeSB0aGUgZXRoZXJuZXQgZGV2aWNlDQpuYW1pbmcg
-c2NoZW1lIHdhcyBjaGFuZ2VkIHJlY2VudGx5Lg0KDQpUcm9uZA0KLS0gDQpUcm9uZCBNeWtsZWJ1
-c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVz
-dEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+Hi,
+
+Folks testing linux nfs + Ganesha with bonnie++ have noticed the issue described here (but I didn't see traffic on this list):
+
+http://bugs.centos.org/view.php?id=5496
+https://bugzilla.redhat.com/show_bug.cgi?id=789452
+
+Ie, an application which unlinks on an open (nfs) directory stream, and continues to read and unlink progressively, will generally not see all the entries originally in the stream.  Reopening the stream ives the "correct" result.  So, apparently older clients were more forgiving, as mentioned in the links.  Is the current behavior one the client is intending?
+
+Thanks,
+
+Matt
+
+-- 
+Matt Benjamin
+The Linux Box
+206 South Fifth Ave. Suite 150
+Ann Arbor, MI  48104
+
+http://linuxbox.com
+
+tel. 734-761-4689
+fax. 734-769-8938
+cel. 734-216-5309
