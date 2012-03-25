@@ -1,87 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:36490 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756547Ab2CUTqy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Mar 2012 15:46:54 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 2 07/12] NFSv4.1 Check invalid deviceid upon slot table waitq wakeup
-Date: Wed, 21 Mar 2012 15:46:19 -0400
-Message-Id: <1332359184-1887-8-git-send-email-andros@netapp.com>
-In-Reply-To: <1332359184-1887-1-git-send-email-andros@netapp.com>
+Received: from mail-vb0-f46.google.com ([209.85.212.46]:48453 "EHLO
+	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756118Ab2CYO7k (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Mar 2012 10:59:40 -0400
+Received: by vbbff1 with SMTP id ff1so2193546vbb.19
+        for <linux-nfs@vger.kernel.org>; Sun, 25 Mar 2012 07:59:39 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <1332362855.12332.11.camel@lade.trondhjem.org>
 References: <1332359184-1887-1-git-send-email-andros@netapp.com>
+	<1332359184-1887-13-git-send-email-andros@netapp.com>
+	<1332362855.12332.11.camel@lade.trondhjem.org>
+Date: Sun, 25 Mar 2012 10:59:39 -0400
+Message-ID: <CADnza44q6-JYdGmRh9CLdGcTOTB93O8nCcJO-inAYm__wi72ug@mail.gmail.com>
+Subject: Re: [PATCH Version 2 12/12] NFSv4.1 have filelayout_initiate_commit
+ return void
+From: Fred Isaman <faisaman4@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Wed, Mar 21, 2012 at 4:47 PM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Wed, 2012-03-21 at 15:46 -0400, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>>
+>> The return is ignored.
+>
+> Yes, but should it be? See the discussion between Fred and myself on the
+> list yesterday. I still don't see why we should report some errors and
+> ignore others...
+>
+>
 
-Tasks sleeping on the slot table waitq wake to the rpc_prepare_task state.
-Reset the task for io through the MDS if the deviceid is invalid.
+I'll come back to this in a day or two, but let me note the following
+problem with nfs_commit_inode, pnfs, and error reporting.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4filelayout.c |   26 +++++++++++++++++++++++++-
- 1 files changed, 25 insertions(+), 1 deletions(-)
+Consider nfs_wb_page, which causes a FLUSH_SYNC nfs_commit_inode.
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index fdec7a8..b73818f 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -241,6 +241,12 @@ static void filelayout_read_prepare(struct rpc_task *task, void *data)
- {
- 	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
- 
-+	if (filelayout_test_devid_invalid(FILELAYOUT_DEVID_NODE(rdata->lseg))) {
-+		dprintk("%s task %u reset io to MDS\n", __func__, task->tk_pid);
-+		filelayout_reset_read(task, rdata);
-+		rpc_restart_call_prepare(task);
-+		return;
-+	}
- 	rdata->read_done_cb = filelayout_read_done_cb;
- 
- 	if (nfs41_setup_sequence(rdata->ds_clp->cl_session,
-@@ -341,6 +347,12 @@ static void filelayout_write_prepare(struct rpc_task *task, void *data)
- {
- 	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
- 
-+	if (filelayout_test_devid_invalid(FILELAYOUT_DEVID_NODE(wdata->lseg))) {
-+		dprintk("%s task %u reset io to MDS\n", __func__, task->tk_pid);
-+		filelayout_reset_write(task, wdata);
-+		rpc_restart_call_prepare(task);
-+		return;
-+	}
- 	if (nfs41_setup_sequence(wdata->ds_clp->cl_session,
- 				&wdata->args.seq_args, &wdata->res.seq_res,
- 				task))
-@@ -372,6 +384,18 @@ static void filelayout_write_release(void *data)
- 	wdata->mds_ops->rpc_release(data);
- }
- 
-+static void filelayout_commit_prepare(struct rpc_task *task, void *data)
-+{
-+	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
-+
-+	if (nfs41_setup_sequence(wdata->ds_clp->cl_session,
-+				&wdata->args.seq_args, &wdata->res.seq_res,
-+				task))
-+		return;
-+
-+	rpc_call_start(task);
-+}
-+
- static void filelayout_commit_release(void *data)
- {
- 	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
-@@ -398,7 +422,7 @@ static const struct rpc_call_ops filelayout_write_call_ops = {
- };
- 
- static const struct rpc_call_ops filelayout_commit_call_ops = {
--	.rpc_call_prepare = filelayout_write_prepare,
-+	.rpc_call_prepare = filelayout_commit_prepare,
- 	.rpc_call_done = filelayout_write_call_done,
- 	.rpc_count_stats = filelayout_write_count_stats,
- 	.rpc_release = filelayout_commit_release,
--- 
-1.7.6.4
+Pre-pnfs, nfs_commit_inode either returned an error, or sent the
+COMMIT.  Even if the page didn't make it into the "to be cleaned" list
+due to the INT_MAX restriction, the COMMIT was sent and on non-eror
+return it was safe to assume that the page data was on disk.
 
+But with pnfs (and commit to DS), lets say that the writes are
+distributed between 2 data servers.  On a non-error return from
+nfs_commit_inode there is now no guarantee that a COMMIT will go to
+the DS hosting the page.  That is solely due to the INT_MAX
+restriction.  It of course gets even worse with the current
+filelayout_commit_pagelist if an alloc fails.
+
+
+Fred
