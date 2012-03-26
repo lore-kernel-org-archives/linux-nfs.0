@@ -1,99 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:64046 "EHLO mx2.netapp.com"
+Received: from aa.linuxbox.com ([134.215.213.37]:1825 "EHLO aa.linuxbox.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754718Ab2CDXd2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 4 Mar 2012 18:33:28 -0500
-Received: from vmwexceht02-prd.hq.netapp.com ([10.106.76.240])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q24NXR5i024478
-	for <linux-nfs@vger.kernel.org>; Sun, 4 Mar 2012 15:33:27 -0800 (PST)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/3] NFSv4: parse and display server implementation ids
-Date: Sun, 4 Mar 2012 23:33:27 +0000
-Message-ID: <1330904007.14357.13.camel@lade.trondhjem.org>
-References: <1329510026-30403-1-git-send-email-dros@netapp.com>
-	 <1329510026-30403-3-git-send-email-dros@netapp.com>
-	 <4F522623.3070709@netapp.com>
-In-Reply-To: <4F522623.3070709@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1753404Ab2CZT3u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Mar 2012 15:29:50 -0400
+Date: Mon, 26 Mar 2012 15:29:15 -0400 (EDT)
+From: "Matt W. Benjamin" <matt@linuxbox.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs <linux-nfs@vger.kernel.org>,
+        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>
+Message-ID: <923219433.84.1332790155474.JavaMail.root@thunderbeast.private.linuxbox.com>
+In-Reply-To: <1598378492.82.1332790088063.JavaMail.root@thunderbeast.private.linuxbox.com>
+Subject: Re: unlink within an open directory stream
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU2F0LCAyMDEyLTAzLTAzIGF0IDA5OjA5IC0wNTAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6
-DQo+IEhpIERyb3MsDQo+IA0KPiBPbiAwMi8xNy8yMDEyIDAzOjIwIFBNLCBXZXN0b24gQW5kcm9z
-IEFkYW1zb24gd3JvdGU6DQo+IA0KPiA+IFNob3dzIHRoZSBpbXBsZW1lbnRhdGlvbiBpZHMgaW4g
-L3Byb2Mvc2VsZi9tb3VudHN0YXRzLiAgVGhpcyBkb2Vzbid0IGJyZWFrDQo+ID4gdGhlIG5mcy11
-dGlscyBtb3VudHN0YXRzIHRvb2wuDQo+ID4gDQo+ID4gU2lnbmVkLW9mZi1ieTogV2VzdG9uIEFu
-ZHJvcyBBZGFtc29uIDxkcm9zQG5ldGFwcC5jb20+DQo+ID4gLS0tDQo+ID4gIGZzL25mcy9jbGll
-bnQuYyAgICAgICAgICAgfCAgICAxICsNCj4gPiAgZnMvbmZzL25mczRwcm9jLmMgICAgICAgICB8
-ICAgMjEgKysrKysrKysrKysrKysrKysrKysrDQo+ID4gIGZzL25mcy9uZnM0eGRyLmMgICAgICAg
-ICAgfCAgIDQyICsrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKystLS0tLQ0KPiA+
-ICBmcy9uZnMvc3VwZXIuYyAgICAgICAgICAgIHwgICAgOCArKysrKysrKw0KPiA+ICBpbmNsdWRl
-L2xpbnV4L25mc19mc19zYi5oIHwgICAgMiArKw0KPiA+ICBpbmNsdWRlL2xpbnV4L25mc194ZHIu
-aCAgIHwgICAxNSArKysrKysrLS0tLS0tLS0NCj4gPiAgNiBmaWxlcyBjaGFuZ2VkLCA3NiBpbnNl
-cnRpb25zKCspLCAxMyBkZWxldGlvbnMoLSkNCj4gPiANCj4gDQo+IDxzbmlwPg0KPiANCj4gPiBk
-aWZmIC0tZ2l0IGEvZnMvbmZzL3N1cGVyLmMgYi9mcy9uZnMvc3VwZXIuYw0KPiA+IGluZGV4IGQw
-NTAyNGEuLjU0NjIyMjUgMTAwNjQ0DQo+ID4gLS0tIGEvZnMvbmZzL3N1cGVyLmMNCj4gPiArKysg
-Yi9mcy9uZnMvc3VwZXIuYw0KPiA+IEBAIC04MDksNiArODA5LDE0IEBAIHN0YXRpYyBpbnQgbmZz
-X3Nob3dfc3RhdHMoc3RydWN0IHNlcV9maWxlICptLCBzdHJ1Y3QgZGVudHJ5ICpyb290KQ0KPiA+
-ICANCj4gPiAgCXNlcV9wcmludGYobSwgIlxuXHRhZ2U6XHQlbHUiLCAoamlmZmllcyAtIG5mc3Mt
-Pm1vdW50X3RpbWUpIC8gSFopOw0KPiA+ICANCj4gPiArCWlmIChuZnNzLT5uZnNfY2xpZW50ICYm
-IG5mc3MtPm5mc19jbGllbnQtPmltcGxfaWQpIHsNCj4gPiArCQlzdHJ1Y3QgbmZzNDFfaW1wbF9p
-ZCAqaW1wbF9pZCA9IG5mc3MtPm5mc19jbGllbnQtPmltcGxfaWQ7DQo+IA0KPiANCj4gInN0cnVj
-dCBuZnM0MV9pbXBsX2lkIiBpcyBvbmx5IGRlZmluZWQgd2hlbiBDT05GSUdfTkZTX1Y0XzEgaXMg
-ZW5hYmxlZCwgc28gaWYgSSBjb21waWxlIHdpdGhvdXQgTkZTIDQuMSBlbmFibGVkIEkgZ2V0IHRo
-aXMgZXJyb3I6DQo+IA0KPiAgIENDIFtNXSAgZnMvbmZzL3N1cGVyLm8NCj4gL2hvbWUvYmpzY2h1
-bWEvbGludXgvbW9kdWxlcy9mcy9uZnMvc3VwZXIuYzogSW4gZnVuY3Rpb24gJ25mc19zaG93X3N0
-YXRzJzoNCj4gL2hvbWUvYmpzY2h1bWEvbGludXgvbW9kdWxlcy9mcy9uZnMvc3VwZXIuYzo4NDM6
-MTQ6IGVycm9yOiBkZXJlZmVyZW5jaW5nIHBvaW50ZXIgdG8gaW5jb21wbGV0ZSB0eXBlDQo+IC9o
-b21lL2Jqc2NodW1hL2xpbnV4L21vZHVsZXMvZnMvbmZzL3N1cGVyLmM6ODQzOjI5OiBlcnJvcjog
-ZGVyZWZlcmVuY2luZyBwb2ludGVyIHRvIGluY29tcGxldGUgdHlwZQ0KPiAvaG9tZS9ianNjaHVt
-YS9saW51eC9tb2R1bGVzL2ZzL25mcy9zdXBlci5jOjg0NDoxNDogZXJyb3I6IGRlcmVmZXJlbmNp
-bmcgcG9pbnRlciB0byBpbmNvbXBsZXRlIHR5cGUNCj4gL2hvbWUvYmpzY2h1bWEvbGludXgvbW9k
-dWxlcy9mcy9uZnMvc3VwZXIuYzo4NDQ6Mzc6IGVycm9yOiBkZXJlZmVyZW5jaW5nIHBvaW50ZXIg
-dG8gaW5jb21wbGV0ZSB0eXBlDQo+IG1ha2VbM106ICoqKiBbZnMvbmZzL3N1cGVyLm9dIEVycm9y
-IDENCg0KSGkgQnJ5YW4gJiBEcm9zDQoNCkkndmUgYXBwbGllZCB0aGUgZm9sbG93aW5nIHBhdGNo
-IHRvIGZpeCB0aGlzIGlzc3VlLiBQbGVhc2UgYWR2aXNlIGlmDQp5b3UncmUgc3RpbGwgc2VlaW5n
-IGNvbXBpbGUgcHJvYmxlbXMgd2hlbiBpdCBpcyBhcHBsaWVkLg0KDQo4PC0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0NCkZyb20gZDAzMjc2OWI4MzNkOGZiYWFhNjIwYTU0MzAwOTc5ZGQ1ODgxZDQ5MyBNb24g
-U2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVi
-dXN0QG5ldGFwcC5jb20+DQpEYXRlOiBTdW4sIDQgTWFyIDIwMTIgMTg6MTI6NTcgLTA1MDANClN1
-YmplY3Q6IFtQQVRDSF0gTkZTOiBGaXggYSBjb21waWxlIGlzc3VlIHdoZW4gIUNPTkZJR19ORlNf
-VjRfMQ0KDQpUaGUgYXR0ZW1wdCB0byBkaXNwbGF5IHRoZSBpbXBsZW1lbnRhdGlvbiBJRCBuZWVk
-cyB0byBiZSBjb25kaXRpb25hbCBvbg0Kd2hldGhlciBvciBub3QgQ09ORklHX05GU19WNF8xIGlz
-IGRlZmluZWQNCg0KUmVwb3J0ZWQtYnk6IEJyeWFuIFNjaHVtYWtlciA8QnJ5YW4uU2NodW1ha2Vy
-QG5ldGFwcC5jb20+DQpTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xl
-YnVzdEBuZXRhcHAuY29tPg0KLS0tDQogZnMvbmZzL3N1cGVyLmMgfCAgIDIyICsrKysrKysrKysr
-KysrKy0tLS0tLS0NCiAxIGZpbGVzIGNoYW5nZWQsIDE1IGluc2VydGlvbnMoKyksIDcgZGVsZXRp
-b25zKC0pDQoNCmRpZmYgLS1naXQgYS9mcy9uZnMvc3VwZXIuYyBiL2ZzL25mcy9zdXBlci5jDQpp
-bmRleCAzOTM1YTM3Li42MTQxOWM5IDEwMDY0NA0KLS0tIGEvZnMvbmZzL3N1cGVyLmMNCisrKyBi
-L2ZzL25mcy9zdXBlci5jDQpAQCAtNzg1LDggKzc4NSwyMiBAQCBzdGF0aWMgdm9pZCBzaG93X3Bu
-ZnMoc3RydWN0IHNlcV9maWxlICptLCBzdHJ1Y3QgbmZzX3NlcnZlciAqc2VydmVyKQ0KIAllbHNl
-DQogCQlzZXFfcHJpbnRmKG0sICJub3QgY29uZmlndXJlZCIpOw0KIH0NCisNCitzdGF0aWMgdm9p
-ZCBzaG93X2ltcGxlbWVudGF0aW9uX2lkKHN0cnVjdCBzZXFfZmlsZSAqbSwgc3RydWN0IG5mc19z
-ZXJ2ZXIgKm5mc3MpDQorew0KKwlpZiAobmZzcy0+bmZzX2NsaWVudCAmJiBuZnNzLT5uZnNfY2xp
-ZW50LT5pbXBsX2lkKSB7DQorCQlzdHJ1Y3QgbmZzNDFfaW1wbF9pZCAqaW1wbF9pZCA9IG5mc3Mt
-Pm5mc19jbGllbnQtPmltcGxfaWQ7DQorCQlzZXFfcHJpbnRmKG0sICJcblx0aW1wbF9pZDpcdG5h
-bWU9JyVzJyxkb21haW49JyVzJywiDQorCQkJICAgImRhdGU9JyVsbHUsJXUnIiwNCisJCQkgICBp
-bXBsX2lkLT5uYW1lLCBpbXBsX2lkLT5kb21haW4sDQorCQkJICAgaW1wbF9pZC0+ZGF0ZS5zZWNv
-bmRzLCBpbXBsX2lkLT5kYXRlLm5zZWNvbmRzKTsNCisJfQ0KK30NCiAjZWxzZQ0KIHN0YXRpYyB2
-b2lkIHNob3dfcG5mcyhzdHJ1Y3Qgc2VxX2ZpbGUgKm0sIHN0cnVjdCBuZnNfc2VydmVyICpzZXJ2
-ZXIpIHt9DQorc3RhdGljIHZvaWQgc2hvd19pbXBsZW1lbnRhdGlvbl9pZChzdHJ1Y3Qgc2VxX2Zp
-bGUgKm0sIHN0cnVjdCBuZnNfc2VydmVyICpuZnNzKQ0KK3sNCit9DQogI2VuZGlmDQogI2VuZGlm
-DQogDQpAQCAtODM2LDEzICs4NTAsNyBAQCBzdGF0aWMgaW50IG5mc19zaG93X3N0YXRzKHN0cnVj
-dCBzZXFfZmlsZSAqbSwgc3RydWN0IGRlbnRyeSAqcm9vdCkNCiANCiAJc2VxX3ByaW50ZihtLCAi
-XG5cdGFnZTpcdCVsdSIsIChqaWZmaWVzIC0gbmZzcy0+bW91bnRfdGltZSkgLyBIWik7DQogDQot
-CWlmIChuZnNzLT5uZnNfY2xpZW50ICYmIG5mc3MtPm5mc19jbGllbnQtPmltcGxfaWQpIHsNCi0J
-CXN0cnVjdCBuZnM0MV9pbXBsX2lkICppbXBsX2lkID0gbmZzcy0+bmZzX2NsaWVudC0+aW1wbF9p
-ZDsNCi0JCXNlcV9wcmludGYobSwgIlxuXHRpbXBsX2lkOlx0bmFtZT0nJXMnLGRvbWFpbj0nJXMn
-LCINCi0JCQkgICAiZGF0ZT0nJWxsdSwldSciLA0KLQkJCSAgIGltcGxfaWQtPm5hbWUsIGltcGxf
-aWQtPmRvbWFpbiwNCi0JCQkgICBpbXBsX2lkLT5kYXRlLnNlY29uZHMsIGltcGxfaWQtPmRhdGUu
-bnNlY29uZHMpOw0KLQl9DQorCXNob3dfaW1wbGVtZW50YXRpb25faWQobSwgbmZzcyk7DQogDQog
-CXNlcV9wcmludGYobSwgIlxuXHRjYXBzOlx0Iik7DQogCXNlcV9wcmludGYobSwgImNhcHM9MHgl
-eCIsIG5mc3MtPmNhcHMpOw0KLS0gDQoxLjcuNy42DQoNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QN
-CkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBu
-ZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+Hi,
+
+----- "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
+
+> On Mon, 2012-03-26 at 14:55 -0400, Matt W. Benjamin wrote:
+> > Hi,
+> > 
+> > Boaz:  we do not any longer send a readdir index.  We do send a
+> cookieverf.
+> 
+> Uhh... That would be so broken, that I can't imagine that is true...
+
+I think you're misreading my statement.  My intended meaning had to do with Ganesha's generator
+for the cookies themselves.  It's not relevant.
+
+> 
+> > Fist of all, I haven't established that the issue we're actually
+> observing is caused
+> > by the Linux client sending old cookies to readdir(something). 
+> However, if it is,
+> > it's in no way better to try to make cookies "more persistent."  Nor
+> should the Linux
+> > client be expecting it.  The assumption is simply flawed.  The
+> protocol introduced
+> > cookie verifier (a LONG time ago) for a reason.
+> 
+> Bullshit... The cookie verifier is unimplementable. Feel free to try
+> or
+> to show me an implementation that works. However I refuse to waste
+> any
+> more of my time trying to make that crap work, having already wasted
+> several months of my life doing just that.
+
+There must be something I'm missing here, but ok.
+
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+
+-- 
+Matt Benjamin
+The Linux Box
+206 South Fifth Ave. Suite 150
+Ann Arbor, MI  48104
+
+http://linuxbox.com
+
+tel. 734-761-4689
+fax. 734-769-8938
+cel. 734-216-5309
