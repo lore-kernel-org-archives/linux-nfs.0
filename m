@@ -1,31 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lpp01m010-f46.google.com ([209.85.215.46]:42475 "EHLO
-	mail-lpp01m010-f46.google.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1760586Ab2CNXZp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Mar 2012 19:25:45 -0400
-Received: by lahj13 with SMTP id j13so1924530lah.19
-        for <linux-nfs@vger.kernel.org>; Wed, 14 Mar 2012 16:25:43 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:60476 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752184Ab2CZUCN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Mar 2012 16:02:13 -0400
+Date: Mon, 26 Mar 2012 16:02:12 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v10 0/8] nfsd: overhaul the client name tracking code
+Message-ID: <20120326200212.GD26254@fieldses.org>
+References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
+ <20120323170630.GB6089@fieldses.org>
+ <20120323132618.60e7e28d@corrin.poochiereds.net>
 MIME-Version: 1.0
-Date: Wed, 14 Mar 2012 19:25:43 -0400
-Message-ID: <CAP=VYLoNpAU7YAvy+3KrqpBErbJtE9i4_3uCyv-QaMgHiD6evw@mail.gmail.com>
-Subject: NFS related randconfig failure on powerpc ('nfs_debug' undeclared)
-From: Paul Gortmaker <paul.gortmaker@windriver.com>
-To: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120323132618.60e7e28d@corrin.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Just a heads up that linux-next builds found this;
+On Fri, Mar 23, 2012 at 01:26:18PM -0400, Jeff Layton wrote:
+> On Fri, 23 Mar 2012 13:06:30 -0400
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> 
+> > On Wed, Mar 21, 2012 at 09:52:01AM -0400, Jeff Layton wrote:
+> > > This is the tenth iteration of this patchset. The primary motivation
+> > > of this respin is to fix up some merge conflicts with some fixes that
+> > > Bruce merged recently.
+> > 
+> > Thanks, these look fine.  I'm intending to merge for 3.4.  But I going
+> > want to spend some more time investigating the callback bug that
+> > excltest is triggering before committing to my for-3.4 branch.
+> > 
+> > --b.
+> > 
+> 
+> Thanks, and totally understood. No need to muddy the waters by merging new code...
 
-fs/nfs/nfs4xdr.c:3443:27: error: 'nfs_debug' undeclared (first use in
-this function)
-make[3]: *** [fs/nfs/nfs4xdr.o] Error 1
-make[2]: *** [fs/nfs] Error 2
-make[1]: *** [fs] Error 2
-make: *** [sub-make] Error 2
+Having looked at it longer: first, I can't see how 4.1/krb5 callbacks
+ever really worked.  That's a project for another day.  (Soon, but
+probably not for 3.4.)
 
-Full build log at:
+Second, after further testing it turns out that the failure isn't always
+reproduceable after applying these patches, and is sometimes
+reproduceable without.
 
-http://kisskb.ellerman.id.au/kisskb/buildresult/5871973/
+Also, the patches look fine to me.
 
-Paul.
+So, I'm pushing them out soon and should be sending Linus a pull request
+in the next couple days.
+
+--b.
