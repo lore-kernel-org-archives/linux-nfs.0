@@ -1,40 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from li9-11.members.linode.com ([67.18.176.11]:56688 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030453Ab2CFPSS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Mar 2012 10:18:18 -0500
-Date: Tue, 6 Mar 2012 10:18:16 -0500
-From: "Ted Ts'o" <tytso@mit.edu>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
-        sandeen@redhat.com, adilger@whamcloud.com
-Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
- may_flags' in nfsd_open()
-Message-ID: <20120306151816.GB32282@thunk.org>
-References: <20120109132158.2616029.30467.stgit@localhost.localdomain>
- <20120109132153.2616029.26302.stgit@localhost.localdomain>
- <20120306000837.GA17164@thunk.org>
- <20120306020819.GH31388@pad.fieldses.org>
+Received: from natasha.panasas.com ([67.152.220.90]:48196 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932830Ab2CZSRu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Mar 2012 14:17:50 -0400
+Message-ID: <4F70B2AE.4000504@panasas.com>
+Date: Mon, 26 Mar 2012 11:17:18 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120306020819.GH31388@pad.fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Matt W. Benjamin" <matt@linuxbox.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: unlink within an open directory stream
+References: <275611967.8.1332608027370.JavaMail.root@thunderbeast.private.linuxbox.com> <1332609149.25346.12.camel@lade.trondhjem.org>
+In-Reply-To: <1332609149.25346.12.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 05, 2012 at 09:08:19PM -0500, J. Bruce Fields wrote:
-> Yes, that would be fine.
+On 03/24/2012 10:12 AM, Myklebust, Trond wrote:
+
+> On Sat, 2012-03-24 at 12:53 -0400, Matt W. Benjamin wrote:
+>> Hi,
+>>
+>> I don't think anything is.  Or, people originally reported the behavior against knfsd.
+>>
+>> Matt
 > 
-> (There may well be some conflict: simplest might be if you can get that
-> pushed out to a stable public branch somewhere, hopefully before the
-> merge window opens, and that'll give me a chance to pull it and handle
-> any merge conflicts.
+> There is a known issue with ext2/3/4 generating non-unique readdir
+> cookies. It rarely hits you when you are creating small directories, but
+> it frequently hits you with larger ones. A fix is underway that should
+> significantly reduce the frequency of cookie collisions.
+> 
+> Recent NFS clients will actually detect the presence of those cookie
+> loops, and log them in the kernel syslog. That would therefore be the
+> first thing that I'd check if confronted with this kind of problem.
+> 
+> Cheers
+>   Trond
+> 
 
-Are the commits you're worried about on the NFS side already in
-linux-next?  If so, I'll do a quick test merge and see if there are
-any conflicts.  If so, I'll segregate out these patches into a
-separate pre-merge branch --- and then if you like you could pull them
-into your branch and we can deal with it that way.
 
-     	  	     	    	      	 - Ted
+Trond please look on the bug report links below. It's not the "cookie collisions" case.
+
+It's the new (post RHEL 6.0 Kernel) NFS need for opendir after an unlink.
+Now the POSIX man page *does* say that applications must re-opendir after
+unlink, but there are some applications who did not read the manual, and since
+it works with local filesystems and old nfs, (What Kernel RHEL 6.0 is based on?)
+they never noticed the bug and never fixed it.
+
+Could we easily support the broken application by being bug compatible to
+old NFS versions?
+.i.e Don't require re-opendir after unlink of a file.
+
+There are more examples in the bug reports below but basically bonnie++
+does the following:
+	DIR *d = opendir(".");
+	dirent *file_ent;
+	while((file_ent = readdir(d)) != NULL) {
+		unlink( file_ent->d_name))
+	}
+	closedir(d);
+
+where it actually needs to do:
+
+	DIR *d = opendir(".");
+	dirent *file_ent;
+	while((file_ent = readdir(d)) != NULL) {
+		unlink( file_ent->d_name))
+
+		closedir(d);
+		d = opendir(".");
+	}
+	closedir(d);
+
+But again case one used to work with old NFS. And it looks like
+it is not Server dependent. We saw this both with Ganesha as well
+as knfsd
+
+<snip>
+
+>> http://bugs.centos.org/view.php?id=5496
+>> https://bugzilla.redhat.com/show_bug.cgi?id=789452
+
+Thanks
+Boaz
