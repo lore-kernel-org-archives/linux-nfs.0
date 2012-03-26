@@ -1,391 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61077 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:33233 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757843Ab2CEXVM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 18:21:12 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 12/16] NFSv4: Add a encode op helper
-Date: Mon,  5 Mar 2012 18:20:50 -0500
-Message-Id: <1330989654-4694-12-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1330989654-4694-11-git-send-email-Trond.Myklebust@netapp.com>
-References: <1330989654-4694-1-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-2-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-3-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-4-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-5-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-6-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-7-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-8-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-9-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-10-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-11-git-send-email-Trond.Myklebust@netapp.com>
+	id S932530Ab2CZSZs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Mar 2012 14:25:48 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: "Matt W. Benjamin" <matt@linuxbox.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: unlink within an open directory stream
+Date: Mon, 26 Mar 2012 18:25:41 +0000
+Message-ID: <1332786347.17253.33.camel@lade.trondhjem.org>
+References: <275611967.8.1332608027370.JavaMail.root@thunderbeast.private.linuxbox.com>
+	 <1332609149.25346.12.camel@lade.trondhjem.org>
+	 <4F70B2AE.4000504@panasas.com>
+In-Reply-To: <4F70B2AE.4000504@panasas.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4xdr.c |  161 +++++++++++-------------------------------------------
- 1 files changed, 32 insertions(+), 129 deletions(-)
-
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 3b38ca5..e9d4ac0 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -935,6 +935,15 @@ static void encode_compound_hdr(struct xdr_stream *xdr,
- 	*p = cpu_to_be32(hdr->nops);
- }
- 
-+static void encode_op_hdr(struct xdr_stream *xdr, enum nfs_opnum4 op,
-+		uint32_t replen,
-+		struct compound_hdr *hdr)
-+{
-+	encode_uint32(xdr, op);
-+	hdr->nops++;
-+	hdr->replen += replen;
-+}
-+
- static void encode_nops(struct compound_hdr *hdr)
- {
- 	BUG_ON(hdr->nops > NFS4_MAX_OPS);
-@@ -1086,14 +1095,9 @@ static void encode_access(struct xdr_stream *xdr, u32 access, struct compound_hd
- 
- static void encode_close(struct xdr_stream *xdr, const struct nfs_closeargs *arg, struct compound_hdr *hdr)
- {
--	__be32 *p;
--
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_CLOSE);
-+	encode_op_hdr(xdr, OP_CLOSE, decode_close_maxsz, hdr);
- 	encode_nfs4_seqid(xdr, arg->seqid);
- 	encode_nfs4_stateid(xdr, arg->stateid);
--	hdr->nops++;
--	hdr->replen += decode_close_maxsz;
- }
- 
- static void encode_commit(struct xdr_stream *xdr, const struct nfs_writeargs *args, struct compound_hdr *hdr)
-@@ -1172,8 +1176,7 @@ encode_getattr_three(struct xdr_stream *xdr,
- {
- 	__be32 *p;
- 
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_GETATTR);
-+	encode_op_hdr(xdr, OP_GETATTR, decode_getattr_maxsz, hdr);
- 	if (bm2) {
- 		p = reserve_space(xdr, 16);
- 		*p++ = cpu_to_be32(3);
-@@ -1190,8 +1193,6 @@ encode_getattr_three(struct xdr_stream *xdr,
- 		*p++ = cpu_to_be32(1);
- 		*p = cpu_to_be32(bm0);
- 	}
--	hdr->nops++;
--	hdr->replen += decode_getattr_maxsz;
- }
- 
- static void encode_getfattr(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
-@@ -1217,23 +1218,13 @@ static void encode_fs_locations(struct xdr_stream *xdr, const u32* bitmask, stru
- 
- static void encode_getfh(struct xdr_stream *xdr, struct compound_hdr *hdr)
- {
--	__be32 *p;
--
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_GETFH);
--	hdr->nops++;
--	hdr->replen += decode_getfh_maxsz;
-+	encode_op_hdr(xdr, OP_GETFH, decode_getfh_maxsz, hdr);
- }
- 
- static void encode_link(struct xdr_stream *xdr, const struct qstr *name, struct compound_hdr *hdr)
- {
--	__be32 *p;
--
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_LINK);
-+	encode_op_hdr(xdr, OP_LINK, decode_link_maxsz, hdr);
- 	encode_string(xdr, name->len, name->name);
--	hdr->nops++;
--	hdr->replen += decode_link_maxsz;
- }
- 
- static inline int nfs4_lock_type(struct file_lock *fl, int block)
-@@ -1323,24 +1314,14 @@ static void encode_locku(struct xdr_stream *xdr, const struct nfs_locku_args *ar
- 
- static void encode_release_lockowner(struct xdr_stream *xdr, const struct nfs_lowner *lowner, struct compound_hdr *hdr)
- {
--	__be32 *p;
--
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_RELEASE_LOCKOWNER);
-+	encode_op_hdr(xdr, OP_RELEASE_LOCKOWNER, decode_release_lockowner_maxsz, hdr);
- 	encode_lockowner(xdr, lowner);
--	hdr->nops++;
--	hdr->replen += decode_release_lockowner_maxsz;
- }
- 
- static void encode_lookup(struct xdr_stream *xdr, const struct qstr *name, struct compound_hdr *hdr)
- {
--	__be32 *p;
--
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_LOOKUP);
-+	encode_op_hdr(xdr, OP_LOOKUP, decode_lookup_maxsz, hdr);
- 	encode_string(xdr, name->len, name->name);
--	hdr->nops++;
--	hdr->replen += decode_lookup_maxsz;
- }
- 
- static void encode_share_access(struct xdr_stream *xdr, fmode_t fmode)
-@@ -1371,8 +1352,6 @@ static inline void encode_openhdr(struct xdr_stream *xdr, const struct nfs_opena
-  * opcode 4, seqid 4, share_access 4, share_deny 4, clientid 8, ownerlen 4,
-  * owner 4 = 32
-  */
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_OPEN);
- 	encode_nfs4_seqid(xdr, arg->seqid);
- 	encode_share_access(xdr, arg->fmode);
- 	p = reserve_space(xdr, 32);
-@@ -1481,6 +1460,7 @@ static inline void encode_claim_delegate_cur(struct xdr_stream *xdr, const struc
- 
- static void encode_open(struct xdr_stream *xdr, const struct nfs_openargs *arg, struct compound_hdr *hdr)
- {
-+	encode_op_hdr(xdr, OP_OPEN, decode_open_maxsz, hdr);
- 	encode_openhdr(xdr, arg);
- 	encode_opentype(xdr, arg);
- 	switch (arg->claim) {
-@@ -1496,55 +1476,33 @@ static void encode_open(struct xdr_stream *xdr, const struct nfs_openargs *arg,
- 	default:
- 		BUG();
- 	}
--	hdr->nops++;
--	hdr->replen += decode_open_maxsz;
- }
- 
- static void encode_open_confirm(struct xdr_stream *xdr, const struct nfs_open_confirmargs *arg, struct compound_hdr *hdr)
- {
--	__be32 *p;
--
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_OPEN_CONFIRM);
-+	encode_op_hdr(xdr, OP_OPEN_CONFIRM, decode_open_confirm_maxsz, hdr);
- 	encode_nfs4_stateid(xdr, arg->stateid);
- 	encode_nfs4_seqid(xdr, arg->seqid);
--	hdr->nops++;
--	hdr->replen += decode_open_confirm_maxsz;
- }
- 
- static void encode_open_downgrade(struct xdr_stream *xdr, const struct nfs_closeargs *arg, struct compound_hdr *hdr)
- {
--	__be32 *p;
--
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_OPEN_DOWNGRADE);
-+	encode_op_hdr(xdr, OP_OPEN_DOWNGRADE, decode_open_downgrade_maxsz, hdr);
- 	encode_nfs4_stateid(xdr, arg->stateid);
- 	encode_nfs4_seqid(xdr, arg->seqid);
- 	encode_share_access(xdr, arg->fmode);
--	hdr->nops++;
--	hdr->replen += decode_open_downgrade_maxsz;
- }
- 
- static void
- encode_putfh(struct xdr_stream *xdr, const struct nfs_fh *fh, struct compound_hdr *hdr)
- {
--	__be32 *p;
--
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_PUTFH);
-+	encode_op_hdr(xdr, OP_PUTFH, decode_putfh_maxsz, hdr);
- 	encode_string(xdr, fh->size, fh->data);
--	hdr->nops++;
--	hdr->replen += decode_putfh_maxsz;
- }
- 
- static void encode_putrootfh(struct xdr_stream *xdr, struct compound_hdr *hdr)
- {
--	__be32 *p;
--
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_PUTROOTFH);
--	hdr->nops++;
--	hdr->replen += decode_putrootfh_maxsz;
-+	encode_op_hdr(xdr, OP_PUTROOTFH, decode_putrootfh_maxsz, hdr);
- }
- 
- static void encode_open_stateid(struct xdr_stream *xdr, const struct nfs_open_context *ctx, const struct nfs_lock_context *l_ctx, int zero_seqid)
-@@ -1564,17 +1522,13 @@ static void encode_read(struct xdr_stream *xdr, const struct nfs_readargs *args,
- {
- 	__be32 *p;
- 
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_READ);
--
-+	encode_op_hdr(xdr, OP_READ, decode_read_maxsz, hdr);
- 	encode_open_stateid(xdr, args->context, args->lock_context,
- 		       hdr->minorversion);
- 
- 	p = reserve_space(xdr, 12);
- 	p = xdr_encode_hyper(p, args->offset);
- 	*p = cpu_to_be32(args->count);
--	hdr->nops++;
--	hdr->replen += decode_read_maxsz;
- }
- 
- static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg *readdir, struct rpc_rqst *req, struct compound_hdr *hdr)
-@@ -1622,35 +1576,20 @@ static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg
- 
- static void encode_readlink(struct xdr_stream *xdr, const struct nfs4_readlink *readlink, struct rpc_rqst *req, struct compound_hdr *hdr)
- {
--	__be32 *p;
--
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_READLINK);
--	hdr->nops++;
--	hdr->replen += decode_readlink_maxsz;
-+	encode_op_hdr(xdr, OP_READLINK, decode_readlink_maxsz, hdr);
- }
- 
- static void encode_remove(struct xdr_stream *xdr, const struct qstr *name, struct compound_hdr *hdr)
- {
--	__be32 *p;
--
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_REMOVE);
-+	encode_op_hdr(xdr, OP_REMOVE, decode_remove_maxsz, hdr);
- 	encode_string(xdr, name->len, name->name);
--	hdr->nops++;
--	hdr->replen += decode_remove_maxsz;
- }
- 
- static void encode_rename(struct xdr_stream *xdr, const struct qstr *oldname, const struct qstr *newname, struct compound_hdr *hdr)
- {
--	__be32 *p;
--
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_RENAME);
-+	encode_op_hdr(xdr, OP_RENAME, decode_rename_maxsz, hdr);
- 	encode_string(xdr, oldname->len, oldname->name);
- 	encode_string(xdr, newname->len, newname->name);
--	hdr->nops++;
--	hdr->replen += decode_rename_maxsz;
- }
- 
- static void encode_renew(struct xdr_stream *xdr, clientid4 clid,
-@@ -1668,12 +1607,7 @@ static void encode_renew(struct xdr_stream *xdr, clientid4 clid,
- static void
- encode_restorefh(struct xdr_stream *xdr, struct compound_hdr *hdr)
- {
--	__be32 *p;
--
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_RESTOREFH);
--	hdr->nops++;
--	hdr->replen += decode_restorefh_maxsz;
-+	encode_op_hdr(xdr, OP_RESTOREFH, decode_restorefh_maxsz, hdr);
- }
- 
- static void
-@@ -1681,8 +1615,7 @@ encode_setacl(struct xdr_stream *xdr, struct nfs_setaclargs *arg, struct compoun
- {
- 	__be32 *p;
- 
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_SETATTR);
-+	encode_op_hdr(xdr, OP_SETATTR, decode_setacl_maxsz, hdr);
- 	encode_nfs4_stateid(xdr, &zero_stateid);
- 	p = reserve_space(xdr, 2*4);
- 	*p++ = cpu_to_be32(1);
-@@ -1691,30 +1624,18 @@ encode_setacl(struct xdr_stream *xdr, struct nfs_setaclargs *arg, struct compoun
- 	p = reserve_space(xdr, 4);
- 	*p = cpu_to_be32(arg->acl_len);
- 	xdr_write_pages(xdr, arg->acl_pages, arg->acl_pgbase, arg->acl_len);
--	hdr->nops++;
--	hdr->replen += decode_setacl_maxsz;
- }
- 
- static void
- encode_savefh(struct xdr_stream *xdr, struct compound_hdr *hdr)
- {
--	__be32 *p;
--
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_SAVEFH);
--	hdr->nops++;
--	hdr->replen += decode_savefh_maxsz;
-+	encode_op_hdr(xdr, OP_SAVEFH, decode_savefh_maxsz, hdr);
- }
- 
- static void encode_setattr(struct xdr_stream *xdr, const struct nfs_setattrargs *arg, const struct nfs_server *server, struct compound_hdr *hdr)
- {
--	__be32 *p;
--
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_SETATTR);
-+	encode_op_hdr(xdr, OP_SETATTR, decode_setattr_maxsz, hdr);
- 	encode_nfs4_stateid(xdr, &arg->stateid);
--	hdr->nops++;
--	hdr->replen += decode_setattr_maxsz;
- 	encode_attrs(xdr, arg->iap, server);
- }
- 
-@@ -1753,9 +1674,7 @@ static void encode_write(struct xdr_stream *xdr, const struct nfs_writeargs *arg
- {
- 	__be32 *p;
- 
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_WRITE);
--
-+	encode_op_hdr(xdr, OP_WRITE, decode_write_maxsz, hdr);
- 	encode_open_stateid(xdr, args->context, args->lock_context,
- 		       hdr->minorversion);
- 
-@@ -1765,30 +1684,18 @@ static void encode_write(struct xdr_stream *xdr, const struct nfs_writeargs *arg
- 	*p = cpu_to_be32(args->count);
- 
- 	xdr_write_pages(xdr, args->pages, args->pgbase, args->count);
--	hdr->nops++;
--	hdr->replen += decode_write_maxsz;
- }
- 
- static void encode_delegreturn(struct xdr_stream *xdr, const nfs4_stateid *stateid, struct compound_hdr *hdr)
- {
--	__be32 *p;
--
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_DELEGRETURN);
-+	encode_op_hdr(xdr, OP_DELEGRETURN, decode_delegreturn_maxsz, hdr);
- 	encode_nfs4_stateid(xdr, stateid);
--	hdr->nops++;
--	hdr->replen += decode_delegreturn_maxsz;
- }
- 
- static void encode_secinfo(struct xdr_stream *xdr, const struct qstr *name, struct compound_hdr *hdr)
- {
--	__be32 *p;
--
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_SECINFO);
-+	encode_op_hdr(xdr, OP_SECINFO, decode_secinfo_maxsz, hdr);
- 	encode_string(xdr, name->len, name->name);
--	hdr->nops++;
--	hdr->replen += decode_secinfo_maxsz;
- }
- 
- #if defined(CONFIG_NFS_V4_1)
-@@ -2132,12 +2039,8 @@ static void encode_free_stateid(struct xdr_stream *xdr,
- 				struct nfs41_free_stateid_args *args,
- 				struct compound_hdr *hdr)
- {
--	__be32 *p;
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_FREE_STATEID);
-+	encode_op_hdr(xdr, OP_FREE_STATEID, decode_free_stateid_maxsz, hdr);
- 	encode_nfs4_stateid(xdr, args->stateid);
--	hdr->nops++;
--	hdr->replen += decode_free_stateid_maxsz;
- }
- #endif /* CONFIG_NFS_V4_1 */
- 
--- 
-1.7.7.6
-
+T24gTW9uLCAyMDEyLTAzLTI2IGF0IDExOjE3IC0wNzAwLCBCb2F6IEhhcnJvc2ggd3JvdGU6DQo+
+IE9uIDAzLzI0LzIwMTIgMTA6MTIgQU0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+IA0KPiA+
+IE9uIFNhdCwgMjAxMi0wMy0yNCBhdCAxMjo1MyAtMDQwMCwgTWF0dCBXLiBCZW5qYW1pbiB3cm90
+ZToNCj4gPj4gSGksDQo+ID4+DQo+ID4+IEkgZG9uJ3QgdGhpbmsgYW55dGhpbmcgaXMuICBPciwg
+cGVvcGxlIG9yaWdpbmFsbHkgcmVwb3J0ZWQgdGhlIGJlaGF2aW9yIGFnYWluc3Qga25mc2QuDQo+
+ID4+DQo+ID4+IE1hdHQNCj4gPiANCj4gPiBUaGVyZSBpcyBhIGtub3duIGlzc3VlIHdpdGggZXh0
+Mi8zLzQgZ2VuZXJhdGluZyBub24tdW5pcXVlIHJlYWRkaXINCj4gPiBjb29raWVzLiBJdCByYXJl
+bHkgaGl0cyB5b3Ugd2hlbiB5b3UgYXJlIGNyZWF0aW5nIHNtYWxsIGRpcmVjdG9yaWVzLCBidXQN
+Cj4gPiBpdCBmcmVxdWVudGx5IGhpdHMgeW91IHdpdGggbGFyZ2VyIG9uZXMuIEEgZml4IGlzIHVu
+ZGVyd2F5IHRoYXQgc2hvdWxkDQo+ID4gc2lnbmlmaWNhbnRseSByZWR1Y2UgdGhlIGZyZXF1ZW5j
+eSBvZiBjb29raWUgY29sbGlzaW9ucy4NCj4gPiANCj4gPiBSZWNlbnQgTkZTIGNsaWVudHMgd2ls
+bCBhY3R1YWxseSBkZXRlY3QgdGhlIHByZXNlbmNlIG9mIHRob3NlIGNvb2tpZQ0KPiA+IGxvb3Bz
+LCBhbmQgbG9nIHRoZW0gaW4gdGhlIGtlcm5lbCBzeXNsb2cuIFRoYXQgd291bGQgdGhlcmVmb3Jl
+IGJlIHRoZQ0KPiA+IGZpcnN0IHRoaW5nIHRoYXQgSSdkIGNoZWNrIGlmIGNvbmZyb250ZWQgd2l0
+aCB0aGlzIGtpbmQgb2YgcHJvYmxlbS4NCj4gPiANCj4gPiBDaGVlcnMNCj4gPiAgIFRyb25kDQo+
+ID4gDQo+IA0KPiANCj4gVHJvbmQgcGxlYXNlIGxvb2sgb24gdGhlIGJ1ZyByZXBvcnQgbGlua3Mg
+YmVsb3cuIEl0J3Mgbm90IHRoZSAiY29va2llIGNvbGxpc2lvbnMiIGNhc2UuDQo+IA0KPiBJdCdz
+IHRoZSBuZXcgKHBvc3QgUkhFTCA2LjAgS2VybmVsKSBORlMgbmVlZCBmb3Igb3BlbmRpciBhZnRl
+ciBhbiB1bmxpbmsuDQoNCldoYXQ/DQoNCj4gTm93IHRoZSBQT1NJWCBtYW4gcGFnZSAqZG9lcyog
+c2F5IHRoYXQgYXBwbGljYXRpb25zIG11c3QgcmUtb3BlbmRpciBhZnRlcg0KPiB1bmxpbmssIGJ1
+dCB0aGVyZSBhcmUgc29tZSBhcHBsaWNhdGlvbnMgd2hvIGRpZCBub3QgcmVhZCB0aGUgbWFudWFs
+LCBhbmQgc2luY2UNCj4gaXQgd29ya3Mgd2l0aCBsb2NhbCBmaWxlc3lzdGVtcyBhbmQgb2xkIG5m
+cywgKFdoYXQgS2VybmVsIFJIRUwgNi4wIGlzIGJhc2VkIG9uPykNCj4gdGhleSBuZXZlciBub3Rp
+Y2VkIHRoZSBidWcgYW5kIG5ldmVyIGZpeGVkIGl0Lg0KPiANCj4gQ291bGQgd2UgZWFzaWx5IHN1
+cHBvcnQgdGhlIGJyb2tlbiBhcHBsaWNhdGlvbiBieSBiZWluZyBidWcgY29tcGF0aWJsZSB0bw0K
+PiBvbGQgTkZTIHZlcnNpb25zPw0KPiAuaS5lIERvbid0IHJlcXVpcmUgcmUtb3BlbmRpciBhZnRl
+ciB1bmxpbmsgb2YgYSBmaWxlLg0KPiANCj4gVGhlcmUgYXJlIG1vcmUgZXhhbXBsZXMgaW4gdGhl
+IGJ1ZyByZXBvcnRzIGJlbG93IGJ1dCBiYXNpY2FsbHkgYm9ubmllKysNCj4gZG9lcyB0aGUgZm9s
+bG93aW5nOg0KPiAJRElSICpkID0gb3BlbmRpcigiLiIpOw0KPiAJZGlyZW50ICpmaWxlX2VudDsN
+Cj4gCXdoaWxlKChmaWxlX2VudCA9IHJlYWRkaXIoZCkpICE9IE5VTEwpIHsNCj4gCQl1bmxpbmso
+IGZpbGVfZW50LT5kX25hbWUpKQ0KPiAJfQ0KPiAJY2xvc2VkaXIoZCk7DQo+IA0KPiB3aGVyZSBp
+dCBhY3R1YWxseSBuZWVkcyB0byBkbzoNCj4gDQo+IAlESVIgKmQgPSBvcGVuZGlyKCIuIik7DQo+
+IAlkaXJlbnQgKmZpbGVfZW50Ow0KPiAJd2hpbGUoKGZpbGVfZW50ID0gcmVhZGRpcihkKSkgIT0g
+TlVMTCkgew0KPiAJCXVubGluayggZmlsZV9lbnQtPmRfbmFtZSkpDQo+IA0KPiAJCWNsb3NlZGly
+KGQpOw0KPiAJCWQgPSBvcGVuZGlyKCIuIik7DQo+IAl9DQo+IAljbG9zZWRpcihkKTsNCj4gDQo+
+IEJ1dCBhZ2FpbiBjYXNlIG9uZSB1c2VkIHRvIHdvcmsgd2l0aCBvbGQgTkZTLiBBbmQgaXQgbG9v
+a3MgbGlrZQ0KPiBpdCBpcyBub3QgU2VydmVyIGRlcGVuZGVudC4gV2Ugc2F3IHRoaXMgYm90aCB3
+aXRoIEdhbmVzaGEgYXMgd2VsbA0KPiBhcyBrbmZzZA0KDQpOby4NCg0KSWYgdGhlIHNlcnZlciBz
+dXBwb3J0cyBwZXJtYW5lbnQgcmVhZGRpciBjb29raWVzLCB0aGVuIHRoZXJlIGlzIG5vIG5lZWQN
+CmZvciBvcGVuZGlyIGFmdGVyIHVubGluay4NCg0KSWYgdGhlIHNlcnZlciBkb2VzIG5vdCBoYXZl
+IHBlcm1hbmVudCByZWFkZGlyIGNvb2tpZXMsIHRoZW4gb3VyIGNsaWVudA0KaGFzIG5ldmVyIHN1
+cHBvcnRlZCBpdCBhbnl3YXkgKG5vciB3aWxsIGl0IGV2ZXIgZG8gc28pLiBUaGF0IHdob2xlDQon
+Y29va2lldmVyZicgUkVBRERJUiBidWxsc2hpdCBoYXMgbmV2ZXIgcHJvdmlkZWQgYSB3b3JrYWJs
+ZSBtb2RlbCBmb3IgYQ0KUE9TSVggY2xpZW50Li4uDQoNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QN
+CkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBu
+ZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
