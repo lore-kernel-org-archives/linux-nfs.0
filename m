@@ -1,62 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:52097 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753987Ab2CDX0m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 4 Mar 2012 18:26:42 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Get normalized paths for comparing NFS export paths
-Date: Sun, 4 Mar 2012 23:26:40 +0000
-Message-ID: <1330903600.14357.10.camel@lade.trondhjem.org>
-References: <1328233332-26020-1-git-send-email-malahal@us.ibm.com>
-	  <4F2BC1C0.8070900@panasas.com> <20120203231623.442fefde@notabene.brown>
-	  <20120203142945.GA31805@us.ibm.com> <4F2E620F.5090100@panasas.com>
-	  <20120207204401.GA31752@us.ibm.com> <4F511B21.1020907@RedHat.com>
-	  <20120302192758.GA28389@us.ibm.com> <4F513429.1050209@RedHat.com>
-	  <20120302220108.GA17119@us.ibm.com> <4F525741.2060404@RedHat.com>
-	 <1330801976.2781.19.camel@lade.trondhjem.org> <4F53ED3C.2020209@RedHat.com>
-	 <4F53F39E.9050802@RedHat.com>
-In-Reply-To: <4F53F39E.9050802@RedHat.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from natasha.panasas.com ([67.152.220.90]:48836 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932944Ab2CZSoB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Mar 2012 14:44:01 -0400
+Message-ID: <4F70B8DF.9000108@panasas.com>
+Date: Mon, 26 Mar 2012 11:43:43 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Matt W. Benjamin" <matt@linuxbox.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>
+Subject: Re: unlink within an open directory stream
+References: <275611967.8.1332608027370.JavaMail.root@thunderbeast.private.linuxbox.com>  <1332609149.25346.12.camel@lade.trondhjem.org>  <4F70B2AE.4000504@panasas.com> <1332786347.17253.33.camel@lade.trondhjem.org>
+In-Reply-To: <1332786347.17253.33.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU3VuLCAyMDEyLTAzLTA0IGF0IDE3OjU4IC0wNTAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0K
-PiBPbiAwMy8wNC8yMDEyIDA1OjMxIFBNLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0KPiA+PiBORlN2
-NCBpcyB0aGUgb25seSBwcm90b2NvbCB0aGF0IGhhcyBhIHN0YW5kYXJkIG1vdW50IHBhdGggc3lu
-dGF4LCBhbmQNCj4gPj4gdGhhdCBpcyBiZWNhdXNlIHRoZSBjbGllbnQgcGVyZm9ybXMgdGhlIGpv
-YiBvZiBpbnRlcnByZXRpbmcgdGhlIHBhdGgNCj4gPj4gbmFtZSBhbmQgdHJhbnNsYXRpbmcgaXQg
-aW50byBQVVRST09URkggZm9sbG93ZWQgYnkgYSBidW5jaCBvZiBMT09LVVBzLg0KPiA+PiBJT1c6
-IHRoZSBzdGFuZGFyZCBzeW50YXggdGhlcmUgaXMgdGhlIG9uZSBpbXBvc2VkIGJ5IHRoZSBjbGll
-bnQuDQo+ID4+DQo+ID4+IFRoZXJlIGlzIG5vdGhpbmcgaW4gdGhlIE5GU3YyL3YzIE1PVU5UIHNw
-ZWMgdGhhdCBzdGF0ZXMgdGhhdCBhIHBhdGgNCj4gPj4gbmVlZHMgdG8gc3RhcnQgd2l0aCAnLycu
-IE5vciBpcyB0aGVyZSBldmVuIGFueXRoaW5nIGluIHRoZSBzcGVjIHRoYXQNCj4gPj4gc3RhdGVz
-IHRoYXQgJy8nIGlzIHJlcXVpcmVkIHRvIGJlIHVzZWQgYXMgdGhlIGRpcmVjdG9yeSBjb21wb25l
-bnQNCj4gPj4gc2VwYXJhdG9yLiBUaGUgWC9PUEVOIGRvY3Mgc3RhdGUgdGhhdCAnLycgaXMgcmVj
-b21tZW5kZWQgZm9yDQo+ID4+IHBvcnRhYmlsaXR5LCBidXQgZG8gbm90IG1ha2UgaXQgYSByZXF1
-aXJlbWVudC4gU2VlDQo+ID4+IGh0dHA6Ly9wdWJzLm9wZW5ncm91cC5vcmcvb25saW5lcHVicy85
-NjI5Nzk5L2NoYXA4Lmh0bSN0YWdjamhfMDlfMDJfMDJfMDMgDQo+ID4+DQo+ID4+IElPVzogSSdt
-IHBlcmZlY3RseSBhbGxvd2VkIHRvIHNldCB1cCBhICdtb3VudGQnIHNlcnZlciB0aGF0IHVzZXMg
-J1wnIG9yDQo+ID4+IGV2ZW4gc29tZXRoaW5nIGxpa2UgJ3wnIGFzIGEgcGF0aCBjb21wb25lbnQg
-c2VwYXJhdG9yLiBUaGlzIGtpbmQgb2YNCj4gPj4gcGF0Y2ggd291bGQgYnJlYWsgdGhlIGNsaWVu
-dCdzIGV4aXN0aW5nIGFiaWxpdHkgdG8gbW91bnQgZnJvbSBzdWNoIGENCj4gPj4gc2VydmVyLg0K
-PiA+IEFuZCB3aGVyZSBkb2VzIGFuIHNlcnZlciBsaWtlIHRoaXMgZXhpc3Q/IE9uZSB0aGF0IHVz
-ZXMgJ3wnIGFzIGl0cw0KPiA+IHBhdGggY29tcG9uZW50IHNlcGFyYXRvcj8/IDstKQ0KPiA+IA0K
-PiA+IEp1c3QgdG8gYmUgY2xlYXIsIHlvdSBhcmUgb2sgd2l0aCBzdHJpcGluZyB0aGUgbXVsdGlw
-bGUgc2xhc2hlcywgZm9yDQo+ID4gYWxsIHByb3RvY29sIHZlcnNpb25zLCBidXQgaXRzIG9ubHkg
-a29zaGVyIHRvIGFkZGVkIHRoZSBsZWFkaW5nIA0KPiA+IHNsYXNoIGZvciB2NCBtb3VudHMuIENv
-cnJlY3Q/ICANCj4gQWZ0ZXIgZnVydGhlciByZXZpZXcuLi4gaXQgYXBwZWFycyB0aGlzIGlzIG9u
-bHkgYSB2NCBpc3N1ZSBzaW5jZQ0KPiB2MyBtb3VudHMgd2l0aCBtdWx0aXBsZSBzbGFzaGVzIGFw
-cGVhciBpbiAvcHJvYy9tb3VudHMgd2l0aCB0aGUNCj4gbXVsdGlwbGUgc2xhc2hlcyAodW5saWtl
-IHY0IG1vdW50cykuLi4gDQo+IA0KPiBTbyB0byByZXN0YXRlLi4uIHRoaXMgbm9ybWFsaXppbmcg
-b2YgdGhlIHBhdGggbmFtZXMgKGFrYSBzdHJpcGluZyANCj4gbXVsdGlwbGUgc2xhc2hlcyBvciBh
-ZGRlZCB0aGUgbGVhZGluZyBzbGFzaCkgb25seSBuZWVkIHRvIG9jY3VyIG9uIA0KPiAoc3VjY2Vz
-c2Z1bCkgdjQgbW91bnRzLi4uIEFsdGhvdWdoIHRoZSBmb3JtZXIgd291bGQgbm90IGJlIGFuIA0K
-PiBwcm9ibGVtIHdpdGggdjIvdjMgbW91bnRzIGJ1dCBpdHMgbm90IG5lZWRlZC4uLi4NCg0KTm9y
-bWFsaXNpbmcgZm9yIHY0IG9ubHkgaXMgT0sgYXMgZmFyIGFzIEknbSBjb25jZXJuZWQsIGJ1dCBh
-cyBhbg0KYWx0ZXJuYXRpdmU6IGlzIHRoZXJlIGFueSByZWFzb24gd2h5IHlvdSBjYW4ndCBqdXN0
-IGdyYWIgdGhlIHBhdGggZnJvbQ0KJy9wcm9jL21vdW50cyc/DQoNCi0tIA0KVHJvbmQgTXlrbGVi
-dXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1
-c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+On 03/26/2012 11:25 AM, Myklebust, Trond wrote:
+
+> On Mon, 2012-03-26 at 11:17 -0700, Boaz Harrosh wrote:
+>> On 03/24/2012 10:12 AM, Myklebust, Trond wrote:
+>>
+>>
+>> It's the new (post RHEL 6.0 Kernel) NFS need for opendir after an unlink.
+> 
+> What?
+> 
+
+
+The links below report on regression in RHEL 6.2 which have a new NFS
+implementation where  6.0 used to be fine.
+(Or it's what I understood from the reporters)
+
+<snip>
+
+> 
+
+> No.
+> 
+> If the server supports permanent readdir cookies, then there is no need
+> for opendir after unlink.
+> 
+> If the server does not have permanent readdir cookies, then our client
+> has never supported it anyway (nor will it ever do so). That whole
+> 'cookieverf' READDIR bullshit has never provided a workable model for a
+> POSIX client...
+
+
+Thanks Trond for the explanation. Forgive my slowness. So you are
+saying that with knfsd it's actually filesystem dependent and maybe
+the reporters did not compare apples-to-apples and the difference is
+in the behind file system.
+
+Matt I'm sure Trond is right with regard to Ganesha, because we
+send a readdir index and a cookieverf, which will change after
+unlink. Since the application does not call opendir again the
+client will send the old cookies, which is now a different file
+or might get out-of-bounds for Ganesha.
+
+Let me think about it a bit. I'm sure we can send a Better
+64bit cookie, which will be more persistent, even across unlinks.
+
+> 
+> 
+
+
+Thanks
+Boaz
