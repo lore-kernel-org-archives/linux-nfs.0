@@ -1,92 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:44711 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965004Ab2CUNwU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Mar 2012 09:52:20 -0400
-Received: by ghrr11 with SMTP id r11so921107ghr.19
-        for <linux-nfs@vger.kernel.org>; Wed, 21 Mar 2012 06:52:20 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v10 5/8] nfsd: add a header describing upcall to nfsdcld
-Date: Wed, 21 Mar 2012 09:52:06 -0400
-Message-Id: <1332337929-18580-6-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
-References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
+Received: from natasha.panasas.com ([67.152.220.90]:50702 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750703Ab2CZTHy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Mar 2012 15:07:54 -0400
+Message-ID: <4F70BE77.7060902@panasas.com>
+Date: Mon, 26 Mar 2012 12:07:35 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: "Matt W. Benjamin" <matt@linuxbox.com>
+CC: linux-nfs <linux-nfs@vger.kernel.org>,
+        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: unlink within an open directory stream
+References: <1974178651.72.1332788099966.JavaMail.root@thunderbeast.private.linuxbox.com>
+In-Reply-To: <1974178651.72.1332788099966.JavaMail.root@thunderbeast.private.linuxbox.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The daemon takes a versioned binary struct. Hopefully this should allow
-us to revise the struct later if it becomes necessary.
+On 03/26/2012 11:55 AM, Matt W. Benjamin wrote:
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- include/linux/nfsd/cld.h |   56 ++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 56 insertions(+), 0 deletions(-)
- create mode 100644 include/linux/nfsd/cld.h
+> Hi,
+> 
+> Boaz:  we do not any longer send a readdir index.  We do send a cookieverf.
+> 
+> Fist of all, I haven't established that the issue we're actually observing is caused
+> by the Linux client sending old cookies to readdir(something).  However, if it is,
+> it's in no way better to try to make cookies "more persistent."  Nor should the Linux
+> client be expecting it.  The assumption is simply flawed.  The protocol introduced
+> cookie verifier (a LONG time ago) for a reason.
+> 
+> Matt
 
-diff --git a/include/linux/nfsd/cld.h b/include/linux/nfsd/cld.h
-new file mode 100644
-index 0000000..f14a9ab
---- /dev/null
-+++ b/include/linux/nfsd/cld.h
-@@ -0,0 +1,56 @@
-+/*
-+ * Upcall description for nfsdcld communication
-+ *
-+ * Copyright (c) 2012 Red Hat, Inc.
-+ * Author(s): Jeff Layton <jlayton@redhat.com>
-+ *
-+ *  This program is free software; you can redistribute it and/or modify
-+ *  it under the terms of the GNU General Public License as published by
-+ *  the Free Software Foundation; either version 2 of the License, or
-+ *  (at your option) any later version.
-+ *
-+ *  This program is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ *  GNU General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU General Public License
-+ *  along with this program; if not, write to the Free Software
-+ *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-+ */
-+
-+#ifndef _NFSD_CLD_H
-+#define _NFSD_CLD_H
-+
-+/* latest upcall version available */
-+#define CLD_UPCALL_VERSION 1
-+
-+/* defined by RFC3530 */
-+#define NFS4_OPAQUE_LIMIT 1024
-+
-+enum cld_command {
-+	Cld_Create,		/* create a record for this cm_id */
-+	Cld_Remove,		/* remove record of this cm_id */
-+	Cld_Check,		/* is this cm_id allowed? */
-+	Cld_GraceDone,		/* grace period is complete */
-+};
-+
-+/* representation of long-form NFSv4 client ID */
-+struct cld_name {
-+	uint16_t	cn_len;				/* length of cm_id */
-+	unsigned char	cn_id[NFS4_OPAQUE_LIMIT];	/* client-provided */
-+} __attribute__((packed));
-+
-+/* message struct for communication with userspace */
-+struct cld_msg {
-+	uint8_t		cm_vers;		/* upcall version */
-+	uint8_t		cm_cmd;			/* upcall command */
-+	int16_t		cm_status;		/* return code */
-+	uint32_t	cm_xid;			/* transaction id */
-+	union {
-+		int64_t		cm_gracetime;	/* grace period start time */
-+		struct cld_name	cm_name;
-+	} __attribute__((packed)) cm_u;
-+} __attribute__((packed));
-+
-+#endif /* !_NFSD_CLD_H */
--- 
-1.7.7.6
+
+Please don't top-post in a Linux-mailing lists. Us Linux guys are not used to it
+and get confused.
+
+Regarding the cookie-verifier it looks like the Linux client never supported
+that. So even if it will start to, from here on, we are in trouble with old
+clients.
+
+Since we are in the business of being bug backward compatible then fixing the
+client will not help. Because you must agree the easiest is to fix bonnie++
+but that's a privilege we do not have.
+
+I think we should imitate the behavior of knfsd+exfs3 I'm sure it's easy for
+Ganesha to fix it. Lets talk about it in this week call. I have ideas that
+will not change current code, just a small enhancement.
+
+Thanks
+Boaz
+
+> ----- "Boaz Harrosh" <bharrosh@panasas.com> wrote:
+> 
+>> On 03/26/2012 11:25 AM, Myklebust, Trond wrote:
+>>
+>>> On Mon, 2012-03-26 at 11:17 -0700, Boaz Harrosh wrote:
+>>>> On 03/24/2012 10:12 AM, Myklebust, Trond wrote:
+>>>>
+>>>>
+>>>> It's the new (post RHEL 6.0 Kernel) NFS need for opendir after an
+>> unlink.
+>>>
+>>> What?
+>>>
+>>
+>>
+>> The links below report on regression in RHEL 6.2 which have a new NFS
+>> implementation where  6.0 used to be fine.
+>> (Or it's what I understood from the reporters)
+>>
+>> <snip>
+>>
+>>>
+>>
+>>> No.
+>>>
+>>> If the server supports permanent readdir cookies, then there is no
+>> need
+>>> for opendir after unlink.
+>>>
+>>> If the server does not have permanent readdir cookies, then our
+>> client
+>>> has never supported it anyway (nor will it ever do so). That whole
+>>> 'cookieverf' READDIR bullshit has never provided a workable model
+>> for a
+>>> POSIX client...
+>>
+>>
+>> Thanks Trond for the explanation. Forgive my slowness. So you are
+>> saying that with knfsd it's actually filesystem dependent and maybe
+>> the reporters did not compare apples-to-apples and the difference is
+>> in the behind file system.
+>>
+>> Matt I'm sure Trond is right with regard to Ganesha, because we
+>> send a readdir index and a cookieverf, which will change after
+>> unlink. Since the application does not call opendir again the
+>> client will send the old cookies, which is now a different file
+>> or might get out-of-bounds for Ganesha.
+>>
+>> Let me think about it a bit. I'm sure we can send a Better
+>> 64bit cookie, which will be more persistent, even across unlinks.
+>>
+>>>
+>>>
+>>
+>>
+>> Thanks
+>> Boaz
+> 
+
 
