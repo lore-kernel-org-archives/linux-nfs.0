@@ -1,72 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.windriver.com ([147.11.1.11]:48412 "EHLO
-	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755991Ab2CRSNI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 18 Mar 2012 14:13:08 -0400
-Date: Sun, 18 Mar 2012 14:13:05 -0400
-From: Paul Gortmaker <paul.gortmaker@windriver.com>
-To: <linux-nfs@vger.kernel.org>
-CC: <Trond.Myklebust@netapp.com>
-Subject: _nfs_display_fhandle_hash: undefined reference to `crc32_le'
-Message-ID: <20120318181304.GA2095@windriver.com>
+Received: from mx2.netapp.com ([216.240.18.37]:60927 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933237Ab2CZTBP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Mar 2012 15:01:15 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Matt W. Benjamin" <matt@linuxbox.com>
+CC: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs <linux-nfs@vger.kernel.org>,
+        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>
+Subject: Re: unlink within an open directory stream
+Date: Mon, 26 Mar 2012 19:01:09 +0000
+Message-ID: <1332788474.20469.9.camel@lade.trondhjem.org>
+References: <1974178651.72.1332788099966.JavaMail.root@thunderbeast.private.linuxbox.com>
+In-Reply-To: <1974178651.72.1332788099966.JavaMail.root@thunderbeast.private.linuxbox.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This started showing up in linux-next last week:
-
-  LD      .tmp_vmlinux1
-fs/built-in.o: In function `_nfs_display_fhandle_hash':
-/scratch/kisskb/src/fs/nfs/inode.c:1063: undefined reference to `crc32_le'
-make[1]: *** [.tmp_vmlinux1] Error 1
-
-Target is an mpc8xx board:
-
-http://kisskb.ellerman.id.au/kisskb/target/2679/
-
-I tried to run an automated bisect on it, but there appears to
-be build failures in the bisection range, in addition to the
-above link error (i.e. points I'd use "skip" on if I wasn't
-using "git bisect run ...")
-
-# good: [b030fb0bb113316cc6f56779388b8572ab0699da] SUNRPC: use proper network namespace in rpcbind RPCBPROC_GETADDR procedure
-git bisect good b030fb0bb113316cc6f56779388b8572ab0699da
-# bad: [5247fab5c82779174d50590e0200bf532248a8a1] SUNRPC: pass network namespace to service registering routines
-git bisect bad 5247fab5c82779174d50590e0200bf532248a8a1
-
-Even without the concrete trigger commit, a suggested possible
-fix (tested locally) is below.
-
-Paul.
----
-
- From 21b77ae0373725bd2c60eca065e77c4d2f0fdbfa Mon Sep 17 00:00:00 2001
-From: Paul Gortmaker <paul.gortmaker@windriver.com>
-Date: Sun, 18 Mar 2012 14:07:42 -0400
-Subject: [PATCH] nfs: select CRC32 for when NFS is enabled for crc32_le
-
-To avoid the following link errors:
-
-  LD      .tmp_vmlinux1
-fs/built-in.o: In function `_nfs_display_fhandle_hash':
-fs/nfs/inode.c:1063: undefined reference to `crc32_le'
-make[1]: *** [.tmp_vmlinux1] Error 1
-
-Signed-off-by: Paul Gortmaker <paul.gortmaker@windriver.com>
-
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index 7bce64c..9acdfb0 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -3,6 +3,7 @@ config NFS_FS
- 	depends on INET && FILE_LOCKING
- 	select LOCKD
- 	select SUNRPC
-+	select CRC32
- 	select NFS_ACL_SUPPORT if NFS_V3_ACL
- 	help
- 	  Choose Y here if you want to access files residing on other
--- 
-1.7.9.1
-
+T24gTW9uLCAyMDEyLTAzLTI2IGF0IDE0OjU1IC0wNDAwLCBNYXR0IFcuIEJlbmphbWluIHdyb3Rl
+Og0KPiBIaSwNCj4gDQo+IEJvYXo6ICB3ZSBkbyBub3QgYW55IGxvbmdlciBzZW5kIGEgcmVhZGRp
+ciBpbmRleC4gIFdlIGRvIHNlbmQgYSBjb29raWV2ZXJmLg0KDQpVaGguLi4gVGhhdCB3b3VsZCBi
+ZSBzbyBicm9rZW4sIHRoYXQgSSBjYW4ndCBpbWFnaW5lIHRoYXQgaXMgdHJ1ZS4uLg0KDQo+IEZp
+c3Qgb2YgYWxsLCBJIGhhdmVuJ3QgZXN0YWJsaXNoZWQgdGhhdCB0aGUgaXNzdWUgd2UncmUgYWN0
+dWFsbHkgb2JzZXJ2aW5nIGlzIGNhdXNlZA0KPiBieSB0aGUgTGludXggY2xpZW50IHNlbmRpbmcg
+b2xkIGNvb2tpZXMgdG8gcmVhZGRpcihzb21ldGhpbmcpLiAgSG93ZXZlciwgaWYgaXQgaXMsDQo+
+IGl0J3MgaW4gbm8gd2F5IGJldHRlciB0byB0cnkgdG8gbWFrZSBjb29raWVzICJtb3JlIHBlcnNp
+c3RlbnQuIiAgTm9yIHNob3VsZCB0aGUgTGludXgNCj4gY2xpZW50IGJlIGV4cGVjdGluZyBpdC4g
+IFRoZSBhc3N1bXB0aW9uIGlzIHNpbXBseSBmbGF3ZWQuICBUaGUgcHJvdG9jb2wgaW50cm9kdWNl
+ZA0KPiBjb29raWUgdmVyaWZpZXIgKGEgTE9ORyB0aW1lIGFnbykgZm9yIGEgcmVhc29uLg0KDQpC
+dWxsc2hpdC4uLiBUaGUgY29va2llIHZlcmlmaWVyIGlzIHVuaW1wbGVtZW50YWJsZS4gRmVlbCBm
+cmVlIHRvIHRyeSBvcg0KdG8gc2hvdyBtZSBhbiBpbXBsZW1lbnRhdGlvbiB0aGF0IHdvcmtzLiBI
+b3dldmVyIEkgcmVmdXNlIHRvIHdhc3RlIGFueQ0KbW9yZSBvZiBteSB0aW1lIHRyeWluZyB0byBt
+YWtlIHRoYXQgY3JhcCB3b3JrLCBoYXZpbmcgYWxyZWFkeSB3YXN0ZWQNCnNldmVyYWwgbW9udGhz
+IG9mIG15IGxpZmUgZG9pbmcganVzdCB0aGF0Lg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGlu
+dXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFw
+cC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
