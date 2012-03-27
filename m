@@ -1,61 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:19659 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758103Ab2CANu7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Mar 2012 08:50:59 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Orion Poplawski <orion@cora.nwra.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfs4 mount hanging suddenly
-Date: Thu, 1 Mar 2012 13:50:41 +0000
-Message-ID: <1330609841.6218.6.camel@lade.trondhjem.org>
-References: <4F4EA6D0.30606@cora.nwra.com>
-	 <20120229231732.GD6506@fieldses.org> <4F4EB2FE.9040108@cora.nwra.com>
-In-Reply-To: <4F4EB2FE.9040108@cora.nwra.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from natasha.panasas.com ([67.152.220.90]:59186 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755762Ab2C0B6y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Mar 2012 21:58:54 -0400
+Message-ID: <4F711EA2.4030608@panasas.com>
+Date: Mon, 26 Mar 2012 18:57:54 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
+To: Andrew Morton <akpm@linux-foundation.org>, Oleg Nesterov <oleg@redhat.com>,
+        Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
+        <linux-security-module@vger.kernel.org>, Ingo Molnar <mingo@elte.hu>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>, Paul Turner <pjt@google.com>,
+        Thomas Gleixner <tglx@linutronix.de>
+CC: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "Bhamare, Sachin" <sbhamare@panasas.com>,
+        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
+        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
+        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Greg Kroah-Hartman <gregkh@suse.de>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+        "keyrings@linux-nfs.org" <keyrings@linux-nfs.org>
+Subject: [PATCHSET 0/6 version 2] kmod: Optional timeout on the wait in call_usermodehelper_exec
+References: <4F691059.30405@panasas.com>
+In-Reply-To: <4F691059.30405@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTAyLTI5IGF0IDE2OjIxIC0wNzAwLCBPcmlvbiBQb3BsYXdza2kgd3JvdGU6
-DQo+IE9uIDAyLzI5LzIwMTIgMDQ6MTcgUE0sIEouIEJydWNlIEZpZWxkcyB3cm90ZToNCj4gPiBP
-biBXZWQsIEZlYiAyOSwgMjAxMiBhdCAwMzoyOTozNlBNIC0wNzAwLCBPcmlvbiBQb3BsYXdza2kg
-d3JvdGU6DQo+ID4+IEp1c3Qgc3RhcnRpbmcgdG9kYXksIG9uZSBvZiBvdXIgdXNlcidzIG5mcyBt
-b3VudGVkIGhvbWUgZGlyZWN0b3J5DQo+ID4+IGhhcyBzdGFydGVkIGxvY2tpbmcgdXAuICBDbGll
-bnQgaXMgRmVkb3JhIDE2IDMyLWJpdCwgc2VydmVyIGlzDQo+ID4+IENlbnRPUyA1LjcgMzItYml0
-LiAgSGF2ZSBub3Qgc2VlbiB0aGlzIHBhcnRpY3VsYXIgcHJvYmxlbSBlbHNld2hlcmUNCj4gPj4g
-KHlldCkuDQo+ID4+DQo+ID4+IEkgY2FwdHVyZWQgdGhpcyB0cmFjZSBvbiB0aGUgc2VydmVyIGFm
-dGVyIHRoZSBoYW5nOg0KPiA+Pg0KPiA+PiBodHRwOi8vc3cuY29yYS5ud3JhLmNvbS90bXAvbWFy
-aWUtbmZzLWhvbWUtbHdhbmctaGFuZy5wY2FwDQo+ID4+DQo+ID4+ICAgIDEgICAwLjAwMDAwMCAg
-MTAuMTAuMjAuMTUgLT4gIDEwLjEwLjEwLjEgICBORlMgVjQgQ09NUCBDYWxsPEVNUFRZPg0KPiA+
-PiBQVVRGSDtHRVRBVFRSIEdFVEFUVFINCj4gPj4gICAgMiAgIDAuMDAwMTMzICAgMTAuMTAuMTAu
-MSAtPiAgMTAuMTAuMjAuMTUgIE5GUyBWNCBDT01QIFJlcGx5IChDYWxsDQo+ID4+IEluIDEpPEVN
-UFRZPiAgUFVURkg7R0VUQVRUUiBHRVRBVFRSDQo+ID4+ICAgIDMgICAwLjAwMDQyMSAgMTAuMTAu
-MjAuMTUgLT4gIDEwLjEwLjEwLjEgICBUQ1AgODc5PiAgbmZzIFtBQ0tdDQo+ID4+IFNlcT0xMzcg
-QWNrPTIyNSBXaW49MTc3MzggTGVuPTAgVFNWPTM1ODQ2NTMgVFNFUj0yNDM4MzMzMTk2DQo+ID4+
-ICAgIDQgICAwLjAwMDUxOSAgMTAuMTAuMjAuMTUgLT4gIDEwLjEwLjEwLjEgICBORlMgVjQgQ09N
-UCBDYWxsPEVNUFRZPg0KPiA+PiBQVVRGSDtBQ0NFU1MgQUNDRVNTO0dFVEFUVFIgR0VUQVRUUg0K
-PiA+PiAgICA1ICAgMC4wMDA1ODcgICAxMC4xMC4xMC4xIC0+ICAxMC4xMC4yMC4xNSAgTkZTIFY0
-IENPTVAgUmVwbHkgKENhbGwNCj4gPj4gSW4gNCk8RU1QVFk+ICBQVVRGSDtBQ0NFU1MgQUNDRVNT
-O0dFVEFUVFIgR0VUQVRUUltVbnJlYXNzZW1ibGVkDQo+ID4+IFBhY2tldCBbaW5jb3JyZWN0IFRD
-UCBjaGVja3N1bV1dDQo+ID4+ICAgIDYgICAwLjA0MDUyMiAgMTAuMTAuMjAuMTUgLT4gIDEwLjEw
-LjEwLjEgICBUQ1AgODc5PiAgbmZzIFtBQ0tdDQo+ID4+IFNlcT0yODkgQWNrPTQ2NSBXaW49MTc3
-MzggTGVuPTAgVFNWPTM1ODQ2OTQgVFNFUj0yNDM4MzMzMTk2DQo+ID4+ICAgIDcgICAwLjQ1MTYz
-NiAgMTAuMTAuMjAuMTUgLT4gIDEwLjEwLjEwLjEgICBORlMgVjQgQ09NUCBDYWxsPEVNUFRZPg0K
-PiA+PiBQVVRGSDtTQVZFRkggU0FWRUZIO09QRU4gT1BFTjtERUxFR1JFVFVSTiBERUxFR1JFVFVS
-TjtVbmtub3duDQo+ID4NCj4gPiBUaGF0IGxvb2tzIHdlaXJkLiAgTG9va2luZyBhdCB0aGUgcGNh
-cC0tb2ssIHRoZSAiZGVsZWdyZXR1cm4iIGlzIGENCj4gPiBtaXN0YWtlLCB0aGVyZSdzIG5vIGRl
-bGVncmV0dXJuIHRoZXJlLg0KPiA+DQo+ID4+ICAgIDggICAwLjQ1MTg5MiAgIDEwLjEwLjEwLjEg
-LT4gIDEwLjEwLjIwLjE1ICBORlMgVjQgQ09NUCBSZXBseSAoQ2FsbA0KPiA+PiBJbiA3KTxFTVBU
-WT4gIFBVVEZIO1NBVkVGSCBTQVZFRkg7T1BFTiBPUEVOKDEwMDA4KQ0KPiA+DQo+ID4gVGhhdCBw
-cm9iYWJseSBtZWFucyB0aGUgc2VydmVyIGlzIHdhaXRpbmcgZm9yIHRoZSBjbGllbnQgdG8gcmV0
-dXJuIGENCj4gPiBkZWxlZ2F0aW9uLg0KPiA+DQo+ID4gRWl0aGVyIHRoZSBzZXJ2ZXIncyBjb25m
-dXNlZCBhYm91dCB0aGVpciBiZWluZyBhIGRlbGVnYXRpb24sIG9yIHRoZQ0KPiA+IGNsaWVudCdz
-IGZhaWxpbmcgdG8gcmV0dXJuIG9uZSBpdCBzaG91bGQ/DQo+ID4NCg0KQXMgZmFyIGFzIEkgY2Fu
-IHNlZSBmcm9tIHlvdXIgdHJhY2UsIHRoZSBjbGllbnQga2VlcHMgdHJ5aW5nIHRvIG9wZW4gdGhl
-DQpmaWxlICcuaGlzdG9yeScsIGFuZCB0aGUgc2VydmVyIGtlZXBzIHJlcGx5aW5nIHdpdGggTkZT
-NEVSUl9ERUxBWS4gVGhlcmUNCmlzIG5vdGhpbmcgaW4gdGhlIHRyYWNlIGl0c2VsZiB0aGF0IGNh
-biB0ZWxsIHVzIHdoeSB0aGUgc2VydmVyIGlzDQpkZWxheWluZy4NCg0KQ2hlZXJzDQogIFRyb25k
-DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0K
-TmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+
+I'm re-sending the timeout optional waiting in call_usermodehelper()
+
+Diff from version 1:
+- Rebased on Olegs patches, based on Linus tree as of [e22057c]
+- Fix bugs as noted by Oleg Nesterov, Thanks Oleg for looking into this.
+- As noted by Oleg it would be cleaner to export from sched/core a
+  new generic wait_for_complition_state() API that encapsulate all the
+  different waits in one API. This is the option-A below.
+  If the maintainers of kernel/sched/ do not like this API then an option-B
+  is presented as a static implementation in kmod.c.
+- As requested By Oleg the convert to kref is optional at the very end and
+  is independent of the timeout changes.
+- Added kernel/sched maintainers to the list (as advised by get_maintainers.pl)
+
+Version 1:
+My motivation is that I added yet another Kernel dependency on the
+call_usermodehelper() function and am not completely happy with the
+error case of having the user-mode program stuck forever. In such
+case I would like the Kernel part to timeout and properly error recover
+and clean up. So therefor the proposed 5th patch.
+
+Please review and tell me what you guys think.
+
+List of patches:
+[PATCH 1/6] kmod: Unexport call_usermodehelper_freeinfo()
+
+	This one has minor conflicts with Tetsuo's patch which ever is applied first.
+
+[PATCH 2/6] kmod: kmod: Convert two call sites to call_usermodehelper_fns()
+
+	Fix mem leak in the case of -ENOMEM. Tetsuo what was the optimization you
+	had for this one?
+
+[PATCH 3/6] kmod: kmod: Move call_usermodehelper_fns() to .c file and unexport all it's helpers
+	Good common sense
+
+[PATCH 4/6 OPTION-A] completion: Add new wait_for_completion_timeout_state
+[PATCH 4/6 OPTION-B] kmod: {OPTION B} Add new wait_for_completion_timeout_state
+
+	These two are interchangeable. I prefer the first one. I don't think
+	kmod will be the only user for long. And it is much cleaner when wait_for_common()
+	is used.
+	Ingo, Peter, kernel/sched/ people please ack/nack on this approach so we can
+	decide how to advance?
+
+[PATCH 5/6] kmod: Add new call_usermodehelper_timeout() API
+
+	And finally my motivation for all this.
+
+[PATCH 6/6] kmod: optional: Convert the use of xchg to a kref
+
+	This is optional. I'm including it here since I already had that code
+	when I was not aware of Oleg's xchng patch. whoever is the maintainer of
+	this code should decide. I'm signed on the patch but I don't have strong
+	feelings one way or the other.
+
+Thanks
+Boaz
+
