@@ -1,54 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from li9-11.members.linode.com ([67.18.176.11]:59794 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751585Ab2CMVKN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Mar 2012 17:10:13 -0400
-Date: Tue, 13 Mar 2012 17:10:09 -0400
-From: "Ted Ts'o" <tytso@mit.edu>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        yong.fan@whamcloud.com, sandeen@redhat.com, adilger@whamcloud.com
-Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
- may_flags' in nfsd_open()
-Message-ID: <20120313211009.GA11969@thunk.org>
-References: <20120306020819.GH31388@pad.fieldses.org>
- <20120306151816.GB32282@thunk.org>
- <20120306152842.GA8339@pad.fieldses.org>
- <20120309205148.GB5635@thunk.org>
- <20120312150912.GB12440@thunk.org>
- <20120312154921.GB17153@pad.fieldses.org>
- <20120312222250.GD8991@fieldses.org>
- <20120313200117.GA21991@fieldses.org>
- <4F5FA827.8020606@itwm.fraunhofer.de>
- <20120313203446.GB21991@fieldses.org>
+Received: from fieldses.org ([174.143.236.118]:56368 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753634Ab2C0PG6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Mar 2012 11:06:58 -0400
+Date: Tue, 27 Mar 2012 11:06:57 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v10 0/8] nfsd: overhaul the client name tracking code
+Message-ID: <20120327150656.GB32055@fieldses.org>
+References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
+ <20120323170630.GB6089@fieldses.org>
+ <20120323132618.60e7e28d@corrin.poochiereds.net>
+ <20120326200212.GD26254@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120313203446.GB21991@fieldses.org>
+In-Reply-To: <20120326200212.GD26254@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 13, 2012 at 04:34:46PM -0400, J. Bruce Fields wrote:
-> > 
-> > Thanks! I'm also just going to work on it (just noticed your mail
-> > while on vacation ...).
+On Mon, Mar 26, 2012 at 04:02:12PM -0400, J. Bruce Fields wrote:
+> Having looked at it longer: first, I can't see how 4.1/krb5 callbacks
+> ever really worked.  That's a project for another day.  (Soon, but
+> probably not for 3.4.)
 
-Brend, thanks!!
+Bah, I'm stupid, I'd forgotten how 4.1 backchannel security works: the
+client chooses which flavor(s) are acceptable in create_session (or the
+mandatory but unimplemented backchannel_ct).  The Linux client always
+chooses auth_sys.  We've never really paid much attention to the client.
+Before we basically just used auth_sys no matter what.  Now we're using
+krb5 in the krb5 case.  Both are wrong, but the latter also breaks in
+practice against the Linux client.
 
-Bruce, random question --- do you know what the copyright and
-licensing terms are for the connectathon test suite?  It occurs to me
-that it might be good to get some of these tests into xfstests, given
-that you mentioned that the telldir test was failing even when run on
-a local file system.  That says to me this is a good file system level
-test that we should try to get into xfstests if possible.
+I think I changed the behavior accidentally while overhauling the 4.1
+server's callback and trunking behavior, probably with 80fc015bdfe
+"nfsd4: use common rpc_cred for all callbacks".
 
-Getting it into xfstests would also tend to reduce the chance of
-regressions, since I always run xfstests before I submit patches (and
-in fact I did run xfstests before sending you a pull request Bernd's
-patches --- and I'm glad your testing caught the problem when mine
-didn't!)
+I'll look into doing this a little more correctly....
 
-Thanks,
-
-     	       	      	       		- Ted
+--b.
