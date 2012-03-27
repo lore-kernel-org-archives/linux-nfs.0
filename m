@@ -1,52 +1,21 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mdf.yatescounty.org ([66.155.173.157]:51898 "EHLO
-	yatescounty.org" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756572Ab2CLXxf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Mar 2012 19:53:35 -0400
-Reply-To: <davveymoore1@yahoo.co.jp>
-From: "david Moore Williams" <davvey01@dhl.com>
-Subject: Notification!!!
-Date: Mon, 12 Mar 2012 17.58.37 +0100
-Content-Type: text/plain;
-	charset="Windows-1251"
-Message-ID: <YCEXCSVRmyBWDrow00G00001b15@ycexcsvr.yatescounty.local>
-To: undisclosed-recipients:;
+From: laurarey111@hotmail.com
+Subject: Hello
+Date: Tue, 27 Mar 2012 13:30:20 GMT
+Message-ID: <4f71c0ec.15c.1230.17328__1613.26602469689$1332902101$gmane$org@econetmobile.co.zw>
+Reply-To: laurarey111@hotmail.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset="iso-8859-1"
+To: unlisted-recipients:; (no To-header on input)
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from comms.econetmobile.co.zw ([217.74.236.106]:55914 "EHLO
+	econetmobile.co.zw" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757250Ab2C1Cef (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Mar 2012 22:34:35 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-MIME-Version: 1.0
 
-Hello
-
-How are you and your family? I guess you are doing great.
-
-My apology for reaching you through this medium.
-
-My name is Mr. David Moore,and i am a registered staff of DHL.
-
-I have been working with the DHL as a special delivery agent Nation wide for eight years now.
-
-I have this little deal that i will disclose to you which i want us to handle, 
-
-but i will need to get your approval before we can proceed.
-
-it is 100% risk free, Fund involved is 50/50.
-
-Kindly get back to me ASAP with your information for identification as i will 
-
-forward you mine in my next mail.
-
-Once i receive your email,I will explain details of the offer to you to enable us 
-
-proceed without further delay.
-
-Name:
-
-Address:
-
-Phone number(Mobile)
-
-Thank you
-
-Mr. David Moore
-DHL special Agent
-davveymoore@yahoo.com
+Hello xxxxx,
+ How are you doing over there? My name is Laura, Please let
+me know if i got the right address so we can open
+communication, here is my email address I am waiting for
+your confirmation with care Laura...
