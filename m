@@ -1,59 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56972 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:60597 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754136Ab2CWPWW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Mar 2012 11:22:22 -0400
-Date: Fri, 23 Mar 2012 11:22:20 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v10 3/8] sunrpc: create nfsd dir in rpc_pipefs
-Message-ID: <20120323152220.GA4953@fieldses.org>
-References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
- <1332337929-18580-4-git-send-email-jlayton@redhat.com>
- <20120323121208.GA3219@fieldses.org>
- <20120323133111.GA2991@fieldses.org>
- <1332516024.3087.1.camel@lade.trondhjem.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1332516024.3087.1.camel@lade.trondhjem.org>
+	id S1755272Ab2C0WgH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Mar 2012 18:36:07 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/3] NFSv4: Fix two infinite loops in the mount code
+Date: Tue, 27 Mar 2012 18:35:42 -0400
+Message-Id: <1332887744-4222-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 23, 2012 at 03:20:21PM +0000, Myklebust, Trond wrote:
-> On Fri, 2012-03-23 at 09:31 -0400, J. Bruce Fields wrote:
-> > On Fri, Mar 23, 2012 at 08:12:08AM -0400, J. Bruce Fields wrote:
-> > > On Wed, Mar 21, 2012 at 09:52:04AM -0400, Jeff Layton wrote:
-> > > > Add a new top-level dir in rpc_pipefs to hold the pipe for the clientid
-> > > > upcall.
-> > > 
-> > > After applying this patch, my tests consistently hang.  The hang happens
-> > > in excltest (of the special connectaton tests), over nfs4.1 and krb5.
-> > > Looking at the wire traffic, I'm seeing DELAY returned from a setattr
-> > > for mode on a newly-created (with EXCLUSIVE4_1) file.  That open got a
-> > > delegation, so presumably that's what's causing the DELAY, though I'm
-> > > not seeing the server send a recall.  That could be a krb5 bug.
-> > > 
-> > > Whatever bug there is here, it's hard to tell why this patch in
-> > > particular would make it more likely.
-> > > 
-> > > So, still investigating!
-> > 
-> > Reproduceable by:
-> > 
-> > 	mount -osec=krb5,minorversion=1 server:/export/ /mnt/
-> > 	cp cthon04/special/excltest /mnt/
-> > 	cd /mnt
-> > 	./excltest
-> 
-> Umm... When would you ever get a DELAY in the above scenario? I can see
-> getting an NFS4ERR_OPENMODE, but not DELAY.
+We can currently loop forever in nfs4_lookup_root() and in
+nfs41_proc_secinfo_no_name(), if the first iteration returns a
+NFS4ERR_DELAY or something else that causes exception.retry to get
+set.
 
-There's a setattr for mode right after the open.  Is that unexpected?
+Reported-by: Dros Adamson <Weston.Adamson@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: stable@vger.kernel.org
+---
+ fs/nfs/nfs4proc.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
 
-The server doesn't really have to recall the delegation in that case (it
-only needs to recall *other* clients' delegations) but I don't think
-it's wrong to.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 45df7d4..ee9ca19 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2290,11 +2290,12 @@ static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
+ 		switch (err) {
+ 		case 0:
+ 		case -NFS4ERR_WRONGSEC:
+-			break;
++			goto out;
+ 		default:
+ 			err = nfs4_handle_exception(server, err, &exception);
+ 		}
+ 	} while (exception.retry);
++out:
+ 	return err;
+ }
+ 
+@@ -6229,11 +6230,12 @@ nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
+ 		case 0:
+ 		case -NFS4ERR_WRONGSEC:
+ 		case -NFS4ERR_NOTSUPP:
+-			break;
++			goto out;
+ 		default:
+ 			err = nfs4_handle_exception(server, err, &exception);
+ 		}
+ 	} while (exception.retry);
++out:
+ 	return err;
+ }
+ 
+-- 
+1.7.7.6
 
---b.
