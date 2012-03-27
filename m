@@ -1,91 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:48765 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755931Ab2CTNzk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Mar 2012 09:55:40 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: add filehandle crc for debug display
-Date: Tue, 20 Mar 2012 13:55:38 +0000
-Message-ID: <1332251739.2963.16.camel@lade.trondhjem.org>
-References: <1331084803-21460-1-git-send-email-dros@netapp.com>
-	 <4F688BCB.3090306@netapp.com>
-In-Reply-To: <4F688BCB.3090306@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from smtp.mail.umich.edu ([141.211.12.86]:52107 "EHLO
+	tombraider.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753001Ab2C0OZ3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Mar 2012 10:25:29 -0400
+From: Jim Rees <rees@umich.edu>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] remove pretty_sig()
+Date: Tue, 27 Mar 2012 10:25:22 -0400
+Message-Id: <1332858322-5194-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTAzLTIwIGF0IDA5OjUzIC0wNDAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6
-DQo+IEhpIERyb3MsDQo+IA0KPiBPbiAwMy8wNi8yMDEyIDA4OjQ2IFBNLCBXZXN0b24gQW5kcm9z
-IEFkYW1zb24gd3JvdGU6DQo+IA0KPiA+IE1hdGNoIHdpcmVzaGFyaydzIENSQy0zMiBoYXNoIGZv
-ciBlYXNpZXIgZGVidWdnaW5nDQo+ID4gDQo+ID4gU2lnbmVkLW9mZi1ieTogV2VzdG9uIEFuZHJv
-cyBBZGFtc29uIDxkcm9zQG5ldGFwcC5jb20+DQo+ID4gLS0tDQo+ID4gUmVwb3N0ZWQgd2l0aCBU
-cm9uZCdzIHN1Z2dlc3Rpb24gb2Ygc3BsaXR0aW5nIG91dCBoYXNoIGNhbGN1bGF0aW9uIHRvIGEg
-DQo+ID4gc2VwYXJhdGUgZnVuY3Rpb24uICBOb3cgZHByaW50a3MgY2FuIHVzZSBhIGZoJ3MgQ1JD
-IGluc3RlYWQgb2YgdGhlIA0KPiA+IG11bHRpbGluZSBuZnNfZGlzcGxheV9maGFuZGxlKCkgd2hl
-biBpdCBtYWtlcyBzZW5zZS4NCj4gPiANCj4gPiAgZnMvbmZzL2lub2RlLmMgICAgICAgICB8ICAg
-MjMgKysrKysrKysrKysrKysrKysrKystLS0NCj4gPiAgaW5jbHVkZS9saW51eC9uZnNfZnMuaCB8
-ICAgIDggKysrKysrKysNCj4gPiAgMiBmaWxlcyBjaGFuZ2VkLCAyOCBpbnNlcnRpb25zKCspLCAz
-IGRlbGV0aW9ucygtKQ0KPiA+IA0KPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvaW5vZGUuYyBiL2Zz
-L25mcy9pbm9kZS5jDQo+ID4gaW5kZXggOTlhNGY1Mi4uMzkxOWNlYiAxMDA2NDQNCj4gPiAtLS0g
-YS9mcy9uZnMvaW5vZGUuYw0KPiA+ICsrKyBiL2ZzL25mcy9pbm9kZS5jDQo+ID4gQEAgLTM5LDYg
-KzM5LDcgQEANCj4gPiAgI2luY2x1ZGUgPGxpbnV4L3NsYWIuaD4NCj4gPiAgI2luY2x1ZGUgPGxp
-bnV4L2NvbXBhdC5oPg0KPiA+ICAjaW5jbHVkZSA8bGludXgvZnJlZXplci5oPg0KPiA+ICsjaW5j
-bHVkZSA8bGludXgvY3JjMzIuaD4NCj4gPiAgDQo+ID4gICNpbmNsdWRlIDxhc20vc3lzdGVtLmg+
-DQo+ID4gICNpbmNsdWRlIDxhc20vdWFjY2Vzcy5oPg0KPiA+IEBAIC0xMDQ1LDcgKzEwNDYsMjMg
-QEAgc3RydWN0IG5mc19maCAqbmZzX2FsbG9jX2ZoYW5kbGUodm9pZCkNCj4gPiAgCXJldHVybiBm
-aDsNCj4gPiAgfQ0KPiA+ICANCj4gPiAtLyoqDQo+ID4gKyNpZmRlZiBSUENfREVCVUcNCj4gPiAr
-LyoNCj4gPiArICogX25mc19kaXNwbGF5X2ZoYW5kbGVfaGFzaCAtIGNhbGN1bGF0ZSB0aGUgY3Jj
-MzIgaGFzaCBmb3IgdGhlIGZpbGVoYW5kbGUNCj4gPiArICogICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgIGluIHRoZSBzYW1lIHdheSB0aGF0IHdpcmVzaGFyayBkb2VzDQo+ID4gKyAqDQo+ID4g
-KyAqIEBmaDogZmlsZSBoYW5kbGUNCj4gPiArICoNCj4gPiArICogRm9yIGRlYnVnZ2luZyBvbmx5
-Lg0KPiA+ICsgKi8NCj4gPiArdTMyIF9uZnNfZGlzcGxheV9maGFuZGxlX2hhc2goY29uc3Qgc3Ry
-dWN0IG5mc19maCAqZmgpDQo+ID4gK3sNCj4gPiArCS8qIHdpcmVzaGFyayB1c2VzIDMyLWJpdCBB
-VVRPRElOIGNyYyBhbmQgZG9lcyBhIGJpdHdpc2UNCj4gPiArCSAqIG5vdCBvbiB0aGUgcmVzdWx0
-ICovDQo+ID4gKwlyZXR1cm4gfmNyYzMyKDB4RkZGRkZGRkYsICZmaC0+ZGF0YVswXSwgZmgtPnNp
-emUpOw0KPiA+ICt9DQo+ID4gKw0KPiA+ICsvKg0KPiA+ICAgKiBfbmZzX2Rpc3BsYXlfZmhhbmRs
-ZSAtIGRpc3BsYXkgYW4gTkZTIGZpbGUgaGFuZGxlIG9uIHRoZSBjb25zb2xlDQo+ID4gICAqDQo+
-ID4gICAqIEBmaDogZmlsZSBoYW5kbGUgdG8gZGlzcGxheQ0KPiA+IEBAIC0xMDUzLDcgKzEwNzAs
-NiBAQCBzdHJ1Y3QgbmZzX2ZoICpuZnNfYWxsb2NfZmhhbmRsZSh2b2lkKQ0KPiA+ICAgKg0KPiA+
-ICAgKiBGb3IgZGVidWdnaW5nIG9ubHkuDQo+ID4gICAqLw0KPiA+IC0jaWZkZWYgUlBDX0RFQlVH
-DQo+ID4gIHZvaWQgX25mc19kaXNwbGF5X2ZoYW5kbGUoY29uc3Qgc3RydWN0IG5mc19maCAqZmgs
-IGNvbnN0IGNoYXIgKmNhcHRpb24pDQo+ID4gIHsNCj4gPiAgCXVuc2lnbmVkIHNob3J0IGk7DQo+
-ID4gQEAgLTEwNjMsNyArMTA3OSw4IEBAIHZvaWQgX25mc19kaXNwbGF5X2ZoYW5kbGUoY29uc3Qg
-c3RydWN0IG5mc19maCAqZmgsIGNvbnN0IGNoYXIgKmNhcHRpb24pDQo+ID4gIAkJcmV0dXJuOw0K
-PiA+ICAJfQ0KPiA+ICANCj4gPiAtCXByaW50ayhLRVJOX0RFRkFVTFQgIiVzIGF0ICVwIGlzICV1
-IGJ5dGVzOlxuIiwgY2FwdGlvbiwgZmgsIGZoLT5zaXplKTsNCj4gPiArCXByaW50ayhLRVJOX0RF
-RkFVTFQgIiVzIGF0ICVwIGlzICV1IGJ5dGVzLCBjcmM6IDB4JTA4eDpcbiIsDQo+ID4gKwkgICAg
-ICAgY2FwdGlvbiwgZmgsIGZoLT5zaXplLCBfbmZzX2Rpc3BsYXlfZmhhbmRsZV9oYXNoKGZoKSk7
-DQo+ID4gIAlmb3IgKGkgPSAwOyBpIDwgZmgtPnNpemU7IGkgKz0gMTYpIHsNCj4gPiAgCQlfX2Jl
-MzIgKnBvcyA9IChfX2JlMzIgKikmZmgtPmRhdGFbaV07DQo+ID4gIA0KPiA+IGRpZmYgLS1naXQg
-YS9pbmNsdWRlL2xpbnV4L25mc19mcy5oIGIvaW5jbHVkZS9saW51eC9uZnNfZnMuaA0KPiA+IGlu
-ZGV4IGMwN2E3NTcuLmNlOGU0MzYgMTAwNjQ0DQo+ID4gLS0tIGEvaW5jbHVkZS9saW51eC9uZnNf
-ZnMuaA0KPiA+ICsrKyBiL2luY2x1ZGUvbGludXgvbmZzX2ZzLmgNCj4gPiBAQCAtMzk2LDYgKzM5
-NiwxMSBAQCBzdGF0aWMgaW5saW5lIHZvaWQgbmZzX2ZyZWVfZmhhbmRsZShjb25zdCBzdHJ1Y3Qg
-bmZzX2ZoICpmaCkNCj4gPiAgfQ0KPiA+ICANCj4gPiAgI2lmZGVmIFJQQ19ERUJVRw0KPiA+ICtl
-eHRlcm4gdTMyIF9uZnNfZGlzcGxheV9maGFuZGxlX2hhc2goY29uc3Qgc3RydWN0IG5mc19maCAq
-ZmgpOw0KPiA+ICtzdGF0aWMgaW5saW5lIHUzMiBuZnNfZGlzcGxheV9maGFuZGxlX2hhc2goY29u
-c3Qgc3RydWN0IG5mc19maCAqZmgpDQo+ID4gK3sNCj4gPiArCXJldHVybiBfbmZzX2Rpc3BsYXlf
-ZmhhbmRsZV9oYXNoKGZoKTsNCj4gPiArfQ0KPiA+ICBleHRlcm4gdm9pZCBfbmZzX2Rpc3BsYXlf
-ZmhhbmRsZShjb25zdCBzdHJ1Y3QgbmZzX2ZoICpmaCwgY29uc3QgY2hhciAqY2FwdGlvbik7DQo+
-ID4gICNkZWZpbmUgbmZzX2Rpc3BsYXlfZmhhbmRsZShmaCwgY2FwdGlvbikJCQlcDQo+ID4gIAlk
-byB7CQkJCQkJCVwNCj4gPiBAQCAtNDAzLDYgKzQwOCw5IEBAIGV4dGVybiB2b2lkIF9uZnNfZGlz
-cGxheV9maGFuZGxlKGNvbnN0IHN0cnVjdCBuZnNfZmggKmZoLCBjb25zdCBjaGFyICpjYXB0aW9u
-KTsNCj4gPiAgCQkJX25mc19kaXNwbGF5X2ZoYW5kbGUoZmgsIGNhcHRpb24pOwlcDQo+ID4gIAl9
-IHdoaWxlICgwKQ0KPiA+ICAjZWxzZQ0KPiA+ICtzdGF0aWMgaW5saW5lIHUzMiBuZnNfZGlzcGxh
-eV9maGFuZGxlX2hhc2goY29uc3Qgc3RydWN0IG5mc19maCAqZmgpDQo+ID4gK3sNCj4gDQo+IA0K
-PiBUaGlzIGZ1bmN0aW9uIHNob3VsZCByZXR1cm4gc29tZXRoaW5nLi4uIG1heWJlIDA/DQo+IA0K
-PiAtIEJyeWFuDQo+IA0KPiA+ICt9DQo+ID4gIHN0YXRpYyBpbmxpbmUgdm9pZCBuZnNfZGlzcGxh
-eV9maGFuZGxlKGNvbnN0IHN0cnVjdCBuZnNfZmggKmZoLA0KPiA+ICAJCQkJICAgICAgIGNvbnN0
-IGNoYXIgKmNhcHRpb24pDQo+ID4gIHsNCj4gDQoNClllcy4gU3RlcGhlbiBSb3Rod2VsbCBwb2lu
-dGVkIG91dCB0aGUgc2FtZSwgYW5kIHNvIEkndmUgYXBwbGllZCBoaXMNCnBhdGNoIHRvIHRoZSAn
-dGVzdGluZycgYnJhbmNoIGFscmVhZHkuDQoNCkhlIGFsc28gZm91bmQgYSBidW5jaCBvZiAnc3Ry
-dWN0IHJwY190YXNrJyBpbiB0aGUgc3VucnBjIGFuZCBsb2NrZCBjb2RlDQp0aGF0IHdlcmUgbWFy
-a2VkIGFzICd1bnVzZWQgdmFyaWFibGUnLCBhbmQgc28gdGhlcmUgaXMgYSBwYXRjaCB0byBmaXgN
-CnRoYXQgdG9vLi4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1h
-aW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFw
-cC5jb20NCg0K
+This really only works against EMC servers.  There is at least one server
+that returns unprintable signatures, which fill the log with garbage (the
+spec does not mandate printable signatures).  It could be made more generic,
+for example by checking each byte for isprint().  But the signatures are
+really only of interest to developers, not admins, so it seems better to
+just remove it.
+
+Signed-off-by: Jim Rees <rees@umich.edu>
+---
+ utils/blkmapd/device-process.c |   29 -----------------------------
+ 1 files changed, 0 insertions(+), 29 deletions(-)
+
+diff --git a/utils/blkmapd/device-process.c b/utils/blkmapd/device-process.c
+index 652a7a8..5fe3dff 100644
+--- a/utils/blkmapd/device-process.c
++++ b/utils/blkmapd/device-process.c
+@@ -49,28 +49,6 @@
+ 
+ #include "device-discovery.h"
+ 
+-static char *pretty_sig(char *sig, uint32_t siglen)
+-{
+-	static char rs[100];
+-	uint64_t sigval;
+-	unsigned int i;
+-
+-	if (siglen <= sizeof(sigval)) {
+-		sigval = 0;
+-		for (i = 0; i < siglen; i++)
+-			sigval |= ((unsigned char *)sig)[i] << (i * 8);
+-		sprintf(rs, "0x%0llx", (unsigned long long) sigval);
+-	} else {
+-		if (siglen > sizeof rs - 4) {
+-			siglen = sizeof rs - 4;
+-			sprintf(&rs[siglen], "...");
+-		} else
+-			rs[siglen] = '\0';
+-		memcpy(rs, sig, siglen);
+-	}
+-	return rs;
+-}
+-
+ uint32_t *blk_overflow(uint32_t * p, uint32_t * end, size_t nbytes)
+ {
+ 	uint32_t *q = p + ((nbytes + 3) >> 2);
+@@ -109,9 +87,6 @@ static int decode_blk_signature(uint32_t **pp, uint32_t * end,
+ 		 * for mapping, then thrown away.
+ 		 */
+ 		comp->bs_string = (char *)p;
+-		BL_LOG_INFO("%s: si_comps[%d]: bs_length %d, bs_string %s\n",
+-			    __func__, i, siglen,
+-			    pretty_sig(comp->bs_string, siglen));
+ 		p += ((siglen + 3) >> 2);
+ 	}
+ 	*pp = p;
+@@ -152,10 +127,6 @@ read_cmp_blk_sig(struct bl_disk *disk, int fd, struct bl_sig_comp *comp)
+ 	}
+ 
+ 	ret = memcmp(sig, comp->bs_string, siglen);
+-	if (!ret)
+-		BL_LOG_INFO("%s: %s sig %s at %lld\n", __func__, dev_name,
+-			    pretty_sig(sig, siglen),
+-			    (long long)comp->bs_offset);
+ 
+  out:
+ 	if (sig)
+-- 
+1.7.5.4
+
