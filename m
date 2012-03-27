@@ -1,44 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61192 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754275Ab2CFQdU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Mar 2012 11:33:20 -0500
-Received: from vmwexceht05-prd.hq.netapp.com (vmwexceht05-prd.hq.netapp.com [10.106.77.35])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q26GXKEw013707
-	for <linux-nfs@vger.kernel.org>; Tue, 6 Mar 2012 08:33:20 -0800 (PST)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2] NFS: Properly handle the case where the delegation
- is revoked
-Date: Tue, 6 Mar 2012 16:33:19 +0000
-Message-ID: <1331051598.3260.26.camel@lade.trondhjem.org>
-References: <1331046186-5638-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <E67CE84F-776D-42C2-8939-8FABEA44D360@netapp.com>
-In-Reply-To: <E67CE84F-776D-42C2-8939-8FABEA44D360@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from natasha.panasas.com ([67.152.220.90]:59758 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756063Ab2C0Cdo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Mar 2012 22:33:44 -0400
+Message-ID: <4F7126E0.5080700@panasas.com>
+Date: Mon, 26 Mar 2012 19:33:04 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
+To: Andrew Morton <akpm@linux-foundation.org>, Oleg Nesterov <oleg@redhat.com>,
+        Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
+        <linux-security-module@vger.kernel.org>, Ingo Molnar <mingo@elte.hu>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>, Paul Turner <pjt@google.com>,
+        Thomas Gleixner <tglx@linutronix.de>
+CC: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "Bhamare, Sachin" <sbhamare@panasas.com>,
+        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
+        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
+        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        "keyrings@linux-nfs.org" <keyrings@linux-nfs.org>
+Subject: Re: [PATCH 4/6 OPTION-A version 3] completion: Add new wait_for_completion_timeout_state
+References: <4F691059.30405@panasas.com> <4F711EA2.4030608@panasas.com> <4F7120B6.2090509@panasas.com>
+In-Reply-To: <4F7120B6.2090509@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTAzLTA2IGF0IDE2OjI0ICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0K
-PiBXaXRoICAiTkZTOiBQcm9wZXJseSBoYW5kbGUgdGhlIGNhc2Ugd2hlcmUgdGhlIGRlbGVnYXRp
-b24gaXMgcmV2b2tlZCIgcGF0Y2ggYWRkZWQgdG8gVHJvbmQncyBvcmlnaW4vdGVzdGlnbiBicmFu
-Y2gsICBteSBweXRob24gdGVzdCB0aGF0IHJlbW92ZXMgdGhlIChkZWxlZ2F0aW9uKSBzdGF0ZWlk
-IG9uIGEgUkVBRCwgYW5kIHJldHVybnMgTkZTNEVSUl9CQURfU1RBVEVJRCBwYXNzZXMgYXMgdGhl
-IGNsaWVudCByZWNvdmVycyBieSB0ZXN0aW5nIGFuZCBmcmVlaW5nIHRoZSBzdGF0ZWlkLCBhbmQg
-dGhlbiBzZW5kaW5nIGFuIE9QRU4gd2l0aCBhIENMQUlNX05VTEwuDQo+IA0KPiAtLT5BbmR5DQo+
-IA0KPiANCj4gQlRXOiB0aGlzIHBhdGNoIGNsZWFucyB1cCBzb21lIHN0YXRlaWQgY29tcGFyZXMg
-YW5kIHRoZSBzZWNvbmQgY2h1bmsgaXMgbmVlZGVkIGZvciB0aGUgb3JpZ2luL3Rlc3RpbmcgYnJh
-bmNoIHRvIGNvbXBpbGUuICBZb3UndmUgcHJvYmFibHkgYWxyZWFkeSBmb3VuZCB0aGlz4oCmLi4N
-Cg0KWWVzLiBJbiBvcmRlciB0byBtYWtlIHRoZSBwYXRjaCBhcHBseSB0byB0aGUgc3RhYmxlIGtl
-cm5lbHMsIEkgYWN0dWFsbHkNCmluc2VydGVkIGl0IGJlZm9yZSB0aGUgc3RhdGVpZCBjaGFuZ2Vz
-IGluIHRoZSAnZGV2ZWwnIGJyYW5jaCwgYW5kIHRoZW4NCmZpeGVkIHRoZSBzdGF0ZWlkIHBhdGNo
-ZXMgdXAgaW5zdGVhZC4gVGhlIGN1cnJlbnQgJ3Rlc3RpbmcnIGJyYW5jaA0Kc2hvdWxkIGhhdmUg
-YSB3b3JraW5nIHZlcnNpb24gb2YgYm90aC4NCg0KQlRXOiB3aXRoIHRoaXMgcGF0Y2gsIHRoZSAi
-TkZTdjQuMTogRml4IHRoZSBjaGVja2luZyBvZiB0aGUgc3RhdGVpZCB3aGVuDQpyZXR1cm5pbmcg
-YSBkZWxlZ2F0aW9uIiBpcyBub3QgbmVlZGVkIGFzIGEgc3RhYmxlIGZpeCwgc2luY2Ugd2Ugbm8N
-CmxvbmdlciB1c2UgbmZzX2FzeW5jX2lub2RlX3JldHVybl9kZWxlZ2F0aW9uKCkgaW4gc3RhdGUg
-cmVjb3Zlcnkgc28gSSd2ZQ0KcmVtb3ZlZCB0aGUgQ2M6IHN0YWJsZSBmcm9tIHRoYXQgcGF0Y2gu
-DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0K
-TmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+Sorry had a checkpatch problem near the switch statement (missing space)
+
+Boaz
+---
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: [PATCH] completion: Add new wait_for_completion_timeout_state
+
+There are sometime places where an API hides a completion
+inside it's implementation, and needs to expose the kind of
+wait it does to it's upper users. Instead of such cases that
+now need an ugly switch case to call the different
+wait_for_completion_xxx function define a generic one
+which can do all.
+
+A new user will be added to this API in linux/kmod.h.
+
+The return value from this member is a more Linux Kernel natural.
+It will return:
+	0  - If the wait was actually completed by a complete() signal.
+	-ERESTARTSYS - If interrupted
+	-ETIMEDOUT - If timeout expired
+
+CC: Oleg Nesterov <oleg@redhat.com>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ include/linux/completion.h |    2 +
+ kernel/sched/core.c        |   56 ++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 58 insertions(+), 0 deletions(-)
+
+diff --git a/include/linux/completion.h b/include/linux/completion.h
+index 51494e6..c41b836 100644
+--- a/include/linux/completion.h
++++ b/include/linux/completion.h
+@@ -85,6 +85,8 @@ extern long wait_for_completion_interruptible_timeout(
+ 	struct completion *x, unsigned long timeout);
+ extern long wait_for_completion_killable_timeout(
+ 	struct completion *x, unsigned long timeout);
++extern int wait_for_completion_timeout_state(
++	struct completion *x, unsigned long timeout, int state);
+ extern bool try_wait_for_completion(struct completion *x);
+ extern bool completion_done(struct completion *x);
+ 
+diff --git a/kernel/sched/core.c b/kernel/sched/core.c
+index 503d642..7aef53e 100644
+--- a/kernel/sched/core.c
++++ b/kernel/sched/core.c
+@@ -3664,6 +3664,62 @@ int __sched wait_for_completion_killable(struct completion *x)
+ EXPORT_SYMBOL(wait_for_completion_killable_timeout);
+ 
+ /**
++ * wait_for_completion_timeout_state: - waits for completion of a task all modes
++ * @x:  holds the state of this particular completion
++ * @timeout:  timeout value in jiffies
++ * @state: Can be either 0 or TASK_KILLABLE or TASK_INTERRUPTIBLE
++ *
++ * This waits for either a completion of a specific task to be
++ * signaled or for a specified timeout to expire.
++ * If @state == TASK_KILLABLE It can be interrupted by a kill signal only.
++ * If @state == TASK_INTERRUPTIBLE It can be interrupted by any signal.
++ *
++ * This is a Swiss-army-knife of all the above, for API's that needs to hide
++ * a completion, and needs to expose it's control to users.
++ *
++ * The return value is:
++ *	0 means completion was signaled with a complete call.
++ *	-ERESTARTSYS if interrupted
++ *	-ETIMEDOUT if timeout expired
++ *  Be careful the return value is Boolean opposite to the above _timeout
++ *  members.
++ */
++int __sched
++wait_for_completion_timeout_state(struct completion *x,
++				  unsigned long timeout, int state)
++{
++	long t;
++	int ret;
++
++	if (!timeout)
++		timeout = MAX_SCHEDULE_TIMEOUT;
++
++	switch (state) {
++	default:
++		WARN_ON_ONCE(1);
++		/* fall through */
++	case 0:
++		state = TASK_UNINTERRUPTIBLE;
++		break;
++	case TASK_KILLABLE:
++	case TASK_INTERRUPTIBLE:
++		break;
++	}
++
++	t = wait_for_common(x, timeout, state);
++	if (likely(t > 0)) {
++		ret = 0;
++	} else  {
++		if (t < 0)
++			ret = t;
++		else
++			ret = -ETIMEDOUT;
++	}
++	return ret;
++}
++EXPORT_SYMBOL(wait_for_completion_timeout_state);
++
++/**
+  *	try_wait_for_completion - try to decrement a completion without blocking
+  *	@x:	completion structure
+  *
+-- 
+1.7.6.5
+
+
