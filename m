@@ -1,143 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:51498 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:28966 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761276Ab2C3TCz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Mar 2012 15:02:55 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 10/10] NFS: Use nfs_fs_mount_common() for remote referral mounts
-Date: Fri, 30 Mar 2012 15:02:37 -0400
-Message-Id: <1333134157-17141-11-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1333134157-17141-1-git-send-email-bjschuma@netapp.com>
-References: <1333134157-17141-1-git-send-email-bjschuma@netapp.com>
+	id S1750956Ab2C0PwW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Mar 2012 11:52:22 -0400
+Date: Tue, 27 Mar 2012 17:43:05 +0200
+From: Oleg Nesterov <oleg@redhat.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
+        linux-security-module@vger.kernel.org, Ingo Molnar <mingo@elte.hu>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>, Paul Turner <pjt@google.com>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "Bhamare, Sachin" <sbhamare@panasas.com>,
+        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
+        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
+        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        "keyrings@linux-nfs.org" <keyrings@linux-nfs.org>
+Subject: Re: [PATCH 5/6] kmod: Add new call_usermodehelper_timeout() API
+Message-ID: <20120327154305.GA19314@redhat.com>
+References: <4F691059.30405@panasas.com> <4F711EA2.4030608@panasas.com> <4F712246.6030201@panasas.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4F712246.6030201@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Hi Boaz,
 
-This should be the last function that needs to be switched over to the
-common mount function.
+I'll read this series tomorrow, but
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/super.c |   90 +++++++++-----------------------------------------------
- 1 file changed, 14 insertions(+), 76 deletions(-)
+On 03/26, Boaz Harrosh wrote:
+>
+>  int call_usermodehelper_exec(struct subprocess_info *sub_info, int wait)
+>  {
+>  	DECLARE_COMPLETION_ONSTACK(done);
+> +	int wait_state;
+>  	int retval = 0;
+>
+>  	helper_lock();
+> @@ -540,19 +541,15 @@ int call_usermodehelper_exec(struct subprocess_info *sub_info, int wait)
+>  	if (wait == UMH_NO_WAIT)	/* task has freed sub_info */
+>  		goto unlock;
+>
+> -	if (wait & UMH_KILLABLE) {
+> -		retval = wait_for_completion_killable(&done);
+> -		if (!retval)
+> -			goto wait_done;
+> -
+> +	wait_state = (wait & UMH_KILLABLE) ? TASK_KILLABLE : 0;
+> +	retval = wait_for_completion_timeout_state(&done, sub_info->timeout,
+> +						   wait_state);
+> +	if (unlikely(retval)) {
+>  		/* umh_complete() will see NULL and free sub_info */
+>  		if (xchg(&sub_info->complete, NULL))
+>  			goto unlock;
+> -		/* fallthrough, umh_complete() was already called */
+>  	}
+>
+> -	wait_for_completion(&done);
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 73e0e4b..e0f6f4a 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2734,95 +2734,33 @@ static struct dentry *
- nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
- 			   const char *dev_name, void *raw_data)
- {
--	struct nfs_clone_mount *data = raw_data;
--	struct super_block *s;
-+	struct nfs_mount_info mount_info = {
-+		.fill_super = nfs_fill_super,
-+		.set_security = nfs_clone_sb_security,
-+		.cloned = raw_data,
-+		.unshared = NFS4_MOUNT_UNSHARED,
-+	};
- 	struct nfs_server *server;
--	struct dentry *mntroot;
-+	struct dentry *mntroot = ERR_PTR(-ENOMEM);
- 	struct nfs_fh *mntfh;
--	int (*compare_super)(struct super_block *, void *) = nfs_compare_super;
--	struct nfs_sb_mountdata sb_mntdata = {
--		.mntflags = flags,
--	};
--	int error = -ENOMEM;
- 
- 	dprintk("--> nfs4_referral_get_sb()\n");
- 
- 	mntfh = nfs_alloc_fhandle();
--	if (mntfh == NULL)
--		goto out_err_nofh;
-+	if (mount_info.cloned == NULL || mntfh == NULL)
-+		goto out;
- 
- 	/* create a new volume representation */
--	server = nfs4_create_referral_server(data, mntfh);
-+	server = nfs4_create_referral_server(mount_info.cloned, mntfh);
- 	if (IS_ERR(server)) {
--		error = PTR_ERR(server);
--		goto out_err_noserver;
--	}
--	sb_mntdata.server = server;
--
--	if (server->flags & NFS4_MOUNT_UNSHARED)
--		compare_super = NULL;
--
--	/* -o noac implies -o sync */
--	if (server->flags & NFS_MOUNT_NOAC)
--		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
--
--	/* Get a superblock - note that we may end up sharing one that already exists */
--	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
--	if (IS_ERR(s)) {
--		error = PTR_ERR(s);
--		goto out_err_nosb;
--	}
--
--	if (s->s_fs_info != server) {
--		nfs_free_server(server);
--		server = NULL;
--	} else {
--		error = nfs_bdi_register(server);
--		if (error)
--			goto error_splat_bdi;
--	}
--
--	if (!s->s_root) {
--		/* initial superblock/root creation */
--		nfs_fill_super(s, NULL);
--		nfs_fscache_get_super_cookie(s, NULL, data);
--	}
--
--	mntroot = nfs_get_root(s, mntfh, dev_name);
--	if (IS_ERR(mntroot)) {
--		error = PTR_ERR(mntroot);
--		goto error_splat_super;
--	}
--	if (mntroot->d_inode->i_op != NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops) {
--		dput(mntroot);
--		error = -ESTALE;
--		goto error_splat_super;
-+		mntroot = ERR_CAST(server);
-+		goto out;
- 	}
- 
--	s->s_flags |= MS_ACTIVE;
--
--	security_sb_clone_mnt_opts(data->sb, s);
--
-+	mntroot = nfs_fs_mount_common(&nfs4_fs_type, server, flags, dev_name, mntfh, &mount_info);
-+out:
- 	nfs_free_fhandle(mntfh);
--	dprintk("<-- nfs4_referral_get_sb() = 0\n");
- 	return mntroot;
--
--out_err_nosb:
--	nfs_free_server(server);
--out_err_noserver:
--	nfs_free_fhandle(mntfh);
--out_err_nofh:
--	dprintk("<-- nfs4_referral_get_sb() = %d [error]\n", error);
--	return ERR_PTR(error);
--
--error_splat_super:
--	if (server && !s->s_root)
--		bdi_unregister(&server->backing_dev_info);
--error_splat_bdi:
--	deactivate_locked_super(s);
--	nfs_free_fhandle(mntfh);
--	dprintk("<-- nfs4_referral_get_sb() = %d [splat]\n", error);
--	return ERR_PTR(error);
- }
- 
- /*
--- 
-1.7.9.5
+at first glance this looks certainly wrong, or I misread the patch.
+
+We can't remove the "fallback to wait_for_completion" logic until
+you move the completion into subprocess_info (the next patch seems
+to do this).
+
+xchg() can race with umh_complete(). If it returns NULL, umh_complete()
+was already called and got ->complete != NULL, we must not return until
+umh_complete() finishes complete().
+
+Oleg.
 
