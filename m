@@ -1,93 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:1070 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753507Ab2C1PJP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Mar 2012 11:09:15 -0400
-Subject: [PATCH 2/8] nfsd: add link to owner cache detail to svc_export
- structure
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Wed, 28 Mar 2012 19:09:08 +0400
-Message-ID: <20120328150908.2646.72841.stgit@localhost6.localdomain6>
-In-Reply-To: <20120328150152.2646.33607.stgit@localhost6.localdomain6>
-References: <20120328150152.2646.33607.stgit@localhost6.localdomain6>
+Received: from natasha.panasas.com ([67.152.220.90]:59419 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757075Ab2C0CJ6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Mar 2012 22:09:58 -0400
+Message-ID: <4F712153.5020205@panasas.com>
+Date: Mon, 26 Mar 2012 19:09:23 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Andrew Morton <akpm@linux-foundation.org>, Oleg Nesterov <oleg@redhat.com>,
+        Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
+        <linux-security-module@vger.kernel.org>, Ingo Molnar <mingo@elte.hu>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>, Paul Turner <pjt@google.com>,
+        Thomas Gleixner <tglx@linutronix.de>
+CC: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "Bhamare, Sachin" <sbhamare@panasas.com>,
+        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
+        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
+        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        "keyrings@linux-nfs.org" <keyrings@linux-nfs.org>
+Subject: [PATCH 4/6 option-B] kmod: add new wait_for_completion_timeout_state()
+ helper
+References: <4F691059.30405@panasas.com> <4F711EA2.4030608@panasas.com>
+In-Reply-To: <4F711EA2.4030608@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Without info about owner cache datail it won't be able to find out, which
-per-net cache detail have to be.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+This patch is if the more desirable patch is not accepted:
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+    completion: Add new wait_for_completion_timeout_state
 
+    There are sometime places where an API hides a completion
+    inside it's implementation, and needs to expose the kind of
+    wait it does to it's upper users. Instead of such cases that
+    now need an ugly switch case to call the different
+    wait_for_completion_xxx function define a generic one
+    which can do all.
+
+    A new user will be added to this API in linux/kmod.h.
+
+    The return value from this member is a more Linux Kernel natural.
+    It will return:
+    	0  - If the wait was actually completed by a complete() signal.
+    	-ERESTARTSYS - If interrupted
+    	-ETIMEDOUT - If timeout expired
+
+It can be seen that done here is more complicated/ugly then if
+done at kernel/sched/core.c
+
+Note that at this stage there is a warning:
+kernel/kmod.c:473:1: warning: 'wait_for_completion_timeout_state' defined but not used [-Wunused-function]
+
+Until the next patch. I keep it separate for the different options
+to be taken
+
+CC: Oleg Nesterov <oleg@redhat.com>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
- fs/nfsd/export.c            |   10 +++++-----
- include/linux/nfsd/export.h |    1 +
- 2 files changed, 6 insertions(+), 5 deletions(-)
+ kernel/kmod.c |   40 ++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 40 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index 71c5ce3..99ea4c0 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -525,6 +525,7 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
- 		goto out1;
- 
- 	exp.ex_client = dom;
-+	exp.cd = cd;
- 
- 	/* expiry */
- 	err = -EINVAL;
-@@ -672,6 +673,7 @@ static void svc_export_init(struct cache_head *cnew, struct cache_head *citem)
- 	new->ex_fslocs.locations = NULL;
- 	new->ex_fslocs.locations_count = 0;
- 	new->ex_fslocs.migrated = 0;
-+	new->cd = item->cd;
+diff --git a/kernel/kmod.c b/kernel/kmod.c
+index 309299a..b404f99 100644
+--- a/kernel/kmod.c
++++ b/kernel/kmod.c
+@@ -466,6 +466,46 @@ void call_usermodehelper_setfns(struct subprocess_info *info,
+ 	info->data = data;
  }
  
- static void export_update(struct cache_head *cnew, struct cache_head *citem)
-@@ -739,8 +741,7 @@ svc_export_lookup(struct svc_export *exp)
- 	struct cache_head *ch;
- 	int hash = svc_export_hash(exp);
- 
--	ch = sunrpc_cache_lookup(&svc_export_cache, &exp->h,
--				 hash);
-+	ch = sunrpc_cache_lookup(exp->cd, &exp->h, hash);
- 	if (ch)
- 		return container_of(ch, struct svc_export, h);
- 	else
-@@ -753,9 +754,7 @@ svc_export_update(struct svc_export *new, struct svc_export *old)
- 	struct cache_head *ch;
- 	int hash = svc_export_hash(old);
- 
--	ch = sunrpc_cache_update(&svc_export_cache, &new->h,
--				 &old->h,
--				 hash);
-+	ch = sunrpc_cache_update(old->cd, &new->h, &old->h, hash);
- 	if (ch)
- 		return container_of(ch, struct svc_export, h);
- 	else
-@@ -797,6 +796,7 @@ static svc_export *exp_get_by_name(svc_client *clp, const struct path *path,
- 
- 	key.ex_client = clp;
- 	key.ex_path = *path;
-+	key.cd = &svc_export_cache;
- 
- 	exp = svc_export_lookup(&key);
- 	if (exp == NULL)
-diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
-index f85308e..6445529 100644
---- a/include/linux/nfsd/export.h
-+++ b/include/linux/nfsd/export.h
-@@ -103,6 +103,7 @@ struct svc_export {
- 	struct nfsd4_fs_locations ex_fslocs;
- 	int			ex_nflavors;
- 	struct exp_flavor_info	ex_flavors[MAX_SECINFO_LIST];
-+	struct cache_detail	*cd;
- };
- 
- /* an "export key" (expkey) maps a filehandlefragement to an
++/* Used by call_usermodehelper_exec below should be considered for
++ * kernel/sched/core.c
++ */
++static int
++wait_for_completion_timeout_state(struct completion *x,
++				  unsigned long timeout, int state)
++{
++	long t;
++	int ret;
++
++	if (!timeout)
++		timeout = MAX_SCHEDULE_TIMEOUT;
++
++	switch (state) {
++	default:
++		WARN_ON_ONCE(1);
++		/* fall through */
++	case 0:
++		wait_for_completion(x);
++		t = 1;
++		break;
++	case TASK_KILLABLE:
++		t = wait_for_completion_killable_timeout(x, timeout);
++		break;
++	case TASK_INTERRUPTIBLE:
++		t = wait_for_completion_interruptible_timeout(x, timeout);
++		break;
++	}
++
++	if (likely(t > 0)) {
++		ret = 0;
++	} else  {
++		if (t < 0)
++			ret = t;
++		else
++			ret = -ETIMEDOUT;
++	}
++	return ret;
++}
++
+ /**
+  * call_usermodehelper_exec - start a usermode application
+  * @sub_info: information about the subprocessa
+-- 
+1.7.6.5
+
 
