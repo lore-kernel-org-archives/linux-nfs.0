@@ -1,41 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56368 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:26362 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753634Ab2C0PG6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Mar 2012 11:06:58 -0400
-Date: Tue, 27 Mar 2012 11:06:57 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v10 0/8] nfsd: overhaul the client name tracking code
-Message-ID: <20120327150656.GB32055@fieldses.org>
-References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
- <20120323170630.GB6089@fieldses.org>
- <20120323132618.60e7e28d@corrin.poochiereds.net>
- <20120326200212.GD26254@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120326200212.GD26254@fieldses.org>
+	id S1754192Ab2C0Rqi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Mar 2012 13:46:38 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH] SUNRPC: Use the already looked-up xprt in rpcb_getport_async()
+Date: Tue, 27 Mar 2012 13:46:32 -0400
+Message-Id: <1332870392-27949-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 26, 2012 at 04:02:12PM -0400, J. Bruce Fields wrote:
-> Having looked at it longer: first, I can't see how 4.1/krb5 callbacks
-> ever really worked.  That's a project for another day.  (Soon, but
-> probably not for 3.4.)
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Bah, I'm stupid, I'd forgotten how 4.1 backchannel security works: the
-client chooses which flavor(s) are acceptable in create_session (or the
-mandatory but unimplemented backchannel_ct).  The Linux client always
-chooses auth_sys.  We've never really paid much attention to the client.
-Before we basically just used auth_sys no matter what.  Now we're using
-krb5 in the krb5 case.  Both are wrong, but the latter also breaks in
-practice against the Linux client.
+rbcb_getport_async() was looking up the rpc_xprt (reference++) and then
+later looking it up again (reference++) to pass through the
+rpcbind_args.  The xprt would only be dereferenced once, when we were
+done with the rpcbind_args (reference--).  This leaves an extra
+reference to the transport that would never go away.
 
-I think I changed the behavior accidentally while overhauling the 4.1
-server's callback and trunking behavior, probably with 80fc015bdfe
-"nfsd4: use common rpc_cred for all callbacks".
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ net/sunrpc/rpcb_clnt.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-I'll look into doing this a little more correctly....
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 4f8af63..4cb71df 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -734,7 +734,7 @@ void rpcb_getport_async(struct rpc_task *task)
+ 	map->r_vers = clnt->cl_vers;
+ 	map->r_prot = xprt->prot;
+ 	map->r_port = 0;
+-	map->r_xprt = xprt_get(xprt);
++	map->r_xprt = xprt;
+ 	map->r_status = -EIO;
+ 
+ 	switch (bind_version) {
+-- 
+1.7.9.4
 
---b.
