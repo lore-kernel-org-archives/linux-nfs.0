@@ -1,359 +1,400 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e36.co.us.ibm.com ([32.97.110.154]:55062 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932365Ab2CEU2V (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2012 15:28:21 -0500
-Received: from /spool/local
-	by e36.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <treinish@linux.vnet.ibm.com>;
-	Mon, 5 Mar 2012 13:28:17 -0700
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id 21D9FC90071
-	for <linux-nfs@vger.kernel.org>; Mon,  5 Mar 2012 15:27:46 -0500 (EST)
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q25KQuVK060266
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 15:27:04 -0500
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q25KQtbJ018958
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 17:26:56 -0300
-From: Matthew Treinish <treinish@linux.vnet.ibm.com>
-To: linux-nfs@vger.kernel.org
-Cc: treinish@linux.vnet.ibm.com
-Subject: [PATCH/RFC v3 04/10] Store objects in nfs4_exception to be used during FHEXPIRED recovery.
-Date: Mon,  5 Mar 2012 15:26:45 -0500
-Message-Id: <1330979211-894-5-git-send-email-treinish@linux.vnet.ibm.com>
-In-Reply-To: <1330979211-894-1-git-send-email-treinish@linux.vnet.ibm.com>
-References: <1330979211-894-1-git-send-email-treinish@linux.vnet.ibm.com>
+Received: from cantor2.suse.de ([195.135.220.15]:58631 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933357Ab2C1XoL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Mar 2012 19:44:11 -0400
+From: Jan Kara <jack@suse.cz>
+To: linux-fsdevel@vger.kernel.org
+Cc: Al Viro <viro@ZenIV.linux.org.uk>, dchinner@redhat.com, sandeen@redhat.com,
+        Kamal Mostafa <kamal@canonical.com>, Jan Kara <jack@suse.cz>,
+        linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH 05/19] nfsd: Push mnt_want_write() outside of i_mutex
+Date: Thu, 29 Mar 2012 01:43:20 +0200
+Message-Id: <1332978214-15535-6-git-send-email-jack@suse.cz>
+In-Reply-To: <1332978214-15535-1-git-send-email-jack@suse.cz>
+References: <1332978214-15535-1-git-send-email-jack@suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-To successfully recover an expired file handle we'll need either
-an inode or preferably a dentry to enable us to recursively walk
-back to the root of the export.
+When mnt_want_write() starts to handle freezing it will get a full lock
+semantics requiring proper lock ordering. So push mnt_want_write() call
+consistently outside of i_mutex.
 
-v3:
-- Add support for getattr recovery by storing the file handle in
-nfs4_exception.
-
-v2:
-- Added credential storage in the exception object. This will allow
-switching credentials on an access error.
-
-Signed-off-by: Matthew Treinish <treinish@linux.vnet.ibm.com>
+CC: linux-nfs@vger.kernel.org
+CC: "J. Bruce Fields" <bfields@fieldses.org>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/nfs/nfs4_fs.h  |    4 ++
- fs/nfs/nfs4proc.c |  122 ++++++++++++++++++++++++++++++++++++++++++----------
- 2 files changed, 102 insertions(+), 24 deletions(-)
+ fs/nfsd/nfs4recover.c      |    9 +++--
+ fs/nfsd/nfsfh.c            |    1 +
+ fs/nfsd/nfsproc.c          |    9 ++++-
+ fs/nfsd/vfs.c              |   79 ++++++++++++++++++++++---------------------
+ fs/nfsd/vfs.h              |   11 +++++-
+ include/linux/nfsd/nfsfh.h |    1 +
+ 6 files changed, 64 insertions(+), 46 deletions(-)
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index b133b50..52d7f94 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -183,6 +183,10 @@ struct nfs4_exception {
- 	long timeout;
- 	int retry;
- 	struct nfs4_state *state;
-+	struct dentry *dentry;
-+	struct inode *inode;
-+	struct nfs_fh *fhandle;
-+	struct rpc_cred *cred;
- };
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index 0b3e875..8e599a6 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -135,6 +135,10 @@ void nfsd4_create_clid_dir(struct nfs4_client *clp)
+ 	if (status < 0)
+ 		return;
  
- struct nfs4_state_recovery_ops {
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ca5e3cd..3706c44 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1260,7 +1260,10 @@ static int _nfs4_do_open_reclaim(struct nfs_open_context *ctx, struct nfs4_state
- static int nfs4_do_open_reclaim(struct nfs_open_context *ctx, struct nfs4_state *state)
- {
- 	struct nfs_server *server = NFS_SERVER(state->inode);
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = state->inode,
-+		.dentry = NULL,
-+	};
- 	int err;
- 	do {
- 		err = _nfs4_do_open_reclaim(ctx, state);
-@@ -1302,7 +1305,10 @@ static int _nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs
++	status = mnt_want_write_file(rec_file);
++	if (status)
++		return;
++
+ 	dir = rec_file->f_path.dentry;
+ 	/* lock the parent */
+ 	mutex_lock(&dir->d_inode->i_mutex);
+@@ -154,11 +158,7 @@ void nfsd4_create_clid_dir(struct nfs4_client *clp)
+ 		 * as well be forgiving and just succeed silently.
+ 		 */
+ 		goto out_put;
+-	status = mnt_want_write_file(rec_file);
+-	if (status)
+-		goto out_put;
+ 	status = vfs_mkdir(dir->d_inode, dentry, S_IRWXU);
+-	mnt_drop_write_file(rec_file);
+ out_put:
+ 	dput(dentry);
+ out_unlock:
+@@ -170,6 +170,7 @@ out_unlock:
+ 				" (err %d); please check that %s exists"
+ 				" and is writeable", status,
+ 				user_recovery_dirname);
++	mnt_drop_write_file(rec_file);
+ 	nfs4_reset_creds(original_cred);
+ }
  
- int nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs4_state *state, const nfs4_stateid *stateid)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = state->inode,
-+		.dentry = NULL,
-+	};
- 	struct nfs_server *server = NFS_SERVER(state->inode);
- 	int err;
- 	do {
-@@ -1692,7 +1698,10 @@ static int _nfs4_open_expired(struct nfs_open_context *ctx, struct nfs4_state *s
- static int nfs4_do_open_expired(struct nfs_open_context *ctx, struct nfs4_state *state)
- {
- 	struct nfs_server *server = NFS_SERVER(state->inode);
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = state->inode,
-+		.dentry = NULL,
-+	};
- 	int err;
+diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+index 68454e7..8b93353 100644
+--- a/fs/nfsd/nfsfh.c
++++ b/fs/nfsd/nfsfh.c
+@@ -635,6 +635,7 @@ fh_put(struct svc_fh *fhp)
+ 		fhp->fh_post_saved = 0;
+ #endif
+ 	}
++	fh_drop_write(fhp);
+ 	if (exp) {
+ 		cache_put(&exp->h, &svc_export_cache);
+ 		fhp->fh_export = NULL;
+diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+index e15dc45..aad6d45 100644
+--- a/fs/nfsd/nfsproc.c
++++ b/fs/nfsd/nfsproc.c
+@@ -196,6 +196,7 @@ nfsd_proc_create(struct svc_rqst *rqstp, struct nfsd_createargs *argp,
+ 	struct dentry	*dchild;
+ 	int		type, mode;
+ 	__be32		nfserr;
++	int		hosterr;
+ 	dev_t		rdev = 0, wanted = new_decode_dev(attr->ia_size);
  
- 	do {
-@@ -1839,7 +1848,11 @@ out_err:
+ 	dprintk("nfsd: CREATE   %s %.*s\n",
+@@ -214,6 +215,12 @@ nfsd_proc_create(struct svc_rqst *rqstp, struct nfsd_createargs *argp,
+ 	nfserr = nfserr_exist;
+ 	if (isdotent(argp->name, argp->len))
+ 		goto done;
++	hosterr = fh_want_write(dirfhp);
++	if (hosterr) {
++		nfserr = nfserrno(hosterr);
++		goto done;
++	}
++
+ 	fh_lock_nested(dirfhp, I_MUTEX_PARENT);
+ 	dchild = lookup_one_len(argp->name, dirfhp->fh_dentry, argp->len);
+ 	if (IS_ERR(dchild)) {
+@@ -330,7 +337,7 @@ nfsd_proc_create(struct svc_rqst *rqstp, struct nfsd_createargs *argp,
+ out_unlock:
+ 	/* We don't really need to unlock, as fh_put does it. */
+ 	fh_unlock(dirfhp);
+-
++	fh_drop_write(dirfhp);
+ done:
+ 	fh_put(dirfhp);
+ 	return nfsd_return_dirop(nfserr, resp);
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index edf6d3e..af49c63 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1268,6 +1268,10 @@ nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	 * If it has, the parent directory should already be locked.
+ 	 */
+ 	if (!resfhp->fh_dentry) {
++		host_err = fh_want_write(fhp);
++		if (host_err)
++			goto out_nfserr;
++
+ 		/* called from nfsd_proc_mkdir, or possibly nfsd3_proc_create */
+ 		fh_lock_nested(fhp, I_MUTEX_PARENT);
+ 		dchild = lookup_one_len(fname, dentry, flen);
+@@ -1311,14 +1315,11 @@ nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		goto out;
+ 	}
  
- static struct nfs4_state *nfs4_do_open(struct inode *dir, struct dentry *dentry, fmode_t fmode, int flags, struct iattr *sattr, struct rpc_cred *cred)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.dentry = dentry,
-+		.inode = NULL,
-+		.cred = cred,
-+	};
- 	struct nfs4_state *res;
- 	int status;
+-	host_err = fh_want_write(fhp);
+-	if (host_err)
+-		goto out_nfserr;
+-
+ 	/*
+ 	 * Get the dir op function pointer.
+ 	 */
+ 	err = 0;
++	host_err = 0;
+ 	switch (type) {
+ 	case S_IFREG:
+ 		host_err = vfs_create(dirp, dchild, iap->ia_mode, NULL);
+@@ -1335,10 +1336,8 @@ nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		host_err = vfs_mknod(dirp, dchild, iap->ia_mode, rdev);
+ 		break;
+ 	}
+-	if (host_err < 0) {
+-		fh_drop_write(fhp);
++	if (host_err < 0)
+ 		goto out_nfserr;
+-	}
  
-@@ -1930,7 +1943,10 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 			   struct nfs4_state *state)
- {
- 	struct nfs_server *server = NFS_SERVER(inode);
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = inode,
-+		.dentry = NULL,
-+	};
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(server,
-@@ -2400,7 +2416,10 @@ static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	err = nfsd_create_setattr(rqstp, resfhp, iap);
  
- static int nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.fhandle = fhandle,
-+		.dentry = NULL,
-+	};
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(server,
-@@ -2505,7 +2524,10 @@ void nfs_fixup_secinfo_attributes(struct nfs_fattr *fattr, struct nfs_fh *fh)
- static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
- 			    struct nfs_fh *fhandle, struct nfs_fattr *fattr)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = dir,
-+		.dentry = NULL,
-+	};
- 	int err;
- 	do {
- 		int status;
-@@ -2582,7 +2604,11 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
+@@ -1350,7 +1349,6 @@ nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	err2 = nfserrno(commit_metadata(fhp));
+ 	if (err2)
+ 		err = err2;
+-	fh_drop_write(fhp);
+ 	/*
+ 	 * Update the file handle to get the new inode info.
+ 	 */
+@@ -1409,6 +1407,11 @@ do_nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	err = nfserr_notdir;
+ 	if (!dirp->i_op->lookup)
+ 		goto out;
++
++	host_err = fh_want_write(fhp);
++	if (host_err)
++		goto out_nfserr;
++
+ 	fh_lock_nested(fhp, I_MUTEX_PARENT);
  
- static int nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = inode,
-+		.dentry = NULL,
-+		.cred = entry->cred,
-+	};
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(NFS_SERVER(inode),
-@@ -2638,7 +2664,10 @@ static int _nfs4_proc_readlink(struct inode *inode, struct page *page,
- static int nfs4_proc_readlink(struct inode *inode, struct page *page,
- 		unsigned int pgbase, unsigned int pglen)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = inode,
-+		.dentry = NULL,
-+	};
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(NFS_SERVER(inode),
-@@ -2730,7 +2759,10 @@ out:
+ 	/*
+@@ -1441,9 +1444,6 @@ do_nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		v_atime = verifier[1]&0x7fffffff;
+ 	}
+ 	
+-	host_err = fh_want_write(fhp);
+-	if (host_err)
+-		goto out_nfserr;
+ 	if (dchild->d_inode) {
+ 		err = 0;
  
- static int nfs4_proc_remove(struct inode *dir, struct qstr *name)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = dir,
-+		.dentry = NULL,
-+	};
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(NFS_SERVER(dir),
-@@ -2885,7 +2917,10 @@ out:
+@@ -1514,7 +1514,6 @@ do_nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	if (!err)
+ 		err = nfserrno(commit_metadata(fhp));
  
- static int nfs4_proc_link(struct inode *inode, struct inode *dir, struct qstr *name)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = inode,
-+		.dentry = NULL,
-+	};
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(NFS_SERVER(inode),
-@@ -2977,7 +3012,10 @@ out:
- static int nfs4_proc_symlink(struct inode *dir, struct dentry *dentry,
- 		struct page *page, unsigned int len, struct iattr *sattr)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.dentry = dentry,
-+		.inode = NULL,
-+	};
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(NFS_SERVER(dir),
-@@ -3008,7 +3046,10 @@ out:
- static int nfs4_proc_mkdir(struct inode *dir, struct dentry *dentry,
- 		struct iattr *sattr)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.dentry = dentry,
-+		.inode = NULL,
-+	};
- 	int err;
+-	fh_drop_write(fhp);
+ 	/*
+ 	 * Update the filehandle to get the new inode info.
+ 	 */
+@@ -1525,6 +1524,7 @@ do_nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	fh_unlock(fhp);
+ 	if (dchild && !IS_ERR(dchild))
+ 		dput(dchild);
++	fh_drop_write(fhp);
+  	return err;
+  
+  out_nfserr:
+@@ -1604,6 +1604,11 @@ nfsd_symlink(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
+ 	if (err)
+ 		goto out;
++
++	host_err = fh_want_write(fhp);
++	if (host_err)
++		goto out_nfserr;
++
+ 	fh_lock(fhp);
+ 	dentry = fhp->fh_dentry;
+ 	dnew = lookup_one_len(fname, dentry, flen);
+@@ -1611,10 +1616,6 @@ nfsd_symlink(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	if (IS_ERR(dnew))
+ 		goto out_nfserr;
  
- 	sattr->ia_mode &= ~current_umask();
-@@ -3062,7 +3103,10 @@ static int _nfs4_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
- static int nfs4_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
- 		u64 cookie, struct page **pages, unsigned int count, int plus)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.dentry = dentry,
-+		.inode = NULL,
-+	};
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(NFS_SERVER(dentry->d_inode),
-@@ -3110,7 +3154,10 @@ out:
- static int nfs4_proc_mknod(struct inode *dir, struct dentry *dentry,
- 		struct iattr *sattr, dev_t rdev)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.dentry = dentry,
-+		.inode = NULL,
-+	};
- 	int err;
+-	host_err = fh_want_write(fhp);
+-	if (host_err)
+-		goto out_nfserr;
+-
+ 	if (unlikely(path[plen] != 0)) {
+ 		char *path_alloced = kmalloc(plen+1, GFP_KERNEL);
+ 		if (path_alloced == NULL)
+@@ -1674,6 +1675,12 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
+ 	if (isdotent(name, len))
+ 		goto out;
  
- 	sattr->ia_mode &= ~current_umask();
-@@ -3659,7 +3706,10 @@ out_free:
++	host_err = fh_want_write(tfhp);
++	if (host_err) {
++		err = nfserrno(host_err);
++		goto out;
++	}
++
+ 	fh_lock_nested(ffhp, I_MUTEX_PARENT);
+ 	ddir = ffhp->fh_dentry;
+ 	dirp = ddir->d_inode;
+@@ -1685,18 +1692,13 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
  
- static ssize_t nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t buflen)
+ 	dold = tfhp->fh_dentry;
+ 
+-	host_err = fh_want_write(tfhp);
+-	if (host_err) {
+-		err = nfserrno(host_err);
+-		goto out_dput;
+-	}
+ 	err = nfserr_noent;
+ 	if (!dold->d_inode)
+-		goto out_drop_write;
++		goto out_dput;
+ 	host_err = nfsd_break_lease(dold->d_inode);
+ 	if (host_err) {
+ 		err = nfserrno(host_err);
+-		goto out_drop_write;
++		goto out_dput;
+ 	}
+ 	host_err = vfs_link(dold, dirp, dnew);
+ 	if (!host_err) {
+@@ -1709,12 +1711,11 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
+ 		else
+ 			err = nfserrno(host_err);
+ 	}
+-out_drop_write:
+-	fh_drop_write(tfhp);
+ out_dput:
+ 	dput(dnew);
+ out_unlock:
+ 	fh_unlock(ffhp);
++	fh_drop_write(tfhp);
+ out:
+ 	return err;
+ 
+@@ -1757,6 +1758,12 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
+ 	if (!flen || isdotent(fname, flen) || !tlen || isdotent(tname, tlen))
+ 		goto out;
+ 
++	host_err = fh_want_write(ffhp);
++	if (host_err) {
++		err = nfserrno(host_err);
++		goto out;
++	}
++
+ 	/* cannot use fh_lock as we need deadlock protective ordering
+ 	 * so do it by hand */
+ 	trap = lock_rename(tdentry, fdentry);
+@@ -1787,17 +1794,14 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
+ 	host_err = -EXDEV;
+ 	if (ffhp->fh_export->ex_path.mnt != tfhp->fh_export->ex_path.mnt)
+ 		goto out_dput_new;
+-	host_err = fh_want_write(ffhp);
+-	if (host_err)
+-		goto out_dput_new;
+ 
+ 	host_err = nfsd_break_lease(odentry->d_inode);
+ 	if (host_err)
+-		goto out_drop_write;
++		goto out_dput_new;
+ 	if (ndentry->d_inode) {
+ 		host_err = nfsd_break_lease(ndentry->d_inode);
+ 		if (host_err)
+-			goto out_drop_write;
++			goto out_dput_new;
+ 	}
+ 	host_err = vfs_rename(fdir, odentry, tdir, ndentry);
+ 	if (!host_err) {
+@@ -1805,8 +1809,6 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
+ 		if (!host_err)
+ 			host_err = commit_metadata(ffhp);
+ 	}
+-out_drop_write:
+-	fh_drop_write(ffhp);
+  out_dput_new:
+ 	dput(ndentry);
+  out_dput_old:
+@@ -1822,6 +1824,7 @@ out_drop_write:
+ 	fill_post_wcc(tfhp);
+ 	unlock_rename(tdentry, fdentry);
+ 	ffhp->fh_locked = tfhp->fh_locked = 0;
++	fh_drop_write(ffhp);
+ 
+ out:
+ 	return err;
+@@ -1847,6 +1850,10 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+ 	if (err)
+ 		goto out;
+ 
++	host_err = fh_want_write(fhp);
++	if (host_err)
++		goto out_nfserr;
++
+ 	fh_lock_nested(fhp, I_MUTEX_PARENT);
+ 	dentry = fhp->fh_dentry;
+ 	dirp = dentry->d_inode;
+@@ -1865,21 +1872,15 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+ 	if (!type)
+ 		type = rdentry->d_inode->i_mode & S_IFMT;
+ 
+-	host_err = fh_want_write(fhp);
+-	if (host_err)
+-		goto out_put;
+-
+ 	host_err = nfsd_break_lease(rdentry->d_inode);
+ 	if (host_err)
+-		goto out_drop_write;
++		goto out_put;
+ 	if (type != S_IFDIR)
+ 		host_err = vfs_unlink(dirp, rdentry);
+ 	else
+ 		host_err = vfs_rmdir(dirp, rdentry);
+ 	if (!host_err)
+ 		host_err = commit_metadata(fhp);
+-out_drop_write:
+-	fh_drop_write(fhp);
+ out_put:
+ 	dput(rdentry);
+ 
+diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+index 1dcd238..d5a50b4 100644
+--- a/fs/nfsd/vfs.h
++++ b/fs/nfsd/vfs.h
+@@ -108,12 +108,19 @@ int nfsd_set_posix_acl(struct svc_fh *, int, struct posix_acl *);
+ 
+ static inline int fh_want_write(struct svc_fh *fh)
  {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = inode,
-+		.dentry = NULL,
-+	};
- 	ssize_t ret;
- 	do {
- 		ret = __nfs4_get_acl_uncached(inode, buf, buflen);
-@@ -3736,7 +3786,10 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
+-	return mnt_want_write(fh->fh_export->ex_path.mnt);
++	int ret = mnt_want_write(fh->fh_export->ex_path.mnt);
++
++	if (!ret)
++		fh->fh_want_write = 1;
++	return ret;
+ }
  
- static int nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t buflen)
+ static inline void fh_drop_write(struct svc_fh *fh)
  {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = inode,
-+		.dentry = NULL,
-+	};
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(NFS_SERVER(inode),
-@@ -4000,7 +4053,10 @@ out:
- int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4_stateid *stateid, int issync)
- {
- 	struct nfs_server *server = NFS_SERVER(inode);
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = inode,
-+		.dentry = NULL,
-+	};
- 	int err;
- 	do {
- 		err = _nfs4_proc_delegreturn(inode, cred, stateid, issync);
-@@ -4074,7 +4130,10 @@ out:
+-	mnt_drop_write(fh->fh_export->ex_path.mnt);
++	if (fh->fh_want_write) {
++		fh->fh_want_write = 0;
++		mnt_drop_write(fh->fh_export->ex_path.mnt);
++	}
+ }
  
- static int nfs4_proc_getlk(struct nfs4_state *state, int cmd, struct file_lock *request)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = state->inode,
-+		.dentry = NULL,
-+	};
- 	int err;
+ #endif /* LINUX_NFSD_VFS_H */
+diff --git a/include/linux/nfsd/nfsfh.h b/include/linux/nfsd/nfsfh.h
+index ce4743a..fa63048 100644
+--- a/include/linux/nfsd/nfsfh.h
++++ b/include/linux/nfsd/nfsfh.h
+@@ -143,6 +143,7 @@ typedef struct svc_fh {
+ 	int			fh_maxsize;	/* max size for fh_handle */
  
- 	do {
-@@ -4480,7 +4539,10 @@ static int _nfs4_do_setlk(struct nfs4_state *state, int cmd, struct file_lock *f
- static int nfs4_lock_reclaim(struct nfs4_state *state, struct file_lock *request)
- {
- 	struct nfs_server *server = NFS_SERVER(state->inode);
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = state->inode,
-+		.dentry = NULL,
-+	};
- 	int err;
+ 	unsigned char		fh_locked;	/* inode locked by us */
++	unsigned char		fh_want_write;	/* remount protection taken */
  
- 	do {
-@@ -4498,7 +4560,10 @@ static int nfs4_lock_reclaim(struct nfs4_state *state, struct file_lock *request
- static int nfs4_lock_expired(struct nfs4_state *state, struct file_lock *request)
- {
- 	struct nfs_server *server = NFS_SERVER(state->inode);
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = state->inode,
-+		.dentry = NULL,
-+	};
- 	int err;
- 
- 	err = nfs4_set_lock_state(state, request);
-@@ -4596,7 +4661,10 @@ out:
- 
- static int nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock *request)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = state->inode,
-+		.dentry = NULL,
-+	};
- 	int err;
- 
- 	do {
-@@ -4656,7 +4724,10 @@ nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
- int nfs4_lock_delegation_recall(struct nfs4_state *state, struct file_lock *fl)
- {
- 	struct nfs_server *server = NFS_SERVER(state->inode);
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = state->inode,
-+		.dentry = NULL,
-+	};
- 	int err;
- 
- 	err = nfs4_set_lock_state(state, fl);
-@@ -4863,7 +4934,10 @@ static int _nfs4_proc_secinfo(struct inode *dir, const struct qstr *name, struct
- 
- int nfs4_proc_secinfo(struct inode *dir, const struct qstr *name, struct nfs4_secinfo_flavors *flavors)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = dir,
-+		.dentry = NULL,
-+	};
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(NFS_SERVER(dir),
+ #ifdef CONFIG_NFSD_V3
+ 	unsigned char		fh_post_saved;	/* post-op attrs saved */
 -- 
-1.7.4.4
+1.7.1
 
