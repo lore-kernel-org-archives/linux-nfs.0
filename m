@@ -1,160 +1,177 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from p02c12o149.mxlogic.net ([208.65.145.82]:54548 "EHLO
-	p02c12o149.mxlogic.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757557Ab2C3RQJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Mar 2012 13:16:09 -0400
-From: Peter Staubach <pstaubach@exagrid.com>
-To: Dr James Bruce Fields <bfields@fieldses.org>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Orion Poplawski <orion@cora.nwra.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Fri, 30 Mar 2012 13:12:22 -0400
-Subject: RE: [nfsv4] open(O_CREAT) returns EEXISTS on symbolic link created
- on another system until stat()ed
-Message-ID: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC062D6EBDCC@IT-1874.Isys.com>
-References: <loom.20120329T182500-467@post.gmane.org>
- <1333040091.5547.32.camel@lade.trondhjem.org>
- <4F749CCA.3000400@cora.nwra.com>
- <1333042863.5547.37.camel@lade.trondhjem.org>
- <4F74A4D5.1040802@cora.nwra.com> <20120329193100.GA20329@fieldses.org>
- <1333052170.10318.6.camel@lade.trondhjem.org>
- <1333053750.10318.15.camel@lade.trondhjem.org>
- <20120329205035.GB21493@fieldses.org>
- <1333054622.10318.19.camel@lade.trondhjem.org>
- <20120329210838.GC21493@fieldses.org>
-In-Reply-To: <20120329210838.GC21493@fieldses.org>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mailhub.sw.ru ([195.214.232.25]:24387 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758342Ab2C1PJt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Mar 2012 11:09:49 -0400
+Subject: [PATCH 7/8] nfsd: pass pointer to export cache down to stack wherever
+ possible.
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Wed, 28 Mar 2012 19:09:42 +0400
+Message-ID: <20120328150942.2646.9920.stgit@localhost6.localdomain6>
+In-Reply-To: <20120328150152.2646.33607.stgit@localhost6.localdomain6>
+References: <20120328150152.2646.33607.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi.
+This cache will be per-net soon. And it's easier to get the pointer to desired
+per-net instance only once and then pass it down instead of discovering it in
+every place were required.
 
-I think that the code to allow CREATE operations which end up opening existing, non-regular files is there for diskless operation.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-I vaguely recall some applications specifying O_CREATE to open and expecting the open of a non-regular file, which exists already, to succeed.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-		ps
+---
+ fs/nfsd/export.c |   37 ++++++++++++++++++++++---------------
+ 1 files changed, 22 insertions(+), 15 deletions(-)
 
-
------Original Message-----
-From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Dr James Bruce Fields
-Sent: Thursday, March 29, 2012 5:09 PM
-To: Myklebust, Trond
-Cc: Orion Poplawski; linux-nfs@vger.kernel.org
-Subject: Re: [nfsv4] open(O_CREAT) returns EEXISTS on symbolic link created on another system until stat()ed
-
-On Thu, Mar 29, 2012 at 08:56:57PM +0000, Myklebust, Trond wrote:
-> On Thu, 2012-03-29 at 16:50 -0400, Dr James Bruce Fields wrote:
-> > On Thu, Mar 29, 2012 at 08:42:24PM +0000, Myklebust, Trond wrote:
-> > > On Thu, 2012-03-29 at 16:16 -0400, Trond Myklebust wrote:
-> > > > On Thu, 2012-03-29 at 15:31 -0400, Dr James Bruce Fields wrote:
-> > > > > On Thu, Mar 29, 2012 at 12:07:17PM -0600, Orion Poplawski wrote:
-> > > > > > On 03/29/2012 11:40 AM, Myklebust, Trond wrote:
-> > > > > > >>Going back to v4 on EL5.8 server: nfsv4el.log, 
-> > > > > > >>nfsv4f18.log
-> > > > > > >>
-> > > > > > >>Both get NFS4ERR_EXIST in this case.
-> > > > > > >
-> > > > > > >Which is an obvious server bug: it should be sending 
-> > > > > > >NFS4ERR_SYMLINK in reply to that OPEN.
-> > > > > > >
-> > > > > > >Bruce?
-> > > > > > >
-> > > > > > 
-> > > > > > I can reproduce with a 3.4.0-0.rc0.git1.2.fc18 server as well.
-> > > > > 
-> > > > > Hm.  So how about this?  (Untested.)
-> > > > > 
-> > > > > Probably there should be a pynfs test too.
-> > > > > 
-> > > > > I'm assuming it should still be ERR_EXIST in the exclusive, 
-> > > > > exclusive4_1, and guarded cases.
-> > > > > 
-> > > > > --b.
-> > > > > 
-> > > > > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c index 
-> > > > > 7423d71..2bfcad4 100644
-> > > > > --- a/fs/nfsd/vfs.c
-> > > > > +++ b/fs/nfsd/vfs.c
-> > > > > @@ -1457,9 +1457,12 @@ do_nfsd_create(struct svc_rqst *rqstp, 
-> > > > > struct svc_fh *fhp,
-> > > > >  
-> > > > >  		switch (createmode) {
-> > > > >  		case NFS3_CREATE_UNCHECKED:
-> > > > > -			if (! S_ISREG(dchild->d_inode->i_mode))
-> > > > > -				err = nfserr_exist;
-> > > > > -			else if (truncp) {
-> > > > > +			if (! S_ISREG(dchild->d_inode->i_mode)) {
-> > > > > +				if (rqstp->rq_vers == 4)
-> > > > > +					err = nfserr_symlink;
-> > > > > +				else
-> > > > > +					err = nfserr_exist;
-> > > > 
-> > > > No. This should _never_ return NFS4ERR_EXIST.
-> > > > 
-> > > > It should return
-> > > >       * NFS4ERR_ISDIR if the object is a directory
-> > > >       * NFS4ERR_SYMLINK if it is symbolic link,
-> > > >       * either NFS4ERR_WRONG_TYPE (NFSv4.1) or NFS4ERR_SYMLINK (NFSv4.0)
-> > > >         if the object is any other non-regular file.
-> > > 
-> > > Basically, if an object already exists with that name, then 
-> > > NFS3_CREATE_UNCHECKED should be treated as if it is an ordinary 
-> > > OPEN (in the case of NFSv4) or LOOKUP (in the case of NFSv3).
-> > 
-> > Oh, so in the v3 case this should be nfs_ok, and it's up to the 
-> > client to check attributes on the result and decide what to do?
-> > 
-> > (Is this written down someplace?)
-> 
-> In RFC1813: "UNCHECKED means that the file should be created without 
-> checking for the existence of a duplicate file in the same directory."
-
-I don't understand how to apply that sentence to the case of a preexisting non-regular-file in the same directory.
-
-(Actually, I don't understand it in the case of an existing regular file either--to me "create without checking for existence" sounds like "even if a file already exists, you should clobber it and create a new one
-anyway"....)
-
-Anyway, something like the following (untested) should change v3 to return nfs_ok in this case, and v4 to return the same errors it would on a non-create open.
-
---b.
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c index 2ed14df..8256efd 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -235,17 +235,17 @@ do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_o
- 		 */
- 		if (open->op_createmode == NFS4_CREATE_EXCLUSIVE && status == 0)
- 			open->op_bmval[1] = (FATTR4_WORD1_TIME_ACCESS |
--						FATTR4_WORD1_TIME_MODIFY);
-+							FATTR4_WORD1_TIME_MODIFY);
- 	} else {
- 		status = nfsd_lookup(rqstp, current_fh,
- 				     open->op_fname.data, open->op_fname.len, resfh);
- 		fh_unlock(current_fh);
--		if (status)
--			goto out;
--		status = nfsd_check_obj_isreg(resfh);
- 	}
- 	if (status)
- 		goto out;
-+	status = nfsd_check_obj_isreg(resfh);
-+	if (status)
-+		goto out;
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index 9fe7156..c237b0a 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -785,8 +785,8 @@ exp_find_key(svc_client *clp, int fsid_type, u32 *fsidv, struct cache_req *reqp)
+ }
  
- 	if (is_create_with_attrs(open) && open->op_acl != NULL)
- 		do_set_nfs4_acl(rqstp, resfh, open->op_acl, open->op_bmval); diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c index 7423d71..890f439 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1458,7 +1458,7 @@ do_nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 		switch (createmode) {
- 		case NFS3_CREATE_UNCHECKED:
- 			if (! S_ISREG(dchild->d_inode->i_mode))
--				err = nfserr_exist;
-+				goto out;
- 			else if (truncp) {
- 				/* in nfsv4, we need to treat this case a little
- 				 * differently.  we don't want to truncate the
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ 
+-static svc_export *exp_get_by_name(svc_client *clp, const struct path *path,
+-				     struct cache_req *reqp)
++static svc_export *exp_get_by_name(struct cache_detail *cd, svc_client *clp,
++				   const struct path *path, struct cache_req *reqp)
+ {
+ 	struct svc_export *exp, key;
+ 	int err;
+@@ -796,12 +796,12 @@ static svc_export *exp_get_by_name(svc_client *clp, const struct path *path,
+ 
+ 	key.ex_client = clp;
+ 	key.ex_path = *path;
+-	key.cd = &svc_export_cache;
++	key.cd = cd;
+ 
+ 	exp = svc_export_lookup(&key);
+ 	if (exp == NULL)
+ 		return ERR_PTR(-ENOMEM);
+-	err = cache_check(&svc_export_cache, &exp->h, reqp);
++	err = cache_check(cd, &exp->h, reqp);
+ 	if (err)
+ 		return ERR_PTR(err);
+ 	return exp;
+@@ -810,16 +810,17 @@ static svc_export *exp_get_by_name(svc_client *clp, const struct path *path,
+ /*
+  * Find the export entry for a given dentry.
+  */
+-static struct svc_export *exp_parent(svc_client *clp, struct path *path)
++static struct svc_export *exp_parent(struct cache_detail *cd, svc_client *clp,
++				     struct path *path)
+ {
+ 	struct dentry *saved = dget(path->dentry);
+-	svc_export *exp = exp_get_by_name(clp, path, NULL);
++	svc_export *exp = exp_get_by_name(cd, clp, path, NULL);
+ 
+ 	while (PTR_ERR(exp) == -ENOENT && !IS_ROOT(path->dentry)) {
+ 		struct dentry *parent = dget_parent(path->dentry);
+ 		dput(path->dentry);
+ 		path->dentry = parent;
+-		exp = exp_get_by_name(clp, path, NULL);
++		exp = exp_get_by_name(cd, clp, path, NULL);
+ 	}
+ 	dput(path->dentry);
+ 	path->dentry = saved;
+@@ -834,13 +835,15 @@ static struct svc_export *exp_parent(svc_client *clp, struct path *path)
+  * since its harder to fool a kernel module than a user space program.
+  */
+ int
+-exp_rootfh(svc_client *clp, char *name, struct knfsd_fh *f, int maxsize)
++exp_rootfh(svc_client *clp, char *name,
++	   struct knfsd_fh *f, int maxsize)
+ {
+ 	struct svc_export	*exp;
+ 	struct path		path;
+ 	struct inode		*inode;
+ 	struct svc_fh		fh;
+ 	int			err;
++	struct cache_detail	*cd = &svc_export_cache;
+ 
+ 	err = -EPERM;
+ 	/* NB: we probably ought to check that it's NUL-terminated */
+@@ -853,7 +856,7 @@ exp_rootfh(svc_client *clp, char *name, struct knfsd_fh *f, int maxsize)
+ 	dprintk("nfsd: exp_rootfh(%s [%p] %s:%s/%ld)\n",
+ 		 name, path.dentry, clp->name,
+ 		 inode->i_sb->s_id, inode->i_ino);
+-	exp = exp_parent(clp, &path);
++	exp = exp_parent(cd, clp, &path);
+ 	if (IS_ERR(exp)) {
+ 		err = PTR_ERR(exp);
+ 		goto out;
+@@ -875,7 +878,8 @@ out:
+ 	return err;
+ }
+ 
+-static struct svc_export *exp_find(struct auth_domain *clp, int fsid_type,
++static struct svc_export *exp_find(struct cache_detail *cd,
++				   struct auth_domain *clp, int fsid_type,
+ 				   u32 *fsidv, struct cache_req *reqp)
+ {
+ 	struct svc_export *exp;
+@@ -883,7 +887,7 @@ static struct svc_export *exp_find(struct auth_domain *clp, int fsid_type,
+ 	if (IS_ERR(ek))
+ 		return ERR_CAST(ek);
+ 
+-	exp = exp_get_by_name(clp, &ek->ek_path, reqp);
++	exp = exp_get_by_name(cd, clp, &ek->ek_path, reqp);
+ 	cache_put(&ek->h, &svc_expkey_cache);
+ 
+ 	if (IS_ERR(exp))
+@@ -926,12 +930,13 @@ struct svc_export *
+ rqst_exp_get_by_name(struct svc_rqst *rqstp, struct path *path)
+ {
+ 	struct svc_export *gssexp, *exp = ERR_PTR(-ENOENT);
++	struct cache_detail *cd = &svc_export_cache;
+ 
+ 	if (rqstp->rq_client == NULL)
+ 		goto gss;
+ 
+ 	/* First try the auth_unix client: */
+-	exp = exp_get_by_name(rqstp->rq_client, path, &rqstp->rq_chandle);
++	exp = exp_get_by_name(cd, rqstp->rq_client, path, &rqstp->rq_chandle);
+ 	if (PTR_ERR(exp) == -ENOENT)
+ 		goto gss;
+ 	if (IS_ERR(exp))
+@@ -943,7 +948,7 @@ gss:
+ 	/* Otherwise, try falling back on gss client */
+ 	if (rqstp->rq_gssclient == NULL)
+ 		return exp;
+-	gssexp = exp_get_by_name(rqstp->rq_gssclient, path, &rqstp->rq_chandle);
++	gssexp = exp_get_by_name(cd, rqstp->rq_gssclient, path, &rqstp->rq_chandle);
+ 	if (PTR_ERR(gssexp) == -ENOENT)
+ 		return exp;
+ 	if (!IS_ERR(exp))
+@@ -955,12 +960,14 @@ struct svc_export *
+ rqst_exp_find(struct svc_rqst *rqstp, int fsid_type, u32 *fsidv)
+ {
+ 	struct svc_export *gssexp, *exp = ERR_PTR(-ENOENT);
++	struct cache_detail *cd = &svc_export_cache;
+ 
+ 	if (rqstp->rq_client == NULL)
+ 		goto gss;
+ 
+ 	/* First try the auth_unix client: */
+-	exp = exp_find(rqstp->rq_client, fsid_type, fsidv, &rqstp->rq_chandle);
++	exp = exp_find(cd, rqstp->rq_client, fsid_type,
++		       fsidv, &rqstp->rq_chandle);
+ 	if (PTR_ERR(exp) == -ENOENT)
+ 		goto gss;
+ 	if (IS_ERR(exp))
+@@ -972,7 +979,7 @@ gss:
+ 	/* Otherwise, try falling back on gss client */
+ 	if (rqstp->rq_gssclient == NULL)
+ 		return exp;
+-	gssexp = exp_find(rqstp->rq_gssclient, fsid_type, fsidv,
++	gssexp = exp_find(cd, rqstp->rq_gssclient, fsid_type, fsidv,
+ 						&rqstp->rq_chandle);
+ 	if (PTR_ERR(gssexp) == -ENOENT)
+ 		return exp;
+
