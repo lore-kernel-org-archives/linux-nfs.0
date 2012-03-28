@@ -1,83 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:17676 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:26782 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751040Ab2CGIqj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Mar 2012 03:46:39 -0500
-Message-ID: <4F572051.5060503@parallels.com>
-Date: Wed, 07 Mar 2012 12:46:09 +0400
+	id S1758079Ab2C1PJf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Mar 2012 11:09:35 -0400
+Subject: [PATCH 5/8] nfsd: pass svc_export_cache pointer as private data to
+ "exports" seq file ops
+To: bfields@fieldses.org
 From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Wed, 28 Mar 2012 19:09:29 +0400
+Message-ID: <20120328150929.2646.59343.stgit@localhost6.localdomain6>
+In-Reply-To: <20120328150152.2646.33607.stgit@localhost6.localdomain6>
+References: <20120328150152.2646.33607.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v9 3/6] nfsd: add a per-net-namespace struct for nfsd
-References: <1331047733-1641-1-git-send-email-jlayton@redhat.com>	<1331047733-1641-4-git-send-email-jlayton@redhat.com>	<4F564CCD.9040708@parallels.com> <20120306133124.5dbef60c@tlielax.poochiereds.net>
-In-Reply-To: <20120306133124.5dbef60c@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-06.03.2012 22:31, Jeff Layton пишет:
-> On Tue, 06 Mar 2012 21:43:41 +0400
-> Stanislav Kinsbursky<skinsbursky@parallels.com>  wrote:
->
->> 06.03.2012 19:28, Jeff Layton пишет:
->>> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
->>> index 64c24af..141197e 100644
->>> --- a/fs/nfsd/nfsctl.c
->>> +++ b/fs/nfsd/nfsctl.c
->>> @@ -19,6 +19,7 @@
->>>    #include "nfsd.h"
->>>    #include "cache.h"
->>>    #include "fault_inject.h"
->>> +#include "netns.h"
->>>
->>>    /*
->>>     *	We have a single directory with several nodes in it.
->>> @@ -1124,14 +1125,23 @@ static int create_proc_exports_entry(void)
->>>    }
->>>    #endif
->>>
->>> +int nfsd_net_id;
->>> +static struct pernet_operations nfsd_net_ops = {
->>> +	.id   =&nfsd_net_id,
->>> +	.size = sizeof(struct nfsd_net),
->>> +};
->>> +
->>>    static int __init init_nfsd(void)
->>>    {
->>>    	int retval;
->>>    	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
->>>
->>> +	retval = register_pernet_subsys(&nfsd_net_ops);
->>
->> Hi, Jeff.
->> You've created per-net structure and operations and that's cool.
->> But why don't you move nfsd client tracking control into per-net operations?
->> I.e. add init-exit callbacks in struct pernet_operations and call
->> nfsd4_client_tracking_init() and nfsd4_client_tracking_exit() respectively in there?
->> And since we don't support any other networks namesapce except init_net, then
->> just skip all others in these callbacks.
->>
->
-> Well...the way I had envisioned it is that you'd create a new net
-> namespace container and would then start up nfsd within that container.
->
-> Just because we're spawning a new namespace doesn't mean that we'll
-> necessarily want to serve nfs from it, right? If we do it this way,
-> then we don't end up allocating resources for containers that aren't
-> going to use it.
->
-> ...or do I not understand the "vision" of how all of this is going to
-> eventually work?
->
+Global svc_export_cache cache is going to be replaced with per-net instance. So
+prepare the ground for it.
 
-You, probably, right.
-If this data is allocated and initialized on NFSd start, then per-net operations 
-has nothing with it.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
+---
+ fs/nfsd/export.c |   18 +++++++++++-------
+ fs/nfsd/nfsctl.c |   11 ++++++++++-
+ 2 files changed, 21 insertions(+), 8 deletions(-)
 
--- 
-Best regards,
-Stanislav Kinsbursky
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index c20a405..1495320 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -1029,13 +1029,14 @@ exp_pseudoroot(struct svc_rqst *rqstp, struct svc_fh *fhp)
+ /* Iterator */
+ 
+ static void *e_start(struct seq_file *m, loff_t *pos)
+-	__acquires(svc_export_cache.hash_lock)
++	__acquires(((struct cache_detail *)m->private)->hash_lock)
+ {
+ 	loff_t n = *pos;
+ 	unsigned hash, export;
+ 	struct cache_head *ch;
+-	
+-	read_lock(&svc_export_cache.hash_lock);
++	struct cache_detail *cd = m->private;
++
++	read_lock(&cd->hash_lock);
+ 	if (!n--)
+ 		return SEQ_START_TOKEN;
+ 	hash = n >> 32;
+@@ -1082,9 +1083,11 @@ static void *e_next(struct seq_file *m, void *p, loff_t *pos)
+ }
+ 
+ static void e_stop(struct seq_file *m, void *p)
+-	__releases(svc_export_cache.hash_lock)
++	__releases(((struct cache_detail *)m->private)->hash_lock)
+ {
+-	read_unlock(&svc_export_cache.hash_lock);
++	struct cache_detail *cd = m->private;
++
++	read_unlock(&cd->hash_lock);
+ }
+ 
+ static struct flags {
+@@ -1195,6 +1198,7 @@ static int e_show(struct seq_file *m, void *p)
+ {
+ 	struct cache_head *cp = p;
+ 	struct svc_export *exp = container_of(cp, struct svc_export, h);
++	struct cache_detail *cd = m->private;
+ 
+ 	if (p == SEQ_START_TOKEN) {
+ 		seq_puts(m, "# Version 1.1\n");
+@@ -1203,10 +1207,10 @@ static int e_show(struct seq_file *m, void *p)
+ 	}
+ 
+ 	cache_get(&exp->h);
+-	if (cache_check(&svc_export_cache, &exp->h, NULL))
++	if (cache_check(cd, &exp->h, NULL))
+ 		return 0;
+ 	exp_put(exp);
+-	return svc_export_show(m, &svc_export_cache, cp);
++	return svc_export_show(m, cd, cp);
+ }
+ 
+ const struct seq_operations nfs_exports_op = {
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index dee6c1b..9bc6f8c 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -127,7 +127,16 @@ static const struct file_operations transaction_ops = {
+ 
+ static int exports_open(struct inode *inode, struct file *file)
+ {
+-	return seq_open(file, &nfs_exports_op);
++	int err;
++	struct seq_file *seq;
++
++	err = seq_open(file, &nfs_exports_op);
++	if (err)
++		return err;
++
++	seq = file->private_data;
++	seq->private = &svc_export_cache;
++	return 0;
+ }
+ 
+ static const struct file_operations exports_operations = {
+
