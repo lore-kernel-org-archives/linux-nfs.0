@@ -1,59 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:35857 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754601Ab2CLRO5 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Mar 2012 13:14:57 -0400
-Subject: Re: [PATCH] NFS: Always use the same SETCLIENTID boot verifier
-Mime-Version: 1.0 (Apple Message framework v1257)
+Received: from fieldses.org ([174.143.236.118]:49452 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755707Ab2C1OTP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Mar 2012 10:19:15 -0400
+Date: Wed, 28 Mar 2012 10:19:14 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Dan Carpenter <dan.carpenter@oracle.com>
+Cc: linux-nfs@vger.kernel.org, kernel-janitors@vger.kernel.org
+Subject: Re: [patch] nfsd4: memory corruption in numeric_name_to_id()
+Message-ID: <20120328141914.GB7779@fieldses.org>
+References: <20120328104459.GA29022@elgon.mountain>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1331336152.2763.88.camel@lade.trondhjem.org>
-Date: Mon, 12 Mar 2012 13:14:53 -0400
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <EBAE3482-7129-493E-A19B-0F671B009657@oracle.com>
-References: <20120309223445.4005.78869.stgit@degas.1015granger.net> <1331336152.2763.88.camel@lade.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+In-Reply-To: <20120328104459.GA29022@elgon.mountain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi-
+On Wed, Mar 28, 2012 at 01:44:59PM +0300, Dan Carpenter wrote:
+> "id" is type is a uid_t (32 bits) but on 64 bit systems strict_strtoul()
+> modifies 64 bits of data.  We should use kstrtouint() instead.
 
-On Mar 9, 2012, at 6:35 PM, Myklebust, Trond wrote:
+Whoops--thanks, applied!
 
-> On Fri, 2012-03-09 at 17:35 -0500, Chuck Lever wrote:
->> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->> index 4db330d..a2b7c47 100644
->> --- a/fs/nfs/nfs4state.c
->> +++ b/fs/nfs/nfs4state.c
->> @@ -1570,7 +1570,6 @@ void nfs41_handle_recall_slot(struct nfs_client *clp)
->> static void nfs4_reset_all_state(struct nfs_client *clp)
->> {
->> 	if (test_and_set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state) == 0) {
->> -		clp->cl_boot_time = CURRENT_TIME;
->> 		nfs4_state_start_reclaim_nograce(clp);
-> ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-> This line is now problematic. If we don't declare a reboot, then we may
-> end up with all sorts of BAD_SEQID errors above.
+--b.
+
 > 
-> Hmm... Thinking about this, the best solution might be simply to declare
-> 2 reboots:
->     1. Reboot using a CURRENT_TIME based verifier
->     2. Reboot again using the nfs_boot_time based verifier.
+> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
 > 
-> That guarantees that the server clears out all the state that we weren't
-> interested in keeping, while ensuring that in the end, we continue to
-> use the nfs_boot_time verifier for all future state generation attempts.
-
-Add a new cl_state flag, call it, say, NFS4CLNT_RESET_SERVER_STATE.  Set that flag in nfs4_reset_all_state().
-
-In nfs4_proc_setclientid(), have it use CURRENT_TIME for the boot verifier if NFS4CLNT_RESET_SERVER_STATE is set.
-
-Add logic at the top of the loop in nfs4_state_manager() that, if NFS4CLNT_RESET_SERVER_STATE is set, invokes nfs4_reclaim_lease(), then it sets the NFS4CLNT_LEASE_EXPIRED flag and does a "continue;".
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+> diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
+> index 69ca9c5..322d11c 100644
+> --- a/fs/nfsd/nfs4idmap.c
+> +++ b/fs/nfsd/nfs4idmap.c
+> @@ -581,7 +581,7 @@ numeric_name_to_id(struct svc_rqst *rqstp, int type, const char *name, u32 namel
+>  	/* Just to make sure it's null-terminated: */
+>  	memcpy(buf, name, namelen);
+>  	buf[namelen] = '\0';
+> -	ret = strict_strtoul(name, 10, (unsigned long *)id);
+> +	ret = kstrtouint(name, 10, id);
+>  	return ret == 0;
+>  }
+>  
