@@ -1,46 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from earth.cora.nwra.com ([4.28.99.180]:45975 "EHLO
-	earth.cora.nwra.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1030654Ab2CGWM4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Mar 2012 17:12:56 -0500
-Received: from orca.cora.nwra.com (orca.cora.nwra.com [10.10.20.2])
-	(authenticated bits=0)
-	by earth.cora.nwra.com (8.13.8/8.13.8) with ESMTP id q27MCrPq007453
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Wed, 7 Mar 2012 15:12:53 -0700
-Message-ID: <4F57DD65.5090202@cora.nwra.com>
-Date: Wed, 07 Mar 2012 15:12:53 -0700
-From: Orion Poplawski <orion@cora.nwra.com>
+Received: from natasha.panasas.com ([67.152.220.90]:53095 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932411Ab2C1SVL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Mar 2012 14:21:11 -0400
+Message-ID: <4F735642.9030905@panasas.com>
+Date: Wed, 28 Mar 2012 11:19:46 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: NFS mount commands hanging
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: Peter Zijlstra <a.p.zijlstra@chello.nl>
+CC: Andrew Morton <akpm@linux-foundation.org>, Oleg Nesterov <oleg@redhat.com>,
+        Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
+        <linux-security-module@vger.kernel.org>, Ingo Molnar <mingo@elte.hu>,
+        Paul Turner <pjt@google.com>, Thomas Gleixner <tglx@linutronix.de>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "Bhamare, Sachin" <sbhamare@panasas.com>,
+        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
+        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
+        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        "keyrings@linux-nfs.org" <keyrings@linux-nfs.org>
+Subject: Re: [PATCH 4/6 OPTION-A version 3] completion: Add new wait_for_completion_timeout_state
+References: <4F691059.30405@panasas.com> <4F711EA2.4030608@panasas.com>  <4F7120B6.2090509@panasas.com> <4F7126E0.5080700@panasas.com> <1332835919.16159.195.camel@twins>
+In-Reply-To: <1332835919.16159.195.camel@twins>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm starting to see mount commands on my Fedora 15/16 clients hanging 
-accessing CentOS 5.7 servers.  I've filed a fedora bug here:
+On 03/27/2012 01:11 AM, Peter Zijlstra wrote:
 
-https://bugzilla.redhat.com/show_bug.cgi?id=791311
+> On Mon, 2012-03-26 at 19:33 -0700, Boaz Harrosh wrote:
+> 
+> 
+> So I'm fine with adding wait_for_completion_timeout_state(), but make it
+> look and smell like wait_for_completion_timeout() and use a proper
+> state, like wake_up_state().
+> 
+> IOW:
+> 
+> unsigned long __sched 
+> wait_for_completion_timeout_state(struct completion *x, 
+> 				  unsigned long timeout,
+> 				  unsigned int state)
+> {
+> 	return wait_for_common(x, timeout, state);
+> }
+> EXPORT_SYMBOL(wait_for_completion_timeout_state);
+> 
 
-that includes a packet capture.  Packets seem to be the following repeating 
-very fast:
-
-   1   0.000000   10.10.11.2 -> 10.10.10.1   NFS V4 COMP Call <EMPTY> PUTROOTFH
-PUTROOTFH;GETFH GETFH;GETATTR GETATTR
-   2   0.000029   10.10.41.5 -> 10.10.10.1   NFS V4 COMP Call <EMPTY> PUTROOTFH
-PUTROOTFH;GETFH GETFH;GETATTR GETATTR
-   3   0.000072   10.10.10.1 -> 10.10.11.2   NFS V4 COMP Reply (Call In 1)
-<EMPTY> PUTROOTFH PUTROOTFH;GETFH GETFH;GETATTR GETATTR
-   4   0.000087   10.10.10.1 -> 10.10.41.5   NFS V4 COMP Reply (Call In 2)
-<EMPTY> PUTROOTFH PUTROOTFH;GETFH GETFH;GETATTR GETATTR
 
 
-Any help tracking this down would be greatly appreciated.
+Looks good thanks It's what I had at first, and went
+overboard with it. KISS right?
 
--- 
-Orion Poplawski
-Technical Manager                     303-415-9701 x222
-NWRA, Boulder Office                  FAX: 303-415-9702
-3380 Mitchell Lane                       orion@nwra.com
-Boulder, CO 80301                   http://www.nwra.com
+I'll resend and use it as is? Should I add a BUG_ON
+if state is not one of:
+	TASK_UNINTERRUPTIBLE
+	TASK_KILLABLE
+	TASK_INTERRUPTIBLE
+
+Thanks Peter, this will help me a lot
+Boaz
