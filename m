@@ -1,51 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:4191 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750745Ab2CBU5O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 2 Mar 2012 15:57:14 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jim Rees <rees@umich.edu>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/3] NFS: Ensure we display the minor version correctly
- in /proc/mounts etc.
-Date: Fri, 2 Mar 2012 20:57:13 +0000
-Message-ID: <1330721831.4073.2.camel@lade.trondhjem.org>
-References: <1330715086-13871-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <1330715086-13871-2-git-send-email-Trond.Myklebust@netapp.com>
-	 <20120302204603.GA1807@umich.edu>
-In-Reply-To: <20120302204603.GA1807@umich.edu>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:51707 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751637Ab2C1NC0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Mar 2012 09:02:26 -0400
+Received: by yenl12 with SMTP id l12so634405yen.19
+        for <linux-nfs@vger.kernel.org>; Wed, 28 Mar 2012 06:02:25 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <1332887744-4222-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1332887744-4222-1-git-send-email-Trond.Myklebust@netapp.com>
+	<1332887744-4222-2-git-send-email-Trond.Myklebust@netapp.com>
+Date: Wed, 28 Mar 2012 22:02:25 +0900
+Message-ID: <CAKYAXd9HT=eiKCuiyBDVE0DDoMKNPYL+KTeA_vcCV6ZY+1WBSQ@mail.gmail.com>
+Subject: Re: [PATCH 2/3] NFSv4.1: Fix layoutcommit error handling
+From: Namjae Jeon <linkinjeon@gmail.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTAzLTAyIGF0IDE1OjQ2IC0wNTAwLCBKaW0gUmVlcyB3cm90ZToNCj4gVHJv
-bmQgTXlrbGVidXN0IHdyb3RlOg0KPiANCj4gICBUaGUgJ21pbm9ydmVyc2lvbicgbW91bnQgb3B0
-aW9uIGlzIG5vdyBkZXByZWNhdGVkLCBzbyB3ZSBuZWVkIHRvIGRpc3BsYXkNCj4gICB0aGUgbWlu
-b3IgdmVyc2lvbiBudW1iZXIgaW4gdGhlICd2ZXJzPScgZm9ybWF0Lg0KPiAgIA0KPiAgIFNpZ25l
-ZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQo+
-ICAgLS0tDQo+ICAgIGZzL25mcy9zdXBlci5jIHwgICAxMiArKysrKysrKysrLS0NCj4gICAgMSBm
-aWxlcyBjaGFuZ2VkLCAxMCBpbnNlcnRpb25zKCspLCAyIGRlbGV0aW9ucygtKQ0KPiAgIA0KPiAg
-IGRpZmYgLS1naXQgYS9mcy9uZnMvc3VwZXIuYyBiL2ZzL25mcy9zdXBlci5jDQo+ICAgaW5kZXgg
-YWI1OGJiOS4uN2YwYzkzZiAxMDA2NDQNCj4gICAtLS0gYS9mcy9uZnMvc3VwZXIuYw0KPiAgICsr
-KyBiL2ZzL25mcy9zdXBlci5jDQo+ICAgQEAgLTY0MCw3ICs2NDAsNiBAQCBzdGF0aWMgdm9pZCBu
-ZnNfc2hvd19uZnN2NF9vcHRpb25zKHN0cnVjdCBzZXFfZmlsZSAqbSwgc3RydWN0IG5mc19zZXJ2
-ZXIgKm5mc3MsDQo+ICAgIAlzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwID0gbmZzcy0+bmZzX2NsaWVu
-dDsNCj4gICAgDQo+ICAgIAlzZXFfcHJpbnRmKG0sICIsY2xpZW50YWRkcj0lcyIsIGNscC0+Y2xf
-aXBhZGRyKTsNCj4gICAtCXNlcV9wcmludGYobSwgIixtaW5vcnZlcnNpb249JXUiLCBjbHAtPmNs
-X21pbm9ydmVyc2lvbik7DQo+ICAgIH0NCj4gICAgI2Vsc2UNCj4gICAgc3RhdGljIHZvaWQgbmZz
-X3Nob3dfbmZzdjRfb3B0aW9ucyhzdHJ1Y3Qgc2VxX2ZpbGUgKm0sIHN0cnVjdCBuZnNfc2VydmVy
-ICpuZnNzLA0KPiAgIEBAIC02NDksNiArNjQ4LDE1IEBAIHN0YXRpYyB2b2lkIG5mc19zaG93X25m
-c3Y0X29wdGlvbnMoc3RydWN0IHNlcV9maWxlICptLCBzdHJ1Y3QgbmZzX3NlcnZlciAqbmZzcywN
-Cj4gICAgfQ0KPiAgICAjZW5kaWYNCj4gICAgDQo+ICAgK3N0YXRpYyB2b2lkIG5mc19zaG93X25m
-c192ZXJzaW9uKHN0cnVjdCBzZXFfZmlsZSAqbSwNCj4gICArCQl1bnNpZ25lZCBpbnQgdmVyc2lv
-biwNCj4gICArCQl1bnNpZ25lZCBpbnQgbWlub3J2ZXJzaW9uKQ0KPiAgICt7DQo+ICAgKwlzZXFf
-cHJpbnRmKG0sICIsdmVycz0ldSIsIHZlcnNpb24pOw0KPiANCj4gSXNuJ3QgIm5mc3ZlcnM9IiBw
-cmVmZXJyZWQ/ICBUaGF0J3Mgd2hhdCB0aGUgbWFuIHBhZ2UgaW1wbGllcy4NCg0KSSBiZWxpZXZl
-IHRoYXQgU29sYXJpcywgQUlYLCBldGMgYWxsIHN1cHBvcnQgdGhlICd2ZXJzPScgbW91bnQgb3B0
-aW9uLA0Kc28gdGhhdCdzIHdoYXQgbW9zdCBhdXRvbW91bnRlciBzY3JpcHRzIHdpbGwgdXNlLg0K
-DQo+ICAgKwlpZiAodmVyc2lvbiA9PSA0KQ0KPiANCj4gU2hvdWxkIHRoaXMgYmUgInZlcnNpb24g
-Pj0gNCI/ICAob25seSBoYWxmIHNlcmlvdXMpDQoNCldoaWNoIGNyeXN0YWwgYmFsbCBzaG91bGQg
-SSB1c2UgdG8gdmVyaWZ5IHRoYXQ/DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMg
-Y2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0K
-d3d3Lm5ldGFwcC5jb20NCg0K
+2012/3/28 Trond Myklebust <Trond.Myklebust@netapp.com>:
+> Firstly, task->tk_status will always return negative error values,
+> so the current tests for 'NFS4ERR_DELEG_REVOKED' etc. are all being
+> ignored.
+> Secondly, clean up the code so that we only need to test
+> task->tk_status once!
+>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Reviewed-by: Namjae Jeon <linkinjeon@gmail.com>
+This patch makes good sense.
+Thanks~
+> Cc: stable@vger.kernel.org
+> ---
