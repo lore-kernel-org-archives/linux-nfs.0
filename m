@@ -1,77 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59595 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:28253 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757803Ab2CLWWx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Mar 2012 18:22:53 -0400
-Date: Mon, 12 Mar 2012 18:22:50 -0400
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: "Ted Ts'o" <tytso@mit.edu>,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
-        sandeen@redhat.com, adilger@whamcloud.com
-Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
- may_flags' in nfsd_open()
-Message-ID: <20120312222250.GD8991@fieldses.org>
-References: <20120109132158.2616029.30467.stgit@localhost.localdomain>
- <20120109132153.2616029.26302.stgit@localhost.localdomain>
- <20120306000837.GA17164@thunk.org>
- <20120306020819.GH31388@pad.fieldses.org>
- <20120306151816.GB32282@thunk.org>
- <20120306152842.GA8339@pad.fieldses.org>
- <20120309205148.GB5635@thunk.org>
- <20120312150912.GB12440@thunk.org>
- <20120312154921.GB17153@pad.fieldses.org>
+	id S1758013Ab2C1Qor (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Mar 2012 12:44:47 -0400
+Date: Wed, 28 Mar 2012 18:35:45 +0200
+From: Oleg Nesterov <oleg@redhat.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
+        linux-security-module@vger.kernel.org, Ingo Molnar <mingo@elte.hu>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>, Paul Turner <pjt@google.com>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "Bhamare, Sachin" <sbhamare@panasas.com>,
+        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
+        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
+        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        "keyrings@linux-nfs.org" <keyrings@linux-nfs.org>
+Subject: Re: [PATCH 6/6] kmod: optional: Convert the use of xchg to a kref
+Message-ID: <20120328163545.GA18944@redhat.com>
+References: <4F691059.30405@panasas.com> <4F711EA2.4030608@panasas.com> <4F7122C0.2070800@panasas.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120312154921.GB17153@pad.fieldses.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <4F7122C0.2070800@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 12, 2012 at 11:49:21AM -0400, J. Bruce Fields wrote:
-> On Mon, Mar 12, 2012 at 11:09:12AM -0400, Ted Ts'o wrote:
-> > On Fri, Mar 09, 2012 at 03:51:48PM -0500, Ted Ts'o wrote:
-> > > 
-> > > Linus in general doesn't like cross tree merges (or any extraneous
-> > > merges) unless they are absolutely necessary; but then, he trusts git
-> > > merges more than many of us do.  :-)
-> > > 
-> > > I've put the the patch series on a separate patch, with a signed tag, at:
-> > > 
-> > >      git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git nfs-ext4-premerge
-> > > 
-> > > Can you confirm that you've pulled it into your tree and it's landed
-> > > in linux-next?  I probably won't bother pulling it in mine unless
-> > > there is definitely a merge conflict that I need to resolve.  (I've
-> > > checked and there do not appear to be any against linux-next as of
-> > > last night.)
-> > 
-> > Ping?
-> 
-> Whoops, sorry.
-> 
-> Looks perfect, thanks for handling these!
-> 
-> I'm running them through my usual regression tests
+On 03/26, Boaz Harrosh wrote:
+>
+> if we use a kref instead of xchg to govern the lifetime
+> of struct subprocess_info, the code becomes simpler and
+> more generic. We can avoid some of the special cases.
 
-Urgh, I'm seeing a failure on the telldir test (part of the "special"
-connectathon tests).  I haven't looked at what it's trying to do yet.
-Reproduceable even just on a local filesystem without NFS involved.  If
-someone wants to look at it, you can just do:
+Looks correct, and perhaps this makes the code more understandable.
+If we use kref, we have to move the completion into subprocess_info,
+but this allows to remove the "fallback to wait_for_completion()"
+subtleness. Up to maintainer.
 
-	git clone git://linux-nfs.org/~bfields/cthon04.git
-	cd cthon04
-	make 
-	NFS_TESTDIR=/somewhere_on_an_ext4_fs/TMP ./runtests -s
+However, I agree with Peter, wait_for_completion_timeout_state()
+helper from 4/6 needs more discussion.
 
-(Or after running that, more specifically,
+And the previous looks patch is wrong, see my reply. The bug goes
+away after this patch, but this is not good anyway. IOW, I think
+you should redo 5 and 6 even if the resulting code looks correct.
 
-	cd /somewhere_on_an_ext4_fs/TMP/
-	./telldir
+Just one nit below.
 
-)
+> Actually I like the xchg use here. But if it will break
+> some ARCHs that do not like xchg, then here is the work
+> needed.
 
-I'll look at it tomorrow.
+Well, xchg() has other arch-neutral users. But again, I am not
+arguing with this change.
 
---b.
+> @@ -302,7 +297,7 @@ static void __call_usermodehelper(struct work_struct *work)
+>
+>  	switch (wait) {
+>  	case UMH_NO_WAIT:
+> -		call_usermodehelper_freeinfo(sub_info);
+> +		kref_put(&sub_info->kref,  call_usermodehelper_freeinfo);
+>  		break;
+
+This is minor and subjective, but UMH_NO_WAIT could use umh_complete()
+too, the unnecessary complete() doesn't hurt. In this case we could do
+
+
+	switch (wait) {
+	case UMH_WAIT_PROC:
+		if (pid > 0)
+			break;
+		/* FALLTHROUGH */
+	case UMH_WAIT_EXEC:
+		if (pid < 0)
+			sub_info->retval = pid;
+		/* FALLTHROUGH */
+	case UMH_NO_WAIT:
+		umh_complete(sub_info);
+	}
+
+Oleg.
+
