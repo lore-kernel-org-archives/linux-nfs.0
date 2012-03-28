@@ -1,47 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from li9-11.members.linode.com ([67.18.176.11]:49586 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752673Ab2CLPJR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Mar 2012 11:09:17 -0400
-Date: Mon, 12 Mar 2012 11:09:12 -0400
-From: "Ted Ts'o" <tytso@mit.edu>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
-        sandeen@redhat.com, adilger@whamcloud.com
-Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
- may_flags' in nfsd_open()
-Message-ID: <20120312150912.GB12440@thunk.org>
-References: <20120109132158.2616029.30467.stgit@localhost.localdomain>
- <20120109132153.2616029.26302.stgit@localhost.localdomain>
- <20120306000837.GA17164@thunk.org>
- <20120306020819.GH31388@pad.fieldses.org>
- <20120306151816.GB32282@thunk.org>
- <20120306152842.GA8339@pad.fieldses.org>
- <20120309205148.GB5635@thunk.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120309205148.GB5635@thunk.org>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:47396 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932365Ab2C1LgG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Mar 2012 07:36:06 -0400
+Received: by yenl12 with SMTP id l12so579613yen.19
+        for <linux-nfs@vger.kernel.org>; Wed, 28 Mar 2012 04:36:05 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, dan.carpenter@oracle.com
+Subject: [PATCH] nfsd: fix NULL pointer dereference in cld_pipe_downcall
+Date: Wed, 28 Mar 2012 07:36:01 -0400
+Message-Id: <1332934561-1709-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 09, 2012 at 03:51:48PM -0500, Ted Ts'o wrote:
-> 
-> Linus in general doesn't like cross tree merges (or any extraneous
-> merges) unless they are absolutely necessary; but then, he trusts git
-> merges more than many of us do.  :-)
-> 
-> I've put the the patch series on a separate patch, with a signed tag, at:
-> 
->      git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git nfs-ext4-premerge
-> 
-> Can you confirm that you've pulled it into your tree and it's landed
-> in linux-next?  I probably won't bother pulling it in mine unless
-> there is definitely a merge conflict that I need to resolve.  (I've
-> checked and there do not appear to be any against linux-next as of
-> last night.)
+If we find that "cup" is NULL in this case, then we obviously don't
+want to dereference it. What we really want to print in this case
+is the xid that we copied off earlier.
 
-Ping?
+Reported-by: Dan Carpenter <dan.carpenter@oracle.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfs4recover.c |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
 
-						- Ted
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index 21b53d5..eaaf948 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -602,8 +602,7 @@ cld_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+ 
+ 	/* couldn't find upcall? */
+ 	if (!cup) {
+-		dprintk("%s: couldn't find upcall -- xid=%u\n", __func__,
+-			cup->cu_msg.cm_xid);
++		dprintk("%s: couldn't find upcall -- xid=%u\n", __func__, xid);
+ 		return -EINVAL;
+ 	}
+ 
+-- 
+1.7.7.6
+
