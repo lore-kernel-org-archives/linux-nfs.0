@@ -1,46 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33506 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:28291 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751859Ab2CMUzg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Mar 2012 16:55:36 -0400
-Date: Tue, 13 Mar 2012 16:55:30 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Peng Tao <bergwolf@gmail.com>
-Cc: NeilBrown <neilb@suse.de>, Al Viro <viro@zeniv.linux.org.uk>,
-        Nick Piggin <npiggin@gmail.com>, Nick Piggin <npiggin@kernel.dk>,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH] fs/dcache: allow __d_obtain_alias() to return unhashed
- dentries
-Message-ID: <20120313205529.GC21991@fieldses.org>
-References: <AANLkTikL2CDSWQJ1QH_Y4G-j70Vd=VesNMMnYTmMGHC9@mail.gmail.com>
- <20110118220817.GF10903@fieldses.org>
- <20110308181320.GA15566@fieldses.org>
- <20110310105821.GE22723@ZenIV.linux.org.uk>
- <20110311150749.2fa2be66@notabene.brown>
- <20120214170300.GA4309@fieldses.org>
- <20120215165633.GE12490@fieldses.org>
- <20120216140603.08cb4900@notabene.brown>
- <20120216223011.GA23997@fieldses.org>
- <CA+a=Yy7WgT37Gost38MrV-qtk8MgnTdqKmjBQDvRLGmuh59r3g@mail.gmail.com>
+	id S1758228Ab2C1Rrc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Mar 2012 13:47:32 -0400
+Date: Wed, 28 Mar 2012 19:38:58 +0200
+From: Oleg Nesterov <oleg@redhat.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
+        linux-security-module@vger.kernel.org, Ingo Molnar <mingo@elte.hu>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>, Paul Turner <pjt@google.com>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "Bhamare, Sachin" <sbhamare@panasas.com>,
+        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
+        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
+        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        "keyrings@linux-nfs.org" <keyrings@linux-nfs.org>
+Subject: Re: [PATCH 4/6 OPTION-A version 3] completion: Add new
+	wait_for_completion_timeout_state
+Message-ID: <20120328173858.GC18944@redhat.com>
+References: <4F691059.30405@panasas.com> <4F711EA2.4030608@panasas.com> <4F7120B6.2090509@panasas.com> <4F7126E0.5080700@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <CA+a=Yy7WgT37Gost38MrV-qtk8MgnTdqKmjBQDvRLGmuh59r3g@mail.gmail.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4F7126E0.5080700@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Feb 18, 2012 at 12:34:14AM +0800, Peng Tao wrote:
-> > diff --git a/fs/dcache.c b/fs/dcache.c
-> > index f68e193..1fd2256 100644
-> > --- a/fs/dcache.c
-> > +++ b/fs/dcache.c
-> > @@ -1602,9 +1602,8 @@ struct dentry *d_splice_alias(struct inode *inode, struct dentry *dentry)
-> >
-> >        if (inode && S_ISDIR(inode->i_mode)) {
-> >                spin_lock(&inode->i_lock);
-> > -               new = __d_find_alias(inode, 1);
-> by replacing this, the want_discon argument is no longer in use. care
-> to remove it as well?
+On 03/26, Boaz Harrosh wrote:
+>
+> +int __sched
+> +wait_for_completion_timeout_state(struct completion *x,
+> +				  unsigned long timeout, int state)
+> +{
+> +	long t;
+> +	int ret;
+> +
+> +	if (!timeout)
+> +		timeout = MAX_SCHEDULE_TIMEOUT;
+> +
+> +	switch (state) {
+> +	default:
+> +		WARN_ON_ONCE(1);
+> +		/* fall through */
+> +	case 0:
+> +		state = TASK_UNINTERRUPTIBLE;
+> +		break;
 
-Yep, both patches follow; Al, could you take these?
+Well, this looks strange, imho. If the caller wants TASK_UNINTERRUPTIBLE,
+it should simply pass TASK_UNINTERRUPTIBLE.
+wait_for_completion_timeout_state(state => 0) looks confusing, and this
+is not symmetrical wrt other states.
 
---b.
+> +	t = wait_for_common(x, timeout, state);
+> +	if (likely(t > 0)) {
+> +		ret = 0;
+> +	} else  {
+> +		if (t < 0)
+> +			ret = t;
+> +		else
+> +			ret = -ETIMEDOUT;
+> +	}
+> +	return ret;
+
+I tend to agree with Peter. This is the common helper, probably it
+will have more users. We shouldn't throw out the positive return
+value, it can be useful.
+
+call_usermodehelper_exec() can simply do
+
+	retval = wait_for_common(...);
+
+	if (retval > 0)
+		retval = sub_info->retval;
+	else if (!retval)
+		retval = -ETIMEDOUT;
+
+Oleg.
+
