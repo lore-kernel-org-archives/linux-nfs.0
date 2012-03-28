@@ -1,86 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:44378 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755533Ab2CEQud (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 11:50:33 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 07/16] NFSv4: Rename nfs4_copy_stateid()
-Date: Mon,  5 Mar 2012 11:50:12 -0500
-Message-Id: <1330966221-17164-7-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1330966221-17164-6-git-send-email-Trond.Myklebust@netapp.com>
-References: <1330966221-17164-1-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-2-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-3-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-4-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-5-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-6-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:39785 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933232Ab2C1XzF convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Mar 2012 19:55:05 -0400
+Received: by iagz16 with SMTP id z16so2172223iag.19
+        for <linux-nfs@vger.kernel.org>; Wed, 28 Mar 2012 16:55:04 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <74BCDDD5-955E-4C06-9640-47D477A9FF8F@netapp.com>
+References: <1332887744-4222-1-git-send-email-Trond.Myklebust@netapp.com>
+	<38AF6CFC-8017-4D08-8DB0-A80BA724E54A@netapp.com>
+	<1332947296.11400.7.camel@lade.trondhjem.org>
+	<74BCDDD5-955E-4C06-9640-47D477A9FF8F@netapp.com>
+Date: Thu, 29 Mar 2012 08:55:04 +0900
+Message-ID: <CAKYAXd-eWRrja8bGqS7tTWehPNgAM4gtPALfAexRvTwkbbBOGw@mail.gmail.com>
+Subject: Re: [PATCH 1/3] NFSv4: Fix two infinite loops in the mount code
+From: Namjae Jeon <linkinjeon@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: linux-nfs list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It is really a function for selecting the correct stateid to use in a
-read or write situation.
+Hi. Trond.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4_fs.h   |    2 +-
- fs/nfs/nfs4proc.c  |    2 +-
- fs/nfs/nfs4state.c |    2 +-
- fs/nfs/nfs4xdr.c   |    2 +-
- 4 files changed, 4 insertions(+), 4 deletions(-)
+Normally goto statement is not recommended(pipeline and branch
+prediction) it is only recommended as a last resort if there is no
+method to escape this loop.
+It is just my opinion. And when I think more,, looks not bad about
+forward goto statement.
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 9c05799..e76f17c 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -327,7 +327,7 @@ extern void nfs41_handle_server_scope(struct nfs_client *,
- 				      struct server_scope **);
- extern void nfs4_put_lock_state(struct nfs4_lock_state *lsp);
- extern int nfs4_set_lock_state(struct nfs4_state *state, struct file_lock *fl);
--extern void nfs4_copy_stateid(nfs4_stateid *, struct nfs4_state *, fl_owner_t, pid_t);
-+extern void nfs4_select_rw_stateid(nfs4_stateid *, struct nfs4_state *, fl_owner_t, pid_t);
- 
- extern struct nfs_seqid *nfs_alloc_seqid(struct nfs_seqid_counter *counter, gfp_t gfp_mask);
- extern int nfs_wait_on_sequence(struct nfs_seqid *seqid, struct rpc_task *task);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index a79f623..9200327 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1916,7 +1916,7 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 	if (nfs4_copy_delegation_stateid(&arg.stateid, inode)) {
- 		/* Use that stateid */
- 	} else if (state != NULL) {
--		nfs4_copy_stateid(&arg.stateid, state, current->files, current->tgid);
-+		nfs4_select_rw_stateid(&arg.stateid, state, current->files, current->tgid);
- 	} else
- 		memcpy(&arg.stateid, &zero_stateid, sizeof(arg.stateid));
- 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 2f76060..b59b39e 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -888,7 +888,7 @@ int nfs4_set_lock_state(struct nfs4_state *state, struct file_lock *fl)
-  * Byte-range lock aware utility to initialize the stateid of read/write
-  * requests.
-  */
--void nfs4_copy_stateid(nfs4_stateid *dst, struct nfs4_state *state, fl_owner_t fl_owner, pid_t fl_pid)
-+void nfs4_select_rw_stateid(nfs4_stateid *dst, struct nfs4_state *state, fl_owner_t fl_owner, pid_t fl_pid)
- {
- 	struct nfs4_lock_state *lsp;
- 	int seq;
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index c03ba77..38736dc 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1546,7 +1546,7 @@ static void encode_open_stateid(struct xdr_stream *xdr, const struct nfs_open_co
- 	nfs4_stateid stateid;
- 
- 	if (ctx->state != NULL) {
--		nfs4_copy_stateid(&stateid, ctx->state, l_ctx->lockowner, l_ctx->pid);
-+		nfs4_select_rw_stateid(&stateid, ctx->state, l_ctx->lockowner, l_ctx->pid);
- 		if (zero_seqid)
- 			stateid.stateid.seqid = 0;
- 		encode_nfs4_stateid(xdr, &stateid);
--- 
-1.7.7.6
+Thanks~
 
+2012/3/29 Adamson, Dros <Weston.Adamson@netapp.com>:
+> OK, I need more coffee :)
+>
+> -dros
+>
+> On Mar 28, 2012, at 11:08 AM, Myklebust, Trond wrote:
+>
+>> On Wed, 2012-03-28 at 15:07 +0000, Adamson, Dros wrote:
+>>> This should probably be sent to stable.
+>>
+>> See below. :-)
+>>
+>>> -dros
+>>>
+>>> On Mar 27, 2012, at 6:35 PM, Trond Myklebust wrote:
+>>>
+>>>> We can currently loop forever in nfs4_lookup_root() and in
+>>>> nfs41_proc_secinfo_no_name(), if the first iteration returns a
+>>>> NFS4ERR_DELAY or something else that causes exception.retry to get
+>>>> set.
+>>>>
+>>>> Reported-by: Dros Adamson <Weston.Adamson@netapp.com>
+>>>> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+>>>> Cc: stable@vger.kernel.org
+>>>> ---
+>>>> fs/nfs/nfs4proc.c |    6 ++++--
+>>>> 1 files changed, 4 insertions(+), 2 deletions(-)
+>>>>
+>>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>>>> index 45df7d4..ee9ca19 100644
+>>>> --- a/fs/nfs/nfs4proc.c
+>>>> +++ b/fs/nfs/nfs4proc.c
+>>>> @@ -2290,11 +2290,12 @@ static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
+>>>>             switch (err) {
+>>>>             case 0:
+>>>>             case -NFS4ERR_WRONGSEC:
+>>>> -                   break;
+>>>> +                   goto out;
+>>>>             default:
+>>>>                     err = nfs4_handle_exception(server, err, &exception);
+>>>>             }
+>>>>     } while (exception.retry);
+>>>> +out:
+>>>>     return err;
+>>>> }
+>>>>
+>>>> @@ -6229,11 +6230,12 @@ nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
+>>>>             case 0:
+>>>>             case -NFS4ERR_WRONGSEC:
+>>>>             case -NFS4ERR_NOTSUPP:
+>>>> -                   break;
+>>>> +                   goto out;
+>>>>             default:
+>>>>                     err = nfs4_handle_exception(server, err, &exception);
+>>>>             }
+>>>>     } while (exception.retry);
+>>>> +out:
+>>>>     return err;
+>>>> }
+>>>>
+>>>> --
+>>>> 1.7.7.6
+>>>>
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
+>>
+>> --
+>> Trond Myklebust
+>> Linux NFS client maintainer
+>>
+>> NetApp
+>> Trond.Myklebust@netapp.com
+>> www.netapp.com
+>>
+>
