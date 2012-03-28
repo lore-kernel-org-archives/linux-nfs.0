@@ -1,59 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:12947 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:21298 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751278Ab2CUUwS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Mar 2012 16:52:18 -0400
-Date: Wed, 21 Mar 2012 16:52:44 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v10 1/8] nfsd: convert nfs4_client->cl_cb_flags to a
- generic flags field
-Message-ID: <20120321165244.4ed5977e@redhat.com>
-In-Reply-To: <20120321204142.GB12309@fieldses.org>
-References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
-	<1332337929-18580-2-git-send-email-jlayton@redhat.com>
-	<20120321204142.GB12309@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1753507Ab2C1PJD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Mar 2012 11:09:03 -0400
+Subject: [PATCH 0/8] NFSd: precursor and cleanup patch set
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Wed, 28 Mar 2012 19:08:53 +0400
+Message-ID: <20120328150152.2646.33607.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 21 Mar 2012 16:41:42 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+This patch set prepares ground for making NFSd export and expkey caches
+allocated and registered per network namespace context.
+Mainly, it just replaces hard-coded pointers with dereferenced everywhere
+required.
 
-> On Wed, Mar 21, 2012 at 09:52:02AM -0400, Jeff Layton wrote:
-> > @@ -2779,12 +2780,6 @@ static void
-> >  nfs4_set_claim_prev(struct nfsd4_open *open, bool has_session)
-> >  {
-> >  	open->op_openowner->oo_flags |= NFS4_OO_CONFIRMED;
-> > -	/*
-> > -	 * On a 4.1+ client, we don't create a state record for a client
-> > -	 * until it performs RECLAIM_COMPLETE:
-> > -	 */
-> > -	if (!has_session)
-> > -		open->op_openowner->oo_owner.so_client->cl_firststate = 1;
-> 
-> That doesn't look right.  Sure you didn't mean to just make that a
-> set_bit, at least for now?
-> 
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The following series consists of:
 
-No. I think that's correct. Once the RECLAIM_COMPLETE is done, we'll
-create a client record and then the NFSD4_CLIENT_STABLE flag will be
-set. We clearly don't want to set that flag until the client is
-actually recorded onto stable storage.
+---
 
-One of the goals of this patch was to get rid of cl_firststate which
-had a very ambiguous meaning. NFSD4_CLIENT_STABLE now means that the
-client is recorded on stable storage, full stop.
+Stanislav Kinsbursky (8):
+      nfsd: use passed cache_detail pointer expkey_parse()
+      nfsd: add link to owner cache detail to svc_export structure
+      nfsd: use cache detail pointer from svc_export structure on cache put
+      nfsd: use exp_put() for svc_export_cache put
+      nfsd: pass svc_export_cache pointer as private data to "exports" seq file ops
+      nfsd: use hash table from cache detail in nfsd export seq ops
+      nfsd: pass pointer to export cache down to stack wherever possible.
+      nfsd: pass pointer to expkey cache down to stack wherever possible.
 
-Did I miss some subtlety that we'll need to account for in the state
-model here?
 
--- 
-Jeff Layton <jlayton@redhat.com>
+ fs/nfsd/export.c            |  102 ++++++++++++++++++++++++-------------------
+ fs/nfsd/nfsctl.c            |   11 ++++-
+ fs/nfsd/nfsfh.c             |    2 -
+ include/linux/nfsd/export.h |    3 +
+ 4 files changed, 71 insertions(+), 47 deletions(-)
+
