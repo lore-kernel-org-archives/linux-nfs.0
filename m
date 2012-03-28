@@ -1,87 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:41393 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:38038 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759099Ab2CBTHR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 2 Mar 2012 14:07:17 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] NFS: Consolidate the parsing of the '-ov4.x' and '-overs=4.x' mount options
-Date: Fri,  2 Mar 2012 14:07:11 -0500
-Message-Id: <1330715231-20650-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1330715231-20650-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1330715231-20650-1-git-send-email-Trond.Myklebust@netapp.com>
- <1330715231-20650-2-git-send-email-Trond.Myklebust@netapp.com>
+	id S1753507Ab2C1PJ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Mar 2012 11:09:29 -0400
+Subject: [PATCH 4/8] nfsd: use exp_put() for svc_export_cache put
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Wed, 28 Mar 2012 19:09:22 +0400
+Message-ID: <20120328150921.2646.46229.stgit@localhost6.localdomain6>
+In-Reply-To: <20120328150152.2646.33607.stgit@localhost6.localdomain6>
+References: <20120328150152.2646.33607.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/super.c |   31 +++----------------------------
- 1 files changed, 3 insertions(+), 28 deletions(-)
+This patch replaces cache_put() call for svc_export_cache by exp_put() call.
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 7f0c93f..f4ccdae 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -80,7 +80,6 @@ enum {
- 	Opt_cto, Opt_nocto,
- 	Opt_ac, Opt_noac,
- 	Opt_lock, Opt_nolock,
--	Opt_v2, Opt_v3, Opt_v4, Opt_v4_0, Opt_v4_1,
- 	Opt_udp, Opt_tcp, Opt_rdma,
- 	Opt_acl, Opt_noacl,
- 	Opt_rdirplus, Opt_nordirplus,
-@@ -133,11 +132,6 @@ static const match_table_t nfs_mount_option_tokens = {
- 	{ Opt_noac, "noac" },
- 	{ Opt_lock, "lock" },
- 	{ Opt_nolock, "nolock" },
--	{ Opt_v2, "v2" },
--	{ Opt_v3, "v3" },
--	{ Opt_v4, "v4" },
--	{ Opt_v4_0, "v4.0" },
--	{ Opt_v4_1, "v4.1" },
- 	{ Opt_udp, "udp" },
- 	{ Opt_tcp, "tcp" },
- 	{ Opt_rdma, "rdma" },
-@@ -183,6 +177,9 @@ static const match_table_t nfs_mount_option_tokens = {
- 	{ Opt_fscache_uniq, "fsc=%s" },
- 	{ Opt_local_lock, "local_lock=%s" },
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
+---
+ fs/nfsd/export.c |    2 +-
+ fs/nfsd/nfsfh.c  |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index 99ea4c0..c20a405 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -1205,7 +1205,7 @@ static int e_show(struct seq_file *m, void *p)
+ 	cache_get(&exp->h);
+ 	if (cache_check(&svc_export_cache, &exp->h, NULL))
+ 		return 0;
+-	cache_put(&exp->h, &svc_export_cache);
++	exp_put(exp);
+ 	return svc_export_show(m, &svc_export_cache, cp);
+ }
  
-+	/* The following needs to be listed after all other options */
-+	{ Opt_nfsvers, "v%s" },
-+
- 	{ Opt_err, NULL }
- };
- 
-@@ -1228,28 +1225,6 @@ static int nfs_parse_mount_options(char *raw,
- 			mnt->flags |= (NFS_MOUNT_LOCAL_FLOCK |
- 				       NFS_MOUNT_LOCAL_FCNTL);
- 			break;
--		case Opt_v2:
--			mnt->flags &= ~NFS_MOUNT_VER3;
--			mnt->version = 2;
--			break;
--		case Opt_v3:
--			mnt->flags |= NFS_MOUNT_VER3;
--			mnt->version = 3;
--			break;
--		case Opt_v4:
--			mnt->flags &= ~NFS_MOUNT_VER3;
--			mnt->version = 4;
--			break;
--		case Opt_v4_0:
--			mnt->flags &= ~NFS_MOUNT_VER3;
--			mnt->version = 4;
--			mnt->minorversion = 0;
--			break;
--		case Opt_v4_1:
--			mnt->flags &= ~NFS_MOUNT_VER3;
--			mnt->version = 4;
--			mnt->minorversion = 1;
--			break;
- 		case Opt_udp:
- 			mnt->flags &= ~NFS_MOUNT_TCP;
- 			mnt->nfs_server.protocol = XPRT_TRANSPORT_UDP;
--- 
-1.7.7.6
+diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+index 68454e7..cc79300 100644
+--- a/fs/nfsd/nfsfh.c
++++ b/fs/nfsd/nfsfh.c
+@@ -636,7 +636,7 @@ fh_put(struct svc_fh *fhp)
+ #endif
+ 	}
+ 	if (exp) {
+-		cache_put(&exp->h, &svc_export_cache);
++		exp_put(exp);
+ 		fhp->fh_export = NULL;
+ 	}
+ 	return;
 
