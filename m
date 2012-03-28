@@ -1,59 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:18848 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:55164 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933803Ab2C2UuW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Mar 2012 16:50:22 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Dr James Bruce Fields <bfields@fieldses.org>
-CC: Orion Poplawski <orion@cora.nwra.com>,
+	id S1758843Ab2C1XqU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Mar 2012 19:46:20 -0400
+Date: Wed, 28 Mar 2012 19:46:17 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Jeff Layton <jlayton@redhat.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [nfsv4] open(O_CREAT) returns EEXISTS on symbolic link created
- on another system until stat()ed
-Date: Thu, 29 Mar 2012 20:50:03 +0000
-Message-ID: <1333054210.10318.17.camel@lade.trondhjem.org>
-References: <loom.20120329T182500-467@post.gmane.org>
-	 <1333040091.5547.32.camel@lade.trondhjem.org>
-	 <4F749CCA.3000400@cora.nwra.com>
-	 <1333042863.5547.37.camel@lade.trondhjem.org>
-	 <4F74A4D5.1040802@cora.nwra.com> <20120329193100.GA20329@fieldses.org>
-	 <1333052170.10318.6.camel@lade.trondhjem.org>
-	 <20120329204355.GA21493@fieldses.org>
-In-Reply-To: <20120329204355.GA21493@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+Subject: Re: [PATCH] nfsd4: use auth_unix unconditionally on backchannel
+Message-ID: <20120328234617.GB13231@fieldses.org>
+References: <20120323121208.GA3219@fieldses.org>
+ <20120323133111.GA2991@fieldses.org>
+ <1332516024.3087.1.camel@lade.trondhjem.org>
+ <20120323152220.GA4953@fieldses.org>
+ <1332516863.3087.10.camel@lade.trondhjem.org>
+ <20120323115337.28bff808@corrin.poochiereds.net>
+ <20120323121218.74461807@corrin.poochiereds.net>
+ <20120323170405.GA6089@fieldses.org>
+ <20120328230931.GA13231@fieldses.org>
+ <1332976613.19172.25.camel@lade.trondhjem.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1332976613.19172.25.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTAzLTI5IGF0IDE2OjQzIC0wNDAwLCBEciBKYW1lcyBCcnVjZSBGaWVsZHMg
-d3JvdGU6DQo+IE9uIFRodSwgTWFyIDI5LCAyMDEyIGF0IDA4OjE2OjA1UE0gKzAwMDAsIE15a2xl
-YnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gT24gVGh1LCAyMDEyLTAzLTI5IGF0IDE1OjMxIC0wNDAw
-LCBEciBKYW1lcyBCcnVjZSBGaWVsZHMgd3JvdGU6DQo+ID4gPiBPbiBUaHUsIE1hciAyOSwgMjAx
-MiBhdCAxMjowNzoxN1BNIC0wNjAwLCBPcmlvbiBQb3BsYXdza2kgd3JvdGU6DQo+ID4gPiA+IE9u
-IDAzLzI5LzIwMTIgMTE6NDAgQU0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gPiA+ID4+
-R29pbmcgYmFjayB0byB2NCBvbiBFTDUuOCBzZXJ2ZXI6IG5mc3Y0ZWwubG9nLCBuZnN2NGYxOC5s
-b2cNCj4gPiA+ID4gPj4NCj4gPiA+ID4gPj5Cb3RoIGdldCBORlM0RVJSX0VYSVNUIGluIHRoaXMg
-Y2FzZS4NCj4gPiA+ID4gPg0KPiA+ID4gPiA+V2hpY2ggaXMgYW4gb2J2aW91cyBzZXJ2ZXIgYnVn
-OiBpdCBzaG91bGQgYmUgc2VuZGluZyBORlM0RVJSX1NZTUxJTksgaW4NCj4gPiA+ID4gPnJlcGx5
-IHRvIHRoYXQgT1BFTi4NCj4gPiA+ID4gPg0KPiA+ID4gPiA+QnJ1Y2U/DQo+ID4gPiA+ID4NCj4g
-PiA+ID4gDQo+ID4gPiA+IEkgY2FuIHJlcHJvZHVjZSB3aXRoIGEgMy40LjAtMC5yYzAuZ2l0MS4y
-LmZjMTggc2VydmVyIGFzIHdlbGwuDQo+ID4gPiANCj4gPiA+IEhtLiAgU28gaG93IGFib3V0IHRo
-aXM/ICAoVW50ZXN0ZWQuKQ0KPiA+ID4gDQo+ID4gPiBQcm9iYWJseSB0aGVyZSBzaG91bGQgYmUg
-YSBweW5mcyB0ZXN0IHRvby4NCj4gPiA+IA0KPiA+ID4gSSdtIGFzc3VtaW5nIGl0IHNob3VsZCBz
-dGlsbCBiZSBFUlJfRVhJU1QgaW4gdGhlIGV4Y2x1c2l2ZSwNCj4gPiA+IGV4Y2x1c2l2ZTRfMSwg
-YW5kIGd1YXJkZWQgY2FzZXMuDQo+ID4gPiANCj4gPiA+IC0tYi4NCj4gPiA+IA0KPiA+ID4gZGlm
-ZiAtLWdpdCBhL2ZzL25mc2QvdmZzLmMgYi9mcy9uZnNkL3Zmcy5jDQo+ID4gPiBpbmRleCA3NDIz
-ZDcxLi4yYmZjYWQ0IDEwMDY0NA0KPiA+ID4gLS0tIGEvZnMvbmZzZC92ZnMuYw0KPiA+ID4gKysr
-IGIvZnMvbmZzZC92ZnMuYw0KPiA+ID4gQEAgLTE0NTcsOSArMTQ1NywxMiBAQCBkb19uZnNkX2Ny
-ZWF0ZShzdHJ1Y3Qgc3ZjX3Jxc3QgKnJxc3RwLCBzdHJ1Y3Qgc3ZjX2ZoICpmaHAsDQo+ID4gPiAg
-DQo+ID4gPiAgCQlzd2l0Y2ggKGNyZWF0ZW1vZGUpIHsNCj4gPiA+ICAJCWNhc2UgTkZTM19DUkVB
-VEVfVU5DSEVDS0VEOg0KPiA+ID4gLQkJCWlmICghIFNfSVNSRUcoZGNoaWxkLT5kX2lub2RlLT5p
-X21vZGUpKQ0KPiA+ID4gLQkJCQllcnIgPSBuZnNlcnJfZXhpc3Q7DQo+ID4gPiAtCQkJZWxzZSBp
-ZiAodHJ1bmNwKSB7DQo+ID4gPiArCQkJaWYgKCEgU19JU1JFRyhkY2hpbGQtPmRfaW5vZGUtPmlf
-bW9kZSkpIHsNCj4gPiA+ICsJCQkJaWYgKHJxc3RwLT5ycV92ZXJzID09IDQpDQo+ID4gPiArCQkJ
-CQllcnIgPSBuZnNlcnJfc3ltbGluazsNCj4gPiA+ICsJCQkJZWxzZQ0KPiA+ID4gKwkJCQkJZXJy
-ID0gbmZzZXJyX2V4aXN0Ow0KPiA+IA0KPiA+IE5vLiBUaGlzIHNob3VsZCBfbmV2ZXJfIHJldHVy
-biBORlM0RVJSX0VYSVNULg0KPiANCj4gVGhhdCAiZWxzZSIgaXMgdGhlIHYzIENSRUFURSBjYXNl
-LiAgSSBkb24ndCBzZWUgdGhlIGFsdGVybmF0aXZlIHRoZXJlPw0KDQpUcmVhdCBpdCBhcyBhIExP
-T0tVUC4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5l
-cg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
-DQo=
+On Wed, Mar 28, 2012 at 11:16:49PM +0000, Myklebust, Trond wrote:
+> On Wed, 2012-03-28 at 19:09 -0400, J. Bruce Fields wrote:
+> > This is a bandaid.
+> > 
+> > I have a series of patches that actually implement the correct behavior,
+> > but that may not quite be ready for 3.4.
+> > 
+> > --b.
+> > 
+> > commit 2f026867c76171d26f003b211063ff0562097d5e
+> > Author: J. Bruce Fields <bfields@redhat.com>
+> > Date:   Wed Mar 28 14:18:16 2012 -0400
+> > 
+> >     nfsd4: use auth_unix unconditionally on backchannel
+> >     
+> >     This isn't actually correct, but it works with the Linux client, and
+> >     agrees with the behavior we used to have before commit 80fc015bdfe.
+> 
+> Question: does the Linux client ever send you anything other than
+> AUTH_SYS credentials for the csa_sec_parms argument in CREATE_SESSION?
+> Anything other than that would be a bug, since our client doesn't
+> actually support RPCSEC_GSS in the callback channel.
+
+Right, I've never seen anything else, so I think the client's behaving
+as expected.
+
+But the server needs to be fixed to deal with the range of possible
+csa_sec_parms possibilities regardless.
+
+The only thing I find odd about the client behavior is why it even
+bothers with auth_sys when auth_null would work just as well and be even
+slightly simpler.
+
+--b.
+
+> 
+> >     Later patches will implement the spec-mandated behavior (which is to use
+> >     the security parameters explicitly given by the client in create_session
+> >     or backchannel_ctl).
+> >     
+> 
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
