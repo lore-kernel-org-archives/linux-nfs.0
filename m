@@ -1,49 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:21953 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:47109 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752922Ab2CaVZC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 31 Mar 2012 17:25:02 -0400
+	id S1757928Ab2C1Nxo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Mar 2012 09:53:44 -0400
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Sasha Levin <levinsasha928@gmail.com>
-CC: Chuck Lever <chuck.lever@oracle.com>, Jim Rees <rees@umich.edu>,
-        "Lukas Razik" <linux@razik.name>, Pekka Enberg <penberg@kernel.org>,
-        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>,
-        LKML Kernel <linux-kernel@vger.kernel.org>,
-        Ingo Molnar <mingo@elte.hu>,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [PATCH] nfs: Don't try mounting device as nfs root unless type
- fully matches
-Date: Sat, 31 Mar 2012 21:24:53 +0000
-Message-ID: <1333229105.2719.17.camel@lade.trondhjem.org>
-References: <1325927523-30103-1-git-send-email-levinsasha928@gmail.com>
-	 <5FF522E0-132E-4A6A-A40F-5CCD08AF800A@oracle.com>
-	 <20120107181221.GA3777@umich.edu> <1326111265.30169.5.camel@lappy>
-	 <CA+1xoqdQPi53GYr_Q6RtECJJcrz0TVVp4uNQX6jkfbQWQSNF7g@mail.gmail.com>
-	 <D3642511-B29B-4CA7-A133-C99B711954C1@oracle.com>
-	 <1333228179.2719.14.camel@lade.trondhjem.org>
-	 <CA+1xoqfv82ngQ4oc5uozZQjN7PipWVjVu670-uUGC5o_3Nec9A@mail.gmail.com>
-In-Reply-To: <CA+1xoqfv82ngQ4oc5uozZQjN7PipWVjVu670-uUGC5o_3Nec9A@mail.gmail.com>
+To: Namjae Jeon <linkinjeon@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/3] NFSv4: Fix two infinite loops in the mount code
+Date: Wed, 28 Mar 2012 13:53:21 +0000
+Message-ID: <1332942805.11400.5.camel@lade.trondhjem.org>
+References: <1332887744-4222-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <CAKYAXd868TcdJandJbV5EWkXPaNVNUmKj-0pdK88CP21ZGB9qw@mail.gmail.com>
+In-Reply-To: <CAKYAXd868TcdJandJbV5EWkXPaNVNUmKj-0pdK88CP21ZGB9qw@mail.gmail.com>
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU2F0LCAyMDEyLTAzLTMxIGF0IDIzOjIxICswMjAwLCBTYXNoYSBMZXZpbiB3cm90ZToNCj4g
-T24gU2F0LCBNYXIgMzEsIDIwMTIgYXQgMTE6MDkgUE0sIE15a2xlYnVzdCwgVHJvbmQNCj4gPFRy
-b25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPiBPbiBTYXQsIDIwMTItMDMtMzEg
-YXQgMTE6MjcgLTA0MDAsIENodWNrIExldmVyIHdyb3RlOg0KPiA+PiBPb3BzLiAgVHJvbmQ/ICBU
-aGlzIGdvdCBkcm9wcGVkIHNvbWV3aGVyZS4NCj4gPg0KPiA+IEkgZG9uJ3Qgb3duIHRoZSAnaW5p
-dCcgZGlyZWN0b3J5LCBhbmQgc2luY2UgcXVpdGUgZnJhbmtseSB0aGlzIGlzbid0DQo+ID4gcmVs
-YXRlZCB0byBORlMgYXQgYWxsLCBpdCBzaG91bGQgYmUgc2VudCB0byBMaW51cyBkaXJlY3RseS4N
-Cj4gPg0KPiA+IEknbSBxdWl0ZSBoYXBweSB0byBhY2sgdGhlIHBhdGNoIGlmIHRoYXQgd291bGQg
-aGVscC4NCj4gDQo+IFRoZSBwYXRjaCB3aGljaCBoYXMgdHJpZ2dlcmVkIHRoaXMgd2hvbGUgc3Rv
-cnkgKDY4MjlhMDQ4ICgiTkZTOiBSZXRyeQ0KPiBtb3VudGluZyBORlNST09UIikpIG1vZGlmaWVk
-IGluaXQvIGFzIHdlbGwsIGFuZCB3ZW50IGluIHRocm91Z2ggdGhlDQo+IE5GUyB0cmVlLiBDYW4n
-dCB0aGlzIHBhdGNoIGZvbGxvdyB0aGUgc2FtZSBwYXRoPw0KDQpOby4gSXQgdG91Y2hlcyBnZW5l
-cmljIGNvZGUgdW5saWtlIHRoZSBhYm92ZSBwYXRjaCwgd2hpY2ggX29ubHlfIHRvdWNoZXMNCk5G
-Uy1yZWxhdGVkIGNvZGUuDQoNCj4gQW55aG93LCBJJ3ZlIENjJ2VkIExpbnVzIGluIGhvcGVzIHRo
-YXQgdGhpcyBwYXRjaCBjYW4gc29tZWhvdyBmaW5kDQo+IGl0J3Mgd2F5IGludG8gMy40Lg0KDQpE
-b24ndCBqdXN0IENjOiBMaW51cyBvbiB0aGlzIHRocmVhZDogc2VuZCB0aGUgcGF0Y2ggdG8gaGlt
-IGRpcmVjdGx5IChhbmQNCkNjOiBsaW51eC1rZXJuZWxAdmdlci5rZXJuZWwub3JnKS4NCg0KLS0g
-DQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHAN
-ClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+T24gV2VkLCAyMDEyLTAzLTI4IGF0IDIxOjQ5ICswOTAwLCBOYW1qYWUgSmVvbiB3cm90ZToNCj4g
+SGkuIFRyb25kLg0KPiANCj4gSXMgaXQgYmV0dGVyIGlmIGV4Y2VwdGlvbi5yZXRyeSBzZXQgdG8g
+emVybyBpbnN0ZWFkIGdvdG8gPw0KDQpXaGF0IG1ha2VzIHlvdSB0aGluayB0aGF0IHdvdWxkIGJl
+IGJldHRlcj8gVGhhdCBhZGRzIGFuIHVubmVjZXNzYXJ5DQpleHRyYSBzZXQrdGVzdCBvZiBleGNl
+cHRpb24ucmV0cnkgZXhjZXB0IGlmIGdjYyBtYW5hZ2VzIHRvIG9wdGltaXNlIHRoYXQNCmF3YXkg
+dG8gdGhlIHNhbWUgZ290byB3ZSd2ZSBub3cgZG9jdW1lbnRlZCBpbiB0aGUgY29kZS4NCg0KPiBU
+aGFua3MuDQo+IA0KPiAyMDEyLzMvMjggVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RA
+bmV0YXBwLmNvbT46DQo+ID4gV2UgY2FuIGN1cnJlbnRseSBsb29wIGZvcmV2ZXIgaW4gbmZzNF9s
+b29rdXBfcm9vdCgpIGFuZCBpbg0KPiA+IG5mczQxX3Byb2Nfc2VjaW5mb19ub19uYW1lKCksIGlm
+IHRoZSBmaXJzdCBpdGVyYXRpb24gcmV0dXJucyBhDQo+ID4gTkZTNEVSUl9ERUxBWSBvciBzb21l
+dGhpbmcgZWxzZSB0aGF0IGNhdXNlcyBleGNlcHRpb24ucmV0cnkgdG8gZ2V0DQo+ID4gc2V0Lg0K
+PiA+DQo+ID4gUmVwb3J0ZWQtYnk6IERyb3MgQWRhbXNvbiA8V2VzdG9uLkFkYW1zb25AbmV0YXBw
+LmNvbT4NCj4gPiBTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVz
+dEBuZXRhcHAuY29tPg0KPiA+IENjOiBzdGFibGVAdmdlci5rZXJuZWwub3JnDQo+ID4gLS0tDQo+
+ID4gIGZzL25mcy9uZnM0cHJvYy5jIHwgICAgNiArKysrLS0NCj4gPiAgMSBmaWxlcyBjaGFuZ2Vk
+LCA0IGluc2VydGlvbnMoKyksIDIgZGVsZXRpb25zKC0pDQo+ID4NCj4gPiBkaWZmIC0tZ2l0IGEv
+ZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMvbmZzNHByb2MuYw0KPiA+IGluZGV4IDQ1ZGY3ZDQu
+LmVlOWNhMTkgMTAwNjQ0DQo+ID4gLS0tIGEvZnMvbmZzL25mczRwcm9jLmMNCj4gPiArKysgYi9m
+cy9uZnMvbmZzNHByb2MuYw0KPiA+IEBAIC0yMjkwLDExICsyMjkwLDEyIEBAIHN0YXRpYyBpbnQg
+bmZzNF9sb29rdXBfcm9vdChzdHJ1Y3QgbmZzX3NlcnZlciAqc2VydmVyLCBzdHJ1Y3QgbmZzX2Zo
+ICpmaGFuZGxlLA0KPiA+ICAgICAgICAgICAgICAgIHN3aXRjaCAoZXJyKSB7DQo+ID4gICAgICAg
+ICAgICAgICAgY2FzZSAwOg0KPiA+ICAgICAgICAgICAgICAgIGNhc2UgLU5GUzRFUlJfV1JPTkdT
+RUM6DQo+ID4gLSAgICAgICAgICAgICAgICAgICAgICAgYnJlYWs7DQo+ID4gKyAgICAgICAgICAg
+ICAgICAgICAgICAgZ290byBvdXQ7DQo+ID4gICAgICAgICAgICAgICAgZGVmYXVsdDoNCj4gPiAg
+ICAgICAgICAgICAgICAgICAgICAgIGVyciA9IG5mczRfaGFuZGxlX2V4Y2VwdGlvbihzZXJ2ZXIs
+IGVyciwgJmV4Y2VwdGlvbik7DQo+ID4gICAgICAgICAgICAgICAgfQ0KPiA+ICAgICAgICB9IHdo
+aWxlIChleGNlcHRpb24ucmV0cnkpOw0KPiA+ICtvdXQ6DQo+ID4gICAgICAgIHJldHVybiBlcnI7
+DQo+ID4gIH0NCj4gPg0KPiA+IEBAIC02MjI5LDExICs2MjMwLDEyIEBAIG5mczQxX3Byb2Nfc2Vj
+aW5mb19ub19uYW1lKHN0cnVjdCBuZnNfc2VydmVyICpzZXJ2ZXIsIHN0cnVjdCBuZnNfZmggKmZo
+YW5kbGUsDQo+ID4gICAgICAgICAgICAgICAgY2FzZSAwOg0KPiA+ICAgICAgICAgICAgICAgIGNh
+c2UgLU5GUzRFUlJfV1JPTkdTRUM6DQo+ID4gICAgICAgICAgICAgICAgY2FzZSAtTkZTNEVSUl9O
+T1RTVVBQOg0KPiA+IC0gICAgICAgICAgICAgICAgICAgICAgIGJyZWFrOw0KPiA+ICsgICAgICAg
+ICAgICAgICAgICAgICAgIGdvdG8gb3V0Ow0KPiA+ICAgICAgICAgICAgICAgIGRlZmF1bHQ6DQo+
+ID4gICAgICAgICAgICAgICAgICAgICAgICBlcnIgPSBuZnM0X2hhbmRsZV9leGNlcHRpb24oc2Vy
+dmVyLCBlcnIsICZleGNlcHRpb24pOw0KPiA+ICAgICAgICAgICAgICAgIH0NCj4gPiAgICAgICAg
+fSB3aGlsZSAoZXhjZXB0aW9uLnJldHJ5KTsNCj4gPiArb3V0Og0KPiA+ICAgICAgICByZXR1cm4g
+ZXJyOw0KPiA+ICB9DQo+ID4NCj4gPiAtLQ0KPiA+IDEuNy43LjYNCj4gPg0KPiA+IC0tDQo+ID4g
+VG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJl
+IGxpbnV4LW5mcyIgaW4NCj4gPiB0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZn
+ZXIua2VybmVsLm9yZw0KPiA+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtl
+cm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGlu
+dXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFw
+cC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
