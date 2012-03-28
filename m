@@ -1,14 +1,15 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:59160 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751941Ab2C1RMD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Mar 2012 13:12:03 -0400
-Date: Wed, 28 Mar 2012 19:04:01 +0200
-From: Oleg Nesterov <oleg@redhat.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-        Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
-        linux-security-module@vger.kernel.org, Ingo Molnar <mingo@elte.hu>,
+Received: from natasha.panasas.com ([67.152.220.90]:35764 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932293Ab2C1VnF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Mar 2012 17:43:05 -0400
+Message-ID: <4F7385AC.1070605@panasas.com>
+Date: Wed, 28 Mar 2012 14:42:04 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Oleg Nesterov <oleg@redhat.com>, Andrew Morton <akpm@linux-foundation.org>
+CC: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
+        <linux-security-module@vger.kernel.org>, Ingo Molnar <mingo@elte.hu>,
         Peter Zijlstra <a.p.zijlstra@chello.nl>, Paul Turner <pjt@google.com>,
         Thomas Gleixner <tglx@linutronix.de>,
         linux-fsdevel <linux-fsdevel@vger.kernel.org>,
@@ -20,71 +21,94 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
         "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
         Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
         "Eric W. Biederman" <ebiederm@xmission.com>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Greg Kroah-Hartman <gregkh@suse.de>, "Rafael J. Wysocki" <rjw@sisk.pl>,
         "keyrings@linux-nfs.org" <keyrings@linux-nfs.org>
-Subject: Re: [PATCH 5/6] kmod: Add new call_usermodehelper_timeout() API
-Message-ID: <20120328170401.GB18944@redhat.com>
-References: <4F691059.30405@panasas.com> <4F711EA2.4030608@panasas.com> <4F712246.6030201@panasas.com> <20120327154305.GA19314@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120327154305.GA19314@redhat.com>
+Subject: Re: [PATCHSET 0/6 version 2] kmod: Optional timeout on the wait in
+ call_usermodehelper_exec
+References: <4F691059.30405@panasas.com> <4F711EA2.4030608@panasas.com> <20120327140709.60ab7bda.akpm@linux-foundation.org> <20120328201904.GA4517@redhat.com>
+In-Reply-To: <20120328201904.GA4517@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/27, Oleg Nesterov wrote:
->
-> On 03/26, Boaz Harrosh wrote:
-> >
-> >  int call_usermodehelper_exec(struct subprocess_info *sub_info, int wait)
-> >  {
-> >  	DECLARE_COMPLETION_ONSTACK(done);
-> > +	int wait_state;
-> >  	int retval = 0;
-> >
-> >  	helper_lock();
-> > @@ -540,19 +541,15 @@ int call_usermodehelper_exec(struct subprocess_info *sub_info, int wait)
-> >  	if (wait == UMH_NO_WAIT)	/* task has freed sub_info */
-> >  		goto unlock;
-> >
-> > -	if (wait & UMH_KILLABLE) {
-> > -		retval = wait_for_completion_killable(&done);
-> > -		if (!retval)
-> > -			goto wait_done;
-> > -
-> > +	wait_state = (wait & UMH_KILLABLE) ? TASK_KILLABLE : 0;
-> > +	retval = wait_for_completion_timeout_state(&done, sub_info->timeout,
-> > +						   wait_state);
-> > +	if (unlikely(retval)) {
-> >  		/* umh_complete() will see NULL and free sub_info */
-> >  		if (xchg(&sub_info->complete, NULL))
-> >  			goto unlock;
-> > -		/* fallthrough, umh_complete() was already called */
-> >  	}
-> >
-> > -	wait_for_completion(&done);
->
-> at first glance this looks certainly wrong, or I misread the patch.
->
-> We can't remove the "fallback to wait_for_completion" logic until
-> you move the completion into subprocess_info (the next patch seems
-> to do this).
+> On 03/27, Andrew Morton wrote:
 
-Yes, I think this is true after I re-checked the code.
+>>
+>> IOW, please explain at some length why you need this.  Do you think
+>> that there are existing call sites which can usefully use this feature?
+>> Do you expect that new callers are likely to need this?  etcetera.
+> 
 
 
+Andrew Hi.
 
-One more nit. With this patch call_usermodehelper_fns() does
+Yes all these explanations were on the other thread which started
+this one. sorry.
 
-	info = call_usermodehelper_setup(path, argv, envp, gfp_mask);
+On my next attempt I will also add a user for this API as a last
+Patch. So you can see exactly how it makes sense, and why I do
+need it. When I started this the user was not in the Kernel
+yet, but now it's in for the 3.4-rc1, and it can make things clearer.
 
-	call_usermodehelper_setfns(info, init, cleanup, data);
+But in (very) short. The call is made in some special cases at
+the read/write path of NFS. I have a very clean way out if
+the call fails for any reason, not only timeout, it can fail
+and properly handled in many other cases as well.
 
-	info->timeout = timeout;
+So early failure does not scare me, what does scare me a lot is
+if it will get stuck (deadlocked) forever. This will eventually do
+very bad things to the NFS client.
 
-We have 2 (static!) helpers to initialize info, yet we initialize
-->timeout by hand. Of course I do not blame this patch, but imho
-this looks a bit messy and deserves another minor cleanup.
+So the very easy thing to do is just add the proper timeout parameter
+to existing wait_for_completion calls. If it means some cleanups and code
+reorganization met on the way I don't mind.
 
-Oleg.
+And yes, I expect that a lot of users that now use UMH_WAIT_PROC
+which need to sync with the app, will enjoy the timeout, just as I do.
+And all users should be revisited and perhaps enhanced with the extra
+robustness this gives.
 
+BTW: Currently the script ran - "osd_login", as submitted
+to the nfs-utils package maintainer, has a user-mode "watchdog"
+sub-process that will kill the parent after a timeout. But I would not
+like to rely on user-mode for this. There are plenty of other things
+that can go wrong. I'd like the Kernel to be independent. Also in light
+that the script may slightly change from distro to distro and is not
+totally in my control.
+
+On 03/28/2012 01:19 PM, Oleg Nesterov wrote:
+> Cough. Can't resist... Could you also explain why
+> http://marc.info/?l=linux-nfs&m=133252084301205 can't work?
+> 
+
+
+Because it's another thread and another wait object and all bunch of
+other allocations, where I already have 3 forks now. I don't do that
+because the Politics to get new code in the Kernel is hard.
+
+I'm utilizing all the current resources and am just exposing currently
+hard coded constants to upper API's but in effect I'm not degrading
+the hot path *at all*. I'll never do what you suggest it's a total waist
+when the right way is just doing what is done today, only cleaned and
+exposed.
+
+> To clarify, I am just curious, I am not arguing. I am asking because
+
+> if UMH_WAIT_PROC(timeout) fails with -ETIMEDOUT, then perhaps it makes
+> sense to not "leak" the user-space process servicing the kernel request
+> we were waiting for.
+> 
+
+
+Hopefully it is not leaked, right? It will eventually return and de-allocate.
+Do you mean that I should kill it? that's an additional mess in kmod.c.
+
+But it's a good point I'll make it killable, and an admin can kill it if it's
+really deadlocked forever.
+
+> Oleg.
+> 
+
+
+Thanks
+Boaz
