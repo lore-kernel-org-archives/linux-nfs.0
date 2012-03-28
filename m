@@ -1,170 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:59351 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755133Ab2C0CFI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Mar 2012 22:05:08 -0400
-Message-ID: <4F71202C.2040006@panasas.com>
-Date: Mon, 26 Mar 2012 19:04:28 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from fieldses.org ([174.143.236.118]:34033 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932687Ab2C1XJf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Mar 2012 19:09:35 -0400
+Date: Wed, 28 Mar 2012 19:09:31 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH] nfsd4: use auth_unix unconditionally on backchannel
+Message-ID: <20120328230931.GA13231@fieldses.org>
+References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
+ <1332337929-18580-4-git-send-email-jlayton@redhat.com>
+ <20120323121208.GA3219@fieldses.org>
+ <20120323133111.GA2991@fieldses.org>
+ <1332516024.3087.1.camel@lade.trondhjem.org>
+ <20120323152220.GA4953@fieldses.org>
+ <1332516863.3087.10.camel@lade.trondhjem.org>
+ <20120323115337.28bff808@corrin.poochiereds.net>
+ <20120323121218.74461807@corrin.poochiereds.net>
+ <20120323170405.GA6089@fieldses.org>
 MIME-Version: 1.0
-To: Andrew Morton <akpm@linux-foundation.org>, Oleg Nesterov <oleg@redhat.com>,
-        Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
-        <linux-security-module@vger.kernel.org>, Ingo Molnar <mingo@elte.hu>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>, Paul Turner <pjt@google.com>,
-        Thomas Gleixner <tglx@linutronix.de>
-CC: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "Bhamare, Sachin" <sbhamare@panasas.com>,
-        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
-        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
-        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        "keyrings@linux-nfs.org" <keyrings@linux-nfs.org>
-Subject: [PATCH 3/6] kmod: Move call_usermodehelper_fns() to .c file and unexport
- all it's helpers
-References: <4F691059.30405@panasas.com> <4F711EA2.4030608@panasas.com>
-In-Reply-To: <4F711EA2.4030608@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120323170405.GA6089@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This is a bandaid.
 
-If we move call_usermodehelper_fns() to kmod.c file and EXPORT_SYMBOL it
-we can avoid exporting all it's helper functions:
-	call_usermodehelper_setup
-	call_usermodehelper_setfns
-	call_usermodehelper_exec
-And make all of them static to kmod.c
+I have a series of patches that actually implement the correct behavior,
+but that may not quite be ready for 3.4.
 
-Since the optimizer will see all these as a single call site it will inline them
-inside call_usermodehelper_fns(). So we loose the call to _fns but gain 3
-calls to the helpers. (Not that it matters)
+--b.
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- include/linux/kmod.h |   30 ++----------------------------
- kernel/kmod.c        |   25 ++++++++++++++++++++++---
- 2 files changed, 24 insertions(+), 31 deletions(-)
+commit 2f026867c76171d26f003b211063ff0562097d5e
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Wed Mar 28 14:18:16 2012 -0400
 
-diff --git a/include/linux/kmod.h b/include/linux/kmod.h
-index ba89dc2..ae3f9623 100644
---- a/include/linux/kmod.h
-+++ b/include/linux/kmod.h
-@@ -66,36 +66,10 @@ struct subprocess_info {
- 	void *data;
- };
- 
--/* Allocate a subprocess_info structure */
--struct subprocess_info *call_usermodehelper_setup(char *path, char **argv,
--						  char **envp, gfp_t gfp_mask);
--
--/* Set various pieces of state into the subprocess_info structure */
--void call_usermodehelper_setfns(struct subprocess_info *info,
--		    int (*init)(struct subprocess_info *info, struct cred *new),
--		    void (*cleanup)(struct subprocess_info *info),
--		    void *data);
--
--/* Actually execute the sub-process */
--int call_usermodehelper_exec(struct subprocess_info *info, int wait);
--
--static inline int
-+extern int
- call_usermodehelper_fns(char *path, char **argv, char **envp, int wait,
- 			int (*init)(struct subprocess_info *info, struct cred *new),
--			void (*cleanup)(struct subprocess_info *), void *data)
--{
--	struct subprocess_info *info;
--	gfp_t gfp_mask = (wait == UMH_NO_WAIT) ? GFP_ATOMIC : GFP_KERNEL;
--
--	info = call_usermodehelper_setup(path, argv, envp, gfp_mask);
--
--	if (info == NULL)
--		return -ENOMEM;
--
--	call_usermodehelper_setfns(info, init, cleanup, data);
--
--	return call_usermodehelper_exec(info, wait);
--}
-+			void (*cleanup)(struct subprocess_info *), void *data);
- 
- static inline int
- call_usermodehelper(char *path, char **argv, char **envp, int wait)
-diff --git a/kernel/kmod.c b/kernel/kmod.c
-index c5af66a..309299a 100644
---- a/kernel/kmod.c
-+++ b/kernel/kmod.c
-@@ -422,6 +422,7 @@ static void helper_unlock(void)
-  * structure.  This should be passed to call_usermodehelper_exec to
-  * exec the process and free the structure.
-  */
-+static
- struct subprocess_info *call_usermodehelper_setup(char *path, char **argv,
- 						  char **envp, gfp_t gfp_mask)
- {
-@@ -437,7 +438,6 @@ struct subprocess_info *call_usermodehelper_setup(char *path, char **argv,
-   out:
- 	return sub_info;
- }
--EXPORT_SYMBOL(call_usermodehelper_setup);
- 
- /**
-  * call_usermodehelper_setfns - set a cleanup/init function
-@@ -455,6 +455,7 @@ struct subprocess_info *call_usermodehelper_setup(char *path, char **argv,
-  * Function must be runnable in either a process context or the
-  * context in which call_usermodehelper_exec is called.
-  */
-+static
- void call_usermodehelper_setfns(struct subprocess_info *info,
- 		    int (*init)(struct subprocess_info *info, struct cred *new),
- 		    void (*cleanup)(struct subprocess_info *info),
-@@ -464,7 +465,6 @@ void call_usermodehelper_setfns(struct subprocess_info *info,
- 	info->init = init;
- 	info->data = data;
- }
--EXPORT_SYMBOL(call_usermodehelper_setfns);
- 
- /**
-  * call_usermodehelper_exec - start a usermode application
-@@ -478,6 +478,7 @@ void call_usermodehelper_setfns(struct subprocess_info *info,
-  * asynchronously if wait is not set, and runs as a child of keventd.
-  * (ie. it runs with full root capabilities).
-  */
-+static
- int call_usermodehelper_exec(struct subprocess_info *sub_info, int wait)
- {
- 	DECLARE_COMPLETION_ONSTACK(done);
-@@ -519,7 +520,25 @@ int call_usermodehelper_exec(struct subprocess_info *sub_info, int wait)
- 	helper_unlock();
- 	return retval;
- }
--EXPORT_SYMBOL(call_usermodehelper_exec);
-+
-+int call_usermodehelper_fns(
-+	char *path, char **argv, char **envp, int wait,
-+	int (*init)(struct subprocess_info *info, struct cred *new),
-+	void (*cleanup)(struct subprocess_info *), void *data)
-+{
-+	struct subprocess_info *info;
-+	gfp_t gfp_mask = (wait == UMH_NO_WAIT) ? GFP_ATOMIC : GFP_KERNEL;
-+
-+	info = call_usermodehelper_setup(path, argv, envp, gfp_mask);
-+
-+	if (info == NULL)
-+		return -ENOMEM;
-+
-+	call_usermodehelper_setfns(info, init, cleanup, data);
-+
-+	return call_usermodehelper_exec(info, wait);
-+}
-+EXPORT_SYMBOL(call_usermodehelper_fns);
- 
- static int proc_cap_handler(struct ctl_table *table, int write,
- 			 void __user *buffer, size_t *lenp, loff_t *ppos)
--- 
-1.7.6.5
+    nfsd4: use auth_unix unconditionally on backchannel
+    
+    This isn't actually correct, but it works with the Linux client, and
+    agrees with the behavior we used to have before commit 80fc015bdfe.
+    
+    Later patches will implement the spec-mandated behavior (which is to use
+    the security parameters explicitly given by the client in create_session
+    or backchannel_ctl).
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 0840fc4..c8e9f63 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -645,7 +645,6 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+ 		.timeout	= &timeparms,
+ 		.program	= &cb_program,
+ 		.version	= 0,
+-		.authflavor	= clp->cl_flavor,
+ 		.flags		= (RPC_CLNT_CREATE_NOPING | RPC_CLNT_CREATE_QUIET),
+ 	};
+ 	struct rpc_clnt *client;
+@@ -656,6 +655,7 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+ 		args.client_name = clp->cl_principal;
+ 		args.prognumber	= conn->cb_prog,
+ 		args.protocol = XPRT_TRANSPORT_TCP;
++		args.authflavor = clp->cl_flavor;
+ 		clp->cl_cb_ident = conn->cb_ident;
+ 	} else {
+ 		if (!conn->cb_xprt)
+@@ -665,6 +665,7 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+ 		args.bc_xprt = conn->cb_xprt;
+ 		args.prognumber = clp->cl_cb_session->se_cb_prog;
+ 		args.protocol = XPRT_TRANSPORT_BC_TCP;
++		args.authflavor = RPC_AUTH_UNIX;
+ 	}
+ 	/* Create RPC client */
+ 	client = rpc_create(&args);
