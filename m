@@ -1,73 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:22558 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752512Ab2CPRgd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 16 Mar 2012 13:36:33 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Sachin Prabhu <sprabhu@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Error: state manager encountered RPCSEC_GSS session expired
- against NFSv4 server
-Date: Fri, 16 Mar 2012 17:36:30 +0000
-Message-ID: <1331919386.2518.44.camel@lade.trondhjem.org>
-References: <1331912791.2336.3.camel@localhost>
-In-Reply-To: <1331912791.2336.3.camel@localhost>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:44367 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751865Ab2C1Mt3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Mar 2012 08:49:29 -0400
+Received: by iagz16 with SMTP id z16so1448649iag.19
+        for <linux-nfs@vger.kernel.org>; Wed, 28 Mar 2012 05:49:28 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <1332887744-4222-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1332887744-4222-1-git-send-email-Trond.Myklebust@netapp.com>
+Date: Wed, 28 Mar 2012 21:49:28 +0900
+Message-ID: <CAKYAXd868TcdJandJbV5EWkXPaNVNUmKj-0pdK88CP21ZGB9qw@mail.gmail.com>
+Subject: Re: [PATCH 1/3] NFSv4: Fix two infinite loops in the mount code
+From: Namjae Jeon <linkinjeon@gmail.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTAzLTE2IGF0IDE1OjQ2ICswMDAwLCBTYWNoaW4gUHJhYmh1IHdyb3RlOg0K
-PiBXZSBoYXZlIGEgdXNlciByZXBvcnQgdGhhdCB0aGV5IHNlZSB0aGUgZm9sbG93aW5nIG1lc3Nh
-Z2VzDQo+IGluIC92YXIvbG9nL21lc3NhZ2VzIGFuZCB0aGUgTkZTIHNoYXJlIGhhbmdzIHdoZW4g
-YSB1c2VyJ3Mga2VyYmVyb3MNCj4gY3JlZGVudGlhbHMgZXhwaXJlLg0KPiANCj4ga2VybmVsOiBF
-cnJvcjogc3RhdGUgbWFuYWdlciBlbmNvdW50ZXJlZCBSUENTRUNfR1NTIHNlc3Npb24gZXhwaXJl
-ZA0KPiBhZ2FpbnN0IE5GU3Y0IHNlcnZlciB2bTE0MC0zMS4NCj4gDQo+IFRoZSByZXByb2R1Y2Vy
-IGlzIGFzIGZvbGxvd3MNCj4gDQo+IDEuIENvbmZpZ3VyZSBORlM0ICsgS2VyYmVyb3MsIG1vdW50
-IG5mczQgc2hhcmUgb24gdGhlIGNsaWVudCBzaWRlIHVzaW5nDQo+IHNlYz1rcmI1Lg0KPiANCj4g
-Mi4gQ3JlYXRlIDIgbmZzdXNlcnMsIGxvZ2luIGFzIHVzZXIxLCBvYnRhaW4gYSBrZXJiZXJvcyB0
-aWNrZXQgd2l0aCBhDQo+IHNob3J0IGR1cmF0aW9uIGFuZCBvcGVuIGEgZmlsZSBvbiB0aGUgbmZz
-IHNoYXJlLiBMZWF2ZSB0aGlzIGZpbGUgb3Blbg0KPiAjIHN1IC0gdXNlcjENCj4gJCBraW5pdCAt
-bCA1bQ0KPiAkIGNkIC9ob21lL3VzZXIxDQo+ICQgdG91Y2ggZmlsZTEudHh0DQo+ICQgc2xlZXAg
-MTAwMDAwIDwgZmlsZTEudHh0ICYNCj4gDQo+IDMuIEFmdGVyIDMwMCBzZWNvbmRzLCBvbiBhIGRp
-ZmZlcmVudCB0ZXJtaW5hbCwgbG9naW4gYXMgdXNlcjIsIG9idGFpbiBhDQo+IGtlcmJlcm9zIHRp
-Y2tldCBhbmQgYXR0ZW1wdCB0byBvcGVuIGEgZmlsZS4NCj4gIyBzdSAtIHVzZXIyDQo+ICQga2lu
-aXQNCj4gJCBjZCAvaG9tZS91c2VyMg0KPiAkIHRvdWNoIG15ZmlsZTEudHh0DQo+IC4NCj4gLg0K
-PiBBdCB0aGlzIHBvaW50LCB0aGUgcHJvY2VzcyBoYW5ncyBhbmQgL3Zhci9sb2cvbWVzc2FnZXMg
-YXJlIGZpbGxlZCB1cA0KPiB3aXRoIHRoZSBmb2xsb3dpbmcgbWVzc2FnZXMuDQo+IGtlcm5lbDog
-RXJyb3I6IHN0YXRlIG1hbmFnZXIgZW5jb3VudGVyZWQgUlBDU0VDX0dTUyBzZXNzaW9uIGV4cGly
-ZWQNCj4gYWdhaW5zdCBORlN2NCBzZXJ2ZXIgJChob3N0bmFtZSkNCj4gDQo+IE9uIGZ1cnRoZXIg
-ZGVidWdnaW5nLCB3ZSBmb3VuZCB0aGUgY2F1c2UgdG8gYmUgdGhlIHRoYXQgdGhlIHN0YXRlDQo+
-IG1hbmFnZXIgdXNlcyB0aGUgY3JlZGVudGlhbHMgb2YgdGhlIGZpcnN0IHN0YXRlb3duZXIgd2l0
-aCBvcGVuIGZpbGVzIGl0DQo+IGZpbmRzLiBUaGVzZSBhcmUgcmV0dXJuZWQgYnkgbmZzNF9nZXRf
-cmVuZXdfY3JlZF9sb2NrZWQoKSAtPg0KPiBuZnM0X2dldF9yZW5ld19jcmVkX3NlcnZlcl9sb2Nr
-ZWQoKSB0byBjYWxsIHRoZSBSRU5FVy4NCj4gDQo+IDEpIFRoZSBzZXJ2ZXIgYmVmb3JlIGl0IG9w
-ZW5zIGEgZmlsZSBuZWVkcyB0byBzZXQgYSBjbGllbnQgaWQuIEl0IGRvZXMNCj4gdGhpcyBieSBj
-YWxsaW5nIHRoZSBTRVRfQ0xJRU5USUQgY2FsbC4gVGhlIHNlcnZlciBpbiByZXNwb25zZSByZXR1
-cm5zIGENCj4gY2xpZW50IGlkLiANCj4gU2luY2Uga2VybmVsIDIuNi4yOShjb21taXQgYTdiNzIx
-MDM3Zjg5OGIyOWE4MDgzZGE1OWIxZGNjZDNkYTM4NWIwNykgdGhlDQo+IFNFVF9DTElFTlRJRCBj
-YWxsIGlzIG1hZGUgdXNpbmcgdGhlIG1hY2hpbmUgY3JlZGVudGlhbHMuIA0KPiANCj4gMikgSG93
-ZXZlciBhbGwgc3Vic2VxdWVudCBSRU5FVyBjYWxscyBmb3IgdGhhdCBjbGllbnRpZCwgdGhlIHNl
-cnZlciB1c2VzDQo+IHRoZSBmaXJzdCBjcmVkZW50aWFsIGl0IGZpbmRzIHdoaWNoIGlzIHVzZWQg
-YnkgYW4gb3BlbiBmaWxlIG9uIHRoYXQNCj4gbWFjaGluZS4gIEluIG91ciB0ZXN0IGNhc2UsIGl0
-IGlzIHRoZSB1c2VyIHdpdGggdGhlIGV4cGlyZWQgdGlja2V0LiANCj4gV2hlbiB0aGUgdGlja2V0
-IGV4cGlyZXMsIHRoZSBjYWxsIHRvIHJlZnJlc2ggdGhlIGNyZWRlbnRpYWxzLCBtYWRlIGF0DQo+
-IGNhbGxfcmVmcmVzaCAtPiBycGNhdXRoX3JlZnJlc2hjcmVkIC0+IGdzc19yZWZyZXNoKCkNCj4g
-cmV0dXJucyBFS0VZRVhQSVJFRC4NCj4gVGhpcyBtZWFucyB0aGF0IHRoZSBSRU5FVyBjYWxsIGZh
-aWxzIGJlZm9yZSBpdCBjb3VsZCBiZSBzZW50IG92ZXIgdGhlDQo+IHdpcmUuIA0KPiBUaGUgY2xp
-ZW50aWQgb24gdGhlIHNlcnZlciBldmVudHVhbGx5IGV4cGlyZXMuDQo+IA0KPiAzKSBXaGVuIHRo
-ZSB1c2VyIHdpdGggdGhlIHZhbGlkIHRpY2tldCB0aGVuIGF0dGVtcHRzIHRvIG9wZW4gYSBmaWxl
-LCB0aGUNCj4gc2VydmVyIHJldHVybnMgYSBORlM0RVJSX0VYUElSRUQgd2hpY2ggaW5kaWNhdGVz
-IHRoYXQgY2xpZW50aWQgYXQgdGhlDQo+IHNlcnZlciBpcyBubyBsb25nZXIgdmFsaWQuIEEgd2Fy
-bmluZyBtZXNzYWdlIGlzIHByaW50ZWQgb3V0IGF0IHRoaXMNCj4gdGltZS4gVG8gZml4IHRoaXMs
-IHRoZSBjbGllbnQgYXR0ZW1wdHMgdG8gUkVORVcuIFRoaXMgaGl0cyB0aGUgcHJvYmxlbQ0KPiBp
-biBzdGVwIDIuDQo+IA0KPiBTdGVwIDIgYW5kIDMgbm93IHJ1biBjb250aW5vdXNseSBhbmQgbm8g
-UkVORVcgY2FsbHMgYXJlIHNlbnQgb3ZlciB0aGUNCj4gd2lyZS4NCj4gDQo+IFRoZSBTRVRfQ0xJ
-RU5USUQgY2FsbHMgYXJlIG1hZGUgdXNpbmcgdGhlIG1hY2hpbmUgY3JlZHMuIFdoeSBkb24ndCB3
-ZQ0KPiBzaW1wbHkgdXNlIHRoZSBtYWNoaW5lIGNyZWRzIHRvIHJlbmV3IHRoZSBjbGllbnRpZD8N
-Cg0KVGhlIHByb2JsZW0gaXMgdGhhdCBpZiB0aGUgY2xpZW50IGRvZXNuJ3QgaGF2ZSBhIG1hY2hp
-bmUgY3JlZCwgdGhlbiB5b3UNCmVuZCB1cCB0YWtpbmcgYSByYW5kb20gdXNlciBjcmVkZW50aWFs
-IHRoYXQgbWF5IG5vdCBjdXJyZW50bHkgYmUgaG9sZGluZw0KYW55IE9QRU4gZmlsZXMuIEluIHRo
-YXQgY2FzZSB0b28gdGhlIFJFTkVXIHdpbGwgZmFpbC4NCg0KQ2hlZXJzDQogIFRyb25kDQotLSAN
-ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0K
-VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+Hi. Trond.
+
+Is it better if exception.retry set to zero instead goto ?
+
+Thanks.
+
+2012/3/28 Trond Myklebust <Trond.Myklebust@netapp.com>:
+> We can currently loop forever in nfs4_lookup_root() and in
+> nfs41_proc_secinfo_no_name(), if the first iteration returns a
+> NFS4ERR_DELAY or something else that causes exception.retry to get
+> set.
+>
+> Reported-by: Dros Adamson <Weston.Adamson@netapp.com>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Cc: stable@vger.kernel.org
+> ---
+>  fs/nfs/nfs4proc.c |    6 ++++--
+>  1 files changed, 4 insertions(+), 2 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 45df7d4..ee9ca19 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -2290,11 +2290,12 @@ static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
+>                switch (err) {
+>                case 0:
+>                case -NFS4ERR_WRONGSEC:
+> -                       break;
+> +                       goto out;
+>                default:
+>                        err = nfs4_handle_exception(server, err, &exception);
+>                }
+>        } while (exception.retry);
+> +out:
+>        return err;
+>  }
+>
+> @@ -6229,11 +6230,12 @@ nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
+>                case 0:
+>                case -NFS4ERR_WRONGSEC:
+>                case -NFS4ERR_NOTSUPP:
+> -                       break;
+> +                       goto out;
+>                default:
+>                        err = nfs4_handle_exception(server, err, &exception);
+>                }
+>        } while (exception.retry);
+> +out:
+>        return err;
+>  }
+>
+> --
+> 1.7.7.6
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
