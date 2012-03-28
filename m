@@ -1,116 +1,141 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:60949 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754447Ab2CWCgQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Mar 2012 22:36:16 -0400
-Message-ID: <4F6BE193.5050103@panasas.com>
-Date: Thu, 22 Mar 2012 19:36:03 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:20576 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758378Ab2C1PKA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Mar 2012 11:10:00 -0400
+Subject: [PATCH 8/8] nfsd: pass pointer to expkey cache down to stack wherever
+ possible.
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Wed, 28 Mar 2012 19:09:50 +0400
+Message-ID: <20120328150950.2646.70232.stgit@localhost6.localdomain6>
+In-Reply-To: <20120328150152.2646.33607.stgit@localhost6.localdomain6>
+References: <20120328150152.2646.33607.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-To: Steve Dickson <steved@redhat.com>,
-        "Bhamare, Sachin" <sbhamare@panasas.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>,
-        Benny Halevy <bhalevy@tonian.com>, "Welch, Brent" <welch@panasas.com>
-Subject: SQUASHME: osd_login: Add autologin script for objlayoutdriver
-References: <4F62DADD.3010502@panasas.com> <4F62DD6C.4040504@panasas.com>
-In-Reply-To: <4F62DD6C.4040504@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/15/2012 11:27 PM, Boaz Harrosh wrote:
-> From: Sachin Bhamare <sbhamare@panasas.com>
-> 
-> This script is part of the autologin feature mandated by the
-> pnfs-objects standard.
-> It is called from objlayoutdriver.ko in the kernel.
-> 
-> Signed-off-by: Sachin Bhamare <sbhamare@panasas.com>
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+This cache will be per-net soon. And it's easier to get the pointer to desired
+per-net instance only once and then pass it down instead of discovering it in
+every place were required.
 
-As suggested by Trond (Thanks Trond) We add a watchdog
-facility to the script so it will timeout after 15s and
-will return to the Kernel, even if iscsiadm gets stuck.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-We are also logging with the "osd_login" prefix.
-
-Below is the diff from this patch. (ver 1).
-
-I will send a new email patch [version 2] for submission
-to nfs-utils, as reply to the original patch.
-
-Please submit, as the Kernel part has been accepted
-into Mainline for the 3.4-rc1 merge window
-
-Much obliged
-Sachin & Boaz
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
 ---
-diff --git a/utils/osd_login/osd_login b/utils/osd_login/osd_login
-index c08e05c..63967fc 100755
---- a/utils/osd_login/osd_login
-+++ b/utils/osd_login/osd_login
-@@ -27,6 +27,9 @@ PATH="/sbin:/usr/sbin:/bin:/usr/bin"
- 
- iscsiadm=/sbin/iscsiadm
- 
-+PARENT_PID=$BASHPID
-+WATCHDOG_TIMEOUT=15
-+
- protocol=""
- portal=""
- uri=""
-@@ -71,32 +74,45 @@ parse_cmdline()
- 	portal=`echo $uri | awk -F '//' '{print $2}'`
+ fs/nfsd/export.c |   32 ++++++++++++++++----------------
+ 1 files changed, 16 insertions(+), 16 deletions(-)
+
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index c237b0a..429b2f5 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -71,9 +71,9 @@ static int expkey_upcall(struct cache_detail *cd, struct cache_head *h)
+ 	return sunrpc_cache_pipe_upcall(cd, h, expkey_request);
  }
  
--do_cmd()
-+watchdog()
+-static struct svc_expkey *svc_expkey_update(struct svc_expkey *new, struct svc_expkey *old);
+-static struct svc_expkey *svc_expkey_lookup(struct svc_expkey *);
+-static struct cache_detail svc_expkey_cache;
++static struct svc_expkey *svc_expkey_update(struct cache_detail *cd, struct svc_expkey *new,
++					    struct svc_expkey *old);
++static struct svc_expkey *svc_expkey_lookup(struct cache_detail *cd, struct svc_expkey *);
+ 
+ static int expkey_parse(struct cache_detail *cd, char *mesg, int mlen)
  {
--	$* 2>&1 | logger &
-+	timeout=$1
-+	portal=$2
-+
-+        sleep $timeout
-+	if kill -9 $PARENT_PID; then
-+	    echo "watchdog : Timed out (>$timeout seconds) while login into $portal" | logger -t "osd_login"
-+	fi
-+        echo "watchdog: exiting .."
-+        exit 2
+@@ -131,7 +131,7 @@ static int expkey_parse(struct cache_detail *cd, char *mesg, int mlen)
+ 	key.ek_fsidtype = fsidtype;
+ 	memcpy(key.ek_fsid, buf, len);
+ 
+-	ek = svc_expkey_lookup(&key);
++	ek = svc_expkey_lookup(cd, &key);
+ 	err = -ENOMEM;
+ 	if (!ek)
+ 		goto out;
+@@ -145,7 +145,7 @@ static int expkey_parse(struct cache_detail *cd, char *mesg, int mlen)
+ 	err = 0;
+ 	if (len == 0) {
+ 		set_bit(CACHE_NEGATIVE, &key.h.flags);
+-		ek = svc_expkey_update(&key, ek);
++		ek = svc_expkey_update(cd, &key, ek);
+ 		if (!ek)
+ 			err = -ENOMEM;
+ 	} else {
+@@ -155,7 +155,7 @@ static int expkey_parse(struct cache_detail *cd, char *mesg, int mlen)
+ 
+ 		dprintk("Found the path %s\n", buf);
+ 
+-		ek = svc_expkey_update(&key, ek);
++		ek = svc_expkey_update(cd, &key, ek);
+ 		if (!ek)
+ 			err = -ENOMEM;
+ 		path_put(&key.ek_path);
+@@ -268,13 +268,12 @@ svc_expkey_hash(struct svc_expkey *item)
  }
  
- login_iscsi_osd()
+ static struct svc_expkey *
+-svc_expkey_lookup(struct svc_expkey *item)
++svc_expkey_lookup(struct cache_detail *cd, struct svc_expkey *item)
  {
--	echo "osd_login: login into: $1"
-+	echo "login into: $1"
- 	if ! $iscsiadm -m discovery -o nonpersistent -t sendtargets -p $1 --login; then
- 		echo "$iscsiadm -m discovery -t sendtargets -p $1 --login returned error $? !"
- 		sleep 1;
- 	fi
+ 	struct cache_head *ch;
+ 	int hash = svc_expkey_hash(item);
+ 
+-	ch = sunrpc_cache_lookup(&svc_expkey_cache, &item->h,
+-				 hash);
++	ch = sunrpc_cache_lookup(cd, &item->h, hash);
+ 	if (ch)
+ 		return container_of(ch, struct svc_expkey, h);
+ 	else
+@@ -282,13 +281,13 @@ svc_expkey_lookup(struct svc_expkey *item)
  }
  
-- echo "============= osd_login ========="
-- echo "progname : $0"
-+echo "============= osd_login ========="
-+echo "progname : $0"
- parse_cmdline "$@"
- echo "protocol: $protocol"
- echo "portal: $portal"
+ static struct svc_expkey *
+-svc_expkey_update(struct svc_expkey *new, struct svc_expkey *old)
++svc_expkey_update(struct cache_detail *cd, struct svc_expkey *new,
++		  struct svc_expkey *old)
+ {
+ 	struct cache_head *ch;
+ 	int hash = svc_expkey_hash(new);
  
-+watchdog $WATCHDOG_TIMEOUT $portal &
-+watchdog_pid=$!
-+
- case $protocol in
- iscsi)
--	login_iscsi_osd $portal |& logger
-+	login_iscsi_osd $portal |& logger -t "osd_login"
- 	;;
- *)
--	echo "osd_login: Error: protocol $protocol not supported !" | logger
-+	echo "Error: protocol $protocol not supported !" | logger -t "osd_login"
- 	;;
- esac
+-	ch = sunrpc_cache_update(&svc_expkey_cache, &new->h,
+-				 &old->h, hash);
++	ch = sunrpc_cache_update(cd, &new->h, &old->h, hash);
+ 	if (ch)
+ 		return container_of(ch, struct svc_expkey, h);
+ 	else
+@@ -763,7 +762,8 @@ svc_export_update(struct svc_export *new, struct svc_export *old)
  
-+kill -9 $watchdog_pid
-+exit 0
+ 
+ static struct svc_expkey *
+-exp_find_key(svc_client *clp, int fsid_type, u32 *fsidv, struct cache_req *reqp)
++exp_find_key(struct cache_detail *cd, svc_client *clp, int fsid_type,
++	     u32 *fsidv, struct cache_req *reqp)
+ {
+ 	struct svc_expkey key, *ek;
+ 	int err;
+@@ -775,10 +775,10 @@ exp_find_key(svc_client *clp, int fsid_type, u32 *fsidv, struct cache_req *reqp)
+ 	key.ek_fsidtype = fsid_type;
+ 	memcpy(key.ek_fsid, fsidv, key_len(fsid_type));
+ 
+-	ek = svc_expkey_lookup(&key);
++	ek = svc_expkey_lookup(cd, &key);
+ 	if (ek == NULL)
+ 		return ERR_PTR(-ENOMEM);
+-	err = cache_check(&svc_expkey_cache, &ek->h, reqp);
++	err = cache_check(cd, &ek->h, reqp);
+ 	if (err)
+ 		return ERR_PTR(err);
+ 	return ek;
+@@ -883,7 +883,7 @@ static struct svc_export *exp_find(struct cache_detail *cd,
+ 				   u32 *fsidv, struct cache_req *reqp)
+ {
+ 	struct svc_export *exp;
+-	struct svc_expkey *ek = exp_find_key(clp, fsid_type, fsidv, reqp);
++	struct svc_expkey *ek = exp_find_key(&svc_expkey_cache, clp, fsid_type, fsidv, reqp);
+ 	if (IS_ERR(ek))
+ 		return ERR_CAST(ek);
+ 
+
