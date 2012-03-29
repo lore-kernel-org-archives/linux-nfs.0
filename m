@@ -1,56 +1,31 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:31117 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:6284 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030562Ab2CTQZu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Mar 2012 12:25:50 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 1/2] NFS4.1: filelayout_commit_pagelist needs to pass back error
-Date: Tue, 20 Mar 2012 12:25:45 -0400
-Message-Id: <1332260746-8351-1-git-send-email-iisaman@netapp.com>
+	id S1759080Ab2C2Qyy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Mar 2012 12:54:54 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Orion Poplawski <orion@cora.nwra.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [nfsv4] open(O_CREAT) returns EEXISTS on symbolic link created
+ on another system until stat()ed
+Date: Thu, 29 Mar 2012 16:54:46 +0000
+Message-ID: <1333040091.5547.32.camel@lade.trondhjem.org>
+References: <loom.20120329T182500-467@post.gmane.org>
+In-Reply-To: <loom.20120329T182500-467@post.gmane.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It was reporting success even if it did nothing.
-
-Note this is still not right.  Caller nfs_commit_unstable_pages
-assumes this is all or none, and count is going to be off.
-
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/nfs4filelayout.c |    4 +++-
- 1 files changed, 3 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index e0bdbf4..08625a8 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -1027,6 +1027,7 @@ filelayout_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
- 	struct nfs_write_data	*data, *tmp;
- 	LIST_HEAD(list);
- 	unsigned int nreq = 0;
-+	int status = PNFS_ATTEMPTED;
- 
- 	if (!list_empty(mds_pages)) {
- 		data = nfs_commitdata_alloc();
-@@ -1042,6 +1043,7 @@ filelayout_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
- 
- 	if (nreq == 0) {
- 		nfs_commit_clear_lock(NFS_I(inode));
-+		status = -ENOMEM;
- 		goto out;
- 	}
- 
-@@ -1059,7 +1061,7 @@ filelayout_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
- 		}
- 	}
- out:
--	return PNFS_ATTEMPTED;
-+	return status;
- }
- 
- static void
--- 
-1.7.2.1
-
+T24gVGh1LCAyMDEyLTAzLTI5IGF0IDE2OjI4ICswMDAwLCBPcmlvbiBQb3BsYXdza2kgd3JvdGU6
+DQo+IEkgZmlsZWQgYSBidWcgaGVyZTogaHR0cHM6Ly9idWd6aWxsYS5yZWRoYXQuY29tL3Nob3df
+YnVnLmNnaT9pZD04MDgxMTINCj4gDQo+IERlc2NyaXB0aW9uIG9mIHByb2JsZW06DQo+IA0KPiBj
+bGllbnQgQToNCj4gdG91Y2ggYmxhaA0KPiBsbiAtcyBibGFoIGJsYWhsaW5rDQo+IA0KPiBjbGll
+bnQgQjoNCj4gb3BlbigiYmxhaGxpbmsiLCBPX1JET05MWXxPX0NSRUFULCAwNjY2KSA9IC0xIEVF
+WElTVCAoRmlsZSBleGlzdHMpDQoNClRoYXQgc291bmRzIG1vcmUgbGlrZSBhIHNlcnZlciBidWcu
+IEl0IHNob3VsZG4ndCBiZSByZXBseWluZw0KTkZTNEVSUl9FWElTVCBoZXJlLCBzaW5jZSB0aGlz
+IGlzbid0IGFuIGV4Y2x1c2l2ZSBjcmVhdGU7IGl0IHNob3VsZA0KcmF0aGVyIGJlIHJlcGx5aW5n
+IHdpdGggTkZTNEVSUl9TWU1MSU5LLg0KDQpXaGljaCBzZXJ2ZXIgYXJlIHlvdSB0ZXN0aW5nIGFn
+YWluc3QsIGFuZCB3aGF0IGRvZXMgdGhlIHdpcmVzaGFyayB0cmFjZQ0Kc2hvdz8NCg0KLS0gDQpU
+cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRy
+b25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
