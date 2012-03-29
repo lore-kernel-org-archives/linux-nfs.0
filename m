@@ -1,36 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58022 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:24005 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756714Ab2CLTfI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Mar 2012 15:35:08 -0400
-Date: Mon, 12 Mar 2012 15:35:07 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
-Cc: Simo Sorce <simo@redhat.com>, steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/7] Kill SPKM3 auth method
-Message-ID: <20120312193507.GB7203@fieldses.org>
-References: <1331322586-4631-1-git-send-email-simo@redhat.com>
- <4F5A76CD.9080809@fifthhorseman.net>
- <20120309215446.GA22068@fieldses.org>
- <4F5C1CCC.7080907@fifthhorseman.net>
+	id S1750712Ab2C2EJB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Mar 2012 00:09:01 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: Boaz Harrosh <bharrosh@panasas.com>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
+Subject: Re: [GIT PULL] Please pull NFS client bugfixes for Linux 3.4...
+Date: Thu, 29 Mar 2012 04:08:39 +0000
+Message-ID: <1332994124.30608.5.camel@lade.trondhjem.org>
+References: <1332986348.19172.43.camel@lade.trondhjem.org>
+	 <CA+55aFwVzhgsw005P3+BkLw_=noJwkQB3G=Q4GqhfLL1WyPHfg@mail.gmail.com>
+	 <1332986928.19172.45.camel@lade.trondhjem.org>
+	 <CA+55aFyQ0r5mN9=3DUVENCtdj8VMLRjiXTc5Xd4o+F=s9B8xMg@mail.gmail.com>
+	 <1332988097.19172.51.camel@lade.trondhjem.org>
+	 <4F73D44C.5090604@panasas.com>
+	 <CA+55aFyHmQBXw3ik3qv81_3Zp+4r-VUt_TNBs-M19b6Zt7PDeQ@mail.gmail.com>
+In-Reply-To: <CA+55aFyHmQBXw3ik3qv81_3Zp+4r-VUt_TNBs-M19b6Zt7PDeQ@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F5C1CCC.7080907@fifthhorseman.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Mar 10, 2012 at 10:32:28PM -0500, Daniel Kahn Gillmor wrote:
-> On 03/09/2012 04:54 PM, J. Bruce Fields wrote:
-> >Understood that people would like such a thing, but alas spkm3 and
-> >lipkey never quite managed to provide it.
-> 
-> Can you point me to an explanation of what is missing from spkm3 and
-> lipkey for this goal?  I'd like to understand this problem space
-> better.
-
-Sorry, no.  Maybe somebody else can.
-
-Googling for spkm3 and looking for ietf mailing discussions might be a
-starting point.
-
---b.
+T24gV2VkLCAyMDEyLTAzLTI4IGF0IDIwOjQ0IC0wNzAwLCBMaW51cyBUb3J2YWxkcyB3cm90ZToN
+Cj4gT24gV2VkLCBNYXIgMjgsIDIwMTIgYXQgODoxNyBQTSwgQm9heiBIYXJyb3NoIDxiaGFycm9z
+aEBwYW5hc2FzLmNvbT4gd3JvdGU6DQo+ID4NCj4gPiBUaGFuayB5b3UgVHJvbmQgZm9yIHNoYXJp
+bmcsIGhlcmUgaXMgYSBuZXcgdXNlcg0KPiANCj4gT2gsICpwbGVhc2UqIHVzZSBnaXQgcHVsbC1y
+ZXF1ZXN0IGluc3RlYWQuIEl0IGRvZXMgYSBsb3Qgb2YgdGhpbmdzDQo+IG11Y2ggYmV0dGVyLCBp
+bmNsdWRpbmcgdGhlIGRpZmZzdGF0L3Nob3J0bG9nIGFuZCB0aGUgdGFnIG1lc3NhZ2UsIG5vbmUN
+Cj4gb2Ygd2hpY2ggVHJvbmQncyBkb2VzLg0KPiANCj4gICAgICAgICAgICAgICAgICAgICAgIExp
+bnVzDQoNCk1heWJlIEknbSBydW5uaW5nIGFuIG9sZGVyIHZlcnNpb24gb2YgZ2l0IChGZWRvcmEg
+MTYgbGF0ZXN0IHVwZGF0ZSksIGJ1dA0Kd2hlbiBJIGRvDQoNCmdpdCByZXF1ZXN0LXB1bGwgdjMu
+MyBnaXQ6Ly9naXQubGludXgtbmZzLm9yZy9wcm9qZWN0cy90cm9uZG15L2xpbnV4LW5mcy5naXQg
+bmZzLWZvci0zLjQtMQ0KDQpJIGdldDoNCg0KICAgICAgICAgICAgICAgIFRoZSBmb2xsb3dpbmcg
+Y2hhbmdlcyBzaW5jZSBjb21taXQgYzE2ZmE0ZjJhZDE5OTA4YTQ3YzYzZDhmYTQzNmExMTc4NDM4
+YzdlNzoNCiAgICAgICAgICAgICAgICANCiAgICAgICAgICAgICAgICAgIExpbnV4IDMuMyAoMjAx
+Mi0wMy0xOCAxNjoxNTozNCAtMDcwMCkNCiAgICAgICAgICAgICAgICANCiAgICAgICAgICAgICAg
+ICBhcmUgYXZhaWxhYmxlIGluIHRoZSBnaXQgcmVwb3NpdG9yeSBhdDoNCiAgICAgICAgICAgICAg
+ICAgIGdpdDovL2dpdC5saW51eC1uZnMub3JnL3Byb2plY3RzL3Ryb25kbXkvbGludXgtbmZzLmdp
+dCAuLkJSQU5DSC5OT1QuVkVSSUZJRUQuLg0KICAgICAgICAgICAgICAgIA0KICAgICAgICAgICAg
+ICAgIEFuZHkgQWRhbXNvbiAoNCk6DQogICAgICAgICAgICAgICAgICAgICAgU1VOUlBDOiBhZGQg
+c2VuZGluZyxwZW5kaW5nIHF1ZXVlIGFuZCBtYXggc2xvdCB0byB4cHJ0IHN0YXRzDQogICAgICAg
+ICAgICAgICAgICAgICAgTkZTdjQuMSBzZXQgaGlnaGVzdF91c2VkX3Nsb3RpZCB0byBORlM0X05P
+X1NMT1QNCiAgICAgICAgICAgICAgICAgICAgICBORlN2NC4xIGhhbmRsZSBEUyBzdGF0ZWlkIGVy
+cm9ycw0KICAgICAgICAgICAgICAgICAgICAgIE5GU3Y0LjEgY2xlYW51cCBEUyBzdGF0ZWlkIGVy
+cm9yIGhhbmRsaW5nDQogICAgICAgICAgICAgICAgDQogICAgICAgICAgICAgICAgLi4uLg0KICAg
+ICAgICAgICAgICAgIGxvdHMgb2Ygc2hvcnRsb2cgc3R1ZmYgZm9sbG93ZWQgYnkgdGhlIGRpZmZz
+dGF0Lg0KICAgICAgICAgICAgICAgIC4uLi4NCg0KYW5kIHRoYXQncyBhbGwuLi4NCg0KDQpJJ20g
+cHJldHR5IHN1cmUgdGhhdCBhIHJlcXVlc3QgdG8gcHVsbCBmcm9tICIuLkJSQU5DSC5OT1QuVkVS
+SUZJRUQuLiINCndvdWxkIHBpc3MgeW91IG9mZiwgd2hpY2ggaXMgd2h5IEknbGwgc3RpY2sgdG8g
+bXkgc2NyaXB0IGZvciBub3cuIEl0DQphbHJlYWR5IGhhcyBhICctcycgb3B0aW9uIHRvIGdpdmUg
+eW91IHRoZSBzaG9ydGxvZywgYW5kIGl0IHdpbGwgZ2l2ZSB5b3UNCnRoZSBkaWZmc3RhdCBieSBk
+ZWZhdWx0LiBBbGwgaXQgaXMgbWlzc2luZyBpcyB0aGUgdGFnIG1lc3NhZ2UuLi4NCg0KLS0gDQpU
+cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRy
+b25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
