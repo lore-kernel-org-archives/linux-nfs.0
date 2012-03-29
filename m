@@ -1,88 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:45757 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757447Ab2CBV6t (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2012 16:58:49 -0500
-Received: by mail-iy0-f174.google.com with SMTP id z16so2853208iag.19
-        for <linux-nfs@vger.kernel.org>; Fri, 02 Mar 2012 13:58:49 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 03/12] NFS: Add debugging messages to NFSv4's CLOSE procedure
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 02 Mar 2012 16:58:48 -0500
-Message-ID: <20120302215848.12758.84433.stgit@degas.1015granger.net>
-In-Reply-To: <20120302215559.12758.39526.stgit@degas.1015granger.net>
-References: <20120302215559.12758.39526.stgit@degas.1015granger.net>
-MIME-Version: 1.0
+Received: from mx2.netapp.com ([216.240.18.37]:54114 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933152Ab2C2U5F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Mar 2012 16:57:05 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Dr James Bruce Fields <bfields@fieldses.org>
+CC: Orion Poplawski <orion@cora.nwra.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [nfsv4] open(O_CREAT) returns EEXISTS on symbolic link created
+ on another system until stat()ed
+Date: Thu, 29 Mar 2012 20:56:57 +0000
+Message-ID: <1333054622.10318.19.camel@lade.trondhjem.org>
+References: <loom.20120329T182500-467@post.gmane.org>
+	 <1333040091.5547.32.camel@lade.trondhjem.org>
+	 <4F749CCA.3000400@cora.nwra.com>
+	 <1333042863.5547.37.camel@lade.trondhjem.org>
+	 <4F74A4D5.1040802@cora.nwra.com> <20120329193100.GA20329@fieldses.org>
+	 <1333052170.10318.6.camel@lade.trondhjem.org>
+	 <1333053750.10318.15.camel@lade.trondhjem.org>
+	 <20120329205035.GB21493@fieldses.org>
+In-Reply-To: <20120329205035.GB21493@fieldses.org>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-CLOSE is new with NFSv4.  Sometimes it's important to know the timing
-of this operation compared to things like lease renewal.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- fs/nfs/nfs4proc.c |   11 ++++++++---
- 1 files changed, 8 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 87c584d..53daab9 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1983,6 +1983,7 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
- 	struct nfs4_state *state = calldata->state;
- 	struct nfs_server *server = NFS_SERVER(calldata->inode);
- 
-+	dprintk("%s: begin!\n", __func__);
- 	if (!nfs4_sequence_done(task, &calldata->res.seq_res))
- 		return;
-         /* hmm. we are done with the inode, and in the process of freeing
-@@ -2010,6 +2011,7 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
- 	}
- 	nfs_release_seqid(calldata->arg.seqid);
- 	nfs_refresh_inode(calldata->inode, calldata->res.fattr);
-+	dprintk("%s: done, ret = %d!\n", __func__, task->tk_status);
- }
- 
- static void nfs4_close_prepare(struct rpc_task *task, void *data)
-@@ -2018,6 +2020,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
- 	struct nfs4_state *state = calldata->state;
- 	int call_close = 0;
- 
-+	dprintk("%s: begin!\n", __func__);
- 	if (nfs_wait_on_sequence(calldata->arg.seqid, task) != 0)
- 		return;
- 
-@@ -2042,7 +2045,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
- 	if (!call_close) {
- 		/* Note: exit _without_ calling nfs4_close_done */
- 		task->tk_action = NULL;
--		return;
-+		goto out;
- 	}
- 
- 	if (calldata->arg.fmode == 0) {
-@@ -2051,7 +2054,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
- 		    pnfs_roc_drain(calldata->inode, &calldata->roc_barrier)) {
- 			rpc_sleep_on(&NFS_SERVER(calldata->inode)->roc_rpcwaitq,
- 				     task, NULL);
--			return;
-+			goto out;
- 		}
- 	}
- 
-@@ -2061,8 +2064,10 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
- 				&calldata->arg.seq_args,
- 				&calldata->res.seq_res,
- 				task))
--		return;
-+		goto out;
- 	rpc_call_start(task);
-+out:
-+	dprintk("%s: done!\n", __func__);
- }
- 
- static const struct rpc_call_ops nfs4_close_ops = {
-
+T24gVGh1LCAyMDEyLTAzLTI5IGF0IDE2OjUwIC0wNDAwLCBEciBKYW1lcyBCcnVjZSBGaWVsZHMg
+d3JvdGU6DQo+IE9uIFRodSwgTWFyIDI5LCAyMDEyIGF0IDA4OjQyOjI0UE0gKzAwMDAsIE15a2xl
+YnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gT24gVGh1LCAyMDEyLTAzLTI5IGF0IDE2OjE2IC0wNDAw
+LCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+ID4gPiBPbiBUaHUsIDIwMTItMDMtMjkgYXQgMTU6
+MzEgLTA0MDAsIERyIEphbWVzIEJydWNlIEZpZWxkcyB3cm90ZToNCj4gPiA+ID4gT24gVGh1LCBN
+YXIgMjksIDIwMTIgYXQgMTI6MDc6MTdQTSAtMDYwMCwgT3Jpb24gUG9wbGF3c2tpIHdyb3RlOg0K
+PiA+ID4gPiA+IE9uIDAzLzI5LzIwMTIgMTE6NDAgQU0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6
+DQo+ID4gPiA+ID4gPj5Hb2luZyBiYWNrIHRvIHY0IG9uIEVMNS44IHNlcnZlcjogbmZzdjRlbC5s
+b2csIG5mc3Y0ZjE4LmxvZw0KPiA+ID4gPiA+ID4+DQo+ID4gPiA+ID4gPj5Cb3RoIGdldCBORlM0
+RVJSX0VYSVNUIGluIHRoaXMgY2FzZS4NCj4gPiA+ID4gPiA+DQo+ID4gPiA+ID4gPldoaWNoIGlz
+IGFuIG9idmlvdXMgc2VydmVyIGJ1ZzogaXQgc2hvdWxkIGJlIHNlbmRpbmcgTkZTNEVSUl9TWU1M
+SU5LIGluDQo+ID4gPiA+ID4gPnJlcGx5IHRvIHRoYXQgT1BFTi4NCj4gPiA+ID4gPiA+DQo+ID4g
+PiA+ID4gPkJydWNlPw0KPiA+ID4gPiA+ID4NCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBJIGNhbiBy
+ZXByb2R1Y2Ugd2l0aCBhIDMuNC4wLTAucmMwLmdpdDEuMi5mYzE4IHNlcnZlciBhcyB3ZWxsLg0K
+PiA+ID4gPiANCj4gPiA+ID4gSG0uICBTbyBob3cgYWJvdXQgdGhpcz8gIChVbnRlc3RlZC4pDQo+
+ID4gPiA+IA0KPiA+ID4gPiBQcm9iYWJseSB0aGVyZSBzaG91bGQgYmUgYSBweW5mcyB0ZXN0IHRv
+by4NCj4gPiA+ID4gDQo+ID4gPiA+IEknbSBhc3N1bWluZyBpdCBzaG91bGQgc3RpbGwgYmUgRVJS
+X0VYSVNUIGluIHRoZSBleGNsdXNpdmUsDQo+ID4gPiA+IGV4Y2x1c2l2ZTRfMSwgYW5kIGd1YXJk
+ZWQgY2FzZXMuDQo+ID4gPiA+IA0KPiA+ID4gPiAtLWIuDQo+ID4gPiA+IA0KPiA+ID4gPiBkaWZm
+IC0tZ2l0IGEvZnMvbmZzZC92ZnMuYyBiL2ZzL25mc2QvdmZzLmMNCj4gPiA+ID4gaW5kZXggNzQy
+M2Q3MS4uMmJmY2FkNCAxMDA2NDQNCj4gPiA+ID4gLS0tIGEvZnMvbmZzZC92ZnMuYw0KPiA+ID4g
+PiArKysgYi9mcy9uZnNkL3Zmcy5jDQo+ID4gPiA+IEBAIC0xNDU3LDkgKzE0NTcsMTIgQEAgZG9f
+bmZzZF9jcmVhdGUoc3RydWN0IHN2Y19ycXN0ICpycXN0cCwgc3RydWN0IHN2Y19maCAqZmhwLA0K
+PiA+ID4gPiAgDQo+ID4gPiA+ICAJCXN3aXRjaCAoY3JlYXRlbW9kZSkgew0KPiA+ID4gPiAgCQlj
+YXNlIE5GUzNfQ1JFQVRFX1VOQ0hFQ0tFRDoNCj4gPiA+ID4gLQkJCWlmICghIFNfSVNSRUcoZGNo
+aWxkLT5kX2lub2RlLT5pX21vZGUpKQ0KPiA+ID4gPiAtCQkJCWVyciA9IG5mc2Vycl9leGlzdDsN
+Cj4gPiA+ID4gLQkJCWVsc2UgaWYgKHRydW5jcCkgew0KPiA+ID4gPiArCQkJaWYgKCEgU19JU1JF
+RyhkY2hpbGQtPmRfaW5vZGUtPmlfbW9kZSkpIHsNCj4gPiA+ID4gKwkJCQlpZiAocnFzdHAtPnJx
+X3ZlcnMgPT0gNCkNCj4gPiA+ID4gKwkJCQkJZXJyID0gbmZzZXJyX3N5bWxpbms7DQo+ID4gPiA+
+ICsJCQkJZWxzZQ0KPiA+ID4gPiArCQkJCQllcnIgPSBuZnNlcnJfZXhpc3Q7DQo+ID4gPiANCj4g
+PiA+IE5vLiBUaGlzIHNob3VsZCBfbmV2ZXJfIHJldHVybiBORlM0RVJSX0VYSVNULg0KPiA+ID4g
+DQo+ID4gPiBJdCBzaG91bGQgcmV0dXJuDQo+ID4gPiAgICAgICAqIE5GUzRFUlJfSVNESVIgaWYg
+dGhlIG9iamVjdCBpcyBhIGRpcmVjdG9yeQ0KPiA+ID4gICAgICAgKiBORlM0RVJSX1NZTUxJTksg
+aWYgaXQgaXMgc3ltYm9saWMgbGluaywNCj4gPiA+ICAgICAgICogZWl0aGVyIE5GUzRFUlJfV1JP
+TkdfVFlQRSAoTkZTdjQuMSkgb3IgTkZTNEVSUl9TWU1MSU5LIChORlN2NC4wKQ0KPiA+ID4gICAg
+ICAgICBpZiB0aGUgb2JqZWN0IGlzIGFueSBvdGhlciBub24tcmVndWxhciBmaWxlLg0KPiA+IA0K
+PiA+IEJhc2ljYWxseSwgaWYgYW4gb2JqZWN0IGFscmVhZHkgZXhpc3RzIHdpdGggdGhhdCBuYW1l
+LCB0aGVuDQo+ID4gTkZTM19DUkVBVEVfVU5DSEVDS0VEIHNob3VsZCBiZSB0cmVhdGVkIGFzIGlm
+IGl0IGlzIGFuIG9yZGluYXJ5IE9QRU4gKGluDQo+ID4gdGhlIGNhc2Ugb2YgTkZTdjQpIG9yIExP
+T0tVUCAoaW4gdGhlIGNhc2Ugb2YgTkZTdjMpLg0KPiANCj4gT2gsIHNvIGluIHRoZSB2MyBjYXNl
+IHRoaXMgc2hvdWxkIGJlIG5mc19vaywgYW5kIGl0J3MgdXAgdG8gdGhlIGNsaWVudA0KPiB0byBj
+aGVjayBhdHRyaWJ1dGVzIG9uIHRoZSByZXN1bHQgYW5kIGRlY2lkZSB3aGF0IHRvIGRvPw0KPiAN
+Cj4gKElzIHRoaXMgd3JpdHRlbiBkb3duIHNvbWVwbGFjZT8pDQoNCkluIFJGQzE4MTM6ICJVTkNI
+RUNLRUQgbWVhbnMgdGhhdCB0aGUgZmlsZSBzaG91bGQgYmUgY3JlYXRlZCB3aXRob3V0DQpjaGVj
+a2luZyBmb3IgdGhlIGV4aXN0ZW5jZSBvZiBhIGR1cGxpY2F0ZSBmaWxlIGluIHRoZSBzYW1lIGRp
+cmVjdG9yeS4iDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50
+YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5j
+b20NCg0K
