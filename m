@@ -1,194 +1,160 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:48333 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:25292 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758934Ab2CSSyo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Mar 2012 14:54:44 -0400
-From: bjschuma@netapp.com
+	id S933071Ab2C2OYI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Mar 2012 10:24:08 -0400
+Subject: [PATCH] Lockd: pass network namespace to creation and destruction
+ routines
 To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 1/4] NFS: Remove nfs4_setup_sequence from generic write code
-Date: Mon, 19 Mar 2012 14:54:39 -0400
-Message-Id: <1332183282-9743-1-git-send-email-bjschuma@netapp.com>
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Thu, 29 Mar 2012 18:23:06 +0400
+Message-ID: <20120329142209.20506.43224.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+These routines are called from locks reclaimer() kernel thread. This thread
+works in "init_net" network context and currently relays on presence on lockd
+thread and it's per-net resources. Thus lockd_up() and lockd_down() can't use
+current network context. So let's pass corrent one into them.
 
-This is an NFS v4 specific operation, so it belongs in the NFS v4 code
-and not the generic client.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfs/direct.c         |    4 ----
- fs/nfs/nfs3proc.c       |    6 ++++++
- fs/nfs/nfs4proc.c       |   11 +++++++++++
- fs/nfs/proc.c           |    6 ++++++
- fs/nfs/write.c          |   15 +--------------
- include/linux/nfs_xdr.h |    1 +
- 6 files changed, 25 insertions(+), 18 deletions(-)
+ fs/lockd/clntlock.c        |   10 +++++-----
+ fs/lockd/svc.c             |    7 +++----
+ fs/nfsd/nfssvc.c           |    6 +++---
+ include/linux/lockd/bind.h |    4 ++--
+ 4 files changed, 13 insertions(+), 14 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 1940f1a..c4bdaf1 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -554,9 +554,7 @@ static void nfs_direct_commit_release(void *calldata)
- }
+diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+index ba1dc2e..32b3c2b 100644
+--- a/fs/lockd/clntlock.c
++++ b/fs/lockd/clntlock.c
+@@ -56,7 +56,7 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
+ 	u32 nlm_version = (nlm_init->nfs_version == 2) ? 1 : 4;
+ 	int status;
  
- static const struct rpc_call_ops nfs_commit_direct_ops = {
--#if defined(CONFIG_NFS_V4_1)
- 	.rpc_call_prepare = nfs_write_prepare,
--#endif /* CONFIG_NFS_V4_1 */
- 	.rpc_call_done = nfs_direct_commit_result,
- 	.rpc_release = nfs_direct_commit_release,
- };
-@@ -696,9 +694,7 @@ out_unlock:
- }
+-	status = lockd_up();
++	status = lockd_up(nlm_init->net);
+ 	if (status < 0)
+ 		return ERR_PTR(status);
  
- static const struct rpc_call_ops nfs_write_direct_ops = {
--#if defined(CONFIG_NFS_V4_1)
- 	.rpc_call_prepare = nfs_write_prepare,
--#endif /* CONFIG_NFS_V4_1 */
- 	.rpc_call_done = nfs_direct_write_result,
- 	.rpc_release = nfs_direct_write_release,
- };
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index 9194395..3bcf722 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -828,6 +828,11 @@ static void nfs3_proc_write_setup(struct nfs_write_data *data, struct rpc_messag
- 	msg->rpc_proc = &nfs3_procedures[NFS3PROC_WRITE];
- }
+@@ -65,7 +65,7 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
+ 				   nlm_init->hostname, nlm_init->noresvport,
+ 				   nlm_init->net);
+ 	if (host == NULL) {
+-		lockd_down();
++		lockd_down(nlm_init->net);
+ 		return ERR_PTR(-ENOLCK);
+ 	}
  
-+static void nfs3_proc_write_rpc_prepare(struct rpc_task *task, struct nfs_write_data *data)
-+{
-+	rpc_call_start(task);
-+}
-+
- static int nfs3_commit_done(struct rpc_task *task, struct nfs_write_data *data)
+@@ -81,7 +81,7 @@ EXPORT_SYMBOL_GPL(nlmclnt_init);
+ void nlmclnt_done(struct nlm_host *host)
  {
- 	if (nfs3_async_handle_jukebox(task, data->inode))
-@@ -881,6 +886,7 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
- 	.read_setup	= nfs3_proc_read_setup,
- 	.read_done	= nfs3_read_done,
- 	.write_setup	= nfs3_proc_write_setup,
-+	.write_rpc_prepare = nfs3_proc_write_rpc_prepare,
- 	.write_done	= nfs3_write_done,
- 	.commit_setup	= nfs3_proc_commit_setup,
- 	.commit_done	= nfs3_commit_done,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5e0961a..aea7e78 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3373,6 +3373,16 @@ static void nfs4_proc_write_setup(struct nfs_write_data *data, struct rpc_messag
- 	nfs41_init_sequence(&data->args.seq_args, &data->res.seq_res, 1);
+ 	nlmclnt_release_host(host);
+-	lockd_down();
++	lockd_down(host->net);
  }
+ EXPORT_SYMBOL_GPL(nlmclnt_done);
  
-+static void nfs4_proc_write_rpc_prepare(struct rpc_task *task, struct nfs_write_data *data)
-+{
-+	if (nfs4_setup_sequence(NFS_SERVER(data->inode),
-+				&data->args.seq_args,
-+				&data->res.seq_res,
-+				task))
-+		return;
-+	rpc_call_start(task);
-+}
-+
- static int nfs4_commit_done_cb(struct rpc_task *task, struct nfs_write_data *data)
+@@ -224,7 +224,7 @@ reclaimer(void *ptr)
+ 	allow_signal(SIGKILL);
+ 
+ 	down_write(&host->h_rwsem);
+-	lockd_up();	/* note: this cannot fail as lockd is already running */
++	lockd_up(host->net);	/* note: this cannot fail as lockd is already running */
+ 
+ 	dprintk("lockd: reclaiming locks for host %s\n", host->h_name);
+ 
+@@ -275,6 +275,6 @@ restart:
+ 
+ 	/* Release host handle after use */
+ 	nlmclnt_release_host(host);
+-	lockd_down();
++	lockd_down(host->net);
+ 	return 0;
+ }
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index b34100e..ce4c80e 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -295,11 +295,10 @@ static void lockd_down_net(struct net *net)
+ /*
+  * Bring up the lockd process if it's not already up.
+  */
+-int lockd_up(void)
++int lockd_up(struct net *net)
  {
- 	struct inode *inode = data->inode;
-@@ -6447,6 +6457,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
- 	.read_setup	= nfs4_proc_read_setup,
- 	.read_done	= nfs4_read_done,
- 	.write_setup	= nfs4_proc_write_setup,
-+	.write_rpc_prepare = nfs4_proc_write_rpc_prepare,
- 	.write_done	= nfs4_write_done,
- 	.commit_setup	= nfs4_proc_commit_setup,
- 	.commit_done	= nfs4_commit_done,
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index 0c672588..8069b41 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -668,6 +668,11 @@ static void nfs_proc_write_setup(struct nfs_write_data *data, struct rpc_message
- 	msg->rpc_proc = &nfs_procedures[NFSPROC_WRITE];
- }
+ 	struct svc_serv *serv;
+ 	int		error = 0;
+-	struct net *net = current->nsproxy->net_ns;
  
-+static void nfs_proc_write_rpc_prepare(struct rpc_task *task, struct nfs_write_data *data)
-+{
-+	rpc_call_start(task);
-+}
-+
- static void
- nfs_proc_commit_setup(struct nfs_write_data *data, struct rpc_message *msg)
+ 	mutex_lock(&nlmsvc_mutex);
+ 	/*
+@@ -377,12 +376,12 @@ EXPORT_SYMBOL_GPL(lockd_up);
+  * Decrement the user count and bring down lockd if we're the last.
+  */
+ void
+-lockd_down(void)
++lockd_down(struct net *net)
  {
-@@ -738,6 +743,7 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
- 	.read_setup	= nfs_proc_read_setup,
- 	.read_done	= nfs_read_done,
- 	.write_setup	= nfs_proc_write_setup,
-+	.write_rpc_prepare = nfs_proc_write_rpc_prepare,
- 	.write_done	= nfs_write_done,
- 	.commit_setup	= nfs_proc_commit_setup,
- 	.lock		= nfs_proc_lock,
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 52e8e09..4119e55 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1175,23 +1175,14 @@ out:
- 	nfs_writedata_release(calldata);
+ 	mutex_lock(&nlmsvc_mutex);
+ 	if (nlmsvc_users) {
+ 		if (--nlmsvc_users) {
+-			lockd_down_net(current->nsproxy->net_ns);
++			lockd_down_net(net);
+ 			goto out;
+ 		}
+ 	} else {
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index fce472f..0f3e35b 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -220,7 +220,7 @@ static int nfsd_startup(unsigned short port, int nrservs)
+ 	ret = nfsd_init_socks(port);
+ 	if (ret)
+ 		goto out_racache;
+-	ret = lockd_up();
++	ret = lockd_up(&init_net);
+ 	if (ret)
+ 		goto out_racache;
+ 	ret = nfs4_state_start();
+@@ -229,7 +229,7 @@ static int nfsd_startup(unsigned short port, int nrservs)
+ 	nfsd_up = true;
+ 	return 0;
+ out_lockd:
+-	lockd_down();
++	lockd_down(&init_net);
+ out_racache:
+ 	nfsd_racache_shutdown();
+ 	return ret;
+@@ -246,7 +246,7 @@ static void nfsd_shutdown(void)
+ 	if (!nfsd_up)
+ 		return;
+ 	nfs4_state_shutdown();
+-	lockd_down();
++	lockd_down(&init_net);
+ 	nfsd_racache_shutdown();
+ 	nfsd_up = false;
  }
+diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
+index 11a966e..4d24d64 100644
+--- a/include/linux/lockd/bind.h
++++ b/include/linux/lockd/bind.h
+@@ -54,7 +54,7 @@ extern void	nlmclnt_done(struct nlm_host *host);
  
--#if defined(CONFIG_NFS_V4_1)
- void nfs_write_prepare(struct rpc_task *task, void *calldata)
- {
- 	struct nfs_write_data *data = calldata;
--
--	if (nfs4_setup_sequence(NFS_SERVER(data->inode),
--				&data->args.seq_args,
--				&data->res.seq_res, task))
--		return;
--	rpc_call_start(task);
-+	NFS_PROTO(data->inode)->write_rpc_prepare(task, data);
- }
--#endif /* CONFIG_NFS_V4_1 */
+ extern int	nlmclnt_proc(struct nlm_host *host, int cmd,
+ 					struct file_lock *fl);
+-extern int	lockd_up(void);
+-extern void	lockd_down(void);
++extern int	lockd_up(struct net *net);
++extern void	lockd_down(struct net *net);
  
- static const struct rpc_call_ops nfs_write_partial_ops = {
--#if defined(CONFIG_NFS_V4_1)
- 	.rpc_call_prepare = nfs_write_prepare,
--#endif /* CONFIG_NFS_V4_1 */
- 	.rpc_call_done = nfs_writeback_done_partial,
- 	.rpc_release = nfs_writeback_release_partial,
- };
-@@ -1253,9 +1244,7 @@ remove_request:
- }
- 
- static const struct rpc_call_ops nfs_write_full_ops = {
--#if defined(CONFIG_NFS_V4_1)
- 	.rpc_call_prepare = nfs_write_prepare,
--#endif /* CONFIG_NFS_V4_1 */
- 	.rpc_call_done = nfs_writeback_done_full,
- 	.rpc_release = nfs_writeback_release_full,
- };
-@@ -1547,9 +1536,7 @@ static void nfs_commit_release(void *calldata)
- }
- 
- static const struct rpc_call_ops nfs_commit_ops = {
--#if defined(CONFIG_NFS_V4_1)
- 	.rpc_call_prepare = nfs_write_prepare,
--#endif /* CONFIG_NFS_V4_1 */
- 	.rpc_call_done = nfs_commit_done,
- 	.rpc_release = nfs_commit_release,
- };
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index c1cf86c..b02a5f9 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1246,6 +1246,7 @@ struct nfs_rpc_ops {
- 	void	(*read_setup)   (struct nfs_read_data *, struct rpc_message *);
- 	int	(*read_done)  (struct rpc_task *, struct nfs_read_data *);
- 	void	(*write_setup)  (struct nfs_write_data *, struct rpc_message *);
-+	void	(*write_rpc_prepare)(struct rpc_task *, struct nfs_write_data *);
- 	int	(*write_done)  (struct rpc_task *, struct nfs_write_data *);
- 	void	(*commit_setup) (struct nfs_write_data *, struct rpc_message *);
- 	int	(*commit_done) (struct rpc_task *, struct nfs_write_data *);
--- 
-1.7.9.4
+ #endif /* LINUX_LOCKD_BIND_H */
 
