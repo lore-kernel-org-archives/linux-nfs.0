@@ -1,100 +1,174 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57390 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:10745 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753000Ab2CUTqz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Mar 2012 15:46:55 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 2 10/12] NFSv4.1 de reference a disconnected data server client record
-Date: Wed, 21 Mar 2012 15:46:22 -0400
-Message-Id: <1332359184-1887-11-git-send-email-andros@netapp.com>
-In-Reply-To: <1332359184-1887-1-git-send-email-andros@netapp.com>
-References: <1332359184-1887-1-git-send-email-andros@netapp.com>
+	id S932608Ab2C2Pe0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Mar 2012 11:34:26 -0400
+Subject: [PATCH] NFSd: remove hard-coded dereferences to name-to-id and
+ id-to-name caches
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Thu, 29 Mar 2012 19:34:16 +0400
+Message-ID: <20120329153352.11921.78796.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+These dereferences to global static caches are redundant. They also prevents
+converting these caches into per-net ones. So this patch is cleanup + precursor
+of patch set,a which will make them per-net.
 
-When the last DS io is processed, the data server client record will be
-freed.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/nfs4filelayout.c    |    4 ++++
- fs/nfs/nfs4filelayout.h    |    1 +
- fs/nfs/nfs4filelayoutdev.c |   17 +++++++++++++++++
- 3 files changed, 22 insertions(+), 0 deletions(-)
+ fs/nfsd/nfs4idmap.c |   50 ++++++++++++++++++++++++--------------------------
+ 1 files changed, 24 insertions(+), 26 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 129b57f..ee0159b 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -209,10 +209,12 @@ static int filelayout_read_done_cb(struct rpc_task *task,
- 			reset, data->ds_clp, data->ds_clp->cl_session);
+diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
+index 322d11c..2ff4470 100644
+--- a/fs/nfsd/nfs4idmap.c
++++ b/fs/nfsd/nfs4idmap.c
+@@ -183,8 +183,9 @@ warn_no_idmapd(struct cache_detail *detail, int has_died)
  
- 		if (test_bit(NFS4_RESET_TO_MDS, &reset)) {
-+			struct nfs_client *clp = data->ds_clp;
- 			filelayout_reset_read(task, data);
- 			if (test_bit(NFS4_RESET_DEVICEID, &reset)) {
- 				filelayout_mark_devid_invalid(devid);
- 				rpc_wake_up(&tbl->slot_tbl_waitq);
-+				nfs4_ds_disconnect(clp);
- 			}
- 		}
- 		rpc_restart_call_prepare(task);
-@@ -304,10 +306,12 @@ static int filelayout_write_done_cb(struct rpc_task *task,
- 			reset, data->ds_clp, data->ds_clp->cl_session);
  
- 		if (test_bit(NFS4_RESET_TO_MDS, &reset)) {
-+			struct nfs_client *clp = data->ds_clp;
- 			filelayout_reset_write(task, data);
- 			if (test_bit(NFS4_RESET_DEVICEID, &reset)) {
- 				filelayout_mark_devid_invalid(devid);
- 				rpc_wake_up(&tbl->slot_tbl_waitq);
-+				nfs4_ds_disconnect(clp);
- 			}
- 		}
- 		rpc_restart_call_prepare(task);
-diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
-index 08b667a..3abf7d9 100644
---- a/fs/nfs/nfs4filelayout.h
-+++ b/fs/nfs/nfs4filelayout.h
-@@ -138,5 +138,6 @@ extern void nfs4_fl_put_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
- extern void nfs4_fl_free_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
- struct nfs4_file_layout_dsaddr *
- get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id, gfp_t gfp_flags);
-+void nfs4_ds_disconnect(struct nfs_client *clp);
+ static int         idtoname_parse(struct cache_detail *, char *, int);
+-static struct ent *idtoname_lookup(struct ent *);
+-static struct ent *idtoname_update(struct ent *, struct ent *);
++static struct ent *idtoname_lookup(struct cache_detail *, struct ent *);
++static struct ent *idtoname_update(struct cache_detail *, struct ent *,
++				   struct ent *);
  
- #endif /* FS_NFS_NFS4FILELAYOUT_H */
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index 2b8ae96..0e54cdf 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -145,6 +145,23 @@ _data_server_lookup_locked(const struct list_head *dsaddrs)
+ static struct cache_detail idtoname_cache = {
+ 	.owner		= THIS_MODULE,
+@@ -244,7 +245,7 @@ idtoname_parse(struct cache_detail *cd, char *buf, int buflen)
+ 		goto out;
+ 
+ 	error = -ENOMEM;
+-	res = idtoname_lookup(&ent);
++	res = idtoname_lookup(cd, &ent);
+ 	if (!res)
+ 		goto out;
+ 
+@@ -260,11 +261,11 @@ idtoname_parse(struct cache_detail *cd, char *buf, int buflen)
+ 	else
+ 		memcpy(ent.name, buf1, sizeof(ent.name));
+ 	error = -ENOMEM;
+-	res = idtoname_update(&ent, res);
++	res = idtoname_update(cd, &ent, res);
+ 	if (res == NULL)
+ 		goto out;
+ 
+-	cache_put(&res->h, &idtoname_cache);
++	cache_put(&res->h, cd);
+ 
+ 	error = 0;
+ out:
+@@ -275,10 +276,9 @@ out:
+ 
+ 
+ static struct ent *
+-idtoname_lookup(struct ent *item)
++idtoname_lookup(struct cache_detail *cd, struct ent *item)
+ {
+-	struct cache_head *ch = sunrpc_cache_lookup(&idtoname_cache,
+-						    &item->h,
++	struct cache_head *ch = sunrpc_cache_lookup(cd, &item->h,
+ 						    idtoname_hash(item));
+ 	if (ch)
+ 		return container_of(ch, struct ent, h);
+@@ -287,10 +287,9 @@ idtoname_lookup(struct ent *item)
  }
  
- /*
-+ * Lookup DS by nfs_client pointer. Zero data server client pointer
-+ */
-+void nfs4_ds_disconnect(struct nfs_client *clp)
-+{
-+	struct nfs4_pnfs_ds *ds;
-+
-+	dprintk("%s clp %p\n", __func__, clp);
-+	spin_lock(&nfs4_ds_cache_lock);
-+	list_for_each_entry(ds, &nfs4_data_server_cache, ds_node)
-+		if (ds->ds_clp && ds->ds_clp == clp) {
-+			nfs_put_client(clp);
-+			ds->ds_clp = NULL;
-+		}
-+	spin_unlock(&nfs4_ds_cache_lock);
-+}
-+
-+/*
-  * Create an rpc connection to the nfs4_pnfs_ds data server
-  * Currently only supports IPv4 and IPv6 addresses
-  */
--- 
-1.7.6.4
+ static struct ent *
+-idtoname_update(struct ent *new, struct ent *old)
++idtoname_update(struct cache_detail *cd, struct ent *new, struct ent *old)
+ {
+-	struct cache_head *ch = sunrpc_cache_update(&idtoname_cache,
+-						    &new->h, &old->h,
++	struct cache_head *ch = sunrpc_cache_update(cd, &new->h, &old->h,
+ 						    idtoname_hash(new));
+ 	if (ch)
+ 		return container_of(ch, struct ent, h);
+@@ -359,8 +358,9 @@ nametoid_show(struct seq_file *m, struct cache_detail *cd, struct cache_head *h)
+ 	return 0;
+ }
+ 
+-static struct ent *nametoid_lookup(struct ent *);
+-static struct ent *nametoid_update(struct ent *, struct ent *);
++static struct ent *nametoid_lookup(struct cache_detail *, struct ent *);
++static struct ent *nametoid_update(struct cache_detail *, struct ent *,
++				   struct ent *);
+ static int         nametoid_parse(struct cache_detail *, char *, int);
+ 
+ static struct cache_detail nametoid_cache = {
+@@ -426,14 +426,14 @@ nametoid_parse(struct cache_detail *cd, char *buf, int buflen)
+ 		set_bit(CACHE_NEGATIVE, &ent.h.flags);
+ 
+ 	error = -ENOMEM;
+-	res = nametoid_lookup(&ent);
++	res = nametoid_lookup(cd, &ent);
+ 	if (res == NULL)
+ 		goto out;
+-	res = nametoid_update(&ent, res);
++	res = nametoid_update(cd, &ent, res);
+ 	if (res == NULL)
+ 		goto out;
+ 
+-	cache_put(&res->h, &nametoid_cache);
++	cache_put(&res->h, cd);
+ 	error = 0;
+ out:
+ 	kfree(buf1);
+@@ -443,10 +443,9 @@ out:
+ 
+ 
+ static struct ent *
+-nametoid_lookup(struct ent *item)
++nametoid_lookup(struct cache_detail *cd, struct ent *item)
+ {
+-	struct cache_head *ch = sunrpc_cache_lookup(&nametoid_cache,
+-						    &item->h,
++	struct cache_head *ch = sunrpc_cache_lookup(cd, &item->h,
+ 						    nametoid_hash(item));
+ 	if (ch)
+ 		return container_of(ch, struct ent, h);
+@@ -455,10 +454,9 @@ nametoid_lookup(struct ent *item)
+ }
+ 
+ static struct ent *
+-nametoid_update(struct ent *new, struct ent *old)
++nametoid_update(struct cache_detail *cd, struct ent *new, struct ent *old)
+ {
+-	struct cache_head *ch = sunrpc_cache_update(&nametoid_cache,
+-						    &new->h, &old->h,
++	struct cache_head *ch = sunrpc_cache_update(cd, &new->h, &old->h,
+ 						    nametoid_hash(new));
+ 	if (ch)
+ 		return container_of(ch, struct ent, h);
+@@ -493,12 +491,12 @@ nfsd_idmap_shutdown(void)
+ 
+ static int
+ idmap_lookup(struct svc_rqst *rqstp,
+-		struct ent *(*lookup_fn)(struct ent *), struct ent *key,
+-		struct cache_detail *detail, struct ent **item)
++		struct ent *(*lookup_fn)(struct cache_detail *, struct ent *),
++		struct ent *key, struct cache_detail *detail, struct ent **item)
+ {
+ 	int ret;
+ 
+-	*item = lookup_fn(key);
++	*item = lookup_fn(detail, key);
+ 	if (!*item)
+ 		return -ENOMEM;
+  retry:
+@@ -506,7 +504,7 @@ idmap_lookup(struct svc_rqst *rqstp,
+ 
+ 	if (ret == -ETIMEDOUT) {
+ 		struct ent *prev_item = *item;
+-		*item = lookup_fn(key);
++		*item = lookup_fn(detail, key);
+ 		if (*item != prev_item)
+ 			goto retry;
+ 		cache_put(&(*item)->h, detail);
 
