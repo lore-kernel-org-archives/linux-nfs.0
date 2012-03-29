@@ -1,106 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:54849 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751241Ab2CGNV3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Mar 2012 08:21:29 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "James Bottomley" <jbottomley@parallels.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH] SUNRPC: set desired file system root before connecting
- local transports
-Date: Wed, 7 Mar 2012 13:21:11 +0000
-Message-ID: <1331126477.5035.5.camel@lade.trondhjem.org>
-References: <20120229145915.24030.31551.stgit@localhost6.localdomain6>
-	 <1331079588.10560.55.camel@lade.trondhjem.org>
-	 <4F571D83.2010001@parallels.com>
-In-Reply-To: <4F571D83.2010001@parallels.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:60323 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750971Ab2C2EVO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Mar 2012 00:21:14 -0400
 MIME-Version: 1.0
+In-Reply-To: <1332994124.30608.5.camel@lade.trondhjem.org>
+References: <1332986348.19172.43.camel@lade.trondhjem.org> <CA+55aFwVzhgsw005P3+BkLw_=noJwkQB3G=Q4GqhfLL1WyPHfg@mail.gmail.com>
+ <1332986928.19172.45.camel@lade.trondhjem.org> <CA+55aFyQ0r5mN9=3DUVENCtdj8VMLRjiXTc5Xd4o+F=s9B8xMg@mail.gmail.com>
+ <1332988097.19172.51.camel@lade.trondhjem.org> <4F73D44C.5090604@panasas.com>
+ <CA+55aFyHmQBXw3ik3qv81_3Zp+4r-VUt_TNBs-M19b6Zt7PDeQ@mail.gmail.com> <1332994124.30608.5.camel@lade.trondhjem.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Wed, 28 Mar 2012 21:20:52 -0700
+Message-ID: <CA+55aFwxkWpH1WyBnE1Lg9eRAfPsfcyoZev7-O9TGrPKTB1pOg@mail.gmail.com>
+Subject: Re: [GIT PULL] Please pull NFS client bugfixes for Linux 3.4...
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTAzLTA3IGF0IDEyOjM0ICswNDAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3
-cm90ZToNCj4gMDcuMDMuMjAxMiAwNDoxOSwgTXlrbGVidXN0LCBUcm9uZCDQv9C40YjQtdGCOg0K
-PiA+IE9uIFdlZCwgMjAxMi0wMi0yOSBhdCAxODo1OSArMDQwMCwgU3RhbmlzbGF2IEtpbnNidXJz
-a3kgd3JvdGU6DQo+ID4+IFRvZGF5LCB0aGVyZSBpcyBhIHByb2JsZW0gaW4gY29ubmVjdGluZyBv
-ZiBsb2NhbCBTVU5SUEMgdGhhbnNwb3J0cy4gVGhlc2UNCj4gPj4gdHJhbnNwb3J0cyB1c2VzIFVO
-SVggc29ja2V0cyBhbmQgY29ubmVjdGlvbiBpdHNlbGYgaXMgZG9uZSBieSBycGNpb2Qgd29ya3F1
-ZXVlLg0KPiA+PiBCdXQgVU5JWCBzb2NrZXRzIGxvb2t1cCBpcyBkb25lIGluIGNvbnRleHQgb2Yg
-cHJvY2VzcyBmaWxlIHN5c3RlbSByb290LiBJLmUuDQo+ID4+IGFsbCBsb2NhbCB0aHVuc3BvcnRz
-IGFyZSBjb25uZWN0aW5nIGluIHJwY2lvZCBjb250ZXh0Lg0KPiA+PiBUaGlzIHdvcmtzIG5pY2Ug
-dW50aWwgd2Ugd2lsbCB0cnkgdG8gbW91bnQgTkZTIGZyb20gcHJvY2VzcyB3aXRoIG90aGVyIHJv
-b3QgLQ0KPiA+PiBmb3IgZXhhbXBsZSBpbiBjb250YWluZXIuIFRoaXMgY29udGFpbmVyIGNhbiBo
-YXZlIGl0J3Mgb3duIChuZXN0ZWQpIHJvb3QgYW5kDQo+ID4+IHJjcGJpbmQgcHJvY2VzcywgbGlz
-dGVuaW5nIG9uIGl0J3Mgb3duIHVuaXggc29ja2V0cy4gQnV0IE5GUyBtb3VudCBhdHRlbXB0IGlu
-DQo+ID4+IHRoaXMgY29udGFpbmVyIHdpbGwgcmVnaXN0ZXIgbmV3IHNlcnZpY2UgKExvY2tkIGZv
-ciBleGFtcGxlKSBpbiBnbG9iYWwgcnBjYmluZA0KPiA+PiAtIG5vdCBjb250YWluZXJzJ3Mgb25l
-Lg0KPiA+PiBUaGlzIHBhdGNoIHNvbHZlcyB0aGUgcHJvYmxlbSBieSBzd2l0Y2hpbmcgcnBjaW9k
-IGtlcm5lbCB0aHJlYWQncyBmaWxlIHN5c3RlbQ0KPiA+PiByb290IHRvIHJpZ2h0IG9uZSAoc3Rv
-cmVkIG9uIHRyYW5zcG9ydCkgd2hpbGUgY29ubmVjdGluZyBvZiBsb2NhbCB0cmFuc3BvcnRzLg0K
-PiA+Pg0KPiA+PiBTaWduZWQtb2ZmLWJ5OiBTdGFuaXNsYXYgS2luc2J1cnNreTxza2luc2J1cnNr
-eUBwYXJhbGxlbHMuY29tPg0KPiA+Pg0KPiA+PiAtLS0NCj4gPj4gICBmcy9mc19zdHJ1Y3QuYyAg
-ICAgICAgfCAgICAxICsNCj4gPj4gICBuZXQvc3VucnBjL3hwcnRzb2NrLmMgfCAgIDMyICsrKysr
-KysrKysrKysrKysrKysrKysrKysrKysrKy0tDQo+ID4+ICAgMiBmaWxlcyBjaGFuZ2VkLCAzMSBp
-bnNlcnRpb25zKCspLCAyIGRlbGV0aW9ucygtKQ0KPiA+Pg0KPiA+PiBkaWZmIC0tZ2l0IGEvZnMv
-ZnNfc3RydWN0LmMgYi9mcy9mc19zdHJ1Y3QuYw0KPiA+PiBpbmRleCA3OGI1MTljLi4wZjk4NGMz
-IDEwMDY0NA0KPiA+PiAtLS0gYS9mcy9mc19zdHJ1Y3QuYw0KPiA+PiArKysgYi9mcy9mc19zdHJ1
-Y3QuYw0KPiA+PiBAQCAtMzYsNiArMzYsNyBAQCB2b2lkIHNldF9mc19yb290KHN0cnVjdCBmc19z
-dHJ1Y3QgKmZzLCBzdHJ1Y3QgcGF0aCAqcGF0aCkNCj4gPj4gICAJaWYgKG9sZF9yb290LmRlbnRy
-eSkNCj4gPj4gICAJCXBhdGhfcHV0X2xvbmd0ZXJtKCZvbGRfcm9vdCk7DQo+ID4+ICAgfQ0KPiA+
-PiArRVhQT1JUX1NZTUJPTF9HUEwoc2V0X2ZzX3Jvb3QpOw0KPiA+Pg0KPiA+PiAgIC8qDQo+ID4+
-ICAgICogUmVwbGFjZSB0aGUgZnMtPntwd2RtbnQscHdkfSB3aXRoIHttbnQsZGVudHJ5fS4gUHV0
-IHRoZSBvbGQgdmFsdWVzLg0KPiA+PiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy94cHJ0c29jay5j
-IGIvbmV0L3N1bnJwYy94cHJ0c29jay5jDQo+ID4+IGluZGV4IDRjODI4MWQuLmM5NGMxODEgMTAw
-NjQ0DQo+ID4+IC0tLSBhL25ldC9zdW5ycGMveHBydHNvY2suYw0KPiA+PiArKysgYi9uZXQvc3Vu
-cnBjL3hwcnRzb2NrLmMNCj4gPj4gQEAgLTM3LDYgKzM3LDcgQEANCj4gPj4gICAjaW5jbHVkZTxs
-aW51eC9zdW5ycGMvc3Zjc29jay5oPg0KPiA+PiAgICNpbmNsdWRlPGxpbnV4L3N1bnJwYy94cHJ0
-c29jay5oPg0KPiA+PiAgICNpbmNsdWRlPGxpbnV4L2ZpbGUuaD4NCj4gPj4gKyNpbmNsdWRlPGxp
-bnV4L2ZzX3N0cnVjdC5oPg0KPiA+PiAgICNpZmRlZiBDT05GSUdfU1VOUlBDX0JBQ0tDSEFOTkVM
-DQo+ID4+ICAgI2luY2x1ZGU8bGludXgvc3VucnBjL2JjX3hwcnQuaD4NCj4gPj4gICAjZW5kaWYN
-Cj4gPj4gQEAgLTI1NSw2ICsyNTYsMTEgQEAgc3RydWN0IHNvY2tfeHBydCB7DQo+ID4+ICAgCXZv
-aWQJCQkoKm9sZF9zdGF0ZV9jaGFuZ2UpKHN0cnVjdCBzb2NrICopOw0KPiA+PiAgIAl2b2lkCQkJ
-KCpvbGRfd3JpdGVfc3BhY2UpKHN0cnVjdCBzb2NrICopOw0KPiA+PiAgIAl2b2lkCQkJKCpvbGRf
-ZXJyb3JfcmVwb3J0KShzdHJ1Y3Qgc29jayAqKTsNCj4gPj4gKw0KPiA+PiArCS8qDQo+ID4+ICsJ
-ICogU2F2ZWQgdHJhbnNwb3J0IGNyZWF0b3Igcm9vdC4gUmVxdWlyZWQgZm9yIGxvY2FsIHRyYW5z
-cG9ydHMgb25seS4NCj4gPj4gKwkgKi8NCj4gPj4gKwlzdHJ1Y3QgcGF0aAkJcm9vdDsNCj4gPj4g
-ICB9Ow0KPiA+Pg0KPiA+PiAgIC8qDQo+ID4+IEBAIC0xODkxLDYgKzE4OTcsNyBAQCBzdGF0aWMg
-dm9pZCB4c19sb2NhbF9zZXR1cF9zb2NrZXQoc3RydWN0IHdvcmtfc3RydWN0ICp3b3JrKQ0KPiA+
-PiAgIAlzdHJ1Y3QgcnBjX3hwcnQgKnhwcnQgPSZ0cmFuc3BvcnQtPnhwcnQ7DQo+ID4+ICAgCXN0
-cnVjdCBzb2NrZXQgKnNvY2s7DQo+ID4+ICAgCWludCBzdGF0dXMgPSAtRUlPOw0KPiA+PiArCXN0
-cnVjdCBwYXRoIHJvb3Q7DQo+ID4+DQo+ID4+ICAgCWlmICh4cHJ0LT5zaHV0ZG93bikNCj4gPj4g
-ICAJCWdvdG8gb3V0Ow0KPiA+PiBAQCAtMTkwOCw3ICsxOTE1LDE0IEBAIHN0YXRpYyB2b2lkIHhz
-X2xvY2FsX3NldHVwX3NvY2tldChzdHJ1Y3Qgd29ya19zdHJ1Y3QgKndvcmspDQo+ID4+ICAgCWRw
-cmludGsoIlJQQzogICAgICAgd29ya2VyIGNvbm5lY3RpbmcgeHBydCAlcCB2aWEgQUZfTE9DQUwg
-dG8gJXNcbiIsDQo+ID4+ICAgCQkJeHBydCwgeHBydC0+YWRkcmVzc19zdHJpbmdzW1JQQ19ESVNQ
-TEFZX0FERFJdKTsNCj4gPj4NCj4gPj4gKwlnZXRfZnNfcm9vdChjdXJyZW50LT5mcywmcm9vdCk7
-DQo+ID4+ICsJc2V0X2ZzX3Jvb3QoY3VycmVudC0+ZnMsJnRyYW5zcG9ydC0+cm9vdCk7DQo+ID4+
-ICsNCj4gPj4gICAJc3RhdHVzID0geHNfbG9jYWxfZmluaXNoX2Nvbm5lY3RpbmcoeHBydCwgc29j
-ayk7DQo+ID4+ICsNCj4gPj4gKwlzZXRfZnNfcm9vdChjdXJyZW50LT5mcywmcm9vdCk7DQo+ID4+
-ICsJcGF0aF9wdXQoJnJvb3QpOw0KPiA+PiArDQo+ID4+ICAgCXN3aXRjaCAoc3RhdHVzKSB7DQo+
-ID4+ICAgCWNhc2UgMDoNCj4gPg0KPiA+IEhpIFN0YW5pc2xhdiwNCj4gPg0KPiA+IFdoYXQgaGFw
-cGVucyBoZXJlIGlmIHRoZSBtb3VudCBuYW1lc3BhY2Ugb2YgdGhlIHByb2Nlc3MgdGhhdCBvcmln
-aW5hbGx5DQo+ID4gY3JlYXRlZCB0aGUgc29ja194cHJ0IG5vIGxvbmdlciBleGlzdHM/IFNob3Vs
-ZCB3ZSBjYXJlIGFib3V0IHRoYXQgY2FzZT8NCj4gPg0KPiANCj4gSGksIFRyb25kLg0KPiBMb29r
-cyBsaWtlIHRoaXMgaXMgbm90IGEgcHJvYmxlbSwgYmVjYXVzZSBwcm9jZXNzIGZzLT5yb290LT5t
-bnQgdXNhZ2UgY291bnRlciANCj4gd2FzIGluY3JlYXNlZCBvbiB0cmFuc3BvcnQgY3JlYXRpb24u
-DQo+IElPVywgdHJhbnNwb3J0IGhvbGRzIGN1cnJlbnQgcm9vdCBhbmQgdGh1cyBtb3VudCBuYW1l
-c3BhY2UgY2FuJ3QgZGlzYXBwZWFyLg0KPiANCg0KVGhhdCBwaW5zIHRoZSByb290IHN0cnVjdCB2
-ZnNtb3VudCwgYnV0IGl0IGRvZXNuJ3QgcGluIHRoZSBhY3R1YWwNCnByb2Nlc3MgbW91bnQgbmFt
-ZXNwYWNlLiBJZiB0aGUgcHJvY2VzcyBpcyBkZWFkLCB0aGVuIGl0IGlzIHF1aXRlDQpwb3NzaWJs
-ZSB0aGF0IHRoZSBzdHJ1Y3QgbW50X25hbWVzcGFjZSBpcyBnb25lLCBpbiB3aGljaCBjYXNlIHdo
-aWxlIHlvdQ0KYXJlIHBpbm5pbmcgdGhlIHJvb3QgKGkuZS4gJy8nKSwgc3VibW91bnRzIHN1Y2gg
-YXMgJy92YXInIG1heSBiZSBnb25lLg0KDQpPVE9ILCBJIHN1cHBvc2UgdGhhdCB5b3UgY2FuIGFy
-Z3VlIHRoYXQgaWYgdGhlIG1udF9uYW1lc3BhY2UgaXMgZ29uZSwNCnRoZW4gcnBjYmluZCBjYW4n
-dCBiZSBsaXN0ZW5pbmcgb24gL3Zhci9ydW4vcnBjYmluZC5zb2NrIGFuZCBzbyB5b3UgYXJlDQpz
-Y3Jld2VkIGFueXdheS4uLg0KDQpPSy4uLi4gUGxlYXNlIGp1c3QgcmVzZW5kIHRoZSBwYXRjaCwg
-Q2NpbmcgQWwgVmlybyBhbmQgQ2hyaXN0b3BoIHNvIHRoYXQNCndlIGNhbiBnZXQgdGhlaXIgb3Bp
-bmlvbi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5l
-cg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
-DQo=
+On Wed, Mar 28, 2012 at 9:08 PM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+>
+> Maybe I'm running an older version of git (Fedora 16 latest update), but
+> when I do
+
+Yeah, you need git 1.7.9 to get the tag content support.
+
+With older git versions, spell out "tags/xyz" instead of just "xyz",
+and it will all work, but it still won't actually show the tag
+content.
+
+                        Linus
