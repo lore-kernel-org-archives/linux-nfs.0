@@ -1,61 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:38181 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932777Ab2C2Umd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Mar 2012 16:42:33 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Dr James Bruce Fields <bfields@fieldses.org>
-CC: Orion Poplawski <orion@cora.nwra.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [nfsv4] open(O_CREAT) returns EEXISTS on symbolic link created
- on another system until stat()ed
-Date: Thu, 29 Mar 2012 20:42:24 +0000
-Message-ID: <1333053750.10318.15.camel@lade.trondhjem.org>
-References: <loom.20120329T182500-467@post.gmane.org>
-	 <1333040091.5547.32.camel@lade.trondhjem.org>
-	 <4F749CCA.3000400@cora.nwra.com>
-	 <1333042863.5547.37.camel@lade.trondhjem.org>
-	 <4F74A4D5.1040802@cora.nwra.com> <20120329193100.GA20329@fieldses.org>
-	 <1333052170.10318.6.camel@lade.trondhjem.org>
-In-Reply-To: <1333052170.10318.6.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:39525 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751432Ab2C2Lwx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Mar 2012 07:52:53 -0400
+Received: by yenl12 with SMTP id l12so1352149yen.19
+        for <linux-nfs@vger.kernel.org>; Thu, 29 Mar 2012 04:52:53 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
+        linux-next@vger.kernel.or, paul.gortmaker@windriver.com
+Subject: [PATCH v2] nfsd: only register cld pipe notifier when CONFIG_NFSD_V4 is enabled
+Date: Thu, 29 Mar 2012 07:52:49 -0400
+Message-Id: <1333021969-9119-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTAzLTI5IGF0IDE2OjE2IC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+IE9uIFRodSwgMjAxMi0wMy0yOSBhdCAxNTozMSAtMDQwMCwgRHIgSmFtZXMgQnJ1Y2UgRmll
-bGRzIHdyb3RlOg0KPiA+IE9uIFRodSwgTWFyIDI5LCAyMDEyIGF0IDEyOjA3OjE3UE0gLTA2MDAs
-IE9yaW9uIFBvcGxhd3NraSB3cm90ZToNCj4gPiA+IE9uIDAzLzI5LzIwMTIgMTE6NDAgQU0sIE15
-a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gPiA+PkdvaW5nIGJhY2sgdG8gdjQgb24gRUw1Ljgg
-c2VydmVyOiBuZnN2NGVsLmxvZywgbmZzdjRmMTgubG9nDQo+ID4gPiA+Pg0KPiA+ID4gPj5Cb3Ro
-IGdldCBORlM0RVJSX0VYSVNUIGluIHRoaXMgY2FzZS4NCj4gPiA+ID4NCj4gPiA+ID5XaGljaCBp
-cyBhbiBvYnZpb3VzIHNlcnZlciBidWc6IGl0IHNob3VsZCBiZSBzZW5kaW5nIE5GUzRFUlJfU1lN
-TElOSyBpbg0KPiA+ID4gPnJlcGx5IHRvIHRoYXQgT1BFTi4NCj4gPiA+ID4NCj4gPiA+ID5CcnVj
-ZT8NCj4gPiA+ID4NCj4gPiA+IA0KPiA+ID4gSSBjYW4gcmVwcm9kdWNlIHdpdGggYSAzLjQuMC0w
-LnJjMC5naXQxLjIuZmMxOCBzZXJ2ZXIgYXMgd2VsbC4NCj4gPiANCj4gPiBIbS4gIFNvIGhvdyBh
-Ym91dCB0aGlzPyAgKFVudGVzdGVkLikNCj4gPiANCj4gPiBQcm9iYWJseSB0aGVyZSBzaG91bGQg
-YmUgYSBweW5mcyB0ZXN0IHRvby4NCj4gPiANCj4gPiBJJ20gYXNzdW1pbmcgaXQgc2hvdWxkIHN0
-aWxsIGJlIEVSUl9FWElTVCBpbiB0aGUgZXhjbHVzaXZlLA0KPiA+IGV4Y2x1c2l2ZTRfMSwgYW5k
-IGd1YXJkZWQgY2FzZXMuDQo+ID4gDQo+ID4gLS1iLg0KPiA+IA0KPiA+IGRpZmYgLS1naXQgYS9m
-cy9uZnNkL3Zmcy5jIGIvZnMvbmZzZC92ZnMuYw0KPiA+IGluZGV4IDc0MjNkNzEuLjJiZmNhZDQg
-MTAwNjQ0DQo+ID4gLS0tIGEvZnMvbmZzZC92ZnMuYw0KPiA+ICsrKyBiL2ZzL25mc2QvdmZzLmMN
-Cj4gPiBAQCAtMTQ1Nyw5ICsxNDU3LDEyIEBAIGRvX25mc2RfY3JlYXRlKHN0cnVjdCBzdmNfcnFz
-dCAqcnFzdHAsIHN0cnVjdCBzdmNfZmggKmZocCwNCj4gPiAgDQo+ID4gIAkJc3dpdGNoIChjcmVh
-dGVtb2RlKSB7DQo+ID4gIAkJY2FzZSBORlMzX0NSRUFURV9VTkNIRUNLRUQ6DQo+ID4gLQkJCWlm
-ICghIFNfSVNSRUcoZGNoaWxkLT5kX2lub2RlLT5pX21vZGUpKQ0KPiA+IC0JCQkJZXJyID0gbmZz
-ZXJyX2V4aXN0Ow0KPiA+IC0JCQllbHNlIGlmICh0cnVuY3ApIHsNCj4gPiArCQkJaWYgKCEgU19J
-U1JFRyhkY2hpbGQtPmRfaW5vZGUtPmlfbW9kZSkpIHsNCj4gPiArCQkJCWlmIChycXN0cC0+cnFf
-dmVycyA9PSA0KQ0KPiA+ICsJCQkJCWVyciA9IG5mc2Vycl9zeW1saW5rOw0KPiA+ICsJCQkJZWxz
-ZQ0KPiA+ICsJCQkJCWVyciA9IG5mc2Vycl9leGlzdDsNCj4gDQo+IE5vLiBUaGlzIHNob3VsZCBf
-bmV2ZXJfIHJldHVybiBORlM0RVJSX0VYSVNULg0KPiANCj4gSXQgc2hvdWxkIHJldHVybg0KPiAg
-ICAgICAqIE5GUzRFUlJfSVNESVIgaWYgdGhlIG9iamVjdCBpcyBhIGRpcmVjdG9yeQ0KPiAgICAg
-ICAqIE5GUzRFUlJfU1lNTElOSyBpZiBpdCBpcyBzeW1ib2xpYyBsaW5rLA0KPiAgICAgICAqIGVp
-dGhlciBORlM0RVJSX1dST05HX1RZUEUgKE5GU3Y0LjEpIG9yIE5GUzRFUlJfU1lNTElOSyAoTkZT
-djQuMCkNCj4gICAgICAgICBpZiB0aGUgb2JqZWN0IGlzIGFueSBvdGhlciBub24tcmVndWxhciBm
-aWxlLg0KDQpCYXNpY2FsbHksIGlmIGFuIG9iamVjdCBhbHJlYWR5IGV4aXN0cyB3aXRoIHRoYXQg
-bmFtZSwgdGhlbg0KTkZTM19DUkVBVEVfVU5DSEVDS0VEIHNob3VsZCBiZSB0cmVhdGVkIGFzIGlm
-IGl0IGlzIGFuIG9yZGluYXJ5IE9QRU4gKGluDQp0aGUgY2FzZSBvZiBORlN2NCkgb3IgTE9PS1VQ
-IChpbiB0aGUgY2FzZSBvZiBORlN2MykuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBO
-RlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
-bQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+Otherwise, we get a warning or error similar to this when building with
+CONFIG_NFSD_V4 disabled:
+
+    ERROR: "nfsd4_cld_block" [fs/nfsd/nfsd.ko] undefined!
+
+Fix this by wrapping the calls to rpc_pipefs_notifier_register and
+..._unregister in another function and providing no-op replacements
+when CONFIG_NFSD_V4 is disabled.
+
+Reported-by: Paul Gortmaker <paul.gortmaker@windriver.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/netns.h       |    1 -
+ fs/nfsd/nfs4recover.c |   12 ++++++++++++
+ fs/nfsd/nfsctl.c      |    6 +++---
+ fs/nfsd/nfsd.h        |    7 ++++++-
+ 4 files changed, 21 insertions(+), 5 deletions(-)
+
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index 66eac33..12e0cff 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -31,5 +31,4 @@ struct nfsd_net {
+ };
+ 
+ extern int nfsd_net_id;
+-extern struct notifier_block nfsd4_cld_block;
+ #endif /* __NFSD_NETNS_H__ */
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index eaaf948..4767429 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -1032,3 +1032,15 @@ rpc_pipefs_event(struct notifier_block *nb, unsigned long event, void *ptr)
+ struct notifier_block nfsd4_cld_block = {
+ 	.notifier_call = rpc_pipefs_event,
+ };
++
++int
++register_cld_notifier(void)
++{
++	return rpc_pipefs_notifier_register(&nfsd4_cld_block);
++}
++
++void
++unregister_cld_notifier(void)
++{
++	rpc_pipefs_notifier_unregister(&nfsd4_cld_block);
++}
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index dee6c1b..2c53be6 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -1137,7 +1137,7 @@ static int __init init_nfsd(void)
+ 	int retval;
+ 	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
+ 
+-	retval = rpc_pipefs_notifier_register(&nfsd4_cld_block);
++	retval = register_cld_notifier();
+ 	if (retval)
+ 		return retval;
+ 	retval = register_pernet_subsys(&nfsd_net_ops);
+@@ -1186,7 +1186,7 @@ out_free_slabs:
+ out_unregister_pernet:
+ 	unregister_pernet_subsys(&nfsd_net_ops);
+ out_unregister_notifier:
+-	rpc_pipefs_notifier_unregister(&nfsd4_cld_block);
++	unregister_cld_notifier();
+ 	return retval;
+ }
+ 
+@@ -1203,7 +1203,7 @@ static void __exit exit_nfsd(void)
+ 	nfsd_fault_inject_cleanup();
+ 	unregister_filesystem(&nfsd_fs_type);
+ 	unregister_pernet_subsys(&nfsd_net_ops);
+-	rpc_pipefs_notifier_unregister(&nfsd4_cld_block);
++	unregister_cld_notifier();
+ }
+ 
+ MODULE_AUTHOR("Olaf Kirch <okir@monad.swb.de>");
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 1d1e858..1671429 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -364,12 +364,17 @@ static inline u32 nfsd_suppattrs2(u32 minorversion)
+ 	NFSD_WRITEABLE_ATTRS_WORD2
+ 
+ extern int nfsd4_is_junction(struct dentry *dentry);
+-#else
++extern int register_cld_notifier(void);
++extern void unregister_cld_notifier(void);
++#else /* CONFIG_NFSD_V4 */
+ static inline int nfsd4_is_junction(struct dentry *dentry)
+ {
+ 	return 0;
+ }
+ 
++#define register_cld_notifier() 0
++#define unregister_cld_notifier() do { } while(0)
++
+ #endif /* CONFIG_NFSD_V4 */
+ 
+ #endif /* LINUX_NFSD_NFSD_H */
+-- 
+1.7.7.6
+
