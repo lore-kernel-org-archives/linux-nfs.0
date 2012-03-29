@@ -1,102 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:37417 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756943Ab2CLTwl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Mar 2012 15:52:41 -0400
-Message-ID: <4F5E5400.3000800@panasas.com>
-Date: Mon, 12 Mar 2012 12:52:32 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:63934 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751873Ab2C2RlF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Mar 2012 13:41:05 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Orion Poplawski <orion@cora.nwra.com>,
+        Dr James Bruce Fields <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [nfsv4] open(O_CREAT) returns EEXISTS on symbolic link created
+ on another system until stat()ed
+Date: Thu, 29 Mar 2012 17:40:57 +0000
+Message-ID: <1333042863.5547.37.camel@lade.trondhjem.org>
+References: <loom.20120329T182500-467@post.gmane.org>
+	 <1333040091.5547.32.camel@lade.trondhjem.org>
+	 <4F749CCA.3000400@cora.nwra.com>
+In-Reply-To: <4F749CCA.3000400@cora.nwra.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: Bug in the pNFS OSD layout driver
-References: <1331487447.2496.10.camel@lade.trondhjem.org>
-In-Reply-To: <1331487447.2496.10.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/11/2012 10:37 AM, Myklebust, Trond wrote:
-> Hi Boaz,
-> 
-> When I run 'sparse' on the object layout driver, I get the following
-> errors:
-> 
-> fs/nfs/objlayout/objio_osd.c:210:37: error: bad constant expression
-> fs/nfs/objlayout/objio_osd.c:211:39: error: bad constant expression
-> fs/nfs/objlayout/objio_osd.c:315:59: error: bad constant expression
-> 
-
-Then sparse is broken
-
-> which boils down to the following section of code:
-> 
-> int __alloc_objio_seg(unsigned numdevs, gfp_t gfp_flags,
->                        struct objio_segment **pseg)
-> {
->         struct __alloc_objio_segment {
->                 struct objio_segment olseg;
->                 struct ore_dev *ods[numdevs];
-> 		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
->                 struct ore_comp comps[numdevs];
-> 		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
->         } *aolseg;
-> 
->         aolseg = kzalloc(sizeof(*aolseg), gfp_flags);
-> 
-> 
-> Dynamically allocated arrays such as the above are a GNU C compiler
-> feature that we cannot use in kernel code. If the above array sizes need
-> to be dynamically determined, then please use the kcalloc() interface to
-> allocate them.
-
-I am using kzalloc to do a single allocation. The *ods[numdevs] is only
-used for the sizeof() expression it does not allocate anything actually.
-
-We use gcc extensions all over the place. From the simple __func__ to
-the famous typeof().
-
-I don't understand why you decide to pick on this one in particular.
-
-> I.e. something like
-> 
->         struct __alloc_objio_segment {
->                 struct objio_segment olseg;
->                 struct ore_dev **ods;
->                 struct ore_comp *comps;
-> 		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
->         } *aolseg;
-> 
->         aolseg = kzalloc(sizeof(*aolseg), gfp_flags);
-> 	if (aolseg) {
-> 		aolseg->ods = kcalloc(numdevs, sizeof(struct ore_dev *), gfp_flags);
-> 		aolseg->ore_comp = kcalloc(numdevs, sizeof(struct ore_comp), gfp_flags);
-
-This is not the same code. It is three allocations instead of one. And it is an
-extra pointer reference instead of just pointer offsetting.
-
-If it would change it would change to:
-
-         aolseg = kzalloc(sizeof(*aolseg) + 
-		          numdevs * sizeof(struct ore_dev *),
-			  numdevs * sizeof(struct ore_comp), 
-			  gfp_flags);
-
-And all the pointer arithmetic that follow. But why the very ugly code
-when there is an elegant, type-safe, and self documenting way. It's
-beautifully clear this way what is the in memory structure of the
-allocation.
-
-> 		if (!aolseg->ods || !aolseg->ore_comp)
-> 			.... clean up and report error...
-> 	}
-> 
-
-Again, we use gcc extensions all over the place. Why not this one?
-BTW variable arrays is also supported by M$-vcc.
-
-> Cheers
->   Trond
-
-Thanks
-Boaz
+T24gVGh1LCAyMDEyLTAzLTI5IGF0IDExOjMyIC0wNjAwLCBPcmlvbiBQb3BsYXdza2kgd3JvdGU6
+DQo+IE9uIDAzLzI5LzIwMTIgMTA6NTQgQU0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4g
+T24gVGh1LCAyMDEyLTAzLTI5IGF0IDE2OjI4ICswMDAwLCBPcmlvbiBQb3BsYXdza2kgd3JvdGU6
+DQo+ID4+IEkgZmlsZWQgYSBidWcgaGVyZTogaHR0cHM6Ly9idWd6aWxsYS5yZWRoYXQuY29tL3No
+b3dfYnVnLmNnaT9pZD04MDgxMTINCj4gPj4NCj4gPj4gRGVzY3JpcHRpb24gb2YgcHJvYmxlbToN
+Cj4gPj4NCj4gPj4gY2xpZW50IEE6DQo+ID4+IHRvdWNoIGJsYWgNCj4gPj4gbG4gLXMgYmxhaCBi
+bGFobGluaw0KPiA+Pg0KPiA+PiBjbGllbnQgQjoNCj4gPj4gb3BlbigiYmxhaGxpbmsiLCBPX1JE
+T05MWXxPX0NSRUFULCAwNjY2KSA9IC0xIEVFWElTVCAoRmlsZSBleGlzdHMpDQo+ID4NCj4gPiBU
+aGF0IHNvdW5kcyBtb3JlIGxpa2UgYSBzZXJ2ZXIgYnVnLiBJdCBzaG91bGRuJ3QgYmUgcmVwbHlp
+bmcNCj4gPiBORlM0RVJSX0VYSVNUIGhlcmUsIHNpbmNlIHRoaXMgaXNuJ3QgYW4gZXhjbHVzaXZl
+IGNyZWF0ZTsgaXQgc2hvdWxkDQo+ID4gcmF0aGVyIGJlIHJlcGx5aW5nIHdpdGggTkZTNEVSUl9T
+WU1MSU5LLg0KPiA+DQo+ID4gV2hpY2ggc2VydmVyIGFyZSB5b3UgdGVzdGluZyBhZ2FpbnN0LCBh
+bmQgd2hhdCBkb2VzIHRoZSB3aXJlc2hhcmsgdHJhY2UNCj4gPiBzaG93Pw0KPiA+DQo+IA0KPiBX
+ZWxsLCBJIGNhbiByZXByb2R1Y2UgaXQgYWdhaW5zdCBhbiBFTDYuMiBzZXJ2ZXIgd2l0aCBhbiBF
+TDYuMiBjbGllbnQgd2l0aCB2My4gDQo+ICAgRmlyc3QgdGVzdHMgd2VyZSB3aXRoIGFuZCBFTDUu
+OCBzZXJ2ZXIuICBJIGNhbid0IHJlcHJvZHVjZSB3aXRoIEZlZG9yYSANCj4gY2xpZW50cyBhZ2Fp
+bnN0IHRoZSBFTDYuMiBzZXJ2ZXIgd2l0aCB2My4NCj4gDQo+IFRoZSBFTDYuMiBjbGllbnQvc2Vy
+dmVyIGV4Y2hhbmdlIGluIG5mc2VsLmxvZywgRjE1L0VMNi4yIGV4Y2hhbmdlIGluIG5mc2YxNS5s
+b2cNCj4gDQo+IFRoZSBFTDYuMiBjbGllbnQgYXBwZWFycyB0byBiZSB1c2luZyBhIHZlcnNpb24g
+NCBjYWxsIGV2ZW4gdGhvdWdoIEkgdGhpbmsgaXQncyANCj4gbW91bnRlZCB2MzoNCj4gDQo+IHNh
+Z2E6L2V4cG9ydC9zdyBvbiAvZGF0YS9zdyB0eXBlIG5mcyANCj4gKHJ3LG5vYXRpbWUsaW50cixy
+c2l6ZT0zMjc2OCx3c2l6ZT0zMjc2OCxzbG9wcHksYWRkcj0xMC4xMC4xMC4yKQ0KDQoNCkl0IGhh
+cyBnb3QgdG8gYmUgbW91bnRlZCB2NC4gSSdkIGNoZWNrIC9wcm9jL21vdW50cy4NCg0KPiBHb2lu
+ZyBiYWNrIHRvIHY0IG9uIEVMNS44IHNlcnZlcjogbmZzdjRlbC5sb2csIG5mc3Y0ZjE4LmxvZw0K
+PiANCj4gQm90aCBnZXQgTkZTNEVSUl9FWElTVCBpbiB0aGlzIGNhc2UuDQoNCldoaWNoIGlzIGFu
+IG9idmlvdXMgc2VydmVyIGJ1ZzogaXQgc2hvdWxkIGJlIHNlbmRpbmcgTkZTNEVSUl9TWU1MSU5L
+IGluDQpyZXBseSB0byB0aGF0IE9QRU4uDQoNCkJydWNlPw0KDQotLSANClRyb25kIE15a2xlYnVz
+dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0
+QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
