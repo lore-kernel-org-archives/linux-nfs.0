@@ -1,66 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from plane.gmane.org ([80.91.229.3]:51718 "EHLO plane.gmane.org"
+Received: from mx2.netapp.com ([216.240.18.37]:56568 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753066Ab2CaNUH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 31 Mar 2012 09:20:07 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1SDyDs-0000Tu-Di
-	for linux-nfs@vger.kernel.org; Sat, 31 Mar 2012 15:20:04 +0200
-Received: from p3e9bbfe5.dip.t-dialin.net ([62.155.191.229])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Sat, 31 Mar 2012 15:20:04 +0200
-Received: from ponto by p3e9bbfe5.dip.t-dialin.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Sat, 31 Mar 2012 15:20:04 +0200
-To: linux-nfs@vger.kernel.org
-From: Christoph Bartoschek <ponto@pontohonk.de>
-Subject: nfsd hangs for more than 120 seconds
-Date: Sat, 31 Mar 2012 13:55:44 +0200
-Message-ID: <0v7j49-4jc.ln1@homer.bruehl.pontohonk.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"
+	id S1758641Ab2C2CIw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Mar 2012 22:08:52 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        "Linux Kernel mailing list" <linux-kernel@vger.kernel.org>
+Subject: Re: [GIT PULL] Please pull NFS client bugfixes for Linux 3.4...
+Date: Thu, 29 Mar 2012 02:08:44 +0000
+Message-ID: <1332986928.19172.45.camel@lade.trondhjem.org>
+References: <1332986348.19172.43.camel@lade.trondhjem.org>
+	 <CA+55aFwVzhgsw005P3+BkLw_=noJwkQB3G=Q4GqhfLL1WyPHfg@mail.gmail.com>
+In-Reply-To: <CA+55aFwVzhgsw005P3+BkLw_=noJwkQB3G=Q4GqhfLL1WyPHfg@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
-
-we use Ubuntu 10.04.3 LTS and often get a traceback for NFS indicating that 
-the daemon hangs for several seconds. At the same time some client machines 
-cannot access the server and have to wait. After some minutes everything 
-goes on.
-
-What could cause the problem? Is there anything we should change?
-
-Here is the message in the kernel log:
-
-[330573.697121] INFO: task nfsd:1376 blocked for more than 120 seconds.
-[330573.708375] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables 
-this message.
-[330573.730773] nfsd          D 0000000000000001     0  1376      2 
-0x00000000
-[330573.730776]  ffff88061c21bdc0 0000000000000046 0000000000015f00 
-0000000000015f00
-[330573.730779]  ffff88061c111ad0 ffff88061c21bfd8 0000000000015f00 
-ffff88061c111700
-[330573.730781]  0000000000015f00 ffff88061c21bfd8 0000000000015f00 
-ffff88061c111ad0
-[330573.730784] Call Trace:
-[330573.730788]  [<ffffffff81559e67>] __mutex_lock_slowpath+0x107/0x190
-[330573.730796]  [<ffffffffa012300f>] ? svc_authorise+0x3f/0x50 [sunrpc]
-[330573.730799]  [<ffffffff81559863>] mutex_lock+0x23/0x50
-[330573.730807]  [<ffffffffa012d478>] svc_send+0x58/0xe0 [sunrpc]
-[330573.730809]  [<ffffffff8105df90>] ? default_wake_function+0x0/0x20
-[330573.730817]  [<ffffffffa011faec>] svc_process+0x11c/0x150 [sunrpc]
-[330573.730821]  [<ffffffffa0184ae5>] nfsd+0xc5/0x170 [nfsd]
-[330573.730830]  [<ffffffffa0184a20>] ? nfsd+0x0/0x170 [nfsd]
-[330573.730832]  [<ffffffff81085db6>] kthread+0x96/0xa0
-[330573.730835]  [<ffffffff810141aa>] child_rip+0xa/0x20
-[330573.730837]  [<ffffffff81085d20>] ? kthread+0x0/0xa0
-[330573.730839]  [<ffffffff810141a0>] ? child_rip+0x0/0x20
-
-
--- 
-Christoph Bartoschek
-
+T24gV2VkLCAyMDEyLTAzLTI4IGF0IDE5OjA2IC0wNzAwLCBMaW51cyBUb3J2YWxkcyB3cm90ZToN
+Cj4gT24gV2VkLCBNYXIgMjgsIDIwMTIgYXQgNjo1OSBQTSwgTXlrbGVidXN0LCBUcm9uZA0KPiA8
+VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+DQo+ID4gUGxlYXNlIHB1bGwg
+ZnJvbSB0aGUgc2lnbmVkIHRhZyAibmZzLWZvci0zLjQtMiIgaW4gdGhlIHJlcG9zaXRvcnkgYXQN
+Cj4gPg0KPiA+ICAgZ2l0IHB1bGwgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJv
+bmRteS9saW51eC1uZnMuZ2l0IHRhZyBuZnMtZm9yLTMuNC0yDQo+IA0KPiBCdHcsIHBsZWFzZSBj
+aGFuZ2UgeW91ciBwdWxsIHJlcXVlc3QgdG8gc2F5ICJ0YWcvbmZzLWZvci0zLjQtMiINCj4gaW5z
+dGVhZCBvZiAidGFnIG5mcy1mb3ItMy40LTIiLg0KPiANCj4gQm90aCB3b3JrLCBidXQgdGhlcmUn
+cyBhIHN1YnRsZSBkaWZmZXJlbmNlOiB0aGUgInB1bGwgdGFnIHh5eiIgaXMNCj4gYmFzaWNhbGx5
+IGFza2luZyBtZSB0byBub3QganVzdCBwdWxsLCBidXQgYWxzbyBhZGQgdGhlIHRhZyB0byBteSBz
+ZXQNCj4gb2YgdGFncywgd2hpY2ggSSdtIG5vdCBpbnRlcmVzdGVkIGluLiBJbiBjb250cmFzdCAi
+cHVsbCB0YWcveHl6IiBhc2tzDQo+IG1lIHRvIGp1c3QgcHVsbCB0aGUgdGFnIGNvbnRlbnRzLg0K
+DQpTdXJlIHRoaW5nLi4uIEkgd2Fzbid0IGF3YXJlIG9mIHRoYXQgc2VtYW50aWMgZGlmZmVyZW5j
+ZSwgYnV0IEknbSBxdWl0ZQ0KaGFwcHkgdG8gYWRkIGl0IHRvIG15IHNjcmlwdC4uLg0KDQotLSAN
+ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0K
+VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
