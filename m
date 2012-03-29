@@ -1,66 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:15489 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:45337 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752126Ab2CCTNP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 3 Mar 2012 14:13:15 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Get normalized paths for comparing NFS export paths
-Date: Sat, 3 Mar 2012 19:12:57 +0000
-Message-ID: <1330801976.2781.19.camel@lade.trondhjem.org>
-References: <1328233332-26020-1-git-send-email-malahal@us.ibm.com>
-	 <4F2BC1C0.8070900@panasas.com> <20120203231623.442fefde@notabene.brown>
-	 <20120203142945.GA31805@us.ibm.com> <4F2E620F.5090100@panasas.com>
-	 <20120207204401.GA31752@us.ibm.com> <4F511B21.1020907@RedHat.com>
-	 <20120302192758.GA28389@us.ibm.com> <4F513429.1050209@RedHat.com>
-	 <20120302220108.GA17119@us.ibm.com> <4F525741.2060404@RedHat.com>
-In-Reply-To: <4F525741.2060404@RedHat.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1753764Ab2C2Osp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Mar 2012 10:48:45 -0400
+Date: Thu, 29 Mar 2012 10:48:43 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Matt W. Benjamin" <matt@linuxbox.com>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] nfsd4: use auth_unix unconditionally on backchannel
+Message-ID: <20120329144843.GJ16938@fieldses.org>
+References: <20120328234617.GB13231@fieldses.org>
+ <1996969981.63.1333031372979.JavaMail.root@thunderbeast.private.linuxbox.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1996969981.63.1333031372979.JavaMail.root@thunderbeast.private.linuxbox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU2F0LCAyMDEyLTAzLTAzIGF0IDEyOjM5IC0wNTAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0K
-PiANCj4gT24gMDMvMDIvMjAxMiAwNTowMSBQTSwgTWFsYWhhbCBOYWluZW5pIHdyb3RlOg0KPiA+
-IFN0ZXZlIERpY2tzb24gW1N0ZXZlREByZWRoYXQuY29tXSB3cm90ZToNCj4gPj4gU28gd2hhdCBt
-eSBwYXRjaCBkb2VzIGlzICJub3JtYWxpemVzIiB0aGUgZGV2aWNlIG5hbWUgZWFybHkNCj4gPj4g
-b24gaW4gbWFpbiwgc28gdGhlIGNvcnJlY3QgbmFtZSB1c2VkIHVzZWQgdGhyb3VnaCB0aGUgbW91
-bnQNCj4gPj4gYW5kIHdoZW4gaXRzIHdyaXR0ZW4gdGhlIG10YWIuIFBsdXMsIGZvciBiZXR0ZXIg
-b3Igd29yc2VzLCANCj4gPj4gc2luY2UgdGhlIG5ldyBkZXZpY2UgbmFtZSB3aWxsIGFsd2F5cyBi
-ZSBzaG9ydGVyLCBJIGp1c3QgDQo+ID4+IHJldXNlL3Jld3JpdGUgdGhlIG1lbW9yeSBhbGxvY2F0
-ZWQgZm9yIHRoZSBhcmd2IHZlY3Rvci4uIA0KPiA+PiBNZWFuaW5nIHRoZXJlIGlzIG5vIGFsbG9j
-YXRpb24uLi4gDQo+ID4gDQo+ID4gTXkgcHJvYmxlbSBpcyBhIGJpdCBkaWZmZXJlbnQuDQo+ID4g
-DQo+ID4gIm1vdW50IC10IG5mczQgc2VydmVyOmV4cG9ydCAvbW50IiB3b3JrcyBidXQgdW1vdW50
-IGZhaWxzLg0KPiA+IA0KPiA+IE5vdGljZSB0aGF0IHRoZXJlIGlzIG5vICcvJyBpbiB0aGUgcGF0
-aCENCj4gPiANCj4gPiBOb3JtYWxpemluZyBvciBqdXN0IHN0cmlwcGluZyBsZWFkaW5nICcvJ3Mg
-ZWFybHkgd29uJ3QgaGVscCB3aXRoIHRoZQ0KPiA+IGFib3ZlIHByb2JsZW0gYW5kIHNpbmNlIHRo
-ZXJlIGlzIGFscmVhZHkgYSBoYWNrIHRvIHN0cmlwIHRoZQ0KPiA+IF9fdHJhaWxpbmdfXyAnLycg
-dGhhdCBrZXJuZWwgYWRkcyB0byAvcHJvYy9tb3VudHMgZmlsZSwgSSBqdXN0IG1hZGUgdGhlDQo+
-ID4gZXhpc3RpbmcgaGFjayBpdCBhIGJpdCBiZXR0ZXIgYnkgbm9ybWFsaXppbmcuDQo+ID4NCj4g
-SG93IGFib3V0IHNvbWV0aGluZyBsaWtlIHRoaXMuLi4gSXQgdGFrZXMgb24gYm90aCBjYXNlIGVh
-cmx5IG9uLi4uDQo+IA0KPiBBdXRob3I6IFN0ZXZlIERpY2tzb24gPHN0ZXZlZEByZWRoYXQuY29t
-Pg0KPiBEYXRlOiAgIFNhdCBNYXIgMyAxMjozMToyMyAyMDEyIC0wNTAwDQo+IA0KPiAgICAgbW91
-bnQubmZzOiBWYWxpZGF0ZSBkZXZpY2UgbmFtZSBzeW50YXgNCj4gICAgIA0KPiAgICAgVG8gZW5z
-dXJlIHRoZSBkZXZpY2UgbmFtZSBpcyBmb3VuZCBhdCB1bm1vdW50IHRpbWUgc3RyaXANCj4gICAg
-IG9mZiB0aGUgbXVsdGlwbGUgJy8nIG9yIGFkZCBhICcvJyBpZiBvbmUgZG9lcyBub3QgZXhpc3Qu
-DQo+ICAgICANCj4gICAgIFNpZ25lZC1vZmYtYnk6IFN0ZXZlIERpY2tzb24gPHN0ZXZlZEByZWRo
-YXQuY29tPg0KDQpOQUNLLg0KDQpORlN2NCBpcyB0aGUgb25seSBwcm90b2NvbCB0aGF0IGhhcyBh
-IHN0YW5kYXJkIG1vdW50IHBhdGggc3ludGF4LCBhbmQNCnRoYXQgaXMgYmVjYXVzZSB0aGUgY2xp
-ZW50IHBlcmZvcm1zIHRoZSBqb2Igb2YgaW50ZXJwcmV0aW5nIHRoZSBwYXRoDQpuYW1lIGFuZCB0
-cmFuc2xhdGluZyBpdCBpbnRvIFBVVFJPT1RGSCBmb2xsb3dlZCBieSBhIGJ1bmNoIG9mIExPT0tV
-UHMuDQpJT1c6IHRoZSBzdGFuZGFyZCBzeW50YXggdGhlcmUgaXMgdGhlIG9uZSBpbXBvc2VkIGJ5
-IHRoZSBjbGllbnQuDQoNClRoZXJlIGlzIG5vdGhpbmcgaW4gdGhlIE5GU3YyL3YzIE1PVU5UIHNw
-ZWMgdGhhdCBzdGF0ZXMgdGhhdCBhIHBhdGgNCm5lZWRzIHRvIHN0YXJ0IHdpdGggJy8nLiBOb3Ig
-aXMgdGhlcmUgZXZlbiBhbnl0aGluZyBpbiB0aGUgc3BlYyB0aGF0DQpzdGF0ZXMgdGhhdCAnLycg
-aXMgcmVxdWlyZWQgdG8gYmUgdXNlZCBhcyB0aGUgZGlyZWN0b3J5IGNvbXBvbmVudA0Kc2VwYXJh
-dG9yLiBUaGUgWC9PUEVOIGRvY3Mgc3RhdGUgdGhhdCAnLycgaXMgcmVjb21tZW5kZWQgZm9yDQpw
-b3J0YWJpbGl0eSwgYnV0IGRvIG5vdCBtYWtlIGl0IGEgcmVxdWlyZW1lbnQuIFNlZQ0KaHR0cDov
-L3B1YnMub3Blbmdyb3VwLm9yZy9vbmxpbmVwdWJzLzk2Mjk3OTkvY2hhcDguaHRtI3RhZ2NqaF8w
-OV8wMl8wMl8wMyANCg0KSU9XOiBJJ20gcGVyZmVjdGx5IGFsbG93ZWQgdG8gc2V0IHVwIGEgJ21v
-dW50ZCcgc2VydmVyIHRoYXQgdXNlcyAnXCcgb3INCmV2ZW4gc29tZXRoaW5nIGxpa2UgJ3wnIGFz
-IGEgcGF0aCBjb21wb25lbnQgc2VwYXJhdG9yLiBUaGlzIGtpbmQgb2YNCnBhdGNoIHdvdWxkIGJy
-ZWFrIHRoZSBjbGllbnQncyBleGlzdGluZyBhYmlsaXR5IHRvIG1vdW50IGZyb20gc3VjaCBhDQpz
-ZXJ2ZXIuDQoNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
-aW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNv
-bQ0KDQo=
+On Thu, Mar 29, 2012 at 10:29:32AM -0400, Matt W. Benjamin wrote:
+> Am I correct that this limitation is only with respect to v40 (that's how I read the comment and the code in fs/nfs/callback.c)?
+
+I'm not sure what "limitation" you mean exactly....  The way the spec
+works is (from memory, someone correct me if I screw up):
+
+	- In the 4.0 case, the server's callbacks use the same flavor as
+	  was used on the setclientid.
+	- In the 4.1 case, the server's callbacks use the flavor
+	  specified in the csa_sec_parms field in a create_session or
+	  backchannel_ctl.
+
+In the 4.1 case the client always requests auth_unix on the backchannel.
+That is the client's right, and is an implementation choice based on the
+assumption that the amount of mischief somebody could perform by reading
+(or spoofing) callbacks is limited.
+
+The Linux server correctly implements the 4.0 case, but in the 4.1 case
+(after this patch, and before my earlier mistake in 80fc015bdfe) it
+always uses auth_unix.  That happens to satisfy the linux client, but
+isn't really correct, as it is perfectly legal for a client to request
+something other than auth_unix, and the Linux server would currently
+fail to interoperate with such a client.
+
+--b.
+
+> 
+> Thanks,
+> 
+> Matt
+> 
+> ----- "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> 
+> > On Wed, Mar 28, 2012 at 11:16:49PM +0000, Myklebust, Trond wrote:
+> > > On Wed, 2012-03-28 at 19:09 -0400, J. Bruce Fields wrote:
+> > > > This is a bandaid.
+> > > > 
+> > > > I have a series of patches that actually implement the correct
+> > behavior,
+> > > > but that may not quite be ready for 3.4.
+> > > > 
+> > > > --b.
+> > > > 
+> > > > commit 2f026867c76171d26f003b211063ff0562097d5e
+> > > > Author: J. Bruce Fields <bfields@redhat.com>
+> > > > Date:   Wed Mar 28 14:18:16 2012 -0400
+> > > > 
+> > > >     nfsd4: use auth_unix unconditionally on backchannel
+> > > >     
+> > > >     This isn't actually correct, but it works with the Linux
+> > client, and
+> > > >     agrees with the behavior we used to have before commit
+> > 80fc015bdfe.
+> > > 
+> > > Question: does the Linux client ever send you anything other than
+> > > AUTH_SYS credentials for the csa_sec_parms argument in
+> > CREATE_SESSION?
+> > > Anything other than that would be a bug, since our client doesn't
+> > > actually support RPCSEC_GSS in the callback channel.
+> > 
+> > Right, I've never seen anything else, so I think the client's
+> > behaving
+> > as expected.
+> > 
+> > But the server needs to be fixed to deal with the range of possible
+> > csa_sec_parms possibilities regardless.
+> > 
+> > The only thing I find odd about the client behavior is why it even
+> > bothers with auth_sys when auth_null would work just as well and be
+> > even
+> > slightly simpler.
+> > 
+> > --b.
+> > 
+> > > 
+> > > >     Later patches will implement the spec-mandated behavior (which
+> > is to use
+> > > >     the security parameters explicitly given by the client in
+> > create_session
+> > > >     or backchannel_ctl).
+> > > >     
+> > > 
+> > > 
+> > > -- 
+> > > Trond Myklebust
+> > > Linux NFS client maintainer
+> > > 
+> > > NetApp
+> > > Trond.Myklebust@netapp.com
+> > > www.netapp.com
+> > > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+> > in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> -- 
+> Matt Benjamin
+> The Linux Box
+> 206 South Fifth Ave. Suite 150
+> Ann Arbor, MI  48104
+> 
+> http://linuxbox.com
+> 
+> tel. 734-761-4689
+> fax. 734-769-8938
+> cel. 734-216-5309
