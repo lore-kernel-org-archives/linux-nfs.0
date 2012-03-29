@@ -1,86 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:22264 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758881Ab2CWPxL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Mar 2012 11:53:11 -0400
-Date: Fri, 23 Mar 2012 11:53:37 -0400
-From: Jeff Layton <jlayton@redhat.com>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:37037 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932640Ab2C2CUq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Mar 2012 22:20:46 -0400
+MIME-Version: 1.0
+In-Reply-To: <1332986928.19172.45.camel@lade.trondhjem.org>
+References: <1332986348.19172.43.camel@lade.trondhjem.org> <CA+55aFwVzhgsw005P3+BkLw_=noJwkQB3G=Q4GqhfLL1WyPHfg@mail.gmail.com>
+ <1332986928.19172.45.camel@lade.trondhjem.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Wed, 28 Mar 2012 19:20:24 -0700
+Message-ID: <CA+55aFyQ0r5mN9=3DUVENCtdj8VMLRjiXTc5Xd4o+F=s9B8xMg@mail.gmail.com>
+Subject: Re: [GIT PULL] Please pull NFS client bugfixes for Linux 3.4...
 To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v10 3/8] sunrpc: create nfsd dir in rpc_pipefs
-Message-ID: <20120323115337.28bff808@corrin.poochiereds.net>
-In-Reply-To: <1332516863.3087.10.camel@lade.trondhjem.org>
-References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
-	<1332337929-18580-4-git-send-email-jlayton@redhat.com>
-	<20120323121208.GA3219@fieldses.org>
-	<20120323133111.GA2991@fieldses.org>
-	<1332516024.3087.1.camel@lade.trondhjem.org>
-	<20120323152220.GA4953@fieldses.org>
-	<1332516863.3087.10.camel@lade.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 23 Mar 2012 15:34:21 +0000
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+On Wed, Mar 28, 2012 at 7:08 PM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+>
+> Sure thing... I wasn't aware of that semantic difference, but I'm quite
+> happy to add it to my script...
 
-> On Fri, 2012-03-23 at 11:22 -0400, J. Bruce Fields wrote:
-> > On Fri, Mar 23, 2012 at 03:20:21PM +0000, Myklebust, Trond wrote:
-> > > On Fri, 2012-03-23 at 09:31 -0400, J. Bruce Fields wrote:
-> > > > On Fri, Mar 23, 2012 at 08:12:08AM -0400, J. Bruce Fields wrote:
-> > > > > On Wed, Mar 21, 2012 at 09:52:04AM -0400, Jeff Layton wrote:
-> > > > > > Add a new top-level dir in rpc_pipefs to hold the pipe for the clientid
-> > > > > > upcall.
-> > > > > 
-> > > > > After applying this patch, my tests consistently hang.  The hang happens
-> > > > > in excltest (of the special connectaton tests), over nfs4.1 and krb5.
-> > > > > Looking at the wire traffic, I'm seeing DELAY returned from a setattr
-> > > > > for mode on a newly-created (with EXCLUSIVE4_1) file.  That open got a
-> > > > > delegation, so presumably that's what's causing the DELAY, though I'm
-> > > > > not seeing the server send a recall.  That could be a krb5 bug.
-> > > > > 
-> > > > > Whatever bug there is here, it's hard to tell why this patch in
-> > > > > particular would make it more likely.
-> > > > > 
-> > > > > So, still investigating!
-> > > > 
-> > > > Reproduceable by:
-> > > > 
-> > > > 	mount -osec=krb5,minorversion=1 server:/export/ /mnt/
-> > > > 	cp cthon04/special/excltest /mnt/
-> > > > 	cd /mnt
-> > > > 	./excltest
-> > > 
-> > > Umm... When would you ever get a DELAY in the above scenario? I can see
-> > > getting an NFS4ERR_OPENMODE, but not DELAY.
-> > 
-> > There's a setattr for mode right after the open.  Is that unexpected?
-> 
-> Well yes, it is. The NFSv4.1 exclusive open should always be sending a
-> full set of attributes as part of the OPEN operation. The session replay
-> cache is now supposed to guarantee the only-once semantics that the
-> verifier used to provide.
-> 
-> > The server doesn't really have to recall the delegation in that case (it
-> > only needs to recall *other* clients' delegations) but I don't think
-> > it's wrong to.
-> 
-> Then why isn't it allowing the operation? Any sane client would normally
-> interpret NFS4ERR_DELAY to mean that the server is doing something to
-> fix whatever situation is preventing the operation from completing
-> (presumably by recalling delegations in this case). Just replying DELAY
-> and doing nothing is not helpful...
-> 
+Thanks. And I noticed that it's supposed to be "tags/xyz" with a "s".
 
-Yeah, this seems like a clear bug in the server code. I think it's
-replying DELAY in order to recall the delegation, but the delegation
-isn't getting recalled for some reason. We arguably don't actually need
-to recall it here, but I don't see any recall go out at all either...
+Of course, you might as well just say "xyz" without mentioning the
+tag[s] part at all, unless you have a branch with the same name and
+want to explicitly disambiguate.
 
-As to why this patch seems to uncover this bug -- that's a complete
-mystery at this point...
-
--- 
-Jeff Layton <jlayton@redhat.com>
+                   Linus
