@@ -1,100 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ebox.rath.org ([173.255.235.238]:41359 "EHLO ebox.rath.org"
+Received: from mx2.netapp.com ([216.240.18.37]:19901 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758671Ab2CTN36 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Mar 2012 09:29:58 -0400
-Message-ID: <4F688655.1090703@rath.org>
-Date: Tue, 20 Mar 2012 09:29:57 -0400
-From: Nikolaus Rath <Nikolaus@rath.org>
+	id S1753875Ab2C2C2S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Mar 2012 22:28:18 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        "Linux Kernel mailing list" <linux-kernel@vger.kernel.org>
+Subject: Re: [GIT PULL] Please pull NFS client bugfixes for Linux 3.4...
+Date: Thu, 29 Mar 2012 02:28:11 +0000
+Message-ID: <1332988097.19172.51.camel@lade.trondhjem.org>
+References: <1332986348.19172.43.camel@lade.trondhjem.org>
+	 <CA+55aFwVzhgsw005P3+BkLw_=noJwkQB3G=Q4GqhfLL1WyPHfg@mail.gmail.com>
+	 <1332986928.19172.45.camel@lade.trondhjem.org>
+	 <CA+55aFyQ0r5mN9=3DUVENCtdj8VMLRjiXTc5Xd4o+F=s9B8xMg@mail.gmail.com>
+In-Reply-To: <CA+55aFyQ0r5mN9=3DUVENCtdj8VMLRjiXTc5Xd4o+F=s9B8xMg@mail.gmail.com>
+Content-Type: multipart/mixed;
+	boundary="_002_13329880971917251camelladetrondhjemorg_"
 MIME-Version: 1.0
-To: Rick Macklem <rmacklem@uoguelph.ca>
-CC: linux-nfs@vger.kernel.org, nfsv4@ietf.org,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [nfsv4] NFS4 over VPN hangs when connecting > 2 clients
-References: <716104306.1267694.1332195933869.JavaMail.root@erie.cs.uoguelph.ca>
-In-Reply-To: <716104306.1267694.1332195933869.JavaMail.root@erie.cs.uoguelph.ca>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/19/2012 06:25 PM, Rick Macklem wrote:
-> Nikolaus Rath wrote:
->> On 03/19/2012 02:39 PM, J. Bruce Fields wrote:
->>> On Mon, Mar 19, 2012 at 02:29:46PM -0400, Chuck Lever wrote:
->>>>
->>>> On Mar 19, 2012, at 2:27 PM, J. Bruce Fields wrote:
->>>>
->>>>> On Mon, Mar 19, 2012 at 01:47:14PM -0400, Chuck Lever wrote:
->>>>>>
->>>>>> On Mar 19, 2012, at 1:36 PM, J. Bruce Fields wrote:
->>>>>>> Well, sure, but all I'm proposing here is returning
->>>>>>> NFS4ERR_INUSE in the
->>>>>>> case where we get setclientid's with the same client-provided
->>>>>>> id.
->>>>>>> There'd be no change of behavior in the case of multiple clients
->>>>>>> sharing
->>>>>>> an IP (which is fine, of course).
->>>>>>
->>>>>> The migration draft proposes that clients use the same
->>>>>> nfs_client_id4 string for all of a server's IP addresses. Would a
->>>>>> server then be obliged to return NFS4ERR_CLID_IN_USE if a client
->>>>>> attempts a SETCLIENTID with the same boot verifier and
->>>>>> nfs_client_id4 on more than one IP address for the same server?
->>>>>
->>>>> That's also not this case, sorry, this time with all the
->>>>> conditions:
->>>>>
->>>>> 	- if the nfs_client_id4 is the same, and
->>>>> 	- if the flavor is auth_sys, and
->>>>> 	- if the client IP address is different,
->>>>> 	- then return NFS4ERR_INUSE.
->>>>
->>>> This still breaks for multi-homed servers and UCS clients. The
->>>> client IP address can be different depending on what server IP
->>>> address the client is accessing, but all the other parameters are
->>>> the same.
->>>
->>> OK. So probably there's nothing we can do to help here.
->>>
->>> As a bandaid maybe a rate-limited log message ("clientid X now in
->>> use
->>> from IP Y") might help debug these things....
->>
->> Since you guys keep Cc'ing me, I'll chime in with a rather naive
->> suggestion: if all that's required is a unique id for every client,
->> why
->> not use the MAC of the first network interface, independent of it
->> being
->> used for communication with the server?
->>
-> I think this works fairly well for "real hardware", but I'm not so sure
-> about clients running in VMs. (I don't really know how the VMs assign
-> MAC addresses to their fake net interfaces and what uniqueness guarantees
-> those have. I remember the old freebie VMware client for Windows just
-> had a config file that assigned the MAC. I bet half the installations
-> on the planet had the same MAC as the default config file:-)
+--_002_13329880971917251camelladetrondhjemorg_
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <77C4C92EA03A7144B58BA03853FDB5B2@tahoe.netapp.com>
+Content-Transfer-Encoding: base64
 
-But as I understand, the clientid doesn't have to globally unique, just
-unique for the given NFS server. I think if you have two virtual
-machines with the same MAC connecting to the same NFS server, you have
-different problems anyway.
+T24gV2VkLCAyMDEyLTAzLTI4IGF0IDE5OjIwIC0wNzAwLCBMaW51cyBUb3J2YWxkcyB3cm90ZToN
+Cj4gT24gV2VkLCBNYXIgMjgsIDIwMTIgYXQgNzowOCBQTSwgTXlrbGVidXN0LCBUcm9uZA0KPiA8
+VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+DQo+ID4gU3VyZSB0aGluZy4u
+LiBJIHdhc24ndCBhd2FyZSBvZiB0aGF0IHNlbWFudGljIGRpZmZlcmVuY2UsIGJ1dCBJJ20gcXVp
+dGUNCj4gPiBoYXBweSB0byBhZGQgaXQgdG8gbXkgc2NyaXB0Li4uDQo+IA0KPiBUaGFua3MuIEFu
+ZCBJIG5vdGljZWQgdGhhdCBpdCdzIHN1cHBvc2VkIHRvIGJlICJ0YWdzL3h5eiIgd2l0aCBhICJz
+Ii4NCj4gDQo+IE9mIGNvdXJzZSwgeW91IG1pZ2h0IGFzIHdlbGwganVzdCBzYXkgInh5eiIgd2l0
+aG91dCBtZW50aW9uaW5nIHRoZQ0KPiB0YWdbc10gcGFydCBhdCBhbGwsIHVubGVzcyB5b3UgaGF2
+ZSBhIGJyYW5jaCB3aXRoIHRoZSBzYW1lIG5hbWUgYW5kDQo+IHdhbnQgdG8gZXhwbGljaXRseSBk
+aXNhbWJpZ3VhdGUuDQo+IA0KPiAgICAgICAgICAgICAgICAgICAgTGludXMNCg0KVGhlIHJlYXNv
+biBmb3IgYWRkaW5nIHRoZSAndGFncycgbGFiZWwgb3JpZ2luYWxseSB3YXMgcHJlY2lzZWx5IGJl
+Y2F1c2UNCkkgaGFkIGFuIGlkZW50aWNhbGx5IG5hbWVkIGJyYW5jaCwgYW5kIEkgd2FudGVkIHRv
+IGJlIGFibGUgdG8gc2VuZCB5b3UNCnRoZSBzaWduZWQgdGFnIGluc3RlYWQuDQoNCkkndmUgYXR0
+YWNoZWQgdGhlIHNjcmlwdCB0aGF0IEkgdXNlIHRvIGdlbmVyYXRlIHB1bGwgcmVxdWVzdHMganVz
+dCBpbg0KY2FzZSBzb21lb25lIGVsc2UgZG9lc24ndCBoYXZlIHRoZWlyIG93biB2ZXJzaW9uLiBJ
+dCBzaG91bGQgYmUgZmFpcmx5DQpvYnZpb3VzIHRvIG1vZGlmeS4uLg0KDQotLSANClRyb25kIE15
+a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlr
+bGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
 
+--_002_13329880971917251camelladetrondhjemorg_
+Content-Type: application/x-shellscript; name="git_make_linus_mail.sh"
+Content-Description: git_make_linus_mail.sh
+Content-Disposition: attachment; filename="git_make_linus_mail.sh"; size=2687;
+	creation-date="Thu, 29 Mar 2012 02:28:11 GMT";
+	modification-date="Thu, 29 Mar 2012 02:28:11 GMT"
+Content-ID: <173C1A53C5686F4B889D4D3376A3585E@tahoe.netapp.com>
+Content-Transfer-Encoding: base64
 
-> ps: Also, although it's not very relevant, getting the MAC address of
->     the first ethernet interface isn't easy in FreeBSD. I have no idea
->     if the same is true of Linux. (I'd also be worried that "first"
->     might not be fixed?)
+IyEvYmluL2Jhc2gNCiMNCiMNCnByZXR0eT1tZWRpdW0NCmRpZmY9MA0Kbm9fZm9ya19wb2ludD0w
+DQpzaG9ydD0wDQp0YWc9MA0KdGFyZ2V0X2JyYW5jaD1tYXN0ZXINCnJlZl9icmFuY2g9b3JpZ2lu
+L21hc3Rlcg0KcmVwbz0ic3NoOi8vdHJvbmRteUBsaW51eC1uZnMub3JnL34vZXhwb3J0cy9saW51
+eC1uZnMuZ2l0Ig0KIw0KZGllICgpIHsNCgljbWQ9JCgke0JBU0VOQU1FfSAkMCkNCgljYXQgPDwg
+RU9GDQp1c2FnZTogJHtjbWR9IFtPUFRJT05dIFtPVVRGSUxFXQ0KT1BUSU9OcyBhcmU6DQogICAt
+ZCwgLS1kaWZmCQkJQXBwZW5kIGEgZGlmZiBvZiBhbGwgY2hhbmdlcw0KICAgLXIsIC0tcmVmZXJl
+bmNlIEJSQU5DSAlVc2UgdGhlIHJlZmVyZW5jZSBicmFuY2ggbmFtZWQgQlJBTkNIDQoJCQkJCShk
+ZWZhdWx0OiAke3JlZl9icmFuY2h9KQ0KICAgICAgIC0tcmVwbyBSRVBPCQlVcmwgdG8gdXNlIGFz
+IHRoZSBnaXQgcmVwb3NpdG9yeQ0KICAgLXMsIC0tc2hvcnQJCQlHZW5lcmF0ZSBhIHNob3J0IGxv
+Zw0KICAgLXQsIC0tdGFyZ2V0IEJSQU5DSAkJVXNlIHRoZSBicmFuY2ggbmFtZWQgQlJBTkNIDQoJ
+CQkJCShkZWZhdWx0OiAke21hc3Rlcn0pDQogICAgICAgLS10YWcgVEFHCQlVc2UgdGhlIHRhZyBz
+aWduZWQgbmFtZWQgVEFHDQpFT0YNCglleGl0ICQxDQp9DQojDQpmYWlsICgpIHsNCgllY2hvICQx
+DQoJZXhpdCAkMg0KfQ0KIw0KZ2l0X3B1c2ggKCkgew0KCWdpdCBwdXNoICR7cmVwb30gIiRAIiB8
+fCBmYWlsICJnaXQgcHVzaCBmYWlsZWQhIiAkPw0KfQ0KIw0KQVJHUz0kKC91c3IvYmluL2dldG9w
+dCAtLWxvbmdvcHRpb25zPSJkaWZmLGhlbHAscmVmZXJlbmNlOixyZXBvOixzaG9ydCx0YWc6LHRh
+cmdldDoiICJkaHI6c3Q6IiAiJEAiKQ0KZXZhbCBzZXQgLS0gIiRBUkdTIg0KIw0Kd2hpbGUgdHJ1
+ZQ0KZG8NCgljYXNlICIkMSIgaW4NCgktLWRpZmZ8LWQpDQoJCWRpZmY9MQ0KCQlzaGlmdA0KCQk7
+Ow0KCS0tcmVmZXJlbmNlfC1yKQ0KCQlyZWZfYnJhbmNoPSQyDQoJCW5vX2ZvcmtfcG9pbnQ9MQ0K
+CQlzaGlmdCAyDQoJCTs7DQoJLS1yZXBvKQ0KCQlyZXBvPSQyDQoJCXNoaWZ0IDINCgkJOzsNCgkt
+LXNob3J0fC1zKQ0KCQlwcmV0dHk9c2hvcnQNCgkJc2hvcnQ9MQ0KCQlzaGlmdA0KCQk7Ow0KCS0t
+dGFnKQ0KCQl0YXJnZXRfYnJhbmNoPSQyDQoJCXRhZz0xDQoJCXNoaWZ0IDINCgkJOzsNCgktLXRh
+cmdldHwtdCkNCgkJdGFyZ2V0X2JyYW5jaD0kMg0KCQl0YWc9MA0KCQlzaGlmdCAyDQoJCTs7DQoJ
+LS0pDQoJCXNoaWZ0DQoJCWJyZWFrDQoJCTs7DQoJKikNCgkJZGllIDENCgkJOzsNCgllc2FjDQpk
+b25lDQoNCnRhcmdldF9maWxlPSR7MTotIi90bXAvbGludXMudHh0In0NCmlmIFsgJG5vX2Zvcmtf
+cG9pbnQgLWVxIDAgXQ0KdGhlbg0KCWZvcmtfcG9pbnQ9IiQoZ2l0IGNoZXJyeSAke3JlZl9icmFu
+Y2h9ICR7dGFyZ2V0X2JyYW5jaH0gfCBoZWFkIC1uMSB8IHNlZCAtZSAncy9eKyAqLy8nKV4iDQpl
+bHNlDQoJZm9ya19wb2ludD0iJHtyZWZfYnJhbmNofSINCmZpDQoNCiMNCnByaW50X2JsdXJiKCkN
+CnsNCgljYXQgPDxFTkQNCkhpIExpbnVzLA0KDQpQbGVhc2UgcHVsbCBmcm9tIHRoZSQxIHJlcG9z
+aXRvcnkgYXQNCg0KICAgZ2l0IHB1bGwgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMv
+dHJvbmRteS9saW51eC1uZnMuZ2l0JDINCg0KVGhpcyB3aWxsIHVwZGF0ZSB0aGUgZm9sbG93aW5n
+IGZpbGVzIHRocm91Z2ggdGhlIGFwcGVuZGVkIGNoYW5nZXNldHMuDQoNCiAgQ2hlZXJzLA0KICAg
+IFRyb25kDQoNCi0tLS0NCkVORA0KfQ0KIw0KKCBcDQogIGlmIFsgIiR0YXJnZXRfYnJhbmNoIiA9
+ICJtYXN0ZXIiIF07IFwNCiAgdGhlbiBcDQoJZ2l0X3B1c2ggJHt0YXJnZXRfYnJhbmNofTsgXA0K
+CXByaW50X2JsdXJiICIiICIiOyBcDQogIGVsaWYgWyAkdGFnIC1lcSAxIF07IFwNCiAgdGhlbiBc
+DQoJZ2l0X3B1c2ggdGFnICR7dGFyZ2V0X2JyYW5jaH07IFwNCglwcmludF9ibHVyYiAiIHNpZ25l
+ZCB0YWcgXCIke3RhcmdldF9icmFuY2h9XCIgaW4gdGhlIiAiIHRhZ3MvJHRhcmdldF9icmFuY2gi
+OyBcDQogIGVsc2UgXA0KCWdpdF9wdXNoICR7dGFyZ2V0X2JyYW5jaH07IFwNCglwcmludF9ibHVy
+YiAiIFwiJHt0YXJnZXRfYnJhbmNofVwiIGJyYW5jaCBvZiB0aGUiICIgJHRhcmdldF9icmFuY2gi
+OyBcDQogIGZpOyBcDQogIFwNCiAgZ2l0IGRpZmYgLS1zdGF0ICR7Zm9ya19wb2ludH0uLiR7dGFy
+Z2V0X2JyYW5jaH07IFwNCiAgZWNobyA7IFwNCiAgaWYgWyAkc2hvcnQgLWVxIDEgXTsgXA0KICB0
+aGVuIFwNCgkgIGdpdCBsb2cgLS1uby1tZXJnZXMgLS1wcmV0dHk9JHtwcmV0dHl9ICR7Zm9ya19w
+b2ludH0uLiR7dGFyZ2V0X2JyYW5jaH0gfCBnaXQgc2hvcnRsb2c7IFwNCiAgZWxzZSBcDQoJICBn
+aXQgbG9nIC0tbm8tbWVyZ2VzIC0tcHJldHR5PSR7cHJldHR5fSAke2ZvcmtfcG9pbnR9Li4ke3Rh
+cmdldF9icmFuY2h9OyBcDQogIGZpOyBcDQogIGVjaG8gOyBcDQogIFsgJGRpZmYgLWVxIDEgXSAm
+JiBnaXQgZGlmZiAtcCAke2ZvcmtfcG9pbnR9Li4ke3RhcmdldF9icmFuY2h9IFwNCikgPiAke3Rh
+cmdldF9maWxlfQ0KIw0KIyBnaXQgc2hvcnRsb2cgJHtmb3JrX3BvaW50fS4uJHt0YXJnZXRfYnJh
+bmNofQ0KIyBnaXQgLS1zdGF0IC0tc3VtbWFyeSAtTSAke2ZvcmtfcG9pbnR9Li4ke3RhcmdldF9i
+cmFuY2h9DQo=
 
-It doesn't need to be the same interface all the time, I just meant the
-first as in not a specific one.
-
-
-Best,
-
-
-   -Nikolaus
-
--- 
- »Time flies like an arrow, fruit flies like a Banana.«
-
-  PGP fingerprint: 5B93 61F8 4EA2 E279 ABF6  02CF A9AD B7F8 AE4E 425C
+--_002_13329880971917251camelladetrondhjemorg_--
