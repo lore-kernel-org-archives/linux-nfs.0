@@ -1,59 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:55706 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932696Ab2C2CKe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Mar 2012 22:10:34 -0400
-Received: by iagz16 with SMTP id z16so2320093iag.19
-        for <linux-nfs@vger.kernel.org>; Wed, 28 Mar 2012 19:10:34 -0700 (PDT)
+Received: from mx2.netapp.com ([216.240.18.37]:28307 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759216Ab2C2UQO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Mar 2012 16:16:14 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Dr James Bruce Fields <bfields@fieldses.org>
+CC: Orion Poplawski <orion@cora.nwra.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [nfsv4] open(O_CREAT) returns EEXISTS on symbolic link created
+ on another system until stat()ed
+Date: Thu, 29 Mar 2012 20:16:05 +0000
+Message-ID: <1333052170.10318.6.camel@lade.trondhjem.org>
+References: <loom.20120329T182500-467@post.gmane.org>
+	 <1333040091.5547.32.camel@lade.trondhjem.org>
+	 <4F749CCA.3000400@cora.nwra.com>
+	 <1333042863.5547.37.camel@lade.trondhjem.org>
+	 <4F74A4D5.1040802@cora.nwra.com> <20120329193100.GA20329@fieldses.org>
+In-Reply-To: <20120329193100.GA20329@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <1332979882.19172.38.camel@lade.trondhjem.org>
-References: <1332887744-4222-1-git-send-email-Trond.Myklebust@netapp.com>
-	<38AF6CFC-8017-4D08-8DB0-A80BA724E54A@netapp.com>
-	<1332947296.11400.7.camel@lade.trondhjem.org>
-	<74BCDDD5-955E-4C06-9640-47D477A9FF8F@netapp.com>
-	<CAKYAXd-eWRrja8bGqS7tTWehPNgAM4gtPALfAexRvTwkbbBOGw@mail.gmail.com>
-	<1332979882.19172.38.camel@lade.trondhjem.org>
-Date: Thu, 29 Mar 2012 11:10:33 +0900
-Message-ID: <CAKYAXd9eyN49AvWjD8ik6-mCB_KO7EiHKiSD=J-CPFxDeZ8fWQ@mail.gmail.com>
-Subject: Re: [PATCH 1/3] NFSv4: Fix two infinite loops in the mount code
-From: Namjae Jeon <linkinjeon@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: linux-nfs list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi. Trond.
-
-First sorry for noise.
-
-if goto is encountered by branch predictor with switch condition, CPU
-try to fetch instruction code after label to cpu cache.
-And Cpu is idiling and CPU clock is watsted. if branch prediction is
-fail, this cost is more big.
-but this patch is good as I said before.
-
-Thanks.
-
-2012/3/29 Myklebust, Trond <Trond.Myklebust@netapp.com>:
-> On Thu, 2012-03-29 at 08:55 +0900, Namjae Jeon wrote:
->> Hi. Trond.
->>
->> Normally goto statement is not recommended(pipeline and branch
->> prediction) it is only recommended as a last resort if there is no
->> method to escape this loop.
->
-> ????????????? A goto is an unconditional branch; there is no further
-> branch prediction involved once once the processor gets the value of
-> 'err' in that switch statement correct. Exactly how would adding an
-> extra set+test of exception.retry after the switch() help the branch
-> predictor in this situation?
->
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
->
+T24gVGh1LCAyMDEyLTAzLTI5IGF0IDE1OjMxIC0wNDAwLCBEciBKYW1lcyBCcnVjZSBGaWVsZHMg
+d3JvdGU6DQo+IE9uIFRodSwgTWFyIDI5LCAyMDEyIGF0IDEyOjA3OjE3UE0gLTA2MDAsIE9yaW9u
+IFBvcGxhd3NraSB3cm90ZToNCj4gPiBPbiAwMy8yOS8yMDEyIDExOjQwIEFNLCBNeWtsZWJ1c3Qs
+IFRyb25kIHdyb3RlOg0KPiA+ID4+R29pbmcgYmFjayB0byB2NCBvbiBFTDUuOCBzZXJ2ZXI6IG5m
+c3Y0ZWwubG9nLCBuZnN2NGYxOC5sb2cNCj4gPiA+Pg0KPiA+ID4+Qm90aCBnZXQgTkZTNEVSUl9F
+WElTVCBpbiB0aGlzIGNhc2UuDQo+ID4gPg0KPiA+ID5XaGljaCBpcyBhbiBvYnZpb3VzIHNlcnZl
+ciBidWc6IGl0IHNob3VsZCBiZSBzZW5kaW5nIE5GUzRFUlJfU1lNTElOSyBpbg0KPiA+ID5yZXBs
+eSB0byB0aGF0IE9QRU4uDQo+ID4gPg0KPiA+ID5CcnVjZT8NCj4gPiA+DQo+ID4gDQo+ID4gSSBj
+YW4gcmVwcm9kdWNlIHdpdGggYSAzLjQuMC0wLnJjMC5naXQxLjIuZmMxOCBzZXJ2ZXIgYXMgd2Vs
+bC4NCj4gDQo+IEhtLiAgU28gaG93IGFib3V0IHRoaXM/ICAoVW50ZXN0ZWQuKQ0KPiANCj4gUHJv
+YmFibHkgdGhlcmUgc2hvdWxkIGJlIGEgcHluZnMgdGVzdCB0b28uDQo+IA0KPiBJJ20gYXNzdW1p
+bmcgaXQgc2hvdWxkIHN0aWxsIGJlIEVSUl9FWElTVCBpbiB0aGUgZXhjbHVzaXZlLA0KPiBleGNs
+dXNpdmU0XzEsIGFuZCBndWFyZGVkIGNhc2VzLg0KPiANCj4gLS1iLg0KPiANCj4gZGlmZiAtLWdp
+dCBhL2ZzL25mc2QvdmZzLmMgYi9mcy9uZnNkL3Zmcy5jDQo+IGluZGV4IDc0MjNkNzEuLjJiZmNh
+ZDQgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mc2QvdmZzLmMNCj4gKysrIGIvZnMvbmZzZC92ZnMuYw0K
+PiBAQCAtMTQ1Nyw5ICsxNDU3LDEyIEBAIGRvX25mc2RfY3JlYXRlKHN0cnVjdCBzdmNfcnFzdCAq
+cnFzdHAsIHN0cnVjdCBzdmNfZmggKmZocCwNCj4gIA0KPiAgCQlzd2l0Y2ggKGNyZWF0ZW1vZGUp
+IHsNCj4gIAkJY2FzZSBORlMzX0NSRUFURV9VTkNIRUNLRUQ6DQo+IC0JCQlpZiAoISBTX0lTUkVH
+KGRjaGlsZC0+ZF9pbm9kZS0+aV9tb2RlKSkNCj4gLQkJCQllcnIgPSBuZnNlcnJfZXhpc3Q7DQo+
+IC0JCQllbHNlIGlmICh0cnVuY3ApIHsNCj4gKwkJCWlmICghIFNfSVNSRUcoZGNoaWxkLT5kX2lu
+b2RlLT5pX21vZGUpKSB7DQo+ICsJCQkJaWYgKHJxc3RwLT5ycV92ZXJzID09IDQpDQo+ICsJCQkJ
+CWVyciA9IG5mc2Vycl9zeW1saW5rOw0KPiArCQkJCWVsc2UNCj4gKwkJCQkJZXJyID0gbmZzZXJy
+X2V4aXN0Ow0KDQpOby4gVGhpcyBzaG91bGQgX25ldmVyXyByZXR1cm4gTkZTNEVSUl9FWElTVC4N
+Cg0KSXQgc2hvdWxkIHJldHVybg0KICAgICAgKiBORlM0RVJSX0lTRElSIGlmIHRoZSBvYmplY3Qg
+aXMgYSBkaXJlY3RvcnkNCiAgICAgICogTkZTNEVSUl9TWU1MSU5LIGlmIGl0IGlzIHN5bWJvbGlj
+IGxpbmssDQogICAgICAqIGVpdGhlciBORlM0RVJSX1dST05HX1RZUEUgKE5GU3Y0LjEpIG9yIE5G
+UzRFUlJfU1lNTElOSyAoTkZTdjQuMCkNCiAgICAgICAgaWYgdGhlIG9iamVjdCBpcyBhbnkgb3Ro
+ZXIgbm9uLXJlZ3VsYXIgZmlsZS4NCg0KDQo+ICsJCQl9IGVsc2UgaWYgKHRydW5jcCkgew0KPiAg
+CQkJCS8qIGluIG5mc3Y0LCB3ZSBuZWVkIHRvIHRyZWF0IHRoaXMgY2FzZSBhIGxpdHRsZQ0KPiAg
+CQkJCSAqIGRpZmZlcmVudGx5LiAgd2UgZG9uJ3Qgd2FudCB0byB0cnVuY2F0ZSB0aGUNCj4gIAkJ
+CQkgKiBmaWxlIG5vdzsgdGhpcyB3b3VsZCBiZSB3cm9uZyBpZiB0aGUgT1BFTg0KDQotLSANClRy
+b25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJv
+bmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
