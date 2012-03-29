@@ -1,49 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:45945 "EHLO
-	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1750927Ab2CSMiQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Mar 2012 08:38:16 -0400
-Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
-	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
-	(envelope-from <steved@redhat.com>)
-	id 1S9bqn-0000W7-P7
-	for linux-nfs@vger.kernel.org; Mon, 19 Mar 2012 08:38:14 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/1] idmapd: logging of Local-Realms only lists the last realm
-Date: Mon, 19 Mar 2012 08:36:56 -0400
-Message-Id: <1332160616-4522-1-git-send-email-steved@redhat.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:55706 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932696Ab2C2CKe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Mar 2012 22:10:34 -0400
+Received: by iagz16 with SMTP id z16so2320093iag.19
+        for <linux-nfs@vger.kernel.org>; Wed, 28 Mar 2012 19:10:34 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <1332979882.19172.38.camel@lade.trondhjem.org>
+References: <1332887744-4222-1-git-send-email-Trond.Myklebust@netapp.com>
+	<38AF6CFC-8017-4D08-8DB0-A80BA724E54A@netapp.com>
+	<1332947296.11400.7.camel@lade.trondhjem.org>
+	<74BCDDD5-955E-4C06-9640-47D477A9FF8F@netapp.com>
+	<CAKYAXd-eWRrja8bGqS7tTWehPNgAM4gtPALfAexRvTwkbbBOGw@mail.gmail.com>
+	<1332979882.19172.38.camel@lade.trondhjem.org>
+Date: Thu, 29 Mar 2012 11:10:33 +0900
+Message-ID: <CAKYAXd9eyN49AvWjD8ik6-mCB_KO7EiHKiSD=J-CPFxDeZ8fWQ@mail.gmail.com>
+Subject: Re: [PATCH 1/3] NFSv4: Fix two infinite loops in the mount code
+From: Namjae Jeon <linkinjeon@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: linux-nfs list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Juno Krahn <Juno.Krahn@gmail.com>
+Hi. Trond.
 
-The list of local realms can be logged with a massage like the following:
-   rpc.idmapd: libnfsidmap: Realms list: 'EXAMPLE2.COM'
-Instead of printing a list of realms, only the last realm in the list is shown.
+First sorry for noise.
 
-https://bugzilla.redhat.com/show_bug.cgi?id=804152
+if goto is encountered by branch predictor with switch condition, CPU
+try to fetch instruction code after label to cpu cache.
+And Cpu is idiling and CPU clock is watsted. if branch prediction is
+fail, this cost is more big.
+but this patch is good as I said before.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- libnfsidmap.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+Thanks.
 
-diff --git a/libnfsidmap.c b/libnfsidmap.c
-index 57bb6c3..641d766 100644
---- a/libnfsidmap.c
-+++ b/libnfsidmap.c
-@@ -285,8 +285,9 @@ int nfs4_init_name_mapping(char *conffile)
- 			}
- 			buf = malloc(siz);
- 			if (buf) {
-+				*buf = 0;
- 				TAILQ_FOREACH(r, &local_realms->fields, link) {
--					sprintf(buf, "'%s' ", r->field);
-+					sprintf(buf+strlen(buf), "'%s' ", r->field);
- 				}
- 				IDMAP_LOG(1, ("libnfsidmap: Realms list: %s", buf));
- 				free(buf);
--- 
-1.7.7.5
-
+2012/3/29 Myklebust, Trond <Trond.Myklebust@netapp.com>:
+> On Thu, 2012-03-29 at 08:55 +0900, Namjae Jeon wrote:
+>> Hi. Trond.
+>>
+>> Normally goto statement is not recommended(pipeline and branch
+>> prediction) it is only recommended as a last resort if there is no
+>> method to escape this loop.
+>
+> ????????????? A goto is an unconditional branch; there is no further
+> branch prediction involved once once the processor gets the value of
+> 'err' in that switch statement correct. Exactly how would adding an
+> extra set+test of exception.retry after the switch() help the branch
+> predictor in this situation?
+>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+>
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+>
