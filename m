@@ -1,111 +1,173 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:39785 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933232Ab2C1XzF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Mar 2012 19:55:05 -0400
-Received: by iagz16 with SMTP id z16so2172223iag.19
-        for <linux-nfs@vger.kernel.org>; Wed, 28 Mar 2012 16:55:04 -0700 (PDT)
+Received: from mailhub.sw.ru ([195.214.232.25]:7323 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933039Ab2C2Oy7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Mar 2012 10:54:59 -0400
+Subject: [PATCH v2] Lockd: pass network namespace to creation and destruction
+ routines
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Thu, 29 Mar 2012 18:54:33 +0400
+Message-ID: <20120329145421.31911.65512.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-In-Reply-To: <74BCDDD5-955E-4C06-9640-47D477A9FF8F@netapp.com>
-References: <1332887744-4222-1-git-send-email-Trond.Myklebust@netapp.com>
-	<38AF6CFC-8017-4D08-8DB0-A80BA724E54A@netapp.com>
-	<1332947296.11400.7.camel@lade.trondhjem.org>
-	<74BCDDD5-955E-4C06-9640-47D477A9FF8F@netapp.com>
-Date: Thu, 29 Mar 2012 08:55:04 +0900
-Message-ID: <CAKYAXd-eWRrja8bGqS7tTWehPNgAM4gtPALfAexRvTwkbbBOGw@mail.gmail.com>
-Subject: Re: [PATCH 1/3] NFSv4: Fix two infinite loops in the mount code
-From: Namjae Jeon <linkinjeon@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: linux-nfs list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi. Trond.
+v2: dereference of most probably already released nlm_host removed in
+nlmclnt_done() and reclaimer().
 
-Normally goto statement is not recommended(pipeline and branch
-prediction) it is only recommended as a last resort if there is no
-method to escape this loop.
-It is just my opinion. And when I think more,, looks not bad about
-forward goto statement.
+These routines are called from locks reclaimer() kernel thread. This thread
+works in "init_net" network context and currently relays on persence on lockd
+thread and it's per-net resources. Thus lockd_up() and lockd_down() can't relay
+on current network context. So let's pass corrent one into them.
 
-Thanks~
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-2012/3/29 Adamson, Dros <Weston.Adamson@netapp.com>:
-> OK, I need more coffee :)
->
-> -dros
->
-> On Mar 28, 2012, at 11:08 AM, Myklebust, Trond wrote:
->
->> On Wed, 2012-03-28 at 15:07 +0000, Adamson, Dros wrote:
->>> This should probably be sent to stable.
->>
->> See below. :-)
->>
->>> -dros
->>>
->>> On Mar 27, 2012, at 6:35 PM, Trond Myklebust wrote:
->>>
->>>> We can currently loop forever in nfs4_lookup_root() and in
->>>> nfs41_proc_secinfo_no_name(), if the first iteration returns a
->>>> NFS4ERR_DELAY or something else that causes exception.retry to get
->>>> set.
->>>>
->>>> Reported-by: Dros Adamson <Weston.Adamson@netapp.com>
->>>> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
->>>> Cc: stable@vger.kernel.org
->>>> ---
->>>> fs/nfs/nfs4proc.c |    6 ++++--
->>>> 1 files changed, 4 insertions(+), 2 deletions(-)
->>>>
->>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>>> index 45df7d4..ee9ca19 100644
->>>> --- a/fs/nfs/nfs4proc.c
->>>> +++ b/fs/nfs/nfs4proc.c
->>>> @@ -2290,11 +2290,12 @@ static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
->>>>             switch (err) {
->>>>             case 0:
->>>>             case -NFS4ERR_WRONGSEC:
->>>> -                   break;
->>>> +                   goto out;
->>>>             default:
->>>>                     err = nfs4_handle_exception(server, err, &exception);
->>>>             }
->>>>     } while (exception.retry);
->>>> +out:
->>>>     return err;
->>>> }
->>>>
->>>> @@ -6229,11 +6230,12 @@ nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
->>>>             case 0:
->>>>             case -NFS4ERR_WRONGSEC:
->>>>             case -NFS4ERR_NOTSUPP:
->>>> -                   break;
->>>> +                   goto out;
->>>>             default:
->>>>                     err = nfs4_handle_exception(server, err, &exception);
->>>>             }
->>>>     } while (exception.retry);
->>>> +out:
->>>>     return err;
->>>> }
->>>>
->>>> --
->>>> 1.7.7.6
->>>>
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
->>
->> --
->> Trond Myklebust
->> Linux NFS client maintainer
->>
->> NetApp
->> Trond.Myklebust@netapp.com
->> www.netapp.com
->>
->
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
+---
+ fs/lockd/clntlock.c        |   13 ++++++++-----
+ fs/lockd/svc.c             |    7 +++----
+ fs/nfsd/nfssvc.c           |    6 +++---
+ include/linux/lockd/bind.h |    4 ++--
+ 4 files changed, 16 insertions(+), 14 deletions(-)
+
+diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+index ba1dc2e..ca0a080 100644
+--- a/fs/lockd/clntlock.c
++++ b/fs/lockd/clntlock.c
+@@ -56,7 +56,7 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
+ 	u32 nlm_version = (nlm_init->nfs_version == 2) ? 1 : 4;
+ 	int status;
+ 
+-	status = lockd_up();
++	status = lockd_up(nlm_init->net);
+ 	if (status < 0)
+ 		return ERR_PTR(status);
+ 
+@@ -65,7 +65,7 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
+ 				   nlm_init->hostname, nlm_init->noresvport,
+ 				   nlm_init->net);
+ 	if (host == NULL) {
+-		lockd_down();
++		lockd_down(nlm_init->net);
+ 		return ERR_PTR(-ENOLCK);
+ 	}
+ 
+@@ -80,8 +80,10 @@ EXPORT_SYMBOL_GPL(nlmclnt_init);
+  */
+ void nlmclnt_done(struct nlm_host *host)
+ {
++	struct net *net = host->net;
++
+ 	nlmclnt_release_host(host);
+-	lockd_down();
++	lockd_down(net);
+ }
+ EXPORT_SYMBOL_GPL(nlmclnt_done);
+ 
+@@ -220,11 +222,12 @@ reclaimer(void *ptr)
+ 	struct nlm_wait	  *block;
+ 	struct file_lock *fl, *next;
+ 	u32 nsmstate;
++	struct net *net = host->net;
+ 
+ 	allow_signal(SIGKILL);
+ 
+ 	down_write(&host->h_rwsem);
+-	lockd_up();	/* note: this cannot fail as lockd is already running */
++	lockd_up(net);	/* note: this cannot fail as lockd is already running */
+ 
+ 	dprintk("lockd: reclaiming locks for host %s\n", host->h_name);
+ 
+@@ -275,6 +278,6 @@ restart:
+ 
+ 	/* Release host handle after use */
+ 	nlmclnt_release_host(host);
+-	lockd_down();
++	lockd_down(net);
+ 	return 0;
+ }
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index b34100e..ce4c80e 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -295,11 +295,10 @@ static void lockd_down_net(struct net *net)
+ /*
+  * Bring up the lockd process if it's not already up.
+  */
+-int lockd_up(void)
++int lockd_up(struct net *net)
+ {
+ 	struct svc_serv *serv;
+ 	int		error = 0;
+-	struct net *net = current->nsproxy->net_ns;
+ 
+ 	mutex_lock(&nlmsvc_mutex);
+ 	/*
+@@ -377,12 +376,12 @@ EXPORT_SYMBOL_GPL(lockd_up);
+  * Decrement the user count and bring down lockd if we're the last.
+  */
+ void
+-lockd_down(void)
++lockd_down(struct net *net)
+ {
+ 	mutex_lock(&nlmsvc_mutex);
+ 	if (nlmsvc_users) {
+ 		if (--nlmsvc_users) {
+-			lockd_down_net(current->nsproxy->net_ns);
++			lockd_down_net(net);
+ 			goto out;
+ 		}
+ 	} else {
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index fce472f..0f3e35b 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -220,7 +220,7 @@ static int nfsd_startup(unsigned short port, int nrservs)
+ 	ret = nfsd_init_socks(port);
+ 	if (ret)
+ 		goto out_racache;
+-	ret = lockd_up();
++	ret = lockd_up(&init_net);
+ 	if (ret)
+ 		goto out_racache;
+ 	ret = nfs4_state_start();
+@@ -229,7 +229,7 @@ static int nfsd_startup(unsigned short port, int nrservs)
+ 	nfsd_up = true;
+ 	return 0;
+ out_lockd:
+-	lockd_down();
++	lockd_down(&init_net);
+ out_racache:
+ 	nfsd_racache_shutdown();
+ 	return ret;
+@@ -246,7 +246,7 @@ static void nfsd_shutdown(void)
+ 	if (!nfsd_up)
+ 		return;
+ 	nfs4_state_shutdown();
+-	lockd_down();
++	lockd_down(&init_net);
+ 	nfsd_racache_shutdown();
+ 	nfsd_up = false;
+ }
+diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
+index 11a966e..4d24d64 100644
+--- a/include/linux/lockd/bind.h
++++ b/include/linux/lockd/bind.h
+@@ -54,7 +54,7 @@ extern void	nlmclnt_done(struct nlm_host *host);
+ 
+ extern int	nlmclnt_proc(struct nlm_host *host, int cmd,
+ 					struct file_lock *fl);
+-extern int	lockd_up(void);
+-extern void	lockd_down(void);
++extern int	lockd_up(struct net *net);
++extern void	lockd_down(struct net *net);
+ 
+ #endif /* LINUX_LOCKD_BIND_H */
+
