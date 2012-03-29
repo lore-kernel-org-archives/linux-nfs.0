@@ -1,51 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:51742 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753563Ab2CTDLg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Mar 2012 23:11:36 -0400
-Message-ID: <4F67F542.50906@panasas.com>
-Date: Mon, 19 Mar 2012 20:10:58 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from fieldses.org ([174.143.236.118]:47650 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752705Ab2C2OcT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Mar 2012 10:32:19 -0400
+Date: Thu, 29 Mar 2012 10:32:18 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Subject: Re: [PATCH 0/8] NFSd: precursor and cleanup patch set
+Message-ID: <20120329143218.GI16938@fieldses.org>
+References: <20120328150152.2646.33607.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "Bhamare, Sachin" <sbhamare@panasas.com>
-CC: NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>,
-        Benny Halevy <bhalevy@tonian.com>, Steve Dickson <steved@redhat.com>,
-        "Welch, Brent" <welch@panasas.com>
-Subject: Re: [PATCH 3/4] pnfs-obj: autologin: Add support for protocol autologin
-References: <4F62DADD.3010502@panasas.com> <4F62DC6A.5080709@panasas.com>  <1331934052.13255.7.camel@lade.trondhjem.org>  <4F679DEF.3040002@panasas.com> <1332191559.2636.34.camel@lade.trondhjem.org> <4F67BFE9.5040809@panasas.com> <4F67DA7E.80307@panasas.com>
-In-Reply-To: <4F67DA7E.80307@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120328150152.2646.33607.stgit@localhost6.localdomain6>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/19/2012 06:16 PM, Boaz Harrosh wrote:
-> Subject: [PATCH] SQUASHME: pnf-obj: Fix as according to Trond's comments
+On Wed, Mar 28, 2012 at 07:08:53PM +0400, Stanislav Kinsbursky wrote:
+> This patch set prepares ground for making NFSd export and expkey caches
+> allocated and registered per network namespace context.
+> Mainly, it just replaces hard-coded pointers with dereferenced everywhere
+> required.
+
+Thanks.  I'll be travelling next week and may not get to look at this
+till I get back.
+
+--b.
+
 > 
-
-<snip>
-
-> * Don't wait for ever for osd_login to finish, only wait osd_login_upcall_timeout
->     number of seconds, else fail.
-
-
-OK I'm dropping this thing for now. The call to call_usermodehelper_xxx infrastructure
-is not built for this.
-
-What happens is that the (*cleanup) function passed to call_usermodehelper_fns is always
-call from within the call_usermodehelper_fns(), before it's return. If it's waiting
-for the execution - UMH_WAIT_EXEC - then just after execution, if UMH_WAIT_PROC then
-after the program ends, if UMH_NO_WAIT it is called immediately. So there is no event
-out of the kmode.c subsystem that can always notify us when the PROC ended.
-
-For that I will need to either spun yet another thread, (The call_usermodehelper_exec
-already spuns 3. Or change call_usermodehelper_exec to receive a third vector that
-will be called on PROC completion. (Which will be redundant if  UMH_WAIT_PROC)
-
-Since both options are too heavyweights for me right now, I will leave this option
-to a TODO, and drop the timeout support for now.
-
-Trond please confirm.
-
-Thanks
-Boaz
+> The following series consists of:
+> 
+> ---
+> 
+> Stanislav Kinsbursky (8):
+>       nfsd: use passed cache_detail pointer expkey_parse()
+>       nfsd: add link to owner cache detail to svc_export structure
+>       nfsd: use cache detail pointer from svc_export structure on cache put
+>       nfsd: use exp_put() for svc_export_cache put
+>       nfsd: pass svc_export_cache pointer as private data to "exports" seq file ops
+>       nfsd: use hash table from cache detail in nfsd export seq ops
+>       nfsd: pass pointer to export cache down to stack wherever possible.
+>       nfsd: pass pointer to expkey cache down to stack wherever possible.
+> 
+> 
+>  fs/nfsd/export.c            |  102 ++++++++++++++++++++++++-------------------
+>  fs/nfsd/nfsctl.c            |   11 ++++-
+>  fs/nfsd/nfsfh.c             |    2 -
+>  include/linux/nfsd/export.h |    3 +
+>  4 files changed, 71 insertions(+), 47 deletions(-)
+> 
