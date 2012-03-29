@@ -1,52 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60476 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:38181 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752184Ab2CZUCN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Mar 2012 16:02:13 -0400
-Date: Mon, 26 Mar 2012 16:02:12 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v10 0/8] nfsd: overhaul the client name tracking code
-Message-ID: <20120326200212.GD26254@fieldses.org>
-References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
- <20120323170630.GB6089@fieldses.org>
- <20120323132618.60e7e28d@corrin.poochiereds.net>
+	id S932777Ab2C2Umd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Mar 2012 16:42:33 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Dr James Bruce Fields <bfields@fieldses.org>
+CC: Orion Poplawski <orion@cora.nwra.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [nfsv4] open(O_CREAT) returns EEXISTS on symbolic link created
+ on another system until stat()ed
+Date: Thu, 29 Mar 2012 20:42:24 +0000
+Message-ID: <1333053750.10318.15.camel@lade.trondhjem.org>
+References: <loom.20120329T182500-467@post.gmane.org>
+	 <1333040091.5547.32.camel@lade.trondhjem.org>
+	 <4F749CCA.3000400@cora.nwra.com>
+	 <1333042863.5547.37.camel@lade.trondhjem.org>
+	 <4F74A4D5.1040802@cora.nwra.com> <20120329193100.GA20329@fieldses.org>
+	 <1333052170.10318.6.camel@lade.trondhjem.org>
+In-Reply-To: <1333052170.10318.6.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120323132618.60e7e28d@corrin.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 23, 2012 at 01:26:18PM -0400, Jeff Layton wrote:
-> On Fri, 23 Mar 2012 13:06:30 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Wed, Mar 21, 2012 at 09:52:01AM -0400, Jeff Layton wrote:
-> > > This is the tenth iteration of this patchset. The primary motivation
-> > > of this respin is to fix up some merge conflicts with some fixes that
-> > > Bruce merged recently.
-> > 
-> > Thanks, these look fine.  I'm intending to merge for 3.4.  But I going
-> > want to spend some more time investigating the callback bug that
-> > excltest is triggering before committing to my for-3.4 branch.
-> > 
-> > --b.
-> > 
-> 
-> Thanks, and totally understood. No need to muddy the waters by merging new code...
-
-Having looked at it longer: first, I can't see how 4.1/krb5 callbacks
-ever really worked.  That's a project for another day.  (Soon, but
-probably not for 3.4.)
-
-Second, after further testing it turns out that the failure isn't always
-reproduceable after applying these patches, and is sometimes
-reproduceable without.
-
-Also, the patches look fine to me.
-
-So, I'm pushing them out soon and should be sending Linus a pull request
-in the next couple days.
-
---b.
+T24gVGh1LCAyMDEyLTAzLTI5IGF0IDE2OjE2IC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
+DQo+IE9uIFRodSwgMjAxMi0wMy0yOSBhdCAxNTozMSAtMDQwMCwgRHIgSmFtZXMgQnJ1Y2UgRmll
+bGRzIHdyb3RlOg0KPiA+IE9uIFRodSwgTWFyIDI5LCAyMDEyIGF0IDEyOjA3OjE3UE0gLTA2MDAs
+IE9yaW9uIFBvcGxhd3NraSB3cm90ZToNCj4gPiA+IE9uIDAzLzI5LzIwMTIgMTE6NDAgQU0sIE15
+a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gPiA+PkdvaW5nIGJhY2sgdG8gdjQgb24gRUw1Ljgg
+c2VydmVyOiBuZnN2NGVsLmxvZywgbmZzdjRmMTgubG9nDQo+ID4gPiA+Pg0KPiA+ID4gPj5Cb3Ro
+IGdldCBORlM0RVJSX0VYSVNUIGluIHRoaXMgY2FzZS4NCj4gPiA+ID4NCj4gPiA+ID5XaGljaCBp
+cyBhbiBvYnZpb3VzIHNlcnZlciBidWc6IGl0IHNob3VsZCBiZSBzZW5kaW5nIE5GUzRFUlJfU1lN
+TElOSyBpbg0KPiA+ID4gPnJlcGx5IHRvIHRoYXQgT1BFTi4NCj4gPiA+ID4NCj4gPiA+ID5CcnVj
+ZT8NCj4gPiA+ID4NCj4gPiA+IA0KPiA+ID4gSSBjYW4gcmVwcm9kdWNlIHdpdGggYSAzLjQuMC0w
+LnJjMC5naXQxLjIuZmMxOCBzZXJ2ZXIgYXMgd2VsbC4NCj4gPiANCj4gPiBIbS4gIFNvIGhvdyBh
+Ym91dCB0aGlzPyAgKFVudGVzdGVkLikNCj4gPiANCj4gPiBQcm9iYWJseSB0aGVyZSBzaG91bGQg
+YmUgYSBweW5mcyB0ZXN0IHRvby4NCj4gPiANCj4gPiBJJ20gYXNzdW1pbmcgaXQgc2hvdWxkIHN0
+aWxsIGJlIEVSUl9FWElTVCBpbiB0aGUgZXhjbHVzaXZlLA0KPiA+IGV4Y2x1c2l2ZTRfMSwgYW5k
+IGd1YXJkZWQgY2FzZXMuDQo+ID4gDQo+ID4gLS1iLg0KPiA+IA0KPiA+IGRpZmYgLS1naXQgYS9m
+cy9uZnNkL3Zmcy5jIGIvZnMvbmZzZC92ZnMuYw0KPiA+IGluZGV4IDc0MjNkNzEuLjJiZmNhZDQg
+MTAwNjQ0DQo+ID4gLS0tIGEvZnMvbmZzZC92ZnMuYw0KPiA+ICsrKyBiL2ZzL25mc2QvdmZzLmMN
+Cj4gPiBAQCAtMTQ1Nyw5ICsxNDU3LDEyIEBAIGRvX25mc2RfY3JlYXRlKHN0cnVjdCBzdmNfcnFz
+dCAqcnFzdHAsIHN0cnVjdCBzdmNfZmggKmZocCwNCj4gPiAgDQo+ID4gIAkJc3dpdGNoIChjcmVh
+dGVtb2RlKSB7DQo+ID4gIAkJY2FzZSBORlMzX0NSRUFURV9VTkNIRUNLRUQ6DQo+ID4gLQkJCWlm
+ICghIFNfSVNSRUcoZGNoaWxkLT5kX2lub2RlLT5pX21vZGUpKQ0KPiA+IC0JCQkJZXJyID0gbmZz
+ZXJyX2V4aXN0Ow0KPiA+IC0JCQllbHNlIGlmICh0cnVuY3ApIHsNCj4gPiArCQkJaWYgKCEgU19J
+U1JFRyhkY2hpbGQtPmRfaW5vZGUtPmlfbW9kZSkpIHsNCj4gPiArCQkJCWlmIChycXN0cC0+cnFf
+dmVycyA9PSA0KQ0KPiA+ICsJCQkJCWVyciA9IG5mc2Vycl9zeW1saW5rOw0KPiA+ICsJCQkJZWxz
+ZQ0KPiA+ICsJCQkJCWVyciA9IG5mc2Vycl9leGlzdDsNCj4gDQo+IE5vLiBUaGlzIHNob3VsZCBf
+bmV2ZXJfIHJldHVybiBORlM0RVJSX0VYSVNULg0KPiANCj4gSXQgc2hvdWxkIHJldHVybg0KPiAg
+ICAgICAqIE5GUzRFUlJfSVNESVIgaWYgdGhlIG9iamVjdCBpcyBhIGRpcmVjdG9yeQ0KPiAgICAg
+ICAqIE5GUzRFUlJfU1lNTElOSyBpZiBpdCBpcyBzeW1ib2xpYyBsaW5rLA0KPiAgICAgICAqIGVp
+dGhlciBORlM0RVJSX1dST05HX1RZUEUgKE5GU3Y0LjEpIG9yIE5GUzRFUlJfU1lNTElOSyAoTkZT
+djQuMCkNCj4gICAgICAgICBpZiB0aGUgb2JqZWN0IGlzIGFueSBvdGhlciBub24tcmVndWxhciBm
+aWxlLg0KDQpCYXNpY2FsbHksIGlmIGFuIG9iamVjdCBhbHJlYWR5IGV4aXN0cyB3aXRoIHRoYXQg
+bmFtZSwgdGhlbg0KTkZTM19DUkVBVEVfVU5DSEVDS0VEIHNob3VsZCBiZSB0cmVhdGVkIGFzIGlm
+IGl0IGlzIGFuIG9yZGluYXJ5IE9QRU4gKGluDQp0aGUgY2FzZSBvZiBORlN2NCkgb3IgTE9PS1VQ
+IChpbiB0aGUgY2FzZSBvZiBORlN2MykuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBO
+RlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
+bQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
