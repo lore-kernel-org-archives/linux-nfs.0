@@ -1,54 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:51937 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756401Ab2CBUmg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2012 15:42:36 -0500
-Received: by yhmm54 with SMTP id m54so1008975yhm.19
-        for <linux-nfs@vger.kernel.org>; Fri, 02 Mar 2012 12:42:35 -0800 (PST)
+Received: from fieldses.org ([174.143.236.118]:34197 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751741Ab2C2TbG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Mar 2012 15:31:06 -0400
+Date: Thu, 29 Mar 2012 15:31:00 -0400
+From: Dr James Bruce Fields <bfields@fieldses.org>
+To: Orion Poplawski <orion@cora.nwra.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [nfsv4] open(O_CREAT) returns EEXISTS on symbolic link created
+ on another system until stat()ed
+Message-ID: <20120329193100.GA20329@fieldses.org>
+References: <loom.20120329T182500-467@post.gmane.org>
+ <1333040091.5547.32.camel@lade.trondhjem.org>
+ <4F749CCA.3000400@cora.nwra.com>
+ <1333042863.5547.37.camel@lade.trondhjem.org>
+ <4F74A4D5.1040802@cora.nwra.com>
 MIME-Version: 1.0
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, skinsbursky@parallels.com
-Subject: [PATCH v8 0/6] nfsd: overhaul the client name tracking code
-Date: Fri,  2 Mar 2012 15:42:24 -0500
-Message-Id: <1330720950-5872-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4F74A4D5.1040802@cora.nwra.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is the eighth iteration of this patchset. The primary motivation
-for the respin here is to deal with the changes introduced by Stanislav's
-"namespacification" of rpc_pipefs. I think this one should be closer
-to what Stanislav suggested for this code.
+On Thu, Mar 29, 2012 at 12:07:17PM -0600, Orion Poplawski wrote:
+> On 03/29/2012 11:40 AM, Myklebust, Trond wrote:
+> >>Going back to v4 on EL5.8 server: nfsv4el.log, nfsv4f18.log
+> >>
+> >>Both get NFS4ERR_EXIST in this case.
+> >
+> >Which is an obvious server bug: it should be sending NFS4ERR_SYMLINK in
+> >reply to that OPEN.
+> >
+> >Bruce?
+> >
+> 
+> I can reproduce with a 3.4.0-0.rc0.git1.2.fc18 server as well.
 
-In particular, I've tried to make the "helpers" be containerized
-by net namespace already and simply have the code call those helpers
-for init_net, and ignore cases where they get called for other net
-namespaces.
+Hm.  So how about this?  (Untested.)
 
-An earlier version of this patchset can be viewed here. That set also
-contains a more comprehensive description of the rationale for doing
-this:
+Probably there should be a pynfs test too.
 
-    http://www.spinics.net/lists/linux-nfs/msg26324.html
+I'm assuming it should still be ERR_EXIST in the exclusive,
+exclusive4_1, and guarded cases.
 
-Jeff Layton (6):
-  nfsd: add nfsd4_client_tracking_ops struct and a way to set it
-  sunrpc: create nfsd dir in rpc_pipefs
-  nfsd: convert nfs4_client->cl_cb_flags to a generic flags field
-  nfsd: add a header describing upcall to nfsdcld
-  nfsd: add the infrastructure to handle the cld upcall
-  nfsd: add notifier to handle mount/unmount of rpc_pipefs sb
+--b.
 
- fs/nfsd/nfs4callback.c   |   14 +-
- fs/nfsd/nfs4proc.c       |    3 +-
- fs/nfsd/nfs4recover.c    |  594 ++++++++++++++++++++++++++++++++++++++++++++-
- fs/nfsd/nfs4state.c      |   50 ++---
- fs/nfsd/state.h          |   24 +-
- include/linux/nfsd/cld.h |   56 +++++
- net/sunrpc/rpc_pipe.c    |    5 +
- 7 files changed, 683 insertions(+), 63 deletions(-)
- create mode 100644 include/linux/nfsd/cld.h
-
--- 
-1.7.7.6
-
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 7423d71..2bfcad4 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1457,9 +1457,12 @@ do_nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 
+ 		switch (createmode) {
+ 		case NFS3_CREATE_UNCHECKED:
+-			if (! S_ISREG(dchild->d_inode->i_mode))
+-				err = nfserr_exist;
+-			else if (truncp) {
++			if (! S_ISREG(dchild->d_inode->i_mode)) {
++				if (rqstp->rq_vers == 4)
++					err = nfserr_symlink;
++				else
++					err = nfserr_exist;
++			} else if (truncp) {
+ 				/* in nfsv4, we need to treat this case a little
+ 				 * differently.  we don't want to truncate the
+ 				 * file now; this would be wrong if the OPEN
