@@ -1,56 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vb0-f46.google.com ([209.85.212.46]:48453 "EHLO
-	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756118Ab2CYO7k (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Mar 2012 10:59:40 -0400
-Received: by vbbff1 with SMTP id ff1so2193546vbb.19
-        for <linux-nfs@vger.kernel.org>; Sun, 25 Mar 2012 07:59:39 -0700 (PDT)
+Received: from mx3.science-computing.de ([193.197.16.20]:11068 "EHLO
+	mx3.science-computing.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758840Ab2C2OMU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Mar 2012 10:12:20 -0400
+Date: Thu, 29 Mar 2012 16:02:26 +0200
+From: Michael Weiser <M.Weiser@science-computing.de>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFSv4 post-1.2.2 nfs-utils client fails to mount from
+ pre-1.2.3 nfs-utils server
+Message-ID: <20120329140226.GB1362@science-computing.de>
+References: <20120312200221.GS29573@science-computing.de>
+ <CAKnQG+dq4C+dw5W2Jgcgg7xk-Kj_-hxLnCbeR8879tZ7DMt3jA@mail.gmail.com>
+ <5dad9f48aa83cc6af5f51fb3a5c076e0.squirrel@webmail.science-computing.de>
+ <CAKnQG+f3cG0q8Zoan=cc85qD5MUqqiwgnxFeq1ygTmGip+Kp5w@mail.gmail.com>
+ <20120313144214.GB16920@science-computing.de>
+ <CAKnQG+ezssmHZCAogTuWC7+ubAn8YjUtOF1MJ0Fw4rr7Z_srhw@mail.gmail.com>
+ <20120314134829.GA943@science-computing.de>
+ <20120319130043.GG9020@science-computing.de>
+ <4F686996.5050108@RedHat.com>
+ <20120320174418.GL24828@science-computing.de>
 MIME-Version: 1.0
-In-Reply-To: <1332362855.12332.11.camel@lade.trondhjem.org>
-References: <1332359184-1887-1-git-send-email-andros@netapp.com>
-	<1332359184-1887-13-git-send-email-andros@netapp.com>
-	<1332362855.12332.11.camel@lade.trondhjem.org>
-Date: Sun, 25 Mar 2012 10:59:39 -0400
-Message-ID: <CADnza44q6-JYdGmRh9CLdGcTOTB93O8nCcJO-inAYm__wi72ug@mail.gmail.com>
-Subject: Re: [PATCH Version 2 12/12] NFSv4.1 have filelayout_initiate_commit
- return void
-From: Fred Isaman <faisaman4@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+In-Reply-To: <20120320174418.GL24828@science-computing.de>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 21, 2012 at 4:47 PM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Wed, 2012-03-21 at 15:46 -0400, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
->>
->> The return is ignored.
->
-> Yes, but should it be? See the discussion between Fred and myself on the
-> list yesterday. I still don't see why we should report some errors and
-> ignore others...
->
->
+Hi Steve,
 
-I'll come back to this in a day or two, but let me note the following
-problem with nfs_commit_inode, pnfs, and error reporting.
+On Tue, Mar 20, 2012 at 06:44:18PM +0100, Michael Weiser wrote:
 
-Consider nfs_wb_page, which causes a FLUSH_SYNC nfs_commit_inode.
+> > > If nobody objects, I'd resubmit my patch to gssd with some cleanup and
+> > > documentation.\
+> > No, Please do...
+> Here's the patch. Is there any special procedure to follow to get it
+> committed?
 
-Pre-pnfs, nfs_commit_inode either returned an error, or sent the
-COMMIT.  Even if the page didn't make it into the "to be cleaned" list
-due to the INT_MAX restriction, the COMMIT was sent and on non-eror
-return it was safe to assume that the page data was on disk.
+How do I go about getting this committed?
 
-But with pnfs (and commit to DS), lets say that the writes are
-distributed between 2 data servers.  On a non-error return from
-nfs_commit_inode there is now no guarantee that a COMMIT will go to
-the DS hosting the page.  That is solely due to the INT_MAX
-restriction.  It of course gets even worse with the current
-filelayout_commit_pagelist if an alloc fails.
+> I just noticed that while the code bits are optional based on
+> HAVE_SET_ALLOWABLE_ENCTYPES, the man page part isn't. I've got no idea,
+> how to go about that.
 
+Thanks,
+-- 
+Michael Weiser                science + computing ag
+Senior Systems Engineer       Geschaeftsstelle Duesseldorf
+                              Martinstrasse 47-55, Haus A
+phone: +49 211 302 708 32     D-40223 Duesseldorf
+fax:   +49 211 302 708 50     www.science-computing.de
+-- 
+Vorstandsvorsitzender/Chairman of the board of management:
+Gerd-Lothar Leonhart
+Vorstand/Board of Management:
+Dr. Bernd Finkbeiner, Michael Heinrichs, 
+Dr. Arno Steitz, Dr. Ingrid Zech
+Vorsitzender des Aufsichtsrats/
+Chairman of the Supervisory Board:
+Philippe Miltin
+Sitz/Registered Office: Tuebingen
+Registergericht/Registration Court: Stuttgart
+Registernummer/Commercial Register No.: HRB 382196
 
-Fred
