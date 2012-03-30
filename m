@@ -1,94 +1,203 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36425 "EHLO fieldses.org"
+Received: from aa.linuxbox.com ([134.215.213.37]:3230 "EHLO aa.linuxbox.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753826Ab2CMUet (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Mar 2012 16:34:49 -0400
-Date: Tue, 13 Mar 2012 16:34:46 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, "Ted Ts'o" <tytso@mit.edu>,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
-        sandeen@redhat.com, adilger@whamcloud.com
-Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
- may_flags' in nfsd_open()
-Message-ID: <20120313203446.GB21991@fieldses.org>
-References: <20120306000837.GA17164@thunk.org>
- <20120306020819.GH31388@pad.fieldses.org>
- <20120306151816.GB32282@thunk.org>
- <20120306152842.GA8339@pad.fieldses.org>
- <20120309205148.GB5635@thunk.org>
- <20120312150912.GB12440@thunk.org>
- <20120312154921.GB17153@pad.fieldses.org>
- <20120312222250.GD8991@fieldses.org>
- <20120313200117.GA21991@fieldses.org>
- <4F5FA827.8020606@itwm.fraunhofer.de>
+	id S1758958Ab2C3RLT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 Mar 2012 13:11:19 -0400
+Date: Fri, 30 Mar 2012 13:10:57 -0400 (EDT)
+From: "Matt W. Benjamin" <matt@linuxbox.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs <linux-nfs@vger.kernel.org>,
+        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>,
+        Peter Staubach <pstaubach@exagrid.com>
+Message-ID: <2010727361.65.1333127457578.JavaMail.root@thunderbeast.private.linuxbox.com>
+In-Reply-To: <1333122400.8099.17.camel@lade.trondhjem.org>
+Subject: Re: unlink within an open directory stream
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F5FA827.8020606@itwm.fraunhofer.de>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 13, 2012 at 09:03:51PM +0100, Bernd Schubert wrote:
-> On 03/13/2012 09:01 PM, J. Bruce Fields wrote:
-> >On Mon, Mar 12, 2012 at 06:22:50PM -0400, bfields wrote:
-> >>On Mon, Mar 12, 2012 at 11:49:21AM -0400, J. Bruce Fields wrote:
-> >>>On Mon, Mar 12, 2012 at 11:09:12AM -0400, Ted Ts'o wrote:
-> >>>>On Fri, Mar 09, 2012 at 03:51:48PM -0500, Ted Ts'o wrote:
-> >>>>>
-> >>>>>Linus in general doesn't like cross tree merges (or any extraneous
-> >>>>>merges) unless they are absolutely necessary; but then, he trusts git
-> >>>>>merges more than many of us do.  :-)
-> >>>>>
-> >>>>>I've put the the patch series on a separate patch, with a signed tag, at:
-> >>>>>
-> >>>>>      git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git nfs-ext4-premerge
-> >>>>>
-> >>>>>Can you confirm that you've pulled it into your tree and it's landed
-> >>>>>in linux-next?  I probably won't bother pulling it in mine unless
-> >>>>>there is definitely a merge conflict that I need to resolve.  (I've
-> >>>>>checked and there do not appear to be any against linux-next as of
-> >>>>>last night.)
-> >>>>
-> >>>>Ping?
-> >>>
-> >>>Whoops, sorry.
-> >>>
-> >>>Looks perfect, thanks for handling these!
-> >>>
-> >>>I'm running them through my usual regression tests
-> >>
-> >>Urgh, I'm seeing a failure on the telldir test (part of the "special"
-> >>connectathon tests).  I haven't looked at what it's trying to do yet.
-> >>Reproduceable even just on a local filesystem without NFS involved.  If
-> >>someone wants to look at it, you can just do:
-> >>
-> >>	git clone git://linux-nfs.org/~bfields/cthon04.git
-> >>	cd cthon04
-> >>	make
-> >>	NFS_TESTDIR=/somewhere_on_an_ext4_fs/TMP ./runtests -s
-> >>
-> >>(Or after running that, more specifically,
-> >>
-> >>	cd /somewhere_on_an_ext4_fs/TMP/
-> >>	./telldir
-> >>
-> >>)
-> >>
-> >>I'll look at it tomorrow.
-> >
-> >Looks like seekdir is just not accepting an offset returned from
-> >getdents:
-> >
-> >	openat(AT_FDCWD, "telldir-test", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 3
-> >	getdents(3, {...{d_ino=20386, d_off=5728083968307607285, d_reclen=24, d_name="192"}...} = 4848
-> >	lseek(3, 5728083968307607285, SEEK_SET) = -1 EINVAL (Invalid argument)
-> >
-> >Still investigating.
+Hi,
+
+Thanks for providing all this reasoning and additional background.
+
+I guess I've always constructed an imaginary intention of the protocol feature that's different from the actual one.  Yet the feature nevertheless seemed useful.
+
+There seem to be two parts to my construction:
+
+1. negatively, it never occurred to me that a client implementation would assume that it could protect an application from invalidation, unless it was able to perform, and cache a complete traversal--this would be one with a consistent verifier for all component readdirs
+
+2. at the same time, it seems a conforming server implementation can be made which would often support a client in doing this, presuming it was able to use the cookie verifier to select a prior version of the directory;  not only do some filesystems now appear able to do this, this technique is used by the dcache nfs server, though iiuc, dcache doesn't make any promises that it will have a specific component cached at every version, etc
+
+Matt
+
+----- "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
+
+> On Fri, 2012-03-30 at 11:24 -0400, Peter Staubach wrote:
+> > Yes, hmmm, ummm...
+> > 
+> > A long time, I thought that the readdir cookie verifier sounded like
+> a good idea.  After all, if directories can be compacted, it would be
+> nice to be able to tell when the cookie has become invalid, right? 
+> So, I added it to the NFSv3 protocol.
+> > 
+> > It was only afterwards, in attempting to implement it, that the real
+> truth was discovered.  This is that the interfaces are not sufficient
+> to be able to convey this information sufficiently and to be able to
+> recover from the situation.  Currently, recovery require action on the
+> part of the application.
+> > 
+> > In retrospect, I wouldn't add the cookie verifier if I was doing it
+> again.
+> > 
+> > Thanks for the support, though.  :-)
+> > 
+> > I do disagree with Trond though, in that applications must be coded
+> to be able to handle directories where cookies can become invalidated.
+>  That's why rm and such have to be coded to keep track of their
+> location in the directory by more than just d_off.
 > 
-> Thanks! I'm also just going to work on it (just noticed your mail
-> while on vacation ...).
+> The problem with that is that there is no standard for how
+> applications
+> should proceed to do this, and so there are no guidelines for how the
+> client should behave.
+> 
+> Worse, if you've looked at the glibc readdir library code, you'll
+> have
+> noticed that it _depends_ on being able to use a strictly
+> POSIX-conforming version of telldir()/seekdir(). If it can't rewind to
+> a
+> previously saved offset, then it can end up skipping entries.
+> 
+> So no, I can't rely on applications either...
+> 
+> > 		ps
+> > 
+> > 
+> > -----Original Message-----
+> > From: linux-nfs-owner@vger.kernel.org
+> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Matt W.
+> Benjamin
+> > Sent: Monday, March 26, 2012 2:55 PM
+> > To: Boaz Harrosh
+> > Cc: linux-nfs; Ganesha NFS List; Trond Myklebust
+> > Subject: Re: unlink within an open directory stream
+> > 
+> > Hi,
+> > 
+> > Boaz:  we do not any longer send a readdir index.  We do send a
+> cookieverf.
+> > 
+> > Fist of all, I haven't established that the issue we're actually
+> observing is caused by the Linux client sending old cookies to
+> readdir(something).  However, if it is, it's in no way better to try
+> to make cookies "more persistent."  Nor should the Linux client be
+> expecting it.  The assumption is simply flawed.  The protocol
+> introduced cookie verifier (a LONG time ago) for a reason.
+> > 
+> > Matt
+> > ----- "Boaz Harrosh" <bharrosh@panasas.com> wrote:
+> > 
+> > > On 03/26/2012 11:25 AM, Myklebust, Trond wrote:
+> > > 
+> > > > On Mon, 2012-03-26 at 11:17 -0700, Boaz Harrosh wrote:
+> > > >> On 03/24/2012 10:12 AM, Myklebust, Trond wrote:
+> > > >>
+> > > >>
+> > > >> It's the new (post RHEL 6.0 Kernel) NFS need for opendir after
+> an
+> > > unlink.
+> > > > 
+> > > > What?
+> > > > 
+> > > 
+> > > 
+> > > The links below report on regression in RHEL 6.2 which have a new
+> NFS 
+> > > implementation where  6.0 used to be fine.
+> > > (Or it's what I understood from the reporters)
+> > > 
+> > > <snip>
+> > > 
+> > > > 
+> > > 
+> > > > No.
+> > > > 
+> > > > If the server supports permanent readdir cookies, then there is
+> no
+> > > need
+> > > > for opendir after unlink.
+> > > > 
+> > > > If the server does not have permanent readdir cookies, then our
+> > > client
+> > > > has never supported it anyway (nor will it ever do so). That
+> whole 
+> > > > 'cookieverf' READDIR bullshit has never provided a workable
+> model
+> > > for a
+> > > > POSIX client...
+> > > 
+> > > 
+> > > Thanks Trond for the explanation. Forgive my slowness. So you are
+> 
+> > > saying that with knfsd it's actually filesystem dependent and
+> maybe 
+> > > the reporters did not compare apples-to-apples and the difference
+> is 
+> > > in the behind file system.
+> > > 
+> > > Matt I'm sure Trond is right with regard to Ganesha, because we
+> send a 
+> > > readdir index and a cookieverf, which will change after unlink.
+> Since 
+> > > the application does not call opendir again the client will send
+> the 
+> > > old cookies, which is now a different file or might get
+> out-of-bounds 
+> > > for Ganesha.
+> > > 
+> > > Let me think about it a bit. I'm sure we can send a Better 64bit 
+> > > cookie, which will be more persistent, even across unlinks.
+> > > 
+> > > > 
+> > > > 
+> > > 
+> > > 
+> > > Thanks
+> > > Boaz
+> > 
+> > --
+> > Matt Benjamin
+> > The Linux Box
+> > 206 South Fifth Ave. Suite 150
+> > Ann Arbor, MI  48104
+> > 
+> > http://linuxbox.com
+> > 
+> > tel. 734-761-4689
+> > fax. 734-769-8938
+> > cel. 734-216-5309
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+> in the body of a message to majordomo@vger.kernel.org More majordomo
+> info at  http://vger.kernel.org/majordomo-info.html
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
 
-OK, good.  You can probably figure this out faster than me....
+-- 
+Matt Benjamin
+The Linux Box
+206 South Fifth Ave. Suite 150
+Ann Arbor, MI  48104
 
---b.
+http://linuxbox.com
+
+tel. 734-761-4689
+fax. 734-769-8938
+cel. 734-216-5309
