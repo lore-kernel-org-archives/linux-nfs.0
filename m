@@ -1,64 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:20858 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754769Ab2CFQO0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Mar 2012 11:14:26 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Apple Message framework v1257)
-Subject: Fwd: NFS: Add a client-side function to display NFS file handles
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Tue, 6 Mar 2012 11:14:20 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <ACBA6BB2-0D59-45D0-82E1-770EF4C4F49A@oracle.com>
-References: <20120306105134.GA1048@elgon.mountain>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from p02c11o149.mxlogic.net ([208.65.144.82]:51824 "EHLO
+	p02c11o149.mxlogic.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751393Ab2C3P26 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Mar 2012 11:28:58 -0400
+From: Peter Staubach <pstaubach@exagrid.com>
+To: "Matt W. Benjamin" <matt@linuxbox.com>,
+        Boaz Harrosh <bharrosh@panasas.com>
+CC: linux-nfs <linux-nfs@vger.kernel.org>,
+        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Date: Fri, 30 Mar 2012 11:24:53 -0400
+Subject: RE: unlink within an open directory stream
+Message-ID: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC062D6EBDA9@IT-1874.Isys.com>
+References: <4F70B8DF.9000108@panasas.com>
+ <1974178651.72.1332788099966.JavaMail.root@thunderbeast.private.linuxbox.com>
+In-Reply-To: <1974178651.72.1332788099966.JavaMail.root@thunderbeast.private.linuxbox.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond-
-
-Can you please reverse these checks in your version of the commit?
-
-Begin forwarded message:
-
-> From: Dan Carpenter <dan.carpenter@oracle.com>
-> Subject: re: NFS: Add a client-side function to display NFS file handles
-> Date: March 6, 2012 5:51:35 AM EST
-> To: chuck.lever@oracle.com
-> Cc: linux-nfs@vger.kernel.org
-> 
-> Hello Chuck Lever,
-> 
-> This is a semi-automatic email about new static checker warnings.
-> 
-> The patch 20d27e929fb4: "NFS: Add a client-side function to display 
-> NFS file handles" from Mar 1, 2012, leads to the following Smatch 
-> complaint:
-> 
-> fs/nfs/inode.c:1061 _nfs_display_fhandle()
-> 	 warn: variable dereferenced before check 'fh' (see line 1061)
-> 
-> fs/nfs/inode.c
->  1060	
->  1061		if (fh->size == 0 || fh == NULL) {
->                    ^^^^^^^^         ^^^^^^^^^^
->                   dereference          check
-> 
->  1062			printk(KERN_DEFAULT "%s at %p is empty\n", caption, fh);
->  1063			return;
-> 
-> regards,
-> dan carpenter
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+WWVzLCBobW1tLCB1bW1tLi4uDQoNCkEgbG9uZyB0aW1lLCBJIHRob3VnaHQgdGhhdCB0aGUgcmVh
+ZGRpciBjb29raWUgdmVyaWZpZXIgc291bmRlZCBsaWtlIGEgZ29vZCBpZGVhLiAgQWZ0ZXIgYWxs
+LCBpZiBkaXJlY3RvcmllcyBjYW4gYmUgY29tcGFjdGVkLCBpdCB3b3VsZCBiZSBuaWNlIHRvIGJl
+IGFibGUgdG8gdGVsbCB3aGVuIHRoZSBjb29raWUgaGFzIGJlY29tZSBpbnZhbGlkLCByaWdodD8g
+IFNvLCBJIGFkZGVkIGl0IHRvIHRoZSBORlN2MyBwcm90b2NvbC4NCg0KSXQgd2FzIG9ubHkgYWZ0
+ZXJ3YXJkcywgaW4gYXR0ZW1wdGluZyB0byBpbXBsZW1lbnQgaXQsIHRoYXQgdGhlIHJlYWwgdHJ1
+dGggd2FzIGRpc2NvdmVyZWQuICBUaGlzIGlzIHRoYXQgdGhlIGludGVyZmFjZXMgYXJlIG5vdCBz
+dWZmaWNpZW50IHRvIGJlIGFibGUgdG8gY29udmV5IHRoaXMgaW5mb3JtYXRpb24gc3VmZmljaWVu
+dGx5IGFuZCB0byBiZSBhYmxlIHRvIHJlY292ZXIgZnJvbSB0aGUgc2l0dWF0aW9uLiAgQ3VycmVu
+dGx5LCByZWNvdmVyeSByZXF1aXJlIGFjdGlvbiBvbiB0aGUgcGFydCBvZiB0aGUgYXBwbGljYXRp
+b24uDQoNCkluIHJldHJvc3BlY3QsIEkgd291bGRuJ3QgYWRkIHRoZSBjb29raWUgdmVyaWZpZXIg
+aWYgSSB3YXMgZG9pbmcgaXQgYWdhaW4uDQoNClRoYW5rcyBmb3IgdGhlIHN1cHBvcnQsIHRob3Vn
+aC4gIDotKQ0KDQpJIGRvIGRpc2FncmVlIHdpdGggVHJvbmQgdGhvdWdoLCBpbiB0aGF0IGFwcGxp
+Y2F0aW9ucyBtdXN0IGJlIGNvZGVkIHRvIGJlIGFibGUgdG8gaGFuZGxlIGRpcmVjdG9yaWVzIHdo
+ZXJlIGNvb2tpZXMgY2FuIGJlY29tZSBpbnZhbGlkYXRlZC4gIFRoYXQncyB3aHkgcm0gYW5kIHN1
+Y2ggaGF2ZSB0byBiZSBjb2RlZCB0byBrZWVwIHRyYWNrIG9mIHRoZWlyIGxvY2F0aW9uIGluIHRo
+ZSBkaXJlY3RvcnkgYnkgbW9yZSB0aGFuIGp1c3QgZF9vZmYuDQoNCgkJcHMNCg0KDQotLS0tLU9y
+aWdpbmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogbGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9y
+ZyBbbWFpbHRvOmxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmddIE9uIEJlaGFsZiBPZiBN
+YXR0IFcuIEJlbmphbWluDQpTZW50OiBNb25kYXksIE1hcmNoIDI2LCAyMDEyIDI6NTUgUE0NClRv
+OiBCb2F6IEhhcnJvc2gNCkNjOiBsaW51eC1uZnM7IEdhbmVzaGEgTkZTIExpc3Q7IFRyb25kIE15
+a2xlYnVzdA0KU3ViamVjdDogUmU6IHVubGluayB3aXRoaW4gYW4gb3BlbiBkaXJlY3Rvcnkgc3Ry
+ZWFtDQoNCkhpLA0KDQpCb2F6OiAgd2UgZG8gbm90IGFueSBsb25nZXIgc2VuZCBhIHJlYWRkaXIg
+aW5kZXguICBXZSBkbyBzZW5kIGEgY29va2lldmVyZi4NCg0KRmlzdCBvZiBhbGwsIEkgaGF2ZW4n
+dCBlc3RhYmxpc2hlZCB0aGF0IHRoZSBpc3N1ZSB3ZSdyZSBhY3R1YWxseSBvYnNlcnZpbmcgaXMg
+Y2F1c2VkIGJ5IHRoZSBMaW51eCBjbGllbnQgc2VuZGluZyBvbGQgY29va2llcyB0byByZWFkZGly
+KHNvbWV0aGluZykuICBIb3dldmVyLCBpZiBpdCBpcywgaXQncyBpbiBubyB3YXkgYmV0dGVyIHRv
+IHRyeSB0byBtYWtlIGNvb2tpZXMgIm1vcmUgcGVyc2lzdGVudC4iICBOb3Igc2hvdWxkIHRoZSBM
+aW51eCBjbGllbnQgYmUgZXhwZWN0aW5nIGl0LiAgVGhlIGFzc3VtcHRpb24gaXMgc2ltcGx5IGZs
+YXdlZC4gIFRoZSBwcm90b2NvbCBpbnRyb2R1Y2VkIGNvb2tpZSB2ZXJpZmllciAoYSBMT05HIHRp
+bWUgYWdvKSBmb3IgYSByZWFzb24uDQoNCk1hdHQNCi0tLS0tICJCb2F6IEhhcnJvc2giIDxiaGFy
+cm9zaEBwYW5hc2FzLmNvbT4gd3JvdGU6DQoNCj4gT24gMDMvMjYvMjAxMiAxMToyNSBBTSwgTXlr
+bGVidXN0LCBUcm9uZCB3cm90ZToNCj4gDQo+ID4gT24gTW9uLCAyMDEyLTAzLTI2IGF0IDExOjE3
+IC0wNzAwLCBCb2F6IEhhcnJvc2ggd3JvdGU6DQo+ID4+IE9uIDAzLzI0LzIwMTIgMTA6MTIgQU0s
+IE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4+DQo+ID4+DQo+ID4+IEl0J3MgdGhlIG5ldyAo
+cG9zdCBSSEVMIDYuMCBLZXJuZWwpIE5GUyBuZWVkIGZvciBvcGVuZGlyIGFmdGVyIGFuDQo+IHVu
+bGluay4NCj4gPiANCj4gPiBXaGF0Pw0KPiA+IA0KPiANCj4gDQo+IFRoZSBsaW5rcyBiZWxvdyBy
+ZXBvcnQgb24gcmVncmVzc2lvbiBpbiBSSEVMIDYuMiB3aGljaCBoYXZlIGEgbmV3IE5GUyANCj4g
+aW1wbGVtZW50YXRpb24gd2hlcmUgIDYuMCB1c2VkIHRvIGJlIGZpbmUuDQo+IChPciBpdCdzIHdo
+YXQgSSB1bmRlcnN0b29kIGZyb20gdGhlIHJlcG9ydGVycykNCj4gDQo+IDxzbmlwPg0KPiANCj4g
+PiANCj4gDQo+ID4gTm8uDQo+ID4gDQo+ID4gSWYgdGhlIHNlcnZlciBzdXBwb3J0cyBwZXJtYW5l
+bnQgcmVhZGRpciBjb29raWVzLCB0aGVuIHRoZXJlIGlzIG5vDQo+IG5lZWQNCj4gPiBmb3Igb3Bl
+bmRpciBhZnRlciB1bmxpbmsuDQo+ID4gDQo+ID4gSWYgdGhlIHNlcnZlciBkb2VzIG5vdCBoYXZl
+IHBlcm1hbmVudCByZWFkZGlyIGNvb2tpZXMsIHRoZW4gb3VyDQo+IGNsaWVudA0KPiA+IGhhcyBu
+ZXZlciBzdXBwb3J0ZWQgaXQgYW55d2F5IChub3Igd2lsbCBpdCBldmVyIGRvIHNvKS4gVGhhdCB3
+aG9sZSANCj4gPiAnY29va2lldmVyZicgUkVBRERJUiBidWxsc2hpdCBoYXMgbmV2ZXIgcHJvdmlk
+ZWQgYSB3b3JrYWJsZSBtb2RlbA0KPiBmb3IgYQ0KPiA+IFBPU0lYIGNsaWVudC4uLg0KPiANCj4g
+DQo+IFRoYW5rcyBUcm9uZCBmb3IgdGhlIGV4cGxhbmF0aW9uLiBGb3JnaXZlIG15IHNsb3duZXNz
+LiBTbyB5b3UgYXJlIA0KPiBzYXlpbmcgdGhhdCB3aXRoIGtuZnNkIGl0J3MgYWN0dWFsbHkgZmls
+ZXN5c3RlbSBkZXBlbmRlbnQgYW5kIG1heWJlIA0KPiB0aGUgcmVwb3J0ZXJzIGRpZCBub3QgY29t
+cGFyZSBhcHBsZXMtdG8tYXBwbGVzIGFuZCB0aGUgZGlmZmVyZW5jZSBpcyANCj4gaW4gdGhlIGJl
+aGluZCBmaWxlIHN5c3RlbS4NCj4gDQo+IE1hdHQgSSdtIHN1cmUgVHJvbmQgaXMgcmlnaHQgd2l0
+aCByZWdhcmQgdG8gR2FuZXNoYSwgYmVjYXVzZSB3ZSBzZW5kIGEgDQo+IHJlYWRkaXIgaW5kZXgg
+YW5kIGEgY29va2lldmVyZiwgd2hpY2ggd2lsbCBjaGFuZ2UgYWZ0ZXIgdW5saW5rLiBTaW5jZSAN
+Cj4gdGhlIGFwcGxpY2F0aW9uIGRvZXMgbm90IGNhbGwgb3BlbmRpciBhZ2FpbiB0aGUgY2xpZW50
+IHdpbGwgc2VuZCB0aGUgDQo+IG9sZCBjb29raWVzLCB3aGljaCBpcyBub3cgYSBkaWZmZXJlbnQg
+ZmlsZSBvciBtaWdodCBnZXQgb3V0LW9mLWJvdW5kcyANCj4gZm9yIEdhbmVzaGEuDQo+IA0KPiBM
+ZXQgbWUgdGhpbmsgYWJvdXQgaXQgYSBiaXQuIEknbSBzdXJlIHdlIGNhbiBzZW5kIGEgQmV0dGVy
+IDY0Yml0IA0KPiBjb29raWUsIHdoaWNoIHdpbGwgYmUgbW9yZSBwZXJzaXN0ZW50LCBldmVuIGFj
+cm9zcyB1bmxpbmtzLg0KPiANCj4gPiANCj4gPiANCj4gDQo+IA0KPiBUaGFua3MNCj4gQm9heg0K
+DQotLQ0KTWF0dCBCZW5qYW1pbg0KVGhlIExpbnV4IEJveA0KMjA2IFNvdXRoIEZpZnRoIEF2ZS4g
+U3VpdGUgMTUwDQpBbm4gQXJib3IsIE1JICA0ODEwNA0KDQpodHRwOi8vbGludXhib3guY29tDQoN
+CnRlbC4gNzM0LTc2MS00Njg5DQpmYXguIDczNC03NjktODkzOA0KY2VsLiA3MzQtMjE2LTUzMDkN
+Ci0tDQpUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJz
+Y3JpYmUgbGludXgtbmZzIiBpbiB0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZn
+ZXIua2VybmVsLm9yZyBNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwu
+b3JnL21ham9yZG9tby1pbmZvLmh0bWwNCg==
