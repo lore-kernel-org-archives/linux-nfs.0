@@ -1,53 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:44390 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1030589Ab2CFP3A (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Mar 2012 10:29:00 -0500
-Received: by mail-gy0-f174.google.com with SMTP id r11so2280207ghr.19
-        for <linux-nfs@vger.kernel.org>; Tue, 06 Mar 2012 07:29:00 -0800 (PST)
-MIME-Version: 1.0
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, skinsbursky@parallels.com
-Subject: [PATCH v9 2/6] sunrpc: create nfsd dir in rpc_pipefs
-Date: Tue,  6 Mar 2012 10:28:49 -0500
-Message-Id: <1331047733-1641-3-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1331047733-1641-1-git-send-email-jlayton@redhat.com>
-References: <1331047733-1641-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:51498 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752923Ab2C3TCs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 Mar 2012 15:02:48 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 03/10] NFS: Fix whitespace errors
+Date: Fri, 30 Mar 2012 15:02:30 -0400
+Message-Id: <1333134157-17141-4-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1333134157-17141-1-git-send-email-bjschuma@netapp.com>
+References: <1333134157-17141-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add a new top-level dir in rpc_pipefs to hold the pipe for the clientid
-upcall.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Remove the space from the beginning of both lines.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- net/sunrpc/rpc_pipe.c |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
+ fs/nfs/super.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 6873c9b..c81915d 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -992,6 +992,7 @@ enum {
- 	RPCAUTH_statd,
- 	RPCAUTH_nfsd4_cb,
- 	RPCAUTH_cache,
-+	RPCAUTH_nfsd,
- 	RPCAUTH_RootEOF
- };
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 1358dc1..7a711e9 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2149,7 +2149,7 @@ static void nfs_fill_super(struct super_block *sb,
+ 		sb->s_xattr = nfs4_xattr_handlers;
  
-@@ -1024,6 +1025,10 @@ static const struct rpc_filelist files[] = {
- 		.name = "cache",
- 		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
- 	},
-+	[RPCAUTH_nfsd] = {
-+		.name = "nfsd",
-+		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
-+	},
- };
+ 	sb->s_op = &nfs_sops;
+- 	nfs_initialise_sb(sb);
++	nfs_initialise_sb(sb);
+ }
  
  /*
+@@ -2174,7 +2174,7 @@ static void nfs_clone_super(struct super_block *sb,
+ 		sb->s_flags |= MS_POSIXACL;
+ 	}
+ 
+- 	nfs_initialise_sb(sb);
++	nfs_initialise_sb(sb);
+ }
+ 
+ static int nfs_compare_mount_options(const struct super_block *s, const struct nfs_server *b, int flags)
 -- 
-1.7.7.6
+1.7.9.5
 
