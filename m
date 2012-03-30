@@ -1,85 +1,211 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:47637 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:51498 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751993Ab2CHVCo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Mar 2012 16:02:44 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Olga Kornievskaia <aglo@citi.umich.edu>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH 2/2] NFSv4: Return the delegation if the server returns
- NFS4ERR_OPENMODE
-Date: Thu, 8 Mar 2012 21:02:43 +0000
-Message-ID: <1331240562.11759.5.camel@lade.trondhjem.org>
-References: <87k42yjb0c.fsf@tucsk.pomaz.szeredi.hu>
-	 <1331160049-3842-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <1331160049-3842-2-git-send-email-Trond.Myklebust@netapp.com>
-	 <1331160049-3842-3-git-send-email-Trond.Myklebust@netapp.com>
-	 <CAN-5tyG-w+ie3sxTwNA6e9x=CojxyDaJScJuCbS+9VE=yTmJNA@mail.gmail.com>
-	 <1331230525.2472.39.camel@lade.trondhjem.org>
-	 <CAN-5tyFYE5ECtv__C9S_GMT1gBMQ4+6WPS-1BjmSE7vHoRAQdw@mail.gmail.com>
-	 <20120308204205.GB9273@fieldses.org>
-	 <1331239814.11759.1.camel@lade.trondhjem.org>
-	 <20120308205737.GC9273@fieldses.org>
-In-Reply-To: <20120308205737.GC9273@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1760509Ab2C3TCv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 Mar 2012 15:02:51 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 08/10] NFS: Create a common xdev_mount() function
+Date: Fri, 30 Mar 2012 15:02:35 -0400
+Message-Id: <1333134157-17141-9-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1333134157-17141-1-git-send-email-bjschuma@netapp.com>
+References: <1333134157-17141-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTAzLTA4IGF0IDE1OjU3IC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIFRodSwgTWFyIDA4LCAyMDEyIGF0IDA4OjUwOjE0UE0gKzAwMDAsIE15a2xlYnVzdCwg
-VHJvbmQgd3JvdGU6DQo+ID4gT24gVGh1LCAyMDEyLTAzLTA4IGF0IDE1OjQyIC0wNTAwLCBKLiBC
-cnVjZSBGaWVsZHMgd3JvdGU6DQo+ID4gPiBPbiBUaHUsIE1hciAwOCwgMjAxMiBhdCAwMzoyMzoz
-NFBNIC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90ZToNCj4gPiA+ID4gT24gVGh1LCBNYXIg
-OCwgMjAxMiBhdCAxOjE1IFBNLCBNeWtsZWJ1c3QsIFRyb25kDQo+ID4gPiA+IDxUcm9uZC5NeWts
-ZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+ID4gPiA+ID4gT24gVGh1LCAyMDEyLTAzLTA4IGF0
-IDEyOjUyIC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90ZToNCj4gPiA+ID4gPj4gd291bGRu
-J3QgaXQgYmUgYmV0dGVyIGZvciB5b3UgdG8gcHJvYWN0aXZlbHkgcmV0dXJuIGEgcmVhZCBkZWxl
-Z2F0aW9uDQo+ID4gPiA+ID4+IHRoZW4gdW5uZWNlc3NhcmlseSBlcnJvcmluZz8NCj4gPiA+ID4g
-Pg0KPiA+ID4gPiA+IElmIG5vYm9keSBlbHNlIGhvbGRzIGEgZGVsZWdhdGlvbiwgdGhlbiB0aGUg
-TkZTIGNsaWVudCBpcyBhY3R1YWxseQ0KPiA+ID4gPiA+IGFsbG93ZWQgdG8ga2VlcCBpdHMgcmVh
-ZCBkZWxlZ2F0aW9uIHdoaWxlIHdyaXRpbmcgdG8gdGhlIGZpbGUuIEl0IGRvZXMNCj4gPiA+ID4g
-PiBhZG1pdHRlZGx5IG5lZWQgdG8gcmVxdWVzdCBhbiBPUEVOIHN0YXRlaWQgZm9yIHdyaXRlIGlu
-IHRoYXQgY2FzZS4uLg0KPiA+ID4gPiA+IChTZWUgc2VjdGlvbiAxMC40IG9mIFJGQzM1MzBiaXMg
-ZHJhZnQgMTYpDQo+ID4gPiA+IA0KPiA+ID4gPiBJZiB3ZSBib3RoIGFncmVlIHRoYXQgdGhlcmUg
-aGFzIHRvIGJlIGEgcmVxdWVzdCBmb3IgYW4gb3BlbiBzdGF0ZWlkIGZvcg0KPiA+ID4gPiBhIHdy
-aXRlLCB0aGVuIGluc3RlYWQgb2YgcmV0dXJuaW5nIHRoZSByZWFkIGRlbGVnYXRpb24gaWYgdGhl
-IGNsaWVudCByZWNlaXZlcw0KPiA+ID4gPiBlcnJfb3Blbm1vZGUgKHdoZW4gaXQgc2VuZCB0aGUg
-cmVxdWVzdCB3aXRoIHJlYWQgZGVsZWdhdGlvbiBzdGF0ZWlkDQo+ID4gPiA+IGFzIHlvdSBzYWlk
-IHBlciAzNTYwYmlzKSwgY2FuJ3QgdGhlIGNsaWVudCByZXNlbmQgdGhlIHNldGF0dHIgd2l0aCB0
-aGUgb3Blbg0KPiA+ID4gPiBzdGF0ZWlkPyBUaGUgb3JkZXJpbmcgb2YgdGhlIHN0YXRlaWQgdXNh
-Z2UgaXMgYSAic2hvdWxkIiBhbmQgbm90IGEgIm11c3QiLg0KPiA+ID4gPiANCj4gPiA+ID4gSW4g
-cmZjNTY2MSwgaXQgcmVhbGx5IGRvZXNuJ3QgbWFrZSBzZW5zZSB0byBldmVyIHNlbmQgYSBzZXRh
-dHRyIHdpdGgNCj4gPiA+ID4gYSByZWFkIGRlbGVnYXRpb24gc3RhdGVpZC4gQWNjb3JkaW5nIHRv
-IDkuMS4yLCB0aGUgc2VydmVyICJNVVNUIiByZXR1cm4NCj4gPiA+ID4gZXJyX29wZW5fbW9kZSIg
-ZXJyb3IgaW4gdGhhdCBjYXNlLg0KPiA+ID4gPiANCj4gPiA+ID4gSSBnYXRoZXIgeW91IGFyZSBp
-biB0aGlzIGNhc2UgZGVhbGluZyB3aXRoIDQuMCBkZWxlZ2F0aW9ucy4gQnV0IEkgd29uZGVyDQo+
-ID4gPiA+IGlmIHlvdSdsbCBkbyBzb21ldGhpbmcgZWxzZSBmb3IgNC4xIGRlbGVnYXRpb24gdGhl
-bj8NCj4gPiA+IA0KPiA+ID4gMzUzMGJpcyBoYXMgdGhlIHNhbWUgbGFuZ3VhZ2UgKCIuLi5tdXN0
-IHZlcmlmeSB0aGF0IHRoZSBhY2Nlc3MgbW9kZQ0KPiA+ID4gYWxsb3dzIHdyaXRpbmcgYW5kIHJl
-dHVybiBhbiBORlM0RVJSX09QRU5NT0RFIGVycm9yIGlmIGl0IGRvZXMgbm90IikuDQo+ID4gDQo+
-ID4gT0ssIHNvIHdlIHNob3VsZG4ndCBzZW5kIHRoZSBkZWxlZ2F0aW9uIHN0YXRlaWQgZWl0aGVy
-IGZvciB2NCBvciB2NC4xLg0KPiA+IEhvd2V2ZXIgc2hvdWxkIHdlIHByZS1lbXB0aXZlbHkgcmV0
-dXJuIHRoZSBkZWxlZ2F0aW9uPyBJJ3ZlIGJlZW4NCj4gPiBhc3N1bWluZyBub3QuDQo+IA0KPiBU
-aGUgc2VydmVyJ3Mgb25seSBsZWdhbCBvcHRpb24gaXMgdG8gcmVjYWxsIGl0LCBzbyBpdCBzZWVt
-cyBvZGQgbm90IHRvDQo+IHByZS1lbXB0aXZlbHkgcmV0dXJuLS1idXQgYXMgeW91IHNheSB0aGVy
-ZSdzIG5vdGhpbmcgdG8gcHJldmVudCB0aGUNCj4gc2VydmVyIGZyb20gdGhlbiBoYW5kaW5nIG9u
-ZSByaWdodCBiYWNrLCBwb3NzaWJseSBiZWZvcmUgeW91IGdldCBhDQo+IGNoYW5jZSB0byBzZW5k
-IHRoZSBzZXRhdHRyLg0KDQpXaHkgd291bGQgaXQgbmVlZCB0byByZWNhbGwgaXQgaWYgdGhpcyBp
-cyB0aGUgb25seSBjbGllbnQgaG9sZGluZyBhDQpkZWxlZ2F0aW9uPyBJIGFncmVlIHRoYXQgZm9y
-IHRoZSBjYXNlIG9mIE5GU3Y0IG9uY2Ugd2UgZG9uJ3Qgc2VuZCB0aGUNCnN0YXRlaWQsIHRoZSBz
-ZXJ2ZXIgaGFzIG5vIHdheSB0byBrbm93IHRoYXQgdGhpcyBpcyB0aGUgc2FtZSBjbGllbnQsIGJ1
-dA0KdGhlIE5GU3Y0LjEgc2VydmVyIGRvZXNuJ3QgaGF2ZSB0aGF0IGxpbWl0YXRpb24uDQoNCj4g
-KEFuZCB0aGUgbGludXggc2VydmVyIG1pZ2h0IHdlbGwgZG8gdGhhdC0tbWF5YmUgaXQgc2hvdWxk
-IGhhdmUgc29tZQ0KPiBoZXVyaXN0aWMgbm90IHRvIGhhbmQgb3V0IGEgZGVsZWdhdGlvbiB0aGF0
-IHdhcyBqdXN0IHJldHVybmVkLS1ub3Qgc28NCj4gbXVjaCBmb3IgdGhpcyBjYXNlIGFzIGp1c3Qg
-YmVjYXVzZSBhIHJldHVybiBpcyBhIHNpZ24gdGhhdCB0aGUNCj4gZGVsZWdhdGlvbiBpc24ndCB1
-c2VmdWwgdG8gdGhhdCBjbGllbnQuKQ0KDQpVbW0uLi4gQW4gTkZTdjQuMSBjbGllbnQgY291bGQg
-c2ltcGx5IHJlcXVlc3QgYSBkZWxlZ2F0aW9uLiBBcyBJIHNhaWQNCmVhcmxpZXIsIHdlIGRvbid0
-IGtlZXAgdGFicyBvbiB3aGF0IG90aGVyIHByb2Nlc3NlcyBhcmUgZG9pbmcuDQoNCi0tIA0KVHJv
-bmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9u
-ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+From: Bryan Schumaker <bjschuma@netapp.com>
+
+The only difference between nfs_xdev_mount() and nfs4_xdev_mount() is the
+unshared flag, so I pass this as an nfs_mount_info parameter so we can
+share more code.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/super.c |  116 ++++++++++++++------------------------------------------
+ 1 file changed, 28 insertions(+), 88 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index cf8a6b2..1247e7e 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2125,6 +2125,7 @@ static inline void nfs_initialise_sb(struct super_block *sb)
+ 
+ struct nfs_mount_info {
+ 	struct nfs_parsed_mount_data *parsed;
++	struct nfs_clone_mount *cloned;
+ 	unsigned int unshared;
+ };
+ 
+@@ -2437,13 +2438,13 @@ static void nfs_kill_super(struct super_block *s)
+ }
+ 
+ /*
+- * Clone an NFS2/3 server record on xdev traversal (FSID-change)
++ * Clone an NFS2/3/4 server record on xdev traversal (FSID-change)
+  */
+ static struct dentry *
+-nfs_xdev_mount(struct file_system_type *fs_type, int flags,
+-		const char *dev_name, void *raw_data)
++nfs_xdev_mount_common(struct file_system_type *fs_type, int flags,
++		const char *dev_name, struct nfs_mount_info *mount_info)
+ {
+-	struct nfs_clone_mount *data = raw_data;
++	struct nfs_clone_mount *data = mount_info->cloned;
+ 	struct super_block *s;
+ 	struct nfs_server *server;
+ 	struct dentry *mntroot;
+@@ -2453,7 +2454,7 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
+ 	};
+ 	int error;
+ 
+-	dprintk("--> nfs_xdev_mount()\n");
++	dprintk("--> nfs_xdev_mount_common()\n");
+ 
+ 	/* create a new volume representation */
+ 	server = nfs_clone_server(NFS_SB(data->sb), data->fh, data->fattr);
+@@ -2463,7 +2464,7 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
+ 	}
+ 	sb_mntdata.server = server;
+ 
+-	if (server->flags & NFS_MOUNT_UNSHARED)
++	if (server->flags & mount_info->unshared)
+ 		compare_super = NULL;
+ 
+ 	/* -o noac implies -o sync */
+@@ -2508,13 +2509,13 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
+ 	/* clone any lsm security options from the parent to the new sb */
+ 	security_sb_clone_mnt_opts(data->sb, s);
+ 
+-	dprintk("<-- nfs_xdev_mount() = 0\n");
++	dprintk("<-- nfs_xdev_mount_common() = 0\n");
+ 	return mntroot;
+ 
+ out_err_nosb:
+ 	nfs_free_server(server);
+ out_err_noserver:
+-	dprintk("<-- nfs_xdev_mount() = %d [error]\n", error);
++	dprintk("<-- nfs_xdev_mount_common() = %d [error]\n", error);
+ 	return ERR_PTR(error);
+ 
+ error_splat_super:
+@@ -2522,10 +2523,24 @@ error_splat_super:
+ 		bdi_unregister(&server->backing_dev_info);
+ error_splat_bdi:
+ 	deactivate_locked_super(s);
+-	dprintk("<-- nfs_xdev_mount() = %d [splat]\n", error);
++	dprintk("<-- nfs_xdev_mount_common() = %d [splat]\n", error);
+ 	return ERR_PTR(error);
+ }
+ 
++/*
++ * Clone an NFS2/3 server record on xdev traversal (FSID-change)
++ */
++static struct dentry *
++nfs_xdev_mount(struct file_system_type *fs_type, int flags,
++		const char *dev_name, void *raw_data)
++{
++	struct nfs_mount_info mount_info = {
++		.cloned   = raw_data,
++		.unshared = NFS_MOUNT_UNSHARED,
++	};
++	return nfs_xdev_mount_common(&nfs_fs_type, flags, dev_name, &mount_info);
++}
++
+ #ifdef CONFIG_NFS_V4
+ 
+ static void nfs4_validate_mount_flags(struct nfs_parsed_mount_data *args)
+@@ -2743,86 +2758,11 @@ static struct dentry *
+ nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
+ 		 const char *dev_name, void *raw_data)
+ {
+-	struct nfs_clone_mount *data = raw_data;
+-	struct super_block *s;
+-	struct nfs_server *server;
+-	struct dentry *mntroot;
+-	int (*compare_super)(struct super_block *, void *) = nfs_compare_super;
+-	struct nfs_sb_mountdata sb_mntdata = {
+-		.mntflags = flags,
++	struct nfs_mount_info mount_info = {
++		.cloned = raw_data,
++		.unshared = NFS4_MOUNT_UNSHARED,
+ 	};
+-	int error;
+-
+-	dprintk("--> nfs4_xdev_mount()\n");
+-
+-	/* create a new volume representation */
+-	server = nfs_clone_server(NFS_SB(data->sb), data->fh, data->fattr);
+-	if (IS_ERR(server)) {
+-		error = PTR_ERR(server);
+-		goto out_err_noserver;
+-	}
+-	sb_mntdata.server = server;
+-
+-	if (server->flags & NFS4_MOUNT_UNSHARED)
+-		compare_super = NULL;
+-
+-	/* -o noac implies -o sync */
+-	if (server->flags & NFS_MOUNT_NOAC)
+-		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
+-
+-	/* Get a superblock - note that we may end up sharing one that already exists */
+-	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
+-	if (IS_ERR(s)) {
+-		error = PTR_ERR(s);
+-		goto out_err_nosb;
+-	}
+-
+-	if (s->s_fs_info != server) {
+-		nfs_free_server(server);
+-		server = NULL;
+-	} else {
+-		error = nfs_bdi_register(server);
+-		if (error)
+-			goto error_splat_bdi;
+-	}
+-
+-	if (!s->s_root) {
+-		/* initial superblock/root creation */
+-		nfs_clone_super(s, data->sb);
+-		nfs_fscache_get_super_cookie(s, NULL, data);
+-	}
+-
+-	mntroot = nfs_get_root(s, data->fh, dev_name);
+-	if (IS_ERR(mntroot)) {
+-		error = PTR_ERR(mntroot);
+-		goto error_splat_super;
+-	}
+-	if (mntroot->d_inode->i_op != NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops) {
+-		dput(mntroot);
+-		error = -ESTALE;
+-		goto error_splat_super;
+-	}
+-
+-	s->s_flags |= MS_ACTIVE;
+-
+-	security_sb_clone_mnt_opts(data->sb, s);
+-
+-	dprintk("<-- nfs4_xdev_mount() = 0\n");
+-	return mntroot;
+-
+-out_err_nosb:
+-	nfs_free_server(server);
+-out_err_noserver:
+-	dprintk("<-- nfs4_xdev_mount() = %d [error]\n", error);
+-	return ERR_PTR(error);
+-
+-error_splat_super:
+-	if (server && !s->s_root)
+-		bdi_unregister(&server->backing_dev_info);
+-error_splat_bdi:
+-	deactivate_locked_super(s);
+-	dprintk("<-- nfs4_xdev_mount() = %d [splat]\n", error);
+-	return ERR_PTR(error);
++	return nfs_xdev_mount_common(&nfs4_fs_type, flags, dev_name, &mount_info);
+ }
+ 
+ static struct dentry *
+-- 
+1.7.9.5
+
