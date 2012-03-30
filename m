@@ -1,141 +1,120 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:20576 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758378Ab2C1PKA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Mar 2012 11:10:00 -0400
-Subject: [PATCH 8/8] nfsd: pass pointer to expkey cache down to stack wherever
- possible.
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Wed, 28 Mar 2012 19:09:50 +0400
-Message-ID: <20120328150950.2646.70232.stgit@localhost6.localdomain6>
-In-Reply-To: <20120328150152.2646.33607.stgit@localhost6.localdomain6>
-References: <20120328150152.2646.33607.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
+Received: from p02c12o142.mxlogic.net ([208.65.145.75]:40652 "EHLO
+	p02c12o142.mxlogic.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756010Ab2C3Q7x (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Mar 2012 12:59:53 -0400
+From: Peter Staubach <pstaubach@exagrid.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Matt W. Benjamin" <matt@linuxbox.com>,
+        Boaz Harrosh <bharrosh@panasas.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>
+Date: Fri, 30 Mar 2012 12:46:31 -0400
+Subject: RE: unlink within an open directory stream
+Message-ID: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC062D6EBDC8@IT-1874.Isys.com>
+References: <4F70B8DF.9000108@panasas.com>
+	 <1974178651.72.1332788099966.JavaMail.root@thunderbeast.private.linuxbox.com>
+	 <FA8A9A935BFD3A4D8F0CDA1C4F611BCC062D6EBDA9@IT-1874.Isys.com>
+ <1333122400.8099.17.camel@lade.trondhjem.org>
+In-Reply-To: <1333122400.8099.17.camel@lade.trondhjem.org>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This cache will be per-net soon. And it's easier to get the pointer to desired
-per-net instance only once and then pass it down instead of discovering it in
-every place were required.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
----
- fs/nfsd/export.c |   32 ++++++++++++++++----------------
- 1 files changed, 16 insertions(+), 16 deletions(-)
-
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index c237b0a..429b2f5 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -71,9 +71,9 @@ static int expkey_upcall(struct cache_detail *cd, struct cache_head *h)
- 	return sunrpc_cache_pipe_upcall(cd, h, expkey_request);
- }
- 
--static struct svc_expkey *svc_expkey_update(struct svc_expkey *new, struct svc_expkey *old);
--static struct svc_expkey *svc_expkey_lookup(struct svc_expkey *);
--static struct cache_detail svc_expkey_cache;
-+static struct svc_expkey *svc_expkey_update(struct cache_detail *cd, struct svc_expkey *new,
-+					    struct svc_expkey *old);
-+static struct svc_expkey *svc_expkey_lookup(struct cache_detail *cd, struct svc_expkey *);
- 
- static int expkey_parse(struct cache_detail *cd, char *mesg, int mlen)
- {
-@@ -131,7 +131,7 @@ static int expkey_parse(struct cache_detail *cd, char *mesg, int mlen)
- 	key.ek_fsidtype = fsidtype;
- 	memcpy(key.ek_fsid, buf, len);
- 
--	ek = svc_expkey_lookup(&key);
-+	ek = svc_expkey_lookup(cd, &key);
- 	err = -ENOMEM;
- 	if (!ek)
- 		goto out;
-@@ -145,7 +145,7 @@ static int expkey_parse(struct cache_detail *cd, char *mesg, int mlen)
- 	err = 0;
- 	if (len == 0) {
- 		set_bit(CACHE_NEGATIVE, &key.h.flags);
--		ek = svc_expkey_update(&key, ek);
-+		ek = svc_expkey_update(cd, &key, ek);
- 		if (!ek)
- 			err = -ENOMEM;
- 	} else {
-@@ -155,7 +155,7 @@ static int expkey_parse(struct cache_detail *cd, char *mesg, int mlen)
- 
- 		dprintk("Found the path %s\n", buf);
- 
--		ek = svc_expkey_update(&key, ek);
-+		ek = svc_expkey_update(cd, &key, ek);
- 		if (!ek)
- 			err = -ENOMEM;
- 		path_put(&key.ek_path);
-@@ -268,13 +268,12 @@ svc_expkey_hash(struct svc_expkey *item)
- }
- 
- static struct svc_expkey *
--svc_expkey_lookup(struct svc_expkey *item)
-+svc_expkey_lookup(struct cache_detail *cd, struct svc_expkey *item)
- {
- 	struct cache_head *ch;
- 	int hash = svc_expkey_hash(item);
- 
--	ch = sunrpc_cache_lookup(&svc_expkey_cache, &item->h,
--				 hash);
-+	ch = sunrpc_cache_lookup(cd, &item->h, hash);
- 	if (ch)
- 		return container_of(ch, struct svc_expkey, h);
- 	else
-@@ -282,13 +281,13 @@ svc_expkey_lookup(struct svc_expkey *item)
- }
- 
- static struct svc_expkey *
--svc_expkey_update(struct svc_expkey *new, struct svc_expkey *old)
-+svc_expkey_update(struct cache_detail *cd, struct svc_expkey *new,
-+		  struct svc_expkey *old)
- {
- 	struct cache_head *ch;
- 	int hash = svc_expkey_hash(new);
- 
--	ch = sunrpc_cache_update(&svc_expkey_cache, &new->h,
--				 &old->h, hash);
-+	ch = sunrpc_cache_update(cd, &new->h, &old->h, hash);
- 	if (ch)
- 		return container_of(ch, struct svc_expkey, h);
- 	else
-@@ -763,7 +762,8 @@ svc_export_update(struct svc_export *new, struct svc_export *old)
- 
- 
- static struct svc_expkey *
--exp_find_key(svc_client *clp, int fsid_type, u32 *fsidv, struct cache_req *reqp)
-+exp_find_key(struct cache_detail *cd, svc_client *clp, int fsid_type,
-+	     u32 *fsidv, struct cache_req *reqp)
- {
- 	struct svc_expkey key, *ek;
- 	int err;
-@@ -775,10 +775,10 @@ exp_find_key(svc_client *clp, int fsid_type, u32 *fsidv, struct cache_req *reqp)
- 	key.ek_fsidtype = fsid_type;
- 	memcpy(key.ek_fsid, fsidv, key_len(fsid_type));
- 
--	ek = svc_expkey_lookup(&key);
-+	ek = svc_expkey_lookup(cd, &key);
- 	if (ek == NULL)
- 		return ERR_PTR(-ENOMEM);
--	err = cache_check(&svc_expkey_cache, &ek->h, reqp);
-+	err = cache_check(cd, &ek->h, reqp);
- 	if (err)
- 		return ERR_PTR(err);
- 	return ek;
-@@ -883,7 +883,7 @@ static struct svc_export *exp_find(struct cache_detail *cd,
- 				   u32 *fsidv, struct cache_req *reqp)
- {
- 	struct svc_export *exp;
--	struct svc_expkey *ek = exp_find_key(clp, fsid_type, fsidv, reqp);
-+	struct svc_expkey *ek = exp_find_key(&svc_expkey_cache, clp, fsid_type, fsidv, reqp);
- 	if (IS_ERR(ek))
- 		return ERR_CAST(ek);
- 
-
+UHJlY2lzZWx5LCBUcm9uZCEgIDotKQ0KDQpUaGF0J3Mgd2h5IHRoZSBjb29raWUgdmVyaWZpZXIg
+dHVybmVkIG91dCB0byBiZSBhIHVudGVuYWJsZSBpZGVhLg0KDQpUaGUgYXBwbGljYXRpb24gaXRz
+ZWxmLCBub3QganVzdCB0aGUgYXBwbGljYXRpb24gbGV2ZWwsIG11c3QgcGFydGljaXBhdGUgaW4g
+dGhlIHJlY292ZXJ5LiAgSWYgdGhlIHJtIGNvbW1hbmQgd2FudHMgdG8gZW5zdXJlIHRoYXQgaXQg
+cmVtb3ZlcyBldmVyeSBlbnRyeSBpbiBhIGRpcmVjdG9yeSBiZWZvcmUgYXR0ZW1wdGluZyB0byBy
+ZW1vdmUgdGhlIGRpcmVjdG9yeSBpdHNlbGYsIHRoZW4gaXQgbXVzdCBhcnJhbmdlIHRvIGRvIHNv
+IGFuZCBjYW4ndCByZWFsbHkgYXNzdW1lIHRoYXQgZGlyZWN0b3J5IGNvb2tpZXMgY2FuIG5ldmVy
+IGJlY29tZSBpbnZhbGlkLiAgUGVyaGFwcyBpdCBjb3VsZCBvbiBhIHB1cmVseSBQT1NJWCBzeXN0
+ZW0sIEkgZHVubm8sIGJ1dCBJIGFtIG5vdCBzdXJlIHRoYXQgYSBwdXJlIFBPU0lYIHN5c3RlbSBl
+eGlzdHMgYW55d2hlcmUuDQoNCgkJcHMNCg0KDQotLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0K
+RnJvbTogTXlrbGVidXN0LCBUcm9uZCBbbWFpbHRvOlRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29t
+XSANClNlbnQ6IEZyaWRheSwgTWFyY2ggMzAsIDIwMTIgMTE6NDcgQU0NClRvOiBQZXRlciBTdGF1
+YmFjaA0KQ2M6IE1hdHQgVy4gQmVuamFtaW47IEJvYXogSGFycm9zaDsgbGludXgtbmZzOyBHYW5l
+c2hhIE5GUyBMaXN0DQpTdWJqZWN0OiBSRTogdW5saW5rIHdpdGhpbiBhbiBvcGVuIGRpcmVjdG9y
+eSBzdHJlYW0NCg0KT24gRnJpLCAyMDEyLTAzLTMwIGF0IDExOjI0IC0wNDAwLCBQZXRlciBTdGF1
+YmFjaCB3cm90ZToNCj4gWWVzLCBobW1tLCB1bW1tLi4uDQo+IA0KPiBBIGxvbmcgdGltZSwgSSB0
+aG91Z2h0IHRoYXQgdGhlIHJlYWRkaXIgY29va2llIHZlcmlmaWVyIHNvdW5kZWQgbGlrZSBhIGdv
+b2QgaWRlYS4gIEFmdGVyIGFsbCwgaWYgZGlyZWN0b3JpZXMgY2FuIGJlIGNvbXBhY3RlZCwgaXQg
+d291bGQgYmUgbmljZSB0byBiZSBhYmxlIHRvIHRlbGwgd2hlbiB0aGUgY29va2llIGhhcyBiZWNv
+bWUgaW52YWxpZCwgcmlnaHQ/ICBTbywgSSBhZGRlZCBpdCB0byB0aGUgTkZTdjMgcHJvdG9jb2wu
+DQo+IA0KPiBJdCB3YXMgb25seSBhZnRlcndhcmRzLCBpbiBhdHRlbXB0aW5nIHRvIGltcGxlbWVu
+dCBpdCwgdGhhdCB0aGUgcmVhbCB0cnV0aCB3YXMgZGlzY292ZXJlZC4gIFRoaXMgaXMgdGhhdCB0
+aGUgaW50ZXJmYWNlcyBhcmUgbm90IHN1ZmZpY2llbnQgdG8gYmUgYWJsZSB0byBjb252ZXkgdGhp
+cyBpbmZvcm1hdGlvbiBzdWZmaWNpZW50bHkgYW5kIHRvIGJlIGFibGUgdG8gcmVjb3ZlciBmcm9t
+IHRoZSBzaXR1YXRpb24uICBDdXJyZW50bHksIHJlY292ZXJ5IHJlcXVpcmUgYWN0aW9uIG9uIHRo
+ZSBwYXJ0IG9mIHRoZSBhcHBsaWNhdGlvbi4NCj4gDQo+IEluIHJldHJvc3BlY3QsIEkgd291bGRu
+J3QgYWRkIHRoZSBjb29raWUgdmVyaWZpZXIgaWYgSSB3YXMgZG9pbmcgaXQgYWdhaW4uDQo+IA0K
+PiBUaGFua3MgZm9yIHRoZSBzdXBwb3J0LCB0aG91Z2guICA6LSkNCj4gDQo+IEkgZG8gZGlzYWdy
+ZWUgd2l0aCBUcm9uZCB0aG91Z2gsIGluIHRoYXQgYXBwbGljYXRpb25zIG11c3QgYmUgY29kZWQg
+dG8gYmUgYWJsZSB0byBoYW5kbGUgZGlyZWN0b3JpZXMgd2hlcmUgY29va2llcyBjYW4gYmVjb21l
+IGludmFsaWRhdGVkLiAgVGhhdCdzIHdoeSBybSBhbmQgc3VjaCBoYXZlIHRvIGJlIGNvZGVkIHRv
+IGtlZXAgdHJhY2sgb2YgdGhlaXIgbG9jYXRpb24gaW4gdGhlIGRpcmVjdG9yeSBieSBtb3JlIHRo
+YW4ganVzdCBkX29mZi4NCg0KDQpUaGUgcHJvYmxlbSB3aXRoIHRoYXQgaXMgdGhhdCB0aGVyZSBp
+cyBubyBzdGFuZGFyZCBmb3IgaG93IGFwcGxpY2F0aW9ucyBzaG91bGQgcHJvY2VlZCB0byBkbyB0
+aGlzLCBhbmQgc28gdGhlcmUgYXJlIG5vIGd1aWRlbGluZXMgZm9yIGhvdyB0aGUgY2xpZW50IHNo
+b3VsZCBiZWhhdmUuDQoNCldvcnNlLCBpZiB5b3UndmUgbG9va2VkIGF0IHRoZSBnbGliYyByZWFk
+ZGlyIGxpYnJhcnkgY29kZSwgeW91J2xsIGhhdmUgbm90aWNlZCB0aGF0IGl0IF9kZXBlbmRzXyBv
+biBiZWluZyBhYmxlIHRvIHVzZSBhIHN0cmljdGx5IFBPU0lYLWNvbmZvcm1pbmcgdmVyc2lvbiBv
+ZiB0ZWxsZGlyKCkvc2Vla2RpcigpLiBJZiBpdCBjYW4ndCByZXdpbmQgdG8gYSBwcmV2aW91c2x5
+IHNhdmVkIG9mZnNldCwgdGhlbiBpdCBjYW4gZW5kIHVwIHNraXBwaW5nIGVudHJpZXMuDQoNClNv
+IG5vLCBJIGNhbid0IHJlbHkgb24gYXBwbGljYXRpb25zIGVpdGhlci4uLg0KDQo+IAkJcHMNCj4g
+DQo+IA0KPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3du
+ZXJAdmdlci5rZXJuZWwub3JnIA0KPiBbbWFpbHRvOmxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5l
+bC5vcmddIE9uIEJlaGFsZiBPZiBNYXR0IFcuIEJlbmphbWluDQo+IFNlbnQ6IE1vbmRheSwgTWFy
+Y2ggMjYsIDIwMTIgMjo1NSBQTQ0KPiBUbzogQm9heiBIYXJyb3NoDQo+IENjOiBsaW51eC1uZnM7
+IEdhbmVzaGEgTkZTIExpc3Q7IFRyb25kIE15a2xlYnVzdA0KPiBTdWJqZWN0OiBSZTogdW5saW5r
+IHdpdGhpbiBhbiBvcGVuIGRpcmVjdG9yeSBzdHJlYW0NCj4gDQo+IEhpLA0KPiANCj4gQm9hejog
+IHdlIGRvIG5vdCBhbnkgbG9uZ2VyIHNlbmQgYSByZWFkZGlyIGluZGV4LiAgV2UgZG8gc2VuZCBh
+IGNvb2tpZXZlcmYuDQo+IA0KPiBGaXN0IG9mIGFsbCwgSSBoYXZlbid0IGVzdGFibGlzaGVkIHRo
+YXQgdGhlIGlzc3VlIHdlJ3JlIGFjdHVhbGx5IG9ic2VydmluZyBpcyBjYXVzZWQgYnkgdGhlIExp
+bnV4IGNsaWVudCBzZW5kaW5nIG9sZCBjb29raWVzIHRvIHJlYWRkaXIoc29tZXRoaW5nKS4gIEhv
+d2V2ZXIsIGlmIGl0IGlzLCBpdCdzIGluIG5vIHdheSBiZXR0ZXIgdG8gdHJ5IHRvIG1ha2UgY29v
+a2llcyAibW9yZSBwZXJzaXN0ZW50LiIgIE5vciBzaG91bGQgdGhlIExpbnV4IGNsaWVudCBiZSBl
+eHBlY3RpbmcgaXQuICBUaGUgYXNzdW1wdGlvbiBpcyBzaW1wbHkgZmxhd2VkLiAgVGhlIHByb3Rv
+Y29sIGludHJvZHVjZWQgY29va2llIHZlcmlmaWVyIChhIExPTkcgdGltZSBhZ28pIGZvciBhIHJl
+YXNvbi4NCj4gDQo+IE1hdHQNCj4gLS0tLS0gIkJvYXogSGFycm9zaCIgPGJoYXJyb3NoQHBhbmFz
+YXMuY29tPiB3cm90ZToNCj4gDQo+ID4gT24gMDMvMjYvMjAxMiAxMToyNSBBTSwgTXlrbGVidXN0
+LCBUcm9uZCB3cm90ZToNCj4gPiANCj4gPiA+IE9uIE1vbiwgMjAxMi0wMy0yNiBhdCAxMToxNyAt
+MDcwMCwgQm9heiBIYXJyb3NoIHdyb3RlOg0KPiA+ID4+IE9uIDAzLzI0LzIwMTIgMTA6MTIgQU0s
+IE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gPj4NCj4gPiA+Pg0KPiA+ID4+IEl0J3MgdGhl
+IG5ldyAocG9zdCBSSEVMIDYuMCBLZXJuZWwpIE5GUyBuZWVkIGZvciBvcGVuZGlyIGFmdGVyIGFu
+DQo+ID4gdW5saW5rLg0KPiA+ID4gDQo+ID4gPiBXaGF0Pw0KPiA+ID4gDQo+ID4gDQo+ID4gDQo+
+ID4gVGhlIGxpbmtzIGJlbG93IHJlcG9ydCBvbiByZWdyZXNzaW9uIGluIFJIRUwgNi4yIHdoaWNo
+IGhhdmUgYSBuZXcgDQo+ID4gTkZTIGltcGxlbWVudGF0aW9uIHdoZXJlICA2LjAgdXNlZCB0byBi
+ZSBmaW5lLg0KPiA+IChPciBpdCdzIHdoYXQgSSB1bmRlcnN0b29kIGZyb20gdGhlIHJlcG9ydGVy
+cykNCj4gPiANCj4gPiA8c25pcD4NCj4gPiANCj4gPiA+IA0KPiA+IA0KPiA+ID4gTm8uDQo+ID4g
+PiANCj4gPiA+IElmIHRoZSBzZXJ2ZXIgc3VwcG9ydHMgcGVybWFuZW50IHJlYWRkaXIgY29va2ll
+cywgdGhlbiB0aGVyZSBpcyBubw0KPiA+IG5lZWQNCj4gPiA+IGZvciBvcGVuZGlyIGFmdGVyIHVu
+bGluay4NCj4gPiA+IA0KPiA+ID4gSWYgdGhlIHNlcnZlciBkb2VzIG5vdCBoYXZlIHBlcm1hbmVu
+dCByZWFkZGlyIGNvb2tpZXMsIHRoZW4gb3VyDQo+ID4gY2xpZW50DQo+ID4gPiBoYXMgbmV2ZXIg
+c3VwcG9ydGVkIGl0IGFueXdheSAobm9yIHdpbGwgaXQgZXZlciBkbyBzbykuIFRoYXQgd2hvbGUg
+DQo+ID4gPiAnY29va2lldmVyZicgUkVBRERJUiBidWxsc2hpdCBoYXMgbmV2ZXIgcHJvdmlkZWQg
+YSB3b3JrYWJsZSBtb2RlbA0KPiA+IGZvciBhDQo+ID4gPiBQT1NJWCBjbGllbnQuLi4NCj4gPiAN
+Cj4gPiANCj4gPiBUaGFua3MgVHJvbmQgZm9yIHRoZSBleHBsYW5hdGlvbi4gRm9yZ2l2ZSBteSBz
+bG93bmVzcy4gU28geW91IGFyZSANCj4gPiBzYXlpbmcgdGhhdCB3aXRoIGtuZnNkIGl0J3MgYWN0
+dWFsbHkgZmlsZXN5c3RlbSBkZXBlbmRlbnQgYW5kIG1heWJlIA0KPiA+IHRoZSByZXBvcnRlcnMg
+ZGlkIG5vdCBjb21wYXJlIGFwcGxlcy10by1hcHBsZXMgYW5kIHRoZSBkaWZmZXJlbmNlIGlzIA0K
+PiA+IGluIHRoZSBiZWhpbmQgZmlsZSBzeXN0ZW0uDQo+ID4gDQo+ID4gTWF0dCBJJ20gc3VyZSBU
+cm9uZCBpcyByaWdodCB3aXRoIHJlZ2FyZCB0byBHYW5lc2hhLCBiZWNhdXNlIHdlIHNlbmQgDQo+
+ID4gYSByZWFkZGlyIGluZGV4IGFuZCBhIGNvb2tpZXZlcmYsIHdoaWNoIHdpbGwgY2hhbmdlIGFm
+dGVyIHVubGluay4gDQo+ID4gU2luY2UgdGhlIGFwcGxpY2F0aW9uIGRvZXMgbm90IGNhbGwgb3Bl
+bmRpciBhZ2FpbiB0aGUgY2xpZW50IHdpbGwgDQo+ID4gc2VuZCB0aGUgb2xkIGNvb2tpZXMsIHdo
+aWNoIGlzIG5vdyBhIGRpZmZlcmVudCBmaWxlIG9yIG1pZ2h0IGdldCANCj4gPiBvdXQtb2YtYm91
+bmRzIGZvciBHYW5lc2hhLg0KPiA+IA0KPiA+IExldCBtZSB0aGluayBhYm91dCBpdCBhIGJpdC4g
+SSdtIHN1cmUgd2UgY2FuIHNlbmQgYSBCZXR0ZXIgNjRiaXQgDQo+ID4gY29va2llLCB3aGljaCB3
+aWxsIGJlIG1vcmUgcGVyc2lzdGVudCwgZXZlbiBhY3Jvc3MgdW5saW5rcy4NCj4gPiANCj4gPiA+
+IA0KPiA+ID4gDQo+ID4gDQo+ID4gDQo+ID4gVGhhbmtzDQo+ID4gQm9heg0KPiANCj4gLS0NCj4g
+TWF0dCBCZW5qYW1pbg0KPiBUaGUgTGludXggQm94DQo+IDIwNiBTb3V0aCBGaWZ0aCBBdmUuIFN1
+aXRlIDE1MA0KPiBBbm4gQXJib3IsIE1JICA0ODEwNA0KPiANCj4gaHR0cDovL2xpbnV4Ym94LmNv
+bQ0KPiANCj4gdGVsLiA3MzQtNzYxLTQ2ODkNCj4gZmF4LiA3MzQtNzY5LTg5MzgNCj4gY2VsLiA3
+MzQtMjE2LTUzMDkNCj4gLS0NCj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQg
+dGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgDQo+IGluIHRoZSBib2R5IG9mIGEgbWVz
+c2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnIE1vcmUgbWFqb3Jkb21vIA0KPiBpbmZv
+IGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCg0KLS0NClRy
+b25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJv
+bmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
