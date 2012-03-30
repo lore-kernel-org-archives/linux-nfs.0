@@ -1,80 +1,208 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61077 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:51498 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757747Ab2CEXVH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 18:21:07 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 01/16] NFS: Fix a compile issue when !CONFIG_NFS_V4_1
-Date: Mon,  5 Mar 2012 18:20:39 -0500
-Message-Id: <1330989654-4694-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1761271Ab2C3TCu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 Mar 2012 15:02:50 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 06/10] NFS: Create a single nfs_get_root()
+Date: Fri, 30 Mar 2012 15:02:33 -0400
+Message-Id: <1333134157-17141-7-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1333134157-17141-1-git-send-email-bjschuma@netapp.com>
+References: <1333134157-17141-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The attempt to display the implementation ID needs to be conditional on
-whether or not CONFIG_NFS_V4_1 is defined
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Reported-by: Bryan Schumaker <Bryan.Schumaker@netapp.com>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+NFS v4 was doing something slightly different, so the difference can
+become the new rpc_ops->getroot() function rather than existing on its
+own.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfs/super.c |   28 +++++++++++++++++++---------
- 1 files changed, 19 insertions(+), 9 deletions(-)
+ fs/nfs/getroot.c  |   83 -----------------------------------------------------
+ fs/nfs/nfs4proc.c |   28 +++++++++++++++++-
+ fs/nfs/super.c    |    6 ++--
+ 3 files changed, 30 insertions(+), 87 deletions(-)
 
+diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
+index 8a0f33e..8abfb19 100644
+--- a/fs/nfs/getroot.c
++++ b/fs/nfs/getroot.c
+@@ -178,87 +178,4 @@ out:
+ 	return ret;
+ }
+ 
+-/*
+- * get an NFS4 root dentry from the root filehandle
+- */
+-struct dentry *nfs4_get_root(struct super_block *sb, struct nfs_fh *mntfh,
+-			     const char *devname)
+-{
+-	struct nfs_server *server = NFS_SB(sb);
+-	struct nfs_fattr *fattr = NULL;
+-	struct dentry *ret;
+-	struct inode *inode;
+-	void *name = kstrdup(devname, GFP_KERNEL);
+-	int error;
+-
+-	dprintk("--> nfs4_get_root()\n");
+-
+-	if (!name)
+-		return ERR_PTR(-ENOMEM);
+-
+-	/* get the info about the server and filesystem */
+-	error = nfs4_server_capabilities(server, mntfh);
+-	if (error < 0) {
+-		dprintk("nfs_get_root: getcaps error = %d\n",
+-			-error);
+-		kfree(name);
+-		return ERR_PTR(error);
+-	}
+-
+-	fattr = nfs_alloc_fattr();
+-	if (fattr == NULL) {
+-		kfree(name);
+-		return ERR_PTR(-ENOMEM);
+-	}
+-
+-	/* get the actual root for this mount */
+-	error = server->nfs_client->rpc_ops->getattr(server, mntfh, fattr);
+-	if (error < 0) {
+-		dprintk("nfs_get_root: getattr error = %d\n", -error);
+-		ret = ERR_PTR(error);
+-		goto out;
+-	}
+-
+-	if (fattr->valid & NFS_ATTR_FATTR_FSID &&
+-	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
+-		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
+-
+-	inode = nfs_fhget(sb, mntfh, fattr);
+-	if (IS_ERR(inode)) {
+-		dprintk("nfs_get_root: get root inode failed\n");
+-		ret = ERR_CAST(inode);
+-		goto out;
+-	}
+-
+-	error = nfs_superblock_set_dummy_root(sb, inode);
+-	if (error != 0) {
+-		ret = ERR_PTR(error);
+-		goto out;
+-	}
+-
+-	/* root dentries normally start off anonymous and get spliced in later
+-	 * if the dentry tree reaches them; however if the dentry already
+-	 * exists, we'll pick it up at this point and use it as the root
+-	 */
+-	ret = d_obtain_alias(inode);
+-	if (IS_ERR(ret)) {
+-		dprintk("nfs_get_root: get root dentry failed\n");
+-		goto out;
+-	}
+-
+-	security_d_instantiate(ret, inode);
+-	spin_lock(&ret->d_lock);
+-	if (IS_ROOT(ret) && !(ret->d_flags & DCACHE_NFSFS_RENAMED)) {
+-		ret->d_fsdata = name;
+-		name = NULL;
+-	}
+-	spin_unlock(&ret->d_lock);
+-out:
+-	if (name)
+-		kfree(name);
+-	nfs_free_fattr(fattr);
+-	dprintk("<-- nfs4_get_root()\n");
+-	return ret;
+-}
+-
+ #endif /* CONFIG_NFS_V4 */
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index bd00e10..e3ddebb 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -80,6 +80,7 @@ static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
+ static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
+ static int nfs4_async_handle_error(struct rpc_task *, const struct nfs_server *, struct nfs4_state *);
+ static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr);
++static int nfs4_proc_getattr(struct nfs_server *, struct nfs_fh *, struct nfs_fattr *);
+ static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
+ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 			    struct nfs_fattr *fattr, struct iattr *sattr,
+@@ -2363,6 +2364,31 @@ int nfs4_proc_get_rootfh(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	return nfs4_map_errors(status);
+ }
+ 
++static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *mntfh,
++			      struct nfs_fsinfo *info)
++{
++	int error;
++	struct nfs_fattr *fattr = info->fattr;
++
++	error = nfs4_server_capabilities(server, mntfh);
++	if (error < 0) {
++		dprintk("nfs4_get_root: getcaps error = %d\n", -error);
++		return error;
++	}
++
++	error = nfs4_proc_getattr(server, mntfh, fattr);
++	if (error < 0) {
++		dprintk("nfs4_get_root: getattr error = %d\n", -error);
++		return error;
++	}
++
++	if (fattr->valid & NFS_ATTR_FATTR_FSID &&
++	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
++		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
++
++	return error;
++}
++
+ /*
+  * Get locations and (maybe) other attributes of a referral.
+  * Note that we'll actually follow the referral later when
+@@ -6465,7 +6491,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
+ 	.dir_inode_ops	= &nfs4_dir_inode_operations,
+ 	.file_inode_ops	= &nfs4_file_inode_operations,
+ 	.file_ops	= &nfs4_file_operations,
+-	.getroot	= nfs4_proc_get_rootfh,
++	.getroot	= nfs4_proc_get_root,
+ 	.getattr	= nfs4_proc_getattr,
+ 	.setattr	= nfs4_proc_setattr,
+ 	.lookup		= nfs4_proc_lookup,
 diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 3935a37..aac4030 100644
+index 11e25f9..d636bd2 100644
 --- a/fs/nfs/super.c
 +++ b/fs/nfs/super.c
-@@ -775,7 +775,6 @@ static void show_sessions(struct seq_file *m, struct nfs_server *server) {}
- #endif
- #endif
+@@ -2694,7 +2694,7 @@ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
+ 		nfs_fscache_get_super_cookie(s, data, NULL);
+ 	}
  
--#ifdef CONFIG_NFS_V4
- #ifdef CONFIG_NFS_V4_1
- static void show_pnfs(struct seq_file *m, struct nfs_server *server)
- {
-@@ -785,9 +784,26 @@ static void show_pnfs(struct seq_file *m, struct nfs_server *server)
- 	else
- 		seq_printf(m, "not configured");
- }
-+
-+static void show_implementation_id(struct seq_file *m, struct nfs_server *nfss)
-+{
-+	if (nfss->nfs_client && nfss->nfs_client->impl_id) {
-+		struct nfs41_impl_id *impl_id = nfss->nfs_client->impl_id;
-+		seq_printf(m, "\n\timpl_id:\tname='%s',domain='%s',"
-+			   "date='%llu,%u'",
-+			   impl_id->name, impl_id->domain,
-+			   impl_id->date.seconds, impl_id->date.nseconds);
-+	}
-+}
- #else
--static void show_pnfs(struct seq_file *m, struct nfs_server *server) {}
-+#ifdef CONFIG_NFS_V4
-+static void show_pnfs(struct seq_file *m, struct nfs_server *server)
-+{
-+}
- #endif
-+static void show_implementation_id(struct seq_file *m, struct nfs_server *nfss)
-+{
-+}
- #endif
+-	mntroot = nfs4_get_root(s, mntfh, dev_name);
++	mntroot = nfs_get_root(s, mntfh, dev_name);
+ 	if (IS_ERR(mntroot)) {
+ 		error = PTR_ERR(mntroot);
+ 		goto error_splat_super;
+@@ -2954,7 +2954,7 @@ nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
+ 		nfs_fscache_get_super_cookie(s, NULL, data);
+ 	}
  
- static int nfs_show_devname(struct seq_file *m, struct dentry *root)
-@@ -836,13 +852,7 @@ static int nfs_show_stats(struct seq_file *m, struct dentry *root)
+-	mntroot = nfs4_get_root(s, data->fh, dev_name);
++	mntroot = nfs_get_root(s, data->fh, dev_name);
+ 	if (IS_ERR(mntroot)) {
+ 		error = PTR_ERR(mntroot);
+ 		goto error_splat_super;
+@@ -3045,7 +3045,7 @@ nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
+ 		nfs_fscache_get_super_cookie(s, NULL, data);
+ 	}
  
- 	seq_printf(m, "\n\tage:\t%lu", (jiffies - nfss->mount_time) / HZ);
- 
--	if (nfss->nfs_client && nfss->nfs_client->impl_id) {
--		struct nfs41_impl_id *impl_id = nfss->nfs_client->impl_id;
--		seq_printf(m, "\n\timpl_id:\tname='%s',domain='%s',"
--			   "date='%llu,%u'",
--			   impl_id->name, impl_id->domain,
--			   impl_id->date.seconds, impl_id->date.nseconds);
--	}
-+	show_implementation_id(m, nfss);
- 
- 	seq_printf(m, "\n\tcaps:\t");
- 	seq_printf(m, "caps=0x%x", nfss->caps);
+-	mntroot = nfs4_get_root(s, mntfh, dev_name);
++	mntroot = nfs_get_root(s, mntfh, dev_name);
+ 	if (IS_ERR(mntroot)) {
+ 		error = PTR_ERR(mntroot);
+ 		goto error_splat_super;
 -- 
-1.7.7.6
+1.7.9.5
 
