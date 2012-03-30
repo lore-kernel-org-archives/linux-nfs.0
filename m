@@ -1,90 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from youngberry.canonical.com ([91.189.89.112]:34749 "EHLO
-	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751499Ab2CKUXK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Mar 2012 16:23:10 -0400
-Message-ID: <1331497364.4641.86.camel@fourier>
-Subject: Re: [PATCH 00/19] Fix filesystem freezing deadlocks
-From: Kamal Mostafa <kamal@canonical.com>
-To: Jan Kara <jack@suse.cz>
-Cc: LKML <linux-kernel@vger.kernel.org>, linux-fsdevel@vger.kernel.org,
-        Al Viro <viro@ZenIV.linux.org.uk>,
-        Christoph Hellwig <hch@infradead.org>, dchinner@redhat.com,
-        sandeen@redhat.com, Alex Elder <elder@kernel.org>,
-        Anton Altaparmakov <anton@tuxera.com>, Ben Myers <bpm@sgi.com>,
-        Chris Mason <chris.mason@oracle.com>, cluster-devel@redhat.com,
-        "David S. Miller" <davem@davemloft.net>,
-        fuse-devel@lists.sourceforge.net,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Joel Becker <jlbec@evilplan.org>,
-        KONISHI Ryusuke <konishi.ryusuke@lab.ntt.co.jp>,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net, Mark Fasheh <mfasheh@suse.com>,
-        Miklos Szeredi <miklos@szeredi.hu>, ocfs2-devel@oss.oracle.com,
-        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-        Steven Whitehouse <swhiteho@redhat.com>,
-        "Theodore Ts'o" <tytso@mit.edu>, xfs@oss.sgi.com
-Date: Sun, 11 Mar 2012 13:22:44 -0700
-In-Reply-To: <1330963277-26336-1-git-send-email-jack@suse.cz>
-References: <1330963277-26336-1-git-send-email-jack@suse.cz>
-Content-Type: multipart/signed; micalg="pgp-sha256";
-	protocol="application/pgp-signature"; boundary="=-ZY9a+JFJ078GfM0ruD69"
+Received: from mx1.redhat.com ([209.132.183.28]:34914 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759210Ab2C3URt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 Mar 2012 16:17:49 -0400
+Date: Fri, 30 Mar 2012 16:17:55 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "Matt W. Benjamin" <matt@linuxbox.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: unlink within an open directory stream
+Message-ID: <20120330161755.681e8924@corrin.poochiereds.net>
+In-Reply-To: <4F70B2AE.4000504@panasas.com>
+References: <275611967.8.1332608027370.JavaMail.root@thunderbeast.private.linuxbox.com>
+	<1332609149.25346.12.camel@lade.trondhjem.org>
+	<4F70B2AE.4000504@panasas.com>
 Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, 26 Mar 2012 11:17:18 -0700
+Boaz Harrosh <bharrosh@panasas.com> wrote:
 
---=-ZY9a+JFJ078GfM0ruD69
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+> On 03/24/2012 10:12 AM, Myklebust, Trond wrote:
+> 
+> > On Sat, 2012-03-24 at 12:53 -0400, Matt W. Benjamin wrote:
+> >> Hi,
+> >>
+> >> I don't think anything is.  Or, people originally reported the behavior against knfsd.
+> >>
+> >> Matt
+> > 
+> > There is a known issue with ext2/3/4 generating non-unique readdir
+> > cookies. It rarely hits you when you are creating small directories, but
+> > it frequently hits you with larger ones. A fix is underway that should
+> > significantly reduce the frequency of cookie collisions.
+> > 
+> > Recent NFS clients will actually detect the presence of those cookie
+> > loops, and log them in the kernel syslog. That would therefore be the
+> > first thing that I'd check if confronted with this kind of problem.
+> > 
+> > Cheers
+> >   Trond
+> > 
+> 
+> 
+> Trond please look on the bug report links below. It's not the "cookie collisions" case.
+> 
+> It's the new (post RHEL 6.0 Kernel) NFS need for opendir after an unlink.
+> Now the POSIX man page *does* say that applications must re-opendir after
+> unlink, but there are some applications who did not read the manual, and since
+> it works with local filesystems and old nfs, (What Kernel RHEL 6.0 is based on?)
+> they never noticed the bug and never fixed it.
+> 
 
-On Mon, 2012-03-05 at 17:00 +0100, Jan Kara wrote:
-> Hallelujah,
->=20
->   after a couple of weeks and several rewrites, here comes the third iter=
-ation
-> of my patches to improve filesystem freezing.  [...]
+The RHEL6 kernel is 2.6.32 based, but we have (as always) done some
+fairly extensive backports from upstream.
 
-We've been testing this patch set at Canonical on the multipath failover
-SAN configuration where we originally encountered the freeze deadlock.
-We are happy to report that it does appear to fix the problem.  Thanks
-Jan!
+One of the things that was backported was the Bryan's work to clean up
+readdir and to eliminate the readdirplus limit. With that change, you
+get fewer entries per READDIRPLUS call, so you make more READDIRPLUS
+calls to the server in order to traverse an entire directory.
 
-Please add the following endorsements for these patches (those actually
-exercised by our test case):  01, 02, 03, 06, 07, 08, 09, 10, 14, 18, 19
+Since you're unlinking as you go, then I suspect that you're just more
+likely to see this problem crop up, but I suspect Trond is correct and
+this is preexisting bug.
 
-BugLink: https://bugs.launchpad.net/bugs/897421
-Tested-by: Kamal Mostafa <kamal@canonical.com>
-Tested-by: Peter M. Petrakis <peter.petrakis@canonical.com>
-Tested-by: Dann Frazier <dann.frazier@canonical.com>
-Tested-by: Massimo Morana <massimo.morana@canonical.com>
-
- -Kamal
-
-
---=-ZY9a+JFJ078GfM0ruD69
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-Content-Transfer-Encoding: 7bit
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.11 (GNU/Linux)
-
-iQIcBAABCAAGBQJPXQmUAAoJEHqwmdxYrXhZHr4P/jsrFBiULwoouLaGlr1gLx1D
-Tk4Die/IiVlO8Vj+ADKTySFKNjk1r2PiNwUKCezri3PeJqFgCHaeURemY5rurPMA
-Qms6XFaKA+8BxtawR2ZdgLodgCnppx1pamzFsoLkd5TnluRdUxlBtvro+B8ID2SO
-6pkeAzYybiI7tOU6VDDSB324DKndcA6YnUQQsATwJUZ3qjf8bdHX5YCc+Il7K9Fe
-BV6EMCdtNVCYwJvYMnhU/kDP2wAEP9hqF5ajBr+0+Q6WPs2/OQvOrr9ctGNyCZBo
-pTBHIFHYRg3g8wlKvsSSisvVZlBAwdDdxXkhk7zfkYEngjwoqzWIqT0qvavBJicM
-h5MoKwC/Zke6xNIPFwAV/AC+vNHkOt5QgV2GhAdphiNQFsgAbv/AY5SswM6JFpdk
-P6WETGa4bMBpLcTHGfxCvO9KevQ9gnQWXHzsbYz0Wl3YYEsU4aBFPICQSf7/amNR
-X9WvhURZwfLSkjOMHee0Lu/qEXrEYNT62Fj+bRKyZkUM0rabU44HBmJHE10lTXlY
-xWKDthAHk+kQPDMI/76jpKDS7M4rE+ohTxM9nQBio4W8v4MS/LHPB84BsHeZFl8v
-4SGJAC9y6UFDamdqnBUDhPL8iLLU77dL+cHcvEdopsLrulRC/6bGkH8xE/5IJjZo
-LXTCfQ+fy3utvK5ooIR4
-=Lndm
------END PGP SIGNATURE-----
-
---=-ZY9a+JFJ078GfM0ruD69--
-
+One way to confirm this might be to have them mount with -o nordirplus.
+Does that make the problem go away?
+-- 
+Jeff Layton <jlayton@redhat.com>
