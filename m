@@ -1,47 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from peace.netnation.com ([204.174.223.2]:60689 "EHLO
-	peace.netnation.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753909Ab2CHRcc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Mar 2012 12:32:32 -0500
-Received: from sim by peace.netnation.com with local (Exim 4.72)
-	(envelope-from <sim@netnation.com>)
-	id 1S5hCZ-0001jR-PO
-	for linux-nfs@vger.kernel.org; Thu, 08 Mar 2012 09:32:31 -0800
-Date: Thu, 8 Mar 2012 09:32:31 -0800
-From: Simon Kirby <sim@hostway.ca>
-To: linux-nfs@vger.kernel.org
-Subject: nfs_file_splice_read() not interruptible
-Message-ID: <20120308173231.GA620@hostway.ca>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from mx2.netapp.com ([216.240.18.37]:51498 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1761268Ab2C3TCt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 Mar 2012 15:02:49 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 05/10] NFS: Rename nfs4_proc_get_root()
+Date: Fri, 30 Mar 2012 15:02:32 -0400
+Message-Id: <1333134157-17141-6-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1333134157-17141-1-git-send-email-bjschuma@netapp.com>
+References: <1333134157-17141-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-While trying to figure out why we keep getting TCP NFSv3 client mounts in
-CLOSE_WAIT state, I notice that the socket closes and the host becomes
-remountable if I kill all D-state processes blocking on it. However, some
-Apache processes are often uninterruptible:
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-# cat /proc/8959/stack
-[<ffffffff810d6b69>] sleep_on_page+0x9/0x10
-[<ffffffff810d6b54>] __lock_page+0x64/0x70
-[<ffffffff81147f5d>] __generic_file_splice_read+0x2dd/0x500
-[<ffffffff811481cd>] generic_file_splice_read+0x4d/0x90
-[<ffffffff811f70b5>] nfs_file_splice_read+0x85/0xd0
-[<ffffffff81146522>] do_splice_to+0x72/0xa0
-[<ffffffff81146d54>] splice_direct_to_actor+0xc4/0x1d0
-[<ffffffff81146eb2>] do_splice_direct+0x52/0x70
-[<ffffffff8111c1fe>] do_sendfile+0x16e/0x1e0
-[<ffffffff8111c2f5>] sys_sendfile64+0x85/0xb0
-[<ffffffff816e1392>] system_call_fastpath+0x16/0x1b
-[<ffffffffffffffff>] 0xffffffffffffffff
+This function is really getting the root filehandle and not the root
+dentry of the filesystem.  I also removed the rpc_ops lookup from
+nfs4_get_rootfh() under the assumption that if we reach this function
+then we already know we are using NFS v4.
 
-However, from loking in generic_file_splice_read, it looks like not
-something easy to make interruptible....
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/getroot.c  |    2 +-
+ fs/nfs/nfs4_fs.h  |    1 +
+ fs/nfs/nfs4proc.c |    6 +++---
+ 3 files changed, 5 insertions(+), 4 deletions(-)
 
-What causes the sockets to close, anyway? I notice there seems to be some
-sort of idle timeout. Is this configured somewhere, so I can set it
-really low and reproduce this more easily? I suspect we must have some
-race with the socket closing and something trying to use it again...
+diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
+index 4ca6f5c..8a0f33e 100644
+--- a/fs/nfs/getroot.c
++++ b/fs/nfs/getroot.c
+@@ -150,7 +150,7 @@ int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh)
+ 		goto out;
+ 
+ 	/* Start by getting the root filehandle from the server */
+-	ret = server->nfs_client->rpc_ops->getroot(server, mntfh, &fsinfo);
++	ret = nfs4_proc_get_rootfh(server, mntfh, &fsinfo);
+ 	if (ret < 0) {
+ 		dprintk("nfs4_get_rootfh: getroot error = %d\n", -ret);
+ 		goto out;
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 97ecc86..f2dc8d5 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -207,6 +207,7 @@ extern const struct inode_operations nfs4_dir_inode_operations;
+ /* nfs4proc.c */
+ extern int nfs4_proc_setclientid(struct nfs_client *, u32, unsigned short, struct rpc_cred *, struct nfs4_setclientid_res *);
+ extern int nfs4_proc_setclientid_confirm(struct nfs_client *, struct nfs4_setclientid_res *arg, struct rpc_cred *);
++extern int nfs4_proc_get_rootfh(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
+ extern int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred);
+ extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
+ extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index f82bde0..bd00e10 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2345,8 +2345,8 @@ static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
+ /*
+  * get the file handle for the "/" directory on the server
+  */
+-static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
+-			      struct nfs_fsinfo *info)
++int nfs4_proc_get_rootfh(struct nfs_server *server, struct nfs_fh *fhandle,
++			 struct nfs_fsinfo *info)
+ {
+ 	int minor_version = server->nfs_client->cl_minorversion;
+ 	int status = nfs4_lookup_root(server, fhandle, info);
+@@ -6465,7 +6465,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
+ 	.dir_inode_ops	= &nfs4_dir_inode_operations,
+ 	.file_inode_ops	= &nfs4_file_inode_operations,
+ 	.file_ops	= &nfs4_file_operations,
+-	.getroot	= nfs4_proc_get_root,
++	.getroot	= nfs4_proc_get_rootfh,
+ 	.getattr	= nfs4_proc_getattr,
+ 	.setattr	= nfs4_proc_setattr,
+ 	.lookup		= nfs4_proc_lookup,
+-- 
+1.7.9.5
 
-Simon-
