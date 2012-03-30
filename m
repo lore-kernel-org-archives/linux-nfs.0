@@ -1,57 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:16131 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755943Ab2CDXDK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 4 Mar 2012 18:03:10 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 04/11] NFSv4: Add a helper for encoding opaque data
-Date: Sun,  4 Mar 2012 18:02:56 -0500
-Message-Id: <1330902183-18879-4-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1330902183-18879-3-git-send-email-Trond.Myklebust@netapp.com>
-References: <1330902183-18879-1-git-send-email-Trond.Myklebust@netapp.com>
- <1330902183-18879-2-git-send-email-Trond.Myklebust@netapp.com>
- <1330902183-18879-3-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:35762 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934665Ab2C3UGZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Mar 2012 16:06:25 -0400
+Received: by vcqp1 with SMTP id p1so618145vcq.19
+        for <linux-nfs@vger.kernel.org>; Fri, 30 Mar 2012 13:06:24 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <1333134157-17141-2-git-send-email-bjschuma@netapp.com>
+References: <1333134157-17141-1-git-send-email-bjschuma@netapp.com>
+	<1333134157-17141-2-git-send-email-bjschuma@netapp.com>
+Date: Fri, 30 Mar 2012 16:06:24 -0400
+Message-ID: <CADnza45POxTkb8zVYK_6UH2q_p5F-Eb2jko=VsjLD++VdD1GrQ@mail.gmail.com>
+Subject: Re: [PATCH 01/10] NFS: Create a single nfs_fill_super() function
+From: Fred Isaman <faisaman4@gmail.com>
+To: bjschuma@netapp.com
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4xdr.c |   14 +++++++++-----
- 1 files changed, 9 insertions(+), 5 deletions(-)
+On Fri, Mar 30, 2012 at 3:02 PM,  <bjschuma@netapp.com> wrote:
+> From: Bryan Schumaker <bjschuma@netapp.com>
+>
+> This can be shared by v2, v3 and v4 in their other common code.
+>
+> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+> ---
+>  fs/nfs/super.c |   26 ++++++--------------------
+>  1 file changed, 6 insertions(+), 20 deletions(-)
+>
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index 37412f7..c9bc86e 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -2135,16 +2135,18 @@ static void nfs_fill_super(struct super_block *sb,
+>
+>        sb->s_blocksize_bits = 0;
+>        sb->s_blocksize = 0;
+> -       if (data->bsize)
+> +       if (data && data->bsize)
+>                sb->s_blocksize = nfs_block_size(data->bsize, &sb->s_blocksize_bits);
+>
+> -       if (server->nfs_client->rpc_ops->version == 3) {
+> +       if (server->nfs_client->rpc_ops->version != 2) {
+>                /* The VFS shouldn't apply the umask to mode bits. We will do
+>                 * so ourselves when necessary.
+>                 */
+>                sb->s_flags |= MS_POSIXACL;
+>                sb->s_time_gran = 1;
+>        }
+> +       if (server->nfs_client->rpc_ops->version == 4)
+> +               sb->s_xattr = nfs4_xattr_handlers;
+>
+>        sb->s_op = &nfs_sops;
+>        nfs_initialise_sb(sb);
+> @@ -2520,22 +2522,6 @@ static void nfs4_clone_super(struct super_block *sb,
+>        nfs_initialise_sb(sb);
+>  }
+>
+> -/*
+> - * Set up an NFS4 superblock
+> - */
+> -static void nfs4_fill_super(struct super_block *sb)
+> -{
+> -       sb->s_time_gran = 1;
+> -       sb->s_op = &nfs4_sops;
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index af11e8b..de4cb5c 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -885,6 +885,14 @@ static __be32 *reserve_space(struct xdr_stream *xdr, size_t nbytes)
- 	return p;
- }
- 
-+static void encode_opaque_fixed(struct xdr_stream *xdr, const void *buf, size_t len)
-+{
-+	__be32 *p;
-+
-+	p = xdr_reserve_space(xdr, len);
-+	xdr_encode_opaque_fixed(p, buf, len);
-+}
-+
- static void encode_string(struct xdr_stream *xdr, unsigned int len, const char *str)
- {
- 	__be32 *p;
-@@ -922,11 +930,7 @@ static void encode_nops(struct compound_hdr *hdr)
- 
- static void encode_nfs4_verifier(struct xdr_stream *xdr, const nfs4_verifier *verf)
- {
--	__be32 *p;
--
--	p = xdr_reserve_space(xdr, NFS4_VERIFIER_SIZE);
--	BUG_ON(p == NULL);
--	xdr_encode_opaque_fixed(p, verf->data, NFS4_VERIFIER_SIZE);
-+	encode_opaque_fixed(xdr, verf->data, NFS4_VERIFIER_SIZE);
- }
- 
- static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const struct nfs_server *server)
--- 
-1.7.7.6
+This seems to discard nfs4_sops (with the accompanying nfs4_evict_inode).
 
+Fred
