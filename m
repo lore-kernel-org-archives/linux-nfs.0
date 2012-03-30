@@ -1,76 +1,143 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:42427 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:51498 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755163Ab2CEQwc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 11:52:32 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Peter Staubach <pstaubach@exagrid.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: [PATCH 08/11] NFSv4: Simplify the struct nfs4_stateid
-Date: Mon, 5 Mar 2012 16:52:31 +0000
-Message-ID: <1330966351.2509.4.camel@lade.trondhjem.org>
-References: <1330902183-18879-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <1330902183-18879-2-git-send-email-Trond.Myklebust@netapp.com>
-	 <1330902183-18879-3-git-send-email-Trond.Myklebust@netapp.com>
-	 <1330902183-18879-4-git-send-email-Trond.Myklebust@netapp.com>
-	 <1330902183-18879-5-git-send-email-Trond.Myklebust@netapp.com>
-	 <1330902183-18879-6-git-send-email-Trond.Myklebust@netapp.com>
-	 <1330902183-18879-7-git-send-email-Trond.Myklebust@netapp.com>
-	 <1330902183-18879-8-git-send-email-Trond.Myklebust@netapp.com>
-	 <FA8A9A935BFD3A4D8F0CDA1C4F611BCC062D48307D@IT-1874.Isys.com>
-In-Reply-To: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC062D48307D@IT-1874.Isys.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1761276Ab2C3TCz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 Mar 2012 15:02:55 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 10/10] NFS: Use nfs_fs_mount_common() for remote referral mounts
+Date: Fri, 30 Mar 2012 15:02:37 -0400
+Message-Id: <1333134157-17141-11-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1333134157-17141-1-git-send-email-bjschuma@netapp.com>
+References: <1333134157-17141-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTAzLTA1IGF0IDExOjMxIC0wNTAwLCBQZXRlciBTdGF1YmFjaCB3cm90ZToN
-Cj4gQ29tbWVudCBpbnRlcm1peGVkIGJlbG93Li4uDQo+IA0KPiAgDQo+IA0KPiAgDQo+IA0KPiAt
-LS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdlci5r
-ZXJuZWwub3JnDQo+IFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24g
-QmVoYWxmIE9mIFRyb25kIE15a2xlYnVzdA0KPiBTZW50OiBTdW5kYXksIE1hcmNoIDA0LCAyMDEy
-IDY6MDMgUE0NCj4gVG86IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4gU3ViamVjdDogW1BB
-VENIIDA4LzExXSBORlN2NDogU2ltcGxpZnkgdGhlIHN0cnVjdCBuZnM0X3N0YXRlaWQNCj4gDQo+
-ICANCj4gDQo+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0
-QG5ldGFwcC5jb20+DQo+IA0KPiAtLS0NCj4gDQo+IGZzL25mcy9uZnM0X2ZzLmggICAgIHwgICAg
-NCArKy0tDQo+IA0KPiBmcy9uZnMvbmZzNHByb2MuYyAgICB8ICAgIDggKysrKy0tLS0NCj4gDQo+
-IGZzL25mcy9uZnM0c3RhdGUuYyAgIHwgICAgNCArKy0tDQo+IA0KPiBmcy9uZnMvbmZzNHhkci5j
-ICAgICB8ICAgIDYgKysrLS0tDQo+IA0KPiBmcy9uZnMvcG5mcy5jICAgICAgICB8ICAgMTAgKysr
-KystLS0tLQ0KPiANCj4gaW5jbHVkZS9saW51eC9uZnM0LmggfCAgICA3ICsrLS0tLS0NCj4gDQo+
-IDYgZmlsZXMgY2hhbmdlZCwgMTggaW5zZXJ0aW9ucygrKSwgMjEgZGVsZXRpb25zKC0pDQo+IA0K
-PiAgDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRfZnMuaCBiL2ZzL25mcy9uZnM0X2Zz
-LmggaW5kZXgNCj4gZjRjYWZhYi4uNGI0ZTQ4YiAxMDA2NDQNCj4gDQo+IC0tLSBhL2ZzL25mcy9u
-ZnM0X2ZzLmgNCj4gDQo+ICsrKyBiL2ZzL25mcy9uZnM0X2ZzLmgNCj4gDQo+IEBAIC0zNDksMTIg
-KzM0OSwxMiBAQCBleHRlcm4gc3RydWN0IHN2Y192ZXJzaW9uDQo+IG5mczRfY2FsbGJhY2tfdmVy
-c2lvbjQ7DQo+IA0KPiAgc3RhdGljIGlubGluZSB2b2lkIG5mczRfc3RhdGVpZF9jb3B5KG5mczRf
-c3RhdGVpZCAqZHN0LCBjb25zdA0KPiBuZnM0X3N0YXRlaWQgKnNyYykgIHsNCj4gDQo+IC0gICAg
-ICAgICAgICAgIG1lbWNweShkc3QtPmRhdGEsIHNyYy0+ZGF0YSwgc2l6ZW9mKGRzdC0+ZGF0YSkp
-Ow0KPiANCj4gKyAgICAgICAgICAgICBtZW1jcHkoZHN0LCBzcmMsIHNpemVvZigqZHN0KSk7DQo+
-IA0KPiB9DQo+IA0KPiAgc3RhdGljIGlubGluZSBib29sIG5mczRfc3RhdGVpZF9tYXRjaChjb25z
-dCBuZnM0X3N0YXRlaWQgKmRzdCwgY29uc3QNCj4gbmZzNF9zdGF0ZWlkICpzcmMpICB7DQo+IA0K
-PiAtICAgICAgICAgICAgICByZXR1cm4gbWVtY21wKGRzdC0+ZGF0YSwgc3JjLT5kYXRhLCBzaXpl
-b2YoZHN0LT5kYXRhKSkNCj4gPT0gMDsNCj4gDQo+ICsgICAgICAgICAgICAgcmV0dXJuIG1lbWNt
-cChkc3QsIHNyYywgc2l6ZW9mKCpkc3QpKSA9PSAwOw0KPiANCj4gfQ0KPiANCj4gICNlbHNlDQo+
-IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMvbmZzNHByb2MuYyBp
-bmRleA0KPiAzZTY1NzY2Li41ZDkwZGM4IDEwMDY0NA0KPiANCj4gLS0tIGEvZnMvbmZzL25mczRw
-cm9jLmMNCj4gDQo+ICsrKyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+IA0KPiBAQCAtNjI1NywxMyAr
-NjI1NywxMyBAQCBzdGF0aWMgaW50IG5mczQxX2ZyZWVfc3RhdGVpZChzdHJ1Y3QNCj4gbmZzX3Nl
-cnZlciAqc2VydmVyLCBuZnM0X3N0YXRlaWQgKnN0YXRlaWQpICBzdGF0aWMgYm9vbA0KPiBuZnM0
-MV9tYXRjaF9zdGF0ZWlkKGNvbnN0IG5mczRfc3RhdGVpZCAqczEsDQo+IA0KPiAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgY29uc3QgbmZzNF9zdGF0ZWlkICpzMikNCj4gDQo+IHsNCj4g
-DQo+IC0gICAgICAgICAgICAgIGlmIChtZW1jbXAoczEtPnN0YXRlaWQub3RoZXIsIHMyLT5zdGF0
-ZWlkLm90aGVyLA0KPiANCj4gLSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHNpemVv
-ZihzMS0+c3RhdGVpZC5vdGhlcikpICE9IDApDQo+IA0KPiArICAgICAgICAgICAgIGlmIChtZW1j
-bXAoczEtPm90aGVyLCBzMi0+b3RoZXIsDQo+IA0KPiArICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICBzaXplb2YoczEtPm90aGVyKSkgIT0gMCkNCj4gDQo+ICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICByZXR1cm4gZmFsc2U7DQo+IA0KPiAtICAgICAgICAgICAgICBpZiAoczEt
-PnN0YXRlaWQuc2VxaWQgPT0gczItPnN0YXRlaWQuc2VxaWQpDQo+IA0KPiArICAgICAgICAgICAg
-IGlmIChzMS0+c2VxaWQgPT0gczItPnNlcWlkKQ0KPiANCj4gICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgIHJldHVybiB0cnVlOw0KPiANCj4gLSAgICAgICAgICAgICAgaWYgKHMxLT5zdGF0
-ZWlkLnNlcWlkID09IDAgfHwgczEtPnN0YXRlaWQuc2VxaWQgPT0gMCkNCj4gDQo+ICsgICAgICAg
-ICAgICAgaWYgKHMxLT5zZXFpZCA9PSAwIHx8IHMxLT5zZXFpZCA9PSAwKQ0KPiANCj4gPiANCj4g
-DQo+ID4gSXMgdGhpcyB0ZXN0IGNvcnJlY3Q/ICBPciBzaG91bGQgdGhlIHNlY29uZCBzMSBiZSBz
-Mj8NCg0KT29wcy4uLiBUaGFua3MgZm9yIHNwb3R0aW5nIHRoYXQhIEknbGwgZml4IGl0IHVwIGlu
-IHYzLi4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
-ZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20N
-Cg0K
+From: Bryan Schumaker <bjschuma@netapp.com>
+
+This should be the last function that needs to be switched over to the
+common mount function.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/super.c |   90 +++++++++-----------------------------------------------
+ 1 file changed, 14 insertions(+), 76 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 73e0e4b..e0f6f4a 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2734,95 +2734,33 @@ static struct dentry *
+ nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
+ 			   const char *dev_name, void *raw_data)
+ {
+-	struct nfs_clone_mount *data = raw_data;
+-	struct super_block *s;
++	struct nfs_mount_info mount_info = {
++		.fill_super = nfs_fill_super,
++		.set_security = nfs_clone_sb_security,
++		.cloned = raw_data,
++		.unshared = NFS4_MOUNT_UNSHARED,
++	};
+ 	struct nfs_server *server;
+-	struct dentry *mntroot;
++	struct dentry *mntroot = ERR_PTR(-ENOMEM);
+ 	struct nfs_fh *mntfh;
+-	int (*compare_super)(struct super_block *, void *) = nfs_compare_super;
+-	struct nfs_sb_mountdata sb_mntdata = {
+-		.mntflags = flags,
+-	};
+-	int error = -ENOMEM;
+ 
+ 	dprintk("--> nfs4_referral_get_sb()\n");
+ 
+ 	mntfh = nfs_alloc_fhandle();
+-	if (mntfh == NULL)
+-		goto out_err_nofh;
++	if (mount_info.cloned == NULL || mntfh == NULL)
++		goto out;
+ 
+ 	/* create a new volume representation */
+-	server = nfs4_create_referral_server(data, mntfh);
++	server = nfs4_create_referral_server(mount_info.cloned, mntfh);
+ 	if (IS_ERR(server)) {
+-		error = PTR_ERR(server);
+-		goto out_err_noserver;
+-	}
+-	sb_mntdata.server = server;
+-
+-	if (server->flags & NFS4_MOUNT_UNSHARED)
+-		compare_super = NULL;
+-
+-	/* -o noac implies -o sync */
+-	if (server->flags & NFS_MOUNT_NOAC)
+-		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
+-
+-	/* Get a superblock - note that we may end up sharing one that already exists */
+-	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
+-	if (IS_ERR(s)) {
+-		error = PTR_ERR(s);
+-		goto out_err_nosb;
+-	}
+-
+-	if (s->s_fs_info != server) {
+-		nfs_free_server(server);
+-		server = NULL;
+-	} else {
+-		error = nfs_bdi_register(server);
+-		if (error)
+-			goto error_splat_bdi;
+-	}
+-
+-	if (!s->s_root) {
+-		/* initial superblock/root creation */
+-		nfs_fill_super(s, NULL);
+-		nfs_fscache_get_super_cookie(s, NULL, data);
+-	}
+-
+-	mntroot = nfs_get_root(s, mntfh, dev_name);
+-	if (IS_ERR(mntroot)) {
+-		error = PTR_ERR(mntroot);
+-		goto error_splat_super;
+-	}
+-	if (mntroot->d_inode->i_op != NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops) {
+-		dput(mntroot);
+-		error = -ESTALE;
+-		goto error_splat_super;
++		mntroot = ERR_CAST(server);
++		goto out;
+ 	}
+ 
+-	s->s_flags |= MS_ACTIVE;
+-
+-	security_sb_clone_mnt_opts(data->sb, s);
+-
++	mntroot = nfs_fs_mount_common(&nfs4_fs_type, server, flags, dev_name, mntfh, &mount_info);
++out:
+ 	nfs_free_fhandle(mntfh);
+-	dprintk("<-- nfs4_referral_get_sb() = 0\n");
+ 	return mntroot;
+-
+-out_err_nosb:
+-	nfs_free_server(server);
+-out_err_noserver:
+-	nfs_free_fhandle(mntfh);
+-out_err_nofh:
+-	dprintk("<-- nfs4_referral_get_sb() = %d [error]\n", error);
+-	return ERR_PTR(error);
+-
+-error_splat_super:
+-	if (server && !s->s_root)
+-		bdi_unregister(&server->backing_dev_info);
+-error_splat_bdi:
+-	deactivate_locked_super(s);
+-	nfs_free_fhandle(mntfh);
+-	dprintk("<-- nfs4_referral_get_sb() = %d [splat]\n", error);
+-	return ERR_PTR(error);
+ }
+ 
+ /*
+-- 
+1.7.9.5
+
