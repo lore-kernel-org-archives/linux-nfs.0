@@ -1,88 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:49119 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752440Ab2CEQmn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2012 11:42:43 -0500
-Received: by gghe5 with SMTP id e5so968082ggh.19
-        for <linux-nfs@vger.kernel.org>; Mon, 05 Mar 2012 08:42:43 -0800 (PST)
-MIME-Version: 1.0
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] nfsd: only initialize client tracking if nfs4_state_start is successful
-Date: Mon,  5 Mar 2012 11:42:36 -0500
-Message-Id: <1330965756-24180-3-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1330965756-24180-1-git-send-email-jlayton@redhat.com>
-References: <1330965756-24180-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:51498 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760509Ab2C3TCs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 Mar 2012 15:02:48 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 04/10] NFS: Consistent arguments to nfs_fscache_get_super_cookie()
+Date: Fri, 30 Mar 2012 15:02:31 -0400
+Message-Id: <1333134157-17141-5-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1333134157-17141-1-git-send-email-bjschuma@netapp.com>
+References: <1333134157-17141-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The current code never calls nfsd4_client_tracking_exit if
-nfs4_state_start returns an error. Also, it's better to go ahead and
-consolidate these functions since one is just a trivial wrapper around
-the other.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+I intend on creating a single nfs_fs_mount() function used by all our
+mount paths.  To avoid checking between new mounts and clone mounts, I
+instead pass both structures to the get_super_cookie() function and let
+this function decide the best way to handle the situation.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfsd/nfs4state.c |   26 +++++++++++++-------------
- 1 files changed, 13 insertions(+), 13 deletions(-)
+ fs/nfs/fscache.c |   13 +++++++++----
+ fs/nfs/fscache.h |    2 +-
+ fs/nfs/super.c   |    4 ++--
+ 3 files changed, 12 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e547b27..1198fe8 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4629,21 +4629,26 @@ set_max_delegations(void)
- 
- /* initialization to perform when the nfsd service is started: */
- 
--static int
--__nfs4_state_start(void)
-+int
-+nfs4_state_start(void)
+diff --git a/fs/nfs/fscache.c b/fs/nfs/fscache.c
+index ae65c16..577b311 100644
+--- a/fs/nfs/fscache.c
++++ b/fs/nfs/fscache.c
+@@ -64,18 +64,23 @@ void nfs_fscache_release_client_cookie(struct nfs_client *clp)
+  * either by the 'fsc=xxx' option to mount, or by inheriting it from the parent
+  * superblock across an automount point of some nature.
+  */
+-void nfs_fscache_get_super_cookie(struct super_block *sb, const char *uniq,
+-				  struct nfs_clone_mount *mntdata)
++void nfs_fscache_get_super_cookie(struct super_block *sb,
++				  struct nfs_parsed_mount_data *parsed,
++				  struct nfs_clone_mount *cloned)
  {
- 	int ret;
+ 	struct nfs_fscache_key *key, *xkey;
+ 	struct nfs_server *nfss = NFS_SB(sb);
+ 	struct rb_node **p, *parent;
++	char *uniq = NULL;
+ 	int diff, ulen;
  
-+	nfsd4_load_reboot_recovery_data();
- 	boot_time = get_seconds();
- 	locks_start_grace(&nfsd4_manager);
- 	printk(KERN_INFO "NFSD: starting %ld-second grace period\n",
- 	       nfsd4_grace);
- 	ret = set_callback_cred();
--	if (ret)
--		return -ENOMEM;
-+	if (ret) {
-+		ret = -ENOMEM;
-+		goto out_recovery;
-+	}
- 	laundry_wq = create_singlethread_workqueue("nfsd4");
--	if (laundry_wq == NULL)
--		return -ENOMEM;
-+	if (laundry_wq == NULL) {
-+		ret = -ENOMEM;
-+		goto out_recovery;
-+	}
- 	ret = nfsd4_create_callback_queue();
- 	if (ret)
- 		goto out_free_laundry;
-@@ -4652,16 +4657,11 @@ __nfs4_state_start(void)
- 	return 0;
- out_free_laundry:
- 	destroy_workqueue(laundry_wq);
-+out_recovery:
-+	nfsd4_shutdown_recdir();
- 	return ret;
- }
++	if (parsed)
++		uniq = parsed->fscache_uniq;
++
+ 	if (uniq) {
+ 		ulen = strlen(uniq);
+-	} else if (mntdata) {
+-		struct nfs_server *mnt_s = NFS_SB(mntdata->sb);
++	} else if (cloned) {
++		struct nfs_server *mnt_s = NFS_SB(cloned->sb);
+ 		if (mnt_s->fscache_key) {
+ 			uniq = mnt_s->fscache_key->key.uniquifier;
+ 			ulen = mnt_s->fscache_key->key.uniq_len;
+diff --git a/fs/nfs/fscache.h b/fs/nfs/fscache.h
+index b9c572d..0264bd6 100644
+--- a/fs/nfs/fscache.h
++++ b/fs/nfs/fscache.h
+@@ -74,7 +74,7 @@ extern void nfs_fscache_get_client_cookie(struct nfs_client *);
+ extern void nfs_fscache_release_client_cookie(struct nfs_client *);
  
--int
--nfs4_state_start(void)
--{
--	nfsd4_load_reboot_recovery_data();
--	return __nfs4_state_start();
--}
--
- static void
- __nfs4_state_shutdown(void)
- {
+ extern void nfs_fscache_get_super_cookie(struct super_block *,
+-					 const char *,
++					 struct nfs_parsed_mount_data *,
+ 					 struct nfs_clone_mount *);
+ extern void nfs_fscache_release_super_cookie(struct super_block *);
+ 
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 7a711e9..11e25f9 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2355,7 +2355,7 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
+ 	if (!s->s_root) {
+ 		/* initial superblock/root creation */
+ 		nfs_fill_super(s, data);
+-		nfs_fscache_get_super_cookie(s, data->fscache_uniq, NULL);
++		nfs_fscache_get_super_cookie(s, data, NULL);
+ 	}
+ 
+ 	mntroot = nfs_get_root(s, mntfh, dev_name);
+@@ -2691,7 +2691,7 @@ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
+ 	if (!s->s_root) {
+ 		/* initial superblock/root creation */
+ 		nfs_fill_super(s, data);
+-		nfs_fscache_get_super_cookie(s, data->fscache_uniq, NULL);
++		nfs_fscache_get_super_cookie(s, data, NULL);
+ 	}
+ 
+ 	mntroot = nfs4_get_root(s, mntfh, dev_name);
 -- 
-1.7.7.6
+1.7.9.5
 
