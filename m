@@ -1,63 +1,160 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:36584 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759219Ab2CMTTV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Mar 2012 15:19:21 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 1/1] NFS4: remove erroneous BUG_ONs in file layout pg_init functions
-Date: Tue, 13 Mar 2012 15:19:19 -0400
-Message-Id: <1331666359-11534-1-git-send-email-iisaman@netapp.com>
+Received: from p02c12o149.mxlogic.net ([208.65.145.82]:54548 "EHLO
+	p02c12o149.mxlogic.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757557Ab2C3RQJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Mar 2012 13:16:09 -0400
+From: Peter Staubach <pstaubach@exagrid.com>
+To: Dr James Bruce Fields <bfields@fieldses.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Orion Poplawski <orion@cora.nwra.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Fri, 30 Mar 2012 13:12:22 -0400
+Subject: RE: [nfsv4] open(O_CREAT) returns EEXISTS on symbolic link created
+ on another system until stat()ed
+Message-ID: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC062D6EBDCC@IT-1874.Isys.com>
+References: <loom.20120329T182500-467@post.gmane.org>
+ <1333040091.5547.32.camel@lade.trondhjem.org>
+ <4F749CCA.3000400@cora.nwra.com>
+ <1333042863.5547.37.camel@lade.trondhjem.org>
+ <4F74A4D5.1040802@cora.nwra.com> <20120329193100.GA20329@fieldses.org>
+ <1333052170.10318.6.camel@lade.trondhjem.org>
+ <1333053750.10318.15.camel@lade.trondhjem.org>
+ <20120329205035.GB21493@fieldses.org>
+ <1333054622.10318.19.camel@lade.trondhjem.org>
+ <20120329210838.GC21493@fieldses.org>
+In-Reply-To: <20120329210838.GC21493@fieldses.org>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These BUG_ONs assume that pg_init is called once per nfs_pageio_descriptor,
-yet it is actually called once per attempted RPC call.
+Hi.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/nfs4filelayout.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
+I think that the code to allow CREATE operations which end up opening existing, non-regular files is there for diskless operation.
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index c7496b6..3c2ee2f 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -757,7 +757,7 @@ void
- filelayout_pg_init_read(struct nfs_pageio_descriptor *pgio,
- 			struct nfs_page *req)
- {
--	BUG_ON(pgio->pg_lseg != NULL);
-+	struct pnfs_layout_segment *old = pgio->pg_lseg;
+I vaguely recall some applications specifying O_CREATE to open and expecting the open of a non-regular file, which exists already, to succeed.
+
+		ps
+
+
+-----Original Message-----
+From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Dr James Bruce Fields
+Sent: Thursday, March 29, 2012 5:09 PM
+To: Myklebust, Trond
+Cc: Orion Poplawski; linux-nfs@vger.kernel.org
+Subject: Re: [nfsv4] open(O_CREAT) returns EEXISTS on symbolic link created on another system until stat()ed
+
+On Thu, Mar 29, 2012 at 08:56:57PM +0000, Myklebust, Trond wrote:
+> On Thu, 2012-03-29 at 16:50 -0400, Dr James Bruce Fields wrote:
+> > On Thu, Mar 29, 2012 at 08:42:24PM +0000, Myklebust, Trond wrote:
+> > > On Thu, 2012-03-29 at 16:16 -0400, Trond Myklebust wrote:
+> > > > On Thu, 2012-03-29 at 15:31 -0400, Dr James Bruce Fields wrote:
+> > > > > On Thu, Mar 29, 2012 at 12:07:17PM -0600, Orion Poplawski wrote:
+> > > > > > On 03/29/2012 11:40 AM, Myklebust, Trond wrote:
+> > > > > > >>Going back to v4 on EL5.8 server: nfsv4el.log, 
+> > > > > > >>nfsv4f18.log
+> > > > > > >>
+> > > > > > >>Both get NFS4ERR_EXIST in this case.
+> > > > > > >
+> > > > > > >Which is an obvious server bug: it should be sending 
+> > > > > > >NFS4ERR_SYMLINK in reply to that OPEN.
+> > > > > > >
+> > > > > > >Bruce?
+> > > > > > >
+> > > > > > 
+> > > > > > I can reproduce with a 3.4.0-0.rc0.git1.2.fc18 server as well.
+> > > > > 
+> > > > > Hm.  So how about this?  (Untested.)
+> > > > > 
+> > > > > Probably there should be a pynfs test too.
+> > > > > 
+> > > > > I'm assuming it should still be ERR_EXIST in the exclusive, 
+> > > > > exclusive4_1, and guarded cases.
+> > > > > 
+> > > > > --b.
+> > > > > 
+> > > > > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c index 
+> > > > > 7423d71..2bfcad4 100644
+> > > > > --- a/fs/nfsd/vfs.c
+> > > > > +++ b/fs/nfsd/vfs.c
+> > > > > @@ -1457,9 +1457,12 @@ do_nfsd_create(struct svc_rqst *rqstp, 
+> > > > > struct svc_fh *fhp,
+> > > > >  
+> > > > >  		switch (createmode) {
+> > > > >  		case NFS3_CREATE_UNCHECKED:
+> > > > > -			if (! S_ISREG(dchild->d_inode->i_mode))
+> > > > > -				err = nfserr_exist;
+> > > > > -			else if (truncp) {
+> > > > > +			if (! S_ISREG(dchild->d_inode->i_mode)) {
+> > > > > +				if (rqstp->rq_vers == 4)
+> > > > > +					err = nfserr_symlink;
+> > > > > +				else
+> > > > > +					err = nfserr_exist;
+> > > > 
+> > > > No. This should _never_ return NFS4ERR_EXIST.
+> > > > 
+> > > > It should return
+> > > >       * NFS4ERR_ISDIR if the object is a directory
+> > > >       * NFS4ERR_SYMLINK if it is symbolic link,
+> > > >       * either NFS4ERR_WRONG_TYPE (NFSv4.1) or NFS4ERR_SYMLINK (NFSv4.0)
+> > > >         if the object is any other non-regular file.
+> > > 
+> > > Basically, if an object already exists with that name, then 
+> > > NFS3_CREATE_UNCHECKED should be treated as if it is an ordinary 
+> > > OPEN (in the case of NFSv4) or LOOKUP (in the case of NFSv3).
+> > 
+> > Oh, so in the v3 case this should be nfs_ok, and it's up to the 
+> > client to check attributes on the result and decide what to do?
+> > 
+> > (Is this written down someplace?)
+> 
+> In RFC1813: "UNCHECKED means that the file should be created without 
+> checking for the existence of a duplicate file in the same directory."
+
+I don't understand how to apply that sentence to the case of a preexisting non-regular-file in the same directory.
+
+(Actually, I don't understand it in the case of an existing regular file either--to me "create without checking for existence" sounds like "even if a file already exists, you should clobber it and create a new one
+anyway"....)
+
+Anyway, something like the following (untested) should change v3 to return nfs_ok in this case, and v4 to return the same errors it would on a non-create open.
+
+--b.
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c index 2ed14df..8256efd 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -235,17 +235,17 @@ do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_o
+ 		 */
+ 		if (open->op_createmode == NFS4_CREATE_EXCLUSIVE && status == 0)
+ 			open->op_bmval[1] = (FATTR4_WORD1_TIME_ACCESS |
+-						FATTR4_WORD1_TIME_MODIFY);
++							FATTR4_WORD1_TIME_MODIFY);
+ 	} else {
+ 		status = nfsd_lookup(rqstp, current_fh,
+ 				     open->op_fname.data, open->op_fname.len, resfh);
+ 		fh_unlock(current_fh);
+-		if (status)
+-			goto out;
+-		status = nfsd_check_obj_isreg(resfh);
+ 	}
+ 	if (status)
+ 		goto out;
++	status = nfsd_check_obj_isreg(resfh);
++	if (status)
++		goto out;
  
- 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
- 					   req->wb_context,
-@@ -765,6 +765,7 @@ filelayout_pg_init_read(struct nfs_pageio_descriptor *pgio,
- 					   NFS4_MAX_UINT64,
- 					   IOMODE_READ,
- 					   GFP_KERNEL);
-+	put_lseg(old);
- 	/* If no lseg, fall back to read through mds */
- 	if (pgio->pg_lseg == NULL)
- 		nfs_pageio_reset_read_mds(pgio);
-@@ -774,7 +775,7 @@ void
- filelayout_pg_init_write(struct nfs_pageio_descriptor *pgio,
- 			 struct nfs_page *req)
- {
--	BUG_ON(pgio->pg_lseg != NULL);
-+	struct pnfs_layout_segment *old = pgio->pg_lseg;
- 
- 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
- 					   req->wb_context,
-@@ -782,6 +783,7 @@ filelayout_pg_init_write(struct nfs_pageio_descriptor *pgio,
- 					   NFS4_MAX_UINT64,
- 					   IOMODE_RW,
- 					   GFP_NOFS);
-+	put_lseg(old);
- 	/* If no lseg, fall back to write through mds */
- 	if (pgio->pg_lseg == NULL)
- 		nfs_pageio_reset_write_mds(pgio);
--- 
-1.7.2.1
-
+ 	if (is_create_with_attrs(open) && open->op_acl != NULL)
+ 		do_set_nfs4_acl(rqstp, resfh, open->op_acl, open->op_bmval); diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c index 7423d71..890f439 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1458,7 +1458,7 @@ do_nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		switch (createmode) {
+ 		case NFS3_CREATE_UNCHECKED:
+ 			if (! S_ISREG(dchild->d_inode->i_mode))
+-				err = nfserr_exist;
++				goto out;
+ 			else if (truncp) {
+ 				/* in nfsv4, we need to treat this case a little
+ 				 * differently.  we don't want to truncate the
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
