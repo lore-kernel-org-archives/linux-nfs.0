@@ -1,79 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:49174 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1030192Ab2CIWbG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Mar 2012 17:31:06 -0500
-Received: by vcqp1 with SMTP id p1so1845793vcq.19
-        for <linux-nfs@vger.kernel.org>; Fri, 09 Mar 2012 14:31:06 -0800 (PST)
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:50905 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760057Ab2CaPWS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 31 Mar 2012 11:22:18 -0400
 MIME-Version: 1.0
-In-Reply-To: <1331222633-2645-1-git-send-email-andros@netapp.com>
-References: <1331222633-2645-1-git-send-email-andros@netapp.com>
-Date: Fri, 9 Mar 2012 14:31:05 -0800
-Message-ID: <CADnza46qMiagwV39sJU7E4AKY0KMFyyHNTAis_+PO-0b8955Yg@mail.gmail.com>
-Subject: Re: [PATCH 1/1] NFSv4.1 cleanup DS stateid error handling
-From: Fred Isaman <iisaman@netapp.com>
-To: andros@netapp.com
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+In-Reply-To: <1326111265.30169.5.camel@lappy>
+References: <1325927523-30103-1-git-send-email-levinsasha928@gmail.com>
+ <5FF522E0-132E-4A6A-A40F-5CCD08AF800A@oracle.com> <20120107181221.GA3777@umich.edu>
+ <1326111265.30169.5.camel@lappy>
+From: Sasha Levin <levinsasha928@gmail.com>
+Date: Sat, 31 Mar 2012 17:21:57 +0200
+Message-ID: <CA+1xoqdQPi53GYr_Q6RtECJJcrz0TVVp4uNQX6jkfbQWQSNF7g@mail.gmail.com>
+Subject: Re: [PATCH] nfs: Don't try mounting device as nfs root unless type
+ fully matches
+To: Jim Rees <rees@umich.edu>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux@razik.name,
+        Trond.Myklebust@netapp.com, penberg@kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 8, 2012 at 8:03 AM,  <andros@netapp.com> wrote:
-> From: Andy Adamson <andros@netapp.com>
->
-> The error handler nfs4_state parameter is never NULL in the pNFS case as
-> the open_context must carry an nfs_state.
->
+ping? I saw that this one didn't get pulled into the tree.
 
-
-Note Trond's argument is that with commit the state is avail for the
-caller, so it need not be NULL.
-But the caller filelayout_commit_done_cb() needs to be adjusted.
-Currently commit to ds oopses
-due to that.
-
-Fred
-
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfs/nfs4filelayout.c |    9 ++-------
->  1 files changed, 2 insertions(+), 7 deletions(-)
+On Mon, Jan 9, 2012 at 1:14 PM, Sasha Levin <levinsasha928@gmail.com> wrote:
+> On Sat, 2012-01-07 at 13:12 -0500, Jim Rees wrote:
+>> Chuck Lever wrote:
+>>
+>>   On Jan 7, 2012, at 4:12 AM, Sasha Levin wrote:
+>>
+>>   > Currently, we'll try mounting any device who's major device number is
+>>   > UNNAMED_MAJOR as NFS root. This would happen for non-NFS devices as well (such
+>>   > as 9p devices) but it wouldn't cause any issues since mounting the device
+>>   > as NFS would fail quickly and the code proceeded to doing the proper mount:
+>>   >
+>>   >   [  101.522716] VFS: Unable to mount root fs via NFS, trying floppy.
+>>   >   [  101.534499] VFS: Mounted root (9p filesystem) on device 0:18.
+>>   >
+>>   > Commit 6829a048 ("NFS: Retry mounting NFSROOT") has introduced retries when
+>>   > mounting NFS root, which means that now we don't immediately fail and instead
+>>   > it takes an additional 90+ seconds until we stop retrying.
+>>   >
+>>   > This meant that it would take an additional 90 seconds to boot when we're not
+>>   > using a device type which gets detected in order before NFS.
+>>
+>>   The long timeouts are kind of irrelevant, in my view.  The real problem is
+>>   that NFS was tried at all in this case.  That behavior was not introduced
+>>   by 6829a058.
+>>
+>> The comment does imply that 6829a048 introduced a bug, but that's not true.
+>> It uncovered a bug that was there before.
+>>
+>> I would change the part about "now we don't immediately fail."  It didn't
+>> immediately fail before, but the timeout was short enough that you wouldn't
+>> notice it.
 >
-> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-> index b2d3bb5..768f6f8 100644
-> --- a/fs/nfs/nfs4filelayout.c
-> +++ b/fs/nfs/nfs4filelayout.c
-> @@ -99,16 +99,12 @@ static int filelayout_async_handle_error(struct rpc_task *task,
->        case -NFS4ERR_DELEG_REVOKED:
->        case -NFS4ERR_ADMIN_REVOKED:
->        case -NFS4ERR_BAD_STATEID:
-> -               if (state != NULL)
-> -                       nfs_remove_bad_delegation(state->inode);
-> +               nfs_remove_bad_delegation(state->inode);
->        case -NFS4ERR_OPENMODE:
-> -               if (state == NULL)
-> -                       break;
->                nfs4_schedule_stateid_recovery(mds_server, state);
->                goto wait_on_recovery;
->        case -NFS4ERR_EXPIRED:
-> -               if (state != NULL)
-> -                       nfs4_schedule_stateid_recovery(mds_server, state);
-> +               nfs4_schedule_stateid_recovery(mds_server, state);
->                nfs4_schedule_lease_recovery(mds_client);
->                goto wait_on_recovery;
->        /* DS session errors */
-> @@ -145,7 +141,6 @@ wait_on_recovery:
->        if (test_bit(NFS4CLNT_MANAGER_RUNNING, &mds_client->cl_state) == 0)
->                rpc_wake_up_queued_task(&mds_client->cl_rpcwaitq, task);
->        goto out;
-> -
->  }
+> I tried to point out that 6829a048 changed the behavior which was
+> described in the first paragraph, I didn't try to imply that 6829a048 is
+> buggy on its own.
 >
->  /* NFS_PROTO call done callback routines */
-> --
-> 1.7.6.4
+> I'm fine with changing the changelog to whatever will make it clearer.
 >
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+> Sasha.
+>
