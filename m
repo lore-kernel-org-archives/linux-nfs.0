@@ -1,94 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:51498 "EHLO mx2.netapp.com"
+Received: from plane.gmane.org ([80.91.229.3]:51718 "EHLO plane.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759154Ab2C3TCr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Mar 2012 15:02:47 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 01/10] NFS: Create a single nfs_fill_super() function
-Date: Fri, 30 Mar 2012 15:02:28 -0400
-Message-Id: <1333134157-17141-2-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1333134157-17141-1-git-send-email-bjschuma@netapp.com>
-References: <1333134157-17141-1-git-send-email-bjschuma@netapp.com>
+	id S1753066Ab2CaNUH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 31 Mar 2012 09:20:07 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1SDyDs-0000Tu-Di
+	for linux-nfs@vger.kernel.org; Sat, 31 Mar 2012 15:20:04 +0200
+Received: from p3e9bbfe5.dip.t-dialin.net ([62.155.191.229])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Sat, 31 Mar 2012 15:20:04 +0200
+Received: from ponto by p3e9bbfe5.dip.t-dialin.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Sat, 31 Mar 2012 15:20:04 +0200
+To: linux-nfs@vger.kernel.org
+From: Christoph Bartoschek <ponto@pontohonk.de>
+Subject: nfsd hangs for more than 120 seconds
+Date: Sat, 31 Mar 2012 13:55:44 +0200
+Message-ID: <0v7j49-4jc.ln1@homer.bruehl.pontohonk.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Hi,
 
-This can be shared by v2, v3 and v4 in their other common code.
+we use Ubuntu 10.04.3 LTS and often get a traceback for NFS indicating that 
+the daemon hangs for several seconds. At the same time some client machines 
+cannot access the server and have to wait. After some minutes everything 
+goes on.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/super.c |   26 ++++++--------------------
- 1 file changed, 6 insertions(+), 20 deletions(-)
+What could cause the problem? Is there anything we should change?
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 37412f7..c9bc86e 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2135,16 +2135,18 @@ static void nfs_fill_super(struct super_block *sb,
- 
- 	sb->s_blocksize_bits = 0;
- 	sb->s_blocksize = 0;
--	if (data->bsize)
-+	if (data && data->bsize)
- 		sb->s_blocksize = nfs_block_size(data->bsize, &sb->s_blocksize_bits);
- 
--	if (server->nfs_client->rpc_ops->version == 3) {
-+	if (server->nfs_client->rpc_ops->version != 2) {
- 		/* The VFS shouldn't apply the umask to mode bits. We will do
- 		 * so ourselves when necessary.
- 		 */
- 		sb->s_flags |= MS_POSIXACL;
- 		sb->s_time_gran = 1;
- 	}
-+	if (server->nfs_client->rpc_ops->version == 4)
-+		sb->s_xattr = nfs4_xattr_handlers;
- 
- 	sb->s_op = &nfs_sops;
-  	nfs_initialise_sb(sb);
-@@ -2520,22 +2522,6 @@ static void nfs4_clone_super(struct super_block *sb,
- 	nfs_initialise_sb(sb);
- }
- 
--/*
-- * Set up an NFS4 superblock
-- */
--static void nfs4_fill_super(struct super_block *sb)
--{
--	sb->s_time_gran = 1;
--	sb->s_op = &nfs4_sops;
--	/*
--	 * The VFS shouldn't apply the umask to mode bits. We will do
--	 * so ourselves when necessary.
--	 */
--	sb->s_flags  |= MS_POSIXACL;
--	sb->s_xattr = nfs4_xattr_handlers;
--	nfs_initialise_sb(sb);
--}
--
- static void nfs4_validate_mount_flags(struct nfs_parsed_mount_data *args)
- {
- 	args->flags &= ~(NFS_MOUNT_NONLM|NFS_MOUNT_NOACL|NFS_MOUNT_VER3|
-@@ -2723,7 +2709,7 @@ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
- 
- 	if (!s->s_root) {
- 		/* initial superblock/root creation */
--		nfs4_fill_super(s);
-+		nfs_fill_super(s, data);
- 		nfs_fscache_get_super_cookie(s, data->fscache_uniq, NULL);
- 	}
- 
-@@ -3074,7 +3060,7 @@ nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
- 
- 	if (!s->s_root) {
- 		/* initial superblock/root creation */
--		nfs4_fill_super(s);
-+		nfs_fill_super(s, NULL);
- 		nfs_fscache_get_super_cookie(s, NULL, data);
- 	}
- 
+Here is the message in the kernel log:
+
+[330573.697121] INFO: task nfsd:1376 blocked for more than 120 seconds.
+[330573.708375] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables 
+this message.
+[330573.730773] nfsd          D 0000000000000001     0  1376      2 
+0x00000000
+[330573.730776]  ffff88061c21bdc0 0000000000000046 0000000000015f00 
+0000000000015f00
+[330573.730779]  ffff88061c111ad0 ffff88061c21bfd8 0000000000015f00 
+ffff88061c111700
+[330573.730781]  0000000000015f00 ffff88061c21bfd8 0000000000015f00 
+ffff88061c111ad0
+[330573.730784] Call Trace:
+[330573.730788]  [<ffffffff81559e67>] __mutex_lock_slowpath+0x107/0x190
+[330573.730796]  [<ffffffffa012300f>] ? svc_authorise+0x3f/0x50 [sunrpc]
+[330573.730799]  [<ffffffff81559863>] mutex_lock+0x23/0x50
+[330573.730807]  [<ffffffffa012d478>] svc_send+0x58/0xe0 [sunrpc]
+[330573.730809]  [<ffffffff8105df90>] ? default_wake_function+0x0/0x20
+[330573.730817]  [<ffffffffa011faec>] svc_process+0x11c/0x150 [sunrpc]
+[330573.730821]  [<ffffffffa0184ae5>] nfsd+0xc5/0x170 [nfsd]
+[330573.730830]  [<ffffffffa0184a20>] ? nfsd+0x0/0x170 [nfsd]
+[330573.730832]  [<ffffffff81085db6>] kthread+0x96/0xa0
+[330573.730835]  [<ffffffff810141aa>] child_rip+0xa/0x20
+[330573.730837]  [<ffffffff81085d20>] ? kthread+0x0/0xa0
+[330573.730839]  [<ffffffff810141a0>] ? child_rip+0x0/0x20
+
+
 -- 
-1.7.9.5
+Christoph Bartoschek
 
