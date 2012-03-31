@@ -1,55 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:41136 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932382Ab2CPVkz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 16 Mar 2012 17:40:55 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>,
-        "Bhamare, Sachin" <sbhamare@panasas.com>,
-        Benny Halevy <bhalevy@tonian.com>, Steve Dickson <steved@redhat.com>,
-        "Welch, Brent" <welch@panasas.com>
-Subject: Re: [PATCH 3/4] pnfs-obj: autologin: Add support for protocol
- autologin
-Date: Fri, 16 Mar 2012 21:40:52 +0000
-Message-ID: <1331934052.13255.7.camel@lade.trondhjem.org>
-References: <4F62DADD.3010502@panasas.com> <4F62DC6A.5080709@panasas.com>
-In-Reply-To: <4F62DC6A.5080709@panasas.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from rcsinet15.oracle.com ([148.87.113.117]:33202 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760147Ab2CaP1q convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 31 Mar 2012 11:27:46 -0400
+Subject: Re: [PATCH] nfs: Don't try mounting device as nfs root unless type fully matches
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=US-ASCII
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CA+1xoqdQPi53GYr_Q6RtECJJcrz0TVVp4uNQX6jkfbQWQSNF7g@mail.gmail.com>
+Date: Sat, 31 Mar 2012 11:27:33 -0400
+Cc: Jim Rees <rees@umich.edu>, Sasha Levin <levinsasha928@gmail.com>,
+        Lukas Razik <linux@razik.name>, Pekka Enberg <penberg@kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        LKML Kernel <linux-kernel@vger.kernel.org>
+Message-Id: <D3642511-B29B-4CA7-A133-C99B711954C1@oracle.com>
+References: <1325927523-30103-1-git-send-email-levinsasha928@gmail.com> <5FF522E0-132E-4A6A-A40F-5CCD08AF800A@oracle.com> <20120107181221.GA3777@umich.edu> <1326111265.30169.5.camel@lappy> <CA+1xoqdQPi53GYr_Q6RtECJJcrz0TVVp4uNQX6jkfbQWQSNF7g@mail.gmail.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTAzLTE1IGF0IDIzOjIzIC0wNzAwLCBCb2F6IEhhcnJvc2ggd3JvdGU6DQo+
-IEZyb206IFNhY2hpbiBCaGFtYXJlIDxzYmhhbWFyZUBwYW5hc2FzLmNvbT4NCj4gDQo+IFRoZSBw
-bmZzLW9iamVjdHMgcHJvdG9jb2wgbWFuZGF0ZXMgdGhhdCB3ZSBhdXRvbG9naW4gaW50byBkZXZp
-Y2VzIG5vdA0KPiBwcmVzZW50IGluIHRoZSBzeXN0ZW0sIGFjY29yZGluZyB0byBpbmZvcm1hdGlv
-biBzcGVjaWZpZWQgaW4gdGhlDQo+IGdldF9kZXZpY2VfaW5mbyByZXR1cm5lZCBmcm9tIHRoZSBz
-ZXJ2ZXIuDQo+IA0KPiBUaGUgUHJvdG9jb2wgc3BlY2lmaWVzIHR3byBsb2dpbiBoaW50cy4NCj4g
-MS4gQW4gSVAgYWRkcmVzczpwb3J0IGNvbWJpbmF0aW9uDQo+IDIuIEEgc3RyaW5nIFVSSSB3aGlj
-aCBpcyBjb25zdHJ1Y3RlZCBhcyBhIFVSTCB3aXRoIGEgcHJvdG9jb2wgcHJlZml4DQo+ICAgIGZv
-bGxvd2VkIGJ5IDovLyBhbmQgYSBzdHJpbmcgYXMgYWRkcmVzcy4gRm9yIGVhY2ggIHByb3RvY29s
-IHByZWZpeA0KPiAgICB0aGUgc3RyaW5nLWFkZHJlc3MgZm9ybWF0IG1pZ2h0IGJlIGRpZmZlcmVu
-dC4NCj4gDQo+IFdlIG9ubHkgc3VwcG9ydCB0aGUgc2Vjb25kIG9wdGlvbi4gVGhlIGZpcnN0IG9w
-dGlvbiBpcyBqdXN0IHJlZHVuZGFudA0KPiB0byB0aGUgc2Vjb25kIG9uZS4NCj4gTk9URTogVGhl
-IEtlcm5lbCBwYXJ0IG9mIGF1dG9sb2dpbiBkb2VzIG5vdCBwYXJzZSB0aGUgVVJJIHN0cmluZy4g
-SXQNCj4ganVzdCBjaGFubmVscyBpdCB0byBhIHVzZXItbW9kZSBzY3JpcHQuIFNvIGFueSBuZXcg
-bG9naW4gcHJvdG9jb2xzIHNob3VsZA0KPiBvbmx5IHVwZGF0ZSB0aGUgdXNlci1tb2RlIHNjcmlw
-dCB3aGljaCBpcyBhIHBhcnQgb2YgdGhlIG5mcy11dGlscyBwYWNrYWdlLA0KPiBidXQgdGhlIEtl
-cm5lbCBuZWVkIG5vdCBjaGFuZ2UuDQo+IA0KPiBXZSBpbXBsZW1lbnQgdGhlIGF1dG9sb2dpbiBi
-eSB1c2luZyB0aGUgY2FsbF91c2VybW9kZWhlbHBlcigpIEFQSS4NCj4gKFRoYW5rcyB0byBTdGV2
-ZSBEaWNrc29uIDxzdGV2ZWRAcmVkaGF0LmNvbT4gZm9yIHBvaW50aW5nIGl0IG91dCkNCj4gU28g
-dGhlcmUgaXMgbm8gcnVubmluZyBkYWVtb24gbmVlZGVkLCBhbmQgb3Igc3BlY2lhbCBzZXR1cC4N
-Cj4gDQo+IEFsbCBpcyBuZWVkZWQgaXMgdGhhdCAiL3NiaW4vb3NkX2xvZ2luIiBzY3JpcHQgZXhp
-c3RzLg0KPiBUT0RPOg0KPiAgICJvc2RfbG9naW4iIGlzIGFuIGhhcmQgY29kZWQgbmFtZS4gSWYg
-bm90IHByZXNlbnQgd2Ugd2lsbCByYXRlX2xpbWl0DQo+ICAgcHJpbnQgdG8gZG1zZyBhbmQga2Vl
-cCBmYWlsaW5nLiBJbiBzdWNoIGNhc2VzIHdlIHNob3VsZCBzdG9wIHRyeWluZw0KPiAgIGFuZCBw
-cm92aWRlIHN5c2ZzIGludGVyZmFjZSBmb3IgcmUtZW5hYmxpbmcgYXV0b2xvZ2luLiBGb3IgZXhh
-bXBsZSwNCj4gICB3ZSBjb3VsZCBaRVJPIG91dCB0aGUgc2NyaXB0IG5hbWUgYW5kIGxldCB1c2Vy
-LW1vZGUgc2V0IGEgbmV3IHNjcmlwdA0KPiAgIG5hbWUuDQo+ICAgW1FdIFdoZXJlIGluIHN5c2Zz
-IHNob3VsZCBhIGxheW91dC1kcml2ZXIgcHV0IGl0cyB0aGluZ3M/DQoNClBsZWFzZSBzZWUgZnMv
-bmZzL2NhY2hlX2xpYi5jLCB3aGljaCBhbHJlYWR5IGRvZXMgdGhpcyBzb3J0IG9mIHRoaW5nLg0K
-VGhlIHJpZ2h0IHRoaW5nIHRvIGRvIGlzIG5vdCBzeXNmcywgYnV0IGEga2VybmVsIG1vZHVsZSBw
-YXJhbWV0ZXIuDQoNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFp
-bnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBw
-LmNvbQ0KDQo=
+Oops.  Trond?  This got dropped somewhere.
+
+
+On Mar 31, 2012, at 11:21 AM, Sasha Levin wrote:
+
+> ping? I saw that this one didn't get pulled into the tree.
+> 
+> On Mon, Jan 9, 2012 at 1:14 PM, Sasha Levin <levinsasha928@gmail.com> wrote:
+>> On Sat, 2012-01-07 at 13:12 -0500, Jim Rees wrote:
+>>> Chuck Lever wrote:
+>>> 
+>>>   On Jan 7, 2012, at 4:12 AM, Sasha Levin wrote:
+>>> 
+>>>   > Currently, we'll try mounting any device who's major device number is
+>>>   > UNNAMED_MAJOR as NFS root. This would happen for non-NFS devices as well (such
+>>>   > as 9p devices) but it wouldn't cause any issues since mounting the device
+>>>   > as NFS would fail quickly and the code proceeded to doing the proper mount:
+>>>   >
+>>>   >   [  101.522716] VFS: Unable to mount root fs via NFS, trying floppy.
+>>>   >   [  101.534499] VFS: Mounted root (9p filesystem) on device 0:18.
+>>>   >
+>>>   > Commit 6829a048 ("NFS: Retry mounting NFSROOT") has introduced retries when
+>>>   > mounting NFS root, which means that now we don't immediately fail and instead
+>>>   > it takes an additional 90+ seconds until we stop retrying.
+>>>   >
+>>>   > This meant that it would take an additional 90 seconds to boot when we're not
+>>>   > using a device type which gets detected in order before NFS.
+>>> 
+>>>   The long timeouts are kind of irrelevant, in my view.  The real problem is
+>>>   that NFS was tried at all in this case.  That behavior was not introduced
+>>>   by 6829a058.
+>>> 
+>>> The comment does imply that 6829a048 introduced a bug, but that's not true.
+>>> It uncovered a bug that was there before.
+>>> 
+>>> I would change the part about "now we don't immediately fail."  It didn't
+>>> immediately fail before, but the timeout was short enough that you wouldn't
+>>> notice it.
+>> 
+>> I tried to point out that 6829a048 changed the behavior which was
+>> described in the first paragraph, I didn't try to imply that 6829a048 is
+>> buggy on its own.
+>> 
+>> I'm fine with changing the changelog to whatever will make it clearer.
+>> 
+>> --
+>> 
+>> Sasha.
+>> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
