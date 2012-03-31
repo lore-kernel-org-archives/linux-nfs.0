@@ -1,177 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:24387 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:21953 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758342Ab2C1PJt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Mar 2012 11:09:49 -0400
-Subject: [PATCH 7/8] nfsd: pass pointer to export cache down to stack wherever
- possible.
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Wed, 28 Mar 2012 19:09:42 +0400
-Message-ID: <20120328150942.2646.9920.stgit@localhost6.localdomain6>
-In-Reply-To: <20120328150152.2646.33607.stgit@localhost6.localdomain6>
-References: <20120328150152.2646.33607.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
+	id S1752922Ab2CaVZC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 31 Mar 2012 17:25:02 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Sasha Levin <levinsasha928@gmail.com>
+CC: Chuck Lever <chuck.lever@oracle.com>, Jim Rees <rees@umich.edu>,
+        "Lukas Razik" <linux@razik.name>, Pekka Enberg <penberg@kernel.org>,
+        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>,
+        LKML Kernel <linux-kernel@vger.kernel.org>,
+        Ingo Molnar <mingo@elte.hu>,
+        Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [PATCH] nfs: Don't try mounting device as nfs root unless type
+ fully matches
+Date: Sat, 31 Mar 2012 21:24:53 +0000
+Message-ID: <1333229105.2719.17.camel@lade.trondhjem.org>
+References: <1325927523-30103-1-git-send-email-levinsasha928@gmail.com>
+	 <5FF522E0-132E-4A6A-A40F-5CCD08AF800A@oracle.com>
+	 <20120107181221.GA3777@umich.edu> <1326111265.30169.5.camel@lappy>
+	 <CA+1xoqdQPi53GYr_Q6RtECJJcrz0TVVp4uNQX6jkfbQWQSNF7g@mail.gmail.com>
+	 <D3642511-B29B-4CA7-A133-C99B711954C1@oracle.com>
+	 <1333228179.2719.14.camel@lade.trondhjem.org>
+	 <CA+1xoqfv82ngQ4oc5uozZQjN7PipWVjVu670-uUGC5o_3Nec9A@mail.gmail.com>
+In-Reply-To: <CA+1xoqfv82ngQ4oc5uozZQjN7PipWVjVu670-uUGC5o_3Nec9A@mail.gmail.com>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This cache will be per-net soon. And it's easier to get the pointer to desired
-per-net instance only once and then pass it down instead of discovering it in
-every place were required.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
----
- fs/nfsd/export.c |   37 ++++++++++++++++++++++---------------
- 1 files changed, 22 insertions(+), 15 deletions(-)
-
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index 9fe7156..c237b0a 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -785,8 +785,8 @@ exp_find_key(svc_client *clp, int fsid_type, u32 *fsidv, struct cache_req *reqp)
- }
- 
- 
--static svc_export *exp_get_by_name(svc_client *clp, const struct path *path,
--				     struct cache_req *reqp)
-+static svc_export *exp_get_by_name(struct cache_detail *cd, svc_client *clp,
-+				   const struct path *path, struct cache_req *reqp)
- {
- 	struct svc_export *exp, key;
- 	int err;
-@@ -796,12 +796,12 @@ static svc_export *exp_get_by_name(svc_client *clp, const struct path *path,
- 
- 	key.ex_client = clp;
- 	key.ex_path = *path;
--	key.cd = &svc_export_cache;
-+	key.cd = cd;
- 
- 	exp = svc_export_lookup(&key);
- 	if (exp == NULL)
- 		return ERR_PTR(-ENOMEM);
--	err = cache_check(&svc_export_cache, &exp->h, reqp);
-+	err = cache_check(cd, &exp->h, reqp);
- 	if (err)
- 		return ERR_PTR(err);
- 	return exp;
-@@ -810,16 +810,17 @@ static svc_export *exp_get_by_name(svc_client *clp, const struct path *path,
- /*
-  * Find the export entry for a given dentry.
-  */
--static struct svc_export *exp_parent(svc_client *clp, struct path *path)
-+static struct svc_export *exp_parent(struct cache_detail *cd, svc_client *clp,
-+				     struct path *path)
- {
- 	struct dentry *saved = dget(path->dentry);
--	svc_export *exp = exp_get_by_name(clp, path, NULL);
-+	svc_export *exp = exp_get_by_name(cd, clp, path, NULL);
- 
- 	while (PTR_ERR(exp) == -ENOENT && !IS_ROOT(path->dentry)) {
- 		struct dentry *parent = dget_parent(path->dentry);
- 		dput(path->dentry);
- 		path->dentry = parent;
--		exp = exp_get_by_name(clp, path, NULL);
-+		exp = exp_get_by_name(cd, clp, path, NULL);
- 	}
- 	dput(path->dentry);
- 	path->dentry = saved;
-@@ -834,13 +835,15 @@ static struct svc_export *exp_parent(svc_client *clp, struct path *path)
-  * since its harder to fool a kernel module than a user space program.
-  */
- int
--exp_rootfh(svc_client *clp, char *name, struct knfsd_fh *f, int maxsize)
-+exp_rootfh(svc_client *clp, char *name,
-+	   struct knfsd_fh *f, int maxsize)
- {
- 	struct svc_export	*exp;
- 	struct path		path;
- 	struct inode		*inode;
- 	struct svc_fh		fh;
- 	int			err;
-+	struct cache_detail	*cd = &svc_export_cache;
- 
- 	err = -EPERM;
- 	/* NB: we probably ought to check that it's NUL-terminated */
-@@ -853,7 +856,7 @@ exp_rootfh(svc_client *clp, char *name, struct knfsd_fh *f, int maxsize)
- 	dprintk("nfsd: exp_rootfh(%s [%p] %s:%s/%ld)\n",
- 		 name, path.dentry, clp->name,
- 		 inode->i_sb->s_id, inode->i_ino);
--	exp = exp_parent(clp, &path);
-+	exp = exp_parent(cd, clp, &path);
- 	if (IS_ERR(exp)) {
- 		err = PTR_ERR(exp);
- 		goto out;
-@@ -875,7 +878,8 @@ out:
- 	return err;
- }
- 
--static struct svc_export *exp_find(struct auth_domain *clp, int fsid_type,
-+static struct svc_export *exp_find(struct cache_detail *cd,
-+				   struct auth_domain *clp, int fsid_type,
- 				   u32 *fsidv, struct cache_req *reqp)
- {
- 	struct svc_export *exp;
-@@ -883,7 +887,7 @@ static struct svc_export *exp_find(struct auth_domain *clp, int fsid_type,
- 	if (IS_ERR(ek))
- 		return ERR_CAST(ek);
- 
--	exp = exp_get_by_name(clp, &ek->ek_path, reqp);
-+	exp = exp_get_by_name(cd, clp, &ek->ek_path, reqp);
- 	cache_put(&ek->h, &svc_expkey_cache);
- 
- 	if (IS_ERR(exp))
-@@ -926,12 +930,13 @@ struct svc_export *
- rqst_exp_get_by_name(struct svc_rqst *rqstp, struct path *path)
- {
- 	struct svc_export *gssexp, *exp = ERR_PTR(-ENOENT);
-+	struct cache_detail *cd = &svc_export_cache;
- 
- 	if (rqstp->rq_client == NULL)
- 		goto gss;
- 
- 	/* First try the auth_unix client: */
--	exp = exp_get_by_name(rqstp->rq_client, path, &rqstp->rq_chandle);
-+	exp = exp_get_by_name(cd, rqstp->rq_client, path, &rqstp->rq_chandle);
- 	if (PTR_ERR(exp) == -ENOENT)
- 		goto gss;
- 	if (IS_ERR(exp))
-@@ -943,7 +948,7 @@ gss:
- 	/* Otherwise, try falling back on gss client */
- 	if (rqstp->rq_gssclient == NULL)
- 		return exp;
--	gssexp = exp_get_by_name(rqstp->rq_gssclient, path, &rqstp->rq_chandle);
-+	gssexp = exp_get_by_name(cd, rqstp->rq_gssclient, path, &rqstp->rq_chandle);
- 	if (PTR_ERR(gssexp) == -ENOENT)
- 		return exp;
- 	if (!IS_ERR(exp))
-@@ -955,12 +960,14 @@ struct svc_export *
- rqst_exp_find(struct svc_rqst *rqstp, int fsid_type, u32 *fsidv)
- {
- 	struct svc_export *gssexp, *exp = ERR_PTR(-ENOENT);
-+	struct cache_detail *cd = &svc_export_cache;
- 
- 	if (rqstp->rq_client == NULL)
- 		goto gss;
- 
- 	/* First try the auth_unix client: */
--	exp = exp_find(rqstp->rq_client, fsid_type, fsidv, &rqstp->rq_chandle);
-+	exp = exp_find(cd, rqstp->rq_client, fsid_type,
-+		       fsidv, &rqstp->rq_chandle);
- 	if (PTR_ERR(exp) == -ENOENT)
- 		goto gss;
- 	if (IS_ERR(exp))
-@@ -972,7 +979,7 @@ gss:
- 	/* Otherwise, try falling back on gss client */
- 	if (rqstp->rq_gssclient == NULL)
- 		return exp;
--	gssexp = exp_find(rqstp->rq_gssclient, fsid_type, fsidv,
-+	gssexp = exp_find(cd, rqstp->rq_gssclient, fsid_type, fsidv,
- 						&rqstp->rq_chandle);
- 	if (PTR_ERR(gssexp) == -ENOENT)
- 		return exp;
-
+T24gU2F0LCAyMDEyLTAzLTMxIGF0IDIzOjIxICswMjAwLCBTYXNoYSBMZXZpbiB3cm90ZToNCj4g
+T24gU2F0LCBNYXIgMzEsIDIwMTIgYXQgMTE6MDkgUE0sIE15a2xlYnVzdCwgVHJvbmQNCj4gPFRy
+b25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPiBPbiBTYXQsIDIwMTItMDMtMzEg
+YXQgMTE6MjcgLTA0MDAsIENodWNrIExldmVyIHdyb3RlOg0KPiA+PiBPb3BzLiAgVHJvbmQ/ICBU
+aGlzIGdvdCBkcm9wcGVkIHNvbWV3aGVyZS4NCj4gPg0KPiA+IEkgZG9uJ3Qgb3duIHRoZSAnaW5p
+dCcgZGlyZWN0b3J5LCBhbmQgc2luY2UgcXVpdGUgZnJhbmtseSB0aGlzIGlzbid0DQo+ID4gcmVs
+YXRlZCB0byBORlMgYXQgYWxsLCBpdCBzaG91bGQgYmUgc2VudCB0byBMaW51cyBkaXJlY3RseS4N
+Cj4gPg0KPiA+IEknbSBxdWl0ZSBoYXBweSB0byBhY2sgdGhlIHBhdGNoIGlmIHRoYXQgd291bGQg
+aGVscC4NCj4gDQo+IFRoZSBwYXRjaCB3aGljaCBoYXMgdHJpZ2dlcmVkIHRoaXMgd2hvbGUgc3Rv
+cnkgKDY4MjlhMDQ4ICgiTkZTOiBSZXRyeQ0KPiBtb3VudGluZyBORlNST09UIikpIG1vZGlmaWVk
+IGluaXQvIGFzIHdlbGwsIGFuZCB3ZW50IGluIHRocm91Z2ggdGhlDQo+IE5GUyB0cmVlLiBDYW4n
+dCB0aGlzIHBhdGNoIGZvbGxvdyB0aGUgc2FtZSBwYXRoPw0KDQpOby4gSXQgdG91Y2hlcyBnZW5l
+cmljIGNvZGUgdW5saWtlIHRoZSBhYm92ZSBwYXRjaCwgd2hpY2ggX29ubHlfIHRvdWNoZXMNCk5G
+Uy1yZWxhdGVkIGNvZGUuDQoNCj4gQW55aG93LCBJJ3ZlIENjJ2VkIExpbnVzIGluIGhvcGVzIHRo
+YXQgdGhpcyBwYXRjaCBjYW4gc29tZWhvdyBmaW5kDQo+IGl0J3Mgd2F5IGludG8gMy40Lg0KDQpE
+b24ndCBqdXN0IENjOiBMaW51cyBvbiB0aGlzIHRocmVhZDogc2VuZCB0aGUgcGF0Y2ggdG8gaGlt
+IGRpcmVjdGx5IChhbmQNCkNjOiBsaW51eC1rZXJuZWxAdmdlci5rZXJuZWwub3JnKS4NCg0KLS0g
+DQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHAN
+ClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
