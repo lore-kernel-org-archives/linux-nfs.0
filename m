@@ -1,133 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:31457 "EHLO mx2.netapp.com"
+Received: from plane.gmane.org ([80.91.229.3]:46172 "EHLO plane.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755700Ab2CHOEV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Mar 2012 09:04:21 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: dan.carpenter@oracle.com, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH V2] NFSv4.1 handle DS stateid errors
-Date: Wed,  7 Mar 2012 18:44:33 -0500
-Message-Id: <1331163873-2306-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1331163873-2306-1-git-send-email-andros@netapp.com>
-References: <1331163873-2306-1-git-send-email-andros@netapp.com>
+	id S1751403Ab2CaQXm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 31 Mar 2012 12:23:42 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1SE15W-0005Kz-MU
+	for linux-nfs@vger.kernel.org; Sat, 31 Mar 2012 18:23:38 +0200
+Received: from p3e9bbfe5.dip.t-dialin.net ([62.155.191.229])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Sat, 31 Mar 2012 18:23:38 +0200
+Received: from ponto by p3e9bbfe5.dip.t-dialin.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Sat, 31 Mar 2012 18:23:38 +0200
+To: linux-nfs@vger.kernel.org
+From: Christoph Bartoschek <ponto@pontohonk.de>
+Subject: Re: nfsd hangs for more than 120 seconds
+Date: Sat, 31 Mar 2012 18:17:29 +0200
+Message-ID: <p9nj49-5hf.ln1@homer.bruehl.pontohonk.de>
+References: <0v7j49-4jc.ln1@homer.bruehl.pontohonk.de> <1333206116.17974.39.camel@lade.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+Myklebust, Trond wrote:
 
-Handle DS READ and WRITE stateid errors by recovering the stateid on the MDS.
+> On Sat, 2012-03-31 at 13:55 +0200, Christoph Bartoschek wrote:
+>> Hi,
+>> 
+>> we use Ubuntu 10.04.3 LTS and often get a traceback for NFS indicating
+>> that the daemon hangs for several seconds. At the same time some client
+>> machines cannot access the server and have to wait. After some minutes
+>> everything goes on.
+>> 
+>> What could cause the problem? Is there anything we should change?
+>> 
+>> Here is the message in the kernel log:
+>> 
+>> [330573.697121] INFO: task nfsd:1376 blocked for more than 120 seconds.
+>> [330573.708375] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs"
+>> [disables
+>> this message.
+>> [330573.730773] nfsd          D 0000000000000001     0  1376      2
+>> 0x00000000
+>> [330573.730776]  ffff88061c21bdc0 0000000000000046 0000000000015f00
+>> 0000000000015f00
+>> [330573.730779]  ffff88061c111ad0 ffff88061c21bfd8 0000000000015f00
+>> ffff88061c111700
+>> [330573.730781]  0000000000015f00 ffff88061c21bfd8 0000000000015f00
+>> ffff88061c111ad0
+>> [330573.730784] Call Trace:
+>> [330573.730788]  [<ffffffff81559e67>] __mutex_lock_slowpath+0x107/0x190
+>> [330573.730796]  [<ffffffffa012300f>] ? svc_authorise+0x3f/0x50 [sunrpc]
+> 
+> At a guess, I'd say that your mountd  or rpc.svcgssd is probably
+> busy/hanging, causing the kernel NFS daemon to hang while it waits to
+> authorise a client or user. Typically, you will see the above in the
+> case of a kerberos, NIS or ldap outage.
+> 
+> So are you using NIS or ldap-based netgroups in your /etc/exports, or
+> are your clients perhaps mounting with sys=krb5?
 
-NFS4ERR_OLD_STATEID is ignored as the client always sends a
-state sequenceid of zero for DS READ and WRITE stateids.
+We are still using NFS3 and NIS. 
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/delegation.c     |    1 +
- fs/nfs/nfs4filelayout.c |   33 ++++++++++++++++++++++++++++++++-
- fs/nfs/nfs4state.c      |    2 ++
- 3 files changed, 35 insertions(+), 1 deletions(-)
+We are also sometimes seeing the following problem that might be related:
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 87f7544..97d5357 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -474,6 +474,7 @@ void nfs_remove_bad_delegation(struct inode *inode)
- 		nfs_free_delegation(delegation);
- 	}
- }
-+EXPORT_SYMBOL_GPL(nfs_remove_bad_delegation);
- 
- /**
-  * nfs_expire_all_delegation_types
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 47e8f34..cdaee60 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -36,6 +36,7 @@
- #include <linux/sunrpc/metrics.h>
- 
- #include "internal.h"
-+#include "delegation.h"
- #include "nfs4filelayout.h"
- 
- #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
-@@ -86,12 +87,35 @@ static int filelayout_async_handle_error(struct rpc_task *task,
- 					 struct nfs_client *clp,
- 					 int *reset)
- {
-+	struct nfs_server *mds_server;
-+	struct nfs_client *mds_client;
-+
- 	if (task->tk_status >= 0)
- 		return 0;
--
- 	*reset = 0;
-+	if (state != NULL) {
-+		mds_server = NFS_SERVER(state->inode);
-+		mds_client = mds_server->nfs_client;
-+	}
- 
- 	switch (task->tk_status) {
-+	/* MDS state errors */
-+	case -NFS4ERR_DELEG_REVOKED:
-+	case -NFS4ERR_ADMIN_REVOKED:
-+	case -NFS4ERR_BAD_STATEID:
-+		if (state != NULL)
-+			nfs_remove_bad_delegation(state->inode);
-+	case -NFS4ERR_OPENMODE:
-+		if (state == NULL)
-+			break;
-+		nfs4_schedule_stateid_recovery(mds_server, state);
-+		goto wait_on_recovery;
-+	case -NFS4ERR_EXPIRED:
-+		if (state != NULL)
-+			nfs4_schedule_stateid_recovery(mds_server, state);
-+		nfs4_schedule_lease_recovery(mds_client);
-+		goto wait_on_recovery;
-+	/* DS session errors */
- 	case -NFS4ERR_BADSESSION:
- 	case -NFS4ERR_BADSLOT:
- 	case -NFS4ERR_BAD_HIGH_SLOT:
-@@ -117,8 +141,15 @@ static int filelayout_async_handle_error(struct rpc_task *task,
- 		*reset = 1;
- 		break;
- 	}
-+out:
- 	task->tk_status = 0;
- 	return -EAGAIN;
-+wait_on_recovery:
-+	rpc_sleep_on(&mds_client->cl_rpcwaitq, task, NULL);
-+	if (test_bit(NFS4CLNT_MANAGER_RUNNING, &mds_client->cl_state) == 0)
-+		rpc_wake_up_queued_task(&mds_client->cl_rpcwaitq, task);
-+	goto out;
-+
- }
- 
- /* NFS_PROTO call done callback routines */
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 1dad5c5..a58d02a 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1072,6 +1072,7 @@ void nfs4_schedule_lease_recovery(struct nfs_client *clp)
- 		set_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state);
- 	nfs4_schedule_state_manager(clp);
- }
-+EXPORT_SYMBOL_GPL(nfs4_schedule_lease_recovery);
- 
- void nfs4_schedule_path_down_recovery(struct nfs_client *clp)
- {
-@@ -1109,6 +1110,7 @@ void nfs4_schedule_stateid_recovery(const struct nfs_server *server, struct nfs4
- 	nfs4_state_mark_reclaim_nograce(clp, state);
- 	nfs4_schedule_state_manager(clp);
- }
-+EXPORT_SYMBOL_GPL(nfs4_schedule_stateid_recovery);
- 
- void nfs_inode_find_state_and_recover(struct inode *inode,
- 		const nfs4_stateid *stateid)
--- 
-1.7.6.4
+One user suddenly has no access to a directory and its subdirectories on a 
+NFS share. The user always gets "permission denied". The access bits and 
+group memberships did not change.
+
+At the same time all other users within the same groups can access the 
+directory on the same client machine and on other client machines.
+
+After about 15 minutes the problem vanishes by itself. The user no longer 
+gets "permission denied" and everything is normal.
+
+This happens about twice a week for different users. We see no pattern in 
+which user is affected and when this happens.
+
+Thanks 
+Christoph
 
