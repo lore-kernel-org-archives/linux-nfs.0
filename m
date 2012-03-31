@@ -1,129 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:38040 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:16220 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755958Ab2CDXDO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 4 Mar 2012 18:03:14 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 09/11] NFSv4: Minor clean ups for encode_string()
-Date: Sun,  4 Mar 2012 18:03:01 -0500
-Message-Id: <1330902183-18879-9-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1330902183-18879-8-git-send-email-Trond.Myklebust@netapp.com>
-References: <1330902183-18879-1-git-send-email-Trond.Myklebust@netapp.com>
- <1330902183-18879-2-git-send-email-Trond.Myklebust@netapp.com>
- <1330902183-18879-3-git-send-email-Trond.Myklebust@netapp.com>
- <1330902183-18879-4-git-send-email-Trond.Myklebust@netapp.com>
- <1330902183-18879-5-git-send-email-Trond.Myklebust@netapp.com>
- <1330902183-18879-6-git-send-email-Trond.Myklebust@netapp.com>
- <1330902183-18879-7-git-send-email-Trond.Myklebust@netapp.com>
- <1330902183-18879-8-git-send-email-Trond.Myklebust@netapp.com>
+	id S1759980Ab2CaPCK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 31 Mar 2012 11:02:10 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Christoph Bartoschek <ponto@pontohonk.de>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nfsd hangs for more than 120 seconds
+Date: Sat, 31 Mar 2012 15:01:45 +0000
+Message-ID: <1333206116.17974.39.camel@lade.trondhjem.org>
+References: <0v7j49-4jc.ln1@homer.bruehl.pontohonk.de>
+In-Reply-To: <0v7j49-4jc.ln1@homer.bruehl.pontohonk.de>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4xdr.c |   40 ++++++++++++++++++----------------------
- 1 files changed, 18 insertions(+), 22 deletions(-)
-
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 76ef986..d6e8306 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -897,8 +897,7 @@ static void encode_string(struct xdr_stream *xdr, unsigned int len, const char *
- {
- 	__be32 *p;
- 
--	p = xdr_reserve_space(xdr, 4 + len);
--	BUG_ON(p == NULL);
-+	p = reserve_space(xdr, 4 + len);
- 	xdr_encode_opaque(p, str, len);
- }
- 
-@@ -915,8 +914,8 @@ static void encode_compound_hdr(struct xdr_stream *xdr,
- 	hdr->replen = RPC_REPHDRSIZE + auth->au_rslack + 3 + hdr->taglen;
- 
- 	BUG_ON(hdr->taglen > NFS4_MAXTAGLEN);
--	p = reserve_space(xdr, 4 + hdr->taglen + 8);
--	p = xdr_encode_opaque(p, hdr->tag, hdr->taglen);
-+	encode_string(xdr, hdr->taglen, hdr->tag);
-+	p = reserve_space(xdr, 8);
- 	*p++ = cpu_to_be32(hdr->minorversion);
- 	hdr->nops_p = p;
- 	*p = cpu_to_be32(hdr->nops);
-@@ -1216,9 +1215,9 @@ static void encode_link(struct xdr_stream *xdr, const struct qstr *name, struct
- {
- 	__be32 *p;
- 
--	p = reserve_space(xdr, 8 + name->len);
--	*p++ = cpu_to_be32(OP_LINK);
--	xdr_encode_opaque(p, name->name, name->len);
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(OP_LINK);
-+	encode_string(xdr, name->len, name->name);
- 	hdr->nops++;
- 	hdr->replen += decode_link_maxsz;
- }
-@@ -1324,12 +1323,11 @@ static void encode_release_lockowner(struct xdr_stream *xdr, const struct nfs_lo
- 
- static void encode_lookup(struct xdr_stream *xdr, const struct qstr *name, struct compound_hdr *hdr)
- {
--	int len = name->len;
- 	__be32 *p;
- 
--	p = reserve_space(xdr, 8 + len);
--	*p++ = cpu_to_be32(OP_LOOKUP);
--	xdr_encode_opaque(p, name->name, len);
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(OP_LOOKUP);
-+	encode_string(xdr, name->len, name->name);
- 	hdr->nops++;
- 	hdr->replen += decode_lookup_maxsz;
- }
-@@ -1521,12 +1519,11 @@ static void encode_open_downgrade(struct xdr_stream *xdr, const struct nfs_close
- static void
- encode_putfh(struct xdr_stream *xdr, const struct nfs_fh *fh, struct compound_hdr *hdr)
- {
--	int len = fh->size;
- 	__be32 *p;
- 
--	p = reserve_space(xdr, 8 + len);
--	*p++ = cpu_to_be32(OP_PUTFH);
--	xdr_encode_opaque(p, fh->data, len);
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(OP_PUTFH);
-+	encode_string(xdr, fh->size, fh->data);
- 	hdr->nops++;
- 	hdr->replen += decode_putfh_maxsz;
- }
-@@ -1628,9 +1625,9 @@ static void encode_remove(struct xdr_stream *xdr, const struct qstr *name, struc
- {
- 	__be32 *p;
- 
--	p = reserve_space(xdr, 8 + name->len);
--	*p++ = cpu_to_be32(OP_REMOVE);
--	xdr_encode_opaque(p, name->name, name->len);
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(OP_REMOVE);
-+	encode_string(xdr, name->len, name->name);
- 	hdr->nops++;
- 	hdr->replen += decode_remove_maxsz;
- }
-@@ -1776,12 +1773,11 @@ static void encode_delegreturn(struct xdr_stream *xdr, const nfs4_stateid *state
- 
- static void encode_secinfo(struct xdr_stream *xdr, const struct qstr *name, struct compound_hdr *hdr)
- {
--	int len = name->len;
- 	__be32 *p;
- 
--	p = reserve_space(xdr, 8 + len);
--	*p++ = cpu_to_be32(OP_SECINFO);
--	xdr_encode_opaque(p, name->name, len);
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(OP_SECINFO);
-+	encode_string(xdr, name->len, name->name);
- 	hdr->nops++;
- 	hdr->replen += decode_secinfo_maxsz;
- }
--- 
-1.7.7.6
-
+T24gU2F0LCAyMDEyLTAzLTMxIGF0IDEzOjU1ICswMjAwLCBDaHJpc3RvcGggQmFydG9zY2hlayB3
+cm90ZToNCj4gSGksDQo+IA0KPiB3ZSB1c2UgVWJ1bnR1IDEwLjA0LjMgTFRTIGFuZCBvZnRlbiBn
+ZXQgYSB0cmFjZWJhY2sgZm9yIE5GUyBpbmRpY2F0aW5nIHRoYXQgDQo+IHRoZSBkYWVtb24gaGFu
+Z3MgZm9yIHNldmVyYWwgc2Vjb25kcy4gQXQgdGhlIHNhbWUgdGltZSBzb21lIGNsaWVudCBtYWNo
+aW5lcyANCj4gY2Fubm90IGFjY2VzcyB0aGUgc2VydmVyIGFuZCBoYXZlIHRvIHdhaXQuIEFmdGVy
+IHNvbWUgbWludXRlcyBldmVyeXRoaW5nIA0KPiBnb2VzIG9uLg0KPiANCj4gV2hhdCBjb3VsZCBj
+YXVzZSB0aGUgcHJvYmxlbT8gSXMgdGhlcmUgYW55dGhpbmcgd2Ugc2hvdWxkIGNoYW5nZT8NCj4g
+DQo+IEhlcmUgaXMgdGhlIG1lc3NhZ2UgaW4gdGhlIGtlcm5lbCBsb2c6DQo+IA0KPiBbMzMwNTcz
+LjY5NzEyMV0gSU5GTzogdGFzayBuZnNkOjEzNzYgYmxvY2tlZCBmb3IgbW9yZSB0aGFuIDEyMCBz
+ZWNvbmRzLg0KPiBbMzMwNTczLjcwODM3NV0gImVjaG8gMCA+IC9wcm9jL3N5cy9rZXJuZWwvaHVu
+Z190YXNrX3RpbWVvdXRfc2VjcyIgZGlzYWJsZXMgDQo+IHRoaXMgbWVzc2FnZS4NCj4gWzMzMDU3
+My43MzA3NzNdIG5mc2QgICAgICAgICAgRCAwMDAwMDAwMDAwMDAwMDAxICAgICAwICAxMzc2ICAg
+ICAgMiANCj4gMHgwMDAwMDAwMA0KPiBbMzMwNTczLjczMDc3Nl0gIGZmZmY4ODA2MWMyMWJkYzAg
+MDAwMDAwMDAwMDAwMDA0NiAwMDAwMDAwMDAwMDE1ZjAwIA0KPiAwMDAwMDAwMDAwMDE1ZjAwDQo+
+IFszMzA1NzMuNzMwNzc5XSAgZmZmZjg4MDYxYzExMWFkMCBmZmZmODgwNjFjMjFiZmQ4IDAwMDAw
+MDAwMDAwMTVmMDAgDQo+IGZmZmY4ODA2MWMxMTE3MDANCj4gWzMzMDU3My43MzA3ODFdICAwMDAw
+MDAwMDAwMDE1ZjAwIGZmZmY4ODA2MWMyMWJmZDggMDAwMDAwMDAwMDAxNWYwMCANCj4gZmZmZjg4
+MDYxYzExMWFkMA0KPiBbMzMwNTczLjczMDc4NF0gQ2FsbCBUcmFjZToNCj4gWzMzMDU3My43MzA3
+ODhdICBbPGZmZmZmZmZmODE1NTllNjc+XSBfX211dGV4X2xvY2tfc2xvd3BhdGgrMHgxMDcvMHgx
+OTANCj4gWzMzMDU3My43MzA3OTZdICBbPGZmZmZmZmZmYTAxMjMwMGY+XSA/IHN2Y19hdXRob3Jp
+c2UrMHgzZi8weDUwIFtzdW5ycGNdDQoNCkF0IGEgZ3Vlc3MsIEknZCBzYXkgdGhhdCB5b3VyIG1v
+dW50ZCAgb3IgcnBjLnN2Y2dzc2QgaXMgcHJvYmFibHkNCmJ1c3kvaGFuZ2luZywgY2F1c2luZyB0
+aGUga2VybmVsIE5GUyBkYWVtb24gdG8gaGFuZyB3aGlsZSBpdCB3YWl0cyB0bw0KYXV0aG9yaXNl
+IGEgY2xpZW50IG9yIHVzZXIuIFR5cGljYWxseSwgeW91IHdpbGwgc2VlIHRoZSBhYm92ZSBpbiB0
+aGUNCmNhc2Ugb2YgYSBrZXJiZXJvcywgTklTIG9yIGxkYXAgb3V0YWdlLg0KDQpTbyBhcmUgeW91
+IHVzaW5nIE5JUyBvciBsZGFwLWJhc2VkIG5ldGdyb3VwcyBpbiB5b3VyIC9ldGMvZXhwb3J0cywg
+b3INCmFyZSB5b3VyIGNsaWVudHMgcGVyaGFwcyBtb3VudGluZyB3aXRoIHN5cz1rcmI1Pw0KDQpD
+aGVlcnMNCiAgVHJvbmQNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQg
+bWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0
+YXBwLmNvbQ0KDQo=
