@@ -1,186 +1,160 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37921 "EHLO fieldses.org"
+Received: from mga01.intel.com ([192.55.52.88]:47998 "EHLO mga01.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933444Ab2DKWHJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Apr 2012 18:07:09 -0400
-Date: Wed, 11 Apr 2012 18:07:07 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Subject: Re: [PATCH] nfsd: remove hard-coded dereferences to name-to-id and
- id-to-name caches
-Message-ID: <20120411220707.GE31706@fieldses.org>
-References: <20120411111844.14534.39808.stgit@localhost6.localdomain6>
+	id S1753519Ab2DCXhd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Apr 2012 19:37:33 -0400
+Date: Tue, 3 Apr 2012 16:32:31 -0700
+From: Fengguang Wu <fengguang.wu@intel.com>
+To: Vivek Goyal <vgoyal@redhat.com>
+Cc: Linux Memory Management List <linux-mm@kvack.org>,
+        Suresh Jayaraman <sjayaraman@suse.com>,
+        Andrea Righi <andrea@betterlinux.com>, Jeff Moyer <jmoyer@redhat.com>,
+        linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+        Tejun Heo <tj@kernel.org>, Jan Kara <jack@suse.cz>,
+        KAMEZAWA Hiroyuki <kamezawa.hiroyu@jp.fujitsu.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Jens Axboe <axboe@kernel.dk>
+Subject: Re: [PATCH 0/6] buffered write IO controller in balance_dirty_pages()
+Message-ID: <20120403233231.GA24333@localhost>
+References: <20120328121308.568545879@intel.com>
+ <20120401205647.GD6116@redhat.com>
+ <20120403080014.GA15546@localhost>
+ <20120403145301.GG5913@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120411111844.14534.39808.stgit@localhost6.localdomain6>
+In-Reply-To: <20120403145301.GG5913@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 11, 2012 at 03:18:58PM +0400, Stanislav Kinsbursky wrote:
-> These dereferences to global static caches are redundant. They also prevents
-> converting these caches into per-net ones. So this patch is cleanup + precursor
-> of patch set, which will make them per-net.
-
-This isn't applying to my latest tree; could you look into that and
-resend?
-
-I've applied and pushed out your cleanup patches, but not yet the two
-cache-containerization patches.
-
---b.
-
+On Tue, Apr 03, 2012 at 10:53:01AM -0400, Vivek Goyal wrote:
+> On Tue, Apr 03, 2012 at 01:00:14AM -0700, Fengguang Wu wrote:
 > 
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> [CC Jens]
 > 
-> ---
->  fs/nfsd/nfs4idmap.c |   50 ++++++++++++++++++++++++--------------------------
->  1 files changed, 24 insertions(+), 26 deletions(-)
+> [..]
+> > > I think blkio.weight can be thought of a system wide weight of a cgroup
+> > > and more than one entity/subsystem should be able to make use of it and
+> > > differentiate between IO in its own way. CFQ can decide to do proportional
+> > > time division, and buffered write controller should be able to use the
+> > > same weight and do write bandwidth differentiation. I think it is better
+> > > than introducing another buffered write controller tunable for weight.
+> > > 
+> > > Personally, I am not too worried about this point. We can document and
+> > > explain it well.
+> > 
+> > Agreed. The throttling may work in *either* bps, IOPS or disk time
+> > modes. In each mode blkio.weight is naturally tied to the
+> > corresponding IO metrics.
 > 
-> diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
-> index 322d11c..2ff4470 100644
-> --- a/fs/nfsd/nfs4idmap.c
-> +++ b/fs/nfsd/nfs4idmap.c
-> @@ -183,8 +183,9 @@ warn_no_idmapd(struct cache_detail *detail, int has_died)
->  
->  
->  static int         idtoname_parse(struct cache_detail *, char *, int);
-> -static struct ent *idtoname_lookup(struct ent *);
-> -static struct ent *idtoname_update(struct ent *, struct ent *);
-> +static struct ent *idtoname_lookup(struct cache_detail *, struct ent *);
-> +static struct ent *idtoname_update(struct cache_detail *, struct ent *,
-> +				   struct ent *);
->  
->  static struct cache_detail idtoname_cache = {
->  	.owner		= THIS_MODULE,
-> @@ -244,7 +245,7 @@ idtoname_parse(struct cache_detail *cd, char *buf, int buflen)
->  		goto out;
->  
->  	error = -ENOMEM;
-> -	res = idtoname_lookup(&ent);
-> +	res = idtoname_lookup(cd, &ent);
->  	if (!res)
->  		goto out;
->  
-> @@ -260,11 +261,11 @@ idtoname_parse(struct cache_detail *cd, char *buf, int buflen)
->  	else
->  		memcpy(ent.name, buf1, sizeof(ent.name));
->  	error = -ENOMEM;
-> -	res = idtoname_update(&ent, res);
-> +	res = idtoname_update(cd, &ent, res);
->  	if (res == NULL)
->  		goto out;
->  
-> -	cache_put(&res->h, &idtoname_cache);
-> +	cache_put(&res->h, cd);
->  
->  	error = 0;
->  out:
-> @@ -275,10 +276,9 @@ out:
->  
->  
->  static struct ent *
-> -idtoname_lookup(struct ent *item)
-> +idtoname_lookup(struct cache_detail *cd, struct ent *item)
->  {
-> -	struct cache_head *ch = sunrpc_cache_lookup(&idtoname_cache,
-> -						    &item->h,
-> +	struct cache_head *ch = sunrpc_cache_lookup(cd, &item->h,
->  						    idtoname_hash(item));
->  	if (ch)
->  		return container_of(ch, struct ent, h);
-> @@ -287,10 +287,9 @@ idtoname_lookup(struct ent *item)
->  }
->  
->  static struct ent *
-> -idtoname_update(struct ent *new, struct ent *old)
-> +idtoname_update(struct cache_detail *cd, struct ent *new, struct ent *old)
->  {
-> -	struct cache_head *ch = sunrpc_cache_update(&idtoname_cache,
-> -						    &new->h, &old->h,
-> +	struct cache_head *ch = sunrpc_cache_update(cd, &new->h, &old->h,
->  						    idtoname_hash(new));
->  	if (ch)
->  		return container_of(ch, struct ent, h);
-> @@ -359,8 +358,9 @@ nametoid_show(struct seq_file *m, struct cache_detail *cd, struct cache_head *h)
->  	return 0;
->  }
->  
-> -static struct ent *nametoid_lookup(struct ent *);
-> -static struct ent *nametoid_update(struct ent *, struct ent *);
-> +static struct ent *nametoid_lookup(struct cache_detail *, struct ent *);
-> +static struct ent *nametoid_update(struct cache_detail *, struct ent *,
-> +				   struct ent *);
->  static int         nametoid_parse(struct cache_detail *, char *, int);
->  
->  static struct cache_detail nametoid_cache = {
-> @@ -426,14 +426,14 @@ nametoid_parse(struct cache_detail *cd, char *buf, int buflen)
->  		set_bit(CACHE_NEGATIVE, &ent.h.flags);
->  
->  	error = -ENOMEM;
-> -	res = nametoid_lookup(&ent);
-> +	res = nametoid_lookup(cd, &ent);
->  	if (res == NULL)
->  		goto out;
-> -	res = nametoid_update(&ent, res);
-> +	res = nametoid_update(cd, &ent, res);
->  	if (res == NULL)
->  		goto out;
->  
-> -	cache_put(&res->h, &nametoid_cache);
-> +	cache_put(&res->h, cd);
->  	error = 0;
->  out:
->  	kfree(buf1);
-> @@ -443,10 +443,9 @@ out:
->  
->  
->  static struct ent *
-> -nametoid_lookup(struct ent *item)
-> +nametoid_lookup(struct cache_detail *cd, struct ent *item)
->  {
-> -	struct cache_head *ch = sunrpc_cache_lookup(&nametoid_cache,
-> -						    &item->h,
-> +	struct cache_head *ch = sunrpc_cache_lookup(cd, &item->h,
->  						    nametoid_hash(item));
->  	if (ch)
->  		return container_of(ch, struct ent, h);
-> @@ -455,10 +454,9 @@ nametoid_lookup(struct ent *item)
->  }
->  
->  static struct ent *
-> -nametoid_update(struct ent *new, struct ent *old)
-> +nametoid_update(struct cache_detail *cd, struct ent *new, struct ent *old)
->  {
-> -	struct cache_head *ch = sunrpc_cache_update(&nametoid_cache,
-> -						    &new->h, &old->h,
-> +	struct cache_head *ch = sunrpc_cache_update(cd, &new->h, &old->h,
->  						    nametoid_hash(new));
->  	if (ch)
->  		return container_of(ch, struct ent, h);
-> @@ -493,12 +491,12 @@ nfsd_idmap_shutdown(void)
->  
->  static int
->  idmap_lookup(struct svc_rqst *rqstp,
-> -		struct ent *(*lookup_fn)(struct ent *), struct ent *key,
-> -		struct cache_detail *detail, struct ent **item)
-> +		struct ent *(*lookup_fn)(struct cache_detail *, struct ent *),
-> +		struct ent *key, struct cache_detail *detail, struct ent **item)
->  {
->  	int ret;
->  
-> -	*item = lookup_fn(key);
-> +	*item = lookup_fn(detail, key);
->  	if (!*item)
->  		return -ENOMEM;
->   retry:
-> @@ -506,7 +504,7 @@ idmap_lookup(struct svc_rqst *rqstp,
->  
->  	if (ret == -ETIMEDOUT) {
->  		struct ent *prev_item = *item;
-> -		*item = lookup_fn(key);
-> +		*item = lookup_fn(detail, key);
->  		if (*item != prev_item)
->  			goto retry;
->  		cache_put(&(*item)->h, detail);
+> Well, Tejun does not like the idea of sharing config variables among
+> different policies. So I guess you shall have to come up with your
+> own configurations variables as desired. As each policy will have its
+> own configuration and stats, prefixing the vairable/stat name with
+> policy name will help identify it. Not sure what's a good name for
+> buffered write policy.
 > 
+> May be
+> 
+> blkio.dirty.weight
+> blkio.dirty.bps
+> blkio.buffered_write.* or
+> blkio.buf_write* or
+> blkio.dirty_rate.* or
+
+OK. dirty.* or buffered_write.*, whatever looks more user friendly will be fine.
+
+> [..]
+> > 
+> > Patch 6/6 shows simple test results for bps based throttling.
+> > 
+> > Since then I've improved the patches to work in a more "contained" way
+> > when blkio.throttle.buffered_write_bps is not set.
+> > 
+> > The old behavior is, if blkcg A contains 1 dd and blkcg B contains 10
+> > dd tasks and they have equal weight, B will get 10 times bandwidth
+> > than A.
+> > 
+> > With the below updated core bits, A and B will get equal share of
+> > write bandwidth. The basic idea is to use
+> 
+> Yes, this new behavior makes more sense. Two equal weight groups get
+> equal bandwidth irrpesctive of number of tasks in cgroup.
+
+Yeah, Andrew Morton reminded me of this during the writeback talk in
+google :) Fortunately the current dirty throttling algorithm can
+handle it easily. What's more, hierarchical cgroups can be supported
+by simply using the parent's blkcg->dirty_ratelimit as the throttling
+bps for the child.
+
+> [..]
+> > Test results are "pretty good looking" :-) The attached graphs
+> > illustrates nice attributes of accuracy, fairness and smoothness
+> > for the following tests.
+> 
+> Indeed. These results are pretty cool. It is hard to belive that lines
+> are so smooth and lines for two tasks are overlapping each other such 
+> that it is not obivious initially that they are overlapping and dirtying
+> equal amount of memory. I had to take a second look to figure that out.
+
+Thanks for noticing this! :)
+
+> Just that results for third graph (weight 500 and 1000 respectively) are
+> not perfect. I think Ideally all the 3 tasks should have dirtied same
+> amount of memory.
+
+Yeah, but note that it's not the fault of the throttling algorithm.
+
+The unfairness is created at the very beginning ~0.1s, where dirty
+pages are far under the dirty limits and the dd tasks are not
+throttled at all. Since the first task manages to start 0.1s earlier
+than the other two tasks, it manages to dirty at full (memory write)
+speed which makes the gap.
+
+Once the dirty throttling mechanism comes into play, you can see that
+the lines for the three tasks grow fairly at the same speed/slope.
+
+> But I think achieving perfection here might not be easy and may be
+> not many people will care.
+
+The formula itself looks simple, however it does ask for some
+debugging/tuning efforts to make it behave well under various
+situations.
+
+> Given the fact that you are doing a reasonable job of providing service
+> differentiation between buffered writers, I am wondering if you should
+> look at the ioprio of writers with-in cgroup and provide service
+> differentiation among those too. CFQ has separate queues but it loses
+> the context information by the time IO is submitted. So you might be
+> able to do a much better job. Anyway, this is a possible future
+> enhancement and not necessarily related to this patchset.
+
+Good point. It seems applicable to the general dirty throttling
+(not relying on cgroups). It would mainly be a problem of how to map
+the priority classes/values to each tasks' throttling weight (or bps).
+
+> Also, we are controlling the rate of dirtying the memory. I am again 
+> wondering whether these configuration knobs should be part of memory
+> controller and not block controller. Think of NFS case. There is no
+> block device or block layer involved but we will control the rate of
+> dirtying memory. So some control in memory controller might make
+> sense. And following kind of knobs might make sense there.
+> 
+> memcg.dirty_weight or memcg.dirty.weight
+> memcg.dirty_bps or memcg.dirty.write_bps
+> 
+> Just that we control not the *absolute amount* of memory but *rate* of
+> writing to memory and I think that makes it somewhat confusing and
+> gives the impression that it should be part of block IO controller.
+
+There is the future prospective of "buffered+direct write bps" interface.
+Considering this, I'm a little inclined towards the blkio.* interfaces,
+in despite of the fact that it's currently tightly tied to the block layer :)
+
+> I am kind of split on this (rather little inclined towards memory
+> controller), so I am raising the question and others can weigh in with
+> their thoughts on what makes more sense here.
+
+Yeah, we definitely need more inputs on the "interface" stuff.
+
+Thanks,
+Fengguang
