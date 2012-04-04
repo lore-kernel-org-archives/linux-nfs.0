@@ -1,119 +1,32 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:34561 "EHLO mx1.redhat.com"
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:53376 "EHLO e5.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752454Ab2DWNNZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Apr 2012 09:13:25 -0400
-Date: Mon, 23 Apr 2012 09:12:55 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Miklos Szeredi <miklos@szeredi.hu>, Malahal Naineni <malahal@us.ibm.com>,
-        Steve Dickson <SteveD@redhat.com>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, hch@infradead.org,
-        michael.brantley@deshaw.com, sven.breuner@itwm.fraunhofer.de,
-        chuck.lever@oracle.com, pstaubach@exagrid.com,
-        trond.myklebust@fys.uio.no, rees@umich.edu
-Subject: Re: [PATCH RFC v3] vfs: make fstatat retry once on ESTALE errors
- from getattr call
-Message-ID: <20120423091255.00f926c4@tlielax.poochiereds.net>
-In-Reply-To: <20120423130009.GA13681@fieldses.org>
-References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
-	<1334749927-26138-1-git-send-email-jlayton@redhat.com>
-	<20120420104055.511e15bc@tlielax.poochiereds.net>
-	<4F91C49D.8070908@RedHat.com>
-	<20120420203725.GA3512@us.ibm.com>
-	<20120420171314.73801874@corrin.poochiereds.net>
-	<CAJfpegt40cgMJQQo3JuNaaS1w957Y2a_NxVoyvx3bmTMj1TGOA@mail.gmail.com>
-	<20120423080012.7c23ef24@tlielax.poochiereds.net>
-	<20120423130009.GA13681@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1753757Ab2DDUbf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Apr 2012 16:31:35 -0400
+Received: from /spool/local
+	by e5.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <eshel@almaden.ibm.com>;
+	Wed, 4 Apr 2012 16:31:34 -0400
+Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 9EF2B38C8065
+	for <linux-nfs@vger.kernel.org>; Wed,  4 Apr 2012 16:31:29 -0400 (EDT)
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q34KVTa8227098
+	for <linux-nfs@vger.kernel.org>; Wed, 4 Apr 2012 16:31:29 -0400
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q3522LLD003861
+	for <linux-nfs@vger.kernel.org>; Wed, 4 Apr 2012 22:02:22 -0400
+In-Reply-To: <OFA0CA5439.45832AAD-ON882579C1.005C1459-882579C1.005C3D51@us.ibm.com>
+References: <OF9A3BDB9C.189BECD1-ON882579B3.007FE19E-882579B3.0080227A@us.ibm.com> <OFA0CA5439.45832AAD-ON882579C1.005C1459-882579C1.005C3D51@us.ibm.com>
+To: Marc Eshel <eshel@almaden.ibm.com>
+Cc: linux-nfs@vger.kernel.org
+MIME-Version: 1.0
+Subject: Linux pNFS status meeting 04/05/12  - NO MEETING THIS WEEK
+Message-ID: <OF6E74E023.92B9B682-ON882579D6.0070A115-882579D6.0070BA5C@us.ibm.com>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Date: Wed, 4 Apr 2012 13:31:20 -0700
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 23 Apr 2012 09:00:09 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> On Mon, Apr 23, 2012 at 08:00:12AM -0400, Jeff Layton wrote:
-> > On Sun, 22 Apr 2012 07:40:57 +0200
-> > Miklos Szeredi <miklos@szeredi.hu> wrote:
-> > 
-> > > On Fri, Apr 20, 2012 at 11:13 PM, Jeff Layton <jlayton@redhat.com> wrote:
-> > > > On Fri, 20 Apr 2012 15:37:26 -0500
-> > > > Malahal Naineni <malahal@us.ibm.com> wrote:
-> > > >
-> > > >> Steve Dickson [SteveD@redhat.com] wrote:
-> > > >> > > 2) if we assume that it is fairly representative of one, how can we
-> > > >> > > achieve retrying indefinitely with NFS, or at least some large finite
-> > > >> > > amount?
-> > > >> > The amount of looping would be peer speculation. If the problem can
-> > > >> > not be handled by one simple retry I would say we simply pass the
-> > > >> > error up to the app... Its an application issue...
-> > > >>
-> > > >> As someone said, ESTALE is an incorrect errno for a path based call.
-> > > >> How about turning ESTALE into ENOENT after a retry or few retries?
-> > > >>
-> > > >
-> > > > It's not really the same thing. One could envision an application
-> > > > that's repeatedly renaming a new file on top of another one. The file
-> > > > is never missing from the namespace of the server, but you could still
-> > > > end up getting an ESTALE.
-> > > >
-> > > > That would break other atomicity guarantees in an even worse way, IMO...
-> > > 
-> > > For directory operations ESTALE *is* equivalent to ENOENT if already
-> > > retrying with LOOKUP_REVAL.  Think about it.  Atomic replacement by
-> > > another directory with rename(2) is not an excuse here actually.
-> > > Local filesystems too can end up with IS_DEAD directory after lookup
-> > > in that case.
-> > > 
-> > 
-> > Doesn't that violate POSIX? rename(2) is supposed to be atomic, and I
-> > can't see where there's any exception for that for directories.
-> 
-> Hm, but that only allows atomic replacement of the last component of a
-> path.
-> 
-> Suppose you're looking up a path, you've so far reached intermediate
-> directory "D", and the next step of the lookup (of some entry in D)
-> returns ESTALE.  Then either:
-> 
-> 	- D has since been unlinked, and ENOENT is obviously right.
-> 	- D was unlinked and then replaced by something else, in which
-> 	  case there was still a moment when ENOENT was correct.
-> 	- D was replaced atomically by a rename.  But for the rename to
-> 	  work it must have been replacing an empty directory, so there
-> 	  was still a moment when ENOENT would have been correct.
-
-I don't think so...D should always exist in the namespace, so ENOENT
-would not be correct. Just because it was empty doesn't mean that it
-didn't exist...
-
-> 	  (Exception: if D was actually a regular file or some other
-> 	  non-directory object, then ENOTDIR would be the right error:
-> 	  but if you're able to get at least object type atomically with
-> 	  a lookup, then you should have noticed this already on lookup
-> 	  of D.)
-> 
-> I think that's what Miklos meant?
-> 
-> --b.
-
-Here's an example -- suppose we have two directories: /foo
-and /bar. /bar is empty. We call:
-
-    rename("/foo","/bar");
-
-...and at the same time, someone is calling:
-
-    stat("/bar");
-
-...the calls race and in this condition the stat() gets ESTALE back
--- /bar got replaced after we did the lookup.
-
-According to POSIX, the name "/bar" should never be absent from the
-namespace in this situation, so I'm not sure I understand why returning
-ENOENT here would be acceptable.
-
--- 
-Jeff Layton <jlayton@redhat.com>
