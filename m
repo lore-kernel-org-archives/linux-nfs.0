@@ -1,89 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:12976 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:22137 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750864Ab2DZVDk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Apr 2012 17:03:40 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/8] NFS: Simplify nfs_fhget()
-Date: Thu, 26 Apr 2012 17:03:29 -0400
-Message-Id: <1335474215-29127-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1335474215-29127-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1335474215-29127-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1756311Ab2DDPfG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Apr 2012 11:35:06 -0400
+Date: Wed, 4 Apr 2012 11:35:39 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "Matt W. Benjamin" <matt@linuxbox.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: unlink within an open directory stream
+Message-ID: <20120404113539.2dc9b1dc@corrin.poochiereds.net>
+In-Reply-To: <4F70B2AE.4000504@panasas.com>
+References: <275611967.8.1332608027370.JavaMail.root@thunderbeast.private.linuxbox.com>
+	<1332609149.25346.12.camel@lade.trondhjem.org>
+	<4F70B2AE.4000504@panasas.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the inode is being initialised, there is no point in
-setting flags such as NFS_INO_INVALID_ACCESS,
-NFS_INO_INVALID_ACL or NFS_INO_INVALID_DATA since there are
-no cached access calls, acls or data caches to invalidate.
+On Mon, 26 Mar 2012 11:17:18 -0700
+Boaz Harrosh <bharrosh@panasas.com> wrote:
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/inode.c |   23 ++++++-----------------
- 1 files changed, 6 insertions(+), 17 deletions(-)
+> On 03/24/2012 10:12 AM, Myklebust, Trond wrote:
+> 
+> > On Sat, 2012-03-24 at 12:53 -0400, Matt W. Benjamin wrote:
+> >> Hi,
+> >>
+> >> I don't think anything is.  Or, people originally reported the behavior against knfsd.
+> >>
+> >> Matt
+> > 
+> > There is a known issue with ext2/3/4 generating non-unique readdir
+> > cookies. It rarely hits you when you are creating small directories, but
+> > it frequently hits you with larger ones. A fix is underway that should
+> > significantly reduce the frequency of cookie collisions.
+> > 
+> > Recent NFS clients will actually detect the presence of those cookie
+> > loops, and log them in the kernel syslog. That would therefore be the
+> > first thing that I'd check if confronted with this kind of problem.
+> > 
+> > Cheers
+> >   Trond
+> > 
+> 
+> 
+> Trond please look on the bug report links below. It's not the "cookie collisions" case.
+> 
+> It's the new (post RHEL 6.0 Kernel) NFS need for opendir after an unlink.
+> Now the POSIX man page *does* say that applications must re-opendir after
+> unlink, but there are some applications who did not read the manual, and since
+> it works with local filesystems and old nfs, (What Kernel RHEL 6.0 is based on?)
+> they never noticed the bug and never fixed it.
+> 
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index e8bbfa5..5f5fb72 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -285,9 +285,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 		inode->i_mode = fattr->mode;
- 		if ((fattr->valid & NFS_ATTR_FATTR_MODE) == 0
- 				&& nfs_server_capable(inode, NFS_CAP_MODE))
--			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_ACCESS
--				| NFS_INO_INVALID_ACL;
-+			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
- 		/* Why so? Because we want revalidate for devices/FIFOs, and
- 		 * that's precisely what we have in nfs_file_inode_operations.
- 		 */
-@@ -337,24 +335,19 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 		if (fattr->valid & NFS_ATTR_FATTR_MTIME)
- 			inode->i_mtime = fattr->mtime;
- 		else if (nfs_server_capable(inode, NFS_CAP_MTIME))
--			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_DATA;
-+			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
- 		if (fattr->valid & NFS_ATTR_FATTR_CTIME)
- 			inode->i_ctime = fattr->ctime;
- 		else if (nfs_server_capable(inode, NFS_CAP_CTIME))
--			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_ACCESS
--				| NFS_INO_INVALID_ACL;
-+			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
- 		if (fattr->valid & NFS_ATTR_FATTR_CHANGE)
- 			inode->i_version = fattr->change_attr;
- 		else if (nfs_server_capable(inode, NFS_CAP_CHANGE_ATTR))
--			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_DATA;
-+			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
- 		if (fattr->valid & NFS_ATTR_FATTR_SIZE)
- 			inode->i_size = nfs_size_to_loff_t(fattr->size);
- 		else
- 			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_DATA
- 				| NFS_INO_REVAL_PAGECACHE;
- 		if (fattr->valid & NFS_ATTR_FATTR_NLINK)
- 			set_nlink(inode, fattr->nlink);
-@@ -363,15 +356,11 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 		if (fattr->valid & NFS_ATTR_FATTR_OWNER)
- 			inode->i_uid = fattr->uid;
- 		else if (nfs_server_capable(inode, NFS_CAP_OWNER))
--			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_ACCESS
--				| NFS_INO_INVALID_ACL;
-+			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
- 		if (fattr->valid & NFS_ATTR_FATTR_GROUP)
- 			inode->i_gid = fattr->gid;
- 		else if (nfs_server_capable(inode, NFS_CAP_OWNER_GROUP))
--			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_ACCESS
--				| NFS_INO_INVALID_ACL;
-+			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
- 		if (fattr->valid & NFS_ATTR_FATTR_BLOCKS_USED)
- 			inode->i_blocks = fattr->du.nfs2.blocks;
- 		if (fattr->valid & NFS_ATTR_FATTR_SPACE_USED) {
+	^^^^^
+Can you tell me which manpage says this? I'd like to be able to point
+application developers at it if possible...
+
+> Could we easily support the broken application by being bug compatible to
+> old NFS versions?
+> .i.e Don't require re-opendir after unlink of a file.
+> 
+> There are more examples in the bug reports below but basically bonnie++
+> does the following:
+> 	DIR *d = opendir(".");
+> 	dirent *file_ent;
+> 	while((file_ent = readdir(d)) != NULL) {
+> 		unlink( file_ent->d_name))
+> 	}
+> 	closedir(d);
+> 
+> where it actually needs to do:
+> 
+> 	DIR *d = opendir(".");
+> 	dirent *file_ent;
+> 	while((file_ent = readdir(d)) != NULL) {
+> 		unlink( file_ent->d_name))
+> 
+> 		closedir(d);
+> 		d = opendir(".");
+> 	}
+> 	closedir(d);
+> 
+> But again case one used to work with old NFS. And it looks like
+> it is not Server dependent. We saw this both with Ganesha as well
+> as knfsd
+> 
+> <snip>
+> 
+
+Again, my suspicion is that the change that triggered this is the
+switch to use READDIRPLUS on larger directories. Before that, we'd use
+READDIR on larger ones and wouldn't need to make as many RPCs to fetch
+directory contents. More continuation READDIRPLUS calls means that you
+have more opportunity to hit problems with cookies.
+
+What might be an interesting test is to see whether this is still
+reproducible on newer clients when you mount with '-o nordirplus'.
+
+Cheers,
 -- 
-1.7.7.6
-
+Jeff Layton <jlayton@redhat.com>
