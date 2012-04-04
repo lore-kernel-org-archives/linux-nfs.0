@@ -1,73 +1,163 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:2786 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:32817 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753920Ab2DPVWs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Apr 2012 17:22:48 -0400
-Received: from vmwexceht03-prd.hq.netapp.com (vmwexceht03-prd.hq.netapp.com [10.106.76.241])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q3GLMlsG011039
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Apr 2012 14:22:48 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Isaman, Fred" <Fred.Isaman@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 19/26] NFS: rewrite directio read to use async coalesce
- code
-Date: Mon, 16 Apr 2012 21:22:47 +0000
-Message-ID: <1334611367.2879.59.camel@lade.trondhjem.org>
-References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
-	 <1334004744-31842-20-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334004744-31842-20-git-send-email-iisaman@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1756702Ab2DDUXS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Apr 2012 16:23:18 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 1/1] NFSv4.1 resend LAYOUTGET on data server invalid layout errors
+Date: Wed,  4 Apr 2012 16:22:37 -0400
+Message-Id: <1333570957-2008-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1333570957-2008-1-git-send-email-andros@netapp.com>
+References: <1333570957-2008-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA0LTA5IGF0IDE2OjUyIC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
-VGhpcyBhbHNvIGhhcyB0aGUgYWR2YW50YWdlIHRoYXQgaXQgYWxsb3dzIGRpcmVjdGlvIHRvIHVz
-ZSBwbmZzLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogRnJlZCBJc2FtYW4gPGlpc2FtYW5AbmV0YXBw
-LmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvZGlyZWN0LmMgICAgICAgICAgfCAgMjQ3ICsrKysrKysr
-KysrKysrKysrKysrKy0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KPiAgZnMvbmZzL2ludGVybmFs
-LmggICAgICAgIHwgICAgMyArDQo+ICBmcy9uZnMvcGFnZWxpc3QuYyAgICAgICAgfCAgICA2ICst
-DQo+ICBmcy9uZnMvcmVhZC5jICAgICAgICAgICAgfCAgICA2ICstDQo+ICBpbmNsdWRlL2xpbnV4
-L25mc19wYWdlLmggfCAgICAxICsNCj4gIGluY2x1ZGUvbGludXgvbmZzX3hkci5oICB8ICAgIDQg
-Ky0NCj4gIDYgZmlsZXMgY2hhbmdlZCwgMTI4IGluc2VydGlvbnMoKyksIDEzOSBkZWxldGlvbnMo
-LSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvZGlyZWN0LmMgYi9mcy9uZnMvZGlyZWN0LmMN
-Cj4gaW5kZXggMjJhNDBjNC4uNDA5YTlhMCAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL2RpcmVjdC5j
-DQo+ICsrKyBiL2ZzL25mcy9kaXJlY3QuYw0KPiBAQCAtMTI0LDIyICsxMjQsNiBAQCBzc2l6ZV90
-IG5mc19kaXJlY3RfSU8oaW50IHJ3LCBzdHJ1Y3Qga2lvY2IgKmlvY2IsIGNvbnN0IHN0cnVjdCBp
-b3ZlYyAqaW92LCBsb2ZmXw0KPiAgCXJldHVybiAtRUlOVkFMOw0KPiAgfQ0KPiAgDQo+IC1zdGF0
-aWMgdm9pZCBuZnNfZGlyZWN0X2RpcnR5X3BhZ2VzKHN0cnVjdCBwYWdlICoqcGFnZXMsIHVuc2ln
-bmVkIGludCBwZ2Jhc2UsIHNpemVfdCBjb3VudCkNCj4gLXsNCj4gLQl1bnNpZ25lZCBpbnQgbnBh
-Z2VzOw0KPiAtCXVuc2lnbmVkIGludCBpOw0KPiAtDQo+IC0JaWYgKGNvdW50ID09IDApDQo+IC0J
-CXJldHVybjsNCj4gLQlwYWdlcyArPSAocGdiYXNlID4+IFBBR0VfU0hJRlQpOw0KPiAtCW5wYWdl
-cyA9IChjb3VudCArIChwZ2Jhc2UgJiB+UEFHRV9NQVNLKSArIFBBR0VfU0laRSAtIDEpID4+IFBB
-R0VfU0hJRlQ7DQo+IC0JZm9yIChpID0gMDsgaSA8IG5wYWdlczsgaSsrKSB7DQo+IC0JCXN0cnVj
-dCBwYWdlICpwYWdlID0gcGFnZXNbaV07DQo+IC0JCWlmICghUGFnZUNvbXBvdW5kKHBhZ2UpKQ0K
-PiAtCQkJc2V0X3BhZ2VfZGlydHkocGFnZSk7DQo+IC0JfQ0KPiAtfQ0KPiAtDQo+ICBzdGF0aWMg
-dm9pZCBuZnNfZGlyZWN0X3JlbGVhc2VfcGFnZXMoc3RydWN0IHBhZ2UgKipwYWdlcywgdW5zaWdu
-ZWQgaW50IG5wYWdlcykNCj4gIHsNCj4gIAl1bnNpZ25lZCBpbnQgaTsNCj4gQEAgLTIyNiw1OCAr
-MjEwLDg1IEBAIHN0YXRpYyB2b2lkIG5mc19kaXJlY3RfY29tcGxldGUoc3RydWN0IG5mc19kaXJl
-Y3RfcmVxICpkcmVxKQ0KPiAgCW5mc19kaXJlY3RfcmVxX3JlbGVhc2UoZHJlcSk7DQo+ICB9DQo+
-ICANCj4gLS8qDQo+IC0gKiBXZSBtdXN0IGhvbGQgYSByZWZlcmVuY2UgdG8gYWxsIHRoZSBwYWdl
-cyBpbiB0aGlzIGRpcmVjdCByZWFkIHJlcXVlc3QNCj4gLSAqIHVudGlsIHRoZSBSUENzIGNvbXBs
-ZXRlLiAgVGhpcyBjb3VsZCBiZSBsb25nICphZnRlciogd2UgYXJlIHdva2VuIHVwIGluDQo+IC0g
-KiBuZnNfZGlyZWN0X3dhaXQgKGZvciBpbnN0YW5jZSwgaWYgc29tZW9uZSBoaXRzIF5DIG9uIGEg
-c2xvdyBzZXJ2ZXIpLg0KPiAtICovDQo+IC1zdGF0aWMgdm9pZCBuZnNfZGlyZWN0X3JlYWRfcmVz
-dWx0KHN0cnVjdCBycGNfdGFzayAqdGFzaywgdm9pZCAqY2FsbGRhdGEpDQo+ICt2b2lkIG5mc19k
-aXJlY3RfcmVhZHBhZ2VfcmVsZWFzZShzdHJ1Y3QgbmZzX3BhZ2UgKnJlcSkNCj4gIHsNCj4gLQlz
-dHJ1Y3QgbmZzX3JlYWRfZGF0YSAqZGF0YSA9IGNhbGxkYXRhOw0KPiAtDQo+IC0JbmZzX3JlYWRw
-YWdlX3Jlc3VsdCh0YXNrLCBkYXRhKTsNCj4gKwlkcHJpbnRrKCJORlM6IGRpcmVjdCByZWFkIGRv
-bmUgKCVzLyVsbGQgJWRAJWxsZClcbiIsDQo+ICsJCXJlcS0+d2JfY29udGV4dC0+ZGVudHJ5LT5k
-X2lub2RlLT5pX3NiLT5zX2lkLA0KPiArCQkobG9uZyBsb25nKU5GU19GSUxFSUQocmVxLT53Yl9j
-b250ZXh0LT5kZW50cnktPmRfaW5vZGUpLA0KPiArCQlyZXEtPndiX2J5dGVzLA0KPiArCQkobG9u
-ZyBsb25nKXJlcV9vZmZzZXQocmVxKSk7DQo+ICsJbmZzX3JlbGVhc2VfcmVxdWVzdChyZXEpOw0K
-PiAgfQ0KPiAgDQo+IC1zdGF0aWMgdm9pZCBuZnNfZGlyZWN0X3JlYWRfcmVsZWFzZSh2b2lkICpj
-YWxsZGF0YSkNCj4gK3N0YXRpYyB2b2lkIG5mc19kaXJlY3RfcmVhZF9jb21wbGV0aW9uKHN0cnVj
-dCBuZnNfcGdpb19oZWFkZXIgKmhkcikNCj4gIHsNCj4gKwl1bnNpZ25lZCBsb25nIHBvcyA9IHJl
-cV9vZmZzZXQoaGRyLT5yZXEpOw0KDQpVbW0uLi4gcmVxX29mZnNldCgpIHJldHVybnMgYW4gbG9m
-Zl90LiAndW5zaWduZWQgbG9uZycgaXMgbGlrZWx5IHRvIGJlDQp0b28gc21hbGwgdG8gaG9sZCB0
-aGVzZSB2YWx1ZXMgb24gYSAzMi1iaXQgbWFjaGluZS4NCg0KTG9va2luZyBiYWNrLCBpdCBsb29r
-cyBhcyBpZiB0aGUgc2FtZSBwcm9ibGVtIGV4aXN0cyBpbiB0aGUgcGFnZSBjYWNoZQ0KY29kZSAo
-ZS5nLiBuZnNfcmVhZF9jb21wbGV0aW9uKSBhcyB3ZWxsIGFzIHN0dWZmIGxpa2UgaGRyLT5lb2Ys
-IGFuZA0KaGRyLT5maXJzdF9lcnJvci4NCg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
-TkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
-b20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+From: Andy Adamson <andros@netapp.com>
+
+The "invalid layout" class of errors is handled by destroying the layout and
+getting a new layout from the server.  Currently, the layout must be
+destroyed before a new layout can be obtained.
+
+This means that all references (e.g.lsegs) to the "to be destroyed" layout
+header must be dropped before it can be destroyed. This in turn means waiting
+for all in flight RPC's using the old layout as well as draining the data
+server session slot table wait queue.
+
+Set the NFS_LAYOUT_INVALID flag to redirect I/O to the MDS while waiting for
+the old layout to be destroyed.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |   27 +++++++++++++++++++++++----
+ fs/nfs/nfs4filelayout.h |   13 +++++++++++++
+ fs/nfs/pnfs.c           |    1 +
+ fs/nfs/pnfs.h           |    1 +
+ 4 files changed, 38 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index a8932a5..f7d2273 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -162,6 +162,25 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+ 		break;
+ 	case -NFS4ERR_RETRY_UNCACHED_REP:
+ 		break;
++	/* Invalidate Layout errors */
++	case -NFS4ERR_PNFS_NO_LAYOUT:
++	case -ESTALE:           /* mapped NFS4ERR_STALE */
++	case -EBADHANDLE:       /* mapped NFS4ERR_BADHANDLE */
++	case -EISDIR:           /* mapped NFS4ERR_ISDIR */
++	case -NFS4ERR_FHEXPIRED:
++	case -NFS4ERR_WRONG_TYPE:
++		dprintk("%s Invalid layout error %d\n", __func__,
++			task->tk_status);
++		/* Destroy layout so new i/o will get a new layout.
++		 * Layout will not be destroyed until all current lseg
++		 * references are put. Resend failed i/o and all i/o
++		 * waiting on the slot table to the MDS. Mark
++		 * layout as invaid until it is destroyed */
++		set_bit(NFS_LAYOUT_INVALID,
++				&NFS_I(state->inode)->layout->plh_flags);
++		pnfs_destroy_layout(NFS_I(state->inode));
++		rpc_wake_up(&tbl->slot_tbl_waitq);
++		goto reset;
+ 	/* RPC connection errors */
+ 	case -ECONNREFUSED:
+ 	case -EHOSTDOWN:
+@@ -177,6 +196,7 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+ 		nfs4_ds_disconnect(clp);
+ 		/* fall through */
+ 	default:
++reset:
+ 		dprintk("%s Retry through MDS. Error %d\n", __func__,
+ 			task->tk_status);
+ 		return -NFS4ERR_RESET_TO_MDS;
+@@ -240,7 +260,7 @@ static void filelayout_read_prepare(struct rpc_task *task, void *data)
+ {
+ 	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
+ 
+-	if (filelayout_test_devid_invalid(FILELAYOUT_DEVID_NODE(rdata->lseg))) {
++	if (filelayout_reset_to_mds(rdata->lseg)) {
+ 		dprintk("%s task %u reset io to MDS\n", __func__, task->tk_pid);
+ 		filelayout_reset_read(task, rdata);
+ 		rpc_restart_call_prepare(task);
+@@ -341,7 +361,7 @@ static void filelayout_write_prepare(struct rpc_task *task, void *data)
+ {
+ 	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
+ 
+-	if (filelayout_test_devid_invalid(FILELAYOUT_DEVID_NODE(wdata->lseg))) {
++	if (filelayout_reset_to_mds(wdata->lseg)) {
+ 		dprintk("%s task %u reset io to MDS\n", __func__, task->tk_pid);
+ 		filelayout_reset_write(task, wdata);
+ 		rpc_restart_call_prepare(task);
+@@ -882,11 +902,10 @@ filelayout_choose_commit_list(struct nfs_page *req,
+ 			      struct pnfs_layout_segment *lseg)
+ {
+ 	struct nfs4_filelayout_segment *fl = FILELAYOUT_LSEG(lseg);
+-	struct nfs4_deviceid_node *devid = FILELAYOUT_DEVID_NODE(lseg);
+ 	u32 i, j;
+ 	struct list_head *list;
+ 
+-	if (fl->commit_through_mds || filelayout_test_devid_invalid(devid))
++	if (fl->commit_through_mds || filelayout_reset_to_mds(lseg))
+ 		return &NFS_I(req->wb_context->dentry->d_inode)->commit_list;
+ 
+ 	/* Note that we are calling nfs4_fl_calc_j_index on each page
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+index ff86c86..5a2a70c 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/nfs4filelayout.h
+@@ -118,11 +118,24 @@ filelayout_mark_devid_invalid(struct nfs4_deviceid_node *node)
+ }
+ 
+ static inline bool
++filelayout_test_layout_invalid(struct pnfs_layout_hdr *lo)
++{
++	return test_bit(NFS_LAYOUT_INVALID, &lo->plh_flags);
++}
++
++static inline bool
+ filelayout_test_devid_invalid(struct nfs4_deviceid_node *node)
+ {
+ 	return test_bit(NFS_DEVICEID_INVALID, &node->flags);
+ }
+ 
++static inline bool
++filelayout_reset_to_mds(struct pnfs_layout_segment *lseg)
++{
++	return filelayout_test_devid_invalid(FILELAYOUT_DEVID_NODE(lseg)) ||
++		filelayout_test_layout_invalid(lseg->pls_layout);
++}
++
+ extern struct nfs_fh *
+ nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, u32 j);
+ 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index b5d4515..751e54e 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -455,6 +455,7 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
+ 	spin_unlock(&nfsi->vfs_inode.i_lock);
+ 	pnfs_free_lseg_list(&tmp_list);
+ }
++EXPORT_SYMBOL_GPL(pnfs_destroy_layout);
+ 
+ /*
+  * Called by the state manger to remove all layouts established under an
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 3bd7e87..e599b5c 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -63,6 +63,7 @@ enum {
+ 	NFS_LAYOUT_BULK_RECALL,		/* bulk recall affecting layout */
+ 	NFS_LAYOUT_ROC,			/* some lseg had roc bit set */
+ 	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
++	NFS_LAYOUT_INVALID,		/* layout is being destroyed */
+ };
+ 
+ enum layoutdriver_policy_flags {
+-- 
+1.7.6.4
+
