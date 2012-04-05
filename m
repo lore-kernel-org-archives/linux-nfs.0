@@ -1,113 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:62861 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753859Ab2DPQ4G (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Apr 2012 12:56:06 -0400
-Received: by yenl12 with SMTP id l12so2582820yen.19
-        for <linux-nfs@vger.kernel.org>; Mon, 16 Apr 2012 09:56:05 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        miklos@szeredi.hu, viro@ZenIV.linux.org.uk, hch@infradead.org,
-        michael.brantley@deshaw.com, sven.breuner@itwm.fraunhofer.de,
-        chuck.lever@oracle.com, pstaubach@exagrid.com, malahal@us.ibm.com,
-        bfields@fieldses.org, trond.myklebust@fys.uio.no, rees@umich.edu
-Subject: [PATCH RFC v2] vfs: make fstatat retry on ESTALE errors from getattr call
-Date: Mon, 16 Apr 2012 12:55:59 -0400
-Message-Id: <1334595359-27080-1-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
-References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:18118 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752471Ab2DERFW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Apr 2012 13:05:22 -0400
+Subject: [PATCH] SUNRPC: register PipeFS file system after pernet sybsystem
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davej@redhat.com,
+        davem@davemloft.net, devel@openvz.org
+Date: Thu, 05 Apr 2012 21:04:37 +0400
+Message-ID: <20120405170405.15055.85431.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Here's another RFC patch that incorporates some of the suggestions so
-far:
+PipeFS superblock creation routine relays on SUNRPC pernet data presense, which
+is created on register_pernet_subsys() call in SUNRPC module init function.
+Registering of PipeFS filesystem prior to registering of per-net subsystem
+leads to races (mount of PipeFS can dereference uninitialized data).
 
-1) it converts the "goto" construct into a do-while loop
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-2) This patch drops the FS_* flag so all filesystems would be affected.
-
-3) It adds a backoff timeout mechanism to the loop with an arbitrary 5s cap
-on the sleep between attempts (this is certainly negotiable).
-
-4) Also, if the process catches a fatal signal, then we'd break out of the
-loop and return the ESTALE to userspace. Not that it would care at that
-point since the program is going to die anyway.
-
-Clearly this inlined function will need to go to a header and the cap on
-the sleep is probably negotiable. This is just a proof of concept thing
-at this point.
-
-Also note that this patch still doesn't incorporate any hard cap on the
-number of retries. I could add that too, but perhaps that's not
-necessary since we're handling the fatal_signal case here?
-
-Opinions welcome...
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/stat.c |   35 +++++++++++++++++++++++++++++------
- 1 files changed, 29 insertions(+), 6 deletions(-)
+ net/sunrpc/sunrpc_syms.c |   17 +++++++++--------
+ 1 files changed, 9 insertions(+), 8 deletions(-)
 
-diff --git a/fs/stat.c b/fs/stat.c
-index c733dc5..71f2f5b 100644
---- a/fs/stat.c
-+++ b/fs/stat.c
-@@ -68,12 +68,25 @@ int vfs_fstat(unsigned int fd, struct kstat *stat)
- }
- EXPORT_SYMBOL(vfs_fstat);
- 
-+/* max retry timeout of 5s */
-+#define MAX_ESTALE_RETRY_TIMEOUT	(5 * HZ)
-+
-+static inline bool
-+estale_retry(int error, long timeout)
-+{
-+	if (likely(error != -ESTALE))
-+		return false;
-+
-+	return !schedule_timeout_killable(timeout);
-+}
-+
- int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
- 		int flag)
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index 8adfc88..3d6498a 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -75,20 +75,21 @@ static struct pernet_operations sunrpc_net_ops = {
+ static int __init
+ init_sunrpc(void)
  {
- 	struct path path;
- 	int error = -EINVAL;
--	int lookup_flags = 0;
-+	long timeout = 1;
-+	unsigned int lookup_flags = 0;
+-	int err = register_rpc_pipefs();
++	int err = rpc_init_mempool();
+ 	if (err)
+ 		goto out;
+-	err = rpc_init_mempool();
+-	if (err)
+-		goto out2;
+ 	err = rpcauth_init_module();
+ 	if (err)
+-		goto out3;
++		goto out2;
  
- 	if ((flag & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
- 		      AT_EMPTY_PATH)) != 0)
-@@ -84,12 +97,22 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
- 	if (flag & AT_EMPTY_PATH)
- 		lookup_flags |= LOOKUP_EMPTY;
+ 	cache_initialize();
  
--	error = user_path_at(dfd, filename, lookup_flags, &path);
--	if (error)
--		goto out;
-+	do {
-+		/*
-+		 * if lookup fails with ESTALE, then that implies that the
-+		 * root of the mount went stale. Give up at that point...
-+		 */
-+		error = user_path_at(dfd, filename, lookup_flags, &path);
-+		if (error)
-+			break;
+ 	err = register_pernet_subsys(&sunrpc_net_ops);
+ 	if (err)
++		goto out3;
++
++	err = register_rpc_pipefs();
++	if (err)
+ 		goto out4;
+ #ifdef RPC_DEBUG
+ 	rpc_register_sysctl();
+@@ -98,11 +99,11 @@ init_sunrpc(void)
+ 	return 0;
  
--	error = vfs_getattr(path.mnt, path.dentry, stat);
--	path_put(&path);
-+		error = vfs_getattr(path.mnt, path.dentry, stat);
-+		path_put(&path);
-+		lookup_flags |= LOOKUP_REVAL;
-+		timeout <<= 1;
-+		if (timeout > MAX_ESTALE_RETRY_TIMEOUT)
-+			timeout = MAX_ESTALE_RETRY_TIMEOUT;
-+	} while (estale_retry(error, timeout));
+ out4:
+-	rpcauth_remove_module();
++	unregister_pernet_subsys(&sunrpc_net_ops);
+ out3:
+-	rpc_destroy_mempool();
++	rpcauth_remove_module();
+ out2:
+-	unregister_rpc_pipefs();
++	rpc_destroy_mempool();
  out:
- 	return error;
+ 	return err;
  }
--- 
-1.7.7.6
 
