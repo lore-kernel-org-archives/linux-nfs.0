@@ -1,66 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37752 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750945Ab2D1P7T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 28 Apr 2012 11:59:19 -0400
-Date: Sat, 28 Apr 2012 11:59:17 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
-        Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 0/3] Fix use_ipaddr race
-Message-ID: <20120428155917.GA23348@fieldses.org>
-References: <1334961978-2843-1-git-send-email-bfields@redhat.com>
- <20120423110419.1311c364@notabene.brown>
- <20120428112639.GA22396@fieldses.org>
- <20120428214726.1742c905@notabene.brown>
+Received: from earth.cora.nwra.com ([4.28.99.180]:56448 "EHLO
+	earth.cora.nwra.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754547Ab2DEURe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Apr 2012 16:17:34 -0400
+Message-ID: <4F7DFDD7.30005@cora.nwra.com>
+Date: Thu, 05 Apr 2012 14:17:27 -0600
+From: Orion Poplawski <orion@cora.nwra.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120428214726.1742c905@notabene.brown>
+To: Bruce Fields <bfields@fieldses.org>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [nfsv4] open(O_CREAT) returns EEXISTS on symbolic link created
+ on another system until stat()ed
+References: <1333042863.5547.37.camel@lade.trondhjem.org> <4F74A4D5.1040802@cora.nwra.com> <20120329193100.GA20329@fieldses.org> <1333052170.10318.6.camel@lade.trondhjem.org> <1333053750.10318.15.camel@lade.trondhjem.org> <20120329205035.GB21493@fieldses.org> <1333054622.10318.19.camel@lade.trondhjem.org> <20120329210838.GC21493@fieldses.org> <20120329211713.GD21493@fieldses.org> <4F7DC9DC.6090802@cora.nwra.com> <20120405165311.GA11707@fieldses.org>
+In-Reply-To: <20120405165311.GA11707@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Apr 28, 2012 at 09:47:26PM +1000, NeilBrown wrote:
-> On Sat, 28 Apr 2012 07:26:39 -0400 "J. Bruce Fields" <bfields@fieldses.org>
-> wrote:
-> 
-> > On Mon, Apr 23, 2012 at 11:04:19AM +1000, NeilBrown wrote:
-> > > On Fri, 20 Apr 2012 18:46:15 -0400 "J. Bruce Fields" <bfields@redhat.com>
-> > > wrote:
-> > > 
-> > > >   mountd: unconditionally resolve ip address
-> > > 
-> > > Not a good idea.  If /etc/exports only contains IP address and subnets, then
-> > > we don't ever want to do any address resolution.  The "resolve ip address"
-> > > must at least be conditional on "are there any domain-name, wild-cards,
-> > > netgroups in /etc/exports".
-> > 
-> > The bug is my changelog.  All we're really doing there is parsing the ip
-> > address, not resolving anything.
-> 
-> Ahhh. I see that now.  Thanks.
-> 
-> > 
-> > ...
-> > > >   mountd: ignore use_ipaddr and just try both client types
-> > > 
-> > > Maybe ... though if we could syntactically distinguish "use_ipaddr" domains
-> > > from "!use_ipaddr" domain and still just choose one test to perform, I think
-> > > I'd prefer that.
-> > 
-> > Hm, OK.  Something like the following?  (Totally untested.)
-> 
-> Yes, that looks good.
-> 
-> I could probably bike-shed for a while about the leading '?', and wonder if
-> '!' or '$' might be better choices, or if leading '[' and trailing ']' is
-> best but I won't.  He who writes the code makes the choice.
+On 04/05/2012 10:53 AM, Bruce Fields wrote:
+> On Thu, Apr 05, 2012 at 10:35:40AM -0600, Orion Poplawski wrote:
+>> On 03/29/2012 03:17 PM, Dr James Bruce Fields wrote:
+>>> On Thu, Mar 29, 2012 at 05:08:38PM -0400, Dr James Bruce Fields wrote:
+>>>> Anyway, something like the following (untested) should change v3 to
+>>>> return nfs_ok in this case, and v4 to return the same errors it would on
+>>>> a non-create open.
+>>>
+>>> Looking at the history, I think the v3 behavior has been there from the
+>>> start.  I wonder why we've never gotten a bug report?
+>>>
+>>> Looking at wireshark.... I guess the client always does a lookup first,
+>>> so we never hit this case (unless someone replaces the file by a
+>>> non-regular-file between a lookup and a create?)
+>>>
+>>> --b.
+>>
+>> So, is this all set to eventually make it into the mainline kernel?
+>> Or is there still something I can do to help move it along?
+>
+> If you could confirm whether the patch in
+>
+> 	http://www.spinics.net/lists/linux-nfs/msg28840.html
+>
+> fixes your problem, that would help.
+>
+> --b.
 
-Hah.  I think I had some vague idea like "the ? reminds us there's still
-some question to be answered about this".  Anyway, my one worry is that
-I'm not sure what the syntax of the existing client types.
+I applied it to 2.6.32-220.7.1.el6.x86_64 and it appears to have fixed the 
+issue.  Can't be sure yet if it broke anything else though...
 
-Hm, the documentation says "?" and "[character set]" can be used in
-wildcard domains, so maybe we do want '!' or '$'.
 
---b.
+-- 
+Orion Poplawski
+Technical Manager                     303-415-9701 x222
+NWRA, Boulder Office                  FAX: 303-415-9702
+3380 Mitchell Lane                       orion@nwra.com
+Boulder, CO 80301                   http://www.nwra.com
