@@ -1,60 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:34188 "EHLO mx2.netapp.com"
+Received: from minas.ics.muni.cz ([147.251.4.40]:37470 "EHLO minas.ics.muni.cz"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932497Ab2DTSgx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 14:36:53 -0400
-From: Fred Isaman <iisaman@netapp.com>
+	id S1753976Ab2DEKwF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Apr 2012 06:52:05 -0400
+Received: from anubis.ics.muni.cz (igw1.zrnko.net [94.112.253.31])
+	(authenticated user=xhejtman@IS.MUNI.CZ bits=0)
+	by minas.ics.muni.cz (8.13.8/8.13.8/SuSE Linux 0.8) with ESMTP id q35AVjEq016569
+	(version=TLSv1/SSLv3 cipher=AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Thu, 5 Apr 2012 12:31:46 +0200
+Received: from xhejtman by anubis.ics.muni.cz with local (Exim 4.76)
+	(envelope-from <xhejtman@ics.muni.cz>)
+	id 1SFjyO-0005Li-0j
+	for linux-nfs@vger.kernel.org; Thu, 05 Apr 2012 12:31:24 +0200
+Date: Thu, 5 Apr 2012 12:31:24 +0200
+From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
 To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH v2 25/28] NFS: add dreq to nfs_commit_info
-Date: Fri, 20 Apr 2012 14:36:07 -0400
-Message-Id: <1334946970-27470-26-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
-References: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
+Subject: NFSv4 high availability setups
+Message-ID: <20120405103124.GV4752@ics.muni.cz>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-2
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Need this to pass into nfs_commitdata_init, in order to keep data->dreq
-accurate.
+Hi,
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/write.c          |    2 ++
- include/linux/nfs_xdr.h |    1 +
- 2 files changed, 3 insertions(+), 0 deletions(-)
+we got several front-ends for a shared storage. We want to build HA setup so
+that failed front-end fails over to another front-end (that is serving NFSv4
+already). 
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 333d01d..44a93d8 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -506,6 +506,7 @@ static void nfs_init_cinfo_from_inode(struct nfs_commit_info *cinfo,
- 	cinfo->lock = &inode->i_lock;
- 	cinfo->mds = &NFS_I(inode)->commit_info;
- 	cinfo->ds = pnfs_get_ds_info(inode);
-+	cinfo->dreq = NULL;
- 	cinfo->completion_ops = &nfs_commit_completion_ops;
- }
- 
-@@ -1431,6 +1432,7 @@ void nfs_init_commit(struct nfs_commit_data *data,
- 	data->lseg	  = lseg; /* reference transferred */
- 	data->mds_ops     = &nfs_commit_ops;
- 	data->completion_ops = cinfo->completion_ops;
-+	data->dreq	  = cinfo->dreq;
- 
- 	data->args.fh     = NFS_FH(data->inode);
- 	/* Note: we always request a commit of the entire inode */
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 756152f..3251c22 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1269,6 +1269,7 @@ struct nfs_commit_info {
- 	spinlock_t			*lock;
- 	struct nfs_mds_commit_info	*mds;
- 	struct pnfs_ds_commit_info	*ds;
-+	struct nfs_direct_req		*dreq;	/* O_DIRECT request */
- 	const struct nfs_commit_completion_ops *completion_ops;
- };
- 
+As I understand, NFS4 uses state dir somewhere in /var/lib/nfs/rpc_pipefs.
+
+Can we put this state dir on a shared volume so that this state dir is common
+for all the front-ends serving the same content? Is is supposed to work and
+NFSv4 can merge its state with existing state on a shared disk?
+
 -- 
-1.7.2.1
-
+Luká¹ Hejtmánek
