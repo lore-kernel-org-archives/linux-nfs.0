@@ -1,57 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:17264 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:49630 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756593Ab2DMXAj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Apr 2012 19:00:39 -0400
-Date: Fri, 13 Apr 2012 19:00:24 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Peter Staubach <pstaubach@exagrid.com>
-Cc: Steve Dickson <SteveD@redhat.com>, Malahal Naineni <malahal@us.ibm.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "miklos@szeredi.hu" <miklos@szeredi.hu>,
-        "viro@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
-        "hch@infradead.org" <hch@infradead.org>,
-        "michael.brantley@deshaw.com" <michael.brantley@deshaw.com>
-Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from
- getattr call
-Message-ID: <20120413190024.5095f9b1@tlielax.poochiereds.net>
-In-Reply-To: <2F609A9B-B44B-4CEA-BF35-D6BEDA729363@exagrid.com>
-References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
-	<20120413150518.GA1987@us.ibm.com>
-	<20120413114236.0e557e01@tlielax.poochiereds.net>
-	<4F884F32.7010402@RedHat.com>
-	<2F609A9B-B44B-4CEA-BF35-D6BEDA729363@exagrid.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1753106Ab2DEQxO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Apr 2012 12:53:14 -0400
+Date: Thu, 5 Apr 2012 12:53:11 -0400
+From: Bruce Fields <bfields@fieldses.org>
+To: Orion Poplawski <orion@cora.nwra.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [nfsv4] open(O_CREAT) returns EEXISTS on symbolic link created
+ on another system until stat()ed
+Message-ID: <20120405165311.GA11707@fieldses.org>
+References: <1333042863.5547.37.camel@lade.trondhjem.org>
+ <4F74A4D5.1040802@cora.nwra.com>
+ <20120329193100.GA20329@fieldses.org>
+ <1333052170.10318.6.camel@lade.trondhjem.org>
+ <1333053750.10318.15.camel@lade.trondhjem.org>
+ <20120329205035.GB21493@fieldses.org>
+ <1333054622.10318.19.camel@lade.trondhjem.org>
+ <20120329210838.GC21493@fieldses.org>
+ <20120329211713.GD21493@fieldses.org>
+ <4F7DC9DC.6090802@cora.nwra.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4F7DC9DC.6090802@cora.nwra.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 13 Apr 2012 13:34:51 -0400
-Peter Staubach <pstaubach@exagrid.com> wrote:
-
-> I still think that returning ESTALE to the application is just exposing a short coming in the implementation.  From a path based system like stat(), the application should see either ENOENT or some sort valid return.
+On Thu, Apr 05, 2012 at 10:35:40AM -0600, Orion Poplawski wrote:
+> On 03/29/2012 03:17 PM, Dr James Bruce Fields wrote:
+> >On Thu, Mar 29, 2012 at 05:08:38PM -0400, Dr James Bruce Fields wrote:
+> >>Anyway, something like the following (untested) should change v3 to
+> >>return nfs_ok in this case, and v4 to return the same errors it would on
+> >>a non-create open.
+> >
+> >Looking at the history, I think the v3 behavior has been there from the
+> >start.  I wonder why we've never gotten a bug report?
+> >
+> >Looking at wireshark.... I guess the client always does a lookup first,
+> >so we never hit this case (unless someone replaces the file by a
+> >non-regular-file between a lookup and a create?)
+> >
+> >--b.
 > 
+> So, is this all set to eventually make it into the mainline kernel?
+> Or is there still something I can do to help move it along?
 
-Agreed, but I'm willing to live with a solution that addresses most of
-these situations, even if we can't fix them all. If retrying
-indefinitely may be a problem for other filesystems then we can't
-just ignore that...
+If you could confirm whether the patch in 
 
-> I also look at the looping from the other side.  While possible, of course, I'd like to see someone construct a situation where it really happens.  By this, I don't mean a thought experiment, but a real running situation.
-> 
-> We already have evidence, in the form of the Solaris NFS client, that infinite looping does not happen in nature.
-> 
+	http://www.spinics.net/lists/linux-nfs/msg28840.html
 
-I'm fairly certainly that looping indefinitely would be just fine for
-NFS. My main concern is those FUSE fs' that Miklos alluded to when he
-reviewed your earlier set.
+fixes your problem, that would help.
 
-He said that some can return ESTALE indefinitely, and they don't
-necessarily respect signals. If limiting the number of retries helps
-prevent problems with those, then that's still better than the current
-situation.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+--b.
