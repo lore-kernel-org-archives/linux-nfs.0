@@ -1,56 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:6403 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:60423 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755993Ab2D3SAn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Apr 2012 14:00:43 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 1/3] NFS: Ensure that we break out of read/write_schedule_segment on error
-Date: Mon, 30 Apr 2012 14:00:39 -0400
-Message-Id: <1335808841-11623-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1752744Ab2DERcB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Apr 2012 13:32:01 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Miklos Szeredi <miklos@szeredi.hu>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [REGRESSION] NFSv4: open(O_TRUNC) hangs
+Date: Thu, 5 Apr 2012 17:31:58 +0000
+Message-ID: <1333647115.4573.3.camel@lade.trondhjem.org>
+References: <87d37osrx2.fsf@tucsk.pomaz.szeredi.hu>
+In-Reply-To: <87d37osrx2.fsf@tucsk.pomaz.szeredi.hu>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently we do break out of the for() loop, but we also need to
-break out of the enclosing do {} while()...
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/direct.c |    5 +++--
- 1 files changed, 3 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index d44de2f..5ce5c6b 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -396,7 +396,7 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *de
- 			pos += req_len;
- 			count -= req_len;
- 		}
--	} while (count != 0);
-+	} while (count != 0 && result >= 0);
- 
- 	kfree(pagevec);
- 
-@@ -689,6 +689,7 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *d
- 				nfs_release_request(req);
- 				nfs_direct_release_pages(pagevec + i,
- 							 npages - i);
-+				break;
- 			}
- 			pgbase = 0;
- 			bytes -= req_len;
-@@ -697,7 +698,7 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *d
- 			pos += req_len;
- 			count -= req_len;
- 		}
--	} while (count != 0);
-+	} while (count != 0 && result >= 0);
- 
- 	kfree(pagevec);
- 
--- 
-1.7.7.6
-
+T24gVHVlLCAyMDEyLTA0LTAzIGF0IDE4OjI2ICswMjAwLCBNaWtsb3MgU3plcmVkaSB3cm90ZToN
+Cj4gTm93IHRoaXMgdGVzdCBwcm9ncmFtIGhhbmdzIG9uIGxhdGVzdCBnaXQuDQo+IA0KPiBUaGFu
+a3MsDQo+IE1pa2xvcw0KPiAtLS0NCj4gDQo+ICNpbmNsdWRlIDxzdGRpby5oPg0KPiAjaW5jbHVk
+ZSA8dW5pc3RkLmg+DQo+ICNpbmNsdWRlIDxmY250bC5oPg0KPiANCj4gaW50IG1haW4oaW50IGFy
+Z2MsIGNoYXIgKmFyZ3ZbXSkNCj4gew0KPiAJaW50IHJlczsNCj4gCWNoYXIgKm5hbWUgPSBhcmd2
+WzFdOw0KPiAJaW50IGZkOw0KPiANCj4gCXVubGluayhuYW1lKTsNCj4gCWZkID0gY3JlYXQobmFt
+ZSwgMDY0NCk7DQo+IAl3cml0ZShmZCwgIjEyMyIsIDMpOw0KPiAJY2xvc2UoZmQpOw0KPiAJY2xv
+c2Uob3BlbihuYW1lLCBPX1JET05MWSB8IE9fVFJVTkMpKTsNCj4gDQo+IAlyZXR1cm4gMDsNCj4g
+fQ0KDQpIaSBNaWtsb3MsDQoNClRoZSBmb2xsb3dpbmcgY2xpZW50IHBhdGNoIGZpeGVzIHRoZSBy
+ZWdyZXNzaW9uIGZvciBtZS4NCg0KQ2hlZXJzDQogIFRyb25kDQo4PC0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCkZyb20gNWVjMGVkNmNkODhjNjU0
+NjQwOTI1MzM3ODc3MDZkOWVjZmI4NTMyMCBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206
+IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQpEYXRlOiBXZWQs
+IDQgQXByIDIwMTIgMTA6NTE6MzMgLTA3MDANClN1YmplY3Q6IFtQQVRDSCAxLzJdIE5GU3Y0OiBE
+b24ndCB1c2Ugb3BlbiBzdGF0ZWlkcyB0aGF0IGhhdmUgdGhlIHdyb25nIG9wZW4NCiBtb2RlDQoN
+CklmIHRoZSBjbGllbnQgaXMgZG9pbmcgYW4gb3BlcmF0aW9uIHRoYXQgbmVlZHMgYSBwYXJ0aWN1
+bGFyIG9wZW4NCm1vZGUsIHRoZW4gbmZzNF9zZWxlY3Rfcndfc3RhdGVpZCgpIHNob3VsZCBvbmx5
+IGNvcHkgdGhlDQpvcGVuIHN0YXRlaWQgaWYgdGhlIGxhdHRlciBoYXMgdGhlIGNvcnJlY3Qgb3Bl
+biBtb2RlLg0KDQpPdGhlcndpc2Ugd2Ugc2hvdWxkIGp1c3QgdXNlIHRoZSB6ZXJvIHN0YXRlaWQu
+DQoNClJlcG9ydGVkLWJ5OiBNaWtsb3MgU3plcmVkaSA8bWlrbG9zQHN6ZXJlZGkuaHU+DQpTaWdu
+ZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0K
+LS0tDQogZnMvbmZzL25mczRzdGF0ZS5jIHwgICAgNyArKysrKysrDQogMSBmaWxlcyBjaGFuZ2Vk
+LCA3IGluc2VydGlvbnMoKyksIDAgZGVsZXRpb25zKC0pDQoNCmRpZmYgLS1naXQgYS9mcy9uZnMv
+bmZzNHN0YXRlLmMgYi9mcy9uZnMvbmZzNHN0YXRlLmMNCmluZGV4IDBmNDM0MTQuLjcxZGNmZDQg
+MTAwNjQ0DQotLS0gYS9mcy9uZnMvbmZzNHN0YXRlLmMNCisrKyBiL2ZzL25mcy9uZnM0c3RhdGUu
+Yw0KQEAgLTkzMiw2ICs5MzIsMTMgQEAgdm9pZCBuZnM0X3NlbGVjdF9yd19zdGF0ZWlkKG5mczRf
+c3RhdGVpZCAqZHN0LCBzdHJ1Y3QgbmZzNF9zdGF0ZSAqc3RhdGUsDQogew0KIAlpZiAobmZzNF9j
+b3B5X2RlbGVnYXRpb25fc3RhdGVpZChkc3QsIHN0YXRlLT5pbm9kZSwgZm1vZGUpKQ0KIAkJcmV0
+dXJuOw0KKw0KKwlmbW9kZSAmPSBGTU9ERV9SRUFEfEZNT0RFX1dSSVRFOw0KKwlpZiAoKHN0YXRl
+LT5zdGF0ZSAmIGZtb2RlKSAhPSBmbW9kZSkgew0KKwkJbmZzNF9zdGF0ZWlkX2NvcHkoZHN0LCAm
+emVyb19zdGF0ZWlkKTsNCisJCXJldHVybjsNCisJfQ0KKw0KIAlpZiAobmZzNF9jb3B5X2xvY2tf
+c3RhdGVpZChkc3QsIHN0YXRlLCBmbF9vd25lciwgZmxfcGlkKSkNCiAJCXJldHVybjsNCiAJbmZz
+NF9jb3B5X29wZW5fc3RhdGVpZChkc3QsIHN0YXRlKTsNCi0tIA0KMS43LjcuNg0KDQoNCi0tIA0K
+VHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpU
+cm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
