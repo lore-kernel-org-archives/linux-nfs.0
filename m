@@ -1,101 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:59738 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754820Ab2D0QGe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Apr 2012 12:06:34 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "steved@redhat.com" <steved@redhat.com>
-Subject: Re: [PATCH v4 6/9] NFS: Remove unused function nfs_lookup_with_sec()
-Date: Fri, 27 Apr 2012 16:06:32 +0000
-Message-ID: <1335542792.3910.12.camel@lade.trondhjem.org>
-References: <1335473772-4401-1-git-send-email-bjschuma@netapp.com>
-	 <1335473772-4401-7-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1335473772-4401-7-git-send-email-bjschuma@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from pmpc1228.nerc-pml.ac.uk ([192.171.161.128]:45929 "EHLO
+	pmpc1228.npm.ac.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755551Ab2DES1m (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Apr 2012 14:27:42 -0400
+Received: from pmpc1228.npm.ac.uk (localhost.localdomain [127.0.0.1])
+	by pmpc1228.npm.ac.uk (8.14.4/8.14.4) with ESMTP id q35HQNq1013884
+	for <linux-nfs@vger.kernel.org>; Thu, 5 Apr 2012 18:26:24 +0100
+Message-ID: <4F7DD5BF.7070003@pml.ac.uk>
+Date: Thu, 05 Apr 2012 18:26:23 +0100
+From: Mike Grant <mggr@pml.ac.uk>
 MIME-Version: 1.0
+To: linux-nfs@vger.kernel.org
+Subject: NFS4 client loop (10025 / BAD_STATEID)
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA0LTI2IGF0IDE2OjU2IC0wNDAwLCBianNjaHVtYUBuZXRhcHAuY29tIHdy
-b3RlOg0KPiBGcm9tOiBCcnlhbiBTY2h1bWFrZXIgPGJqc2NodW1hQG5ldGFwcC5jb20+DQo+IA0K
-PiBUaGlzIGZpeGVzIGEgY29tcGlsZXIgd2FybmluZy4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IEJy
-eWFuIFNjaHVtYWtlciA8YmpzY2h1bWFAbmV0YXBwLmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvbmFt
-ZXNwYWNlLmMgfCAgIDg0ICsrKysrKysrKystLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0NCj4gIDEgZmlsZSBjaGFuZ2VkLCAxNSBpbnNlcnRpb25zKCspLCA2OSBkZWxl
-dGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmFtZXNwYWNlLmMgYi9mcy9uZnMv
-bmFtZXNwYWNlLmMNCj4gaW5kZXggNzc5ZjA2YS4uZDUxODY4ZSAxMDA2NDQNCj4gLS0tIGEvZnMv
-bmZzL25hbWVzcGFjZS5jDQo+ICsrKyBiL2ZzL25mcy9uYW1lc3BhY2UuYw0KPiBAQCAtMTQ4LDg0
-ICsxNDgsMzEgQEAgcnBjX2F1dGhmbGF2b3JfdCBuZnNfZmluZF9iZXN0X3NlYyhzdHJ1Y3QgbmZz
-NF9zZWNpbmZvX2ZsYXZvcnMgKmZsYXZvcnMpDQo+ICAJcmV0dXJuIHBzZXVkb2ZsYXZvcjsNCj4g
-IH0NCj4gIA0KPiAtc3RhdGljIGludCBuZnNfbmVnb3RpYXRlX3NlY3VyaXR5KGNvbnN0IHN0cnVj
-dCBkZW50cnkgKnBhcmVudCwNCj4gLQkJCQkgIGNvbnN0IHN0cnVjdCBkZW50cnkgKmRlbnRyeSwN
-Cj4gLQkJCQkgIHJwY19hdXRoZmxhdm9yX3QgKmZsYXZvcikNCj4gLXsNCj4gLQlzdHJ1Y3QgcGFn
-ZSAqcGFnZTsNCj4gLQlzdHJ1Y3QgbmZzNF9zZWNpbmZvX2ZsYXZvcnMgKmZsYXZvcnM7DQo+IC0J
-aW50ICgqc2VjaW5mbykoc3RydWN0IGlub2RlICosIGNvbnN0IHN0cnVjdCBxc3RyICosIHN0cnVj
-dCBuZnM0X3NlY2luZm9fZmxhdm9ycyAqKTsNCj4gLQlpbnQgcmV0ID0gLUVQRVJNOw0KPiAtDQo+
-IC0Jc2VjaW5mbyA9IE5GU19QUk9UTyhwYXJlbnQtPmRfaW5vZGUpLT5zZWNpbmZvOw0KPiAtCWlm
-IChzZWNpbmZvICE9IE5VTEwpIHsNCj4gLQkJcGFnZSA9IGFsbG9jX3BhZ2UoR0ZQX0tFUk5FTCk7
-DQo+IC0JCWlmICghcGFnZSkgew0KPiAtCQkJcmV0ID0gLUVOT01FTTsNCj4gLQkJCWdvdG8gb3V0
-Ow0KPiAtCQl9DQo+IC0JCWZsYXZvcnMgPSBwYWdlX2FkZHJlc3MocGFnZSk7DQo+IC0JCXJldCA9
-IHNlY2luZm8ocGFyZW50LT5kX2lub2RlLCAmZGVudHJ5LT5kX25hbWUsIGZsYXZvcnMpOw0KPiAt
-CQkqZmxhdm9yID0gbmZzX2ZpbmRfYmVzdF9zZWMoZmxhdm9ycyk7DQo+IC0JCXB1dF9wYWdlKHBh
-Z2UpOw0KPiAtCX0NCj4gLQ0KPiAtb3V0Og0KPiAtCXJldHVybiByZXQ7DQo+IC19DQo+IC0NCj4g
-LXN0YXRpYyBpbnQgbmZzX2xvb2t1cF93aXRoX3NlYyhzdHJ1Y3QgbmZzX3NlcnZlciAqc2VydmVy
-LCBzdHJ1Y3QgZGVudHJ5ICpwYXJlbnQsDQo+IC0JCQkgICAgICAgc3RydWN0IGRlbnRyeSAqZGVu
-dHJ5LCBzdHJ1Y3QgcGF0aCAqcGF0aCwNCj4gLQkJCSAgICAgICBzdHJ1Y3QgbmZzX2ZoICpmaCwg
-c3RydWN0IG5mc19mYXR0ciAqZmF0dHIsDQo+IC0JCQkgICAgICAgcnBjX2F1dGhmbGF2b3JfdCAq
-Zmxhdm9yKQ0KPiAtew0KPiAtCXN0cnVjdCBycGNfY2xudCAqY2xvbmU7DQo+IC0Jc3RydWN0IHJw
-Y19hdXRoICphdXRoOw0KPiAtCWludCBlcnI7DQo+IC0NCj4gLQllcnIgPSBuZnNfbmVnb3RpYXRl
-X3NlY3VyaXR5KHBhcmVudCwgcGF0aC0+ZGVudHJ5LCBmbGF2b3IpOw0KPiAtCWlmIChlcnIgPCAw
-KQ0KPiAtCQlnb3RvIG91dDsNCj4gLQljbG9uZSAgPSBycGNfY2xvbmVfY2xpZW50KHNlcnZlci0+
-Y2xpZW50KTsNCj4gLQlhdXRoICAgPSBycGNhdXRoX2NyZWF0ZSgqZmxhdm9yLCBjbG9uZSk7DQo+
-IC0JaWYgKCFhdXRoKSB7DQo+IC0JCWVyciA9IC1FSU87DQo+IC0JCWdvdG8gb3V0X3NodXRkb3du
-Ow0KPiAtCX0NCj4gLQllcnIgPSBzZXJ2ZXItPm5mc19jbGllbnQtPnJwY19vcHMtPmxvb2t1cChj
-bG9uZSwgcGFyZW50LT5kX2lub2RlLA0KPiAtCQkJCQkJICAmcGF0aC0+ZGVudHJ5LT5kX25hbWUs
-DQo+IC0JCQkJCQkgIGZoLCBmYXR0cik7DQo+IC1vdXRfc2h1dGRvd246DQo+IC0JcnBjX3NodXRk
-b3duX2NsaWVudChjbG9uZSk7DQo+IC1vdXQ6DQo+IC0JcmV0dXJuIGVycjsNCj4gLX0NCj4gLQ0K
-PiAgc3RhdGljIHN0cnVjdCBycGNfY2xudCAqbmZzX2xvb2t1cF9tb3VudHBvaW50KHN0cnVjdCBp
-bm9kZSAqZGlyLA0KPiAgCQkJCQkgICAgICBzdHJ1Y3QgcXN0ciAqbmFtZSwNCj4gIAkJCQkJICAg
-ICAgc3RydWN0IG5mc19maCAqZmgsDQo+ICAJCQkJCSAgICAgIHN0cnVjdCBuZnNfZmF0dHIgKmZh
-dHRyKQ0KPiAgew0KPiAtCWlmIChORlNfUFJPVE8oZGlyKS0+dmVyc2lvbiAhPSA0KQ0KPiAtCQly
-ZXR1cm4gcnBjX2Nsb25lX2NsaWVudChORlNfU0VSVkVSKGRpciktPmNsaWVudCk7DQo+IC0JcmV0
-dXJuIG5mczRfcHJvY19sb29rdXBfbW91bnRwb2ludChkaXIsIG5hbWUsIGZoLCBmYXR0cik7DQo+
-ICsJaW50IGVycjsNCj4gKw0KPiArCWlmIChORlNfUFJPVE8oZGlyKS0+dmVyc2lvbiA9PSA0KQ0K
-PiArCQlyZXR1cm4gbmZzNF9wcm9jX2xvb2t1cF9tb3VudHBvaW50KGRpciwgbmFtZSwgZmgsIGZh
-dHRyKTsNCj4gKw0KPiArCWVyciA9IE5GU19QUk9UTyhkaXIpLT5sb29rdXAoTkZTX1NFUlZFUihk
-aXIpLT5jbGllbnQsIGRpciwgbmFtZSwgZmgsIGZhdHRyKTsNCj4gKwlpZiAoZXJyKQ0KPiArCQly
-ZXR1cm4gRVJSX1BUUihlcnIpOw0KPiArCXJldHVybiBycGNfY2xvbmVfY2xpZW50KE5GU19TRVJW
-RVIoZGlyKS0+Y2xpZW50KTsNCg0KV2hlcmUgZG9lcyB0aGlzIGNvbWUgZnJvbSwgYW5kIGhvdyBp
-cyBpdCByZWxldmFudCB0byByZW1vdmluZw0KbmZzX2xvb2t1cF93aXRoX3NlYz8NCg0KPiAgfQ0K
-PiAgI2Vsc2UgLyogQ09ORklHX05GU19WNCAqLw0KPiAtc3RhdGljIGlubGluZSBpbnQgbmZzX2xv
-b2t1cF93aXRoX3NlYyhzdHJ1Y3QgbmZzX3NlcnZlciAqc2VydmVyLA0KPiAtCQkJCSAgICAgIHN0
-cnVjdCBkZW50cnkgKnBhcmVudCwgc3RydWN0IGRlbnRyeSAqZGVudHJ5LA0KPiAtCQkJCSAgICAg
-IHN0cnVjdCBwYXRoICpwYXRoLCBzdHJ1Y3QgbmZzX2ZoICpmaCwNCj4gLQkJCQkgICAgICBzdHJ1
-Y3QgbmZzX2ZhdHRyICpmYXR0ciwNCj4gLQkJCQkgICAgICBycGNfYXV0aGZsYXZvcl90ICpmbGF2
-b3IpDQo+IC17DQo+IC0JcmV0dXJuIC1FUEVSTTsNCj4gLX0NCj4gLQ0KPiAtc3RhdGljIGlubGlu
-ZSBzdHJ1Y3QgcnBjX2NsbnQgKm5mc19sb29rdXBfbW91bnRwb2ludChzdHJ1Y3QgaW5vZGUgKmlu
-b2RlLA0KPiArc3RhdGljIGlubGluZSBzdHJ1Y3QgcnBjX2NsbnQgKm5mc19sb29rdXBfbW91bnRw
-b2ludChzdHJ1Y3QgaW5vZGUgKmRpciwNCj4gIAkJCQkJCSAgICAgc3RydWN0IHFzdHIgKm5hbWUs
-DQo+ICAJCQkJCQkgICAgIHN0cnVjdCBuZnNfZmggKmZoLA0KPiAgCQkJCQkJICAgICBzdHJ1Y3Qg
-bmZzX2ZhdHRyICpmYXR0cikNCj4gIHsNCj4gLQlyZXR1cm4gcnBjX2Nsb25lX2NsaWVudChORlNf
-U0VSVkVSKGlub2RlKS0+Y2xpZW50KTsNCj4gKwlpbnQgZXJyID0gTkZTX1BST1RPKGRpciktPmxv
-b2t1cChORlNfU0VSVkVSKGRpciktPmNsaWVudCwgZGlyLCBuYW1lLCBmaCwgZmF0dHIpOw0KPiAr
-CWlmIChlcnIpDQo+ICsJCXJldHVybiBFUlJfUFRSKGVycik7DQoNCkRpdHRvLiBUaGlzIGRlZmlu
-aXRlbHkgYmVsb25ncyBpbiBhIHNlcGFyYXRlIHBhdGNoLg0KDQo+ICsJcmV0dXJuIHJwY19jbG9u
-ZV9jbGllbnQoTkZTX1NFUlZFUihkaXIpLT5jbGllbnQpOw0KPiAgfQ0KPiAgI2VuZGlmIC8qIENP
-TkZJR19ORlNfVjQgKi8NCj4gIA0KPiBAQCAtMjQ4LDcgKzE5NSw2IEBAIHN0cnVjdCB2ZnNtb3Vu
-dCAqbmZzX2RfYXV0b21vdW50KHN0cnVjdCBwYXRoICpwYXRoKQ0KPiAgCXN0cnVjdCBuZnNfZmgg
-KmZoID0gTlVMTDsNCj4gIAlzdHJ1Y3QgbmZzX2ZhdHRyICpmYXR0ciA9IE5VTEw7DQo+ICAJc3Ry
-dWN0IHJwY19jbG50ICpjbGllbnQ7DQo+IC0JcnBjX2F1dGhmbGF2b3JfdCBmbGF2b3IgPSBSUENf
-QVVUSF9VTklYOw0KPiAgDQo+ICAJZHByaW50aygiLS0+IG5mc19kX2F1dG9tb3VudCgpXG4iKTsN
-Cj4gIA0KPiBAQCAtMjc2LDcgKzIyMiw3IEBAIHN0cnVjdCB2ZnNtb3VudCAqbmZzX2RfYXV0b21v
-dW50KHN0cnVjdCBwYXRoICpwYXRoKQ0KPiAgCWlmIChmYXR0ci0+dmFsaWQgJiBORlNfQVRUUl9G
-QVRUUl9WNF9SRUZFUlJBTCkNCj4gIAkJbW50ID0gbmZzX2RvX3JlZm1vdW50KGNsaWVudCwgcGF0
-aC0+ZGVudHJ5KTsNCj4gIAllbHNlDQo+IC0JCW1udCA9IG5mc19kb19zdWJtb3VudChwYXRoLT5k
-ZW50cnksIGZoLCBmYXR0ciwgZmxhdm9yKTsNCj4gKwkJbW50ID0gbmZzX2RvX3N1Ym1vdW50KHBh
-dGgtPmRlbnRyeSwgZmgsIGZhdHRyLCBjbGllbnQtPmNsX2F1dGgtPmF1X2ZsYXZvcik7DQo+ICAJ
-cnBjX3NodXRkb3duX2NsaWVudChjbGllbnQpOw0KPiAgDQo+ICAJaWYgKElTX0VSUihtbnQpKQ0K
-DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5l
-dEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+Hi,
+
+We've recently had some issues with NFS clients hammering servers to a
+crawl due to a loop condition with NFS4 BAD_STATEID.  After trawling the
+archives, I found something similar:
+ http://www.spinics.net/lists/linux-nfs/msg25012.html
+  ("RE: NFS4ERR_STALE_CLIENTID loop" Oct 2011)
+
+I believe the outcome was that this was probably a Solaris server bug,
+but the archive search makes it tricky to be sure.
+
+Our issue is similar albeit with BAD_STATEID.  A couple of tcpdumps can
+be found at http://rsg.pml.ac.uk/staff/mggr/linux-nfs/  The clients are
+a bit outdated (Fedora 14, running 2.6.35.14-106.fc14.x86_64).
+
+This is also against a Solaris server and, while not reproducable on
+demand, happens about once every 2 days.  There are three machines in
+this loop as I write ;)  Anyway, I'm assuming that's Oracle's (and our)
+problem..
+
+However, we have seen the same situation against a Linux server (RHEL 6,
+2.6.32-71.el6.x86_64) about two weeks ago.  It occurred when the server
+was rebooted and 2 workstations (out of 40) that were active at the time
+of the reboot went into the same sort of loop when the server
+reappeared.  Unfortunately the workstations were quickly rebooted
+without gathering info and it's not yet reoccurred.
+
+We're likely to do another reboot sometime after Easter, so I have my
+fingers crossed we'll get a repeat of the issue.  If so, what info and
+conditions would you ideally want us to try and get, bearing in mind
+this is a core operational fileserver?  (i.e. we'd rather not run
+development kernels on it)
+
+Cheers,
+
+Mike Grant.
