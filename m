@@ -1,63 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:42869 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934441Ab2DLPyL convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Apr 2012 11:54:11 -0400
-Subject: Re: global openowner_id and lockowner_id
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1334245818.2237.55.camel@lade.trondhjem.org>
-Date: Thu, 12 Apr 2012 11:54:04 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <7212EB20-16EC-475E-993E-3F244C621AB0@oracle.com>
-References: <58E57AF8-1636-4017-93C0-8520488ED866@oracle.com> <1334245818.2237.55.camel@lade.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mx2.netapp.com ([216.240.18.37]:12108 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752188Ab2DFCUU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Apr 2012 22:20:20 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: David Quigley <dpquigl@davequigley.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: Another try at LNFS?
+Date: Fri, 6 Apr 2012 02:20:08 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA915A300@SACEXCMBX04-PRD.hq.netapp.com>
+References: <775e0a2cd5e2e4c8f52401214dbd9413@countercultured.net>
+ <1333646141.4573.1.camel@lade.trondhjem.org>
+ <85614613274dbfef5253665a84a36374@countercultured.net>
+ <7193f15f28e7483021244c72ee285516@countercultured.net>
+In-Reply-To: <7193f15f28e7483021244c72ee285516@countercultured.net>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Apr 12, 2012, at 11:50 AM, Myklebust, Trond wrote:
-
-> On Thu, 2012-04-12 at 11:42 -0400, Chuck Lever wrote:
->> Hi-
->> 
->> Changing the SETCLIENTID boot verifier so it is global for the whole client exposes a problem with how we allocate state owners.
->> 
->> A quick umount / mount sequence destroys all state on the client.  But since the client now always uses the same boot verifier and nfs_client_id4 string, the server no longer recognizes a client reboot.  FOr a fresh mount, the client may perform a SETCLIENTID, but it is treated as a callback update (state is not purged) if the client's lease has not yet expired.
->> 
->> Our state owners are generated from a pair of ida structures in the nfs_server for that mount.  They always start from zero after a mount operation.  Likewise, the sequence IDs for these state owners are also reset by umount / mount.  Note that each mount point gets a fresh nfs_server, so these structures are not retained across umount / mount.
->> 
->> This means umount / mount with no lease expiry starts to re-play state owners with reset sequence IDs.  Servers don't really care for that behavior.  I have a test case that reliably gets a BAD_SEQID error from a server after a quick umount / mount followed by a single file creation.
->> 
->> Now that we are about to switch to using more-or-less global SETCLIENTID boot verifiers, it seems to me that we really want a global openowner_id and lockowner_id as well.
->> 
->> The performance impact of such a change might be acceptable because we cache and reuse state owners now.
->> 
->> Thoughts?
-> 
-> That's a definite server bug. If the client holds no open state, then it
-> is allowed to forget the open owner and start the sequence id from 0
-> again. It is not required to remember sequence ids for open owners that
-> aren't in use.
-> 
-> Our current client could easily trigger this bug even without a
-> umount/mount.
-
-The client is holding open state.  Here's the exact reproducer on my modified client:
-
-1.  mount server:/export /mnt
-2.  touch /mnt/newfile
-3.  umount /mnt
-4.  mount server:/export /mnt
-5.  touch /mnt/newfile2
-
-Step 5 causes the client to replay an open owner with a reset sequence ID, and the server replies BAD_SEQID.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBEYXZpZCBRdWlnbGV5IFttYWls
+dG86ZHBxdWlnbEBkYXZlcXVpZ2xleS5jb21dDQo+IFNlbnQ6IFRodXJzZGF5LCBBcHJpbCAwNSwg
+MjAxMiAyOjM4IFBNDQo+IFRvOiBNeWtsZWJ1c3QsIFRyb25kDQo+IENjOiBsaW51eC1uZnNAdmdl
+ci5rZXJuZWwub3JnDQo+IFN1YmplY3Q6IFJlOiBBbm90aGVyIHRyeSBhdCBMTkZTPw0KPiANCj4g
+T24gMDQvMDUvMjAxMiAxNzoyNiwgRGF2aWQgUXVpZ2xleSB3cm90ZToNCj4gPiBPbiAwNC8wNS8y
+MDEyIDEzOjE1LCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+PiBPbiBUaHUsIDIwMTItMDQt
+MDUgYXQgMTM6MDIgLTA0MDAsIERhdmlkIFF1aWdsZXkgd3JvdGU6DQo+ID4+PiBOb3cgdGhhdCB3
+ZSdyZSBwYXN0IHRoZSAzLjQgbWVyZ2Ugd2luZG93IHNob3VsZCBJIHBvc3QgdGhlIExORlMNCj4g
+Pj4+IG1vZGlmaWNhdGlvbnMgZm9yIHJldmlldyBmb3Igd2hlbiAzLjUgcm9sbHMgYXJvdW5kPw0K
+PiA+Pg0KPiA+PiBUaGUgc29vbmVyIHRoZSBiZXR0ZXIuIEl0IGxvb2tzIGFzIGlmIHRoZXJlIHdp
+bGwgYmUgcXVpdGUgYSBiaXQgb2YNCj4gPj4gc3R1ZmYgZ29pbmcgaW50byAzLjUsIHNvIGl0IHdv
+dWxkIGJlIG5pY2UgdG8gbWF4aW1pc2Ugb3VyIHRlc3RpbmcNCj4gPj4gd2luZG93Lg0KPiA+Pg0K
+PiA+PiBUaGFua3MhDQo+ID4+ICAgVHJvbmQNCj4gPg0KPiA+IEkgaGF2ZSBhIG1vc3RseSB3b3Jr
+aW5nIGNvcHkgZm9yIDMuMiB3aGljaCBJIGNhbiBmb3J3YXJkIHBvcnQgYnV0IEknbQ0KPiA+IGhh
+dmluZyBhbiBpc3N1ZSB3aXRoIGl0LiBUaGUgcmV2YWxpZGF0ZSBjb2RlIGNoYW5nZWQgYXQgc29t
+ZSBwb2ludCBhbmQNCj4gPiBqdXN0IHRvIGdldCB0aGluZ3Mgd29ya2luZyBJIGRyb3BwZWQgYSBw
+aWVjZSBvZiBjb2RlIGZyb20gdGhlIHBhdGNoDQo+ID4gc2V0IHRoYXQgSSBjb3VsZG4ndCBmaWd1
+cmUgb3V0IGhvdyB0byB0cmFuc2l0aW9uIHRvIHRoZSBuZXcgcmV2YWxpZGF0ZQ0KPiA+IGNvZGUu
+IFVuZm9ydHVuYXRlbHkgdGhpcyBpcyB0aGUgaW5pdGlhbCBnZXQgb2YgdGhlIHNlY3VyaXR5IGxh
+YmVsIHNvDQo+ID4gdGhlIHNlY3VyaXR5IGxhYmVsIGlzIGludmFsaWQgdW50aWwgdGhlIGZpcnN0
+IGNhY2hlIGludmFsaWRhdGlvbi4gQW55DQo+ID4gc3VnZ2VzdGlvbnMgb24gd2hlcmUgdG8gcGxh
+Y2UgdGhpcyBjb2RlPyBJIGNhbiBnaXZlIHlvdSB0aGUgb3JpZ2luYWwNCj4gPiBjb2RlIHNuaXBw
+ZXQgd2hlbiBJIGdldCBob21lIHRoYXQgSSBkcm9wcGVkLg0KPiA+DQo+ID4gRGF2ZQ0KPiA+IC0t
+DQo+ID4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vi
+c2NyaWJlIGxpbnV4LW5mcyINCj4gPiBpbg0KPiA+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBt
+YWpvcmRvbW9Admdlci5rZXJuZWwub3JnIE1vcmUgbWFqb3Jkb21vDQo+IGluZm8NCj4gPiBhdCAg
+aHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo+IA0KPiBMb29raW5n
+IGF0IG15IHBhdGNoZXMgaXQgbG9va3MgbGlrZSBuZnNfbG9va3VwX3JldmFsaWRhdGUgd2FzIGNo
+YW5nZWQgYW5kIGF0DQo+IHRoZSB0aW1lIEkgY291bGRuJ3QgZmlndXJlIG91dCB3aGF0IGl0IHdh
+cyBjaGFuZ2VkIHRvLg0KDQpIaSBEYXZlLA0KICBUaGVyZSBzaG91bGRuJ3QgYmUgbXVjaCBpbiB0
+aGUgd2F5IG9mIGNoYW5nZXMgaW4gbmZzX2xvb2t1cF9yZXZhbGlkYXRlKCk6IEkgd2FzIGp1c3Qg
+dHJ5aW5nIHRvIGNsZWFuIGl0IHVwIGluIHByZXBhcmF0aW9uIGZvciB0aGUgYXRvbWljIG9wZW4g
+cGF0Y2hlcyB0aGF0IE1pa2xvcyBpcyBjdXJyZW50bHkgd29ya2luZyBvbi4NCkF0IHRoaXMgcG9p
+bnQsIGl0IGxvb2tzIGFzIGlmIG1vc3Qgb2YgdGhhdCBmdW5jdGlvbmFsaXR5IHdpbGwgaW4gYW55
+IGNhc2UgYmUgbW92ZWQgaW50byB0aGUgc3RydWN0IGZpbGVfb3BlcmF0aW9ucy0+b3BlbiBjYWxs
+YmFjaywgc28gdGhhdCB3ZSBjYW4ga2VlcCAtPmRfcmV2YWxpZGF0ZSgpIGFzIGEgcHVyZSBsb29r
+dXAgZnVuY3Rpb24uDQoNCkNoZWVycw0KICBUcm9uZA0K
