@@ -1,63 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53735 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756878Ab2DIQVM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Apr 2012 12:21:12 -0400
-Date: Mon, 9 Apr 2012 12:21:07 -0400
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: Grace period
-Message-ID: <20120409162107.GC6482@fieldses.org>
-References: <4F7F230A.6080506@parallels.com>
- <20120406234039.GA20940@fieldses.org>
- <4F82C6E3.3030009@parallels.com>
- <20120409094743.56932677@tlielax.poochiereds.net>
- <4F82F16C.7030303@parallels.com>
- <20120409112739.6a823d6f@corrin.poochiereds.net>
- <4F830999.5000504@parallels.com>
- <20120409161114.GB6482@fieldses.org>
- <1333988226.2688.76.camel@lade.trondhjem.org>
+Received: from mail-we0-f174.google.com ([74.125.82.174]:58136 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754837Ab2DFJnC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Apr 2012 05:43:02 -0400
+Received: by wejx9 with SMTP id x9so1361811wej.19
+        for <linux-nfs@vger.kernel.org>; Fri, 06 Apr 2012 02:43:00 -0700 (PDT)
+From: Miklos Szeredi <miklos@szeredi.hu>
+To: "Myklebust\, Trond" <Trond.Myklebust@netapp.com>
+Cc: "bfields\@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [REGRESSION] NFSv4: open(O_TRUNC) hangs
+References: <87d37osrx2.fsf@tucsk.pomaz.szeredi.hu>
+	<1333647115.4573.3.camel@lade.trondhjem.org>
+Date: Fri, 06 Apr 2012 11:43:29 +0200
+In-Reply-To: <1333647115.4573.3.camel@lade.trondhjem.org> (Trond Myklebust's
+	message of "Thu, 5 Apr 2012 17:31:58 +0000")
+Message-ID: <8762ddb3ge.fsf@tucsk.pomaz.szeredi.hu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <1333988226.2688.76.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 09, 2012 at 04:17:06PM +0000, Myklebust, Trond wrote:
-> On Mon, 2012-04-09 at 12:11 -0400, bfields@fieldses.org wrote:
-> > On Mon, Apr 09, 2012 at 08:08:57PM +0400, Stanislav Kinsbursky wrote:
-> > > 09.04.2012 19:27, Jeff Layton пишет:
-> > > >
-> > > >If you allow one container to hand out conflicting locks while another
-> > > >container is allowing reclaims, then you can end up with some very
-> > > >difficult to debug silent data corruption. That's the worst possible
-> > > >outcome, IMO. We really need to actively keep people from shooting
-> > > >themselves in the foot here.
-> > > >
-> > > >One possibility might be to only allow filesystems to be exported from
-> > > >a single container at a time (and allow that to be overridable somehow
-> > > >once we have a working active/active serving solution). With that, you
-> > > >may be able limp along with a per-container grace period handling
-> > > >scheme like you're proposing.
-> > > >
-> > > 
-> > > Ok then. Keeping people from shooting themselves here sounds reasonable.
-> > > And I like the idea of exporting a filesystem only from once per
-> > > network namespace.
-> > 
-> > Unfortunately that's not going to get us very far, especially not in the
-> > v4 case where we've got the common read-only pseudoroot that everyone
-> > has to share.
-> 
-> I don't see how that can work in cases where each container has its own
-> private mount namespace. You're going to have to tie that pseudoroot to
-> the mount namespace somehow.
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> writes:
 
-Sure, but in typical cases it'll still be shared; requiring that they
-not be sounds like a severe limitation.
+> The following client patch fixes the regression for me.
 
---b.
+It fixes the hang, but it still doesn't work 100% correctly.  Try the
+following test program.
+
+BTW, do you run any fs test suits?  All these were caught with one I use
+to quick test fuse (it's in the fuse git tree(*) under the "test"
+directory).  But I guess others like LTP would catch these as well.
+
+Thanks,
+Miklos
+
+(*)  git://fuse.git.sourceforge.net/gitroot/fuse/fuse
+---
+
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+
+int main(int argc, char *argv[])
+{
+	int res;
+	char *name = argv[1];
+
+	unlink(name);
+	close(creat(name, 0400));
+	res = open(name, O_RDONLY | O_TRUNC);
+	if (res != -1 && errno != EPERM)
+		fprintf(stderr, "should have failed!\n");
+
+	return 0;
+}
