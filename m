@@ -1,33 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:31709 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:25761 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756235Ab2DZOif (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Apr 2012 10:38:35 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q3QEcZQa030032
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 26 Apr 2012 10:38:35 -0400
-Received: from badhat.bos.devel.redhat.com (badhat.boston.devel.redhat.com [10.16.60.49])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q3QEcYBP029128
-	for <linux-nfs@vger.kernel.org>; Thu, 26 Apr 2012 10:38:34 -0400
-Message-ID: <4F995DE1.4090707@RedHat.com>
-Date: Thu, 26 Apr 2012 10:38:25 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1755224Ab2DHSIF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 8 Apr 2012 14:08:05 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "tigran.mkrtchyan@desy.de" <tigran.mkrtchyan@desy.de>
+CC: linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: corrupted rpc message on GSS_DESTROY
+Date: Sun, 8 Apr 2012 18:07:47 +0000
+Message-ID: <1333908466.18901.1.camel@lade.trondhjem.org>
+References: <CAGue13oi+486dGpgsUpn0EkiNmf8pLM60XzjT7q+r3gkzYAL0g@mail.gmail.com>
+In-Reply-To: <CAGue13oi+486dGpgsUpn0EkiNmf8pLM60XzjT7q+r3gkzYAL0g@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Linux pNFS status meeting 04/26/12
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sorry for the late notice but we schedule to have this meeting today 
-at 9:30 AM PST (12:30 PM EST)
-
-The new call in numbers: 
-
-U.S. and Canada: (800) 451-8679
-International dial-in number: (212) 729-5016
-Israel Toll-Free: 1-809-462-557
-Conference code: 564.272.1552
-
-
+T24gRnJpLCAyMDEyLTA0LTA2IGF0IDIzOjU2ICswMjAwLCBUaWdyYW4gTWtydGNoeWFuIHdyb3Rl
+Og0KPiBIaSwNCj4gDQo+IFdlIGFyZSBzdGlsbCBzZWUgaXNzdWVkIGRlc2NyaWJlZCBpbjoNCj4g
+DQo+IGh0dHA6Ly93d3cuc3Bpbmljcy5uZXQvbGlzdHMvbGludXgtbmZzL21zZzIyMTQyLmh0bWwN
+Cj4gDQo+IE5vdyBldmVuIHRoZSBzZWUgcGFydGlhbCBjb250ZXh0Lg0KPiBCeSBsb29raW5nIGF0
+IGtlcm5lbCdzIEdTUyBpbXBsZW1lbnRhdGlvbiBJIHNlZSBmb2xsb3dpbmc6DQo+IA0KPiBUaGUg
+YXV0aF9nc3MuYzpnc3NfbWFyc2hhbCgpIGluIHNvbWUgY2FzZXMgbWF5IHJldHVybiBOVUxMLg0K
+PiBUaGUgTlVMTCB2YWx1ZSBpcyBwYXNzZWQgdG8geGRyX2FkanVzdF9pb3ZlYygpIHdoaWNoDQo+
+IGNhbGN1bGF0ZXMgbWVzc2FnZSBsZW5ndGggYXM6DQo+IA0KPiAgcmV0dXJuIGlvdi0+aW92X2xl
+biA9ICgodTggKikgcCAtICh1OCAqKSBpb3YtPmlvdl9iYXNlKTsNCj4gDQo+IHdoZXJlIHAgaXMg
+TlVMTCBpbiBzdWNoIGNhc2UuICBJIGRvbid0IHRoaW5rIGl0J3MgYW4gZXhwZWN0ZWQNCj4gYmVo
+YXZpb3IuDQoNCkFzIGZhciBhcyBJIGNhbiBzZWUsIGEgemVybyByZXBseSBpbiBnc3NfbWFyc2hh
+bCgpIHJlc3VsdHMgaW4NCnJwY194ZHJfZW5jb2RlKCkgcHJpbnRpbmcgIlJQQzogY291bGRuJ3Qg
+ZW5jb2RlIFJQQyBoZWFkZXIsIGV4aXQgRUlPIg0KYW5kIHRoZW4gY2FsbGluZyBycGNfZXhpdCgp
+LiBJIGRvbid0IHNlZSBob3cgdGhhdCBjb3VsZCByZXN1bHQgaW4gYQ0KY29ycnVwdGVkIGJ1ZmZl
+ci4NCg0KQ2hlZXJzDQogIFRyb25kDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNs
+aWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3
+dy5uZXRhcHAuY29tDQoNCg==
