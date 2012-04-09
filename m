@@ -1,106 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:1028 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:57517 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753591Ab2DWVWx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Apr 2012 17:22:53 -0400
-Message-ID: <4F95C827.6010207@redhat.com>
-Date: Mon, 23 Apr 2012 16:22:47 -0500
-From: Eric Sandeen <sandeen@redhat.com>
-MIME-Version: 1.0
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-CC: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Fan Yong <yong.fan@whamcloud.com>,
-        bfields@redhat.com, Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: [PATCH 5 2/4] Return 32/64-bit dir name hash according to usage
- type
-References: <20120109132137.2616029.76288.stgit@localhost.localdomain> <20120109132148.2616029.68798.stgit@localhost.localdomain> <4F91C15B.6070200@redhat.com> <4F93FED6.6090505@itwm.fraunhofer.de> <4F95BD72.6090200@redhat.com> <4F95C109.1030401@itwm.fraunhofer.de>
-In-Reply-To: <4F95C109.1030401@itwm.fraunhofer.de>
-Content-Type: text/plain; charset=UTF-8
+	id S1758201Ab2DIUwv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Apr 2012 16:52:51 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 06/26] NFS: dprintks in directio code were referencing task after put
+Date: Mon,  9 Apr 2012 16:52:04 -0400
+Message-Id: <1334004744-31842-7-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
+References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 4/23/12 3:52 PM, Bernd Schubert wrote:
-> On 04/23/2012 10:37 PM, Eric Sandeen wrote:
->> On 4/22/12 7:51 AM, Bernd Schubert wrote:
->>> On 04/20/2012 10:04 PM, Eric Sandeen wrote:
->>>> On 1/9/12 7:21 AM, Bernd Schubert wrote:
->>>>> From: Fan Yong <yong.fan@whamcloud.com>
->>>>>
->>>>> Traditionally ext2/3/4 has returned a 32-bit hash value from llseek()
->>>>> to appease NFSv2, which can only handle a 32-bit cookie for seekdir()
->>>>> and telldir().  However, this causes problems if there are 32-bit hash
->>>>> collisions, since the NFSv2 server can get stuck resending the same
->>>>> entries from the directory repeatedly.
->>>>>
->>>>> Allow ext4 to return a full 64-bit hash (both major and minor) for
->>>>> telldir to decrease the chance of hash collisions.  This still needs
->>>>> integration on the NFS side.
->>>>>
->>>>> Patch-updated-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
->>>>> (blame me if something is not correct)
->>>>
->>>> Bernd, I've merged this to ext3.  Bruce thought maybe you were working
->>>> on the same.  Should I send mine?
->>>
->>> That is perfectly fine with me.
->>>
->>>>
->>>> Also...
->>>>
->>>>> +/*
->>>>> + * ext4_dir_llseek() based on generic_file_llseek() to handle both
->>>>> + * non-htree and htree directories, where the "offset" is in terms
->>>>> + * of the filename hash value instead of the byte offset.
->>>>> + *
->>>>> + * NOTE: offsets obtained *before* ext4_set_inode_flag(dir, EXT4_INODE_INDEX)
->>>>> + *       will be invalid once the directory was converted into a dx directory
->>>>> + */
->>>>> +loff_t ext4_dir_llseek(struct file *file, loff_t offset, int origin)
->>>>
->>>> ext4_llseek() worries about max offset for direct/indirect vs. extent-mapped
->>>> files.  Do we need to worry about the same thing in this function?
->>>
->>> Hrmm, I just checked it and I think either is wrong. We only have to
->>> care about non-dx directories, so ext4_readdir() applies, which limits
->>> filp->f_pos < inode->i_size.
->>> Going to send a patch tomorrow. Thanks for spotting this!
->>
->> The other thing I'm wondering is whether, in light of
->>
->> ef3d0fd27e90f67e35da516dafc1482c82939a60 vfs: do (nearly) lockless generic_file_llseek
->>
->> taking the i_mutex in ext4_dir_llseek could be a perf regression vs what was there before?  Is there anything about the new function which requires stronger locking?
->>
->> I may be missing something obvious about the nfs interaction, not sure.
->>
-> 
-> Oh, good point. I was just about to send a small patch, but reading
-> through the lockless commit will take some time - its already too late
-> for me for today. Will work on that tomorrow. Thanks again for your review!
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/direct.c |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
 
-Sorry it's so late :(
-
--Eric
-
-> Cheers,
-> Bernd
-> 
-> 
-> 
-> diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-> index b867862..3a4988e2 100644
-> --- a/fs/ext4/dir.c
-> +++ b/fs/ext4/dir.c
-> @@ -363,7 +363,7 @@ loff_t ext4_dir_llseek(struct file *file, loff_t
-> offset, int origin)
->  		goto out_err;
-> 
->  	if (!dx_dir) {
-> -		if (offset > inode->i_sb->s_maxbytes)
-> +		if (offset > i_size_read(inode))
->  			goto out_err;
->  	} else if (offset > ext4_get_htree_eof(file))
->  		goto out_err;
-> 
-> 
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 5897dfe..fb7fbaa 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -357,15 +357,15 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
+ 		task = rpc_run_task(&task_setup_data);
+ 		if (IS_ERR(task))
+ 			break;
+-		rpc_put_task(task);
+ 
+ 		dprintk("NFS: %5u initiated direct read call "
+ 			"(req %s/%Ld, %zu bytes @ offset %Lu)\n",
+-				data->task.tk_pid,
++				task->tk_pid,
+ 				inode->i_sb->s_id,
+ 				(long long)NFS_FILEID(inode),
+ 				bytes,
+ 				(unsigned long long)data->args.offset);
++		rpc_put_task(task);
+ 
+ 		started += bytes;
+ 		user_addr += bytes;
+@@ -784,15 +784,15 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
+ 		task = rpc_run_task(&task_setup_data);
+ 		if (IS_ERR(task))
+ 			break;
+-		rpc_put_task(task);
+ 
+ 		dprintk("NFS: %5u initiated direct write call "
+ 			"(req %s/%Ld, %zu bytes @ offset %Lu)\n",
+-				data->task.tk_pid,
++				task->tk_pid,
+ 				inode->i_sb->s_id,
+ 				(long long)NFS_FILEID(inode),
+ 				bytes,
+ 				(unsigned long long)data->args.offset);
++		rpc_put_task(task);
+ 
+ 		started += bytes;
+ 		user_addr += bytes;
+-- 
+1.7.2.1
 
