@@ -1,14 +1,14 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
 Received: from mx2.netapp.com ([216.240.18.37]:54329 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758230Ab2DIUwz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Apr 2012 16:52:55 -0400
+	id S1753197Ab2DIUxB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Apr 2012 16:53:01 -0400
 From: Fred Isaman <iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
 Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 10/26] NFS: put open context on error in nfs_pagein_multi
-Date: Mon,  9 Apr 2012 16:52:08 -0400
-Message-Id: <1334004744-31842-11-git-send-email-iisaman@netapp.com>
+Subject: [PATCH 24/26] NFS: avoid some stat gathering for direct io
+Date: Mon,  9 Apr 2012 16:52:22 -0400
+Message-Id: <1334004744-31842-25-git-send-email-iisaman@netapp.com>
 In-Reply-To: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
 References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -16,22 +16,45 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/read.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ fs/nfs/write.c |   18 ++++++++++++------
+ 1 files changed, 12 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index e1db04a..4ddba67 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -323,7 +323,7 @@ out_bad:
- 	while (!list_empty(res)) {
- 		data = list_entry(res->next, struct nfs_read_data, list);
- 		list_del(&data->list);
--		nfs_readdata_free(data);
-+		nfs_readdata_release(data);
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index fe8224c..aabc103 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -466,9 +466,13 @@ nfs_request_add_commit_list(struct nfs_page *req, struct list_head *dst,
+ 	nfs_list_add_request(req, dst);
+ 	cinfo->mds->ncommit++;
+ 	spin_unlock(cinfo->lock);
+-	inc_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
+-	inc_bdi_stat(req->wb_page->mapping->backing_dev_info, BDI_RECLAIMABLE);
+-	__mark_inode_dirty(req->wb_context->dentry->d_inode, I_DIRTY_DATASYNC);
++	if (!cinfo->dreq) {
++		inc_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
++		inc_bdi_stat(req->wb_page->mapping->backing_dev_info,
++			     BDI_RECLAIMABLE);
++		__mark_inode_dirty(req->wb_context->dentry->d_inode,
++				   I_DIRTY_DATASYNC);
++	}
+ }
+ EXPORT_SYMBOL_GPL(nfs_request_add_commit_list);
+ 
+@@ -1453,9 +1457,11 @@ void nfs_retry_commit(struct list_head *page_list,
+ 		req = nfs_list_entry(page_list->next);
+ 		nfs_list_remove_request(req);
+ 		nfs_mark_request_commit(req, lseg, cinfo);
+-		dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
+-		dec_bdi_stat(req->wb_page->mapping->backing_dev_info,
+-			     BDI_RECLAIMABLE);
++		if (!cinfo->dreq) {
++			dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
++			dec_bdi_stat(req->wb_page->mapping->backing_dev_info,
++				     BDI_RECLAIMABLE);
++		}
+ 		nfs_unlock_request(req);
  	}
- 	nfs_readpage_release(req);
- 	return -ENOMEM;
+ }
 -- 
 1.7.2.1
 
