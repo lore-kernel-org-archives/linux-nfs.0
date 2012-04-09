@@ -1,69 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:21211 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751066Ab2DTUpR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Apr 2012 16:45:17 -0400
-Subject: Re: [PATCH] NFS4: fix referrals with IPv6 mounts
-Mime-Version: 1.0 (Apple Message framework v1257)
+Received: from fieldses.org ([174.143.236.118]:51308 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757223Ab2DIWc0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Apr 2012 18:32:26 -0400
+Date: Mon, 9 Apr 2012 18:32:21 -0400
+From: Bruce Fields <bfields@fieldses.org>
+To: Orion Poplawski <orion@cora.nwra.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [nfsv4] open(O_CREAT) returns EEXISTS on symbolic link created
+ on another system until stat()ed
+Message-ID: <20120409223221.GD10508@fieldses.org>
+References: <20120329193100.GA20329@fieldses.org>
+ <1333052170.10318.6.camel@lade.trondhjem.org>
+ <1333053750.10318.15.camel@lade.trondhjem.org>
+ <20120329205035.GB21493@fieldses.org>
+ <1333054622.10318.19.camel@lade.trondhjem.org>
+ <20120329210838.GC21493@fieldses.org>
+ <20120329211713.GD21493@fieldses.org>
+ <4F7DC9DC.6090802@cora.nwra.com>
+ <20120405165311.GA11707@fieldses.org>
+ <4F7DFDD7.30005@cora.nwra.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1334952788.3295.24.camel@lade.trondhjem.org>
-Date: Fri, 20 Apr 2012 16:14:29 -0400
-Cc: "Adamson, Dros" <Weston.Adamson@netapp.com>, Jim Rees <rees@umich.edu>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Message-Id: <1C008FE1-241B-42CD-8916-079CCF2A0E72@oracle.com>
-References: <1334949705-33393-1-git-send-email-dros@netapp.com> <20120420194504.GA10259@umich.edu> <EA178ED0-5813-4235-A0CF-CF9D54AFB04F@netapp.com> <1334952788.3295.24.camel@lade.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+In-Reply-To: <4F7DFDD7.30005@cora.nwra.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Apr 20, 2012, at 4:13 PM, Myklebust, Trond wrote:
-
-> On Fri, 2012-04-20 at 19:57 +0000, Adamson, Dros wrote:
->> On Apr 20, 2012, at 3:45 PM, Jim Rees wrote:
->> 
->>> Weston Andros Adamson wrote:
->>> 
->>> nfs4_path() was parsing the path component by splitting on the first colon.
->>> This is wrong when an IPv6 address is used to mount a server.
->>> 
->>> For example, having mounted 'fc00::10:/export', nfs4_path() returned
->>> ':10:/export'.  This causes referrals (using IPv4 or IPv6 addresses) to fail
->>> in nfs4_validate_fspath().
->>> 
->>> Parsing the path component by using the *last* colon works with
->>> IPv6 as well as IPv4 addrs.
->>> 
->>> What if your mount is:
->>> 
->>> server.edu:/export/:I-like-colons:
->>> 
->>> It seems to me something has to give.  Either we require v6 addresses be
->>> enclosed in [], export dirs start with "/", or exports have no ":".
->> 
->> 
->> Yeah, you're right.
->> 
->> Although IPv6 addrs must be enclosed in [] to work with mount, it's always displayed in the kernel without the [].
->> 
->> I suppose the correct fix is to always display IPv6 addresses enclosed in [], which might touch a *lot* of places.
->> 
->> Thoughts?  I'll wait for others to chime in before I go fixing this. I have a set of nfsd and mountd patches that deal with similar issues on the server side.  I'll clean those up and submit them before getting back to this.
+On Thu, Apr 05, 2012 at 02:17:27PM -0600, Orion Poplawski wrote:
+> On 04/05/2012 10:53 AM, Bruce Fields wrote:
+> >On Thu, Apr 05, 2012 at 10:35:40AM -0600, Orion Poplawski wrote:
+> >>On 03/29/2012 03:17 PM, Dr James Bruce Fields wrote:
+> >>>On Thu, Mar 29, 2012 at 05:08:38PM -0400, Dr James Bruce Fields wrote:
+> >>>>Anyway, something like the following (untested) should change v3 to
+> >>>>return nfs_ok in this case, and v4 to return the same errors it would on
+> >>>>a non-create open.
+> >>>
+> >>>Looking at the history, I think the v3 behavior has been there from the
+> >>>start.  I wonder why we've never gotten a bug report?
+> >>>
+> >>>Looking at wireshark.... I guess the client always does a lookup first,
+> >>>so we never hit this case (unless someone replaces the file by a
+> >>>non-regular-file between a lookup and a create?)
+> >>>
+> >>>--b.
+> >>
+> >>So, is this all set to eventually make it into the mainline kernel?
+> >>Or is there still something I can do to help move it along?
+> >
+> >If you could confirm whether the patch in
+> >
+> >	http://www.spinics.net/lists/linux-nfs/msg28840.html
+> >
+> >fixes your problem, that would help.
+> >
+> >--b.
 > 
-> We do know which part is the hostname, and which is the pathname. If you
-> look at "try_location()", you'll see that the hostname is stored in
-> location->servers, and is then copied into this empty buffer.
-> 
-> If you want to test if that is an IPv6 address so that you can enclose
-> it in [], then that should be fairly easy to do right there...
+> I applied it to 2.6.32-220.7.1.el6.x86_64 and it appears to have
+> fixed the issue.  Can't be sure yet if it broke anything else
+> though...
 
-Yes, that's kind of what was I was thinking.
+Great, thanks.  I'm applying as follows.  I want to run in through some
+basic regression tests and then I'll see about getting it upstream.
+(Though it's a bug we've apparently lived with since the beginning of
+time, so it may need to wait for the next merge window.)
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+--b.
