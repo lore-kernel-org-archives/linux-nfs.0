@@ -1,71 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f46.google.com ([209.85.216.46]:33426 "EHLO
-	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752250Ab2DZRGY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 13:06:24 -0400
-MIME-Version: 1.0
-In-Reply-To: <20120426142816.GB7176@fieldses.org>
-References: <CAH2r5muMb8m9-fMc_tcfn3ku_s55q9EEbc-vzvoFjPnsDdq1gA@mail.gmail.com>
-	<20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
-	<20120419140612.17272.57774.stgit@warthog.procyon.org.uk>
-	<20120424212911.GA26073@fieldses.org>
-	<18765.1335447954@redhat.com>
-	<20120426142816.GB7176@fieldses.org>
-Date: Thu, 26 Apr 2012 12:06:22 -0500
-Message-ID: <CAH2r5mut083KtCZWMsvC08WtJPJpBxXm6M0HCY4hk8T3hN7xdg@mail.gmail.com>
-Subject: Re: [PATCH 1/6] xstat: Add a pair of system calls to make extended
- file stats available
-From: Steve French <smfrench@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
-        wine-devel@winehq.org, linux-api@vger.kernel.org,
-        libc-alpha@sourceware.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:54329 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758027Ab2DIUw7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Apr 2012 16:52:59 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 18/26] NFS: prepare coalesce testing for directio
+Date: Mon,  9 Apr 2012 16:52:16 -0400
+Message-Id: <1334004744-31842-19-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
+References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 26, 2012 at 9:28 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Thu, Apr 26, 2012 at 02:45:54PM +0100, David Howells wrote:
->> Steve French <smfrench@gmail.com> wrote:
->>
->> > I also would prefer that we simply treat the time granularity as part
->> > of the superblock (mounted volume) ie returned on fstat rather than on
->> > every stat of the filesystem.   For cifs mounts we could conceivably
->> > have different time granularity (1 or 2 second) on mounts to old
->> > servers rather than 100 nanoseconds.
->>
->> The question is whether you want to have to do a statfs in addition to a stat?
->> I suppose you can potentially cache the statfs based on device number.
->>
->> That said, there are cases where caching filesystem-level info based on i_dev
->> doesn't work.  OpenAFS springs to mind as that only has one superblock and
->> thus one set of device numbers, but keeps all the inodes for all the different
->> volumes it may have mounted there.
->>
->> I don't know whether this would be a problem for CIFS too - say on a windows
->> server you fabricate P:, for example, by joining together several filesystems
->> (with junctions?).  How does this appear on a Linux client when it steps from
->> one filesystem to another within a mounted share?
->
-> In the NFS case we do try to preserve filesystem boundaries as well as
-> we can--the protocol has an fsid field and the client creates a new
-> mount each time it sees it change.  And the protocol defines time_delta
-> as a per-filesystem attribute (though, somewhat hilariously, there's
-> also a per-filesystem "homogeneous" attribute that a server can clear to
-> indicate the per-filesystem attributes might actually vary within the
-> filesystem.)
+The coalesce code made assumptions that will no longer be true once
+non-page aligned io occurs.  This introduces no change in
+current behavior, but allows for more general situations to come.
 
-Thank you for reminding me, I need to look at this case more ...
-although cifs creates  implicit submounts (as we traverse DFS referrals)
-there are probably cases where we need to do the same thing as NFS
-and look at the fsid so we don't run into a Windows server
-exporting something with a "junction" (e.g. directory redirection to
-a DVD drive for example) and thus cross file system volume boundaries.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |   17 ++++++++++++++++-
+ fs/nfs/pagelist.c       |    4 +---
+ fs/nfs/pnfs.c           |    8 ++++++++
+ 3 files changed, 25 insertions(+), 4 deletions(-)
 
-
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 2c78a46..0afa735 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -779,6 +779,16 @@ filelayout_pg_init_read(struct nfs_pageio_descriptor *pgio,
+ {
+ 	BUG_ON(pgio->pg_lseg != NULL);
+ 
++	if (req->wb_offset != req->wb_pgbase) {
++		/*
++		 * Handling unaligned pages is difficult, because have to
++		 * somehow split a req in two in certain cases in the
++		 * pg.test code.  Avoid this by just not using pnfs
++		 * in this case.
++		 */
++		nfs_pageio_reset_read_mds(pgio);
++		return;
++	}
+ 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 					   req->wb_context,
+ 					   0,
+@@ -796,6 +806,8 @@ filelayout_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ {
+ 	BUG_ON(pgio->pg_lseg != NULL);
+ 
++	if (req->wb_offset != req->wb_pgbase)
++		goto out_mds;
+ 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 					   req->wb_context,
+ 					   0,
+@@ -804,7 +816,10 @@ filelayout_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 					   GFP_NOFS);
+ 	/* If no lseg, fall back to write through mds */
+ 	if (pgio->pg_lseg == NULL)
+-		nfs_pageio_reset_write_mds(pgio);
++		goto out_mds;
++	return;
++out_mds:
++	nfs_pageio_reset_write_mds(pgio);
+ }
+ 
+ static const struct nfs_pageio_ops filelayout_pg_read_ops = {
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index b360d08..bd201d1 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -278,12 +278,10 @@ static bool nfs_can_coalesce_requests(struct nfs_page *prev,
+ 		return false;
+ 	if (req->wb_context->state != prev->wb_context->state)
+ 		return false;
+-	if (req->wb_index != (prev->wb_index + 1))
++	if (req_offset(req) != req_offset(prev) + prev->wb_bytes)
+ 		return false;
+ 	if (req->wb_pgbase != 0)
+ 		return false;
+-	if (prev->wb_pgbase + prev->wb_bytes != PAGE_CACHE_SIZE)
+-		return false;
+ 	return pgio->pg_ops->pg_test(pgio, prev, req);
+ }
+ 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 02dd84b..da3c183 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1082,6 +1082,10 @@ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *r
+ {
+ 	BUG_ON(pgio->pg_lseg != NULL);
+ 
++	if (req->wb_offset != req->wb_pgbase) {
++		nfs_pageio_reset_read_mds(pgio);
++		return;
++	}
+ 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 					   req->wb_context,
+ 					   req_offset(req),
+@@ -1100,6 +1104,10 @@ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *
+ {
+ 	BUG_ON(pgio->pg_lseg != NULL);
+ 
++	if (req->wb_offset != req->wb_pgbase) {
++		nfs_pageio_reset_write_mds(pgio);
++		return;
++	}
+ 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 					   req->wb_context,
+ 					   req_offset(req),
 -- 
-Thanks,
+1.7.2.1
 
-Steve
