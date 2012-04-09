@@ -1,123 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61571 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:31295 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757419Ab2DTSsL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 14:48:11 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH v3 09/25] NFS: reverse arg order in nfs_initiate_[read|write]
-Date: Fri, 20 Apr 2012 14:47:41 -0400
-Message-Id: <1334947677-28864-10-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
-References: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
+	id S1756878Ab2DIQRn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Apr 2012 12:17:43 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: Grace period
+Date: Mon, 9 Apr 2012 16:17:06 +0000
+Message-ID: <1333988226.2688.76.camel@lade.trondhjem.org>
+References: <4F7F230A.6080506@parallels.com>
+	 <20120406234039.GA20940@fieldses.org> <4F82C6E3.3030009@parallels.com>
+	 <20120409094743.56932677@tlielax.poochiereds.net>
+	 <4F82F16C.7030303@parallels.com>
+	 <20120409112739.6a823d6f@corrin.poochiereds.net>
+	 <4F830999.5000504@parallels.com> <20120409161114.GB6482@fieldses.org>
+In-Reply-To: <20120409161114.GB6482@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Make it consistent with nfs_initiate_commit.
-
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/internal.h       |    7 ++++---
- fs/nfs/nfs4filelayout.c |    4 ++--
- fs/nfs/read.c           |    5 +++--
- fs/nfs/write.c          |    6 +++---
- 4 files changed, 12 insertions(+), 10 deletions(-)
-
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 87e899d..abdf40c 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -296,7 +296,8 @@ extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh);
- 
- struct nfs_pageio_descriptor;
- /* read.c */
--extern int nfs_initiate_read(struct nfs_read_data *data, struct rpc_clnt *clnt,
-+extern int nfs_initiate_read(struct rpc_clnt *clnt,
-+			     struct nfs_read_data *data,
- 			     const struct rpc_call_ops *call_ops);
- extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
- extern int nfs_generic_pagein(struct nfs_pageio_descriptor *desc,
-@@ -315,8 +316,8 @@ extern void nfs_pageio_init_write_mds(struct nfs_pageio_descriptor *pgio,
- extern void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio);
- extern void nfs_writedata_release(struct nfs_write_data *wdata);
- extern void nfs_commit_free(struct nfs_commit_data *p);
--extern int nfs_initiate_write(struct nfs_write_data *data,
--			      struct rpc_clnt *clnt,
-+extern int nfs_initiate_write(struct rpc_clnt *clnt,
-+			      struct nfs_write_data *data,
- 			      const struct rpc_call_ops *call_ops,
- 			      int how);
- extern void nfs_write_prepare(struct rpc_task *task, void *calldata);
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 675ce3b..adbadcb 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -413,7 +413,7 @@ filelayout_read_pagelist(struct nfs_read_data *data)
- 	data->mds_offset = offset;
- 
- 	/* Perform an asynchronous read to ds */
--	status = nfs_initiate_read(data, ds->ds_clp->cl_rpcclient,
-+	status = nfs_initiate_read(ds->ds_clp->cl_rpcclient, data,
- 				   &filelayout_read_call_ops);
- 	BUG_ON(status != 0);
- 	return PNFS_ATTEMPTED;
-@@ -460,7 +460,7 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
- 	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
- 
- 	/* Perform an asynchronous write */
--	status = nfs_initiate_write(data, ds->ds_clp->cl_rpcclient,
-+	status = nfs_initiate_write(ds->ds_clp->cl_rpcclient, data,
- 				    &filelayout_write_call_ops, sync);
- 	BUG_ON(status != 0);
- 	return PNFS_ATTEMPTED;
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 0a4be28..4ddba67 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -169,7 +169,8 @@ static void nfs_readpage_release(struct nfs_page *req)
- 	nfs_release_request(req);
- }
- 
--int nfs_initiate_read(struct nfs_read_data *data, struct rpc_clnt *clnt,
-+int nfs_initiate_read(struct rpc_clnt *clnt,
-+		      struct nfs_read_data *data,
- 		      const struct rpc_call_ops *call_ops)
- {
- 	struct inode *inode = data->inode;
-@@ -240,7 +241,7 @@ static int nfs_do_read(struct nfs_read_data *data,
- {
- 	struct inode *inode = data->args.context->dentry->d_inode;
- 
--	return nfs_initiate_read(data, NFS_CLIENT(inode), call_ops);
-+	return nfs_initiate_read(NFS_CLIENT(inode), data, call_ops);
- }
- 
- static int
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 54f7c0f..76735dd 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -836,8 +836,8 @@ static int flush_task_priority(int how)
- 	return RPC_PRIORITY_NORMAL;
- }
- 
--int nfs_initiate_write(struct nfs_write_data *data,
--		       struct rpc_clnt *clnt,
-+int nfs_initiate_write(struct rpc_clnt *clnt,
-+		       struct nfs_write_data *data,
- 		       const struct rpc_call_ops *call_ops,
- 		       int how)
- {
-@@ -937,7 +937,7 @@ static int nfs_do_write(struct nfs_write_data *data,
- {
- 	struct inode *inode = data->args.context->dentry->d_inode;
- 
--	return nfs_initiate_write(data, NFS_CLIENT(inode), call_ops, how);
-+	return nfs_initiate_write(NFS_CLIENT(inode), data, call_ops, how);
- }
- 
- static int nfs_do_multiple_writes(struct list_head *head,
--- 
-1.7.2.1
-
+T24gTW9uLCAyMDEyLTA0LTA5IGF0IDEyOjExIC0wNDAwLCBiZmllbGRzQGZpZWxkc2VzLm9yZyB3
+cm90ZToNCj4gT24gTW9uLCBBcHIgMDksIDIwMTIgYXQgMDg6MDg6NTdQTSArMDQwMCwgU3Rhbmlz
+bGF2IEtpbnNidXJza3kgd3JvdGU6DQo+ID4gMDkuMDQuMjAxMiAxOToyNywgSmVmZiBMYXl0b24g
+0L/QuNGI0LXRgjoNCj4gPiA+DQo+ID4gPklmIHlvdSBhbGxvdyBvbmUgY29udGFpbmVyIHRvIGhh
+bmQgb3V0IGNvbmZsaWN0aW5nIGxvY2tzIHdoaWxlIGFub3RoZXINCj4gPiA+Y29udGFpbmVyIGlz
+IGFsbG93aW5nIHJlY2xhaW1zLCB0aGVuIHlvdSBjYW4gZW5kIHVwIHdpdGggc29tZSB2ZXJ5DQo+
+ID4gPmRpZmZpY3VsdCB0byBkZWJ1ZyBzaWxlbnQgZGF0YSBjb3JydXB0aW9uLiBUaGF0J3MgdGhl
+IHdvcnN0IHBvc3NpYmxlDQo+ID4gPm91dGNvbWUsIElNTy4gV2UgcmVhbGx5IG5lZWQgdG8gYWN0
+aXZlbHkga2VlcCBwZW9wbGUgZnJvbSBzaG9vdGluZw0KPiA+ID50aGVtc2VsdmVzIGluIHRoZSBm
+b290IGhlcmUuDQo+ID4gPg0KPiA+ID5PbmUgcG9zc2liaWxpdHkgbWlnaHQgYmUgdG8gb25seSBh
+bGxvdyBmaWxlc3lzdGVtcyB0byBiZSBleHBvcnRlZCBmcm9tDQo+ID4gPmEgc2luZ2xlIGNvbnRh
+aW5lciBhdCBhIHRpbWUgKGFuZCBhbGxvdyB0aGF0IHRvIGJlIG92ZXJyaWRhYmxlIHNvbWVob3cN
+Cj4gPiA+b25jZSB3ZSBoYXZlIGEgd29ya2luZyBhY3RpdmUvYWN0aXZlIHNlcnZpbmcgc29sdXRp
+b24pLiBXaXRoIHRoYXQsIHlvdQ0KPiA+ID5tYXkgYmUgYWJsZSBsaW1wIGFsb25nIHdpdGggYSBw
+ZXItY29udGFpbmVyIGdyYWNlIHBlcmlvZCBoYW5kbGluZw0KPiA+ID5zY2hlbWUgbGlrZSB5b3Un
+cmUgcHJvcG9zaW5nLg0KPiA+ID4NCj4gPiANCj4gPiBPayB0aGVuLiBLZWVwaW5nIHBlb3BsZSBm
+cm9tIHNob290aW5nIHRoZW1zZWx2ZXMgaGVyZSBzb3VuZHMgcmVhc29uYWJsZS4NCj4gPiBBbmQg
+SSBsaWtlIHRoZSBpZGVhIG9mIGV4cG9ydGluZyBhIGZpbGVzeXN0ZW0gb25seSBmcm9tIG9uY2Ug
+cGVyDQo+ID4gbmV0d29yayBuYW1lc3BhY2UuDQo+IA0KPiBVbmZvcnR1bmF0ZWx5IHRoYXQncyBu
+b3QgZ29pbmcgdG8gZ2V0IHVzIHZlcnkgZmFyLCBlc3BlY2lhbGx5IG5vdCBpbiB0aGUNCj4gdjQg
+Y2FzZSB3aGVyZSB3ZSd2ZSBnb3QgdGhlIGNvbW1vbiByZWFkLW9ubHkgcHNldWRvcm9vdCB0aGF0
+IGV2ZXJ5b25lDQo+IGhhcyB0byBzaGFyZS4NCg0KSSBkb24ndCBzZWUgaG93IHRoYXQgY2FuIHdv
+cmsgaW4gY2FzZXMgd2hlcmUgZWFjaCBjb250YWluZXIgaGFzIGl0cyBvd24NCnByaXZhdGUgbW91
+bnQgbmFtZXNwYWNlLiBZb3UncmUgZ29pbmcgdG8gaGF2ZSB0byB0aWUgdGhhdCBwc2V1ZG9yb290
+IHRvDQp0aGUgbW91bnQgbmFtZXNwYWNlIHNvbWVob3cuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0
+DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RA
+bmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
