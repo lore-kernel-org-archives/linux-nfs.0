@@ -1,56 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:41983 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:57517 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754372Ab2DTOTa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 10:19:30 -0400
-Subject: [PATCH 1/3] SUNRPC: skip clients with program without PipeFS entries
-To: bfields@fieldses.org, Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Fri, 20 Apr 2012 18:19:18 +0400
-Message-ID: <20120420141907.10848.74388.stgit@localhost6.localdomain6>
-In-Reply-To: <20120420141419.10848.84280.stgit@localhost6.localdomain6>
-References: <20120420141419.10848.84280.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1758244Ab2DIUw7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Apr 2012 16:52:59 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 17/26] NFS: remove unused wb_complete field from struct nfs_page
+Date: Mon,  9 Apr 2012 16:52:15 -0400
+Message-Id: <1334004744-31842-18-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
+References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-1) This is sane.
-2) Otherwise there will be soft lockup:
-
-do {
-	rpc_get_client_for_event (clnt->cl_dentry == NULL ==> choose)
-	__rpc_pipefs_event (clnt->cl_program->pipe_dir_name == NULL ==> return)
-} while (1)
-
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- net/sunrpc/clnt.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ fs/nfs/pagelist.c        |    1 -
+ fs/nfs/write.c           |    1 -
+ include/linux/nfs_page.h |    1 -
+ 3 files changed, 0 insertions(+), 3 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index d10ebc4..8a19849 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -184,8 +184,6 @@ static int __rpc_pipefs_event(struct rpc_clnt *clnt, unsigned long event,
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index e2c2af0..b360d08 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -112,7 +112,6 @@ nfs_create_request(struct nfs_open_context *ctx, struct inode *inode,
+ 	 * long write-back delay. This will be adjusted in
+ 	 * update_nfs_request below if the region is not locked. */
+ 	req->wb_page    = page;
+-	atomic_set(&req->wb_complete, 0);
+ 	req->wb_index	= page->index;
+ 	page_cache_get(page);
+ 	BUG_ON(PagePrivate(page));
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 4d9bbaf..293ddb9 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1055,7 +1055,6 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc,
+ 		nbytes -= len;
+ 		offset += len;
+ 	} while (nbytes != 0);
+-	atomic_set(&req->wb_complete, requests);
+ 	desc->pg_rpc_callops = &nfs_write_common_ops;
+ 	return ret;
  
- 	switch (event) {
- 	case RPC_PIPEFS_MOUNT:
--		if (clnt->cl_program->pipe_dir_name == NULL)
--			break;
- 		dentry = rpc_setup_pipedir_sb(sb, clnt,
- 					      clnt->cl_program->pipe_dir_name);
- 		BUG_ON(dentry == NULL);
-@@ -215,6 +213,8 @@ static struct rpc_clnt *rpc_get_client_for_event(struct net *net, int event)
- 
- 	spin_lock(&sn->rpc_client_lock);
- 	list_for_each_entry(clnt, &sn->all_clients, cl_clients) {
-+		if (clnt->cl_program->pipe_dir_name == NULL)
-+			break;
- 		if (((event == RPC_PIPEFS_MOUNT) && clnt->cl_dentry) ||
- 		    ((event == RPC_PIPEFS_UMOUNT) && !clnt->cl_dentry))
- 			continue;
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index a36fbb6..1198f18 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -36,7 +36,6 @@ struct nfs_page {
+ 	struct page		*wb_page;	/* page to read in/write out */
+ 	struct nfs_open_context	*wb_context;	/* File state context info */
+ 	struct nfs_lock_context	*wb_lock_context;	/* lock context info */
+-	atomic_t		wb_complete;	/* i/os we're waiting for */
+ 	pgoff_t			wb_index;	/* Offset >> PAGE_CACHE_SHIFT */
+ 	unsigned int		wb_offset,	/* Offset & ~PAGE_CACHE_MASK */
+ 				wb_pgbase,	/* Start of page data */
+-- 
+1.7.2.1
 
