@@ -1,92 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:24201 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:57517 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757769Ab2DZP4G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Apr 2012 11:56:06 -0400
-Subject: [PATCH 09/10] NFS; callback per-net usage counting introduced
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Thu, 26 Apr 2012 19:55:56 +0400
-Message-ID: <20120426155556.3763.79542.stgit@localhost6.localdomain6>
-In-Reply-To: <20120426155250.3763.98748.stgit@localhost6.localdomain6>
-References: <20120426155250.3763.98748.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1758250Ab2DIUxB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Apr 2012 16:53:01 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 23/26] NFS: add dreq to nfs_commit_info
+Date: Mon,  9 Apr 2012 16:52:21 -0400
+Message-Id: <1334004744-31842-24-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
+References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch also introduces refcount-aware nfs_callback_down_net() wrapper for
-svc_shutdown_net().
+Need this to pass into nfs_commitdata_init, in order to keep data->dreq
+accurate.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/callback.c |   19 +++++++++++++++++--
- fs/nfs/netns.h    |    1 +
- 2 files changed, 18 insertions(+), 2 deletions(-)
+ fs/nfs/write.c          |    2 ++
+ include/linux/nfs_xdr.h |    1 +
+ 2 files changed, 3 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 3f1b5d1..1f814b0 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -285,10 +285,25 @@ static int nfs_callback_start_svc(int minorversion, struct rpc_xprt *xprt,
- 	return 0;
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index ceb3979..fe8224c 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -500,6 +500,7 @@ static void nfs_init_cinfo_from_inode(struct nfs_commit_info *cinfo,
+ 	cinfo->lock = &inode->i_lock;
+ 	cinfo->mds = &NFS_I(inode)->commit_info;
+ 	cinfo->ds = pnfs_get_ds_info(inode);
++	cinfo->dreq = NULL;
+ 	cinfo->compl_ops = &nfs_commit_compl_ops;
  }
  
-+static void nfs_callback_down_net(u32 minorversion, struct svc_serv *serv, struct net *net)
-+{
-+	struct nfs_net *nn = net_generic(net, nfs_net_id);
-+
-+	if (--nn->cb_users[minorversion])
-+		return;
-+
-+	dprintk("NFS: destroy per-net callback data; net=%p\n", net);
-+	svc_shutdown_net(serv, net);
-+}
-+
- static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct net *net)
- {
-+	struct nfs_net *nn = net_generic(net, nfs_net_id);
- 	int ret;
+@@ -1429,6 +1430,7 @@ void nfs_init_commit(struct nfs_commit_data *data,
+ 	data->lseg	  = lseg; /* reference transferred */
+ 	data->mds_ops     = &nfs_commit_ops;
+ 	data->compl_ops	  = cinfo->compl_ops;
++	data->dreq	  = cinfo->dreq;
  
-+	if (nn->cb_users[minorversion]++)
-+		return 0;
-+
- 	dprintk("NFS: create per-net callback data; net=%p\n", net);
- 
- 	ret = svc_bind(serv, net);
-@@ -391,7 +406,7 @@ err_create:
- 	return ret;
- 
- err_start:
--	svc_shutdown_net(serv, net);
-+	nfs_callback_down_net(minorversion, serv, net);
- 	dprintk("NFS: Couldn't create server thread; err = %d\n", ret);
- 	goto err_net;
- }
-@@ -404,10 +419,10 @@ void nfs_callback_down(int minorversion, struct net *net)
- 	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
- 
- 	mutex_lock(&nfs_callback_mutex);
-+	nfs_callback_down_net(minorversion, cb_info->serv, net);
- 	cb_info->users--;
- 	if (cb_info->users == 0 && cb_info->task != NULL) {
- 		kthread_stop(cb_info->task);
--		svc_shutdown_net(cb_info->serv, net);
- 		svc_exit_thread(cb_info->rqst);
- 		cb_info->serv = NULL;
- 		cb_info->rqst = NULL;
-diff --git a/fs/nfs/netns.h b/fs/nfs/netns.h
-index bd72a55..db3e495 100644
---- a/fs/nfs/netns.h
-+++ b/fs/nfs/netns.h
-@@ -20,6 +20,7 @@ struct nfs_net {
- 	struct idr cb_ident_idr; /* Protected by nfs_client_lock */
- 	unsigned short nfs_callback_tcpport;
- 	unsigned short nfs_callback_tcpport6;
-+	int cb_users[NFS4_MAX_MINOR_VERSION + 1];
- #endif
- 	spinlock_t nfs_client_lock;
+ 	data->args.fh     = NFS_FH(data->inode);
+ 	/* Note: we always request a commit of the entire inode */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 0ee7b3a..5297f4f 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1269,6 +1269,7 @@ struct nfs_commit_info {
+ 	spinlock_t			*lock;
+ 	struct nfs_mds_commit_info	*mds;
+ 	struct pnfs_ds_commit_info	*ds;
++	struct nfs_direct_req		*dreq;	/* O_DIRECT request */
+ 	const struct nfs_commit_completion_ops *compl_ops;
  };
+ 
+-- 
+1.7.2.1
 
