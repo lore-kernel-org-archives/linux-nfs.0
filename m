@@ -1,110 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:49310 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:57514 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752250Ab2DZRGy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Apr 2012 13:06:54 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Steve French <smfrench@gmail.com>
-CC: David Howells <dhowells@redhat.com>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
-        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "wine-devel@winehq.org" <wine-devel@winehq.org>,
-        "kfm-devel@kde.org" <kfm-devel@kde.org>,
-        "nautilus-list@gnome.org" <nautilus-list@gnome.org>,
-        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
-        "libc-alpha@sourceware.org" <libc-alpha@sourceware.org>
-Subject: Re: [PATCH 0/6] Extended file stat system call
-Date: Thu, 26 Apr 2012 17:06:51 +0000
-Message-ID: <1335460011.9701.30.camel@lade.trondhjem.org>
-References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
-	 <CAH2r5ms4WQV3DnTvqNN=2N71Cj8UHwj8Z6+RHXgrAOv6mSoyQg@mail.gmail.com>
-	 <20656.1335450358@redhat.com>
-	 <CAH2r5mv1Lijdwk5zsQwYJr4Etb6fhrRyNXm-iFCQX+HecboGrQ@mail.gmail.com>
-	 <1335453958.9701.10.camel@lade.trondhjem.org>
-	 <CAH2r5mt5af-_hxBRKK72iD5Gr99bo91ec78Rov8EGVEx8=21mA@mail.gmail.com>
-	 <1335459642.9701.27.camel@lade.trondhjem.org>
-	 <CAH2r5mvmCfLrxRHje6Wx5X84zxPEHwRMUJGsjvWBujMu7w841w@mail.gmail.com>
-In-Reply-To: <CAH2r5mvmCfLrxRHje6Wx5X84zxPEHwRMUJGsjvWBujMu7w841w@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1753197Ab2DIUwy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Apr 2012 16:52:54 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 08/26] NFS: remove unnecessary casts of void pointers in nfs4filelayout.c
+Date: Mon,  9 Apr 2012 16:52:06 -0400
+Message-Id: <1334004744-31842-9-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
+References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA0LTI2IGF0IDEyOjAzIC0wNTAwLCBTdGV2ZSBGcmVuY2ggd3JvdGU6DQo+
-IE9uIFRodSwgQXByIDI2LCAyMDEyIGF0IDEyOjAwIFBNLCBNeWtsZWJ1c3QsIFRyb25kDQo+IDxU
-cm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+ID4gT24gVGh1LCAyMDEyLTA0LTI2
-IGF0IDExOjU2IC0wNTAwLCBTdGV2ZSBGcmVuY2ggd3JvdGU6DQo+ID4+IE9uIFRodSwgQXByIDI2
-LCAyMDEyIGF0IDEwOjI1IEFNLCBNeWtsZWJ1c3QsIFRyb25kDQo+ID4+IDxUcm9uZC5NeWtsZWJ1
-c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+ID4+ID4gT24gVGh1LCAyMDEyLTA0LTI2IGF0IDA5OjU0
-IC0wNTAwLCBTdGV2ZSBGcmVuY2ggd3JvdGU6DQo+ID4+ID4+IE9uIFRodSwgQXByIDI2LCAyMDEy
-IGF0IDk6MjUgQU0sIERhdmlkIEhvd2VsbHMgPGRob3dlbGxzQHJlZGhhdC5jb20+IHdyb3RlOg0K
-PiA+PiA+PiA+IFN0ZXZlIEZyZW5jaCA8c21mcmVuY2hAZ21haWwuY29tPiB3cm90ZToNCj4gPj4g
-Pj4gPg0KPiA+PiA+PiA+PiBXb3VsZCBpdCBiZSBiZXR0ZXIgdG8gbWFrZSB0aGUgc3RhYmxlIHZz
-IHZvbGF0aWxlIGlub2RlIG51bWJlciBhbiBhdHRyaWJ1dGUNCj4gPj4gPj4gPj4gb2YgdGhlIHZv
-bHVtZSAgb3Igc29tZXRoaW5nIHJldHVybmVkIGJ5IHRoZSBwcm9wb3NlZCB4c3RhdD8NCj4gPj4g
-Pj4gPg0KPiA+PiA+PiA+IEknbSBub3Qgc3VyZSB3aGF0IHlvdSBtZWFuIGJ5IGEgc3RhYmxlIHZz
-IGEgdm9sYXRpbGUgaW5vZGUgbnVtYmVyLg0KPiA+PiA+Pg0KPiA+PiA+PiBCb3RoIE5GUyBhbmQg
-Q0lGUyAoYW5kIFNNQjIpIGNhbiByZXR1cm4gaW5vZGUgbnVtYmVycyBvciBlcXVpdmFsZW50DQo+
-ID4+ID4+IHVuaXF1ZSBpZGVudGlmaWVyLCBidXQgaW4gdGhlIGNhc2Ugb2YgQ0lGUyBzb21lIG9s
-ZCBzZXJ2ZXJzIGRvbid0IHN1cHBvcnQgdGhlDQo+ID4+ID4+IGNhbGxzIHdoaWNoIHJldHVybiBp
-bm9kZSBudW1iZXJzIChvciBkb24ndCByZXR1cm4gdGhlbSBmb3IgYWxsIGZpbGUgc3lzdGVtDQo+
-ID4+ID4+IHR5cGVzLCBXaW5kb3dzIEZBVD8pIHNvIGluIHRoZXNlIGNhc2VzIGNpZnMgaGFzIHRv
-IGNyZWF0ZSBpbm9kZQ0KPiA+PiA+PiBudW1iZXJzIG9uIHRoZSBmbHkNCj4gPj4gPj4gb24gdGhl
-IGNsaWVudC4gICBpbm9kZSBudW1iZXJzIGNyZWF0ZWQgb24gdGhlIGNsaWVudCBhcmUgbm90ICJz
-dGFibGUiIHRoZXkNCj4gPj4gPj4gY2FuIGNoYW5nZSBvbiB1bm1vdW50L3JlbW91bnQgKHdoaWNo
-IGNhbiBjYXVzZSBwcm9ibGVtcyBmb3IgYmFja3VwDQo+ID4+ID4+IGFwcGxpY2F0aW9ucykuDQo+
-ID4+ID4+DQo+ID4+ID4+IFNpbWlsYXJseSBORlN2NCBkb2VzIG5vdCByZXF1aXJlIHRoYXQgc2Vy
-dmVycyBhbHdheXMgcmV0dXJuIHN0YWJsZSBpbm9kZSBudW1iZXJzDQo+ID4+ID4+ICh0aGF0IHdp
-bGwgbmV2ZXIgY2hhbmdlKSBhbmQgaW50cm9kdWNlZCBhIGNvbmNlcHQgb2YgInZvbGF0aWxlIGZp
-bGUgaGFuZGxlLiINCj4gPj4gPj4gV2UgaGF2ZSBydW4gaW50byB0aGlzIGluIHR3byBjYXNlcyAo
-dGhlcmUgYXJlIHByb2JhYmx5IG1vcmUpIC0NCj4gPj4gPj4gU3BlY2lhbGl6ZWQgTkZTIHNlcnZl
-cnMNCj4gPj4gPj4gZm9yIEhQQyB3aGljaCBkZWFsIHdpdGggbG90cyBvZiB0cmFuc2llbnQgaW5v
-ZGVzLCBhbmQgc2Vjb25kIHRob3NlIGZvciBzZXJ2ZXJzDQo+ID4+ID4+IHdoaWNoIGJhc2UgdGhl
-cmUgaW5vZGUgbnVtYmVyIG9uIHBhdGggKFdpbmRvd3MgTkZTPykuICBTZWUNCj4gPj4gPj4gaHR0
-cDovL2RvY3Mub3JhY2xlLmNvbS9jZC9FMTkwODItMDEvODE5LTE2MzQvcmZzcmVmZXItMTM3L2lu
-ZGV4Lmh0bWwNCj4gPj4gPj4gb3IgdGhlIE5GU3Y0IFJGQy4NCj4gPj4gPj4NCj4gPj4gPj4gQmFz
-aWNhbGx5IHRoZSBxdWVzdGlvbiBpcyB3aGV0aGVyIGl0IGlzIHdvcnRoIHJlcG9ydGluZyBhIGZs
-YWcgb24gdGhlDQo+ID4+ID4+IGNhbGwgd2hpY2ggcmV0dXJucw0KPiA+PiA+PiB0aGUgaW5vZGUg
-bnVtYmVyIHRvIGluZGljYXRlIHRoYXQgdGhlIGlub2RlIG51bWJlciBpcyAic3RhYmxlIiAod291
-bGQgbm90IGNoYW5nZQ0KPiA+PiA+PiBvbiByZWJvb3Qgb3IgcmVjb25uZWN0aW9uKSBvciAidm9s
-YXRpbGUuIiAgICBTaW5jZSB0aGUgbWFqb3JpdHkgb2YgTkZTDQo+ID4+ID4+IGFuZCBTTUIyIHNl
-cnZlcnMNCj4gPj4gPj4gY2FuIHJldHVybiBzdGFibGUgaW5vZGUgbnVtYmVycywgSSBkb24ndCBm
-ZWVsIHN0cm9uZ2x5IGFib3V0IHRoZSBuZWVkDQo+ID4+ID4+IGZvciBhbiBpbmRpY2F0b3INCj4g
-Pj4gPj4gb2YgInN0YWJsZSIgdnMuICJ2b2xhdGlsZSIgYnV0IEkgbWVudGlvbiBpdCBiZWNhdXNl
-IGJhY2t1cCBhbmQNCj4gPj4gPj4gbWlncmF0aW9uIGFwcGxpY2F0aW9ucw0KPiA+PiA+PiBtZW50
-aW9uIHRoaXMgKGlmIGlub2RlIG51bWJlcnMgYXJlIHZvbGF0aWxlLCB0aGV5IG1heSBoYXZlIHRv
-IGNoZWNrDQo+ID4+ID4+IGZvciBoYXJkbGlua3MgZGlmZmVyZW50bHkNCj4gPj4gPj4gZm9yIGV4
-YW1wbGUpDQo+ID4+ID4NCj4gPj4gPiBJIGRvbid0IHVuZGVyc3RhbmQuIElmIHRoZSBmaWxlc3lz
-dGVtIGRvZXNuJ3Qgc3VwcG9ydCByZWFsIGlub2RlDQo+ID4+ID4gbnVtYmVycywgdGhlbiB3aHkg
-cmVwb3J0IHRoZW0gYXQgYWxsPyBXaGF0IHVzZSB3b3VsZCBhbiBhcHBsaWNhdGlvbiBoYXZlDQo+
-ID4+ID4gZm9yIGFuIGlub2RlIG51bWJlciB0aGF0IGNhbid0IGJlIHVzZWQgdG8gaWRlbnRpZnkg
-aGFyZCBsaW5rZWQgZmlsZXM/DQo+ID4+DQo+ID4+IFdlbGwgLi4uIHlvdSBoYXZlIHRvIGhhdmUg
-YW4gaW5vZGUgbnVtYmVyIG9uIHRoZSBMaW51eCBjbGllbnQgc2lkZSBldmVuIGlmDQo+ID4+IHRo
-ZSBzZXJ2ZXIgZG9lc24ndCByZXBvcnQgdGhlbSAob3IgaGFzIGEgYnVnIGFuZCByZXBvcnRzIGR1
-cGxpY2F0ZXMpLg0KPiA+PiBJZiB5b3UgY2FuJ3QgdGVsbCBoYXJkbGlua2VkIGZpbGVzIGFwYXJ0
-IGZpeCB0aGUgc2VydmVyIChidXQgaW4gdGhlDQo+ID4+IGNhc2VzIHdoZXJlIHRoZSBmaWxlIHN5
-c3RlbXMgaGFzIHRoaXMgcHJvYmxlbSB0aGUgc2VydmVyIGRvZXNuJ3QgdXN1YWxseQ0KPiA+PiBz
-dXBwb3J0IGhhcmRsaW5rcyBlaXRoZXIpLg0KPiA+Pg0KPiA+PiBJZiB0aGUgc2VydmVyJ3MgZmls
-ZSBzeXN0ZW0gaW50ZXJuYWwgc3RydWN0dXJlcyBkb24ndCBzdXBwb3J0IHJlYWwgaW5vZGUNCj4g
-Pj4gbnVtYmVycyAoc3VjaCBhcyBGQVQgb3IgYSByYW1kaXNrKSB0aGVuIGl0IGVpdGhlciBoYXMg
-dG8gbWFrZSB0aGVtDQo+ID4+IHVwIGJhc2VkIG9uIHNvbWV0aGluZyBsaWtlIHBhdGggbmFtZSBv
-ciBzb21lIG90aGVyIGF0dHJpYnV0ZSBvZiB0aGUNCj4gPj4gZmlsZSBvbiBkaXNrLg0KPiA+Pg0K
-PiA+PiBTZXJ2ZXJzIGxpa2UgTmV0QXBwIGlzIHdoZXJlIHRoaXMgZ2V0cyBpbnRlcmVzdGluZyAt
-IGZvciBjaWZzIGUuZy4gbGV2ZWwgMTAwOQ0KPiA+PiBxdWVyeSBmaWxlIGluZm8gaXMgdXNlZCB0
-byBxdWVyeV9maWxlX2ludGVybmFsX2luZm8gKHRoZSBpbm9kZSBudW1iZXIpIGJ1dA0KPiA+PiB3
-aGF0IGlmIHRoZSBzZXJ2ZXIgY2FuIG5vdCByZXBvcnQgaW5vZGUgbnVtYmVycyAoZHVlIHRvIGEg
-YnVnKSBpbg0KPiA+PiBhbGwgY2FzZXMuDQo+ID4NCj4gPiBSaWdodCwgYnV0IG5vbmUgb2YgdGhp
-cyBleHBsYWlucyB3aHkgd2UgbmVlZCB0byByZXBvcnQgdGhlc2UgYm9ndXMgaW5vZGUNCj4gPiBu
-dW1iZXJzIHRvIHRoZSBhcHBsaWNhdGlvbiBpbiB0aGUgeHN0YXQoKSByZXBseS4NCj4gDQo+IHRo
-ZSBxdWVzdGlvbiBpcyB3aGV0aGVyIHRoZSBhcHBsaWNhdGlvbiAoYmFja3VwKSB3b3VsZCBuZWVk
-IHRvIGtub3cNCj4gdGhhdCB0aGUgaW5vZGUgbnVtYmVycyBhcmUgYm9ndXMgYW5kIGZyb20gbXkg
-Y29udmVyc2F0aW9ucyB3aXRoDQo+IGd1eXMgd3JpdGluZyBiYWNrdXAgc29mdHdhcmUgaXQgc2Vl
-bXMgdGhhdCBzdWNoIGRhdGEgaXMgdXNlZnVsIHRvIHRoZW0uDQoNCllvdSBhcmUgc3RpbGwgbm90
-IGV4cGxhaW5pbmcgd2h5IHRoZXkgbmVlZCB0byBrbm93IHRoZSB2YWx1ZXMgYXQgYWxsPyBJZg0K
-dGhlIHZhbHVlcyBhcmUgYm9ndXMsIHRoZW4gZG9uJ3QgcmV0dXJuIHRoZW0sIGFuZCBkb24ndCBz
-ZXQgdGhlIGZsYWcNCnRoYXQgc2F5cyB0aGV5IGFyZSBiZWluZyByZXR1cm5lZC4NCg0KVHJvbmQN
-Cg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpO
-ZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |   16 ++++++++--------
+ 1 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index fe6a116..b9b2e54 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -191,7 +191,7 @@ filelayout_set_layoutcommit(struct nfs_write_data *wdata)
+  */
+ static void filelayout_read_prepare(struct rpc_task *task, void *data)
+ {
+-	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
++	struct nfs_read_data *rdata = data;
+ 
+ 	rdata->read_done_cb = filelayout_read_done_cb;
+ 
+@@ -205,7 +205,7 @@ static void filelayout_read_prepare(struct rpc_task *task, void *data)
+ 
+ static void filelayout_read_call_done(struct rpc_task *task, void *data)
+ {
+-	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
++	struct nfs_read_data *rdata = data;
+ 
+ 	dprintk("--> %s task->tk_status %d\n", __func__, task->tk_status);
+ 
+@@ -215,14 +215,14 @@ static void filelayout_read_call_done(struct rpc_task *task, void *data)
+ 
+ static void filelayout_read_count_stats(struct rpc_task *task, void *data)
+ {
+-	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
++	struct nfs_read_data *rdata = data;
+ 
+ 	rpc_count_iostats(task, NFS_SERVER(rdata->inode)->client->cl_metrics);
+ }
+ 
+ static void filelayout_read_release(void *data)
+ {
+-	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
++	struct nfs_read_data *rdata = data;
+ 
+ 	put_lseg(rdata->lseg);
+ 	rdata->mds_ops->rpc_release(data);
+@@ -282,7 +282,7 @@ static int filelayout_commit_done_cb(struct rpc_task *task,
+ 
+ static void filelayout_write_prepare(struct rpc_task *task, void *data)
+ {
+-	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
++	struct nfs_write_data *wdata = data;
+ 
+ 	if (nfs41_setup_sequence(wdata->ds_clp->cl_session,
+ 				&wdata->args.seq_args, &wdata->res.seq_res,
+@@ -294,7 +294,7 @@ static void filelayout_write_prepare(struct rpc_task *task, void *data)
+ 
+ static void filelayout_write_call_done(struct rpc_task *task, void *data)
+ {
+-	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
++	struct nfs_write_data *wdata = data;
+ 
+ 	/* Note this may cause RPC to be resent */
+ 	wdata->mds_ops->rpc_call_done(task, data);
+@@ -302,14 +302,14 @@ static void filelayout_write_call_done(struct rpc_task *task, void *data)
+ 
+ static void filelayout_write_count_stats(struct rpc_task *task, void *data)
+ {
+-	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
++	struct nfs_write_data *wdata = data;
+ 
+ 	rpc_count_iostats(task, NFS_SERVER(wdata->inode)->client->cl_metrics);
+ }
+ 
+ static void filelayout_write_release(void *data)
+ {
+-	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
++	struct nfs_write_data *wdata = data;
+ 
+ 	put_lseg(wdata->lseg);
+ 	wdata->mds_ops->rpc_release(data);
+-- 
+1.7.2.1
+
