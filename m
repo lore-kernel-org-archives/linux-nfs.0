@@ -1,53 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:37116 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:28190 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755246Ab2DIV4r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Apr 2012 17:56:47 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/1] NFSv4.1 fix page number calulation bug for filelayout decode buffer
-Date: Mon,  9 Apr 2012 17:55:35 -0400
-Message-Id: <1334008535-2875-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1334008535-2875-1-git-send-email-andros@netapp.com>
-References: <1334008535-2875-1-git-send-email-andros@netapp.com>
+	id S1753714Ab2DJNNw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Apr 2012 09:13:52 -0400
+Date: Tue, 10 Apr 2012 09:13:21 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+Cc: linux-nfs@vger.kernel.org, jiri.horky@cesnet.cz
+Subject: Re: NFSv4 high availability setups
+Message-ID: <20120410091321.1be1a87e@tlielax.poochiereds.net>
+In-Reply-To: <20120410125552.GC5074@ics.muni.cz>
+References: <20120405103124.GV4752@ics.muni.cz>
+	<20120405073901.63d1c749@tlielax.poochiereds.net>
+	<20120410125552.GC5074@ics.muni.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Tue, 10 Apr 2012 14:55:52 +0200
+Lukas Hejtmanek <xhejtman@ics.muni.cz> wrote:
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4filelayoutdev.c |    2 +-
- fs/nfs/pnfs.c              |    2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+> Hi Jeff, 
+> 
+> On Thu, Apr 05, 2012 at 07:39:01AM -0400, Jeff Layton wrote:
+> > > As I understand, NFS4 uses state dir somewhere in /var/lib/nfs/rpc_pipefs.
+> > > 
+> > 
+> > You're probably thinking of /var/lib/nfs/v4recovery.
+> 
+> yes, sorry for confusion.
+> 
+> > > Can we put this state dir on a shared volume so that this state dir is common
+> > > for all the front-ends serving the same content? Is is supposed to work and
+> > > NFSv4 can merge its state with existing state on a shared disk?
+> > > 
+> > 
+> > Not properly, no. nfsd expects to have complete control over that
+> > directory. There's no locking or merging of the data there. A node will
+> > also clean that directory out in some cases, and that will throw your
+> > state tracking off.
+> 
+> Thank you for information.
+> 
+> Is there any (preferably simple) way to demonstrate that this does not work
+> properly? E.g., if I share the same export through two or more NFSv4
+> front-ends that share the v4recovery directory, do I trigger problems with
+> this tool http://nfsv4.bullopensource.org/tools/tests/locktest.php?
+> 
 
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index a866bbd..696e448 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -699,7 +699,7 @@ get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id, gfp_t gfp_fla
- 	 * GETDEVICEINFO's maxcount
- 	 */
- 	max_resp_sz = server->nfs_client->cl_session->fc_attrs.max_resp_sz;
--	max_pages = max_resp_sz >> PAGE_SHIFT;
-+	max_pages = (max_resp_sz + PAGE_SIZE - 1) >> PAGE_SHIFT;
- 	dprintk("%s inode %p max_resp_sz %u max_pages %d\n",
- 		__func__, inode, max_resp_sz, max_pages);
- 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index b5d4515..b73af2e 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -587,7 +587,7 @@ send_layoutget(struct pnfs_layout_hdr *lo,
- 
- 	/* allocate pages for xdr post processing */
- 	max_resp_sz = server->nfs_client->cl_session->fc_attrs.max_resp_sz;
--	max_pages = max_resp_sz >> PAGE_SHIFT;
-+	max_pages = (max_resp_sz + PAGE_SIZE - 1) >> PAGE_SHIFT;
- 
- 	pages = kcalloc(max_pages, sizeof(struct page *), gfp_flags);
- 	if (!pages)
+Nope. It'll all work just great...until it doesn't. I don't have any
+specific failure scenarios, but most of the problems will be issues
+with state recovery when a server node is restarted.
+
+That may manifest in different ways -- problems reclaiming locks for
+instance, or even silent data corruption depending on the application.
+
+For instance, a node might hand out a lock and the client release it,
+after a server node reboots but before a client that really "owns" it
+reclaims it. Depending on the application, that may cause serious
+problems.
+
 -- 
-1.7.6.4
-
+Jeff Layton <jlayton@redhat.com>
