@@ -1,82 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:13636 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:41223 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753186Ab2DXUgI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Apr 2012 16:36:08 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org,
-        Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] nfs4: fix referrals on mounts that use IPv6 addrs
-Date: Tue, 24 Apr 2012 16:35:20 -0400
-Message-Id: <1335299720-50765-1-git-send-email-dros@netapp.com>
+	id S1753687Ab2DJASy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Apr 2012 20:18:54 -0400
+Date: Tue, 10 Apr 2012 10:18:44 +1000
+From: NeilBrown <neilb@suse.de>
+To: Jim Rees <rees@umich.edu>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] fix page number calculation bug for block layout decode
+ buffer
+Message-ID: <20120410101844.62c09f57@notabene.brown>
+In-Reply-To: <1334013727-1931-1-git-send-email-rees@umich.edu>
+References: <1334013727-1931-1-git-send-email-rees@umich.edu>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/NrOIA5NinjIr.BXKwgbv3sR"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-All referrals (IPv4 addr, IPv6 addr, and DNS) are broken on mounts of
-IPv6 addresses, because validation code uses a path that is parsed
-from the dev_name ("<server>:<path>") by splitting on the first colon and
-colons are used in IPv6 addrs.
-This patch ignores colons within IPv6 addresses that are escaped by '[' and ']'.
+--Sig_/NrOIA5NinjIr.BXKwgbv3sR
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
-Reposted to address comments from Trond and Jim
+On Mon,  9 Apr 2012 19:22:07 -0400 Jim Rees <rees@umich.edu> wrote:
 
-This depends on commit 2f8e4bd91488f286e83e8abb14683102efaafb05
-"nfs: Enclose hostname in brackets when needed in nfs_do_root_mount".
+> Signed-off-by: Jim Rees <rees@umich.edu>
+> Suggested-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfs/blocklayout/blocklayout.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+>=20
+> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blockl=
+ayout.c
+> index 48cfac3..576da5b 100644
+> --- a/fs/nfs/blocklayout/blocklayout.c
+> +++ b/fs/nfs/blocklayout/blocklayout.c
+> @@ -872,7 +872,7 @@ nfs4_blk_get_deviceinfo(struct nfs_server *server, co=
+nst struct nfs_fh *fh,
+>  	 * GETDEVICEINFO's maxcount
+>  	 */
+>  	max_resp_sz =3D server->nfs_client->cl_session->fc_attrs.max_resp_sz;
+> -	max_pages =3D max_resp_sz >> PAGE_SHIFT;
+> +	max_pages =3D (max_resp_sz  + PAGE_SIZE - 1) >> PAGE_SHIFT;
 
- fs/nfs/nfs4namespace.c |   30 +++++++++++++++++++++++++++---
- 1 files changed, 27 insertions(+), 3 deletions(-)
+        max_pages =3D DIV_ROUND_UP(max_resp_sz, PAGE_SIZE);
 
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index 9c8eca3..8c84e73 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -52,6 +52,30 @@ Elong:
- }
- 
- /*
-+ * return the path component of "<server>:<path>"
-+ *  nfspath - the "<server>:<path>" string
-+ *  end - one past the last char that could contain "<server>:"
-+ * returns NULL on failure
-+ */
-+static char *nfs_path_component(const char *nfspath, const char *end)
-+{
-+	char *p;
-+
-+	if (*nfspath == '[') {
-+		/* parse [] escaped IPv6 addrs */
-+		p = strchr(nfspath, ']');
-+		if (p != NULL && (p + 1) < end && *(++p) == ':')
-+			return p + 1;
-+	} else {
-+		/* otherwise split on first colon */
-+		p = strchr(nfspath, ':');
-+		if (p != NULL && p < end)
-+			return p + 1;
-+	}
-+	return NULL;
-+}
-+
-+/*
-  * Determine the mount path as a string
-  */
- static char *nfs4_path(struct dentry *dentry, char *buffer, ssize_t buflen)
-@@ -59,9 +83,9 @@ static char *nfs4_path(struct dentry *dentry, char *buffer, ssize_t buflen)
- 	char *limit;
- 	char *path = nfs_path(&limit, dentry, buffer, buflen);
- 	if (!IS_ERR(path)) {
--		char *colon = strchr(path, ':');
--		if (colon && colon < limit)
--			path = colon + 1;
-+		char *path_component = nfs_path_component(path, limit);
-+		if (path_component)
-+			return path_component;
- 	}
- 	return path;
- }
--- 
-1.7.4.4
+??
 
+compiler should optimise the constant-divide into a shift, and it is more
+"obviously correct" this way.
+
+NeilBrown
+
+
+>  	dprintk("%s max_resp_sz %u max_pages %d\n",
+>  		__func__, max_resp_sz, max_pages);
+> =20
+
+
+--Sig_/NrOIA5NinjIr.BXKwgbv3sR
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
+
+iQIVAwUBT4N8ZDnsnt1WYoG5AQIc9hAAsC+ErfyQiSc6NL1mfa/p3tqXXc3dIRty
+aqO0CsVLTxyLb8KDk1T2mSgAn2+sXigbbWKJ5XxcBVCrMG2OISlMslZm1ievwQ9B
+gzi9KBG5GFJvp57M4aLs0u7odYb52OBbbOsQli3lFZtL9D15BgcLrh+MXAyinLwd
+c1b8OTzA9iIePpkw2G8DcUFq/Hg9w1WqQUxUYPpNxdtlTIFOfhBejfRN+4GEZOR2
+HVvmsGwF8rXsrTnOQbPulX6wKqbtSBhJYvG7bLx/gIXC/ZFu5Hcw4J34Sj1MPl8w
+pMq24k7Vg13KLJg7IiJW1LOrC/upnGymbPdCOHufnJSKau3Rn1wTy9t/jvc82gJe
+YUHZkcWigc4WNiymJHEp2QjFTWwmfeniluTBgULBpfytTTOqjvCCX7lj80eArdI5
+Jy2nBazp7V0XqGv5EUNE2Lrl9DTBNgsXEYbk3ia6BACrfqYQF5vp+Qx32J0tUF6Q
+ohTbBDact3pEFlVpTfi8vgn9pC0uiKRjPWnOSoy4OVRPpvfTmSjTl6pFxf/EcODr
+uz2LceePR1WD5cxSh3c8l3qwUTcA7GzHYl+tWSAvtBskqHAQ/RceA5o59mIwDsx+
+Urc1GTV31vbk+WFR9pEAFKp0dqvnO3hR3zdwCbqOhD+s6+k27MBlF4+YIwLyzLEq
+0WNDdsl91GQ=
+=VTNP
+-----END PGP SIGNATURE-----
+
+--Sig_/NrOIA5NinjIr.BXKwgbv3sR--
