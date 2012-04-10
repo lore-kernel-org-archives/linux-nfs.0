@@ -1,61 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:4512 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:39015 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751119Ab2DTTIk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 15:08:40 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
-        Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v2 0/8] Fix SECINFO procedure
-Date: Fri, 20 Apr 2012 15:08:30 -0400
-Message-Id: <1334948918-4706-1-git-send-email-bjschuma@netapp.com>
+	id S1752229Ab2DJNhi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Apr 2012 09:37:38 -0400
+Date: Tue, 10 Apr 2012 09:37:35 -0400
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: Grace period
+Message-ID: <20120410133735.GE18465@fieldses.org>
+References: <4F7F230A.6080506@parallels.com>
+ <20120406234039.GA20940@fieldses.org>
+ <4F82C6E3.3030009@parallels.com>
+ <20120409232618.GI10508@fieldses.org>
+ <4F841987.6090909@parallels.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <4F841987.6090909@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Tue, Apr 10, 2012 at 03:29:11PM +0400, Stanislav Kinsbursky wrote:
+> 10.04.2012 03:26, bfields@fieldses.org пишет:
+> >On Mon, Apr 09, 2012 at 03:24:19PM +0400, Stanislav Kinsbursky wrote:
+> >>07.04.2012 03:40, bfields@fieldses.org пишет:
+> >>>On Fri, Apr 06, 2012 at 09:08:26PM +0400, Stanislav Kinsbursky wrote:
+> >>>>Hello, Bruce.
+> >>>>Could you, please, clarify this reason why grace list is used?
+> >>>>I.e. why list is used instead of some atomic variable, for example?
+> >>>
+> >>>Like just a reference count?  Yeah, that would be OK.
+> >>>
+> >>>In theory it could provide some sort of debugging help.  (E.g. we could
+> >>>print out the list of "lock managers" currently keeping us in grace.)  I
+> >>>had some idea we'd make those lock manager objects more complicated, and
+> >>>might have more for individual containerized services.
+> >>
+> >>Could you share this idea, please?
+> >>
+> >>Anyway, I have nothing against lists. Just was curious, why it was used.
+> >>I added Trond and lists to this reply.
+> >>
+> >>Let me explain, what is the problem with grace period I'm facing
+> >>right know, and what I'm thinking about it.
+> >>So, one of the things to be containerized during "NFSd per net ns"
+> >>work is the grace period, and these are the basic components of it:
+> >>1) Grace period start.
+> >>2) Grace period end.
+> >>3) Grace period check.
+> >>3) Grace period restart.
+> >
+> >For restart, you're thinking of the fs/lockd/svc.c:restart_grace()
+> >that's called on aisngal in lockd()?
+> >
+> >I wonder if there's any way to figure out if that's actually used by
+> >anyone?  (E.g. by any distro init scripts).  It strikes me as possibly
+> >impossible to use correctly.  Perhaps we could deprecate it....
+> >
+> 
+> Or (since lockd kthread is visible only from initial pid namespace)
+> we can just hardcode "init_net" in this case. But it means, that
+> this "kill" logic will be broken if two containers shares one pid
+> namespace, but have separated networks namespaces.
+> Anyway, both (this one or Bruce's) solutions suits me.
+> 
+> >>So, the simplest straight-forward way is to make all internal stuff:
+> >>"grace_list", "grace_lock", "grace_period_end" work and both
+> >>"lockd_manager" and "nfsd4_manager" - per network namespace. Also,
+> >>"laundromat_work" have to be per-net as well.
+> >>In this case:
+> >>1) Start - grace period can be started per net ns in
+> >>"lockd_up_net()" (thus has to be moves there from "lockd()") and
+> >>"nfs4_state_start()".
+> >>2) End - grace period can be ended per net ns in "lockd_down_net()"
+> >>(thus has to be moved there from "lockd()"), "nfsd4_end_grace()" and
+> >>"fs4_state_shutdown()".
+> >>3) Check - looks easy. There is either svc_rqst or net context can
+> >>be passed to function.
+> >>4) Restart - this is a tricky place. It would be great to restart
+> >>grace period only for the networks namespace of the sender of the
+> >>kill signal. So, the idea is to check siginfo_t for the pid of
+> >>sender, then try to locate the task, and if found, then get sender's
+> >>networks namespace, and restart grace period only for this namespace
+> >>(of course, if lockd was started for this namespace - see below).
+> >
+> >If it's really the signalling that's the problem--perhaps we can get
+> >away from the signal-based interface.
+> >
+> >At least in the case of lockd I suspect we could.
+> >
+> 
+> I'm ok with that. So, if no objections will follow, I'll drop it and
+> send the patch. Or you want to do it?
 
-My initial SECINFO implementation was merged in 2.6.39, but accidentally
-got disabled in 3.0.  These patches re-enable SECINFO as part of LOOKUP
-and push it down to the v4 layer, instead of existing as an rpc_op (I
-create a "submount" rpc_op instead, see patch 5).
+Please do go ahead.
 
-I also noticed that SECINFO_NO_NAME was never run with the current xdr
-decoding logic.  Patch 6 fixes this problem.
+The safest approach might be:
+	- leave lockd's signal handling there (just accept that it may
+	  behave incorrectly in container case), assuming that's safe.
+	- add a printk ("signalling lockd to restart is deprecated",
+	  or something) if it's used.
 
-Changes in version 2:
-- Reorder the patches so I'm not doing cleanup in the beginning
-- Don't pre-clone an rpc_clnt for nfs_clone_server, instead fix passing an
-  rpc_authflavor_t through the nfs_clone_mount data.
+Then eventually we'll remove it entirely.
 
-Comments are appreciated!
+(But if that doesn't work, it'd likely also be OK just to remove it
+completely now.)
 
-- Bryan
-
-Bryan Schumaker (8):
-  NFS: Fix SECINFO_NO_NAME
-  NFS: Handle exceptions coming out of nfs4_proc_fs_locations()
-  NFS: Do secinfo as part of lookup
-  NFS: Remove secinfo knowledge out of the generic client
-  NFS: Create a submount rpc_op
-  NFS: Fix following referral mount points with different security
-  NFS: Honor the authflavor set in the clone mount data
-  NFS: Remove extra rpc_clnt argument to proc_lookup
-
- fs/nfs/client.c         |    5 +-
- fs/nfs/dir.c            |    6 +-
- fs/nfs/internal.h       |   20 +++----
- fs/nfs/namespace.c      |  140 ++++++-----------------------------------------
- fs/nfs/nfs3proc.c       |    3 +-
- fs/nfs/nfs4_fs.h        |   12 +++-
- fs/nfs/nfs4namespace.c  |  107 +++++++++++++++++++++++++++++++++++-
- fs/nfs/nfs4proc.c       |  111 +++++++++++++++++++++++++++++--------
- fs/nfs/nfs4xdr.c        |   26 ++++++---
- fs/nfs/proc.c           |    3 +-
- fs/nfs/super.c          |    4 +-
- include/linux/nfs_xdr.h |    5 +-
- 12 files changed, 261 insertions(+), 181 deletions(-)
-
--- 
-1.7.10
-
+--b.
