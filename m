@@ -1,153 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:48014 "EHLO mx2.suse.de"
+Received: from mailhub.sw.ru ([195.214.232.25]:27661 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753949Ab2DPMSF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Apr 2012 08:18:05 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 06/11] mm: Add get_kernel_page[s] for pinning of kernel addresses for I/O
-Date: Mon, 16 Apr 2012 13:17:50 +0100
-Message-Id: <1334578675-23445-7-git-send-email-mgorman@suse.de>
-In-Reply-To: <1334578675-23445-1-git-send-email-mgorman@suse.de>
-References: <1334578675-23445-1-git-send-email-mgorman@suse.de>
+	id S1755883Ab2DJMSw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Apr 2012 08:18:52 -0400
+Message-ID: <4F84250F.8050301@parallels.com>
+Date: Tue, 10 Apr 2012 16:18:23 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: Jeff Layton <jlayton@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH][RFC] nfsd/lockd: have locks_in_grace take a sb arg
+References: <1333455279-11200-1-git-send-email-jlayton@redhat.com>	<4F841D2A.9020504@parallels.com> <20120410080508.2c82225d@tlielax.poochiereds.net>
+In-Reply-To: <20120410080508.2c82225d@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch adds two new APIs get_kernel_pages() and get_kernel_page()
-that may be used to pin a vector of kernel addresses for IO. The initial
-user is expected to be NFS for allowing pages to be written to swap
-using aops->direct_IO(). Strictly speaking, swap-over-NFS only needs
-to pin one page for IO but it makes sense to express the API in terms
-of a vector and add a helper for pinning single pages.
+10.04.2012 16:05, Jeff Layton пишет:
+> On Tue, 10 Apr 2012 15:44:42 +0400
+> Stanislav Kinsbursky<skinsbursky@parallels.com>  wrote:
+>
+>> 03.04.2012 16:14, Jeff Layton пишет:
+>>> The main reason for the grace period is to prevent the server from
+>>> allowing an operation that might otherwise be denied once the client has
+>>> reclaimed all of its stateful objects.
+>>>
+>>> Currently, the grace period handling in the nfsd/lockd server code is
+>>> very simple. When the lock managers start, they stick an entry on a list
+>>> and set a timer. When the timers pop, then they remove the entry from
+>>> the list. The locks_in_grace check just looks to see if the list is
+>>> empty. If it is, then the grace period is considered to be over.
+>>>
+>>> This is insufficient for a clustered filesystem that is being served
+>>> from multiple nodes at the same time. In such a configuration, the grace
+>>> period must be coordinated in some fashion, or else one node might hand
+>>> out stateful objects that conflict with those that have not yet been
+>>> reclaimed.
+>>>
+>>> This patch paves the way for fixing this by adding a new export
+>>> operation called locks_in_grace that takes a superblock argument. The
+>>> existing locks_in_grace function is renamed to generic_locks_in_grace,
+>>> and a new locks_in_grace function that takes a superblock arg is added.
+>>> If a filesystem does not have a locks_in_grace export operation then the
+>>> generic version will be used.
+>>>
+>>> Care has also been taken to reorder calls such that locks_in_grace is
+>>> called last in compound conditional statements. Handling this for
+>>> clustered filesystems may involve upcalls, so we don't want to call it
+>>> unnecessarily.
+>>>
+>>> For now, this patch is just an RFC as I do not yet have any code that
+>>> overrides this function and am still specing out what that code should
+>>> look like.
+>>>
+>>
+>> Oops, I've noticed your patch after I replied in "Grace period" thread.
+>> This patch looks good, but doesn't explain, how this per-filesystem logic will
+>> work in case of sharing non-nested subdirectories with the same superblock.
+>> This is a valid situation. But how to handle grace period in this case?
+>
+>
+> It's a valid situation but one that's discouraged.
 
-Signed-off-by: Mel Gorman <mgorman@suse.de>
----
- include/linux/blk_types.h |    2 ++
- include/linux/fs.h        |    2 ++
- include/linux/mm.h        |    4 ++++
- mm/memory.c               |   53 +++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 61 insertions(+)
+But it looks like common case. In future we are going to get rid of using one 
+mounted file system for more than one virtual environment, but currently in 
+OpenVZ we do exactly this.
+And it looks like LXC uses chroot for containers as well...
 
-diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
-index 4053cbd..1e62642 100644
---- a/include/linux/blk_types.h
-+++ b/include/linux/blk_types.h
-@@ -150,6 +150,7 @@ enum rq_flag_bits {
- 	__REQ_FLUSH_SEQ,	/* request for flush sequence */
- 	__REQ_IO_STAT,		/* account I/O stat */
- 	__REQ_MIXED_MERGE,	/* merge of different types, fail separately */
-+	__REQ_KERNEL, 		/* direct IO to kernel pages */
- 	__REQ_NR_BITS,		/* stops here */
- };
- 
-@@ -191,5 +192,6 @@ enum rq_flag_bits {
- #define REQ_IO_STAT		(1 << __REQ_IO_STAT)
- #define REQ_MIXED_MERGE		(1 << __REQ_MIXED_MERGE)
- #define REQ_SECURE		(1 << __REQ_SECURE)
-+#define REQ_KERNEL		(1 << __REQ_KERNEL)
- 
- #endif /* __LINUX_BLK_TYPES_H */
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 5a71145..d8e2504 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -165,6 +165,8 @@ struct inodes_stat_t {
- #define READ			0
- #define WRITE			RW_MASK
- #define READA			RWA_MASK
-+#define KERNEL_READ		(READ|REQ_KERNEL)
-+#define KERNEL_WRITE		(WRITE|REQ_KERNEL)
- 
- #define READ_SYNC		(READ | REQ_SYNC)
- #define WRITE_SYNC		(WRITE | REQ_SYNC | REQ_NOIDLE)
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index 3cc96ab..aa39873 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -1023,6 +1023,10 @@ int get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
- 			struct page **pages, struct vm_area_struct **vmas);
- int get_user_pages_fast(unsigned long start, int nr_pages, int write,
- 			struct page **pages);
-+struct kvec;
-+int get_kernel_pages(const struct kvec *iov, int nr_pages, int write,
-+			struct page **pages);
-+int get_kernel_page(unsigned long start, int write, struct page **pages);
- struct page *get_dump_page(unsigned long addr);
- 
- extern int try_to_release_page(struct page * page, gfp_t gfp_mask);
-diff --git a/mm/memory.c b/mm/memory.c
-index 6105f47..0bc990e7 100644
---- a/mm/memory.c
-+++ b/mm/memory.c
-@@ -1837,6 +1837,59 @@ next_page:
- EXPORT_SYMBOL(__get_user_pages);
- 
- /*
-+ * get_kernel_pages() - pin kernel pages in memory
-+ * @kiov:	An array of struct kvec structures
-+ * @nr_segs:	number of segments to pin
-+ * @write:	pinning for read/write, currently ignored
-+ * @pages:	array that receives pointers to the pages pinned.
-+ *		Should be at least nr_segs long.
-+ *
-+ * Returns number of pages pinned. This may be fewer than the number
-+ * requested. If nr_pages is 0 or negative, returns 0. If no pages
-+ * were pinned, returns -errno. Each page returned must be released
-+ * with a put_page() call when it is finished with.
-+ */
-+int get_kernel_pages(const struct kvec *kiov, int nr_segs, int write,
-+		struct page **pages)
-+{
-+	int seg;
-+
-+	for (seg = 0; seg < nr_segs; seg++) {
-+		if (WARN_ON(kiov[seg].iov_len != PAGE_SIZE))
-+			return seg;
-+
-+		/* virt_to_page sanity checks the PFN */
-+		pages[seg] = virt_to_page(kiov[seg].iov_base);
-+		page_cache_get(pages[seg]);
-+	}
-+
-+	return seg;
-+}
-+EXPORT_SYMBOL_GPL(get_kernel_pages);
-+
-+/*
-+ * get_kernel_page() - pin a kernel page in memory
-+ * @start:	starting kernel address
-+ * @write:	pinning for read/write, currently ignored
-+ * @pages:	array that receives pointer to the page pinned.
-+ *		Must be at least nr_segs long.
-+ *
-+ * Returns 1 if page is pinned. If the page was not pinned, returns
-+ * -errno. The page returned must be released with a put_page() call
-+ * when it is finished with.
-+ */
-+int get_kernel_page(unsigned long start, int write, struct page **pages)
-+{
-+	const struct kvec kiov = {
-+		.iov_base = (void *)start,
-+		.iov_len = PAGE_SIZE
-+	};
-+
-+	return get_kernel_pages(&kiov, 1, write, pages);
-+}
-+EXPORT_SYMBOL_GPL(get_kernel_page);
-+
-+/*
-  * fixup_user_fault() - manually resolve a user page fault
-  * @tsk:	the task_struct to use for page fault accounting, or
-  *		NULL if faults are not to be recorded.
 -- 
-1.7.9.2
-
+Best regards,
+Stanislav Kinsbursky
