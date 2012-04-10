@@ -1,99 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:30268 "EHLO relay.sw.ru"
+Received: from minas.ics.muni.cz ([147.251.4.40]:37665 "EHLO minas.ics.muni.cz"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759290Ab2DYOW6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Apr 2012 10:22:58 -0400
-Subject: [PATCH 2/6] LockD: use existent per-net data function on service
- creation
-To: bfields@fieldses.org, Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Wed, 25 Apr 2012 18:22:47 +0400
-Message-ID: <20120425142247.22909.7047.stgit@localhost6.localdomain6>
-In-Reply-To: <20120425141934.22909.53047.stgit@localhost6.localdomain6>
-References: <20120425141934.22909.53047.stgit@localhost6.localdomain6>
+	id S1756223Ab2DJM4Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Apr 2012 08:56:25 -0400
+Date: Tue, 10 Apr 2012 14:55:52 +0200
+From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, jiri.horky@cesnet.cz
+Subject: Re: NFSv4 high availability setups
+Message-ID: <20120410125552.GC5074@ics.muni.cz>
+References: <20120405103124.GV4752@ics.muni.cz>
+ <20120405073901.63d1c749@tlielax.poochiereds.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=iso-8859-2
+In-Reply-To: <20120405073901.63d1c749@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch also replaces svc_rpcb_setup() with svc_bind().
+Hi Jeff, 
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+On Thu, Apr 05, 2012 at 07:39:01AM -0400, Jeff Layton wrote:
+> > As I understand, NFS4 uses state dir somewhere in /var/lib/nfs/rpc_pipefs.
+> > 
+> 
+> You're probably thinking of /var/lib/nfs/v4recovery.
 
----
- fs/lockd/svc.c |   23 +++++++----------------
- 1 files changed, 7 insertions(+), 16 deletions(-)
+yes, sorry for confusion.
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 58ddc38..71c6c31 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -259,9 +259,9 @@ static int lockd_up_net(struct svc_serv *serv, struct net *net)
- 	if (ln->nlmsvc_users++)
- 		return 0;
- 
--	error = svc_rpcb_setup(serv, net);
-+	error = svc_bind(serv, net);
- 	if (error)
--		goto err_rpcb;
-+		goto err_bind;
- 
- 	error = make_socks(serv, net);
- 	if (error < 0)
-@@ -270,7 +270,7 @@ static int lockd_up_net(struct svc_serv *serv, struct net *net)
- 
- err_socks:
- 	svc_rpcb_cleanup(serv, net);
--err_rpcb:
-+err_bind:
- 	ln->nlmsvc_users--;
- 	return error;
- }
-@@ -298,7 +298,6 @@ int lockd_up(struct net *net)
- {
- 	struct svc_serv *serv;
- 	int		error = 0;
--	struct lockd_net *ln = net_generic(net, lockd_net_id);
- 
- 	mutex_lock(&nlmsvc_mutex);
- 	/*
-@@ -324,17 +323,9 @@ int lockd_up(struct net *net)
- 		goto out;
- 	}
- 
--	error = svc_bind(serv, net);
--	if (error < 0) {
--		printk(KERN_WARNING "lockd_up: bind service failed\n");
--		goto destroy_and_out;
--	}
--
--	ln->nlmsvc_users++;
--
--	error = make_socks(serv, net);
-+	error = lockd_up_net(serv, net);
- 	if (error < 0)
--		goto err_start;
-+		goto err_net;
- 
- 	/*
- 	 * Create the kernel thread and wait for it to start.
-@@ -367,7 +358,7 @@ int lockd_up(struct net *net)
- 	 * Note: svc_serv structures have an initial use count of 1,
- 	 * so we exit through here on both success and failure.
- 	 */
--destroy_and_out:
-+err_net:
- 	svc_destroy(serv);
- out:
- 	if (!error)
-@@ -377,7 +368,7 @@ out:
- 
- err_start:
- 	lockd_down_net(serv, net);
--	goto destroy_and_out;
-+	goto err_net;
- }
- EXPORT_SYMBOL_GPL(lockd_up);
- 
+> > Can we put this state dir on a shared volume so that this state dir is common
+> > for all the front-ends serving the same content? Is is supposed to work and
+> > NFSv4 can merge its state with existing state on a shared disk?
+> > 
+> 
+> Not properly, no. nfsd expects to have complete control over that
+> directory. There's no locking or merging of the data there. A node will
+> also clean that directory out in some cases, and that will throw your
+> state tracking off.
 
+Thank you for information.
+
+Is there any (preferably simple) way to demonstrate that this does not work
+properly? E.g., if I share the same export through two or more NFSv4
+front-ends that share the v4recovery directory, do I trigger problems with
+this tool http://nfsv4.bullopensource.org/tools/tests/locktest.php?
+
+-- 
+Luká¹ Hejtmánek
