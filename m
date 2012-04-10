@@ -1,61 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:59171 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759166Ab2DZUHF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Apr 2012 16:07:05 -0400
-Message-ID: <4F99AADC.5000904@RedHat.com>
-Date: Thu, 26 Apr 2012 16:06:52 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Nick Alcock <nix@esperi.org.uk>
-CC: linux-nfs@vger.kernel.org, Nick Alcock <nick.alcock@oracle.com>
-Subject: Re: [PATCH 2/4] Make svc_auth_none always available.
-References: <1328472138-25750-1-git-send-email-nix@esperi.org.uk> <1328472138-25750-2-git-send-email-nix@esperi.org.uk>
-In-Reply-To: <1328472138-25750-2-git-send-email-nix@esperi.org.uk>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:46900 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754114Ab2DJAAS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Apr 2012 20:00:18 -0400
+Received: by iagz16 with SMTP id z16so6554579iag.19
+        for <linux-nfs@vger.kernel.org>; Mon, 09 Apr 2012 17:00:18 -0700 (PDT)
+References: <1334013727-1931-1-git-send-email-rees@umich.edu> <787F4D40-6513-4424-A297-FD608268EA56@oracle.com>
+In-Reply-To: <787F4D40-6513-4424-A297-FD608268EA56@oracle.com>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain;
+	charset=us-ascii
+Message-Id: <BCB4197C-4B6A-4935-846C-681126BD7E30@gmail.com>
+Cc: Jim Rees <rees@umich.edu>, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+From: Fred Isaman <faisaman4@gmail.com>
+Subject: Re: [PATCH] fix page number calculation bug for block layout decode buffer
+Date: Mon, 9 Apr 2012 20:00:12 -0400
+To: Chuck Lever <chuck.lever@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 02/05/2012 03:02 PM, Nick Alcock wrote:
-> From: Nick Alcock <nick.alcock@oracle.com>
-> 
-> svc_auth_none is only included in the build when GSS is compiled in, but is used
-> by svc_auth_unix, which is unconditionally included.
-> 
-> Include svc_auth_none unconditionally as well.
-> 
-> Signed-off-by: Nick Alcock <nick.alcock@oracle.com>
-> ---
->  src/Makefile.am |    7 +++----
->  1 files changed, 3 insertions(+), 4 deletions(-)
-> 
-> diff --git a/src/Makefile.am b/src/Makefile.am
-> index 6731ff9..509cf61 100644
-> --- a/src/Makefile.am
-> +++ b/src/Makefile.am
-> @@ -48,8 +48,8 @@ libtirpc_la_SOURCES = auth_none.c auth_unix.c authunix_prot.c bindresvport.c cln
->          getrpcport.c mt_misc.c pmap_clnt.c pmap_getmaps.c pmap_getport.c \
->          pmap_prot.c pmap_prot2.c pmap_rmt.c rpc_prot.c rpc_commondata.c \
->          rpc_callmsg.c rpc_generic.c rpc_soc.c rpcb_clnt.c rpcb_prot.c \
-> -        rpcb_st_xdr.c svc.c svc_auth.c svc_dg.c svc_auth_unix.c svc_generic.c \
-> -        svc_raw.c svc_run.c svc_simple.c svc_vc.c getpeereid.c \
-> +        rpcb_st_xdr.c svc.c svc_auth.c svc_dg.c svc_auth_unix.c svc_auth_none.c \
-> +        svc_generic.c svc_raw.c svc_run.c svc_simple.c svc_vc.c getpeereid.c \
->          auth_time.c auth_des.c authdes_prot.c
->  
->  ## XDR
-> @@ -57,8 +57,7 @@ libtirpc_la_SOURCES += xdr.c xdr_rec.c xdr_array.c xdr_float.c xdr_mem.c xdr_ref
->  
->  ## Secure-RPC
->  if GSS
-> -    libtirpc_la_SOURCES += auth_gss.c authgss_prot.c svc_auth_gss.c \
-> -		svc_auth_none.c
-> +    libtirpc_la_SOURCES += auth_gss.c authgss_prot.c svc_auth_gss.c
->      libtirpc_la_LDFLAGS += $(GSSGLUE_LIBS)
->      libtirpc_la_CFLAGS = -DHAVE_RPCSEC_GSS $(GSSGLUE_CFLAGS)
->  endif
-Committed...
 
-steved.
+
+On Apr 9, 2012, at 7:25 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+
+> Hi-
+> 
+> Since all the layouts (and I'm guessing the non-pNFS path too) seem to need this calculation, would it make sense to create an inline function in a header somewhere?
+> 
+
+nfs_page_array_len(0, size) would work. 
+
+Fred
