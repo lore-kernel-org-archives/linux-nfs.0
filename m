@@ -1,119 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:24513 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755055Ab2D0Vpg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Apr 2012 17:45:36 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 4 11/13] NFSv4.1 ref count nfs_client across filelayout data server io
-Date: Fri, 27 Apr 2012 17:53:51 -0400
-Message-Id: <1335563633-7191-12-git-send-email-andros@netapp.com>
-In-Reply-To: <1335563633-7191-1-git-send-email-andros@netapp.com>
-References: <1335563633-7191-1-git-send-email-andros@netapp.com>
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:61390 "EHLO
+	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754778Ab2DJXcR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Apr 2012 19:32:17 -0400
+Received: by obbtb18 with SMTP id tb18so438065obb.19
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Apr 2012 16:32:16 -0700 (PDT)
+Message-ID: <4F84C2FA.20700@gmail.com>
+Date: Tue, 10 Apr 2012 18:32:10 -0500
+From: Calvin Owens <jcalvinowens@gmail.com>
+MIME-Version: 1.0
+To: David Quigley <dpquigl@davequigley.com>
+CC: "Myklebust, Trond" <trond.myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [GSoC Project] Implementing NFS v4.2
+References: <4F7E32D4.3030201@gmail.com> <1333682276.4792.32.camel@lade.trondhjem.org> <4F837E87.3070204@gmail.com> <b4c5095c047099c1c299345e174c9476@countercultured.net>
+In-Reply-To: <b4c5095c047099c1c299345e174c9476@countercultured.net>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On 04/09/2012 07:34 PM, David Quigley wrote:
+> On 04/09/2012 20:27, Calvin Owens wrote:
+>> On 04/05/2012 10:17 PM, Myklebust, Trond wrote:
+>>> On Thu, 2012-04-05 at 19:03 -0500, Calvin Owens wrote:
+>>>> Hello all,
+>>>>
+>>>> I'm interested in implementing the draft specification for NFS v4.2
+>>>> as a
+>>>> Google Summer of Code project. That includes server-side copying,
+>>>> sparse
+>>>> files, and carrying fadvise() calls through to the server, among other
+>>>> things.
+>>>>
+>>>> The current document can be found here:
+>>>> http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-07
+>>>>
+>>>> Is this something that you need to be done? If so, I'd very much
+>>>> like to
+>>>> be involved. :)
+>>>
+>>> Hi Calvin,
+>>>
+>>> Labelled NFS is likely to be merged into 3.5 (if Dave Q finds the time
+>>> to port his existing code).
+>>>
+>>> Copy offload already exists in prototype form. The main remaining issue
+>>> is working out the user syscall interface, which really requires getting
+>>> all the interested filesystem maintainers to agree (we've started on
+>>> doing that).
+>>>
+>>> If you'd like to contribute, then I'd suggest looking into SEEK (for
+>>> providing lseek(SEEK_HOLE/SEEK_DATA) support. There is also the hole
+>>> punching/space reservation, that should fit nicely into the fallocate()
+>>> system call.
+>>
+>> Yes, that sounds good. I'll start looking into that.
+>>
+>>> The efficient sparse file read and fadvise support might be nice too,
+>>> but I'd like to see numbers for how they improve matters before I feel
+>>> comfortable saying yea or nay to adding those specific features.
+>>
+>> I definitely see your point. It does seem to be a lot of added
+>> complexity for a negligible benefit.
+>>
+>>> Note that there are also a bunch of NFSv4.1 features that have yet to be
+>>> implemented, so the above list of tasks is not exhaustive. I'd be happy
+>>> to work with you to find something...
+>>
+>> What else, precisely, would you like to get done? I need to get some
+>> more detailed objectives to put into my application. (Forgive me for
+>> so blatantly not looking myself, but it seems more efficient than me
+>> digging through the code finding missing features and lobbing them at
+>> you for approval, when I'm sure you know exactly where your priorities
+>> are...)
+>>
+>> Thanks very much,
+>> Calvin Owens
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at http://vger.kernel.org/majordomo-info.html
+>
+> Finishing up the port of Labeled NFS would be some low hanging fruit if
+> someone wants to help tackle it. I'll be trying to find time to work on
+> it but its unclear how soon I'll be able to get around to it.
+>
+> Dave
 
-Prepare to put a dis-connected DS client record.
+Okay. I took a look at your lnfs git tree - just to make sure I 
+understand: the patchset was originally against 2.6.33, and you're 
+working to make it apply to the current kernel, with the same 
+functionality? And stuff has changed enough since then that it's not 
+trivial? Or am I completely missing the point?
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4filelayout.c |   26 +++++++++++++++++++++-----
- 1 files changed, 21 insertions(+), 5 deletions(-)
-
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index c6b7c18..eb8eb00 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -101,6 +101,9 @@ static void filelayout_reset_write(struct nfs_write_data *data)
- 							&hdr->pages,
- 							hdr->completion_ops);
- 	}
-+	/* balance nfs_get_client in filelayout_write_pagelist */
-+	nfs_put_client(data->ds_clp);
-+	data->ds_clp     = NULL;
- }
- 
- static void filelayout_reset_read(struct nfs_read_data *data)
-@@ -122,6 +125,9 @@ static void filelayout_reset_read(struct nfs_read_data *data)
- 							&hdr->pages,
- 							hdr->completion_ops);
- 	}
-+	/* balance nfs_get_client in filelayout_read_pagelist */
-+	nfs_put_client(data->ds_clp);
-+	data->ds_clp = NULL;
- }
- 
- static int filelayout_async_handle_error(struct rpc_task *task,
-@@ -298,6 +304,8 @@ static void filelayout_read_release(void *data)
- {
- 	struct nfs_read_data *rdata = data;
- 
-+	if (!test_bit(NFS_IOHDR_REDO, &rdata->header->flags))
-+		nfs_put_client(rdata->ds_clp);
- 	rdata->header->mds_ops->rpc_release(data);
- }
- 
-@@ -395,6 +403,8 @@ static void filelayout_write_release(void *data)
- {
- 	struct nfs_write_data *wdata = data;
- 
-+	if (!test_bit(NFS_IOHDR_REDO, &wdata->header->flags))
-+		nfs_put_client(wdata->ds_clp);
- 	wdata->header->mds_ops->rpc_release(data);
- }
- 
-@@ -431,6 +441,7 @@ static void filelayout_commit_release(void *calldata)
- 
- 	data->completion_ops->completion(data);
- 	put_lseg(data->lseg);
-+	nfs_put_client(data->ds_clp);
- 	nfs_commitdata_release(data);
- }
- 
-@@ -476,9 +487,11 @@ filelayout_read_pagelist(struct nfs_read_data *data)
- 	ds = nfs4_fl_prepare_ds(lseg, idx);
- 	if (!ds)
- 		return PNFS_NOT_ATTEMPTED;
--	dprintk("%s USE DS: %s\n", __func__, ds->ds_remotestr);
-+	dprintk("%s USE DS: %s cl_count %d\n", __func__,
-+		ds->ds_remotestr, atomic_read(&ds->ds_clp->cl_count));
- 
- 	/* No multipath support. Use first DS */
-+	atomic_inc(&ds->ds_clp->cl_count);
- 	data->ds_clp = ds->ds_clp;
- 	fh = nfs4_fl_select_ds_fh(lseg, j);
- 	if (fh)
-@@ -512,11 +525,12 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
- 	ds = nfs4_fl_prepare_ds(lseg, idx);
- 	if (!ds)
- 		return PNFS_NOT_ATTEMPTED;
--	dprintk("%s ino %lu sync %d req %Zu@%llu DS: %s\n", __func__,
--		hdr->inode->i_ino, sync, (size_t) data->args.count, offset,
--		ds->ds_remotestr);
-+	dprintk("%s ino %lu sync %d req %Zu@%llu DS: %s cl_count %d\n",
-+		__func__, hdr->inode->i_ino, sync, (size_t) data->args.count,
-+		offset, ds->ds_remotestr, atomic_read(&ds->ds_clp->cl_count));
- 
- 	data->write_done_cb = filelayout_write_done_cb;
-+	atomic_inc(&ds->ds_clp->cl_count);
- 	data->ds_clp = ds->ds_clp;
- 	fh = nfs4_fl_select_ds_fh(lseg, j);
- 	if (fh)
-@@ -1048,8 +1062,10 @@ static int filelayout_initiate_commit(struct nfs_commit_data *data, int how)
- 		filelayout_commit_release(data);
- 		return -EAGAIN;
- 	}
--	dprintk("%s ino %lu, how %d\n", __func__, data->inode->i_ino, how);
-+	dprintk("%s ino %lu, how %d cl_count %d\n", __func__,
-+		data->inode->i_ino, how, atomic_read(&ds->ds_clp->cl_count));
- 	data->commit_done_cb = filelayout_commit_done_cb;
-+	atomic_inc(&ds->ds_clp->cl_count);
- 	data->ds_clp = ds->ds_clp;
- 	fh = select_ds_fh_from_commit(lseg, data->ds_commit_index);
- 	if (fh)
--- 
-1.7.6.4
-
+Thanks,
+Calvin Owens
