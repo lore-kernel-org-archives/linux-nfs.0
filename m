@@ -1,38 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:7976 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:47554 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754706Ab2DZSLo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Apr 2012 14:11:44 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 2/3] SUNRPC: traverse clients tree on PipeFS event
-Date: Thu, 26 Apr 2012 18:11:42 +0000
-Message-ID: <1335463902.9701.35.camel@lade.trondhjem.org>
-References: <20120420141419.10848.84280.stgit@localhost6.localdomain6>
-	 <20120420141925.10848.90395.stgit@localhost6.localdomain6>
-In-Reply-To: <20120420141925.10848.90395.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset="utf-8"
+	id S1752647Ab2DJNHY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Apr 2012 09:07:24 -0400
+Date: Tue, 10 Apr 2012 09:07:21 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH] vfs: take i_mutex on renamed file
+Message-ID: <20120410130721.GA18465@fieldses.org>
+References: <20120305223847.GA16444@fieldses.org>
+ <20120305224334.GB16444@fieldses.org>
+ <20120309222114.GA22423@fieldses.org>
+ <20120320192712.GA1431@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120320192712.GA1431@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTA0LTIwIGF0IDE4OjE5ICswNDAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3
-cm90ZToNCg0KPiArc3RhdGljIGludCBfX3JwY19waXBlZnNfZXZlbnQoc3RydWN0IHJwY19jbG50
-ICpjbG50LCB1bnNpZ25lZCBsb25nIGV2ZW50LA0KPiArCQkJCXN0cnVjdCBzdXBlcl9ibG9jayAq
-c2IpDQo+ICt7DQo+ICsJaW50IGVycm9yOw0KPiArDQo+ICsJaWYgKCFycGNfY2xudF9za2lwX2V2
-ZW50KGNsbnQsIGV2ZW50KSkgew0KPiArCQllcnJvciA9IF9fcnBjX2NsbnRfaGFuZGxlX2V2ZW50
-KGNsbnQsIGV2ZW50LCBzYik7DQo+ICsJCWlmIChlcnJvcikNCj4gKwkJCXJldHVybiBlcnJvcjsN
-Cj4gKwl9DQo+ICsJaWYgKGNsbnQgIT0gY2xudC0+Y2xfcGFyZW50KQ0KPiArCQlyZXR1cm4gX19y
-cGNfcGlwZWZzX2V2ZW50KGNsbnQtPmNsX3BhcmVudCwgZXZlbnQsIHNiKTsNCj4gKwlyZXR1cm4g
-MDsNCj4gK30NCg0KSGkgU3RhbmlzbGF2LA0KDQpSZWN1cnNpb24gaW4gdGhlIGtlcm5lbCBpcyBn
-ZW5lcmFsbHkgZnJvd25lZCB1cG9uIGR1ZSB0byB0aGUgc3RhY2sgc2l6ZQ0KbGltaXRzLiBDb3Vs
-ZCB5b3UgcGxlYXNlIHJld3JpdGUgdGhlIGFib3ZlIGludG8gYSBzaW1wbGUgbG9vcC4gU29tZXRo
-aW5nDQphbG9uZyB0aGUgbGluZXMgb2Y6DQoNCglmb3IoOzspIHsNCgkJLi4uDQoNCgkJaWYgKGNs
-bnQgPT0gY2xudC0+Y2xfcGFyZW50KQ0KCQkJYnJlYWs7DQoJCWNsbnQgPSBjbG50LT5jbF9wYXJl
-bnQ7DQoJfQ0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFp
-bmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29t
-DQoNCg==
+On Tue, Mar 20, 2012 at 03:27:12PM -0400, J. Bruce Fields wrote:
+> What are the chances of getting this reviewed for this merge cycle?  Is
+> it on somebody's list?
+> 
+> If it would make it any simpler: the one that I think absolutely must get wider
+> review, and get merged through Al's tree, is "vfs: take i_mutex on renamed
+> file".
+> 
+> There aren't actually any dependencies between that and the rest;
+
+Based on discussion at LSF, and absent any objections, I'm leaving "vfs:
+take i_mutex on renamed file" for Al to take, and merging the rest
+through the nfsd tree for 3.5.  (Al, assuming that's the correct thing
+to do, should I add an acked-by/reviewed-by for you to the patches I
+merge?)
+
+--b.
+
+> and
+> the rest is mainly in nfsd/ and locks.c (changes to which have mostly
+> been going through my tree anyway, I think); other than that:
+> 
+>  fs/attr.c           |    3 ++
+>  fs/namei.c          |   18 +++++++++++++-
+> 
+> straightforward changes that tend to look like:
+> 
+> 	+	error = break_deleg(inode, O_WRONLY);
+> 	+	if (error)
+> 	+		return error;
+> 
+>  include/linux/fs.h  |   19 +++++++++++++--
+> 
+> and some definitions.
+> 
+> --b.
