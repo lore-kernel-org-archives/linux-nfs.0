@@ -1,95 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:14533 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:34646 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753213Ab2DPLgT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Apr 2012 07:36:19 -0400
-Date: Mon, 16 Apr 2012 07:36:55 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Cc: Malahal Naineni <malahal@us.ibm.com>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        pstaubach@exagrid.com, miklos@szeredi.hu, viro@ZenIV.linux.org.uk,
-        hch@infradead.org, michael.brantley@deshaw.com,
-        sven.breuner@itwm.fraunhofer.de
-Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from
- getattr call
-Message-ID: <20120416073655.7cdb90cf@corrin.poochiereds.net>
-In-Reply-To: <4F8B1B7B.3040304@itwm.fraunhofer.de>
-References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
-	<20120413150518.GA1987@us.ibm.com>
-	<20120413114236.0e557e01@tlielax.poochiereds.net>
-	<4F8B1B7B.3040304@itwm.fraunhofer.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1752835Ab2DJNSd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Apr 2012 09:18:33 -0400
+Date: Tue, 10 Apr 2012 09:18:32 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH][RFC] nfsd/lockd: have locks_in_grace take a sb arg
+Message-ID: <20120410131832.GC18465@fieldses.org>
+References: <1333455279-11200-1-git-send-email-jlayton@redhat.com>
+ <20120409231849.GH10508@fieldses.org>
+ <20120410071317.0e60bcd5@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120410071317.0e60bcd5@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 15 Apr 2012 21:03:23 +0200
-Bernd Schubert <bernd.schubert@itwm.fraunhofer.de> wrote:
-
-> On 04/13/2012 05:42 PM, Jeff Layton wrote:
-> > (note: please don't trim the CC list!)
-> > 
-> > Indefinitely does make some sense (as Peter articulated in his original
-> > set). It's possible you could race several times in a row, or a server
-> > misconfiguration or something has happened and you have a transient
-> > error that will eventually recover. His assertion was that any limit on
-> > the number of retries is by definition wrong. For NFS, a fatal signal
-> > ought to interrupt things as well, so retrying indefinitely has some
-> > appeal there.
-> > 
-> > OTOH, we do have to contend with filesystems that might return ESTALE
-> > persistently for other reasons and that might not respond to signals.
-> > Miklos pointed out that some FUSE fs' do this in his review of Peter's
-> > set.
-> > 
-> > As a purely defensive coding measure, limiting the number of retries to
-> > something finite makes sense. If we're going to do that though, I'd
-> > probably recommend that we set the number of retries be something
-> > higher just so that this is more resilient in the face of multiple
-> > races. Those other fs' might "spin" a bit in that case but it is an
-> > error condition and IMO resiliency trumps performance -- at least in
->  this case.
+On Tue, Apr 10, 2012 at 07:13:17AM -0400, Jeff Layton wrote:
+> Yes, FS implementers should expect that this could get called
+> frequently and ensure that it doesn't generate undue load.
 > 
-> I am definitely voting against an infinite number of retries. I'm
-> working on FhGFS, which supports distributed meta data servers. So when
-> a file is moved around between directories, its file handle, which
-> contains the meta-data target id might become invalid. As NFSv3 is
-> stateless we cannot inform the client about that and must return ESTALE
-> then. NFSv4 is better, but I'm not sure how well invalidating a file
-> handle works. So retrying once on ESTALE might be a good idea, but
-> retrying forever is not.
-
-It's important to note that I'm only proposing to wrap syscalls this
-way that take a pathname argument. We can't do anything about those
-that don't since at that point we have no way to retry the lookup.
-
-So, I'm not sure this patch would affect the case you're concerned
-about one way or another. If you move the file to a different
-directory, then it's pathname would also change, and at that point
-you'd end up with an ENOENT error or something on the next retry.
-
-If the file was open and you were (for instance) reading or writing to
-it from a client when you moved it, then we can't retry the lookup at
-that point. The open is long since done and the pathname is now gone.
-You'll get an ESTALE back in userspace regardless.
-
-> Also, what about asymmetric HA servers? I believe to remember that also
-> resulted in ESTALE. So for example server1 exports /home and /scratch,
-> but on failure server2 can only take over /home and denies access to
-> /scratch.
+> I'd expect that any that do this via an upcall would ratelimit it in
+> some fashion during the grace period. They'd then set a flag or
+> something in the superblock afterward so they wouldn't need to upcall
+> anymore once it ends.
 > 
+> I'd rather push those smarts into the filesystems for now though in
+> order to allow for more flexibility. There are potential designs where
+> a fs could end up back in grace after initially leaving it and we
+> should allow for that.
 
-That sounds like a broken cluster configuration. Still...
+Even then a grace period transition should be rare, so I'd think they'd
+want to notify the kernel on the transition rather than polling?
 
-Presumably at some point in the future, a sysadmin would intervene and
-fix the situation such that /scratch is available again. Is it better
-to return an error to the application at that point, or simply allow it
-to keep retrying until the problem has been fixed?
+> 
+> > > @@ -3183,7 +3183,7 @@ nfs4_laundromat(void)
+> > >  	nfs4_lock_state();
+> > >  
+> > >  	dprintk("NFSD: laundromat service - starting\n");
+> > > -	if (locks_in_grace())
+> > > +	if (generic_locks_in_grace())
+> > >  		nfsd4_end_grace();
+> > 
+> > Looking at the code.... This is really just checking whether we've ended
+> > our own grace period.  The laundromat's scheduled to run a grace period
+> > after startup.  So I think we should just make this:
+> > 
+> > 	static bool grace_ended = false;
+> > 
+> > 	if (!grace_ended) {
+> > 		grace_ended = true;
+> > 		nfsd4_end_grace();
+> > 	}
+> > 
+> > or something.  No reason not to do that now.
+> > 
+> > (Hm, and maybe there's a reason to: locks_in_grace() could in theory
+> > still return true on a second run of nfs4_laundromat(), but
+> > nfsd4_end_grace() probably shouldn't really be run twice?)
+> > 
+> 
+> Most of the things that nfsd4_end_grace does should be safe to run
+> twice. The exception is nfsd4_recdir_purge_old which could be bad news.
+> So, doing what you suggest looks reasonable. I'll add that into the next
+> respin.
 
-The person with the long running job that's doing operations
-in /scratch would probably prefer the latter. If not, then they could
-always send the program a fatal signal to stop it altogether.
+Thanks; that at least I can merge whenever it's ready.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+--b.
