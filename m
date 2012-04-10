@@ -1,93 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:52934 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:33118 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752082Ab2DWO4V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Apr 2012 10:56:21 -0400
-Message-ID: <4F956D5C.5050801@RedHat.com>
-Date: Mon, 23 Apr 2012 10:55:24 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, miklos@szeredi.hu,
-        viro@ZenIV.linux.org.uk, hch@infradead.org,
-        michael.brantley@deshaw.com, sven.breuner@itwm.fraunhofer.de,
-        chuck.lever@oracle.com, pstaubach@exagrid.com, malahal@us.ibm.com,
-        bfields@fieldses.org, trond.myklebust@fys.uio.no, rees@umich.edu
-Subject: Re: [PATCH RFC v3] vfs: make fstatat retry once on ESTALE errors
- from getattr call
-References: <1334316311-22331-1-git-send-email-jlayton@redhat.com> <1334749927-26138-1-git-send-email-jlayton@redhat.com> <20120420104055.511e15bc@tlielax.poochiereds.net> <4F91C49D.8070908@RedHat.com> <20120420171300.326d6e36@corrin.poochiereds.net>
-In-Reply-To: <20120420171300.326d6e36@corrin.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1751144Ab2DJQDs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Apr 2012 12:03:48 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q3AG3mZF018389
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 10 Apr 2012 12:03:48 -0400
+Message-ID: <1334073825.2149.29.camel@localhost>
+Subject: ESTALE errors: What can be done to handle this problem.
+From: Sachin Prabhu <sprabhu@redhat.com>
+To: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Cc: jlayton@redhat.com, bfields@redhat.com, steved <steved@redhat.com>
+Date: Tue, 10 Apr 2012 17:03:45 +0100
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The change introduced by upstream patch
+4f48af45842c6e78ab958c90344d3c940db4da15
+means that the lookup call for a file will return a inode as being valid
+as long as 
+1) The directory containing the file was revalidated ie. the cached
+attributes are valid and it was found that there was no change in the
+directory since the attributes of the file were cached.
+2) We aren't doing a OPEN call or the LOOKUP_REVAL flag is not set.
 
+We no longer check to see if the file attributes themselves are valid.
+This patch was introduced in 2.6.23.
 
-On 04/20/2012 05:13 PM, Jeff Layton wrote:
-> On Fri, 20 Apr 2012 16:18:37 -0400
-> Steve Dickson <SteveD@redhat.com> wrote:
-> 
->> On 04/20/2012 10:40 AM, Jeff Layton wrote:
->>> I guess the questions at this point is:
->>>
->>> 1) How representative is Peter's mkdir_test() of a real-world workload?
->> Reading your email I had to wonder the same thing... What application 
->> removes hierarchy of directories in a loop from two different clients?
->> I would suspect not many, if any... esp over NFS... 
->>  
-> 
-> Peter's test just happens to demonstrate the problem well, but one
-> could envision someone removing a heirarchy of directories on the
-> server while we're trying to do other operations in it. At that point,
-> we can easily end up hitting an ESTALE twice while doing the lookup and
-> returning ESTALE back to userspace.
-Just curious, what happens when you run Peter's mkdir_test() on a
-local file system? Any errors returned? 
+This increases the chances of ESTALE errors on GETATTR calls if
+1) The attributes of the directory containing the file is refreshed on
+the client and the values stored in the attribute cache are still valid
+when the subsequent steps are run.
+2) The file is deleted on the server.
+3) The cached attributes of the file on the client have expired.
+4) We stat the file.
 
-I would think removing hierarchy of directories while they are being 
-accessed has to even cause local fs some type of havoc
+For a GETATTR call
+1) The lookup will return the inode as valid.
+2) The subsequent getattr call will notice that the attributes are no
+longer valid and will attempt a on the wire call which fails with an
+ESTALE. 
+We cannot recover at this point and return an ESTALE error to userland.
 
-> 
->>>
->>> 2) if we assume that it is fairly representative of one, how can we
->>> achieve retrying indefinitely with NFS, or at least some large finite
->>> amount?
->> The amount of looping would be peer speculation. If the problem can
->> not be handled by one simple retry I would say we simply pass the
->> error up to the app... Its an application issue... 
->>  
-> 
-> It's not an application issue. The application just asked the kernel
-> to do an operation on a pathname. The only reason you're getting an
-> ESTALE back in this situation is a shortcoming of the implementation.
-> 
-> We passed it a pathname after all, not a filehandle. ESTALE really has
-> no place as a return code in that situation...
-We'll have to agree to disagree... I think any application that is 
-removing hierarchies of file and directory w/out taking any 
-precautionary locking is a shortcoming of the application
-implementation.
-    
-> 
->>>
->>> I have my doubts as to whether it would really be as big a problem for
->>> other filesystems as Miklos and others have asserted, but I'll take
->>> their word for it at the moment. What's the best way to contain this
->>> behavior to just those filesystems that want to retry indefinitely when
->>> they get an ESTALE? Would we need to go with an entirely new
->>> ESTALERETRY after all?
->>>
->> Introducing a new errno to handle this problem would be overkill IMHO...
->>
->> If we have to go to the looping approach, I would strong suggest we
->> make the file systems register for this type of behavior...
->>
-> 
-> Returning ESTALERETRY would be registering for it in a way and it is
-> somewhat cleaner than having to go all the way back up to the fstype to
-> figure out whether you want to retry it or not.
-How would legacy apps handle this new errno, esp if they have logic
-to take care of ESTALE errors?
+We can easily reproduce this with the following reproducer.
 
-steved.
+On the server
+# while true; do date >b ; rm -f a ; mv b a;sleep 3; done
+
+On the client
+#while true; do stat a 2>&1 | grep Stale ; done
+
+We do not see this problem in kernels not containing this patch since we
+revalidate the file inode before we return the inode as valid in the
+lookup call. Here  we notice that the attribute cache is no longer valid
+and do an over the wire GETATTR call to fetch the latest file
+attributes. An ESTALE error in the lookup phase is handled by redoing
+the lookup call. This still has a potential of failing with an ESTALE if
+the attribute cache expires between the lookup and the getattr calls.
+But chances of this happening are relatively low.
+
+A workaround is to disable attribute caching which is accompanied by a
+huge performance hit. A proper fix would be to just redo the lookup call
+in case we ever encounter an ESTALE error with a limit to the number of
+retries which can be made. However this approach will involve a bit of
+work in the VFS layer. We have a user provided patch which does just
+this but is incomplete.
+
+Is this approach feasible? If not, what else can be done to avoid this
+problem.
+
+Sachin Prabhu
+
