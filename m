@@ -1,50 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52828 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:29279 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754124Ab2DLVZk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Apr 2012 17:25:40 -0400
-Date: Thu, 12 Apr 2012 17:25:34 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Bernd Schubert <bernd.schubert@fastmail.fm>
-Cc: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        "J. Bruce Fields" <bfields@redhat.com>, "Ted Ts'o" <tytso@mit.edu>,
-        Jan Kara <jack@suse.cz>, linux-nfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        yong.fan@whamcloud.com, sandeen@redhat.com, adilger@whamcloud.com
-Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
- may_flags' in nfsd_open()
-Message-ID: <20120412212534.GF6667@fieldses.org>
-References: <20120312154921.GB17153@pad.fieldses.org>
- <20120312222250.GD8991@fieldses.org>
- <20120313200117.GA21991@fieldses.org>
- <4F5FA827.8020606@itwm.fraunhofer.de>
- <20120313203446.GB21991@fieldses.org>
- <4F5FB771.9010805@fastmail.fm>
- <20120313212947.GK31995@pad.fieldses.org>
- <4F60AC0D.9020204@itwm.fraunhofer.de>
- <20120412204948.GE6667@fieldses.org>
- <4F8747A1.8060800@fastmail.fm>
+	id S1757542Ab2DJLpH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Apr 2012 07:45:07 -0400
+Message-ID: <4F841D2A.9020504@parallels.com>
+Date: Tue, 10 Apr 2012 15:44:42 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F8747A1.8060800@fastmail.fm>
+To: Jeff Layton <jlayton@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH][RFC] nfsd/lockd: have locks_in_grace take a sb arg
+References: <1333455279-11200-1-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1333455279-11200-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 12, 2012 at 11:22:41PM +0200, Bernd Schubert wrote:
-> On 04/12/2012 10:49 PM, J. Bruce Fields wrote:
-> > Stupid question: is there any fundamental feature of ext4 this depends
-> > on, or would this fix work equally well for fs/ext3?
-> 
-> First of all, Bruce and Ted, thanks a lot for your patience with those
-> patches!
-> 
-> I have not looked into it in detail yet, but it should be possible to
-> back port it to ext3. I don't think there is anything that would depend
-> on ext4. I also have ext3 on my todo list, but I first wanted to have it
-> in ext4 (in the sense of stability of ext3, if there still should be a
-> bug...) and I think for 3.4 it is too late now anyways. So unless there
-> are objections, lets target the back port to ext3 for 3.5?
+03.04.2012 16:14, Jeff Layton пишет:
+> The main reason for the grace period is to prevent the server from
+> allowing an operation that might otherwise be denied once the client has
+> reclaimed all of its stateful objects.
+>
+> Currently, the grace period handling in the nfsd/lockd server code is
+> very simple. When the lock managers start, they stick an entry on a list
+> and set a timer. When the timers pop, then they remove the entry from
+> the list. The locks_in_grace check just looks to see if the list is
+> empty. If it is, then the grace period is considered to be over.
+>
+> This is insufficient for a clustered filesystem that is being served
+> from multiple nodes at the same time. In such a configuration, the grace
+> period must be coordinated in some fashion, or else one node might hand
+> out stateful objects that conflict with those that have not yet been
+> reclaimed.
+>
+> This patch paves the way for fixing this by adding a new export
+> operation called locks_in_grace that takes a superblock argument. The
+> existing locks_in_grace function is renamed to generic_locks_in_grace,
+> and a new locks_in_grace function that takes a superblock arg is added.
+> If a filesystem does not have a locks_in_grace export operation then the
+> generic version will be used.
+>
+> Care has also been taken to reorder calls such that locks_in_grace is
+> called last in compound conditional statements. Handling this for
+> clustered filesystems may involve upcalls, so we don't want to call it
+> unnecessarily.
+>
+> For now, this patch is just an RFC as I do not yet have any code that
+> overrides this function and am still specing out what that code should
+> look like.
+>
 
-That sounds sensible, thanks!
+Oops, I've noticed your patch after I replied in "Grace period" thread.
+This patch looks good, but doesn't explain, how this per-filesystem logic will 
+work in case of sharing non-nested subdirectories with the same superblock.
+This is a valid situation. But how to handle grace period in this case?
+Also, don't we need to prevent of exporting the same file system parts but 
+different servers always, but not only for grace period?
 
---b.
+-- 
+Best regards,
+Stanislav Kinsbursky
