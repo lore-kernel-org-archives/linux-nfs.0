@@ -1,232 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:37386 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:35149 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752243Ab2DYOAW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Apr 2012 10:00:22 -0400
-Subject: [PATCH v2 3/3] SUNRPC: move per-net operations from svc_destroy()
-To: bfields@fieldses.org, Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Wed, 25 Apr 2012 18:00:10 +0400
-Message-ID: <20120425135847.16743.49290.stgit@localhost6.localdomain6>
-In-Reply-To: <20120425133756.13800.29973.stgit@localhost6.localdomain6>
-References: <20120425133756.13800.29973.stgit@localhost6.localdomain6>
+	id S1755271Ab2DJVP1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Apr 2012 17:15:27 -0400
+Date: Tue, 10 Apr 2012 17:15:26 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: don't use locks_in_grace to determine whether to
+ call nfs4_grace_end
+Message-ID: <20120410211526.GJ18465@fieldses.org>
+References: <1334070528-16019-1-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1334070528-16019-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v2:
-1) Increase per-net usage counted in lockd_up_net(), because of note 2.
+On Tue, Apr 10, 2012 at 11:08:48AM -0400, Jeff Layton wrote:
+> It's possible that lockd or another lock manager might still be on the
+> list after we call nfsd4_end_grace. If the laundromat thread runs
+> again at that point, then we could end up calling nfsd4_end_grace more
+> than once.
+> 
+> That's not only inefficient, but calling nfsd4_recdir_purge_old more
+> than once could be problematic. Fix this by adding a new global
+> "grace_ended" flag and use that to determine whether we've already
+> called nfsd4_grace_end.
 
-The idea is to separate service destruction and per-net operations, because
-these are two different things and it's mix looks ugly.
+Looks good to me, applying, thanks.--b.
 
-Notes:
-1) For NFS server this patch looks ugly (sorry for that). But these place will be
-rewritten soon during NFSd containerization.
-2) LockD per-net counter increase int lockd_up() was moved prior to
-make_socks() to make lockd_down_net() call safe in case of error.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
----
- fs/lockd/svc.c    |   27 +++++++++++++++------------
- fs/nfs/callback.c |    3 +++
- fs/nfsd/nfsctl.c  |    4 ++++
- fs/nfsd/nfssvc.c  |    7 +++++++
- net/sunrpc/svc.c  |    4 ----
- 5 files changed, 29 insertions(+), 16 deletions(-)
-
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index b7e92ed..3250f28 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -257,7 +257,7 @@ static int lockd_up_net(struct net *net)
- 	struct svc_serv *serv = nlmsvc_rqst->rq_server;
- 	int error;
- 
--	if (ln->nlmsvc_users)
-+	if (ln->nlmsvc_users++)
- 		return 0;
- 
- 	error = svc_rpcb_setup(serv, net);
-@@ -272,6 +272,7 @@ static int lockd_up_net(struct net *net)
- err_socks:
- 	svc_rpcb_cleanup(serv, net);
- err_rpcb:
-+	ln->nlmsvc_users--;
- 	return error;
- }
- 
-@@ -299,6 +300,7 @@ int lockd_up(struct net *net)
- {
- 	struct svc_serv *serv;
- 	int		error = 0;
-+	struct lockd_net *ln = net_generic(net, lockd_net_id);
- 
- 	mutex_lock(&nlmsvc_mutex);
- 	/*
-@@ -330,9 +332,11 @@ int lockd_up(struct net *net)
- 		goto destroy_and_out;
- 	}
- 
-+	ln->nlmsvc_users++;
-+
- 	error = make_socks(serv, net);
- 	if (error < 0)
--		goto destroy_and_out;
-+		goto err_start;
- 
- 	/*
- 	 * Create the kernel thread and wait for it to start.
-@@ -344,7 +348,7 @@ int lockd_up(struct net *net)
- 		printk(KERN_WARNING
- 			"lockd_up: svc_rqst allocation failed, error=%d\n",
- 			error);
--		goto destroy_and_out;
-+		goto err_start;
- 	}
- 
- 	svc_sock_update_bufs(serv);
-@@ -358,7 +362,7 @@ int lockd_up(struct net *net)
- 		nlmsvc_rqst = NULL;
- 		printk(KERN_WARNING
- 			"lockd_up: kthread_run failed, error=%d\n", error);
--		goto destroy_and_out;
-+		goto err_start;
- 	}
- 
- 	/*
-@@ -368,14 +372,14 @@ int lockd_up(struct net *net)
- destroy_and_out:
- 	svc_destroy(serv);
- out:
--	if (!error) {
--		struct lockd_net *ln = net_generic(net, lockd_net_id);
--
--		ln->nlmsvc_users++;
-+	if (!error)
- 		nlmsvc_users++;
--	}
- 	mutex_unlock(&nlmsvc_mutex);
- 	return error;
-+
-+err_start:
-+	lockd_down_net(net);
-+	goto destroy_and_out;
- }
- EXPORT_SYMBOL_GPL(lockd_up);
- 
-@@ -386,11 +390,10 @@ void
- lockd_down(struct net *net)
- {
- 	mutex_lock(&nlmsvc_mutex);
-+	lockd_down_net(net);
- 	if (nlmsvc_users) {
--		if (--nlmsvc_users) {
--			lockd_down_net(net);
-+		if (--nlmsvc_users)
- 			goto out;
--		}
- 	} else {
- 		printk(KERN_ERR "lockd_down: no users! task=%p\n",
- 			nlmsvc_task);
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 26b38fb..cff3940 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -314,6 +314,8 @@ out_err:
- 	dprintk("NFS: Couldn't create callback socket or server thread; "
- 		"err = %d\n", ret);
- 	cb_info->users--;
-+	if (serv)
-+		svc_shutdown_net(serv, net);
- 	goto out;
- }
- 
-@@ -328,6 +330,7 @@ void nfs_callback_down(int minorversion)
- 	cb_info->users--;
- 	if (cb_info->users == 0 && cb_info->task != NULL) {
- 		kthread_stop(cb_info->task);
-+		svc_shutdown_net(cb_info->serv, current->nsproxy->net_ns);
- 		svc_exit_thread(cb_info->rqst);
- 		cb_info->serv = NULL;
- 		cb_info->rqst = NULL;
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 7269988..efb3818 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -672,6 +672,8 @@ static ssize_t __write_ports_addfd(char *buf)
- 
- 	err = svc_addsock(nfsd_serv, fd, buf, SIMPLE_TRANSACTION_LIMIT);
- 	if (err < 0) {
-+		if (nfsd_serv->sv_nrthreads == 1)
-+			svc_shutdown_net(nfsd_serv, current->nsproxy->net_ns);
- 		svc_destroy(nfsd_serv);
- 		return err;
- 	}
-@@ -740,6 +742,8 @@ out_close:
- 		svc_xprt_put(xprt);
- 	}
- out_err:
-+	if (nfsd_serv->sv_nrthreads == 1)
-+		svc_shutdown_net(nfsd_serv, current->nsproxy->net_ns);
- 	svc_destroy(nfsd_serv);
- 	return err;
- }
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 0762f3c..3fffe6c 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -426,6 +426,9 @@ int nfsd_set_nrthreads(int n, int *nthreads)
- 		if (err)
- 			break;
- 	}
-+
-+	if (nfsd_serv->sv_nrthreads == 1)
-+		svc_shutdown_net(nfsd_serv, current->nsproxy->net_ns);
- 	svc_destroy(nfsd_serv);
- 
- 	return err;
-@@ -473,6 +476,8 @@ out_shutdown:
- 	if (error < 0 && !nfsd_up_before)
- 		nfsd_shutdown();
- out_destroy:
-+	if (nfsd_serv->sv_nrthreads == 1)
-+		svc_shutdown_net(nfsd_serv, current->nsproxy->net_ns);
- 	svc_destroy(nfsd_serv);		/* Release server */
- out:
- 	mutex_unlock(&nfsd_mutex);
-@@ -670,6 +675,8 @@ int nfsd_pool_stats_release(struct inode *inode, struct file *file)
- 	int ret = seq_release(inode, file);
- 	mutex_lock(&nfsd_mutex);
- 	/* this function really, really should have been called svc_put() */
-+	if (nfsd_serv->sv_nrthreads == 1)
-+		svc_shutdown_net(nfsd_serv, current->nsproxy->net_ns);
- 	svc_destroy(nfsd_serv);
- 	mutex_unlock(&nfsd_mutex);
- 	return ret;
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index e6d542c..b7210f5 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -537,8 +537,6 @@ EXPORT_SYMBOL_GPL(svc_shutdown_net);
- void
- svc_destroy(struct svc_serv *serv)
- {
--	struct net *net = current->nsproxy->net_ns;
--
- 	dprintk("svc: svc_destroy(%s, %d)\n",
- 				serv->sv_program->pg_name,
- 				serv->sv_nrthreads);
-@@ -553,8 +551,6 @@ svc_destroy(struct svc_serv *serv)
- 
- 	del_timer_sync(&serv->sv_temptimer);
- 
--	svc_shutdown_net(serv, net);
--
- 	/*
- 	 * The last user is gone and thus all sockets have to be destroyed to
- 	 * the point. Check this.
-
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfsd/nfs4state.c |   11 +++++++++--
+>  1 files changed, 9 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index a822e31..277c989 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -3155,10 +3155,17 @@ out:
+>  static struct lock_manager nfsd4_manager = {
+>  };
+>  
+> +static bool grace_ended;
+> +
+>  static void
+>  nfsd4_end_grace(void)
+>  {
+> +	/* do nothing if grace period already ended */
+> +	if (grace_ended)
+> +		return;
+> +
+>  	dprintk("NFSD: end of grace period\n");
+> +	grace_ended = true;
+>  	nfsd4_record_grace_done(&init_net, boot_time);
+>  	locks_end_grace(&nfsd4_manager);
+>  	/*
+> @@ -3183,8 +3190,7 @@ nfs4_laundromat(void)
+>  	nfs4_lock_state();
+>  
+>  	dprintk("NFSD: laundromat service - starting\n");
+> -	if (locks_in_grace())
+> -		nfsd4_end_grace();
+> +	nfsd4_end_grace();
+>  	INIT_LIST_HEAD(&reaplist);
+>  	spin_lock(&client_lock);
+>  	list_for_each_safe(pos, next, &client_lru) {
+> @@ -4718,6 +4724,7 @@ nfs4_state_start(void)
+>  	nfsd4_client_tracking_init(&init_net);
+>  	boot_time = get_seconds();
+>  	locks_start_grace(&nfsd4_manager);
+> +	grace_ended = false;
+>  	printk(KERN_INFO "NFSD: starting %ld-second grace period\n",
+>  	       nfsd4_grace);
+>  	ret = set_callback_cred();
+> -- 
+> 1.7.7.6
+> 
