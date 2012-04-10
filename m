@@ -1,125 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42342 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:39528 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751435Ab2D1L2Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 28 Apr 2012 07:28:16 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: NeilBrown <neilb@suse.de>
-Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/3] mountd: add trivial helpers for client-matching
-Date: Sat, 28 Apr 2012 07:28:11 -0400
-Message-Id: <1335612492-22574-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <20120428112639.GA22396@fieldses.org>
-References: <20120428112639.GA22396@fieldses.org>
+	id S1751053Ab2DJL3j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Apr 2012 07:29:39 -0400
+Message-ID: <4F841987.6090909@parallels.com>
+Date: Tue, 10 Apr 2012 15:29:11 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: Grace period
+References: <4F7F230A.6080506@parallels.com> <20120406234039.GA20940@fieldses.org> <4F82C6E3.3030009@parallels.com> <20120409232618.GI10508@fieldses.org>
+In-Reply-To: <20120409232618.GI10508@fieldses.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+10.04.2012 03:26, bfields@fieldses.org пишет:
+> On Mon, Apr 09, 2012 at 03:24:19PM +0400, Stanislav Kinsbursky wrote:
+>> 07.04.2012 03:40, bfields@fieldses.org пишет:
+>>> On Fri, Apr 06, 2012 at 09:08:26PM +0400, Stanislav Kinsbursky wrote:
+>>>> Hello, Bruce.
+>>>> Could you, please, clarify this reason why grace list is used?
+>>>> I.e. why list is used instead of some atomic variable, for example?
+>>>
+>>> Like just a reference count?  Yeah, that would be OK.
+>>>
+>>> In theory it could provide some sort of debugging help.  (E.g. we could
+>>> print out the list of "lock managers" currently keeping us in grace.)  I
+>>> had some idea we'd make those lock manager objects more complicated, and
+>>> might have more for individual containerized services.
+>>
+>> Could you share this idea, please?
+>>
+>> Anyway, I have nothing against lists. Just was curious, why it was used.
+>> I added Trond and lists to this reply.
+>>
+>> Let me explain, what is the problem with grace period I'm facing
+>> right know, and what I'm thinking about it.
+>> So, one of the things to be containerized during "NFSd per net ns"
+>> work is the grace period, and these are the basic components of it:
+>> 1) Grace period start.
+>> 2) Grace period end.
+>> 3) Grace period check.
+>> 3) Grace period restart.
+>
+> For restart, you're thinking of the fs/lockd/svc.c:restart_grace()
+> that's called on aisngal in lockd()?
+>
+> I wonder if there's any way to figure out if that's actually used by
+> anyone?  (E.g. by any distro init scripts).  It strikes me as possibly
+> impossible to use correctly.  Perhaps we could deprecate it....
+>
 
-Pull out a tiny bit of common logic from three functions.
+Or (since lockd kthread is visible only from initial pid namespace) we can just 
+hardcode "init_net" in this case. But it means, that this "kill" logic will be 
+broken if two containers shares one pid namespace, but have separated networks 
+namespaces.
+Anyway, both (this one or Bruce's) solutions suits me.
 
-Possibly minor overkill, but simplifies the next patch.
+>> So, the simplest straight-forward way is to make all internal stuff:
+>> "grace_list", "grace_lock", "grace_period_end" work and both
+>> "lockd_manager" and "nfsd4_manager" - per network namespace. Also,
+>> "laundromat_work" have to be per-net as well.
+>> In this case:
+>> 1) Start - grace period can be started per net ns in
+>> "lockd_up_net()" (thus has to be moves there from "lockd()") and
+>> "nfs4_state_start()".
+>> 2) End - grace period can be ended per net ns in "lockd_down_net()"
+>> (thus has to be moved there from "lockd()"), "nfsd4_end_grace()" and
+>> "fs4_state_shutdown()".
+>> 3) Check - looks easy. There is either svc_rqst or net context can
+>> be passed to function.
+>> 4) Restart - this is a tricky place. It would be great to restart
+>> grace period only for the networks namespace of the sender of the
+>> kill signal. So, the idea is to check siginfo_t for the pid of
+>> sender, then try to locate the task, and if found, then get sender's
+>> networks namespace, and restart grace period only for this namespace
+>> (of course, if lockd was started for this namespace - see below).
+>
+> If it's really the signalling that's the problem--perhaps we can get
+> away from the signal-based interface.
+>
+> At least in the case of lockd I suspect we could.
+>
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- utils/mountd/auth.c   |   20 +++++++++++++++++---
- utils/mountd/cache.c  |   14 +++-----------
- utils/mountd/mountd.h |    4 ++++
- 3 files changed, 24 insertions(+), 14 deletions(-)
+I'm ok with that. So, if no objections will follow, I'll drop it and send the 
+patch. Or you want to do it?
 
-diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
-index ccc849a..7aa00c4 100644
---- a/utils/mountd/auth.c
-+++ b/utils/mountd/auth.c
-@@ -131,6 +131,22 @@ get_client_hostname(const struct sockaddr *caller, struct addrinfo *ai,
- 	return strdup("DEFAULT");
- }
- 
-+bool ipaddr_client_matches(char *dom, nfs_export *exp, struct addrinfo *ai)
-+{
-+	return use_ipaddr && client_check(exp->m_client, ai);
-+}
-+
-+bool namelist_client_matches(char *dom, nfs_export *exp, struct addrinfo *ai)
-+{
-+	return !use_ipaddr && client_member(dom, exp->m_client->m_hostname);
-+}
-+
-+bool client_matches(char *dom, nfs_export *exp, struct addrinfo *ai)
-+{
-+	return ipaddr_client_matches(dom, exp, ai)
-+		|| namelist_client_matches(dom, exp, ai);
-+}
-+
- /* return static nfs_export with details filled in */
- static nfs_export *
- auth_authenticate_newcache(const struct sockaddr *caller,
-@@ -155,9 +171,7 @@ auth_authenticate_newcache(const struct sockaddr *caller,
- 		for (exp = exportlist[i].p_head; exp; exp = exp->m_next) {
- 			if (strcmp(path, exp->m_export.e_path))
- 				continue;
--			if (!use_ipaddr && !client_member(my_client.m_hostname, exp->m_client->m_hostname))
--				continue;
--			if (use_ipaddr && !client_check(exp->m_client, ai))
-+			if (!client_matches(my_client.m_hostname, exp, ai))
- 				continue;
- 			break;
- 		}
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 08ff150..02d5313 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -587,7 +587,7 @@ static void nfsd_fh(FILE *f)
- 				next_exp = exp->m_next;
- 			}
- 
--			if (!use_ipaddr && !client_member(dom, exp->m_client->m_hostname))
-+			if (!namelist_client_matches(dom, exp, ai))
- 				continue;
- 			if (exp->m_export.e_mountpoint &&
- 			    !is_mountpoint(exp->m_export.e_mountpoint[0]?
-@@ -597,7 +597,7 @@ static void nfsd_fh(FILE *f)
- 
- 			if (!match_fsid(&parsed, exp, path))
- 				continue;
--			if (use_ipaddr && !client_check(exp->m_client, ai))
-+			if (!ipaddr_client_matches(dom, exp, ai))
- 				continue;
- 			if (!found || subexport(&exp->m_export, found)) {
- 				found = &exp->m_export;
-@@ -751,17 +751,9 @@ static int path_matches(nfs_export *exp, char *path)
- }
- 
- static int
--client_matches(nfs_export *exp, char *dom, struct addrinfo *ai)
--{
--	if (use_ipaddr)
--		return client_check(exp->m_client, ai);
--	return client_member(dom, exp->m_client->m_hostname);
--}
--
--static int
- export_matches(nfs_export *exp, char *dom, char *path, struct addrinfo *ai)
- {
--	return path_matches(exp, path) && client_matches(exp, dom, ai);
-+	return path_matches(exp, path) && client_matches(dom, exp, ai);
- }
- 
- static nfs_export *
-diff --git a/utils/mountd/mountd.h b/utils/mountd/mountd.h
-index 4c184d2..189db7e 100644
---- a/utils/mountd/mountd.h
-+++ b/utils/mountd/mountd.h
-@@ -56,4 +56,8 @@ struct nfs_fh_len *
- 		cache_get_filehandle(nfs_export *exp, int len, char *p);
- int		cache_export(nfs_export *exp, char *path);
- 
-+bool ipaddr_client_matches(char *dom, nfs_export *exp, struct addrinfo *ai);
-+bool namelist_client_matches(char *dom, nfs_export *exp, struct addrinfo *ai);
-+bool client_matches(char *dom, nfs_export *exp, struct addrinfo *ai);
-+
- #endif /* MOUNTD_H */
+BTW, I tried this "pid from siginfo" approach yesterday. And it doesn't work, 
+because sender usually dead already, when lookup for task by pid is performed.
+
+> Or perhaps the decision to share a single lockd thread (or set of nsfd
+> threads) among multiple network namespaces was a poor one.  But I
+> realize multithreading lockd doesn't look easy.
+>
+
+This decision was the best one in current circumstances.
+Having Lockd thread (or NFSd threads) per container looks easy to implement on 
+first sight. But kernel threads currently supported only in initial pid 
+namespace. I.e. it means that per-container kernel thread won't be visible in 
+container, if it has it's own pid namespace. And there is no way to put a kernel 
+thread into container.
+In OpenVZ we have per-container kernel threads. But integrating this feature to 
+mainline looks hopeless (or very difficult) to me. At least for now.
+So this problem with signals remains unsolved.
+
+So, as it looks to me, this "one service per all" is the only one suitable for 
+now. But there are some corner cases which have to be solved.
+
+Anyway, Jeff's question is still open.
+Do we need to prevent people from exporting nested directories from different 
+network namespaces?
+And if yes, how to do this?
+
 -- 
-1.7.7.6
-
+Best regards,
+Stanislav Kinsbursky
