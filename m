@@ -1,146 +1,325 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:1444 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759546Ab2D0TbK convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Apr 2012 15:31:10 -0400
-Subject: Re: [PATCH 0/6] Extended file stat system call
-Mime-Version: 1.0 (Apple Message framework v1084)
+Received: from fieldses.org ([174.143.236.118]:55053 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759598Ab2DJXCF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Apr 2012 19:02:05 -0400
+Date: Tue, 10 Apr 2012 19:02:03 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kevin Coffman <kwc@umich.edu>
+Cc: NFS list <linux-nfs@vger.kernel.org>, Steve Dickson <SteveD@redhat.com>
+Subject: Re: RFC: Handling GSS rotated data
+Message-ID: <20120410230202.GM18465@fieldses.org>
+References: <CAKnQG+dVhQ3JSXJnQihzs0FnS_aeyUKftDX7j7X6iJTjRGMzPQ@mail.gmail.com>
+ <20120410215633.GL18465@fieldses.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-From: Andreas Dilger <adilger@dilger.ca>
-In-Reply-To: <20120427131306.GG9541@dastard>
-Date: Fri, 27 Apr 2012 13:31:07 -0600
-Cc: David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
-        wine-devel@winehq.org, kfm-devel@kde.org, nautilus-list@gnome.org,
-        linux-api@vger.kernel.org, libc-alpha@sourceware.org
-Message-Id: <F2018580-9ACC-4A63-A8D1-155FA371749A@dilger.ca>
-References: <20120427010610.GE9541@dastard> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <4111.1335519545@redhat.com> <20120427131306.GG9541@dastard>
-To: Dave Chinner <david@fromorbit.com>
+In-Reply-To: <20120410215633.GL18465@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2012-04-27, at 7:13 AM, Dave Chinner wrote:
-> Have a look at fs/xfs/xfs_dinode.h. There's a bunch of flags defined
-> at the bottom of the file.
+On Tue, Apr 10, 2012 at 05:56:33PM -0400, bfields wrote:
+> On Wed, Apr 04, 2012 at 06:28:47PM -0400, Kevin Coffman wrote:
+> > This bug points out a deficiency in the GSS code previously added to the kernel:
+> > 
+> > https://bugzilla.redhat.com/show_bug.cgi?id=796992
+> > 
+> > The spec (RFC 4121 section 4.2.5) says, "The receiver MUST be able to
+> > interpret all possible rotation count values, including rotation
+> > counts greater than the length of the token."  Note that an
+> > implementation is never required to send rotated data.  However it is
+> > required to be able to handle receiving rotated data.  Windows is the
+> > only implementation that I am aware of that currently sends tokens
+> > with rotated data.
+> > 
+> > Attached is a patch (with way too much debugging) to handle the
+> > rotated data we have seen from Microsoft clients.  Admittedly, it does
+> > not handle all cases, which is required to be fully compliant with the
+> > spec.  I will not have the time to devote to making it fully
+> > compliant.  I submit this patch as an RFC and for someone else to
+> > complete!  Also note that I may have over-complicating things!!
 > 
-> Stuff like the "nodefrag", "nodump", and "prealloc" bits seem fairly
-> generic - they are for indicating that files are to be avoided for
-> defrag or backup purposes, the prealloc bit indicates that fallocate
-> has been used to reserve space on the inode (finding files that space
-> can be punched out of safely), and so on.
-
-There is already the FS_NODUMP_FL in the standard FS_IOC_GETFLAGS ioctl
-and I expect this to be in statxat() also.  In ext4 there was also an
-EXT4_EOFBLOCKS_FL added for inodes with fallocate'd data beyond EOF,
-but Eric thought it was a pain to maintain and it has been deprecated
-in ext4 and e2fsprogs recently.
-
-> Currently these things are queried and manipulated by ioctls
-> (XFS_IOC_FSX[GS]ETATTR) along with extent size hints, project
-> quotas, etc. but I think there's some wider use for many of the
-> flags, which is why I was asking is there's any thought to this sort
-> of flag being exposed by the VFS.
+> Thanks!
 > 
-> Historically the flags exposed by the VFS are those used by extN - I
-> see little reason why we should favour one filesystem's flags over
-> any others in an extended stat interface if they are generically
-> useful....
-
-Sure, they started as ext4 flags because the "lsattr" and "chattr"
-tools were using this ioctl/flags, but have become more generic in
-recent years.  FS_NOTAIL_FL was added for Reiserfs, and FS_NOCOW_FL
-was added for another filesystem (maybe Btrfs?).  I'm not against
-adding more flags here that are generically useful, and recommended
-that statxat() have a 64-bit st_ioc_flags, since there are already
-22 FS_*_FL flags defined today.
-
->> Either you can add some of them to the ioc flags (which may be
->> impractical, I grant you) or we'd have to add an arbitrary fs-type
->> specific field and specify the host fs (the provision of which might
->> not be a bad idea in and of itself) to tell userspace how to interpret them.
+> But I'm not going to agree to implementing another subset of the
+> cases--we already fell into that trap once, let's not do it again.
 > 
-> Well, that's the complexity, isn't it. I have no good answer to
-> that...
+> Even if it means we have to do something slow and stupid as the first
+> pass, I'd rather have something complete....
+
+By the way, did the cases you saw form microsoft all have a small
+rotation value?
+
+So, one approach xdr_buf_subsegment() can calculate a new xdr_buf that
+has the "correct" head, tail, and page lengths (making
+realhead/realpage/realtail unnecessary).
+
+And read_bytes_from_xdr_buf()/write_bytes_from_xdr_buf() already know
+how to do scatter/gather copies from/to an xdr_buf.
+
+And then we can use those to repeatedly shift by up to LOCAL_BUF_LEN
+bytes until we've rotated the right amount.  Assuming the typical case
+is a small (less than LOCAL_BUF_LEN) rotation value, that will only
+require one pass.  So maybe it's not too horrible.
+
+So, something like:
+
+	rrc = rrc % buf->len;
+	xdr_buf_subsegment(buf, subbuf, offset, buf->len);
+	while (shifted < rrc) {
+		this_shift = min(rrc, LOCAL_BUF_LEN);
+		shift_buf_a_little(subbuf, this_shift);
+		shifted += this_shift;
+	}
+
+void shift_buf_a_little(buf, shift)
+{
+	char head[LOCAL_BUF_LEN];
+	
+	BUG_ON(shift > LOCAL_BUF_LEN);
+
+	read_bytes_from_xdr_buf(buf, 0, head, shift);
+	for (i=0; i + shift < buf->len; i += shift) {
+		char tmp[LOCAL_BUF_LEN];
+		this_len = min(shift, buf->len - i);
+		read_bytes_from_xdr_buf(buf, i+shift, tmp, this_len);
+		write_bytes_to_xdr_buf(buf, i, tmp, this_len);
+	}
+	write_bytes_to_xdr_buf(buf, buf->len - shift, head, shift);
+}
+
+?
+
+Uh, but I'm not certain of that second function.
+
+--b.
+
 > 
->>> Along the same lines, filesytsems can have different allocation
->>> constraints to IO the filesystem block size - ext4 with it's
->>> bigalloc hack, XFS with it's per-inode extent size hints and the
->>> realtime device, etc. Then there's optimal IO characteristics
->>> (e.g. geometery hints like stripe unit/stripe width for the
->>> allocation policy of that given file) that applications could
->>> use if they were present rather than having to expose them
->>> through ioctls that nobody even knows about...
->> 
->> Yeah...  Not representable by one number.  You'd have to unset a
->> flag to say you were providing this information.
->> 
->> However, providing a whole bunch of hints about I/O characteristics
->> is probably beyond this syscall - especially if it isn't constant
->> over the length of a file.  That's specialist knowledge that most
->> applications don't need to know.  
->> Having a generic way to retrieve it, though, may be a good idea.
+> --b.
 > 
-> We're continually talking about applications giving us usage hints
-> on what IO they are going to do so the storage can optimise the IO.
-> IO is still a GIGO problem, though, and the idea of geometry hints
-> is to enable us to tell the application to do well formed IO. i.e.
-> less garbage.
-> 
-> XFS has ioctls to expose filesystem geometry, optimal IO sizes, the
-> alignment limits for direct IO, etc, and they are very useful to
-> applications that care about high performance IO. A lot of this can
-> be distilled down to a simple set of geometries, and generally
-> speaking they don't change mid way through a file....
-> 
->> OTOH, there's plenty of uncommitted space, so if we can condense
->> the hints down to something small, we could perhaps add it later -
->> but from your paragraph above, it doesn't sound like it'll be small.
-> 
-> Allocation block size, minimum sane IO size (to avoid page cache RMW
-> cycles or DIO zeroing), minimum prefered IO size (e.g. stripe unit),
-> optimal IO size for bandwidth (e.g. stripe width). I don't think
-> there's much more than that which will be really usable by
-> applications.
-
-I think this is a minimal set that makes sense, and is manageable for
-both the interface and for users.  Even if it isn't 100% correct for
-every file of every filesystem, it still makes sense for many systems.
-I'd suggest st_frsize (like BSD statvfs() f_frsize) would be the
-minimum fragment or page size, st_iosize (BSD f_iosize) could be
-the optimal IO size, and "st_stripesize" for the minimum preferred RAID/chunk size.
-
-One could argue that "st_blksize" is used for the "optimal IO size"
-on Linux today, but this is an overloaded term.  It _appears_ to
-represent the filesystem blocksize, which it usually is not, and on
-BSD st_bsize means the minimum blocksize and has a confusingly
-similar name.  Since any application using this API needs to do some
-extra coding already, we may as well give the structure members good
-names that are not ambiguous.
-
->>> Perhaps also exposing the project ID for quota purposes, like we
->>> do UID and GID. That way we wouldn't need a filesystem specific
->>> ioctl to read it....
->> 
->> Is this an XFS only thing?  If so, can it be generalised?
-> 
-> Right now it is, but there's been patches in the past to introduce
-> project quotas to ext4. That didn't go far because it was done in a
-> way that was semantically different to XFS (for no reason that I
-> could understand) and nobody wanted two different sets of semantics
-> for the "same" feature.  The most common use of project quotas is to
-> implement sub-tree quotas, which is probably of more interest to
-> btrfs folks as it is an exact match for per-subvolume quotas.
-> 
-> So, yes, I do see it as something generically useful - it's a
-> feature that a lot of people use XFS specifically for....
-
-I'd agree.  There was the tree quota project for ext4, and I've also
-heard this is available in other filesystems.
-
-Cheers, Andreas
-
-
-
-
-
+> diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+> index 2763e3e..b824067 100644
+> --- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
+> +++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+> @@ -384,7 +384,6 @@ gss_unwrap_kerberos_v1(struct krb5_ctx *kctx, int offset, struct xdr_buf *buf)
+>   * We cannot currently handle tokens with rotated data.  We need a
+>   * generalized routine to rotate the data in place.  It is anticipated
+>   * that we won't encounter rotated data in the general case.
+> - */
+>  static u32
+>  rotate_left(struct krb5_ctx *kctx, u32 offset, struct xdr_buf *buf, u16 rrc)
+>  {
+> @@ -397,6 +396,139 @@ rotate_left(struct krb5_ctx *kctx, u32 offset, struct xdr_buf *buf, u16 rrc)
+>  		"rrc %u, realrrc %u\n", __func__, rrc, realrrc);
+>  	return 1;
+>  }
+> + */
+> +
+> +#include <linux/ctype.h>
+> +void print_xdrbuf(const char *msg, struct xdr_buf *x);
+> +void print_xdrbuf_data(const char *msg, struct xdr_buf *x, unsigned int offset);
+> +
+> +#define LOCAL_BUF_LEN 32
+> +
+> +static u32
+> +rotate_left(struct krb5_ctx *kctx, u32 offset, struct xdr_buf *buf, u16 rrc)
+> +{
+> +	unsigned int realhead, realpage, realtail;
+> +	unsigned int remainder;
+> +	unsigned int rot_len = buf->len - offset - 16;
+> +	unsigned int realrrc = rrc % rot_len;
+> +	struct kvec *head, *tail;
+> +	void *headstart;    /* start of data past rpc header */
+> +	u32 err;
+> +
+> +	printk("%s: rrc %u, buf->len %u, offset %u, rot_len %u, realrrc %u\n",
+> +		__func__, rrc, buf->len, offset, rot_len, realrrc);
+> +	print_xdrbuf("in rotate_left", buf);
+> +	print_xdrbuf_data("BEFORE: ", buf, offset);
+> +
+> +	if (realrrc == 0)
+> +		return 0;
+> +
+> +	/*
+> +	 * At the time this function is called, the only length
+> +	 * values we can absolutely trust are buf->len (the length
+> +	 * of data actually read off the network) and buf->buflen
+> +	 * (the total available buffer space).
+> +	 *
+> +	 * The head, tail, and page lengths are the available
+> +	 * buffer space for each, not how much data is actually
+> +	 * available in each.  We know that data is read to fill
+> +	 * up the head, then page data, and then tail; so we can
+> +	 * calculate the *real* lengths of each.
+> +	 */
+> +	realhead = realpage = realtail = 0;
+> +	remainder = buf->len;
+> +	head = &buf->head[0];
+> +	tail = &buf->tail[0];
+> +
+> +	if (remainder) {
+> +		realhead = min_t(unsigned int, buf->len, head->iov_len);
+> +		remainder -= realhead;
+> +	}
+> +	if (remainder) {
+> +		realpage = min_t(unsigned int, remainder, buf->page_len);
+> +		remainder -= realpage;
+> +	}
+> +	if (remainder) {
+> +		realtail = min_t(unsigned int, remainder, tail->iov_len);
+> +		remainder -= realtail;
+> +	}
+> +	BUG_ON(remainder);
+> +	printk("%s: realhead %u, realpage %u, realtail %u\n",
+> +		__func__, realhead, realpage, realtail);
+> +
+> +	headstart = head->iov_base + offset + 16;
+> +
+> +	if (realpage == 0 && realtail == 0) {
+> +		/*
+> +		 * All the data is in the head.  Therefore all
+> +		 * the data to be moved is in the head
+> +		 */
+> +		char localbuf[LOCAL_BUF_LEN];
+> +		unsigned int amtleft = realrrc;
+> +		unsigned int thismove;
+> +		printk("%s: We are lucky! (moving %u within head)\n",
+> +			__func__, realrrc);
+> +		while (amtleft != 0) {
+> +			thismove = min_t(unsigned int, amtleft, LOCAL_BUF_LEN);
+> +			memcpy(localbuf, headstart, thismove);
+> +			memmove(headstart, headstart + thismove,
+> +				realhead - offset - 16 - thismove);
+> +			memcpy(head->iov_base + realhead - thismove,
+> +				localbuf, thismove);
+> +			amtleft -= thismove;
+> +		}
+> +	} else if (realhead - offset - 16 < realrrc) {
+> +		/*
+> +		 * The part to be moved is split between the head and
+> +		 * page data or tail
+> +		 */
+> +		printk("%s: We are not lucky.  All the realrrc data (%u) "
+> +			" is not in the head!\n", __func__, realrrc);
+> +		return 1;
+> +	} else if (realtail != 0 && tail->iov_len - realtail >= realrrc) {
+> +		/*
+> +		 * We are lucky enough to simply move rrc bytes
+> +		 * from the head to the end of the tail
+> +		 */
+> +		printk("%s: We are lucky! (moving %u from head to tail)\n",
+> +			__func__, realrrc);
+> +		memcpy(tail->iov_base + realtail,
+> +		       head->iov_base + offset + 16,
+> +		       realrrc);
+> +		tail->iov_len = realtail + realrrc;
+> +		memmove(headstart, headstart + realrrc,
+> +			realhead - offset - 16 - realrrc);
+> +		head->iov_len -= realrrc;
+> +	} else if (realpage != 0 && realtail == 0) {
+> +		/*
+> +		 * There is page data and no existing tail
+> +		 */
+> +		printk("%s: We are lucky! (moving %u from head to pages)\n",
+> +			__func__, realrrc);
+> +		buf->page_len += realrrc;
+> +		err = write_bytes_to_xdr_buf(buf, realhead + realpage,
+> +					     headstart, realrrc);
+> +		if (err) {
+> +			printk("%s: We are not lucky getting err %d while "
+> +				"writing %u bytes to xdr_buf\n",
+> +				__func__, err, realrrc);
+> +			return 1;
+> +		}
+> +		memmove(headstart, headstart + realrrc,
+> +			realhead - offset - 16 - realrrc);
+> +		head->iov_len -= realrrc;
+> +	} else {
+> +		/*
+> +		 * None of the quick fixes works.  Do it the "hard way".
+> +		 */
+> +		printk("%s: We are not lucky with realrrc %u\n",
+> +			__func__, realrrc);
+> +		return 1;
+> +	}
+> +
+> +	print_xdrbuf_data("AFTER : ", buf, offset);
+> +	return 0;
+> +}
+>  
+>  static u32
+>  gss_wrap_kerberos_v2(struct krb5_ctx *kctx, u32 offset,
+> @@ -585,3 +717,74 @@ gss_unwrap_kerberos(struct gss_ctx *gctx, int offset, struct xdr_buf *buf)
+>  	}
+>  }
+>  
+> +void
+> +print_hexl(const char *title, u8 *p, u_int length, u_int offset)
+> +{
+> +	u_int i, j, jm;
+> +	u8 c, *cp;
+> +
+> +	printk("RPC:       %s: length %d: %p\n", title, length, p);
+> +	cp = (u8 *) p;
+> +
+> +	for (i = 0; i < length; i += 0x10) {
+> +	        printk("  %04x: ", (u_int)(i + offset));
+> +	        jm = length - i;
+> +	        jm = jm > 16 ? 16 : jm;
+> +
+> +	        for (j = 0; j < jm; j++) {
+> +	                if ((j % 2) == 1)
+> +	                        printk("%02x ", (u_int)cp[i+j]);
+> +	                else
+> +	                        printk("%02x", (u_int)cp[i+j]);
+> +	        }
+> +	        for (; j < 16; j++) {
+> +	                if ((j % 2) == 1)
+> +	                        printk("   ");
+> +	                else
+> +	                        printk("  ");
+> +	        }
+> +	        printk(" ");
+> +
+> +	        for (j = 0; j < jm; j++) {
+> +	                c = cp[i+j];
+> +	                c = isprint(c) ? c : '.';
+> +	                printk("%c", c);
+> +	        }
+> +	        printk("\n");
+> +	}
+> +	printk("\n");
+> +}
+> +EXPORT_SYMBOL(print_hexl);
+> +
+> +void print_xdrbuf(const char *msg, struct xdr_buf *x)
+> +{
+> +	printk("---------- xdr_buf at %p: %s ----------\n", x, msg);
+> +	printk("  head[0].iov_base %p, iov_len %zu\n",
+> +	        x->head[0].iov_base, x->head[0].iov_len);
+> +	printk("  tail[0].iov_base %p, iov_len %zu\n",
+> +	        x->tail[0].iov_base, x->tail[0].iov_len);
+> +	printk("  pages %p\n", x->pages);
+> +	printk("  page_base %u, page_len %u, flags %u\n",
+> +	        x->page_base, x->page_len, x->flags);
+> +	printk("  buflen %u, len %u\n", x->buflen, x->len);
+> +}
+> +EXPORT_SYMBOL(print_xdrbuf);
+> +
+> +//extern void print_hexl(const char *title, u8 *p, u_int length, u_int offset);
+> +void print_xdrbuf_data(const char *msg, struct xdr_buf *x, unsigned int offset)
+> +{
+> +	printk("========== xdr_buf %p offset %u: %s ==========\n",
+> +	        x, offset, msg);
+> +	if (offset < x->head[0].iov_len)
+> +	        print_hexl("head data", x->head[0].iov_base + offset,
+> +	                                x->head[0].iov_len - offset, 0);
+> +	if (x->page_len) {
+> +	        int plen = (x->page_len > 512) ? 512 : x->page_len;
+> +	        print_hexl("page data",
+> +	                page_address(x->pages[0]) + x->page_base, plen, 0);
+> +	}
+> +	if (x->tail[0].iov_base != NULL && x->tail[0].iov_len != 0)
+> +	        print_hexl("tail data", x->tail[0].iov_base,
+> +	                                x->tail[0].iov_len, 0);
+> +}
+> +EXPORT_SYMBOL(print_xdrbuf_data);
