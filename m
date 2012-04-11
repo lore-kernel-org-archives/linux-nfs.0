@@ -1,50 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50883 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759048Ab2DYWSK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Apr 2012 18:18:10 -0400
-Date: Wed, 25 Apr 2012 18:18:09 -0400
-To: Jeff Layton <jlayton@redhat.com>
-Cc: bfields@fieldses.net, sandeen@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: trivial: use SEEK_SET instead of 0 in vfs_llseek
-Message-ID: <20120425221809.GC3251@fieldses.org>
-References: <1335382088-5463-1-git-send-email-jlayton@redhat.com>
+Received: from relay.parallels.com ([195.214.232.42]:34564 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750896Ab2DKKfA convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Apr 2012 06:35:00 -0400
+Message-ID: <4F855E3D.6090306@parallels.com>
+Date: Wed, 11 Apr 2012 14:34:37 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1335382088-5463-1-git-send-email-jlayton@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH][RFC] nfsd/lockd: have locks_in_grace take a sb arg
+References: <1333455279-11200-1-git-send-email-jlayton@redhat.com> <4F841D2A.9020504@parallels.com> <20120410081612.65dd25fa@tlielax.poochiereds.net> <4F842BAE.2010804@parallels.com> <20120410202251.GH18465@fieldses.org>
+In-Reply-To: <20120410202251.GH18465@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 25, 2012 at 03:28:08PM -0400, Jeff Layton wrote:
-> They're equivalent, but SEEK_SET is more informative...
+11.04.2012 00:22, J. Bruce Fields пишет:
+> On Tue, Apr 10, 2012 at 04:46:38PM +0400, Stanislav Kinsbursky wrote:
+>> 10.04.2012 16:16, Jeff Layton пишет:
+>>> On Tue, 10 Apr 2012 15:44:42 +0400
+>>>
+>>> (sorry about the earlier truncated reply, my MUA has a mind of its own
+>>> this morning)
+>>>
+>>
+>> OK then. Previous letter confused me a bit.
+>>
+>>>
+>>> TBH, I haven't considered that in depth. That is a valid situation, but
+>>> one that's discouraged. It's very difficult (and expensive) to
+>>> sequester off portions of a filesystem for serving.
+>>>
+>>> A filehandle is somewhat analogous to a device/inode combination. When
+>>> the server gets a filehandle, it has to determine "is this within a
+>>> path that's exported to this host"? That process is called subtree
+>>> checking. It's expensive and difficult to handle. It's always better to
+>>> export along filesystem boundaries.
+>>>
+>>> My suggestion would be to simply not deal with those cases in this
+>>> patch. Possibly we could force no_subtree_check when we export an fs
+>>> with a locks_in_grace option defined.
+>>>
+>>
+>> Sorry, but without dealing with those cases your patch looks a bit... Useless.
+>> I.e. it changes nothing, it there will be no support from file
+>> systems, going to be exported.
+>> But how are you going to push developers to implement these calls?
+>> Or, even if you'll try to implement them by yourself, how they will
+>> looks like?
+>> Simple check only for superblock looks bad to me, because any other
+>> start of NFSd will lead to grace period for all other containers
+>> (which uses the same filesystem).
+>
+> That's the correct behavior, and it sounds simple to implement.  Let's
+> just do that.
+>
+> If somebody doesn't like the grace period from another container
+> intruding on their use of the same filesystem, they should either
+> arrange to export different filesystems (not just different subtrees)
+> from their containers, or arrange to start all their containers at the
+> same time so their grace periods overlap.
+>
 
-Applied, thanks.--b.
+Starting all at once is not a very good solution.
+When you start 100 containers simultaneously - then you can't predict, when the 
+process as a whole will succeed (it will produce heavy load on all subsystems). 
+Moreover, there is also  server restart...
+Anyway, I agree with the idea of this patch.
 
-> 
-> Cc: Eric Sandeen <sandeen@redhat.com>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfsd/vfs.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 5686661..c8bd9c3 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -2039,7 +2039,7 @@ nfsd_readdir(struct svc_rqst *rqstp, struct svc_fh *fhp, loff_t *offsetp,
->  	if (err)
->  		goto out;
->  
-> -	offset = vfs_llseek(file, offset, 0);
-> +	offset = vfs_llseek(file, offset, SEEK_SET);
->  	if (offset < 0) {
->  		err = nfserrno((int)offset);
->  		goto out_close;
-> -- 
-> 1.7.7.6
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Please, have a look at new export option I mentioned in "Grace period" thread.
+
+-- 
+Best regards,
+Stanislav Kinsbursky
