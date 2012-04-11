@@ -1,112 +1,211 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:20315 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:33794 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756060Ab2DQNKq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Apr 2012 09:10:46 -0400
-Message-ID: <4F8D580B.7060104@RedHat.com>
-Date: Tue, 17 Apr 2012 07:46:19 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1759924Ab2DKLNy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Apr 2012 07:13:54 -0400
+Subject: [PATCH 3/4] nfsd: make expkey cache allocated per network namespace
+ context
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Wed, 11 Apr 2012 15:13:28 +0400
+Message-ID: <20120411111328.13840.69772.stgit@localhost6.localdomain6>
+In-Reply-To: <20120411111053.13840.66083.stgit@localhost6.localdomain6>
+References: <20120411111053.13840.66083.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        Malahal Naineni <malahal@us.ibm.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "pstaubach@exagrid.com" <pstaubach@exagrid.com>,
-        "miklos@szeredi.hu" <miklos@szeredi.hu>,
-        "viro@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
-        "hch@infradead.org" <hch@infradead.org>,
-        "michael.brantley@deshaw.com" <michael.brantley@deshaw.com>,
-        "sven.breuner@itwm.fraunhofer.de" <sven.breuner@itwm.fraunhofer.de>
-Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from getattr
- call
-References: <1334316311-22331-1-git-send-email-jlayton@redhat.com> <20120413150518.GA1987@us.ibm.com> <20120413114236.0e557e01@tlielax.poochiereds.net> <4F8B1B7B.3040304@itwm.fraunhofer.de> <20120416073655.7cdb90cf@corrin.poochiereds.net> <4F8C3036.2030702@itwm.fraunhofer.de> <20120416134642.1754cd3e@corrin.poochiereds.net> <1334604785.2879.23.camel@lade.trondhjem.org> <20120416154322.0d95e435@corrin.poochiereds.net> <1334607906.2879.36.camel@lade.trondhjem.org> <20120416190548.2463d1d0@corrin.poochiereds.net>
-In-Reply-To: <20120416190548.2463d1d0@corrin.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This patch also changes svcauth_unix_purge() function: added network namespace
+as a parameter and thus loop over all networks was replaced by only one call
+for ip map cache purge.
 
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-On 04/16/2012 07:05 PM, Jeff Layton wrote:
-> On Mon, 16 Apr 2012 20:25:06 +0000
-> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-> 
->> On Mon, 2012-04-16 at 15:43 -0400, Jeff Layton wrote:
->>> On Mon, 16 Apr 2012 19:33:05 +0000
->>> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
->>>
->>>> On Mon, 2012-04-16 at 13:46 -0400, Jeff Layton wrote:
->>>>> The question about looping indefinitely really comes down to:
->>>>>
->>>>> 1) is a persistent ESTALE in conjunction with a successful lookup a
->>>>> situation that we expect to be temporary. i.e. will the admin at some
->>>>> point be able to do something about it? If not, then there's no point
->>>>> in continuing to retry. Again, this is a situation that *really* should
->>>>> not happen if the filesystem is doing the right thing.
->>>>>
->>>>> 2) If the admin can't do anything about it, is it reasonable to expect
->>>>> that users can send a fatal signal to hung applications if this
->>>>> situation occurs.
->>>>>
->>>>> We expect that that's ok in other situations to resolve hung
->>>>> applications, so I'm not sure I understand why it wouldn't be
->>>>> acceptable here...
->>>>
->>>> There are definitely potentially persistent pathological situations that
->>>> the filesystem can't do anything about. If the point of origin for your
->>>> pathname (for instance your current directory in the case of a relative
->>>> pathname) is stale, then no amount of looping is going to help you to
->>>> recover.
->>>>
->>>
->>> Ok -- Peter pretty much said something similar. Retrying indefnitely
->>> when the lookup returns ESTALE probably won't help. I'm ok with
->>> basically letting the VFS continue to do what it does there already. If
->>> it gets an ESTALE, it tries again with LOOKUP_REVAL set and then gives
->>> up if that doesn't work.
->>>
->>> If however, the operation itself keeps returning ESTALE, are we OK to
->>> retry indefinitely assuming that we'll break out of the loop on fatal
->>> signals?
->>>
->>> For example, something like the v2 patch I sent a little while ago?
->>
->>
->> Won't something like fstatat(AT_FDCWD, "", &stat, AT_EMPTY_PATH) risk
->> looping forever there, or am I missing something?
->>
-> 
-> To make sure I understand, that should be "shortcut" for a lookup of the
-> cwd?
-> 
-> So I guess the concern is that you'd do the above and get a successful
-> lookup since you're just going to get back the cwd. At that point,
-> you'd attempt the getattr and get ESTALE back. Then, you'd redo the
-> lookup with LOOKUP_REVAL set -- but since we're operating on the
-> cwd, we don't have a way to redo the lookup since we don't have a
-> pathname that we can look up again...
-> 
-> So yeah, I guess if you're sitting in a stale directory, something like
-> that could loop eternally.
-> 
-> Do you think the proposed check for fatal_signal_pending is enough to
-> mitigate such a problem? Or do we need to limit the number of retries
-> to address those sorts of loops?
-> 
-I think your version 2 patch is definitely more clever than v1, but I'm
-thinking Trond's point is no matter what type of looping is done or how
-long its done its going to fail... So why loop at all? 
+---
+ fs/nfsd/export.c               |   28 +++++++++++++++++-----------
+ fs/nfsd/netns.h                |    1 +
+ fs/nfsd/nfsctl.c               |    3 ++-
+ include/linux/nfsd/export.h    |    2 --
+ include/linux/sunrpc/svcauth.h |    2 +-
+ net/sunrpc/svcauth_unix.c      |   13 ++++---------
+ 6 files changed, 25 insertions(+), 24 deletions(-)
 
-Again I think the safest and simply way, from the VFS point of view,
-is do the looping once if the file system as registered for it
-through the fs_flags. This will catch %99 of the issues, failing
-on the %1 of the corner cases... 
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index 84d020f..dcb52b8 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -40,7 +40,6 @@ typedef struct svc_export	svc_export;
+ #define	EXPKEY_HASHBITS		8
+ #define	EXPKEY_HASHMAX		(1 << EXPKEY_HASHBITS)
+ #define	EXPKEY_HASHMASK		(EXPKEY_HASHMAX -1)
+-static struct cache_head *expkey_table[EXPKEY_HASHMAX];
+ 
+ static void expkey_put(struct kref *ref)
+ {
+@@ -241,10 +240,9 @@ static struct cache_head *expkey_alloc(void)
+ 		return NULL;
+ }
+ 
+-static struct cache_detail svc_expkey_cache = {
++static struct cache_detail svc_expkey_cache_template = {
+ 	.owner		= THIS_MODULE,
+ 	.hash_size	= EXPKEY_HASHMAX,
+-	.hash_table	= expkey_table,
+ 	.name		= "nfsd.fh",
+ 	.cache_put	= expkey_put,
+ 	.cache_upcall	= expkey_upcall,
+@@ -883,12 +881,13 @@ static struct svc_export *exp_find(struct cache_detail *cd,
+ 				   u32 *fsidv, struct cache_req *reqp)
+ {
+ 	struct svc_export *exp;
+-	struct svc_expkey *ek = exp_find_key(&svc_expkey_cache, clp, fsid_type, fsidv, reqp);
++	struct nfsd_net *nn = net_generic(cd->net, nfsd_net_id);
++	struct svc_expkey *ek = exp_find_key(nn->svc_expkey_cache, clp, fsid_type, fsidv, reqp);
+ 	if (IS_ERR(ek))
+ 		return ERR_CAST(ek);
+ 
+ 	exp = exp_get_by_name(cd, clp, &ek->ek_path, reqp);
+-	cache_put(&ek->h, &svc_expkey_cache);
++	cache_put(&ek->h, nn->svc_expkey_cache);
+ 
+ 	if (IS_ERR(exp))
+ 		return ERR_CAST(exp);
+@@ -1232,7 +1231,6 @@ const struct seq_operations nfs_exports_op = {
+ 	.show	= e_show,
+ };
+ 
+-
+ /*
+  * Initialize the exports module.
+  */
+@@ -1251,11 +1249,18 @@ nfsd_export_init(struct net *net)
+ 	if (rv)
+ 		goto destroy_export_cache;
+ 
+-	rv = cache_register_net(&svc_expkey_cache, net);
+-	if (rv)
++	nn->svc_expkey_cache = cache_create_net(&svc_expkey_cache_template, net);
++	if (IS_ERR(nn->svc_expkey_cache)) {
++		rv = PTR_ERR(nn->svc_expkey_cache);
+ 		goto unregister_export_cache;
++	}
++	rv = cache_register_net(nn->svc_expkey_cache, net);
++	if (rv)
++		goto destroy_expkey_cache;
+ 	return 0;
+ 
++destroy_expkey_cache:
++	cache_destroy_net(nn->svc_expkey_cache, net);
+ unregister_export_cache:
+ 	cache_unregister_net(nn->svc_export_cache, net);
+ destroy_export_cache:
+@@ -1271,7 +1276,7 @@ nfsd_export_flush(struct net *net)
+ {
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
+-	cache_purge(&svc_expkey_cache);
++	cache_purge(nn->svc_expkey_cache);
+ 	cache_purge(nn->svc_export_cache);
+ }
+ 
+@@ -1285,10 +1290,11 @@ nfsd_export_shutdown(struct net *net)
+ 
+ 	dprintk("nfsd: shutting down export module (net: %p).\n", net);
+ 
+-	cache_unregister_net(&svc_expkey_cache, net);
++	cache_unregister_net(nn->svc_expkey_cache, net);
+ 	cache_unregister_net(nn->svc_export_cache, net);
++	cache_destroy_net(nn->svc_expkey_cache, net);
+ 	cache_destroy_net(nn->svc_export_cache, net);
+-	svcauth_unix_purge();
++	svcauth_unix_purge(net);
+ 
+ 	dprintk("nfsd: export shutdown complete (net: %p).\n", net);
+ }
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index c1c6242..9794c6c 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -29,6 +29,7 @@ struct cld_net;
+ struct nfsd_net {
+ 	struct cld_net *cld_net;
+ 
++	struct cache_detail *svc_expkey_cache;
+ 	struct cache_detail *svc_export_cache;
+ };
+ 
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index ddb9f87..b144177 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -129,13 +129,14 @@ static int exports_open(struct inode *inode, struct file *file)
+ {
+ 	int err;
+ 	struct seq_file *seq;
++	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
+ 
+ 	err = seq_open(file, &nfs_exports_op);
+ 	if (err)
+ 		return err;
+ 
+ 	seq = file->private_data;
+-	seq->private = &svc_export_cache;
++	seq->private = nn->svc_export_cache;
+ 	return 0;
+ }
+ 
+diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
+index 565c212..e33f747 100644
+--- a/include/linux/nfsd/export.h
++++ b/include/linux/nfsd/export.h
+@@ -143,8 +143,6 @@ int			exp_rootfh(struct net *, struct auth_domain *,
+ __be32			exp_pseudoroot(struct svc_rqst *, struct svc_fh *);
+ __be32			nfserrno(int errno);
+ 
+-extern struct cache_detail svc_export_cache;
+-
+ static inline void exp_put(struct svc_export *exp)
+ {
+ 	cache_put(&exp->h, exp->cd);
+diff --git a/include/linux/sunrpc/svcauth.h b/include/linux/sunrpc/svcauth.h
+index 548790e..153de45 100644
+--- a/include/linux/sunrpc/svcauth.h
++++ b/include/linux/sunrpc/svcauth.h
+@@ -131,7 +131,7 @@ extern struct auth_domain *auth_domain_lookup(char *name, struct auth_domain *ne
+ extern struct auth_domain *auth_domain_find(char *name);
+ extern struct auth_domain *auth_unix_lookup(struct net *net, struct in6_addr *addr);
+ extern int auth_unix_forget_old(struct auth_domain *dom);
+-extern void svcauth_unix_purge(void);
++extern void svcauth_unix_purge(struct net *net);
+ extern void svcauth_unix_info_release(struct svc_xprt *xpt);
+ extern int svcauth_unix_set_client(struct svc_rqst *rqstp);
+ 
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index 521d8f7..9c3b9f0 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -346,17 +346,12 @@ static inline int ip_map_update(struct net *net, struct ip_map *ipm,
+ 	return __ip_map_update(sn->ip_map_cache, ipm, udom, expiry);
+ }
+ 
+-
+-void svcauth_unix_purge(void)
++void svcauth_unix_purge(struct net *net)
+ {
+-	struct net *net;
+-
+-	for_each_net(net) {
+-		struct sunrpc_net *sn;
++	struct sunrpc_net *sn;
+ 
+-		sn = net_generic(net, sunrpc_net_id);
+-		cache_purge(sn->ip_map_cache);
+-	}
++	sn = net_generic(net, sunrpc_net_id);
++	cache_purge(sn->ip_map_cache);
+ }
+ EXPORT_SYMBOL_GPL(svcauth_unix_purge);
+ 
 
-steved.
-
-
-
-  
