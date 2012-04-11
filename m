@@ -1,69 +1,231 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:60782 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:14705 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754705Ab2DPVH7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Apr 2012 17:07:59 -0400
-Received: from vmwexceht03-prd.hq.netapp.com (vmwexceht03-prd.hq.netapp.com [10.106.76.241])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q3GL7hpX003922
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Apr 2012 14:07:44 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Isaman, Fred" <Fred.Isaman@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 16/26] NFS: create completion structure to pass into
- page_init functions
-Date: Mon, 16 Apr 2012 21:07:41 +0000
-Message-ID: <1334610460.2879.51.camel@lade.trondhjem.org>
-References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
-	 <1334004744-31842-17-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334004744-31842-17-git-send-email-iisaman@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1754627Ab2DKLNs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Apr 2012 07:13:48 -0400
+Subject: [PATCH 2/4] nfsd: make export cache allocated per network namespace
+ context
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Wed, 11 Apr 2012 15:13:21 +0400
+Message-ID: <20120411111321.13840.93926.stgit@localhost6.localdomain6>
+In-Reply-To: <20120411111053.13840.66083.stgit@localhost6.localdomain6>
+References: <20120411111053.13840.66083.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA0LTA5IGF0IDE2OjUyIC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
-RmFjdG9ycyBvdXQgdGhlIGNvZGUgdGhhdCB3aWxsIG5lZWQgdG8gY2hhbmdlIHdoZW4gZGlyZWN0
-aW8NCj4gc3RhcnRzIHVzaW5nIHRoZXNlIGNvZGUgcGF0aHMuICBUaGlzIHdpbGwgYWxsb3cgZGly
-ZWN0aW8gdG8gdXNlDQo+IHRoZSBnZW5lcmljIHBhZ2VpbiBhbmQgZmx1c2ggcm91dGluZXMNCj4g
-DQo+IFNpZ25lZC1vZmYtYnk6IEZyZWQgSXNhbWFuIDxpaXNhbWFuQG5ldGFwcC5jb20+DQo+IC0t
-LQ0KDQo+IC0tLSBhL2ZzL25mcy9yZWFkLmMNCj4gKysrIGIvZnMvbmZzL3JlYWQuYw0KPiBAQCAt
-MzEsNiArMzEsNyBAQA0KPiAgDQo+ICBzdGF0aWMgY29uc3Qgc3RydWN0IG5mc19wYWdlaW9fb3Bz
-IG5mc19wYWdlaW9fcmVhZF9vcHM7DQo+ICBzdGF0aWMgY29uc3Qgc3RydWN0IHJwY19jYWxsX29w
-cyBuZnNfcmVhZF9jb21tb25fb3BzOw0KPiArc3RhdGljIGNvbnN0IHN0cnVjdCBuZnNfaW9fY29t
-cGxldGlvbl9vcHMgbmZzX2FzeW5jaF9yZWFkX2NvbXBsX29wczsNCg0KQ291bGQgd2UgcGxlYXNl
-IHJlbmFtZT8gSSdkIHByZWZlciBuZnNfYXN5bmNfcmVhZF9jb21wbGV0aW9uX29wcy4gSXQncw0K
-bW9yZSBpbiBsaW5lIHdpdGggaG93IHdlIHVzdWFsbHkgbmFtZSBzdHVmZiAod2UgdXNlIHRoZSBh
-YmJyZXZpYXRpb25zDQonYXN5bmMnIGFuZCAnb3BzJyBldmVyeXdoZXJlLCBidXQgd2UgZG9uJ3Qg
-Y29tbW9ubHkgYWJicmV2aWF0ZQ0KJ2NvbXBsZXRpb24nKS4NCg0KPiBkaWZmIC0tZ2l0IGEvZnMv
-bmZzL3dyaXRlLmMgYi9mcy9uZnMvd3JpdGUuYw0KPiBpbmRleCBjZGUwZmEyLi40ZDliYmFmIDEw
-MDY0NA0KPiAtLS0gYS9mcy9uZnMvd3JpdGUuYw0KPiArKysgYi9mcy9uZnMvd3JpdGUuYw0KPiBA
-QCAtNDAsMTAgKzQwLDEyIEBADQo+ICAgKiBMb2NhbCBmdW5jdGlvbiBkZWNsYXJhdGlvbnMNCj4g
-ICAqLw0KPiAgc3RhdGljIHZvaWQgbmZzX3BhZ2Vpb19pbml0X3dyaXRlKHN0cnVjdCBuZnNfcGFn
-ZWlvX2Rlc2NyaXB0b3IgKmRlc2MsDQo+IC0JCQkJICBzdHJ1Y3QgaW5vZGUgKmlub2RlLCBpbnQg
-aW9mbGFncyk7DQo+ICsJCQkJICBzdHJ1Y3QgaW5vZGUgKmlub2RlLCBpbnQgaW9mbGFncywNCj4g
-KwkJCQkgIGNvbnN0IHN0cnVjdCBuZnNfaW9fY29tcGxldGlvbl9vcHMgKmNvbXBsX29wcyk7DQo+
-ICBzdGF0aWMgdm9pZCBuZnNfcmVkaXJ0eV9yZXF1ZXN0KHN0cnVjdCBuZnNfcGFnZSAqcmVxKTsN
-Cj4gIHN0YXRpYyBjb25zdCBzdHJ1Y3QgcnBjX2NhbGxfb3BzIG5mc193cml0ZV9jb21tb25fb3Bz
-Ow0KPiAgc3RhdGljIGNvbnN0IHN0cnVjdCBycGNfY2FsbF9vcHMgbmZzX2NvbW1pdF9vcHM7DQo+
-ICtzdGF0aWMgY29uc3Qgc3RydWN0IG5mc19pb19jb21wbGV0aW9uX29wcyBuZnNfYXN5bmNoX3dy
-aXRlX2NvbXBsX29wczsNCg0KRGl0dG8NCiANCj4gIA0KPiAgdm9pZCBuZnNfd3JpdGVfcHJlcGFy
-ZShzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2ssIHZvaWQgKmNhbGxkYXRhKQ0KPiBkaWZmIC0tZ2l0IGEv
-aW5jbHVkZS9saW51eC9uZnNfcGFnZS5oIGIvaW5jbHVkZS9saW51eC9uZnNfcGFnZS5oDQo+IGlu
-ZGV4IDVjNTIwMzQuLmEzNmZiYjYgMTAwNjQ0DQo+IC0tLSBhL2luY2x1ZGUvbGludXgvbmZzX3Bh
-Z2UuaA0KPiArKysgYi9pbmNsdWRlL2xpbnV4L25mc19wYWdlLmgNCj4gQEAgLTY3LDYgKzY3LDcg
-QEAgc3RydWN0IG5mc19wYWdlaW9fZGVzY3JpcHRvciB7DQo+ICAJaW50IAkJCXBnX2lvZmxhZ3M7
-DQo+ICAJaW50CQkJcGdfZXJyb3I7DQo+ICAJY29uc3Qgc3RydWN0IHJwY19jYWxsX29wcyAqcGdf
-cnBjX2NhbGxvcHM7DQo+ICsJY29uc3Qgc3RydWN0IG5mc19pb19jb21wbGV0aW9uX29wcyAqcGdf
-Y29tcGxfb3BzOw0KDQpBZ2FpbiwgY2FuIHdlIHBsZWFzZSBtYWtlIHRoaXMgJ3BnX2NvbXBsZXRp
-b25fb3BzJz8NCg0KPiAgCXN0cnVjdCBwbmZzX2xheW91dF9zZWdtZW50ICpwZ19sc2VnOw0KPiAg
-fTsNCj4gIA0KPiAgZXh0ZXJuCWludCBuZnNfcGFnZWlvX2FkZF9yZXF1ZXN0KHN0cnVjdCBuZnNf
-cGFnZWlvX2Rlc2NyaXB0b3IgKiwNCj4gZGlmZiAtLWdpdCBhL2luY2x1ZGUvbGludXgvbmZzX3hk
-ci5oIGIvaW5jbHVkZS9saW51eC9uZnNfeGRyLmgNCj4gaW5kZXggMmJiYjdjNy4uYjM4OTUwYyAx
-MDA2NDQNCj4gLS0tIGEvaW5jbHVkZS9saW51eC9uZnNfeGRyLmgNCj4gKysrIGIvaW5jbHVkZS9s
-aW51eC9uZnNfeGRyLmgNCj4gQEAgLTEyMDEsNiArMTIwMSw3IEBAIHN0cnVjdCBuZnNfcGdpb19o
-ZWFkZXIgew0KPiAgCXN0cnVjdCBwbmZzX2xheW91dF9zZWdtZW50ICpsc2VnOw0KPiAgCWNvbnN0
-IHN0cnVjdCBycGNfY2FsbF9vcHMgKm1kc19vcHM7DQo+ICAJdm9pZCAoKnJlbGVhc2UpIChzdHJ1
-Y3QgbmZzX3BnaW9faGVhZGVyICpoZHIpOw0KPiArCWNvbnN0IHN0cnVjdCBuZnNfaW9fY29tcGxl
-dGlvbl9vcHMgKmNvbXBsX29wczsNCg0KRGl0dG8uLi4NCg0KDQoNCi0tIA0KVHJvbmQgTXlrbGVi
-dXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1
-c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+This patch also changes prototypes of nfsd_export_flush() and exp_rootfh():
+network namespace parameter added.
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
+---
+ fs/nfsd/export.c            |   47 +++++++++++++++++++++++++++++--------------
+ fs/nfsd/netns.h             |    2 ++
+ fs/nfsd/nfsctl.c            |    2 +-
+ fs/nfsd/nfssvc.c            |    2 +-
+ include/linux/nfsd/export.h |    4 ++--
+ 5 files changed, 38 insertions(+), 19 deletions(-)
+
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index 688264b..84d020f 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -15,11 +15,13 @@
+ #include <linux/namei.h>
+ #include <linux/module.h>
+ #include <linux/exportfs.h>
++#include <linux/sunrpc/svc_xprt.h>
+ 
+ #include <net/ipv6.h>
+ 
+ #include "nfsd.h"
+ #include "nfsfh.h"
++#include "netns.h"
+ 
+ #define NFSDDBG_FACILITY	NFSDDBG_EXPORT
+ 
+@@ -298,8 +300,6 @@ svc_expkey_update(struct cache_detail *cd, struct svc_expkey *new,
+ #define	EXPORT_HASHBITS		8
+ #define	EXPORT_HASHMAX		(1<< EXPORT_HASHBITS)
+ 
+-static struct cache_head *export_table[EXPORT_HASHMAX];
+-
+ static void nfsd4_fslocs_free(struct nfsd4_fs_locations *fsloc)
+ {
+ 	int i;
+@@ -708,10 +708,9 @@ static struct cache_head *svc_export_alloc(void)
+ 		return NULL;
+ }
+ 
+-struct cache_detail svc_export_cache = {
++struct cache_detail svc_export_cache_template = {
+ 	.owner		= THIS_MODULE,
+ 	.hash_size	= EXPORT_HASHMAX,
+-	.hash_table	= export_table,
+ 	.name		= "nfsd.export",
+ 	.cache_put	= svc_export_put,
+ 	.cache_upcall	= svc_export_upcall,
+@@ -835,7 +834,7 @@ static struct svc_export *exp_parent(struct cache_detail *cd, svc_client *clp,
+  * since its harder to fool a kernel module than a user space program.
+  */
+ int
+-exp_rootfh(svc_client *clp, char *name,
++exp_rootfh(struct net *net, svc_client *clp, char *name,
+ 	   struct knfsd_fh *f, int maxsize)
+ {
+ 	struct svc_export	*exp;
+@@ -843,7 +842,8 @@ exp_rootfh(svc_client *clp, char *name,
+ 	struct inode		*inode;
+ 	struct svc_fh		fh;
+ 	int			err;
+-	struct cache_detail	*cd = &svc_export_cache;
++	struct nfsd_net		*nn = net_generic(net, nfsd_net_id);
++	struct cache_detail	*cd = nn->svc_export_cache;
+ 
+ 	err = -EPERM;
+ 	/* NB: we probably ought to check that it's NUL-terminated */
+@@ -930,7 +930,8 @@ struct svc_export *
+ rqst_exp_get_by_name(struct svc_rqst *rqstp, struct path *path)
+ {
+ 	struct svc_export *gssexp, *exp = ERR_PTR(-ENOENT);
+-	struct cache_detail *cd = &svc_export_cache;
++	struct nfsd_net *nn = net_generic(rqstp->rq_xprt->xpt_net, nfsd_net_id);
++	struct cache_detail *cd = nn->svc_export_cache;
+ 
+ 	if (rqstp->rq_client == NULL)
+ 		goto gss;
+@@ -960,7 +961,8 @@ struct svc_export *
+ rqst_exp_find(struct svc_rqst *rqstp, int fsid_type, u32 *fsidv)
+ {
+ 	struct svc_export *gssexp, *exp = ERR_PTR(-ENOENT);
+-	struct cache_detail *cd = &svc_export_cache;
++	struct nfsd_net *nn = net_generic(rqstp->rq_xprt->xpt_net, nfsd_net_id);
++	struct cache_detail *cd = nn->svc_export_cache;
+ 
+ 	if (rqstp->rq_client == NULL)
+ 		goto gss;
+@@ -1238,26 +1240,39 @@ int
+ nfsd_export_init(struct net *net)
+ {
+ 	int rv;
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++
+ 	dprintk("nfsd: initializing export module (net: %p).\n", net);
+ 
+-	rv = cache_register_net(&svc_export_cache, net);
++	nn->svc_export_cache = cache_create_net(&svc_export_cache_template, net);
++	if (IS_ERR(nn->svc_export_cache))
++		return PTR_ERR(nn->svc_export_cache);
++	rv = cache_register_net(nn->svc_export_cache, net);
+ 	if (rv)
+-		return rv;
++		goto destroy_export_cache;
++
+ 	rv = cache_register_net(&svc_expkey_cache, net);
+ 	if (rv)
+-		cache_unregister_net(&svc_export_cache, net);
+-	return rv;
++		goto unregister_export_cache;
++	return 0;
+ 
++unregister_export_cache:
++	cache_unregister_net(nn->svc_export_cache, net);
++destroy_export_cache:
++	cache_destroy_net(nn->svc_export_cache, net);
++	return rv;
+ }
+ 
+ /*
+  * Flush exports table - called when last nfsd thread is killed
+  */
+ void
+-nfsd_export_flush(void)
++nfsd_export_flush(struct net *net)
+ {
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++
+ 	cache_purge(&svc_expkey_cache);
+-	cache_purge(&svc_export_cache);
++	cache_purge(nn->svc_export_cache);
+ }
+ 
+ /*
+@@ -1266,11 +1281,13 @@ nfsd_export_flush(void)
+ void
+ nfsd_export_shutdown(struct net *net)
+ {
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
+ 	dprintk("nfsd: shutting down export module (net: %p).\n", net);
+ 
+ 	cache_unregister_net(&svc_expkey_cache, net);
+-	cache_unregister_net(&svc_export_cache, net);
++	cache_unregister_net(nn->svc_export_cache, net);
++	cache_destroy_net(nn->svc_export_cache, net);
+ 	svcauth_unix_purge();
+ 
+ 	dprintk("nfsd: export shutdown complete (net: %p).\n", net);
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index 12e0cff..c1c6242 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -28,6 +28,8 @@ struct cld_net;
+ 
+ struct nfsd_net {
+ 	struct cld_net *cld_net;
++
++	struct cache_detail *svc_export_cache;
+ };
+ 
+ extern int nfsd_net_id;
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index bc76f8e..ddb9f87 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -354,7 +354,7 @@ static ssize_t write_filehandle(struct file *file, char *buf, size_t size)
+ 	if (!dom)
+ 		return -ENOMEM;
+ 
+-	len = exp_rootfh(dom, path, &fh,  maxsize);
++	len = exp_rootfh(&init_net, dom, path, &fh,  maxsize);
+ 	auth_domain_put(dom);
+ 	if (len)
+ 		return len;
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 78e5213..cb4d51d 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -261,7 +261,7 @@ static void nfsd_last_thread(struct svc_serv *serv, struct net *net)
+ 
+ 	printk(KERN_WARNING "nfsd: last server has exited, flushing export "
+ 			    "cache\n");
+-	nfsd_export_flush();
++	nfsd_export_flush(net);
+ }
+ 
+ void nfsd_reset_versions(void)
+diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
+index 375096c..565c212 100644
+--- a/include/linux/nfsd/export.h
++++ b/include/linux/nfsd/export.h
+@@ -132,13 +132,13 @@ __be32 check_nfsd_access(struct svc_export *exp, struct svc_rqst *rqstp);
+  */
+ int			nfsd_export_init(struct net *);
+ void			nfsd_export_shutdown(struct net *);
+-void			nfsd_export_flush(void);
++void			nfsd_export_flush(struct net *);
+ struct svc_export *	rqst_exp_get_by_name(struct svc_rqst *,
+ 					     struct path *);
+ struct svc_export *	rqst_exp_parent(struct svc_rqst *,
+ 					struct path *);
+ struct svc_export *	rqst_find_fsidzero_export(struct svc_rqst *);
+-int			exp_rootfh(struct auth_domain *, 
++int			exp_rootfh(struct net *, struct auth_domain *,
+ 					char *path, struct knfsd_fh *, int maxsize);
+ __be32			exp_pseudoroot(struct svc_rqst *, struct svc_fh *);
+ __be32			nfserrno(int errno);
+
