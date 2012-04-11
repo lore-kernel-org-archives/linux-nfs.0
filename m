@@ -1,73 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:27811 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754832Ab2DXPdZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Apr 2012 11:33:25 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs4: fix referrals on mounts that use IPv6 addrs
-Date: Tue, 24 Apr 2012 15:33:04 +0000
-Message-ID: <1335281584.3792.30.camel@lade.trondhjem.org>
-References: <1335279471-46782-1-git-send-email-dros@netapp.com>
-In-Reply-To: <1335279471-46782-1-git-send-email-dros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:53786 "EHLO
+	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752105Ab2DKA45 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Apr 2012 20:56:57 -0400
+Received: by obbtb18 with SMTP id tb18so523915obb.19
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Apr 2012 17:56:56 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <20120410230202.GM18465@fieldses.org>
+References: <CAKnQG+dVhQ3JSXJnQihzs0FnS_aeyUKftDX7j7X6iJTjRGMzPQ@mail.gmail.com>
+	<20120410215633.GL18465@fieldses.org>
+	<20120410230202.GM18465@fieldses.org>
+Date: Tue, 10 Apr 2012 20:56:56 -0400
+Message-ID: <CAKnQG+fBw8--kfGmEvh4Fq0tzfAKq0gwi6kQHsKMQ38YmJNQ_A@mail.gmail.com>
+Subject: Re: RFC: Handling GSS rotated data
+From: Kevin Coffman <kwc@umich.edu>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: NFS list <linux-nfs@vger.kernel.org>, Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA0LTI0IGF0IDEwOjU3IC0wNDAwLCBXZXN0b24gQW5kcm9zIEFkYW1zb24g
-d3JvdGU6DQo+IEFsbCByZWZlcnJhbHMgKElQdjQgYWRkciwgSVB2NiBhZGRyLCBhbmQgRE5TKSBh
-cmUgYnJva2VuIG9uIG1vdW50cyBvZg0KPiBJUHY2IGFkZHJlc3NlcywgYmVjYXVzZSB2YWxpZGF0
-aW9uIGNvZGUgdXNlcyBhIHBhdGggdGhhdCBpcyBwYXJzZWQNCj4gZnJvbSB0aGUgZGV2X25hbWUg
-KCI8c2VydmVyPjo8cGF0aD4iKSBieSBzcGxpdHRpbmcgb24gdGhlIGZpcnN0IGNvbG9uIGFuZA0K
-PiBjb2xvbnMgYXJlIHVzZWQgaW4gSVB2NiBhZGRycy4NCj4gVGhpcyBwYXRjaCBpZ25vcmVzIGNv
-bG9ucyB3aXRoaW4gSVB2NiBhZGRyZXNzZXMgdGhhdCBhcmUgZXNjYXBlZCBieSAnWycgYW5kICdd
-Jy4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IFdlc3RvbiBBbmRyb3MgQWRhbXNvbiA8ZHJvc0BuZXRh
-cHAuY29tPg0KPiAtLS0NCj4gDQo+IFRoaXMgZGVwZW5kcyBvbiBjb21taXQgMmY4ZTRiZDkxNDg4
-ZjI4NmU4M2U4YWJiMTQ2ODMxMDJlZmFhZmIwNQ0KPiAibmZzOiBFbmNsb3NlIGhvc3RuYW1lIGlu
-IGJyYWNrZXRzIHdoZW4gbmVlZGVkIGluIG5mc19kb19yb290X21vdW50Ii4NCj4gDQo+ICBmcy9u
-ZnMvbmZzNG5hbWVzcGFjZS5jIHwgICAzNSArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
-Ky0tLQ0KPiAgMSBmaWxlcyBjaGFuZ2VkLCAzMiBpbnNlcnRpb25zKCspLCAzIGRlbGV0aW9ucygt
-KQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0bmFtZXNwYWNlLmMgYi9mcy9uZnMvbmZz
-NG5hbWVzcGFjZS5jDQo+IGluZGV4IDljOGVjYTMuLjMwNzc0M2QgMTAwNjQ0DQo+IC0tLSBhL2Zz
-L25mcy9uZnM0bmFtZXNwYWNlLmMNCj4gKysrIGIvZnMvbmZzL25mczRuYW1lc3BhY2UuYw0KPiBA
-QCAtNTIsNiArNTIsMzUgQEAgRWxvbmc6DQo+ICB9DQo+ICANCj4gIC8qDQo+ICsgKiBwYXJzZSB0
-aGUgcGF0aCBjb21wb25lbnQgb2YgYW4gbmZzIHBhdGggKCI8c2VydmVyPjo8cGF0aD4iKS4NCj4g
-KyAqICBuZnNwYXRoIC0gdGhlICI8c2VydmVyPjo8cGF0aD4iIHN0cmluZw0KPiArICogIGVuZCAt
-IHBvaW50ZXIgdG8gZW5kIG9mIGRldm5hbWUgY29tcG9uZW50IG9mICduZnNwYXRoJw0KPiArICog
-cmV0dXJucyBOVUxMIG9uIGZhaWx1cmUNCj4gKyAqLw0KPiArc3RhdGljIGlubGluZSBjaGFyICpu
-ZnNfcGFyc2VfcGF0aF9jb21wb25lbnQoY2hhciAqbmZzcGF0aCwgY2hhciAqZW5kKQ0KDQpOaXQ6
-IHRoaXMgaXMgcmVhbGx5IHBhcnNpbmcgdGhlIHNlcnZlciBuYW1lIGNvbXBvbmVudCBvZiB0aGUg
-ZGV2bmFtZS4NCg0KQWxzbywgcGxlYXNlIG1ha2UgdGhlICdlbmQnIGFyZ3VtZW50ICdjb25zdCBj
-aGFyIConLCBhbmQgIGRyb3AgdGhlDQonaW5saW5lJyBkZWNsYXJhdGlvbi4NCg0KPiArew0KPiAr
-CWJvb2wgaXB2Nl9lc2MgPSBmYWxzZTsNCj4gKwljaGFyICpwOw0KPiArDQo+ICsJLyogZmluZCBm
-aXJzdCBjb2xvbiBub3QgaW4gSVB2NiBhZGRyICovDQo+ICsJZm9yIChwID0gbmZzcGF0aDsgcCA8
-IGVuZCAmJiAqcDsgcCsrKSB7DQo+ICsJCXN3aXRjaCAoKnApIHsNCj4gKwkJY2FzZSAnWyc6DQo+
-ICsJCQlpcHY2X2VzYyA9IHRydWU7DQoNCk5vdGUgdGhhdCBpZiBwICE9IG5mc3BhdGgsIHRoZW4g
-d2UgaGF2ZSBhIHByb2JsZW0uIFRoZSAnWycgX211c3RfIGJlIHRoZQ0KZmlyc3QgY2hhcmFjdGVy
-IGluIHRoZSBzZXJ2ZXIgbmFtZSwgYW5kIHRoZXJlIF9tdXN0XyBiZSBhIG1hdGNoaW5nICddJw0K
-YXQgdGhlIGVuZC4NClNvIGhvdyBhYm91dCBvcHRpbWlzaW5nIHRoaXMgdXNpbmcgc29tZXRoaW5n
-IGFsb25nIHRoZSBsaW5lcyBvZjoNCg0KCXAgPSBuZnNwYXRoOw0KCS8qIEhhbmRsZSBlc2NhcGVk
-IGhvc3RuYW1lcyAqLw0KCWlmICgqcCA9PSAnWycpIHsNCgkJcCA9IHN0cmNocihwLCAnXScpOw0K
-CQlpZiAocCA9PSBOVUxMKQ0KCQkJcmV0dXJuIE5VTEw7DQoJfQ0KCXAgPSBzdHJjaHIocCwgJzon
-KTsNCglpZiAocCAhPSBOVUxMKQ0KCQlwKys7DQoJcmV0dXJuIHA7DQoNCj4gKwkJCWJyZWFrOw0K
-PiArCQljYXNlICc6JzoNCj4gKwkJCWlmICghaXB2Nl9lc2MpDQo+ICsJCQkJcmV0dXJuIChwICsg
-MSk7DQo+ICsJCQlicmVhazsNCj4gKwkJfQ0KPiArCX0NCj4gKwlyZXR1cm4gTlVMTDsNCj4gK30N
-Cj4gKw0KPiArLyoNCj4gICAqIERldGVybWluZSB0aGUgbW91bnQgcGF0aCBhcyBhIHN0cmluZw0K
-PiAgICovDQo+ICBzdGF0aWMgY2hhciAqbmZzNF9wYXRoKHN0cnVjdCBkZW50cnkgKmRlbnRyeSwg
-Y2hhciAqYnVmZmVyLCBzc2l6ZV90IGJ1ZmxlbikNCj4gQEAgLTU5LDkgKzg4LDkgQEAgc3RhdGlj
-IGNoYXIgKm5mczRfcGF0aChzdHJ1Y3QgZGVudHJ5ICpkZW50cnksIGNoYXIgKmJ1ZmZlciwgc3Np
-emVfdCBidWZsZW4pDQo+ICAJY2hhciAqbGltaXQ7DQo+ICAJY2hhciAqcGF0aCA9IG5mc19wYXRo
-KCZsaW1pdCwgZGVudHJ5LCBidWZmZXIsIGJ1Zmxlbik7DQo+ICAJaWYgKCFJU19FUlIocGF0aCkp
-IHsNCj4gLQkJY2hhciAqY29sb24gPSBzdHJjaHIocGF0aCwgJzonKTsNCj4gLQkJaWYgKGNvbG9u
-ICYmIGNvbG9uIDwgbGltaXQpDQo+IC0JCQlwYXRoID0gY29sb24gKyAxOw0KPiArCQljaGFyICpw
-YXRoX2NvbXBvbmVudCA9IG5mc19wYXJzZV9wYXRoX2NvbXBvbmVudChwYXRoLCBsaW1pdCk7DQo+
-ICsJCWlmIChwYXRoX2NvbXBvbmVudCkNCj4gKwkJCXJldHVybiBwYXRoX2NvbXBvbmVudDsNCj4g
-IAl9DQo+ICAJcmV0dXJuIHBhdGg7DQo+ICB9DQoNClNvIHRoaXMgZml4ZXMgdGhlIHByb2JsZW0g
-b2YgcGFyc2luZyB0aGUgZGV2bmFtZSwgYnV0IGhvdyBhYm91dCB0aGUNCmlzc3VlIG9mIHNldHRp
-bmcgdGhlIGNvcnJlY3QgZGV2bmFtZSBpZiB0aGUgc2VydmVyIHN1cHBsaWVzIGFuIElQdjYNCmFk
-ZHJlc3MgYXMgdGhlIGhvc3RuYW1lPw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZT
-IGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20N
-Cnd3dy5uZXRhcHAuY29tDQoNCg==
+On Tue, Apr 10, 2012 at 7:02 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Tue, Apr 10, 2012 at 05:56:33PM -0400, bfields wrote:
+>> On Wed, Apr 04, 2012 at 06:28:47PM -0400, Kevin Coffman wrote:
+>> > This bug points out a deficiency in the GSS code previously added to the kernel:
+>> >
+>> > https://bugzilla.redhat.com/show_bug.cgi?id=796992
+>> >
+>> > The spec (RFC 4121 section 4.2.5) says, "The receiver MUST be able to
+>> > interpret all possible rotation count values, including rotation
+>> > counts greater than the length of the token."  Note that an
+>> > implementation is never required to send rotated data.  However it is
+>> > required to be able to handle receiving rotated data.  Windows is the
+>> > only implementation that I am aware of that currently sends tokens
+>> > with rotated data.
+>> >
+>> > Attached is a patch (with way too much debugging) to handle the
+>> > rotated data we have seen from Microsoft clients.  Admittedly, it does
+>> > not handle all cases, which is required to be fully compliant with the
+>> > spec.  I will not have the time to devote to making it fully
+>> > compliant.  I submit this patch as an RFC and for someone else to
+>> > complete!  Also note that I may have over-complicating things!!
+>>
+>> Thanks!
+>>
+>> But I'm not going to agree to implementing another subset of the
+>> cases--we already fell into that trap once, let's not do it again.
+>>
+>> Even if it means we have to do something slow and stupid as the first
+>> pass, I'd rather have something complete....
+>
+> By the way, did the cases you saw form microsoft all have a small
+> rotation value?
+>
+> So, one approach xdr_buf_subsegment() can calculate a new xdr_buf that
+> has the "correct" head, tail, and page lengths (making
+> realhead/realpage/realtail unnecessary).
+>
+> And read_bytes_from_xdr_buf()/write_bytes_from_xdr_buf() already know
+> how to do scatter/gather copies from/to an xdr_buf.
+>
+> And then we can use those to repeatedly shift by up to LOCAL_BUF_LEN
+> bytes until we've rotated the right amount.  Assuming the typical case
+> is a small (less than LOCAL_BUF_LEN) rotation value, that will only
+> require one pass.  So maybe it's not too horrible.
+>
+> So, something like:
+>
+>        rrc = rrc % buf->len;
+>        xdr_buf_subsegment(buf, subbuf, offset, buf->len);
+>        while (shifted < rrc) {
+>                this_shift = min(rrc, LOCAL_BUF_LEN);
+>                shift_buf_a_little(subbuf, this_shift);
+>                shifted += this_shift;
+>        }
+>
+> void shift_buf_a_little(buf, shift)
+> {
+>        char head[LOCAL_BUF_LEN];
+>
+>        BUG_ON(shift > LOCAL_BUF_LEN);
+>
+>        read_bytes_from_xdr_buf(buf, 0, head, shift);
+>        for (i=0; i + shift < buf->len; i += shift) {
+>                char tmp[LOCAL_BUF_LEN];
+>                this_len = min(shift, buf->len - i);
+>                read_bytes_from_xdr_buf(buf, i+shift, tmp, this_len);
+>                write_bytes_to_xdr_buf(buf, i, tmp, this_len);
+>        }
+>        write_bytes_to_xdr_buf(buf, buf->len - shift, head, shift);
+> }
+>
+> ?
+>
+> Uh, but I'm not certain of that second function.
+>
+> --b.
+
+The rotation values we've seen from Microsoft clients/servers for AES
+have been 28.  Your code definitely looks simpler!
+
+K.C.
