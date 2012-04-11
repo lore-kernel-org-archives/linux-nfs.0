@@ -1,89 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:44937 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755853Ab2DETrr convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Apr 2012 15:47:47 -0400
+Received: from fieldses.org ([174.143.236.118]:54372 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754346Ab2DKSUR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Apr 2012 14:20:17 -0400
+Date: Wed, 11 Apr 2012 14:20:15 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH][RFC] nfsd/lockd: have locks_in_grace take a sb arg
+Message-ID: <20120411182015.GA31025@fieldses.org>
+References: <1333455279-11200-1-git-send-email-jlayton@redhat.com>
+ <4F841D2A.9020504@parallels.com>
+ <20120410081612.65dd25fa@tlielax.poochiereds.net>
+ <4F842BAE.2010804@parallels.com>
+ <20120410202251.GH18465@fieldses.org>
+ <4F855E3D.6090306@parallels.com>
+ <20120411172019.GB29903@fieldses.org>
+ <4F85C087.7060106@parallels.com>
 MIME-Version: 1.0
-In-Reply-To: <CADnza44gqDeLtZ9B6K3LVAxuyDc9dBh6uRpKrKbGeZ2+uHom_g@mail.gmail.com>
-References: <CAPVoSvQ8M=VUjNCwd5=0ax9O1FOFruP33FcN-_NNPeE68J0FaQ@mail.gmail.com>
-	<CADnza44gqDeLtZ9B6K3LVAxuyDc9dBh6uRpKrKbGeZ2+uHom_g@mail.gmail.com>
-Date: Thu, 5 Apr 2012 21:47:47 +0200
-Message-ID: <CAPVoSvQCA806f7igBWGF3aK6V5cVnFXEBZUut-nL3MEhPaCFjg@mail.gmail.com>
-Subject: Re: 3.4-rc1:NFS Oops in nfs_clear_request_commit
-From: Torsten Kaiser <just.for.lkml@googlemail.com>
-To: Fred Isaman <faisaman4@gmail.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        LKML Kernel <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <4F85C087.7060106@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 5, 2012 at 9:31 PM, Fred Isaman <faisaman4@gmail.com> wrote:
-> On Thu, Apr 5, 2012 at 2:55 PM, Torsten Kaiser
->> (gdb) list *0xffffffff81152d98
->> 0xffffffff81152d98 is in nfs_updatepage (fs/nfs/write.c:685).
->> 680                     req->wb_bytes = end - req->wb_offset;
->> 681             else
->> 682                     req->wb_bytes = rqend - req->wb_offset;
->> 683     out_unlock:
->> 684             spin_unlock(&inode->i_lock);
->> 685             nfs_clear_request_commit(req);
->> 686             return req;
->> 687     out_flushme:
->> 688             spin_unlock(&inode->i_lock);
->> 689             nfs_release_request(req);
->
-> This was a simple failure to check for req==NULL after some recent
-> code rearrangement.  I've just sent the patch to the linux-nfs list.
+On Wed, Apr 11, 2012 at 09:33:59PM +0400, Stanislav Kinsbursky wrote:
+> 11.04.2012 21:20, J. Bruce Fields Ð¿Ð¸ÑˆÐµÑ‚:
+> >So you really are exporting subtrees of the same filesystem from
+> >multiple containers?  Why?
+> >
+> 
+> Everything is very-very simple and obvious.
+> We use "chroot jail". This is the most often and simple setup for containers.
+> And, basicaly, Virtuozzo container file system consist of two parts:
+> one of them is it's private modified data, another part is a
+> template, used for all containers based on it (rhel6, for example;
+> when it's content is modified my some container - then modified file
+> copied to private part of container, which modified the file).
+> Anyway, with properly configured environment it could be as many
+> containers on the same file system, as possible. And making sure,
+> that no data shared between them is root's responsibility.
+> This approach gives us journal bottleneck. That's why, in future we
+> are going to use "ploop" device (a kind of a very smart loop device)
+> per container. And thus this problem with grace period for file
+> systems will disappear.
+> 
+> >And are you sure you're not vulnerable to filehandle-guessing attacks?
+> >
+> 
+> No, I'm not. Could you give me some examples of such attacks?
 
-Thanks for the quick patch.
-In hindsight its obvious how the NULL got into
-nfs_clear_request_commit(), had I do not have to wonder if its fixed,
-or if I'm just not seeing it again.
+Suppose you export subtree /export/foo of filesystem /export to a
+client, that client can also easily access anything else in /export; all
+it hsa to do is guess the filehandle of the thing it wants to access (or
+just guess filehandle of /export itself; root filehandles are likely
+especially easily to guess), and then work from there.
 
- 648                 if (req == NULL)
- 649                         goto out_unlock;
-...
- 683 out_unlock:
- 684         spin_unlock(&inode->i_lock);
- 685         nfs_clear_request_commit(req);
+(There's a workaround: you can set the subtree_check option.  That
+causes a number of problems (renaming a file to a different directory
+changes its filehandle, for example, so anyone trying to use it while it
+gets renamed gets an unexpected ESTALE).  So we don't recommend it.)
 
-> I've copied and pasted below for reference, but there will probably be
-> white space errors.
+So if all the containers are sharing the same filesystem, then anyone
+exporting a subdirectory of its own filesystem has essentially granted
+access to everyone's filesystem.
 
-No problem, I can apply that minimal change by hand.
+For that reason it's really only recommended to export separate
+filesystems....
 
-Thanks again, Torsten
-
-> Fred
->
-> 8<-------------------------------------------------------------------------------------------------------
->
-> From 6a5223e5df12318d9f6bdc401634126271399f9b Mon Sep 17 00:00:00 2001
-> From: Fred Isaman <iisaman@netapp.com>
-> Date: Thu, 5 Apr 2012 15:24:04 -0400
-> Subject: [PATCH 1/1] NFS: check for req==NULL in
-> nfs_try_to_update_request cleanup
->
-> Signed-off-by: Fred Isaman <iisaman@netapp.com>
-> ---
->  fs/nfs/write.c |    3 ++-
->  1 files changed, 2 insertions(+), 1 deletions(-)
->
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index 2c68818..9b8d4d4 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -682,7 +682,8 @@ static struct nfs_page
-> *nfs_try_to_update_request(struct inode *inode,
->                req->wb_bytes = rqend - req->wb_offset;
->  out_unlock:
->        spin_unlock(&inode->i_lock);
-> -       nfs_clear_request_commit(req);
-> +       if (req)
-> +               nfs_clear_request_commit(req);
->        return req;
->  out_flushme:
->        spin_unlock(&inode->i_lock);
-> --
-> 1.7.2.1
+--b.
