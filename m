@@ -1,40 +1,120 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:35582 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756971Ab2DMXFM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Apr 2012 19:05:12 -0400
-Received: by obbta14 with SMTP id ta14so1189882obb.19
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Apr 2012 16:05:11 -0700 (PDT)
-Message-ID: <4F88B124.9030002@gmail.com>
-Date: Fri, 13 Apr 2012 16:05:08 -0700
-From: Dean <seattleplus@gmail.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:14119 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932499Ab2DKNdZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Apr 2012 09:33:25 -0400
+Subject: [PATCH 3/4] nfsd: make name-to-id cache allocated per network
+ namespace context
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Wed, 11 Apr 2012 17:32:58 +0400
+Message-ID: <20120411133258.26953.73735.stgit@localhost6.localdomain6>
+In-Reply-To: <20120411133139.26953.85254.stgit@localhost6.localdomain6>
+References: <20120411133139.26953.85254.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Calvin Owens <jcalvinowens@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [GSoC Project] Implementing NFS v4.2
-References: <4F7E32D4.3030201@gmail.com> <1333682276.4792.32.camel@lade.trondhjem.org>
-In-Reply-To: <1333682276.4792.32.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->
->
->
-> The efficient sparse file read and fadvise support might be nice too,
-> but I'd like to see numbers for how they improve matters before I feel
-> comfortable saying yea or nay to adding those specific features.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Instead of '...but I'd like to see...' I assume you meant, '...since I'd 
-like to see...', as it would be hard to see how they improve matters 
-without actually implementing them.
+---
+ fs/nfsd/netns.h     |    2 +-
+ fs/nfsd/nfs4idmap.c |   24 +++++++++++++++---------
+ 2 files changed, 16 insertions(+), 10 deletions(-)
 
-Although for sparse file reads, I think the low overhead design to avoid 
-bloating every file upon read in NFSv4.2 makes it easy to see the 
-benefit without any implementation.  For ioadvise, I think the benefit 
-will be dependent upon support from the exported file system (or 
-possibly nfs server).  So any prototype would have to be combined with 
-appropriate support in the server file system or nfs server.
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index 948a718..3936563 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -33,7 +33,7 @@ struct nfsd_net {
+ 	struct cache_detail *svc_export_cache;
+ 
+ 	struct cache_detail *idtoname_cache;
+-
++	struct cache_detail *nametoid_cache;
+ };
+ 
+ extern int nfsd_net_id;
+diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
+index b285a69..286a7f8 100644
+--- a/fs/nfsd/nfs4idmap.c
++++ b/fs/nfsd/nfs4idmap.c
+@@ -301,8 +301,6 @@ idtoname_update(struct cache_detail *cd, struct ent *new, struct ent *old)
+  * Name -> ID cache
+  */
+ 
+-static struct cache_head *nametoid_table[ENT_HASHMAX];
+-
+ static inline int
+ nametoid_hash(struct ent *ent)
+ {
+@@ -362,10 +360,9 @@ static struct ent *nametoid_update(struct cache_detail *, struct ent *,
+ 				   struct ent *);
+ static int         nametoid_parse(struct cache_detail *, char *, int);
+ 
+-static struct cache_detail nametoid_cache = {
++static struct cache_detail nametoid_cache_template = {
+ 	.owner		= THIS_MODULE,
+ 	.hash_size	= ENT_HASHMAX,
+-	.hash_table	= nametoid_table,
+ 	.name		= "nfs4.nametoid",
+ 	.cache_put	= ent_put,
+ 	.cache_upcall	= nametoid_upcall,
+@@ -479,11 +476,18 @@ nfsd_idmap_init(struct net *net)
+ 	rv = cache_register_net(nn->idtoname_cache, net);
+ 	if (rv)
+ 		goto destroy_idtoname_cache;
+-	rv = cache_register_net(&nametoid_cache, net);
+-	if (rv)
++	nn->nametoid_cache = cache_create_net(&nametoid_cache_template, net);
++	if (IS_ERR(nn->nametoid_cache)) {
++		rv = PTR_ERR(nn->idtoname_cache);
+ 		goto unregister_idtoname_cache;
++	}
++	rv = cache_register_net(nn->nametoid_cache, net);
++	if (rv)
++		goto destroy_nametoid_cache;
+ 	return 0;
+ 
++destroy_nametoid_cache:
++	cache_destroy_net(nn->nametoid_cache, net);
+ unregister_idtoname_cache:
+ 	cache_unregister_net(nn->idtoname_cache, net);
+ destroy_idtoname_cache:
+@@ -497,8 +501,9 @@ nfsd_idmap_shutdown(struct net *net)
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
+ 	cache_unregister_net(nn->idtoname_cache, net);
+-	cache_unregister_net(&nametoid_cache, net);
++	cache_unregister_net(nn->nametoid_cache, net);
+ 	cache_destroy_net(nn->idtoname_cache, net);
++	cache_destroy_net(nn->nametoid_cache, net);
+ }
+ 
+ static int
+@@ -541,19 +546,20 @@ idmap_name_to_id(struct svc_rqst *rqstp, int type, const char *name, u32 namelen
+ 		.type = type,
+ 	};
+ 	int ret;
++	struct nfsd_net *nn = net_generic(rqstp->rq_xprt->xpt_net, nfsd_net_id);
+ 
+ 	if (namelen + 1 > sizeof(key.name))
+ 		return nfserr_badowner;
+ 	memcpy(key.name, name, namelen);
+ 	key.name[namelen] = '\0';
+ 	strlcpy(key.authname, rqst_authname(rqstp), sizeof(key.authname));
+-	ret = idmap_lookup(rqstp, nametoid_lookup, &key, &nametoid_cache, &item);
++	ret = idmap_lookup(rqstp, nametoid_lookup, &key, nn->nametoid_cache, &item);
+ 	if (ret == -ENOENT)
+ 		return nfserr_badowner;
+ 	if (ret)
+ 		return nfserrno(ret);
+ 	*id = item->id;
+-	cache_put(&item->h, &nametoid_cache);
++	cache_put(&item->h, nn->nametoid_cache);
+ 	return 0;
+ }
+ 
 
-Dean
