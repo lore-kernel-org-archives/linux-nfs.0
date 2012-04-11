@@ -1,132 +1,140 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:55610 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754182Ab2D2Uub (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 29 Apr 2012 16:50:31 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 09/15] NFSv2/v3: Simulate the change attribute
-Date: Sun, 29 Apr 2012 16:50:14 -0400
-Message-Id: <1335732620-10445-10-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1335732620-10445-9-git-send-email-Trond.Myklebust@netapp.com>
-References: <1335732620-10445-1-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-2-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-3-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-4-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-5-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-6-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-7-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-8-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-9-git-send-email-Trond.Myklebust@netapp.com>
+Received: from relay.parallels.com ([195.214.232.42]:36503 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753264Ab2DKNJI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Apr 2012 09:09:08 -0400
+Message-ID: <4F85825E.4060104@parallels.com>
+Date: Wed, 11 Apr 2012 17:08:46 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: Jeff Layton <jlayton@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH][RFC] nfsd/lockd: have locks_in_grace take a sb arg
+References: <1333455279-11200-1-git-send-email-jlayton@redhat.com>	<4F841D2A.9020504@parallels.com>	<20120410081612.65dd25fa@tlielax.poochiereds.net>	<4F842BAE.2010804@parallels.com>	<20120410093900.20209d00@tlielax.poochiereds.net>	<4F84493C.1040303@parallels.com>	<20120410144505.58bca0b9@corrin.poochiereds.net>	<4F855864.8050509@parallels.com> <20120411074822.0054eb36@tlielax.poochiereds.net>
+In-Reply-To: <20120411074822.0054eb36@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use the ctime to simulate a change attribute for NFSv2 and NFSv3.
+11.04.2012 15:48, Jeff Layton пишет:
+>>>>> One thing that puzzles me at the moment. We have two namespaces to deal
+>>>>> with -- the network and the mount namespace. With nfs client code,
+>>>>> everything is keyed off of the net namespace. That's not really the
+>>>>> case here since we have to deal with a local fs tree as well.
+>>>>>
+>>>>> When an nfsd running in a container receives an RPC, how does it
+>>>>> determine what mount namespace it should do its operations in?
+>>>>>
+>>>>
+>>>> We don't use mount namespaces, so that's why I wasn't thinking about it...
+>>>> But if we have 2 types of namespaces, then we have to tie  mount namesapce to
+>>>> network. I.e we can get desired mount namespace from per-net NFSd data.
+>>>>
+>>>
+>>> One thing that Bruce mentioned to me privately is that we could plan to
+>>> use whatever mount namespace mountd is using within a particular net
+>>> namespace. That makes some sense since mountd is the final arbiter of
+>>> who gets access to what.
+>>>
+>>
+>> Could you, please, give some examples? I don't get the idea.
+>>
+>
+> When nfsd gets an RPC call, it needs to decide in what mount namespace
+> to do the fs operations. How do we decide this?
+>
+> Bruce's thought was to look at what mount namespace rpc.mountd is using
+> and use that, but now that I consider it, it's a bit of a chicken and
+> egg problem really... nfsd talks to mountd via files in /proc/net/rpc/.
+> In order to talk to the right mountd, might you need to know what mount
+> namespace it's operating in?
+>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/client.c         |    2 +-
- fs/nfs/internal.h       |   12 ++++++++++++
- fs/nfs/nfs2xdr.c        |    2 ++
- fs/nfs/nfs3xdr.c        |    3 +++
- include/linux/nfs_xdr.h |    6 +++---
- 5 files changed, 21 insertions(+), 4 deletions(-)
+Not really... /proc itself depens on pid namespace. /proc/net depends on current 
+(!) network namespace. So we can't just lookup for this dentry.
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 60f7e4e..a8f8de6 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -880,7 +880,7 @@ static int nfs_init_server(struct nfs_server *server,
- 	server->options = data->options;
- 	server->caps |= NFS_CAP_HARDLINKS|NFS_CAP_SYMLINKS|NFS_CAP_FILEID|
- 		NFS_CAP_MODE|NFS_CAP_NLINK|NFS_CAP_OWNER|NFS_CAP_OWNER_GROUP|
--		NFS_CAP_ATIME|NFS_CAP_CTIME|NFS_CAP_MTIME;
-+		NFS_CAP_ATIME|NFS_CAP_CTIME|NFS_CAP_MTIME|NFS_CAP_CHANGE_ATTR;
- 
- 	if (data->rsize)
- 		server->rsize = nfs_block_size(data->rsize, NULL);
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 0fd1efa..1855e8f 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -493,3 +493,15 @@ unsigned int nfs_page_array_len(unsigned int base, size_t len)
- 		PAGE_SIZE - 1) >> PAGE_SHIFT;
- }
- 
-+/*
-+ * Convert a struct timespec into a 64-bit change attribute
-+ *
-+ * This does approximately the same thing as timespec_to_ns(),
-+ * but for calculation efficiency, we multiply the seconds by
-+ * 1024*1024*1024.
-+ */
-+static inline
-+u64 nfs_timespec_to_change_attr(const struct timespec *ts)
-+{
-+	return ((u64)ts->tv_sec << 30) + ts->tv_nsec;
-+}
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index 1f56000..c99008e 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -313,6 +313,8 @@ static int decode_fattr(struct xdr_stream *xdr, struct nfs_fattr *fattr)
- 	p = xdr_decode_time(p, &fattr->atime);
- 	p = xdr_decode_time(p, &fattr->mtime);
- 	xdr_decode_time(p, &fattr->ctime);
-+	fattr->change_attr = nfs_timespec_to_change_attr(&fattr->ctime);
-+
- 	return 0;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index 01e53e9..ee284c2 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -675,6 +675,7 @@ static int decode_fattr3(struct xdr_stream *xdr, struct nfs_fattr *fattr)
- 	p = xdr_decode_nfstime3(p, &fattr->atime);
- 	p = xdr_decode_nfstime3(p, &fattr->mtime);
- 	xdr_decode_nfstime3(p, &fattr->ctime);
-+	fattr->change_attr = nfs_timespec_to_change_attr(&fattr->ctime);
- 
- 	fattr->valid |= NFS_ATTR_FATTR_V3;
- 	return 0;
-@@ -725,12 +726,14 @@ static int decode_wcc_attr(struct xdr_stream *xdr, struct nfs_fattr *fattr)
- 		goto out_overflow;
- 
- 	fattr->valid |= NFS_ATTR_FATTR_PRESIZE
-+		| NFS_ATTR_FATTR_PRECHANGE
- 		| NFS_ATTR_FATTR_PREMTIME
- 		| NFS_ATTR_FATTR_PRECTIME;
- 
- 	p = xdr_decode_size3(p, &fattr->pre_size);
- 	p = xdr_decode_nfstime3(p, &fattr->pre_mtime);
- 	xdr_decode_nfstime3(p, &fattr->pre_ctime);
-+	fattr->pre_change_attr = nfs_timespec_to_change_attr(&fattr->pre_ctime);
- 
- 	return 0;
- out_overflow:
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index c940d46..cd160ab 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -106,14 +106,14 @@ struct nfs_fattr {
- 		| NFS_ATTR_FATTR_FILEID \
- 		| NFS_ATTR_FATTR_ATIME \
- 		| NFS_ATTR_FATTR_MTIME \
--		| NFS_ATTR_FATTR_CTIME)
-+		| NFS_ATTR_FATTR_CTIME \
-+		| NFS_ATTR_FATTR_CHANGE)
- #define NFS_ATTR_FATTR_V2 (NFS_ATTR_FATTR \
- 		| NFS_ATTR_FATTR_BLOCKS_USED)
- #define NFS_ATTR_FATTR_V3 (NFS_ATTR_FATTR \
- 		| NFS_ATTR_FATTR_SPACE_USED)
- #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
--		| NFS_ATTR_FATTR_SPACE_USED \
--		| NFS_ATTR_FATTR_CHANGE)
-+		| NFS_ATTR_FATTR_SPACE_USED)
- 
- /*
-  * Info on the file system
+But, in spite of nfsd works in initial (init_net and friends) environment, we 
+can get network namespace from RPC request. Having this, we can easily get 
+desired proc entry (proc_net_rpc in sunrpc_net). So it looks like we can 
+actually don't care about mount namespaces - we have our own back door.
+If I'm not mistaken, of course...
+
+> A simpler method might be to take a reference to whatever mount
+> namespace rpc.nfsd has when it starts knfsd and keep that reference
+> inside of the nfsd_net struct. When a call comes in to a particular
+> nfsd "instance" you can just use that mount namespace.
+>
+
+This means that we tie mount namespace to network. Even worse - network 
+namespace holds mount namespace. Currently, I can't see any problems. But I 
+can't even imagine, how many pitfalls can (and, most probably, will) be found in 
+future.
+I think, we should try to avoid explicit cross-namespaces dependencies...
+
+>>> Note that it is quite easy to get lost in the weeds with this. I've been
+>>> struggling to get a working design for a clustered nfsv4 server for the
+>>> last several months and have had some time to wrestle with these
+>>> issues. It's anything but trivial.
+>>>
+>>> What you may need to do in order to make progress is to start with some
+>>> valid use-cases for this stuff, and get those working while disallowing
+>>> or ignoring other use cases. We'll never get anywhere if we try to solve
+>>> all of these problems at once...
+>>>
+>>
+>> Agreed.
+>> So, my current understanding of the situation can be summarized as follows:
+>>
+>> 1) The idea of making grace period (and int internals) per networks namespace
+>> stays the same. But it's implementation affect only current "generic grace
+>> period" code.
+>>
+>
+> Yes, that's where you should focus your efforts for now. As I said, we
+> don't have any alternate grace period handling schemes yet, but we will
+> eventually need one to handle clustered filesystems and possibly the
+> case of serving the same local fs from multiple namespaces.
+>
+
+Ok.
+
+>> 2) Your idea of making grace period per file system looks reasonable. And maybe
+>> this approach (using of filesystem's export operations if available) have to be
+>> used by default.
+>> But I suggest to add new option to exports (say, "no_fs_grace"), which will
+>> disable this new functionality. With this option system administrator becomes
+>> responsible for any problems with shared file system.
+>>
+>
+> Something like that may be a reasonable hack initially but we need to
+> ensure that we can deal with this properly later. I think we're going
+> to end up with "pluggable" grace period handling at some point, so it
+> may be more future proof to do something like "grace=simple" or
+> something instead of no_fs_grace. Still...
+>
+> This is a complex enough problem that I think it behooves us to
+> consider it very carefully and come up with a clear design before we
+> code anything. We need to ensure that whatever we do doesn't end up
+> hamstringing other use cases later...
+>
+> We have 3 cases that I can see that we're interested in initially.
+> There is some overlap between them however:
+>
+> 1) simple case of a filesystem being exported from a single namespace.
+> This covers non-containerized nfsd and containerized nfsd's that are
+> serving different filesystems.
+>
+> 2) a containerized nfsd that serves the same filesystem from multiple
+> namespaces.
+>
+> 3) a cluster serving the same filesystem from multiple namespaces. In
+> this case, the namespaces are also potentially spread across multiple
+> nodes as well.
+>
+> There's a lot of overlap between #2 and #3 here.
+
+Yep, sure. I have nothing to add or object here.
+
 -- 
-1.7.7.6
-
+Best regards,
+Stanislav Kinsbursky
