@@ -1,80 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:41464 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752598Ab2DZTOW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Apr 2012 15:14:22 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 13/20] NFS: Fix recovery from NFS4ERR_CLID_INUSE
-Date: Thu, 26 Apr 2012 19:14:19 +0000
-Message-ID: <1335467659.24247.19.camel@lade.trondhjem.org>
-References: <20120423205312.11446.67081.stgit@degas.1015granger.net>
-	 <20120423205505.11446.28437.stgit@degas.1015granger.net>
-	 <D6859152-CF45-44CC-BB3C-B40CB9FD0BE8@oracle.com>
-	 <1335459334.9701.25.camel@lade.trondhjem.org>
-	 <F4214CAE-E0DE-4A3C-BA0B-02A9F8277897@oracle.com>
-	 <1335466422.24247.8.camel@lade.trondhjem.org>
-	 <99F031E0-3888-45A0-AA81-0F5C961B8AD8@oracle.com>
-In-Reply-To: <99F031E0-3888-45A0-AA81-0F5C961B8AD8@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from relay.parallels.com ([195.214.232.42]:50560 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760945Ab2DKTYy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Apr 2012 15:24:54 -0400
+Message-ID: <4F85DA84.8010703@parallels.com>
+Date: Wed, 11 Apr 2012 23:24:52 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH][RFC] nfsd/lockd: have locks_in_grace take a sb arg
+References: <20120410081612.65dd25fa@tlielax.poochiereds.net> <4F842BAE.2010804@parallels.com> <20120410093900.20209d00@tlielax.poochiereds.net> <4F84493C.1040303@parallels.com> <20120410144505.58bca0b9@corrin.poochiereds.net> <4F855864.8050509@parallels.com> <20120411074822.0054eb36@tlielax.poochiereds.net> <4F85825E.4060104@parallels.com> <20120411171919.GA29903@fieldses.org> <4F85C15D.5060408@parallels.com> <20120411182218.GB31025@fieldses.org>
+In-Reply-To: <20120411182218.GB31025@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA0LTI2IGF0IDE1OjA0IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gQXByIDI2LCAyMDEyLCBhdCAyOjUzIFBNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiAN
-Cj4gPiBPbiBUaHUsIDIwMTItMDQtMjYgYXQgMTQ6NDMgLTA0MDAsIENodWNrIExldmVyIHdyb3Rl
-Og0KPiA+PiBPbiBBcHIgMjYsIDIwMTIsIGF0IDEyOjU1IFBNLCBNeWtsZWJ1c3QsIFRyb25kIHdy
-b3RlOg0KPiA+PiANCj4gPj4+IE9uIFRodSwgMjAxMi0wNC0yNiBhdCAxMjoyNCAtMDQwMCwgQ2h1
-Y2sgTGV2ZXIgd3JvdGU6DQo+ID4+Pj4gT24gQXByIDIzLCAyMDEyLCBhdCA0OjU1IFBNLCBDaHVj
-ayBMZXZlciB3cm90ZToNCj4gPj4+IFRoZW4gbGV0cyBtb3ZlIHRoZSBmbGF2b3VyIG91dCBvZiB0
-aGUgY2xpZW50aWQgc3RyaW5nLA0KPiA+PiANCj4gPj4gUmVtb3ZpbmcgdGhlIGZsYXZvciBmcm9t
-IHRoZSBuZnNfY2xpZW50X2lkNCBzdHJpbmcgbWFrZXMgc2Vuc2UuDQo+ID4+IA0KPiA+Pj4gYW5k
-IGp1c3Qgc2V0dGxlDQo+ID4+PiBmb3IgaGFuZGxpbmcgQ0xJRF9JTlVTRSBieSBjaGFuZ2luZyB0
-aGUgZmxhdm91ciBvbiB0aGUgU0VUQ0xJRU5USUQgY2FsbC4NCj4gPj4gDQo+ID4+IFRoaXMgaXMg
-d2hlcmUgSSBnZXQgaGF6eS4gIA0KPiA+PiANCj4gPj4gSWYgSSBzaW1wbHkgY2hhbmdlIHRoZSBh
-dXRoZW50aWNhdGlvbiBmbGF2b3Igb24gdGhlIGV4aXN0aW5nIGNscC0+Y2xfcnBjY2xpZW50LCB3
-aWxsIHRoaXMgYWZmZWN0IG9uZ29pbmcgUkVORVcgb3BlcmF0aW9ucyB0aGF0IGFsc28gdXNlIHRo
-aXMgdHJhbnNwb3J0PyAgRG8gd2Ugd2FudCBzdWJzZXF1ZW50IFJFTkVXIG9wZXJhdGlvbnMgdG8g
-dXNlIHRoZSBuZXcgZmxhdm9yPw0KPiA+PiANCj4gPj4gVGhpbmtpbmcgaHlwb3RoZXRpY2FsbHks
-IGl0IHNlZW1zIHRvIG1lIHRoYXQgQ0xJRF9JTlVTRSBpcyByZWFsbHkgYW4gaW5kaWNhdGlvbiBv
-ZiBhIHBlcm1hbmVudCBjb25maWd1cmF0aW9uIGVycm9yLCBvciBhIHNvZnR3YXJlIGJ1ZywgYW5k
-IHdlIHNob3VsZCBub3QgYm90aGVyIHRvIHJlY292ZXIuICBCdXQgbWF5YmUgdGhhdCdzIG15IGxp
-bWl0ZWQgaW1hZ2luYXRpb24uICBVbmRlciB3aGF0IHVzZSBjYXNlcyBkbyB5b3UgdGhpbmsgQ0xJ
-RF9JTlVTRSBtaWdodCBvY2N1ciBhbmQgaXQgbWlnaHQgYmUgdXNlZnVsIHRvIGF0dGVtcHQgcmVj
-b3Zlcnk/DQo+ID4+IA0KPiA+IA0KPiA+IFRoZSBzZXJ2ZXIgY2FjaGVzIHRoZSBwcmluY2lwYWwg
-bmFtZSB0aGF0IHdhcyB1c2VkIHRvIGNhbGwgU0VUQ0xJRU5USUQNCj4gPiB3aGVuIHRoZSBsZWFz
-ZSB3YXMgZXN0YWJsaXNoZWQuIEFueSBhdHRlbXB0IHRvIGNhbGwgU0VUQ0xJRU5USUQgd2l0aCBh
-DQo+ID4gZGlmZmVyZW50IHByaW5jaXBhbCB3aWxsIHJlc3VsdCBpbiBDTElEX0lOVVNFIHVubGVz
-cyB0aGUgbGVhc2UgaGFzDQo+ID4gZXhwaXJlZC4NCj4gPiANCj4gPiBTbyB3aGF0IEkgd2FzIHBy
-b3Bvc2luZyB3YXNuJ3QgdGhhdCB5b3UgdHJ5IHRvIGNoYW5nZSB0aGUgYXV0aGVudGljYXRpb24N
-Cj4gPiBmbGF2b3VyIG9uIGFuIGV4aXN0aW5nIG5mc19jbGllbnQuIEl0IHdhcyB0aGF0IHdoZW4g
-eW91IGFyZSBwcm9iaW5nLCB5b3UNCj4gPiBjYW4gdXNlIHRoZSBDTElEX0lOVVNFIHJlcGx5IGZy
-b20gU0VUQ0xJRU5USUQgYXMgYSBkaXJlY3QgaW5kaWNhdGlvbg0KPiA+IHRoYXQgdGhlIHNlcnZl
-ciBpcyBpbmRlZWQgdHJ1bmtlZCwgYW5kIHRoYXQgeW91IGFscmVhZHkgaG9sZCBhIGxlYXNlIG9u
-DQo+ID4gdGhhdCBzZXJ2ZXIsIGJ1dCB0aGF0IHRoZSBhdXRoZW50aWNhdGlvbiBmbGF2b3VyIHRo
-YXQgeW91IGFyZSB0cnlpbmcgdG8NCj4gPiB1c2UgaXMgd3JvbmcuDQo+IA0KPiBUaGUgdXNlIGNh
-c2Ugd291bGQgYmUgdGhhdCBteSBjbGllbnQgaGFzIG1vdW50ZWQgYSBzZXJ2ZXIgdmlhIGFkZHJl
-c3MgWCB1c2luZyBhdXRoZW50aWNhdGlvbiBmbGF2b3IgMSwgYW5kIHRoZW4gdHJpZXMgdG8gbW91
-bnQgdGhlIHNhbWUgc2VydmVyIHZpYSBhZGRyZXNzIFkgdXNpbmcgYXV0aGVudGljYXRpb24gZmxh
-dm9yIDIuDQoNCi4uLmZvciB3aGljaCB0aGUgcmVzdWx0IHNob3VsZCBiZSB0aGF0IGFsbCBzZXRj
-bGllbnRpZC9jb25maXJtIGFuZCByZW5ldw0KcmVxdWVzdHMgd2lsbCB1c2UgZmxhdm91ciAxLg0K
-DQo+IERvIHdlIGV2ZW4gbmVlZCB0byByZXRyeSB0aGUgU0VUQ0xJRU5USUQgYW5kIHRvIHBlcmZv
-cm0gYSBTRVRDTElFTlRJRF9DT05GSVJNIGluIHRoYXQgY2FzZT8NCg0KWWVzLiBPdGhlcndpc2Ug
-d2UgZW5kIHVwIHdpdGggMiBsZWFzZXMgb24gdGhlIHNhbWUgc2VydmVyLiBXZSBkb24ndCB3YW50
-DQp0byBkbyB0aGF0Li4uDQoNCj4gTm93LCB3aGF0IGFib3V0IG5mczRfcmVjbGFpbV9sZWFzZSgp
-ID8gIElmIHRoZSBjbGllbnQgc2VlcyBDTElEX0lOVVNFIGR1cmluZyBhIGxlYXNlIHJlY2xhaW0s
-IG5vIHRydW5raW5nIGRpc2NvdmVyeSBpcyBpbnZvbHZlZC4NCg0KVGhhdCB3b3VsZCBtZWFuIHRo
-YXQgdGhlIGxlYXNlIHdhcyBleHBpcmVkLCBhbmQgdGhhdCBzb21lb25lIHNlbnQgYQ0KU0VUQ0xJ
-RU5USUQgY2FsbCB0byB0aGUgc2VydmVyIHVzaW5nIG91ciBjbGllbnRpZCBzdHJpbmcsIGJ1dCB1
-c2luZyB0aGUNCndyb25nIHByaW5jaXBhbC4gVGhlcmUgYXJlIDIgY2FzZXM6DQoNCjEpIFNvbWVv
-bmUgaXMgc3Bvb2Zpbmcgb3VyIGNsaWVudC4gSSd2ZSBubyBpZGVhIGhvdyB0byByZWNvdmVyIGZy
-b20NCnRoaXMsIHNob3J0IG9mIGNoYW5naW5nIHRoZSBjbGllbnRpZCBzdHJpbmcuDQoNCjIpIFRo
-ZSBzZXJ2ZXIgaXMgdHJ1bmtlZCwgdGhlIGxlYXNlIGV4cGlyZWQsIGFuZCB3ZSBoYXBwZW5lZCB0
-byBjYWxsDQonbW91bnQnIHdoaWxlIGl0IHdhcyBleHBpcmVkLCBhbmQgaW5hZHZlcnRlbnRseSBz
-ZW50IGEgU0VUQ0xJRU5USUQNCitTRVRDTElFTlRJRF9DT05GSVJNIGNhbGwgdG8gdGhlIHNlcnZl
-ciB1c2luZyBhIGRpZmZlcmVudCBJUCBhZGRyZXNzLA0KYW5kIHVzaW5nIHRoZSB3cm9uZyBwcmlu
-Y2lwYWwuDQoNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
-aW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNv
-bQ0KDQo=
+11.04.2012 22:22, J. Bruce Fields написал:
+>> >  What would happen, if we will have situation like below:
+>> >  
+>> >  	mountd A	mountd B
+>> >  
+>> >  	pid_ns		pid_ns
+>> >  	|		  |
+>> >  	mnt_ns		mnt_ns
+>> >  	|		  |
+>> >  	-----	net_ns ----
+>> >  
+>> >  Is it possible, BTW?
+>> >  It yes, that is such construction valid?
+> Looks like a mess, no.  I'd expect there to be only one rpc.mountd
+> running per network namespace.
+
+Then we have to prevent such situations somehow.
+Or it is done already?
