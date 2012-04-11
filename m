@@ -1,121 +1,200 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:28820 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:44286 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753206Ab2DCOxp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Apr 2012 10:53:45 -0400
-Date: Tue, 3 Apr 2012 10:53:01 -0400
-From: Vivek Goyal <vgoyal@redhat.com>
-To: Fengguang Wu <fengguang.wu@intel.com>
-Cc: Linux Memory Management List <linux-mm@kvack.org>,
-        Suresh Jayaraman <sjayaraman@suse.com>,
-        Andrea Righi <andrea@betterlinux.com>, Jeff Moyer <jmoyer@redhat.com>,
-        linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-        Tejun Heo <tj@kernel.org>, Jan Kara <jack@suse.cz>,
-        KAMEZAWA Hiroyuki <kamezawa.hiroyu@jp.fujitsu.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Jens Axboe <axboe@kernel.dk>
-Subject: Re: [PATCH 0/6] buffered write IO controller in balance_dirty_pages()
-Message-ID: <20120403145301.GG5913@redhat.com>
-References: <20120328121308.568545879@intel.com>
- <20120401205647.GD6116@redhat.com>
- <20120403080014.GA15546@localhost>
+	id S1760856Ab2DKVct (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Apr 2012 17:32:49 -0400
+Date: Wed, 11 Apr 2012 17:32:45 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        James Bottomley <jbottomley@parallels.com>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v2] Lockd: pass network namespace to creation and
+ destruction routines
+Message-ID: <20120411213245.GD31706@fieldses.org>
+References: <20120329145421.31911.65512.stgit@localhost6.localdomain6>
+ <20120411161114.GB28928@fieldses.org>
+ <4F85AD54.6000806@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120403080014.GA15546@localhost>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <4F85AD54.6000806@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 03, 2012 at 01:00:14AM -0700, Fengguang Wu wrote:
-
-[CC Jens]
-
-[..]
-> > I think blkio.weight can be thought of a system wide weight of a cgroup
-> > and more than one entity/subsystem should be able to make use of it and
-> > differentiate between IO in its own way. CFQ can decide to do proportional
-> > time division, and buffered write controller should be able to use the
-> > same weight and do write bandwidth differentiation. I think it is better
-> > than introducing another buffered write controller tunable for weight.
-> > 
-> > Personally, I am not too worried about this point. We can document and
-> > explain it well.
+On Wed, Apr 11, 2012 at 08:12:04PM +0400, Stanislav Kinsbursky wrote:
+> 11.04.2012 20:11, J. Bruce Fields пишет:
+> >On Thu, Mar 29, 2012 at 06:54:33PM +0400, Stanislav Kinsbursky wrote:
+> >>v2: dereference of most probably already released nlm_host removed in
+> >>nlmclnt_done() and reclaimer().
+> >
+> >Did you want this in Trond's tree or mine?
+> >
 > 
-> Agreed. The throttling may work in *either* bps, IOPS or disk time
-> modes. In each mode blkio.weight is naturally tied to the
-> corresponding IO metrics.
+> Your tree is preferred since I'm working with it.
 
-Well, Tejun does not like the idea of sharing config variables among
-different policies. So I guess you shall have to come up with your
-own configurations variables as desired. As each policy will have its
-own configuration and stats, prefixing the vairable/stat name with
-policy name will help identify it. Not sure what's a good name for
-buffered write policy.
+OK, applying.--b.
 
-May be
-
-blkio.dirty.weight
-blkio.dirty.bps
-blkio.buffered_write.* or
-blkio.buf_write* or
-blkio.dirty_rate.* or
-
-[..]
 > 
-> Patch 6/6 shows simple test results for bps based throttling.
+> >--b.
+> >
+> >>
+> >>These routines are called from locks reclaimer() kernel thread. This thread
+> >>works in "init_net" network context and currently relays on persence on lockd
+> >>thread and it's per-net resources. Thus lockd_up() and lockd_down() can't relay
+> >>on current network context. So let's pass corrent one into them.
+> >>
+> >>Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
+> >>
+> >>Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
+> >>
+> >>---
+> >>  fs/lockd/clntlock.c        |   13 ++++++++-----
+> >>  fs/lockd/svc.c             |    7 +++----
+> >>  fs/nfsd/nfssvc.c           |    6 +++---
+> >>  include/linux/lockd/bind.h |    4 ++--
+> >>  4 files changed, 16 insertions(+), 14 deletions(-)
+> >>
+> >>diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+> >>index ba1dc2e..ca0a080 100644
+> >>--- a/fs/lockd/clntlock.c
+> >>+++ b/fs/lockd/clntlock.c
+> >>@@ -56,7 +56,7 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
+> >>  	u32 nlm_version = (nlm_init->nfs_version == 2) ? 1 : 4;
+> >>  	int status;
+> >>
+> >>-	status = lockd_up();
+> >>+	status = lockd_up(nlm_init->net);
+> >>  	if (status<  0)
+> >>  		return ERR_PTR(status);
+> >>
+> >>@@ -65,7 +65,7 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
+> >>  				   nlm_init->hostname, nlm_init->noresvport,
+> >>  				   nlm_init->net);
+> >>  	if (host == NULL) {
+> >>-		lockd_down();
+> >>+		lockd_down(nlm_init->net);
+> >>  		return ERR_PTR(-ENOLCK);
+> >>  	}
+> >>
+> >>@@ -80,8 +80,10 @@ EXPORT_SYMBOL_GPL(nlmclnt_init);
+> >>   */
+> >>  void nlmclnt_done(struct nlm_host *host)
+> >>  {
+> >>+	struct net *net = host->net;
+> >>+
+> >>  	nlmclnt_release_host(host);
+> >>-	lockd_down();
+> >>+	lockd_down(net);
+> >>  }
+> >>  EXPORT_SYMBOL_GPL(nlmclnt_done);
+> >>
+> >>@@ -220,11 +222,12 @@ reclaimer(void *ptr)
+> >>  	struct nlm_wait	  *block;
+> >>  	struct file_lock *fl, *next;
+> >>  	u32 nsmstate;
+> >>+	struct net *net = host->net;
+> >>
+> >>  	allow_signal(SIGKILL);
+> >>
+> >>  	down_write(&host->h_rwsem);
+> >>-	lockd_up();	/* note: this cannot fail as lockd is already running */
+> >>+	lockd_up(net);	/* note: this cannot fail as lockd is already running */
+> >>
+> >>  	dprintk("lockd: reclaiming locks for host %s\n", host->h_name);
+> >>
+> >>@@ -275,6 +278,6 @@ restart:
+> >>
+> >>  	/* Release host handle after use */
+> >>  	nlmclnt_release_host(host);
+> >>-	lockd_down();
+> >>+	lockd_down(net);
+> >>  	return 0;
+> >>  }
+> >>diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+> >>index b34100e..ce4c80e 100644
+> >>--- a/fs/lockd/svc.c
+> >>+++ b/fs/lockd/svc.c
+> >>@@ -295,11 +295,10 @@ static void lockd_down_net(struct net *net)
+> >>  /*
+> >>   * Bring up the lockd process if it's not already up.
+> >>   */
+> >>-int lockd_up(void)
+> >>+int lockd_up(struct net *net)
+> >>  {
+> >>  	struct svc_serv *serv;
+> >>  	int		error = 0;
+> >>-	struct net *net = current->nsproxy->net_ns;
+> >>
+> >>  	mutex_lock(&nlmsvc_mutex);
+> >>  	/*
+> >>@@ -377,12 +376,12 @@ EXPORT_SYMBOL_GPL(lockd_up);
+> >>   * Decrement the user count and bring down lockd if we're the last.
+> >>   */
+> >>  void
+> >>-lockd_down(void)
+> >>+lockd_down(struct net *net)
+> >>  {
+> >>  	mutex_lock(&nlmsvc_mutex);
+> >>  	if (nlmsvc_users) {
+> >>  		if (--nlmsvc_users) {
+> >>-			lockd_down_net(current->nsproxy->net_ns);
+> >>+			lockd_down_net(net);
+> >>  			goto out;
+> >>  		}
+> >>  	} else {
+> >>diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> >>index fce472f..0f3e35b 100644
+> >>--- a/fs/nfsd/nfssvc.c
+> >>+++ b/fs/nfsd/nfssvc.c
+> >>@@ -220,7 +220,7 @@ static int nfsd_startup(unsigned short port, int nrservs)
+> >>  	ret = nfsd_init_socks(port);
+> >>  	if (ret)
+> >>  		goto out_racache;
+> >>-	ret = lockd_up();
+> >>+	ret = lockd_up(&init_net);
+> >>  	if (ret)
+> >>  		goto out_racache;
+> >>  	ret = nfs4_state_start();
+> >>@@ -229,7 +229,7 @@ static int nfsd_startup(unsigned short port, int nrservs)
+> >>  	nfsd_up = true;
+> >>  	return 0;
+> >>  out_lockd:
+> >>-	lockd_down();
+> >>+	lockd_down(&init_net);
+> >>  out_racache:
+> >>  	nfsd_racache_shutdown();
+> >>  	return ret;
+> >>@@ -246,7 +246,7 @@ static void nfsd_shutdown(void)
+> >>  	if (!nfsd_up)
+> >>  		return;
+> >>  	nfs4_state_shutdown();
+> >>-	lockd_down();
+> >>+	lockd_down(&init_net);
+> >>  	nfsd_racache_shutdown();
+> >>  	nfsd_up = false;
+> >>  }
+> >>diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
+> >>index 11a966e..4d24d64 100644
+> >>--- a/include/linux/lockd/bind.h
+> >>+++ b/include/linux/lockd/bind.h
+> >>@@ -54,7 +54,7 @@ extern void	nlmclnt_done(struct nlm_host *host);
+> >>
+> >>  extern int	nlmclnt_proc(struct nlm_host *host, int cmd,
+> >>  					struct file_lock *fl);
+> >>-extern int	lockd_up(void);
+> >>-extern void	lockd_down(void);
+> >>+extern int	lockd_up(struct net *net);
+> >>+extern void	lockd_down(struct net *net);
+> >>
+> >>  #endif /* LINUX_LOCKD_BIND_H */
+> >>
 > 
-> Since then I've improved the patches to work in a more "contained" way
-> when blkio.throttle.buffered_write_bps is not set.
 > 
-> The old behavior is, if blkcg A contains 1 dd and blkcg B contains 10
-> dd tasks and they have equal weight, B will get 10 times bandwidth
-> than A.
-> 
-> With the below updated core bits, A and B will get equal share of
-> write bandwidth. The basic idea is to use
-
-Yes, this new behavior makes more sense. Two equal weight groups get
-equal bandwidth irrpesctive of number of tasks in cgroup.
-
-[..]
-> Test results are "pretty good looking" :-) The attached graphs
-> illustrates nice attributes of accuracy, fairness and smoothness
-> for the following tests.
-
-Indeed. These results are pretty cool. It is hard to belive that lines
-are so smooth and lines for two tasks are overlapping each other such 
-that it is not obivious initially that they are overlapping and dirtying
-equal amount of memory. I had to take a second look to figure that out.
-
-Just that results for third graph (weight 500 and 1000 respectively) are
-not perfect. I think Ideally all the 3 tasks should have dirtied same
-amount of memory. But I think achieving perfection here might not be
-easy and may be not many people will care.
-
-Given the fact that you are doing a reasonable job of providing service
-differentiation between buffered writers, I am wondering if you should
-look at the ioprio of writers with-in cgroup and provide service
-differentiation among those too. CFQ has separate queues but it loses
-the context information by the time IO is submitted. So you might be
-able to do a much better job. Anyway, this is a possible future
-enhancement and not necessarily related to this patchset.
-
-Also, we are controlling the rate of dirtying the memory. I am again 
-wondering whether these configuration knobs should be part of memory
-controller and not block controller. Think of NFS case. There is no
-block device or block layer involved but we will control the rate of
-dirtying memory. So some control in memory controller might make
-sense. And following kind of knobs might make sense there.
-
-memcg.dirty_weight or memcg.dirty.weight
-memcg.dirty_bps or memcg.dirty.write_bps
-
-Just that we control not the *absolute amount* of memory but *rate* of
-writing to memory and I think that makes it somewhat confusing and
-gives the impression that it should be part of block IO controller.
-
-I am kind of split on this (rather little inclined towards memory
-controller), so I am raising the question and others can weigh in with
-their thoughts on what makes more sense here.
-
-Thanks
-Vivek
+> -- 
+> Best regards,
+> Stanislav Kinsbursky
