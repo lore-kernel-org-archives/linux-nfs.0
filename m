@@ -1,104 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:32783 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757794Ab2DZPzo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Apr 2012 11:55:44 -0400
-Subject: [PATCH 06/10] NFS: callback up - users counting cleanup
-To: Trond.Myklebust@netapp.com
+Received: from relay.parallels.com ([195.214.232.42]:36640 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761006Ab2DKTjL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Apr 2012 15:39:11 -0400
+Message-ID: <4F85DDDD.5020702@parallels.com>
+Date: Wed, 11 Apr 2012 23:39:09 +0400
 From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Thu, 26 Apr 2012 19:55:34 +0400
-Message-ID: <20120426155534.3763.72951.stgit@localhost6.localdomain6>
-In-Reply-To: <20120426155250.3763.98748.stgit@localhost6.localdomain6>
-References: <20120426155250.3763.98748.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH][RFC] nfsd/lockd: have locks_in_grace take a sb arg
+References: <1333455279-11200-1-git-send-email-jlayton@redhat.com> <4F841D2A.9020504@parallels.com> <20120410081612.65dd25fa@tlielax.poochiereds.net> <4F842BAE.2010804@parallels.com> <20120410202251.GH18465@fieldses.org> <4F855E3D.6090306@parallels.com> <20120411172019.GB29903@fieldses.org> <4F85C087.7060106@parallels.com> <20120411182015.GA31025@fieldses.org>
+In-Reply-To: <20120411182015.GA31025@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Usage coutner now increased only is the service was started sccessfully.
-Even if service is running already, then goto is not required anymore, because
-service creation and start will be skipped.
-With this patch code looks clearer.
+11.04.2012 22:20, J. Bruce Fields написал:
+> Suppose you export subtree /export/foo of filesystem /export to a
+> client, that client can also easily access anything else in /export; all
+> it hsa to do is guess the filehandle of the thing it wants to access (or
+> just guess filehandle of /export itself; root filehandles are likely
+> especially easily to guess), and then work from there.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+I see.
+So, if I undertand you correctly, filesystem to export should be not 
+only one per server, but also should not consist or any other files, 
+which are not allowed to export.
+Currently, in OpenVZ we have kernel threads per container. Thus even 
+kernel threads are in "chroot jail".
+But I'll check, do we have such vulnerability.
+Thank you.
 
----
- fs/nfs/callback.c |   22 ++++++++++------------
- 1 files changed, 10 insertions(+), 12 deletions(-)
+> (There's a workaround: you can set the subtree_check option.  That
+> causes a number of problems (renaming a file to a different directory
+> changes its filehandle, for example, so anyone trying to use it while it
+> gets renamed gets an unexpected ESTALE).  So we don't recommend it.)
+>
+> So if all the containers are sharing the same filesystem, then anyone
+> exporting a subdirectory of its own filesystem has essentially granted
+> access to everyone's filesystem.
+>
+> For that reason it's really only recommended to export separate
+> filesystems....
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 7686845..4b8169c 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -254,6 +254,9 @@ static int nfs_callback_start_svc(int minorversion, struct rpc_xprt *xprt,
- 
- 	nfs_callback_bc_serv(minorversion, xprt, serv);
- 
-+	if (cb_info->task)
-+		return 0;
-+
- 	minorversion_setup =  nfs_minorversion_callback_svc_setup(minorversion,
- 					serv, &rqstp, &callback_svc);
- 	if (!minorversion_setup) {
-@@ -309,6 +312,8 @@ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct n
- err_socks:
- 	svc_rpcb_cleanup(serv, net);
- err_bind:
-+	dprintk("NFS: Couldn't create callback socket: err = %d; "
-+			"net = %p\n", ret, net);
- 	return ret;
- }
- 
-@@ -353,7 +358,7 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
- {
- 	struct svc_serv *serv;
- 	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
--	int ret = 0;
-+	int ret;
- 	struct net *net = xprt->xprt_net;
- 
- 	mutex_lock(&nfs_callback_mutex);
-@@ -364,11 +369,6 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
- 		goto err_create;
- 	}
- 
--	if (cb_info->users++ || cb_info->task != NULL) {
--		nfs_callback_bc_serv(minorversion, xprt, serv);
--		goto out;
--	}
--
- 	ret = nfs_callback_up_net(minorversion, serv, net);
- 	if (ret < 0)
- 		goto err_net;
-@@ -377,13 +377,14 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
- 	if (ret < 0)
- 		goto err_start;
- 
--out:
-+	cb_info->users++;
- 	/*
- 	 * svc_create creates the svc_serv with sv_nrthreads == 1, and then
- 	 * svc_prepare_thread increments that. So we need to call svc_destroy
- 	 * on both success and failure so that the refcount is 1 when the
- 	 * thread exits.
- 	 */
-+err_net:
- 	svc_destroy(serv);
- err_create:
- 	mutex_unlock(&nfs_callback_mutex);
-@@ -391,11 +392,8 @@ err_create:
- 
- err_start:
- 	svc_shutdown_net(serv, net);
--err_net:
--	dprintk("NFS: Couldn't create callback socket or server thread; "
--		"err = %d\n", ret);
--	cb_info->users--;
--	goto out;
-+	dprintk("NFS: Couldn't create server thread; err = %d\n", ret);
-+	goto err_net;
- }
- 
- /*
+Thanks. Anyway, we are going to get rid of "chroot jails" and replace 
+them by separated loop device.
 
