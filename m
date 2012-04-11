@@ -1,85 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:30970 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:44166 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755167Ab2DTOTz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 10:19:55 -0400
-Subject: [PATCH 2/3] SUNRPC: traverse clients tree on PipeFS event
-To: bfields@fieldses.org, Trond.Myklebust@netapp.com
+	id S1760091Ab2DKLOB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Apr 2012 07:14:01 -0400
+Subject: [PATCH 4/4] nfsd: allocate export and expkey caches in per-net
+ operations.
+To: bfields@fieldses.org
 From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Fri, 20 Apr 2012 18:19:43 +0400
-Message-ID: <20120420141925.10848.90395.stgit@localhost6.localdomain6>
-In-Reply-To: <20120420141419.10848.84280.stgit@localhost6.localdomain6>
-References: <20120420141419.10848.84280.stgit@localhost6.localdomain6>
+Date: Wed, 11 Apr 2012 15:13:35 +0400
+Message-ID: <20120411111335.13840.76893.stgit@localhost6.localdomain6>
+In-Reply-To: <20120411111053.13840.66083.stgit@localhost6.localdomain6>
+References: <20120411111053.13840.66083.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If client is a clone, then it's parent can not be in the list.
-But parent's PipeFS dentries have to be created and destroyed as well.
-
-Note: event skip helper for clients introduced
-
 Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
 ---
- net/sunrpc/clnt.c |   30 ++++++++++++++++++++++++++----
- 1 files changed, 26 insertions(+), 4 deletions(-)
+ fs/nfsd/nfsctl.c |   27 +++++++++++++++++++++------
+ 1 files changed, 21 insertions(+), 6 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 8a19849..80b59f1 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -176,8 +176,16 @@ rpc_setup_pipedir(struct rpc_clnt *clnt, const char *dir_name)
- 	return 0;
- }
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index b144177..08cd87a 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -1137,7 +1137,28 @@ static int create_proc_exports_entry(void)
+ #endif
  
--static int __rpc_pipefs_event(struct rpc_clnt *clnt, unsigned long event,
--				struct super_block *sb)
-+static inline int rpc_clnt_skip_event(struct rpc_clnt *clnt, unsigned long event)
+ int nfsd_net_id;
++
++static __net_init int nfsd_init_net(struct net *net)
 +{
-+	if (((event == RPC_PIPEFS_MOUNT) && clnt->cl_dentry) ||
-+	    ((event == RPC_PIPEFS_UMOUNT) && !clnt->cl_dentry))
-+		return 1;
++	int retval;
++
++	retval = nfsd_export_init(net);
++	if (retval)
++		goto out_export_error;
 +	return 0;
++
++out_export_error:
++	return retval;
 +}
 +
-+static int __rpc_clnt_handle_event(struct rpc_clnt *clnt, unsigned long event,
-+				   struct super_block *sb)
- {
- 	struct dentry *dentry;
- 	int err = 0;
-@@ -206,6 +214,21 @@ static int __rpc_pipefs_event(struct rpc_clnt *clnt, unsigned long event,
- 	return err;
- }
- 
-+static int __rpc_pipefs_event(struct rpc_clnt *clnt, unsigned long event,
-+				struct super_block *sb)
++static __net_exit void nfsd_exit_net(struct net *net)
 +{
-+	int error;
-+
-+	if (!rpc_clnt_skip_event(clnt, event)) {
-+		error = __rpc_clnt_handle_event(clnt, event, sb);
-+		if (error)
-+			return error;
-+	}
-+	if (clnt != clnt->cl_parent)
-+		return __rpc_pipefs_event(clnt->cl_parent, event, sb);
-+	return 0;
++	nfsd_export_shutdown(net);
 +}
 +
- static struct rpc_clnt *rpc_get_client_for_event(struct net *net, int event)
+ static struct pernet_operations nfsd_net_ops = {
++	.init = nfsd_init_net,
++	.exit = nfsd_exit_net,
+ 	.id   = &nfsd_net_id,
+ 	.size = sizeof(struct nfsd_net),
+ };
+@@ -1164,9 +1185,6 @@ static int __init init_nfsd(void)
+ 	retval = nfsd_reply_cache_init();
+ 	if (retval)
+ 		goto out_free_stat;
+-	retval = nfsd_export_init(&init_net);
+-	if (retval)
+-		goto out_free_cache;
+ 	nfsd_lockd_init();	/* lockd->nfsd callbacks */
+ 	retval = nfsd_idmap_init();
+ 	if (retval)
+@@ -1185,8 +1203,6 @@ out_free_idmap:
+ 	nfsd_idmap_shutdown();
+ out_free_lockd:
+ 	nfsd_lockd_shutdown();
+-	nfsd_export_shutdown(&init_net);
+-out_free_cache:
+ 	nfsd_reply_cache_shutdown();
+ out_free_stat:
+ 	nfsd_stat_shutdown();
+@@ -1202,7 +1218,6 @@ out_unregister_notifier:
+ 
+ static void __exit exit_nfsd(void)
  {
- 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-@@ -215,8 +238,7 @@ static struct rpc_clnt *rpc_get_client_for_event(struct net *net, int event)
- 	list_for_each_entry(clnt, &sn->all_clients, cl_clients) {
- 		if (clnt->cl_program->pipe_dir_name == NULL)
- 			break;
--		if (((event == RPC_PIPEFS_MOUNT) && clnt->cl_dentry) ||
--		    ((event == RPC_PIPEFS_UMOUNT) && !clnt->cl_dentry))
-+		if (rpc_clnt_skip_event(clnt, event))
- 			continue;
- 		if (atomic_inc_not_zero(&clnt->cl_count) == 0)
- 			continue;
+-	nfsd_export_shutdown(&init_net);
+ 	nfsd_reply_cache_shutdown();
+ 	remove_proc_entry("fs/nfs/exports", NULL);
+ 	remove_proc_entry("fs/nfs", NULL);
 
