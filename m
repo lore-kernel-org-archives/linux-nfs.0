@@ -1,259 +1,202 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:15983 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:39392 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755162Ab2DWTAH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Apr 2012 15:00:07 -0400
-Date: Mon, 23 Apr 2012 14:59:35 -0400
+	id S1756306Ab2DKLs1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Apr 2012 07:48:27 -0400
+Date: Wed, 11 Apr 2012 07:48:22 -0400
 From: Jeff Layton <jlayton@redhat.com>
-To: Miklos Szeredi <miklos@szeredi.hu>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Malahal Naineni <malahal@us.ibm.com>,
-        Steve Dickson <SteveD@redhat.com>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, hch@infradead.org,
-        michael.brantley@deshaw.com, sven.breuner@itwm.fraunhofer.de,
-        chuck.lever@oracle.com, pstaubach@exagrid.com,
-        trond.myklebust@fys.uio.no, rees@umich.edu
-Subject: Re: [PATCH RFC v3] vfs: make fstatat retry once on ESTALE errors
- from getattr call
-Message-ID: <20120423145935.141cfe0b@tlielax.poochiereds.net>
-In-Reply-To: <87zka2qxgs.fsf@tucsk.pomaz.szeredi.hu>
-References: <20120420104055.511e15bc@tlielax.poochiereds.net>
-	<4F91C49D.8070908@RedHat.com>
-	<20120420203725.GA3512@us.ibm.com>
-	<20120420171314.73801874@corrin.poochiereds.net>
-	<CAJfpegt40cgMJQQo3JuNaaS1w957Y2a_NxVoyvx3bmTMj1TGOA@mail.gmail.com>
-	<20120423080012.7c23ef24@tlielax.poochiereds.net>
-	<20120423130009.GA13681@fieldses.org>
-	<20120423091255.00f926c4@tlielax.poochiereds.net>
-	<20120423133412.GB13681@fieldses.org>
-	<20120423095021.1a91a23b@tlielax.poochiereds.net>
-	<20120423135456.GC13681@fieldses.org>
-	<87hawasdrb.fsf@tucsk.pomaz.szeredi.hu>
-	<20120423111610.0259d610@tlielax.poochiereds.net>
-	<87zka2qxgs.fsf@tucsk.pomaz.szeredi.hu>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH][RFC] nfsd/lockd: have locks_in_grace take a sb arg
+Message-ID: <20120411074822.0054eb36@tlielax.poochiereds.net>
+In-Reply-To: <4F855864.8050509@parallels.com>
+References: <1333455279-11200-1-git-send-email-jlayton@redhat.com>
+	<4F841D2A.9020504@parallels.com>
+	<20120410081612.65dd25fa@tlielax.poochiereds.net>
+	<4F842BAE.2010804@parallels.com>
+	<20120410093900.20209d00@tlielax.poochiereds.net>
+	<4F84493C.1040303@parallels.com>
+	<20120410144505.58bca0b9@corrin.poochiereds.net>
+	<4F855864.8050509@parallels.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 23 Apr 2012 17:28:19 +0200
-Miklos Szeredi <miklos@szeredi.hu> wrote:
+On Wed, 11 Apr 2012 14:09:40 +0400
+Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
 
-> Jeff Layton <jlayton@redhat.com> writes:
+> 10.04.2012 22:45, Jeff Layton пишет:
+> >>>> This check is expensive (as you mentioned), but have to be done only once on NFS
+> >>>> server start.
+> >>>
+> >>> Well, no. The subtree check happens every time nfsd processes a
+> >>> filehandle -- see nfsd_acceptable().
+> >>>
+> >>> Basically we have to turn the filehandle into a dentry and then walk
+> >>> back up to the directory that's exported to verify that it is within
+> >>> the correct subtree. If that fails, then we might have to do it more
+> >>> than once if it's a hardlinked file.
+> >>>
+> >>
+> >> Wait. Looks like I'm missing something.
+> >> This subtree check has nothing with my proposal (if I'm not mistaken).
+> >> This option and it's logic remains the same.
+> >> My proposal was to check directories, desired to be exported, on NFS server
+> >> start. And if any of passed exports intersects with any of exports, already
+> >> shared by another NFSd - then shutdown NFSd and print error message.
+> >> Am I missing the point here?
+> >>
+> >
+> > Sorry I got confused with the discussion. You will need to do
+> > something similar to what subtree checking does in order to handle
+> > your proposal however.
+> >
 > 
-> >
-> > Ok, but again, that only applies to the lookup. It has no bearing on
-> > the subsequent operation. For instance, if we're doing:
-> >
-> >      rename("/foo", "/bar");
-> >
-> > ...and another client is simultaneously doing:
-> >
-> >      creat("/bar/baz", 0600);
-> >
-> > ...and we get back ESTALE from the server on the create because the
-> > "old" /bar got replaced after the lookup of it. Then it seems like
-> > returning -ENOENT would not be correct since there was never a time
-> > where /bar didn't exist...
+> Agreed. But this check should be performed only once on NFS server start (not 
+> every fh lookup.
 > 
-> It may not be "correct" according to some standard.  But it's what Linux
-> does since day one on *all* filesystems.  And probably other OS's that
-> have remotely scalable lookup routines.
+> >>>> With this solution, grace period can simple, and no support from exporting file
+> >>>> system is required.
+> >>>> But the main problem here is that such intersections can be checked only in
+> >>>> initial file system environment (containers with it's own roots, gained via
+> >>>> chroot, can't handle this situation).
+> >>>> So, it means, that there have to be some daemon (kernel or user space), which
+> >>>> will handle such requests from different NFS server instances... Which in turn
+> >>>> means, that some way of communication between this daemon and NFS servers is
+> >>>> required. And unix (any of them) sockets doesn't suits here, which makes this
+> >>>> problem more difficult.
+> >>>>
+> >>>
+> >>> This is a truly ugly problem, and unfortunately parts of the nfsd
+> >>> codebase are very old and crusty. We've got a lot of cleanup work ahead
+> >>> of us no matter what design we settle on.
+> >>>
+> >>> This is really a lot bigger than the grace period. I think we ought to
+> >>> step back a bit and consider this more "holistically" first. Do you
+> >>> have a pointer to an overall design document or something?
+> >>>
+> >>
+> >> What exactly you are asking about? Overall design of containerization?
+> >>
+> >
+> > I meant containerization of nfsd in particular.
+> >
 > 
-> Thanks,
-> Miklos
+> If you are asking about some kind of white paper, then I don't have it.
+> But here are main visible targets:
+> 1) Move all network-related resources to per-net data (caches, grace period, 
+> lockd calls, transports, your tracking engine).
+> 2) make nfsd filesystem superblock per network namespace.
+> 3) service itself will be controlled like Lockd done (one pool for all, per-net 
+> resources allocated on service start).
+> 
+> >>> One thing that puzzles me at the moment. We have two namespaces to deal
+> >>> with -- the network and the mount namespace. With nfs client code,
+> >>> everything is keyed off of the net namespace. That's not really the
+> >>> case here since we have to deal with a local fs tree as well.
+> >>>
+> >>> When an nfsd running in a container receives an RPC, how does it
+> >>> determine what mount namespace it should do its operations in?
+> >>>
+> >>
+> >> We don't use mount namespaces, so that's why I wasn't thinking about it...
+> >> But if we have 2 types of namespaces, then we have to tie  mount namesapce to
+> >> network. I.e we can get desired mount namespace from per-net NFSd data.
+> >>
+> >
+> > One thing that Bruce mentioned to me privately is that we could plan to
+> > use whatever mount namespace mountd is using within a particular net
+> > namespace. That makes some sense since mountd is the final arbiter of
+> > who gets access to what.
+> >
+> 
+> Could you, please, give some examples? I don't get the idea.
+> 
 
-The race window with local filesystems is very small though. I'm not
-sure I've ever heard of anyone hitting this on one in practice. For NFS
-OTOH, it's quite large and it's easy to hit an ESTALE without even
-trying very hard.
+When nfsd gets an RPC call, it needs to decide in what mount namespace
+to do the fs operations. How do we decide this?
 
-On a related note, here's a first pass at making the getattr codepaths
-handle ERETRYLOOKUP. It assumes that we don't need to fix the devtmpfs
-callers or block/loop.c.
+Bruce's thought was to look at what mount namespace rpc.mountd is using
+and use that, but now that I consider it, it's a bit of a chicken and
+egg problem really... nfsd talks to mountd via files in /proc/net/rpc/.
+In order to talk to the right mountd, might you need to know what mount
+namespace it's operating in?
 
-The really ugly part is that we have to deal with other callers that
-don't have the ability to retry. So we have to convert ERETRYLOOKUP
-back to ESTALE in those callers.
+A simpler method might be to take a reference to whatever mount
+namespace rpc.nfsd has when it starts knfsd and keep that reference
+inside of the nfsd_net struct. When a call comes in to a particular
+nfsd "instance" you can just use that mount namespace.
 
-Dealing with vfs_getattr is actually fairly trivial. A tougher one would
-be the inode_permission codepaths. Those go all over the place and it
-would be tough to ensure that we don't leak this new error code to
-userspace.
+> >> But, please, don't ask me, what will be, if two or more NFS servers shares the
+> >> same mount namespace... Looks like this case should be forbidden.
+> >>
+> >
+> > I'm not sure we need to forbid sharing the mount namespace. They might
+> > be exporting completely different filesystems after all, in which case
+> > we'd be forbidding it for no good reason.
+> >
+> 
+> Actually, if we will make file system responsible for grace period control, then 
+> yes, no reason for forbidding of shared mount namespace.
+> 
+> > Note that it is quite easy to get lost in the weeds with this. I've been
+> > struggling to get a working design for a clustered nfsv4 server for the
+> > last several months and have had some time to wrestle with these
+> > issues. It's anything but trivial.
+> >
+> > What you may need to do in order to make progress is to start with some
+> > valid use-cases for this stuff, and get those working while disallowing
+> > or ignoring other use cases. We'll never get anywhere if we try to solve
+> > all of these problems at once...
+> >
+> 
+> Agreed.
+> So, my current understanding of the situation can be summarized as follows:
+> 
+> 1) The idea of making grace period (and int internals) per networks namespace 
+> stays the same. But it's implementation affect only current "generic grace 
+> period" code.
+> 
 
-Personally, I think this approach is just too ugly to live in these
-other codepaths, but it seems like a reasonable approach to allow us to
-retry indefinitely on an ESTALE from a lookup.
+Yes, that's where you should focus your efforts for now. As I said, we
+don't have any alternate grace period handling schemes yet, but we will
+eventually need one to handle clustered filesystems and possibly the
+case of serving the same local fs from multiple namespaces.
 
--------------------------------------------------------------------------------
-vfs-add-an-retry_lookup-functi
--------------------------------------------------------------------------------
-vfs: add an retry_lookup function to handle retries on ERETRYLOOKUP
+> 2) Your idea of making grace period per file system looks reasonable. And maybe 
+> this approach (using of filesystem's export operations if available) have to be 
+> used by default.
+> But I suggest to add new option to exports (say, "no_fs_grace"), which will 
+> disable this new functionality. With this option system administrator becomes 
+> responsible for any problems with shared file system.
+> 
 
-From: Jeff Layton <jlayton@redhat.com>
+Something like that may be a reasonable hack initially but we need to
+ensure that we can deal with this properly later. I think we're going
+to end up with "pluggable" grace period handling at some point, so it
+may be more future proof to do something like "grace=simple" or
+something instead of no_fs_grace. Still...
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
+This is a complex enough problem that I think it behooves us to
+consider it very carefully and come up with a clear design before we
+code anything. We need to ensure that whatever we do doesn't end up
+hamstringing other use cases later...
 
- fs/namei.c         |   23 +++++++++++++++++++++++
- include/linux/fs.h |    2 ++
- 2 files changed, 25 insertions(+), 0 deletions(-)
+We have 3 cases that I can see that we're interested in initially.
+There is some overlap between them however:
 
+1) simple case of a filesystem being exported from a single namespace.
+This covers non-containerized nfsd and containerized nfsd's that are
+serving different filesystems.
 
-diff --git a/fs/namei.c b/fs/namei.c
-index fef6a0d..a781b0e 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -116,6 +116,29 @@
-  * POSIX.1 2.4: an empty pathname is invalid (ENOENT).
-  * PATH_MAX includes the nul terminator --RR.
-  */
-+
-+/**
-+ * retry_lookup - determine whether the caller should retry a lookup and op
-+ *
-+ * @error: the error we'll be returning
-+ * @retry: what retry attempt we're on
-+ *
-+ */
-+bool
-+retry_lookup(const long error, const unsigned int retry)
-+{
-+	long timeout;
-+
-+	if (likely(error != -ERETRYLOOKUP))
-+		return false;
-+
-+	/* arbitrarily cap backoff delay at 1s */
-+	timeout = retry * 2;
-+	timeout = timeout > HZ ? HZ : timeout;
-+
-+	return !schedule_timeout_killable(timeout);
-+}
-+
- static int do_getname(const char __user *filename, char *page)
- {
- 	int retval;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 8de6755..5cc03c3 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2026,6 +2026,8 @@ extern struct file * dentry_open(struct dentry *, struct vfsmount *, int,
- extern int filp_close(struct file *, fl_owner_t id);
- extern char * getname(const char __user *);
- 
-+extern bool retry_lookup(const long error, const unsigned int retry);
-+
- /* fs/ioctl.c */
- 
- extern int ioctl_preallocate(struct file *filp, void __user *argp);
--------------------------------------------------------------------------------
-vfs-make-fstatat-retry-on-esta
--------------------------------------------------------------------------------
-vfs: make fstatat retry on ESTALE errors from getattr call
+2) a containerized nfsd that serves the same filesystem from multiple
+namespaces.
 
-From: Jeff Layton <jlayton@redhat.com>
+3) a cluster serving the same filesystem from multiple namespaces. In
+this case, the namespaces are also potentially spread across multiple
+nodes as well.
 
-Have NFS return ERETRYLOOKUP to the vfs when it gets an ESTALE back on a
-GETATTR call. The VFS will then retry the lookup and call when it sees
-that error.
-
-Unfortunately, we do need to deal with the potential for "leakage" of
-this error when we can't retry, so we must check for it in *all* callers
-of vfs_getattr and swap -ESTALE for it when it occurs.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
-
- fs/ecryptfs/inode.c |    2 +-
- fs/nfs/inode.c      |    2 +-
- fs/nfsd/nfsproc.c   |    1 +
- fs/stat.c           |   20 ++++++++++++--------
- 4 files changed, 15 insertions(+), 10 deletions(-)
-
-
-diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
-index ab35b11..d4b5f15 100644
---- a/fs/ecryptfs/inode.c
-+++ b/fs/ecryptfs/inode.c
-@@ -1068,7 +1068,7 @@ int ecryptfs_getattr(struct vfsmount *mnt, struct dentry *dentry,
- 		generic_fillattr(dentry->d_inode, stat);
- 		stat->blocks = lower_stat.blocks;
- 	}
--	return rc;
-+	return rc == -ERETRYLOOKUP ? -ESTALE : rc;
- }
- 
- int
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index e8bbfa5..2916e87 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -541,7 +541,7 @@ int nfs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
- 		stat->ino = nfs_compat_user_ino64(NFS_FILEID(inode));
- 	}
- out:
--	return err;
-+	return err == -ESTALE ? -ERETRYLOOKUP : err;
- }
- 
- static void nfs_init_lock_context(struct nfs_lock_context *l_ctx)
-diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index e15dc45..5dee967 100644
---- a/fs/nfsd/nfsproc.c
-+++ b/fs/nfsd/nfsproc.c
-@@ -742,6 +742,7 @@ nfserrno (int errno)
- 		{ nfserr_notsupp, -EOPNOTSUPP },
- 		{ nfserr_toosmall, -ETOOSMALL },
- 		{ nfserr_serverfault, -ESERVERFAULT },
-+		{ nfserr_stale, -ERETRYLOOKUP },
- 	};
- 	int	i;
- 
-diff --git a/fs/stat.c b/fs/stat.c
-index c733dc5..fb4cf29 100644
---- a/fs/stat.c
-+++ b/fs/stat.c
-@@ -64,7 +64,7 @@ int vfs_fstat(unsigned int fd, struct kstat *stat)
- 		error = vfs_getattr(f->f_path.mnt, f->f_path.dentry, stat);
- 		fput(f);
- 	}
--	return error;
-+	return error == -ERETRYLOOKUP ? -ESTALE : error;
- }
- EXPORT_SYMBOL(vfs_fstat);
- 
-@@ -73,7 +73,8 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
- {
- 	struct path path;
- 	int error = -EINVAL;
--	int lookup_flags = 0;
-+	unsigned int try = 0;
-+	unsigned int lookup_flags = 0;
- 
- 	if ((flag & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
- 		      AT_EMPTY_PATH)) != 0)
-@@ -84,12 +85,15 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
- 	if (flag & AT_EMPTY_PATH)
- 		lookup_flags |= LOOKUP_EMPTY;
- 
--	error = user_path_at(dfd, filename, lookup_flags, &path);
--	if (error)
--		goto out;
--
--	error = vfs_getattr(path.mnt, path.dentry, stat);
--	path_put(&path);
-+	do {
-+		error = user_path_at(dfd, filename, lookup_flags, &path);
-+		if (!error) {
-+			error = vfs_getattr(path.mnt, path.dentry, stat);
-+			path_put(&path);
-+			break;
-+		}
-+		lookup_flags |= LOOKUP_REVAL;
-+	} while (retry_lookup(error, try++));
- out:
- 	return error;
- }
-
+There's a lot of overlap between #2 and #3 here.
+-- 
+Jeff Layton <jlayton@redhat.com>
