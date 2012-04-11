@@ -1,63 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:2751 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757156Ab2DXR4T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Apr 2012 13:56:19 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
-        Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v3 2/8] NFS: Handle exceptions coming out of nfs4_proc_fs_locations()
-Date: Tue, 24 Apr 2012 13:56:06 -0400
-Message-Id: <1335290172-1532-3-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1335290172-1532-1-git-send-email-bjschuma@netapp.com>
-References: <1335290172-1532-1-git-send-email-bjschuma@netapp.com>
+Received: from relay.parallels.com ([195.214.232.42]:60507 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759765Ab2DKQGW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Apr 2012 12:06:22 -0400
+Message-ID: <4F85ABE8.5030203@parallels.com>
+Date: Wed, 11 Apr 2012 20:06:00 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH 0/8] NFSd: precursor and cleanup patch set
+References: <20120328150152.2646.33607.stgit@localhost6.localdomain6> <20120411160523.GA28928@fieldses.org>
+In-Reply-To: <20120411160523.GA28928@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+11.04.2012 20:05, J. Bruce Fields пишет:
+> On Wed, Mar 28, 2012 at 07:08:53PM +0400, Stanislav Kinsbursky wrote:
+>> This patch set prepares ground for making NFSd export and expkey caches
+>> allocated and registered per network namespace context.
+>> Mainly, it just replaces hard-coded pointers with dereferenced everywhere
+>> required.
+>>
+>> The following series consists of:
+>
+> OK, thanks, applying these all pending some testing.  I'll try to get a
+> for-3.5 branch with this pushed out later today or tomorrow.
+>
 
-We don't want to return -NFS4ERR_WRONGSEC to the VFS because it could
-cause the kernel to oops.
+Ok, thanks, Bruce.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/nfs4proc.c |   15 ++++++++++++++-
- 1 file changed, 14 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 60d5f4c..0de2614 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4919,7 +4919,7 @@ static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr)
- 	fattr->nlink = 2;
- }
- 
--int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
-+static int _nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
- 		struct nfs4_fs_locations *fs_locations, struct page *page)
- {
- 	struct nfs_server *server = NFS_SERVER(dir);
-@@ -4959,6 +4959,19 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
- 	return status;
- }
- 
-+int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
-+		struct nfs4_fs_locations *fs_locations, struct page *page)
-+{
-+	struct nfs4_exception exception = { };
-+	int err;
-+	do {
-+		err = nfs4_handle_exception(NFS_SERVER(dir),
-+				_nfs4_proc_fs_locations(dir, name, fs_locations, page),
-+				&exception);
-+	} while (exception.retry);
-+	return err;
-+}
-+
- static int _nfs4_proc_secinfo(struct inode *dir, const struct qstr *name, struct nfs4_secinfo_flavors *flavors)
- {
- 	int status;
 -- 
-1.7.10
-
+Best regards,
+Stanislav Kinsbursky
