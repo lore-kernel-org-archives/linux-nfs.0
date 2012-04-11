@@ -1,131 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:60375 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1757046Ab2DLGPR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Apr 2012 02:15:17 -0400
-Message-ID: <4F8672ED.10901@davequigley.com>
-Date: Thu, 12 Apr 2012 02:15:09 -0400
-From: Dave Quigley <dpquigl@davequigley.com>
+Received: from relay.parallels.com ([195.214.232.42]:40909 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756027Ab2DKKUp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Apr 2012 06:20:45 -0400
+Message-ID: <4F855811.8080909@parallels.com>
+Date: Wed, 11 Apr 2012 14:08:17 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-To: Calvin Owens <jcalvinowens@gmail.com>
-CC: "Myklebust, Trond" <trond.myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [GSoC Project] Implementing NFS v4.2
-References: <4F7E32D4.3030201@gmail.com> <1333682276.4792.32.camel@lade.trondhjem.org> <4F837E87.3070204@gmail.com> <b4c5095c047099c1c299345e174c9476@countercultured.net> <4F84C2FA.20700@gmail.com>
-In-Reply-To: <4F84C2FA.20700@gmail.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+To: Jeff Layton <jlayton@redhat.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: Grace period
+References: <4F82F16C.7030303@parallels.com>	<20120409112739.6a823d6f@corrin.poochiereds.net>	<4F830999.5000504@parallels.com>	<20120409161114.GB6482@fieldses.org>	<1333988226.2688.76.camel@lade.trondhjem.org>	<20120409162107.GC6482@fieldses.org>	<1333989216.2688.87.camel@lade.trondhjem.org>	<4F8314CF.70302@parallels.com>	<20120409181138.GA9581@fieldses.org>	<4F8411CC.2070105@parallels.com>	<20120410133913.GF18465@fieldses.org>	<4F84537A.40100@parallels.com> <20120410142853.7e749ba2@corrin.poochiereds.net>
+In-Reply-To: <20120410142853.7e749ba2@corrin.poochiereds.net>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 4/10/2012 7:32 PM, Calvin Owens wrote:
-> On 04/09/2012 07:34 PM, David Quigley wrote:
->> On 04/09/2012 20:27, Calvin Owens wrote:
->>> On 04/05/2012 10:17 PM, Myklebust, Trond wrote:
->>>> On Thu, 2012-04-05 at 19:03 -0500, Calvin Owens wrote:
->>>>> Hello all,
+10.04.2012 22:28, Jeff Layton пишет:
+> On Tue, 10 Apr 2012 19:36:26 +0400
+> Stanislav Kinsbursky<skinsbursky@parallels.com>  wrote:
+>
+>> 10.04.2012 17:39, bfields@fieldses.org пишет:
+>>> On Tue, Apr 10, 2012 at 02:56:12PM +0400, Stanislav Kinsbursky wrote:
+>>>> 09.04.2012 22:11, bfields@fieldses.org пишет:
+>>>>> Since NFSv4 doesn't have a separate MOUNT protocol, clients need to be
+>>>>> able to do readdir's and lookups to get to exported filesystems.  We
+>>>>> support this in the Linux server by exporting all the filesystems from
+>>>>> "/" on down that must be traversed to reach a given filesystem.  These
+>>>>> exports are very restricted (e.g. only parents of exports are visible).
 >>>>>
->>>>> I'm interested in implementing the draft specification for NFS v4.2
->>>>> as a
->>>>> Google Summer of Code project. That includes server-side copying,
->>>>> sparse
->>>>> files, and carrying fadvise() calls through to the server, among other
->>>>> things.
+>>>>
+>>>> Ok, thanks for explanation.
+>>>> So, this pseudoroot looks like a part of NFS server internal
+>>>> implementation, but not a part of a standard. That's good.
+>>>>
+>>>>>> Why does it prevents implementing of check for "superblock-network
+>>>>>> namespace" pair on NFS server start and forbid (?) it in case of
+>>>>>> this pair is shared already in other namespace? I.e. maybe this
+>>>>>> pseudoroot can be an exclusion from this rule?
 >>>>>
->>>>> The current document can be found here:
->>>>> http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-07
+>>>>> That might work.  It's read-only and consists only of directories, so
+>>>>> the grace period doesn't affect it.
 >>>>>
->>>>> Is this something that you need to be done? If so, I'd very much
->>>>> like to
->>>>> be involved. :)
 >>>>
->>>> Hi Calvin,
->>>>
->>>> Labelled NFS is likely to be merged into 3.5 (if Dave Q finds the time
->>>> to port his existing code).
->>>>
->>>> Copy offload already exists in prototype form. The main remaining issue
->>>> is working out the user syscall interface, which really requires
->>>> getting
->>>> all the interested filesystem maintainers to agree (we've started on
->>>> doing that).
->>>>
->>>> If you'd like to contribute, then I'd suggest looking into SEEK (for
->>>> providing lseek(SEEK_HOLE/SEEK_DATA) support. There is also the hole
->>>> punching/space reservation, that should fit nicely into the fallocate()
->>>> system call.
+>>>> I've just realized, that this per-sb grace period won't work.
+>>>> I.e., it's a valid situation, when two or more containers located on
+>>>> the same filesystem, but shares different parts of it. And there is
+>>>> not conflict here at all.
 >>>
->>> Yes, that sounds good. I'll start looking into that.
+>>> Well, there may be some conflict in that a file could be hardlinked into
+>>> both subtrees, and that file could be locked from users of either
+>>> export.
 >>>
->>>> The efficient sparse file read and fadvise support might be nice too,
->>>> but I'd like to see numbers for how they improve matters before I feel
->>>> comfortable saying yea or nay to adding those specific features.
->>>
->>> I definitely see your point. It does seem to be a lot of added
->>> complexity for a negligible benefit.
->>>
->>>> Note that there are also a bunch of NFSv4.1 features that have yet
->>>> to be
->>>> implemented, so the above list of tasks is not exhaustive. I'd be happy
->>>> to work with you to find something...
->>>
->>> What else, precisely, would you like to get done? I need to get some
->>> more detailed objectives to put into my application. (Forgive me for
->>> so blatantly not looking myself, but it seems more efficient than me
->>> digging through the code finding missing features and lobbing them at
->>> you for approval, when I'm sure you know exactly where your priorities
->>> are...)
->>>
->>> Thanks very much,
->>> Calvin Owens
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at http://vger.kernel.org/majordomo-info.html
 >>
->> Finishing up the port of Labeled NFS would be some low hanging fruit if
->> someone wants to help tackle it. I'll be trying to find time to work on
->> it but its unclear how soon I'll be able to get around to it.
+>> Is this case handled if both links or visible in the same export?
+>> But anyway, this is not that bad. I.e it doesn't make things unpredictable.
+>> Probably, there are some more issues like this one (bind-mounting, for example).
+>> But I think, that it's root responsibility to handle such problems.
 >>
->> Dave
 >
-> Okay. I took a look at your lnfs git tree - just to make sure I
-> understand: the patchset was originally against 2.6.33, and you're
-> working to make it apply to the current kernel, with the same
-> functionality? And stuff has changed enough since then that it's not
-> trivial? Or am I completely missing the point?
+> Well, it's a problem and one that you'll probably have to address to
+> some degree. In truth, the fact that you're exporting different
+> subtrees in different containers is immaterial since they're both on
+> the same fs and filehandles don't carry any info about the path in and
+> of themselves...
 >
-> Thanks,
-> Calvin Owens
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at http://vger.kernel.org/majordomo-info.html
+> Suppose for instance that we have a hardlinked file that's available
+> from two different exports in two different containers. The grace
+> period ends in container #1, so that nfsd starts servicing normal lock
+> requests. An application takes a lock on that hardlinked file. In the
+> meantime, a client of container #2 attempts to reclaim the lock that he
+> previously held on that same inode and gets denied.
 >
 
-Sorry I somehow completely missed this email. The latest tree should be 
-against 3.2 or something like that. Currently there is an issue where I 
-couldn't port one of the parts over in lookup (see a previous email I 
-sent to trond on list for the details). Once that issue is fixed I would 
-assume the forward port to 3.5 would be mostly trivial.
+> That's just one example. The scarier case is that the client of
+> container #1 takes the lock, alters the file and then drops it again
+> with the client of container #2 none the wiser. Now the file got
+> altered while client #2 thought he held a lock on it. That won't be fun
+> to track down...
+>
+> This sort of thing is one of the reasons I've been saying that the
+> grace period is really a property of the underlying filesystem and not
+> of nfsd itself. Of course, we do have to come up with a way to handle
+> the grace period that doesn't involve altering every exportable fs.
+>
 
-The Labeled NFS tree is managed as two git trees for people's 
-convenience. The tree listed first below [1] is the guilt patch set 
-which I keep track of. The second tree is a git tree which has had the 
-patches applied to it[2]. The tree currently has a v3.2-lnfs branch 
-which needs the one fix figured out. The way I do development is to 
-check out the kernel tag and the patch-set and just work from there.
-
-Another issue is that currently, SELinux is really the only thing you 
-can use to test Labeled NFS. I have a setup script which should give a 
-small test environment to mess around with as well. If you're not 
-familiar with SELinux I can help you with that part as well.
-
-If you find this interesting and want to try to fix the issue and do the 
-forward port I'd be glad to help you. It would be nice to get these 
-changes upstream.
+I see.
+But, frankly speaking, looks like the problem you are talking about is another 
+task (comparing to containerization).
+I.e. making NFSd work per network namespace is somewhat different comparing to 
+these "shared file system" issues (which are actually a part of mount namespace).
 
 
-[1] 
-http://git.selinuxproject.org/git/?p=users/dpquigl/lnfs-patchset/.git;a=summary
-[2] http://git.selinuxproject.org/git/?p=users/dpquigl/lnfs/.git;a=summary
 
-Dave
+-- 
+Best regards,
+Stanislav Kinsbursky
