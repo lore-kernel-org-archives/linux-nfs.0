@@ -1,290 +1,147 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57183 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753088Ab2D1TbM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 28 Apr 2012 15:31:12 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 09/10] NFSv4: Simplify the NFSv4 REMOVE, LINK and RENAME compounds
-Date: Sat, 28 Apr 2012 15:30:59 -0400
-Message-Id: <1335641460-24839-10-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1335641460-24839-9-git-send-email-Trond.Myklebust@netapp.com>
-References: <1335641460-24839-1-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-2-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-3-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-4-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-5-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-6-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-7-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-8-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-9-git-send-email-Trond.Myklebust@netapp.com>
+Received: from relay.parallels.com ([195.214.232.42]:40905 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755163Ab2DKKUm convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Apr 2012 06:20:42 -0400
+Message-ID: <4F855864.8050509@parallels.com>
+Date: Wed, 11 Apr 2012 14:09:40 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: Jeff Layton <jlayton@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH][RFC] nfsd/lockd: have locks_in_grace take a sb arg
+References: <1333455279-11200-1-git-send-email-jlayton@redhat.com>	<4F841D2A.9020504@parallels.com>	<20120410081612.65dd25fa@tlielax.poochiereds.net>	<4F842BAE.2010804@parallels.com>	<20120410093900.20209d00@tlielax.poochiereds.net>	<4F84493C.1040303@parallels.com> <20120410144505.58bca0b9@corrin.poochiereds.net>
+In-Reply-To: <20120410144505.58bca0b9@corrin.poochiereds.net>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Get rid of the post-op GETATTR on the directory in order to reduce
-the amount of processing done on the server.
+10.04.2012 22:45, Jeff Layton пишет:
+>>>> This check is expensive (as you mentioned), but have to be done only once on NFS
+>>>> server start.
+>>>
+>>> Well, no. The subtree check happens every time nfsd processes a
+>>> filehandle -- see nfsd_acceptable().
+>>>
+>>> Basically we have to turn the filehandle into a dentry and then walk
+>>> back up to the directory that's exported to verify that it is within
+>>> the correct subtree. If that fails, then we might have to do it more
+>>> than once if it's a hardlinked file.
+>>>
+>>
+>> Wait. Looks like I'm missing something.
+>> This subtree check has nothing with my proposal (if I'm not mistaken).
+>> This option and it's logic remains the same.
+>> My proposal was to check directories, desired to be exported, on NFS server
+>> start. And if any of passed exports intersects with any of exports, already
+>> shared by another NFSd - then shutdown NFSd and print error message.
+>> Am I missing the point here?
+>>
+>
+> Sorry I got confused with the discussion. You will need to do
+> something similar to what subtree checking does in order to handle
+> your proposal however.
+>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c       |   34 +++-------------------------------
- fs/nfs/nfs4xdr.c        |   37 ++++---------------------------------
- include/linux/nfs_xdr.h |    2 --
- 3 files changed, 7 insertions(+), 66 deletions(-)
+Agreed. But this check should be performed only once on NFS server start (not 
+every fh lookup.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 55b465a..25168dd 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2775,7 +2775,6 @@ static int _nfs4_proc_remove(struct inode *dir, struct qstr *name)
- 		.fh = NFS_FH(dir),
- 		.name.len = name->len,
- 		.name.name = name->name,
--		.bitmask = server->attr_bitmask,
- 	};
- 	struct nfs_removeres res = {
- 		.server = server,
-@@ -2785,19 +2784,11 @@ static int _nfs4_proc_remove(struct inode *dir, struct qstr *name)
- 		.rpc_argp = &args,
- 		.rpc_resp = &res,
- 	};
--	int status = -ENOMEM;
--
--	res.dir_attr = nfs_alloc_fattr();
--	if (res.dir_attr == NULL)
--		goto out;
-+	int status;
- 
- 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
--	if (status == 0) {
-+	if (status == 0)
- 		update_changeattr(dir, &res.cinfo);
--		nfs_post_op_update_inode(dir, res.dir_attr);
--	}
--	nfs_free_fattr(res.dir_attr);
--out:
- 	return status;
- }
- 
-@@ -2819,7 +2810,6 @@ static void nfs4_proc_unlink_setup(struct rpc_message *msg, struct inode *dir)
- 	struct nfs_removeargs *args = msg->rpc_argp;
- 	struct nfs_removeres *res = msg->rpc_resp;
- 
--	args->bitmask = server->cache_consistency_bitmask;
- 	res->server = server;
- 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_REMOVE];
- 	nfs41_init_sequence(&args->seq_args, &res->seq_res, 1);
-@@ -2844,7 +2834,6 @@ static int nfs4_proc_unlink_done(struct rpc_task *task, struct inode *dir)
- 	if (nfs4_async_handle_error(task, res->server, NULL) == -EAGAIN)
- 		return 0;
- 	update_changeattr(dir, &res->cinfo);
--	nfs_post_op_update_inode(dir, res->dir_attr);
- 	return 1;
- }
- 
-@@ -2855,7 +2844,6 @@ static void nfs4_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
- 	struct nfs_renameres *res = msg->rpc_resp;
- 
- 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_RENAME];
--	arg->bitmask = server->attr_bitmask;
- 	res->server = server;
- 	nfs41_init_sequence(&arg->seq_args, &res->seq_res, 1);
- }
-@@ -2881,9 +2869,7 @@ static int nfs4_proc_rename_done(struct rpc_task *task, struct inode *old_dir,
- 		return 0;
- 
- 	update_changeattr(old_dir, &res->old_cinfo);
--	nfs_post_op_update_inode(old_dir, res->old_fattr);
- 	update_changeattr(new_dir, &res->new_cinfo);
--	nfs_post_op_update_inode(new_dir, res->new_fattr);
- 	return 1;
- }
- 
-@@ -2896,7 +2882,6 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 		.new_dir = NFS_FH(new_dir),
- 		.old_name = old_name,
- 		.new_name = new_name,
--		.bitmask = server->attr_bitmask,
- 	};
- 	struct nfs_renameres res = {
- 		.server = server,
-@@ -2908,21 +2893,11 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 	};
- 	int status = -ENOMEM;
- 	
--	res.old_fattr = nfs_alloc_fattr();
--	res.new_fattr = nfs_alloc_fattr();
--	if (res.old_fattr == NULL || res.new_fattr == NULL)
--		goto out;
--
- 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
- 		update_changeattr(old_dir, &res.old_cinfo);
--		nfs_post_op_update_inode(old_dir, res.old_fattr);
- 		update_changeattr(new_dir, &res.new_cinfo);
--		nfs_post_op_update_inode(new_dir, res.new_fattr);
- 	}
--out:
--	nfs_free_fattr(res.new_fattr);
--	nfs_free_fattr(res.old_fattr);
- 	return status;
- }
- 
-@@ -2960,18 +2935,15 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, struct qstr *
- 	int status = -ENOMEM;
- 
- 	res.fattr = nfs_alloc_fattr();
--	res.dir_attr = nfs_alloc_fattr();
--	if (res.fattr == NULL || res.dir_attr == NULL)
-+	if (res.fattr == NULL)
- 		goto out;
- 
- 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
- 		update_changeattr(dir, &res.cinfo);
--		nfs_post_op_update_inode(dir, res.dir_attr);
- 		nfs_post_op_update_inode(inode, res.fattr);
- 	}
- out:
--	nfs_free_fattr(res.dir_attr);
- 	nfs_free_fattr(res.fattr);
- 	return status;
- }
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 89ffe03..86d5459 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -589,38 +589,29 @@ static int nfs4_stat_to_errno(int);
- #define NFS4_enc_remove_sz	(compound_encode_hdr_maxsz + \
- 				encode_sequence_maxsz + \
- 				encode_putfh_maxsz + \
--				encode_remove_maxsz + \
--				encode_getattr_maxsz)
-+				encode_remove_maxsz)
- #define NFS4_dec_remove_sz	(compound_decode_hdr_maxsz + \
- 				decode_sequence_maxsz + \
- 				decode_putfh_maxsz + \
--				decode_remove_maxsz + \
--				decode_getattr_maxsz)
-+				decode_remove_maxsz)
- #define NFS4_enc_rename_sz	(compound_encode_hdr_maxsz + \
- 				encode_sequence_maxsz + \
- 				encode_putfh_maxsz + \
- 				encode_savefh_maxsz + \
- 				encode_putfh_maxsz + \
--				encode_rename_maxsz + \
--				encode_getattr_maxsz + \
--				encode_restorefh_maxsz + \
--				encode_getattr_maxsz)
-+				encode_rename_maxsz)
- #define NFS4_dec_rename_sz	(compound_decode_hdr_maxsz + \
- 				decode_sequence_maxsz + \
- 				decode_putfh_maxsz + \
- 				decode_savefh_maxsz + \
- 				decode_putfh_maxsz + \
--				decode_rename_maxsz + \
--				decode_getattr_maxsz + \
--				decode_restorefh_maxsz + \
--				decode_getattr_maxsz)
-+				decode_rename_maxsz)
- #define NFS4_enc_link_sz	(compound_encode_hdr_maxsz + \
- 				encode_sequence_maxsz + \
- 				encode_putfh_maxsz + \
- 				encode_savefh_maxsz + \
- 				encode_putfh_maxsz + \
- 				encode_link_maxsz + \
--				encode_getattr_maxsz + \
- 				encode_restorefh_maxsz + \
- 				encode_getattr_maxsz)
- #define NFS4_dec_link_sz	(compound_decode_hdr_maxsz + \
-@@ -629,7 +620,6 @@ static int nfs4_stat_to_errno(int);
- 				decode_savefh_maxsz + \
- 				decode_putfh_maxsz + \
- 				decode_link_maxsz + \
--				decode_getattr_maxsz + \
- 				decode_restorefh_maxsz + \
- 				decode_getattr_maxsz)
- #define NFS4_enc_symlink_sz	(compound_encode_hdr_maxsz + \
-@@ -2052,7 +2042,6 @@ static void nfs4_xdr_enc_remove(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	encode_sequence(xdr, &args->seq_args, &hdr);
- 	encode_putfh(xdr, args->fh, &hdr);
- 	encode_remove(xdr, &args->name, &hdr);
--	encode_getfattr(xdr, args->bitmask, &hdr);
- 	encode_nops(&hdr);
- }
- 
-@@ -2072,9 +2061,6 @@ static void nfs4_xdr_enc_rename(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	encode_savefh(xdr, &hdr);
- 	encode_putfh(xdr, args->new_dir, &hdr);
- 	encode_rename(xdr, args->old_name, args->new_name, &hdr);
--	encode_getfattr(xdr, args->bitmask, &hdr);
--	encode_restorefh(xdr, &hdr);
--	encode_getfattr(xdr, args->bitmask, &hdr);
- 	encode_nops(&hdr);
- }
- 
-@@ -2094,7 +2080,6 @@ static void nfs4_xdr_enc_link(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	encode_savefh(xdr, &hdr);
- 	encode_putfh(xdr, args->dir_fh, &hdr);
- 	encode_link(xdr, args->name, &hdr);
--	encode_getfattr(xdr, args->bitmask, &hdr);
- 	encode_restorefh(xdr, &hdr);
- 	encode_getfattr(xdr, args->bitmask, &hdr);
- 	encode_nops(&hdr);
-@@ -5782,9 +5767,6 @@ static int nfs4_xdr_dec_remove(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- 	if (status)
- 		goto out;
- 	status = decode_remove(xdr, &res->cinfo);
--	if (status)
--		goto out;
--	decode_getfattr(xdr, res->dir_attr, res->server);
- out:
- 	return status;
- }
-@@ -5814,15 +5796,6 @@ static int nfs4_xdr_dec_rename(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- 	if (status)
- 		goto out;
- 	status = decode_rename(xdr, &res->old_cinfo, &res->new_cinfo);
--	if (status)
--		goto out;
--	/* Current FH is target directory */
--	if (decode_getfattr(xdr, res->new_fattr, res->server))
--		goto out;
--	status = decode_restorefh(xdr);
--	if (status)
--		goto out;
--	decode_getfattr(xdr, res->old_fattr, res->server);
- out:
- 	return status;
- }
-@@ -5858,8 +5831,6 @@ static int nfs4_xdr_dec_link(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- 	 * Note order: OP_LINK leaves the directory as the current
- 	 *             filehandle.
- 	 */
--	if (decode_getfattr(xdr, res->dir_attr, res->server))
--		goto out;
- 	status = decode_restorefh(xdr);
- 	if (status)
- 		goto out;
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 5a05739..4bb1f9b 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -540,7 +540,6 @@ struct nfs_commitres {
- struct nfs_removeargs {
- 	const struct nfs_fh	*fh;
- 	struct qstr		name;
--	const u32 *		bitmask;
- 	struct nfs4_sequence_args	seq_args;
- };
- 
-@@ -559,7 +558,6 @@ struct nfs_renameargs {
- 	const struct nfs_fh		*new_dir;
- 	const struct qstr		*old_name;
- 	const struct qstr		*new_name;
--	const u32			*bitmask;
- 	struct nfs4_sequence_args	seq_args;
- };
- 
+>>>> With this solution, grace period can simple, and no support from exporting file
+>>>> system is required.
+>>>> But the main problem here is that such intersections can be checked only in
+>>>> initial file system environment (containers with it's own roots, gained via
+>>>> chroot, can't handle this situation).
+>>>> So, it means, that there have to be some daemon (kernel or user space), which
+>>>> will handle such requests from different NFS server instances... Which in turn
+>>>> means, that some way of communication between this daemon and NFS servers is
+>>>> required. And unix (any of them) sockets doesn't suits here, which makes this
+>>>> problem more difficult.
+>>>>
+>>>
+>>> This is a truly ugly problem, and unfortunately parts of the nfsd
+>>> codebase are very old and crusty. We've got a lot of cleanup work ahead
+>>> of us no matter what design we settle on.
+>>>
+>>> This is really a lot bigger than the grace period. I think we ought to
+>>> step back a bit and consider this more "holistically" first. Do you
+>>> have a pointer to an overall design document or something?
+>>>
+>>
+>> What exactly you are asking about? Overall design of containerization?
+>>
+>
+> I meant containerization of nfsd in particular.
+>
+
+If you are asking about some kind of white paper, then I don't have it.
+But here are main visible targets:
+1) Move all network-related resources to per-net data (caches, grace period, 
+lockd calls, transports, your tracking engine).
+2) make nfsd filesystem superblock per network namespace.
+3) service itself will be controlled like Lockd done (one pool for all, per-net 
+resources allocated on service start).
+
+>>> One thing that puzzles me at the moment. We have two namespaces to deal
+>>> with -- the network and the mount namespace. With nfs client code,
+>>> everything is keyed off of the net namespace. That's not really the
+>>> case here since we have to deal with a local fs tree as well.
+>>>
+>>> When an nfsd running in a container receives an RPC, how does it
+>>> determine what mount namespace it should do its operations in?
+>>>
+>>
+>> We don't use mount namespaces, so that's why I wasn't thinking about it...
+>> But if we have 2 types of namespaces, then we have to tie  mount namesapce to
+>> network. I.e we can get desired mount namespace from per-net NFSd data.
+>>
+>
+> One thing that Bruce mentioned to me privately is that we could plan to
+> use whatever mount namespace mountd is using within a particular net
+> namespace. That makes some sense since mountd is the final arbiter of
+> who gets access to what.
+>
+
+Could you, please, give some examples? I don't get the idea.
+
+>> But, please, don't ask me, what will be, if two or more NFS servers shares the
+>> same mount namespace... Looks like this case should be forbidden.
+>>
+>
+> I'm not sure we need to forbid sharing the mount namespace. They might
+> be exporting completely different filesystems after all, in which case
+> we'd be forbidding it for no good reason.
+>
+
+Actually, if we will make file system responsible for grace period control, then 
+yes, no reason for forbidding of shared mount namespace.
+
+> Note that it is quite easy to get lost in the weeds with this. I've been
+> struggling to get a working design for a clustered nfsv4 server for the
+> last several months and have had some time to wrestle with these
+> issues. It's anything but trivial.
+>
+> What you may need to do in order to make progress is to start with some
+> valid use-cases for this stuff, and get those working while disallowing
+> or ignoring other use cases. We'll never get anywhere if we try to solve
+> all of these problems at once...
+>
+
+Agreed.
+So, my current understanding of the situation can be summarized as follows:
+
+1) The idea of making grace period (and int internals) per networks namespace 
+stays the same. But it's implementation affect only current "generic grace 
+period" code.
+
+2) Your idea of making grace period per file system looks reasonable. And maybe 
+this approach (using of filesystem's export operations if available) have to be 
+used by default.
+But I suggest to add new option to exports (say, "no_fs_grace"), which will 
+disable this new functionality. With this option system administrator becomes 
+responsible for any problems with shared file system.
+
+Any objections?
+
 -- 
-1.7.7.6
-
+Best regards,
+Stanislav Kinsbursky
