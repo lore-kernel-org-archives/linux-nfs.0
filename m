@@ -1,57 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57183 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752812Ab2D1TbG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 28 Apr 2012 15:31:06 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from mailout-de.gmx.net ([213.165.64.23]:55144 "HELO
+	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1754223Ab2DKITI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Apr 2012 04:19:08 -0400
+Content-Type: text/plain; charset="utf-8"
+Date: Wed, 11 Apr 2012 10:19:04 +0200
+From: "Johannes Schild" <JSchild@gmx.de>
+Message-ID: <20120411081904.72810@gmx.net>
+MIME-Version: 1.0
+Subject: Problems Setting up pNFS
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 00/10] Optimise away unnecessary NFSv4 post-op attributes
-Date: Sat, 28 Apr 2012 15:30:50 -0400
-Message-Id: <1335641460-24839-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The following set of patches adds support for simulating 'change attributes'
-in NFSv2/v3 by converting the file ctime into a 64-bit value that can
-be stored in inode->i_version.
-With this change, we can then proceed to simplify the attribute cache
-consistency code so that it only uses the change attribute to determine
-whether or not the data and attribute caches are consistent.
+Hi,
 
-Once the cache consistency only depends on the change attribute, we
-can optimise away unnecessary requests for the directory post-op
-attributes on NFSv4 OPEN, CREATE, REMOVE, LINK and RENAME compounds,
-since those operations all supply a 'change_info4' field describing
-the directory change attribute.
+i hope this is the right place to post my problem. Sorry for any inconvenience this is one of my first posts on a mailing list.
 
-Finally, we can stop requesting cache consistency attributes altogether
-for O_DIRECT writes and commits (they are uncached) as well as for
-delegated writes and commits.
+My problem is to set up pNFS. I used Fedora 16 with kernel 3.3.0-0.rc2.git1.1.pnfsd.fc17.x86_64.rpm from http://steved.fedorapeople.org/repos/pnfs/devel/x86_64/rpms/.
+The following howto was used to set up the environment: http://wiki.linux-nfs.org/wiki/index.php/Configuring_pNFS/spnfsd.
+I tested with wireshark the connection between Metadataserver and Client and they use NFSv4.1. But my problem is with the layout... how can i tell the Metadataserver or the Client which layout could/must they use? Because spnfs is obsolete so iam a litte bit lost (i want to use a filelayout).
+Maybe someone can give me a hint or further documentation?
 
 
-Trond Myklebust (10):
-  NFSv4: Fix a typo in NFS4_enc_link_sz
-  NFSv4: Delegreturn only needs the cache consistency bitmask
-  NFS: Simplify nfs_fhget()
-  NFS: Change attribute updates should set NFS_INO_REVAL_PAGECACHE
-  NFSv2/v3: Simulate the change attribute
-  NFS: Simplify the cache invalidation code
-  NFSv4: Simplify the NFSv4 OPEN compound
-  NFSv4: Simplify the NFSv4 CREATE compound
-  NFSv4: Simplify the NFSv4 REMOVE, LINK and RENAME compounds
-  NFSv4: Don't request cache consistency attributes on some writes and
-    commits
+Thanks in advance
 
- fs/nfs/client.c         |    2 +-
- fs/nfs/inode.c          |   58 ++++++++-------------------------
- fs/nfs/internal.h       |   12 +++++++
- fs/nfs/nfs2xdr.c        |    2 +
- fs/nfs/nfs3xdr.c        |    3 ++
- fs/nfs/nfs4proc.c       |   81 +++++++++++++++++++----------------------------
- fs/nfs/nfs4xdr.c        |   76 ++++----------------------------------------
- include/linux/nfs_xdr.h |   11 ++-----
- 8 files changed, 75 insertions(+), 170 deletions(-)
+regards
 
+Johannes
 -- 
-1.7.7.6
-
+NEU: FreePhone 3-fach-Flat mit kostenlosem Smartphone!                                  
+Jetzt informieren: http://mobile.1und1.de/?ac=OM.PW.PW003K20328T7073a
