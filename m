@@ -1,80 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:12976 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:42856 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754526Ab2DZVDn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Apr 2012 17:03:43 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 5/8] NFS: Simplify the cache invalidation code
-Date: Thu, 26 Apr 2012 17:03:32 -0400
-Message-Id: <1335474215-29127-5-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1335474215-29127-4-git-send-email-Trond.Myklebust@netapp.com>
-References: <1335474215-29127-1-git-send-email-Trond.Myklebust@netapp.com>
- <1335474215-29127-2-git-send-email-Trond.Myklebust@netapp.com>
- <1335474215-29127-3-git-send-email-Trond.Myklebust@netapp.com>
- <1335474215-29127-4-git-send-email-Trond.Myklebust@netapp.com>
+	id S1760752Ab2DKRUV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Apr 2012 13:20:21 -0400
+Date: Wed, 11 Apr 2012 13:20:19 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH][RFC] nfsd/lockd: have locks_in_grace take a sb arg
+Message-ID: <20120411172019.GB29903@fieldses.org>
+References: <1333455279-11200-1-git-send-email-jlayton@redhat.com>
+ <4F841D2A.9020504@parallels.com>
+ <20120410081612.65dd25fa@tlielax.poochiereds.net>
+ <4F842BAE.2010804@parallels.com>
+ <20120410202251.GH18465@fieldses.org>
+ <4F855E3D.6090306@parallels.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <4F855E3D.6090306@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that NFSv2 and NFSv3 have simulated change attributes,
-instead of using all three of mtime, ctime and change attribute to
-manage data cache consistency, we can simplify the code to just use
-the change attribute.
+On Wed, Apr 11, 2012 at 02:34:37PM +0400, Stanislav Kinsbursky wrote:
+> 11.04.2012 00:22, J. Bruce Fields пишет:
+> >On Tue, Apr 10, 2012 at 04:46:38PM +0400, Stanislav Kinsbursky wrote:
+> >>10.04.2012 16:16, Jeff Layton пишет:
+> >>>On Tue, 10 Apr 2012 15:44:42 +0400
+> >>>
+> >>>(sorry about the earlier truncated reply, my MUA has a mind of its own
+> >>>this morning)
+> >>>
+> >>
+> >>OK then. Previous letter confused me a bit.
+> >>
+> >>>
+> >>>TBH, I haven't considered that in depth. That is a valid situation, but
+> >>>one that's discouraged. It's very difficult (and expensive) to
+> >>>sequester off portions of a filesystem for serving.
+> >>>
+> >>>A filehandle is somewhat analogous to a device/inode combination. When
+> >>>the server gets a filehandle, it has to determine "is this within a
+> >>>path that's exported to this host"? That process is called subtree
+> >>>checking. It's expensive and difficult to handle. It's always better to
+> >>>export along filesystem boundaries.
+> >>>
+> >>>My suggestion would be to simply not deal with those cases in this
+> >>>patch. Possibly we could force no_subtree_check when we export an fs
+> >>>with a locks_in_grace option defined.
+> >>>
+> >>
+> >>Sorry, but without dealing with those cases your patch looks a bit... Useless.
+> >>I.e. it changes nothing, it there will be no support from file
+> >>systems, going to be exported.
+> >>But how are you going to push developers to implement these calls?
+> >>Or, even if you'll try to implement them by yourself, how they will
+> >>looks like?
+> >>Simple check only for superblock looks bad to me, because any other
+> >>start of NFSd will lead to grace period for all other containers
+> >>(which uses the same filesystem).
+> >
+> >That's the correct behavior, and it sounds simple to implement.  Let's
+> >just do that.
+> >
+> >If somebody doesn't like the grace period from another container
+> >intruding on their use of the same filesystem, they should either
+> >arrange to export different filesystems (not just different subtrees)
+> >from their containers, or arrange to start all their containers at the
+> >same time so their grace periods overlap.
+> >
+> 
+> Starting all at once is not a very good solution.
+> When you start 100 containers simultaneously - then you can't
+> predict, when the process as a whole will succeed (it will produce
+> heavy load on all subsystems). Moreover, there is also  server
+> restart...
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/inode.c |   22 ++--------------------
- 1 files changed, 2 insertions(+), 20 deletions(-)
+So you really are exporting subtrees of the same filesystem from
+multiple containers?  Why?
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index a54dbce..7f14a2f 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -949,7 +949,7 @@ static int nfs_check_inode_attributes(struct inode *inode, struct nfs_fattr *fat
- 
- 	/* Verify a few of the more important attributes */
- 	if ((fattr->valid & NFS_ATTR_FATTR_MTIME) && !timespec_equal(&inode->i_mtime, &fattr->mtime))
--		invalid |= NFS_INO_INVALID_ATTR|NFS_INO_REVAL_PAGECACHE;
-+		invalid |= NFS_INO_INVALID_ATTR;
- 
- 	if (fattr->valid & NFS_ATTR_FATTR_SIZE) {
- 		cur_size = i_size_read(inode);
-@@ -1320,34 +1320,16 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 		if (!timespec_equal(&inode->i_mtime, &fattr->mtime)) {
- 			dprintk("NFS: mtime change on server for file %s/%ld\n",
- 					inode->i_sb->s_id, inode->i_ino);
--			invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA;
--			if (S_ISDIR(inode->i_mode))
--				nfs_force_lookup_revalidate(inode);
- 			memcpy(&inode->i_mtime, &fattr->mtime, sizeof(inode->i_mtime));
- 		}
- 	} else if (server->caps & NFS_CAP_MTIME)
- 		invalid |= save_cache_validity & (NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_DATA
--				| NFS_INO_REVAL_PAGECACHE
- 				| NFS_INO_REVAL_FORCED);
- 
- 	if (fattr->valid & NFS_ATTR_FATTR_CTIME) {
--		/* If ctime has changed we should definitely clear access+acl caches */
--		if (!timespec_equal(&inode->i_ctime, &fattr->ctime)) {
--			invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_ACCESS|NFS_INO_INVALID_ACL;
--			/* and probably clear data for a directory too as utimes can cause
--			 * havoc with our cache.
--			 */
--			if (S_ISDIR(inode->i_mode)) {
--				invalid |= NFS_INO_INVALID_DATA;
--				nfs_force_lookup_revalidate(inode);
--			}
--			memcpy(&inode->i_ctime, &fattr->ctime, sizeof(inode->i_ctime));
--		}
-+		memcpy(&inode->i_ctime, &fattr->ctime, sizeof(inode->i_ctime));
- 	} else if (server->caps & NFS_CAP_CTIME)
- 		invalid |= save_cache_validity & (NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_ACCESS
--				| NFS_INO_INVALID_ACL
- 				| NFS_INO_REVAL_FORCED);
- 
- 	/* Check if our cached file size is stale */
--- 
-1.7.7.6
+And are you sure you're not vulnerable to filehandle-guessing attacks?
 
+--b.
+
+> Anyway, I agree with the idea of this patch.
+> 
+> Please, have a look at new export option I mentioned in "Grace period" thread.
