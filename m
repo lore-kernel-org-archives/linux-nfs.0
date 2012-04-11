@@ -1,126 +1,241 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:1105 "EHLO
-	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757114Ab2D0NNL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Apr 2012 09:13:11 -0400
-Date: Fri, 27 Apr 2012 23:13:06 +1000
-From: Dave Chinner <david@fromorbit.com>
-To: David Howells <dhowells@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-ext4@vger.kernel.org, wine-devel@winehq.org, kfm-devel@kde.org,
-        nautilus-list@gnome.org, linux-api@vger.kernel.org,
-        libc-alpha@sourceware.org
-Subject: Re: [PATCH 0/6] Extended file stat system call
-Message-ID: <20120427131306.GG9541@dastard>
-References: <20120427010610.GE9541@dastard>
- <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
- <4111.1335519545@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:34397 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1761289Ab2DKWOb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Apr 2012 18:14:31 -0400
+Date: Wed, 11 Apr 2012 18:14:29 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Subject: Re: [PATCH 2/4] nfsd: make export cache allocated per network
+ namespace context
+Message-ID: <20120411221429.GF31706@fieldses.org>
+References: <20120411111053.13840.66083.stgit@localhost6.localdomain6>
+ <20120411111321.13840.93926.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4111.1335519545@redhat.com>
+In-Reply-To: <20120411111321.13840.93926.stgit@localhost6.localdomain6>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 27, 2012 at 10:39:05AM +0100, David Howells wrote:
-> Dave Chinner <david@fromorbit.com> wrote:
+On Wed, Apr 11, 2012 at 03:13:21PM +0400, Stanislav Kinsbursky wrote:
+> This patch also changes prototypes of nfsd_export_flush() and exp_rootfh():
+> network namespace parameter added.
+
+This also isn't applying cleanly for me.
+
+At this point I'm assuming any patches that aren't already applied to my
+git tree need to be resent.
+
+--b.
+
 > 
-> > If we are adding per-inode flags, then what do we do with filesystem specific
-> > flags? e.g. XFS has quite a number of per-inode flags that don't align with
-> > any other filesystem (e.g. filestream allocator, real time file, behaviour
-> > inheritence flags, etc), but may be useful to retrieve in such a call. We
-> > currently have an ioctl to get that information from each inode. Have you
-> > thought about how to handle such flags?
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 > 
-> I haven't looked at XFS with regard to xstat as yet, so I'm not sure exactly
-> which flags you're talking about.  The question, though, is what will actually
-> make use of these flags?  Will it just be XFS tools or are they something that
-> a GUI might make use of?
-
-Have a look at fs/xfs/xfs_dinode.h. There's a bunch of flags defined
-at the bottom of the file.
-
-Stuff like the "nodefrag", "nodump", and "prealloc" bits seem fairly
-generic - they are for indicating that files are to be avoided for defrag or
-backup purposes, the prealloc bit indicates that fallocate has been
-used to reserve space on the inode (finding files that space can be
-punched out of safely), and so on.
-
-Currently these things are queried and manipulated by ioctls
-(XFS_IOC_FSX[GS]ETATTR) along with extent size hints, project
-quotas, etc. but I think there's some wider use for many of the
-flags, which is why I was asking is there's any thought to this sort
-of flag being exposed by the VFS.
-
-Historically the flags exposed by the VFS are those used by extN - I
-see little reason why we should favour one filesystem's flags over
-any others in an extended stat interface if they are generically
-useful....
-
-> Either you can add some of them to the ioc flags (which may be impractical, I
-> grant you) or we'd have to add an arbitrary fs-type specific field and specify
-> the host fs (the provision of which might not be a bad idea in and of itself)
-> to tell userspace how to interpret them.
-
-Well, that's the complexity, isn't it. I have no good answer to
-that...
-
-> > Along the same lines, filesytsems can have different allocation constraints
-> > to IO the filesystem block size - ext4 with it's bigalloc hack, XFS with it's
-> > per-inode extent size hints and the realtime device, etc. Then there's
-> > optimal IO characteristics (e.g. geometery hints like stripe unit/stripe
-> > width for the allocation policy of that given file) that applications could
-> > use if they were present rather than having to expose them through ioctls
-> > that nobody even knows about...
+> ---
+>  fs/nfsd/export.c            |   47 +++++++++++++++++++++++++++++--------------
+>  fs/nfsd/netns.h             |    2 ++
+>  fs/nfsd/nfsctl.c            |    2 +-
+>  fs/nfsd/nfssvc.c            |    2 +-
+>  include/linux/nfsd/export.h |    4 ++--
+>  5 files changed, 38 insertions(+), 19 deletions(-)
 > 
-> Yeah...  Not representable by one number.  You'd have to unset a flag to say
-> you were providing this information.
+> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+> index 688264b..84d020f 100644
+> --- a/fs/nfsd/export.c
+> +++ b/fs/nfsd/export.c
+> @@ -15,11 +15,13 @@
+>  #include <linux/namei.h>
+>  #include <linux/module.h>
+>  #include <linux/exportfs.h>
+> +#include <linux/sunrpc/svc_xprt.h>
+>  
+>  #include <net/ipv6.h>
+>  
+>  #include "nfsd.h"
+>  #include "nfsfh.h"
+> +#include "netns.h"
+>  
+>  #define NFSDDBG_FACILITY	NFSDDBG_EXPORT
+>  
+> @@ -298,8 +300,6 @@ svc_expkey_update(struct cache_detail *cd, struct svc_expkey *new,
+>  #define	EXPORT_HASHBITS		8
+>  #define	EXPORT_HASHMAX		(1<< EXPORT_HASHBITS)
+>  
+> -static struct cache_head *export_table[EXPORT_HASHMAX];
+> -
+>  static void nfsd4_fslocs_free(struct nfsd4_fs_locations *fsloc)
+>  {
+>  	int i;
+> @@ -708,10 +708,9 @@ static struct cache_head *svc_export_alloc(void)
+>  		return NULL;
+>  }
+>  
+> -struct cache_detail svc_export_cache = {
+> +struct cache_detail svc_export_cache_template = {
+>  	.owner		= THIS_MODULE,
+>  	.hash_size	= EXPORT_HASHMAX,
+> -	.hash_table	= export_table,
+>  	.name		= "nfsd.export",
+>  	.cache_put	= svc_export_put,
+>  	.cache_upcall	= svc_export_upcall,
+> @@ -835,7 +834,7 @@ static struct svc_export *exp_parent(struct cache_detail *cd, svc_client *clp,
+>   * since its harder to fool a kernel module than a user space program.
+>   */
+>  int
+> -exp_rootfh(svc_client *clp, char *name,
+> +exp_rootfh(struct net *net, svc_client *clp, char *name,
+>  	   struct knfsd_fh *f, int maxsize)
+>  {
+>  	struct svc_export	*exp;
+> @@ -843,7 +842,8 @@ exp_rootfh(svc_client *clp, char *name,
+>  	struct inode		*inode;
+>  	struct svc_fh		fh;
+>  	int			err;
+> -	struct cache_detail	*cd = &svc_export_cache;
+> +	struct nfsd_net		*nn = net_generic(net, nfsd_net_id);
+> +	struct cache_detail	*cd = nn->svc_export_cache;
+>  
+>  	err = -EPERM;
+>  	/* NB: we probably ought to check that it's NUL-terminated */
+> @@ -930,7 +930,8 @@ struct svc_export *
+>  rqst_exp_get_by_name(struct svc_rqst *rqstp, struct path *path)
+>  {
+>  	struct svc_export *gssexp, *exp = ERR_PTR(-ENOENT);
+> -	struct cache_detail *cd = &svc_export_cache;
+> +	struct nfsd_net *nn = net_generic(rqstp->rq_xprt->xpt_net, nfsd_net_id);
+> +	struct cache_detail *cd = nn->svc_export_cache;
+>  
+>  	if (rqstp->rq_client == NULL)
+>  		goto gss;
+> @@ -960,7 +961,8 @@ struct svc_export *
+>  rqst_exp_find(struct svc_rqst *rqstp, int fsid_type, u32 *fsidv)
+>  {
+>  	struct svc_export *gssexp, *exp = ERR_PTR(-ENOENT);
+> -	struct cache_detail *cd = &svc_export_cache;
+> +	struct nfsd_net *nn = net_generic(rqstp->rq_xprt->xpt_net, nfsd_net_id);
+> +	struct cache_detail *cd = nn->svc_export_cache;
+>  
+>  	if (rqstp->rq_client == NULL)
+>  		goto gss;
+> @@ -1238,26 +1240,39 @@ int
+>  nfsd_export_init(struct net *net)
+>  {
+>  	int rv;
+> +	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+> +
+>  	dprintk("nfsd: initializing export module (net: %p).\n", net);
+>  
+> -	rv = cache_register_net(&svc_export_cache, net);
+> +	nn->svc_export_cache = cache_create_net(&svc_export_cache_template, net);
+> +	if (IS_ERR(nn->svc_export_cache))
+> +		return PTR_ERR(nn->svc_export_cache);
+> +	rv = cache_register_net(nn->svc_export_cache, net);
+>  	if (rv)
+> -		return rv;
+> +		goto destroy_export_cache;
+> +
+>  	rv = cache_register_net(&svc_expkey_cache, net);
+>  	if (rv)
+> -		cache_unregister_net(&svc_export_cache, net);
+> -	return rv;
+> +		goto unregister_export_cache;
+> +	return 0;
+>  
+> +unregister_export_cache:
+> +	cache_unregister_net(nn->svc_export_cache, net);
+> +destroy_export_cache:
+> +	cache_destroy_net(nn->svc_export_cache, net);
+> +	return rv;
+>  }
+>  
+>  /*
+>   * Flush exports table - called when last nfsd thread is killed
+>   */
+>  void
+> -nfsd_export_flush(void)
+> +nfsd_export_flush(struct net *net)
+>  {
+> +	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+> +
+>  	cache_purge(&svc_expkey_cache);
+> -	cache_purge(&svc_export_cache);
+> +	cache_purge(nn->svc_export_cache);
+>  }
+>  
+>  /*
+> @@ -1266,11 +1281,13 @@ nfsd_export_flush(void)
+>  void
+>  nfsd_export_shutdown(struct net *net)
+>  {
+> +	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+>  
+>  	dprintk("nfsd: shutting down export module (net: %p).\n", net);
+>  
+>  	cache_unregister_net(&svc_expkey_cache, net);
+> -	cache_unregister_net(&svc_export_cache, net);
+> +	cache_unregister_net(nn->svc_export_cache, net);
+> +	cache_destroy_net(nn->svc_export_cache, net);
+>  	svcauth_unix_purge();
+>  
+>  	dprintk("nfsd: export shutdown complete (net: %p).\n", net);
+> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+> index 12e0cff..c1c6242 100644
+> --- a/fs/nfsd/netns.h
+> +++ b/fs/nfsd/netns.h
+> @@ -28,6 +28,8 @@ struct cld_net;
+>  
+>  struct nfsd_net {
+>  	struct cld_net *cld_net;
+> +
+> +	struct cache_detail *svc_export_cache;
+>  };
+>  
+>  extern int nfsd_net_id;
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index bc76f8e..ddb9f87 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -354,7 +354,7 @@ static ssize_t write_filehandle(struct file *file, char *buf, size_t size)
+>  	if (!dom)
+>  		return -ENOMEM;
+>  
+> -	len = exp_rootfh(dom, path, &fh,  maxsize);
+> +	len = exp_rootfh(&init_net, dom, path, &fh,  maxsize);
+>  	auth_domain_put(dom);
+>  	if (len)
+>  		return len;
+> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> index 78e5213..cb4d51d 100644
+> --- a/fs/nfsd/nfssvc.c
+> +++ b/fs/nfsd/nfssvc.c
+> @@ -261,7 +261,7 @@ static void nfsd_last_thread(struct svc_serv *serv, struct net *net)
+>  
+>  	printk(KERN_WARNING "nfsd: last server has exited, flushing export "
+>  			    "cache\n");
+> -	nfsd_export_flush();
+> +	nfsd_export_flush(net);
+>  }
+>  
+>  void nfsd_reset_versions(void)
+> diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
+> index 375096c..565c212 100644
+> --- a/include/linux/nfsd/export.h
+> +++ b/include/linux/nfsd/export.h
+> @@ -132,13 +132,13 @@ __be32 check_nfsd_access(struct svc_export *exp, struct svc_rqst *rqstp);
+>   */
+>  int			nfsd_export_init(struct net *);
+>  void			nfsd_export_shutdown(struct net *);
+> -void			nfsd_export_flush(void);
+> +void			nfsd_export_flush(struct net *);
+>  struct svc_export *	rqst_exp_get_by_name(struct svc_rqst *,
+>  					     struct path *);
+>  struct svc_export *	rqst_exp_parent(struct svc_rqst *,
+>  					struct path *);
+>  struct svc_export *	rqst_find_fsidzero_export(struct svc_rqst *);
+> -int			exp_rootfh(struct auth_domain *, 
+> +int			exp_rootfh(struct net *, struct auth_domain *,
+>  					char *path, struct knfsd_fh *, int maxsize);
+>  __be32			exp_pseudoroot(struct svc_rqst *, struct svc_fh *);
+>  __be32			nfserrno(int errno);
 > 
-> However, providing a whole bunch of hints about I/O characteristics is probably
-> beyond this syscall - especially if it isn't constant over the length of a
-> file.  That's specialist knowledge that most applications don't need to know.
-> Having a generic way to retrieve it, though, may be a good idea.
-
-We're continually talking about applications giving us usage hints
-on what IO they are going to do so the storage can optimise the IO.
-IO is still a GIGO problem, though, and the idea of geometry hints is to enable
-us to tell the application to do well formed IO. i.e. less garbage.
-
-XFS has ioctls to expose filesystem geometry, optimal IO sizes, the
-alignment limits for direct IO, etc, and they are very useful to
-applications that care about high performance IO. A lot of this can
-be distilled down to a simple set of geometries, and generally
-speaking they don't change mid way through a file....
-
-> OTOH, there's plenty of uncommitted space, so if we can condense the hints down
-> to something small, we could perhaps add it later - but from your paragraph
-> above, it doesn't sound like it'll be small.
-
-Allocation block size, minimum sane IO size (to avoid page cache RMW
-cycles or DIO zeroing), minimum prefered IO size (e.g. stripe unit),
-optimal IO size for bandwidth (e.g. stripe width). I don't think
-there's much more than that which will be really usable by
-applications.
-
-> > Perhaps also exposing the project ID for quota purposes, like we do UID and
-> > GID. That way we wouldn't need a filesystem specific ioctl to read it....
-> 
-> Is this an XFS only thing?  If so, can it be generalised?
-
-Right now it is, but there's ben patches in the past to introduce
-project quotas to ext4. That didn't go far because it was done in a
-way that was semantically different to XFS (for no reason that I
-could understand) and nobody wanted two different sets of semantics
-for the "same" feature.  The most common use of project quotas is to
-implement sub-tree quotas, which is probably of more interest to
-btrfs folks as it is an exact match for per-subvolume quotas.
-
-So, yes, I do see it as something generically useful - it's a
-feature that a lot of people use XFS specifically for....
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
