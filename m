@@ -1,91 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:47662 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1756810Ab2DFNN2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Apr 2012 09:13:28 -0400
+Received: from relay.parallels.com ([195.214.232.42]:34337 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932309Ab2DKRhz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Apr 2012 13:37:55 -0400
+Message-ID: <4F85C15D.5060408@parallels.com>
+Date: Wed, 11 Apr 2012 21:37:33 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Date: Fri, 06 Apr 2012 09:13:26 -0400
-From: David Quigley <dpquigl@davequigley.com>
-To: "Myklebust, Trond" <trond.myklebust@netapp.com>
-Cc: <linux-nfs@vger.kernel.org>
-Subject: RE: Another try at =?UTF-8?Q?LNFS=3F?=
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA915A300@SACEXCMBX04-PRD.hq.netapp.com>
-References: <775e0a2cd5e2e4c8f52401214dbd9413@countercultured.net>
- <1333646141.4573.1.camel@lade.trondhjem.org>
- <85614613274dbfef5253665a84a36374@countercultured.net>
- <7193f15f28e7483021244c72ee285516@countercultured.net>
- <4FA345DA4F4AE44899BD2B03EEEC2FA915A300@SACEXCMBX04-PRD.hq.netapp.com>
-Message-ID: <52582eccd514b86a8f3c178c948bfd69@countercultured.net>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH][RFC] nfsd/lockd: have locks_in_grace take a sb arg
+References: <1333455279-11200-1-git-send-email-jlayton@redhat.com> <4F841D2A.9020504@parallels.com> <20120410081612.65dd25fa@tlielax.poochiereds.net> <4F842BAE.2010804@parallels.com> <20120410093900.20209d00@tlielax.poochiereds.net> <4F84493C.1040303@parallels.com> <20120410144505.58bca0b9@corrin.poochiereds.net> <4F855864.8050509@parallels.com> <20120411074822.0054eb36@tlielax.poochiereds.net> <4F85825E.4060104@parallels.com> <20120411171919.GA29903@fieldses.org>
+In-Reply-To: <20120411171919.GA29903@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/05/2012 22:20, Myklebust, Trond wrote:
->> -----Original Message-----
->> From: David Quigley [mailto:dpquigl@davequigley.com]
->> Sent: Thursday, April 05, 2012 2:38 PM
->> To: Myklebust, Trond
->> Cc: linux-nfs@vger.kernel.org
->> Subject: Re: Another try at LNFS?
+11.04.2012 21:19, J. Bruce Fields пишет:
+> On Wed, Apr 11, 2012 at 05:08:46PM +0400, Stanislav Kinsbursky wrote:
+>> 11.04.2012 15:48, Jeff Layton пишет:
+>>>>>>> One thing that puzzles me at the moment. We have two namespaces to deal
+>>>>>>> with -- the network and the mount namespace. With nfs client code,
+>>>>>>> everything is keyed off of the net namespace. That's not really the
+>>>>>>> case here since we have to deal with a local fs tree as well.
+>>>>>>>
+>>>>>>> When an nfsd running in a container receives an RPC, how does it
+>>>>>>> determine what mount namespace it should do its operations in?
+>>>>>>>
+>>>>>>
+>>>>>> We don't use mount namespaces, so that's why I wasn't thinking about it...
+>>>>>> But if we have 2 types of namespaces, then we have to tie  mount namesapce to
+>>>>>> network. I.e we can get desired mount namespace from per-net NFSd data.
+>>>>>>
+>>>>>
+>>>>> One thing that Bruce mentioned to me privately is that we could plan to
+>>>>> use whatever mount namespace mountd is using within a particular net
+>>>>> namespace. That makes some sense since mountd is the final arbiter of
+>>>>> who gets access to what.
+>>>>>
+>>>>
+>>>> Could you, please, give some examples? I don't get the idea.
+>>>>
+>>>
+>>> When nfsd gets an RPC call, it needs to decide in what mount namespace
+>>> to do the fs operations. How do we decide this?
+>>>
+>>> Bruce's thought was to look at what mount namespace rpc.mountd is using
+>>> and use that, but now that I consider it, it's a bit of a chicken and
+>>> egg problem really... nfsd talks to mountd via files in /proc/net/rpc/.
+>>> In order to talk to the right mountd, might you need to know what mount
+>>> namespace it's operating in?
+>>>
 >>
->> On 04/05/2012 17:26, David Quigley wrote:
->> > On 04/05/2012 13:15, Myklebust, Trond wrote:
->> >> On Thu, 2012-04-05 at 13:02 -0400, David Quigley wrote:
->> >>> Now that we're past the 3.4 merge window should I post the LNFS
->> >>> modifications for review for when 3.5 rolls around?
->> >>
->> >> The sooner the better. It looks as if there will be quite a bit 
->> of
->> >> stuff going into 3.5, so it would be nice to maximise our testing
->> >> window.
->> >>
->> >> Thanks!
->> >>   Trond
->> >
->> > I have a mostly working copy for 3.2 which I can forward port but 
->> I'm
->> > having an issue with it. The revalidate code changed at some point 
->> and
->> > just to get things working I dropped a piece of code from the 
->> patch
->> > set that I couldn't figure out how to transition to the new 
->> revalidate
->> > code. Unfortunately this is the initial get of the security label 
->> so
->> > the security label is invalid until the first cache invalidation. 
->> Any
->> > suggestions on where to place this code? I can give you the 
->> original
->> > code snippet when I get home that I dropped.
->> >
->> > Dave
->> > --
->> > To unsubscribe from this list: send the line "unsubscribe 
->> linux-nfs"
->> > in
->> > the body of a message to majordomo@vger.kernel.org More majordomo
->> info
->> > at  http://vger.kernel.org/majordomo-info.html
+>> Not really... /proc itself depens on pid namespace. /proc/net
+>> depends on current (!) network namespace. So we can't just lookup
+>> for this dentry.
 >>
->> Looking at my patches it looks like nfs_lookup_revalidate was 
->> changed and at
->> the time I couldn't figure out what it was changed to.
+>> But, in spite of nfsd works in initial (init_net and friends)
+>> environment, we can get network namespace from RPC request. Having
+>> this, we can easily get desired proc entry (proc_net_rpc in
+>> sunrpc_net). So it looks like we can actually don't care about mount
+>> namespaces - we have our own back door.
 >
-> Hi Dave,
->   There shouldn't be much in the way of changes in
-> nfs_lookup_revalidate(): I was just trying to clean it up in
-> preparation for the atomic open patches that Miklos is currently
-> working on.
-> At this point, it looks as if most of that functionality will in any
-> case be moved into the struct file_operations->open callback, so that
-> we can keep ->d_revalidate() as a pure lookup function.
+> OK, good, that's what I was hoping for.  Then we call up to whatever
+> mountd is running in our network namespace, and for path lookups it's
+> whatever fs namespace that mountd is running in that's going to matter.
 >
-> Cheers
->   Trond
 
-Ok, I'll try to take a look at it next week since I head out of town 
-for the weekend starting this afternoon. If I run into any other 
-problems I'll check back with you guys. After that forward porting 
-shouldn't be much of an issue its just time consuming and unfortunately 
-my time is limited as of late.
+The problem here, is that mountd is running in pid namespace - not net.
+What would happen, if we will have situation like below:
+
+	mountd A	mountd B
+
+	pid_ns		pid_ns
+	  |		  |
+	mnt_ns		mnt_ns
+	  |		  |
+	  -----	net_ns ----
+
+Is it possible, BTW?
+It yes, that is such construction valid?
+
+-- 
+Best regards,
+Stanislav Kinsbursky
