@@ -1,40 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from nm10-vm0.bullet.mail.bf1.yahoo.com ([98.139.213.147]:44945 "HELO
-	nm10-vm0.bullet.mail.bf1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1750896Ab2D2GHM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Apr 2012 02:07:12 -0400
-Message-ID: <1335679256.79612.YahooMailClassic@web181019.mail.ne1.yahoo.com>
-Date: Sat, 28 Apr 2012 23:00:56 -0700 (PDT)
-From: Zack Perry <zack.perry@sbcglobal.net>
-Subject: To start testing Linux pNFS server?
-To: linux-nfs@vger.kernel.org
+Received: from mailhub.sw.ru ([195.214.232.25]:29303 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754627Ab2DKLNk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Apr 2012 07:13:40 -0400
+Subject: [PATCH 1/4] nfsd: pass network context to export caches init/shutdown
+ routines
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Wed, 11 Apr 2012 15:13:14 +0400
+Message-ID: <20120411111314.13840.48019.stgit@localhost6.localdomain6>
+In-Reply-To: <20120411111053.13840.66083.stgit@localhost6.localdomain6>
+References: <20120411111053.13840.66083.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+These functions will be called from per-net operations.
 
-This is my first message to this list. I have been using Fedora 16 and NFSv4 for sometime, and would like to give NFSv4.1 with the pNFS extension a try.  
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-I understand that according to  http://wiki.linux-nfs.org/wiki/index.php/NFSv41_Introduction NFSv4.1 is really developer-only at this point, but it should "mostly work" - that's good enough for me. 
+---
+ fs/nfsd/export.c            |   20 ++++++++++----------
+ fs/nfsd/nfsctl.c            |    6 +++---
+ include/linux/nfsd/export.h |    4 ++--
+ 3 files changed, 15 insertions(+), 15 deletions(-)
 
-The wiki http://wiki.linux-nfs.org/wiki/index.php/Configuring_pNFS/spnfsd, states that "As of early 2011, it is mostly unmaintained, and we no longer recommend its use". It then points to http://wiki.linux-nfs.org/wiki/index.php/PNFS_server_projects. But, as far as spNFS is concerned, the two wiki pages form a circular reference. The other options for file layout are no go either.
-
-Then, there is this: http://wiki.linux-nfs.org/wiki/index.php/PNFS_Setup_Instructions
-which seems to indicate that with a pNFS enabled kernel, a determined user can start testing NFSv4.1 + pNFS. Steve Dickson even has a repository here: http://steved.fedorapeople.org/repos/pnfs/devel/x86_64/rpms/
-
-Can anyone kind enough to give a short summary as to how to proceed for testing NFSv4.1 + pNFS using Fedora 16 nodes as servers?
-
-As of now, all my Fedora 16 nodes have the following from a regular kickstart install:
-[root@fedora0 ~]# uname -a
-Linux fedora0 3.3.2-6.fc16.x86_64 #1 SMP Sat Apr 21 12:43:20 UTC 2012 x86_64 x86_64 x86_64 GNU/Linux
-[root@fedora0 ~]# rpm -q nfs-utils
-nfs-utils-1.2.5-5.fc16.x86_64
-[root@fedora0 ~]# cat /proc/fs/nfsd/versions
-+2 +3 +4 -4.1
-
-Thanks,
-
-Zack
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index 429b2f5..688264b 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -1235,17 +1235,17 @@ const struct seq_operations nfs_exports_op = {
+  * Initialize the exports module.
+  */
+ int
+-nfsd_export_init(void)
++nfsd_export_init(struct net *net)
+ {
+ 	int rv;
+-	dprintk("nfsd: initializing export module.\n");
++	dprintk("nfsd: initializing export module (net: %p).\n", net);
+ 
+-	rv = cache_register_net(&svc_export_cache, &init_net);
++	rv = cache_register_net(&svc_export_cache, net);
+ 	if (rv)
+ 		return rv;
+-	rv = cache_register_net(&svc_expkey_cache, &init_net);
++	rv = cache_register_net(&svc_expkey_cache, net);
+ 	if (rv)
+-		cache_unregister_net(&svc_export_cache, &init_net);
++		cache_unregister_net(&svc_export_cache, net);
+ 	return rv;
+ 
+ }
+@@ -1264,14 +1264,14 @@ nfsd_export_flush(void)
+  * Shutdown the exports module.
+  */
+ void
+-nfsd_export_shutdown(void)
++nfsd_export_shutdown(struct net *net)
+ {
+ 
+-	dprintk("nfsd: shutting down export module.\n");
++	dprintk("nfsd: shutting down export module (net: %p).\n", net);
+ 
+-	cache_unregister_net(&svc_expkey_cache, &init_net);
+-	cache_unregister_net(&svc_export_cache, &init_net);
++	cache_unregister_net(&svc_expkey_cache, net);
++	cache_unregister_net(&svc_export_cache, net);
+ 	svcauth_unix_purge();
+ 
+-	dprintk("nfsd: export shutdown complete.\n");
++	dprintk("nfsd: export shutdown complete (net: %p).\n", net);
+ }
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index ae19293..bc76f8e 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -1163,7 +1163,7 @@ static int __init init_nfsd(void)
+ 	retval = nfsd_reply_cache_init();
+ 	if (retval)
+ 		goto out_free_stat;
+-	retval = nfsd_export_init();
++	retval = nfsd_export_init(&init_net);
+ 	if (retval)
+ 		goto out_free_cache;
+ 	nfsd_lockd_init();	/* lockd->nfsd callbacks */
+@@ -1184,7 +1184,7 @@ out_free_idmap:
+ 	nfsd_idmap_shutdown();
+ out_free_lockd:
+ 	nfsd_lockd_shutdown();
+-	nfsd_export_shutdown();
++	nfsd_export_shutdown(&init_net);
+ out_free_cache:
+ 	nfsd_reply_cache_shutdown();
+ out_free_stat:
+@@ -1201,7 +1201,7 @@ out_unregister_notifier:
+ 
+ static void __exit exit_nfsd(void)
+ {
+-	nfsd_export_shutdown();
++	nfsd_export_shutdown(&init_net);
+ 	nfsd_reply_cache_shutdown();
+ 	remove_proc_entry("fs/nfs/exports", NULL);
+ 	remove_proc_entry("fs/nfs", NULL);
+diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
+index 485c2af..375096c 100644
+--- a/include/linux/nfsd/export.h
++++ b/include/linux/nfsd/export.h
+@@ -130,8 +130,8 @@ __be32 check_nfsd_access(struct svc_export *exp, struct svc_rqst *rqstp);
+ /*
+  * Function declarations
+  */
+-int			nfsd_export_init(void);
+-void			nfsd_export_shutdown(void);
++int			nfsd_export_init(struct net *);
++void			nfsd_export_shutdown(struct net *);
+ void			nfsd_export_flush(void);
+ struct svc_export *	rqst_exp_get_by_name(struct svc_rqst *,
+ 					     struct path *);
 
