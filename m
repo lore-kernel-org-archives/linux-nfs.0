@@ -1,83 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57480 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754769Ab2DPU2Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Apr 2012 16:28:24 -0400
-Received: from vmwexceht05-prd.hq.netapp.com (vmwexceht05-prd.hq.netapp.com [10.106.77.35])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q3GKSNaR011220
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Apr 2012 13:28:23 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Isaman, Fred" <Fred.Isaman@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 14/26] NFS: merge _full and _partial read rpc_ops
-Date: Mon, 16 Apr 2012 20:28:22 +0000
-Message-ID: <1334608102.2879.37.camel@lade.trondhjem.org>
-References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
-	 <1334004744-31842-15-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334004744-31842-15-git-send-email-iisaman@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from acsinet15.oracle.com ([141.146.126.227]:42869 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934441Ab2DLPyL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Apr 2012 11:54:11 -0400
+Subject: Re: global openowner_id and lockowner_id
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1334245818.2237.55.camel@lade.trondhjem.org>
+Date: Thu, 12 Apr 2012 11:54:04 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <7212EB20-16EC-475E-993E-3F244C621AB0@oracle.com>
+References: <58E57AF8-1636-4017-93C0-8520488ED866@oracle.com> <1334245818.2237.55.camel@lade.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA0LTA5IGF0IDE2OjUyIC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
-RGVjb3VwbGUgbmZzX3BnaW9faGVhZGVyIGFuZCBuZnNfcmVhZF9kYXRhLCBhbmQgaGF2ZSAocG9z
-c2libHkNCj4gbXVsdGlwbGUpIG5mc19yZWFkX2RhdGFzIGVhY2ggdGFrZSBhIHJlZmNvdW50IG9u
-IG5mc19wZ2lvX2hlYWRlci4NCj4gDQo+IEZvciB0aGUgbW9tZW50IGtlZXBzIG5mc19yZWFkX2hl
-YWRlciBhcyBhIHdheSB0byBwcmVhbGxvY2F0ZSBhIHNpbmdsZQ0KPiBuZnNfcmVhZF9kYXRhIHdp
-dGggdGhlIG5mc19wZ2lvX2hlYWRlci4gIFRoZSBjb2RlIGRvZXNuJ3QgbmVlZCB0aGlzLA0KPiBh
-bmQgd291bGQgYmUgcHJldHRpZXIgd2l0aG91dCwgYnV0IGdpdmVuIHRoZSBhbW91bnQgb2YgY2h1
-cm4gSSBhbQ0KPiBhbHJlYWR5IGludHJvZHVjaW5nIEkgZGlkbid0IHdhbnQgdG8gcGxheSB3aXRo
-IHR1bmluZyBuZXcgbWVtcG9vbHMuDQo+IA0KPiBUaGlzIGFsc28gZml4ZXMgYnVnIGluIHBuZnNf
-bGRfaGFuZGxlX3JlYWRfZXJyb3IuICBJbiB0aGUgY2FzZSBvZg0KPiBkZXNjLT5wZ19ic2l6ZSA8
-IFBBR0VfQ0FDSEVfU0laRSwgdGhlIHBhZ2VzIGxpc3Qgd2FzIGVtcHR5LCBjYXVzaW5nDQo+IHJl
-cGxheSBhdHRlbXB0IHRvIGRvIG5vdGhpbmcuDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBGcmVkIElz
-YW1hbiA8aWlzYW1hbkBuZXRhcHAuY29tPg0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL3JlYWQuYyBi
-L2ZzL25mcy9yZWFkLmMNCj4gaW5kZXggZjZhYjMwYi4uZWE4NDRiMiAxMDA2NDQNCj4gLS0tIGEv
-ZnMvbmZzL3JlYWQuYw0KPiArKysgYi9mcy9uZnMvcmVhZC5jDQo+IEBAIC0zMCwyOSArMzAsNDUg
-QEANCj4gICNkZWZpbmUgTkZTREJHX0ZBQ0lMSVRZCQlORlNEQkdfUEFHRUNBQ0hFDQo+ICANCj4g
-IHN0YXRpYyBjb25zdCBzdHJ1Y3QgbmZzX3BhZ2Vpb19vcHMgbmZzX3BhZ2Vpb19yZWFkX29wczsN
-Cj4gLXN0YXRpYyBjb25zdCBzdHJ1Y3QgcnBjX2NhbGxfb3BzIG5mc19yZWFkX3BhcnRpYWxfb3Bz
-Ow0KPiAtc3RhdGljIGNvbnN0IHN0cnVjdCBycGNfY2FsbF9vcHMgbmZzX3JlYWRfZnVsbF9vcHM7
-DQo+ICtzdGF0aWMgY29uc3Qgc3RydWN0IHJwY19jYWxsX29wcyBuZnNfcmVhZF9jb21tb25fb3Bz
-Ow0KPiAgDQo+ICBzdGF0aWMgc3RydWN0IGttZW1fY2FjaGUgKm5mc19yZGF0YV9jYWNoZXA7DQo+
-ICANCj4gLXN0cnVjdCBuZnNfcmVhZF9oZWFkZXIgKm5mc19yZWFkaGRyX2FsbG9jKHVuc2lnbmVk
-IGludCBwYWdlY291bnQpDQo+ICtzdHJ1Y3QgbmZzX3JlYWRfaGVhZGVyICpuZnNfcmVhZGhkcl9h
-bGxvYygpDQo+ICB7DQo+IC0Jc3RydWN0IG5mc19yZWFkX2hlYWRlciAqcDsNCj4gKwlzdHJ1Y3Qg
-bmZzX3JlYWRfaGVhZGVyICpyaGRyOw0KPiAgDQo+IC0JcCA9IGttZW1fY2FjaGVfemFsbG9jKG5m
-c19yZGF0YV9jYWNoZXAsIEdGUF9LRVJORUwpOw0KPiAtCWlmIChwKSB7DQo+IC0JCXN0cnVjdCBu
-ZnNfcGdpb19oZWFkZXIgKmhkciA9ICZwLT5oZWFkZXI7DQo+IC0JCXN0cnVjdCBuZnNfcmVhZF9k
-YXRhICpkYXRhID0gJnAtPnJwY19kYXRhOw0KPiArCXJoZHIgPSBrbWVtX2NhY2hlX3phbGxvYyhu
-ZnNfcmRhdGFfY2FjaGVwLCBHRlBfS0VSTkVMKTsNCj4gKwlpZiAocmhkcikgew0KPiArCQlzdHJ1
-Y3QgbmZzX3BnaW9faGVhZGVyICpoZHIgPSAmcmhkci0+aGVhZGVyOw0KPiAgDQo+ICAJCUlOSVRf
-TElTVF9IRUFEKCZoZHItPnBhZ2VzKTsNCj4gLQkJSU5JVF9MSVNUX0hFQUQoJmRhdGEtPmxpc3Qp
-Ow0KPiAtCQlkYXRhLT5oZWFkZXIgPSBoZHI7DQo+ICsJCUlOSVRfTElTVF9IRUFEKCZoZHItPnJw
-Y19saXN0KTsNCj4gKwkJc3Bpbl9sb2NrX2luaXQoJmhkci0+bG9jayk7DQo+ICsJCWF0b21pY19z
-ZXQoJmhkci0+cmVmY250LCAwKTsNCj4gKwl9DQo+ICsJcmV0dXJuIHJoZHI7DQo+ICt9DQo+ICsN
-Cj4gK3N0cnVjdCBuZnNfcmVhZF9kYXRhICpuZnNfcmVhZGRhdGFfYWxsb2Moc3RydWN0IG5mc19w
-Z2lvX2hlYWRlciAqaGRyLA0KPiArCQkJCQkgdW5zaWduZWQgaW50IHBhZ2Vjb3VudCkNCj4gK3sN
-Cj4gKwlzdHJ1Y3QgbmZzX3JlYWRfZGF0YSAqZGF0YTsNCj4gKw0KPiArCWlmIChoZHIpIHsNCj4g
-KwkJLyogVXNlIGRhdGEgcHJlYWxsb2NhdGVkIHdpdGggdGhlIGhlYWRlciAqLw0KPiArCQlkYXRh
-ID0gJmNvbnRhaW5lcl9vZihoZHIsIHN0cnVjdCBuZnNfcmVhZF9oZWFkZXIsIGhlYWRlciktPnJw
-Y19kYXRhOw0KPiArCX0gZWxzZQ0KPiArCQlkYXRhID0ga3phbGxvYyhzaXplb2YoKmRhdGEpLCBH
-RlBfS0VSTkVMKTsNCj4gKw0KPiArCWlmIChkYXRhKSB7DQo+ICAJCWlmICghbmZzX3BnYXJyYXlf
-c2V0KCZkYXRhLT5wYWdlcywgcGFnZWNvdW50KSkgew0KPiAtCQkJa21lbV9jYWNoZV9mcmVlKG5m
-c19yZGF0YV9jYWNoZXAsIHApOw0KPiAtCQkJcCA9IE5VTEw7DQo+ICsJCQlpZiAoIWhkcikNCj4g
-KwkJCQlrZnJlZShkYXRhKTsNCj4gKwkJCWRhdGEgPSBOVUxMOw0KPiAgCQl9DQo+ICAJfQ0KPiAt
-CXJldHVybiBwOw0KPiArCXJldHVybiBkYXRhOw0KPiAgfQ0KPiAgDQo+ICB2b2lkIG5mc19yZWFk
-aGRyX2ZyZWUoc3RydWN0IG5mc19wZ2lvX2hlYWRlciAqaGRyKQ0KPiBAQCAtNjQsMTAgKzgwLDE2
-IEBAIHZvaWQgbmZzX3JlYWRoZHJfZnJlZShzdHJ1Y3QgbmZzX3BnaW9faGVhZGVyICpoZHIpDQo+
-ICANCj4gIHZvaWQgbmZzX3JlYWRkYXRhX3JlbGVhc2Uoc3RydWN0IG5mc19yZWFkX2RhdGEgKnJk
-YXRhKQ0KPiAgew0KPiArCXN0cnVjdCBuZnNfcGdpb19oZWFkZXIgKmhkciA9IHJkYXRhLT5oZWFk
-ZXI7DQo+ICsNCj4gIAlwdXRfbmZzX29wZW5fY29udGV4dChyZGF0YS0+YXJncy5jb250ZXh0KTsN
-Cj4gIAlpZiAocmRhdGEtPnBhZ2VzLnBhZ2V2ZWMgIT0gcmRhdGEtPnBhZ2VzLnBhZ2VfYXJyYXkp
-DQo+ICAJCWtmcmVlKHJkYXRhLT5wYWdlcy5wYWdldmVjKTsNCj4gLQluZnNfcmVhZGhkcl9mcmVl
-KHJkYXRhLT5oZWFkZXIpOw0KPiArCWlmIChjb250YWluZXJfb2YoaGRyLCBzdHJ1Y3QgbmZzX3Jl
-YWRfaGVhZGVyLCBoZWFkZXIpICE9DQo+ICsJICAgIGNvbnRhaW5lcl9vZihyZGF0YSwgc3RydWN0
-IG5mc19yZWFkX2hlYWRlciwgcnBjX2RhdGEpKQ0KPiArCQlrZnJlZShyZGF0YSk7DQoNClRoaXMg
-bG9va3MgdW5uZWNlc3NhcmlseSBjb21wbGljYXRlZC4gSG93IGFib3V0DQoNCglpZiAocmRhdGEg
-IT0gJmhkci0+cnBjX2RhdGEpDQoJCWtmcmVlKHJkYXRhKTsNCg0KPiArCWlmIChhdG9taWNfZGVj
-X2FuZF90ZXN0KCZoZHItPnJlZmNudCkpDQo+ICsJCW5mc19yZWFkX2NvbXBsZXRpb24oaGRyKTsN
-Cj4gIH0NCj4gIA0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWlu
-dGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAu
-Y29tDQoNCg==
+
+On Apr 12, 2012, at 11:50 AM, Myklebust, Trond wrote:
+
+> On Thu, 2012-04-12 at 11:42 -0400, Chuck Lever wrote:
+>> Hi-
+>> 
+>> Changing the SETCLIENTID boot verifier so it is global for the whole client exposes a problem with how we allocate state owners.
+>> 
+>> A quick umount / mount sequence destroys all state on the client.  But since the client now always uses the same boot verifier and nfs_client_id4 string, the server no longer recognizes a client reboot.  FOr a fresh mount, the client may perform a SETCLIENTID, but it is treated as a callback update (state is not purged) if the client's lease has not yet expired.
+>> 
+>> Our state owners are generated from a pair of ida structures in the nfs_server for that mount.  They always start from zero after a mount operation.  Likewise, the sequence IDs for these state owners are also reset by umount / mount.  Note that each mount point gets a fresh nfs_server, so these structures are not retained across umount / mount.
+>> 
+>> This means umount / mount with no lease expiry starts to re-play state owners with reset sequence IDs.  Servers don't really care for that behavior.  I have a test case that reliably gets a BAD_SEQID error from a server after a quick umount / mount followed by a single file creation.
+>> 
+>> Now that we are about to switch to using more-or-less global SETCLIENTID boot verifiers, it seems to me that we really want a global openowner_id and lockowner_id as well.
+>> 
+>> The performance impact of such a change might be acceptable because we cache and reuse state owners now.
+>> 
+>> Thoughts?
+> 
+> That's a definite server bug. If the client holds no open state, then it
+> is allowed to forget the open owner and start the sequence id from 0
+> again. It is not required to remember sequence ids for open owners that
+> aren't in use.
+> 
+> Our current client could easily trigger this bug even without a
+> umount/mount.
+
+The client is holding open state.  Here's the exact reproducer on my modified client:
+
+1.  mount server:/export /mnt
+2.  touch /mnt/newfile
+3.  umount /mnt
+4.  mount server:/export /mnt
+5.  touch /mnt/newfile2
+
+Step 5 causes the client to replay an open owner with a reset sequence ID, and the server replies BAD_SEQID.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
