@@ -1,67 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:15969 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753049Ab2D3QLQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Apr 2012 12:11:16 -0400
-Message-ID: <4F9EB992.9040501@netapp.com>
-Date: Mon, 30 Apr 2012 12:10:58 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+Received: from relay.parallels.com ([195.214.232.42]:56481 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754870Ab2DLJGX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Apr 2012 05:06:23 -0400
+Message-ID: <4F869AF7.10901@parallels.com>
+Date: Thu, 12 Apr 2012 13:05:59 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-To: Fred Isaman <iisaman@netapp.com>
-CC: linux-nfs@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH v3 25/25] NFS: rewrite directio write to use async coalesce
- code
-References: <1334947677-28864-1-git-send-email-iisaman@netapp.com> <1334947677-28864-26-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334947677-28864-26-git-send-email-iisaman@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH][RFC] nfsd/lockd: have locks_in_grace take a sb arg
+References: <20120410093900.20209d00@tlielax.poochiereds.net> <4F84493C.1040303@parallels.com> <20120410144505.58bca0b9@corrin.poochiereds.net> <4F855864.8050509@parallels.com> <20120411074822.0054eb36@tlielax.poochiereds.net> <4F85825E.4060104@parallels.com> <20120411171919.GA29903@fieldses.org> <4F85C15D.5060408@parallels.com> <20120411182218.GB31025@fieldses.org> <4F85DA84.8010703@parallels.com> <20120411221729.GG31706@fieldses.org>
+In-Reply-To: <20120411221729.GG31706@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Fred,
+12.04.2012 02:17, J. Bruce Fields пишет:
+> On Wed, Apr 11, 2012 at 11:24:52PM +0400, Stanislav Kinsbursky wrote:
+>> 11.04.2012 22:22, J. Bruce Fields написал:
+>>>>>   What would happen, if we will have situation like below:
+>>>>>   >   	mountd A	mountd B
+>>>>>   >   	pid_ns		pid_ns
+>>>>>   	|		  |
+>>>>>   	mnt_ns		mnt_ns
+>>>>>   	|		  |
+>>>>>   	-----	net_ns ----
+>>>>>   >   Is it possible, BTW?
+>>>>>   It yes, that is such construction valid?
+>>> Looks like a mess, no.  I'd expect there to be only one rpc.mountd
+>>> running per network namespace.
+>>
+>> Then we have to prevent such situations somehow.
+>> Or it is done already?
+>
+> If there's a way to prevent it, great, otherwise I think we just tell
+> people not to do that, and make sure any distro scripts (or whatever)
+> don't do that.
+>
 
-On 04/20/2012 02:47 PM, Fred Isaman wrote:
+Sure, there is a way.
+For example, mountd will need to ask kernel is he allowed to start or not. 
+Kernel will have to compare starting mountd mount namespace with the mount 
+namespace of the previous started mountd process. If they matches or previous 
+mountd process is dead (or even never started), then new start is allowed.
+And disallowed otherwise.
 
-> This also has the advantage that it allows directio to use pnfs.
-> 
-> Signed-off-by: Fred Isaman <iisaman@netapp.com>
-> ---
->  fs/nfs/direct.c         |  527 +++++++++++++++++++++--------------------------
->  fs/nfs/internal.h       |   18 ++-
->  fs/nfs/nfs4filelayout.c |   44 ++++-
->  fs/nfs/pnfs.h           |   17 ++
->  fs/nfs/write.c          |   36 ++--
->  5 files changed, 319 insertions(+), 323 deletions(-)
-> 
-> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-> index 4ba9a2c..d44de2f 100644
-> --- a/fs/nfs/direct.c
-> +++ b/fs/nfs/direct.c
-> @@ -56,6 +56,7 @@
->  
->  #include "internal.h"
->  #include "iostat.h"
-> +#include "pnfs.h"
->  
->  #define NFSDBG_FACILITY		NFSDBG_VFS
->  
-> @@ -81,16 +82,19 @@ struct nfs_direct_req {
->  	struct completion	completion;	/* wait for i/o completion */
->  
->  	/* commit state */
-> -	struct list_head	rewrite_list;	/* saved nfs_write_data structs */
-> -	struct nfs_commit_data *commit_data;	/* special write_data for commits */
-> +	struct nfs_mds_commit_info mds_cinfo;	/* Storage for cinfo */
-> +	struct pnfs_ds_commit_info ds_cinfo;	/* Storage for cinfo */
+> Actually, my statement above isn't quite right: we do allow running
+> multiple rpc.mountd processes in one network namespace (see the
+> --num-threads option to rpc.mountd, which is sometimes necessary for
+> performance).  But they should all be in the same namespaces and be
+> using the same configuration.
+>
+> --b.
 
 
-
-When I compile without CONFIG_NFS_V4 enabled, I see this error:
-
-  CC [M]  fs/nfs/super.o
-  CC [M]  fs/nfs/direct.o
-fs/nfs/direct.c:86:29: error: field 'ds_cinfo' has incomplete type
-make[2]: *** [fs/nfs/direct.o] Error 1
-make[1]: *** [fs/nfs] Error 2
-make: *** [fs] Error 2
-
-- Bryan
+-- 
+Best regards,
+Stanislav Kinsbursky
