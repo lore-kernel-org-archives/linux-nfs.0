@@ -1,122 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:64409 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:56983 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751765Ab2DINsJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Apr 2012 09:48:09 -0400
-Date: Mon, 9 Apr 2012 09:47:43 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: Grace period
-Message-ID: <20120409094743.56932677@tlielax.poochiereds.net>
-In-Reply-To: <4F82C6E3.3030009@parallels.com>
-References: <4F7F230A.6080506@parallels.com>
-	<20120406234039.GA20940@fieldses.org>
-	<4F82C6E3.3030009@parallels.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+	id S1757753Ab2DLRc4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Apr 2012 13:32:56 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: global openowner_id and lockowner_id
+Date: Thu, 12 Apr 2012 17:32:54 +0000
+Message-ID: <1334251974.2237.95.camel@lade.trondhjem.org>
+References: <58E57AF8-1636-4017-93C0-8520488ED866@oracle.com>
+	 <1334245818.2237.55.camel@lade.trondhjem.org>
+	 <7212EB20-16EC-475E-993E-3F244C621AB0@oracle.com>
+	 <1334246326.2237.59.camel@lade.trondhjem.org>
+	 <6DD87307-2E70-4BC0-8920-70B5D4C34D62@oracle.com>
+In-Reply-To: <6DD87307-2E70-4BC0-8920-70B5D4C34D62@oracle.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 09 Apr 2012 15:24:19 +0400
-Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
-
-> 07.04.2012 03:40, bfields@fieldses.org пишет:
-> > On Fri, Apr 06, 2012 at 09:08:26PM +0400, Stanislav Kinsbursky wrote:
-> >> Hello, Bruce.
-> >> Could you, please, clarify this reason why grace list is used?
-> >> I.e. why list is used instead of some atomic variable, for example?
-> >
-> > Like just a reference count?  Yeah, that would be OK.
-> >
-> > In theory it could provide some sort of debugging help.  (E.g. we could
-> > print out the list of "lock managers" currently keeping us in grace.)  I
-> > had some idea we'd make those lock manager objects more complicated, and
-> > might have more for individual containerized services.
-> 
-> Could you share this idea, please?
-> 
-> Anyway, I have nothing against lists. Just was curious, why it was used.
-> I added Trond and lists to this reply.
-> 
-> Let me explain, what is the problem with grace period I'm facing right know, and 
-> what I'm thinking about it.
-> So, one of the things to be containerized during "NFSd per net ns" work is the 
-> grace period, and these are the basic components of it:
-> 1) Grace period start.
-> 2) Grace period end.
-> 3) Grace period check.
-> 3) Grace period restart.
-> 
-> So, the simplest straight-forward way is to make all internal stuff: 
-> "grace_list", "grace_lock", "grace_period_end" work and both "lockd_manager" and 
-> "nfsd4_manager" - per network namespace. Also, "laundromat_work" have to be 
-> per-net as well.
-> In this case:
-> 1) Start - grace period can be started per net ns in "lockd_up_net()" (thus has 
-> to be moves there from "lockd()") and "nfs4_state_start()".
-> 2) End - grace period can be ended per net ns in "lockd_down_net()" (thus has to 
-> be moved there from "lockd()"), "nfsd4_end_grace()" and "fs4_state_shutdown()".
-> 3) Check - looks easy. There is either svc_rqst or net context can be passed to 
-> function.
-> 4) Restart - this is a tricky place. It would be great to restart grace period 
-> only for the networks namespace of the sender of the kill signal. So, the idea 
-> is to check siginfo_t for the pid of sender, then try to locate the task, and if 
-> found, then get sender's networks namespace, and restart grace period only for 
-> this namespace (of course, if lockd was started for this namespace - see below).
-> 
-> If task not found, of it's lockd wasn't started for it's namespace, then grace 
-> period can be either restarted for all namespaces, of just silently dropped. 
-> This is the place where I'm not sure, how to do. Because calling grace period 
-> for all namespaces will be overkill...
-> 
-> There also another problem with the "task by pid" search, that found task can be 
-> actually not sender (which died already), but some other new task with the same 
-> pid number. In this case, I think, we can just neglect this probability and 
-> always assume, that we located sender (if, of course, lockd was started for 
-> sender's network namespace).
-> 
-> Trond, Bruce, could you, please, comment this ideas?
-> 
-
-I can comment and I'm not sure that will be sufficient.
-
-The grace period has a particular purpose. It keeps nfsd or lockd from
-handing out stateful objects (e.g. locks) before clients have an
-opportunity to reclaim them. Once the grace period expires, there is no
-more reclaim allowed and "normal" lock and open requests can proceed.
-
-Traditionally, there has been one nfsd or lockd "instance" per host.
-With that, we were able to get away with a relatively simple-minded
-approach of a global grace period that's gated on nfsd or lockd's
-startup and shutdown.
-
-Now, you're looking at making multiple nfsd or lockd "instances". Does
-it make sense to make this a per-net thing? Here's a particularly
-problematic case to illustrate what I mean:
-
-Suppose I have a filesystem that's mounted and exported in two
-different containers. You start up one container and then 60s later,
-start up the other. The grace period expires in the first container and
-that nfsd hands out locks that conflict with some that have not been
-reclaimed yet in the other.
-
-Now, we can just try to say "don't export the same fs from more than
-one container". But we all know that people will do it anyway, since
-there's nothing that really stops you from doing so.
-
-What probably makes more sense is making the grace period a per-sb
-property, and coming up with a set of rules for the fs going into and
-out of "grace" status.
-
-Perhaps a way for different net namespaces to "subscribe" to a
-particular fs, and don't take the fs out of grace until all of the
-grace period timers pop? If a fs attempts to subscribe after the fs
-comes out of grace, then its subscription would be denied and reclaim
-attempts would get NFS4ERR_NOGRACE or the NLM equivalent.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+T24gVGh1LCAyMDEyLTA0LTEyIGF0IDEyOjA1IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+T24gQXByIDEyLCAyMDEyLCBhdCAxMTo1OCBBTSwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4g
+DQo+ID4gT24gVGh1LCAyMDEyLTA0LTEyIGF0IDExOjU0IC0wNDAwLCBDaHVjayBMZXZlciB3cm90
+ZToNCj4gPj4gT24gQXByIDEyLCAyMDEyLCBhdCAxMTo1MCBBTSwgTXlrbGVidXN0LCBUcm9uZCB3
+cm90ZToNCj4gPj4gDQo+ID4+PiBPbiBUaHUsIDIwMTItMDQtMTIgYXQgMTE6NDIgLTA0MDAsIENo
+dWNrIExldmVyIHdyb3RlOg0KPiA+Pj4+IEhpLQ0KPiA+Pj4+IA0KPiA+Pj4+IENoYW5naW5nIHRo
+ZSBTRVRDTElFTlRJRCBib290IHZlcmlmaWVyIHNvIGl0IGlzIGdsb2JhbCBmb3IgdGhlIHdob2xl
+IGNsaWVudCBleHBvc2VzIGEgcHJvYmxlbSB3aXRoIGhvdyB3ZSBhbGxvY2F0ZSBzdGF0ZSBvd25l
+cnMuDQo+ID4+Pj4gDQo+ID4+Pj4gQSBxdWljayB1bW91bnQgLyBtb3VudCBzZXF1ZW5jZSBkZXN0
+cm95cyBhbGwgc3RhdGUgb24gdGhlIGNsaWVudC4gIEJ1dCBzaW5jZSB0aGUgY2xpZW50IG5vdyBh
+bHdheXMgdXNlcyB0aGUgc2FtZSBib290IHZlcmlmaWVyIGFuZCBuZnNfY2xpZW50X2lkNCBzdHJp
+bmcsIHRoZSBzZXJ2ZXIgbm8gbG9uZ2VyIHJlY29nbml6ZXMgYSBjbGllbnQgcmVib290LiAgRk9y
+IGEgZnJlc2ggbW91bnQsIHRoZSBjbGllbnQgbWF5IHBlcmZvcm0gYSBTRVRDTElFTlRJRCwgYnV0
+IGl0IGlzIHRyZWF0ZWQgYXMgYSBjYWxsYmFjayB1cGRhdGUgKHN0YXRlIGlzIG5vdCBwdXJnZWQp
+IGlmIHRoZSBjbGllbnQncyBsZWFzZSBoYXMgbm90IHlldCBleHBpcmVkLg0KPiA+Pj4+IA0KPiA+
+Pj4+IE91ciBzdGF0ZSBvd25lcnMgYXJlIGdlbmVyYXRlZCBmcm9tIGEgcGFpciBvZiBpZGEgc3Ry
+dWN0dXJlcyBpbiB0aGUgbmZzX3NlcnZlciBmb3IgdGhhdCBtb3VudC4gIFRoZXkgYWx3YXlzIHN0
+YXJ0IGZyb20gemVybyBhZnRlciBhIG1vdW50IG9wZXJhdGlvbi4gIExpa2V3aXNlLCB0aGUgc2Vx
+dWVuY2UgSURzIGZvciB0aGVzZSBzdGF0ZSBvd25lcnMgYXJlIGFsc28gcmVzZXQgYnkgdW1vdW50
+IC8gbW91bnQuICBOb3RlIHRoYXQgZWFjaCBtb3VudCBwb2ludCBnZXRzIGEgZnJlc2ggbmZzX3Nl
+cnZlciwgc28gdGhlc2Ugc3RydWN0dXJlcyBhcmUgbm90IHJldGFpbmVkIGFjcm9zcyB1bW91bnQg
+LyBtb3VudC4NCj4gPj4+PiANCj4gPj4+PiBUaGlzIG1lYW5zIHVtb3VudCAvIG1vdW50IHdpdGgg
+bm8gbGVhc2UgZXhwaXJ5IHN0YXJ0cyB0byByZS1wbGF5IHN0YXRlIG93bmVycyB3aXRoIHJlc2V0
+IHNlcXVlbmNlIElEcy4gIFNlcnZlcnMgZG9uJ3QgcmVhbGx5IGNhcmUgZm9yIHRoYXQgYmVoYXZp
+b3IuICBJIGhhdmUgYSB0ZXN0IGNhc2UgdGhhdCByZWxpYWJseSBnZXRzIGEgQkFEX1NFUUlEIGVy
+cm9yIGZyb20gYSBzZXJ2ZXIgYWZ0ZXIgYSBxdWljayB1bW91bnQgLyBtb3VudCBmb2xsb3dlZCBi
+eSBhIHNpbmdsZSBmaWxlIGNyZWF0aW9uLg0KPiA+Pj4+IA0KPiA+Pj4+IE5vdyB0aGF0IHdlIGFy
+ZSBhYm91dCB0byBzd2l0Y2ggdG8gdXNpbmcgbW9yZS1vci1sZXNzIGdsb2JhbCBTRVRDTElFTlRJ
+RCBib290IHZlcmlmaWVycywgaXQgc2VlbXMgdG8gbWUgdGhhdCB3ZSByZWFsbHkgd2FudCBhIGds
+b2JhbCBvcGVub3duZXJfaWQgYW5kIGxvY2tvd25lcl9pZCBhcyB3ZWxsLg0KPiA+Pj4+IA0KPiA+
+Pj4+IFRoZSBwZXJmb3JtYW5jZSBpbXBhY3Qgb2Ygc3VjaCBhIGNoYW5nZSBtaWdodCBiZSBhY2Nl
+cHRhYmxlIGJlY2F1c2Ugd2UgY2FjaGUgYW5kIHJldXNlIHN0YXRlIG93bmVycyBub3cuDQo+ID4+
+Pj4gDQo+ID4+Pj4gVGhvdWdodHM/DQo+ID4+PiANCj4gPj4+IFRoYXQncyBhIGRlZmluaXRlIHNl
+cnZlciBidWcuIElmIHRoZSBjbGllbnQgaG9sZHMgbm8gb3BlbiBzdGF0ZSwgdGhlbiBpdA0KPiA+
+Pj4gaXMgYWxsb3dlZCB0byBmb3JnZXQgdGhlIG9wZW4gb3duZXIgYW5kIHN0YXJ0IHRoZSBzZXF1
+ZW5jZSBpZCBmcm9tIDANCj4gPj4+IGFnYWluLiBJdCBpcyBub3QgcmVxdWlyZWQgdG8gcmVtZW1i
+ZXIgc2VxdWVuY2UgaWRzIGZvciBvcGVuIG93bmVycyB0aGF0DQo+ID4+PiBhcmVuJ3QgaW4gdXNl
+Lg0KPiA+Pj4gDQo+ID4+PiBPdXIgY3VycmVudCBjbGllbnQgY291bGQgZWFzaWx5IHRyaWdnZXIg
+dGhpcyBidWcgZXZlbiB3aXRob3V0IGENCj4gPj4+IHVtb3VudC9tb3VudC4NCj4gPj4gDQo+ID4+
+IFRoZSBjbGllbnQgaXMgaG9sZGluZyBvcGVuIHN0YXRlLiAgSGVyZSdzIHRoZSBleGFjdCByZXBy
+b2R1Y2VyIG9uIG15IG1vZGlmaWVkIGNsaWVudDoNCj4gPj4gDQo+ID4+IDEuICBtb3VudCBzZXJ2
+ZXI6L2V4cG9ydCAvbW50DQo+ID4+IDIuICB0b3VjaCAvbW50L25ld2ZpbGUNCj4gPj4gMy4gIHVt
+b3VudCAvbW50DQo+ID4+IDQuICBtb3VudCBzZXJ2ZXI6L2V4cG9ydCAvbW50DQo+ID4+IDUuICB0
+b3VjaCAvbW50L25ld2ZpbGUyDQo+ID4+IA0KPiA+PiBTdGVwIDUgY2F1c2VzIHRoZSBjbGllbnQg
+dG8gcmVwbGF5IGFuIG9wZW4gb3duZXIgd2l0aCBhIHJlc2V0IHNlcXVlbmNlIElELCBhbmQgdGhl
+IHNlcnZlciByZXBsaWVzIEJBRF9TRVFJRC4NCj4gPiANCj4gPiB0b3VjaCB3b24ndCBrZWVwIHRo
+ZSBmaWxlIG9wZW4uIFRoZXJlIGlzIG5vIG9wZW4gc3RhdGUgb25jZSB0b3VjaCBoYXMNCj4gPiBm
+aW5pc2hlZCBleGVjdXRpbmcuDQo+IA0KPiBPSywgYWdyZWVkLg0KPiANCj4gPiBXaGF0IHlvdSBo
+YXZlIGV4cG9zZWQgYWJvdmUgaXMgYSBfc2VydmVyXyBidWcuIFRoZSBzZXJ2ZXIgaXMgX25vdF8N
+Cj4gPiBhbGxvd2VkIHRvIGFzc3VtZSB0aGF0IHRoZSBjbGllbnQgd2lsbCBjYWNoZSBhbiBvcGVu
+IG93bmVyIGZvcmV2ZXIgb25jZQ0KPiA+IGl0IG5vIGxvbmdlciBob2xkcyBhbnkgb3BlbiBzdGF0
+ZSB1c2luZyB0aGF0IG9wZW4gb3duZXIuIFdlIGhhZCBhIGxvb25nDQo+ID4gZGlzY3Vzc2lvbiBh
+Ym91dCB0aGlzIG9uIHRoZSBtYWlsaW5nIGxpc3QgYSBmZXcgeWVhcnMgYWdvIHdpdGggRGF2aWQN
+Cj4gPiBSb2JpbnNvbiBiZWluZyB0aGUgcGVyc29uIHdobyBmb3JtdWxhdGVkIHRoZSBhYm92ZSBy
+dWxlLg0KPiANCj4gSSdtIG5vdCBzdXJlIEkgd291bGQgY2hhcmFjdGVyaXplIHRoaXMgYXMgYSBz
+ZXJ2ZXIgYnVnIGp1c3QgeWV0LiAgT24gT1BFTiwgdGhlIHNlcnZlciBpcyBhbGxvd2VkIHRvIHRl
+bGwgdGhlIGNsaWVudCBpdCBpcyB1c2luZyBhIGJhZCBzZXF1ZW5jZSBJRCwgYW5kIHRoZSBjbGll
+bnQgaXMgc3VwcG9zZWQgdG8gcmVjb3ZlciBieSB0cnlpbmcgYWdhaW4gd2l0aCBhIGRpZmZlcmVu
+dCBPTy4gIE91ciBCQURfU0VRSUQgcmVjb3ZlcnkgbG9naWMgYXBwZWFycyB0byBiZSBicm9rZW4s
+IGJlY2F1c2Ugb3VyIGNsaWVudCBnb2VzIGludG8gYSBsb29wIHJldHJ5aW5nIHRoZSBPUEVOIHdp
+dGggdGhlIHNhbWUgT08uICBJZiByZWNvdmVyeSB3b3JrZWQsIHRoaXMgd291bGQgYWxsIGJlIHBl
+cmZlY3RseSB0cmFuc3BhcmVudCwgSSB0aGluay4NCg0KQWZ0ZXIgcmUtcmVhZGluZyB0aGUgdGhy
+ZWFkIG9uDQpodHRwOi8vd3d3LmlldGYub3JnL21haWwtYXJjaGl2ZS93ZWIvbmZzdjQvY3VycmVu
+dC9tc2cwMTcxOS5odG1sIEknbQ0KaGF2aW5nIHNlY29uZCB0aG91Z2h0cy4gSSBkaWQgcmVtZW1i
+ZXIgYmVpbmcgY29udmluY2VkIGJ5IERhdmlkJ3MNCmFyZ3VtZW50cywgYnV0IGxvb2tpbmcgYmFj
+ayBpdCBkb2VzIG5vdCBhcHBlYXIgdGhhdCB3ZSBhY2hpZXZlZA0KY29uc2Vuc3VzLg0KDQpUaGUg
+d2hvbGUgcHJvYmxlbSBpbiB0aGUgc3BlYyBpcyB0aGF0IGFsdGhvdWdoIHRoZSBzZXJ2ZXIgaXMg
+YWxsb3dlZCB0bw0KZm9yZ2V0IHRoZSBvcGVuIG93bmVyIHdoZW4gdGhlIGNsaWVudCBubyBsb25n
+ZXIgaG9sZHMgYW55IHN0YXRlLCBpdCBpcw0Kbm90IF9yZXF1aXJlZF8gdG8gZG8gc28uDQpJbiBv
+dGhlciB3b3JkcywgdGhlIGNsaWVudCBuZWVkcyB0byBiZSBwcmVwYXJlZCBmb3IgZWl0aGVyIEJB
+RF9TRVFJRCBvcg0KYW4gT1BFTl9DT05GSVJNIHJlcXVlc3QgaWYgaXQgdHJpZXMgdG8gT1BFTiB1
+c2luZyBhIHJlY3ljbGVkIG9wZW4gb3duZXIuDQoNCj4gSSB3YXMgdGFraW5nIGEgc3RlcCBiYWNr
+IGFuZCB3b25kZXJpbmcgaG93IHRoZSBjbGllbnQgY2hvc2UgdGhlIE9PIGluIHRoZSBmaXJzdCBw
+bGFjZS4NCj4gDQo+IEJ1dCB5b3UgY2xhaW1lZCBhYm92ZSB0aGF0IG91ciBjbGllbnQgY291bGQg
+dHJpZ2dlciB0aGlzIGJ1ZyB3aXRob3V0IGEgdW1vdW50IC8gbW91bnQgc2VxdWVuY2UuICBEbyB5
+b3UgaGF2ZSBhbiBleGFtcGxlIG9mIGhvdyBJIG1pZ2h0IHRyeSB0aGF0Pw0KDQpUaGUgbGF0ZXN0
+IGNsaWVudCB1c2VzIHRoZSBpZGEgYWxsb2NhdG9yIGluIG9yZGVyIHRvIGdlbmVyYXRlIHVuaXF1
+ZQ0KaWRlbnRpZmllcnMuIFRoYXQgcGFydGljdWxhciBhbGxvY2F0b3Igb2ZmZXJzIG5vIGd1YXJh
+bnRlZXMgdGhhdCBpdA0Kd29uJ3QgcmUtdXNlIGFuIGlkZW50aWZpZXIgdGhhdCBpcyBubyBsb25n
+ZXIgaW4gdXNlLiBJbiBmYWN0LCBiZWNhdXNlIGl0DQp1c2VzIGZpbmRfbmV4dF96ZXJvX2JpdCgp
+LCByZXVzZSBpcyBhY3R1YWxseSB0aGUgbm9ybS4NCg0KU28gSSBiZWxpZXZlIHRoYXQgYWxsIHlv
+dSBuZWVkIHRvIGRvIGhlcmUgaXMgY3JlYXRlIDIgb3BlbiBvd25lcnMgdXNpbmcNCnNpbXVsdGVu
+ZW91cyAnb3BlbigpJyBjYWxscyBmcm9tIDIgcHJvY2Vzc2VzIHdpdGggZGlmZmVyZW50IGNyZWRl
+bnRpYWxzLA0KdGhlbiBjbG9zZSBib3RoIGZpbGUgZGVzY3JpcHRvcnMsIHdhaXQgMSBsZWFzZSBw
+ZXJpb2QsIGFuZCB0aGVuIHRyeQ0KJ29wZW4oKScgZnJvbSBib3RoIHByb2Nlc3NlcyBhZ2Fpbi4N
+CkFzIGZhciBhcyBJIGNhbiBzZWUsIHRoZSBnYXJiYWdlIGNvbGxlY3RvciBzaG91bGQgdGhyb3cg
+b3V0IHRoZSBzZWNvbmQNCm9wZW4gb3duZXIgd2hlbiB5b3UgZG8gdGhlIHRoaXJkICdvcGVuKCkn
+LCBhbmQgc28gdGhlIGNsaWVudCB3aWxsDQpnZW5lcmF0ZSBhIG5ldyBvbmUgd2l0aCB0aGUgc2Ft
+ZSBpZGEgdmFsdWUgd2hlbiB5b3UgZG8gdGhlIGZvdXJ0aA0Kb3BlbigpLg0KDQotLSANClRyb25k
+IE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQu
+TXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
