@@ -1,128 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57183 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:40144 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752950Ab2D1TbJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 28 Apr 2012 15:31:09 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 05/10] NFSv2/v3: Simulate the change attribute
-Date: Sat, 28 Apr 2012 15:30:55 -0400
-Message-Id: <1335641460-24839-6-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1335641460-24839-5-git-send-email-Trond.Myklebust@netapp.com>
-References: <1335641460-24839-1-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-2-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-3-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-4-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-5-git-send-email-Trond.Myklebust@netapp.com>
+	id S934032Ab2DLPue (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Apr 2012 11:50:34 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: global openowner_id and lockowner_id
+Date: Thu, 12 Apr 2012 15:50:18 +0000
+Message-ID: <1334245818.2237.55.camel@lade.trondhjem.org>
+References: <58E57AF8-1636-4017-93C0-8520488ED866@oracle.com>
+In-Reply-To: <58E57AF8-1636-4017-93C0-8520488ED866@oracle.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use the ctime to simulate a change attribute for NFSv2 and NFSv3.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/client.c         |    2 +-
- fs/nfs/internal.h       |   12 ++++++++++++
- fs/nfs/nfs2xdr.c        |    2 ++
- fs/nfs/nfs3xdr.c        |    3 +++
- include/linux/nfs_xdr.h |    6 +++---
- 5 files changed, 21 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 60f7e4e..a8f8de6 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -880,7 +880,7 @@ static int nfs_init_server(struct nfs_server *server,
- 	server->options = data->options;
- 	server->caps |= NFS_CAP_HARDLINKS|NFS_CAP_SYMLINKS|NFS_CAP_FILEID|
- 		NFS_CAP_MODE|NFS_CAP_NLINK|NFS_CAP_OWNER|NFS_CAP_OWNER_GROUP|
--		NFS_CAP_ATIME|NFS_CAP_CTIME|NFS_CAP_MTIME;
-+		NFS_CAP_ATIME|NFS_CAP_CTIME|NFS_CAP_MTIME|NFS_CAP_CHANGE_ATTR;
- 
- 	if (data->rsize)
- 		server->rsize = nfs_block_size(data->rsize, NULL);
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 0fd1efa..1855e8f 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -493,3 +493,15 @@ unsigned int nfs_page_array_len(unsigned int base, size_t len)
- 		PAGE_SIZE - 1) >> PAGE_SHIFT;
- }
- 
-+/*
-+ * Convert a struct timespec into a 64-bit change attribute
-+ *
-+ * This does approximately the same thing as timespec_to_ns(),
-+ * but for calculation efficiency, we multiply the seconds by
-+ * 1024*1024*1024.
-+ */
-+static inline
-+u64 nfs_timespec_to_change_attr(const struct timespec *ts)
-+{
-+	return ((u64)ts->tv_sec << 30) + ts->tv_nsec;
-+}
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index 1f56000..c99008e 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -313,6 +313,8 @@ static int decode_fattr(struct xdr_stream *xdr, struct nfs_fattr *fattr)
- 	p = xdr_decode_time(p, &fattr->atime);
- 	p = xdr_decode_time(p, &fattr->mtime);
- 	xdr_decode_time(p, &fattr->ctime);
-+	fattr->change_attr = nfs_timespec_to_change_attr(&fattr->ctime);
-+
- 	return 0;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index 01e53e9..ee284c2 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -675,6 +675,7 @@ static int decode_fattr3(struct xdr_stream *xdr, struct nfs_fattr *fattr)
- 	p = xdr_decode_nfstime3(p, &fattr->atime);
- 	p = xdr_decode_nfstime3(p, &fattr->mtime);
- 	xdr_decode_nfstime3(p, &fattr->ctime);
-+	fattr->change_attr = nfs_timespec_to_change_attr(&fattr->ctime);
- 
- 	fattr->valid |= NFS_ATTR_FATTR_V3;
- 	return 0;
-@@ -725,12 +726,14 @@ static int decode_wcc_attr(struct xdr_stream *xdr, struct nfs_fattr *fattr)
- 		goto out_overflow;
- 
- 	fattr->valid |= NFS_ATTR_FATTR_PRESIZE
-+		| NFS_ATTR_FATTR_PRECHANGE
- 		| NFS_ATTR_FATTR_PREMTIME
- 		| NFS_ATTR_FATTR_PRECTIME;
- 
- 	p = xdr_decode_size3(p, &fattr->pre_size);
- 	p = xdr_decode_nfstime3(p, &fattr->pre_mtime);
- 	xdr_decode_nfstime3(p, &fattr->pre_ctime);
-+	fattr->pre_change_attr = nfs_timespec_to_change_attr(&fattr->pre_ctime);
- 
- 	return 0;
- out_overflow:
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index c940d46..cd160ab 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -106,14 +106,14 @@ struct nfs_fattr {
- 		| NFS_ATTR_FATTR_FILEID \
- 		| NFS_ATTR_FATTR_ATIME \
- 		| NFS_ATTR_FATTR_MTIME \
--		| NFS_ATTR_FATTR_CTIME)
-+		| NFS_ATTR_FATTR_CTIME \
-+		| NFS_ATTR_FATTR_CHANGE)
- #define NFS_ATTR_FATTR_V2 (NFS_ATTR_FATTR \
- 		| NFS_ATTR_FATTR_BLOCKS_USED)
- #define NFS_ATTR_FATTR_V3 (NFS_ATTR_FATTR \
- 		| NFS_ATTR_FATTR_SPACE_USED)
- #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
--		| NFS_ATTR_FATTR_SPACE_USED \
--		| NFS_ATTR_FATTR_CHANGE)
-+		| NFS_ATTR_FATTR_SPACE_USED)
- 
- /*
-  * Info on the file system
--- 
-1.7.7.6
-
+T24gVGh1LCAyMDEyLTA0LTEyIGF0IDExOjQyIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+SGktDQo+IA0KPiBDaGFuZ2luZyB0aGUgU0VUQ0xJRU5USUQgYm9vdCB2ZXJpZmllciBzbyBpdCBp
+cyBnbG9iYWwgZm9yIHRoZSB3aG9sZSBjbGllbnQgZXhwb3NlcyBhIHByb2JsZW0gd2l0aCBob3cg
+d2UgYWxsb2NhdGUgc3RhdGUgb3duZXJzLg0KPiANCj4gQSBxdWljayB1bW91bnQgLyBtb3VudCBz
+ZXF1ZW5jZSBkZXN0cm95cyBhbGwgc3RhdGUgb24gdGhlIGNsaWVudC4gIEJ1dCBzaW5jZSB0aGUg
+Y2xpZW50IG5vdyBhbHdheXMgdXNlcyB0aGUgc2FtZSBib290IHZlcmlmaWVyIGFuZCBuZnNfY2xp
+ZW50X2lkNCBzdHJpbmcsIHRoZSBzZXJ2ZXIgbm8gbG9uZ2VyIHJlY29nbml6ZXMgYSBjbGllbnQg
+cmVib290LiAgRk9yIGEgZnJlc2ggbW91bnQsIHRoZSBjbGllbnQgbWF5IHBlcmZvcm0gYSBTRVRD
+TElFTlRJRCwgYnV0IGl0IGlzIHRyZWF0ZWQgYXMgYSBjYWxsYmFjayB1cGRhdGUgKHN0YXRlIGlz
+IG5vdCBwdXJnZWQpIGlmIHRoZSBjbGllbnQncyBsZWFzZSBoYXMgbm90IHlldCBleHBpcmVkLg0K
+PiANCj4gT3VyIHN0YXRlIG93bmVycyBhcmUgZ2VuZXJhdGVkIGZyb20gYSBwYWlyIG9mIGlkYSBz
+dHJ1Y3R1cmVzIGluIHRoZSBuZnNfc2VydmVyIGZvciB0aGF0IG1vdW50LiAgVGhleSBhbHdheXMg
+c3RhcnQgZnJvbSB6ZXJvIGFmdGVyIGEgbW91bnQgb3BlcmF0aW9uLiAgTGlrZXdpc2UsIHRoZSBz
+ZXF1ZW5jZSBJRHMgZm9yIHRoZXNlIHN0YXRlIG93bmVycyBhcmUgYWxzbyByZXNldCBieSB1bW91
+bnQgLyBtb3VudC4gIE5vdGUgdGhhdCBlYWNoIG1vdW50IHBvaW50IGdldHMgYSBmcmVzaCBuZnNf
+c2VydmVyLCBzbyB0aGVzZSBzdHJ1Y3R1cmVzIGFyZSBub3QgcmV0YWluZWQgYWNyb3NzIHVtb3Vu
+dCAvIG1vdW50Lg0KPiANCj4gVGhpcyBtZWFucyB1bW91bnQgLyBtb3VudCB3aXRoIG5vIGxlYXNl
+IGV4cGlyeSBzdGFydHMgdG8gcmUtcGxheSBzdGF0ZSBvd25lcnMgd2l0aCByZXNldCBzZXF1ZW5j
+ZSBJRHMuICBTZXJ2ZXJzIGRvbid0IHJlYWxseSBjYXJlIGZvciB0aGF0IGJlaGF2aW9yLiAgSSBo
+YXZlIGEgdGVzdCBjYXNlIHRoYXQgcmVsaWFibHkgZ2V0cyBhIEJBRF9TRVFJRCBlcnJvciBmcm9t
+IGEgc2VydmVyIGFmdGVyIGEgcXVpY2sgdW1vdW50IC8gbW91bnQgZm9sbG93ZWQgYnkgYSBzaW5n
+bGUgZmlsZSBjcmVhdGlvbi4NCj4gDQo+IE5vdyB0aGF0IHdlIGFyZSBhYm91dCB0byBzd2l0Y2gg
+dG8gdXNpbmcgbW9yZS1vci1sZXNzIGdsb2JhbCBTRVRDTElFTlRJRCBib290IHZlcmlmaWVycywg
+aXQgc2VlbXMgdG8gbWUgdGhhdCB3ZSByZWFsbHkgd2FudCBhIGdsb2JhbCBvcGVub3duZXJfaWQg
+YW5kIGxvY2tvd25lcl9pZCBhcyB3ZWxsLg0KPiANCj4gVGhlIHBlcmZvcm1hbmNlIGltcGFjdCBv
+ZiBzdWNoIGEgY2hhbmdlIG1pZ2h0IGJlIGFjY2VwdGFibGUgYmVjYXVzZSB3ZSBjYWNoZSBhbmQg
+cmV1c2Ugc3RhdGUgb3duZXJzIG5vdy4NCj4gDQo+IFRob3VnaHRzPw0KDQpUaGF0J3MgYSBkZWZp
+bml0ZSBzZXJ2ZXIgYnVnLiBJZiB0aGUgY2xpZW50IGhvbGRzIG5vIG9wZW4gc3RhdGUsIHRoZW4g
+aXQNCmlzIGFsbG93ZWQgdG8gZm9yZ2V0IHRoZSBvcGVuIG93bmVyIGFuZCBzdGFydCB0aGUgc2Vx
+dWVuY2UgaWQgZnJvbSAwDQphZ2Fpbi4gSXQgaXMgbm90IHJlcXVpcmVkIHRvIHJlbWVtYmVyIHNl
+cXVlbmNlIGlkcyBmb3Igb3BlbiBvd25lcnMgdGhhdA0KYXJlbid0IGluIHVzZS4NCg0KT3VyIGN1
+cnJlbnQgY2xpZW50IGNvdWxkIGVhc2lseSB0cmlnZ2VyIHRoaXMgYnVnIGV2ZW4gd2l0aG91dCBh
+DQp1bW91bnQvbW91bnQuDQoNCkNoZWVycw0KICBUcm9uZA0KDQotLSANClRyb25kIE15a2xlYnVz
+dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0
+QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
