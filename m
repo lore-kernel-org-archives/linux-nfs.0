@@ -1,52 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33810 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751230Ab2DQW20 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Apr 2012 18:28:26 -0400
-Date: Tue, 17 Apr 2012 18:28:25 -0400
-To: Simo Sorce <simo@redhat.com>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 4/5] SUNRPC: Add RPC based upcall mechanism for RPCGSS
- auth
-Message-ID: <20120417222825.GA32619@fieldses.org>
-References: <1334669948-4156-1-git-send-email-simo@redhat.com>
- <1334669948-4156-5-git-send-email-simo@redhat.com>
+Received: from sainfoin-out.extra.cea.fr ([132.167.192.144]:58258 "EHLO
+	sainfoin-out.extra.cea.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756247Ab2DLOfF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Apr 2012 10:35:05 -0400
+Received: from pisaure.intra.cea.fr (pisaure.intra.cea.fr [132.166.88.21])
+	by sainfoin.extra.cea.fr (8.14.2/8.14.2/CEAnet-Internet-out-2.3) with ESMTP id q3CEZ0vt012909
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
+	for <linux-nfs@vger.kernel.org>; Thu, 12 Apr 2012 16:35:00 +0200
+Received: from muguet1.intra.cea.fr (muguet1.intra.cea.fr [132.166.192.6])
+	by pisaure.intra.cea.fr (8.14.4/8.14.4) with ESMTP id q3CEZ0Tf021706
+	for <linux-nfs@vger.kernel.org>; Thu, 12 Apr 2012 16:35:00 +0200
+	(envelope-from philippe.deniel@cea.fr)
+Received: from zia.cdc.esteban.ctsi (esteban.dam.intra.cea.fr [132.165.76.10])
+	by muguet1.intra.cea.fr (8.13.8/8.13.8/CEAnet-Intranet-out-1.2) with SMTP id q3CEZ0WP003001
+	for <linux-nfs@vger.kernel.org>; Thu, 12 Apr 2012 16:35:00 +0200
+Message-ID: <4F86E813.3010200@cea.fr>
+Date: Thu, 12 Apr 2012 16:34:59 +0200
+From: DENIEL Philippe <philippe.deniel@cea.fr>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1334669948-4156-5-git-send-email-simo@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: How to manage EDQUOT on the server side
+References: <4F86E4E0.8000703@cea.fr> <20120412142946.GB29891@us.ibm.com>
+In-Reply-To: <20120412142946.GB29891@us.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 17, 2012 at 09:39:07AM -0400, Simo Sorce wrote:
-> This patch implements a sunrpc client to use the services of the gssproxy
-> userspace daemon.
-> 
-> In particular it allows to perform calls in user space using an RPC
-> call instead of custom hand-coded upcall/downcall messages.
+Malahal Naineni a écrit :
+> Are you using Linux client?
+Yes.
 
-The "hand-coded" messages aren't really particularly hard to generate or
-parse.  Let's just drop that argument.
+>  I think there is a bug where the client
+> reports EIO rather than QUOTA/NOSPC errors under some circumstances.
+>   
+Do you have more informations about those circumstances ? I just ran 
+"dd" until I exceed my data quota's hard limit.
 
-> Currently only accept_sec_context is implemented as that is all is needed for
-> the server case.
-> 
-> File server modules like NFS and CIFS can use full gssapi services this way,
-> once init_sec_context is also implemented.
+    Regards
 
-What's the situation with CIFS, by the way?  (How does it currently do
-gssapi, and what are their plans?)
+       Philippe
 
-> For the NFS server case this code allow to lift the limit of max 2k krb5
-> tickets. This limit is prevents legitimate kerberos deployments from using krb5
-> authentication with the Linux NFS server as they have normally ticket that are
-> many kilobytes large.
-> 
-> It will also allow to lift the limitation on the size of the credential set
-> (uid,gid,gids) passed down from user space for users that have very many groups
-> associated. Currently the downcall mechanism used by rpc.svcgssd is limited
-> to around 2k secondary groups of the 65k allowed by kernel structures.
+> I didn't know about client looping on the same WRITE call though!
+>
+> Thanks, Malahal.
+>
+> DENIEL Philippe [philippe.deniel@cea.fr] wrote:
+>   
+>> Hi,
+>>
+>> I am currently busy with implementing quota management in my nfs
+>> server (nfs-ganesha).
+>> I have efficient way to make NFS3_WRITE detecting an IO that exceeds
+>> data quota, and use that to return NFS3ERR_DQUOT.
+>> Wireshark shows me that nfs reply contains NFS3ERR_DQUOT, but the
+>> client starts looping on the same WRITE call. By the end, by test
+>> application (a simple 'dd') end with "I/O Error".
+>> Did I miss something when implementing this ?
+>> I had no rquotad running for the share at the time the test was
+>> running, should I have a co-related rquotad running as well ?
+>>
+>>    Regards
+>>
+>>       Philippe
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>>     
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>   
 
-Remind me what remains to be done before that works?
-
---b.
