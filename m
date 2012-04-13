@@ -1,86 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:48062 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:17264 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754040Ab2DPMSK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Apr 2012 08:18:10 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 10/11] nfs: Prevent page allocator recursions with swap over NFS.
-Date: Mon, 16 Apr 2012 13:17:54 +0100
-Message-Id: <1334578675-23445-11-git-send-email-mgorman@suse.de>
-In-Reply-To: <1334578675-23445-1-git-send-email-mgorman@suse.de>
-References: <1334578675-23445-1-git-send-email-mgorman@suse.de>
+	id S1756593Ab2DMXAj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Apr 2012 19:00:39 -0400
+Date: Fri, 13 Apr 2012 19:00:24 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Peter Staubach <pstaubach@exagrid.com>
+Cc: Steve Dickson <SteveD@redhat.com>, Malahal Naineni <malahal@us.ibm.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "miklos@szeredi.hu" <miklos@szeredi.hu>,
+        "viro@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
+        "hch@infradead.org" <hch@infradead.org>,
+        "michael.brantley@deshaw.com" <michael.brantley@deshaw.com>
+Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from
+ getattr call
+Message-ID: <20120413190024.5095f9b1@tlielax.poochiereds.net>
+In-Reply-To: <2F609A9B-B44B-4CEA-BF35-D6BEDA729363@exagrid.com>
+References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
+	<20120413150518.GA1987@us.ibm.com>
+	<20120413114236.0e557e01@tlielax.poochiereds.net>
+	<4F884F32.7010402@RedHat.com>
+	<2F609A9B-B44B-4CEA-BF35-D6BEDA729363@exagrid.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-GFP_NOFS is _more_ permissive than GFP_NOIO in that it will initiate
-IO, just not of any filesystem data.
+On Fri, 13 Apr 2012 13:34:51 -0400
+Peter Staubach <pstaubach@exagrid.com> wrote:
 
-The problem is that previously NOFS was correct because that avoids
-recursion into the NFS code. With swap-over-NFS, it is no longer
-correct as swap IO can lead to this recursion.
+> I still think that returning ESTALE to the application is just exposing a short coming in the implementation.  From a path based system like stat(), the application should see either ENOENT or some sort valid return.
+> 
 
-Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
----
- fs/nfs/pagelist.c |    2 +-
- fs/nfs/write.c    |    7 ++++---
- 2 files changed, 5 insertions(+), 4 deletions(-)
+Agreed, but I'm willing to live with a solution that addresses most of
+these situations, even if we can't fix them all. If retrying
+indefinitely may be a problem for other filesystems then we can't
+just ignore that...
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 77aa83e..8e80d71 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -29,7 +29,7 @@ static struct kmem_cache *nfs_page_cachep;
- static inline struct nfs_page *
- nfs_page_alloc(void)
- {
--	struct nfs_page	*p = kmem_cache_zalloc(nfs_page_cachep, GFP_KERNEL);
-+	struct nfs_page	*p = kmem_cache_zalloc(nfs_page_cachep, GFP_NOIO);
- 	if (p)
- 		INIT_LIST_HEAD(&p->wb_list);
- 	return p;
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index eea4ec0..c679527 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -52,7 +52,7 @@ static mempool_t *nfs_commit_mempool;
- 
- struct nfs_write_data *nfs_commitdata_alloc(void)
- {
--	struct nfs_write_data *p = mempool_alloc(nfs_commit_mempool, GFP_NOFS);
-+	struct nfs_write_data *p = mempool_alloc(nfs_commit_mempool, GFP_NOIO);
- 
- 	if (p) {
- 		memset(p, 0, sizeof(*p));
-@@ -72,7 +72,7 @@ EXPORT_SYMBOL_GPL(nfs_commit_free);
- 
- struct nfs_write_data *nfs_writedata_alloc(unsigned int pagecount)
- {
--	struct nfs_write_data *p = mempool_alloc(nfs_wdata_mempool, GFP_NOFS);
-+	struct nfs_write_data *p = mempool_alloc(nfs_wdata_mempool, GFP_NOIO);
- 
- 	if (p) {
- 		memset(p, 0, sizeof(*p));
-@@ -81,7 +81,8 @@ struct nfs_write_data *nfs_writedata_alloc(unsigned int pagecount)
- 		if (pagecount <= ARRAY_SIZE(p->page_array))
- 			p->pagevec = p->page_array;
- 		else {
--			p->pagevec = kcalloc(pagecount, sizeof(struct page *), GFP_NOFS);
-+			p->pagevec = kcalloc(pagecount, sizeof(struct page *),
-+					GFP_NOIO);
- 			if (!p->pagevec) {
- 				mempool_free(p, nfs_wdata_mempool);
- 				p = NULL;
+> I also look at the looping from the other side.  While possible, of course, I'd like to see someone construct a situation where it really happens.  By this, I don't mean a thought experiment, but a real running situation.
+> 
+> We already have evidence, in the form of the Solaris NFS client, that infinite looping does not happen in nature.
+> 
+
+I'm fairly certainly that looping indefinitely would be just fine for
+NFS. My main concern is those FUSE fs' that Miklos alluded to when he
+reviewed your earlier set.
+
+He said that some can return ESTALE indefinitely, and they don't
+necessarily respect signals. If limiting the number of retries helps
+prevent problems with those, then that's still better than the current
+situation.
+
 -- 
-1.7.9.2
-
+Jeff Layton <jlayton@redhat.com>
