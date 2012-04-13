@@ -1,67 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.12.86]:35617 "EHLO
-	tombraider.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755093Ab2DXP2c (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Apr 2012 11:28:32 -0400
-Date: Tue, 24 Apr 2012 11:29:50 -0400
-From: Jim Rees <rees@umich.edu>
-To: Niels de Vos <ndevos@redhat.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, Steve Dickson <steved@redhat.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] rpcbind: Only listen on requested hostnames for
- NC_TPI_COTS connections
-Message-ID: <20120424152950.GB13191@umich.edu>
-References: <1335194692-6714-1-git-send-email-ndevos@redhat.com>
- <82D8C43F-5C40-444C-9573-B4FF95F615DA@oracle.com>
- <4F957D30.9010102@redhat.com>
- <7C71F75F-3F15-401B-8700-38B0EBE2B595@oracle.com>
- <4F96C0E3.9090007@redhat.com>
+Received: from e7.ny.us.ibm.com ([32.97.182.137]:49851 "EHLO e7.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751821Ab2DMPGU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Apr 2012 11:06:20 -0400
+Received: from /spool/local
+	by e7.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Fri, 13 Apr 2012 11:06:18 -0400
+Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
+	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id 9BE786E8060
+	for <linux-nfs@vger.kernel.org>; Fri, 13 Apr 2012 11:05:55 -0400 (EDT)
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q3DF5aqV2064606
+	for <linux-nfs@vger.kernel.org>; Fri, 13 Apr 2012 11:05:37 -0400
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q3DF5URE007699
+	for <linux-nfs@vger.kernel.org>; Fri, 13 Apr 2012 09:05:31 -0600
+Received: from malahal (malahal.austin.ibm.com [9.53.40.203])
+	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q3DF5Rwr006341
+	for <linux-nfs@vger.kernel.org>; Fri, 13 Apr 2012 09:05:27 -0600
+Date: Fri, 13 Apr 2012 10:05:18 -0500
+From: Malahal Naineni <malahal@us.ibm.com>
+To: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from
+ getattr call
+Message-ID: <20120413150518.GA1987@us.ibm.com>
+References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F96C0E3.9090007@redhat.com>
+In-Reply-To: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Niels de Vos wrote:
+Jeff Layton [jlayton@redhat.com] wrote:
+> 1) should we retry these calls on all filesystems, or attempt to have
+> them "opt-in" in some fashion? This patch adds a flag for that, but
+> we could just treat all filesystems the same way.
 
-  On 04/23/2012 06:22 PM, Chuck Lever wrote:
-  >
-  > So you did check the mail archive?  I seem to recall other patches like
-  > this in the past, and that there is a reason why rpcbind works this way.
-  > I simply don't remember the specifics right at the moment.
-  
-  I did, but no messages about this subject come up for me... Maybe I'm looking
-  in the wrong places :-/
+I don't know any cases where a retry on ESTALE would hurt. I would say
+retry on all file systems the same way.
 
-I asked about this last November, and at that time Chuck referred me to the
-mail archive too.  I couldn't find any discussion either.  But the behavior
-is intentional, so I don't think you'll get a patch accepted.  I never did
-discover the reason but I do have a workaround.  I just don't run rpcbind.
+> 2) How many times should we retry on an ESTALE error? Once?
+> Indefinitely? Some amount in between? Retrying once would probably
+> fix the bulk of the real world problems with this, but there will
+> still be cases where that's not sufficient.
 
-This was the most informative response I got:
+As you say 1 retry should work in most cases. Indefinitely doesn't make
+sense, I would rather let my application fail! How about 3 retries (3 is
+a nice number! :-) )
 
-Date: Tue, 8 Nov 2011 19:01:51 +1100
-From: Max Matveev <makc@redhat.com>
-Subject: Re: rpcbind -h
-To: Jim Rees <rees@umich.edu>
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Regards, Malahal.
 
-Chuck's quote from the manpage reminded me - -h was used to work            
-around the address selection: if server has more then one address the       
-reply may use any of them. Some clients don't like it.
-
-This issue should go away after
-
-commit 74ef3df0236c55185225c62fba34953f2582da72
-Author: Olaf Kirch <okir@suse.de>      
-Date:   Wed Mar 2 10:09:24 2011 -0500
-
-was added to libtirpc.
-
- rees> As I said before, I was hoping for the equivalent of "portmap
- rees> -l".  I was ready to code up a patch of some kind but now have
- rees> a workaround (mount with nolock and don't run rpcbind at all).
-
-iptables is another option.
-
-max
