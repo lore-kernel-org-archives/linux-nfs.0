@@ -1,178 +1,208 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:43196 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757665Ab2D1Aii (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Apr 2012 20:38:38 -0400
-Date: Sat, 28 Apr 2012 10:38:33 +1000
-From: Dave Chinner <david@fromorbit.com>
-To: Andreas Dilger <adilger@whamcloud.com>
-Cc: David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
-        wine-devel@winehq.org, kfm-devel@kde.org, nautilus-list@gnome.org,
-        linux-api@vger.kernel.org, libc-alpha@sourceware.org
-Subject: Re: [PATCH 0/6] Extended file stat system call
-Message-ID: <20120428003833.GH9541@dastard>
-References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
- <20120427010610.GE9541@dastard>
- <ED5B8F1B-6C99-4516-85FA-A767E94B635F@dilger.ca>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <ED5B8F1B-6C99-4516-85FA-A767E94B635F@dilger.ca>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:57233 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752372Ab2DMLZR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Apr 2012 07:25:17 -0400
+Received: by yenl12 with SMTP id l12so1536818yen.19
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Apr 2012 04:25:16 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Cc: pstaubach@exagrid.com, miklos@szeredi.hu, viro@ZenIV.linux.org.uk,
+        hch@infradead.org, michael.brantley@deshaw.com
+Subject: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from getattr call
+Date: Fri, 13 Apr 2012 07:25:11 -0400
+Message-Id: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 26, 2012 at 09:22:04PM -0600, Andreas Dilger wrote:
-> On 2012-04-26, at 7:06 PM, Dave Chinner wrote:
-> > On Thu, Apr 19, 2012 at 03:05:58PM +0100, David Howells wrote:
-> >> 
-> >> Implement a pair of new system calls to provide extended and further extensible stat functions.
-> >> 
-> >> The second of the associated patches is the main patch that provides these new system calls:
-> >> 
-> >> 	ssize_t ret = xstat(int dfd,
-> >> 			    const char *filename,
-> >> 			    unsigned atflag,
-> >> 			    unsigned mask,
-> >> 			    struct xstat *buffer);
-> >> 
-> >> 	ssize_t ret = fxstat(int fd,
-> >> 			     unsigned atflag,
-> >> 			     unsigned mask,
-> >> 			     struct xstat *buffer);
-> >> 
-> >> which are more fully documented in the first patch's description.
-> >> 
-> >> These new stat functions provide a number of useful features, in summary:
-> >> 
-> >> (1) More information: creation time, inode generation number, data
-> >>     version number, flags/attributes.  A subset of these is available
-> >>     through a number of filesystems (CIFS, NFS, AFS, Ext4 and BTRFS).
-> > 
-> > If we are adding per-inode flags, then what do we do with filesystem
-> > specific flags? e.g. XFS has quite a number of per-inode flags that
-> > don't align with any other filesystem (e.g. filestream allocator,
-> > real time file, behaviour inheritence flags, etc), but may be useful
-> > to retrieve in such a call. We currently have an ioctl to get that
-> > information from each inode. Have you thought about how to handle
-> > such flags?
-> 
-> I'm sympathetic to your cause, but I don't want this to degrade into
-> the same morass that it did last time when every attribute under the
-> sun was added to the call.
+ESTALE errors are a source of pain for many users of NFS. Often they
+occur when a lookup is satisfied out of the dcache, but the associated
+inode has been removed on the server. In the case where a file is
+renamed on top of another, the call would ordinarily have succeeded had
+we issued an on the wire lookup instead. There are also other situations
+that can lead to ESTALE errors, and the remedy is usually to retry the
+lookup and call. If this is handled correctly in the kernel, then
+userspace should only rarely see an ESTALE error.
 
-Understood, which is why I'm not asking for everything under the sun
-to be supported. I'm more interested in finding the useful subset of
-information that a typical application might make use of.
+This is an RFC patch showing the general approach to addressing this
+problem that I'm suggesting. In order to solve this completely we'll
+need to fix most of the path-based syscalls in a similar way.
 
-> The intent is to replace the stat() call
-> with something that can avoid overhead on filesystems for which some
-> attributes are expensive, and that applications may not need.  Some
-> common attributes were added that are used by multiple filesystems.
-> 
-> If it is too filesystem-specific, and there is little possibility
-> that these attributes will be usable on other filesystems, then it
-> should remain a filesystem specific ioctl() call.
+This is not the first attempt at fixing this. Peter Staubach made a
+similar attempt several years ago:
 
-Right, that's why I didn't mention the real-time bits, the
-filestream allocation bits, or other things that are tightly bound
-to the way XFS works....
+    https://lkml.org/lkml/2008/3/10/267
 
-> If you can make
-> a case that these attributes have value on a few other filesystems,
-> and applications are reasonably likely to be able to use them, and
-> their addition does not make the API overly complex, then suggest
-> away.
+This patch attempts to address the problem by having the VFS retry
+the lookup (with LOOKUP_REVAL set) and the getattr call whenever the
+getattr returns ESTALE.
 
-Exactly my thoughts ;)
+A new fs flag is specified that allows filesystems to opt-in to
+this behavior. That should address many of the concerns about whether
+it's ok to retry indefinitely, but it does mean that we're only
+going to do retry the call when the lookup succeeds.
 
-> > Along the same lines, filesytsems can have different allocation
-> > constraints to IO the filesystem block size - ext4 with it's
-> > bigalloc hack, XFS with it's per-inode extent size hints and the
-> > realtime device, etc. Then there's optimal IO characteristics
-> > (e.g. geometery hints like stripe unit/stripe width for the
-> > allocation policy of that given file) that applications could use
-> > if they were present rather than having to expose them through
-> > ioctls that nobody even knows about...
-> 
-> There is already "optimal IO size" that the application can use,
-> how do the geometry hints differ?
+However, basing this on a flag does give us a bit of a discrepancy in
+retry behavior between the lookup and other operations. The path-walking
+code already will reattempt the lookup once on an ESTALE error. The
+proposed patch here however will make it retry indefinitely when the
+getattr call returns ESTALE.
 
-Have a look at how XFS overloads stat.st_blksize depending on the
-filesystem and inode config. It's amazingly convoluted, and based on
-a combination of filesystem geometry, inode bits and mount options:
+Since fixing this means touching a lot of code, it's pretty important
+that we get the semantics correct here. I'm quite open to suggestion
+about how we should make this behave as long as it resolves most of
+these sorts of problems.
 
-xfs_vn_getattr()
-....
-                if (XFS_IS_REALTIME_INODE(ip)) {
-                        /*
-                         * If the file blocks are being allocated from a
-                         * realtime volume, then return the inode's realtime
-                         * extent size or the realtime volume's extent size.
-                         */
-                        stat->blksize =
-                                xfs_get_extsz_hint(ip) << mp->m_sb.sb_blocklog;
-                } else
-                        stat->blksize = xfs_preferred_iosize(mp);
-......
+The main questions I have are:
 
-xfs_extlen_t
-xfs_get_extsz_hint(
-        struct xfs_inode        *ip)
-{
-        if ((ip->i_d.di_flags & XFS_DIFLAG_EXTSIZE) && ip->i_d.di_extsize)
-                return ip->i_d.di_extsize;
-        if (XFS_IS_REALTIME_INODE(ip))
-                return ip->i_mount->m_sb.sb_rextsize;
-        return 0;
-}
+1) should we retry these calls on all filesystems, or attempt to have
+them "opt-in" in some fashion? This patch adds a flag for that, but
+we could just treat all filesystems the same way.
 
-....
+2) How many times should we retry on an ESTALE error? Once?
+Indefinitely? Some amount in between? Retrying once would probably
+fix the bulk of the real world problems with this, but there will
+still be cases where that's not sufficient.
 
-static inline unsigned long
-xfs_preferred_iosize(xfs_mount_t *mp)
-{
-        if (mp->m_flags & XFS_MOUNT_COMPAT_IOSIZE)
-                return PAGE_CACHE_SIZE;
-        return (mp->m_swidth ?
-                (mp->m_swidth << mp->m_sb.sb_blocklog) :
-                ((mp->m_flags & XFS_MOUNT_DFLT_IOSIZE) ?
-                        (1 << (int)MAX(mp->m_readio_log, mp->m_writeio_log)) :
-                        PAGE_CACHE_SIZE));
-}
+3) Should we consider also changing the path-walking code to retry
+more than once on an ESTALE error?
 
-All of that can be exported as 4 parameters for normal files:
+Once we nail down some acceptable semantics for this, I should be
+able to make a more comprehensive patch that fixes this for all
+path-based syscalls. I don't really want to dive into that work
+however until we've come to some agreement about it.
 
-	allocation block size 	(extent size hint)
-	minimum io size		(PAGE_CACHE_SIZE)
-	preferred minimum IO size (mp->m_readio_log/mp->m_writeio_log)
-	best aligned IO size	(stripe width)
+Thanks to Michael Brantley for his initial work and patch for this
+problem.
 
-And for realtime files it's a bit different because of the
-block-based bitmap allocator it uses:
+Reported-by: Michael Brantley <michael.brantley@deshaw.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/super.c     |   14 +++++++-------
+ fs/stat.c          |    9 ++++++++-
+ include/linux/fs.h |    3 +++
+ 3 files changed, 18 insertions(+), 8 deletions(-)
 
-	allocation block size	(extent size hint)
-	minimum io size		(PAGE_CACHE_SIZE)
-	preferred minimum IO size (extent size hint)
-	best aligned IO size	(some multiple of extent size hint)
-
-> Userspace is able to handle
-> st_blksize of several MB in size without problems, and any sane
-> application will do the IO sized + aligned on multiples of this.
-
-Actually, some applications still have problems with that. That's
-the reason we only expose stripe widths in st_blksize when a mount
-option is set. Stripe widths are known to get into the tens of MB,
-and applications using st_blksize for memory allocation of IO
-buffers tend to get into trouble with those.
-
-That's why I'd prefer specific optimal IO hints - we don't have to
-overload st_blksize with lots of meanings to pass what is relatively
-trivial information back to the application.
-
-Cheers,
-
-Dave.
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 37412f7..b22aaba 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -296,7 +296,7 @@ static struct file_system_type nfs_fs_type = {
+ 	.name		= "nfs",
+ 	.mount		= nfs_fs_mount,
+ 	.kill_sb	= nfs_kill_super,
+-	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
++	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA|FS_RETRY_ESTALE,
+ };
+ 
+ struct file_system_type nfs_xdev_fs_type = {
+@@ -304,7 +304,7 @@ struct file_system_type nfs_xdev_fs_type = {
+ 	.name		= "nfs",
+ 	.mount		= nfs_xdev_mount,
+ 	.kill_sb	= nfs_kill_super,
+-	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
++	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA|FS_RETRY_ESTALE,
+ };
+ 
+ static const struct super_operations nfs_sops = {
+@@ -344,7 +344,7 @@ static struct file_system_type nfs4_fs_type = {
+ 	.name		= "nfs4",
+ 	.mount		= nfs4_mount,
+ 	.kill_sb	= nfs4_kill_super,
+-	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
++	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA|FS_RETRY_ESTALE,
+ };
+ 
+ static struct file_system_type nfs4_remote_fs_type = {
+@@ -352,7 +352,7 @@ static struct file_system_type nfs4_remote_fs_type = {
+ 	.name		= "nfs4",
+ 	.mount		= nfs4_remote_mount,
+ 	.kill_sb	= nfs4_kill_super,
+-	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
++	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA|FS_RETRY_ESTALE,
+ };
+ 
+ struct file_system_type nfs4_xdev_fs_type = {
+@@ -360,7 +360,7 @@ struct file_system_type nfs4_xdev_fs_type = {
+ 	.name		= "nfs4",
+ 	.mount		= nfs4_xdev_mount,
+ 	.kill_sb	= nfs4_kill_super,
+-	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
++	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA|FS_RETRY_ESTALE,
+ };
+ 
+ static struct file_system_type nfs4_remote_referral_fs_type = {
+@@ -368,7 +368,7 @@ static struct file_system_type nfs4_remote_referral_fs_type = {
+ 	.name		= "nfs4",
+ 	.mount		= nfs4_remote_referral_mount,
+ 	.kill_sb	= nfs4_kill_super,
+-	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
++	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA|FS_RETRY_ESTALE,
+ };
+ 
+ struct file_system_type nfs4_referral_fs_type = {
+@@ -376,7 +376,7 @@ struct file_system_type nfs4_referral_fs_type = {
+ 	.name		= "nfs4",
+ 	.mount		= nfs4_referral_mount,
+ 	.kill_sb	= nfs4_kill_super,
+-	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
++	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA|FS_RETRY_ESTALE,
+ };
+ 
+ static const struct super_operations nfs4_sops = {
+diff --git a/fs/stat.c b/fs/stat.c
+index c733dc5..02ce590 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -73,7 +73,8 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
+ {
+ 	struct path path;
+ 	int error = -EINVAL;
+-	int lookup_flags = 0;
++	unsigned int lookup_flags = 0;
++	bool should_retry;
+ 
+ 	if ((flag & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
+ 		      AT_EMPTY_PATH)) != 0)
+@@ -84,12 +85,18 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
+ 	if (flag & AT_EMPTY_PATH)
+ 		lookup_flags |= LOOKUP_EMPTY;
+ 
++retry:
+ 	error = user_path_at(dfd, filename, lookup_flags, &path);
+ 	if (error)
+ 		goto out;
+ 
+ 	error = vfs_getattr(path.mnt, path.dentry, stat);
++	should_retry = error == -ESTALE ? retry_estale(path.dentry) : false;
+ 	path_put(&path);
++	if (should_retry) {
++		lookup_flags |= LOOKUP_REVAL;
++		goto retry;
++	}
+ out:
+ 	return error;
+ }
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 8de6755..36fd4fa 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -181,11 +181,14 @@ struct inodes_stat_t {
+ #define FS_REQUIRES_DEV 1 
+ #define FS_BINARY_MOUNTDATA 2
+ #define FS_HAS_SUBTYPE 4
++#define FS_RETRY_ESTALE 8	/* retry operation on ESTALE error */
+ #define FS_REVAL_DOT	16384	/* Check the paths ".", ".." for staleness */
+ #define FS_RENAME_DOES_D_MOVE	32768	/* FS will handle d_move()
+ 					 * during rename() internally.
+ 					 */
+ 
++#define retry_estale(dentry) (dentry->d_sb->s_type->fs_flags & FS_RETRY_ESTALE)
++
+ /*
+  * These are the fs-independent mount-flags: up to 32 flags are supported
+  */
 -- 
-Dave Chinner
-david@fromorbit.com
+1.7.7.6
+
