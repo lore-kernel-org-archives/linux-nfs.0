@@ -1,149 +1,138 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from p02c12o147.mxlogic.net ([208.65.145.80]:44094 "EHLO
-	p02c12o147.mxlogic.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751221Ab2DQOsx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Apr 2012 10:48:53 -0400
-From: Peter Staubach <pstaubach@exagrid.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Jeff Layton <jlayton@redhat.com>,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        Malahal Naineni <malahal@us.ibm.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "miklos@szeredi.hu" <miklos@szeredi.hu>,
-        "viro@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
-        "hch@infradead.org" <hch@infradead.org>,
-        "michael.brantley@deshaw.com" <michael.brantley@deshaw.com>,
-        "sven.breuner@itwm.fraunhofer.de" <sven.breuner@itwm.fraunhofer.de>
-Date: Tue, 17 Apr 2012 10:48:42 -0400
-Subject: RE: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from
- getattr call
-Message-ID: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC063CF8E132@IT-1874.Isys.com>
-References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
-	 <20120413150518.GA1987@us.ibm.com>
-	 <20120413114236.0e557e01@tlielax.poochiereds.net>
-	 <4F8B1B7B.3040304@itwm.fraunhofer.de>
-	 <20120416073655.7cdb90cf@corrin.poochiereds.net>
-	 <4F8C3036.2030702@itwm.fraunhofer.de>
-	 <20120416134642.1754cd3e@corrin.poochiereds.net>
-	 <1334604785.2879.23.camel@lade.trondhjem.org>
-	 <20120416154322.0d95e435@corrin.poochiereds.net>
-	 <1334607906.2879.36.camel@lade.trondhjem.org>
-	 <20120416190548.2463d1d0@corrin.poochiereds.net>
-	 <FA8A9A935BFD3A4D8F0CDA1C4F611BCC063CF8E115@IT-1874.Isys.com>
- <1334671736.2963.30.camel@lade.trondhjem.org.localdomain>
-In-Reply-To: <1334671736.2963.30.camel@lade.trondhjem.org.localdomain>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:57951 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754013Ab2DMQub convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Apr 2012 12:50:31 -0400
+Received: by vcqp1 with SMTP id p1so2164668vcq.19
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Apr 2012 09:50:30 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <1334332041.25130.16.camel@lade.trondhjem.org>
+References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
+	<1334004744-31842-4-git-send-email-iisaman@netapp.com>
+	<1334332041.25130.16.camel@lade.trondhjem.org>
+Date: Fri, 13 Apr 2012 12:50:30 -0400
+Message-ID: <CADnza45zA+dnO7cX9Q_y9B679kOGdV3+Cph5hTKit6gs1ZOUKA@mail.gmail.com>
+Subject: Re: [PATCH 03/26] NFS4.1: Add lseg to struct nfs4_fl_commit_bucket
+From: Fred Isaman <faisaman4@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "Isaman, Fred" <Fred.Isaman@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SSBkb24ndCB0aGluayB0aGF0IHRoZSBjb2RlIGVuZHMgdXAgYmVpbmcgYWxsIHRoYXQgY29tcGxl
-eCwgYWN0dWFsbHkuICBJIHdpbGwgaGF2ZSB0byBkaWcgb3V0IHRoZSBwYXRjaGVzIHRoYXQgSSBo
-YWQgcHJldmlvdXNseSB0byBsb29rIHRvIHNlZSB3aGF0IHRoZXkgZGlkLiAgSSBhbSBwcmV0dHkg
-c3VyZSB0aGF0IHRoZXkgaGFuZGxlZCBhbGwgb2YgdGhlc2UgY2FzZXMuICBJIGFsc28gaGFkIHNv
-bWUgdGVzdHMgd2hpY2ggZXhlcmNpc2VkIHRoZSBtb2RpZmllZCBwYXRoIGJhc2VkIHN5c3RlbSBj
-YWxscyBhbmQgYXQgbGVhc3QsIGF0IG9uZSBwb2ludCBpbiB0aW1lLCB0aGV5IHdvdWxkIHJ1biB3
-aXRob3V0IHJldHVybmluZyBFU1RBTEUgdG8gdGhlIHVzZXIgbGV2ZWwuDQoNCkxldCBtZSBzZWUg
-d2hhdCBJIGNhbiBmaW5kLiAgU3RldmVELCB5b3Ugd291bGRuJ3QgaGF2ZSBzcXVpcnJlbGxlZCBh
-d2F5IGEgY29weSBvZiBteSBzdHVmZiBmcm9tIFJlZCBIYXQsIHdvdWxkIHlvdT8NCg0KCVRoYW54
-Li4uDQoNCgkJcHMNCg0KDQotLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogTXlrbGVi
-dXN0LCBUcm9uZCBbbWFpbHRvOlRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tXSANClNlbnQ6IFR1
-ZXNkYXksIEFwcmlsIDE3LCAyMDEyIDEwOjA5IEFNDQpUbzogUGV0ZXIgU3RhdWJhY2gNCkNjOiBK
-ZWZmIExheXRvbjsgQmVybmQgU2NodWJlcnQ7IE1hbGFoYWwgTmFpbmVuaTsgbGludXgtbmZzQHZn
-ZXIua2VybmVsLm9yZzsgbGludXgtZnNkZXZlbEB2Z2VyLmtlcm5lbC5vcmc7IGxpbnV4LWtlcm5l
-bEB2Z2VyLmtlcm5lbC5vcmc7IG1pa2xvc0BzemVyZWRpLmh1OyB2aXJvQFplbklWLmxpbnV4Lm9y
-Zy51azsgaGNoQGluZnJhZGVhZC5vcmc7IG1pY2hhZWwuYnJhbnRsZXlAZGVzaGF3LmNvbTsgc3Zl
-bi5icmV1bmVyQGl0d20uZnJhdW5ob2Zlci5kZQ0KU3ViamVjdDogUkU6IFtQQVRDSCBSRkNdIHZm
-czogbWFrZSBmc3RhdGF0IHJldHJ5IG9uIEVTVEFMRSBlcnJvcnMgZnJvbSBnZXRhdHRyIGNhbGwN
-Cg0KT24gVHVlLCAyMDEyLTA0LTE3IGF0IDA5OjM5IC0wNDAwLCBQZXRlciBTdGF1YmFjaCB3cm90
-ZToNCj4gSGkuDQo+IA0KPiBUaGVyZSBkb2VzIG5lZWQgdG8gYmUgc3VwcG9ydCBpbiB0aGUgbG9v
-a3VwIHBhdGggdG8gaGFuZGxlIHN0YWxlIGRpcmVjdG9yaWVzLiAgRHVyaW5nIGEgbXVsdGktY29t
-cG9uZW50IGxvb2t1cCwgaXQgaXMgcG9zc2libGUgZm9yIG9uZSBjb21wb25lbnQgdG8gYmUgbG9v
-a2VkIHVwLCBidXQgdGhlbiBiZWNvbWUgc3RhbGUgYmVmb3JlIGJlaW5nIHVzZWQuICBUaGUgc3Vw
-cG9ydCBuZWVkcyB0byBnbyBpbnRvIG1vcmUgdGhhbiBqdXN0IHRoZSBzZXQgb2Ygc3lzdGVtIGNh
-bGxzLCBidXQgYWxzbyBpbnRvIHRoZSBsb29rdXAgY29kZS4NCj4gDQo+IEkgc3VzcGVjdCB0aGF0
-IHNpbmNlIHRoZSAiIiBjYXNlIGlzIGhhbmRsZWQgc3BlY2lhbGx5IGFueXdheSwgY29kZSBjb3Vs
-ZCBiZSBhZGRlZCB0byBkbyBzb21ldGhpbmcgbGlrZSBpc3N1ZSBhIEdFVEFUVFIgdG8gdmVyaWZ5
-IHRoYXQgdGhlIGRpcmVjdG9yeSBpcyBzdGlsbCB2YWxpZC4gIFNpbmNlICIiIGlzIHByb2JhYmx5
-IHVzZWQgbWluaW1hbGx5LCB0aGUgcGVyZm9ybWFuY2UgaW1wYWN0IHRvIHRoZSBzeXN0ZW0gc2hv
-dWxkIGJlIGFsc28gYmUgbWluaW1hbC4NCg0KVGhlIHByb2JsZW0gd2l0aCB0aGF0IGlzIHRoYXQg
-ZXZlbiBpZiB5b3VyIGN1cnJlbnQgZGlyZWN0b3J5IGlzIHN0YWxlLCBhIHBhdGggb2YgdGhlIGZv
-cm0gIi4uLy4uLy4uL2JsYWgiIGNhbiBzdGlsbCBiZSB2YWxpZC4gSSBzdXNwZWN0IHRoYXQgYW55
-IGNvZGUgdGhhdCB0cmllcyB0byBsb29wIGZvcmV2ZXIgY2FuIHF1aWNrbHkgZ2V0IHZlcnkgY29t
-cGxpY2F0ZWQgYXMgd2Ugc3RhcnQgYWRkaW5nIGFsbCB0aGVzZSBjb3JuZXIgY2FzZXMuDQoNClRo
-ZSB0aGluZyBhYm91dCBzdGF0KCkgaXMgdGhhdCBpbiA5OS45OSUgb2YgY2FzZXMgd2hlbiB0aGUg
-cGF0aCByZXZhbGlkYXRpb24gY29kZSB3b3JrcywgdGhlbiB0aGUgTkZTIGNsaWVudCB3b24ndCBo
-YXZlIHRvIGFjdHVhbGx5IGlzc3VlIGEgR0VUQVRUUiBpbiB0aGUgY2FsbCB0byB2ZnNfZ2V0c3Rh
-dCgpIHNpbmNlIHRoZSBMT09LVVAgb2YgdGhhdCBmaW5hbCBwYXRoIGNvbXBvbmVudCB3aWxsIHJl
-dmFsaWRhdGUgdGhvc2UgYXR0cmlidXRlcyBhbnl3YXkuDQoNClRoZSBvbmx5IGV4Y2VwdGlvbiB0
-byB0aGF0IHJ1bGUgd2lsbCBiZSB0aGUgJ25vYWMnIG1vdW50cywgd2hpY2ggcmVhbGx5IGNhbiBl
-bmQgdXAgbG9vcGluZyBmb3JldmVyLg0KDQpDaGVlcnMNCiAgVHJvbmQNCg0KPiAJCXBzDQo+IA0K
-PiANCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogSmVmZiBMYXl0b24gW21h
-aWx0bzpqbGF5dG9uQHJlZGhhdC5jb21dDQo+IFNlbnQ6IE1vbmRheSwgQXByaWwgMTYsIDIwMTIg
-NzowNiBQTQ0KPiBUbzogTXlrbGVidXN0LCBUcm9uZA0KPiBDYzogQmVybmQgU2NodWJlcnQ7IE1h
-bGFoYWwgTmFpbmVuaTsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZzsgDQo+IGxpbnV4LWZzZGV2
-ZWxAdmdlci5rZXJuZWwub3JnOyBsaW51eC1rZXJuZWxAdmdlci5rZXJuZWwub3JnOyBQZXRlciAN
-Cj4gU3RhdWJhY2g7IG1pa2xvc0BzemVyZWRpLmh1OyB2aXJvQFplbklWLmxpbnV4Lm9yZy51azsg
-DQo+IGhjaEBpbmZyYWRlYWQub3JnOyBtaWNoYWVsLmJyYW50bGV5QGRlc2hhdy5jb207IA0KPiBz
-dmVuLmJyZXVuZXJAaXR3bS5mcmF1bmhvZmVyLmRlDQo+IFN1YmplY3Q6IFJlOiBbUEFUQ0ggUkZD
-XSB2ZnM6IG1ha2UgZnN0YXRhdCByZXRyeSBvbiBFU1RBTEUgZXJyb3JzIGZyb20gDQo+IGdldGF0
-dHIgY2FsbA0KPiANCj4gT24gTW9uLCAxNiBBcHIgMjAxMiAyMDoyNTowNiArMDAwMA0KPiAiTXlr
-bGVidXN0LCBUcm9uZCIgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+
-ID4gT24gTW9uLCAyMDEyLTA0LTE2IGF0IDE1OjQzIC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToN
-Cj4gPiA+IE9uIE1vbiwgMTYgQXByIDIwMTIgMTk6MzM6MDUgKzAwMDAgIk15a2xlYnVzdCwgVHJv
-bmQiIA0KPiA+ID4gPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPiA+IA0K
-PiA+ID4gPiBPbiBNb24sIDIwMTItMDQtMTYgYXQgMTM6NDYgLTA0MDAsIEplZmYgTGF5dG9uIHdy
-b3RlOg0KPiA+ID4gPiA+IFRoZSBxdWVzdGlvbiBhYm91dCBsb29waW5nIGluZGVmaW5pdGVseSBy
-ZWFsbHkgY29tZXMgZG93biB0bzoNCj4gPiA+ID4gPiANCj4gPiA+ID4gPiAxKSBpcyBhIHBlcnNp
-c3RlbnQgRVNUQUxFIGluIGNvbmp1bmN0aW9uIHdpdGggYSBzdWNjZXNzZnVsIA0KPiA+ID4gPiA+
-IGxvb2t1cCBhIHNpdHVhdGlvbiB0aGF0IHdlIGV4cGVjdCB0byBiZSB0ZW1wb3JhcnkuIGkuZS4g
-d2lsbCANCj4gPiA+ID4gPiB0aGUgYWRtaW4gYXQgc29tZSBwb2ludCBiZSBhYmxlIHRvIGRvIHNv
-bWV0aGluZyBhYm91dCBpdD8gSWYgDQo+ID4gPiA+ID4gbm90LCB0aGVuIHRoZXJlJ3Mgbm8gcG9p
-bnQgaW4gY29udGludWluZyB0byByZXRyeS4gQWdhaW4sIHRoaXMgDQo+ID4gPiA+ID4gaXMgYSBz
-aXR1YXRpb24gdGhhdCAqcmVhbGx5KiBzaG91bGQgbm90IGhhcHBlbiBpZiB0aGUgZmlsZXN5c3Rl
-bSBpcyBkb2luZyB0aGUgcmlnaHQgdGhpbmcuDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gMikgSWYg
-dGhlIGFkbWluIGNhbid0IGRvIGFueXRoaW5nIGFib3V0IGl0LCBpcyBpdCByZWFzb25hYmxlIA0K
-PiA+ID4gPiA+IHRvIGV4cGVjdCB0aGF0IHVzZXJzIGNhbiBzZW5kIGEgZmF0YWwgc2lnbmFsIHRv
-IGh1bmcgDQo+ID4gPiA+ID4gYXBwbGljYXRpb25zIGlmIHRoaXMgc2l0dWF0aW9uIG9jY3Vycy4N
-Cj4gPiA+ID4gPiANCj4gPiA+ID4gPiBXZSBleHBlY3QgdGhhdCB0aGF0J3Mgb2sgaW4gb3RoZXIg
-c2l0dWF0aW9ucyB0byByZXNvbHZlIGh1bmcgDQo+ID4gPiA+ID4gYXBwbGljYXRpb25zLCBzbyBJ
-J20gbm90IHN1cmUgSSB1bmRlcnN0YW5kIHdoeSBpdCB3b3VsZG4ndCBiZSANCj4gPiA+ID4gPiBh
-Y2NlcHRhYmxlIGhlcmUuLi4NCj4gPiA+ID4gDQo+ID4gPiA+IFRoZXJlIGFyZSBkZWZpbml0ZWx5
-IHBvdGVudGlhbGx5IHBlcnNpc3RlbnQgcGF0aG9sb2dpY2FsIA0KPiA+ID4gPiBzaXR1YXRpb25z
-IHRoYXQgdGhlIGZpbGVzeXN0ZW0gY2FuJ3QgZG8gYW55dGhpbmcgYWJvdXQuIElmIHRoZSANCj4g
-PiA+ID4gcG9pbnQgb2Ygb3JpZ2luIGZvciB5b3VyIHBhdGhuYW1lIChmb3IgaW5zdGFuY2UgeW91
-ciBjdXJyZW50IA0KPiA+ID4gPiBkaXJlY3RvcnkgaW4gdGhlIGNhc2Ugb2YgYSByZWxhdGl2ZQ0K
-PiA+ID4gPiBwYXRobmFtZSkgaXMgc3RhbGUsIHRoZW4gbm8gYW1vdW50IG9mIGxvb3BpbmcgaXMg
-Z29pbmcgdG8gaGVscCANCj4gPiA+ID4geW91IHRvIHJlY292ZXIuDQo+ID4gPiA+IA0KPiA+ID4g
-DQo+ID4gPiBPayAtLSBQZXRlciBwcmV0dHkgbXVjaCBzYWlkIHNvbWV0aGluZyBzaW1pbGFyLiBS
-ZXRyeWluZyANCj4gPiA+IGluZGVmbml0ZWx5IHdoZW4gdGhlIGxvb2t1cCByZXR1cm5zIEVTVEFM
-RSBwcm9iYWJseSB3b24ndCBoZWxwLiANCj4gPiA+IEknbSBvayB3aXRoIGJhc2ljYWxseSBsZXR0
-aW5nIHRoZSBWRlMgY29udGludWUgdG8gZG8gd2hhdCBpdCBkb2VzIHRoZXJlIGFscmVhZHkuDQo+
-ID4gPiBJZiBpdCBnZXRzIGFuIEVTVEFMRSwgaXQgdHJpZXMgYWdhaW4gd2l0aCBMT09LVVBfUkVW
-QUwgc2V0IGFuZCANCj4gPiA+IHRoZW4gZ2l2ZXMgdXAgaWYgdGhhdCBkb2Vzbid0IHdvcmsuDQo+
-ID4gPiANCj4gPiA+IElmIGhvd2V2ZXIsIHRoZSBvcGVyYXRpb24gaXRzZWxmIGtlZXBzIHJldHVy
-bmluZyBFU1RBTEUsIGFyZSB3ZSBPSyANCj4gPiA+IHRvIHJldHJ5IGluZGVmaW5pdGVseSBhc3N1
-bWluZyB0aGF0IHdlJ2xsIGJyZWFrIG91dCBvZiB0aGUgbG9vcCBvbiANCj4gPiA+IGZhdGFsIHNp
-Z25hbHM/DQo+ID4gPg0KPiA+ID4gRm9yIGV4YW1wbGUsIHNvbWV0aGluZyBsaWtlIHRoZSB2MiBw
-YXRjaCBJIHNlbnQgYSBsaXR0bGUgd2hpbGUgYWdvPw0KPiA+IA0KPiA+IA0KPiA+IFdvbid0IHNv
-bWV0aGluZyBsaWtlIGZzdGF0YXQoQVRfRkRDV0QsICIiLCAmc3RhdCwgQVRfRU1QVFlfUEFUSCkg
-DQo+ID4gcmlzayBsb29waW5nIGZvcmV2ZXIgdGhlcmUsIG9yIGFtIEkgbWlzc2luZyBzb21ldGhp
-bmc/DQo+ID4gDQo+IA0KPiBUbyBtYWtlIHN1cmUgSSB1bmRlcnN0YW5kLCB0aGF0IHNob3VsZCBi
-ZSAic2hvcnRjdXQiIGZvciBhIGxvb2t1cCBvZiB0aGUgY3dkPw0KPiANCj4gU28gSSBndWVzcyB0
-aGUgY29uY2VybiBpcyB0aGF0IHlvdSdkIGRvIHRoZSBhYm92ZSBhbmQgZ2V0IGEgc3VjY2Vzc2Z1
-bCBsb29rdXAgc2luY2UgeW91J3JlIGp1c3QgZ29pbmcgdG8gZ2V0IGJhY2sgdGhlIGN3ZC4gQXQg
-dGhhdCBwb2ludCwgeW91J2QgYXR0ZW1wdCB0aGUgZ2V0YXR0ciBhbmQgZ2V0IEVTVEFMRSBiYWNr
-LiBUaGVuLCB5b3UnZCByZWRvIHRoZSBsb29rdXAgd2l0aCBMT09LVVBfUkVWQUwgc2V0IC0tIGJ1
-dCBzaW5jZSB3ZSdyZSBvcGVyYXRpbmcgb24gdGhlIGN3ZCwgd2UgZG9uJ3QgaGF2ZSBhIHdheSB0
-byByZWRvIHRoZSBsb29rdXAgc2luY2Ugd2UgZG9uJ3QgaGF2ZSBhIHBhdGhuYW1lIHRoYXQgd2Ug
-Y2FuIGxvb2sgdXAgYWdhaW4uLi4NCj4gDQo+IFNvIHllYWgsIEkgZ3Vlc3MgaWYgeW91J3JlIHNp
-dHRpbmcgaW4gYSBzdGFsZSBkaXJlY3RvcnksIHNvbWV0aGluZyBsaWtlIHRoYXQgY291bGQgbG9v
-cCBldGVybmFsbHkuDQo+IA0KPiBEbyB5b3UgdGhpbmsgdGhlIHByb3Bvc2VkIGNoZWNrIGZvciBm
-YXRhbF9zaWduYWxfcGVuZGluZyBpcyBlbm91Z2ggdG8gbWl0aWdhdGUgc3VjaCBhIHByb2JsZW0/
-IE9yIGRvIHdlIG5lZWQgdG8gbGltaXQgdGhlIG51bWJlciBvZiByZXRyaWVzIHRvIGFkZHJlc3Mg
-dGhvc2Ugc29ydHMgb2YgbG9vcHM/DQo+IA0KPiAtLQ0KPiBKZWZmIExheXRvbiA8amxheXRvbkBy
-ZWRoYXQuY29tPg0KDQotLQ0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50
-YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5j
-b20NCg0K
+On Fri, Apr 13, 2012 at 11:47 AM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Mon, 2012-04-09 at 16:52 -0400, Fred Isaman wrote:
+>> Also create a commit_info structure to hold the bucket array and push
+>> it up from the lseg to the layout where it really belongs.
+>>
+>> While we are at it, fix a refcounting bug due to an (incorrect)
+>> implicit assumption that filelayout_scan_ds_commit_list always
+>> completely emptied the src list.
+>>
+>> This clarifies refcounting, removes the ugly find_only_write_lseg
+>> functions, and pushes the file layout commit code along on the path to
+>> supporting multiple lsegs.
+>>
+>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>> ---
+>>  fs/nfs/nfs4filelayout.c |  150 +++++++++++++++++++++++++----------------------
+>>  fs/nfs/nfs4filelayout.h |   20 ++++++-
+>>  2 files changed, 97 insertions(+), 73 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+>> index 5acfd9e..0bbc88a 100644
+>> --- a/fs/nfs/nfs4filelayout.c
+>> +++ b/fs/nfs/nfs4filelayout.c
+>> @@ -650,7 +650,15 @@ filelayout_free_lseg(struct pnfs_layout_segment *lseg)
+>>
+>>       dprintk("--> %s\n", __func__);
+>>       nfs4_fl_put_deviceid(fl->dsaddr);
+>> -     kfree(fl->commit_buckets);
+>> +     /* This assumes a single RW lseg */
+>> +     if (lseg->pls_range.iomode == IOMODE_RW) {
+>> +             struct nfs4_filelayout *flo;
+>> +
+>> +             flo = FILELAYOUT_FROM_HDR(lseg->pls_layout);
+>> +             flo->commit_info.nbuckets = 0;
+>> +             kfree(flo->commit_info.buckets);
+>> +             flo->commit_info.buckets = NULL;
+>> +     }
+>>       _filelayout_free_lseg(fl);
+>>  }
+>>
+>> @@ -681,19 +689,27 @@ filelayout_alloc_lseg(struct pnfs_layout_hdr *layoutid,
+>>        * to filelayout_write_pagelist().
+>>        * */
+>>       if ((!fl->commit_through_mds) && (lgr->range.iomode == IOMODE_RW)) {
+>> +             struct nfs4_filelayout *flo = FILELAYOUT_FROM_HDR(layoutid);
+>>               int i;
+>>               int size = (fl->stripe_type == STRIPE_SPARSE) ?
+>>                       fl->dsaddr->ds_num : fl->dsaddr->stripe_count;
+>>
+>> -             fl->commit_buckets = kcalloc(size, sizeof(struct nfs4_fl_commit_bucket), gfp_flags);
+>> -             if (!fl->commit_buckets) {
+>> +             if (flo->commit_info.nbuckets != 0) {
+>> +                     /* Shouldn't happen if only one IOMODE_RW lseg */
+>>                       filelayout_free_lseg(&fl->generic_hdr);
+>>                       return NULL;
+>
+> Is this really the correct thing to do? If we're dealing with multiple
+> IOMODE_RW lsegs, then surely we might find ourselves in a situation
+> where we might have to add new commit buckets.
+>
+> Doesn't the above deserve a WARN_ON() and a FIXME comment?
+>
+>>               }
+>> -             fl->number_of_buckets = size;
+>> +             flo->commit_info.buckets = kcalloc(size,
+>> +                                                sizeof(struct nfs4_fl_commit_bucket),
+>> +                                                gfp_flags);
+>> +             if (!flo->commit_info.buckets) {
+>> +                     filelayout_free_lseg(&fl->generic_hdr);
+>> +                     return NULL;
+>> +             }
+>> +             flo->commit_info.nbuckets = size;
+>>               for (i = 0; i < size; i++) {
+>> -                     INIT_LIST_HEAD(&fl->commit_buckets[i].written);
+>> -                     INIT_LIST_HEAD(&fl->commit_buckets[i].committing);
+>> +                     INIT_LIST_HEAD(&flo->commit_info.buckets[i].written);
+>> +                     INIT_LIST_HEAD(&flo->commit_info.buckets[i].committing);
+>>               }
+>
+> The commit_info allocation and initialisation should probably be moved
+> into a different function if it is no longer part of the lseg.
+>
+
+This is done in patch 26, and called from pg_init_write.  Perhaps I
+should move it earlier in the series
+This is also the reason for the lack of WARN_ON, as in the moved code
+it hits frequently.
+
+My idea was that in a multi-layout scenerio, the check (for
+ncommits==0) would be replaced with code that
+would scan the existing buckets to see if any new needed to be added.
+Regarding taking the reference to the lseg,
+I am still not convinced that the bucket really needs to take a ref on
+the lseg.  Eventually buckets need to be tied to
+a ds, fh pair, though a ds, fh,lseg triple may be needed to deal with
+certain corner cases.
+
+Fred
+
+> That said, I'm having trouble seeing how this architecture can survive
+> in a future multiple-layout world. I'm thinking that since the
+> commit_buckets need to take a reference to the lseg, then maybe we
+> should keep the commit buckets tied to the lseg, and then let the commit
+> code iterate through the list of lsegs with something in their commit
+> buckets... What are your thoughts for how this might evolve?
+>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+>
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+>
