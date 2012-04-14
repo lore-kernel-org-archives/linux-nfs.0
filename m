@@ -1,73 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36676 "EHLO fieldses.org"
+Received: from mail-out2.uio.no ([129.240.10.58]:59333 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756608Ab2DZOXw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Apr 2012 10:23:52 -0400
-Date: Thu, 26 Apr 2012 10:23:29 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: David Howells <dhowells@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-ext4@vger.kernel.org, wine-devel@winehq.org, kfm-devel@kde.org,
-        nautilus-list@gnome.org, linux-api@vger.kernel.org,
-        libc-alpha@sourceware.org
-Subject: Re: [PATCH 1/6] xstat: Add a pair of system calls to make extended
- file stats available
-Message-ID: <20120426142329.GA7176@fieldses.org>
-References: <20120424212911.GA26073@fieldses.org>
- <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
- <20120419140612.17272.57774.stgit@warthog.procyon.org.uk>
- <18533.1335447617@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <18533.1335447617@redhat.com>
+	id S1753359Ab2DNBO5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Apr 2012 21:14:57 -0400
+Message-ID: <1334365079.25130.21.camel@lade.trondhjem.org>
+Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from
+ getattr call
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Peter Staubach <pstaubach@exagrid.com>
+Cc: Steve Dickson <SteveD@redhat.com>, Jeff Layton <jlayton@redhat.com>,
+        Malahal Naineni <malahal@us.ibm.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "miklos@szeredi.hu" <miklos@szeredi.hu>,
+        "viro@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
+        "hch@infradead.org" <hch@infradead.org>,
+        "michael.brantley@deshaw.com" <michael.brantley@deshaw.com>
+Date: Fri, 13 Apr 2012 20:57:59 -0400
+In-Reply-To: <2F609A9B-B44B-4CEA-BF35-D6BEDA729363@exagrid.com>
+References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
+	 <20120413150518.GA1987@us.ibm.com>
+	 <20120413114236.0e557e01@tlielax.poochiereds.net>
+	 <4F884F32.7010402@RedHat.com>
+	 <2F609A9B-B44B-4CEA-BF35-D6BEDA729363@exagrid.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 26, 2012 at 02:40:17PM +0100, David Howells wrote:
-> J. Bruce Fields <bfields@fieldses.org> wrote:
+On Fri, 2012-04-13 at 13:34 -0400, Peter Staubach wrote:
+> I still think that returning ESTALE to the application is just exposing a short coming in the implementation.  From a path based system like stat(), the application should see either ENOENT or some sort valid return.
 > 
-> > > (11) Include granularity fields in the time data to indicate the
-> > >      granularity of each of the times (NFSv4 time_delta) [Steve French].
-> > 
-> > It looks like you're including this with *each* time?  But surely
-> > there's no filesystem with different granularity (say) for ctime than
-> > for mtime.
+> I also look at the looping from the other side.  While possible, of course, I'd like to see someone construct a situation where it really happens.  By this, I don't mean a thought experiment, but a real running situation.
 > 
-> I put it in each time struct to use up the hole there.  I could, I suppose,
-> split tv_sec from tv_nsec to get rid of the holes and then put the granularity
-> separately.  That means that someone who wanted both the tv_sec and tv_nsec
-> would have to fish them out separately, but that's probably okay.
-> 
-> I could even make the granularity bigger then, to allow for the possibility of
-> having a granularity >4s, but I don't know of anywhere that requires a gran >2.
-> 
-> > Also, nfsd will want only one time_delta, not one for each time.
-> 
-> time_delta?  Is that the same as granularity?
+> We already have evidence, in the form of the Solaris NFS client, that infinite looping does not happen in nature.
 
-Right, sorry, that's just the NFS word for the same thing.
+Could we turn that statistic around? Has the Solaris client ever seen a
+loop of more than, say, 5 or 6 retries?
 
-So my whine here is just that most callers only want to know one number
-and we're giving them three.  Whatever, they can just pick one.  It
-feels a little ugly, but feel free to ignore my nitpicking....
+I'm just trying to limit the scope of the problem...
 
-(Though as Steve French asked: could we add this to statfs (or something
-similar) instead?)
+Cheers
+  Trond
 
-> 
-> > Note also we need to document carefully what this means: I think it
-> > should be the granularity that the filesystem is capable of
-> > representing, but people are sometimes surprised to find out that the
-> > actual time source is usually more coarse-grained than that.
-> 
-> Yeah, but the latter is something you may not be able to determine, and may
-> indeed change over time (say someone updates the server kernel to one with a
-> more fine-grained software clock).  Also, for a network fs, it may depend on
-> the client that happened to set that time last.
-
-Yep, agreed, the granularity should be what the filesystem can store, we
-should just make sure that statement makes it into any eventual man
-pages or other documentation, since it does seem to surprise people.
-
---b.
