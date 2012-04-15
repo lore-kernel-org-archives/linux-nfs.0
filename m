@@ -1,59 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:58596 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:43065 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756540Ab2DZQzs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Apr 2012 12:55:48 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 13/20] NFS: Fix recovery from NFS4ERR_CLID_INUSE
-Date: Thu, 26 Apr 2012 16:55:35 +0000
-Message-ID: <1335459334.9701.25.camel@lade.trondhjem.org>
-References: <20120423205312.11446.67081.stgit@degas.1015granger.net>
-	 <20120423205505.11446.28437.stgit@degas.1015granger.net>
-	 <D6859152-CF45-44CC-BB3C-B40CB9FD0BE8@oracle.com>
-In-Reply-To: <D6859152-CF45-44CC-BB3C-B40CB9FD0BE8@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1750819Ab2DOT1V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 15 Apr 2012 15:27:21 -0400
+Date: Sun, 15 Apr 2012 15:27:14 -0400
+To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: Jeff Layton <jlayton@redhat.com>, Malahal Naineni <malahal@us.ibm.com>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, pstaubach@exagrid.com, miklos@szeredi.hu,
+        viro@ZenIV.linux.org.uk, hch@infradead.org,
+        michael.brantley@deshaw.com, sven.breuner@itwm.fraunhofer.de
+Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from
+ getattr call
+Message-ID: <20120415192714.GA3842@fieldses.org>
+References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
+ <20120413150518.GA1987@us.ibm.com>
+ <20120413114236.0e557e01@tlielax.poochiereds.net>
+ <4F8B1B7B.3040304@itwm.fraunhofer.de>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4F8B1B7B.3040304@itwm.fraunhofer.de>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA0LTI2IGF0IDEyOjI0IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gQXByIDIzLCAyMDEyLCBhdCA0OjU1IFBNLCBDaHVjayBMZXZlciB3cm90ZToNCj4gDQo+ID4g
-Rm9yIE5GU3Y0IG1pbm9yIHZlcnNpb24gMCwgY3VycmVudGx5IHRoZSBjbF9pZF91bmlxdWlmaWVy
-IGFsbG93cyB0aGUNCj4gPiBMaW51eCBjbGllbnQgdG8gZ2VuZXJhdGUgYSB1bmlxdWUgbmZzX2Ns
-aWVudF9pZDQgc3RyaW5nIHdoZW5ldmVyIGENCj4gPiBzZXJ2ZXIgcmVwbGllcyB3aXRoIE5GUzRF
-UlJfQ0xJRF9JTlVTRS4NCj4gPiANCj4gPiBORlM0RVJSX0NMSURfSU5VU0UgYWN0dWFsbHkgbWVh
-bnMgdGhhdCB0aGUgY2xpZW50IGhhcyBwcmVzZW50ZWQgdGhpcw0KPiA+IG5mc19jbGllbnRfaWQ0
-IHN0cmluZyB3aXRoIGEgZGlmZmVyZW50IGF1dGhlbnRpY2F0aW9uIGZsYXZvciBpbiB0aGUNCj4g
-PiBwYXN0LiAgUmV0cnlpbmcgd2l0aCBhIGRpZmZlcmVudCBuZnNfY2xpZW50X2lkNCBzdHJpbmcg
-bWVhbnMgdGhlDQo+ID4gY2xpZW50IG9ycGhhbnMgTkZTdjQgc3RhdGUgb24gdGhlIHNlcnZlci4g
-IFRoaXMgc3RhdGUgd2lsbCB0YWtlIGF0DQo+ID4gbGVhc3QgYSB3aG9sZSBsZWFzZSBwZXJpb2Qg
-dG8gYmUgcHVyZ2VkLg0KPiA+IA0KPiA+IENoYW5nZSByZWNvdmVyeSB0byB0cnkgdGhlIGlkZW50
-aWZpY2F0aW9uIG9wZXJhdGlvbiBhZ2FpbiB3aXRoIGENCj4gPiBkaWZmZXJlbnQgYXV0aCBmbGF2
-b3IgdW50aWwgaXQgd29ya3MuICBUaGUgcmV0cnkgbG9vcCBpcyBmYWN0b3JlZA0KPiA+IG91dCBv
-ZiBuZnM0X3Byb2Nfc2V0Y2xpZW50aWQoKSBhbmQgaW50byB0aGUgc3RhdGUgbWFuYWdlciwgc28g
-dGhhdA0KPiA+IGJvdGggbXYwIGFuZCBtdjEgY2xpZW50IElEIGVzdGFibGlzaG1lbnQgaXMgY292
-ZXJlZCBieSB0aGUgc2FtZQ0KPiA+IENMSURfSU5VU0UgcmVjb3ZlcnkgbG9naWMuDQo+ID4gDQo+
-ID4gWFhYOiBPbiBmdXJ0aGVyIHJldmlldywgSSdtIG5vdCBzdXJlIGhvdyBpdCB3b3VsZCBiZSBw
-b3NzaWJsZSB0bw0KPiA+IHNlbmQgYW4gbmZzX2NsaWVudF9pZDQgd2l0aCB0aGUgd3JvbmcgYXV0
-aGVudGljYXRpb24gZmxhdm9yLCBzaW5jZQ0KPiA+IHRoZSBhdV9uYW1lIGlzIHBhcnQgb2YgdGhl
-IHN0cmluZyBpdHNlbGYuLi4NCj4gDQo+IEknbSBoYXZpbmcgb3RoZXIgZG91YnRzIGFib3V0IHRo
-aXMgd2hvbGUgYXBwcm9hY2guDQo+IA0KPiBJbiB0aGUgbG9vcCBpbiBuZnM0X3JlY2xhaW1fbGVh
-c2UoKSwgdGhlIGNsaWVudCB3aWxsIG5lZWQgdG8gcmVwbGFjZSB0aGUgUlBDIHRyYW5zcG9ydCBm
-b3IgZWFjaCByZXRyaWVkIGZsYXZvciwgYW5kIHRoZW4gY29udGludWUgdXNpbmcgdGhlIHRyYW5z
-cG9ydCB0aGF0IHdvcmtlZC4gIE5ldyBtb3VudHMgY2xvbmUgdGhlaXIgdHJhbnNwb3J0IGZyb20g
-dGhlIG5mc19jbGllbnQsIGV2ZW4gaWYgaXRzIGF1dGhlbnRpY2F0aW9uIGZsYXZvciBkb2VzIG5v
-dCBtYXRjaCB3aGF0IG1pZ2h0IGhhdmUgYmVlbiBzcGVjaWZpZWQgb24gdGhlIG1vdW50LiAgKEkg
-aGF2ZW4ndCBjaGVja2VkIHRoaXMsIGlzIGl0IHRydWU/KQ0KPiANCj4gV2hhdCdzIG1vcmUsIHRo
-ZXJlJ3Mgbm8gd2F5IGEgc2VydmVyIGNhbiBpZGVudGlmeSBhIHJlLXVzZWQgbmZzX2NsaWVudF9p
-ZDQsIHNpbmNlIHdlIGN1cnJlbnRseSBwbGFudCB0aGUgYXV0aGVudGljYXRpb24gZmxhdm9yIGlu
-IHRoZSBuZnNfY2xpZW50X2lkNCBzdHJpbmfigKYNCj4gDQo+IEluIGZhY3QsIGJlY2F1c2Ugd2Ug
-Z2VuZXJhdGUgbmZzX2NsaWVudF9pZDQgc3RyaW5ncyB3aXRoIHRoZSBmbGF2b3IgYnVpbHQgaW4s
-IHdvbid0IGVhY2ggZmxhdm9yIHVzZWQgb24gYSBtb3VudCBnZW5lcmF0ZSBhIHNlcGFyYXRlIGxl
-YXNlIG9uIHRoZSBzZXJ2ZXI/DQoNClRoZW4gbGV0cyBtb3ZlIHRoZSBmbGF2b3VyIG91dCBvZiB0
-aGUgY2xpZW50aWQgc3RyaW5nLCBhbmQganVzdCBzZXR0bGUNCmZvciBoYW5kbGluZyBDTElEX0lO
-VVNFIGJ5IGNoYW5naW5nIHRoZSBmbGF2b3VyIG9uIHRoZSBTRVRDTElFTlRJRCBjYWxsLg0KDQpD
-aGVlcnMNCiAgVHJvbmQNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQg
-bWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0
-YXBwLmNvbQ0KDQo=
+On Sun, Apr 15, 2012 at 09:03:23PM +0200, Bernd Schubert wrote:
+> On 04/13/2012 05:42 PM, Jeff Layton wrote:
+> > (note: please don't trim the CC list!)
+> > 
+> > Indefinitely does make some sense (as Peter articulated in his original
+> > set). It's possible you could race several times in a row, or a server
+> > misconfiguration or something has happened and you have a transient
+> > error that will eventually recover. His assertion was that any limit on
+> > the number of retries is by definition wrong. For NFS, a fatal signal
+> > ought to interrupt things as well, so retrying indefinitely has some
+> > appeal there.
+> > 
+> > OTOH, we do have to contend with filesystems that might return ESTALE
+> > persistently for other reasons and that might not respond to signals.
+> > Miklos pointed out that some FUSE fs' do this in his review of Peter's
+> > set.
+> > 
+> > As a purely defensive coding measure, limiting the number of retries to
+> > something finite makes sense. If we're going to do that though, I'd
+> > probably recommend that we set the number of retries be something
+> > higher just so that this is more resilient in the face of multiple
+> > races. Those other fs' might "spin" a bit in that case but it is an
+> > error condition and IMO resiliency trumps performance -- at least in
+>  this case.
+> 
+> I am definitely voting against an infinite number of retries. I'm
+> working on FhGFS, which supports distributed meta data servers. So when
+> a file is moved around between directories, its file handle, which
+> contains the meta-data target id might become invalid.  As NFSv3 is
+> stateless we cannot inform the client about that and must return ESTALE
+> then.
+
+Note we're not talking about retrying the operation that returned ESTALE
+with the same filehandle--probably any server would return ESTALE again
+in that case.
+
+We're talking about re-looking up the path (in the case where we're
+implementing a system call that takes a path as an argument), and then
+retrying the operation with the newly looked-up filehandle.
+
+--b.
+
+> NFSv4 is better, but I'm not sure how well invalidating a file
+> handle works. So retrying once on ESTALE might be a good idea, but
+> retrying forever is not.
+> Also, what about asymmetric HA servers? I believe to remember that also
+> resulted in ESTALE. So for example server1 exports /home and /scratch,
+> but on failure server2 can only take over /home and denies access to
+> /scratch.
+> 
+> 
+> Thanks,
+> Bernd
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
