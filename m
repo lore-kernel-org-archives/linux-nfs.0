@@ -1,68 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:7812 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760501Ab2D0P0O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Apr 2012 11:26:14 -0400
-Date: Fri, 27 Apr 2012 11:27:09 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Josh Boyer <jwboyer@redhat.com>, Jim Rees <rees@umich.edu>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: Add modalias for "nfs4"
-Message-ID: <20120427112709.08c99ec3@corrin.poochiereds.net>
-In-Reply-To: <1335538927.3910.3.camel@lade.trondhjem.org>
-References: <20120427131031.GA13189@zod.bos.redhat.com>
-	<20120427141918.GA15506@umich.edu>
-	<20120427144840.GB13189@zod.bos.redhat.com>
-	<1335538228.3910.1.camel@lade.trondhjem.org>
-	<20120427145352.GC13189@zod.bos.redhat.com>
-	<1335538927.3910.3.camel@lade.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from rcsinet15.oracle.com ([148.87.113.117]:17424 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750968Ab2DOT6A convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Apr 2012 15:58:00 -0400
+Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from getattr call
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4F8B1B7B.3040304@itwm.fraunhofer.de>
+Date: Sun, 15 Apr 2012 15:57:32 -0400
+Cc: Jeff Layton <jlayton@redhat.com>, Malahal Naineni <malahal@us.ibm.com>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, pstaubach@exagrid.com, miklos@szeredi.hu,
+        viro@ZenIV.linux.org.uk, hch@infradead.org,
+        michael.brantley@deshaw.com, sven.breuner@itwm.fraunhofer.de
+Message-Id: <F7D07FEC-4CA3-471F-8043-0DB899660BBB@oracle.com>
+References: <1334316311-22331-1-git-send-email-jlayton@redhat.com> <20120413150518.GA1987@us.ibm.com> <20120413114236.0e557e01@tlielax.poochiereds.net> <4F8B1B7B.3040304@itwm.fraunhofer.de>
+To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 27 Apr 2012 15:02:07 +0000
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-> On Fri, 2012-04-27 at 10:53 -0400, Josh Boyer wrote:
-> > On Fri, Apr 27, 2012 at 02:50:28PM +0000, Myklebust, Trond wrote:
-> > > On Fri, 2012-04-27 at 10:48 -0400, Josh Boyer wrote:
-> > > > On Fri, Apr 27, 2012 at 10:19:18AM -0400, Jim Rees wrote:
-> > > > > Josh Boyer wrote:
-> > > > > 
-> > > > >   When NFSv4 is configured, the support goes into the nfs.ko module.
-> > > > >   However, nfs-utils seems to pass "nfs4" as the fileststem type for
-> > > > >   NFSv4 mounts.
-> > > > > 
-> > > > > Weren't we going to change that to nfs and use nfsvers to select nfs4?
-> > > > 
-> > > > I have, approximately, no idea.  At least the version of nfs-utils found
-> > > > in Fedora 17 and rawhide, it's still using "nfs4".   I believe that is
-> > > > nfs-utils-1.2.6-rc6 based.
-> > > 
-> > > nfs4 is still _supported_ in Fedora 17, rawhide and upstream as a legacy
-> > > feature, but the recommended practice should be to mount -t nfs -overs=4
-> > > (or -overs=4.1).
-> > 
-> > OK.  So either this patch needs to go in, or something needs to add:
-> > 
-> > alias nfs4 nfs
-> > 
-> > to a conf file so modprobe picks it up.  I figured the kernel could add
-> > the alias itself.  Is there a reason not to?
+On Apr 15, 2012, at 3:03 PM, Bernd Schubert wrote:
+
+> On 04/13/2012 05:42 PM, Jeff Layton wrote:
+>> (note: please don't trim the CC list!)
+>> 
+>> Indefinitely does make some sense (as Peter articulated in his original
+>> set). It's possible you could race several times in a row, or a server
+>> misconfiguration or something has happened and you have a transient
+>> error that will eventually recover. His assertion was that any limit on
+>> the number of retries is by definition wrong. For NFS, a fatal signal
+>> ought to interrupt things as well, so retrying indefinitely has some
+>> appeal there.
+>> 
+>> OTOH, we do have to contend with filesystems that might return ESTALE
+>> persistently for other reasons and that might not respond to signals.
+>> Miklos pointed out that some FUSE fs' do this in his review of Peter's
+>> set.
+>> 
+>> As a purely defensive coding measure, limiting the number of retries to
+>> something finite makes sense. If we're going to do that though, I'd
+>> probably recommend that we set the number of retries be something
+>> higher just so that this is more resilient in the face of multiple
+>> races. Those other fs' might "spin" a bit in that case but it is an
+>> error condition and IMO resiliency trumps performance -- at least in
+> this case.
 > 
-> Yes. This is a legacy feature that we want to encourage people to move
-> their systems off...
-> 
+> I am definitely voting against an infinite number of retries. I'm
+> working on FhGFS, which supports distributed meta data servers. So when
+> a file is moved around between directories, its file handle, which
+> contains the meta-data target id might become invalid.
 
-Ahh ok...I guess I didn't get that memo. In that case, is there a plan
-to deprecate the nfs4 fstype altogether?
+Doesn't Jeff's recovery mechanism resolve this situation?  The client does a fresh lookup, so shouldn't it get the new FH at that point?  If there is no possible way for the client to discover the new FH, then ESTALE recovery should probably be finite.
 
-Otherwise, you're going to end up with inconsistent behavior with "-t
-nfs4", depending on whether nfs.ko is already plugged in at the time or
-not.
+> As NFSv3 is
+> stateless we cannot inform the client about that and must return ESTALE
+> then. NFSv4 is better, but I'm not sure how well invalidating a file
+> handle works.  So retrying once on ESTALE might be a good idea, but
+> retrying forever is not.
+> Also, what about asymmetric HA servers? I believe to remember that also
+> resulted in ESTALE. So for example server1 exports /home and /scratch,
+> but on failure server2 can only take over /home and denies access to
+> /scratch.
+
+Retrying forever is bad only if we think there are cases where there is no possible recovery action for the client, or the ESTALE signals a condition that is not temporary.
+
+It is temporary, for instance, when an administrator takes an exported volume offline; at some point, that volume will be brought back online.  Maybe it is better generally for the client to retry indefinitely instead of causing applications to fail.
+
+Retrying forever is exactly what we do for "hard" NFS mounts, for example, and for many types of NFSv4 state recovery.  Philosophically, how is this situation different?
+
+It would be reasonable, at least, to insert a backoff delay in the retry logic.
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
