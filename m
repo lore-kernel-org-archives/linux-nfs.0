@@ -1,55 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47550 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:57480 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751716Ab2DZTD0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Apr 2012 15:03:26 -0400
-Date: Thu, 26 Apr 2012 15:03:24 -0400
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Linux server client ID behavior
-Message-ID: <20120426190324.GA9920@fieldses.org>
-References: <CDACC8A7-C94B-4F03-B355-33B42686BD1B@oracle.com>
+	id S1754769Ab2DPU2Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Apr 2012 16:28:24 -0400
+Received: from vmwexceht05-prd.hq.netapp.com (vmwexceht05-prd.hq.netapp.com [10.106.77.35])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q3GKSNaR011220
+	for <linux-nfs@vger.kernel.org>; Mon, 16 Apr 2012 13:28:23 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Isaman, Fred" <Fred.Isaman@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 14/26] NFS: merge _full and _partial read rpc_ops
+Date: Mon, 16 Apr 2012 20:28:22 +0000
+Message-ID: <1334608102.2879.37.camel@lade.trondhjem.org>
+References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
+	 <1334004744-31842-15-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334004744-31842-15-git-send-email-iisaman@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CDACC8A7-C94B-4F03-B355-33B42686BD1B@oracle.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 26, 2012 at 12:17:13PM -0400, Chuck Lever wrote:
-> Hi-
-> 
-> Follow up on the issue I reported in IRC a couple of days ago.
-> 
-> I'm using a stock Fedora 16 NFS server and my prototype UCS client.  The client uses the same nfs_client_id4 string and boot verifier for all mounts on all servers.  It performs a SETCLIENTID as part of the mount operation.  SETCLIENTID is the first NFS operation after the client sends it's NFS ping.
-> 
-> The test is simple.  It is meant to see if the UCS client recognizes that a server with an IPv4 and IPv6 address (a very typical configuration) is effectively trunked.  It goes like this:
-> 
->   1.  Mount a filesystem on a server on it's IPv4 address via NFSv4.0
->   2.  Without unmounting the first filesystem, and without letting the first lease expire, mount a different filesystem on the same server on it's IPv6 address via NFSv4.0
-> 
-> The Solaris 11 FCS server allows both mounts, and the client recognizes that the IPv4 and IPv6 address represent the same server instance.  Based on Noveck's NFSv4 migration draft, I believe this is the correct outcome.
-> 
-> With the Fedora 16 (3.3.2-1) Linux NFS server, the following is observed:
-> 
->   a.  The second (IPv6) mount sends a SETCLIENTID with the same nfs_client_id4 and boot verifier as the first mount, as expected.  The request succeeds, and the server returns a different clientid4 than the first mount.  I believe that's incorrect.
-> 
-> The server should return the same clientid4 as the first SETCLIENTID operation, since the client has presented the same nfs_client_id4 and boot verifier.  The nfs_client_id4 string alone is how servers should detect client identity.  For non-UCS clients, this should be enough anyway, since IP addresses are already embedded in the string.  [ I have not yet tried this test with NFSv4.1, where all clients are supposed to use UCS. ]
-> 
->   b.  The second (IPv6) mount then sends a SETCLIENTID_CONFIRM and the server replies with NFS4ERR_CLID_INUSE.  I believe CLID_INUSE is an incorrect response.
-> 
-> My reading of 3530bis is that CLID_INUSE is appropriate only when there is an authentication flavor mismatch on SETCLIENTID or SETCLIENTID_CONFIRM requests.  That is, the client has previously presented the nfs_client_id4 string using a different authentication flavor than the one it is using in the current request, and the lease that resulted from that previous operation has not yet expired.  In this case, the authentication flavor (AUTH_SYS) is the same on both SETCLIENTID operations, so SETCLIENTID_CONFIRM should be treated as a valid request from this client.
-> 
-> The larger concern is that we have here another example of a widely deployed server implementation that does not tolerate UCS clients.  Before I report this experience to the working group, I would like comment on the Linux server's behavior and my opinions about its correctness.
-
-I agree, both sound like bugs.  (Could you make patches?)
-
-The second is easy to fix.  From a quick look at historical git
-archives, it appears to have been there from the beginning.
-
-The first I don't understand.  It certainly doesn't look like what the
-code's intended to do on a quick glance, so there must be some logic
-error I'm not seeing....
-
---b.
+T24gTW9uLCAyMDEyLTA0LTA5IGF0IDE2OjUyIC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
+RGVjb3VwbGUgbmZzX3BnaW9faGVhZGVyIGFuZCBuZnNfcmVhZF9kYXRhLCBhbmQgaGF2ZSAocG9z
+c2libHkNCj4gbXVsdGlwbGUpIG5mc19yZWFkX2RhdGFzIGVhY2ggdGFrZSBhIHJlZmNvdW50IG9u
+IG5mc19wZ2lvX2hlYWRlci4NCj4gDQo+IEZvciB0aGUgbW9tZW50IGtlZXBzIG5mc19yZWFkX2hl
+YWRlciBhcyBhIHdheSB0byBwcmVhbGxvY2F0ZSBhIHNpbmdsZQ0KPiBuZnNfcmVhZF9kYXRhIHdp
+dGggdGhlIG5mc19wZ2lvX2hlYWRlci4gIFRoZSBjb2RlIGRvZXNuJ3QgbmVlZCB0aGlzLA0KPiBh
+bmQgd291bGQgYmUgcHJldHRpZXIgd2l0aG91dCwgYnV0IGdpdmVuIHRoZSBhbW91bnQgb2YgY2h1
+cm4gSSBhbQ0KPiBhbHJlYWR5IGludHJvZHVjaW5nIEkgZGlkbid0IHdhbnQgdG8gcGxheSB3aXRo
+IHR1bmluZyBuZXcgbWVtcG9vbHMuDQo+IA0KPiBUaGlzIGFsc28gZml4ZXMgYnVnIGluIHBuZnNf
+bGRfaGFuZGxlX3JlYWRfZXJyb3IuICBJbiB0aGUgY2FzZSBvZg0KPiBkZXNjLT5wZ19ic2l6ZSA8
+IFBBR0VfQ0FDSEVfU0laRSwgdGhlIHBhZ2VzIGxpc3Qgd2FzIGVtcHR5LCBjYXVzaW5nDQo+IHJl
+cGxheSBhdHRlbXB0IHRvIGRvIG5vdGhpbmcuDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBGcmVkIElz
+YW1hbiA8aWlzYW1hbkBuZXRhcHAuY29tPg0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL3JlYWQuYyBi
+L2ZzL25mcy9yZWFkLmMNCj4gaW5kZXggZjZhYjMwYi4uZWE4NDRiMiAxMDA2NDQNCj4gLS0tIGEv
+ZnMvbmZzL3JlYWQuYw0KPiArKysgYi9mcy9uZnMvcmVhZC5jDQo+IEBAIC0zMCwyOSArMzAsNDUg
+QEANCj4gICNkZWZpbmUgTkZTREJHX0ZBQ0lMSVRZCQlORlNEQkdfUEFHRUNBQ0hFDQo+ICANCj4g
+IHN0YXRpYyBjb25zdCBzdHJ1Y3QgbmZzX3BhZ2Vpb19vcHMgbmZzX3BhZ2Vpb19yZWFkX29wczsN
+Cj4gLXN0YXRpYyBjb25zdCBzdHJ1Y3QgcnBjX2NhbGxfb3BzIG5mc19yZWFkX3BhcnRpYWxfb3Bz
+Ow0KPiAtc3RhdGljIGNvbnN0IHN0cnVjdCBycGNfY2FsbF9vcHMgbmZzX3JlYWRfZnVsbF9vcHM7
+DQo+ICtzdGF0aWMgY29uc3Qgc3RydWN0IHJwY19jYWxsX29wcyBuZnNfcmVhZF9jb21tb25fb3Bz
+Ow0KPiAgDQo+ICBzdGF0aWMgc3RydWN0IGttZW1fY2FjaGUgKm5mc19yZGF0YV9jYWNoZXA7DQo+
+ICANCj4gLXN0cnVjdCBuZnNfcmVhZF9oZWFkZXIgKm5mc19yZWFkaGRyX2FsbG9jKHVuc2lnbmVk
+IGludCBwYWdlY291bnQpDQo+ICtzdHJ1Y3QgbmZzX3JlYWRfaGVhZGVyICpuZnNfcmVhZGhkcl9h
+bGxvYygpDQo+ICB7DQo+IC0Jc3RydWN0IG5mc19yZWFkX2hlYWRlciAqcDsNCj4gKwlzdHJ1Y3Qg
+bmZzX3JlYWRfaGVhZGVyICpyaGRyOw0KPiAgDQo+IC0JcCA9IGttZW1fY2FjaGVfemFsbG9jKG5m
+c19yZGF0YV9jYWNoZXAsIEdGUF9LRVJORUwpOw0KPiAtCWlmIChwKSB7DQo+IC0JCXN0cnVjdCBu
+ZnNfcGdpb19oZWFkZXIgKmhkciA9ICZwLT5oZWFkZXI7DQo+IC0JCXN0cnVjdCBuZnNfcmVhZF9k
+YXRhICpkYXRhID0gJnAtPnJwY19kYXRhOw0KPiArCXJoZHIgPSBrbWVtX2NhY2hlX3phbGxvYyhu
+ZnNfcmRhdGFfY2FjaGVwLCBHRlBfS0VSTkVMKTsNCj4gKwlpZiAocmhkcikgew0KPiArCQlzdHJ1
+Y3QgbmZzX3BnaW9faGVhZGVyICpoZHIgPSAmcmhkci0+aGVhZGVyOw0KPiAgDQo+ICAJCUlOSVRf
+TElTVF9IRUFEKCZoZHItPnBhZ2VzKTsNCj4gLQkJSU5JVF9MSVNUX0hFQUQoJmRhdGEtPmxpc3Qp
+Ow0KPiAtCQlkYXRhLT5oZWFkZXIgPSBoZHI7DQo+ICsJCUlOSVRfTElTVF9IRUFEKCZoZHItPnJw
+Y19saXN0KTsNCj4gKwkJc3Bpbl9sb2NrX2luaXQoJmhkci0+bG9jayk7DQo+ICsJCWF0b21pY19z
+ZXQoJmhkci0+cmVmY250LCAwKTsNCj4gKwl9DQo+ICsJcmV0dXJuIHJoZHI7DQo+ICt9DQo+ICsN
+Cj4gK3N0cnVjdCBuZnNfcmVhZF9kYXRhICpuZnNfcmVhZGRhdGFfYWxsb2Moc3RydWN0IG5mc19w
+Z2lvX2hlYWRlciAqaGRyLA0KPiArCQkJCQkgdW5zaWduZWQgaW50IHBhZ2Vjb3VudCkNCj4gK3sN
+Cj4gKwlzdHJ1Y3QgbmZzX3JlYWRfZGF0YSAqZGF0YTsNCj4gKw0KPiArCWlmIChoZHIpIHsNCj4g
+KwkJLyogVXNlIGRhdGEgcHJlYWxsb2NhdGVkIHdpdGggdGhlIGhlYWRlciAqLw0KPiArCQlkYXRh
+ID0gJmNvbnRhaW5lcl9vZihoZHIsIHN0cnVjdCBuZnNfcmVhZF9oZWFkZXIsIGhlYWRlciktPnJw
+Y19kYXRhOw0KPiArCX0gZWxzZQ0KPiArCQlkYXRhID0ga3phbGxvYyhzaXplb2YoKmRhdGEpLCBH
+RlBfS0VSTkVMKTsNCj4gKw0KPiArCWlmIChkYXRhKSB7DQo+ICAJCWlmICghbmZzX3BnYXJyYXlf
+c2V0KCZkYXRhLT5wYWdlcywgcGFnZWNvdW50KSkgew0KPiAtCQkJa21lbV9jYWNoZV9mcmVlKG5m
+c19yZGF0YV9jYWNoZXAsIHApOw0KPiAtCQkJcCA9IE5VTEw7DQo+ICsJCQlpZiAoIWhkcikNCj4g
+KwkJCQlrZnJlZShkYXRhKTsNCj4gKwkJCWRhdGEgPSBOVUxMOw0KPiAgCQl9DQo+ICAJfQ0KPiAt
+CXJldHVybiBwOw0KPiArCXJldHVybiBkYXRhOw0KPiAgfQ0KPiAgDQo+ICB2b2lkIG5mc19yZWFk
+aGRyX2ZyZWUoc3RydWN0IG5mc19wZ2lvX2hlYWRlciAqaGRyKQ0KPiBAQCAtNjQsMTAgKzgwLDE2
+IEBAIHZvaWQgbmZzX3JlYWRoZHJfZnJlZShzdHJ1Y3QgbmZzX3BnaW9faGVhZGVyICpoZHIpDQo+
+ICANCj4gIHZvaWQgbmZzX3JlYWRkYXRhX3JlbGVhc2Uoc3RydWN0IG5mc19yZWFkX2RhdGEgKnJk
+YXRhKQ0KPiAgew0KPiArCXN0cnVjdCBuZnNfcGdpb19oZWFkZXIgKmhkciA9IHJkYXRhLT5oZWFk
+ZXI7DQo+ICsNCj4gIAlwdXRfbmZzX29wZW5fY29udGV4dChyZGF0YS0+YXJncy5jb250ZXh0KTsN
+Cj4gIAlpZiAocmRhdGEtPnBhZ2VzLnBhZ2V2ZWMgIT0gcmRhdGEtPnBhZ2VzLnBhZ2VfYXJyYXkp
+DQo+ICAJCWtmcmVlKHJkYXRhLT5wYWdlcy5wYWdldmVjKTsNCj4gLQluZnNfcmVhZGhkcl9mcmVl
+KHJkYXRhLT5oZWFkZXIpOw0KPiArCWlmIChjb250YWluZXJfb2YoaGRyLCBzdHJ1Y3QgbmZzX3Jl
+YWRfaGVhZGVyLCBoZWFkZXIpICE9DQo+ICsJICAgIGNvbnRhaW5lcl9vZihyZGF0YSwgc3RydWN0
+IG5mc19yZWFkX2hlYWRlciwgcnBjX2RhdGEpKQ0KPiArCQlrZnJlZShyZGF0YSk7DQoNClRoaXMg
+bG9va3MgdW5uZWNlc3NhcmlseSBjb21wbGljYXRlZC4gSG93IGFib3V0DQoNCglpZiAocmRhdGEg
+IT0gJmhkci0+cnBjX2RhdGEpDQoJCWtmcmVlKHJkYXRhKTsNCg0KPiArCWlmIChhdG9taWNfZGVj
+X2FuZF90ZXN0KCZoZHItPnJlZmNudCkpDQo+ICsJCW5mc19yZWFkX2NvbXBsZXRpb24oaGRyKTsN
+Cj4gIH0NCj4gIA0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWlu
+dGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAu
+Y29tDQoNCg==
