@@ -1,140 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:36503 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753264Ab2DKNJI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Apr 2012 09:09:08 -0400
-Message-ID: <4F85825E.4060104@parallels.com>
-Date: Wed, 11 Apr 2012 17:08:46 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:6037 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752440Ab2DPUlv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Apr 2012 16:41:51 -0400
+Received: from vmwexceht05-prd.hq.netapp.com (vmwexceht05-prd.hq.netapp.com [10.106.77.35])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q3GKfp9k021755
+	for <linux-nfs@vger.kernel.org>; Mon, 16 Apr 2012 13:41:51 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Isaman, Fred" <Fred.Isaman@netapp.com>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH][RFC] nfsd/lockd: have locks_in_grace take a sb arg
-References: <1333455279-11200-1-git-send-email-jlayton@redhat.com>	<4F841D2A.9020504@parallels.com>	<20120410081612.65dd25fa@tlielax.poochiereds.net>	<4F842BAE.2010804@parallels.com>	<20120410093900.20209d00@tlielax.poochiereds.net>	<4F84493C.1040303@parallels.com>	<20120410144505.58bca0b9@corrin.poochiereds.net>	<4F855864.8050509@parallels.com> <20120411074822.0054eb36@tlielax.poochiereds.net>
-In-Reply-To: <20120411074822.0054eb36@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Subject: Re: [PATCH 14/26] NFS: merge _full and _partial read rpc_ops
+Date: Mon, 16 Apr 2012 20:41:49 +0000
+Message-ID: <1334608910.2879.45.camel@lade.trondhjem.org>
+References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
+	 <1334004744-31842-15-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334004744-31842-15-git-send-email-iisaman@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-11.04.2012 15:48, Jeff Layton пишет:
->>>>> One thing that puzzles me at the moment. We have two namespaces to deal
->>>>> with -- the network and the mount namespace. With nfs client code,
->>>>> everything is keyed off of the net namespace. That's not really the
->>>>> case here since we have to deal with a local fs tree as well.
->>>>>
->>>>> When an nfsd running in a container receives an RPC, how does it
->>>>> determine what mount namespace it should do its operations in?
->>>>>
->>>>
->>>> We don't use mount namespaces, so that's why I wasn't thinking about it...
->>>> But if we have 2 types of namespaces, then we have to tie  mount namesapce to
->>>> network. I.e we can get desired mount namespace from per-net NFSd data.
->>>>
->>>
->>> One thing that Bruce mentioned to me privately is that we could plan to
->>> use whatever mount namespace mountd is using within a particular net
->>> namespace. That makes some sense since mountd is the final arbiter of
->>> who gets access to what.
->>>
->>
->> Could you, please, give some examples? I don't get the idea.
->>
->
-> When nfsd gets an RPC call, it needs to decide in what mount namespace
-> to do the fs operations. How do we decide this?
->
-> Bruce's thought was to look at what mount namespace rpc.mountd is using
-> and use that, but now that I consider it, it's a bit of a chicken and
-> egg problem really... nfsd talks to mountd via files in /proc/net/rpc/.
-> In order to talk to the right mountd, might you need to know what mount
-> namespace it's operating in?
->
-
-Not really... /proc itself depens on pid namespace. /proc/net depends on current 
-(!) network namespace. So we can't just lookup for this dentry.
-
-But, in spite of nfsd works in initial (init_net and friends) environment, we 
-can get network namespace from RPC request. Having this, we can easily get 
-desired proc entry (proc_net_rpc in sunrpc_net). So it looks like we can 
-actually don't care about mount namespaces - we have our own back door.
-If I'm not mistaken, of course...
-
-> A simpler method might be to take a reference to whatever mount
-> namespace rpc.nfsd has when it starts knfsd and keep that reference
-> inside of the nfsd_net struct. When a call comes in to a particular
-> nfsd "instance" you can just use that mount namespace.
->
-
-This means that we tie mount namespace to network. Even worse - network 
-namespace holds mount namespace. Currently, I can't see any problems. But I 
-can't even imagine, how many pitfalls can (and, most probably, will) be found in 
-future.
-I think, we should try to avoid explicit cross-namespaces dependencies...
-
->>> Note that it is quite easy to get lost in the weeds with this. I've been
->>> struggling to get a working design for a clustered nfsv4 server for the
->>> last several months and have had some time to wrestle with these
->>> issues. It's anything but trivial.
->>>
->>> What you may need to do in order to make progress is to start with some
->>> valid use-cases for this stuff, and get those working while disallowing
->>> or ignoring other use cases. We'll never get anywhere if we try to solve
->>> all of these problems at once...
->>>
->>
->> Agreed.
->> So, my current understanding of the situation can be summarized as follows:
->>
->> 1) The idea of making grace period (and int internals) per networks namespace
->> stays the same. But it's implementation affect only current "generic grace
->> period" code.
->>
->
-> Yes, that's where you should focus your efforts for now. As I said, we
-> don't have any alternate grace period handling schemes yet, but we will
-> eventually need one to handle clustered filesystems and possibly the
-> case of serving the same local fs from multiple namespaces.
->
-
-Ok.
-
->> 2) Your idea of making grace period per file system looks reasonable. And maybe
->> this approach (using of filesystem's export operations if available) have to be
->> used by default.
->> But I suggest to add new option to exports (say, "no_fs_grace"), which will
->> disable this new functionality. With this option system administrator becomes
->> responsible for any problems with shared file system.
->>
->
-> Something like that may be a reasonable hack initially but we need to
-> ensure that we can deal with this properly later. I think we're going
-> to end up with "pluggable" grace period handling at some point, so it
-> may be more future proof to do something like "grace=simple" or
-> something instead of no_fs_grace. Still...
->
-> This is a complex enough problem that I think it behooves us to
-> consider it very carefully and come up with a clear design before we
-> code anything. We need to ensure that whatever we do doesn't end up
-> hamstringing other use cases later...
->
-> We have 3 cases that I can see that we're interested in initially.
-> There is some overlap between them however:
->
-> 1) simple case of a filesystem being exported from a single namespace.
-> This covers non-containerized nfsd and containerized nfsd's that are
-> serving different filesystems.
->
-> 2) a containerized nfsd that serves the same filesystem from multiple
-> namespaces.
->
-> 3) a cluster serving the same filesystem from multiple namespaces. In
-> this case, the namespaces are also potentially spread across multiple
-> nodes as well.
->
-> There's a lot of overlap between #2 and #3 here.
-
-Yep, sure. I have nothing to add or object here.
-
--- 
-Best regards,
-Stanislav Kinsbursky
+T24gTW9uLCAyMDEyLTA0LTA5IGF0IDE2OjUyIC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
+RGVjb3VwbGUgbmZzX3BnaW9faGVhZGVyIGFuZCBuZnNfcmVhZF9kYXRhLCBhbmQgaGF2ZSAocG9z
+c2libHkNCj4gbXVsdGlwbGUpIG5mc19yZWFkX2RhdGFzIGVhY2ggdGFrZSBhIHJlZmNvdW50IG9u
+IG5mc19wZ2lvX2hlYWRlci4NCj4gDQo+IEZvciB0aGUgbW9tZW50IGtlZXBzIG5mc19yZWFkX2hl
+YWRlciBhcyBhIHdheSB0byBwcmVhbGxvY2F0ZSBhIHNpbmdsZQ0KPiBuZnNfcmVhZF9kYXRhIHdp
+dGggdGhlIG5mc19wZ2lvX2hlYWRlci4gIFRoZSBjb2RlIGRvZXNuJ3QgbmVlZCB0aGlzLA0KPiBh
+bmQgd291bGQgYmUgcHJldHRpZXIgd2l0aG91dCwgYnV0IGdpdmVuIHRoZSBhbW91bnQgb2YgY2h1
+cm4gSSBhbQ0KPiBhbHJlYWR5IGludHJvZHVjaW5nIEkgZGlkbid0IHdhbnQgdG8gcGxheSB3aXRo
+IHR1bmluZyBuZXcgbWVtcG9vbHMuDQo+IA0KPiBUaGlzIGFsc28gZml4ZXMgYnVnIGluIHBuZnNf
+bGRfaGFuZGxlX3JlYWRfZXJyb3IuICBJbiB0aGUgY2FzZSBvZg0KPiBkZXNjLT5wZ19ic2l6ZSA8
+IFBBR0VfQ0FDSEVfU0laRSwgdGhlIHBhZ2VzIGxpc3Qgd2FzIGVtcHR5LCBjYXVzaW5nDQo+IHJl
+cGxheSBhdHRlbXB0IHRvIGRvIG5vdGhpbmcuDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBGcmVkIElz
+YW1hbiA8aWlzYW1hbkBuZXRhcHAuY29tPg0KPiAtLS0NCjxzbmlwPg0KPiBkaWZmIC0tZ2l0IGEv
+ZnMvbmZzL3JlYWQuYyBiL2ZzL25mcy9yZWFkLmMNCj4gaW5kZXggZjZhYjMwYi4uZWE4NDRiMiAx
+MDA2NDQNCj4gLS0tIGEvZnMvbmZzL3JlYWQuYw0KPiArKysgYi9mcy9uZnMvcmVhZC5jDQo+IEBA
+IC0zMCwyOSArMzAsNDUgQEANCj4gICNkZWZpbmUgTkZTREJHX0ZBQ0lMSVRZCQlORlNEQkdfUEFH
+RUNBQ0hFDQo+ICANCj4gIHN0YXRpYyBjb25zdCBzdHJ1Y3QgbmZzX3BhZ2Vpb19vcHMgbmZzX3Bh
+Z2Vpb19yZWFkX29wczsNCj4gLXN0YXRpYyBjb25zdCBzdHJ1Y3QgcnBjX2NhbGxfb3BzIG5mc19y
+ZWFkX3BhcnRpYWxfb3BzOw0KPiAtc3RhdGljIGNvbnN0IHN0cnVjdCBycGNfY2FsbF9vcHMgbmZz
+X3JlYWRfZnVsbF9vcHM7DQo+ICtzdGF0aWMgY29uc3Qgc3RydWN0IHJwY19jYWxsX29wcyBuZnNf
+cmVhZF9jb21tb25fb3BzOw0KPiAgDQo+ICBzdGF0aWMgc3RydWN0IGttZW1fY2FjaGUgKm5mc19y
+ZGF0YV9jYWNoZXA7DQo+ICANCj4gLXN0cnVjdCBuZnNfcmVhZF9oZWFkZXIgKm5mc19yZWFkaGRy
+X2FsbG9jKHVuc2lnbmVkIGludCBwYWdlY291bnQpDQo+ICtzdHJ1Y3QgbmZzX3JlYWRfaGVhZGVy
+ICpuZnNfcmVhZGhkcl9hbGxvYygpDQo+ICB7DQo+IC0Jc3RydWN0IG5mc19yZWFkX2hlYWRlciAq
+cDsNCj4gKwlzdHJ1Y3QgbmZzX3JlYWRfaGVhZGVyICpyaGRyOw0KPiAgDQo+IC0JcCA9IGttZW1f
+Y2FjaGVfemFsbG9jKG5mc19yZGF0YV9jYWNoZXAsIEdGUF9LRVJORUwpOw0KPiAtCWlmIChwKSB7
+DQo+IC0JCXN0cnVjdCBuZnNfcGdpb19oZWFkZXIgKmhkciA9ICZwLT5oZWFkZXI7DQo+IC0JCXN0
+cnVjdCBuZnNfcmVhZF9kYXRhICpkYXRhID0gJnAtPnJwY19kYXRhOw0KPiArCXJoZHIgPSBrbWVt
+X2NhY2hlX3phbGxvYyhuZnNfcmRhdGFfY2FjaGVwLCBHRlBfS0VSTkVMKTsNCj4gKwlpZiAocmhk
+cikgew0KPiArCQlzdHJ1Y3QgbmZzX3BnaW9faGVhZGVyICpoZHIgPSAmcmhkci0+aGVhZGVyOw0K
+PiAgDQo+ICAJCUlOSVRfTElTVF9IRUFEKCZoZHItPnBhZ2VzKTsNCj4gLQkJSU5JVF9MSVNUX0hF
+QUQoJmRhdGEtPmxpc3QpOw0KPiAtCQlkYXRhLT5oZWFkZXIgPSBoZHI7DQo+ICsJCUlOSVRfTElT
+VF9IRUFEKCZoZHItPnJwY19saXN0KTsNCj4gKwkJc3Bpbl9sb2NrX2luaXQoJmhkci0+bG9jayk7
+DQo+ICsJCWF0b21pY19zZXQoJmhkci0+cmVmY250LCAwKTsNCj4gKwl9DQo+ICsJcmV0dXJuIHJo
+ZHI7DQo+ICt9DQo+ICsNCj4gK3N0cnVjdCBuZnNfcmVhZF9kYXRhICpuZnNfcmVhZGRhdGFfYWxs
+b2Moc3RydWN0IG5mc19wZ2lvX2hlYWRlciAqaGRyLA0KPiArCQkJCQkgdW5zaWduZWQgaW50IHBh
+Z2Vjb3VudCkNCj4gK3sNCj4gKwlzdHJ1Y3QgbmZzX3JlYWRfZGF0YSAqZGF0YTsNCj4gKw0KPiAr
+CWlmIChoZHIpIHsNCj4gKwkJLyogVXNlIGRhdGEgcHJlYWxsb2NhdGVkIHdpdGggdGhlIGhlYWRl
+ciAqLw0KPiArCQlkYXRhID0gJmNvbnRhaW5lcl9vZihoZHIsIHN0cnVjdCBuZnNfcmVhZF9oZWFk
+ZXIsIGhlYWRlciktPnJwY19kYXRhOw0KPiArCX0gZWxzZQ0KPiArCQlkYXRhID0ga3phbGxvYyhz
+aXplb2YoKmRhdGEpLCBHRlBfS0VSTkVMKTsNCj4gKw0KPiArCWlmIChkYXRhKSB7DQo+ICAJCWlm
+ICghbmZzX3BnYXJyYXlfc2V0KCZkYXRhLT5wYWdlcywgcGFnZWNvdW50KSkgew0KPiAtCQkJa21l
+bV9jYWNoZV9mcmVlKG5mc19yZGF0YV9jYWNoZXAsIHApOw0KPiAtCQkJcCA9IE5VTEw7DQo+ICsJ
+CQlpZiAoIWhkcikNCj4gKwkJCQlrZnJlZShkYXRhKTsNCj4gKwkJCWRhdGEgPSBOVUxMOw0KPiAg
+CQl9DQo+ICAJfQ0KPiAtCXJldHVybiBwOw0KPiArCXJldHVybiBkYXRhOw0KPiAgfQ0KDQpCVFc6
+IEl0IG1ha2VzIG1lIG5lcnZvdXMgdGhhdCB3ZSBjYW4gYWxsb2NhdGUgYSBzdHJ1Y3QgbmZzX3Jl
+YWRfZGF0YQ0KdGhhdCBkb2VzIG5vdCBoYXZlIGRhdGEtPmhlYWRlciBzZXQuIENvdWxkIHdlIHBs
+ZWFzZSBhbHdheXMgcGFzcyBhbg0KbmZzX3BnaW9faGVhZGVyIGFyZ3VtZW50Pw0KDQpJZiB5b3Ug
+bWFrZSBzdXJlIHRoYXQgdGhlIGFib3ZlIGZ1bmN0aW9uIGFsd2F5cyBidW1wcyBoZWFkZXItPnJl
+ZmNudCwNCnRoZW4geW91IGNhbiBjaGVjayBpZiBoZWFkZXItPnJwY19kYXRhIGlzIGFsbG9jYXRl
+ZCBieSBzZWVpbmcgaWYNCmhlYWRlci0+cmVmY250IGlzIHplcm8uDQoNCkJUVzogVGhlIHNhbWUg
+YXBwbGllcyB0byB0aGUgIndyaXRlIiBlcXVpdmFsZW50cy4uLg0KDQo+ICB2b2lkIG5mc19yZWFk
+aGRyX2ZyZWUoc3RydWN0IG5mc19wZ2lvX2hlYWRlciAqaGRyKQ0KPiBAQCAtNjQsMTAgKzgwLDE2
+IEBAIHZvaWQgbmZzX3JlYWRoZHJfZnJlZShzdHJ1Y3QgbmZzX3BnaW9faGVhZGVyICpoZHIpDQo+
+ICANCj4gIHZvaWQgbmZzX3JlYWRkYXRhX3JlbGVhc2Uoc3RydWN0IG5mc19yZWFkX2RhdGEgKnJk
+YXRhKQ0KPiAgew0KPiArCXN0cnVjdCBuZnNfcGdpb19oZWFkZXIgKmhkciA9IHJkYXRhLT5oZWFk
+ZXI7DQo+ICsNCj4gIAlwdXRfbmZzX29wZW5fY29udGV4dChyZGF0YS0+YXJncy5jb250ZXh0KTsN
+Cj4gIAlpZiAocmRhdGEtPnBhZ2VzLnBhZ2V2ZWMgIT0gcmRhdGEtPnBhZ2VzLnBhZ2VfYXJyYXkp
+DQo+ICAJCWtmcmVlKHJkYXRhLT5wYWdlcy5wYWdldmVjKTsNCj4gLQluZnNfcmVhZGhkcl9mcmVl
+KHJkYXRhLT5oZWFkZXIpOw0KPiArCWlmIChjb250YWluZXJfb2YoaGRyLCBzdHJ1Y3QgbmZzX3Jl
+YWRfaGVhZGVyLCBoZWFkZXIpICE9DQo+ICsJICAgIGNvbnRhaW5lcl9vZihyZGF0YSwgc3RydWN0
+IG5mc19yZWFkX2hlYWRlciwgcnBjX2RhdGEpKQ0KPiArCQlrZnJlZShyZGF0YSk7DQo+ICsJaWYg
+KGF0b21pY19kZWNfYW5kX3Rlc3QoJmhkci0+cmVmY250KSkNCj4gKwkJbmZzX3JlYWRfY29tcGxl
+dGlvbihoZHIpOw0KPiAgfQ0KPiAgDQo+ICBzdGF0aWMNCj4gQEAgLTc5LDM1ICsxMDEsNiBAQCBp
+bnQgbmZzX3JldHVybl9lbXB0eV9wYWdlKHN0cnVjdCBwYWdlICpwYWdlKQ0KPiAgCXJldHVybiAw
+Ow0KPiAgfQ0KDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50
+YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5j
+b20NCg0K
