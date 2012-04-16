@@ -1,208 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:12008 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:55196 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756531Ab2D3Ske (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Apr 2012 14:40:34 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 2/7] NFS: Create a single nfs_get_root()
-Date: Mon, 30 Apr 2012 14:40:24 -0400
-Message-Id: <1335811229-2989-3-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1335811229-2989-1-git-send-email-bjschuma@netapp.com>
-References: <1335811229-2989-1-git-send-email-bjschuma@netapp.com>
+	id S1753619Ab2DPNo3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Apr 2012 09:44:29 -0400
+Date: Mon, 16 Apr 2012 14:44:22 +0100
+From: Mel Gorman <mgorman@suse.de>
+To: Fred Isaman <iisaman@netapp.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>, Linux-MM <linux-mm@kvack.org>,
+        Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>
+Subject: Re: [PATCH 08/11] nfs: disable data cache revalidation for swapfiles
+Message-ID: <20120416134422.GC2359@suse.de>
+References: <1334578675-23445-1-git-send-email-mgorman@suse.de>
+ <1334578675-23445-9-git-send-email-mgorman@suse.de>
+ <CADnza444dTr=JEtqpL5wxHRNkEc7vBz1qq9TL7Z+5h749vNawg@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-15
+In-Reply-To: <CADnza444dTr=JEtqpL5wxHRNkEc7vBz1qq9TL7Z+5h749vNawg@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Mon, Apr 16, 2012 at 09:10:04AM -0400, Fred Isaman wrote:
+> > <SNIP>
+> > -static struct nfs_page *nfs_page_find_request_locked(struct page *page)
+> > +static struct nfs_page *
+> > +nfs_page_find_request_locked(struct nfs_inode *nfsi, struct page *page)
+> >  {
+> >        struct nfs_page *req = NULL;
+> >
+> > -       if (PagePrivate(page)) {
+> > +       if (PagePrivate(page))
+> >                req = (struct nfs_page *)page_private(page);
+> > -               if (req != NULL)
+> > -                       kref_get(&req->wb_kref);
+> > +       else if (unlikely(PageSwapCache(page))) {
+> > +               struct nfs_page *freq, *t;
+> > +
+> > +               /* Linearly search the commit list for the correct req */
+> > +               list_for_each_entry_safe(freq, t, &nfsi->commit_list, wb_list) {
+> > +                       if (freq->wb_page == page) {
+> > +                               req = freq;
+> > +                               break;
+> > +                       }
+> > +               }
+> > +
+> > +               BUG_ON(req == NULL);
+> 
+> I suspect I am missing something, but why is it guaranteed that the
+> req is on the commit list?
+> 
 
-NFS v4 was doing something slightly different, so the difference can
-become the new rpc_ops->getroot() function rather than existing on its
-own.
+It's a fair question and a statement about what I expected to happen.
+The commit list replaces the nfs_page_tree radix tree that used to exist
+and my understanding was that the req would exist in the radix tree until
+the swap IO was completed. I expected it to be the same for the commit
+list and the BUG_ON was based on that expectation. Are there cases where
+the req would not be found?
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/getroot.c  |   83 -----------------------------------------------------
- fs/nfs/nfs4proc.c |   28 +++++++++++++++++-
- fs/nfs/super.c    |    6 ++--
- 3 files changed, 30 insertions(+), 87 deletions(-)
+Thanks.
 
-diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
-index 8a0f33e..8abfb19 100644
---- a/fs/nfs/getroot.c
-+++ b/fs/nfs/getroot.c
-@@ -178,87 +178,4 @@ out:
- 	return ret;
- }
- 
--/*
-- * get an NFS4 root dentry from the root filehandle
-- */
--struct dentry *nfs4_get_root(struct super_block *sb, struct nfs_fh *mntfh,
--			     const char *devname)
--{
--	struct nfs_server *server = NFS_SB(sb);
--	struct nfs_fattr *fattr = NULL;
--	struct dentry *ret;
--	struct inode *inode;
--	void *name = kstrdup(devname, GFP_KERNEL);
--	int error;
--
--	dprintk("--> nfs4_get_root()\n");
--
--	if (!name)
--		return ERR_PTR(-ENOMEM);
--
--	/* get the info about the server and filesystem */
--	error = nfs4_server_capabilities(server, mntfh);
--	if (error < 0) {
--		dprintk("nfs_get_root: getcaps error = %d\n",
--			-error);
--		kfree(name);
--		return ERR_PTR(error);
--	}
--
--	fattr = nfs_alloc_fattr();
--	if (fattr == NULL) {
--		kfree(name);
--		return ERR_PTR(-ENOMEM);
--	}
--
--	/* get the actual root for this mount */
--	error = server->nfs_client->rpc_ops->getattr(server, mntfh, fattr);
--	if (error < 0) {
--		dprintk("nfs_get_root: getattr error = %d\n", -error);
--		ret = ERR_PTR(error);
--		goto out;
--	}
--
--	if (fattr->valid & NFS_ATTR_FATTR_FSID &&
--	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
--		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
--
--	inode = nfs_fhget(sb, mntfh, fattr);
--	if (IS_ERR(inode)) {
--		dprintk("nfs_get_root: get root inode failed\n");
--		ret = ERR_CAST(inode);
--		goto out;
--	}
--
--	error = nfs_superblock_set_dummy_root(sb, inode);
--	if (error != 0) {
--		ret = ERR_PTR(error);
--		goto out;
--	}
--
--	/* root dentries normally start off anonymous and get spliced in later
--	 * if the dentry tree reaches them; however if the dentry already
--	 * exists, we'll pick it up at this point and use it as the root
--	 */
--	ret = d_obtain_alias(inode);
--	if (IS_ERR(ret)) {
--		dprintk("nfs_get_root: get root dentry failed\n");
--		goto out;
--	}
--
--	security_d_instantiate(ret, inode);
--	spin_lock(&ret->d_lock);
--	if (IS_ROOT(ret) && !(ret->d_flags & DCACHE_NFSFS_RENAMED)) {
--		ret->d_fsdata = name;
--		name = NULL;
--	}
--	spin_unlock(&ret->d_lock);
--out:
--	if (name)
--		kfree(name);
--	nfs_free_fattr(fattr);
--	dprintk("<-- nfs4_get_root()\n");
--	return ret;
--}
--
- #endif /* CONFIG_NFS_V4 */
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8182038..8d62d00 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -80,6 +80,7 @@ static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
- static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
- static int nfs4_async_handle_error(struct rpc_task *, const struct nfs_server *, struct nfs4_state *);
- static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr);
-+static int nfs4_proc_getattr(struct nfs_server *, struct nfs_fh *, struct nfs_fattr *);
- static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
- static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 			    struct nfs_fattr *fattr, struct iattr *sattr,
-@@ -2372,6 +2373,31 @@ int nfs4_proc_get_rootfh(struct nfs_server *server, struct nfs_fh *fhandle,
- 	return nfs4_map_errors(status);
- }
- 
-+static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *mntfh,
-+			      struct nfs_fsinfo *info)
-+{
-+	int error;
-+	struct nfs_fattr *fattr = info->fattr;
-+
-+	error = nfs4_server_capabilities(server, mntfh);
-+	if (error < 0) {
-+		dprintk("nfs4_get_root: getcaps error = %d\n", -error);
-+		return error;
-+	}
-+
-+	error = nfs4_proc_getattr(server, mntfh, fattr);
-+	if (error < 0) {
-+		dprintk("nfs4_get_root: getattr error = %d\n", -error);
-+		return error;
-+	}
-+
-+	if (fattr->valid & NFS_ATTR_FATTR_FSID &&
-+	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
-+		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
-+
-+	return error;
-+}
-+
- /*
-  * Get locations and (maybe) other attributes of a referral.
-  * Note that we'll actually follow the referral later when
-@@ -6570,7 +6596,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
- 	.dir_inode_ops	= &nfs4_dir_inode_operations,
- 	.file_inode_ops	= &nfs4_file_inode_operations,
- 	.file_ops	= &nfs4_file_operations,
--	.getroot	= nfs4_proc_get_rootfh,
-+	.getroot	= nfs4_proc_get_root,
- 	.submount	= nfs4_submount,
- 	.getattr	= nfs4_proc_getattr,
- 	.setattr	= nfs4_proc_setattr,
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 4ac7fca..75b1717 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2727,7 +2727,7 @@ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
- 		nfs_fscache_get_super_cookie(s, data->fscache_uniq, NULL);
- 	}
- 
--	mntroot = nfs4_get_root(s, mntfh, dev_name);
-+	mntroot = nfs_get_root(s, mntfh, dev_name);
- 	if (IS_ERR(mntroot)) {
- 		error = PTR_ERR(mntroot);
- 		goto error_splat_super;
-@@ -2991,7 +2991,7 @@ nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
- 		nfs_fscache_get_super_cookie(s, NULL, data);
- 	}
- 
--	mntroot = nfs4_get_root(s, data->fh, dev_name);
-+	mntroot = nfs_get_root(s, data->fh, dev_name);
- 	if (IS_ERR(mntroot)) {
- 		error = PTR_ERR(mntroot);
- 		goto error_splat_super;
-@@ -3082,7 +3082,7 @@ nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
- 		nfs_fscache_get_super_cookie(s, NULL, data);
- 	}
- 
--	mntroot = nfs4_get_root(s, mntfh, dev_name);
-+	mntroot = nfs_get_root(s, mntfh, dev_name);
- 	if (IS_ERR(mntroot)) {
- 		error = PTR_ERR(mntroot);
- 		goto error_splat_super;
 -- 
-1.7.10
-
+Mel Gorman
+SUSE Labs
