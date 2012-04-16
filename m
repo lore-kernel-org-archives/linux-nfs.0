@@ -1,171 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from p02c11o142.mxlogic.net ([208.65.144.75]:59686 "EHLO
-	p02c11o142.mxlogic.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754036Ab2DWUjG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Apr 2012 16:39:06 -0400
-From: Peter Staubach <pstaubach@exagrid.com>
-To: Steve Dickson <SteveD@redhat.com>, Jeff Layton <jlayton@redhat.com>
-CC: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "miklos@szeredi.hu" <miklos@szeredi.hu>,
-        "viro@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
-        "hch@infradead.org" <hch@infradead.org>,
-        "michael.brantley@deshaw.com" <michael.brantley@deshaw.com>,
-        "sven.breuner@itwm.fraunhofer.de" <sven.breuner@itwm.fraunhofer.de>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
-        "malahal@us.ibm.com" <malahal@us.ibm.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "trond.myklebust@fys.uio.no" <trond.myklebust@fys.uio.no>,
-        "rees@umich.edu" <rees@umich.edu>
-Date: Mon, 23 Apr 2012 16:38:00 -0400
-Subject: RE: [PATCH RFC v3] vfs: make fstatat retry once on ESTALE errors
- from getattr call
-Message-ID: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC063CF8E64B@IT-1874.Isys.com>
-References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
- <1334749927-26138-1-git-send-email-jlayton@redhat.com>
- <20120420104055.511e15bc@tlielax.poochiereds.net>
- <4F91C49D.8070908@RedHat.com>
- <20120420171300.326d6e36@corrin.poochiereds.net>
- <4F956D5C.5050801@RedHat.com>
- <20120423113216.01992555@tlielax.poochiereds.net>
- <4F959A36.2080402@RedHat.com>
-In-Reply-To: <4F959A36.2080402@RedHat.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:47449 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753787Ab2DPOie (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Apr 2012 10:38:34 -0400
+Message-ID: <4F8C2B6A.1000203@itwm.fraunhofer.de>
+Date: Mon, 16 Apr 2012 16:23:38 +0200
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
 MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Jeff Layton <jlayton@redhat.com>, Malahal Naineni <malahal@us.ibm.com>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, pstaubach@exagrid.com, miklos@szeredi.hu,
+        viro@ZenIV.linux.org.uk, hch@infradead.org,
+        michael.brantley@deshaw.com, sven.breuner@itwm.fraunhofer.de
+Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from getattr
+ call
+References: <1334316311-22331-1-git-send-email-jlayton@redhat.com> <20120413150518.GA1987@us.ibm.com> <20120413114236.0e557e01@tlielax.poochiereds.net> <4F8B1B7B.3040304@itwm.fraunhofer.de> <20120415192714.GA3842@fieldses.org>
+In-Reply-To: <20120415192714.GA3842@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I don't really like the idea of introducing another errno as well.  It seems like too much complexity and represents complexity that no one has really justified needing.
-
-This is a situation which we know happens in nature.  We should fix it and fix it correctly and not for just "part of the time".  The changes are pretty simple and straightforward, so complexity isn't even an argument.
-
-A tunable sounds good, until it is needed, and when it is needed, it is too late.  The system should just work correctly on its own, so I don't think that this is such a good idea either.
-
-	Thanx...
-
-		ps
-
-
------Original Message-----
-From: Steve Dickson [mailto:SteveD@redhat.com] 
-Sent: Monday, April 23, 2012 2:07 PM
-To: Jeff Layton
-Cc: linux-fsdevel@vger.kernel.org; linux-nfs@vger.kernel.org; linux-kernel@vger.kernel.org; miklos@szeredi.hu; viro@ZenIV.linux.org.uk; hch@infradead.org; michael.brantley@deshaw.com; sven.breuner@itwm.fraunhofer.de; chuck.lever@oracle.com; Peter Staubach; malahal@us.ibm.com; bfields@fieldses.org; trond.myklebust@fys.uio.no; rees@umich.edu
-Subject: Re: [PATCH RFC v3] vfs: make fstatat retry once on ESTALE errors from getattr call
-
-
-
-On 04/23/2012 11:32 AM, Jeff Layton wrote:
-> On Mon, 23 Apr 2012 10:55:24 -0400
-> Steve Dickson <SteveD@redhat.com> wrote:
-> 
+On 04/15/2012 09:27 PM, J. Bruce Fields wrote:
+> On Sun, Apr 15, 2012 at 09:03:23PM +0200, Bernd Schubert wrote:
+>> On 04/13/2012 05:42 PM, Jeff Layton wrote:
+>>> (note: please don't trim the CC list!)
+>>>
+>>> Indefinitely does make some sense (as Peter articulated in his original
+>>> set). It's possible you could race several times in a row, or a server
+>>> misconfiguration or something has happened and you have a transient
+>>> error that will eventually recover. His assertion was that any limit on
+>>> the number of retries is by definition wrong. For NFS, a fatal signal
+>>> ought to interrupt things as well, so retrying indefinitely has some
+>>> appeal there.
+>>>
+>>> OTOH, we do have to contend with filesystems that might return ESTALE
+>>> persistently for other reasons and that might not respond to signals.
+>>> Miklos pointed out that some FUSE fs' do this in his review of Peter's
+>>> set.
+>>>
+>>> As a purely defensive coding measure, limiting the number of retries to
+>>> something finite makes sense. If we're going to do that though, I'd
+>>> probably recommend that we set the number of retries be something
+>>> higher just so that this is more resilient in the face of multiple
+>>> races. Those other fs' might "spin" a bit in that case but it is an
+>>> error condition and IMO resiliency trumps performance -- at least in
+>>   this case.
 >>
->>
->> On 04/20/2012 05:13 PM, Jeff Layton wrote:
->>> On Fri, 20 Apr 2012 16:18:37 -0400
->>> Steve Dickson <SteveD@redhat.com> wrote:
->>>
->>>> On 04/20/2012 10:40 AM, Jeff Layton wrote:
->>>>> I guess the questions at this point is:
->>>>>
->>>>> 1) How representative is Peter's mkdir_test() of a real-world workload?
->>>> Reading your email I had to wonder the same thing... What 
->>>> application removes hierarchy of directories in a loop from two different clients?
->>>> I would suspect not many, if any... esp over NFS... 
->>>>  
->>>
->>> Peter's test just happens to demonstrate the problem well, but one 
->>> could envision someone removing a heirarchy of directories on the 
->>> server while we're trying to do other operations in it. At that 
->>> point, we can easily end up hitting an ESTALE twice while doing the 
->>> lookup and returning ESTALE back to userspace.
->> Just curious, what happens when you run Peter's mkdir_test() on a 
->> local file system? Any errors returned?
->>
->> I would think removing hierarchy of directories while they are being 
->> accessed has to even cause local fs some type of havoc
->>
-> 
-> Peter's test only treats an ESTALE error as a failure since it was 
-> specifically designed to ensure that those didn't make it in to 
-> userspace.
-> 
-> If you run 2 copies on the same local fs and strace it, then you'll 
-> see the syscalls get back things like ENOENT or EEXIST as they step on 
-> each others' toes in the mkdir()/rmdir() calls.
-I figured as much... I just don't see any real world applications remove directory hierarchies without some type of synchronization locking...
- 
-> 
->>>
->>>>>
->>>>> 2) if we assume that it is fairly representative of one, how can 
->>>>> we achieve retrying indefinitely with NFS, or at least some large 
->>>>> finite amount?
->>>> The amount of looping would be peer speculation. If the problem can 
->>>> not be handled by one simple retry I would say we simply pass the 
->>>> error up to the app... Its an application issue...
->>>>  
->>>
->>> It's not an application issue. The application just asked the kernel 
->>> to do an operation on a pathname. The only reason you're getting an 
->>> ESTALE back in this situation is a shortcoming of the implementation.
->>>
->>> We passed it a pathname after all, not a filehandle. ESTALE really 
->>> has no place as a return code in that situation...
->> We'll have to agree to disagree... I think any application that is 
->> removing hierarchies of file and directory w/out taking any 
->> precautionary locking is a shortcoming of the application 
->> implementation.
->>
-> 
-> I'm not saying they should never get an error in that situation. I'm 
-> just saying that an ESTALE return in this situation is wrong (or at 
-> least not helpful) since the syscall was provided a pathname not a 
-> filehandle or open fd or anything. When we still have the pathname, 
-> then we have the ability to reattempt on an ESTALE, and it would be 
-> preferable to do so.
-Point. But if the reestablishment can not be done in one try, the I say we punt... 
+>> I am definitely voting against an infinite number of retries. I'm
+>> working on FhGFS, which supports distributed meta data servers. So when
+>> a file is moved around between directories, its file handle, which
+>> contains the meta-data target id might become invalid.  As NFSv3 is
+>> stateless we cannot inform the client about that and must return ESTALE
+>> then.
+>
+> Note we're not talking about retrying the operation that returned ESTALE
+> with the same filehandle--probably any server would return ESTALE again
+> in that case.
+>
+> We're talking about re-looking up the path (in the case where we're
+> implementing a system call that takes a path as an argument), and then
+> retrying the operation with the newly looked-up filehandle.
+>
 
-> 
->>>
->>>>>
->>>>> I have my doubts as to whether it would really be as big a problem 
->>>>> for other filesystems as Miklos and others have asserted, but I'll 
->>>>> take their word for it at the moment. What's the best way to 
->>>>> contain this behavior to just those filesystems that want to retry 
->>>>> indefinitely when they get an ESTALE? Would we need to go with an 
->>>>> entirely new ESTALERETRY after all?
->>>>>
->>>> Introducing a new errno to handle this problem would be overkill IMHO...
->>>>
->>>> If we have to go to the looping approach, I would strong suggest we 
->>>> make the file systems register for this type of behavior...
->>>>
->>>
->>> Returning ESTALERETRY would be registering for it in a way and it is 
->>> somewhat cleaner than having to go all the way back up to the fstype 
->>> to figure out whether you want to retry it or not.
->> How would legacy apps handle this new errno, esp if they have logic 
->> to take care of ESTALE errors?
->>
-> 
-> Userspace should never see that error. 
-Why do you say this?  ESTALE the errno has been around forever... 
-Its defined in the errno man page "ESTALE - Stale file handle (POSIX.1)" 
+Oh, sorry my mistake. Somehow I missed that it is really _only_ about 
+path lookups and not already opened files.
 
-> The idea is that this would be a
-> kernel-internal error code that indicates to the VFS that it should 
-> retry the lookup and operation. If the kernel decides to give up after 
-> the FS returns ESTALERETRY, then we'd have to convert that error into 
-> ESTALE.
-Yeah... I understand the idea... I just don't think another error code is needed to handle this problem... 
-
-> 
-> It'd be preferable to me if we didn't require a new error code, but if 
-> different filesystems require different semantics from the VFS on an 
-> ESTALE return, then that is one way to achieve it.
-> 
-Well I thought the use of the fs_flags to register for this type of semantics was a good one...
-
-steved.
+Thanks,
+Bernd
