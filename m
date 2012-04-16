@@ -1,164 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:33092 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753229Ab2DTVif (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 17:38:35 -0400
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Adamson, Dros" <Weston.Adamson@netapp.com>, Jim Rees <rees@umich.edu>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS4: fix referrals with IPv6 mounts
-Date: Fri, 20 Apr 2012 21:38:33 +0000
-Message-ID: <9AAD6718-5A17-482C-8AC1-A6F676838AF0@netapp.com>
-References: <1334949705-33393-1-git-send-email-dros@netapp.com>
- <20120420194504.GA10259@umich.edu>
- <EA178ED0-5813-4235-A0CF-CF9D54AFB04F@netapp.com>
- <1334952788.3295.24.camel@lade.trondhjem.org>
- <A3FAE1E4-2AB8-4AF0-AC46-77EA3E4B9AB2@netapp.com>
- <1334957730.3295.35.camel@lade.trondhjem.org>
-In-Reply-To: <1334957730.3295.35.camel@lade.trondhjem.org>
-Content-Type: multipart/signed;
-	boundary="Apple-Mail=_7F264C63-4A68-4958-AE09-6AAABA3688B9";
-	protocol="application/pkcs7-signature"; micalg=sha1
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:59475 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753673Ab2DPOoN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Apr 2012 10:44:13 -0400
+Message-ID: <4F8C3036.2030702@itwm.fraunhofer.de>
+Date: Mon, 16 Apr 2012 16:44:06 +0200
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
 MIME-Version: 1.0
+To: Jeff Layton <jlayton@redhat.com>
+CC: Malahal Naineni <malahal@us.ibm.com>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        pstaubach@exagrid.com, miklos@szeredi.hu, viro@ZenIV.linux.org.uk,
+        hch@infradead.org, michael.brantley@deshaw.com,
+        sven.breuner@itwm.fraunhofer.de
+Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from getattr
+ call
+References: <1334316311-22331-1-git-send-email-jlayton@redhat.com> <20120413150518.GA1987@us.ibm.com> <20120413114236.0e557e01@tlielax.poochiereds.net> <4F8B1B7B.3040304@itwm.fraunhofer.de> <20120416073655.7cdb90cf@corrin.poochiereds.net>
+In-Reply-To: <20120416073655.7cdb90cf@corrin.poochiereds.net>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Apple-Mail=_7F264C63-4A68-4958-AE09-6AAABA3688B9
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=windows-1252
+>> I am definitely voting against an infinite number of retries. I'm
+>> working on FhGFS, which supports distributed meta data servers. So when
+>> a file is moved around between directories, its file handle, which
+>> contains the meta-data target id might become invalid. As NFSv3 is
+>> stateless we cannot inform the client about that and must return ESTALE
+>> then. NFSv4 is better, but I'm not sure how well invalidating a file
+>> handle works. So retrying once on ESTALE might be a good idea, but
+>> retrying forever is not.
+>
+> It's important to note that I'm only proposing to wrap syscalls this
+> way that take a pathname argument. We can't do anything about those
+> that don't since at that point we have no way to retry the lookup.
+>
+> So, I'm not sure this patch would affect the case you're concerned
+> about one way or another. If you move the file to a different
+> directory, then it's pathname would also change, and at that point
+> you'd end up with an ENOENT error or something on the next retry.
+>
+> If the file was open and you were (for instance) reading or writing to
+> it from a client when you moved it, then we can't retry the lookup at
+> that point. The open is long since done and the pathname is now gone.
+> You'll get an ESTALE back in userspace regardless.
+
+Yes, sorry, I should have read the patch and its description more carefully.
+
+>
+>> Also, what about asymmetric HA servers? I believe to remember that also
+>> resulted in ESTALE. So for example server1 exports /home and /scratch,
+>> but on failure server2 can only take over /home and denies access to
+>> /scratch.
+>>
+>
+> That sounds like a broken cluster configuration. Still...
+
+Simply budget and safety. I had to do that in the past, /home was 
+mirrored via drbd, but /scratch was not. And although /scratch was on an 
+external raid system, I simply did not setup a connection to the 
+failover system. HA software is not reliable and extensive testing 
+revealed possible split brain situations with corrupting double mounts. 
+Nowadays there are ext4 + enabled MMP, but in 2004 there was no such 
+additional protection.
+
+>
+> Presumably at some point in the future, a sysadmin would intervene and
+> fix the situation such that /scratch is available again. Is it better
+> to return an error to the application at that point, or simply allow it
+> to keep retrying until the problem has been fixed?
+>
+> The person with the long running job that's doing operations
+> in /scratch would probably prefer the latter. If not, then they could
+> always send the program a fatal signal to stop it altogether.
+>
+
+That was not a compute cluster, but the diskless desktop environment. 
+And things get difficult if desktop evironments start to hang. I'm not 
+sure if a soft mount is the solution then, as users do not like to kill 
+their running desktops. And with kde and gnome and their habit to 
+monitor everything it might not be easy to kill their proccesses 
+monitoring /scratch without killing the entire desktop.
+But then I'm not sure if anyone still is doing async HA clusters and how 
+applications react to that nowadays. I just wonder if it is always a 
+good idea to loop forever in ESTALE in such situations.
 
 
-On Apr 20, 2012, at 5:35 PM, Myklebust, Trond wrote:
-
-> On Fri, 2012-04-20 at 20:51 +0000, Adamson, Dros wrote:
->> On Apr 20, 2012, at 4:13 PM, Myklebust, Trond wrote:
->>=20
->>> On Fri, 2012-04-20 at 19:57 +0000, Adamson, Dros wrote:
->>>> On Apr 20, 2012, at 3:45 PM, Jim Rees wrote:
->>>>=20
->>>>> Weston Andros Adamson wrote:
->>>>>=20
->>>>> nfs4_path() was parsing the path component by splitting on the =
-first colon.
->>>>> This is wrong when an IPv6 address is used to mount a server.
->>>>>=20
->>>>> For example, having mounted 'fc00::10:/export', nfs4_path() =
-returned
->>>>> ':10:/export'.  This causes referrals (using IPv4 or IPv6 =
-addresses) to fail
->>>>> in nfs4_validate_fspath().
->>>>>=20
->>>>> Parsing the path component by using the *last* colon works with
->>>>> IPv6 as well as IPv4 addrs.
->>>>>=20
->>>>> What if your mount is:
->>>>>=20
->>>>> server.edu:/export/:I-like-colons:
->>>>>=20
->>>>> It seems to me something has to give.  Either we require v6 =
-addresses be
->>>>> enclosed in [], export dirs start with "/", or exports have no =
-":".
->>>>=20
->>>>=20
->>>> Yeah, you're right.
->>>>=20
->>>> Although IPv6 addrs must be enclosed in [] to work with mount, it's =
-always displayed in the kernel without the [].
->>>>=20
->>>> I suppose the correct fix is to always display IPv6 addresses =
-enclosed in [], which might touch a *lot* of places.
->>>>=20
->>>> Thoughts?  I'll wait for others to chime in before I go fixing =
-this. I have a set of nfsd and mountd patches that deal with similar =
-issues on the server side.  I'll clean those up and submit them before =
-getting back to this.
->>>=20
->>> We do know which part is the hostname, and which is the pathname. If =
-you
->>> look at "try_location()", you'll see that the hostname is stored in
->>> location->servers, and is then copied into this empty buffer.
->>>=20
->>> If you want to test if that is an IPv6 address so that you can =
-enclose
->>> it in [], then that should be fairly easy to do right there=85
->>=20
->> Right, we have separate hostname and pathname for each fs_location4, =
-but I'm talking about the return value of nfs_path() which is used to =
-determine the server-side path on an arbitrary dentry on the *current* =
-mountpoint (not the referral server).
->> The path part of nfs_path() is then compared against the fs_path of =
-the nfs4_fs_locations struct (this is all in nfs4_validate_fspath).
->>=20
->> Having nfs_path return [] wrapped IPv6 addresses basically means =
-changing the devname to that format (d_fsdata is used by nfs_path()).  =
-I'm concerned about changing the format of devname - its used all over =
-the place.
->>=20
->> So the options are:
->> 1) change the format of devname
->> 2) change how nfs4_validate_fspath gets the server-side path =
-component of the current mount (don't use nfs_path())
->>=20
->> I'll try option 1 and see what breaks.
->=20
-> That really should not be necessary.
->=20
-> If you are using an IPv6 address, you are supposed to mount using the =
-[]
-> format. If not, then expect things to break.
->=20
-
-Yes, I am mounting with a [] escaped IPv6 addr.
-
-> The real bug here is in nfs4_path: it tries to parse the ':' that are
-> part of the IPv6 address even if we use the square bracket delimiters.
-> Instead, we should be following the example of nfs_parse_devname.
-
-The [] escaping is stripped well before nfs4_path.
-
->=20
-> I suggest breaking out the first half of nfs_parse_devname into a
-> function that returns the host name part of a mount path, and that can
-> be called by nfs4_path too.
-
-Yes, something like that could work, but we still have the same issue - =
-dentry->d_fsdata never has [] escaping.
-
--dros
-
-
---Apple-Mail=_7F264C63-4A68-4958-AE09-6AAABA3688B9
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-
-MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIDTzCCA0sw
-ggIzoAMCAQICAQEwCwYJKoZIhvcNAQEFMEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYD
-VQQGEwJVUzEeMBwGCSqGSIb3DQEJARYPZHJvc0BuZXRhcHAuY29tMB4XDTExMDYwODIyMDc0NloX
-DTEyMDYwNzIyMDc0NlowRjEXMBUGA1UEAwwOV2VzdG9uIEFkYW1zb24xCzAJBgNVBAYTAlVTMR4w
-HAYJKoZIhvcNAQkBFg9kcm9zQG5ldGFwcC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
-AoIBAQC8/tJxtovJEXYRfSsrFOWKHxIZGY7/2mBee1DpWuoGDbVNapefCC7WXe+Nqxz609w2J/Mk
-/k3trZ3Ge2NXK0tGnP9NzjkzpGA7rSpM3wUFsvbLMUEGfQpvV24/nYvcLHTvOOEUaDPpHduN94bD
-dwvyowzDIRIpF2MeRnOzBNeHkrGHlZdzPmGjm8tkhrDRRkDYHhlxaiG4z30KCfAazxomuINiy1kj
-vbndXooYMDoh9H63hgW4NkOedtLdflLa322DXQ3nFU7YbyOIjHVl1tgWJLDWf7WT3lsAB8KvuJZ5
-zhsUB+fqxCKPJVRPDO1gjChvvtGiG1tGUUZz0H9Wx00zAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIH
-gDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDBDAaBgNVHREEEzARgQ9kcm9zQG5ldGFwcC5jb20wDQYJ
-KoZIhvcNAQEFBQADggEBACv0niZSmW+psB1sJXULh3mecDbN2mj0bFpN1YNdjcV7BiOLJ1Rs1ibV
-f13h73z8C7SBsPXTM5si8gmJtOnXM5jsgtlql44h/RrjUr8+mtK5DPCZls9J7iz3cGthzwOPvxUj
-nMSv3BpRX5oJom5ESgCM9Nn4u/ECTlLMhEIOYnBFiN0eDxcxz+r1cpbHg3r0otIKyxLpeaCjP6AH
-F93EHp4T8Rb63y3CcDgxrQGHlTdVi3QvxaMUexUXD81fiA+UqsB/MKmRxB1Hs4Vf3Q/+ejcm78K1
-ROF8TNPmNWRlKg3Y7cSFjZGzLuzXsvSsCbw4HLn0oZe/OfgSbarTAxttL5IxggHRMIIBzQIBATBL
-MEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYDVQQGEwJVUzEeMBwGCSqGSIb3DQEJARYP
-ZHJvc0BuZXRhcHAuY29tAgEBMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
-MBwGCSqGSIb3DQEJBTEPFw0xMjA0MjAyMTM4MzRaMCMGCSqGSIb3DQEJBDEWBBQeD+3E7uPKCgU4
-ekZ2XFSJ57kTmTANBgkqhkiG9w0BAQEFAASCAQBhME5st7mJgruu2gKx8xUXayyby9bWlbMcXW9N
-XWbvWLQSw+GcQXsGM/v5Wr+pch6NQD5yj9HQTzs/ee37gW/LVEoaKMkEQk7O+Teob8EzHMAWM2bT
-H8bt42rMnQ9vwT0bZbZHiAQMi3L+LLsirFhsrp+e6BmCPuo/H8y9G++DE7PNq0MVXG7GxejDtGXP
-C2s6mjqhJ8Hx0QIwbZi5veu0hGBXGVzkkKHKll/vaTEQ56wr+b3Oly4+JHRj9759cCnIPAagxb6v
-Mb8ojk3GvAdyACc4n8S/Lq0kca7uQWh/AG1ACSGp6WThUye45GKTEcr+sARS6pZk8XoGx8FhTmOb
-AAAAAAAA
-
---Apple-Mail=_7F264C63-4A68-4958-AE09-6AAABA3688B9--
+Cheers,
+Bernd
