@@ -1,73 +1,148 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:38941 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758797Ab2DYUbt convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Apr 2012 16:31:49 -0400
-Subject: Re: [PATCH 1/1] mounts.nfs: v2 and v3 background mounts should retry when server is down.
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1335368390-26767-1-git-send-email-steved@redhat.com>
-Date: Wed, 25 Apr 2012 16:31:44 -0400
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-Id: <56A41F90-A936-4926-B532-E6600655025E@oracle.com>
-References: <1335368390-26767-1-git-send-email-steved@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
+Received: from cantor2.suse.de ([195.135.220.15]:47972 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753923Ab2DPMSB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Apr 2012 08:18:01 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 03/11] mm: Methods for teaching filesystems about PG_swapcache pages
+Date: Mon, 16 Apr 2012 13:17:47 +0100
+Message-Id: <1334578675-23445-4-git-send-email-mgorman@suse.de>
+In-Reply-To: <1334578675-23445-1-git-send-email-mgorman@suse.de>
+References: <1334578675-23445-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi-
+In order to teach filesystems to handle swap cache pages, three new
+page functions are introduced:
 
-On Apr 25, 2012, at 11:39 AM, Steve Dickson wrote:
+  pgoff_t page_file_index(struct page *);
+  loff_t page_file_offset(struct page *);
+  struct address_space *page_file_mapping(struct page *);
 
-> The point of background mounts is to have the mount
-> retried if the mount fails. This patch allows the v2/v3
-> background mount to proceed in the case when the server
-> is down by not making EOPNOTSUPP a permanent error.
+page_file_index() - gives the offset of this page in the file in
+PAGE_CACHE_SIZE blocks. Like page->index is for mapped pages, this
+function also gives the correct index for PG_swapcache pages.
 
-Just curious... why wouldn't we want to do this for foreground mounts as well?
+page_file_offset() - uses page_file_index(), so that it will give
+the expected result, even for PG_swapcache pages.
 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
-> utils/mount/stropts.c |    6 ++++--
-> 1 files changed, 4 insertions(+), 2 deletions(-)
-> 
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index d52e21a..e09aa7c 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -911,7 +911,8 @@ static int nfsmount_parent(struct nfsmount_info *mi)
-> 	if (nfs_try_mount(mi))
-> 		return EX_SUCCESS;
-> 
-> -	if (nfs_is_permanent_error(errno)) {
-> +	/* retry background mounts when the server is not up */
-> +	if (nfs_is_permanent_error(errno) && errno != EOPNOTSUPP) {
-> 		mount_error(mi->spec, mi->node, errno);
-> 		return EX_FAIL;
-> 	}
-> @@ -946,7 +947,8 @@ static int nfsmount_child(struct nfsmount_info *mi)
-> 		if (nfs_try_mount(mi))
-> 			return EX_SUCCESS;
-> 
-> -		if (nfs_is_permanent_error(errno))
-> +		/* retry background mounts when the server is not up */
-> +		if (nfs_is_permanent_error(errno) && errno != EOPNOTSUPP)
-> 			break;
-> 
-> 		if (time(NULL) > timeout)
-> -- 
-> 1.7.7.6
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+page_file_mapping() - gives the mapping backing the actual page;
+that is for swap cache pages it will give swap_file->f_mapping.
 
+Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ include/linux/mm.h      |   25 +++++++++++++++++++++++++
+ include/linux/pagemap.h |    5 +++++
+ mm/swapfile.c           |   19 +++++++++++++++++++
+ 3 files changed, 49 insertions(+)
+
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index d8738a4..3cc96ab 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -803,6 +803,17 @@ static inline void *page_rmapping(struct page *page)
+ 	return (void *)((unsigned long)page->mapping & ~PAGE_MAPPING_FLAGS);
+ }
+ 
++extern struct address_space *__page_file_mapping(struct page *);
++
++static inline
++struct address_space *page_file_mapping(struct page *page)
++{
++	if (unlikely(PageSwapCache(page)))
++		return __page_file_mapping(page);
++
++	return page->mapping;
++}
++
+ static inline int PageAnon(struct page *page)
+ {
+ 	return ((unsigned long)page->mapping & PAGE_MAPPING_ANON) != 0;
+@@ -819,6 +830,20 @@ static inline pgoff_t page_index(struct page *page)
+ 	return page->index;
+ }
+ 
++extern pgoff_t __page_file_index(struct page *page);
++
++/*
++ * Return the file index of the page. Regular pagecache pages use ->index
++ * whereas swapcache pages use swp_offset(->private)
++ */
++static inline pgoff_t page_file_index(struct page *page)
++{
++	if (unlikely(PageSwapCache(page)))
++		return __page_file_index(page);
++
++	return page->index;
++}
++
+ /*
+  * Return true if this page is mapped into pagetables.
+  */
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index cfaaa69..d4d4bda 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -286,6 +286,11 @@ static inline loff_t page_offset(struct page *page)
+ 	return ((loff_t)page->index) << PAGE_CACHE_SHIFT;
+ }
+ 
++static inline loff_t page_file_offset(struct page *page)
++{
++	return ((loff_t)page_file_index(page)) << PAGE_CACHE_SHIFT;
++}
++
+ extern pgoff_t linear_hugepage_index(struct vm_area_struct *vma,
+ 				     unsigned long address);
+ 
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index fafc26d..df5f148 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -31,6 +31,7 @@
+ #include <linux/memcontrol.h>
+ #include <linux/poll.h>
+ #include <linux/oom.h>
++#include <linux/export.h>
+ 
+ #include <asm/pgtable.h>
+ #include <asm/tlbflush.h>
+@@ -2293,6 +2294,24 @@ int swapcache_prepare(swp_entry_t entry)
+ }
+ 
+ /*
++ * out-of-line __page_file_ methods to avoid include hell.
++ */
++struct address_space *__page_file_mapping(struct page *page)
++{
++	VM_BUG_ON(!PageSwapCache(page));
++	return page_swap_info(page)->swap_file->f_mapping;
++}
++EXPORT_SYMBOL_GPL(__page_file_mapping);
++
++pgoff_t __page_file_index(struct page *page)
++{
++	swp_entry_t swap = { .val = page_private(page) };
++	VM_BUG_ON(!PageSwapCache(page));
++	return swp_offset(swap);
++}
++EXPORT_SYMBOL_GPL(__page_file_index);
++
++/*
+  * add_swap_count_continuation - called when a swap count is duplicated
+  * beyond SWAP_MAP_MAX, it allocates a new page and links that to the entry's
+  * page of the original vmalloc'ed swap_map, to hold the continuation count
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.9.2
 
