@@ -1,71 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:26073 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:40995 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755605Ab2DQOIS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Apr 2012 10:08:18 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q3HE8HKZ007561
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 17 Apr 2012 10:08:17 -0400
-From: Simo Sorce <simo@redhat.com>
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
-Subject: [PATCH 0/5] [RFC] Add support for new upcall mechanism for nfsd
-Date: Tue, 17 Apr 2012 09:39:03 -0400
-Message-Id: <1334669948-4156-1-git-send-email-simo@redhat.com>
+	id S1752653Ab2DPQO1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Apr 2012 12:14:27 -0400
+From: Jan Kara <jack@suse.cz>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: dchinner@redhat.com, LKML <linux-kernel@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.cz>,
+        Alex Elder <elder@kernel.org>, Anton Altaparmakov <anton@tuxera.com>,
+        Ben Myers <bpm@sgi.com>, Chris Mason <chris.mason@oracle.com>,
+        cluster-devel@redhat.com, "David S. Miller" <davem@davemloft.net>,
+        fuse-devel@lists.sourceforge.net,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Joel Becker <jlbec@evilplan.org>,
+        KONISHI Ryusuke <konishi.ryusuke@lab.ntt.co.jp>,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net, Mark Fasheh <mfasheh@suse.com>,
+        Miklos Szeredi <miklos@szeredi.hu>, ocfs2-devel@oss.oracle.com,
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        Steven Whitehouse <swhiteho@redhat.com>,
+        "Theodore Ts'o" <tytso@mit.edu>, xfs@oss.sgi.com
+Subject: [PATCH 00/19 v5] Fix filesystem freezing deadlocks
+Date: Mon, 16 Apr 2012 18:13:38 +0200
+Message-Id: <1334592845-22862-1-git-send-email-jack@suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patchset implements a new upcall mechanism that uses the sunrpc client
-to talk to gssproxy[1], a new userspace daemon to handle gssapi operations on
-behalf of other processes on the system.
+  Hello,
 
-The main driver for this new mechanism is to overcome limitations with the
-current daemon and upcall. The current code cannot handle tickets larger than
-approximatively 2k and cannot handle large user credentials set to be set in
-the kernel.
+  here is the fifth iteration of my patches to improve filesystem freezing.
+No serious changes since last time. Mostly I rebased patches and merged this
+series with series moving file_update_time() to ->page_mkwrite() to simplify
+testing and merging.
 
-These patches have been tested against the development version of gssproxy
-tagged as kernel_v0.1 in the master repo[2].
+Filesystem freezing is currently racy and thus we can end up with dirty data on
+frozen filesystem (see changelog patch 13 for detailed race description). This
+patch series aims at fixing this.
 
-I have tested walking into mountpoints using tickets artificially pumped up to
-64k and the user is properly authorized, after the accept_se_context call is
-performed through the new upcall mechanism and gssproxy.
+To be able to block all places where inodes get dirtied, I've moved filesystem
+file_update_time() call to ->page_mkwrite callback (patches 01-07) and put
+freeze handling in mnt_want_write() / mnt_drop_write(). That however required
+some code shuffling and changes to kern_path_create() (see patches 09-12). I
+think the result is OK but opinions may differ ;). The advantage of this change
+also is that all filesystems get freeze protection almost for free - even ext2
+can handle freezing well now.
 
-The gssproxy has the potential of handling also init_sec_context calls, but at
-the moment the only targeted system is nfsd.
+Another potential contention point might be patch 19. In that patch we make
+freeze_super() refuse to freeze the filesystem when there are open but unlinked
+files which may be impractical in some cases. The main reason for this is the
+problem with handling of file deletion from fput() called with mmap_sem held
+(e.g. from munmap(2)), and then there's the fact that we cannot really force
+such filesystem into a consistent state... But if people think that freezing
+with open but unlinked files should happen, then I have some possible
+solutions in mind (maybe as a separate patchset since this is large enough).
 
-Simo.
+I'm not able to hit any deadlocks, lockdep warnings, or dirty data on frozen
+filesystem despite beating it with fsstress and bash-shared-mapping while
+freezing and unfreezing for several hours (using ext4 and xfs) so I'm
+reasonably confident this could finally be the right solution.
 
+Changes since v4:
+  * added a couple of Acked-by's
+  * added some comments & doc update
+  * added patches from series "Push file_update_time() into .page_mkwrite"
+    since it doesn't make much sense to keep them separate anymore
+  * rebased on top of 3.4-rc2
 
-Simo Sorce (5):
-  SUNRPC: Document a bit RPCGSS handling in the NFS Server
-  SUNRPC: conditionally return endtime from import_sec_context
-  SUNRPC: split upcall function to extract reusable parts
-  SUNRPC: Add RPC based upcall mechanism for RPCGSS auth
-  SUNRPC: Use gssproxy upcall for nfsd's RPCGSS authentication.
+Changes since v3:
+  * added third level of freezing for fs internal purposes - hooked some
+    filesystems to use it (XFS, nilfs2)
+  * removed racy i_size check from filemap_mkwrite()
 
- Documentation/filesystems/nfs/00-INDEX         |    2 +
- Documentation/filesystems/nfs/knfsd-rpcgss.txt |   65 ++
- include/linux/sunrpc/auth_gss.h                |    3 +
- include/linux/sunrpc/gss_api.h                 |    2 +
- include/linux/sunrpc/svcauth_gss.h             |    2 +-
- net/sunrpc/auth_gss/Makefile                   |    4 +-
- net/sunrpc/auth_gss/auth_gss.c                 |   11 +-
- net/sunrpc/auth_gss/gss_krb5_mech.c            |    3 +
- net/sunrpc/auth_gss/gss_mech_switch.c          |    5 +-
- net/sunrpc/auth_gss/gss_rpc_upcall.c           |  341 +++++++++
- net/sunrpc/auth_gss/gss_rpc_upcall.h           |   43 ++
- net/sunrpc/auth_gss/gss_rpc_xdr.c              |  904 ++++++++++++++++++++++++
- net/sunrpc/auth_gss/gss_rpc_xdr.h              |  269 +++++++
- net/sunrpc/auth_gss/svcauth_gss.c              |  342 ++++++++--
- 14 files changed, 1945 insertions(+), 51 deletions(-)
- create mode 100644 Documentation/filesystems/nfs/knfsd-rpcgss.txt
- create mode 100644 net/sunrpc/auth_gss/gss_rpc_upcall.c
- create mode 100644 net/sunrpc/auth_gss/gss_rpc_upcall.h
- create mode 100644 net/sunrpc/auth_gss/gss_rpc_xdr.c
- create mode 100644 net/sunrpc/auth_gss/gss_rpc_xdr.h
+Changes since v2:
+  * completely rewritten
+  * freezing is now blocked at VFS entry points
+  * two stage freezing to handle both mmapped writes and other IO
 
--- 
-1.7.7.6
+The biggest changes since v1:
+  * have two counters to provide safe state transitions for SB_FREEZE_WRITE
+    and SB_FREEZE_TRANS states
+  * use percpu counters instead of own percpu structure
+  * added documentation fixes from the old fs freezing series
+  * converted XFS to use SB_FREEZE_TRANS counter instead of its private
+    m_active_trans counter
 
+								Honza
+
+CC: Alex Elder <elder@kernel.org>
+CC: Anton Altaparmakov <anton@tuxera.com>
+CC: Ben Myers <bpm@sgi.com>
+CC: Chris Mason <chris.mason@oracle.com>
+CC: cluster-devel@redhat.com
+CC: "David S. Miller" <davem@davemloft.net>
+CC: fuse-devel@lists.sourceforge.net
+CC: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Joel Becker <jlbec@evilplan.org>
+CC: KONISHI Ryusuke <konishi.ryusuke@lab.ntt.co.jp>
+CC: linux-btrfs@vger.kernel.org
+CC: linux-ext4@vger.kernel.org
+CC: linux-nfs@vger.kernel.org
+CC: linux-nilfs@vger.kernel.org
+CC: linux-ntfs-dev@lists.sourceforge.net
+CC: Mark Fasheh <mfasheh@suse.com>
+CC: Miklos Szeredi <miklos@szeredi.hu>
+CC: ocfs2-devel@oss.oracle.com
+CC: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+CC: Steven Whitehouse <swhiteho@redhat.com>
+CC: "Theodore Ts'o" <tytso@mit.edu>
+CC: xfs@oss.sgi.com
