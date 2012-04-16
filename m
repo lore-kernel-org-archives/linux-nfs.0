@@ -1,82 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:4795 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:60782 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756223Ab2DJMrC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Apr 2012 08:47:02 -0400
-Message-ID: <4F842BAE.2010804@parallels.com>
-Date: Tue, 10 Apr 2012 16:46:38 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
+	id S1754705Ab2DPVH7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Apr 2012 17:07:59 -0400
+Received: from vmwexceht03-prd.hq.netapp.com (vmwexceht03-prd.hq.netapp.com [10.106.76.241])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q3GL7hpX003922
+	for <linux-nfs@vger.kernel.org>; Mon, 16 Apr 2012 14:07:44 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Isaman, Fred" <Fred.Isaman@netapp.com>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH][RFC] nfsd/lockd: have locks_in_grace take a sb arg
-References: <1333455279-11200-1-git-send-email-jlayton@redhat.com>	<4F841D2A.9020504@parallels.com> <20120410081612.65dd25fa@tlielax.poochiereds.net>
-In-Reply-To: <20120410081612.65dd25fa@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Subject: Re: [PATCH 16/26] NFS: create completion structure to pass into
+ page_init functions
+Date: Mon, 16 Apr 2012 21:07:41 +0000
+Message-ID: <1334610460.2879.51.camel@lade.trondhjem.org>
+References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
+	 <1334004744-31842-17-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334004744-31842-17-git-send-email-iisaman@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-10.04.2012 16:16, Jeff Layton пишет:
-> On Tue, 10 Apr 2012 15:44:42 +0400
->
-> (sorry about the earlier truncated reply, my MUA has a mind of its own
-> this morning)
->
-
-OK then. Previous letter confused me a bit.
-
->
-> TBH, I haven't considered that in depth. That is a valid situation, but
-> one that's discouraged. It's very difficult (and expensive) to
-> sequester off portions of a filesystem for serving.
->
-> A filehandle is somewhat analogous to a device/inode combination. When
-> the server gets a filehandle, it has to determine "is this within a
-> path that's exported to this host"? That process is called subtree
-> checking. It's expensive and difficult to handle. It's always better to
-> export along filesystem boundaries.
->
-> My suggestion would be to simply not deal with those cases in this
-> patch. Possibly we could force no_subtree_check when we export an fs
-> with a locks_in_grace option defined.
->
-
-Sorry, but without dealing with those cases your patch looks a bit... Useless.
-I.e. it changes nothing, it there will be no support from file systems, going to 
-be exported.
-But how are you going to push developers to implement these calls? Or, even if 
-you'll try to implement them by yourself, how they will looks like?
-Simple check only for superblock looks bad to me, because any other start of 
-NFSd will lead to grace period for all other containers (which uses the same 
-filesystem).
-
->> Also, don't we need to prevent of exporting the same file system parts but
->> different servers always, but not only for grace period?
->>
->
-> I'm not sure I understand what you're asking here. Were you referring
-> to my suggestion earlier of not allowing the export of the same
-> filesystem from more than one container? If so, then yes that would
-> apply before and after the grace period ends.
->
-
-I was talking about preventing of exporting intersecting directories by 
-different server.
-IOW, exporting of the same file system by different NFS server is allowed, but 
-only if their exporting directories doesn't intersect.
-This check is expensive (as you mentioned), but have to be done only once on NFS 
-server start.
-With this solution, grace period can simple, and no support from exporting file 
-system is required.
-But the main problem here is that such intersections can be checked only in 
-initial file system environment (containers with it's own roots, gained via 
-chroot, can't handle this situation).
-So, it means, that there have to be some daemon (kernel or user space), which 
-will handle such requests from different NFS server instances... Which in turn 
-means, that some way of communication between this daemon and NFS servers is 
-required. And unix (any of them) sockets doesn't suits here, which makes this 
-problem more difficult.
-
--- 
-Best regards,
-Stanislav Kinsbursky
+T24gTW9uLCAyMDEyLTA0LTA5IGF0IDE2OjUyIC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
+RmFjdG9ycyBvdXQgdGhlIGNvZGUgdGhhdCB3aWxsIG5lZWQgdG8gY2hhbmdlIHdoZW4gZGlyZWN0
+aW8NCj4gc3RhcnRzIHVzaW5nIHRoZXNlIGNvZGUgcGF0aHMuICBUaGlzIHdpbGwgYWxsb3cgZGly
+ZWN0aW8gdG8gdXNlDQo+IHRoZSBnZW5lcmljIHBhZ2VpbiBhbmQgZmx1c2ggcm91dGluZXMNCj4g
+DQo+IFNpZ25lZC1vZmYtYnk6IEZyZWQgSXNhbWFuIDxpaXNhbWFuQG5ldGFwcC5jb20+DQo+IC0t
+LQ0KDQo+IC0tLSBhL2ZzL25mcy9yZWFkLmMNCj4gKysrIGIvZnMvbmZzL3JlYWQuYw0KPiBAQCAt
+MzEsNiArMzEsNyBAQA0KPiAgDQo+ICBzdGF0aWMgY29uc3Qgc3RydWN0IG5mc19wYWdlaW9fb3Bz
+IG5mc19wYWdlaW9fcmVhZF9vcHM7DQo+ICBzdGF0aWMgY29uc3Qgc3RydWN0IHJwY19jYWxsX29w
+cyBuZnNfcmVhZF9jb21tb25fb3BzOw0KPiArc3RhdGljIGNvbnN0IHN0cnVjdCBuZnNfaW9fY29t
+cGxldGlvbl9vcHMgbmZzX2FzeW5jaF9yZWFkX2NvbXBsX29wczsNCg0KQ291bGQgd2UgcGxlYXNl
+IHJlbmFtZT8gSSdkIHByZWZlciBuZnNfYXN5bmNfcmVhZF9jb21wbGV0aW9uX29wcy4gSXQncw0K
+bW9yZSBpbiBsaW5lIHdpdGggaG93IHdlIHVzdWFsbHkgbmFtZSBzdHVmZiAod2UgdXNlIHRoZSBh
+YmJyZXZpYXRpb25zDQonYXN5bmMnIGFuZCAnb3BzJyBldmVyeXdoZXJlLCBidXQgd2UgZG9uJ3Qg
+Y29tbW9ubHkgYWJicmV2aWF0ZQ0KJ2NvbXBsZXRpb24nKS4NCg0KPiBkaWZmIC0tZ2l0IGEvZnMv
+bmZzL3dyaXRlLmMgYi9mcy9uZnMvd3JpdGUuYw0KPiBpbmRleCBjZGUwZmEyLi40ZDliYmFmIDEw
+MDY0NA0KPiAtLS0gYS9mcy9uZnMvd3JpdGUuYw0KPiArKysgYi9mcy9uZnMvd3JpdGUuYw0KPiBA
+QCAtNDAsMTAgKzQwLDEyIEBADQo+ICAgKiBMb2NhbCBmdW5jdGlvbiBkZWNsYXJhdGlvbnMNCj4g
+ICAqLw0KPiAgc3RhdGljIHZvaWQgbmZzX3BhZ2Vpb19pbml0X3dyaXRlKHN0cnVjdCBuZnNfcGFn
+ZWlvX2Rlc2NyaXB0b3IgKmRlc2MsDQo+IC0JCQkJICBzdHJ1Y3QgaW5vZGUgKmlub2RlLCBpbnQg
+aW9mbGFncyk7DQo+ICsJCQkJICBzdHJ1Y3QgaW5vZGUgKmlub2RlLCBpbnQgaW9mbGFncywNCj4g
+KwkJCQkgIGNvbnN0IHN0cnVjdCBuZnNfaW9fY29tcGxldGlvbl9vcHMgKmNvbXBsX29wcyk7DQo+
+ICBzdGF0aWMgdm9pZCBuZnNfcmVkaXJ0eV9yZXF1ZXN0KHN0cnVjdCBuZnNfcGFnZSAqcmVxKTsN
+Cj4gIHN0YXRpYyBjb25zdCBzdHJ1Y3QgcnBjX2NhbGxfb3BzIG5mc193cml0ZV9jb21tb25fb3Bz
+Ow0KPiAgc3RhdGljIGNvbnN0IHN0cnVjdCBycGNfY2FsbF9vcHMgbmZzX2NvbW1pdF9vcHM7DQo+
+ICtzdGF0aWMgY29uc3Qgc3RydWN0IG5mc19pb19jb21wbGV0aW9uX29wcyBuZnNfYXN5bmNoX3dy
+aXRlX2NvbXBsX29wczsNCg0KRGl0dG8NCiANCj4gIA0KPiAgdm9pZCBuZnNfd3JpdGVfcHJlcGFy
+ZShzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2ssIHZvaWQgKmNhbGxkYXRhKQ0KPiBkaWZmIC0tZ2l0IGEv
+aW5jbHVkZS9saW51eC9uZnNfcGFnZS5oIGIvaW5jbHVkZS9saW51eC9uZnNfcGFnZS5oDQo+IGlu
+ZGV4IDVjNTIwMzQuLmEzNmZiYjYgMTAwNjQ0DQo+IC0tLSBhL2luY2x1ZGUvbGludXgvbmZzX3Bh
+Z2UuaA0KPiArKysgYi9pbmNsdWRlL2xpbnV4L25mc19wYWdlLmgNCj4gQEAgLTY3LDYgKzY3LDcg
+QEAgc3RydWN0IG5mc19wYWdlaW9fZGVzY3JpcHRvciB7DQo+ICAJaW50IAkJCXBnX2lvZmxhZ3M7
+DQo+ICAJaW50CQkJcGdfZXJyb3I7DQo+ICAJY29uc3Qgc3RydWN0IHJwY19jYWxsX29wcyAqcGdf
+cnBjX2NhbGxvcHM7DQo+ICsJY29uc3Qgc3RydWN0IG5mc19pb19jb21wbGV0aW9uX29wcyAqcGdf
+Y29tcGxfb3BzOw0KDQpBZ2FpbiwgY2FuIHdlIHBsZWFzZSBtYWtlIHRoaXMgJ3BnX2NvbXBsZXRp
+b25fb3BzJz8NCg0KPiAgCXN0cnVjdCBwbmZzX2xheW91dF9zZWdtZW50ICpwZ19sc2VnOw0KPiAg
+fTsNCj4gIA0KPiAgZXh0ZXJuCWludCBuZnNfcGFnZWlvX2FkZF9yZXF1ZXN0KHN0cnVjdCBuZnNf
+cGFnZWlvX2Rlc2NyaXB0b3IgKiwNCj4gZGlmZiAtLWdpdCBhL2luY2x1ZGUvbGludXgvbmZzX3hk
+ci5oIGIvaW5jbHVkZS9saW51eC9uZnNfeGRyLmgNCj4gaW5kZXggMmJiYjdjNy4uYjM4OTUwYyAx
+MDA2NDQNCj4gLS0tIGEvaW5jbHVkZS9saW51eC9uZnNfeGRyLmgNCj4gKysrIGIvaW5jbHVkZS9s
+aW51eC9uZnNfeGRyLmgNCj4gQEAgLTEyMDEsNiArMTIwMSw3IEBAIHN0cnVjdCBuZnNfcGdpb19o
+ZWFkZXIgew0KPiAgCXN0cnVjdCBwbmZzX2xheW91dF9zZWdtZW50ICpsc2VnOw0KPiAgCWNvbnN0
+IHN0cnVjdCBycGNfY2FsbF9vcHMgKm1kc19vcHM7DQo+ICAJdm9pZCAoKnJlbGVhc2UpIChzdHJ1
+Y3QgbmZzX3BnaW9faGVhZGVyICpoZHIpOw0KPiArCWNvbnN0IHN0cnVjdCBuZnNfaW9fY29tcGxl
+dGlvbl9vcHMgKmNvbXBsX29wczsNCg0KRGl0dG8uLi4NCg0KDQoNCi0tIA0KVHJvbmQgTXlrbGVi
+dXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1
+c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
