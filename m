@@ -1,240 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:58808 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:14533 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932801Ab2DTSsU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 14:48:20 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH v3 22/25] NFS: create nfs_commit_completion_ops
-Date: Fri, 20 Apr 2012 14:47:54 -0400
-Message-Id: <1334947677-28864-23-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
-References: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
+	id S1753213Ab2DPLgT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Apr 2012 07:36:19 -0400
+Date: Mon, 16 Apr 2012 07:36:55 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: Malahal Naineni <malahal@us.ibm.com>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        pstaubach@exagrid.com, miklos@szeredi.hu, viro@ZenIV.linux.org.uk,
+        hch@infradead.org, michael.brantley@deshaw.com,
+        sven.breuner@itwm.fraunhofer.de
+Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from
+ getattr call
+Message-ID: <20120416073655.7cdb90cf@corrin.poochiereds.net>
+In-Reply-To: <4F8B1B7B.3040304@itwm.fraunhofer.de>
+References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
+	<20120413150518.GA1987@us.ibm.com>
+	<20120413114236.0e557e01@tlielax.poochiereds.net>
+	<4F8B1B7B.3040304@itwm.fraunhofer.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Factors out the code that needs to change when directio
-starts using these code paths.
+On Sun, 15 Apr 2012 21:03:23 +0200
+Bernd Schubert <bernd.schubert@itwm.fraunhofer.de> wrote:
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/internal.h       |    5 ++---
- fs/nfs/nfs4filelayout.c |   12 ++++--------
- fs/nfs/write.c          |   31 +++++++++++++++++++++----------
- include/linux/nfs_xdr.h |    9 +++++++++
- 4 files changed, 36 insertions(+), 21 deletions(-)
+> On 04/13/2012 05:42 PM, Jeff Layton wrote:
+> > (note: please don't trim the CC list!)
+> > 
+> > Indefinitely does make some sense (as Peter articulated in his original
+> > set). It's possible you could race several times in a row, or a server
+> > misconfiguration or something has happened and you have a transient
+> > error that will eventually recover. His assertion was that any limit on
+> > the number of retries is by definition wrong. For NFS, a fatal signal
+> > ought to interrupt things as well, so retrying indefinitely has some
+> > appeal there.
+> > 
+> > OTOH, we do have to contend with filesystems that might return ESTALE
+> > persistently for other reasons and that might not respond to signals.
+> > Miklos pointed out that some FUSE fs' do this in his review of Peter's
+> > set.
+> > 
+> > As a purely defensive coding measure, limiting the number of retries to
+> > something finite makes sense. If we're going to do that though, I'd
+> > probably recommend that we set the number of retries be something
+> > higher just so that this is more resilient in the face of multiple
+> > races. Those other fs' might "spin" a bit in that case but it is an
+> > error condition and IMO resiliency trumps performance -- at least in
+>  this case.
+> 
+> I am definitely voting against an infinite number of retries. I'm
+> working on FhGFS, which supports distributed meta data servers. So when
+> a file is moved around between directories, its file handle, which
+> contains the meta-data target id might become invalid. As NFSv3 is
+> stateless we cannot inform the client about that and must return ESTALE
+> then. NFSv4 is better, but I'm not sure how well invalidating a file
+> handle works. So retrying once on ESTALE might be a good idea, but
+> retrying forever is not.
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 53d148b..3d45213 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -344,13 +344,12 @@ extern int nfs_initiate_commit(struct rpc_clnt *clnt,
- 			       int how);
- extern void nfs_init_commit(struct nfs_commit_data *data,
- 			    struct list_head *head,
--			    struct pnfs_layout_segment *lseg);
-+			    struct pnfs_layout_segment *lseg,
-+			    struct nfs_commit_info *cinfo);
- void nfs_retry_commit(struct list_head *page_list,
- 		      struct pnfs_layout_segment *lseg,
- 		      struct nfs_commit_info *cinfo);
--void nfs_commit_clear_lock(struct nfs_inode *nfsi);
- void nfs_commitdata_release(struct nfs_commit_data *data);
--void nfs_commit_release_pages(struct nfs_commit_data *data);
- void nfs_request_add_commit_list(struct nfs_page *req, struct list_head *dst,
- 				 struct nfs_commit_info *cinfo);
- void nfs_request_remove_commit_list(struct nfs_page *req,
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index fe2cb55..26d1da4 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -347,12 +347,8 @@ static void filelayout_commit_count_stats(struct rpc_task *task, void *data)
- static void filelayout_commit_release(void *calldata)
- {
- 	struct nfs_commit_data *data = calldata;
--	struct nfs_commit_info cinfo;
- 
--	nfs_commit_release_pages(data);
--	nfs_init_cinfo(&cinfo, data->inode, data->dreq);
--	if (atomic_dec_and_test(&cinfo.mds->rpcs_out))
--		nfs_commit_clear_lock(NFS_I(data->inode));
-+	data->completion_ops->completion(data);
- 	put_lseg(data->lseg);
- 	nfs_commitdata_release(data);
- }
-@@ -1108,7 +1104,7 @@ filelayout_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
- 	nreq += alloc_ds_commits(cinfo, &list);
- 
- 	if (nreq == 0) {
--		nfs_commit_clear_lock(NFS_I(inode));
-+		cinfo->completion_ops->error_cleanup(NFS_I(inode));
- 		goto out;
- 	}
- 
-@@ -1117,14 +1113,14 @@ filelayout_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
- 	list_for_each_entry_safe(data, tmp, &list, pages) {
- 		list_del_init(&data->pages);
- 		if (!data->lseg) {
--			nfs_init_commit(data, mds_pages, NULL);
-+			nfs_init_commit(data, mds_pages, NULL, cinfo);
- 			nfs_initiate_commit(NFS_CLIENT(inode), data,
- 					    data->mds_ops, how);
- 		} else {
- 			struct pnfs_commit_bucket *buckets;
- 
- 			buckets = cinfo->ds->buckets;
--			nfs_init_commit(data, &buckets[data->ds_commit_index].committing, data->lseg);
-+			nfs_init_commit(data, &buckets[data->ds_commit_index].committing, data->lseg, cinfo);
- 			filelayout_initiate_commit(data, how);
- 		}
- 	}
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 18bf700..333d01d 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -46,6 +46,7 @@ static void nfs_redirty_request(struct nfs_page *req);
- static const struct rpc_call_ops nfs_write_common_ops;
- static const struct rpc_call_ops nfs_commit_ops;
- static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops;
-+static const struct nfs_commit_completion_ops nfs_commit_completion_ops;
- 
- static struct kmem_cache *nfs_wdata_cachep;
- static mempool_t *nfs_wdata_mempool;
-@@ -505,6 +506,7 @@ static void nfs_init_cinfo_from_inode(struct nfs_commit_info *cinfo,
- 	cinfo->lock = &inode->i_lock;
- 	cinfo->mds = &NFS_I(inode)->commit_info;
- 	cinfo->ds = pnfs_get_ds_info(inode);
-+	cinfo->completion_ops = &nfs_commit_completion_ops;
- }
- 
- void nfs_init_cinfo(struct nfs_commit_info *cinfo,
-@@ -1358,13 +1360,12 @@ static int nfs_commit_set_lock(struct nfs_inode *nfsi, int may_wait)
- 	return (ret < 0) ? ret : 1;
- }
- 
--void nfs_commit_clear_lock(struct nfs_inode *nfsi)
-+static void nfs_commit_clear_lock(struct nfs_inode *nfsi)
- {
- 	clear_bit(NFS_INO_COMMIT, &nfsi->flags);
- 	smp_mb__after_clear_bit();
- 	wake_up_bit(&nfsi->flags, NFS_INO_COMMIT);
- }
--EXPORT_SYMBOL_GPL(nfs_commit_clear_lock);
- 
- void nfs_commitdata_release(struct nfs_commit_data *data)
- {
-@@ -1413,8 +1414,9 @@ EXPORT_SYMBOL_GPL(nfs_initiate_commit);
-  * Set up the argument/result storage required for the RPC call.
-  */
- void nfs_init_commit(struct nfs_commit_data *data,
--			    struct list_head *head,
--			    struct pnfs_layout_segment *lseg)
-+		     struct list_head *head,
-+		     struct pnfs_layout_segment *lseg,
-+		     struct nfs_commit_info *cinfo)
- {
- 	struct nfs_page *first = nfs_list_entry(head->next);
- 	struct inode *inode = first->wb_context->dentry->d_inode;
-@@ -1428,6 +1430,7 @@ void nfs_init_commit(struct nfs_commit_data *data,
- 	data->cred	  = first->wb_context->cred;
- 	data->lseg	  = lseg; /* reference transferred */
- 	data->mds_ops     = &nfs_commit_ops;
-+	data->completion_ops = cinfo->completion_ops;
- 
- 	data->args.fh     = NFS_FH(data->inode);
- 	/* Note: we always request a commit of the entire inode */
-@@ -1473,11 +1476,12 @@ nfs_commit_list(struct inode *inode, struct list_head *head, int how,
- 		goto out_bad;
- 
- 	/* Set up the argument struct */
--	nfs_init_commit(data, head, NULL);
-+	nfs_init_commit(data, head, NULL, cinfo);
-+	atomic_inc(&cinfo->mds->rpcs_out);
- 	return nfs_initiate_commit(NFS_CLIENT(inode), data, data->mds_ops, how);
-  out_bad:
- 	nfs_retry_commit(head, NULL, cinfo);
--	nfs_commit_clear_lock(NFS_I(inode));
-+	cinfo->completion_ops->error_cleanup(NFS_I(inode));
- 	return -ENOMEM;
- }
- 
-@@ -1495,10 +1499,11 @@ static void nfs_commit_done(struct rpc_task *task, void *calldata)
- 	NFS_PROTO(data->inode)->commit_done(task, data);
- }
- 
--void nfs_commit_release_pages(struct nfs_commit_data *data)
-+static void nfs_commit_release_pages(struct nfs_commit_data *data)
- {
- 	struct nfs_page	*req;
- 	int status = data->task.tk_status;
-+	struct nfs_commit_info cinfo;
- 
- 	while (!list_empty(&data->pages)) {
- 		req = nfs_list_entry(data->pages.next);
-@@ -1531,15 +1536,16 @@ void nfs_commit_release_pages(struct nfs_commit_data *data)
- 	next:
- 		nfs_unlock_request(req);
- 	}
-+	nfs_init_cinfo(&cinfo, data->inode, data->dreq);
-+	if (atomic_dec_and_test(&cinfo.mds->rpcs_out))
-+		nfs_commit_clear_lock(NFS_I(data->inode));
- }
--EXPORT_SYMBOL_GPL(nfs_commit_release_pages);
- 
- static void nfs_commit_release(void *calldata)
- {
- 	struct nfs_commit_data *data = calldata;
- 
--	nfs_commit_release_pages(data);
--	nfs_commit_clear_lock(NFS_I(data->inode));
-+	data->completion_ops->completion(data);
- 	nfs_commitdata_release(calldata);
- }
- 
-@@ -1549,6 +1555,11 @@ static const struct rpc_call_ops nfs_commit_ops = {
- 	.rpc_release = nfs_commit_release,
- };
- 
-+static const struct nfs_commit_completion_ops nfs_commit_completion_ops = {
-+	.completion = nfs_commit_release_pages,
-+	.error_cleanup = nfs_commit_clear_lock,
-+};
-+
- static int nfs_generic_commit_list(struct inode *inode, struct list_head *head,
- 				   int how, struct nfs_commit_info *cinfo)
- {
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 2884ced..756152f 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1258,10 +1258,18 @@ struct nfs_mds_commit_info {
- 	struct list_head	list;
- };
- 
-+struct nfs_commit_data;
-+struct nfs_inode;
-+struct nfs_commit_completion_ops {
-+	void (*error_cleanup) (struct nfs_inode *nfsi);
-+	void (*completion) (struct nfs_commit_data *data);
-+};
-+
- struct nfs_commit_info {
- 	spinlock_t			*lock;
- 	struct nfs_mds_commit_info	*mds;
- 	struct pnfs_ds_commit_info	*ds;
-+	const struct nfs_commit_completion_ops *completion_ops;
- };
- 
- struct nfs_commit_data {
-@@ -1280,6 +1288,7 @@ struct nfs_commit_data {
- 	struct nfs_client	*ds_clp;	/* pNFS data server */
- 	int			ds_commit_index;
- 	const struct rpc_call_ops *mds_ops;
-+	const struct nfs_commit_completion_ops *completion_ops;
- 	int (*commit_done_cb) (struct rpc_task *task, struct nfs_commit_data *data);
- };
- 
+It's important to note that I'm only proposing to wrap syscalls this
+way that take a pathname argument. We can't do anything about those
+that don't since at that point we have no way to retry the lookup.
+
+So, I'm not sure this patch would affect the case you're concerned
+about one way or another. If you move the file to a different
+directory, then it's pathname would also change, and at that point
+you'd end up with an ENOENT error or something on the next retry.
+
+If the file was open and you were (for instance) reading or writing to
+it from a client when you moved it, then we can't retry the lookup at
+that point. The open is long since done and the pathname is now gone.
+You'll get an ESTALE back in userspace regardless.
+
+> Also, what about asymmetric HA servers? I believe to remember that also
+> resulted in ESTALE. So for example server1 exports /home and /scratch,
+> but on failure server2 can only take over /home and denies access to
+> /scratch.
+> 
+
+That sounds like a broken cluster configuration. Still...
+
+Presumably at some point in the future, a sysadmin would intervene and
+fix the situation such that /scratch is available again. Is it better
+to return an error to the application at that point, or simply allow it
+to keep retrying until the problem has been fixed?
+
+The person with the long running job that's doing operations
+in /scratch would probably prefer the latter. If not, then they could
+always send the program a fatal signal to stop it altogether.
+
 -- 
-1.7.2.1
-
+Jeff Layton <jlayton@redhat.com>
