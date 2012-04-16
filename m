@@ -1,31 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:13785 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:21864 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752783Ab2DZNy4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Apr 2012 09:54:56 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <20120419163238.61D382C0DF@topped-with-meat.com>
-References: <20120419163238.61D382C0DF@topped-with-meat.com> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
-To: Roland McGrath <roland@hack.frob.com>
-Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
-        wine-devel@winehq.org, kfm-devel@kde.org, nautilus-list@gnome.org,
-        linux-api@vger.kernel.org, libc-alpha@sourceware.org
-Subject: Re: [PATCH 0/6] Extended file stat system call
-Date: Thu, 26 Apr 2012 14:54:15 +0100
-Message-ID: <19184.1335448455@redhat.com>
+	id S1753326Ab2DPOWd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Apr 2012 10:22:33 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q3GEMXTr006144
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 16 Apr 2012 10:22:33 -0400
+Date: Mon, 16 Apr 2012 10:23:23 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v5 1/9] nfsdcld: add client tracking daemon stub
+Message-ID: <20120416102323.7f86eb56@corrin.poochiereds.net>
+In-Reply-To: <4F8C277F.2090707@RedHat.com>
+References: <1328111096-28430-1-git-send-email-jlayton@redhat.com>
+	<1328111096-28430-2-git-send-email-jlayton@redhat.com>
+	<4F8C277F.2090707@RedHat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Roland McGrath <roland@hack.frob.com> wrote:
+On Mon, 16 Apr 2012 10:06:55 -0400
+Steve Dickson <SteveD@redhat.com> wrote:
 
-> I have no comment on the functionality.  But "xstat" is probably a poor
-> choice of name.  There is precedent for that function name with different
-> meaning in the userland APIs.  (It's a moderately useless meaning inherited
-> from SVR4, but regardless overloading a name previously used is unwise.)
+> 
+> 
+> On 02/01/2012 10:44 AM, Jeff Layton wrote:
+> > This program opens and "listens" on the new nfsd/cld rpc_pipefs pipe.
+> > The code here doesn't actually do anything on stable storage yet. That
+> > will be added in a later patch.
+> > 
+> > The patch also adds a autoconf enable switch for the new daemon that
+> > defaults to "no", and a test for the upcall description header file.
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  configure.ac              |   14 +++
+> >  utils/Makefile.am         |    4 +
+> >  utils/nfsdcld/Makefile.am |   14 +++
+> >  utils/nfsdcld/nfsdcld.c   |  275 +++++++++++++++++++++++++++++++++++++++++++++
+> >  4 files changed, 307 insertions(+), 0 deletions(-)
+> >  create mode 100644 utils/nfsdcld/Makefile.am
+> >  create mode 100644 utils/nfsdcld/nfsdcld.c
+> > 
+> > diff --git a/configure.ac b/configure.ac
+> > index 920e8da..d50e54e 100644
+> > --- a/configure.ac
+> > +++ b/configure.ac
+> > @@ -185,6 +185,12 @@ else
+> >  	AM_CONDITIONAL(MOUNT_CONFIG, [test "$enable_mount" = "yes"])
+> >  fi
+> >  
+> > +AC_ARG_ENABLE(nfsdcld,
+> > +	[AC_HELP_STRING([--enable-nfsdcld],
+> > +			[Create nfsdcld NFSv4 clientid tracking daemon. <:@default=no@:>@])],
+> > +	enable_nfsdcld=$enableval,
+> > +	enable_nfsdcld="no")
+> > +
+> >  dnl Check for TI-RPC library and headers
+> >  AC_LIBTIRPC
+> >  
+> > @@ -260,6 +266,13 @@ if test "$enable_nfsv4" = yes; then
+> >    dnl check for the keyutils libraries and headers
+> >    AC_KEYUTILS
+> >  
+> > +  if test "$enable_nfsdcld" = "yes"; then
+> > +    AC_CHECK_HEADERS([linux/nfsd/cld.h], ,
+> > +		     AC_MSG_ERROR([Cannot find header needed for nfsdcld]))
+> > +  fi
+> This adds a dependency on the kernel headers being present which 
+> is unprecedented for nfs-utils or any other package I'm aware of
+> and I just don't think its a good idea... 
+> 
+> So I'm wondering if there is someway around creating this
+> dependency...
+> 
 
-I've no particular attachment to the name 'xstat'.  If you'd prefer 'statx' I
-could go for that.
+The idea with that header was to have a common userspace/kernel header
+that describes the upcall/downcall format. The proper place for those
+is generally the kernel-headers package (at least on Fedora). Other
+distros have a similar package.
 
-David
+One possibility is to include a copy of this header with nfs-utils, and
+only use it if /usr/include/linux/nfsd/cld.h isn't present. It's not
+ideal, but I suppose we could live with it if adding a dependency on
+kernel headers is anathema. It would take some rework of the code and
+autoconf/automake stuff however.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
