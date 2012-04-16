@@ -1,63 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:25085 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:2786 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752077Ab2DZU4b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Apr 2012 16:56:31 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
-        Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v4 2/9] NFS: Handle exceptions coming out of nfs4_proc_fs_locations()
-Date: Thu, 26 Apr 2012 16:56:05 -0400
-Message-Id: <1335473772-4401-3-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1335473772-4401-1-git-send-email-bjschuma@netapp.com>
-References: <1335473772-4401-1-git-send-email-bjschuma@netapp.com>
+	id S1753920Ab2DPVWs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Apr 2012 17:22:48 -0400
+Received: from vmwexceht03-prd.hq.netapp.com (vmwexceht03-prd.hq.netapp.com [10.106.76.241])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q3GLMlsG011039
+	for <linux-nfs@vger.kernel.org>; Mon, 16 Apr 2012 14:22:48 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Isaman, Fred" <Fred.Isaman@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 19/26] NFS: rewrite directio read to use async coalesce
+ code
+Date: Mon, 16 Apr 2012 21:22:47 +0000
+Message-ID: <1334611367.2879.59.camel@lade.trondhjem.org>
+References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
+	 <1334004744-31842-20-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334004744-31842-20-git-send-email-iisaman@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
-
-We don't want to return -NFS4ERR_WRONGSEC to the VFS because it could
-cause the kernel to oops.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/nfs4proc.c |   15 ++++++++++++++-
- 1 file changed, 14 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 60d5f4c..0de2614 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4919,7 +4919,7 @@ static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr)
- 	fattr->nlink = 2;
- }
- 
--int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
-+static int _nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
- 		struct nfs4_fs_locations *fs_locations, struct page *page)
- {
- 	struct nfs_server *server = NFS_SERVER(dir);
-@@ -4959,6 +4959,19 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
- 	return status;
- }
- 
-+int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
-+		struct nfs4_fs_locations *fs_locations, struct page *page)
-+{
-+	struct nfs4_exception exception = { };
-+	int err;
-+	do {
-+		err = nfs4_handle_exception(NFS_SERVER(dir),
-+				_nfs4_proc_fs_locations(dir, name, fs_locations, page),
-+				&exception);
-+	} while (exception.retry);
-+	return err;
-+}
-+
- static int _nfs4_proc_secinfo(struct inode *dir, const struct qstr *name, struct nfs4_secinfo_flavors *flavors)
- {
- 	int status;
--- 
-1.7.10
-
+T24gTW9uLCAyMDEyLTA0LTA5IGF0IDE2OjUyIC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
+VGhpcyBhbHNvIGhhcyB0aGUgYWR2YW50YWdlIHRoYXQgaXQgYWxsb3dzIGRpcmVjdGlvIHRvIHVz
+ZSBwbmZzLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogRnJlZCBJc2FtYW4gPGlpc2FtYW5AbmV0YXBw
+LmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvZGlyZWN0LmMgICAgICAgICAgfCAgMjQ3ICsrKysrKysr
+KysrKysrKysrKysrKy0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KPiAgZnMvbmZzL2ludGVybmFs
+LmggICAgICAgIHwgICAgMyArDQo+ICBmcy9uZnMvcGFnZWxpc3QuYyAgICAgICAgfCAgICA2ICst
+DQo+ICBmcy9uZnMvcmVhZC5jICAgICAgICAgICAgfCAgICA2ICstDQo+ICBpbmNsdWRlL2xpbnV4
+L25mc19wYWdlLmggfCAgICAxICsNCj4gIGluY2x1ZGUvbGludXgvbmZzX3hkci5oICB8ICAgIDQg
+Ky0NCj4gIDYgZmlsZXMgY2hhbmdlZCwgMTI4IGluc2VydGlvbnMoKyksIDEzOSBkZWxldGlvbnMo
+LSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvZGlyZWN0LmMgYi9mcy9uZnMvZGlyZWN0LmMN
+Cj4gaW5kZXggMjJhNDBjNC4uNDA5YTlhMCAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL2RpcmVjdC5j
+DQo+ICsrKyBiL2ZzL25mcy9kaXJlY3QuYw0KPiBAQCAtMTI0LDIyICsxMjQsNiBAQCBzc2l6ZV90
+IG5mc19kaXJlY3RfSU8oaW50IHJ3LCBzdHJ1Y3Qga2lvY2IgKmlvY2IsIGNvbnN0IHN0cnVjdCBp
+b3ZlYyAqaW92LCBsb2ZmXw0KPiAgCXJldHVybiAtRUlOVkFMOw0KPiAgfQ0KPiAgDQo+IC1zdGF0
+aWMgdm9pZCBuZnNfZGlyZWN0X2RpcnR5X3BhZ2VzKHN0cnVjdCBwYWdlICoqcGFnZXMsIHVuc2ln
+bmVkIGludCBwZ2Jhc2UsIHNpemVfdCBjb3VudCkNCj4gLXsNCj4gLQl1bnNpZ25lZCBpbnQgbnBh
+Z2VzOw0KPiAtCXVuc2lnbmVkIGludCBpOw0KPiAtDQo+IC0JaWYgKGNvdW50ID09IDApDQo+IC0J
+CXJldHVybjsNCj4gLQlwYWdlcyArPSAocGdiYXNlID4+IFBBR0VfU0hJRlQpOw0KPiAtCW5wYWdl
+cyA9IChjb3VudCArIChwZ2Jhc2UgJiB+UEFHRV9NQVNLKSArIFBBR0VfU0laRSAtIDEpID4+IFBB
+R0VfU0hJRlQ7DQo+IC0JZm9yIChpID0gMDsgaSA8IG5wYWdlczsgaSsrKSB7DQo+IC0JCXN0cnVj
+dCBwYWdlICpwYWdlID0gcGFnZXNbaV07DQo+IC0JCWlmICghUGFnZUNvbXBvdW5kKHBhZ2UpKQ0K
+PiAtCQkJc2V0X3BhZ2VfZGlydHkocGFnZSk7DQo+IC0JfQ0KPiAtfQ0KPiAtDQo+ICBzdGF0aWMg
+dm9pZCBuZnNfZGlyZWN0X3JlbGVhc2VfcGFnZXMoc3RydWN0IHBhZ2UgKipwYWdlcywgdW5zaWdu
+ZWQgaW50IG5wYWdlcykNCj4gIHsNCj4gIAl1bnNpZ25lZCBpbnQgaTsNCj4gQEAgLTIyNiw1OCAr
+MjEwLDg1IEBAIHN0YXRpYyB2b2lkIG5mc19kaXJlY3RfY29tcGxldGUoc3RydWN0IG5mc19kaXJl
+Y3RfcmVxICpkcmVxKQ0KPiAgCW5mc19kaXJlY3RfcmVxX3JlbGVhc2UoZHJlcSk7DQo+ICB9DQo+
+ICANCj4gLS8qDQo+IC0gKiBXZSBtdXN0IGhvbGQgYSByZWZlcmVuY2UgdG8gYWxsIHRoZSBwYWdl
+cyBpbiB0aGlzIGRpcmVjdCByZWFkIHJlcXVlc3QNCj4gLSAqIHVudGlsIHRoZSBSUENzIGNvbXBs
+ZXRlLiAgVGhpcyBjb3VsZCBiZSBsb25nICphZnRlciogd2UgYXJlIHdva2VuIHVwIGluDQo+IC0g
+KiBuZnNfZGlyZWN0X3dhaXQgKGZvciBpbnN0YW5jZSwgaWYgc29tZW9uZSBoaXRzIF5DIG9uIGEg
+c2xvdyBzZXJ2ZXIpLg0KPiAtICovDQo+IC1zdGF0aWMgdm9pZCBuZnNfZGlyZWN0X3JlYWRfcmVz
+dWx0KHN0cnVjdCBycGNfdGFzayAqdGFzaywgdm9pZCAqY2FsbGRhdGEpDQo+ICt2b2lkIG5mc19k
+aXJlY3RfcmVhZHBhZ2VfcmVsZWFzZShzdHJ1Y3QgbmZzX3BhZ2UgKnJlcSkNCj4gIHsNCj4gLQlz
+dHJ1Y3QgbmZzX3JlYWRfZGF0YSAqZGF0YSA9IGNhbGxkYXRhOw0KPiAtDQo+IC0JbmZzX3JlYWRw
+YWdlX3Jlc3VsdCh0YXNrLCBkYXRhKTsNCj4gKwlkcHJpbnRrKCJORlM6IGRpcmVjdCByZWFkIGRv
+bmUgKCVzLyVsbGQgJWRAJWxsZClcbiIsDQo+ICsJCXJlcS0+d2JfY29udGV4dC0+ZGVudHJ5LT5k
+X2lub2RlLT5pX3NiLT5zX2lkLA0KPiArCQkobG9uZyBsb25nKU5GU19GSUxFSUQocmVxLT53Yl9j
+b250ZXh0LT5kZW50cnktPmRfaW5vZGUpLA0KPiArCQlyZXEtPndiX2J5dGVzLA0KPiArCQkobG9u
+ZyBsb25nKXJlcV9vZmZzZXQocmVxKSk7DQo+ICsJbmZzX3JlbGVhc2VfcmVxdWVzdChyZXEpOw0K
+PiAgfQ0KPiAgDQo+IC1zdGF0aWMgdm9pZCBuZnNfZGlyZWN0X3JlYWRfcmVsZWFzZSh2b2lkICpj
+YWxsZGF0YSkNCj4gK3N0YXRpYyB2b2lkIG5mc19kaXJlY3RfcmVhZF9jb21wbGV0aW9uKHN0cnVj
+dCBuZnNfcGdpb19oZWFkZXIgKmhkcikNCj4gIHsNCj4gKwl1bnNpZ25lZCBsb25nIHBvcyA9IHJl
+cV9vZmZzZXQoaGRyLT5yZXEpOw0KDQpVbW0uLi4gcmVxX29mZnNldCgpIHJldHVybnMgYW4gbG9m
+Zl90LiAndW5zaWduZWQgbG9uZycgaXMgbGlrZWx5IHRvIGJlDQp0b28gc21hbGwgdG8gaG9sZCB0
+aGVzZSB2YWx1ZXMgb24gYSAzMi1iaXQgbWFjaGluZS4NCg0KTG9va2luZyBiYWNrLCBpdCBsb29r
+cyBhcyBpZiB0aGUgc2FtZSBwcm9ibGVtIGV4aXN0cyBpbiB0aGUgcGFnZSBjYWNoZQ0KY29kZSAo
+ZS5nLiBuZnNfcmVhZF9jb21wbGV0aW9uKSBhcyB3ZWxsIGFzIHN0dWZmIGxpa2UgaGRyLT5lb2Ys
+IGFuZA0KaGRyLT5maXJzdF9lcnJvci4NCg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
+TkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
+b20NCnd3dy5uZXRhcHAuY29tDQoNCg==
