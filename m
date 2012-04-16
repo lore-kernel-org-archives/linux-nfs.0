@@ -1,88 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:30251 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:47935 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755093Ab2DXPHu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Apr 2012 11:07:50 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org,
-        Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] nfs4: fix referrals on mounts that use IPv6 addrs
-Date: Tue, 24 Apr 2012 11:07:47 -0400
-Message-Id: <1335280067-47391-1-git-send-email-dros@netapp.com>
+	id S1753513Ab2DPMSA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Apr 2012 08:18:00 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 00/11] Swap-over-NFS without deadlocking V3
+Date: Mon, 16 Apr 2012 13:17:44 +0100
+Message-Id: <1334578675-23445-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-All referrals (IPv4 addr, IPv6 addr, and DNS) are broken on mounts of
-IPv6 addresses, because validation code uses a path that is parsed
-from the dev_name ("<server>:<path>") by splitting on the first colon and
-colons are used in IPv6 addrs.
-This patch ignores colons within IPv6 addresses that are escaped by '[' and ']'.
+Changelog since V2
+o Nothing significant, just rebases. A radix tree lookup is replaced with
+  a linear search would be the biggest rebase artifact
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
+This patch series is based on top of "Swap-over-NBD without deadlocking v9"
+as it depends on the same reservation of PF_MEMALLOC reserves logic.
 
-Updated to pass checkpatch.pl - sorry for posting twice!
+When a user or administrator requires swap for their application, they
+create a swap partition and file, format it with mkswap and activate it with
+swapon. In diskless systems this is not an option so if swap if required
+then swapping over the network is considered.  The two likely scenarios
+are when blade servers are used as part of a cluster where the form factor
+or maintenance costs do not allow the use of disks and thin clients.
 
-This depends on commit 2f8e4bd91488f286e83e8abb14683102efaafb05
-"nfs: Enclose hostname in brackets when needed in nfs_do_root_mount".
+The Linux Terminal Server Project recommends the use of the Network
+Block Device (NBD) for swap but this is not always an option.  There is
+no guarantee that the network attached storage (NAS) device is running
+Linux or supports NBD. However, it is likely that it supports NFS so there
+are users that want support for swapping over NFS despite any performance
+concern. Some distributions currently carry patches that support swapping
+over NFS but it would be preferable to support it in the mainline kernel.
 
- fs/nfs/nfs4namespace.c |   35 ++++++++++++++++++++++++++++++++---
- 1 files changed, 32 insertions(+), 3 deletions(-)
+Patch 1 avoids a stream-specific deadlock that potentially affects TCP.
 
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index 9c8eca3..f90c7b3 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -52,6 +52,35 @@ Elong:
- }
- 
- /*
-+ * parse the path component of an nfs path ("<server>:<path>").
-+ *  nfspath - the "<server>:<path>" string
-+ *  end - pointer to end of devname component of 'nfspath'
-+ * returns NULL on failure
-+ */
-+static inline char *nfs_parse_path_component(char *nfspath, char *end)
-+{
-+	bool ipv6_esc = false;
-+	char *p;
-+
-+	/* find first colon not in IPv6 addr */
-+	for (p = nfspath; p < end && *p; p++) {
-+		switch (*p) {
-+		case '[':
-+			ipv6_esc = true;
-+			break;
-+		case ']':
-+			ipv6_esc = false;
-+			break;
-+		case ':':
-+			if (!ipv6_esc)
-+				return p + 1;
-+			break;
-+		}
-+	}
-+	return NULL;
-+}
-+
-+/*
-  * Determine the mount path as a string
-  */
- static char *nfs4_path(struct dentry *dentry, char *buffer, ssize_t buflen)
-@@ -59,9 +88,9 @@ static char *nfs4_path(struct dentry *dentry, char *buffer, ssize_t buflen)
- 	char *limit;
- 	char *path = nfs_path(&limit, dentry, buffer, buflen);
- 	if (!IS_ERR(path)) {
--		char *colon = strchr(path, ':');
--		if (colon && colon < limit)
--			path = colon + 1;
-+		char *path_component = nfs_parse_path_component(path, limit);
-+		if (path_component)
-+			return path_component;
- 	}
- 	return path;
- }
+Patch 2 is a small modification to SELinux to avoid using PFMEMALLOC
+	reserves.
+
+Patch 3 adds three helpers for filesystems to handle swap cache pages.
+	For example, page_file_mapping() returns page->mapping for
+	file-backed pages and the address_space of the underlying
+	swap file for swap cache pages.
+
+Patch 4 adds two address_space_operations to allow a filesystem
+	to pin all metadata relevant to a swapfile in memory. Upon
+	successful activation, the swapfile is marked SWP_FILE and
+	the address space operation ->direct_IO is used for writing
+	and ->readpage for reading in swap pages.
+
+Patch 5 notes that patch 3 is bolting
+	filesystem-specific-swapfile-support onto the side and that
+	the default handlers have different information to what
+	is available to the filesystem. This patch refactors the
+	code so that there are generic handlers for each of the new
+	address_space operations.
+
+Patch 6 adds an API to allow a vector of kernel addresses to be
+	translated to struct pages and pinned for IO.
+
+Patch 7 updates NFS to use the helpers from patch 3 where necessary.
+
+Patch 8 avoids setting PF_private on PG_swapcache pages within NFS.
+
+Patch 9 implements the new swapfile-related address_space operations
+	for NFS and teaches the direct IO handler how to manage
+	kernel addresses.
+
+Patch 10 prevents page allocator recursions in NFS by using GFP_NOIO
+	where appropriate.
+
+Patch 11 fixes a NULL pointer dereference that occurs when using
+	swap-over-NFS.
+
+With the patches applied, it is possible to mount a swapfile that is on an
+NFS filesystem. Swap performance is not great with a swap stress test taking
+roughly twice as long to complete than if the swap device was backed by NBD.
+
+ Documentation/filesystems/Locking |   13 ++++
+ Documentation/filesystems/vfs.txt |   12 ++++
+ fs/nfs/Kconfig                    |    8 +++
+ fs/nfs/direct.c                   |   94 ++++++++++++++++--------
+ fs/nfs/file.c                     |   28 ++++++--
+ fs/nfs/inode.c                    |    6 ++
+ fs/nfs/internal.h                 |    7 +-
+ fs/nfs/pagelist.c                 |    6 +-
+ fs/nfs/read.c                     |    6 +-
+ fs/nfs/write.c                    |   98 +++++++++++++++----------
+ include/linux/blk_types.h         |    2 +
+ include/linux/fs.h                |    9 +++
+ include/linux/mm.h                |   29 ++++++++
+ include/linux/nfs_fs.h            |    4 +-
+ include/linux/pagemap.h           |    5 ++
+ include/linux/sunrpc/xprt.h       |    3 +
+ include/linux/swap.h              |    8 +++
+ include/net/sock.h                |    7 +-
+ mm/memory.c                       |   53 ++++++++++++++
+ mm/page_io.c                      |  144 +++++++++++++++++++++++++++++++++++++
+ mm/swap_state.c                   |    2 +-
+ mm/swapfile.c                     |  141 ++++++++++++++----------------------
+ net/caif/caif_socket.c            |    2 +-
+ net/core/sock.c                   |    2 +-
+ net/ipv4/tcp_input.c              |   12 ++--
+ net/sctp/ulpevent.c               |    2 +-
+ net/sunrpc/Kconfig                |    5 ++
+ net/sunrpc/clnt.c                 |    2 +
+ net/sunrpc/sched.c                |    7 +-
+ net/sunrpc/xprtsock.c             |   53 ++++++++++++++
+ security/selinux/avc.c            |    2 +-
+ 31 files changed, 585 insertions(+), 187 deletions(-)
+
 -- 
-1.7.4.4
+1.7.9.2
 
