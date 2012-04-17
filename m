@@ -1,150 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:33695 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755172Ab2DWUzh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Apr 2012 16:55:37 -0400
-Received: by yenl12 with SMTP id l12so6485905yen.19
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2012 13:55:37 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 16/20] NFS: Use the same nfs_client_id4 for every server
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 23 Apr 2012 16:55:34 -0400
-Message-ID: <20120423205534.11446.48187.stgit@degas.1015granger.net>
-In-Reply-To: <20120423205312.11446.67081.stgit@degas.1015granger.net>
-References: <20120423205312.11446.67081.stgit@degas.1015granger.net>
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:27918 "EHLO
+	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752940Ab2DQAsi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Apr 2012 20:48:38 -0400
+Date: Tue, 17 Apr 2012 10:43:29 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: Andreas Dilger <adilger@whamcloud.com>
+Cc: Jan Kara <jack@suse.cz>, Al Viro <viro@ZenIV.linux.org.uk>,
+        dchinner@redhat.com, LKML <linux-kernel@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org, Alex Elder <elder@kernel.org>,
+        Anton Altaparmakov <anton@tuxera.com>, Ben Myers <bpm@sgi.com>,
+        Chris Mason <chris.mason@oracle.com>, cluster-devel@redhat.com,
+        "David S. Miller" <davem@davemloft.net>,
+        fuse-devel@lists.sourceforge.net,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Joel Becker <jlbec@evilplan.org>,
+        KONISHI Ryusuke <konishi.ryusuke@lab.ntt.co.jp>,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net, Mark Fasheh <mfasheh@suse.com>,
+        Miklos Szeredi <miklos@szeredi.hu>, ocfs2-devel@oss.oracle.com,
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        Steven Whitehouse <swhiteho@redhat.com>,
+        "Theodore Ts'o" <tytso@mit.edu>, xfs@oss.sgi.com
+Subject: Re: [PATCH 00/19 v5] Fix filesystem freezing deadlocks
+Message-ID: <20120417004329.GE6734@dastard>
+References: <1334592845-22862-1-git-send-email-jack@suse.cz>
+ <C9A0E2F0-ED57-40D6-9F75-5D72D45D21F0@dilger.ca>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <C9A0E2F0-ED57-40D6-9F75-5D72D45D21F0@dilger.ca>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, when identifying itself to NFS servers, the Linux NFS
-client uses a unique nfs_client_id4 string for each server IP address
-it talks with.  For example, when client A talks to server X, the
-client identifies itself using a string like "AX".
+On Mon, Apr 16, 2012 at 03:02:50PM -0700, Andreas Dilger wrote:
+> On 2012-04-16, at 9:13 AM, Jan Kara wrote:
+> > Another potential contention point might be patch 19. In that patch
+> > we make freeze_super() refuse to freeze the filesystem when there
+> > are open but unlinked files which may be impractical in some cases.
+> > The main reason for this is the problem with handling of file deletion
+> > from fput() called with mmap_sem held (e.g. from munmap(2)), and
+> > then there's the fact that we cannot really force such filesystem
+> > into a consistent state... But if people think that freezing with
+> > open but unlinked files should happen, then I have some possible
+> > solutions in mind (maybe as a separate patchset since this is
+> > large enough).
+> 
+> Looking at a desktop system, I think it is very typical that there
+> are open-unlinked files present, so I don't know if this is really
+> an acceptable solution.  It isn't clear from your comments whether
+> this is a blanket refusal for all open-unlinked files, or only in
+> some particular cases...
+> 
+> lsof | grep deleted
+> nautilus  25393  adilger   19r      REG           253,0      340     253954 /home/adilger/.local/share/gvfs-metadata/home (deleted)
+> nautilus  25393  adilger   20r      REG           253,0    32768     253964 /home/adilger/.local/share/gvfs-metadata/home-f332a8f3.log (deleted)
+> gnome-ter 25623  adilger   22u      REG            0,18    17841    2717846 /tmp/vtePIRJCW (deleted)
+> gnome-ter 25623  adilger   23u      REG            0,18     5568    2717847 /tmp/vteDCSJCW (deleted)
+> gnome-ter 25623  adilger   29u      REG            0,18      480    2728484 /tmp/vte6C1TCW (deleted)
 
-These strings are opaque to servers.  Each client is free to choose
-any content, as long as it is unique from other client instances.  A
-server must not parse the contents of the string, it can only test
-these strings for equality.  These requirements are specified in
-detail by RFC 3530 (and bis).
+Unlinked-but-open files are the reason that XFS dirties the log
+after the freeze process is complete. This ensures that if the
+system crashes while the filesystem is frozen then log recovery
+during the next mount will process the unlinked (orphaned) inodes
+and free the correctly. i.e. you can still freeze a filesystem with
+inodes in this state successfully and have everythign behave as
+you'd expect.
 
-This form of client identification presents a problem for Transparent
-State Migration.  When client A's state on server X is migrated to
-server Y, it continues to be associated with string "AX."  But client
-A will present string "AY" when communicating with server Y.
+I'm not sure how other filesystems handle this problem, but perhaps
+pushing this check down into filesystem specific code or adding a
+superblock feature flag might be a way to allow filesystems to
+handle this case in the way they think is best...
 
-Server Y thus has no way to know that client A should be associated
-with the state migrated from server X.  "AX" is all but abandoned,
-interferring with establishing fresh state for A on server Y.
+Cheers,
 
-To support Transparent State Migration, then, NFSv4.0 clients must
-instead use the same nfs_client_id4 string to identify themselves to
-every NFS server; something like "A".
-
-As part of a migration event, when state associated with string "A"
-shows up at server Y, client A identifies itself as "A" and server Y
-will know immediately that the state associated with "A," whether it
-is native or migrated, is owned by client A.
-
-As a pre-requisite to adding support for NFSv4 migration to the Linux
-NFS client, this patch changes the way Linux identifies itself to NFS
-servers via the SETCLIENTID (NFSv4 minor version 0) and EXCHANGE_ID
-(NFSv4 minor version 1) operations.
-
-In addition to removing the server's IP address from nfs_client_id4,
-the Linux NFS client will also no longer use its own source IP address
-as part of the nfs_client_id4 string.  On multi-homed clients, the
-value of this address depends on the address family and network
-routing used to contact the server, thus it can be different for each
-server.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- fs/nfs/nfs4proc.c |   50 ++++++++++++++++++++++++++++++++++++++++----------
- 1 files changed, 40 insertions(+), 10 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 7ec1b68..9fe19d4 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3908,6 +3908,34 @@ nfs4_init_nonuniform_client_string(const struct nfs_client *clp,
- 	return result;
- }
- 
-+/*
-+ * XXX:
-+ *
-+ * Our client ID string should not use init_utsname->nodename, but
-+ * rather should contain the nodename for the appropriate net
-+ * namespace for this nfs_client.
-+ *
-+ * There's a pointer to the correct net namespace in the rpc_clnt's
-+ * xprt, but I have no idea how then to get the net namespace's nodename.
-+ *
-+ * However, rpc_create() should be using that namespace to construct
-+ * ->cl_nodename, which is exactly the string we need...  but it is
-+ * currently still using init_utsname().
-+ *
-+ * For now I'm going to stick with init_utsname.  We can easily work
-+ * this out later when the client has container support.
-+ */
-+static unsigned int
-+nfs4_init_uniform_client_string(const struct nfs_client *clp,
-+				char *buf, size_t len)
-+{
-+	return scnprintf(buf, len, "Linux NFSv%u.%u %s %s %s uniform",
-+				clp->rpc_ops->version, clp->cl_minorversion,
-+				init_utsname()->nodename,
-+				init_utsname()->domainname,
-+				clp->cl_rpcclient->cl_auth->au_ops->au_name);
-+}
-+
- /**
-  * nfs4_proc_setclientid - Negotiate client ID
-  * @clp: state data structure
-@@ -3941,7 +3969,14 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 
- 	/* Client ID */
- 	nfs4_init_boot_verifier(clp, &sc_verifier);
--	setclientid.sc_name_len = nfs4_init_nonuniform_client_string(clp,
-+	if (test_bit(NFS_CS_MIGRATION, &clp->cl_flags))
-+		setclientid.sc_name_len =
-+				nfs4_init_uniform_client_string(clp,
-+						setclientid.sc_name,
-+						sizeof(setclientid.sc_name));
-+	else
-+		setclientid.sc_name_len =
-+				nfs4_init_nonuniform_client_string(clp,
- 						setclientid.sc_name,
- 						sizeof(setclientid.sc_name));
- 
-@@ -5061,14 +5096,8 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 	BUG_ON(clp == NULL);
- 
- 	nfs4_init_boot_verifier(clp, &verifier);
--
--	args.id_len = scnprintf(args.id, sizeof(args.id),
--				"%s/%s.%s/%u",
--				clp->cl_ipaddr,
--				init_utsname()->nodename,
--				init_utsname()->domainname,
--				clp->cl_rpcclient->cl_auth->au_flavor);
--
-+	args.id_len = nfs4_init_uniform_client_string(clp, args.id,
-+							sizeof(args.id));
- 	res.server_scope = kzalloc(sizeof(struct nfs41_server_scope),
- 					GFP_KERNEL);
- 	if (unlikely(res.server_scope == NULL)) {
-@@ -5119,7 +5148,8 @@ out:
- 			__func__, clp->cl_implid->domain, clp->cl_implid->name,
- 			clp->cl_implid->date.seconds,
- 			clp->cl_implid->date.nseconds);
--	dprintk("<-- %s status= %d\n", __func__, status);
-+	dprintk("<-- %s nfs_client_id4 '%.*s' (status %d)\n",
-+		__func__, args.id_len, args.id, status);
- 	return status;
- }
- 
-
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
