@@ -1,91 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57183 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753107Ab2D1TbN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 28 Apr 2012 15:31:13 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 10/10] NFSv4: Don't request cache consistency attributes on some writes and commits
-Date: Sat, 28 Apr 2012 15:31:00 -0400
-Message-Id: <1335641460-24839-11-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1335641460-24839-10-git-send-email-Trond.Myklebust@netapp.com>
-References: <1335641460-24839-1-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-2-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-3-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-4-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-5-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-6-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-7-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-8-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-9-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-10-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-we0-f174.google.com ([74.125.82.174]:32903 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754675Ab2DQQCG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Apr 2012 12:02:06 -0400
+Received: by wejx9 with SMTP id x9so4134039wej.19
+        for <linux-nfs@vger.kernel.org>; Tue, 17 Apr 2012 09:02:05 -0700 (PDT)
+From: Miklos Szeredi <miklos@szeredi.hu>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jlayton@redhat.com>,
+        "Myklebust\, Trond" <Trond.Myklebust@netapp.com>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        Malahal Naineni <malahal@us.ibm.com>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "pstaubach\@exagrid.com" <pstaubach@exagrid.com>,
+        "viro\@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
+        "hch\@infradead.org" <hch@infradead.org>,
+        "michael.brantley\@deshaw.com" <michael.brantley@deshaw.com>,
+        "sven.breuner\@itwm.fraunhofer.de" <sven.breuner@itwm.fraunhofer.de>
+Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from getattr call
+References: <4F8C3036.2030702@itwm.fraunhofer.de>
+	<20120416134642.1754cd3e@corrin.poochiereds.net>
+	<1334604785.2879.23.camel@lade.trondhjem.org>
+	<20120416154322.0d95e435@corrin.poochiereds.net>
+	<1334607906.2879.36.camel@lade.trondhjem.org>
+	<20120416190548.2463d1d0@corrin.poochiereds.net>
+	<87sjg2o62z.fsf@tucsk.pomaz.szeredi.hu>
+	<20120417093222.2ff5e1bd@corrin.poochiereds.net>
+	<1334671473.2963.27.camel@lade.trondhjem.org.localdomain>
+	<20120417102035.2236e553@corrin.poochiereds.net>
+	<20120417154549.GA27426@fieldses.org>
+Date: Tue, 17 Apr 2012 18:02:13 +0200
+In-Reply-To: <20120417154549.GA27426@fieldses.org> (J. Bruce Fields's message
+	of "Tue, 17 Apr 2012 11:45:49 -0400")
+Message-ID: <8762cyny7u.fsf@tucsk.pomaz.szeredi.hu>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We don't need cache consistency information when we're doing O_DIRECT
-writes or commits. Ditto for the case of delegated writes and commits.
+"J. Bruce Fields" <bfields@fieldses.org> writes:
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c |   30 ++++++++++++++++++++++++++++--
- 1 files changed, 28 insertions(+), 2 deletions(-)
+> On Tue, Apr 17, 2012 at 10:20:35AM -0400, Jeff Layton wrote:
+>> Well, it's possible, but it seems pathological to me for a server to do
+>> that...
+>> 
+>> Bruce and I were discussing this the other day. It would be good to add
+>> something like this to the RFCs:
+>> 
+>> "On a PUTFH, a server SHOULD hold a reference to the filehandle such
+>
+> For "filehandle" I'd specify "current and saved filehandle".
+>
+>> that it does not go stale over the life of the compound."
+>
+> And that's *much* less of a burden on the server than requiring that the
+> compound execute atomically.
+>
+>> ...or something along those lines. That's a different matter though and
+>> not directly related to this. :)
+>
+> Yes.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 25168dd..2ae8e87 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3401,11 +3401,25 @@ void nfs4_reset_write(struct rpc_task *task, struct nfs_write_data *data)
- }
- EXPORT_SYMBOL_GPL(nfs4_reset_write);
- 
-+static
-+bool nfs4_write_need_cache_consistency_data(const struct nfs_write_data *data)
-+{
-+	const struct nfs_pgio_header *hdr = data->header;
-+
-+	/* Don't request attributes for pNFS or O_DIRECT writes */
-+	if (data->ds_clp != NULL || hdr->dreq != NULL)
-+		return false;
-+	/* Otherwise, request attributes if and only if we don't hold
-+	 * a delegation
-+	 */
-+	return nfs_have_delegation(hdr->inode, FMODE_READ) == 0;
-+}
-+
- static void nfs4_proc_write_setup(struct nfs_write_data *data, struct rpc_message *msg)
- {
- 	struct nfs_server *server = NFS_SERVER(data->header->inode);
- 
--	if (data->ds_clp) {
-+	if (!nfs4_write_need_cache_consistency_data(data)) {
- 		data->args.bitmask = NULL;
- 		data->res.fattr = NULL;
- 	} else
-@@ -3458,11 +3472,23 @@ static int nfs4_commit_done(struct rpc_task *task, struct nfs_commit_data *data)
- 	return data->commit_done_cb(task, data);
- }
- 
-+static
-+bool nfs4_commit_need_cache_consistency_data(const struct nfs_commit_data *data)
-+{
-+	/* Don't request attributes for pNFS or O_DIRECT writes */
-+	if (data->ds_clp != NULL || data->dreq != NULL)
-+		return false;
-+	/* Otherwise, request attributes if and only if we don't hold
-+	 * a delegation
-+	 */
-+	return nfs_have_delegation(data->inode, FMODE_READ) == 0;
-+}
-+
- static void nfs4_proc_commit_setup(struct nfs_commit_data *data, struct rpc_message *msg)
- {
- 	struct nfs_server *server = NFS_SERVER(data->inode);
- 
--	if (data->lseg) {
-+	if (!nfs4_commit_need_cache_consistency_data(data)) {
- 		data->args.bitmask = NULL;
- 		data->res.fattr = NULL;
- 	} else
--- 
-1.7.7.6
+It's only related, because it proves that it's theoretically possible to
+deal with this problem without introducing infinite retries.  And that
+applies to all operations, not just getattr.
 
+As for atomicity, the VFS doesn't have any atomicity guarantees here
+either.  So for example getattr("foo") may end up with st_nlink == 0
+with a concurrent rename("bar", "foo").  Whether this is permitted by
+the standards is another matter, but it's not something that appears to
+bother anybody.
+
+Thanks,
+Miklos
