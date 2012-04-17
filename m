@@ -1,48 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:51025 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755228Ab2D3RG4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Apr 2012 13:06:56 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, iisaman@netapp.com,
-        Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH] NFS: pnfs_pageio_init_read() and init_write() need an extra argument
-Date: Mon, 30 Apr 2012 13:06:53 -0400
-Message-Id: <1335805613-23138-1-git-send-email-bjschuma@netapp.com>
+Received: from mail-vb0-f46.google.com ([209.85.212.46]:50265 "EHLO
+	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752022Ab2DQPlU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Apr 2012 11:41:20 -0400
+Received: by vbbff1 with SMTP id ff1so4249081vbb.19
+        for <linux-nfs@vger.kernel.org>; Tue, 17 Apr 2012 08:41:18 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <1334611367.2879.59.camel@lade.trondhjem.org>
+References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
+	<1334004744-31842-20-git-send-email-iisaman@netapp.com>
+	<1334611367.2879.59.camel@lade.trondhjem.org>
+Date: Tue, 17 Apr 2012 11:41:18 -0400
+Message-ID: <CADnza46tRhuPW6keCOSLkWQ-t9VrLvCUampmCP2aXydTuS=Sdw@mail.gmail.com>
+Subject: Re: [PATCH 19/26] NFS: rewrite directio read to use async coalesce code
+From: Fred Isaman <faisaman4@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "Isaman, Fred" <Fred.Isaman@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Mon, Apr 16, 2012 at 5:22 PM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Mon, 2012-04-09 at 16:52 -0400, Fred Isaman wrote:
+>> This also has the advantage that it allows directio to use pnfs.
+>>
+>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>> ---
+>> -static void nfs_direct_read_release(void *calldata)
+>> +static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
+>>  {
+>> +     unsigned long pos = req_offset(hdr->req);
+>
+> Umm... req_offset() returns an loff_t. 'unsigned long' is likely to be
+> too small to hold these values on a 32-bit machine.
+>
+> Looking back, it looks as if the same problem exists in the page cache
+> code (e.g. nfs_read_completion) as well as stuff like hdr->eof, and
+> hdr->first_error.
+>
+>
 
-This is only when CONFIG_NFS_V4_1 isn't enabled.
+OK, I'll fix these.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/pnfs.h |    6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 8efbee7..f20054b 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -424,12 +424,14 @@ static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
- {
- }
- 
--static inline bool pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode)
-+static inline bool pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode,
-+					 const struct nfs_pgio_completion_ops *compl_ops)
- {
- 	return false;
- }
- 
--static inline bool pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode, int ioflags)
-+static inline bool pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode, int ioflags,
-+					  const struct nfs_pgio_completion_ops *compl_ops)
- {
- 	return false;
- }
--- 
-1.7.10
-
+Fred
