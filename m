@@ -1,141 +1,184 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:9404 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:30233 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751867Ab2DYORp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Apr 2012 10:17:45 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Simon Kirby <sim@hostway.ca>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [3.2.10] NFSv3 CLOSE_WAIT hang
-Date: Wed, 25 Apr 2012 14:16:47 +0000
-Message-ID: <1335363367.3569.8.camel@lade.trondhjem.org>
-References: <20120425005636.GB2082@hostway.ca>
-In-Reply-To: <20120425005636.GB2082@hostway.ca>
-Content-Type: text/plain; charset="utf-8"
+	id S1750795Ab2DQOPS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Apr 2012 10:15:18 -0400
+Message-ID: <4F8D7ADF.9030709@RedHat.com>
+Date: Tue, 17 Apr 2012 10:14:55 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: Jeff Layton <jlayton@redhat.com>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        Malahal Naineni <malahal@us.ibm.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "pstaubach@exagrid.com" <pstaubach@exagrid.com>,
+        "miklos@szeredi.hu" <miklos@szeredi.hu>,
+        "viro@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
+        "hch@infradead.org" <hch@infradead.org>,
+        "michael.brantley@deshaw.com" <michael.brantley@deshaw.com>,
+        "sven.breuner@itwm.fraunhofer.de" <sven.breuner@itwm.fraunhofer.de>
+Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from getattr
+ call
+References: <1334316311-22331-1-git-send-email-jlayton@redhat.com> <20120413150518.GA1987@us.ibm.com> <20120413114236.0e557e01@tlielax.poochiereds.net> <4F8B1B7B.3040304@itwm.fraunhofer.de> <20120416073655.7cdb90cf@corrin.poochiereds.net> <4F8C3036.2030702@itwm.fraunhofer.de> <20120416134642.1754cd3e@corrin.poochiereds.net> <1334604785.2879.23.camel@lade.trondhjem.org> <20120416154322.0d95e435@corrin.poochiereds.net> <1334607906.2879.36.camel@lade.trondhjem.org> <20120416190548.2463d1d0@corrin.poochiereds.net> <4F8D580B.7060104@RedHat.com> <20120417093643.7f172057@corrin.poochiereds.net>
+In-Reply-To: <20120417093643.7f172057@corrin.poochiereds.net>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA0LTI0IGF0IDE3OjU2IC0wNzAwLCBTaW1vbiBLaXJieSB3cm90ZToNCj4g
-SGVsbG8hDQo+IA0KPiBJJ3ZlIHJlcG9ydGVkIHRoaXMgYSBmZXcgdGltZXMgbm93LCBidXQgd2Ug
-c3RpbGwga2VlcCBoaXR0aW5nIHRoZSBpc3N1ZS4NCj4gTkZTIGNsaWVudHMgaW4gdGhlIGNsdXN0
-ZXIgb2NjYXNpb25hbGx5IGdldCBzdHVjayB3aXRoIHRoZSBzb2NrZXQgdG8gb25lDQo+IG9mIHRo
-ZSBORlMgc2VydmVycyBpbiBDTE9TRV9XQUlUIHN0YXRlLCBhbmQgZG9uJ3QgcmVjb3Zlci4NCj4g
-DQo+IFRoZSBORlMgc2VydmVycyAoa25mc2QpIHVzZWQgdG8gYmUgcnVubmluZyAyLjYuMzAgc2lu
-Y2UgbmV3ZXIga2VybmVscyBoaXQNCj4gWEZTIGJ1Z3MsIGJ1dCBhcmUgYWxsIG5vdyBmaW5hbGx5
-IHJ1bm5pbmcgMy4yLjEwIG9yIDMuMi4xNi4NCj4gDQo+IEkndmUgYWRkZWQgc29tZSBkZWJ1Z2dp
-bmcgcHJpbnRrKClzIGFuZCBXQVJOKClzIHRvIHRoZSBrZXJuZWwgdG8gdHJ5IHRvDQo+IGZpZ3Vy
-ZSBvdXQgd2hhdCBpcyBnb2luZyBvbi4gV2l0aG91dCBrbm93aW5nIG11Y2ggYWJvdXQgaG93IGl0
-J3MgYWN0dWFsbHkNCj4gZXhwZWN0ZWQgdG8gd29yayA6KSwgdGhlc2Ugd2VyZSBtb3N0bHkgdG8g
-ZmlndXJlIG91dCB3aHkgdGhlIHNvY2tldCBpcw0KPiBiZWluZyBjbG9zZWQuIEkgYWRkZWQgdGhl
-IGZvbGxvd2luZyBvbiB0b3Agb2Ygd2l0aCBUcm9uZCdzIHN1bnJwYw0KPiBkZWJ1Z2dpbmcgcGF0
-Y2g6DQo8c25pcD4NCj4gWzExMTkxOTYuNjQwMDE3XSBuZnM6IFJQQyBjYWxsIHRpbWVvdXQgKDEx
-MCksIGRpc2Nvbm5lY3RpbmcNCj4gWzExMTkxOTYuNzIwMDI2XSBuZnM6IFJQQyBjYWxsIHRpbWVv
-dXQgKDExMCksIGRpc2Nvbm5lY3RpbmcNCj4gWzExMTkxOTYuODkyMDIxXSBuZnM6IFJQQyBjYWxs
-IHRpbWVvdXQgKDExMCksIGRpc2Nvbm5lY3RpbmcNCj4gWzExMTkxOTguNTE2MDIyXSBuZnM6IFJQ
-QyBjYWxsIHRpbWVvdXQgKDExMCksIGRpc2Nvbm5lY3RpbmcNCj4gWzExMTkyMjAuNTc2MDI1XSBu
-ZnM6IFJQQyBjYWxsIHRpbWVvdXQgKDExMCksIGRpc2Nvbm5lY3RpbmcNCj4gWzExMTk4NzEuMDQ4
-MDQwXSBuZnM6IFJQQyBjYWxsIHRpbWVvdXQgKDExMCksIGRpc2Nvbm5lY3RpbmcNCj4gWzExMjAy
-NjYuNDY0MDIxXSBuZnM6IFJQQyBjYWxsIHRpbWVvdXQgKDExMCksIGRpc2Nvbm5lY3RpbmcNCj4g
-WzExMjAzNDEuNDcyMDIxXSBuZnM6IFJQQyBjYWxsIHRpbWVvdXQgKDExMCksIGRpc2Nvbm5lY3Rp
-bmcNCj4gWzExMjIxMzkuMDA4MDIyXSBuZnM6IFJQQyBjYWxsIHRpbWVvdXQgKDExMCksIGRpc2Nv
-bm5lY3RpbmcNCj4gWzExMjIxNjYuMTEyMDQzXSBuZnM6IFJQQyBjYWxsIHRpbWVvdXQgKDExMCks
-IGRpc2Nvbm5lY3RpbmcNCj4gWzExMjIzMDIuMzA0MDM3XSBuZnM6IFJQQyBjYWxsIHRpbWVvdXQg
-KDExMCksIGRpc2Nvbm5lY3RpbmcNCj4gWzExMjI2NjYuNzM1NzY1XSAtLS0tLS0tLS0tLS1bIGN1
-dCBoZXJlIF0tLS0tLS0tLS0tLS0NCj4gWzExMjI2NjYuNzM1ODU1XSBXQVJOSU5HOiBhdCBuZXQv
-c3VucnBjL3hwcnQuYzo2NDAgeHBydF9mb3JjZV9kaXNjb25uZWN0KzB4NGEvMHhhMCgpDQo+IFsx
-MTIyNjY2LjczNTk0NV0gSGFyZHdhcmUgbmFtZTogUG93ZXJFZGdlIDE5NTANCj4gWzExMjI2NjYu
-NzM2MDI1XSB4cHJ0X2ZvcmNlX2Rpc2Nvbm5lY3QoKTogc2V0dGluZyBYUFJUX0NMT1NFX1dBSVQN
-Cj4gWzExMjI2NjYuNzM2MDk5XSBNb2R1bGVzIGxpbmtlZCBpbjogaXBtaV9kZXZpbnRmIGlwbWlf
-c2kgaXBtaV9tc2doYW5kbGVyIHh0X3JlY2VudCBuZl9jb25udHJhY2tfZnRwIHh0X3N0YXRlIHh0
-X293bmVyIG5mX2Nvbm50cmFja19pcHY0IG5mX2Nvbm50cmFjayBuZl9kZWZyYWdfaXB2NCBibngy
-IHNlcmlvX3JhdyBldmRldg0KPiBbMTEyMjY2Ni43MzY4OThdIFBpZDogMTg0NTgsIGNvbW06IGh0
-dHBkIFRhaW50ZWQ6IEcgICAgICAgIFcgICAgMy4yLjEwLWh3KyAjMTYNCj4gWzExMjI2NjYuNzM2
-OTc1XSBDYWxsIFRyYWNlOg0KPiBbMTEyMjY2Ni43MzcwNDNdICA8SVJRPiAgWzxmZmZmZmZmZjgx
-NmI1NDVhPl0gPyB4cHJ0X2ZvcmNlX2Rpc2Nvbm5lY3QrMHg0YS8weGEwDQo+IFsxMTIyNjY2Ljcz
-NzE3Nl0gIFs8ZmZmZmZmZmY4MTA1ZGQ2MD5dIHdhcm5fc2xvd3BhdGhfY29tbW9uKzB4ODAvMHhj
-MA0KPiBbMTEyMjY2Ni43MzcyNTJdICBbPGZmZmZmZmZmODEwNWRlOTk+XSB3YXJuX3Nsb3dwYXRo
-X2ZtdCsweDY5LzB4NzANCj4gWzExMjI2NjYuNzM3MzM1XSAgWzxmZmZmZmZmZmEwMDU1YWZmPl0g
-PyB0Y3BfcGFja2V0KzB4N2NmLzB4MTBmMCBbbmZfY29ubnRyYWNrXQ0KPiBbMTEyMjY2Ni43Mzc0
-MTRdICBbPGZmZmZmZmZmODE3MDJjNDE+XSA/IF9yYXdfc3Bpbl9sb2NrX2JoKzB4MTEvMHg0MA0K
-PiBbMTEyMjY2Ni43Mzc0OTBdICBbPGZmZmZmZmZmODE2YjU0NWE+XSB4cHJ0X2ZvcmNlX2Rpc2Nv
-bm5lY3QrMHg0YS8weGEwDQo+IFsxMTIyNjY2LjczNzU2Nl0gIFs8ZmZmZmZmZmY4MTZiODdlOD5d
-IHhzX3RjcF9zdGF0ZV9jaGFuZ2UrMHg3OC8weDMyMA0KPiBbMTEyMjY2Ni43Mzc2NDNdICBbPGZm
-ZmZmZmZmODE2NjdmNGI+XSB0Y3BfZmluKzB4MTdiLzB4MjEwDQo+IFsxMTIyNjY2LjczNzcxN10g
-IFs8ZmZmZmZmZmY4MTY2OGM1Mj5dIHRjcF9kYXRhX3F1ZXVlKzB4NGMyLzB4ZTcwDQo+IFsxMTIy
-NjY2LjczNzc5M10gIFs8ZmZmZmZmZmY4MTY2YzM4OT5dID8gdGNwX3ZhbGlkYXRlX2luY29taW5n
-KzB4MTA5LzB4MzQwDQo+IFsxMTIyNjY2LjczNzg2OV0gIFs8ZmZmZmZmZmY4MTY2YzcwOT5dIHRj
-cF9yY3ZfZXN0YWJsaXNoZWQrMHgxNDkvMHhiMDANCj4gWzExMjI2NjYuNzM3OTQ2XSAgWzxmZmZm
-ZmZmZjgxNjc1MWRjPl0gdGNwX3Y0X2RvX3JjdisweDE1Yy8weDJlMA0KPiBbMTEyMjY2Ni43Mzgw
-MjFdICBbPGZmZmZmZmZmODE2NDk5MjQ+XSA/IG5mX2l0ZXJhdGUrMHg4NC8weGIwDQo+IFsxMTIy
-NjY2LjczODA5Nl0gIFs8ZmZmZmZmZmY4MTY3NTlhZj5dIHRjcF92NF9yY3YrMHg2NGYvMHg4YjAN
-Cj4gWzExMjI2NjYuNzM4MTcwXSAgWzxmZmZmZmZmZjgxNjQ5YTlkPl0gPyBuZl9ob29rX3Nsb3cr
-MHg2ZC8weDEzMA0KPiBbMTEyMjY2Ni43MzgyNDZdICBbPGZmZmZmZmZmODE2NTQzYjA+XSA/IGlw
-X3JjdisweDJmMC8weDJmMA0KPiBbMTEyMjY2Ni43MzgzMjJdICBbPGZmZmZmZmZmODE2NTQ0NWE+
-XSBpcF9sb2NhbF9kZWxpdmVyX2ZpbmlzaCsweGFhLzB4MWQwDQo+IFsxMTIyNjY2LjczODM5OV0g
-IFs8ZmZmZmZmZmY4MTY1NDYwZD5dIGlwX2xvY2FsX2RlbGl2ZXIrMHg4ZC8weGEwDQo+IFsxMTIy
-NjY2LjczODQ3NF0gIFs8ZmZmZmZmZmY4MTY1M2VmOT5dIGlwX3Jjdl9maW5pc2grMHgxNjkvMHgz
-MzANCj4gWzExMjI2NjYuNzM4NTQ5XSAgWzxmZmZmZmZmZjgxNjU0MzNkPl0gaXBfcmN2KzB4Mjdk
-LzB4MmYwDQo+IFsxMTIyNjY2LjczODYyNV0gIFs8ZmZmZmZmZmY4MTYyNTZlNz5dIF9fbmV0aWZf
-cmVjZWl2ZV9za2IrMHg0MzcvMHg0OTANCj4gWzExMjI2NjYuNzM4NzAxXSAgWzxmZmZmZmZmZjgx
-NjI3NTY4Pl0gbmV0aWZfcmVjZWl2ZV9za2IrMHg3OC8weDgwDQo+IFsxMTIyNjY2LjczODc3OF0g
-IFs8ZmZmZmZmZmY4MTNhYThkYz5dID8gaXNfc3dpb3RsYl9idWZmZXIrMHgzYy8weDUwDQo+IFsx
-MTIyNjY2LjczODg1NF0gIFs8ZmZmZmZmZmY4MTYyNzZhMD5dIG5hcGlfc2tiX2ZpbmlzaCsweDUw
-LzB4NzANCj4gWzExMjI2NjYuNzM4OTI5XSAgWzxmZmZmZmZmZjgxNjI3Y2U1Pl0gbmFwaV9ncm9f
-cmVjZWl2ZSsweDEwNS8weDE0MA0KPiBbMTEyMjY2Ni43MzkwMDhdICBbPGZmZmZmZmZmYTAwMjll
-N2I+XSBibngyX3BvbGxfd29yaysweDYwYi8weDE1NTAgW2JueDJdDQo+IFsxMTIyNjY2LjczOTA4
-NV0gIFs8ZmZmZmZmZmY4MTA1MDk2ZD5dID8gZW5xdWV1ZV90YXNrX2ZhaXIrMHgxNWQvMHg1NDAN
-Cj4gWzExMjI2NjYuNzM5MTYzXSAgWzxmZmZmZmZmZjgxMDQ4MjVlPl0gPyBjcHVfc210X21hc2sr
-MHgxZS8weDIwDQo+IFsxMTIyNjY2LjczOTIzOF0gIFs8ZmZmZmZmZmY4MTA0NzVkZD5dID8gY2hl
-Y2tfcHJlZW1wdF9jdXJyKzB4N2QvMHhhMA0KPiBbMTEyMjY2Ni43MzkzMTVdICBbPGZmZmZmZmZm
-YTAwMmFlZWM+XSBibngyX3BvbGwrMHg1Yy8weDIzMCBbYm54Ml0NCj4gWzExMjI2NjYuNzM5Mzkx
-XSAgWzxmZmZmZmZmZjgxNjI3ZjBiPl0gbmV0X3J4X2FjdGlvbisweDExYi8weDJlMA0KPiBbMTEy
-MjY2Ni43Mzk0NjddICBbPGZmZmZmZmZmODEwMTkyNzY+XSA/IHJlYWRfdHNjKzB4MTYvMHg0MA0K
-PiBbMTEyMjY2Ni43Mzk1NDJdICBbPGZmZmZmZmZmODEwNjRmYTA+XSBfX2RvX3NvZnRpcnErMHhl
-MC8weDFkMA0KPiBbMTEyMjY2Ni43Mzk2MTldICBbPGZmZmZmZmZmODE3MGM4ZWM+XSBjYWxsX3Nv
-ZnRpcnErMHgxYy8weDMwDQo+IFsxMTIyNjY2LjczOTY5M10gIFs8ZmZmZmZmZmY4MTAxNDJiNT5d
-IGRvX3NvZnRpcnErMHg2NS8weGEwDQo+IFsxMTIyNjY2LjczOTc2N10gIFs8ZmZmZmZmZmY4MTA2
-NGNhZD5dIGlycV9leGl0KzB4YWQvMHhlMA0KPiBbMTEyMjY2Ni43Mzk4NDFdICBbPGZmZmZmZmZm
-ODEwMTNhOTQ+XSBkb19JUlErMHg2NC8weGUwDQo+IFsxMTIyNjY2LjczOTkxNF0gIFs8ZmZmZmZm
-ZmY4MTcwMmRlZT5dIGNvbW1vbl9pbnRlcnJ1cHQrMHg2ZS8weDZlDQo+IFsxMTIyNjY2LjczOTk4
-OF0gIDxFT0k+ICBbPGZmZmZmZmZmODE3MGE3MTI+XSA/IHN5c3RlbV9jYWxsX2Zhc3RwYXRoKzB4
-MTYvMHgxYg0KPiBbMTEyMjY2Ni43NDAxMjddIC0tLVsgZW5kIHRyYWNlIDE4MzI3NzM4ZmYxNzEx
-ZWUgXS0tLQ0KPiBbMTEyMjY2Ni43NDAyMDNdIFJQQzogc2VydmVyIGluaXRhdGVkIHNodXRkb3du
-IC0tIHN0YXRlIDggY29ubiAxIGRlYWQgMCB6YXBwZWQgMSBza19zaHV0ZG93biAxDQo+IA0KPiBO
-byBvdGhlciBtZXNzYWdlcyBhZnRlciB0aGlzIC0tIHdlIHNlZSB0aGUgc29ja2V0IGluIENMT1NF
-X1dBSVQ6DQo+IA0KPiBQcm90byBSZWN2LVEgU2VuZC1RIExvY2FsIEFkZHJlc3MgICAgICAgICAg
-IEZvcmVpZ24gQWRkcmVzcyAgICAgICAgIFN0YXRlICAgICAgIFBJRC9Qcm9ncmFtIG5hbWUgVGlt
-ZXINCj4gdGNwICAgICAgICAwICAgICAgMCAxMC4xMC41Mi4xMTo4MDEgICAgICAgICAxMC4xMC41
-Mi4yMjU6MjA0OSAgICAgICBDTE9TRV9XQUlUICAtICAgICAgICAgICAgICAgIG9mZiAoMC4wMC8w
-LzApDQo+IA0KPiBIZXJlJ3MgdGhlIGRtZXNnIGFmdGVyICJycGNkZWJ1ZyAtbSBycGMgLWMgYWxs
-IjogaHR0cDovLzB4LmNhL3NpbS9yZWYvMy4yLjEwL2RtZXNnDQo+IA0KPiBXaGVyZSBzaG91bGQg
-SSBnbyBmcm9tIGhlcmU/IElzIGl0IHZhbGlkIHRoYXQgc29tZSBwcm9jZXNzZXMgc2hvdWxkIGdl
-dA0KPiBzdHVjayBpbiB1bmludGVycnVwdGlibGUgc2xlZXAgaW4gdGhpcyBjYXNlPyBJcyBpdCB2
-YWxpZCB0aGF0IHRoZSBzZXJ2ZXINCj4gc2hvdWxkIGhhbmcgdXAgYXQgYWxsPw0KDQpDYW4geW91
-IHRyeSBhcHBseWluZyBzb21ldGhpbmcgbGlrZSB0aGUgZm9sbG93aW5nIHBhdGNoIG9uIHRvcCBv
-ZiB3aGF0DQp5b3UgaGF2ZSBhcHBsaWVkIGFib3ZlPyBJdCBpcyBjbGVhciB0aGF0IHNvbWV0aGlu
-ZyBpcyBnb2luZyB3cm9uZyBpbiB0aGUNCmF1dG9kaXNjb25uZWN0IGxvZ2ljLCBidXQgaXQgaXMg
-bm90IHlldCAxMDAlIGNsZWFyIHRvIG1lIHdoYXQgdGhhdCBtaWdodA0KYmUuIFRoZSBwYXRjaCBi
-ZWxvdyBjaGVja3MgZm9yIHJhY2VzIGluIHhwcnRfYXV0b2Nsb3NlKCkgYW5kIGFsc28gY2hlY2tz
-DQp0byBzZWUgaWYgdGhlIHhwcnRfZm9yY2VfZGlzY29ubmVjdCBtaWdodCBiZSBmYWlsaW5nIHRv
-IHdha2UgdXAgYSBzdHVjaw0KdGFzayB0aGF0IGhvbGRzIHRoZSBzb2NrZXQgd3JpdGUgbG9jay4N
-Cg0KQ2hlZXJzDQogIFRyb25kDQotLS0NCmRpZmYgLS1naXQgYS9uZXQvc3VucnBjL3hwcnQuYyBi
-L25ldC9zdW5ycGMveHBydC5jDQppbmRleCBjNjRjMGVmLi4xOTA0NDY3IDEwMDY0NA0KLS0tIGEv
-bmV0L3N1bnJwYy94cHJ0LmMNCisrKyBiL25ldC9zdW5ycGMveHBydC5jDQpAQCAtNjA0LDggKzYw
-NCw5IEBAIHN0YXRpYyB2b2lkIHhwcnRfYXV0b2Nsb3NlKHN0cnVjdCB3b3JrX3N0cnVjdCAqd29y
-aykNCiAJc3RydWN0IHJwY194cHJ0ICp4cHJ0ID0NCiAJCWNvbnRhaW5lcl9vZih3b3JrLCBzdHJ1
-Y3QgcnBjX3hwcnQsIHRhc2tfY2xlYW51cCk7DQogDQotCXhwcnQtPm9wcy0+Y2xvc2UoeHBydCk7
-DQogCWNsZWFyX2JpdChYUFJUX0NMT1NFX1dBSVQsICZ4cHJ0LT5zdGF0ZSk7DQorCXhwcnQtPm9w
-cy0+Y2xvc2UoeHBydCk7DQorCVdBUk5fT04odGVzdF9iaXQoWFBSVF9DTE9TRV9XQUlULCAmeHBy
-dC0+c3RhdGUpKTsNCiAJeHBydF9yZWxlYXNlX3dyaXRlKHhwcnQsIE5VTEwpOw0KIH0NCiANCkBA
-IC02MzgsNiArNjM5LDE0IEBAIHZvaWQgeHBydF9mb3JjZV9kaXNjb25uZWN0KHN0cnVjdCBycGNf
-eHBydCAqeHBydCkNCiAJaWYgKHRlc3RfYW5kX3NldF9iaXQoWFBSVF9MT0NLRUQsICZ4cHJ0LT5z
-dGF0ZSkgPT0gMCkNCiAJCXF1ZXVlX3dvcmsocnBjaW9kX3dvcmtxdWV1ZSwgJnhwcnQtPnRhc2tf
-Y2xlYW51cCk7DQogCXhwcnRfd2FrZV9wZW5kaW5nX3Rhc2tzKHhwcnQsIC1FQUdBSU4pOw0KKwlp
-ZiAoeHBydC0+c25kX3Rhc2sgIT0gTlVMTCkgew0KKwkJc3RydWN0IHJwY190YXNrICp0YXNrID0g
-eHBydC0+c25kX3Rhc2s7DQorCQlpZiAoUlBDX0lTX1FVRVVFRCh0YXNrKSkgew0KKwkJCVdBUk4o
-MSwgInRhc2sgJTV1IGlzIHF1ZXVlZCBvbiAlc1xuIiwNCisJCQkJCXRhc2stPnRrX3BpZCwNCisJ
-CQkJCXJwY19xbmFtZSh0YXNrLT50a193YWl0cXVldWUpKTsNCisJCX0NCisJfQ0KIAlzcGluX3Vu
-bG9ja19iaCgmeHBydC0+dHJhbnNwb3J0X2xvY2spOw0KIH0NCiANCg0KLS0gDQpUcm9uZCBNeWts
-ZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xl
-YnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+
+
+On 04/17/2012 09:36 AM, Jeff Layton wrote:
+> On Tue, 17 Apr 2012 07:46:19 -0400
+> Steve Dickson <SteveD@redhat.com> wrote:
+> 
+>>
+>>
+>> On 04/16/2012 07:05 PM, Jeff Layton wrote:
+>>> On Mon, 16 Apr 2012 20:25:06 +0000
+>>> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+>>>
+>>>> On Mon, 2012-04-16 at 15:43 -0400, Jeff Layton wrote:
+>>>>> On Mon, 16 Apr 2012 19:33:05 +0000
+>>>>> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+>>>>>
+>>>>>> On Mon, 2012-04-16 at 13:46 -0400, Jeff Layton wrote:
+>>>>>>> The question about looping indefinitely really comes down to:
+>>>>>>>
+>>>>>>> 1) is a persistent ESTALE in conjunction with a successful lookup a
+>>>>>>> situation that we expect to be temporary. i.e. will the admin at some
+>>>>>>> point be able to do something about it? If not, then there's no point
+>>>>>>> in continuing to retry. Again, this is a situation that *really* should
+>>>>>>> not happen if the filesystem is doing the right thing.
+>>>>>>>
+>>>>>>> 2) If the admin can't do anything about it, is it reasonable to expect
+>>>>>>> that users can send a fatal signal to hung applications if this
+>>>>>>> situation occurs.
+>>>>>>>
+>>>>>>> We expect that that's ok in other situations to resolve hung
+>>>>>>> applications, so I'm not sure I understand why it wouldn't be
+>>>>>>> acceptable here...
+>>>>>>
+>>>>>> There are definitely potentially persistent pathological situations that
+>>>>>> the filesystem can't do anything about. If the point of origin for your
+>>>>>> pathname (for instance your current directory in the case of a relative
+>>>>>> pathname) is stale, then no amount of looping is going to help you to
+>>>>>> recover.
+>>>>>>
+>>>>>
+>>>>> Ok -- Peter pretty much said something similar. Retrying indefnitely
+>>>>> when the lookup returns ESTALE probably won't help. I'm ok with
+>>>>> basically letting the VFS continue to do what it does there already. If
+>>>>> it gets an ESTALE, it tries again with LOOKUP_REVAL set and then gives
+>>>>> up if that doesn't work.
+>>>>>
+>>>>> If however, the operation itself keeps returning ESTALE, are we OK to
+>>>>> retry indefinitely assuming that we'll break out of the loop on fatal
+>>>>> signals?
+>>>>>
+>>>>> For example, something like the v2 patch I sent a little while ago?
+>>>>
+>>>>
+>>>> Won't something like fstatat(AT_FDCWD, "", &stat, AT_EMPTY_PATH) risk
+>>>> looping forever there, or am I missing something?
+>>>>
+>>>
+>>> To make sure I understand, that should be "shortcut" for a lookup of the
+>>> cwd?
+>>>
+>>> So I guess the concern is that you'd do the above and get a successful
+>>> lookup since you're just going to get back the cwd. At that point,
+>>> you'd attempt the getattr and get ESTALE back. Then, you'd redo the
+>>> lookup with LOOKUP_REVAL set -- but since we're operating on the
+>>> cwd, we don't have a way to redo the lookup since we don't have a
+>>> pathname that we can look up again...
+>>>
+>>> So yeah, I guess if you're sitting in a stale directory, something like
+>>> that could loop eternally.
+>>>
+>>> Do you think the proposed check for fatal_signal_pending is enough to
+>>> mitigate such a problem? Or do we need to limit the number of retries
+>>> to address those sorts of loops?
+>>>
+>> I think your version 2 patch is definitely more clever than v1, but I'm
+>> thinking Trond's point is no matter what type of looping is done or how
+>> long its done its going to fail... So why loop at all? 
+>>
+> 
+> Because we can't distinguish between that case and a case where
+> retrying may help. If we can avoid failing altogether, isn't that
+> preferable?
+> 
+>> Again I think the safest and simply way, from the VFS point of view,
+>> is do the looping once if the file system as registered for it
+>> through the fs_flags. This will catch %99 of the issues, failing
+>> on the %1 of the corner cases... 
+>>
+> 
+> If we're just going to retry once, then I see no need to bother with a
+> fs flag. Retrying once should be harmless for all filesystems. The main
+> reason to bother with a per-fs flag is to deal with those that would
+> have problems looping indefinitely on an ESTALE return from the
+> operation.
+True, but even so... Giving file systems an opt-out option with the 
+default being out, maybe still have some merit... Making file systems
+enable this new type of functionality would cut down on any of the
+"surprise" that might occur with this redo ;-) 
+ 
+> 
+> So, to give your proposal some "legs", you'd prefer to see something
+> like this?
+> 
+> ---------------------------------[snip]-------------------------------
+> 
+> [PATCH] vfs: make fstatat retry once on ESTALE errors from getattr call
+> 
+> A third patch. This one takes the minimalist approach. It only retries
+> once per syscall.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/stat.c |    9 ++++++++-
+>  1 files changed, 8 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/stat.c b/fs/stat.c
+> index c733dc5..0ee9cb4 100644
+> --- a/fs/stat.c
+> +++ b/fs/stat.c
+> @@ -73,7 +73,8 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
+>  {
+>  	struct path path;
+>  	int error = -EINVAL;
+> -	int lookup_flags = 0;
+> +	bool retried = false;
+> +	unsigned int lookup_flags = 0;
+>  
+>  	if ((flag & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
+>  		      AT_EMPTY_PATH)) != 0)
+> @@ -84,12 +85,18 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
+>  	if (flag & AT_EMPTY_PATH)
+>  		lookup_flags |= LOOKUP_EMPTY;
+>  
+> +retry:
+>  	error = user_path_at(dfd, filename, lookup_flags, &path);
+>  	if (error)
+>  		goto out;
+>  
+>  	error = vfs_getattr(path.mnt, path.dentry, stat);
+>  	path_put(&path);
+> +	if (error == -ESTALE && !retried) {
+> +		retried = true;
+> +		lookup_flags |= LOOKUP_REVAL;
+> +		goto retry;
+> +	}
+>  out:
+>  	return error;
+>  }
+Yes, with the exception of the fs_flag check. If this proves out to
+handle 99% of the cases... all but the very few corner cases.. then
+why does it have to be more complicated? 
+
+steved.
+
