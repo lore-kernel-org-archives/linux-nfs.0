@@ -1,186 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vb0-f46.google.com ([209.85.212.46]:60969 "EHLO
-	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753262Ab2DPNKG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Apr 2012 09:10:06 -0400
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:35913 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932073Ab2DQQQd convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Apr 2012 12:16:33 -0400
+Received: by vcqp1 with SMTP id p1so4219494vcq.19
+        for <linux-nfs@vger.kernel.org>; Tue, 17 Apr 2012 09:16:32 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <1334578675-23445-9-git-send-email-mgorman@suse.de>
-References: <1334578675-23445-1-git-send-email-mgorman@suse.de>
-	<1334578675-23445-9-git-send-email-mgorman@suse.de>
-Date: Mon, 16 Apr 2012 09:10:04 -0400
-Message-ID: <CADnza444dTr=JEtqpL5wxHRNkEc7vBz1qq9TL7Z+5h749vNawg@mail.gmail.com>
-Subject: Re: [PATCH 08/11] nfs: disable data cache revalidation for swapfiles
-From: Fred Isaman <iisaman@netapp.com>
-To: Mel Gorman <mgorman@suse.de>
-Cc: Andrew Morton <akpm@linux-foundation.org>, Linux-MM <linux-mm@kvack.org>,
-        Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>
+In-Reply-To: <1334679223.2703.15.camel@lade.trondhjem.org>
+References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
+	<1334004744-31842-15-git-send-email-iisaman@netapp.com>
+	<1334608102.2879.37.camel@lade.trondhjem.org>
+	<CADnza467ROBp0-=Qgq5DwSK=Zu5Vyk5i1v1qFN2aMbKXDWdT=A@mail.gmail.com>
+	<1334679223.2703.15.camel@lade.trondhjem.org>
+Date: Tue, 17 Apr 2012 12:16:32 -0400
+Message-ID: <CADnza46wJCykVgCh=3C=9MjZ4i-NLW1HTaDfmw4AMf9OQOj6Jw@mail.gmail.com>
+Subject: Re: [PATCH 14/26] NFS: merge _full and _partial read rpc_ops
+From: Fred Isaman <faisaman4@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "Isaman, Fred" <Fred.Isaman@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 16, 2012 at 8:17 AM, Mel Gorman <mgorman@suse.de> wrote:
-> The VM does not like PG_private set on PG_swapcache pages. As suggested
-> by Trond in http://lkml.org/lkml/2006/8/25/348, this patch disables
-> NFS data cache revalidation on swap files.  as it does not make
-> sense to have other clients change the file while it is being used as
-> swap. This avoids setting PG_private on swap pages, since there ought
-> to be no further races with invalidate_inode_pages2() to deal with.
+On Tue, Apr 17, 2012 at 12:13 PM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Tue, 2012-04-17 at 11:37 -0400, Fred Isaman wrote:
+>> On Mon, Apr 16, 2012 at 4:28 PM, Myklebust, Trond
+>> <Trond.Myklebust@netapp.com> wrote:
+>> > On Mon, 2012-04-09 at 16:52 -0400, Fred Isaman wrote:
+>> >> @@ -64,10 +80,16 @@ void nfs_readhdr_free(struct nfs_pgio_header *hdr)
+>> >>
+>> >>  void nfs_readdata_release(struct nfs_read_data *rdata)
+>> >>  {
+>> >> +     struct nfs_pgio_header *hdr = rdata->header;
+>> >> +
+>> >>       put_nfs_open_context(rdata->args.context);
+>> >>       if (rdata->pages.pagevec != rdata->pages.page_array)
+>> >>               kfree(rdata->pages.pagevec);
+>> >> -     nfs_readhdr_free(rdata->header);
+>> >> +     if (container_of(hdr, struct nfs_read_header, header) !=
+>> >> +         container_of(rdata, struct nfs_read_header, rpc_data))
+>> >> +             kfree(rdata);
+>> >
+>> > This looks unnecessarily complicated. How about
+>> >
+>> >        if (rdata != &hdr->rpc_data)
+>> >                kfree(rdata);
+>> >
+>>
+>> That won't work.  There is no hdr->rpc_data.
 >
-> Since we cannot set PG_private we cannot use page->private which
-> is already used by PG_swapcache pages to store the nfs_page. Thus
-> augment the new nfs_page_find_request logic.
+> Doh! Make that
 >
-> Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-> Signed-off-by: Mel Gorman <mgorman@suse.de>
-> ---
->  fs/nfs/inode.c |    6 ++++++
->  fs/nfs/write.c |   51 +++++++++++++++++++++++++++++++++++++--------------
->  2 files changed, 43 insertions(+), 14 deletions(-)
+>        struct nfs_read_header *read_header = container_of(hdr, struct....);
 >
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index e8bbfa5..af43ef6 100644
-> --- a/fs/nfs/inode.c
-> +++ b/fs/nfs/inode.c
-> @@ -880,6 +880,12 @@ int nfs_revalidate_mapping(struct inode *inode, struct address_space *mapping)
->        struct nfs_inode *nfsi = NFS_I(inode);
->        int ret = 0;
+>        if (rdata != &read_header->rpc_data)
+>                kfree(rdata);
 >
-> +       /*
-> +        * swapfiles are not supposed to be shared.
-> +        */
-> +       if (IS_SWAPFILE(inode))
-> +               goto out;
-> +
->        if ((nfsi->cache_validity & NFS_INO_REVAL_PAGECACHE)
->                        || nfs_attribute_cache_expired(inode)
->                        || NFS_STALE(inode)) {
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index 6a891eb..eea4ec0 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -111,15 +111,30 @@ static void nfs_context_set_write_error(struct nfs_open_context *ctx, int error)
->        set_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
->  }
+> The reason for preferring the above line is that I can trivially see
+> that the reason why I don't want to do the kfree() is because I'm
+> pointing at a field inside the read_header.
 >
-> -static struct nfs_page *nfs_page_find_request_locked(struct page *page)
-> +static struct nfs_page *
-> +nfs_page_find_request_locked(struct nfs_inode *nfsi, struct page *page)
->  {
->        struct nfs_page *req = NULL;
->
-> -       if (PagePrivate(page)) {
-> +       if (PagePrivate(page))
->                req = (struct nfs_page *)page_private(page);
-> -               if (req != NULL)
-> -                       kref_get(&req->wb_kref);
-> +       else if (unlikely(PageSwapCache(page))) {
-> +               struct nfs_page *freq, *t;
-> +
-> +               /* Linearly search the commit list for the correct req */
-> +               list_for_each_entry_safe(freq, t, &nfsi->commit_list, wb_list) {
-> +                       if (freq->wb_page == page) {
-> +                               req = freq;
-> +                               break;
-> +                       }
-> +               }
-> +
-> +               BUG_ON(req == NULL);
 
-I suspect I am missing something, but why is it guaranteed that the
-req is on the commit list?
+OK.
 
 Fred
-
->        }
-> +
-> +       if (req)
-> +               kref_get(&req->wb_kref);
-> +
->        return req;
->  }
->
-> @@ -129,7 +144,7 @@ static struct nfs_page *nfs_page_find_request(struct page *page)
->        struct nfs_page *req = NULL;
->
->        spin_lock(&inode->i_lock);
-> -       req = nfs_page_find_request_locked(page);
-> +       req = nfs_page_find_request_locked(NFS_I(inode), page);
->        spin_unlock(&inode->i_lock);
->        return req;
->  }
-> @@ -232,7 +247,7 @@ static struct nfs_page *nfs_find_and_lock_request(struct page *page, bool nonblo
->
->        spin_lock(&inode->i_lock);
->        for (;;) {
-> -               req = nfs_page_find_request_locked(page);
-> +               req = nfs_page_find_request_locked(NFS_I(inode), page);
->                if (req == NULL)
->                        break;
->                if (nfs_lock_request_dontget(req))
-> @@ -385,9 +400,15 @@ static void nfs_inode_add_request(struct inode *inode, struct nfs_page *req)
->        spin_lock(&inode->i_lock);
->        if (!nfsi->npages && nfs_have_delegation(inode, FMODE_WRITE))
->                inode->i_version++;
-> -       set_bit(PG_MAPPED, &req->wb_flags);
-> -       SetPagePrivate(req->wb_page);
-> -       set_page_private(req->wb_page, (unsigned long)req);
-> +       /*
-> +        * Swap-space should not get truncated. Hence no need to plug the race
-> +        * with invalidate/truncate.
-> +        */
-> +       if (likely(!PageSwapCache(req->wb_page))) {
-> +               set_bit(PG_MAPPED, &req->wb_flags);
-> +               SetPagePrivate(req->wb_page);
-> +               set_page_private(req->wb_page, (unsigned long)req);
-> +       }
->        nfsi->npages++;
->        kref_get(&req->wb_kref);
->        spin_unlock(&inode->i_lock);
-> @@ -404,9 +425,11 @@ static void nfs_inode_remove_request(struct nfs_page *req)
->        BUG_ON (!NFS_WBACK_BUSY(req));
->
->        spin_lock(&inode->i_lock);
-> -       set_page_private(req->wb_page, 0);
-> -       ClearPagePrivate(req->wb_page);
-> -       clear_bit(PG_MAPPED, &req->wb_flags);
-> +       if (likely(!PageSwapCache(req->wb_page))) {
-> +               set_page_private(req->wb_page, 0);
-> +               ClearPagePrivate(req->wb_page);
-> +               clear_bit(PG_MAPPED, &req->wb_flags);
-> +       }
->        nfsi->npages--;
->        spin_unlock(&inode->i_lock);
->        nfs_release_request(req);
-> @@ -646,7 +669,7 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
->        spin_lock(&inode->i_lock);
->
->        for (;;) {
-> -               req = nfs_page_find_request_locked(page);
-> +               req = nfs_page_find_request_locked(NFS_I(inode), page);
->                if (req == NULL)
->                        goto out_unlock;
->
-> @@ -1690,7 +1713,7 @@ int nfs_wb_page_cancel(struct inode *inode, struct page *page)
->  */
->  int nfs_wb_page(struct inode *inode, struct page *page)
->  {
-> -       loff_t range_start = page_offset(page);
-> +       loff_t range_start = page_file_offset(page);
->        loff_t range_end = range_start + (loff_t)(PAGE_CACHE_SIZE - 1);
->        struct writeback_control wbc = {
->                .sync_mode = WB_SYNC_ALL,
-> --
-> 1.7.9.2
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
