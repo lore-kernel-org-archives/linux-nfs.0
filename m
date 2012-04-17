@@ -1,114 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:28453 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:61018 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753174Ab2DWUsp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Apr 2012 16:48:45 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/3] NFSv4: Ensure we do not reuse open owner names
-Date: Mon, 23 Apr 2012 20:48:44 +0000
-Message-ID: <1335214124.11427.23.camel@lade.trondhjem.org>
-References: <1335213414-20826-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <418AC7C0-6289-40D0-85DB-092C29BA40D3@oracle.com>
-In-Reply-To: <418AC7C0-6289-40D0-85DB-092C29BA40D3@oracle.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S932312Ab2DQNqH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Apr 2012 09:46:07 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q3HDk7Fa017117
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 17 Apr 2012 09:46:07 -0400
+Subject: Re: [PATCH 0/5] [RFC] Add support for new upcall mechanism for nfsd
+From: Simo Sorce <simo@redhat.com>
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <1334669948-4156-1-git-send-email-simo@redhat.com>
+References: <1334669948-4156-1-git-send-email-simo@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 17 Apr 2012 09:46:05 -0400
+Message-ID: <1334670365.16658.179.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA0LTIzIGF0IDE2OjQ0IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-SGktDQo+IA0KPiBJIHdpc2ggeW91IGhhZCB0b2xkIG1lIHlvdSB3ZXJlIGdvaW5nIHRvIGZpeCB0
-aGlzIHRvby4gIEkndmUgYmVlbiB0ZXN0aW5nIGEgZml4IGZvciB0aGlzIGZvciBhIGNvdXBsZSB3
-ZWVrcy4gIFdhcyBnb2luZyB0byBwb3N0IHRoaXMgYWZ0ZXJub29uLiAgU2hhbGwgSSB0b3NzIG1p
-bmU/DQoNCkkgd2FzIGhpdHRpbmcgdGhhdCBCQURfU0VRSUQgc3Rvcm0gZHVyaW5nIHRlc3Rpbmcg
-b2YgdGhlIG90aGVyIG9wZW4NCmZpeGVzIGxhc3Qgd2Vlay4NCg0KPiBPbiBBcHIgMjMsIDIwMTIs
-IGF0IDQ6MzYgUE0sIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gDQo+ID4gVGhlIE5GU3Y0IHNw
-ZWMgaXMgYW1iaWd1b3VzIGFib3V0IHdoZXRoZXIgb3Igbm90IGl0IGlzIHBlcm1pc3NpYmxlDQo+
-ID4gdG8gcmV1c2Ugb3BlbiBvd25lciBuYW1lcywgc28gcGxheSBpdCBzYWZlLiBUaGlzIHBhdGNo
-IGFkZHMgYSB0aW1lc3RhbXANCj4gPiB0byB0aGUgc3RhdGVfb3duZXIgc3RydWN0dXJlLCBhbmQg
-Y29tYmluZXMgdGhhdCB3aXRoIHRoZSBJREEgYmFzZWQNCj4gPiB1bmlxdWlmaWVyLg0KPiA+IEZp
-eGVzIGEgcmVncmVzc2lvbiB3aGVyZWJ5IHRoZSBMaW51eCBzZXJ2ZXIgcmV0dXJucyBORlM0RVJS
-X0JBRF9TRVFJRC4NCj4gPiANCj4gPiBTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRy
-b25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KPiA+IC0tLQ0KPiA+IGZzL25mcy9uZnM0X2ZzLmgg
-ICAgICAgIHwgICAgMSArDQo+ID4gZnMvbmZzL25mczRwcm9jLmMgICAgICAgfCAgICA2ICsrKy0t
-LQ0KPiA+IGZzL25mcy9uZnM0c3RhdGUuYyAgICAgIHwgICAgMSArDQo+ID4gZnMvbmZzL25mczR4
-ZHIuYyAgICAgICAgfCAgICA5ICsrKysrLS0tLQ0KPiA+IGluY2x1ZGUvbGludXgvbmZzX3hkci5o
-IHwgICAgNyArKysrKystDQo+ID4gNSBmaWxlcyBjaGFuZ2VkLCAxNiBpbnNlcnRpb25zKCspLCA4
-IGRlbGV0aW9ucygtKQ0KPiA+IA0KPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNF9mcy5oIGIv
-ZnMvbmZzL25mczRfZnMuaA0KPiA+IGluZGV4IDk3ZWNjODYuLmI2ZGI5ZTMgMTAwNjQ0DQo+ID4g
-LS0tIGEvZnMvbmZzL25mczRfZnMuaA0KPiA+ICsrKyBiL2ZzL25mcy9uZnM0X2ZzLmgNCj4gPiBA
-QCAtNTksNiArNTksNyBAQCBzdHJ1Y3QgbmZzX3VuaXF1ZV9pZCB7DQo+ID4gDQo+ID4gI2RlZmlu
-ZSBORlNfU0VRSURfQ09ORklSTUVEIDENCj4gPiBzdHJ1Y3QgbmZzX3NlcWlkX2NvdW50ZXIgew0K
-PiA+ICsJa3RpbWVfdCBjcmVhdGVfdGltZTsNCj4gPiAJaW50IG93bmVyX2lkOw0KPiA+IAlpbnQg
-ZmxhZ3M7DQo+ID4gCXUzMiBjb3VudGVyOw0KPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHBy
-b2MuYyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+ID4gaW5kZXggZjg3NWNmMy4uNjBkNWY0YyAxMDA2
-NDQNCj4gPiAtLS0gYS9mcy9uZnMvbmZzNHByb2MuYw0KPiA+ICsrKyBiL2ZzL25mcy9uZnM0cHJv
-Yy5jDQo+ID4gQEAgLTgzOCw3ICs4MzgsOCBAQCBzdGF0aWMgc3RydWN0IG5mczRfb3BlbmRhdGEg
-Km5mczRfb3BlbmRhdGFfYWxsb2Moc3RydWN0IGRlbnRyeSAqZGVudHJ5LA0KPiA+IAlwLT5vX2Fy
-Zy5vcGVuX2ZsYWdzID0gZmxhZ3M7DQo+ID4gCXAtPm9fYXJnLmZtb2RlID0gZm1vZGUgJiAoRk1P
-REVfUkVBRHxGTU9ERV9XUklURSk7DQo+ID4gCXAtPm9fYXJnLmNsaWVudGlkID0gc2VydmVyLT5u
-ZnNfY2xpZW50LT5jbF9jbGllbnRpZDsNCj4gPiAtCXAtPm9fYXJnLmlkID0gc3AtPnNvX3NlcWlk
-Lm93bmVyX2lkOw0KPiA+ICsJcC0+b19hcmcuaWQuY3JlYXRlX3RpbWUgPSBrdGltZV90b19ucyhz
-cC0+c29fc2VxaWQuY3JlYXRlX3RpbWUpOw0KPiA+ICsJcC0+b19hcmcuaWQudW5pcXVpZmllciA9
-IHNwLT5zb19zZXFpZC5vd25lcl9pZDsNCj4gPiAJcC0+b19hcmcubmFtZSA9ICZkZW50cnktPmRf
-bmFtZTsNCj4gPiAJcC0+b19hcmcuc2VydmVyID0gc2VydmVyOw0KPiA+IAlwLT5vX2FyZy5iaXRt
-YXNrID0gc2VydmVyLT5hdHRyX2JpdG1hc2s7DQo+ID4gQEAgLTE0NjYsOCArMTQ2Nyw3IEBAIHN0
-YXRpYyB2b2lkIG5mczRfb3Blbl9wcmVwYXJlKHN0cnVjdCBycGNfdGFzayAqdGFzaywgdm9pZCAq
-Y2FsbGRhdGEpDQo+ID4gCQkJZ290byB1bmxvY2tfbm9fYWN0aW9uOw0KPiA+IAkJcmN1X3JlYWRf
-dW5sb2NrKCk7DQo+ID4gCX0NCj4gPiAtCS8qIFVwZGF0ZSBzZXF1ZW5jZSBpZC4gKi8NCj4gPiAt
-CWRhdGEtPm9fYXJnLmlkID0gc3AtPnNvX3NlcWlkLm93bmVyX2lkOw0KPiA+ICsJLyogVXBkYXRl
-IGNsaWVudCBpZC4gKi8NCj4gPiAJZGF0YS0+b19hcmcuY2xpZW50aWQgPSBzcC0+c29fc2VydmVy
-LT5uZnNfY2xpZW50LT5jbF9jbGllbnRpZDsNCj4gPiAJaWYgKGRhdGEtPm9fYXJnLmNsYWltID09
-IE5GUzRfT1BFTl9DTEFJTV9QUkVWSU9VUykgew0KPiA+IAkJdGFzay0+dGtfbXNnLnJwY19wcm9j
-ID0gJm5mczRfcHJvY2VkdXJlc1tORlNQUk9DNF9DTE5UX09QRU5fTk9BVFRSXTsNCj4gPiBkaWZm
-IC0tZ2l0IGEvZnMvbmZzL25mczRzdGF0ZS5jIGIvZnMvbmZzL25mczRzdGF0ZS5jDQo+ID4gaW5k
-ZXggMGY0MzQxNC4uM2IwN2YwOSAxMDA2NDQNCj4gPiAtLS0gYS9mcy9uZnMvbmZzNHN0YXRlLmMN
-Cj4gPiArKysgYi9mcy9uZnMvbmZzNHN0YXRlLmMNCj4gPiBAQCAtMzkzLDYgKzM5Myw3IEBAIG5m
-czRfcmVtb3ZlX3N0YXRlX293bmVyX2xvY2tlZChzdHJ1Y3QgbmZzNF9zdGF0ZV9vd25lciAqc3Ap
-DQo+ID4gc3RhdGljIHZvaWQNCj4gPiBuZnM0X2luaXRfc2VxaWRfY291bnRlcihzdHJ1Y3QgbmZz
-X3NlcWlkX2NvdW50ZXIgKnNjKQ0KPiA+IHsNCj4gPiArCXNjLT5jcmVhdGVfdGltZSA9IGt0aW1l
-X2dldCgpOw0KPiA+IAlzYy0+ZmxhZ3MgPSAwOw0KPiA+IAlzYy0+Y291bnRlciA9IDA7DQo+ID4g
-CXNwaW5fbG9ja19pbml0KCZzYy0+bG9jayk7DQo+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0
-eGRyLmMgYi9mcy9uZnMvbmZzNHhkci5jDQo+ID4gaW5kZXggYzc0ZmRiMS4uNzdmYzVmOSAxMDA2
-NDQNCj4gPiAtLS0gYS9mcy9uZnMvbmZzNHhkci5jDQo+ID4gKysrIGIvZnMvbmZzL25mczR4ZHIu
-Yw0KPiA+IEBAIC03NCw3ICs3NCw3IEBAIHN0YXRpYyBpbnQgbmZzNF9zdGF0X3RvX2Vycm5vKGlu
-dCk7DQo+ID4gLyogbG9jayxvcGVuIG93bmVyIGlkOg0KPiA+ICAqIHdlIGN1cnJlbnRseSB1c2Ug
-c2l6ZSAyICh1NjQpIG91dCBvZiAoTkZTNF9PUEFRVUVfTElNSVQgID4+IDIpDQo+ID4gICovDQo+
-ID4gLSNkZWZpbmUgb3Blbl9vd25lcl9pZF9tYXhzegkoMSArIDEgKyA0KQ0KPiA+ICsjZGVmaW5l
-IG9wZW5fb3duZXJfaWRfbWF4c3oJKDEgKyAyICsgMSArIDEgKyAyKQ0KPiA+ICNkZWZpbmUgbG9j
-a19vd25lcl9pZF9tYXhzegkoMSArIDEgKyA0KQ0KPiA+ICNkZWZpbmUgZGVjb2RlX2xvY2tvd25l
-cl9tYXhzegkoMSArIFhEUl9RVUFETEVOKElETUFQX05BTUVTWikpDQo+ID4gI2RlZmluZSBjb21w
-b3VuZF9lbmNvZGVfaGRyX21heHN6CSgzICsgKE5GUzRfTUFYVEFHTEVOID4+IDIpKQ0KPiA+IEBA
-IC0xMzQwLDEyICsxMzQwLDEzIEBAIHN0YXRpYyBpbmxpbmUgdm9pZCBlbmNvZGVfb3Blbmhkcihz
-dHJ1Y3QgeGRyX3N0cmVhbSAqeGRyLCBjb25zdCBzdHJ1Y3QgbmZzX29wZW5hDQo+ID4gICovDQo+
-ID4gCWVuY29kZV9uZnM0X3NlcWlkKHhkciwgYXJnLT5zZXFpZCk7DQo+ID4gCWVuY29kZV9zaGFy
-ZV9hY2Nlc3MoeGRyLCBhcmctPmZtb2RlKTsNCj4gPiAtCXAgPSByZXNlcnZlX3NwYWNlKHhkciwg
-MzIpOw0KPiA+ICsJcCA9IHJlc2VydmVfc3BhY2UoeGRyLCAzNik7DQo+ID4gCXAgPSB4ZHJfZW5j
-b2RlX2h5cGVyKHAsIGFyZy0+Y2xpZW50aWQpOw0KPiA+IC0JKnArKyA9IGNwdV90b19iZTMyKDIw
-KTsNCj4gPiArCSpwKysgPSBjcHVfdG9fYmUzMigyNCk7DQo+ID4gCXAgPSB4ZHJfZW5jb2RlX29w
-YXF1ZV9maXhlZChwLCAib3BlbiBpZDoiLCA4KTsNCj4gPiAJKnArKyA9IGNwdV90b19iZTMyKGFy
-Zy0+c2VydmVyLT5zX2Rldik7DQo+ID4gLQl4ZHJfZW5jb2RlX2h5cGVyKHAsIGFyZy0+aWQpOw0K
-PiA+ICsJKnArKyA9IGNwdV90b19iZTMyKGFyZy0+aWQudW5pcXVpZmllcik7DQo+ID4gKwl4ZHJf
-ZW5jb2RlX2h5cGVyKHAsIGFyZy0+aWQuY3JlYXRlX3RpbWUpOw0KPiA+IH0NCj4gPiANCj4gPiBz
-dGF0aWMgaW5saW5lIHZvaWQgZW5jb2RlX2NyZWF0ZW1vZGUoc3RydWN0IHhkcl9zdHJlYW0gKnhk
-ciwgY29uc3Qgc3RydWN0IG5mc19vcGVuYXJncyAqYXJnKQ0KPiA+IGRpZmYgLS1naXQgYS9pbmNs
-dWRlL2xpbnV4L25mc194ZHIuaCBiL2luY2x1ZGUvbGludXgvbmZzX3hkci5oDQo+ID4gaW5kZXgg
-YmZkMGQxYi4uN2JhMzU1MSAxMDA2NDQNCj4gPiAtLS0gYS9pbmNsdWRlL2xpbnV4L25mc194ZHIu
-aA0KPiA+ICsrKyBiL2luY2x1ZGUvbGludXgvbmZzX3hkci5oDQo+ID4gQEAgLTMxMiw2ICszMTIs
-MTEgQEAgc3RydWN0IG5mczRfbGF5b3V0cmV0dXJuIHsNCj4gPiAJaW50IHJwY19zdGF0dXM7DQo+
-ID4gfTsNCj4gPiANCj4gPiArc3RydWN0IHN0YXRlb3duZXJfaWQgew0KPiA+ICsJX191NjQJY3Jl
-YXRlX3RpbWU7DQo+ID4gKwlfX3UzMgl1bmlxdWlmaWVyOw0KPiA+ICt9Ow0KPiA+ICsNCj4gPiAv
-Kg0KPiA+ICAqIEFyZ3VtZW50cyB0byB0aGUgb3BlbiBjYWxsLg0KPiA+ICAqLw0KPiA+IEBAIC0z
-MjEsNyArMzI2LDcgQEAgc3RydWN0IG5mc19vcGVuYXJncyB7DQo+ID4gCWludAkJCW9wZW5fZmxh
-Z3M7DQo+ID4gCWZtb2RlX3QJCQlmbW9kZTsNCj4gPiAJX191NjQgICAgICAgICAgICAgICAgICAg
-Y2xpZW50aWQ7DQo+ID4gLQlfX3U2NCAgICAgICAgICAgICAgICAgICBpZDsNCj4gPiArCXN0cnVj
-dCBzdGF0ZW93bmVyX2lkCWlkOw0KPiA+IAl1bmlvbiB7DQo+ID4gCQlzdHJ1Y3Qgew0KPiA+IAkJ
-CXN0cnVjdCBpYXR0ciAqICBhdHRyczsgICAgLyogVU5DSEVDS0VELCBHVUFSREVEICovDQo+ID4g
-LS0gDQo+ID4gMS43LjcuNg0KPiA+IA0KPiA+IC0tDQo+ID4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0
-aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4NCj4gPiB0
-aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0KPiA+IE1v
-cmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWlu
-Zm8uaHRtbA0KPiANCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFp
-bnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBw
-LmNvbQ0KDQo=
+On Tue, 2012-04-17 at 09:39 -0400, Simo Sorce wrote:
+> This patchset implements a new upcall mechanism that uses the sunrpc client
+> to talk to gssproxy[1], a new userspace daemon to handle gssapi operations on
+> behalf of other processes on the system.
+> 
+> The main driver for this new mechanism is to overcome limitations with the
+> current daemon and upcall. The current code cannot handle tickets larger than
+> approximatively 2k and cannot handle large user credentials set to be set in
+> the kernel.
+> 
+> These patches have been tested against the development version of gssproxy
+> tagged as kernel_v0.1 in the master repo[2].
+> 
+> I have tested walking into mountpoints using tickets artificially pumped up to
+> 64k and the user is properly authorized, after the accept_se_context call is
+> performed through the new upcall mechanism and gssproxy.
+> 
+> The gssproxy has the potential of handling also init_sec_context calls, but at
+> the moment the only targeted system is nfsd.
+
+Sorry, forgot to add the [1] and [2] references before sending, here
+they are:
+[1] https://fedorahosted.org/gss-proxy/
+[2] http://git.fedorahosted.org/git/?p=gss-proxy.git
+
+Simo.
+
+
+-- 
+Simo Sorce * Red Hat, Inc * New York
+
