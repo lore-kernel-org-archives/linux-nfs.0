@@ -1,56 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:10637 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:42306 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755562Ab2DSR3M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Apr 2012 13:29:12 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Luis Henriques <luis.henriques@canonical.com>
-CC: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/2] Fix regression on NFS in mainline kernel
-Date: Thu, 19 Apr 2012 17:29:09 +0000
-Message-ID: <1334856549.21419.48.camel@lade.trondhjem.org>
-References: <20120418105147.2a6f1c55@corrin.poochiereds.net>
-	 <1334770614-10653-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <20120419093025.GA2916@zeus> <20120419134847.GC2916@zeus>
-In-Reply-To: <20120419134847.GC2916@zeus>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1751410Ab2DQOWZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Apr 2012 10:22:25 -0400
+Date: Tue, 17 Apr 2012 10:22:58 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Miklos Szeredi <miklos@szeredi.hu>
+Cc: "Myklebust\, Trond" <Trond.Myklebust@netapp.com>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        Malahal Naineni <malahal@us.ibm.com>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "pstaubach\@exagrid.com" <pstaubach@exagrid.com>,
+        "viro\@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
+        "hch\@infradead.org" <hch@infradead.org>,
+        "michael.brantley\@deshaw.com" <michael.brantley@deshaw.com>,
+        "sven.breuner\@itwm.fraunhofer.de" <sven.breuner@itwm.fraunhofer.de>
+Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from
+ getattr call
+Message-ID: <20120417102258.49eb0071@corrin.poochiereds.net>
+In-Reply-To: <87obqqo3qd.fsf@tucsk.pomaz.szeredi.hu>
+References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
+	<20120413150518.GA1987@us.ibm.com>
+	<20120413114236.0e557e01@tlielax.poochiereds.net>
+	<4F8B1B7B.3040304@itwm.fraunhofer.de>
+	<20120416073655.7cdb90cf@corrin.poochiereds.net>
+	<4F8C3036.2030702@itwm.fraunhofer.de>
+	<20120416134642.1754cd3e@corrin.poochiereds.net>
+	<1334604785.2879.23.camel@lade.trondhjem.org>
+	<20120416154322.0d95e435@corrin.poochiereds.net>
+	<1334607906.2879.36.camel@lade.trondhjem.org>
+	<20120416190548.2463d1d0@corrin.poochiereds.net>
+	<87sjg2o62z.fsf@tucsk.pomaz.szeredi.hu>
+	<20120417093222.2ff5e1bd@corrin.poochiereds.net>
+	<87obqqo3qd.fsf@tucsk.pomaz.szeredi.hu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA0LTE5IGF0IDE0OjQ4ICswMTAwLCBMdWlzIEhlbnJpcXVlcyB3cm90ZToN
-Cj4gT24gVGh1LCBBcHIgMTksIDIwMTIgYXQgMTA6MzA6MjVBTSArMDEwMCwgTHVpcyBIZW5yaXF1
-ZXMgd3JvdGU6DQo+ID4gT24gV2VkLCBBcHIgMTgsIDIwMTIgYXQgMDE6MzY6NTJQTSAtMDQwMCwg
-VHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPiA+ID4gVGhlIGZpcnN0IHBhdGNoIGFkZHJlc3NlcyB0
-aGUgT29wcy4NCj4gPiA+IFRoZSBzZWNvbmQgd2lsbCBob3BlZnVsbHkgYWRkcmVzcyB0aGUgbG9v
-cGluZy4NCj4gPiA+IA0KPiA+ID4gVHJvbmQgTXlrbGVidXN0ICgyKToNCj4gPiA+ICAgTkZTdjQ6
-IEVuc3VyZSB0aGF0IHRoZSBMT0NLIGNvZGUgc2V0cyBleGNlcHRpb24tPmlub2RlDQo+ID4gPiAg
-IE5GU3Y0OiBFbnN1cmUgdGhhdCB3ZSBjaGVjayBsb2NrIGV4Y2x1c2l2ZS9zaGFyZWQgdHlwZSBh
-Z2FpbnN0IG9wZW4NCj4gPiA+ICAgICBtb2Rlcw0KPiA+ID4gDQo+ID4gPiAgZnMvbmZzL25mczRw
-cm9jLmMgfCAgIDIzICsrKysrKysrKysrKysrKysrKysrKy0tDQo+ID4gPiAgMSBmaWxlcyBjaGFu
-Z2VkLCAyMSBpbnNlcnRpb25zKCspLCAyIGRlbGV0aW9ucygtKQ0KPiA+ID4gDQo+ID4gPiAtLSAN
-Cj4gPiA+IDEuNy43LjYNCj4gPiA+IA0KPiA+IEp1c3QgdG8gbGV0IHlvdSBrbm93IHdlIGRvIGhh
-dmUgYSBmZXcgc3VjY2Vzc2Z1bCB0ZXN0cyBvbiB0aGVzZSBwYXRjaGVzLg0KPiA+IFlvdSBjYW4g
-Y2hlY2sgdGhlIGRldGFpbHMgaGVyZToNCj4gPiANCj4gPiBodHRwOi8vYnVncy5sYXVuY2hwYWQu
-bmV0L2J1Z3MvOTc0NjY0DQo+ID4gDQo+ID4gQWx0aG91Z2ggSSBoYXZlbid0IHRlc3RlZCB0aGUg
-cGF0Y2hlcyBteXNlbGYsIGZlbGwgZnJlZSB0byBhZGQgYSBUZXN0ZWQtYnkNCj4gPiB0byB0aGVz
-ZSBwYXRjaGVzLg0KPiANCj4gVGhlcmUncyBzb21ldGhpbmcgZWxzZSBhIGZvcmdvdCB0byBtZW50
-aW9uLCB3aGljaCBpcyB0aGUgZmFjdCB0aGF0IHRoZSBidWcNCj4gcmVwb3J0cyB3ZXJlIGZvciBr
-ZXJuZWwgMy4yLjE0LiAgU28geW91IG1heSB3YW50IHRvIHVwZGF0ZSB0aGUNCj4gIkNjOiBzdGFi
-bGVAdmdlci5rZXJuZWwub3JnIiBvbiBjb21taXQgNDg3NzkwZjI3ZGY5YmIyN2QzNDAwNDg2YmQw
-MjFkZDU5ZWRjNzU4OQ0KPiB0byBpbmNsdWRlIGF0IGxlYXN0IHRoaXMgdmVyc2lvbi4NCg0KWWVw
-LiBJIGFsc28gc2F3IHRoYXQgdGhlcmUgaXMgYSBuZWVkIGZvciBpdCBpbiAzLjAuMjcsIHNvIEkn
-bGwganVzdA0KcmVtb3ZlIHRoYXQgPj0gMy4zLjEuLi4NCg0KPiBUaGVyZSBhcmUgdHdvIGFub3Ro
-ZXIgcGF0Y2hlcyB3ZSBoYXZlIGFwcGxpZWQgdGhhdCBhcmUgcHJlc2VudCBpbiBtYWlubGluZQ0K
-PiBidXQgaGF2ZW4ndCBtYWRlIGl0cyB3YXkgaW50byBzdGFibGU6DQo+ICAtIDE0OTc3NDg5ZmZk
-YjgwZDRjYWY1YTE4NGJhNDFiMjNiMDJmYmFjZDkNCj4gIC0gOTZkY2FkYzJmZGQxMTFkY2E5MGQ1
-NTlmMTg5YTMwYzY1Mzk0NDUxYQ0KDQpJIGRvbid0IHBsYW4gb24gc2VuZGluZyB0aGVzZSAyIGNv
-bW1pdHMgdG8gc3RhYmxlIHVubGVzcyB3ZSBzZWUgc29tZQ0Kc3BlY2lmaWMgcHJvYmxlbXMgdGhh
-dCBuZWVkIHRvIGJlIGNvcnJlY3RlZC4gSSB1bmRlcnN0YW5kIHRoYXQgc2VlaW5nIGENCk5GUzRF
-UlJfT1BFTk1PREUgYXQgdGhlIHdyb25nIHRpbWUgY291bGQgdGhlb3JldGljYWxseSBjYXVzZSBh
-biBPb3BzDQp3aXRob3V0IHRoZSAxNDk3NzQ4IGNvbW1pdCwgYnV0IGJyb2tlbiBzZXJ2ZXJzIGNh
-biB3cmVhayBhbGwgc29ydHMgb2YNCmhhdm9jIGFueXdheS4gVGhlcmUgaXNuJ3QgbXVjaCB5b3Ug
-Y2FuIGRvIHRvIHByb3RlY3QgYWdhaW5zdCB0aGVtLg0KDQpDaGVlcnMNCiAgVHJvbmQNCg0KLS0g
-DQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHAN
-ClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+On Tue, 17 Apr 2012 16:03:06 +0200
+Miklos Szeredi <miklos@szeredi.hu> wrote:
+
+> Jeff Layton <jlayton@redhat.com> writes:
+> 
+> >> The retry is needed when when we discover during ->getattr() that the
+> >> cached lookup returned a stale file handle.
+> >> 
+> >> If the lookup wasn't cached or if there was no lookup at all
+> >> (stat(".") and friends) then retrying will not gain anything.
+> >> 
+> >
+> > That's not necessarily the case, at least not with NFS. It's easily
+> > possible for you to do a full-fledged lookup over the wire, and then
+> > for that inode to be removed prior to issuing a call against the FH that
+> > you got back. 
+> >
+> >> And that also means that retrying multiple times is pointless, since
+> >> after the first retry we are sure to have up-to-date attributes.
+> >> 
+> >
+> > Again, it's not pointless. It's possible (though somewhat pathological)
+> > for you to hit the race above more than once in the same operation.
+> > Granted, it's an unlikely race but it is possible.
+> 
+> ->lookup() should (and does AFAICS) leave a fully initialized inode with
+> up-to-date atributes in there and at that moment there's not a lot of
+> sense in fetching the attributes from the server *again*.
+> 
+> How that lookup is implemented is another question, I can see in
+> nfs3_proc_lookup() that it may or may not be atomic, and retrying (and
+> looping) there might make sense.  But it doesn't retry and doesn't loop,
+> so the fact is, it will either return ESTALE (and the path lookup will
+> retry once with LOOKUP_REVAL) or the inode *will* be up-to-date.
+> 
+> So I think I'm still right that it's pointless to do retry after a
+> non-cached lookup.
+> 
+
+Ok, I'll grant that for stat() type calls, but I've just been focusing
+on that as an example here. We'll need to do something similar for all
+path based syscalls. What about things that require more than one round
+trip -- e.g. chmod()?
+
+> >> Unfortunately it's impossible for the filesystem to know whether a
+> >> ->getattr (or other inode operation) was perfromed after a cached or a
+> >> non-cached lookup.
+> >> 
+> >> I'm not sure what the right interface for this would be.  One would be
+> >> to just pass the "cached-or-not" information as a flag.  That works for
+> >> getattr() but not for other operations.
+> >> 
+> >> Another is to introduce atomic lookup+foo variants of these operations
+> >> just like for open.  E.g. the lookup+getattr is called if the cached
+> >> lookup fails or if the cached lookup succeeds and the plain ->getattr
+> >> call returns ESTALE.
+> >>
+> >
+> > To do that would require protocol support that we simply don't have. We
+> > don't have a way to (for instance) say via NFS "give me the attributes
+> > for this filename". Well, at least not for NFSv3...
+> >
+> > With v4 you could theoretically construct a compound that does that,
+> > but you'd have to assume that the server won't release the reference to
+> > the inode midway through the compound. That's a reasonably safe
+> > assumption.
+> >
+> > While it's nice to consider new atomic ops like this, it's not really
+> > possible with earlier versions of NFS.
+> 
+> It's just an interface question: where you put the retry logic for those
+> non-atomic protocols.  I think it's cleaner if the retry logic is in the
+> filesystem and not in the VFS.  Then NFS can do whatever it wants
+> without having to impose policy in the generic filesystem layer.
+> 
+
+So essentially you want to push all of the LOOKUP handling down into
+the filesystems such that all ops are atomic_* or have an atomic_*
+variant. That sounds like a very heavy-handed way to solve this.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
