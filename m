@@ -1,41 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:43332 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:59336 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752884Ab2DTOLM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 10:11:12 -0400
-Subject: [PATCH v2] SUNRPC: skip dead but not buried clients on PipeFS events
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Fri, 20 Apr 2012 18:11:02 +0400
-Message-ID: <20120420141042.7205.62608.stgit@localhost6.localdomain6>
+	id S1755954Ab2DQR0X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Apr 2012 13:26:23 -0400
+Message-ID: <4F8DA7BA.6040204@RedHat.com>
+Date: Tue, 17 Apr 2012 13:26:18 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Steve Dickson <SteveD@redhat.com>
+CC: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
+Subject: Re: Linux pNFS status meeting 04/12/12
+References: <OF5E2F67F6.4278FA6C-ON8825799D.00793B9D-8825799D.007960B1@us.ibm.com> <OFB6DA5CEF.C6895471-ON882579A4.00712ECE-882579A4.00715EC4@us.ibm.com> <4F86DF4D.5070208@RedHat.com> <4F8D9A0D.6000605@panasas.com> <4F8DA2BF.6000109@RedHat.com>
+In-Reply-To: <4F8DA2BF.6000109@RedHat.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v2: atomic_inc_return() was replaced by atomic_inc_not_zero().
 
-These clients can't be safely dereferenced if their counter in 0.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+On 04/17/2012 01:05 PM, Steve Dickson wrote:
+> 
+> 
+> On 04/17/2012 12:27 PM, Boaz Harrosh wrote:
+>> On 04/12/2012 04:57 PM, Steve Dickson wrote:
+>>
+>>> Meeting on Thursday 04/12/12 at 9:30 AM PST (12:30 PM EST)
+>>>
+>>> Please note the new call in number:
+>>>
+>>> U.S. and Canada: (800) 451-8679
+>>> International dial-in number: (212) 729-5016
+>>> Conference code: 564.272.1552
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>>
+>> Any Israel number?
+> I'm assuming you mean toll free Israel number... Let me find out...
+There is... its 
+  Israel Toll-Free: 1-809-462-557
 
----
- net/sunrpc/clnt.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+I'll make note in my next invite...
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 6797246..d10ebc4 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -218,7 +218,8 @@ static struct rpc_clnt *rpc_get_client_for_event(struct net *net, int event)
- 		if (((event == RPC_PIPEFS_MOUNT) && clnt->cl_dentry) ||
- 		    ((event == RPC_PIPEFS_UMOUNT) && !clnt->cl_dentry))
- 			continue;
--		atomic_inc(&clnt->cl_count);
-+		if (atomic_inc_not_zero(&clnt->cl_count) == 0)
-+			continue;
- 		spin_unlock(&sn->rpc_client_lock);
- 		return clnt;
- 	}
 
+steved.
