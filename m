@@ -1,156 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:36842 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:42611 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755074Ab2D0Vpg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Apr 2012 17:45:36 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 4 13/13] NFSv4.1 resend LAYOUTGET on data server invalid layout errors
-Date: Fri, 27 Apr 2012 17:53:53 -0400
-Message-Id: <1335563633-7191-14-git-send-email-andros@netapp.com>
-In-Reply-To: <1335563633-7191-1-git-send-email-andros@netapp.com>
-References: <1335563633-7191-1-git-send-email-andros@netapp.com>
+	id S1751221Ab2DQOUJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Apr 2012 10:20:09 -0400
+Date: Tue, 17 Apr 2012 10:20:35 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Miklos Szeredi <miklos@szeredi.hu>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        Malahal Naineni <malahal@us.ibm.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "pstaubach@exagrid.com" <pstaubach@exagrid.com>,
+        "viro@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
+        "hch@infradead.org" <hch@infradead.org>,
+        "michael.brantley@deshaw.com" <michael.brantley@deshaw.com>,
+        "sven.breuner@itwm.fraunhofer.de" <sven.breuner@itwm.fraunhofer.de>
+Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from
+ getattr call
+Message-ID: <20120417102035.2236e553@corrin.poochiereds.net>
+In-Reply-To: <1334671473.2963.27.camel@lade.trondhjem.org.localdomain>
+References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
+	<20120413150518.GA1987@us.ibm.com>
+	<20120413114236.0e557e01@tlielax.poochiereds.net>
+	<4F8B1B7B.3040304@itwm.fraunhofer.de>
+	<20120416073655.7cdb90cf@corrin.poochiereds.net>
+	<4F8C3036.2030702@itwm.fraunhofer.de>
+	<20120416134642.1754cd3e@corrin.poochiereds.net>
+	<1334604785.2879.23.camel@lade.trondhjem.org>
+	<20120416154322.0d95e435@corrin.poochiereds.net>
+	<1334607906.2879.36.camel@lade.trondhjem.org>
+	<20120416190548.2463d1d0@corrin.poochiereds.net>
+	<87sjg2o62z.fsf@tucsk.pomaz.szeredi.hu>
+	<20120417093222.2ff5e1bd@corrin.poochiereds.net>
+	<1334671473.2963.27.camel@lade.trondhjem.org.localdomain>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Tue, 17 Apr 2012 14:04:34 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-The "invalid layout" class of errors is handled by destroying the layout and
-getting a new layout from the server.  Currently, the layout must be
-destroyed before a new layout can be obtained.
+> On Tue, 2012-04-17 at 09:32 -0400, Jeff Layton wrote:
+> > On Tue, 17 Apr 2012 15:12:20 +0200
+> > Miklos Szeredi <miklos@szeredi.hu> wrote:
+> 
+> > To do that would require protocol support that we simply don't have. We
+> > don't have a way to (for instance) say via NFS "give me the attributes
+> > for this filename". Well, at least not for NFSv3...
+> 
+> What's wrong with LOOKUP?
+> 
 
-This means that all references (e.g.lsegs) to the "to be destroyed" layout
-header must be dropped before it can be destroyed. This in turn means waiting
-for all in flight RPC's using the old layout as well as draining the data
-server session slot table wait queue.
+Some of this is due to my decision to use fstatat as an example, but we
+should bear in mind that I've just been using that as an example. We'll
+eventually have to do something similar for all path based syscalls in
+order to fix tihs comprehensively.
 
-Set the NFS_LAYOUT_INVALID flag to redirect I/O to the MDS while waiting for
-the old layout to be destroyed.
+While it may be possible to handle stat type calls atomically with a
+simple LOOKUP call, other operations may require more than one round
+trip. Consider chmod(), for instance...
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4filelayout.c |   28 ++++++++++++++++++++++++----
- fs/nfs/nfs4filelayout.h |   13 +++++++++++++
- fs/nfs/pnfs.c           |    1 +
- fs/nfs/pnfs.h           |    1 +
- 4 files changed, 39 insertions(+), 4 deletions(-)
+> > With v4 you could theoretically construct a compound that does that,
+> > but you'd have to assume that the server won't release the reference to
+> > the inode midway through the compound. That's a reasonably safe
+> > assumption.
+> 
+> Actually, NFSv4 is the one that has the problem: there are no atomicity
+> guarantees within compounds, so you could theoretically get an ESTALE in
+> the GETATTR part of our lookup compound.
+> 
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index eaaca89..474c630 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -182,6 +182,27 @@ static int filelayout_async_handle_error(struct rpc_task *task,
- 		break;
- 	case -NFS4ERR_RETRY_UNCACHED_REP:
- 		break;
-+	/* Invalidate Layout errors */
-+	case -NFS4ERR_PNFS_NO_LAYOUT:
-+	case -ESTALE:           /* mapped NFS4ERR_STALE */
-+	case -EBADHANDLE:       /* mapped NFS4ERR_BADHANDLE */
-+	case -EISDIR:           /* mapped NFS4ERR_ISDIR */
-+	case -NFS4ERR_FHEXPIRED:
-+	case -NFS4ERR_WRONG_TYPE:
-+		dprintk("%s Invalid layout error %d\n", __func__,
-+			task->tk_status);
-+		/*
-+		 * Destroy layout so new i/o will get a new layout.
-+		 * Layout will not be destroyed until all current lseg
-+		 * references are put. Mark layout as invalid to resend failed
-+		 * i/o and all i/o waiting on the slot table to the MDS until
-+		 * layout is destroyed and a new valid layout is obtained.
-+		 */
-+		set_bit(NFS_LAYOUT_INVALID,
-+				&NFS_I(state->inode)->layout->plh_flags);
-+		pnfs_destroy_layout(NFS_I(state->inode));
-+		rpc_wake_up(&tbl->slot_tbl_waitq);
-+		goto reset;
- 	/* RPC connection errors */
- 	case -ECONNREFUSED:
- 	case -EHOSTDOWN:
-@@ -199,6 +220,7 @@ static int filelayout_async_handle_error(struct rpc_task *task,
- 		nfs4_ds_disconnect(clp);
- 		/* fall through */
- 	default:
-+reset:
- 		dprintk("%s Retry through MDS. Error %d\n", __func__,
- 			task->tk_status);
- 		return -NFS4ERR_RESET_TO_MDS;
-@@ -263,9 +285,8 @@ filelayout_set_layoutcommit(struct nfs_write_data *wdata)
- static void filelayout_read_prepare(struct rpc_task *task, void *data)
- {
- 	struct nfs_read_data *rdata = data;
--	struct pnfs_layout_segment *lseg = rdata->header->lseg;
- 
--	if (filelayout_test_devid_invalid(FILELAYOUT_DEVID_NODE(lseg))) {
-+	if (filelayout_reset_to_mds(rdata->header->lseg)) {
- 		dprintk("%s task %u reset io to MDS\n", __func__, task->tk_pid);
- 		filelayout_reset_read(rdata);
- 		rpc_exit(task, 0);
-@@ -366,9 +387,8 @@ static int filelayout_commit_done_cb(struct rpc_task *task,
- static void filelayout_write_prepare(struct rpc_task *task, void *data)
- {
- 	struct nfs_write_data *wdata = data;
--	struct pnfs_layout_segment *lseg = wdata->header->lseg;
- 
--	if (filelayout_test_devid_invalid(FILELAYOUT_DEVID_NODE(lseg))) {
-+	if (filelayout_reset_to_mds(wdata->header->lseg)) {
- 		dprintk("%s task %u reset io to MDS\n", __func__, task->tk_pid);
- 		filelayout_reset_write(wdata);
- 		rpc_exit(task, 0);
-diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
-index 95562ad..43fe802 100644
---- a/fs/nfs/nfs4filelayout.h
-+++ b/fs/nfs/nfs4filelayout.h
-@@ -129,11 +129,24 @@ filelayout_mark_devid_invalid(struct nfs4_deviceid_node *node)
- }
- 
- static inline bool
-+filelayout_test_layout_invalid(struct pnfs_layout_hdr *lo)
-+{
-+	return test_bit(NFS_LAYOUT_INVALID, &lo->plh_flags);
-+}
-+
-+static inline bool
- filelayout_test_devid_invalid(struct nfs4_deviceid_node *node)
- {
- 	return test_bit(NFS_DEVICEID_INVALID, &node->flags);
- }
- 
-+static inline bool
-+filelayout_reset_to_mds(struct pnfs_layout_segment *lseg)
-+{
-+	return filelayout_test_devid_invalid(FILELAYOUT_DEVID_NODE(lseg)) ||
-+		filelayout_test_layout_invalid(lseg->pls_layout);
-+}
-+
- extern struct nfs_fh *
- nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, u32 j);
- 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 98a7ec8..42af565 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -455,6 +455,7 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
- 	spin_unlock(&nfsi->vfs_inode.i_lock);
- 	pnfs_free_lseg_list(&tmp_list);
- }
-+EXPORT_SYMBOL_GPL(pnfs_destroy_layout);
- 
- /*
-  * Called by the state manger to remove all layouts established under an
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 681875d..549136a 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -63,6 +63,7 @@ enum {
- 	NFS_LAYOUT_BULK_RECALL,		/* bulk recall affecting layout */
- 	NFS_LAYOUT_ROC,			/* some lseg had roc bit set */
- 	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
-+	NFS_LAYOUT_INVALID,		/* layout is being destroyed */
- };
- 
- enum layoutdriver_policy_flags {
+Well, it's possible, but it seems pathological to me for a server to do
+that...
+
+Bruce and I were discussing this the other day. It would be good to add
+something like this to the RFCs:
+
+"On a PUTFH, a server SHOULD hold a reference to the filehandle such
+that it does not go stale over the life of the compound."
+
+...or something along those lines. That's a different matter though and
+not directly related to this. :)
+
 -- 
-1.7.6.4
-
+Jeff Layton <jlayton@redhat.com>
