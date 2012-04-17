@@ -1,117 +1,185 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from p02c11o148.mxlogic.net ([208.65.144.81]:54833 "EHLO
-	p02c11o148.mxlogic.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752547Ab2DWRn0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Apr 2012 13:43:26 -0400
-From: Peter Staubach <pstaubach@exagrid.com>
-To: Steve Dickson <SteveD@redhat.com>, Jeff Layton <jlayton@redhat.com>
-CC: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "miklos@szeredi.hu" <miklos@szeredi.hu>,
-        "viro@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
-        "hch@infradead.org" <hch@infradead.org>,
-        "michael.brantley@deshaw.com" <michael.brantley@deshaw.com>,
-        "sven.breuner@itwm.fraunhofer.de" <sven.breuner@itwm.fraunhofer.de>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
-        "malahal@us.ibm.com" <malahal@us.ibm.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "trond.myklebust@fys.uio.no" <trond.myklebust@fys.uio.no>,
-        "rees@umich.edu" <rees@umich.edu>
-Date: Mon, 23 Apr 2012 13:43:12 -0400
-Subject: RE: [PATCH RFC v3] vfs: make fstatat retry once on ESTALE errors
- from getattr call
-Message-ID: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC063CF8E603@IT-1874.Isys.com>
-References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
- <1334749927-26138-1-git-send-email-jlayton@redhat.com>
- <20120420104055.511e15bc@tlielax.poochiereds.net>
- <4F91C49D.8070908@RedHat.com>
- <20120420171300.326d6e36@corrin.poochiereds.net>
- <4F956D5C.5050801@RedHat.com>
-In-Reply-To: <4F956D5C.5050801@RedHat.com>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:2740 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756078Ab2DQOIS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Apr 2012 10:08:18 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q3HE8HKf007561
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 17 Apr 2012 10:08:18 -0400
+From: Simo Sorce <simo@redhat.com>
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
+Subject: [PATCH 3/5] SUNRPC: split upcall function to extract reusable parts
+Date: Tue, 17 Apr 2012 09:39:06 -0400
+Message-Id: <1334669948-4156-4-git-send-email-simo@redhat.com>
+In-Reply-To: <1334669948-4156-1-git-send-email-simo@redhat.com>
+References: <1334669948-4156-1-git-send-email-simo@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The test program runs and expects many, many ENOENTS to be returned.  It just doesn't expect ESTALE to be returned.  It doesn't see ESTALE from local file systems.
+This is needed to share code between the current server upcall mechanism
+and the new gssproxy upcall mechanism introduced in a following patch.
 
-To answer a question asked earlier -- the test program does not mimic any particular application behavior, except in the extreme.  It is designed to create as stressful a situation as might be ever seen.
+Signed-off-by: Simo Sorce <simo@redhat.com>
+---
+ net/sunrpc/auth_gss/svcauth_gss.c |  110 +++++++++++++++++++++++--------------
+ 1 files changed, 69 insertions(+), 41 deletions(-)
 
-Has anyone explained why the full solution won't work from a technical viewpoint?
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 274df6410057fa23e991545d80fdb90ab37e0b6f..aa1b649749741c82e60f0f528ac645197fd7ab35 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -965,16 +965,17 @@ svcauth_gss_set_client(struct svc_rqst *rqstp)
+ }
+ 
+ static inline int
+-gss_write_init_verf(struct cache_detail *cd, struct svc_rqst *rqstp, struct rsi *rsip)
++gss_write_init_verf(struct cache_detail *cd, struct svc_rqst *rqstp,
++		struct xdr_netobj *out_handle, int *major_status)
+ {
+ 	struct rsc *rsci;
+ 	int        rc;
+ 
+-	if (rsip->major_status != GSS_S_COMPLETE)
++	if (*major_status != GSS_S_COMPLETE)
+ 		return gss_write_null_verf(rqstp);
+-	rsci = gss_svc_searchbyctx(cd, &rsip->out_handle);
++	rsci = gss_svc_searchbyctx(cd, out_handle);
+ 	if (rsci == NULL) {
+-		rsip->major_status = GSS_S_NO_CONTEXT;
++		*major_status = GSS_S_NO_CONTEXT;
+ 		return gss_write_null_verf(rqstp);
+ 	}
+ 	rc = gss_write_verf(rqstp, rsci->mechctx, GSS_SEQ_WIN);
+@@ -982,6 +983,61 @@ gss_write_init_verf(struct cache_detail *cd, struct svc_rqst *rqstp, struct rsi
+ 	return rc;
+ }
+ 
++static inline int
++gss_read_verf(struct rpc_gss_wire_cred *gc,
++	      struct kvec *argv, __be32 *authp,
++	      struct xdr_netobj *in_handle,
++	      struct xdr_netobj *in_token)
++{
++	struct xdr_netobj tmpobj;
++
++	/* Read the verifier; should be NULL: */
++	*authp = rpc_autherr_badverf;
++	if (argv->iov_len < 2 * 4)
++		return SVC_DENIED;
++	if (svc_getnl(argv) != RPC_AUTH_NULL)
++		return SVC_DENIED;
++	if (svc_getnl(argv) != 0)
++		return SVC_DENIED;
++	/* Martial context handle and token for upcall: */
++	*authp = rpc_autherr_badcred;
++	if (gc->gc_proc == RPC_GSS_PROC_INIT && gc->gc_ctx.len != 0)
++		return SVC_DENIED;
++	if (dup_netobj(in_handle, &gc->gc_ctx))
++		return SVC_CLOSE;
++	*authp = rpc_autherr_badverf;
++	if (svc_safe_getnetobj(argv, &tmpobj)) {
++		kfree(in_handle->data);
++		return SVC_DENIED;
++	}
++	if (dup_netobj(in_token, &tmpobj)) {
++		kfree(in_handle->data);
++		return SVC_CLOSE;
++	}
++
++	return 0;
++}
++
++static inline int
++gss_write_resv(struct kvec *resv, size_t size_limit,
++	       struct xdr_netobj *out_handle, struct xdr_netobj *out_token,
++	       int major_status, int minor_status)
++{
++	if (resv->iov_len + 4 > size_limit)
++		return -1;
++	svc_putnl(resv, RPC_SUCCESS);
++	if (svc_safe_putnetobj(resv, out_handle))
++		return -1;
++	if (resv->iov_len + 3 * 4 > size_limit)
++		return -1;
++	svc_putnl(resv, major_status);
++	svc_putnl(resv, minor_status);
++	svc_putnl(resv, GSS_SEQ_WIN);
++	if (svc_safe_putnetobj(resv, out_token))
++		return -1;
++	return 0;
++}
++
+ /*
+  * Having read the cred already and found we're in the context
+  * initiation case, read the verifier and initiate (or check the results
+@@ -994,36 +1050,15 @@ static int svcauth_gss_handle_init(struct svc_rqst *rqstp,
+ {
+ 	struct kvec *argv = &rqstp->rq_arg.head[0];
+ 	struct kvec *resv = &rqstp->rq_res.head[0];
+-	struct xdr_netobj tmpobj;
+ 	struct rsi *rsip, rsikey;
+ 	int ret;
+ 	struct sunrpc_net *sn = net_generic(rqstp->rq_xprt->xpt_net, sunrpc_net_id);
+ 
+-	/* Read the verifier; should be NULL: */
+-	*authp = rpc_autherr_badverf;
+-	if (argv->iov_len < 2 * 4)
+-		return SVC_DENIED;
+-	if (svc_getnl(argv) != RPC_AUTH_NULL)
+-		return SVC_DENIED;
+-	if (svc_getnl(argv) != 0)
+-		return SVC_DENIED;
+-
+-	/* Martial context handle and token for upcall: */
+-	*authp = rpc_autherr_badcred;
+-	if (gc->gc_proc == RPC_GSS_PROC_INIT && gc->gc_ctx.len != 0)
+-		return SVC_DENIED;
+ 	memset(&rsikey, 0, sizeof(rsikey));
+-	if (dup_netobj(&rsikey.in_handle, &gc->gc_ctx))
+-		return SVC_CLOSE;
+-	*authp = rpc_autherr_badverf;
+-	if (svc_safe_getnetobj(argv, &tmpobj)) {
+-		kfree(rsikey.in_handle.data);
+-		return SVC_DENIED;
+-	}
+-	if (dup_netobj(&rsikey.in_token, &tmpobj)) {
+-		kfree(rsikey.in_handle.data);
+-		return SVC_CLOSE;
+-	}
++	ret = gss_read_verf(gc, argv, authp,
++			    &rsikey.in_handle, &rsikey.in_token);
++	if (ret)
++		return ret;
+ 
+ 	/* Perform upcall, or find upcall result: */
+ 	rsip = rsi_lookup(sn->rsi_cache, &rsikey);
+@@ -1036,19 +1071,12 @@ static int svcauth_gss_handle_init(struct svc_rqst *rqstp,
+ 
+ 	ret = SVC_CLOSE;
+ 	/* Got an answer to the upcall; use it: */
+-	if (gss_write_init_verf(sn->rsc_cache, rqstp, rsip))
++	if (gss_write_init_verf(sn->rsc_cache, rqstp,
++				&rsip->out_handle, &rsip->major_status))
+ 		goto out;
+-	if (resv->iov_len + 4 > PAGE_SIZE)
+-		goto out;
+-	svc_putnl(resv, RPC_SUCCESS);
+-	if (svc_safe_putnetobj(resv, &rsip->out_handle))
+-		goto out;
+-	if (resv->iov_len + 3 * 4 > PAGE_SIZE)
+-		goto out;
+-	svc_putnl(resv, rsip->major_status);
+-	svc_putnl(resv, rsip->minor_status);
+-	svc_putnl(resv, GSS_SEQ_WIN);
+-	if (svc_safe_putnetobj(resv, &rsip->out_token))
++	if (gss_write_resv(resv, PAGE_SIZE,
++			   &rsip->out_handle, &rsip->out_token,
++			   rsip->major_status, rsip->minor_status))
+ 		goto out;
+ 
+ 	ret = SVC_COMPLETE;
+-- 
+1.7.7.6
 
-	Thanx...
-
-		ps
-
-
------Original Message-----
-From: Steve Dickson [mailto:SteveD@redhat.com] 
-Sent: Monday, April 23, 2012 10:55 AM
-To: Jeff Layton
-Cc: linux-fsdevel@vger.kernel.org; linux-nfs@vger.kernel.org; linux-kernel@vger.kernel.org; miklos@szeredi.hu; viro@ZenIV.linux.org.uk; hch@infradead.org; michael.brantley@deshaw.com; sven.breuner@itwm.fraunhofer.de; chuck.lever@oracle.com; Peter Staubach; malahal@us.ibm.com; bfields@fieldses.org; trond.myklebust@fys.uio.no; rees@umich.edu
-Subject: Re: [PATCH RFC v3] vfs: make fstatat retry once on ESTALE errors from getattr call
-
-
-
-On 04/20/2012 05:13 PM, Jeff Layton wrote:
-> On Fri, 20 Apr 2012 16:18:37 -0400
-> Steve Dickson <SteveD@redhat.com> wrote:
-> 
->> On 04/20/2012 10:40 AM, Jeff Layton wrote:
->>> I guess the questions at this point is:
->>>
->>> 1) How representative is Peter's mkdir_test() of a real-world workload?
->> Reading your email I had to wonder the same thing... What application 
->> removes hierarchy of directories in a loop from two different clients?
->> I would suspect not many, if any... esp over NFS... 
->>  
-> 
-> Peter's test just happens to demonstrate the problem well, but one 
-> could envision someone removing a heirarchy of directories on the 
-> server while we're trying to do other operations in it. At that point, 
-> we can easily end up hitting an ESTALE twice while doing the lookup 
-> and returning ESTALE back to userspace.
-Just curious, what happens when you run Peter's mkdir_test() on a local file system? Any errors returned? 
-
-I would think removing hierarchy of directories while they are being accessed has to even cause local fs some type of havoc
-
-> 
->>>
->>> 2) if we assume that it is fairly representative of one, how can we 
->>> achieve retrying indefinitely with NFS, or at least some large 
->>> finite amount?
->> The amount of looping would be peer speculation. If the problem can 
->> not be handled by one simple retry I would say we simply pass the 
->> error up to the app... Its an application issue...
->>  
-> 
-> It's not an application issue. The application just asked the kernel 
-> to do an operation on a pathname. The only reason you're getting an 
-> ESTALE back in this situation is a shortcoming of the implementation.
-> 
-> We passed it a pathname after all, not a filehandle. ESTALE really has 
-> no place as a return code in that situation...
-We'll have to agree to disagree... I think any application that is removing hierarchies of file and directory w/out taking any precautionary locking is a shortcoming of the application implementation.
-    
-> 
->>>
->>> I have my doubts as to whether it would really be as big a problem 
->>> for other filesystems as Miklos and others have asserted, but I'll 
->>> take their word for it at the moment. What's the best way to contain 
->>> this behavior to just those filesystems that want to retry 
->>> indefinitely when they get an ESTALE? Would we need to go with an 
->>> entirely new ESTALERETRY after all?
->>>
->> Introducing a new errno to handle this problem would be overkill IMHO...
->>
->> If we have to go to the looping approach, I would strong suggest we 
->> make the file systems register for this type of behavior...
->>
-> 
-> Returning ESTALERETRY would be registering for it in a way and it is 
-> somewhat cleaner than having to go all the way back up to the fstype 
-> to figure out whether you want to retry it or not.
-How would legacy apps handle this new errno, esp if they have logic to take care of ESTALE errors?
-
-steved.
