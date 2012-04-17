@@ -1,58 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from youngberry.canonical.com ([91.189.89.112]:55092 "EHLO
-	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755467Ab2DSNtB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Apr 2012 09:49:01 -0400
-Date: Thu, 19 Apr 2012 14:48:47 +0100
-From: Luis Henriques <luis.henriques@canonical.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/2] Fix regression on NFS in mainline kernel
-Message-ID: <20120419134847.GC2916@zeus>
-References: <20120418105147.2a6f1c55@corrin.poochiereds.net>
- <1334770614-10653-1-git-send-email-Trond.Myklebust@netapp.com>
- <20120419093025.GA2916@zeus>
+Received: from natasha.panasas.com ([67.152.220.90]:57835 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756305Ab2DQRcQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Apr 2012 13:32:16 -0400
+Message-ID: <4F8DA913.3010207@panasas.com>
+Date: Tue, 17 Apr 2012 20:32:03 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120419093025.GA2916@zeus>
+To: Steve Dickson <SteveD@redhat.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: Re: Linux pNFS status meeting 04/12/12
+References: <OF5E2F67F6.4278FA6C-ON8825799D.00793B9D-8825799D.007960B1@us.ibm.com> <OFB6DA5CEF.C6895471-ON882579A4.00712ECE-882579A4.00715EC4@us.ibm.com> <4F86DF4D.5070208@RedHat.com> <4F8D9A0D.6000605@panasas.com> <4F8DA2BF.6000109@RedHat.com> <4F8DA7BA.6040204@RedHat.com>
+In-Reply-To: <4F8DA7BA.6040204@RedHat.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 19, 2012 at 10:30:25AM +0100, Luis Henriques wrote:
-> On Wed, Apr 18, 2012 at 01:36:52PM -0400, Trond Myklebust wrote:
-> > The first patch addresses the Oops.
-> > The second will hopefully address the looping.
-> > 
-> > Trond Myklebust (2):
-> >   NFSv4: Ensure that the LOCK code sets exception->inode
-> >   NFSv4: Ensure that we check lock exclusive/shared type against open
-> >     modes
-> > 
-> >  fs/nfs/nfs4proc.c |   23 +++++++++++++++++++++--
-> >  1 files changed, 21 insertions(+), 2 deletions(-)
-> > 
-> > -- 
-> > 1.7.7.6
-> > 
-> Just to let you know we do have a few successful tests on these patches.
-> You can check the details here:
+On 04/17/2012 08:26 PM, Steve Dickson wrote:
+
+> There is... its 
+>   Israel Toll-Free: 1-809-462-557
+
+
+> I'll make note in my next invite...
 > 
-> http://bugs.launchpad.net/bugs/974664
-> 
-> Although I haven't tested the patches myself, fell free to add a Tested-by
-> to these patches.
+> steved.
 
-There's something else a forgot to mention, which is the fact that the bug
-reports were for kernel 3.2.14.  So you may want to update the
-"Cc: stable@vger.kernel.org" on commit 487790f27df9bb27d3400486bd021dd59edc7589
-to include at least this version.
 
-There are two another patches we have applied that are present in mainline
-but haven't made its way into stable:
- - 14977489ffdb80d4caf5a184ba41b23b02fbacd9
- - 96dcadc2fdd111dca90d559f189a30c65394451a
 
-Cheers,
---
-Luis
+Perfect thanks. I thought they should have one
+
+See you next time
+Boaz
