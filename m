@@ -1,105 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:12976 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:47521 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753968Ab2DZVDm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Apr 2012 17:03:42 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 4/8] NFSv2/v3: Simulate the change attribute
-Date: Thu, 26 Apr 2012 17:03:31 -0400
-Message-Id: <1335474215-29127-4-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1335474215-29127-3-git-send-email-Trond.Myklebust@netapp.com>
-References: <1335474215-29127-1-git-send-email-Trond.Myklebust@netapp.com>
- <1335474215-29127-2-git-send-email-Trond.Myklebust@netapp.com>
- <1335474215-29127-3-git-send-email-Trond.Myklebust@netapp.com>
+	id S1756072Ab2DQMlD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Apr 2012 08:41:03 -0400
+Date: Tue, 17 Apr 2012 13:40:56 +0100
+From: Mel Gorman <mgorman@suse.de>
+To: Fred Isaman <iisaman@netapp.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>, Linux-MM <linux-mm@kvack.org>,
+        Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>
+Subject: Re: [PATCH 08/11] nfs: disable data cache revalidation for swapfiles
+Message-ID: <20120417124056.GI2359@suse.de>
+References: <1334578675-23445-1-git-send-email-mgorman@suse.de>
+ <1334578675-23445-9-git-send-email-mgorman@suse.de>
+ <CADnza444dTr=JEtqpL5wxHRNkEc7vBz1qq9TL7Z+5h749vNawg@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-15
+In-Reply-To: <CADnza444dTr=JEtqpL5wxHRNkEc7vBz1qq9TL7Z+5h749vNawg@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use the ctime to simulate a change attribute for NFSv2 and NFSv3.
+> On Mon, Apr 16, 2012 at 9:44 AM, Mel Gorman <mgorman@suse.de> wrote:
+> > On Mon, Apr 16, 2012 at 09:10:04AM -0400, Fred Isaman wrote:
+> >> > <SNIP>
+> >> > -static struct nfs_page *nfs_page_find_request_locked(struct page *page)
+> >> > +static struct nfs_page *
+> >> > +nfs_page_find_request_locked(struct nfs_inode *nfsi, struct page *page)
+> >> >  {
+> >> >        struct nfs_page *req = NULL;
+> >> >
+> >> > -       if (PagePrivate(page)) {
+> >> > +       if (PagePrivate(page))
+> >> >                req = (struct nfs_page *)page_private(page);
+> >> > -               if (req != NULL)
+> >> > -                       kref_get(&req->wb_kref);
+> >> > +       else if (unlikely(PageSwapCache(page))) {
+> >> > +               struct nfs_page *freq, *t;
+> >> > +
+> >> > +               /* Linearly search the commit list for the correct req */
+> >> > +               list_for_each_entry_safe(freq, t, &nfsi->commit_list, wb_list) {
+> >> > +                       if (freq->wb_page == page) {
+> >> > +                               req = freq;
+> >> > +                               break;
+> >> > +                       }
+> >> > +               }
+> >> > +
+> >> > +               BUG_ON(req == NULL);
+> >>
+> >> I suspect I am missing something, but why is it guaranteed that the
+> >> req is on the commit list?
+> >>
+> >
+> > It's a fair question and a statement about what I expected to happen.
+> > The commit list replaces the nfs_page_tree radix tree that used to exist
+> > and my understanding was that the req would exist in the radix tree until
+> > the swap IO was completed. I expected it to be the same for the commit
+> > list and the BUG_ON was based on that expectation. Are there cases where
+> > the req would not be found?
+> >
+> 
+> A req is on the commit list only if it actually needs to be scheduled
+> for COMMIT. In other words, only after it has been sent via WRITE and
+> the server did not return NFS_FILE_SYNC.
+> 
+> Thus dirtying a page, then trying to touch it again before the WRITE
+> is sent will not find the corresponding req on the commit_list.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/client.c         |    2 +-
- fs/nfs/nfs2xdr.c        |    2 ++
- fs/nfs/nfs3xdr.c        |    3 +++
- include/linux/nfs_xdr.h |    6 +++---
- 4 files changed, 9 insertions(+), 4 deletions(-)
+Thanks for the explanation. I'll remove the BUG_ON
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index da7b5e4..e258f97 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -880,7 +880,7 @@ static int nfs_init_server(struct nfs_server *server,
- 	server->options = data->options;
- 	server->caps |= NFS_CAP_HARDLINKS|NFS_CAP_SYMLINKS|NFS_CAP_FILEID|
- 		NFS_CAP_MODE|NFS_CAP_NLINK|NFS_CAP_OWNER|NFS_CAP_OWNER_GROUP|
--		NFS_CAP_ATIME|NFS_CAP_CTIME|NFS_CAP_MTIME;
-+		NFS_CAP_ATIME|NFS_CAP_CTIME|NFS_CAP_MTIME|NFS_CAP_CHANGE_ATTR;
- 
- 	if (data->rsize)
- 		server->rsize = nfs_block_size(data->rsize, NULL);
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index 1f56000..ae6b6a1 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -313,6 +313,8 @@ static int decode_fattr(struct xdr_stream *xdr, struct nfs_fattr *fattr)
- 	p = xdr_decode_time(p, &fattr->atime);
- 	p = xdr_decode_time(p, &fattr->mtime);
- 	xdr_decode_time(p, &fattr->ctime);
-+	fattr->change_attr = timespec_to_ns(&fattr->ctime);
-+
- 	return 0;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index a77cc9a..a2ac4b8 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -675,6 +675,7 @@ static int decode_fattr3(struct xdr_stream *xdr, struct nfs_fattr *fattr)
- 	p = xdr_decode_nfstime3(p, &fattr->atime);
- 	p = xdr_decode_nfstime3(p, &fattr->mtime);
- 	xdr_decode_nfstime3(p, &fattr->ctime);
-+	fattr->change_attr = timespec_to_ns(&fattr->ctime);
- 
- 	fattr->valid |= NFS_ATTR_FATTR_V3;
- 	return 0;
-@@ -725,12 +726,14 @@ static int decode_wcc_attr(struct xdr_stream *xdr, struct nfs_fattr *fattr)
- 		goto out_overflow;
- 
- 	fattr->valid |= NFS_ATTR_FATTR_PRESIZE
-+		| NFS_ATTR_FATTR_PRECHANGE
- 		| NFS_ATTR_FATTR_PREMTIME
- 		| NFS_ATTR_FATTR_PRECTIME;
- 
- 	p = xdr_decode_size3(p, &fattr->pre_size);
- 	p = xdr_decode_nfstime3(p, &fattr->pre_mtime);
- 	xdr_decode_nfstime3(p, &fattr->pre_ctime);
-+	fattr->pre_change_attr = timespec_to_ns(&fattr->pre_ctime);
- 
- 	return 0;
- out_overflow:
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 536a2b4..1def5fe 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -106,14 +106,14 @@ struct nfs_fattr {
- 		| NFS_ATTR_FATTR_FILEID \
- 		| NFS_ATTR_FATTR_ATIME \
- 		| NFS_ATTR_FATTR_MTIME \
--		| NFS_ATTR_FATTR_CTIME)
-+		| NFS_ATTR_FATTR_CTIME \
-+		| NFS_ATTR_FATTR_CHANGE)
- #define NFS_ATTR_FATTR_V2 (NFS_ATTR_FATTR \
- 		| NFS_ATTR_FATTR_BLOCKS_USED)
- #define NFS_ATTR_FATTR_V3 (NFS_ATTR_FATTR \
- 		| NFS_ATTR_FATTR_SPACE_USED)
- #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
--		| NFS_ATTR_FATTR_SPACE_USED \
--		| NFS_ATTR_FATTR_CHANGE)
-+		| NFS_ATTR_FATTR_SPACE_USED)
- 
- /*
-  * Info on the file system
 -- 
-1.7.7.6
-
+Mel Gorman
+SUSE Labs
