@@ -1,66 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:38993 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:50330 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760567Ab2D0PVd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Apr 2012 11:21:33 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Josh Boyer <jwboyer@redhat.com>
-CC: Jim Rees <rees@umich.edu>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: Add modalias for "nfs4"
-Date: Fri, 27 Apr 2012 15:21:15 +0000
-Message-ID: <1335540074.3910.9.camel@lade.trondhjem.org>
-References: <20120427131031.GA13189@zod.bos.redhat.com>
-	 <20120427141918.GA15506@umich.edu>
-	 <20120427144840.GB13189@zod.bos.redhat.com>
-	 <1335538228.3910.1.camel@lade.trondhjem.org>
-	 <20120427145352.GC13189@zod.bos.redhat.com>
-	 <1335538927.3910.3.camel@lade.trondhjem.org>
-	 <20120427151406.GD13189@zod.bos.redhat.com>
-In-Reply-To: <20120427151406.GD13189@zod.bos.redhat.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1756030Ab2DQOIS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Apr 2012 10:08:18 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q3HE8HKb007561
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 17 Apr 2012 10:08:18 -0400
+From: Simo Sorce <simo@redhat.com>
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
+Subject: [PATCH 1/5] SUNRPC: Document a bit RPCGSS handling in the NFS Server
+Date: Tue, 17 Apr 2012 09:39:04 -0400
+Message-Id: <1334669948-4156-2-git-send-email-simo@redhat.com>
+In-Reply-To: <1334669948-4156-1-git-send-email-simo@redhat.com>
+References: <1334669948-4156-1-git-send-email-simo@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTA0LTI3IGF0IDExOjE0IC0wNDAwLCBKb3NoIEJveWVyIHdyb3RlOg0KPiBP
-biBGcmksIEFwciAyNywgMjAxMiBhdCAwMzowMjowN1BNICswMDAwLCBNeWtsZWJ1c3QsIFRyb25k
-IHdyb3RlOg0KPiA+IE9uIEZyaSwgMjAxMi0wNC0yNyBhdCAxMDo1MyAtMDQwMCwgSm9zaCBCb3ll
-ciB3cm90ZToNCj4gPiA+IE9uIEZyaSwgQXByIDI3LCAyMDEyIGF0IDAyOjUwOjI4UE0gKzAwMDAs
-IE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gPiA+IE9uIEZyaSwgMjAxMi0wNC0yNyBhdCAx
-MDo0OCAtMDQwMCwgSm9zaCBCb3llciB3cm90ZToNCj4gPiA+ID4gPiBPbiBGcmksIEFwciAyNywg
-MjAxMiBhdCAxMDoxOToxOEFNIC0wNDAwLCBKaW0gUmVlcyB3cm90ZToNCj4gPiA+ID4gPiA+IEpv
-c2ggQm95ZXIgd3JvdGU6DQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ICAgV2hlbiBORlN2NCBp
-cyBjb25maWd1cmVkLCB0aGUgc3VwcG9ydCBnb2VzIGludG8gdGhlIG5mcy5rbyBtb2R1bGUuDQo+
-ID4gPiA+ID4gPiAgIEhvd2V2ZXIsIG5mcy11dGlscyBzZWVtcyB0byBwYXNzICJuZnM0IiBhcyB0
-aGUgZmlsZXN0c3RlbSB0eXBlIGZvcg0KPiA+ID4gPiA+ID4gICBORlN2NCBtb3VudHMuDQo+ID4g
-PiA+ID4gPiANCj4gPiA+ID4gPiA+IFdlcmVuJ3Qgd2UgZ29pbmcgdG8gY2hhbmdlIHRoYXQgdG8g
-bmZzIGFuZCB1c2UgbmZzdmVycyB0byBzZWxlY3QgbmZzND8NCj4gPiA+ID4gPiANCj4gPiA+ID4g
-PiBJIGhhdmUsIGFwcHJveGltYXRlbHksIG5vIGlkZWEuICBBdCBsZWFzdCB0aGUgdmVyc2lvbiBv
-ZiBuZnMtdXRpbHMgZm91bmQNCj4gPiA+ID4gPiBpbiBGZWRvcmEgMTcgYW5kIHJhd2hpZGUsIGl0
-J3Mgc3RpbGwgdXNpbmcgIm5mczQiLiAgIEkgYmVsaWV2ZSB0aGF0IGlzDQo+ID4gPiA+ID4gbmZz
-LXV0aWxzLTEuMi42LXJjNiBiYXNlZC4NCj4gPiA+ID4gDQo+ID4gPiA+IG5mczQgaXMgc3RpbGwg
-X3N1cHBvcnRlZF8gaW4gRmVkb3JhIDE3LCByYXdoaWRlIGFuZCB1cHN0cmVhbSBhcyBhIGxlZ2Fj
-eQ0KPiA+ID4gPiBmZWF0dXJlLCBidXQgdGhlIHJlY29tbWVuZGVkIHByYWN0aWNlIHNob3VsZCBi
-ZSB0byBtb3VudCAtdCBuZnMgLW92ZXJzPTQNCj4gPiA+ID4gKG9yIC1vdmVycz00LjEpLg0KPiA+
-ID4gDQo+ID4gPiBPSy4gIFNvIGVpdGhlciB0aGlzIHBhdGNoIG5lZWRzIHRvIGdvIGluLCBvciBz
-b21ldGhpbmcgbmVlZHMgdG8gYWRkOg0KPiA+ID4gDQo+ID4gPiBhbGlhcyBuZnM0IG5mcw0KPiA+
-ID4gDQo+ID4gPiB0byBhIGNvbmYgZmlsZSBzbyBtb2Rwcm9iZSBwaWNrcyBpdCB1cC4gIEkgZmln
-dXJlZCB0aGUga2VybmVsIGNvdWxkIGFkZA0KPiA+ID4gdGhlIGFsaWFzIGl0c2VsZi4gIElzIHRo
-ZXJlIGEgcmVhc29uIG5vdCB0bz8NCj4gPiANCj4gPiBZZXMuIFRoaXMgaXMgYSBsZWdhY3kgZmVh
-dHVyZSB0aGF0IHdlIHdhbnQgdG8gZW5jb3VyYWdlIHBlb3BsZSB0byBtb3ZlDQo+ID4gdGhlaXIg
-c3lzdGVtcyBvZmYuLi4NCj4gDQo+IFNvIGVzc2VudGlhbGx5IHdoYXQgbmVlZHMgdG8gaGFwcGVu
-IGlzOg0KPiANCj4gLSBSZWNlbnQgZGlzdHJvcyBzdGlsbCBzaGlwIHRoZSBtb2RhbGlhcyBpbiBh
-IGNvbmYgZmlsZQ0KPiAtIFVwc3RyZWFtIG5mcy11dGlscyBzdGFydHMgdHJhbnNsYXRpbmcgJ21v
-dW50IC10IG5mczQnIGludG8gJ21vdW50IC10DQo+ICAgbmZzIC1vdmVycz00JyBpbiAvc2Jpbi9t
-b3VudC5uZnM0DQo+IC0gVXBzdHJlYW0gcmVsZWFzZXMgdGhhdA0KPiAtIERpc3Ryb3MgZHJvcCB0
-aGUgYWxpYXMuDQo+IA0KPiBSaWdodD8NCg0KTm8uIFJlYWxseSBhbGwgd2UgbmVlZCB0byBkbyBp
-cyBhZGQgYSBwcmludGYoKSB0byAvc2Jpbi9tb3VudC5uZnM0IHRvDQp0aGUgZWZmZWN0IHRoYXQg
-dGhpcyBpcyBhIGxlZ2FjeSBmZWF0dXJlIGFuZCB0aGF0ICctdCBuZnMgLW92ZXJzPTQnIGlzDQp0
-aGUgcmVjb21tZW5kZWQgbW91bnQgb3B0aW9uLiBQZXJoYXBzIHRoZSBkaXN0cm9zIGNhbiBhbHNv
-IGhhdmUgdGhlaXINCmRpc3RybyB1cGdyYWRlIHV0aWxpdGllcyBlZGl0IC9ldGMvZnN0YWIgdG8g
-dXBncmFkZSB0aG9zZSBhdXRvbWF0aWNhbGx5Lg0KDQpUaGVuIHRoZSBkaXN0cm9zIGNhbiBkcm9w
-IHRoZSBhbGlhcyB3aGVuZXZlciB0aGV5IHRoaW5rIGl0IGlzDQphcHByb3ByaWF0ZS4NCg0KLS0g
-DQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHAN
-ClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+Includes changes intorduced by GSS-Proxy.
+
+Signed-off-by: Simo Sorce <simo@redhat.com>
+---
+ Documentation/filesystems/nfs/00-INDEX         |    2 +
+ Documentation/filesystems/nfs/knfsd-rpcgss.txt |   65 ++++++++++++++++++++++++
+ 2 files changed, 67 insertions(+), 0 deletions(-)
+ create mode 100644 Documentation/filesystems/nfs/knfsd-rpcgss.txt
+
+diff --git a/Documentation/filesystems/nfs/00-INDEX b/Documentation/filesystems/nfs/00-INDEX
+index 1716874a651e1c574e7ca9719dfb4e3521b0a5e9..66eb6c8c5334518ddbc10115c7b34b4dfb1b3c0e 100644
+--- a/Documentation/filesystems/nfs/00-INDEX
++++ b/Documentation/filesystems/nfs/00-INDEX
+@@ -20,3 +20,5 @@ rpc-cache.txt
+ 	- introduction to the caching mechanisms in the sunrpc layer.
+ idmapper.txt
+ 	- information for configuring request-keys to be used by idmapper
++knfsd-rpcgss.txt
++	- Information on GSS authentication support in the NFS Server
+diff --git a/Documentation/filesystems/nfs/knfsd-rpcgss.txt b/Documentation/filesystems/nfs/knfsd-rpcgss.txt
+new file mode 100644
+index 0000000000000000000000000000000000000000..914aa536273b986539d7859092e2c0f139ce5535
+--- /dev/null
++++ b/Documentation/filesystems/nfs/knfsd-rpcgss.txt
+@@ -0,0 +1,65 @@
++
++Kernel NFS Server RPCGSS Support
++================================
++
++This document gives references to the standards and protocols used to
++implement RPCGSS authentication in the NFS Server.
++
++RPCGSS is specified in a few IETF documents:
++ - RFC2203 v1: http://tools.ietf.org/rfc/rfc2203.txt
++ - RFC5403 v2: http://tools.ietf.org/rfc/rfc5403.txt
++and there is a 3rd version  being proposed:
++ - http://tools.ietf.org/id/draft-williams-rpcsecgssv3.txt
++   (At draft n. 02 at the time of writing)
++
++Background
++----------
++
++The RPCGSS Authentication method describes a way to perform GSSAPI
++Authentication for NFS.
++Although GSSAPI is itself completely mechanism agnostic, in many cases only
++the KRB5 mechanism is supported by NFS implementations.
++
++The Linux kernel, at the moment, supports only the KRB5 mechanism, and depends
++on GSSAPI extensions that are KRB5 specific.
++
++GSSAPI is a complex library, and implementing it completely in kernel is
++unwarranted. However GSSAPI operations are fundementally separable in 2 parts:
++- context establishment
++- integrity/privacy protection (read: signing and encrypting)
++
++The first part is the complex one, while the actual integrity and privacy
++protecion is simple enough.
++Because of the complexity of context establishment, the NFS Server defers the
++operation to the userspace througuh the use of upcalls.
++
++NFS Server Legacy Upcall mechanism
++----------------------------------
++
++The classic upcall mechanism uses a custom text based upcall mechanism to talk
++to a custom daemon called rpc.svcgssd that is provide by the nfs-utils package.
++
++This upcall mechanism has 2 limitations:
++A) Can handle tokens that are no bigger than 2KiB
++
++In some Kerberos deployment GSSAPI tokens can be quite big, up and beyond 64KiB
++in size due to various authorization extensions attacked to the Kerberos
++tickets, that needs to be sent through the GSS layer in order to perform
++context establishment.
++
++B) Does not properly handle creds where the user is member of more than a few
++housand groups (the current hard limit in the kernel is 65K groups) due to
++limitation on the size of the buffer that can be send back to the kernel (4KiB).
++
++NFS Server New RPC Upcall mechanism
++-----------------------------------
++
++A new upcall mechanism that uses RPC over a Unix socket is added. This
++mechanism uses a protocol called gss-proxy, and user space program that
++implements it called Gssproxy. The gss_proxy RPC protocol is currently document
++here: https://fedorahosted.org/gss-proxy/wiki/ProtocolDocumentation
++
++This upcall mechanism uses the kernel rpc client and connects to the gssproxy
++userspace program over a regular unix socket. The gssproxy protocol does not
++suffer from the size limitations of the legacy protocol.
++
+-- 
+1.7.7.6
+
