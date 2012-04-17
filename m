@@ -1,132 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34123 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:42618 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758050Ab2DIW65 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Apr 2012 18:58:57 -0400
-Date: Mon, 9 Apr 2012 18:58:53 -0400
-From: Bruce Fields <bfields@fieldses.org>
-To: Orion Poplawski <orion@cora.nwra.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [nfsv4] open(O_CREAT) returns EEXISTS on symbolic link created
- on another system until stat()ed
-Message-ID: <20120409225853.GG10508@fieldses.org>
-References: <1333052170.10318.6.camel@lade.trondhjem.org>
- <1333053750.10318.15.camel@lade.trondhjem.org>
- <20120329205035.GB21493@fieldses.org>
- <1333054622.10318.19.camel@lade.trondhjem.org>
- <20120329210838.GC21493@fieldses.org>
- <20120329211713.GD21493@fieldses.org>
- <4F7DC9DC.6090802@cora.nwra.com>
- <20120405165311.GA11707@fieldses.org>
- <4F7DFDD7.30005@cora.nwra.com>
- <20120409223221.GD10508@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120409223221.GD10508@fieldses.org>
+	id S1756058Ab2DQOIS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Apr 2012 10:08:18 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q3HE8HKd007561
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 17 Apr 2012 10:08:18 -0400
+From: Simo Sorce <simo@redhat.com>
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
+Subject: [PATCH 2/5] SUNRPC: conditionally return endtime from import_sec_context
+Date: Tue, 17 Apr 2012 09:39:05 -0400
+Message-Id: <1334669948-4156-3-git-send-email-simo@redhat.com>
+In-Reply-To: <1334669948-4156-1-git-send-email-simo@redhat.com>
+References: <1334669948-4156-1-git-send-email-simo@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 09, 2012 at 06:32:21PM -0400, Bruce Fields wrote:
-> On Thu, Apr 05, 2012 at 02:17:27PM -0600, Orion Poplawski wrote:
-> > On 04/05/2012 10:53 AM, Bruce Fields wrote:
-> > >On Thu, Apr 05, 2012 at 10:35:40AM -0600, Orion Poplawski wrote:
-> > >>On 03/29/2012 03:17 PM, Dr James Bruce Fields wrote:
-> > >>>On Thu, Mar 29, 2012 at 05:08:38PM -0400, Dr James Bruce Fields wrote:
-> > >>>>Anyway, something like the following (untested) should change v3 to
-> > >>>>return nfs_ok in this case, and v4 to return the same errors it would on
-> > >>>>a non-create open.
-> > >>>
-> > >>>Looking at the history, I think the v3 behavior has been there from the
-> > >>>start.  I wonder why we've never gotten a bug report?
-> > >>>
-> > >>>Looking at wireshark.... I guess the client always does a lookup first,
-> > >>>so we never hit this case (unless someone replaces the file by a
-> > >>>non-regular-file between a lookup and a create?)
-> > >>>
-> > >>>--b.
-> > >>
-> > >>So, is this all set to eventually make it into the mainline kernel?
-> > >>Or is there still something I can do to help move it along?
-> > >
-> > >If you could confirm whether the patch in
-> > >
-> > >	http://www.spinics.net/lists/linux-nfs/msg28840.html
-> > >
-> > >fixes your problem, that would help.
-> > >
-> > >--b.
-> > 
-> > I applied it to 2.6.32-220.7.1.el6.x86_64 and it appears to have
-> > fixed the issue.  Can't be sure yet if it broke anything else
-> > though...
-> 
-> Great, thanks.  I'm applying as follows.
+We expose this parameter for a future caller.
+It will be used to extract the endtime from the gss-proxy upcall mechanism,
+in order to set the rsc cache expiration time.
 
-Whoops, forgot to append the patch.--b.
+Signed-off-by: Simo Sorce <simo@redhat.com>
+---
+ include/linux/sunrpc/gss_api.h        |    2 ++
+ net/sunrpc/auth_gss/auth_gss.c        |    2 +-
+ net/sunrpc/auth_gss/gss_krb5_mech.c   |    3 +++
+ net/sunrpc/auth_gss/gss_mech_switch.c |    5 +++--
+ net/sunrpc/auth_gss/svcauth_gss.c     |    3 ++-
+ 5 files changed, 11 insertions(+), 4 deletions(-)
 
-commit 02f661e5012665a3994e454a3f2602843ef65d59
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Mon Apr 9 18:06:49 2012 -0400
-
-    nfsd: don't fail unchecked creates of non-special files
-    
-    Allow a v3 unchecked open of a non-regular file succeed as if it were a
-    lookup; typically a client in such a case will want to fall back on a
-    local open, so succeeding and giving it the filehandle is more useful
-    than failing with nfserr_exist, which makes it appear that nothing at
-    all exists by that name.
-    
-    Similarly for v4, on an open-create, return the same errors we would on
-    an attempt to open a non-regular file, instead of returning
-    nfserr_exist.
-    
-    This fixes a problem found doing a v4 open of a symlink with
-    O_RDONLY|O_CREAT, which resulted in the current client returning EEXIST.
-    
-    Thanks also to Trond for analysis.
-    
-    Cc: stable@kernel.org
-    Reported-by: Orion Poplawski <orion@cora.nwra.com>
-    Tested-by: Orion Poplawski <orion@cora.nwra.com>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 2ed14df..8256efd 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -235,17 +235,17 @@ do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_o
- 		 */
- 		if (open->op_createmode == NFS4_CREATE_EXCLUSIVE && status == 0)
- 			open->op_bmval[1] = (FATTR4_WORD1_TIME_ACCESS |
--						FATTR4_WORD1_TIME_MODIFY);
-+							FATTR4_WORD1_TIME_MODIFY);
- 	} else {
- 		status = nfsd_lookup(rqstp, current_fh,
- 				     open->op_fname.data, open->op_fname.len, resfh);
- 		fh_unlock(current_fh);
--		if (status)
--			goto out;
--		status = nfsd_check_obj_isreg(resfh);
+diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
+index 332da61cf8b71fc73d802b2609210f46641a9ea1..7bd486d50f0861b45c98e695751c2f92f1b3bdfa 100644
+--- a/include/linux/sunrpc/gss_api.h
++++ b/include/linux/sunrpc/gss_api.h
+@@ -36,6 +36,7 @@ int gss_import_sec_context(
+ 		size_t			bufsize,
+ 		struct gss_api_mech	*mech,
+ 		struct gss_ctx		**ctx_id,
++		time_t			*endtime,
+ 		gfp_t			gfp_mask);
+ u32 gss_get_mic(
+ 		struct gss_ctx		*ctx_id,
+@@ -91,6 +92,7 @@ struct gss_api_ops {
+ 			const void		*input_token,
+ 			size_t			bufsize,
+ 			struct gss_ctx		*ctx_id,
++			time_t			*endtime,
+ 			gfp_t			gfp_mask);
+ 	u32 (*gss_get_mic)(
+ 			struct gss_ctx		*ctx_id,
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index d3ad81f8da5b79551c36b17a7d53007406946699..836cbecb1947235d38c62eadf79ae96ad73906e6 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -232,7 +232,7 @@ gss_fill_context(const void *p, const void *end, struct gss_cl_ctx *ctx, struct
+ 		p = ERR_PTR(-EFAULT);
+ 		goto err;
  	}
- 	if (status)
- 		goto out;
-+	status = nfsd_check_obj_isreg(resfh);
-+	if (status)
-+		goto out;
+-	ret = gss_import_sec_context(p, seclen, gm, &ctx->gc_gss_ctx, GFP_NOFS);
++	ret = gss_import_sec_context(p, seclen, gm, &ctx->gc_gss_ctx, NULL, GFP_NOFS);
+ 	if (ret < 0) {
+ 		p = ERR_PTR(ret);
+ 		goto err;
+diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
+index 8eff8c32d1b9b403c2365326c16e44df7c0923e6..329c36b9aa269a414932df86d89650c7a39528fd 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_mech.c
++++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+@@ -679,6 +679,7 @@ out_err:
+ static int
+ gss_import_sec_context_kerberos(const void *p, size_t len,
+ 				struct gss_ctx *ctx_id,
++				time_t *endtime,
+ 				gfp_t gfp_mask)
+ {
+ 	const void *end = (const void *)((const char *)p + len);
+@@ -696,6 +697,8 @@ gss_import_sec_context_kerberos(const void *p, size_t len,
  
- 	if (is_create_with_attrs(open) && open->op_acl != NULL)
- 		do_set_nfs4_acl(rqstp, resfh, open->op_acl, open->op_bmval);
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 296d671..5686661 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1458,7 +1458,7 @@ do_nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 		switch (createmode) {
- 		case NFS3_CREATE_UNCHECKED:
- 			if (! S_ISREG(dchild->d_inode->i_mode))
--				err = nfserr_exist;
-+				goto out;
- 			else if (truncp) {
- 				/* in nfsv4, we need to treat this case a little
- 				 * differently.  we don't want to truncate the
+ 	if (ret == 0)
+ 		ctx_id->internal_ctx_id = ctx;
++		if (endtime)
++			*endtime = ctx->endtime;
+ 	else
+ 		kfree(ctx);
+ 
+diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
+index ca8cad8251c7ff1c13c9bff6757e098c4f1cd9b2..b22cc24fac482351876c8f4a6c10d8b203a95045 100644
+--- a/net/sunrpc/auth_gss/gss_mech_switch.c
++++ b/net/sunrpc/auth_gss/gss_mech_switch.c
+@@ -312,14 +312,15 @@ int
+ gss_import_sec_context(const void *input_token, size_t bufsize,
+ 		       struct gss_api_mech	*mech,
+ 		       struct gss_ctx		**ctx_id,
++		       time_t			*endtime,
+ 		       gfp_t gfp_mask)
+ {
+ 	if (!(*ctx_id = kzalloc(sizeof(**ctx_id), gfp_mask)))
+ 		return -ENOMEM;
+ 	(*ctx_id)->mech_type = gss_mech_get(mech);
+ 
+-	return mech->gm_ops
+-		->gss_import_sec_context(input_token, bufsize, *ctx_id, gfp_mask);
++	return mech->gm_ops->gss_import_sec_context(input_token, bufsize,
++						*ctx_id, endtime, gfp_mask);
+ }
+ 
+ /* gss_get_mic: compute a mic over message and return mic_token. */
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 1600cfb1618cd2abb4ae14be87f96554100a862a..274df6410057fa23e991545d80fdb90ab37e0b6f 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -489,7 +489,8 @@ static int rsc_parse(struct cache_detail *cd,
+ 		len = qword_get(&mesg, buf, mlen);
+ 		if (len < 0)
+ 			goto out;
+-		status = gss_import_sec_context(buf, len, gm, &rsci.mechctx, GFP_KERNEL);
++		status = gss_import_sec_context(buf, len, gm, &rsci.mechctx,
++						NULL, GFP_KERNEL);
+ 		if (status)
+ 			goto out;
+ 
+-- 
+1.7.7.6
+
