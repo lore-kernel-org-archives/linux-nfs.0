@@ -1,111 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:61013 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758051Ab2DZRDI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 13:03:08 -0400
+Received: from mail-wg0-f44.google.com ([74.125.82.44]:46739 "EHLO
+	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753336Ab2DQO1E (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Apr 2012 10:27:04 -0400
+Received: by wgbdr13 with SMTP id dr13so6454056wgb.1
+        for <linux-nfs@vger.kernel.org>; Tue, 17 Apr 2012 07:27:03 -0700 (PDT)
+From: Miklos Szeredi <miklos@szeredi.hu>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Jeff Layton <jlayton@redhat.com>,
+        "Myklebust\, Trond" <Trond.Myklebust@netapp.com>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        Malahal Naineni <malahal@us.ibm.com>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "pstaubach\@exagrid.com" <pstaubach@exagrid.com>,
+        "viro\@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
+        "hch\@infradead.org" <hch@infradead.org>,
+        "michael.brantley\@deshaw.com" <michael.brantley@deshaw.com>,
+        "sven.breuner\@itwm.fraunhofer.de" <sven.breuner@itwm.fraunhofer.de>
+Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from getattr call
+References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
+	<20120413150518.GA1987@us.ibm.com>
+	<20120413114236.0e557e01@tlielax.poochiereds.net>
+	<4F8B1B7B.3040304@itwm.fraunhofer.de>
+	<20120416073655.7cdb90cf@corrin.poochiereds.net>
+	<4F8C3036.2030702@itwm.fraunhofer.de>
+	<20120416134642.1754cd3e@corrin.poochiereds.net>
+	<1334604785.2879.23.camel@lade.trondhjem.org>
+	<20120416154322.0d95e435@corrin.poochiereds.net>
+	<1334607906.2879.36.camel@lade.trondhjem.org>
+	<20120416190548.2463d1d0@corrin.poochiereds.net>
+	<4F8D580B.7060104@RedHat.com>
+	<20120417093643.7f172057@corrin.poochiereds.net>
+	<4F8D7ADF.9030709@RedHat.com>
+Date: Tue, 17 Apr 2012 16:27:16 +0200
+In-Reply-To: <4F8D7ADF.9030709@RedHat.com> (Steve Dickson's message of "Tue,
+	17 Apr 2012 10:14:55 -0400")
+Message-ID: <87k41eo2m3.fsf@tucsk.pomaz.szeredi.hu>
 MIME-Version: 1.0
-In-Reply-To: <1335459642.9701.27.camel@lade.trondhjem.org>
-References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
-	<CAH2r5ms4WQV3DnTvqNN=2N71Cj8UHwj8Z6+RHXgrAOv6mSoyQg@mail.gmail.com>
-	<20656.1335450358@redhat.com>
-	<CAH2r5mv1Lijdwk5zsQwYJr4Etb6fhrRyNXm-iFCQX+HecboGrQ@mail.gmail.com>
-	<1335453958.9701.10.camel@lade.trondhjem.org>
-	<CAH2r5mt5af-_hxBRKK72iD5Gr99bo91ec78Rov8EGVEx8=21mA@mail.gmail.com>
-	<1335459642.9701.27.camel@lade.trondhjem.org>
-Date: Thu, 26 Apr 2012 12:03:07 -0500
-Message-ID: <CAH2r5mvmCfLrxRHje6Wx5X84zxPEHwRMUJGsjvWBujMu7w841w@mail.gmail.com>
-Subject: Re: [PATCH 0/6] Extended file stat system call
-From: Steve French <smfrench@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: David Howells <dhowells@redhat.com>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
-        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "wine-devel@winehq.org" <wine-devel@winehq.org>,
-        "kfm-devel@kde.org" <kfm-devel@kde.org>,
-        "nautilus-list@gnome.org" <nautilus-list@gnome.org>,
-        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
-        "libc-alpha@sourceware.org" <libc-alpha@sourceware.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 26, 2012 at 12:00 PM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Thu, 2012-04-26 at 11:56 -0500, Steve French wrote:
->> On Thu, Apr 26, 2012 at 10:25 AM, Myklebust, Trond
->> <Trond.Myklebust@netapp.com> wrote:
->> > On Thu, 2012-04-26 at 09:54 -0500, Steve French wrote:
->> >> On Thu, Apr 26, 2012 at 9:25 AM, David Howells <dhowells@redhat.com> wrote:
->> >> > Steve French <smfrench@gmail.com> wrote:
->> >> >
->> >> >> Would it be better to make the stable vs volatile inode number an attribute
->> >> >> of the volume  or something returned by the proposed xstat?
->> >> >
->> >> > I'm not sure what you mean by a stable vs a volatile inode number.
->> >>
->> >> Both NFS and CIFS (and SMB2) can return inode numbers or equivalent
->> >> unique identifier, but in the case of CIFS some old servers don't support the
->> >> calls which return inode numbers (or don't return them for all file system
->> >> types, Windows FAT?) so in these cases cifs has to create inode
->> >> numbers on the fly
->> >> on the client.   inode numbers created on the client are not "stable" they
->> >> can change on unmount/remount (which can cause problems for backup
->> >> applications).
->> >>
->> >> Similarly NFSv4 does not require that servers always return stable inode numbers
->> >> (that will never change) and introduced a concept of "volatile file handle."
->> >> We have run into this in two cases (there are probably more) -
->> >> Specialized NFS servers
->> >> for HPC which deal with lots of transient inodes, and second those for servers
->> >> which base there inode number on path (Windows NFS?).  See
->> >> http://docs.oracle.com/cd/E19082-01/819-1634/rfsrefer-137/index.html
->> >> or the NFSv4 RFC.
->> >>
->> >> Basically the question is whether it is worth reporting a flag on the
->> >> call which returns
->> >> the inode number to indicate that the inode number is "stable" (would not change
->> >> on reboot or reconnection) or "volatile."    Since the majority of NFS
->> >> and SMB2 servers
->> >> can return stable inode numbers, I don't feel strongly about the need
->> >> for an indicator
->> >> of "stable" vs. "volatile" but I mention it because backup and
->> >> migration applications
->> >> mention this (if inode numbers are volatile, they may have to check
->> >> for hardlinks differently
->> >> for example)
->> >
->> > I don't understand. If the filesystem doesn't support real inode
->> > numbers, then why report them at all? What use would an application have
->> > for an inode number that can't be used to identify hard linked files?
->>
->> Well ... you have to have an inode number on the Linux client side even if
->> the server doesn't report them (or has a bug and reports duplicates).
->> If you can't tell hardlinked files apart fix the server (but in the
->> cases where the file systems has this problem the server doesn't usually
->> support hardlinks either).
->>
->> If the server's file system internal structures don't support real inode
->> numbers (such as FAT or a ramdisk) then it either has to make them
->> up based on something like path name or some other attribute of the
->> file on disk.
->>
->> Servers like NetApp is where this gets interesting - for cifs e.g. level 1009
->> query file info is used to query_file_internal_info (the inode number) but
->> what if the server can not report inode numbers (due to a bug) in
->> all cases.
->
-> Right, but none of this explains why we need to report these bogus inode
-> numbers to the application in the xstat() reply.
+Steve Dickson <SteveD@redhat.com> writes:
 
-the question is whether the application (backup) would need to know
-that the inode numbers are bogus and from my conversations with
-guys writing backup software it seems that such data is useful to them.
+> True, but even so... Giving file systems an opt-out option with the 
+> default being out, maybe still have some merit... Making file systems
+> enable this new type of functionality would cut down on any of the
+> "surprise" that might occur with this redo ;-) 
 
+I've been arguing for something slightly different for quite some time:
+I never liked errno values which have side effects in the kernel yet
+might be visible to userspace.
 
--- 
+So why not introduce ERETRYSTALE, a *kernel internal* errno value that
+userspace will never see and filesystems never accidentally set.  The
+VFS can turn this into ESTALE if it doesn't retry for some reason
+(e.g. already retried).
+
 Thanks,
-
-Steve
+Miklos
