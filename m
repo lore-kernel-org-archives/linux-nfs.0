@@ -1,130 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:18660 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:8266 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753593Ab2DTVZs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 17:25:48 -0400
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS4: fix referrals with IPv6 mounts
-Date: Fri, 20 Apr 2012 21:25:46 +0000
-Message-ID: <79682769-1052-4392-A63D-F686A81C2BBE@netapp.com>
-References: <1334949705-33393-1-git-send-email-dros@netapp.com>
- <B1E9AAB3-6739-46D5-999A-130494131031@oracle.com>
-In-Reply-To: <B1E9AAB3-6739-46D5-999A-130494131031@oracle.com>
-Content-Type: multipart/signed;
-	boundary="Apple-Mail=_4F863D3B-066A-463C-B120-1D87D13261FD";
-	protocol="application/pkcs7-signature"; micalg=sha1
+	id S1752815Ab2DQRFJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Apr 2012 13:05:09 -0400
+Message-ID: <4F8DA2BF.6000109@RedHat.com>
+Date: Tue, 17 Apr 2012 13:05:03 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Linux pNFS status meeting 04/12/12
+References: <OF5E2F67F6.4278FA6C-ON8825799D.00793B9D-8825799D.007960B1@us.ibm.com> <OFB6DA5CEF.C6895471-ON882579A4.00712ECE-882579A4.00715EC4@us.ibm.com> <4F86DF4D.5070208@RedHat.com> <4F8D9A0D.6000605@panasas.com>
+In-Reply-To: <4F8D9A0D.6000605@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Apple-Mail=_4F863D3B-066A-463C-B120-1D87D13261FD
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
 
-On Apr 20, 2012, at 3:30 PM, Chuck Lever wrote:
 
->=20
-> On Apr 20, 2012, at 3:21 PM, Weston Andros Adamson wrote:
->=20
->> nfs4_path() was parsing the path component by splitting on the first =
-colon.
->> This is wrong when an IPv6 address is used to mount a server.
->>=20
->> For example, having mounted 'fc00::10:/export', nfs4_path() returned
->> ':10:/export'.  This causes referrals (using IPv4 or IPv6 addresses) =
-to fail
->> in nfs4_validate_fspath().
->>=20
->> Parsing the path component by using the *last* colon works with
->> IPv6 as well as IPv4 addrs.
->=20
-> These ad hoc fixes give me the willies.
->=20
-> During a referral, how is the server name and export path getting =
-recombined?  In fs_locations data, these are separate.  In the forward =
-mount path, IPv6 addresses are escaped via square brackets.
-
-Again, the string that needs to be split into (server, path) is not the =
-fs_locations side -- those are already separated.  What's not separated =
-is the result of nfs_path().
-
-> (Having not looked at this code in years), is there some way we can =
-keep the server name and path separate here so we don't have to reparse?
-
-nfs_path() walks up the dentry tree until it hits the root dentry of the =
-nfs mount, then it uses dentry.d_fsdata to get the "dev_name" of the =
-mountpoint (<server>:<path>) to make <server>:<rootpath + path to the =
-dentry>.
-
-The problem I'm having is how we can generate the string "<rootpath of =
-parent mount>/<path-to-current-dentry>" without adding [] escaping to =
-dev_name, or adding another variable to dentry (not likely!).
-
--dros
-
->=20
->> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
->> ---
->> fs/nfs/nfs4namespace.c |    2 +-
->> 1 files changed, 1 insertions(+), 1 deletions(-)
->>=20
->> diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
->> index 9c8eca3..dd3dd30 100644
->> --- a/fs/nfs/nfs4namespace.c
->> +++ b/fs/nfs/nfs4namespace.c
->> @@ -59,7 +59,7 @@ static char *nfs4_path(struct dentry *dentry, char =
-*buffer, ssize_t buflen)
->> 	char *limit;
->> 	char *path =3D nfs_path(&limit, dentry, buffer, buflen);
->> 	if (!IS_ERR(path)) {
->> -		char *colon =3D strchr(path, ':');
->> +		char *colon =3D strrchr(path, ':');
->> 		if (colon && colon < limit)
->> 			path =3D colon + 1;
->> 	}
->> --=20
->> 1.7.4.4
->>=20
+On 04/17/2012 12:27 PM, Boaz Harrosh wrote:
+> On 04/12/2012 04:57 PM, Steve Dickson wrote:
+> 
+>> Meeting on Thursday 04/12/12 at 9:30 AM PST (12:30 PM EST)
+>>
+>> Please note the new call in number:
+>>
+>> U.S. and Canada: (800) 451-8679
+>> International dial-in number: (212) 729-5016
+>> Conference code: 564.272.1552
 >> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 >> the body of a message to majordomo@vger.kernel.org
 >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
+> Any Israel number?
+I'm assuming you mean toll free Israel number... Let me find out...
 
+steved.
 
---Apple-Mail=_4F863D3B-066A-463C-B120-1D87D13261FD
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-
-MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIDTzCCA0sw
-ggIzoAMCAQICAQEwCwYJKoZIhvcNAQEFMEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYD
-VQQGEwJVUzEeMBwGCSqGSIb3DQEJARYPZHJvc0BuZXRhcHAuY29tMB4XDTExMDYwODIyMDc0NloX
-DTEyMDYwNzIyMDc0NlowRjEXMBUGA1UEAwwOV2VzdG9uIEFkYW1zb24xCzAJBgNVBAYTAlVTMR4w
-HAYJKoZIhvcNAQkBFg9kcm9zQG5ldGFwcC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
-AoIBAQC8/tJxtovJEXYRfSsrFOWKHxIZGY7/2mBee1DpWuoGDbVNapefCC7WXe+Nqxz609w2J/Mk
-/k3trZ3Ge2NXK0tGnP9NzjkzpGA7rSpM3wUFsvbLMUEGfQpvV24/nYvcLHTvOOEUaDPpHduN94bD
-dwvyowzDIRIpF2MeRnOzBNeHkrGHlZdzPmGjm8tkhrDRRkDYHhlxaiG4z30KCfAazxomuINiy1kj
-vbndXooYMDoh9H63hgW4NkOedtLdflLa322DXQ3nFU7YbyOIjHVl1tgWJLDWf7WT3lsAB8KvuJZ5
-zhsUB+fqxCKPJVRPDO1gjChvvtGiG1tGUUZz0H9Wx00zAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIH
-gDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDBDAaBgNVHREEEzARgQ9kcm9zQG5ldGFwcC5jb20wDQYJ
-KoZIhvcNAQEFBQADggEBACv0niZSmW+psB1sJXULh3mecDbN2mj0bFpN1YNdjcV7BiOLJ1Rs1ibV
-f13h73z8C7SBsPXTM5si8gmJtOnXM5jsgtlql44h/RrjUr8+mtK5DPCZls9J7iz3cGthzwOPvxUj
-nMSv3BpRX5oJom5ESgCM9Nn4u/ECTlLMhEIOYnBFiN0eDxcxz+r1cpbHg3r0otIKyxLpeaCjP6AH
-F93EHp4T8Rb63y3CcDgxrQGHlTdVi3QvxaMUexUXD81fiA+UqsB/MKmRxB1Hs4Vf3Q/+ejcm78K1
-ROF8TNPmNWRlKg3Y7cSFjZGzLuzXsvSsCbw4HLn0oZe/OfgSbarTAxttL5IxggHRMIIBzQIBATBL
-MEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYDVQQGEwJVUzEeMBwGCSqGSIb3DQEJARYP
-ZHJvc0BuZXRhcHAuY29tAgEBMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
-MBwGCSqGSIb3DQEJBTEPFw0xMjA0MjAyMTI1NDZaMCMGCSqGSIb3DQEJBDEWBBTR1xqg7LE/OYPA
-lwhx2RBO6pFXMzANBgkqhkiG9w0BAQEFAASCAQAQNvUmnA1HABDa1yMTfA0A582dT/3DiURhB5du
-0Prf9Sr/NrdObAlWpsqAuvs48Hf73j/mHO5Be1mN8+Tug3ST6y58G3pGpB57Jg7fDxTDMLAQtW/5
-gbBHcivO6ciw3GwssYqd/I0eOpe5nuY2bUB9LKarfdpY3S12nCu8zQJ6K0YmAVEC/F/YIFHSg6rp
-zu50hAN7O5jJfSPsHZ3mmTQiVOi0d0ZAKRksmSQeBhl0uKZAcMNrhmLGPSpjFU4A8663F6zl9qkg
-LP0U2rxIqvp1RtSvMgafY18+LQVD+1ohsQC65pB6Em978IVSUeHttG36uPHOb9Lg9XKG/VGUhRoh
-AAAAAAAA
-
---Apple-Mail=_4F863D3B-066A-463C-B120-1D87D13261FD--
