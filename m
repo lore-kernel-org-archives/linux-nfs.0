@@ -1,55 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:25436 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:4537 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759319Ab2DYOXR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Apr 2012 10:23:17 -0400
-Subject: [PATCH 4/6] LockD: move global usage counter manipulation from error
- path
-To: bfields@fieldses.org, Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Wed, 25 Apr 2012 18:23:02 +0400
-Message-ID: <20120425142301.22909.31119.stgit@localhost6.localdomain6>
-In-Reply-To: <20120425141934.22909.53047.stgit@localhost6.localdomain6>
-References: <20120425141934.22909.53047.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1751730Ab2DRK73 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Apr 2012 06:59:29 -0400
+Date: Wed, 18 Apr 2012 06:59:26 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Simo Sorce <simo@redhat.com>, bfields@redhat.com,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org
+Subject: Re: [PATCH 4/5] SUNRPC: Add RPC based upcall mechanism for RPCGSS
+ auth
+Message-ID: <20120418065926.55d75ec2@tlielax.poochiereds.net>
+In-Reply-To: <20120417222825.GA32619@fieldses.org>
+References: <1334669948-4156-1-git-send-email-simo@redhat.com>
+	<1334669948-4156-5-git-send-email-simo@redhat.com>
+	<20120417222825.GA32619@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+On Tue, 17 Apr 2012 18:28:25 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
----
- fs/lockd/svc.c |    5 ++---
- 1 files changed, 2 insertions(+), 3 deletions(-)
+> On Tue, Apr 17, 2012 at 09:39:07AM -0400, Simo Sorce wrote:
+> > This patch implements a sunrpc client to use the services of the gssproxy
+> > userspace daemon.
+> > 
+> > In particular it allows to perform calls in user space using an RPC
+> > call instead of custom hand-coded upcall/downcall messages.
+> 
+> The "hand-coded" messages aren't really particularly hard to generate or
+> parse.  Let's just drop that argument.
+> 
+> > Currently only accept_sec_context is implemented as that is all is needed for
+> > the server case.
+> > 
+> > File server modules like NFS and CIFS can use full gssapi services this way,
+> > once init_sec_context is also implemented.
+> 
+> What's the situation with CIFS, by the way?  (How does it currently do
+> gssapi, and what are their plans?)
+> 
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index ad11ea7..53cd69e 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -329,7 +329,7 @@ static struct svc_serv *lockd_create_svc(void)
- int lockd_up(struct net *net)
- {
- 	struct svc_serv *serv;
--	int		error = 0;
-+	int error;
- 
- 	mutex_lock(&nlmsvc_mutex);
- 
-@@ -370,14 +370,13 @@ int lockd_up(struct net *net)
- 		goto err_start;
- 	}
- 
-+	nlmsvc_users++;
- 	/*
- 	 * Note: svc_serv structures have an initial use count of 1,
- 	 * so we exit through here on both success and failure.
- 	 */
- err_net:
- 	svc_destroy(serv);
--	if (!error)
--		nlmsvc_users++;
- err_create:
- 	mutex_unlock(&nlmsvc_mutex);
- 	return error;
+Currently it has its own upcall that's done using the keys API. It's
+pretty limited. It's stateless and so doesn't handle multistage
+negotiation properly, for instance but it works well enough for our
+purposes...
 
+If there's common infrastructure in the kernel for handling GSSAPI then
+we'd be interested in using that instead. I'm all for less code that we
+have to maintain ourselves...
+
+We would of course need to come up with a transition scheme to the new
+daemon. We might need some small modifications too since CIFS expects
+the blob to be wrapped in SPNEGO as well, but that's fairly easy to
+manage and we could do that in kernel space if needed.
+
+My only (minor) reservation is that moving to this would mean cifs
+would be dependent to some degree on the sunrpc code. It's not a huge
+problem. Most distros won't care, but some embedded ones might.
+
+What we'll probably do is wait until this is more settled with nfs(d)
+and then look at moving to it.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
