@@ -1,98 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61571 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:64440 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932158Ab2DTSsL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 14:48:11 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH v3 10/25] NFS: remove unnecessary casts of void pointers in nfs4filelayout.c
-Date: Fri, 20 Apr 2012 14:47:42 -0400
-Message-Id: <1334947677-28864-11-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
-References: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
+	id S1754161Ab2DRRhC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Apr 2012 13:37:02 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Luis Henriques <luis.henriques@canonical.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH 0/2] Fix regression on NFS in mainline kernel
+Date: Wed, 18 Apr 2012 13:36:52 -0400
+Message-Id: <1334770614-10653-1-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <20120418105147.2a6f1c55@corrin.poochiereds.net>
+References: <20120418105147.2a6f1c55@corrin.poochiereds.net>
+In-Reply-To: <20120418105147.2a6f1c55@corrin.poochiereds.net>
+References: <20120418105147.2a6f1c55@corrin.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/nfs4filelayout.c |   16 ++++++++--------
- 1 files changed, 8 insertions(+), 8 deletions(-)
+The first patch addresses the Oops.
+The second will hopefully address the looping.
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index adbadcb..31afd81 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -191,7 +191,7 @@ filelayout_set_layoutcommit(struct nfs_write_data *wdata)
-  */
- static void filelayout_read_prepare(struct rpc_task *task, void *data)
- {
--	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
-+	struct nfs_read_data *rdata = data;
- 
- 	rdata->read_done_cb = filelayout_read_done_cb;
- 
-@@ -205,7 +205,7 @@ static void filelayout_read_prepare(struct rpc_task *task, void *data)
- 
- static void filelayout_read_call_done(struct rpc_task *task, void *data)
- {
--	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
-+	struct nfs_read_data *rdata = data;
- 
- 	dprintk("--> %s task->tk_status %d\n", __func__, task->tk_status);
- 
-@@ -215,14 +215,14 @@ static void filelayout_read_call_done(struct rpc_task *task, void *data)
- 
- static void filelayout_read_count_stats(struct rpc_task *task, void *data)
- {
--	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
-+	struct nfs_read_data *rdata = data;
- 
- 	rpc_count_iostats(task, NFS_SERVER(rdata->inode)->client->cl_metrics);
- }
- 
- static void filelayout_read_release(void *data)
- {
--	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
-+	struct nfs_read_data *rdata = data;
- 
- 	put_lseg(rdata->lseg);
- 	rdata->mds_ops->rpc_release(data);
-@@ -282,7 +282,7 @@ static int filelayout_commit_done_cb(struct rpc_task *task,
- 
- static void filelayout_write_prepare(struct rpc_task *task, void *data)
- {
--	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
-+	struct nfs_write_data *wdata = data;
- 
- 	if (nfs41_setup_sequence(wdata->ds_clp->cl_session,
- 				&wdata->args.seq_args, &wdata->res.seq_res,
-@@ -294,7 +294,7 @@ static void filelayout_write_prepare(struct rpc_task *task, void *data)
- 
- static void filelayout_write_call_done(struct rpc_task *task, void *data)
- {
--	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
-+	struct nfs_write_data *wdata = data;
- 
- 	/* Note this may cause RPC to be resent */
- 	wdata->mds_ops->rpc_call_done(task, data);
-@@ -302,14 +302,14 @@ static void filelayout_write_call_done(struct rpc_task *task, void *data)
- 
- static void filelayout_write_count_stats(struct rpc_task *task, void *data)
- {
--	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
-+	struct nfs_write_data *wdata = data;
- 
- 	rpc_count_iostats(task, NFS_SERVER(wdata->inode)->client->cl_metrics);
- }
- 
- static void filelayout_write_release(void *data)
- {
--	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
-+	struct nfs_write_data *wdata = data;
- 
- 	put_lseg(wdata->lseg);
- 	wdata->mds_ops->rpc_release(data);
+Trond Myklebust (2):
+  NFSv4: Ensure that the LOCK code sets exception->inode
+  NFSv4: Ensure that we check lock exclusive/shared type against open
+    modes
+
+ fs/nfs/nfs4proc.c |   23 +++++++++++++++++++++--
+ 1 files changed, 21 insertions(+), 2 deletions(-)
+
 -- 
-1.7.2.1
+1.7.7.6
 
