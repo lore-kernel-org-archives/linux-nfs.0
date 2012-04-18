@@ -1,95 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:60253 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:64528 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751064Ab2DROE3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Apr 2012 10:04:29 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Luis Henriques <luis.henriques@canonical.com>
-CC: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Regretion on NFS in mainline kernel
-Date: Wed, 18 Apr 2012 14:04:26 +0000
-Message-ID: <1334757866.4701.6.camel@lade.trondhjem.org>
-References: <20120418112610.GA3979@zeus>
-	 <20120418092822.07a4f944@tlielax.poochiereds.net>
-	 <20120418135738.GB3979@zeus>
-In-Reply-To: <20120418135738.GB3979@zeus>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1752176Ab2DRRqe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Apr 2012 13:46:34 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
+        Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 2/6] NFS: Pass alternate rpc_clnt to fs_locations()
+Date: Wed, 18 Apr 2012 13:46:21 -0400
+Message-Id: <1334771185-9841-3-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1334771185-9841-1-git-send-email-bjschuma@netapp.com>
+References: <1334771185-9841-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTA0LTE4IGF0IDE0OjU3ICswMTAwLCBMdWlzIEhlbnJpcXVlcyB3cm90ZToN
-Cj4gSGkgSmVmZiwNCj4gDQo+IE9uIFdlZCwgQXByIDE4LCAyMDEyIGF0IDA5OjI4OjIyQU0gLTA0
-MDAsIEplZmYgTGF5dG9uIHdyb3RlOg0KPiA+IE9uIFdlZCwgMTggQXByIDIwMTIgMTI6MjY6MTAg
-KzAxMDANCj4gPiBMdWlzIEhlbnJpcXVlcyA8bHVpcy5oZW5yaXF1ZXNAY2Fub25pY2FsLmNvbT4g
-d3JvdGU6DQo+ID4gDQo+ID4gPiBIaSwNCj4gPiA+IA0KPiA+ID4gV2UgaGF2ZSBhIGJ1ZyByZXBv
-cnRpbmcgYSByZWdyZXNzaW9uIGluIG1haW5saW5lIGtlcm5lbC4gIEJhc2ljYWxseSwgdGhlDQo+
-ID4gPiBidWcgcmVwb3J0ZXJzIGFyZSBzZWVpbmcgbG90cyBvZiBtZXNzYWdlczoNCj4gPiA+IA0K
-PiA+ID4gWyA0OC43MDEyMTNdIE5GUzogbmZzNF9yZWNsYWltX29wZW5fc3RhdGU6IExvY2sgcmVj
-bGFpbSBmYWlsZWQhDQo+ID4gPiBbIDQ4LjcwMTk5MF0gTkZTOiBuZnM0X3JlY2xhaW1fb3Blbl9z
-dGF0ZTogTG9jayByZWNsYWltIGZhaWxlZCENCj4gPiA+IFsgNTMuNjk2MDc2XSBuZnM0X3JlY2xh
-aW1fb3Blbl9zdGF0ZTogNjQ0MCBjYWxsYmFja3Mgc3VwcHJlc3NlZA0KPiA+ID4gDQo+ID4gPiBU
-aGlzIGhhcHBlbnMgd2hlbiBtb3VudGluZyBhIHVzZXIncyBob21lIGRpcmVjdG9yeSBvdmVyIE5G
-Uy4NCj4gPiA+IA0KPiA+ID4gSXMgdGhpcyBhIGtub3duIGlzc3VlIGJlaW5nIGFkZHJlc3NlZCBh
-dCB0aGUgbW9tZW50PyAgSXMgdGhlcmUgYW55DQo+ID4gPiBpbmZvcm1hdGlvbiBuZWVkZWQgdG8g
-aGVscCBkZWJ1Z2dpbmcgdGhlIGlzc3VlPw0KPiA+ID4gDQo+ID4gPiBUaGUgb3JpZ2luYWwgYnVn
-IHJlcG9ydCBjYW4gYmUgZm91bmQgaGVyZToNCj4gPiA+IA0KPiA+ID4gaHR0cDovL2J1Z3MubGF1
-bmNocGFkLm5ldC9idWdzLzk3NDY2NA0KPiA+ID4gDQo+ID4gPiBBbmQgdGhlcmUncyBhbHNvIGEg
-c2ltaWxhciByZXBvcnQgZm9yIEZlZG9yYToNCj4gPiA+IA0KPiA+ID4gaHR0cHM6Ly9idWd6aWxs
-YS5yZWRoYXQuY29tL3Nob3dfYnVnLmNnaT9pZD04MTExMzgNCj4gPiA+IA0KPiA+ID4gQ2hlZXJz
-LA0KPiA+IA0KPiA+IFRoaXMgY29kZSBpbiBuZnM0X3JlY2xhaW1fb3Blbl9zdGF0ZSgpIGxvb2tz
-IHdyb25nIHRvIG1lLCBidXQgSSdtIG5vdA0KPiA+IHRoYXQgZmFtaWxpYXIgd2l0aCB0aGlzIGNv
-ZGUgc28gSSBjb3VsZCBiZSB3cm9uZzoNCj4gPiANCj4gPiAtLS0tLS0tLS0tLS0tLS0tLS0tW3Nu
-aXBdLS0tLS0tLS0tLS0tLS0tLS0tLS0NCj4gPiAgICAgICAgICAgICAgICAgc3RhdHVzID0gb3Bz
-LT5yZWNvdmVyX29wZW4oc3AsIHN0YXRlKTsNCj4gPiAgICAgICAgICAgICAgICAgaWYgKHN0YXR1
-cyA+PSAwKSB7DQo+ID4gICAgICAgICAgICAgICAgICAgICAgICAgc3RhdHVzID0gbmZzNF9yZWNs
-YWltX2xvY2tzKHN0YXRlLCBvcHMpOw0KPiA+ICAgICAgICAgICAgICAgICAgICAgICAgIGlmIChz
-dGF0dXMgPj0gMCkgew0KPiA+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgc3Bpbl9s
-b2NrKCZzdGF0ZS0+c3RhdGVfbG9jayk7DQo+ID4gICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICBsaXN0X2Zvcl9lYWNoX2VudHJ5KGxvY2ssICZzdGF0ZS0+bG9ja19zdGF0ZXMsIGxzX2xv
-Y2tzKSB7DQo+ID4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGlmICgh
-KGxvY2stPmxzX2ZsYWdzICYgTkZTX0xPQ0tfSU5JVElBTElaRUQpKQ0KPiA+ICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHByX3dhcm5fcmF0ZWxpbWl0ZWQo
-Ik5GUzogIg0KPiA+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgIiVzOiBMb2NrIHJlY2xhaW0gIg0KPiA+ICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgImZhaWxlZCFcbiIsIF9fZnVuY19f
-KTsNCj4gPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0NCj4gPiAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgIHNwaW5fdW5sb2NrKCZzdGF0ZS0+c3RhdGVfbG9jayk7DQo+
-ID4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBuZnM0X3B1dF9vcGVuX3N0YXRlKHN0
-YXRlKTsNCj4gPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGdvdG8gcmVzdGFydDsN
-Cj4gPiAgICAgICAgICAgICAgICAgICAgICAgICB9DQo+ID4gICAgICAgICAgICAgICAgIH0NCj4g
-PiAtLS0tLS0tLS0tLS0tLS0tLS0tW3NuaXBdLS0tLS0tLS0tLS0tLS0tLS0tLS0NCj4gPiANCj4g
-PiBTaG91bGRuJ3QgdGhlIHN0YXR1cyBjaGVjayBhZnRlciBuZnM0X3JlY2xhaW1fbG9ja3MgYmUg
-cmV2ZXJzZWQ/DQo+IA0KPiBUaGFua3MgYSBsb3QgZm9yIHlvdXIgaGVscC4gIENvdWxkIHlvdSBw
-bGVhc2UgdGFrZSBhIGxvb2sgYXQgdGhlIHBhdGNoDQo+IGJlbG93LCBqdXN0IHRvIG1ha2Ugc3Vy
-ZSBJIHVuZGVyc3Rvb2QgeW91J3JlIHN1Z2dlc3Rpb24gY29ycmVjdGx5PyAgSSB3aWxsDQo+IHBy
-ZXBhcmUgYSB0ZXN0IGtlcm5lbCBzbyB0aGF0IHdlIGNhbiBjaGVjayB3aGV0aGVyIGl0IGFjdHVh
-bGx5IHNvbHZlcyB0aGUNCj4gcHJvYmxlbSBvciBub3QuDQo+IA0KPiBDaGVlcnMsDQo+IC0tDQo+
-IEx1aXMNCj4gDQo+IA0KPiA+RnJvbSBhMTM0OGY0NzNjMTU3NDM5YWM2MmY1MDJlYjQ1Y2E0OGY5
-NWU2MjdmIE1vbiBTZXAgMTcgMDA6MDA6MDAgMjAwMQ0KPiBGcm9tOiBMdWlzIEhlbnJpcXVlcyA8
-bHVpcy5oZW5yaXF1ZXNAY2Fub25pY2FsLmNvbT4NCj4gRGF0ZTogV2VkLCAxOCBBcHIgMjAxMiAx
-NDo1MDoxMCArMDEwMA0KPiBTdWJqZWN0OiBbUEFUQ0ggMS8xXSBORlM6IEZpeCBzdGF0dXMgY2hl
-Y2sgb24gbmZzNF9yZWNsYWltX29wZW5fc3RhdGUoKQ0KPiANCj4gVGhlcmUgaGF2ZSBiZWVuIHNl
-dmVyYWwgYnVnIHJlcG9ydHMsIHdpdGggdGhlIGZvbGxvd2luZyBtZXNzYWdlcyBvbiB0aGUNCj4g
-bG9nczoNCj4gDQo+ICBbIDQ4LjcwMTIxM10gTkZTOiBuZnM0X3JlY2xhaW1fb3Blbl9zdGF0ZTog
-TG9jayByZWNsYWltIGZhaWxlZCENCj4gIFsgNDguNzAxOTkwXSBORlM6IG5mczRfcmVjbGFpbV9v
-cGVuX3N0YXRlOiBMb2NrIHJlY2xhaW0gZmFpbGVkIQ0KPiAgWyA1My42OTYwNzZdIG5mczRfcmVj
-bGFpbV9vcGVuX3N0YXRlOiA2NDQwIGNhbGxiYWNrcyBzdXBwcmVzc2VkDQo+IA0KPiBUaGlzIGhh
-cHBlbnMsIGZvciBleGFtcGxlLCB3aGVuIG1vdW50aW5nIGEgdXNlcidzIGhvbWUgZGlyZWN0b3J5
-IG92ZXIgTkZTLg0KPiANCj4gVGhhbmtzIHRvIEplZmYgTGF5dG9uIHRoYXQgaWRlbnRpZmllZCB0
-aGUgY2F1c2UsIHRoaXMgcGF0Y2ggZml4ZXMgYW4NCj4gaW5jb3JyZWN0IHN0YXR1cyBjaGVjayBv
-biBuZnM0X3JlY2xhaW1fb3Blbl9zdGF0ZSgpLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogTHVpcyBI
-ZW5yaXF1ZXMgPGx1aXMuaGVucmlxdWVzQGNhbm9uaWNhbC5jb20+DQo+IC0tLQ0KPiAgZnMvbmZz
-L25mczRzdGF0ZS5jIHwgICAgMiArLQ0KPiAgMSBmaWxlIGNoYW5nZWQsIDEgaW5zZXJ0aW9uKCsp
-LCAxIGRlbGV0aW9uKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRzdGF0ZS5jIGIv
-ZnMvbmZzL25mczRzdGF0ZS5jDQo+IGluZGV4IDA3MzU0YjcuLjhiNmFjZWMgMTAwNjQ0DQo+IC0t
-LSBhL2ZzL25mcy9uZnM0c3RhdGUuYw0KPiArKysgYi9mcy9uZnMvbmZzNHN0YXRlLmMNCj4gQEAg
-LTExODAsNyArMTE4MCw3IEBAIHJlc3RhcnQ6DQo+ICAJCWF0b21pY19pbmMoJnN0YXRlLT5jb3Vu
-dCk7DQo+ICAJCXNwaW5fdW5sb2NrKCZzcC0+c29fbG9jayk7DQo+ICAJCXN0YXR1cyA9IG9wcy0+
-cmVjb3Zlcl9vcGVuKHNwLCBzdGF0ZSk7DQo+IC0JCWlmIChzdGF0dXMgPj0gMCkgew0KPiArCQlp
-ZiAoc3RhdHVzIDwgMCkgew0KPiAgCQkJc3RhdHVzID0gbmZzNF9yZWNsYWltX2xvY2tzKHN0YXRl
-LCBvcHMpOw0KPiAgCQkJaWYgKHN0YXR1cyA+PSAwKSB7DQo+ICAJCQkJc3Bpbl9sb2NrKCZzdGF0
-ZS0+c3RhdGVfbG9jayk7DQoNCkhlbGwgbm8hIA0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGlu
-dXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFw
-cC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+From: Bryan Schumaker <bjschuma@netapp.com>
+
+nfs4_proc_lookup() will soon create a new rpc_clnt with the results of a
+SECINFO call.  This patch prepares for a referral hidden behind a
+mountpoint with a different secflavor.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/nfs4_fs.h       |    2 +-
+ fs/nfs/nfs4namespace.c |    3 ++-
+ fs/nfs/nfs4proc.c      |   17 +++++++++--------
+ 3 files changed, 12 insertions(+), 10 deletions(-)
+
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 97ecc86..41a89d0 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -212,7 +212,7 @@ extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
+ extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
+ extern int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait, bool roc);
+ extern int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle);
+-extern int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
++extern int nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir, const struct qstr *name,
+ 		struct nfs4_fs_locations *fs_locations, struct page *page);
+ extern int nfs4_release_lockowner(struct nfs4_lock_state *);
+ extern const struct xattr_handler *nfs4_xattr_handlers[];
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index 28a4771..be5268d 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -250,7 +250,8 @@ struct vfsmount *nfs_do_refmount(struct dentry *dentry)
+ 	dprintk("%s: getting locations for %s/%s\n",
+ 		__func__, parent->d_name.name, dentry->d_name.name);
+ 
+-	err = nfs4_proc_fs_locations(parent->d_inode, &dentry->d_name, fs_locations, page);
++	err = nfs4_proc_fs_locations(NFS_CLIENT(parent->d_inode), parent->d_inode,
++				     &dentry->d_name, fs_locations, page);
+ 	dput(parent);
+ 	if (err != 0 ||
+ 	    fs_locations->nlocations <= 0 ||
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index f82bde0..826c3d5 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2368,8 +2368,9 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
+  * Note that we'll actually follow the referral later when
+  * we detect fsid mismatch in inode revalidation
+  */
+-static int nfs4_get_referral(struct inode *dir, const struct qstr *name,
+-			     struct nfs_fattr *fattr, struct nfs_fh *fhandle)
++static int nfs4_get_referral(struct rpc_clnt *client, struct inode *dir,
++			     const struct qstr *name, struct nfs_fattr *fattr,
++			     struct nfs_fh *fhandle)
+ {
+ 	int status = -ENOMEM;
+ 	struct page *page = NULL;
+@@ -2382,7 +2383,7 @@ static int nfs4_get_referral(struct inode *dir, const struct qstr *name,
+ 	if (locations == NULL)
+ 		goto out;
+ 
+-	status = nfs4_proc_fs_locations(dir, name, locations, page);
++	status = nfs4_proc_fs_locations(client, dir, name, locations, page);
+ 	if (status != 0)
+ 		goto out;
+ 	/* Make sure server returned a different fsid for the referral */
+@@ -2542,7 +2543,7 @@ static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qst
+ 		case -NFS4ERR_BADNAME:
+ 			return -ENOENT;
+ 		case -NFS4ERR_MOVED:
+-			return nfs4_get_referral(dir, name, fattr, fhandle);
++			return nfs4_get_referral(clnt, dir, name, fattr, fhandle);
+ 		case -NFS4ERR_WRONGSEC:
+ 			nfs_fixup_secinfo_attributes(fattr, fhandle);
+ 		}
+@@ -4891,8 +4892,8 @@ static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr)
+ 	fattr->nlink = 2;
+ }
+ 
+-int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+-		struct nfs4_fs_locations *fs_locations, struct page *page)
++int nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir, const struct qstr *name,
++			   struct nfs4_fs_locations *fs_locations, struct page *page)
+ {
+ 	struct nfs_server *server = NFS_SERVER(dir);
+ 	u32 bitmask[2] = {
+@@ -4918,7 +4919,7 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+ 
+ 	/* Ask for the fileid of the absent filesystem if mounted_on_fileid
+ 	 * is not supported */
+-	if (NFS_SERVER(dir)->attr_bitmask[1] & FATTR4_WORD1_MOUNTED_ON_FILEID)
++	if (server->attr_bitmask[1] & FATTR4_WORD1_MOUNTED_ON_FILEID)
+ 		bitmask[1] |= FATTR4_WORD1_MOUNTED_ON_FILEID;
+ 	else
+ 		bitmask[0] |= FATTR4_WORD0_FILEID;
+@@ -4926,7 +4927,7 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+ 	nfs_fattr_init(&fs_locations->fattr);
+ 	fs_locations->server = server;
+ 	fs_locations->nlocations = 0;
+-	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
++	status = nfs4_call_sync(client, server, &msg, &args.seq_args, &res.seq_res, 0);
+ 	dprintk("%s: returned status = %d\n", __func__, status);
+ 	return status;
+ }
+-- 
+1.7.10
+
