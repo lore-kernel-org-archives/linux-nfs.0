@@ -1,80 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:51652 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757790Ab2DZPy5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 11:54:57 -0400
-Received: by yenl12 with SMTP id l12so1010610yen.19
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Apr 2012 08:54:56 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
-        michael.brantley@deshaw.com
-Subject: [PATCH v1 00/12] vfs: add the ability to retry on ESTALE to several syscalls
-Date: Thu, 26 Apr 2012 11:54:39 -0400
-Message-Id: <1335455691-16003-1-git-send-email-jlayton@redhat.com>
+Received: from youngberry.canonical.com ([91.189.89.112]:49356 "EHLO
+	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752524Ab2DRL0O (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Apr 2012 07:26:14 -0400
+Date: Wed, 18 Apr 2012 12:26:10 +0100
+From: Luis Henriques <luis.henriques@canonical.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Regretion on NFS in mainline kernel
+Message-ID: <20120418112610.GA3979@zeus>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-ESTALE errors are a source of pain for many users, primarily those who
-are doing work on NFS. When userspace provides a path to a syscall, then
-there's really little excuse for returning ESTALE. If userspace gave us
-a path that we had to lookup in order to do the call, then it's not
-particularly helpful to return ESTALE just because that path went stale
-before we could do the actual operation.
+Hi,
 
-We can and should do better here. The kernel should instead catch that
-error and retry the lookup and call, while forcing a revalidation of all
-dentries involved.
+We have a bug reporting a regression in mainline kernel.  Basically, the
+bug reporters are seeing lots of messages:
 
-Unfortunately fixing this requires touching the syscalls themselves, or
-at least their immediate helper functions. Not all syscalls can be
-retried -- only those that take a pathname as an argument.
+[ 48.701213] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
+[ 48.701990] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
+[ 53.696076] nfs4_reclaim_open_state: 6440 callbacks suppressed
 
-This set is a first "official" pass at adding ESTALE retry handling to
-various syscalls.  With this patchset, I've decided to take the
-relatively less controversial approach of just having the kernel retry
-once when it gets an ESTALE error. I still think that it's not as strong
-as it should be, but it should improve the situation in many common
-cases.
+This happens when mounting a user's home directory over NFS.
 
-I've also tried to engineer this in such a way that if we do decide that
-we need to retry more than once, then it should be easy to change that
-later. This should cover all of the syscalls in fs/stat.c and
-fs/namei.c.
+Is this a known issue being addressed at the moment?  Is there any
+information needed to help debugging the issue?
 
-If this approach is reasonable I'll look at adding similar handling to
-other path-based vfs calls in a another set. A quick look shows that
-we have about 50-odd path-based syscalls that will need similar
-handling, so this is just a start.
+The original bug report can be found here:
 
-Comments welcome...
+http://bugs.launchpad.net/bugs/974664
 
-Jeff Layton (12):
-  vfs: add a retry_estale helper function to handle retries on ESTALE
-  vfs: make fstatat retry on ESTALE errors from getattr call
-  vfs: fix readlinkat to retry on ESTALE
-  vfs: add new "reval" argument to kern_path_create and
-    user_path_create
-  vfs: fix mknodat to retry on ESTALE errors
-  vfs: fix mkdir to retry on ESTALE errors
-  vfs: add a "reval" flag to args for user_path_parent
-  vfs: make rmdir retry on ESTALE errors
-  vfs: make do_unlinkat retry on ESTALE errors
-  vfs: fix symlinkat to retry on ESTALE errors
-  vfs: fix linkat to retry on ESTALE errors
-  vfs: fix renameat to retry on ESTALE errors
+And there's also a similar report for Fedora:
 
- arch/powerpc/platforms/cell/spufs/syscalls.c |    2 +-
- drivers/base/devtmpfs.c                      |    7 +-
- fs/namei.c                                   |  233 +++++++++++++++-----------
- fs/ocfs2/refcounttree.c                      |    3 +-
- fs/stat.c                                    |   32 +++-
- include/linux/fs.h                           |   21 +++
- include/linux/namei.h                        |    4 +-
- net/unix/af_unix.c                           |    3 +-
- 8 files changed, 191 insertions(+), 114 deletions(-)
+https://bugzilla.redhat.com/show_bug.cgi?id=811138
 
--- 
-1.7.7.6
-
+Cheers,
+--
+Luis
