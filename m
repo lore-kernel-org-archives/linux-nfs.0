@@ -1,93 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:64528 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:46874 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752275Ab2DRRqi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Apr 2012 13:46:38 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
-        Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 6/6] NFS: Fix SECINFO_NO_NAME
-Date: Wed, 18 Apr 2012 13:46:25 -0400
-Message-Id: <1334771185-9841-7-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1334771185-9841-1-git-send-email-bjschuma@netapp.com>
-References: <1334771185-9841-1-git-send-email-bjschuma@netapp.com>
+	id S1752605Ab2DRWDa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Apr 2012 18:03:30 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Miklos Szeredi <miklos@szeredi.hu>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [REGRESSION] NFSv4: open(O_TRUNC) hangs
+Date: Wed, 18 Apr 2012 22:03:26 +0000
+Message-ID: <1334786606.12880.14.camel@lade.trondhjem.org>
+References: <87d37osrx2.fsf@tucsk.pomaz.szeredi.hu>
+	 <1333647115.4573.3.camel@lade.trondhjem.org>
+	 <8762ddb3ge.fsf@tucsk.pomaz.szeredi.hu>
+In-Reply-To: <8762ddb3ge.fsf@tucsk.pomaz.szeredi.hu>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
-
-I was using the same decoder function for SECINFO and SECINFO_NO_NAME,
-so it was returning an error when it tried to decode an OP_SECINFO_NO_NAME
-header as OP_SECINFO.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/nfs4xdr.c |   24 +++++++++++++++++++-----
- 1 file changed, 19 insertions(+), 5 deletions(-)
-
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index eca81b1..78b71a6 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -5087,16 +5087,13 @@ out_err:
- 	return -EINVAL;
- }
- 
--static int decode_secinfo(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
-+static int decode_secinfo_common(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
- {
- 	struct nfs4_secinfo_flavor *sec_flavor;
- 	int status;
- 	__be32 *p;
- 	int i, num_flavors;
- 
--	status = decode_op_hdr(xdr, OP_SECINFO);
--	if (status)
--		goto out;
- 	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
- 		goto out_overflow;
-@@ -5122,6 +5119,7 @@ static int decode_secinfo(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
- 		res->flavors->num_flavors++;
- 	}
- 
-+	status = 0;
- out:
- 	return status;
- out_overflow:
-@@ -5129,6 +5127,22 @@ out_overflow:
- 	return -EIO;
- }
- 
-+static int decode_secinfo(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
-+{
-+	int status = decode_op_hdr(xdr, OP_SECINFO);
-+	if (status)
-+		return status;
-+	return decode_secinfo_common(xdr, res);
-+}
-+
-+static int decode_secinfo_no_name(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
-+{
-+	int status = decode_op_hdr(xdr, OP_SECINFO_NO_NAME);
-+	if (status)
-+		return status;
-+	return decode_secinfo_common(xdr, res);
-+}
-+
- #if defined(CONFIG_NFS_V4_1)
- static int decode_exchange_id(struct xdr_stream *xdr,
- 			      struct nfs41_exchange_id_res *res)
-@@ -6814,7 +6828,7 @@ static int nfs4_xdr_dec_secinfo_no_name(struct rpc_rqst *rqstp,
- 	status = decode_putrootfh(xdr);
- 	if (status)
- 		goto out;
--	status = decode_secinfo(xdr, res);
-+	status = decode_secinfo_no_name(xdr, res);
- out:
- 	return status;
- }
--- 
-1.7.10
-
+SGkgTWlrbG9zDQoNCk9uIEZyaSwgMjAxMi0wNC0wNiBhdCAxMTo0MyArMDIwMCwgTWlrbG9zIFN6
+ZXJlZGkgd3JvdGU6DQo+ICJNeWtsZWJ1c3QsIFRyb25kIiA8VHJvbmQuTXlrbGVidXN0QG5ldGFw
+cC5jb20+IHdyaXRlczoNCj4gDQo+ID4gVGhlIGZvbGxvd2luZyBjbGllbnQgcGF0Y2ggZml4ZXMg
+dGhlIHJlZ3Jlc3Npb24gZm9yIG1lLg0KPiANCj4gSXQgZml4ZXMgdGhlIGhhbmcsIGJ1dCBpdCBz
+dGlsbCBkb2Vzbid0IHdvcmsgMTAwJSBjb3JyZWN0bHkuICBUcnkgdGhlDQo+IGZvbGxvd2luZyB0
+ZXN0IHByb2dyYW0uDQo+IA0KPiBCVFcsIGRvIHlvdSBydW4gYW55IGZzIHRlc3Qgc3VpdHM/ICBB
+bGwgdGhlc2Ugd2VyZSBjYXVnaHQgd2l0aCBvbmUgSSB1c2UNCj4gdG8gcXVpY2sgdGVzdCBmdXNl
+IChpdCdzIGluIHRoZSBmdXNlIGdpdCB0cmVlKCopIHVuZGVyIHRoZSAidGVzdCINCj4gZGlyZWN0
+b3J5KS4gIEJ1dCBJIGd1ZXNzIG90aGVycyBsaWtlIExUUCB3b3VsZCBjYXRjaCB0aGVzZSBhcyB3
+ZWxsLg0KDQpUaGFua3MhIEknbGwgbG9vayBpbnRvIHRoYXQuIEJyeWFuIGhhcyBiZWVuIGhlbHBp
+bmcgbWUgdG8gc2V0IHVwIGEgdGVzdA0KcmlnIGZvciB0aGUgTkZTIGNsaWVudCwgYnV0IGZvciBu
+b3cgd2UgZG9uJ3QgaGF2ZSBtdWNoIGNvdmVyYWdlIG9mIGJhc2ljDQpQT1NJWCB0ZXN0cy4NCg0K
+PiBUaGFua3MsDQo+IE1pa2xvcw0KPiANCj4gKCopICBnaXQ6Ly9mdXNlLmdpdC5zb3VyY2Vmb3Jn
+ZS5uZXQvZ2l0cm9vdC9mdXNlL2Z1c2UNCj4gLS0tDQo+IA0KPiAjaW5jbHVkZSA8c3RkaW8uaD4N
+Cj4gI2luY2x1ZGUgPHVuaXN0ZC5oPg0KPiAjaW5jbHVkZSA8ZmNudGwuaD4NCj4gI2luY2x1ZGUg
+PGVycm5vLmg+DQo+IA0KPiBpbnQgbWFpbihpbnQgYXJnYywgY2hhciAqYXJndltdKQ0KPiB7DQo+
+IAlpbnQgcmVzOw0KPiAJY2hhciAqbmFtZSA9IGFyZ3ZbMV07DQo+IA0KPiAJdW5saW5rKG5hbWUp
+Ow0KPiAJY2xvc2UoY3JlYXQobmFtZSwgMDQwMCkpOw0KPiAJcmVzID0gb3BlbihuYW1lLCBPX1JE
+T05MWSB8IE9fVFJVTkMpOw0KPiAJaWYgKHJlcyAhPSAtMSAmJiBlcnJubyAhPSBFUEVSTSkNCj4g
+CQlmcHJpbnRmKHN0ZGVyciwgInNob3VsZCBoYXZlIGZhaWxlZCFcbiIpOw0KDQpTaG91bGRuJ3Qg
+dGhhdCBiZSBFQUNDRVM/IEFzIGZhciBhcyBJIGtub3csIFBPU0lYIGRvZXNuJ3QgbGlzdCBFUEVS
+TSBhcw0KYW4gYWxsb3dlZCByZXR1cm4gdmFsdWUgZm9yIG9wZW4oKS4NCg0KPiANCj4gCXJldHVy
+biAwOw0KPiB9DQoNCkknbSB0cnlpbmcgdG8gZmluZCBvdXQgd2hhdCB0aGUgY29ycmVjdCBiZWhh
+dmlvdXIgc2hvdWxkIGJlLiBDbGVhcmx5IHdlDQpzaG91bGQgbm90IGJlIGhhbmdpbmcsIGFuZCBz
+byB3ZSBkZWZpbml0ZWx5IGRvIG5lZWQgYSBmaXguIEhvd2V2ZXINCmFjY29yZGluZyB0byBQT1NJ
+WCwgdGhlIGJlaGF2aW91ciBvZiBvcGVuKE9fUkRPTkxZfE9fVFJVTkMpIGlzDQp1bmRlZmluZWQu
+IEknbSB0aGVyZWZvcmUgdGhpbmtpbmcgdGhhdCByZXR1cm5pbmcgRUFDQ0VTIHNob3VsZCBiZQ0K
+YWNjZXB0YWJsZSBpbiB0aGUgY2FzZSB3aGVyZSB0aGUgc2VydmVyIHJldHVybnMgTkZTNEVSUl9P
+UEVOTU9ERSB0byBvdXINCm9wZW4gc3RhdGVpZCAod2hpY2ggaXMgdGhlIGNhc2UgZm9yIHRoZSBM
+aW51eCBzZXJ2ZXIpLg0KDQpTb21ldGhpbmcgbGlrZSB0aGUgZm9sbG93aW5nIHdpbGwgJ2JyZWFr
+JyB5b3VyIHByZXZpb3VzIHRlc3QsIGluIHRoYXQgaXQNCnJldHVybnMgRUFDQ0VTIHRvIHRoZSBv
+cGVuKE9fUkRPTkxZfE9fVFJVTkMpIGluc3RlYWQgb2YgdHJ1bmNhdGluZyB0aGUNCmZpbGUuIEhv
+d2V2ZXIgYXMgSSBzYWlkLCB0aGF0IGFwcGVhcnMgdG8gYmUgUE9TSVgtY29tcGxpYW50Lg0KDQpD
+aGVlcnMNCiAgVHJvbmQNCjg8LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCkZyb20gZjNlZmRlNjM1NTljMzNhOTA2
+ZGMzMjViMTkyZWNkYjZjNTkwYzBmNiBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206IFRy
+b25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQpEYXRlOiBXZWQsIDE4
+IEFwciAyMDEyIDE2OjI5OjExIC0wNDAwDQpTdWJqZWN0OiBbUEFUQ0hdIE5GU3Y0OiBGaXggb3Bl
+bihPX1RSVU5DKSBhbmQgZnRydW5jYXRlKCkgZXJyb3IgaGFuZGxpbmcNCg0KSWYgdGhlIGZpbGUg
+d2Fzbid0IG9wZW5lZCBmb3Igd3JpdGluZywgdGhlbiB0cnVuY2F0ZSBhbmQgZnRydW5jYXRlDQpu
+ZWVkIHRvIHJlcG9ydCB0aGUgYXBwcm9wcmlhdGUgZXJyb3JzLg0KDQpSZXBvcnRlZC1ieTogTWlr
+bG9zIFN6ZXJlZGkgPG1pa2xvc0BzemVyZWRpLmh1Pg0KU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlr
+bGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCkNjOiBzdGFibGVAdmdlci5rZXJu
+ZWwub3JnDQotLS0NCiBmcy9uZnMvZGlyLmMgICAgICB8ICAgIDQgKystLQ0KIGZzL25mcy9uZnM0
+cHJvYy5jIHwgICAxNSArKysrKysrKysrKystLS0NCiAyIGZpbGVzIGNoYW5nZWQsIDE0IGluc2Vy
+dGlvbnMoKyksIDUgZGVsZXRpb25zKC0pDQoNCmRpZmYgLS1naXQgYS9mcy9uZnMvZGlyLmMgYi9m
+cy9uZnMvZGlyLmMNCmluZGV4IDRhYWYwMzEuLjg3ODkyMTAgMTAwNjQ0DQotLS0gYS9mcy9uZnMv
+ZGlyLmMNCisrKyBiL2ZzL25mcy9kaXIuYw0KQEAgLTE0MjksNyArMTQyOSw3IEBAIHN0YXRpYyBz
+dHJ1Y3QgZGVudHJ5ICpuZnNfYXRvbWljX2xvb2t1cChzdHJ1Y3QgaW5vZGUgKmRpciwgc3RydWN0
+IGRlbnRyeSAqZGVudHJ5DQogCX0NCiANCiAJb3Blbl9mbGFncyA9IG5kLT5pbnRlbnQub3Blbi5m
+bGFnczsNCi0JYXR0ci5pYV92YWxpZCA9IDA7DQorCWF0dHIuaWFfdmFsaWQgPSBBVFRSX09QRU47
+DQogDQogCWN0eCA9IGNyZWF0ZV9uZnNfb3Blbl9jb250ZXh0KGRlbnRyeSwgb3Blbl9mbGFncyk7
+DQogCXJlcyA9IEVSUl9DQVNUKGN0eCk7DQpAQCAtMTUzNiw3ICsxNTM2LDcgQEAgc3RhdGljIGlu
+dCBuZnNfb3Blbl9yZXZhbGlkYXRlKHN0cnVjdCBkZW50cnkgKmRlbnRyeSwgc3RydWN0IG5hbWVp
+ZGF0YSAqbmQpDQogCWlmIChJU19FUlIoY3R4KSkNCiAJCWdvdG8gb3V0Ow0KIA0KLQlhdHRyLmlh
+X3ZhbGlkID0gMDsNCisJYXR0ci5pYV92YWxpZCA9IEFUVFJfT1BFTjsNCiAJaWYgKG9wZW5mbGFn
+cyAmIE9fVFJVTkMpIHsNCiAJCWF0dHIuaWFfdmFsaWQgfD0gQVRUUl9TSVpFOw0KIAkJYXR0ci5p
+YV9zaXplID0gMDsNCmRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHByb2MuYyBiL2ZzL25mcy9uZnM0
+cHJvYy5jDQppbmRleCBiYTgzN2Q5Li5mODc1Y2YzIDEwMDY0NA0KLS0tIGEvZnMvbmZzL25mczRw
+cm9jLmMNCisrKyBiL2ZzL25mcy9uZnM0cHJvYy5jDQpAQCAtMTk1NCwxMCArMTk1NCwxOSBAQCBz
+dGF0aWMgaW50IG5mczRfZG9fc2V0YXR0cihzdHJ1Y3QgaW5vZGUgKmlub2RlLCBzdHJ1Y3QgcnBj
+X2NyZWQgKmNyZWQsDQogCX07DQogCWludCBlcnI7DQogCWRvIHsNCi0JCWVyciA9IG5mczRfaGFu
+ZGxlX2V4Y2VwdGlvbihzZXJ2ZXIsDQotCQkJCV9uZnM0X2RvX3NldGF0dHIoaW5vZGUsIGNyZWQs
+IGZhdHRyLCBzYXR0ciwgc3RhdGUpLA0KLQkJCQkmZXhjZXB0aW9uKTsNCisJCWVyciA9IF9uZnM0
+X2RvX3NldGF0dHIoaW5vZGUsIGNyZWQsIGZhdHRyLCBzYXR0ciwgc3RhdGUpOw0KKwkJc3dpdGNo
+IChlcnIpIHsNCisJCWNhc2UgLU5GUzRFUlJfT1BFTk1PREU6DQorCQkJaWYgKHN0YXRlICYmICEo
+c3RhdGUtPnN0YXRlICYgRk1PREVfV1JJVEUpKSB7DQorCQkJCWVyciA9IC1FQkFERjsNCisJCQkJ
+aWYgKHNhdHRyLT5pYV92YWxpZCAmIEFUVFJfT1BFTikNCisJCQkJCWVyciA9IC1FQUNDRVM7DQor
+CQkJCWdvdG8gb3V0Ow0KKwkJCX0NCisJCX0NCisJCWVyciA9IG5mczRfaGFuZGxlX2V4Y2VwdGlv
+bihzZXJ2ZXIsIGVyciwgJmV4Y2VwdGlvbik7DQogCX0gd2hpbGUgKGV4Y2VwdGlvbi5yZXRyeSk7
+DQorb3V0Og0KIAlyZXR1cm4gZXJyOw0KIH0NCiANCi0tIA0KMS43LjcuNg0KDQoNCi0tIA0KVHJv
+bmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9u
+ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
