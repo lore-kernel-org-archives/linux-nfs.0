@@ -1,79 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52306 "EHLO fieldses.org"
+Received: from csamuel.org ([74.50.50.137]:39200 "EHLO csamuel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760116Ab2D0L2n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Apr 2012 07:28:43 -0400
-Date: Fri, 27 Apr 2012 07:28:40 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Weston Andros Adamson <dros@netapp.com>
-Cc: SteveD@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] mountd: support IPv6 [] escaping with fsloc hosts
-Message-ID: <20120427112840.GB14973@fieldses.org>
-References: <1335279607-46861-1-git-send-email-dros@netapp.com>
+	id S1752214Ab2DRAze (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Apr 2012 20:55:34 -0400
+Message-ID: <4F8E0EFF.4090007@csamuel.org>
+Date: Wed, 18 Apr 2012 10:46:55 +1000
+From: Chris Samuel <chris@csamuel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1335279607-46861-1-git-send-email-dros@netapp.com>
+To: Andreas Dilger <adilger@whamcloud.com>
+CC: Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
+        Al Viro <viro@ZenIV.linux.org.uk>, dchinner@redhat.com,
+        LKML <linux-kernel@vger.kernel.org>, linux-fsdevel@vger.kernel.org,
+        Alex Elder <elder@kernel.org>, Anton Altaparmakov <anton@tuxera.com>,
+        Ben Myers <bpm@sgi.com>, Chris Mason <chris.mason@oracle.com>,
+        cluster-devel@redhat.com, "David S. Miller" <davem@davemloft.net>,
+        fuse-devel@lists.sourceforge.net,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Joel Becker <jlbec@evilplan.org>,
+        KONISHI Ryusuke <konishi.ryusuke@lab.ntt.co.jp>,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net, Mark Fasheh <mfasheh@suse.com>,
+        Miklos Szeredi <miklos@szeredi.hu>, ocfs2-devel@oss.oracle.com,
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        Steven Whitehouse <swhiteho@redhat.com>,
+        "Theodore Ts'o" <tytso@mit.edu>, xfs@oss.sgi.com
+Subject: Re: [PATCH 00/19 v5] Fix filesystem freezing deadlocks
+References: <1334592845-22862-1-git-send-email-jack@suse.cz> <C9A0E2F0-ED57-40D6-9F75-5D72D45D21F0@dilger.ca> <20120417004329.GE6734@dastard> <141752A3-EDF1-4ABC-919D-4170B0455948@whamcloud.com>
+In-Reply-To: <141752A3-EDF1-4ABC-919D-4170B0455948@whamcloud.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 24, 2012 at 11:00:07AM -0400, Weston Andros Adamson wrote:
-> mountd uses colons to split fsloc hosts, but this doesn't work with IPv6
-> addresses (they contain ':').
-> To fix this, mountd is changed to expect all IPv6 addresses to be escaped
-> by '[' and ']' so colons that are part of the address may be skipped.
-> To fix IPv6 referrals, this patch must be used with the nfsd patch that
-> properly parses escaped IPv6 addresses in fs_location->hosts.
+On 17/04/12 15:10, Andreas Dilger wrote:
 
-Looks OK to me.--b.
+> (which IMHO would prevent nearly every Gnome system from freezing unless these
+> apps have changed their behaviour in more recent releases).
 
-> 
-> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
-> ---
->  utils/mountd/fsloc.c |   20 +++++++++++++++++---
->  1 files changed, 17 insertions(+), 3 deletions(-)
-> 
-> diff --git a/utils/mountd/fsloc.c b/utils/mountd/fsloc.c
-> index 704b7a0..bc737d1 100644
-> --- a/utils/mountd/fsloc.c
-> +++ b/utils/mountd/fsloc.c
-> @@ -120,10 +120,11 @@ static struct servers *parse_list(char **list)
->   */
->  static struct servers *method_list(char *data)
->  {
-> -	char *copy, *ptr=data;
-> +	char *copy, *ptr=data, *p;
->  	char **list;
->  	int i, listsize;
->  	struct servers *rv=NULL;
-> +	bool v6esc = false;
->  
->  	xlog(L_NOTICE, "method_list(%s)", data);
->  	for (ptr--, listsize=1; ptr; ptr=index(ptr, ':'), listsize++)
-> @@ -134,9 +135,22 @@ static struct servers *method_list(char *data)
->  		xlog(L_NOTICE, "converted to %s", copy);
->  	if (list && copy) {
->  		ptr = copy;
-> -		for (i=0; i<listsize; i++) {
-> -			list[i] = strsep(&ptr, ":");
-> +		for (p = ptr, i = 0; *p && i < listsize; p++) {
-> +			if (*p == '[')
-> +				v6esc = true;
-> +			else if (*p == ']')
-> +				v6esc = false;
-> +
-> +			if (!v6esc && *p == ':') {
-> +				*p = '\0';
-> +				if (*ptr)
-> +					list[i++] = ptr;
-> +				ptr = p + 1;
-> +			}
->  		}
-> +		if (*ptr)
-> +			list[i++] = ptr;
-> +		list[i] = NULL;
->  		rv = parse_list(list);
->  	}
->  	free(copy);
-> -- 
-> 1.7.4.4
-> 
+It would also affect current KDE desktops as they tend to use MySQL for
+Akonadi & Nepomuk, plus anyone using Chromium (and presumably Chrome):
+
+samuel@eris:/tmp$ sudo lsof | grep deleted | awk '{print $1}' | sort |
+uniq -c
+[sudo] password for samuel:
+     32 chromium-
+      1 dovecot
+      5 imap-logi
+      5 mysqld
+
+I would be surprised if you could find many systems that didn't have
+files in this situation.
+
+-- 
+ Chris Samuel  :  http://www.csamuel.org/  :  Melbourne, VIC
