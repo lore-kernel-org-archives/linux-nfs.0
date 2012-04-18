@@ -1,470 +1,150 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:64528 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:4036 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752176Ab2DRRqg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Apr 2012 13:46:36 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
-        Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 4/6] NFS: Do secinfo as part of lookup
-Date: Wed, 18 Apr 2012 13:46:23 -0400
-Message-Id: <1334771185-9841-5-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1334771185-9841-1-git-send-email-bjschuma@netapp.com>
-References: <1334771185-9841-1-git-send-email-bjschuma@netapp.com>
+	id S1750808Ab2DROmO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Apr 2012 10:42:14 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: Luis Henriques <luis.henriques@canonical.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Regretion on NFS in mainline kernel
+Date: Wed, 18 Apr 2012 14:41:45 +0000
+Message-ID: <1334760105.4701.11.camel@lade.trondhjem.org>
+References: <20120418112610.GA3979@zeus>
+	 <20120418092822.07a4f944@tlielax.poochiereds.net>
+	 <20120418135738.GB3979@zeus> <1334757866.4701.6.camel@lade.trondhjem.org>
+	 <20120418141313.GC3979@zeus>
+	 <20120418101554.4aad0849@tlielax.poochiereds.net>
+In-Reply-To: <20120418101554.4aad0849@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
-
-Whenever lookup sees wrongsec do a secinfo and retry the lookup to find
-important attributes, such as "is this a referral mountpoint".  This
-means that  secinfo is done in v4 code only, we can remove the rpc_op.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/internal.h       |    8 ----
- fs/nfs/namespace.c      |   84 --------------------------------------
- fs/nfs/nfs4_fs.h        |    5 +++
- fs/nfs/nfs4namespace.c  |  102 ++++++++++++++++++++++++++++++++++++++++-------
- fs/nfs/nfs4proc.c       |   77 ++++++++++++++++++++++++++---------
- fs/nfs/nfs4xdr.c        |    2 -
- include/linux/nfs_xdr.h |    1 -
- 7 files changed, 151 insertions(+), 128 deletions(-)
-
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index a7995b3..9d7d4d1 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -224,7 +224,6 @@ extern const u32 nfs41_maxwrite_overhead;
- /* nfs4proc.c */
- #ifdef CONFIG_NFS_V4
- extern struct rpc_procinfo nfs4_procedures[];
--void nfs_fixup_secinfo_attributes(struct nfs_fattr *, struct nfs_fh *);
- #endif
- 
- extern int nfs4_init_ds_session(struct nfs_client *clp);
-@@ -275,13 +274,6 @@ struct vfsmount *nfs_do_submount(struct dentry *, struct nfs_fh *,
- struct vfsmount *nfs_submount(struct nfs_server *, struct dentry *,
- 			      struct nfs_fh *, struct nfs_fattr *);
- 
--#ifdef CONFIG_NFS_V4
--rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *);
--int nfs_lookup_with_sec(struct nfs_server *, struct dentry *, struct dentry *,
--			struct nfs_fh *, struct nfs_fattr *);
--
--#endif
--
- /* getroot.c */
- extern struct dentry *nfs_get_root(struct super_block *, struct nfs_fh *,
- 				   const char *);
-diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-index 5f401fa..3138077 100644
---- a/fs/nfs/namespace.c
-+++ b/fs/nfs/namespace.c
-@@ -113,90 +113,6 @@ Elong:
- 	return ERR_PTR(-ENAMETOOLONG);
- }
- 
--#ifdef CONFIG_NFS_V4
--rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors)
--{
--	struct gss_api_mech *mech;
--	struct xdr_netobj oid;
--	int i;
--	rpc_authflavor_t pseudoflavor = RPC_AUTH_UNIX;
--
--	for (i = 0; i < flavors->num_flavors; i++) {
--		struct nfs4_secinfo_flavor *flavor;
--		flavor = &flavors->flavors[i];
--
--		if (flavor->flavor == RPC_AUTH_NULL || flavor->flavor == RPC_AUTH_UNIX) {
--			pseudoflavor = flavor->flavor;
--			break;
--		} else if (flavor->flavor == RPC_AUTH_GSS) {
--			oid.len  = flavor->gss.sec_oid4.len;
--			oid.data = flavor->gss.sec_oid4.data;
--			mech = gss_mech_get_by_OID(&oid);
--			if (!mech)
--				continue;
--			pseudoflavor = gss_svc_to_pseudoflavor(mech, flavor->gss.service);
--			gss_mech_put(mech);
--			break;
--		}
--	}
--
--	return pseudoflavor;
--}
--
--static int nfs_negotiate_security(const struct dentry *parent,
--				  const struct dentry *dentry,
--				  rpc_authflavor_t *flavor)
--{
--	struct page *page;
--	struct nfs4_secinfo_flavors *flavors;
--	int (*secinfo)(struct inode *, const struct qstr *, struct nfs4_secinfo_flavors *);
--	int ret = -EPERM;
--
--	secinfo = NFS_PROTO(parent->d_inode)->secinfo;
--	if (secinfo != NULL) {
--		page = alloc_page(GFP_KERNEL);
--		if (!page) {
--			ret = -ENOMEM;
--			goto out;
--		}
--		flavors = page_address(page);
--		ret = secinfo(parent->d_inode, &dentry->d_name, flavors);
--		*flavor = nfs_find_best_sec(flavors);
--		put_page(page);
--	}
--
--out:
--	return ret;
--}
--
--int nfs_lookup_with_sec(struct nfs_server *server, struct dentry *parent,
--			struct dentry *dentry, struct nfs_fh *fh,
--			struct nfs_fattr *fattr)
--{
--	struct rpc_clnt *clone;
--	struct rpc_auth *auth;
--	rpc_authflavor_t flavor;
--	int err;
--
--	err = nfs_negotiate_security(parent, dentry, &flavor);
--	if (err < 0)
--		goto out;
--	clone  = rpc_clone_client(server->client);
--	auth   = rpcauth_create(flavor, clone);
--	if (!auth) {
--		err = -EIO;
--		goto out_shutdown;
--	}
--	err = server->nfs_client->rpc_ops->lookup(clone, parent->d_inode,
--						  &dentry->d_name,
--						  fh, fattr);
--out_shutdown:
--	rpc_shutdown_client(clone);
--out:
--	return err;
--}
--#endif /* CONFIG_NFS_V4 */
--
- /*
-  * nfs_d_automount - Handle crossing a mountpoint on the server
-  * @path - The mountpoint
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index e761268..a3471234 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -207,6 +207,8 @@ extern const struct inode_operations nfs4_dir_inode_operations;
- /* nfs4namespace.c */
- struct vfsmount *nfs4_submount(struct nfs_server *, struct dentry *,
- 			       struct nfs_fh *, struct nfs_fattr *);
-+struct rpc_clnt *nfs4_create_sec_client(struct rpc_clnt *, struct inode *, struct qstr *);
-+rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *);
- 
- /* nfs4proc.c */
- extern int nfs4_proc_setclientid(struct nfs_client *, u32, unsigned short, struct rpc_cred *, struct nfs4_setclientid_res *);
-@@ -220,6 +222,9 @@ extern int nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir, co
- 		struct nfs4_fs_locations *fs_locations, struct page *page);
- extern int nfs4_proc_lookup(struct rpc_clnt *, struct inode *, struct qstr *,
- 			    struct nfs_fh *, struct nfs_fattr *);
-+struct rpc_clnt *nfs4_proc_lookup_mountpoint(struct inode *, struct qstr *,
-+			    struct nfs_fh *, struct nfs_fattr *);
-+int nfs4_proc_secinfo(struct inode *, const struct qstr *, struct nfs4_secinfo_flavors *);
- extern int nfs4_release_lockowner(struct nfs4_lock_state *);
- extern const struct xattr_handler *nfs4_xattr_handlers[];
- 
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index a12b747..a2d08bd 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -108,6 +108,84 @@ static size_t nfs_parse_server_name(char *string, size_t len,
- 	return ret;
- }
- 
-+rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors)
-+{
-+	struct gss_api_mech *mech;
-+	struct xdr_netobj oid;
-+	int i;
-+	rpc_authflavor_t pseudoflavor = RPC_AUTH_UNIX;
-+
-+	for (i = 0; i < flavors->num_flavors; i++) {
-+		struct nfs4_secinfo_flavor *flavor;
-+		flavor = &flavors->flavors[i];
-+
-+		if (flavor->flavor == RPC_AUTH_NULL || flavor->flavor == RPC_AUTH_UNIX) {
-+			pseudoflavor = flavor->flavor;
-+			break;
-+		} else if (flavor->flavor == RPC_AUTH_GSS) {
-+			oid.len  = flavor->gss.sec_oid4.len;
-+			oid.data = flavor->gss.sec_oid4.data;
-+			mech = gss_mech_get_by_OID(&oid);
-+			if (!mech)
-+				continue;
-+			pseudoflavor = gss_svc_to_pseudoflavor(mech, flavor->gss.service);
-+			gss_mech_put(mech);
-+			break;
-+		}
-+	}
-+
-+	return pseudoflavor;
-+}
-+
-+static rpc_authflavor_t nfs4_negotiate_security(struct inode *inode, struct qstr *name)
-+{
-+	struct page *page;
-+	struct nfs4_secinfo_flavors *flavors;
-+	rpc_authflavor_t flavor;
-+	int err;
-+
-+	page = alloc_page(GFP_KERNEL);
-+	if (!page)
-+		return -ENOMEM;
-+	flavors = page_address(page);
-+
-+	err = nfs4_proc_secinfo(inode, name, flavors);
-+	if (err < 0) {
-+		flavor = err;
-+		goto out;
-+	}
-+
-+	flavor = nfs_find_best_sec(flavors);
-+
-+out:
-+	put_page(page);
-+	return flavor;
-+}
-+
-+/*
-+ * Please call rpc_shutdown_client() when you are done with this client.
-+ */
-+struct rpc_clnt *nfs4_create_sec_client(struct rpc_clnt *clnt, struct inode *inode,
-+					struct qstr *name)
-+{
-+	struct rpc_clnt *clone;
-+	struct rpc_auth *auth;
-+	rpc_authflavor_t flavor;
-+
-+	flavor = nfs4_negotiate_security(inode, name);
-+	if (flavor < 0)
-+		return ERR_PTR(flavor);
-+
-+	clone  = rpc_clone_client(clnt);
-+	auth   = rpcauth_create(flavor, clone);
-+	if (!auth) {
-+		rpc_shutdown_client(clone);
-+		clone = ERR_PTR(-EIO);
-+	}
-+
-+	return clone;
-+}
-+
- static struct vfsmount *try_location(struct nfs_clone_mount *mountdata,
- 				     char *page, char *page2,
- 				     const struct nfs4_fs_location *location)
-@@ -224,7 +302,7 @@ out:
-  * @dentry - dentry of referral
-  *
-  */
--static struct vfsmount *nfs_do_refmount(struct dentry *dentry)
-+static struct vfsmount *nfs_do_refmount(struct dentry *dentry, struct rpc_clnt *client)
- {
- 	struct vfsmount *mnt = ERR_PTR(-ENOMEM);
- 	struct dentry *parent;
-@@ -250,7 +328,7 @@ static struct vfsmount *nfs_do_refmount(struct dentry *dentry)
- 	dprintk("%s: getting locations for %s/%s\n",
- 		__func__, parent->d_name.name, dentry->d_name.name);
- 
--	err = nfs4_proc_fs_locations(NFS_CLIENT(parent->d_inode), parent->d_inode,
-+	err = nfs4_proc_fs_locations(client, parent->d_inode,
- 				     &dentry->d_name, fs_locations, page);
- 	dput(parent);
- 	if (err != 0 ||
-@@ -270,29 +348,23 @@ out:
- struct vfsmount *nfs4_submount(struct nfs_server *server, struct dentry *dentry,
- 			       struct nfs_fh *fh, struct nfs_fattr *fattr)
- {
--	int err;
- 	struct dentry *parent = dget_parent(dentry);
- 	struct rpc_clnt *client;
- 	struct vfsmount *ret;
- 
- 	/* Look it up again to get its attributes */
--	err = nfs4_proc_lookup(server->client, parent->d_inode, &dentry->d_name, fh, fattr);
--	if (err == -EPERM)
--		err = nfs_lookup_with_sec(server, parent, dentry, fh, fattr);
-+	client = nfs4_proc_lookup_mountpoint(parent->d_inode, &dentry->d_name, fh, fattr);
- 	dput(parent);
- 
--	if (err != 0)
--		return ERR_PTR(err);
--
--	if (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)
--		return nfs_do_refmount(dentry);
--
--	client = rpc_clone_client(server->client);
- 	if (IS_ERR(client))
- 		return ERR_CAST(client);
- 
--	ret = nfs_do_submount(dentry, fh, fattr, client);
--	if (IS_ERR(ret))
-+	if (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)
-+		ret = nfs_do_refmount(dentry, client);
-+	else
-+		ret = nfs_do_submount(dentry, fh, fattr, client);
-+
-+	if (IS_ERR(ret) || (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL))
- 		rpc_shutdown_client(client);
- 
- 	return ret;
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 9e21e25..9f83a22 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2520,39 +2520,81 @@ static int _nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir,
- 	return status;
- }
- 
--void nfs_fixup_secinfo_attributes(struct nfs_fattr *fattr, struct nfs_fh *fh)
-+static void nfs_fixup_secinfo_attributes(struct nfs_fattr *fattr)
- {
--	memset(fh, 0, sizeof(struct nfs_fh));
--	fattr->fsid.major = 1;
- 	fattr->valid |= NFS_ATTR_FATTR_TYPE | NFS_ATTR_FATTR_MODE |
--		NFS_ATTR_FATTR_NLINK | NFS_ATTR_FATTR_FSID | NFS_ATTR_FATTR_MOUNTPOINT;
-+		NFS_ATTR_FATTR_NLINK | NFS_ATTR_FATTR_MOUNTPOINT;
- 	fattr->mode = S_IFDIR | S_IRUGO | S_IXUGO;
- 	fattr->nlink = 2;
- }
- 
--int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
--		     struct nfs_fh *fhandle, struct nfs_fattr *fattr)
-+static int nfs4_proc_lookup_common(struct rpc_clnt **clnt, struct inode *dir,
-+				   struct qstr *name, struct nfs_fh *fhandle,
-+				   struct nfs_fattr *fattr)
- {
- 	struct nfs4_exception exception = { };
-+	struct rpc_clnt *client = *clnt;
- 	int err;
--	do {
--		int status;
- 
--		status = _nfs4_proc_lookup(clnt, dir, name, fhandle, fattr);
--		switch (status) {
-+	do {
-+		err = _nfs4_proc_lookup(client, dir, name, fhandle, fattr);
-+		switch (err) {
- 		case -NFS4ERR_BADNAME:
--			return -ENOENT;
-+			err = -ENOENT;
-+			goto out;
- 		case -NFS4ERR_MOVED:
--			return nfs4_get_referral(clnt, dir, name, fattr, fhandle);
-+			err = nfs4_get_referral(client, dir, name, fattr, fhandle);
-+			goto out;
- 		case -NFS4ERR_WRONGSEC:
--			nfs_fixup_secinfo_attributes(fattr, fhandle);
-+			err = -EPERM;
-+			if (client != *clnt)
-+				goto out;
-+			client = nfs4_create_sec_client(client, dir, name);
-+			exception.retry = 1;
-+			break;
-+		default:
-+			err = nfs4_handle_exception(NFS_SERVER(dir), err, &exception);
- 		}
--		err = nfs4_handle_exception(NFS_SERVER(dir),
--				status, &exception);
- 	} while (exception.retry);
-+
-+out:
-+	if (err == 0)
-+		*clnt = client;
-+	else if (client != *clnt)
-+		rpc_shutdown_client(client);
-+
- 	return err;
- }
- 
-+int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
-+		     struct nfs_fh *fhandle, struct nfs_fattr *fattr)
-+{
-+	int status;
-+	struct rpc_clnt *client = NFS_CLIENT(dir);
-+
-+	status = nfs4_proc_lookup_common(&client, dir, name, fhandle, fattr);
-+	if (client != NFS_CLIENT(dir)) {
-+		rpc_shutdown_client(client);
-+		nfs_fixup_secinfo_attributes(fattr);
-+	}
-+	return status;
-+}
-+
-+struct rpc_clnt *
-+nfs4_proc_lookup_mountpoint(struct inode *dir, struct qstr *name,
-+			    struct nfs_fh *fhandle, struct nfs_fattr *fattr)
-+{
-+	int status;
-+	struct rpc_clnt *client = rpc_clone_client(NFS_CLIENT(dir));
-+
-+	status = nfs4_proc_lookup_common(&client, dir, name, fhandle, fattr);
-+	if (status < 0) {
-+		rpc_shutdown_client(client);
-+		return ERR_PTR(status);
-+	}
-+	return client;
-+}
-+
- static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry)
- {
- 	struct nfs_server *server = NFS_SERVER(inode);
-@@ -4954,8 +4996,8 @@ static int _nfs4_proc_secinfo(struct inode *dir, const struct qstr *name, struct
- 	return status;
- }
- 
--static int nfs4_proc_secinfo(struct inode *dir, const struct qstr *name,
--		struct nfs4_secinfo_flavors *flavors)
-+int nfs4_proc_secinfo(struct inode *dir, const struct qstr *name,
-+		      struct nfs4_secinfo_flavors *flavors)
- {
- 	struct nfs4_exception exception = { };
- 	int err;
-@@ -6506,7 +6548,6 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
- 	.open_context	= nfs4_atomic_open,
- 	.submount	= nfs4_submount,
- 	.init_client	= nfs4_init_client,
--	.secinfo	= nfs4_proc_secinfo,
- };
- 
- static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index c74fdb1..eca81b1 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4257,8 +4257,6 @@ static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
- 	status = decode_attr_error(xdr, bitmap, &err);
- 	if (status < 0)
- 		goto xdr_error;
--	if (err == -NFS4ERR_WRONGSEC)
--		nfs_fixup_secinfo_attributes(fattr, fh);
- 
- 	status = decode_attr_filehandle(xdr, bitmap, fh);
- 	if (status < 0)
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 3c94c80..24c11b2 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1286,7 +1286,6 @@ struct nfs_rpc_ops {
- 				     struct nfs_fh *, struct nfs_fattr *);
- 	int	(*init_client) (struct nfs_client *, const struct rpc_timeout *,
- 				const char *, rpc_authflavor_t, int);
--	int	(*secinfo)(struct inode *, const struct qstr *, struct nfs4_secinfo_flavors *);
- };
- 
- /*
--- 
-1.7.10
-
+T24gV2VkLCAyMDEyLTA0LTE4IGF0IDEwOjE1IC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
+T24gV2VkLCAxOCBBcHIgMjAxMiAxNToxMzoxMyArMDEwMA0KPiBMdWlzIEhlbnJpcXVlcyA8bHVp
+cy5oZW5yaXF1ZXNAY2Fub25pY2FsLmNvbT4gd3JvdGU6DQo+IA0KPiA+IE9uIFdlZCwgQXByIDE4
+LCAyMDEyIGF0IDAyOjA0OjI2UE0gKzAwMDAsIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4g
+PiBPbiBXZWQsIDIwMTItMDQtMTggYXQgMTQ6NTcgKzAxMDAsIEx1aXMgSGVucmlxdWVzIHdyb3Rl
+Og0KPiA+ID4gPiBIaSBKZWZmLA0KPiA+ID4gPiANCj4gPiA+ID4gT24gV2VkLCBBcHIgMTgsIDIw
+MTIgYXQgMDk6Mjg6MjJBTSAtMDQwMCwgSmVmZiBMYXl0b24gd3JvdGU6DQo+ID4gPiA+ID4gT24g
+V2VkLCAxOCBBcHIgMjAxMiAxMjoyNjoxMCArMDEwMA0KPiA+ID4gPiA+IEx1aXMgSGVucmlxdWVz
+IDxsdWlzLmhlbnJpcXVlc0BjYW5vbmljYWwuY29tPiB3cm90ZToNCj4gPiA+ID4gPiANCj4gPiA+
+ID4gPiA+IEhpLA0KPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBXZSBoYXZlIGEgYnVnIHJlcG9y
+dGluZyBhIHJlZ3Jlc3Npb24gaW4gbWFpbmxpbmUga2VybmVsLiAgQmFzaWNhbGx5LCB0aGUNCj4g
+PiA+ID4gPiA+IGJ1ZyByZXBvcnRlcnMgYXJlIHNlZWluZyBsb3RzIG9mIG1lc3NhZ2VzOg0KPiA+
+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBbIDQ4LjcwMTIxM10gTkZTOiBuZnM0X3JlY2xhaW1fb3Bl
+bl9zdGF0ZTogTG9jayByZWNsYWltIGZhaWxlZCENCj4gPiA+ID4gPiA+IFsgNDguNzAxOTkwXSBO
+RlM6IG5mczRfcmVjbGFpbV9vcGVuX3N0YXRlOiBMb2NrIHJlY2xhaW0gZmFpbGVkIQ0KPiA+ID4g
+PiA+ID4gWyA1My42OTYwNzZdIG5mczRfcmVjbGFpbV9vcGVuX3N0YXRlOiA2NDQwIGNhbGxiYWNr
+cyBzdXBwcmVzc2VkDQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IFRoaXMgaGFwcGVucyB3aGVu
+IG1vdW50aW5nIGEgdXNlcidzIGhvbWUgZGlyZWN0b3J5IG92ZXIgTkZTLg0KPiA+ID4gPiA+ID4g
+DQo+ID4gPiA+ID4gPiBJcyB0aGlzIGEga25vd24gaXNzdWUgYmVpbmcgYWRkcmVzc2VkIGF0IHRo
+ZSBtb21lbnQ/ICBJcyB0aGVyZSBhbnkNCj4gPiA+ID4gPiA+IGluZm9ybWF0aW9uIG5lZWRlZCB0
+byBoZWxwIGRlYnVnZ2luZyB0aGUgaXNzdWU/DQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IFRo
+ZSBvcmlnaW5hbCBidWcgcmVwb3J0IGNhbiBiZSBmb3VuZCBoZXJlOg0KPiA+ID4gPiA+ID4gDQo+
+ID4gPiA+ID4gPiBodHRwOi8vYnVncy5sYXVuY2hwYWQubmV0L2J1Z3MvOTc0NjY0DQo+ID4gPiA+
+ID4gPiANCj4gPiA+ID4gPiA+IEFuZCB0aGVyZSdzIGFsc28gYSBzaW1pbGFyIHJlcG9ydCBmb3Ig
+RmVkb3JhOg0KPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBodHRwczovL2J1Z3ppbGxhLnJlZGhh
+dC5jb20vc2hvd19idWcuY2dpP2lkPTgxMTEzOA0KPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBD
+aGVlcnMsDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gVGhpcyBjb2RlIGluIG5mczRfcmVjbGFpbV9v
+cGVuX3N0YXRlKCkgbG9va3Mgd3JvbmcgdG8gbWUsIGJ1dCBJJ20gbm90DQo+ID4gPiA+ID4gdGhh
+dCBmYW1pbGlhciB3aXRoIHRoaXMgY29kZSBzbyBJIGNvdWxkIGJlIHdyb25nOg0KPiA+ID4gPiA+
+IA0KPiA+ID4gPiA+IC0tLS0tLS0tLS0tLS0tLS0tLS1bc25pcF0tLS0tLS0tLS0tLS0tLS0tLS0t
+LQ0KPiA+ID4gPiA+ICAgICAgICAgICAgICAgICBzdGF0dXMgPSBvcHMtPnJlY292ZXJfb3Blbihz
+cCwgc3RhdGUpOw0KPiA+ID4gPiA+ICAgICAgICAgICAgICAgICBpZiAoc3RhdHVzID49IDApIHsN
+Cj4gPiA+ID4gPiAgICAgICAgICAgICAgICAgICAgICAgICBzdGF0dXMgPSBuZnM0X3JlY2xhaW1f
+bG9ja3Moc3RhdGUsIG9wcyk7DQo+ID4gPiA+ID4gICAgICAgICAgICAgICAgICAgICAgICAgaWYg
+KHN0YXR1cyA+PSAwKSB7DQo+ID4gPiA+ID4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICBzcGluX2xvY2soJnN0YXRlLT5zdGF0ZV9sb2NrKTsNCj4gPiA+ID4gPiAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgIGxpc3RfZm9yX2VhY2hfZW50cnkobG9jaywgJnN0YXRlLT5sb2Nr
+X3N0YXRlcywgbHNfbG9ja3MpIHsNCj4gPiA+ID4gPiAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgaWYgKCEobG9jay0+bHNfZmxhZ3MgJiBORlNfTE9DS19JTklUSUFMSVpF
+RCkpDQo+ID4gPiA+ID4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgcHJfd2Fybl9yYXRlbGltaXRlZCgiTkZTOiAiDQo+ID4gPiA+ID4gICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAiJXM6IExvY2sgcmVj
+bGFpbSAiDQo+ID4gPiA+ID4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAiZmFpbGVkIVxuIiwgX19mdW5jX18pOw0KPiA+ID4gPiA+ICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgfQ0KPiA+ID4gPiA+ICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgc3Bpbl91bmxvY2soJnN0YXRlLT5zdGF0ZV9sb2NrKTsNCj4gPiA+ID4g
+PiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIG5mczRfcHV0X29wZW5fc3RhdGUoc3Rh
+dGUpOw0KPiA+ID4gPiA+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgZ290byByZXN0
+YXJ0Ow0KPiA+ID4gPiA+ICAgICAgICAgICAgICAgICAgICAgICAgIH0NCj4gPiA+ID4gPiAgICAg
+ICAgICAgICAgICAgfQ0KPiA+ID4gPiA+IC0tLS0tLS0tLS0tLS0tLS0tLS1bc25pcF0tLS0tLS0t
+LS0tLS0tLS0tLS0tLQ0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IFNob3VsZG4ndCB0aGUgc3RhdHVz
+IGNoZWNrIGFmdGVyIG5mczRfcmVjbGFpbV9sb2NrcyBiZSByZXZlcnNlZD8NCj4gPiA+ID4gDQo+
+ID4gPiA+IFRoYW5rcyBhIGxvdCBmb3IgeW91ciBoZWxwLiAgQ291bGQgeW91IHBsZWFzZSB0YWtl
+IGEgbG9vayBhdCB0aGUgcGF0Y2gNCj4gPiA+ID4gYmVsb3csIGp1c3QgdG8gbWFrZSBzdXJlIEkg
+dW5kZXJzdG9vZCB5b3UncmUgc3VnZ2VzdGlvbiBjb3JyZWN0bHk/ICBJIHdpbGwNCj4gPiA+ID4g
+cHJlcGFyZSBhIHRlc3Qga2VybmVsIHNvIHRoYXQgd2UgY2FuIGNoZWNrIHdoZXRoZXIgaXQgYWN0
+dWFsbHkgc29sdmVzIHRoZQ0KPiA+ID4gPiBwcm9ibGVtIG9yIG5vdC4NCj4gPiA+ID4gDQo+ID4g
+PiA+IENoZWVycywNCj4gPiA+ID4gLS0NCj4gPiA+ID4gTHVpcw0KPiA+ID4gPiANCj4gPiA+ID4g
+DQo+ID4gPiA+ID5Gcm9tIGExMzQ4ZjQ3M2MxNTc0MzlhYzYyZjUwMmViNDVjYTQ4Zjk1ZTYyN2Yg
+TW9uIFNlcCAxNyAwMDowMDowMCAyMDAxDQo+ID4gPiA+IEZyb206IEx1aXMgSGVucmlxdWVzIDxs
+dWlzLmhlbnJpcXVlc0BjYW5vbmljYWwuY29tPg0KPiA+ID4gPiBEYXRlOiBXZWQsIDE4IEFwciAy
+MDEyIDE0OjUwOjEwICswMTAwDQo+ID4gPiA+IFN1YmplY3Q6IFtQQVRDSCAxLzFdIE5GUzogRml4
+IHN0YXR1cyBjaGVjayBvbiBuZnM0X3JlY2xhaW1fb3Blbl9zdGF0ZSgpDQo+ID4gPiA+IA0KPiA+
+ID4gPiBUaGVyZSBoYXZlIGJlZW4gc2V2ZXJhbCBidWcgcmVwb3J0cywgd2l0aCB0aGUgZm9sbG93
+aW5nIG1lc3NhZ2VzIG9uIHRoZQ0KPiA+ID4gPiBsb2dzOg0KPiA+ID4gPiANCj4gPiA+ID4gIFsg
+NDguNzAxMjEzXSBORlM6IG5mczRfcmVjbGFpbV9vcGVuX3N0YXRlOiBMb2NrIHJlY2xhaW0gZmFp
+bGVkIQ0KPiA+ID4gPiAgWyA0OC43MDE5OTBdIE5GUzogbmZzNF9yZWNsYWltX29wZW5fc3RhdGU6
+IExvY2sgcmVjbGFpbSBmYWlsZWQhDQo+ID4gPiA+ICBbIDUzLjY5NjA3Nl0gbmZzNF9yZWNsYWlt
+X29wZW5fc3RhdGU6IDY0NDAgY2FsbGJhY2tzIHN1cHByZXNzZWQNCj4gPiA+ID4gDQo+ID4gPiA+
+IFRoaXMgaGFwcGVucywgZm9yIGV4YW1wbGUsIHdoZW4gbW91bnRpbmcgYSB1c2VyJ3MgaG9tZSBk
+aXJlY3Rvcnkgb3ZlciBORlMuDQo+ID4gPiA+IA0KPiA+ID4gPiBUaGFua3MgdG8gSmVmZiBMYXl0
+b24gdGhhdCBpZGVudGlmaWVkIHRoZSBjYXVzZSwgdGhpcyBwYXRjaCBmaXhlcyBhbg0KPiA+ID4g
+PiBpbmNvcnJlY3Qgc3RhdHVzIGNoZWNrIG9uIG5mczRfcmVjbGFpbV9vcGVuX3N0YXRlKCkuDQo+
+ID4gPiA+IA0KPiA+ID4gPiBTaWduZWQtb2ZmLWJ5OiBMdWlzIEhlbnJpcXVlcyA8bHVpcy5oZW5y
+aXF1ZXNAY2Fub25pY2FsLmNvbT4NCj4gPiA+ID4gLS0tDQo+ID4gPiA+ICBmcy9uZnMvbmZzNHN0
+YXRlLmMgfCAgICAyICstDQo+ID4gPiA+ICAxIGZpbGUgY2hhbmdlZCwgMSBpbnNlcnRpb24oKyks
+IDEgZGVsZXRpb24oLSkNCj4gPiA+ID4gDQo+ID4gPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZz
+NHN0YXRlLmMgYi9mcy9uZnMvbmZzNHN0YXRlLmMNCj4gPiA+ID4gaW5kZXggMDczNTRiNy4uOGI2
+YWNlYyAxMDA2NDQNCj4gPiA+ID4gLS0tIGEvZnMvbmZzL25mczRzdGF0ZS5jDQo+ID4gPiA+ICsr
+KyBiL2ZzL25mcy9uZnM0c3RhdGUuYw0KPiA+ID4gPiBAQCAtMTE4MCw3ICsxMTgwLDcgQEAgcmVz
+dGFydDoNCj4gPiA+ID4gIAkJYXRvbWljX2luYygmc3RhdGUtPmNvdW50KTsNCj4gPiA+ID4gIAkJ
+c3Bpbl91bmxvY2soJnNwLT5zb19sb2NrKTsNCj4gPiA+ID4gIAkJc3RhdHVzID0gb3BzLT5yZWNv
+dmVyX29wZW4oc3AsIHN0YXRlKTsNCj4gPiA+ID4gLQkJaWYgKHN0YXR1cyA+PSAwKSB7DQo+ID4g
+PiA+ICsJCWlmIChzdGF0dXMgPCAwKSB7DQo+ID4gPiA+ICAJCQlzdGF0dXMgPSBuZnM0X3JlY2xh
+aW1fbG9ja3Moc3RhdGUsIG9wcyk7DQo+ID4gPiA+ICAJCQlpZiAoc3RhdHVzID49IDApIHsNCj4g
+PiA+ID4gIAkJCQlzcGluX2xvY2soJnN0YXRlLT5zdGF0ZV9sb2NrKTsNCj4gPiA+IA0KPiA+ID4g
+SGVsbCBubyEgDQo+ID4gDQo+ID4gT3VjaCEgIFdyb25nIG9uZS4uLg0KPiA+IA0KPiA+IEZyb20g
+MDA1OTE4YjVlZWY4NTNmZDRkNDk1NzQzZmVmNWE1MmFlNjJmODI1ZSBNb24gU2VwIDE3IDAwOjAw
+OjAwIDIwMDENCj4gPiBGcm9tOiBMdWlzIEhlbnJpcXVlcyA8bHVpcy5oZW5yaXF1ZXNAY2Fub25p
+Y2FsLmNvbT4NCj4gPiBEYXRlOiBXZWQsIDE4IEFwciAyMDEyIDE1OjA4OjM5ICswMTAwDQo+ID4g
+U3ViamVjdDogW1BBVENIIDEvMV0gTkZTOiBGaXggc3RhdHVzIGNoZWNrIG9uIG5mczRfcmVjbGFp
+bV9vcGVuX3N0YXRlKCkNCj4gPiANCj4gPiBUaGVyZSBoYXZlIGJlZW4gc2V2ZXJhbCBidWcgcmVw
+b3J0cywgd2l0aCB0aGUgZm9sbG93aW5nIG1lc3NhZ2VzIG9uIHRoZQ0KPiA+IGxvZ3M6DQo+ID4g
+DQo+ID4gIFsgNDguNzAxMjEzXSBORlM6IG5mczRfcmVjbGFpbV9vcGVuX3N0YXRlOiBMb2NrIHJl
+Y2xhaW0gZmFpbGVkIQ0KPiA+ICBbIDQ4LjcwMTk5MF0gTkZTOiBuZnM0X3JlY2xhaW1fb3Blbl9z
+dGF0ZTogTG9jayByZWNsYWltIGZhaWxlZCENCj4gPiAgWyA1My42OTYwNzZdIG5mczRfcmVjbGFp
+bV9vcGVuX3N0YXRlOiA2NDQwIGNhbGxiYWNrcyBzdXBwcmVzc2VkDQo+ID4gDQo+ID4gVGhpcyBo
+YXBwZW5zLCBmb3IgZXhhbXBsZSwgd2hlbiBtb3VudGluZyBhIHVzZXIncyBob21lIGRpcmVjdG9y
+eSBvdmVyIE5GUy4NCj4gPiANCj4gPiBUaGFua3MgdG8gSmVmZiBMYXl0b24gdGhhdCBpZGVudGlm
+aWVkIHRoZSBjYXVzZSwgdGhpcyBwYXRjaCBmaXhlcyBhbg0KPiA+IGluY29ycmVjdCBzdGF0dXMg
+Y2hlY2sgb24gbmZzNF9yZWNsYWltX29wZW5fc3RhdGUoKS4NCj4gPiANCj4gPiBTaWduZWQtb2Zm
+LWJ5OiBMdWlzIEhlbnJpcXVlcyA8bHVpcy5oZW5yaXF1ZXNAY2Fub25pY2FsLmNvbT4NCj4gPiAt
+LS0NCj4gPiAgZnMvbmZzL25mczRzdGF0ZS5jIHwgICAgMiArLQ0KPiA+ICAxIGZpbGUgY2hhbmdl
+ZCwgMSBpbnNlcnRpb24oKyksIDEgZGVsZXRpb24oLSkNCj4gPiANCj4gPiBkaWZmIC0tZ2l0IGEv
+ZnMvbmZzL25mczRzdGF0ZS5jIGIvZnMvbmZzL25mczRzdGF0ZS5jDQo+ID4gaW5kZXggMDczNTRi
+Ny4uMDIzZTA5ZiAxMDA2NDQNCj4gPiAtLS0gYS9mcy9uZnMvbmZzNHN0YXRlLmMNCj4gPiArKysg
+Yi9mcy9uZnMvbmZzNHN0YXRlLmMNCj4gPiBAQCAtMTE4Miw3ICsxMTgyLDcgQEAgcmVzdGFydDoN
+Cj4gPiAgCQlzdGF0dXMgPSBvcHMtPnJlY292ZXJfb3BlbihzcCwgc3RhdGUpOw0KPiA+ICAJCWlm
+IChzdGF0dXMgPj0gMCkgew0KPiA+ICAJCQlzdGF0dXMgPSBuZnM0X3JlY2xhaW1fbG9ja3Moc3Rh
+dGUsIG9wcyk7DQo+ID4gLQkJCWlmIChzdGF0dXMgPj0gMCkgew0KPiA+ICsJCQlpZiAoc3RhdHVz
+IDwgMCkgew0KPiA+ICAJCQkJc3Bpbl9sb2NrKCZzdGF0ZS0+c3RhdGVfbG9jayk7DQo+ID4gIAkJ
+CQlsaXN0X2Zvcl9lYWNoX2VudHJ5KGxvY2ssICZzdGF0ZS0+bG9ja19zdGF0ZXMsIGxzX2xvY2tz
+KSB7DQo+ID4gIAkJCQkJaWYgKCEobG9jay0+bHNfZmxhZ3MgJiBORlNfTE9DS19JTklUSUFMSVpF
+RCkpDQo+IA0KPiBZZWFoLCB0aGF0IGxvb2tzIG1vcmUgcmVhc29uYWJsZSwgYnV0IGFnYWluIEkn
+bSBub3Qgc3VyZSBhYm91dCB0aGlzDQo+IGVpdGhlciB3YXkuIFRoaXMgY29kZSBoYXMgYmVlbiB0
+aGlzIHdheSBmb3IgYSBsb25nIHRpbWUgYW5kIGl0J3Mgbm90DQo+IGNsZWFyIHRvIG1lIHdoeSBp
+dCdzIG9ubHkgbm93IGJlY29tZSBhIHByb2JsZW0gaWYgaXQgaXMgd3JvbmcuDQoNClJpZ2h0LiBS
+YW5kb20gKGFuZCB3cm9uZyEpIGNoYW5nZXMgc3VjaCBhcyB0aGUgYWJvdmUgd29uJ3QgZml4IHRo
+ZQ0KcHJvYmxlbS4gVGhhdCBjb2RlIGlzIHBlcmZlY3RseSBjb3JyZWN0IChsb29rIGF0IHRoZSBu
+ZnM0X3JlY2xhaW1fbG9ja3MNCmVycm9yIGNhc2VzIHRvIHNlZSB3aHkpLg0KDQpIYXZlIHlvdSBp
+bnN0ZWFkIGxvb2tlZCBpbnRvIHdoYXQgdGhlc2UgYXBwbGljYXRpb25zIGFyZSBkb2luZz8gQXJl
+IHRoZXkNCnBlcmhhcHMgb3BlbmluZyB0aGUgZmlsZSByZWFkIG9ubHksIHRoZW4gdHJ5aW5nIHRv
+IGFwcGx5IGFuIGV4Y2x1c2l2ZQ0KQlNEIGxvY2sgKHNvbWV0aGluZyB3aGljaCBORlN2NCBjYW5u
+b3Qgc3VwcG9ydCk/DQoNCklPVzogZG9lcyB0aGUgcHJvYmxlbSBnbyBhd2F5IGlmIHlvdSBtb3Vu
+dCB3aXRoICdsb2NhbF9sb2NrPWZsb2NrJz8NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4
+IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAu
+Y29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
