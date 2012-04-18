@@ -1,53 +1,166 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:35087 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753383Ab2DZSxo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Apr 2012 14:53:44 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 13/20] NFS: Fix recovery from NFS4ERR_CLID_INUSE
-Date: Thu, 26 Apr 2012 18:53:43 +0000
-Message-ID: <1335466422.24247.8.camel@lade.trondhjem.org>
-References: <20120423205312.11446.67081.stgit@degas.1015granger.net>
-	 <20120423205505.11446.28437.stgit@degas.1015granger.net>
-	 <D6859152-CF45-44CC-BB3C-B40CB9FD0BE8@oracle.com>
-	 <1335459334.9701.25.camel@lade.trondhjem.org>
-	 <F4214CAE-E0DE-4A3C-BA0B-02A9F8277897@oracle.com>
-In-Reply-To: <F4214CAE-E0DE-4A3C-BA0B-02A9F8277897@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from youngberry.canonical.com ([91.189.89.112]:50177 "EHLO
+	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751532Ab2DRONQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Apr 2012 10:13:16 -0400
+Date: Wed, 18 Apr 2012 15:13:13 +0100
+From: Luis Henriques <luis.henriques@canonical.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Regretion on NFS in mainline kernel
+Message-ID: <20120418141313.GC3979@zeus>
+References: <20120418112610.GA3979@zeus>
+ <20120418092822.07a4f944@tlielax.poochiereds.net>
+ <20120418135738.GB3979@zeus>
+ <1334757866.4701.6.camel@lade.trondhjem.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1334757866.4701.6.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA0LTI2IGF0IDE0OjQzIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gQXByIDI2LCAyMDEyLCBhdCAxMjo1NSBQTSwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4g
-DQo+ID4gT24gVGh1LCAyMDEyLTA0LTI2IGF0IDEyOjI0IC0wNDAwLCBDaHVjayBMZXZlciB3cm90
-ZToNCj4gPj4gT24gQXByIDIzLCAyMDEyLCBhdCA0OjU1IFBNLCBDaHVjayBMZXZlciB3cm90ZToN
-Cj4gPiBUaGVuIGxldHMgbW92ZSB0aGUgZmxhdm91ciBvdXQgb2YgdGhlIGNsaWVudGlkIHN0cmlu
-ZywNCj4gDQo+IFJlbW92aW5nIHRoZSBmbGF2b3IgZnJvbSB0aGUgbmZzX2NsaWVudF9pZDQgc3Ry
-aW5nIG1ha2VzIHNlbnNlLg0KPiANCj4gPiBhbmQganVzdCBzZXR0bGUNCj4gPiBmb3IgaGFuZGxp
-bmcgQ0xJRF9JTlVTRSBieSBjaGFuZ2luZyB0aGUgZmxhdm91ciBvbiB0aGUgU0VUQ0xJRU5USUQg
-Y2FsbC4NCj4gDQo+IFRoaXMgaXMgd2hlcmUgSSBnZXQgaGF6eS4gIA0KPiANCj4gSWYgSSBzaW1w
-bHkgY2hhbmdlIHRoZSBhdXRoZW50aWNhdGlvbiBmbGF2b3Igb24gdGhlIGV4aXN0aW5nIGNscC0+
-Y2xfcnBjY2xpZW50LCB3aWxsIHRoaXMgYWZmZWN0IG9uZ29pbmcgUkVORVcgb3BlcmF0aW9ucyB0
-aGF0IGFsc28gdXNlIHRoaXMgdHJhbnNwb3J0PyAgRG8gd2Ugd2FudCBzdWJzZXF1ZW50IFJFTkVX
-IG9wZXJhdGlvbnMgdG8gdXNlIHRoZSBuZXcgZmxhdm9yPw0KPiANCj4gVGhpbmtpbmcgaHlwb3Ro
-ZXRpY2FsbHksIGl0IHNlZW1zIHRvIG1lIHRoYXQgQ0xJRF9JTlVTRSBpcyByZWFsbHkgYW4gaW5k
-aWNhdGlvbiBvZiBhIHBlcm1hbmVudCBjb25maWd1cmF0aW9uIGVycm9yLCBvciBhIHNvZnR3YXJl
-IGJ1ZywgYW5kIHdlIHNob3VsZCBub3QgYm90aGVyIHRvIHJlY292ZXIuICBCdXQgbWF5YmUgdGhh
-dCdzIG15IGxpbWl0ZWQgaW1hZ2luYXRpb24uICBVbmRlciB3aGF0IHVzZSBjYXNlcyBkbyB5b3Ug
-dGhpbmsgQ0xJRF9JTlVTRSBtaWdodCBvY2N1ciBhbmQgaXQgbWlnaHQgYmUgdXNlZnVsIHRvIGF0
-dGVtcHQgcmVjb3Zlcnk/DQo+IA0KDQpUaGUgc2VydmVyIGNhY2hlcyB0aGUgcHJpbmNpcGFsIG5h
-bWUgdGhhdCB3YXMgdXNlZCB0byBjYWxsIFNFVENMSUVOVElEDQp3aGVuIHRoZSBsZWFzZSB3YXMg
-ZXN0YWJsaXNoZWQuIEFueSBhdHRlbXB0IHRvIGNhbGwgU0VUQ0xJRU5USUQgd2l0aCBhDQpkaWZm
-ZXJlbnQgcHJpbmNpcGFsIHdpbGwgcmVzdWx0IGluIENMSURfSU5VU0UgdW5sZXNzIHRoZSBsZWFz
-ZSBoYXMNCmV4cGlyZWQuDQoNClNvIHdoYXQgSSB3YXMgcHJvcG9zaW5nIHdhc24ndCB0aGF0IHlv
-dSB0cnkgdG8gY2hhbmdlIHRoZSBhdXRoZW50aWNhdGlvbg0KZmxhdm91ciBvbiBhbiBleGlzdGlu
-ZyBuZnNfY2xpZW50LiBJdCB3YXMgdGhhdCB3aGVuIHlvdSBhcmUgcHJvYmluZywgeW91DQpjYW4g
-dXNlIHRoZSBDTElEX0lOVVNFIHJlcGx5IGZyb20gU0VUQ0xJRU5USUQgYXMgYSBkaXJlY3QgaW5k
-aWNhdGlvbg0KdGhhdCB0aGUgc2VydmVyIGlzIGluZGVlZCB0cnVua2VkLCBhbmQgdGhhdCB5b3Ug
-YWxyZWFkeSBob2xkIGEgbGVhc2Ugb24NCnRoYXQgc2VydmVyLCBidXQgdGhhdCB0aGUgYXV0aGVu
-dGljYXRpb24gZmxhdm91ciB0aGF0IHlvdSBhcmUgdHJ5aW5nIHRvDQp1c2UgaXMgd3JvbmcuDQoN
-Ci0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0
-QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+On Wed, Apr 18, 2012 at 02:04:26PM +0000, Myklebust, Trond wrote:
+> On Wed, 2012-04-18 at 14:57 +0100, Luis Henriques wrote:
+> > Hi Jeff,
+> > 
+> > On Wed, Apr 18, 2012 at 09:28:22AM -0400, Jeff Layton wrote:
+> > > On Wed, 18 Apr 2012 12:26:10 +0100
+> > > Luis Henriques <luis.henriques@canonical.com> wrote:
+> > > 
+> > > > Hi,
+> > > > 
+> > > > We have a bug reporting a regression in mainline kernel.  Basically, the
+> > > > bug reporters are seeing lots of messages:
+> > > > 
+> > > > [ 48.701213] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
+> > > > [ 48.701990] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
+> > > > [ 53.696076] nfs4_reclaim_open_state: 6440 callbacks suppressed
+> > > > 
+> > > > This happens when mounting a user's home directory over NFS.
+> > > > 
+> > > > Is this a known issue being addressed at the moment?  Is there any
+> > > > information needed to help debugging the issue?
+> > > > 
+> > > > The original bug report can be found here:
+> > > > 
+> > > > http://bugs.launchpad.net/bugs/974664
+> > > > 
+> > > > And there's also a similar report for Fedora:
+> > > > 
+> > > > https://bugzilla.redhat.com/show_bug.cgi?id=811138
+> > > > 
+> > > > Cheers,
+> > > 
+> > > This code in nfs4_reclaim_open_state() looks wrong to me, but I'm not
+> > > that familiar with this code so I could be wrong:
+> > > 
+> > > -------------------[snip]--------------------
+> > >                 status = ops->recover_open(sp, state);
+> > >                 if (status >= 0) {
+> > >                         status = nfs4_reclaim_locks(state, ops);
+> > >                         if (status >= 0) {
+> > >                                 spin_lock(&state->state_lock);
+> > >                                 list_for_each_entry(lock, &state->lock_states, ls_locks) {
+> > >                                         if (!(lock->ls_flags & NFS_LOCK_INITIALIZED))
+> > >                                                 pr_warn_ratelimited("NFS: "
+> > >                                                         "%s: Lock reclaim "
+> > >                                                         "failed!\n", __func__);
+> > >                                 }
+> > >                                 spin_unlock(&state->state_lock);
+> > >                                 nfs4_put_open_state(state);
+> > >                                 goto restart;
+> > >                         }
+> > >                 }
+> > > -------------------[snip]--------------------
+> > > 
+> > > Shouldn't the status check after nfs4_reclaim_locks be reversed?
+> > 
+> > Thanks a lot for your help.  Could you please take a look at the patch
+> > below, just to make sure I understood you're suggestion correctly?  I will
+> > prepare a test kernel so that we can check whether it actually solves the
+> > problem or not.
+> > 
+> > Cheers,
+> > --
+> > Luis
+> > 
+> > 
+> > >From a1348f473c157439ac62f502eb45ca48f95e627f Mon Sep 17 00:00:00 2001
+> > From: Luis Henriques <luis.henriques@canonical.com>
+> > Date: Wed, 18 Apr 2012 14:50:10 +0100
+> > Subject: [PATCH 1/1] NFS: Fix status check on nfs4_reclaim_open_state()
+> > 
+> > There have been several bug reports, with the following messages on the
+> > logs:
+> > 
+> >  [ 48.701213] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
+> >  [ 48.701990] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
+> >  [ 53.696076] nfs4_reclaim_open_state: 6440 callbacks suppressed
+> > 
+> > This happens, for example, when mounting a user's home directory over NFS.
+> > 
+> > Thanks to Jeff Layton that identified the cause, this patch fixes an
+> > incorrect status check on nfs4_reclaim_open_state().
+> > 
+> > Signed-off-by: Luis Henriques <luis.henriques@canonical.com>
+> > ---
+> >  fs/nfs/nfs4state.c |    2 +-
+> >  1 file changed, 1 insertion(+), 1 deletion(-)
+> > 
+> > diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+> > index 07354b7..8b6acec 100644
+> > --- a/fs/nfs/nfs4state.c
+> > +++ b/fs/nfs/nfs4state.c
+> > @@ -1180,7 +1180,7 @@ restart:
+> >  		atomic_inc(&state->count);
+> >  		spin_unlock(&sp->so_lock);
+> >  		status = ops->recover_open(sp, state);
+> > -		if (status >= 0) {
+> > +		if (status < 0) {
+> >  			status = nfs4_reclaim_locks(state, ops);
+> >  			if (status >= 0) {
+> >  				spin_lock(&state->state_lock);
+> 
+> Hell no! 
+
+Ouch!  Wrong one...
+
+>From 005918b5eef853fd4d495743fef5a52ae62f825e Mon Sep 17 00:00:00 2001
+From: Luis Henriques <luis.henriques@canonical.com>
+Date: Wed, 18 Apr 2012 15:08:39 +0100
+Subject: [PATCH 1/1] NFS: Fix status check on nfs4_reclaim_open_state()
+
+There have been several bug reports, with the following messages on the
+logs:
+
+ [ 48.701213] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
+ [ 48.701990] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
+ [ 53.696076] nfs4_reclaim_open_state: 6440 callbacks suppressed
+
+This happens, for example, when mounting a user's home directory over NFS.
+
+Thanks to Jeff Layton that identified the cause, this patch fixes an
+incorrect status check on nfs4_reclaim_open_state().
+
+Signed-off-by: Luis Henriques <luis.henriques@canonical.com>
+---
+ fs/nfs/nfs4state.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 07354b7..023e09f 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1182,7 +1182,7 @@ restart:
+ 		status = ops->recover_open(sp, state);
+ 		if (status >= 0) {
+ 			status = nfs4_reclaim_locks(state, ops);
+-			if (status >= 0) {
++			if (status < 0) {
+ 				spin_lock(&state->state_lock);
+ 				list_for_each_entry(lock, &state->lock_states, ls_locks) {
+ 					if (!(lock->ls_flags & NFS_LOCK_INITIALIZED))
+-- 
+1.7.9.5
+
