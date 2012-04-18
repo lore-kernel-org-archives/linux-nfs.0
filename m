@@ -1,59 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57517 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:12472 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758246Ab2DIUxA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Apr 2012 16:53:00 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 20/26] NFS: create nfs_generic_commit_list
-Date: Mon,  9 Apr 2012 16:52:18 -0400
-Message-Id: <1334004744-31842-21-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
-References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
+	id S1753366Ab2DRN2b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Apr 2012 09:28:31 -0400
+Date: Wed, 18 Apr 2012 09:28:22 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Luis Henriques <luis.henriques@canonical.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: Regretion on NFS in mainline kernel
+Message-ID: <20120418092822.07a4f944@tlielax.poochiereds.net>
+In-Reply-To: <20120418112610.GA3979@zeus>
+References: <20120418112610.GA3979@zeus>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Simple refactoring.
+On Wed, 18 Apr 2012 12:26:10 +0100
+Luis Henriques <luis.henriques@canonical.com> wrote:
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/write.c |   15 ++++++++++++---
- 1 files changed, 12 insertions(+), 3 deletions(-)
+> Hi,
+> 
+> We have a bug reporting a regression in mainline kernel.  Basically, the
+> bug reporters are seeing lots of messages:
+> 
+> [ 48.701213] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
+> [ 48.701990] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
+> [ 53.696076] nfs4_reclaim_open_state: 6440 callbacks suppressed
+> 
+> This happens when mounting a user's home directory over NFS.
+> 
+> Is this a known issue being addressed at the moment?  Is there any
+> information needed to help debugging the issue?
+> 
+> The original bug report can be found here:
+> 
+> http://bugs.launchpad.net/bugs/974664
+> 
+> And there's also a similar report for Fedora:
+> 
+> https://bugzilla.redhat.com/show_bug.cgi?id=811138
+> 
+> Cheers,
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 293ddb9..948df43 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1521,6 +1521,17 @@ static const struct rpc_call_ops nfs_commit_ops = {
- 	.rpc_release = nfs_commit_release,
- };
- 
-+static int nfs_generic_commit_list(struct inode *inode, struct list_head *head,
-+				   int how)
-+{
-+	int status;
-+
-+	status = pnfs_commit_list(inode, head, how);
-+	if (status == PNFS_NOT_ATTEMPTED)
-+		status = nfs_commit_list(inode, head, how);
-+	return status;
-+}
-+
- int nfs_commit_inode(struct inode *inode, int how)
- {
- 	LIST_HEAD(head);
-@@ -1534,9 +1545,7 @@ int nfs_commit_inode(struct inode *inode, int how)
- 	if (res) {
- 		int error;
- 
--		error = pnfs_commit_list(inode, &head, how);
--		if (error == PNFS_NOT_ATTEMPTED)
--			error = nfs_commit_list(inode, &head, how);
-+		error = nfs_generic_commit_list(inode, &head, how);
- 		if (error < 0)
- 			return error;
- 		if (!may_wait)
+This code in nfs4_reclaim_open_state() looks wrong to me, but I'm not
+that familiar with this code so I could be wrong:
+
+-------------------[snip]--------------------
+                status = ops->recover_open(sp, state);
+                if (status >= 0) {
+                        status = nfs4_reclaim_locks(state, ops);
+                        if (status >= 0) {
+                                spin_lock(&state->state_lock);
+                                list_for_each_entry(lock, &state->lock_states, ls_locks) {
+                                        if (!(lock->ls_flags & NFS_LOCK_INITIALIZED))
+                                                pr_warn_ratelimited("NFS: "
+                                                        "%s: Lock reclaim "
+                                                        "failed!\n", __func__);
+                                }
+                                spin_unlock(&state->state_lock);
+                                nfs4_put_open_state(state);
+                                goto restart;
+                        }
+                }
+-------------------[snip]--------------------
+
+Shouldn't the status check after nfs4_reclaim_locks be reversed?
+
 -- 
-1.7.2.1
-
+Jeff Layton <jlayton@redhat.com>
