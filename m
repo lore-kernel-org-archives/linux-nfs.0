@@ -1,80 +1,204 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59112 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:4401 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753155Ab2DIXSv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Apr 2012 19:18:51 -0400
-Date: Mon, 9 Apr 2012 19:18:49 -0400
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH][RFC] nfsd/lockd: have locks_in_grace take a sb arg
-Message-ID: <20120409231849.GH10508@fieldses.org>
-References: <1333455279-11200-1-git-send-email-jlayton@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1333455279-11200-1-git-send-email-jlayton@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1750887Ab2DROu6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Apr 2012 10:50:58 -0400
+Date: Wed, 18 Apr 2012 10:51:47 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Luis Henriques <luis.henriques@canonical.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Regretion on NFS in mainline kernel
+Message-ID: <20120418105147.2a6f1c55@corrin.poochiereds.net>
+In-Reply-To: <1334760105.4701.11.camel@lade.trondhjem.org>
+References: <20120418112610.GA3979@zeus>
+	<20120418092822.07a4f944@tlielax.poochiereds.net>
+	<20120418135738.GB3979@zeus>
+	<1334757866.4701.6.camel@lade.trondhjem.org>
+	<20120418141313.GC3979@zeus>
+	<20120418101554.4aad0849@tlielax.poochiereds.net>
+	<1334760105.4701.11.camel@lade.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 03, 2012 at 08:14:39AM -0400, Jeff Layton wrote:
-> The main reason for the grace period is to prevent the server from
-> allowing an operation that might otherwise be denied once the client has
-> reclaimed all of its stateful objects.
+On Wed, 18 Apr 2012 14:41:45 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+
+> On Wed, 2012-04-18 at 10:15 -0400, Jeff Layton wrote:
+> > On Wed, 18 Apr 2012 15:13:13 +0100
+> > Luis Henriques <luis.henriques@canonical.com> wrote:
+> > 
+> > > On Wed, Apr 18, 2012 at 02:04:26PM +0000, Myklebust, Trond wrote:
+> > > > On Wed, 2012-04-18 at 14:57 +0100, Luis Henriques wrote:
+> > > > > Hi Jeff,
+> > > > > 
+> > > > > On Wed, Apr 18, 2012 at 09:28:22AM -0400, Jeff Layton wrote:
+> > > > > > On Wed, 18 Apr 2012 12:26:10 +0100
+> > > > > > Luis Henriques <luis.henriques@canonical.com> wrote:
+> > > > > > 
+> > > > > > > Hi,
+> > > > > > > 
+> > > > > > > We have a bug reporting a regression in mainline kernel.  Basically, the
+> > > > > > > bug reporters are seeing lots of messages:
+> > > > > > > 
+> > > > > > > [ 48.701213] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
+> > > > > > > [ 48.701990] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
+> > > > > > > [ 53.696076] nfs4_reclaim_open_state: 6440 callbacks suppressed
+> > > > > > > 
+> > > > > > > This happens when mounting a user's home directory over NFS.
+> > > > > > > 
+> > > > > > > Is this a known issue being addressed at the moment?  Is there any
+> > > > > > > information needed to help debugging the issue?
+> > > > > > > 
+> > > > > > > The original bug report can be found here:
+> > > > > > > 
+> > > > > > > http://bugs.launchpad.net/bugs/974664
+> > > > > > > 
+> > > > > > > And there's also a similar report for Fedora:
+> > > > > > > 
+> > > > > > > https://bugzilla.redhat.com/show_bug.cgi?id=811138
+> > > > > > > 
+> > > > > > > Cheers,
+> > > > > > 
+> > > > > > This code in nfs4_reclaim_open_state() looks wrong to me, but I'm not
+> > > > > > that familiar with this code so I could be wrong:
+> > > > > > 
+> > > > > > -------------------[snip]--------------------
+> > > > > >                 status = ops->recover_open(sp, state);
+> > > > > >                 if (status >= 0) {
+> > > > > >                         status = nfs4_reclaim_locks(state, ops);
+> > > > > >                         if (status >= 0) {
+> > > > > >                                 spin_lock(&state->state_lock);
+> > > > > >                                 list_for_each_entry(lock, &state->lock_states, ls_locks) {
+> > > > > >                                         if (!(lock->ls_flags & NFS_LOCK_INITIALIZED))
+> > > > > >                                                 pr_warn_ratelimited("NFS: "
+> > > > > >                                                         "%s: Lock reclaim "
+> > > > > >                                                         "failed!\n", __func__);
+> > > > > >                                 }
+> > > > > >                                 spin_unlock(&state->state_lock);
+> > > > > >                                 nfs4_put_open_state(state);
+> > > > > >                                 goto restart;
+> > > > > >                         }
+> > > > > >                 }
+> > > > > > -------------------[snip]--------------------
+> > > > > > 
+> > > > > > Shouldn't the status check after nfs4_reclaim_locks be reversed?
+> > > > > 
+> > > > > Thanks a lot for your help.  Could you please take a look at the patch
+> > > > > below, just to make sure I understood you're suggestion correctly?  I will
+> > > > > prepare a test kernel so that we can check whether it actually solves the
+> > > > > problem or not.
+> > > > > 
+> > > > > Cheers,
+> > > > > --
+> > > > > Luis
+> > > > > 
+> > > > > 
+> > > > > >From a1348f473c157439ac62f502eb45ca48f95e627f Mon Sep 17 00:00:00 2001
+> > > > > From: Luis Henriques <luis.henriques@canonical.com>
+> > > > > Date: Wed, 18 Apr 2012 14:50:10 +0100
+> > > > > Subject: [PATCH 1/1] NFS: Fix status check on nfs4_reclaim_open_state()
+> > > > > 
+> > > > > There have been several bug reports, with the following messages on the
+> > > > > logs:
+> > > > > 
+> > > > >  [ 48.701213] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
+> > > > >  [ 48.701990] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
+> > > > >  [ 53.696076] nfs4_reclaim_open_state: 6440 callbacks suppressed
+> > > > > 
+> > > > > This happens, for example, when mounting a user's home directory over NFS.
+> > > > > 
+> > > > > Thanks to Jeff Layton that identified the cause, this patch fixes an
+> > > > > incorrect status check on nfs4_reclaim_open_state().
+> > > > > 
+> > > > > Signed-off-by: Luis Henriques <luis.henriques@canonical.com>
+> > > > > ---
+> > > > >  fs/nfs/nfs4state.c |    2 +-
+> > > > >  1 file changed, 1 insertion(+), 1 deletion(-)
+> > > > > 
+> > > > > diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+> > > > > index 07354b7..8b6acec 100644
+> > > > > --- a/fs/nfs/nfs4state.c
+> > > > > +++ b/fs/nfs/nfs4state.c
+> > > > > @@ -1180,7 +1180,7 @@ restart:
+> > > > >  		atomic_inc(&state->count);
+> > > > >  		spin_unlock(&sp->so_lock);
+> > > > >  		status = ops->recover_open(sp, state);
+> > > > > -		if (status >= 0) {
+> > > > > +		if (status < 0) {
+> > > > >  			status = nfs4_reclaim_locks(state, ops);
+> > > > >  			if (status >= 0) {
+> > > > >  				spin_lock(&state->state_lock);
+> > > > 
+> > > > Hell no! 
+> > > 
+> > > Ouch!  Wrong one...
+> > > 
+> > > From 005918b5eef853fd4d495743fef5a52ae62f825e Mon Sep 17 00:00:00 2001
+> > > From: Luis Henriques <luis.henriques@canonical.com>
+> > > Date: Wed, 18 Apr 2012 15:08:39 +0100
+> > > Subject: [PATCH 1/1] NFS: Fix status check on nfs4_reclaim_open_state()
+> > > 
+> > > There have been several bug reports, with the following messages on the
+> > > logs:
+> > > 
+> > >  [ 48.701213] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
+> > >  [ 48.701990] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
+> > >  [ 53.696076] nfs4_reclaim_open_state: 6440 callbacks suppressed
+> > > 
+> > > This happens, for example, when mounting a user's home directory over NFS.
+> > > 
+> > > Thanks to Jeff Layton that identified the cause, this patch fixes an
+> > > incorrect status check on nfs4_reclaim_open_state().
+> > > 
+> > > Signed-off-by: Luis Henriques <luis.henriques@canonical.com>
+> > > ---
+> > >  fs/nfs/nfs4state.c |    2 +-
+> > >  1 file changed, 1 insertion(+), 1 deletion(-)
+> > > 
+> > > diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+> > > index 07354b7..023e09f 100644
+> > > --- a/fs/nfs/nfs4state.c
+> > > +++ b/fs/nfs/nfs4state.c
+> > > @@ -1182,7 +1182,7 @@ restart:
+> > >  		status = ops->recover_open(sp, state);
+> > >  		if (status >= 0) {
+> > >  			status = nfs4_reclaim_locks(state, ops);
+> > > -			if (status >= 0) {
+> > > +			if (status < 0) {
+> > >  				spin_lock(&state->state_lock);
+> > >  				list_for_each_entry(lock, &state->lock_states, ls_locks) {
+> > >  					if (!(lock->ls_flags & NFS_LOCK_INITIALIZED))
+> > 
+> > Yeah, that looks more reasonable, but again I'm not sure about this
+> > either way. This code has been this way for a long time and it's not
+> > clear to me why it's only now become a problem if it is wrong.
 > 
-> Currently, the grace period handling in the nfsd/lockd server code is
-> very simple. When the lock managers start, they stick an entry on a list
-> and set a timer. When the timers pop, then they remove the entry from
-> the list. The locks_in_grace check just looks to see if the list is
-> empty. If it is, then the grace period is considered to be over.
+> Right. Random (and wrong!) changes such as the above won't fix the
+> problem. That code is perfectly correct (look at the nfs4_reclaim_locks
+> error cases to see why).
 > 
-> This is insufficient for a clustered filesystem that is being served
-> from multiple nodes at the same time. In such a configuration, the grace
-> period must be coordinated in some fashion, or else one node might hand
-> out stateful objects that conflict with those that have not yet been
-> reclaimed.
+
+Ugh, ok I see and that code is correct even if it's a bit hard to
+follow...
+
+We clear the state_flag_bit on the first attempt against that lock so
+if it returns 0 (meaning a successful reclaim, we'll skip over it on
+the next pass through the loop.
+
+> Have you instead looked into what these applications are doing? Are they
+> perhaps opening the file read only, then trying to apply an exclusive
+> BSD lock (something which NFSv4 cannot support)?
 > 
-> This patch paves the way for fixing this by adding a new export
-> operation called locks_in_grace that takes a superblock argument. The
-> existing locks_in_grace function is renamed to generic_locks_in_grace,
-> and a new locks_in_grace function that takes a superblock arg is added.
-> If a filesystem does not have a locks_in_grace export operation then the
-> generic version will be used.
+> IOW: does the problem go away if you mount with 'local_lock=flock'?
+> 
 
-Looks more or less OK to me....
 
-> Care has also been taken to reorder calls such that locks_in_grace is
-> called last in compound conditional statements. Handling this for
-> clustered filesystems may involve upcalls, so we don't want to call it
-> unnecessarily.
+I suspect that that is the trigger here. Sadly common among userspace
+apps...
 
-Even if we're careful to do the check last, we potentially still have to
-do it on every otherwise-succesful open and lock operation.
 
-And really I don't think it's too much to ask that this be fast.
-
-> @@ -3183,7 +3183,7 @@ nfs4_laundromat(void)
->  	nfs4_lock_state();
->  
->  	dprintk("NFSD: laundromat service - starting\n");
-> -	if (locks_in_grace())
-> +	if (generic_locks_in_grace())
->  		nfsd4_end_grace();
-
-Looking at the code.... This is really just checking whether we've ended
-our own grace period.  The laundromat's scheduled to run a grace period
-after startup.  So I think we should just make this:
-
-	static bool grace_ended = false;
-
-	if (!grace_ended) {
-		grace_ended = true;
-		nfsd4_end_grace();
-	}
-
-or something.  No reason not to do that now.
-
-(Hm, and maybe there's a reason to: locks_in_grace() could in theory
-still return true on a second run of nfs4_laundromat(), but
-nfsd4_end_grace() probably shouldn't really be run twice?)
-
---b.
+-- 
+Jeff Layton <jlayton@redhat.com>
