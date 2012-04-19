@@ -1,48 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from minas.ics.muni.cz ([147.251.4.40]:37665 "EHLO minas.ics.muni.cz"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756223Ab2DJM4Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Apr 2012 08:56:25 -0400
-Date: Tue, 10 Apr 2012 14:55:52 +0200
-From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, jiri.horky@cesnet.cz
-Subject: Re: NFSv4 high availability setups
-Message-ID: <20120410125552.GC5074@ics.muni.cz>
-References: <20120405103124.GV4752@ics.muni.cz>
- <20120405073901.63d1c749@tlielax.poochiereds.net>
+Received: from relay.parallels.com ([195.214.232.42]:41249 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751065Ab2DSLhE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Apr 2012 07:37:04 -0400
+Message-ID: <4F8FF8D9.5080503@parallels.com>
+Date: Thu, 19 Apr 2012 15:36:57 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-2
-In-Reply-To: <20120405073901.63d1c749@tlielax.poochiereds.net>
+To: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        James Bottomley <jbottomley@parallels.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH] SUNRPC: skip dead but not buried clients on PipeFS events
+References: <20120419105707.32131.79719.stgit@localhost6.localdomain6>
+In-Reply-To: <20120419105707.32131.79719.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Jeff, 
+Sorry, but ignore this patch too.
+It can't be that simple because of these cl_count tricks in rpc_release_client...
 
-On Thu, Apr 05, 2012 at 07:39:01AM -0400, Jeff Layton wrote:
-> > As I understand, NFS4 uses state dir somewhere in /var/lib/nfs/rpc_pipefs.
-> > 
-> 
-> You're probably thinking of /var/lib/nfs/v4recovery.
+19.04.2012 14:57, Stanislav Kinsbursky пишет:
+> These clients can't be safely dereferenced if their counter in 0.
+>
+> Signee-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
+>
+> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
+>
+> ---
+>   net/sunrpc/clnt.c |    3 ++-
+>   1 files changed, 2 insertions(+), 1 deletions(-)
+>
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index 6797246..591994d 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -218,7 +218,8 @@ static struct rpc_clnt *rpc_get_client_for_event(struct net *net, int event)
+>   		if (((event == RPC_PIPEFS_MOUNT)&&  clnt->cl_dentry) ||
+>   		    ((event == RPC_PIPEFS_UMOUNT)&&  !clnt->cl_dentry))
+>   			continue;
+> -		atomic_inc(&clnt->cl_count);
+> +		if (atomic_inc_return(&clnt->cl_count) == 1)
+> +			continue;
+>   		spin_unlock(&sn->rpc_client_lock);
+>   		return clnt;
+>   	}
+>
 
-yes, sorry for confusion.
-
-> > Can we put this state dir on a shared volume so that this state dir is common
-> > for all the front-ends serving the same content? Is is supposed to work and
-> > NFSv4 can merge its state with existing state on a shared disk?
-> > 
-> 
-> Not properly, no. nfsd expects to have complete control over that
-> directory. There's no locking or merging of the data there. A node will
-> also clean that directory out in some cases, and that will throw your
-> state tracking off.
-
-Thank you for information.
-
-Is there any (preferably simple) way to demonstrate that this does not work
-properly? E.g., if I share the same export through two or more NFSv4
-front-ends that share the v4recovery directory, do I trigger problems with
-this tool http://nfsv4.bullopensource.org/tools/tests/locktest.php?
 
 -- 
-Luk� Hejtm�nek
+Best regards,
+Stanislav Kinsbursky
