@@ -1,38 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:32224 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754308Ab2DKLNf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Apr 2012 07:13:35 -0400
-Subject: [PATCH 0/4] nfsd: containerize export and expkey caches 
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Wed, 11 Apr 2012 15:13:07 +0400
-Message-ID: <20120411111053.13840.66083.stgit@localhost6.localdomain6>
+Received: from youngberry.canonical.com ([91.189.89.112]:53755 "EHLO
+	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754138Ab2DSJah (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Apr 2012 05:30:37 -0400
+Date: Thu, 19 Apr 2012 10:30:25 +0100
+From: Luis Henriques <luis.henriques@canonical.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/2] Fix regression on NFS in mainline kernel
+Message-ID: <20120419093025.GA2916@zeus>
+References: <20120418105147.2a6f1c55@corrin.poochiereds.net>
+ <1334770614-10653-1-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1334770614-10653-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch set depends on "NFSd: precursor and cleanup patch set".
+On Wed, Apr 18, 2012 at 01:36:52PM -0400, Trond Myklebust wrote:
+> The first patch addresses the Oops.
+> The second will hopefully address the looping.
+> 
+> Trond Myklebust (2):
+>   NFSv4: Ensure that the LOCK code sets exception->inode
+>   NFSv4: Ensure that we check lock exclusive/shared type against open
+>     modes
+> 
+>  fs/nfs/nfs4proc.c |   23 +++++++++++++++++++++--
+>  1 files changed, 21 insertions(+), 2 deletions(-)
+> 
+> -- 
+> 1.7.7.6
+> 
+Just to let you know we do have a few successful tests on these patches.
+You can check the details here:
 
-The following series consists of:
+http://bugs.launchpad.net/bugs/974664
 
----
+Although I haven't tested the patches myself, fell free to add a Tested-by
+to these patches.
 
-Stanislav Kinsbursky (4):
-      nfsd: pass network context to export caches init/shutdown routines
-      nfsd: make export cache allocated per network namespace context
-      nfsd: make expkey cache allocated per network namespace context
-      nfsd: allocate export and expkey caches in per-net operations.
-
-
- fs/nfsd/export.c               |   83 ++++++++++++++++++++++++++--------------
- fs/nfsd/netns.h                |    3 +
- fs/nfsd/nfsctl.c               |   32 ++++++++++++---
- fs/nfsd/nfssvc.c               |    2 -
- include/linux/nfsd/export.h    |   10 ++---
- include/linux/sunrpc/svcauth.h |    2 -
- net/sunrpc/svcauth_unix.c      |   13 ++----
- 7 files changed, 90 insertions(+), 55 deletions(-)
-
+Cheers,
+--
+Luis
