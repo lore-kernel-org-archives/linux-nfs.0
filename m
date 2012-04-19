@@ -1,71 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f172.google.com ([209.85.212.172]:57406 "EHLO
-	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755863Ab2DXPyi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Apr 2012 11:54:38 -0400
-Received: by wibhj6 with SMTP id hj6so4074341wib.1
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Apr 2012 08:54:36 -0700 (PDT)
-From: Miklos Szeredi <miklos@szeredi.hu>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Peter Staubach <pstaubach@exagrid.com>, Steve Dickson <SteveD@redhat.com>,
-        "linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "viro\@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
-        "hch\@infradead.org" <hch@infradead.org>,
-        "michael.brantley\@deshaw.com" <michael.brantley@deshaw.com>,
-        "sven.breuner\@itwm.fraunhofer.de" <sven.breuner@itwm.fraunhofer.de>,
-        "chuck.lever\@oracle.com" <chuck.lever@oracle.com>,
-        "malahal\@us.ibm.com" <malahal@us.ibm.com>,
-        "bfields\@fieldses.org" <bfields@fieldses.org>,
-        "trond.myklebust\@fys.uio.no" <trond.myklebust@fys.uio.no>,
-        "rees\@umich.edu" <rees@umich.edu>
-Subject: Re: [PATCH RFC v3] vfs: make fstatat retry once on ESTALE errors from getattr call
-References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
-	<1334749927-26138-1-git-send-email-jlayton@redhat.com>
-	<20120420104055.511e15bc@tlielax.poochiereds.net>
-	<4F91C49D.8070908@RedHat.com>
-	<20120420171300.326d6e36@corrin.poochiereds.net>
-	<4F956D5C.5050801@RedHat.com>
-	<20120423113216.01992555@tlielax.poochiereds.net>
-	<4F959A36.2080402@RedHat.com>
-	<FA8A9A935BFD3A4D8F0CDA1C4F611BCC063CF8E64B@IT-1874.Isys.com>
-	<20120424105049.5ed96b40@tlielax.poochiereds.net>
-Date: Tue, 24 Apr 2012 17:54:56 +0200
-In-Reply-To: <20120424105049.5ed96b40@tlielax.poochiereds.net> (Jeff Layton's
-	message of "Tue, 24 Apr 2012 10:50:49 -0400")
-Message-ID: <87lillktv3.fsf@tucsk.pomaz.szeredi.hu>
+Received: from youngberry.canonical.com ([91.189.89.112]:57089 "EHLO
+	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756460Ab2DSUql (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Apr 2012 16:46:41 -0400
+Date: Thu, 19 Apr 2012 21:46:38 +0100
+From: Luis Henriques <luis.henriques@canonical.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/2] Fix regression on NFS in mainline kernel
+Message-ID: <20120419204638.GB22948@zeus>
+References: <20120418105147.2a6f1c55@corrin.poochiereds.net>
+ <1334770614-10653-1-git-send-email-Trond.Myklebust@netapp.com>
+ <20120419093025.GA2916@zeus>
+ <20120419134847.GC2916@zeus>
+ <1334856549.21419.48.camel@lade.trondhjem.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1334856549.21419.48.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jeff Layton <jlayton@redhat.com> writes:
+On Thu, Apr 19, 2012 at 05:29:09PM +0000, Myklebust, Trond wrote:
+> On Thu, 2012-04-19 at 14:48 +0100, Luis Henriques wrote:
+> > On Thu, Apr 19, 2012 at 10:30:25AM +0100, Luis Henriques wrote:
+> > > On Wed, Apr 18, 2012 at 01:36:52PM -0400, Trond Myklebust wrote:
+> > > > The first patch addresses the Oops.
+> > > > The second will hopefully address the looping.
+> > > > 
+> > > > Trond Myklebust (2):
+> > > >   NFSv4: Ensure that the LOCK code sets exception->inode
+> > > >   NFSv4: Ensure that we check lock exclusive/shared type against open
+> > > >     modes
+> > > > 
+> > > >  fs/nfs/nfs4proc.c |   23 +++++++++++++++++++++--
+> > > >  1 files changed, 21 insertions(+), 2 deletions(-)
+> > > > 
+> > > > -- 
+> > > > 1.7.7.6
+> > > > 
+> > > Just to let you know we do have a few successful tests on these patches.
+> > > You can check the details here:
+> > > 
+> > > http://bugs.launchpad.net/bugs/974664
+> > > 
+> > > Although I haven't tested the patches myself, fell free to add a Tested-by
+> > > to these patches.
+> > 
+> > There's something else a forgot to mention, which is the fact that the bug
+> > reports were for kernel 3.2.14.  So you may want to update the
+> > "Cc: stable@vger.kernel.org" on commit 487790f27df9bb27d3400486bd021dd59edc7589
+> > to include at least this version.
+> 
+> Yep. I also saw that there is a need for it in 3.0.27, so I'll just
+> remove that >= 3.3.1...
 
-> On Mon, 23 Apr 2012 16:38:00 -0400
-> Peter Staubach <pstaubach@exagrid.com> wrote:
->
->> I don't really like the idea of introducing another errno as well.  It seems like too much complexity and represents complexity that no one has really justified needing.
->> 
->
-> I tend to agree here. Miklos, can you elaborate a bit on what fuse
-> filesystems you're particularly concerned about here? Which ones return
-> ESTALE and under what conditions. Maybe we can try to tailor this
-> solution to avoid the complexity without impacting them.
+Great, thanks.
+ 
+> > There are two another patches we have applied that are present in mainline
+> > but haven't made its way into stable:
+> >  - 14977489ffdb80d4caf5a184ba41b23b02fbacd9
+> >  - 96dcadc2fdd111dca90d559f189a30c65394451a
+> 
+> I don't plan on sending these 2 commits to stable unless we see some
+> specific problems that need to be corrected. I understand that seeing a
+> NFS4ERR_OPENMODE at the wrong time could theoretically cause an Oops
+> without the 1497748 commit, but broken servers can wreak all sorts of
+> havoc anyway. There isn't much you can do to protect against them.
 
-It is not just fuse I'm concerned about.  Grep for -ESTALE, there are
-about 120 hits about 20 of which come from NFS.  There's no guarantee
-that any of those ESTALE errors will go away on retry, which for an
-unlimited retry means a hung OS.  If you limit the number of retries
-then in the best case it's just lots of wasted CPU cycles.
+I'm afraid I can't follow you on the protocol-related details, but the bug
+report I referred above was caused by an Oops which could be avoided by
+improving the robustness of the code (which the first commit does by
+checking for a NULL).  Also, I'm not sure the NFS server being used by the
+bug reporter would fit into the "broken servers" category, as it seems to
+be working OK.  For all of this, I would be glad to see the first commit
+on stable.
 
-And an audit would still not ensure safety against future additions of
-ESTALE.
+Anyway, thanks a lot for your help sorting this out.
 
-And a simple audit won't find things like fuse, where the error comes
-from outside the kernel.  Fixing that is not trivial either.  Turning
-ESTALE into some other error prevents looping but breaks the return
-value.
-
-Thanks,
-Miklos
+Cheers,
+--
+Luis
