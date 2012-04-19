@@ -1,44 +1,30 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:48534 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754758Ab2DSK5r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Apr 2012 06:57:47 -0400
-Subject: [PATCH] SUNRPC: skip dead but not buried clients on PipeFS events
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Thu, 19 Apr 2012 14:57:18 +0400
-Message-ID: <20120419105707.32131.79719.stgit@localhost6.localdomain6>
+Received: from toast.topped-with-meat.com ([204.197.218.159]:36041 "EHLO
+	topped-with-meat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753485Ab2DSXGC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Apr 2012 19:06:02 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+From: Roland McGrath <roland@hack.frob.com>
+To: Paul Eggert <eggert@cs.ucla.edu>
+Cc: David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
+        wine-devel@winehq.org, kfm-devel@kde.org, nautilus-list@gnome.org,
+        linux-api@vger.kernel.org, libc-alpha@sourceware.org
+Subject: Re: [PATCH 0/6] Extended file stat system call
+In-Reply-To: Paul Eggert's message of  Thursday, 19 April 2012 14:51:18 -0700 <4F9088D6.9020203@cs.ucla.edu>
+References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+	<20120419163238.61D382C0DF@topped-with-meat.com>
+	<4F9088D6.9020203@cs.ucla.edu>
+Message-Id: <20120419230556.A80392C0AF@topped-with-meat.com>
+Date: Thu, 19 Apr 2012 16:05:56 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These clients can't be safely dereferenced if their counter in 0.
+statx seems like a better family of names.  I also think it's worthwhile to
+see if the interface can be made to more closely match the AIX precedent.
 
-Signee-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
----
- net/sunrpc/clnt.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
-
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 6797246..591994d 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -218,7 +218,8 @@ static struct rpc_clnt *rpc_get_client_for_event(struct net *net, int event)
- 		if (((event == RPC_PIPEFS_MOUNT) && clnt->cl_dentry) ||
- 		    ((event == RPC_PIPEFS_UMOUNT) && !clnt->cl_dentry))
- 			continue;
--		atomic_inc(&clnt->cl_count);
-+		if (atomic_inc_return(&clnt->cl_count) == 1)
-+			continue;
- 		spin_unlock(&sn->rpc_client_lock);
- 		return clnt;
- 	}
-
+Thanks,
+Roland
