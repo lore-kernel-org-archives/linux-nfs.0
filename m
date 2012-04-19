@@ -1,46 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from partagas.dragonet.es ([217.70.240.130]:32799 "EHLO
-	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752073Ab2DUM3s (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 Apr 2012 08:29:48 -0400
-Message-ID: <4F929B50.1020407@steve-ss.com>
-Date: Sat, 21 Apr 2012 13:34:40 +0200
-From: steve <steve@steve-ss.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:13876 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754604Ab2DSIal (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Apr 2012 04:30:41 -0400
+Message-ID: <4F8FCD20.1070103@openvz.org>
+Date: Thu, 19 Apr 2012 12:30:24 +0400
+From: Kinsbursky Stanislav <skinsbursky@openvz.org>
 MIME-Version: 1.0
-To: simo <idra@samba.org>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, Jeremy Allison <jra@samba.org>,
-        linux-nfs@vger.kernel.org,
-        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
-        Ondrej Valousek <webserv@s3group.com>
-Subject: Re: NFSv4 ACLs
-References: <4F913492.8000402@s3group.cz> <20120420185553.GB32622@samba2>  <20120420212627.GA710@fieldses.org> <20120420215945.GE32622@samba2>  <20120420220832.GA1914@fieldses.org> <1334972084.2492.722.camel@pico.li.ssimo.org>
-In-Reply-To: <1334972084.2492.722.camel@pico.li.ssimo.org>
+To: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH] LockD: call per-net shutdown on every global shutdown
+ call
+References: <20120418131827.16800.33207.stgit@localhost6.localdomain6>
+In-Reply-To: <20120418131827.16800.33207.stgit@localhost6.localdomain6>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 21/04/12 03:34, simo wrote:
-> On Fri, 2012-04-20 at 18:08 -0400, J. Bruce Fields wrote:
->> On Fri, Apr 20, 2012 at 02:59:45PM -0700, Jeremy Allison wrote:
->>> On Fri, Apr 20, 2012 at 05:26:27PM -0400, J. Bruce Fields wrote:
->>>> On Fri, Apr 20, 2012 at 11:55:53AM -0700, Jeremy Allison wrote:
->>>>> On Fri, Apr 20, 2012 at 12:04:02PM +0200, Ondrej Valousek wrote:
->>>>>> Hi List,
->>>>>>
+Please, ignore this patch.
+The idea is correct, but current implementation hides few more things to be 
+modified.
+Otherwise kernel oopses.
+Sorry.
 
+18.04.2012 17:18, Stanislav Kinsbursky пишет:
+> Per-net LockD shutdown call must be called regardless of global nlm users
+> counter.
 >
->> (By the way, is reexporting nfs with samba really going to work well
->> anyway?)
+> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
 >
-> Not really, it is generally unsupported, except for read only shares. It
-> will work in most of the simple cases for writing .. until it breaks :)
+> ---
+>   fs/lockd/svc.c |    5 ++---
+>   1 files changed, 2 insertions(+), 3 deletions(-)
+>
+> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+> index 1ead075..2ad3715 100644
+> --- a/fs/lockd/svc.c
+> +++ b/fs/lockd/svc.c
+> @@ -381,10 +381,9 @@ lockd_down(struct net *net)
+>   {
+>   	mutex_lock(&nlmsvc_mutex);
+>   	if (nlmsvc_users) {
+> -		if (--nlmsvc_users) {
+> -			lockd_down_net(net);
+> +		lockd_down_net(net);
+> +		if (--nlmsvc_users)
+>   			goto out;
+> -		}
+>   	} else {
+>   		printk(KERN_ERR "lockd_down: no users! task=%p\n",
+>   			nlmsvc_task);
 >
 
-Hi
-That's worrying.
 
-We been rw'ing nfs/samba for years.  Maybe we're the only ones. nfs3 for 
-our Linux clients and samba for the rest. Same shared data. Only Posix 
-acl's though. Maybe that's the simple bit?
-Cheers,
-Steve
+-- 
+Best regards,
+Stanislav Kinsbursky
+
