@@ -1,79 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:36309 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:10637 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752073Ab2D3Q64 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Apr 2012 12:58:56 -0400
-Message-ID: <4F9EC4CA.3080604@netapp.com>
-Date: Mon, 30 Apr 2012 12:58:50 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+	id S1755562Ab2DSR3M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Apr 2012 13:29:12 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Luis Henriques <luis.henriques@canonical.com>
+CC: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/2] Fix regression on NFS in mainline kernel
+Date: Thu, 19 Apr 2012 17:29:09 +0000
+Message-ID: <1334856549.21419.48.camel@lade.trondhjem.org>
+References: <20120418105147.2a6f1c55@corrin.poochiereds.net>
+	 <1334770614-10653-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <20120419093025.GA2916@zeus> <20120419134847.GC2916@zeus>
+In-Reply-To: <20120419134847.GC2916@zeus>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Fred Isaman <iisaman@netapp.com>
-CC: linux-nfs@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH v3 25/25] NFS: rewrite directio write to use async coalesce
- code
-References: <1334947677-28864-1-git-send-email-iisaman@netapp.com> <1334947677-28864-26-git-send-email-iisaman@netapp.com> <4F9EB992.9040501@netapp.com>
-In-Reply-To: <4F9EB992.9040501@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/30/2012 12:10 PM, Bryan Schumaker wrote:
-
-> Hi Fred,
-> 
-> On 04/20/2012 02:47 PM, Fred Isaman wrote:
-> 
->> This also has the advantage that it allows directio to use pnfs.
->>
->> Signed-off-by: Fred Isaman <iisaman@netapp.com>
->> ---
->>  fs/nfs/direct.c         |  527 +++++++++++++++++++++--------------------------
->>  fs/nfs/internal.h       |   18 ++-
->>  fs/nfs/nfs4filelayout.c |   44 ++++-
->>  fs/nfs/pnfs.h           |   17 ++
->>  fs/nfs/write.c          |   36 ++--
->>  5 files changed, 319 insertions(+), 323 deletions(-)
->>
->> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
->> index 4ba9a2c..d44de2f 100644
->> --- a/fs/nfs/direct.c
->> +++ b/fs/nfs/direct.c
->> @@ -56,6 +56,7 @@
->>  
->>  #include "internal.h"
->>  #include "iostat.h"
->> +#include "pnfs.h"
->>  
->>  #define NFSDBG_FACILITY		NFSDBG_VFS
->>  
->> @@ -81,16 +82,19 @@ struct nfs_direct_req {
->>  	struct completion	completion;	/* wait for i/o completion */
->>  
->>  	/* commit state */
->> -	struct list_head	rewrite_list;	/* saved nfs_write_data structs */
->> -	struct nfs_commit_data *commit_data;	/* special write_data for commits */
->> +	struct nfs_mds_commit_info mds_cinfo;	/* Storage for cinfo */
->> +	struct pnfs_ds_commit_info ds_cinfo;	/* Storage for cinfo */
-> 
-> 
-> 
-> When I compile without CONFIG_NFS_V4 enabled, I see this error:
-
-
-Actually, it's when CONFIG_NFS_V4_1 isn't enabled, I just happened to find it with v4 turned off.
-
-> 
->   CC [M]  fs/nfs/super.o
->   CC [M]  fs/nfs/direct.o
-> fs/nfs/direct.c:86:29: error: field 'ds_cinfo' has incomplete type
-> make[2]: *** [fs/nfs/direct.o] Error 1
-> make[1]: *** [fs/nfs] Error 2
-> make: *** [fs] Error 2
-> 
-> - Bryan
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
+T24gVGh1LCAyMDEyLTA0LTE5IGF0IDE0OjQ4ICswMTAwLCBMdWlzIEhlbnJpcXVlcyB3cm90ZToN
+Cj4gT24gVGh1LCBBcHIgMTksIDIwMTIgYXQgMTA6MzA6MjVBTSArMDEwMCwgTHVpcyBIZW5yaXF1
+ZXMgd3JvdGU6DQo+ID4gT24gV2VkLCBBcHIgMTgsIDIwMTIgYXQgMDE6MzY6NTJQTSAtMDQwMCwg
+VHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPiA+ID4gVGhlIGZpcnN0IHBhdGNoIGFkZHJlc3NlcyB0
+aGUgT29wcy4NCj4gPiA+IFRoZSBzZWNvbmQgd2lsbCBob3BlZnVsbHkgYWRkcmVzcyB0aGUgbG9v
+cGluZy4NCj4gPiA+IA0KPiA+ID4gVHJvbmQgTXlrbGVidXN0ICgyKToNCj4gPiA+ICAgTkZTdjQ6
+IEVuc3VyZSB0aGF0IHRoZSBMT0NLIGNvZGUgc2V0cyBleGNlcHRpb24tPmlub2RlDQo+ID4gPiAg
+IE5GU3Y0OiBFbnN1cmUgdGhhdCB3ZSBjaGVjayBsb2NrIGV4Y2x1c2l2ZS9zaGFyZWQgdHlwZSBh
+Z2FpbnN0IG9wZW4NCj4gPiA+ICAgICBtb2Rlcw0KPiA+ID4gDQo+ID4gPiAgZnMvbmZzL25mczRw
+cm9jLmMgfCAgIDIzICsrKysrKysrKysrKysrKysrKysrKy0tDQo+ID4gPiAgMSBmaWxlcyBjaGFu
+Z2VkLCAyMSBpbnNlcnRpb25zKCspLCAyIGRlbGV0aW9ucygtKQ0KPiA+ID4gDQo+ID4gPiAtLSAN
+Cj4gPiA+IDEuNy43LjYNCj4gPiA+IA0KPiA+IEp1c3QgdG8gbGV0IHlvdSBrbm93IHdlIGRvIGhh
+dmUgYSBmZXcgc3VjY2Vzc2Z1bCB0ZXN0cyBvbiB0aGVzZSBwYXRjaGVzLg0KPiA+IFlvdSBjYW4g
+Y2hlY2sgdGhlIGRldGFpbHMgaGVyZToNCj4gPiANCj4gPiBodHRwOi8vYnVncy5sYXVuY2hwYWQu
+bmV0L2J1Z3MvOTc0NjY0DQo+ID4gDQo+ID4gQWx0aG91Z2ggSSBoYXZlbid0IHRlc3RlZCB0aGUg
+cGF0Y2hlcyBteXNlbGYsIGZlbGwgZnJlZSB0byBhZGQgYSBUZXN0ZWQtYnkNCj4gPiB0byB0aGVz
+ZSBwYXRjaGVzLg0KPiANCj4gVGhlcmUncyBzb21ldGhpbmcgZWxzZSBhIGZvcmdvdCB0byBtZW50
+aW9uLCB3aGljaCBpcyB0aGUgZmFjdCB0aGF0IHRoZSBidWcNCj4gcmVwb3J0cyB3ZXJlIGZvciBr
+ZXJuZWwgMy4yLjE0LiAgU28geW91IG1heSB3YW50IHRvIHVwZGF0ZSB0aGUNCj4gIkNjOiBzdGFi
+bGVAdmdlci5rZXJuZWwub3JnIiBvbiBjb21taXQgNDg3NzkwZjI3ZGY5YmIyN2QzNDAwNDg2YmQw
+MjFkZDU5ZWRjNzU4OQ0KPiB0byBpbmNsdWRlIGF0IGxlYXN0IHRoaXMgdmVyc2lvbi4NCg0KWWVw
+LiBJIGFsc28gc2F3IHRoYXQgdGhlcmUgaXMgYSBuZWVkIGZvciBpdCBpbiAzLjAuMjcsIHNvIEkn
+bGwganVzdA0KcmVtb3ZlIHRoYXQgPj0gMy4zLjEuLi4NCg0KPiBUaGVyZSBhcmUgdHdvIGFub3Ro
+ZXIgcGF0Y2hlcyB3ZSBoYXZlIGFwcGxpZWQgdGhhdCBhcmUgcHJlc2VudCBpbiBtYWlubGluZQ0K
+PiBidXQgaGF2ZW4ndCBtYWRlIGl0cyB3YXkgaW50byBzdGFibGU6DQo+ICAtIDE0OTc3NDg5ZmZk
+YjgwZDRjYWY1YTE4NGJhNDFiMjNiMDJmYmFjZDkNCj4gIC0gOTZkY2FkYzJmZGQxMTFkY2E5MGQ1
+NTlmMTg5YTMwYzY1Mzk0NDUxYQ0KDQpJIGRvbid0IHBsYW4gb24gc2VuZGluZyB0aGVzZSAyIGNv
+bW1pdHMgdG8gc3RhYmxlIHVubGVzcyB3ZSBzZWUgc29tZQ0Kc3BlY2lmaWMgcHJvYmxlbXMgdGhh
+dCBuZWVkIHRvIGJlIGNvcnJlY3RlZC4gSSB1bmRlcnN0YW5kIHRoYXQgc2VlaW5nIGENCk5GUzRF
+UlJfT1BFTk1PREUgYXQgdGhlIHdyb25nIHRpbWUgY291bGQgdGhlb3JldGljYWxseSBjYXVzZSBh
+biBPb3BzDQp3aXRob3V0IHRoZSAxNDk3NzQ4IGNvbW1pdCwgYnV0IGJyb2tlbiBzZXJ2ZXJzIGNh
+biB3cmVhayBhbGwgc29ydHMgb2YNCmhhdm9jIGFueXdheS4gVGhlcmUgaXNuJ3QgbXVjaCB5b3Ug
+Y2FuIGRvIHRvIHByb3RlY3QgYWdhaW5zdCB0aGVtLg0KDQpDaGVlcnMNCiAgVHJvbmQNCg0KLS0g
+DQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHAN
+ClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
