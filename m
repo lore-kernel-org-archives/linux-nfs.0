@@ -1,243 +1,179 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:12008 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48994 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756556Ab2D3Skh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Apr 2012 14:40:37 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 5/7] NFS: Create a common xdev_mount() function
-Date: Mon, 30 Apr 2012 14:40:27 -0400
-Message-Id: <1335811229-2989-6-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1335811229-2989-1-git-send-email-bjschuma@netapp.com>
-References: <1335811229-2989-1-git-send-email-bjschuma@netapp.com>
+	id S1754872Ab2DSOGd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Apr 2012 10:06:33 -0400
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 0/6] Extended file stat system call
+To: linux-fsdevel@vger.kernel.org
+Cc: dhowells@redhat.com, linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
+        wine-devel@winehq.org, kfm-devel@kde.org, nautilus-list@gnome.org,
+        linux-api@vger.kernel.org, libc-alpha@sourceware.org
+Date: Thu, 19 Apr 2012 15:05:58 +0100
+Message-ID: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
 
-The only difference between nfs_xdev_mount() and nfs4_xdev_mount() is the
-unshared flag, so I pass this as an nfs_mount_info parameter so we can
-share more code.
+Implement a pair of new system calls to provide extended and further extensible
+stat functions.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+The second of the associated patches is the main patch that provides these new
+system calls:
+
+	ssize_t ret = xstat(int dfd,
+			    const char *filename,
+			    unsigned atflag,
+			    unsigned mask,
+			    struct xstat *buffer);
+
+	ssize_t ret = fxstat(int fd,
+			     unsigned atflag,
+			     unsigned mask,
+			     struct xstat *buffer);
+
+which are more fully documented in the first patch's description.
+
+These new stat functions provide a number of useful features, in summary:
+
+ (1) More information: creation time, inode generation number, data version
+     number, flags/attributes.  A subset of these is available through a number
+     of filesystems (such as CIFS, NFS, AFS, Ext4 and BTRFS).
+
+ (2) Lightweight stat: Ask for just those details of interest, and allow a
+     netfs (such as NFS) to approximate anything not of interest, possibly
+     without going to the server.
+
+ (3) Heavyweight stat: Force a netfs to go to the server, even if it thinks its
+     cached attributes are up to date.
+
+ (4) Allow the filesystem to indicate what it can/cannot provide: A filesystem
+     can now say it doesn't support a standard stat feature if that isn't
+     available.
+
+ (5) Make the fields a consistent size on all arches, and make them large.
+
+ (6) Can be extended by using more request flags and appending further data
+     after the end of the standard return data.
+
+Note that no lstat() equivalent is required as that can be implemented through
+xstat() with atflag == 0.
+
+
+=======
+PATCHES
+=======
+
+Patch 1 defines the xstat() and fxstat() system calls.
+
+Patches 2-6 implement extended stat facilities for Ext4, AFS, NFS and CIFS, and
+make eCryptFS go to the lower filesystem for such details.
+
+
+==============
+CONSIDERATIONS
+==============
+
+Should fxstat() be implemented as xstat() with a NULL filename, using dfd as
+fd?
+
+Should the default for a network fs be to do an unconditional (heavyweight)
+stat with a flag to suppress going to the server to update the locally held
+attributes and flushing pending writebacks?
+
+Should things like the Windows Archive, Hidden and System bits be handled
+through IOC flags, perhaps expanded to 64-bits?
+
+Are these things useful to userspace other than Samba and userspace NFS
+servers?
+
+Is it useful to pass the volume ID out?  Or is statfs() sufficient for this?
+
+Should I add a sixth argument to xstat(), mark it reserved and require that
+must be supplied as 0 to hedge against future use?
+
+Is there anything else I can usefully add at the moment?
+
+
+==========
+TO BE DONE
+==========
+
+Autofs, ntfs, btrfs, ...
+
+I should perhaps use u8/u32/u64 rather than uint8/32/64_t.
+
+Handle remote filesystems being offline and indicate this with
+XSTAT_INFO_OFFLINE.
+
+
+=======
+TESTING
+=======
+
+There's a test program attached to the description for the main patch.  It can
+be run as follows:
+[root@andromeda tmp]# ./xstat -R /mnt/foo
+
+	xstat(/mnt/foo) = 0
+	0000: 000081a40000ffef 0000000000000001 0000020000000000 0000100000080000
+	0020: 0000000000000000 0000000600000008 000000004f88499a 0000000136fd9208
+	0040: 000000004f88499a 0000000136fd9208 000000004f8849b9 0000000106daf187
+	0060: 000000004f8849b9 0000000106daf187 000000000000000c 000000000000000f
+	0080: 0000000000000008 00000000484ebbef 0000000000000025 5949ebd4711efd82
+	00a0: d3250b5c15d5e380 0000000000000000 0000000000000000 0000000000000000
+	00c0: 0000000000000000 0000000000000000 0000000000000000 0000000000000000
+	00e0: 0000000000000000 0000000000000000 0000000000000000 0000000000000000
+	results=ffef
+	  Size: 15              Blocks: 8          IO Block: 4096    regular file
+	Device: 08:06           Inode: 12          Links: 1    
+	Access: (0644/-rw-r--r--)  Uid: 0   
+	Gid: 0
+	Access: 2012-04-13 16:43:22.922587656+0100
+	Modify: 2012-04-13 16:43:53.115011975+0100
+	Change: 2012-04-13 16:43:53.115011975+0100
+	Create: 2012-04-13 16:43:22.922587656+0100
+	Inode version: 484ebbefh
+	Data version: 25h
+	Inode flags: 00080000 (-------- ----e--- -------- --------)
+	Information: 00000200 (-------- -------- ------a- --------)
+	Volume ID: 82fd1e71d4eb4959-80e3d5155c0b25d3
+
+David
 ---
- fs/nfs/super.c |  126 ++++++++++++++++----------------------------------------
- 1 file changed, 35 insertions(+), 91 deletions(-)
+David Howells (6):
+      xstat: eCryptFS: Return extended attributes
+      xstat: CIFS: Return extended attributes
+      xstat: NFS: Return extended attributes
+      xstat: AFS: Return extended attributes
+      xstat: Ext4: Return extended attributes
+      xstat: Add a pair of system calls to make extended file stats available
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index b9ee798..eefb3ed 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2126,6 +2126,7 @@ static inline void nfs_initialise_sb(struct super_block *sb)
- struct nfs_mount_info {
- 	void (*fill_super)(struct super_block *, struct nfs_mount_info *);
- 	struct nfs_parsed_mount_data *parsed;
-+	struct nfs_clone_mount *cloned;
- 	unsigned int unshared;
- };
- 
-@@ -2159,8 +2160,9 @@ static void nfs_fill_super(struct super_block *sb,
-  * Finish setting up a cloned NFS2/3 superblock
-  */
- static void nfs_clone_super(struct super_block *sb,
--			    const struct super_block *old_sb)
-+			    struct nfs_mount_info *mount_info)
- {
-+	const struct super_block *old_sb = mount_info->cloned->sb;
- 	struct nfs_server *server = NFS_SB(sb);
- 
- 	sb->s_blocksize_bits = old_sb->s_blocksize_bits;
-@@ -2439,13 +2441,13 @@ static void nfs_kill_super(struct super_block *s)
- }
- 
- /*
-- * Clone an NFS2/3 server record on xdev traversal (FSID-change)
-+ * Clone an NFS2/3/4 server record on xdev traversal (FSID-change)
-  */
- static struct dentry *
--nfs_xdev_mount(struct file_system_type *fs_type, int flags,
--		const char *dev_name, void *raw_data)
-+nfs_xdev_mount_common(struct file_system_type *fs_type, int flags,
-+		const char *dev_name, struct nfs_mount_info *mount_info)
- {
--	struct nfs_clone_mount *data = raw_data;
-+	struct nfs_clone_mount *data = mount_info->cloned;
- 	struct super_block *s;
- 	struct nfs_server *server;
- 	struct dentry *mntroot;
-@@ -2455,7 +2457,7 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
- 	};
- 	int error;
- 
--	dprintk("--> nfs_xdev_mount()\n");
-+	dprintk("--> nfs_xdev_mount_common()\n");
- 
- 	/* create a new volume representation */
- 	server = nfs_clone_server(NFS_SB(data->sb), data->fh, data->fattr, data->authflavor);
-@@ -2465,7 +2467,7 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
- 	}
- 	sb_mntdata.server = server;
- 
--	if (server->flags & NFS_MOUNT_UNSHARED)
-+	if (server->flags & mount_info->unshared)
- 		compare_super = NULL;
- 
- 	/* -o noac implies -o sync */
-@@ -2490,7 +2492,7 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
- 
- 	if (!s->s_root) {
- 		/* initial superblock/root creation */
--		nfs_clone_super(s, data->sb);
-+		mount_info->fill_super(s, mount_info);
- 		nfs_fscache_get_super_cookie(s, NULL, data);
- 	}
- 
-@@ -2510,13 +2512,13 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
- 	/* clone any lsm security options from the parent to the new sb */
- 	security_sb_clone_mnt_opts(data->sb, s);
- 
--	dprintk("<-- nfs_xdev_mount() = 0\n");
-+	dprintk("<-- nfs_xdev_mount_common() = 0\n");
- 	return mntroot;
- 
- out_err_nosb:
- 	nfs_free_server(server);
- out_err_noserver:
--	dprintk("<-- nfs_xdev_mount() = %d [error]\n", error);
-+	dprintk("<-- nfs_xdev_mount_common() = %d [error]\n", error);
- 	return ERR_PTR(error);
- 
- error_splat_super:
-@@ -2524,18 +2526,34 @@ error_splat_super:
- 		bdi_unregister(&server->backing_dev_info);
- error_splat_bdi:
- 	deactivate_locked_super(s);
--	dprintk("<-- nfs_xdev_mount() = %d [splat]\n", error);
-+	dprintk("<-- nfs_xdev_mount_common() = %d [splat]\n", error);
- 	return ERR_PTR(error);
- }
- 
-+/*
-+ * Clone an NFS2/3 server record on xdev traversal (FSID-change)
-+ */
-+static struct dentry *
-+nfs_xdev_mount(struct file_system_type *fs_type, int flags,
-+		const char *dev_name, void *raw_data)
-+{
-+	struct nfs_mount_info mount_info = {
-+		.fill_super = nfs_clone_super,
-+		.cloned   = raw_data,
-+		.unshared = NFS_MOUNT_UNSHARED,
-+	};
-+	return nfs_xdev_mount_common(&nfs_fs_type, flags, dev_name, &mount_info);
-+}
-+
- #ifdef CONFIG_NFS_V4
- 
- /*
-  * Finish setting up a cloned NFS4 superblock
-  */
- static void nfs4_clone_super(struct super_block *sb,
--			    const struct super_block *old_sb)
-+			     struct nfs_mount_info *mount_info)
- {
-+	const struct super_block *old_sb = mount_info->cloned->sb;
- 	sb->s_blocksize_bits = old_sb->s_blocksize_bits;
- 	sb->s_blocksize = old_sb->s_blocksize;
- 	sb->s_maxbytes = old_sb->s_maxbytes;
-@@ -2787,86 +2805,12 @@ static struct dentry *
- nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
- 		 const char *dev_name, void *raw_data)
- {
--	struct nfs_clone_mount *data = raw_data;
--	struct super_block *s;
--	struct nfs_server *server;
--	struct dentry *mntroot;
--	int (*compare_super)(struct super_block *, void *) = nfs_compare_super;
--	struct nfs_sb_mountdata sb_mntdata = {
--		.mntflags = flags,
-+	struct nfs_mount_info mount_info = {
-+		.fill_super = nfs4_clone_super,
-+		.cloned = raw_data,
-+		.unshared = NFS4_MOUNT_UNSHARED,
- 	};
--	int error;
--
--	dprintk("--> nfs4_xdev_mount()\n");
--
--	/* create a new volume representation */
--	server = nfs_clone_server(NFS_SB(data->sb), data->fh, data->fattr, data->authflavor);
--	if (IS_ERR(server)) {
--		error = PTR_ERR(server);
--		goto out_err_noserver;
--	}
--	sb_mntdata.server = server;
--
--	if (server->flags & NFS4_MOUNT_UNSHARED)
--		compare_super = NULL;
--
--	/* -o noac implies -o sync */
--	if (server->flags & NFS_MOUNT_NOAC)
--		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
--
--	/* Get a superblock - note that we may end up sharing one that already exists */
--	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
--	if (IS_ERR(s)) {
--		error = PTR_ERR(s);
--		goto out_err_nosb;
--	}
--
--	if (s->s_fs_info != server) {
--		nfs_free_server(server);
--		server = NULL;
--	} else {
--		error = nfs_bdi_register(server);
--		if (error)
--			goto error_splat_bdi;
--	}
--
--	if (!s->s_root) {
--		/* initial superblock/root creation */
--		nfs4_clone_super(s, data->sb);
--		nfs_fscache_get_super_cookie(s, NULL, data);
--	}
--
--	mntroot = nfs_get_root(s, data->fh, dev_name);
--	if (IS_ERR(mntroot)) {
--		error = PTR_ERR(mntroot);
--		goto error_splat_super;
--	}
--	if (mntroot->d_inode->i_op != NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops) {
--		dput(mntroot);
--		error = -ESTALE;
--		goto error_splat_super;
--	}
--
--	s->s_flags |= MS_ACTIVE;
--
--	security_sb_clone_mnt_opts(data->sb, s);
--
--	dprintk("<-- nfs4_xdev_mount() = 0\n");
--	return mntroot;
--
--out_err_nosb:
--	nfs_free_server(server);
--out_err_noserver:
--	dprintk("<-- nfs4_xdev_mount() = %d [error]\n", error);
--	return ERR_PTR(error);
--
--error_splat_super:
--	if (server && !s->s_root)
--		bdi_unregister(&server->backing_dev_info);
--error_splat_bdi:
--	deactivate_locked_super(s);
--	dprintk("<-- nfs4_xdev_mount() = %d [splat]\n", error);
--	return ERR_PTR(error);
-+	return nfs_xdev_mount_common(&nfs4_fs_type, flags, dev_name, &mount_info);
- }
- 
- static struct dentry *
--- 
-1.7.10
+
+ arch/x86/syscalls/syscall_32.tbl |    2 
+ arch/x86/syscalls/syscall_64.tbl |    2 
+ fs/afs/inode.c                   |   29 ++-
+ fs/afs/super.c                   |    7 +
+ fs/cifs/cifsfs.h                 |    4 
+ fs/cifs/cifsglob.h               |   16 +-
+ fs/cifs/dir.c                    |    2 
+ fs/cifs/inode.c                  |  120 +++++++++++--
+ fs/ecryptfs/inode.c              |   14 +-
+ fs/ext4/ext4.h                   |    2 
+ fs/ext4/file.c                   |    2 
+ fs/ext4/inode.c                  |   32 +++
+ fs/ext4/namei.c                  |    2 
+ fs/ext4/super.c                  |    1 
+ fs/ext4/symlink.c                |    2 
+ fs/nfs/inode.c                   |   49 ++++-
+ fs/nfs/super.c                   |    1 
+ fs/stat.c                        |  350 +++++++++++++++++++++++++++++++++++---
+ include/linux/fcntl.h            |    1 
+ include/linux/fs.h               |    4 
+ include/linux/stat.h             |  126 +++++++++++++-
+ include/linux/syscalls.h         |    7 +
+ 22 files changed, 694 insertions(+), 81 deletions(-)
 
