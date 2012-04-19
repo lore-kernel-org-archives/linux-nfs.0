@@ -1,157 +1,168 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:27073 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752954Ab2DWUof convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Apr 2012 16:44:35 -0400
-Subject: Re: [PATCH 1/3] NFSv4: Ensure we do not reuse open owner names
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1335213414-20826-1-git-send-email-Trond.Myklebust@netapp.com>
-Date: Mon, 23 Apr 2012 16:44:29 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <418AC7C0-6289-40D0-85DB-092C29BA40D3@oracle.com>
-References: <1335213414-20826-1-git-send-email-Trond.Myklebust@netapp.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from mx1.redhat.com ([209.132.183.28]:50781 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753017Ab2DSOH0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Apr 2012 10:07:26 -0400
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 2/6] xstat: Ext4: Return extended attributes
+To: linux-fsdevel@vger.kernel.org
+Cc: dhowells@redhat.com, linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
+        wine-devel@winehq.org, kfm-devel@kde.org, nautilus-list@gnome.org,
+        linux-api@vger.kernel.org, libc-alpha@sourceware.org
+Date: Thu, 19 Apr 2012 15:06:26 +0100
+Message-ID: <20120419140625.17272.23303.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi-
+Return extended attributes from the Ext4 filesystem.  This includes the
+following:
 
-I wish you had told me you were going to fix this too.  I've been testing a fix for this for a couple weeks.  Was going to post this afternoon.  Shall I toss mine?
+ (1) The inode creation time (i_crtime) as i_btime.
 
-On Apr 23, 2012, at 4:36 PM, Trond Myklebust wrote:
+ (2) The inode i_generation as i_gen if not the root directory.
 
-> The NFSv4 spec is ambiguous about whether or not it is permissible
-> to reuse open owner names, so play it safe. This patch adds a timestamp
-> to the state_owner structure, and combines that with the IDA based
-> uniquifier.
-> Fixes a regression whereby the Linux server returns NFS4ERR_BAD_SEQID.
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
-> fs/nfs/nfs4_fs.h        |    1 +
-> fs/nfs/nfs4proc.c       |    6 +++---
-> fs/nfs/nfs4state.c      |    1 +
-> fs/nfs/nfs4xdr.c        |    9 +++++----
-> include/linux/nfs_xdr.h |    7 ++++++-
-> 5 files changed, 16 insertions(+), 8 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-> index 97ecc86..b6db9e3 100644
-> --- a/fs/nfs/nfs4_fs.h
-> +++ b/fs/nfs/nfs4_fs.h
-> @@ -59,6 +59,7 @@ struct nfs_unique_id {
-> 
-> #define NFS_SEQID_CONFIRMED 1
-> struct nfs_seqid_counter {
-> +	ktime_t create_time;
-> 	int owner_id;
-> 	int flags;
-> 	u32 counter;
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index f875cf3..60d5f4c 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -838,7 +838,8 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
-> 	p->o_arg.open_flags = flags;
-> 	p->o_arg.fmode = fmode & (FMODE_READ|FMODE_WRITE);
-> 	p->o_arg.clientid = server->nfs_client->cl_clientid;
-> -	p->o_arg.id = sp->so_seqid.owner_id;
-> +	p->o_arg.id.create_time = ktime_to_ns(sp->so_seqid.create_time);
-> +	p->o_arg.id.uniquifier = sp->so_seqid.owner_id;
-> 	p->o_arg.name = &dentry->d_name;
-> 	p->o_arg.server = server;
-> 	p->o_arg.bitmask = server->attr_bitmask;
-> @@ -1466,8 +1467,7 @@ static void nfs4_open_prepare(struct rpc_task *task, void *calldata)
-> 			goto unlock_no_action;
-> 		rcu_read_unlock();
-> 	}
-> -	/* Update sequence id. */
-> -	data->o_arg.id = sp->so_seqid.owner_id;
-> +	/* Update client id. */
-> 	data->o_arg.clientid = sp->so_server->nfs_client->cl_clientid;
-> 	if (data->o_arg.claim == NFS4_OPEN_CLAIM_PREVIOUS) {
-> 		task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_OPEN_NOATTR];
-> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> index 0f43414..3b07f09 100644
-> --- a/fs/nfs/nfs4state.c
-> +++ b/fs/nfs/nfs4state.c
-> @@ -393,6 +393,7 @@ nfs4_remove_state_owner_locked(struct nfs4_state_owner *sp)
-> static void
-> nfs4_init_seqid_counter(struct nfs_seqid_counter *sc)
-> {
-> +	sc->create_time = ktime_get();
-> 	sc->flags = 0;
-> 	sc->counter = 0;
-> 	spin_lock_init(&sc->lock);
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index c74fdb1..77fc5f9 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -74,7 +74,7 @@ static int nfs4_stat_to_errno(int);
-> /* lock,open owner id:
->  * we currently use size 2 (u64) out of (NFS4_OPAQUE_LIMIT  >> 2)
->  */
-> -#define open_owner_id_maxsz	(1 + 1 + 4)
-> +#define open_owner_id_maxsz	(1 + 2 + 1 + 1 + 2)
-> #define lock_owner_id_maxsz	(1 + 1 + 4)
-> #define decode_lockowner_maxsz	(1 + XDR_QUADLEN(IDMAP_NAMESZ))
-> #define compound_encode_hdr_maxsz	(3 + (NFS4_MAXTAGLEN >> 2))
-> @@ -1340,12 +1340,13 @@ static inline void encode_openhdr(struct xdr_stream *xdr, const struct nfs_opena
->  */
-> 	encode_nfs4_seqid(xdr, arg->seqid);
-> 	encode_share_access(xdr, arg->fmode);
-> -	p = reserve_space(xdr, 32);
-> +	p = reserve_space(xdr, 36);
-> 	p = xdr_encode_hyper(p, arg->clientid);
-> -	*p++ = cpu_to_be32(20);
-> +	*p++ = cpu_to_be32(24);
-> 	p = xdr_encode_opaque_fixed(p, "open id:", 8);
-> 	*p++ = cpu_to_be32(arg->server->s_dev);
-> -	xdr_encode_hyper(p, arg->id);
-> +	*p++ = cpu_to_be32(arg->id.uniquifier);
-> +	xdr_encode_hyper(p, arg->id.create_time);
-> }
-> 
-> static inline void encode_createmode(struct xdr_stream *xdr, const struct nfs_openargs *arg)
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index bfd0d1b..7ba3551 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -312,6 +312,11 @@ struct nfs4_layoutreturn {
-> 	int rpc_status;
-> };
-> 
-> +struct stateowner_id {
-> +	__u64	create_time;
-> +	__u32	uniquifier;
-> +};
-> +
-> /*
->  * Arguments to the open call.
->  */
-> @@ -321,7 +326,7 @@ struct nfs_openargs {
-> 	int			open_flags;
-> 	fmode_t			fmode;
-> 	__u64                   clientid;
-> -	__u64                   id;
-> +	struct stateowner_id	id;
-> 	union {
-> 		struct {
-> 			struct iattr *  attrs;    /* UNCHECKED, GUARDED */
-> -- 
-> 1.7.7.6
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ (3) The inode i_version as st_data_version if a file with I_VERSION set or a
+     directory.
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+ (4) FS_xxx_FL flags are returned as for ioctl(FS_IOC_GETFLAGS).
 
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
 
+ fs/ext4/ext4.h    |    2 ++
+ fs/ext4/file.c    |    2 +-
+ fs/ext4/inode.c   |   32 +++++++++++++++++++++++++++++---
+ fs/ext4/namei.c   |    2 ++
+ fs/ext4/super.c   |    1 +
+ fs/ext4/symlink.c |    2 ++
+ 6 files changed, 37 insertions(+), 4 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index ab2594a..81806da 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1899,6 +1899,8 @@ extern int  ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
+ 				struct kstat *stat);
+ extern void ext4_evict_inode(struct inode *);
+ extern void ext4_clear_inode(struct inode *);
++extern int  ext4_file_getattr(struct vfsmount *mnt, struct dentry *dentry,
++			      struct kstat *stat);
+ extern int  ext4_sync_inode(handle_t *, struct inode *);
+ extern void ext4_dirty_inode(struct inode *, int);
+ extern int ext4_change_inode_journal_flag(struct inode *, int);
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index cb70f18..ae8654c 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -249,7 +249,7 @@ const struct file_operations ext4_file_operations = {
+ 
+ const struct inode_operations ext4_file_inode_operations = {
+ 	.setattr	= ext4_setattr,
+-	.getattr	= ext4_getattr,
++	.getattr	= ext4_file_getattr,
+ #ifdef CONFIG_EXT4_FS_XATTR
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c77b0bd..eafc188 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4191,11 +4191,37 @@ err_out:
+ int ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
+ 		 struct kstat *stat)
+ {
+-	struct inode *inode;
+-	unsigned long delalloc_blocks;
++	struct inode *inode = dentry->d_inode;
++	struct ext4_inode_info *ei = EXT4_I(inode);
++
++	stat->result_mask |= XSTAT_BTIME;
++	stat->btime.tv_sec = ei->i_crtime.tv_sec;
++	stat->btime.tv_nsec = ei->i_crtime.tv_nsec;
++
++	if (inode->i_ino != EXT4_ROOT_INO) {
++		stat->result_mask |= XSTAT_GEN;
++		stat->gen = inode->i_generation;
++	}
++	if (S_ISDIR(inode->i_mode) || IS_I_VERSION(inode)) {
++		stat->result_mask |= XSTAT_VERSION;
++		stat->version = inode->i_version;
++	}
++
++	ext4_get_inode_flags(ei);
++	stat->ioc_flags |= ei->i_flags & EXT4_FL_USER_VISIBLE;
++	stat->result_mask |= XSTAT_IOC_FLAGS;
+ 
+-	inode = dentry->d_inode;
+ 	generic_fillattr(inode, stat);
++	return 0;
++}
++
++int ext4_file_getattr(struct vfsmount *mnt, struct dentry *dentry,
++		      struct kstat *stat)
++{
++	struct inode *inode = dentry->d_inode;
++	u64 delalloc_blocks;
++
++	ext4_getattr(mnt, dentry, stat);
+ 
+ 	/*
+ 	 * We can't update i_blocks if the block allocation is delayed
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 349d7b3..6162387 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2579,6 +2579,7 @@ const struct inode_operations ext4_dir_inode_operations = {
+ 	.mknod		= ext4_mknod,
+ 	.rename		= ext4_rename,
+ 	.setattr	= ext4_setattr,
++	.getattr	= ext4_getattr,
+ #ifdef CONFIG_EXT4_FS_XATTR
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
+@@ -2591,6 +2592,7 @@ const struct inode_operations ext4_dir_inode_operations = {
+ 
+ const struct inode_operations ext4_special_inode_operations = {
+ 	.setattr	= ext4_setattr,
++	.getattr	= ext4_getattr,
+ #ifdef CONFIG_EXT4_FS_XATTR
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index ceebaf8..2d395bf 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3040,6 +3040,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (sb->s_magic != EXT4_SUPER_MAGIC)
+ 		goto cantfind_ext4;
+ 	sbi->s_kbytes_written = le64_to_cpu(es->s_kbytes_written);
++	memcpy(sb->s_volume_id, es->s_uuid, sizeof(sb->s_volume_id));
+ 
+ 	/* Set defaults before we parse the mount options */
+ 	def_mount_opts = le32_to_cpu(es->s_default_mount_opts);
+diff --git a/fs/ext4/symlink.c b/fs/ext4/symlink.c
+index ed9354a..d8fe7fb 100644
+--- a/fs/ext4/symlink.c
++++ b/fs/ext4/symlink.c
+@@ -35,6 +35,7 @@ const struct inode_operations ext4_symlink_inode_operations = {
+ 	.follow_link	= page_follow_link_light,
+ 	.put_link	= page_put_link,
+ 	.setattr	= ext4_setattr,
++	.getattr	= ext4_getattr,
+ #ifdef CONFIG_EXT4_FS_XATTR
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
+@@ -47,6 +48,7 @@ const struct inode_operations ext4_fast_symlink_inode_operations = {
+ 	.readlink	= generic_readlink,
+ 	.follow_link	= ext4_follow_link,
+ 	.setattr	= ext4_setattr,
++	.getattr	= ext4_getattr,
+ #ifdef CONFIG_EXT4_FS_XATTR
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
 
