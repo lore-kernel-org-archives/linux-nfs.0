@@ -1,56 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:60423 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:52952 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752744Ab2DERcB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Apr 2012 13:32:01 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Miklos Szeredi <miklos@szeredi.hu>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [REGRESSION] NFSv4: open(O_TRUNC) hangs
-Date: Thu, 5 Apr 2012 17:31:58 +0000
-Message-ID: <1333647115.4573.3.camel@lade.trondhjem.org>
-References: <87d37osrx2.fsf@tucsk.pomaz.szeredi.hu>
-In-Reply-To: <87d37osrx2.fsf@tucsk.pomaz.szeredi.hu>
-Content-Type: text/plain; charset="utf-8"
+	id S1755425Ab2DTWIf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 18:08:35 -0400
+Date: Fri, 20 Apr 2012 18:08:32 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeremy Allison <jra@samba.org>
+Cc: Ondrej Valousek <webserv@s3group.com>,
+        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
+        linux-nfs@vger.kernel.org
+Subject: Re: NFSv4 ACLs
+Message-ID: <20120420220832.GA1914@fieldses.org>
+References: <4F913492.8000402@s3group.cz>
+ <20120420185553.GB32622@samba2>
+ <20120420212627.GA710@fieldses.org>
+ <20120420215945.GE32622@samba2>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120420215945.GE32622@samba2>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA0LTAzIGF0IDE4OjI2ICswMjAwLCBNaWtsb3MgU3plcmVkaSB3cm90ZToN
-Cj4gTm93IHRoaXMgdGVzdCBwcm9ncmFtIGhhbmdzIG9uIGxhdGVzdCBnaXQuDQo+IA0KPiBUaGFu
-a3MsDQo+IE1pa2xvcw0KPiAtLS0NCj4gDQo+ICNpbmNsdWRlIDxzdGRpby5oPg0KPiAjaW5jbHVk
-ZSA8dW5pc3RkLmg+DQo+ICNpbmNsdWRlIDxmY250bC5oPg0KPiANCj4gaW50IG1haW4oaW50IGFy
-Z2MsIGNoYXIgKmFyZ3ZbXSkNCj4gew0KPiAJaW50IHJlczsNCj4gCWNoYXIgKm5hbWUgPSBhcmd2
-WzFdOw0KPiAJaW50IGZkOw0KPiANCj4gCXVubGluayhuYW1lKTsNCj4gCWZkID0gY3JlYXQobmFt
-ZSwgMDY0NCk7DQo+IAl3cml0ZShmZCwgIjEyMyIsIDMpOw0KPiAJY2xvc2UoZmQpOw0KPiAJY2xv
-c2Uob3BlbihuYW1lLCBPX1JET05MWSB8IE9fVFJVTkMpKTsNCj4gDQo+IAlyZXR1cm4gMDsNCj4g
-fQ0KDQpIaSBNaWtsb3MsDQoNClRoZSBmb2xsb3dpbmcgY2xpZW50IHBhdGNoIGZpeGVzIHRoZSBy
-ZWdyZXNzaW9uIGZvciBtZS4NCg0KQ2hlZXJzDQogIFRyb25kDQo4PC0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCkZyb20gNWVjMGVkNmNkODhjNjU0
-NjQwOTI1MzM3ODc3MDZkOWVjZmI4NTMyMCBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206
-IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQpEYXRlOiBXZWQs
-IDQgQXByIDIwMTIgMTA6NTE6MzMgLTA3MDANClN1YmplY3Q6IFtQQVRDSCAxLzJdIE5GU3Y0OiBE
-b24ndCB1c2Ugb3BlbiBzdGF0ZWlkcyB0aGF0IGhhdmUgdGhlIHdyb25nIG9wZW4NCiBtb2RlDQoN
-CklmIHRoZSBjbGllbnQgaXMgZG9pbmcgYW4gb3BlcmF0aW9uIHRoYXQgbmVlZHMgYSBwYXJ0aWN1
-bGFyIG9wZW4NCm1vZGUsIHRoZW4gbmZzNF9zZWxlY3Rfcndfc3RhdGVpZCgpIHNob3VsZCBvbmx5
-IGNvcHkgdGhlDQpvcGVuIHN0YXRlaWQgaWYgdGhlIGxhdHRlciBoYXMgdGhlIGNvcnJlY3Qgb3Bl
-biBtb2RlLg0KDQpPdGhlcndpc2Ugd2Ugc2hvdWxkIGp1c3QgdXNlIHRoZSB6ZXJvIHN0YXRlaWQu
-DQoNClJlcG9ydGVkLWJ5OiBNaWtsb3MgU3plcmVkaSA8bWlrbG9zQHN6ZXJlZGkuaHU+DQpTaWdu
-ZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0K
-LS0tDQogZnMvbmZzL25mczRzdGF0ZS5jIHwgICAgNyArKysrKysrDQogMSBmaWxlcyBjaGFuZ2Vk
-LCA3IGluc2VydGlvbnMoKyksIDAgZGVsZXRpb25zKC0pDQoNCmRpZmYgLS1naXQgYS9mcy9uZnMv
-bmZzNHN0YXRlLmMgYi9mcy9uZnMvbmZzNHN0YXRlLmMNCmluZGV4IDBmNDM0MTQuLjcxZGNmZDQg
-MTAwNjQ0DQotLS0gYS9mcy9uZnMvbmZzNHN0YXRlLmMNCisrKyBiL2ZzL25mcy9uZnM0c3RhdGUu
-Yw0KQEAgLTkzMiw2ICs5MzIsMTMgQEAgdm9pZCBuZnM0X3NlbGVjdF9yd19zdGF0ZWlkKG5mczRf
-c3RhdGVpZCAqZHN0LCBzdHJ1Y3QgbmZzNF9zdGF0ZSAqc3RhdGUsDQogew0KIAlpZiAobmZzNF9j
-b3B5X2RlbGVnYXRpb25fc3RhdGVpZChkc3QsIHN0YXRlLT5pbm9kZSwgZm1vZGUpKQ0KIAkJcmV0
-dXJuOw0KKw0KKwlmbW9kZSAmPSBGTU9ERV9SRUFEfEZNT0RFX1dSSVRFOw0KKwlpZiAoKHN0YXRl
-LT5zdGF0ZSAmIGZtb2RlKSAhPSBmbW9kZSkgew0KKwkJbmZzNF9zdGF0ZWlkX2NvcHkoZHN0LCAm
-emVyb19zdGF0ZWlkKTsNCisJCXJldHVybjsNCisJfQ0KKw0KIAlpZiAobmZzNF9jb3B5X2xvY2tf
-c3RhdGVpZChkc3QsIHN0YXRlLCBmbF9vd25lciwgZmxfcGlkKSkNCiAJCXJldHVybjsNCiAJbmZz
-NF9jb3B5X29wZW5fc3RhdGVpZChkc3QsIHN0YXRlKTsNCi0tIA0KMS43LjcuNg0KDQoNCi0tIA0K
-VHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpU
-cm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+On Fri, Apr 20, 2012 at 02:59:45PM -0700, Jeremy Allison wrote:
+> On Fri, Apr 20, 2012 at 05:26:27PM -0400, J. Bruce Fields wrote:
+> > On Fri, Apr 20, 2012 at 11:55:53AM -0700, Jeremy Allison wrote:
+> > > On Fri, Apr 20, 2012 at 12:04:02PM +0200, Ondrej Valousek wrote:
+> > > > Hi List,
+> > > > 
+> > > > I know this has been asked many times, but I will ask one more time:
+> > > > I would like to export NFSv4 mounted filesystem with Samba and would
+> > > > like to be able to use windows "security tab" in explorer to modify
+> > > > these ACLs.
+> > > > Do I have any chance with Samba on RHEL-5/6?
+> > > 
+> > > Does Linux have local API's to manipulate mounted NFSv4 ACLs ?
+> > > 
+> > > Samba has VFS modules to cope with mapping Windows ACLs onto
+> > > NFSv4 ACLs but currently they only work on AIX, Linux with IBM's
+> > > gpfs and Solaris right now.
+> > > 
+> > > If you can point me a docs showing the library APIs for Linux
+> > > to allow programatic manipulation of NFSv4 ACLs then I can
+> > > make it work on Linux too.
+> > 
+> > It's a bit idiosyncratic, but should be easy enough to handle if you
+> > want, I think: on the linux client, on an nfs4 filesystem, the
+> > "system.nfs4_acl" xattr contains the xdr-encoded ACL as it came in on
+> > the wire (network-byte-order and all).  See the definition of fattr4_acl
+> > in rfc 3530.
+> 
+> I'm sorry, but that *really* *really* sucks. There needs to
+> be an API on the Linux side that implements both RichACLs
+> and NFSv4 ACLs (as they're the same thing essentially).
+
+Yes, that's the eventual plan.
+
+The richacl patches still need a little more work, and alas there's
+noone working on them currently as far as I know.
+
+So if you wanted something that would work now, you could use
+system.nfs4_acl now and later replace that by something that tried
+richacls and then fell back.
+
+The xdr isn't hard to parse or create--the main problem would be
+figuring out what to do with the names....
+
+(By the way, is reexporting nfs with samba really going to work well
+anyway?)
+
+--b.
