@@ -1,43 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61494 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:33913 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754758Ab2DXSuw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Apr 2012 14:50:52 -0400
-From: Fred Isaman <iisaman@netapp.com>
+	id S1756241Ab2DTWqW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 18:46:22 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
 To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 1/1] NFS: Prevent garbage cinfo->ds from leaking out
-Date: Tue, 24 Apr 2012 14:50:34 -0400
-Message-Id: <1335293434-12957-1-git-send-email-iisaman@netapp.com>
+Cc: Jeff Layton <jlayton@redhat.com>, Neil Brown <neilb@suse.de>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 3/3] mountd: ignore use_ipaddr and just try both client types
+Date: Fri, 20 Apr 2012 18:46:18 -0400
+Message-Id: <1334961978-2843-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1334961978-2843-1-git-send-email-bfields@redhat.com>
+References: <1334961978-2843-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a bugfix that applies on top of the previous directio patches,
-that fixes a bug introduced in "NFS: create struct nfs_commit_info".
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
+There are races when switching use_ipaddr on or off: it's possible the
+kernel may still do export upcalls with the previous client type.  So,
+let's just match either one.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/nfs4filelayout.c |    7 ++++++-
- 1 files changed, 6 insertions(+), 1 deletions(-)
+ utils/mountd/cache.c |    7 ++++---
+ 1 files changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 806a55f..80a63f6 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -1184,7 +1184,12 @@ filelayout_free_layout_hdr(struct pnfs_layout_hdr *lo)
- static struct pnfs_ds_commit_info *
- filelayout_get_ds_info(struct inode *inode)
- {
--	return &FILELAYOUT_FROM_HDR(NFS_I(inode)->layout)->commit_info;
-+	struct pnfs_layout_hdr *layout = NFS_I(inode)->layout;
-+
-+	if (layout == NULL)
-+		return NULL;
-+	else
-+		return &FILELAYOUT_FROM_HDR(layout)->commit_info;
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index a6bad07..181922b 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -495,12 +495,13 @@ static bool match_fsid(struct parsed_fsid *parsed, nfs_export *exp, char *path)
+ 	return false;
  }
  
- static struct pnfs_layoutdriver_type filelayout_type = {
+-static bool match_client(char *dom, nfs_export *exp, struct addinfo *ai)
++static bool match_client(char *dom, nfs_export *exp, struct addrinfo *ai)
+ {
+-	if (!use_ipaddr && client_member(dom, exp->m_client->m_hostname))
++	if (client_member(dom, exp->m_client->m_hostname))
+ 		return true;
+-	if (use_ipaddr && ai && client_check(exp->m_client, ai))
++	if (ai && client_check(exp->m_client, ai))
+ 		return true;
++	return false;
+ }
+ 
+ struct addrinfo *lookup_client_addr(char *dom)
 -- 
-1.7.2.1
+1.7.7.6
 
