@@ -1,38 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60022 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:17574 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752170Ab2DLRHm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Apr 2012 13:07:42 -0400
-Date: Thu, 12 Apr 2012 13:07:39 -0400
+	id S1751300Ab2DTUvg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 16:51:36 -0400
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
 To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: global openowner_id and lockowner_id
-Message-ID: <20120412170739.GB4684@fieldses.org>
-References: <58E57AF8-1636-4017-93C0-8520488ED866@oracle.com>
- <1334245818.2237.55.camel@lade.trondhjem.org>
- <7212EB20-16EC-475E-993E-3F244C621AB0@oracle.com>
- <1334246326.2237.59.camel@lade.trondhjem.org>
+CC: "Adamson, Dros" <Weston.Adamson@netapp.com>, Jim Rees <rees@umich.edu>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS4: fix referrals with IPv6 mounts
+Date: Fri, 20 Apr 2012 20:51:17 +0000
+Message-ID: <A3FAE1E4-2AB8-4AF0-AC46-77EA3E4B9AB2@netapp.com>
+References: <1334949705-33393-1-git-send-email-dros@netapp.com>
+ <20120420194504.GA10259@umich.edu>
+ <EA178ED0-5813-4235-A0CF-CF9D54AFB04F@netapp.com>
+ <1334952788.3295.24.camel@lade.trondhjem.org>
+In-Reply-To: <1334952788.3295.24.camel@lade.trondhjem.org>
+Content-Type: multipart/signed;
+	boundary="Apple-Mail=_68AA061C-DC4C-4238-9EEC-EB4AD0BCF1E1";
+	protocol="application/pkcs7-signature"; micalg=sha1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1334246326.2237.59.camel@lade.trondhjem.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 12, 2012 at 03:58:45PM +0000, Myklebust, Trond wrote:
-> touch won't keep the file open. There is no open state once touch has
-> finished executing.
-> 
-> What you have exposed above is a _server_ bug. The server is _not_
-> allowed to assume that the client will cache an open owner forever once
-> it no longer holds any open state using that open owner. We had a loong
-> discussion about this on the mailing list a few years ago with David
-> Robinson being the person who formulated the above rule.
+--Apple-Mail=_68AA061C-DC4C-4238-9EEC-EB4AD0BCF1E1
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=windows-1252
 
-Chuck, what server are you testing against?
+On Apr 20, 2012, at 4:13 PM, Myklebust, Trond wrote:
 
-I don't think the Linux server does the above, so it probably does need
-fixing.
+> On Fri, 2012-04-20 at 19:57 +0000, Adamson, Dros wrote:
+>> On Apr 20, 2012, at 3:45 PM, Jim Rees wrote:
+>>=20
+>>> Weston Andros Adamson wrote:
+>>>=20
+>>> nfs4_path() was parsing the path component by splitting on the first =
+colon.
+>>> This is wrong when an IPv6 address is used to mount a server.
+>>>=20
+>>> For example, having mounted 'fc00::10:/export', nfs4_path() returned
+>>> ':10:/export'.  This causes referrals (using IPv4 or IPv6 addresses) =
+to fail
+>>> in nfs4_validate_fspath().
+>>>=20
+>>> Parsing the path component by using the *last* colon works with
+>>> IPv6 as well as IPv4 addrs.
+>>>=20
+>>> What if your mount is:
+>>>=20
+>>> server.edu:/export/:I-like-colons:
+>>>=20
+>>> It seems to me something has to give.  Either we require v6 =
+addresses be
+>>> enclosed in [], export dirs start with "/", or exports have no ":".
+>>=20
+>>=20
+>> Yeah, you're right.
+>>=20
+>> Although IPv6 addrs must be enclosed in [] to work with mount, it's =
+always displayed in the kernel without the [].
+>>=20
+>> I suppose the correct fix is to always display IPv6 addresses =
+enclosed in [], which might touch a *lot* of places.
+>>=20
+>> Thoughts?  I'll wait for others to chime in before I go fixing this. =
+I have a set of nfsd and mountd patches that deal with similar issues on =
+the server side.  I'll clean those up and submit them before getting =
+back to this.
+>=20
+> We do know which part is the hostname, and which is the pathname. If =
+you
+> look at "try_location()", you'll see that the hostname is stored in
+> location->servers, and is then copied into this empty buffer.
+>=20
+> If you want to test if that is an IPv6 address so that you can enclose
+> it in [], then that should be fairly easy to do right there=85
 
---b.
+Right, we have separate hostname and pathname for each fs_location4, but =
+I'm talking about the return value of nfs_path() which is used to =
+determine the server-side path on an arbitrary dentry on the *current* =
+mountpoint (not the referral server).
+The path part of nfs_path() is then compared against the fs_path of the =
+nfs4_fs_locations struct (this is all in nfs4_validate_fspath).
+
+Having nfs_path return [] wrapped IPv6 addresses basically means =
+changing the devname to that format (d_fsdata is used by nfs_path()).  =
+I'm concerned about changing the format of devname - its used all over =
+the place.
+
+So the options are:
+ 1) change the format of devname
+ 2) change how nfs4_validate_fspath gets the server-side path component =
+of the current mount (don't use nfs_path())
+
+I'll try option 1 and see what breaks.
+
+-dros
+
+
+--Apple-Mail=_68AA061C-DC4C-4238-9EEC-EB4AD0BCF1E1
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Type: application/pkcs7-signature; name="smime.p7s"
+Content-Transfer-Encoding: base64
+
+MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIDTzCCA0sw
+ggIzoAMCAQICAQEwCwYJKoZIhvcNAQEFMEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYD
+VQQGEwJVUzEeMBwGCSqGSIb3DQEJARYPZHJvc0BuZXRhcHAuY29tMB4XDTExMDYwODIyMDc0NloX
+DTEyMDYwNzIyMDc0NlowRjEXMBUGA1UEAwwOV2VzdG9uIEFkYW1zb24xCzAJBgNVBAYTAlVTMR4w
+HAYJKoZIhvcNAQkBFg9kcm9zQG5ldGFwcC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
+AoIBAQC8/tJxtovJEXYRfSsrFOWKHxIZGY7/2mBee1DpWuoGDbVNapefCC7WXe+Nqxz609w2J/Mk
+/k3trZ3Ge2NXK0tGnP9NzjkzpGA7rSpM3wUFsvbLMUEGfQpvV24/nYvcLHTvOOEUaDPpHduN94bD
+dwvyowzDIRIpF2MeRnOzBNeHkrGHlZdzPmGjm8tkhrDRRkDYHhlxaiG4z30KCfAazxomuINiy1kj
+vbndXooYMDoh9H63hgW4NkOedtLdflLa322DXQ3nFU7YbyOIjHVl1tgWJLDWf7WT3lsAB8KvuJZ5
+zhsUB+fqxCKPJVRPDO1gjChvvtGiG1tGUUZz0H9Wx00zAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIH
+gDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDBDAaBgNVHREEEzARgQ9kcm9zQG5ldGFwcC5jb20wDQYJ
+KoZIhvcNAQEFBQADggEBACv0niZSmW+psB1sJXULh3mecDbN2mj0bFpN1YNdjcV7BiOLJ1Rs1ibV
+f13h73z8C7SBsPXTM5si8gmJtOnXM5jsgtlql44h/RrjUr8+mtK5DPCZls9J7iz3cGthzwOPvxUj
+nMSv3BpRX5oJom5ESgCM9Nn4u/ECTlLMhEIOYnBFiN0eDxcxz+r1cpbHg3r0otIKyxLpeaCjP6AH
+F93EHp4T8Rb63y3CcDgxrQGHlTdVi3QvxaMUexUXD81fiA+UqsB/MKmRxB1Hs4Vf3Q/+ejcm78K1
+ROF8TNPmNWRlKg3Y7cSFjZGzLuzXsvSsCbw4HLn0oZe/OfgSbarTAxttL5IxggHRMIIBzQIBATBL
+MEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYDVQQGEwJVUzEeMBwGCSqGSIb3DQEJARYP
+ZHJvc0BuZXRhcHAuY29tAgEBMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
+MBwGCSqGSIb3DQEJBTEPFw0xMjA0MjAyMDUxMThaMCMGCSqGSIb3DQEJBDEWBBTk361XCck0KT5k
+xqIMxa8RFtwdGjANBgkqhkiG9w0BAQEFAASCAQBxi6vAHVJIAw7UsQga0/aKEwtetiGs7OtMZmJi
+YgJXL5nH6Ny5GWnhtd3qlj2YwO5ZjUb1CFreQ9dIucz/8ClkoeEG4vw0Wj1QGnQ9RiSeel52/SHt
+DrXa2p1l9lzrTUkTgQXkMw1bm83KVZ79Nbv0Gj2lR2xZ98uOtPT2cmrd3Iip80Vfn4V+sC13M9XL
+da0c31Gg59pjF73Zds5RY1Q/h0ZTacBmqz5wfNxWlB/b1XbhUfcGJEFnPt4wVnS0SyEUsyNmEjuA
+uIfv9VTYsgTM03SY7/5BgVhvPs4zEf4t1FE/yb3+PVYiLSEVX8Fkio6XyJivi9qSmdJTz9bxZfjn
+AAAAAAAA
+
+--Apple-Mail=_68AA061C-DC4C-4238-9EEC-EB4AD0BCF1E1--
