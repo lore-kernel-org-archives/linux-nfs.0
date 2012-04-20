@@ -1,66 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:42274 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:36297 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760227Ab2D0Pll (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Apr 2012 11:41:41 -0400
-Date: Fri, 27 Apr 2012 11:41:33 -0400
-From: Josh Boyer <jwboyer@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Jim Rees <rees@umich.edu>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: Add modalias for "nfs4"
-Message-ID: <20120427154123.GE13189@zod.bos.redhat.com>
-References: <20120427131031.GA13189@zod.bos.redhat.com>
- <20120427141918.GA15506@umich.edu>
- <20120427144840.GB13189@zod.bos.redhat.com>
- <1335538228.3910.1.camel@lade.trondhjem.org>
- <20120427145352.GC13189@zod.bos.redhat.com>
- <1335538927.3910.3.camel@lade.trondhjem.org>
- <20120427151406.GD13189@zod.bos.redhat.com>
- <1335540074.3910.9.camel@lade.trondhjem.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1335540074.3910.9.camel@lade.trondhjem.org>
+	id S1753838Ab2DTVMo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 17:12:44 -0400
+Date: Fri, 20 Apr 2012 17:13:14 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Malahal Naineni <malahal@us.ibm.com>
+Cc: Steve Dickson <SteveD@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        miklos@szeredi.hu, viro@ZenIV.linux.org.uk, hch@infradead.org,
+        michael.brantley@deshaw.com, sven.breuner@itwm.fraunhofer.de,
+        chuck.lever@oracle.com, pstaubach@exagrid.com, bfields@fieldses.org,
+        trond.myklebust@fys.uio.no, rees@umich.edu
+Subject: Re: [PATCH RFC v3] vfs: make fstatat retry once on ESTALE errors
+ from getattr call
+Message-ID: <20120420171314.73801874@corrin.poochiereds.net>
+In-Reply-To: <20120420203725.GA3512@us.ibm.com>
+References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
+	<1334749927-26138-1-git-send-email-jlayton@redhat.com>
+	<20120420104055.511e15bc@tlielax.poochiereds.net>
+	<4F91C49D.8070908@RedHat.com>
+	<20120420203725.GA3512@us.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 27, 2012 at 03:21:15PM +0000, Myklebust, Trond wrote:
-> > > > OK.  So either this patch needs to go in, or something needs to add:
-> > > > 
-> > > > alias nfs4 nfs
-> > > > 
-> > > > to a conf file so modprobe picks it up.  I figured the kernel could add
-> > > > the alias itself.  Is there a reason not to?
-> > > 
-> > > Yes. This is a legacy feature that we want to encourage people to move
-> > > their systems off...
-> > 
-> > So essentially what needs to happen is:
-> > 
-> > - Recent distros still ship the modalias in a conf file
-> > - Upstream nfs-utils starts translating 'mount -t nfs4' into 'mount -t
-> >   nfs -overs=4' in /sbin/mount.nfs4
-> > - Upstream releases that
-> > - Distros drop the alias.
-> > 
-> > Right?
+On Fri, 20 Apr 2012 15:37:26 -0500
+Malahal Naineni <malahal@us.ibm.com> wrote:
+
+> Steve Dickson [SteveD@redhat.com] wrote:
+> > > 2) if we assume that it is fairly representative of one, how can we
+> > > achieve retrying indefinitely with NFS, or at least some large finite
+> > > amount?
+> > The amount of looping would be peer speculation. If the problem can
+> > not be handled by one simple retry I would say we simply pass the
+> > error up to the app... Its an application issue... 
 > 
-> No. Really all we need to do is add a printf() to /sbin/mount.nfs4 to
-> the effect that this is a legacy feature and that '-t nfs -overs=4' is
-> the recommended mount option. Perhaps the distros can also have their
-> distro upgrade utilities edit /etc/fstab to upgrade those automatically.
+> As someone said, ESTALE is an incorrect errno for a path based call.
+> How about turning ESTALE into ENOENT after a retry or few retries?
 > 
-> Then the distros can drop the alias whenever they think it is
-> appropriate.
 
-My limited experience shows that people won't change their habits until
-those habits simply no longer work.  Adding a printf is probably a fine
-thing to do, but I'm not sure it will have much impact on how people go
-about mounting NFSv4 filesystems.  That leads me to believe that the
-alias will be carried along for quite a while.
+It's not really the same thing. One could envision an application
+that's repeatedly renaming a new file on top of another one. The file
+is never missing from the namespace of the server, but you could still
+end up getting an ESTALE.
 
-Anyway, the immediate problem can be solved by just keeping the alias in
-a conf file.  If that's what is recommended for now, OK.
+That would break other atomicity guarantees in an even worse way, IMO...
 
-josh
+-- 
+Jeff Layton <jlayton@redhat.com>
