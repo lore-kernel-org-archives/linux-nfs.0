@@ -1,49 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57517 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:4083 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758177Ab2DIUwz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Apr 2012 16:52:55 -0400
+	id S932803Ab2DTSsR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 14:48:17 -0400
 From: Fred Isaman <iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
 Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 09/26] NFS: use req_offset where appropriate
-Date: Mon,  9 Apr 2012 16:52:07 -0400
-Message-Id: <1334004744-31842-10-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
-References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
+Subject: [PATCH v3 18/25] NFS: prepare coalesce testing for directio
+Date: Fri, 20 Apr 2012 14:47:50 -0400
+Message-Id: <1334947677-28864-19-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
+References: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The coalesce code made assumptions that will no longer be true once
+non-page aligned io occurs.  This introduces no change in
+current behavior, but allows for more general situations to come.
+
 Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/nfs4filelayout.c |    7 +++----
- 1 files changed, 3 insertions(+), 4 deletions(-)
+ fs/nfs/nfs4filelayout.c |   12 ++++++++++++
+ fs/nfs/pagelist.c       |    2 +-
+ fs/nfs/pnfs.c           |    8 ++++++++
+ 3 files changed, 21 insertions(+), 1 deletions(-)
 
 diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index b9b2e54..04dd63f 100644
+index 02d8170..e40523f 100644
 --- a/fs/nfs/nfs4filelayout.c
 +++ b/fs/nfs/nfs4filelayout.c
-@@ -759,8 +759,8 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 	    !nfs_generic_pg_test(pgio, prev, req))
+@@ -796,6 +796,16 @@ filelayout_pg_init_read(struct nfs_pageio_descriptor *pgio,
+ {
+ 	BUG_ON(pgio->pg_lseg != NULL);
+ 
++	if (req->wb_offset != req->wb_pgbase) {
++		/*
++		 * Handling unaligned pages is difficult, because have to
++		 * somehow split a req in two in certain cases in the
++		 * pg.test code.  Avoid this by just not using pnfs
++		 * in this case.
++		 */
++		nfs_pageio_reset_read_mds(pgio);
++		return;
++	}
+ 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 					   req->wb_context,
+ 					   0,
+@@ -815,6 +825,8 @@ filelayout_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 
+ 	BUG_ON(pgio->pg_lseg != NULL);
+ 
++	if (req->wb_offset != req->wb_pgbase)
++		goto out_mds;
+ 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 					   req->wb_context,
+ 					   0,
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 5d01a16..b344946 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -280,7 +280,7 @@ static bool nfs_can_coalesce_requests(struct nfs_page *prev,
  		return false;
+ 	if (req->wb_context->state != prev->wb_context->state)
+ 		return false;
+-	if (req->wb_index != (prev->wb_index + 1))
++	if (req_offset(req) != req_offset(prev) + prev->wb_bytes)
+ 		return false;
+ 	if (req->wb_pgbase != 0)
+ 		return false;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 4fa43e0..5e11557 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1082,6 +1082,10 @@ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *r
+ {
+ 	BUG_ON(pgio->pg_lseg != NULL);
  
--	p_stripe = (u64)prev->wb_index << PAGE_CACHE_SHIFT;
--	r_stripe = (u64)req->wb_index << PAGE_CACHE_SHIFT;
-+	p_stripe = (u64)req_offset(prev);
-+	r_stripe = (u64)req_offset(req);
- 	stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
++	if (req->wb_offset != req->wb_pgbase) {
++		nfs_pageio_reset_read_mds(pgio);
++		return;
++	}
+ 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 					   req->wb_context,
+ 					   req_offset(req),
+@@ -1100,6 +1104,10 @@ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *
+ {
+ 	BUG_ON(pgio->pg_lseg != NULL);
  
- 	do_div(p_stripe, stripe_unit);
-@@ -868,8 +868,7 @@ filelayout_choose_commit_list(struct nfs_page *req,
- 	 * to store the value calculated in filelayout_write_pagelist
- 	 * and just use that here.
- 	 */
--	j = nfs4_fl_calc_j_index(lseg,
--				 (loff_t)req->wb_index << PAGE_CACHE_SHIFT);
-+	j = nfs4_fl_calc_j_index(lseg, req_offset(req));
- 	i = select_bucket_index(fl, j);
- 	buckets = FILELAYOUT_FROM_HDR(lseg->pls_layout)->commit_info.buckets;
- 	list = &buckets[i].written;
++	if (req->wb_offset != req->wb_pgbase) {
++		nfs_pageio_reset_write_mds(pgio);
++		return;
++	}
+ 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 					   req->wb_context,
+ 					   req_offset(req),
 -- 
 1.7.2.1
 
