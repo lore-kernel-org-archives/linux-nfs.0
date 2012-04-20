@@ -1,91 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34645 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:20251 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757282Ab2DXWFN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Apr 2012 18:05:13 -0400
-Date: Tue, 24 Apr 2012 18:05:11 -0400
-To: Neil Brown <neilb@suse.de>
-Cc: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/6] fix some problems with v4root handling in mountd
-Message-ID: <20120424220511.GC26073@fieldses.org>
-References: <20120424054003.20130.16209.stgit@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120424054003.20130.16209.stgit@notabene.brown>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1752394Ab2DTVMf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 17:12:35 -0400
+Date: Fri, 20 Apr 2012 17:13:00 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu,
+        viro@ZenIV.linux.org.uk, hch@infradead.org,
+        michael.brantley@deshaw.com, sven.breuner@itwm.fraunhofer.de,
+        chuck.lever@oracle.com, pstaubach@exagrid.com, malahal@us.ibm.com,
+        bfields@fieldses.org, trond.myklebust@fys.uio.no, rees@umich.edu
+Subject: Re: [PATCH RFC v3] vfs: make fstatat retry once on ESTALE errors
+ from getattr call
+Message-ID: <20120420171300.326d6e36@corrin.poochiereds.net>
+In-Reply-To: <4F91C49D.8070908@RedHat.com>
+References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
+	<1334749927-26138-1-git-send-email-jlayton@redhat.com>
+	<20120420104055.511e15bc@tlielax.poochiereds.net>
+	<4F91C49D.8070908@RedHat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 24, 2012 at 03:46:38PM +1000, Neil Brown wrote:
-> First I'd like to say that I love seeing comments that explain the
-> code..  What way when the code does something different to the
-> comment, I can be sure I'm on to something :-)
+On Fri, 20 Apr 2012 16:18:37 -0400
+Steve Dickson <SteveD@redhat.com> wrote:
 
-ACK to all of these from me, thanks!
+> On 04/20/2012 10:40 AM, Jeff Layton wrote:
+> > I guess the questions at this point is:
+> > 
+> > 1) How representative is Peter's mkdir_test() of a real-world workload?
+> Reading your email I had to wonder the same thing... What application 
+> removes hierarchy of directories in a loop from two different clients?
+> I would suspect not many, if any... esp over NFS... 
+>  
 
---b.
+Peter's test just happens to demonstrate the problem well, but one
+could envision someone removing a heirarchy of directories on the
+server while we're trying to do other operations in it. At that point,
+we can easily end up hitting an ESTALE twice while doing the lookup and
+returning ESTALE back to userspace.
 
+> > 
+> > 2) if we assume that it is fairly representative of one, how can we
+> > achieve retrying indefinitely with NFS, or at least some large finite
+> > amount?
+> The amount of looping would be peer speculation. If the problem can
+> not be handled by one simple retry I would say we simply pass the
+> error up to the app... Its an application issue... 
+>  
+
+It's not an application issue. The application just asked the kernel
+to do an operation on a pathname. The only reason you're getting an
+ESTALE back in this situation is a shortcoming of the implementation.
+
+We passed it a pathname after all, not a filehandle. ESTALE really has
+no place as a return code in that situation...
+
+> > 
+> > I have my doubts as to whether it would really be as big a problem for
+> > other filesystems as Miklos and others have asserted, but I'll take
+> > their word for it at the moment. What's the best way to contain this
+> > behavior to just those filesystems that want to retry indefinitely when
+> > they get an ESTALE? Would we need to go with an entirely new
+> > ESTALERETRY after all?
+> > 
+> Introducing a new errno to handle this problem would be overkill IMHO...
 > 
-> If I have exports:
+> If we have to go to the looping approach, I would strong suggest we
+> make the file systems register for this type of behavior...
 > 
->  /  *(rw,no_root_squash)
->  /home 192.168.1.2(rw,no_root_squash)
-> 
-> Then I want to export 'root' to everything (on my side of a firewall)
-> but '/home' only to one machine.
-> However this doesn't work for host 192.168.1.2.
-> If I try to mount '/' with NFSv3, it fails.
-> If I try to mount '/' with NFSv4, then it works but we only see
-> "home" in the mounted "/".
-> 
-> The problem is that the export of "/home" causes a V4ROOT export
-> of "/" to be created for 192.168.1.2 and as MCL_SUBNETWORK comes
-> before MCL_WILDCARD, the V4ROOT export wins and the other wildcard
-> export isn't even tried.
-> 
-> So the following patches:
->  1/ fix the NFSv4 mount case so that we really see '/' and not a pseudo
->     '/'.  This is the case where the comment says the right thing
->     but the code doesn't.
-> 
->  2/ fix 'mountd' lookup for NFSv2/v3 so they successfully mount
->     the real export, and don't fail because only the V4ROOT export
->     was found,
-> 
->  3/ Fix a similar ordering problem in nfsd_fh.  Without this an
->     NFSv4 client might see the V4ROOT export for '/' rather than
->     the explicitly exported export.
-> 
->  4/ Set a useful ttl on V4ROOT exports so they don't need to
->     constantly be refreshed, an
->   
->  5/ fix a buglet which didn't cause any of these problems but
->     certainly looks wrong.
-> 
-> Enjoy :-)
-> 
-> NeilBrown
-> 
-> ---
-> 
-> Neil Brown (6):
->       v4_root_add_parents: remove a possible buffer overflow.
->       v4root: set the time-to-live for V4ROOT exports to the DEFAULT.
->       v4set_root: force "fsid=0" for all exports of '/'
->       nfsd_fh: if two exports are possible, choose the one without V4ROOT
->       auth_authenticate_newcache: prefer non-V4ROOT export over V4ROOT exports.
->       lookup_export: really prefer nonV4ROOT exports.
-> 
-> 
->  utils/mountd/auth.c   |    7 +++----
->  utils/mountd/cache.c  |   21 +++++++++++++++++----
->  utils/mountd/v4root.c |   12 ++++++++++--
->  3 files changed, 30 insertions(+), 10 deletions(-)
-> 
-> -- 
-> Signature
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+Returning ESTALERETRY would be registering for it in a way and it is
+somewhat cleaner than having to go all the way back up to the fstype to
+figure out whether you want to retry it or not.
+
+There's also the non-trivial matter of needing to retry during the
+lookup itself. If the lookup just returns ESTALE, then you don't have
+any way to know whether the underlying fs wanted you to retry it or
+not...
+
+I'm not thrilled with having to do all of this ESTALE to ESTALERETRY
+conversion and back, but it does give us a way to neatly deal with and
+ESTALE during the lookup.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
