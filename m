@@ -1,310 +1,501 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:47995 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:4083 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754003Ab2DPMSE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Apr 2012 08:18:04 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 05/11] mm: swap: Implement generic handler for swap_activate
-Date: Mon, 16 Apr 2012 13:17:49 +0100
-Message-Id: <1334578675-23445-6-git-send-email-mgorman@suse.de>
-In-Reply-To: <1334578675-23445-1-git-send-email-mgorman@suse.de>
-References: <1334578675-23445-1-git-send-email-mgorman@suse.de>
+	id S932786Ab2DTSsS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 14:48:18 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH v3 19/25] NFS: rewrite directio read to use async coalesce code
+Date: Fri, 20 Apr 2012 14:47:51 -0400
+Message-Id: <1334947677-28864-20-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
+References: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The version of swap_activate introduced is sufficient for swap-over-NFS
-but would not provide enough information to implement a generic handler.
-This patch shuffles things slightly to ensure the same information is
-available for aops->swap_activate() as is available to the core.
+This also has the advantage that it allows directio to use pnfs.
 
-No functionality change.
-
-Signed-off-by: Mel Gorman <mgorman@suse.de>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- include/linux/fs.h   |    7 ++--
- include/linux/swap.h |    5 +++
- mm/page_io.c         |   92 ++++++++++++++++++++++++++++++++++++++++++++++++++
- mm/swapfile.c        |   91 +++----------------------------------------------
- 4 files changed, 107 insertions(+), 88 deletions(-)
+ fs/nfs/direct.c          |  255 ++++++++++++++++++++++------------------------
+ fs/nfs/internal.h        |    5 +-
+ fs/nfs/pagelist.c        |    7 +-
+ fs/nfs/read.c            |   10 +-
+ include/linux/nfs_page.h |    1 +
+ include/linux/nfs_xdr.h  |    4 +-
+ 6 files changed, 138 insertions(+), 144 deletions(-)
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 0dcd1e8..5a71145 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -587,6 +587,8 @@ typedef struct {
- typedef int (*read_actor_t)(read_descriptor_t *, struct page *,
- 		unsigned long, unsigned long);
- 
-+struct swap_info_struct;
-+
- struct address_space_operations {
- 	int (*writepage)(struct page *page, struct writeback_control *wbc);
- 	int (*readpage)(struct file *, struct page *);
-@@ -628,8 +630,9 @@ struct address_space_operations {
- 	int (*error_remove_page)(struct address_space *, struct page *);
- 
- 	/* swapfile support */
--	int (*swap_activate)(struct file *file);
--	int (*swap_deactivate)(struct file *file);
-+	int (*swap_activate)(struct swap_info_struct *sis, struct file *file,
-+				sector_t *span);
-+	void (*swap_deactivate)(struct file *file);
- };
- 
- extern const struct address_space_operations empty_aops;
-diff --git a/include/linux/swap.h b/include/linux/swap.h
-index 6b40350..4ab2276 100644
---- a/include/linux/swap.h
-+++ b/include/linux/swap.h
-@@ -320,6 +320,11 @@ extern int swap_writepage(struct page *page, struct writeback_control *wbc);
- extern int swap_set_page_dirty(struct page *page);
- extern void end_swap_bio_read(struct bio *bio, int err);
- 
-+int add_swap_extent(struct swap_info_struct *sis, unsigned long start_page,
-+		unsigned long nr_pages, sector_t start_block);
-+int generic_swapfile_activate(struct swap_info_struct *, struct file *,
-+		sector_t *);
-+
- /* linux/mm/swap_state.c */
- extern struct address_space swapper_space;
- #define total_swapcache_pages  swapper_space.nrpages
-diff --git a/mm/page_io.c b/mm/page_io.c
-index 2a7a4c1..0a7492c 100644
---- a/mm/page_io.c
-+++ b/mm/page_io.c
-@@ -86,6 +86,98 @@ void end_swap_bio_read(struct bio *bio, int err)
- 	bio_put(bio);
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 22a40c4..4ba9a2c 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -124,22 +124,6 @@ ssize_t nfs_direct_IO(int rw, struct kiocb *iocb, const struct iovec *iov, loff_
+ 	return -EINVAL;
  }
  
-+int generic_swapfile_activate(struct swap_info_struct *sis,
-+				struct file *swap_file,
-+				sector_t *span)
-+{
-+	struct address_space *mapping = swap_file->f_mapping;
-+	struct inode *inode = mapping->host;
-+	unsigned blocks_per_page;
-+	unsigned long page_no;
-+	unsigned blkbits;
-+	sector_t probe_block;
-+	sector_t last_block;
-+	sector_t lowest_block = -1;
-+	sector_t highest_block = 0;
-+	int nr_extents = 0;
-+	int ret;
+-static void nfs_direct_dirty_pages(struct page **pages, unsigned int pgbase, size_t count)
+-{
+-	unsigned int npages;
+-	unsigned int i;
+-
+-	if (count == 0)
+-		return;
+-	pages += (pgbase >> PAGE_SHIFT);
+-	npages = (count + (pgbase & ~PAGE_MASK) + PAGE_SIZE - 1) >> PAGE_SHIFT;
+-	for (i = 0; i < npages; i++) {
+-		struct page *page = pages[i];
+-		if (!PageCompound(page))
+-			set_page_dirty(page);
+-	}
+-}
+-
+ static void nfs_direct_release_pages(struct page **pages, unsigned int npages)
+ {
+ 	unsigned int i;
+@@ -226,58 +210,92 @@ static void nfs_direct_complete(struct nfs_direct_req *dreq)
+ 	nfs_direct_req_release(dreq);
+ }
+ 
+-/*
+- * We must hold a reference to all the pages in this direct read request
+- * until the RPCs complete.  This could be long *after* we are woken up in
+- * nfs_direct_wait (for instance, if someone hits ^C on a slow server).
+- */
+-static void nfs_direct_read_result(struct rpc_task *task, void *calldata)
++void nfs_direct_readpage_release(struct nfs_page *req)
+ {
+-	struct nfs_read_data *data = calldata;
+-
+-	nfs_readpage_result(task, data);
++	dprintk("NFS: direct read done (%s/%lld %d@%lld)\n",
++		req->wb_context->dentry->d_inode->i_sb->s_id,
++		(long long)NFS_FILEID(req->wb_context->dentry->d_inode),
++		req->wb_bytes,
++		(long long)req_offset(req));
++	nfs_release_request(req);
+ }
+ 
+-static void nfs_direct_read_release(void *calldata)
++static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
+ {
++	unsigned long bytes = 0;
++	struct nfs_direct_req *dreq = hdr->dreq;
+ 
+-	struct nfs_read_data *data = calldata;
+-	struct nfs_direct_req *dreq = (struct nfs_direct_req *)data->header->req;
+-	int status = data->task.tk_status;
++	if (test_bit(NFS_IOHDR_REDO, &hdr->flags))
++		goto out_put;
+ 
+ 	spin_lock(&dreq->lock);
+-	if (unlikely(status < 0)) {
+-		dreq->error = status;
+-		spin_unlock(&dreq->lock);
++	if (test_bit(NFS_IOHDR_ERROR, &hdr->flags) && (hdr->good_bytes == 0))
++		dreq->error = hdr->error;
++	else
++		dreq->count += hdr->good_bytes;
++	spin_unlock(&dreq->lock);
 +
-+	blkbits = inode->i_blkbits;
-+	blocks_per_page = PAGE_SIZE >> blkbits;
++	if (!test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
++		while (!list_empty(&hdr->pages)) {
++			struct nfs_page *req = nfs_list_entry(hdr->pages.next);
++			struct page *page = req->wb_page;
 +
-+	/*
-+	 * Map all the blocks into the extent list.  This code doesn't try
-+	 * to be very smart.
-+	 */
-+	probe_block = 0;
-+	page_no = 0;
-+	last_block = i_size_read(inode) >> blkbits;
-+	while ((probe_block + blocks_per_page) <= last_block &&
-+			page_no < sis->max) {
-+		unsigned block_in_page;
-+		sector_t first_block;
-+
-+		first_block = bmap(inode, probe_block);
-+		if (first_block == 0)
-+			goto bad_bmap;
-+
-+		/*
-+		 * It must be PAGE_SIZE aligned on-disk
-+		 */
-+		if (first_block & (blocks_per_page - 1)) {
-+			probe_block++;
-+			goto reprobe;
-+		}
-+
-+		for (block_in_page = 1; block_in_page < blocks_per_page;
-+					block_in_page++) {
-+			sector_t block;
-+
-+			block = bmap(inode, probe_block + block_in_page);
-+			if (block == 0)
-+				goto bad_bmap;
-+			if (block != first_block + block_in_page) {
-+				/* Discontiguity */
-+				probe_block++;
-+				goto reprobe;
++			if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
++				if (bytes > hdr->good_bytes)
++					zero_user(page, 0, PAGE_SIZE);
++				else if (hdr->good_bytes - bytes < PAGE_SIZE)
++					zero_user_segment(page,
++						hdr->good_bytes & ~PAGE_MASK,
++						PAGE_SIZE);
 +			}
++			bytes += req->wb_bytes;
++			nfs_list_remove_request(req);
++			nfs_direct_readpage_release(req);
++			if (!PageCompound(page))
++				set_page_dirty(page);
++			page_cache_release(page);
 +		}
+ 	} else {
+-		dreq->count += data->res.count;
+-		spin_unlock(&dreq->lock);
+-		nfs_direct_dirty_pages(data->pages.pagevec,
+-				data->args.pgbase,
+-				data->res.count);
++		while (!list_empty(&hdr->pages)) {
++			struct nfs_page *req = nfs_list_entry(hdr->pages.next);
 +
-+		first_block >>= (PAGE_SHIFT - blkbits);
-+		if (page_no) {	/* exclude the header page */
-+			if (first_block < lowest_block)
-+				lowest_block = first_block;
-+			if (first_block > highest_block)
-+				highest_block = first_block;
++			if (bytes < hdr->good_bytes)
++				if (!PageCompound(req->wb_page))
++					set_page_dirty(req->wb_page);
++			bytes += req->wb_bytes;
++			page_cache_release(req->wb_page);
++			nfs_list_remove_request(req);
++			nfs_direct_readpage_release(req);
 +		}
-+
-+		/*
-+		 * We found a PAGE_SIZE-length, PAGE_SIZE-aligned run of blocks
-+		 */
-+		ret = add_swap_extent(sis, page_no, 1, first_block);
-+		if (ret < 0)
-+			goto out;
-+		nr_extents += ret;
-+		page_no++;
-+		probe_block += blocks_per_page;
-+reprobe:
-+		continue;
+ 	}
+-	nfs_direct_release_pages(data->pages.pagevec, data->pages.npages);
+-
++out_put:
+ 	if (put_dreq(dreq))
+ 		nfs_direct_complete(dreq);
+-	nfs_readdata_release(data);
++	hdr->release(hdr);
+ }
+ 
+-static const struct rpc_call_ops nfs_read_direct_ops = {
+-	.rpc_call_prepare = nfs_read_prepare,
+-	.rpc_call_done = nfs_direct_read_result,
+-	.rpc_release = nfs_direct_read_release,
+-};
+-
+-static void nfs_direct_readhdr_release(struct nfs_read_header *rhdr)
++static void nfs_sync_pgio_error(struct list_head *head)
+ {
+-	struct nfs_read_data *data = &rhdr->rpc_data;
++	struct nfs_page *req;
+ 
+-	if (data->pages.pagevec != data->pages.page_array)
+-		kfree(data->pages.pagevec);
+-	nfs_readhdr_free(&rhdr->header);
++	while (!list_empty(head)) {
++		req = nfs_list_entry(head->next);
++		nfs_list_remove_request(req);
++		nfs_release_request(req);
 +	}
-+	ret = nr_extents;
-+	*span = 1 + highest_block - lowest_block;
-+	if (page_no == 0)
-+		page_no = 1;	/* force Empty message */
-+	sis->max = page_no;
-+	sis->pages = page_no - 1;
-+	sis->highest_bit = page_no - 1;
-+out:
-+	return ret;
-+bad_bmap:
-+	printk(KERN_ERR "swapon: swapfile has holes\n");
-+	ret = -EINVAL;
-+	goto out;
+ }
+ 
++static void nfs_direct_pgio_init(struct nfs_pgio_header *hdr)
++{
++	get_dreq(hdr->dreq);
 +}
 +
++static const struct nfs_pgio_completion_ops nfs_direct_read_completion_ops = {
++	.error_cleanup = nfs_sync_pgio_error,
++	.init_hdr = nfs_direct_pgio_init,
++	.completion = nfs_direct_read_completion,
++};
++
  /*
-  * We may have stale swap cache pages in memory: notice
-  * them here and get rid of the unnecessary final write.
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index fe2ed44..80b3415 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -1358,7 +1358,7 @@ static void destroy_swap_extents(struct swap_info_struct *sis)
-  *
-  * This function rather assumes that it is called in ascending page order.
+  * For each rsize'd chunk of the user's buffer, dispatch an NFS READ
+  * operation.  If nfs_readdata_alloc() or get_user_pages() fails,
+@@ -285,118 +303,85 @@ static void nfs_direct_readhdr_release(struct nfs_read_header *rhdr)
+  * handled automatically by nfs_direct_read_result().  Otherwise, if
+  * no requests have been sent, just return an error.
   */
--static int
-+int
- add_swap_extent(struct swap_info_struct *sis, unsigned long start_page,
- 		unsigned long nr_pages, sector_t start_block)
+-static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
++static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *desc,
+ 						const struct iovec *iov,
+ 						loff_t pos)
  {
-@@ -1434,106 +1434,25 @@ static int setup_swap_extents(struct swap_info_struct *sis, sector_t *span)
- 	struct file *swap_file = sis->swap_file;
- 	struct address_space *mapping = swap_file->f_mapping;
- 	struct inode *inode = mapping->host;
--	unsigned blocks_per_page;
--	unsigned long page_no;
--	unsigned blkbits;
--	sector_t probe_block;
--	sector_t last_block;
--	sector_t lowest_block = -1;
--	sector_t highest_block = 0;
--	int nr_extents = 0;
- 	int ret;
++	struct nfs_direct_req *dreq = desc->pg_dreq;
+ 	struct nfs_open_context *ctx = dreq->ctx;
+ 	struct inode *inode = ctx->dentry->d_inode;
+ 	unsigned long user_addr = (unsigned long)iov->iov_base;
+ 	size_t count = iov->iov_len;
+ 	size_t rsize = NFS_SERVER(inode)->rsize;
+-	struct rpc_task *task;
+-	struct rpc_message msg = {
+-		.rpc_cred = ctx->cred,
+-	};
+-	struct rpc_task_setup task_setup_data = {
+-		.rpc_client = NFS_CLIENT(inode),
+-		.rpc_message = &msg,
+-		.callback_ops = &nfs_read_direct_ops,
+-		.workqueue = nfsiod_workqueue,
+-		.flags = RPC_TASK_ASYNC,
+-	};
+ 	unsigned int pgbase;
+ 	int result;
+ 	ssize_t started = 0;
++	struct page **pagevec = NULL;
++	unsigned int npages;
  
- 	if (S_ISBLK(inode->i_mode)) {
- 		ret = add_swap_extent(sis, 0, sis->max, 0);
- 		*span = sis->pages;
--		goto out;
-+		return ret;
- 	}
+ 	do {
+-		struct nfs_read_header *rhdr;
+-		struct nfs_read_data *data;
+-		struct nfs_page_array *pages;
+ 		size_t bytes;
++		int i;
  
- 	if (mapping->a_ops->swap_activate) {
--		ret = mapping->a_ops->swap_activate(swap_file);
-+		ret = mapping->a_ops->swap_activate(sis, swap_file, span);
- 		if (!ret) {
- 			sis->flags |= SWP_FILE;
- 			ret = add_swap_extent(sis, 0, sis->max, 0);
- 			*span = sis->pages;
+ 		pgbase = user_addr & ~PAGE_MASK;
+-		bytes = min(rsize,count);
++		bytes = min(max(rsize, PAGE_SIZE), count);
+ 
+ 		result = -ENOMEM;
+-		rhdr = nfs_readhdr_alloc();
+-		if (unlikely(!rhdr))
+-			break;
+-		data = nfs_readdata_alloc(&rhdr->header, nfs_page_array_len(pgbase, bytes));
+-		if (!data) {
+-			nfs_readhdr_free(&rhdr->header);
++		npages = nfs_page_array_len(pgbase, bytes);
++		if (!pagevec)
++			pagevec = kmalloc(npages * sizeof(struct page *),
++					  GFP_KERNEL);
++		if (!pagevec)
+ 			break;
+-		}
+-		data->header = &rhdr->header;
+-		atomic_inc(&data->header->refcnt);
+-		pages = &data->pages;
+-
+ 		down_read(&current->mm->mmap_sem);
+ 		result = get_user_pages(current, current->mm, user_addr,
+-					pages->npages, 1, 0, pages->pagevec, NULL);
++					npages, 1, 0, pagevec, NULL);
+ 		up_read(&current->mm->mmap_sem);
+-		if (result < 0) {
+-			nfs_direct_readhdr_release(rhdr);
++		if (result < 0)
+ 			break;
+-		}
+-		if ((unsigned)result < pages->npages) {
++		if ((unsigned)result < npages) {
+ 			bytes = result * PAGE_SIZE;
+ 			if (bytes <= pgbase) {
+-				nfs_direct_release_pages(pages->pagevec, result);
+-				nfs_direct_readhdr_release(rhdr);
++				nfs_direct_release_pages(pagevec, result);
+ 				break;
+ 			}
+ 			bytes -= pgbase;
+-			pages->npages = result;
++			npages = result;
  		}
--		goto out;
-+		return ret;
+ 
+-		get_dreq(dreq);
+-
+-		rhdr->header.req = (struct nfs_page *) dreq;
+-		rhdr->header.inode = inode;
+-		rhdr->header.cred = msg.rpc_cred;
+-		data->args.fh = NFS_FH(inode);
+-		data->args.context = get_nfs_open_context(ctx);
+-		data->args.lock_context = dreq->l_ctx;
+-		data->args.offset = pos;
+-		data->args.pgbase = pgbase;
+-		data->args.pages = pages->pagevec;
+-		data->args.count = bytes;
+-		data->res.fattr = &data->fattr;
+-		data->res.eof = 0;
+-		data->res.count = bytes;
+-		nfs_fattr_init(&data->fattr);
+-		msg.rpc_argp = &data->args;
+-		msg.rpc_resp = &data->res;
+-
+-		task_setup_data.task = &data->task;
+-		task_setup_data.callback_data = data;
+-		NFS_PROTO(inode)->read_setup(data, &msg);
+-
+-		task = rpc_run_task(&task_setup_data);
+-		if (IS_ERR(task))
+-			break;
+-
+-		dprintk("NFS: %5u initiated direct read call "
+-			"(req %s/%Ld, %zu bytes @ offset %Lu)\n",
+-				task->tk_pid,
+-				inode->i_sb->s_id,
+-				(long long)NFS_FILEID(inode),
+-				bytes,
+-				(unsigned long long)data->args.offset);
+-		rpc_put_task(task);
+-
+-		started += bytes;
+-		user_addr += bytes;
+-		pos += bytes;
+-		/* FIXME: Remove this unnecessary math from final patch */
+-		pgbase += bytes;
+-		pgbase &= ~PAGE_MASK;
+-		BUG_ON(pgbase != (user_addr & ~PAGE_MASK));
+-
+-		count -= bytes;
++		for (i = 0; i < npages; i++) {
++			struct nfs_page *req;
++			unsigned int req_len = min(bytes, PAGE_SIZE - pgbase);
++			/* XXX do we need to do the eof zeroing found in async_filler? */
++			req = nfs_create_request(dreq->ctx, dreq->inode,
++						 pagevec[i],
++						 pgbase, req_len);
++			if (IS_ERR(req)) {
++				nfs_direct_release_pages(pagevec + i,
++							 npages - i);
++				result = PTR_ERR(req);
++				break;
++			}
++			req->wb_index = pos >> PAGE_SHIFT;
++			req->wb_offset = pos & ~PAGE_MASK;
++			if (!nfs_pageio_add_request(desc, req)) {
++				result = desc->pg_error;
++				nfs_release_request(req);
++				nfs_direct_release_pages(pagevec + i,
++							 npages - i);
++				break;
++			}
++			pgbase = 0;
++			bytes -= req_len;
++			started += req_len;
++			user_addr += req_len;
++			pos += req_len;
++			count -= req_len;
++		}
+ 	} while (count != 0);
+ 
++	kfree(pagevec);
++
+ 	if (started)
+ 		return started;
+ 	return result < 0 ? (ssize_t) result : -EFAULT;
+@@ -407,15 +392,19 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+ 					      unsigned long nr_segs,
+ 					      loff_t pos)
+ {
++	struct nfs_pageio_descriptor desc;
+ 	ssize_t result = -EINVAL;
+ 	size_t requested_bytes = 0;
+ 	unsigned long seg;
+ 
++	nfs_pageio_init_read(&desc, dreq->inode,
++			     &nfs_direct_read_completion_ops);
+ 	get_dreq(dreq);
++	desc.pg_dreq = dreq;
+ 
+ 	for (seg = 0; seg < nr_segs; seg++) {
+ 		const struct iovec *vec = &iov[seg];
+-		result = nfs_direct_read_schedule_segment(dreq, vec, pos);
++		result = nfs_direct_read_schedule_segment(&desc, vec, pos);
+ 		if (result < 0)
+ 			break;
+ 		requested_bytes += result;
+@@ -424,6 +413,8 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+ 		pos += vec->iov_len;
  	}
  
--	blkbits = inode->i_blkbits;
--	blocks_per_page = PAGE_SIZE >> blkbits;
--
--	/*
--	 * Map all the blocks into the extent list.  This code doesn't try
--	 * to be very smart.
--	 */
--	probe_block = 0;
--	page_no = 0;
--	last_block = i_size_read(inode) >> blkbits;
--	while ((probe_block + blocks_per_page) <= last_block &&
--			page_no < sis->max) {
--		unsigned block_in_page;
--		sector_t first_block;
--
--		first_block = bmap(inode, probe_block);
--		if (first_block == 0)
--			goto bad_bmap;
--
--		/*
--		 * It must be PAGE_SIZE aligned on-disk
--		 */
--		if (first_block & (blocks_per_page - 1)) {
--			probe_block++;
--			goto reprobe;
--		}
--
--		for (block_in_page = 1; block_in_page < blocks_per_page;
--					block_in_page++) {
--			sector_t block;
--
--			block = bmap(inode, probe_block + block_in_page);
--			if (block == 0)
--				goto bad_bmap;
--			if (block != first_block + block_in_page) {
--				/* Discontiguity */
--				probe_block++;
--				goto reprobe;
--			}
--		}
--
--		first_block >>= (PAGE_SHIFT - blkbits);
--		if (page_no) {	/* exclude the header page */
--			if (first_block < lowest_block)
--				lowest_block = first_block;
--			if (first_block > highest_block)
--				highest_block = first_block;
--		}
--
--		/*
--		 * We found a PAGE_SIZE-length, PAGE_SIZE-aligned run of blocks
--		 */
--		ret = add_swap_extent(sis, page_no, 1, first_block);
--		if (ret < 0)
--			goto out;
--		nr_extents += ret;
--		page_no++;
--		probe_block += blocks_per_page;
--reprobe:
--		continue;
--	}
--	ret = nr_extents;
--	*span = 1 + highest_block - lowest_block;
--	if (page_no == 0)
--		page_no = 1;	/* force Empty message */
--	sis->max = page_no;
--	sis->pages = page_no - 1;
--	sis->highest_bit = page_no - 1;
--out:
--	return ret;
--bad_bmap:
--	printk(KERN_ERR "swapon: swapfile has holes\n");
--	ret = -EINVAL;
--	goto out;
-+	return generic_swapfile_activate(sis, swap_file, span);
++	nfs_pageio_complete(&desc);
++
+ 	/*
+ 	 * If no bytes were started, return the error, and let the
+ 	 * generic layer handle the completion.
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index f431e26..50d85e5 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -304,8 +304,9 @@ struct nfs_pgio_completion_ops;
+ /* read.c */
+ extern struct nfs_read_header *nfs_readhdr_alloc(void);
+ extern void nfs_readhdr_free(struct nfs_pgio_header *hdr);
+-extern struct nfs_read_data *nfs_readdata_alloc(struct nfs_pgio_header *hdr,
+-						unsigned int pagecount);
++extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
++			struct inode *inode,
++			const struct nfs_pgio_completion_ops *compl_ops);
+ extern int nfs_initiate_read(struct rpc_clnt *clnt,
+ 			     struct nfs_read_data *data,
+ 			     const struct rpc_call_ops *call_ops);
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index b344946..d6aa8368 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -48,8 +48,11 @@ void nfs_pgheader_init(struct nfs_pageio_descriptor *desc,
+ 	hdr->cred = hdr->req->wb_context->cred;
+ 	hdr->io_start = req_offset(hdr->req);
+ 	hdr->good_bytes = desc->pg_count;
++	hdr->dreq = desc->pg_dreq;
+ 	hdr->release = release;
+ 	hdr->completion_ops = desc->pg_completion_ops;
++	if (hdr->completion_ops->init_hdr)
++		hdr->completion_ops->init_hdr(hdr);
  }
  
- static void enable_swap_info(struct swap_info_struct *p, int prio,
+ void nfs_set_pgio_error(struct nfs_pgio_header *hdr, int error, loff_t pos)
+@@ -116,9 +119,6 @@ nfs_create_request(struct nfs_open_context *ctx, struct inode *inode,
+ 	req->wb_page    = page;
+ 	req->wb_index	= page->index;
+ 	page_cache_get(page);
+-	BUG_ON(PagePrivate(page));
+-	BUG_ON(!PageLocked(page));
+-	BUG_ON(page->mapping->host != inode);
+ 	req->wb_offset  = offset;
+ 	req->wb_pgbase	= offset;
+ 	req->wb_bytes   = count;
+@@ -257,6 +257,7 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+ 	desc->pg_ioflags = io_flags;
+ 	desc->pg_error = 0;
+ 	desc->pg_lseg = NULL;
++	desc->pg_dreq = NULL;
+ }
+ 
+ /**
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 5e78af1..35e2dce 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -51,8 +51,8 @@ struct nfs_read_header *nfs_readhdr_alloc()
+ 	return rhdr;
+ }
+ 
+-struct nfs_read_data *nfs_readdata_alloc(struct nfs_pgio_header *hdr,
+-					 unsigned int pagecount)
++static struct nfs_read_data *nfs_readdata_alloc(struct nfs_pgio_header *hdr,
++						unsigned int pagecount)
+ {
+ 	struct nfs_read_data *data, *prealloc;
+ 
+@@ -123,9 +123,9 @@ void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio)
+ }
+ EXPORT_SYMBOL_GPL(nfs_pageio_reset_read_mds);
+ 
+-static void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+-				struct inode *inode,
+-				const struct nfs_pgio_completion_ops *compl_ops)
++void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
++			  struct inode *inode,
++			  const struct nfs_pgio_completion_ops *compl_ops)
+ {
+ 	if (!pnfs_pageio_init_read(pgio, inode, compl_ops))
+ 		nfs_pageio_init_read_mds(pgio, inode, compl_ops);
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 0a5b63f..f9ee9eb 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -68,6 +68,7 @@ struct nfs_pageio_descriptor {
+ 	const struct rpc_call_ops *pg_rpc_callops;
+ 	const struct nfs_pgio_completion_ops *pg_completion_ops;
+ 	struct pnfs_layout_segment *pg_lseg;
++	struct nfs_direct_req	*pg_dreq;
+ };
+ 
+ #define NFS_WBACK_BUSY(req)	(test_bit(PG_BUSY,&(req)->wb_flags))
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 2597f90..938d30a 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1203,6 +1203,7 @@ struct nfs_pgio_header {
+ 	const struct rpc_call_ops *mds_ops;
+ 	void (*release) (struct nfs_pgio_header *hdr);
+ 	const struct nfs_pgio_completion_ops *completion_ops;
++	struct nfs_direct_req	*dreq;
+ 	spinlock_t		lock;
+ 	/* fields protected by lock */
+ 	int			pnfs_error;
+@@ -1216,8 +1217,6 @@ struct nfs_read_header {
+ 	struct nfs_read_data	rpc_data;
+ };
+ 
+-struct nfs_direct_req;
+-
+ struct nfs_write_data {
+ 	struct nfs_pgio_header	*header;
+ 	struct list_head	list;
+@@ -1259,6 +1258,7 @@ struct nfs_commit_data {
+ 
+ struct nfs_pgio_completion_ops {
+ 	void	(*error_cleanup)(struct list_head *head);
++	void	(*init_hdr)(struct nfs_pgio_header *hdr);
+ 	void	(*completion)(struct nfs_pgio_header *hdr);
+ };
+ 
 -- 
-1.7.9.2
+1.7.2.1
 
