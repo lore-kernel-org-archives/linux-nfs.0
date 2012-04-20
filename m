@@ -1,164 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:19167 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:18660 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760916Ab2D0R2B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Apr 2012 13:28:01 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
-        Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v5 7/9] NFS: Remove secinfo knowledge out of the generic client
-Date: Fri, 27 Apr 2012 13:27:44 -0400
-Message-Id: <1335547666-28315-8-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1335547666-28315-1-git-send-email-bjschuma@netapp.com>
-References: <1335547666-28315-1-git-send-email-bjschuma@netapp.com>
+	id S1753593Ab2DTVZs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 17:25:48 -0400
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS4: fix referrals with IPv6 mounts
+Date: Fri, 20 Apr 2012 21:25:46 +0000
+Message-ID: <79682769-1052-4392-A63D-F686A81C2BBE@netapp.com>
+References: <1334949705-33393-1-git-send-email-dros@netapp.com>
+ <B1E9AAB3-6739-46D5-999A-130494131031@oracle.com>
+In-Reply-To: <B1E9AAB3-6739-46D5-999A-130494131031@oracle.com>
+Content-Type: multipart/signed;
+	boundary="Apple-Mail=_4F863D3B-066A-463C-B120-1D87D13261FD";
+	protocol="application/pkcs7-signature"; micalg=sha1
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+--Apple-Mail=_4F863D3B-066A-463C-B120-1D87D13261FD
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-And also remove the unneeded rpc_op.
+On Apr 20, 2012, at 3:30 PM, Chuck Lever wrote:
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/internal.h       |    3 ---
- fs/nfs/namespace.c      |   29 -----------------------------
- fs/nfs/nfs4_fs.h        |    1 +
- fs/nfs/nfs4namespace.c  |   29 +++++++++++++++++++++++++++++
- fs/nfs/nfs4proc.c       |    1 -
- include/linux/nfs_xdr.h |    1 -
- 6 files changed, 30 insertions(+), 34 deletions(-)
+>=20
+> On Apr 20, 2012, at 3:21 PM, Weston Andros Adamson wrote:
+>=20
+>> nfs4_path() was parsing the path component by splitting on the first =
+colon.
+>> This is wrong when an IPv6 address is used to mount a server.
+>>=20
+>> For example, having mounted 'fc00::10:/export', nfs4_path() returned
+>> ':10:/export'.  This causes referrals (using IPv4 or IPv6 addresses) =
+to fail
+>> in nfs4_validate_fspath().
+>>=20
+>> Parsing the path component by using the *last* colon works with
+>> IPv6 as well as IPv4 addrs.
+>=20
+> These ad hoc fixes give me the willies.
+>=20
+> During a referral, how is the server name and export path getting =
+recombined?  In fs_locations data, these are separate.  In the forward =
+mount path, IPv6 addresses are escaped via square brackets.
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index b777bda..a7e2497 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -280,9 +280,6 @@ extern void nfs_sb_deactive(struct super_block *sb);
- extern char *nfs_path(char **p, struct dentry *dentry,
- 		      char *buffer, ssize_t buflen);
- extern struct vfsmount *nfs_d_automount(struct path *path);
--#ifdef CONFIG_NFS_V4
--rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *);
--#endif
- 
- /* getroot.c */
- extern struct dentry *nfs_get_root(struct super_block *, struct nfs_fh *,
-diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-index d51868e..2a9591b 100644
---- a/fs/nfs/namespace.c
-+++ b/fs/nfs/namespace.c
-@@ -119,35 +119,6 @@ Elong:
- }
- 
- #ifdef CONFIG_NFS_V4
--rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors)
--{
--	struct gss_api_mech *mech;
--	struct xdr_netobj oid;
--	int i;
--	rpc_authflavor_t pseudoflavor = RPC_AUTH_UNIX;
--
--	for (i = 0; i < flavors->num_flavors; i++) {
--		struct nfs4_secinfo_flavor *flavor;
--		flavor = &flavors->flavors[i];
--
--		if (flavor->flavor == RPC_AUTH_NULL || flavor->flavor == RPC_AUTH_UNIX) {
--			pseudoflavor = flavor->flavor;
--			break;
--		} else if (flavor->flavor == RPC_AUTH_GSS) {
--			oid.len  = flavor->gss.sec_oid4.len;
--			oid.data = flavor->gss.sec_oid4.data;
--			mech = gss_mech_get_by_OID(&oid);
--			if (!mech)
--				continue;
--			pseudoflavor = gss_svc_to_pseudoflavor(mech, flavor->gss.service);
--			gss_mech_put(mech);
--			break;
--		}
--	}
--
--	return pseudoflavor;
--}
--
- static struct rpc_clnt *nfs_lookup_mountpoint(struct inode *dir,
- 					      struct qstr *name,
- 					      struct nfs_fh *fh,
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 8d75021..53a487e 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -206,6 +206,7 @@ extern const struct dentry_operations nfs4_dentry_operations;
- extern const struct inode_operations nfs4_dir_inode_operations;
- 
- /* nfs4namespace.c */
-+rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *);
- struct rpc_clnt *nfs4_create_sec_client(struct rpc_clnt *, struct inode *, struct qstr *);
- 
- /* nfs4proc.c */
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index a7f3ded..a69ee39 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -132,6 +132,35 @@ static size_t nfs_parse_server_name(char *string, size_t len,
- 	return ret;
- }
- 
-+rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors)
-+{
-+	struct gss_api_mech *mech;
-+	struct xdr_netobj oid;
-+	int i;
-+	rpc_authflavor_t pseudoflavor = RPC_AUTH_UNIX;
-+
-+	for (i = 0; i < flavors->num_flavors; i++) {
-+		struct nfs4_secinfo_flavor *flavor;
-+		flavor = &flavors->flavors[i];
-+
-+		if (flavor->flavor == RPC_AUTH_NULL || flavor->flavor == RPC_AUTH_UNIX) {
-+			pseudoflavor = flavor->flavor;
-+			break;
-+		} else if (flavor->flavor == RPC_AUTH_GSS) {
-+			oid.len  = flavor->gss.sec_oid4.len;
-+			oid.data = flavor->gss.sec_oid4.data;
-+			mech = gss_mech_get_by_OID(&oid);
-+			if (!mech)
-+				continue;
-+			pseudoflavor = gss_svc_to_pseudoflavor(mech, flavor->gss.service);
-+			gss_mech_put(mech);
-+			break;
-+		}
-+	}
-+
-+	return pseudoflavor;
-+}
-+
- static rpc_authflavor_t nfs4_negotiate_security(struct inode *inode, struct qstr *name)
- {
- 	struct page *page;
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 75eb883..946f0b6 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6597,7 +6597,6 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
- 	.close_context  = nfs4_close_context,
- 	.open_context	= nfs4_atomic_open,
- 	.init_client	= nfs4_init_client,
--	.secinfo	= nfs4_proc_secinfo,
- };
- 
- static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 7ba3551..6cba0a1 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1289,7 +1289,6 @@ struct nfs_rpc_ops {
- 				struct iattr *iattr);
- 	int	(*init_client) (struct nfs_client *, const struct rpc_timeout *,
- 				const char *, rpc_authflavor_t, int);
--	int	(*secinfo)(struct inode *, const struct qstr *, struct nfs4_secinfo_flavors *);
- };
- 
- /*
--- 
-1.7.10
+Again, the string that needs to be split into (server, path) is not the =
+fs_locations side -- those are already separated.  What's not separated =
+is the result of nfs_path().
 
+> (Having not looked at this code in years), is there some way we can =
+keep the server name and path separate here so we don't have to reparse?
+
+nfs_path() walks up the dentry tree until it hits the root dentry of the =
+nfs mount, then it uses dentry.d_fsdata to get the "dev_name" of the =
+mountpoint (<server>:<path>) to make <server>:<rootpath + path to the =
+dentry>.
+
+The problem I'm having is how we can generate the string "<rootpath of =
+parent mount>/<path-to-current-dentry>" without adding [] escaping to =
+dev_name, or adding another variable to dentry (not likely!).
+
+-dros
+
+>=20
+>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>> ---
+>> fs/nfs/nfs4namespace.c |    2 +-
+>> 1 files changed, 1 insertions(+), 1 deletions(-)
+>>=20
+>> diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+>> index 9c8eca3..dd3dd30 100644
+>> --- a/fs/nfs/nfs4namespace.c
+>> +++ b/fs/nfs/nfs4namespace.c
+>> @@ -59,7 +59,7 @@ static char *nfs4_path(struct dentry *dentry, char =
+*buffer, ssize_t buflen)
+>> 	char *limit;
+>> 	char *path =3D nfs_path(&limit, dentry, buffer, buflen);
+>> 	if (!IS_ERR(path)) {
+>> -		char *colon =3D strchr(path, ':');
+>> +		char *colon =3D strrchr(path, ':');
+>> 		if (colon && colon < limit)
+>> 			path =3D colon + 1;
+>> 	}
+>> --=20
+>> 1.7.4.4
+>>=20
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+--Apple-Mail=_4F863D3B-066A-463C-B120-1D87D13261FD
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Type: application/pkcs7-signature; name="smime.p7s"
+Content-Transfer-Encoding: base64
+
+MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIDTzCCA0sw
+ggIzoAMCAQICAQEwCwYJKoZIhvcNAQEFMEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYD
+VQQGEwJVUzEeMBwGCSqGSIb3DQEJARYPZHJvc0BuZXRhcHAuY29tMB4XDTExMDYwODIyMDc0NloX
+DTEyMDYwNzIyMDc0NlowRjEXMBUGA1UEAwwOV2VzdG9uIEFkYW1zb24xCzAJBgNVBAYTAlVTMR4w
+HAYJKoZIhvcNAQkBFg9kcm9zQG5ldGFwcC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
+AoIBAQC8/tJxtovJEXYRfSsrFOWKHxIZGY7/2mBee1DpWuoGDbVNapefCC7WXe+Nqxz609w2J/Mk
+/k3trZ3Ge2NXK0tGnP9NzjkzpGA7rSpM3wUFsvbLMUEGfQpvV24/nYvcLHTvOOEUaDPpHduN94bD
+dwvyowzDIRIpF2MeRnOzBNeHkrGHlZdzPmGjm8tkhrDRRkDYHhlxaiG4z30KCfAazxomuINiy1kj
+vbndXooYMDoh9H63hgW4NkOedtLdflLa322DXQ3nFU7YbyOIjHVl1tgWJLDWf7WT3lsAB8KvuJZ5
+zhsUB+fqxCKPJVRPDO1gjChvvtGiG1tGUUZz0H9Wx00zAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIH
+gDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDBDAaBgNVHREEEzARgQ9kcm9zQG5ldGFwcC5jb20wDQYJ
+KoZIhvcNAQEFBQADggEBACv0niZSmW+psB1sJXULh3mecDbN2mj0bFpN1YNdjcV7BiOLJ1Rs1ibV
+f13h73z8C7SBsPXTM5si8gmJtOnXM5jsgtlql44h/RrjUr8+mtK5DPCZls9J7iz3cGthzwOPvxUj
+nMSv3BpRX5oJom5ESgCM9Nn4u/ECTlLMhEIOYnBFiN0eDxcxz+r1cpbHg3r0otIKyxLpeaCjP6AH
+F93EHp4T8Rb63y3CcDgxrQGHlTdVi3QvxaMUexUXD81fiA+UqsB/MKmRxB1Hs4Vf3Q/+ejcm78K1
+ROF8TNPmNWRlKg3Y7cSFjZGzLuzXsvSsCbw4HLn0oZe/OfgSbarTAxttL5IxggHRMIIBzQIBATBL
+MEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYDVQQGEwJVUzEeMBwGCSqGSIb3DQEJARYP
+ZHJvc0BuZXRhcHAuY29tAgEBMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
+MBwGCSqGSIb3DQEJBTEPFw0xMjA0MjAyMTI1NDZaMCMGCSqGSIb3DQEJBDEWBBTR1xqg7LE/OYPA
+lwhx2RBO6pFXMzANBgkqhkiG9w0BAQEFAASCAQAQNvUmnA1HABDa1yMTfA0A582dT/3DiURhB5du
+0Prf9Sr/NrdObAlWpsqAuvs48Hf73j/mHO5Be1mN8+Tug3ST6y58G3pGpB57Jg7fDxTDMLAQtW/5
+gbBHcivO6ciw3GwssYqd/I0eOpe5nuY2bUB9LKarfdpY3S12nCu8zQJ6K0YmAVEC/F/YIFHSg6rp
+zu50hAN7O5jJfSPsHZ3mmTQiVOi0d0ZAKRksmSQeBhl0uKZAcMNrhmLGPSpjFU4A8663F6zl9qkg
+LP0U2rxIqvp1RtSvMgafY18+LQVD+1ohsQC65pB6Em978IVSUeHttG36uPHOb9Lg9XKG/VGUhRoh
+AAAAAAAA
+
+--Apple-Mail=_4F863D3B-066A-463C-B120-1D87D13261FD--
