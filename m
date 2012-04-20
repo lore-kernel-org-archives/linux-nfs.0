@@ -1,54 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:63451 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:34178 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751670Ab2DTUTS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 16:19:18 -0400
-Message-ID: <4F91C49D.8070908@RedHat.com>
-Date: Fri, 20 Apr 2012 16:18:37 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, miklos@szeredi.hu,
-        viro@ZenIV.linux.org.uk, hch@infradead.org,
-        michael.brantley@deshaw.com, sven.breuner@itwm.fraunhofer.de,
-        chuck.lever@oracle.com, pstaubach@exagrid.com, malahal@us.ibm.com,
-        bfields@fieldses.org, trond.myklebust@fys.uio.no, rees@umich.edu
-Subject: Re: [PATCH RFC v3] vfs: make fstatat retry once on ESTALE errors
- from getattr call
-References: <1334316311-22331-1-git-send-email-jlayton@redhat.com> <1334749927-26138-1-git-send-email-jlayton@redhat.com> <20120420104055.511e15bc@tlielax.poochiereds.net>
-In-Reply-To: <20120420104055.511e15bc@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1757385Ab2DTSgr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 14:36:47 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH v2 03/28] NFS: put open context on error in nfs_flush_multi
+Date: Fri, 20 Apr 2012 14:35:45 -0400
+Message-Id: <1334946970-27470-4-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
+References: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/20/2012 10:40 AM, Jeff Layton wrote:
-> I guess the questions at this point is:
-> 
-> 1) How representative is Peter's mkdir_test() of a real-world workload?
-Reading your email I had to wonder the same thing... What application 
-removes hierarchy of directories in a loop from two different clients?
-I would suspect not many, if any... esp over NFS... 
- 
-> 
-> 2) if we assume that it is fairly representative of one, how can we
-> achieve retrying indefinitely with NFS, or at least some large finite
-> amount?
-The amount of looping would be peer speculation. If the problem can
-not be handled by one simple retry I would say we simply pass the
-error up to the app... Its an application issue... 
- 
-> 
-> I have my doubts as to whether it would really be as big a problem for
-> other filesystems as Miklos and others have asserted, but I'll take
-> their word for it at the moment. What's the best way to contain this
-> behavior to just those filesystems that want to retry indefinitely when
-> they get an ESTALE? Would we need to go with an entirely new
-> ESTALERETRY after all?
-> 
-Introducing a new errno to handle this problem would be overkill IMHO...
+Cc: <stable@vger.kernel.org>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/write.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-If we have to go to the looping approach, I would strong suggest we
-make the file systems register for this type of behavior...
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 9b8d4d4..c074623 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1019,7 +1019,7 @@ out_bad:
+ 	while (!list_empty(res)) {
+ 		data = list_entry(res->next, struct nfs_write_data, list);
+ 		list_del(&data->list);
+-		nfs_writedata_free(data);
++		nfs_writedata_release(data);
+ 	}
+ 	nfs_redirty_request(req);
+ 	return -ENOMEM;
+-- 
+1.7.2.1
 
-steved. 
