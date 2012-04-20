@@ -1,42 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:29404 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:34188 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752700Ab2DZOE7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Apr 2012 10:04:59 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <4F9088D6.9020203@cs.ucla.edu>
-References: <4F9088D6.9020203@cs.ucla.edu> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <20120419163238.61D382C0DF@topped-with-meat.com>
-To: Paul Eggert <eggert@cs.ucla.edu>
-Cc: dhowells@redhat.com, Roland McGrath <roland@hack.frob.com>,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-ext4@vger.kernel.org, wine-devel@winehq.org, kfm-devel@kde.org,
-        nautilus-list@gnome.org, linux-api@vger.kernel.org,
-        libc-alpha@sourceware.org
-Subject: Re: [PATCH 0/6] Extended file stat system call
-Date: Thu, 26 Apr 2012 15:04:07 +0100
-Message-ID: <19638.1335449047@redhat.com>
+	id S1757405Ab2DTSgw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 14:36:52 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH v2 21/28] direct read
+Date: Fri, 20 Apr 2012 14:36:03 -0400
+Message-Id: <1334946970-27470-22-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
+References: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Paul Eggert <eggert@cs.ucla.edu> wrote:
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/direct.c |   21 ++++++++++++++-------
+ 1 files changed, 14 insertions(+), 7 deletions(-)
 
-> On 04/19/2012 09:32 AM, Roland McGrath wrote:
-> > I have no comment on the functionality.  But "xstat" is probably a poor
-> > choice of name. 
-> 
-> In AIX 7.1 the (similar) function is called statxat instead of xstat.
-> The API isn't exactly the same, but it's the same basic idea.
-> Might be worth looking at, not merely to see whether the API
-> should be the same, but also to borrow good ideas even if not.
-> 
-> http://pic.dhe.ibm.com/infocenter/aix/v7r1/topic/com.ibm.aix.basetechref/doc/basetrf2/statx.htm
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index d713234..4ba9a2c 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -222,18 +222,17 @@ void nfs_direct_readpage_release(struct nfs_page *req)
+ 
+ static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
+ {
+-	unsigned long pos = req_offset(hdr->req);
++	unsigned long bytes = 0;
+ 	struct nfs_direct_req *dreq = hdr->dreq;
+ 
+ 	if (test_bit(NFS_IOHDR_REDO, &hdr->flags))
+ 		goto out_put;
+ 
+ 	spin_lock(&dreq->lock);
+-	if (test_bit(NFS_IOHDR_ERROR, &hdr->flags) &&
+-	    (hdr->first_error == pos))
++	if (test_bit(NFS_IOHDR_ERROR, &hdr->flags) && (hdr->good_bytes == 0))
+ 		dreq->error = hdr->error;
+ 	else
+-		dreq->count += (hdr->first_error - pos);
++		dreq->count += hdr->good_bytes;
+ 	spin_unlock(&dreq->lock);
+ 
+ 	if (!test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
+@@ -241,6 +240,15 @@ static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
+ 			struct nfs_page *req = nfs_list_entry(hdr->pages.next);
+ 			struct page *page = req->wb_page;
+ 
++			if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
++				if (bytes > hdr->good_bytes)
++					zero_user(page, 0, PAGE_SIZE);
++				else if (hdr->good_bytes - bytes < PAGE_SIZE)
++					zero_user_segment(page,
++						hdr->good_bytes & ~PAGE_MASK,
++						PAGE_SIZE);
++			}
++			bytes += req->wb_bytes;
+ 			nfs_list_remove_request(req);
+ 			nfs_direct_readpage_release(req);
+ 			if (!PageCompound(page))
+@@ -248,17 +256,16 @@ static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
+ 			page_cache_release(page);
+ 		}
+ 	} else {
+-		pos &= PAGE_MASK;
+ 		while (!list_empty(&hdr->pages)) {
+ 			struct nfs_page *req = nfs_list_entry(hdr->pages.next);
+ 
+-			if (pos < (hdr->first_error & PAGE_MASK))
++			if (bytes < hdr->good_bytes)
+ 				if (!PageCompound(req->wb_page))
+ 					set_page_dirty(req->wb_page);
++			bytes += req->wb_bytes;
+ 			page_cache_release(req->wb_page);
+ 			nfs_list_remove_request(req);
+ 			nfs_direct_readpage_release(req);
+-			pos += PAGE_SIZE;
+ 		}
+ 	}
+ out_put:
+-- 
+1.7.2.1
 
-Interesting.  I wasn't intending to provide both statx() and statxat()
-variants, just the latter, in which case I'd've though that -at suffix is
-redundant.
-
-I note that they split their time fields into separate seconds and ns fields,
-presumably for better packing.
-
-David
