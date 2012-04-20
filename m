@@ -1,126 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:42618 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:55791 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756058Ab2DQOIS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Apr 2012 10:08:18 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q3HE8HKd007561
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 17 Apr 2012 10:08:18 -0400
-From: Simo Sorce <simo@redhat.com>
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
-Subject: [PATCH 2/5] SUNRPC: conditionally return endtime from import_sec_context
-Date: Tue, 17 Apr 2012 09:39:05 -0400
-Message-Id: <1334669948-4156-3-git-send-email-simo@redhat.com>
-In-Reply-To: <1334669948-4156-1-git-send-email-simo@redhat.com>
-References: <1334669948-4156-1-git-send-email-simo@redhat.com>
+	id S932794Ab2DTSsS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 14:48:18 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH v3 20/25] NFS: create nfs_generic_commit_list
+Date: Fri, 20 Apr 2012 14:47:52 -0400
+Message-Id: <1334947677-28864-21-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
+References: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We expose this parameter for a future caller.
-It will be used to extract the endtime from the gss-proxy upcall mechanism,
-in order to set the rsc cache expiration time.
+Simple refactoring.
 
-Signed-off-by: Simo Sorce <simo@redhat.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- include/linux/sunrpc/gss_api.h        |    2 ++
- net/sunrpc/auth_gss/auth_gss.c        |    2 +-
- net/sunrpc/auth_gss/gss_krb5_mech.c   |    3 +++
- net/sunrpc/auth_gss/gss_mech_switch.c |    5 +++--
- net/sunrpc/auth_gss/svcauth_gss.c     |    3 ++-
- 5 files changed, 11 insertions(+), 4 deletions(-)
+ fs/nfs/write.c |   15 ++++++++++++---
+ 1 files changed, 12 insertions(+), 3 deletions(-)
 
-diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
-index 332da61cf8b71fc73d802b2609210f46641a9ea1..7bd486d50f0861b45c98e695751c2f92f1b3bdfa 100644
---- a/include/linux/sunrpc/gss_api.h
-+++ b/include/linux/sunrpc/gss_api.h
-@@ -36,6 +36,7 @@ int gss_import_sec_context(
- 		size_t			bufsize,
- 		struct gss_api_mech	*mech,
- 		struct gss_ctx		**ctx_id,
-+		time_t			*endtime,
- 		gfp_t			gfp_mask);
- u32 gss_get_mic(
- 		struct gss_ctx		*ctx_id,
-@@ -91,6 +92,7 @@ struct gss_api_ops {
- 			const void		*input_token,
- 			size_t			bufsize,
- 			struct gss_ctx		*ctx_id,
-+			time_t			*endtime,
- 			gfp_t			gfp_mask);
- 	u32 (*gss_get_mic)(
- 			struct gss_ctx		*ctx_id,
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index d3ad81f8da5b79551c36b17a7d53007406946699..836cbecb1947235d38c62eadf79ae96ad73906e6 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -232,7 +232,7 @@ gss_fill_context(const void *p, const void *end, struct gss_cl_ctx *ctx, struct
- 		p = ERR_PTR(-EFAULT);
- 		goto err;
- 	}
--	ret = gss_import_sec_context(p, seclen, gm, &ctx->gc_gss_ctx, GFP_NOFS);
-+	ret = gss_import_sec_context(p, seclen, gm, &ctx->gc_gss_ctx, NULL, GFP_NOFS);
- 	if (ret < 0) {
- 		p = ERR_PTR(ret);
- 		goto err;
-diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-index 8eff8c32d1b9b403c2365326c16e44df7c0923e6..329c36b9aa269a414932df86d89650c7a39528fd 100644
---- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-@@ -679,6 +679,7 @@ out_err:
- static int
- gss_import_sec_context_kerberos(const void *p, size_t len,
- 				struct gss_ctx *ctx_id,
-+				time_t *endtime,
- 				gfp_t gfp_mask)
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 705bf01..2500f1c 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1523,6 +1523,17 @@ static const struct rpc_call_ops nfs_commit_ops = {
+ 	.rpc_release = nfs_commit_release,
+ };
+ 
++static int nfs_generic_commit_list(struct inode *inode, struct list_head *head,
++				   int how)
++{
++	int status;
++
++	status = pnfs_commit_list(inode, head, how);
++	if (status == PNFS_NOT_ATTEMPTED)
++		status = nfs_commit_list(inode, head, how);
++	return status;
++}
++
+ int nfs_commit_inode(struct inode *inode, int how)
  {
- 	const void *end = (const void *)((const char *)p + len);
-@@ -696,6 +697,8 @@ gss_import_sec_context_kerberos(const void *p, size_t len,
+ 	LIST_HEAD(head);
+@@ -1536,9 +1547,7 @@ int nfs_commit_inode(struct inode *inode, int how)
+ 	if (res) {
+ 		int error;
  
- 	if (ret == 0)
- 		ctx_id->internal_ctx_id = ctx;
-+		if (endtime)
-+			*endtime = ctx->endtime;
- 	else
- 		kfree(ctx);
- 
-diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-index ca8cad8251c7ff1c13c9bff6757e098c4f1cd9b2..b22cc24fac482351876c8f4a6c10d8b203a95045 100644
---- a/net/sunrpc/auth_gss/gss_mech_switch.c
-+++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-@@ -312,14 +312,15 @@ int
- gss_import_sec_context(const void *input_token, size_t bufsize,
- 		       struct gss_api_mech	*mech,
- 		       struct gss_ctx		**ctx_id,
-+		       time_t			*endtime,
- 		       gfp_t gfp_mask)
- {
- 	if (!(*ctx_id = kzalloc(sizeof(**ctx_id), gfp_mask)))
- 		return -ENOMEM;
- 	(*ctx_id)->mech_type = gss_mech_get(mech);
- 
--	return mech->gm_ops
--		->gss_import_sec_context(input_token, bufsize, *ctx_id, gfp_mask);
-+	return mech->gm_ops->gss_import_sec_context(input_token, bufsize,
-+						*ctx_id, endtime, gfp_mask);
- }
- 
- /* gss_get_mic: compute a mic over message and return mic_token. */
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 1600cfb1618cd2abb4ae14be87f96554100a862a..274df6410057fa23e991545d80fdb90ab37e0b6f 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -489,7 +489,8 @@ static int rsc_parse(struct cache_detail *cd,
- 		len = qword_get(&mesg, buf, mlen);
- 		if (len < 0)
- 			goto out;
--		status = gss_import_sec_context(buf, len, gm, &rsci.mechctx, GFP_KERNEL);
-+		status = gss_import_sec_context(buf, len, gm, &rsci.mechctx,
-+						NULL, GFP_KERNEL);
- 		if (status)
- 			goto out;
- 
+-		error = pnfs_commit_list(inode, &head, how);
+-		if (error == PNFS_NOT_ATTEMPTED)
+-			error = nfs_commit_list(inode, &head, how);
++		error = nfs_generic_commit_list(inode, &head, how);
+ 		if (error < 0)
+ 			return error;
+ 		if (!may_wait)
 -- 
-1.7.7.6
+1.7.2.1
 
