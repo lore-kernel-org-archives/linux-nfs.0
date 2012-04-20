@@ -1,109 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:38231 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758085Ab2DZQFZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 12:05:25 -0400
-Received: by mail-yx0-f174.google.com with SMTP id l12so1020657yen.19
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Apr 2012 09:05:24 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
-        michael.brantley@deshaw.com
-Subject: [PATCH v1 05/12] vfs: fix mknodat to retry on ESTALE errors
-Date: Thu, 26 Apr 2012 11:57:16 -0400
-Message-Id: <1335455843-16089-4-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1335455843-16089-1-git-send-email-jlayton@redhat.com>
-References: <1335455843-16089-1-git-send-email-jlayton@redhat.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:30970 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755167Ab2DTOTz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 10:19:55 -0400
+Subject: [PATCH 2/3] SUNRPC: traverse clients tree on PipeFS event
+To: bfields@fieldses.org, Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Fri, 20 Apr 2012 18:19:43 +0400
+Message-ID: <20120420141925.10848.90395.stgit@localhost6.localdomain6>
+In-Reply-To: <20120420141419.10848.84280.stgit@localhost6.localdomain6>
+References: <20120420141419.10848.84280.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c |   62 ++++++++++++++++++++++++++++++-----------------------------
- 1 files changed, 32 insertions(+), 30 deletions(-)
+If client is a clone, then it's parent can not be in the list.
+But parent's PipeFS dentries have to be created and destroyed as well.
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 367b0f2..9ee6b4e 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2581,44 +2581,46 @@ SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, umode_t, mode,
- 	struct dentry *dentry;
- 	struct path path;
- 	int error;
-+	unsigned int try = 0;
- 
- 	if (S_ISDIR(mode))
- 		return -EPERM;
- 
--	dentry = user_path_create(dfd, filename, &path, false, false);
--	if (IS_ERR(dentry))
--		return PTR_ERR(dentry);
-+	do {
-+		dentry = user_path_create(dfd, filename, &path, false, try);
-+		if (IS_ERR(dentry))
-+			return PTR_ERR(dentry);
- 
--	if (!IS_POSIXACL(path.dentry->d_inode))
--		mode &= ~current_umask();
--	error = may_mknod(mode);
--	if (error)
--		goto out_dput;
--	error = mnt_want_write(path.mnt);
--	if (error)
--		goto out_dput;
--	error = security_path_mknod(&path, dentry, mode, dev);
--	if (error)
--		goto out_drop_write;
--	switch (mode & S_IFMT) {
--		case 0: case S_IFREG:
--			error = vfs_create(path.dentry->d_inode,dentry,mode,NULL);
--			break;
--		case S_IFCHR: case S_IFBLK:
--			error = vfs_mknod(path.dentry->d_inode,dentry,mode,
--					new_decode_dev(dev));
--			break;
--		case S_IFIFO: case S_IFSOCK:
--			error = vfs_mknod(path.dentry->d_inode,dentry,mode,0);
-+		if (!IS_POSIXACL(path.dentry->d_inode))
-+			mode &= ~current_umask();
-+		error = may_mknod(mode);
-+		if (error)
-+			goto out_dput;
-+		error = mnt_want_write(path.mnt);
-+		if (error)
-+			goto out_dput;
-+		error = security_path_mknod(&path, dentry, mode, dev);
-+		if (error)
-+			goto out_drop_write;
-+		switch (mode & S_IFMT) {
-+			case 0: case S_IFREG:
-+				error = vfs_create(path.dentry->d_inode, dentry, mode, NULL);
-+				break;
-+			case S_IFCHR: case S_IFBLK:
-+				error = vfs_mknod(path.dentry->d_inode, dentry, mode,
-+						new_decode_dev(dev));
-+				break;
-+			case S_IFIFO: case S_IFSOCK:
-+				error = vfs_mknod(path.dentry->d_inode, dentry, mode, 0);
- 			break;
--	}
-+		}
- out_drop_write:
--	mnt_drop_write(path.mnt);
-+		mnt_drop_write(path.mnt);
- out_dput:
--	dput(dentry);
--	mutex_unlock(&path.dentry->d_inode->i_mutex);
--	path_put(&path);
--
-+		dput(dentry);
-+		mutex_unlock(&path.dentry->d_inode->i_mutex);
-+		path_put(&path);
-+	} while (retry_estale(error, try++));
- 	return error;
+Note: event skip helper for clients introduced
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
+---
+ net/sunrpc/clnt.c |   30 ++++++++++++++++++++++++++----
+ 1 files changed, 26 insertions(+), 4 deletions(-)
+
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 8a19849..80b59f1 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -176,8 +176,16 @@ rpc_setup_pipedir(struct rpc_clnt *clnt, const char *dir_name)
+ 	return 0;
  }
  
--- 
-1.7.7.6
+-static int __rpc_pipefs_event(struct rpc_clnt *clnt, unsigned long event,
+-				struct super_block *sb)
++static inline int rpc_clnt_skip_event(struct rpc_clnt *clnt, unsigned long event)
++{
++	if (((event == RPC_PIPEFS_MOUNT) && clnt->cl_dentry) ||
++	    ((event == RPC_PIPEFS_UMOUNT) && !clnt->cl_dentry))
++		return 1;
++	return 0;
++}
++
++static int __rpc_clnt_handle_event(struct rpc_clnt *clnt, unsigned long event,
++				   struct super_block *sb)
+ {
+ 	struct dentry *dentry;
+ 	int err = 0;
+@@ -206,6 +214,21 @@ static int __rpc_pipefs_event(struct rpc_clnt *clnt, unsigned long event,
+ 	return err;
+ }
+ 
++static int __rpc_pipefs_event(struct rpc_clnt *clnt, unsigned long event,
++				struct super_block *sb)
++{
++	int error;
++
++	if (!rpc_clnt_skip_event(clnt, event)) {
++		error = __rpc_clnt_handle_event(clnt, event, sb);
++		if (error)
++			return error;
++	}
++	if (clnt != clnt->cl_parent)
++		return __rpc_pipefs_event(clnt->cl_parent, event, sb);
++	return 0;
++}
++
+ static struct rpc_clnt *rpc_get_client_for_event(struct net *net, int event)
+ {
+ 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+@@ -215,8 +238,7 @@ static struct rpc_clnt *rpc_get_client_for_event(struct net *net, int event)
+ 	list_for_each_entry(clnt, &sn->all_clients, cl_clients) {
+ 		if (clnt->cl_program->pipe_dir_name == NULL)
+ 			break;
+-		if (((event == RPC_PIPEFS_MOUNT) && clnt->cl_dentry) ||
+-		    ((event == RPC_PIPEFS_UMOUNT) && !clnt->cl_dentry))
++		if (rpc_clnt_skip_event(clnt, event))
+ 			continue;
+ 		if (atomic_inc_not_zero(&clnt->cl_count) == 0)
+ 			continue;
 
