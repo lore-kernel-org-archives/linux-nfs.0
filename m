@@ -1,39 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:56983 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:10185 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754546Ab2DWVca (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Apr 2012 17:32:30 -0400
+	id S1751484Ab2DTUAT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 16:00:19 -0400
+Received: from vmwexceht03-prd.hq.netapp.com (vmwexceht03-prd.hq.netapp.com [10.106.76.241])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q3KK01an028727
+	for <linux-nfs@vger.kernel.org>; Fri, 20 Apr 2012 13:00:19 -0700 (PDT)
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
+To: "Isaman, Fred" <Fred.Isaman@netapp.com>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/3] NFSv4: Ensure we do not reuse open owner names
-Date: Mon, 23 Apr 2012 21:32:28 +0000
-Message-ID: <1335216748.11427.38.camel@lade.trondhjem.org>
-References: <1335213414-20826-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <418AC7C0-6289-40D0-85DB-092C29BA40D3@oracle.com>
-	 <1335214124.11427.23.camel@lade.trondhjem.org>
-	 <537D97FE-BB59-4541-A705-C01178025C48@oracle.com>
-In-Reply-To: <537D97FE-BB59-4541-A705-C01178025C48@oracle.com>
+Subject: Re: [PATCH v3 00/25] directio rewrite
+Date: Fri, 20 Apr 2012 20:00:12 +0000
+Message-ID: <1334952012.3295.19.camel@lade.trondhjem.org>
+References: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA0LTIzIGF0IDE2OjU3IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gQXByIDIzLCAyMDEyLCBhdCA0OjQ4IFBNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiAN
-Cj4gPiBPbiBNb24sIDIwMTItMDQtMjMgYXQgMTY6NDQgLTA0MDAsIENodWNrIExldmVyIHdyb3Rl
-Og0KPiA+PiBIaS0NCj4gPj4gDQo+ID4+IEkgd2lzaCB5b3UgaGFkIHRvbGQgbWUgeW91IHdlcmUg
-Z29pbmcgdG8gZml4IHRoaXMgdG9vLiAgSSd2ZSBiZWVuIHRlc3RpbmcgYSBmaXggZm9yIHRoaXMg
-Zm9yIGEgY291cGxlIHdlZWtzLiAgV2FzIGdvaW5nIHRvIHBvc3QgdGhpcyBhZnRlcm5vb24uICBT
-aGFsbCBJIHRvc3MgbWluZT8NCj4gPiANCj4gPiBJIHdhcyBoaXR0aW5nIHRoYXQgQkFEX1NFUUlE
-IHN0b3JtIGR1cmluZyB0ZXN0aW5nIG9mIHRoZSBvdGhlciBvcGVuDQo+ID4gZml4ZXMgbGFzdCB3
-ZWVrLg0KPiANCj4gRmFpciBlbm91Z2gsIGJ1dCBJIGFubm91bmNlZCBJIGhhZCBhIGZpeCBpbiBt
-eSBBcHJpbCAxNSBzdGF0dXMgcmVwb3J0LiAgT2ggd2VsbC4NCj4gDQo+IFNvLCBJIGRlY2lkZWQg
-dGhhdCBhIHRpbWVzdGFtcCB3b3VsZCBsZWFrIGluZm9ybWF0aW9uIGFib3V0IHRoZSBjbGllbnQs
-IHNvIEknbSB1c2luZyBhIHNpbXBsZSBjb3VudGVyIGluc3RlYWQuICBXb3VsZCB5b3UgY29uc2lk
-ZXIgdGhhdCBmb3IgeW91ciBwYXRjaD8NCg0KSG93IHdvdWxkIGEgdGltZXN0YW1wIGxlYWsgdXNl
-ZnVsIGluZm9ybWF0aW9uPyBUaGUgc2VydmVyIGFuZCBhbnlvbmUNCm1vbml0b3JpbmcgdGhlIE5G
-UyB0cmFmZmljIGFscmVhZHkga25vd3MgYXQgd2hhdCB0aW1lIHRoZSBvcGVuIG93bmVyIHdhcw0K
-Y3JlYXRlZCB0byB3aXRoaW4gYSBmZXcgbWlsbGlzZWNvbmRzLg0KDQoNCi0tIA0KVHJvbmQgTXlr
-bGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWts
-ZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+T24gRnJpLCAyMDEyLTA0LTIwIGF0IDE0OjQ3IC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
+dmVyc2lvbiAyIG9mIHRoZXNlIHBhdGNoZXMgaGFkIHNvbWUgcGF0Y2ggZnJhZ21lbnRzIHRoYXQg
+d2VyZSBsZWZ0DQo+IHVuc3F1YXNoZWQuICBUaGlzIHZlcnNpb24gbWVyZWx5IHNxdWFzaGVzIHRo
+b3NlIGluLg0KPiANCj4gDQo+IA0KPiBUaGVzZSBwYXRjaGVzIHJld3JpdGUgdGhlIGRpcmVjdGlv
+IGNvZGUgdG8gdXNlIHRoZSBzYW1lIGNvYWxlc2NlDQo+IGFuZCBSUEMgc2VuZG9mZiBjb2RlIGFz
+IGNhY2hlZCBpby4gIFRoaXMgYWxsb3dzIGRpcmVjdGlvIHRvIG1ha2UNCj4gdXNlIG9mIHRoZSBw
+cmVleGlzdGluZyBwbmZzIGNvZGUuDQo+IA0KPiBUaGVyZSBhcmUgc29tZSBsaW1pdGF0aW9ucyBh
+dCB0aGUgbW9tZW50IHRoYXQgbmVlZCB0byBiZSBmaXhlZCwgYnV0DQo+IGdpdmVuIHRoZSBhbW91
+bnQgb2YgY2hhbmdlIHRoaXMgcGF0Y2hzZXQgaW50cm9kdWNlcyBJJ20NCj4gdHJ5aW5nIHRvIHB1
+dCBvdXQgYXMgc21hbGwgYSBiYXNlIHNldCBvZiBwYXRjaGVzIGFzIHBvc3NpYmxlLg0KPiANCj4g
+VGhlIHByaW1hcnkgVE9ET3MgYXJlOg0KPiAtIENvYWxlc2Npbmcgb2YgYnNpemU8UEFHRVNJWkUs
+IHdoaWxlIHRlY2huaWNhbGx5IGNvcnJlY3QsIGlzIHN1Ym9wdGltYWwuDQo+ICAgVG8gZml4IHRo
+aXMgSSdsbCBuZWVkIHRvIGFkanVzdCB0aGUgKl9tdWx0aSBmdW5jdGlvbnMgdG8gaGFuZGxlDQo+
+ICAgbW9yZSB0aGFuIGEgc2luZ2xlIHJlcQ0KPiANCj4gLSBVbmFsaWduZWQgaW8gaXMgbm90IHNl
+bnQgdG8gcG5mcywgYXMgdGhlcmUgaXMgbm8gZXhpc3RpbmcgY29kZSB0byBkZWFsDQo+ICAgd2l0
+aCBhIGxheW91dCBib3VuZGFyeSAodGhpbmsgc3RyaXBlIGVkZ2UpIG9jY3VycmluZyBpbiB0aGUg
+bWlkZGxlDQo+ICAgb2YgYSBuZnNfcGFnZS4NCg0KVGhpcyBub3cgbG9va3MgZ29vZCB0byBtZS4u
+Lg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoN
+Ck5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
