@@ -1,62 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:1280 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:4512 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754961Ab2DJPg6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Apr 2012 11:36:58 -0400
-Message-ID: <4F84537A.40100@parallels.com>
-Date: Tue, 10 Apr 2012 19:36:26 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: Grace period
-References: <4F82F16C.7030303@parallels.com> <20120409112739.6a823d6f@corrin.poochiereds.net> <4F830999.5000504@parallels.com> <20120409161114.GB6482@fieldses.org> <1333988226.2688.76.camel@lade.trondhjem.org> <20120409162107.GC6482@fieldses.org> <1333989216.2688.87.camel@lade.trondhjem.org> <4F8314CF.70302@parallels.com> <20120409181138.GA9581@fieldses.org> <4F8411CC.2070105@parallels.com> <20120410133913.GF18465@fieldses.org>
-In-Reply-To: <20120410133913.GF18465@fieldses.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+	id S1757490Ab2DTTIr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 15:08:47 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
+        Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v2 7/8] NFS: Honor the authflavor set in the clone mount data
+Date: Fri, 20 Apr 2012 15:08:37 -0400
+Message-Id: <1334948918-4706-8-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1334948918-4706-1-git-send-email-bjschuma@netapp.com>
+References: <1334948918-4706-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-10.04.2012 17:39, bfields@fieldses.org пишет:
-> On Tue, Apr 10, 2012 at 02:56:12PM +0400, Stanislav Kinsbursky wrote:
->> 09.04.2012 22:11, bfields@fieldses.org пишет:
->>> Since NFSv4 doesn't have a separate MOUNT protocol, clients need to be
->>> able to do readdir's and lookups to get to exported filesystems.  We
->>> support this in the Linux server by exporting all the filesystems from
->>> "/" on down that must be traversed to reach a given filesystem.  These
->>> exports are very restricted (e.g. only parents of exports are visible).
->>>
->>
->> Ok, thanks for explanation.
->> So, this pseudoroot looks like a part of NFS server internal
->> implementation, but not a part of a standard. That's good.
->>
->>>> Why does it prevents implementing of check for "superblock-network
->>>> namespace" pair on NFS server start and forbid (?) it in case of
->>>> this pair is shared already in other namespace? I.e. maybe this
->>>> pseudoroot can be an exclusion from this rule?
->>>
->>> That might work.  It's read-only and consists only of directories, so
->>> the grace period doesn't affect it.
->>>
->>
->> I've just realized, that this per-sb grace period won't work.
->> I.e., it's a valid situation, when two or more containers located on
->> the same filesystem, but shares different parts of it. And there is
->> not conflict here at all.
->
-> Well, there may be some conflict in that a file could be hardlinked into
-> both subtrees, and that file could be locked from users of either
-> export.
->
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Is this case handled if both links or visible in the same export?
-But anyway, this is not that bad. I.e it doesn't make things unpredictable.
-Probably, there are some more issues like this one (bind-mounting, for example).
-But I think, that it's root responsibility to handle such problems.
+The authflavor is set in an nfs_clone_mount structure and passed to the
+xdev_mount() functions where it was promptly ignored.  Instead, use it
+to initialize an rpc_clnt for the cloned server.
 
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/client.c   |    5 +++--
+ fs/nfs/internal.h |    3 ++-
+ fs/nfs/super.c    |    4 ++--
+ 3 files changed, 7 insertions(+), 5 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index da7b5e4..60f7e4e 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1729,7 +1729,8 @@ error:
+  */
+ struct nfs_server *nfs_clone_server(struct nfs_server *source,
+ 				    struct nfs_fh *fh,
+-				    struct nfs_fattr *fattr)
++				    struct nfs_fattr *fattr,
++				    rpc_authflavor_t flavor)
+ {
+ 	struct nfs_server *server;
+ 	struct nfs_fattr *fattr_fsinfo;
+@@ -1758,7 +1759,7 @@ struct nfs_server *nfs_clone_server(struct nfs_server *source,
+ 
+ 	error = nfs_init_server_rpcclient(server,
+ 			source->client->cl_timeout,
+-			source->client->cl_auth->au_flavor);
++			flavor);
+ 	if (error < 0)
+ 		goto out_free_server;
+ 	if (!IS_ERR(source->client_acl))
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 1be8d3d..bd2e5f2 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -165,7 +165,8 @@ extern struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *,
+ extern void nfs_free_server(struct nfs_server *server);
+ extern struct nfs_server *nfs_clone_server(struct nfs_server *,
+ 					   struct nfs_fh *,
+-					   struct nfs_fattr *);
++					   struct nfs_fattr *,
++					   rpc_authflavor_t);
+ extern void nfs_mark_client_ready(struct nfs_client *clp, int state);
+ extern int nfs4_check_client_ready(struct nfs_client *clp);
+ extern struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 37412f7..ca7559f 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2428,7 +2428,7 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
+ 	dprintk("--> nfs_xdev_mount()\n");
+ 
+ 	/* create a new volume representation */
+-	server = nfs_clone_server(NFS_SB(data->sb), data->fh, data->fattr);
++	server = nfs_clone_server(NFS_SB(data->sb), data->fh, data->fattr, data->authflavor);
+ 	if (IS_ERR(server)) {
+ 		error = PTR_ERR(server);
+ 		goto out_err_noserver;
+@@ -2951,7 +2951,7 @@ nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
+ 	dprintk("--> nfs4_xdev_mount()\n");
+ 
+ 	/* create a new volume representation */
+-	server = nfs_clone_server(NFS_SB(data->sb), data->fh, data->fattr);
++	server = nfs_clone_server(NFS_SB(data->sb), data->fh, data->fattr, data->authflavor);
+ 	if (IS_ERR(server)) {
+ 		error = PTR_ERR(server);
+ 		goto out_err_noserver;
 -- 
-Best regards,
-Stanislav Kinsbursky
+1.7.10
+
