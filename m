@@ -1,124 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:47935 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:61571 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753513Ab2DPMSA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Apr 2012 08:18:00 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 00/11] Swap-over-NFS without deadlocking V3
-Date: Mon, 16 Apr 2012 13:17:44 +0100
-Message-Id: <1334578675-23445-1-git-send-email-mgorman@suse.de>
+	id S932171Ab2DTSsM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 14:48:12 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH v3 11/25] NFS: use req_offset where appropriate
+Date: Fri, 20 Apr 2012 14:47:43 -0400
+Message-Id: <1334947677-28864-12-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
+References: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Changelog since V2
-o Nothing significant, just rebases. A radix tree lookup is replaced with
-  a linear search would be the biggest rebase artifact
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |    7 +++----
+ 1 files changed, 3 insertions(+), 4 deletions(-)
 
-This patch series is based on top of "Swap-over-NBD without deadlocking v9"
-as it depends on the same reservation of PF_MEMALLOC reserves logic.
-
-When a user or administrator requires swap for their application, they
-create a swap partition and file, format it with mkswap and activate it with
-swapon. In diskless systems this is not an option so if swap if required
-then swapping over the network is considered.  The two likely scenarios
-are when blade servers are used as part of a cluster where the form factor
-or maintenance costs do not allow the use of disks and thin clients.
-
-The Linux Terminal Server Project recommends the use of the Network
-Block Device (NBD) for swap but this is not always an option.  There is
-no guarantee that the network attached storage (NAS) device is running
-Linux or supports NBD. However, it is likely that it supports NFS so there
-are users that want support for swapping over NFS despite any performance
-concern. Some distributions currently carry patches that support swapping
-over NFS but it would be preferable to support it in the mainline kernel.
-
-Patch 1 avoids a stream-specific deadlock that potentially affects TCP.
-
-Patch 2 is a small modification to SELinux to avoid using PFMEMALLOC
-	reserves.
-
-Patch 3 adds three helpers for filesystems to handle swap cache pages.
-	For example, page_file_mapping() returns page->mapping for
-	file-backed pages and the address_space of the underlying
-	swap file for swap cache pages.
-
-Patch 4 adds two address_space_operations to allow a filesystem
-	to pin all metadata relevant to a swapfile in memory. Upon
-	successful activation, the swapfile is marked SWP_FILE and
-	the address space operation ->direct_IO is used for writing
-	and ->readpage for reading in swap pages.
-
-Patch 5 notes that patch 3 is bolting
-	filesystem-specific-swapfile-support onto the side and that
-	the default handlers have different information to what
-	is available to the filesystem. This patch refactors the
-	code so that there are generic handlers for each of the new
-	address_space operations.
-
-Patch 6 adds an API to allow a vector of kernel addresses to be
-	translated to struct pages and pinned for IO.
-
-Patch 7 updates NFS to use the helpers from patch 3 where necessary.
-
-Patch 8 avoids setting PF_private on PG_swapcache pages within NFS.
-
-Patch 9 implements the new swapfile-related address_space operations
-	for NFS and teaches the direct IO handler how to manage
-	kernel addresses.
-
-Patch 10 prevents page allocator recursions in NFS by using GFP_NOIO
-	where appropriate.
-
-Patch 11 fixes a NULL pointer dereference that occurs when using
-	swap-over-NFS.
-
-With the patches applied, it is possible to mount a swapfile that is on an
-NFS filesystem. Swap performance is not great with a swap stress test taking
-roughly twice as long to complete than if the swap device was backed by NBD.
-
- Documentation/filesystems/Locking |   13 ++++
- Documentation/filesystems/vfs.txt |   12 ++++
- fs/nfs/Kconfig                    |    8 +++
- fs/nfs/direct.c                   |   94 ++++++++++++++++--------
- fs/nfs/file.c                     |   28 ++++++--
- fs/nfs/inode.c                    |    6 ++
- fs/nfs/internal.h                 |    7 +-
- fs/nfs/pagelist.c                 |    6 +-
- fs/nfs/read.c                     |    6 +-
- fs/nfs/write.c                    |   98 +++++++++++++++----------
- include/linux/blk_types.h         |    2 +
- include/linux/fs.h                |    9 +++
- include/linux/mm.h                |   29 ++++++++
- include/linux/nfs_fs.h            |    4 +-
- include/linux/pagemap.h           |    5 ++
- include/linux/sunrpc/xprt.h       |    3 +
- include/linux/swap.h              |    8 +++
- include/net/sock.h                |    7 +-
- mm/memory.c                       |   53 ++++++++++++++
- mm/page_io.c                      |  144 +++++++++++++++++++++++++++++++++++++
- mm/swap_state.c                   |    2 +-
- mm/swapfile.c                     |  141 ++++++++++++++----------------------
- net/caif/caif_socket.c            |    2 +-
- net/core/sock.c                   |    2 +-
- net/ipv4/tcp_input.c              |   12 ++--
- net/sctp/ulpevent.c               |    2 +-
- net/sunrpc/Kconfig                |    5 ++
- net/sunrpc/clnt.c                 |    2 +
- net/sunrpc/sched.c                |    7 +-
- net/sunrpc/xprtsock.c             |   53 ++++++++++++++
- security/selinux/avc.c            |    2 +-
- 31 files changed, 585 insertions(+), 187 deletions(-)
-
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 31afd81..c536328 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -776,8 +776,8 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 	    !nfs_generic_pg_test(pgio, prev, req))
+ 		return false;
+ 
+-	p_stripe = (u64)prev->wb_index << PAGE_CACHE_SHIFT;
+-	r_stripe = (u64)req->wb_index << PAGE_CACHE_SHIFT;
++	p_stripe = (u64)req_offset(prev);
++	r_stripe = (u64)req_offset(req);
+ 	stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
+ 
+ 	do_div(p_stripe, stripe_unit);
+@@ -896,8 +896,7 @@ filelayout_choose_commit_list(struct nfs_page *req,
+ 	 * to store the value calculated in filelayout_write_pagelist
+ 	 * and just use that here.
+ 	 */
+-	j = nfs4_fl_calc_j_index(lseg,
+-				 (loff_t)req->wb_index << PAGE_CACHE_SHIFT);
++	j = nfs4_fl_calc_j_index(lseg, req_offset(req));
+ 	i = select_bucket_index(fl, j);
+ 	buckets = FILELAYOUT_FROM_HDR(lseg->pls_layout)->commit_info.buckets;
+ 	list = &buckets[i].written;
 -- 
-1.7.9.2
+1.7.2.1
 
