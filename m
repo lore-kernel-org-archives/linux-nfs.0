@@ -1,113 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:50330 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:4512 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756030Ab2DQOIS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Apr 2012 10:08:18 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q3HE8HKb007561
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 17 Apr 2012 10:08:18 -0400
-From: Simo Sorce <simo@redhat.com>
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
-Subject: [PATCH 1/5] SUNRPC: Document a bit RPCGSS handling in the NFS Server
-Date: Tue, 17 Apr 2012 09:39:04 -0400
-Message-Id: <1334669948-4156-2-git-send-email-simo@redhat.com>
-In-Reply-To: <1334669948-4156-1-git-send-email-simo@redhat.com>
-References: <1334669948-4156-1-git-send-email-simo@redhat.com>
+	id S1751119Ab2DTTIl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 15:08:41 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
+        Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v2 1/8] NFS: Fix SECINFO_NO_NAME
+Date: Fri, 20 Apr 2012 15:08:31 -0400
+Message-Id: <1334948918-4706-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1334948918-4706-1-git-send-email-bjschuma@netapp.com>
+References: <1334948918-4706-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Includes changes intorduced by GSS-Proxy.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Signed-off-by: Simo Sorce <simo@redhat.com>
+I was using the same decoder function for SECINFO and SECINFO_NO_NAME,
+so it was returning an error when it tried to decode an OP_SECINFO_NO_NAME
+header as OP_SECINFO.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- Documentation/filesystems/nfs/00-INDEX         |    2 +
- Documentation/filesystems/nfs/knfsd-rpcgss.txt |   65 ++++++++++++++++++++++++
- 2 files changed, 67 insertions(+), 0 deletions(-)
- create mode 100644 Documentation/filesystems/nfs/knfsd-rpcgss.txt
+ fs/nfs/nfs4xdr.c |   24 +++++++++++++++++++-----
+ 1 file changed, 19 insertions(+), 5 deletions(-)
 
-diff --git a/Documentation/filesystems/nfs/00-INDEX b/Documentation/filesystems/nfs/00-INDEX
-index 1716874a651e1c574e7ca9719dfb4e3521b0a5e9..66eb6c8c5334518ddbc10115c7b34b4dfb1b3c0e 100644
---- a/Documentation/filesystems/nfs/00-INDEX
-+++ b/Documentation/filesystems/nfs/00-INDEX
-@@ -20,3 +20,5 @@ rpc-cache.txt
- 	- introduction to the caching mechanisms in the sunrpc layer.
- idmapper.txt
- 	- information for configuring request-keys to be used by idmapper
-+knfsd-rpcgss.txt
-+	- Information on GSS authentication support in the NFS Server
-diff --git a/Documentation/filesystems/nfs/knfsd-rpcgss.txt b/Documentation/filesystems/nfs/knfsd-rpcgss.txt
-new file mode 100644
-index 0000000000000000000000000000000000000000..914aa536273b986539d7859092e2c0f139ce5535
---- /dev/null
-+++ b/Documentation/filesystems/nfs/knfsd-rpcgss.txt
-@@ -0,0 +1,65 @@
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index c74fdb1..d2cfefd 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -5089,16 +5089,13 @@ out_err:
+ 	return -EINVAL;
+ }
+ 
+-static int decode_secinfo(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
++static int decode_secinfo_common(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
+ {
+ 	struct nfs4_secinfo_flavor *sec_flavor;
+ 	int status;
+ 	__be32 *p;
+ 	int i, num_flavors;
+ 
+-	status = decode_op_hdr(xdr, OP_SECINFO);
+-	if (status)
+-		goto out;
+ 	p = xdr_inline_decode(xdr, 4);
+ 	if (unlikely(!p))
+ 		goto out_overflow;
+@@ -5124,6 +5121,7 @@ static int decode_secinfo(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
+ 		res->flavors->num_flavors++;
+ 	}
+ 
++	status = 0;
+ out:
+ 	return status;
+ out_overflow:
+@@ -5131,6 +5129,22 @@ out_overflow:
+ 	return -EIO;
+ }
+ 
++static int decode_secinfo(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
++{
++	int status = decode_op_hdr(xdr, OP_SECINFO);
++	if (status)
++		return status;
++	return decode_secinfo_common(xdr, res);
++}
 +
-+Kernel NFS Server RPCGSS Support
-+================================
++static int decode_secinfo_no_name(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
++{
++	int status = decode_op_hdr(xdr, OP_SECINFO_NO_NAME);
++	if (status)
++		return status;
++	return decode_secinfo_common(xdr, res);
++}
 +
-+This document gives references to the standards and protocols used to
-+implement RPCGSS authentication in the NFS Server.
-+
-+RPCGSS is specified in a few IETF documents:
-+ - RFC2203 v1: http://tools.ietf.org/rfc/rfc2203.txt
-+ - RFC5403 v2: http://tools.ietf.org/rfc/rfc5403.txt
-+and there is a 3rd version  being proposed:
-+ - http://tools.ietf.org/id/draft-williams-rpcsecgssv3.txt
-+   (At draft n. 02 at the time of writing)
-+
-+Background
-+----------
-+
-+The RPCGSS Authentication method describes a way to perform GSSAPI
-+Authentication for NFS.
-+Although GSSAPI is itself completely mechanism agnostic, in many cases only
-+the KRB5 mechanism is supported by NFS implementations.
-+
-+The Linux kernel, at the moment, supports only the KRB5 mechanism, and depends
-+on GSSAPI extensions that are KRB5 specific.
-+
-+GSSAPI is a complex library, and implementing it completely in kernel is
-+unwarranted. However GSSAPI operations are fundementally separable in 2 parts:
-+- context establishment
-+- integrity/privacy protection (read: signing and encrypting)
-+
-+The first part is the complex one, while the actual integrity and privacy
-+protecion is simple enough.
-+Because of the complexity of context establishment, the NFS Server defers the
-+operation to the userspace througuh the use of upcalls.
-+
-+NFS Server Legacy Upcall mechanism
-+----------------------------------
-+
-+The classic upcall mechanism uses a custom text based upcall mechanism to talk
-+to a custom daemon called rpc.svcgssd that is provide by the nfs-utils package.
-+
-+This upcall mechanism has 2 limitations:
-+A) Can handle tokens that are no bigger than 2KiB
-+
-+In some Kerberos deployment GSSAPI tokens can be quite big, up and beyond 64KiB
-+in size due to various authorization extensions attacked to the Kerberos
-+tickets, that needs to be sent through the GSS layer in order to perform
-+context establishment.
-+
-+B) Does not properly handle creds where the user is member of more than a few
-+housand groups (the current hard limit in the kernel is 65K groups) due to
-+limitation on the size of the buffer that can be send back to the kernel (4KiB).
-+
-+NFS Server New RPC Upcall mechanism
-+-----------------------------------
-+
-+A new upcall mechanism that uses RPC over a Unix socket is added. This
-+mechanism uses a protocol called gss-proxy, and user space program that
-+implements it called Gssproxy. The gss_proxy RPC protocol is currently document
-+here: https://fedorahosted.org/gss-proxy/wiki/ProtocolDocumentation
-+
-+This upcall mechanism uses the kernel rpc client and connects to the gssproxy
-+userspace program over a regular unix socket. The gssproxy protocol does not
-+suffer from the size limitations of the legacy protocol.
-+
+ #if defined(CONFIG_NFS_V4_1)
+ static int decode_exchange_id(struct xdr_stream *xdr,
+ 			      struct nfs41_exchange_id_res *res)
+@@ -6816,7 +6830,7 @@ static int nfs4_xdr_dec_secinfo_no_name(struct rpc_rqst *rqstp,
+ 	status = decode_putrootfh(xdr);
+ 	if (status)
+ 		goto out;
+-	status = decode_secinfo(xdr, res);
++	status = decode_secinfo_no_name(xdr, res);
+ out:
+ 	return status;
+ }
 -- 
-1.7.7.6
+1.7.10
 
