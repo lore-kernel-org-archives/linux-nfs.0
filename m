@@ -1,82 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:11695 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:35341 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751930Ab2DJQ5o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Apr 2012 12:57:44 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Sachin Prabhu <sprabhu@redhat.com>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        "jlayton@redhat.com" <jlayton@redhat.com>,
-        "bfields@redhat.com" <bfields@redhat.com>, steved <steved@redhat.com>
-Subject: Re: ESTALE errors: What can be done to handle this problem.
-Date: Tue, 10 Apr 2012 16:57:42 +0000
-Message-ID: <1334077062.19865.21.camel@lade.trondhjem.org>
-References: <1334073825.2149.29.camel@localhost>
-In-Reply-To: <1334073825.2149.29.camel@localhost>
-Content-Type: text/plain; charset="utf-8"
+	id S1754454Ab2DTVm6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 17:42:58 -0400
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS4: fix referrals with IPv6 mounts
+Date: Fri, 20 Apr 2012 21:42:56 +0000
+Message-ID: <DA990978-9EBE-44F2-9776-DD8FBAFDCB19@netapp.com>
+References: <1334949705-33393-1-git-send-email-dros@netapp.com>
+ <B1E9AAB3-6739-46D5-999A-130494131031@oracle.com>
+ <79682769-1052-4392-A63D-F686A81C2BBE@netapp.com>
+ <41440F4B-99AC-48AC-A1F8-C9A3DED9E76E@netapp.com>
+ <1334957938.3295.37.camel@lade.trondhjem.org>
+In-Reply-To: <1334957938.3295.37.camel@lade.trondhjem.org>
+Content-Type: multipart/signed;
+	boundary="Apple-Mail=_3AAFBF2C-7FC9-4EFD-9E33-042BF89E76D4";
+	protocol="application/pkcs7-signature"; micalg=sha1
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA0LTEwIGF0IDE3OjAzICswMTAwLCBTYWNoaW4gUHJhYmh1IHdyb3RlOg0K
-PiBUaGUgY2hhbmdlIGludHJvZHVjZWQgYnkgdXBzdHJlYW0gcGF0Y2gNCj4gNGY0OGFmNDU4NDJj
-NmU3OGFiOTU4YzkwMzQ0ZDNjOTQwZGI0ZGExNQ0KPiBtZWFucyB0aGF0IHRoZSBsb29rdXAgY2Fs
-bCBmb3IgYSBmaWxlIHdpbGwgcmV0dXJuIGEgaW5vZGUgYXMgYmVpbmcgdmFsaWQNCj4gYXMgbG9u
-ZyBhcyANCj4gMSkgVGhlIGRpcmVjdG9yeSBjb250YWluaW5nIHRoZSBmaWxlIHdhcyByZXZhbGlk
-YXRlZCBpZS4gdGhlIGNhY2hlZA0KPiBhdHRyaWJ1dGVzIGFyZSB2YWxpZCBhbmQgaXQgd2FzIGZv
-dW5kIHRoYXQgdGhlcmUgd2FzIG5vIGNoYW5nZSBpbiB0aGUNCj4gZGlyZWN0b3J5IHNpbmNlIHRo
-ZSBhdHRyaWJ1dGVzIG9mIHRoZSBmaWxlIHdlcmUgY2FjaGVkLg0KPiAyKSBXZSBhcmVuJ3QgZG9p
-bmcgYSBPUEVOIGNhbGwgb3IgdGhlIExPT0tVUF9SRVZBTCBmbGFnIGlzIG5vdCBzZXQuDQo+IA0K
-PiBXZSBubyBsb25nZXIgY2hlY2sgdG8gc2VlIGlmIHRoZSBmaWxlIGF0dHJpYnV0ZXMgdGhlbXNl
-bHZlcyBhcmUgdmFsaWQuDQo+IFRoaXMgcGF0Y2ggd2FzIGludHJvZHVjZWQgaW4gMi42LjIzLg0K
-PiANCj4gVGhpcyBpbmNyZWFzZXMgdGhlIGNoYW5jZXMgb2YgRVNUQUxFIGVycm9ycyBvbiBHRVRB
-VFRSIGNhbGxzIGlmDQo+IDEpIFRoZSBhdHRyaWJ1dGVzIG9mIHRoZSBkaXJlY3RvcnkgY29udGFp
-bmluZyB0aGUgZmlsZSBpcyByZWZyZXNoZWQgb24NCj4gdGhlIGNsaWVudCBhbmQgdGhlIHZhbHVl
-cyBzdG9yZWQgaW4gdGhlIGF0dHJpYnV0ZSBjYWNoZSBhcmUgc3RpbGwgdmFsaWQNCj4gd2hlbiB0
-aGUgc3Vic2VxdWVudCBzdGVwcyBhcmUgcnVuLg0KPiAyKSBUaGUgZmlsZSBpcyBkZWxldGVkIG9u
-IHRoZSBzZXJ2ZXIuDQo+IDMpIFRoZSBjYWNoZWQgYXR0cmlidXRlcyBvZiB0aGUgZmlsZSBvbiB0
-aGUgY2xpZW50IGhhdmUgZXhwaXJlZC4NCj4gNCkgV2Ugc3RhdCB0aGUgZmlsZS4NCj4gDQo+IEZv
-ciBhIEdFVEFUVFIgY2FsbA0KPiAxKSBUaGUgbG9va3VwIHdpbGwgcmV0dXJuIHRoZSBpbm9kZSBh
-cyB2YWxpZC4NCj4gMikgVGhlIHN1YnNlcXVlbnQgZ2V0YXR0ciBjYWxsIHdpbGwgbm90aWNlIHRo
-YXQgdGhlIGF0dHJpYnV0ZXMgYXJlIG5vDQo+IGxvbmdlciB2YWxpZCBhbmQgd2lsbCBhdHRlbXB0
-IGEgb24gdGhlIHdpcmUgY2FsbCB3aGljaCBmYWlscyB3aXRoIGFuDQo+IEVTVEFMRS4gDQo+IFdl
-IGNhbm5vdCByZWNvdmVyIGF0IHRoaXMgcG9pbnQgYW5kIHJldHVybiBhbiBFU1RBTEUgZXJyb3Ig
-dG8gdXNlcmxhbmQuDQo+IA0KPiBXZSBjYW4gZWFzaWx5IHJlcHJvZHVjZSB0aGlzIHdpdGggdGhl
-IGZvbGxvd2luZyByZXByb2R1Y2VyLg0KPiANCj4gT24gdGhlIHNlcnZlcg0KPiAjIHdoaWxlIHRy
-dWU7IGRvIGRhdGUgPmIgOyBybSAtZiBhIDsgbXYgYiBhO3NsZWVwIDM7IGRvbmUNCj4gDQo+IE9u
-IHRoZSBjbGllbnQNCj4gI3doaWxlIHRydWU7IGRvIHN0YXQgYSAyPiYxIHwgZ3JlcCBTdGFsZSA7
-IGRvbmUNCj4gDQo+IFdlIGRvIG5vdCBzZWUgdGhpcyBwcm9ibGVtIGluIGtlcm5lbHMgbm90IGNv
-bnRhaW5pbmcgdGhpcyBwYXRjaCBzaW5jZSB3ZQ0KPiByZXZhbGlkYXRlIHRoZSBmaWxlIGlub2Rl
-IGJlZm9yZSB3ZSByZXR1cm4gdGhlIGlub2RlIGFzIHZhbGlkIGluIHRoZQ0KPiBsb29rdXAgY2Fs
-bC4gSGVyZSAgd2Ugbm90aWNlIHRoYXQgdGhlIGF0dHJpYnV0ZSBjYWNoZSBpcyBubyBsb25nZXIg
-dmFsaWQNCj4gYW5kIGRvIGFuIG92ZXIgdGhlIHdpcmUgR0VUQVRUUiBjYWxsIHRvIGZldGNoIHRo
-ZSBsYXRlc3QgZmlsZQ0KPiBhdHRyaWJ1dGVzLiBBbiBFU1RBTEUgZXJyb3IgaW4gdGhlIGxvb2t1
-cCBwaGFzZSBpcyBoYW5kbGVkIGJ5IHJlZG9pbmcNCj4gdGhlIGxvb2t1cCBjYWxsLiBUaGlzIHN0
-aWxsIGhhcyBhIHBvdGVudGlhbCBvZiBmYWlsaW5nIHdpdGggYW4gRVNUQUxFIGlmDQo+IHRoZSBh
-dHRyaWJ1dGUgY2FjaGUgZXhwaXJlcyBiZXR3ZWVuIHRoZSBsb29rdXAgYW5kIHRoZSBnZXRhdHRy
-IGNhbGxzLg0KPiBCdXQgY2hhbmNlcyBvZiB0aGlzIGhhcHBlbmluZyBhcmUgcmVsYXRpdmVseSBs
-b3cuDQo+DQo+IEEgd29ya2Fyb3VuZCBpcyB0byBkaXNhYmxlIGF0dHJpYnV0ZSBjYWNoaW5nIHdo
-aWNoIGlzIGFjY29tcGFuaWVkIGJ5IGENCj4gaHVnZSBwZXJmb3JtYW5jZSBoaXQuIEEgcHJvcGVy
-IGZpeCB3b3VsZCBiZSB0byBqdXN0IHJlZG8gdGhlIGxvb2t1cCBjYWxsDQo+IGluIGNhc2Ugd2Ug
-ZXZlciBlbmNvdW50ZXIgYW4gRVNUQUxFIGVycm9yIHdpdGggYSBsaW1pdCB0byB0aGUgbnVtYmVy
-IG9mDQo+IHJldHJpZXMgd2hpY2ggY2FuIGJlIG1hZGUuIEhvd2V2ZXIgdGhpcyBhcHByb2FjaCB3
-aWxsIGludm9sdmUgYSBiaXQgb2YNCj4gd29yayBpbiB0aGUgVkZTIGxheWVyLiBXZSBoYXZlIGEg
-dXNlciBwcm92aWRlZCBwYXRjaCB3aGljaCBkb2VzIGp1c3QNCj4gdGhpcyBidXQgaXMgaW5jb21w
-bGV0ZS4NCg0KSGFuZGxpbmcgRVNUQUxFIHN0aWxsIGRvZXNuJ3QgZ3VhcmFudGVlIHRoYXQgeW91
-IGNhbiBtYWtlIHByb2dyZXNzLg0KUmVtb3ZlIHRoZSAnc2xlZXAgMycgYWJvdmUsIGFuZCB5b3Ug
-Y2FuIHRoZW9yZXRpY2FsbHkgZmluZCB5b3Vyc2VsZg0KcmVwbGF5aW5nIGxvb2t1cHMgdW50aWwg
-dGhlIGNvd3MgY29tZSBob21lIHdoaWxlIHRoYXQgJ3N0YXQoKScgY2FsbA0KY29udGludWVzIHRv
-IHJldHVybiBFU1RBTEUuDQpUaGUgYm90dG9tIGxpbmUgaXMgdGhhdCBORlMgaXMgbm90IHNhZmUg
-aW4gc2l0dWF0aW9ucyBzdWNoIGFzIHRoZSBhYm92ZSwNCnNpbmNlIHdlIGRvbid0IGhhdmUgdGhl
-IGtpbmQgb2YgbG9ja2luZyByZXF1aXJlZCB0byBndWFyYW50ZWUgdGhhdA0KTE9PS1VQICsgR0VU
-QVRUUiBjYW4gYmUgZG9uZSBhdG9taWNhbGx5Lg0KDQo+IElzIHRoaXMgYXBwcm9hY2ggZmVhc2li
-bGU/IElmIG5vdCwgd2hhdCBlbHNlIGNhbiBiZSBkb25lIHRvIGF2b2lkIHRoaXMNCj4gcHJvYmxl
-bS4NCg0KSWYgeW91IGhhdmUgd29ya2xvYWRzIHN1Y2ggYXMgdGhlIGFib3ZlLCB0aGVuIEkgc3Vn
-Z2VzdCAibW91bnQNCi1vbG9va3VwY2FjaGU9bm9uZSIuIEl0IHN0aWxsIHdvbid0IHByZXZlbnQg
-RVNUQUxFLCBidXQgYXQgbGVhc3QgeW91DQplbnN1cmUgdGhhdCB0aGUgZGVudHJ5IHJldmFsaWRh
-dGlvbiBhbHdheXMgZG9lcyBhIGZ1bGwgbG9va3VwLg0KDQpPdGhlcndpc2UsIHlvdSBjYW4gZG8g
-YXMgSmVmZiBzdWdnZXN0ZWQ6IGhhbmRsZSB0aGUgRVNUQUxFIGF0IHRoZSBWRlMNCmxldmVsLCBi
-dXQgZW5zdXJlIHRoYXQgeW91IGJyZWFrIG91dCBvZiB0aGUgbG9vcCBhZnRlciBhIGxpbWl0ZWQg
-bnVtYmVyDQpvZiBhdHRlbXB0cyBoYXMgYmVlbiBtYWRlLg0KDQotLSANClRyb25kIE15a2xlYnVz
-dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0
-QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+--Apple-Mail=_3AAFBF2C-7FC9-4EFD-9E33-042BF89E76D4
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
+
+On Apr 20, 2012, at 5:39 PM, Myklebust, Trond wrote:
+
+> On Fri, 2012-04-20 at 21:31 +0000, Adamson, Dros wrote:
+>> On Apr 20, 2012, at 5:25 PM, Adamson, Dros wrote:
+>> To be clear: the problem is *not* with IPv6 addrs in FS_LOCATIONS =
+attrs.  They work if the parent mount is IPv4/dns.  The problem is when =
+the parent mount is IPv6 *no* referrals work (IPv4, IPv6 or DNS), =
+because of the issue described above.
+>=20
+> There is a problem there too. If you don't bracket the IPv6 address =
+that
+> you get from fs_locations, then you'll hit the same problem if you hit =
+a
+> referral on the referred-to server.
+
+Ok, but that's a moot point at this stage as [] escaping is always =
+getting stripped from dentry->d_fsdata (really from dev_name passed to =
+mount as far as I can tell).
+
+-dros=
+
+--Apple-Mail=_3AAFBF2C-7FC9-4EFD-9E33-042BF89E76D4
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Type: application/pkcs7-signature; name="smime.p7s"
+Content-Transfer-Encoding: base64
+
+MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIDTzCCA0sw
+ggIzoAMCAQICAQEwCwYJKoZIhvcNAQEFMEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYD
+VQQGEwJVUzEeMBwGCSqGSIb3DQEJARYPZHJvc0BuZXRhcHAuY29tMB4XDTExMDYwODIyMDc0NloX
+DTEyMDYwNzIyMDc0NlowRjEXMBUGA1UEAwwOV2VzdG9uIEFkYW1zb24xCzAJBgNVBAYTAlVTMR4w
+HAYJKoZIhvcNAQkBFg9kcm9zQG5ldGFwcC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
+AoIBAQC8/tJxtovJEXYRfSsrFOWKHxIZGY7/2mBee1DpWuoGDbVNapefCC7WXe+Nqxz609w2J/Mk
+/k3trZ3Ge2NXK0tGnP9NzjkzpGA7rSpM3wUFsvbLMUEGfQpvV24/nYvcLHTvOOEUaDPpHduN94bD
+dwvyowzDIRIpF2MeRnOzBNeHkrGHlZdzPmGjm8tkhrDRRkDYHhlxaiG4z30KCfAazxomuINiy1kj
+vbndXooYMDoh9H63hgW4NkOedtLdflLa322DXQ3nFU7YbyOIjHVl1tgWJLDWf7WT3lsAB8KvuJZ5
+zhsUB+fqxCKPJVRPDO1gjChvvtGiG1tGUUZz0H9Wx00zAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIH
+gDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDBDAaBgNVHREEEzARgQ9kcm9zQG5ldGFwcC5jb20wDQYJ
+KoZIhvcNAQEFBQADggEBACv0niZSmW+psB1sJXULh3mecDbN2mj0bFpN1YNdjcV7BiOLJ1Rs1ibV
+f13h73z8C7SBsPXTM5si8gmJtOnXM5jsgtlql44h/RrjUr8+mtK5DPCZls9J7iz3cGthzwOPvxUj
+nMSv3BpRX5oJom5ESgCM9Nn4u/ECTlLMhEIOYnBFiN0eDxcxz+r1cpbHg3r0otIKyxLpeaCjP6AH
+F93EHp4T8Rb63y3CcDgxrQGHlTdVi3QvxaMUexUXD81fiA+UqsB/MKmRxB1Hs4Vf3Q/+ejcm78K1
+ROF8TNPmNWRlKg3Y7cSFjZGzLuzXsvSsCbw4HLn0oZe/OfgSbarTAxttL5IxggHRMIIBzQIBATBL
+MEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYDVQQGEwJVUzEeMBwGCSqGSIb3DQEJARYP
+ZHJvc0BuZXRhcHAuY29tAgEBMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
+MBwGCSqGSIb3DQEJBTEPFw0xMjA0MjAyMTQyNTZaMCMGCSqGSIb3DQEJBDEWBBSOkiIb3anUjM0Z
+SSe56I9L5sj+JjANBgkqhkiG9w0BAQEFAASCAQAeXfWaG6PDRPhe1XSg293pX5t2ppWbBNXwwUXU
+gpXIXVcRElCSQiVO4m3M6+tNBnCHWzGslVD7oSGm3Tf7f6nKQOlSqx68yY8dcrhSQf+D4kqB4ldz
+lLV6NnqLafyZI6NjCGZ2qXW+0tAh2AK8rL8KKj+p9Cg+HLvhRzIq80xRD3OCw+9SWj+d0/np8Dx2
+8xJNL4Ir3XU2eM3JwLUJGyautMXkVgU/REkDkJvR1VMehXyB3VsIpT0GdkAZmhd1uDD0TNNsLoZ5
+mw0Vfe1nj4JsU2pv0Vk9jHImB1o5Yom+AXV+WuZlnbA6YTyDqLJiz6R6tP1AbrpPwslQan2+ZaFq
+AAAAAAAA
+
+--Apple-Mail=_3AAFBF2C-7FC9-4EFD-9E33-042BF89E76D4--
