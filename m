@@ -1,94 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:19167 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:34180 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760847Ab2D0R1v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Apr 2012 13:27:51 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
-        Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v5 1/9] NFS: Fix SECINFO_NO_NAME
-Date: Fri, 27 Apr 2012 13:27:38 -0400
-Message-Id: <1335547666-28315-2-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1335547666-28315-1-git-send-email-bjschuma@netapp.com>
-References: <1335547666-28315-1-git-send-email-bjschuma@netapp.com>
+	id S1757367Ab2DTSgr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 14:36:47 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH v2 01/28] NFS: check for req==NULL in nfs_try_to_update_request cleanup
+Date: Fri, 20 Apr 2012 14:35:43 -0400
+Message-Id: <1334946970-27470-2-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
+References: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
-
-I was using the same decoder function for SECINFO and SECINFO_NO_NAME,
-so it was returning an error when it tried to decode an OP_SECINFO_NO_NAME
-header as OP_SECINFO.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/nfs4xdr.c |   24 +++++++++++++++++++-----
- 1 file changed, 19 insertions(+), 5 deletions(-)
+ fs/nfs/write.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index aff275b..6cebcf3 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -5094,16 +5094,13 @@ out_err:
- 	return -EINVAL;
- }
- 
--static int decode_secinfo(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
-+static int decode_secinfo_common(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
- {
- 	struct nfs4_secinfo_flavor *sec_flavor;
- 	int status;
- 	__be32 *p;
- 	int i, num_flavors;
- 
--	status = decode_op_hdr(xdr, OP_SECINFO);
--	if (status)
--		goto out;
- 	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
- 		goto out_overflow;
-@@ -5129,6 +5126,7 @@ static int decode_secinfo(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
- 		res->flavors->num_flavors++;
- 	}
- 
-+	status = 0;
- out:
- 	return status;
- out_overflow:
-@@ -5136,7 +5134,23 @@ out_overflow:
- 	return -EIO;
- }
- 
-+static int decode_secinfo(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
-+{
-+	int status = decode_op_hdr(xdr, OP_SECINFO);
-+	if (status)
-+		return status;
-+	return decode_secinfo_common(xdr, res);
-+}
-+
- #if defined(CONFIG_NFS_V4_1)
-+static int decode_secinfo_no_name(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
-+{
-+	int status = decode_op_hdr(xdr, OP_SECINFO_NO_NAME);
-+	if (status)
-+		return status;
-+	return decode_secinfo_common(xdr, res);
-+}
-+
- static int decode_exchange_id(struct xdr_stream *xdr,
- 			      struct nfs41_exchange_id_res *res)
- {
-@@ -6821,7 +6835,7 @@ static int nfs4_xdr_dec_secinfo_no_name(struct rpc_rqst *rqstp,
- 	status = decode_putrootfh(xdr);
- 	if (status)
- 		goto out;
--	status = decode_secinfo(xdr, res);
-+	status = decode_secinfo_no_name(xdr, res);
- out:
- 	return status;
- }
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 2c68818..9b8d4d4 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -682,7 +682,8 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
+ 		req->wb_bytes = rqend - req->wb_offset;
+ out_unlock:
+ 	spin_unlock(&inode->i_lock);
+-	nfs_clear_request_commit(req);
++	if (req)
++		nfs_clear_request_commit(req);
+ 	return req;
+ out_flushme:
+ 	spin_unlock(&inode->i_lock);
 -- 
-1.7.10
+1.7.2.1
 
