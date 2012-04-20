@@ -1,58 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:12108 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:34178 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752188Ab2DFCUU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Apr 2012 22:20:20 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: David Quigley <dpquigl@davequigley.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: Another try at LNFS?
-Date: Fri, 6 Apr 2012 02:20:08 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA915A300@SACEXCMBX04-PRD.hq.netapp.com>
-References: <775e0a2cd5e2e4c8f52401214dbd9413@countercultured.net>
- <1333646141.4573.1.camel@lade.trondhjem.org>
- <85614613274dbfef5253665a84a36374@countercultured.net>
- <7193f15f28e7483021244c72ee285516@countercultured.net>
-In-Reply-To: <7193f15f28e7483021244c72ee285516@countercultured.net>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1757367Ab2DTSgq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 14:36:46 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH v2 00/28]
+Date: Fri, 20 Apr 2012 14:35:42 -0400
+Message-Id: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBEYXZpZCBRdWlnbGV5IFttYWls
-dG86ZHBxdWlnbEBkYXZlcXVpZ2xleS5jb21dDQo+IFNlbnQ6IFRodXJzZGF5LCBBcHJpbCAwNSwg
-MjAxMiAyOjM4IFBNDQo+IFRvOiBNeWtsZWJ1c3QsIFRyb25kDQo+IENjOiBsaW51eC1uZnNAdmdl
-ci5rZXJuZWwub3JnDQo+IFN1YmplY3Q6IFJlOiBBbm90aGVyIHRyeSBhdCBMTkZTPw0KPiANCj4g
-T24gMDQvMDUvMjAxMiAxNzoyNiwgRGF2aWQgUXVpZ2xleSB3cm90ZToNCj4gPiBPbiAwNC8wNS8y
-MDEyIDEzOjE1LCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+PiBPbiBUaHUsIDIwMTItMDQt
-MDUgYXQgMTM6MDIgLTA0MDAsIERhdmlkIFF1aWdsZXkgd3JvdGU6DQo+ID4+PiBOb3cgdGhhdCB3
-ZSdyZSBwYXN0IHRoZSAzLjQgbWVyZ2Ugd2luZG93IHNob3VsZCBJIHBvc3QgdGhlIExORlMNCj4g
-Pj4+IG1vZGlmaWNhdGlvbnMgZm9yIHJldmlldyBmb3Igd2hlbiAzLjUgcm9sbHMgYXJvdW5kPw0K
-PiA+Pg0KPiA+PiBUaGUgc29vbmVyIHRoZSBiZXR0ZXIuIEl0IGxvb2tzIGFzIGlmIHRoZXJlIHdp
-bGwgYmUgcXVpdGUgYSBiaXQgb2YNCj4gPj4gc3R1ZmYgZ29pbmcgaW50byAzLjUsIHNvIGl0IHdv
-dWxkIGJlIG5pY2UgdG8gbWF4aW1pc2Ugb3VyIHRlc3RpbmcNCj4gPj4gd2luZG93Lg0KPiA+Pg0K
-PiA+PiBUaGFua3MhDQo+ID4+ICAgVHJvbmQNCj4gPg0KPiA+IEkgaGF2ZSBhIG1vc3RseSB3b3Jr
-aW5nIGNvcHkgZm9yIDMuMiB3aGljaCBJIGNhbiBmb3J3YXJkIHBvcnQgYnV0IEknbQ0KPiA+IGhh
-dmluZyBhbiBpc3N1ZSB3aXRoIGl0LiBUaGUgcmV2YWxpZGF0ZSBjb2RlIGNoYW5nZWQgYXQgc29t
-ZSBwb2ludCBhbmQNCj4gPiBqdXN0IHRvIGdldCB0aGluZ3Mgd29ya2luZyBJIGRyb3BwZWQgYSBw
-aWVjZSBvZiBjb2RlIGZyb20gdGhlIHBhdGNoDQo+ID4gc2V0IHRoYXQgSSBjb3VsZG4ndCBmaWd1
-cmUgb3V0IGhvdyB0byB0cmFuc2l0aW9uIHRvIHRoZSBuZXcgcmV2YWxpZGF0ZQ0KPiA+IGNvZGUu
-IFVuZm9ydHVuYXRlbHkgdGhpcyBpcyB0aGUgaW5pdGlhbCBnZXQgb2YgdGhlIHNlY3VyaXR5IGxh
-YmVsIHNvDQo+ID4gdGhlIHNlY3VyaXR5IGxhYmVsIGlzIGludmFsaWQgdW50aWwgdGhlIGZpcnN0
-IGNhY2hlIGludmFsaWRhdGlvbi4gQW55DQo+ID4gc3VnZ2VzdGlvbnMgb24gd2hlcmUgdG8gcGxh
-Y2UgdGhpcyBjb2RlPyBJIGNhbiBnaXZlIHlvdSB0aGUgb3JpZ2luYWwNCj4gPiBjb2RlIHNuaXBw
-ZXQgd2hlbiBJIGdldCBob21lIHRoYXQgSSBkcm9wcGVkLg0KPiA+DQo+ID4gRGF2ZQ0KPiA+IC0t
-DQo+ID4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vi
-c2NyaWJlIGxpbnV4LW5mcyINCj4gPiBpbg0KPiA+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBt
-YWpvcmRvbW9Admdlci5rZXJuZWwub3JnIE1vcmUgbWFqb3Jkb21vDQo+IGluZm8NCj4gPiBhdCAg
-aHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo+IA0KPiBMb29raW5n
-IGF0IG15IHBhdGNoZXMgaXQgbG9va3MgbGlrZSBuZnNfbG9va3VwX3JldmFsaWRhdGUgd2FzIGNo
-YW5nZWQgYW5kIGF0DQo+IHRoZSB0aW1lIEkgY291bGRuJ3QgZmlndXJlIG91dCB3aGF0IGl0IHdh
-cyBjaGFuZ2VkIHRvLg0KDQpIaSBEYXZlLA0KICBUaGVyZSBzaG91bGRuJ3QgYmUgbXVjaCBpbiB0
-aGUgd2F5IG9mIGNoYW5nZXMgaW4gbmZzX2xvb2t1cF9yZXZhbGlkYXRlKCk6IEkgd2FzIGp1c3Qg
-dHJ5aW5nIHRvIGNsZWFuIGl0IHVwIGluIHByZXBhcmF0aW9uIGZvciB0aGUgYXRvbWljIG9wZW4g
-cGF0Y2hlcyB0aGF0IE1pa2xvcyBpcyBjdXJyZW50bHkgd29ya2luZyBvbi4NCkF0IHRoaXMgcG9p
-bnQsIGl0IGxvb2tzIGFzIGlmIG1vc3Qgb2YgdGhhdCBmdW5jdGlvbmFsaXR5IHdpbGwgaW4gYW55
-IGNhc2UgYmUgbW92ZWQgaW50byB0aGUgc3RydWN0IGZpbGVfb3BlcmF0aW9ucy0+b3BlbiBjYWxs
-YmFjaywgc28gdGhhdCB3ZSBjYW4ga2VlcCAtPmRfcmV2YWxpZGF0ZSgpIGFzIGEgcHVyZSBsb29r
-dXAgZnVuY3Rpb24uDQoNCkNoZWVycw0KICBUcm9uZA0K
+These patches rewrite the directio code to use the same coalesce
+and RPC sendoff code as cached io.  This allows directio to make
+use of the preexisting pnfs code.
+
+There are some limitations at the moment that need to be fixed, but
+given the amount of change this patchset introduces I'm
+trying to put out as small a base set of patches as possible.
+
+This set of patches responds to comments from the previous version,
+as well as including a number of bugfixes.
+
+
+The primary TODOs are:
+- Coalescing of bsize<PAGESIZE, while technically correct, is suboptimal.
+  To fix this I'll need to adjust the *_multi functions to handle
+  more than a single req
+
+- Unaligned io is not sent to pnfs, as there is no existing code to deal
+  with a layout boundary (think stripe edge) occurring in the middle
+  of a nfs_page.
+
+Fred
+
