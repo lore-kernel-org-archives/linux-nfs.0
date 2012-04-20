@@ -1,39 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57183 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:34188 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752823Ab2D1TbG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 28 Apr 2012 15:31:06 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+	id S932497Ab2DTSgx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 14:36:53 -0400
+From: Fred Isaman <iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 01/10] NFSv4: Fix a typo in NFS4_enc_link_sz
-Date: Sat, 28 Apr 2012 15:30:51 -0400
-Message-Id: <1335641460-24839-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1335641460-24839-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1335641460-24839-1-git-send-email-Trond.Myklebust@netapp.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH v2 25/28] NFS: add dreq to nfs_commit_info
+Date: Fri, 20 Apr 2012 14:36:07 -0400
+Message-Id: <1334946970-27470-26-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
+References: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4xdr.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+Need this to pass into nfs_commitdata_init, in order to keep data->dreq
+accurate.
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 4c3cc0e..fe61424 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -626,9 +626,9 @@ static int nfs4_stat_to_errno(int);
- 				encode_savefh_maxsz + \
- 				encode_putfh_maxsz + \
- 				encode_link_maxsz + \
--				decode_getattr_maxsz + \
-+				encode_getattr_maxsz + \
- 				encode_restorefh_maxsz + \
--				decode_getattr_maxsz)
-+				encode_getattr_maxsz)
- #define NFS4_dec_link_sz	(compound_decode_hdr_maxsz + \
- 				decode_sequence_maxsz + \
- 				decode_putfh_maxsz + \
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/write.c          |    2 ++
+ include/linux/nfs_xdr.h |    1 +
+ 2 files changed, 3 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 333d01d..44a93d8 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -506,6 +506,7 @@ static void nfs_init_cinfo_from_inode(struct nfs_commit_info *cinfo,
+ 	cinfo->lock = &inode->i_lock;
+ 	cinfo->mds = &NFS_I(inode)->commit_info;
+ 	cinfo->ds = pnfs_get_ds_info(inode);
++	cinfo->dreq = NULL;
+ 	cinfo->completion_ops = &nfs_commit_completion_ops;
+ }
+ 
+@@ -1431,6 +1432,7 @@ void nfs_init_commit(struct nfs_commit_data *data,
+ 	data->lseg	  = lseg; /* reference transferred */
+ 	data->mds_ops     = &nfs_commit_ops;
+ 	data->completion_ops = cinfo->completion_ops;
++	data->dreq	  = cinfo->dreq;
+ 
+ 	data->args.fh     = NFS_FH(data->inode);
+ 	/* Note: we always request a commit of the entire inode */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 756152f..3251c22 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1269,6 +1269,7 @@ struct nfs_commit_info {
+ 	spinlock_t			*lock;
+ 	struct nfs_mds_commit_info	*mds;
+ 	struct pnfs_ds_commit_info	*ds;
++	struct nfs_direct_req		*dreq;	/* O_DIRECT request */
+ 	const struct nfs_commit_completion_ops *completion_ops;
+ };
+ 
 -- 
-1.7.7.6
+1.7.2.1
 
