@@ -1,76 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47560 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:34178 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750886Ab2DIQjF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Apr 2012 12:39:05 -0400
-Date: Mon, 9 Apr 2012 12:39:02 -0400
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: Grace period
-Message-ID: <20120409163902.GD6482@fieldses.org>
-References: <20120406234039.GA20940@fieldses.org>
- <4F82C6E3.3030009@parallels.com>
- <20120409094743.56932677@tlielax.poochiereds.net>
- <4F82F16C.7030303@parallels.com>
- <20120409112739.6a823d6f@corrin.poochiereds.net>
- <4F830999.5000504@parallels.com>
- <20120409161114.GB6482@fieldses.org>
- <1333988226.2688.76.camel@lade.trondhjem.org>
- <20120409162107.GC6482@fieldses.org>
- <1333989216.2688.87.camel@lade.trondhjem.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <1333989216.2688.87.camel@lade.trondhjem.org>
+	id S1757417Ab2DTSgu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 14:36:50 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH v2 11/28] NFS: use req_offset where appropriate
+Date: Fri, 20 Apr 2012 14:35:53 -0400
+Message-Id: <1334946970-27470-12-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
+References: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 09, 2012 at 04:33:36PM +0000, Myklebust, Trond wrote:
-> On Mon, 2012-04-09 at 12:21 -0400, bfields@fieldses.org wrote:
-> > On Mon, Apr 09, 2012 at 04:17:06PM +0000, Myklebust, Trond wrote:
-> > > On Mon, 2012-04-09 at 12:11 -0400, bfields@fieldses.org wrote:
-> > > > On Mon, Apr 09, 2012 at 08:08:57PM +0400, Stanislav Kinsbursky wrote:
-> > > > > 09.04.2012 19:27, Jeff Layton пишет:
-> > > > > >
-> > > > > >If you allow one container to hand out conflicting locks while another
-> > > > > >container is allowing reclaims, then you can end up with some very
-> > > > > >difficult to debug silent data corruption. That's the worst possible
-> > > > > >outcome, IMO. We really need to actively keep people from shooting
-> > > > > >themselves in the foot here.
-> > > > > >
-> > > > > >One possibility might be to only allow filesystems to be exported from
-> > > > > >a single container at a time (and allow that to be overridable somehow
-> > > > > >once we have a working active/active serving solution). With that, you
-> > > > > >may be able limp along with a per-container grace period handling
-> > > > > >scheme like you're proposing.
-> > > > > >
-> > > > > 
-> > > > > Ok then. Keeping people from shooting themselves here sounds reasonable.
-> > > > > And I like the idea of exporting a filesystem only from once per
-> > > > > network namespace.
-> > > > 
-> > > > Unfortunately that's not going to get us very far, especially not in the
-> > > > v4 case where we've got the common read-only pseudoroot that everyone
-> > > > has to share.
-> > > 
-> > > I don't see how that can work in cases where each container has its own
-> > > private mount namespace. You're going to have to tie that pseudoroot to
-> > > the mount namespace somehow.
-> > 
-> > Sure, but in typical cases it'll still be shared; requiring that they
-> > not be sounds like a severe limitation.
-> 
-> I'd expect the typical case to be the non-shared namespace: the whole
-> point of containers is to provide for complete isolation of processes.
-> Usually that implies that you don't want them to be able to communicate
-> via a shared filesystem.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |    7 +++----
+ 1 files changed, 3 insertions(+), 4 deletions(-)
 
-If it's just a file server, then you may want to be able to bring up and
-down service on individual server ip's individually, and possibly
-advertise different exports; but requiring complete isolation to do that
-seems like overkill.
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 31afd81..c536328 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -776,8 +776,8 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 	    !nfs_generic_pg_test(pgio, prev, req))
+ 		return false;
+ 
+-	p_stripe = (u64)prev->wb_index << PAGE_CACHE_SHIFT;
+-	r_stripe = (u64)req->wb_index << PAGE_CACHE_SHIFT;
++	p_stripe = (u64)req_offset(prev);
++	r_stripe = (u64)req_offset(req);
+ 	stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
+ 
+ 	do_div(p_stripe, stripe_unit);
+@@ -896,8 +896,7 @@ filelayout_choose_commit_list(struct nfs_page *req,
+ 	 * to store the value calculated in filelayout_write_pagelist
+ 	 * and just use that here.
+ 	 */
+-	j = nfs4_fl_calc_j_index(lseg,
+-				 (loff_t)req->wb_index << PAGE_CACHE_SHIFT);
++	j = nfs4_fl_calc_j_index(lseg, req_offset(req));
+ 	i = select_bucket_index(fl, j);
+ 	buckets = FILELAYOUT_FROM_HDR(lseg->pls_layout)->commit_info.buckets;
+ 	list = &buckets[i].written;
+-- 
+1.7.2.1
 
---b.
