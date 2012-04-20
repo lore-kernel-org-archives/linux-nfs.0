@@ -1,67 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47553 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:4512 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756375Ab2DZTG1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Apr 2012 15:06:27 -0400
-Date: Thu, 26 Apr 2012 15:06:26 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Linux server client ID behavior
-Message-ID: <20120426190625.GB9920@fieldses.org>
-References: <CDACC8A7-C94B-4F03-B355-33B42686BD1B@oracle.com>
- <20120426190324.GA9920@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120426190324.GA9920@fieldses.org>
+	id S1757465Ab2DTTIs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 15:08:48 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
+        Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v2 8/8] NFS: Remove extra rpc_clnt argument to proc_lookup
+Date: Fri, 20 Apr 2012 15:08:38 -0400
+Message-Id: <1334948918-4706-9-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1334948918-4706-1-git-send-email-bjschuma@netapp.com>
+References: <1334948918-4706-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 26, 2012 at 03:03:24PM -0400, bfields wrote:
-> On Thu, Apr 26, 2012 at 12:17:13PM -0400, Chuck Lever wrote:
-> > Hi-
-> > 
-> > Follow up on the issue I reported in IRC a couple of days ago.
-> > 
-> > I'm using a stock Fedora 16 NFS server and my prototype UCS client.  The client uses the same nfs_client_id4 string and boot verifier for all mounts on all servers.  It performs a SETCLIENTID as part of the mount operation.  SETCLIENTID is the first NFS operation after the client sends it's NFS ping.
-> > 
-> > The test is simple.  It is meant to see if the UCS client recognizes that a server with an IPv4 and IPv6 address (a very typical configuration) is effectively trunked.  It goes like this:
-> > 
-> >   1.  Mount a filesystem on a server on it's IPv4 address via NFSv4.0
-> >   2.  Without unmounting the first filesystem, and without letting the first lease expire, mount a different filesystem on the same server on it's IPv6 address via NFSv4.0
-> > 
-> > The Solaris 11 FCS server allows both mounts, and the client recognizes that the IPv4 and IPv6 address represent the same server instance.  Based on Noveck's NFSv4 migration draft, I believe this is the correct outcome.
-> > 
-> > With the Fedora 16 (3.3.2-1) Linux NFS server, the following is observed:
-> > 
-> >   a.  The second (IPv6) mount sends a SETCLIENTID with the same nfs_client_id4 and boot verifier as the first mount, as expected.  The request succeeds, and the server returns a different clientid4 than the first mount.  I believe that's incorrect.
-> > 
-> > The server should return the same clientid4 as the first SETCLIENTID operation, since the client has presented the same nfs_client_id4 and boot verifier.  The nfs_client_id4 string alone is how servers should detect client identity.  For non-UCS clients, this should be enough anyway, since IP addresses are already embedded in the string.  [ I have not yet tried this test with NFSv4.1, where all clients are supposed to use UCS. ]
-> > 
-> >   b.  The second (IPv6) mount then sends a SETCLIENTID_CONFIRM and the server replies with NFS4ERR_CLID_INUSE.  I believe CLID_INUSE is an incorrect response.
-> > 
-> > My reading of 3530bis is that CLID_INUSE is appropriate only when there is an authentication flavor mismatch on SETCLIENTID or SETCLIENTID_CONFIRM requests.  That is, the client has previously presented the nfs_client_id4 string using a different authentication flavor than the one it is using in the current request, and the lease that resulted from that previous operation has not yet expired.  In this case, the authentication flavor (AUTH_SYS) is the same on both SETCLIENTID operations, so SETCLIENTID_CONFIRM should be treated as a valid request from this client.
-> > 
-> > The larger concern is that we have here another example of a widely deployed server implementation that does not tolerate UCS clients.  Before I report this experience to the working group, I would like comment on the Linux server's behavior and my opinions about its correctness.
-> 
-> I agree, both sound like bugs.  (Could you make patches?)
-> 
-> The second is easy to fix.  From a quick look at historical git
-> archives, it appears to have been there from the beginning.
-> 
-> The first I don't understand.  It certainly doesn't look like what the
-> code's intended to do on a quick glance, so there must be some logic
-> error I'm not seeing....
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Note the clid_inuse logic is wrong in another way: it uses same_creds,
-which just compares uid's.  All gss machine creds, for example, are
-likely mapped to the same (nobody) uid.  So this is unlikely to give the
-right results!  It should be doing a string compare on the principal
-name in the gss case.
+Now that I'm doing secinfo automatically in the v4 code this extra
+argument isn't needed.
 
-(And svcgssd should probably be modified to pass down the principal in
-more cases, and/or we should check that Simo's new upcall would help
-there.)
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/dir.c            |    6 +++---
+ fs/nfs/namespace.c      |    3 +--
+ fs/nfs/nfs3proc.c       |    2 +-
+ fs/nfs/nfs4proc.c       |    2 +-
+ fs/nfs/proc.c           |    2 +-
+ include/linux/nfs_xdr.h |    2 +-
+ 6 files changed, 8 insertions(+), 9 deletions(-)
 
---b.
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 8789210..82b42e2 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1143,7 +1143,7 @@ static int nfs_lookup_revalidate(struct dentry *dentry, struct nameidata *nd)
+ 	if (fhandle == NULL || fattr == NULL)
+ 		goto out_error;
+ 
+-	error = NFS_PROTO(dir)->lookup(NFS_SERVER(dir)->client, dir, &dentry->d_name, fhandle, fattr);
++	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr);
+ 	if (error)
+ 		goto out_bad;
+ 	if (nfs_compare_fh(NFS_FH(inode), fhandle))
+@@ -1299,7 +1299,7 @@ static struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, stru
+ 	parent = dentry->d_parent;
+ 	/* Protect against concurrent sillydeletes */
+ 	nfs_block_sillyrename(parent);
+-	error = NFS_PROTO(dir)->lookup(NFS_SERVER(dir)->client, dir, &dentry->d_name, fhandle, fattr);
++	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr);
+ 	if (error == -ENOENT)
+ 		goto no_entry;
+ 	if (error < 0) {
+@@ -1646,7 +1646,7 @@ int nfs_instantiate(struct dentry *dentry, struct nfs_fh *fhandle,
+ 	if (dentry->d_inode)
+ 		goto out;
+ 	if (fhandle->size == 0) {
+-		error = NFS_PROTO(dir)->lookup(NFS_SERVER(dir)->client, dir, &dentry->d_name, fhandle, fattr);
++		error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr);
+ 		if (error)
+ 			goto out_error;
+ 	}
+diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
+index e36fd8a..08b9c93 100644
+--- a/fs/nfs/namespace.c
++++ b/fs/nfs/namespace.c
+@@ -261,8 +261,7 @@ struct vfsmount *nfs_submount(struct nfs_server *server, struct dentry *dentry,
+ 	struct dentry *parent = dget_parent(dentry);
+ 
+ 	/* Look it up again to get its attributes */
+-	err = server->nfs_client->rpc_ops->lookup(server->client, parent->d_inode,
+-						  &dentry->d_name, fh, fattr);
++	err = server->nfs_client->rpc_ops->lookup(parent->d_inode, &dentry->d_name, fh, fattr);
+ 	dput(parent);
+ 	if (err != 0)
+ 		return ERR_PTR(err);
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index d39d1d7..f03ab63 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -142,7 +142,7 @@ nfs3_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ }
+ 
+ static int
+-nfs3_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
++nfs3_proc_lookup(struct inode *dir, struct qstr *name,
+ 		 struct nfs_fh *fhandle, struct nfs_fattr *fattr)
+ {
+ 	struct nfs3_diropargs	arg = {
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 6a07dd3..e5c82e9 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2578,7 +2578,7 @@ out:
+ 	return err;
+ }
+ 
+-static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
++static int nfs4_proc_lookup(struct inode *dir, struct qstr *name,
+ 			    struct nfs_fh *fhandle, struct nfs_fattr *fattr)
+ {
+ 	int status;
+diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+index 8dfe960..11645a2 100644
+--- a/fs/nfs/proc.c
++++ b/fs/nfs/proc.c
+@@ -178,7 +178,7 @@ nfs_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ }
+ 
+ static int
+-nfs_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
++nfs_proc_lookup(struct inode *dir, struct qstr *name,
+ 		struct nfs_fh *fhandle, struct nfs_fattr *fattr)
+ {
+ 	struct nfs_diropargs	arg = {
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index fbacdc8..a02a537 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1235,7 +1235,7 @@ struct nfs_rpc_ops {
+ 			    struct nfs_fattr *);
+ 	int	(*setattr) (struct dentry *, struct nfs_fattr *,
+ 			    struct iattr *);
+-	int	(*lookup)  (struct rpc_clnt *clnt, struct inode *, struct qstr *,
++	int	(*lookup)  (struct inode *, struct qstr *,
+ 			    struct nfs_fh *, struct nfs_fattr *);
+ 	int	(*access)  (struct inode *, struct nfs_access_entry *);
+ 	int	(*readlink)(struct inode *, struct page *, unsigned int,
+-- 
+1.7.10
+
