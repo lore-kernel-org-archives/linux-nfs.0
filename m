@@ -1,217 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:48964 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:18867 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758369Ab2DJSoW convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Apr 2012 14:44:22 -0400
-Date: Tue, 10 Apr 2012 14:45:05 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH][RFC] nfsd/lockd: have locks_in_grace take a sb arg
-Message-ID: <20120410144505.58bca0b9@corrin.poochiereds.net>
-In-Reply-To: <4F84493C.1040303@parallels.com>
-References: <1333455279-11200-1-git-send-email-jlayton@redhat.com>
-	<4F841D2A.9020504@parallels.com>
-	<20120410081612.65dd25fa@tlielax.poochiereds.net>
-	<4F842BAE.2010804@parallels.com>
-	<20120410093900.20209d00@tlielax.poochiereds.net>
-	<4F84493C.1040303@parallels.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+	id S1755359Ab2DTWFe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 18:05:34 -0400
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Adamson, Dros" <Weston.Adamson@netapp.com>, Jim Rees <rees@umich.edu>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS4: fix referrals with IPv6 mounts
+Date: Fri, 20 Apr 2012 22:05:32 +0000
+Message-ID: <1642D7EE-AF61-42D8-BB8B-BA444207DFAF@netapp.com>
+References: <1334949705-33393-1-git-send-email-dros@netapp.com>
+ <20120420194504.GA10259@umich.edu>
+ <EA178ED0-5813-4235-A0CF-CF9D54AFB04F@netapp.com>
+ <1334952788.3295.24.camel@lade.trondhjem.org>
+ <A3FAE1E4-2AB8-4AF0-AC46-77EA3E4B9AB2@netapp.com>
+ <1334957730.3295.35.camel@lade.trondhjem.org>
+ <9AAD6718-5A17-482C-8AC1-A6F676838AF0@netapp.com>
+ <1334958209.3295.39.camel@lade.trondhjem.org>
+ <A74D78B5-728F-45EE-8A02-6FDBE0D5ABB2@netapp.com>
+ <1334959106.3295.43.camel@lade.trondhjem.org>
+In-Reply-To: <1334959106.3295.43.camel@lade.trondhjem.org>
+Content-Type: multipart/signed;
+	boundary="Apple-Mail=_3992F476-0BD8-426D-BB31-1E61F6907608";
+	protocol="application/pkcs7-signature"; micalg=sha1
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 10 Apr 2012 18:52:44 +0400
-Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+--Apple-Mail=_3992F476-0BD8-426D-BB31-1E61F6907608
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-> 10.04.2012 17:39, Jeff Layton пишет:
-> > On Tue, 10 Apr 2012 16:46:38 +0400
-> > Stanislav Kinsbursky<skinsbursky@parallels.com>  wrote:
-> >
-> >> 10.04.2012 16:16, Jeff Layton пишет:
-> >>> On Tue, 10 Apr 2012 15:44:42 +0400
-> >>>
-> >>> (sorry about the earlier truncated reply, my MUA has a mind of its own
-> >>> this morning)
-> >>>
-> >>
-> >> OK then. Previous letter confused me a bit.
-> >>
-> >>>
-> >>> TBH, I haven't considered that in depth. That is a valid situation, but
-> >>> one that's discouraged. It's very difficult (and expensive) to
-> >>> sequester off portions of a filesystem for serving.
-> >>>
-> >>> A filehandle is somewhat analogous to a device/inode combination. When
-> >>> the server gets a filehandle, it has to determine "is this within a
-> >>> path that's exported to this host"? That process is called subtree
-> >>> checking. It's expensive and difficult to handle. It's always better to
-> >>> export along filesystem boundaries.
-> >>>
-> >>> My suggestion would be to simply not deal with those cases in this
-> >>> patch. Possibly we could force no_subtree_check when we export an fs
-> >>> with a locks_in_grace option defined.
-> >>>
-> >>
-> >> Sorry, but without dealing with those cases your patch looks a bit... Useless.
-> >> I.e. it changes nothing, it there will be no support from file systems, going to
-> >> be exported.
-> >> But how are you going to push developers to implement these calls? Or, even if
-> >> you'll try to implement them by yourself, how they will looks like?
-> >> Simple check only for superblock looks bad to me, because any other start of
-> >> NFSd will lead to grace period for all other containers (which uses the same
-> >> filesystem).
-> >>
-> >
-> > Changing nothing was sort of the point. The idea was to allow
-> > filesystems to override this if they choose. The main impetus here was
-> > to allow clustered filesystems to handle this in a different fashion to
-> > allow them to do active/active serving from multiple nodes. I wasn't
-> > considering the container use-case when I spun this up last week...
-> >
-> 
-> Sorry, I didn't notice, that this patch was sent a week ago (thought, that you 
-> wrote it yesterday).
-> 
-> > Now that said, we probably can accommodate containers with this too.
-> > Perhaps we could consider passing in a sb+namespace tuple eventually?
-> >
-> 
-> We can, of course. But it looks like the problem with different NFSd on the same 
-> file system won't be solved.
-> 
+On Apr 20, 2012, at 5:58 PM, Myklebust, Trond wrote:
 
-Probably not. I think the only way to solve that is to coordinate grace
-periods for filesystems exported from multiple containers.
+> On Fri, 2012-04-20 at 21:48 +0000, Adamson, Dros wrote:
+>> On Apr 20, 2012, at 5:43 PM, Myklebust, Trond wrote:
+>>=20
+>>> On Fri, 2012-04-20 at 21:38 +0000, Adamson, Dros wrote:
+>>>=20
+>>>> Yes, something like that could work, but we still have the same =
+issue - dentry->d_fsdata never has [] escaping.
+>>>=20
+>>> That's a bug too...=20
+>>=20
+>> Right! This is what I've been talking about the whole time - I guess =
+I didn't do a good job explaining it :)  The original bug (splitting =
+return of nfs_path()) would be trivial to fix if d_fsdata had [] =
+escaping.
+>>=20
+>> So I guess that answers my earlier question - we *do* want to change =
+dev_name to include [] escaping.
+>>=20
+>> -dros
+>=20
+> Here is a patch from Jan Kara that does just this. I'll start by
+> applying that...
 
-What may be a lot easier initially is to only allow a fs to be exported
-from one container. You could always lift that restriction later if you
-come up with a way to handle it safely.
+Cool! dprintk debugging just led me there!
 
-We will probably need to re-think the current design of mountd and
-exportfs in order to enforce that however.
+Why wasn't this patch applied earlier?  Just curious.
 
-> >>>> Also, don't we need to prevent of exporting the same file system parts but
-> >>>> different servers always, but not only for grace period?
-> >>>>
-> >>>
-> >>> I'm not sure I understand what you're asking here. Were you referring
-> >>> to my suggestion earlier of not allowing the export of the same
-> >>> filesystem from more than one container? If so, then yes that would
-> >>> apply before and after the grace period ends.
-> >>>
-> >>
-> >> I was talking about preventing of exporting intersecting directories by
-> >> different server.
-> >> IOW, exporting of the same file system by different NFS server is allowed, but
-> >> only if their exporting directories doesn't intersect.
-> >
-> > Doesn't that require that the containers are aware of each other to
-> > some degree? Or are you considering doing this in the kernel?
-> >
-> > If the latter, then there's another problem. The export table is kept
-> > in userspace (in mountd) and the kernel only upcalls for it as needed.
-> >
-> > You'll need to change that overall design if you want the kernel to do
-> > this enforcement.
-> >
-> 
-> Hmm, I see...
-> Yes, I was thinking about doing it in kernel.
-> In theory (I'm just thinking and writing simultaneously - this is not a solid 
-> idea) this could be a kernel thread (this gives desired fs access). And most 
-> probably this thread have to be launched on nfsd module insertion.
-> There should be some way to add a job for it on NFSd start and a way to wait for 
-> the job to be done. This is the easy part.
-> But I forgot about cross mounts...
->
-> >> This check is expensive (as you mentioned), but have to be done only once on NFS
-> >> server start.
-> >
-> > Well, no. The subtree check happens every time nfsd processes a
-> > filehandle -- see nfsd_acceptable().
-> >
-> > Basically we have to turn the filehandle into a dentry and then walk
-> > back up to the directory that's exported to verify that it is within
-> > the correct subtree. If that fails, then we might have to do it more
-> > than once if it's a hardlinked file.
-> >
-> 
-> Wait. Looks like I'm missing something.
-> This subtree check has nothing with my proposal (if I'm not mistaken).
-> This option and it's logic remains the same.
-> My proposal was to check directories, desired to be exported, on NFS server 
-> start. And if any of passed exports intersects with any of exports, already 
-> shared by another NFSd - then shutdown NFSd and print error message.
-> Am I missing the point here?
-> 
+I'll post a new patch to fix splitting nfs_path().
 
-Sorry I got confused with the discussion. You will need to do
-something similar to what subtree checking does in order to handle
-your proposal however.
+-dros=
 
-> >> With this solution, grace period can simple, and no support from exporting file
-> >> system is required.
-> >> But the main problem here is that such intersections can be checked only in
-> >> initial file system environment (containers with it's own roots, gained via
-> >> chroot, can't handle this situation).
-> >> So, it means, that there have to be some daemon (kernel or user space), which
-> >> will handle such requests from different NFS server instances... Which in turn
-> >> means, that some way of communication between this daemon and NFS servers is
-> >> required. And unix (any of them) sockets doesn't suits here, which makes this
-> >> problem more difficult.
-> >>
-> >
-> > This is a truly ugly problem, and unfortunately parts of the nfsd
-> > codebase are very old and crusty. We've got a lot of cleanup work ahead
-> > of us no matter what design we settle on.
-> >
-> > This is really a lot bigger than the grace period. I think we ought to
-> > step back a bit and consider this more "holistically" first. Do you
-> > have a pointer to an overall design document or something?
-> >
-> 
-> What exactly you are asking about? Overall design of containerization?
-> 
+--Apple-Mail=_3992F476-0BD8-426D-BB31-1E61F6907608
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Type: application/pkcs7-signature; name="smime.p7s"
+Content-Transfer-Encoding: base64
 
-I meant containerization of nfsd in particular.
+MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIDTzCCA0sw
+ggIzoAMCAQICAQEwCwYJKoZIhvcNAQEFMEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYD
+VQQGEwJVUzEeMBwGCSqGSIb3DQEJARYPZHJvc0BuZXRhcHAuY29tMB4XDTExMDYwODIyMDc0NloX
+DTEyMDYwNzIyMDc0NlowRjEXMBUGA1UEAwwOV2VzdG9uIEFkYW1zb24xCzAJBgNVBAYTAlVTMR4w
+HAYJKoZIhvcNAQkBFg9kcm9zQG5ldGFwcC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
+AoIBAQC8/tJxtovJEXYRfSsrFOWKHxIZGY7/2mBee1DpWuoGDbVNapefCC7WXe+Nqxz609w2J/Mk
+/k3trZ3Ge2NXK0tGnP9NzjkzpGA7rSpM3wUFsvbLMUEGfQpvV24/nYvcLHTvOOEUaDPpHduN94bD
+dwvyowzDIRIpF2MeRnOzBNeHkrGHlZdzPmGjm8tkhrDRRkDYHhlxaiG4z30KCfAazxomuINiy1kj
+vbndXooYMDoh9H63hgW4NkOedtLdflLa322DXQ3nFU7YbyOIjHVl1tgWJLDWf7WT3lsAB8KvuJZ5
+zhsUB+fqxCKPJVRPDO1gjChvvtGiG1tGUUZz0H9Wx00zAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIH
+gDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDBDAaBgNVHREEEzARgQ9kcm9zQG5ldGFwcC5jb20wDQYJ
+KoZIhvcNAQEFBQADggEBACv0niZSmW+psB1sJXULh3mecDbN2mj0bFpN1YNdjcV7BiOLJ1Rs1ibV
+f13h73z8C7SBsPXTM5si8gmJtOnXM5jsgtlql44h/RrjUr8+mtK5DPCZls9J7iz3cGthzwOPvxUj
+nMSv3BpRX5oJom5ESgCM9Nn4u/ECTlLMhEIOYnBFiN0eDxcxz+r1cpbHg3r0otIKyxLpeaCjP6AH
+F93EHp4T8Rb63y3CcDgxrQGHlTdVi3QvxaMUexUXD81fiA+UqsB/MKmRxB1Hs4Vf3Q/+ejcm78K1
+ROF8TNPmNWRlKg3Y7cSFjZGzLuzXsvSsCbw4HLn0oZe/OfgSbarTAxttL5IxggHRMIIBzQIBATBL
+MEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYDVQQGEwJVUzEeMBwGCSqGSIb3DQEJARYP
+ZHJvc0BuZXRhcHAuY29tAgEBMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
+MBwGCSqGSIb3DQEJBTEPFw0xMjA0MjAyMjA1MzJaMCMGCSqGSIb3DQEJBDEWBBQvtUH9KnNspLFL
+1BS7HX1HMPogtzANBgkqhkiG9w0BAQEFAASCAQA+OhATetB1lcgKZuciIgcBJC9tn7CMf00MaoPE
+VSEfrHlEKSTOe7p22l4OgWlSjIceWBMzfEcL6uN8Y3LozO7gDmajBdDfwnssL6Bd/VWKXKtzhHT4
+OOtByRgF9uzVatBVeq96mbvVWxbNIBxuyoP4IYKEDXVayGjnfnrN8j0Wffa3uiNG/vHzLHgZztxr
+f6am/8aSyertSevAxOy/5uIDAeTR8olm8r3L8hJ8tpECrwFcEQw0DQ614sSHXlhcsOonNoH5EDsz
+9Dmty+Zz/SFvF80BUv8yz3kj0djw5xyrL0vPFqaM3VDZ3posZqRfNwC8TVLASx1wepfMAjPmhbsQ
+AAAAAAAA
 
-> > One thing that puzzles me at the moment. We have two namespaces to deal
-> > with -- the network and the mount namespace. With nfs client code,
-> > everything is keyed off of the net namespace. That's not really the
-> > case here since we have to deal with a local fs tree as well.
-> >
-> > When an nfsd running in a container receives an RPC, how does it
-> > determine what mount namespace it should do its operations in?
-> >
-> 
-> We don't use mount namespaces, so that's why I wasn't thinking about it...
-> But if we have 2 types of namespaces, then we have to tie  mount namesapce to 
-> network. I.e we can get desired mount namespace from per-net NFSd data.
-> 
-
-One thing that Bruce mentioned to me privately is that we could plan to
-use whatever mount namespace mountd is using within a particular net
-namespace. That makes some sense since mountd is the final arbiter of
-who gets access to what.
-
-> But, please, don't ask me, what will be, if two or more NFS servers shares the 
-> same mount namespace... Looks like this case should be forbidden.
-> 
-
-I'm not sure we need to forbid sharing the mount namespace. They might
-be exporting completely different filesystems after all, in which case
-we'd be forbidding it for no good reason.
-
-Note that it is quite easy to get lost in the weeds with this. I've been
-struggling to get a working design for a clustered nfsv4 server for the
-last several months and have had some time to wrestle with these
-issues. It's anything but trivial.
-
-What you may need to do in order to make progress is to start with some
-valid use-cases for this stuff, and get those working while disallowing
-or ignoring other use cases. We'll never get anywhere if we try to solve
-all of these problems at once...
-
--- 
-Jeff Layton <jlayton@redhat.com>
+--Apple-Mail=_3992F476-0BD8-426D-BB31-1E61F6907608--
