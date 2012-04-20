@@ -1,15 +1,15 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:2751 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:4512 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757034Ab2DXR4T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Apr 2012 13:56:19 -0400
+	id S1751119Ab2DTTIk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 15:08:40 -0400
 From: bjschuma@netapp.com
 To: Trond.Myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
         Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v3 0/8] Fix SECINFO procedure
-Date: Tue, 24 Apr 2012 13:56:04 -0400
-Message-Id: <1335290172-1532-1-git-send-email-bjschuma@netapp.com>
+Subject: [PATCH v2 0/8] Fix SECINFO procedure
+Date: Fri, 20 Apr 2012 15:08:30 -0400
+Message-Id: <1334948918-4706-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -22,10 +22,6 @@ create a "submount" rpc_op instead, see patch 5).
 
 I also noticed that SECINFO_NO_NAME was never run with the current xdr
 decoding logic.  Patch 6 fixes this problem.
-
-Changes in version 3:
-- Don't define decode_secinfo_no_name() if CONFIG_NFS_V4_1 isn't set
-- Move around function declerations in header files
 
 Changes in version 2:
 - Reorder the patches so I'm not doing cleanup in the beginning
@@ -48,17 +44,17 @@ Bryan Schumaker (8):
 
  fs/nfs/client.c         |    5 +-
  fs/nfs/dir.c            |    6 +-
- fs/nfs/internal.h       |   22 ++------
+ fs/nfs/internal.h       |   20 +++----
  fs/nfs/namespace.c      |  140 ++++++-----------------------------------------
  fs/nfs/nfs3proc.c       |    3 +-
- fs/nfs/nfs4_fs.h        |   13 ++++-
+ fs/nfs/nfs4_fs.h        |   12 +++-
  fs/nfs/nfs4namespace.c  |  107 +++++++++++++++++++++++++++++++++++-
  fs/nfs/nfs4proc.c       |  111 +++++++++++++++++++++++++++++--------
  fs/nfs/nfs4xdr.c        |   26 ++++++---
  fs/nfs/proc.c           |    3 +-
  fs/nfs/super.c          |    4 +-
  include/linux/nfs_xdr.h |    5 +-
- 12 files changed, 261 insertions(+), 184 deletions(-)
+ 12 files changed, 261 insertions(+), 181 deletions(-)
 
 -- 
 1.7.10
