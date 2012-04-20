@@ -1,124 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:42306 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:34191 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751410Ab2DQOWZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Apr 2012 10:22:25 -0400
-Date: Tue, 17 Apr 2012 10:22:58 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Miklos Szeredi <miklos@szeredi.hu>
-Cc: "Myklebust\, Trond" <Trond.Myklebust@netapp.com>,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        Malahal Naineni <malahal@us.ibm.com>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "pstaubach\@exagrid.com" <pstaubach@exagrid.com>,
-        "viro\@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
-        "hch\@infradead.org" <hch@infradead.org>,
-        "michael.brantley\@deshaw.com" <michael.brantley@deshaw.com>,
-        "sven.breuner\@itwm.fraunhofer.de" <sven.breuner@itwm.fraunhofer.de>
-Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from
- getattr call
-Message-ID: <20120417102258.49eb0071@corrin.poochiereds.net>
-In-Reply-To: <87obqqo3qd.fsf@tucsk.pomaz.szeredi.hu>
-References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
-	<20120413150518.GA1987@us.ibm.com>
-	<20120413114236.0e557e01@tlielax.poochiereds.net>
-	<4F8B1B7B.3040304@itwm.fraunhofer.de>
-	<20120416073655.7cdb90cf@corrin.poochiereds.net>
-	<4F8C3036.2030702@itwm.fraunhofer.de>
-	<20120416134642.1754cd3e@corrin.poochiereds.net>
-	<1334604785.2879.23.camel@lade.trondhjem.org>
-	<20120416154322.0d95e435@corrin.poochiereds.net>
-	<1334607906.2879.36.camel@lade.trondhjem.org>
-	<20120416190548.2463d1d0@corrin.poochiereds.net>
-	<87sjg2o62z.fsf@tucsk.pomaz.szeredi.hu>
-	<20120417093222.2ff5e1bd@corrin.poochiereds.net>
-	<87obqqo3qd.fsf@tucsk.pomaz.szeredi.hu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S932330Ab2DTSgw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 14:36:52 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH v2 18/28] NFS: remove unused wb_complete field from struct nfs_page
+Date: Fri, 20 Apr 2012 14:36:00 -0400
+Message-Id: <1334946970-27470-19-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
+References: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 17 Apr 2012 16:03:06 +0200
-Miklos Szeredi <miklos@szeredi.hu> wrote:
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pagelist.c        |    1 -
+ fs/nfs/write.c           |    1 -
+ include/linux/nfs_page.h |    1 -
+ 3 files changed, 0 insertions(+), 3 deletions(-)
 
-> Jeff Layton <jlayton@redhat.com> writes:
-> 
-> >> The retry is needed when when we discover during ->getattr() that the
-> >> cached lookup returned a stale file handle.
-> >> 
-> >> If the lookup wasn't cached or if there was no lookup at all
-> >> (stat(".") and friends) then retrying will not gain anything.
-> >> 
-> >
-> > That's not necessarily the case, at least not with NFS. It's easily
-> > possible for you to do a full-fledged lookup over the wire, and then
-> > for that inode to be removed prior to issuing a call against the FH that
-> > you got back. 
-> >
-> >> And that also means that retrying multiple times is pointless, since
-> >> after the first retry we are sure to have up-to-date attributes.
-> >> 
-> >
-> > Again, it's not pointless. It's possible (though somewhat pathological)
-> > for you to hit the race above more than once in the same operation.
-> > Granted, it's an unlikely race but it is possible.
-> 
-> ->lookup() should (and does AFAICS) leave a fully initialized inode with
-> up-to-date atributes in there and at that moment there's not a lot of
-> sense in fetching the attributes from the server *again*.
-> 
-> How that lookup is implemented is another question, I can see in
-> nfs3_proc_lookup() that it may or may not be atomic, and retrying (and
-> looping) there might make sense.  But it doesn't retry and doesn't loop,
-> so the fact is, it will either return ESTALE (and the path lookup will
-> retry once with LOOKUP_REVAL) or the inode *will* be up-to-date.
-> 
-> So I think I'm still right that it's pointless to do retry after a
-> non-cached lookup.
-> 
-
-Ok, I'll grant that for stat() type calls, but I've just been focusing
-on that as an example here. We'll need to do something similar for all
-path based syscalls. What about things that require more than one round
-trip -- e.g. chmod()?
-
-> >> Unfortunately it's impossible for the filesystem to know whether a
-> >> ->getattr (or other inode operation) was perfromed after a cached or a
-> >> non-cached lookup.
-> >> 
-> >> I'm not sure what the right interface for this would be.  One would be
-> >> to just pass the "cached-or-not" information as a flag.  That works for
-> >> getattr() but not for other operations.
-> >> 
-> >> Another is to introduce atomic lookup+foo variants of these operations
-> >> just like for open.  E.g. the lookup+getattr is called if the cached
-> >> lookup fails or if the cached lookup succeeds and the plain ->getattr
-> >> call returns ESTALE.
-> >>
-> >
-> > To do that would require protocol support that we simply don't have. We
-> > don't have a way to (for instance) say via NFS "give me the attributes
-> > for this filename". Well, at least not for NFSv3...
-> >
-> > With v4 you could theoretically construct a compound that does that,
-> > but you'd have to assume that the server won't release the reference to
-> > the inode midway through the compound. That's a reasonably safe
-> > assumption.
-> >
-> > While it's nice to consider new atomic ops like this, it's not really
-> > possible with earlier versions of NFS.
-> 
-> It's just an interface question: where you put the retry logic for those
-> non-atomic protocols.  I think it's cleaner if the retry logic is in the
-> filesystem and not in the VFS.  Then NFS can do whatever it wants
-> without having to impose policy in the generic filesystem layer.
-> 
-
-So essentially you want to push all of the LOOKUP handling down into
-the filesystems such that all ops are atomic_* or have an atomic_*
-variant. That sounds like a very heavy-handed way to solve this.
-
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 4cf2a68..5d01a16 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -114,7 +114,6 @@ nfs_create_request(struct nfs_open_context *ctx, struct inode *inode,
+ 	 * long write-back delay. This will be adjusted in
+ 	 * update_nfs_request below if the region is not locked. */
+ 	req->wb_page    = page;
+-	atomic_set(&req->wb_complete, 0);
+ 	req->wb_index	= page->index;
+ 	page_cache_get(page);
+ 	BUG_ON(PagePrivate(page));
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 1503972..705bf01 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1059,7 +1059,6 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc,
+ 		nbytes -= len;
+ 		offset += len;
+ 	} while (nbytes != 0);
+-	atomic_set(&req->wb_complete, requests);
+ 	desc->pg_rpc_callops = &nfs_write_common_ops;
+ 	return ret;
+ 
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index bc5b7a5..0a5b63f 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -36,7 +36,6 @@ struct nfs_page {
+ 	struct page		*wb_page;	/* page to read in/write out */
+ 	struct nfs_open_context	*wb_context;	/* File state context info */
+ 	struct nfs_lock_context	*wb_lock_context;	/* lock context info */
+-	atomic_t		wb_complete;	/* i/os we're waiting for */
+ 	pgoff_t			wb_index;	/* Offset >> PAGE_CACHE_SHIFT */
+ 	unsigned int		wb_offset,	/* Offset & ~PAGE_CACHE_MASK */
+ 				wb_pgbase,	/* Start of page data */
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.2.1
+
