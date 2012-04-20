@@ -1,65 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:28190 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:28519 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753714Ab2DJNNw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Apr 2012 09:13:52 -0400
-Date: Tue, 10 Apr 2012 09:13:21 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-Cc: linux-nfs@vger.kernel.org, jiri.horky@cesnet.cz
-Subject: Re: NFSv4 high availability setups
-Message-ID: <20120410091321.1be1a87e@tlielax.poochiereds.net>
-In-Reply-To: <20120410125552.GC5074@ics.muni.cz>
-References: <20120405103124.GV4752@ics.muni.cz>
-	<20120405073901.63d1c749@tlielax.poochiereds.net>
-	<20120410125552.GC5074@ics.muni.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1757385Ab2DTSsG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 14:48:06 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH v3 01/25] NFS: check for req==NULL in nfs_try_to_update_request cleanup
+Date: Fri, 20 Apr 2012 14:47:33 -0400
+Message-Id: <1334947677-28864-2-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
+References: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 10 Apr 2012 14:55:52 +0200
-Lukas Hejtmanek <xhejtman@ics.muni.cz> wrote:
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/write.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-> Hi Jeff, 
-> 
-> On Thu, Apr 05, 2012 at 07:39:01AM -0400, Jeff Layton wrote:
-> > > As I understand, NFS4 uses state dir somewhere in /var/lib/nfs/rpc_pipefs.
-> > > 
-> > 
-> > You're probably thinking of /var/lib/nfs/v4recovery.
-> 
-> yes, sorry for confusion.
-> 
-> > > Can we put this state dir on a shared volume so that this state dir is common
-> > > for all the front-ends serving the same content? Is is supposed to work and
-> > > NFSv4 can merge its state with existing state on a shared disk?
-> > > 
-> > 
-> > Not properly, no. nfsd expects to have complete control over that
-> > directory. There's no locking or merging of the data there. A node will
-> > also clean that directory out in some cases, and that will throw your
-> > state tracking off.
-> 
-> Thank you for information.
-> 
-> Is there any (preferably simple) way to demonstrate that this does not work
-> properly? E.g., if I share the same export through two or more NFSv4
-> front-ends that share the v4recovery directory, do I trigger problems with
-> this tool http://nfsv4.bullopensource.org/tools/tests/locktest.php?
-> 
-
-Nope. It'll all work just great...until it doesn't. I don't have any
-specific failure scenarios, but most of the problems will be issues
-with state recovery when a server node is restarted.
-
-That may manifest in different ways -- problems reclaiming locks for
-instance, or even silent data corruption depending on the application.
-
-For instance, a node might hand out a lock and the client release it,
-after a server node reboots but before a client that really "owns" it
-reclaims it. Depending on the application, that may cause serious
-problems.
-
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 2c68818..9b8d4d4 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -682,7 +682,8 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
+ 		req->wb_bytes = rqend - req->wb_offset;
+ out_unlock:
+ 	spin_unlock(&inode->i_lock);
+-	nfs_clear_request_commit(req);
++	if (req)
++		nfs_clear_request_commit(req);
+ 	return req;
+ out_flushme:
+ 	spin_unlock(&inode->i_lock);
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.2.1
+
