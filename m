@@ -1,53 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:38231 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757915Ab2DZQGU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 12:06:20 -0400
-Received: by mail-yx0-f174.google.com with SMTP id l12so1020657yen.19
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Apr 2012 09:06:20 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
-        michael.brantley@deshaw.com
-Subject: [PATCH v1 09/12] vfs: make do_unlinkat retry on ESTALE errors
-Date: Thu, 26 Apr 2012 11:57:20 -0400
-Message-Id: <1335455843-16089-8-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1335455843-16089-1-git-send-email-jlayton@redhat.com>
-References: <1335455843-16089-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:28519 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757421Ab2DTSsH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 14:48:07 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH v3 04/25] NFS: grab open context in direct read
+Date: Fri, 20 Apr 2012 14:47:36 -0400
+Message-Id: <1334947677-28864-5-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
+References: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/namei.c |    7 +++++--
- 1 files changed, 5 insertions(+), 2 deletions(-)
+ fs/nfs/direct.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index d754460..3a8e5e4 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2863,8 +2863,9 @@ static long do_unlinkat(int dfd, const char __user *pathname)
- 	struct dentry *dentry;
- 	struct nameidata nd;
- 	struct inode *inode = NULL;
--
--	error = user_path_parent(dfd, pathname, &nd, &name, false);
-+	unsigned int try = 0;
-+retry:
-+	error = user_path_parent(dfd, pathname, &nd, &name, try);
- 	if (error)
- 		return error;
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 481be7f..8a89423 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -260,7 +260,7 @@ static void nfs_direct_read_release(void *calldata)
  
-@@ -2903,6 +2904,8 @@ exit3:
- exit1:
- 	path_put(&nd.path);
- 	putname(name);
-+	if (retry_estale(error, try++))
-+		goto retry;
- 	return error;
+ 	if (put_dreq(dreq))
+ 		nfs_direct_complete(dreq);
+-	nfs_readdata_free(data);
++	nfs_readdata_release(data);
+ }
  
- slashes:
+ static const struct rpc_call_ops nfs_read_direct_ops = {
+@@ -337,7 +337,7 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
+ 		data->inode = inode;
+ 		data->cred = msg.rpc_cred;
+ 		data->args.fh = NFS_FH(inode);
+-		data->args.context = ctx;
++		data->args.context = get_nfs_open_context(ctx);
+ 		data->args.lock_context = dreq->l_ctx;
+ 		data->args.offset = pos;
+ 		data->args.pgbase = pgbase;
 -- 
-1.7.7.6
+1.7.2.1
 
