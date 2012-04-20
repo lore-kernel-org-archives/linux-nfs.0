@@ -1,55 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49630 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:61571 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753106Ab2DEQxO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Apr 2012 12:53:14 -0400
-Date: Thu, 5 Apr 2012 12:53:11 -0400
-From: Bruce Fields <bfields@fieldses.org>
-To: Orion Poplawski <orion@cora.nwra.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [nfsv4] open(O_CREAT) returns EEXISTS on symbolic link created
- on another system until stat()ed
-Message-ID: <20120405165311.GA11707@fieldses.org>
-References: <1333042863.5547.37.camel@lade.trondhjem.org>
- <4F74A4D5.1040802@cora.nwra.com>
- <20120329193100.GA20329@fieldses.org>
- <1333052170.10318.6.camel@lade.trondhjem.org>
- <1333053750.10318.15.camel@lade.trondhjem.org>
- <20120329205035.GB21493@fieldses.org>
- <1333054622.10318.19.camel@lade.trondhjem.org>
- <20120329210838.GC21493@fieldses.org>
- <20120329211713.GD21493@fieldses.org>
- <4F7DC9DC.6090802@cora.nwra.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F7DC9DC.6090802@cora.nwra.com>
+	id S932158Ab2DTSsL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 14:48:11 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH v3 10/25] NFS: remove unnecessary casts of void pointers in nfs4filelayout.c
+Date: Fri, 20 Apr 2012 14:47:42 -0400
+Message-Id: <1334947677-28864-11-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
+References: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 05, 2012 at 10:35:40AM -0600, Orion Poplawski wrote:
-> On 03/29/2012 03:17 PM, Dr James Bruce Fields wrote:
-> >On Thu, Mar 29, 2012 at 05:08:38PM -0400, Dr James Bruce Fields wrote:
-> >>Anyway, something like the following (untested) should change v3 to
-> >>return nfs_ok in this case, and v4 to return the same errors it would on
-> >>a non-create open.
-> >
-> >Looking at the history, I think the v3 behavior has been there from the
-> >start.  I wonder why we've never gotten a bug report?
-> >
-> >Looking at wireshark.... I guess the client always does a lookup first,
-> >so we never hit this case (unless someone replaces the file by a
-> >non-regular-file between a lookup and a create?)
-> >
-> >--b.
-> 
-> So, is this all set to eventually make it into the mainline kernel?
-> Or is there still something I can do to help move it along?
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |   16 ++++++++--------
+ 1 files changed, 8 insertions(+), 8 deletions(-)
 
-If you could confirm whether the patch in 
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index adbadcb..31afd81 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -191,7 +191,7 @@ filelayout_set_layoutcommit(struct nfs_write_data *wdata)
+  */
+ static void filelayout_read_prepare(struct rpc_task *task, void *data)
+ {
+-	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
++	struct nfs_read_data *rdata = data;
+ 
+ 	rdata->read_done_cb = filelayout_read_done_cb;
+ 
+@@ -205,7 +205,7 @@ static void filelayout_read_prepare(struct rpc_task *task, void *data)
+ 
+ static void filelayout_read_call_done(struct rpc_task *task, void *data)
+ {
+-	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
++	struct nfs_read_data *rdata = data;
+ 
+ 	dprintk("--> %s task->tk_status %d\n", __func__, task->tk_status);
+ 
+@@ -215,14 +215,14 @@ static void filelayout_read_call_done(struct rpc_task *task, void *data)
+ 
+ static void filelayout_read_count_stats(struct rpc_task *task, void *data)
+ {
+-	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
++	struct nfs_read_data *rdata = data;
+ 
+ 	rpc_count_iostats(task, NFS_SERVER(rdata->inode)->client->cl_metrics);
+ }
+ 
+ static void filelayout_read_release(void *data)
+ {
+-	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
++	struct nfs_read_data *rdata = data;
+ 
+ 	put_lseg(rdata->lseg);
+ 	rdata->mds_ops->rpc_release(data);
+@@ -282,7 +282,7 @@ static int filelayout_commit_done_cb(struct rpc_task *task,
+ 
+ static void filelayout_write_prepare(struct rpc_task *task, void *data)
+ {
+-	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
++	struct nfs_write_data *wdata = data;
+ 
+ 	if (nfs41_setup_sequence(wdata->ds_clp->cl_session,
+ 				&wdata->args.seq_args, &wdata->res.seq_res,
+@@ -294,7 +294,7 @@ static void filelayout_write_prepare(struct rpc_task *task, void *data)
+ 
+ static void filelayout_write_call_done(struct rpc_task *task, void *data)
+ {
+-	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
++	struct nfs_write_data *wdata = data;
+ 
+ 	/* Note this may cause RPC to be resent */
+ 	wdata->mds_ops->rpc_call_done(task, data);
+@@ -302,14 +302,14 @@ static void filelayout_write_call_done(struct rpc_task *task, void *data)
+ 
+ static void filelayout_write_count_stats(struct rpc_task *task, void *data)
+ {
+-	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
++	struct nfs_write_data *wdata = data;
+ 
+ 	rpc_count_iostats(task, NFS_SERVER(wdata->inode)->client->cl_metrics);
+ }
+ 
+ static void filelayout_write_release(void *data)
+ {
+-	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
++	struct nfs_write_data *wdata = data;
+ 
+ 	put_lseg(wdata->lseg);
+ 	wdata->mds_ops->rpc_release(data);
+-- 
+1.7.2.1
 
-	http://www.spinics.net/lists/linux-nfs/msg28840.html
-
-fixes your problem, that would help.
-
---b.
