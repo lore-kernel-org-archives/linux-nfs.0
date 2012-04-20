@@ -1,83 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fn.samba.org ([216.83.154.106]:41253 "EHLO mail.samba.org"
+Received: from mx2.netapp.com ([216.240.18.37]:4512 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752416Ab2DUBpq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 21:45:46 -0400
-Message-ID: <1334972084.2492.722.camel@pico.li.ssimo.org>
-Subject: Re: NFSv4 ACLs
-From: simo <idra@samba.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeremy Allison <jra@samba.org>, linux-nfs@vger.kernel.org,
-        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
-        Ondrej Valousek <webserv@s3group.com>
-Date: Fri, 20 Apr 2012 21:34:44 -0400
-In-Reply-To: <20120420220832.GA1914@fieldses.org>
-References: <4F913492.8000402@s3group.cz> <20120420185553.GB32622@samba2>
-	 <20120420212627.GA710@fieldses.org> <20120420215945.GE32622@samba2>
-	 <20120420220832.GA1914@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1751119Ab2DTTIm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 15:08:42 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
+        Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v2 2/8] NFS: Handle exceptions coming out of nfs4_proc_fs_locations()
+Date: Fri, 20 Apr 2012 15:08:32 -0400
+Message-Id: <1334948918-4706-3-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1334948918-4706-1-git-send-email-bjschuma@netapp.com>
+References: <1334948918-4706-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2012-04-20 at 18:08 -0400, J. Bruce Fields wrote: 
-> On Fri, Apr 20, 2012 at 02:59:45PM -0700, Jeremy Allison wrote:
-> > On Fri, Apr 20, 2012 at 05:26:27PM -0400, J. Bruce Fields wrote:
-> > > On Fri, Apr 20, 2012 at 11:55:53AM -0700, Jeremy Allison wrote:
-> > > > On Fri, Apr 20, 2012 at 12:04:02PM +0200, Ondrej Valousek wrote:
-> > > > > Hi List,
-> > > > > 
-> > > > > I know this has been asked many times, but I will ask one more time:
-> > > > > I would like to export NFSv4 mounted filesystem with Samba and would
-> > > > > like to be able to use windows "security tab" in explorer to modify
-> > > > > these ACLs.
-> > > > > Do I have any chance with Samba on RHEL-5/6?
-> > > > 
-> > > > Does Linux have local API's to manipulate mounted NFSv4 ACLs ?
-> > > > 
-> > > > Samba has VFS modules to cope with mapping Windows ACLs onto
-> > > > NFSv4 ACLs but currently they only work on AIX, Linux with IBM's
-> > > > gpfs and Solaris right now.
-> > > > 
-> > > > If you can point me a docs showing the library APIs for Linux
-> > > > to allow programatic manipulation of NFSv4 ACLs then I can
-> > > > make it work on Linux too.
-> > > 
-> > > It's a bit idiosyncratic, but should be easy enough to handle if you
-> > > want, I think: on the linux client, on an nfs4 filesystem, the
-> > > "system.nfs4_acl" xattr contains the xdr-encoded ACL as it came in on
-> > > the wire (network-byte-order and all).  See the definition of fattr4_acl
-> > > in rfc 3530.
-> > 
-> > I'm sorry, but that *really* *really* sucks. There needs to
-> > be an API on the Linux side that implements both RichACLs
-> > and NFSv4 ACLs (as they're the same thing essentially).
-> 
-> Yes, that's the eventual plan.
-> 
-> The richacl patches still need a little more work, and alas there's
-> noone working on them currently as far as I know.
-> 
-> So if you wanted something that would work now, you could use
-> system.nfs4_acl now and later replace that by something that tried
-> richacls and then fell back.
-> 
-> The xdr isn't hard to parse or create--the main problem would be
-> figuring out what to do with the names....
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Samba does handle id mapping in general and name mapping shouldn't be
-too hard to add, SIDs would be easier for us though :-)
+We don't want to return -NFS4ERR_WRONGSEC to the VFS because it could
+cause the kernel to oops.
 
-> (By the way, is reexporting nfs with samba really going to work well
-> anyway?)
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/nfs4proc.c |   15 ++++++++++++++-
+ 1 file changed, 14 insertions(+), 1 deletion(-)
 
-Not really, it is generally unsupported, except for read only shares. It
-will work in most of the simple cases for writing .. until it breaks :)
-
-Simo.
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index f875cf3..9f7f517 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4919,7 +4919,7 @@ static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr)
+ 	fattr->nlink = 2;
+ }
+ 
+-int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
++static int _nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+ 		struct nfs4_fs_locations *fs_locations, struct page *page)
+ {
+ 	struct nfs_server *server = NFS_SERVER(dir);
+@@ -4959,6 +4959,19 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+ 	return status;
+ }
+ 
++int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
++		struct nfs4_fs_locations *fs_locations, struct page *page)
++{
++	struct nfs4_exception exception = { };
++	int err;
++	do {
++		err = nfs4_handle_exception(NFS_SERVER(dir),
++				_nfs4_proc_fs_locations(dir, name, fs_locations, page),
++				&exception);
++	} while (exception.retry);
++	return err;
++}
++
+ static int _nfs4_proc_secinfo(struct inode *dir, const struct qstr *name, struct nfs4_secinfo_flavors *flavors)
+ {
+ 	int status;
 -- 
-Simo Sorce
-Samba Team GPL Compliance Officer <simo@samba.org>
-Principal Software Engineer at Red Hat, Inc. <simo@redhat.com>
+1.7.10
 
