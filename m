@@ -1,82 +1,209 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:12008 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:4512 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756383Ab2D3Skd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Apr 2012 14:40:33 -0400
+	id S1757465Ab2DTTIo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 15:08:44 -0400
 From: bjschuma@netapp.com
 To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 1/7] NFS: Rename nfs4_proc_get_root()
-Date: Mon, 30 Apr 2012 14:40:23 -0400
-Message-Id: <1335811229-2989-2-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1335811229-2989-1-git-send-email-bjschuma@netapp.com>
-References: <1335811229-2989-1-git-send-email-bjschuma@netapp.com>
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
+        Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v2 4/8] NFS: Remove secinfo knowledge out of the generic client
+Date: Fri, 20 Apr 2012 15:08:34 -0400
+Message-Id: <1334948918-4706-5-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1334948918-4706-1-git-send-email-bjschuma@netapp.com>
+References: <1334948918-4706-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Bryan Schumaker <bjschuma@netapp.com>
 
-This function is really getting the root filehandle and not the root
-dentry of the filesystem.  I also removed the rpc_ops lookup from
-nfs4_get_rootfh() under the assumption that if we reach this function
-then we already know we are using NFS v4.
+And also remove the unneeded rpc_op.
 
 Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfs/getroot.c  |    2 +-
- fs/nfs/nfs4_fs.h  |    1 +
- fs/nfs/nfs4proc.c |    6 +++---
- 3 files changed, 5 insertions(+), 4 deletions(-)
+ fs/nfs/namespace.c      |   95 -----------------------------------------------
+ fs/nfs/nfs4namespace.c  |   29 +++++++++++++++
+ fs/nfs/nfs4proc.c       |    1 -
+ include/linux/nfs_xdr.h |    1 -
+ 4 files changed, 29 insertions(+), 97 deletions(-)
 
-diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
-index 4ca6f5c..8a0f33e 100644
---- a/fs/nfs/getroot.c
-+++ b/fs/nfs/getroot.c
-@@ -150,7 +150,7 @@ int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh)
- 		goto out;
+diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
+index 1807866..9accf45 100644
+--- a/fs/nfs/namespace.c
++++ b/fs/nfs/namespace.c
+@@ -118,99 +118,6 @@ Elong:
+ 	return ERR_PTR(-ENAMETOOLONG);
+ }
  
- 	/* Start by getting the root filehandle from the server */
--	ret = server->nfs_client->rpc_ops->getroot(server, mntfh, &fsinfo);
-+	ret = nfs4_proc_get_rootfh(server, mntfh, &fsinfo);
- 	if (ret < 0) {
- 		dprintk("nfs4_get_rootfh: getroot error = %d\n", -ret);
- 		goto out;
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 97365b0..edeef71 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -214,6 +214,7 @@ struct vfsmount *nfs4_submount(struct nfs_server *, struct dentry *,
- /* nfs4proc.c */
- extern int nfs4_proc_setclientid(struct nfs_client *, u32, unsigned short, struct rpc_cred *, struct nfs4_setclientid_res *);
- extern int nfs4_proc_setclientid_confirm(struct nfs_client *, struct nfs4_setclientid_res *arg, struct rpc_cred *);
-+extern int nfs4_proc_get_rootfh(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
- extern int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred);
- extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
- extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
+-#ifdef CONFIG_NFS_V4
+-rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors)
+-{
+-	struct gss_api_mech *mech;
+-	struct xdr_netobj oid;
+-	int i;
+-	rpc_authflavor_t pseudoflavor = RPC_AUTH_UNIX;
+-
+-	for (i = 0; i < flavors->num_flavors; i++) {
+-		struct nfs4_secinfo_flavor *flavor;
+-		flavor = &flavors->flavors[i];
+-
+-		if (flavor->flavor == RPC_AUTH_NULL || flavor->flavor == RPC_AUTH_UNIX) {
+-			pseudoflavor = flavor->flavor;
+-			break;
+-		} else if (flavor->flavor == RPC_AUTH_GSS) {
+-			oid.len  = flavor->gss.sec_oid4.len;
+-			oid.data = flavor->gss.sec_oid4.data;
+-			mech = gss_mech_get_by_OID(&oid);
+-			if (!mech)
+-				continue;
+-			pseudoflavor = gss_svc_to_pseudoflavor(mech, flavor->gss.service);
+-			gss_mech_put(mech);
+-			break;
+-		}
+-	}
+-
+-	return pseudoflavor;
+-}
+-
+-static int nfs_negotiate_security(const struct dentry *parent,
+-				  const struct dentry *dentry,
+-				  rpc_authflavor_t *flavor)
+-{
+-	struct page *page;
+-	struct nfs4_secinfo_flavors *flavors;
+-	int (*secinfo)(struct inode *, const struct qstr *, struct nfs4_secinfo_flavors *);
+-	int ret = -EPERM;
+-
+-	secinfo = NFS_PROTO(parent->d_inode)->secinfo;
+-	if (secinfo != NULL) {
+-		page = alloc_page(GFP_KERNEL);
+-		if (!page) {
+-			ret = -ENOMEM;
+-			goto out;
+-		}
+-		flavors = page_address(page);
+-		ret = secinfo(parent->d_inode, &dentry->d_name, flavors);
+-		*flavor = nfs_find_best_sec(flavors);
+-		put_page(page);
+-	}
+-
+-out:
+-	return ret;
+-}
+-
+-static int nfs_lookup_with_sec(struct nfs_server *server, struct dentry *parent,
+-			       struct dentry *dentry, struct path *path,
+-			       struct nfs_fh *fh, struct nfs_fattr *fattr,
+-			       rpc_authflavor_t *flavor)
+-{
+-	struct rpc_clnt *clone;
+-	struct rpc_auth *auth;
+-	int err;
+-
+-	err = nfs_negotiate_security(parent, path->dentry, flavor);
+-	if (err < 0)
+-		goto out;
+-	clone  = rpc_clone_client(server->client);
+-	auth   = rpcauth_create(*flavor, clone);
+-	if (!auth) {
+-		err = -EIO;
+-		goto out_shutdown;
+-	}
+-	err = server->nfs_client->rpc_ops->lookup(clone, parent->d_inode,
+-						  &path->dentry->d_name,
+-						  fh, fattr);
+-out_shutdown:
+-	rpc_shutdown_client(clone);
+-out:
+-	return err;
+-}
+-#else /* CONFIG_NFS_V4 */
+-static inline int nfs_lookup_with_sec(struct nfs_server *server,
+-				      struct dentry *parent, struct dentry *dentry,
+-				      struct path *path, struct nfs_fh *fh,
+-				      struct nfs_fattr *fattr,
+-				      rpc_authflavor_t *flavor)
+-{
+-	return -EPERM;
+-}
+-#endif /* CONFIG_NFS_V4 */
+-
+ /*
+  * nfs_d_automount - Handle crossing a mountpoint on the server
+  * @path - The mountpoint
+@@ -252,8 +159,6 @@ struct vfsmount *nfs_d_automount(struct path *path)
+ 	err = server->nfs_client->rpc_ops->lookup(server->client, parent->d_inode,
+ 						  &path->dentry->d_name,
+ 						  fh, fattr);
+-	if (err == -EPERM && NFS_PROTO(parent->d_inode)->secinfo != NULL)
+-		err = nfs_lookup_with_sec(server, parent, path->dentry, path, fh, fattr, &flavor);
+ 	dput(parent);
+ 	if (err != 0) {
+ 		mnt = ERR_PTR(err);
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index 199eec5..e01cd03 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -108,6 +108,35 @@ static size_t nfs_parse_server_name(char *string, size_t len,
+ 	return ret;
+ }
+ 
++rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors)
++{
++	struct gss_api_mech *mech;
++	struct xdr_netobj oid;
++	int i;
++	rpc_authflavor_t pseudoflavor = RPC_AUTH_UNIX;
++
++	for (i = 0; i < flavors->num_flavors; i++) {
++		struct nfs4_secinfo_flavor *flavor;
++		flavor = &flavors->flavors[i];
++
++		if (flavor->flavor == RPC_AUTH_NULL || flavor->flavor == RPC_AUTH_UNIX) {
++			pseudoflavor = flavor->flavor;
++			break;
++		} else if (flavor->flavor == RPC_AUTH_GSS) {
++			oid.len  = flavor->gss.sec_oid4.len;
++			oid.data = flavor->gss.sec_oid4.data;
++			mech = gss_mech_get_by_OID(&oid);
++			if (!mech)
++				continue;
++			pseudoflavor = gss_svc_to_pseudoflavor(mech, flavor->gss.service);
++			gss_mech_put(mech);
++			break;
++		}
++	}
++
++	return pseudoflavor;
++}
++
+ static rpc_authflavor_t nfs4_negotiate_security(struct inode *inode, struct qstr *name)
+ {
+ 	struct page *page;
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 1780391..8182038 100644
+index eda2a25..9b70b13 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -2354,8 +2354,8 @@ static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
+@@ -6575,7 +6575,6 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
+ 	.close_context  = nfs4_close_context,
+ 	.open_context	= nfs4_atomic_open,
+ 	.init_client	= nfs4_init_client,
+-	.secinfo	= nfs4_proc_secinfo,
+ };
+ 
+ static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index bfd0d1b..f03c832 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1284,7 +1284,6 @@ struct nfs_rpc_ops {
+ 				struct iattr *iattr);
+ 	int	(*init_client) (struct nfs_client *, const struct rpc_timeout *,
+ 				const char *, rpc_authflavor_t, int);
+-	int	(*secinfo)(struct inode *, const struct qstr *, struct nfs4_secinfo_flavors *);
+ };
+ 
  /*
-  * get the file handle for the "/" directory on the server
-  */
--static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
--			      struct nfs_fsinfo *info)
-+int nfs4_proc_get_rootfh(struct nfs_server *server, struct nfs_fh *fhandle,
-+			 struct nfs_fsinfo *info)
- {
- 	int minor_version = server->nfs_client->cl_minorversion;
- 	int status = nfs4_lookup_root(server, fhandle, info);
-@@ -6570,7 +6570,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
- 	.dir_inode_ops	= &nfs4_dir_inode_operations,
- 	.file_inode_ops	= &nfs4_file_inode_operations,
- 	.file_ops	= &nfs4_file_operations,
--	.getroot	= nfs4_proc_get_root,
-+	.getroot	= nfs4_proc_get_rootfh,
- 	.submount	= nfs4_submount,
- 	.getattr	= nfs4_proc_getattr,
- 	.setattr	= nfs4_proc_setattr,
 -- 
 1.7.10
 
