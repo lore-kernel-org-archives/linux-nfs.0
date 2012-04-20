@@ -1,171 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57183 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:32656 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753016Ab2D1TbL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 28 Apr 2012 15:31:11 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 07/10] NFSv4: Simplify the NFSv4 OPEN compound
-Date: Sat, 28 Apr 2012 15:30:57 -0400
-Message-Id: <1335641460-24839-8-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1335641460-24839-7-git-send-email-Trond.Myklebust@netapp.com>
-References: <1335641460-24839-1-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-2-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-3-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-4-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-5-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-6-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-7-git-send-email-Trond.Myklebust@netapp.com>
+	id S1753229Ab2DTVUV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 17:20:21 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Fred Isaman <faisaman4@gmail.com>
+CC: "Isaman, Fred" <Fred.Isaman@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v3 18/25] NFS: prepare coalesce testing for directio
+Date: Fri, 20 Apr 2012 21:20:18 +0000
+Message-ID: <1334956818.3295.25.camel@lade.trondhjem.org>
+References: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
+	 <1334947677-28864-19-git-send-email-iisaman@netapp.com>
+	 <1334951175.3295.17.camel@lade.trondhjem.org>
+	 <CADnza44DMDySGA5zhpn2QCzSjEmLakWB0-q9C+d-sqx+K8Rq=g@mail.gmail.com>
+In-Reply-To: <CADnza44DMDySGA5zhpn2QCzSjEmLakWB0-q9C+d-sqx+K8Rq=g@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Get rid of the post-op GETATTR on the directory in order to reduce
-the amount of processing done on the server.
-
-The cost is that if we later need to stat() the directory, then we
-know that the ctime and mtime are likely to be invalid.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c       |   11 +----------
- fs/nfs/nfs4xdr.c        |   18 +-----------------
- include/linux/nfs_xdr.h |    2 --
- 3 files changed, 2 insertions(+), 29 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 111a3cc..fc758ef 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -788,7 +788,6 @@ struct nfs4_opendata {
- 	struct nfs4_string owner_name;
- 	struct nfs4_string group_name;
- 	struct nfs_fattr f_attr;
--	struct nfs_fattr dir_attr;
- 	struct dentry *dir;
- 	struct dentry *dentry;
- 	struct nfs4_state_owner *owner;
-@@ -804,12 +803,10 @@ struct nfs4_opendata {
- static void nfs4_init_opendata_res(struct nfs4_opendata *p)
- {
- 	p->o_res.f_attr = &p->f_attr;
--	p->o_res.dir_attr = &p->dir_attr;
- 	p->o_res.seqid = p->o_arg.seqid;
- 	p->c_res.seqid = p->c_arg.seqid;
- 	p->o_res.server = p->o_arg.server;
- 	nfs_fattr_init(&p->f_attr);
--	nfs_fattr_init(&p->dir_attr);
- 	nfs_fattr_init_names(&p->f_attr, &p->owner_name, &p->group_name);
- }
- 
-@@ -843,7 +840,6 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
- 	p->o_arg.name = &dentry->d_name;
- 	p->o_arg.server = server;
- 	p->o_arg.bitmask = server->attr_bitmask;
--	p->o_arg.dir_bitmask = server->cache_consistency_bitmask;
- 	p->o_arg.claim = NFS4_OPEN_CLAIM_NULL;
- 	if (attrs != NULL && attrs->ia_valid != 0) {
- 		__be32 verf[2];
-@@ -1611,8 +1607,6 @@ static int _nfs4_recover_proc_open(struct nfs4_opendata *data)
- 
- 	nfs_fattr_map_and_free_names(NFS_SERVER(dir), &data->f_attr);
- 
--	nfs_refresh_inode(dir, o_res->dir_attr);
--
- 	if (o_res->rflags & NFS4_OPEN_RESULT_CONFIRM) {
- 		status = _nfs4_proc_open_confirm(data);
- 		if (status != 0)
-@@ -1645,11 +1639,8 @@ static int _nfs4_proc_open(struct nfs4_opendata *data)
- 
- 	nfs_fattr_map_and_free_names(server, &data->f_attr);
- 
--	if (o_arg->open_flags & O_CREAT) {
-+	if (o_arg->open_flags & O_CREAT)
- 		update_changeattr(dir, &o_res->cinfo);
--		nfs_post_op_update_inode(dir, o_res->dir_attr);
--	} else
--		nfs_refresh_inode(dir, o_res->dir_attr);
- 	if ((o_res->rflags & NFS4_OPEN_RESULT_LOCKTYPE_POSIX) == 0)
- 		server->caps &= ~NFS_CAP_POSIX_LOCK;
- 	if(o_res->rflags & NFS4_OPEN_RESULT_CONFIRM) {
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index fe61424..a20f61c 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -431,20 +431,14 @@ static int nfs4_stat_to_errno(int);
- #define NFS4_enc_open_sz        (compound_encode_hdr_maxsz + \
- 				encode_sequence_maxsz + \
- 				encode_putfh_maxsz + \
--				encode_savefh_maxsz + \
- 				encode_open_maxsz + \
- 				encode_getfh_maxsz + \
--				encode_getattr_maxsz + \
--				encode_restorefh_maxsz + \
- 				encode_getattr_maxsz)
- #define NFS4_dec_open_sz        (compound_decode_hdr_maxsz + \
- 				decode_sequence_maxsz + \
- 				decode_putfh_maxsz + \
--				decode_savefh_maxsz + \
- 				decode_open_maxsz + \
- 				decode_getfh_maxsz + \
--				decode_getattr_maxsz + \
--				decode_restorefh_maxsz + \
- 				decode_getattr_maxsz)
- #define NFS4_enc_open_confirm_sz \
- 				(compound_encode_hdr_maxsz + \
-@@ -2191,12 +2185,9 @@ static void nfs4_xdr_enc_open(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	encode_compound_hdr(xdr, req, &hdr);
- 	encode_sequence(xdr, &args->seq_args, &hdr);
- 	encode_putfh(xdr, args->fh, &hdr);
--	encode_savefh(xdr, &hdr);
- 	encode_open(xdr, args, &hdr);
- 	encode_getfh(xdr, &hdr);
- 	encode_getfattr(xdr, args->bitmask, &hdr);
--	encode_restorefh(xdr, &hdr);
--	encode_getfattr(xdr, args->dir_bitmask, &hdr);
- 	encode_nops(&hdr);
- }
- 
-@@ -6075,19 +6066,12 @@ static int nfs4_xdr_dec_open(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- 	status = decode_putfh(xdr);
- 	if (status)
- 		goto out;
--	status = decode_savefh(xdr);
--	if (status)
--		goto out;
- 	status = decode_open(xdr, res);
- 	if (status)
- 		goto out;
- 	if (decode_getfh(xdr, &res->fh) != 0)
- 		goto out;
--	if (decode_getfattr(xdr, res->f_attr, res->server) != 0)
--		goto out;
--	if (decode_restorefh(xdr) != 0)
--		goto out;
--	decode_getfattr(xdr, res->dir_attr, res->server);
-+	decode_getfattr(xdr, res->f_attr, res->server);
- out:
- 	return status;
- }
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index cd160ab..fb25080 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -338,7 +338,6 @@ struct nfs_openargs {
- 	const struct qstr *	name;
- 	const struct nfs_server *server;	 /* Needed for ID mapping */
- 	const u32 *		bitmask;
--	const u32 *		dir_bitmask;
- 	__u32			claim;
- 	struct nfs4_sequence_args	seq_args;
- };
-@@ -349,7 +348,6 @@ struct nfs_openres {
- 	struct nfs4_change_info	cinfo;
- 	__u32                   rflags;
- 	struct nfs_fattr *      f_attr;
--	struct nfs_fattr *      dir_attr;
- 	struct nfs_seqid *	seqid;
- 	const struct nfs_server *server;
- 	fmode_t			delegation_type;
--- 
-1.7.7.6
-
+T24gRnJpLCAyMDEyLTA0LTIwIGF0IDE2OjUyIC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
+T24gRnJpLCBBcHIgMjAsIDIwMTIgYXQgMzo0NiBQTSwgTXlrbGVidXN0LCBUcm9uZA0KPiA8VHJv
+bmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+IE9uIEZyaSwgMjAxMi0wNC0yMCBh
+dCAxNDo0NyAtMDQwMCwgRnJlZCBJc2FtYW4gd3JvdGU6DQo+ID4+IFRoZSBjb2FsZXNjZSBjb2Rl
+IG1hZGUgYXNzdW1wdGlvbnMgdGhhdCB3aWxsIG5vIGxvbmdlciBiZSB0cnVlIG9uY2UNCj4gPj4g
+bm9uLXBhZ2UgYWxpZ25lZCBpbyBvY2N1cnMuICBUaGlzIGludHJvZHVjZXMgbm8gY2hhbmdlIGlu
+DQo+ID4+IGN1cnJlbnQgYmVoYXZpb3IsIGJ1dCBhbGxvd3MgZm9yIG1vcmUgZ2VuZXJhbCBzaXR1
+YXRpb25zIHRvIGNvbWUuDQo+ID4+DQo+ID4+IFNpZ25lZC1vZmYtYnk6IEZyZWQgSXNhbWFuIDxp
+aXNhbWFuQG5ldGFwcC5jb20+DQo+ID4+IC0tLQ0KPiA+PiAgZnMvbmZzL25mczRmaWxlbGF5b3V0
+LmMgfCAgIDEyICsrKysrKysrKysrKw0KPiA+PiAgZnMvbmZzL3BhZ2VsaXN0LmMgICAgICAgfCAg
+ICAyICstDQo+ID4+ICBmcy9uZnMvcG5mcy5jICAgICAgICAgICB8ICAgIDggKysrKysrKysNCj4g
+Pj4gIDMgZmlsZXMgY2hhbmdlZCwgMjEgaW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbnMoLSkNCj4g
+Pj4NCj4gPj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9wYWdlbGlzdC5jIGIvZnMvbmZzL3BhZ2VsaXN0
+LmMNCj4gPj4gaW5kZXggNWQwMWExNi4uYjM0NDk0NiAxMDA2NDQNCj4gPj4gLS0tIGEvZnMvbmZz
+L3BhZ2VsaXN0LmMNCj4gPj4gKysrIGIvZnMvbmZzL3BhZ2VsaXN0LmMNCj4gPj4gQEAgLTI4MCw3
+ICsyODAsNyBAQCBzdGF0aWMgYm9vbCBuZnNfY2FuX2NvYWxlc2NlX3JlcXVlc3RzKHN0cnVjdCBu
+ZnNfcGFnZSAqcHJldiwNCj4gPj4gICAgICAgICAgICAgICByZXR1cm4gZmFsc2U7DQo+ID4+ICAg
+ICAgIGlmIChyZXEtPndiX2NvbnRleHQtPnN0YXRlICE9IHByZXYtPndiX2NvbnRleHQtPnN0YXRl
+KQ0KPiA+PiAgICAgICAgICAgICAgIHJldHVybiBmYWxzZTsNCj4gPj4gLSAgICAgaWYgKHJlcS0+
+d2JfaW5kZXggIT0gKHByZXYtPndiX2luZGV4ICsgMSkpDQo+ID4+ICsgICAgIGlmIChyZXFfb2Zm
+c2V0KHJlcSkgIT0gcmVxX29mZnNldChwcmV2KSArIHByZXYtPndiX2J5dGVzKQ0KPiA+DQo+ID4g
+Q2FuIHdlIG1pY3JvLW9wdGltaXNlIHRoaXMganVzdCBhIHRlZW5zeSBiaXQgYnkgbW92aW5nIGl0
+IHVudGlsIGFmdGVyDQo+ID4gdGhlIHJlcS0+d2JfYmFzZSBhbmQgcHJldi0+d2JfYmFzZSB0ZXN0
+cz8gU2luY2UgdGhvc2UgYXJlDQo+ID4gY29tcHV0YXRpb25hbGx5IHNpbXBsZXIsIGRvaW5nIHRo
+ZW0gZmlyc3QgbWlnaHQgbWFrZSB0aGUgImNhbid0DQo+ID4gY29hbGVzY2UiIHRlc3QgYSBsaXR0
+bGUgZmFzdGVyLg0KPiA+DQo+IA0KPiBTdXJlLiAgRG8geW91IHdhbnQgYSBuZXcgdjQgc3VibWlz
+c2lvbiB3aXRoIGp1c3QgdGhhdCBjaGFuZ2U/DQoNCkp1c3QgcmVzZW5kIHRoYXQgMSBwYXRjaC4g
+SSBkb24ndCB0aGluayB3ZSdsbCBoYXZlIGFueSBjb25mbGljdHMgd2l0aA0KdGhlIHJlc3QuDQoN
+Ci0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0
+QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
