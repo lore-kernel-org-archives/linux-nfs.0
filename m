@@ -1,434 +1,492 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:54329 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:34180 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758027Ab2DIUwz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Apr 2012 16:52:55 -0400
+	id S1757367Ab2DTSgw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Apr 2012 14:36:52 -0400
 From: Fred Isaman <iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
 Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 13/26] NFS: create struct nfs_page_array
-Date: Mon,  9 Apr 2012 16:52:11 -0400
-Message-Id: <1334004744-31842-14-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
-References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
+Subject: [PATCH v2 20/28] NFS: rewrite directio read to use async coalesce code
+Date: Fri, 20 Apr 2012 14:36:02 -0400
+Message-Id: <1334946970-27470-21-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
+References: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Both nfs_read_data and nfs_write_data devote several fields which
-can be combined into a single shared struct.
+This also has the advantage that it allows directio to use pnfs.
 
 Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/blocklayout/blocklayout.c |   11 +++++----
- fs/nfs/direct.c                  |   40 +++++++++++++++++++++----------------
- fs/nfs/internal.h                |    1 +
- fs/nfs/pagelist.c                |   13 ++++++++++++
- fs/nfs/read.c                    |   22 +++++++-------------
- fs/nfs/write.c                   |   22 +++++++-------------
- include/linux/nfs_xdr.h          |   14 +++++++-----
- 7 files changed, 67 insertions(+), 56 deletions(-)
+ fs/nfs/direct.c          |  248 +++++++++++++++++++++------------------------
+ fs/nfs/internal.h        |    5 +-
+ fs/nfs/pagelist.c        |    7 +-
+ fs/nfs/read.c            |   10 +-
+ include/linux/nfs_page.h |    1 +
+ include/linux/nfs_xdr.h  |    4 +-
+ 6 files changed, 131 insertions(+), 144 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 192e16a..3f58832 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -240,7 +240,7 @@ bl_read_pagelist(struct nfs_read_data *rdata)
- 	int pg_index = rdata->args.pgbase >> PAGE_CACHE_SHIFT;
- 
- 	dprintk("%s enter nr_pages %u offset %lld count %u\n", __func__,
--	       rdata->npages, f_offset, (unsigned int)rdata->args.count);
-+	       rdata->pages.npages, f_offset, (unsigned int)rdata->args.count);
- 
- 	par = alloc_parallel(rdata);
- 	if (!par)
-@@ -250,7 +250,7 @@ bl_read_pagelist(struct nfs_read_data *rdata)
- 
- 	isect = (sector_t) (f_offset >> SECTOR_SHIFT);
- 	/* Code assumes extents are page-aligned */
--	for (i = pg_index; i < rdata->npages; i++) {
-+	for (i = pg_index; i < rdata->pages.npages; i++) {
- 		if (!extent_length) {
- 			/* We've used up the previous extent */
- 			bl_put_extent(be);
-@@ -283,7 +283,8 @@ bl_read_pagelist(struct nfs_read_data *rdata)
- 			struct pnfs_block_extent *be_read;
- 
- 			be_read = (hole && cow_read) ? cow_read : be;
--			bio = bl_add_page_to_bio(bio, rdata->npages - i, READ,
-+			bio = bl_add_page_to_bio(bio, rdata->pages.npages - i,
-+						 READ,
- 						 isect, pages[i], be_read,
- 						 bl_end_io_read, par);
- 			if (IS_ERR(bio)) {
-@@ -652,7 +653,7 @@ next_page:
- 
- 	/* Middle pages */
- 	pg_index = wdata->args.pgbase >> PAGE_CACHE_SHIFT;
--	for (i = pg_index; i < wdata->npages; i++) {
-+	for (i = pg_index; i < wdata->pages.npages; i++) {
- 		if (!extent_length) {
- 			/* We've used up the previous extent */
- 			bl_put_extent(be);
-@@ -686,7 +687,7 @@ next_page:
- 				goto out;
- 			}
- 		}
--		bio = bl_add_page_to_bio(bio, wdata->npages - i, WRITE,
-+		bio = bl_add_page_to_bio(bio, wdata->pages.npages - i, WRITE,
- 					 isect, pages[i], be,
- 					 bl_end_io_write, par);
- 		if (IS_ERR(bio)) {
 diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 56176af..0faba4c 100644
+index 22a40c4..d713234 100644
 --- a/fs/nfs/direct.c
 +++ b/fs/nfs/direct.c
-@@ -252,11 +252,11 @@ static void nfs_direct_read_release(void *calldata)
- 	} else {
- 		dreq->count += data->res.count;
- 		spin_unlock(&dreq->lock);
--		nfs_direct_dirty_pages(data->pagevec,
-+		nfs_direct_dirty_pages(data->pages.pagevec,
- 				data->args.pgbase,
- 				data->res.count);
- 	}
--	nfs_direct_release_pages(data->pagevec, data->npages);
-+	nfs_direct_release_pages(data->pages.pagevec, data->pages.npages);
+@@ -124,22 +124,6 @@ ssize_t nfs_direct_IO(int rw, struct kiocb *iocb, const struct iovec *iov, loff_
+ 	return -EINVAL;
+ }
  
+-static void nfs_direct_dirty_pages(struct page **pages, unsigned int pgbase, size_t count)
+-{
+-	unsigned int npages;
+-	unsigned int i;
+-
+-	if (count == 0)
+-		return;
+-	pages += (pgbase >> PAGE_SHIFT);
+-	npages = (count + (pgbase & ~PAGE_MASK) + PAGE_SIZE - 1) >> PAGE_SHIFT;
+-	for (i = 0; i < npages; i++) {
+-		struct page *page = pages[i];
+-		if (!PageCompound(page))
+-			set_page_dirty(page);
+-	}
+-}
+-
+ static void nfs_direct_release_pages(struct page **pages, unsigned int npages)
+ {
+ 	unsigned int i;
+@@ -226,58 +210,85 @@ static void nfs_direct_complete(struct nfs_direct_req *dreq)
+ 	nfs_direct_req_release(dreq);
+ }
+ 
+-/*
+- * We must hold a reference to all the pages in this direct read request
+- * until the RPCs complete.  This could be long *after* we are woken up in
+- * nfs_direct_wait (for instance, if someone hits ^C on a slow server).
+- */
+-static void nfs_direct_read_result(struct rpc_task *task, void *calldata)
++void nfs_direct_readpage_release(struct nfs_page *req)
+ {
+-	struct nfs_read_data *data = calldata;
+-
+-	nfs_readpage_result(task, data);
++	dprintk("NFS: direct read done (%s/%lld %d@%lld)\n",
++		req->wb_context->dentry->d_inode->i_sb->s_id,
++		(long long)NFS_FILEID(req->wb_context->dentry->d_inode),
++		req->wb_bytes,
++		(long long)req_offset(req));
++	nfs_release_request(req);
+ }
+ 
+-static void nfs_direct_read_release(void *calldata)
++static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
+ {
++	unsigned long pos = req_offset(hdr->req);
++	struct nfs_direct_req *dreq = hdr->dreq;
+ 
+-	struct nfs_read_data *data = calldata;
+-	struct nfs_direct_req *dreq = (struct nfs_direct_req *)data->header->req;
+-	int status = data->task.tk_status;
++	if (test_bit(NFS_IOHDR_REDO, &hdr->flags))
++		goto out_put;
+ 
+ 	spin_lock(&dreq->lock);
+-	if (unlikely(status < 0)) {
+-		dreq->error = status;
+-		spin_unlock(&dreq->lock);
++	if (test_bit(NFS_IOHDR_ERROR, &hdr->flags) &&
++	    (hdr->first_error == pos))
++		dreq->error = hdr->error;
++	else
++		dreq->count += (hdr->first_error - pos);
++	spin_unlock(&dreq->lock);
++
++	if (!test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
++		while (!list_empty(&hdr->pages)) {
++			struct nfs_page *req = nfs_list_entry(hdr->pages.next);
++			struct page *page = req->wb_page;
++
++			nfs_list_remove_request(req);
++			nfs_direct_readpage_release(req);
++			if (!PageCompound(page))
++				set_page_dirty(page);
++			page_cache_release(page);
++		}
+ 	} else {
+-		dreq->count += data->res.count;
+-		spin_unlock(&dreq->lock);
+-		nfs_direct_dirty_pages(data->pages.pagevec,
+-				data->args.pgbase,
+-				data->res.count);
++		pos &= PAGE_MASK;
++		while (!list_empty(&hdr->pages)) {
++			struct nfs_page *req = nfs_list_entry(hdr->pages.next);
++
++			if (pos < (hdr->first_error & PAGE_MASK))
++				if (!PageCompound(req->wb_page))
++					set_page_dirty(req->wb_page);
++			page_cache_release(req->wb_page);
++			nfs_list_remove_request(req);
++			nfs_direct_readpage_release(req);
++			pos += PAGE_SIZE;
++		}
+ 	}
+-	nfs_direct_release_pages(data->pages.pagevec, data->pages.npages);
+-
++out_put:
  	if (put_dreq(dreq))
  		nfs_direct_complete(dreq);
-@@ -273,8 +273,8 @@ static void nfs_direct_readhdr_release(struct nfs_read_header *rhdr)
+-	nfs_readdata_release(data);
++	hdr->release(hdr);
+ }
+ 
+-static const struct rpc_call_ops nfs_read_direct_ops = {
+-	.rpc_call_prepare = nfs_read_prepare,
+-	.rpc_call_done = nfs_direct_read_result,
+-	.rpc_release = nfs_direct_read_release,
+-};
+-
+-static void nfs_direct_readhdr_release(struct nfs_read_header *rhdr)
++static void nfs_sync_pgio_error(struct list_head *head)
  {
- 	struct nfs_read_data *data = &rhdr->rpc_data;
+-	struct nfs_read_data *data = &rhdr->rpc_data;
++	struct nfs_page *req;
  
--	if (data->pagevec != data->page_array)
--		kfree(data->pagevec);
-+	if (data->pages.pagevec != data->pages.page_array)
-+		kfree(data->pages.pagevec);
- 	nfs_readhdr_free(&rhdr->header);
- }
- 
-@@ -312,6 +312,7 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
- 	do {
- 		struct nfs_read_header *rhdr;
- 		struct nfs_read_data *data;
-+		struct nfs_page_array *pages;
- 		size_t bytes;
- 
- 		pgbase = user_addr & ~PAGE_MASK;
-@@ -322,24 +323,25 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
- 		if (unlikely(!rhdr))
- 			break;
- 		data = &rhdr->rpc_data;
-+		pages = &data->pages;
- 
- 		down_read(&current->mm->mmap_sem);
- 		result = get_user_pages(current, current->mm, user_addr,
--					data->npages, 1, 0, data->pagevec, NULL);
-+					pages->npages, 1, 0, pages->pagevec, NULL);
- 		up_read(&current->mm->mmap_sem);
- 		if (result < 0) {
- 			nfs_direct_readhdr_release(rhdr);
- 			break;
- 		}
--		if ((unsigned)result < data->npages) {
-+		if ((unsigned)result < pages->npages) {
- 			bytes = result * PAGE_SIZE;
- 			if (bytes <= pgbase) {
--				nfs_direct_release_pages(data->pagevec, result);
-+				nfs_direct_release_pages(pages->pagevec, result);
- 				nfs_direct_readhdr_release(rhdr);
- 				break;
- 			}
- 			bytes -= pgbase;
--			data->npages = result;
-+			pages->npages = result;
- 		}
- 
- 		get_dreq(dreq);
-@@ -352,7 +354,7 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
- 		data->args.lock_context = dreq->l_ctx;
- 		data->args.offset = pos;
- 		data->args.pgbase = pgbase;
--		data->args.pages = data->pagevec;
-+		data->args.pages = pages->pagevec;
- 		data->args.count = bytes;
- 		data->res.fattr = &data->fattr;
- 		data->res.eof = 0;
-@@ -462,8 +464,8 @@ static void nfs_direct_writehdr_release(struct nfs_write_header *whdr)
- {
- 	struct nfs_write_data *data = &whdr->rpc_data;
- 
--	if (data->pagevec != data->page_array)
--		kfree(data->pagevec);
-+	if (data->pages.pagevec != data->pages.page_array)
-+		kfree(data->pages.pagevec);
- 	nfs_writehdr_free(&whdr->header);
- }
- 
-@@ -472,8 +474,10 @@ static void nfs_direct_free_writedata(struct nfs_direct_req *dreq)
- 	while (!list_empty(&dreq->rewrite_list)) {
- 		struct nfs_pgio_header *hdr = list_entry(dreq->rewrite_list.next, struct nfs_pgio_header, pages);
- 		struct nfs_write_header *whdr = container_of(hdr, struct nfs_write_header, header);
-+		struct nfs_page_array *p = &whdr->rpc_data.pages;
-+
- 		list_del(&hdr->pages);
--		nfs_direct_release_pages(whdr->rpc_data.pagevec, whdr->rpc_data.npages);
-+		nfs_direct_release_pages(p->pagevec, p->npages);
- 		nfs_direct_writehdr_release(whdr);
- 	}
- }
-@@ -751,6 +755,7 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
- 	do {
- 		struct nfs_write_header *whdr;
- 		struct nfs_write_data *data;
-+		struct nfs_page_array *pages;
- 		size_t bytes;
- 
- 		pgbase = user_addr & ~PAGE_MASK;
-@@ -762,24 +767,25 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
- 			break;
- 
- 		data = &whdr->rpc_data;
-+		pages = &data->pages;
- 
- 		down_read(&current->mm->mmap_sem);
- 		result = get_user_pages(current, current->mm, user_addr,
--					data->npages, 0, 0, data->pagevec, NULL);
-+					pages->npages, 0, 0, pages->pagevec, NULL);
- 		up_read(&current->mm->mmap_sem);
- 		if (result < 0) {
- 			nfs_direct_writehdr_release(whdr);
- 			break;
- 		}
--		if ((unsigned)result < data->npages) {
-+		if ((unsigned)result < pages->npages) {
- 			bytes = result * PAGE_SIZE;
- 			if (bytes <= pgbase) {
--				nfs_direct_release_pages(data->pagevec, result);
-+				nfs_direct_release_pages(pages->pagevec, result);
- 				nfs_direct_writehdr_release(whdr);
- 				break;
- 			}
- 			bytes -= pgbase;
--			data->npages = result;
-+			pages->npages = result;
- 		}
- 
- 		get_dreq(dreq);
-@@ -794,7 +800,7 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
- 		data->args.lock_context = dreq->l_ctx;
- 		data->args.offset = pos;
- 		data->args.pgbase = pgbase;
--		data->args.pages = data->pagevec;
-+		data->args.pages = pages->pagevec;
- 		data->args.count = bytes;
- 		data->args.stable = sync;
- 		data->res.fattr = &data->fattr;
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 9b2b8bf..0818e66 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -209,6 +209,7 @@ extern void nfs_destroy_writepagecache(void);
- 
- extern int __init nfs_init_directcache(void);
- extern void nfs_destroy_directcache(void);
-+extern bool nfs_pgarray_set(struct nfs_page_array *p, unsigned int pagecount);
- 
- /* nfs2xdr.c */
- extern int nfs_stat_to_errno(enum nfs_stat);
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index d21fcea..d349bd4 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -26,6 +26,19 @@
- 
- static struct kmem_cache *nfs_page_cachep;
- 
-+bool nfs_pgarray_set(struct nfs_page_array *p, unsigned int pagecount)
-+{
-+	p->npages = pagecount;
-+	if (pagecount <= ARRAY_SIZE(p->page_array))
-+		p->pagevec = p->page_array;
-+	else {
-+		p->pagevec = kcalloc(pagecount, sizeof(struct page *), GFP_KERNEL);
-+		if (!p->pagevec)
-+			p->npages = 0;
+-	if (data->pages.pagevec != data->pages.page_array)
+-		kfree(data->pages.pagevec);
+-	nfs_readhdr_free(&rhdr->header);
++	while (!list_empty(head)) {
++		req = nfs_list_entry(head->next);
++		nfs_list_remove_request(req);
++		nfs_release_request(req);
 +	}
-+	return p->pagevec != NULL;
+ }
+ 
++static void nfs_direct_pgio_init(struct nfs_pgio_header *hdr)
++{
++	get_dreq(hdr->dreq);
 +}
 +
- static inline struct nfs_page *
- nfs_page_alloc(void)
- {
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index d6d4682..f6ab30b 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -46,16 +46,10 @@ struct nfs_read_header *nfs_readhdr_alloc(unsigned int pagecount)
- 
- 		INIT_LIST_HEAD(&hdr->pages);
- 		INIT_LIST_HEAD(&data->list);
--		data->npages = pagecount;
- 		data->header = hdr;
--		if (pagecount <= ARRAY_SIZE(data->page_array))
--			data->pagevec = data->page_array;
--		else {
--			data->pagevec = kcalloc(pagecount, sizeof(struct page *), GFP_KERNEL);
--			if (!data->pagevec) {
--				kmem_cache_free(nfs_rdata_cachep, p);
--				p = NULL;
--			}
-+		if (!nfs_pgarray_set(&data->pages, pagecount)) {
-+			kmem_cache_free(nfs_rdata_cachep, p);
-+			p = NULL;
- 		}
- 	}
- 	return p;
-@@ -71,8 +65,8 @@ void nfs_readhdr_free(struct nfs_pgio_header *hdr)
- void nfs_readdata_release(struct nfs_read_data *rdata)
- {
- 	put_nfs_open_context(rdata->args.context);
--	if (rdata->pagevec != rdata->page_array)
--		kfree(rdata->pagevec);
-+	if (rdata->pages.pagevec != rdata->pages.page_array)
-+		kfree(rdata->pages.pagevec);
- 	nfs_readhdr_free(rdata->header);
- }
- 
-@@ -232,7 +226,7 @@ static void nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
- 	data->args.fh     = NFS_FH(inode);
- 	data->args.offset = req_offset(req) + offset;
- 	data->args.pgbase = req->wb_pgbase + offset;
--	data->args.pages  = data->pagevec;
-+	data->args.pages  = data->pages.pagevec;
- 	data->args.count  = count;
- 	data->args.context = get_nfs_open_context(req->wb_context);
- 	data->args.lock_context = req->wb_lock_context;
-@@ -318,7 +312,7 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc, struct list_head
- 		if (!rhdr)
- 			goto out_bad;
- 		data = &rhdr->rpc_data;
--		data->pagevec[0] = page;
-+		data->pages.pagevec[0] = page;
- 		nfs_read_rpcsetup(req, data, len, offset);
- 		list_add(&data->list, res);
- 		requests++;
-@@ -356,7 +350,7 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc, struct list_head *
- 	}
- 
- 	data = &rhdr->rpc_data;
--	pages = data->pagevec;
-+	pages = data->pages.pagevec;
- 	while (!list_empty(head)) {
- 		req = nfs_list_entry(head->next);
- 		nfs_list_remove_request(req);
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index dbb5c0a..2efae04 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -80,16 +80,10 @@ struct nfs_write_header *nfs_writehdr_alloc(unsigned int pagecount)
- 		memset(p, 0, sizeof(*p));
- 		INIT_LIST_HEAD(&hdr->pages);
- 		INIT_LIST_HEAD(&data->list);
--		data->npages = pagecount;
- 		data->header = hdr;
--		if (pagecount <= ARRAY_SIZE(data->page_array))
--			data->pagevec = data->page_array;
--		else {
--			data->pagevec = kcalloc(pagecount, sizeof(struct page *), GFP_NOFS);
--			if (!data->pagevec) {
--				mempool_free(p, nfs_wdata_mempool);
--				p = NULL;
--			}
-+		if (!nfs_pgarray_set(&data->pages, pagecount)) {
-+			mempool_free(p, nfs_wdata_mempool);
-+			p = NULL;
- 		}
- 	}
- 	return p;
-@@ -104,8 +98,8 @@ void nfs_writehdr_free(struct nfs_pgio_header *hdr)
- void nfs_writedata_release(struct nfs_write_data *wdata)
- {
- 	put_nfs_open_context(wdata->args.context);
--	if (wdata->pagevec != wdata->page_array)
--		kfree(wdata->pagevec);
-+	if (wdata->pages.pagevec != wdata->pages.page_array)
-+		kfree(wdata->pages.pagevec);
- 	nfs_writehdr_free(wdata->header);
- }
- 
-@@ -916,7 +910,7 @@ static void nfs_write_rpcsetup(struct nfs_page *req,
- 	/* pnfs_set_layoutcommit needs this */
- 	data->mds_offset = data->args.offset;
- 	data->args.pgbase = req->wb_pgbase + offset;
--	data->args.pages  = data->pagevec;
-+	data->args.pages  = data->pages.pagevec;
- 	data->args.count  = count;
- 	data->args.context = get_nfs_open_context(req->wb_context);
- 	data->args.lock_context = req->wb_lock_context;
-@@ -1011,7 +1005,7 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc, struct list_head
- 		if (!whdr)
- 			goto out_bad;
- 		data = &whdr->rpc_data;
--		data->pagevec[0] = page;
-+		data->pages.pagevec[0] = page;
- 		nfs_write_rpcsetup(req, data, len, offset, desc->pg_ioflags);
- 		list_add(&data->list, res);
- 		requests++;
-@@ -1061,7 +1055,7 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc, struct list_head *r
- 		goto out;
- 	}
- 	data = &whdr->rpc_data;
--	pages = data->pagevec;
-+	pages = data->pages.pagevec;
- 	while (!list_empty(head)) {
- 		req = nfs_list_entry(head->next);
- 		nfs_list_remove_request(req);
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 0e31c44..060896f 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1162,19 +1162,23 @@ struct nfs_page;
- 
- #define NFS_PAGEVEC_SIZE	(8U)
- 
-+struct nfs_page_array {
-+	struct page		**pagevec;
-+	unsigned int		npages;		/* Max length of pagevec */
-+	struct page		*page_array[NFS_PAGEVEC_SIZE];
++static const struct nfs_pgio_completion_ops nfs_direct_read_completion_ops = {
++	.error_cleanup = nfs_sync_pgio_error,
++	.init_hdr = nfs_direct_pgio_init,
++	.completion = nfs_direct_read_completion,
 +};
 +
- struct nfs_read_data {
- 	struct nfs_pgio_header	*header;
- 	struct list_head	list;
- 	struct rpc_task		task;
- 	struct nfs_fattr	fattr;	/* fattr storage */
--	struct page		**pagevec;
--	unsigned int		npages;	/* Max length of pagevec */
- 	struct nfs_readargs args;
- 	struct nfs_readres  res;
- 	unsigned long		timestamp;	/* For lease renewal */
- 	int (*read_done_cb) (struct rpc_task *task, struct nfs_read_data *data);
- 	__u64			mds_offset;
--	struct page		*page_array[NFS_PAGEVEC_SIZE];
-+	struct nfs_page_array	pages;
- 	struct nfs_client	*ds_clp;	/* pNFS data server */
+ /*
+  * For each rsize'd chunk of the user's buffer, dispatch an NFS READ
+  * operation.  If nfs_readdata_alloc() or get_user_pages() fails,
+@@ -285,118 +296,85 @@ static void nfs_direct_readhdr_release(struct nfs_read_header *rhdr)
+  * handled automatically by nfs_direct_read_result().  Otherwise, if
+  * no requests have been sent, just return an error.
+  */
+-static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
++static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *desc,
+ 						const struct iovec *iov,
+ 						loff_t pos)
+ {
++	struct nfs_direct_req *dreq = desc->pg_dreq;
+ 	struct nfs_open_context *ctx = dreq->ctx;
+ 	struct inode *inode = ctx->dentry->d_inode;
+ 	unsigned long user_addr = (unsigned long)iov->iov_base;
+ 	size_t count = iov->iov_len;
+ 	size_t rsize = NFS_SERVER(inode)->rsize;
+-	struct rpc_task *task;
+-	struct rpc_message msg = {
+-		.rpc_cred = ctx->cred,
+-	};
+-	struct rpc_task_setup task_setup_data = {
+-		.rpc_client = NFS_CLIENT(inode),
+-		.rpc_message = &msg,
+-		.callback_ops = &nfs_read_direct_ops,
+-		.workqueue = nfsiod_workqueue,
+-		.flags = RPC_TASK_ASYNC,
+-	};
+ 	unsigned int pgbase;
+ 	int result;
+ 	ssize_t started = 0;
++	struct page **pagevec = NULL;
++	unsigned int npages;
+ 
+ 	do {
+-		struct nfs_read_header *rhdr;
+-		struct nfs_read_data *data;
+-		struct nfs_page_array *pages;
+ 		size_t bytes;
++		int i;
+ 
+ 		pgbase = user_addr & ~PAGE_MASK;
+-		bytes = min(rsize,count);
++		bytes = min(max(rsize, PAGE_SIZE), count);
+ 
+ 		result = -ENOMEM;
+-		rhdr = nfs_readhdr_alloc();
+-		if (unlikely(!rhdr))
+-			break;
+-		data = nfs_readdata_alloc(&rhdr->header, nfs_page_array_len(pgbase, bytes));
+-		if (!data) {
+-			nfs_readhdr_free(&rhdr->header);
++		npages = nfs_page_array_len(pgbase, bytes);
++		if (!pagevec)
++			pagevec = kmalloc(npages * sizeof(struct page *),
++					  GFP_KERNEL);
++		if (!pagevec)
+ 			break;
+-		}
+-		data->header = &rhdr->header;
+-		atomic_inc(&data->header->refcnt);
+-		pages = &data->pages;
+-
+ 		down_read(&current->mm->mmap_sem);
+ 		result = get_user_pages(current, current->mm, user_addr,
+-					pages->npages, 1, 0, pages->pagevec, NULL);
++					npages, 1, 0, pagevec, NULL);
+ 		up_read(&current->mm->mmap_sem);
+-		if (result < 0) {
+-			nfs_direct_readhdr_release(rhdr);
++		if (result < 0)
+ 			break;
+-		}
+-		if ((unsigned)result < pages->npages) {
++		if ((unsigned)result < npages) {
+ 			bytes = result * PAGE_SIZE;
+ 			if (bytes <= pgbase) {
+-				nfs_direct_release_pages(pages->pagevec, result);
+-				nfs_direct_readhdr_release(rhdr);
++				nfs_direct_release_pages(pagevec, result);
+ 				break;
+ 			}
+ 			bytes -= pgbase;
+-			pages->npages = result;
++			npages = result;
+ 		}
+ 
+-		get_dreq(dreq);
+-
+-		rhdr->header.req = (struct nfs_page *) dreq;
+-		rhdr->header.inode = inode;
+-		rhdr->header.cred = msg.rpc_cred;
+-		data->args.fh = NFS_FH(inode);
+-		data->args.context = get_nfs_open_context(ctx);
+-		data->args.lock_context = dreq->l_ctx;
+-		data->args.offset = pos;
+-		data->args.pgbase = pgbase;
+-		data->args.pages = pages->pagevec;
+-		data->args.count = bytes;
+-		data->res.fattr = &data->fattr;
+-		data->res.eof = 0;
+-		data->res.count = bytes;
+-		nfs_fattr_init(&data->fattr);
+-		msg.rpc_argp = &data->args;
+-		msg.rpc_resp = &data->res;
+-
+-		task_setup_data.task = &data->task;
+-		task_setup_data.callback_data = data;
+-		NFS_PROTO(inode)->read_setup(data, &msg);
+-
+-		task = rpc_run_task(&task_setup_data);
+-		if (IS_ERR(task))
+-			break;
+-
+-		dprintk("NFS: %5u initiated direct read call "
+-			"(req %s/%Ld, %zu bytes @ offset %Lu)\n",
+-				task->tk_pid,
+-				inode->i_sb->s_id,
+-				(long long)NFS_FILEID(inode),
+-				bytes,
+-				(unsigned long long)data->args.offset);
+-		rpc_put_task(task);
+-
+-		started += bytes;
+-		user_addr += bytes;
+-		pos += bytes;
+-		/* FIXME: Remove this unnecessary math from final patch */
+-		pgbase += bytes;
+-		pgbase &= ~PAGE_MASK;
+-		BUG_ON(pgbase != (user_addr & ~PAGE_MASK));
+-
+-		count -= bytes;
++		for (i = 0; i < npages; i++) {
++			struct nfs_page *req;
++			unsigned int req_len = min(bytes, PAGE_SIZE - pgbase);
++			/* XXX do we need to do the eof zeroing found in async_filler? */
++			req = nfs_create_request(dreq->ctx, dreq->inode,
++						 pagevec[i],
++						 pgbase, req_len);
++			if (IS_ERR(req)) {
++				nfs_direct_release_pages(pagevec + i,
++							 npages - i);
++				result = PTR_ERR(req);
++				break;
++			}
++			req->wb_index = pos >> PAGE_SHIFT;
++			req->wb_offset = pos & ~PAGE_MASK;
++			if (!nfs_pageio_add_request(desc, req)) {
++				result = desc->pg_error;
++				nfs_release_request(req);
++				nfs_direct_release_pages(pagevec + i,
++							 npages - i);
++				break;
++			}
++			pgbase = 0;
++			bytes -= req_len;
++			started += req_len;
++			user_addr += req_len;
++			pos += req_len;
++			count -= req_len;
++		}
+ 	} while (count != 0);
+ 
++	kfree(pagevec);
++
+ 	if (started)
+ 		return started;
+ 	return result < 0 ? (ssize_t) result : -EFAULT;
+@@ -407,15 +385,19 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+ 					      unsigned long nr_segs,
+ 					      loff_t pos)
+ {
++	struct nfs_pageio_descriptor desc;
+ 	ssize_t result = -EINVAL;
+ 	size_t requested_bytes = 0;
+ 	unsigned long seg;
+ 
++	nfs_pageio_init_read(&desc, dreq->inode,
++			     &nfs_direct_read_completion_ops);
+ 	get_dreq(dreq);
++	desc.pg_dreq = dreq;
+ 
+ 	for (seg = 0; seg < nr_segs; seg++) {
+ 		const struct iovec *vec = &iov[seg];
+-		result = nfs_direct_read_schedule_segment(dreq, vec, pos);
++		result = nfs_direct_read_schedule_segment(&desc, vec, pos);
+ 		if (result < 0)
+ 			break;
+ 		requested_bytes += result;
+@@ -424,6 +406,8 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+ 		pos += vec->iov_len;
+ 	}
+ 
++	nfs_pageio_complete(&desc);
++
+ 	/*
+ 	 * If no bytes were started, return the error, and let the
+ 	 * generic layer handle the completion.
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index f431e26..50d85e5 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -304,8 +304,9 @@ struct nfs_pgio_completion_ops;
+ /* read.c */
+ extern struct nfs_read_header *nfs_readhdr_alloc(void);
+ extern void nfs_readhdr_free(struct nfs_pgio_header *hdr);
+-extern struct nfs_read_data *nfs_readdata_alloc(struct nfs_pgio_header *hdr,
+-						unsigned int pagecount);
++extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
++			struct inode *inode,
++			const struct nfs_pgio_completion_ops *compl_ops);
+ extern int nfs_initiate_read(struct rpc_clnt *clnt,
+ 			     struct nfs_read_data *data,
+ 			     const struct rpc_call_ops *call_ops);
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index b344946..d6aa8368 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -48,8 +48,11 @@ void nfs_pgheader_init(struct nfs_pageio_descriptor *desc,
+ 	hdr->cred = hdr->req->wb_context->cred;
+ 	hdr->io_start = req_offset(hdr->req);
+ 	hdr->good_bytes = desc->pg_count;
++	hdr->dreq = desc->pg_dreq;
+ 	hdr->release = release;
+ 	hdr->completion_ops = desc->pg_completion_ops;
++	if (hdr->completion_ops->init_hdr)
++		hdr->completion_ops->init_hdr(hdr);
+ }
+ 
+ void nfs_set_pgio_error(struct nfs_pgio_header *hdr, int error, loff_t pos)
+@@ -116,9 +119,6 @@ nfs_create_request(struct nfs_open_context *ctx, struct inode *inode,
+ 	req->wb_page    = page;
+ 	req->wb_index	= page->index;
+ 	page_cache_get(page);
+-	BUG_ON(PagePrivate(page));
+-	BUG_ON(!PageLocked(page));
+-	BUG_ON(page->mapping->host != inode);
+ 	req->wb_offset  = offset;
+ 	req->wb_pgbase	= offset;
+ 	req->wb_bytes   = count;
+@@ -257,6 +257,7 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+ 	desc->pg_ioflags = io_flags;
+ 	desc->pg_error = 0;
+ 	desc->pg_lseg = NULL;
++	desc->pg_dreq = NULL;
+ }
+ 
+ /**
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 5e78af1..35e2dce 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -51,8 +51,8 @@ struct nfs_read_header *nfs_readhdr_alloc()
+ 	return rhdr;
+ }
+ 
+-struct nfs_read_data *nfs_readdata_alloc(struct nfs_pgio_header *hdr,
+-					 unsigned int pagecount)
++static struct nfs_read_data *nfs_readdata_alloc(struct nfs_pgio_header *hdr,
++						unsigned int pagecount)
+ {
+ 	struct nfs_read_data *data, *prealloc;
+ 
+@@ -123,9 +123,9 @@ void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio)
+ }
+ EXPORT_SYMBOL_GPL(nfs_pageio_reset_read_mds);
+ 
+-static void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+-				struct inode *inode,
+-				const struct nfs_pgio_completion_ops *compl_ops)
++void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
++			  struct inode *inode,
++			  const struct nfs_pgio_completion_ops *compl_ops)
+ {
+ 	if (!pnfs_pageio_init_read(pgio, inode, compl_ops))
+ 		nfs_pageio_init_read_mds(pgio, inode, compl_ops);
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 0a5b63f..f9ee9eb 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -68,6 +68,7 @@ struct nfs_pageio_descriptor {
+ 	const struct rpc_call_ops *pg_rpc_callops;
+ 	const struct nfs_pgio_completion_ops *pg_completion_ops;
+ 	struct pnfs_layout_segment *pg_lseg;
++	struct nfs_direct_req	*pg_dreq;
  };
  
-@@ -1201,14 +1205,12 @@ struct nfs_write_data {
- 	struct rpc_task		task;
- 	struct nfs_fattr	fattr;
- 	struct nfs_writeverf	verf;
--	struct page		**pagevec;
--	unsigned int		npages;		/* Max length of pagevec */
- 	struct nfs_writeargs	args;		/* argument struct */
- 	struct nfs_writeres	res;		/* result struct */
- 	unsigned long		timestamp;	/* For lease renewal */
- 	int (*write_done_cb) (struct rpc_task *task, struct nfs_write_data *data);
- 	__u64			mds_offset;	/* Filelayout dense stripe */
--	struct page		*page_array[NFS_PAGEVEC_SIZE];
-+	struct nfs_page_array	pages;
- 	struct nfs_client	*ds_clp;	/* pNFS data server */
+ #define NFS_WBACK_BUSY(req)	(test_bit(PG_BUSY,&(req)->wb_flags))
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 2597f90..938d30a 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1203,6 +1203,7 @@ struct nfs_pgio_header {
+ 	const struct rpc_call_ops *mds_ops;
+ 	void (*release) (struct nfs_pgio_header *hdr);
+ 	const struct nfs_pgio_completion_ops *completion_ops;
++	struct nfs_direct_req	*dreq;
+ 	spinlock_t		lock;
+ 	/* fields protected by lock */
+ 	int			pnfs_error;
+@@ -1216,8 +1217,6 @@ struct nfs_read_header {
+ 	struct nfs_read_data	rpc_data;
+ };
+ 
+-struct nfs_direct_req;
+-
+ struct nfs_write_data {
+ 	struct nfs_pgio_header	*header;
+ 	struct list_head	list;
+@@ -1259,6 +1258,7 @@ struct nfs_commit_data {
+ 
+ struct nfs_pgio_completion_ops {
+ 	void	(*error_cleanup)(struct list_head *head);
++	void	(*init_hdr)(struct nfs_pgio_header *hdr);
+ 	void	(*completion)(struct nfs_pgio_header *hdr);
  };
  
 -- 
