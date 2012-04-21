@@ -1,47 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:10806 "EHLO mx2.netapp.com"
+Received: from fn.samba.org ([216.83.154.106]:50370 "EHLO mail.samba.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752538Ab2DFDR7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Apr 2012 23:17:59 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Calvin Owens <jcalvinowens@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [GSoC Project] Implementing NFS v4.2
-Date: Fri, 6 Apr 2012 03:17:57 +0000
-Message-ID: <1333682276.4792.32.camel@lade.trondhjem.org>
-References: <4F7E32D4.3030201@gmail.com>
-In-Reply-To: <4F7E32D4.3030201@gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1751079Ab2DVAFr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 21 Apr 2012 20:05:47 -0400
+Message-ID: <1335052658.17583.4.camel@obed>
+Subject: Re: NFSv4 ACLs
+From: Andrew Bartlett <abartlet@samba.org>
+To: steve <steve@steve-ss.com>
+Cc: simo <idra@samba.org>, linux-nfs@vger.kernel.org,
+        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
+        Jeremy Allison <jra@samba.org>, Ondrej Valousek <webserv@s3group.com>
+Date: Sun, 22 Apr 2012 09:57:38 +1000
+In-Reply-To: <4F929B50.1020407@steve-ss.com>
+References: <4F913492.8000402@s3group.cz> <20120420185553.GB32622@samba2>
+	 <20120420212627.GA710@fieldses.org> <20120420215945.GE32622@samba2>
+	 <20120420220832.GA1914@fieldses.org>
+	 <1334972084.2492.722.camel@pico.li.ssimo.org>
+	 <4F929B50.1020407@steve-ss.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA0LTA1IGF0IDE5OjAzIC0wNTAwLCBDYWx2aW4gT3dlbnMgd3JvdGU6DQo+
-IEhlbGxvIGFsbCwNCj4gDQo+IEknbSBpbnRlcmVzdGVkIGluIGltcGxlbWVudGluZyB0aGUgZHJh
-ZnQgc3BlY2lmaWNhdGlvbiBmb3IgTkZTIHY0LjIgYXMgYSANCj4gR29vZ2xlIFN1bW1lciBvZiBD
-b2RlIHByb2plY3QuIFRoYXQgaW5jbHVkZXMgc2VydmVyLXNpZGUgY29weWluZywgc3BhcnNlIA0K
-PiBmaWxlcywgYW5kIGNhcnJ5aW5nIGZhZHZpc2UoKSBjYWxscyB0aHJvdWdoIHRvIHRoZSBzZXJ2
-ZXIsIGFtb25nIG90aGVyIA0KPiB0aGluZ3MuDQo+IA0KPiBUaGUgY3VycmVudCBkb2N1bWVudCBj
-YW4gYmUgZm91bmQgaGVyZToNCj4gaHR0cDovL3Rvb2xzLmlldGYub3JnL2h0bWwvZHJhZnQtaWV0
-Zi1uZnN2NC1taW5vcnZlcnNpb24yLTA3DQo+IA0KPiBJcyB0aGlzIHNvbWV0aGluZyB0aGF0IHlv
-dSBuZWVkIHRvIGJlIGRvbmU/IElmIHNvLCBJJ2QgdmVyeSBtdWNoIGxpa2UgdG8gDQo+IGJlIGlu
-dm9sdmVkLiA6KQ0KDQpIaSBDYWx2aW4sDQoNCkxhYmVsbGVkIE5GUyBpcyBsaWtlbHkgdG8gYmUg
-bWVyZ2VkIGludG8gMy41IChpZiBEYXZlIFEgZmluZHMgdGhlIHRpbWUNCnRvIHBvcnQgaGlzIGV4
-aXN0aW5nIGNvZGUpLg0KDQpDb3B5IG9mZmxvYWQgYWxyZWFkeSBleGlzdHMgaW4gcHJvdG90eXBl
-IGZvcm0uIFRoZSBtYWluIHJlbWFpbmluZyBpc3N1ZQ0KaXMgd29ya2luZyBvdXQgdGhlIHVzZXIg
-c3lzY2FsbCBpbnRlcmZhY2UsIHdoaWNoIHJlYWxseSByZXF1aXJlcyBnZXR0aW5nDQphbGwgdGhl
-IGludGVyZXN0ZWQgZmlsZXN5c3RlbSBtYWludGFpbmVycyB0byBhZ3JlZSAod2UndmUgc3RhcnRl
-ZCBvbg0KZG9pbmcgdGhhdCkuDQoNCklmIHlvdSdkIGxpa2UgdG8gY29udHJpYnV0ZSwgdGhlbiBJ
-J2Qgc3VnZ2VzdCBsb29raW5nIGludG8gU0VFSyAoZm9yDQpwcm92aWRpbmcgbHNlZWsoU0VFS19I
-T0xFL1NFRUtfREFUQSkgc3VwcG9ydC4gVGhlcmUgaXMgYWxzbyB0aGUgaG9sZQ0KcHVuY2hpbmcv
-c3BhY2UgcmVzZXJ2YXRpb24sIHRoYXQgc2hvdWxkIGZpdCBuaWNlbHkgaW50byB0aGUgZmFsbG9j
-YXRlKCkNCnN5c3RlbSBjYWxsLg0KVGhlIGVmZmljaWVudCBzcGFyc2UgZmlsZSByZWFkIGFuZCBm
-YWR2aXNlIHN1cHBvcnQgbWlnaHQgYmUgbmljZSB0b28sDQpidXQgSSdkIGxpa2UgdG8gc2VlIG51
-bWJlcnMgZm9yIGhvdyB0aGV5IGltcHJvdmUgbWF0dGVycyBiZWZvcmUgSSBmZWVsDQpjb21mb3J0
-YWJsZSBzYXlpbmcgeWVhIG9yIG5heSB0byBhZGRpbmcgdGhvc2Ugc3BlY2lmaWMgZmVhdHVyZXMu
-DQoNCk5vdGUgdGhhdCB0aGVyZSBhcmUgYWxzbyBhIGJ1bmNoIG9mIE5GU3Y0LjEgZmVhdHVyZXMg
-dGhhdCBoYXZlIHlldCB0byBiZQ0KaW1wbGVtZW50ZWQsIHNvIHRoZSBhYm92ZSBsaXN0IG9mIHRh
-c2tzIGlzIG5vdCBleGhhdXN0aXZlLiBJJ2QgYmUgaGFwcHkNCnRvIHdvcmsgd2l0aCB5b3UgdG8g
-ZmluZCBzb21ldGhpbmcuLi4NCg0KQ2hlZXJzDQogIFRyb25kDQotLSANClRyb25kIE15a2xlYnVz
-dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0
-QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+On Sat, 2012-04-21 at 13:34 +0200, steve wrote:
+> On 21/04/12 03:34, simo wrote:
+> > On Fri, 2012-04-20 at 18:08 -0400, J. Bruce Fields wrote:
+> >> On Fri, Apr 20, 2012 at 02:59:45PM -0700, Jeremy Allison wrote:
+> >>> On Fri, Apr 20, 2012 at 05:26:27PM -0400, J. Bruce Fields wrote:
+> >>>> On Fri, Apr 20, 2012 at 11:55:53AM -0700, Jeremy Allison wrote:
+> >>>>> On Fri, Apr 20, 2012 at 12:04:02PM +0200, Ondrej Valousek wrote:
+> >>>>>> Hi List,
+> >>>>>>
+> 
+> >
+> >> (By the way, is reexporting nfs with samba really going to work well
+> >> anyway?)
+> >
+> > Not really, it is generally unsupported, except for read only shares. It
+> > will work in most of the simple cases for writing .. until it breaks :)
+> >
+> 
+> Hi
+> That's worrying.
+> 
+> We been rw'ing nfs/samba for years.  Maybe we're the only ones. nfs3 for 
+> our Linux clients and samba for the rest. Same shared data. Only Posix 
+> acl's though. Maybe that's the simple bit?
+> Cheers,
+> Steve
+
+Are Samba and NFSd running on the same server, exporting the same data?
+That is what is expected to work.  See 'kernel oplocks' (the default of
+which will change for 4.0) to allow NFS and Samba to break each other's
+oplocks.
+
+What Simo cautions about is where an NFS server (say a NAS server)
+exports to some direct NFS clients, and then a 'proxy' Samba server is
+an NFS client and a Samba server for Windows clients.  This 'proxy'
+setup is considered dangerous. 
+
+Andrew Bartlett
+
+-- 
+Andrew Bartlett                                http://samba.org/~abartlet/
+Authentication Developer, Samba Team           http://samba.org
+
