@@ -1,53 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:40144 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934032Ab2DLPue (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Apr 2012 11:50:34 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: global openowner_id and lockowner_id
-Date: Thu, 12 Apr 2012 15:50:18 +0000
-Message-ID: <1334245818.2237.55.camel@lade.trondhjem.org>
-References: <58E57AF8-1636-4017-93C0-8520488ED866@oracle.com>
-In-Reply-To: <58E57AF8-1636-4017-93C0-8520488ED866@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qa0-f42.google.com ([209.85.216.42]:62292 "EHLO
+	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751924Ab2DVFk6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Apr 2012 01:40:58 -0400
+Received: by qafi31 with SMTP id i31so1702029qaf.1
+        for <linux-nfs@vger.kernel.org>; Sat, 21 Apr 2012 22:40:57 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <20120420171314.73801874@corrin.poochiereds.net>
+References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
+	<1334749927-26138-1-git-send-email-jlayton@redhat.com>
+	<20120420104055.511e15bc@tlielax.poochiereds.net>
+	<4F91C49D.8070908@RedHat.com>
+	<20120420203725.GA3512@us.ibm.com>
+	<20120420171314.73801874@corrin.poochiereds.net>
+Date: Sun, 22 Apr 2012 07:40:57 +0200
+Message-ID: <CAJfpegt40cgMJQQo3JuNaaS1w957Y2a_NxVoyvx3bmTMj1TGOA@mail.gmail.com>
+Subject: Re: [PATCH RFC v3] vfs: make fstatat retry once on ESTALE errors from
+ getattr call
+From: Miklos Szeredi <miklos@szeredi.hu>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Malahal Naineni <malahal@us.ibm.com>, Steve Dickson <SteveD@redhat.com>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        hch@infradead.org, michael.brantley@deshaw.com,
+        sven.breuner@itwm.fraunhofer.de, chuck.lever@oracle.com,
+        pstaubach@exagrid.com, bfields@fieldses.org,
+        trond.myklebust@fys.uio.no, rees@umich.edu
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA0LTEyIGF0IDExOjQyIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-SGktDQo+IA0KPiBDaGFuZ2luZyB0aGUgU0VUQ0xJRU5USUQgYm9vdCB2ZXJpZmllciBzbyBpdCBp
-cyBnbG9iYWwgZm9yIHRoZSB3aG9sZSBjbGllbnQgZXhwb3NlcyBhIHByb2JsZW0gd2l0aCBob3cg
-d2UgYWxsb2NhdGUgc3RhdGUgb3duZXJzLg0KPiANCj4gQSBxdWljayB1bW91bnQgLyBtb3VudCBz
-ZXF1ZW5jZSBkZXN0cm95cyBhbGwgc3RhdGUgb24gdGhlIGNsaWVudC4gIEJ1dCBzaW5jZSB0aGUg
-Y2xpZW50IG5vdyBhbHdheXMgdXNlcyB0aGUgc2FtZSBib290IHZlcmlmaWVyIGFuZCBuZnNfY2xp
-ZW50X2lkNCBzdHJpbmcsIHRoZSBzZXJ2ZXIgbm8gbG9uZ2VyIHJlY29nbml6ZXMgYSBjbGllbnQg
-cmVib290LiAgRk9yIGEgZnJlc2ggbW91bnQsIHRoZSBjbGllbnQgbWF5IHBlcmZvcm0gYSBTRVRD
-TElFTlRJRCwgYnV0IGl0IGlzIHRyZWF0ZWQgYXMgYSBjYWxsYmFjayB1cGRhdGUgKHN0YXRlIGlz
-IG5vdCBwdXJnZWQpIGlmIHRoZSBjbGllbnQncyBsZWFzZSBoYXMgbm90IHlldCBleHBpcmVkLg0K
-PiANCj4gT3VyIHN0YXRlIG93bmVycyBhcmUgZ2VuZXJhdGVkIGZyb20gYSBwYWlyIG9mIGlkYSBz
-dHJ1Y3R1cmVzIGluIHRoZSBuZnNfc2VydmVyIGZvciB0aGF0IG1vdW50LiAgVGhleSBhbHdheXMg
-c3RhcnQgZnJvbSB6ZXJvIGFmdGVyIGEgbW91bnQgb3BlcmF0aW9uLiAgTGlrZXdpc2UsIHRoZSBz
-ZXF1ZW5jZSBJRHMgZm9yIHRoZXNlIHN0YXRlIG93bmVycyBhcmUgYWxzbyByZXNldCBieSB1bW91
-bnQgLyBtb3VudC4gIE5vdGUgdGhhdCBlYWNoIG1vdW50IHBvaW50IGdldHMgYSBmcmVzaCBuZnNf
-c2VydmVyLCBzbyB0aGVzZSBzdHJ1Y3R1cmVzIGFyZSBub3QgcmV0YWluZWQgYWNyb3NzIHVtb3Vu
-dCAvIG1vdW50Lg0KPiANCj4gVGhpcyBtZWFucyB1bW91bnQgLyBtb3VudCB3aXRoIG5vIGxlYXNl
-IGV4cGlyeSBzdGFydHMgdG8gcmUtcGxheSBzdGF0ZSBvd25lcnMgd2l0aCByZXNldCBzZXF1ZW5j
-ZSBJRHMuICBTZXJ2ZXJzIGRvbid0IHJlYWxseSBjYXJlIGZvciB0aGF0IGJlaGF2aW9yLiAgSSBo
-YXZlIGEgdGVzdCBjYXNlIHRoYXQgcmVsaWFibHkgZ2V0cyBhIEJBRF9TRVFJRCBlcnJvciBmcm9t
-IGEgc2VydmVyIGFmdGVyIGEgcXVpY2sgdW1vdW50IC8gbW91bnQgZm9sbG93ZWQgYnkgYSBzaW5n
-bGUgZmlsZSBjcmVhdGlvbi4NCj4gDQo+IE5vdyB0aGF0IHdlIGFyZSBhYm91dCB0byBzd2l0Y2gg
-dG8gdXNpbmcgbW9yZS1vci1sZXNzIGdsb2JhbCBTRVRDTElFTlRJRCBib290IHZlcmlmaWVycywg
-aXQgc2VlbXMgdG8gbWUgdGhhdCB3ZSByZWFsbHkgd2FudCBhIGdsb2JhbCBvcGVub3duZXJfaWQg
-YW5kIGxvY2tvd25lcl9pZCBhcyB3ZWxsLg0KPiANCj4gVGhlIHBlcmZvcm1hbmNlIGltcGFjdCBv
-ZiBzdWNoIGEgY2hhbmdlIG1pZ2h0IGJlIGFjY2VwdGFibGUgYmVjYXVzZSB3ZSBjYWNoZSBhbmQg
-cmV1c2Ugc3RhdGUgb3duZXJzIG5vdy4NCj4gDQo+IFRob3VnaHRzPw0KDQpUaGF0J3MgYSBkZWZp
-bml0ZSBzZXJ2ZXIgYnVnLiBJZiB0aGUgY2xpZW50IGhvbGRzIG5vIG9wZW4gc3RhdGUsIHRoZW4g
-aXQNCmlzIGFsbG93ZWQgdG8gZm9yZ2V0IHRoZSBvcGVuIG93bmVyIGFuZCBzdGFydCB0aGUgc2Vx
-dWVuY2UgaWQgZnJvbSAwDQphZ2Fpbi4gSXQgaXMgbm90IHJlcXVpcmVkIHRvIHJlbWVtYmVyIHNl
-cXVlbmNlIGlkcyBmb3Igb3BlbiBvd25lcnMgdGhhdA0KYXJlbid0IGluIHVzZS4NCg0KT3VyIGN1
-cnJlbnQgY2xpZW50IGNvdWxkIGVhc2lseSB0cmlnZ2VyIHRoaXMgYnVnIGV2ZW4gd2l0aG91dCBh
-DQp1bW91bnQvbW91bnQuDQoNCkNoZWVycw0KICBUcm9uZA0KDQotLSANClRyb25kIE15a2xlYnVz
-dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0
-QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+On Fri, Apr 20, 2012 at 11:13 PM, Jeff Layton <jlayton@redhat.com> wrote:
+> On Fri, 20 Apr 2012 15:37:26 -0500
+> Malahal Naineni <malahal@us.ibm.com> wrote:
+>
+>> Steve Dickson [SteveD@redhat.com] wrote:
+>> > > 2) if we assume that it is fairly representative of one, how can we
+>> > > achieve retrying indefinitely with NFS, or at least some large finite
+>> > > amount?
+>> > The amount of looping would be peer speculation. If the problem can
+>> > not be handled by one simple retry I would say we simply pass the
+>> > error up to the app... Its an application issue...
+>>
+>> As someone said, ESTALE is an incorrect errno for a path based call.
+>> How about turning ESTALE into ENOENT after a retry or few retries?
+>>
+>
+> It's not really the same thing. One could envision an application
+> that's repeatedly renaming a new file on top of another one. The file
+> is never missing from the namespace of the server, but you could still
+> end up getting an ESTALE.
+>
+> That would break other atomicity guarantees in an even worse way, IMO...
+
+For directory operations ESTALE *is* equivalent to ENOENT if already
+retrying with LOOKUP_REVAL.  Think about it.  Atomic replacement by
+another directory with rename(2) is not an excuse here actually.
+Local filesystems too can end up with IS_DEAD directory after lookup
+in that case.
+
+For non directories we basically have getattr and setattr.   NFSv4 can
+handle both without retries if we supply the name instead of the
+handle (i.e. i_op->getattr_by_name, i_op->setattr_by_name).  Other
+protocols can do whatever they want, exponential backoff with limited
+number of retries, whatever.
+
+No looping required in the VFS.
+
+Thanks,
+Miklos
