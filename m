@@ -1,125 +1,167 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47765 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:26463 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752815Ab2DLAM0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Apr 2012 20:12:26 -0400
-Date: Wed, 11 Apr 2012 20:12:24 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kevin Coffman <kwc@umich.edu>
-Cc: NFS list <linux-nfs@vger.kernel.org>, Steve Dickson <SteveD@redhat.com>
-Subject: Re: RFC: Handling GSS rotated data
-Message-ID: <20120412001224.GB2523@fieldses.org>
-References: <CAKnQG+dVhQ3JSXJnQihzs0FnS_aeyUKftDX7j7X6iJTjRGMzPQ@mail.gmail.com>
- <20120410215633.GL18465@fieldses.org>
- <20120410230202.GM18465@fieldses.org>
- <CAKnQG+fBw8--kfGmEvh4Fq0tzfAKq0gwi6kQHsKMQ38YmJNQ_A@mail.gmail.com>
+	id S1750802Ab2DVEQn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 22 Apr 2012 00:16:43 -0400
+Message-ID: <4F938620.2080301@redhat.com>
+Date: Sun, 22 Apr 2012 09:46:32 +0530
+From: Ric Wheeler <rwheeler@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAKnQG+fBw8--kfGmEvh4Fq0tzfAKq0gwi6kQHsKMQ38YmJNQ_A@mail.gmail.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu,
+        viro@ZenIV.linux.org.uk, hch@infradead.org,
+        michael.brantley@deshaw.com, sven.breuner@itwm.fraunhofer.de,
+        chuck.lever@oracle.com, pstaubach@exagrid.com, malahal@us.ibm.com,
+        bfields@fieldses.org, trond.myklebust@fys.uio.no, rees@umich.edu
+Subject: Re: [PATCH RFC v3] vfs: make fstatat retry once on ESTALE errors
+ from getattr call
+References: <1334316311-22331-1-git-send-email-jlayton@redhat.com> <1334749927-26138-1-git-send-email-jlayton@redhat.com> <20120420104055.511e15bc@tlielax.poochiereds.net>
+In-Reply-To: <20120420104055.511e15bc@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 10, 2012 at 08:56:56PM -0400, Kevin Coffman wrote:
-> The rotation values we've seen from Microsoft clients/servers for AES
-> have been 28.  Your code definitely looks simpler!
+On 04/20/2012 08:10 PM, Jeff Layton wrote:
+> On Wed, 18 Apr 2012 07:52:07 -0400
+> Jeff Layton<jlayton@redhat.com>  wrote:
+>
+>> ESTALE errors are a source of pain for many users of NFS. Usually they
+>> occur when a file is removed from the server after a successful lookup
+>> against it.
+>>
+>> Luckily, the remedy in these cases is usually simple. We should just
+>> redo the lookup, forcing revalidations all the way in and then retry the
+>> call. We of course cannot do this for syscalls that do not involve a
+>> path, but for path-based syscalls we can and should attempt to recover
+>> from an ESTALE.
+>>
+>> This patch implements this by having the VFS reattempt the lookup (with
+>> LOOKUP_REVAL set) and call exactly once when it would ordinarily return
+>> ESTALE. This should catch the bulk of these cases under normal usage,
+>> without unduly inconveniencing other filesystems that return ESTALE on
+>> path-based syscalls.
+>>
+>> Note that it's possible to hit this race more than once, but a single
+>> retry should catch the bulk of these cases under normal circumstances.
+>>
+>> This patch is just an example. We'll alter most path-based syscalls in a
+>> similar fashion to fix this correctly. At this point, I'm just trying to
+>> ensure that the retry semantics are acceptable before I being that work.
+>>
+>> Does anyone have strong objections to this patch? I'm aware that the
+>> retry mechanism is not as robust as many (e.g. Peter) would like, but it
+>> should at least improve the current situation.
+>>
+>> If no one has a strong objection, then I'll start going through and
+>> adding similar code to the other syscalls. And we can hopefully we can
+>> get at least some of them in for 3.5.
+>>
+>> Signed-off-by: Jeff Layton<jlayton@redhat.com>
+>> ---
+>>   fs/stat.c |    9 ++++++++-
+>>   1 files changed, 8 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/fs/stat.c b/fs/stat.c
+>> index c733dc5..0ee9cb4 100644
+>> --- a/fs/stat.c
+>> +++ b/fs/stat.c
+>> @@ -73,7 +73,8 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
+>>   {
+>>   	struct path path;
+>>   	int error = -EINVAL;
+>> -	int lookup_flags = 0;
+>> +	bool retried = false;
+>> +	unsigned int lookup_flags = 0;
+>>
+>>   	if ((flag&  ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
+>>   		      AT_EMPTY_PATH)) != 0)
+>> @@ -84,12 +85,18 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
+>>   	if (flag&  AT_EMPTY_PATH)
+>>   		lookup_flags |= LOOKUP_EMPTY;
+>>
+>> +retry:
+>>   	error = user_path_at(dfd, filename, lookup_flags,&path);
+>>   	if (error)
+>>   		goto out;
+>>
+>>   	error = vfs_getattr(path.mnt, path.dentry, stat);
+>>   	path_put(&path);
+>> +	if (error == -ESTALE&&  !retried) {
+>> +		retried = true;
+>> +		lookup_flags |= LOOKUP_REVAL;
+>> +		goto retry;
+>> +	}
+>>   out:
+>>   	return error;
+>>   }
+> Apologies for replying to myself here. Just to beat on the deceased
+> equine a little longer, I should note that the above approach does
+> *not* fix Peter's reproducer in his original email. It fails rather
+> quickly when run simultaneously on the client and server.
+>
+> At least one of the tests in it creates and removes a hierarchy of
+> directories in a loop. During that, the lookup from the client can
+> easily fail more than once with ESTALE. Since we give up after a single
+> retry, that causes the call to return ESTALE.
+>
+> While testing this approach with mkdir and fstatat, I modified the
+> patch to retry multiple times, also retry when the lookup thows ESTALE
+> and to throw a printk when the number of retries was>  1 with the
+> number of retries that the call did and the eventual error code.
+>
+> With Peter's (admittedly synthetic) test, we can get an answer of sorts
+> to Trond's question from earlier in the thread as to how many retries
+> is "enough":
+>
+> [   45.023665] sys_mkdirat: retries=33 error=-2
+> [   47.889300] sys_mkdirat: retries=51 error=-2
+> [   49.172746] sys_mkdirat: retries=27 error=-2
+> [   52.325723] sys_mkdirat: retries=10 error=-2
+> [   58.082576] sys_mkdirat: retries=33 error=-2
+> [   59.810461] sys_mkdirat: retries=5 error=-2
+> [   63.387914] sys_mkdirat: retries=14 error=-2
+> [   63.630785] sys_mkdirat: retries=4 error=-2
+> [   68.268903] sys_mkdirat: retries=6 error=-2
+> [   71.124173] sys_mkdirat: retries=99 error=-2
+> [   75.657649] sys_mkdirat: retries=123 error=-2
+> [   76.903814] sys_mkdirat: retries=26 error=-2
+> [   82.009463] sys_mkdirat: retries=30 error=-2
+> [   84.807731] sys_mkdirat: retries=67 error=-2
+> [   89.825529] sys_mkdirat: retries=166 error=-2
+> [   91.599104] sys_mkdirat: retries=8 error=-2
+> [   95.621855] sys_mkdirat: retries=44 error=-2
+> [   98.164588] sys_mkdirat: retries=61 error=-2
+> [   99.783347] sys_mkdirat: retries=11 error=-2
+> [  105.593980] sys_mkdirat: retries=104 error=-2
+> [  110.348861] sys_mkdirat: retries=8 error=-2
+> [  112.087966] sys_mkdirat: retries=46 error=-2
+> [  117.613316] sys_mkdirat: retries=90 error=-2
+> [  120.117550] sys_mkdirat: retries=2 error=-2
+> [  122.624330] sys_mkdirat: retries=15 error=-2
+>
+> So, now I'm having buyers remorse of sorts about proposing to just
+> retry once as that may not be strong enough to fix some of the cases
+> we're interested in.
+>
+> I guess the questions at this point is:
+>
+> 1) How representative is Peter's mkdir_test() of a real-world workload?
+>
+> 2) if we assume that it is fairly representative of one, how can we
+> achieve retrying indefinitely with NFS, or at least some large finite
+> amount?
+>
+> I have my doubts as to whether it would really be as big a problem for
+> other filesystems as Miklos and others have asserted, but I'll take
+> their word for it at the moment. What's the best way to contain this
+> behavior to just those filesystems that want to retry indefinitely when
+> they get an ESTALE? Would we need to go with an entirely new
+> ESTALERETRY after all?
+>
 
-So, here's something that actually compiles.  I'll need someone else to
-test, though, and I won't be at all surprised if it needs some
-fixing....
+Maybe we should have a default of a single loop and a tunable to allow clients 
+to crank it up?
 
---b.
+Ric
 
-commit cf3f40cb1fdda74abf76614f03eb00f5d6f35b54
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Wed Apr 11 20:08:45 2012 -0400
-
-    rpc: handle rotated gss data for Windows interoperability
-    
-    The data in Kerberos gss tokens can be rotated.  But we were lazy and
-    rejected any nonzero rotation value.  It wasn't necessary for the
-    implementations we were testing against at the time.
-    
-    But it appears that Windows does use a nonzero value here.
-    
-    So, implementation rotation to bring ourselves into compliance with the
-    spec and to interoperate with Windows.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-index 38f388c..2070681 100644
---- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-@@ -381,21 +381,47 @@ gss_unwrap_kerberos_v1(struct krb5_ctx *kctx, int offset, struct xdr_buf *buf)
- }
- 
- /*
-- * We cannot currently handle tokens with rotated data.  We need a
-- * generalized routine to rotate the data in place.  It is anticipated
-- * that we won't encounter rotated data in the general case.
-+ * We can shift data by up to LOCAL_BUF_LEN bytes in a pass.  If we need
-+ * to do more than that, we shift repeatedly.  Kevin Coffman reports
-+ * seeing 28 bytes as the value used by Microsoft clients and servers
-+ * with AES, so this constant is chosen to allow handling 28 in one pass
-+ * without using two much stack space.
-+ *
-+ * If that proves to a problem perhaps we could use a more clever
-+ * algorithm.
-  */
--static u32
--rotate_left(struct krb5_ctx *kctx, u32 offset, struct xdr_buf *buf, u16 rrc)
-+#define LOCAL_BUF_LEN 32u
-+
-+void shift_buf_a_little(struct xdr_buf *buf, unsigned int shift)
- {
--	unsigned int realrrc = rrc % (buf->len - offset - GSS_KRB5_TOK_HDR_LEN);
-+	char head[LOCAL_BUF_LEN];
-+	unsigned int this_len, i;
- 
--	if (realrrc == 0)
--		return 0;
-+	BUG_ON(shift > LOCAL_BUF_LEN);
- 
--	dprintk("%s: cannot process token with rotated data: "
--		"rrc %u, realrrc %u\n", __func__, rrc, realrrc);
--	return 1;
-+	read_bytes_from_xdr_buf(buf, 0, head, shift);
-+	for (i=0; i + shift < buf->len; i += shift) {
-+		char tmp[LOCAL_BUF_LEN];
-+		this_len = min(shift, buf->len - i);
-+		read_bytes_from_xdr_buf(buf, i+shift, tmp, this_len);
-+		write_bytes_to_xdr_buf(buf, i, tmp, this_len);
-+	}
-+	write_bytes_to_xdr_buf(buf, buf->len - shift, head, shift);
-+}
-+
-+void rotate_left(struct krb5_ctx *kctx, u32 offset, struct xdr_buf *buf, unsigned int rrc)
-+{
-+	struct xdr_buf subbuf;
-+	int shifted = 0;
-+	int this_shift;
-+
-+	rrc %= buf->len;
-+	xdr_buf_subsegment(buf, &subbuf, offset, buf->len);
-+	while (shifted < rrc) {
-+		this_shift = min(rrc, LOCAL_BUF_LEN);
-+		shift_buf_a_little(&subbuf, this_shift);
-+		shifted += this_shift;
-+	}
- }
- 
- static u32
-@@ -495,11 +521,8 @@ gss_unwrap_kerberos_v2(struct krb5_ctx *kctx, int offset, struct xdr_buf *buf)
- 
- 	seqnum = be64_to_cpup((__be64 *)(ptr + 8));
- 
--	if (rrc != 0) {
--		err = rotate_left(kctx, offset, buf, rrc);
--		if (err)
--			return GSS_S_FAILURE;
--	}
-+	if (rrc != 0)
-+		rotate_left(kctx, offset, buf, rrc);
- 
- 	err = (*kctx->gk5e->decrypt_v2)(kctx, offset, buf,
- 					&headskip, &tailskip);
