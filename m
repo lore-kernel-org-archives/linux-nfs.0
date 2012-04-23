@@ -1,81 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35149 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:65208 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755271Ab2DJVP1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Apr 2012 17:15:27 -0400
-Date: Tue, 10 Apr 2012 17:15:26 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: don't use locks_in_grace to determine whether to
- call nfs4_grace_end
-Message-ID: <20120410211526.GJ18465@fieldses.org>
-References: <1334070528-16019-1-git-send-email-jlayton@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1334070528-16019-1-git-send-email-jlayton@redhat.com>
+	id S1752239Ab2DWMAw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Apr 2012 08:00:52 -0400
+Date: Mon, 23 Apr 2012 08:00:12 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Miklos Szeredi <miklos@szeredi.hu>
+Cc: Malahal Naineni <malahal@us.ibm.com>, Steve Dickson <SteveD@redhat.com>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        hch@infradead.org, michael.brantley@deshaw.com,
+        sven.breuner@itwm.fraunhofer.de, chuck.lever@oracle.com,
+        pstaubach@exagrid.com, bfields@fieldses.org,
+        trond.myklebust@fys.uio.no, rees@umich.edu
+Subject: Re: [PATCH RFC v3] vfs: make fstatat retry once on ESTALE errors
+ from getattr call
+Message-ID: <20120423080012.7c23ef24@tlielax.poochiereds.net>
+In-Reply-To: <CAJfpegt40cgMJQQo3JuNaaS1w957Y2a_NxVoyvx3bmTMj1TGOA@mail.gmail.com>
+References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
+	<1334749927-26138-1-git-send-email-jlayton@redhat.com>
+	<20120420104055.511e15bc@tlielax.poochiereds.net>
+	<4F91C49D.8070908@RedHat.com>
+	<20120420203725.GA3512@us.ibm.com>
+	<20120420171314.73801874@corrin.poochiereds.net>
+	<CAJfpegt40cgMJQQo3JuNaaS1w957Y2a_NxVoyvx3bmTMj1TGOA@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 10, 2012 at 11:08:48AM -0400, Jeff Layton wrote:
-> It's possible that lockd or another lock manager might still be on the
-> list after we call nfsd4_end_grace. If the laundromat thread runs
-> again at that point, then we could end up calling nfsd4_end_grace more
-> than once.
-> 
-> That's not only inefficient, but calling nfsd4_recdir_purge_old more
-> than once could be problematic. Fix this by adding a new global
-> "grace_ended" flag and use that to determine whether we've already
-> called nfsd4_grace_end.
+On Sun, 22 Apr 2012 07:40:57 +0200
+Miklos Szeredi <miklos@szeredi.hu> wrote:
 
-Looks good to me, applying, thanks.--b.
+> On Fri, Apr 20, 2012 at 11:13 PM, Jeff Layton <jlayton@redhat.com> wrote:
+> > On Fri, 20 Apr 2012 15:37:26 -0500
+> > Malahal Naineni <malahal@us.ibm.com> wrote:
+> >
+> >> Steve Dickson [SteveD@redhat.com] wrote:
+> >> > > 2) if we assume that it is fairly representative of one, how can we
+> >> > > achieve retrying indefinitely with NFS, or at least some large finite
+> >> > > amount?
+> >> > The amount of looping would be peer speculation. If the problem can
+> >> > not be handled by one simple retry I would say we simply pass the
+> >> > error up to the app... Its an application issue...
+> >>
+> >> As someone said, ESTALE is an incorrect errno for a path based call.
+> >> How about turning ESTALE into ENOENT after a retry or few retries?
+> >>
+> >
+> > It's not really the same thing. One could envision an application
+> > that's repeatedly renaming a new file on top of another one. The file
+> > is never missing from the namespace of the server, but you could still
+> > end up getting an ESTALE.
+> >
+> > That would break other atomicity guarantees in an even worse way, IMO...
+> 
+> For directory operations ESTALE *is* equivalent to ENOENT if already
+> retrying with LOOKUP_REVAL.  Think about it.  Atomic replacement by
+> another directory with rename(2) is not an excuse here actually.
+> Local filesystems too can end up with IS_DEAD directory after lookup
+> in that case.
+> 
 
+Doesn't that violate POSIX? rename(2) is supposed to be atomic, and I
+can't see where there's any exception for that for directories.
+
+Seems like it ought to be possible to eliminate that race for other
+filesystems as well, by turning those into an ESTALE return and
+retrying again.
+
+> For non directories we basically have getattr and setattr.   NFSv4 can
+> handle both without retries if we supply the name instead of the
+> handle (i.e. i_op->getattr_by_name, i_op->setattr_by_name).  Other
+> protocols can do whatever they want, exponential backoff with limited
+> number of retries, whatever.
 > 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfsd/nfs4state.c |   11 +++++++++--
->  1 files changed, 9 insertions(+), 2 deletions(-)
+> No looping required in the VFS.
 > 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index a822e31..277c989 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -3155,10 +3155,17 @@ out:
->  static struct lock_manager nfsd4_manager = {
->  };
->  
-> +static bool grace_ended;
-> +
->  static void
->  nfsd4_end_grace(void)
->  {
-> +	/* do nothing if grace period already ended */
-> +	if (grace_ended)
-> +		return;
-> +
->  	dprintk("NFSD: end of grace period\n");
-> +	grace_ended = true;
->  	nfsd4_record_grace_done(&init_net, boot_time);
->  	locks_end_grace(&nfsd4_manager);
->  	/*
-> @@ -3183,8 +3190,7 @@ nfs4_laundromat(void)
->  	nfs4_lock_state();
->  
->  	dprintk("NFSD: laundromat service - starting\n");
-> -	if (locks_in_grace())
-> -		nfsd4_end_grace();
-> +	nfsd4_end_grace();
->  	INIT_LIST_HEAD(&reaplist);
->  	spin_lock(&client_lock);
->  	list_for_each_safe(pos, next, &client_lru) {
-> @@ -4718,6 +4724,7 @@ nfs4_state_start(void)
->  	nfsd4_client_tracking_init(&init_net);
->  	boot_time = get_seconds();
->  	locks_start_grace(&nfsd4_manager);
-> +	grace_ended = false;
->  	printk(KERN_INFO "NFSD: starting %ld-second grace period\n",
->  	       nfsd4_grace);
->  	ret = set_callback_cred();
-> -- 
-> 1.7.7.6
-> 
+
+Per-name operations for things like getattr and setattr would be nice.
+It would also make things cleaner on CIFS since there'd be less
+conversion from dentry to path.
+
+Note that we would still need to do a lookup. We have to update the
+inode attributes with these operations too. But, that would likely
+avoid the ESTALE problems with NFS since we could retry within
+the lower fs itself.
+
+That said, there's more than just those two operations involved. We'd
+need similar ones for other inode operations too:
+
+readlink
+permission
+*xattr
+
+...and probably others, especially if you want to allow for more
+resilient create/delete in the face of a stale directory.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
