@@ -1,72 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:45370 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753320Ab2DJA1y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Apr 2012 20:27:54 -0400
-Received: by iagz16 with SMTP id z16so6584707iag.19
-        for <linux-nfs@vger.kernel.org>; Mon, 09 Apr 2012 17:27:53 -0700 (PDT)
-Message-ID: <4F837E87.3070204@gmail.com>
-Date: Mon, 09 Apr 2012 19:27:51 -0500
-From: Calvin Owens <jcalvinowens@gmail.com>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mx2.netapp.com ([216.240.18.37]:56983 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754546Ab2DWVca (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Apr 2012 17:32:30 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [GSoC Project] Implementing NFS v4.2
-References: <4F7E32D4.3030201@gmail.com> <1333682276.4792.32.camel@lade.trondhjem.org>
-In-Reply-To: <1333682276.4792.32.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Subject: Re: [PATCH 1/3] NFSv4: Ensure we do not reuse open owner names
+Date: Mon, 23 Apr 2012 21:32:28 +0000
+Message-ID: <1335216748.11427.38.camel@lade.trondhjem.org>
+References: <1335213414-20826-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <418AC7C0-6289-40D0-85DB-092C29BA40D3@oracle.com>
+	 <1335214124.11427.23.camel@lade.trondhjem.org>
+	 <537D97FE-BB59-4541-A705-C01178025C48@oracle.com>
+In-Reply-To: <537D97FE-BB59-4541-A705-C01178025C48@oracle.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/05/2012 10:17 PM, Myklebust, Trond wrote:
-> On Thu, 2012-04-05 at 19:03 -0500, Calvin Owens wrote:
->> Hello all,
->>
->> I'm interested in implementing the draft specification for NFS v4.2 as a
->> Google Summer of Code project. That includes server-side copying, sparse
->> files, and carrying fadvise() calls through to the server, among other
->> things.
->>
->> The current document can be found here:
->> http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-07
->>
->> Is this something that you need to be done? If so, I'd very much like to
->> be involved. :)
->
-> Hi Calvin,
->
-> Labelled NFS is likely to be merged into 3.5 (if Dave Q finds the time
-> to port his existing code).
- >
-> Copy offload already exists in prototype form. The main remaining issue
-> is working out the user syscall interface, which really requires getting
-> all the interested filesystem maintainers to agree (we've started on
-> doing that).
->
-> If you'd like to contribute, then I'd suggest looking into SEEK (for
-> providing lseek(SEEK_HOLE/SEEK_DATA) support. There is also the hole
-> punching/space reservation, that should fit nicely into the fallocate()
-> system call.
-
-Yes, that sounds good. I'll start looking into that.
-
-> The efficient sparse file read and fadvise support might be nice too,
-> but I'd like to see numbers for how they improve matters before I feel
-> comfortable saying yea or nay to adding those specific features.
-
-I definitely see your point. It does seem to be a lot of added 
-complexity for a negligible benefit.
-
-> Note that there are also a bunch of NFSv4.1 features that have yet to be
-> implemented, so the above list of tasks is not exhaustive. I'd be happy
-> to work with you to find something...
-
-What else, precisely, would you like to get done? I need to get some 
-more detailed objectives to put into my application. (Forgive me for so 
-blatantly not looking myself, but it seems more efficient than me 
-digging through the code finding missing features and lobbing them at 
-you for approval, when I'm sure you know exactly where your priorities 
-are...)
-
-Thanks very much,
-Calvin Owens
+T24gTW9uLCAyMDEyLTA0LTIzIGF0IDE2OjU3IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+T24gQXByIDIzLCAyMDEyLCBhdCA0OjQ4IFBNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiAN
+Cj4gPiBPbiBNb24sIDIwMTItMDQtMjMgYXQgMTY6NDQgLTA0MDAsIENodWNrIExldmVyIHdyb3Rl
+Og0KPiA+PiBIaS0NCj4gPj4gDQo+ID4+IEkgd2lzaCB5b3UgaGFkIHRvbGQgbWUgeW91IHdlcmUg
+Z29pbmcgdG8gZml4IHRoaXMgdG9vLiAgSSd2ZSBiZWVuIHRlc3RpbmcgYSBmaXggZm9yIHRoaXMg
+Zm9yIGEgY291cGxlIHdlZWtzLiAgV2FzIGdvaW5nIHRvIHBvc3QgdGhpcyBhZnRlcm5vb24uICBT
+aGFsbCBJIHRvc3MgbWluZT8NCj4gPiANCj4gPiBJIHdhcyBoaXR0aW5nIHRoYXQgQkFEX1NFUUlE
+IHN0b3JtIGR1cmluZyB0ZXN0aW5nIG9mIHRoZSBvdGhlciBvcGVuDQo+ID4gZml4ZXMgbGFzdCB3
+ZWVrLg0KPiANCj4gRmFpciBlbm91Z2gsIGJ1dCBJIGFubm91bmNlZCBJIGhhZCBhIGZpeCBpbiBt
+eSBBcHJpbCAxNSBzdGF0dXMgcmVwb3J0LiAgT2ggd2VsbC4NCj4gDQo+IFNvLCBJIGRlY2lkZWQg
+dGhhdCBhIHRpbWVzdGFtcCB3b3VsZCBsZWFrIGluZm9ybWF0aW9uIGFib3V0IHRoZSBjbGllbnQs
+IHNvIEknbSB1c2luZyBhIHNpbXBsZSBjb3VudGVyIGluc3RlYWQuICBXb3VsZCB5b3UgY29uc2lk
+ZXIgdGhhdCBmb3IgeW91ciBwYXRjaD8NCg0KSG93IHdvdWxkIGEgdGltZXN0YW1wIGxlYWsgdXNl
+ZnVsIGluZm9ybWF0aW9uPyBUaGUgc2VydmVyIGFuZCBhbnlvbmUNCm1vbml0b3JpbmcgdGhlIE5G
+UyB0cmFmZmljIGFscmVhZHkga25vd3MgYXQgd2hhdCB0aW1lIHRoZSBvcGVuIG93bmVyIHdhcw0K
+Y3JlYXRlZCB0byB3aXRoaW4gYSBmZXcgbWlsbGlzZWNvbmRzLg0KDQoNCi0tIA0KVHJvbmQgTXlr
+bGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWts
+ZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
