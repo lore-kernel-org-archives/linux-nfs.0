@@ -1,62 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:57422 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751674Ab2DXFs0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Apr 2012 01:48:26 -0400
-From: Neil Brown <neilb@suse.de>
-To: Steve Dickson <steved@redhat.com>
-Date: Tue, 24 Apr 2012 15:46:38 +1000
-Subject: [PATCH 6/6] v4_root_add_parents: remove a possible buffer overflow.
-Cc: linux-nfs@vger.kernel.org, NeilBrown <neilb@suse.de>
-Message-ID: <20120424054638.20130.42383.stgit@notabene.brown>
-In-Reply-To: <20120424054003.20130.16209.stgit@notabene.brown>
-References: <20120424054003.20130.16209.stgit@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from acsinet15.oracle.com ([141.146.126.227]:34777 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755222Ab2DWViS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Apr 2012 17:38:18 -0400
+Subject: Re: [PATCH 1/3] NFSv4: Ensure we do not reuse open owner names
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1335216748.11427.38.camel@lade.trondhjem.org>
+Date: Mon, 23 Apr 2012 17:38:12 -0400
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <2D111BD9-B02C-4B58-B5F0-667EF39138F9@oracle.com>
+References: <1335213414-20826-1-git-send-email-Trond.Myklebust@netapp.com> <418AC7C0-6289-40D0-85DB-092C29BA40D3@oracle.com> <1335214124.11427.23.camel@lade.trondhjem.org> <537D97FE-BB59-4541-A705-C01178025C48@oracle.com> <1335216748.11427.38.camel@lade.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The loop in v4root_add_parents() is a little odd.
-The first time through, 'ptr' points immediately "beyond"
-a '/' character (the first).  For every other iterration it points
-directly "at" a '/' character.
-Such inconsistency is error prone and infact there is an error.
-If "path" is precisely "/", then the first call to
-   ptr = strchr(ptr, '/')
 
-will be given a 'ptr' which is beyond the '\0' at the end of
-"path".  This could potentially contain anything and the strchr()
-could search well beyond a buffer (though this depends on exactly how
-the string is set up which depends on separate code).
+On Apr 23, 2012, at 5:32 PM, Myklebust, Trond wrote:
 
-So change the loop to have 'ptr' always point at a '/', and
-handle the special case of "/" explicitly.
+> On Mon, 2012-04-23 at 16:57 -0400, Chuck Lever wrote:
+>> On Apr 23, 2012, at 4:48 PM, Myklebust, Trond wrote:
+>> 
+>>> On Mon, 2012-04-23 at 16:44 -0400, Chuck Lever wrote:
+>>>> Hi-
+>>>> 
+>>>> I wish you had told me you were going to fix this too.  I've been testing a fix for this for a couple weeks.  Was going to post this afternoon.  Shall I toss mine?
+>>> 
+>>> I was hitting that BAD_SEQID storm during testing of the other open
+>>> fixes last week.
+>> 
+>> Fair enough, but I announced I had a fix in my April 15 status report.  Oh well.
+>> 
+>> So, I decided that a timestamp would leak information about the client, so I'm using a simple counter instead.  Would you consider that for your patch?
+> 
+> How would a timestamp leak useful information? The server and anyone
+> monitoring the NFS traffic already knows at what time the open owner was
+> created to within a few milliseconds.
 
-Signed-off-by: NeilBrown <neilb@suse.de>
----
+It leaks the exact time as the client sees it.  This is why time-based UUIDs are no longer considered safe.
 
- utils/mountd/v4root.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+But also, is it possible that a state_owner could be destroyed and created so quickly on a system with inadequate timestamp resolution, such that the new owner ID would not actually be different than the previous one?
 
-diff --git a/utils/mountd/v4root.c b/utils/mountd/v4root.c
-index 57ee0b2..708eb61 100644
---- a/utils/mountd/v4root.c
-+++ b/utils/mountd/v4root.c
-@@ -150,13 +150,13 @@ static int v4root_add_parents(nfs_export *exp)
- 				"pseudo export for '%s'", exp->m_export.e_path);
- 		return -ENOMEM;
- 	}
--	for (ptr = path + 1; ptr; ptr = strchr(ptr, '/')) {
-+	for (ptr = path; ptr; ptr = strchr(ptr, '/')) {
- 		int ret;
- 		char saved;
- 
- 		saved = *ptr;
- 		*ptr = '\0';
--		ret = pseudofs_update(hostname, path, exp);
-+		ret = pseudofs_update(hostname, *path ? path : "/", exp);
- 		if (ret)
- 			return ret;
- 		*ptr = saved;
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
 
