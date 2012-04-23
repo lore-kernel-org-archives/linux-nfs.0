@@ -1,78 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:6592 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754165Ab2DRQTm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Apr 2012 12:19:42 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Alexandre Depoutovitch <adepoutovitch@vmware.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH RFC] Performing direct I/O on sector-aligned requests
-Date: Wed, 18 Apr 2012 16:19:40 +0000
-Message-ID: <1334765979.4701.27.camel@lade.trondhjem.org>
-References: <9c0b78d1.00001bd8.00000533@aldep-VC.vmware.com>
-In-Reply-To: <9c0b78d1.00001bd8.00000533@aldep-VC.vmware.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from p02c11o144.mxlogic.net ([208.65.144.77]:46641 "EHLO
+	p02c11o144.mxlogic.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753056Ab2DWRu2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Apr 2012 13:50:28 -0400
+From: Peter Staubach <pstaubach@exagrid.com>
+To: Miklos Szeredi <miklos@szeredi.hu>, Chuck Lever <chuck.lever@oracle.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, Jeff Layton <jlayton@redhat.com>,
+        Malahal Naineni <malahal@us.ibm.com>,
+        Steve Dickson <SteveD@redhat.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+        "hch@infradead.org" <hch@infradead.org>,
+        "michael.brantley@deshaw.com" <michael.brantley@deshaw.com>,
+        "sven.breuner@itwm.fraunhofer.de" <sven.breuner@itwm.fraunhofer.de>,
+        "trond.myklebust@fys.uio.no" <trond.myklebust@fys.uio.no>,
+        "rees@umich.edu" <rees@umich.edu>
+Date: Mon, 23 Apr 2012 13:45:08 -0400
+Subject: RE: [PATCH RFC v3] vfs: make fstatat retry once on ESTALE errors
+ from getattr call
+Message-ID: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC063CF8E604@IT-1874.Isys.com>
+References: <20120420104055.511e15bc@tlielax.poochiereds.net>
+	<4F91C49D.8070908@RedHat.com> <20120420203725.GA3512@us.ibm.com>
+	<20120420171314.73801874@corrin.poochiereds.net>
+	<CAJfpegt40cgMJQQo3JuNaaS1w957Y2a_NxVoyvx3bmTMj1TGOA@mail.gmail.com>
+	<20120423080012.7c23ef24@tlielax.poochiereds.net>
+	<20120423130009.GA13681@fieldses.org>
+	<20120423091255.00f926c4@tlielax.poochiereds.net>
+	<20120423133412.GB13681@fieldses.org>
+	<20120423095021.1a91a23b@tlielax.poochiereds.net>
+	<20120423135456.GC13681@fieldses.org>
+	<87hawasdrb.fsf@tucsk.pomaz.szeredi.hu>
+	<9991AAC7-5256-4AFE-9722-7AF1119EE7BE@oracle.com>
+ <874nsasc8l.fsf@tucsk.pomaz.szeredi.hu>
+In-Reply-To: <874nsasc8l.fsf@tucsk.pomaz.szeredi.hu>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTA0LTE4IGF0IDA3OjE4IC0wNzAwLCBBbGV4YW5kcmUgRGVwb3V0b3ZpdGNo
-IHdyb3RlOg0KPiBORlMgZGFlbW9ucyBhbHdheXMgcGVyZm9ybSBidWZmZXJlZCBJTyBvbiBmaWxl
-cy4gQXMgYSByZXN1bHQsIHdyaXRlDQo+IHJlcXVlc3RzIHRoYXQgYXJlIG5vdCBhbGlnbmVkIG9u
-IGEgZmlsZSBzeXN0ZW0gYmxvY2sgYm91bmRhcnkgdGFrZSBhYm91dA0KPiAxNSB0aW1lcyBtb3Jl
-IHRpbWUgdG8gY29tcGxldGUgY29tcGFyZWQgdG8gdGhlIHNhbWUgd3JpdGVzIHRoYXQgYXJlIGZp
-bGUNCj4gc3lzdGVtIGJsb2NrIGFsaWduZWQuIFRoaXMgcGF0Y2ggZml4ZXMgdGhlIHByb2JsZW0g
-YnkgYW5hbHl6aW5nIGFsaWdubWVudA0KPiBvZiB0aGUgSU8gcmVxdWVzdCB0aGF0IGNvbWVzIHRv
-IE5GUyBkYWVtb24gYW5kIHVzaW5nIERpcmVjdCBJL08gbWVjaGFuaXNtDQo+IHdoZW4gYWxsIG9m
-IHRoZSBmb2xsb3dpbmcgYXJlIHRydWU6DQo+IDEuIFJlcXVlc3QgaXMgbm90IGFsaWduZWQgb24g
-YSBmaWxlIHN5c3RlbSBibG9jayBib3VuZGFyeQ0KPiAyLiBSZXF1ZXN0IGlzIGFsaWduZWQgb24g
-YW4gdW5kZXJseWluZyBibG9jayBkZXZpY2XigJlzIHNlY3RvciBib3VuZGFyeS4NCj4gMy4gUmVx
-dWVzdCBzaXplIGlzIGEgbXVsdGlwbGUgb2YgdGhlIHNlY3RvciBzaXplLg0KPiBJbiBhbGwgb3Ro
-ZXIgY2FzZXMsIGJ1ZmZlcmVkIElPIGlzIHBlcmZvcm1lZCBhcyBoYXMgYmVlbiBkb25lIGJlZm9y
-ZS4NCj4gDQo+IEFmdGVyIGFwcGx5aW5nIGEgcGF0Y2gsIHRoZSByZXN1bHRpbmcgcGVyZm9ybWFu
-Y2Ugb2YgYWxsIHR5cGVzIG9mDQo+IHJlcXVlc3RzLCBleGNlcHQgdW5hbGlnbmVkIHdyaXRlcyBy
-ZW1haW5zIHRoZSBzYW1lLCB3aGlsZSBwZXJmb3JtYW5jZSBvZg0KPiB1bmFsaWduZWQgd3JpdGVz
-IGltcHJvdmVzIDE1IHRpbWVzLg0KPiBBIG5ldyBmbGFnIGlzIGV4cG9zZWQgdG8gdXNlcnMgdGhy
-b3VnaCAvcHJvYy9mcy9uZnNkL2RpcmVjdF9pbyBub2RlLiBUaGUNCj4gZGVmYXVsdCB2YWx1ZSBv
-ZiAxIHJlc3VsdHMgaW4gdGhlIGFib3ZlIGJlaGF2aW9yLiBXcml0aW5nIDAgdG8gdGhlIG5vZGUN
-Cj4gdHVybnMgb2ZmIHRoZSBvcHRpbWl6YXRpb24sIGFuZCBmb3JjZXMgTkZTIGRhZW1vbiB0byBh
-bHdheXMgdXNlIGJ1ZmZlcmVkDQo+IElPIChhcyBpdCBoYXMgZG9uZSBiZWZvcmUpLiBXcml0aW5n
-IDIgdG8gdGhlIG5vZGUgdGVsbHMgTkZTIGRhZW1vbiB0byB1c2UNCj4gZGlyZWN0IEkvTyBldmVu
-IGlmIHJlcXVlc3QgaXMgZmlsZSBzeXN0ZW0gYmxvY2sgYWxpZ25lZC4NCj4gDQo+IEkgaGF2ZSB0
-ZXN0ZWQgdGhpcyBwYXRjaCBieSBydW5uaW5nIGNvbmN1cnJlbnQgTkZTIHdyaXRlcyB0byBhbiBl
-eHBvcnRlZA0KPiAgZmlsZSBzeXN0ZW0gYW5kIHZlcmlmeWluZyBsb2NhbGx5IHRoYXQgd3JpdGVz
-IHJlYWNoZWQgdGhlIGRpc2suDQo+IA0KPHNuaXA+DQo+ICsvKg0KPiArIFBlcmZvcm1zIGRpcmVj
-dCBJL08gZm9yIGEgZ2l2ZW4gTkZTIHdyaXRlIHJlcXVlc3QNCj4gKyovDQo+ICtzdGF0aWMgc3Np
-emVfdCBuZnNkX3Zmc193cml0ZV9kaXJlY3Qoc3RydWN0IGZpbGUgKmZpbGUsIGNvbnN0IHN0cnVj
-dA0KPiBpb3ZlYyAqdmVjLA0KPiArICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgdW5z
-aWduZWQgbG9uZyB2bGVuLCBsb2ZmX3QgKnBvcykgew0KPiArICAgICAgICAgICAgICBzc2l6ZV90
-IHJlc3VsdCA9IC1FSU5WQUw7DQo+ICsgICAgICAgICAgICAgIHVuc2lnbmVkIGludCBwYWdlX251
-bTsNCj4gKyAgICAgICAgICAgICAgc3RydWN0IGlvdmVjICphbGlnbmVkX3ZlYyA9IE5VTEw7DQo+
-ICsgICAgICAgICAgICAgDQo+ICsgICAgICAgICAgICAgIC8vIENoZWNrIHNpemUgdG8gYmUgbXVs
-dGlwbGUgb2Ygc2VjdG9ycw0KPiArICAgICAgICAgICAgICBzaXplX3Qgc2l6ZSA9IGlvdl9sZW5n
-dGgodmVjLCB2bGVuKTsNCj4gKw0KPiArICAgICAgICAgICAgICBpZiAoc2l6ZSA9PSAwKQ0KPiAr
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcmV0dXJuIHZmc193cml0ZXYoZmlsZSwgKHN0
-cnVjdCBpb3ZlYw0KPiBfX3VzZXIgKil2ZWMsIHZsZW4sIHBvcyk7DQo+ICsNCj4gKyAgICAgICAg
-ICAgICAgLy8gQWxsb2NhdGUgbmVjZXNhcnkgbnVtYmVyIG9mIHBhZ2VzDQo+ICsgICAgICAgICAg
-ICAgIHJlc3VsdCA9IG5mc2RfYWxsb2NhdGVfcGFnZWRfaW92ZWMoc2l6ZSwgJnBhZ2VfbnVtLA0K
-PiAmYWxpZ25lZF92ZWMpOw0KPiArICAgICAgICAgICAgICBpZiAocmVzdWx0KSB7DQo+ICsgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICBwcmludGsoS0VSTl9XQVJOSU5HIkNhbm5vdCBhbGxv
-Y2F0ZQ0KPiBhbGlnbmVkX3ZlYy4iKTsNCj4gKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-IGdvdG8gb3V0Ow0KPiArICAgICAgICAgICAgICB9DQo+ICsNCj4gKyAgICAgICAgICAgICAgLy8g
-Q29weSBkYXRhDQo+ICsgICAgICAgICAgICAgIHJlc3VsdCA9IG5mc2RfY29weV9pb3ZlYyh2ZWMs
-IHZsZW4sIGFsaWduZWRfdmVjLCBwYWdlX251bSwNCj4gc2l6ZSk7DQo+ICsgICAgICAgICAgICAg
-IGlmKHJlc3VsdCkgew0KPiArICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcHJpbnRrKEtF
-Uk5fV0FSTklORyJXcm9uZyBhbW91bnQgb2YgZGF0YQ0KPiBjb3BpZWQgdG8gYWxpZ25lZCBidWZm
-ZXIuIik7DQo+ICsgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBnb3RvIG91dDsNCj4gKyAg
-ICAgICAgICAgICAgfQ0KPiArDQo+ICsgICAgICAgICAgICAgIC8vIENhbGwgZnVydGhlcg0KPiAr
-ICAgICAgICAgICAgICByZXN1bHQgPSB2ZnNfd3JpdGV2KGZpbGUsIChzdHJ1Y3QgaW92ZWMgX191
-c2VyDQo+ICopYWxpZ25lZF92ZWMsIHBhZ2VfbnVtLCBwb3MpOw0KPiArDQo+ICtvdXQ6DQo+ICsg
-ICAgICAgICAgICAgIG5mc2RfZnJlZV9wYWdlZF9pb3ZlYyhwYWdlX251bSwgYWxpZ25lZF92ZWMp
-Ow0KPiArICAgICAgICAgICAgICByZXR1cm4gcmVzdWx0Ow0KPiArfQ0KPiArDQo+ICsNCg0KQ2Fu
-IHRoaXMgYmUgcmV3cml0dGVuIHRvIHVzZSBEYXZlIEtsZWlrYW1wJ3MgaW92X2l0ZXIgaW50ZXJm
-YWNlIHdpdGgNCmFzeW5jaHJvbm91cyByZWFkcyBhbmQgd3JpdGVzPyBPdGhlcndpc2UgSSBjYW4n
-dCBzZWUgaG93IGl0IGlzIGdvaW5nIHRvDQphdm9pZCBiZWluZyBtaW5kbnVtYmluZ2x5IHNsb3cu
-DQoNCllvdSBjYW4gc2VlIHRoZSBMV04gZGVzY3JpcHRpb24gYW5kIGxpbmsgdG8gaGlzIHBhdGNo
-ZXMgaW4NCmh0dHA6Ly9sd24ubmV0L0FydGljbGVzLzQ5MDExNC8NCg0KLS0gDQpUcm9uZCBNeWts
-ZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xl
-YnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+The situation of stale current directories and/or stale root directories for mounted file systems is handled.  In these cases, recovery is not possible and so, are not looped for.
+
+	Thanx...
+
+		ps
+
+
+-----Original Message-----
+From: Miklos Szeredi [mailto:miklos@szeredi.hu] 
+Sent: Monday, April 23, 2012 11:24 AM
+To: Chuck Lever
+Cc: J. Bruce Fields; Jeff Layton; Malahal Naineni; Steve Dickson; linux-fsdevel@vger.kernel.org; linux-nfs@vger.kernel.org; linux-kernel@vger.kernel.org; viro@zeniv.linux.org.uk; hch@infradead.org; michael.brantley@deshaw.com; sven.breuner@itwm.fraunhofer.de; Peter Staubach; trond.myklebust@fys.uio.no; rees@umich.edu
+Subject: Re: [PATCH RFC v3] vfs: make fstatat retry once on ESTALE errors from getattr call
+
+Chuck Lever <chuck.lever@oracle.com> writes:
+
+> On Apr 23, 2012, at 10:51 AM, Miklos Szeredi wrote:
+>
+>> "J. Bruce Fields" <bfields@fieldses.org> writes:
+>> 
+>>> 
+>>> I also wonder whether it would be making too many assumptions about 
+>>> the server or filesystem: just because ordinary posix interfaces 
+>>> don't allow atomic replacement of a whole directory tree doesn't 
+>>> mean the server might not have some way to do it.
+>> 
+>> Exactly because posix limits the atomic replacement to empty 
+>> directories is that this feature is not useful and is why linux can 
+>> get away with the dead directory behavior in this case.  And thinking 
+>> about fixing this in NFS is completely pointless since no one will 
+>> rely on the atomic replacement behavior.  Fixing local filesystems is 
+>> also pointless for the same reason.
+>> 
+>> Atomic replacement of whole directory trees would indeed be more 
+>> useful, but it's highly unlikely to be used anywhere since 
+>> applications relying on this feature would be limited to special filesystems that allow this.
+>
+> The cases I can think of have to do with file system restore, file 
+> system and block device snapshots, and so on.  This type of use case 
+> may not practical on today's Linux server, but they are a reality for 
+> anyone using high-end NFS storage.
+
+Problem with this is: if some directory file handles are stale (e.g. due to directories being removed, recreated, moved around) and on the client there are cwd-s referring to these handles, then they are going to become stale no matter what you do, even if the same path does exist after the restore on the server.
+
+Thanks,
+Miklos
