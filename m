@@ -1,310 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:39660 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755131Ab2DXS6x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Apr 2012 14:58:53 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 1/2] NFS: Create an NFS v3 stat_to_errno()
-Date: Tue, 24 Apr 2012 14:58:49 -0400
-Message-Id: <1335293930-20215-2-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1335293930-20215-1-git-send-email-bjschuma@netapp.com>
-References: <1335293930-20215-1-git-send-email-bjschuma@netapp.com>
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:56370 "EHLO
+	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755913Ab2DWWat convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Apr 2012 18:30:49 -0400
+Received: by obbta14 with SMTP id ta14so76162obb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2012 15:30:48 -0700 (PDT)
+Subject: Re: [PATCH 5 2/4] Return 32/64-bit dir name hash according to usage type
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+From: Andreas Dilger <adilger@whamcloud.com>
+In-Reply-To: <4F95D65A.8070608@redhat.com>
+Date: Mon, 23 Apr 2012 17:42:02 -0500
+Cc: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, Fan Yong <yong.fan@whamcloud.com>,
+        bfields@redhat.com
+Message-Id: <A754D23B-B946-4E80-ACEA-0E2C2E6FAA2E@whamcloud.com>
+References: <20120109132137.2616029.76288.stgit@localhost.localdomain> <20120109132148.2616029.68798.stgit@localhost.localdomain> <4F91C15B.6070200@redhat.com> <4F93FED6.6090505@itwm.fraunhofer.de> <4F95BD72.6090200@redhat.com> <4F95C109.1030401@itwm.fraunhofer.de> <4F95D65A.8070608@redhat.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On 2012-04-23, at 5:23 PM, Eric Sandeen wrote:
+> I'm curious about the above as well as:
+> 
+>        case SEEK_END:
+>                if (unlikely(offset > 0))
+>                        goto out_err; /* not supported for directories */
+> 
+> The previous .llseek handler, and the generic handler for other filesystems, allow seeking past the end of the dir AFAICT.  (not sure why you'd want to, but I don't see that you'd get an error back).
+> 
+> Is there a reason to uniquely exclude it in ext4?  Does that line up with POSIX?
 
-In theory, NFS v3 can have different error versions than NFS v2. v4 is
-already using its own nfs4_stat_to_errno() to mapp error codes, so
-rather than create something in the generic client for v2 and v3 to
-share I instead give v3 its own function.
+I don't know what the origin of this was...  I don't think there is a real reason for it except that it doesn't make any sense to do so.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/internal.h |    1 -
- fs/nfs/nfs2xdr.c  |    3 +-
- fs/nfs/nfs3xdr.c  |  103 +++++++++++++++++++++++++++++++++++++++++++----------
- 3 files changed, 87 insertions(+), 20 deletions(-)
+Cheers, Andreas
+--
+Andreas Dilger                       Whamcloud, Inc.
+Principal Lustre Engineer            http://www.whamcloud.com/
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index f4e7066..d02b645 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -201,7 +201,6 @@ extern int __init nfs_init_directcache(void);
- extern void nfs_destroy_directcache(void);
- 
- /* nfs2xdr.c */
--extern int nfs_stat_to_errno(enum nfs_stat);
- extern struct rpc_procinfo nfs_procedures[];
- extern int nfs2_decode_dirent(struct xdr_stream *,
- 				struct nfs_entry *, int);
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index 1f56000..73e3e67 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -61,6 +61,7 @@
- #define NFS_readdirres_sz	(1)
- #define NFS_statfsres_sz	(1+NFS_info_sz)
- 
-+static int nfs_stat_to_errno(enum nfs_stat);
- 
- /*
-  * While encoding arguments, set up the reply buffer in advance to
-@@ -1109,7 +1110,7 @@ static const struct {
-  * Returns a local errno value, or -EIO if the NFS status code is
-  * not recognized.  This function is used jointly by NFSv2 and NFSv3.
-  */
--int nfs_stat_to_errno(enum nfs_stat status)
-+static int nfs_stat_to_errno(enum nfs_stat status)
- {
- 	int i;
- 
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index a77cc9a..f766a6f 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -86,6 +86,8 @@
- 				XDR_QUADLEN(NFS_ACL_INLINE_BUFSIZE))
- #define ACL3_setaclres_sz	(1+NFS3_post_op_attr_sz)
- 
-+static int nfs3_stat_to_errno(enum nfs_stat);
-+
- /*
-  * Map file type to S_IFMT bits
-  */
-@@ -1385,7 +1387,7 @@ static int nfs3_xdr_dec_getattr3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_default:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1424,7 +1426,7 @@ static int nfs3_xdr_dec_setattr3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1472,7 +1474,7 @@ out_default:
- 	error = decode_post_op_attr(xdr, result->dir_attr);
- 	if (unlikely(error))
- 		goto out;
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1513,7 +1515,7 @@ static int nfs3_xdr_dec_access3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_default:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1554,7 +1556,7 @@ static int nfs3_xdr_dec_readlink3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_default:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1636,7 +1638,7 @@ static int nfs3_xdr_dec_read3res(struct rpc_rqst *req, struct xdr_stream *xdr,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1706,7 +1708,7 @@ static int nfs3_xdr_dec_write3res(struct rpc_rqst *req, struct xdr_stream *xdr,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1770,7 +1772,7 @@ out_default:
- 	error = decode_wcc_data(xdr, result->dir_attr);
- 	if (unlikely(error))
- 		goto out;
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1809,7 +1811,7 @@ static int nfs3_xdr_dec_remove3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1853,7 +1855,7 @@ static int nfs3_xdr_dec_rename3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1896,7 +1898,7 @@ static int nfs3_xdr_dec_link3res(struct rpc_rqst *req, struct xdr_stream *xdr,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /**
-@@ -2088,7 +2090,7 @@ out_default:
- 	error = decode_post_op_attr(xdr, result->dir_attr);
- 	if (unlikely(error))
- 		goto out;
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -2156,7 +2158,7 @@ static int nfs3_xdr_dec_fsstat3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -2232,7 +2234,7 @@ static int nfs3_xdr_dec_fsinfo3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -2295,7 +2297,7 @@ static int nfs3_xdr_dec_pathconf3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -2336,7 +2338,7 @@ static int nfs3_xdr_dec_commit3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- #ifdef CONFIG_NFS_V3_ACL
-@@ -2401,7 +2403,7 @@ static int nfs3_xdr_dec_getacl3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_default:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- static int nfs3_xdr_dec_setacl3res(struct rpc_rqst *req,
-@@ -2420,11 +2422,76 @@ static int nfs3_xdr_dec_setacl3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_default:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- #endif  /* CONFIG_NFS_V3_ACL */
- 
-+
-+/*
-+ * We need to translate between nfs status return values and
-+ * the local errno values which may not be the same.
-+ */
-+static const struct {
-+	int stat;
-+	int errno;
-+} nfs_errtbl[] = {
-+	{ NFS_OK,		0		},
-+	{ NFSERR_PERM,		-EPERM		},
-+	{ NFSERR_NOENT,		-ENOENT		},
-+	{ NFSERR_IO,		-errno_NFSERR_IO},
-+	{ NFSERR_NXIO,		-ENXIO		},
-+/*	{ NFSERR_EAGAIN,	-EAGAIN		}, */
-+	{ NFSERR_ACCES,		-EACCES		},
-+	{ NFSERR_EXIST,		-EEXIST		},
-+	{ NFSERR_XDEV,		-EXDEV		},
-+	{ NFSERR_NODEV,		-ENODEV		},
-+	{ NFSERR_NOTDIR,	-ENOTDIR	},
-+	{ NFSERR_ISDIR,		-EISDIR		},
-+	{ NFSERR_INVAL,		-EINVAL		},
-+	{ NFSERR_FBIG,		-EFBIG		},
-+	{ NFSERR_NOSPC,		-ENOSPC		},
-+	{ NFSERR_ROFS,		-EROFS		},
-+	{ NFSERR_MLINK,		-EMLINK		},
-+	{ NFSERR_NAMETOOLONG,	-ENAMETOOLONG	},
-+	{ NFSERR_NOTEMPTY,	-ENOTEMPTY	},
-+	{ NFSERR_DQUOT,		-EDQUOT		},
-+	{ NFSERR_STALE,		-ESTALE		},
-+	{ NFSERR_REMOTE,	-EREMOTE	},
-+#ifdef EWFLUSH
-+	{ NFSERR_WFLUSH,	-EWFLUSH	},
-+#endif
-+	{ NFSERR_BADHANDLE,	-EBADHANDLE	},
-+	{ NFSERR_NOT_SYNC,	-ENOTSYNC	},
-+	{ NFSERR_BAD_COOKIE,	-EBADCOOKIE	},
-+	{ NFSERR_NOTSUPP,	-ENOTSUPP	},
-+	{ NFSERR_TOOSMALL,	-ETOOSMALL	},
-+	{ NFSERR_SERVERFAULT,	-EREMOTEIO	},
-+	{ NFSERR_BADTYPE,	-EBADTYPE	},
-+	{ NFSERR_JUKEBOX,	-EJUKEBOX	},
-+	{ -1,			-EIO		}
-+};
-+
-+/**
-+ * nfs3_stat_to_errno - convert an NFS status code to a local errno
-+ * @status: NFS status code to convert
-+ *
-+ * Returns a local errno value, or -EIO if the NFS status code is
-+ * not recognized.  This function is used jointly by NFSv2 and NFSv3.
-+ */
-+static int nfs3_stat_to_errno(enum nfs_stat status)
-+{
-+	int i;
-+
-+	for (i = 0; nfs_errtbl[i].stat != -1; i++) {
-+		if (nfs_errtbl[i].stat == (int)status)
-+			return nfs_errtbl[i].errno;
-+	}
-+	dprintk("NFS: Unrecognized nfs status value: %u\n", status);
-+	return nfs_errtbl[i].errno;
-+}
-+
-+
- #define PROC(proc, argtype, restype, timer)				\
- [NFS3PROC_##proc] = {							\
- 	.p_proc      = NFS3PROC_##proc,					\
--- 
-1.7.10
+
+
 
