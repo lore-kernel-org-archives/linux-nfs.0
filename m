@@ -1,77 +1,148 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:34564 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750896Ab2DKKfA convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Apr 2012 06:35:00 -0400
-Message-ID: <4F855E3D.6090306@parallels.com>
-Date: Wed, 11 Apr 2012 14:34:37 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH][RFC] nfsd/lockd: have locks_in_grace take a sb arg
-References: <1333455279-11200-1-git-send-email-jlayton@redhat.com> <4F841D2A.9020504@parallels.com> <20120410081612.65dd25fa@tlielax.poochiereds.net> <4F842BAE.2010804@parallels.com> <20120410202251.GH18465@fieldses.org>
-In-Reply-To: <20120410202251.GH18465@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Received: from cantor2.suse.de ([195.135.220.15]:43875 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753254Ab2DWBE1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 22 Apr 2012 21:04:27 -0400
+Date: Mon, 23 Apr 2012 11:04:19 +1000
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 0/3] Fix use_ipaddr race
+Message-ID: <20120423110419.1311c364@notabene.brown>
+In-Reply-To: <1334961978-2843-1-git-send-email-bfields@redhat.com>
+References: <1334961978-2843-1-git-send-email-bfields@redhat.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/c97.V+X0YcIfzHc_gS7WWQ/"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-11.04.2012 00:22, J. Bruce Fields пишет:
-> On Tue, Apr 10, 2012 at 04:46:38PM +0400, Stanislav Kinsbursky wrote:
->> 10.04.2012 16:16, Jeff Layton пишет:
->>> On Tue, 10 Apr 2012 15:44:42 +0400
->>>
->>> (sorry about the earlier truncated reply, my MUA has a mind of its own
->>> this morning)
->>>
->>
->> OK then. Previous letter confused me a bit.
->>
->>>
->>> TBH, I haven't considered that in depth. That is a valid situation, but
->>> one that's discouraged. It's very difficult (and expensive) to
->>> sequester off portions of a filesystem for serving.
->>>
->>> A filehandle is somewhat analogous to a device/inode combination. When
->>> the server gets a filehandle, it has to determine "is this within a
->>> path that's exported to this host"? That process is called subtree
->>> checking. It's expensive and difficult to handle. It's always better to
->>> export along filesystem boundaries.
->>>
->>> My suggestion would be to simply not deal with those cases in this
->>> patch. Possibly we could force no_subtree_check when we export an fs
->>> with a locks_in_grace option defined.
->>>
->>
->> Sorry, but without dealing with those cases your patch looks a bit... Useless.
->> I.e. it changes nothing, it there will be no support from file
->> systems, going to be exported.
->> But how are you going to push developers to implement these calls?
->> Or, even if you'll try to implement them by yourself, how they will
->> looks like?
->> Simple check only for superblock looks bad to me, because any other
->> start of NFSd will lead to grace period for all other containers
->> (which uses the same filesystem).
->
-> That's the correct behavior, and it sounds simple to implement.  Let's
-> just do that.
->
-> If somebody doesn't like the grace period from another container
-> intruding on their use of the same filesystem, they should either
-> arrange to export different filesystems (not just different subtrees)
-> from their containers, or arrange to start all their containers at the
-> same time so their grace periods overlap.
->
+--Sig_/c97.V+X0YcIfzHc_gS7WWQ/
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Starting all at once is not a very good solution.
-When you start 100 containers simultaneously - then you can't predict, when the 
-process as a whole will succeed (it will produce heavy load on all subsystems). 
-Moreover, there is also  server restart...
-Anyway, I agree with the idea of this patch.
+On Fri, 20 Apr 2012 18:46:15 -0400 "J. Bruce Fields" <bfields@redhat.com>
+wrote:
 
-Please, have a look at new export option I mentioned in "Grace period" thread.
+> From: "J. Bruce Fields" <bfields@redhat.com>
+>=20
+> We have a report of failed upcalls that occur when use_ipaddr is
+> toggled.  The problem appears to be that for example after turning on
+> use_ipaddr, the kernel may still see upcalls for clients such as "*".
+>=20
+> The following patches (untested except to check that they compile...)
+> attempt to fix that by just letting nfsd_fh() accept either client type;
+> does anyone see a problem with that?
+>=20
+>=20
+> The current code actually attempts to avoid tihs problem by flushing
+> caches on a use_ipaddr change (see the cache_flush() call in
+> utils/mountd/auth.c:check_useipaddr().  But that doesn't work, because a
+> write to a cache/flush file doesn't actually provide useful guarantees
+> to the caller on return:
+>=20
+> 	- as far as I can tell, cache_clean leaves alone any entries
+> 	  that were created in the current second.
 
--- 
-Best regards,
-Stanislav Kinsbursky
+We only do one thing each second - right?
+
+Maybe a simple work around is:
+  - update state in mountd
+  - sleep(1)
+  - flush cache.
+
+
+?? Then anything dependant on the old behaviour will be gone.
+
+> 	- cache_clean only removes entries from the cache, it doesn't
+> 	  wait for them to actually be destroyed: so an in-progress nfsd
+> 	  thread could still make an upcall using information from one
+> 	  of the flushed entries.
+
+Ideally we would like those threads to abort and re-start from the beginnin=
+g.
+That's not really very easy with all the NFSv4 state issues is it?
+
+I think waiting for them to complete would be problematic.  As you say,
+deadlocks and such.
+So we need to continue to serve them faithfully.
+
+Does that just mean changing nfsd_fh to *not* test use_ipaddr, but rather to
+inspect the 'dom' and if it looks like an IP address, act as though use_ipa=
+ddr
+was set, else not?
+
+>=20
+> These seem like bugs in their own right to me: a cache-flush operation
+> that actually guaranteed the entries were gone on return would be more
+> useful.  And I wonder whether this doesn't also cause exportfs bugs....
+>=20
+> I'm not sure what to do about it, though.
+>=20
+> I don't think the existing interface is really fixable, since fixing the
+> second problem above would (I think) require the cache/flush write to
+> wait on in-progress rpc's, but those in-progress rpc's could be waiting
+> on mountd, creating a deadlock.
+>=20
+> A new interface shouldn't need to accept a time--every actual user just
+> wants to cache flushed now.
+
+Having a time-stamp seems like a good idea at the time .... I don't remember
+why though. :-(
+
+>=20
+> Maybe the first problem could be solved by replacing the time by a
+> counter incremented on each insert of a cache entry.
+>=20
+> And the second could be fixed by waiting on in-progress rpc's.  That
+> might not help mountd, but it would help exportfs at least.
+>=20
+> --b.
+>=20
+> J. Bruce Fields (3):
+>   mountd: unconditionally resolve ip address
+
+Not a good idea.  If /etc/exports only contains IP address and subnets, then
+we don't ever want to do any address resolution.  The "resolve ip address"
+must at least be conditional on "are there any domain-name, wild-cards,
+netgroups in /etc/exports".
+
+
+>   mountd: helper function for export upcall's client matching
+
+This depends on the earlier patch?  and does the host-name lookup earlier.
+That really can cause a delay sometimes so it should be as late as possible.
+
+
+>   mountd: ignore use_ipaddr and just try both client types
+
+Maybe ... though if we could syntactically distinguish "use_ipaddr" domains
+from "!use_ipaddr" domain and still just choose one test to perform, I think
+I'd prefer that.
+
+
+NeilBrown
+
+--Sig_/c97.V+X0YcIfzHc_gS7WWQ/
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
+
+iQIVAwUBT5Sqkznsnt1WYoG5AQJvkg//Qy3Ayv0zl1Dl2JpKsKVUSDa21GZynr0Z
+WcWNqAtHtjFRGv+2wA/GHtwd1dzUNnc1fDeij/qI0u0jz/305YfcVwFscbc3Pr6i
+rGZqeCMX/jMJqEvWe3uhzZN74M329dPXNxaVIZEHBCx0j9I/rN4AncnX979tZepM
+sOev0dGoNx93gISrmbUjR/pKZG5ucdScYtbHiueX7FAFuItvvacQUIQKi3a41OFN
+hofRq3pURkrt9CBx796V8xnDJE4E5OYtOdDjUkWF0rFEJ0QImrG0MJDKjoOlOxDO
+d0x0hkqLB+MP+0SAToSZ/DzVEO17FPg6MeveX3T7GliTUpz/LET/p4//auOPjF26
+D0qnxOIivRO4gkziawaiqvtefdUNtKHfnwoGQTr1bMpxdZSMPgvJ/HoggP0Upv24
+rITzbKlMfFIPxsjPesk6aqsEQw4EXEejrcpJP5FXOZh+VY3F8AF0bKicblO6vPdJ
+zddaF2TOlc2RUIqRxWkQR1sigwXyyVw/+Jy5ZkpFAi18QO0HoNJuiBm263ha4uEW
+s9PlmfXNhE76aLu+oHbelN/I89/2w/EnuY4AN5pDd1+syUB2dR/nEAWEHuuwNS2d
+gM9QAUUxFWaJR6fgNiccRSdz/k53y97MAz6SQHCq0dbAiS6CnxZfbei2JC1+P4Hg
+g9mAiB3cWQk=
+=7w6P
+-----END PGP SIGNATURE-----
+
+--Sig_/c97.V+X0YcIfzHc_gS7WWQ/--
