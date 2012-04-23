@@ -1,66 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:56213 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:50983 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751164Ab2DIQdi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Apr 2012 12:33:38 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-CC: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: Grace period
-Date: Mon, 9 Apr 2012 16:33:36 +0000
-Message-ID: <1333989216.2688.87.camel@lade.trondhjem.org>
-References: <4F7F230A.6080506@parallels.com>
-	 <20120406234039.GA20940@fieldses.org> <4F82C6E3.3030009@parallels.com>
-	 <20120409094743.56932677@tlielax.poochiereds.net>
-	 <4F82F16C.7030303@parallels.com>
-	 <20120409112739.6a823d6f@corrin.poochiereds.net>
-	 <4F830999.5000504@parallels.com> <20120409161114.GB6482@fieldses.org>
-	 <1333988226.2688.76.camel@lade.trondhjem.org>
-	 <20120409162107.GC6482@fieldses.org>
-In-Reply-To: <20120409162107.GC6482@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+	id S1752454Ab2DWNAQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Apr 2012 09:00:16 -0400
+Date: Mon, 23 Apr 2012 09:00:09 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Miklos Szeredi <miklos@szeredi.hu>, Malahal Naineni <malahal@us.ibm.com>,
+        Steve Dickson <SteveD@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        viro@zeniv.linux.org.uk, hch@infradead.org,
+        michael.brantley@deshaw.com, sven.breuner@itwm.fraunhofer.de,
+        chuck.lever@oracle.com, pstaubach@exagrid.com,
+        trond.myklebust@fys.uio.no, rees@umich.edu
+Subject: Re: [PATCH RFC v3] vfs: make fstatat retry once on ESTALE errors
+ from getattr call
+Message-ID: <20120423130009.GA13681@fieldses.org>
+References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
+ <1334749927-26138-1-git-send-email-jlayton@redhat.com>
+ <20120420104055.511e15bc@tlielax.poochiereds.net>
+ <4F91C49D.8070908@RedHat.com>
+ <20120420203725.GA3512@us.ibm.com>
+ <20120420171314.73801874@corrin.poochiereds.net>
+ <CAJfpegt40cgMJQQo3JuNaaS1w957Y2a_NxVoyvx3bmTMj1TGOA@mail.gmail.com>
+ <20120423080012.7c23ef24@tlielax.poochiereds.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120423080012.7c23ef24@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA0LTA5IGF0IDEyOjIxIC0wNDAwLCBiZmllbGRzQGZpZWxkc2VzLm9yZyB3
-cm90ZToNCj4gT24gTW9uLCBBcHIgMDksIDIwMTIgYXQgMDQ6MTc6MDZQTSArMDAwMCwgTXlrbGVi
-dXN0LCBUcm9uZCB3cm90ZToNCj4gPiBPbiBNb24sIDIwMTItMDQtMDkgYXQgMTI6MTEgLTA0MDAs
-IGJmaWVsZHNAZmllbGRzZXMub3JnIHdyb3RlOg0KPiA+ID4gT24gTW9uLCBBcHIgMDksIDIwMTIg
-YXQgMDg6MDg6NTdQTSArMDQwMCwgU3RhbmlzbGF2IEtpbnNidXJza3kgd3JvdGU6DQo+ID4gPiA+
-IDA5LjA0LjIwMTIgMTk6MjcsIEplZmYgTGF5dG9uINC/0LjRiNC10YI6DQo+ID4gPiA+ID4NCj4g
-PiA+ID4gPklmIHlvdSBhbGxvdyBvbmUgY29udGFpbmVyIHRvIGhhbmQgb3V0IGNvbmZsaWN0aW5n
-IGxvY2tzIHdoaWxlIGFub3RoZXINCj4gPiA+ID4gPmNvbnRhaW5lciBpcyBhbGxvd2luZyByZWNs
-YWltcywgdGhlbiB5b3UgY2FuIGVuZCB1cCB3aXRoIHNvbWUgdmVyeQ0KPiA+ID4gPiA+ZGlmZmlj
-dWx0IHRvIGRlYnVnIHNpbGVudCBkYXRhIGNvcnJ1cHRpb24uIFRoYXQncyB0aGUgd29yc3QgcG9z
-c2libGUNCj4gPiA+ID4gPm91dGNvbWUsIElNTy4gV2UgcmVhbGx5IG5lZWQgdG8gYWN0aXZlbHkg
-a2VlcCBwZW9wbGUgZnJvbSBzaG9vdGluZw0KPiA+ID4gPiA+dGhlbXNlbHZlcyBpbiB0aGUgZm9v
-dCBoZXJlLg0KPiA+ID4gPiA+DQo+ID4gPiA+ID5PbmUgcG9zc2liaWxpdHkgbWlnaHQgYmUgdG8g
-b25seSBhbGxvdyBmaWxlc3lzdGVtcyB0byBiZSBleHBvcnRlZCBmcm9tDQo+ID4gPiA+ID5hIHNp
-bmdsZSBjb250YWluZXIgYXQgYSB0aW1lIChhbmQgYWxsb3cgdGhhdCB0byBiZSBvdmVycmlkYWJs
-ZSBzb21laG93DQo+ID4gPiA+ID5vbmNlIHdlIGhhdmUgYSB3b3JraW5nIGFjdGl2ZS9hY3RpdmUg
-c2VydmluZyBzb2x1dGlvbikuIFdpdGggdGhhdCwgeW91DQo+ID4gPiA+ID5tYXkgYmUgYWJsZSBs
-aW1wIGFsb25nIHdpdGggYSBwZXItY29udGFpbmVyIGdyYWNlIHBlcmlvZCBoYW5kbGluZw0KPiA+
-ID4gPiA+c2NoZW1lIGxpa2UgeW91J3JlIHByb3Bvc2luZy4NCj4gPiA+ID4gPg0KPiA+ID4gPiAN
-Cj4gPiA+ID4gT2sgdGhlbi4gS2VlcGluZyBwZW9wbGUgZnJvbSBzaG9vdGluZyB0aGVtc2VsdmVz
-IGhlcmUgc291bmRzIHJlYXNvbmFibGUuDQo+ID4gPiA+IEFuZCBJIGxpa2UgdGhlIGlkZWEgb2Yg
-ZXhwb3J0aW5nIGEgZmlsZXN5c3RlbSBvbmx5IGZyb20gb25jZSBwZXINCj4gPiA+ID4gbmV0d29y
-ayBuYW1lc3BhY2UuDQo+ID4gPiANCj4gPiA+IFVuZm9ydHVuYXRlbHkgdGhhdCdzIG5vdCBnb2lu
-ZyB0byBnZXQgdXMgdmVyeSBmYXIsIGVzcGVjaWFsbHkgbm90IGluIHRoZQ0KPiA+ID4gdjQgY2Fz
-ZSB3aGVyZSB3ZSd2ZSBnb3QgdGhlIGNvbW1vbiByZWFkLW9ubHkgcHNldWRvcm9vdCB0aGF0IGV2
-ZXJ5b25lDQo+ID4gPiBoYXMgdG8gc2hhcmUuDQo+ID4gDQo+ID4gSSBkb24ndCBzZWUgaG93IHRo
-YXQgY2FuIHdvcmsgaW4gY2FzZXMgd2hlcmUgZWFjaCBjb250YWluZXIgaGFzIGl0cyBvd24NCj4g
-PiBwcml2YXRlIG1vdW50IG5hbWVzcGFjZS4gWW91J3JlIGdvaW5nIHRvIGhhdmUgdG8gdGllIHRo
-YXQgcHNldWRvcm9vdCB0bw0KPiA+IHRoZSBtb3VudCBuYW1lc3BhY2Ugc29tZWhvdy4NCj4gDQo+
-IFN1cmUsIGJ1dCBpbiB0eXBpY2FsIGNhc2VzIGl0J2xsIHN0aWxsIGJlIHNoYXJlZDsgcmVxdWly
-aW5nIHRoYXQgdGhleQ0KPiBub3QgYmUgc291bmRzIGxpa2UgYSBzZXZlcmUgbGltaXRhdGlvbi4N
-Cg0KSSdkIGV4cGVjdCB0aGUgdHlwaWNhbCBjYXNlIHRvIGJlIHRoZSBub24tc2hhcmVkIG5hbWVz
-cGFjZTogdGhlIHdob2xlDQpwb2ludCBvZiBjb250YWluZXJzIGlzIHRvIHByb3ZpZGUgZm9yIGNv
-bXBsZXRlIGlzb2xhdGlvbiBvZiBwcm9jZXNzZXMuDQpVc3VhbGx5IHRoYXQgaW1wbGllcyB0aGF0
-IHlvdSBkb24ndCB3YW50IHRoZW0gdG8gYmUgYWJsZSB0byBjb21tdW5pY2F0ZQ0KdmlhIGEgc2hh
-cmVkIGZpbGVzeXN0ZW0uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50
-IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5l
-dGFwcC5jb20NCg0K
+On Mon, Apr 23, 2012 at 08:00:12AM -0400, Jeff Layton wrote:
+> On Sun, 22 Apr 2012 07:40:57 +0200
+> Miklos Szeredi <miklos@szeredi.hu> wrote:
+> 
+> > On Fri, Apr 20, 2012 at 11:13 PM, Jeff Layton <jlayton@redhat.com> wrote:
+> > > On Fri, 20 Apr 2012 15:37:26 -0500
+> > > Malahal Naineni <malahal@us.ibm.com> wrote:
+> > >
+> > >> Steve Dickson [SteveD@redhat.com] wrote:
+> > >> > > 2) if we assume that it is fairly representative of one, how can we
+> > >> > > achieve retrying indefinitely with NFS, or at least some large finite
+> > >> > > amount?
+> > >> > The amount of looping would be peer speculation. If the problem can
+> > >> > not be handled by one simple retry I would say we simply pass the
+> > >> > error up to the app... Its an application issue...
+> > >>
+> > >> As someone said, ESTALE is an incorrect errno for a path based call.
+> > >> How about turning ESTALE into ENOENT after a retry or few retries?
+> > >>
+> > >
+> > > It's not really the same thing. One could envision an application
+> > > that's repeatedly renaming a new file on top of another one. The file
+> > > is never missing from the namespace of the server, but you could still
+> > > end up getting an ESTALE.
+> > >
+> > > That would break other atomicity guarantees in an even worse way, IMO...
+> > 
+> > For directory operations ESTALE *is* equivalent to ENOENT if already
+> > retrying with LOOKUP_REVAL.  Think about it.  Atomic replacement by
+> > another directory with rename(2) is not an excuse here actually.
+> > Local filesystems too can end up with IS_DEAD directory after lookup
+> > in that case.
+> > 
+> 
+> Doesn't that violate POSIX? rename(2) is supposed to be atomic, and I
+> can't see where there's any exception for that for directories.
+
+Hm, but that only allows atomic replacement of the last component of a
+path.
+
+Suppose you're looking up a path, you've so far reached intermediate
+directory "D", and the next step of the lookup (of some entry in D)
+returns ESTALE.  Then either:
+
+	- D has since been unlinked, and ENOENT is obviously right.
+	- D was unlinked and then replaced by something else, in which
+	  case there was still a moment when ENOENT was correct.
+	- D was replaced atomically by a rename.  But for the rename to
+	  work it must have been replacing an empty directory, so there
+	  was still a moment when ENOENT would have been correct.
+	  (Exception: if D was actually a regular file or some other
+	  non-directory object, then ENOTDIR would be the right error:
+	  but if you're able to get at least object type atomically with
+	  a lookup, then you should have noticed this already on lookup
+	  of D.)
+
+I think that's what Miklos meant?
+
+--b.
