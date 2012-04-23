@@ -1,197 +1,228 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:4512 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757469Ab2DTTIq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 15:08:46 -0400
-From: bjschuma@netapp.com
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:43242 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753585Ab2DWUy7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Apr 2012 16:54:59 -0400
+Received: by mail-iy0-f174.google.com with SMTP id i9so2498807iad.19
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2012 13:54:58 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 12/20] NFS: Refactor nfs_get_client(): initialize nfs_client
 To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
-        Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v2 6/8] NFS: Fix following referral mount points with different security
-Date: Fri, 20 Apr 2012 15:08:36 -0400
-Message-Id: <1334948918-4706-7-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1334948918-4706-1-git-send-email-bjschuma@netapp.com>
-References: <1334948918-4706-1-git-send-email-bjschuma@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 23 Apr 2012 16:54:56 -0400
+Message-ID: <20120423205456.11446.73723.stgit@degas.1015granger.net>
+In-Reply-To: <20120423205312.11446.67081.stgit@degas.1015granger.net>
+References: <20120423205312.11446.67081.stgit@degas.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Clean up: Continue to rationalize the locking in nfs_get_client() by
+moving the logic that handles the case where a matching server IP
+address is not found.
 
-I create a new proc_lookup_mountpoint() to use when submounting an NFS
-v4 share.  This function returns an rpc_clnt to use for performing an
-fs_locations() call on a referral's mountpoint.
+When we support server trunking detection, client initialization may
+return a different nfs_client struct than was passed to it.  Change
+the synopsis of the init_client methods to return an nfs_client.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+The client initialization logic in nfs_get_client() is not much more
+than a wrapper around ->init_client.  It's simpler to keep the little
+bits of error handling in the version-specific init_client methods.
+
+No behavior change is expected.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/nfs4_fs.h       |    6 ++++--
- fs/nfs/nfs4namespace.c |   24 ++++++++++++++----------
- fs/nfs/nfs4proc.c      |   40 ++++++++++++++++++++++++++++++----------
- 3 files changed, 48 insertions(+), 22 deletions(-)
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 640a499..16846e9 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -218,8 +218,10 @@ extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
- extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
- extern int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait, bool roc);
- extern int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle);
--extern int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
--		struct nfs4_fs_locations *fs_locations, struct page *page);
-+extern int nfs4_proc_fs_locations(struct rpc_clnt *, struct inode *, const struct qstr *,
-+		struct nfs4_fs_locations *, struct page *);
-+struct rpc_clnt *nfs4_proc_lookup_mountpoint(struct inode *, struct qstr *,
-+			    struct nfs_fh *, struct nfs_fattr *);
- extern int nfs4_release_lockowner(struct nfs4_lock_state *);
- extern const struct xattr_handler *nfs4_xattr_handlers[];
+ fs/nfs/client.c         |   52 ++++++++++++++++++++---------------------------
+ fs/nfs/internal.h       |   19 +++++++++--------
+ include/linux/nfs_xdr.h |    3 ++-
+ 3 files changed, 34 insertions(+), 40 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 09b3f55..d62f7e4 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -548,7 +548,6 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
+ 	       int noresvport)
+ {
+ 	struct nfs_client *clp, *new = NULL;
+-	int error;
+ 	struct nfs_net *nn = net_generic(cl_init->net, nfs_net_id);
  
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index b6baa6e..3cb3746 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -305,7 +305,7 @@ out:
-  * @dentry - dentry of referral
-  *
+ 	dprintk("--> nfs_get_client(%s,v%u)\n",
+@@ -565,8 +564,13 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
+ 				nfs_free_client(new);
+ 			return nfs_found_client(cl_init, clp);
+ 		}
+-		if (new)
+-			goto install_client;
++		if (new) {
++			list_add(&new->cl_share_link, &nn->nfs_client_list);
++			spin_unlock(&nn->nfs_client_lock);
++			return cl_init->rpc_ops->init_client(new,
++						timeparms, ip_addr,
++						authflavour, noresvport);
++		}
+ 
+ 		spin_unlock(&nn->nfs_client_lock);
+ 
+@@ -576,21 +580,6 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
+ 	dprintk("<-- nfs_get_client() Failed to find %s (%ld)\n",
+ 		cl_init->hostname ?: "", PTR_ERR(new));
+ 	return new;
+-
+-	/* install a new client and return with it unready */
+-install_client:
+-	clp = new;
+-	list_add(&clp->cl_share_link, &nn->nfs_client_list);
+-	spin_unlock(&nn->nfs_client_lock);
+-
+-	error = cl_init->rpc_ops->init_client(clp, timeparms, ip_addr,
+-					      authflavour, noresvport);
+-	if (error < 0) {
+-		nfs_put_client(clp);
+-		return ERR_PTR(error);
+-	}
+-	dprintk("--> nfs_get_client() = %p [new]\n", clp);
+-	return clp;
+ }
+ 
+ /*
+@@ -818,7 +807,8 @@ static int nfs_init_server_rpcclient(struct nfs_server *server,
+ /*
+  * Initialise an NFS2 or NFS3 client
   */
--static struct vfsmount *nfs_do_refmount(struct dentry *dentry)
-+static struct vfsmount *nfs_do_refmount(struct rpc_clnt *client, struct dentry *dentry)
+-int nfs_init_client(struct nfs_client *clp, const struct rpc_timeout *timeparms,
++struct nfs_client *nfs_init_client(struct nfs_client *clp,
++		    const struct rpc_timeout *timeparms,
+ 		    const char *ip_addr, rpc_authflavor_t authflavour,
+ 		    int noresvport)
  {
- 	struct vfsmount *mnt = ERR_PTR(-ENOMEM);
- 	struct dentry *parent;
-@@ -331,7 +331,7 @@ static struct vfsmount *nfs_do_refmount(struct dentry *dentry)
- 	dprintk("%s: getting locations for %s/%s\n",
- 		__func__, parent->d_name.name, dentry->d_name.name);
+@@ -827,7 +817,7 @@ int nfs_init_client(struct nfs_client *clp, const struct rpc_timeout *timeparms,
+ 	if (clp->cl_cons_state == NFS_CS_READY) {
+ 		/* the client is already initialised */
+ 		dprintk("<-- nfs_init_client() = 0 [already %p]\n", clp);
+-		return 0;
++		return clp;
+ 	}
  
--	err = nfs4_proc_fs_locations(parent->d_inode, &dentry->d_name, fs_locations, page);
-+	err = nfs4_proc_fs_locations(client, parent->d_inode, &dentry->d_name, fs_locations, page);
- 	dput(parent);
- 	if (err != 0 ||
- 	    fs_locations->nlocations <= 0 ||
-@@ -350,17 +350,21 @@ out:
- struct vfsmount *nfs4_submount(struct nfs_server *server, struct dentry *dentry,
- 			       struct nfs_fh *fh, struct nfs_fattr *fattr)
- {
--	int err;
- 	struct dentry *parent = dget_parent(dentry);
-+	struct rpc_clnt *client;
-+	struct vfsmount *mnt;
+ 	/*
+@@ -839,12 +829,13 @@ int nfs_init_client(struct nfs_client *clp, const struct rpc_timeout *timeparms,
+ 	if (error < 0)
+ 		goto error;
+ 	nfs_mark_client_ready(clp, NFS_CS_READY);
+-	return 0;
++	return clp;
  
--	/* Look it up again to get its attributes */
--	err = server->nfs_client->rpc_ops->lookup(server->client, parent->d_inode,
--						  &dentry->d_name, fh, fattr);
-+	/* Look it up again to get its attributes and sec flavor*/
-+	client = nfs4_proc_lookup_mountpoint(parent->d_inode, &dentry->d_name, fh, fattr);
- 	dput(parent);
--	if (err != 0)
--		return ERR_PTR(err);
-+	if (IS_ERR(client))
-+		return ERR_CAST(client);
- 
- 	if (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)
--		return nfs_do_refmount(dentry);
--	return nfs_do_submount(dentry, fh, fattr, server->client->cl_auth->au_flavor);
-+		mnt = nfs_do_refmount(client, dentry);
-+	else
-+		mnt = nfs_do_submount(dentry, fh, fattr, client->cl_auth->au_flavor);
-+
-+	rpc_shutdown_client(client);
-+	return mnt;
+ error:
+ 	nfs_mark_client_ready(clp, error);
++	nfs_put_client(clp);
+ 	dprintk("<-- nfs_init_client() = xerror %d\n", error);
+-	return error;
++	return ERR_PTR(error);
  }
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 3da1d7a..6a07dd3 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2377,8 +2377,9 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
-  * Note that we'll actually follow the referral later when
-  * we detect fsid mismatch in inode revalidation
+ 
+ /*
+@@ -1353,11 +1344,11 @@ static int nfs4_init_client_minor_version(struct nfs_client *clp)
+ /*
+  * Initialise an NFS4 client record
   */
--static int nfs4_get_referral(struct inode *dir, const struct qstr *name,
--			     struct nfs_fattr *fattr, struct nfs_fh *fhandle)
-+static int nfs4_get_referral(struct rpc_clnt *client, struct inode *dir,
-+			     const struct qstr *name, struct nfs_fattr *fattr,
-+			     struct nfs_fh *fhandle)
+-int nfs4_init_client(struct nfs_client *clp,
+-		     const struct rpc_timeout *timeparms,
+-		     const char *ip_addr,
+-		     rpc_authflavor_t authflavour,
+-		     int noresvport)
++struct nfs_client *nfs4_init_client(struct nfs_client *clp,
++				    const struct rpc_timeout *timeparms,
++				    const char *ip_addr,
++				    rpc_authflavor_t authflavour,
++				    int noresvport)
  {
- 	int status = -ENOMEM;
- 	struct page *page = NULL;
-@@ -2391,7 +2392,7 @@ static int nfs4_get_referral(struct inode *dir, const struct qstr *name,
- 	if (locations == NULL)
- 		goto out;
+ 	char buf[INET6_ADDRSTRLEN + 1];
+ 	int error;
+@@ -1365,7 +1356,7 @@ int nfs4_init_client(struct nfs_client *clp,
+ 	if (clp->cl_cons_state == NFS_CS_READY) {
+ 		/* the client is initialised already */
+ 		dprintk("<-- nfs4_init_client() = 0 [already %p]\n", clp);
+-		return 0;
++		return clp;
+ 	}
  
--	status = nfs4_proc_fs_locations(dir, name, locations, page);
-+	status = nfs4_proc_fs_locations(client, dir, name, locations, page);
- 	if (status != 0)
- 		goto out;
- 	/* Make sure server returned a different fsid for the referral */
-@@ -2550,7 +2551,7 @@ static int nfs4_proc_lookup_common(struct rpc_clnt **clnt, struct inode *dir,
- 			err = -ENOENT;
- 			goto out;
- 		case -NFS4ERR_MOVED:
--			err = nfs4_get_referral(dir, name, fattr, fhandle);
-+			err = nfs4_get_referral(client, dir, name, fattr, fhandle);
- 			goto out;
- 		case -NFS4ERR_WRONGSEC:
- 			err = -EPERM;
-@@ -2591,6 +2592,21 @@ static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qst
- 	return status;
+ 	/* Check NFS protocol revision and initialize RPC op vector */
+@@ -1405,12 +1396,13 @@ int nfs4_init_client(struct nfs_client *clp,
+ 
+ 	if (!nfs4_has_session(clp))
+ 		nfs_mark_client_ready(clp, NFS_CS_READY);
+-	return 0;
++	return clp;
+ 
+ error:
+ 	nfs_mark_client_ready(clp, error);
++	nfs_put_client(clp);
+ 	dprintk("<-- nfs4_init_client() = xerror %d\n", error);
+-	return error;
++	return ERR_PTR(error);
  }
  
-+struct rpc_clnt *
-+nfs4_proc_lookup_mountpoint(struct inode *dir, struct qstr *name,
-+			    struct nfs_fh *fhandle, struct nfs_fattr *fattr)
-+{
-+	int status;
-+	struct rpc_clnt *client = rpc_clone_client(NFS_CLIENT(dir));
-+
-+	status = nfs4_proc_lookup_common(&client, dir, name, fhandle, fattr);
-+	if (status < 0) {
-+		rpc_shutdown_client(client);
-+		return ERR_PTR(status);
-+	}
-+	return client;
-+}
-+
- static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry)
- {
- 	struct nfs_server *server = NFS_SERVER(inode);
-@@ -4949,8 +4965,10 @@ static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr)
- 	fattr->nlink = 2;
- }
+ /*
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index faf15eb..f1021c8 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -154,6 +154,16 @@ extern struct nfs_client *nfs4_find_client_ident(struct net *, int);
+ extern struct nfs_client *
+ nfs4_find_client_sessionid(struct net *, const struct sockaddr *,
+ 				struct nfs4_sessionid *);
++extern struct nfs_client *nfs_init_client(struct nfs_client *clp,
++				const struct rpc_timeout *timeparms,
++				const char *ip_addr,
++				rpc_authflavor_t authflavour,
++				int noresvport);
++extern struct nfs_client *nfs4_init_client(struct nfs_client *clp,
++				const struct rpc_timeout *timeparms,
++				const char *ip_addr,
++				rpc_authflavor_t authflavour,
++				int noresvport);
+ extern struct nfs_server *nfs_create_server(
+ 					const struct nfs_parsed_mount_data *,
+ 					struct nfs_fh *);
+@@ -241,10 +251,6 @@ extern int nfs4_init_ds_session(struct nfs_client *clp);
  
--static int _nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
--		struct nfs4_fs_locations *fs_locations, struct page *page)
-+static int _nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
-+				   const struct qstr *name,
-+				   struct nfs4_fs_locations *fs_locations,
-+				   struct page *page)
- {
- 	struct nfs_server *server = NFS_SERVER(dir);
- 	u32 bitmask[2] = {
-@@ -4984,19 +5002,21 @@ static int _nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
- 	nfs_fattr_init(&fs_locations->fattr);
- 	fs_locations->server = server;
- 	fs_locations->nlocations = 0;
--	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
-+	status = nfs4_call_sync(client, server, &msg, &args.seq_args, &res.seq_res, 0);
- 	dprintk("%s: returned status = %d\n", __func__, status);
- 	return status;
- }
+ /* proc.c */
+ void nfs_close_context(struct nfs_open_context *ctx, int is_sync);
+-extern int nfs_init_client(struct nfs_client *clp,
+-			   const struct rpc_timeout *timeparms,
+-			   const char *ip_addr, rpc_authflavor_t authflavour,
+-			   int noresvport);
  
--int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
--		struct nfs4_fs_locations *fs_locations, struct page *page)
-+int nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
-+			   const struct qstr *name,
-+			   struct nfs4_fs_locations *fs_locations,
-+			   struct page *page)
- {
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(NFS_SERVER(dir),
--				_nfs4_proc_fs_locations(dir, name, fs_locations, page),
-+				_nfs4_proc_fs_locations(client, dir, name, fs_locations, page),
- 				&exception);
- 	} while (exception.retry);
- 	return err;
--- 
-1.7.10
+ /* dir.c */
+ extern int nfs_access_cache_shrinker(struct shrinker *shrink,
+@@ -345,11 +351,6 @@ extern int nfs_migrate_page(struct address_space *,
+ /* nfs4proc.c */
+ extern void __nfs4_read_done_cb(struct nfs_read_data *);
+ extern void nfs4_reset_read(struct rpc_task *task, struct nfs_read_data *data);
+-extern int nfs4_init_client(struct nfs_client *clp,
+-			    const struct rpc_timeout *timeparms,
+-			    const char *ip_addr,
+-			    rpc_authflavor_t authflavour,
+-			    int noresvport);
+ extern void nfs4_reset_write(struct rpc_task *task, struct nfs_write_data *data);
+ extern int _nfs4_call_sync(struct rpc_clnt *clnt,
+ 			   struct nfs_server *server,
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index ece705d..7437931 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1284,7 +1284,8 @@ struct nfs_rpc_ops {
+ 				struct nfs_open_context *ctx,
+ 				int open_flags,
+ 				struct iattr *iattr);
+-	int	(*init_client) (struct nfs_client *, const struct rpc_timeout *,
++	struct nfs_client *
++		(*init_client) (struct nfs_client *, const struct rpc_timeout *,
+ 				const char *, rpc_authflavor_t, int);
+ 	int	(*secinfo)(struct inode *, const struct qstr *, struct nfs4_secinfo_flavors *);
+ };
 
