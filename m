@@ -1,80 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:31448 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:13776 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755039Ab2DILYs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Apr 2012 07:24:48 -0400
-Message-ID: <4F82C6E3.3030009@parallels.com>
-Date: Mon, 09 Apr 2012 15:24:19 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+	id S1753966Ab2DWVNz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Apr 2012 17:13:55 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 09/20] NFS: Force server to drop NFSv4 state
+Date: Mon, 23 Apr 2012 21:13:53 +0000
+Message-ID: <1335215633.11427.27.camel@lade.trondhjem.org>
+References: <20120423205312.11446.67081.stgit@degas.1015granger.net>
+	 <20120423205427.11446.1552.stgit@degas.1015granger.net>
+In-Reply-To: <20120423205427.11446.1552.stgit@degas.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: Grace period
-References: <4F7F230A.6080506@parallels.com> <20120406234039.GA20940@fieldses.org>
-In-Reply-To: <20120406234039.GA20940@fieldses.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-07.04.2012 03:40, bfields@fieldses.org пишет:
-> On Fri, Apr 06, 2012 at 09:08:26PM +0400, Stanislav Kinsbursky wrote:
->> Hello, Bruce.
->> Could you, please, clarify this reason why grace list is used?
->> I.e. why list is used instead of some atomic variable, for example?
->
-> Like just a reference count?  Yeah, that would be OK.
->
-> In theory it could provide some sort of debugging help.  (E.g. we could
-> print out the list of "lock managers" currently keeping us in grace.)  I
-> had some idea we'd make those lock manager objects more complicated, and
-> might have more for individual containerized services.
-
-Could you share this idea, please?
-
-Anyway, I have nothing against lists. Just was curious, why it was used.
-I added Trond and lists to this reply.
-
-Let me explain, what is the problem with grace period I'm facing right know, and 
-what I'm thinking about it.
-So, one of the things to be containerized during "NFSd per net ns" work is the 
-grace period, and these are the basic components of it:
-1) Grace period start.
-2) Grace period end.
-3) Grace period check.
-3) Grace period restart.
-
-So, the simplest straight-forward way is to make all internal stuff: 
-"grace_list", "grace_lock", "grace_period_end" work and both "lockd_manager" and 
-"nfsd4_manager" - per network namespace. Also, "laundromat_work" have to be 
-per-net as well.
-In this case:
-1) Start - grace period can be started per net ns in "lockd_up_net()" (thus has 
-to be moves there from "lockd()") and "nfs4_state_start()".
-2) End - grace period can be ended per net ns in "lockd_down_net()" (thus has to 
-be moved there from "lockd()"), "nfsd4_end_grace()" and "fs4_state_shutdown()".
-3) Check - looks easy. There is either svc_rqst or net context can be passed to 
-function.
-4) Restart - this is a tricky place. It would be great to restart grace period 
-only for the networks namespace of the sender of the kill signal. So, the idea 
-is to check siginfo_t for the pid of sender, then try to locate the task, and if 
-found, then get sender's networks namespace, and restart grace period only for 
-this namespace (of course, if lockd was started for this namespace - see below).
-
-If task not found, of it's lockd wasn't started for it's namespace, then grace 
-period can be either restarted for all namespaces, of just silently dropped. 
-This is the place where I'm not sure, how to do. Because calling grace period 
-for all namespaces will be overkill...
-
-There also another problem with the "task by pid" search, that found task can be 
-actually not sender (which died already), but some other new task with the same 
-pid number. In this case, I think, we can just neglect this probability and 
-always assume, that we located sender (if, of course, lockd was started for 
-sender's network namespace).
-
-Trond, Bruce, could you, please, comment this ideas?
-
--- 
-Best regards,
-Stanislav Kinsbursky
+T24gTW9uLCAyMDEyLTA0LTIzIGF0IDE2OjU0IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+QSBTRVRDTElFTlRJRCBib290IHZlcmlmaWVyIGlzIG5vdGhpbmcgbW9yZSB0aGFuIGEgYm9vdCB0
+aW1lc3RhbXAuDQo+IEFuIE5GU3Y0IHNlcnZlciBpcyBvYmxpZ2F0ZWQgdG8gd2lwZSBhbGwgTkZT
+djQgc3RhdGUgZm9yIGFuIE5GUyBjbGllbnQNCj4gd2hlbiB0aGUgY2xpZW50IHByZXNlbnRzIGFu
+IHVwZGF0ZWQgU0VUQ0xJRU5USUQgYm9vdCB2ZXJpZmllci4gIFRoaXMNCj4gaXMgaG93IHNlcnZl
+cnMgZGV0ZWN0IGNsaWVudCByZWJvb3RzLg0KPiANCj4gbmZzNF9yZXNldF9hbGxfc3RhdGUoKSBm
+b3JjZXMgYSBib290IHZlcmlmaWVyIHJlZnJlc2ggdG8gY2F1c2UgYQ0KPiBzZXJ2ZXIgdG8gd2lw
+ZSBzdGF0ZSBhcyBwYXJ0IG9mIHJlY292ZXJpbmcgZnJvbSBhIHNlcnZlciByZXBvcnRpbmcNCj4g
+dGhhdCBpdCBoYXMgcmV2b2tlZCBzb21lIG9yIGFsbCBvZiBhIGNsaWVudCdzIE5GU3Y0IHN0YXRl
+LiAgVGhpcyB3aXBlcw0KPiB0aGUgc2xhdGUgZm9yIGZ1bGwgc3RhdGUgcmVjb3ZlcnkuDQo+IA0K
+PiBTb29uIHdlIHdhbnQgdG8gZ2V0IHJpZCBvZiB0aGUgcGVyLW5mc19jbGllbnQgY2xfYm9vdF90
+aW1lIGZpZWxkLA0KPiBob3dldmVyLiAgV2l0aG91dCBjbF9ib290X3RpbWUsIHRoZSBORlMgY2xp
+ZW50IHdpbGwgbmVlZCB0byBmaW5kIGENCj4gZGlmZmVyZW50IHdheSB0byBmb3JjZSB0aGUgc2Vy
+dmVyIHRvIHB1cmdlIHRoZSBjbGllbnQncyBORlN2NCBzdGF0ZS4NCj4gDQo+IEJlY2F1c2UgdGhl
+c2UgdmVyaWZpZXJzIGFyZSBvcGFxdWUgKGllLCB0aGUgc2VydmVyIGRvZXNuJ3Qga25vdyBvcg0K
+PiBjYXJlIHRoYXQgdGhleSBhcmUgdGltZXN0YW1wcyksIHdlIGNhbiBkbyB0aGlzIGJ5IHVzaW5n
+IHRoZSBzYW1lDQo+IHRyaWNrIHdlIHVzZSBub3csIGJ1dCB0aGVuIGFmdGVyd2FyZHMgZXN0YWJs
+aXNoIGEgZnJlc2ggY2xpZW50IElEDQo+IHVzaW5nIHRoZSBvbGQgYm9vdCB2ZXJpZmllciBhZ2Fp
+bi4NCj4gDQo+IEhvcGVmdWxseSB0aGVyZSBhcmUgbm8gZXh0cmEgcGFyYW5vaWQgc2VydmVyIGlt
+cGxlbWVudGF0aW9ucyB0aGF0IGtlZXANCj4gdHJhY2sgb2YgdGhlIGNsaWVudCdzIGJvb3QgdmVy
+aWZpZXJzIGFuZCBwcmV2ZW50IGNsaWVudHMgZnJvbSByZXVzaW5nDQo+IGEgcHJldmlvdXMgb25l
+Lg0KPiANCj4gU2lnbmVkLW9mZi1ieTogQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5j
+b20+DQo+IC0tLQ0KPiANCj4gIGZzL25mcy9uZnM0X2ZzLmggICB8ICAgIDEgKw0KPiAgZnMvbmZz
+L25mczRwcm9jLmMgIHwgICAgOSArKysrKysrLS0NCj4gIGZzL25mcy9uZnM0c3RhdGUuYyB8ICAg
+IDcgKysrKysrLQ0KPiAgMyBmaWxlcyBjaGFuZ2VkLCAxNCBpbnNlcnRpb25zKCspLCAzIGRlbGV0
+aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0X2ZzLmggYi9mcy9uZnMvbmZz
+NF9mcy5oDQo+IGluZGV4IGQ4YzJkMzkuLjI5NTNmMmMgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9u
+ZnM0X2ZzLmgNCj4gKysrIGIvZnMvbmZzL25mczRfZnMuaA0KPiBAQCAtMjQsNiArMjQsNyBAQCBl
+bnVtIG5mczRfY2xpZW50X3N0YXRlIHsNCj4gIAlORlM0Q0xOVF9SRUNBTExfU0xPVCwNCj4gIAlO
+RlM0Q0xOVF9MRUFTRV9DT05GSVJNLA0KPiAgCU5GUzRDTE5UX1NFUlZFUl9TQ09QRV9NSVNNQVRD
+SCwNCj4gKwlORlM0Q0xOVF9QVVJHRV9TVEFURSwNCj4gIH07DQo+ICANCj4gIGVudW0gbmZzNF9z
+ZXNzaW9uX3N0YXRlIHsNCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0cHJvYy5jIGIvZnMvbmZz
+L25mczRwcm9jLmMNCj4gaW5kZXggODRhMjZkOS4uYjE5Y2Y4MSAxMDA2NDQNCj4gLS0tIGEvZnMv
+bmZzL25mczRwcm9jLmMNCj4gKysrIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gQEAgLTM4NzgsOCAr
+Mzg3OCwxMyBAQCBzdGF0aWMgdm9pZCBuZnM0X2NvbnN0cnVjdF9ib290X3ZlcmlmaWVyKHN0cnVj
+dCBuZnNfY2xpZW50ICpjbHAsDQo+ICB7DQo+ICAJX19iZTMyIHZlcmZbMl07DQo+ICANCj4gLQl2
+ZXJmWzBdID0gKF9fYmUzMiljbHAtPmNsX2Jvb3RfdGltZS50dl9zZWM7DQo+IC0JdmVyZlsxXSA9
+IChfX2JlMzIpY2xwLT5jbF9ib290X3RpbWUudHZfbnNlYzsNCj4gKwlpZiAodGVzdF9iaXQoTkZT
+NENMTlRfUFVSR0VfU1RBVEUsICZjbHAtPmNsX3N0YXRlKSkgew0KPiArCQl2ZXJmWzBdID0gKF9f
+YmUzMilDVVJSRU5UX1RJTUUudHZfc2VjOw0KPiArCQl2ZXJmWzFdID0gKF9fYmUzMilDVVJSRU5U
+X1RJTUUudHZfbnNlYzsNCj4gKwl9IGVsc2Ugew0KPiArCQl2ZXJmWzBdID0gKF9fYmUzMiljbHAt
+PmNsX2Jvb3RfdGltZS50dl9zZWM7DQo+ICsJCXZlcmZbMV0gPSAoX19iZTMyKWNscC0+Y2xfYm9v
+dF90aW1lLnR2X25zZWM7DQo+ICsJfQ0KPiAgCW1lbWNweShib290dmVyZi0+ZGF0YSwgdmVyZiwg
+c2l6ZW9mKGJvb3R2ZXJmLT5kYXRhKSk7DQo+ICB9DQo+ICANCj4gZGlmZiAtLWdpdCBhL2ZzL25m
+cy9uZnM0c3RhdGUuYyBiL2ZzL25mcy9uZnM0c3RhdGUuYw0KPiBpbmRleCBjYmVmMzY2Li43ZjU2
+NTAyIDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvbmZzNHN0YXRlLmMNCj4gKysrIGIvZnMvbmZzL25m
+czRzdGF0ZS5jDQo+IEBAIC0xNjEyLDcgKzE2MTIsNyBAQCB2b2lkIG5mczQxX2hhbmRsZV9yZWNh
+bGxfc2xvdChzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwKQ0KPiAgc3RhdGljIHZvaWQgbmZzNF9yZXNl
+dF9hbGxfc3RhdGUoc3RydWN0IG5mc19jbGllbnQgKmNscCkNCj4gIHsNCj4gIAlpZiAodGVzdF9h
+bmRfc2V0X2JpdChORlM0Q0xOVF9MRUFTRV9FWFBJUkVELCAmY2xwLT5jbF9zdGF0ZSkgPT0gMCkg
+ew0KPiAtCQljbHAtPmNsX2Jvb3RfdGltZSA9IENVUlJFTlRfVElNRTsNCj4gKwkJc2V0X2JpdChO
+RlM0Q0xOVF9QVVJHRV9TVEFURSwgJmNscC0+Y2xfc3RhdGUpOw0KPiAgCQluZnM0X3N0YXRlX3N0
+YXJ0X3JlY2xhaW1fbm9ncmFjZShjbHApOw0KPiAgCQluZnM0X3NjaGVkdWxlX3N0YXRlX21hbmFn
+ZXIoY2xwKTsNCj4gIAl9DQo+IEBAIC0xNzU5LDYgKzE3NTksMTEgQEAgc3RhdGljIHZvaWQgbmZz
+NF9zdGF0ZV9tYW5hZ2VyKHN0cnVjdCBuZnNfY2xpZW50ICpjbHApDQo+ICANCj4gIAkvKiBFbnN1
+cmUgZXhjbHVzaXZlIGFjY2VzcyB0byBORlN2NCBzdGF0ZSAqLw0KPiAgCWRvIHsNCj4gKwkJaWYg
+KHRlc3RfYml0KE5GUzRDTE5UX1BVUkdFX1NUQVRFLCAmY2xwLT5jbF9zdGF0ZSkpIHsNCj4gKwkJ
+CW5mczRfcmVjbGFpbV9sZWFzZShjbHApOw0KPiArCQkJY2xlYXJfYml0KE5GUzRDTE5UX1BVUkdF
+X1NUQVRFLCAmY2xwLT5jbF9zdGF0ZSk7DQoNClRoaXMgbmVlZHMgdG8gc2V0IE5GUzRDTE5UX0xF
+QVNFX0VYUElSRUQsIHNvIHRoYXQgd2UgZG8gYSBzZWNvbmQNClNFVENMSUVOVElEIGFmdGVyIHRo
+ZSBzdGF0ZSBoYXMgYmVlbiBjbGVhcmVkLiBPdGhlcndpc2Ugd2UgZW5kIHVwIHdpdGggYQ0KbGVh
+c2Ugd2l0aCB0aGUgd3JvbmcgdmVyaWZpZXIuDQoNCj4gKwkJfQ0KPiArDQo+ICAJCWlmICh0ZXN0
+X2FuZF9jbGVhcl9iaXQoTkZTNENMTlRfTEVBU0VfRVhQSVJFRCwgJmNscC0+Y2xfc3RhdGUpKSB7
+DQo+ICAJCQkvKiBXZSdyZSBnb2luZyB0byBoYXZlIHRvIHJlLWVzdGFibGlzaCBhIGNsaWVudGlk
+ICovDQo+ICAJCQlzdGF0dXMgPSBuZnM0X3JlY2xhaW1fbGVhc2UoY2xwKTsNCj4gDQoNCi0tIA0K
+VHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpU
+cm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
