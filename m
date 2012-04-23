@@ -1,60 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:34178 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932158Ab2DTSgx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 14:36:53 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH v2 26/28] NFS: avoid some stat gathering for direct io
-Date: Fri, 20 Apr 2012 14:36:08 -0400
-Message-Id: <1334946970-27470-27-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
-References: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:43242 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751819Ab2DWUxQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Apr 2012 16:53:16 -0400
+Received: by iadi9 with SMTP id i9so2498807iad.19
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2012 13:53:15 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 01/20] NFS: Fix comment misspelling in struct nfs_client
+ definition
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 23 Apr 2012 16:53:13 -0400
+Message-ID: <20120423205312.11446.67081.stgit@degas.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/write.c |   18 ++++++++++++------
- 1 files changed, 12 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 44a93d8..56db9e7 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -472,9 +472,13 @@ nfs_request_add_commit_list(struct nfs_page *req, struct list_head *dst,
- 	nfs_list_add_request(req, dst);
- 	cinfo->mds->ncommit++;
- 	spin_unlock(cinfo->lock);
--	inc_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
--	inc_bdi_stat(req->wb_page->mapping->backing_dev_info, BDI_RECLAIMABLE);
--	__mark_inode_dirty(req->wb_context->dentry->d_inode, I_DIRTY_DATASYNC);
-+	if (!cinfo->dreq) {
-+		inc_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
-+		inc_bdi_stat(req->wb_page->mapping->backing_dev_info,
-+			     BDI_RECLAIMABLE);
-+		__mark_inode_dirty(req->wb_context->dentry->d_inode,
-+				   I_DIRTY_DATASYNC);
-+	}
- }
- EXPORT_SYMBOL_GPL(nfs_request_add_commit_list);
+ include/linux/nfs_fs_sb.h |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 7073fc7..5498e9d 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -79,7 +79,7 @@ struct nfs_client {
+ 	u32			cl_seqid;
+ 	/* The flags used for obtaining the clientid during EXCHANGE_ID */
+ 	u32			cl_exchange_flags;
+-	struct nfs4_session	*cl_session; 	/* sharred session */
++	struct nfs4_session	*cl_session;	/* shared session */
+ #endif /* CONFIG_NFS_V4 */
  
-@@ -1455,9 +1459,11 @@ void nfs_retry_commit(struct list_head *page_list,
- 		req = nfs_list_entry(page_list->next);
- 		nfs_list_remove_request(req);
- 		nfs_mark_request_commit(req, lseg, cinfo);
--		dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
--		dec_bdi_stat(req->wb_page->mapping->backing_dev_info,
--			     BDI_RECLAIMABLE);
-+		if (!cinfo->dreq) {
-+			dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
-+			dec_bdi_stat(req->wb_page->mapping->backing_dev_info,
-+				     BDI_RECLAIMABLE);
-+		}
- 		nfs_unlock_request(req);
- 	}
- }
--- 
-1.7.2.1
+ #ifdef CONFIG_NFS_FSCACHE
 
