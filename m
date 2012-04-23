@@ -1,494 +1,143 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:34180 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:50226 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757367Ab2DTSgw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 14:36:52 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH v2 20/28] NFS: rewrite directio read to use async coalesce code
-Date: Fri, 20 Apr 2012 14:36:02 -0400
-Message-Id: <1334946970-27470-21-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
-References: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
+	id S1751812Ab2DWTCX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Apr 2012 15:02:23 -0400
+Message-ID: <4F959A36.2080402@RedHat.com>
+Date: Mon, 23 Apr 2012 14:06:46 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Jeff Layton <jlayton@redhat.com>
+CC: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu,
+        viro@ZenIV.linux.org.uk, hch@infradead.org,
+        michael.brantley@deshaw.com, sven.breuner@itwm.fraunhofer.de,
+        chuck.lever@oracle.com, pstaubach@exagrid.com, malahal@us.ibm.com,
+        bfields@fieldses.org, trond.myklebust@fys.uio.no, rees@umich.edu
+Subject: Re: [PATCH RFC v3] vfs: make fstatat retry once on ESTALE errors
+ from getattr call
+References: <1334316311-22331-1-git-send-email-jlayton@redhat.com> <1334749927-26138-1-git-send-email-jlayton@redhat.com> <20120420104055.511e15bc@tlielax.poochiereds.net> <4F91C49D.8070908@RedHat.com> <20120420171300.326d6e36@corrin.poochiereds.net> <4F956D5C.5050801@RedHat.com> <20120423113216.01992555@tlielax.poochiereds.net>
+In-Reply-To: <20120423113216.01992555@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This also has the advantage that it allows directio to use pnfs.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/direct.c          |  248 +++++++++++++++++++++------------------------
- fs/nfs/internal.h        |    5 +-
- fs/nfs/pagelist.c        |    7 +-
- fs/nfs/read.c            |   10 +-
- include/linux/nfs_page.h |    1 +
- include/linux/nfs_xdr.h  |    4 +-
- 6 files changed, 131 insertions(+), 144 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 22a40c4..d713234 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -124,22 +124,6 @@ ssize_t nfs_direct_IO(int rw, struct kiocb *iocb, const struct iovec *iov, loff_
- 	return -EINVAL;
- }
+On 04/23/2012 11:32 AM, Jeff Layton wrote:
+> On Mon, 23 Apr 2012 10:55:24 -0400
+> Steve Dickson <SteveD@redhat.com> wrote:
+> 
+>>
+>>
+>> On 04/20/2012 05:13 PM, Jeff Layton wrote:
+>>> On Fri, 20 Apr 2012 16:18:37 -0400
+>>> Steve Dickson <SteveD@redhat.com> wrote:
+>>>
+>>>> On 04/20/2012 10:40 AM, Jeff Layton wrote:
+>>>>> I guess the questions at this point is:
+>>>>>
+>>>>> 1) How representative is Peter's mkdir_test() of a real-world workload?
+>>>> Reading your email I had to wonder the same thing... What application 
+>>>> removes hierarchy of directories in a loop from two different clients?
+>>>> I would suspect not many, if any... esp over NFS... 
+>>>>  
+>>>
+>>> Peter's test just happens to demonstrate the problem well, but one
+>>> could envision someone removing a heirarchy of directories on the
+>>> server while we're trying to do other operations in it. At that point,
+>>> we can easily end up hitting an ESTALE twice while doing the lookup and
+>>> returning ESTALE back to userspace.
+>> Just curious, what happens when you run Peter's mkdir_test() on a
+>> local file system? Any errors returned? 
+>>
+>> I would think removing hierarchy of directories while they are being 
+>> accessed has to even cause local fs some type of havoc
+>>
+> 
+> Peter's test only treats an ESTALE error as a failure since it was
+> specifically designed to ensure that those didn't make it in to
+> userspace.
+> 
+> If you run 2 copies on the same local fs and strace it, then you'll see
+> the syscalls get back things like ENOENT or EEXIST as they step on each
+> others' toes in the mkdir()/rmdir() calls.
+I figured as much... I just don't see any real world applications remove
+directory hierarchies without some type of synchronization locking...
  
--static void nfs_direct_dirty_pages(struct page **pages, unsigned int pgbase, size_t count)
--{
--	unsigned int npages;
--	unsigned int i;
--
--	if (count == 0)
--		return;
--	pages += (pgbase >> PAGE_SHIFT);
--	npages = (count + (pgbase & ~PAGE_MASK) + PAGE_SIZE - 1) >> PAGE_SHIFT;
--	for (i = 0; i < npages; i++) {
--		struct page *page = pages[i];
--		if (!PageCompound(page))
--			set_page_dirty(page);
--	}
--}
--
- static void nfs_direct_release_pages(struct page **pages, unsigned int npages)
- {
- 	unsigned int i;
-@@ -226,58 +210,85 @@ static void nfs_direct_complete(struct nfs_direct_req *dreq)
- 	nfs_direct_req_release(dreq);
- }
- 
--/*
-- * We must hold a reference to all the pages in this direct read request
-- * until the RPCs complete.  This could be long *after* we are woken up in
-- * nfs_direct_wait (for instance, if someone hits ^C on a slow server).
-- */
--static void nfs_direct_read_result(struct rpc_task *task, void *calldata)
-+void nfs_direct_readpage_release(struct nfs_page *req)
- {
--	struct nfs_read_data *data = calldata;
--
--	nfs_readpage_result(task, data);
-+	dprintk("NFS: direct read done (%s/%lld %d@%lld)\n",
-+		req->wb_context->dentry->d_inode->i_sb->s_id,
-+		(long long)NFS_FILEID(req->wb_context->dentry->d_inode),
-+		req->wb_bytes,
-+		(long long)req_offset(req));
-+	nfs_release_request(req);
- }
- 
--static void nfs_direct_read_release(void *calldata)
-+static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
- {
-+	unsigned long pos = req_offset(hdr->req);
-+	struct nfs_direct_req *dreq = hdr->dreq;
- 
--	struct nfs_read_data *data = calldata;
--	struct nfs_direct_req *dreq = (struct nfs_direct_req *)data->header->req;
--	int status = data->task.tk_status;
-+	if (test_bit(NFS_IOHDR_REDO, &hdr->flags))
-+		goto out_put;
- 
- 	spin_lock(&dreq->lock);
--	if (unlikely(status < 0)) {
--		dreq->error = status;
--		spin_unlock(&dreq->lock);
-+	if (test_bit(NFS_IOHDR_ERROR, &hdr->flags) &&
-+	    (hdr->first_error == pos))
-+		dreq->error = hdr->error;
-+	else
-+		dreq->count += (hdr->first_error - pos);
-+	spin_unlock(&dreq->lock);
-+
-+	if (!test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
-+		while (!list_empty(&hdr->pages)) {
-+			struct nfs_page *req = nfs_list_entry(hdr->pages.next);
-+			struct page *page = req->wb_page;
-+
-+			nfs_list_remove_request(req);
-+			nfs_direct_readpage_release(req);
-+			if (!PageCompound(page))
-+				set_page_dirty(page);
-+			page_cache_release(page);
-+		}
- 	} else {
--		dreq->count += data->res.count;
--		spin_unlock(&dreq->lock);
--		nfs_direct_dirty_pages(data->pages.pagevec,
--				data->args.pgbase,
--				data->res.count);
-+		pos &= PAGE_MASK;
-+		while (!list_empty(&hdr->pages)) {
-+			struct nfs_page *req = nfs_list_entry(hdr->pages.next);
-+
-+			if (pos < (hdr->first_error & PAGE_MASK))
-+				if (!PageCompound(req->wb_page))
-+					set_page_dirty(req->wb_page);
-+			page_cache_release(req->wb_page);
-+			nfs_list_remove_request(req);
-+			nfs_direct_readpage_release(req);
-+			pos += PAGE_SIZE;
-+		}
- 	}
--	nfs_direct_release_pages(data->pages.pagevec, data->pages.npages);
--
-+out_put:
- 	if (put_dreq(dreq))
- 		nfs_direct_complete(dreq);
--	nfs_readdata_release(data);
-+	hdr->release(hdr);
- }
- 
--static const struct rpc_call_ops nfs_read_direct_ops = {
--	.rpc_call_prepare = nfs_read_prepare,
--	.rpc_call_done = nfs_direct_read_result,
--	.rpc_release = nfs_direct_read_release,
--};
--
--static void nfs_direct_readhdr_release(struct nfs_read_header *rhdr)
-+static void nfs_sync_pgio_error(struct list_head *head)
- {
--	struct nfs_read_data *data = &rhdr->rpc_data;
-+	struct nfs_page *req;
- 
--	if (data->pages.pagevec != data->pages.page_array)
--		kfree(data->pages.pagevec);
--	nfs_readhdr_free(&rhdr->header);
-+	while (!list_empty(head)) {
-+		req = nfs_list_entry(head->next);
-+		nfs_list_remove_request(req);
-+		nfs_release_request(req);
-+	}
- }
- 
-+static void nfs_direct_pgio_init(struct nfs_pgio_header *hdr)
-+{
-+	get_dreq(hdr->dreq);
-+}
-+
-+static const struct nfs_pgio_completion_ops nfs_direct_read_completion_ops = {
-+	.error_cleanup = nfs_sync_pgio_error,
-+	.init_hdr = nfs_direct_pgio_init,
-+	.completion = nfs_direct_read_completion,
-+};
-+
- /*
-  * For each rsize'd chunk of the user's buffer, dispatch an NFS READ
-  * operation.  If nfs_readdata_alloc() or get_user_pages() fails,
-@@ -285,118 +296,85 @@ static void nfs_direct_readhdr_release(struct nfs_read_header *rhdr)
-  * handled automatically by nfs_direct_read_result().  Otherwise, if
-  * no requests have been sent, just return an error.
-  */
--static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
-+static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *desc,
- 						const struct iovec *iov,
- 						loff_t pos)
- {
-+	struct nfs_direct_req *dreq = desc->pg_dreq;
- 	struct nfs_open_context *ctx = dreq->ctx;
- 	struct inode *inode = ctx->dentry->d_inode;
- 	unsigned long user_addr = (unsigned long)iov->iov_base;
- 	size_t count = iov->iov_len;
- 	size_t rsize = NFS_SERVER(inode)->rsize;
--	struct rpc_task *task;
--	struct rpc_message msg = {
--		.rpc_cred = ctx->cred,
--	};
--	struct rpc_task_setup task_setup_data = {
--		.rpc_client = NFS_CLIENT(inode),
--		.rpc_message = &msg,
--		.callback_ops = &nfs_read_direct_ops,
--		.workqueue = nfsiod_workqueue,
--		.flags = RPC_TASK_ASYNC,
--	};
- 	unsigned int pgbase;
- 	int result;
- 	ssize_t started = 0;
-+	struct page **pagevec = NULL;
-+	unsigned int npages;
- 
- 	do {
--		struct nfs_read_header *rhdr;
--		struct nfs_read_data *data;
--		struct nfs_page_array *pages;
- 		size_t bytes;
-+		int i;
- 
- 		pgbase = user_addr & ~PAGE_MASK;
--		bytes = min(rsize,count);
-+		bytes = min(max(rsize, PAGE_SIZE), count);
- 
- 		result = -ENOMEM;
--		rhdr = nfs_readhdr_alloc();
--		if (unlikely(!rhdr))
--			break;
--		data = nfs_readdata_alloc(&rhdr->header, nfs_page_array_len(pgbase, bytes));
--		if (!data) {
--			nfs_readhdr_free(&rhdr->header);
-+		npages = nfs_page_array_len(pgbase, bytes);
-+		if (!pagevec)
-+			pagevec = kmalloc(npages * sizeof(struct page *),
-+					  GFP_KERNEL);
-+		if (!pagevec)
- 			break;
--		}
--		data->header = &rhdr->header;
--		atomic_inc(&data->header->refcnt);
--		pages = &data->pages;
--
- 		down_read(&current->mm->mmap_sem);
- 		result = get_user_pages(current, current->mm, user_addr,
--					pages->npages, 1, 0, pages->pagevec, NULL);
-+					npages, 1, 0, pagevec, NULL);
- 		up_read(&current->mm->mmap_sem);
--		if (result < 0) {
--			nfs_direct_readhdr_release(rhdr);
-+		if (result < 0)
- 			break;
--		}
--		if ((unsigned)result < pages->npages) {
-+		if ((unsigned)result < npages) {
- 			bytes = result * PAGE_SIZE;
- 			if (bytes <= pgbase) {
--				nfs_direct_release_pages(pages->pagevec, result);
--				nfs_direct_readhdr_release(rhdr);
-+				nfs_direct_release_pages(pagevec, result);
- 				break;
- 			}
- 			bytes -= pgbase;
--			pages->npages = result;
-+			npages = result;
- 		}
- 
--		get_dreq(dreq);
--
--		rhdr->header.req = (struct nfs_page *) dreq;
--		rhdr->header.inode = inode;
--		rhdr->header.cred = msg.rpc_cred;
--		data->args.fh = NFS_FH(inode);
--		data->args.context = get_nfs_open_context(ctx);
--		data->args.lock_context = dreq->l_ctx;
--		data->args.offset = pos;
--		data->args.pgbase = pgbase;
--		data->args.pages = pages->pagevec;
--		data->args.count = bytes;
--		data->res.fattr = &data->fattr;
--		data->res.eof = 0;
--		data->res.count = bytes;
--		nfs_fattr_init(&data->fattr);
--		msg.rpc_argp = &data->args;
--		msg.rpc_resp = &data->res;
--
--		task_setup_data.task = &data->task;
--		task_setup_data.callback_data = data;
--		NFS_PROTO(inode)->read_setup(data, &msg);
--
--		task = rpc_run_task(&task_setup_data);
--		if (IS_ERR(task))
--			break;
--
--		dprintk("NFS: %5u initiated direct read call "
--			"(req %s/%Ld, %zu bytes @ offset %Lu)\n",
--				task->tk_pid,
--				inode->i_sb->s_id,
--				(long long)NFS_FILEID(inode),
--				bytes,
--				(unsigned long long)data->args.offset);
--		rpc_put_task(task);
--
--		started += bytes;
--		user_addr += bytes;
--		pos += bytes;
--		/* FIXME: Remove this unnecessary math from final patch */
--		pgbase += bytes;
--		pgbase &= ~PAGE_MASK;
--		BUG_ON(pgbase != (user_addr & ~PAGE_MASK));
--
--		count -= bytes;
-+		for (i = 0; i < npages; i++) {
-+			struct nfs_page *req;
-+			unsigned int req_len = min(bytes, PAGE_SIZE - pgbase);
-+			/* XXX do we need to do the eof zeroing found in async_filler? */
-+			req = nfs_create_request(dreq->ctx, dreq->inode,
-+						 pagevec[i],
-+						 pgbase, req_len);
-+			if (IS_ERR(req)) {
-+				nfs_direct_release_pages(pagevec + i,
-+							 npages - i);
-+				result = PTR_ERR(req);
-+				break;
-+			}
-+			req->wb_index = pos >> PAGE_SHIFT;
-+			req->wb_offset = pos & ~PAGE_MASK;
-+			if (!nfs_pageio_add_request(desc, req)) {
-+				result = desc->pg_error;
-+				nfs_release_request(req);
-+				nfs_direct_release_pages(pagevec + i,
-+							 npages - i);
-+				break;
-+			}
-+			pgbase = 0;
-+			bytes -= req_len;
-+			started += req_len;
-+			user_addr += req_len;
-+			pos += req_len;
-+			count -= req_len;
-+		}
- 	} while (count != 0);
- 
-+	kfree(pagevec);
-+
- 	if (started)
- 		return started;
- 	return result < 0 ? (ssize_t) result : -EFAULT;
-@@ -407,15 +385,19 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
- 					      unsigned long nr_segs,
- 					      loff_t pos)
- {
-+	struct nfs_pageio_descriptor desc;
- 	ssize_t result = -EINVAL;
- 	size_t requested_bytes = 0;
- 	unsigned long seg;
- 
-+	nfs_pageio_init_read(&desc, dreq->inode,
-+			     &nfs_direct_read_completion_ops);
- 	get_dreq(dreq);
-+	desc.pg_dreq = dreq;
- 
- 	for (seg = 0; seg < nr_segs; seg++) {
- 		const struct iovec *vec = &iov[seg];
--		result = nfs_direct_read_schedule_segment(dreq, vec, pos);
-+		result = nfs_direct_read_schedule_segment(&desc, vec, pos);
- 		if (result < 0)
- 			break;
- 		requested_bytes += result;
-@@ -424,6 +406,8 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
- 		pos += vec->iov_len;
- 	}
- 
-+	nfs_pageio_complete(&desc);
-+
- 	/*
- 	 * If no bytes were started, return the error, and let the
- 	 * generic layer handle the completion.
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index f431e26..50d85e5 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -304,8 +304,9 @@ struct nfs_pgio_completion_ops;
- /* read.c */
- extern struct nfs_read_header *nfs_readhdr_alloc(void);
- extern void nfs_readhdr_free(struct nfs_pgio_header *hdr);
--extern struct nfs_read_data *nfs_readdata_alloc(struct nfs_pgio_header *hdr,
--						unsigned int pagecount);
-+extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
-+			struct inode *inode,
-+			const struct nfs_pgio_completion_ops *compl_ops);
- extern int nfs_initiate_read(struct rpc_clnt *clnt,
- 			     struct nfs_read_data *data,
- 			     const struct rpc_call_ops *call_ops);
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index b344946..d6aa8368 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -48,8 +48,11 @@ void nfs_pgheader_init(struct nfs_pageio_descriptor *desc,
- 	hdr->cred = hdr->req->wb_context->cred;
- 	hdr->io_start = req_offset(hdr->req);
- 	hdr->good_bytes = desc->pg_count;
-+	hdr->dreq = desc->pg_dreq;
- 	hdr->release = release;
- 	hdr->completion_ops = desc->pg_completion_ops;
-+	if (hdr->completion_ops->init_hdr)
-+		hdr->completion_ops->init_hdr(hdr);
- }
- 
- void nfs_set_pgio_error(struct nfs_pgio_header *hdr, int error, loff_t pos)
-@@ -116,9 +119,6 @@ nfs_create_request(struct nfs_open_context *ctx, struct inode *inode,
- 	req->wb_page    = page;
- 	req->wb_index	= page->index;
- 	page_cache_get(page);
--	BUG_ON(PagePrivate(page));
--	BUG_ON(!PageLocked(page));
--	BUG_ON(page->mapping->host != inode);
- 	req->wb_offset  = offset;
- 	req->wb_pgbase	= offset;
- 	req->wb_bytes   = count;
-@@ -257,6 +257,7 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
- 	desc->pg_ioflags = io_flags;
- 	desc->pg_error = 0;
- 	desc->pg_lseg = NULL;
-+	desc->pg_dreq = NULL;
- }
- 
- /**
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 5e78af1..35e2dce 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -51,8 +51,8 @@ struct nfs_read_header *nfs_readhdr_alloc()
- 	return rhdr;
- }
- 
--struct nfs_read_data *nfs_readdata_alloc(struct nfs_pgio_header *hdr,
--					 unsigned int pagecount)
-+static struct nfs_read_data *nfs_readdata_alloc(struct nfs_pgio_header *hdr,
-+						unsigned int pagecount)
- {
- 	struct nfs_read_data *data, *prealloc;
- 
-@@ -123,9 +123,9 @@ void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio)
- }
- EXPORT_SYMBOL_GPL(nfs_pageio_reset_read_mds);
- 
--static void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
--				struct inode *inode,
--				const struct nfs_pgio_completion_ops *compl_ops)
-+void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
-+			  struct inode *inode,
-+			  const struct nfs_pgio_completion_ops *compl_ops)
- {
- 	if (!pnfs_pageio_init_read(pgio, inode, compl_ops))
- 		nfs_pageio_init_read_mds(pgio, inode, compl_ops);
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index 0a5b63f..f9ee9eb 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -68,6 +68,7 @@ struct nfs_pageio_descriptor {
- 	const struct rpc_call_ops *pg_rpc_callops;
- 	const struct nfs_pgio_completion_ops *pg_completion_ops;
- 	struct pnfs_layout_segment *pg_lseg;
-+	struct nfs_direct_req	*pg_dreq;
- };
- 
- #define NFS_WBACK_BUSY(req)	(test_bit(PG_BUSY,&(req)->wb_flags))
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 2597f90..938d30a 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1203,6 +1203,7 @@ struct nfs_pgio_header {
- 	const struct rpc_call_ops *mds_ops;
- 	void (*release) (struct nfs_pgio_header *hdr);
- 	const struct nfs_pgio_completion_ops *completion_ops;
-+	struct nfs_direct_req	*dreq;
- 	spinlock_t		lock;
- 	/* fields protected by lock */
- 	int			pnfs_error;
-@@ -1216,8 +1217,6 @@ struct nfs_read_header {
- 	struct nfs_read_data	rpc_data;
- };
- 
--struct nfs_direct_req;
--
- struct nfs_write_data {
- 	struct nfs_pgio_header	*header;
- 	struct list_head	list;
-@@ -1259,6 +1258,7 @@ struct nfs_commit_data {
- 
- struct nfs_pgio_completion_ops {
- 	void	(*error_cleanup)(struct list_head *head);
-+	void	(*init_hdr)(struct nfs_pgio_header *hdr);
- 	void	(*completion)(struct nfs_pgio_header *hdr);
- };
- 
--- 
-1.7.2.1
+> 
+>>>
+>>>>>
+>>>>> 2) if we assume that it is fairly representative of one, how can we
+>>>>> achieve retrying indefinitely with NFS, or at least some large finite
+>>>>> amount?
+>>>> The amount of looping would be peer speculation. If the problem can
+>>>> not be handled by one simple retry I would say we simply pass the
+>>>> error up to the app... Its an application issue... 
+>>>>  
+>>>
+>>> It's not an application issue. The application just asked the kernel
+>>> to do an operation on a pathname. The only reason you're getting an
+>>> ESTALE back in this situation is a shortcoming of the implementation.
+>>>
+>>> We passed it a pathname after all, not a filehandle. ESTALE really has
+>>> no place as a return code in that situation...
+>> We'll have to agree to disagree... I think any application that is 
+>> removing hierarchies of file and directory w/out taking any 
+>> precautionary locking is a shortcoming of the application
+>> implementation.
+>>
+> 
+> I'm not saying they should never get an error in that situation. I'm
+> just saying that an ESTALE return in this situation is wrong (or at
+> least not helpful) since the syscall was provided a pathname not a
+> filehandle or open fd or anything. When we still have the pathname,
+> then we have the ability to reattempt on an ESTALE, and it would be
+> preferable to do so.
+Point. But if the reestablishment can not be done in one try, the
+I say we punt... 
 
+> 
+>>>
+>>>>>
+>>>>> I have my doubts as to whether it would really be as big a problem for
+>>>>> other filesystems as Miklos and others have asserted, but I'll take
+>>>>> their word for it at the moment. What's the best way to contain this
+>>>>> behavior to just those filesystems that want to retry indefinitely when
+>>>>> they get an ESTALE? Would we need to go with an entirely new
+>>>>> ESTALERETRY after all?
+>>>>>
+>>>> Introducing a new errno to handle this problem would be overkill IMHO...
+>>>>
+>>>> If we have to go to the looping approach, I would strong suggest we
+>>>> make the file systems register for this type of behavior...
+>>>>
+>>>
+>>> Returning ESTALERETRY would be registering for it in a way and it is
+>>> somewhat cleaner than having to go all the way back up to the fstype to
+>>> figure out whether you want to retry it or not.
+>> How would legacy apps handle this new errno, esp if they have logic
+>> to take care of ESTALE errors?
+>>
+> 
+> Userspace should never see that error. 
+Why do you say this?  ESTALE the errno has been around forever... 
+Its defined in the errno man page "ESTALE - Stale file handle (POSIX.1)" 
+
+> The idea is that this would be a
+> kernel-internal error code that indicates to the VFS that it should
+> retry the lookup and operation. If the kernel decides to give up after
+> the FS returns ESTALERETRY, then we'd have to convert that error
+> into ESTALE.
+Yeah... I understand the idea... I just don't think another error
+code is needed to handle this problem... 
+
+> 
+> It'd be preferable to me if we didn't require a new error code, but if
+> different filesystems require different semantics from the VFS on an
+> ESTALE return, then that is one way to achieve it.
+> 
+Well I thought the use of the fs_flags to register for this type
+of semantics was a good one...
+
+steved.
