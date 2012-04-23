@@ -1,51 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:34777 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755222Ab2DWViS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Apr 2012 17:38:18 -0400
-Subject: Re: [PATCH 1/3] NFSv4: Ensure we do not reuse open owner names
-Mime-Version: 1.0 (Apple Message framework v1257)
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:37537 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752292Ab2DWOur (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Apr 2012 10:50:47 -0400
+Received: by bkcik5 with SMTP id ik5so8697580bkc.19
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2012 07:50:45 -0700 (PDT)
+From: Miklos Szeredi <miklos@szeredi.hu>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jlayton@redhat.com>, Malahal Naineni <malahal@us.ibm.com>,
+        Steve Dickson <SteveD@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        viro@zeniv.linux.org.uk, hch@infradead.org,
+        michael.brantley@deshaw.com, sven.breuner@itwm.fraunhofer.de,
+        chuck.lever@oracle.com, pstaubach@exagrid.com,
+        trond.myklebust@fys.uio.no, rees@umich.edu
+Subject: Re: [PATCH RFC v3] vfs: make fstatat retry once on ESTALE errors from getattr call
+References: <20120420104055.511e15bc@tlielax.poochiereds.net>
+	<4F91C49D.8070908@RedHat.com> <20120420203725.GA3512@us.ibm.com>
+	<20120420171314.73801874@corrin.poochiereds.net>
+	<CAJfpegt40cgMJQQo3JuNaaS1w957Y2a_NxVoyvx3bmTMj1TGOA@mail.gmail.com>
+	<20120423080012.7c23ef24@tlielax.poochiereds.net>
+	<20120423130009.GA13681@fieldses.org>
+	<20120423091255.00f926c4@tlielax.poochiereds.net>
+	<20120423133412.GB13681@fieldses.org>
+	<20120423095021.1a91a23b@tlielax.poochiereds.net>
+	<20120423135456.GC13681@fieldses.org>
+Date: Mon, 23 Apr 2012 16:51:04 +0200
+In-Reply-To: <20120423135456.GC13681@fieldses.org> (J. Bruce Fields's message
+	of "Mon, 23 Apr 2012 09:54:56 -0400")
+Message-ID: <87hawasdrb.fsf@tucsk.pomaz.szeredi.hu>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1335216748.11427.38.camel@lade.trondhjem.org>
-Date: Mon, 23 Apr 2012 17:38:12 -0400
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <2D111BD9-B02C-4B58-B5F0-667EF39138F9@oracle.com>
-References: <1335213414-20826-1-git-send-email-Trond.Myklebust@netapp.com> <418AC7C0-6289-40D0-85DB-092C29BA40D3@oracle.com> <1335214124.11427.23.camel@lade.trondhjem.org> <537D97FE-BB59-4541-A705-C01178025C48@oracle.com> <1335216748.11427.38.camel@lade.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+"J. Bruce Fields" <bfields@fieldses.org> writes:
 
-On Apr 23, 2012, at 5:32 PM, Myklebust, Trond wrote:
+>
+> I also wonder whether it would be making too many assumptions about the
+> server or filesystem: just because ordinary posix interfaces don't allow
+> atomic replacement of a whole directory tree doesn't mean the server
+> might not have some way to do it.
 
-> On Mon, 2012-04-23 at 16:57 -0400, Chuck Lever wrote:
->> On Apr 23, 2012, at 4:48 PM, Myklebust, Trond wrote:
->> 
->>> On Mon, 2012-04-23 at 16:44 -0400, Chuck Lever wrote:
->>>> Hi-
->>>> 
->>>> I wish you had told me you were going to fix this too.  I've been testing a fix for this for a couple weeks.  Was going to post this afternoon.  Shall I toss mine?
->>> 
->>> I was hitting that BAD_SEQID storm during testing of the other open
->>> fixes last week.
->> 
->> Fair enough, but I announced I had a fix in my April 15 status report.  Oh well.
->> 
->> So, I decided that a timestamp would leak information about the client, so I'm using a simple counter instead.  Would you consider that for your patch?
-> 
-> How would a timestamp leak useful information? The server and anyone
-> monitoring the NFS traffic already knows at what time the open owner was
-> created to within a few milliseconds.
+Exactly because posix limits the atomic replacement to empty directories
+is that this feature is not useful and is why linux can get away with
+the dead directory behavior in this case.  And thinking about fixing
+this in NFS is completely pointless since no one will rely on the atomic
+replacement behavior.  Fixing local filesystems is also pointless for
+the same reason.
 
-It leaks the exact time as the client sees it.  This is why time-based UUIDs are no longer considered safe.
+Atomic replacement of whole directory trees would indeed be more useful,
+but it's highly unlikely to be used anywhere since applications relying
+on this feature would be limited to special filesystems that allow this.
 
-But also, is it possible that a state_owner could be destroyed and created so quickly on a system with inadequate timestamp resolution, such that the new owner ID would not actually be different than the previous one?
+So my statement is "ENOENT is equivalent to ESTALE if already retrying
+path lookup with LOOKUP_REVAL on any operation that takes an parent
+directory and a name (lookup, create, link, unlink, symlink, mkdir,
+rmdir, mknod, rename)."
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+This equivalence is in the sense that it doesn't change behavior
+compared to local filesystems.
 
+For other operations ENOENT is not equivalent to ESTALE.
 
-
-
+Thanks,
+Miklos
