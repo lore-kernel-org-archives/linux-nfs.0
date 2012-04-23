@@ -1,86 +1,363 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:47990 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:46572 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759914Ab2D0JAh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Apr 2012 05:00:37 -0400
-Subject: [PATCH v2 2/3] SUNRPC: traverse clients tree on PipeFS event
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Fri, 27 Apr 2012 13:00:17 +0400
-Message-ID: <20120427085959.4859.55386.stgit@localhost6.localdomain6>
-In-Reply-To: <20120420141925.10848.90395.stgit@localhost6.localdomain6>
-References: <20120420141925.10848.90395.stgit@localhost6.localdomain6>
+	id S1752372Ab2DWQDC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Apr 2012 12:03:02 -0400
+Message-ID: <4F957D30.9010102@redhat.com>
+Date: Mon, 23 Apr 2012 18:02:56 +0200
+From: Niels de Vos <ndevos@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] rpcbind: Only listen on requested hostnames for NC_TPI_COTS
+ connections
+References: <1335194692-6714-1-git-send-email-ndevos@redhat.com> <82D8C43F-5C40-444C-9573-B4FF95F615DA@oracle.com>
+In-Reply-To: <82D8C43F-5C40-444C-9573-B4FF95F615DA@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v2: recursion was replaced by loop
+On 04/23/2012 05:33 PM, Chuck Lever wrote:
+> Hi-
+>
+> On Apr 23, 2012, at 11:24 AM, Niels de Vos wrote:
+>
+>> There is a check for NC_TPI_CLTS connections which correctly binds only
+>> to the hostnames/addresses given on the commandline (-h option). This
+>> implementation does not take non NC_TPI_CLTS like NC_TPI_COTS and
+>> NC_TPI_COTS_ORD into account. This causes non NC_TPI_CLTS protocols to
+>> listen on the "0.0.0.0" and "::" wildcard addresses.
+>>
+>> This patch simplifies the code, and moves the check for NC_TPI_CLTS into
+>> the loop when a bind() for each requested address is done. All
+>> connections, including NC_TPI_COTS and NC_TPI_COTS_ORD can now benefit
+>> from resticted bind()'ing on addresses.
+>
+> Please check the mailing list archives for linux-nfs and/or
+> libtirpc-devel. There may be a good reason for this asymmetrical
+> behavior, or at least some enlightening discussion of this idea.
 
-If client is a clone, then it's parent can not be in the list.
-But parent's Pipefs dentries have to be created and destroyed.
+The only difference in the code before and after is for NC_TPI_CLTS vs 
+(NC_TPI_CLTS or NC_TPI_COTS) and has moved to this if statement:
 
-Note: event skip helper for clients introduced
+		if (nconf->nc_semantics != NC_TPI_CLTS) {
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+I could not find any reasons why binding on UDP may be restricted, where 
+binding on TCP would not.
 
----
- net/sunrpc/clnt.c |   29 +++++++++++++++++++++++++----
- 1 files changed, 25 insertions(+), 4 deletions(-)
+> Also, can you tell us why you need this change in the patch
+ > description?
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 8a19849..d127bd7 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -176,8 +176,16 @@ rpc_setup_pipedir(struct rpc_clnt *clnt, const char *dir_name)
- 	return 0;
- }
- 
--static int __rpc_pipefs_event(struct rpc_clnt *clnt, unsigned long event,
--				struct super_block *sb)
-+static inline int rpc_clnt_skip_event(struct rpc_clnt *clnt, unsigned long event)
-+{
-+	if (((event == RPC_PIPEFS_MOUNT) && clnt->cl_dentry) ||
-+	    ((event == RPC_PIPEFS_UMOUNT) && !clnt->cl_dentry))
-+		return 1;
-+	return 0;
-+}
-+
-+static int __rpc_clnt_handle_event(struct rpc_clnt *clnt, unsigned long event,
-+				   struct super_block *sb)
- {
- 	struct dentry *dentry;
- 	int err = 0;
-@@ -206,6 +214,20 @@ static int __rpc_pipefs_event(struct rpc_clnt *clnt, unsigned long event,
- 	return err;
- }
- 
-+static int __rpc_pipefs_event(struct rpc_clnt *clnt, unsigned long event,
-+				struct super_block *sb)
-+{
-+	int error = 0;
-+
-+	for (;; clnt = clnt->cl_parent) {
-+		if (!rpc_clnt_skip_event(clnt, event))
-+			error = __rpc_clnt_handle_event(clnt, event, sb);
-+		if (error || clnt == clnt->cl_parent)
-+			break;
-+	}
-+	return error;
-+}
-+
- static struct rpc_clnt *rpc_get_client_for_event(struct net *net, int event)
- {
- 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-@@ -215,8 +237,7 @@ static struct rpc_clnt *rpc_get_client_for_event(struct net *net, int event)
- 	list_for_each_entry(clnt, &sn->all_clients, cl_clients) {
- 		if (clnt->cl_program->pipe_dir_name == NULL)
- 			break;
--		if (((event == RPC_PIPEFS_MOUNT) && clnt->cl_dentry) ||
--		    ((event == RPC_PIPEFS_UMOUNT) && !clnt->cl_dentry))
-+		if (rpc_clnt_skip_event(clnt, event))
- 			continue;
- 		if (atomic_inc_not_zero(&clnt->cl_count) == 0)
- 			continue;
+Currently rpcbind provides the -h option to contain a hostname (like 
+localhost). When the option is used, rpcbind will only listen on the 
+"127.0.0.1" address for UDP. TCP will continue to listen on "0.0.0.0" 
+and "::". IMHO this is inconsistent and wrong, hence my proposal to fix 
+this. While doing so, I noticed that the if and else branches are 
+extremely similar and therefore I combined them.
 
+Let me know if you need any further details. Thanks,
+Niels
+
+
+>
+>> Signed-off-by: Niels de Vos<ndevos@redhat.com>
+>> ---
+>> src/rpcbind.c |  230 ++++++++++++++++++++------------------------------------
+>> 1 files changed, 82 insertions(+), 148 deletions(-)
+>>
+>> diff --git a/src/rpcbind.c b/src/rpcbind.c
+>> index 9a0504d..3f6c2a9 100644
+>> --- a/src/rpcbind.c
+>> +++ b/src/rpcbind.c
+>> @@ -339,172 +339,103 @@ init_transport(struct netconfig *nconf)
+>> 		hints.ai_socktype = si.si_socktype;
+>> 		hints.ai_protocol = si.si_proto;
+>> 	}
+>> -	if (nconf->nc_semantics == NC_TPI_CLTS) {
+>> +
+>> +	/*
+>> +	 * If no hosts were specified, just bind to INADDR_ANY.  Otherwise
+>> +	 * make sure 127.0.0.1 is added to the list.
+>> +	 */
+>> +	nhostsbak = nhosts;
+>> +	nhostsbak++;
+>> +	hosts = realloc(hosts, nhostsbak * sizeof(char *));
+>> +	if (nhostsbak == 1)
+>> +		hosts[0] = "*";
+>> +	else {
+>> +		if (hints.ai_family == AF_INET) {
+>> +			hosts[nhostsbak - 1] = "127.0.0.1";
+>> +		} else if (hints.ai_family == AF_INET6) {
+>> +			hosts[nhostsbak - 1] = "::1";
+>> +		} else
+>> +			return 1;
+>> +	}
+>> +
+>> +       /*
+>> +	* Bind to specific IPs if asked to
+>> +	*/
+>> +	checkbind = 0;
+>> +	while (nhostsbak>  0) {
+>> +		--nhostsbak;
+>> 		/*
+>> -		 * If no hosts were specified, just bind to INADDR_ANY.  Otherwise
+>> -		 * make sure 127.0.0.1 is added to the list.
+>> +		 * XXX - using RPC library internal functions.
+>> 		 */
+>> -		nhostsbak = nhosts;
+>> -		nhostsbak++;
+>> -		hosts = realloc(hosts, nhostsbak * sizeof(char *));
+>> -		if (nhostsbak == 1)
+>> -			hosts[0] = "*";
+>> -		else {
+>> -			if (hints.ai_family == AF_INET) {
+>> -				hosts[nhostsbak - 1] = "127.0.0.1";
+>> -			} else if (hints.ai_family == AF_INET6) {
+>> -				hosts[nhostsbak - 1] = "::1";
+>> -			} else
+>> -				return 1;
+>> +		if ((fd = __rpc_nconf2fd(nconf))<  0) {
+>> +			syslog(LOG_ERR, "cannot create socket for %s",
+>> +			    nconf->nc_netid);
+>> +			return (1);
+>> 		}
+>> -
+>> -	       /*
+>> -		* Bind to specific IPs if asked to
+>> -		*/
+>> -		checkbind = 0;
+>> -		while (nhostsbak>  0) {
+>> -			--nhostsbak;
+>> -			/*
+>> -			 * XXX - using RPC library internal functions.
+>> -			 */
+>> -			if ((fd = __rpc_nconf2fd(nconf))<  0) {
+>> -				syslog(LOG_ERR, "cannot create socket for %s",
+>> -				    nconf->nc_netid);
+>> -				return (1);
+>> +		switch (hints.ai_family) {
+>> +		case AF_INET:
+>> +			if (inet_pton(AF_INET, hosts[nhostsbak],
+>> +			    host_addr) == 1) {
+>> +				hints.ai_flags&= AI_NUMERICHOST;
+>> +			} else {
+>> +				/*
+>> +				 * Skip if we have an AF_INET6 adress.
+>> +				 */
+>> +				if (inet_pton(AF_INET6,
+>> +				    hosts[nhostsbak], host_addr) == 1)
+>> +					continue;
+>> 			}
+>> -			switch (hints.ai_family) {
+>> -			case AF_INET:
+>> +			break;
+>> +		case AF_INET6:
+>> +			if (inet_pton(AF_INET6, hosts[nhostsbak],
+>> +			    host_addr) == 1) {
+>> +				hints.ai_flags&= AI_NUMERICHOST;
+>> +			} else {
+>> +				/*
+>> +				 * Skip if we have an AF_INET adress.
+>> +				 */
+>> 				if (inet_pton(AF_INET, hosts[nhostsbak],
+>> -				    host_addr) == 1) {
+>> -					hints.ai_flags&= AI_NUMERICHOST;
+>> -				} else {
+>> -					/*
+>> -					 * Skip if we have an AF_INET6 adress.
+>> -					 */
+>> -					if (inet_pton(AF_INET6,
+>> -					    hosts[nhostsbak], host_addr) == 1)
+>> -						continue;
+>> -				}
+>> -				break;
+>> -			case AF_INET6:
+>> -				if (inet_pton(AF_INET6, hosts[nhostsbak],
+>> -				    host_addr) == 1) {
+>> -					hints.ai_flags&= AI_NUMERICHOST;
+>> -				} else {
+>> -					/*
+>> -					 * Skip if we have an AF_INET adress.
+>> -					 */
+>> -					if (inet_pton(AF_INET, hosts[nhostsbak],
+>> -					    host_addr) == 1)
+>> -						continue;
+>> -				}
+>> -	        		break;
+>> -			default:
+>> -				break;
+>> +				    host_addr) == 1)
+>> +					continue;
+>> 			}
+>> +			break;
+>> +		default:
+>> +			break;
+>> +		}
+>>
+>> -			/*
+>> -			 * If no hosts were specified, just bind to INADDR_ANY
+>> -			 */
+>> -			if (strcmp("*", hosts[nhostsbak]) == 0)
+>> -				hosts[nhostsbak] = NULL;
+>> +		/*
+>> +		 * If no hosts were specified, just bind to INADDR_ANY
+>> +		 */
+>> +		if (strcmp("*", hosts[nhostsbak]) == 0)
+>> +			hosts[nhostsbak] = NULL;
+>>
+>> +		if ((strcmp(nconf->nc_netid, "local") != 0)&&
+>> +		    (strcmp(nconf->nc_netid, "unix") != 0)) {
+>> 			if ((aicode = getaddrinfo(hosts[nhostsbak],
+>> -			    servname,&hints,&res)) != 0) {
+>> +			    servname,&hints,&res))!= 0) {
+>> 			  if ((aicode = getaddrinfo(hosts[nhostsbak],
+>> -						    "portmapper",&hints,&res)) != 0) {
+>> -				syslog(LOG_ERR,
+>> +					    "portmapper",&hints,&res))!= 0) {
+>> +			    syslog(LOG_ERR,
+>> 				    "cannot get local address for %s: %s",
+>> 				    nconf->nc_netid, gai_strerror(aicode));
+>> -				continue;
+>> +			    continue;
+>> 			  }
+>> 			}
+>> 			addrlen = res->ai_addrlen;
+>> 			sa = (struct sockaddr *)res->ai_addr;
+>> -			oldmask = umask(S_IXUSR|S_IXGRP|S_IXOTH);
+>> -                        if (bind(fd, sa, addrlen) != 0) {
+>> -				syslog(LOG_ERR, "cannot bind %s on %s: %m",
+>> -					(hosts[nhostsbak] == NULL) ? "*" :
+>> -					hosts[nhostsbak], nconf->nc_netid);
+>> -				if (res != NULL)
+>> -					freeaddrinfo(res);
+>> -				continue;
+>> -			} else
+>> -				checkbind++;
+>> -			(void) umask(oldmask);
+>> -
+>> -			/* Copy the address */
+>> -			taddr.addr.maxlen = taddr.addr.len = addrlen;
+>> -			taddr.addr.buf = malloc(addrlen);
+>> -			if (taddr.addr.buf == NULL) {
+>> -				syslog(LOG_ERR,
+>> -				    "cannot allocate memory for %s address",
+>> -				    nconf->nc_netid);
+>> +		}
+>> +		oldmask = umask(S_IXUSR|S_IXGRP|S_IXOTH);
+>> +		if (nconf->nc_semantics != NC_TPI_CLTS) {
+>> +			/* NC_TPI_COTS and NC_TPI_COTS_ORD etc */
+>> +			__rpc_fd2sockinfo(fd,&si);
+>> +			if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,&on,
+>> +			    sizeof(on)) != 0) {
+>> +				syslog(LOG_ERR, "cannot set SO_REUSEADDR on %s",
+>> +					nconf->nc_netid);
+>> 				if (res != NULL)
+>> 					freeaddrinfo(res);
+>> 				return 1;
+>> 			}
+>> -			memcpy(taddr.addr.buf, sa, addrlen);
+>> -#ifdef RPCBIND_DEBUG
+>> -			if (debugging) {
+>> -				/*
+>> -				 * for debugging print out our universal
+>> -				 * address
+>> -				 */
+>> -				char *uaddr;
+>> -				struct netbuf nb;
+>> -				int sa_size = 0;
+>> -
+>> -				nb.buf = sa;
+>> -				switch( sa->sa_family){
+>> -				case AF_INET:
+>> -				  sa_size = sizeof (struct sockaddr_in);
+>> -				  break;
+>> -				case AF_INET6:
+>> -				  sa_size = sizeof (struct sockaddr_in6);				
+>> -				  break;
+>> -				}
+>> -				nb.len = nb.maxlen = sa_size;
+>> -				uaddr = taddr2uaddr(nconf,&nb);
+>> -				(void) fprintf(stderr,
+>> -				    "rpcbind : my address is %s\n", uaddr);
+>> -				(void) free(uaddr);
+>> -			}
+>> -#endif
+>> -			my_xprt = (SVCXPRT *)svc_tli_create(fd, nconf,&taddr,
+>> -                                RPC_MAXDATASIZE, RPC_MAXDATASIZE);
+>> -			if (my_xprt == (SVCXPRT *)NULL) {
+>> -				syslog(LOG_ERR, "%s: could not create service",
+>> -                                        nconf->nc_netid);
+>> -				goto error;
+>> -			}
+>> -		}
+>> -		if (!checkbind)
+>> -			return 1;
+>> -	} else {	/* NC_TPI_COTS */
+>> -		if ((strcmp(nconf->nc_netid, "local") != 0)&&
+>> -		    (strcmp(nconf->nc_netid, "unix") != 0)) {
+>> -			if ((aicode = getaddrinfo(NULL, servname,&hints,&res))!= 0) {
+>> -			  if ((aicode = getaddrinfo(NULL, "portmapper",&hints,&res))!= 0) {
+>> -			  printf("cannot get local address for %s: %s",  nconf->nc_netid, gai_strerror(aicode));
+>> -			  syslog(LOG_ERR,
+>> -				    "cannot get local address for %s: %s",
+>> -				    nconf->nc_netid, gai_strerror(aicode));
+>> -				return 1;
+>> -			  }
+>> -			}
+>> -			addrlen = res->ai_addrlen;
+>> -			sa = (struct sockaddr *)res->ai_addr;
+>> -		}
+>> -		oldmask = umask(S_IXUSR|S_IXGRP|S_IXOTH);
+>> -		__rpc_fd2sockinfo(fd,&si);
+>> -		if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,&on,
+>> -				sizeof(on)) != 0) {
+>> -			syslog(LOG_ERR, "cannot set SO_REUSEADDR on %s",
+>> -				nconf->nc_netid);
+>> -			if (res != NULL)
+>> -				freeaddrinfo(res);
+>> -			return 1;
+>> 		}
+>> 		if (bind(fd, sa, addrlen)<  0) {
+>> 			syslog(LOG_ERR, "cannot bind %s: %m", nconf->nc_netid);
+>> @@ -530,7 +461,7 @@ init_transport(struct netconfig *nconf)
+>> 			/* for debugging print out our universal address */
+>> 			char *uaddr;
+>> 			struct netbuf nb;
+>> -		        int sa_size2 = 0;
+>> +			int sa_size2 = 0;
+>>
+>> 			nb.buf = sa;
+>> 			switch( sa->sa_family){
+>> @@ -551,13 +482,16 @@ init_transport(struct netconfig *nconf)
+>>
+>> 		listen(fd, SOMAXCONN);
+>>
+>> -		my_xprt = (SVCXPRT *)svc_tli_create(fd, nconf,&taddr, RPC_MAXDATASIZE, RPC_MAXDATASIZE);
+>> +		my_xprt = (SVCXPRT *)svc_tli_create(fd, nconf,&taddr,
+>> +			    RPC_MAXDATASIZE, RPC_MAXDATASIZE);
+>> 		if (my_xprt == (SVCXPRT *)NULL) {
+>> 			syslog(LOG_ERR, "%s: could not create service",
+>> 					nconf->nc_netid);
+>> 			goto error;
+>> 		}
+>> 	}
+>> +	if (!checkbind)
+>> +		return 1;
+>>
+>> #ifdef PORTMAP
+>> 	/*
+>> --
+>> 1.7.7.6
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+
+
+-- 
+Niels de Vos
+Software Maintenance Engineer
+Global Support Services
+Red Hat
