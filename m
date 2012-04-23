@@ -1,83 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:41223 "EHLO mx2.suse.de"
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:55093 "EHLO e6.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753687Ab2DJASy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Apr 2012 20:18:54 -0400
-Date: Tue, 10 Apr 2012 10:18:44 +1000
-From: NeilBrown <neilb@suse.de>
-To: Jim Rees <rees@umich.edu>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] fix page number calculation bug for block layout decode
- buffer
-Message-ID: <20120410101844.62c09f57@notabene.brown>
-In-Reply-To: <1334013727-1931-1-git-send-email-rees@umich.edu>
-References: <1334013727-1931-1-git-send-email-rees@umich.edu>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/NrOIA5NinjIr.BXKwgbv3sR"; protocol="application/pgp-signature"
+	id S1753883Ab2DWVYW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Apr 2012 17:24:22 -0400
+Received: from /spool/local
+	by e6.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Mon, 23 Apr 2012 17:24:20 -0400
+Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 4B1A138C8063
+	for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2012 17:23:47 -0400 (EDT)
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q3NLNlAh293042
+	for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2012 17:23:47 -0400
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q3NLNk6r015592
+	for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2012 18:23:46 -0300
+Date: Mon, 23 Apr 2012 16:23:45 -0500
+From: Malahal Naineni <malahal@us.ibm.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 20/20] NFS: Clean up debugging messages in
+ fs/nfs/client.c
+Message-ID: <20120423212345.GA17089@us.ibm.com>
+References: <20120423205312.11446.67081.stgit@degas.1015granger.net>
+ <20120423205612.11446.89496.stgit@degas.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120423205612.11446.89496.stgit@degas.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/NrOIA5NinjIr.BXKwgbv3sR
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
-
-On Mon,  9 Apr 2012 19:22:07 -0400 Jim Rees <rees@umich.edu> wrote:
-
-> Signed-off-by: Jim Rees <rees@umich.edu>
-> Suggested-by: Andy Adamson <andros@netapp.com>
+Chuck Lever [chuck.lever@oracle.com] wrote:
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
->  fs/nfs/blocklayout/blocklayout.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
->=20
-> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blockl=
-ayout.c
-> index 48cfac3..576da5b 100644
-> --- a/fs/nfs/blocklayout/blocklayout.c
-> +++ b/fs/nfs/blocklayout/blocklayout.c
-> @@ -872,7 +872,7 @@ nfs4_blk_get_deviceinfo(struct nfs_server *server, co=
-nst struct nfs_fh *fh,
->  	 * GETDEVICEINFO's maxcount
->  	 */
->  	max_resp_sz =3D server->nfs_client->cl_session->fc_attrs.max_resp_sz;
-> -	max_pages =3D max_resp_sz >> PAGE_SHIFT;
-> +	max_pages =3D (max_resp_sz  + PAGE_SIZE - 1) >> PAGE_SHIFT;
+> 
+>  fs/nfs/client.c |   21 +++++++++++++++++----
+>  1 files changed, 17 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index 7330673..beb001b 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -192,6 +192,8 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+>  		clp->cl_machine_cred = cred;
+>  	nfs_fscache_get_client_cookie(clp);
+> 
+> +	dprintk("NFS: %s returning new nfs_client = %p ({1})\n",
+> +		__func__, clp);
+>  	return clp;
+> 
+>  error_cleanup:
+> @@ -291,7 +293,7 @@ static void pnfs_init_server(struct nfs_server *server)
+>   */
+>  static void nfs_free_client(struct nfs_client *clp)
+>  {
+> -	dprintk("--> nfs_free_client(%u)\n", clp->rpc_ops->version);
+> +	dprintk("--> %s destroying nfs_client = %p\n", __func__, clp);
+> 
+>  	nfs4_shutdown_client(clp);
+> 
+> @@ -308,7 +310,7 @@ static void nfs_free_client(struct nfs_client *clp)
+>  	kfree(clp->cl_hostname);
+>  	kfree(clp);
+> 
+> -	dprintk("<-- nfs_free_client()\n");
+> +	dprintk("<-- %s done\n", __func__);
 
-        max_pages =3D DIV_ROUND_UP(max_resp_sz, PAGE_SIZE);
+Many dprintk's seem to take __func__. How about pushing that to dprink
+macro itself. I have one and use it most of the time.
 
-??
+Regards, Malahal.
 
-compiler should optimise the constant-divide into a shift, and it is more
-"obviously correct" this way.
-
-NeilBrown
-
-
->  	dprintk("%s max_resp_sz %u max_pages %d\n",
->  		__func__, max_resp_sz, max_pages);
-> =20
-
-
---Sig_/NrOIA5NinjIr.BXKwgbv3sR
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.18 (GNU/Linux)
-
-iQIVAwUBT4N8ZDnsnt1WYoG5AQIc9hAAsC+ErfyQiSc6NL1mfa/p3tqXXc3dIRty
-aqO0CsVLTxyLb8KDk1T2mSgAn2+sXigbbWKJ5XxcBVCrMG2OISlMslZm1ievwQ9B
-gzi9KBG5GFJvp57M4aLs0u7odYb52OBbbOsQli3lFZtL9D15BgcLrh+MXAyinLwd
-c1b8OTzA9iIePpkw2G8DcUFq/Hg9w1WqQUxUYPpNxdtlTIFOfhBejfRN+4GEZOR2
-HVvmsGwF8rXsrTnOQbPulX6wKqbtSBhJYvG7bLx/gIXC/ZFu5Hcw4J34Sj1MPl8w
-pMq24k7Vg13KLJg7IiJW1LOrC/upnGymbPdCOHufnJSKau3Rn1wTy9t/jvc82gJe
-YUHZkcWigc4WNiymJHEp2QjFTWwmfeniluTBgULBpfytTTOqjvCCX7lj80eArdI5
-Jy2nBazp7V0XqGv5EUNE2Lrl9DTBNgsXEYbk3ia6BACrfqYQF5vp+Qx32J0tUF6Q
-ohTbBDact3pEFlVpTfi8vgn9pC0uiKRjPWnOSoy4OVRPpvfTmSjTl6pFxf/EcODr
-uz2LceePR1WD5cxSh3c8l3qwUTcA7GzHYl+tWSAvtBskqHAQ/RceA5o59mIwDsx+
-Urc1GTV31vbk+WFR9pEAFKp0dqvnO3hR3zdwCbqOhD+s6+k27MBlF4+YIwLyzLEq
-0WNDdsl91GQ=
-=VTNP
------END PGP SIGNATURE-----
-
---Sig_/NrOIA5NinjIr.BXKwgbv3sR--
