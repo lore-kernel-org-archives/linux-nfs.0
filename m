@@ -1,165 +1,139 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:44195 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757256Ab2DIP1G convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Apr 2012 11:27:06 -0400
-Date: Mon, 9 Apr 2012 11:27:39 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: Grace period
-Message-ID: <20120409112739.6a823d6f@corrin.poochiereds.net>
-In-Reply-To: <4F82F16C.7030303@parallels.com>
-References: <4F7F230A.6080506@parallels.com>
-	<20120406234039.GA20940@fieldses.org>
-	<4F82C6E3.3030009@parallels.com>
-	<20120409094743.56932677@tlielax.poochiereds.net>
-	<4F82F16C.7030303@parallels.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:44481 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753984Ab2DWUyt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Apr 2012 16:54:49 -0400
+Received: by yhmm54 with SMTP id m54so6471798yhm.19
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2012 13:54:49 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 11/20] NFS: Refactor nfs_get_client(): add nfs_found_client()
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 23 Apr 2012 16:54:47 -0400
+Message-ID: <20120423205447.11446.14775.stgit@degas.1015granger.net>
+In-Reply-To: <20120423205312.11446.67081.stgit@degas.1015granger.net>
+References: <20120423205312.11446.67081.stgit@degas.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 09 Apr 2012 18:25:48 +0400
-Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+Clean up: Rationalize the locking in nfs_get_client() for the case
+where the target server already appears in the nfs_client_list.
 
-> 09.04.2012 17:47, Jeff Layton пишет:
-> > On Mon, 09 Apr 2012 15:24:19 +0400
-> > Stanislav Kinsbursky<skinsbursky@parallels.com>  wrote:
-> >
-> >> 07.04.2012 03:40, bfields@fieldses.org пишет:
-> >>> On Fri, Apr 06, 2012 at 09:08:26PM +0400, Stanislav Kinsbursky wrote:
-> >>>> Hello, Bruce.
-> >>>> Could you, please, clarify this reason why grace list is used?
-> >>>> I.e. why list is used instead of some atomic variable, for example?
-> >>>
-> >>> Like just a reference count?  Yeah, that would be OK.
-> >>>
-> >>> In theory it could provide some sort of debugging help.  (E.g. we could
-> >>> print out the list of "lock managers" currently keeping us in grace.)  I
-> >>> had some idea we'd make those lock manager objects more complicated, and
-> >>> might have more for individual containerized services.
-> >>
-> >> Could you share this idea, please?
-> >>
-> >> Anyway, I have nothing against lists. Just was curious, why it was used.
-> >> I added Trond and lists to this reply.
-> >>
-> >> Let me explain, what is the problem with grace period I'm facing right know, and
-> >> what I'm thinking about it.
-> >> So, one of the things to be containerized during "NFSd per net ns" work is the
-> >> grace period, and these are the basic components of it:
-> >> 1) Grace period start.
-> >> 2) Grace period end.
-> >> 3) Grace period check.
-> >> 3) Grace period restart.
-> >>
-> >> So, the simplest straight-forward way is to make all internal stuff:
-> >> "grace_list", "grace_lock", "grace_period_end" work and both "lockd_manager" and
-> >> "nfsd4_manager" - per network namespace. Also, "laundromat_work" have to be
-> >> per-net as well.
-> >> In this case:
-> >> 1) Start - grace period can be started per net ns in "lockd_up_net()" (thus has
-> >> to be moves there from "lockd()") and "nfs4_state_start()".
-> >> 2) End - grace period can be ended per net ns in "lockd_down_net()" (thus has to
-> >> be moved there from "lockd()"), "nfsd4_end_grace()" and "fs4_state_shutdown()".
-> >> 3) Check - looks easy. There is either svc_rqst or net context can be passed to
-> >> function.
-> >> 4) Restart - this is a tricky place. It would be great to restart grace period
-> >> only for the networks namespace of the sender of the kill signal. So, the idea
-> >> is to check siginfo_t for the pid of sender, then try to locate the task, and if
-> >> found, then get sender's networks namespace, and restart grace period only for
-> >> this namespace (of course, if lockd was started for this namespace - see below).
-> >>
-> >> If task not found, of it's lockd wasn't started for it's namespace, then grace
-> >> period can be either restarted for all namespaces, of just silently dropped.
-> >> This is the place where I'm not sure, how to do. Because calling grace period
-> >> for all namespaces will be overkill...
-> >>
-> >> There also another problem with the "task by pid" search, that found task can be
-> >> actually not sender (which died already), but some other new task with the same
-> >> pid number. In this case, I think, we can just neglect this probability and
-> >> always assume, that we located sender (if, of course, lockd was started for
-> >> sender's network namespace).
-> >>
-> >> Trond, Bruce, could you, please, comment this ideas?
-> >>
-> >
-> > I can comment and I'm not sure that will be sufficient.
-> >
-> 
-> Hi, Jeff. Thanks for the comment.
-> 
-> > The grace period has a particular purpose. It keeps nfsd or lockd from
-> > handing out stateful objects (e.g. locks) before clients have an
-> > opportunity to reclaim them. Once the grace period expires, there is no
-> > more reclaim allowed and "normal" lock and open requests can proceed.
-> >
-> > Traditionally, there has been one nfsd or lockd "instance" per host.
-> > With that, we were able to get away with a relatively simple-minded
-> > approach of a global grace period that's gated on nfsd or lockd's
-> > startup and shutdown.
-> >
-> > Now, you're looking at making multiple nfsd or lockd "instances". Does
-> > it make sense to make this a per-net thing? Here's a particularly
-> > problematic case to illustrate what I mean:
-> >
-> > Suppose I have a filesystem that's mounted and exported in two
-> > different containers. You start up one container and then 60s later,
-> > start up the other. The grace period expires in the first container and
-> > that nfsd hands out locks that conflict with some that have not been
-> > reclaimed yet in the other.
-> >
-> > Now, we can just try to say "don't export the same fs from more than
-> > one container". But we all know that people will do it anyway, since
-> > there's nothing that really stops you from doing so.
-> >
-> 
-> Yes, I see. But situation you described is existent already.
-> I.e. you can replace containers with the same file system by two nodes, sharing 
-> the same distributed file system (like Lustre and GPFS), and you'll experience 
-> the same problem in such case.
-> 
+Code that takes and releases nfs_client_lock remains in
+nfs_get_client().  The rest of the logic is moved to a separate
+function.
 
-Yep, which is why we don't support active/active serving from clustered
-filesystems (yet). Containers are somewhat similar to a clustered
-configuration.
+No behavior change is expected.
 
-The simple minded grace period handling we have now is really only
-suitable for very simple export configurations. The grace period exists
-to ensure that filesystem objects are not "oversubscribed" so it makes
-some sense to turn it into a per-sb property.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-> > What probably makes more sense is making the grace period a per-sb
-> > property, and coming up with a set of rules for the fs going into and
-> > out of "grace" status.
-> >
-> > Perhaps a way for different net namespaces to "subscribe" to a
-> > particular fs, and don't take the fs out of grace until all of the
-> > grace period timers pop? If a fs attempts to subscribe after the fs
-> > comes out of grace, then its subscription would be denied and reclaim
-> > attempts would get NFS4ERR_NOGRACE or the NLM equivalent.
-> >
-> 
-> This raises another problem. Imagine, that grace period has elapsed for some 
-> container and then you start nfsd in another one. New grace period will affect 
-> all both of them. And that's even worse from my pow.
-> 
+ fs/nfs/client.c |   71 ++++++++++++++++++++++++++++++++-----------------------
+ 1 files changed, 41 insertions(+), 30 deletions(-)
 
-If you allow one container to hand out conflicting locks while another
-container is allowing reclaims, then you can end up with some very
-difficult to debug silent data corruption. That's the worst possible
-outcome, IMO. We really need to actively keep people from shooting
-themselves in the foot here.
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 3ba6c62..09b3f55 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -504,6 +504,39 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
+ }
+ 
+ /*
++ * Found an existing client.  Make sure it's ready before returning.
++ */
++static struct nfs_client *
++nfs_found_client(const struct nfs_client_initdata *cl_init,
++		 struct nfs_client *clp)
++{
++	int error;
++
++	error = wait_event_killable(nfs_client_active_wq,
++				clp->cl_cons_state < NFS_CS_INITING);
++	if (error < 0) {
++		dprintk("<-- nfs_get_client error waiting for nfs_client %p "
++			"for %s (%d)\n", clp, cl_init->hostname ?: "", error);
++		nfs_put_client(clp);
++		return ERR_PTR(-ERESTARTSYS);
++	}
++
++	if (clp->cl_cons_state < NFS_CS_READY) {
++		error = clp->cl_cons_state;
++		dprintk("<-- nfs_get_client found nfs_client %p for %s, not "
++			"ready (%d)\n", clp, cl_init->hostname ?: "", error);
++		nfs_put_client(clp);
++		return ERR_PTR(error);
++	}
++
++	BUG_ON(clp->cl_cons_state != NFS_CS_READY);
++
++	dprintk("<-- nfs_get_client found nfs_client %p for %s\n",
++		clp, cl_init->hostname ?: "");
++	return clp;
++}
++
++/*
+  * Look up a client by IP address and protocol version
+  * - creates a new record if one doesn't yet exist
+  */
+@@ -526,8 +559,12 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
+ 		spin_lock(&nn->nfs_client_lock);
+ 
+ 		clp = nfs_match_client(cl_init);
+-		if (clp)
+-			goto found_client;
++		if (clp) {
++			spin_unlock(&nn->nfs_client_lock);
++			if (new)
++				nfs_free_client(new);
++			return nfs_found_client(cl_init, clp);
++		}
+ 		if (new)
+ 			goto install_client;
+ 
+@@ -536,7 +573,8 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
+ 		new = nfs_alloc_client(cl_init);
+ 	} while (!IS_ERR(new));
+ 
+-	dprintk("--> nfs_get_client() = %ld [failed]\n", PTR_ERR(new));
++	dprintk("<-- nfs_get_client() Failed to find %s (%ld)\n",
++		cl_init->hostname ?: "", PTR_ERR(new));
+ 	return new;
+ 
+ 	/* install a new client and return with it unready */
+@@ -553,33 +591,6 @@ install_client:
+ 	}
+ 	dprintk("--> nfs_get_client() = %p [new]\n", clp);
+ 	return clp;
+-
+-	/* found an existing client
+-	 * - make sure it's ready before returning
+-	 */
+-found_client:
+-	spin_unlock(&nn->nfs_client_lock);
+-
+-	if (new)
+-		nfs_free_client(new);
+-
+-	error = wait_event_killable(nfs_client_active_wq,
+-				clp->cl_cons_state < NFS_CS_INITING);
+-	if (error < 0) {
+-		nfs_put_client(clp);
+-		return ERR_PTR(-ERESTARTSYS);
+-	}
+-
+-	if (clp->cl_cons_state < NFS_CS_READY) {
+-		error = clp->cl_cons_state;
+-		nfs_put_client(clp);
+-		return ERR_PTR(error);
+-	}
+-
+-	BUG_ON(clp->cl_cons_state != NFS_CS_READY);
+-
+-	dprintk("--> nfs_get_client() = %p [share]\n", clp);
+-	return clp;
+ }
+ 
+ /*
 
-One possibility might be to only allow filesystems to be exported from
-a single container at a time (and allow that to be overridable somehow
-once we have a working active/active serving solution). With that, you
-may be able limp along with a per-container grace period handling
-scheme like you're proposing.
-
--- 
-Jeff Layton <jlayton@redhat.com>
