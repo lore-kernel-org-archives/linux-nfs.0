@@ -1,59 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:41249 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751065Ab2DSLhE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Apr 2012 07:37:04 -0400
-Message-ID: <4F8FF8D9.5080503@parallels.com>
-Date: Thu, 19 Apr 2012 15:36:57 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH] SUNRPC: skip dead but not buried clients on PipeFS events
-References: <20120419105707.32131.79719.stgit@localhost6.localdomain6>
-In-Reply-To: <20120419105707.32131.79719.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:64858 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753828Ab2DWUhC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Apr 2012 16:37:02 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/3] NFSv4: Ensure that we don't drop a state owner more than once
+Date: Mon, 23 Apr 2012 16:36:53 -0400
+Message-Id: <1335213414-20826-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1335213414-20826-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1335213414-20826-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sorry, but ignore this patch too.
-It can't be that simple because of these cl_count tricks in rpc_release_client...
+Retest the RB_EMPTY_NODE() condition under the spin lock
+to ensure that we don't call rb_erase() more than once on the
+same state owner.
 
-19.04.2012 14:57, Stanislav Kinsbursky пишет:
-> These clients can't be safely dereferenced if their counter in 0.
->
-> Signee-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
->
-> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
->
-> ---
->   net/sunrpc/clnt.c |    3 ++-
->   1 files changed, 2 insertions(+), 1 deletions(-)
->
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index 6797246..591994d 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -218,7 +218,8 @@ static struct rpc_clnt *rpc_get_client_for_event(struct net *net, int event)
->   		if (((event == RPC_PIPEFS_MOUNT)&&  clnt->cl_dentry) ||
->   		    ((event == RPC_PIPEFS_UMOUNT)&&  !clnt->cl_dentry))
->   			continue;
-> -		atomic_inc(&clnt->cl_count);
-> +		if (atomic_inc_return(&clnt->cl_count) == 1)
-> +			continue;
->   		spin_unlock(&sn->rpc_client_lock);
->   		return clnt;
->   	}
->
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4state.c |   10 +++++++---
+ 1 files changed, 7 insertions(+), 3 deletions(-)
 
-
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 3b07f09..b300fb8 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -435,13 +435,17 @@ nfs4_alloc_state_owner(struct nfs_server *server,
+ static void
+ nfs4_drop_state_owner(struct nfs4_state_owner *sp)
+ {
+-	if (!RB_EMPTY_NODE(&sp->so_server_node)) {
++	struct rb_node *rb_node = &sp->so_server_node;
++
++	if (!RB_EMPTY_NODE(rb_node)) {
+ 		struct nfs_server *server = sp->so_server;
+ 		struct nfs_client *clp = server->nfs_client;
+ 
+ 		spin_lock(&clp->cl_lock);
+-		rb_erase(&sp->so_server_node, &server->state_owners);
+-		RB_CLEAR_NODE(&sp->so_server_node);
++		if (!RB_EMPTY_NODE(rb_node)) {
++			rb_erase(rb_node, &server->state_owners);
++			RB_CLEAR_NODE(rb_node);
++		}
+ 		spin_unlock(&clp->cl_lock);
+ 	}
+ }
 -- 
-Best regards,
-Stanislav Kinsbursky
+1.7.7.6
+
