@@ -1,91 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57183 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752877Ab2D1TbH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 28 Apr 2012 15:31:07 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 03/10] NFS: Simplify nfs_fhget()
-Date: Sat, 28 Apr 2012 15:30:53 -0400
-Message-Id: <1335641460-24839-4-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1335641460-24839-3-git-send-email-Trond.Myklebust@netapp.com>
-References: <1335641460-24839-1-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-2-git-send-email-Trond.Myklebust@netapp.com>
- <1335641460-24839-3-git-send-email-Trond.Myklebust@netapp.com>
+Received: from e39.co.us.ibm.com ([32.97.110.160]:45566 "EHLO
+	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752821Ab2DWTG3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Apr 2012 15:06:29 -0400
+Received: from /spool/local
+	by e39.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Mon, 23 Apr 2012 13:06:28 -0600
+Date: Mon, 23 Apr 2012 14:06:22 -0500
+From: Malahal Naineni <malahal@us.ibm.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        miklos@szeredi.hu, viro@ZenIV.linux.org.uk, hch@infradead.org,
+        michael.brantley@deshaw.com, sven.breuner@itwm.fraunhofer.de,
+        chuck.lever@oracle.com, pstaubach@exagrid.com, bfields@fieldses.org,
+        trond.myklebust@fys.uio.no, rees@umich.edu
+Subject: Re: [PATCH RFC v3] vfs: make fstatat retry once on ESTALE errors
+ from getattr call
+Message-ID: <20120423190622.GA1175@us.ibm.com>
+References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
+ <1334749927-26138-1-git-send-email-jlayton@redhat.com>
+ <20120420104055.511e15bc@tlielax.poochiereds.net>
+ <4F91C49D.8070908@RedHat.com>
+ <20120420171300.326d6e36@corrin.poochiereds.net>
+ <4F956D5C.5050801@RedHat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4F956D5C.5050801@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the inode is being initialised, there is no point in
-setting flags such as NFS_INO_INVALID_ACCESS,
-NFS_INO_INVALID_ACL or NFS_INO_INVALID_DATA since there are
-no cached access calls, acls or data caches to invalidate.
+Steve Dickson [SteveD@redhat.com] wrote:
+> > Returning ESTALERETRY would be registering for it in a way and it is
+> > somewhat cleaner than having to go all the way back up to the fstype to
+> > figure out whether you want to retry it or not.
+> How would legacy apps handle this new errno, esp if they have logic
+> to take care of ESTALE errors?
+> 
+> steved.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/inode.c |   23 ++++++-----------------
- 1 files changed, 6 insertions(+), 17 deletions(-)
-
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 59a12c6..fdbf76a 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -285,9 +285,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 		inode->i_mode = fattr->mode;
- 		if ((fattr->valid & NFS_ATTR_FATTR_MODE) == 0
- 				&& nfs_server_capable(inode, NFS_CAP_MODE))
--			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_ACCESS
--				| NFS_INO_INVALID_ACL;
-+			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
- 		/* Why so? Because we want revalidate for devices/FIFOs, and
- 		 * that's precisely what we have in nfs_file_inode_operations.
- 		 */
-@@ -337,24 +335,19 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 		if (fattr->valid & NFS_ATTR_FATTR_MTIME)
- 			inode->i_mtime = fattr->mtime;
- 		else if (nfs_server_capable(inode, NFS_CAP_MTIME))
--			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_DATA;
-+			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
- 		if (fattr->valid & NFS_ATTR_FATTR_CTIME)
- 			inode->i_ctime = fattr->ctime;
- 		else if (nfs_server_capable(inode, NFS_CAP_CTIME))
--			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_ACCESS
--				| NFS_INO_INVALID_ACL;
-+			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
- 		if (fattr->valid & NFS_ATTR_FATTR_CHANGE)
- 			inode->i_version = fattr->change_attr;
- 		else if (nfs_server_capable(inode, NFS_CAP_CHANGE_ATTR))
--			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_DATA;
-+			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
- 		if (fattr->valid & NFS_ATTR_FATTR_SIZE)
- 			inode->i_size = nfs_size_to_loff_t(fattr->size);
- 		else
- 			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_DATA
- 				| NFS_INO_REVAL_PAGECACHE;
- 		if (fattr->valid & NFS_ATTR_FATTR_NLINK)
- 			set_nlink(inode, fattr->nlink);
-@@ -363,15 +356,11 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 		if (fattr->valid & NFS_ATTR_FATTR_OWNER)
- 			inode->i_uid = fattr->uid;
- 		else if (nfs_server_capable(inode, NFS_CAP_OWNER))
--			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_ACCESS
--				| NFS_INO_INVALID_ACL;
-+			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
- 		if (fattr->valid & NFS_ATTR_FATTR_GROUP)
- 			inode->i_gid = fattr->gid;
- 		else if (nfs_server_capable(inode, NFS_CAP_OWNER_GROUP))
--			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_ACCESS
--				| NFS_INO_INVALID_ACL;
-+			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
- 		if (fattr->valid & NFS_ATTR_FATTR_BLOCKS_USED)
- 			inode->i_blocks = fattr->du.nfs2.blocks;
- 		if (fattr->valid & NFS_ATTR_FATTR_SPACE_USED) {
--- 
-1.7.7.6
+As I understand, there is no new errno for the apps. This new
+ESTALERETRY is produced and consumed by kernel only.
 
