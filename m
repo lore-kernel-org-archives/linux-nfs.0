@@ -1,101 +1,158 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pz0-f51.google.com ([209.85.210.51]:53141 "EHLO
-	mail-pz0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761186Ab2D0Sn5 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Apr 2012 14:43:57 -0400
-Received: by dadz8 with SMTP id z8so1352952dad.10
-        for <linux-nfs@vger.kernel.org>; Fri, 27 Apr 2012 11:43:57 -0700 (PDT)
-Subject: Re: [PATCH 0/6] Extended file stat system call
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-From: Andreas Dilger <adilger@whamcloud.com>
-In-Reply-To: <20120427010610.GE9541@dastard>
-Date: Thu, 26 Apr 2012 21:22:04 -0600
-Cc: David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
-        wine-devel@winehq.org, kfm-devel@kde.org, nautilus-list@gnome.org,
-        linux-api@vger.kernel.org, libc-alpha@sourceware.org
-Message-Id: <ED5B8F1B-6C99-4516-85FA-A767E94B635F@dilger.ca>
-References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <20120427010610.GE9541@dastard>
-To: Dave Chinner <david@fromorbit.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:43242 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753486Ab2DWU4F (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Apr 2012 16:56:05 -0400
+Received: by mail-iy0-f174.google.com with SMTP id i9so2498807iad.19
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2012 13:56:05 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 19/20] NFS: Add nfs4_unique_id boot parameter
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 23 Apr 2012 16:56:02 -0400
+Message-ID: <20120423205602.11446.34359.stgit@degas.1015granger.net>
+In-Reply-To: <20120423205312.11446.67081.stgit@degas.1015granger.net>
+References: <20120423205312.11446.67081.stgit@degas.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2012-04-26, at 7:06 PM, Dave Chinner wrote:
-> On Thu, Apr 19, 2012 at 03:05:58PM +0100, David Howells wrote:
->> 
->> Implement a pair of new system calls to provide extended and further extensible stat functions.
->> 
->> The second of the associated patches is the main patch that provides these new system calls:
->> 
->> 	ssize_t ret = xstat(int dfd,
->> 			    const char *filename,
->> 			    unsigned atflag,
->> 			    unsigned mask,
->> 			    struct xstat *buffer);
->> 
->> 	ssize_t ret = fxstat(int fd,
->> 			     unsigned atflag,
->> 			     unsigned mask,
->> 			     struct xstat *buffer);
->> 
->> which are more fully documented in the first patch's description.
->> 
->> These new stat functions provide a number of useful features, in summary:
->> 
->> (1) More information: creation time, inode generation number, data
->>     version number, flags/attributes.  A subset of these is available
->>     through a number of filesystems (CIFS, NFS, AFS, Ext4 and BTRFS).
-> 
-> If we are adding per-inode flags, then what do we do with filesystem
-> specific flags? e.g. XFS has quite a number of per-inode flags that
-> don't align with any other filesystem (e.g. filestream allocator,
-> real time file, behaviour inheritence flags, etc), but may be useful
-> to retrieve in such a call. We currently have an ioctl to get that
-> information from each inode. Have you thought about how to handle
-> such flags?
+An optional boot parameter is introduced to allow client
+administrators to specify a string that the Linux NFS client can
+insert into its nfs_client_id4 string, to make it both more globally
+unique and more fixed.
 
-I'm sympathetic to your cause, but I don't want this to degrade into
-the same morass that it did last time when every attribute under the
-sun was added to the call.  The intent is to replace the stat() call
-with something that can avoid overhead on filesystems for which some
-attributes are expensive, and that applications may not need.  Some
-common attributes were added that are used by multiple filesystems.
+If this boot parameter is not specified, the client's nodename is
+used, as before.
 
-If it is too filesystem-specific, and there is little possibility
-that these attributes will be usable on other filesystems, then it
-should remain a filesystem specific ioctl() call.  If you can make
-a case that these attributes have value on a few other filesystems,
-and applications are reasonably likely to be able to use them, and
-their addition does not make the API overly complex, then suggest
-away.
+Client installation procedures can create a unique string (typically,
+a UUID) which remains unchanged during the lifetime of that client
+instance.  This works just like creating a UUID for the label of the
+system's root and boot volumes.
 
-> Along the same lines, filesytsems can have different allocation
-> constraints to IO the filesystem block size - ext4 with it's
-> bigalloc hack, XFS with it's per-inode extent size hints and the
-> realtime device, etc. Then there's optimal IO characteristics
-> (e.g. geometery hints like stripe unit/stripe width for the
-> allocation policy of that given file) that applications could use
-> if they were present rather than having to expose them through
-> ioctls that nobody even knows about...
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-There is already "optimal IO size" that the application can use,
-how do the geometry hints differ?  Userspace is able to handle
-st_blksize of several MB in size without problems, and any sane
-application will do the IO sized + aligned on multiples of this.
+ Documentation/filesystems/nfs/nfs.txt |   44 +++++++++++++++++++++++++++++++--
+ Documentation/kernel-parameters.txt   |    5 ++++
+ fs/nfs/nfs4proc.c                     |   17 +++++++++++++
+ 3 files changed, 63 insertions(+), 3 deletions(-)
 
-> Perhaps also exposing the project ID for quota purposes, like we do
-> UID and GID. That way we wouldn't need a filesystem specific ioctl
-> to read it....
-
-This seems reasonable and generic and simple.  This is similar to
-directory quotas in other filesystems.
-
-
-Cheers, Andreas
-
-
-
-
+diff --git a/Documentation/filesystems/nfs/nfs.txt b/Documentation/filesystems/nfs/nfs.txt
+index f50f26c..f2571c8 100644
+--- a/Documentation/filesystems/nfs/nfs.txt
++++ b/Documentation/filesystems/nfs/nfs.txt
+@@ -12,9 +12,47 @@ and work is in progress on adding support for minor version 1 of the NFSv4
+ protocol.
+ 
+ The purpose of this document is to provide information on some of the
+-upcall interfaces that are used in order to provide the NFS client with
+-some of the information that it requires in order to fully comply with
+-the NFS spec.
++special features of the NFS client that can be configured by system
++administrators.
++
++
++The nfs4_unique_id parameter
++============================
++
++NFSv4 requires clients to identify themselves to servers with a unique
++string.  File open and lock state shared between one client and one server
++is associated with this identity.  To support robust NFSv4 state recovery
++and transparent state migration, this identity string must not change
++across client reboots.
++
++Without any other intervention, the Linux client uses a string that contains
++the local system's node name.  System administrators, however, often do not
++take care to ensure that node names are fully qualified and do not change
++over the lifetime of a client system.  Node names can have other
++administrative requirements that require particular behavior that does not
++work well as part of an nfs_client_id4 string.
++
++The nfs.nfs4_unique_id boot parameter specifies a unique string that can be
++used instead of a system's node name when an NFS client identifies itself to
++a server.  Thus, if the system's node name is not unique, or it changes, its
++nfs.nfs4_unique_id stays the same, preventing collision with other clients
++or loss of state during NFS reboot recovery or transparent state migration.
++
++The nfs.nfs4_unique_id string is typically a UUID, though it can contain
++anything that is believed to be unique across all NFS clients.  An
++nfs4_unique_id string should be chosen when a client system is installed,
++just as a system's root file system gets a fresh UUID in its label at
++install time.
++
++The string should remain fixed for the lifetime of the client.  It can be
++changed safely if care is taken that the client shuts down cleanly and all
++outstanding NFSv4 state has expired, to prevent loss of NFSv4 state.
++
++This string can be stored in an NFS client's grub.conf, or it can be provided
++via a net boot facility such as PXE.  It may also be specified as an nfs.ko
++module parameter.  Specifying a uniquifier string is not support for NFS
++clients running in containers.
++
+ 
+ The DNS resolver
+ ================
+diff --git a/Documentation/kernel-parameters.txt b/Documentation/kernel-parameters.txt
+index c1601e5..096356b 100644
+--- a/Documentation/kernel-parameters.txt
++++ b/Documentation/kernel-parameters.txt
+@@ -1690,6 +1690,11 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
+ 			will be autodetected by the client, and it will fall
+ 			back to using the idmapper.
+ 			To turn off this behaviour, set the value to '0'.
++	nfs.nfs4_unique_id=
++			[NFS4] Specify an additional fixed unique ident-
++			ification string that NFSv4 clients can insert into
++			their nfs_client_id4 string.  This is typically a
++			UUID that is generated at system install time.
+ 
+ 	nfs.send_implementation_id =
+ 			[NFSv4.1] Send client implementation identification
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 00b5d02..d112931 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -75,6 +75,12 @@
+ 
+ static unsigned short max_session_slots = NFS4_DEF_SLOT_TABLE_SIZE;
+ 
++#define NFS4_CLIENT_ID_UNIQ_LEN		(64)
++static char nfs4_client_id_uniquifier[NFS4_CLIENT_ID_UNIQ_LEN] = "";
++module_param_string(nfs4_unique_id, nfs4_client_id_uniquifier,
++			NFS4_CLIENT_ID_UNIQ_LEN, 0600);
++MODULE_PARM_DESC(nfs4_unique_id, "nfs_client_id4 uniquifier string");
++
+ struct nfs4_opendata;
+ static int _nfs4_proc_open(struct nfs4_opendata *data);
+ static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
+@@ -3924,16 +3930,27 @@ nfs4_init_nonuniform_client_string(const struct nfs_client *clp,
+  *
+  * For now I'm going to stick with init_utsname.  We can easily work
+  * this out later when the client has container support.
++ *
++ * Specifying a uniquifier string is not supported for NFS clients
++ * running in containers.
+  */
+ static unsigned int
+ nfs4_init_uniform_client_string(const struct nfs_client *clp,
+ 				char *buf, size_t len)
+ {
++	if (nfs4_client_id_uniquifier[0] != '\0')
++		goto have_uniquifier;
+ 	return scnprintf(buf, len, "Linux NFSv%u.%u %s %s %s uniform",
+ 				clp->rpc_ops->version, clp->cl_minorversion,
+ 				init_utsname()->nodename,
+ 				init_utsname()->domainname,
+ 				clp->cl_rpcclient->cl_auth->au_ops->au_name);
++
++have_uniquifier:
++	return scnprintf(buf, len, "Linux NFSv%u.%u %s %s uniform",
++				clp->rpc_ops->version, clp->cl_minorversion,
++				nfs4_client_id_uniquifier,
++				clp->cl_rpcclient->cl_auth->au_ops->au_name);
+ }
+ 
+ /**
 
