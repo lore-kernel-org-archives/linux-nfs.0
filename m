@@ -1,95 +1,157 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:7200 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753197Ab2DMRKu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Apr 2012 13:10:50 -0400
-Date: Fri, 13 Apr 2012 13:10:35 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Malahal Naineni <malahal@us.ibm.com>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        pstaubach@exagrid.com, miklos@szeredi.hu, viro@ZenIV.linux.org.uk,
-        hch@infradead.org, michael.brantley@deshaw.com
-Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from
- getattr call
-Message-ID: <20120413131035.79ebc2d0@tlielax.poochiereds.net>
-In-Reply-To: <4F884F32.7010402@RedHat.com>
-References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
-	<20120413150518.GA1987@us.ibm.com>
-	<20120413114236.0e557e01@tlielax.poochiereds.net>
-	<4F884F32.7010402@RedHat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from acsinet15.oracle.com ([141.146.126.227]:40611 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755285Ab2DWVoE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Apr 2012 17:44:04 -0400
+Subject: Re: [PATCH 18/20] NFS: Detect NFSv4 server trunking when mounting
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1335216465.11427.34.camel@lade.trondhjem.org>
+Date: Mon, 23 Apr 2012 17:43:59 -0400
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <6FC87D57-EAB3-4743-A8E4-6FA8E86DF6E1@oracle.com>
+References: <20120423205312.11446.67081.stgit@degas.1015granger.net> <20120423205552.11446.58714.stgit@degas.1015granger.net> <1335216465.11427.34.camel@lade.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 13 Apr 2012 12:07:14 -0400
-Steve Dickson <SteveD@redhat.com> wrote:
 
-> 
-> 
-> On 04/13/2012 11:42 AM, Jeff Layton wrote:
-> > On Fri, 13 Apr 2012 10:05:18 -0500
-> > Malahal Naineni <malahal@us.ibm.com> wrote:
-> > 
-> >> Jeff Layton [jlayton@redhat.com] wrote:
-> >>> 1) should we retry these calls on all filesystems, or attempt to have
-> >>> them "opt-in" in some fashion? This patch adds a flag for that, but
-> >>> we could just treat all filesystems the same way.
-> >>
-> >> I don't know any cases where a retry on ESTALE would hurt. I would say
-> >> retry on all file systems the same way.
-> >>
-> >>> 2) How many times should we retry on an ESTALE error? Once?
-> >>> Indefinitely? Some amount in between? Retrying once would probably
-> >>> fix the bulk of the real world problems with this, but there will
-> >>> still be cases where that's not sufficient.
-> >>
-> >> As you say 1 retry should work in most cases. Indefinitely doesn't make
-> >> sense, I would rather let my application fail! How about 3 retries (3 is
-> >> a nice number! :-) )
-> >>
-> > 
-> > (note: please don't trim the CC list!)
-> > 
-> > Indefinitely does make some sense (as Peter articulated in his original
-> > set). It's possible you could race several times in a row, or a server
-> > misconfiguration or something has happened and you have a transient
-> > error that will eventually recover. His assertion was that any limit on
-> > the number of retries is by definition wrong. For NFS, a fatal signal
-> > ought to interrupt things as well, so retrying indefinitely has some
-> > appeal there.
-> > 
-> > OTOH, we do have to contend with filesystems that might return ESTALE
-> > persistently for other reasons and that might not respond to signals.
-> > Miklos pointed out that some FUSE fs' do this in his review of Peter's
-> > set.
-> > 
-> > As a purely defensive coding measure, limiting the number of retries to
-> > something finite makes sense. If we're going to do that though, I'd
-> > probably recommend that we set the number of retries be something
-> > higher just so that this is more resilient in the face of multiple
-> > races. Those other fs' might "spin" a bit in that case but it is an
-> > error condition and IMO resiliency trumps performance -- at least in
-> > this case.
-> I'm of the opinion retry more than once has the potential of 
-> doing more harm than good... Why introduce looping when there
-> is no solid evidence its even needed. 
-> 
-> I would think 99% of the time the one try would solve the problem. 
-> That 1% probably due two apps that have gone wild fight over the same 
-> file or the FUSE case. In those cases the error should be returned
-> IMHO... 
-> 
-> steved.
-> 
+On Apr 23, 2012, at 5:27 PM, Myklebust, Trond wrote:
 
-My only real concern with doing that is that again we're going to have
-to alter every path-based syscall. If we decide later that retrying
-once isn't sufficient, then we'll be stuck doing it again.
+> On Mon, 2012-04-23 at 16:55 -0400, Chuck Lever wrote:
+>> Currently the Linux NFS client waits to perform a SETCLIENTID until
+>> just before an application wants to open a file.  Quite a bit of
+>> activity can occur before any state is needed.
+>> 
+>> If the client cares about server trunking, however, no NFSv4
+>> operations can proceed until the client determines who it is talking
+>> to.  Thus server IP trunking detection must be done when the client
+>> first encounters an unfamiliar server IP address.
+>> 
+>> The nfs_get_client() function walks the nfs_client_list and matches on
+>> server IP address.  The outcome of that walk tells us immediately if
+>> we have an unfamiliar server IP address.  It invokes an init_client()
+>> method in this case.
+>> 
+>> Thus, nfs4_init_client() can establish a fresh client ID, and perform
+>> trunking detection with it.  The exact process for detecting trunking
+>> is different for NFSv4.0 and NFSv4.1, so a minorversion-specific
+>> init_client callout is introduced.
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> 
+>> fs/nfs/client.c    |  223 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+>> fs/nfs/internal.h  |    6 +
+>> fs/nfs/nfs4_fs.h   |    7 ++
+>> fs/nfs/nfs4proc.c  |    2 
+>> fs/nfs/nfs4state.c |  131 ++++++++++++++++++++++++++++++-
+>> 5 files changed, 367 insertions(+), 2 deletions(-)
+>> 
+>> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+>> index 920abbc..7330673 100644
+>> --- a/fs/nfs/client.c
+>> +++ b/fs/nfs/client.c
+>> @@ -566,7 +566,8 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
+>> 			return nfs_found_client(cl_init, clp);
+>> 		}
+>> 		if (new) {
+>> -			list_add(&new->cl_share_link, &nn->nfs_client_list);
+>> +			list_add_tail(&new->cl_share_link,
+>> +					&nn->nfs_client_list);
+>> 			spin_unlock(&nn->nfs_client_lock);
+>> 			new->cl_flags = cl_init->init_flags;
+>> 			return cl_init->rpc_ops->init_client(new,
+>> @@ -584,6 +585,210 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
+>> 	return new;
+>> }
+>> 
+>> +#ifdef CONFIG_NFS_V4
+>> +/*
+>> + * Returns true if the client IDs match
+>> + */
+>> +static bool
+>> +nfs4_match_clientids(struct nfs_client *a, struct nfs_client *b)
+>> +{
+>> +	if (a->cl_clientid != b->cl_clientid) {
+>> +		dprintk("NFS: --> %s client ID %llx does not match %llx\n",
+>> +			__func__, a->cl_clientid, b->cl_clientid);
+>> +		return false;
+>> +	}
+>> +	dprintk("NFS: --> %s client ID %llx matches %llx\n",
+>> +		__func__, a->cl_clientid, b->cl_clientid);
+>> +	return true;
+>> +}
+>> +
+>> +/**
+>> + * nfs40_walk_client_list - Find server that recognizes a client ID
+>> + *
+>> + * @new: nfs_client with client ID to test
+>> + * @result: OUT: found nfs_client, or new
+>> + * @cred: credential to use for trunking test
+>> + *
+>> + * Returns NFS4_OK, a negative errno, or a negative NFS4ERR status.
+>> + * If NFS4_OK is returned, an nfs_client pointer is planted in "result."
+>> + *
+>> + * NB: nfs40_walk_client_list() relies on the new nfs_client being
+>> + *     the last nfs_client on the list.
+>> + */
+>> +int nfs40_walk_client_list(struct nfs_client *new,
+>> +			   struct nfs_client **result,
+>> +			   struct rpc_cred *cred)
+>> +{
+>> +	struct nfs_net *nn = net_generic(new->cl_net, nfs_net_id);
+>> +	struct nfs_client *pos, *prev = NULL;
+>> +	struct nfs4_setclientid_res clid = {
+>> +		.clientid	= new->cl_clientid,
+>> +		.confirm	= new->cl_confirm,
+>> +	};
+>> +	int status;
+>> +
+>> +	dprintk("NFS: --> %s nfs_client = %p\n", __func__, new);
+>> +
+>> +	spin_lock(&nn->nfs_client_lock);
+>> +
+>> +	list_for_each_entry(pos, &nn->nfs_client_list, cl_share_link) {
+>> +		if (pos->cl_cons_state < 0)
+>> +			continue;
+>> +
+>> +		if (pos->rpc_ops != new->rpc_ops)
+>> +			continue;
+>> +
+>> +		if (pos->cl_proto != new->cl_proto)
+>> +			continue;
+>> +
+>> +		if (pos->cl_minorversion != new->cl_minorversion)
+>> +			continue;
+>> +
+>> +		dprintk("NFS: --> %s comparing %llx and %llx\n", __func__,
+>> +			new->cl_clientid, pos->cl_clientid);
+>> +		if (pos->cl_clientid != new->cl_clientid)
+>> +			continue;
+>> +
+>> +		atomic_inc(&pos->cl_count);
+>> +		dprintk("%s nfs_client = %p ({%d})\n",
+>> +			__func__, pos, atomic_read(&pos->cl_count));
+>> +		spin_unlock(&nn->nfs_client_lock);
+>> +
+>> +		dprintk("NFS: --> %s confirming %llx\n",
+>> +			__func__, new->cl_clientid);
+>> +
+>> +		if (prev)
+>> +			nfs_put_client(prev);
+>> +
+>> +		status = nfs4_proc_setclientid_confirm(pos, &clid, cred);
+> 
+> How are you protecting against NFS4CLNT_PURGE_STATE?
 
-That said, it would jive better with the existing ESTALE retry in the
-lookup code.
+My design is that the clid_init_mutex is held by nfs4_reclaim_lease() and while we are in this code.  Whether that made it out of my head and into the source code is another question.
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
