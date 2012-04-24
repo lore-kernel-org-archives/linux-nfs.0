@@ -1,71 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54372 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:63645 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754346Ab2DKSUR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Apr 2012 14:20:17 -0400
-Date: Wed, 11 Apr 2012 14:20:15 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH][RFC] nfsd/lockd: have locks_in_grace take a sb arg
-Message-ID: <20120411182015.GA31025@fieldses.org>
-References: <1333455279-11200-1-git-send-email-jlayton@redhat.com>
- <4F841D2A.9020504@parallels.com>
- <20120410081612.65dd25fa@tlielax.poochiereds.net>
- <4F842BAE.2010804@parallels.com>
- <20120410202251.GH18465@fieldses.org>
- <4F855E3D.6090306@parallels.com>
- <20120411172019.GB29903@fieldses.org>
- <4F85C087.7060106@parallels.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <4F85C087.7060106@parallels.com>
+	id S1752773Ab2DXOwY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Apr 2012 10:52:24 -0400
+Date: Tue, 24 Apr 2012 10:50:49 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Peter Staubach <pstaubach@exagrid.com>
+Cc: Steve Dickson <SteveD@redhat.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "miklos@szeredi.hu" <miklos@szeredi.hu>,
+        "viro@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
+        "hch@infradead.org" <hch@infradead.org>,
+        "michael.brantley@deshaw.com" <michael.brantley@deshaw.com>,
+        "sven.breuner@itwm.fraunhofer.de" <sven.breuner@itwm.fraunhofer.de>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "malahal@us.ibm.com" <malahal@us.ibm.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "trond.myklebust@fys.uio.no" <trond.myklebust@fys.uio.no>,
+        "rees@umich.edu" <rees@umich.edu>
+Subject: Re: [PATCH RFC v3] vfs: make fstatat retry once on ESTALE errors
+ from getattr call
+Message-ID: <20120424105049.5ed96b40@tlielax.poochiereds.net>
+In-Reply-To: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC063CF8E64B@IT-1874.Isys.com>
+References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
+	<1334749927-26138-1-git-send-email-jlayton@redhat.com>
+	<20120420104055.511e15bc@tlielax.poochiereds.net>
+	<4F91C49D.8070908@RedHat.com>
+	<20120420171300.326d6e36@corrin.poochiereds.net>
+	<4F956D5C.5050801@RedHat.com>
+	<20120423113216.01992555@tlielax.poochiereds.net>
+	<4F959A36.2080402@RedHat.com>
+	<FA8A9A935BFD3A4D8F0CDA1C4F611BCC063CF8E64B@IT-1874.Isys.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 11, 2012 at 09:33:59PM +0400, Stanislav Kinsbursky wrote:
-> 11.04.2012 21:20, J. Bruce Fields пишет:
-> >So you really are exporting subtrees of the same filesystem from
-> >multiple containers?  Why?
-> >
+On Mon, 23 Apr 2012 16:38:00 -0400
+Peter Staubach <pstaubach@exagrid.com> wrote:
+
+> I don't really like the idea of introducing another errno as well.  It seems like too much complexity and represents complexity that no one has really justified needing.
 > 
-> Everything is very-very simple and obvious.
-> We use "chroot jail". This is the most often and simple setup for containers.
-> And, basicaly, Virtuozzo container file system consist of two parts:
-> one of them is it's private modified data, another part is a
-> template, used for all containers based on it (rhel6, for example;
-> when it's content is modified my some container - then modified file
-> copied to private part of container, which modified the file).
-> Anyway, with properly configured environment it could be as many
-> containers on the same file system, as possible. And making sure,
-> that no data shared between them is root's responsibility.
-> This approach gives us journal bottleneck. That's why, in future we
-> are going to use "ploop" device (a kind of a very smart loop device)
-> per container. And thus this problem with grace period for file
-> systems will disappear.
+
+I tend to agree here. Miklos, can you elaborate a bit on what fuse
+filesystems you're particularly concerned about here? Which ones return
+ESTALE and under what conditions. Maybe we can try to tailor this
+solution to avoid the complexity without impacting them.
+
+> This is a situation which we know happens in nature.  We should fix it and fix it correctly and not for just "part of the time".  The changes are pretty simple and straightforward, so complexity isn't even an argument.
 > 
-> >And are you sure you're not vulnerable to filehandle-guessing attacks?
-> >
+
+That was the case in the original patch, yes. One thing I see that will
+be tricky in forward porting all of that work is that that set also had
+some checks to make sure that lookups were making forward progress
+before retrying. Trying to add that to the current lookup code may be
+more difficult.
+
+do_path_lookup (for instance) does this currently:
+
+---------------[snip]---------------
+                retval = path_lookupat(dfd, name, flags, nd);
+        if (unlikely(retval == -ESTALE))
+                retval = path_lookupat(dfd, name, flags | LOOKUP_REVAL, nd);
+---------------[snip]---------------
+
+The trivial thing to do to make that retry is to turn that ESTALE check
+into a while loop (optionally with some sort of limit on the number of
+retries). But...we don't have a way to know the pointer to the last
+dentry that we successfully looked up.
+
+One possibility there is to try and have the error paths that matter
+set the nd->path.dentry to the current one (without taking any
+references). Then we could compare that to the last one on each pass of
+the while loop and ensure that it's different and just not try to
+dereference it.
+
+> A tunable sounds good, until it is needed, and when it is needed, it is too late.  The system should just work correctly on its own, so I don't think that this is such a good idea either.
 > 
-> No, I'm not. Could you give me some examples of such attacks?
 
-Suppose you export subtree /export/foo of filesystem /export to a
-client, that client can also easily access anything else in /export; all
-it hsa to do is guess the filehandle of the thing it wants to access (or
-just guess filehandle of /export itself; root filehandles are likely
-especially easily to guess), and then work from there.
+Yeah, it's not ideal, but if there are concerns about the number of
+retries, then that's one way to alleviate them. Eventually we could
+eliminate the tunable when/if we found a default that worked for
+everyone, or just decide that retrying indefinitely is OK.
 
-(There's a workaround: you can set the subtree_check option.  That
-causes a number of problems (renaming a file to a different directory
-changes its filehandle, for example, so anyone trying to use it while it
-gets renamed gets an unexpected ESTALE).  So we don't recommend it.)
-
-So if all the containers are sharing the same filesystem, then anyone
-exporting a subdirectory of its own filesystem has essentially granted
-access to everyone's filesystem.
-
-For that reason it's really only recommended to export separate
-filesystems....
-
---b.
+-- 
+Jeff Layton <jlayton@redhat.com>
