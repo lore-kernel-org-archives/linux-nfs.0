@@ -1,55 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:12464 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51126 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754520Ab2D0Acl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Apr 2012 20:32:41 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: David Howells <dhowells@redhat.com>
-CC: Steve French <smfrench@gmail.com>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
-        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "wine-devel@winehq.org" <wine-devel@winehq.org>,
-        "kfm-devel@kde.org" <kfm-devel@kde.org>,
-        "nautilus-list@gnome.org" <nautilus-list@gnome.org>,
-        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
-        "libc-alpha@sourceware.org" <libc-alpha@sourceware.org>
-Subject: Re: [PATCH 0/6] Extended file stat system call
-Date: Fri, 27 Apr 2012 00:30:30 +0000
-Message-ID: <1335486630.2559.3.camel@lade.trondhjem.org>
-References: <1335460011.9701.30.camel@lade.trondhjem.org>
-	 <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
-	 <CAH2r5ms4WQV3DnTvqNN=2N71Cj8UHwj8Z6+RHXgrAOv6mSoyQg@mail.gmail.com>
-	 <20656.1335450358@redhat.com>
-	 <CAH2r5mv1Lijdwk5zsQwYJr4Etb6fhrRyNXm-iFCQX+HecboGrQ@mail.gmail.com>
-	 <1335453958.9701.10.camel@lade.trondhjem.org>
-	 <CAH2r5mt5af-_hxBRKK72iD5Gr99bo91ec78Rov8EGVEx8=21mA@mail.gmail.com>
-	 <1335459642.9701.27.camel@lade.trondhjem.org>
-	 <CAH2r5mvmCfLrxRHje6Wx5X84zxPEHwRMUJGsjvWBujMu7w841w@mail.gmail.com>
-	  <10104.1335477476@redhat.com>
-In-Reply-To: <10104.1335477476@redhat.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1755254Ab2DXPjv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Apr 2012 11:39:51 -0400
+Message-ID: <4F96C93F.3060908@redhat.com>
+Date: Tue, 24 Apr 2012 17:39:43 +0200
+From: Niels de Vos <ndevos@redhat.com>
 MIME-Version: 1.0
+To: Jim Rees <rees@umich.edu>
+CC: Chuck Lever <chuck.lever@oracle.com>, Steve Dickson <steved@redhat.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] rpcbind: Only listen on requested hostnames for NC_TPI_COTS
+ connections
+References: <1335194692-6714-1-git-send-email-ndevos@redhat.com> <82D8C43F-5C40-444C-9573-B4FF95F615DA@oracle.com> <4F957D30.9010102@redhat.com> <7C71F75F-3F15-401B-8700-38B0EBE2B595@oracle.com> <4F96C0E3.9090007@redhat.com> <20120424152950.GB13191@umich.edu>
+In-Reply-To: <20120424152950.GB13191@umich.edu>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA0LTI2IGF0IDIyOjU3ICswMTAwLCBEYXZpZCBIb3dlbGxzIHdyb3RlOg0K
-PiBNeWtsZWJ1c3QsIFRyb25kIDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+
-IA0KPiA+IFlvdSBhcmUgc3RpbGwgbm90IGV4cGxhaW5pbmcgd2h5IHRoZXkgbmVlZCB0byBrbm93
-IHRoZSB2YWx1ZXMgYXQgYWxsPyBJZg0KPiA+IHRoZSB2YWx1ZXMgYXJlIGJvZ3VzLCB0aGVuIGRv
-bid0IHJldHVybiB0aGVtLCBhbmQgZG9uJ3Qgc2V0IHRoZSBmbGFnDQo+ID4gdGhhdCBzYXlzIHRo
-ZXkgYXJlIGJlaW5nIHJldHVybmVkLg0KPiB0aA0KPiBXaGF0IGlmIHRoZSB4c3RhdCgpIGFuZCBz
-dHJ1Y3QgeHN0YXQgZXZlbnR1YWxseSBiZWNvbWVzIHdoYXQgdXNlcnNwYWNlIHVzZXMgYXMNCj4g
-c3RhdCgpIChhcyBhIHdyYXBwZXIpIGFuZCBzdHJ1Y3Qgc3RhdCAoaWYgc3VjaCBhIHRoaW5nIGlz
-IHBvc3NpYmxlIHdpdGggZ2xpYmMNCj4gdmVyc2lvbmluZyk/ICBEbyBvbGRlciBwcm9ncmFtcyB0
-aGF0IHRoaW5rIHRoZXkncmUgdXNpbmcgc3RhdCgpIGFuZCBkb24ndCBrbm93DQo+IGFib3V0IHRo
-ZSBleHRyYSBmaWVsZHMgYXZhaWxhYmxlIGV4cGVjdCB0byBzZWUgYSB1c2VmdWwgdmFsdWUgaW4g
-c3RfaW5vPw0KDQpEb2VzIGl0IHJlYWxseSBtYXR0ZXIgd2hldGhlciBpdCBpcyB0aGUga2VybmVs
-IG9yIHVzZXJsYW5kIHRoYXQgaXMNCnJlc3BvbnNpYmxlIGZvciBmYWtpbmcgdXAgaW5vZGUgbnVt
-YmVycz8gSWYgdXNlcmxhbmQgd2FudHMgdG8gdXNlDQp4c3RhdCgpIGluIG9yZGVyIHRvIGZha2Ug
-dXAgYSBzdGF0KCkgY2FsbCwgdGhlbiBpdCBnZXRzIHRvIHRha2UNCnJlc3BvbnNpYmlsaXR5IGZv
-ciB0aGUgcmVzdWx0cy4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQg
-bWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0
-YXBwLmNvbQ0KDQo=
+On 04/24/2012 05:29 PM, Jim Rees wrote:
+> Niels de Vos wrote:
+>
+>    On 04/23/2012 06:22 PM, Chuck Lever wrote:
+>    >
+>    >  So you did check the mail archive?  I seem to recall other patches like
+>    >  this in the past, and that there is a reason why rpcbind works this way.
+>    >  I simply don't remember the specifics right at the moment.
+>
+>    I did, but no messages about this subject come up for me... Maybe I'm looking
+>    in the wrong places :-/
+>
+> I asked about this last November, and at that time Chuck referred me to the
+> mail archive too.  I couldn't find any discussion either.  But the behavior
+> is intentional, so I don't think you'll get a patch accepted.  I never did
+> discover the reason but I do have a workaround.  I just don't run rpcbind.
+
+Many thanks for the pointer, I think this should be an acceptable solution.
+
+Cheers,
+Niels
+
+> This was the most informative response I got:
+>
+> Date: Tue, 8 Nov 2011 19:01:51 +1100
+> From: Max Matveev<makc@redhat.com>
+> Subject: Re: rpcbind -h
+> To: Jim Rees<rees@umich.edu>
+> Cc: Chuck Lever<chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+>
+> Chuck's quote from the manpage reminded me - -h was used to work
+> around the address selection: if server has more then one address the
+> reply may use any of them. Some clients don't like it.
+>
+> This issue should go away after
+>
+> commit 74ef3df0236c55185225c62fba34953f2582da72
+> Author: Olaf Kirch<okir@suse.de>
+> Date:   Wed Mar 2 10:09:24 2011 -0500
+>
+> was added to libtirpc.
+>
+>   rees>  As I said before, I was hoping for the equivalent of "portmap
+>   rees>  -l".  I was ready to code up a patch of some kind but now have
+>   rees>  a workaround (mount with nolock and don't run rpcbind at all).
+>
+> iptables is another option.
+>
+> max
