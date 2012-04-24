@@ -1,92 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42339 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751435Ab2D1L2P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 28 Apr 2012 07:28:15 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: NeilBrown <neilb@suse.de>
-Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/3] mountd: parse ip address earlier
-Date: Sat, 28 Apr 2012 07:28:10 -0400
-Message-Id: <1335612492-22574-1-git-send-email-bfields@redhat.com>
-In-Reply-To: <20120428112639.GA22396@fieldses.org>
-References: <20120428112639.GA22396@fieldses.org>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:63905 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754012Ab2DXXXP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Apr 2012 19:23:15 -0400
+Received: by pbbro12 with SMTP id ro12so693128pbb.19
+        for <linux-nfs@vger.kernel.org>; Tue, 24 Apr 2012 16:23:15 -0700 (PDT)
+MIME-Version: 1.0
+Date: Tue, 24 Apr 2012 19:23:15 -0400
+Message-ID: <CA+WntOuEeVYNJbmeS9vqkTJt8+sTAc=6zDT757+KTGu7LY5eUg@mail.gmail.com>
+Subject: nfs-utils-1.2.5 getpagesize error in utils/blkmpd/device-process.c
+From: Super Bisquit <superbisquit@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+root@dookie-bomb:/tmp/nfs-utils-1.2.5/utils/blkmapd# make
+gcc -DHAVE_CONFIG_H -I. -I../../support/include   -D_GNU_SOURCE -Wall
+-Wextra -Wstrict-prototypes  -pipe -D_LARGEFILE64_SOURCE -g -O2 -MT
+device-discovery.o -MD -MP -MF .deps/device-discovery.Tpo -c -o
+device-discovery.o device-discovery.c
+mv -f .deps/device-discovery.Tpo .deps/device-discovery.Po
+gcc -DHAVE_CONFIG_H -I. -I../../support/include   -D_GNU_SOURCE -Wall
+-Wextra -Wstrict-prototypes  -pipe -D_LARGEFILE64_SOURCE -g -O2 -MT
+device-inq.o -MD -MP -MF .deps/device-inq.Tpo -c -o device-inq.o
+device-inq.c
+mv -f .deps/device-inq.Tpo .deps/device-inq.Po
+gcc -DHAVE_CONFIG_H -I. -I../../support/include   -D_GNU_SOURCE -Wall
+-Wextra -Wstrict-prototypes  -pipe -D_LARGEFILE64_SOURCE -g -O2 -MT
+device-process.o -MD -MP -MF .deps/device-process.Tpo -c -o
+device-process.o device-process.c
+device-process.c: In function ‘decode_blk_volume’:
+device-process.c:299: error: ‘PAGE_SIZE’ undeclared (first use in this function)
+device-process.c:299: error: (Each undeclared identifier is reported only once
+device-process.c:299: error: for each function it appears in.)
+make: *** [device-process.o] Error 1
+root@dookie-bomb:/tmp/nfs-utils-1.2.5/utils/blkmapd#
 
-I don't see the point of waiting to the last minute to parse the ip
-address.  If the client name isn't a legal ip address then this will
-fail fairly quickly, so there's not much of a performance penalty.
-
-Also, note the previous code incorrectly assumed client_resolve would
-always return non-NULL.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- utils/mountd/cache.c |   33 +++++++++++++++++++++------------
- 1 files changed, 21 insertions(+), 12 deletions(-)
-
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index ac9cdbd..08ff150 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -495,6 +495,19 @@ static bool match_fsid(struct parsed_fsid *parsed, nfs_export *exp, char *path)
- 	return false;
- }
- 
-+struct addrinfo *lookup_client_addr(char *dom)
-+{
-+	struct addrinfo *ret;
-+	struct addrinfo *tmp;
-+
-+	tmp = host_pton(dom);
-+	if (tmp == NULL)
-+		return NULL;
-+	ret = client_resolve(tmp->ai_addr);
-+	freeaddrinfo(tmp);
-+	return ret;
-+}
-+
- static void nfsd_fh(FILE *f)
- {
- 	/* request are:
-@@ -538,6 +551,12 @@ static void nfsd_fh(FILE *f)
- 
- 	auth_reload();
- 
-+	if (use_ipaddr) {
-+		ai = lookup_client_addr(dom);
-+		if (!ai)
-+			goto out;
-+	}
-+
- 	/* Now determine export point for this fsid/domain */
- 	for (i=0 ; i < MCL_MAXTYPES; i++) {
- 		nfs_export *next_exp;
-@@ -578,18 +597,8 @@ static void nfsd_fh(FILE *f)
- 
- 			if (!match_fsid(&parsed, exp, path))
- 				continue;
--			if (use_ipaddr) {
--				if (ai == NULL) {
--					struct addrinfo *tmp;
--					tmp = host_pton(dom);
--					if (tmp == NULL)
--						goto out;
--					ai = client_resolve(tmp->ai_addr);
--					freeaddrinfo(tmp);
--				}
--				if (!client_check(exp->m_client, ai))
--					continue;
--			}
-+			if (use_ipaddr && !client_check(exp->m_client, ai))
-+				continue;
- 			if (!found || subexport(&exp->m_export, found)) {
- 				found = &exp->m_export;
- 				free(found_path);
--- 
-1.7.7.6
-
+http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=223219 I looked t
+this for suggestions.
