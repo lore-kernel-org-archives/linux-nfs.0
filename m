@@ -1,170 +1,423 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:31891 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752225Ab2DJOxL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Apr 2012 10:53:11 -0400
-Message-ID: <4F84493C.1040303@parallels.com>
-Date: Tue, 10 Apr 2012 18:52:44 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH][RFC] nfsd/lockd: have locks_in_grace take a sb arg
-References: <1333455279-11200-1-git-send-email-jlayton@redhat.com>	<4F841D2A.9020504@parallels.com>	<20120410081612.65dd25fa@tlielax.poochiereds.net>	<4F842BAE.2010804@parallels.com> <20120410093900.20209d00@tlielax.poochiereds.net>
-In-Reply-To: <20120410093900.20209d00@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from rcsinet15.oracle.com ([148.87.113.117]:51593 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754677Ab2DXPSr convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Apr 2012 11:18:47 -0400
+Subject: Re: [PATCH] rpcbind: Only listen on requested hostnames for NC_TPI_COTS connections
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=US-ASCII
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4F96C0E3.9090007@redhat.com>
+Date: Tue, 24 Apr 2012 11:18:39 -0400
+Cc: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
+Message-Id: <A4109129-7766-4AB3-9895-3A20352F612B@oracle.com>
+References: <1335194692-6714-1-git-send-email-ndevos@redhat.com> <82D8C43F-5C40-444C-9573-B4FF95F615DA@oracle.com> <4F957D30.9010102@redhat.com> <7C71F75F-3F15-401B-8700-38B0EBE2B595@oracle.com> <4F96C0E3.9090007@redhat.com>
+To: Niels de Vos <ndevos@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-10.04.2012 17:39, Jeff Layton пишет:
-> On Tue, 10 Apr 2012 16:46:38 +0400
-> Stanislav Kinsbursky<skinsbursky@parallels.com>  wrote:
->
->> 10.04.2012 16:16, Jeff Layton пишет:
->>> On Tue, 10 Apr 2012 15:44:42 +0400
->>>
->>> (sorry about the earlier truncated reply, my MUA has a mind of its own
->>> this morning)
->>>
->>
->> OK then. Previous letter confused me a bit.
->>
->>>
->>> TBH, I haven't considered that in depth. That is a valid situation, but
->>> one that's discouraged. It's very difficult (and expensive) to
->>> sequester off portions of a filesystem for serving.
->>>
->>> A filehandle is somewhat analogous to a device/inode combination. When
->>> the server gets a filehandle, it has to determine "is this within a
->>> path that's exported to this host"? That process is called subtree
->>> checking. It's expensive and difficult to handle. It's always better to
->>> export along filesystem boundaries.
->>>
->>> My suggestion would be to simply not deal with those cases in this
->>> patch. Possibly we could force no_subtree_check when we export an fs
->>> with a locks_in_grace option defined.
->>>
->>
->> Sorry, but without dealing with those cases your patch looks a bit... Useless.
->> I.e. it changes nothing, it there will be no support from file systems, going to
->> be exported.
->> But how are you going to push developers to implement these calls? Or, even if
->> you'll try to implement them by yourself, how they will looks like?
->> Simple check only for superblock looks bad to me, because any other start of
->> NFSd will lead to grace period for all other containers (which uses the same
->> filesystem).
->>
->
-> Changing nothing was sort of the point. The idea was to allow
-> filesystems to override this if they choose. The main impetus here was
-> to allow clustered filesystems to handle this in a different fashion to
-> allow them to do active/active serving from multiple nodes. I wasn't
-> considering the container use-case when I spun this up last week...
->
 
-Sorry, I didn't notice, that this patch was sent a week ago (thought, that you 
-wrote it yesterday).
+On Apr 24, 2012, at 11:04 AM, Niels de Vos wrote:
 
-> Now that said, we probably can accommodate containers with this too.
-> Perhaps we could consider passing in a sb+namespace tuple eventually?
->
+> Hi again,
+> 
+> On 04/23/2012 06:22 PM, Chuck Lever wrote:
+> >
+> > On Apr 23, 2012, at 12:02 PM, Niels de Vos wrote:
+> >
+> >> On 04/23/2012 05:33 PM, Chuck Lever wrote:
+> >>> Hi-
+> >>>
+> >>> On Apr 23, 2012, at 11:24 AM, Niels de Vos wrote:
+> >>>
+> >>>> There is a check for NC_TPI_CLTS connections which correctly binds
+> only
+> >>>> to the hostnames/addresses given on the commandline (-h option). This
+> >>>> implementation does not take non NC_TPI_CLTS like NC_TPI_COTS and
+> >>>> NC_TPI_COTS_ORD into account. This causes non NC_TPI_CLTS protocols to
+> >>>> listen on the "0.0.0.0" and "::" wildcard addresses.
+> >>>>
+> >>>> This patch simplifies the code, and moves the check for
+> NC_TPI_CLTS into
+> >>>> the loop when a bind() for each requested address is done. All
+> >>>> connections, including NC_TPI_COTS and NC_TPI_COTS_ORD can now benefit
+> >>>> from resticted bind()'ing on addresses.
+> >>>
+> >>> Please check the mailing list archives for linux-nfs and/or
+> >>> libtirpc-devel. There may be a good reason for this asymmetrical
+> >>> behavior, or at least some enlightening discussion of this idea.
+> >>
+> >> The only difference in the code before and after is for NC_TPI_CLTS vs
+> >> (NC_TPI_CLTS or NC_TPI_COTS) and has moved to this if statement:
+> >>
+> >> 		if (nconf->nc_semantics != NC_TPI_CLTS) {
+> >>
+> >> I could not find any reasons why binding on UDP may be restricted, where
+> >> binding on TCP would not.
+> >
+> > So you did check the mail archive?  I seem to recall other patches like
+> > this in the past, and that there is a reason why rpcbind works this way.
+> > I simply don't remember the specifics right at the moment.
+> 
+> I did, but no messages about this subject come up for me... Maybe I'm looking
+> in the wrong places :-/
+> 
+> > One reason might be that UDP doesn't guarantee that the forward and
+> > reply network paths will use the same source and destination addresses,
+> > but TCP does.
+> 
+> Would this not rather speak against binding on a specific address for UDP?
+> That functionality already exists, its just TCP that ignores the option from
+> the command line.
+> 
+> >>> Also, can you tell us why you need this change in the patch
+> >>> description?
+> >>
+> >> Currently rpcbind provides the -h option to contain a hostname (like
+> >> localhost). When the option is used, rpcbind will only listen on the
+> >> "127.0.0.1" address for UDP. TCP will continue to listen on "0.0.0.0"
+> >> and "::". IMHO this is inconsistent and wrong, hence my proposal to
+> >> fix this.
+> >
+> > Let me ask a more specific question: is there a real-world use case
+> > that requires this change?
+> 
+> It was brought to my attention that the old portmapper has this feature. When
+> migrating the configuration to rpcbind, it was noticed that the -h option does
+> not affect binding TCP sockets, only UDP.
 
-We can, of course. But it looks like the problem with different NFSd on the same 
-file system won't be solved.
+In general, rpcbind is not supposed to be precisely backwards-compatible with portmapper, since the functionality is significantly expanded and made more secure.
 
->>>> Also, don't we need to prevent of exporting the same file system parts but
->>>> different servers always, but not only for grace period?
->>>>
->>>
->>> I'm not sure I understand what you're asking here. Were you referring
->>> to my suggestion earlier of not allowing the export of the same
->>> filesystem from more than one container? If so, then yes that would
->>> apply before and after the grace period ends.
->>>
->>
->> I was talking about preventing of exporting intersecting directories by
->> different server.
->> IOW, exporting of the same file system by different NFS server is allowed, but
->> only if their exporting directories doesn't intersect.
->
-> Doesn't that require that the containers are aware of each other to
-> some degree? Or are you considering doing this in the kernel?
->
-> If the latter, then there's another problem. The export table is kept
-> in userspace (in mountd) and the kernel only upcalls for it as needed.
->
-> You'll need to change that overall design if you want the kernel to do
-> this enforcement.
->
+It sounds like you don't have a use case that requires the change.  Is that correct?
 
-Hmm, I see...
-Yes, I was thinking about doing it in kernel.
-In theory (I'm just thinking and writing simultaneously - this is not a solid 
-idea) this could be a kernel thread (this gives desired fs access). And most 
-probably this thread have to be launched on nfsd module insertion.
-There should be some way to add a job for it on NFSd start and a way to wait for 
-the job to be done. This is the easy part.
-But I forgot about cross mounts...
+> This behavior is documented in the
+> man-page, but is still feels inconsistent.
 
->> This check is expensive (as you mentioned), but have to be done only once on NFS
->> server start.
->
-> Well, no. The subtree check happens every time nfsd processes a
-> filehandle -- see nfsd_acceptable().
->
-> Basically we have to turn the filehandle into a dentry and then walk
-> back up to the directory that's exported to verify that it is within
-> the correct subtree. If that fails, then we might have to do it more
-> than once if it's a hardlinked file.
->
+The fact this is documented in the man page suggests it is purposely designed to behave this way.  I don't have time to research this at the moment, but I'll look into it soon.
 
-Wait. Looks like I'm missing something.
-This subtree check has nothing with my proposal (if I'm not mistaken).
-This option and it's logic remains the same.
-My proposal was to check directories, desired to be exported, on NFS server 
-start. And if any of passed exports intersects with any of exports, already 
-shared by another NFSd - then shutdown NFSd and print error message.
-Am I missing the point here?
+In the meantime, I'd like to exercise a firm community member's veto on this behavior change, just until we figure out why "-h" is the way it is.
 
->> With this solution, grace period can simple, and no support from exporting file
->> system is required.
->> But the main problem here is that such intersections can be checked only in
->> initial file system environment (containers with it's own roots, gained via
->> chroot, can't handle this situation).
->> So, it means, that there have to be some daemon (kernel or user space), which
->> will handle such requests from different NFS server instances... Which in turn
->> means, that some way of communication between this daemon and NFS servers is
->> required. And unix (any of them) sockets doesn't suits here, which makes this
->> problem more difficult.
->>
->
-> This is a truly ugly problem, and unfortunately parts of the nfsd
-> codebase are very old and crusty. We've got a lot of cleanup work ahead
-> of us no matter what design we settle on.
->
-> This is really a lot bigger than the grace period. I think we ought to
-> step back a bit and consider this more "holistically" first. Do you
-> have a pointer to an overall design document or something?
->
-
-What exactly you are asking about? Overall design of containerization?
-
-> One thing that puzzles me at the moment. We have two namespaces to deal
-> with -- the network and the mount namespace. With nfs client code,
-> everything is keyed off of the net namespace. That's not really the
-> case here since we have to deal with a local fs tree as well.
->
-> When an nfsd running in a container receives an RPC, how does it
-> determine what mount namespace it should do its operations in?
->
-
-We don't use mount namespaces, so that's why I wasn't thinking about it...
-But if we have 2 types of namespaces, then we have to tie  mount namesapce to 
-network. I.e we can get desired mount namespace from per-net NFSd data.
-
-But, please, don't ask me, what will be, if two or more NFS servers shares the 
-same mount namespace... Looks like this case should be forbidden.
+> >> While doing so, I noticed that the if and else branches are extremely
+> >> similar and therefore I combined them.
+> >
+> > That is a clean up, and being a logically distinct change, generally
+> > belongs in a separate patch from a patch that changes the code behavior.
+> 
+> If you or someone else can let me know if the change itself is acceptable,
+> I'll resend the patch in two pieces (behavior change, cleanup).
+> After more testing it seems that the patched rpcbind is not functioning
+> correctly. I'll have to look into that before sending a 2nd patch-set.
+> 
+> Thanks!
+> 
+> 
+> >> Let me know if you need any further details. Thanks,
+> >> Niels
+> >>
+> >>
+> >>>
+> >>>> Signed-off-by: Niels de Vos<ndevos@redhat.com>
+> >>>> ---
+> >>>> src/rpcbind.c |  230
+> ++++++++++++++++++++------------------------------------
+> >>>> 1 files changed, 82 insertions(+), 148 deletions(-)
+> >>>>
+> >>>> diff --git a/src/rpcbind.c b/src/rpcbind.c
+> >>>> index 9a0504d..3f6c2a9 100644
+> >>>> --- a/src/rpcbind.c
+> >>>> +++ b/src/rpcbind.c
+> >>>> @@ -339,172 +339,103 @@ init_transport(struct netconfig *nconf)
+> >>>> 		hints.ai_socktype = si.si_socktype;
+> >>>> 		hints.ai_protocol = si.si_proto;
+> >>>> 	}
+> >>>> -	if (nconf->nc_semantics == NC_TPI_CLTS) {
+> >>>> +
+> >>>> +	/*
+> >>>> +	 * If no hosts were specified, just bind to INADDR_ANY.  Otherwise
+> >>>> +	 * make sure 127.0.0.1 is added to the list.
+> >>>> +	 */
+> >>>> +	nhostsbak = nhosts;
+> >>>> +	nhostsbak++;
+> >>>> +	hosts = realloc(hosts, nhostsbak * sizeof(char *));
+> >>>> +	if (nhostsbak == 1)
+> >>>> +		hosts[0] = "*";
+> >>>> +	else {
+> >>>> +		if (hints.ai_family == AF_INET) {
+> >>>> +			hosts[nhostsbak - 1] = "127.0.0.1";
+> >>>> +		} else if (hints.ai_family == AF_INET6) {
+> >>>> +			hosts[nhostsbak - 1] = "::1";
+> >>>> +		} else
+> >>>> +			return 1;
+> >>>> +	}
+> >>>> +
+> >>>> +       /*
+> >>>> +	* Bind to specific IPs if asked to
+> >>>> +	*/
+> >>>> +	checkbind = 0;
+> >>>> +	while (nhostsbak>   0) {
+> >>>> +		--nhostsbak;
+> >>>> 		/*
+> >>>> -		 * If no hosts were specified, just bind to INADDR_ANY.  Otherwise
+> >>>> -		 * make sure 127.0.0.1 is added to the list.
+> >>>> +		 * XXX - using RPC library internal functions.
+> >>>> 		 */
+> >>>> -		nhostsbak = nhosts;
+> >>>> -		nhostsbak++;
+> >>>> -		hosts = realloc(hosts, nhostsbak * sizeof(char *));
+> >>>> -		if (nhostsbak == 1)
+> >>>> -			hosts[0] = "*";
+> >>>> -		else {
+> >>>> -			if (hints.ai_family == AF_INET) {
+> >>>> -				hosts[nhostsbak - 1] = "127.0.0.1";
+> >>>> -			} else if (hints.ai_family == AF_INET6) {
+> >>>> -				hosts[nhostsbak - 1] = "::1";
+> >>>> -			} else
+> >>>> -				return 1;
+> >>>> +		if ((fd = __rpc_nconf2fd(nconf))<   0) {
+> >>>> +			syslog(LOG_ERR, "cannot create socket for %s",
+> >>>> +			    nconf->nc_netid);
+> >>>> +			return (1);
+> >>>> 		}
+> >>>> -
+> >>>> -	       /*
+> >>>> -		* Bind to specific IPs if asked to
+> >>>> -		*/
+> >>>> -		checkbind = 0;
+> >>>> -		while (nhostsbak>   0) {
+> >>>> -			--nhostsbak;
+> >>>> -			/*
+> >>>> -			 * XXX - using RPC library internal functions.
+> >>>> -			 */
+> >>>> -			if ((fd = __rpc_nconf2fd(nconf))<   0) {
+> >>>> -				syslog(LOG_ERR, "cannot create socket for %s",
+> >>>> -				    nconf->nc_netid);
+> >>>> -				return (1);
+> >>>> +		switch (hints.ai_family) {
+> >>>> +		case AF_INET:
+> >>>> +			if (inet_pton(AF_INET, hosts[nhostsbak],
+> >>>> +			    host_addr) == 1) {
+> >>>> +				hints.ai_flags&= AI_NUMERICHOST;
+> >>>> +			} else {
+> >>>> +				/*
+> >>>> +				 * Skip if we have an AF_INET6 adress.
+> >>>> +				 */
+> >>>> +				if (inet_pton(AF_INET6,
+> >>>> +				    hosts[nhostsbak], host_addr) == 1)
+> >>>> +					continue;
+> >>>> 			}
+> >>>> -			switch (hints.ai_family) {
+> >>>> -			case AF_INET:
+> >>>> +			break;
+> >>>> +		case AF_INET6:
+> >>>> +			if (inet_pton(AF_INET6, hosts[nhostsbak],
+> >>>> +			    host_addr) == 1) {
+> >>>> +				hints.ai_flags&= AI_NUMERICHOST;
+> >>>> +			} else {
+> >>>> +				/*
+> >>>> +				 * Skip if we have an AF_INET adress.
+> >>>> +				 */
+> >>>> 				if (inet_pton(AF_INET, hosts[nhostsbak],
+> >>>> -				    host_addr) == 1) {
+> >>>> -					hints.ai_flags&= AI_NUMERICHOST;
+> >>>> -				} else {
+> >>>> -					/*
+> >>>> -					 * Skip if we have an AF_INET6 adress.
+> >>>> -					 */
+> >>>> -					if (inet_pton(AF_INET6,
+> >>>> -					    hosts[nhostsbak], host_addr) == 1)
+> >>>> -						continue;
+> >>>> -				}
+> >>>> -				break;
+> >>>> -			case AF_INET6:
+> >>>> -				if (inet_pton(AF_INET6, hosts[nhostsbak],
+> >>>> -				    host_addr) == 1) {
+> >>>> -					hints.ai_flags&= AI_NUMERICHOST;
+> >>>> -				} else {
+> >>>> -					/*
+> >>>> -					 * Skip if we have an AF_INET adress.
+> >>>> -					 */
+> >>>> -					if (inet_pton(AF_INET, hosts[nhostsbak],
+> >>>> -					    host_addr) == 1)
+> >>>> -						continue;
+> >>>> -				}
+> >>>> -	        		break;
+> >>>> -			default:
+> >>>> -				break;
+> >>>> +				    host_addr) == 1)
+> >>>> +					continue;
+> >>>> 			}
+> >>>> +			break;
+> >>>> +		default:
+> >>>> +			break;
+> >>>> +		}
+> >>>>
+> >>>> -			/*
+> >>>> -			 * If no hosts were specified, just bind to INADDR_ANY
+> >>>> -			 */
+> >>>> -			if (strcmp("*", hosts[nhostsbak]) == 0)
+> >>>> -				hosts[nhostsbak] = NULL;
+> >>>> +		/*
+> >>>> +		 * If no hosts were specified, just bind to INADDR_ANY
+> >>>> +		 */
+> >>>> +		if (strcmp("*", hosts[nhostsbak]) == 0)
+> >>>> +			hosts[nhostsbak] = NULL;
+> >>>>
+> >>>> +		if ((strcmp(nconf->nc_netid, "local") != 0)&&
+> >>>> +		    (strcmp(nconf->nc_netid, "unix") != 0)) {
+> >>>> 			if ((aicode = getaddrinfo(hosts[nhostsbak],
+> >>>> -			    servname,&hints,&res)) != 0) {
+> >>>> +			    servname,&hints,&res))!= 0) {
+> >>>> 			  if ((aicode = getaddrinfo(hosts[nhostsbak],
+> >>>> -						    "portmapper",&hints,&res)) != 0) {
+> >>>> -				syslog(LOG_ERR,
+> >>>> +					    "portmapper",&hints,&res))!= 0) {
+> >>>> +			    syslog(LOG_ERR,
+> >>>> 				    "cannot get local address for %s: %s",
+> >>>> 				    nconf->nc_netid, gai_strerror(aicode));
+> >>>> -				continue;
+> >>>> +			    continue;
+> >>>> 			  }
+> >>>> 			}
+> >>>> 			addrlen = res->ai_addrlen;
+> >>>> 			sa = (struct sockaddr *)res->ai_addr;
+> >>>> -			oldmask = umask(S_IXUSR|S_IXGRP|S_IXOTH);
+> >>>> -                        if (bind(fd, sa, addrlen) != 0) {
+> >>>> -				syslog(LOG_ERR, "cannot bind %s on %s: %m",
+> >>>> -					(hosts[nhostsbak] == NULL) ? "*" :
+> >>>> -					hosts[nhostsbak], nconf->nc_netid);
+> >>>> -				if (res != NULL)
+> >>>> -					freeaddrinfo(res);
+> >>>> -				continue;
+> >>>> -			} else
+> >>>> -				checkbind++;
+> >>>> -			(void) umask(oldmask);
+> >>>> -
+> >>>> -			/* Copy the address */
+> >>>> -			taddr.addr.maxlen = taddr.addr.len = addrlen;
+> >>>> -			taddr.addr.buf = malloc(addrlen);
+> >>>> -			if (taddr.addr.buf == NULL) {
+> >>>> -				syslog(LOG_ERR,
+> >>>> -				    "cannot allocate memory for %s address",
+> >>>> -				    nconf->nc_netid);
+> >>>> +		}
+> >>>> +		oldmask = umask(S_IXUSR|S_IXGRP|S_IXOTH);
+> >>>> +		if (nconf->nc_semantics != NC_TPI_CLTS) {
+> >>>> +			/* NC_TPI_COTS and NC_TPI_COTS_ORD etc */
+> >>>> +			__rpc_fd2sockinfo(fd,&si);
+> >>>> +			if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,&on,
+> >>>> +			    sizeof(on)) != 0) {
+> >>>> +				syslog(LOG_ERR, "cannot set SO_REUSEADDR on %s",
+> >>>> +					nconf->nc_netid);
+> >>>> 				if (res != NULL)
+> >>>> 					freeaddrinfo(res);
+> >>>> 				return 1;
+> >>>> 			}
+> >>>> -			memcpy(taddr.addr.buf, sa, addrlen);
+> >>>> -#ifdef RPCBIND_DEBUG
+> >>>> -			if (debugging) {
+> >>>> -				/*
+> >>>> -				 * for debugging print out our universal
+> >>>> -				 * address
+> >>>> -				 */
+> >>>> -				char *uaddr;
+> >>>> -				struct netbuf nb;
+> >>>> -				int sa_size = 0;
+> >>>> -
+> >>>> -				nb.buf = sa;
+> >>>> -				switch( sa->sa_family){
+> >>>> -				case AF_INET:
+> >>>> -				  sa_size = sizeof (struct sockaddr_in);
+> >>>> -				  break;
+> >>>> -				case AF_INET6:
+> >>>> -				  sa_size = sizeof (struct sockaddr_in6);				
+> >>>> -				  break;
+> >>>> -				}
+> >>>> -				nb.len = nb.maxlen = sa_size;
+> >>>> -				uaddr = taddr2uaddr(nconf,&nb);
+> >>>> -				(void) fprintf(stderr,
+> >>>> -				    "rpcbind : my address is %s\n", uaddr);
+> >>>> -				(void) free(uaddr);
+> >>>> -			}
+> >>>> -#endif
+> >>>> -			my_xprt = (SVCXPRT *)svc_tli_create(fd, nconf,&taddr,
+> >>>> -                                RPC_MAXDATASIZE, RPC_MAXDATASIZE);
+> >>>> -			if (my_xprt == (SVCXPRT *)NULL) {
+> >>>> -				syslog(LOG_ERR, "%s: could not create service",
+> >>>> -                                        nconf->nc_netid);
+> >>>> -				goto error;
+> >>>> -			}
+> >>>> -		}
+> >>>> -		if (!checkbind)
+> >>>> -			return 1;
+> >>>> -	} else {	/* NC_TPI_COTS */
+> >>>> -		if ((strcmp(nconf->nc_netid, "local") != 0)&&
+> >>>> -		    (strcmp(nconf->nc_netid, "unix") != 0)) {
+> >>>> -			if ((aicode = getaddrinfo(NULL, servname,&hints,&res))!= 0) {
+> >>>> -			  if ((aicode = getaddrinfo(NULL, "portmapper",&hints,&res))!=
+> 0) {
+> >>>> -			  printf("cannot get local address for %s: %s",
+> nconf->nc_netid, gai_strerror(aicode));
+> >>>> -			  syslog(LOG_ERR,
+> >>>> -				    "cannot get local address for %s: %s",
+> >>>> -				    nconf->nc_netid, gai_strerror(aicode));
+> >>>> -				return 1;
+> >>>> -			  }
+> >>>> -			}
+> >>>> -			addrlen = res->ai_addrlen;
+> >>>> -			sa = (struct sockaddr *)res->ai_addr;
+> >>>> -		}
+> >>>> -		oldmask = umask(S_IXUSR|S_IXGRP|S_IXOTH);
+> >>>> -		__rpc_fd2sockinfo(fd,&si);
+> >>>> -		if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,&on,
+> >>>> -				sizeof(on)) != 0) {
+> >>>> -			syslog(LOG_ERR, "cannot set SO_REUSEADDR on %s",
+> >>>> -				nconf->nc_netid);
+> >>>> -			if (res != NULL)
+> >>>> -				freeaddrinfo(res);
+> >>>> -			return 1;
+> >>>> 		}
+> >>>> 		if (bind(fd, sa, addrlen)<   0) {
+> >>>> 			syslog(LOG_ERR, "cannot bind %s: %m", nconf->nc_netid);
+> >>>> @@ -530,7 +461,7 @@ init_transport(struct netconfig *nconf)
+> >>>> 			/* for debugging print out our universal address */
+> >>>> 			char *uaddr;
+> >>>> 			struct netbuf nb;
+> >>>> -		        int sa_size2 = 0;
+> >>>> +			int sa_size2 = 0;
+> >>>>
+> >>>> 			nb.buf = sa;
+> >>>> 			switch( sa->sa_family){
+> >>>> @@ -551,13 +482,16 @@ init_transport(struct netconfig *nconf)
+> >>>>
+> >>>> 		listen(fd, SOMAXCONN);
+> >>>>
+> >>>> -		my_xprt = (SVCXPRT *)svc_tli_create(fd, nconf,&taddr,
+> RPC_MAXDATASIZE, RPC_MAXDATASIZE);
+> >>>> +		my_xprt = (SVCXPRT *)svc_tli_create(fd, nconf,&taddr,
+> >>>> +			    RPC_MAXDATASIZE, RPC_MAXDATASIZE);
+> >>>> 		if (my_xprt == (SVCXPRT *)NULL) {
+> >>>> 			syslog(LOG_ERR, "%s: could not create service",
+> >>>> 					nconf->nc_netid);
+> >>>> 			goto error;
+> >>>> 		}
+> >>>> 	}
+> >>>> +	if (!checkbind)
+> >>>> +		return 1;
+> >>>>
+> >>>> #ifdef PORTMAP
+> >>>> 	/*
+> >>>> --
+> >>>> 1.7.7.6
+> >>>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 -- 
-Best regards,
-Stanislav Kinsbursky
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
