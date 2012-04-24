@@ -1,57 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:30180 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:21727 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754204Ab2DYPkZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Apr 2012 11:40:25 -0400
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q3PFePvQ008078
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 25 Apr 2012 11:40:25 -0400
-Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
-	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q3PFeOgY017442
-	for <linux-nfs@vger.kernel.org>; Wed, 25 Apr 2012 11:40:24 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/1] mounts.nfs: v2 and v3 background mounts should retry when server is down.
-Date: Wed, 25 Apr 2012 11:39:50 -0400
-Message-Id: <1335368390-26767-1-git-send-email-steved@redhat.com>
+	id S1752052Ab2DXOBm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Apr 2012 10:01:42 -0400
+Date: Tue, 24 Apr 2012 10:01:17 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+Cc: linux-nfs@vger.kernel.org, jiri.horky@cesnet.cz
+Subject: Re: NFSv4 high availability setups
+Message-ID: <20120424100117.67d3d842@tlielax.poochiereds.net>
+In-Reply-To: <20120417111411.334c3d2b@corrin.poochiereds.net>
+References: <20120405103124.GV4752@ics.muni.cz>
+	<20120405073901.63d1c749@tlielax.poochiereds.net>
+	<20120410125552.GC5074@ics.muni.cz>
+	<20120410091321.1be1a87e@tlielax.poochiereds.net>
+	<20120417143448.GU32132@ics.muni.cz>
+	<20120417111411.334c3d2b@corrin.poochiereds.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The point of background mounts is to have the mount
-retried if the mount fails. This patch allows the v2/v3
-background mount to proceed in the case when the server
-is down by not making EOPNOTSUPP a permanent error.
+On Tue, 17 Apr 2012 11:14:11 -0400
+Jeff Layton <jlayton@redhat.com> wrote:
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- utils/mount/stropts.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
+> On Tue, 17 Apr 2012 16:34:48 +0200
+> Lukas Hejtmanek <xhejtman@ics.muni.cz> wrote:
+> 
+> > Hi,
+> > 
+> > On Tue, Apr 10, 2012 at 09:13:21AM -0400, Jeff Layton wrote:
+> > > Nope. It'll all work just great...until it doesn't. I don't have any
+> > > specific failure scenarios, but most of the problems will be issues
+> > > with state recovery when a server node is restarted.
+> > > 
+> > > That may manifest in different ways -- problems reclaiming locks for
+> > > instance, or even silent data corruption depending on the application.
+> > 
+> > would it work if I relax active-active scenario to just active-passive in the
+> > following way:
+> > 
+> > Server A actively exports  /export/A
+> > Server B actively exports  /export/B
+> > 
+> > Server B is passive backup for Server A
+> > Server A is passive backup for Server B
+> > 
+> > would it work to migrate the failed Server B to Server A so that Server A will
+> > server both /export/A and /export/B?
+> > 
+> > There will be a problem with v4recovery dir. Would it be possible just to
+> > merge v4recovery from Server B to Server A (nfs export would be stopped while
+> > merging v4recovery).
+> > 
+> > It seems that cp -r B/v4recovery/* A/v4recovery/ would do all the things. Am
+> > I right?
+> > 
+> > Do I need to copy recovery state if I delay migration of the failed Server B to
+> > Server A for 91 secs? I.e., longer than lease expiry time.. Or do I still need
+> > a record for the client in v4recovery dir in such a case?
+> > 
+> 
+> That'll still be dangerous. Suppose (for instance) that a client1 lost
+> communication with server B for a period of time and then it expired
+> the lease and handed out a lock to client2 that it was holding
+> previously. client2 modifies the file and drops the lock. At the same
+> time, client1 has uninterrupted communication with serverA, and holds
+> state on it.
+> 
+> Eventually, you fail over server B and merge the directories. client1
+> attempts to renew its lease, but gets back an error and starts
+> reclaiming things. Now, server B would have denied reclaim of that lock
+> -- its lease had expired, but in this case it's allowed because you
+> merged the directory and it client1 held state on serverA. client1
+> reclaims the lock and thinks that it's held the lock the entire time --
+> data corruption and other hilarity ensues...
+> 
 
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index d52e21a..e09aa7c 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -911,7 +911,8 @@ static int nfsmount_parent(struct nfsmount_info *mi)
- 	if (nfs_try_mount(mi))
- 		return EX_SUCCESS;
- 
--	if (nfs_is_permanent_error(errno)) {
-+	/* retry background mounts when the server is not up */
-+	if (nfs_is_permanent_error(errno) && errno != EOPNOTSUPP) {
- 		mount_error(mi->spec, mi->node, errno);
- 		return EX_FAIL;
- 	}
-@@ -946,7 +947,8 @@ static int nfsmount_child(struct nfsmount_info *mi)
- 		if (nfs_try_mount(mi))
- 			return EX_SUCCESS;
- 
--		if (nfs_is_permanent_error(errno))
-+		/* retry background mounts when the server is not up */
-+		if (nfs_is_permanent_error(errno) && errno != EOPNOTSUPP)
- 			break;
- 
- 		if (time(NULL) > timeout)
+Now that I've had some time to think about this, you may actually be OK
+to just merge those directories when you fail over. The caveat is that
+you need to know for certain that the clients are using non-uniform
+clientid strings when they talk to the server.
+
+When a client makes a SETCLIENTID call to the server, it sends an opaque
+identifier string to the server. Traditionally (and I think per a
+SHOULD in the RFC) Linux clients have varied that string based on the IP
+address of the server. That's called the non-UCS (uniform client string)
+based model.
+
+There is some debate on this practice though, as it makes it difficult
+to identify clients for recovery purposes in migration scenarios (Dave
+Novak has a paper on this). In order to facilitate that, we're
+considering moving to a UCS based model in the linux client.
+
+The upshot here is that if you do it that way, then a client that holds
+state on both server addresses will look like two different clients even
+after the service floats to the backup server. In that case, you'd have
+no problems with reclaim (in principle, of course!).
+
+The catch here is that if any clients have a UCS based model for
+generating client strings (where the client string is invariant vs. the
+server's IP address), then you'll be subject to the scenario above.
+
+Still, merging those directories is enough of an uncharted territory
+that I'd advise against it even if it would theoretically work.
+
 -- 
-1.7.7.6
-
+Jeff Layton <jlayton@redhat.com>
