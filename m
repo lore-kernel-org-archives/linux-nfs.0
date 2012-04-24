@@ -1,194 +1,178 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:48836 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759665Ab2DKQM1 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Apr 2012 12:12:27 -0400
-Message-ID: <4F85AD54.6000806@parallels.com>
-Date: Wed, 11 Apr 2012 20:12:04 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from mx2.netapp.com ([216.240.18.37]:10041 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755770Ab2DXQSO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Apr 2012 12:18:14 -0400
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs4: fix referrals on mounts that use IPv6 addrs
+Date: Tue, 24 Apr 2012 16:17:57 +0000
+Message-ID: <E3473B22-0223-452B-AA8E-3A6E613F4D43@netapp.com>
+References: <1335279471-46782-1-git-send-email-dros@netapp.com>
+ <1335281584.3792.30.camel@lade.trondhjem.org>
+In-Reply-To: <1335281584.3792.30.camel@lade.trondhjem.org>
+Content-Type: multipart/signed;
+	boundary="Apple-Mail=_801FFC00-1A04-4562-B37A-FF5DF023DD42";
+	protocol="application/pkcs7-signature"; micalg=sha1
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH v2] Lockd: pass network namespace to creation and destruction
- routines
-References: <20120329145421.31911.65512.stgit@localhost6.localdomain6> <20120411161114.GB28928@fieldses.org>
-In-Reply-To: <20120411161114.GB28928@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-11.04.2012 20:11, J. Bruce Fields пишет:
-> On Thu, Mar 29, 2012 at 06:54:33PM +0400, Stanislav Kinsbursky wrote:
->> v2: dereference of most probably already released nlm_host removed in
->> nlmclnt_done() and reclaimer().
->
-> Did you want this in Trond's tree or mine?
->
+--Apple-Mail=_801FFC00-1A04-4562-B37A-FF5DF023DD42
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-Your tree is preferred since I'm working with it.
 
-> --b.
->
->>
->> These routines are called from locks reclaimer() kernel thread. This thread
->> works in "init_net" network context and currently relays on persence on lockd
->> thread and it's per-net resources. Thus lockd_up() and lockd_down() can't relay
->> on current network context. So let's pass corrent one into them.
->>
->> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
->>
->> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
->>
+On Apr 24, 2012, at 11:33 AM, Myklebust, Trond wrote:
+
+> On Tue, 2012-04-24 at 10:57 -0400, Weston Andros Adamson wrote:
+>> All referrals (IPv4 addr, IPv6 addr, and DNS) are broken on mounts of
+>> IPv6 addresses, because validation code uses a path that is parsed
+>> from the dev_name ("<server>:<path>") by splitting on the first colon =
+and
+>> colons are used in IPv6 addrs.
+>> This patch ignores colons within IPv6 addresses that are escaped by =
+'[' and ']'.
+>>=20
+>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
 >> ---
->>   fs/lockd/clntlock.c        |   13 ++++++++-----
->>   fs/lockd/svc.c             |    7 +++----
->>   fs/nfsd/nfssvc.c           |    6 +++---
->>   include/linux/lockd/bind.h |    4 ++--
->>   4 files changed, 16 insertions(+), 14 deletions(-)
->>
->> diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
->> index ba1dc2e..ca0a080 100644
->> --- a/fs/lockd/clntlock.c
->> +++ b/fs/lockd/clntlock.c
->> @@ -56,7 +56,7 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
->>   	u32 nlm_version = (nlm_init->nfs_version == 2) ? 1 : 4;
->>   	int status;
->>
->> -	status = lockd_up();
->> +	status = lockd_up(nlm_init->net);
->>   	if (status<  0)
->>   		return ERR_PTR(status);
->>
->> @@ -65,7 +65,7 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
->>   				   nlm_init->hostname, nlm_init->noresvport,
->>   				   nlm_init->net);
->>   	if (host == NULL) {
->> -		lockd_down();
->> +		lockd_down(nlm_init->net);
->>   		return ERR_PTR(-ENOLCK);
->>   	}
->>
->> @@ -80,8 +80,10 @@ EXPORT_SYMBOL_GPL(nlmclnt_init);
->>    */
->>   void nlmclnt_done(struct nlm_host *host)
->>   {
->> +	struct net *net = host->net;
+>>=20
+>> This depends on commit 2f8e4bd91488f286e83e8abb14683102efaafb05
+>> "nfs: Enclose hostname in brackets when needed in nfs_do_root_mount".
+>>=20
+>> fs/nfs/nfs4namespace.c |   35 ++++++++++++++++++++++++++++++++---
+>> 1 files changed, 32 insertions(+), 3 deletions(-)
+>>=20
+>> diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+>> index 9c8eca3..307743d 100644
+>> --- a/fs/nfs/nfs4namespace.c
+>> +++ b/fs/nfs/nfs4namespace.c
+>> @@ -52,6 +52,35 @@ Elong:
+>> }
+>>=20
+>> /*
+>> + * parse the path component of an nfs path ("<server>:<path>").
+>> + *  nfspath - the "<server>:<path>" string
+>> + *  end - pointer to end of devname component of 'nfspath'
+>> + * returns NULL on failure
+>> + */
+>> +static inline char *nfs_parse_path_component(char *nfspath, char =
+*end)
+>=20
+> Nit: this is really parsing the server name component of the devname.
+>=20
+> Also, please make the 'end' argument 'const char *', and  drop the
+> 'inline' declaration.
+
+OK.
+
+>=20
+>> +{
+>> +	bool ipv6_esc =3D false;
+>> +	char *p;
 >> +
->>   	nlmclnt_release_host(host);
->> -	lockd_down();
->> +	lockd_down(net);
->>   }
->>   EXPORT_SYMBOL_GPL(nlmclnt_done);
->>
->> @@ -220,11 +222,12 @@ reclaimer(void *ptr)
->>   	struct nlm_wait	  *block;
->>   	struct file_lock *fl, *next;
->>   	u32 nsmstate;
->> +	struct net *net = host->net;
->>
->>   	allow_signal(SIGKILL);
->>
->>   	down_write(&host->h_rwsem);
->> -	lockd_up();	/* note: this cannot fail as lockd is already running */
->> +	lockd_up(net);	/* note: this cannot fail as lockd is already running */
->>
->>   	dprintk("lockd: reclaiming locks for host %s\n", host->h_name);
->>
->> @@ -275,6 +278,6 @@ restart:
->>
->>   	/* Release host handle after use */
->>   	nlmclnt_release_host(host);
->> -	lockd_down();
->> +	lockd_down(net);
->>   	return 0;
->>   }
->> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
->> index b34100e..ce4c80e 100644
->> --- a/fs/lockd/svc.c
->> +++ b/fs/lockd/svc.c
->> @@ -295,11 +295,10 @@ static void lockd_down_net(struct net *net)
->>   /*
->>    * Bring up the lockd process if it's not already up.
->>    */
->> -int lockd_up(void)
->> +int lockd_up(struct net *net)
->>   {
->>   	struct svc_serv *serv;
->>   	int		error = 0;
->> -	struct net *net = current->nsproxy->net_ns;
->>
->>   	mutex_lock(&nlmsvc_mutex);
->>   	/*
->> @@ -377,12 +376,12 @@ EXPORT_SYMBOL_GPL(lockd_up);
->>    * Decrement the user count and bring down lockd if we're the last.
->>    */
->>   void
->> -lockd_down(void)
->> +lockd_down(struct net *net)
->>   {
->>   	mutex_lock(&nlmsvc_mutex);
->>   	if (nlmsvc_users) {
->>   		if (--nlmsvc_users) {
->> -			lockd_down_net(current->nsproxy->net_ns);
->> +			lockd_down_net(net);
->>   			goto out;
->>   		}
->>   	} else {
->> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
->> index fce472f..0f3e35b 100644
->> --- a/fs/nfsd/nfssvc.c
->> +++ b/fs/nfsd/nfssvc.c
->> @@ -220,7 +220,7 @@ static int nfsd_startup(unsigned short port, int nrservs)
->>   	ret = nfsd_init_socks(port);
->>   	if (ret)
->>   		goto out_racache;
->> -	ret = lockd_up();
->> +	ret = lockd_up(&init_net);
->>   	if (ret)
->>   		goto out_racache;
->>   	ret = nfs4_state_start();
->> @@ -229,7 +229,7 @@ static int nfsd_startup(unsigned short port, int nrservs)
->>   	nfsd_up = true;
->>   	return 0;
->>   out_lockd:
->> -	lockd_down();
->> +	lockd_down(&init_net);
->>   out_racache:
->>   	nfsd_racache_shutdown();
->>   	return ret;
->> @@ -246,7 +246,7 @@ static void nfsd_shutdown(void)
->>   	if (!nfsd_up)
->>   		return;
->>   	nfs4_state_shutdown();
->> -	lockd_down();
->> +	lockd_down(&init_net);
->>   	nfsd_racache_shutdown();
->>   	nfsd_up = false;
->>   }
->> diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
->> index 11a966e..4d24d64 100644
->> --- a/include/linux/lockd/bind.h
->> +++ b/include/linux/lockd/bind.h
->> @@ -54,7 +54,7 @@ extern void	nlmclnt_done(struct nlm_host *host);
->>
->>   extern int	nlmclnt_proc(struct nlm_host *host, int cmd,
->>   					struct file_lock *fl);
->> -extern int	lockd_up(void);
->> -extern void	lockd_down(void);
->> +extern int	lockd_up(struct net *net);
->> +extern void	lockd_down(struct net *net);
->>
->>   #endif /* LINUX_LOCKD_BIND_H */
->>
+>> +	/* find first colon not in IPv6 addr */
+>> +	for (p =3D nfspath; p < end && *p; p++) {
+>> +		switch (*p) {
+>> +		case '[':
+>> +			ipv6_esc =3D true;
+>=20
+> Note that if p !=3D nfspath, then we have a problem. The '[' _must_ be =
+the
+> first character in the server name, and there _must_ be a matching ']'
+> at the end.
+> So how about optimising this using something along the lines of:
+>=20
+> 	p =3D nfspath;
+> 	/* Handle escaped hostnames */
+> 	if (*p =3D=3D '[') {
+> 		p =3D strchr(p, ']');
+> 		if (p =3D=3D NULL)
+> 			return NULL;
+> 	}
+> 	p =3D strchr(p, ':');
+> 	if (p !=3D NULL)
+> 		p++;
+> 	return p;
 
+OK, I'll change it to be more strict.  Note that your suggestion doesn't =
+enforce that the matching ']' is at the end of the hostname (next char =
+':').
 
--- 
-Best regards,
-Stanislav Kinsbursky
+>> +			break;
+>> +		case ':':
+>> +			if (!ipv6_esc)
+>> +				return (p + 1);
+>> +			break;
+>> +		}
+>> +	}
+>> +	return NULL;
+>> +}
+>> +
+>> +/*
+>>  * Determine the mount path as a string
+>>  */
+>> static char *nfs4_path(struct dentry *dentry, char *buffer, ssize_t =
+buflen)
+>> @@ -59,9 +88,9 @@ static char *nfs4_path(struct dentry *dentry, char =
+*buffer, ssize_t buflen)
+>> 	char *limit;
+>> 	char *path =3D nfs_path(&limit, dentry, buffer, buflen);
+>> 	if (!IS_ERR(path)) {
+>> -		char *colon =3D strchr(path, ':');
+>> -		if (colon && colon < limit)
+>> -			path =3D colon + 1;
+>> +		char *path_component =3D nfs_parse_path_component(path, =
+limit);
+>> +		if (path_component)
+>> +			return path_component;
+>> 	}
+>> 	return path;
+>> }
+>=20
+> So this fixes the problem of parsing the devname, but how about the
+> issue of setting the correct devname if the server supplies an IPv6
+> address as the hostname?
+
+That is covered by the patch you sent me (commit =
+2f8e4bd91488f286e83e8abb14683102efaafb05).  I thought you'd just use =
+that patch - it's what I tested with.
+
+-dros=
+
+--Apple-Mail=_801FFC00-1A04-4562-B37A-FF5DF023DD42
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Type: application/pkcs7-signature; name="smime.p7s"
+Content-Transfer-Encoding: base64
+
+MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIDTzCCA0sw
+ggIzoAMCAQICAQEwCwYJKoZIhvcNAQEFMEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYD
+VQQGEwJVUzEeMBwGCSqGSIb3DQEJARYPZHJvc0BuZXRhcHAuY29tMB4XDTExMDYwODIyMDc0NloX
+DTEyMDYwNzIyMDc0NlowRjEXMBUGA1UEAwwOV2VzdG9uIEFkYW1zb24xCzAJBgNVBAYTAlVTMR4w
+HAYJKoZIhvcNAQkBFg9kcm9zQG5ldGFwcC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
+AoIBAQC8/tJxtovJEXYRfSsrFOWKHxIZGY7/2mBee1DpWuoGDbVNapefCC7WXe+Nqxz609w2J/Mk
+/k3trZ3Ge2NXK0tGnP9NzjkzpGA7rSpM3wUFsvbLMUEGfQpvV24/nYvcLHTvOOEUaDPpHduN94bD
+dwvyowzDIRIpF2MeRnOzBNeHkrGHlZdzPmGjm8tkhrDRRkDYHhlxaiG4z30KCfAazxomuINiy1kj
+vbndXooYMDoh9H63hgW4NkOedtLdflLa322DXQ3nFU7YbyOIjHVl1tgWJLDWf7WT3lsAB8KvuJZ5
+zhsUB+fqxCKPJVRPDO1gjChvvtGiG1tGUUZz0H9Wx00zAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIH
+gDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDBDAaBgNVHREEEzARgQ9kcm9zQG5ldGFwcC5jb20wDQYJ
+KoZIhvcNAQEFBQADggEBACv0niZSmW+psB1sJXULh3mecDbN2mj0bFpN1YNdjcV7BiOLJ1Rs1ibV
+f13h73z8C7SBsPXTM5si8gmJtOnXM5jsgtlql44h/RrjUr8+mtK5DPCZls9J7iz3cGthzwOPvxUj
+nMSv3BpRX5oJom5ESgCM9Nn4u/ECTlLMhEIOYnBFiN0eDxcxz+r1cpbHg3r0otIKyxLpeaCjP6AH
+F93EHp4T8Rb63y3CcDgxrQGHlTdVi3QvxaMUexUXD81fiA+UqsB/MKmRxB1Hs4Vf3Q/+ejcm78K1
+ROF8TNPmNWRlKg3Y7cSFjZGzLuzXsvSsCbw4HLn0oZe/OfgSbarTAxttL5IxggHRMIIBzQIBATBL
+MEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYDVQQGEwJVUzEeMBwGCSqGSIb3DQEJARYP
+ZHJvc0BuZXRhcHAuY29tAgEBMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
+MBwGCSqGSIb3DQEJBTEPFw0xMjA0MjQxNjE3NTdaMCMGCSqGSIb3DQEJBDEWBBR9G5qaCzCmG5cM
+mtWkVaTUQltwCjANBgkqhkiG9w0BAQEFAASCAQCPpd91P7gt64Y+EnryYcYmKjm2DZMa/JDYAt26
+KUSsOwWguhRYLnL7HNQ11Q3yWPRDF0TCl7OlKOjirwjYs91Nzs57MMXx2QoqoGrjw4ZB4XyqrCu1
+m/qp9IGX0LGTMPrzngdqMJyxdreVzlN9oyY+TsAX7dUaajsRDaAbOadW+wgBqP/Iq5749RKTjyU5
+kSu8q9/pqUcaiEHgDnkgQP1F4xVcYgf71nOP9moY4BHIAkKc/F/ct2X7weThIam43Dn4lauMCSF9
+12i7KVUIBeYEz+hrqBqnvxg3oYr4XQHnD0eng8Q0bVvxyV6VbmfnyfINn6UEG7eNKKiBNlT8N+Z4
+AAAAAAAA
+
+--Apple-Mail=_801FFC00-1A04-4562-B37A-FF5DF023DD42--
