@@ -1,438 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:42158 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:2552 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755288Ab2DXPrg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Apr 2012 11:47:36 -0400
-Message-ID: <4F96CB0F.7080300@redhat.com>
-Date: Tue, 24 Apr 2012 17:47:27 +0200
-From: Niels de Vos <ndevos@redhat.com>
+	id S1757352Ab2DXUSW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Apr 2012 16:18:22 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        "Linux Kernel mailing list" <linux-kernel@vger.kernel.org>
+Subject: [GIT PULL] please pull NFS client bugfixes
+Date: Tue, 24 Apr 2012 20:18:03 +0000
+Message-ID: <1335298684.2561.8.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] rpcbind: Only listen on requested hostnames for NC_TPI_COTS
- connections
-References: <1335194692-6714-1-git-send-email-ndevos@redhat.com> <82D8C43F-5C40-444C-9573-B4FF95F615DA@oracle.com> <4F957D30.9010102@redhat.com> <7C71F75F-3F15-401B-8700-38B0EBE2B595@oracle.com> <4F96C0E3.9090007@redhat.com> <A4109129-7766-4AB3-9895-3A20352F612B@oracle.com>
-In-Reply-To: <A4109129-7766-4AB3-9895-3A20352F612B@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/24/2012 05:18 PM, Chuck Lever wrote:
->
-> On Apr 24, 2012, at 11:04 AM, Niels de Vos wrote:
->
->> Hi again,
->>
->> On 04/23/2012 06:22 PM, Chuck Lever wrote:
->>>
->>> On Apr 23, 2012, at 12:02 PM, Niels de Vos wrote:
->>>
->>>> On 04/23/2012 05:33 PM, Chuck Lever wrote:
->>>>> Hi-
->>>>>
->>>>> On Apr 23, 2012, at 11:24 AM, Niels de Vos wrote:
->>>>>
->>>>>> There is a check for NC_TPI_CLTS connections which correctly binds
->> only
->>>>>> to the hostnames/addresses given on the commandline (-h option). This
->>>>>> implementation does not take non NC_TPI_CLTS like NC_TPI_COTS and
->>>>>> NC_TPI_COTS_ORD into account. This causes non NC_TPI_CLTS protocols to
->>>>>> listen on the "0.0.0.0" and "::" wildcard addresses.
->>>>>>
->>>>>> This patch simplifies the code, and moves the check for
->> NC_TPI_CLTS into
->>>>>> the loop when a bind() for each requested address is done. All
->>>>>> connections, including NC_TPI_COTS and NC_TPI_COTS_ORD can now benefit
->>>>>> from resticted bind()'ing on addresses.
->>>>>
->>>>> Please check the mailing list archives for linux-nfs and/or
->>>>> libtirpc-devel. There may be a good reason for this asymmetrical
->>>>> behavior, or at least some enlightening discussion of this idea.
->>>>
->>>> The only difference in the code before and after is for NC_TPI_CLTS vs
->>>> (NC_TPI_CLTS or NC_TPI_COTS) and has moved to this if statement:
->>>>
->>>> 		if (nconf->nc_semantics != NC_TPI_CLTS) {
->>>>
->>>> I could not find any reasons why binding on UDP may be restricted, where
->>>> binding on TCP would not.
->>>
->>> So you did check the mail archive?  I seem to recall other patches like
->>> this in the past, and that there is a reason why rpcbind works this way.
->>> I simply don't remember the specifics right at the moment.
->>
->> I did, but no messages about this subject come up for me... Maybe I'm looking
->> in the wrong places :-/
->>
->>> One reason might be that UDP doesn't guarantee that the forward and
->>> reply network paths will use the same source and destination addresses,
->>> but TCP does.
->>
->> Would this not rather speak against binding on a specific address for UDP?
->> That functionality already exists, its just TCP that ignores the option from
->> the command line.
->>
->>>>> Also, can you tell us why you need this change in the patch
->>>>> description?
->>>>
->>>> Currently rpcbind provides the -h option to contain a hostname (like
->>>> localhost). When the option is used, rpcbind will only listen on the
->>>> "127.0.0.1" address for UDP. TCP will continue to listen on "0.0.0.0"
->>>> and "::". IMHO this is inconsistent and wrong, hence my proposal to
->>>> fix this.
->>>
->>> Let me ask a more specific question: is there a real-world use case
->>> that requires this change?
->>
->> It was brought to my attention that the old portmapper has this feature. When
->> migrating the configuration to rpcbind, it was noticed that the -h option does
->> not affect binding TCP sockets, only UDP.
->
-> In general, rpcbind is not supposed to be precisely backwards-compatible
-> with  portmapper, since the functionality is significantly expanded and
- > made more secure.
->
-> It sounds like you don't have a use case that requires the change. Is that
-> correct?
-
-Requiring the change would suggest that there are no other solutions. Jim 
-pointed to an alternative in this email thread, and I think that should be 
-acceptable.
-
->> This behavior is documented in the
->> man-page, but is still feels inconsistent.
->
-> The fact this is documented in the man page suggests it is purposely
-> designed  to behave this way. I don't have time to research this at the
- > moment, but I'll look into it soon.
-
-Don't spend too much time on that, I'll have the alternative checked first. in 
-case there is no working alternative, I'll research again and post fully working 
-patches.
-
-> In the meantime, I'd like to exercise a firm community member's veto on this
-> behavior change, just until we figure out why "-h" is the way it is.
-
-Sure, I agree that only useful functionalities should be included. Changes 
-should not break the design without clearly improving it.
-
-Thanks for the responses,
-Niels
-
->>>> While doing so, I noticed that the if and else branches are extremely
->>>> similar and therefore I combined them.
->>>
->>> That is a clean up, and being a logically distinct change, generally
->>> belongs in a separate patch from a patch that changes the code behavior.
->>
->> If you or someone else can let me know if the change itself is acceptable,
->> I'll resend the patch in two pieces (behavior change, cleanup).
->> After more testing it seems that the patched rpcbind is not functioning
->> correctly. I'll have to look into that before sending a 2nd patch-set.
->>
->> Thanks!
->>
->>
->>>> Let me know if you need any further details. Thanks,
->>>> Niels
->>>>
->>>>
->>>>>
->>>>>> Signed-off-by: Niels de Vos<ndevos@redhat.com>
->>>>>> ---
->>>>>> src/rpcbind.c |  230
->> ++++++++++++++++++++------------------------------------
->>>>>> 1 files changed, 82 insertions(+), 148 deletions(-)
->>>>>>
->>>>>> diff --git a/src/rpcbind.c b/src/rpcbind.c
->>>>>> index 9a0504d..3f6c2a9 100644
->>>>>> --- a/src/rpcbind.c
->>>>>> +++ b/src/rpcbind.c
->>>>>> @@ -339,172 +339,103 @@ init_transport(struct netconfig *nconf)
->>>>>> 		hints.ai_socktype = si.si_socktype;
->>>>>> 		hints.ai_protocol = si.si_proto;
->>>>>> 	}
->>>>>> -	if (nconf->nc_semantics == NC_TPI_CLTS) {
->>>>>> +
->>>>>> +	/*
->>>>>> +	 * If no hosts were specified, just bind to INADDR_ANY.  Otherwise
->>>>>> +	 * make sure 127.0.0.1 is added to the list.
->>>>>> +	 */
->>>>>> +	nhostsbak = nhosts;
->>>>>> +	nhostsbak++;
->>>>>> +	hosts = realloc(hosts, nhostsbak * sizeof(char *));
->>>>>> +	if (nhostsbak == 1)
->>>>>> +		hosts[0] = "*";
->>>>>> +	else {
->>>>>> +		if (hints.ai_family == AF_INET) {
->>>>>> +			hosts[nhostsbak - 1] = "127.0.0.1";
->>>>>> +		} else if (hints.ai_family == AF_INET6) {
->>>>>> +			hosts[nhostsbak - 1] = "::1";
->>>>>> +		} else
->>>>>> +			return 1;
->>>>>> +	}
->>>>>> +
->>>>>> +       /*
->>>>>> +	* Bind to specific IPs if asked to
->>>>>> +	*/
->>>>>> +	checkbind = 0;
->>>>>> +	while (nhostsbak>    0) {
->>>>>> +		--nhostsbak;
->>>>>> 		/*
->>>>>> -		 * If no hosts were specified, just bind to INADDR_ANY.  Otherwise
->>>>>> -		 * make sure 127.0.0.1 is added to the list.
->>>>>> +		 * XXX - using RPC library internal functions.
->>>>>> 		 */
->>>>>> -		nhostsbak = nhosts;
->>>>>> -		nhostsbak++;
->>>>>> -		hosts = realloc(hosts, nhostsbak * sizeof(char *));
->>>>>> -		if (nhostsbak == 1)
->>>>>> -			hosts[0] = "*";
->>>>>> -		else {
->>>>>> -			if (hints.ai_family == AF_INET) {
->>>>>> -				hosts[nhostsbak - 1] = "127.0.0.1";
->>>>>> -			} else if (hints.ai_family == AF_INET6) {
->>>>>> -				hosts[nhostsbak - 1] = "::1";
->>>>>> -			} else
->>>>>> -				return 1;
->>>>>> +		if ((fd = __rpc_nconf2fd(nconf))<    0) {
->>>>>> +			syslog(LOG_ERR, "cannot create socket for %s",
->>>>>> +			    nconf->nc_netid);
->>>>>> +			return (1);
->>>>>> 		}
->>>>>> -
->>>>>> -	       /*
->>>>>> -		* Bind to specific IPs if asked to
->>>>>> -		*/
->>>>>> -		checkbind = 0;
->>>>>> -		while (nhostsbak>    0) {
->>>>>> -			--nhostsbak;
->>>>>> -			/*
->>>>>> -			 * XXX - using RPC library internal functions.
->>>>>> -			 */
->>>>>> -			if ((fd = __rpc_nconf2fd(nconf))<    0) {
->>>>>> -				syslog(LOG_ERR, "cannot create socket for %s",
->>>>>> -				    nconf->nc_netid);
->>>>>> -				return (1);
->>>>>> +		switch (hints.ai_family) {
->>>>>> +		case AF_INET:
->>>>>> +			if (inet_pton(AF_INET, hosts[nhostsbak],
->>>>>> +			    host_addr) == 1) {
->>>>>> +				hints.ai_flags&= AI_NUMERICHOST;
->>>>>> +			} else {
->>>>>> +				/*
->>>>>> +				 * Skip if we have an AF_INET6 adress.
->>>>>> +				 */
->>>>>> +				if (inet_pton(AF_INET6,
->>>>>> +				    hosts[nhostsbak], host_addr) == 1)
->>>>>> +					continue;
->>>>>> 			}
->>>>>> -			switch (hints.ai_family) {
->>>>>> -			case AF_INET:
->>>>>> +			break;
->>>>>> +		case AF_INET6:
->>>>>> +			if (inet_pton(AF_INET6, hosts[nhostsbak],
->>>>>> +			    host_addr) == 1) {
->>>>>> +				hints.ai_flags&= AI_NUMERICHOST;
->>>>>> +			} else {
->>>>>> +				/*
->>>>>> +				 * Skip if we have an AF_INET adress.
->>>>>> +				 */
->>>>>> 				if (inet_pton(AF_INET, hosts[nhostsbak],
->>>>>> -				    host_addr) == 1) {
->>>>>> -					hints.ai_flags&= AI_NUMERICHOST;
->>>>>> -				} else {
->>>>>> -					/*
->>>>>> -					 * Skip if we have an AF_INET6 adress.
->>>>>> -					 */
->>>>>> -					if (inet_pton(AF_INET6,
->>>>>> -					    hosts[nhostsbak], host_addr) == 1)
->>>>>> -						continue;
->>>>>> -				}
->>>>>> -				break;
->>>>>> -			case AF_INET6:
->>>>>> -				if (inet_pton(AF_INET6, hosts[nhostsbak],
->>>>>> -				    host_addr) == 1) {
->>>>>> -					hints.ai_flags&= AI_NUMERICHOST;
->>>>>> -				} else {
->>>>>> -					/*
->>>>>> -					 * Skip if we have an AF_INET adress.
->>>>>> -					 */
->>>>>> -					if (inet_pton(AF_INET, hosts[nhostsbak],
->>>>>> -					    host_addr) == 1)
->>>>>> -						continue;
->>>>>> -				}
->>>>>> -	        		break;
->>>>>> -			default:
->>>>>> -				break;
->>>>>> +				    host_addr) == 1)
->>>>>> +					continue;
->>>>>> 			}
->>>>>> +			break;
->>>>>> +		default:
->>>>>> +			break;
->>>>>> +		}
->>>>>>
->>>>>> -			/*
->>>>>> -			 * If no hosts were specified, just bind to INADDR_ANY
->>>>>> -			 */
->>>>>> -			if (strcmp("*", hosts[nhostsbak]) == 0)
->>>>>> -				hosts[nhostsbak] = NULL;
->>>>>> +		/*
->>>>>> +		 * If no hosts were specified, just bind to INADDR_ANY
->>>>>> +		 */
->>>>>> +		if (strcmp("*", hosts[nhostsbak]) == 0)
->>>>>> +			hosts[nhostsbak] = NULL;
->>>>>>
->>>>>> +		if ((strcmp(nconf->nc_netid, "local") != 0)&&
->>>>>> +		    (strcmp(nconf->nc_netid, "unix") != 0)) {
->>>>>> 			if ((aicode = getaddrinfo(hosts[nhostsbak],
->>>>>> -			    servname,&hints,&res)) != 0) {
->>>>>> +			    servname,&hints,&res))!= 0) {
->>>>>> 			  if ((aicode = getaddrinfo(hosts[nhostsbak],
->>>>>> -						    "portmapper",&hints,&res)) != 0) {
->>>>>> -				syslog(LOG_ERR,
->>>>>> +					    "portmapper",&hints,&res))!= 0) {
->>>>>> +			    syslog(LOG_ERR,
->>>>>> 				    "cannot get local address for %s: %s",
->>>>>> 				    nconf->nc_netid, gai_strerror(aicode));
->>>>>> -				continue;
->>>>>> +			    continue;
->>>>>> 			  }
->>>>>> 			}
->>>>>> 			addrlen = res->ai_addrlen;
->>>>>> 			sa = (struct sockaddr *)res->ai_addr;
->>>>>> -			oldmask = umask(S_IXUSR|S_IXGRP|S_IXOTH);
->>>>>> -                        if (bind(fd, sa, addrlen) != 0) {
->>>>>> -				syslog(LOG_ERR, "cannot bind %s on %s: %m",
->>>>>> -					(hosts[nhostsbak] == NULL) ? "*" :
->>>>>> -					hosts[nhostsbak], nconf->nc_netid);
->>>>>> -				if (res != NULL)
->>>>>> -					freeaddrinfo(res);
->>>>>> -				continue;
->>>>>> -			} else
->>>>>> -				checkbind++;
->>>>>> -			(void) umask(oldmask);
->>>>>> -
->>>>>> -			/* Copy the address */
->>>>>> -			taddr.addr.maxlen = taddr.addr.len = addrlen;
->>>>>> -			taddr.addr.buf = malloc(addrlen);
->>>>>> -			if (taddr.addr.buf == NULL) {
->>>>>> -				syslog(LOG_ERR,
->>>>>> -				    "cannot allocate memory for %s address",
->>>>>> -				    nconf->nc_netid);
->>>>>> +		}
->>>>>> +		oldmask = umask(S_IXUSR|S_IXGRP|S_IXOTH);
->>>>>> +		if (nconf->nc_semantics != NC_TPI_CLTS) {
->>>>>> +			/* NC_TPI_COTS and NC_TPI_COTS_ORD etc */
->>>>>> +			__rpc_fd2sockinfo(fd,&si);
->>>>>> +			if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,&on,
->>>>>> +			    sizeof(on)) != 0) {
->>>>>> +				syslog(LOG_ERR, "cannot set SO_REUSEADDR on %s",
->>>>>> +					nconf->nc_netid);
->>>>>> 				if (res != NULL)
->>>>>> 					freeaddrinfo(res);
->>>>>> 				return 1;
->>>>>> 			}
->>>>>> -			memcpy(taddr.addr.buf, sa, addrlen);
->>>>>> -#ifdef RPCBIND_DEBUG
->>>>>> -			if (debugging) {
->>>>>> -				/*
->>>>>> -				 * for debugging print out our universal
->>>>>> -				 * address
->>>>>> -				 */
->>>>>> -				char *uaddr;
->>>>>> -				struct netbuf nb;
->>>>>> -				int sa_size = 0;
->>>>>> -
->>>>>> -				nb.buf = sa;
->>>>>> -				switch( sa->sa_family){
->>>>>> -				case AF_INET:
->>>>>> -				  sa_size = sizeof (struct sockaddr_in);
->>>>>> -				  break;
->>>>>> -				case AF_INET6:
->>>>>> -				  sa_size = sizeof (struct sockaddr_in6);				
->>>>>> -				  break;
->>>>>> -				}
->>>>>> -				nb.len = nb.maxlen = sa_size;
->>>>>> -				uaddr = taddr2uaddr(nconf,&nb);
->>>>>> -				(void) fprintf(stderr,
->>>>>> -				    "rpcbind : my address is %s\n", uaddr);
->>>>>> -				(void) free(uaddr);
->>>>>> -			}
->>>>>> -#endif
->>>>>> -			my_xprt = (SVCXPRT *)svc_tli_create(fd, nconf,&taddr,
->>>>>> -                                RPC_MAXDATASIZE, RPC_MAXDATASIZE);
->>>>>> -			if (my_xprt == (SVCXPRT *)NULL) {
->>>>>> -				syslog(LOG_ERR, "%s: could not create service",
->>>>>> -                                        nconf->nc_netid);
->>>>>> -				goto error;
->>>>>> -			}
->>>>>> -		}
->>>>>> -		if (!checkbind)
->>>>>> -			return 1;
->>>>>> -	} else {	/* NC_TPI_COTS */
->>>>>> -		if ((strcmp(nconf->nc_netid, "local") != 0)&&
->>>>>> -		    (strcmp(nconf->nc_netid, "unix") != 0)) {
->>>>>> -			if ((aicode = getaddrinfo(NULL, servname,&hints,&res))!= 0) {
->>>>>> -			  if ((aicode = getaddrinfo(NULL, "portmapper",&hints,&res))!=
->> 0) {
->>>>>> -			  printf("cannot get local address for %s: %s",
->> nconf->nc_netid, gai_strerror(aicode));
->>>>>> -			  syslog(LOG_ERR,
->>>>>> -				    "cannot get local address for %s: %s",
->>>>>> -				    nconf->nc_netid, gai_strerror(aicode));
->>>>>> -				return 1;
->>>>>> -			  }
->>>>>> -			}
->>>>>> -			addrlen = res->ai_addrlen;
->>>>>> -			sa = (struct sockaddr *)res->ai_addr;
->>>>>> -		}
->>>>>> -		oldmask = umask(S_IXUSR|S_IXGRP|S_IXOTH);
->>>>>> -		__rpc_fd2sockinfo(fd,&si);
->>>>>> -		if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,&on,
->>>>>> -				sizeof(on)) != 0) {
->>>>>> -			syslog(LOG_ERR, "cannot set SO_REUSEADDR on %s",
->>>>>> -				nconf->nc_netid);
->>>>>> -			if (res != NULL)
->>>>>> -				freeaddrinfo(res);
->>>>>> -			return 1;
->>>>>> 		}
->>>>>> 		if (bind(fd, sa, addrlen)<    0) {
->>>>>> 			syslog(LOG_ERR, "cannot bind %s: %m", nconf->nc_netid);
->>>>>> @@ -530,7 +461,7 @@ init_transport(struct netconfig *nconf)
->>>>>> 			/* for debugging print out our universal address */
->>>>>> 			char *uaddr;
->>>>>> 			struct netbuf nb;
->>>>>> -		        int sa_size2 = 0;
->>>>>> +			int sa_size2 = 0;
->>>>>>
->>>>>> 			nb.buf = sa;
->>>>>> 			switch( sa->sa_family){
->>>>>> @@ -551,13 +482,16 @@ init_transport(struct netconfig *nconf)
->>>>>>
->>>>>> 		listen(fd, SOMAXCONN);
->>>>>>
->>>>>> -		my_xprt = (SVCXPRT *)svc_tli_create(fd, nconf,&taddr,
->> RPC_MAXDATASIZE, RPC_MAXDATASIZE);
->>>>>> +		my_xprt = (SVCXPRT *)svc_tli_create(fd, nconf,&taddr,
->>>>>> +			    RPC_MAXDATASIZE, RPC_MAXDATASIZE);
->>>>>> 		if (my_xprt == (SVCXPRT *)NULL) {
->>>>>> 			syslog(LOG_ERR, "%s: could not create service",
->>>>>> 					nconf->nc_netid);
->>>>>> 			goto error;
->>>>>> 		}
->>>>>> 	}
->>>>>> +	if (!checkbind)
->>>>>> +		return 1;
->>>>>>
->>>>>> #ifdef PORTMAP
->>>>>> 	/*
->>>>>> --
->>>>>> 1.7.7.6
->>>>>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+SGkgTGludXMsDQoNClBsZWFzZSBwdWxsIGZyb20gdGhlIHNpZ25lZCB0YWcgIm5mcy1mb3ItMy40
+LTMiIGluIHRoZSByZXBvc2l0b3J5IGF0DQoNCiAgIGdpdCBwdWxsIGdpdDovL2dpdC5saW51eC1u
+ZnMub3JnL3Byb2plY3RzL3Ryb25kbXkvbGludXgtbmZzLmdpdCB0YWdzL25mcy1mb3ItMy40LTMN
+Cg0KVGhpcyB3aWxsIHVwZGF0ZSB0aGUgZm9sbG93aW5nIGZpbGVzIHRocm91Z2ggdGhlIGFwcGVu
+ZGVkIGNoYW5nZXNldHMuDQoNCiAgQ2hlZXJzLA0KICAgIFRyb25kDQoNCi0tLS0NCiBmcy9uZnMv
+ZGlyLmMgICAgICAgICAgICAgfCAgICA0ICsrLS0NCiBmcy9uZnMvbmZzNF9mcy5oICAgICAgICAg
+fCAgICAxICsNCiBmcy9uZnMvbmZzNHByb2MuYyAgICAgICAgfCAgIDQ0ICsrKysrKysrKysrKysr
+KysrKysrKysrKysrKysrKysrKysrKy0tLS0tLS0tDQogZnMvbmZzL25mczRzdGF0ZS5jICAgICAg
+IHwgICAzMSArKysrKysrKysrKysrKysrKysrLS0tLS0tLS0tLS0tDQogZnMvbmZzL25mczR4ZHIu
+YyAgICAgICAgIHwgICAgOSArKysrKy0tLS0NCiBmcy9uZnMvcmVhZC5jICAgICAgICAgICAgfCAg
+ICAyICstDQogZnMvbmZzL3N1cGVyLmMgICAgICAgICAgIHwgICAgOCArKysrKystLQ0KIGZzL25m
+cy93cml0ZS5jICAgICAgICAgICB8ICAgIDUgKysrLS0NCiBpbmNsdWRlL2xpbnV4L25mc194ZHIu
+aCAgfCAgICA3ICsrKysrKy0NCiBuZXQvc3VucnBjL3N1bnJwY19zeW1zLmMgfCAgIDE3ICsrKysr
+KysrKy0tLS0tLS0tDQogMTAgZmlsZXMgY2hhbmdlZCwgODggaW5zZXJ0aW9ucygrKSwgNDAgZGVs
+ZXRpb25zKC0pDQoNCmNvbW1pdCA3YmY5N2JjMjczMDhjZmRjN2E4ZGFkZDQwYWU1MGY3YzRjYjA5
+YjAxDQpBdXRob3I6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+
+DQpEYXRlOiAgIFNhdCBBcHIgMjEgMTI6MzY6MTkgMjAxMiAtMDQwMA0KDQogICAgTkZTdjQ6IEtl
+ZXAgZHJvcHBlZCBzdGF0ZSBvd25lcnMgb24gdGhlIExSVSBsaXN0IGZvciBhIHdoaWxlDQogICAg
+DQogICAgVG8gZW5zdXJlIHRoYXQgd2UgZG9uJ3QgcmV1c2UgdGhlaXIgaWRlbnRpZmllcnMuDQog
+ICAgDQogICAgU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RA
+bmV0YXBwLmNvbT4NCg0KY29tbWl0IGM3NzM2NWM5NjNjZjg3MDNlY2YxMDA0Y2QzYjI5ODA2OGEz
+ZTFiNzYNCkF1dGhvcjogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
+bT4NCkRhdGU6ICAgU2F0IEFwciAyMSAxMjozMTowNSAyMDEyIC0wNDAwDQoNCiAgICBORlN2NDog
+RW5zdXJlIHRoYXQgd2UgZG9uJ3QgZHJvcCBhIHN0YXRlIG93bmVyIG1vcmUgdGhhbiBvbmNlDQog
+ICAgDQogICAgUmV0ZXN0IHRoZSBSQl9FTVBUWV9OT0RFKCkgY29uZGl0aW9uIHVuZGVyIHRoZSBz
+cGluIGxvY2sNCiAgICB0byBlbnN1cmUgdGhhdCB3ZSBkb24ndCBjYWxsIHJiX2VyYXNlKCkgbW9y
+ZSB0aGFuIG9uY2Ugb24gdGhlDQogICAgc2FtZSBzdGF0ZSBvd25lci4NCiAgICANCiAgICBTaWdu
+ZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0K
+DQpjb21taXQgOTViNzJlYjBiZGVmNjQ3NmI3ZTczMDYxZjAzODJhZGY0NmM1NDk1YQ0KQXV0aG9y
+OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KRGF0ZTogICBG
+cmkgQXByIDIwIDE5OjI0OjUxIDIwMTIgLTA0MDANCg0KICAgIE5GU3Y0OiBFbnN1cmUgd2UgZG8g
+bm90IHJldXNlIG9wZW4gb3duZXIgbmFtZXMNCiAgICANCiAgICBUaGUgTkZTdjQgc3BlYyBpcyBh
+bWJpZ3VvdXMgYWJvdXQgd2hldGhlciBvciBub3QgaXQgaXMgcGVybWlzc2libGUNCiAgICB0byBy
+ZXVzZSBvcGVuIG93bmVyIG5hbWVzLCBzbyBwbGF5IGl0IHNhZmUuIFRoaXMgcGF0Y2ggYWRkcyBh
+IHRpbWVzdGFtcA0KICAgIHRvIHRoZSBzdGF0ZV9vd25lciBzdHJ1Y3R1cmUsIGFuZCBjb21iaW5l
+cyB0aGF0IHdpdGggdGhlIElEQSBiYXNlZA0KICAgIHVuaXF1aWZpZXIuDQogICAgRml4ZXMgYSBy
+ZWdyZXNzaW9uIHdoZXJlYnkgdGhlIExpbnV4IHNlcnZlciByZXR1cm5zIE5GUzRFUlJfQkFEX1NF
+UUlELg0KICAgIA0KICAgIFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlr
+bGVidXN0QG5ldGFwcC5jb20+DQoNCmNvbW1pdCA5OGEyMTM5ZjRmNGQ3YjVmY2MzYTU0YzdmZGRi
+ZTg4NjEyYWJlZDIwDQpBdXRob3I6IEphbiBLYXJhIDxqYWNrQHN1c2UuY3o+DQpEYXRlOiAgIFNh
+dCBTZXAgMyAwMTowOTo0MyAyMDExICswMjAwDQoNCiAgICBuZnM6IEVuY2xvc2UgaG9zdG5hbWUg
+aW4gYnJhY2tldHMgd2hlbiBuZWVkZWQgaW4gbmZzX2RvX3Jvb3RfbW91bnQNCiAgICANCiAgICBX
+aGVuIGhvc3RuYW1lIGNvbnRhaW5zIGNvbG9uIChlLmcuIHdoZW4gaXQgaXMgYW4gSVB2NiBhZGRy
+ZXNzKSBpdCBuZWVkcw0KICAgIHRvIGJlIGVuY2xvc2VkIGluIGJyYWNrZXRzIHRvIG1ha2UgcGFy
+c2luZyBvZiBORlMgZGV2aWNlIHN0cmluZyBwb3NzaWJsZS4NCiAgICBGaXggbmZzX2RvX3Jvb3Rf
+bW91bnQoKSB0byBlbmNsb3NlIGhvc3RuYW1lIHByb3Blcmx5IHdoZW4gbmVlZGVkLiBORlMgY29k
+ZQ0KICAgIGFjdHVhbGx5IGRvZXMgbm90IG5lZWQgdGhpcyBhcyBpdCBkb2VzIG5vdCBwYXJzZSB0
+aGUgc3RyaW5nIHBhc3NlZCBieQ0KICAgIG5mc19kb19yb290X21vdW50KCkgYnV0IHRoZSBkZXZp
+Y2Ugc3RyaW5nIGlzIGV4cG9zZWQgdG8gdXNlcnNwYWNlIGluDQogICAgL3Byb2MvbW91bnRzLg0K
+ICAgIA0KICAgIENDOiBKb3NoIEJveWVyIDxqd2JveWVyQHJlZGhhdC5jb20+DQogICAgQ0M6IFRy
+b25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQogICAgU2lnbmVkLW9m
+Zi1ieTogSmFuIEthcmEgPGphY2tAc3VzZS5jej4NCiAgICBDYzogc3RhYmxlQHZnZXIua2VybmVs
+Lm9yZw0KICAgIFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0
+QG5ldGFwcC5jb20+DQoNCmNvbW1pdCA4Y2NkMjcxZjdhM2E4NDZjZTZmODVlYWQwNzYwZDlkMTI5
+OTRhNjExDQpBdXRob3I6IEZyZWQgSXNhbWFuIDxpaXNhbWFuQG5ldGFwcC5jb20+DQpEYXRlOiAg
+IEZyaSBBcHIgMjAgMTQ6NDc6MzUgMjAxMiAtMDQwMA0KDQogICAgTkZTOiBwdXQgb3BlbiBjb250
+ZXh0IG9uIGVycm9yIGluIG5mc19mbHVzaF9tdWx0aQ0KICAgIA0KICAgIENjOiA8c3RhYmxlQHZn
+ZXIua2VybmVsLm9yZz4NCiAgICBTaWduZWQtb2ZmLWJ5OiBGcmVkIElzYW1hbiA8aWlzYW1hbkBu
+ZXRhcHAuY29tPg0KICAgIFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlr
+bGVidXN0QG5ldGFwcC5jb20+DQoNCmNvbW1pdCA3M2ZiN2JjN2M1N2Q5NzFiMTFmMmUwMDUzNmFj
+MmQzZTMxNmUwNjA5DQpBdXRob3I6IEZyZWQgSXNhbWFuIDxpaXNhbWFuQG5ldGFwcC5jb20+DQpE
+YXRlOiAgIEZyaSBBcHIgMjAgMTQ6NDc6MzQgMjAxMiAtMDQwMA0KDQogICAgTkZTOiBwdXQgb3Bl
+biBjb250ZXh0IG9uIGVycm9yIGluIG5mc19wYWdlaW5fbXVsdGkNCiAgICANCiAgICBDYzogPHN0
+YWJsZUB2Z2VyLmtlcm5lbC5vcmc+DQogICAgU2lnbmVkLW9mZi1ieTogRnJlZCBJc2FtYW4gPGlp
+c2FtYW5AbmV0YXBwLmNvbT4NCiAgICBTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRy
+b25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KDQpjb21taXQgNDUxMTQ2YmU5MzNlMjZlMjEyNzc4
+NTJiNWU0MGM2YTUyMjY2ZWY5Ng0KQXV0aG9yOiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xl
+YnVzdEBuZXRhcHAuY29tPg0KRGF0ZTogICBXZWQgQXByIDE4IDE2OjI5OjExIDIwMTIgLTA0MDAN
+Cg0KICAgIE5GU3Y0OiBGaXggb3BlbihPX1RSVU5DKSBhbmQgZnRydW5jYXRlKCkgZXJyb3IgaGFu
+ZGxpbmcNCiAgICANCiAgICBJZiB0aGUgZmlsZSB3YXNuJ3Qgb3BlbmVkIGZvciB3cml0aW5nLCB0
+aGVuIHRydW5jYXRlIGFuZCBmdHJ1bmNhdGUNCiAgICBuZWVkIHRvIHJlcG9ydCB0aGUgYXBwcm9w
+cmlhdGUgZXJyb3JzLg0KICAgIA0KICAgIFJlcG9ydGVkLWJ5OiBNaWtsb3MgU3plcmVkaSA8bWlr
+bG9zQHN6ZXJlZGkuaHU+DQogICAgU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDxUcm9u
+ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCiAgICBDYzogc3RhYmxlQHZnZXIua2VybmVsLm9yZw0K
+DQpjb21taXQgNTU3MjU1MTNiNWVmOWQ0NjJhYTNlMTg1Mjc2NThhMDM2MmFhYWU4Mw0KQXV0aG9y
+OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KRGF0ZTogICBX
+ZWQgQXByIDE4IDEyOjQ4OjM1IDIwMTIgLTA0MDANCg0KICAgIE5GU3Y0OiBFbnN1cmUgdGhhdCB3
+ZSBjaGVjayBsb2NrIGV4Y2x1c2l2ZS9zaGFyZWQgdHlwZSBhZ2FpbnN0IG9wZW4gbW9kZXMNCiAg
+ICANCiAgICBTaW5jZSB3ZSBtYXkgYmUgc2ltdWxhdGluZyBmbG9jaygpIGxvY2tzIHVzaW5nIE5G
+UyBieXRlIHJhbmdlIGxvY2tzLA0KICAgIHdlIGNhbid0IHJlbHkgb24gdGhlIFZGUyBoYXZpbmcg
+Y2hlY2tlZCB0aGUgZmlsZSBvcGVuIG1vZGUgZm9yIHVzLg0KICAgIA0KICAgIFNpZ25lZC1vZmYt
+Ynk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQogICAgQ2M6
+IHN0YWJsZUB2Z2VyLmtlcm5lbC5vcmcNCg0KY29tbWl0IDA1ZmZlMjRmNTI5MGRjMDk1Zjk4ZmJh
+Zjg0YWZlNTFlZjQwNGNjYzUNCkF1dGhvcjogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1
+c3RAbmV0YXBwLmNvbT4NCkRhdGU6ICAgV2VkIEFwciAxOCAxMjoyMDoxMCAyMDEyIC0wNDAwDQoN
+CiAgICBORlN2NDogRW5zdXJlIHRoYXQgdGhlIExPQ0sgY29kZSBzZXRzIGV4Y2VwdGlvbi0+aW5v
+ZGUNCiAgICANCiAgICBBbGwgY2FsbGVycyBvZiBuZnM0X2hhbmRsZV9leGNlcHRpb24oKSB0aGF0
+IG5lZWQgdG8gaGFuZGxlDQogICAgTkZTNEVSUl9PUEVOTU9ERSBjb3JyZWN0bHkgc2hvdWxkIHNl
+dCBleGNlcHRpb24tPmlub2RlDQogICAgDQogICAgU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVi
+dXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCiAgICBDYzogc3RhYmxlQHZnZXIua2Vy
+bmVsLm9yZw0KDQpjb21taXQgY2ExMzhmMzY4YTM2ZGJhNDBkM2VmNGE1M2Q2NGFmMjAxMWNkYTNj
+Nw0KQXV0aG9yOiBGcmVkIElzYW1hbiA8aWlzYW1hbkBuZXRhcHAuY29tPg0KRGF0ZTogICBUaHUg
+QXByIDUgMTU6MjY6MzYgMjAxMiAtMDQwMA0KDQogICAgTkZTOiBjaGVjayBmb3IgcmVxPT1OVUxM
+IGluIG5mc190cnlfdG9fdXBkYXRlX3JlcXVlc3QgY2xlYW51cA0KICAgIA0KICAgIFNpZ25lZC1v
+ZmYtYnk6IEZyZWQgSXNhbWFuIDxpaXNhbWFuQG5ldGFwcC5jb20+DQogICAgU2lnbmVkLW9mZi1i
+eTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCg0KY29tbWl0
+IGFkYWUwZmUwZWE4N2U4ZmIxYTcyZGRlMzA0OTM3YzYwNzU5YjQ5NWYNCkF1dGhvcjogU3Rhbmlz
+bGF2IEtpbnNidXJza3kgPHNraW5zYnVyc2t5QHBhcmFsbGVscy5jb20+DQpEYXRlOiAgIFRodSBB
+cHIgNSAyMTowNDozNyAyMDEyICswNDAwDQoNCiAgICBTVU5SUEM6IHJlZ2lzdGVyIFBpcGVGUyBm
+aWxlIHN5c3RlbSBhZnRlciBwZXJuZXQgc3lic3lzdGVtDQogICAgDQogICAgUGlwZUZTIHN1cGVy
+YmxvY2sgY3JlYXRpb24gcm91dGluZSByZWxheXMgb24gU1VOUlBDIHBlcm5ldCBkYXRhIHByZXNl
+bnNlLCB3aGljaA0KICAgIGlzIGNyZWF0ZWQgb24gcmVnaXN0ZXJfcGVybmV0X3N1YnN5cygpIGNh
+bGwgaW4gU1VOUlBDIG1vZHVsZSBpbml0IGZ1bmN0aW9uLg0KICAgIFJlZ2lzdGVyaW5nIG9mIFBp
+cGVGUyBmaWxlc3lzdGVtIHByaW9yIHRvIHJlZ2lzdGVyaW5nIG9mIHBlci1uZXQgc3Vic3lzdGVt
+DQogICAgbGVhZHMgdG8gcmFjZXMgKG1vdW50IG9mIFBpcGVGUyBjYW4gZGVyZWZlcmVuY2UgdW5p
+bml0aWFsaXplZCBkYXRhKS4NCiAgICANCiAgICBTaWduZWQtb2ZmLWJ5OiBTdGFuaXNsYXYgS2lu
+c2J1cnNreSA8c2tpbnNidXJza3lAcGFyYWxsZWxzLmNvbT4NCiAgICBTaWduZWQtb2ZmLWJ5OiBU
+cm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KDQoNCi0tIA0KVHJv
+bmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9u
+ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
