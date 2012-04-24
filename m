@@ -1,58 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:60401 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753272Ab2DSXdC convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Apr 2012 19:33:02 -0400
-Subject: Re: [PATCH 1/6] xstat: Add a pair of system calls to make extended file stats available
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-From: Andreas Dilger <adilger@dilger.ca>
-In-Reply-To: <20120419140612.17272.57774.stgit@warthog.procyon.org.uk>
-Date: Thu, 19 Apr 2012 17:36:32 -0600
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-ext4@vger.kernel.org, wine-devel@winehq.org, kfm-devel@kde.org,
-        nautilus-list@gnome.org, linux-api@vger.kernel.org,
-        libc-alpha@sourceware.org
-Message-Id: <5D4BF4AB-47E9-4E25-B2A3-F895C98BDAA3@dilger.ca>
-References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <20120419140612.17272.57774.stgit@warthog.procyon.org.uk>
-To: David Howells <dhowells@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:2751 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757034Ab2DXR4T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Apr 2012 13:56:19 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
+        Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v3 0/8] Fix SECINFO procedure
+Date: Tue, 24 Apr 2012 13:56:04 -0400
+Message-Id: <1335290172-1532-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2012-04-19, at 8:06 AM, David Howells wrote:
-> Add a pair of system calls to make extended file stats available,
-> including file creation time, inode version and data version where available through the underlying filesystem.
-> 
-> The idea was initially proposed as a set of xattrs that could be
-> retrieved with getxattr(), but the general preferance proved to be
-> for new syscalls with an extended stat structure.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-I would comment that it was the opposite.  It was originally a
-stat()-like extension that degraded into a messy getxattr() mess.
+My initial SECINFO implementation was merged in 2.6.39, but accidentally
+got disabled in 3.0.  These patches re-enable SECINFO as part of LOOKUP
+and push it down to the v4 layer, instead of existing as an rpc_op (I
+create a "submount" rpc_op instead, see patch 5).
 
-> (2) Lightweight stat: Ask for just those details of interest, and
->     allow a netfs (such as NFS) to approximate anything not of
->     interest, possibly without going to the server [Trond Myklebust,
->     Ulrich Drepper].
+I also noticed that SECINFO_NO_NAME was never run with the current xdr
+decoding logic.  Patch 6 fixes this problem.
 
-This was my original motivation for this functionality, so you can
-put my name here also.
+Changes in version 3:
+- Don't define decode_secinfo_no_name() if CONFIG_NFS_V4_1 isn't set
+- Move around function declerations in header files
 
-> The fields in struct xstat come in a number of classes:
-> 
-> (0) st_dev, st_blksize, st_information.
-> 
->     These are local data and are always available.
+Changes in version 2:
+- Reorder the patches so I'm not doing cleanup in the beginning
+- Don't pre-clone an rpc_clnt for nfs_clone_server, instead fix passing an
+  rpc_authflavor_t through the nfs_clone_mount data.
 
-For the extra two bits it would cost us, I don't think st_blksize
-and st_information should always be returned.  st_blksize may be
-variable for a distributed filesystem, and some of the fields in
-st_information (offline) may not be free to access either.
+Comments are appreciated!
 
-Cheers, Andreas
+- Bryan
 
+Bryan Schumaker (8):
+  NFS: Fix SECINFO_NO_NAME
+  NFS: Handle exceptions coming out of nfs4_proc_fs_locations()
+  NFS: Do secinfo as part of lookup
+  NFS: Remove secinfo knowledge out of the generic client
+  NFS: Create a submount rpc_op
+  NFS: Fix following referral mount points with different security
+  NFS: Honor the authflavor set in the clone mount data
+  NFS: Remove extra rpc_clnt argument to proc_lookup
 
+ fs/nfs/client.c         |    5 +-
+ fs/nfs/dir.c            |    6 +-
+ fs/nfs/internal.h       |   22 ++------
+ fs/nfs/namespace.c      |  140 ++++++-----------------------------------------
+ fs/nfs/nfs3proc.c       |    3 +-
+ fs/nfs/nfs4_fs.h        |   13 ++++-
+ fs/nfs/nfs4namespace.c  |  107 +++++++++++++++++++++++++++++++++++-
+ fs/nfs/nfs4proc.c       |  111 +++++++++++++++++++++++++++++--------
+ fs/nfs/nfs4xdr.c        |   26 ++++++---
+ fs/nfs/proc.c           |    3 +-
+ fs/nfs/super.c          |    4 +-
+ include/linux/nfs_xdr.h |    5 +-
+ 12 files changed, 261 insertions(+), 184 deletions(-)
 
-
+-- 
+1.7.10
 
