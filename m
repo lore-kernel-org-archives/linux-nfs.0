@@ -1,84 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:35341 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754454Ab2DTVm6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 17:42:58 -0400
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS4: fix referrals with IPv6 mounts
-Date: Fri, 20 Apr 2012 21:42:56 +0000
-Message-ID: <DA990978-9EBE-44F2-9776-DD8FBAFDCB19@netapp.com>
-References: <1334949705-33393-1-git-send-email-dros@netapp.com>
- <B1E9AAB3-6739-46D5-999A-130494131031@oracle.com>
- <79682769-1052-4392-A63D-F686A81C2BBE@netapp.com>
- <41440F4B-99AC-48AC-A1F8-C9A3DED9E76E@netapp.com>
- <1334957938.3295.37.camel@lade.trondhjem.org>
-In-Reply-To: <1334957938.3295.37.camel@lade.trondhjem.org>
-Content-Type: multipart/signed;
-	boundary="Apple-Mail=_3AAFBF2C-7FC9-4EFD-9E33-042BF89E76D4";
-	protocol="application/pkcs7-signature"; micalg=sha1
-MIME-Version: 1.0
+Received: from acsinet15.oracle.com ([141.146.126.227]:42422 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755118Ab2DXPkz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Apr 2012 11:40:55 -0400
+Subject: Re: [PATCH] rpcbind: Only listen on requested hostnames for NC_TPI_COTS connections
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20120424152950.GB13191@umich.edu>
+Date: Tue, 24 Apr 2012 11:40:41 -0400
+Cc: Steve Dickson <steved@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <2332F6F6-A1CF-4C0A-A35C-4E4EE588EC1D@oracle.com>
+References: <1335194692-6714-1-git-send-email-ndevos@redhat.com> <82D8C43F-5C40-444C-9573-B4FF95F615DA@oracle.com> <4F957D30.9010102@redhat.com> <7C71F75F-3F15-401B-8700-38B0EBE2B595@oracle.com> <4F96C0E3.9090007@redhat.com> <20120424152950.GB13191@umich.edu>
+To: Jim Rees <rees@umich.edu>, Niels de Vos <ndevos@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Apple-Mail=_3AAFBF2C-7FC9-4EFD-9E33-042BF89E76D4
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
 
-On Apr 20, 2012, at 5:39 PM, Myklebust, Trond wrote:
+On Apr 24, 2012, at 11:29 AM, Jim Rees wrote:
 
-> On Fri, 2012-04-20 at 21:31 +0000, Adamson, Dros wrote:
->> On Apr 20, 2012, at 5:25 PM, Adamson, Dros wrote:
->> To be clear: the problem is *not* with IPv6 addrs in FS_LOCATIONS =
-attrs.  They work if the parent mount is IPv4/dns.  The problem is when =
-the parent mount is IPv6 *no* referrals work (IPv4, IPv6 or DNS), =
-because of the issue described above.
->=20
-> There is a problem there too. If you don't bracket the IPv6 address =
-that
-> you get from fs_locations, then you'll hit the same problem if you hit =
-a
-> referral on the referred-to server.
+> Niels de Vos wrote:
+> 
+>  On 04/23/2012 06:22 PM, Chuck Lever wrote:
+>> 
+>> So you did check the mail archive?  I seem to recall other patches like
+>> this in the past, and that there is a reason why rpcbind works this way.
+>> I simply don't remember the specifics right at the moment.
+> 
+>  I did, but no messages about this subject come up for me... Maybe I'm looking
+>  in the wrong places :-/
+> 
+> I asked about this last November, and at that time Chuck referred me to the
+> mail archive too.  I couldn't find any discussion either.  But the behavior
+> is intentional, so I don't think you'll get a patch accepted.
 
-Ok, but that's a moot point at this stage as [] escaping is always =
-getting stripped from dentry->d_fsdata (really from dev_name passed to =
-mount as far as I can tell).
+Going back to the rpcbind(8) man page, the "-h" is meant to work around a brokenness of RPC over UDP.  UDP replies can come from any server address, as I mentioned before, and most Linux clients, at least, don't like an RPC reply to come from a different address than the request was sent to.
 
--dros=
+We don't need or want this option for connection-oriented transports.  The reply will always be returned on the same connection that request was made on.
 
---Apple-Mail=_3AAFBF2C-7FC9-4EFD-9E33-042BF89E76D4
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
+Restricting the bind address for rpcbind's listener is a different, and perhaps orthogonal, issue.  In addition to trimming rpcbind's listener address space via IP tables, you can also run the rpcbind server, and the RPC services it shepherds, in a separate network namespace.
 
-MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIDTzCCA0sw
-ggIzoAMCAQICAQEwCwYJKoZIhvcNAQEFMEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYD
-VQQGEwJVUzEeMBwGCSqGSIb3DQEJARYPZHJvc0BuZXRhcHAuY29tMB4XDTExMDYwODIyMDc0NloX
-DTEyMDYwNzIyMDc0NlowRjEXMBUGA1UEAwwOV2VzdG9uIEFkYW1zb24xCzAJBgNVBAYTAlVTMR4w
-HAYJKoZIhvcNAQkBFg9kcm9zQG5ldGFwcC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
-AoIBAQC8/tJxtovJEXYRfSsrFOWKHxIZGY7/2mBee1DpWuoGDbVNapefCC7WXe+Nqxz609w2J/Mk
-/k3trZ3Ge2NXK0tGnP9NzjkzpGA7rSpM3wUFsvbLMUEGfQpvV24/nYvcLHTvOOEUaDPpHduN94bD
-dwvyowzDIRIpF2MeRnOzBNeHkrGHlZdzPmGjm8tkhrDRRkDYHhlxaiG4z30KCfAazxomuINiy1kj
-vbndXooYMDoh9H63hgW4NkOedtLdflLa322DXQ3nFU7YbyOIjHVl1tgWJLDWf7WT3lsAB8KvuJZ5
-zhsUB+fqxCKPJVRPDO1gjChvvtGiG1tGUUZz0H9Wx00zAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIH
-gDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDBDAaBgNVHREEEzARgQ9kcm9zQG5ldGFwcC5jb20wDQYJ
-KoZIhvcNAQEFBQADggEBACv0niZSmW+psB1sJXULh3mecDbN2mj0bFpN1YNdjcV7BiOLJ1Rs1ibV
-f13h73z8C7SBsPXTM5si8gmJtOnXM5jsgtlql44h/RrjUr8+mtK5DPCZls9J7iz3cGthzwOPvxUj
-nMSv3BpRX5oJom5ESgCM9Nn4u/ECTlLMhEIOYnBFiN0eDxcxz+r1cpbHg3r0otIKyxLpeaCjP6AH
-F93EHp4T8Rb63y3CcDgxrQGHlTdVi3QvxaMUexUXD81fiA+UqsB/MKmRxB1Hs4Vf3Q/+ejcm78K1
-ROF8TNPmNWRlKg3Y7cSFjZGzLuzXsvSsCbw4HLn0oZe/OfgSbarTAxttL5IxggHRMIIBzQIBATBL
-MEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYDVQQGEwJVUzEeMBwGCSqGSIb3DQEJARYP
-ZHJvc0BuZXRhcHAuY29tAgEBMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
-MBwGCSqGSIb3DQEJBTEPFw0xMjA0MjAyMTQyNTZaMCMGCSqGSIb3DQEJBDEWBBSOkiIb3anUjM0Z
-SSe56I9L5sj+JjANBgkqhkiG9w0BAQEFAASCAQAeXfWaG6PDRPhe1XSg293pX5t2ppWbBNXwwUXU
-gpXIXVcRElCSQiVO4m3M6+tNBnCHWzGslVD7oSGm3Tf7f6nKQOlSqx68yY8dcrhSQf+D4kqB4ldz
-lLV6NnqLafyZI6NjCGZ2qXW+0tAh2AK8rL8KKj+p9Cg+HLvhRzIq80xRD3OCw+9SWj+d0/np8Dx2
-8xJNL4Ir3XU2eM3JwLUJGyautMXkVgU/REkDkJvR1VMehXyB3VsIpT0GdkAZmhd1uDD0TNNsLoZ5
-mw0Vfe1nj4JsU2pv0Vk9jHImB1o5Yom+AXV+WuZlnbA6YTyDqLJiz6R6tP1AbrpPwslQan2+ZaFq
-AAAAAAAA
+> I never did
+> discover the reason but I do have a workaround.  I just don't run rpcbind.
+> 
+> This was the most informative response I got:
+> 
+> Date: Tue, 8 Nov 2011 19:01:51 +1100
+> From: Max Matveev <makc@redhat.com>
+> Subject: Re: rpcbind -h
+> To: Jim Rees <rees@umich.edu>
+> Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+> 
+> Chuck's quote from the manpage reminded me - -h was used to work            
+> around the address selection: if server has more then one address the       
+> reply may use any of them. Some clients don't like it.
+> 
+> This issue should go away after
+> 
+> commit 74ef3df0236c55185225c62fba34953f2582da72
+> Author: Olaf Kirch <okir@suse.de>      
+> Date:   Wed Mar 2 10:09:24 2011 -0500
+> 
+> was added to libtirpc.
+> 
+> rees> As I said before, I was hoping for the equivalent of "portmap
+> rees> -l".  I was ready to code up a patch of some kind but now have
+> rees> a workaround (mount with nolock and don't run rpcbind at all).
+> 
+> iptables is another option.
+> 
+> max
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
---Apple-Mail=_3AAFBF2C-7FC9-4EFD-9E33-042BF89E76D4--
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
