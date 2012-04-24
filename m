@@ -1,132 +1,310 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:44986 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754222Ab2DESzM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Apr 2012 14:55:12 -0400
-MIME-Version: 1.0
-Date: Thu, 5 Apr 2012 20:55:11 +0200
-Message-ID: <CAPVoSvQ8M=VUjNCwd5=0ax9O1FOFruP33FcN-_NNPeE68J0FaQ@mail.gmail.com>
-Subject: 3.4-rc1:NFS Oops in nfs_clear_request_commit
-From: Torsten Kaiser <just.for.lkml@googlemail.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        LKML Kernel <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:39660 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755131Ab2DXS6x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Apr 2012 14:58:53 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 1/2] NFS: Create an NFS v3 stat_to_errno()
+Date: Tue, 24 Apr 2012 14:58:49 -0400
+Message-Id: <1335293930-20215-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1335293930-20215-1-git-send-email-bjschuma@netapp.com>
+References: <1335293930-20215-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-While using wget to download a 100MB+ file onto a nfs share I got the
-following Oops:
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Apr  5 19:53:59 thoregon kernel: [ 1726.918412] BUG: unable to handle
-kernel NULL pointer dereference at 0000000000000048
-Apr  5 19:53:59 thoregon kernel: [ 1726.918455] IP:
-[<ffffffff81151821>] nfs_clear_request_commit+0x11/0x90
-Apr  5 19:53:59 thoregon kernel: [ 1726.918489] PGD 1e6300067 PUD
-21175c067 PMD 0
-Apr  5 19:53:59 thoregon kernel: [ 1726.918511] Oops: 0000 [#1] SMP
-Apr  5 19:53:59 thoregon kernel: [ 1726.918527] CPU 5
-Apr  5 19:53:59 thoregon kernel: [ 1726.918536] Modules linked in: fuse
-Apr  5 19:53:59 thoregon kernel: [ 1726.918554]
-Apr  5 19:53:59 thoregon kernel: [ 1726.918562] Pid: 11486, comm: wget
-Not tainted 3.4.0-rc1 #1 MSI MS-7640/890FXA-GD70 (MS-7640)
-Apr  5 19:53:59 thoregon kernel: [ 1726.918600] RIP:
-0010:[<ffffffff81151821>]  [<ffffffff81151821>]
-nfs_clear_request_commit+0x11/0x90
-Apr  5 19:53:59 thoregon kernel: [ 1726.918639] RSP:
-0018:ffff8801e546fb08  EFLAGS: 00010292
-Apr  5 19:53:59 thoregon kernel: [ 1726.918660] RAX: 0000000000000000
-RBX: 0000000000000000 RCX: 0000000180200000
-Apr  5 19:53:59 thoregon kernel: [ 1726.918689] RDX: 4000000000000029
-RSI: 0000000000000001 RDI: 0000000000000000
-Apr  5 19:53:59 thoregon kernel: [ 1726.918717] RBP: 000000000000078c
-R08: 0000000000000000 R09: ffffffff81152d68
-Apr  5 19:53:59 thoregon kernel: [ 1726.918745] R10: ffffffff8114d54a
-R11: 0000000000000000 R12: ffff8802312c73a8
-Apr  5 19:53:59 thoregon kernel: [ 1726.918774] R13: 0000000000000874
-R14: ffff8803291a2580 R15: 0000000000000000
-Apr  5 19:53:59 thoregon kernel: [ 1726.918803] FS:
-00007f7b3a65d720(0000) GS:ffff880337d40000(0000)
-knlGS:0000000000000000
-Apr  5 19:53:59 thoregon kernel: [ 1726.918835] CS:  0010 DS: 0000 ES:
-0000 CR0: 0000000080050033
-Apr  5 19:53:59 thoregon kernel: [ 1726.918858] CR2: 0000000000000048
-CR3: 000000021e3c0000 CR4: 00000000000007e0
-Apr  5 19:53:59 thoregon kernel: [ 1726.918887] DR0: 0000000000000000
-DR1: 0000000000000000 DR2: 0000000000000000
-Apr  5 19:53:59 thoregon kernel: [ 1726.918915] DR3: 0000000000000000
-DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Apr  5 19:53:59 thoregon kernel: [ 1726.918944] Process wget (pid:
-11486, threadinfo ffff8801e546e000, task ffff8801d2decac0)
-Apr  5 19:53:59 thoregon kernel: [ 1726.918976] Stack:
-Apr  5 19:53:59 thoregon kernel: [ 1726.918985]  000000000000078c
-ffffea0006d484c0 000000000000078c ffffffff81152d98
-Apr  5 19:53:59 thoregon kernel: [ 1726.919020]  ffff8802312c74e0
-ffffffff00000000 ffff8802312c7420 0000100006d484c0
-Apr  5 19:53:59 thoregon kernel: [ 1726.919053]  ffff8803291a2580
-ffff880235f43c00 0000000000000874 ffffea0006d484c0
-Apr  5 19:53:59 thoregon kernel: [ 1726.919086] Call Trace:
-Apr  5 19:53:59 thoregon kernel: [ 1726.919099]  [<ffffffff81152d98>]
-? nfs_updatepage+0x1e8/0x3d0
-Apr  5 19:53:59 thoregon kernel: [ 1726.919124]  [<ffffffff811445c9>]
-? nfs_write_end+0x129/0x250
-Apr  5 19:53:59 thoregon kernel: [ 1726.919149]  [<ffffffff8108e46b>]
-? generic_file_buffered_write+0x19b/0x2c0
-Apr  5 19:53:59 thoregon kernel: [ 1726.919179]  [<ffffffff8108ffb1>]
-? __generic_file_aio_write+0x211/0x410
-Apr  5 19:53:59 thoregon kernel: [ 1726.919207]  [<ffffffff81090226>]
-? generic_file_aio_write+0x76/0xf0
-Apr  5 19:53:59 thoregon kernel: [ 1726.919233]  [<ffffffff8114439b>]
-? nfs_file_write+0x7b/0x180
-Apr  5 19:53:59 thoregon kernel: [ 1726.919258]  [<ffffffff810cf4df>]
-? do_sync_write+0xbf/0x100
-Apr  5 19:53:59 thoregon kernel: [ 1726.919282]  [<ffffffff810cfd16>]
-? vfs_write+0xc6/0x170
-Apr  5 19:53:59 thoregon kernel: [ 1726.919304]  [<ffffffff810cfffe>]
-? sys_write+0x4e/0x90
-Apr  5 19:53:59 thoregon kernel: [ 1726.919328]  [<ffffffff815f7822>]
-? system_call_fastpath+0x16/0x1b
-Apr  5 19:53:59 thoregon kernel: [ 1726.919352] Code: 00 00 e8 f3 4d
-11 00 53 9d 5b c3 66 66 66 66 66 66 2e 0f 1f 84 00 00 00 00 00 48 83
-ec 18 48 89 5c 24 08 48 89 6c 24 10 48 89 fb <48> 8b 47 48 a8 04 74 47
-48 8b 47 18 48 8b 40 30 48 8b 68 30 48
-Apr  5 19:53:59 thoregon kernel: [ 1726.919494] RIP
-[<ffffffff81151821>] nfs_clear_request_commit+0x11/0x90
-Apr  5 19:53:59 thoregon kernel: [ 1726.919522]  RSP <ffff8801e546fb08>
-Apr  5 19:53:59 thoregon kernel: [ 1726.919537] CR2: 0000000000000048
-Apr  5 19:53:59 thoregon kernel: [ 1726.940636] ---[ end trace
-0e47a071a9891fab ]---
+In theory, NFS v3 can have different error versions than NFS v2. v4 is
+already using its own nfs4_stat_to_errno() to mapp error codes, so
+rather than create something in the generic client for v2 and v3 to
+share I instead give v3 its own function.
 
-Otherwise 3.4-rc1 works fine for me. And other big downloads before
-and after that worked fine.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/internal.h |    1 -
+ fs/nfs/nfs2xdr.c  |    3 +-
+ fs/nfs/nfs3xdr.c  |  103 +++++++++++++++++++++++++++++++++++++++++++----------
+ 3 files changed, 87 insertions(+), 20 deletions(-)
 
-(gdb) list *0xffffffff81151821
-0xffffffff81151821 is in nfs_clear_request_commit
-(/usr/src/linux-3.4-rc1/arch/x86/include/asm/bitops.h:312).
-307     }
-308
-309     static __always_inline int constant_test_bit(unsigned int nr,
-const volatile unsigned long *addr)
-310     {
-311             return ((1UL << (nr % BITS_PER_LONG)) &
-312                     (addr[nr / BITS_PER_LONG])) != 0;
-313     }
-314
-315     static inline int variable_test_bit(int nr, volatile const
-unsigned long *addr)
-316     {
-(gdb) list *0xffffffff81152d98
-0xffffffff81152d98 is in nfs_updatepage (fs/nfs/write.c:685).
-680                     req->wb_bytes = end - req->wb_offset;
-681             else
-682                     req->wb_bytes = rqend - req->wb_offset;
-683     out_unlock:
-684             spin_unlock(&inode->i_lock);
-685             nfs_clear_request_commit(req);
-686             return req;
-687     out_flushme:
-688             spin_unlock(&inode->i_lock);
-689             nfs_release_request(req);
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index f4e7066..d02b645 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -201,7 +201,6 @@ extern int __init nfs_init_directcache(void);
+ extern void nfs_destroy_directcache(void);
+ 
+ /* nfs2xdr.c */
+-extern int nfs_stat_to_errno(enum nfs_stat);
+ extern struct rpc_procinfo nfs_procedures[];
+ extern int nfs2_decode_dirent(struct xdr_stream *,
+ 				struct nfs_entry *, int);
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index 1f56000..73e3e67 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -61,6 +61,7 @@
+ #define NFS_readdirres_sz	(1)
+ #define NFS_statfsres_sz	(1+NFS_info_sz)
+ 
++static int nfs_stat_to_errno(enum nfs_stat);
+ 
+ /*
+  * While encoding arguments, set up the reply buffer in advance to
+@@ -1109,7 +1110,7 @@ static const struct {
+  * Returns a local errno value, or -EIO if the NFS status code is
+  * not recognized.  This function is used jointly by NFSv2 and NFSv3.
+  */
+-int nfs_stat_to_errno(enum nfs_stat status)
++static int nfs_stat_to_errno(enum nfs_stat status)
+ {
+ 	int i;
+ 
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index a77cc9a..f766a6f 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -86,6 +86,8 @@
+ 				XDR_QUADLEN(NFS_ACL_INLINE_BUFSIZE))
+ #define ACL3_setaclres_sz	(1+NFS3_post_op_attr_sz)
+ 
++static int nfs3_stat_to_errno(enum nfs_stat);
++
+ /*
+  * Map file type to S_IFMT bits
+  */
+@@ -1385,7 +1387,7 @@ static int nfs3_xdr_dec_getattr3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_default:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1424,7 +1426,7 @@ static int nfs3_xdr_dec_setattr3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1472,7 +1474,7 @@ out_default:
+ 	error = decode_post_op_attr(xdr, result->dir_attr);
+ 	if (unlikely(error))
+ 		goto out;
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1513,7 +1515,7 @@ static int nfs3_xdr_dec_access3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_default:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1554,7 +1556,7 @@ static int nfs3_xdr_dec_readlink3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_default:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1636,7 +1638,7 @@ static int nfs3_xdr_dec_read3res(struct rpc_rqst *req, struct xdr_stream *xdr,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1706,7 +1708,7 @@ static int nfs3_xdr_dec_write3res(struct rpc_rqst *req, struct xdr_stream *xdr,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1770,7 +1772,7 @@ out_default:
+ 	error = decode_wcc_data(xdr, result->dir_attr);
+ 	if (unlikely(error))
+ 		goto out;
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1809,7 +1811,7 @@ static int nfs3_xdr_dec_remove3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1853,7 +1855,7 @@ static int nfs3_xdr_dec_rename3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1896,7 +1898,7 @@ static int nfs3_xdr_dec_link3res(struct rpc_rqst *req, struct xdr_stream *xdr,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /**
+@@ -2088,7 +2090,7 @@ out_default:
+ 	error = decode_post_op_attr(xdr, result->dir_attr);
+ 	if (unlikely(error))
+ 		goto out;
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -2156,7 +2158,7 @@ static int nfs3_xdr_dec_fsstat3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -2232,7 +2234,7 @@ static int nfs3_xdr_dec_fsinfo3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -2295,7 +2297,7 @@ static int nfs3_xdr_dec_pathconf3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -2336,7 +2338,7 @@ static int nfs3_xdr_dec_commit3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ #ifdef CONFIG_NFS_V3_ACL
+@@ -2401,7 +2403,7 @@ static int nfs3_xdr_dec_getacl3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_default:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ static int nfs3_xdr_dec_setacl3res(struct rpc_rqst *req,
+@@ -2420,11 +2422,76 @@ static int nfs3_xdr_dec_setacl3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_default:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ #endif  /* CONFIG_NFS_V3_ACL */
+ 
++
++/*
++ * We need to translate between nfs status return values and
++ * the local errno values which may not be the same.
++ */
++static const struct {
++	int stat;
++	int errno;
++} nfs_errtbl[] = {
++	{ NFS_OK,		0		},
++	{ NFSERR_PERM,		-EPERM		},
++	{ NFSERR_NOENT,		-ENOENT		},
++	{ NFSERR_IO,		-errno_NFSERR_IO},
++	{ NFSERR_NXIO,		-ENXIO		},
++/*	{ NFSERR_EAGAIN,	-EAGAIN		}, */
++	{ NFSERR_ACCES,		-EACCES		},
++	{ NFSERR_EXIST,		-EEXIST		},
++	{ NFSERR_XDEV,		-EXDEV		},
++	{ NFSERR_NODEV,		-ENODEV		},
++	{ NFSERR_NOTDIR,	-ENOTDIR	},
++	{ NFSERR_ISDIR,		-EISDIR		},
++	{ NFSERR_INVAL,		-EINVAL		},
++	{ NFSERR_FBIG,		-EFBIG		},
++	{ NFSERR_NOSPC,		-ENOSPC		},
++	{ NFSERR_ROFS,		-EROFS		},
++	{ NFSERR_MLINK,		-EMLINK		},
++	{ NFSERR_NAMETOOLONG,	-ENAMETOOLONG	},
++	{ NFSERR_NOTEMPTY,	-ENOTEMPTY	},
++	{ NFSERR_DQUOT,		-EDQUOT		},
++	{ NFSERR_STALE,		-ESTALE		},
++	{ NFSERR_REMOTE,	-EREMOTE	},
++#ifdef EWFLUSH
++	{ NFSERR_WFLUSH,	-EWFLUSH	},
++#endif
++	{ NFSERR_BADHANDLE,	-EBADHANDLE	},
++	{ NFSERR_NOT_SYNC,	-ENOTSYNC	},
++	{ NFSERR_BAD_COOKIE,	-EBADCOOKIE	},
++	{ NFSERR_NOTSUPP,	-ENOTSUPP	},
++	{ NFSERR_TOOSMALL,	-ETOOSMALL	},
++	{ NFSERR_SERVERFAULT,	-EREMOTEIO	},
++	{ NFSERR_BADTYPE,	-EBADTYPE	},
++	{ NFSERR_JUKEBOX,	-EJUKEBOX	},
++	{ -1,			-EIO		}
++};
++
++/**
++ * nfs3_stat_to_errno - convert an NFS status code to a local errno
++ * @status: NFS status code to convert
++ *
++ * Returns a local errno value, or -EIO if the NFS status code is
++ * not recognized.  This function is used jointly by NFSv2 and NFSv3.
++ */
++static int nfs3_stat_to_errno(enum nfs_stat status)
++{
++	int i;
++
++	for (i = 0; nfs_errtbl[i].stat != -1; i++) {
++		if (nfs_errtbl[i].stat == (int)status)
++			return nfs_errtbl[i].errno;
++	}
++	dprintk("NFS: Unrecognized nfs status value: %u\n", status);
++	return nfs_errtbl[i].errno;
++}
++
++
+ #define PROC(proc, argtype, restype, timer)				\
+ [NFS3PROC_##proc] = {							\
+ 	.p_proc      = NFS3PROC_##proc,					\
+-- 
+1.7.10
 
-Thanks for looking into this.
-
-Torsten
