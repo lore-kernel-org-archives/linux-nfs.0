@@ -1,160 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga01.intel.com ([192.55.52.88]:47998 "EHLO mga01.intel.com"
+Received: from mx2.netapp.com ([216.240.18.37]:19583 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753519Ab2DCXhd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Apr 2012 19:37:33 -0400
-Date: Tue, 3 Apr 2012 16:32:31 -0700
-From: Fengguang Wu <fengguang.wu@intel.com>
-To: Vivek Goyal <vgoyal@redhat.com>
-Cc: Linux Memory Management List <linux-mm@kvack.org>,
-        Suresh Jayaraman <sjayaraman@suse.com>,
-        Andrea Righi <andrea@betterlinux.com>, Jeff Moyer <jmoyer@redhat.com>,
-        linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-        Tejun Heo <tj@kernel.org>, Jan Kara <jack@suse.cz>,
-        KAMEZAWA Hiroyuki <kamezawa.hiroyu@jp.fujitsu.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Jens Axboe <axboe@kernel.dk>
-Subject: Re: [PATCH 0/6] buffered write IO controller in balance_dirty_pages()
-Message-ID: <20120403233231.GA24333@localhost>
-References: <20120328121308.568545879@intel.com>
- <20120401205647.GD6116@redhat.com>
- <20120403080014.GA15546@localhost>
- <20120403145301.GG5913@redhat.com>
+	id S1753151Ab2DXUmQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Apr 2012 16:42:16 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+CC: "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs4: fix referrals on mounts that use IPv6 addrs
+Date: Tue, 24 Apr 2012 20:42:14 +0000
+Message-ID: <1335300134.2561.20.camel@lade.trondhjem.org>
+References: <1335299720-50765-1-git-send-email-dros@netapp.com>
+In-Reply-To: <1335299720-50765-1-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120403145301.GG5913@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 03, 2012 at 10:53:01AM -0400, Vivek Goyal wrote:
-> On Tue, Apr 03, 2012 at 01:00:14AM -0700, Fengguang Wu wrote:
-> 
-> [CC Jens]
-> 
-> [..]
-> > > I think blkio.weight can be thought of a system wide weight of a cgroup
-> > > and more than one entity/subsystem should be able to make use of it and
-> > > differentiate between IO in its own way. CFQ can decide to do proportional
-> > > time division, and buffered write controller should be able to use the
-> > > same weight and do write bandwidth differentiation. I think it is better
-> > > than introducing another buffered write controller tunable for weight.
-> > > 
-> > > Personally, I am not too worried about this point. We can document and
-> > > explain it well.
-> > 
-> > Agreed. The throttling may work in *either* bps, IOPS or disk time
-> > modes. In each mode blkio.weight is naturally tied to the
-> > corresponding IO metrics.
-> 
-> Well, Tejun does not like the idea of sharing config variables among
-> different policies. So I guess you shall have to come up with your
-> own configurations variables as desired. As each policy will have its
-> own configuration and stats, prefixing the vairable/stat name with
-> policy name will help identify it. Not sure what's a good name for
-> buffered write policy.
-> 
-> May be
-> 
-> blkio.dirty.weight
-> blkio.dirty.bps
-> blkio.buffered_write.* or
-> blkio.buf_write* or
-> blkio.dirty_rate.* or
-
-OK. dirty.* or buffered_write.*, whatever looks more user friendly will be fine.
-
-> [..]
-> > 
-> > Patch 6/6 shows simple test results for bps based throttling.
-> > 
-> > Since then I've improved the patches to work in a more "contained" way
-> > when blkio.throttle.buffered_write_bps is not set.
-> > 
-> > The old behavior is, if blkcg A contains 1 dd and blkcg B contains 10
-> > dd tasks and they have equal weight, B will get 10 times bandwidth
-> > than A.
-> > 
-> > With the below updated core bits, A and B will get equal share of
-> > write bandwidth. The basic idea is to use
-> 
-> Yes, this new behavior makes more sense. Two equal weight groups get
-> equal bandwidth irrpesctive of number of tasks in cgroup.
-
-Yeah, Andrew Morton reminded me of this during the writeback talk in
-google :) Fortunately the current dirty throttling algorithm can
-handle it easily. What's more, hierarchical cgroups can be supported
-by simply using the parent's blkcg->dirty_ratelimit as the throttling
-bps for the child.
-
-> [..]
-> > Test results are "pretty good looking" :-) The attached graphs
-> > illustrates nice attributes of accuracy, fairness and smoothness
-> > for the following tests.
-> 
-> Indeed. These results are pretty cool. It is hard to belive that lines
-> are so smooth and lines for two tasks are overlapping each other such 
-> that it is not obivious initially that they are overlapping and dirtying
-> equal amount of memory. I had to take a second look to figure that out.
-
-Thanks for noticing this! :)
-
-> Just that results for third graph (weight 500 and 1000 respectively) are
-> not perfect. I think Ideally all the 3 tasks should have dirtied same
-> amount of memory.
-
-Yeah, but note that it's not the fault of the throttling algorithm.
-
-The unfairness is created at the very beginning ~0.1s, where dirty
-pages are far under the dirty limits and the dd tasks are not
-throttled at all. Since the first task manages to start 0.1s earlier
-than the other two tasks, it manages to dirty at full (memory write)
-speed which makes the gap.
-
-Once the dirty throttling mechanism comes into play, you can see that
-the lines for the three tasks grow fairly at the same speed/slope.
-
-> But I think achieving perfection here might not be easy and may be
-> not many people will care.
-
-The formula itself looks simple, however it does ask for some
-debugging/tuning efforts to make it behave well under various
-situations.
-
-> Given the fact that you are doing a reasonable job of providing service
-> differentiation between buffered writers, I am wondering if you should
-> look at the ioprio of writers with-in cgroup and provide service
-> differentiation among those too. CFQ has separate queues but it loses
-> the context information by the time IO is submitted. So you might be
-> able to do a much better job. Anyway, this is a possible future
-> enhancement and not necessarily related to this patchset.
-
-Good point. It seems applicable to the general dirty throttling
-(not relying on cgroups). It would mainly be a problem of how to map
-the priority classes/values to each tasks' throttling weight (or bps).
-
-> Also, we are controlling the rate of dirtying the memory. I am again 
-> wondering whether these configuration knobs should be part of memory
-> controller and not block controller. Think of NFS case. There is no
-> block device or block layer involved but we will control the rate of
-> dirtying memory. So some control in memory controller might make
-> sense. And following kind of knobs might make sense there.
-> 
-> memcg.dirty_weight or memcg.dirty.weight
-> memcg.dirty_bps or memcg.dirty.write_bps
-> 
-> Just that we control not the *absolute amount* of memory but *rate* of
-> writing to memory and I think that makes it somewhat confusing and
-> gives the impression that it should be part of block IO controller.
-
-There is the future prospective of "buffered+direct write bps" interface.
-Considering this, I'm a little inclined towards the blkio.* interfaces,
-in despite of the fact that it's currently tightly tied to the block layer :)
-
-> I am kind of split on this (rather little inclined towards memory
-> controller), so I am raising the question and others can weigh in with
-> their thoughts on what makes more sense here.
-
-Yeah, we definitely need more inputs on the "interface" stuff.
-
-Thanks,
-Fengguang
+T24gVHVlLCAyMDEyLTA0LTI0IGF0IDE2OjM1IC0wNDAwLCBXZXN0b24gQW5kcm9zIEFkYW1zb24g
+d3JvdGU6DQo+IEFsbCByZWZlcnJhbHMgKElQdjQgYWRkciwgSVB2NiBhZGRyLCBhbmQgRE5TKSBh
+cmUgYnJva2VuIG9uIG1vdW50cyBvZg0KPiBJUHY2IGFkZHJlc3NlcywgYmVjYXVzZSB2YWxpZGF0
+aW9uIGNvZGUgdXNlcyBhIHBhdGggdGhhdCBpcyBwYXJzZWQNCj4gZnJvbSB0aGUgZGV2X25hbWUg
+KCI8c2VydmVyPjo8cGF0aD4iKSBieSBzcGxpdHRpbmcgb24gdGhlIGZpcnN0IGNvbG9uIGFuZA0K
+PiBjb2xvbnMgYXJlIHVzZWQgaW4gSVB2NiBhZGRycy4NCj4gVGhpcyBwYXRjaCBpZ25vcmVzIGNv
+bG9ucyB3aXRoaW4gSVB2NiBhZGRyZXNzZXMgdGhhdCBhcmUgZXNjYXBlZCBieSAnWycgYW5kICdd
+Jy4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IFdlc3RvbiBBbmRyb3MgQWRhbXNvbiA8ZHJvc0BuZXRh
+cHAuY29tPg0KPiAtLS0NCj4gUmVwb3N0ZWQgdG8gYWRkcmVzcyBjb21tZW50cyBmcm9tIFRyb25k
+IGFuZCBKaW0NCj4gDQo+IFRoaXMgZGVwZW5kcyBvbiBjb21taXQgMmY4ZTRiZDkxNDg4ZjI4NmU4
+M2U4YWJiMTQ2ODMxMDJlZmFhZmIwNQ0KPiAibmZzOiBFbmNsb3NlIGhvc3RuYW1lIGluIGJyYWNr
+ZXRzIHdoZW4gbmVlZGVkIGluIG5mc19kb19yb290X21vdW50Ii4NCj4gDQo+ICBmcy9uZnMvbmZz
+NG5hbWVzcGFjZS5jIHwgICAzMCArKysrKysrKysrKysrKysrKysrKysrKysrKystLS0NCj4gIDEg
+ZmlsZXMgY2hhbmdlZCwgMjcgaW5zZXJ0aW9ucygrKSwgMyBkZWxldGlvbnMoLSkNCj4gDQo+IGRp
+ZmYgLS1naXQgYS9mcy9uZnMvbmZzNG5hbWVzcGFjZS5jIGIvZnMvbmZzL25mczRuYW1lc3BhY2Uu
+Yw0KPiBpbmRleCA5YzhlY2EzLi44Yzg0ZTczIDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvbmZzNG5h
+bWVzcGFjZS5jDQo+ICsrKyBiL2ZzL25mcy9uZnM0bmFtZXNwYWNlLmMNCj4gQEAgLTUyLDYgKzUy
+LDMwIEBAIEVsb25nOg0KPiAgfQ0KPiAgDQo+ICAvKg0KPiArICogcmV0dXJuIHRoZSBwYXRoIGNv
+bXBvbmVudCBvZiAiPHNlcnZlcj46PHBhdGg+Ig0KPiArICogIG5mc3BhdGggLSB0aGUgIjxzZXJ2
+ZXI+OjxwYXRoPiIgc3RyaW5nDQo+ICsgKiAgZW5kIC0gb25lIHBhc3QgdGhlIGxhc3QgY2hhciB0
+aGF0IGNvdWxkIGNvbnRhaW4gIjxzZXJ2ZXI+OiINCj4gKyAqIHJldHVybnMgTlVMTCBvbiBmYWls
+dXJlDQo+ICsgKi8NCj4gK3N0YXRpYyBjaGFyICpuZnNfcGF0aF9jb21wb25lbnQoY29uc3QgY2hh
+ciAqbmZzcGF0aCwgY29uc3QgY2hhciAqZW5kKQ0KPiArew0KPiArCWNoYXIgKnA7DQo+ICsNCj4g
+KwlpZiAoKm5mc3BhdGggPT0gJ1snKSB7DQo+ICsJCS8qIHBhcnNlIFtdIGVzY2FwZWQgSVB2NiBh
+ZGRycyAqLw0KPiArCQlwID0gc3RyY2hyKG5mc3BhdGgsICddJyk7DQo+ICsJCWlmIChwICE9IE5V
+TEwgJiYgKHAgKyAxKSA8IGVuZCAmJiAqKCsrcCkgPT0gJzonKQ0KCQkJCV5eXl5eXl5eXiB3aHkg
+bm90ICsrcD8NCg0KPiArCQkJcmV0dXJuIHAgKyAxOw0KPiArCX0gZWxzZSB7DQo+ICsJCS8qIG90
+aGVyd2lzZSBzcGxpdCBvbiBmaXJzdCBjb2xvbiAqLw0KPiArCQlwID0gc3RyY2hyKG5mc3BhdGgs
+ICc6Jyk7DQo+ICsJCWlmIChwICE9IE5VTEwgJiYgcCA8IGVuZCkNCj4gKwkJCXJldHVybiBwICsg
+MTsNCj4gKwl9DQo+ICsJcmV0dXJuIE5VTEw7DQo+ICt9DQo+ICsNCj4gKy8qDQo+ICAgKiBEZXRl
+cm1pbmUgdGhlIG1vdW50IHBhdGggYXMgYSBzdHJpbmcNCj4gICAqLw0KPiAgc3RhdGljIGNoYXIg
+Km5mczRfcGF0aChzdHJ1Y3QgZGVudHJ5ICpkZW50cnksIGNoYXIgKmJ1ZmZlciwgc3NpemVfdCBi
+dWZsZW4pDQo+IEBAIC01OSw5ICs4Myw5IEBAIHN0YXRpYyBjaGFyICpuZnM0X3BhdGgoc3RydWN0
+IGRlbnRyeSAqZGVudHJ5LCBjaGFyICpidWZmZXIsIHNzaXplX3QgYnVmbGVuKQ0KPiAgCWNoYXIg
+KmxpbWl0Ow0KPiAgCWNoYXIgKnBhdGggPSBuZnNfcGF0aCgmbGltaXQsIGRlbnRyeSwgYnVmZmVy
+LCBidWZsZW4pOw0KPiAgCWlmICghSVNfRVJSKHBhdGgpKSB7DQo+IC0JCWNoYXIgKmNvbG9uID0g
+c3RyY2hyKHBhdGgsICc6Jyk7DQo+IC0JCWlmIChjb2xvbiAmJiBjb2xvbiA8IGxpbWl0KQ0KPiAt
+CQkJcGF0aCA9IGNvbG9uICsgMTsNCj4gKwkJY2hhciAqcGF0aF9jb21wb25lbnQgPSBuZnNfcGF0
+aF9jb21wb25lbnQocGF0aCwgbGltaXQpOw0KPiArCQlpZiAocGF0aF9jb21wb25lbnQpDQo+ICsJ
+CQlyZXR1cm4gcGF0aF9jb21wb25lbnQ7DQo+ICAJfQ0KPiAgCXJldHVybiBwYXRoOw0KPiAgfQ0K
+DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5l
+dEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
