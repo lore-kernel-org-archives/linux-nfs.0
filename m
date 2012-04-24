@@ -1,74 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:37424 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759060Ab2DJPIx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Apr 2012 11:08:53 -0400
-Received: by yenl12 with SMTP id l12so2348832yen.19
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Apr 2012 08:08:53 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: don't use locks_in_grace to determine whether to call nfs4_grace_end
-Date: Tue, 10 Apr 2012 11:08:48 -0400
-Message-Id: <1334070528-16019-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:13636 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753186Ab2DXUgI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Apr 2012 16:36:08 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org,
+        Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH] nfs4: fix referrals on mounts that use IPv6 addrs
+Date: Tue, 24 Apr 2012 16:35:20 -0400
+Message-Id: <1335299720-50765-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It's possible that lockd or another lock manager might still be on the
-list after we call nfsd4_end_grace. If the laundromat thread runs
-again at that point, then we could end up calling nfsd4_end_grace more
-than once.
+All referrals (IPv4 addr, IPv6 addr, and DNS) are broken on mounts of
+IPv6 addresses, because validation code uses a path that is parsed
+from the dev_name ("<server>:<path>") by splitting on the first colon and
+colons are used in IPv6 addrs.
+This patch ignores colons within IPv6 addresses that are escaped by '[' and ']'.
 
-That's not only inefficient, but calling nfsd4_recdir_purge_old more
-than once could be problematic. Fix this by adding a new global
-"grace_ended" flag and use that to determine whether we've already
-called nfsd4_grace_end.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
 ---
- fs/nfsd/nfs4state.c |   11 +++++++++--
- 1 files changed, 9 insertions(+), 2 deletions(-)
+Reposted to address comments from Trond and Jim
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a822e31..277c989 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3155,10 +3155,17 @@ out:
- static struct lock_manager nfsd4_manager = {
- };
+This depends on commit 2f8e4bd91488f286e83e8abb14683102efaafb05
+"nfs: Enclose hostname in brackets when needed in nfs_do_root_mount".
+
+ fs/nfs/nfs4namespace.c |   30 +++++++++++++++++++++++++++---
+ 1 files changed, 27 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index 9c8eca3..8c84e73 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -52,6 +52,30 @@ Elong:
+ }
  
-+static bool grace_ended;
+ /*
++ * return the path component of "<server>:<path>"
++ *  nfspath - the "<server>:<path>" string
++ *  end - one past the last char that could contain "<server>:"
++ * returns NULL on failure
++ */
++static char *nfs_path_component(const char *nfspath, const char *end)
++{
++	char *p;
 +
- static void
- nfsd4_end_grace(void)
- {
-+	/* do nothing if grace period already ended */
-+	if (grace_ended)
-+		return;
++	if (*nfspath == '[') {
++		/* parse [] escaped IPv6 addrs */
++		p = strchr(nfspath, ']');
++		if (p != NULL && (p + 1) < end && *(++p) == ':')
++			return p + 1;
++	} else {
++		/* otherwise split on first colon */
++		p = strchr(nfspath, ':');
++		if (p != NULL && p < end)
++			return p + 1;
++	}
++	return NULL;
++}
 +
- 	dprintk("NFSD: end of grace period\n");
-+	grace_ended = true;
- 	nfsd4_record_grace_done(&init_net, boot_time);
- 	locks_end_grace(&nfsd4_manager);
- 	/*
-@@ -3183,8 +3190,7 @@ nfs4_laundromat(void)
- 	nfs4_lock_state();
- 
- 	dprintk("NFSD: laundromat service - starting\n");
--	if (locks_in_grace())
--		nfsd4_end_grace();
-+	nfsd4_end_grace();
- 	INIT_LIST_HEAD(&reaplist);
- 	spin_lock(&client_lock);
- 	list_for_each_safe(pos, next, &client_lru) {
-@@ -4718,6 +4724,7 @@ nfs4_state_start(void)
- 	nfsd4_client_tracking_init(&init_net);
- 	boot_time = get_seconds();
- 	locks_start_grace(&nfsd4_manager);
-+	grace_ended = false;
- 	printk(KERN_INFO "NFSD: starting %ld-second grace period\n",
- 	       nfsd4_grace);
- 	ret = set_callback_cred();
++/*
+  * Determine the mount path as a string
+  */
+ static char *nfs4_path(struct dentry *dentry, char *buffer, ssize_t buflen)
+@@ -59,9 +83,9 @@ static char *nfs4_path(struct dentry *dentry, char *buffer, ssize_t buflen)
+ 	char *limit;
+ 	char *path = nfs_path(&limit, dentry, buffer, buflen);
+ 	if (!IS_ERR(path)) {
+-		char *colon = strchr(path, ':');
+-		if (colon && colon < limit)
+-			path = colon + 1;
++		char *path_component = nfs_path_component(path, limit);
++		if (path_component)
++			return path_component;
+ 	}
+ 	return path;
+ }
 -- 
-1.7.7.6
+1.7.4.4
 
