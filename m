@@ -1,49 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:32740 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:2751 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756114Ab2D3Sab (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Apr 2012 14:30:31 -0400
+	id S1757156Ab2DXR4T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Apr 2012 13:56:19 -0400
 From: bjschuma@netapp.com
 To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, iisaman@netapp.com,
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
         Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v2] NFS: Define dummy nfs_init_cinfo() and nfs_init_cinfo_from_inode()
-Date: Mon, 30 Apr 2012 14:30:22 -0400
-Message-Id: <1335810622-32127-1-git-send-email-bjschuma@netapp.com>
+Subject: [PATCH v3 2/8] NFS: Handle exceptions coming out of nfs4_proc_fs_locations()
+Date: Tue, 24 Apr 2012 13:56:06 -0400
+Message-Id: <1335290172-1532-3-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1335290172-1532-1-git-send-email-bjschuma@netapp.com>
+References: <1335290172-1532-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Bryan Schumaker <bjschuma@netapp.com>
 
-These are needed when v3 and v4 are not enabled.
+We don't want to return -NFS4ERR_WRONGSEC to the VFS because it could
+cause the kernel to oops.
 
 Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfs/write.c |   11 +++++++++++
- 1 file changed, 11 insertions(+)
+ fs/nfs/nfs4proc.c |   15 ++++++++++++++-
+ 1 file changed, 14 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 3636191..2f80aa5 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -567,6 +567,17 @@ int nfs_write_need_commit(struct nfs_write_data *data)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 60d5f4c..0de2614 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4919,7 +4919,7 @@ static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr)
+ 	fattr->nlink = 2;
  }
  
- #else
-+static void nfs_init_cinfo_from_inode(struct nfs_commit_info *cinfo,
-+				      struct inode *inode)
+-int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
++static int _nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+ 		struct nfs4_fs_locations *fs_locations, struct page *page)
+ {
+ 	struct nfs_server *server = NFS_SERVER(dir);
+@@ -4959,6 +4959,19 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+ 	return status;
+ }
+ 
++int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
++		struct nfs4_fs_locations *fs_locations, struct page *page)
 +{
++	struct nfs4_exception exception = { };
++	int err;
++	do {
++		err = nfs4_handle_exception(NFS_SERVER(dir),
++				_nfs4_proc_fs_locations(dir, name, fs_locations, page),
++				&exception);
++	} while (exception.retry);
++	return err;
 +}
 +
-+void nfs_init_cinfo(struct nfs_commit_info *cinfo,
-+		    struct inode *inode,
-+		    struct nfs_direct_req *dreq)
-+{
-+}
-+
- void
- nfs_mark_request_commit(struct nfs_page *req, struct pnfs_layout_segment *lseg,
- 			struct nfs_commit_info *cinfo)
+ static int _nfs4_proc_secinfo(struct inode *dir, const struct qstr *name, struct nfs4_secinfo_flavors *flavors)
+ {
+ 	int status;
 -- 
 1.7.10
 
