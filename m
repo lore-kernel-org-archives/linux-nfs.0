@@ -1,94 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:39906 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759972Ab2D0OIU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Apr 2012 10:08:20 -0400
-Message-ID: <4F9AA84D.8090604@parallels.com>
-Date: Fri, 27 Apr 2012 18:08:13 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 2/3] SUNRPC: check rpcbind clients usage counter before
- decrement
-References: <20120425132314.13800.6813.stgit@localhost6.localdomain6> <20120425133749.13800.24003.stgit@localhost6.localdomain6> <20120427135507.GE14973@fieldses.org>
-In-Reply-To: <20120427135507.GE14973@fieldses.org>
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:35149 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757177Ab2DXR4Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Apr 2012 13:56:24 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
+        Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v3 8/8] NFS: Remove extra rpc_clnt argument to proc_lookup
+Date: Tue, 24 Apr 2012 13:56:12 -0400
+Message-Id: <1335290172-1532-9-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1335290172-1532-1-git-send-email-bjschuma@netapp.com>
+References: <1335290172-1532-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 27.04.2012 17:55, J. Bruce Fields wrote:
-> On Wed, Apr 25, 2012 at 05:37:49PM +0400, Stanislav Kinsbursky wrote:
->> Registering service with svc_bind() can fail. In this case service will be
->> destroyed and during destruction it will try to unregister itself from rpcbind.
->> In this case unregister have to be skipped.
->
-> Isn't this a preexisting bug, in which case perhaps Trond should at it
-> to his list of bugs to submit now?
->
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Not it's not.
+Now that I'm doing secinfo automatically in the v4 code this extra
+argument isn't needed.
 
-Previously, in case of bind operations failure, rpcb_put_local() wasn't called, 
-but service data was destroyed instead:
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/dir.c            |    6 +++---
+ fs/nfs/namespace.c      |    3 +--
+ fs/nfs/nfs3proc.c       |    2 +-
+ fs/nfs/nfs4proc.c       |    2 +-
+ fs/nfs/proc.c           |    2 +-
+ include/linux/nfs_xdr.h |    2 +-
+ 6 files changed, 8 insertions(+), 9 deletions(-)
 
--	if (svc_uses_rpcbind(serv)) {
--		if (svc_rpcb_setup(serv, current->nsproxy->net_ns) < 0) {
--			kfree(serv->sv_pools);
--			kfree(serv);
--			return NULL;
--		}
--		if (!serv->sv_shutdown)
--			serv->sv_shutdown = svc_rpcb_cleanup;
--	}
-
-Now (with svc_bind() introduction) service can be created, but svc_bind() could 
-fail. And thus svc_destroy() have to be called. Which will call rpcb_put_local().
-
-And the problem here that svc_bind() can fail before incrementing of rpcb usage 
-counter.
-
-> --b.
->
->>
->> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
->>
->> ---
->>   net/sunrpc/rpcb_clnt.c |   12 +++++++-----
->>   1 files changed, 7 insertions(+), 5 deletions(-)
->>
->> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
->> index 78ac39f..4c38b33 100644
->> --- a/net/sunrpc/rpcb_clnt.c
->> +++ b/net/sunrpc/rpcb_clnt.c
->> @@ -180,14 +180,16 @@ void rpcb_put_local(struct net *net)
->>   	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
->>   	struct rpc_clnt *clnt = sn->rpcb_local_clnt;
->>   	struct rpc_clnt *clnt4 = sn->rpcb_local_clnt4;
->> -	int shutdown;
->> +	int shutdown = 0;
->>
->>   	spin_lock(&sn->rpcb_clnt_lock);
->> -	if (--sn->rpcb_users == 0) {
->> -		sn->rpcb_local_clnt = NULL;
->> -		sn->rpcb_local_clnt4 = NULL;
->> +	if (sn->rpcb_users) {
->> +		if (--sn->rpcb_users == 0) {
->> +			sn->rpcb_local_clnt = NULL;
->> +			sn->rpcb_local_clnt4 = NULL;
->> +		}
->> +		shutdown = !sn->rpcb_users;
->>   	}
->> -	shutdown = !sn->rpcb_users;
->>   	spin_unlock(&sn->rpcb_clnt_lock);
->>
->>   	if (shutdown) {
->>
-
-
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 8789210..82b42e2 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1143,7 +1143,7 @@ static int nfs_lookup_revalidate(struct dentry *dentry, struct nameidata *nd)
+ 	if (fhandle == NULL || fattr == NULL)
+ 		goto out_error;
+ 
+-	error = NFS_PROTO(dir)->lookup(NFS_SERVER(dir)->client, dir, &dentry->d_name, fhandle, fattr);
++	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr);
+ 	if (error)
+ 		goto out_bad;
+ 	if (nfs_compare_fh(NFS_FH(inode), fhandle))
+@@ -1299,7 +1299,7 @@ static struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, stru
+ 	parent = dentry->d_parent;
+ 	/* Protect against concurrent sillydeletes */
+ 	nfs_block_sillyrename(parent);
+-	error = NFS_PROTO(dir)->lookup(NFS_SERVER(dir)->client, dir, &dentry->d_name, fhandle, fattr);
++	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr);
+ 	if (error == -ENOENT)
+ 		goto no_entry;
+ 	if (error < 0) {
+@@ -1646,7 +1646,7 @@ int nfs_instantiate(struct dentry *dentry, struct nfs_fh *fhandle,
+ 	if (dentry->d_inode)
+ 		goto out;
+ 	if (fhandle->size == 0) {
+-		error = NFS_PROTO(dir)->lookup(NFS_SERVER(dir)->client, dir, &dentry->d_name, fhandle, fattr);
++		error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr);
+ 		if (error)
+ 			goto out_error;
+ 	}
+diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
+index e36fd8a..08b9c93 100644
+--- a/fs/nfs/namespace.c
++++ b/fs/nfs/namespace.c
+@@ -261,8 +261,7 @@ struct vfsmount *nfs_submount(struct nfs_server *server, struct dentry *dentry,
+ 	struct dentry *parent = dget_parent(dentry);
+ 
+ 	/* Look it up again to get its attributes */
+-	err = server->nfs_client->rpc_ops->lookup(server->client, parent->d_inode,
+-						  &dentry->d_name, fh, fattr);
++	err = server->nfs_client->rpc_ops->lookup(parent->d_inode, &dentry->d_name, fh, fattr);
+ 	dput(parent);
+ 	if (err != 0)
+ 		return ERR_PTR(err);
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index d39d1d7..f03ab63 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -142,7 +142,7 @@ nfs3_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ }
+ 
+ static int
+-nfs3_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
++nfs3_proc_lookup(struct inode *dir, struct qstr *name,
+ 		 struct nfs_fh *fhandle, struct nfs_fattr *fattr)
+ {
+ 	struct nfs3_diropargs	arg = {
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 279bbd9..1f46bae 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2578,7 +2578,7 @@ out:
+ 	return err;
+ }
+ 
+-static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
++static int nfs4_proc_lookup(struct inode *dir, struct qstr *name,
+ 			    struct nfs_fh *fhandle, struct nfs_fattr *fattr)
+ {
+ 	int status;
+diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+index 8dfe960..11645a2 100644
+--- a/fs/nfs/proc.c
++++ b/fs/nfs/proc.c
+@@ -178,7 +178,7 @@ nfs_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ }
+ 
+ static int
+-nfs_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
++nfs_proc_lookup(struct inode *dir, struct qstr *name,
+ 		struct nfs_fh *fhandle, struct nfs_fattr *fattr)
+ {
+ 	struct nfs_diropargs	arg = {
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index ada3acd..3636fb6 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1240,7 +1240,7 @@ struct nfs_rpc_ops {
+ 			    struct nfs_fattr *);
+ 	int	(*setattr) (struct dentry *, struct nfs_fattr *,
+ 			    struct iattr *);
+-	int	(*lookup)  (struct rpc_clnt *clnt, struct inode *, struct qstr *,
++	int	(*lookup)  (struct inode *, struct qstr *,
+ 			    struct nfs_fh *, struct nfs_fattr *);
+ 	int	(*access)  (struct inode *, struct nfs_access_entry *);
+ 	int	(*readlink)(struct inode *, struct page *, unsigned int,
 -- 
-Best regards,
-Stanislav Kinsbursky
+1.7.10
+
