@@ -1,53 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:25482 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:28669 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753195Ab2DWWX1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Apr 2012 18:23:27 -0400
-Message-ID: <4F95D65A.8070608@redhat.com>
-Date: Mon, 23 Apr 2012 17:23:22 -0500
-From: Eric Sandeen <sandeen@redhat.com>
+	id S1755915Ab2DXP6m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Apr 2012 11:58:42 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Jim Rees <rees@umich.edu>, Niels de Vos <ndevos@redhat.com>,
+        Steve Dickson <steved@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] rpcbind: Only listen on requested hostnames for
+ NC_TPI_COTS connections
+Date: Tue, 24 Apr 2012 15:58:26 +0000
+Message-ID: <1335283106.3792.39.camel@lade.trondhjem.org>
+References: <1335194692-6714-1-git-send-email-ndevos@redhat.com>
+	 <82D8C43F-5C40-444C-9573-B4FF95F615DA@oracle.com>
+	 <4F957D30.9010102@redhat.com>
+	 <7C71F75F-3F15-401B-8700-38B0EBE2B595@oracle.com>
+	 <4F96C0E3.9090007@redhat.com> <20120424152950.GB13191@umich.edu>
+	 <2332F6F6-A1CF-4C0A-A35C-4E4EE588EC1D@oracle.com>
+In-Reply-To: <2332F6F6-A1CF-4C0A-A35C-4E4EE588EC1D@oracle.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-CC: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Fan Yong <yong.fan@whamcloud.com>,
-        bfields@redhat.com, Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: [PATCH 5 2/4] Return 32/64-bit dir name hash according to usage
- type
-References: <20120109132137.2616029.76288.stgit@localhost.localdomain> <20120109132148.2616029.68798.stgit@localhost.localdomain> <4F91C15B.6070200@redhat.com> <4F93FED6.6090505@itwm.fraunhofer.de> <4F95BD72.6090200@redhat.com> <4F95C109.1030401@itwm.fraunhofer.de>
-In-Reply-To: <4F95C109.1030401@itwm.fraunhofer.de>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 4/23/12 3:52 PM, Bernd Schubert wrote:
-> On 04/23/2012 10:37 PM, Eric Sandeen wrote:
-
-...
-
-> diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-> index b867862..3a4988e2 100644
-> --- a/fs/ext4/dir.c
-> +++ b/fs/ext4/dir.c
-> @@ -363,7 +363,7 @@ loff_t ext4_dir_llseek(struct file *file, loff_t
-> offset, int origin)
->  		goto out_err;
-> 
->  	if (!dx_dir) {
-> -		if (offset > inode->i_sb->s_maxbytes)
-> +		if (offset > i_size_read(inode))
->  			goto out_err;
->  	} else if (offset > ext4_get_htree_eof(file))
->  		goto out_err;
-
-I'm curious about the above as well as:
-
-        case SEEK_END:
-                if (unlikely(offset > 0))
-                        goto out_err; /* not supported for directories */
-
-The previous .llseek handler, and the generic handler for other filesystems, allow seeking past the end of the dir AFAICT.  (not sure why you'd want to, but I don't see that you'd get an error back).
-
-Is there a reason to uniquely exclude it in ext4?  Does that line up with POSIX?
-
--Eric
-
+T24gVHVlLCAyMDEyLTA0LTI0IGF0IDExOjQwIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+T24gQXByIDI0LCAyMDEyLCBhdCAxMToyOSBBTSwgSmltIFJlZXMgd3JvdGU6DQo+IA0KPiA+IE5p
+ZWxzIGRlIFZvcyB3cm90ZToNCj4gPiANCj4gPiAgT24gMDQvMjMvMjAxMiAwNjoyMiBQTSwgQ2h1
+Y2sgTGV2ZXIgd3JvdGU6DQo+ID4+IA0KPiA+PiBTbyB5b3UgZGlkIGNoZWNrIHRoZSBtYWlsIGFy
+Y2hpdmU/ICBJIHNlZW0gdG8gcmVjYWxsIG90aGVyIHBhdGNoZXMgbGlrZQ0KPiA+PiB0aGlzIGlu
+IHRoZSBwYXN0LCBhbmQgdGhhdCB0aGVyZSBpcyBhIHJlYXNvbiB3aHkgcnBjYmluZCB3b3JrcyB0
+aGlzIHdheS4NCj4gPj4gSSBzaW1wbHkgZG9uJ3QgcmVtZW1iZXIgdGhlIHNwZWNpZmljcyByaWdo
+dCBhdCB0aGUgbW9tZW50Lg0KPiA+IA0KPiA+ICBJIGRpZCwgYnV0IG5vIG1lc3NhZ2VzIGFib3V0
+IHRoaXMgc3ViamVjdCBjb21lIHVwIGZvciBtZS4uLiBNYXliZSBJJ20gbG9va2luZw0KPiA+ICBp
+biB0aGUgd3JvbmcgcGxhY2VzIDotLw0KPiA+IA0KPiA+IEkgYXNrZWQgYWJvdXQgdGhpcyBsYXN0
+IE5vdmVtYmVyLCBhbmQgYXQgdGhhdCB0aW1lIENodWNrIHJlZmVycmVkIG1lIHRvIHRoZQ0KPiA+
+IG1haWwgYXJjaGl2ZSB0b28uICBJIGNvdWxkbid0IGZpbmQgYW55IGRpc2N1c3Npb24gZWl0aGVy
+LiAgQnV0IHRoZSBiZWhhdmlvcg0KPiA+IGlzIGludGVudGlvbmFsLCBzbyBJIGRvbid0IHRoaW5r
+IHlvdSdsbCBnZXQgYSBwYXRjaCBhY2NlcHRlZC4NCj4gDQo+IEdvaW5nIGJhY2sgdG8gdGhlIHJw
+Y2JpbmQoOCkgbWFuIHBhZ2UsIHRoZSAiLWgiIGlzIG1lYW50IHRvIHdvcmsgYXJvdW5kIGEgYnJv
+a2VubmVzcyBvZiBSUEMgb3ZlciBVRFAuICBVRFAgcmVwbGllcyBjYW4gY29tZSBmcm9tIGFueSBz
+ZXJ2ZXIgYWRkcmVzcywgYXMgSSBtZW50aW9uZWQgYmVmb3JlLCBhbmQgbW9zdCBMaW51eCBjbGll
+bnRzLCBhdCBsZWFzdCwgZG9uJ3QgbGlrZSBhbiBSUEMgcmVwbHkgdG8gY29tZSBmcm9tIGEgZGlm
+ZmVyZW50IGFkZHJlc3MgdGhhbiB0aGUgcmVxdWVzdCB3YXMgc2VudCB0by4NCg0KU2VlIHRoZSBJ
+UF9QS1RJTkZPIHNvY2tldCBjb250cm9sIG1lc3NhZ2UgZGVmaW5pdGlvbiBmb3IgdGhlIGNvcnJl
+Y3Qgd2F5DQp0byBkbyB0aGlzICgnbWFuIDcgaXAnKS4gVGhhdCBpcyBob3cgdGhlIGtlcm5lbCBS
+UEMgc2VydmVyIGNvZGUNCmRldGVybWluZXMgdG8gd2hpY2ggYWRkcmVzcyB0aGUgbWVzc2FnZSB3
+YXMgc2VudCwgYW5kIGlzIGhvdyBpdCBzZXRzIHRoZQ0KcmVwbHkncyBzb3VyY2UgYWRkcmVzcy4u
+Lg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoN
+Ck5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
