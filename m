@@ -1,85 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:55746 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754674Ab2DMQHf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Apr 2012 12:07:35 -0400
-Message-ID: <4F884F32.7010402@RedHat.com>
-Date: Fri, 13 Apr 2012 12:07:14 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:41797 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755240Ab2DXQLO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Apr 2012 12:11:14 -0400
+Message-ID: <4F96D08B.2020606@itwm.fraunhofer.de>
+Date: Tue, 24 Apr 2012 18:10:51 +0200
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: Malahal Naineni <malahal@us.ibm.com>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        pstaubach@exagrid.com, miklos@szeredi.hu, viro@ZenIV.linux.org.uk,
-        hch@infradead.org, michael.brantley@deshaw.com
-Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from getattr
- call
-References: <1334316311-22331-1-git-send-email-jlayton@redhat.com> <20120413150518.GA1987@us.ibm.com> <20120413114236.0e557e01@tlielax.poochiereds.net>
-In-Reply-To: <20120413114236.0e557e01@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+To: Andreas Dilger <adilger@whamcloud.com>
+CC: Eric Sandeen <sandeen@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Fan Yong <yong.fan@whamcloud.com>, bfields@redhat.com
+Subject: Re: [PATCH 5 2/4] Return 32/64-bit dir name hash according to usage
+ type
+References: <20120109132137.2616029.76288.stgit@localhost.localdomain> <20120109132148.2616029.68798.stgit@localhost.localdomain> <4F91C15B.6070200@redhat.com> <4F93FED6.6090505@itwm.fraunhofer.de> <4F95BD72.6090200@redhat.com> <4F95C109.1030401@itwm.fraunhofer.de> <4F95D65A.8070608@redhat.com> <A754D23B-B946-4E80-ACEA-0E2C2E6FAA2E@whamcloud.com>
+In-Reply-To: <A754D23B-B946-4E80-ACEA-0E2C2E6FAA2E@whamcloud.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 04/13/2012 11:42 AM, Jeff Layton wrote:
-> On Fri, 13 Apr 2012 10:05:18 -0500
-> Malahal Naineni <malahal@us.ibm.com> wrote:
-> 
->> Jeff Layton [jlayton@redhat.com] wrote:
->>> 1) should we retry these calls on all filesystems, or attempt to have
->>> them "opt-in" in some fashion? This patch adds a flag for that, but
->>> we could just treat all filesystems the same way.
+On 04/24/2012 12:42 AM, Andreas Dilger wrote:
+> On 2012-04-23, at 5:23 PM, Eric Sandeen wrote:
+>> I'm curious about the above as well as:
 >>
->> I don't know any cases where a retry on ESTALE would hurt. I would say
->> retry on all file systems the same way.
+>>         case SEEK_END:
+>>                 if (unlikely(offset>  0))
+>>                         goto out_err; /* not supported for directories */
 >>
->>> 2) How many times should we retry on an ESTALE error? Once?
->>> Indefinitely? Some amount in between? Retrying once would probably
->>> fix the bulk of the real world problems with this, but there will
->>> still be cases where that's not sufficient.
+>> The previous .llseek handler, and the generic handler for other filesystems, allow seeking past the end of the dir AFAICT.  (not sure why you'd want to, but I don't see that you'd get an error back).
 >>
->> As you say 1 retry should work in most cases. Indefinitely doesn't make
->> sense, I would rather let my application fail! How about 3 retries (3 is
->> a nice number! :-) )
->>
-> 
-> (note: please don't trim the CC list!)
-> 
-> Indefinitely does make some sense (as Peter articulated in his original
-> set). It's possible you could race several times in a row, or a server
-> misconfiguration or something has happened and you have a transient
-> error that will eventually recover. His assertion was that any limit on
-> the number of retries is by definition wrong. For NFS, a fatal signal
-> ought to interrupt things as well, so retrying indefinitely has some
-> appeal there.
-> 
-> OTOH, we do have to contend with filesystems that might return ESTALE
-> persistently for other reasons and that might not respond to signals.
-> Miklos pointed out that some FUSE fs' do this in his review of Peter's
-> set.
-> 
-> As a purely defensive coding measure, limiting the number of retries to
-> something finite makes sense. If we're going to do that though, I'd
-> probably recommend that we set the number of retries be something
-> higher just so that this is more resilient in the face of multiple
-> races. Those other fs' might "spin" a bit in that case but it is an
-> error condition and IMO resiliency trumps performance -- at least in
-> this case.
-I'm of the opinion retry more than once has the potential of 
-doing more harm than good... Why introduce looping when there
-is no solid evidence its even needed. 
+>> Is there a reason to uniquely exclude it in ext4?  Does that line up with POSIX?
+>
+> I don't know what the origin of this was...  I don't think there is a real reason for it except that it doesn't make any sense to do so.
+>
 
-I would think 99% of the time the one try would solve the problem. 
-That 1% probably due two apps that have gone wild fight over the same 
-file or the FUSE case. In those cases the error should be returned
-IMHO... 
+I think I added that. According to pubs.opengroup.org:
+(http://pubs.opengroup.org/onlinepubs/009695399/functions/seekdir.html)
 
-steved.
+void seekdir(DIR *dirp, long loc);
 
-> 
-> Of course, if we're going to do this for all fs', then we probably
-> ought to try to handle ESTALEs that are encountered in the pathwalking
-> code in a similar way. That may mean changing do_path_lookup and
-> do_filp_open_* to reattempt several times on an ESTALE error.
-> 
+<quote>
+
+If the value of loc was not obtained from an earlier call to telldir(), 
+or if a call to rewinddir() occurred between the call to telldir() and 
+the call to seekdir(), the results of subsequent calls to readdir() are 
+unspecified.
+
+</quote>
+
+
+As telldir(), which should correlate to 'case SEEK_CUR' will not provide 
+invalid values, the behaviour is undefined.
+
+
+Also,
+
+
+case SEEK_END:
+[...]
+                 if (dx_dir)
+                         offset += ext4_get_htree_eof(file);
+                 else
+                         offset += inode->i_size;
+[...]
+
+
+         if (!dx_dir) {
+                 if (offset > inode->i_sb->s_maxbytes)
+                         goto out_err;
+         } else if (offset > ext4_get_htree_eof(file))
+                 goto out_err;
+
+
+
+
+Hence, the additional:
+
+          case SEEK_END:
+                  if (unlikely(offset>  0))
+                       goto out_err; /* not supported for directories */
+
+	
+is just a shortcut to avoid useless calculations.
+
+Unless I missed something, it only remains the question if could break 
+existing applications relying on undefined behaviour. However, I have no 
+idea how an application might trigger that?
+
+
+Thanks,
+Bernd
+
