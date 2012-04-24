@@ -1,62 +1,246 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:60860 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:41656 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752326Ab2DZS5O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Apr 2012 14:57:14 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 13/20] NFS: Fix recovery from NFS4ERR_CLID_INUSE
-Date: Thu, 26 Apr 2012 18:57:13 +0000
-Message-ID: <1335466633.24247.11.camel@lade.trondhjem.org>
-References: <20120423205312.11446.67081.stgit@degas.1015granger.net>
-	 <20120423205505.11446.28437.stgit@degas.1015granger.net>
-	 <D6859152-CF45-44CC-BB3C-B40CB9FD0BE8@oracle.com>
-	 <1335459334.9701.25.camel@lade.trondhjem.org>
-	 <F4214CAE-E0DE-4A3C-BA0B-02A9F8277897@oracle.com>
-	 <1335466422.24247.8.camel@lade.trondhjem.org>
-In-Reply-To: <1335466422.24247.8.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1757168Ab2DXR4U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Apr 2012 13:56:20 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
+        Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v3 3/8] NFS: Do secinfo as part of lookup
+Date: Tue, 24 Apr 2012 13:56:07 -0400
+Message-Id: <1335290172-1532-4-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1335290172-1532-1-git-send-email-bjschuma@netapp.com>
+References: <1335290172-1532-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA0LTI2IGF0IDE0OjUzIC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+IE9uIFRodSwgMjAxMi0wNC0yNiBhdCAxNDo0MyAtMDQwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6
-DQo+ID4gT24gQXByIDI2LCAyMDEyLCBhdCAxMjo1NSBQTSwgTXlrbGVidXN0LCBUcm9uZCB3cm90
-ZToNCj4gPiANCj4gPiA+IE9uIFRodSwgMjAxMi0wNC0yNiBhdCAxMjoyNCAtMDQwMCwgQ2h1Y2sg
-TGV2ZXIgd3JvdGU6DQo+ID4gPj4gT24gQXByIDIzLCAyMDEyLCBhdCA0OjU1IFBNLCBDaHVjayBM
-ZXZlciB3cm90ZToNCj4gPiA+IFRoZW4gbGV0cyBtb3ZlIHRoZSBmbGF2b3VyIG91dCBvZiB0aGUg
-Y2xpZW50aWQgc3RyaW5nLA0KPiA+IA0KPiA+IFJlbW92aW5nIHRoZSBmbGF2b3IgZnJvbSB0aGUg
-bmZzX2NsaWVudF9pZDQgc3RyaW5nIG1ha2VzIHNlbnNlLg0KPiA+IA0KPiA+ID4gYW5kIGp1c3Qg
-c2V0dGxlDQo+ID4gPiBmb3IgaGFuZGxpbmcgQ0xJRF9JTlVTRSBieSBjaGFuZ2luZyB0aGUgZmxh
-dm91ciBvbiB0aGUgU0VUQ0xJRU5USUQgY2FsbC4NCj4gPiANCj4gPiBUaGlzIGlzIHdoZXJlIEkg
-Z2V0IGhhenkuICANCj4gPiANCj4gPiBJZiBJIHNpbXBseSBjaGFuZ2UgdGhlIGF1dGhlbnRpY2F0
-aW9uIGZsYXZvciBvbiB0aGUgZXhpc3RpbmcgY2xwLT5jbF9ycGNjbGllbnQsIHdpbGwgdGhpcyBh
-ZmZlY3Qgb25nb2luZyBSRU5FVyBvcGVyYXRpb25zIHRoYXQgYWxzbyB1c2UgdGhpcyB0cmFuc3Bv
-cnQ/ICBEbyB3ZSB3YW50IHN1YnNlcXVlbnQgUkVORVcgb3BlcmF0aW9ucyB0byB1c2UgdGhlIG5l
-dyBmbGF2b3I/DQo+ID4gDQo+ID4gVGhpbmtpbmcgaHlwb3RoZXRpY2FsbHksIGl0IHNlZW1zIHRv
-IG1lIHRoYXQgQ0xJRF9JTlVTRSBpcyByZWFsbHkgYW4gaW5kaWNhdGlvbiBvZiBhIHBlcm1hbmVu
-dCBjb25maWd1cmF0aW9uIGVycm9yLCBvciBhIHNvZnR3YXJlIGJ1ZywgYW5kIHdlIHNob3VsZCBu
-b3QgYm90aGVyIHRvIHJlY292ZXIuICBCdXQgbWF5YmUgdGhhdCdzIG15IGxpbWl0ZWQgaW1hZ2lu
-YXRpb24uICBVbmRlciB3aGF0IHVzZSBjYXNlcyBkbyB5b3UgdGhpbmsgQ0xJRF9JTlVTRSBtaWdo
-dCBvY2N1ciBhbmQgaXQgbWlnaHQgYmUgdXNlZnVsIHRvIGF0dGVtcHQgcmVjb3Zlcnk/DQo+ID4g
-DQo+IA0KPiBUaGUgc2VydmVyIGNhY2hlcyB0aGUgcHJpbmNpcGFsIG5hbWUgdGhhdCB3YXMgdXNl
-ZCB0byBjYWxsIFNFVENMSUVOVElEDQo+IHdoZW4gdGhlIGxlYXNlIHdhcyBlc3RhYmxpc2hlZC4g
-QW55IGF0dGVtcHQgdG8gY2FsbCBTRVRDTElFTlRJRCB3aXRoIGENCj4gZGlmZmVyZW50IHByaW5j
-aXBhbCB3aWxsIHJlc3VsdCBpbiBDTElEX0lOVVNFIHVubGVzcyB0aGUgbGVhc2UgaGFzDQo+IGV4
-cGlyZWQuDQo+IA0KPiBTbyB3aGF0IEkgd2FzIHByb3Bvc2luZyB3YXNuJ3QgdGhhdCB5b3UgdHJ5
-IHRvIGNoYW5nZSB0aGUgYXV0aGVudGljYXRpb24NCj4gZmxhdm91ciBvbiBhbiBleGlzdGluZyBu
-ZnNfY2xpZW50LiBJdCB3YXMgdGhhdCB3aGVuIHlvdSBhcmUgcHJvYmluZywgeW91DQo+IGNhbiB1
-c2UgdGhlIENMSURfSU5VU0UgcmVwbHkgZnJvbSBTRVRDTElFTlRJRCBhcyBhIGRpcmVjdCBpbmRp
-Y2F0aW9uDQo+IHRoYXQgdGhlIHNlcnZlciBpcyBpbmRlZWQgdHJ1bmtlZCwgYW5kIHRoYXQgeW91
-IGFscmVhZHkgaG9sZCBhIGxlYXNlIG9uDQo+IHRoYXQgc2VydmVyLCBidXQgdGhhdCB0aGUgYXV0
-aGVudGljYXRpb24gZmxhdm91ciB0aGF0IHlvdSBhcmUgdHJ5aW5nIHRvDQo+IHVzZSBpcyB3cm9u
-Zy4NCg0KQWN0dWFsbHksIGxldCBtZSBxdWFsaWZ5IHRoYXQgYSBiaXQuIENMSURfSU5VU0UgY2Fu
-IGFsc28gbWVhbiBvbmUgb3RoZXINCnRoaW5nOiB0aGF0IHlvdSBoYXZlIHByZXZpb3VzbHkgZXN0
-YWJsaXNoZWQgYSBsZWFzZSBvbiB0aGF0IHNlcnZlciwgd2l0aA0KYSBkaWZmZXJlbnQgYXV0aGVu
-dGljYXRpb24gZmxhdm91ciwgYW5kIHRoYXQgbGVhc2UgaGFzIG5vdCB5ZXQgZXhwaXJlZA0KKGV2
-ZW4gdGhvdWdoIHlvdXIgY2xpZW50IG1heSBoYXZlIGZvcmdvdHRlbiBpdCBkdWUgdG8gYSB1bW91
-bnQgb2YgYWxsDQpmaWxlc3lzdGVtcyBmcm9tIHRoYXQgc2VydmVyKS4NCg0KLS0gDQpUcm9uZCBN
-eWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15
-a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+From: Bryan Schumaker <bjschuma@netapp.com>
+
+Whenever lookup sees wrongsec do a secinfo and retry the lookup to find
+attributes of the file or directory, such as "is this a referral
+mountpoint?".  This also allows me to remove handling -NFS4ERR_WRONSEC
+as part of getattr xdr decoding.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/internal.h      |    1 -
+ fs/nfs/nfs4_fs.h       |    4 +++
+ fs/nfs/nfs4namespace.c |   52 +++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4proc.c      |   64 +++++++++++++++++++++++++++++++++++-------------
+ fs/nfs/nfs4xdr.c       |    2 --
+ 5 files changed, 103 insertions(+), 20 deletions(-)
+
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 2476dc6..45966d9 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -234,7 +234,6 @@ extern const u32 nfs41_maxwrite_overhead;
+ /* nfs4proc.c */
+ #ifdef CONFIG_NFS_V4
+ extern struct rpc_procinfo nfs4_procedures[];
+-void nfs_fixup_secinfo_attributes(struct nfs_fattr *, struct nfs_fh *);
+ #endif
+ 
+ extern int nfs4_init_ds_session(struct nfs_client *clp);
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index b6db9e3..c82c2cd 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -205,6 +205,9 @@ struct nfs4_state_maintenance_ops {
+ extern const struct dentry_operations nfs4_dentry_operations;
+ extern const struct inode_operations nfs4_dir_inode_operations;
+ 
++/* nfs4namespace.c */
++struct rpc_clnt *nfs4_create_sec_client(struct rpc_clnt *, struct inode *, struct qstr *);
++
+ /* nfs4proc.c */
+ extern int nfs4_proc_setclientid(struct nfs_client *, u32, unsigned short, struct rpc_cred *, struct nfs4_setclientid_res *);
+ extern int nfs4_proc_setclientid_confirm(struct nfs_client *, struct nfs4_setclientid_res *arg, struct rpc_cred *);
+@@ -215,6 +218,7 @@ extern int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait, boo
+ extern int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle);
+ extern int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+ 		struct nfs4_fs_locations *fs_locations, struct page *page);
++extern int nfs4_proc_secinfo(struct inode *, const struct qstr *, struct nfs4_secinfo_flavors *);
+ extern int nfs4_release_lockowner(struct nfs4_lock_state *);
+ extern const struct xattr_handler *nfs4_xattr_handlers[];
+ 
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index 9c8eca3..199eec5 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -108,6 +108,58 @@ static size_t nfs_parse_server_name(char *string, size_t len,
+ 	return ret;
+ }
+ 
++static rpc_authflavor_t nfs4_negotiate_security(struct inode *inode, struct qstr *name)
++{
++	struct page *page;
++	struct nfs4_secinfo_flavors *flavors;
++	rpc_authflavor_t flavor;
++	int err;
++
++	page = alloc_page(GFP_KERNEL);
++	if (!page)
++		return -ENOMEM;
++	flavors = page_address(page);
++
++	err = nfs4_proc_secinfo(inode, name, flavors);
++	if (err < 0) {
++		flavor = err;
++		goto out;
++	}
++
++	flavor = nfs_find_best_sec(flavors);
++
++out:
++	put_page(page);
++	return flavor;
++}
++
++/*
++ * Please call rpc_shutdown_client() when you are done with this client.
++ */
++struct rpc_clnt *nfs4_create_sec_client(struct rpc_clnt *clnt, struct inode *inode,
++					struct qstr *name)
++{
++	struct rpc_clnt *clone;
++	struct rpc_auth *auth;
++	rpc_authflavor_t flavor;
++
++	flavor = nfs4_negotiate_security(inode, name);
++	if (flavor < 0)
++		return ERR_PTR(flavor);
++
++	clone = rpc_clone_client(clnt);
++	if (IS_ERR(clone))
++		return clone;
++
++	auth = rpcauth_create(flavor, clone);
++	if (!auth) {
++		rpc_shutdown_client(clone);
++		clone = ERR_PTR(-EIO);
++	}
++
++	return clone;
++}
++
+ static struct vfsmount *try_location(struct nfs_clone_mount *mountdata,
+ 				     char *page, char *page2,
+ 				     const struct nfs4_fs_location *location)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 0de2614..d6b1cd0 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2528,39 +2528,69 @@ static int _nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir,
+ 	return status;
+ }
+ 
+-void nfs_fixup_secinfo_attributes(struct nfs_fattr *fattr, struct nfs_fh *fh)
++static void nfs_fixup_secinfo_attributes(struct nfs_fattr *fattr)
+ {
+-	memset(fh, 0, sizeof(struct nfs_fh));
+-	fattr->fsid.major = 1;
+ 	fattr->valid |= NFS_ATTR_FATTR_TYPE | NFS_ATTR_FATTR_MODE |
+-		NFS_ATTR_FATTR_NLINK | NFS_ATTR_FATTR_FSID | NFS_ATTR_FATTR_MOUNTPOINT;
++		NFS_ATTR_FATTR_NLINK | NFS_ATTR_FATTR_MOUNTPOINT;
+ 	fattr->mode = S_IFDIR | S_IRUGO | S_IXUGO;
+ 	fattr->nlink = 2;
+ }
+ 
+-static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
+-			    struct nfs_fh *fhandle, struct nfs_fattr *fattr)
++static int nfs4_proc_lookup_common(struct rpc_clnt **clnt, struct inode *dir,
++				   struct qstr *name, struct nfs_fh *fhandle,
++				   struct nfs_fattr *fattr)
+ {
+ 	struct nfs4_exception exception = { };
++	struct rpc_clnt *client = *clnt;
+ 	int err;
+ 	do {
+-		int status;
+-
+-		status = _nfs4_proc_lookup(clnt, dir, name, fhandle, fattr);
+-		switch (status) {
++		err = _nfs4_proc_lookup(client, dir, name, fhandle, fattr);
++		switch (err) {
+ 		case -NFS4ERR_BADNAME:
+-			return -ENOENT;
++			err = -ENOENT;
++			goto out;
+ 		case -NFS4ERR_MOVED:
+-			return nfs4_get_referral(dir, name, fattr, fhandle);
++			err = nfs4_get_referral(dir, name, fattr, fhandle);
++			goto out;
+ 		case -NFS4ERR_WRONGSEC:
+-			nfs_fixup_secinfo_attributes(fattr, fhandle);
++			err = -EPERM;
++			if (client != *clnt)
++				goto out;
++
++			client = nfs4_create_sec_client(client, dir, name);
++			if (IS_ERR(client))
++				return PTR_ERR(client);
++
++			exception.retry = 1;
++			break;
++		default:
++			err = nfs4_handle_exception(NFS_SERVER(dir), err, &exception);
+ 		}
+-		err = nfs4_handle_exception(NFS_SERVER(dir),
+-				status, &exception);
+ 	} while (exception.retry);
++
++out:
++	if (err == 0)
++		*clnt = client;
++	else if (client != *clnt)
++		rpc_shutdown_client(client);
++
+ 	return err;
+ }
+ 
++static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
++			    struct nfs_fh *fhandle, struct nfs_fattr *fattr)
++{
++	int status;
++	struct rpc_clnt *client = NFS_CLIENT(dir);
++
++	status = nfs4_proc_lookup_common(&client, dir, name, fhandle, fattr);
++	if (client != NFS_CLIENT(dir)) {
++		rpc_shutdown_client(client);
++		nfs_fixup_secinfo_attributes(fattr);
++	}
++	return status;
++}
++
+ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry)
+ {
+ 	struct nfs_server *server = NFS_SERVER(inode);
+@@ -4994,8 +5024,8 @@ static int _nfs4_proc_secinfo(struct inode *dir, const struct qstr *name, struct
+ 	return status;
+ }
+ 
+-static int nfs4_proc_secinfo(struct inode *dir, const struct qstr *name,
+-		struct nfs4_secinfo_flavors *flavors)
++int nfs4_proc_secinfo(struct inode *dir, const struct qstr *name,
++		      struct nfs4_secinfo_flavors *flavors)
+ {
+ 	struct nfs4_exception exception = { };
+ 	int err;
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 043c010..a95bde8 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -4258,8 +4258,6 @@ static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
+ 	status = decode_attr_error(xdr, bitmap, &err);
+ 	if (status < 0)
+ 		goto xdr_error;
+-	if (err == -NFS4ERR_WRONGSEC)
+-		nfs_fixup_secinfo_attributes(fattr, fh);
+ 
+ 	status = decode_attr_filehandle(xdr, bitmap, fh);
+ 	if (status < 0)
+-- 
+1.7.10
+
