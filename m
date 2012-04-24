@@ -1,71 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f42.google.com ([209.85.216.42]:62292 "EHLO
-	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751924Ab2DVFk6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Apr 2012 01:40:58 -0400
-Received: by qafi31 with SMTP id i31so1702029qaf.1
-        for <linux-nfs@vger.kernel.org>; Sat, 21 Apr 2012 22:40:57 -0700 (PDT)
+Received: from mx2.netapp.com ([216.240.18.37]:27811 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754832Ab2DXPdZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Apr 2012 11:33:25 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+CC: "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs4: fix referrals on mounts that use IPv6 addrs
+Date: Tue, 24 Apr 2012 15:33:04 +0000
+Message-ID: <1335281584.3792.30.camel@lade.trondhjem.org>
+References: <1335279471-46782-1-git-send-email-dros@netapp.com>
+In-Reply-To: <1335279471-46782-1-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <20120420171314.73801874@corrin.poochiereds.net>
-References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
-	<1334749927-26138-1-git-send-email-jlayton@redhat.com>
-	<20120420104055.511e15bc@tlielax.poochiereds.net>
-	<4F91C49D.8070908@RedHat.com>
-	<20120420203725.GA3512@us.ibm.com>
-	<20120420171314.73801874@corrin.poochiereds.net>
-Date: Sun, 22 Apr 2012 07:40:57 +0200
-Message-ID: <CAJfpegt40cgMJQQo3JuNaaS1w957Y2a_NxVoyvx3bmTMj1TGOA@mail.gmail.com>
-Subject: Re: [PATCH RFC v3] vfs: make fstatat retry once on ESTALE errors from
- getattr call
-From: Miklos Szeredi <miklos@szeredi.hu>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Malahal Naineni <malahal@us.ibm.com>, Steve Dickson <SteveD@redhat.com>,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        hch@infradead.org, michael.brantley@deshaw.com,
-        sven.breuner@itwm.fraunhofer.de, chuck.lever@oracle.com,
-        pstaubach@exagrid.com, bfields@fieldses.org,
-        trond.myklebust@fys.uio.no, rees@umich.edu
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 20, 2012 at 11:13 PM, Jeff Layton <jlayton@redhat.com> wrote:
-> On Fri, 20 Apr 2012 15:37:26 -0500
-> Malahal Naineni <malahal@us.ibm.com> wrote:
->
->> Steve Dickson [SteveD@redhat.com] wrote:
->> > > 2) if we assume that it is fairly representative of one, how can we
->> > > achieve retrying indefinitely with NFS, or at least some large finite
->> > > amount?
->> > The amount of looping would be peer speculation. If the problem can
->> > not be handled by one simple retry I would say we simply pass the
->> > error up to the app... Its an application issue...
->>
->> As someone said, ESTALE is an incorrect errno for a path based call.
->> How about turning ESTALE into ENOENT after a retry or few retries?
->>
->
-> It's not really the same thing. One could envision an application
-> that's repeatedly renaming a new file on top of another one. The file
-> is never missing from the namespace of the server, but you could still
-> end up getting an ESTALE.
->
-> That would break other atomicity guarantees in an even worse way, IMO...
-
-For directory operations ESTALE *is* equivalent to ENOENT if already
-retrying with LOOKUP_REVAL.  Think about it.  Atomic replacement by
-another directory with rename(2) is not an excuse here actually.
-Local filesystems too can end up with IS_DEAD directory after lookup
-in that case.
-
-For non directories we basically have getattr and setattr.   NFSv4 can
-handle both without retries if we supply the name instead of the
-handle (i.e. i_op->getattr_by_name, i_op->setattr_by_name).  Other
-protocols can do whatever they want, exponential backoff with limited
-number of retries, whatever.
-
-No looping required in the VFS.
-
-Thanks,
-Miklos
+T24gVHVlLCAyMDEyLTA0LTI0IGF0IDEwOjU3IC0wNDAwLCBXZXN0b24gQW5kcm9zIEFkYW1zb24g
+d3JvdGU6DQo+IEFsbCByZWZlcnJhbHMgKElQdjQgYWRkciwgSVB2NiBhZGRyLCBhbmQgRE5TKSBh
+cmUgYnJva2VuIG9uIG1vdW50cyBvZg0KPiBJUHY2IGFkZHJlc3NlcywgYmVjYXVzZSB2YWxpZGF0
+aW9uIGNvZGUgdXNlcyBhIHBhdGggdGhhdCBpcyBwYXJzZWQNCj4gZnJvbSB0aGUgZGV2X25hbWUg
+KCI8c2VydmVyPjo8cGF0aD4iKSBieSBzcGxpdHRpbmcgb24gdGhlIGZpcnN0IGNvbG9uIGFuZA0K
+PiBjb2xvbnMgYXJlIHVzZWQgaW4gSVB2NiBhZGRycy4NCj4gVGhpcyBwYXRjaCBpZ25vcmVzIGNv
+bG9ucyB3aXRoaW4gSVB2NiBhZGRyZXNzZXMgdGhhdCBhcmUgZXNjYXBlZCBieSAnWycgYW5kICdd
+Jy4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IFdlc3RvbiBBbmRyb3MgQWRhbXNvbiA8ZHJvc0BuZXRh
+cHAuY29tPg0KPiAtLS0NCj4gDQo+IFRoaXMgZGVwZW5kcyBvbiBjb21taXQgMmY4ZTRiZDkxNDg4
+ZjI4NmU4M2U4YWJiMTQ2ODMxMDJlZmFhZmIwNQ0KPiAibmZzOiBFbmNsb3NlIGhvc3RuYW1lIGlu
+IGJyYWNrZXRzIHdoZW4gbmVlZGVkIGluIG5mc19kb19yb290X21vdW50Ii4NCj4gDQo+ICBmcy9u
+ZnMvbmZzNG5hbWVzcGFjZS5jIHwgICAzNSArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
+Ky0tLQ0KPiAgMSBmaWxlcyBjaGFuZ2VkLCAzMiBpbnNlcnRpb25zKCspLCAzIGRlbGV0aW9ucygt
+KQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0bmFtZXNwYWNlLmMgYi9mcy9uZnMvbmZz
+NG5hbWVzcGFjZS5jDQo+IGluZGV4IDljOGVjYTMuLjMwNzc0M2QgMTAwNjQ0DQo+IC0tLSBhL2Zz
+L25mcy9uZnM0bmFtZXNwYWNlLmMNCj4gKysrIGIvZnMvbmZzL25mczRuYW1lc3BhY2UuYw0KPiBA
+QCAtNTIsNiArNTIsMzUgQEAgRWxvbmc6DQo+ICB9DQo+ICANCj4gIC8qDQo+ICsgKiBwYXJzZSB0
+aGUgcGF0aCBjb21wb25lbnQgb2YgYW4gbmZzIHBhdGggKCI8c2VydmVyPjo8cGF0aD4iKS4NCj4g
+KyAqICBuZnNwYXRoIC0gdGhlICI8c2VydmVyPjo8cGF0aD4iIHN0cmluZw0KPiArICogIGVuZCAt
+IHBvaW50ZXIgdG8gZW5kIG9mIGRldm5hbWUgY29tcG9uZW50IG9mICduZnNwYXRoJw0KPiArICog
+cmV0dXJucyBOVUxMIG9uIGZhaWx1cmUNCj4gKyAqLw0KPiArc3RhdGljIGlubGluZSBjaGFyICpu
+ZnNfcGFyc2VfcGF0aF9jb21wb25lbnQoY2hhciAqbmZzcGF0aCwgY2hhciAqZW5kKQ0KDQpOaXQ6
+IHRoaXMgaXMgcmVhbGx5IHBhcnNpbmcgdGhlIHNlcnZlciBuYW1lIGNvbXBvbmVudCBvZiB0aGUg
+ZGV2bmFtZS4NCg0KQWxzbywgcGxlYXNlIG1ha2UgdGhlICdlbmQnIGFyZ3VtZW50ICdjb25zdCBj
+aGFyIConLCBhbmQgIGRyb3AgdGhlDQonaW5saW5lJyBkZWNsYXJhdGlvbi4NCg0KPiArew0KPiAr
+CWJvb2wgaXB2Nl9lc2MgPSBmYWxzZTsNCj4gKwljaGFyICpwOw0KPiArDQo+ICsJLyogZmluZCBm
+aXJzdCBjb2xvbiBub3QgaW4gSVB2NiBhZGRyICovDQo+ICsJZm9yIChwID0gbmZzcGF0aDsgcCA8
+IGVuZCAmJiAqcDsgcCsrKSB7DQo+ICsJCXN3aXRjaCAoKnApIHsNCj4gKwkJY2FzZSAnWyc6DQo+
+ICsJCQlpcHY2X2VzYyA9IHRydWU7DQoNCk5vdGUgdGhhdCBpZiBwICE9IG5mc3BhdGgsIHRoZW4g
+d2UgaGF2ZSBhIHByb2JsZW0uIFRoZSAnWycgX211c3RfIGJlIHRoZQ0KZmlyc3QgY2hhcmFjdGVy
+IGluIHRoZSBzZXJ2ZXIgbmFtZSwgYW5kIHRoZXJlIF9tdXN0XyBiZSBhIG1hdGNoaW5nICddJw0K
+YXQgdGhlIGVuZC4NClNvIGhvdyBhYm91dCBvcHRpbWlzaW5nIHRoaXMgdXNpbmcgc29tZXRoaW5n
+IGFsb25nIHRoZSBsaW5lcyBvZjoNCg0KCXAgPSBuZnNwYXRoOw0KCS8qIEhhbmRsZSBlc2NhcGVk
+IGhvc3RuYW1lcyAqLw0KCWlmICgqcCA9PSAnWycpIHsNCgkJcCA9IHN0cmNocihwLCAnXScpOw0K
+CQlpZiAocCA9PSBOVUxMKQ0KCQkJcmV0dXJuIE5VTEw7DQoJfQ0KCXAgPSBzdHJjaHIocCwgJzon
+KTsNCglpZiAocCAhPSBOVUxMKQ0KCQlwKys7DQoJcmV0dXJuIHA7DQoNCj4gKwkJCWJyZWFrOw0K
+PiArCQljYXNlICc6JzoNCj4gKwkJCWlmICghaXB2Nl9lc2MpDQo+ICsJCQkJcmV0dXJuIChwICsg
+MSk7DQo+ICsJCQlicmVhazsNCj4gKwkJfQ0KPiArCX0NCj4gKwlyZXR1cm4gTlVMTDsNCj4gK30N
+Cj4gKw0KPiArLyoNCj4gICAqIERldGVybWluZSB0aGUgbW91bnQgcGF0aCBhcyBhIHN0cmluZw0K
+PiAgICovDQo+ICBzdGF0aWMgY2hhciAqbmZzNF9wYXRoKHN0cnVjdCBkZW50cnkgKmRlbnRyeSwg
+Y2hhciAqYnVmZmVyLCBzc2l6ZV90IGJ1ZmxlbikNCj4gQEAgLTU5LDkgKzg4LDkgQEAgc3RhdGlj
+IGNoYXIgKm5mczRfcGF0aChzdHJ1Y3QgZGVudHJ5ICpkZW50cnksIGNoYXIgKmJ1ZmZlciwgc3Np
+emVfdCBidWZsZW4pDQo+ICAJY2hhciAqbGltaXQ7DQo+ICAJY2hhciAqcGF0aCA9IG5mc19wYXRo
+KCZsaW1pdCwgZGVudHJ5LCBidWZmZXIsIGJ1Zmxlbik7DQo+ICAJaWYgKCFJU19FUlIocGF0aCkp
+IHsNCj4gLQkJY2hhciAqY29sb24gPSBzdHJjaHIocGF0aCwgJzonKTsNCj4gLQkJaWYgKGNvbG9u
+ICYmIGNvbG9uIDwgbGltaXQpDQo+IC0JCQlwYXRoID0gY29sb24gKyAxOw0KPiArCQljaGFyICpw
+YXRoX2NvbXBvbmVudCA9IG5mc19wYXJzZV9wYXRoX2NvbXBvbmVudChwYXRoLCBsaW1pdCk7DQo+
+ICsJCWlmIChwYXRoX2NvbXBvbmVudCkNCj4gKwkJCXJldHVybiBwYXRoX2NvbXBvbmVudDsNCj4g
+IAl9DQo+ICAJcmV0dXJuIHBhdGg7DQo+ICB9DQoNClNvIHRoaXMgZml4ZXMgdGhlIHByb2JsZW0g
+b2YgcGFyc2luZyB0aGUgZGV2bmFtZSwgYnV0IGhvdyBhYm91dCB0aGUNCmlzc3VlIG9mIHNldHRp
+bmcgdGhlIGNvcnJlY3QgZGV2bmFtZSBpZiB0aGUgc2VydmVyIHN1cHBsaWVzIGFuIElQdjYNCmFk
+ZHJlc3MgYXMgdGhlIGhvc3RuYW1lPw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZT
+IGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20N
+Cnd3dy5uZXRhcHAuY29tDQoNCg==
