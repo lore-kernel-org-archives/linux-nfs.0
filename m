@@ -1,31 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:35420 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:41666 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754454Ab2DTVna (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 17:43:30 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: Jim Rees <rees@umich.edu>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS4: fix referrals with IPv6 mounts
-Date: Fri, 20 Apr 2012 21:43:28 +0000
-Message-ID: <1334958209.3295.39.camel@lade.trondhjem.org>
-References: <1334949705-33393-1-git-send-email-dros@netapp.com>
-	 <20120420194504.GA10259@umich.edu>
-	 <EA178ED0-5813-4235-A0CF-CF9D54AFB04F@netapp.com>
-	 <1334952788.3295.24.camel@lade.trondhjem.org>
-	 <A3FAE1E4-2AB8-4AF0-AC46-77EA3E4B9AB2@netapp.com>
-	 <1334957730.3295.35.camel@lade.trondhjem.org>
-	 <9AAD6718-5A17-482C-8AC1-A6F676838AF0@netapp.com>
-In-Reply-To: <9AAD6718-5A17-482C-8AC1-A6F676838AF0@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1753151Ab2DXUvV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Apr 2012 16:51:21 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org,
+        Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH] nfs4: fix referrals on mounts that use IPv6 addrs
+Date: Tue, 24 Apr 2012 16:50:37 -0400
+Message-Id: <1335300637-51397-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTA0LTIwIGF0IDIxOjM4ICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
-DQo+IFllcywgc29tZXRoaW5nIGxpa2UgdGhhdCBjb3VsZCB3b3JrLCBidXQgd2Ugc3RpbGwgaGF2
-ZSB0aGUgc2FtZSBpc3N1ZSAtIGRlbnRyeS0+ZF9mc2RhdGEgbmV2ZXIgaGFzIFtdIGVzY2FwaW5n
-Lg0KDQpUaGF0J3MgYSBidWcgdG9vLi4uIA0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
-TkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
-b20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+All referrals (IPv4 addr, IPv6 addr, and DNS) are broken on mounts of
+IPv6 addresses, because validation code uses a path that is parsed
+from the dev_name ("<server>:<path>") by splitting on the first colon and
+colons are used in IPv6 addrs.
+This patch ignores colons within IPv6 addresses that are escaped by '[' and ']'.
+
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+Reposted again to address a comment from Trond
+
+This depends on commit 2f8e4bd91488f286e83e8abb14683102efaafb05
+"nfs: Enclose hostname in brackets when needed in nfs_do_root_mount".
+
+
+
+ fs/nfs/nfs4namespace.c |   30 +++++++++++++++++++++++++++---
+ 1 files changed, 27 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index 9c8eca3..7483a17 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -52,6 +52,30 @@ Elong:
+ }
+ 
+ /*
++ * return the path component of "<server>:<path>"
++ *  nfspath - the "<server>:<path>" string
++ *  end - one past the last char that could contain "<server>:"
++ * returns NULL on failure
++ */
++static char *nfs_path_component(const char *nfspath, const char *end)
++{
++	char *p;
++
++	if (*nfspath == '[') {
++		/* parse [] escaped IPv6 addrs */
++		p = strchr(nfspath, ']');
++		if (p != NULL && ++p < end && *p == ':')
++			return p + 1;
++	} else {
++		/* otherwise split on first colon */
++		p = strchr(nfspath, ':');
++		if (p != NULL && p < end)
++			return p + 1;
++	}
++	return NULL;
++}
++
++/*
+  * Determine the mount path as a string
+  */
+ static char *nfs4_path(struct dentry *dentry, char *buffer, ssize_t buflen)
+@@ -59,9 +83,9 @@ static char *nfs4_path(struct dentry *dentry, char *buffer, ssize_t buflen)
+ 	char *limit;
+ 	char *path = nfs_path(&limit, dentry, buffer, buflen);
+ 	if (!IS_ERR(path)) {
+-		char *colon = strchr(path, ':');
+-		if (colon && colon < limit)
+-			path = colon + 1;
++		char *path_component = nfs_path_component(path, limit);
++		if (path_component)
++			return path_component;
+ 	}
+ 	return path;
+ }
+-- 
+1.7.4.4
+
