@@ -1,77 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f174.google.com ([74.125.82.174]:32903 "EHLO
-	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754675Ab2DQQCG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Apr 2012 12:02:06 -0400
-Received: by wejx9 with SMTP id x9so4134039wej.19
-        for <linux-nfs@vger.kernel.org>; Tue, 17 Apr 2012 09:02:05 -0700 (PDT)
-From: Miklos Szeredi <miklos@szeredi.hu>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        "Myklebust\, Trond" <Trond.Myklebust@netapp.com>,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        Malahal Naineni <malahal@us.ibm.com>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "pstaubach\@exagrid.com" <pstaubach@exagrid.com>,
-        "viro\@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
-        "hch\@infradead.org" <hch@infradead.org>,
-        "michael.brantley\@deshaw.com" <michael.brantley@deshaw.com>,
-        "sven.breuner\@itwm.fraunhofer.de" <sven.breuner@itwm.fraunhofer.de>
-Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from getattr call
-References: <4F8C3036.2030702@itwm.fraunhofer.de>
-	<20120416134642.1754cd3e@corrin.poochiereds.net>
-	<1334604785.2879.23.camel@lade.trondhjem.org>
-	<20120416154322.0d95e435@corrin.poochiereds.net>
-	<1334607906.2879.36.camel@lade.trondhjem.org>
-	<20120416190548.2463d1d0@corrin.poochiereds.net>
-	<87sjg2o62z.fsf@tucsk.pomaz.szeredi.hu>
-	<20120417093222.2ff5e1bd@corrin.poochiereds.net>
-	<1334671473.2963.27.camel@lade.trondhjem.org.localdomain>
-	<20120417102035.2236e553@corrin.poochiereds.net>
-	<20120417154549.GA27426@fieldses.org>
-Date: Tue, 17 Apr 2012 18:02:13 +0200
-In-Reply-To: <20120417154549.GA27426@fieldses.org> (J. Bruce Fields's message
-	of "Tue, 17 Apr 2012 11:45:49 -0400")
-Message-ID: <8762cyny7u.fsf@tucsk.pomaz.szeredi.hu>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from mx2.netapp.com ([216.240.18.37]:41656 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757048Ab2DXR4T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Apr 2012 13:56:19 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
+        Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v3 1/8] NFS: Fix SECINFO_NO_NAME
+Date: Tue, 24 Apr 2012 13:56:05 -0400
+Message-Id: <1335290172-1532-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1335290172-1532-1-git-send-email-bjschuma@netapp.com>
+References: <1335290172-1532-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-"J. Bruce Fields" <bfields@fieldses.org> writes:
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-> On Tue, Apr 17, 2012 at 10:20:35AM -0400, Jeff Layton wrote:
->> Well, it's possible, but it seems pathological to me for a server to do
->> that...
->> 
->> Bruce and I were discussing this the other day. It would be good to add
->> something like this to the RFCs:
->> 
->> "On a PUTFH, a server SHOULD hold a reference to the filehandle such
->
-> For "filehandle" I'd specify "current and saved filehandle".
->
->> that it does not go stale over the life of the compound."
->
-> And that's *much* less of a burden on the server than requiring that the
-> compound execute atomically.
->
->> ...or something along those lines. That's a different matter though and
->> not directly related to this. :)
->
-> Yes.
+I was using the same decoder function for SECINFO and SECINFO_NO_NAME,
+so it was returning an error when it tried to decode an OP_SECINFO_NO_NAME
+header as OP_SECINFO.
 
-It's only related, because it proves that it's theoretically possible to
-deal with this problem without introducing infinite retries.  And that
-applies to all operations, not just getattr.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/nfs4xdr.c |   24 +++++++++++++++++++-----
+ 1 file changed, 19 insertions(+), 5 deletions(-)
 
-As for atomicity, the VFS doesn't have any atomicity guarantees here
-either.  So for example getattr("foo") may end up with st_nlink == 0
-with a concurrent rename("bar", "foo").  Whether this is permitted by
-the standards is another matter, but it's not something that appears to
-bother anybody.
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 77fc5f9..043c010 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -5090,16 +5090,13 @@ out_err:
+ 	return -EINVAL;
+ }
+ 
+-static int decode_secinfo(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
++static int decode_secinfo_common(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
+ {
+ 	struct nfs4_secinfo_flavor *sec_flavor;
+ 	int status;
+ 	__be32 *p;
+ 	int i, num_flavors;
+ 
+-	status = decode_op_hdr(xdr, OP_SECINFO);
+-	if (status)
+-		goto out;
+ 	p = xdr_inline_decode(xdr, 4);
+ 	if (unlikely(!p))
+ 		goto out_overflow;
+@@ -5125,6 +5122,7 @@ static int decode_secinfo(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
+ 		res->flavors->num_flavors++;
+ 	}
+ 
++	status = 0;
+ out:
+ 	return status;
+ out_overflow:
+@@ -5132,7 +5130,23 @@ out_overflow:
+ 	return -EIO;
+ }
+ 
++static int decode_secinfo(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
++{
++	int status = decode_op_hdr(xdr, OP_SECINFO);
++	if (status)
++		return status;
++	return decode_secinfo_common(xdr, res);
++}
++
+ #if defined(CONFIG_NFS_V4_1)
++static int decode_secinfo_no_name(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
++{
++	int status = decode_op_hdr(xdr, OP_SECINFO_NO_NAME);
++	if (status)
++		return status;
++	return decode_secinfo_common(xdr, res);
++}
++
+ static int decode_exchange_id(struct xdr_stream *xdr,
+ 			      struct nfs41_exchange_id_res *res)
+ {
+@@ -6817,7 +6831,7 @@ static int nfs4_xdr_dec_secinfo_no_name(struct rpc_rqst *rqstp,
+ 	status = decode_putrootfh(xdr);
+ 	if (status)
+ 		goto out;
+-	status = decode_secinfo(xdr, res);
++	status = decode_secinfo_no_name(xdr, res);
+ out:
+ 	return status;
+ }
+-- 
+1.7.10
 
-Thanks,
-Miklos
