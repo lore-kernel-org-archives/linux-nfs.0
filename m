@@ -1,87 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:48603 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752224Ab2DMPrk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Apr 2012 11:47:40 -0400
-Received: from vmwexceht02-prd.hq.netapp.com (vmwexceht02-prd.hq.netapp.com [10.106.76.240])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q3DFlOjS008851
-	for <linux-nfs@vger.kernel.org>; Fri, 13 Apr 2012 08:47:25 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Isaman, Fred" <Fred.Isaman@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 03/26] NFS4.1: Add lseg to struct nfs4_fl_commit_bucket
-Date: Fri, 13 Apr 2012 15:47:23 +0000
-Message-ID: <1334332041.25130.16.camel@lade.trondhjem.org>
-References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
-	 <1334004744-31842-4-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334004744-31842-4-git-send-email-iisaman@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from smtp.mail.umich.edu ([141.211.14.81]:56404 "EHLO
+	hackers.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755311Ab2DXPSO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Apr 2012 11:18:14 -0400
+Date: Tue, 24 Apr 2012 11:19:24 -0400
+From: Jim Rees <rees@umich.edu>
+To: Weston Andros Adamson <dros@netapp.com>
+Cc: Trond.Myklebust@netapp.com, chuck.lever@oracle.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs4: fix referrals on mounts that use IPv6 addrs
+Message-ID: <20120424151924.GA13191@umich.edu>
+References: <1335279471-46782-1-git-send-email-dros@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1335279471-46782-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA0LTA5IGF0IDE2OjUyIC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
-QWxzbyBjcmVhdGUgYSBjb21taXRfaW5mbyBzdHJ1Y3R1cmUgdG8gaG9sZCB0aGUgYnVja2V0IGFy
-cmF5IGFuZCBwdXNoDQo+IGl0IHVwIGZyb20gdGhlIGxzZWcgdG8gdGhlIGxheW91dCB3aGVyZSBp
-dCByZWFsbHkgYmVsb25ncy4NCj4gDQo+IFdoaWxlIHdlIGFyZSBhdCBpdCwgZml4IGEgcmVmY291
-bnRpbmcgYnVnIGR1ZSB0byBhbiAoaW5jb3JyZWN0KQ0KPiBpbXBsaWNpdCBhc3N1bXB0aW9uIHRo
-YXQgZmlsZWxheW91dF9zY2FuX2RzX2NvbW1pdF9saXN0IGFsd2F5cw0KPiBjb21wbGV0ZWx5IGVt
-cHRpZWQgdGhlIHNyYyBsaXN0Lg0KPiANCj4gVGhpcyBjbGFyaWZpZXMgcmVmY291bnRpbmcsIHJl
-bW92ZXMgdGhlIHVnbHkgZmluZF9vbmx5X3dyaXRlX2xzZWcNCj4gZnVuY3Rpb25zLCBhbmQgcHVz
-aGVzIHRoZSBmaWxlIGxheW91dCBjb21taXQgY29kZSBhbG9uZyBvbiB0aGUgcGF0aCB0bw0KPiBz
-dXBwb3J0aW5nIG11bHRpcGxlIGxzZWdzLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogRnJlZCBJc2Ft
-YW4gPGlpc2FtYW5AbmV0YXBwLmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvbmZzNGZpbGVsYXlvdXQu
-YyB8ICAxNTAgKysrKysrKysrKysrKysrKysrKysrKysrKy0tLS0tLS0tLS0tLS0tLS0tLS0tLS0N
-Cj4gIGZzL25mcy9uZnM0ZmlsZWxheW91dC5oIHwgICAyMCArKysrKystDQo+ICAyIGZpbGVzIGNo
-YW5nZWQsIDk3IGluc2VydGlvbnMoKyksIDczIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdp
-dCBhL2ZzL25mcy9uZnM0ZmlsZWxheW91dC5jIGIvZnMvbmZzL25mczRmaWxlbGF5b3V0LmMNCj4g
-aW5kZXggNWFjZmQ5ZS4uMGJiYzg4YSAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL25mczRmaWxlbGF5
-b3V0LmMNCj4gKysrIGIvZnMvbmZzL25mczRmaWxlbGF5b3V0LmMNCj4gQEAgLTY1MCw3ICs2NTAs
-MTUgQEAgZmlsZWxheW91dF9mcmVlX2xzZWcoc3RydWN0IHBuZnNfbGF5b3V0X3NlZ21lbnQgKmxz
-ZWcpDQo+ICANCj4gIAlkcHJpbnRrKCItLT4gJXNcbiIsIF9fZnVuY19fKTsNCj4gIAluZnM0X2Zs
-X3B1dF9kZXZpY2VpZChmbC0+ZHNhZGRyKTsNCj4gLQlrZnJlZShmbC0+Y29tbWl0X2J1Y2tldHMp
-Ow0KPiArCS8qIFRoaXMgYXNzdW1lcyBhIHNpbmdsZSBSVyBsc2VnICovDQo+ICsJaWYgKGxzZWct
-PnBsc19yYW5nZS5pb21vZGUgPT0gSU9NT0RFX1JXKSB7DQo+ICsJCXN0cnVjdCBuZnM0X2ZpbGVs
-YXlvdXQgKmZsbzsNCj4gKw0KPiArCQlmbG8gPSBGSUxFTEFZT1VUX0ZST01fSERSKGxzZWctPnBs
-c19sYXlvdXQpOw0KPiArCQlmbG8tPmNvbW1pdF9pbmZvLm5idWNrZXRzID0gMDsNCj4gKwkJa2Zy
-ZWUoZmxvLT5jb21taXRfaW5mby5idWNrZXRzKTsNCj4gKwkJZmxvLT5jb21taXRfaW5mby5idWNr
-ZXRzID0gTlVMTDsNCj4gKwl9DQo+ICAJX2ZpbGVsYXlvdXRfZnJlZV9sc2VnKGZsKTsNCj4gIH0N
-Cj4gIA0KPiBAQCAtNjgxLDE5ICs2ODksMjcgQEAgZmlsZWxheW91dF9hbGxvY19sc2VnKHN0cnVj
-dCBwbmZzX2xheW91dF9oZHIgKmxheW91dGlkLA0KPiAgCSAqIHRvIGZpbGVsYXlvdXRfd3JpdGVf
-cGFnZWxpc3QoKS4NCj4gIAkgKiAqLw0KPiAgCWlmICgoIWZsLT5jb21taXRfdGhyb3VnaF9tZHMp
-ICYmIChsZ3ItPnJhbmdlLmlvbW9kZSA9PSBJT01PREVfUlcpKSB7DQo+ICsJCXN0cnVjdCBuZnM0
-X2ZpbGVsYXlvdXQgKmZsbyA9IEZJTEVMQVlPVVRfRlJPTV9IRFIobGF5b3V0aWQpOw0KPiAgCQlp
-bnQgaTsNCj4gIAkJaW50IHNpemUgPSAoZmwtPnN0cmlwZV90eXBlID09IFNUUklQRV9TUEFSU0Up
-ID8NCj4gIAkJCWZsLT5kc2FkZHItPmRzX251bSA6IGZsLT5kc2FkZHItPnN0cmlwZV9jb3VudDsN
-Cj4gIA0KPiAtCQlmbC0+Y29tbWl0X2J1Y2tldHMgPSBrY2FsbG9jKHNpemUsIHNpemVvZihzdHJ1
-Y3QgbmZzNF9mbF9jb21taXRfYnVja2V0KSwgZ2ZwX2ZsYWdzKTsNCj4gLQkJaWYgKCFmbC0+Y29t
-bWl0X2J1Y2tldHMpIHsNCj4gKwkJaWYgKGZsby0+Y29tbWl0X2luZm8ubmJ1Y2tldHMgIT0gMCkg
-ew0KPiArCQkJLyogU2hvdWxkbid0IGhhcHBlbiBpZiBvbmx5IG9uZSBJT01PREVfUlcgbHNlZyAq
-Lw0KPiAgCQkJZmlsZWxheW91dF9mcmVlX2xzZWcoJmZsLT5nZW5lcmljX2hkcik7DQo+ICAJCQly
-ZXR1cm4gTlVMTDsNCg0KSXMgdGhpcyByZWFsbHkgdGhlIGNvcnJlY3QgdGhpbmcgdG8gZG8/IElm
-IHdlJ3JlIGRlYWxpbmcgd2l0aCBtdWx0aXBsZQ0KSU9NT0RFX1JXIGxzZWdzLCB0aGVuIHN1cmVs
-eSB3ZSBtaWdodCBmaW5kIG91cnNlbHZlcyBpbiBhIHNpdHVhdGlvbg0Kd2hlcmUgd2UgbWlnaHQg
-aGF2ZSB0byBhZGQgbmV3IGNvbW1pdCBidWNrZXRzLg0KDQpEb2Vzbid0IHRoZSBhYm92ZSBkZXNl
-cnZlIGEgV0FSTl9PTigpIGFuZCBhIEZJWE1FIGNvbW1lbnQ/DQoNCj4gIAkJfQ0KPiAtCQlmbC0+
-bnVtYmVyX29mX2J1Y2tldHMgPSBzaXplOw0KPiArCQlmbG8tPmNvbW1pdF9pbmZvLmJ1Y2tldHMg
-PSBrY2FsbG9jKHNpemUsDQo+ICsJCQkJCQkgICBzaXplb2Yoc3RydWN0IG5mczRfZmxfY29tbWl0
-X2J1Y2tldCksDQo+ICsJCQkJCQkgICBnZnBfZmxhZ3MpOw0KPiArCQlpZiAoIWZsby0+Y29tbWl0
-X2luZm8uYnVja2V0cykgew0KPiArCQkJZmlsZWxheW91dF9mcmVlX2xzZWcoJmZsLT5nZW5lcmlj
-X2hkcik7DQo+ICsJCQlyZXR1cm4gTlVMTDsNCj4gKwkJfQ0KPiArCQlmbG8tPmNvbW1pdF9pbmZv
-Lm5idWNrZXRzID0gc2l6ZTsNCj4gIAkJZm9yIChpID0gMDsgaSA8IHNpemU7IGkrKykgew0KPiAt
-CQkJSU5JVF9MSVNUX0hFQUQoJmZsLT5jb21taXRfYnVja2V0c1tpXS53cml0dGVuKTsNCj4gLQkJ
-CUlOSVRfTElTVF9IRUFEKCZmbC0+Y29tbWl0X2J1Y2tldHNbaV0uY29tbWl0dGluZyk7DQo+ICsJ
-CQlJTklUX0xJU1RfSEVBRCgmZmxvLT5jb21taXRfaW5mby5idWNrZXRzW2ldLndyaXR0ZW4pOw0K
-PiArCQkJSU5JVF9MSVNUX0hFQUQoJmZsby0+Y29tbWl0X2luZm8uYnVja2V0c1tpXS5jb21taXR0
-aW5nKTsNCj4gIAkJfQ0KDQpUaGUgY29tbWl0X2luZm8gYWxsb2NhdGlvbiBhbmQgaW5pdGlhbGlz
-YXRpb24gc2hvdWxkIHByb2JhYmx5IGJlIG1vdmVkDQppbnRvIGEgZGlmZmVyZW50IGZ1bmN0aW9u
-IGlmIGl0IGlzIG5vIGxvbmdlciBwYXJ0IG9mIHRoZSBsc2VnLg0KDQpUaGF0IHNhaWQsIEknbSBo
-YXZpbmcgdHJvdWJsZSBzZWVpbmcgaG93IHRoaXMgYXJjaGl0ZWN0dXJlIGNhbiBzdXJ2aXZlDQpp
-biBhIGZ1dHVyZSBtdWx0aXBsZS1sYXlvdXQgd29ybGQuIEknbSB0aGlua2luZyB0aGF0IHNpbmNl
-IHRoZQ0KY29tbWl0X2J1Y2tldHMgbmVlZCB0byB0YWtlIGEgcmVmZXJlbmNlIHRvIHRoZSBsc2Vn
-LCB0aGVuIG1heWJlIHdlDQpzaG91bGQga2VlcCB0aGUgY29tbWl0IGJ1Y2tldHMgdGllZCB0byB0
-aGUgbHNlZywgYW5kIHRoZW4gbGV0IHRoZSBjb21taXQNCmNvZGUgaXRlcmF0ZSB0aHJvdWdoIHRo
-ZSBsaXN0IG9mIGxzZWdzIHdpdGggc29tZXRoaW5nIGluIHRoZWlyIGNvbW1pdA0KYnVja2V0cy4u
-LiBXaGF0IGFyZSB5b3VyIHRob3VnaHRzIGZvciBob3cgdGhpcyBtaWdodCBldm9sdmU/DQoNCi0t
-IA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBw
-DQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+Weston Andros Adamson wrote:
+
+  diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+  index 9c8eca3..307743d 100644
+  --- a/fs/nfs/nfs4namespace.c
+  +++ b/fs/nfs/nfs4namespace.c
+  @@ -52,6 +52,35 @@ Elong:
+   }
+   
+   /*
+  + * parse the path component of an nfs path ("<server>:<path>").
+  + *  nfspath - the "<server>:<path>" string
+  + *  end - pointer to end of devname component of 'nfspath'
+  + * returns NULL on failure
+  + */
+
+The comment seems odd to me.  You're not parsing the path component, you're
+parsing the nfspath to return the path.  And the term "devname component"
+hasn't been defined anywhere.  How about this:
+
+Return the path component of an nfs path ("<server>:<path>").
+ nfspath - the "<server>:<path>" string
+ end - pointer to end of nfspath
+returns NULL on failure
