@@ -1,40 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:57273 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751324Ab2DNA4k (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Apr 2012 20:56:40 -0400
-Received: by obbta14 with SMTP id ta14so1292053obb.19
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Apr 2012 17:56:39 -0700 (PDT)
-Message-ID: <4F88CB43.6020506@gmail.com>
-Date: Fri, 13 Apr 2012 19:56:35 -0500
-From: Calvin Owens <jcalvinowens@gmail.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:35139 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753630Ab2DYOX1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Apr 2012 10:23:27 -0400
+Subject: [PATCH 6/6] LockD: add debug message to start and stop functions
+To: bfields@fieldses.org, Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Wed, 25 Apr 2012 18:23:16 +0400
+Message-ID: <20120425142316.22909.17901.stgit@localhost6.localdomain6>
+In-Reply-To: <20120425141934.22909.53047.stgit@localhost6.localdomain6>
+References: <20120425141934.22909.53047.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-To: Dean <seattleplus@gmail.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [GSoC Project] Implementing NFS v4.2
-References: <4F7E32D4.3030201@gmail.com> <1333682276.4792.32.camel@lade.trondhjem.org> <4F88B124.9030002@gmail.com>
-In-Reply-To: <4F88B124.9030002@gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/13/2012 06:05 PM, Dean wrote:
->>
->>
->>
->> The efficient sparse file read and fadvise support might be nice too,
->> but I'd like to see numbers for how they improve matters before I feel
->> comfortable saying yea or nay to adding those specific features.
-> 
-> Instead of '...but I'd like to see...' I assume you meant, '...since I'd like to see...', as it would be hard to see how they improve matters without actually implementing them.
-> 
-> Although for sparse file reads, I think the low overhead design to avoid bloating every file upon read in NFSv4.2 makes it easy to see the benefit without any implementation.  For ioadvise, I think the benefit will be dependent upon support from the exported file system (or possibly nfs server).  So any prototype would have to be combined with appropriate support in the server file system or nfs server.
-> 
-> Dean
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Well, that would make my project a lot more straightforward: if you guys want the ADB sparse file reads, I could just call it "Implementing Sparse File Support for NFS", and implement sections 3, 4, and 6 of the v4.2 internet-draft. That seems like enough.
+---
+ fs/lockd/svc.c |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
 
-fadvise() has the same behaviour for all filesystems, doesn't it? If wanting more efficient VM virtual disks over NFS is driving the sparse file stuff, I can see how POSIX_FADV_RANDOM on the server end would help with that.
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index b47bf77..80938fd 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -266,6 +266,7 @@ static int lockd_up_net(struct svc_serv *serv, struct net *net)
+ 	error = make_socks(serv, net);
+ 	if (error < 0)
+ 		goto err_socks;
++	dprintk("lockd_up_net: per-net data created; net=%p\n", net);
+ 	return 0;
+ 
+ err_socks:
+@@ -283,6 +284,7 @@ static void lockd_down_net(struct svc_serv *serv, struct net *net)
+ 		if (--ln->nlmsvc_users == 0) {
+ 			nlm_shutdown_hosts_net(net);
+ 			svc_shutdown_net(serv, net);
++			dprintk("lockd_down_net: per-net data destroyed; net=%p\n", net);
+ 		}
+ 	} else {
+ 		printk(KERN_ERR "lockd_down_net: no users! task=%p, net=%p\n",
+@@ -360,6 +362,7 @@ static struct svc_serv *lockd_create_svc(void)
+ 		printk(KERN_WARNING "lockd_up: create service failed\n");
+ 		return ERR_PTR(-ENOMEM);
+ 	}
++	dprintk("lockd_up: service created\n");
+ 	return serv;
+ }
+ 
+@@ -426,7 +429,9 @@ lockd_down(struct net *net)
+ 		BUG();
+ 	}
+ 	kthread_stop(nlmsvc_task);
++	dprintk("lockd_down: service stopped\n");
+ 	svc_exit_thread(nlmsvc_rqst);
++	dprintk("lockd_down: service destroyed\n");
+ 	nlmsvc_task = NULL;
+ 	nlmsvc_rqst = NULL;
+ out:
 
-Calvin
