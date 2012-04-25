@@ -1,129 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:28998 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755888Ab2DQOI7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Apr 2012 10:08:59 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Peter Staubach <pstaubach@exagrid.com>
-CC: Jeff Layton <jlayton@redhat.com>,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        Malahal Naineni <malahal@us.ibm.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "miklos@szeredi.hu" <miklos@szeredi.hu>,
-        "viro@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
-        "hch@infradead.org" <hch@infradead.org>,
-        "michael.brantley@deshaw.com" <michael.brantley@deshaw.com>,
-        "sven.breuner@itwm.fraunhofer.de" <sven.breuner@itwm.fraunhofer.de>
-Subject: RE: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from
- getattr call
-Date: Tue, 17 Apr 2012 14:08:57 +0000
-Message-ID: <1334671736.2963.30.camel@lade.trondhjem.org.localdomain>
-References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
-	 <20120413150518.GA1987@us.ibm.com>
-	 <20120413114236.0e557e01@tlielax.poochiereds.net>
-	 <4F8B1B7B.3040304@itwm.fraunhofer.de>
-	 <20120416073655.7cdb90cf@corrin.poochiereds.net>
-	 <4F8C3036.2030702@itwm.fraunhofer.de>
-	 <20120416134642.1754cd3e@corrin.poochiereds.net>
-	 <1334604785.2879.23.camel@lade.trondhjem.org>
-	 <20120416154322.0d95e435@corrin.poochiereds.net>
-	 <1334607906.2879.36.camel@lade.trondhjem.org>
-	 <20120416190548.2463d1d0@corrin.poochiereds.net>
-	 <FA8A9A935BFD3A4D8F0CDA1C4F611BCC063CF8E115@IT-1874.Isys.com>
-In-Reply-To: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC063CF8E115@IT-1874.Isys.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from partagas.dragonet.es ([217.70.240.130]:58020 "EHLO
+	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932415Ab2DYX0a (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Apr 2012 19:26:30 -0400
+Message-ID: <4F988878.7090703@steve-ss.com>
+Date: Thu, 26 Apr 2012 01:27:52 +0200
+From: steve <steve@steve-ss.com>
 MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: LOOKUP Reply Error:NFS3ERR_NO_ENT
+References: <4F986927.9020102@steve-ss.com> <20120425222231.GE3251@fieldses.org>
+In-Reply-To: <20120425222231.GE3251@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA0LTE3IGF0IDA5OjM5IC0wNDAwLCBQZXRlciBTdGF1YmFjaCB3cm90ZToN
-Cj4gSGkuDQo+IA0KPiBUaGVyZSBkb2VzIG5lZWQgdG8gYmUgc3VwcG9ydCBpbiB0aGUgbG9va3Vw
-IHBhdGggdG8gaGFuZGxlIHN0YWxlIGRpcmVjdG9yaWVzLiAgRHVyaW5nIGEgbXVsdGktY29tcG9u
-ZW50IGxvb2t1cCwgaXQgaXMgcG9zc2libGUgZm9yIG9uZSBjb21wb25lbnQgdG8gYmUgbG9va2Vk
-IHVwLCBidXQgdGhlbiBiZWNvbWUgc3RhbGUgYmVmb3JlIGJlaW5nIHVzZWQuICBUaGUgc3VwcG9y
-dCBuZWVkcyB0byBnbyBpbnRvIG1vcmUgdGhhbiBqdXN0IHRoZSBzZXQgb2Ygc3lzdGVtIGNhbGxz
-LCBidXQgYWxzbyBpbnRvIHRoZSBsb29rdXAgY29kZS4NCj4gDQo+IEkgc3VzcGVjdCB0aGF0IHNp
-bmNlIHRoZSAiIiBjYXNlIGlzIGhhbmRsZWQgc3BlY2lhbGx5IGFueXdheSwgY29kZSBjb3VsZCBi
-ZSBhZGRlZCB0byBkbyBzb21ldGhpbmcgbGlrZSBpc3N1ZSBhIEdFVEFUVFIgdG8gdmVyaWZ5IHRo
-YXQgdGhlIGRpcmVjdG9yeSBpcyBzdGlsbCB2YWxpZC4gIFNpbmNlICIiIGlzIHByb2JhYmx5IHVz
-ZWQgbWluaW1hbGx5LCB0aGUgcGVyZm9ybWFuY2UgaW1wYWN0IHRvIHRoZSBzeXN0ZW0gc2hvdWxk
-IGJlIGFsc28gYmUgbWluaW1hbC4NCg0KVGhlIHByb2JsZW0gd2l0aCB0aGF0IGlzIHRoYXQgZXZl
-biBpZiB5b3VyIGN1cnJlbnQgZGlyZWN0b3J5IGlzIHN0YWxlLCBhDQpwYXRoIG9mIHRoZSBmb3Jt
-ICIuLi8uLi8uLi9ibGFoIiBjYW4gc3RpbGwgYmUgdmFsaWQuIEkgc3VzcGVjdCB0aGF0IGFueQ0K
-Y29kZSB0aGF0IHRyaWVzIHRvIGxvb3AgZm9yZXZlciBjYW4gcXVpY2tseSBnZXQgdmVyeSBjb21w
-bGljYXRlZCBhcyB3ZQ0Kc3RhcnQgYWRkaW5nIGFsbCB0aGVzZSBjb3JuZXIgY2FzZXMuDQoNClRo
-ZSB0aGluZyBhYm91dCBzdGF0KCkgaXMgdGhhdCBpbiA5OS45OSUgb2YgY2FzZXMgd2hlbiB0aGUg
-cGF0aA0KcmV2YWxpZGF0aW9uIGNvZGUgd29ya3MsIHRoZW4gdGhlIE5GUyBjbGllbnQgd29uJ3Qg
-aGF2ZSB0byBhY3R1YWxseQ0KaXNzdWUgYSBHRVRBVFRSIGluIHRoZSBjYWxsIHRvIHZmc19nZXRz
-dGF0KCkgc2luY2UgdGhlIExPT0tVUCBvZiB0aGF0DQpmaW5hbCBwYXRoIGNvbXBvbmVudCB3aWxs
-IHJldmFsaWRhdGUgdGhvc2UgYXR0cmlidXRlcyBhbnl3YXkuDQoNClRoZSBvbmx5IGV4Y2VwdGlv
-biB0byB0aGF0IHJ1bGUgd2lsbCBiZSB0aGUgJ25vYWMnIG1vdW50cywgd2hpY2ggcmVhbGx5DQpj
-YW4gZW5kIHVwIGxvb3BpbmcgZm9yZXZlci4NCg0KQ2hlZXJzDQogIFRyb25kDQoNCj4gCQlwcw0K
-PiANCj4gDQo+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+IEZyb206IEplZmYgTGF5dG9u
-IFttYWlsdG86amxheXRvbkByZWRoYXQuY29tXSANCj4gU2VudDogTW9uZGF5LCBBcHJpbCAxNiwg
-MjAxMiA3OjA2IFBNDQo+IFRvOiBNeWtsZWJ1c3QsIFRyb25kDQo+IENjOiBCZXJuZCBTY2h1YmVy
-dDsgTWFsYWhhbCBOYWluZW5pOyBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnOyBsaW51eC1mc2Rl
-dmVsQHZnZXIua2VybmVsLm9yZzsgbGludXgta2VybmVsQHZnZXIua2VybmVsLm9yZzsgUGV0ZXIg
-U3RhdWJhY2g7IG1pa2xvc0BzemVyZWRpLmh1OyB2aXJvQFplbklWLmxpbnV4Lm9yZy51azsgaGNo
-QGluZnJhZGVhZC5vcmc7IG1pY2hhZWwuYnJhbnRsZXlAZGVzaGF3LmNvbTsgc3Zlbi5icmV1bmVy
-QGl0d20uZnJhdW5ob2Zlci5kZQ0KPiBTdWJqZWN0OiBSZTogW1BBVENIIFJGQ10gdmZzOiBtYWtl
-IGZzdGF0YXQgcmV0cnkgb24gRVNUQUxFIGVycm9ycyBmcm9tIGdldGF0dHIgY2FsbA0KPiANCj4g
-T24gTW9uLCAxNiBBcHIgMjAxMiAyMDoyNTowNiArMDAwMA0KPiAiTXlrbGVidXN0LCBUcm9uZCIg
-PFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4gT24gTW9uLCAyMDEy
-LTA0LTE2IGF0IDE1OjQzIC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4gPiA+IE9uIE1vbiwg
-MTYgQXByIDIwMTIgMTk6MzM6MDUgKzAwMDANCj4gPiA+ICJNeWtsZWJ1c3QsIFRyb25kIiA8VHJv
-bmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+ID4gDQo+ID4gPiA+IE9uIE1vbiwg
-MjAxMi0wNC0xNiBhdCAxMzo0NiAtMDQwMCwgSmVmZiBMYXl0b24gd3JvdGU6DQo+ID4gPiA+ID4g
-VGhlIHF1ZXN0aW9uIGFib3V0IGxvb3BpbmcgaW5kZWZpbml0ZWx5IHJlYWxseSBjb21lcyBkb3du
-IHRvOg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IDEpIGlzIGEgcGVyc2lzdGVudCBFU1RBTEUgaW4g
-Y29uanVuY3Rpb24gd2l0aCBhIHN1Y2Nlc3NmdWwgDQo+ID4gPiA+ID4gbG9va3VwIGEgc2l0dWF0
-aW9uIHRoYXQgd2UgZXhwZWN0IHRvIGJlIHRlbXBvcmFyeS4gaS5lLiB3aWxsIHRoZSANCj4gPiA+
-ID4gPiBhZG1pbiBhdCBzb21lIHBvaW50IGJlIGFibGUgdG8gZG8gc29tZXRoaW5nIGFib3V0IGl0
-PyBJZiBub3QsIA0KPiA+ID4gPiA+IHRoZW4gdGhlcmUncyBubyBwb2ludCBpbiBjb250aW51aW5n
-IHRvIHJldHJ5LiBBZ2FpbiwgdGhpcyBpcyBhIA0KPiA+ID4gPiA+IHNpdHVhdGlvbiB0aGF0ICpy
-ZWFsbHkqIHNob3VsZCBub3QgaGFwcGVuIGlmIHRoZSBmaWxlc3lzdGVtIGlzIGRvaW5nIHRoZSBy
-aWdodCB0aGluZy4NCj4gPiA+ID4gPiANCj4gPiA+ID4gPiAyKSBJZiB0aGUgYWRtaW4gY2FuJ3Qg
-ZG8gYW55dGhpbmcgYWJvdXQgaXQsIGlzIGl0IHJlYXNvbmFibGUgdG8gDQo+ID4gPiA+ID4gZXhw
-ZWN0IHRoYXQgdXNlcnMgY2FuIHNlbmQgYSBmYXRhbCBzaWduYWwgdG8gaHVuZyBhcHBsaWNhdGlv
-bnMgDQo+ID4gPiA+ID4gaWYgdGhpcyBzaXR1YXRpb24gb2NjdXJzLg0KPiA+ID4gPiA+IA0KPiA+
-ID4gPiA+IFdlIGV4cGVjdCB0aGF0IHRoYXQncyBvayBpbiBvdGhlciBzaXR1YXRpb25zIHRvIHJl
-c29sdmUgaHVuZyANCj4gPiA+ID4gPiBhcHBsaWNhdGlvbnMsIHNvIEknbSBub3Qgc3VyZSBJIHVu
-ZGVyc3RhbmQgd2h5IGl0IHdvdWxkbid0IGJlIA0KPiA+ID4gPiA+IGFjY2VwdGFibGUgaGVyZS4u
-Lg0KPiA+ID4gPiANCj4gPiA+ID4gVGhlcmUgYXJlIGRlZmluaXRlbHkgcG90ZW50aWFsbHkgcGVy
-c2lzdGVudCBwYXRob2xvZ2ljYWwgDQo+ID4gPiA+IHNpdHVhdGlvbnMgdGhhdCB0aGUgZmlsZXN5
-c3RlbSBjYW4ndCBkbyBhbnl0aGluZyBhYm91dC4gSWYgdGhlIA0KPiA+ID4gPiBwb2ludCBvZiBv
-cmlnaW4gZm9yIHlvdXIgcGF0aG5hbWUgKGZvciBpbnN0YW5jZSB5b3VyIGN1cnJlbnQgDQo+ID4g
-PiA+IGRpcmVjdG9yeSBpbiB0aGUgY2FzZSBvZiBhIHJlbGF0aXZlDQo+ID4gPiA+IHBhdGhuYW1l
-KSBpcyBzdGFsZSwgdGhlbiBubyBhbW91bnQgb2YgbG9vcGluZyBpcyBnb2luZyB0byBoZWxwIHlv
-dSANCj4gPiA+ID4gdG8gcmVjb3Zlci4NCj4gPiA+ID4gDQo+ID4gPiANCj4gPiA+IE9rIC0tIFBl
-dGVyIHByZXR0eSBtdWNoIHNhaWQgc29tZXRoaW5nIHNpbWlsYXIuIFJldHJ5aW5nIGluZGVmbml0
-ZWx5IA0KPiA+ID4gd2hlbiB0aGUgbG9va3VwIHJldHVybnMgRVNUQUxFIHByb2JhYmx5IHdvbid0
-IGhlbHAuIEknbSBvayB3aXRoIA0KPiA+ID4gYmFzaWNhbGx5IGxldHRpbmcgdGhlIFZGUyBjb250
-aW51ZSB0byBkbyB3aGF0IGl0IGRvZXMgdGhlcmUgYWxyZWFkeS4gDQo+ID4gPiBJZiBpdCBnZXRz
-IGFuIEVTVEFMRSwgaXQgdHJpZXMgYWdhaW4gd2l0aCBMT09LVVBfUkVWQUwgc2V0IGFuZCB0aGVu
-IA0KPiA+ID4gZ2l2ZXMgdXAgaWYgdGhhdCBkb2Vzbid0IHdvcmsuDQo+ID4gPiANCj4gPiA+IElm
-IGhvd2V2ZXIsIHRoZSBvcGVyYXRpb24gaXRzZWxmIGtlZXBzIHJldHVybmluZyBFU1RBTEUsIGFy
-ZSB3ZSBPSyANCj4gPiA+IHRvIHJldHJ5IGluZGVmaW5pdGVseSBhc3N1bWluZyB0aGF0IHdlJ2xs
-IGJyZWFrIG91dCBvZiB0aGUgbG9vcCBvbiANCj4gPiA+IGZhdGFsIHNpZ25hbHM/DQo+ID4gPg0K
-PiA+ID4gRm9yIGV4YW1wbGUsIHNvbWV0aGluZyBsaWtlIHRoZSB2MiBwYXRjaCBJIHNlbnQgYSBs
-aXR0bGUgd2hpbGUgYWdvPw0KPiA+IA0KPiA+IA0KPiA+IFdvbid0IHNvbWV0aGluZyBsaWtlIGZz
-dGF0YXQoQVRfRkRDV0QsICIiLCAmc3RhdCwgQVRfRU1QVFlfUEFUSCkgcmlzayANCj4gPiBsb29w
-aW5nIGZvcmV2ZXIgdGhlcmUsIG9yIGFtIEkgbWlzc2luZyBzb21ldGhpbmc/DQo+ID4gDQo+IA0K
-PiBUbyBtYWtlIHN1cmUgSSB1bmRlcnN0YW5kLCB0aGF0IHNob3VsZCBiZSAic2hvcnRjdXQiIGZv
-ciBhIGxvb2t1cCBvZiB0aGUgY3dkPw0KPiANCj4gU28gSSBndWVzcyB0aGUgY29uY2VybiBpcyB0
-aGF0IHlvdSdkIGRvIHRoZSBhYm92ZSBhbmQgZ2V0IGEgc3VjY2Vzc2Z1bCBsb29rdXAgc2luY2Ug
-eW91J3JlIGp1c3QgZ29pbmcgdG8gZ2V0IGJhY2sgdGhlIGN3ZC4gQXQgdGhhdCBwb2ludCwgeW91
-J2QgYXR0ZW1wdCB0aGUgZ2V0YXR0ciBhbmQgZ2V0IEVTVEFMRSBiYWNrLiBUaGVuLCB5b3UnZCBy
-ZWRvIHRoZSBsb29rdXAgd2l0aCBMT09LVVBfUkVWQUwgc2V0IC0tIGJ1dCBzaW5jZSB3ZSdyZSBv
-cGVyYXRpbmcgb24gdGhlIGN3ZCwgd2UgZG9uJ3QgaGF2ZSBhIHdheSB0byByZWRvIHRoZSBsb29r
-dXAgc2luY2Ugd2UgZG9uJ3QgaGF2ZSBhIHBhdGhuYW1lIHRoYXQgd2UgY2FuIGxvb2sgdXAgYWdh
-aW4uLi4NCj4gDQo+IFNvIHllYWgsIEkgZ3Vlc3MgaWYgeW91J3JlIHNpdHRpbmcgaW4gYSBzdGFs
-ZSBkaXJlY3RvcnksIHNvbWV0aGluZyBsaWtlIHRoYXQgY291bGQgbG9vcCBldGVybmFsbHkuDQo+
-IA0KPiBEbyB5b3UgdGhpbmsgdGhlIHByb3Bvc2VkIGNoZWNrIGZvciBmYXRhbF9zaWduYWxfcGVu
-ZGluZyBpcyBlbm91Z2ggdG8gbWl0aWdhdGUgc3VjaCBhIHByb2JsZW0/IE9yIGRvIHdlIG5lZWQg
-dG8gbGltaXQgdGhlIG51bWJlciBvZiByZXRyaWVzIHRvIGFkZHJlc3MgdGhvc2Ugc29ydHMgb2Yg
-bG9vcHM/DQo+IA0KPiAtLQ0KPiBKZWZmIExheXRvbiA8amxheXRvbkByZWRoYXQuY29tPg0KDQot
-LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFw
-cA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+On 26/04/12 00:22, J. Bruce Fields wrote:
+> On Wed, Apr 25, 2012 at 11:14:15PM +0200, steve wrote:
+>> Sorry:
+>> also just seen this:
+>>
+>> CREATE Reply Error:NFS3ERR_ACCES
+>
+> What principal are you authenticated as?
+>
+> --b.
+The user principal who owns the home directory. I can see the request 
+for nfs on the KDC and the share mounts, the user is placed there but 
+alas ro
+Cheers
+Steve
