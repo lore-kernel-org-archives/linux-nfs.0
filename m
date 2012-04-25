@@ -1,42 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47310 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:20951 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756006Ab2D0LZc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Apr 2012 07:25:32 -0400
-Date: Fri, 27 Apr 2012 07:25:29 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Weston Andros Adamson <dros@netapp.com>
-Cc: SteveD@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: add IPv6 addr escaping to fs_location hosts
-Message-ID: <20120427112529.GA14973@fieldses.org>
-References: <1335279577-46822-1-git-send-email-dros@netapp.com>
+	id S1752073Ab2DYOWp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Apr 2012 10:22:45 -0400
+Subject: [PATCH 0/6] Lockd: service start cleanup patch set
+To: bfields@fieldses.org, Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Wed, 25 Apr 2012 18:22:32 +0400
+Message-ID: <20120425141934.22909.53047.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1335279577-46822-1-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 24, 2012 at 10:59:37AM -0400, Weston Andros Adamson wrote:
-> The fs_location->hosts list is split on colons, but this doesn't work when
-> IPv6 addresses are used (they contain colons).
-> This patch adds the function nfsd4_encode_components_esc() to
-> allow the caller to specify escape characters when splitting on 'sep'.
-> In order to fix referrals, this patch must be used with the mountd patch
-> that similarly fixes IPv6 [] escaping.
+This patch set simplifies LockD start logic, makes code looks straight-forward
+and clear.
 
-Thanks, looks fine, applying with one trivial change:
+The following series consists of:
 
-> -		for (; *end && (*end != sep); end++)
-> -			; /* Point to end of component */
-> +		bool found_esc = false;
-> +
-> +		/* try to parse as esc_start, ..., esc_end, sep */
-> +		if (*str == esc_enter) {
-> +			for (; *end && (*end != esc_exit); end++);
+---
 
-I kinda like keeping the semicolon on its own line here.  Tastes may
-differ.
+Stanislav Kinsbursky (6):
+      LockD: pass service to per-net up and down functions
+      LockD: use existent per-net data function on service creation
+      LockD: service creation function introduced
+      LockD: move global usage counter manipulation from error path
+      LockD: service start function introduced
+      LockD: add debug message to start and stop functions
 
-(Also: how did you test this?)
 
---b.
+ fs/lockd/svc.c |  140 +++++++++++++++++++++++++++++++++-----------------------
+ 1 files changed, 83 insertions(+), 57 deletions(-)
+
