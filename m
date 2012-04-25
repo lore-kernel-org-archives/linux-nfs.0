@@ -1,132 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:17574 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:56333 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751300Ab2DTUvg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 16:51:36 -0400
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Adamson, Dros" <Weston.Adamson@netapp.com>, Jim Rees <rees@umich.edu>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS4: fix referrals with IPv6 mounts
-Date: Fri, 20 Apr 2012 20:51:17 +0000
-Message-ID: <A3FAE1E4-2AB8-4AF0-AC46-77EA3E4B9AB2@netapp.com>
-References: <1334949705-33393-1-git-send-email-dros@netapp.com>
- <20120420194504.GA10259@umich.edu>
- <EA178ED0-5813-4235-A0CF-CF9D54AFB04F@netapp.com>
- <1334952788.3295.24.camel@lade.trondhjem.org>
-In-Reply-To: <1334952788.3295.24.camel@lade.trondhjem.org>
-Content-Type: multipart/signed;
-	boundary="Apple-Mail=_68AA061C-DC4C-4238-9EEC-EB4AD0BCF1E1";
-	protocol="application/pkcs7-signature"; micalg=sha1
+	id S1755525Ab2DYSYM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Apr 2012 14:24:12 -0400
+Date: Wed, 25 Apr 2012 14:24:09 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Subject: Re: [PATCH 0/3] SUNRPC: three bugfixes for PipeFS event handling
+Message-ID: <20120425182409.GE751@fieldses.org>
+References: <20120420141419.10848.84280.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120420141419.10848.84280.stgit@localhost6.localdomain6>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Apple-Mail=_68AA061C-DC4C-4238-9EEC-EB4AD0BCF1E1
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=windows-1252
+On Fri, Apr 20, 2012 at 06:18:59PM +0400, Stanislav Kinsbursky wrote:
+> These bugfixes were caught (or noticed) due to the following simple script:
 
-On Apr 20, 2012, at 4:13 PM, Myklebust, Trond wrote:
+I'm assuming Trond should take these (possibly for 3.4?).
 
-> On Fri, 2012-04-20 at 19:57 +0000, Adamson, Dros wrote:
->> On Apr 20, 2012, at 3:45 PM, Jim Rees wrote:
->>=20
->>> Weston Andros Adamson wrote:
->>>=20
->>> nfs4_path() was parsing the path component by splitting on the first =
-colon.
->>> This is wrong when an IPv6 address is used to mount a server.
->>>=20
->>> For example, having mounted 'fc00::10:/export', nfs4_path() returned
->>> ':10:/export'.  This causes referrals (using IPv4 or IPv6 addresses) =
-to fail
->>> in nfs4_validate_fspath().
->>>=20
->>> Parsing the path component by using the *last* colon works with
->>> IPv6 as well as IPv4 addrs.
->>>=20
->>> What if your mount is:
->>>=20
->>> server.edu:/export/:I-like-colons:
->>>=20
->>> It seems to me something has to give.  Either we require v6 =
-addresses be
->>> enclosed in [], export dirs start with "/", or exports have no ":".
->>=20
->>=20
->> Yeah, you're right.
->>=20
->> Although IPv6 addrs must be enclosed in [] to work with mount, it's =
-always displayed in the kernel without the [].
->>=20
->> I suppose the correct fix is to always display IPv6 addresses =
-enclosed in [], which might touch a *lot* of places.
->>=20
->> Thoughts?  I'll wait for others to chime in before I go fixing this. =
-I have a set of nfsd and mountd patches that deal with similar issues on =
-the server side.  I'll clean those up and submit them before getting =
-back to this.
->=20
-> We do know which part is the hostname, and which is the pathname. If =
-you
-> look at "try_location()", you'll see that the hostname is stored in
-> location->servers, and is then copied into this empty buffer.
->=20
-> If you want to test if that is an IPv6 address so that you can enclose
-> it in [], then that should be fairly easy to do right there=85
+--b.
 
-Right, we have separate hostname and pathname for each fs_location4, but =
-I'm talking about the return value of nfs_path() which is used to =
-determine the server-side path on an arbitrary dentry on the *current* =
-mountpoint (not the referral server).
-The path part of nfs_path() is then compared against the fs_path of the =
-nfs4_fs_locations struct (this is all in nfs4_validate_fspath).
-
-Having nfs_path return [] wrapped IPv6 addresses basically means =
-changing the devname to that format (d_fsdata is used by nfs_path()).  =
-I'm concerned about changing the format of devname - its used all over =
-the place.
-
-So the options are:
- 1) change the format of devname
- 2) change how nfs4_validate_fspath gets the server-side path component =
-of the current mount (don't use nfs_path())
-
-I'll try option 1 and see what breaks.
-
--dros
-
-
---Apple-Mail=_68AA061C-DC4C-4238-9EEC-EB4AD0BCF1E1
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-
-MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIDTzCCA0sw
-ggIzoAMCAQICAQEwCwYJKoZIhvcNAQEFMEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYD
-VQQGEwJVUzEeMBwGCSqGSIb3DQEJARYPZHJvc0BuZXRhcHAuY29tMB4XDTExMDYwODIyMDc0NloX
-DTEyMDYwNzIyMDc0NlowRjEXMBUGA1UEAwwOV2VzdG9uIEFkYW1zb24xCzAJBgNVBAYTAlVTMR4w
-HAYJKoZIhvcNAQkBFg9kcm9zQG5ldGFwcC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
-AoIBAQC8/tJxtovJEXYRfSsrFOWKHxIZGY7/2mBee1DpWuoGDbVNapefCC7WXe+Nqxz609w2J/Mk
-/k3trZ3Ge2NXK0tGnP9NzjkzpGA7rSpM3wUFsvbLMUEGfQpvV24/nYvcLHTvOOEUaDPpHduN94bD
-dwvyowzDIRIpF2MeRnOzBNeHkrGHlZdzPmGjm8tkhrDRRkDYHhlxaiG4z30KCfAazxomuINiy1kj
-vbndXooYMDoh9H63hgW4NkOedtLdflLa322DXQ3nFU7YbyOIjHVl1tgWJLDWf7WT3lsAB8KvuJZ5
-zhsUB+fqxCKPJVRPDO1gjChvvtGiG1tGUUZz0H9Wx00zAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIH
-gDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDBDAaBgNVHREEEzARgQ9kcm9zQG5ldGFwcC5jb20wDQYJ
-KoZIhvcNAQEFBQADggEBACv0niZSmW+psB1sJXULh3mecDbN2mj0bFpN1YNdjcV7BiOLJ1Rs1ibV
-f13h73z8C7SBsPXTM5si8gmJtOnXM5jsgtlql44h/RrjUr8+mtK5DPCZls9J7iz3cGthzwOPvxUj
-nMSv3BpRX5oJom5ESgCM9Nn4u/ECTlLMhEIOYnBFiN0eDxcxz+r1cpbHg3r0otIKyxLpeaCjP6AH
-F93EHp4T8Rb63y3CcDgxrQGHlTdVi3QvxaMUexUXD81fiA+UqsB/MKmRxB1Hs4Vf3Q/+ejcm78K1
-ROF8TNPmNWRlKg3Y7cSFjZGzLuzXsvSsCbw4HLn0oZe/OfgSbarTAxttL5IxggHRMIIBzQIBATBL
-MEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYDVQQGEwJVUzEeMBwGCSqGSIb3DQEJARYP
-ZHJvc0BuZXRhcHAuY29tAgEBMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
-MBwGCSqGSIb3DQEJBTEPFw0xMjA0MjAyMDUxMThaMCMGCSqGSIb3DQEJBDEWBBTk361XCck0KT5k
-xqIMxa8RFtwdGjANBgkqhkiG9w0BAQEFAASCAQBxi6vAHVJIAw7UsQga0/aKEwtetiGs7OtMZmJi
-YgJXL5nH6Ny5GWnhtd3qlj2YwO5ZjUb1CFreQ9dIucz/8ClkoeEG4vw0Wj1QGnQ9RiSeel52/SHt
-DrXa2p1l9lzrTUkTgQXkMw1bm83KVZ79Nbv0Gj2lR2xZ98uOtPT2cmrd3Iip80Vfn4V+sC13M9XL
-da0c31Gg59pjF73Zds5RY1Q/h0ZTacBmqz5wfNxWlB/b1XbhUfcGJEFnPt4wVnS0SyEUsyNmEjuA
-uIfv9VTYsgTM03SY7/5BgVhvPs4zEf4t1FE/yb3+PVYiLSEVX8Fkio6XyJivi9qSmdJTz9bxZfjn
-AAAAAAAA
-
---Apple-Mail=_68AA061C-DC4C-4238-9EEC-EB4AD0BCF1E1--
+> 
+> ======================================================================
+> 
+> #!/bin/bash
+> service rpcbind stop
+> service rpcidmapd stop
+> killall -TERM rpc.statd
+> umount /var/lib/nfs/rpc_pipefs
+> rmmod nfs
+> service rpcbind start
+> service nfs start
+> mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs
+> 
+> =======================================================================
+> 
+> The following series consists of:
+> 
+> ---
+> 
+> Stanislav Kinsbursky (3):
+>       SUNRPC: skip clients with program without PipeFS entries
+>       SUNRPC: traverse clients tree on PipeFS event
+>       SUNRPC: set per-net PipeFS superblock before notification
+> 
+> 
+>  net/sunrpc/clnt.c     |   34 ++++++++++++++++++++++++++++------
+>  net/sunrpc/rpc_pipe.c |    3 ++-
+>  2 files changed, 30 insertions(+), 7 deletions(-)
+> 
