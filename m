@@ -1,80 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:47521 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756072Ab2DQMlD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Apr 2012 08:41:03 -0400
-Date: Tue, 17 Apr 2012 13:40:56 +0100
-From: Mel Gorman <mgorman@suse.de>
-To: Fred Isaman <iisaman@netapp.com>
-Cc: Andrew Morton <akpm@linux-foundation.org>, Linux-MM <linux-mm@kvack.org>,
-        Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>
-Subject: Re: [PATCH 08/11] nfs: disable data cache revalidation for swapfiles
-Message-ID: <20120417124056.GI2359@suse.de>
-References: <1334578675-23445-1-git-send-email-mgorman@suse.de>
- <1334578675-23445-9-git-send-email-mgorman@suse.de>
- <CADnza444dTr=JEtqpL5wxHRNkEc7vBz1qq9TL7Z+5h749vNawg@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-In-Reply-To: <CADnza444dTr=JEtqpL5wxHRNkEc7vBz1qq9TL7Z+5h749vNawg@mail.gmail.com>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:52086 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757892Ab2DYT2O (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Apr 2012 15:28:14 -0400
+Received: by yenl12 with SMTP id l12so433476yen.19
+        for <linux-nfs@vger.kernel.org>; Wed, 25 Apr 2012 12:28:13 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.net
+Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd: trivial: use SEEK_SET instead of 0 in vfs_llseek
+Date: Wed, 25 Apr 2012 15:28:08 -0400
+Message-Id: <1335382088-5463-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> On Mon, Apr 16, 2012 at 9:44 AM, Mel Gorman <mgorman@suse.de> wrote:
-> > On Mon, Apr 16, 2012 at 09:10:04AM -0400, Fred Isaman wrote:
-> >> > <SNIP>
-> >> > -static struct nfs_page *nfs_page_find_request_locked(struct page *page)
-> >> > +static struct nfs_page *
-> >> > +nfs_page_find_request_locked(struct nfs_inode *nfsi, struct page *page)
-> >> >  {
-> >> >        struct nfs_page *req = NULL;
-> >> >
-> >> > -       if (PagePrivate(page)) {
-> >> > +       if (PagePrivate(page))
-> >> >                req = (struct nfs_page *)page_private(page);
-> >> > -               if (req != NULL)
-> >> > -                       kref_get(&req->wb_kref);
-> >> > +       else if (unlikely(PageSwapCache(page))) {
-> >> > +               struct nfs_page *freq, *t;
-> >> > +
-> >> > +               /* Linearly search the commit list for the correct req */
-> >> > +               list_for_each_entry_safe(freq, t, &nfsi->commit_list, wb_list) {
-> >> > +                       if (freq->wb_page == page) {
-> >> > +                               req = freq;
-> >> > +                               break;
-> >> > +                       }
-> >> > +               }
-> >> > +
-> >> > +               BUG_ON(req == NULL);
-> >>
-> >> I suspect I am missing something, but why is it guaranteed that the
-> >> req is on the commit list?
-> >>
-> >
-> > It's a fair question and a statement about what I expected to happen.
-> > The commit list replaces the nfs_page_tree radix tree that used to exist
-> > and my understanding was that the req would exist in the radix tree until
-> > the swap IO was completed. I expected it to be the same for the commit
-> > list and the BUG_ON was based on that expectation. Are there cases where
-> > the req would not be found?
-> >
-> 
-> A req is on the commit list only if it actually needs to be scheduled
-> for COMMIT. In other words, only after it has been sent via WRITE and
-> the server did not return NFS_FILE_SYNC.
-> 
-> Thus dirtying a page, then trying to touch it again before the WRITE
-> is sent will not find the corresponding req on the commit_list.
+They're equivalent, but SEEK_SET is more informative...
 
-Thanks for the explanation. I'll remove the BUG_ON
+Cc: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/vfs.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 5686661..c8bd9c3 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -2039,7 +2039,7 @@ nfsd_readdir(struct svc_rqst *rqstp, struct svc_fh *fhp, loff_t *offsetp,
+ 	if (err)
+ 		goto out;
+ 
+-	offset = vfs_llseek(file, offset, 0);
++	offset = vfs_llseek(file, offset, SEEK_SET);
+ 	if (offset < 0) {
+ 		err = nfserrno((int)offset);
+ 		goto out_close;
 -- 
-Mel Gorman
-SUSE Labs
+1.7.7.6
+
