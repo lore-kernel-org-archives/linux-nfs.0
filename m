@@ -1,80 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21717 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:4376 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753996Ab2DQPCA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Apr 2012 11:02:00 -0400
-Date: Tue, 17 Apr 2012 11:02:19 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Miklos Szeredi <miklos@szeredi.hu>
-Cc: Steve Dickson <SteveD@redhat.com>,
-        "Myklebust\, Trond" <Trond.Myklebust@netapp.com>,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        Malahal Naineni <malahal@us.ibm.com>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "pstaubach\@exagrid.com" <pstaubach@exagrid.com>,
-        "viro\@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
-        "hch\@infradead.org" <hch@infradead.org>,
-        "michael.brantley\@deshaw.com" <michael.brantley@deshaw.com>,
-        "sven.breuner\@itwm.fraunhofer.de" <sven.breuner@itwm.fraunhofer.de>
-Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from
- getattr call
-Message-ID: <20120417110219.0db9bdee@corrin.poochiereds.net>
-In-Reply-To: <87k41eo2m3.fsf@tucsk.pomaz.szeredi.hu>
-References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
-	<20120413150518.GA1987@us.ibm.com>
-	<20120413114236.0e557e01@tlielax.poochiereds.net>
-	<4F8B1B7B.3040304@itwm.fraunhofer.de>
-	<20120416073655.7cdb90cf@corrin.poochiereds.net>
-	<4F8C3036.2030702@itwm.fraunhofer.de>
-	<20120416134642.1754cd3e@corrin.poochiereds.net>
-	<1334604785.2879.23.camel@lade.trondhjem.org>
-	<20120416154322.0d95e435@corrin.poochiereds.net>
-	<1334607906.2879.36.camel@lade.trondhjem.org>
-	<20120416190548.2463d1d0@corrin.poochiereds.net>
-	<4F8D580B.7060104@RedHat.com>
-	<20120417093643.7f172057@corrin.poochiereds.net>
-	<4F8D7ADF.9030709@RedHat.com>
-	<87k41eo2m3.fsf@tucsk.pomaz.szeredi.hu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S932325Ab2DYOXG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Apr 2012 10:23:06 -0400
+Subject: [PATCH 3/6] LockD: service creation function introduced
+To: bfields@fieldses.org, Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Wed, 25 Apr 2012 18:22:54 +0400
+Message-ID: <20120425142254.22909.92489.stgit@localhost6.localdomain6>
+In-Reply-To: <20120425141934.22909.53047.stgit@localhost6.localdomain6>
+References: <20120425141934.22909.53047.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 17 Apr 2012 16:27:16 +0200
-Miklos Szeredi <miklos@szeredi.hu> wrote:
+This function creates service if it's not exist, or increase usage counter of
+the existent, and returns pointer to it.
+Usage counter will be droppepd by svc_destroy() later in lockd_up().
 
-> Steve Dickson <SteveD@redhat.com> writes:
-> 
-> > True, but even so... Giving file systems an opt-out option with the 
-> > default being out, maybe still have some merit... Making file systems
-> > enable this new type of functionality would cut down on any of the
-> > "surprise" that might occur with this redo ;-) 
-> 
-> I've been arguing for something slightly different for quite some time:
-> I never liked errno values which have side effects in the kernel yet
-> might be visible to userspace.
-> 
-> So why not introduce ERETRYSTALE, a *kernel internal* errno value that
-> userspace will never see and filesystems never accidentally set.  The
-> VFS can turn this into ESTALE if it doesn't retry for some reason
-> (e.g. already retried).
-> 
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-That's possible but it's certainly a lot more invasive. It's also far
-more difficult for filesystems to opt-in to this sort of behavior.
+---
+ fs/lockd/svc.c |   38 +++++++++++++++++++++++++++-----------
+ 1 files changed, 27 insertions(+), 11 deletions(-)
 
-All of the places that call vfs_getattr, for instance will need to be
-fixed up to deal with that sort of error. That will also make it messy
-to do this in any sort of piecemeal fashion. We can't (for instance)
-convert NFSERR_STALE to -ESTALERETRY universally. We'll need to take
-great care only to return that to codepaths that are equipped to deal
-with it.
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 71c6c31..ad11ea7 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -291,21 +291,20 @@ static void lockd_down_net(struct svc_serv *serv, struct net *net)
+ 	}
+ }
+ 
+-/*
+- * Bring up the lockd process if it's not already up.
+- */
+-int lockd_up(struct net *net)
++static struct svc_serv *lockd_create_svc(void)
+ {
+ 	struct svc_serv *serv;
+-	int		error = 0;
+ 
+-	mutex_lock(&nlmsvc_mutex);
+ 	/*
+ 	 * Check whether we're already up and running.
+ 	 */
+ 	if (nlmsvc_rqst) {
+-		error = lockd_up_net(nlmsvc_rqst->rq_server, net);
+-		goto out;
++		/*
++		 * Note: increase service usage, because later in case of error
++		 * svc_destroy() will be called.
++		 */
++		svc_get(nlmsvc_rqst->rq_server);
++		return nlmsvc_rqst->rq_server;
+ 	}
+ 
+ 	/*
+@@ -316,11 +315,28 @@ int lockd_up(struct net *net)
+ 		printk(KERN_WARNING
+ 			"lockd_up: no pid, %d users??\n", nlmsvc_users);
+ 
+-	error = -ENOMEM;
+ 	serv = svc_create(&nlmsvc_program, LOCKD_BUFSIZE, NULL);
+ 	if (!serv) {
+ 		printk(KERN_WARNING "lockd_up: create service failed\n");
+-		goto out;
++		return ERR_PTR(-ENOMEM);
++	}
++	return serv;
++}
++
++/*
++ * Bring up the lockd process if it's not already up.
++ */
++int lockd_up(struct net *net)
++{
++	struct svc_serv *serv;
++	int		error = 0;
++
++	mutex_lock(&nlmsvc_mutex);
++
++	serv = lockd_create_svc();
++	if (IS_ERR(serv)) {
++		error = PTR_ERR(serv);
++		goto err_create;
+ 	}
+ 
+ 	error = lockd_up_net(serv, net);
+@@ -360,9 +376,9 @@ int lockd_up(struct net *net)
+ 	 */
+ err_net:
+ 	svc_destroy(serv);
+-out:
+ 	if (!error)
+ 		nlmsvc_users++;
++err_create:
+ 	mutex_unlock(&nlmsvc_mutex);
+ 	return error;
+ 
 
-Personally, I'd prefer not to foist so much code churn on any filesystem
-that might want to do this sort of retry, but I'll live with it if
-that's the consensus opinion...
-
--- 
-Jeff Layton <jlayton@redhat.com>
