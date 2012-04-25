@@ -1,111 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:8168 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:33787 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755093Ab2DXPIC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Apr 2012 11:08:02 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: bfields@fieldses.org
-Cc: SteveD@redhat.com, linux-nfs@vger.kernel.org,
-        Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] nfsd: add IPv6 addr escaping to fs_location hosts
-Date: Tue, 24 Apr 2012 11:07:59 -0400
-Message-Id: <1335280079-47424-1-git-send-email-dros@netapp.com>
+	id S1759222Ab2DYOW4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Apr 2012 10:22:56 -0400
+Subject: [PATCH 1/6] LockD: pass service to per-net up and down functions
+To: bfields@fieldses.org, Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Wed, 25 Apr 2012 18:22:40 +0400
+Message-ID: <20120425142240.22909.50321.stgit@localhost6.localdomain6>
+In-Reply-To: <20120425141934.22909.53047.stgit@localhost6.localdomain6>
+References: <20120425141934.22909.53047.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The fs_location->hosts list is split on colons, but this doesn't work when
-IPv6 addresses are used (they contain colons).
-This patch adds the function nfsd4_encode_components_esc() to
-allow the caller to specify escape characters when splitting on 'sep'.
-In order to fix referrals, this patch must be used with the mountd patch
-that similarly fixes IPv6 [] escaping.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
 ---
+ fs/lockd/svc.c |   12 +++++-------
+ 1 files changed, 5 insertions(+), 7 deletions(-)
 
-Sorry, I posted a slightly older version of this patch.  This is the one
-we want!
-
- fs/nfsd/nfs4xdr.c |   40 +++++++++++++++++++++++++++++++++-------
- 1 files changed, 33 insertions(+), 7 deletions(-)
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 74c00bc..eabd0d9 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1744,15 +1744,16 @@ static void encode_seqid_op_tail(struct nfsd4_compoundres *resp, __be32 *save, _
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 3250f28..58ddc38 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -251,10 +251,9 @@ out_err:
+ 	return err;
  }
  
- /* Encode as an array of strings the string given with components
-- * separated @sep.
-+ * separated @sep, escaped with esc_enter and esc_exit.
-  */
--static __be32 nfsd4_encode_components(char sep, char *components,
--				   __be32 **pp, int *buflen)
-+static __be32 nfsd4_encode_components_esc(char sep, char *components,
-+				   __be32 **pp, int *buflen,
-+				   char esc_enter, char esc_exit)
+-static int lockd_up_net(struct net *net)
++static int lockd_up_net(struct svc_serv *serv, struct net *net)
  {
- 	__be32 *p = *pp;
- 	__be32 *countp = p;
- 	int strlen, count=0;
--	char *str, *end;
-+	char *str, *end, *next;
+ 	struct lockd_net *ln = net_generic(net, lockd_net_id);
+-	struct svc_serv *serv = nlmsvc_rqst->rq_server;
+ 	int error;
  
- 	dprintk("nfsd4_encode_components(%s)\n", components);
- 	if ((*buflen -= 4) < 0)
-@@ -1760,8 +1761,23 @@ static __be32 nfsd4_encode_components(char sep, char *components,
- 	WRITE32(0); /* We will fill this in with @count later */
- 	end = str = components;
- 	while (*end) {
--		for (; *end && (*end != sep); end++)
--			; /* Point to end of component */
-+		bool found_esc = false;
-+
-+		/* try to parse as esc_start, ..., esc_end, sep */
-+		if (*str == esc_enter) {
-+			for (; *end && (*end != esc_exit); end++)
-+				/* find esc_exit or end of string */;
-+			next = end + 1;
-+			if (*end && (!*next || *next == sep)) {
-+				str++;
-+				found_esc = true;
-+			}
-+		}
-+
-+		if (!found_esc)
-+			for (; *end && (*end != sep); end++)
-+				/* find sep or end of string */;
-+
- 		strlen = end - str;
- 		if (strlen) {
- 			if ((*buflen -= ((XDR_QUADLEN(strlen) << 2) + 4)) < 0)
-@@ -1780,6 +1796,15 @@ static __be32 nfsd4_encode_components(char sep, char *components,
- 	return 0;
+ 	if (ln->nlmsvc_users++)
+@@ -276,10 +275,9 @@ err_rpcb:
+ 	return error;
  }
  
-+/* Encode as an array of strings the string given with components
-+ * separated @sep.
-+ */
-+static __be32 nfsd4_encode_components(char sep, char *components,
-+				   __be32 **pp, int *buflen)
-+{
-+	return nfsd4_encode_components_esc(sep, components, pp, buflen, 0, 0);
-+}
-+
- /*
-  * encode a location element of a fs_locations structure
-  */
-@@ -1789,7 +1814,8 @@ static __be32 nfsd4_encode_fs_location4(struct nfsd4_fs_location *location,
- 	__be32 status;
- 	__be32 *p = *pp;
+-static void lockd_down_net(struct net *net)
++static void lockd_down_net(struct svc_serv *serv, struct net *net)
+ {
+ 	struct lockd_net *ln = net_generic(net, lockd_net_id);
+-	struct svc_serv *serv = nlmsvc_rqst->rq_server;
  
--	status = nfsd4_encode_components(':', location->hosts, &p, buflen);
-+	status = nfsd4_encode_components_esc(':', location->hosts, &p, buflen,
-+						'[', ']');
- 	if (status)
- 		return status;
- 	status = nfsd4_encode_components('/', location->path, &p, buflen);
--- 
-1.7.4.4
+ 	if (ln->nlmsvc_users) {
+ 		if (--ln->nlmsvc_users == 0) {
+@@ -307,7 +305,7 @@ int lockd_up(struct net *net)
+ 	 * Check whether we're already up and running.
+ 	 */
+ 	if (nlmsvc_rqst) {
+-		error = lockd_up_net(net);
++		error = lockd_up_net(nlmsvc_rqst->rq_server, net);
+ 		goto out;
+ 	}
+ 
+@@ -378,7 +376,7 @@ out:
+ 	return error;
+ 
+ err_start:
+-	lockd_down_net(net);
++	lockd_down_net(serv, net);
+ 	goto destroy_and_out;
+ }
+ EXPORT_SYMBOL_GPL(lockd_up);
+@@ -390,7 +388,7 @@ void
+ lockd_down(struct net *net)
+ {
+ 	mutex_lock(&nlmsvc_mutex);
+-	lockd_down_net(net);
++	lockd_down_net(nlmsvc_rqst->rq_server, net);
+ 	if (nlmsvc_users) {
+ 		if (--nlmsvc_users)
+ 			goto out;
 
