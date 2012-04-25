@@ -1,42 +1,30 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.14.81]:57747 "EHLO
+Received: from smtp.mail.umich.edu ([141.211.14.81]:47034 "EHLO
 	hackers.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753376Ab2DMMCn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Apr 2012 08:02:43 -0400
-Date: Fri, 13 Apr 2012 08:02:32 -0400
+	with ESMTP id S1753369Ab2DYAnf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Apr 2012 20:43:35 -0400
+Date: Tue, 24 Apr 2012 20:43:32 -0400
 From: Jim Rees <rees@umich.edu>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, pstaubach@exagrid.com, miklos@szeredi.hu,
-        viro@ZenIV.linux.org.uk, hch@infradead.org,
-        michael.brantley@deshaw.com
-Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from
- getattr call
-Message-ID: <20120413120232.GA27179@umich.edu>
-References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
+To: Super Bisquit <superbisquit@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: nfs-utils-1.2.5 getpagesize error in
+ utils/blkmpd/device-process.c
+Message-ID: <20120425004332.GA20453@umich.edu>
+References: <CA+WntOuEeVYNJbmeS9vqkTJt8+sTAc=6zDT757+KTGu7LY5eUg@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <CA+WntOuEeVYNJbmeS9vqkTJt8+sTAc=6zDT757+KTGu7LY5eUg@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jeff Layton wrote:
+Super Bisquit wrote:
 
-  +retry:
-   	error = user_path_at(dfd, filename, lookup_flags, &path);
-   	if (error)
-   		goto out;
-   
-   	error = vfs_getattr(path.mnt, path.dentry, stat);
-  +	should_retry = error == -ESTALE ? retry_estale(path.dentry) : false;
-   	path_put(&path);
-  +	if (should_retry) {
-  +		lookup_flags |= LOOKUP_REVAL;
-  +		goto retry;
-  +	}
-   out:
-   	return error;
-   }
+  device-process.c: In function ‘decode_blk_volume’:
+  device-process.c:299: error: ‘PAGE_SIZE’ undeclared (first use in this function)
+  device-process.c:299: error: (Each undeclared identifier is reported only once
+  device-process.c:299: error: for each function it appears in.)
+  make: *** [device-process.o] Error 1
+  root@dookie-bomb:/tmp/nfs-utils-1.2.5/utils/blkmapd#
 
-This is starting to look like FORTRAN.  Maybe turn this into a "do while"?
-Then you could make the "goto out" into a break and get rid of them both.
+Your nfs-utils is out of date.  The fix for this is commit fdc6e7ec.  Repo
+is at git://git.linux-nfs.org/projects/steved/nfs-utils.git .
