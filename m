@@ -1,42 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35457 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753595Ab2DJUqL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Apr 2012 16:46:11 -0400
-Date: Tue, 10 Apr 2012 16:46:08 -0400
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: Grace period
-Message-ID: <20120410204608.GI18465@fieldses.org>
-References: <20120409161114.GB6482@fieldses.org>
- <1333988226.2688.76.camel@lade.trondhjem.org>
- <20120409162107.GC6482@fieldses.org>
- <1333989216.2688.87.camel@lade.trondhjem.org>
- <4F8314CF.70302@parallels.com>
- <20120409181138.GA9581@fieldses.org>
- <4F8411CC.2070105@parallels.com>
- <20120410133913.GF18465@fieldses.org>
- <4F84537A.40100@parallels.com>
- <20120410142853.7e749ba2@corrin.poochiereds.net>
+Received: from relay.parallels.com ([195.214.232.42]:57611 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759273Ab2DYU7K convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Apr 2012 16:59:10 -0400
+Message-ID: <4F98659B.6060409@parallels.com>
+Date: Thu, 26 Apr 2012 00:59:07 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120410142853.7e749ba2@corrin.poochiereds.net>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH 0/3] SUNRPC: three bugfixes for PipeFS event handling
+References: <20120420141419.10848.84280.stgit@localhost6.localdomain6> <20120425182409.GE751@fieldses.org>
+In-Reply-To: <20120425182409.GE751@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 10, 2012 at 02:28:53PM -0400, Jeff Layton wrote:
-> This sort of thing is one of the reasons I've been saying that the
-> grace period is really a property of the underlying filesystem and not
-> of nfsd itself. Of course, we do have to come up with a way to handle
-> the grace period that doesn't involve altering every exportable fs.
+25.04.2012 22:24, J. Bruce Fields написал:
+> On Fri, Apr 20, 2012 at 06:18:59PM +0400, Stanislav Kinsbursky wrote:
+>> These bugfixes were caught (or noticed) due to the following simple script:
+> I'm assuming Trond should take these (possibly for 3.4?).
 
-By the way, the case of multiple containers exporting a single
-filesystem does look a lot like an active/active cluster filesystem
-export.  It might be an opportunity to prototype the interfaces for
-handling that case without having to deal with modifying the DLM.
+I think so.
+But would be great if you'll take them as well (since I'm mostly working 
+with your tree).
+Of course, only if its not a big deal for you.
+But if there will be any conflicts - then don't worry. I can just keep 
+these patches in my repo.
 
---b.
+> --b.
+>
+>> ======================================================================
+>>
+>> #!/bin/bash
+>> service rpcbind stop
+>> service rpcidmapd stop
+>> killall -TERM rpc.statd
+>> umount /var/lib/nfs/rpc_pipefs
+>> rmmod nfs
+>> service rpcbind start
+>> service nfs start
+>> mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs
+>>
+>> =======================================================================
+>>
+>> The following series consists of:
+>>
+>> ---
+>>
+>> Stanislav Kinsbursky (3):
+>>        SUNRPC: skip clients with program without PipeFS entries
+>>        SUNRPC: traverse clients tree on PipeFS event
+>>        SUNRPC: set per-net PipeFS superblock before notification
+>>
+>>
+>>   net/sunrpc/clnt.c     |   34 ++++++++++++++++++++++++++++------
+>>   net/sunrpc/rpc_pipe.c |    3 ++-
+>>   2 files changed, 30 insertions(+), 7 deletions(-)
+>>
+
