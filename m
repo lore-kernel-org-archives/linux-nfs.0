@@ -1,291 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:19167 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760638Ab2D0R2C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Apr 2012 13:28:02 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
-        Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v5 8/9] NFS: Create a submount rpc_op
-Date: Fri, 27 Apr 2012 13:27:45 -0400
-Message-Id: <1335547666-28315-9-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1335547666-28315-1-git-send-email-bjschuma@netapp.com>
-References: <1335547666-28315-1-git-send-email-bjschuma@netapp.com>
+Received: from relay.parallels.com ([195.214.232.42]:49674 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753184Ab2DYVO7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Apr 2012 17:14:59 -0400
+Message-ID: <4F986951.50105@parallels.com>
+Date: Thu, 26 Apr 2012 01:14:57 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v2] SUNRPC: skip dead but not buried clients on PipeFS
+ events
+References: <20120420141042.7205.62608.stgit@localhost6.localdomain6> <20120425173005.GD751@fieldses.org>
+In-Reply-To: <20120425173005.GD751@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+25.04.2012 21:30, J. Bruce Fields написал:
+> On Fri, Apr 20, 2012 at 06:11:02PM +0400, Stanislav Kinsbursky wrote:
+>> v2: atomic_inc_return() was replaced by atomic_inc_not_zero().
+>>
+>> These clients can't be safely dereferenced if their counter in 0.
+> I'm pretty confused by how these notifiers work....
 
-This simplifies the code for v2 and v3 and gives v4 a chance to decide
-on referrals without needing to modify the generic client.
+There were made as simple as possible - i.e. notifier holds a client 
+while creating of destroying PipeFS dentries. But event in this case 
+there were races.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/internal.h       |   15 +++-------
- fs/nfs/namespace.c      |   75 +++++++++++++----------------------------------
- fs/nfs/nfs3proc.c       |    1 +
- fs/nfs/nfs4_fs.h        |    2 ++
- fs/nfs/nfs4namespace.c  |   24 ++++++++++++++-
- fs/nfs/nfs4proc.c       |    1 +
- fs/nfs/proc.c           |    1 +
- include/linux/nfs_xdr.h |    2 ++
- 8 files changed, 54 insertions(+), 67 deletions(-)
+> rpc_release_client decrements cl_count to zero temporarily, to have it
+> immediately re-incremented by rpc_free_auth.
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index a7e2497..f4e7066 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -185,17 +185,6 @@ static inline void nfs_fs_proc_exit(void)
- }
- #endif
- 
--/* nfs4namespace.c */
--#ifdef CONFIG_NFS_V4
--extern struct vfsmount *nfs_do_refmount(struct rpc_clnt *client, struct dentry *dentry);
--#else
--static inline
--struct vfsmount *nfs_do_refmount(struct rpc_clnt *client, struct dentry *dentry)
--{
--	return ERR_PTR(-ENOENT);
--}
--#endif
--
- /* callback_xdr.c */
- extern struct svc_version nfs4_callback_version1;
- extern struct svc_version nfs4_callback_version4;
-@@ -280,6 +269,10 @@ extern void nfs_sb_deactive(struct super_block *sb);
- extern char *nfs_path(char **p, struct dentry *dentry,
- 		      char *buffer, ssize_t buflen);
- extern struct vfsmount *nfs_d_automount(struct path *path);
-+struct vfsmount *nfs_submount(struct nfs_server *, struct dentry *,
-+			      struct nfs_fh *, struct nfs_fattr *);
-+struct vfsmount *nfs_do_submount(struct dentry *, struct nfs_fh *,
-+				 struct nfs_fattr *, rpc_authflavor_t);
- 
- /* getroot.c */
- extern struct dentry *nfs_get_root(struct super_block *, struct nfs_fh *,
-diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-index 2a9591b..e36fd8a 100644
---- a/fs/nfs/namespace.c
-+++ b/fs/nfs/namespace.c
-@@ -26,11 +26,6 @@ static LIST_HEAD(nfs_automount_list);
- static DECLARE_DELAYED_WORK(nfs_automount_task, nfs_expire_automounts);
- int nfs_mountpoint_expiry_timeout = 500 * HZ;
- 
--static struct vfsmount *nfs_do_submount(struct dentry *dentry,
--					struct nfs_fh *fh,
--					struct nfs_fattr *fattr,
--					rpc_authflavor_t authflavor);
--
- /*
-  * nfs_path - reconstruct the path given an arbitrary dentry
-  * @base - used to return pointer to the end of devname part of path
-@@ -118,35 +113,6 @@ Elong:
- 	return ERR_PTR(-ENAMETOOLONG);
- }
- 
--#ifdef CONFIG_NFS_V4
--static struct rpc_clnt *nfs_lookup_mountpoint(struct inode *dir,
--					      struct qstr *name,
--					      struct nfs_fh *fh,
--					      struct nfs_fattr *fattr)
--{
--	int err;
--
--	if (NFS_PROTO(dir)->version == 4)
--		return nfs4_proc_lookup_mountpoint(dir, name, fh, fattr);
--
--	err = NFS_PROTO(dir)->lookup(NFS_SERVER(dir)->client, dir, name, fh, fattr);
--	if (err)
--		return ERR_PTR(err);
--	return rpc_clone_client(NFS_SERVER(dir)->client);
--}
--#else /* CONFIG_NFS_V4 */
--static inline struct rpc_clnt *nfs_lookup_mountpoint(struct inode *dir,
--						     struct qstr *name,
--						     struct nfs_fh *fh,
--						     struct nfs_fattr *fattr)
--{
--	int err = NFS_PROTO(dir)->lookup(NFS_SERVER(dir)->client, dir, name, fh, fattr);
--	if (err)
--		return ERR_PTR(err);
--	return rpc_clone_client(NFS_SERVER(dir)->client);
--}
--#endif /* CONFIG_NFS_V4 */
--
- /*
-  * nfs_d_automount - Handle crossing a mountpoint on the server
-  * @path - The mountpoint
-@@ -162,10 +128,9 @@ static inline struct rpc_clnt *nfs_lookup_mountpoint(struct inode *dir,
- struct vfsmount *nfs_d_automount(struct path *path)
- {
- 	struct vfsmount *mnt;
--	struct dentry *parent;
-+	struct nfs_server *server = NFS_SERVER(path->dentry->d_inode);
- 	struct nfs_fh *fh = NULL;
- 	struct nfs_fattr *fattr = NULL;
--	struct rpc_clnt *client;
- 
- 	dprintk("--> nfs_d_automount()\n");
- 
-@@ -181,21 +146,7 @@ struct vfsmount *nfs_d_automount(struct path *path)
- 
- 	dprintk("%s: enter\n", __func__);
- 
--	/* Look it up again to get its attributes */
--	parent = dget_parent(path->dentry);
--	client = nfs_lookup_mountpoint(parent->d_inode, &path->dentry->d_name, fh, fattr);
--	dput(parent);
--	if (IS_ERR(client)) {
--		mnt = ERR_CAST(client);
--		goto out;
--	}
--
--	if (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)
--		mnt = nfs_do_refmount(client, path->dentry);
--	else
--		mnt = nfs_do_submount(path->dentry, fh, fattr, client->cl_auth->au_flavor);
--	rpc_shutdown_client(client);
--
-+	mnt = server->nfs_client->rpc_ops->submount(server, path->dentry, fh, fattr);
- 	if (IS_ERR(mnt))
- 		goto out;
- 
-@@ -268,10 +219,8 @@ static struct vfsmount *nfs_do_clone_mount(struct nfs_server *server,
-  * @authflavor - security flavor to use when performing the mount
-  *
-  */
--static struct vfsmount *nfs_do_submount(struct dentry *dentry,
--					struct nfs_fh *fh,
--					struct nfs_fattr *fattr,
--					rpc_authflavor_t authflavor)
-+struct vfsmount *nfs_do_submount(struct dentry *dentry, struct nfs_fh *fh,
-+				 struct nfs_fattr *fattr, rpc_authflavor_t authflavor)
- {
- 	struct nfs_clone_mount mountdata = {
- 		.sb = dentry->d_sb,
-@@ -304,3 +253,19 @@ out:
- 	dprintk("<-- nfs_do_submount() = %p\n", mnt);
- 	return mnt;
- }
-+
-+struct vfsmount *nfs_submount(struct nfs_server *server, struct dentry *dentry,
-+			      struct nfs_fh *fh, struct nfs_fattr *fattr)
-+{
-+	int err;
-+	struct dentry *parent = dget_parent(dentry);
-+
-+	/* Look it up again to get its attributes */
-+	err = server->nfs_client->rpc_ops->lookup(server->client, parent->d_inode,
-+						  &dentry->d_name, fh, fattr);
-+	dput(parent);
-+	if (err != 0)
-+		return ERR_PTR(err);
-+
-+	return nfs_do_submount(dentry, fh, fattr, server->client->cl_auth->au_flavor);
-+}
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index 5242eae..d39d1d7 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -876,6 +876,7 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
- 	.file_inode_ops	= &nfs3_file_inode_operations,
- 	.file_ops	= &nfs_file_operations,
- 	.getroot	= nfs3_proc_get_root,
-+	.submount	= nfs_submount,
- 	.getattr	= nfs3_proc_getattr,
- 	.setattr	= nfs3_proc_setattr,
- 	.lookup		= nfs3_proc_lookup,
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 53a487e..97365b0 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -208,6 +208,8 @@ extern const struct inode_operations nfs4_dir_inode_operations;
- /* nfs4namespace.c */
- rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *);
- struct rpc_clnt *nfs4_create_sec_client(struct rpc_clnt *, struct inode *, struct qstr *);
-+struct vfsmount *nfs4_submount(struct nfs_server *, struct dentry *,
-+			       struct nfs_fh *, struct nfs_fattr *);
- 
- /* nfs4proc.c */
- extern int nfs4_proc_setclientid(struct nfs_client *, u32, unsigned short, struct rpc_cred *, struct nfs4_setclientid_res *);
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index a69ee39..80fc0fe 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -329,7 +329,7 @@ out:
-  * @dentry - dentry of referral
-  *
-  */
--struct vfsmount *nfs_do_refmount(struct rpc_clnt *client, struct dentry *dentry)
-+static struct vfsmount *nfs_do_refmount(struct rpc_clnt *client, struct dentry *dentry)
- {
- 	struct vfsmount *mnt = ERR_PTR(-ENOMEM);
- 	struct dentry *parent;
-@@ -370,3 +370,25 @@ out:
- 	dprintk("%s: done\n", __func__);
- 	return mnt;
- }
-+
-+struct vfsmount *nfs4_submount(struct nfs_server *server, struct dentry *dentry,
-+			       struct nfs_fh *fh, struct nfs_fattr *fattr)
-+{
-+	struct dentry *parent = dget_parent(dentry);
-+	struct rpc_clnt *client;
-+	struct vfsmount *mnt;
-+
-+	/* Look it up again to get its attributes and sec flavor */
-+	client = nfs4_proc_lookup_mountpoint(parent->d_inode, &dentry->d_name, fh, fattr);
-+	dput(parent);
-+	if (IS_ERR(client))
-+		return ERR_CAST(client);
-+
-+	if (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)
-+		mnt = nfs_do_refmount(client, dentry);
-+	else
-+		mnt = nfs_do_submount(dentry, fh, fattr, client->cl_auth->au_flavor);
-+
-+	rpc_shutdown_client(client);
-+	return mnt;
-+}
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 946f0b6..f587724 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6559,6 +6559,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
- 	.file_inode_ops	= &nfs4_file_inode_operations,
- 	.file_ops	= &nfs4_file_operations,
- 	.getroot	= nfs4_proc_get_root,
-+	.submount	= nfs4_submount,
- 	.getattr	= nfs4_proc_getattr,
- 	.setattr	= nfs4_proc_setattr,
- 	.lookup		= nfs4_proc_lookup,
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index b63b6f4..8dfe960 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -733,6 +733,7 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
- 	.file_inode_ops	= &nfs_file_inode_operations,
- 	.file_ops	= &nfs_file_operations,
- 	.getroot	= nfs_proc_get_root,
-+	.submount	= nfs_submount,
- 	.getattr	= nfs_proc_getattr,
- 	.setattr	= nfs_proc_setattr,
- 	.lookup		= nfs_proc_lookup,
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 6cba0a1..ada3acd 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1234,6 +1234,8 @@ struct nfs_rpc_ops {
- 
- 	int	(*getroot) (struct nfs_server *, struct nfs_fh *,
- 			    struct nfs_fsinfo *);
-+	struct vfsmount *(*submount) (struct nfs_server *, struct dentry *,
-+				      struct nfs_fh *, struct nfs_fattr *);
- 	int	(*getattr) (struct nfs_server *, struct nfs_fh *,
- 			    struct nfs_fattr *);
- 	int	(*setattr) (struct dentry *, struct nfs_fattr *,
--- 
-1.7.10
+BTW, I'm really confused with these re-incrementing reference counter 
+technic. It makes life-time of RPC client unpredictable.
+Is this a real-world valid situation, when usage of it reached zero, but 
+while we destroying auth, there can some other user of client appear and 
+client become alive again?
+It it was done just to make sure that client is still active while we 
+destroying auth, then maybe we can just remove the client from the 
+clients list before rpc_free_auth? It will simplify the notifier 
+callback logic greatly...
+
+
+> So if we're called concurrently with rpc_release_client then it's sort
+> of random whether someone gets this callback.
+>
+> Is that a problem?
+>
+> Also, is this an existing bug?  (In which case Trond should take it
+> now.)
+
+This is probably not a bug (I can't llok at the code right now; because 
+these dentries will be destroyed), but a flaw.
+Today (without this patch) notifier can try to create dentries for 
+clients, which are dead already (i.e. auth was destroyed and client is 
+going to be destroyed very soon, but notifier gained lock first.
+
+
+>
+> --b.
+>
+>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
+>>
+>> ---
+>>   net/sunrpc/clnt.c |    3 ++-
+>>   1 files changed, 2 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+>> index 6797246..d10ebc4 100644
+>> --- a/net/sunrpc/clnt.c
+>> +++ b/net/sunrpc/clnt.c
+>> @@ -218,7 +218,8 @@ static struct rpc_clnt *rpc_get_client_for_event(struct net *net, int event)
+>>   		if (((event == RPC_PIPEFS_MOUNT)&&  clnt->cl_dentry) ||
+>>   		    ((event == RPC_PIPEFS_UMOUNT)&&  !clnt->cl_dentry))
+>>   			continue;
+>> -		atomic_inc(&clnt->cl_count);
+>> +		if (atomic_inc_not_zero(&clnt->cl_count) == 0)
+>> +			continue;
+>>   		spin_unlock(&sn->rpc_client_lock);
+>>   		return clnt;
+>>   	}
+>>
 
