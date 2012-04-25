@@ -1,127 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:56629 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755396Ab2DWUxf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Apr 2012 16:53:35 -0400
-Received: by yhmm54 with SMTP id m54so6470862yhm.19
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2012 13:53:34 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 03/20] NFS: Use proper naming conventions for
- nfs_client.impl_id field
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 23 Apr 2012 16:53:32 -0400
-Message-ID: <20120423205332.11446.67287.stgit@degas.1015granger.net>
-In-Reply-To: <20120423205312.11446.67081.stgit@degas.1015granger.net>
-References: <20120423205312.11446.67081.stgit@degas.1015granger.net>
-MIME-Version: 1.0
+Received: from mx2.netapp.com ([216.240.18.37]:18024 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757516Ab2DYSy6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Apr 2012 14:54:58 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v2] SUNRPC: skip dead but not buried clients on PipeFS
+ events
+Date: Wed, 25 Apr 2012 18:54:55 +0000
+Message-ID: <1335380095.15862.26.camel@lade.trondhjem.org>
+References: <20120420141042.7205.62608.stgit@localhost6.localdomain6>
+	 <20120425173005.GD751@fieldses.org>
+In-Reply-To: <20120425173005.GD751@fieldses.org>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up:  When naming fields and data types, follow established
-conventions to facilitate accurate grep/cscope searches.
-
-Additionally, for consistency, move the impl_id field into the NFSv4-
-specific part of the nfs_client, and free that memory in the logic
-that shuts down NFSv4 nfs_clients.
-
-Introduced by commit 7d2ed9ac "NFSv4: parse and display server
-implementation ids," Fri Feb 17, 2012.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- fs/nfs/client.c           |    2 +-
- fs/nfs/nfs4proc.c         |   12 ++++++------
- fs/nfs/super.c            |    4 ++--
- include/linux/nfs_fs_sb.h |    2 +-
- 4 files changed, 10 insertions(+), 10 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 60e1525..654150a 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -236,6 +236,7 @@ static void nfs4_shutdown_client(struct nfs_client *clp)
- 
- 	rpc_destroy_wait_queue(&clp->cl_rpcwaitq);
- 	kfree(clp->cl_serverscope);
-+	kfree(clp->cl_implid);
- }
- 
- /* idr_remove_all is not needed as all id's are removed by nfs_put_client */
-@@ -304,7 +305,6 @@ static void nfs_free_client(struct nfs_client *clp)
- 
- 	put_net(clp->net);
- 	kfree(clp->cl_hostname);
--	kfree(clp->impl_id);
- 	kfree(clp);
- 
- 	dprintk("<-- nfs_free_client()\n");
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 669b181..3778e4f 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5055,8 +5055,8 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 
- 	if (!status) {
- 		/* use the most recent implementation id */
--		kfree(clp->impl_id);
--		clp->impl_id = res.impl_id;
-+		kfree(clp->cl_implid);
-+		clp->cl_implid = res.impl_id;
- 	} else
- 		kfree(res.impl_id);
- 
-@@ -5080,12 +5080,12 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- out_server_scope:
- 	kfree(res.server_scope);
- out:
--	if (clp->impl_id)
-+	if (clp->cl_implid)
- 		dprintk("%s: Server Implementation ID: "
- 			"domain: %s, name: %s, date: %llu,%u\n",
--			__func__, clp->impl_id->domain, clp->impl_id->name,
--			clp->impl_id->date.seconds,
--			clp->impl_id->date.nseconds);
-+			__func__, clp->cl_implid->domain, clp->cl_implid->name,
-+			clp->cl_implid->date.seconds,
-+			clp->cl_implid->date.nseconds);
- 	dprintk("<-- %s status= %d\n", __func__, status);
- 	return status;
- }
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 37412f7..6decf3c 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -786,8 +786,8 @@ static void show_pnfs(struct seq_file *m, struct nfs_server *server)
- 
- static void show_implementation_id(struct seq_file *m, struct nfs_server *nfss)
- {
--	if (nfss->nfs_client && nfss->nfs_client->impl_id) {
--		struct nfs41_impl_id *impl_id = nfss->nfs_client->impl_id;
-+	if (nfss->nfs_client && nfss->nfs_client->cl_implid) {
-+		struct nfs41_impl_id *impl_id = nfss->nfs_client->cl_implid;
- 		seq_printf(m, "\n\timpl_id:\tname='%s',domain='%s',"
- 			   "date='%llu,%u'",
- 			   impl_id->name, impl_id->domain,
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 900d733..773e021 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -81,13 +81,13 @@ struct nfs_client {
- 	u32			cl_exchange_flags;
- 	struct nfs4_session	*cl_session;	/* shared session */
- 	struct nfs41_server_scope *cl_serverscope;
-+	struct nfs41_impl_id	*cl_implid;
- #endif /* CONFIG_NFS_V4 */
- 
- #ifdef CONFIG_NFS_FSCACHE
- 	struct fscache_cookie	*fscache;	/* client index cache cookie */
- #endif
- 
--	struct nfs41_impl_id	*impl_id;	/* from exchange_id */
- 	struct net		*net;
- };
- 
-
+T24gV2VkLCAyMDEyLTA0LTI1IGF0IDEzOjMwIC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIEZyaSwgQXByIDIwLCAyMDEyIGF0IDA2OjExOjAyUE0gKzA0MDAsIFN0YW5pc2xhdiBL
+aW5zYnVyc2t5IHdyb3RlOg0KPiA+IHYyOiBhdG9taWNfaW5jX3JldHVybigpIHdhcyByZXBsYWNl
+ZCBieSBhdG9taWNfaW5jX25vdF96ZXJvKCkuDQo+ID4gDQo+ID4gVGhlc2UgY2xpZW50cyBjYW4n
+dCBiZSBzYWZlbHkgZGVyZWZlcmVuY2VkIGlmIHRoZWlyIGNvdW50ZXIgaW4gMC4NCj4gDQo+IEkn
+bSBwcmV0dHkgY29uZnVzZWQgYnkgaG93IHRoZXNlIG5vdGlmaWVycyB3b3JrLi4uLg0KPiANCj4g
+cnBjX3JlbGVhc2VfY2xpZW50IGRlY3JlbWVudHMgY2xfY291bnQgdG8gemVybyB0ZW1wb3Jhcmls
+eSwgdG8gaGF2ZSBpdA0KPiBpbW1lZGlhdGVseSByZS1pbmNyZW1lbnRlZCBieSBycGNfZnJlZV9h
+dXRoLg0KPiANCj4gU28gaWYgd2UncmUgY2FsbGVkIGNvbmN1cnJlbnRseSB3aXRoIHJwY19yZWxl
+YXNlX2NsaWVudCB0aGVuIGl0J3Mgc29ydA0KPiBvZiByYW5kb20gd2hldGhlciBzb21lb25lIGdl
+dHMgdGhpcyBjYWxsYmFjay4NCj4gDQo+IElzIHRoYXQgYSBwcm9ibGVtPw0KDQpOb3QgcmVhbGx5
+LiBJZiB3ZSByZS1pbmNyZW1lbnQgdGhlIGNsaWVudC0+Y2xfY291bnQgaW4gcnBjX2ZyZWVfYXV0
+aCgpDQp0aGVuIGl0IHdvdWxkIGJlIHNvIHRoYXQgd2UgY2FuIHNlbmQgb2ZmIGEgYnVuY2ggb2Yg
+TlVMTCBycGMgY2FsbHMgdG8NCmRlc3Ryb3kgZXhpc3RpbmcgUlBDU0VDX0dTUyBjb250ZXh0cy4g
+V2Ugc2hvdWxkbid0IG5lZWQgdG8gZG8gYW55IG1vcmUNCnVwY2FsbHMgaW4gcGlwZWZzLg0KDQpJ
+ZiB3ZSBjYXJlLCB3ZSBjb3VsZCBzaW1wbHkgbW92ZSB0aGUgY2FsbCB0byBycGNfdW5yZWdpc3Rl
+cl9jbGllbnQoKQ0KaW50byBycGNfZnJlZV9hdXRoKCkgc28gdGhhdCB0aGUgcGlwZWZzIG5vdGlm
+aWVyIGRvZXNuJ3Qgc2VlIHVzLCBvciB3ZQ0KY291bGQgc2V0IGEgZmxhZyB0byBoYXZlIGl0IGln
+bm9yZSB1cy4NCg0KPiBBbHNvLCBpcyB0aGlzIGFuIGV4aXN0aW5nIGJ1Zz8gIChJbiB3aGljaCBj
+YXNlIFRyb25kIHNob3VsZCB0YWtlIGl0DQo+IG5vdy4pDQoNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1
+c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVz
+dEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
