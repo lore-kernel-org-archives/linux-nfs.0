@@ -1,52 +1,26 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:22272 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754542Ab2DMMJs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Apr 2012 08:09:48 -0400
-Date: Fri, 13 Apr 2012 08:09:27 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Jim Rees <rees@umich.edu>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, pstaubach@exagrid.com, miklos@szeredi.hu,
-        viro@ZenIV.linux.org.uk, hch@infradead.org,
-        michael.brantley@deshaw.com
-Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from
- getattr call
-Message-ID: <20120413080927.72cca80f@tlielax.poochiereds.net>
-In-Reply-To: <20120413120232.GA27179@umich.edu>
-References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
-	<20120413120232.GA27179@umich.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from partagas.dragonet.es ([217.70.240.130]:56333 "EHLO
+	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759048Ab2DYVMt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Apr 2012 17:12:49 -0400
+Received: from [192.168.1.2] (217-70-247-131.dragonet.es [217.70.247.131] (may be forged))
+	(authenticated bits=0)
+	by partagas.dragonet.es (8.12.11/8.12.11) with ESMTP id q3PLDGWf025219
+	for <linux-nfs@vger.kernel.org>; Wed, 25 Apr 2012 23:13:22 +0200
+Message-ID: <4F986927.9020102@steve-ss.com>
+Date: Wed, 25 Apr 2012 23:14:15 +0200
+From: steve <steve@steve-ss.com>
+MIME-Version: 1.0
+To: linux-nfs@vger.kernel.org
+Subject: LOOKUP Reply Error:NFS3ERR_NO_ENT
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 13 Apr 2012 08:02:32 -0400
-Jim Rees <rees@umich.edu> wrote:
+Sorry:
+also just seen this:
 
-> Jeff Layton wrote:
-> 
->   +retry:
->    	error = user_path_at(dfd, filename, lookup_flags, &path);
->    	if (error)
->    		goto out;
->    
->    	error = vfs_getattr(path.mnt, path.dentry, stat);
->   +	should_retry = error == -ESTALE ? retry_estale(path.dentry) : false;
->    	path_put(&path);
->   +	if (should_retry) {
->   +		lookup_flags |= LOOKUP_REVAL;
->   +		goto retry;
->   +	}
->    out:
->    	return error;
->    }
-> 
-> This is starting to look like FORTRAN.  Maybe turn this into a "do while"?
-> Then you could make the "goto out" into a break and get rid of them both.
+CREATE Reply Error:NFS3ERR_ACCES
 
-Sure, that's doable. If we want to do a finite number of retries that
-may be preferable anyway.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+Thanks,
+Steve
