@@ -1,56 +1,212 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from toast.topped-with-meat.com ([204.197.218.159]:54051 "EHLO
-	topped-with-meat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758866Ab2DZWFx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 18:05:53 -0400
+Received: from mailhub.sw.ru ([195.214.232.25]:25013 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758576Ab2DYNiI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Apr 2012 09:38:08 -0400
+Subject: [PATCH 3/3] SUNRPC: move per-net operations from svc_destroy()
+To: bfields@fieldses.org, Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Wed, 25 Apr 2012 17:37:57 +0400
+Message-ID: <20120425133756.13800.29973.stgit@localhost6.localdomain6>
+In-Reply-To: <20120425132314.13800.6813.stgit@localhost6.localdomain6>
+References: <20120425132314.13800.6813.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: Roland McGrath <roland@hack.frob.com>
-To: David Howells <dhowells@redhat.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Steve French <smfrench@gmail.com>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
-        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "wine-devel@winehq.org" <wine-devel@winehq.org>,
-        "kfm-devel@kde.org" <kfm-devel@kde.org>,
-        "nautilus-list@gnome.org" <nautilus-list@gnome.org>,
-        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
-        "libc-alpha@sourceware.org" <libc-alpha@sourceware.org>
-Subject: Re: [PATCH 0/6] Extended file stat system call
-In-Reply-To: David Howells's message of  Thursday, 26 April 2012 22:57:56 +0100 <10104.1335477476@redhat.com>
-References: <1335460011.9701.30.camel@lade.trondhjem.org>
-	<20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
-	<CAH2r5ms4WQV3DnTvqNN=2N71Cj8UHwj8Z6+RHXgrAOv6mSoyQg@mail.gmail.com>
-	<20656.1335450358@redhat.com>
-	<CAH2r5mv1Lijdwk5zsQwYJr4Etb6fhrRyNXm-iFCQX+HecboGrQ@mail.gmail.com>
-	<1335453958.9701.10.camel@lade.trondhjem.org>
-	<CAH2r5mt5af-_hxBRKK72iD5Gr99bo91ec78Rov8EGVEx8=21mA@mail.gmail.com>
-	<1335459642.9701.27.camel@lade.trondhjem.org>
-	<CAH2r5mvmCfLrxRHje6Wx5X84zxPEHwRMUJGsjvWBujMu7w841w@mail.gmail.com>
-	<10104.1335477476@redhat.com>
-Message-Id: <20120426220552.D98D62C0D3@topped-with-meat.com>
-Date: Thu, 26 Apr 2012 15:05:52 -0700 (PDT)
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> What if the xstat() and struct xstat eventually becomes what userspace
-> uses as stat() (as a wrapper) and struct stat (if such a thing is
-> possible with glibc versioning)?  
+The idea is to separate service destruction and per-net operations, because
+these are two different things and it's mix looks ugly.
 
-It's certainly possible with symbol versioning, though it seems much more
-likely that we'd stick with the existing struct stat and stat* interfaces
-and only have the implementation using statx underneath (e.g. for new
-machines or kernel ABIs where the kernel stops providing any calls except
-for statxat), at least for the foreseeable future.
+Notes:
+1) For NFS server this patch looks ugly (sorry for that). But these place will be
+rewritten soon during NFSd containerization.
+2) LockD per-net counter increase int lockd_up() was moved prior to
+make_socks() to make lockd_down_net() call safe in case of error.
 
-> Do older programs that think they're using stat() and don't know about
-> the extra fields available expect to see a useful value in st_ino?
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-POSIX requires that st_ino have a useful value for the standard *stat calls.
+---
+ fs/lockd/svc.c    |   24 +++++++++++++-----------
+ fs/nfs/callback.c |    3 +++
+ fs/nfsd/nfsctl.c  |    4 ++++
+ fs/nfsd/nfssvc.c  |    7 +++++++
+ net/sunrpc/svc.c  |    4 ----
+ 5 files changed, 27 insertions(+), 15 deletions(-)
 
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index b7e92ed..2c9ea37 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -299,6 +299,7 @@ int lockd_up(struct net *net)
+ {
+ 	struct svc_serv *serv;
+ 	int		error = 0;
++	struct lockd_net *ln = net_generic(net, lockd_net_id);
+ 
+ 	mutex_lock(&nlmsvc_mutex);
+ 	/*
+@@ -330,9 +331,11 @@ int lockd_up(struct net *net)
+ 		goto destroy_and_out;
+ 	}
+ 
++	ln->nlmsvc_users++;
++
+ 	error = make_socks(serv, net);
+ 	if (error < 0)
+-		goto destroy_and_out;
++		goto err_start;
+ 
+ 	/*
+ 	 * Create the kernel thread and wait for it to start.
+@@ -344,7 +347,7 @@ int lockd_up(struct net *net)
+ 		printk(KERN_WARNING
+ 			"lockd_up: svc_rqst allocation failed, error=%d\n",
+ 			error);
+-		goto destroy_and_out;
++		goto err_start;
+ 	}
+ 
+ 	svc_sock_update_bufs(serv);
+@@ -358,7 +361,7 @@ int lockd_up(struct net *net)
+ 		nlmsvc_rqst = NULL;
+ 		printk(KERN_WARNING
+ 			"lockd_up: kthread_run failed, error=%d\n", error);
+-		goto destroy_and_out;
++		goto err_start;
+ 	}
+ 
+ 	/*
+@@ -368,14 +371,14 @@ int lockd_up(struct net *net)
+ destroy_and_out:
+ 	svc_destroy(serv);
+ out:
+-	if (!error) {
+-		struct lockd_net *ln = net_generic(net, lockd_net_id);
+-
+-		ln->nlmsvc_users++;
++	if (!error)
+ 		nlmsvc_users++;
+-	}
+ 	mutex_unlock(&nlmsvc_mutex);
+ 	return error;
++
++err_start:
++	lockd_down_net(net);
++	goto destroy_and_out;
+ }
+ EXPORT_SYMBOL_GPL(lockd_up);
+ 
+@@ -386,11 +389,10 @@ void
+ lockd_down(struct net *net)
+ {
+ 	mutex_lock(&nlmsvc_mutex);
++	lockd_down_net(net);
+ 	if (nlmsvc_users) {
+-		if (--nlmsvc_users) {
+-			lockd_down_net(net);
++		if (--nlmsvc_users)
+ 			goto out;
+-		}
+ 	} else {
+ 		printk(KERN_ERR "lockd_down: no users! task=%p\n",
+ 			nlmsvc_task);
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 26b38fb..cff3940 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -314,6 +314,8 @@ out_err:
+ 	dprintk("NFS: Couldn't create callback socket or server thread; "
+ 		"err = %d\n", ret);
+ 	cb_info->users--;
++	if (serv)
++		svc_shutdown_net(serv, net);
+ 	goto out;
+ }
+ 
+@@ -328,6 +330,7 @@ void nfs_callback_down(int minorversion)
+ 	cb_info->users--;
+ 	if (cb_info->users == 0 && cb_info->task != NULL) {
+ 		kthread_stop(cb_info->task);
++		svc_shutdown_net(cb_info->serv, current->nsproxy->net_ns);
+ 		svc_exit_thread(cb_info->rqst);
+ 		cb_info->serv = NULL;
+ 		cb_info->rqst = NULL;
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 7269988..efb3818 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -672,6 +672,8 @@ static ssize_t __write_ports_addfd(char *buf)
+ 
+ 	err = svc_addsock(nfsd_serv, fd, buf, SIMPLE_TRANSACTION_LIMIT);
+ 	if (err < 0) {
++		if (nfsd_serv->sv_nrthreads == 1)
++			svc_shutdown_net(nfsd_serv, current->nsproxy->net_ns);
+ 		svc_destroy(nfsd_serv);
+ 		return err;
+ 	}
+@@ -740,6 +742,8 @@ out_close:
+ 		svc_xprt_put(xprt);
+ 	}
+ out_err:
++	if (nfsd_serv->sv_nrthreads == 1)
++		svc_shutdown_net(nfsd_serv, current->nsproxy->net_ns);
+ 	svc_destroy(nfsd_serv);
+ 	return err;
+ }
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 0762f3c..3fffe6c 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -426,6 +426,9 @@ int nfsd_set_nrthreads(int n, int *nthreads)
+ 		if (err)
+ 			break;
+ 	}
++
++	if (nfsd_serv->sv_nrthreads == 1)
++		svc_shutdown_net(nfsd_serv, current->nsproxy->net_ns);
+ 	svc_destroy(nfsd_serv);
+ 
+ 	return err;
+@@ -473,6 +476,8 @@ out_shutdown:
+ 	if (error < 0 && !nfsd_up_before)
+ 		nfsd_shutdown();
+ out_destroy:
++	if (nfsd_serv->sv_nrthreads == 1)
++		svc_shutdown_net(nfsd_serv, current->nsproxy->net_ns);
+ 	svc_destroy(nfsd_serv);		/* Release server */
+ out:
+ 	mutex_unlock(&nfsd_mutex);
+@@ -670,6 +675,8 @@ int nfsd_pool_stats_release(struct inode *inode, struct file *file)
+ 	int ret = seq_release(inode, file);
+ 	mutex_lock(&nfsd_mutex);
+ 	/* this function really, really should have been called svc_put() */
++	if (nfsd_serv->sv_nrthreads == 1)
++		svc_shutdown_net(nfsd_serv, current->nsproxy->net_ns);
+ 	svc_destroy(nfsd_serv);
+ 	mutex_unlock(&nfsd_mutex);
+ 	return ret;
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index e6d542c..b7210f5 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -537,8 +537,6 @@ EXPORT_SYMBOL_GPL(svc_shutdown_net);
+ void
+ svc_destroy(struct svc_serv *serv)
+ {
+-	struct net *net = current->nsproxy->net_ns;
+-
+ 	dprintk("svc: svc_destroy(%s, %d)\n",
+ 				serv->sv_program->pg_name,
+ 				serv->sv_nrthreads);
+@@ -553,8 +551,6 @@ svc_destroy(struct svc_serv *serv)
+ 
+ 	del_timer_sync(&serv->sv_temptimer);
+ 
+-	svc_shutdown_net(serv, net);
+-
+ 	/*
+ 	 * The last user is gone and thus all sockets have to be destroyed to
+ 	 * the point. Check this.
 
-Thanks,
-Roland
