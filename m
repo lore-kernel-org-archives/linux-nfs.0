@@ -1,128 +1,263 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:25485 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:11580 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753551Ab2DSOgH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Apr 2012 10:36:07 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: David Howells <dhowells@redhat.com>
-CC: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
-        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "wine-devel@winehq.org" <wine-devel@winehq.org>,
-        "kfm-devel@kde.org" <kfm-devel@kde.org>,
-        "nautilus-list@gnome.org" <nautilus-list@gnome.org>,
-        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
-        "libc-alpha@sourceware.org" <libc-alpha@sourceware.org>
-Subject: Re: [PATCH 4/6] xstat: NFS: Return extended attributes
-Date: Thu, 19 Apr 2012 14:35:50 +0000
-Message-ID: <1334846149.21419.22.camel@lade.trondhjem.org>
-References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
-	 <20120419140653.17272.95035.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20120419140653.17272.95035.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1759096Ab2DZU4c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Apr 2012 16:56:32 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
+        Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v4 4/9] NFS: Fix following referral mount points with different security
+Date: Thu, 26 Apr 2012 16:56:07 -0400
+Message-Id: <1335473772-4401-5-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1335473772-4401-1-git-send-email-bjschuma@netapp.com>
+References: <1335473772-4401-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA0LTE5IGF0IDE1OjA2ICswMTAwLCBEYXZpZCBIb3dlbGxzIHdyb3RlOg0K
-PiBSZXR1cm4gZXh0ZW5kZWQgYXR0cmlidXRlcyBmcm9tIHRoZSBORlMgZmlsZXN5c3RlbS4gIFRo
-aXMgaW5jbHVkZXMgdGhlDQo+IGZvbGxvd2luZzoNCj4gDQo+ICAoMSkgVGhlIGNoYW5nZSBhdHRy
-aWJ1dGUgYXMgc3RfZGF0YV92ZXJzaW9uIGlmIE5GU3Y0Lg0KPiANCj4gICgyKSBYU1RBVF9JTkZP
-X0FVVE9NT1VOVCBhbmQgWFNUQVRfSU5GT19GQUJSSUNBVEVEIGFyZSBzZXQgb24gcmVmZXJyYWwg
-b3INCj4gICAgICBzdWJtb3VudCBkaXJlY3RvcmllcyB0aGF0IGFyZSBhdXRvbW91bnRlZCB1cG9u
-LiAgTkZTIHNob3dzIG9uZSBkaXJlY3RvcnkNCj4gICAgICB3aXRoIGEgZGlmZmVyZW50IEZTSUQs
-IGJ1dCB0aGUgbG9jYWwgZmlsZXN5c3RlbSBoYXMgdHdvOiB0aGUgbW91bnRwb2ludA0KPiAgICAg
-IGRpcmVjdG9yeSBhbmQgdGhlIHJvb3Qgb2YgdGhlIGZpbGVzeXN0ZW0gbW91bnRlZCB1cG9uIGl0
-Lg0KPiANCj4gICgzKSBYU1RBVF9JTkZPX1JFTU9URSBpcyBzZXQgb24gZmlsZXMgYWNxdWlyZWQg
-b3ZlciBORlMuDQo+IA0KPiBGdXJ0aGVybW9yZSwgd2hhdCBuZnNfZ2V0YXR0cigpIGRvZXMgY2Fu
-IGJlIGNvbnRyb2xsZWQgYXMgZm9sbG93czoNCj4gDQo+ICAoMSkgSWYgQVRfRk9SQ0VfQVRUUl9T
-WU5DIGlzIGluZGljYXRlZCwgb3IgbXRpbWUsIGN0aW1lIG9yIGRhdGFfdmVyc2lvbiAoTkZTdjQN
-Cj4gICAgICBvbmx5KSBhcmUgcmVxdWVzdGVkIHRoZW4gdGhlIG91dHN0YW5kaW5nIHdyaXRlcyB3
-aWxsIGJlIHdyaXR0ZW4gdG8gdGhlDQo+ICAgICAgc2VydmVyIGZpcnN0Lg0KPiANCj4gICgyKSBU
-aGUgaW5vZGUncyBhdHRyaWJ1dGVzIG1heSBiZSBzeW5jaHJvbmlzZWQgd2l0aCB0aGUgc2VydmVy
-Og0KPiANCj4gICAgICAoYSkgSWYgQVRfRk9SQ0VfQVRUUl9TWU5DIGlzIGluZGljYXRlZCBvciBp
-ZiBhdGltZSBpcyByZXF1ZXN0ZWQgKGFuZCBhdGltZQ0KPiAgICAgIAkgdXBkYXRpbmcgaXMgbm90
-IHN1cHByZXNzZWQgYnkgYSBtb3VudCBmbGFnKSB0aGVuIHRoZSBhdHRyaWJ1dGVzIHdpbGwNCj4g
-ICAgICAJIGJlIHJlcmVhZCB1bmNvbmRpdGlvbmFsbHkuDQo+IA0KPiAgICAgIChiKSBJZiB0aGUg
-ZGF0YSB2ZXJzaW9uIG9yIGFueSBvZiBiYXNpYyBzdGF0cyBhcmUgcmVxdWVzdGVkIHRoZW4gdGhl
-DQo+ICAgICAgCSBhdHRyaWJ1dGVzIHdpbGwgYmUgcmVyZWFkIGlmIHRoZSBjYWNoZWQgYXR0cmli
-dXRlcyBoYXZlIGV4cGlyZWQuDQo+IA0KPiAgICAgIChjKSBPdGhlcndpc2UgdGhlIGNhY2hlZCBh
-dHRyaWJ1dGVzIHdpbGwgYmUgdXNlZCAtIGV2ZW4gaWYgZXhwaXJlZCAtDQo+ICAgICAgCSB3aXRo
-b3V0IHJlZmVyZW5jZSB0byB0aGUgc2VydmVyLg0KDQpIbW0uLi4gQXMgZmFyIGFzIEkgY2FuIHNl
-ZSB5b3UgYXJlIHN0aWxsIGRvaW5nIGFuIG5mc19yZXZhbGlkYXRlX2lub2RlKCkNCmluIHRoZSBu
-b24tZm9yY2VkIGNhc2UuIFRoYXQgd2lsbCBjYXVzZSBleHBpcmVkIGF0dHJpYnV0ZXMgdG8gYmUN
-CnJldHJpZXZlZCBmcm9tIHRoZSBzZXJ2ZXIuDQoNCj4gU2lnbmVkLW9mZi1ieTogRGF2aWQgSG93
-ZWxscyA8ZGhvd2VsbHNAcmVkaGF0LmNvbT4NCj4gLS0tDQo+IA0KPiAgZnMvbmZzL2lub2RlLmMg
-fCAgIDQ5ICsrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKystLS0tLS0tLS0tLS0N
-Cj4gIGZzL25mcy9zdXBlci5jIHwgICAgMSArDQo+ICAyIGZpbGVzIGNoYW5nZWQsIDM4IGluc2Vy
-dGlvbnMoKyksIDEyIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9pbm9k
-ZS5jIGIvZnMvbmZzL2lub2RlLmMNCj4gaW5kZXggZThiYmZhNS4uNDYwZmNmMyAxMDA2NDQNCj4g
-LS0tIGEvZnMvbmZzL2lub2RlLmMNCj4gKysrIGIvZnMvbmZzL2lub2RlLmMNCj4gQEAgLTUwOSwx
-MSArNTA5LDE4IEBAIHZvaWQgbmZzX3NldGF0dHJfdXBkYXRlX2lub2RlKHN0cnVjdCBpbm9kZSAq
-aW5vZGUsIHN0cnVjdCBpYXR0ciAqYXR0cikNCj4gIGludCBuZnNfZ2V0YXR0cihzdHJ1Y3QgdmZz
-bW91bnQgKm1udCwgc3RydWN0IGRlbnRyeSAqZGVudHJ5LCBzdHJ1Y3Qga3N0YXQgKnN0YXQpDQo+
-ICB7DQo+ICAJc3RydWN0IGlub2RlICppbm9kZSA9IGRlbnRyeS0+ZF9pbm9kZTsNCj4gKwl1bnNp
-Z25lZCBmb3JjZSA9IHN0YXQtPnF1ZXJ5X2ZsYWdzICYgQVRfRk9SQ0VfQVRUUl9TWU5DOw0KPiAg
-CWludCBuZWVkX2F0aW1lID0gTkZTX0koaW5vZGUpLT5jYWNoZV92YWxpZGl0eSAmIE5GU19JTk9f
-SU5WQUxJRF9BVElNRTsNCj4gIAlpbnQgZXJyOw0KPiAgDQo+IC0JLyogRmx1c2ggb3V0IHdyaXRl
-cyB0byB0aGUgc2VydmVyIGluIG9yZGVyIHRvIHVwZGF0ZSBjL210aW1lLiAgKi8NCj4gLQlpZiAo
-U19JU1JFRyhpbm9kZS0+aV9tb2RlKSkgew0KPiArCWlmIChORlNfU0VSVkVSKGlub2RlKS0+bmZz
-X2NsaWVudC0+cnBjX29wcy0+dmVyc2lvbiA8IDQpDQo+ICsJCXN0YXQtPnJlcXVlc3RfbWFzayAm
-PSB+WFNUQVRfVkVSU0lPTjsNCj4gKw0KPiArCS8qIEZsdXNoIG91dCB3cml0ZXMgdG8gdGhlIHNl
-cnZlciBpbiBvcmRlciB0byB1cGRhdGUgYy9tdGltZQ0KPiArCSAqIG9yIGRhdGEgdmVyc2lvbiBp
-ZiB0aGUgdXNlciB3YW50cyB0aGVtICovDQo+ICsJaWYgKChmb3JjZSB8fCAoc3RhdC0+cmVxdWVz
-dF9tYXNrICYNCj4gKwkJICAgICAgIChYU1RBVF9NVElNRSB8IFhTVEFUX0NUSU1FIHwgWFNUQVRf
-VkVSU0lPTikpKSAmJg0KPiArCSAgICBTX0lTUkVHKGlub2RlLT5pX21vZGUpKSB7DQo+ICAJCWVy
-ciA9IGZpbGVtYXBfd3JpdGVfYW5kX3dhaXQoaW5vZGUtPmlfbWFwcGluZyk7DQoNCldlIGNhbiBn
-ZXQgcmlkIG9mIHRoZSBmaWxlbWFwX3dyaXRlX2FuZF93YWl0KCkgaWYgdGhlIGNhbGxlciBhbGxv
-d3MgdXMNCnRvIGFwcHJveGltYXRlIG0vY3RpbWUgdmFsdWVzLiBUaGF0IHdvdWxkIGdpdmUgYSBt
-YWpvciBzcGVlZC11cCBmb3IgbW9zdA0Kc3RhdCgpIHdvcmtsb2Fkcy4NCg0KPiAgCQlpZiAoZXJy
-KQ0KPiAgCQkJZ290byBvdXQ7DQo+IEBAIC01MjgsMTggKzUzNSwzNiBAQCBpbnQgbmZzX2dldGF0
-dHIoc3RydWN0IHZmc21vdW50ICptbnQsIHN0cnVjdCBkZW50cnkgKmRlbnRyeSwgc3RydWN0IGtz
-dGF0ICpzdGF0KQ0KPiAgCSAqICAtIE5GUyBuZXZlciBzZXRzIE1TX05PQVRJTUUgb3IgTVNfTk9E
-SVJBVElNRSBzbyB0aGVyZSBpcw0KPiAgCSAqICAgIG5vIHBvaW50IGluIGNoZWNraW5nIHRob3Nl
-Lg0KPiAgCSAqLw0KPiAtIAlpZiAoKG1udC0+bW50X2ZsYWdzICYgTU5UX05PQVRJTUUpIHx8DQo+
-IC0gCSAgICAoKG1udC0+bW50X2ZsYWdzICYgTU5UX05PRElSQVRJTUUpICYmIFNfSVNESVIoaW5v
-ZGUtPmlfbW9kZSkpKQ0KPiArCWlmIChtbnQtPm1udF9mbGFncyAmIE1OVF9OT0FUSU1FIHx8DQo+
-ICsJICAgIChtbnQtPm1udF9mbGFncyAmIE1OVF9OT0RJUkFUSU1FICYmIFNfSVNESVIoaW5vZGUt
-PmlfbW9kZSkpKSB7DQo+ICsJCXN0YXQtPmlvY19mbGFncyB8PSBGU19OT0FUSU1FX0ZMOw0KPiAr
-CQluZWVkX2F0aW1lID0gMDsNCj4gKwl9IGVsc2UgaWYgKCEoc3RhdC0+cmVxdWVzdF9tYXNrICYg
-WFNUQVRfQVRJTUUpKSB7DQo+ICAJCW5lZWRfYXRpbWUgPSAwOw0KPiArCX0NCj4gIA0KPiAtCWlm
-IChuZWVkX2F0aW1lKQ0KPiAtCQllcnIgPSBfX25mc19yZXZhbGlkYXRlX2lub2RlKE5GU19TRVJW
-RVIoaW5vZGUpLCBpbm9kZSk7DQo+IC0JZWxzZQ0KPiAtCQllcnIgPSBuZnNfcmV2YWxpZGF0ZV9p
-bm9kZShORlNfU0VSVkVSKGlub2RlKSwgaW5vZGUpOw0KPiAtCWlmICghZXJyKSB7DQo+IC0JCWdl
-bmVyaWNfZmlsbGF0dHIoaW5vZGUsIHN0YXQpOw0KPiAtCQlzdGF0LT5pbm8gPSBuZnNfY29tcGF0
-X3VzZXJfaW5vNjQoTkZTX0ZJTEVJRChpbm9kZSkpOw0KPiArCWlmIChmb3JjZSB8fCBzdGF0LT5y
-ZXF1ZXN0X21hc2sgJiAoWFNUQVRfQkFTSUNfU1RBVFMgfCBYU1RBVF9WRVJTSU9OKSkgew0KPiAr
-CQlpZiAoZm9yY2UgfHwgbmVlZF9hdGltZSkNCj4gKwkJCWVyciA9IF9fbmZzX3JldmFsaWRhdGVf
-aW5vZGUoTkZTX1NFUlZFUihpbm9kZSksIGlub2RlKTsNCj4gKwkJZWxzZQ0KPiArCQkJZXJyID0g
-bmZzX3JldmFsaWRhdGVfaW5vZGUoTkZTX1NFUlZFUihpbm9kZSksIGlub2RlKTsNCj4gKwkJaWYg
-KGVycikNCj4gKwkJCWdvdG8gb3V0Ow0KPiAgCX0NCj4gKw0KPiArCWdlbmVyaWNfZmlsbGF0dHIo
-aW5vZGUsIHN0YXQpOw0KPiArCXN0YXQtPmlubyA9IG5mc19jb21wYXRfdXNlcl9pbm82NChORlNf
-RklMRUlEKGlub2RlKSk7DQo+ICsNCj4gKwlpZiAoc3RhdC0+cmVxdWVzdF9tYXNrICYgWFNUQVRf
-VkVSU0lPTikgew0KPiArCQlzdGF0LT52ZXJzaW9uID0gaW5vZGUtPmlfdmVyc2lvbjsNCj4gKwkJ
-c3RhdC0+cmVzdWx0X21hc2sgfD0gWFNUQVRfVkVSU0lPTjsNCj4gKwl9DQo+ICsNCj4gKwlpZiAo
-SVNfQVVUT01PVU5UKGlub2RlKSkNCj4gKwkJc3RhdC0+aW5mb3JtYXRpb24gfD0gWFNUQVRfSU5G
-T19GQUJSSUNBVEVEOw0KPiArDQo+ICsJc3RhdC0+aW5mb3JtYXRpb24gfD0gWFNUQVRfSU5GT19S
-RU1PVEU7DQo+ICsNCj4gIG91dDoNCj4gIAlyZXR1cm4gZXJyOw0KPiAgfQ0KPiBAQCAtODUyLDcg
-Kzg3Nyw3IEBAIGludCBuZnNfcmV2YWxpZGF0ZV9pbm9kZShzdHJ1Y3QgbmZzX3NlcnZlciAqc2Vy
-dmVyLCBzdHJ1Y3QgaW5vZGUgKmlub2RlKQ0KPiAgc3RhdGljIGludCBuZnNfaW52YWxpZGF0ZV9t
-YXBwaW5nKHN0cnVjdCBpbm9kZSAqaW5vZGUsIHN0cnVjdCBhZGRyZXNzX3NwYWNlICptYXBwaW5n
-KQ0KPiAgew0KPiAgCXN0cnVjdCBuZnNfaW5vZGUgKm5mc2kgPSBORlNfSShpbm9kZSk7DQo+IC0J
-DQo+ICsNCj4gIAlpZiAobWFwcGluZy0+bnJwYWdlcyAhPSAwKSB7DQo+ICAJCWludCByZXQgPSBp
-bnZhbGlkYXRlX2lub2RlX3BhZ2VzMihtYXBwaW5nKTsNCj4gIAkJaWYgKHJldCA8IDApDQo+IGRp
-ZmYgLS1naXQgYS9mcy9uZnMvc3VwZXIuYyBiL2ZzL25mcy9zdXBlci5jDQo+IGluZGV4IDM3NDEy
-ZjcuLmZhYTY1MmMgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9zdXBlci5jDQo+ICsrKyBiL2ZzL25m
-cy9zdXBlci5jDQo+IEBAIC0yMjIyLDYgKzIyMjIsNyBAQCBzdGF0aWMgaW50IG5mc19zZXRfc3Vw
-ZXIoc3RydWN0IHN1cGVyX2Jsb2NrICpzLCB2b2lkICpkYXRhKQ0KPiAgCXJldCA9IHNldF9hbm9u
-X3N1cGVyKHMsIHNlcnZlcik7DQo+ICAJaWYgKHJldCA9PSAwKQ0KPiAgCQlzZXJ2ZXItPnNfZGV2
-ID0gcy0+c19kZXY7DQo+ICsJbWVtY3B5KCZzLT5zX3ZvbHVtZV9pZCwgJnNlcnZlci0+ZnNpZCwg
-c2l6ZW9mKHMtPnNfdm9sdW1lX2lkKSk7DQo+ICAJcmV0dXJuIHJldDsNCj4gIH0NCj4gIA0KPiAN
-Cj4gLS0NCj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVu
-c3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4NCj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9y
-ZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3Zn
-ZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0
-DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RA
-bmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+From: Bryan Schumaker <bjschuma@netapp.com>
+
+I create a new proc_lookup_mountpoint() to use when submounting an NFS
+v4 share.  This function returns an rpc_clnt to use for performing an
+fs_locations() call on a referral's mountpoint.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/internal.h      |    4 ++--
+ fs/nfs/namespace.c     |   35 +++++++++++++++++++++++++----------
+ fs/nfs/nfs4_fs.h       |    6 ++++--
+ fs/nfs/nfs4namespace.c |    4 ++--
+ fs/nfs/nfs4proc.c      |   40 ++++++++++++++++++++++++++++++----------
+ 5 files changed, 63 insertions(+), 26 deletions(-)
+
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 45966d9..49c09b4 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -186,10 +186,10 @@ static inline void nfs_fs_proc_exit(void)
+ 
+ /* nfs4namespace.c */
+ #ifdef CONFIG_NFS_V4
+-extern struct vfsmount *nfs_do_refmount(struct dentry *dentry);
++extern struct vfsmount *nfs_do_refmount(struct rpc_clnt *client, struct dentry *dentry);
+ #else
+ static inline
+-struct vfsmount *nfs_do_refmount(struct dentry *dentry)
++struct vfsmount *nfs_do_refmount(struct rpc_clnt *client, struct dentry *dentry)
+ {
+ 	return ERR_PTR(-ENOENT);
+ }
+diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
+index 1807866..779f06a 100644
+--- a/fs/nfs/namespace.c
++++ b/fs/nfs/namespace.c
+@@ -200,6 +200,16 @@ out_shutdown:
+ out:
+ 	return err;
+ }
++
++static struct rpc_clnt *nfs_lookup_mountpoint(struct inode *dir,
++					      struct qstr *name,
++					      struct nfs_fh *fh,
++					      struct nfs_fattr *fattr)
++{
++	if (NFS_PROTO(dir)->version != 4)
++		return rpc_clone_client(NFS_SERVER(dir)->client);
++	return nfs4_proc_lookup_mountpoint(dir, name, fh, fattr);
++}
+ #else /* CONFIG_NFS_V4 */
+ static inline int nfs_lookup_with_sec(struct nfs_server *server,
+ 				      struct dentry *parent, struct dentry *dentry,
+@@ -209,6 +219,14 @@ static inline int nfs_lookup_with_sec(struct nfs_server *server,
+ {
+ 	return -EPERM;
+ }
++
++static inline struct rpc_clnt *nfs_lookup_mountpoint(struct inode *inode,
++						     struct qstr *name,
++						     struct nfs_fh *fh,
++						     struct nfs_fattr *fattr)
++{
++	return rpc_clone_client(NFS_SERVER(inode)->client);
++}
+ #endif /* CONFIG_NFS_V4 */
+ 
+ /*
+@@ -226,11 +244,10 @@ static inline int nfs_lookup_with_sec(struct nfs_server *server,
+ struct vfsmount *nfs_d_automount(struct path *path)
+ {
+ 	struct vfsmount *mnt;
+-	struct nfs_server *server = NFS_SERVER(path->dentry->d_inode);
+ 	struct dentry *parent;
+ 	struct nfs_fh *fh = NULL;
+ 	struct nfs_fattr *fattr = NULL;
+-	int err;
++	struct rpc_clnt *client;
+ 	rpc_authflavor_t flavor = RPC_AUTH_UNIX;
+ 
+ 	dprintk("--> nfs_d_automount()\n");
+@@ -249,21 +266,19 @@ struct vfsmount *nfs_d_automount(struct path *path)
+ 
+ 	/* Look it up again to get its attributes */
+ 	parent = dget_parent(path->dentry);
+-	err = server->nfs_client->rpc_ops->lookup(server->client, parent->d_inode,
+-						  &path->dentry->d_name,
+-						  fh, fattr);
+-	if (err == -EPERM && NFS_PROTO(parent->d_inode)->secinfo != NULL)
+-		err = nfs_lookup_with_sec(server, parent, path->dentry, path, fh, fattr, &flavor);
++	client = nfs_lookup_mountpoint(parent->d_inode, &path->dentry->d_name, fh, fattr);
+ 	dput(parent);
+-	if (err != 0) {
+-		mnt = ERR_PTR(err);
++	if (IS_ERR(client)) {
++		mnt = ERR_CAST(client);
+ 		goto out;
+ 	}
+ 
+ 	if (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)
+-		mnt = nfs_do_refmount(path->dentry);
++		mnt = nfs_do_refmount(client, path->dentry);
+ 	else
+ 		mnt = nfs_do_submount(path->dentry, fh, fattr, flavor);
++	rpc_shutdown_client(client);
++
+ 	if (IS_ERR(mnt))
+ 		goto out;
+ 
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index c82c2cd..8d75021 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -216,8 +216,10 @@ extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
+ extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
+ extern int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait, bool roc);
+ extern int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle);
+-extern int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+-		struct nfs4_fs_locations *fs_locations, struct page *page);
++extern int nfs4_proc_fs_locations(struct rpc_clnt *, struct inode *, const struct qstr *,
++				  struct nfs4_fs_locations *, struct page *);
++extern struct rpc_clnt *nfs4_proc_lookup_mountpoint(struct inode *, struct qstr *,
++			    struct nfs_fh *, struct nfs_fattr *);
+ extern int nfs4_proc_secinfo(struct inode *, const struct qstr *, struct nfs4_secinfo_flavors *);
+ extern int nfs4_release_lockowner(struct nfs4_lock_state *);
+ extern const struct xattr_handler *nfs4_xattr_handlers[];
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index 199eec5..69ebe03 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -276,7 +276,7 @@ out:
+  * @dentry - dentry of referral
+  *
+  */
+-struct vfsmount *nfs_do_refmount(struct dentry *dentry)
++struct vfsmount *nfs_do_refmount(struct rpc_clnt *client, struct dentry *dentry)
+ {
+ 	struct vfsmount *mnt = ERR_PTR(-ENOMEM);
+ 	struct dentry *parent;
+@@ -302,7 +302,7 @@ struct vfsmount *nfs_do_refmount(struct dentry *dentry)
+ 	dprintk("%s: getting locations for %s/%s\n",
+ 		__func__, parent->d_name.name, dentry->d_name.name);
+ 
+-	err = nfs4_proc_fs_locations(parent->d_inode, &dentry->d_name, fs_locations, page);
++	err = nfs4_proc_fs_locations(client, parent->d_inode, &dentry->d_name, fs_locations, page);
+ 	dput(parent);
+ 	if (err != 0 ||
+ 	    fs_locations->nlocations <= 0 ||
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index d6b1cd0..19c0c8d 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2377,8 +2377,9 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
+  * Note that we'll actually follow the referral later when
+  * we detect fsid mismatch in inode revalidation
+  */
+-static int nfs4_get_referral(struct inode *dir, const struct qstr *name,
+-			     struct nfs_fattr *fattr, struct nfs_fh *fhandle)
++static int nfs4_get_referral(struct rpc_clnt *client, struct inode *dir,
++			     const struct qstr *name, struct nfs_fattr *fattr,
++			     struct nfs_fh *fhandle)
+ {
+ 	int status = -ENOMEM;
+ 	struct page *page = NULL;
+@@ -2391,7 +2392,7 @@ static int nfs4_get_referral(struct inode *dir, const struct qstr *name,
+ 	if (locations == NULL)
+ 		goto out;
+ 
+-	status = nfs4_proc_fs_locations(dir, name, locations, page);
++	status = nfs4_proc_fs_locations(client, dir, name, locations, page);
+ 	if (status != 0)
+ 		goto out;
+ 	/* Make sure server returned a different fsid for the referral */
+@@ -2550,7 +2551,7 @@ static int nfs4_proc_lookup_common(struct rpc_clnt **clnt, struct inode *dir,
+ 			err = -ENOENT;
+ 			goto out;
+ 		case -NFS4ERR_MOVED:
+-			err = nfs4_get_referral(dir, name, fattr, fhandle);
++			err = nfs4_get_referral(client, dir, name, fattr, fhandle);
+ 			goto out;
+ 		case -NFS4ERR_WRONGSEC:
+ 			err = -EPERM;
+@@ -2591,6 +2592,21 @@ static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qst
+ 	return status;
+ }
+ 
++struct rpc_clnt *
++nfs4_proc_lookup_mountpoint(struct inode *dir, struct qstr *name,
++			    struct nfs_fh *fhandle, struct nfs_fattr *fattr)
++{
++	int status;
++	struct rpc_clnt *client = rpc_clone_client(NFS_CLIENT(dir));
++
++	status = nfs4_proc_lookup_common(&client, dir, name, fhandle, fattr);
++	if (status < 0) {
++		rpc_shutdown_client(client);
++		return ERR_PTR(status);
++	}
++	return client;
++}
++
+ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry)
+ {
+ 	struct nfs_server *server = NFS_SERVER(inode);
+@@ -4949,8 +4965,10 @@ static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr)
+ 	fattr->nlink = 2;
+ }
+ 
+-static int _nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+-		struct nfs4_fs_locations *fs_locations, struct page *page)
++static int _nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
++				   const struct qstr *name,
++				   struct nfs4_fs_locations *fs_locations,
++				   struct page *page)
+ {
+ 	struct nfs_server *server = NFS_SERVER(dir);
+ 	u32 bitmask[2] = {
+@@ -4984,19 +5002,21 @@ static int _nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+ 	nfs_fattr_init(&fs_locations->fattr);
+ 	fs_locations->server = server;
+ 	fs_locations->nlocations = 0;
+-	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
++	status = nfs4_call_sync(client, server, &msg, &args.seq_args, &res.seq_res, 0);
+ 	dprintk("%s: returned status = %d\n", __func__, status);
+ 	return status;
+ }
+ 
+-int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+-		struct nfs4_fs_locations *fs_locations, struct page *page)
++int nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
++			   const struct qstr *name,
++			   struct nfs4_fs_locations *fs_locations,
++			   struct page *page)
+ {
+ 	struct nfs4_exception exception = { };
+ 	int err;
+ 	do {
+ 		err = nfs4_handle_exception(NFS_SERVER(dir),
+-				_nfs4_proc_fs_locations(dir, name, fs_locations, page),
++				_nfs4_proc_fs_locations(client, dir, name, fs_locations, page),
+ 				&exception);
+ 	} while (exception.retry);
+ 	return err;
+-- 
+1.7.10
+
