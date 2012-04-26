@@ -1,211 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:33794 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759924Ab2DKLNy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Apr 2012 07:13:54 -0400
-Subject: [PATCH 3/4] nfsd: make expkey cache allocated per network namespace
- context
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Wed, 11 Apr 2012 15:13:28 +0400
-Message-ID: <20120411111328.13840.69772.stgit@localhost6.localdomain6>
-In-Reply-To: <20120411111053.13840.66083.stgit@localhost6.localdomain6>
-References: <20120411111053.13840.66083.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:51652 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757790Ab2DZPy5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 11:54:57 -0400
+Received: by yenl12 with SMTP id l12so1010610yen.19
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Apr 2012 08:54:56 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
+        michael.brantley@deshaw.com
+Subject: [PATCH v1 00/12] vfs: add the ability to retry on ESTALE to several syscalls
+Date: Thu, 26 Apr 2012 11:54:39 -0400
+Message-Id: <1335455691-16003-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch also changes svcauth_unix_purge() function: added network namespace
-as a parameter and thus loop over all networks was replaced by only one call
-for ip map cache purge.
+ESTALE errors are a source of pain for many users, primarily those who
+are doing work on NFS. When userspace provides a path to a syscall, then
+there's really little excuse for returning ESTALE. If userspace gave us
+a path that we had to lookup in order to do the call, then it's not
+particularly helpful to return ESTALE just because that path went stale
+before we could do the actual operation.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+We can and should do better here. The kernel should instead catch that
+error and retry the lookup and call, while forcing a revalidation of all
+dentries involved.
 
----
- fs/nfsd/export.c               |   28 +++++++++++++++++-----------
- fs/nfsd/netns.h                |    1 +
- fs/nfsd/nfsctl.c               |    3 ++-
- include/linux/nfsd/export.h    |    2 --
- include/linux/sunrpc/svcauth.h |    2 +-
- net/sunrpc/svcauth_unix.c      |   13 ++++---------
- 6 files changed, 25 insertions(+), 24 deletions(-)
+Unfortunately fixing this requires touching the syscalls themselves, or
+at least their immediate helper functions. Not all syscalls can be
+retried -- only those that take a pathname as an argument.
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index 84d020f..dcb52b8 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -40,7 +40,6 @@ typedef struct svc_export	svc_export;
- #define	EXPKEY_HASHBITS		8
- #define	EXPKEY_HASHMAX		(1 << EXPKEY_HASHBITS)
- #define	EXPKEY_HASHMASK		(EXPKEY_HASHMAX -1)
--static struct cache_head *expkey_table[EXPKEY_HASHMAX];
- 
- static void expkey_put(struct kref *ref)
- {
-@@ -241,10 +240,9 @@ static struct cache_head *expkey_alloc(void)
- 		return NULL;
- }
- 
--static struct cache_detail svc_expkey_cache = {
-+static struct cache_detail svc_expkey_cache_template = {
- 	.owner		= THIS_MODULE,
- 	.hash_size	= EXPKEY_HASHMAX,
--	.hash_table	= expkey_table,
- 	.name		= "nfsd.fh",
- 	.cache_put	= expkey_put,
- 	.cache_upcall	= expkey_upcall,
-@@ -883,12 +881,13 @@ static struct svc_export *exp_find(struct cache_detail *cd,
- 				   u32 *fsidv, struct cache_req *reqp)
- {
- 	struct svc_export *exp;
--	struct svc_expkey *ek = exp_find_key(&svc_expkey_cache, clp, fsid_type, fsidv, reqp);
-+	struct nfsd_net *nn = net_generic(cd->net, nfsd_net_id);
-+	struct svc_expkey *ek = exp_find_key(nn->svc_expkey_cache, clp, fsid_type, fsidv, reqp);
- 	if (IS_ERR(ek))
- 		return ERR_CAST(ek);
- 
- 	exp = exp_get_by_name(cd, clp, &ek->ek_path, reqp);
--	cache_put(&ek->h, &svc_expkey_cache);
-+	cache_put(&ek->h, nn->svc_expkey_cache);
- 
- 	if (IS_ERR(exp))
- 		return ERR_CAST(exp);
-@@ -1232,7 +1231,6 @@ const struct seq_operations nfs_exports_op = {
- 	.show	= e_show,
- };
- 
--
- /*
-  * Initialize the exports module.
-  */
-@@ -1251,11 +1249,18 @@ nfsd_export_init(struct net *net)
- 	if (rv)
- 		goto destroy_export_cache;
- 
--	rv = cache_register_net(&svc_expkey_cache, net);
--	if (rv)
-+	nn->svc_expkey_cache = cache_create_net(&svc_expkey_cache_template, net);
-+	if (IS_ERR(nn->svc_expkey_cache)) {
-+		rv = PTR_ERR(nn->svc_expkey_cache);
- 		goto unregister_export_cache;
-+	}
-+	rv = cache_register_net(nn->svc_expkey_cache, net);
-+	if (rv)
-+		goto destroy_expkey_cache;
- 	return 0;
- 
-+destroy_expkey_cache:
-+	cache_destroy_net(nn->svc_expkey_cache, net);
- unregister_export_cache:
- 	cache_unregister_net(nn->svc_export_cache, net);
- destroy_export_cache:
-@@ -1271,7 +1276,7 @@ nfsd_export_flush(struct net *net)
- {
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
--	cache_purge(&svc_expkey_cache);
-+	cache_purge(nn->svc_expkey_cache);
- 	cache_purge(nn->svc_export_cache);
- }
- 
-@@ -1285,10 +1290,11 @@ nfsd_export_shutdown(struct net *net)
- 
- 	dprintk("nfsd: shutting down export module (net: %p).\n", net);
- 
--	cache_unregister_net(&svc_expkey_cache, net);
-+	cache_unregister_net(nn->svc_expkey_cache, net);
- 	cache_unregister_net(nn->svc_export_cache, net);
-+	cache_destroy_net(nn->svc_expkey_cache, net);
- 	cache_destroy_net(nn->svc_export_cache, net);
--	svcauth_unix_purge();
-+	svcauth_unix_purge(net);
- 
- 	dprintk("nfsd: export shutdown complete (net: %p).\n", net);
- }
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index c1c6242..9794c6c 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -29,6 +29,7 @@ struct cld_net;
- struct nfsd_net {
- 	struct cld_net *cld_net;
- 
-+	struct cache_detail *svc_expkey_cache;
- 	struct cache_detail *svc_export_cache;
- };
- 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index ddb9f87..b144177 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -129,13 +129,14 @@ static int exports_open(struct inode *inode, struct file *file)
- {
- 	int err;
- 	struct seq_file *seq;
-+	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
- 
- 	err = seq_open(file, &nfs_exports_op);
- 	if (err)
- 		return err;
- 
- 	seq = file->private_data;
--	seq->private = &svc_export_cache;
-+	seq->private = nn->svc_export_cache;
- 	return 0;
- }
- 
-diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
-index 565c212..e33f747 100644
---- a/include/linux/nfsd/export.h
-+++ b/include/linux/nfsd/export.h
-@@ -143,8 +143,6 @@ int			exp_rootfh(struct net *, struct auth_domain *,
- __be32			exp_pseudoroot(struct svc_rqst *, struct svc_fh *);
- __be32			nfserrno(int errno);
- 
--extern struct cache_detail svc_export_cache;
--
- static inline void exp_put(struct svc_export *exp)
- {
- 	cache_put(&exp->h, exp->cd);
-diff --git a/include/linux/sunrpc/svcauth.h b/include/linux/sunrpc/svcauth.h
-index 548790e..153de45 100644
---- a/include/linux/sunrpc/svcauth.h
-+++ b/include/linux/sunrpc/svcauth.h
-@@ -131,7 +131,7 @@ extern struct auth_domain *auth_domain_lookup(char *name, struct auth_domain *ne
- extern struct auth_domain *auth_domain_find(char *name);
- extern struct auth_domain *auth_unix_lookup(struct net *net, struct in6_addr *addr);
- extern int auth_unix_forget_old(struct auth_domain *dom);
--extern void svcauth_unix_purge(void);
-+extern void svcauth_unix_purge(struct net *net);
- extern void svcauth_unix_info_release(struct svc_xprt *xpt);
- extern int svcauth_unix_set_client(struct svc_rqst *rqstp);
- 
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index 521d8f7..9c3b9f0 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -346,17 +346,12 @@ static inline int ip_map_update(struct net *net, struct ip_map *ipm,
- 	return __ip_map_update(sn->ip_map_cache, ipm, udom, expiry);
- }
- 
--
--void svcauth_unix_purge(void)
-+void svcauth_unix_purge(struct net *net)
- {
--	struct net *net;
--
--	for_each_net(net) {
--		struct sunrpc_net *sn;
-+	struct sunrpc_net *sn;
- 
--		sn = net_generic(net, sunrpc_net_id);
--		cache_purge(sn->ip_map_cache);
--	}
-+	sn = net_generic(net, sunrpc_net_id);
-+	cache_purge(sn->ip_map_cache);
- }
- EXPORT_SYMBOL_GPL(svcauth_unix_purge);
- 
+This set is a first "official" pass at adding ESTALE retry handling to
+various syscalls.  With this patchset, I've decided to take the
+relatively less controversial approach of just having the kernel retry
+once when it gets an ESTALE error. I still think that it's not as strong
+as it should be, but it should improve the situation in many common
+cases.
+
+I've also tried to engineer this in such a way that if we do decide that
+we need to retry more than once, then it should be easy to change that
+later. This should cover all of the syscalls in fs/stat.c and
+fs/namei.c.
+
+If this approach is reasonable I'll look at adding similar handling to
+other path-based vfs calls in a another set. A quick look shows that
+we have about 50-odd path-based syscalls that will need similar
+handling, so this is just a start.
+
+Comments welcome...
+
+Jeff Layton (12):
+  vfs: add a retry_estale helper function to handle retries on ESTALE
+  vfs: make fstatat retry on ESTALE errors from getattr call
+  vfs: fix readlinkat to retry on ESTALE
+  vfs: add new "reval" argument to kern_path_create and
+    user_path_create
+  vfs: fix mknodat to retry on ESTALE errors
+  vfs: fix mkdir to retry on ESTALE errors
+  vfs: add a "reval" flag to args for user_path_parent
+  vfs: make rmdir retry on ESTALE errors
+  vfs: make do_unlinkat retry on ESTALE errors
+  vfs: fix symlinkat to retry on ESTALE errors
+  vfs: fix linkat to retry on ESTALE errors
+  vfs: fix renameat to retry on ESTALE errors
+
+ arch/powerpc/platforms/cell/spufs/syscalls.c |    2 +-
+ drivers/base/devtmpfs.c                      |    7 +-
+ fs/namei.c                                   |  233 +++++++++++++++-----------
+ fs/ocfs2/refcounttree.c                      |    3 +-
+ fs/stat.c                                    |   32 +++-
+ include/linux/fs.h                           |   21 +++
+ include/linux/namei.h                        |    4 +-
+ net/unix/af_unix.c                           |    3 +-
+ 8 files changed, 191 insertions(+), 114 deletions(-)
+
+-- 
+1.7.7.6
 
