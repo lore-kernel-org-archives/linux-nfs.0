@@ -1,94 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:34960 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753121Ab2DRLwM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Apr 2012 07:52:12 -0400
-Received: by yenl12 with SMTP id l12so3574038yen.19
-        for <linux-nfs@vger.kernel.org>; Wed, 18 Apr 2012 04:52:12 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Cc: miklos@szeredi.hu, viro@ZenIV.linux.org.uk, hch@infradead.org,
-        michael.brantley@deshaw.com, sven.breuner@itwm.fraunhofer.de,
-        chuck.lever@oracle.com, pstaubach@exagrid.com, malahal@us.ibm.com,
-        bfields@fieldses.org, trond.myklebust@fys.uio.no, rees@umich.edu
-Subject: [PATCH RFC v3] vfs: make fstatat retry once on ESTALE errors from getattr call
-Date: Wed, 18 Apr 2012 07:52:07 -0400
-Message-Id: <1334749927-26138-1-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
-References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:44929 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754032Ab2DZV6j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Apr 2012 17:58:39 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <1335460011.9701.30.camel@lade.trondhjem.org>
+References: <1335460011.9701.30.camel@lade.trondhjem.org> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <CAH2r5ms4WQV3DnTvqNN=2N71Cj8UHwj8Z6+RHXgrAOv6mSoyQg@mail.gmail.com> <20656.1335450358@redhat.com> <CAH2r5mv1Lijdwk5zsQwYJr4Etb6fhrRyNXm-iFCQX+HecboGrQ@mail.gmail.com> <1335453958.9701.10.camel@lade.trondhjem.org> <CAH2r5mt5af-_hxBRKK72iD5Gr99bo91ec78Rov8EGVEx8=21mA@mail.gmail.com> <1335459642.9701.27.camel@lade.trondhjem.org> <CAH2r5mvmCfLrxRHje6Wx5X84zxPEHwRMUJGsjvWBujMu7w841w@mail.gmail.com> 
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: dhowells@redhat.com, Steve French <smfrench@gmail.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
+        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "wine-devel@winehq.org" <wine-devel@winehq.org>,
+        "kfm-devel@kde.org" <kfm-devel@kde.org>,
+        "nautilus-list@gnome.org" <nautilus-list@gnome.org>,
+        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
+        "libc-alpha@sourceware.org" <libc-alpha@sourceware.org>
+Subject: Re: [PATCH 0/6] Extended file stat system call
+Date: Thu, 26 Apr 2012 22:57:56 +0100
+Message-ID: <10104.1335477476@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-ESTALE errors are a source of pain for many users of NFS. Usually they
-occur when a file is removed from the server after a successful lookup
-against it.
+Myklebust, Trond <Trond.Myklebust@netapp.com> wrote:
 
-Luckily, the remedy in these cases is usually simple. We should just
-redo the lookup, forcing revalidations all the way in and then retry the
-call. We of course cannot do this for syscalls that do not involve a
-path, but for path-based syscalls we can and should attempt to recover
-from an ESTALE.
+> You are still not explaining why they need to know the values at all? If
+> the values are bogus, then don't return them, and don't set the flag
+> that says they are being returned.
 
-This patch implements this by having the VFS reattempt the lookup (with
-LOOKUP_REVAL set) and call exactly once when it would ordinarily return
-ESTALE. This should catch the bulk of these cases under normal usage,
-without unduly inconveniencing other filesystems that return ESTALE on
-path-based syscalls.
+What if the xstat() and struct xstat eventually becomes what userspace uses as
+stat() (as a wrapper) and struct stat (if such a thing is possible with glibc
+versioning)?  Do older programs that think they're using stat() and don't know
+about the extra fields available expect to see a useful value in st_ino?
 
-Note that it's possible to hit this race more than once, but a single
-retry should catch the bulk of these cases under normal circumstances.
-
-This patch is just an example. We'll alter most path-based syscalls in a
-similar fashion to fix this correctly. At this point, I'm just trying to
-ensure that the retry semantics are acceptable before I being that work.
-
-Does anyone have strong objections to this patch? I'm aware that the
-retry mechanism is not as robust as many (e.g. Peter) would like, but it
-should at least improve the current situation.
-
-If no one has a strong objection, then I'll start going through and
-adding similar code to the other syscalls. And we can hopefully we can
-get at least some of them in for 3.5.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/stat.c |    9 ++++++++-
- 1 files changed, 8 insertions(+), 1 deletions(-)
-
-diff --git a/fs/stat.c b/fs/stat.c
-index c733dc5..0ee9cb4 100644
---- a/fs/stat.c
-+++ b/fs/stat.c
-@@ -73,7 +73,8 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
- {
- 	struct path path;
- 	int error = -EINVAL;
--	int lookup_flags = 0;
-+	bool retried = false;
-+	unsigned int lookup_flags = 0;
- 
- 	if ((flag & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
- 		      AT_EMPTY_PATH)) != 0)
-@@ -84,12 +85,18 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
- 	if (flag & AT_EMPTY_PATH)
- 		lookup_flags |= LOOKUP_EMPTY;
- 
-+retry:
- 	error = user_path_at(dfd, filename, lookup_flags, &path);
- 	if (error)
- 		goto out;
- 
- 	error = vfs_getattr(path.mnt, path.dentry, stat);
- 	path_put(&path);
-+	if (error == -ESTALE && !retried) {
-+		retried = true;
-+		lookup_flags |= LOOKUP_REVAL;
-+		goto retry;
-+	}
- out:
- 	return error;
- }
--- 
-1.7.7.6
-
+David
