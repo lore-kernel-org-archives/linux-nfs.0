@@ -1,158 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:43242 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753486Ab2DWU4F (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Apr 2012 16:56:05 -0400
-Received: by mail-iy0-f174.google.com with SMTP id i9so2498807iad.19
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2012 13:56:05 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 19/20] NFS: Add nfs4_unique_id boot parameter
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 23 Apr 2012 16:56:02 -0400
-Message-ID: <20120423205602.11446.34359.stgit@degas.1015granger.net>
-In-Reply-To: <20120423205312.11446.67081.stgit@degas.1015granger.net>
+Received: from mx2.netapp.com ([216.240.18.37]:60860 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752326Ab2DZS5O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Apr 2012 14:57:14 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 13/20] NFS: Fix recovery from NFS4ERR_CLID_INUSE
+Date: Thu, 26 Apr 2012 18:57:13 +0000
+Message-ID: <1335466633.24247.11.camel@lade.trondhjem.org>
 References: <20120423205312.11446.67081.stgit@degas.1015granger.net>
-MIME-Version: 1.0
+	 <20120423205505.11446.28437.stgit@degas.1015granger.net>
+	 <D6859152-CF45-44CC-BB3C-B40CB9FD0BE8@oracle.com>
+	 <1335459334.9701.25.camel@lade.trondhjem.org>
+	 <F4214CAE-E0DE-4A3C-BA0B-02A9F8277897@oracle.com>
+	 <1335466422.24247.8.camel@lade.trondhjem.org>
+In-Reply-To: <1335466422.24247.8.camel@lade.trondhjem.org>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-An optional boot parameter is introduced to allow client
-administrators to specify a string that the Linux NFS client can
-insert into its nfs_client_id4 string, to make it both more globally
-unique and more fixed.
-
-If this boot parameter is not specified, the client's nodename is
-used, as before.
-
-Client installation procedures can create a unique string (typically,
-a UUID) which remains unchanged during the lifetime of that client
-instance.  This works just like creating a UUID for the label of the
-system's root and boot volumes.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- Documentation/filesystems/nfs/nfs.txt |   44 +++++++++++++++++++++++++++++++--
- Documentation/kernel-parameters.txt   |    5 ++++
- fs/nfs/nfs4proc.c                     |   17 +++++++++++++
- 3 files changed, 63 insertions(+), 3 deletions(-)
-
-diff --git a/Documentation/filesystems/nfs/nfs.txt b/Documentation/filesystems/nfs/nfs.txt
-index f50f26c..f2571c8 100644
---- a/Documentation/filesystems/nfs/nfs.txt
-+++ b/Documentation/filesystems/nfs/nfs.txt
-@@ -12,9 +12,47 @@ and work is in progress on adding support for minor version 1 of the NFSv4
- protocol.
- 
- The purpose of this document is to provide information on some of the
--upcall interfaces that are used in order to provide the NFS client with
--some of the information that it requires in order to fully comply with
--the NFS spec.
-+special features of the NFS client that can be configured by system
-+administrators.
-+
-+
-+The nfs4_unique_id parameter
-+============================
-+
-+NFSv4 requires clients to identify themselves to servers with a unique
-+string.  File open and lock state shared between one client and one server
-+is associated with this identity.  To support robust NFSv4 state recovery
-+and transparent state migration, this identity string must not change
-+across client reboots.
-+
-+Without any other intervention, the Linux client uses a string that contains
-+the local system's node name.  System administrators, however, often do not
-+take care to ensure that node names are fully qualified and do not change
-+over the lifetime of a client system.  Node names can have other
-+administrative requirements that require particular behavior that does not
-+work well as part of an nfs_client_id4 string.
-+
-+The nfs.nfs4_unique_id boot parameter specifies a unique string that can be
-+used instead of a system's node name when an NFS client identifies itself to
-+a server.  Thus, if the system's node name is not unique, or it changes, its
-+nfs.nfs4_unique_id stays the same, preventing collision with other clients
-+or loss of state during NFS reboot recovery or transparent state migration.
-+
-+The nfs.nfs4_unique_id string is typically a UUID, though it can contain
-+anything that is believed to be unique across all NFS clients.  An
-+nfs4_unique_id string should be chosen when a client system is installed,
-+just as a system's root file system gets a fresh UUID in its label at
-+install time.
-+
-+The string should remain fixed for the lifetime of the client.  It can be
-+changed safely if care is taken that the client shuts down cleanly and all
-+outstanding NFSv4 state has expired, to prevent loss of NFSv4 state.
-+
-+This string can be stored in an NFS client's grub.conf, or it can be provided
-+via a net boot facility such as PXE.  It may also be specified as an nfs.ko
-+module parameter.  Specifying a uniquifier string is not support for NFS
-+clients running in containers.
-+
- 
- The DNS resolver
- ================
-diff --git a/Documentation/kernel-parameters.txt b/Documentation/kernel-parameters.txt
-index c1601e5..096356b 100644
---- a/Documentation/kernel-parameters.txt
-+++ b/Documentation/kernel-parameters.txt
-@@ -1690,6 +1690,11 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
- 			will be autodetected by the client, and it will fall
- 			back to using the idmapper.
- 			To turn off this behaviour, set the value to '0'.
-+	nfs.nfs4_unique_id=
-+			[NFS4] Specify an additional fixed unique ident-
-+			ification string that NFSv4 clients can insert into
-+			their nfs_client_id4 string.  This is typically a
-+			UUID that is generated at system install time.
- 
- 	nfs.send_implementation_id =
- 			[NFSv4.1] Send client implementation identification
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 00b5d02..d112931 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -75,6 +75,12 @@
- 
- static unsigned short max_session_slots = NFS4_DEF_SLOT_TABLE_SIZE;
- 
-+#define NFS4_CLIENT_ID_UNIQ_LEN		(64)
-+static char nfs4_client_id_uniquifier[NFS4_CLIENT_ID_UNIQ_LEN] = "";
-+module_param_string(nfs4_unique_id, nfs4_client_id_uniquifier,
-+			NFS4_CLIENT_ID_UNIQ_LEN, 0600);
-+MODULE_PARM_DESC(nfs4_unique_id, "nfs_client_id4 uniquifier string");
-+
- struct nfs4_opendata;
- static int _nfs4_proc_open(struct nfs4_opendata *data);
- static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
-@@ -3924,16 +3930,27 @@ nfs4_init_nonuniform_client_string(const struct nfs_client *clp,
-  *
-  * For now I'm going to stick with init_utsname.  We can easily work
-  * this out later when the client has container support.
-+ *
-+ * Specifying a uniquifier string is not supported for NFS clients
-+ * running in containers.
-  */
- static unsigned int
- nfs4_init_uniform_client_string(const struct nfs_client *clp,
- 				char *buf, size_t len)
- {
-+	if (nfs4_client_id_uniquifier[0] != '\0')
-+		goto have_uniquifier;
- 	return scnprintf(buf, len, "Linux NFSv%u.%u %s %s %s uniform",
- 				clp->rpc_ops->version, clp->cl_minorversion,
- 				init_utsname()->nodename,
- 				init_utsname()->domainname,
- 				clp->cl_rpcclient->cl_auth->au_ops->au_name);
-+
-+have_uniquifier:
-+	return scnprintf(buf, len, "Linux NFSv%u.%u %s %s uniform",
-+				clp->rpc_ops->version, clp->cl_minorversion,
-+				nfs4_client_id_uniquifier,
-+				clp->cl_rpcclient->cl_auth->au_ops->au_name);
- }
- 
- /**
-
+T24gVGh1LCAyMDEyLTA0LTI2IGF0IDE0OjUzIC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
+DQo+IE9uIFRodSwgMjAxMi0wNC0yNiBhdCAxNDo0MyAtMDQwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6
+DQo+ID4gT24gQXByIDI2LCAyMDEyLCBhdCAxMjo1NSBQTSwgTXlrbGVidXN0LCBUcm9uZCB3cm90
+ZToNCj4gPiANCj4gPiA+IE9uIFRodSwgMjAxMi0wNC0yNiBhdCAxMjoyNCAtMDQwMCwgQ2h1Y2sg
+TGV2ZXIgd3JvdGU6DQo+ID4gPj4gT24gQXByIDIzLCAyMDEyLCBhdCA0OjU1IFBNLCBDaHVjayBM
+ZXZlciB3cm90ZToNCj4gPiA+IFRoZW4gbGV0cyBtb3ZlIHRoZSBmbGF2b3VyIG91dCBvZiB0aGUg
+Y2xpZW50aWQgc3RyaW5nLA0KPiA+IA0KPiA+IFJlbW92aW5nIHRoZSBmbGF2b3IgZnJvbSB0aGUg
+bmZzX2NsaWVudF9pZDQgc3RyaW5nIG1ha2VzIHNlbnNlLg0KPiA+IA0KPiA+ID4gYW5kIGp1c3Qg
+c2V0dGxlDQo+ID4gPiBmb3IgaGFuZGxpbmcgQ0xJRF9JTlVTRSBieSBjaGFuZ2luZyB0aGUgZmxh
+dm91ciBvbiB0aGUgU0VUQ0xJRU5USUQgY2FsbC4NCj4gPiANCj4gPiBUaGlzIGlzIHdoZXJlIEkg
+Z2V0IGhhenkuICANCj4gPiANCj4gPiBJZiBJIHNpbXBseSBjaGFuZ2UgdGhlIGF1dGhlbnRpY2F0
+aW9uIGZsYXZvciBvbiB0aGUgZXhpc3RpbmcgY2xwLT5jbF9ycGNjbGllbnQsIHdpbGwgdGhpcyBh
+ZmZlY3Qgb25nb2luZyBSRU5FVyBvcGVyYXRpb25zIHRoYXQgYWxzbyB1c2UgdGhpcyB0cmFuc3Bv
+cnQ/ICBEbyB3ZSB3YW50IHN1YnNlcXVlbnQgUkVORVcgb3BlcmF0aW9ucyB0byB1c2UgdGhlIG5l
+dyBmbGF2b3I/DQo+ID4gDQo+ID4gVGhpbmtpbmcgaHlwb3RoZXRpY2FsbHksIGl0IHNlZW1zIHRv
+IG1lIHRoYXQgQ0xJRF9JTlVTRSBpcyByZWFsbHkgYW4gaW5kaWNhdGlvbiBvZiBhIHBlcm1hbmVu
+dCBjb25maWd1cmF0aW9uIGVycm9yLCBvciBhIHNvZnR3YXJlIGJ1ZywgYW5kIHdlIHNob3VsZCBu
+b3QgYm90aGVyIHRvIHJlY292ZXIuICBCdXQgbWF5YmUgdGhhdCdzIG15IGxpbWl0ZWQgaW1hZ2lu
+YXRpb24uICBVbmRlciB3aGF0IHVzZSBjYXNlcyBkbyB5b3UgdGhpbmsgQ0xJRF9JTlVTRSBtaWdo
+dCBvY2N1ciBhbmQgaXQgbWlnaHQgYmUgdXNlZnVsIHRvIGF0dGVtcHQgcmVjb3Zlcnk/DQo+ID4g
+DQo+IA0KPiBUaGUgc2VydmVyIGNhY2hlcyB0aGUgcHJpbmNpcGFsIG5hbWUgdGhhdCB3YXMgdXNl
+ZCB0byBjYWxsIFNFVENMSUVOVElEDQo+IHdoZW4gdGhlIGxlYXNlIHdhcyBlc3RhYmxpc2hlZC4g
+QW55IGF0dGVtcHQgdG8gY2FsbCBTRVRDTElFTlRJRCB3aXRoIGENCj4gZGlmZmVyZW50IHByaW5j
+aXBhbCB3aWxsIHJlc3VsdCBpbiBDTElEX0lOVVNFIHVubGVzcyB0aGUgbGVhc2UgaGFzDQo+IGV4
+cGlyZWQuDQo+IA0KPiBTbyB3aGF0IEkgd2FzIHByb3Bvc2luZyB3YXNuJ3QgdGhhdCB5b3UgdHJ5
+IHRvIGNoYW5nZSB0aGUgYXV0aGVudGljYXRpb24NCj4gZmxhdm91ciBvbiBhbiBleGlzdGluZyBu
+ZnNfY2xpZW50LiBJdCB3YXMgdGhhdCB3aGVuIHlvdSBhcmUgcHJvYmluZywgeW91DQo+IGNhbiB1
+c2UgdGhlIENMSURfSU5VU0UgcmVwbHkgZnJvbSBTRVRDTElFTlRJRCBhcyBhIGRpcmVjdCBpbmRp
+Y2F0aW9uDQo+IHRoYXQgdGhlIHNlcnZlciBpcyBpbmRlZWQgdHJ1bmtlZCwgYW5kIHRoYXQgeW91
+IGFscmVhZHkgaG9sZCBhIGxlYXNlIG9uDQo+IHRoYXQgc2VydmVyLCBidXQgdGhhdCB0aGUgYXV0
+aGVudGljYXRpb24gZmxhdm91ciB0aGF0IHlvdSBhcmUgdHJ5aW5nIHRvDQo+IHVzZSBpcyB3cm9u
+Zy4NCg0KQWN0dWFsbHksIGxldCBtZSBxdWFsaWZ5IHRoYXQgYSBiaXQuIENMSURfSU5VU0UgY2Fu
+IGFsc28gbWVhbiBvbmUgb3RoZXINCnRoaW5nOiB0aGF0IHlvdSBoYXZlIHByZXZpb3VzbHkgZXN0
+YWJsaXNoZWQgYSBsZWFzZSBvbiB0aGF0IHNlcnZlciwgd2l0aA0KYSBkaWZmZXJlbnQgYXV0aGVu
+dGljYXRpb24gZmxhdm91ciwgYW5kIHRoYXQgbGVhc2UgaGFzIG5vdCB5ZXQgZXhwaXJlZA0KKGV2
+ZW4gdGhvdWdoIHlvdXIgY2xpZW50IG1heSBoYXZlIGZvcmdvdHRlbiBpdCBkdWUgdG8gYSB1bW91
+bnQgb2YgYWxsDQpmaWxlc3lzdGVtcyBmcm9tIHRoYXQgc2VydmVyKS4NCg0KLS0gDQpUcm9uZCBN
+eWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15
+a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
