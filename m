@@ -1,46 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:27043 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758639Ab2D0NKl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Apr 2012 09:10:41 -0400
-Date: Fri, 27 Apr 2012 09:10:33 -0400
-From: Josh Boyer <jwboyer@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH] NFSv4: Add modalias for "nfs4"
-Message-ID: <20120427131031.GA13189@zod.bos.redhat.com>
+Received: from relay.parallels.com ([195.214.232.42]:58272 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756893Ab2DZS0x convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 14:26:53 -0400
+Message-ID: <4F99936B.2050507@parallels.com>
+Date: Thu, 26 Apr 2012 22:26:51 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH 2/3] SUNRPC: traverse clients tree on PipeFS event
+References: <20120420141419.10848.84280.stgit@localhost6.localdomain6>  <20120420141925.10848.90395.stgit@localhost6.localdomain6> <1335463902.9701.35.camel@lade.trondhjem.org>
+In-Reply-To: <1335463902.9701.35.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When NFSv4 is configured, the support goes into the nfs.ko module.
-However, nfs-utils seems to pass "nfs4" as the fileststem type for
-NFSv4 mounts.  If the nfs module is not already loaded, the kernel
-will eventually do a module request for "nfs4".  Apparently, this
-has worked until now as the distributions ship a module config file
-that manually aliases "nfs4" to "nfs".
+26.04.2012 22:11, Myklebust, Trond написал:
+> On Fri, 2012-04-20 at 18:19 +0400, Stanislav Kinsbursky wrote:
+>
+>> +static int __rpc_pipefs_event(struct rpc_clnt *clnt, unsigned long event,
+>> +				struct super_block *sb)
+>> +{
+>> +	int error;
+>> +
+>> +	if (!rpc_clnt_skip_event(clnt, event)) {
+>> +		error = __rpc_clnt_handle_event(clnt, event, sb);
+>> +		if (error)
+>> +			return error;
+>> +	}
+>> +	if (clnt != clnt->cl_parent)
+>> +		return __rpc_pipefs_event(clnt->cl_parent, event, sb);
+>> +	return 0;
+>> +}
+> Hi Stanislav,
+>
+> Recursion in the kernel is generally frowned upon due to the stack size
+> limits. Could you please rewrite the above into a simple loop. Something
+> along the lines of:
+>
+> 	for(;;) {
+> 		...
+>
+> 		if (clnt == clnt->cl_parent)
+> 			break;
+> 		clnt = clnt->cl_parent;
+> 	}
+>
 
-There is really no need to do this, as the kernel can provide a
-module alias internally for nfs4.  This adds that.
-
-Signed-off-by: Josh Boyer <jwboyer@redhat.com>
----
- fs/nfs/nfs4proc.c |    1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 60d5f4c..d6929c3 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6550,6 +6550,7 @@ const struct xattr_handler *nfs4_xattr_handlers[] = {
- module_param(max_session_slots, ushort, 0644);
- MODULE_PARM_DESC(max_session_slots, "Maximum number of outstanding NFSv4.1 "
- 		"requests the client will negotiate");
-+MODULE_ALIAS("nfs4");
- 
- /*
-  * Local variables:
--- 
-1.7.10
-
+Hi, Trond.
+Yes, sure, I can do this.
