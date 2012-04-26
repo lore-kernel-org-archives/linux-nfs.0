@@ -1,93 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:46846 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758622Ab2DZTqo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 15:46:44 -0400
-Subject: Re: [PATCH 13/20] NFS: Fix recovery from NFS4ERR_CLID_INUSE
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1335467659.24247.19.camel@lade.trondhjem.org>
-Date: Thu, 26 Apr 2012 15:46:17 -0400
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <02FC38C6-46FB-4A0E-A020-07DC562A7007@oracle.com>
-References: <20120423205312.11446.67081.stgit@degas.1015granger.net> <20120423205505.11446.28437.stgit@degas.1015granger.net> <D6859152-CF45-44CC-BB3C-B40CB9FD0BE8@oracle.com> <1335459334.9701.25.camel@lade.trondhjem.org> <F4214CAE-E0DE-4A3C-BA0B-02A9F8277897@oracle.com> <1335466422.24247.8.camel@lade.trondhjem.org> <99F031E0-3888-45A0-AA81-0F5C961B8AD8@oracle.com> <1335467659.24247.19.camel@lade.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:58169 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758052Ab2DZP6L (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 11:58:11 -0400
+Received: by mail-yx0-f174.google.com with SMTP id l12so1014243yen.19
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Apr 2012 08:58:10 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
+        michael.brantley@deshaw.com
+Subject: [PATCH v1 03/12] vfs: fix readlinkat to retry on ESTALE
+Date: Thu, 26 Apr 2012 11:57:14 -0400
+Message-Id: <1335455843-16089-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1335455843-16089-1-git-send-email-jlayton@redhat.com>
+References: <1335455843-16089-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/stat.c |   16 ++++++++++++----
+ 1 files changed, 12 insertions(+), 4 deletions(-)
 
-On Apr 26, 2012, at 3:14 PM, Myklebust, Trond wrote:
-
-> On Thu, 2012-04-26 at 15:04 -0400, Chuck Lever wrote:
->> On Apr 26, 2012, at 2:53 PM, Myklebust, Trond wrote:
->> 
->>> On Thu, 2012-04-26 at 14:43 -0400, Chuck Lever wrote:
->>>> On Apr 26, 2012, at 12:55 PM, Myklebust, Trond wrote:
->>>> 
->>>>> On Thu, 2012-04-26 at 12:24 -0400, Chuck Lever wrote:
->>>>>> On Apr 23, 2012, at 4:55 PM, Chuck Lever wrote:
->>>>> Then lets move the flavour out of the clientid string,
->>>> 
->>>> Removing the flavor from the nfs_client_id4 string makes sense.
->>>> 
->>>>> and just settle
->>>>> for handling CLID_INUSE by changing the flavour on the SETCLIENTID call.
->>>> 
->>>> This is where I get hazy.  
->>>> 
->>>> If I simply change the authentication flavor on the existing clp->cl_rpcclient, will this affect ongoing RENEW operations that also use this transport?  Do we want subsequent RENEW operations to use the new flavor?
->>>> 
->>>> Thinking hypothetically, it seems to me that CLID_INUSE is really an indication of a permanent configuration error, or a software bug, and we should not bother to recover.  But maybe that's my limited imagination.  Under what use cases do you think CLID_INUSE might occur and it might be useful to attempt recovery?
->>>> 
->>> 
->>> The server caches the principal name that was used to call SETCLIENTID
->>> when the lease was established. Any attempt to call SETCLIENTID with a
->>> different principal will result in CLID_INUSE unless the lease has
->>> expired.
->>> 
->>> So what I was proposing wasn't that you try to change the authentication
->>> flavour on an existing nfs_client. It was that when you are probing, you
->>> can use the CLID_INUSE reply from SETCLIENTID as a direct indication
->>> that the server is indeed trunked, and that you already hold a lease on
->>> that server, but that the authentication flavour that you are trying to
->>> use is wrong.
->> 
->> The use case would be that my client has mounted a server via address X using authentication flavor 1, and then tries to mount the same server via address Y using authentication flavor 2.
-> 
-> ...for which the result should be that all setclientid/confirm and renew
-> requests will use flavour 1.
-
-Agreed.
-
->> Do we even need to retry the SETCLIENTID and to perform a SETCLIENTID_CONFIRM in that case?
-> 
-> Yes. Otherwise we end up with 2 leases on the same server.
-
-I don't see how...  If the second SETCLIENTID fails with CLID_INUSE then the server still has the first lease that's using flavor 1.  "Boom, done."
-
->> Now, what about nfs4_reclaim_lease() ?  If the client sees CLID_INUSE during a lease reclaim, no trunking discovery is involved.
-> 
-> That would mean that the lease was expired, and that someone sent a
-> SETCLIENTID call to the server using our clientid string, but using the
-> wrong principal. There are 2 cases:
-> 
-> 1) Someone is spoofing our client. I've no idea how to recover from
-> this, short of changing the clientid string.
-
-Maybe we should keep cl_uniquifier for case 1...?  Since nfs4_reclaim_lease() is called in the state manager, it has to do something to recover or make the waiting process error out.
-
-> 2) The server is trunked, the lease expired, and we happened to call
-> 'mount' while it was expired, and inadvertently sent a SETCLIENTID
-> +SETCLIENTID_CONFIRM call to the server using a different IP address,
-> and using the wrong principal.
-
-The clid_init_mutex should exclude this case...?
-
+diff --git a/fs/stat.c b/fs/stat.c
+index f3eef0d..f7904aa 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -299,14 +299,21 @@ SYSCALL_DEFINE4(readlinkat, int, dfd, const char __user *, pathname,
+ 	struct path path;
+ 	int error;
+ 	int empty = 0;
++	unsigned int try = 0;
++	unsigned int lookup_flags = LOOKUP_EMPTY;
+ 
+ 	if (bufsiz <= 0)
+ 		return -EINVAL;
+ 
+-	error = user_path_at_empty(dfd, pathname, LOOKUP_EMPTY, &path, &empty);
+-	if (!error) {
+-		struct inode *inode = path.dentry->d_inode;
++	do {
++		struct inode *inode;
++
++		error = user_path_at_empty(dfd, pathname, lookup_flags, &path,
++					   &empty);
++		if (error)
++			break;
+ 
++		inode = path.dentry->d_inode;
+ 		error = empty ? -ENOENT : -EINVAL;
+ 		if (inode->i_op->readlink) {
+ 			error = security_inode_readlink(path.dentry);
+@@ -317,7 +324,8 @@ SYSCALL_DEFINE4(readlinkat, int, dfd, const char __user *, pathname,
+ 			}
+ 		}
+ 		path_put(&path);
+-	}
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
+ 	return error;
+ }
+ 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.7.6
 
