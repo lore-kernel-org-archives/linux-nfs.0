@@ -1,56 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34527 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933457Ab2DKWRb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Apr 2012 18:17:31 -0400
-Date: Wed, 11 Apr 2012 18:17:29 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH][RFC] nfsd/lockd: have locks_in_grace take a sb arg
-Message-ID: <20120411221729.GG31706@fieldses.org>
-References: <20120410093900.20209d00@tlielax.poochiereds.net>
- <4F84493C.1040303@parallels.com>
- <20120410144505.58bca0b9@corrin.poochiereds.net>
- <4F855864.8050509@parallels.com>
- <20120411074822.0054eb36@tlielax.poochiereds.net>
- <4F85825E.4060104@parallels.com>
- <20120411171919.GA29903@fieldses.org>
- <4F85C15D.5060408@parallels.com>
- <20120411182218.GB31025@fieldses.org>
- <4F85DA84.8010703@parallels.com>
+Received: from mail-qa0-f53.google.com ([209.85.216.53]:61013 "EHLO
+	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758051Ab2DZRDI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 13:03:08 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <4F85DA84.8010703@parallels.com>
+In-Reply-To: <1335459642.9701.27.camel@lade.trondhjem.org>
+References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+	<CAH2r5ms4WQV3DnTvqNN=2N71Cj8UHwj8Z6+RHXgrAOv6mSoyQg@mail.gmail.com>
+	<20656.1335450358@redhat.com>
+	<CAH2r5mv1Lijdwk5zsQwYJr4Etb6fhrRyNXm-iFCQX+HecboGrQ@mail.gmail.com>
+	<1335453958.9701.10.camel@lade.trondhjem.org>
+	<CAH2r5mt5af-_hxBRKK72iD5Gr99bo91ec78Rov8EGVEx8=21mA@mail.gmail.com>
+	<1335459642.9701.27.camel@lade.trondhjem.org>
+Date: Thu, 26 Apr 2012 12:03:07 -0500
+Message-ID: <CAH2r5mvmCfLrxRHje6Wx5X84zxPEHwRMUJGsjvWBujMu7w841w@mail.gmail.com>
+Subject: Re: [PATCH 0/6] Extended file stat system call
+From: Steve French <smfrench@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: David Howells <dhowells@redhat.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
+        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "wine-devel@winehq.org" <wine-devel@winehq.org>,
+        "kfm-devel@kde.org" <kfm-devel@kde.org>,
+        "nautilus-list@gnome.org" <nautilus-list@gnome.org>,
+        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
+        "libc-alpha@sourceware.org" <libc-alpha@sourceware.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 11, 2012 at 11:24:52PM +0400, Stanislav Kinsbursky wrote:
-> 11.04.2012 22:22, J. Bruce Fields Ð½Ð°Ð¿Ð¸ÑÐ°Ð»:
-> >>>  What would happen, if we will have situation like below:
-> >>>  >  	mountd A	mountd B
-> >>>  >  	pid_ns		pid_ns
-> >>>  	|		  |
-> >>>  	mnt_ns		mnt_ns
-> >>>  	|		  |
-> >>>  	-----	net_ns ----
-> >>>  >  Is it possible, BTW?
-> >>>  It yes, that is such construction valid?
-> >Looks like a mess, no.  I'd expect there to be only one rpc.mountd
-> >running per network namespace.
-> 
-> Then we have to prevent such situations somehow.
-> Or it is done already?
+On Thu, Apr 26, 2012 at 12:00 PM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Thu, 2012-04-26 at 11:56 -0500, Steve French wrote:
+>> On Thu, Apr 26, 2012 at 10:25 AM, Myklebust, Trond
+>> <Trond.Myklebust@netapp.com> wrote:
+>> > On Thu, 2012-04-26 at 09:54 -0500, Steve French wrote:
+>> >> On Thu, Apr 26, 2012 at 9:25 AM, David Howells <dhowells@redhat.com> wrote:
+>> >> > Steve French <smfrench@gmail.com> wrote:
+>> >> >
+>> >> >> Would it be better to make the stable vs volatile inode number an attribute
+>> >> >> of the volume  or something returned by the proposed xstat?
+>> >> >
+>> >> > I'm not sure what you mean by a stable vs a volatile inode number.
+>> >>
+>> >> Both NFS and CIFS (and SMB2) can return inode numbers or equivalent
+>> >> unique identifier, but in the case of CIFS some old servers don't support the
+>> >> calls which return inode numbers (or don't return them for all file system
+>> >> types, Windows FAT?) so in these cases cifs has to create inode
+>> >> numbers on the fly
+>> >> on the client.   inode numbers created on the client are not "stable" they
+>> >> can change on unmount/remount (which can cause problems for backup
+>> >> applications).
+>> >>
+>> >> Similarly NFSv4 does not require that servers always return stable inode numbers
+>> >> (that will never change) and introduced a concept of "volatile file handle."
+>> >> We have run into this in two cases (there are probably more) -
+>> >> Specialized NFS servers
+>> >> for HPC which deal with lots of transient inodes, and second those for servers
+>> >> which base there inode number on path (Windows NFS?).  See
+>> >> http://docs.oracle.com/cd/E19082-01/819-1634/rfsrefer-137/index.html
+>> >> or the NFSv4 RFC.
+>> >>
+>> >> Basically the question is whether it is worth reporting a flag on the
+>> >> call which returns
+>> >> the inode number to indicate that the inode number is "stable" (would not change
+>> >> on reboot or reconnection) or "volatile."    Since the majority of NFS
+>> >> and SMB2 servers
+>> >> can return stable inode numbers, I don't feel strongly about the need
+>> >> for an indicator
+>> >> of "stable" vs. "volatile" but I mention it because backup and
+>> >> migration applications
+>> >> mention this (if inode numbers are volatile, they may have to check
+>> >> for hardlinks differently
+>> >> for example)
+>> >
+>> > I don't understand. If the filesystem doesn't support real inode
+>> > numbers, then why report them at all? What use would an application have
+>> > for an inode number that can't be used to identify hard linked files?
+>>
+>> Well ... you have to have an inode number on the Linux client side even if
+>> the server doesn't report them (or has a bug and reports duplicates).
+>> If you can't tell hardlinked files apart fix the server (but in the
+>> cases where the file systems has this problem the server doesn't usually
+>> support hardlinks either).
+>>
+>> If the server's file system internal structures don't support real inode
+>> numbers (such as FAT or a ramdisk) then it either has to make them
+>> up based on something like path name or some other attribute of the
+>> file on disk.
+>>
+>> Servers like NetApp is where this gets interesting - for cifs e.g. level 1009
+>> query file info is used to query_file_internal_info (the inode number) but
+>> what if the server can not report inode numbers (due to a bug) in
+>> all cases.
+>
+> Right, but none of this explains why we need to report these bogus inode
+> numbers to the application in the xstat() reply.
 
-If there's a way to prevent it, great, otherwise I think we just tell
-people not to do that, and make sure any distro scripts (or whatever)
-don't do that.
+the question is whether the application (backup) would need to know
+that the inode numbers are bogus and from my conversations with
+guys writing backup software it seems that such data is useful to them.
 
-Actually, my statement above isn't quite right: we do allow running
-multiple rpc.mountd processes in one network namespace (see the
---num-threads option to rpc.mountd, which is sometimes necessary for
-performance).  But they should all be in the same namespaces and be
-using the same configuration.
 
---b.
+-- 
+Thanks,
+
+Steve
