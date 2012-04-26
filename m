@@ -1,251 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:41656 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757048Ab2DXR4U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Apr 2012 13:56:20 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
-        Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v3 5/8] NFS: Create a submount rpc_op
-Date: Tue, 24 Apr 2012 13:56:09 -0400
-Message-Id: <1335290172-1532-6-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1335290172-1532-1-git-send-email-bjschuma@netapp.com>
-References: <1335290172-1532-1-git-send-email-bjschuma@netapp.com>
+Received: from mail-qa0-f46.google.com ([209.85.216.46]:52304 "EHLO
+	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751843Ab2DZRKv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 13:10:51 -0400
+MIME-Version: 1.0
+In-Reply-To: <CAH2r5muXk+frkFz9X523Ny=RMwJGeqOPH75G1ToNa5QoMo5SkQ@mail.gmail.com>
+References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+	<CAH2r5ms4WQV3DnTvqNN=2N71Cj8UHwj8Z6+RHXgrAOv6mSoyQg@mail.gmail.com>
+	<20656.1335450358@redhat.com>
+	<CAH2r5mv1Lijdwk5zsQwYJr4Etb6fhrRyNXm-iFCQX+HecboGrQ@mail.gmail.com>
+	<1335453958.9701.10.camel@lade.trondhjem.org>
+	<CAH2r5mt5af-_hxBRKK72iD5Gr99bo91ec78Rov8EGVEx8=21mA@mail.gmail.com>
+	<1335459642.9701.27.camel@lade.trondhjem.org>
+	<CAH2r5mvmCfLrxRHje6Wx5X84zxPEHwRMUJGsjvWBujMu7w841w@mail.gmail.com>
+	<1335460011.9701.30.camel@lade.trondhjem.org>
+	<CAH2r5muXk+frkFz9X523Ny=RMwJGeqOPH75G1ToNa5QoMo5SkQ@mail.gmail.com>
+Date: Thu, 26 Apr 2012 12:10:50 -0500
+Message-ID: <CAH2r5mu6i6aKLqt2EagBECSEU7jxsy-muAwcXThKJ51cd+CHpQ@mail.gmail.com>
+Subject: Re: [PATCH 0/6] Extended file stat system call
+From: Steve French <smfrench@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: David Howells <dhowells@redhat.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
+        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "wine-devel@winehq.org" <wine-devel@winehq.org>,
+        "kfm-devel@kde.org" <kfm-devel@kde.org>,
+        "nautilus-list@gnome.org" <nautilus-list@gnome.org>,
+        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
+        "libc-alpha@sourceware.org" <libc-alpha@sourceware.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Thu, Apr 26, 2012 at 12:09 PM, Steve French <smfrench@gmail.com> wrote:
+> On Thu, Apr 26, 2012 at 12:06 PM, Myklebust, Trond
+> <Trond.Myklebust@netapp.com> wrote:
+>> On Thu, 2012-04-26 at 12:03 -0500, Steve French wrote:
+>>> On Thu, Apr 26, 2012 at 12:00 PM, Myklebust, Trond
+>>> <Trond.Myklebust@netapp.com> wrote:
+>>> > On Thu, 2012-04-26 at 11:56 -0500, Steve French wrote:
+>>> >> On Thu, Apr 26, 2012 at 10:25 AM, Myklebust, Trond
+>>> >> <Trond.Myklebust@netapp.com> wrote:
+>>> >> > On Thu, 2012-04-26 at 09:54 -0500, Steve French wrote:
+>>> >> >> On Thu, Apr 26, 2012 at 9:25 AM, David Howells <dhowells@redhat.com> wrote:
+>>> >> >> > Steve French <smfrench@gmail.com> wrote:
+>>> >> >> >
+>>> >> >> >> Would it be better to make the stable vs volatile inode number an attribute
+>>> >> >> >> of the volume  or something returned by the proposed xstat?
+>>> >> >> >
+>>> >> >> > I'm not sure what you mean by a stable vs a volatile inode number.
+>>> >> >>
+>>> >> >> Both NFS and CIFS (and SMB2) can return inode numbers or equivalent
+>>> >> >> unique identifier, but in the case of CIFS some old servers don't support the
+>>> >> >> calls which return inode numbers (or don't return them for all file system
+>>> >> >> types, Windows FAT?) so in these cases cifs has to create inode
+>>> >> >> numbers on the fly
+>>> >> >> on the client.   inode numbers created on the client are not "stable" they
+>>> >> >> can change on unmount/remount (which can cause problems for backup
+>>> >> >> applications).
+>>> >> >>
+>>> >> >> Similarly NFSv4 does not require that servers always return stable inode numbers
+>>> >> >> (that will never change) and introduced a concept of "volatile file handle."
+>>> >> >> We have run into this in two cases (there are probably more) -
+>>> >> >> Specialized NFS servers
+>>> >> >> for HPC which deal with lots of transient inodes, and second those for servers
+>>> >> >> which base there inode number on path (Windows NFS?).  See
+>>> >> >> http://docs.oracle.com/cd/E19082-01/819-1634/rfsrefer-137/index.html
+>>> >> >> or the NFSv4 RFC.
+>>> >> >>
+>>> >> >> Basically the question is whether it is worth reporting a flag on the
+>>> >> >> call which returns
+>>> >> >> the inode number to indicate that the inode number is "stable" (would not change
+>>> >> >> on reboot or reconnection) or "volatile."    Since the majority of NFS
+>>> >> >> and SMB2 servers
+>>> >> >> can return stable inode numbers, I don't feel strongly about the need
+>>> >> >> for an indicator
+>>> >> >> of "stable" vs. "volatile" but I mention it because backup and
+>>> >> >> migration applications
+>>> >> >> mention this (if inode numbers are volatile, they may have to check
+>>> >> >> for hardlinks differently
+>>> >> >> for example)
+>>> >> >
+>>> >> > I don't understand. If the filesystem doesn't support real inode
+>>> >> > numbers, then why report them at all? What use would an application have
+>>> >> > for an inode number that can't be used to identify hard linked files?
+>>> >>
+>>> >> Well ... you have to have an inode number on the Linux client side even if
+>>> >> the server doesn't report them (or has a bug and reports duplicates).
+>>> >> If you can't tell hardlinked files apart fix the server (but in the
+>>> >> cases where the file systems has this problem the server doesn't usually
+>>> >> support hardlinks either).
+>>> >>
+>>> >> If the server's file system internal structures don't support real inode
+>>> >> numbers (such as FAT or a ramdisk) then it either has to make them
+>>> >> up based on something like path name or some other attribute of the
+>>> >> file on disk.
+>>> >>
+>>> >> Servers like NetApp is where this gets interesting - for cifs e.g. level 1009
+>>> >> query file info is used to query_file_internal_info (the inode number) but
+>>> >> what if the server can not report inode numbers (due to a bug) in
+>>> >> all cases.
+>>> >
+>>> > Right, but none of this explains why we need to report these bogus inode
+>>> > numbers to the application in the xstat() reply.
+>>>
+>>> the question is whether the application (backup) would need to know
+>>> that the inode numbers are bogus and from my conversations with
+>>> guys writing backup software it seems that such data is useful to them.
+>>
+>> You are still not explaining why they need to know the values at all? If
+>> the values are bogus, then don't return them, and don't set the flag
+>> that says they are being returned.
+>
+> I don't know, but assumed it was because it was an easy way
+> to index them since the inode numbers even if they "change"
+> on remount, are still unique.
 
-This simplifies the code for v2 and v3 and gives v4 a chance to decide
-on referrals without needing to modify the generic client.
+if the call allows the inode number not to be returned, that
+is probably ok (they can always use the posix stat to get
+the client generated one)
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/internal.h       |   15 ++++-----------
- fs/nfs/namespace.c      |   46 +++++++++++++++++++---------------------------
- fs/nfs/nfs3proc.c       |    1 +
- fs/nfs/nfs4_fs.h        |    2 ++
- fs/nfs/nfs4namespace.c  |   20 +++++++++++++++++++-
- fs/nfs/nfs4proc.c       |    1 +
- fs/nfs/proc.c           |    1 +
- include/linux/nfs_xdr.h |    2 ++
- 8 files changed, 49 insertions(+), 39 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 15f702f..21d49e3 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -184,17 +184,6 @@ static inline void nfs_fs_proc_exit(void)
- }
- #endif
- 
--/* nfs4namespace.c */
--#ifdef CONFIG_NFS_V4
--extern struct vfsmount *nfs_do_refmount(struct dentry *dentry);
--#else
--static inline
--struct vfsmount *nfs_do_refmount(struct dentry *dentry)
--{
--	return ERR_PTR(-ENOENT);
--}
--#endif
--
- /* callback_xdr.c */
- extern struct svc_version nfs4_callback_version1;
- extern struct svc_version nfs4_callback_version4;
-@@ -279,6 +268,10 @@ extern void nfs_sb_deactive(struct super_block *sb);
- extern char *nfs_path(char **p, struct dentry *dentry,
- 		      char *buffer, ssize_t buflen);
- extern struct vfsmount *nfs_d_automount(struct path *path);
-+struct vfsmount *nfs_submount(struct nfs_server *, struct dentry *,
-+			      struct nfs_fh *, struct nfs_fattr *);
-+struct vfsmount *nfs_do_submount(struct dentry *, struct nfs_fh *,
-+				 struct nfs_fattr *, rpc_authflavor_t);
- 
- /* getroot.c */
- extern struct dentry *nfs_get_root(struct super_block *, struct nfs_fh *,
-diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-index 9accf45..e36fd8a 100644
---- a/fs/nfs/namespace.c
-+++ b/fs/nfs/namespace.c
-@@ -26,11 +26,6 @@ static LIST_HEAD(nfs_automount_list);
- static DECLARE_DELAYED_WORK(nfs_automount_task, nfs_expire_automounts);
- int nfs_mountpoint_expiry_timeout = 500 * HZ;
- 
--static struct vfsmount *nfs_do_submount(struct dentry *dentry,
--					struct nfs_fh *fh,
--					struct nfs_fattr *fattr,
--					rpc_authflavor_t authflavor);
--
- /*
-  * nfs_path - reconstruct the path given an arbitrary dentry
-  * @base - used to return pointer to the end of devname part of path
-@@ -134,11 +129,8 @@ struct vfsmount *nfs_d_automount(struct path *path)
- {
- 	struct vfsmount *mnt;
- 	struct nfs_server *server = NFS_SERVER(path->dentry->d_inode);
--	struct dentry *parent;
- 	struct nfs_fh *fh = NULL;
- 	struct nfs_fattr *fattr = NULL;
--	int err;
--	rpc_authflavor_t flavor = RPC_AUTH_UNIX;
- 
- 	dprintk("--> nfs_d_automount()\n");
- 
-@@ -154,21 +146,7 @@ struct vfsmount *nfs_d_automount(struct path *path)
- 
- 	dprintk("%s: enter\n", __func__);
- 
--	/* Look it up again to get its attributes */
--	parent = dget_parent(path->dentry);
--	err = server->nfs_client->rpc_ops->lookup(server->client, parent->d_inode,
--						  &path->dentry->d_name,
--						  fh, fattr);
--	dput(parent);
--	if (err != 0) {
--		mnt = ERR_PTR(err);
--		goto out;
--	}
--
--	if (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)
--		mnt = nfs_do_refmount(path->dentry);
--	else
--		mnt = nfs_do_submount(path->dentry, fh, fattr, flavor);
-+	mnt = server->nfs_client->rpc_ops->submount(server, path->dentry, fh, fattr);
- 	if (IS_ERR(mnt))
- 		goto out;
- 
-@@ -241,10 +219,8 @@ static struct vfsmount *nfs_do_clone_mount(struct nfs_server *server,
-  * @authflavor - security flavor to use when performing the mount
-  *
-  */
--static struct vfsmount *nfs_do_submount(struct dentry *dentry,
--					struct nfs_fh *fh,
--					struct nfs_fattr *fattr,
--					rpc_authflavor_t authflavor)
-+struct vfsmount *nfs_do_submount(struct dentry *dentry, struct nfs_fh *fh,
-+				 struct nfs_fattr *fattr, rpc_authflavor_t authflavor)
- {
- 	struct nfs_clone_mount mountdata = {
- 		.sb = dentry->d_sb,
-@@ -277,3 +253,19 @@ out:
- 	dprintk("<-- nfs_do_submount() = %p\n", mnt);
- 	return mnt;
- }
-+
-+struct vfsmount *nfs_submount(struct nfs_server *server, struct dentry *dentry,
-+			      struct nfs_fh *fh, struct nfs_fattr *fattr)
-+{
-+	int err;
-+	struct dentry *parent = dget_parent(dentry);
-+
-+	/* Look it up again to get its attributes */
-+	err = server->nfs_client->rpc_ops->lookup(server->client, parent->d_inode,
-+						  &dentry->d_name, fh, fattr);
-+	dput(parent);
-+	if (err != 0)
-+		return ERR_PTR(err);
-+
-+	return nfs_do_submount(dentry, fh, fattr, server->client->cl_auth->au_flavor);
-+}
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index 5242eae..d39d1d7 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -876,6 +876,7 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
- 	.file_inode_ops	= &nfs3_file_inode_operations,
- 	.file_ops	= &nfs_file_operations,
- 	.getroot	= nfs3_proc_get_root,
-+	.submount	= nfs_submount,
- 	.getattr	= nfs3_proc_getattr,
- 	.setattr	= nfs3_proc_setattr,
- 	.lookup		= nfs3_proc_lookup,
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 670d5e5..77ed882 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -208,6 +208,8 @@ extern const struct inode_operations nfs4_dir_inode_operations;
- /* nfs4namespace.c */
- rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *);
- struct rpc_clnt *nfs4_create_sec_client(struct rpc_clnt *, struct inode *, struct qstr *);
-+struct vfsmount *nfs4_submount(struct nfs_server *, struct dentry *,
-+			       struct nfs_fh *, struct nfs_fattr *);
- 
- /* nfs4proc.c */
- extern int nfs4_proc_setclientid(struct nfs_client *, u32, unsigned short, struct rpc_cred *, struct nfs4_setclientid_res *);
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index e01cd03..b6baa6e 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -305,7 +305,7 @@ out:
-  * @dentry - dentry of referral
-  *
-  */
--struct vfsmount *nfs_do_refmount(struct dentry *dentry)
-+static struct vfsmount *nfs_do_refmount(struct dentry *dentry)
- {
- 	struct vfsmount *mnt = ERR_PTR(-ENOMEM);
- 	struct dentry *parent;
-@@ -346,3 +346,21 @@ out:
- 	dprintk("%s: done\n", __func__);
- 	return mnt;
- }
-+
-+struct vfsmount *nfs4_submount(struct nfs_server *server, struct dentry *dentry,
-+			       struct nfs_fh *fh, struct nfs_fattr *fattr)
-+{
-+	int err;
-+	struct dentry *parent = dget_parent(dentry);
-+
-+	/* Look it up again to get its attributes */
-+	err = server->nfs_client->rpc_ops->lookup(server->client, parent->d_inode,
-+						  &dentry->d_name, fh, fattr);
-+	dput(parent);
-+	if (err != 0)
-+		return ERR_PTR(err);
-+
-+	if (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)
-+		return nfs_do_refmount(dentry);
-+	return nfs_do_submount(dentry, fh, fattr, server->client->cl_auth->au_flavor);
-+}
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index a9b9e28..5d8885b 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6537,6 +6537,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
- 	.file_inode_ops	= &nfs4_file_inode_operations,
- 	.file_ops	= &nfs4_file_operations,
- 	.getroot	= nfs4_proc_get_root,
-+	.submount	= nfs4_submount,
- 	.getattr	= nfs4_proc_getattr,
- 	.setattr	= nfs4_proc_setattr,
- 	.lookup		= nfs4_proc_lookup,
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index b63b6f4..8dfe960 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -733,6 +733,7 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
- 	.file_inode_ops	= &nfs_file_inode_operations,
- 	.file_ops	= &nfs_file_operations,
- 	.getroot	= nfs_proc_get_root,
-+	.submount	= nfs_submount,
- 	.getattr	= nfs_proc_getattr,
- 	.setattr	= nfs_proc_setattr,
- 	.lookup		= nfs_proc_lookup,
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 6cba0a1..ada3acd 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1234,6 +1234,8 @@ struct nfs_rpc_ops {
- 
- 	int	(*getroot) (struct nfs_server *, struct nfs_fh *,
- 			    struct nfs_fsinfo *);
-+	struct vfsmount *(*submount) (struct nfs_server *, struct dentry *,
-+				      struct nfs_fh *, struct nfs_fattr *);
- 	int	(*getattr) (struct nfs_server *, struct nfs_fh *,
- 			    struct nfs_fattr *);
- 	int	(*setattr) (struct dentry *, struct nfs_fattr *,
+
 -- 
-1.7.10
+Thanks,
 
+Steve
