@@ -1,97 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:5532 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753677Ab2DPPOi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Apr 2012 11:14:38 -0400
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q3GFEbSE017128
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Apr 2012 11:14:37 -0400
-Message-ID: <4F8C375A.7020200@RedHat.com>
-Date: Mon, 16 Apr 2012 11:14:34 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-qa0-f46.google.com ([209.85.216.46]:33426 "EHLO
+	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752250Ab2DZRGY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 13:06:24 -0400
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v5 1/9] nfsdcld: add client tracking daemon stub
-References: <1328111096-28430-1-git-send-email-jlayton@redhat.com> <1328111096-28430-2-git-send-email-jlayton@redhat.com> <4F8C277F.2090707@RedHat.com> <20120416102323.7f86eb56@corrin.poochiereds.net>
-In-Reply-To: <20120416102323.7f86eb56@corrin.poochiereds.net>
+In-Reply-To: <20120426142816.GB7176@fieldses.org>
+References: <CAH2r5muMb8m9-fMc_tcfn3ku_s55q9EEbc-vzvoFjPnsDdq1gA@mail.gmail.com>
+	<20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+	<20120419140612.17272.57774.stgit@warthog.procyon.org.uk>
+	<20120424212911.GA26073@fieldses.org>
+	<18765.1335447954@redhat.com>
+	<20120426142816.GB7176@fieldses.org>
+Date: Thu, 26 Apr 2012 12:06:22 -0500
+Message-ID: <CAH2r5mut083KtCZWMsvC08WtJPJpBxXm6M0HCY4hk8T3hN7xdg@mail.gmail.com>
+Subject: Re: [PATCH 1/6] xstat: Add a pair of system calls to make extended
+ file stats available
+From: Steve French <smfrench@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
+        wine-devel@winehq.org, linux-api@vger.kernel.org,
+        libc-alpha@sourceware.org
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Apr 26, 2012 at 9:28 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Thu, Apr 26, 2012 at 02:45:54PM +0100, David Howells wrote:
+>> Steve French <smfrench@gmail.com> wrote:
+>>
+>> > I also would prefer that we simply treat the time granularity as part
+>> > of the superblock (mounted volume) ie returned on fstat rather than on
+>> > every stat of the filesystem.   For cifs mounts we could conceivably
+>> > have different time granularity (1 or 2 second) on mounts to old
+>> > servers rather than 100 nanoseconds.
+>>
+>> The question is whether you want to have to do a statfs in addition to a stat?
+>> I suppose you can potentially cache the statfs based on device number.
+>>
+>> That said, there are cases where caching filesystem-level info based on i_dev
+>> doesn't work.  OpenAFS springs to mind as that only has one superblock and
+>> thus one set of device numbers, but keeps all the inodes for all the different
+>> volumes it may have mounted there.
+>>
+>> I don't know whether this would be a problem for CIFS too - say on a windows
+>> server you fabricate P:, for example, by joining together several filesystems
+>> (with junctions?).  How does this appear on a Linux client when it steps from
+>> one filesystem to another within a mounted share?
+>
+> In the NFS case we do try to preserve filesystem boundaries as well as
+> we can--the protocol has an fsid field and the client creates a new
+> mount each time it sees it change.  And the protocol defines time_delta
+> as a per-filesystem attribute (though, somewhat hilariously, there's
+> also a per-filesystem "homogeneous" attribute that a server can clear to
+> indicate the per-filesystem attributes might actually vary within the
+> filesystem.)
+
+Thank you for reminding me, I need to look at this case more ...
+although cifs creates  implicit submounts (as we traverse DFS referrals)
+there are probably cases where we need to do the same thing as NFS
+and look at the fsid so we don't run into a Windows server
+exporting something with a "junction" (e.g. directory redirection to
+a DVD drive for example) and thus cross file system volume boundaries.
 
 
-On 04/16/2012 10:23 AM, Jeff Layton wrote:
-> On Mon, 16 Apr 2012 10:06:55 -0400
-> Steve Dickson <SteveD@redhat.com> wrote:
-> 
->>
->>
->> On 02/01/2012 10:44 AM, Jeff Layton wrote:
->>> This program opens and "listens" on the new nfsd/cld rpc_pipefs pipe.
->>> The code here doesn't actually do anything on stable storage yet. That
->>> will be added in a later patch.
->>>
->>> The patch also adds a autoconf enable switch for the new daemon that
->>> defaults to "no", and a test for the upcall description header file.
->>>
->>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
->>> ---
->>>  configure.ac              |   14 +++
->>>  utils/Makefile.am         |    4 +
->>>  utils/nfsdcld/Makefile.am |   14 +++
->>>  utils/nfsdcld/nfsdcld.c   |  275 +++++++++++++++++++++++++++++++++++++++++++++
->>>  4 files changed, 307 insertions(+), 0 deletions(-)
->>>  create mode 100644 utils/nfsdcld/Makefile.am
->>>  create mode 100644 utils/nfsdcld/nfsdcld.c
->>>
->>> diff --git a/configure.ac b/configure.ac
->>> index 920e8da..d50e54e 100644
->>> --- a/configure.ac
->>> +++ b/configure.ac
->>> @@ -185,6 +185,12 @@ else
->>>  	AM_CONDITIONAL(MOUNT_CONFIG, [test "$enable_mount" = "yes"])
->>>  fi
->>>  
->>> +AC_ARG_ENABLE(nfsdcld,
->>> +	[AC_HELP_STRING([--enable-nfsdcld],
->>> +			[Create nfsdcld NFSv4 clientid tracking daemon. <:@default=no@:>@])],
->>> +	enable_nfsdcld=$enableval,
->>> +	enable_nfsdcld="no")
->>> +
->>>  dnl Check for TI-RPC library and headers
->>>  AC_LIBTIRPC
->>>  
->>> @@ -260,6 +266,13 @@ if test "$enable_nfsv4" = yes; then
->>>    dnl check for the keyutils libraries and headers
->>>    AC_KEYUTILS
->>>  
->>> +  if test "$enable_nfsdcld" = "yes"; then
->>> +    AC_CHECK_HEADERS([linux/nfsd/cld.h], ,
->>> +		     AC_MSG_ERROR([Cannot find header needed for nfsdcld]))
->>> +  fi
->> This adds a dependency on the kernel headers being present which 
->> is unprecedented for nfs-utils or any other package I'm aware of
->> and I just don't think its a good idea... 
->>
->> So I'm wondering if there is someway around creating this
->> dependency...
->>
-> 
-> The idea with that header was to have a common userspace/kernel header
-> that describes the upcall/downcall format. The proper place for those
-> is generally the kernel-headers package (at least on Fedora). Other
-> distros have a similar package.
-> 
-> One possibility is to include a copy of this header with nfs-utils, and
-> only use it if /usr/include/linux/nfsd/cld.h isn't present. It's not
-> ideal, but I suppose we could live with it if adding a dependency on
-> kernel headers is anathema. It would take some rework of the code and
-> autoconf/automake stuff however.
-> 
-I believe this is how it was done in the past, keeping separate
-header files... Since I'm causing the pain, I would be more than 
-willing to do the autoconf/automake updates...
+-- 
+Thanks,
 
-steved.
+Steve
