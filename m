@@ -1,55 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:19812 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:42184 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755467Ab2DWVvz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Apr 2012 17:51:55 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/3] NFSv4: Ensure we do not reuse open owner names
-Date: Mon, 23 Apr 2012 21:51:39 +0000
-Message-ID: <1335217898.11427.49.camel@lade.trondhjem.org>
-References: <1335213414-20826-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <418AC7C0-6289-40D0-85DB-092C29BA40D3@oracle.com>
-	 <1335214124.11427.23.camel@lade.trondhjem.org>
-	 <537D97FE-BB59-4541-A705-C01178025C48@oracle.com>
-	 <1335216748.11427.38.camel@lade.trondhjem.org>
-	 <2D111BD9-B02C-4B58-B5F0-667EF39138F9@oracle.com>
-In-Reply-To: <2D111BD9-B02C-4B58-B5F0-667EF39138F9@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1757845Ab2DZPzG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Apr 2012 11:55:06 -0400
+Subject: [PATCH 00/10] NFS: callback threads containerization
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Thu, 26 Apr 2012 19:54:51 +0400
+Message-ID: <20120426155250.3763.98748.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA0LTIzIGF0IDE3OjM4IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gQXByIDIzLCAyMDEyLCBhdCA1OjMyIFBNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiAN
-Cj4gPiBPbiBNb24sIDIwMTItMDQtMjMgYXQgMTY6NTcgLTA0MDAsIENodWNrIExldmVyIHdyb3Rl
-Og0KPiA+PiBPbiBBcHIgMjMsIDIwMTIsIGF0IDQ6NDggUE0sIE15a2xlYnVzdCwgVHJvbmQgd3Jv
-dGU6DQo+ID4+IA0KPiA+Pj4gT24gTW9uLCAyMDEyLTA0LTIzIGF0IDE2OjQ0IC0wNDAwLCBDaHVj
-ayBMZXZlciB3cm90ZToNCj4gPj4+PiBIaS0NCj4gPj4+PiANCj4gPj4+PiBJIHdpc2ggeW91IGhh
-ZCB0b2xkIG1lIHlvdSB3ZXJlIGdvaW5nIHRvIGZpeCB0aGlzIHRvby4gIEkndmUgYmVlbiB0ZXN0
-aW5nIGEgZml4IGZvciB0aGlzIGZvciBhIGNvdXBsZSB3ZWVrcy4gIFdhcyBnb2luZyB0byBwb3N0
-IHRoaXMgYWZ0ZXJub29uLiAgU2hhbGwgSSB0b3NzIG1pbmU/DQo+ID4+PiANCj4gPj4+IEkgd2Fz
-IGhpdHRpbmcgdGhhdCBCQURfU0VRSUQgc3Rvcm0gZHVyaW5nIHRlc3Rpbmcgb2YgdGhlIG90aGVy
-IG9wZW4NCj4gPj4+IGZpeGVzIGxhc3Qgd2Vlay4NCj4gPj4gDQo+ID4+IEZhaXIgZW5vdWdoLCBi
-dXQgSSBhbm5vdW5jZWQgSSBoYWQgYSBmaXggaW4gbXkgQXByaWwgMTUgc3RhdHVzIHJlcG9ydC4g
-IE9oIHdlbGwuDQo+ID4+IA0KPiA+PiBTbywgSSBkZWNpZGVkIHRoYXQgYSB0aW1lc3RhbXAgd291
-bGQgbGVhayBpbmZvcm1hdGlvbiBhYm91dCB0aGUgY2xpZW50LCBzbyBJJ20gdXNpbmcgYSBzaW1w
-bGUgY291bnRlciBpbnN0ZWFkLiAgV291bGQgeW91IGNvbnNpZGVyIHRoYXQgZm9yIHlvdXIgcGF0
-Y2g/DQo+ID4gDQo+ID4gSG93IHdvdWxkIGEgdGltZXN0YW1wIGxlYWsgdXNlZnVsIGluZm9ybWF0
-aW9uPyBUaGUgc2VydmVyIGFuZCBhbnlvbmUNCj4gPiBtb25pdG9yaW5nIHRoZSBORlMgdHJhZmZp
-YyBhbHJlYWR5IGtub3dzIGF0IHdoYXQgdGltZSB0aGUgb3BlbiBvd25lciB3YXMNCj4gPiBjcmVh
-dGVkIHRvIHdpdGhpbiBhIGZldyBtaWxsaXNlY29uZHMuDQo+IA0KPiBJdCBsZWFrcyB0aGUgZXhh
-Y3QgdGltZSBhcyB0aGUgY2xpZW50IHNlZXMgaXQuICBUaGlzIGlzIHdoeSB0aW1lLWJhc2VkIFVV
-SURzIGFyZSBubyBsb25nZXIgY29uc2lkZXJlZCBzYWZlLg0KDQouLmFuZCBmaWxlIGNyZWF0aW9u
-IGRhdGVzIGxlYWsgdGhlIGV4YWN0IHRpbWUgYXMgdGhlIHNlcnZlciBzZWVzIGl0Li4uDQpJZiB5
-b3UgYXJlIHVzaW5nIE5GUyBvbiBhbiB1bnRydXN0ZWQgbmV0d29yaywgdGhlbiB5b3Ugc2hvdWxk
-IGJlIHVzaW5nDQpSUENTRUNfR1NTIHdpdGggZnVsbCBwcml2YWN5Lg0KDQo+IEJ1dCBhbHNvLCBp
-cyBpdCBwb3NzaWJsZSB0aGF0IGEgc3RhdGVfb3duZXIgY291bGQgYmUgZGVzdHJveWVkIGFuZCBj
-cmVhdGVkIHNvIHF1aWNrbHkgb24gYSBzeXN0ZW0gd2l0aCBpbmFkZXF1YXRlIHRpbWVzdGFtcCBy
-ZXNvbHV0aW9uLCBzdWNoIHRoYXQgdGhlIG5ldyBvd25lciBJRCB3b3VsZCBub3QgYWN0dWFsbHkg
-YmUgZGlmZmVyZW50IHRoYW4gdGhlIHByZXZpb3VzIG9uZT8NCg0KQ2FjaGluZyBhbGwgcHJldmlv
-dXNseSB1c2VkIHVuaXF1aWZpZXJzIG9uIHRoZSBMUlUgbGlzdCBmb3IgYSB3aGlsZQ0KdGFrZXMg
-Y2FyZSBvZiB0aGF0IHByb2JsZW0gKHNlZSB0aGUgdGhpcmQgcGF0Y2ggaW4gbXkgc2VyaWVzKS4N
-Cg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpO
-ZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+This aptch set depened on "SUNRPC: separate per-net data creation from service
+creation" patch set sent earlier.
+
+The following series consists of:
+
+---
+
+Stanislav Kinsbursky (10):
+      NFS: pass net to nfs_callback_down()
+      NFS: callback service creation function introduced
+      NFS: move per-net callback thread initialization to nfs_callback_up_net()
+      NFS: callback up - transport backchannel cleanup
+      NFS: callback service start function introduced
+      NFS: callback up - users counting cleanup
+      NFS: make nfs_callback_tcpport per network context
+      NFS: make nfs_callback_tcpport6 per network context
+      NFS; callback per-net usage counting introduced
+      NFS: add debug messages to callback down function
+
+
+ fs/nfs/callback.c  |  288 ++++++++++++++++++++++++++++++++++------------------
+ fs/nfs/callback.h  |    4 -
+ fs/nfs/client.c    |    2 
+ fs/nfs/netns.h     |    3 +
+ fs/nfs/nfs4state.c |    7 +
+ 5 files changed, 201 insertions(+), 103 deletions(-)
+
