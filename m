@@ -1,134 +1,288 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:39854 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:12976 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753753Ab2DWUhC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Apr 2012 16:37:02 -0400
+	id S1754032Ab2DZVDp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Apr 2012 17:03:45 -0400
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/3] NFSv4: Ensure we do not reuse open owner names
-Date: Mon, 23 Apr 2012 16:36:52 -0400
-Message-Id: <1335213414-20826-1-git-send-email-Trond.Myklebust@netapp.com>
+Subject: [PATCH 8/8] NFSv4: Simplify the NFSv4 REMOVE, LINK and RENAME compounds
+Date: Thu, 26 Apr 2012 17:03:35 -0400
+Message-Id: <1335474215-29127-8-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1335474215-29127-7-git-send-email-Trond.Myklebust@netapp.com>
+References: <1335474215-29127-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1335474215-29127-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1335474215-29127-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1335474215-29127-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1335474215-29127-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1335474215-29127-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1335474215-29127-7-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The NFSv4 spec is ambiguous about whether or not it is permissible
-to reuse open owner names, so play it safe. This patch adds a timestamp
-to the state_owner structure, and combines that with the IDA based
-uniquifier.
-Fixes a regression whereby the Linux server returns NFS4ERR_BAD_SEQID.
+Get rid of the post-op GETATTR on the directory in order to reduce
+the amount of processing done on the server.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/nfs4_fs.h        |    1 +
- fs/nfs/nfs4proc.c       |    6 +++---
- fs/nfs/nfs4state.c      |    1 +
- fs/nfs/nfs4xdr.c        |    9 +++++----
- include/linux/nfs_xdr.h |    7 ++++++-
- 5 files changed, 16 insertions(+), 8 deletions(-)
+ fs/nfs/nfs4proc.c       |   34 +++-------------------------------
+ fs/nfs/nfs4xdr.c        |   37 ++++---------------------------------
+ include/linux/nfs_xdr.h |    2 --
+ 3 files changed, 7 insertions(+), 66 deletions(-)
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 97ecc86..b6db9e3 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -59,6 +59,7 @@ struct nfs_unique_id {
- 
- #define NFS_SEQID_CONFIRMED 1
- struct nfs_seqid_counter {
-+	ktime_t create_time;
- 	int owner_id;
- 	int flags;
- 	u32 counter;
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index f875cf3..60d5f4c 100644
+index 0239d52..ef7e29d 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -838,7 +838,8 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
- 	p->o_arg.open_flags = flags;
- 	p->o_arg.fmode = fmode & (FMODE_READ|FMODE_WRITE);
- 	p->o_arg.clientid = server->nfs_client->cl_clientid;
--	p->o_arg.id = sp->so_seqid.owner_id;
-+	p->o_arg.id.create_time = ktime_to_ns(sp->so_seqid.create_time);
-+	p->o_arg.id.uniquifier = sp->so_seqid.owner_id;
- 	p->o_arg.name = &dentry->d_name;
- 	p->o_arg.server = server;
- 	p->o_arg.bitmask = server->attr_bitmask;
-@@ -1466,8 +1467,7 @@ static void nfs4_open_prepare(struct rpc_task *task, void *calldata)
- 			goto unlock_no_action;
- 		rcu_read_unlock();
- 	}
--	/* Update sequence id. */
--	data->o_arg.id = sp->so_seqid.owner_id;
-+	/* Update client id. */
- 	data->o_arg.clientid = sp->so_server->nfs_client->cl_clientid;
- 	if (data->o_arg.claim == NFS4_OPEN_CLAIM_PREVIOUS) {
- 		task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_OPEN_NOATTR];
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 0f43414..3b07f09 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -393,6 +393,7 @@ nfs4_remove_state_owner_locked(struct nfs4_state_owner *sp)
- static void
- nfs4_init_seqid_counter(struct nfs_seqid_counter *sc)
- {
-+	sc->create_time = ktime_get();
- 	sc->flags = 0;
- 	sc->counter = 0;
- 	spin_lock_init(&sc->lock);
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index c74fdb1..77fc5f9 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -74,7 +74,7 @@ static int nfs4_stat_to_errno(int);
- /* lock,open owner id:
-  * we currently use size 2 (u64) out of (NFS4_OPAQUE_LIMIT  >> 2)
-  */
--#define open_owner_id_maxsz	(1 + 1 + 4)
-+#define open_owner_id_maxsz	(1 + 2 + 1 + 1 + 2)
- #define lock_owner_id_maxsz	(1 + 1 + 4)
- #define decode_lockowner_maxsz	(1 + XDR_QUADLEN(IDMAP_NAMESZ))
- #define compound_encode_hdr_maxsz	(3 + (NFS4_MAXTAGLEN >> 2))
-@@ -1340,12 +1340,13 @@ static inline void encode_openhdr(struct xdr_stream *xdr, const struct nfs_opena
-  */
- 	encode_nfs4_seqid(xdr, arg->seqid);
- 	encode_share_access(xdr, arg->fmode);
--	p = reserve_space(xdr, 32);
-+	p = reserve_space(xdr, 36);
- 	p = xdr_encode_hyper(p, arg->clientid);
--	*p++ = cpu_to_be32(20);
-+	*p++ = cpu_to_be32(24);
- 	p = xdr_encode_opaque_fixed(p, "open id:", 8);
- 	*p++ = cpu_to_be32(arg->server->s_dev);
--	xdr_encode_hyper(p, arg->id);
-+	*p++ = cpu_to_be32(arg->id.uniquifier);
-+	xdr_encode_hyper(p, arg->id.create_time);
+@@ -2756,7 +2756,6 @@ static int _nfs4_proc_remove(struct inode *dir, struct qstr *name)
+ 		.fh = NFS_FH(dir),
+ 		.name.len = name->len,
+ 		.name.name = name->name,
+-		.bitmask = server->attr_bitmask,
+ 	};
+ 	struct nfs_removeres res = {
+ 		.server = server,
+@@ -2766,19 +2765,11 @@ static int _nfs4_proc_remove(struct inode *dir, struct qstr *name)
+ 		.rpc_argp = &args,
+ 		.rpc_resp = &res,
+ 	};
+-	int status = -ENOMEM;
+-
+-	res.dir_attr = nfs_alloc_fattr();
+-	if (res.dir_attr == NULL)
+-		goto out;
++	int status;
+ 
+ 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
+-	if (status == 0) {
++	if (status == 0)
+ 		update_changeattr(dir, &res.cinfo);
+-		nfs_post_op_update_inode(dir, res.dir_attr);
+-	}
+-	nfs_free_fattr(res.dir_attr);
+-out:
+ 	return status;
  }
  
- static inline void encode_createmode(struct xdr_stream *xdr, const struct nfs_openargs *arg)
+@@ -2800,7 +2791,6 @@ static void nfs4_proc_unlink_setup(struct rpc_message *msg, struct inode *dir)
+ 	struct nfs_removeargs *args = msg->rpc_argp;
+ 	struct nfs_removeres *res = msg->rpc_resp;
+ 
+-	args->bitmask = server->cache_consistency_bitmask;
+ 	res->server = server;
+ 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_REMOVE];
+ 	nfs41_init_sequence(&args->seq_args, &res->seq_res, 1);
+@@ -2825,7 +2815,6 @@ static int nfs4_proc_unlink_done(struct rpc_task *task, struct inode *dir)
+ 	if (nfs4_async_handle_error(task, res->server, NULL) == -EAGAIN)
+ 		return 0;
+ 	update_changeattr(dir, &res->cinfo);
+-	nfs_post_op_update_inode(dir, res->dir_attr);
+ 	return 1;
+ }
+ 
+@@ -2836,7 +2825,6 @@ static void nfs4_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
+ 	struct nfs_renameres *res = msg->rpc_resp;
+ 
+ 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_RENAME];
+-	arg->bitmask = server->attr_bitmask;
+ 	res->server = server;
+ 	nfs41_init_sequence(&arg->seq_args, &res->seq_res, 1);
+ }
+@@ -2862,9 +2850,7 @@ static int nfs4_proc_rename_done(struct rpc_task *task, struct inode *old_dir,
+ 		return 0;
+ 
+ 	update_changeattr(old_dir, &res->old_cinfo);
+-	nfs_post_op_update_inode(old_dir, res->old_fattr);
+ 	update_changeattr(new_dir, &res->new_cinfo);
+-	nfs_post_op_update_inode(new_dir, res->new_fattr);
+ 	return 1;
+ }
+ 
+@@ -2877,7 +2863,6 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 		.new_dir = NFS_FH(new_dir),
+ 		.old_name = old_name,
+ 		.new_name = new_name,
+-		.bitmask = server->attr_bitmask,
+ 	};
+ 	struct nfs_renameres res = {
+ 		.server = server,
+@@ -2889,21 +2874,11 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 	};
+ 	int status = -ENOMEM;
+ 	
+-	res.old_fattr = nfs_alloc_fattr();
+-	res.new_fattr = nfs_alloc_fattr();
+-	if (res.old_fattr == NULL || res.new_fattr == NULL)
+-		goto out;
+-
+ 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (!status) {
+ 		update_changeattr(old_dir, &res.old_cinfo);
+-		nfs_post_op_update_inode(old_dir, res.old_fattr);
+ 		update_changeattr(new_dir, &res.new_cinfo);
+-		nfs_post_op_update_inode(new_dir, res.new_fattr);
+ 	}
+-out:
+-	nfs_free_fattr(res.new_fattr);
+-	nfs_free_fattr(res.old_fattr);
+ 	return status;
+ }
+ 
+@@ -2941,18 +2916,15 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, struct qstr *
+ 	int status = -ENOMEM;
+ 
+ 	res.fattr = nfs_alloc_fattr();
+-	res.dir_attr = nfs_alloc_fattr();
+-	if (res.fattr == NULL || res.dir_attr == NULL)
++	if (res.fattr == NULL)
+ 		goto out;
+ 
+ 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (!status) {
+ 		update_changeattr(dir, &res.cinfo);
+-		nfs_post_op_update_inode(dir, res.dir_attr);
+ 		nfs_post_op_update_inode(inode, res.fattr);
+ 	}
+ out:
+-	nfs_free_fattr(res.dir_attr);
+ 	nfs_free_fattr(res.fattr);
+ 	return status;
+ }
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index e77097c..4a37c31 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -589,38 +589,29 @@ static int nfs4_stat_to_errno(int);
+ #define NFS4_enc_remove_sz	(compound_encode_hdr_maxsz + \
+ 				encode_sequence_maxsz + \
+ 				encode_putfh_maxsz + \
+-				encode_remove_maxsz + \
+-				encode_getattr_maxsz)
++				encode_remove_maxsz)
+ #define NFS4_dec_remove_sz	(compound_decode_hdr_maxsz + \
+ 				decode_sequence_maxsz + \
+ 				decode_putfh_maxsz + \
+-				decode_remove_maxsz + \
+-				decode_getattr_maxsz)
++				decode_remove_maxsz)
+ #define NFS4_enc_rename_sz	(compound_encode_hdr_maxsz + \
+ 				encode_sequence_maxsz + \
+ 				encode_putfh_maxsz + \
+ 				encode_savefh_maxsz + \
+ 				encode_putfh_maxsz + \
+-				encode_rename_maxsz + \
+-				encode_getattr_maxsz + \
+-				encode_restorefh_maxsz + \
+-				encode_getattr_maxsz)
++				encode_rename_maxsz)
+ #define NFS4_dec_rename_sz	(compound_decode_hdr_maxsz + \
+ 				decode_sequence_maxsz + \
+ 				decode_putfh_maxsz + \
+ 				decode_savefh_maxsz + \
+ 				decode_putfh_maxsz + \
+-				decode_rename_maxsz + \
+-				decode_getattr_maxsz + \
+-				decode_restorefh_maxsz + \
+-				decode_getattr_maxsz)
++				decode_rename_maxsz)
+ #define NFS4_enc_link_sz	(compound_encode_hdr_maxsz + \
+ 				encode_sequence_maxsz + \
+ 				encode_putfh_maxsz + \
+ 				encode_savefh_maxsz + \
+ 				encode_putfh_maxsz + \
+ 				encode_link_maxsz + \
+-				encode_getattr_maxsz + \
+ 				encode_restorefh_maxsz + \
+ 				encode_getattr_maxsz)
+ #define NFS4_dec_link_sz	(compound_decode_hdr_maxsz + \
+@@ -629,7 +620,6 @@ static int nfs4_stat_to_errno(int);
+ 				decode_savefh_maxsz + \
+ 				decode_putfh_maxsz + \
+ 				decode_link_maxsz + \
+-				decode_getattr_maxsz + \
+ 				decode_restorefh_maxsz + \
+ 				decode_getattr_maxsz)
+ #define NFS4_enc_symlink_sz	(compound_encode_hdr_maxsz + \
+@@ -2051,7 +2041,6 @@ static void nfs4_xdr_enc_remove(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 	encode_sequence(xdr, &args->seq_args, &hdr);
+ 	encode_putfh(xdr, args->fh, &hdr);
+ 	encode_remove(xdr, &args->name, &hdr);
+-	encode_getfattr(xdr, args->bitmask, &hdr);
+ 	encode_nops(&hdr);
+ }
+ 
+@@ -2071,9 +2060,6 @@ static void nfs4_xdr_enc_rename(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 	encode_savefh(xdr, &hdr);
+ 	encode_putfh(xdr, args->new_dir, &hdr);
+ 	encode_rename(xdr, args->old_name, args->new_name, &hdr);
+-	encode_getfattr(xdr, args->bitmask, &hdr);
+-	encode_restorefh(xdr, &hdr);
+-	encode_getfattr(xdr, args->bitmask, &hdr);
+ 	encode_nops(&hdr);
+ }
+ 
+@@ -2093,7 +2079,6 @@ static void nfs4_xdr_enc_link(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 	encode_savefh(xdr, &hdr);
+ 	encode_putfh(xdr, args->dir_fh, &hdr);
+ 	encode_link(xdr, args->name, &hdr);
+-	encode_getfattr(xdr, args->bitmask, &hdr);
+ 	encode_restorefh(xdr, &hdr);
+ 	encode_getfattr(xdr, args->bitmask, &hdr);
+ 	encode_nops(&hdr);
+@@ -5798,9 +5783,6 @@ static int nfs4_xdr_dec_remove(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
+ 	if (status)
+ 		goto out;
+ 	status = decode_remove(xdr, &res->cinfo);
+-	if (status)
+-		goto out;
+-	decode_getfattr(xdr, res->dir_attr, res->server);
+ out:
+ 	return status;
+ }
+@@ -5830,15 +5812,6 @@ static int nfs4_xdr_dec_rename(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
+ 	if (status)
+ 		goto out;
+ 	status = decode_rename(xdr, &res->old_cinfo, &res->new_cinfo);
+-	if (status)
+-		goto out;
+-	/* Current FH is target directory */
+-	if (decode_getfattr(xdr, res->new_fattr, res->server))
+-		goto out;
+-	status = decode_restorefh(xdr);
+-	if (status)
+-		goto out;
+-	decode_getfattr(xdr, res->old_fattr, res->server);
+ out:
+ 	return status;
+ }
+@@ -5874,8 +5847,6 @@ static int nfs4_xdr_dec_link(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
+ 	 * Note order: OP_LINK leaves the directory as the current
+ 	 *             filehandle.
+ 	 */
+-	if (decode_getfattr(xdr, res->dir_attr, res->server))
+-		goto out;
+ 	status = decode_restorefh(xdr);
+ 	if (status)
+ 		goto out;
 diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index bfd0d1b..7ba3551 100644
+index 8f4cd0d..f199c43 100644
 --- a/include/linux/nfs_xdr.h
 +++ b/include/linux/nfs_xdr.h
-@@ -312,6 +312,11 @@ struct nfs4_layoutreturn {
- 	int rpc_status;
+@@ -524,7 +524,6 @@ struct nfs_writeres {
+ struct nfs_removeargs {
+ 	const struct nfs_fh	*fh;
+ 	struct qstr		name;
+-	const u32 *		bitmask;
+ 	struct nfs4_sequence_args	seq_args;
  };
  
-+struct stateowner_id {
-+	__u64	create_time;
-+	__u32	uniquifier;
-+};
-+
- /*
-  * Arguments to the open call.
-  */
-@@ -321,7 +326,7 @@ struct nfs_openargs {
- 	int			open_flags;
- 	fmode_t			fmode;
- 	__u64                   clientid;
--	__u64                   id;
-+	struct stateowner_id	id;
- 	union {
- 		struct {
- 			struct iattr *  attrs;    /* UNCHECKED, GUARDED */
+@@ -543,7 +542,6 @@ struct nfs_renameargs {
+ 	const struct nfs_fh		*new_dir;
+ 	const struct qstr		*old_name;
+ 	const struct qstr		*new_name;
+-	const u32			*bitmask;
+ 	struct nfs4_sequence_args	seq_args;
+ };
+ 
 -- 
 1.7.7.6
 
