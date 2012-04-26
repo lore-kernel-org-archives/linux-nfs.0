@@ -1,41 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:8266 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:46489 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752815Ab2DQRFJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Apr 2012 13:05:09 -0400
-Message-ID: <4F8DA2BF.6000109@RedHat.com>
-Date: Tue, 17 Apr 2012 13:05:03 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: Linux pNFS status meeting 04/12/12
-References: <OF5E2F67F6.4278FA6C-ON8825799D.00793B9D-8825799D.007960B1@us.ibm.com> <OFB6DA5CEF.C6895471-ON882579A4.00712ECE-882579A4.00715EC4@us.ibm.com> <4F86DF4D.5070208@RedHat.com> <4F8D9A0D.6000605@panasas.com>
-In-Reply-To: <4F8D9A0D.6000605@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+	id S1757153Ab2DZO1O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Apr 2012 10:27:14 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <1334846149.21419.22.camel@lade.trondhjem.org>
+References: <1334846149.21419.22.camel@lade.trondhjem.org> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <20120419140653.17272.95035.stgit@warthog.procyon.org.uk>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: dhowells@redhat.com,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
+        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "wine-devel@winehq.org" <wine-devel@winehq.org>,
+        "kfm-devel@kde.org" <kfm-devel@kde.org>,
+        "nautilus-list@gnome.org" <nautilus-list@gnome.org>,
+        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
+        "libc-alpha@sourceware.org" <libc-alpha@sourceware.org>
+Subject: Re: [PATCH 4/6] xstat: NFS: Return extended attributes
+Date: Thu, 26 Apr 2012 14:52:40 +0100
+Message-ID: <19094.1335448360@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Myklebust, Trond <Trond.Myklebust@netapp.com> wrote:
 
+> Hmm... As far as I can see you are still doing an nfs_revalidate_inode()
+> in the non-forced case. That will cause expired attributes to be
+> retrieved from the server.
 
-On 04/17/2012 12:27 PM, Boaz Harrosh wrote:
-> On 04/12/2012 04:57 PM, Steve Dickson wrote:
-> 
->> Meeting on Thursday 04/12/12 at 9:30 AM PST (12:30 PM EST)
->>
->> Please note the new call in number:
->>
->> U.S. and Canada: (800) 451-8679
->> International dial-in number: (212) 729-5016
->> Conference code: 564.272.1552
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
-> Any Israel number?
-I'm assuming you mean toll free Israel number... Let me find out...
+Revalidation is only done when you force it or explicitly ask for a basic stat
+or the data version number:
 
-steved.
+-	if (need_atime)
+-		err = __nfs_revalidate_inode(NFS_SERVER(inode), inode);
+-	else
+-		err = nfs_revalidate_inode(NFS_SERVER(inode), inode);
+-	if (!err) {
+-		generic_fillattr(inode, stat);
+-		stat->ino = nfs_compat_user_ino64(NFS_FILEID(inode));
++	if (force || stat->request_mask & (XSTAT_BASIC_STATS | XSTAT_VERSION)) {
++		if (force || need_atime)
++			err = __nfs_revalidate_inode(NFS_SERVER(inode), inode);
++		else
++			err = nfs_revalidate_inode(NFS_SERVER(inode), inode);
++		if (err)
++			goto out;
 
+Unfortunately, I think I have to revalidate if any of XSTAT_BASIC_STATS are
+requested to maintain compatibility with stat() so that stat() can be done
+with xstat().  On the other hand, stat() could be done by userspace with
+xstat() and AT_FORCE_ATTR_SYNC, I suppose.
+
+David
