@@ -1,141 +1,199 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:36589 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755049Ab2DTVbe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 17:31:34 -0400
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS4: fix referrals with IPv6 mounts
-Date: Fri, 20 Apr 2012 21:31:33 +0000
-Message-ID: <41440F4B-99AC-48AC-A1F8-C9A3DED9E76E@netapp.com>
-References: <1334949705-33393-1-git-send-email-dros@netapp.com>
- <B1E9AAB3-6739-46D5-999A-130494131031@oracle.com>
- <79682769-1052-4392-A63D-F686A81C2BBE@netapp.com>
-In-Reply-To: <79682769-1052-4392-A63D-F686A81C2BBE@netapp.com>
-Content-Type: multipart/signed;
-	boundary="Apple-Mail=_75C6B499-A385-4B08-88B2-25A512E40D40";
-	protocol="application/pkcs7-signature"; micalg=sha1
-MIME-Version: 1.0
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:50296 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751590Ab2DZQ6m (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 12:58:42 -0400
+Received: by ghrr11 with SMTP id r11so1080149ghr.19
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Apr 2012 09:58:41 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
+        michael.brantley@deshaw.com
+Subject: [PATCH v1 04/12] vfs: add new "reval" argument to kern_path_create and user_path_create
+Date: Thu, 26 Apr 2012 11:57:15 -0400
+Message-Id: <1335455843-16089-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1335455843-16089-1-git-send-email-jlayton@redhat.com>
+References: <1335455843-16089-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Apple-Mail=_75C6B499-A385-4B08-88B2-25A512E40D40
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+...for now, all of the callers pass in "false". Eventually, we'll set
+that to "true" when we retry the lookup after getting back an ESTALE on
+a call.
 
-On Apr 20, 2012, at 5:25 PM, Adamson, Dros wrote:
+While we're at it, change the is_dir arg to a bool since that's how
+it's used currently.
 
-> On Apr 20, 2012, at 3:30 PM, Chuck Lever wrote:
->=20
->>=20
->> On Apr 20, 2012, at 3:21 PM, Weston Andros Adamson wrote:
->>=20
->>> nfs4_path() was parsing the path component by splitting on the first =
-colon.
->>> This is wrong when an IPv6 address is used to mount a server.
->>>=20
->>> For example, having mounted 'fc00::10:/export', nfs4_path() returned
->>> ':10:/export'.  This causes referrals (using IPv4 or IPv6 addresses) =
-to fail
->>> in nfs4_validate_fspath().
->>>=20
->>> Parsing the path component by using the *last* colon works with
->>> IPv6 as well as IPv4 addrs.
->>=20
->> These ad hoc fixes give me the willies.
->>=20
->> During a referral, how is the server name and export path getting =
-recombined?  In fs_locations data, these are separate.  In the forward =
-mount path, IPv6 addresses are escaped via square brackets.
->=20
-> Again, the string that needs to be split into (server, path) is not =
-the fs_locations side -- those are already separated.  What's not =
-separated is the result of nfs_path().
->=20
->> (Having not looked at this code in years), is there some way we can =
-keep the server name and path separate here so we don't have to reparse?
->=20
-> nfs_path() walks up the dentry tree until it hits the root dentry of =
-the nfs mount, then it uses dentry.d_fsdata to get the "dev_name" of the =
-mountpoint (<server>:<path>) to make <server>:<rootpath + path to the =
-dentry>.
->=20
-> The problem I'm having is how we can generate the string "<rootpath of =
-parent mount>/<path-to-current-dentry>" without adding [] escaping to =
-dev_name, or adding another variable to dentry (not likely!).
->=20
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ arch/powerpc/platforms/cell/spufs/syscalls.c |    2 +-
+ drivers/base/devtmpfs.c                      |    7 ++++---
+ fs/namei.c                                   |   22 ++++++++++++++--------
+ fs/ocfs2/refcounttree.c                      |    3 ++-
+ include/linux/namei.h                        |    4 ++--
+ net/unix/af_unix.c                           |    3 ++-
+ 6 files changed, 25 insertions(+), 16 deletions(-)
 
-To be clear: the problem is *not* with IPv6 addrs in FS_LOCATIONS attrs. =
- They work if the parent mount is IPv4/dns.  The problem is when the =
-parent mount is IPv6 *no* referrals work (IPv4, IPv6 or DNS), because of =
-the issue described above.
+diff --git a/arch/powerpc/platforms/cell/spufs/syscalls.c b/arch/powerpc/platforms/cell/spufs/syscalls.c
+index 5665dcc..3c222cc 100644
+--- a/arch/powerpc/platforms/cell/spufs/syscalls.c
++++ b/arch/powerpc/platforms/cell/spufs/syscalls.c
+@@ -66,7 +66,7 @@ static long do_spu_create(const char __user *pathname, unsigned int flags,
+ 	struct dentry *dentry;
+ 	int ret;
+ 
+-	dentry = user_path_create(AT_FDCWD, pathname, &path, 1);
++	dentry = user_path_create(AT_FDCWD, pathname, &path, true, false);
+ 	ret = PTR_ERR(dentry);
+ 	if (!IS_ERR(dentry)) {
+ 		ret = spufs_create(&path, dentry, flags, mode, neighbor);
+diff --git a/drivers/base/devtmpfs.c b/drivers/base/devtmpfs.c
+index 8493536..70eb0b0 100644
+--- a/drivers/base/devtmpfs.c
++++ b/drivers/base/devtmpfs.c
+@@ -148,7 +148,7 @@ static int dev_mkdir(const char *name, umode_t mode)
+ 	struct path path;
+ 	int err;
+ 
+-	dentry = kern_path_create(AT_FDCWD, name, &path, 1);
++	dentry = kern_path_create(AT_FDCWD, name, &path, false, false);
+ 	if (IS_ERR(dentry))
+ 		return PTR_ERR(dentry);
+ 
+@@ -195,10 +195,11 @@ static int handle_create(const char *nodename, umode_t mode, struct device *dev)
+ 	struct path path;
+ 	int err;
+ 
+-	dentry = kern_path_create(AT_FDCWD, nodename, &path, 0);
++	dentry = kern_path_create(AT_FDCWD, nodename, &path, false, false);
+ 	if (dentry == ERR_PTR(-ENOENT)) {
+ 		create_path(nodename);
+-		dentry = kern_path_create(AT_FDCWD, nodename, &path, 0);
++		dentry = kern_path_create(AT_FDCWD, nodename, &path,
++								false, false);
+ 	}
+ 	if (IS_ERR(dentry))
+ 		return PTR_ERR(dentry);
+diff --git a/fs/namei.c b/fs/namei.c
+index 0062dd1..367b0f2 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2460,11 +2460,17 @@ struct file *do_file_open_root(struct dentry *dentry, struct vfsmount *mnt,
+ 	return file;
+ }
+ 
+-struct dentry *kern_path_create(int dfd, const char *pathname, struct path *path, int is_dir)
++struct dentry *kern_path_create(int dfd, const char *pathname, struct path *path, bool is_dir, bool reval)
+ {
+ 	struct dentry *dentry = ERR_PTR(-EEXIST);
+ 	struct nameidata nd;
+-	int error = do_path_lookup(dfd, pathname, LOOKUP_PARENT, &nd);
++	int error;
++	unsigned int lookup_flags = LOOKUP_PARENT;
++
++	if (reval)
++		lookup_flags |= LOOKUP_REVAL;
++
++	error = do_path_lookup(dfd, pathname, lookup_flags, &nd);
+ 	if (error)
+ 		return ERR_PTR(error);
+ 
+@@ -2512,13 +2518,13 @@ out:
+ }
+ EXPORT_SYMBOL(kern_path_create);
+ 
+-struct dentry *user_path_create(int dfd, const char __user *pathname, struct path *path, int is_dir)
++struct dentry *user_path_create(int dfd, const char __user *pathname, struct path *path, bool is_dir, bool reval)
+ {
+ 	char *tmp = getname(pathname);
+ 	struct dentry *res;
+ 	if (IS_ERR(tmp))
+ 		return ERR_CAST(tmp);
+-	res = kern_path_create(dfd, tmp, path, is_dir);
++	res = kern_path_create(dfd, tmp, path, is_dir, reval);
+ 	putname(tmp);
+ 	return res;
+ }
+@@ -2579,7 +2585,7 @@ SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, umode_t, mode,
+ 	if (S_ISDIR(mode))
+ 		return -EPERM;
+ 
+-	dentry = user_path_create(dfd, filename, &path, 0);
++	dentry = user_path_create(dfd, filename, &path, false, false);
+ 	if (IS_ERR(dentry))
+ 		return PTR_ERR(dentry);
+ 
+@@ -2652,7 +2658,7 @@ SYSCALL_DEFINE3(mkdirat, int, dfd, const char __user *, pathname, umode_t, mode)
+ 	struct path path;
+ 	int error;
+ 
+-	dentry = user_path_create(dfd, pathname, &path, 1);
++	dentry = user_path_create(dfd, pathname, &path, true, false);
+ 	if (IS_ERR(dentry))
+ 		return PTR_ERR(dentry);
+ 
+@@ -2939,7 +2945,7 @@ SYSCALL_DEFINE3(symlinkat, const char __user *, oldname,
+ 	if (IS_ERR(from))
+ 		return PTR_ERR(from);
+ 
+-	dentry = user_path_create(newdfd, newname, &path, 0);
++	dentry = user_path_create(newdfd, newname, &path, false, false);
+ 	error = PTR_ERR(dentry);
+ 	if (IS_ERR(dentry))
+ 		goto out_putname;
+@@ -3048,7 +3054,7 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
+ 	if (error)
+ 		return error;
+ 
+-	new_dentry = user_path_create(newdfd, newname, &new_path, 0);
++	new_dentry = user_path_create(newdfd, newname, &new_path, false, false);
+ 	error = PTR_ERR(new_dentry);
+ 	if (IS_ERR(new_dentry))
+ 		goto out;
+diff --git a/fs/ocfs2/refcounttree.c b/fs/ocfs2/refcounttree.c
+index 9f32d7c..b52b24d 100644
+--- a/fs/ocfs2/refcounttree.c
++++ b/fs/ocfs2/refcounttree.c
+@@ -4453,7 +4453,8 @@ int ocfs2_reflink_ioctl(struct inode *inode,
+ 		return error;
+ 	}
+ 
+-	new_dentry = user_path_create(AT_FDCWD, newname, &new_path, 0);
++	new_dentry = user_path_create(AT_FDCWD, newname, &new_path,
++								false, false);
+ 	error = PTR_ERR(new_dentry);
+ 	if (IS_ERR(new_dentry)) {
+ 		mlog_errno(error);
+diff --git a/include/linux/namei.h b/include/linux/namei.h
+index ffc0213..3e90dcd 100644
+--- a/include/linux/namei.h
++++ b/include/linux/namei.h
+@@ -76,8 +76,8 @@ extern int user_path_at_empty(int, const char __user *, unsigned, struct path *,
+ 
+ extern int kern_path(const char *, unsigned, struct path *);
+ 
+-extern struct dentry *kern_path_create(int, const char *, struct path *, int);
+-extern struct dentry *user_path_create(int, const char __user *, struct path *, int);
++extern struct dentry *kern_path_create(int, const char *, struct path *, bool, bool);
++extern struct dentry *user_path_create(int, const char __user *, struct path *, bool, bool);
+ extern int kern_path_parent(const char *, struct nameidata *);
+ extern int vfs_path_lookup(struct dentry *, struct vfsmount *,
+ 			   const char *, unsigned int, struct path *);
+diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c
+index d510353..9951294 100644
+--- a/net/unix/af_unix.c
++++ b/net/unix/af_unix.c
+@@ -865,7 +865,8 @@ static int unix_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
+ 		 * Get the parent directory, calculate the hash for last
+ 		 * component.
+ 		 */
+-		dentry = kern_path_create(AT_FDCWD, sun_path, &path, 0);
++		dentry = kern_path_create(AT_FDCWD, sun_path, &path,
++								false, false);
+ 		err = PTR_ERR(dentry);
+ 		if (IS_ERR(dentry))
+ 			goto out_mknod_parent;
+-- 
+1.7.7.6
 
-> -dros
->=20
->>=20
->>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
->>> ---
->>> fs/nfs/nfs4namespace.c |    2 +-
->>> 1 files changed, 1 insertions(+), 1 deletions(-)
->>>=20
->>> diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
->>> index 9c8eca3..dd3dd30 100644
->>> --- a/fs/nfs/nfs4namespace.c
->>> +++ b/fs/nfs/nfs4namespace.c
->>> @@ -59,7 +59,7 @@ static char *nfs4_path(struct dentry *dentry, char =
-*buffer, ssize_t buflen)
->>> 	char *limit;
->>> 	char *path =3D nfs_path(&limit, dentry, buffer, buflen);
->>> 	if (!IS_ERR(path)) {
->>> -		char *colon =3D strchr(path, ':');
->>> +		char *colon =3D strrchr(path, ':');
->>> 		if (colon && colon < limit)
->>> 			path =3D colon + 1;
->>> 	}
->>> --=20
->>> 1.7.4.4
->>>=20
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->=20
-
-
---Apple-Mail=_75C6B499-A385-4B08-88B2-25A512E40D40
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-
-MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIDTzCCA0sw
-ggIzoAMCAQICAQEwCwYJKoZIhvcNAQEFMEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYD
-VQQGEwJVUzEeMBwGCSqGSIb3DQEJARYPZHJvc0BuZXRhcHAuY29tMB4XDTExMDYwODIyMDc0NloX
-DTEyMDYwNzIyMDc0NlowRjEXMBUGA1UEAwwOV2VzdG9uIEFkYW1zb24xCzAJBgNVBAYTAlVTMR4w
-HAYJKoZIhvcNAQkBFg9kcm9zQG5ldGFwcC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
-AoIBAQC8/tJxtovJEXYRfSsrFOWKHxIZGY7/2mBee1DpWuoGDbVNapefCC7WXe+Nqxz609w2J/Mk
-/k3trZ3Ge2NXK0tGnP9NzjkzpGA7rSpM3wUFsvbLMUEGfQpvV24/nYvcLHTvOOEUaDPpHduN94bD
-dwvyowzDIRIpF2MeRnOzBNeHkrGHlZdzPmGjm8tkhrDRRkDYHhlxaiG4z30KCfAazxomuINiy1kj
-vbndXooYMDoh9H63hgW4NkOedtLdflLa322DXQ3nFU7YbyOIjHVl1tgWJLDWf7WT3lsAB8KvuJZ5
-zhsUB+fqxCKPJVRPDO1gjChvvtGiG1tGUUZz0H9Wx00zAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIH
-gDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDBDAaBgNVHREEEzARgQ9kcm9zQG5ldGFwcC5jb20wDQYJ
-KoZIhvcNAQEFBQADggEBACv0niZSmW+psB1sJXULh3mecDbN2mj0bFpN1YNdjcV7BiOLJ1Rs1ibV
-f13h73z8C7SBsPXTM5si8gmJtOnXM5jsgtlql44h/RrjUr8+mtK5DPCZls9J7iz3cGthzwOPvxUj
-nMSv3BpRX5oJom5ESgCM9Nn4u/ECTlLMhEIOYnBFiN0eDxcxz+r1cpbHg3r0otIKyxLpeaCjP6AH
-F93EHp4T8Rb63y3CcDgxrQGHlTdVi3QvxaMUexUXD81fiA+UqsB/MKmRxB1Hs4Vf3Q/+ejcm78K1
-ROF8TNPmNWRlKg3Y7cSFjZGzLuzXsvSsCbw4HLn0oZe/OfgSbarTAxttL5IxggHRMIIBzQIBATBL
-MEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYDVQQGEwJVUzEeMBwGCSqGSIb3DQEJARYP
-ZHJvc0BuZXRhcHAuY29tAgEBMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
-MBwGCSqGSIb3DQEJBTEPFw0xMjA0MjAyMTMxMzNaMCMGCSqGSIb3DQEJBDEWBBSbwQ7NjQlkqzzH
-C8JlNxDSBJ0/yjANBgkqhkiG9w0BAQEFAASCAQCxGFZ/BROX58tpHd1K87lmEC2m/EMOT3yPpe2v
-nqMSPMA1YpnIyuqR8MpcOxjiiiBLdPwsE6cG2p5Q1OgUH/V2ocfjOsIted1Bm6Hs+NNB8nuAJisp
-U7o8h/kiogJvOXkpbABOdaj+6eF8qoXVSN86q8DezG+nHErXXnzz1vTFoSqIBuz5/Pg7B9TsBCyA
-DKCfEg/Ca5MebGeszxIhEgGu7PWH2yvmCuBcqoQbXDo5OXcu/A48b5FDL5YD4aA6MVLDhUFxaRu8
-8e29faZcRUAgIZIhKklq8Wh4cjpEVj81baqowI5JjIlbxQfsYyrWBtHjDFWiof3nCoPEvNpBiRs7
-AAAAAAAA
-
---Apple-Mail=_75C6B499-A385-4B08-88B2-25A512E40D40--
