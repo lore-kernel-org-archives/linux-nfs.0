@@ -1,72 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:43565 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51402 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965265Ab2DLP6r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Apr 2012 11:58:47 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: global openowner_id and lockowner_id
-Date: Thu, 12 Apr 2012 15:58:45 +0000
-Message-ID: <1334246326.2237.59.camel@lade.trondhjem.org>
-References: <58E57AF8-1636-4017-93C0-8520488ED866@oracle.com>
-	 <1334245818.2237.55.camel@lade.trondhjem.org>
-	 <7212EB20-16EC-475E-993E-3F244C621AB0@oracle.com>
-In-Reply-To: <7212EB20-16EC-475E-993E-3F244C621AB0@oracle.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1756165Ab2DZNeI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Apr 2012 09:34:08 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <5D4BF4AB-47E9-4E25-B2A3-F895C98BDAA3@dilger.ca>
+References: <5D4BF4AB-47E9-4E25-B2A3-F895C98BDAA3@dilger.ca> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <20120419140612.17272.57774.stgit@warthog.procyon.org.uk>
+To: Andreas Dilger <adilger@dilger.ca>
+Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
+        wine-devel@winehq.org, kfm-devel@kde.org, nautilus-list@gnome.org,
+        linux-api@vger.kernel.org, libc-alpha@sourceware.org
+Subject: Re: [PATCH 1/6] xstat: Add a pair of system calls to make extended file stats available
+Date: Thu, 26 Apr 2012 14:32:36 +0100
+Message-ID: <18195.1335447156@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA0LTEyIGF0IDExOjU0IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gQXByIDEyLCAyMDEyLCBhdCAxMTo1MCBBTSwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4g
-DQo+ID4gT24gVGh1LCAyMDEyLTA0LTEyIGF0IDExOjQyIC0wNDAwLCBDaHVjayBMZXZlciB3cm90
-ZToNCj4gPj4gSGktDQo+ID4+IA0KPiA+PiBDaGFuZ2luZyB0aGUgU0VUQ0xJRU5USUQgYm9vdCB2
-ZXJpZmllciBzbyBpdCBpcyBnbG9iYWwgZm9yIHRoZSB3aG9sZSBjbGllbnQgZXhwb3NlcyBhIHBy
-b2JsZW0gd2l0aCBob3cgd2UgYWxsb2NhdGUgc3RhdGUgb3duZXJzLg0KPiA+PiANCj4gPj4gQSBx
-dWljayB1bW91bnQgLyBtb3VudCBzZXF1ZW5jZSBkZXN0cm95cyBhbGwgc3RhdGUgb24gdGhlIGNs
-aWVudC4gIEJ1dCBzaW5jZSB0aGUgY2xpZW50IG5vdyBhbHdheXMgdXNlcyB0aGUgc2FtZSBib290
-IHZlcmlmaWVyIGFuZCBuZnNfY2xpZW50X2lkNCBzdHJpbmcsIHRoZSBzZXJ2ZXIgbm8gbG9uZ2Vy
-IHJlY29nbml6ZXMgYSBjbGllbnQgcmVib290LiAgRk9yIGEgZnJlc2ggbW91bnQsIHRoZSBjbGll
-bnQgbWF5IHBlcmZvcm0gYSBTRVRDTElFTlRJRCwgYnV0IGl0IGlzIHRyZWF0ZWQgYXMgYSBjYWxs
-YmFjayB1cGRhdGUgKHN0YXRlIGlzIG5vdCBwdXJnZWQpIGlmIHRoZSBjbGllbnQncyBsZWFzZSBo
-YXMgbm90IHlldCBleHBpcmVkLg0KPiA+PiANCj4gPj4gT3VyIHN0YXRlIG93bmVycyBhcmUgZ2Vu
-ZXJhdGVkIGZyb20gYSBwYWlyIG9mIGlkYSBzdHJ1Y3R1cmVzIGluIHRoZSBuZnNfc2VydmVyIGZv
-ciB0aGF0IG1vdW50LiAgVGhleSBhbHdheXMgc3RhcnQgZnJvbSB6ZXJvIGFmdGVyIGEgbW91bnQg
-b3BlcmF0aW9uLiAgTGlrZXdpc2UsIHRoZSBzZXF1ZW5jZSBJRHMgZm9yIHRoZXNlIHN0YXRlIG93
-bmVycyBhcmUgYWxzbyByZXNldCBieSB1bW91bnQgLyBtb3VudC4gIE5vdGUgdGhhdCBlYWNoIG1v
-dW50IHBvaW50IGdldHMgYSBmcmVzaCBuZnNfc2VydmVyLCBzbyB0aGVzZSBzdHJ1Y3R1cmVzIGFy
-ZSBub3QgcmV0YWluZWQgYWNyb3NzIHVtb3VudCAvIG1vdW50Lg0KPiA+PiANCj4gPj4gVGhpcyBt
-ZWFucyB1bW91bnQgLyBtb3VudCB3aXRoIG5vIGxlYXNlIGV4cGlyeSBzdGFydHMgdG8gcmUtcGxh
-eSBzdGF0ZSBvd25lcnMgd2l0aCByZXNldCBzZXF1ZW5jZSBJRHMuICBTZXJ2ZXJzIGRvbid0IHJl
-YWxseSBjYXJlIGZvciB0aGF0IGJlaGF2aW9yLiAgSSBoYXZlIGEgdGVzdCBjYXNlIHRoYXQgcmVs
-aWFibHkgZ2V0cyBhIEJBRF9TRVFJRCBlcnJvciBmcm9tIGEgc2VydmVyIGFmdGVyIGEgcXVpY2sg
-dW1vdW50IC8gbW91bnQgZm9sbG93ZWQgYnkgYSBzaW5nbGUgZmlsZSBjcmVhdGlvbi4NCj4gPj4g
-DQo+ID4+IE5vdyB0aGF0IHdlIGFyZSBhYm91dCB0byBzd2l0Y2ggdG8gdXNpbmcgbW9yZS1vci1s
-ZXNzIGdsb2JhbCBTRVRDTElFTlRJRCBib290IHZlcmlmaWVycywgaXQgc2VlbXMgdG8gbWUgdGhh
-dCB3ZSByZWFsbHkgd2FudCBhIGdsb2JhbCBvcGVub3duZXJfaWQgYW5kIGxvY2tvd25lcl9pZCBh
-cyB3ZWxsLg0KPiA+PiANCj4gPj4gVGhlIHBlcmZvcm1hbmNlIGltcGFjdCBvZiBzdWNoIGEgY2hh
-bmdlIG1pZ2h0IGJlIGFjY2VwdGFibGUgYmVjYXVzZSB3ZSBjYWNoZSBhbmQgcmV1c2Ugc3RhdGUg
-b3duZXJzIG5vdy4NCj4gPj4gDQo+ID4+IFRob3VnaHRzPw0KPiA+IA0KPiA+IFRoYXQncyBhIGRl
-ZmluaXRlIHNlcnZlciBidWcuIElmIHRoZSBjbGllbnQgaG9sZHMgbm8gb3BlbiBzdGF0ZSwgdGhl
-biBpdA0KPiA+IGlzIGFsbG93ZWQgdG8gZm9yZ2V0IHRoZSBvcGVuIG93bmVyIGFuZCBzdGFydCB0
-aGUgc2VxdWVuY2UgaWQgZnJvbSAwDQo+ID4gYWdhaW4uIEl0IGlzIG5vdCByZXF1aXJlZCB0byBy
-ZW1lbWJlciBzZXF1ZW5jZSBpZHMgZm9yIG9wZW4gb3duZXJzIHRoYXQNCj4gPiBhcmVuJ3QgaW4g
-dXNlLg0KPiA+IA0KPiA+IE91ciBjdXJyZW50IGNsaWVudCBjb3VsZCBlYXNpbHkgdHJpZ2dlciB0
-aGlzIGJ1ZyBldmVuIHdpdGhvdXQgYQ0KPiA+IHVtb3VudC9tb3VudC4NCj4gDQo+IFRoZSBjbGll
-bnQgaXMgaG9sZGluZyBvcGVuIHN0YXRlLiAgSGVyZSdzIHRoZSBleGFjdCByZXByb2R1Y2VyIG9u
-IG15IG1vZGlmaWVkIGNsaWVudDoNCj4gDQo+IDEuICBtb3VudCBzZXJ2ZXI6L2V4cG9ydCAvbW50
-DQo+IDIuICB0b3VjaCAvbW50L25ld2ZpbGUNCj4gMy4gIHVtb3VudCAvbW50DQo+IDQuICBtb3Vu
-dCBzZXJ2ZXI6L2V4cG9ydCAvbW50DQo+IDUuICB0b3VjaCAvbW50L25ld2ZpbGUyDQo+IA0KPiBT
-dGVwIDUgY2F1c2VzIHRoZSBjbGllbnQgdG8gcmVwbGF5IGFuIG9wZW4gb3duZXIgd2l0aCBhIHJl
-c2V0IHNlcXVlbmNlIElELCBhbmQgdGhlIHNlcnZlciByZXBsaWVzIEJBRF9TRVFJRC4NCg0KdG91
-Y2ggd29uJ3Qga2VlcCB0aGUgZmlsZSBvcGVuLiBUaGVyZSBpcyBubyBvcGVuIHN0YXRlIG9uY2Ug
-dG91Y2ggaGFzDQpmaW5pc2hlZCBleGVjdXRpbmcuDQoNCldoYXQgeW91IGhhdmUgZXhwb3NlZCBh
-Ym92ZSBpcyBhIF9zZXJ2ZXJfIGJ1Zy4gVGhlIHNlcnZlciBpcyBfbm90Xw0KYWxsb3dlZCB0byBh
-c3N1bWUgdGhhdCB0aGUgY2xpZW50IHdpbGwgY2FjaGUgYW4gb3BlbiBvd25lciBmb3JldmVyIG9u
-Y2UNCml0IG5vIGxvbmdlciBob2xkcyBhbnkgb3BlbiBzdGF0ZSB1c2luZyB0aGF0IG9wZW4gb3du
-ZXIuIFdlIGhhZCBhIGxvb25nDQpkaXNjdXNzaW9uIGFib3V0IHRoaXMgb24gdGhlIG1haWxpbmcg
-bGlzdCBhIGZldyB5ZWFycyBhZ28gd2l0aCBEYXZpZA0KUm9iaW5zb24gYmVpbmcgdGhlIHBlcnNv
-biB3aG8gZm9ybXVsYXRlZCB0aGUgYWJvdmUgcnVsZS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QN
-CkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBu
-ZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+Andreas Dilger <adilger@dilger.ca> wrote:
+
+> > The idea was initially proposed as a set of xattrs that could be
+> > retrieved with getxattr(), but the general preferance proved to be
+> > for new syscalls with an extended stat structure.
+> 
+> I would comment that it was the opposite.  It was originally a
+> stat()-like extension that degraded into a messy getxattr() mess.
+
+Ummm...  No, my first attempt was definitely through getxattr().  You even
+commented on it.
+
+> > The fields in struct xstat come in a number of classes:
+> > 
+> > (0) st_dev, st_blksize, st_information.
+> > 
+> >     These are local data and are always available.
+> 
+> For the extra two bits it would cost us, I don't think st_blksize
+> and st_information should always be returned.
+
+Fair enough.
+
+> st_blksize may be variable for a distributed filesystem,
+
+I wonder if there's a way to make this explicit - or is it something that if
+the bit isn't set, you can't use the value in st_blksize.  I wonder if this
+value always has to be non-zero to make sure existing stat() doesn't explode.
+
+> and some of the fields in st_information (offline) may not be free to access
+> either.
+
+True.
+
+David
