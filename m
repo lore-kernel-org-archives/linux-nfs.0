@@ -1,40 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:10185 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751484Ab2DTUAT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 16:00:19 -0400
-Received: from vmwexceht03-prd.hq.netapp.com (vmwexceht03-prd.hq.netapp.com [10.106.76.241])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q3KK01an028727
-	for <linux-nfs@vger.kernel.org>; Fri, 20 Apr 2012 13:00:19 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Isaman, Fred" <Fred.Isaman@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 00/25] directio rewrite
-Date: Fri, 20 Apr 2012 20:00:12 +0000
-Message-ID: <1334952012.3295.19.camel@lade.trondhjem.org>
-References: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qc0-f174.google.com ([209.85.216.174]:53528 "EHLO
+	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756540Ab2DZQ4S convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 12:56:18 -0400
 MIME-Version: 1.0
+In-Reply-To: <1335453958.9701.10.camel@lade.trondhjem.org>
+References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+	<CAH2r5ms4WQV3DnTvqNN=2N71Cj8UHwj8Z6+RHXgrAOv6mSoyQg@mail.gmail.com>
+	<20656.1335450358@redhat.com>
+	<CAH2r5mv1Lijdwk5zsQwYJr4Etb6fhrRyNXm-iFCQX+HecboGrQ@mail.gmail.com>
+	<1335453958.9701.10.camel@lade.trondhjem.org>
+Date: Thu, 26 Apr 2012 11:56:17 -0500
+Message-ID: <CAH2r5mt5af-_hxBRKK72iD5Gr99bo91ec78Rov8EGVEx8=21mA@mail.gmail.com>
+Subject: Re: [PATCH 0/6] Extended file stat system call
+From: Steve French <smfrench@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: David Howells <dhowells@redhat.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
+        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "wine-devel@winehq.org" <wine-devel@winehq.org>,
+        "kfm-devel@kde.org" <kfm-devel@kde.org>,
+        "nautilus-list@gnome.org" <nautilus-list@gnome.org>,
+        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
+        "libc-alpha@sourceware.org" <libc-alpha@sourceware.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTA0LTIwIGF0IDE0OjQ3IC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
-dmVyc2lvbiAyIG9mIHRoZXNlIHBhdGNoZXMgaGFkIHNvbWUgcGF0Y2ggZnJhZ21lbnRzIHRoYXQg
-d2VyZSBsZWZ0DQo+IHVuc3F1YXNoZWQuICBUaGlzIHZlcnNpb24gbWVyZWx5IHNxdWFzaGVzIHRo
-b3NlIGluLg0KPiANCj4gDQo+IA0KPiBUaGVzZSBwYXRjaGVzIHJld3JpdGUgdGhlIGRpcmVjdGlv
-IGNvZGUgdG8gdXNlIHRoZSBzYW1lIGNvYWxlc2NlDQo+IGFuZCBSUEMgc2VuZG9mZiBjb2RlIGFz
-IGNhY2hlZCBpby4gIFRoaXMgYWxsb3dzIGRpcmVjdGlvIHRvIG1ha2UNCj4gdXNlIG9mIHRoZSBw
-cmVleGlzdGluZyBwbmZzIGNvZGUuDQo+IA0KPiBUaGVyZSBhcmUgc29tZSBsaW1pdGF0aW9ucyBh
-dCB0aGUgbW9tZW50IHRoYXQgbmVlZCB0byBiZSBmaXhlZCwgYnV0DQo+IGdpdmVuIHRoZSBhbW91
-bnQgb2YgY2hhbmdlIHRoaXMgcGF0Y2hzZXQgaW50cm9kdWNlcyBJJ20NCj4gdHJ5aW5nIHRvIHB1
-dCBvdXQgYXMgc21hbGwgYSBiYXNlIHNldCBvZiBwYXRjaGVzIGFzIHBvc3NpYmxlLg0KPiANCj4g
-VGhlIHByaW1hcnkgVE9ET3MgYXJlOg0KPiAtIENvYWxlc2Npbmcgb2YgYnNpemU8UEFHRVNJWkUs
-IHdoaWxlIHRlY2huaWNhbGx5IGNvcnJlY3QsIGlzIHN1Ym9wdGltYWwuDQo+ICAgVG8gZml4IHRo
-aXMgSSdsbCBuZWVkIHRvIGFkanVzdCB0aGUgKl9tdWx0aSBmdW5jdGlvbnMgdG8gaGFuZGxlDQo+
-ICAgbW9yZSB0aGFuIGEgc2luZ2xlIHJlcQ0KPiANCj4gLSBVbmFsaWduZWQgaW8gaXMgbm90IHNl
-bnQgdG8gcG5mcywgYXMgdGhlcmUgaXMgbm8gZXhpc3RpbmcgY29kZSB0byBkZWFsDQo+ICAgd2l0
-aCBhIGxheW91dCBib3VuZGFyeSAodGhpbmsgc3RyaXBlIGVkZ2UpIG9jY3VycmluZyBpbiB0aGUg
-bWlkZGxlDQo+ICAgb2YgYSBuZnNfcGFnZS4NCg0KVGhpcyBub3cgbG9va3MgZ29vZCB0byBtZS4u
-Lg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoN
-Ck5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+On Thu, Apr 26, 2012 at 10:25 AM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Thu, 2012-04-26 at 09:54 -0500, Steve French wrote:
+>> On Thu, Apr 26, 2012 at 9:25 AM, David Howells <dhowells@redhat.com> wrote:
+>> > Steve French <smfrench@gmail.com> wrote:
+>> >
+>> >> Would it be better to make the stable vs volatile inode number an attribute
+>> >> of the volume  or something returned by the proposed xstat?
+>> >
+>> > I'm not sure what you mean by a stable vs a volatile inode number.
+>>
+>> Both NFS and CIFS (and SMB2) can return inode numbers or equivalent
+>> unique identifier, but in the case of CIFS some old servers don't support the
+>> calls which return inode numbers (or don't return them for all file system
+>> types, Windows FAT?) so in these cases cifs has to create inode
+>> numbers on the fly
+>> on the client.   inode numbers created on the client are not "stable" they
+>> can change on unmount/remount (which can cause problems for backup
+>> applications).
+>>
+>> Similarly NFSv4 does not require that servers always return stable inode numbers
+>> (that will never change) and introduced a concept of "volatile file handle."
+>> We have run into this in two cases (there are probably more) -
+>> Specialized NFS servers
+>> for HPC which deal with lots of transient inodes, and second those for servers
+>> which base there inode number on path (Windows NFS?).  See
+>> http://docs.oracle.com/cd/E19082-01/819-1634/rfsrefer-137/index.html
+>> or the NFSv4 RFC.
+>>
+>> Basically the question is whether it is worth reporting a flag on the
+>> call which returns
+>> the inode number to indicate that the inode number is "stable" (would not change
+>> on reboot or reconnection) or "volatile."    Since the majority of NFS
+>> and SMB2 servers
+>> can return stable inode numbers, I don't feel strongly about the need
+>> for an indicator
+>> of "stable" vs. "volatile" but I mention it because backup and
+>> migration applications
+>> mention this (if inode numbers are volatile, they may have to check
+>> for hardlinks differently
+>> for example)
+>
+> I don't understand. If the filesystem doesn't support real inode
+> numbers, then why report them at all? What use would an application have
+> for an inode number that can't be used to identify hard linked files?
+
+Well ... you have to have an inode number on the Linux client side even if
+the server doesn't report them (or has a bug and reports duplicates).
+If you can't tell hardlinked files apart fix the server (but in the
+cases where the file systems has this problem the server doesn't usually
+support hardlinks either).
+
+If the server's file system internal structures don't support real inode
+numbers (such as FAT or a ramdisk) then it either has to make them
+up based on something like path name or some other attribute of the
+file on disk.
+
+Servers like NetApp is where this gets interesting - for cifs e.g. level 1009
+query file info is used to query_file_internal_info (the inode number) but
+what if the server can not report inode numbers (due to a bug) in
+all cases.
+
+-- 
+Thanks,
+
+Steve
