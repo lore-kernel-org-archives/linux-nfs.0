@@ -1,83 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:20292 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:24201 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752970Ab2DTVfd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 17:35:33 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: Jim Rees <rees@umich.edu>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS4: fix referrals with IPv6 mounts
-Date: Fri, 20 Apr 2012 21:35:31 +0000
-Message-ID: <1334957730.3295.35.camel@lade.trondhjem.org>
-References: <1334949705-33393-1-git-send-email-dros@netapp.com>
-	 <20120420194504.GA10259@umich.edu>
-	 <EA178ED0-5813-4235-A0CF-CF9D54AFB04F@netapp.com>
-	 <1334952788.3295.24.camel@lade.trondhjem.org>
-	 <A3FAE1E4-2AB8-4AF0-AC46-77EA3E4B9AB2@netapp.com>
-In-Reply-To: <A3FAE1E4-2AB8-4AF0-AC46-77EA3E4B9AB2@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1757769Ab2DZP4G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Apr 2012 11:56:06 -0400
+Subject: [PATCH 09/10] NFS; callback per-net usage counting introduced
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Thu, 26 Apr 2012 19:55:56 +0400
+Message-ID: <20120426155556.3763.79542.stgit@localhost6.localdomain6>
+In-Reply-To: <20120426155250.3763.98748.stgit@localhost6.localdomain6>
+References: <20120426155250.3763.98748.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTA0LTIwIGF0IDIwOjUxICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
-PiBPbiBBcHIgMjAsIDIwMTIsIGF0IDQ6MTMgUE0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+
-IA0KPiA+IE9uIEZyaSwgMjAxMi0wNC0yMCBhdCAxOTo1NyArMDAwMCwgQWRhbXNvbiwgRHJvcyB3
-cm90ZToNCj4gPj4gT24gQXByIDIwLCAyMDEyLCBhdCAzOjQ1IFBNLCBKaW0gUmVlcyB3cm90ZToN
-Cj4gPj4gDQo+ID4+PiBXZXN0b24gQW5kcm9zIEFkYW1zb24gd3JvdGU6DQo+ID4+PiANCj4gPj4+
-IG5mczRfcGF0aCgpIHdhcyBwYXJzaW5nIHRoZSBwYXRoIGNvbXBvbmVudCBieSBzcGxpdHRpbmcg
-b24gdGhlIGZpcnN0IGNvbG9uLg0KPiA+Pj4gVGhpcyBpcyB3cm9uZyB3aGVuIGFuIElQdjYgYWRk
-cmVzcyBpcyB1c2VkIHRvIG1vdW50IGEgc2VydmVyLg0KPiA+Pj4gDQo+ID4+PiBGb3IgZXhhbXBs
-ZSwgaGF2aW5nIG1vdW50ZWQgJ2ZjMDA6OjEwOi9leHBvcnQnLCBuZnM0X3BhdGgoKSByZXR1cm5l
-ZA0KPiA+Pj4gJzoxMDovZXhwb3J0Jy4gIFRoaXMgY2F1c2VzIHJlZmVycmFscyAodXNpbmcgSVB2
-NCBvciBJUHY2IGFkZHJlc3NlcykgdG8gZmFpbA0KPiA+Pj4gaW4gbmZzNF92YWxpZGF0ZV9mc3Bh
-dGgoKS4NCj4gPj4+IA0KPiA+Pj4gUGFyc2luZyB0aGUgcGF0aCBjb21wb25lbnQgYnkgdXNpbmcg
-dGhlICpsYXN0KiBjb2xvbiB3b3JrcyB3aXRoDQo+ID4+PiBJUHY2IGFzIHdlbGwgYXMgSVB2NCBh
-ZGRycy4NCj4gPj4+IA0KPiA+Pj4gV2hhdCBpZiB5b3VyIG1vdW50IGlzOg0KPiA+Pj4gDQo+ID4+
-PiBzZXJ2ZXIuZWR1Oi9leHBvcnQvOkktbGlrZS1jb2xvbnM6DQo+ID4+PiANCj4gPj4+IEl0IHNl
-ZW1zIHRvIG1lIHNvbWV0aGluZyBoYXMgdG8gZ2l2ZS4gIEVpdGhlciB3ZSByZXF1aXJlIHY2IGFk
-ZHJlc3NlcyBiZQ0KPiA+Pj4gZW5jbG9zZWQgaW4gW10sIGV4cG9ydCBkaXJzIHN0YXJ0IHdpdGgg
-Ii8iLCBvciBleHBvcnRzIGhhdmUgbm8gIjoiLg0KPiA+PiANCj4gPj4gDQo+ID4+IFllYWgsIHlv
-dSdyZSByaWdodC4NCj4gPj4gDQo+ID4+IEFsdGhvdWdoIElQdjYgYWRkcnMgbXVzdCBiZSBlbmNs
-b3NlZCBpbiBbXSB0byB3b3JrIHdpdGggbW91bnQsIGl0J3MgYWx3YXlzIGRpc3BsYXllZCBpbiB0
-aGUga2VybmVsIHdpdGhvdXQgdGhlIFtdLg0KPiA+PiANCj4gPj4gSSBzdXBwb3NlIHRoZSBjb3Jy
-ZWN0IGZpeCBpcyB0byBhbHdheXMgZGlzcGxheSBJUHY2IGFkZHJlc3NlcyBlbmNsb3NlZCBpbiBb
-XSwgd2hpY2ggbWlnaHQgdG91Y2ggYSAqbG90KiBvZiBwbGFjZXMuDQo+ID4+IA0KPiA+PiBUaG91
-Z2h0cz8gIEknbGwgd2FpdCBmb3Igb3RoZXJzIHRvIGNoaW1lIGluIGJlZm9yZSBJIGdvIGZpeGlu
-ZyB0aGlzLiBJIGhhdmUgYSBzZXQgb2YgbmZzZCBhbmQgbW91bnRkIHBhdGNoZXMgdGhhdCBkZWFs
-IHdpdGggc2ltaWxhciBpc3N1ZXMgb24gdGhlIHNlcnZlciBzaWRlLiAgSSdsbCBjbGVhbiB0aG9z
-ZSB1cCBhbmQgc3VibWl0IHRoZW0gYmVmb3JlIGdldHRpbmcgYmFjayB0byB0aGlzLg0KPiA+IA0K
-PiA+IFdlIGRvIGtub3cgd2hpY2ggcGFydCBpcyB0aGUgaG9zdG5hbWUsIGFuZCB3aGljaCBpcyB0
-aGUgcGF0aG5hbWUuIElmIHlvdQ0KPiA+IGxvb2sgYXQgInRyeV9sb2NhdGlvbigpIiwgeW91J2xs
-IHNlZSB0aGF0IHRoZSBob3N0bmFtZSBpcyBzdG9yZWQgaW4NCj4gPiBsb2NhdGlvbi0+c2VydmVy
-cywgYW5kIGlzIHRoZW4gY29waWVkIGludG8gdGhpcyBlbXB0eSBidWZmZXIuDQo+ID4gDQo+ID4g
-SWYgeW91IHdhbnQgdG8gdGVzdCBpZiB0aGF0IGlzIGFuIElQdjYgYWRkcmVzcyBzbyB0aGF0IHlv
-dSBjYW4gZW5jbG9zZQ0KPiA+IGl0IGluIFtdLCB0aGVuIHRoYXQgc2hvdWxkIGJlIGZhaXJseSBl
-YXN5IHRvIGRvIHJpZ2h0IHRoZXJl4oCmDQo+IA0KPiBSaWdodCwgd2UgaGF2ZSBzZXBhcmF0ZSBo
-b3N0bmFtZSBhbmQgcGF0aG5hbWUgZm9yIGVhY2ggZnNfbG9jYXRpb240LCBidXQgSSdtIHRhbGtp
-bmcgYWJvdXQgdGhlIHJldHVybiB2YWx1ZSBvZiBuZnNfcGF0aCgpIHdoaWNoIGlzIHVzZWQgdG8g
-ZGV0ZXJtaW5lIHRoZSBzZXJ2ZXItc2lkZSBwYXRoIG9uIGFuIGFyYml0cmFyeSBkZW50cnkgb24g
-dGhlICpjdXJyZW50KiBtb3VudHBvaW50IChub3QgdGhlIHJlZmVycmFsIHNlcnZlcikuDQo+IFRo
-ZSBwYXRoIHBhcnQgb2YgbmZzX3BhdGgoKSBpcyB0aGVuIGNvbXBhcmVkIGFnYWluc3QgdGhlIGZz
-X3BhdGggb2YgdGhlIG5mczRfZnNfbG9jYXRpb25zIHN0cnVjdCAodGhpcyBpcyBhbGwgaW4gbmZz
-NF92YWxpZGF0ZV9mc3BhdGgpLg0KPiANCj4gSGF2aW5nIG5mc19wYXRoIHJldHVybiBbXSB3cmFw
-cGVkIElQdjYgYWRkcmVzc2VzIGJhc2ljYWxseSBtZWFucyBjaGFuZ2luZyB0aGUgZGV2bmFtZSB0
-byB0aGF0IGZvcm1hdCAoZF9mc2RhdGEgaXMgdXNlZCBieSBuZnNfcGF0aCgpKS4gIEknbSBjb25j
-ZXJuZWQgYWJvdXQgY2hhbmdpbmcgdGhlIGZvcm1hdCBvZiBkZXZuYW1lIC0gaXRzIHVzZWQgYWxs
-IG92ZXIgdGhlIHBsYWNlLg0KPiANCj4gU28gdGhlIG9wdGlvbnMgYXJlOg0KPiAgMSkgY2hhbmdl
-IHRoZSBmb3JtYXQgb2YgZGV2bmFtZQ0KPiAgMikgY2hhbmdlIGhvdyBuZnM0X3ZhbGlkYXRlX2Zz
-cGF0aCBnZXRzIHRoZSBzZXJ2ZXItc2lkZSBwYXRoIGNvbXBvbmVudCBvZiB0aGUgY3VycmVudCBt
-b3VudCAoZG9uJ3QgdXNlIG5mc19wYXRoKCkpDQo+IA0KPiBJJ2xsIHRyeSBvcHRpb24gMSBhbmQg
-c2VlIHdoYXQgYnJlYWtzLg0KDQpUaGF0IHJlYWxseSBzaG91bGQgbm90IGJlIG5lY2Vzc2FyeS4N
-Cg0KSWYgeW91IGFyZSB1c2luZyBhbiBJUHY2IGFkZHJlc3MsIHlvdSBhcmUgc3VwcG9zZWQgdG8g
-bW91bnQgdXNpbmcgdGhlIFtdDQpmb3JtYXQuIElmIG5vdCwgdGhlbiBleHBlY3QgdGhpbmdzIHRv
-IGJyZWFrLg0KDQpUaGUgcmVhbCBidWcgaGVyZSBpcyBpbiBuZnM0X3BhdGg6IGl0IHRyaWVzIHRv
-IHBhcnNlIHRoZSAnOicgdGhhdCBhcmUNCnBhcnQgb2YgdGhlIElQdjYgYWRkcmVzcyBldmVuIGlm
-IHdlIHVzZSB0aGUgc3F1YXJlIGJyYWNrZXQgZGVsaW1pdGVycy4NCkluc3RlYWQsIHdlIHNob3Vs
-ZCBiZSBmb2xsb3dpbmcgdGhlIGV4YW1wbGUgb2YgbmZzX3BhcnNlX2Rldm5hbWUuDQoNCkkgc3Vn
-Z2VzdCBicmVha2luZyBvdXQgdGhlIGZpcnN0IGhhbGYgb2YgbmZzX3BhcnNlX2Rldm5hbWUgaW50
-byBhDQpmdW5jdGlvbiB0aGF0IHJldHVybnMgdGhlIGhvc3QgbmFtZSBwYXJ0IG9mIGEgbW91bnQg
-cGF0aCwgYW5kIHRoYXQgY2FuDQpiZSBjYWxsZWQgYnkgbmZzNF9wYXRoIHRvby4NCg0KLS0gDQpU
-cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRy
-b25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+This patch also introduces refcount-aware nfs_callback_down_net() wrapper for
+svc_shutdown_net().
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
+---
+ fs/nfs/callback.c |   19 +++++++++++++++++--
+ fs/nfs/netns.h    |    1 +
+ 2 files changed, 18 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 3f1b5d1..1f814b0 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -285,10 +285,25 @@ static int nfs_callback_start_svc(int minorversion, struct rpc_xprt *xprt,
+ 	return 0;
+ }
+ 
++static void nfs_callback_down_net(u32 minorversion, struct svc_serv *serv, struct net *net)
++{
++	struct nfs_net *nn = net_generic(net, nfs_net_id);
++
++	if (--nn->cb_users[minorversion])
++		return;
++
++	dprintk("NFS: destroy per-net callback data; net=%p\n", net);
++	svc_shutdown_net(serv, net);
++}
++
+ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct net *net)
+ {
++	struct nfs_net *nn = net_generic(net, nfs_net_id);
+ 	int ret;
+ 
++	if (nn->cb_users[minorversion]++)
++		return 0;
++
+ 	dprintk("NFS: create per-net callback data; net=%p\n", net);
+ 
+ 	ret = svc_bind(serv, net);
+@@ -391,7 +406,7 @@ err_create:
+ 	return ret;
+ 
+ err_start:
+-	svc_shutdown_net(serv, net);
++	nfs_callback_down_net(minorversion, serv, net);
+ 	dprintk("NFS: Couldn't create server thread; err = %d\n", ret);
+ 	goto err_net;
+ }
+@@ -404,10 +419,10 @@ void nfs_callback_down(int minorversion, struct net *net)
+ 	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
+ 
+ 	mutex_lock(&nfs_callback_mutex);
++	nfs_callback_down_net(minorversion, cb_info->serv, net);
+ 	cb_info->users--;
+ 	if (cb_info->users == 0 && cb_info->task != NULL) {
+ 		kthread_stop(cb_info->task);
+-		svc_shutdown_net(cb_info->serv, net);
+ 		svc_exit_thread(cb_info->rqst);
+ 		cb_info->serv = NULL;
+ 		cb_info->rqst = NULL;
+diff --git a/fs/nfs/netns.h b/fs/nfs/netns.h
+index bd72a55..db3e495 100644
+--- a/fs/nfs/netns.h
++++ b/fs/nfs/netns.h
+@@ -20,6 +20,7 @@ struct nfs_net {
+ 	struct idr cb_ident_idr; /* Protected by nfs_client_lock */
+ 	unsigned short nfs_callback_tcpport;
+ 	unsigned short nfs_callback_tcpport6;
++	int cb_users[NFS4_MAX_MINOR_VERSION + 1];
+ #endif
+ 	spinlock_t nfs_client_lock;
+ };
+
