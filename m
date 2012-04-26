@@ -1,63 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from youngberry.canonical.com ([91.189.89.112]:51233 "EHLO
-	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751790Ab2DRRfm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Apr 2012 13:35:42 -0400
-Date: Wed, 18 Apr 2012 18:35:37 +0100
-From: Luis Henriques <luis.henriques@canonical.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Regretion on NFS in mainline kernel
-Message-ID: <20120418173537.GE3979@zeus>
-References: <20120418112610.GA3979@zeus>
- <20120418092822.07a4f944@tlielax.poochiereds.net>
- <20120418135738.GB3979@zeus>
- <1334757866.4701.6.camel@lade.trondhjem.org>
- <20120418141313.GC3979@zeus>
- <20120418101554.4aad0849@tlielax.poochiereds.net>
- <1334760105.4701.11.camel@lade.trondhjem.org>
- <20120418105147.2a6f1c55@corrin.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120418105147.2a6f1c55@corrin.poochiereds.net>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:60541 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758105Ab2DZP7J (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 11:59:09 -0400
+Received: by mail-yx0-f174.google.com with SMTP id l12so1015271yen.19
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Apr 2012 08:59:09 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
+        michael.brantley@deshaw.com
+Subject: [PATCH v1 11/12] vfs: fix linkat to retry on ESTALE errors
+Date: Thu, 26 Apr 2012 11:57:22 -0400
+Message-Id: <1335455843-16089-10-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1335455843-16089-1-git-send-email-jlayton@redhat.com>
+References: <1335455843-16089-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 18, 2012 at 10:51:47AM -0400, Jeff Layton wrote:
-> On Wed, 18 Apr 2012 14:41:45 +0000
-> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-> 
-> > Right. Random (and wrong!) changes such as the above won't fix the
-> > problem. That code is perfectly correct (look at the nfs4_reclaim_locks
-> > error cases to see why).
-> > 
-> 
-> Ugh, ok I see and that code is correct even if it's a bit hard to
-> follow...
-> 
-> We clear the state_flag_bit on the first attempt against that lock so
-> if it returns 0 (meaning a successful reclaim, we'll skip over it on
-> the next pass through the loop.
-> 
-> > Have you instead looked into what these applications are doing? Are they
-> > perhaps opening the file read only, then trying to apply an exclusive
-> > BSD lock (something which NFSv4 cannot support)?
-> > 
-> > IOW: does the problem go away if you mount with 'local_lock=flock'?
-> > 
-> I suspect that that is the trigger here. Sadly common among userspace
-> apps...
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c |    9 +++++++--
+ 1 files changed, 7 insertions(+), 2 deletions(-)
 
-Ok, I'll ask some of the guys reporting the bug to try to use that option
-to mount.  Is there any other useful information that could be collected
-to help sorting this out?
+diff --git a/fs/namei.c b/fs/namei.c
+index b189dc5..0d54eb3 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3054,6 +3054,7 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
+ 	struct path old_path, new_path;
+ 	int how = 0;
+ 	int error;
++	unsigned int try = 0;
+ 
+ 	if ((flags & ~(AT_SYMLINK_FOLLOW | AT_EMPTY_PATH)) != 0)
+ 		return -EINVAL;
+@@ -3071,11 +3072,12 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
+ 	if (flags & AT_SYMLINK_FOLLOW)
+ 		how |= LOOKUP_FOLLOW;
+ 
++retry:
+ 	error = user_path_at(olddfd, oldname, how, &old_path);
+ 	if (error)
+ 		return error;
+ 
+-	new_dentry = user_path_create(newdfd, newname, &new_path, false, false);
++	new_dentry = user_path_create(newdfd, newname, &new_path, false, try);
+ 	error = PTR_ERR(new_dentry);
+ 	if (IS_ERR(new_dentry))
+ 		goto out;
+@@ -3098,7 +3100,10 @@ out_dput:
+ 	path_put(&new_path);
+ out:
+ 	path_put(&old_path);
+-
++	if (retry_estale(error, try++)) {
++		how |= LOOKUP_REVAL;
++		goto retry;
++	}
+ 	return error;
+ }
+ 
+-- 
+1.7.7.6
 
-Btw, there was someone reporting that an easy reproducer of this problem
-is to just run:
-
-  $ /usr/bin/flock /file/on/nfs echo Fish
-
-Cheers,
---
-Luis
