@@ -1,79 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:57390 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:36676 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751601Ab2DXFrk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Apr 2012 01:47:40 -0400
-From: Neil Brown <neilb@suse.de>
-To: Steve Dickson <steved@redhat.com>
-Date: Tue, 24 Apr 2012 15:46:38 +1000
-Subject: [PATCH 0/6] fix some problems with v4root handling in mountd
-Cc: linux-nfs@vger.kernel.org
-Message-ID: <20120424054003.20130.16209.stgit@notabene.brown>
+	id S1756608Ab2DZOXw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Apr 2012 10:23:52 -0400
+Date: Thu, 26 Apr 2012 10:23:29 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: David Howells <dhowells@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-ext4@vger.kernel.org, wine-devel@winehq.org, kfm-devel@kde.org,
+        nautilus-list@gnome.org, linux-api@vger.kernel.org,
+        libc-alpha@sourceware.org
+Subject: Re: [PATCH 1/6] xstat: Add a pair of system calls to make extended
+ file stats available
+Message-ID: <20120426142329.GA7176@fieldses.org>
+References: <20120424212911.GA26073@fieldses.org>
+ <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+ <20120419140612.17272.57774.stgit@warthog.procyon.org.uk>
+ <18533.1335447617@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <18533.1335447617@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-First I'd like to say that I love seeing comments that explain the
-code..  What way when the code does something different to the
-comment, I can be sure I'm on to something :-)
+On Thu, Apr 26, 2012 at 02:40:17PM +0100, David Howells wrote:
+> J. Bruce Fields <bfields@fieldses.org> wrote:
+> 
+> > > (11) Include granularity fields in the time data to indicate the
+> > >      granularity of each of the times (NFSv4 time_delta) [Steve French].
+> > 
+> > It looks like you're including this with *each* time?  But surely
+> > there's no filesystem with different granularity (say) for ctime than
+> > for mtime.
+> 
+> I put it in each time struct to use up the hole there.  I could, I suppose,
+> split tv_sec from tv_nsec to get rid of the holes and then put the granularity
+> separately.  That means that someone who wanted both the tv_sec and tv_nsec
+> would have to fish them out separately, but that's probably okay.
+> 
+> I could even make the granularity bigger then, to allow for the possibility of
+> having a granularity >4s, but I don't know of anywhere that requires a gran >2.
+> 
+> > Also, nfsd will want only one time_delta, not one for each time.
+> 
+> time_delta?  Is that the same as granularity?
 
-If I have exports:
+Right, sorry, that's just the NFS word for the same thing.
 
- /  *(rw,no_root_squash)
- /home 192.168.1.2(rw,no_root_squash)
+So my whine here is just that most callers only want to know one number
+and we're giving them three.  Whatever, they can just pick one.  It
+feels a little ugly, but feel free to ignore my nitpicking....
 
-Then I want to export 'root' to everything (on my side of a firewall)
-but '/home' only to one machine.
-However this doesn't work for host 192.168.1.2.
-If I try to mount '/' with NFSv3, it fails.
-If I try to mount '/' with NFSv4, then it works but we only see
-"home" in the mounted "/".
+(Though as Steve French asked: could we add this to statfs (or something
+similar) instead?)
 
-The problem is that the export of "/home" causes a V4ROOT export
-of "/" to be created for 192.168.1.2 and as MCL_SUBNETWORK comes
-before MCL_WILDCARD, the V4ROOT export wins and the other wildcard
-export isn't even tried.
+> 
+> > Note also we need to document carefully what this means: I think it
+> > should be the granularity that the filesystem is capable of
+> > representing, but people are sometimes surprised to find out that the
+> > actual time source is usually more coarse-grained than that.
+> 
+> Yeah, but the latter is something you may not be able to determine, and may
+> indeed change over time (say someone updates the server kernel to one with a
+> more fine-grained software clock).  Also, for a network fs, it may depend on
+> the client that happened to set that time last.
 
-So the following patches:
- 1/ fix the NFSv4 mount case so that we really see '/' and not a pseudo
-    '/'.  This is the case where the comment says the right thing
-    but the code doesn't.
+Yep, agreed, the granularity should be what the filesystem can store, we
+should just make sure that statement makes it into any eventual man
+pages or other documentation, since it does seem to surprise people.
 
- 2/ fix 'mountd' lookup for NFSv2/v3 so they successfully mount
-    the real export, and don't fail because only the V4ROOT export
-    was found,
-
- 3/ Fix a similar ordering problem in nfsd_fh.  Without this an
-    NFSv4 client might see the V4ROOT export for '/' rather than
-    the explicitly exported export.
-
- 4/ Set a useful ttl on V4ROOT exports so they don't need to
-    constantly be refreshed, an
-  
- 5/ fix a buglet which didn't cause any of these problems but
-    certainly looks wrong.
-
-Enjoy :-)
-
-NeilBrown
-
----
-
-Neil Brown (6):
-      v4_root_add_parents: remove a possible buffer overflow.
-      v4root: set the time-to-live for V4ROOT exports to the DEFAULT.
-      v4set_root: force "fsid=0" for all exports of '/'
-      nfsd_fh: if two exports are possible, choose the one without V4ROOT
-      auth_authenticate_newcache: prefer non-V4ROOT export over V4ROOT exports.
-      lookup_export: really prefer nonV4ROOT exports.
-
-
- utils/mountd/auth.c   |    7 +++----
- utils/mountd/cache.c  |   21 +++++++++++++++++----
- utils/mountd/v4root.c |   12 ++++++++++--
- 3 files changed, 30 insertions(+), 10 deletions(-)
-
--- 
-Signature
-
+--b.
