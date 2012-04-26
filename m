@@ -1,159 +1,253 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fold.natur.cuni.cz ([195.113.57.32]:47730 "HELO
-	fold.natur.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752005Ab2DFJAc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Apr 2012 05:00:32 -0400
-Message-ID: <4F7EAF1C.60001@fold.natur.cuni.cz>
-Date: Fri, 06 Apr 2012 10:53:48 +0200
-From: Martin Mokrejs <mmokrejs@fold.natur.cuni.cz>
-MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: 2.6.32.58: BUG: unable to handle kernel NULL pointer dereference
- at 0000000000000330
-Content-Type: text/plain; charset=UTF-8
+Received: from rcsinet15.oracle.com ([148.87.113.117]:46321 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757575Ab2DZQYL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 12:24:11 -0400
+Subject: Re: [PATCH 13/20] NFS: Fix recovery from NFS4ERR_CLID_INUSE
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=windows-1252
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20120423205505.11446.28437.stgit@degas.1015granger.net>
+Date: Thu, 26 Apr 2012 12:24:04 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <D6859152-CF45-44CC-BB3C-B40CB9FD0BE8@oracle.com>
+References: <20120423205312.11446.67081.stgit@degas.1015granger.net> <20120423205505.11446.28437.stgit@degas.1015granger.net>
+To: Trond.Myklebust@netapp.com
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
-   I found one of my cluster nodes killed my program. Is this a nfs/rpc issue?
-Thanks for clues,
-Martin
 
-Apr  6 04:32:13 node010 kernel: nfs: server 192.168.10.100 not responding, still trying
-Apr  6 04:32:13 node010 kernel: nfs: server 192.168.10.100 OK
-Apr  6 04:49:01 node010 kernel: nfs: server 192.168.10.100 not responding, still trying
-Apr  6 04:49:01 node010 kernel: nfs: server 192.168.10.100 not responding, still trying
-Apr  6 04:49:01 node010 kernel: nfs: server 192.168.10.100 not responding, still trying
-Apr  6 04:49:02 node010 kernel: nfs: server 192.168.10.100 OK
-Apr  6 04:49:02 node010 kernel: nfs: server 192.168.10.100 OK
-Apr  6 04:49:02 node010 kernel: nfs: server 192.168.10.100 OK
-Apr  6 04:49:11 node010 kernel: nfs: server 192.168.10.100 not responding, still trying
-Apr  6 04:49:11 node010 kernel: nfs: server 192.168.10.100 not responding, still trying
-Apr  6 04:49:11 node010 kernel: nfs: server 192.168.10.100 OK
-Apr  6 04:49:11 node010 kernel: nfs: server 192.168.10.100 OK
-Apr  6 04:50:01 node010 cron[22755]: (root) CMD (test -x /usr/sbin/run-crons && /usr/sbin/run-crons )
-Apr  6 04:59:54 node010 kernel: nfs: server 192.168.10.100 not responding, still trying
-Apr  6 04:59:54 node010 kernel: nfs: server 192.168.10.100 OK
-Apr  6 05:00:01 node010 cron[29092]: (root) CMD (test -x /usr/sbin/run-crons && /usr/sbin/run-crons )
-Apr  6 05:00:01 node010 cron[29093]: (root) CMD (rm -f /var/spool/cron/lastrun/cron.hourly)
-Apr  6 05:00:03 node010 kernel: nfs: server 192.168.10.100 not responding, still trying
-Apr  6 05:00:03 node010 kernel: nfs: server 192.168.10.100 not responding, still trying
-Apr  6 05:00:03 node010 kernel: nfs: server 192.168.10.100 OK
-Apr  6 05:00:03 node010 kernel: nfs: server 192.168.10.100 OK
-Apr  6 05:10:01 node010 cron[28456]: (root) CMD (test -x /usr/sbin/run-crons && /usr/sbin/run-crons )
-Apr  6 05:20:01 node010 cron[29974]: (root) CMD (test -x /usr/sbin/run-crons && /usr/sbin/run-crons )
-Apr  6 05:30:01 node010 cron[32569]: (root) CMD (test -x /usr/sbin/run-crons && /usr/sbin/run-crons )
-Apr  6 05:37:48 node010 kernel: BUG: unable to handle kernel NULL pointer dereference at 0000000000000330
-Apr  6 05:37:48 node010 kernel: IP: [<ffffffff81025448>] do_page_fault+0x20/0x1de
-Apr  6 05:37:48 node010 kernel: PGD 106180067 PUD 12c8bc067 PMD 0 
-Apr  6 05:37:48 node010 kernel: Oops: 0000 [#1] SMP 
-Apr  6 05:37:48 node010 kernel: last sysfs file: /sys/devices/pci0000:00/0000:00:1f.2/host2/uevent
-Apr  6 05:37:48 node010 kernel: CPU 0 
-Apr  6 05:37:48 node010 kernel: Modules linked in:
-Apr  6 05:37:48 node010 kernel: Pid: 22251, comm: SFF_inspector.p Not tainted 2.6.32.58-default #5 MS-7345
-Apr  6 05:37:48 node010 kernel: RIP: 0010:[<ffffffff81025448>]  [<ffffffff81025448>] do_page_fault+0x20/0x1de
-Apr  6 05:37:48 node010 kernel: RSP: 0000:ffff880129e7df08  EFLAGS: 00010092
-Apr  6 05:37:48 node010 kernel: RAX: 00007fbd0c6201a0 RBX: 0000000000000000 RCX: 00000000017771b8
-Apr  6 05:37:48 node010 kernel: RDX: 0000000001650aa0 RSI: 0000000000000007 RDI: ffff880129e7df58
-Apr  6 05:37:48 node010 kernel: RBP: ffff880129e7df48 R08: 000000000000001f R09: 0000000000000002
-Apr  6 05:37:48 node010 kernel: R10: 0000000000000001 R11: 00007fbd0c31c890 R12: 00000000017acad0
-Apr  6 05:37:48 node010 kernel: R13: 0000000000000007 R14: ffff880129e7df58 R15: 0000000000000000
-Apr  6 05:37:48 node010 kernel: FS:  00007fbd0c85d720(0000) GS:ffff880028200000(0000) knlGS:0000000000000000
-Apr  6 05:37:48 node010 kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-Apr  6 05:37:48 node010 kernel: CR2: 0000000000000330 CR3: 000000012ca52000 CR4: 00000000000006f0
-Apr  6 05:37:48 node010 kernel: DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-Apr  6 05:37:48 node010 kernel: DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Apr  6 05:37:48 node010 kernel: Process myprog.py (pid: 22251, threadinfo ffff880129e7c000, task ffff88012e0907f0)
-Apr  6 05:37:48 node010 kernel: Stack:
-Apr  6 05:37:48 node010 kernel: 0000000000000000 ffff8800c81110a0 ffff8800c8111040 0000000000000000
-Apr  6 05:37:48 node010 kernel: <0> 00000000017acad0 0000000001650aa0 00000000018417f0 0000000001841a00
-Apr  6 05:37:48 node010 kernel: <0> 00000000017771b8 ffffffff813e16af 0000000001841a00 00000000018417f0
-Apr  6 05:37:48 node010 kernel: Call Trace:
-Apr  6 05:37:48 node010 kernel: [<ffffffff813e16af>] page_fault+0x1f/0x30
-Apr  6 05:37:48 node010 kernel: Code: ec 80 5b 41 5c 41 5d 41 5e c9 c3 55 48 89 e5 41 57 41 56 65 4c 8b 3c 25 00 b5 00 00 41 55 49 89 fe 41 54 49 89 f5 53 48 83 ec 18 <49> 8b 87 30 03 00 00 48 89 45 d0 0f 20 d3 48 83 c0 60 48 89 45 
-Apr  6 05:37:48 node010 kernel: RIP  [<ffffffff81025448>] do_page_fault+0x20/0x1de
-Apr  6 05:37:48 node010 kernel: RSP <ffff880129e7df08>
-Apr  6 05:37:48 node010 kernel: CR2: 0000000000000330
-Apr  6 05:37:48 node010 kernel: ---[ end trace 4d2269fd524616a4 ]---
-Apr  6 05:37:48 node010 kernel: ------------[ cut here ]------------
-Apr  6 05:37:48 node010 kernel: WARNING: at kernel/softirq.c:159 local_bh_enable_ip+0x3c/0x89()
-Apr  6 05:37:48 node010 kernel: Hardware name: MS-7345
-Apr  6 05:37:48 node010 kernel: Modules linked in:
-Apr  6 05:37:48 node010 kernel: Pid: 22251, comm: myprog.py Tainted: G      D    2.6.32.58-default #5
-Apr  6 05:37:48 node010 kernel: Call Trace:
-Apr  6 05:37:48 node010 kernel: [<ffffffff81041136>] ? local_bh_enable_ip+0x3c/0x89
-Apr  6 05:37:48 node010 kernel: [<ffffffff8103c6f9>] warn_slowpath_common+0x77/0xa4
-Apr  6 05:37:48 node010 kernel: [<ffffffff8103c735>] warn_slowpath_null+0xf/0x11
-Apr  6 05:37:48 node010 kernel: [<ffffffff81041136>] local_bh_enable_ip+0x3c/0x89
-Apr  6 05:37:48 node010 kernel: [<ffffffff813e1468>] _spin_unlock_bh+0x10/0x12
-Apr  6 05:37:48 node010 kernel: [<ffffffff81395c27>] rpc_sleep_on+0x332/0x341
-Apr  6 05:37:48 node010 kernel: [<ffffffff81391285>] xprt_reserve_xprt_cong+0x121/0x13d
-Apr  6 05:37:48 node010 kernel: [<ffffffff813909fd>] xprt_prepare_transmit+0x6a/0x89
-Apr  6 05:37:48 node010 kernel: [<ffffffff8138eb74>] call_transmit+0x53/0x255
-Apr  6 05:37:48 node010 kernel: [<ffffffff81395684>] __rpc_execute+0x7b/0x24c
-Apr  6 05:37:48 node010 kernel: [<ffffffff813958da>] rpc_execute+0x85/0x8e
-Apr  6 05:37:48 node010 kernel: [<ffffffff8138f632>] rpc_run_task+0x56/0x5e
-Apr  6 05:37:48 node010 kernel: [<ffffffff8138f725>] rpc_call_sync+0x3f/0x5d
-Apr  6 05:37:48 node010 kernel: [<ffffffff81134eb3>] nfs3_rpc_wrapper+0x2b/0x5d
-Apr  6 05:37:48 node010 kernel: [<ffffffff811355e6>] nfs3_proc_getattr+0x5b/0x81
-Apr  6 05:37:48 node010 kernel: [<ffffffff811278da>] __nfs_revalidate_inode+0xbd/0x1c9
-Apr  6 05:37:48 node010 kernel: [<ffffffff81131f9f>] ? nfs_scan_commit+0x2c/0x56
-Apr  6 05:37:48 node010 kernel: [<ffffffff81132d01>] ? nfs_sync_mapping_wait+0x16d/0x22c
-Apr  6 05:37:48 node010 kernel: [<ffffffff81127a85>] nfs_revalidate_inode+0x44/0x49
-Apr  6 05:37:48 node010 kernel: [<ffffffff81127acc>] nfs_close_context+0x42/0x44
-Apr  6 05:37:48 node010 kernel: [<ffffffff81127b54>] __put_nfs_open_context+0x86/0xae
-Apr  6 05:37:48 node010 kernel: [<ffffffff81127bfe>] nfs_release+0x82/0x8d
-Apr  6 05:37:48 node010 kernel: [<ffffffff81125bd5>] nfs_file_release+0x6c/0x71
-Apr  6 05:37:48 node010 kernel: [<ffffffff8109c99e>] __fput+0xf6/0x1b3
-Apr  6 05:37:48 node010 kernel: [<ffffffff8109ca73>] fput+0x18/0x1a
-Apr  6 05:37:48 node010 kernel: [<ffffffff81099f0c>] filp_close+0x67/0x72
-Apr  6 05:37:48 node010 kernel: [<ffffffff8103e04f>] put_files_struct+0x6b/0xc2
-Apr  6 05:37:48 node010 kernel: [<ffffffff8103e0ee>] exit_files+0x48/0x50
-Apr  6 05:37:48 node010 kernel: [<ffffffff8103f673>] do_exit+0x1d9/0x63f
-Apr  6 05:37:48 node010 kernel: [<ffffffff8100f616>] oops_end+0xb3/0xbb
-Apr  6 05:37:48 node010 kernel: [<ffffffff81025083>] no_context+0x1ea/0x1f9
-Apr  6 05:37:48 node010 kernel: [<ffffffff81025245>] __bad_area_nosemaphore+0x1b3/0x1d9
-Apr  6 05:37:48 node010 kernel: [<ffffffff811a9dc4>] ? cpumask_any_but+0x2b/0x38
-Apr  6 05:37:48 node010 kernel: [<ffffffff810292e3>] ? flush_tlb_page+0x58/0x76
-Apr  6 05:37:48 node010 kernel: [<ffffffff810252bd>] bad_area+0x42/0x4a
-Apr  6 05:37:48 node010 kernel: [<ffffffff81025578>] do_page_fault+0x150/0x1de
-Apr  6 05:37:48 node010 kernel: [<ffffffff813e16af>] page_fault+0x1f/0x30
-Apr  6 05:37:48 node010 kernel: [<ffffffff81025448>] ? do_page_fault+0x20/0x1de
-Apr  6 05:37:48 node010 kernel: [<ffffffff810255d7>] ? do_page_fault+0x1af/0x1de
-Apr  6 05:37:48 node010 kernel: [<ffffffff813e16af>] page_fault+0x1f/0x30
-Apr  6 05:37:48 node010 kernel: ---[ end trace 4d2269fd524616a5 ]---
-Apr  6 05:47:09 node010 kernel: myprog.py[20292]: segfault at 0 ip (null) sp 00007fff3694b518 error 14 in python2.7[400000+1000]
-Apr  6 05:50:01 node010 cron[28586]: (root) CMD (test -x /usr/sbin/run-crons && /usr/sbin/run-crons )
-Apr  6 05:56:02 node010 kernel: BUG: unable to handle kernel NULL pointer dereference at 0000000000000296
-Apr  6 05:56:02 node010 kernel: IP: [<0000000000000296>] 0x296
-Apr  6 05:56:02 node010 kernel: PGD cfab6067 PUD c806a067 PMD 0 
-Apr  6 05:56:02 node010 kernel: Oops: 0010 [#2] SMP 
-Apr  6 05:56:02 node010 kernel: last sysfs file: /sys/devices/pci0000:00/0000:00:1f.2/host2/uevent
-Apr  6 05:56:02 node010 kernel: CPU 0 
-Apr  6 05:56:02 node010 kernel: Modules linked in:
-Apr  6 05:56:02 node010 kernel: Pid: 10918, comm: water Tainted: G      D W  2.6.32.58-default #5 MS-7345
-Apr  6 05:56:02 node010 kernel: RIP: 0010:[<0000000000000296>]  [<0000000000000296>] 0x296
-Apr  6 05:56:02 node010 kernel: RSP: 0000:ffff880006407e78  EFLAGS: 00010292
-Apr  6 05:56:02 node010 kernel: RAX: 0000000000000200 RBX: 0000000000000000 RCX: 0000000000000034
-Apr  6 05:56:02 node010 kernel: RDX: 0000000000000000 RSI: ffffea0001747680 RDI: ffff880028007768
-Apr  6 05:56:02 node010 kernel: RBP: ffff880006407ef8 R08: 0000000000000000 R09: 0000000000000000
-Apr  6 05:56:02 node010 kernel: R10: 0000000000000002 R11: ffff880006407dd8 R12: ffff8800cf958690
-Apr  6 05:56:02 node010 kernel: R13: 0000000000000014 R14: 0000000000000000 R15: ffff8800c80ff870
-Apr  6 05:56:02 node010 kernel: FS:  00007f32fc32f720(0000) GS:ffff880028200000(0000) knlGS:0000000000000000
-Apr  6 05:56:02 node010 kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-Apr  6 05:56:02 node010 kernel: CR2: 0000000000000296 CR3: 00000000c818e000 CR4: 00000000000006f0
-Apr  6 05:56:02 node010 kernel: DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-Apr  6 05:56:02 node010 kernel: DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Apr  6 05:56:02 node010 kernel: Process water (pid: 10918, threadinfo ffff880006406000, task ffff8800cf91b040)
-Apr  6 05:56:02 node010 kernel: Stack:
-Apr  6 05:56:02 node010 kernel: 0000000000000000 ffff88012b098e30 0000000000000296 00007f32fbed2900
-Apr  6 05:56:02 node010 kernel: <0> ffff88012cb19580 ffff8800cfa23ef8 0000000000000690 ffff88012b098e30
-Apr  6 05:56:02 node010 kernel: <0> ffff88012b080d78 ffff88012b080d90 ffff880006407ee8 00007f32fbed2900
-Apr  6 05:56:02 node010 kernel: Call Trace:
-Apr  6 05:56:02 node010 kernel: [<ffffffff810255ef>] do_page_fault+0x1c7/0x1de
-Apr  6 05:56:02 node010 kernel: [<ffffffff813e16af>] page_fault+0x1f/0x30
-Apr  6 05:56:02 node010 kernel: Code:  Bad RIP value.
-Apr  6 05:56:02 node010 kernel: RIP  [<0000000000000296>] 0x296
-Apr  6 05:56:02 node010 kernel: RSP <ffff880006407e78>
-Apr  6 05:56:02 node010 kernel: CR2: 0000000000000296
-Apr  6 05:56:02 node010 kernel: ---[ end trace 4d2269fd524616a6 ]---
+On Apr 23, 2012, at 4:55 PM, Chuck Lever wrote:
+
+> For NFSv4 minor version 0, currently the cl_id_uniquifier allows the
+> Linux client to generate a unique nfs_client_id4 string whenever a
+> server replies with NFS4ERR_CLID_INUSE.
+> 
+> NFS4ERR_CLID_INUSE actually means that the client has presented this
+> nfs_client_id4 string with a different authentication flavor in the
+> past.  Retrying with a different nfs_client_id4 string means the
+> client orphans NFSv4 state on the server.  This state will take at
+> least a whole lease period to be purged.
+> 
+> Change recovery to try the identification operation again with a
+> different auth flavor until it works.  The retry loop is factored
+> out of nfs4_proc_setclientid() and into the state manager, so that
+> both mv0 and mv1 client ID establishment is covered by the same
+> CLID_INUSE recovery logic.
+> 
+> XXX: On further review, I'm not sure how it would be possible to
+> send an nfs_client_id4 with the wrong authentication flavor, since
+> the au_name is part of the string itself...
+
+I'm having other doubts about this whole approach.
+
+In the loop in nfs4_reclaim_lease(), the client will need to replace the RPC transport for each retried flavor, and then continue using the transport that worked.  New mounts clone their transport from the nfs_client, even if its authentication flavor does not match what might have been specified on the mount.  (I haven't checked this, is it true?)
+
+What's more, there's no way a server can identify a re-used nfs_client_id4, since we currently plant the authentication flavor in the nfs_client_id4 string…
+
+In fact, because we generate nfs_client_id4 strings with the flavor built in, won't each flavor used on a mount generate a separate lease on the server?
+
+Talk me down?
+
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+> fs/nfs/nfs4proc.c         |   75 ++++++++++++++++++++++++++++++---------------
+> fs/nfs/nfs4state.c        |   37 ++++++++++++++++++----
+> include/linux/nfs_fs_sb.h |    3 +-
+> 3 files changed, 81 insertions(+), 34 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 8bdc6fd..7ec1b68 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -3890,6 +3890,37 @@ static void nfs4_init_boot_verifier(const struct nfs_client *clp,
+> 	memcpy(bootverf->data, verf, sizeof(bootverf->data));
+> }
+> 
+> +static unsigned int
+> +nfs4_init_nonuniform_client_string(const struct nfs_client *clp,
+> +				   char *buf, size_t len)
+> +{
+> +	unsigned int result;
+> +
+> +	rcu_read_lock();
+> +	result = scnprintf(buf, len, "%s/%s %s %s non-uniform",
+> +				clp->cl_ipaddr,
+> +				rpc_peeraddr2str(clp->cl_rpcclient,
+> +							RPC_DISPLAY_ADDR),
+> +				rpc_peeraddr2str(clp->cl_rpcclient,
+> +							RPC_DISPLAY_PROTO),
+> +				clp->cl_rpcclient->cl_auth->au_ops->au_name);
+> +	rcu_read_unlock();
+> +	return result;
+> +}
+> +
+> +/**
+> + * nfs4_proc_setclientid - Negotiate client ID
+> + * @clp: state data structure
+> + * @program: RPC program for NFSv4 callback service
+> + * @port: IP port number for NFS4 callback service
+> + * @cred: RPC credential to use for this call
+> + * @res: where to place the result
+> + *
+> + * Returns zero or a negative NFS4ERR status code.
+> + *
+> + * A status of -NFS4ERR_CLID_INUSE means the caller should try
+> + * again with a different authentication flavor.
+> + */
+> int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+> 		unsigned short port, struct rpc_cred *cred,
+> 		struct nfs4_setclientid_res *res)
+> @@ -3906,41 +3937,30 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+> 		.rpc_resp = res,
+> 		.rpc_cred = cred,
+> 	};
+> -	int loop = 0;
+> 	int status;
+> 
+> +	/* Client ID */
+> 	nfs4_init_boot_verifier(clp, &sc_verifier);
+> +	setclientid.sc_name_len = nfs4_init_nonuniform_client_string(clp,
+> +						setclientid.sc_name,
+> +						sizeof(setclientid.sc_name));
+> 
+> -	for(;;) {
+> -		rcu_read_lock();
+> -		setclientid.sc_name_len = scnprintf(setclientid.sc_name,
+> -				sizeof(setclientid.sc_name), "%s/%s %s %s %u",
+> -				clp->cl_ipaddr,
+> -				rpc_peeraddr2str(clp->cl_rpcclient,
+> -							RPC_DISPLAY_ADDR),
+> -				rpc_peeraddr2str(clp->cl_rpcclient,
+> -							RPC_DISPLAY_PROTO),
+> -				clp->cl_rpcclient->cl_auth->au_ops->au_name,
+> -				clp->cl_id_uniquifier);
+> -		setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
+> +	/* Callback info */
+> +	rcu_read_lock();
+> +	setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
+> 				sizeof(setclientid.sc_netid),
+> 				rpc_peeraddr2str(clp->cl_rpcclient,
+> 							RPC_DISPLAY_NETID));
+> -		setclientid.sc_uaddr_len = scnprintf(setclientid.sc_uaddr,
+> +	rcu_read_unlock();
+> +	setclientid.sc_uaddr_len = scnprintf(setclientid.sc_uaddr,
+> 				sizeof(setclientid.sc_uaddr), "%s.%u.%u",
+> 				clp->cl_ipaddr, port >> 8, port & 255);
+> -		rcu_read_unlock();
+> 
+> -		status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
+> -		if (status != -NFS4ERR_CLID_INUSE)
+> -			break;
+> -		if (loop != 0) {
+> -			++clp->cl_id_uniquifier;
+> -			break;
+> -		}
+> -		++loop;
+> -		ssleep(clp->cl_lease_time / HZ + 1);
+> -	}
+> +	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
+> +
+> +	dprintk("%s: nfs_client_id4 '%.*s' (status %d)\n",
+> +		__func__, setclientid.sc_name_len, setclientid.sc_name,
+> +		status);
+> 	return status;
+> }
+> 
+> @@ -5008,6 +5028,11 @@ nfs41_same_server_scope(struct nfs41_server_scope *a,
+> /*
+>  * nfs4_proc_exchange_id()
+>  *
+> + * Returns zero or a negative NFS4ERR status code.
+> + *
+> + * A status of -NFS4ERR_CLID_INUSE means the caller should try
+> + * again with a different authentication flavor.
+> + *
+>  * Since the clientid has expired, all compounds using sessions
+>  * associated with the stale clientid will be returning
+>  * NFS4ERR_BADSESSION in the sequence operation, and will therefore
+> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+> index 7f56502..6a1a305 100644
+> --- a/fs/nfs/nfs4state.c
+> +++ b/fs/nfs/nfs4state.c
+> @@ -1576,19 +1576,42 @@ static int nfs4_reclaim_lease(struct nfs_client *clp)
+> 	struct rpc_cred *cred;
+> 	const struct nfs4_state_recovery_ops *ops =
+> 		clp->cl_mvops->reboot_recovery_ops;
+> -	int status = -ENOENT;
+> +	rpc_authflavor_t flavors[NFS_MAX_SECFLAVORS];
+> +	int i, len, status;
+> 
+> +	i = 0;
+> +	len = gss_mech_list_pseudoflavors(flavors);
+> +
+> +again:
+> +	status = -ENOENT;
+> 	cred = ops->get_clid_cred(clp);
+> 	if (cred != NULL) {
+> 		status = ops->establish_clid(clp, cred);
+> 		put_rpccred(cred);
+> -		/* Handle case where the user hasn't set up machine creds */
+> -		if (status == -EACCES && cred == clp->cl_machine_cred) {
+> -			nfs4_clear_machine_cred(clp);
+> -			status = -EAGAIN;
+> -		}
+> -		if (status == -NFS4ERR_MINOR_VERS_MISMATCH)
+> +		switch (status) {
+> +		case 0:
+> +			break;
+> +		case -EACCES:	/* the user hasn't set up machine creds */
+> +			if (cred == clp->cl_machine_cred) {
+> +				nfs4_clear_machine_cred(clp);
+> +				status = -EAGAIN;
+> +			}
+> +			break;
+> +		case -NFS4ERR_CLID_INUSE:
+> +		case -NFS4ERR_WRONGSEC:
+> +			/*
+> +			 * XXX: "flavors" is unordered; the client should
+> +			 *	prefer krb5p for this transport
+> +			 */
+> +			if (i < len && rpcauth_create(flavors[i++],
+> +						clp->cl_rpcclient) != NULL)
+> +				goto again;
+> +			status = -EPERM;
+> +			break;
+> +		case -NFS4ERR_MINOR_VERS_MISMATCH:
+> 			status = -EPROTONOSUPPORT;
+> +			break;
+> +		}
+> 	}
+> 	return status;
+> }
+> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+> index b246582..1c4c174 100644
+> --- a/include/linux/nfs_fs_sb.h
+> +++ b/include/linux/nfs_fs_sb.h
+> @@ -65,10 +65,9 @@ struct nfs_client {
+> 	struct idmap *		cl_idmap;
+> 
+> 	/* Our own IP address, as a null-terminated string.
+> -	 * This is used to generate the clientid, and the callback address.
+> +	 * This is used to generate the mv0 callback address.
+> 	 */
+> 	char			cl_ipaddr[48];
+> -	unsigned char		cl_id_uniquifier;
+> 	u32			cl_cb_ident;	/* v4.0 callback identifier */
+> 	const struct nfs4_minor_version_ops *cl_mvops;
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
