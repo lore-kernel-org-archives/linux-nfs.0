@@ -1,48 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49345 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:35087 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753593Ab2DTV0a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 17:26:30 -0400
-Date: Fri, 20 Apr 2012 17:26:27 -0400
-To: Jeremy Allison <jra@samba.org>
-Cc: Ondrej Valousek <webserv@s3group.com>,
-        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
-        linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 ACLs
-Message-ID: <20120420212627.GA710@fieldses.org>
-References: <4F913492.8000402@s3group.cz>
- <20120420185553.GB32622@samba2>
+	id S1753383Ab2DZSxo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Apr 2012 14:53:44 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 13/20] NFS: Fix recovery from NFS4ERR_CLID_INUSE
+Date: Thu, 26 Apr 2012 18:53:43 +0000
+Message-ID: <1335466422.24247.8.camel@lade.trondhjem.org>
+References: <20120423205312.11446.67081.stgit@degas.1015granger.net>
+	 <20120423205505.11446.28437.stgit@degas.1015granger.net>
+	 <D6859152-CF45-44CC-BB3C-B40CB9FD0BE8@oracle.com>
+	 <1335459334.9701.25.camel@lade.trondhjem.org>
+	 <F4214CAE-E0DE-4A3C-BA0B-02A9F8277897@oracle.com>
+In-Reply-To: <F4214CAE-E0DE-4A3C-BA0B-02A9F8277897@oracle.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120420185553.GB32622@samba2>
-From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 20, 2012 at 11:55:53AM -0700, Jeremy Allison wrote:
-> On Fri, Apr 20, 2012 at 12:04:02PM +0200, Ondrej Valousek wrote:
-> > Hi List,
-> > 
-> > I know this has been asked many times, but I will ask one more time:
-> > I would like to export NFSv4 mounted filesystem with Samba and would
-> > like to be able to use windows "security tab" in explorer to modify
-> > these ACLs.
-> > Do I have any chance with Samba on RHEL-5/6?
-> 
-> Does Linux have local API's to manipulate mounted NFSv4 ACLs ?
-> 
-> Samba has VFS modules to cope with mapping Windows ACLs onto
-> NFSv4 ACLs but currently they only work on AIX, Linux with IBM's
-> gpfs and Solaris right now.
-> 
-> If you can point me a docs showing the library APIs for Linux
-> to allow programatic manipulation of NFSv4 ACLs then I can
-> make it work on Linux too.
-
-It's a bit idiosyncratic, but should be easy enough to handle if you
-want, I think: on the linux client, on an nfs4 filesystem, the
-"system.nfs4_acl" xattr contains the xdr-encoded ACL as it came in on
-the wire (network-byte-order and all).  See the definition of fattr4_acl
-in rfc 3530.
-
---b.
+T24gVGh1LCAyMDEyLTA0LTI2IGF0IDE0OjQzIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+T24gQXByIDI2LCAyMDEyLCBhdCAxMjo1NSBQTSwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4g
+DQo+ID4gT24gVGh1LCAyMDEyLTA0LTI2IGF0IDEyOjI0IC0wNDAwLCBDaHVjayBMZXZlciB3cm90
+ZToNCj4gPj4gT24gQXByIDIzLCAyMDEyLCBhdCA0OjU1IFBNLCBDaHVjayBMZXZlciB3cm90ZToN
+Cj4gPiBUaGVuIGxldHMgbW92ZSB0aGUgZmxhdm91ciBvdXQgb2YgdGhlIGNsaWVudGlkIHN0cmlu
+ZywNCj4gDQo+IFJlbW92aW5nIHRoZSBmbGF2b3IgZnJvbSB0aGUgbmZzX2NsaWVudF9pZDQgc3Ry
+aW5nIG1ha2VzIHNlbnNlLg0KPiANCj4gPiBhbmQganVzdCBzZXR0bGUNCj4gPiBmb3IgaGFuZGxp
+bmcgQ0xJRF9JTlVTRSBieSBjaGFuZ2luZyB0aGUgZmxhdm91ciBvbiB0aGUgU0VUQ0xJRU5USUQg
+Y2FsbC4NCj4gDQo+IFRoaXMgaXMgd2hlcmUgSSBnZXQgaGF6eS4gIA0KPiANCj4gSWYgSSBzaW1w
+bHkgY2hhbmdlIHRoZSBhdXRoZW50aWNhdGlvbiBmbGF2b3Igb24gdGhlIGV4aXN0aW5nIGNscC0+
+Y2xfcnBjY2xpZW50LCB3aWxsIHRoaXMgYWZmZWN0IG9uZ29pbmcgUkVORVcgb3BlcmF0aW9ucyB0
+aGF0IGFsc28gdXNlIHRoaXMgdHJhbnNwb3J0PyAgRG8gd2Ugd2FudCBzdWJzZXF1ZW50IFJFTkVX
+IG9wZXJhdGlvbnMgdG8gdXNlIHRoZSBuZXcgZmxhdm9yPw0KPiANCj4gVGhpbmtpbmcgaHlwb3Ro
+ZXRpY2FsbHksIGl0IHNlZW1zIHRvIG1lIHRoYXQgQ0xJRF9JTlVTRSBpcyByZWFsbHkgYW4gaW5k
+aWNhdGlvbiBvZiBhIHBlcm1hbmVudCBjb25maWd1cmF0aW9uIGVycm9yLCBvciBhIHNvZnR3YXJl
+IGJ1ZywgYW5kIHdlIHNob3VsZCBub3QgYm90aGVyIHRvIHJlY292ZXIuICBCdXQgbWF5YmUgdGhh
+dCdzIG15IGxpbWl0ZWQgaW1hZ2luYXRpb24uICBVbmRlciB3aGF0IHVzZSBjYXNlcyBkbyB5b3Ug
+dGhpbmsgQ0xJRF9JTlVTRSBtaWdodCBvY2N1ciBhbmQgaXQgbWlnaHQgYmUgdXNlZnVsIHRvIGF0
+dGVtcHQgcmVjb3Zlcnk/DQo+IA0KDQpUaGUgc2VydmVyIGNhY2hlcyB0aGUgcHJpbmNpcGFsIG5h
+bWUgdGhhdCB3YXMgdXNlZCB0byBjYWxsIFNFVENMSUVOVElEDQp3aGVuIHRoZSBsZWFzZSB3YXMg
+ZXN0YWJsaXNoZWQuIEFueSBhdHRlbXB0IHRvIGNhbGwgU0VUQ0xJRU5USUQgd2l0aCBhDQpkaWZm
+ZXJlbnQgcHJpbmNpcGFsIHdpbGwgcmVzdWx0IGluIENMSURfSU5VU0UgdW5sZXNzIHRoZSBsZWFz
+ZSBoYXMNCmV4cGlyZWQuDQoNClNvIHdoYXQgSSB3YXMgcHJvcG9zaW5nIHdhc24ndCB0aGF0IHlv
+dSB0cnkgdG8gY2hhbmdlIHRoZSBhdXRoZW50aWNhdGlvbg0KZmxhdm91ciBvbiBhbiBleGlzdGlu
+ZyBuZnNfY2xpZW50LiBJdCB3YXMgdGhhdCB3aGVuIHlvdSBhcmUgcHJvYmluZywgeW91DQpjYW4g
+dXNlIHRoZSBDTElEX0lOVVNFIHJlcGx5IGZyb20gU0VUQ0xJRU5USUQgYXMgYSBkaXJlY3QgaW5k
+aWNhdGlvbg0KdGhhdCB0aGUgc2VydmVyIGlzIGluZGVlZCB0cnVua2VkLCBhbmQgdGhhdCB5b3Ug
+YWxyZWFkeSBob2xkIGEgbGVhc2Ugb24NCnRoYXQgc2VydmVyLCBidXQgdGhhdCB0aGUgYXV0aGVu
+dGljYXRpb24gZmxhdm91ciB0aGF0IHlvdSBhcmUgdHJ5aW5nIHRvDQp1c2UgaXMgd3JvbmcuDQoN
+Ci0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0
+QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
