@@ -1,85 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:62103 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754240Ab2DWUhK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Apr 2012 16:37:10 -0400
-Message-ID: <4F95BD72.6090200@redhat.com>
-Date: Mon, 23 Apr 2012 15:37:06 -0500
-From: Eric Sandeen <sandeen@redhat.com>
-MIME-Version: 1.0
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-CC: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Fan Yong <yong.fan@whamcloud.com>,
-        bfields@redhat.com, Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: [PATCH 5 2/4] Return 32/64-bit dir name hash according to usage
- type
-References: <20120109132137.2616029.76288.stgit@localhost.localdomain> <20120109132148.2616029.68798.stgit@localhost.localdomain> <4F91C15B.6070200@redhat.com> <4F93FED6.6090505@itwm.fraunhofer.de>
-In-Reply-To: <4F93FED6.6090505@itwm.fraunhofer.de>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:53756 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757625Ab2DZQ2j (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 12:28:39 -0400
+Received: by yenl12 with SMTP id l12so1046184yen.19
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Apr 2012 09:28:39 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
+        michael.brantley@deshaw.com
+Subject: [PATCH v1 06/12] vfs: fix mkdir to retry on ESTALE errors
+Date: Thu, 26 Apr 2012 11:57:17 -0400
+Message-Id: <1335455843-16089-5-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1335455843-16089-1-git-send-email-jlayton@redhat.com>
+References: <1335455843-16089-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 4/22/12 7:51 AM, Bernd Schubert wrote:
-> On 04/20/2012 10:04 PM, Eric Sandeen wrote:
->> On 1/9/12 7:21 AM, Bernd Schubert wrote:
->>> From: Fan Yong <yong.fan@whamcloud.com>
->>>
->>> Traditionally ext2/3/4 has returned a 32-bit hash value from llseek()
->>> to appease NFSv2, which can only handle a 32-bit cookie for seekdir()
->>> and telldir().  However, this causes problems if there are 32-bit hash
->>> collisions, since the NFSv2 server can get stuck resending the same
->>> entries from the directory repeatedly.
->>>
->>> Allow ext4 to return a full 64-bit hash (both major and minor) for
->>> telldir to decrease the chance of hash collisions.  This still needs
->>> integration on the NFS side.
->>>
->>> Patch-updated-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
->>> (blame me if something is not correct)
->>
->> Bernd, I've merged this to ext3.  Bruce thought maybe you were working
->> on the same.  Should I send mine?
-> 
-> That is perfectly fine with me.
-> 
->>
->> Also...
->>
->>> +/*
->>> + * ext4_dir_llseek() based on generic_file_llseek() to handle both
->>> + * non-htree and htree directories, where the "offset" is in terms
->>> + * of the filename hash value instead of the byte offset.
->>> + *
->>> + * NOTE: offsets obtained *before* ext4_set_inode_flag(dir, EXT4_INODE_INDEX)
->>> + *       will be invalid once the directory was converted into a dx directory
->>> + */
->>> +loff_t ext4_dir_llseek(struct file *file, loff_t offset, int origin)
->>
->> ext4_llseek() worries about max offset for direct/indirect vs. extent-mapped
->> files.  Do we need to worry about the same thing in this function?
-> 
-> Hrmm, I just checked it and I think either is wrong. We only have to
-> care about non-dx directories, so ext4_readdir() applies, which limits
-> filp->f_pos < inode->i_size.
-> Going to send a patch tomorrow. Thanks for spotting this!
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c |   38 +++++++++++++++++++++-----------------
+ 1 files changed, 21 insertions(+), 17 deletions(-)
 
-The other thing I'm wondering is whether, in light of
-
-ef3d0fd27e90f67e35da516dafc1482c82939a60 vfs: do (nearly) lockless generic_file_llseek
-
-taking the i_mutex in ext4_dir_llseek could be a perf regression vs what was there before?  Is there anything about the new function which requires stronger locking?
-
-I may be missing something obvious about the nfs interaction, not sure.
-
--Eric
-
-> Cheers,
-> Bernd
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/namei.c b/fs/namei.c
+index 9ee6b4e..e9da40b 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2659,26 +2659,30 @@ SYSCALL_DEFINE3(mkdirat, int, dfd, const char __user *, pathname, umode_t, mode)
+ 	struct dentry *dentry;
+ 	struct path path;
+ 	int error;
++	unsigned int try = 0;
+ 
+-	dentry = user_path_create(dfd, pathname, &path, true, false);
+-	if (IS_ERR(dentry))
+-		return PTR_ERR(dentry);
+-
+-	if (!IS_POSIXACL(path.dentry->d_inode))
+-		mode &= ~current_umask();
+-	error = mnt_want_write(path.mnt);
+-	if (error)
+-		goto out_dput;
+-	error = security_path_mkdir(&path, dentry, mode);
+-	if (error)
+-		goto out_drop_write;
+-	error = vfs_mkdir(path.dentry->d_inode, dentry, mode);
++	do {
++		dentry = user_path_create(dfd, pathname, &path, true, try);
++		if (IS_ERR(dentry)) {
++			error = PTR_ERR(dentry);
++			break;
++		}
++		if (!IS_POSIXACL(path.dentry->d_inode))
++			mode &= ~current_umask();
++		error = mnt_want_write(path.mnt);
++		if (error)
++			goto out_dput;
++		error = security_path_mkdir(&path, dentry, mode);
++		if (error)
++			goto out_drop_write;
++		error = vfs_mkdir(path.dentry->d_inode, dentry, mode);
+ out_drop_write:
+-	mnt_drop_write(path.mnt);
++		mnt_drop_write(path.mnt);
+ out_dput:
+-	dput(dentry);
+-	mutex_unlock(&path.dentry->d_inode->i_mutex);
+-	path_put(&path);
++		dput(dentry);
++		mutex_unlock(&path.dentry->d_inode->i_mutex);
++		path_put(&path);
++	} while (retry_estale(error, try++));
+ 	return error;
+ }
+ 
+-- 
+1.7.7.6
 
