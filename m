@@ -1,127 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:2552 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757352Ab2DXUSW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Apr 2012 16:18:22 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        "Linux Kernel mailing list" <linux-kernel@vger.kernel.org>
-Subject: [GIT PULL] please pull NFS client bugfixes
-Date: Tue, 24 Apr 2012 20:18:03 +0000
-Message-ID: <1335298684.2561.8.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from acsinet15.oracle.com ([141.146.126.227]:41508 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752284Ab2DZSn7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 14:43:59 -0400
+Subject: Re: [PATCH 13/20] NFS: Fix recovery from NFS4ERR_CLID_INUSE
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=windows-1252
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1335459334.9701.25.camel@lade.trondhjem.org>
+Date: Thu, 26 Apr 2012 14:43:52 -0400
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <F4214CAE-E0DE-4A3C-BA0B-02A9F8277897@oracle.com>
+References: <20120423205312.11446.67081.stgit@degas.1015granger.net> <20120423205505.11446.28437.stgit@degas.1015granger.net> <D6859152-CF45-44CC-BB3C-B40CB9FD0BE8@oracle.com> <1335459334.9701.25.camel@lade.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgTGludXMsDQoNClBsZWFzZSBwdWxsIGZyb20gdGhlIHNpZ25lZCB0YWcgIm5mcy1mb3ItMy40
-LTMiIGluIHRoZSByZXBvc2l0b3J5IGF0DQoNCiAgIGdpdCBwdWxsIGdpdDovL2dpdC5saW51eC1u
-ZnMub3JnL3Byb2plY3RzL3Ryb25kbXkvbGludXgtbmZzLmdpdCB0YWdzL25mcy1mb3ItMy40LTMN
-Cg0KVGhpcyB3aWxsIHVwZGF0ZSB0aGUgZm9sbG93aW5nIGZpbGVzIHRocm91Z2ggdGhlIGFwcGVu
-ZGVkIGNoYW5nZXNldHMuDQoNCiAgQ2hlZXJzLA0KICAgIFRyb25kDQoNCi0tLS0NCiBmcy9uZnMv
-ZGlyLmMgICAgICAgICAgICAgfCAgICA0ICsrLS0NCiBmcy9uZnMvbmZzNF9mcy5oICAgICAgICAg
-fCAgICAxICsNCiBmcy9uZnMvbmZzNHByb2MuYyAgICAgICAgfCAgIDQ0ICsrKysrKysrKysrKysr
-KysrKysrKysrKysrKysrKysrKysrKy0tLS0tLS0tDQogZnMvbmZzL25mczRzdGF0ZS5jICAgICAg
-IHwgICAzMSArKysrKysrKysrKysrKysrKysrLS0tLS0tLS0tLS0tDQogZnMvbmZzL25mczR4ZHIu
-YyAgICAgICAgIHwgICAgOSArKysrKy0tLS0NCiBmcy9uZnMvcmVhZC5jICAgICAgICAgICAgfCAg
-ICAyICstDQogZnMvbmZzL3N1cGVyLmMgICAgICAgICAgIHwgICAgOCArKysrKystLQ0KIGZzL25m
-cy93cml0ZS5jICAgICAgICAgICB8ICAgIDUgKysrLS0NCiBpbmNsdWRlL2xpbnV4L25mc194ZHIu
-aCAgfCAgICA3ICsrKysrKy0NCiBuZXQvc3VucnBjL3N1bnJwY19zeW1zLmMgfCAgIDE3ICsrKysr
-KysrKy0tLS0tLS0tDQogMTAgZmlsZXMgY2hhbmdlZCwgODggaW5zZXJ0aW9ucygrKSwgNDAgZGVs
-ZXRpb25zKC0pDQoNCmNvbW1pdCA3YmY5N2JjMjczMDhjZmRjN2E4ZGFkZDQwYWU1MGY3YzRjYjA5
-YjAxDQpBdXRob3I6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+
-DQpEYXRlOiAgIFNhdCBBcHIgMjEgMTI6MzY6MTkgMjAxMiAtMDQwMA0KDQogICAgTkZTdjQ6IEtl
-ZXAgZHJvcHBlZCBzdGF0ZSBvd25lcnMgb24gdGhlIExSVSBsaXN0IGZvciBhIHdoaWxlDQogICAg
-DQogICAgVG8gZW5zdXJlIHRoYXQgd2UgZG9uJ3QgcmV1c2UgdGhlaXIgaWRlbnRpZmllcnMuDQog
-ICAgDQogICAgU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RA
-bmV0YXBwLmNvbT4NCg0KY29tbWl0IGM3NzM2NWM5NjNjZjg3MDNlY2YxMDA0Y2QzYjI5ODA2OGEz
-ZTFiNzYNCkF1dGhvcjogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
-bT4NCkRhdGU6ICAgU2F0IEFwciAyMSAxMjozMTowNSAyMDEyIC0wNDAwDQoNCiAgICBORlN2NDog
-RW5zdXJlIHRoYXQgd2UgZG9uJ3QgZHJvcCBhIHN0YXRlIG93bmVyIG1vcmUgdGhhbiBvbmNlDQog
-ICAgDQogICAgUmV0ZXN0IHRoZSBSQl9FTVBUWV9OT0RFKCkgY29uZGl0aW9uIHVuZGVyIHRoZSBz
-cGluIGxvY2sNCiAgICB0byBlbnN1cmUgdGhhdCB3ZSBkb24ndCBjYWxsIHJiX2VyYXNlKCkgbW9y
-ZSB0aGFuIG9uY2Ugb24gdGhlDQogICAgc2FtZSBzdGF0ZSBvd25lci4NCiAgICANCiAgICBTaWdu
-ZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0K
-DQpjb21taXQgOTViNzJlYjBiZGVmNjQ3NmI3ZTczMDYxZjAzODJhZGY0NmM1NDk1YQ0KQXV0aG9y
-OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KRGF0ZTogICBG
-cmkgQXByIDIwIDE5OjI0OjUxIDIwMTIgLTA0MDANCg0KICAgIE5GU3Y0OiBFbnN1cmUgd2UgZG8g
-bm90IHJldXNlIG9wZW4gb3duZXIgbmFtZXMNCiAgICANCiAgICBUaGUgTkZTdjQgc3BlYyBpcyBh
-bWJpZ3VvdXMgYWJvdXQgd2hldGhlciBvciBub3QgaXQgaXMgcGVybWlzc2libGUNCiAgICB0byBy
-ZXVzZSBvcGVuIG93bmVyIG5hbWVzLCBzbyBwbGF5IGl0IHNhZmUuIFRoaXMgcGF0Y2ggYWRkcyBh
-IHRpbWVzdGFtcA0KICAgIHRvIHRoZSBzdGF0ZV9vd25lciBzdHJ1Y3R1cmUsIGFuZCBjb21iaW5l
-cyB0aGF0IHdpdGggdGhlIElEQSBiYXNlZA0KICAgIHVuaXF1aWZpZXIuDQogICAgRml4ZXMgYSBy
-ZWdyZXNzaW9uIHdoZXJlYnkgdGhlIExpbnV4IHNlcnZlciByZXR1cm5zIE5GUzRFUlJfQkFEX1NF
-UUlELg0KICAgIA0KICAgIFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlr
-bGVidXN0QG5ldGFwcC5jb20+DQoNCmNvbW1pdCA5OGEyMTM5ZjRmNGQ3YjVmY2MzYTU0YzdmZGRi
-ZTg4NjEyYWJlZDIwDQpBdXRob3I6IEphbiBLYXJhIDxqYWNrQHN1c2UuY3o+DQpEYXRlOiAgIFNh
-dCBTZXAgMyAwMTowOTo0MyAyMDExICswMjAwDQoNCiAgICBuZnM6IEVuY2xvc2UgaG9zdG5hbWUg
-aW4gYnJhY2tldHMgd2hlbiBuZWVkZWQgaW4gbmZzX2RvX3Jvb3RfbW91bnQNCiAgICANCiAgICBX
-aGVuIGhvc3RuYW1lIGNvbnRhaW5zIGNvbG9uIChlLmcuIHdoZW4gaXQgaXMgYW4gSVB2NiBhZGRy
-ZXNzKSBpdCBuZWVkcw0KICAgIHRvIGJlIGVuY2xvc2VkIGluIGJyYWNrZXRzIHRvIG1ha2UgcGFy
-c2luZyBvZiBORlMgZGV2aWNlIHN0cmluZyBwb3NzaWJsZS4NCiAgICBGaXggbmZzX2RvX3Jvb3Rf
-bW91bnQoKSB0byBlbmNsb3NlIGhvc3RuYW1lIHByb3Blcmx5IHdoZW4gbmVlZGVkLiBORlMgY29k
-ZQ0KICAgIGFjdHVhbGx5IGRvZXMgbm90IG5lZWQgdGhpcyBhcyBpdCBkb2VzIG5vdCBwYXJzZSB0
-aGUgc3RyaW5nIHBhc3NlZCBieQ0KICAgIG5mc19kb19yb290X21vdW50KCkgYnV0IHRoZSBkZXZp
-Y2Ugc3RyaW5nIGlzIGV4cG9zZWQgdG8gdXNlcnNwYWNlIGluDQogICAgL3Byb2MvbW91bnRzLg0K
-ICAgIA0KICAgIENDOiBKb3NoIEJveWVyIDxqd2JveWVyQHJlZGhhdC5jb20+DQogICAgQ0M6IFRy
-b25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQogICAgU2lnbmVkLW9m
-Zi1ieTogSmFuIEthcmEgPGphY2tAc3VzZS5jej4NCiAgICBDYzogc3RhYmxlQHZnZXIua2VybmVs
-Lm9yZw0KICAgIFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0
-QG5ldGFwcC5jb20+DQoNCmNvbW1pdCA4Y2NkMjcxZjdhM2E4NDZjZTZmODVlYWQwNzYwZDlkMTI5
-OTRhNjExDQpBdXRob3I6IEZyZWQgSXNhbWFuIDxpaXNhbWFuQG5ldGFwcC5jb20+DQpEYXRlOiAg
-IEZyaSBBcHIgMjAgMTQ6NDc6MzUgMjAxMiAtMDQwMA0KDQogICAgTkZTOiBwdXQgb3BlbiBjb250
-ZXh0IG9uIGVycm9yIGluIG5mc19mbHVzaF9tdWx0aQ0KICAgIA0KICAgIENjOiA8c3RhYmxlQHZn
-ZXIua2VybmVsLm9yZz4NCiAgICBTaWduZWQtb2ZmLWJ5OiBGcmVkIElzYW1hbiA8aWlzYW1hbkBu
-ZXRhcHAuY29tPg0KICAgIFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlr
-bGVidXN0QG5ldGFwcC5jb20+DQoNCmNvbW1pdCA3M2ZiN2JjN2M1N2Q5NzFiMTFmMmUwMDUzNmFj
-MmQzZTMxNmUwNjA5DQpBdXRob3I6IEZyZWQgSXNhbWFuIDxpaXNhbWFuQG5ldGFwcC5jb20+DQpE
-YXRlOiAgIEZyaSBBcHIgMjAgMTQ6NDc6MzQgMjAxMiAtMDQwMA0KDQogICAgTkZTOiBwdXQgb3Bl
-biBjb250ZXh0IG9uIGVycm9yIGluIG5mc19wYWdlaW5fbXVsdGkNCiAgICANCiAgICBDYzogPHN0
-YWJsZUB2Z2VyLmtlcm5lbC5vcmc+DQogICAgU2lnbmVkLW9mZi1ieTogRnJlZCBJc2FtYW4gPGlp
-c2FtYW5AbmV0YXBwLmNvbT4NCiAgICBTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRy
-b25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KDQpjb21taXQgNDUxMTQ2YmU5MzNlMjZlMjEyNzc4
-NTJiNWU0MGM2YTUyMjY2ZWY5Ng0KQXV0aG9yOiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xl
-YnVzdEBuZXRhcHAuY29tPg0KRGF0ZTogICBXZWQgQXByIDE4IDE2OjI5OjExIDIwMTIgLTA0MDAN
-Cg0KICAgIE5GU3Y0OiBGaXggb3BlbihPX1RSVU5DKSBhbmQgZnRydW5jYXRlKCkgZXJyb3IgaGFu
-ZGxpbmcNCiAgICANCiAgICBJZiB0aGUgZmlsZSB3YXNuJ3Qgb3BlbmVkIGZvciB3cml0aW5nLCB0
-aGVuIHRydW5jYXRlIGFuZCBmdHJ1bmNhdGUNCiAgICBuZWVkIHRvIHJlcG9ydCB0aGUgYXBwcm9w
-cmlhdGUgZXJyb3JzLg0KICAgIA0KICAgIFJlcG9ydGVkLWJ5OiBNaWtsb3MgU3plcmVkaSA8bWlr
-bG9zQHN6ZXJlZGkuaHU+DQogICAgU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDxUcm9u
-ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCiAgICBDYzogc3RhYmxlQHZnZXIua2VybmVsLm9yZw0K
-DQpjb21taXQgNTU3MjU1MTNiNWVmOWQ0NjJhYTNlMTg1Mjc2NThhMDM2MmFhYWU4Mw0KQXV0aG9y
-OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KRGF0ZTogICBX
-ZWQgQXByIDE4IDEyOjQ4OjM1IDIwMTIgLTA0MDANCg0KICAgIE5GU3Y0OiBFbnN1cmUgdGhhdCB3
-ZSBjaGVjayBsb2NrIGV4Y2x1c2l2ZS9zaGFyZWQgdHlwZSBhZ2FpbnN0IG9wZW4gbW9kZXMNCiAg
-ICANCiAgICBTaW5jZSB3ZSBtYXkgYmUgc2ltdWxhdGluZyBmbG9jaygpIGxvY2tzIHVzaW5nIE5G
-UyBieXRlIHJhbmdlIGxvY2tzLA0KICAgIHdlIGNhbid0IHJlbHkgb24gdGhlIFZGUyBoYXZpbmcg
-Y2hlY2tlZCB0aGUgZmlsZSBvcGVuIG1vZGUgZm9yIHVzLg0KICAgIA0KICAgIFNpZ25lZC1vZmYt
-Ynk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQogICAgQ2M6
-IHN0YWJsZUB2Z2VyLmtlcm5lbC5vcmcNCg0KY29tbWl0IDA1ZmZlMjRmNTI5MGRjMDk1Zjk4ZmJh
-Zjg0YWZlNTFlZjQwNGNjYzUNCkF1dGhvcjogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1
-c3RAbmV0YXBwLmNvbT4NCkRhdGU6ICAgV2VkIEFwciAxOCAxMjoyMDoxMCAyMDEyIC0wNDAwDQoN
-CiAgICBORlN2NDogRW5zdXJlIHRoYXQgdGhlIExPQ0sgY29kZSBzZXRzIGV4Y2VwdGlvbi0+aW5v
-ZGUNCiAgICANCiAgICBBbGwgY2FsbGVycyBvZiBuZnM0X2hhbmRsZV9leGNlcHRpb24oKSB0aGF0
-IG5lZWQgdG8gaGFuZGxlDQogICAgTkZTNEVSUl9PUEVOTU9ERSBjb3JyZWN0bHkgc2hvdWxkIHNl
-dCBleGNlcHRpb24tPmlub2RlDQogICAgDQogICAgU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVi
-dXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCiAgICBDYzogc3RhYmxlQHZnZXIua2Vy
-bmVsLm9yZw0KDQpjb21taXQgY2ExMzhmMzY4YTM2ZGJhNDBkM2VmNGE1M2Q2NGFmMjAxMWNkYTNj
-Nw0KQXV0aG9yOiBGcmVkIElzYW1hbiA8aWlzYW1hbkBuZXRhcHAuY29tPg0KRGF0ZTogICBUaHUg
-QXByIDUgMTU6MjY6MzYgMjAxMiAtMDQwMA0KDQogICAgTkZTOiBjaGVjayBmb3IgcmVxPT1OVUxM
-IGluIG5mc190cnlfdG9fdXBkYXRlX3JlcXVlc3QgY2xlYW51cA0KICAgIA0KICAgIFNpZ25lZC1v
-ZmYtYnk6IEZyZWQgSXNhbWFuIDxpaXNhbWFuQG5ldGFwcC5jb20+DQogICAgU2lnbmVkLW9mZi1i
-eTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCg0KY29tbWl0
-IGFkYWUwZmUwZWE4N2U4ZmIxYTcyZGRlMzA0OTM3YzYwNzU5YjQ5NWYNCkF1dGhvcjogU3Rhbmlz
-bGF2IEtpbnNidXJza3kgPHNraW5zYnVyc2t5QHBhcmFsbGVscy5jb20+DQpEYXRlOiAgIFRodSBB
-cHIgNSAyMTowNDozNyAyMDEyICswNDAwDQoNCiAgICBTVU5SUEM6IHJlZ2lzdGVyIFBpcGVGUyBm
-aWxlIHN5c3RlbSBhZnRlciBwZXJuZXQgc3lic3lzdGVtDQogICAgDQogICAgUGlwZUZTIHN1cGVy
-YmxvY2sgY3JlYXRpb24gcm91dGluZSByZWxheXMgb24gU1VOUlBDIHBlcm5ldCBkYXRhIHByZXNl
-bnNlLCB3aGljaA0KICAgIGlzIGNyZWF0ZWQgb24gcmVnaXN0ZXJfcGVybmV0X3N1YnN5cygpIGNh
-bGwgaW4gU1VOUlBDIG1vZHVsZSBpbml0IGZ1bmN0aW9uLg0KICAgIFJlZ2lzdGVyaW5nIG9mIFBp
-cGVGUyBmaWxlc3lzdGVtIHByaW9yIHRvIHJlZ2lzdGVyaW5nIG9mIHBlci1uZXQgc3Vic3lzdGVt
-DQogICAgbGVhZHMgdG8gcmFjZXMgKG1vdW50IG9mIFBpcGVGUyBjYW4gZGVyZWZlcmVuY2UgdW5p
-bml0aWFsaXplZCBkYXRhKS4NCiAgICANCiAgICBTaWduZWQtb2ZmLWJ5OiBTdGFuaXNsYXYgS2lu
-c2J1cnNreSA8c2tpbnNidXJza3lAcGFyYWxsZWxzLmNvbT4NCiAgICBTaWduZWQtb2ZmLWJ5OiBU
-cm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KDQoNCi0tIA0KVHJv
-bmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9u
-ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+
+On Apr 26, 2012, at 12:55 PM, Myklebust, Trond wrote:
+
+> On Thu, 2012-04-26 at 12:24 -0400, Chuck Lever wrote:
+>> On Apr 23, 2012, at 4:55 PM, Chuck Lever wrote:
+>> 
+>>> For NFSv4 minor version 0, currently the cl_id_uniquifier allows the
+>>> Linux client to generate a unique nfs_client_id4 string whenever a
+>>> server replies with NFS4ERR_CLID_INUSE.
+>>> 
+>>> NFS4ERR_CLID_INUSE actually means that the client has presented this
+>>> nfs_client_id4 string with a different authentication flavor in the
+>>> past.  Retrying with a different nfs_client_id4 string means the
+>>> client orphans NFSv4 state on the server.  This state will take at
+>>> least a whole lease period to be purged.
+>>> 
+>>> Change recovery to try the identification operation again with a
+>>> different auth flavor until it works.  The retry loop is factored
+>>> out of nfs4_proc_setclientid() and into the state manager, so that
+>>> both mv0 and mv1 client ID establishment is covered by the same
+>>> CLID_INUSE recovery logic.
+>>> 
+>>> XXX: On further review, I'm not sure how it would be possible to
+>>> send an nfs_client_id4 with the wrong authentication flavor, since
+>>> the au_name is part of the string itself...
+>> 
+>> I'm having other doubts about this whole approach.
+>> 
+>> In the loop in nfs4_reclaim_lease(), the client will need to replace the RPC transport for each retried flavor, and then continue using the transport that worked.  New mounts clone their transport from the nfs_client, even if its authentication flavor does not match what might have been specified on the mount.  (I haven't checked this, is it true?)
+
+It looks like nfs_init_server_rpcclient() changes the flavor of the RPC transport that was cloned from cl_rpcclient, so that shouldn't be a problem.
+
+>> What's more, there's no way a server can identify a re-used nfs_client_id4, since we currently plant the authentication flavor in the nfs_client_id4 string…
+>> 
+>> In fact, because we generate nfs_client_id4 strings with the flavor built in, won't each flavor used on a mount generate a separate lease on the server?
+> 
+> Then lets move the flavour out of the clientid string,
+
+Removing the flavor from the nfs_client_id4 string makes sense.
+
+> and just settle
+> for handling CLID_INUSE by changing the flavour on the SETCLIENTID call.
+
+This is where I get hazy.  
+
+If I simply change the authentication flavor on the existing clp->cl_rpcclient, will this affect ongoing RENEW operations that also use this transport?  Do we want subsequent RENEW operations to use the new flavor?
+
+Thinking hypothetically, it seems to me that CLID_INUSE is really an indication of a permanent configuration error, or a software bug, and we should not bother to recover.  But maybe that's my limited imagination.  Under what use cases do you think CLID_INUSE might occur and it might be useful to attempt recovery?
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
