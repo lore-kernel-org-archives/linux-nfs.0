@@ -1,59 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:34178 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932390Ab2DTSgx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 14:36:53 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH v2 22/28] NFS: create nfs_generic_commit_list
-Date: Fri, 20 Apr 2012 14:36:04 -0400
-Message-Id: <1334946970-27470-23-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
-References: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:55966 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756540Ab2DZQyT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 12:54:19 -0400
+Received: by yenl12 with SMTP id l12so1072245yen.19
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Apr 2012 09:54:19 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
+        michael.brantley@deshaw.com
+Subject: [PATCH v1 01/12] vfs: add a retry_estale helper function to handle retries on ESTALE
+Date: Thu, 26 Apr 2012 11:54:40 -0400
+Message-Id: <1335455691-16003-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1335455691-16003-1-git-send-email-jlayton@redhat.com>
+References: <1335455691-16003-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Simple refactoring.
+This function is expected to be called from path-based syscalls to help
+them decide whether to try the lookup and call again in the event that
+they got an -ESTALE return back on an earier try.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Currently, we only retry the call once on an ESTALE error, but in the
+event that we decide that that's not enough in the future, we should be
+able to change the logic in this helper without too much effort.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/write.c |   15 ++++++++++++---
- 1 files changed, 12 insertions(+), 3 deletions(-)
+ include/linux/fs.h |   21 +++++++++++++++++++++
+ 1 files changed, 21 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 705bf01..2500f1c 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1523,6 +1523,17 @@ static const struct rpc_call_ops nfs_commit_ops = {
- 	.rpc_release = nfs_commit_release,
- };
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 8de6755..3c0bcda 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2026,6 +2026,27 @@ extern struct file * dentry_open(struct dentry *, struct vfsmount *, int,
+ extern int filp_close(struct file *, fl_owner_t id);
+ extern char * getname(const char __user *);
  
-+static int nfs_generic_commit_list(struct inode *inode, struct list_head *head,
-+				   int how)
++/**
++ * retry_estale - determine whether the caller should retry an operation
++ *
++ * @error: the error we'll be returning
++ * @try: number of retries already performed
++ *
++ * Check to see if the error code was -ESTALE, and then determine whether
++ * to retry the call based on the number of retries so far. Currently, we only
++ * retry the call once.
++ *
++ * Returns true if the caller should try again.
++ */
++static inline bool
++retry_estale(const long error, const unsigned int try)
 +{
-+	int status;
++	if (likely(error != -ESTALE))
++		return false;
 +
-+	status = pnfs_commit_list(inode, head, how);
-+	if (status == PNFS_NOT_ATTEMPTED)
-+		status = nfs_commit_list(inode, head, how);
-+	return status;
++	return !try;
 +}
 +
- int nfs_commit_inode(struct inode *inode, int how)
- {
- 	LIST_HEAD(head);
-@@ -1536,9 +1547,7 @@ int nfs_commit_inode(struct inode *inode, int how)
- 	if (res) {
- 		int error;
+ /* fs/ioctl.c */
  
--		error = pnfs_commit_list(inode, &head, how);
--		if (error == PNFS_NOT_ATTEMPTED)
--			error = nfs_commit_list(inode, &head, how);
-+		error = nfs_generic_commit_list(inode, &head, how);
- 		if (error < 0)
- 			return error;
- 		if (!may_wait)
+ extern int ioctl_preallocate(struct file *filp, void __user *argp);
 -- 
-1.7.2.1
+1.7.7.6
 
