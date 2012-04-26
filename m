@@ -1,56 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:42906 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1755367Ab2DEViP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Apr 2012 17:38:15 -0400
+Received: from toast.topped-with-meat.com ([204.197.218.159]:50239 "EHLO
+	topped-with-meat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754426Ab2DZSYD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 14:24:03 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Date: Thu, 05 Apr 2012 17:38:12 -0400
-From: David Quigley <dpquigl@davequigley.com>
-To: "Myklebust, Trond" <trond.myklebust@netapp.com>
-Cc: <linux-nfs@vger.kernel.org>
-Subject: Re: Another try at =?UTF-8?Q?LNFS=3F?=
-In-Reply-To: <85614613274dbfef5253665a84a36374@countercultured.net>
-References: <775e0a2cd5e2e4c8f52401214dbd9413@countercultured.net>
- <1333646141.4573.1.camel@lade.trondhjem.org>
- <85614613274dbfef5253665a84a36374@countercultured.net>
-Message-ID: <7193f15f28e7483021244c72ee285516@countercultured.net>
+Content-Type: text/plain; charset=us-ascii
+From: Roland McGrath <roland@hack.frob.com>
+To: David Howells <dhowells@redhat.com>
+Cc: Paul Eggert <eggert@cs.ucla.edu>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
+        wine-devel@winehq.org, kfm-devel@kde.org, nautilus-list@gnome.org,
+        linux-api@vger.kernel.org, libc-alpha@sourceware.org
+Subject: Re: [PATCH 0/6] Extended file stat system call
+In-Reply-To: David Howells's message of  Thursday, 26 April 2012 15:04:07 +0100 <19638.1335449047@redhat.com>
+References: <4F9088D6.9020203@cs.ucla.edu>
+	<20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+	<20120419163238.61D382C0DF@topped-with-meat.com>
+	<19638.1335449047@redhat.com>
+Message-Id: <20120426182401.B246E2C0EA@topped-with-meat.com>
+Date: Thu, 26 Apr 2012 11:24:01 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/05/2012 17:26, David Quigley wrote:
-> On 04/05/2012 13:15, Myklebust, Trond wrote:
->> On Thu, 2012-04-05 at 13:02 -0400, David Quigley wrote:
->>> Now that we're past the 3.4 merge window should I post the LNFS
->>> modifications for review for when 3.5 rolls around?
->>
->> The sooner the better. It looks as if there will be quite a bit of 
->> stuff
->> going into 3.5, so it would be nice to maximise our testing window.
->>
->> Thanks!
->>   Trond
->
-> I have a mostly working copy for 3.2 which I can forward port but I'm
-> having an issue with it. The revalidate code changed at some point 
-> and
-> just to get things working I dropped a piece of code from the patch
-> set that I couldn't figure out how to transition to the new 
-> revalidate
-> code. Unfortunately this is the initial get of the security label so
-> the security label is invalid until the first cache invalidation. Any
-> suggestions on where to place this code? I can give you the original
-> code snippet when I get home that I dropped.
->
-> Dave
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" 
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Interesting.  I wasn't intending to provide both statx() and statxat()
+> variants, just the latter, in which case I'd've though that -at suffix is
+> redundant.
 
-Looking at my patches it looks like nfs_lookup_revalidate was changed 
-and at the time I couldn't figure out what it was changed to.
+It's certainly fine to provide only *at flavors for any new syscall, IMHO.
+The * case is always just a simple degenerate case of *at, and libc can
+trivially provide the simpler user API as well using the *at syscall.
 
-Dave
+But please keep the uniformity that everything taking a descriptor and AT_*
+flags is named *at.
+
+
+Thanks,
+Roland
