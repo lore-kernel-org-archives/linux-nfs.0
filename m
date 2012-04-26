@@ -1,64 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:34180 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:27528 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757385Ab2DTSgs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 14:36:48 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH v2 08/28] NFS: dprintks in directio code were referencing task after put
-Date: Fri, 20 Apr 2012 14:35:50 -0400
-Message-Id: <1334946970-27470-9-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
-References: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
+	id S1753848Ab2DZUCE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Apr 2012 16:02:04 -0400
+Message-ID: <4F99878C.2050903@RedHat.com>
+Date: Thu, 26 Apr 2012 13:36:12 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] mounts.nfs: v2 and v3 background mounts should retry
+ when server is down.
+References: <1335368390-26767-1-git-send-email-steved@redhat.com> <56A41F90-A936-4926-B532-E6600655025E@oracle.com>
+In-Reply-To: <56A41F90-A936-4926-B532-E6600655025E@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/direct.c |    8 ++++----
- 1 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 5897dfe..fb7fbaa 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -357,15 +357,15 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
- 		task = rpc_run_task(&task_setup_data);
- 		if (IS_ERR(task))
- 			break;
--		rpc_put_task(task);
- 
- 		dprintk("NFS: %5u initiated direct read call "
- 			"(req %s/%Ld, %zu bytes @ offset %Lu)\n",
--				data->task.tk_pid,
-+				task->tk_pid,
- 				inode->i_sb->s_id,
- 				(long long)NFS_FILEID(inode),
- 				bytes,
- 				(unsigned long long)data->args.offset);
-+		rpc_put_task(task);
- 
- 		started += bytes;
- 		user_addr += bytes;
-@@ -784,15 +784,15 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
- 		task = rpc_run_task(&task_setup_data);
- 		if (IS_ERR(task))
- 			break;
--		rpc_put_task(task);
- 
- 		dprintk("NFS: %5u initiated direct write call "
- 			"(req %s/%Ld, %zu bytes @ offset %Lu)\n",
--				data->task.tk_pid,
-+				task->tk_pid,
- 				inode->i_sb->s_id,
- 				(long long)NFS_FILEID(inode),
- 				bytes,
- 				(unsigned long long)data->args.offset);
-+		rpc_put_task(task);
- 
- 		started += bytes;
- 		user_addr += bytes;
--- 
-1.7.2.1
 
+On 04/25/2012 04:31 PM, Chuck Lever wrote:
+> Hi-
+> 
+> On Apr 25, 2012, at 11:39 AM, Steve Dickson wrote:
+> 
+>> The point of background mounts is to have the mount
+>> retried if the mount fails. This patch allows the v2/v3
+>> background mount to proceed in the case when the server
+>> is down by not making EOPNOTSUPP a permanent error.
+> 
+> Just curious... why wouldn't we want to do this for foreground mounts as well?
+I had a similar thought but I was worried that it would change the
+current behavior that people are depending on... Giving the
+option of putting the mount in back ground to wait I thought
+was a good compromise... 
+
+steved.
