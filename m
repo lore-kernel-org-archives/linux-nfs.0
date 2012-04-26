@@ -1,184 +1,169 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:2957 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:12976 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754604Ab2DQQDu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Apr 2012 12:03:50 -0400
-Date: Tue, 17 Apr 2012 12:03:55 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Miklos Szeredi <miklos@szeredi.hu>
-Cc: Steve Dickson <SteveD@redhat.com>,
-        "Myklebust\, Trond" <Trond.Myklebust@netapp.com>,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        Malahal Naineni <malahal@us.ibm.com>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "pstaubach\@exagrid.com" <pstaubach@exagrid.com>,
-        "viro\@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
-        "hch\@infradead.org" <hch@infradead.org>,
-        "michael.brantley\@deshaw.com" <michael.brantley@deshaw.com>,
-        "sven.breuner\@itwm.fraunhofer.de" <sven.breuner@itwm.fraunhofer.de>
-Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from
- getattr call
-Message-ID: <20120417120355.08752a7d@corrin.poochiereds.net>
-In-Reply-To: <87aa2anys1.fsf@tucsk.pomaz.szeredi.hu>
-References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
-	<20120413150518.GA1987@us.ibm.com>
-	<20120413114236.0e557e01@tlielax.poochiereds.net>
-	<4F8B1B7B.3040304@itwm.fraunhofer.de>
-	<20120416073655.7cdb90cf@corrin.poochiereds.net>
-	<4F8C3036.2030702@itwm.fraunhofer.de>
-	<20120416134642.1754cd3e@corrin.poochiereds.net>
-	<1334604785.2879.23.camel@lade.trondhjem.org>
-	<20120416154322.0d95e435@corrin.poochiereds.net>
-	<1334607906.2879.36.camel@lade.trondhjem.org>
-	<20120416190548.2463d1d0@corrin.poochiereds.net>
-	<4F8D580B.7060104@RedHat.com>
-	<20120417093643.7f172057@corrin.poochiereds.net>
-	<4F8D7ADF.9030709@RedHat.com>
-	<87k41eo2m3.fsf@tucsk.pomaz.szeredi.hu>
-	<20120417110219.0db9bdee@corrin.poochiereds.net>
-	<87aa2anys1.fsf@tucsk.pomaz.szeredi.hu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1754596Ab2DZVDo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Apr 2012 17:03:44 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 6/8] NFSv4: Simplify the NFSv4 OPEN compound
+Date: Thu, 26 Apr 2012 17:03:33 -0400
+Message-Id: <1335474215-29127-6-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1335474215-29127-5-git-send-email-Trond.Myklebust@netapp.com>
+References: <1335474215-29127-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1335474215-29127-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1335474215-29127-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1335474215-29127-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1335474215-29127-5-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 17 Apr 2012 17:50:06 +0200
-Miklos Szeredi <miklos@szeredi.hu> wrote:
+Get rid of the post-op GETATTR on the directory in order to reduce
+the amount of processing done on the server.
 
-> Jeff Layton <jlayton@redhat.com> writes:
-> 
-> > On Tue, 17 Apr 2012 16:27:16 +0200
-> > Miklos Szeredi <miklos@szeredi.hu> wrote:
-> >
-> >> Steve Dickson <SteveD@redhat.com> writes:
-> >> 
-> >> > True, but even so... Giving file systems an opt-out option with the 
-> >> > default being out, maybe still have some merit... Making file systems
-> >> > enable this new type of functionality would cut down on any of the
-> >> > "surprise" that might occur with this redo ;-) 
-> >> 
-> >> I've been arguing for something slightly different for quite some time:
-> >> I never liked errno values which have side effects in the kernel yet
-> >> might be visible to userspace.
-> >> 
-> >> So why not introduce ERETRYSTALE, a *kernel internal* errno value that
-> >> userspace will never see and filesystems never accidentally set.  The
-> >> VFS can turn this into ESTALE if it doesn't retry for some reason
-> >> (e.g. already retried).
-> >> 
-> >
-> > That's possible but it's certainly a lot more invasive. It's also far
-> > more difficult for filesystems to opt-in to this sort of behavior.
-> 
-> As a first step all that is needed to opt in is to convert -ESTALE to
-> -ESTALERETRY on those operations that allow retrying.  Which is lookup,
-> at the moment.
-> 
-> If we decide to make more ops retryable (I'm not convinced that's the
-> best approach, but it might be) then those can be converted without too
-> much pain.
-> 
+The cost is that if we later need to stat() the directory, then we
+know that the ctime and mtime are likely to be invalid.
 
-We will need to make more operations retryable. The main problem is
-that inodes can go stale between the lookup and the actual operation
-that we want the syscall to do. Mostly, that happens when a lookup
-is satisfied out of the dcache, but it can happen even after an
-on-the-wire lookup too.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c       |   11 +----------
+ fs/nfs/nfs4xdr.c        |   18 +-----------------
+ include/linux/nfs_xdr.h |    2 --
+ 3 files changed, 2 insertions(+), 29 deletions(-)
 
-Just having an opt-in to to retry when the lookup fails won't
-materially help that situation.
-
-The more I look at it, the less fond I am of this new error code. The
-patch below just increases the complexity of the lookup codepath by
-introducing ERETRYLOOKUP, which basically means the same thing as
-ESTALE in most situations. It doesn't really add much benefit that I
-can see.
-
-Again, what's the problem with just basing this decision on the existing
-ESTALE return? Very few filesystems return ESTALE at all, and most of them
-just do it in their export-ops codepaths which won't be involved here.
-Do we really need to jump through these sorts of hoops in order to
-avoid a single retry in an ESTALE codepath?
-
-> 
-> diff --git a/fs/namei.c b/fs/namei.c
-> index 0062dd1..66b7d06 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -1776,9 +1776,14 @@ static int do_path_lookup(int dfd, const char *name,
->  	int retval = path_lookupat(dfd, name, flags | LOOKUP_RCU, nd);
->  	if (unlikely(retval == -ECHILD))
->  		retval = path_lookupat(dfd, name, flags, nd);
-> -	if (unlikely(retval == -ESTALE))
-> +	if (unlikely(retval == -ERETRYLOOKUP)) {
->  		retval = path_lookupat(dfd, name, flags | LOOKUP_REVAL, nd);
->  
-> +		/* retry only once */
-> +		if (retval == -ERETRYLOOKUP)
-> +			retval = -ESTALE;
-> +	}
-> +
->  	if (likely(!retval)) {
->  		if (unlikely(!audit_dummy_context())) {
->  			if (nd->path.dentry && nd->inode)
-> @@ -2433,8 +2438,12 @@ struct file *do_filp_open(int dfd, const char *pathname,
->  	filp = path_openat(dfd, pathname, &nd, op, flags | LOOKUP_RCU);
->  	if (unlikely(filp == ERR_PTR(-ECHILD)))
->  		filp = path_openat(dfd, pathname, &nd, op, flags);
-> -	if (unlikely(filp == ERR_PTR(-ESTALE)))
-> +	if (unlikely(filp == ERR_PTR(-ERETRYLOOKUP))) {
->  		filp = path_openat(dfd, pathname, &nd, op, flags | LOOKUP_REVAL);
-> +		if (filp == ERR_PTR(-ERETRYLOOKUP))
-> +			filp = ERR_PTR(-ESTALE);
-> +	}
-> +
->  	return filp;
->  }
->  
-> @@ -2455,8 +2464,11 @@ struct file *do_file_open_root(struct dentry *dentry, struct vfsmount *mnt,
->  	file = path_openat(-1, name, &nd, op, flags | LOOKUP_RCU);
->  	if (unlikely(file == ERR_PTR(-ECHILD)))
->  		file = path_openat(-1, name, &nd, op, flags);
-> -	if (unlikely(file == ERR_PTR(-ESTALE)))
-> +	if (unlikely(file == ERR_PTR(-ESTALE))) {
->  		file = path_openat(-1, name, &nd, op, flags | LOOKUP_REVAL);
-> +		if (file == ERR_PTR(-ERETRYLOOKUP))
-> +			file = ERR_PTR(-ESTALE);
-> +	}
->  	return file;
->  }
->  
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index 4aaf031..cd35da3 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -1303,6 +1303,8 @@ static struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, stru
->  	if (error == -ENOENT)
->  		goto no_entry;
->  	if (error < 0) {
-> +		if (error == -ESTALE)
-> +			error = -ERETRYLOOKUP;
->  		res = ERR_PTR(error);
->  		goto out_unblock_sillyrename;
->  	}
-> diff --git a/include/linux/errno.h b/include/linux/errno.h
-> index 2d09bfa..cfaedb8 100644
-> --- a/include/linux/errno.h
-> +++ b/include/linux/errno.h
-> @@ -17,6 +17,7 @@
->  #define ENOIOCTLCMD	515	/* No ioctl command */
->  #define ERESTART_RESTARTBLOCK 516 /* restart by calling sys_restart_syscall */
->  #define EPROBE_DEFER	517	/* Driver requests probe retry */
-> +#define ERETRYLOOKUP	519	/* Retry lookup */
->  
->  /* Defined for the NFSv3 protocol */
->  #define EBADHANDLE	521	/* Illegal NFS file handle */
-> 
-> 
-> 
-
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index a3930fe..8219298 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -788,7 +788,6 @@ struct nfs4_opendata {
+ 	struct nfs4_string owner_name;
+ 	struct nfs4_string group_name;
+ 	struct nfs_fattr f_attr;
+-	struct nfs_fattr dir_attr;
+ 	struct dentry *dir;
+ 	struct dentry *dentry;
+ 	struct nfs4_state_owner *owner;
+@@ -804,12 +803,10 @@ struct nfs4_opendata {
+ static void nfs4_init_opendata_res(struct nfs4_opendata *p)
+ {
+ 	p->o_res.f_attr = &p->f_attr;
+-	p->o_res.dir_attr = &p->dir_attr;
+ 	p->o_res.seqid = p->o_arg.seqid;
+ 	p->c_res.seqid = p->c_arg.seqid;
+ 	p->o_res.server = p->o_arg.server;
+ 	nfs_fattr_init(&p->f_attr);
+-	nfs_fattr_init(&p->dir_attr);
+ 	nfs_fattr_init_names(&p->f_attr, &p->owner_name, &p->group_name);
+ }
+ 
+@@ -844,7 +841,6 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	p->o_arg.name = &dentry->d_name;
+ 	p->o_arg.server = server;
+ 	p->o_arg.bitmask = server->attr_bitmask;
+-	p->o_arg.dir_bitmask = server->cache_consistency_bitmask;
+ 	p->o_arg.claim = NFS4_OPEN_CLAIM_NULL;
+ 	p->o_arg.opentype = NFS4_OPEN_NOCREATE;
+ 	p->o_arg.createmode = NFS4_CREATE_UNCHECKED;
+@@ -1629,8 +1625,6 @@ static int _nfs4_recover_proc_open(struct nfs4_opendata *data)
+ 
+ 	nfs_fattr_map_and_free_names(NFS_SERVER(dir), &data->f_attr);
+ 
+-	nfs_refresh_inode(dir, o_res->dir_attr);
+-
+ 	if (o_res->rflags & NFS4_OPEN_RESULT_CONFIRM) {
+ 		status = _nfs4_proc_open_confirm(data);
+ 		if (status != 0)
+@@ -1663,11 +1657,8 @@ static int _nfs4_proc_open(struct nfs4_opendata *data)
+ 
+ 	nfs_fattr_map_and_free_names(server, &data->f_attr);
+ 
+-	if (o_arg->open_flags & O_CREAT) {
++	if (o_arg->open_flags & O_CREAT)
+ 		update_changeattr(dir, &o_res->cinfo);
+-		nfs_post_op_update_inode(dir, o_res->dir_attr);
+-	} else
+-		nfs_refresh_inode(dir, o_res->dir_attr);
+ 	if ((o_res->rflags & NFS4_OPEN_RESULT_LOCKTYPE_POSIX) == 0)
+ 		server->caps &= ~NFS_CAP_POSIX_LOCK;
+ 	if(o_res->rflags & NFS4_OPEN_RESULT_CONFIRM) {
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 5edf936..782466d 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -431,20 +431,14 @@ static int nfs4_stat_to_errno(int);
+ #define NFS4_enc_open_sz        (compound_encode_hdr_maxsz + \
+ 				encode_sequence_maxsz + \
+ 				encode_putfh_maxsz + \
+-				encode_savefh_maxsz + \
+ 				encode_open_maxsz + \
+ 				encode_getfh_maxsz + \
+-				encode_getattr_maxsz + \
+-				encode_restorefh_maxsz + \
+ 				encode_getattr_maxsz)
+ #define NFS4_dec_open_sz        (compound_decode_hdr_maxsz + \
+ 				decode_sequence_maxsz + \
+ 				decode_putfh_maxsz + \
+-				decode_savefh_maxsz + \
+ 				decode_open_maxsz + \
+ 				decode_getfh_maxsz + \
+-				decode_getattr_maxsz + \
+-				decode_restorefh_maxsz + \
+ 				decode_getattr_maxsz)
+ #define NFS4_enc_open_confirm_sz \
+ 				(compound_encode_hdr_maxsz + \
+@@ -2190,12 +2184,9 @@ static void nfs4_xdr_enc_open(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 	encode_compound_hdr(xdr, req, &hdr);
+ 	encode_sequence(xdr, &args->seq_args, &hdr);
+ 	encode_putfh(xdr, args->fh, &hdr);
+-	encode_savefh(xdr, &hdr);
+ 	encode_open(xdr, args, &hdr);
+ 	encode_getfh(xdr, &hdr);
+ 	encode_getfattr(xdr, args->bitmask, &hdr);
+-	encode_restorefh(xdr, &hdr);
+-	encode_getfattr(xdr, args->dir_bitmask, &hdr);
+ 	encode_nops(&hdr);
+ }
+ 
+@@ -6091,19 +6082,12 @@ static int nfs4_xdr_dec_open(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
+ 	status = decode_putfh(xdr);
+ 	if (status)
+ 		goto out;
+-	status = decode_savefh(xdr);
+-	if (status)
+-		goto out;
+ 	status = decode_open(xdr, res);
+ 	if (status)
+ 		goto out;
+ 	if (decode_getfh(xdr, &res->fh) != 0)
+ 		goto out;
+-	if (decode_getfattr(xdr, res->f_attr, res->server) != 0)
+-		goto out;
+-	if (decode_restorefh(xdr) != 0)
+-		goto out;
+-	decode_getfattr(xdr, res->dir_attr, res->server);
++	decode_getfattr(xdr, res->f_attr, res->server);
+ out:
+ 	return status;
+ }
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 1def5fe..33b0d9e 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -338,7 +338,6 @@ struct nfs_openargs {
+ 	const struct qstr *	name;
+ 	const struct nfs_server *server;	 /* Needed for ID mapping */
+ 	const u32 *		bitmask;
+-	const u32 *		dir_bitmask;
+ 	__u32			claim;
+ 	__u32			opentype;
+ 	__u32			createmode;
+@@ -351,7 +350,6 @@ struct nfs_openres {
+ 	struct nfs4_change_info	cinfo;
+ 	__u32                   rflags;
+ 	struct nfs_fattr *      f_attr;
+-	struct nfs_fattr *      dir_attr;
+ 	struct nfs_seqid *	seqid;
+ 	const struct nfs_server *server;
+ 	fmode_t			delegation_type;
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.7.6
+
