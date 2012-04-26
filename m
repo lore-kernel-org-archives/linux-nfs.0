@@ -1,62 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:13876 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:48191 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754604Ab2DSIal (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Apr 2012 04:30:41 -0400
-Message-ID: <4F8FCD20.1070103@openvz.org>
-Date: Thu, 19 Apr 2012 12:30:24 +0400
-From: Kinsbursky Stanislav <skinsbursky@openvz.org>
+	id S1757845Ab2DZPzR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Apr 2012 11:55:17 -0400
+Subject: [PATCH 02/10] NFS: callback service creation function introduced
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Thu, 26 Apr 2012 19:55:06 +0400
+Message-ID: <20120426155506.3763.25301.stgit@localhost6.localdomain6>
+In-Reply-To: <20120426155250.3763.98748.stgit@localhost6.localdomain6>
+References: <20120426155250.3763.98748.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-To: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH] LockD: call per-net shutdown on every global shutdown
- call
-References: <20120418131827.16800.33207.stgit@localhost6.localdomain6>
-In-Reply-To: <20120418131827.16800.33207.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please, ignore this patch.
-The idea is correct, but current implementation hides few more things to be 
-modified.
-Otherwise kernel oopses.
-Sorry.
+This function creates service if it's not exist, or increase usage counter of
+the existent, and returns pointer to it.
+Usage counter will be droppepd by svc_destroy() later in nfs_callback_up().
 
-18.04.2012 17:18, Stanislav Kinsbursky пишет:
-> Per-net LockD shutdown call must be called regardless of global nlm users
-> counter.
->
-> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
->
-> ---
->   fs/lockd/svc.c |    5 ++---
->   1 files changed, 2 insertions(+), 3 deletions(-)
->
-> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-> index 1ead075..2ad3715 100644
-> --- a/fs/lockd/svc.c
-> +++ b/fs/lockd/svc.c
-> @@ -381,10 +381,9 @@ lockd_down(struct net *net)
->   {
->   	mutex_lock(&nlmsvc_mutex);
->   	if (nlmsvc_users) {
-> -		if (--nlmsvc_users) {
-> -			lockd_down_net(net);
-> +		lockd_down_net(net);
-> +		if (--nlmsvc_users)
->   			goto out;
-> -		}
->   	} else {
->   		printk(KERN_ERR "lockd_down: no users! task=%p\n",
->   			nlmsvc_task);
->
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
+---
+ fs/nfs/callback.c |   55 +++++++++++++++++++++++++++++++++++++++++++----------
+ 1 files changed, 45 insertions(+), 10 deletions(-)
 
--- 
-Best regards,
-Stanislav Kinsbursky
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index d5bb1ae..786f21c 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -242,12 +242,46 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
+ }
+ #endif /* CONFIG_NFS_V4_1 */
+ 
++static struct svc_serv *nfs_callback_create_svc(int minorversion)
++{
++	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
++	struct svc_serv *serv;
++
++	/*
++	 * Check whether we're already up and running.
++	 */
++	if (cb_info->task) {
++		/*
++		 * Note: increase service usage, because later in case of error
++		 * svc_destroy() will be called.
++		 */
++		svc_get(cb_info->serv);
++		return cb_info->serv;
++	}
++
++	/*
++	 * Sanity check: if there's no task,
++	 * we should be the first user ...
++	 */
++	if (cb_info->users)
++		printk(KERN_WARNING "nfs_callback_up: no kthread, %d users??\n",
++			cb_info->users);
++
++	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, NULL);
++	if (!serv) {
++		printk(KERN_ERR "lockd_up: create service failed\n");
++		return ERR_PTR(-ENOMEM);
++	}
++	dprintk("nfs_callback_up: service created\n");
++	return serv;
++}
++
+ /*
+  * Bring up the callback thread if it is not already up.
+  */
+ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ {
+-	struct svc_serv *serv = NULL;
++	struct svc_serv *serv;
+ 	struct svc_rqst *rqstp;
+ 	int (*callback_svc)(void *vrqstp);
+ 	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
+@@ -257,15 +291,17 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ 	struct net *net = current->nsproxy->net_ns;
+ 
+ 	mutex_lock(&nfs_callback_mutex);
++
++	serv = nfs_callback_create_svc(minorversion);
++	if (IS_ERR(serv)) {
++		ret = PTR_ERR(serv);
++		goto err_create;
++	}
++
+ 	if (cb_info->users++ || cb_info->task != NULL) {
+ 		nfs_callback_bc_serv(minorversion, xprt, cb_info);
+ 		goto out;
+ 	}
+-	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, NULL);
+-	if (!serv) {
+-		ret = -ENOMEM;
+-		goto out_err;
+-	}
+ 
+ 	ret = svc_bind(serv, net);
+ 	if (ret < 0) {
+@@ -306,16 +342,15 @@ out:
+ 	 * on both success and failure so that the refcount is 1 when the
+ 	 * thread exits.
+ 	 */
+-	if (serv)
+-		svc_destroy(serv);
++	svc_destroy(serv);
++err_create:
+ 	mutex_unlock(&nfs_callback_mutex);
+ 	return ret;
+ out_err:
+ 	dprintk("NFS: Couldn't create callback socket or server thread; "
+ 		"err = %d\n", ret);
+ 	cb_info->users--;
+-	if (serv)
+-		svc_shutdown_net(serv, net);
++	svc_shutdown_net(serv, net);
+ 	goto out;
+ }
+ 
 
