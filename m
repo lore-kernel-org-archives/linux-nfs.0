@@ -1,52 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:64858 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:30809 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753828Ab2DWUhC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Apr 2012 16:37:02 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/3] NFSv4: Ensure that we don't drop a state owner more than once
-Date: Mon, 23 Apr 2012 16:36:53 -0400
-Message-Id: <1335213414-20826-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1335213414-20826-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1335213414-20826-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1753848Ab2DZUGp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Apr 2012 16:06:45 -0400
+Message-ID: <4F99AAC7.3060709@RedHat.com>
+Date: Thu, 26 Apr 2012 16:06:31 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Nick Alcock <nix@esperi.org.uk>
+CC: linux-nfs@vger.kernel.org, Nick Alcock <nick.alcock@oracle.com>
+Subject: Re: [PATCH 1/4] Fix debugging reference from non-GSS to optional
+ GSS code.
+References: <1328472138-25750-1-git-send-email-nix@esperi.org.uk>
+In-Reply-To: <1328472138-25750-1-git-send-email-nix@esperi.org.uk>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Retest the RB_EMPTY_NODE() condition under the spin lock
-to ensure that we don't call rb_erase() more than once on the
-same state owner.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4state.c |   10 +++++++---
- 1 files changed, 7 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 3b07f09..b300fb8 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -435,13 +435,17 @@ nfs4_alloc_state_owner(struct nfs_server *server,
- static void
- nfs4_drop_state_owner(struct nfs4_state_owner *sp)
- {
--	if (!RB_EMPTY_NODE(&sp->so_server_node)) {
-+	struct rb_node *rb_node = &sp->so_server_node;
-+
-+	if (!RB_EMPTY_NODE(rb_node)) {
- 		struct nfs_server *server = sp->so_server;
- 		struct nfs_client *clp = server->nfs_client;
- 
- 		spin_lock(&clp->cl_lock);
--		rb_erase(&sp->so_server_node, &server->state_owners);
--		RB_CLEAR_NODE(&sp->so_server_node);
-+		if (!RB_EMPTY_NODE(rb_node)) {
-+			rb_erase(rb_node, &server->state_owners);
-+			RB_CLEAR_NODE(rb_node);
-+		}
- 		spin_unlock(&clp->cl_lock);
- 	}
- }
--- 
-1.7.7.6
+On 02/05/2012 03:02 PM, Nick Alcock wrote:
+> From: Nick Alcock <nick.alcock@oracle.com>
+> 
+> AUTH_DESTROY() and auth_destroy() are pulling in log_debug() from
+> authgss_prot.c, but are used from outside the GSS code, thus preventing libtirpc
+> from being used if compiled without GSS support.
+> 
+> The (somewhat ugly) fix here defines a new macro to do the job. Because we're
+> not compiling as C99, I use the GNU C variadic macro extension: if we mean to
+> be compiled with other compilers, this needs to change.
+> 
+> Signed-off-by: Nick Alcock <nick.alcock@oracle.com>
+> ---
+>  tirpc/rpc/auth.h |   11 +++++++++--
+>  1 files changed, 9 insertions(+), 2 deletions(-)
+> 
+> diff --git a/tirpc/rpc/auth.h b/tirpc/rpc/auth.h
+> index 5f66e67..e7bbe36 100644
+> --- a/tirpc/rpc/auth.h
+> +++ b/tirpc/rpc/auth.h
+> @@ -51,6 +51,7 @@
+>  #include <sys/cdefs.h>
+>  #include <sys/socket.h>
+>  #include <sys/types.h>
+> +#include <stdio.h>
+>  
+>  
+>  #define MAX_AUTH_BYTES	400
+> @@ -248,12 +249,18 @@ auth_put(AUTH *auth)
+>  #define auth_refresh(auth, msg)		\
+>  		((*((auth)->ah_ops->ah_refresh))(auth, msg))
+>  
+> +#if defined(__GNUC__) && defined(DEBUG)
+> +#define auth_log_debug(fmt,args...) printf(stderr, fmt, args)
+> +#else
+> +#define auth_log_debug(fmt,args...)
+> +#endif
+> +
+>  #define AUTH_DESTROY(auth)						\
+>  		do {							\
+>  			int refs;					\
+>  			if ((refs = auth_put((auth))) == 0)		\
+>  				((*((auth)->ah_ops->ah_destroy))(auth));\
+> -			log_debug("%s: auth_put(), refs %d\n",		\
+> +			auth_log_debug("%s: auth_put(), refs %d\n",	\
+>  				__func__, refs);			\
+>  		} while (0)
+>  
+> @@ -262,7 +269,7 @@ auth_put(AUTH *auth)
+>  			int refs;					\
+>  			if ((refs = auth_put((auth))) == 0)		\
+>  				((*((auth)->ah_ops->ah_destroy))(auth));\
+> -			log_debug("%s: auth_put(), refs %d\n",		\
+> +			auth_log_debug("%s: auth_put(), refs %d\n",	\
+>  				__func__, refs);			\
+>  		} while (0)
+>  
+Committed...
 
+steved.
