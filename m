@@ -1,1036 +1,848 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:34191 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932390Ab2DTSgy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 14:36:54 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH v2 27/28] NFS: rewrite directio write to use async coalesce code
-Date: Fri, 20 Apr 2012 14:36:09 -0400
-Message-Id: <1334946970-27470-28-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
-References: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
+Received: from nm9-vm1.bullet.mail.sp2.yahoo.com ([98.139.91.197]:38678 "HELO
+	nm9-vm1.bullet.mail.sp2.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1757111Ab2DZOiP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 10:38:15 -0400
+Message-ID: <1335451033.91608.YahooMailClassic@web2804.biz.mail.ne1.yahoo.com>
+Date: Thu, 26 Apr 2012 07:37:13 -0700 (PDT)
+From: "INHERITANCE CLAIMS DEPT." <mrjohnsonsmith2389@gmail.com>
+Reply-To: johnson@information4u.com
+Subject: OPEN THE ATTACHMENT AND READ YOUR MESSAGE AND GET BACK TO ME.
+To: undisclosed recipients:;
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="-1051860855-2084369068-1335451033=:91608"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This also has the advantage that it allows directio to use pnfs.
+---1051860855-2084369068-1335451033=:91608
+Content-Type: text/plain; charset=us-ascii
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/direct.c         |  527 +++++++++++++++++++++--------------------------
- fs/nfs/internal.h       |   18 ++-
- fs/nfs/nfs4filelayout.c |   44 ++++-
- fs/nfs/pnfs.h           |   17 ++
- fs/nfs/write.c          |   36 ++--
- 5 files changed, 319 insertions(+), 323 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 4ba9a2c..f69ef97 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -56,6 +56,7 @@
- 
- #include "internal.h"
- #include "iostat.h"
-+#include "pnfs.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_VFS
- 
-@@ -81,16 +82,19 @@ struct nfs_direct_req {
- 	struct completion	completion;	/* wait for i/o completion */
- 
- 	/* commit state */
--	struct list_head	rewrite_list;	/* saved nfs_write_data structs */
--	struct nfs_commit_data *commit_data;	/* special write_data for commits */
-+	struct nfs_mds_commit_info mds_cinfo;	/* Storage for cinfo */
-+	struct pnfs_ds_commit_info ds_cinfo;	/* Storage for cinfo */
-+	struct work_struct	work;
- 	int			flags;
- #define NFS_ODIRECT_DO_COMMIT		(1)	/* an unstable reply was received */
- #define NFS_ODIRECT_RESCHED_WRITES	(2)	/* write verification failed */
- 	struct nfs_writeverf	verf;		/* unstable write verifier */
- };
- 
-+static const struct nfs_pgio_completion_ops nfs_direct_write_completion_ops;
-+static const struct nfs_commit_completion_ops nfs_direct_commit_completion_ops;
- static void nfs_direct_write_complete(struct nfs_direct_req *dreq, struct inode *inode);
--static const struct rpc_call_ops nfs_write_direct_ops;
-+static void nfs_direct_write_schedule_work(struct work_struct *work);
- 
- static inline void get_dreq(struct nfs_direct_req *dreq)
- {
-@@ -131,6 +135,16 @@ static void nfs_direct_release_pages(struct page **pages, unsigned int npages)
- 		page_cache_release(pages[i]);
- }
- 
-+void nfs_init_cinfo_from_dreq(struct nfs_commit_info *cinfo,
-+			      struct nfs_direct_req *dreq)
-+{
-+	cinfo->lock = &dreq->lock;
-+	cinfo->mds = &dreq->mds_cinfo;
-+	cinfo->ds = &dreq->ds_cinfo;
-+	cinfo->dreq = dreq;
-+	cinfo->completion_ops = &nfs_direct_commit_completion_ops;
-+}
-+
- static inline struct nfs_direct_req *nfs_direct_req_alloc(void)
- {
- 	struct nfs_direct_req *dreq;
-@@ -142,7 +156,11 @@ static inline struct nfs_direct_req *nfs_direct_req_alloc(void)
- 	kref_init(&dreq->kref);
- 	kref_get(&dreq->kref);
- 	init_completion(&dreq->completion);
--	INIT_LIST_HEAD(&dreq->rewrite_list);
-+	dreq->mds_cinfo.ncommit = 0;
-+	atomic_set(&dreq->mds_cinfo.rpcs_out, 0);
-+	INIT_LIST_HEAD(&dreq->mds_cinfo.list);
-+	INIT_WORK(&dreq->work, nfs_direct_write_schedule_work);
-+	memset(&dreq->ds_cinfo, 0, sizeof(dreq->ds_cinfo));
- 	dreq->iocb = NULL;
- 	dreq->ctx = NULL;
- 	dreq->l_ctx = NULL;
-@@ -457,112 +475,60 @@ out:
- 	return result;
- }
- 
--static void nfs_direct_writehdr_release(struct nfs_write_header *whdr)
--{
--	struct nfs_write_data *data = &whdr->rpc_data;
--
--	if (data->pages.pagevec != data->pages.page_array)
--		kfree(data->pages.pagevec);
--	nfs_writehdr_free(&whdr->header);
--}
--
--static void nfs_direct_free_writedata(struct nfs_direct_req *dreq)
--{
--	while (!list_empty(&dreq->rewrite_list)) {
--		struct nfs_pgio_header *hdr = list_entry(dreq->rewrite_list.next, struct nfs_pgio_header, pages);
--		struct nfs_write_header *whdr = container_of(hdr, struct nfs_write_header, header);
--		struct nfs_page_array *p = &whdr->rpc_data.pages;
--
--		list_del(&hdr->pages);
--		nfs_direct_release_pages(p->pagevec, p->npages);
--		nfs_direct_writehdr_release(whdr);
--	}
--}
--
- #if defined(CONFIG_NFS_V3) || defined(CONFIG_NFS_V4)
- static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
- {
--	struct inode *inode = dreq->inode;
--	struct list_head *p;
--	struct nfs_write_data *data;
--	struct nfs_pgio_header *hdr;
--	struct rpc_task *task;
--	struct rpc_message msg = {
--		.rpc_cred = dreq->ctx->cred,
--	};
--	struct rpc_task_setup task_setup_data = {
--		.rpc_client = NFS_CLIENT(inode),
--		.rpc_message = &msg,
--		.callback_ops = &nfs_write_direct_ops,
--		.workqueue = nfsiod_workqueue,
--		.flags = RPC_TASK_ASYNC,
--	};
-+	struct nfs_pageio_descriptor desc;
-+	struct nfs_page *req, *tmp;
-+	LIST_HEAD(reqs);
-+	struct nfs_commit_info cinfo;
-+	LIST_HEAD(failed);
-+
-+	nfs_init_cinfo_from_dreq(&cinfo, dreq);
-+	pnfs_recover_commit_reqs(dreq->inode, &reqs, &cinfo);
-+	spin_lock(cinfo.lock);
-+	nfs_scan_commit_list(&cinfo.mds->list, &reqs, &cinfo, 0);
-+	spin_unlock(cinfo.lock);
- 
- 	dreq->count = 0;
- 	get_dreq(dreq);
- 
--	list_for_each(p, &dreq->rewrite_list) {
--		hdr = list_entry(p, struct nfs_pgio_header, pages);
--		data = &(container_of(hdr, struct nfs_write_header, header))->rpc_data;
--
--		get_dreq(dreq);
--
--		/* Use stable writes */
--		data->args.stable = NFS_FILE_SYNC;
--
--		/*
--		 * Reset data->res.
--		 */
--		nfs_fattr_init(&data->fattr);
--		data->res.count = data->args.count;
--		memset(&data->verf, 0, sizeof(data->verf));
--
--		/*
--		 * Reuse data->task; data->args should not have changed
--		 * since the original request was sent.
--		 */
--		task_setup_data.task = &data->task;
--		task_setup_data.callback_data = data;
--		msg.rpc_argp = &data->args;
--		msg.rpc_resp = &data->res;
--		NFS_PROTO(inode)->write_setup(data, &msg);
--
--		/*
--		 * We're called via an RPC callback, so BKL is already held.
--		 */
--		task = rpc_run_task(&task_setup_data);
--		if (!IS_ERR(task))
--			rpc_put_task(task);
--
--		dprintk("NFS: %5u rescheduled direct write call (req %s/%Ld, %u bytes @ offset %Lu)\n",
--				data->task.tk_pid,
--				inode->i_sb->s_id,
--				(long long)NFS_FILEID(inode),
--				data->args.count,
--				(unsigned long long)data->args.offset);
--	}
-+	nfs_pageio_init_write(&desc, dreq->inode, FLUSH_STABLE,
-+			      &nfs_direct_write_completion_ops);
-+	desc.pg_dreq = dreq;
- 
--	if (put_dreq(dreq))
--		nfs_direct_write_complete(dreq, inode);
--}
-+	list_for_each_entry_safe(req, tmp, &reqs, wb_list) {
-+		if (!nfs_pageio_add_request(&desc, req)) {
-+			nfs_list_add_request(req, &failed);
-+			spin_lock(cinfo.lock);
-+			dreq->flags = 0;
-+			dreq->error = -EIO;
-+			spin_unlock(cinfo.lock);
-+		}
-+	}
-+	nfs_pageio_complete(&desc);
- 
--static void nfs_direct_commit_result(struct rpc_task *task, void *calldata)
--{
--	struct nfs_commit_data *data = calldata;
-+	while (!list_empty(&failed)) {
-+		page_cache_release(req->wb_page);
-+		nfs_release_request(req);
-+		nfs_unlock_request(req);
-+	}
- 
--	/* Call the NFS version-specific code */
--	NFS_PROTO(data->inode)->commit_done(task, data);
-+	if (put_dreq(dreq))
-+		nfs_direct_write_complete(dreq, dreq->inode);
- }
- 
--static void nfs_direct_commit_release(void *calldata)
-+static void nfs_direct_commit_complete(struct nfs_commit_data *data)
- {
--	struct nfs_commit_data *data = calldata;
- 	struct nfs_direct_req *dreq = data->dreq;
-+	struct nfs_commit_info cinfo;
-+	struct nfs_page *req;
- 	int status = data->task.tk_status;
- 
-+	nfs_init_cinfo_from_dreq(&cinfo, dreq);
- 	if (status < 0) {
- 		dprintk("NFS: %5u commit failed with error %d.\n",
--				data->task.tk_pid, status);
-+			data->task.tk_pid, status);
- 		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
- 	} else if (memcmp(&dreq->verf, &data->verf, sizeof(data->verf))) {
- 		dprintk("NFS: %5u commit verify failed\n", data->task.tk_pid);
-@@ -570,59 +536,49 @@ static void nfs_direct_commit_release(void *calldata)
- 	}
- 
- 	dprintk("NFS: %5u commit returned %d\n", data->task.tk_pid, status);
--	nfs_direct_write_complete(dreq, data->inode);
--	nfs_commit_free(data);
-+	while (!list_empty(&data->pages)) {
-+		req = nfs_list_entry(data->pages.next);
-+		nfs_list_remove_request(req);
-+		if (dreq->flags == NFS_ODIRECT_RESCHED_WRITES) {
-+			/* Note the rewrite will go through mds */
-+			nfs_mark_request_commit(req, NULL, &cinfo);
-+		} else {
-+			page_cache_release(req->wb_page);
-+			nfs_release_request(req);
-+		}
-+		nfs_unlock_request(req);
-+	}
-+
-+	if (atomic_dec_and_test(&cinfo.mds->rpcs_out))
-+		nfs_direct_write_complete(dreq, data->inode);
- }
- 
--static const struct rpc_call_ops nfs_commit_direct_ops = {
--	.rpc_call_prepare = nfs_commit_prepare,
--	.rpc_call_done = nfs_direct_commit_result,
--	.rpc_release = nfs_direct_commit_release,
-+static void nfs_direct_error_cleanup(struct nfs_inode *nfsi)
-+{
-+	/* There is no lock to clear */
-+}
-+
-+static const struct nfs_commit_completion_ops nfs_direct_commit_completion_ops = {
-+	.completion = nfs_direct_commit_complete,
-+	.error_cleanup = nfs_direct_error_cleanup,
- };
- 
- static void nfs_direct_commit_schedule(struct nfs_direct_req *dreq)
- {
--	struct nfs_commit_data *data = dreq->commit_data;
--	struct rpc_task *task;
--	struct rpc_message msg = {
--		.rpc_argp = &data->args,
--		.rpc_resp = &data->res,
--		.rpc_cred = dreq->ctx->cred,
--	};
--	struct rpc_task_setup task_setup_data = {
--		.task = &data->task,
--		.rpc_client = NFS_CLIENT(dreq->inode),
--		.rpc_message = &msg,
--		.callback_ops = &nfs_commit_direct_ops,
--		.callback_data = data,
--		.workqueue = nfsiod_workqueue,
--		.flags = RPC_TASK_ASYNC,
--	};
--
--	data->inode = dreq->inode;
--	data->cred = msg.rpc_cred;
--
--	data->args.fh = NFS_FH(data->inode);
--	data->args.offset = 0;
--	data->args.count = 0;
--	data->res.fattr = &data->fattr;
--	data->res.verf = &data->verf;
--	nfs_fattr_init(&data->fattr);
--
--	NFS_PROTO(data->inode)->commit_setup(data, &msg);
--
--	/* Note: task.tk_ops->rpc_release will free dreq->commit_data */
--	dreq->commit_data = NULL;
--
--	dprintk("NFS: %5u initiated commit call\n", data->task.tk_pid);
--
--	task = rpc_run_task(&task_setup_data);
--	if (!IS_ERR(task))
--		rpc_put_task(task);
-+	int res;
-+	struct nfs_commit_info cinfo;
-+	LIST_HEAD(mds_list);
-+
-+	nfs_init_cinfo_from_dreq(&cinfo, dreq);
-+	nfs_scan_commit(dreq->inode, &mds_list, &cinfo);
-+	res = nfs_generic_commit_list(dreq->inode, &mds_list, 0, &cinfo);
-+	if (res < 0) /* res == -ENOMEM */
-+		nfs_direct_write_reschedule(dreq);
- }
- 
--static void nfs_direct_write_complete(struct nfs_direct_req *dreq, struct inode *inode)
-+static void nfs_direct_write_schedule_work(struct work_struct *work)
- {
-+	struct nfs_direct_req *dreq = container_of(work, struct nfs_direct_req, work);
- 	int flags = dreq->flags;
- 
- 	dreq->flags = 0;
-@@ -634,90 +590,29 @@ static void nfs_direct_write_complete(struct nfs_direct_req *dreq, struct inode
- 			nfs_direct_write_reschedule(dreq);
- 			break;
- 		default:
--			if (dreq->commit_data != NULL)
--				nfs_commit_free(dreq->commit_data);
--			nfs_direct_free_writedata(dreq);
--			nfs_zap_mapping(inode, inode->i_mapping);
-+			nfs_zap_mapping(dreq->inode, dreq->inode->i_mapping);
- 			nfs_direct_complete(dreq);
- 	}
- }
- 
--static void nfs_alloc_commit_data(struct nfs_direct_req *dreq)
-+static void nfs_direct_write_complete(struct nfs_direct_req *dreq, struct inode *inode)
- {
--	dreq->commit_data = nfs_commitdata_alloc();
--	if (dreq->commit_data != NULL)
--		dreq->commit_data->dreq = dreq;
-+	schedule_work(&dreq->work); /* Calls nfs_direct_write_schedule_work */
- }
-+
- #else
--static inline void nfs_alloc_commit_data(struct nfs_direct_req *dreq)
--{
--	dreq->commit_data = NULL;
--}
- 
- static void nfs_direct_write_complete(struct nfs_direct_req *dreq, struct inode *inode)
- {
--	nfs_direct_free_writedata(dreq);
- 	nfs_zap_mapping(inode, inode->i_mapping);
- 	nfs_direct_complete(dreq);
- }
- #endif
- 
--static void nfs_direct_write_result(struct rpc_task *task, void *calldata)
--{
--	struct nfs_write_data *data = calldata;
--
--	nfs_writeback_done(task, data);
--}
--
- /*
-  * NB: Return the value of the first error return code.  Subsequent
-  *     errors after the first one are ignored.
-  */
--static void nfs_direct_write_release(void *calldata)
--{
--	struct nfs_write_data *data = calldata;
--	struct nfs_pgio_header *hdr = data->header;
--	struct nfs_direct_req *dreq = (struct nfs_direct_req *) hdr->req;
--	int status = data->task.tk_status;
--
--	spin_lock(&dreq->lock);
--
--	if (unlikely(status < 0)) {
--		/* An error has occurred, so we should not commit */
--		dreq->flags = 0;
--		dreq->error = status;
--	}
--	if (unlikely(dreq->error != 0))
--		goto out_unlock;
--
--	dreq->count += data->res.count;
--
--	if (data->res.verf->committed != NFS_FILE_SYNC) {
--		switch (dreq->flags) {
--			case 0:
--				memcpy(&dreq->verf, &data->verf, sizeof(dreq->verf));
--				dreq->flags = NFS_ODIRECT_DO_COMMIT;
--				break;
--			case NFS_ODIRECT_DO_COMMIT:
--				if (memcmp(&dreq->verf, &data->verf, sizeof(dreq->verf))) {
--					dprintk("NFS: %5u write verify failed\n", data->task.tk_pid);
--					dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
--				}
--		}
--	}
--out_unlock:
--	spin_unlock(&dreq->lock);
--
--	if (put_dreq(dreq))
--		nfs_direct_write_complete(dreq, hdr->inode);
--}
--
--static const struct rpc_call_ops nfs_write_direct_ops = {
--	.rpc_call_prepare = nfs_write_prepare,
--	.rpc_call_done = nfs_direct_write_result,
--	.rpc_release = nfs_direct_write_release,
--};
--
- /*
-  * For each wsize'd chunk of the user's buffer, dispatch an NFS WRITE
-  * operation.  If nfs_writedata_alloc() or get_user_pages() fails,
-@@ -725,143 +620,181 @@ static const struct rpc_call_ops nfs_write_direct_ops = {
-  * handled automatically by nfs_direct_write_result().  Otherwise, if
-  * no requests have been sent, just return an error.
-  */
--static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
-+static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *desc,
- 						 const struct iovec *iov,
--						 loff_t pos, int sync)
-+						 loff_t pos)
- {
-+	struct nfs_direct_req *dreq = desc->pg_dreq;
- 	struct nfs_open_context *ctx = dreq->ctx;
- 	struct inode *inode = ctx->dentry->d_inode;
- 	unsigned long user_addr = (unsigned long)iov->iov_base;
- 	size_t count = iov->iov_len;
--	struct rpc_task *task;
--	struct rpc_message msg = {
--		.rpc_cred = ctx->cred,
--	};
--	struct rpc_task_setup task_setup_data = {
--		.rpc_client = NFS_CLIENT(inode),
--		.rpc_message = &msg,
--		.callback_ops = &nfs_write_direct_ops,
--		.workqueue = nfsiod_workqueue,
--		.flags = RPC_TASK_ASYNC,
--	};
- 	size_t wsize = NFS_SERVER(inode)->wsize;
- 	unsigned int pgbase;
- 	int result;
- 	ssize_t started = 0;
-+	struct page **pagevec = NULL;
-+	unsigned int npages;
- 
- 	do {
--		struct nfs_write_header *whdr;
--		struct nfs_write_data *data;
--		struct nfs_page_array *pages;
- 		size_t bytes;
-+		int i;
- 
- 		pgbase = user_addr & ~PAGE_MASK;
--		bytes = min(wsize,count);
-+		bytes = min(max(wsize, PAGE_SIZE), count);
- 
- 		result = -ENOMEM;
--		whdr = nfs_writehdr_alloc();
--		if (unlikely(!whdr))
--			break;
--
--		data = nfs_writedata_alloc(&whdr->header, nfs_page_array_len(pgbase, bytes));
--		if (!data) {
--			nfs_writehdr_free(&whdr->header);
-+		npages = nfs_page_array_len(pgbase, bytes);
-+		if (!pagevec)
-+			pagevec = kmalloc(npages * sizeof(struct page *), GFP_KERNEL);
-+		if (!pagevec)
- 			break;
--		}
--		data->header = &whdr->header;
--		atomic_inc(&data->header->refcnt);
--		pages = &data->pages;
- 
- 		down_read(&current->mm->mmap_sem);
- 		result = get_user_pages(current, current->mm, user_addr,
--					pages->npages, 0, 0, pages->pagevec, NULL);
-+					npages, 0, 0, pagevec, NULL);
- 		up_read(&current->mm->mmap_sem);
--		if (result < 0) {
--			nfs_direct_writehdr_release(whdr);
-+		if (result < 0)
- 			break;
--		}
--		if ((unsigned)result < pages->npages) {
-+
-+		if ((unsigned)result < npages) {
- 			bytes = result * PAGE_SIZE;
- 			if (bytes <= pgbase) {
--				nfs_direct_release_pages(pages->pagevec, result);
--				nfs_direct_writehdr_release(whdr);
-+				nfs_direct_release_pages(pagevec, result);
- 				break;
- 			}
- 			bytes -= pgbase;
--			pages->npages = result;
-+			npages = result;
- 		}
- 
--		get_dreq(dreq);
--
--		list_move_tail(&whdr->header.pages, &dreq->rewrite_list);
--
--		whdr->header.req = (struct nfs_page *) dreq;
--		whdr->header.inode = inode;
--		whdr->header.cred = msg.rpc_cred;
--		data->args.fh = NFS_FH(inode);
--		data->args.context = ctx;
--		data->args.lock_context = dreq->l_ctx;
--		data->args.offset = pos;
--		data->args.pgbase = pgbase;
--		data->args.pages = pages->pagevec;
--		data->args.count = bytes;
--		data->args.stable = sync;
--		data->res.fattr = &data->fattr;
--		data->res.count = bytes;
--		data->res.verf = &data->verf;
--		nfs_fattr_init(&data->fattr);
--
--		task_setup_data.task = &data->task;
--		task_setup_data.callback_data = data;
--		msg.rpc_argp = &data->args;
--		msg.rpc_resp = &data->res;
--		NFS_PROTO(inode)->write_setup(data, &msg);
--
--		task = rpc_run_task(&task_setup_data);
--		if (IS_ERR(task))
--			break;
-+		for (i = 0; i < npages; i++) {
-+			struct nfs_page *req;
-+			unsigned int req_len = min(bytes, PAGE_SIZE - pgbase);
- 
--		dprintk("NFS: %5u initiated direct write call "
--			"(req %s/%Ld, %zu bytes @ offset %Lu)\n",
--				task->tk_pid,
--				inode->i_sb->s_id,
--				(long long)NFS_FILEID(inode),
--				bytes,
--				(unsigned long long)data->args.offset);
--		rpc_put_task(task);
--
--		started += bytes;
--		user_addr += bytes;
--		pos += bytes;
--
--		/* FIXME: Remove this useless math from the final patch */
--		pgbase += bytes;
--		pgbase &= ~PAGE_MASK;
--		BUG_ON(pgbase != (user_addr & ~PAGE_MASK));
--
--		count -= bytes;
-+			req = nfs_create_request(dreq->ctx, dreq->inode,
-+						 pagevec[i],
-+						 pgbase, req_len);
-+			if (IS_ERR(req)) {
-+				nfs_direct_release_pages(pagevec + i,
-+							 npages - i);
-+				result = PTR_ERR(req);
-+				break;
-+			}
-+			nfs_lock_request(req);
-+			req->wb_index = pos >> PAGE_SHIFT;
-+			req->wb_offset = pos & ~PAGE_MASK;
-+			if (!nfs_pageio_add_request(desc, req)) {
-+				result = desc->pg_error;
-+				nfs_unlock_request(req);
-+				nfs_release_request(req);
-+				nfs_direct_release_pages(pagevec + i,
-+							 npages - i);
-+			}
-+			pgbase = 0;
-+			bytes -= req_len;
-+			started += req_len;
-+			user_addr += req_len;
-+			pos += req_len;
-+			count -= req_len;
-+		}
- 	} while (count != 0);
- 
-+	kfree(pagevec);
-+
- 	if (started)
- 		return started;
- 	return result < 0 ? (ssize_t) result : -EFAULT;
- }
- 
-+static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
-+{
-+	struct nfs_direct_req *dreq = hdr->dreq;
-+	struct nfs_commit_info cinfo;
-+	int bit = -1;
-+	struct nfs_page *req = nfs_list_entry(hdr->pages.next);
-+
-+	if (test_bit(NFS_IOHDR_REDO, &hdr->flags))
-+		goto out_put;
-+
-+	nfs_init_cinfo_from_dreq(&cinfo, dreq);
-+
-+	spin_lock(&dreq->lock);
-+
-+	if (test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
-+		dreq->flags = 0;
-+		dreq->error = hdr->error;
-+	}
-+	if (dreq->error != 0)
-+		bit = NFS_IOHDR_ERROR;
-+	else {
-+		dreq->count += (hdr->first_error - req_offset(hdr->req));
-+		if (test_bit(NFS_IOHDR_NEED_RESCHED, &hdr->flags)) {
-+			dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
-+			bit = NFS_IOHDR_NEED_RESCHED;
-+		} else if (test_bit(NFS_IOHDR_NEED_COMMIT, &hdr->flags)) {
-+			if (dreq->flags == NFS_ODIRECT_RESCHED_WRITES)
-+				bit = NFS_IOHDR_NEED_RESCHED;
-+			else if (dreq->flags == 0) {
-+				memcpy(&dreq->verf, &req->wb_verf,
-+				       sizeof(dreq->verf));
-+				bit = NFS_IOHDR_NEED_COMMIT;
-+				dreq->flags = NFS_ODIRECT_DO_COMMIT;
-+			} else if (dreq->flags == NFS_ODIRECT_DO_COMMIT) {
-+				if (memcmp(&dreq->verf, &req->wb_verf, sizeof(dreq->verf))) {
-+					dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
-+					bit = NFS_IOHDR_NEED_RESCHED;
-+				} else
-+					bit = NFS_IOHDR_NEED_COMMIT;
-+			}
-+		}
-+	}
-+	spin_unlock(&dreq->lock);
-+
-+	while (!list_empty(&hdr->pages)) {
-+		req = nfs_list_entry(hdr->pages.next);
-+		nfs_list_remove_request(req);
-+		switch (bit) {
-+		case NFS_IOHDR_NEED_RESCHED:
-+		case NFS_IOHDR_NEED_COMMIT:
-+			nfs_mark_request_commit(req, hdr->lseg, &cinfo);
-+			break;
-+		default:
-+			page_cache_release(req->wb_page);
-+			nfs_release_request(req);
-+		}
-+		nfs_unlock_request(req);
-+	}
-+
-+out_put:
-+	if (put_dreq(dreq))
-+		nfs_direct_write_complete(dreq, hdr->inode);
-+	hdr->release(hdr);
-+}
-+
-+static const struct nfs_pgio_completion_ops nfs_direct_write_completion_ops = {
-+	.error_cleanup = nfs_sync_pgio_error,
-+	.init_hdr = nfs_direct_pgio_init,
-+	.completion = nfs_direct_write_completion,
-+};
-+
- static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
- 					       const struct iovec *iov,
- 					       unsigned long nr_segs,
--					       loff_t pos, int sync)
-+					       loff_t pos)
- {
-+	struct nfs_pageio_descriptor desc;
- 	ssize_t result = 0;
- 	size_t requested_bytes = 0;
- 	unsigned long seg;
- 
-+	nfs_pageio_init_write(&desc, dreq->inode, FLUSH_COND_STABLE,
-+			      &nfs_direct_write_completion_ops);
-+	desc.pg_dreq = dreq;
- 	get_dreq(dreq);
- 
- 	for (seg = 0; seg < nr_segs; seg++) {
- 		const struct iovec *vec = &iov[seg];
--		result = nfs_direct_write_schedule_segment(dreq, vec,
--							   pos, sync);
-+		result = nfs_direct_write_schedule_segment(&desc, vec, pos);
- 		if (result < 0)
- 			break;
- 		requested_bytes += result;
-@@ -869,6 +802,7 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
- 			break;
- 		pos += vec->iov_len;
- 	}
-+	nfs_pageio_complete(&desc);
- 
- 	/*
- 	 * If no bytes were started, return the error, and let the
-@@ -891,16 +825,10 @@ static ssize_t nfs_direct_write(struct kiocb *iocb, const struct iovec *iov,
- 	ssize_t result = -ENOMEM;
- 	struct inode *inode = iocb->ki_filp->f_mapping->host;
- 	struct nfs_direct_req *dreq;
--	size_t wsize = NFS_SERVER(inode)->wsize;
--	int sync = NFS_UNSTABLE;
- 
- 	dreq = nfs_direct_req_alloc();
- 	if (!dreq)
- 		goto out;
--	nfs_alloc_commit_data(dreq);
--
--	if (dreq->commit_data == NULL || count <= wsize)
--		sync = NFS_FILE_SYNC;
- 
- 	dreq->inode = inode;
- 	dreq->ctx = get_nfs_open_context(nfs_file_open_context(iocb->ki_filp));
-@@ -910,7 +838,7 @@ static ssize_t nfs_direct_write(struct kiocb *iocb, const struct iovec *iov,
- 	if (!is_sync_kiocb(iocb))
- 		dreq->iocb = iocb;
- 
--	result = nfs_direct_write_schedule_iovec(dreq, iov, nr_segs, pos, sync);
-+	result = nfs_direct_write_schedule_iovec(dreq, iov, nr_segs, pos);
- 	if (!result)
- 		result = nfs_direct_wait(dreq);
- out_release:
-@@ -1030,10 +958,15 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
- 	task_io_account_write(count);
- 
- 	retval = nfs_direct_write(iocb, iov, nr_segs, pos, count);
-+	if (retval > 0) {
-+		struct inode *inode = mapping->host;
- 
--	if (retval > 0)
- 		iocb->ki_pos = pos + retval;
--
-+		spin_lock(&inode->i_lock);
-+		if (i_size_read(inode) < iocb->ki_pos)
-+			i_size_write(inode, iocb->ki_pos);
-+		spin_unlock(&inode->i_lock);
-+	}
- out:
- 	return retval;
- }
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 3d45213..12d3818 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -320,10 +320,11 @@ extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
- extern void nfs_readdata_release(struct nfs_read_data *rdata);
- 
- /* write.c */
-+extern void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
-+			struct inode *inode, int ioflags,
-+			const struct nfs_pgio_completion_ops *compl_ops);
- extern struct nfs_write_header *nfs_writehdr_alloc(void);
- extern void nfs_writehdr_free(struct nfs_pgio_header *hdr);
--extern struct nfs_write_data *nfs_writedata_alloc(struct nfs_pgio_header *hdr,
--						  unsigned int pagecount);
- extern int nfs_generic_flush(struct nfs_pageio_descriptor *desc,
- 			     struct nfs_pgio_header *hdr);
- extern void nfs_pageio_init_write_mds(struct nfs_pageio_descriptor *pgio,
-@@ -346,6 +347,15 @@ extern void nfs_init_commit(struct nfs_commit_data *data,
- 			    struct list_head *head,
- 			    struct pnfs_layout_segment *lseg,
- 			    struct nfs_commit_info *cinfo);
-+int nfs_scan_commit_list(struct list_head *src, struct list_head *dst,
-+			 struct nfs_commit_info *cinfo, int max);
-+int nfs_scan_commit(struct inode *inode, struct list_head *dst,
-+		    struct nfs_commit_info *cinfo);
-+void nfs_mark_request_commit(struct nfs_page *req,
-+			     struct pnfs_layout_segment *lseg,
-+			     struct nfs_commit_info *cinfo);
-+int nfs_generic_commit_list(struct inode *inode, struct list_head *head,
-+			    int how, struct nfs_commit_info *cinfo);
- void nfs_retry_commit(struct list_head *page_list,
- 		      struct pnfs_layout_segment *lseg,
- 		      struct nfs_commit_info *cinfo);
-@@ -365,6 +375,10 @@ extern int nfs_migrate_page(struct address_space *,
- #define nfs_migrate_page NULL
- #endif
- 
-+/* direct.c */
-+void nfs_init_cinfo_from_dreq(struct nfs_commit_info *cinfo,
-+			      struct nfs_direct_req *dreq);
-+
- /* nfs4proc.c */
- extern void __nfs4_read_done_cb(struct nfs_read_data *);
- extern void nfs4_reset_read(struct rpc_task *task, struct nfs_read_data *data);
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 26d1da4..806a55f 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -996,12 +996,9 @@ static int filelayout_initiate_commit(struct nfs_commit_data *data, int how)
- }
- 
- static int
--filelayout_scan_ds_commit_list(struct pnfs_commit_bucket *bucket,
--			       struct nfs_commit_info *cinfo,
--			       int max)
-+transfer_commit_list(struct list_head *src, struct list_head *dst,
-+		     struct nfs_commit_info *cinfo, int max)
- {
--	struct list_head *src = &bucket->written;
--	struct list_head *dst = &bucket->committing;
- 	struct nfs_page *req, *tmp;
- 	int ret = 0;
- 
-@@ -1014,9 +1011,22 @@ filelayout_scan_ds_commit_list(struct pnfs_commit_bucket *bucket,
- 		clear_bit(PG_COMMIT_TO_DS, &req->wb_flags);
- 		nfs_list_add_request(req, dst);
- 		ret++;
--		if (ret == max)
-+		if ((ret == max) && !cinfo->dreq)
- 			break;
- 	}
-+	return ret;
-+}
-+
-+static int
-+filelayout_scan_ds_commit_list(struct pnfs_commit_bucket *bucket,
-+			       struct nfs_commit_info *cinfo,
-+			       int max)
-+{
-+	struct list_head *src = &bucket->written;
-+	struct list_head *dst = &bucket->committing;
-+	int ret;
-+
-+	ret = transfer_commit_list(src, dst, cinfo, max);
- 	if (ret) {
- 		cinfo->ds->nwritten -= ret;
- 		cinfo->ds->ncommitting += ret;
-@@ -1046,6 +1056,27 @@ static int filelayout_scan_commit_lists(struct nfs_commit_info *cinfo,
- 	return rv;
- }
- 
-+/* Pull everything off the committing lists and dump into @dst */
-+static void filelayout_recover_commit_reqs(struct list_head *dst,
-+					   struct nfs_commit_info *cinfo)
-+{
-+	struct pnfs_commit_bucket *b;
-+	int i;
-+
-+	/* NOTE cinfo->lock is NOT held, relying on fact that this is
-+	 * only called on single thread per dreq.
-+	 * Can't take the lock because need to do put_lseg
-+	 */
-+	for (i = 0, b = cinfo->ds->buckets; i < cinfo->ds->nbuckets; i++, b++) {
-+		if (transfer_commit_list(&b->written, dst, cinfo, 0)) {
-+			BUG_ON(!list_empty(&b->written));
-+			put_lseg(b->wlseg);
-+			b->wlseg = NULL;
-+		}
-+	}
-+	cinfo->ds->nwritten = 0;
-+}
-+
- static unsigned int
- alloc_ds_commits(struct nfs_commit_info *cinfo, struct list_head *list)
- {
-@@ -1170,6 +1201,7 @@ static struct pnfs_layoutdriver_type filelayout_type = {
- 	.mark_request_commit	= filelayout_mark_request_commit,
- 	.clear_request_commit	= filelayout_clear_request_commit,
- 	.scan_commit_lists	= filelayout_scan_commit_lists,
-+	.recover_commit_reqs	= filelayout_recover_commit_reqs,
- 	.commit_pagelist	= filelayout_commit_pagelist,
- 	.read_pagelist		= filelayout_read_pagelist,
- 	.write_pagelist		= filelayout_write_pagelist,
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 4cd8760..8efbee7 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -102,6 +102,8 @@ struct pnfs_layoutdriver_type {
- 				      struct nfs_commit_info *cinfo);
- 	int (*scan_commit_lists) (struct nfs_commit_info *cinfo,
- 				  int max);
-+	void (*recover_commit_reqs) (struct list_head *list,
-+				     struct nfs_commit_info *cinfo);
- 	int (*commit_pagelist)(struct inode *inode,
- 			       struct list_head *mds_pages,
- 			       int how,
-@@ -323,6 +325,15 @@ pnfs_scan_commit_lists(struct inode *inode, struct nfs_commit_info *cinfo,
- 		return NFS_SERVER(inode)->pnfs_curr_ld->scan_commit_lists(cinfo, max);
- }
- 
-+static inline void
-+pnfs_recover_commit_reqs(struct inode *inode, struct list_head *list,
-+			 struct nfs_commit_info *cinfo)
-+{
-+	if (cinfo->ds == NULL || cinfo->ds->nwritten == 0)
-+		return;
-+	NFS_SERVER(inode)->pnfs_curr_ld->recover_commit_reqs(list, cinfo);
-+}
-+
- /* Should the pNFS client commit and return the layout upon a setattr */
- static inline bool
- pnfs_ld_layoutret_on_setattr(struct inode *inode)
-@@ -456,6 +467,12 @@ pnfs_scan_commit_lists(struct inode *inode, struct nfs_commit_info *cinfo,
- 	return 0;
- }
- 
-+static inline void
-+pnfs_recover_commit_reqs(struct inode *inode, struct list_head *list,
-+			 struct nfs_commit_info *cinfo)
-+{
-+}
-+
- static inline int pnfs_layoutcommit_inode(struct inode *inode, bool sync)
- {
- 	return 0;
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 56db9e7..fec214b 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -39,9 +39,6 @@
- /*
-  * Local function declarations
-  */
--static void nfs_pageio_init_write(struct nfs_pageio_descriptor *desc,
--			struct inode *inode, int ioflags,
--			const struct nfs_pgio_completion_ops *compl_ops);
- static void nfs_redirty_request(struct nfs_page *req);
- static const struct rpc_call_ops nfs_write_common_ops;
- static const struct rpc_call_ops nfs_commit_ops;
-@@ -87,8 +84,8 @@ struct nfs_write_header *nfs_writehdr_alloc(void)
- 	return p;
- }
- 
--struct nfs_write_data *nfs_writedata_alloc(struct nfs_pgio_header *hdr,
--					   unsigned int pagecount)
-+static struct nfs_write_data *nfs_writedata_alloc(struct nfs_pgio_header *hdr,
-+						  unsigned int pagecount)
- {
- 	struct nfs_write_data *data, *prealloc;
- 
-@@ -518,14 +515,17 @@ void nfs_init_cinfo(struct nfs_commit_info *cinfo,
- 		    struct inode *inode,
- 		    struct nfs_direct_req *dreq)
- {
--	nfs_init_cinfo_from_inode(cinfo, inode);
-+	if (dreq)
-+		nfs_init_cinfo_from_dreq(cinfo, dreq);
-+	else
-+		nfs_init_cinfo_from_inode(cinfo, inode);
- }
- EXPORT_SYMBOL_GPL(nfs_init_cinfo);
- 
- /*
-  * Add a request to the inode's commit list.
-  */
--static void
-+void
- nfs_mark_request_commit(struct nfs_page *req, struct pnfs_layout_segment *lseg,
- 			struct nfs_commit_info *cinfo)
- {
-@@ -567,7 +567,7 @@ int nfs_write_need_commit(struct nfs_write_data *data)
- }
- 
- #else
--static void
-+void
- nfs_mark_request_commit(struct nfs_page *req, struct pnfs_layout_segment *lseg,
- 			struct nfs_commit_info *cinfo)
- {
-@@ -632,7 +632,7 @@ nfs_reqs_to_commit(struct nfs_commit_info *cinfo)
- }
- 
- /* cinfo->lock held by caller */
--static int
-+int
- nfs_scan_commit_list(struct list_head *src, struct list_head *dst,
- 		     struct nfs_commit_info *cinfo, int max)
- {
-@@ -647,7 +647,7 @@ nfs_scan_commit_list(struct list_head *src, struct list_head *dst,
- 		nfs_request_remove_commit_list(req, cinfo);
- 		nfs_list_add_request(req, dst);
- 		ret++;
--		if (ret == max)
-+		if ((ret == max) && !cinfo->dreq)
- 			break;
- 	}
- 	return ret;
-@@ -662,7 +662,7 @@ nfs_scan_commit_list(struct list_head *src, struct list_head *dst,
-  * Moves requests from the inode's 'commit' request list.
-  * The requests are *not* checked to ensure that they form a contiguous set.
-  */
--static int
-+int
- nfs_scan_commit(struct inode *inode, struct list_head *dst,
- 		struct nfs_commit_info *cinfo)
- {
-@@ -686,8 +686,8 @@ static unsigned long nfs_reqs_to_commit(struct nfs_commit_info *cinfo)
- 	return 0;
- }
- 
--static inline int nfs_scan_commit(struct inode *inode, struct list_head *dst,
--				  struct nfs_commit_info *cinfo)
-+int nfs_scan_commit(struct inode *inode, struct list_head *dst,
-+		    struct nfs_commit_info *cinfo)
- {
- 	return 0;
- }
-@@ -1202,9 +1202,9 @@ void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio)
- }
- EXPORT_SYMBOL_GPL(nfs_pageio_reset_write_mds);
- 
--static void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
--				struct inode *inode, int ioflags,
--				const struct nfs_pgio_completion_ops *compl_ops)
-+void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
-+			   struct inode *inode, int ioflags,
-+			   const struct nfs_pgio_completion_ops *compl_ops)
- {
- 	if (!pnfs_pageio_init_write(pgio, inode, ioflags, compl_ops))
- 		nfs_pageio_init_write_mds(pgio, inode, ioflags, compl_ops);
-@@ -1568,8 +1568,8 @@ static const struct nfs_commit_completion_ops nfs_commit_completion_ops = {
- 	.error_cleanup = nfs_commit_clear_lock,
- };
- 
--static int nfs_generic_commit_list(struct inode *inode, struct list_head *head,
--				   int how, struct nfs_commit_info *cinfo)
-+int nfs_generic_commit_list(struct inode *inode, struct list_head *head,
-+			    int how, struct nfs_commit_info *cinfo)
- {
- 	int status;
- 
--- 
-1.7.2.1
+---1051860855-2084369068-1335451033=:91608
+Content-Type: application/pdf; name=INHERITANCE
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="INHERITANCE FUNDS.pdf"
 
+JVBERi0xLjMNCiXi48/TDQoxIDAgb2JqDQo8PC9UeXBlL1BhZ2UvTWVkaWFC
+b3hbMCAwIDU5NSA4NDJdL1JvdGF0ZSAwL1Jlc291cmNlczw8L1Byb2NTZXRb
+L1BERi9UZXh0XS9Gb250IDIgMCBSPj4vQ29udGVudHMgMTEgMCBSL0FydEJv
+eFswIDAgNTk1IDg0Ml0vQ3JvcEJveFswIDAgNTk1IDg0Ml0vUGFyZW50IDE0
+IDAgUj4+DQplbmRvYmoNCjIgMCBvYmoNCjw8L1I5IDMgMCBSL1I3IDcgMCBS
+Pj4NCmVuZG9iag0KMyAwIG9iag0KPDwvQmFzZUZvbnQvS1BTSEJPK0NhbGli
+cmkvRm9udERlc2NyaXB0b3IgNCAwIFIvVG9Vbmljb2RlIDYgMCBSL1R5cGUv
+Rm9udC9GaXJzdENoYXIgMS9MYXN0Q2hhciAxL1dpZHRoc1syMjZdL1N1YnR5
+cGUvVHJ1ZVR5cGU+Pg0KZW5kb2JqDQo0IDAgb2JqDQo8PC9UeXBlL0ZvbnRE
+ZXNjcmlwdG9yL0ZvbnROYW1lL0tQU0hCTytDYWxpYnJpL0ZvbnRCQm94WzAg
+MCA0ODUgNjMxXS9GbGFncyA0L0FzY2VudCA2MzEvQ2FwSGVpZ2h0IDYzMS9E
+ZXNjZW50IDAvSXRhbGljQW5nbGUgMC9TdGVtViA3Mi9NaXNzaW5nV2lkdGgg
+NTA2L0ZvbnRGaWxlMiA1IDAgUj4+DQplbmRvYmoNCjUgMCBvYmoNCjw8L0Zp
+bHRlci9GbGF0ZURlY29kZS9MZW5ndGgxIDIxNzcyL0xlbmd0aCA2MDk4Pj5z
+dHJlYW0NCnic7Zx5WJRV+8fPmQEGGIYZEBAdcQZHSAPEXVSSkU0RN4SxGdzY
+xdyIxS1R0krDLMv2xWy1ovLh0RJts7J9sWzftX2zbC9N+H2f557b1Ot9+/3+
+eK/r/XVdM4fPfL/3fZZnPYfjVRdCCiEsokUYxdQpxemDhf4pmYiv6ZULy+so
+nvazEDKzckmjU7lh3wEk3hciuFdN3dyFv/46KQL+dyHCes5dsLyG2g+pRfvs
+2uryqs+TOs/CeK8jObwWCct90blCWGMQ961d2LjMf7zb8WVbsLiynOKh9wrR
+O39h+bK6xBzjNWifgaRzUfnCan/7gfjqUbe4odEf79Tq6+qr6+ZvN3SivRfD
+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
+8km30t8BdwdVBdq54GcdTlVr+rg2TFGHmOZahpVFO2l9JBOqFUtSQTkWf+pv
+RsaVwZ1DtTXC7B9jH2VN2pVH4L4bk0o6ura5liee9ElLdWm/HLQXU9h348UW
+vtbTE8qMlLTU0NOzFj3d2hpq+dcd6H6FWk6olnTm4bcGGuLfxCGiU8h94VuP
+HT26NexbLXPKJ0jLWPtIp7Bhb2bCfLCJdIF/nUZt6urSatUwo7PDcMHOsHg5
+AWYtmzVszmfTwmY1m1VsmtmsZHMemxVslrNZxmYpmyVsmtg0smlgcy6bOjaL
+2Sxis5DNAjbz2ZzDZh6bWjZz2dSwqWZTxaaSTQWbcjZlbOawmc1mFpuZbGaw
+KWXjY+Nlczab6Ww8bErYFLOZxqaIzVQ2U9hMZjOJzUQ2hWwmsClgM57NODb5
+bPLY5LLJYZPNZiwbN5ssNmPYnMUmk81oNqPYjGSTwWYEm+FshrEZymYIm8Fs
+BrEZyCadzQA2aWxS2aSwOZNNfzb92JzBJplNEpu+bFxs+rBJZONk42DTm00C
+m15s7Gx6sunBJp5NdzZxbGLZxLDpxiaaTRQbGxsrm0g2FjYRbMxswtmEsQll
+Y2ITwiaYTRAbIxsDG8lG+I3sYtPJ5jibP9kcY3OUzR9sfmfzG5tf2fzC5mc2
+P7H5kc0PbI6w+Z7Nd2wOs/mWzTdsvmbzFZsv2XzB5nM2n7H5lM0nbD5mc4jN
+QTYfsfmQzQds3mfzHpt32bzD5m02b7F5k80bbF5n8xqbA2xeZfMKm/1sXmbz
+EpsX2bzA5nk2z7F5ls0zbJ5m8xSbfWyeZPMEm8fZ7GXzGJtH2TzC5mE2D7HZ
+w2Y3mw42u9g8yOYBNjvZ7GCjsmlno7DZzuZ+NvexuZdNG5t72NzN5i4229jc
+yeYONrezuY3NrWxuYbOVzc1strC5ic2NbG5gcz2b69hcy+YaNlezuYrNlWw2
+s7mCzeVsNrG5jM2lbDayuYTNBjatbC5ms57NOjYXsbmQDW97JG97JG97JG97
+JG97JG97JG97JG97JG97JG97JG97JG97JG97JG97JG97JG97JG97JG97ZD0b
+3v9I3v9I3v9I3v9I3v9I3v9I3v9I3v9I3v9I3v9I3v9I3v9I3v9I3v9I3v9I
+3v9I3v9I3v9I3v9I3v9I3v9I3v9I3v9I3v9I3v9I3v9I3v9I3v9I3v9I3v9I
+3v9I3v9I3vZI3vZI3vZI3u1I3u1I3u1I3u1I3u1I3u1I3u1I3u1I3u3InB2a
+wa5Z7T3GgT2z2jsWsoai89XeoyAtFK0mWaX2joA0U7SS5DySFSTL1YSxkGVq
+Qg5kKckSkiaqa6SogaSekueqCdmQOpLFJIuoyUKSBSTz1V55kHNI5pHUkswl
+qVF75UKqKaoiqSSpICknKSOZQzKb+s2iaCbJDJJSEh+Jl+RskukkHpISkmKS
+aSRFJFNJppBMJplEMpGkkGSCai+AFJCMV+0TIONI8lV7ISRPtU+E5JLkkGRT
+3Vjq5ybJon5jSM4iyaSWo0lGUfeRJBkkI0iGkwyjwYaSDKFRBpMMIhlIg6WT
+DKB+aSSpJCkkZ5L0J+lHcgYNnUySRGP2JXGR9KGhE0mc1M9B0pskgaQXiZ2k
+p9pzMqQHSbzacwqkO0kcJWNJYijZjSSaJIrqbCRWSkaSWEgiqM5MEk4SRnWh
+JCaSELXHVEiw2qMIEkRipKSBIkkidJFdJJ16E3mcoj9JjpEcpbo/KPqd5DeS
+X0l+UeNLID+r8cWQnyj6keQHkiNU9z1F35EcJvmW6r4h+ZqSX5F8SfIFyefU
+5DOKPqXoE4o+JjlEcpDqPiL5kJIfkLxP8h7Ju9TkHYreJnlL7X425E21+3TI
+GySvU/I1kgMkr5K8Qk32k7xMyZdIXiR5geR5avIcybOUfIbkaZKnSPaRPEkt
+n6DocZK9JI9R3aMkj1DyYZKHSPaQ7CbpoJa7KHqQ5AGSnSQ71LgsiKrGzYC0
+kygk20nuJ7mP5F6SNpJ71Dis1/JuGuUukm1UdyfJHSS3k9xGcivJLSRbSW6m
+wbbQKDeR3Eh1N5BcT3IdybXU4RqKria5iuRKqttMo1xBcjnVbSK5jORSko0k
+l1DLDRS1klxMsp5kHclFamw55EI1tgJyAclaNbYGsobkfDXWA2lRY7EYy9Vq
+7HDIKpJm6r6S+p1HskKNrYIsp+7LSJaSLCFpImkkaaCh66n7uSR1amwlZDEN
+tohaLiRZQDKf5BySedSvlmQunVkNda8mqaKWlSQVJOUkZSRzSGbTRc+iM5tJ
+MoMuupSG9tGBvCRn0+lOpwN5aJQSkmKSaSRFaowbMlWN0Y4wRY3RXu/Jasxa
+yCQ1Jg0ykZoUkkxQY7AvkAUUjScZR8l8NWYVJE+NWQfJVWNWQ3LUmBZIthqd
+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
+z55Zrl3DQjYaowrwj/edWaaNWMqzjn94/OX04x8ejh6Zflimf3Dow0O2H16O
+Gpk+5NDrhwYNlFGJUToxkQaTKSbE1WeAYdgZycOHDBk8xjBsaLKrT6RBzw0d
+PmKMccjg3gZjDGfGGLRYGg/8WWqccjzEsMqVNX1IcO+e1hhLSLChV3x0WmaS
+rXhGUuaABJPRFGIMDjX1G5Hdp3BBXp93TVEJsXEJ0aGh0QlxsQlRpuPvBUce
+/TE48lhO0IJjVxpDRs/M6mu8NjzUEBQS0tE7vseZoxMLplu72YLM3WxRcaGm
+6KiIfrkzj18U20sbo1dsLI11fJL+/13dEiiBEiiBEiiBEiiBEiiBEiiBEiiB
+EiiBEiiBEiiBEiiBEiiBEiiBEiiBEiiB4i/ax+D/ix4xwqiJ7AlCYIz/oT/4
++E/9BIk++rf+902OyK4u/kYcJOj+SBGN+2cQ2h9JMQmRU75gXkX9PKHXCLlJ
+BIvQ/+PRTmt3RBzpOiXh/6srQZF/IfeL//0paf2Ct3S0K9v3zLFm/iJ60IEe
++mbli5o+1efaFceOHt8Q9q3pQYRh+rXg8z/SnA4EDQplbmRzdHJlYW0NCmVu
+ZG9iag0KNiAwIG9iag0KPDwvRmlsdGVyL0ZsYXRlRGVjb2RlL0xlbmd0aCAx
+NTg+PnN0cmVhbQ0KeJxdTzEOwyAM3HmFfwBEHaMs6ZKhVdX2A8SYiCEGETL0
+9w0k6dDhLJ3vTj7LfrgO7DPIRwr4ogzOs020hDUhwUiTZ6EbsB7zwerE2UQh
++5uJ708k2Azkdn43M8mnvtSN3jMYLC3RICXDE4lWqa51rhPE9k86AqM7nbrb
+oRpV/adSoqXDeRJwTYk416K1SCngmX6/xBBLCjaIL+mvUucNCmVuZHN0cmVh
+bQ0KZW5kb2JqDQo3IDAgb2JqDQo8PC9CYXNlRm9udC9BVVhZWEUrQXJpYWwv
+Rm9udERlc2NyaXB0b3IgOCAwIFIvVG9Vbmljb2RlIDEwIDAgUi9UeXBlL0Zv
+bnQvRmlyc3RDaGFyIDEvTGFzdENoYXIgNTcvV2lkdGhzWzc3OCA1NTYgNTU2
+IDI3OCA3MjIgNTU2IDUwMCAyNzggODMzIDU1NiA4MzMgNTU2IDIyMiA1MDAg
+NTAwIDc3OCA3MjIgNzIyIDY2NyAyNzggNjExIDI3OCAzMzMgNTU2IDI3OCA1
+NTYgNTAwIDIyMiA2NjcgNTAwIDY2NyAyNzggNzIyIDU1NiA1MDAgNTU2IDU1
+NiAyNzggOTQ0IDM1NSAzMzMgMjc4IDcyMiA2NjcgNTU2IDY2NyA3MjIgNTAw
+IDU1NiA1NTYgMjc4IDE5MSAyMjIgNTU2IDIyMiA2NjcgNzIyXS9TdWJ0eXBl
+L1RydWVUeXBlPj4NCmVuZG9iag0KOCAwIG9iag0KPDwvVHlwZS9Gb250RGVz
+Y3JpcHRvci9Gb250TmFtZS9BVVhZWEUrQXJpYWwvRm9udEJCb3hbLTQ1IC0y
+MTAgOTMyIDcyOF0vRmxhZ3MgNi9Bc2NlbnQgNzI4L0NhcEhlaWdodCA3Mjgv
+RGVzY2VudCAtMjEwL0l0YWxpY0FuZ2xlIDAvU3RlbVYgMTAwL01pc3NpbmdX
+aWR0aCA3NTAvWEhlaWdodCA1MzAvRm9udEZpbGUyIDkgMCBSPj4NCmVuZG9i
+ag0KOSAwIG9iag0KPDwvRmlsdGVyL0ZsYXRlRGVjb2RlL0xlbmd0aDEgMzMz
+ODQvTGVuZ3RoIDIwMjU1Pj5zdHJlYW0NCniclL0JYFTF/Tg+M+9+b4+395ns
+bja7CdlgIAmEQCSPI6BG7sMEiQQB5RAhXIpnqAqIF9oWr7bgUcWrLEnAgPZr
+qlTrQaFVsWpVavFso9RSqkJ2/5+ZtxtC7e/3+/73MTOfN2/eezPzOebz+czn
+BYQRQlbUjjg0dcqMikrEfjf8GbLZC5bPX2meX+9HCD+9YN2a6LayP66DCrgu
+Drls5eXL31jf/ABCkgXOr7z8ivWXme39PQhdZCxeNH/h7+9L3o3Qj4ZA5fDF
+UOGscmbhhdfBefHi5WuuNtvfWI0Q+fMVKxbMN8/pa63e5fOvXqlNtOwEeAdU
+RK+cv3xRrn8HIPOtXLF6jXn+I51eX7lq0crpmQNfQHt4v5oV9qMApKDwOArw
+SQRjyH4G6XNaZpZkP6fXaUm+hLu7cwmhnegZvAQ9g15AL+LjcNcutA91od8h
+HxqPfoauQz9Bm5CI5kDNrWg6HALU/wQHsl2oAj0E8/gQOghtL0I3oP3Ii/3Z
+L9CN6BbuTbjrFpjpIjQGTUUr0B34wuxaNBd9xN+EatCF6Eq0Erdnm7J3Zu/J
+Pop+ifZxv8v2IQ0F0QI4Dma/Ev6U/TMaDHf8FN2PPsL3KHuQAW9ph5Y/R6vQ
+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
+ZG9iag0KMTAgMCBvYmoNCjw8L0ZpbHRlci9GbGF0ZURlY29kZS9MZW5ndGgg
+NTA2Pj5zdHJlYW0NCnicXdQ9btwwEAXgfk+hGyxnSEk2YLBxGhcJgiQX0EqU
+sYW1grwucvu89yZOkeIZGFP8+fiz5+eXLy/b9d6dvx+3+We7d+t1W472fvs4
+5tZd2ut1O5l3y3W+/630d36b9tP5+eu0//q9tw4ftDXqb9NbO/+wXv+x6DPf
+lva+T3M7pu21nZ5Sqk/rWk9tW/5r6sfocVk/P7UaSWWsKL1G0rCyzDWShsKy
+1EjyxLKvkVTUOtRIGozlWCNpfGT5UCMpTywfaySVheVUI2loLC81kga1zjWS
+hp7lUiNp0MitRtKYWa41kgonMuwFg5Iig9XC+8ASVpO3cF6D1eTtOZTBavIW
+TmSwmrw9vQaryZsvLGG18DpLWE3ekXtlsJq8o/rCauHVMmC18GpeWC28M0tY
+Td7CjTVYLbwDS1gtvJwXJ6OgL1sdVg8vR3ZYPc5XH8Pqcb4kOKwu78h9dlhd
+3oF3w2F1eZ175bC6vL1aYXV5XSPDqiTjCTqsLq9T5LC6vKP6wury9twrh9Xl
+HenFbApaeQoOq8vbc5EZ1izvyJ3MsGZ5s1phzfJmjpxhzfI6L0OGNcd95jLQ
+Q4GXNyfDmuUtXHOGlYGIy8iwZnkLty7DmnW+vevhfb4wvkE+5s+3280fx9G2
+u168XjRf8nVr/34U9tvOXh1y+gP8FAgVDQplbmRzdHJlYW0NCmVuZG9iag0K
+MTEgMCBvYmoNCjw8L0ZpbHRlci9GbGF0ZURlY29kZS9MZW5ndGggNTUzMT4+
+c3RyZWFtDQp4nMWd228kSZWHhd00i7EGZugF92WH2qHduGZwkvfKel1ptdJq
+X0CWeJjZJ9CC0PRIw///sHmNOBH5RZzItA1qqVXOysqMPHGuv3PJ7w95VtaH
+fPi3fPjTx6vx78Mf/mv+8Pe/XH1/VWdF27an8YD8/KePh/94uPrdH06Hc3Zu
+Dw//d1WMx4vDqTyc2jw7tcXh4ePV13c/ON43WZXnzd3FscjOVVN34tOl+fTi
+2P+orJpzd/fD431RZqdT0d297D/mWVGUp7sfHYsuy/tT7v6lP1hkVVm3/a/+
+9+G/r/q/mvLw8D9XD19+LS80fTsc/PF4napt5HVe2Ot8851ZyEvz6SfH+7LM
+6qI6313TOr/5+3F+tE+O922Wl3Uhv/6pOfgzQ4NPj/fm+8/E558f66yqi+Ys
+zpXfi8v+/Hh/yk552xbyqV6NJzR52939a3+0yfqtKpfbNXl994sjXewVHkUS
+4PfioKWBJZYgqyWW3f1fHu+XxxYXuoGtEGe+FhvwnWWPa+Wq/f379Z3qU3uW
+y5pYpKxPWdez78Ofe44VN3hjzru2dxIXFaS2939rCPEmTgh7on3Qd8uXL8Yb
+dlVb3f3bscq6pqp6aTGL+Pw4/5SY0KFw2WV11THb/8ry0kWc6iio02+6urw7
+SJE033/qcLi51a8Ms/+7w+LjJar+Sb6AtQgK/ro/0zxLeeq3riqHXbyftnG4
+TD1tpX0oXqAVO3vme/PJYQSx/UVWFkXX2X0RFxcki280ipNkaKT4G2J4+/tL
+5NIIFUaFcbvmvgt7IbkZ5qBgU5TbQWsUbX7u2a7qf1L2Zy6qpO1YQbwmVSJ4
+FVkBiUTk/mSS86rOaiPozqaa+yzr7BePt7QHLd3sA6HN4KcUKxb7omnHV476
+W9PBcl2A18wzB8hoVqIJhznxjfNrX2ntEY4Pw4KL06ksZgV9P+/c/Wzq/3zV
+f/Hwt9G2/+Z4X5VZ3rQDxavs3FUnli5xe7Tnb0GBIpEsFexPXqum5lbZD7Sl
+rwNqAiR++r49N6reviGSXMBDXQv5WY75vk7e9pS32ylVmDFSdB3BQPbXt0LM
+zGUCpMVNmu15zxDlIuYXyPKGHKXQcMLKvxErWalHtiaatfnmbvDtzqdTLsRD
+yLO1i+JH1n929sqs0/Ki3dVvjvbUL1HhoPSyj8MKR+wJel6SDV7Sr9SdZGvj
+mPtxl61K+FpQUHMcHIaNSqjUCsRIt7BO+0BoDwSdkDb2zA/oawq/MhiCjJZ9
+l1jiFt2COKAET49eNrVzS4yacE0Xkpzm9tElByKTURGU56yuF03w1u6/2Sr5
+kCuLPbi2jsU2D/yV8FztdlwQA30C8YBjlIo2qzpn2/HZAnFJ9I7pwaz9zfuA
+PG8PkL86Cv4wVMbn6ElbVll1KpdIpW1rx+8QrOTogGmDpRJQHUVwKd/Fgihd
+b0bVhmV4Qc+3QG5BznQHIG6shS5QNhg9gfdMSqsGw1p00AAvSEHs0UQbvGr5
+7JMr0CtN4/KLC700En4Z38kvCIMKySWQBoXZbluaJlrFDsDE/H3vdfR3OhVF
+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
+IEltYWdlIGluIGJhdGNoZXMhKS9Qcm9kdWNlciAoTmVldmlhIERvY3VtZW50
+IENvbnZlcnRlciBQcm8gdjYuMSBcKCBodHRwOi8vbmVldmlhLmNvbSBcKSkv
+Q3JlYXRpb25EYXRlIChEOjIwMTIwNDIwMDY0NjE4LTA1JzAwJykvTW9kRGF0
+ZSAoRDoyMDEyMDQyMDA2NDYxOC0wNScwMCcpPj4NCmVuZG9iag0KMTMgMCBv
+YmoNCjw8L0NvdW50IDEvVHlwZS9QYWdlcy9LaWRzWzE0IDAgUl0+Pg0KZW5k
+b2JqDQoxNCAwIG9iag0KPDwvVHlwZS9QYWdlcy9QYXJlbnQgMTMgMCBSL0tp
+ZHNbMSAwIFJdL0NvdW50IDE+Pg0KZW5kb2JqDQoxNSAwIG9iag0KPDwvVHlw
+ZS9DYXRhbG9nL1BhZ2VzIDEzIDAgUi9NZXRhZGF0YSAxNiAwIFI+Pg0KZW5k
+b2JqDQoxNiAwIG9iag0KPDwvTGVuZ3RoIDE3NTQvVHlwZS9NZXRhZGF0YS9T
+dWJ0eXBlL1hNTD4+c3RyZWFtDQo8P3hwYWNrZXQgYmVnaW49J++7vycgaWQ9
+J1c1TTBNcENlaGlIenJlU3pOVGN6a2M5ZCc/Pgo8P2Fkb2JlLXhhcC1maWx0
+ZXJzIGVzYz0iQ1JMRiI/Pgo8eDp4bXBtZXRhIHhtbG5zOng9J2Fkb2JlOm5z
+Om1ldGEvJyB4OnhtcHRrPSczLjEtNzAyJz4KPHJkZjpSREYgeG1sbnM6cmRm
+PSdodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMj
+Jz4KPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9J0VFOUEzREY3LUZGQTEt
+RDM2MS1BMDQwLTEwNTQyRjQ5NThCNCcgeG1sbnM6cGRmPSdodHRwOi8vbnMu
+YWRvYmUuY29tL3BkZi8xLjMvJz48cGRmOktleXdvcmRzPnd3dy5OZWV2aWEu
+Y29tLCBEb2N1bWVudCBDb252ZXJ0ZXIgUHJvLCBDb252ZXJ0IHRvIFBERiBv
+ciBJbWFnZSBpbiBiYXRjaGVzITwvcGRmOktleXdvcmRzPjxwZGY6UHJvZHVj
+ZXI+TmVldmlhIERvY3VtZW50IENvbnZlcnRlciBQcm8gdjYuMSAoIGh0dHA6
+Ly9uZWV2aWEuY29tICk8L3BkZjpQcm9kdWNlcj48L3JkZjpEZXNjcmlwdGlv
+bj4KPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9J0VFOUEzREY3LUZGQTEt
+RDM2MS1BMDQwLTEwNTQyRjQ5NThCNCcgeG1sbnM6eGFwPSdodHRwOi8vbnMu
+YWRvYmUuY29tL3hhcC8xLjAvJz48eGFwOk1vZGlmeURhdGU+MjAxMi0wNC0y
+MFQwNjo0NjoxOC0wNTowMDwveGFwOk1vZGlmeURhdGU+PHhhcDpDcmVhdGVE
+YXRlPjIwMTItMDQtMjBUMDY6NDY6MTgtMDU6MDA8L3hhcDpDcmVhdGVEYXRl
+Pjx4YXA6TWV0YWRhdGFEYXRlPjIwMTItMDQtMjBUMDY6NDY6MTgtMDU6MDA8
+L3hhcDpNZXRhZGF0YURhdGU+PHhhcDpDcmVhdG9yVG9vbD5NaWNyb3NvZnQg
+V29yZCAyMDEwPC94YXA6Q3JlYXRvclRvb2w+PC9yZGY6RGVzY3JpcHRpb24+
+CjxyZGY6RGVzY3JpcHRpb24gcmRmOmFib3V0PSdFRTlBM0RGNy1GRkExLUQz
+NjEtQTA0MC0xMDU0MkY0OTU4QjQnIHhtbG5zOmRjPSdodHRwOi8vcHVybC5v
+cmcvZGMvZWxlbWVudHMvMS4xLyc+PGRjOmZvcm1hdD5hcHBsaWNhdGlvbi9w
+ZGY8L2RjOmZvcm1hdD48ZGM6ZGVzY3JpcHRpb24+PHJkZjpBbHQ+PHJkZjps
+aSB4bWw6bGFuZz0neC1kZWZhdWx0Jz48L3JkZjpsaT48L3JkZjpBbHQ+PC9k
+YzpkZXNjcmlwdGlvbj48ZGM6Y3JlYXRvcj48cmRmOlNlcT48cmRmOmxpPjwv
+cmRmOmxpPjwvcmRmOlNlcT48L2RjOmNyZWF0b3I+PGRjOnRpdGxlPjxyZGY6
+QWx0PjxyZGY6bGkgeG1sOmxhbmc9J3gtZGVmYXVsdCc+PC9yZGY6bGk+PC9y
+ZGY6QWx0PjwvZGM6dGl0bGU+PC9yZGY6RGVzY3JpcHRpb24+CjxyZGY6RGVz
+Y3JpcHRpb24gcmRmOmFib3V0PSdFRTlBM0RGNy1GRkExLUQzNjEtQTA0MC0x
+MDU0MkY0OTU4QjQnIHhtbG5zOnhhcE1NPSdodHRwOi8vbnMuYWRvYmUuY29t
+L3hhcC8xLjAvbW0vJz48eGFwTU06RG9jdW1lbnRJRD51dWlkOjA2RTFFNDg0
+LTcwOEUtMEJFNC0xMzYzLTlFMkFFREQ2RjIxMDwveGFwTU06RG9jdW1lbnRJ
+RD48eGFwTU06SW5zdGFuY2VJRD51dWlkOkVFOUEzREY3LUZGQTEtRDM2MS1B
+MDQwLTEwNTQyRjQ5NThCNDwveGFwTU06SW5zdGFuY2VJRD48L3JkZjpEZXNj
+cmlwdGlvbj4KCjwvcmRmOlJERj4KPC94OnhtcG1ldGE+CiAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAK
+PD94cGFja2V0IGVuZD0ndyc/Pg0KZW5kc3RyZWFtDQplbmRvYmoNCnhyZWYN
+CjAgMTcNCjAwMDAwMDAwMDAgNjU1MzUgZg0KMDAwMDAwMDAxNyAwMDAwMCBu
+DQowMDAwMDAwMTk2IDAwMDAwIG4NCjAwMDAwMDAyMzcgMDAwMDAgbg0KMDAw
+MDAwMDM4MyAwMDAwMCBuDQowMDAwMDAwNTcxIDAwMDAwIG4NCjAwMDAwMDY3
+NTYgMDAwMDAgbg0KMDAwMDAwNjk4NiAwMDAwMCBuDQowMDAwMDA3MzU2IDAw
+MDAwIG4NCjAwMDAwMDc1NjMgMDAwMDAgbg0KMDAwMDAyNzkwNiAwMDAwMCBu
+DQowMDAwMDI4NDg1IDAwMDAwIG4NCjAwMDAwMzQwOTAgMDAwMDAgbg0KMDAw
+MDAzNDM3NCAwMDAwMCBuDQowMDAwMDM0NDMwIDAwMDAwIG4NCjAwMDAwMzQ0
+OTkgMDAwMDAgbg0KMDAwMDAzNDU2NSAwMDAwMCBuDQp0cmFpbGVyDQo8PA0K
+L1NpemUgMTcNCi9Sb290IDE1IDAgUg0KL0luZm8gMTIgMCBSDQovSUQgWzww
+RTRENjEwNzJGQTYxOTcxQzlCM0RBQTQxMzMwQTVCNj48M0RDRTY1ODQ3REZE
+NDEwMDAyRjhFNkUzMjNDOTcyOEY+XQ0KPj4NCnN0YXJ0eHJlZg0KMzY0MDAN
+CiUlRU9GDQo=
+
+---1051860855-2084369068-1335451033=:91608--
