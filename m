@@ -1,88 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:42250 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54700 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753065Ab2D1UZm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 28 Apr 2012 16:25:42 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 07/11] NFS: Simplify the cache invalidation code
-Date: Sat, 28 Apr 2012 16:25:16 -0400
-Message-Id: <1335644720-28305-8-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1335644720-28305-7-git-send-email-Trond.Myklebust@netapp.com>
-References: <1335644720-28305-1-git-send-email-Trond.Myklebust@netapp.com>
- <1335644720-28305-2-git-send-email-Trond.Myklebust@netapp.com>
- <1335644720-28305-3-git-send-email-Trond.Myklebust@netapp.com>
- <1335644720-28305-4-git-send-email-Trond.Myklebust@netapp.com>
- <1335644720-28305-5-git-send-email-Trond.Myklebust@netapp.com>
- <1335644720-28305-6-git-send-email-Trond.Myklebust@netapp.com>
- <1335644720-28305-7-git-send-email-Trond.Myklebust@netapp.com>
+	id S1755008Ab2DZVzZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Apr 2012 17:55:25 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <20120426182524.E5ADF2C0EC@topped-with-meat.com>
+References: <20120426182524.E5ADF2C0EC@topped-with-meat.com> <20120419163238.61D382C0DF@topped-with-meat.com> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <19184.1335448455@redhat.com>
+To: Roland McGrath <roland@hack.frob.com>
+Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
+        wine-devel@winehq.org, kfm-devel@kde.org, nautilus-list@gnome.org,
+        linux-api@vger.kernel.org, libc-alpha@sourceware.org
+Subject: Re: [PATCH 0/6] Extended file stat system call
+Date: Thu, 26 Apr 2012 22:54:41 +0100
+Message-ID: <9931.1335477281@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that NFSv2 and NFSv3 have simulated change attributes,
-instead of using all three of mtime, ctime and change attribute to
-manage data cache consistency, we can simplify the code to just use
-the change attribute.
+Roland McGrath <roland@hack.frob.com> wrote:
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/inode.c |   29 +++--------------------------
- 1 files changed, 3 insertions(+), 26 deletions(-)
+> > I've no particular attachment to the name 'xstat'.  If you'd prefer
+> > 'statx' I could go for that.
+> 
+> I prefer something other than xstat and statx(at) seems acceptable enough.
+> What I'd really prefer is a name that is less meaninglessly arcane,
+> but I haven't thought of any good ones.
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 072ff8f..8bfe9bf 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -949,7 +949,7 @@ static int nfs_check_inode_attributes(struct inode *inode, struct nfs_fattr *fat
- 
- 	/* Verify a few of the more important attributes */
- 	if ((fattr->valid & NFS_ATTR_FATTR_MTIME) && !timespec_equal(&inode->i_mtime, &fattr->mtime))
--		invalid |= NFS_INO_INVALID_ATTR|NFS_INO_REVAL_PAGECACHE;
-+		invalid |= NFS_INO_INVALID_ATTR;
- 
- 	if (fattr->valid & NFS_ATTR_FATTR_SIZE) {
- 		cur_size = i_size_read(inode);
-@@ -1316,38 +1316,15 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 		invalid |= save_cache_validity;
- 
- 	if (fattr->valid & NFS_ATTR_FATTR_MTIME) {
--		/* NFSv2/v3: Check if the mtime agrees */
--		if (!timespec_equal(&inode->i_mtime, &fattr->mtime)) {
--			dprintk("NFS: mtime change on server for file %s/%ld\n",
--					inode->i_sb->s_id, inode->i_ino);
--			invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA;
--			if (S_ISDIR(inode->i_mode))
--				nfs_force_lookup_revalidate(inode);
--			memcpy(&inode->i_mtime, &fattr->mtime, sizeof(inode->i_mtime));
--		}
-+		memcpy(&inode->i_mtime, &fattr->mtime, sizeof(inode->i_mtime));
- 	} else if (server->caps & NFS_CAP_MTIME)
- 		invalid |= save_cache_validity & (NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_DATA
--				| NFS_INO_REVAL_PAGECACHE
- 				| NFS_INO_REVAL_FORCED);
- 
- 	if (fattr->valid & NFS_ATTR_FATTR_CTIME) {
--		/* If ctime has changed we should definitely clear access+acl caches */
--		if (!timespec_equal(&inode->i_ctime, &fattr->ctime)) {
--			invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_ACCESS|NFS_INO_INVALID_ACL;
--			/* and probably clear data for a directory too as utimes can cause
--			 * havoc with our cache.
--			 */
--			if (S_ISDIR(inode->i_mode)) {
--				invalid |= NFS_INO_INVALID_DATA;
--				nfs_force_lookup_revalidate(inode);
--			}
--			memcpy(&inode->i_ctime, &fattr->ctime, sizeof(inode->i_ctime));
--		}
-+		memcpy(&inode->i_ctime, &fattr->ctime, sizeof(inode->i_ctime));
- 	} else if (server->caps & NFS_CAP_CTIME)
- 		invalid |= save_cache_validity & (NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_ACCESS
--				| NFS_INO_INVALID_ACL
- 				| NFS_INO_REVAL_FORCED);
- 
- 	/* Check if our cached file size is stale */
--- 
-1.7.7.6
+fileinfoat() perhaps?  I think stat*at() is better, though, as people are used
+to the stat function family.
 
+David
