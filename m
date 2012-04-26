@@ -1,345 +1,233 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57517 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:44813 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758027Ab2DIUwt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Apr 2012 16:52:49 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 03/26] NFS4.1: Add lseg to struct nfs4_fl_commit_bucket
-Date: Mon,  9 Apr 2012 16:52:01 -0400
-Message-Id: <1334004744-31842-4-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
-References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
+	id S1757808Ab2DZPzi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Apr 2012 11:55:38 -0400
+Subject: [PATCH 03/10] NFS: move per-net callback thread initialization to
+ nfs_callback_up_net()
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Thu, 26 Apr 2012 19:55:13 +0400
+Message-ID: <20120426155513.3763.98297.stgit@localhost6.localdomain6>
+In-Reply-To: <20120426155250.3763.98748.stgit@localhost6.localdomain6>
+References: <20120426155250.3763.98748.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Also create a commit_info structure to hold the bucket array and push
-it up from the lseg to the layout where it really belongs.
+This new function in now called before nfs_minorversion_callback_svc_setup()).
 
-While we are at it, fix a refcounting bug due to an (incorrect)
-implicit assumption that filelayout_scan_ds_commit_list always
-completely emptied the src list.
+Also few small changes:
+1) current network namespace in nfs_callback_up() was replaced by transport net.
+2) svc_shutdown_net() was moved prior to callback usage counter decrement
+(because in case of per-net data allocation faulure svc_shutdown_net() have to
+be skipped).
 
-This clarifies refcounting, removes the ugly find_only_write_lseg
-functions, and pushes the file layout commit code along on the path to
-supporting multiple lsegs.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/nfs4filelayout.c |  150 +++++++++++++++++++++++++----------------------
- fs/nfs/nfs4filelayout.h |   20 ++++++-
- 2 files changed, 97 insertions(+), 73 deletions(-)
+ fs/nfs/callback.c |  125 +++++++++++++++++++++++++++++++++--------------------
+ 1 files changed, 78 insertions(+), 47 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 5acfd9e..0bbc88a 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -650,7 +650,15 @@ filelayout_free_lseg(struct pnfs_layout_segment *lseg)
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 786f21c..9f5e790 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -64,6 +64,32 @@ static struct kernel_param_ops param_ops_portnr = {
  
- 	dprintk("--> %s\n", __func__);
- 	nfs4_fl_put_deviceid(fl->dsaddr);
--	kfree(fl->commit_buckets);
-+	/* This assumes a single RW lseg */
-+	if (lseg->pls_range.iomode == IOMODE_RW) {
-+		struct nfs4_filelayout *flo;
+ module_param_named(callback_tcpport, nfs_callback_set_tcpport, portnr, 0644);
+ 
++static int nfs4_callback_up_net(struct svc_serv *serv, struct net *net)
++{
++	int ret;
 +
-+		flo = FILELAYOUT_FROM_HDR(lseg->pls_layout);
-+		flo->commit_info.nbuckets = 0;
-+		kfree(flo->commit_info.buckets);
-+		flo->commit_info.buckets = NULL;
-+	}
- 	_filelayout_free_lseg(fl);
++	ret = svc_create_xprt(serv, "tcp", net, PF_INET,
++				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
++	if (ret <= 0)
++		goto out_err;
++	nfs_callback_tcpport = ret;
++	dprintk("NFS: Callback listener port = %u (af %u, net %p)\n",
++			nfs_callback_tcpport, PF_INET, net);
++
++	ret = svc_create_xprt(serv, "tcp", net, PF_INET6,
++				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
++	if (ret > 0) {
++		nfs_callback_tcpport6 = ret;
++		dprintk("NFS: Callback listener port = %u (af %u, net %p)\n",
++				nfs_callback_tcpport6, PF_INET6, net);
++	} else if (ret != -EAFNOSUPPORT)
++		goto out_err;
++	return 0;
++
++out_err:
++	return (ret) ? ret : -ENOMEM;
++}
++
+ /*
+  * This is the NFSv4 callback kernel thread.
+  */
+@@ -105,36 +131,21 @@ nfs4_callback_svc(void *vrqstp)
+ static struct svc_rqst *
+ nfs4_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+ {
+-	int ret;
+-
+-	ret = svc_create_xprt(serv, "tcp", xprt->xprt_net, PF_INET,
+-				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
+-	if (ret <= 0)
+-		goto out_err;
+-	nfs_callback_tcpport = ret;
+-	dprintk("NFS: Callback listener port = %u (af %u)\n",
+-			nfs_callback_tcpport, PF_INET);
+-
+-	ret = svc_create_xprt(serv, "tcp", xprt->xprt_net, PF_INET6,
+-				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
+-	if (ret > 0) {
+-		nfs_callback_tcpport6 = ret;
+-		dprintk("NFS: Callback listener port = %u (af %u)\n",
+-				nfs_callback_tcpport6, PF_INET6);
+-	} else if (ret == -EAFNOSUPPORT)
+-		ret = 0;
+-	else
+-		goto out_err;
+-
+ 	return svc_prepare_thread(serv, &serv->sv_pools[0], NUMA_NO_NODE);
+-
+-out_err:
+-	if (ret == 0)
+-		ret = -ENOMEM;
+-	return ERR_PTR(ret);
  }
  
-@@ -681,19 +689,27 @@ filelayout_alloc_lseg(struct pnfs_layout_hdr *layoutid,
- 	 * to filelayout_write_pagelist().
- 	 * */
- 	if ((!fl->commit_through_mds) && (lgr->range.iomode == IOMODE_RW)) {
-+		struct nfs4_filelayout *flo = FILELAYOUT_FROM_HDR(layoutid);
- 		int i;
- 		int size = (fl->stripe_type == STRIPE_SPARSE) ?
- 			fl->dsaddr->ds_num : fl->dsaddr->stripe_count;
+ #if defined(CONFIG_NFS_V4_1)
++static int nfs41_callback_up_net(struct svc_serv *serv, struct net *net)
++{
++	/*
++	 * Create an svc_sock for the back channel service that shares the
++	 * fore channel connection.
++	 * Returns the input port (0) and sets the svc_serv bc_xprt on success
++	 */
++	return svc_create_xprt(serv, "tcp-bc", net, PF_INET, 0,
++			      SVC_SOCK_ANONYMOUS);
++}
++
+ /*
+  * The callback service for NFSv4.1 callbacks
+  */
+@@ -177,19 +188,6 @@ static struct svc_rqst *
+ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+ {
+ 	struct svc_rqst *rqstp;
+-	int ret;
+-
+-	/*
+-	 * Create an svc_sock for the back channel service that shares the
+-	 * fore channel connection.
+-	 * Returns the input port (0) and sets the svc_serv bc_xprt on success
+-	 */
+-	ret = svc_create_xprt(serv, "tcp-bc", xprt->xprt_net, PF_INET, 0,
+-			      SVC_SOCK_ANONYMOUS);
+-	if (ret < 0) {
+-		rqstp = ERR_PTR(ret);
+-		goto out;
+-	}
  
--		fl->commit_buckets = kcalloc(size, sizeof(struct nfs4_fl_commit_bucket), gfp_flags);
--		if (!fl->commit_buckets) {
-+		if (flo->commit_info.nbuckets != 0) {
-+			/* Shouldn't happen if only one IOMODE_RW lseg */
- 			filelayout_free_lseg(&fl->generic_hdr);
- 			return NULL;
- 		}
--		fl->number_of_buckets = size;
-+		flo->commit_info.buckets = kcalloc(size,
-+						   sizeof(struct nfs4_fl_commit_bucket),
-+						   gfp_flags);
-+		if (!flo->commit_info.buckets) {
-+			filelayout_free_lseg(&fl->generic_hdr);
-+			return NULL;
-+		}
-+		flo->commit_info.nbuckets = size;
- 		for (i = 0; i < size; i++) {
--			INIT_LIST_HEAD(&fl->commit_buckets[i].written);
--			INIT_LIST_HEAD(&fl->commit_buckets[i].committing);
-+			INIT_LIST_HEAD(&flo->commit_info.buckets[i].written);
-+			INIT_LIST_HEAD(&flo->commit_info.buckets[i].committing);
- 		}
+ 	/*
+ 	 * Save the svc_serv in the transport so that it can
+@@ -205,7 +203,6 @@ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+ 		svc_xprt_put(serv->sv_bc_xprt);
+ 		serv->sv_bc_xprt = NULL;
  	}
- 	return &fl->generic_hdr;
-@@ -793,17 +809,13 @@ filelayout_clear_request_commit(struct nfs_page *req)
- 	if (!test_and_clear_bit(PG_COMMIT_TO_DS, &req->wb_flags))
+-out:
+ 	dprintk("--> %s return %ld\n", __func__,
+ 		IS_ERR(rqstp) ? PTR_ERR(rqstp) : 0);
+ 	return rqstp;
+@@ -229,6 +226,11 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
+ 		xprt->bc_serv = cb_info->serv;
+ }
+ #else
++static int nfs41_callback_up_net(struct svc_serv *serv, struct net *net)
++{
++	return 0;
++}
++
+ static inline int nfs_minorversion_callback_svc_setup(u32 minorversion,
+ 		struct svc_serv *serv, struct rpc_xprt *xprt,
+ 		struct svc_rqst **rqstpp, int (**callback_svc)(void *vrqstp))
+@@ -242,6 +244,36 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
+ }
+ #endif /* CONFIG_NFS_V4_1 */
+ 
++static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct net *net)
++{
++	int ret;
++
++	dprintk("NFS: create per-net callback data; net=%p\n", net);
++
++	ret = svc_bind(serv, net);
++	if (ret < 0) {
++		printk(KERN_WARNING "NFS: bind callback service failed\n");
++		goto err_bind;
++	}
++
++	if (minorversion) {
++		ret = nfs41_callback_up_net(serv, net);
++		if (ret < 0)
++			goto err_socks;
++	}
++
++	if (ret == 0)
++		ret = nfs4_callback_up_net(serv, net);
++	if (ret < 0)
++		goto err_socks;
++	return 0;
++
++err_socks:
++	svc_rpcb_cleanup(serv, net);
++err_bind:
++	return ret;
++}
++
+ static struct svc_serv *nfs_callback_create_svc(int minorversion)
+ {
+ 	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
+@@ -288,7 +320,7 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ 	char svc_name[12];
+ 	int ret = 0;
+ 	int minorversion_setup;
+-	struct net *net = current->nsproxy->net_ns;
++	struct net *net = xprt->xprt_net;
+ 
+ 	mutex_lock(&nfs_callback_mutex);
+ 
+@@ -303,11 +335,9 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
  		goto out;
- 	if (list_is_singular(&req->wb_list)) {
--		struct pnfs_layout_segment *lseg;
-+		struct nfs4_fl_commit_bucket *bucket;
- 
--		/* From here we can find the bucket, but for the moment,
--		 * since there is only one relevant lseg...
--		 */
--		list_for_each_entry(lseg, &NFS_I(inode)->layout->plh_segs, pls_list) {
--			if (lseg->pls_range.iomode == IOMODE_RW) {
--				freeme = lseg;
--				break;
--			}
--		}
-+		bucket = list_first_entry(&req->wb_list,
-+					  struct nfs4_fl_commit_bucket,
-+					  written);
-+		freeme = bucket->wlseg;
-+		bucket->wlseg = NULL;
  	}
- out:
- 	nfs_request_remove_commit_list(req);
-@@ -818,6 +830,7 @@ filelayout_choose_commit_list(struct nfs_page *req,
- 	struct nfs4_filelayout_segment *fl = FILELAYOUT_LSEG(lseg);
- 	u32 i, j;
- 	struct list_head *list;
-+	struct nfs4_fl_commit_bucket *buckets;
  
- 	if (fl->commit_through_mds)
- 		return &NFS_I(req->wb_context->dentry->d_inode)->commit_list;
-@@ -831,15 +844,16 @@ filelayout_choose_commit_list(struct nfs_page *req,
- 	j = nfs4_fl_calc_j_index(lseg,
- 				 (loff_t)req->wb_index << PAGE_CACHE_SHIFT);
- 	i = select_bucket_index(fl, j);
--	list = &fl->commit_buckets[i].written;
-+	buckets = FILELAYOUT_FROM_HDR(lseg->pls_layout)->commit_info.buckets;
-+	list = &buckets[i].written;
- 	if (list_empty(list)) {
- 		/* Non-empty buckets hold a reference on the lseg.  That ref
- 		 * is normally transferred to the COMMIT call and released
- 		 * there.  It could also be released if the last req is pulled
- 		 * off due to a rewrite, in which case it will be done in
--		 * filelayout_remove_commit_req
-+		 * filelayout_clear_request_commit
- 		 */
--		get_lseg(lseg);
-+		buckets[i].wlseg = get_lseg(lseg);
- 	}
- 	set_bit(PG_COMMIT_TO_DS, &req->wb_flags);
- 	return list;
-@@ -908,32 +922,6 @@ static int filelayout_initiate_commit(struct nfs_write_data *data, int how)
- 				   &filelayout_commit_call_ops, how);
- }
+-	ret = svc_bind(serv, net);
+-	if (ret < 0) {
+-		printk(KERN_WARNING "NFS: bind callback service failed\n");
+-		goto out_err;
+-	}
++	ret = nfs_callback_up_net(minorversion, serv, net);
++	if (ret < 0)
++		goto err_net;
  
--/*
-- * This is only useful while we are using whole file layouts.
-- */
--static struct pnfs_layout_segment *
--find_only_write_lseg_locked(struct inode *inode)
--{
--	struct pnfs_layout_segment *lseg;
--
--	list_for_each_entry(lseg, &NFS_I(inode)->layout->plh_segs, pls_list)
--		if (lseg->pls_range.iomode == IOMODE_RW)
--			return lseg;
--	return NULL;
--}
--
--static struct pnfs_layout_segment *find_only_write_lseg(struct inode *inode)
--{
--	struct pnfs_layout_segment *rv;
--
--	spin_lock(&inode->i_lock);
--	rv = find_only_write_lseg_locked(inode);
--	if (rv)
--		get_lseg(rv);
--	spin_unlock(&inode->i_lock);
--	return rv;
--}
--
- static int
- filelayout_scan_ds_commit_list(struct nfs4_fl_commit_bucket *bucket, int max,
- 		spinlock_t *lock)
-@@ -955,6 +943,13 @@ filelayout_scan_ds_commit_list(struct nfs4_fl_commit_bucket *bucket, int max,
- 		if (ret == max)
- 			break;
- 	}
-+	if (ret) {
-+		bucket->clseg = bucket->wlseg;
-+		if (list_empty(src))
-+			bucket->wlseg = NULL;
-+		else
-+			get_lseg(bucket->clseg);
-+	}
+ 	minorversion_setup =  nfs_minorversion_callback_svc_setup(minorversion,
+ 					serv, xprt, &rqstp, &callback_svc);
+@@ -347,10 +377,11 @@ err_create:
+ 	mutex_unlock(&nfs_callback_mutex);
  	return ret;
+ out_err:
++	svc_shutdown_net(serv, net);
++err_net:
+ 	dprintk("NFS: Couldn't create callback socket or server thread; "
+ 		"err = %d\n", ret);
+ 	cb_info->users--;
+-	svc_shutdown_net(serv, net);
+ 	goto out;
  }
  
-@@ -964,18 +959,14 @@ filelayout_scan_ds_commit_list(struct nfs4_fl_commit_bucket *bucket, int max,
- static int filelayout_scan_commit_lists(struct inode *inode, int max,
- 		spinlock_t *lock)
- {
--	struct pnfs_layout_segment *lseg;
--	struct nfs4_filelayout_segment *fl;
-+	struct nfs4_fl_commit_info *fl_cinfo;
- 	int i, rv = 0, cnt;
- 
--	lseg = find_only_write_lseg_locked(inode);
--	if (!lseg)
-+	fl_cinfo = &FILELAYOUT_FROM_HDR(NFS_I(inode)->layout)->commit_info;
-+	if (fl_cinfo->nbuckets == 0)
- 		goto out_done;
--	fl = FILELAYOUT_LSEG(lseg);
--	if (fl->commit_through_mds)
--		goto out_done;
--	for (i = 0; i < fl->number_of_buckets && max != 0; i++) {
--		cnt = filelayout_scan_ds_commit_list(&fl->commit_buckets[i],
-+	for (i = 0; i < fl_cinfo->nbuckets && max != 0; i++) {
-+		cnt = filelayout_scan_ds_commit_list(&fl_cinfo->buckets[i],
- 				max, lock);
- 		max -= cnt;
- 		rv += cnt;
-@@ -987,38 +978,35 @@ out_done:
- static unsigned int
- alloc_ds_commits(struct inode *inode, struct list_head *list)
- {
--	struct pnfs_layout_segment *lseg;
--	struct nfs4_filelayout_segment *fl;
-+	struct nfs4_fl_commit_info *fl_cinfo;
-+	struct nfs4_fl_commit_bucket *bucket;
- 	struct nfs_write_data *data;
- 	int i, j;
- 	unsigned int nreq = 0;
- 
--	/* Won't need this when non-whole file layout segments are supported
--	 * instead we will use a pnfs_layout_hdr structure */
--	lseg = find_only_write_lseg(inode);
--	if (!lseg)
--		return 0;
--	fl = FILELAYOUT_LSEG(lseg);
--	for (i = 0; i < fl->number_of_buckets; i++) {
--		if (list_empty(&fl->commit_buckets[i].committing))
-+	fl_cinfo = &FILELAYOUT_FROM_HDR(NFS_I(inode)->layout)->commit_info;
-+	bucket = fl_cinfo->buckets;
-+	for (i = 0; i < fl_cinfo->nbuckets; i++, bucket++) {
-+		if (list_empty(&bucket->committing))
- 			continue;
- 		data = nfs_commitdata_alloc();
- 		if (!data)
- 			break;
- 		data->ds_commit_index = i;
--		data->lseg = lseg;
-+		data->lseg = bucket->clseg;
-+		bucket->clseg = NULL;
- 		list_add(&data->pages, list);
- 		nreq++;
- 	}
- 
- 	/* Clean up on error */
--	for (j = i; j < fl->number_of_buckets; j++) {
--		if (list_empty(&fl->commit_buckets[i].committing))
-+	for (j = i; j < fl_cinfo->nbuckets; j++, bucket++) {
-+		if (list_empty(&bucket->committing))
- 			continue;
--		nfs_retry_commit(&fl->commit_buckets[i].committing, lseg);
--		put_lseg(lseg);  /* associated with emptying bucket */
-+		nfs_retry_commit(&bucket->committing, bucket->clseg);
-+		put_lseg(bucket->clseg);
-+		bucket->clseg = NULL;
- 	}
--	put_lseg(lseg);
- 	/* Caller will clean up entries put on list */
- 	return nreq;
- }
-@@ -1058,7 +1046,10 @@ filelayout_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
- 			nfs_initiate_commit(data, NFS_CLIENT(inode),
- 					    data->mds_ops, how);
- 		} else {
--			nfs_init_commit(data, &FILELAYOUT_LSEG(data->lseg)->commit_buckets[data->ds_commit_index].committing, data->lseg);
-+			struct nfs4_fl_commit_info *fl_cinfo;
-+
-+			fl_cinfo = &FILELAYOUT_FROM_HDR(data->lseg->pls_layout)->commit_info;
-+			nfs_init_commit(data, &fl_cinfo->buckets[data->ds_commit_index].committing, data->lseg);
- 			filelayout_initiate_commit(data, how);
- 		}
- 	}
-@@ -1072,10 +1063,27 @@ filelayout_free_deveiceid_node(struct nfs4_deviceid_node *d)
- 	nfs4_fl_free_deviceid(container_of(d, struct nfs4_file_layout_dsaddr, id_node));
- }
- 
-+static struct pnfs_layout_hdr *
-+filelayout_alloc_layout_hdr(struct inode *inode, gfp_t gfp_flags)
-+{
-+	struct nfs4_filelayout *flo;
-+
-+	flo = kzalloc(sizeof(*flo), gfp_flags);
-+	return &flo->generic_hdr;
-+}
-+
-+static void
-+filelayout_free_layout_hdr(struct pnfs_layout_hdr *lo)
-+{
-+	kfree(FILELAYOUT_FROM_HDR(lo));
-+}
-+
- static struct pnfs_layoutdriver_type filelayout_type = {
- 	.id			= LAYOUT_NFSV4_1_FILES,
- 	.name			= "LAYOUT_NFSV4_1_FILES",
- 	.owner			= THIS_MODULE,
-+	.alloc_layout_hdr	= filelayout_alloc_layout_hdr,
-+	.free_layout_hdr	= filelayout_free_layout_hdr,
- 	.alloc_lseg		= filelayout_alloc_lseg,
- 	.free_lseg		= filelayout_free_lseg,
- 	.pg_read_ops		= &filelayout_pg_read_ops,
-diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
-index 21190bb..333a3ac 100644
---- a/fs/nfs/nfs4filelayout.h
-+++ b/fs/nfs/nfs4filelayout.h
-@@ -77,6 +77,13 @@ struct nfs4_file_layout_dsaddr {
- struct nfs4_fl_commit_bucket {
- 	struct list_head written;
- 	struct list_head committing;
-+	struct pnfs_layout_segment *wlseg;
-+	struct pnfs_layout_segment *clseg;
-+};
-+
-+struct nfs4_fl_commit_info {
-+	int nbuckets;
-+	struct nfs4_fl_commit_bucket *buckets;
- };
- 
- struct nfs4_filelayout_segment {
-@@ -89,10 +96,19 @@ struct nfs4_filelayout_segment {
- 	struct nfs4_file_layout_dsaddr *dsaddr; /* Point to GETDEVINFO data */
- 	unsigned int num_fh;
- 	struct nfs_fh **fh_array;
--	struct nfs4_fl_commit_bucket *commit_buckets; /* Sort commits to ds */
--	int number_of_buckets;
- };
- 
-+struct nfs4_filelayout {
-+	struct pnfs_layout_hdr generic_hdr;
-+	struct nfs4_fl_commit_info commit_info;
-+};
-+
-+static inline struct nfs4_filelayout *
-+FILELAYOUT_FROM_HDR(struct pnfs_layout_hdr *lo)
-+{
-+	return container_of(lo, struct nfs4_filelayout, generic_hdr);
-+}
-+
- static inline struct nfs4_filelayout_segment *
- FILELAYOUT_LSEG(struct pnfs_layout_segment *lseg)
- {
--- 
-1.7.2.1
 
