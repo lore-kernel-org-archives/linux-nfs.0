@@ -1,48 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:2909 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755863Ab2DQQNo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Apr 2012 12:13:44 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Fred Isaman <faisaman4@gmail.com>
-CC: "Isaman, Fred" <Fred.Isaman@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 14/26] NFS: merge _full and _partial read rpc_ops
-Date: Tue, 17 Apr 2012 16:13:43 +0000
-Message-ID: <1334679223.2703.15.camel@lade.trondhjem.org>
-References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
-	 <1334004744-31842-15-git-send-email-iisaman@netapp.com>
-	 <1334608102.2879.37.camel@lade.trondhjem.org>
-	 <CADnza467ROBp0-=Qgq5DwSK=Zu5Vyk5i1v1qFN2aMbKXDWdT=A@mail.gmail.com>
-In-Reply-To: <CADnza467ROBp0-=Qgq5DwSK=Zu5Vyk5i1v1qFN2aMbKXDWdT=A@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from rcsinet15.oracle.com ([148.87.113.117]:19959 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756047Ab2DZQRT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 12:17:19 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Subject: Linux server client ID behavior
+Date: Thu, 26 Apr 2012 12:17:13 -0400
+Message-Id: <CDACC8A7-C94B-4F03-B355-33B42686BD1B@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Mime-Version: 1.0 (Apple Message framework v1257)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA0LTE3IGF0IDExOjM3IC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
-T24gTW9uLCBBcHIgMTYsIDIwMTIgYXQgNDoyOCBQTSwgTXlrbGVidXN0LCBUcm9uZA0KPiA8VHJv
-bmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+IE9uIE1vbiwgMjAxMi0wNC0wOSBh
-dCAxNjo1MiAtMDQwMCwgRnJlZCBJc2FtYW4gd3JvdGU6DQo+ID4+IEBAIC02NCwxMCArODAsMTYg
-QEAgdm9pZCBuZnNfcmVhZGhkcl9mcmVlKHN0cnVjdCBuZnNfcGdpb19oZWFkZXIgKmhkcikNCj4g
-Pj4NCj4gPj4gIHZvaWQgbmZzX3JlYWRkYXRhX3JlbGVhc2Uoc3RydWN0IG5mc19yZWFkX2RhdGEg
-KnJkYXRhKQ0KPiA+PiAgew0KPiA+PiArICAgICBzdHJ1Y3QgbmZzX3BnaW9faGVhZGVyICpoZHIg
-PSByZGF0YS0+aGVhZGVyOw0KPiA+PiArDQo+ID4+ICAgICAgIHB1dF9uZnNfb3Blbl9jb250ZXh0
-KHJkYXRhLT5hcmdzLmNvbnRleHQpOw0KPiA+PiAgICAgICBpZiAocmRhdGEtPnBhZ2VzLnBhZ2V2
-ZWMgIT0gcmRhdGEtPnBhZ2VzLnBhZ2VfYXJyYXkpDQo+ID4+ICAgICAgICAgICAgICAga2ZyZWUo
-cmRhdGEtPnBhZ2VzLnBhZ2V2ZWMpOw0KPiA+PiAtICAgICBuZnNfcmVhZGhkcl9mcmVlKHJkYXRh
-LT5oZWFkZXIpOw0KPiA+PiArICAgICBpZiAoY29udGFpbmVyX29mKGhkciwgc3RydWN0IG5mc19y
-ZWFkX2hlYWRlciwgaGVhZGVyKSAhPQ0KPiA+PiArICAgICAgICAgY29udGFpbmVyX29mKHJkYXRh
-LCBzdHJ1Y3QgbmZzX3JlYWRfaGVhZGVyLCBycGNfZGF0YSkpDQo+ID4+ICsgICAgICAgICAgICAg
-a2ZyZWUocmRhdGEpOw0KPiA+DQo+ID4gVGhpcyBsb29rcyB1bm5lY2Vzc2FyaWx5IGNvbXBsaWNh
-dGVkLiBIb3cgYWJvdXQNCj4gPg0KPiA+ICAgICAgICBpZiAocmRhdGEgIT0gJmhkci0+cnBjX2Rh
-dGEpDQo+ID4gICAgICAgICAgICAgICAga2ZyZWUocmRhdGEpOw0KPiA+DQo+IA0KPiBUaGF0IHdv
-bid0IHdvcmsuICBUaGVyZSBpcyBubyBoZHItPnJwY19kYXRhLg0KDQpEb2ghIE1ha2UgdGhhdA0K
-DQoJc3RydWN0IG5mc19yZWFkX2hlYWRlciAqcmVhZF9oZWFkZXIgPSBjb250YWluZXJfb2YoaGRy
-LCBzdHJ1Y3QuLi4uKTsNCg0KCWlmIChyZGF0YSAhPSAmcmVhZF9oZWFkZXItPnJwY19kYXRhKQ0K
-CQlrZnJlZShyZGF0YSk7DQoNClRoZSByZWFzb24gZm9yIHByZWZlcnJpbmcgdGhlIGFib3ZlIGxp
-bmUgaXMgdGhhdCBJIGNhbiB0cml2aWFsbHkgc2VlDQp0aGF0IHRoZSByZWFzb24gd2h5IEkgZG9u
-J3Qgd2FudCB0byBkbyB0aGUga2ZyZWUoKSBpcyBiZWNhdXNlIEknbQ0KcG9pbnRpbmcgYXQgYSBm
-aWVsZCBpbnNpZGUgdGhlIHJlYWRfaGVhZGVyLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGlu
-dXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFw
-cC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+Hi-
+
+Follow up on the issue I reported in IRC a couple of days ago.
+
+I'm using a stock Fedora 16 NFS server and my prototype UCS client.  The client uses the same nfs_client_id4 string and boot verifier for all mounts on all servers.  It performs a SETCLIENTID as part of the mount operation.  SETCLIENTID is the first NFS operation after the client sends it's NFS ping.
+
+The test is simple.  It is meant to see if the UCS client recognizes that a server with an IPv4 and IPv6 address (a very typical configuration) is effectively trunked.  It goes like this:
+
+  1.  Mount a filesystem on a server on it's IPv4 address via NFSv4.0
+  2.  Without unmounting the first filesystem, and without letting the first lease expire, mount a different filesystem on the same server on it's IPv6 address via NFSv4.0
+
+The Solaris 11 FCS server allows both mounts, and the client recognizes that the IPv4 and IPv6 address represent the same server instance.  Based on Noveck's NFSv4 migration draft, I believe this is the correct outcome.
+
+With the Fedora 16 (3.3.2-1) Linux NFS server, the following is observed:
+
+  a.  The second (IPv6) mount sends a SETCLIENTID with the same nfs_client_id4 and boot verifier as the first mount, as expected.  The request succeeds, and the server returns a different clientid4 than the first mount.  I believe that's incorrect.
+
+The server should return the same clientid4 as the first SETCLIENTID operation, since the client has presented the same nfs_client_id4 and boot verifier.  The nfs_client_id4 string alone is how servers should detect client identity.  For non-UCS clients, this should be enough anyway, since IP addresses are already embedded in the string.  [ I have not yet tried this test with NFSv4.1, where all clients are supposed to use UCS. ]
+
+  b.  The second (IPv6) mount then sends a SETCLIENTID_CONFIRM and the server replies with NFS4ERR_CLID_INUSE.  I believe CLID_INUSE is an incorrect response.
+
+My reading of 3530bis is that CLID_INUSE is appropriate only when there is an authentication flavor mismatch on SETCLIENTID or SETCLIENTID_CONFIRM requests.  That is, the client has previously presented the nfs_client_id4 string using a different authentication flavor than the one it is using in the current request, and the lease that resulted from that previous operation has not yet expired.  In this case, the authentication flavor (AUTH_SYS) is the same on both SETCLIENTID operations, so SETCLIENTID_CONFIRM should be treated as a valid request from this client.
+
+The larger concern is that we have here another example of a widely deployed server implementation that does not tolerate UCS clients.  Before I report this experience to the working group, I would like comment on the Linux server's behavior and my opinions about its correctness.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
