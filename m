@@ -1,105 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:22137 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:41464 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756311Ab2DDPfG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Apr 2012 11:35:06 -0400
-Date: Wed, 4 Apr 2012 11:35:39 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "Matt W. Benjamin" <matt@linuxbox.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: unlink within an open directory stream
-Message-ID: <20120404113539.2dc9b1dc@corrin.poochiereds.net>
-In-Reply-To: <4F70B2AE.4000504@panasas.com>
-References: <275611967.8.1332608027370.JavaMail.root@thunderbeast.private.linuxbox.com>
-	<1332609149.25346.12.camel@lade.trondhjem.org>
-	<4F70B2AE.4000504@panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1752598Ab2DZTOW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Apr 2012 15:14:22 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 13/20] NFS: Fix recovery from NFS4ERR_CLID_INUSE
+Date: Thu, 26 Apr 2012 19:14:19 +0000
+Message-ID: <1335467659.24247.19.camel@lade.trondhjem.org>
+References: <20120423205312.11446.67081.stgit@degas.1015granger.net>
+	 <20120423205505.11446.28437.stgit@degas.1015granger.net>
+	 <D6859152-CF45-44CC-BB3C-B40CB9FD0BE8@oracle.com>
+	 <1335459334.9701.25.camel@lade.trondhjem.org>
+	 <F4214CAE-E0DE-4A3C-BA0B-02A9F8277897@oracle.com>
+	 <1335466422.24247.8.camel@lade.trondhjem.org>
+	 <99F031E0-3888-45A0-AA81-0F5C961B8AD8@oracle.com>
+In-Reply-To: <99F031E0-3888-45A0-AA81-0F5C961B8AD8@oracle.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 26 Mar 2012 11:17:18 -0700
-Boaz Harrosh <bharrosh@panasas.com> wrote:
-
-> On 03/24/2012 10:12 AM, Myklebust, Trond wrote:
-> 
-> > On Sat, 2012-03-24 at 12:53 -0400, Matt W. Benjamin wrote:
-> >> Hi,
-> >>
-> >> I don't think anything is.  Or, people originally reported the behavior against knfsd.
-> >>
-> >> Matt
-> > 
-> > There is a known issue with ext2/3/4 generating non-unique readdir
-> > cookies. It rarely hits you when you are creating small directories, but
-> > it frequently hits you with larger ones. A fix is underway that should
-> > significantly reduce the frequency of cookie collisions.
-> > 
-> > Recent NFS clients will actually detect the presence of those cookie
-> > loops, and log them in the kernel syslog. That would therefore be the
-> > first thing that I'd check if confronted with this kind of problem.
-> > 
-> > Cheers
-> >   Trond
-> > 
-> 
-> 
-> Trond please look on the bug report links below. It's not the "cookie collisions" case.
-> 
-> It's the new (post RHEL 6.0 Kernel) NFS need for opendir after an unlink.
-> Now the POSIX man page *does* say that applications must re-opendir after
-> unlink, but there are some applications who did not read the manual, and since
-> it works with local filesystems and old nfs, (What Kernel RHEL 6.0 is based on?)
-> they never noticed the bug and never fixed it.
-> 
-
-	^^^^^
-Can you tell me which manpage says this? I'd like to be able to point
-application developers at it if possible...
-
-> Could we easily support the broken application by being bug compatible to
-> old NFS versions?
-> .i.e Don't require re-opendir after unlink of a file.
-> 
-> There are more examples in the bug reports below but basically bonnie++
-> does the following:
-> 	DIR *d = opendir(".");
-> 	dirent *file_ent;
-> 	while((file_ent = readdir(d)) != NULL) {
-> 		unlink( file_ent->d_name))
-> 	}
-> 	closedir(d);
-> 
-> where it actually needs to do:
-> 
-> 	DIR *d = opendir(".");
-> 	dirent *file_ent;
-> 	while((file_ent = readdir(d)) != NULL) {
-> 		unlink( file_ent->d_name))
-> 
-> 		closedir(d);
-> 		d = opendir(".");
-> 	}
-> 	closedir(d);
-> 
-> But again case one used to work with old NFS. And it looks like
-> it is not Server dependent. We saw this both with Ganesha as well
-> as knfsd
-> 
-> <snip>
-> 
-
-Again, my suspicion is that the change that triggered this is the
-switch to use READDIRPLUS on larger directories. Before that, we'd use
-READDIR on larger ones and wouldn't need to make as many RPCs to fetch
-directory contents. More continuation READDIRPLUS calls means that you
-have more opportunity to hit problems with cookies.
-
-What might be an interesting test is to see whether this is still
-reproducible on newer clients when you mount with '-o nordirplus'.
-
-Cheers,
--- 
-Jeff Layton <jlayton@redhat.com>
+T24gVGh1LCAyMDEyLTA0LTI2IGF0IDE1OjA0IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+T24gQXByIDI2LCAyMDEyLCBhdCAyOjUzIFBNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiAN
+Cj4gPiBPbiBUaHUsIDIwMTItMDQtMjYgYXQgMTQ6NDMgLTA0MDAsIENodWNrIExldmVyIHdyb3Rl
+Og0KPiA+PiBPbiBBcHIgMjYsIDIwMTIsIGF0IDEyOjU1IFBNLCBNeWtsZWJ1c3QsIFRyb25kIHdy
+b3RlOg0KPiA+PiANCj4gPj4+IE9uIFRodSwgMjAxMi0wNC0yNiBhdCAxMjoyNCAtMDQwMCwgQ2h1
+Y2sgTGV2ZXIgd3JvdGU6DQo+ID4+Pj4gT24gQXByIDIzLCAyMDEyLCBhdCA0OjU1IFBNLCBDaHVj
+ayBMZXZlciB3cm90ZToNCj4gPj4+IFRoZW4gbGV0cyBtb3ZlIHRoZSBmbGF2b3VyIG91dCBvZiB0
+aGUgY2xpZW50aWQgc3RyaW5nLA0KPiA+PiANCj4gPj4gUmVtb3ZpbmcgdGhlIGZsYXZvciBmcm9t
+IHRoZSBuZnNfY2xpZW50X2lkNCBzdHJpbmcgbWFrZXMgc2Vuc2UuDQo+ID4+IA0KPiA+Pj4gYW5k
+IGp1c3Qgc2V0dGxlDQo+ID4+PiBmb3IgaGFuZGxpbmcgQ0xJRF9JTlVTRSBieSBjaGFuZ2luZyB0
+aGUgZmxhdm91ciBvbiB0aGUgU0VUQ0xJRU5USUQgY2FsbC4NCj4gPj4gDQo+ID4+IFRoaXMgaXMg
+d2hlcmUgSSBnZXQgaGF6eS4gIA0KPiA+PiANCj4gPj4gSWYgSSBzaW1wbHkgY2hhbmdlIHRoZSBh
+dXRoZW50aWNhdGlvbiBmbGF2b3Igb24gdGhlIGV4aXN0aW5nIGNscC0+Y2xfcnBjY2xpZW50LCB3
+aWxsIHRoaXMgYWZmZWN0IG9uZ29pbmcgUkVORVcgb3BlcmF0aW9ucyB0aGF0IGFsc28gdXNlIHRo
+aXMgdHJhbnNwb3J0PyAgRG8gd2Ugd2FudCBzdWJzZXF1ZW50IFJFTkVXIG9wZXJhdGlvbnMgdG8g
+dXNlIHRoZSBuZXcgZmxhdm9yPw0KPiA+PiANCj4gPj4gVGhpbmtpbmcgaHlwb3RoZXRpY2FsbHks
+IGl0IHNlZW1zIHRvIG1lIHRoYXQgQ0xJRF9JTlVTRSBpcyByZWFsbHkgYW4gaW5kaWNhdGlvbiBv
+ZiBhIHBlcm1hbmVudCBjb25maWd1cmF0aW9uIGVycm9yLCBvciBhIHNvZnR3YXJlIGJ1ZywgYW5k
+IHdlIHNob3VsZCBub3QgYm90aGVyIHRvIHJlY292ZXIuICBCdXQgbWF5YmUgdGhhdCdzIG15IGxp
+bWl0ZWQgaW1hZ2luYXRpb24uICBVbmRlciB3aGF0IHVzZSBjYXNlcyBkbyB5b3UgdGhpbmsgQ0xJ
+RF9JTlVTRSBtaWdodCBvY2N1ciBhbmQgaXQgbWlnaHQgYmUgdXNlZnVsIHRvIGF0dGVtcHQgcmVj
+b3Zlcnk/DQo+ID4+IA0KPiA+IA0KPiA+IFRoZSBzZXJ2ZXIgY2FjaGVzIHRoZSBwcmluY2lwYWwg
+bmFtZSB0aGF0IHdhcyB1c2VkIHRvIGNhbGwgU0VUQ0xJRU5USUQNCj4gPiB3aGVuIHRoZSBsZWFz
+ZSB3YXMgZXN0YWJsaXNoZWQuIEFueSBhdHRlbXB0IHRvIGNhbGwgU0VUQ0xJRU5USUQgd2l0aCBh
+DQo+ID4gZGlmZmVyZW50IHByaW5jaXBhbCB3aWxsIHJlc3VsdCBpbiBDTElEX0lOVVNFIHVubGVz
+cyB0aGUgbGVhc2UgaGFzDQo+ID4gZXhwaXJlZC4NCj4gPiANCj4gPiBTbyB3aGF0IEkgd2FzIHBy
+b3Bvc2luZyB3YXNuJ3QgdGhhdCB5b3UgdHJ5IHRvIGNoYW5nZSB0aGUgYXV0aGVudGljYXRpb24N
+Cj4gPiBmbGF2b3VyIG9uIGFuIGV4aXN0aW5nIG5mc19jbGllbnQuIEl0IHdhcyB0aGF0IHdoZW4g
+eW91IGFyZSBwcm9iaW5nLCB5b3UNCj4gPiBjYW4gdXNlIHRoZSBDTElEX0lOVVNFIHJlcGx5IGZy
+b20gU0VUQ0xJRU5USUQgYXMgYSBkaXJlY3QgaW5kaWNhdGlvbg0KPiA+IHRoYXQgdGhlIHNlcnZl
+ciBpcyBpbmRlZWQgdHJ1bmtlZCwgYW5kIHRoYXQgeW91IGFscmVhZHkgaG9sZCBhIGxlYXNlIG9u
+DQo+ID4gdGhhdCBzZXJ2ZXIsIGJ1dCB0aGF0IHRoZSBhdXRoZW50aWNhdGlvbiBmbGF2b3VyIHRo
+YXQgeW91IGFyZSB0cnlpbmcgdG8NCj4gPiB1c2UgaXMgd3JvbmcuDQo+IA0KPiBUaGUgdXNlIGNh
+c2Ugd291bGQgYmUgdGhhdCBteSBjbGllbnQgaGFzIG1vdW50ZWQgYSBzZXJ2ZXIgdmlhIGFkZHJl
+c3MgWCB1c2luZyBhdXRoZW50aWNhdGlvbiBmbGF2b3IgMSwgYW5kIHRoZW4gdHJpZXMgdG8gbW91
+bnQgdGhlIHNhbWUgc2VydmVyIHZpYSBhZGRyZXNzIFkgdXNpbmcgYXV0aGVudGljYXRpb24gZmxh
+dm9yIDIuDQoNCi4uLmZvciB3aGljaCB0aGUgcmVzdWx0IHNob3VsZCBiZSB0aGF0IGFsbCBzZXRj
+bGllbnRpZC9jb25maXJtIGFuZCByZW5ldw0KcmVxdWVzdHMgd2lsbCB1c2UgZmxhdm91ciAxLg0K
+DQo+IERvIHdlIGV2ZW4gbmVlZCB0byByZXRyeSB0aGUgU0VUQ0xJRU5USUQgYW5kIHRvIHBlcmZv
+cm0gYSBTRVRDTElFTlRJRF9DT05GSVJNIGluIHRoYXQgY2FzZT8NCg0KWWVzLiBPdGhlcndpc2Ug
+d2UgZW5kIHVwIHdpdGggMiBsZWFzZXMgb24gdGhlIHNhbWUgc2VydmVyLiBXZSBkb24ndCB3YW50
+DQp0byBkbyB0aGF0Li4uDQoNCj4gTm93LCB3aGF0IGFib3V0IG5mczRfcmVjbGFpbV9sZWFzZSgp
+ID8gIElmIHRoZSBjbGllbnQgc2VlcyBDTElEX0lOVVNFIGR1cmluZyBhIGxlYXNlIHJlY2xhaW0s
+IG5vIHRydW5raW5nIGRpc2NvdmVyeSBpcyBpbnZvbHZlZC4NCg0KVGhhdCB3b3VsZCBtZWFuIHRo
+YXQgdGhlIGxlYXNlIHdhcyBleHBpcmVkLCBhbmQgdGhhdCBzb21lb25lIHNlbnQgYQ0KU0VUQ0xJ
+RU5USUQgY2FsbCB0byB0aGUgc2VydmVyIHVzaW5nIG91ciBjbGllbnRpZCBzdHJpbmcsIGJ1dCB1
+c2luZyB0aGUNCndyb25nIHByaW5jaXBhbC4gVGhlcmUgYXJlIDIgY2FzZXM6DQoNCjEpIFNvbWVv
+bmUgaXMgc3Bvb2Zpbmcgb3VyIGNsaWVudC4gSSd2ZSBubyBpZGVhIGhvdyB0byByZWNvdmVyIGZy
+b20NCnRoaXMsIHNob3J0IG9mIGNoYW5naW5nIHRoZSBjbGllbnRpZCBzdHJpbmcuDQoNCjIpIFRo
+ZSBzZXJ2ZXIgaXMgdHJ1bmtlZCwgdGhlIGxlYXNlIGV4cGlyZWQsIGFuZCB3ZSBoYXBwZW5lZCB0
+byBjYWxsDQonbW91bnQnIHdoaWxlIGl0IHdhcyBleHBpcmVkLCBhbmQgaW5hZHZlcnRlbnRseSBz
+ZW50IGEgU0VUQ0xJRU5USUQNCitTRVRDTElFTlRJRF9DT05GSVJNIGNhbGwgdG8gdGhlIHNlcnZl
+ciB1c2luZyBhIGRpZmZlcmVudCBJUCBhZGRyZXNzLA0KYW5kIHVzaW5nIHRoZSB3cm9uZyBwcmlu
+Y2lwYWwuDQoNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
+aW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNv
+bQ0KDQo=
