@@ -1,65 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:58346 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759915Ab2D0Jju (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Apr 2012 05:39:50 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <20120427010610.GE9541@dastard>
-References: <20120427010610.GE9541@dastard> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
-To: Dave Chinner <david@fromorbit.com>
-Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
-        wine-devel@winehq.org, kfm-devel@kde.org, nautilus-list@gnome.org,
-        linux-api@vger.kernel.org, libc-alpha@sourceware.org
-Subject: Re: [PATCH 0/6] Extended file stat system call
-Date: Fri, 27 Apr 2012 10:39:05 +0100
-Message-ID: <4111.1335519545@redhat.com>
+Received: from mail-qa0-f53.google.com ([209.85.216.53]:44904 "EHLO
+	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753402Ab2DZRAi convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 13:00:38 -0400
+MIME-Version: 1.0
+In-Reply-To: <18841.1335448056@redhat.com>
+References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+	<20120419140625.17272.23303.stgit@warthog.procyon.org.uk>
+	<CAH2r5mtHj6LnOcRDv37_S-tZmc42sTLwE8Z02+27XZbjEVzZfg@mail.gmail.com>
+	<18841.1335448056@redhat.com>
+Date: Thu, 26 Apr 2012 12:00:37 -0500
+Message-ID: <CAH2r5muSz63aCJ56ExrXV2gmLQjmUhbnrpKT0RnRoXRQL3RtoQ@mail.gmail.com>
+Subject: Re: [PATCH 2/6] xstat: Ext4: Return extended attributes
+From: Steve French <smfrench@gmail.com>
+To: David Howells <dhowells@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-ext4@vger.kernel.org, wine-devel@winehq.org, kfm-devel@kde.org,
+        nautilus-list@gnome.org, linux-api@vger.kernel.org,
+        libc-alpha@sourceware.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Dave Chinner <david@fromorbit.com> wrote:
+On Thu, Apr 26, 2012 at 8:47 AM, David Howells <dhowells@redhat.com> wrote:
+> Steve French <smfrench@gmail.com> wrote:
+>
+>> This patch reminds me of a question on time stamps - how can an
+>> application query the time granularity ie sb_s_time_gran for a mount
+>> (e.g. 1 second for some file systems, 100 nanoseconds for cifs/smb2, 1
+>> nanosecond for others etc.)
+>
+> Ummm...  In what context?  With the proposed xstat() interface it will be
+> provided.
 
-> If we are adding per-inode flags, then what do we do with filesystem specific
-> flags? e.g. XFS has quite a number of per-inode flags that don't align with
-> any other filesystem (e.g. filestream allocator, real time file, behaviour
-> inheritence flags, etc), but may be useful to retrieve in such a call. We
-> currently have an ioctl to get that information from each inode. Have you
-> thought about how to handle such flags?
+great (although I thought it would be "stat -f" property).
 
-I haven't looked at XFS with regard to xstat as yet, so I'm not sure exactly
-which flags you're talking about.  The question, though, is what will actually
-make use of these flags?  Will it just be XFS tools or are they something that
-a GUI might make use of?
 
-Either you can add some of them to the ioc flags (which may be impractical, I
-grant you) or we'd have to add an arbitrary fs-type specific field and specify
-the host fs (the provision of which might not be a bad idea in and of itself)
-to tell userspace how to interpret them.
+-- 
+Thanks,
 
-> Along the same lines, filesytsems can have different allocation constraints
-> to IO the filesystem block size - ext4 with it's bigalloc hack, XFS with it's
-> per-inode extent size hints and the realtime device, etc. Then there's
-> optimal IO characteristics (e.g. geometery hints like stripe unit/stripe
-> width for the allocation policy of that given file) that applications could
-> use if they were present rather than having to expose them through ioctls
-> that nobody even knows about...
-
-Yeah...  Not representable by one number.  You'd have to unset a flag to say
-you were providing this information.
-
-However, providing a whole bunch of hints about I/O characteristics is probably
-beyond this syscall - especially if it isn't constant over the length of a
-file.  That's specialist knowledge that most applications don't need to know.
-Having a generic way to retrieve it, though, may be a good idea.
-
-OTOH, there's plenty of uncommitted space, so if we can condense the hints down
-to something small, we could perhaps add it later - but from your paragraph
-above, it doesn't sound like it'll be small.
-
-> Perhaps also exposing the project ID for quota purposes, like we do UID and
-> GID. That way we wouldn't need a filesystem specific ioctl to read it....
-
-Is this an XFS only thing?  If so, can it be generalised?
-
-David
+Steve
