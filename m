@@ -1,68 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:4537 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:48576 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751730Ab2DRK73 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Apr 2012 06:59:29 -0400
-Date: Wed, 18 Apr 2012 06:59:26 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Simo Sorce <simo@redhat.com>, bfields@redhat.com,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org
-Subject: Re: [PATCH 4/5] SUNRPC: Add RPC based upcall mechanism for RPCGSS
- auth
-Message-ID: <20120418065926.55d75ec2@tlielax.poochiereds.net>
-In-Reply-To: <20120417222825.GA32619@fieldses.org>
-References: <1334669948-4156-1-git-send-email-simo@redhat.com>
-	<1334669948-4156-5-git-send-email-simo@redhat.com>
-	<20120417222825.GA32619@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1754505Ab2DZT5g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Apr 2012 15:57:36 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 13/20] NFS: Fix recovery from NFS4ERR_CLID_INUSE
+Date: Thu, 26 Apr 2012 19:57:19 +0000
+Message-ID: <1335470239.24247.33.camel@lade.trondhjem.org>
+References: <20120423205312.11446.67081.stgit@degas.1015granger.net>
+	 <20120423205505.11446.28437.stgit@degas.1015granger.net>
+	 <D6859152-CF45-44CC-BB3C-B40CB9FD0BE8@oracle.com>
+	 <1335459334.9701.25.camel@lade.trondhjem.org>
+	 <F4214CAE-E0DE-4A3C-BA0B-02A9F8277897@oracle.com>
+	 <1335466422.24247.8.camel@lade.trondhjem.org>
+	 <99F031E0-3888-45A0-AA81-0F5C961B8AD8@oracle.com>
+	 <1335467659.24247.19.camel@lade.trondhjem.org>
+	 <02FC38C6-46FB-4A0E-A020-07DC562A7007@oracle.com>
+In-Reply-To: <02FC38C6-46FB-4A0E-A020-07DC562A7007@oracle.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 17 Apr 2012 18:28:25 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Tue, Apr 17, 2012 at 09:39:07AM -0400, Simo Sorce wrote:
-> > This patch implements a sunrpc client to use the services of the gssproxy
-> > userspace daemon.
-> > 
-> > In particular it allows to perform calls in user space using an RPC
-> > call instead of custom hand-coded upcall/downcall messages.
-> 
-> The "hand-coded" messages aren't really particularly hard to generate or
-> parse.  Let's just drop that argument.
-> 
-> > Currently only accept_sec_context is implemented as that is all is needed for
-> > the server case.
-> > 
-> > File server modules like NFS and CIFS can use full gssapi services this way,
-> > once init_sec_context is also implemented.
-> 
-> What's the situation with CIFS, by the way?  (How does it currently do
-> gssapi, and what are their plans?)
-> 
-
-Currently it has its own upcall that's done using the keys API. It's
-pretty limited. It's stateless and so doesn't handle multistage
-negotiation properly, for instance but it works well enough for our
-purposes...
-
-If there's common infrastructure in the kernel for handling GSSAPI then
-we'd be interested in using that instead. I'm all for less code that we
-have to maintain ourselves...
-
-We would of course need to come up with a transition scheme to the new
-daemon. We might need some small modifications too since CIFS expects
-the blob to be wrapped in SPNEGO as well, but that's fairly easy to
-manage and we could do that in kernel space if needed.
-
-My only (minor) reservation is that moving to this would mean cifs
-would be dependent to some degree on the sunrpc code. It's not a huge
-problem. Most distros won't care, but some embedded ones might.
-
-What we'll probably do is wait until this is more settled with nfs(d)
-and then look at moving to it.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+T24gVGh1LCAyMDEyLTA0LTI2IGF0IDE1OjQ2IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+T24gQXByIDI2LCAyMDEyLCBhdCAzOjE0IFBNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiAN
+Cj4gPiBPbiBUaHUsIDIwMTItMDQtMjYgYXQgMTU6MDQgLTA0MDAsIENodWNrIExldmVyIHdyb3Rl
+Og0KPiA+PiBPbiBBcHIgMjYsIDIwMTIsIGF0IDI6NTMgUE0sIE15a2xlYnVzdCwgVHJvbmQgd3Jv
+dGU6DQo+ID4+IA0KPiA+Pj4gT24gVGh1LCAyMDEyLTA0LTI2IGF0IDE0OjQzIC0wNDAwLCBDaHVj
+ayBMZXZlciB3cm90ZToNCj4gPj4+PiBPbiBBcHIgMjYsIDIwMTIsIGF0IDEyOjU1IFBNLCBNeWts
+ZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+Pj4+IA0KPiA+Pj4+PiBPbiBUaHUsIDIwMTItMDQtMjYg
+YXQgMTI6MjQgLTA0MDAsIENodWNrIExldmVyIHdyb3RlOg0KPiA+Pj4+Pj4gT24gQXByIDIzLCAy
+MDEyLCBhdCA0OjU1IFBNLCBDaHVjayBMZXZlciB3cm90ZToNCj4gPj4+Pj4gVGhlbiBsZXRzIG1v
+dmUgdGhlIGZsYXZvdXIgb3V0IG9mIHRoZSBjbGllbnRpZCBzdHJpbmcsDQo+ID4+Pj4gDQo+ID4+
+Pj4gUmVtb3ZpbmcgdGhlIGZsYXZvciBmcm9tIHRoZSBuZnNfY2xpZW50X2lkNCBzdHJpbmcgbWFr
+ZXMgc2Vuc2UuDQo+ID4+Pj4gDQo+ID4+Pj4+IGFuZCBqdXN0IHNldHRsZQ0KPiA+Pj4+PiBmb3Ig
+aGFuZGxpbmcgQ0xJRF9JTlVTRSBieSBjaGFuZ2luZyB0aGUgZmxhdm91ciBvbiB0aGUgU0VUQ0xJ
+RU5USUQgY2FsbC4NCj4gPj4+PiANCj4gPj4+PiBUaGlzIGlzIHdoZXJlIEkgZ2V0IGhhenkuICAN
+Cj4gPj4+PiANCj4gPj4+PiBJZiBJIHNpbXBseSBjaGFuZ2UgdGhlIGF1dGhlbnRpY2F0aW9uIGZs
+YXZvciBvbiB0aGUgZXhpc3RpbmcgY2xwLT5jbF9ycGNjbGllbnQsIHdpbGwgdGhpcyBhZmZlY3Qg
+b25nb2luZyBSRU5FVyBvcGVyYXRpb25zIHRoYXQgYWxzbyB1c2UgdGhpcyB0cmFuc3BvcnQ/ICBE
+byB3ZSB3YW50IHN1YnNlcXVlbnQgUkVORVcgb3BlcmF0aW9ucyB0byB1c2UgdGhlIG5ldyBmbGF2
+b3I/DQo+ID4+Pj4gDQo+ID4+Pj4gVGhpbmtpbmcgaHlwb3RoZXRpY2FsbHksIGl0IHNlZW1zIHRv
+IG1lIHRoYXQgQ0xJRF9JTlVTRSBpcyByZWFsbHkgYW4gaW5kaWNhdGlvbiBvZiBhIHBlcm1hbmVu
+dCBjb25maWd1cmF0aW9uIGVycm9yLCBvciBhIHNvZnR3YXJlIGJ1ZywgYW5kIHdlIHNob3VsZCBu
+b3QgYm90aGVyIHRvIHJlY292ZXIuICBCdXQgbWF5YmUgdGhhdCdzIG15IGxpbWl0ZWQgaW1hZ2lu
+YXRpb24uICBVbmRlciB3aGF0IHVzZSBjYXNlcyBkbyB5b3UgdGhpbmsgQ0xJRF9JTlVTRSBtaWdo
+dCBvY2N1ciBhbmQgaXQgbWlnaHQgYmUgdXNlZnVsIHRvIGF0dGVtcHQgcmVjb3Zlcnk/DQo+ID4+
+Pj4gDQo+ID4+PiANCj4gPj4+IFRoZSBzZXJ2ZXIgY2FjaGVzIHRoZSBwcmluY2lwYWwgbmFtZSB0
+aGF0IHdhcyB1c2VkIHRvIGNhbGwgU0VUQ0xJRU5USUQNCj4gPj4+IHdoZW4gdGhlIGxlYXNlIHdh
+cyBlc3RhYmxpc2hlZC4gQW55IGF0dGVtcHQgdG8gY2FsbCBTRVRDTElFTlRJRCB3aXRoIGENCj4g
+Pj4+IGRpZmZlcmVudCBwcmluY2lwYWwgd2lsbCByZXN1bHQgaW4gQ0xJRF9JTlVTRSB1bmxlc3Mg
+dGhlIGxlYXNlIGhhcw0KPiA+Pj4gZXhwaXJlZC4NCj4gPj4+IA0KPiA+Pj4gU28gd2hhdCBJIHdh
+cyBwcm9wb3Npbmcgd2Fzbid0IHRoYXQgeW91IHRyeSB0byBjaGFuZ2UgdGhlIGF1dGhlbnRpY2F0
+aW9uDQo+ID4+PiBmbGF2b3VyIG9uIGFuIGV4aXN0aW5nIG5mc19jbGllbnQuIEl0IHdhcyB0aGF0
+IHdoZW4geW91IGFyZSBwcm9iaW5nLCB5b3UNCj4gPj4+IGNhbiB1c2UgdGhlIENMSURfSU5VU0Ug
+cmVwbHkgZnJvbSBTRVRDTElFTlRJRCBhcyBhIGRpcmVjdCBpbmRpY2F0aW9uDQo+ID4+PiB0aGF0
+IHRoZSBzZXJ2ZXIgaXMgaW5kZWVkIHRydW5rZWQsIGFuZCB0aGF0IHlvdSBhbHJlYWR5IGhvbGQg
+YSBsZWFzZSBvbg0KPiA+Pj4gdGhhdCBzZXJ2ZXIsIGJ1dCB0aGF0IHRoZSBhdXRoZW50aWNhdGlv
+biBmbGF2b3VyIHRoYXQgeW91IGFyZSB0cnlpbmcgdG8NCj4gPj4+IHVzZSBpcyB3cm9uZy4NCj4g
+Pj4gDQo+ID4+IFRoZSB1c2UgY2FzZSB3b3VsZCBiZSB0aGF0IG15IGNsaWVudCBoYXMgbW91bnRl
+ZCBhIHNlcnZlciB2aWEgYWRkcmVzcyBYIHVzaW5nIGF1dGhlbnRpY2F0aW9uIGZsYXZvciAxLCBh
+bmQgdGhlbiB0cmllcyB0byBtb3VudCB0aGUgc2FtZSBzZXJ2ZXIgdmlhIGFkZHJlc3MgWSB1c2lu
+ZyBhdXRoZW50aWNhdGlvbiBmbGF2b3IgMi4NCj4gPiANCj4gPiAuLi5mb3Igd2hpY2ggdGhlIHJl
+c3VsdCBzaG91bGQgYmUgdGhhdCBhbGwgc2V0Y2xpZW50aWQvY29uZmlybSBhbmQgcmVuZXcNCj4g
+PiByZXF1ZXN0cyB3aWxsIHVzZSBmbGF2b3VyIDEuDQo+IA0KPiBBZ3JlZWQuDQo+IA0KPiA+PiBE
+byB3ZSBldmVuIG5lZWQgdG8gcmV0cnkgdGhlIFNFVENMSUVOVElEIGFuZCB0byBwZXJmb3JtIGEg
+U0VUQ0xJRU5USURfQ09ORklSTSBpbiB0aGF0IGNhc2U/DQo+ID4gDQo+ID4gWWVzLiBPdGhlcndp
+c2Ugd2UgZW5kIHVwIHdpdGggMiBsZWFzZXMgb24gdGhlIHNhbWUgc2VydmVyLg0KPiANCj4gSSBk
+b24ndCBzZWUgaG93Li4uICBJZiB0aGUgc2Vjb25kIFNFVENMSUVOVElEIGZhaWxzIHdpdGggQ0xJ
+RF9JTlVTRSB0aGVuIHRoZSBzZXJ2ZXIgc3RpbGwgaGFzIHRoZSBmaXJzdCBsZWFzZSB0aGF0J3Mg
+dXNpbmcgZmxhdm9yIDEuICAiQm9vbSwgZG9uZS4iDQoNClNvcnJ5LiBJIHRob3VnaHQgeW91IHdl
+cmUgaW1wbHlpbmcgdGhhdCB3ZSBzaG91bGQgdXNlIGEgZGlmZmVyZW50DQpjbGllbnRpZCBvciBz
+b21ldGhpbmcgbGlrZSB0aGF0Lg0KDQpZb3Ugc3RpbGwgZG8gbmVlZCB0byBpc3N1ZSB0aGUgU0VU
+Q0xJRU5USUQgaW4gb3JkZXIgdG8gZmlndXJlIG91dCB0aGUNCnRydW5raW5nIHRvcG9sb2d5IHNv
+IHRoYXQgeW91IGNhbiBtYXAgYWRkcmVzcyBZIHRvIGFkZHJlc3MgWC4NCg0KPiA+PiBOb3csIHdo
+YXQgYWJvdXQgbmZzNF9yZWNsYWltX2xlYXNlKCkgPyAgSWYgdGhlIGNsaWVudCBzZWVzIENMSURf
+SU5VU0UgZHVyaW5nIGEgbGVhc2UgcmVjbGFpbSwgbm8gdHJ1bmtpbmcgZGlzY292ZXJ5IGlzIGlu
+dm9sdmVkLg0KPiA+IA0KPiA+IFRoYXQgd291bGQgbWVhbiB0aGF0IHRoZSBsZWFzZSB3YXMgZXhw
+aXJlZCwgYW5kIHRoYXQgc29tZW9uZSBzZW50IGENCj4gPiBTRVRDTElFTlRJRCBjYWxsIHRvIHRo
+ZSBzZXJ2ZXIgdXNpbmcgb3VyIGNsaWVudGlkIHN0cmluZywgYnV0IHVzaW5nIHRoZQ0KPiA+IHdy
+b25nIHByaW5jaXBhbC4gVGhlcmUgYXJlIDIgY2FzZXM6DQo+ID4gDQo+ID4gMSkgU29tZW9uZSBp
+cyBzcG9vZmluZyBvdXIgY2xpZW50LiBJJ3ZlIG5vIGlkZWEgaG93IHRvIHJlY292ZXIgZnJvbQ0K
+PiA+IHRoaXMsIHNob3J0IG9mIGNoYW5naW5nIHRoZSBjbGllbnRpZCBzdHJpbmcuDQo+IA0KPiBN
+YXliZSB3ZSBzaG91bGQga2VlcCBjbF91bmlxdWlmaWVyIGZvciBjYXNlIDEuLi4/ICBTaW5jZSBu
+ZnM0X3JlY2xhaW1fbGVhc2UoKSBpcyBjYWxsZWQgaW4gdGhlIHN0YXRlIG1hbmFnZXIsIGl0IGhh
+cyB0byBkbyBzb21ldGhpbmcgdG8gcmVjb3ZlciBvciBtYWtlIHRoZSB3YWl0aW5nIHByb2Nlc3Mg
+ZXJyb3Igb3V0Lg0KDQpZZXMsIGJ1dCB0aGF0IGJyZWFrcyB0aGUgVUNTIHRydW5raW5nLWRldGVj
+dGlvbiBtb2RlbC4gU3Bvb2ZpbmcgaXMgYmFkDQpubyBtYXR0ZXIgd2hhdCBoYXBwZW5zLCBhbmQg
+cGFwZXJpbmcgYXJvdW5kIGl0IHdpdGggY2xfdW5pcXVpZmllciB3YXMNCndyb25nLiBXaGF0IGlm
+IHlvdSBqdXN0IGhhcHBlbmVkIHRvIHVzZSB0aGUgY29ycmVjdCBwcmluY2lwYWwgKHZlcnkgZWFz
+eQ0KaWYgeW91IGFyZSB1c2luZyBBVVRIX1NZUykgYW5kIGRpZG4ndCBkZXRlY3QgdGhhdCB0aGUg
+Y2xpZW50aWQgaXMgYmVpbmcNCnNwb29mZWQ/DQoNCj4gPiAyKSBUaGUgc2VydmVyIGlzIHRydW5r
+ZWQsIHRoZSBsZWFzZSBleHBpcmVkLCBhbmQgd2UgaGFwcGVuZWQgdG8gY2FsbA0KPiA+ICdtb3Vu
+dCcgd2hpbGUgaXQgd2FzIGV4cGlyZWQsIGFuZCBpbmFkdmVydGVudGx5IHNlbnQgYSBTRVRDTElF
+TlRJRA0KPiA+ICtTRVRDTElFTlRJRF9DT05GSVJNIGNhbGwgdG8gdGhlIHNlcnZlciB1c2luZyBh
+IGRpZmZlcmVudCBJUCBhZGRyZXNzLA0KPiA+IGFuZCB1c2luZyB0aGUgd3JvbmcgcHJpbmNpcGFs
+Lg0KPiANCj4gVGhlIGNsaWRfaW5pdF9tdXRleCBzaG91bGQgZXhjbHVkZSB0aGlzIGNhc2UuLi4/
+DQoNCkkgYXNzdW1lIHNvLi4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xp
+ZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3
+Lm5ldGFwcC5jb20NCg0K
