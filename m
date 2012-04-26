@@ -1,48 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:12008 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756263Ab2D3Skc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Apr 2012 14:40:32 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 0/7] Clean up mount functions
-Date: Mon, 30 Apr 2012 14:40:22 -0400
-Message-Id: <1335811229-2989-1-git-send-email-bjschuma@netapp.com>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:38231 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758085Ab2DZQFZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 12:05:25 -0400
+Received: by mail-yx0-f174.google.com with SMTP id l12so1020657yen.19
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Apr 2012 09:05:24 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
+        michael.brantley@deshaw.com
+Subject: [PATCH v1 05/12] vfs: fix mknodat to retry on ESTALE errors
+Date: Thu, 26 Apr 2012 11:57:16 -0400
+Message-Id: <1335455843-16089-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1335455843-16089-1-git-send-email-jlayton@redhat.com>
+References: <1335455843-16089-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c |   62 ++++++++++++++++++++++++++++++-----------------------------
+ 1 files changed, 32 insertions(+), 30 deletions(-)
 
-I noticed that we had 5 almost identical mount functions in super.c.  I
-collapsed them all into one common function to make everything easier to
-maintain and work with.  The first few patches are basic cleanups, the last
-four drop us down to one common mount path.
-
-These patches also help simplify my modules changes since I no longer have
-to split these functions out of the generic code.
-
-Comments or suggestions are appreciated!
-
-- Bryan
-
-Bryan Schumaker (7):
-  NFS: Rename nfs4_proc_get_root()
-  NFS: Create a single nfs_get_root()
-  NFS: Consistent arguments to nfs_fscache_get_super_cookie()
-  NFS: Create a common fs_mount() function
-  NFS: Create a common xdev_mount() function
-  NFS: Use nfs_fs_mount_common() for xdev mounts
-  NFS: Use nfs_fs_mount_common() for remote referral mounts
-
- fs/nfs/fscache.c  |   13 +-
- fs/nfs/fscache.h  |    2 +-
- fs/nfs/getroot.c  |   85 +-------
- fs/nfs/nfs4_fs.h  |    1 +
- fs/nfs/nfs4proc.c |   30 ++-
- fs/nfs/super.c    |  622 +++++++++++++----------------------------------------
- 6 files changed, 192 insertions(+), 561 deletions(-)
-
+diff --git a/fs/namei.c b/fs/namei.c
+index 367b0f2..9ee6b4e 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2581,44 +2581,46 @@ SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, umode_t, mode,
+ 	struct dentry *dentry;
+ 	struct path path;
+ 	int error;
++	unsigned int try = 0;
+ 
+ 	if (S_ISDIR(mode))
+ 		return -EPERM;
+ 
+-	dentry = user_path_create(dfd, filename, &path, false, false);
+-	if (IS_ERR(dentry))
+-		return PTR_ERR(dentry);
++	do {
++		dentry = user_path_create(dfd, filename, &path, false, try);
++		if (IS_ERR(dentry))
++			return PTR_ERR(dentry);
+ 
+-	if (!IS_POSIXACL(path.dentry->d_inode))
+-		mode &= ~current_umask();
+-	error = may_mknod(mode);
+-	if (error)
+-		goto out_dput;
+-	error = mnt_want_write(path.mnt);
+-	if (error)
+-		goto out_dput;
+-	error = security_path_mknod(&path, dentry, mode, dev);
+-	if (error)
+-		goto out_drop_write;
+-	switch (mode & S_IFMT) {
+-		case 0: case S_IFREG:
+-			error = vfs_create(path.dentry->d_inode,dentry,mode,NULL);
+-			break;
+-		case S_IFCHR: case S_IFBLK:
+-			error = vfs_mknod(path.dentry->d_inode,dentry,mode,
+-					new_decode_dev(dev));
+-			break;
+-		case S_IFIFO: case S_IFSOCK:
+-			error = vfs_mknod(path.dentry->d_inode,dentry,mode,0);
++		if (!IS_POSIXACL(path.dentry->d_inode))
++			mode &= ~current_umask();
++		error = may_mknod(mode);
++		if (error)
++			goto out_dput;
++		error = mnt_want_write(path.mnt);
++		if (error)
++			goto out_dput;
++		error = security_path_mknod(&path, dentry, mode, dev);
++		if (error)
++			goto out_drop_write;
++		switch (mode & S_IFMT) {
++			case 0: case S_IFREG:
++				error = vfs_create(path.dentry->d_inode, dentry, mode, NULL);
++				break;
++			case S_IFCHR: case S_IFBLK:
++				error = vfs_mknod(path.dentry->d_inode, dentry, mode,
++						new_decode_dev(dev));
++				break;
++			case S_IFIFO: case S_IFSOCK:
++				error = vfs_mknod(path.dentry->d_inode, dentry, mode, 0);
+ 			break;
+-	}
++		}
+ out_drop_write:
+-	mnt_drop_write(path.mnt);
++		mnt_drop_write(path.mnt);
+ out_dput:
+-	dput(dentry);
+-	mutex_unlock(&path.dentry->d_inode->i_mutex);
+-	path_put(&path);
+-
++		dput(dentry);
++		mutex_unlock(&path.dentry->d_inode->i_mutex);
++		path_put(&path);
++	} while (retry_estale(error, try++));
+ 	return error;
+ }
+ 
 -- 
-1.7.10
+1.7.7.6
 
