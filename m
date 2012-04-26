@@ -1,83 +1,246 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:36976 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753939Ab2DCNpV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Apr 2012 09:45:21 -0400
-Received: by ghrr11 with SMTP id r11so1743744ghr.19
-        for <linux-nfs@vger.kernel.org>; Tue, 03 Apr 2012 06:45:20 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <4F762AD1.2090306@panasas.com>
-References: <4F7625D7.8070801@panasas.com> <4F762AD1.2090306@panasas.com>
-From: Benny Halevy <bhalevy@tonian.com>
-Date: Tue, 3 Apr 2012 16:45:00 +0300
-Message-ID: <CAEMWVhsKLTWLA9Rc_jftgDkZ=WL-5RKoPFsh5ajn-zxw6F=Rbw@mail.gmail.com>
-Subject: Re: [osd-dev] [PATCH] pnfs-obj: Remove unused variable from objlayout_get_deviceinfo()
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:25085 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753141Ab2DZU4c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Apr 2012 16:56:32 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
+        Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v4 3/9] NFS: Do secinfo as part of lookup
+Date: Thu, 26 Apr 2012 16:56:06 -0400
+Message-Id: <1335473772-4401-4-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1335473772-4401-1-git-send-email-bjschuma@netapp.com>
+References: <1335473772-4401-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Mar 31, 2012 at 12:51 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> On 03/30/2012 02:29 PM, Boaz Harrosh wrote:
->
->> From: Sachin Bhamare <sbhamare@panasas.com>
->>
->> Local variable 'sb' was not being used in objlayout_get_deviceinfo().
->>
->> Signed-off-by: Sachin Bhamare <sbhamare@panasas.com>
->> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
->
->
-> I was transitioning all my tree's to the 3.4-rc0 Kernel and noticed
-> we forgot this patch, Please add it to what ever next-kernel branch you
-> have.
->
-> Benny could you please make a pnfs-all-3.3 branch? It should be identical
-> to the 3.3-rc6, probably, but just for completeness.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-I'll do that after rebasing to v3.3 (which I've been chasing my tail to do)
+Whenever lookup sees wrongsec do a secinfo and retry the lookup to find
+attributes of the file or directory, such as "is this a referral
+mountpoint?".  This also allows me to remove handling -NFS4ERR_WRONSEC
+as part of getattr xdr decoding.
 
->
-> Tell me if you also want to add the autologin patches to it I can help
-> out with that. Else the client side went into 3.4-rc0 so I'll send you
-> the exofs side for your future 3.4-rc1 tree.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/internal.h      |    1 -
+ fs/nfs/nfs4_fs.h       |    4 +++
+ fs/nfs/nfs4namespace.c |   52 +++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4proc.c      |   64 +++++++++++++++++++++++++++++++++++-------------
+ fs/nfs/nfs4xdr.c       |    2 --
+ 5 files changed, 103 insertions(+), 20 deletions(-)
 
-I prefer to apply it for 3.4-rc.
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 2476dc6..45966d9 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -234,7 +234,6 @@ extern const u32 nfs41_maxwrite_overhead;
+ /* nfs4proc.c */
+ #ifdef CONFIG_NFS_V4
+ extern struct rpc_procinfo nfs4_procedures[];
+-void nfs_fixup_secinfo_attributes(struct nfs_fattr *, struct nfs_fh *);
+ #endif
+ 
+ extern int nfs4_init_ds_session(struct nfs_client *clp);
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index b6db9e3..c82c2cd 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -205,6 +205,9 @@ struct nfs4_state_maintenance_ops {
+ extern const struct dentry_operations nfs4_dentry_operations;
+ extern const struct inode_operations nfs4_dir_inode_operations;
+ 
++/* nfs4namespace.c */
++struct rpc_clnt *nfs4_create_sec_client(struct rpc_clnt *, struct inode *, struct qstr *);
++
+ /* nfs4proc.c */
+ extern int nfs4_proc_setclientid(struct nfs_client *, u32, unsigned short, struct rpc_cred *, struct nfs4_setclientid_res *);
+ extern int nfs4_proc_setclientid_confirm(struct nfs_client *, struct nfs4_setclientid_res *arg, struct rpc_cred *);
+@@ -215,6 +218,7 @@ extern int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait, boo
+ extern int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle);
+ extern int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+ 		struct nfs4_fs_locations *fs_locations, struct page *page);
++extern int nfs4_proc_secinfo(struct inode *, const struct qstr *, struct nfs4_secinfo_flavors *);
+ extern int nfs4_release_lockowner(struct nfs4_lock_state *);
+ extern const struct xattr_handler *nfs4_xattr_handlers[];
+ 
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index 9c8eca3..199eec5 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -108,6 +108,58 @@ static size_t nfs_parse_server_name(char *string, size_t len,
+ 	return ret;
+ }
+ 
++static rpc_authflavor_t nfs4_negotiate_security(struct inode *inode, struct qstr *name)
++{
++	struct page *page;
++	struct nfs4_secinfo_flavors *flavors;
++	rpc_authflavor_t flavor;
++	int err;
++
++	page = alloc_page(GFP_KERNEL);
++	if (!page)
++		return -ENOMEM;
++	flavors = page_address(page);
++
++	err = nfs4_proc_secinfo(inode, name, flavors);
++	if (err < 0) {
++		flavor = err;
++		goto out;
++	}
++
++	flavor = nfs_find_best_sec(flavors);
++
++out:
++	put_page(page);
++	return flavor;
++}
++
++/*
++ * Please call rpc_shutdown_client() when you are done with this client.
++ */
++struct rpc_clnt *nfs4_create_sec_client(struct rpc_clnt *clnt, struct inode *inode,
++					struct qstr *name)
++{
++	struct rpc_clnt *clone;
++	struct rpc_auth *auth;
++	rpc_authflavor_t flavor;
++
++	flavor = nfs4_negotiate_security(inode, name);
++	if (flavor < 0)
++		return ERR_PTR(flavor);
++
++	clone = rpc_clone_client(clnt);
++	if (IS_ERR(clone))
++		return clone;
++
++	auth = rpcauth_create(flavor, clone);
++	if (!auth) {
++		rpc_shutdown_client(clone);
++		clone = ERR_PTR(-EIO);
++	}
++
++	return clone;
++}
++
+ static struct vfsmount *try_location(struct nfs_clone_mount *mountdata,
+ 				     char *page, char *page2,
+ 				     const struct nfs4_fs_location *location)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 0de2614..d6b1cd0 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2528,39 +2528,69 @@ static int _nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir,
+ 	return status;
+ }
+ 
+-void nfs_fixup_secinfo_attributes(struct nfs_fattr *fattr, struct nfs_fh *fh)
++static void nfs_fixup_secinfo_attributes(struct nfs_fattr *fattr)
+ {
+-	memset(fh, 0, sizeof(struct nfs_fh));
+-	fattr->fsid.major = 1;
+ 	fattr->valid |= NFS_ATTR_FATTR_TYPE | NFS_ATTR_FATTR_MODE |
+-		NFS_ATTR_FATTR_NLINK | NFS_ATTR_FATTR_FSID | NFS_ATTR_FATTR_MOUNTPOINT;
++		NFS_ATTR_FATTR_NLINK | NFS_ATTR_FATTR_MOUNTPOINT;
+ 	fattr->mode = S_IFDIR | S_IRUGO | S_IXUGO;
+ 	fattr->nlink = 2;
+ }
+ 
+-static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
+-			    struct nfs_fh *fhandle, struct nfs_fattr *fattr)
++static int nfs4_proc_lookup_common(struct rpc_clnt **clnt, struct inode *dir,
++				   struct qstr *name, struct nfs_fh *fhandle,
++				   struct nfs_fattr *fattr)
+ {
+ 	struct nfs4_exception exception = { };
++	struct rpc_clnt *client = *clnt;
+ 	int err;
+ 	do {
+-		int status;
+-
+-		status = _nfs4_proc_lookup(clnt, dir, name, fhandle, fattr);
+-		switch (status) {
++		err = _nfs4_proc_lookup(client, dir, name, fhandle, fattr);
++		switch (err) {
+ 		case -NFS4ERR_BADNAME:
+-			return -ENOENT;
++			err = -ENOENT;
++			goto out;
+ 		case -NFS4ERR_MOVED:
+-			return nfs4_get_referral(dir, name, fattr, fhandle);
++			err = nfs4_get_referral(dir, name, fattr, fhandle);
++			goto out;
+ 		case -NFS4ERR_WRONGSEC:
+-			nfs_fixup_secinfo_attributes(fattr, fhandle);
++			err = -EPERM;
++			if (client != *clnt)
++				goto out;
++
++			client = nfs4_create_sec_client(client, dir, name);
++			if (IS_ERR(client))
++				return PTR_ERR(client);
++
++			exception.retry = 1;
++			break;
++		default:
++			err = nfs4_handle_exception(NFS_SERVER(dir), err, &exception);
+ 		}
+-		err = nfs4_handle_exception(NFS_SERVER(dir),
+-				status, &exception);
+ 	} while (exception.retry);
++
++out:
++	if (err == 0)
++		*clnt = client;
++	else if (client != *clnt)
++		rpc_shutdown_client(client);
++
+ 	return err;
+ }
+ 
++static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
++			    struct nfs_fh *fhandle, struct nfs_fattr *fattr)
++{
++	int status;
++	struct rpc_clnt *client = NFS_CLIENT(dir);
++
++	status = nfs4_proc_lookup_common(&client, dir, name, fhandle, fattr);
++	if (client != NFS_CLIENT(dir)) {
++		rpc_shutdown_client(client);
++		nfs_fixup_secinfo_attributes(fattr);
++	}
++	return status;
++}
++
+ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry)
+ {
+ 	struct nfs_server *server = NFS_SERVER(inode);
+@@ -4994,8 +5024,8 @@ static int _nfs4_proc_secinfo(struct inode *dir, const struct qstr *name, struct
+ 	return status;
+ }
+ 
+-static int nfs4_proc_secinfo(struct inode *dir, const struct qstr *name,
+-		struct nfs4_secinfo_flavors *flavors)
++int nfs4_proc_secinfo(struct inode *dir, const struct qstr *name,
++		      struct nfs4_secinfo_flavors *flavors)
+ {
+ 	struct nfs4_exception exception = { };
+ 	int err;
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 043c010..a95bde8 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -4258,8 +4258,6 @@ static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
+ 	status = decode_attr_error(xdr, bitmap, &err);
+ 	if (status < 0)
+ 		goto xdr_error;
+-	if (err == -NFS4ERR_WRONGSEC)
+-		nfs_fixup_secinfo_attributes(fattr, fh);
+ 
+ 	status = decode_attr_filehandle(xdr, bitmap, fh);
+ 	if (status < 0)
+-- 
+1.7.10
 
->
-> Thanks
-
-Sure :)
-
-Benny
-
-> Boaz
->
->> ---
->>  fs/nfs/objlayout/objlayout.c |    2 --
->>  1 files changed, 0 insertions(+), 2 deletions(-)
->>
->> diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
->> index 1ae53eb..b158d1b 100644
->> --- a/fs/nfs/objlayout/objlayout.c
->> +++ b/fs/nfs/objlayout/objlayout.c
->> @@ -604,7 +604,6 @@ int objlayout_get_deviceinfo(struct pnfs_layout_hdr *pnfslay,
->>  {
->>       struct objlayout_deviceinfo *odi;
->>       struct pnfs_device pd;
->> -     struct super_block *sb;
->>       struct page *page, **pages;
->>       u32 *p;
->>       int err;
->> @@ -623,7 +622,6 @@ int objlayout_get_deviceinfo(struct pnfs_layout_hdr *pnfslay,
->>       pd.pglen = PAGE_SIZE;
->>       pd.mincount = 0;
->>
->> -     sb = pnfslay->plh_inode->i_sb;
->>       err = nfs4_proc_getdeviceinfo(NFS_SERVER(pnfslay->plh_inode), &pd);
->>       dprintk("%s nfs_getdeviceinfo returned %d\n", __func__, err);
->>       if (err)
->
->
