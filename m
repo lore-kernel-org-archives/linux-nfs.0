@@ -1,77 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33018 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:13380 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933493Ab2DSVkt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Apr 2012 17:40:49 -0400
-Date: Thu, 19 Apr 2012 17:40:43 -0400
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH] SUNRPC: skip dead but not buried clients on PipeFS
- events
-Message-ID: <20120419214043.GA23309@fieldses.org>
-References: <20120419105707.32131.79719.stgit@localhost6.localdomain6>
- <4F8FF8D9.5080503@parallels.com>
+	id S1759168Ab2DZUHV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Apr 2012 16:07:21 -0400
+Message-ID: <4F99AAEB.6080509@RedHat.com>
+Date: Thu, 26 Apr 2012 16:07:07 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <4F8FF8D9.5080503@parallels.com>
+To: Nick Alcock <nix@esperi.org.uk>
+CC: linux-nfs@vger.kernel.org, Nick Alcock <nick.alcock@oracle.com>
+Subject: Re: [PATCH 3/4] No longer require NIS.
+References: <1328472138-25750-1-git-send-email-nix@esperi.org.uk> <1328472138-25750-3-git-send-email-nix@esperi.org.uk>
+In-Reply-To: <1328472138-25750-3-git-send-email-nix@esperi.org.uk>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 19, 2012 at 03:36:57PM +0400, Stanislav Kinsbursky wrote:
-> Sorry, but ignore this patch too.
-> It can't be that simple because of these cl_count tricks in rpc_release_client...
 
-OK.  Very minor whine:
 
+On 02/05/2012 03:02 PM, Nick Alcock wrote:
+> From: Nick Alcock <nick.alcock@oracle.com>
 > 
-> 19.04.2012 14:57, Stanislav Kinsbursky пишет:
-> >These clients can't be safely dereferenced if their counter in 0.
-> >
-> >Signee-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
-> >
-> >Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
-
-I don't mind fixing up trivial slips every now and then, but that double
-signed-off-by seems to happen on a lot of your posts; could you figure
-out what's up with your scripts?
-
---b.
-
-> >
-> >---
-> >  net/sunrpc/clnt.c |    3 ++-
-> >  1 files changed, 2 insertions(+), 1 deletions(-)
-> >
-> >diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> >index 6797246..591994d 100644
-> >--- a/net/sunrpc/clnt.c
-> >+++ b/net/sunrpc/clnt.c
-> >@@ -218,7 +218,8 @@ static struct rpc_clnt *rpc_get_client_for_event(struct net *net, int event)
-> >  		if (((event == RPC_PIPEFS_MOUNT)&&  clnt->cl_dentry) ||
-> >  		    ((event == RPC_PIPEFS_UMOUNT)&&  !clnt->cl_dentry))
-> >  			continue;
-> >-		atomic_inc(&clnt->cl_count);
-> >+		if (atomic_inc_return(&clnt->cl_count) == 1)
-> >+			continue;
-> >  		spin_unlock(&sn->rpc_client_lock);
-> >  		return clnt;
-> >  	}
-> >
+> NIS is deader than the proverbial dodo, and eglibc allows you to compile it out
+> entirely.  Though libtirpc can work with NIS, it works perfectly well if NIS
+> is not in the libc, thanks to nsswitch (acting as if NIS is there but empty).
+> However, when NIS is not compiled into eglibc, libnsl is not present.  So
+> check for it at configure time, and include it via LIBS if available.
+> (I suspect this LIBS-inclusion will have no effect, and we don't even need
+> to check for NIS at compile time, but I have no NIS-capable systems to
+> test this on.)
 > 
+> Signed-off-by: Nick Alcock <nick.alcock@oracle.com>
+> ---
+>  configure.ac    |    1 +
+>  src/Makefile.am |    2 +-
+>  2 files changed, 2 insertions(+), 1 deletions(-)
 > 
-> -- 
-> Best regards,
-> Stanislav Kinsbursky
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
+> diff --git a/configure.ac b/configure.ac
+> index 97c6f2c..7ff80a4 100644
+> --- a/configure.ac
+> +++ b/configure.ac
+> @@ -23,6 +23,7 @@ AC_HEADER_DIRENT
+>  AC_PREFIX_DEFAULT(/usr)
+>  AC_CHECK_HEADERS([arpa/inet.h fcntl.h libintl.h limits.h locale.h netdb.h netinet/in.h stddef.h stdint.h stdlib.h string.h sys/ioctl.h sys/param.h sys/socket.h sys/time.h syslog.h unistd.h])
+>  AC_CHECK_LIB([pthread], [pthread_create])
+> +AC_CHECK_LIB([nsl], [yp_get_default_domain])
+>  
+>  
+>  AC_CONFIG_FILES([Makefile src/Makefile man/Makefile doc/Makefile])
+> diff --git a/src/Makefile.am b/src/Makefile.am
+> index 509cf61..66350f5 100644
+> --- a/src/Makefile.am
+> +++ b/src/Makefile.am
+> @@ -40,7 +40,7 @@ lib_LTLIBRARIES = libtirpc.la
+>  # release number of your package. This is an abuse that only fosters
+>  # misunderstanding of the purpose of library versions."
+>  #
+> -libtirpc_la_LDFLAGS = -lnsl -lpthread -version-info 1:10:0
+> +libtirpc_la_LDFLAGS = -lpthread -version-info 1:10:0
+>  
+>  libtirpc_la_SOURCES = auth_none.c auth_unix.c authunix_prot.c bindresvport.c clnt_bcast.c \
+>          clnt_dg.c clnt_generic.c clnt_perror.c clnt_raw.c clnt_simple.c \
+
+Committed...
+
+steved.
