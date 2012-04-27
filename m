@@ -1,117 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:61647 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:58346 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932175Ab2DQNbx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Apr 2012 09:31:53 -0400
-Date: Tue, 17 Apr 2012 09:32:22 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Miklos Szeredi <miklos@szeredi.hu>
-Cc: "Myklebust\, Trond" <Trond.Myklebust@netapp.com>,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        Malahal Naineni <malahal@us.ibm.com>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "pstaubach\@exagrid.com" <pstaubach@exagrid.com>,
-        "viro\@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
-        "hch\@infradead.org" <hch@infradead.org>,
-        "michael.brantley\@deshaw.com" <michael.brantley@deshaw.com>,
-        "sven.breuner\@itwm.fraunhofer.de" <sven.breuner@itwm.fraunhofer.de>
-Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from
- getattr call
-Message-ID: <20120417093222.2ff5e1bd@corrin.poochiereds.net>
-In-Reply-To: <87sjg2o62z.fsf@tucsk.pomaz.szeredi.hu>
-References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
-	<20120413150518.GA1987@us.ibm.com>
-	<20120413114236.0e557e01@tlielax.poochiereds.net>
-	<4F8B1B7B.3040304@itwm.fraunhofer.de>
-	<20120416073655.7cdb90cf@corrin.poochiereds.net>
-	<4F8C3036.2030702@itwm.fraunhofer.de>
-	<20120416134642.1754cd3e@corrin.poochiereds.net>
-	<1334604785.2879.23.camel@lade.trondhjem.org>
-	<20120416154322.0d95e435@corrin.poochiereds.net>
-	<1334607906.2879.36.camel@lade.trondhjem.org>
-	<20120416190548.2463d1d0@corrin.poochiereds.net>
-	<87sjg2o62z.fsf@tucsk.pomaz.szeredi.hu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1759915Ab2D0Jju (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Apr 2012 05:39:50 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <20120427010610.GE9541@dastard>
+References: <20120427010610.GE9541@dastard> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+To: Dave Chinner <david@fromorbit.com>
+Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
+        wine-devel@winehq.org, kfm-devel@kde.org, nautilus-list@gnome.org,
+        linux-api@vger.kernel.org, libc-alpha@sourceware.org
+Subject: Re: [PATCH 0/6] Extended file stat system call
+Date: Fri, 27 Apr 2012 10:39:05 +0100
+Message-ID: <4111.1335519545@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 17 Apr 2012 15:12:20 +0200
-Miklos Szeredi <miklos@szeredi.hu> wrote:
+Dave Chinner <david@fromorbit.com> wrote:
 
-> Jeff Layton <jlayton@redhat.com> writes:
-> 
-> >> 
-> >> Won't something like fstatat(AT_FDCWD, "", &stat, AT_EMPTY_PATH) risk
-> >> looping forever there, or am I missing something?
-> >> 
-> >
-> > To make sure I understand, that should be "shortcut" for a lookup of the
-> > cwd?
-> >
-> > So I guess the concern is that you'd do the above and get a successful
-> > lookup since you're just going to get back the cwd. At that point,
-> > you'd attempt the getattr and get ESTALE back. Then, you'd redo the
-> > lookup with LOOKUP_REVAL set -- but since we're operating on the
-> > cwd, we don't have a way to redo the lookup since we don't have a
-> > pathname that we can look up again...
-> >
-> > So yeah, I guess if you're sitting in a stale directory, something like
-> > that could loop eternally.
-> >
-> > Do you think the proposed check for fatal_signal_pending is enough to
-> > mitigate such a problem? Or do we need to limit the number of retries
-> > to address those sorts of loops?
-> 
-> Lets step back a bit.
-> 
-> The retry is needed when when we discover during ->getattr() that the
-> cached lookup returned a stale file handle.
-> 
-> If the lookup wasn't cached or if there was no lookup at all
-> (stat(".") and friends) then retrying will not gain anything.
-> 
+> If we are adding per-inode flags, then what do we do with filesystem specific
+> flags? e.g. XFS has quite a number of per-inode flags that don't align with
+> any other filesystem (e.g. filestream allocator, real time file, behaviour
+> inheritence flags, etc), but may be useful to retrieve in such a call. We
+> currently have an ioctl to get that information from each inode. Have you
+> thought about how to handle such flags?
 
-That's not necessarily the case, at least not with NFS. It's easily
-possible for you to do a full-fledged lookup over the wire, and then
-for that inode to be removed prior to issuing a call against the FH that
-you got back. 
+I haven't looked at XFS with regard to xstat as yet, so I'm not sure exactly
+which flags you're talking about.  The question, though, is what will actually
+make use of these flags?  Will it just be XFS tools or are they something that
+a GUI might make use of?
 
-> And that also means that retrying multiple times is pointless, since
-> after the first retry we are sure to have up-to-date attributes.
-> 
+Either you can add some of them to the ioc flags (which may be impractical, I
+grant you) or we'd have to add an arbitrary fs-type specific field and specify
+the host fs (the provision of which might not be a bad idea in and of itself)
+to tell userspace how to interpret them.
 
-Again, it's not pointless. It's possible (though somewhat pathological)
-for you to hit the race above more than once in the same operation.
-Granted, it's an unlikely race but it is possible.
+> Along the same lines, filesytsems can have different allocation constraints
+> to IO the filesystem block size - ext4 with it's bigalloc hack, XFS with it's
+> per-inode extent size hints and the realtime device, etc. Then there's
+> optimal IO characteristics (e.g. geometery hints like stripe unit/stripe
+> width for the allocation policy of that given file) that applications could
+> use if they were present rather than having to expose them through ioctls
+> that nobody even knows about...
 
-> Unfortunately it's impossible for the filesystem to know whether a
-> ->getattr (or other inode operation) was perfromed after a cached or a
-> non-cached lookup.
-> 
-> I'm not sure what the right interface for this would be.  One would be
-> to just pass the "cached-or-not" information as a flag.  That works for
-> getattr() but not for other operations.
-> 
-> Another is to introduce atomic lookup+foo variants of these operations
-> just like for open.  E.g. the lookup+getattr is called if the cached
-> lookup fails or if the cached lookup succeeds and the plain ->getattr
-> call returns ESTALE.
->
+Yeah...  Not representable by one number.  You'd have to unset a flag to say
+you were providing this information.
 
-To do that would require protocol support that we simply don't have. We
-don't have a way to (for instance) say via NFS "give me the attributes
-for this filename". Well, at least not for NFSv3...
+However, providing a whole bunch of hints about I/O characteristics is probably
+beyond this syscall - especially if it isn't constant over the length of a
+file.  That's specialist knowledge that most applications don't need to know.
+Having a generic way to retrieve it, though, may be a good idea.
 
-With v4 you could theoretically construct a compound that does that,
-but you'd have to assume that the server won't release the reference to
-the inode midway through the compound. That's a reasonably safe
-assumption.
+OTOH, there's plenty of uncommitted space, so if we can condense the hints down
+to something small, we could perhaps add it later - but from your paragraph
+above, it doesn't sound like it'll be small.
 
-While it's nice to consider new atomic ops like this, it's not really
-possible with earlier versions of NFS.
+> Perhaps also exposing the project ID for quota purposes, like we do UID and
+> GID. That way we wouldn't need a filesystem specific ioctl to read it....
 
--- 
-Jeff Layton <jlayton@redhat.com>
+Is this an XFS only thing?  If so, can it be generalised?
+
+David
