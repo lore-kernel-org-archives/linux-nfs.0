@@ -1,214 +1,164 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx4.science-computing.de ([193.197.16.30]:61480 "EHLO
-	mx4.science-computing.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965522Ab2DLP7S (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Apr 2012 11:59:18 -0400
-Date: Thu, 12 Apr 2012 17:49:28 +0200
-From: Michael Weiser <M.Weiser@science-computing.de>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 post-1.2.2 nfs-utils client fails to mount from
- pre-1.2.3 nfs-utils server
-Message-ID: <20120412154928.GG2351@science-computing.de>
-References: <5dad9f48aa83cc6af5f51fb3a5c076e0.squirrel@webmail.science-computing.de>
- <CAKnQG+f3cG0q8Zoan=cc85qD5MUqqiwgnxFeq1ygTmGip+Kp5w@mail.gmail.com>
- <20120313144214.GB16920@science-computing.de>
- <CAKnQG+ezssmHZCAogTuWC7+ubAn8YjUtOF1MJ0Fw4rr7Z_srhw@mail.gmail.com>
- <20120314134829.GA943@science-computing.de>
- <20120319130043.GG9020@science-computing.de>
- <4F686996.5050108@RedHat.com>
- <20120320174418.GL24828@science-computing.de>
- <20120329140226.GB1362@science-computing.de>
- <4F86EA08.5000308@RedHat.com>
-MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="BOKacYhQ+x31HxR3"
-In-Reply-To: <4F86EA08.5000308@RedHat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:19167 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760916Ab2D0R2B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Apr 2012 13:28:01 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
+        Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v5 7/9] NFS: Remove secinfo knowledge out of the generic client
+Date: Fri, 27 Apr 2012 13:27:44 -0400
+Message-Id: <1335547666-28315-8-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1335547666-28315-1-git-send-email-bjschuma@netapp.com>
+References: <1335547666-28315-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Bryan Schumaker <bjschuma@netapp.com>
 
---BOKacYhQ+x31HxR3
-Content-Disposition: inline
-MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+And also remove the unneeded rpc_op.
 
-Hi Steve,
-
-On Thu, Apr 12, 2012 at 10:43:20AM -0400, Steve Dickson wrote:
-
-> > How do I go about getting this committed?
-> My bad... I'm looking into this now....
-
-Thanks for getting back to me.
-
-> >> I just noticed that while the code bits are optional based on
-> >> HAVE_SET_ALLOWABLE_ENCTYPES, the man page part isn't. I've got no idea,
-> >> how to go about that.
-> I'm think we should remove all those defines and have the code enabled
-> by default. The main reason is defines like that just clutter up the =
-
-> code, plus there would be a needed for another configuration flag
-> which I think is a bit over kill... =
-
-
-Here it is. The whole HAVE_SET_ALLOWABLE_ENCTYPES logic is still in place
-but my code now ignores it. So with a GSSAPI implementation that doesn't
-support it, the -l switch will be accepted by gssd but silently do
-nothing.
-
-Thanks,
--- =
-
-Michael Weiser                science + computing ag
-Senior Systems Engineer       Geschaeftsstelle Duesseldorf
-                              Martinstrasse 47-55, Haus A
-phone: +49 211 302 708 32     D-40223 Duesseldorf
-fax:   +49 211 302 708 50     www.science-computing.de
--- =
-
-Vorstandsvorsitzender/Chairman of the board of management:
-Gerd-Lothar Leonhart
-Vorstand/Board of Management:
-Dr. Bernd Finkbeiner, Michael Heinrichs, =
-
-Dr. Arno Steitz, Dr. Ingrid Zech
-Vorsitzender des Aufsichtsrats/
-Chairman of the Supervisory Board:
-Philippe Miltin
-Sitz/Registered Office: Tuebingen
-Registergericht/Registration Court: Stuttgart
-Registernummer/Commercial Register No.: HRB 382196
-
---BOKacYhQ+x31HxR3
-Content-Type: text/x-diff; charset=iso-8859-1
-Content-Disposition: attachment; filename="0001-Add-l-option-to-gssd-to-force-legacy-behaviour.patch"
-
->From 8ebaf42be06c87f52ca482dd954d4b710452e9e9 Mon Sep 17 00:00:00 2001
-From: Michael Weiser <weiser@science-computing.de>
-Date: Thu, 12 Apr 2012 17:44:12 +0200
-Subject: [PATCH] Add -l option to gssd to force legacy behaviour
-
-Implement a new option -l to force gssd to ignore its kernel's crypto
-capabilities and use just the Single DES legacy encryption types to be
-compatible with old servers. This is only relevant if those servers have
-strong keys in their keytab.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- utils/gssd/gssd.c      |    7 +++++--
- utils/gssd/gssd.man    |   22 +++++++++++++++++++++-
- utils/gssd/krb5_util.c |    4 +++-
- utils/gssd/krb5_util.h |    1 +
- 4 files changed, 30 insertions(+), 4 deletions(-)
+ fs/nfs/internal.h       |    3 ---
+ fs/nfs/namespace.c      |   29 -----------------------------
+ fs/nfs/nfs4_fs.h        |    1 +
+ fs/nfs/nfs4namespace.c  |   29 +++++++++++++++++++++++++++++
+ fs/nfs/nfs4proc.c       |    1 -
+ include/linux/nfs_xdr.h |    1 -
+ 6 files changed, 30 insertions(+), 34 deletions(-)
 
-diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-index d53795e..d4c18a7 100644
---- a/utils/gssd/gssd.c
-+++ b/utils/gssd/gssd.c
-@@ -85,7 +85,7 @@ sig_hup(int signal)
- static void
- usage(char *progname)
- {
--	fprintf(stderr, "usage: %s [-f] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm]\n",
-+	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm]\n",
- 		progname);
- 	exit(1);
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index b777bda..a7e2497 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -280,9 +280,6 @@ extern void nfs_sb_deactive(struct super_block *sb);
+ extern char *nfs_path(char **p, struct dentry *dentry,
+ 		      char *buffer, ssize_t buflen);
+ extern struct vfsmount *nfs_d_automount(struct path *path);
+-#ifdef CONFIG_NFS_V4
+-rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *);
+-#endif
+ 
+ /* getroot.c */
+ extern struct dentry *nfs_get_root(struct super_block *, struct nfs_fh *,
+diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
+index d51868e..2a9591b 100644
+--- a/fs/nfs/namespace.c
++++ b/fs/nfs/namespace.c
+@@ -119,35 +119,6 @@ Elong:
  }
-@@ -102,7 +102,7 @@ main(int argc, char *argv[])
- 	char *progname;
  
- 	memset(ccachesearch, 0, sizeof(ccachesearch));
--	while ((opt = getopt(argc, argv, "fvrmnMp:k:d:t:R:")) != -1) {
-+	while ((opt = getopt(argc, argv, "fvrmnMp:k:ld:t:R")) != -1) {
- 		switch (opt) {
- 			case 'f':
- 				fg = 1;
-@@ -143,6 +143,9 @@ main(int argc, char *argv[])
- 			case 'R':
- 				preferred_realm = strdup(optarg);
- 				break;
-+			case 'l':
-+				limit_to_legacy_enctypes = 1;
-+				break;
- 			default:
- 				usage(argv[0]);
- 				break;
-diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
-index 073379d..fd76bfe 100644
---- a/utils/gssd/gssd.man
-+++ b/utils/gssd/gssd.man
-@@ -6,7 +6,7 @@
- .SH NAME
- rpc.gssd \- rpcsec_gss daemon
- .SH SYNOPSIS
--.B "rpc.gssd [-f] [-n] [-k keytab] [-p pipefsdir] [-v] [-r] [-d ccachedir]"
-+.B "rpc.gssd [-f] [-n] [-k keytab] [-l] [-p pipefsdir] [-v] [-r] [-d ccachedir]"
- .SH DESCRIPTION
- The rpcsec_gss protocol gives a means of using the gss-api generic security
- api to provide security for protocols using rpc (in particular, nfs).  Before
-@@ -70,6 +70,26 @@ for "machine credentials" is now:
- If this search order does not use the correct key then provide a
- keytab file that contains only correct keys.
- .TP
-+.B -l
-+Tells
-+.B rpc.gssd
-+to limit session keys to Single DES even if the kernel supports stronger
-+encryption types. Service ticket encryption is still governed by what
-+the KDC believes the target server supports. This way the client can
-+access a server that has strong keys in its keytab for ticket decryption
-+but whose kernel only supports Single DES.
-+.IP
-+The alternative is to put only Single DES keys in the server's keytab
-+and limit encryption types for its principal to Single DES on the KDC
-+which will cause service tickets for this server to be encrypted using
-+only Single DES and (as a side-effect) contain only Single DES session
-+keys.
-+.IP
-+This legacy behaviour is only required for older servers
-+(pre nfs-utils-1.2.4). If the server has a recent kernel, Kerberos
-+implementation and nfs-utils it will work just fine with stronger
-+encryption.
-+.TP
- .B -p path
- Tells
- .B rpc.gssd
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index 4b13fa1..c84d978 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -129,6 +129,8 @@
- /* Global list of principals/cache file names for machine credentials */
- struct gssd_k5_kt_princ *gssd_k5_kt_princ_list = NULL;
+ #ifdef CONFIG_NFS_V4
+-rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors)
+-{
+-	struct gss_api_mech *mech;
+-	struct xdr_netobj oid;
+-	int i;
+-	rpc_authflavor_t pseudoflavor = RPC_AUTH_UNIX;
+-
+-	for (i = 0; i < flavors->num_flavors; i++) {
+-		struct nfs4_secinfo_flavor *flavor;
+-		flavor = &flavors->flavors[i];
+-
+-		if (flavor->flavor == RPC_AUTH_NULL || flavor->flavor == RPC_AUTH_UNIX) {
+-			pseudoflavor = flavor->flavor;
+-			break;
+-		} else if (flavor->flavor == RPC_AUTH_GSS) {
+-			oid.len  = flavor->gss.sec_oid4.len;
+-			oid.data = flavor->gss.sec_oid4.data;
+-			mech = gss_mech_get_by_OID(&oid);
+-			if (!mech)
+-				continue;
+-			pseudoflavor = gss_svc_to_pseudoflavor(mech, flavor->gss.service);
+-			gss_mech_put(mech);
+-			break;
+-		}
+-	}
+-
+-	return pseudoflavor;
+-}
+-
+ static struct rpc_clnt *nfs_lookup_mountpoint(struct inode *dir,
+ 					      struct qstr *name,
+ 					      struct nfs_fh *fh,
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 8d75021..53a487e 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -206,6 +206,7 @@ extern const struct dentry_operations nfs4_dentry_operations;
+ extern const struct inode_operations nfs4_dir_inode_operations;
  
-+int limit_to_legacy_enctypes = 0;
+ /* nfs4namespace.c */
++rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *);
+ struct rpc_clnt *nfs4_create_sec_client(struct rpc_clnt *, struct inode *, struct qstr *);
+ 
+ /* nfs4proc.c */
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index a7f3ded..a69ee39 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -132,6 +132,35 @@ static size_t nfs_parse_server_name(char *string, size_t len,
+ 	return ret;
+ }
+ 
++rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors)
++{
++	struct gss_api_mech *mech;
++	struct xdr_netobj oid;
++	int i;
++	rpc_authflavor_t pseudoflavor = RPC_AUTH_UNIX;
 +
- /*==========================*/
- /*===  Internal routines ===*/
- /*==========================*/
-@@ -1342,7 +1344,7 @@ limit_krb5_enctypes(struct rpc_gss_sec *sec)
- 	 * If we failed for any reason to produce global
- 	 * list of supported enctypes, use local default here.
- 	 */
--	if (krb5_enctypes == NULL)
-+	if (krb5_enctypes == NULL || limit_to_legacy_enctypes)
- 		maj_stat = gss_set_allowable_enctypes(&min_stat, credh,
- 					&krb5oid, num_enctypes, enctypes);
- 	else
-diff --git a/utils/gssd/krb5_util.h b/utils/gssd/krb5_util.h
-index b42b91e..ddf00ca 100644
---- a/utils/gssd/krb5_util.h
-+++ b/utils/gssd/krb5_util.h
-@@ -38,6 +38,7 @@ void gssd_k5_get_default_realm(char **def_realm);
- #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
- int limit_krb5_enctypes(struct rpc_gss_sec *sec);
- #endif
-+extern int limit_to_legacy_enctypes;
++	for (i = 0; i < flavors->num_flavors; i++) {
++		struct nfs4_secinfo_flavor *flavor;
++		flavor = &flavors->flavors[i];
++
++		if (flavor->flavor == RPC_AUTH_NULL || flavor->flavor == RPC_AUTH_UNIX) {
++			pseudoflavor = flavor->flavor;
++			break;
++		} else if (flavor->flavor == RPC_AUTH_GSS) {
++			oid.len  = flavor->gss.sec_oid4.len;
++			oid.data = flavor->gss.sec_oid4.data;
++			mech = gss_mech_get_by_OID(&oid);
++			if (!mech)
++				continue;
++			pseudoflavor = gss_svc_to_pseudoflavor(mech, flavor->gss.service);
++			gss_mech_put(mech);
++			break;
++		}
++	}
++
++	return pseudoflavor;
++}
++
+ static rpc_authflavor_t nfs4_negotiate_security(struct inode *inode, struct qstr *name)
+ {
+ 	struct page *page;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 75eb883..946f0b6 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6597,7 +6597,6 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
+ 	.close_context  = nfs4_close_context,
+ 	.open_context	= nfs4_atomic_open,
+ 	.init_client	= nfs4_init_client,
+-	.secinfo	= nfs4_proc_secinfo,
+ };
+ 
+ static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 7ba3551..6cba0a1 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1289,7 +1289,6 @@ struct nfs_rpc_ops {
+ 				struct iattr *iattr);
+ 	int	(*init_client) (struct nfs_client *, const struct rpc_timeout *,
+ 				const char *, rpc_authflavor_t, int);
+-	int	(*secinfo)(struct inode *, const struct qstr *, struct nfs4_secinfo_flavors *);
+ };
  
  /*
-  * Hide away some of the MIT vs. Heimdal differences
 -- 
-1.7.3.4
-
-
---BOKacYhQ+x31HxR3--
+1.7.10
 
