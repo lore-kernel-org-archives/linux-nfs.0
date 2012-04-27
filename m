@@ -1,62 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:42250 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:51231 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751748Ab2D1UZ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 28 Apr 2012 16:25:29 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 00/11] Optimise away unnecessary NFSv4 post-op attributes
-Date: Sat, 28 Apr 2012 16:25:09 -0400
-Message-Id: <1335644720-28305-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1760272Ab2D0PLZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Apr 2012 11:11:25 -0400
+Date: Fri, 27 Apr 2012 11:10:57 -0400
+To: Dave Chinner <david@fromorbit.com>
+Cc: David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
+        wine-devel@winehq.org, kfm-devel@kde.org, nautilus-list@gnome.org,
+        linux-api@vger.kernel.org, libc-alpha@sourceware.org
+Subject: Re: [PATCH 0/6] Extended file stat system call
+Message-ID: <20120427151057.GA16580@fieldses.org>
+References: <20120427010610.GE9541@dastard>
+ <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+ <4111.1335519545@redhat.com>
+ <20120427131306.GG9541@dastard>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120427131306.GG9541@dastard>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The following set of patches adds support for simulating 'change attributes'
-in NFSv2/v3 by converting the file ctime into a 64-bit value that can
-be stored in inode->i_version.
-With this change, we can then proceed to simplify the attribute cache
-consistency code so that it only uses the change attribute to determine
-whether or not the data and attribute caches are consistent.
+On Fri, Apr 27, 2012 at 11:13:06PM +1000, Dave Chinner wrote:
+> Right now it is, but there's ben patches in the past to introduce
+> project quotas to ext4. That didn't go far because it was done in a
+> way that was semantically different to XFS (for no reason that I
+> could understand) and nobody wanted two different sets of semantics
+> for the "same" feature.  The most common use of project quotas is to
+> implement sub-tree quotas,
 
-Once the cache consistency only depends on the change attribute, we
-can optimise away unnecessary requests for the directory post-op
-attributes on NFSv4 OPEN, CREATE, REMOVE, LINK and RENAME compounds,
-since those operations all supply a 'change_info4' field describing
-the directory change attribute.
+(Though it's also useful as a way to do safe subtree NFS exports).
 
-Finally, we can stop requesting cache consistency attributes altogether
-for O_DIRECT writes and commits (they are uncached) as well as for
-delegated writes and commits.
+--b.
 
-v2: Don't request cache consistency attributes on writes and commits
-    Delegreturn only needs the cache consistency bitmask
-    Simplify the simulated change attribute calculation for v2/v3
-v3: Fix a race in delegreturn
-
-Trond Myklebust (11):
-  NFSv4: Fix a typo in NFS4_enc_link_sz
-  NFSv4: Delegreturn only needs the cache consistency bitmask
-  NFSv4: Retrieve attributes _before_ calling delegreturn
-  NFS: Simplify nfs_fhget()
-  NFS: Change attribute updates should set NFS_INO_REVAL_PAGECACHE
-  NFSv2/v3: Simulate the change attribute
-  NFS: Simplify the cache invalidation code
-  NFSv4: Simplify the NFSv4 OPEN compound
-  NFSv4: Simplify the NFSv4 CREATE compound
-  NFSv4: Simplify the NFSv4 REMOVE, LINK and RENAME compounds
-  NFSv4: Don't request cache consistency attributes on some writes and
-    commits
-
- fs/nfs/client.c         |    2 +-
- fs/nfs/inode.c          |   58 +++++++-----------------------
- fs/nfs/internal.h       |   12 ++++++
- fs/nfs/nfs2xdr.c        |    2 +
- fs/nfs/nfs3xdr.c        |    3 ++
- fs/nfs/nfs4proc.c       |   88 ++++++++++++++++++++---------------------------
- fs/nfs/nfs4xdr.c        |   82 +++++--------------------------------------
- include/linux/nfs_xdr.h |   11 ++----
- 8 files changed, 82 insertions(+), 176 deletions(-)
-
--- 
-1.7.7.6
-
+> which is probably of more interest to
+> btrfs folks as it is an exact match for per-subvolume quotas.
+> 
+> So, yes, I do see it as something generically useful - it's a
+> feature that a lot of people use XFS specifically for....
+> 
+> Cheers,
+> 
+> Dave.
+> -- 
+> Dave Chinner
+> david@fromorbit.com
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
