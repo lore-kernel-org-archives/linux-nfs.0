@@ -1,104 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:3740 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:24513 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755770Ab2DXQUp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Apr 2012 12:20:45 -0400
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: Jim Rees <rees@umich.edu>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "<chuck.lever@oracle.com>" <chuck.lever@oracle.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs4: fix referrals on mounts that use IPv6 addrs
-Date: Tue, 24 Apr 2012 16:20:43 +0000
-Message-ID: <9B2A7080-EE63-4EE7-B13C-50B51655EDDE@netapp.com>
-References: <1335279471-46782-1-git-send-email-dros@netapp.com>
- <20120424151924.GA13191@umich.edu>
-In-Reply-To: <20120424151924.GA13191@umich.edu>
-Content-Type: multipart/signed;
-	boundary="Apple-Mail=_1FCCD454-132B-42D1-985D-6ABDF54BEB51";
-	protocol="application/pkcs7-signature"; micalg=sha1
-MIME-Version: 1.0
+	id S1755055Ab2D0Vpg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Apr 2012 17:45:36 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 4 11/13] NFSv4.1 ref count nfs_client across filelayout data server io
+Date: Fri, 27 Apr 2012 17:53:51 -0400
+Message-Id: <1335563633-7191-12-git-send-email-andros@netapp.com>
+In-Reply-To: <1335563633-7191-1-git-send-email-andros@netapp.com>
+References: <1335563633-7191-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Apple-Mail=_1FCCD454-132B-42D1-985D-6ABDF54BEB51
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+From: Andy Adamson <andros@netapp.com>
 
+Prepare to put a dis-connected DS client record.
 
-On Apr 24, 2012, at 11:19 AM, Jim Rees wrote:
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |   26 +++++++++++++++++++++-----
+ 1 files changed, 21 insertions(+), 5 deletions(-)
 
-> Weston Andros Adamson wrote:
->=20
->  diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
->  index 9c8eca3..307743d 100644
->  --- a/fs/nfs/nfs4namespace.c
->  +++ b/fs/nfs/nfs4namespace.c
->  @@ -52,6 +52,35 @@ Elong:
->   }
->=20
->   /*
->  + * parse the path component of an nfs path ("<server>:<path>").
->  + *  nfspath - the "<server>:<path>" string
->  + *  end - pointer to end of devname component of 'nfspath'
->  + * returns NULL on failure
->  + */
->=20
-> The comment seems odd to me.  You're not parsing the path component, =
-you're
-> parsing the nfspath to return the path.  And the term "devname =
-component"
-> hasn't been defined anywhere.  How about this:
->=20
-> Return the path component of an nfs path ("<server>:<path>").
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index c6b7c18..eb8eb00 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -101,6 +101,9 @@ static void filelayout_reset_write(struct nfs_write_data *data)
+ 							&hdr->pages,
+ 							hdr->completion_ops);
+ 	}
++	/* balance nfs_get_client in filelayout_write_pagelist */
++	nfs_put_client(data->ds_clp);
++	data->ds_clp     = NULL;
+ }
+ 
+ static void filelayout_reset_read(struct nfs_read_data *data)
+@@ -122,6 +125,9 @@ static void filelayout_reset_read(struct nfs_read_data *data)
+ 							&hdr->pages,
+ 							hdr->completion_ops);
+ 	}
++	/* balance nfs_get_client in filelayout_read_pagelist */
++	nfs_put_client(data->ds_clp);
++	data->ds_clp = NULL;
+ }
+ 
+ static int filelayout_async_handle_error(struct rpc_task *task,
+@@ -298,6 +304,8 @@ static void filelayout_read_release(void *data)
+ {
+ 	struct nfs_read_data *rdata = data;
+ 
++	if (!test_bit(NFS_IOHDR_REDO, &rdata->header->flags))
++		nfs_put_client(rdata->ds_clp);
+ 	rdata->header->mds_ops->rpc_release(data);
+ }
+ 
+@@ -395,6 +403,8 @@ static void filelayout_write_release(void *data)
+ {
+ 	struct nfs_write_data *wdata = data;
+ 
++	if (!test_bit(NFS_IOHDR_REDO, &wdata->header->flags))
++		nfs_put_client(wdata->ds_clp);
+ 	wdata->header->mds_ops->rpc_release(data);
+ }
+ 
+@@ -431,6 +441,7 @@ static void filelayout_commit_release(void *calldata)
+ 
+ 	data->completion_ops->completion(data);
+ 	put_lseg(data->lseg);
++	nfs_put_client(data->ds_clp);
+ 	nfs_commitdata_release(data);
+ }
+ 
+@@ -476,9 +487,11 @@ filelayout_read_pagelist(struct nfs_read_data *data)
+ 	ds = nfs4_fl_prepare_ds(lseg, idx);
+ 	if (!ds)
+ 		return PNFS_NOT_ATTEMPTED;
+-	dprintk("%s USE DS: %s\n", __func__, ds->ds_remotestr);
++	dprintk("%s USE DS: %s cl_count %d\n", __func__,
++		ds->ds_remotestr, atomic_read(&ds->ds_clp->cl_count));
+ 
+ 	/* No multipath support. Use first DS */
++	atomic_inc(&ds->ds_clp->cl_count);
+ 	data->ds_clp = ds->ds_clp;
+ 	fh = nfs4_fl_select_ds_fh(lseg, j);
+ 	if (fh)
+@@ -512,11 +525,12 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
+ 	ds = nfs4_fl_prepare_ds(lseg, idx);
+ 	if (!ds)
+ 		return PNFS_NOT_ATTEMPTED;
+-	dprintk("%s ino %lu sync %d req %Zu@%llu DS: %s\n", __func__,
+-		hdr->inode->i_ino, sync, (size_t) data->args.count, offset,
+-		ds->ds_remotestr);
++	dprintk("%s ino %lu sync %d req %Zu@%llu DS: %s cl_count %d\n",
++		__func__, hdr->inode->i_ino, sync, (size_t) data->args.count,
++		offset, ds->ds_remotestr, atomic_read(&ds->ds_clp->cl_count));
+ 
+ 	data->write_done_cb = filelayout_write_done_cb;
++	atomic_inc(&ds->ds_clp->cl_count);
+ 	data->ds_clp = ds->ds_clp;
+ 	fh = nfs4_fl_select_ds_fh(lseg, j);
+ 	if (fh)
+@@ -1048,8 +1062,10 @@ static int filelayout_initiate_commit(struct nfs_commit_data *data, int how)
+ 		filelayout_commit_release(data);
+ 		return -EAGAIN;
+ 	}
+-	dprintk("%s ino %lu, how %d\n", __func__, data->inode->i_ino, how);
++	dprintk("%s ino %lu, how %d cl_count %d\n", __func__,
++		data->inode->i_ino, how, atomic_read(&ds->ds_clp->cl_count));
+ 	data->commit_done_cb = filelayout_commit_done_cb;
++	atomic_inc(&ds->ds_clp->cl_count);
+ 	data->ds_clp = ds->ds_clp;
+ 	fh = select_ds_fh_from_commit(lseg, data->ds_commit_index);
+ 	if (fh)
+-- 
+1.7.6.4
 
-Yeah, OK.
-
-> nfspath - the "<server>:<path>" string
-> end - pointer to end of nfspath
-
-Well, that's not really true.  "end" comes from the call to nfs_path() =
-and points to the end of the devname component of the nfs_path, i.e.:
-
-if "[fc00::10]:/export" is mounted:
-
-[fc00::10]:/export/foo/bar
-                  ^end
-
-> returns NULL on failure
-
--dros=
-
---Apple-Mail=_1FCCD454-132B-42D1-985D-6ABDF54BEB51
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-
-MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIDTzCCA0sw
-ggIzoAMCAQICAQEwCwYJKoZIhvcNAQEFMEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYD
-VQQGEwJVUzEeMBwGCSqGSIb3DQEJARYPZHJvc0BuZXRhcHAuY29tMB4XDTExMDYwODIyMDc0NloX
-DTEyMDYwNzIyMDc0NlowRjEXMBUGA1UEAwwOV2VzdG9uIEFkYW1zb24xCzAJBgNVBAYTAlVTMR4w
-HAYJKoZIhvcNAQkBFg9kcm9zQG5ldGFwcC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
-AoIBAQC8/tJxtovJEXYRfSsrFOWKHxIZGY7/2mBee1DpWuoGDbVNapefCC7WXe+Nqxz609w2J/Mk
-/k3trZ3Ge2NXK0tGnP9NzjkzpGA7rSpM3wUFsvbLMUEGfQpvV24/nYvcLHTvOOEUaDPpHduN94bD
-dwvyowzDIRIpF2MeRnOzBNeHkrGHlZdzPmGjm8tkhrDRRkDYHhlxaiG4z30KCfAazxomuINiy1kj
-vbndXooYMDoh9H63hgW4NkOedtLdflLa322DXQ3nFU7YbyOIjHVl1tgWJLDWf7WT3lsAB8KvuJZ5
-zhsUB+fqxCKPJVRPDO1gjChvvtGiG1tGUUZz0H9Wx00zAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIH
-gDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDBDAaBgNVHREEEzARgQ9kcm9zQG5ldGFwcC5jb20wDQYJ
-KoZIhvcNAQEFBQADggEBACv0niZSmW+psB1sJXULh3mecDbN2mj0bFpN1YNdjcV7BiOLJ1Rs1ibV
-f13h73z8C7SBsPXTM5si8gmJtOnXM5jsgtlql44h/RrjUr8+mtK5DPCZls9J7iz3cGthzwOPvxUj
-nMSv3BpRX5oJom5ESgCM9Nn4u/ECTlLMhEIOYnBFiN0eDxcxz+r1cpbHg3r0otIKyxLpeaCjP6AH
-F93EHp4T8Rb63y3CcDgxrQGHlTdVi3QvxaMUexUXD81fiA+UqsB/MKmRxB1Hs4Vf3Q/+ejcm78K1
-ROF8TNPmNWRlKg3Y7cSFjZGzLuzXsvSsCbw4HLn0oZe/OfgSbarTAxttL5IxggHRMIIBzQIBATBL
-MEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYDVQQGEwJVUzEeMBwGCSqGSIb3DQEJARYP
-ZHJvc0BuZXRhcHAuY29tAgEBMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
-MBwGCSqGSIb3DQEJBTEPFw0xMjA0MjQxNjIwNDNaMCMGCSqGSIb3DQEJBDEWBBR19I2W1D9meT4P
-l+G81R/muUHC6DANBgkqhkiG9w0BAQEFAASCAQCuaISAAiNe4Y6IXbWqf5ihNQI6gENEbJayjCtP
-n4gcVMtJTjaGS8YWe4QW4TVL9gGHTnHdfeZIpppnrasfvds7GPlsgfff8ZY2mS7W64ftnkncCLQs
-uY4VWjtbDUnXCbigxIRORKNquZ1TzDt+792zVr5qiTSWZPwlS9F7pMQ60QHY5eBO3wMSzu58I8UV
-QQkqfH5kBj/XIEoGkqQYLfp2SEPjNHY+peOEPItDqhHJpBrb1S/Sj9OLvSQ+6rRYKAFMfrqLiSka
-Pioa9S1O0cUPJsJdOO4ZaKhBhsE6YRzkEBfuslMJoH3uVVj/SodpisKHT3kOBGV4dT79VVVR1Kj5
-AAAAAAAA
-
---Apple-Mail=_1FCCD454-132B-42D1-985D-6ABDF54BEB51--
