@@ -1,38 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:34180 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:60173 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757367Ab2DTSgr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 14:36:47 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH v2 01/28] NFS: check for req==NULL in nfs_try_to_update_request cleanup
-Date: Fri, 20 Apr 2012 14:35:43 -0400
-Message-Id: <1334946970-27470-2-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
-References: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
+	id S1759972Ab2D0POj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Apr 2012 11:14:39 -0400
+Date: Fri, 27 Apr 2012 11:14:06 -0400
+From: Josh Boyer <jwboyer@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Jim Rees <rees@umich.edu>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: Add modalias for "nfs4"
+Message-ID: <20120427151406.GD13189@zod.bos.redhat.com>
+References: <20120427131031.GA13189@zod.bos.redhat.com>
+ <20120427141918.GA15506@umich.edu>
+ <20120427144840.GB13189@zod.bos.redhat.com>
+ <1335538228.3910.1.camel@lade.trondhjem.org>
+ <20120427145352.GC13189@zod.bos.redhat.com>
+ <1335538927.3910.3.camel@lade.trondhjem.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1335538927.3910.3.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/write.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+On Fri, Apr 27, 2012 at 03:02:07PM +0000, Myklebust, Trond wrote:
+> On Fri, 2012-04-27 at 10:53 -0400, Josh Boyer wrote:
+> > On Fri, Apr 27, 2012 at 02:50:28PM +0000, Myklebust, Trond wrote:
+> > > On Fri, 2012-04-27 at 10:48 -0400, Josh Boyer wrote:
+> > > > On Fri, Apr 27, 2012 at 10:19:18AM -0400, Jim Rees wrote:
+> > > > > Josh Boyer wrote:
+> > > > > 
+> > > > >   When NFSv4 is configured, the support goes into the nfs.ko module.
+> > > > >   However, nfs-utils seems to pass "nfs4" as the fileststem type for
+> > > > >   NFSv4 mounts.
+> > > > > 
+> > > > > Weren't we going to change that to nfs and use nfsvers to select nfs4?
+> > > > 
+> > > > I have, approximately, no idea.  At least the version of nfs-utils found
+> > > > in Fedora 17 and rawhide, it's still using "nfs4".   I believe that is
+> > > > nfs-utils-1.2.6-rc6 based.
+> > > 
+> > > nfs4 is still _supported_ in Fedora 17, rawhide and upstream as a legacy
+> > > feature, but the recommended practice should be to mount -t nfs -overs=4
+> > > (or -overs=4.1).
+> > 
+> > OK.  So either this patch needs to go in, or something needs to add:
+> > 
+> > alias nfs4 nfs
+> > 
+> > to a conf file so modprobe picks it up.  I figured the kernel could add
+> > the alias itself.  Is there a reason not to?
+> 
+> Yes. This is a legacy feature that we want to encourage people to move
+> their systems off...
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 2c68818..9b8d4d4 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -682,7 +682,8 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
- 		req->wb_bytes = rqend - req->wb_offset;
- out_unlock:
- 	spin_unlock(&inode->i_lock);
--	nfs_clear_request_commit(req);
-+	if (req)
-+		nfs_clear_request_commit(req);
- 	return req;
- out_flushme:
- 	spin_unlock(&inode->i_lock);
--- 
-1.7.2.1
+So essentially what needs to happen is:
 
+- Recent distros still ship the modalias in a conf file
+- Upstream nfs-utils starts translating 'mount -t nfs4' into 'mount -t
+  nfs -overs=4' in /sbin/mount.nfs4
+- Upstream releases that
+- Distros drop the alias.
+
+Right?
+
+josh
