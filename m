@@ -1,180 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48076 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759593Ab2DKQLW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Apr 2012 12:11:22 -0400
-Date: Wed, 11 Apr 2012 12:11:14 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, xemul@parallels.com,
-        neilb@suse.de, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, davem@davemloft.net, devel@openvz.org
-Subject: Re: [PATCH v2] Lockd: pass network namespace to creation and
- destruction routines
-Message-ID: <20120411161114.GB28928@fieldses.org>
-References: <20120329145421.31911.65512.stgit@localhost6.localdomain6>
+Received: from relay.parallels.com ([195.214.232.42]:39906 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759972Ab2D0OIU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Apr 2012 10:08:20 -0400
+Message-ID: <4F9AA84D.8090604@parallels.com>
+Date: Fri, 27 Apr 2012 18:08:13 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120329145421.31911.65512.stgit@localhost6.localdomain6>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH 2/3] SUNRPC: check rpcbind clients usage counter before
+ decrement
+References: <20120425132314.13800.6813.stgit@localhost6.localdomain6> <20120425133749.13800.24003.stgit@localhost6.localdomain6> <20120427135507.GE14973@fieldses.org>
+In-Reply-To: <20120427135507.GE14973@fieldses.org>
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 29, 2012 at 06:54:33PM +0400, Stanislav Kinsbursky wrote:
-> v2: dereference of most probably already released nlm_host removed in
-> nlmclnt_done() and reclaimer().
+On 27.04.2012 17:55, J. Bruce Fields wrote:
+> On Wed, Apr 25, 2012 at 05:37:49PM +0400, Stanislav Kinsbursky wrote:
+>> Registering service with svc_bind() can fail. In this case service will be
+>> destroyed and during destruction it will try to unregister itself from rpcbind.
+>> In this case unregister have to be skipped.
+>
+> Isn't this a preexisting bug, in which case perhaps Trond should at it
+> to his list of bugs to submit now?
+>
 
-Did you want this in Trond's tree or mine?
+Not it's not.
 
---b.
+Previously, in case of bind operations failure, rpcb_put_local() wasn't called, 
+but service data was destroyed instead:
 
-> 
-> These routines are called from locks reclaimer() kernel thread. This thread
-> works in "init_net" network context and currently relays on persence on lockd
-> thread and it's per-net resources. Thus lockd_up() and lockd_down() can't relay
-> on current network context. So let's pass corrent one into them.
-> 
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> 
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> 
-> ---
->  fs/lockd/clntlock.c        |   13 ++++++++-----
->  fs/lockd/svc.c             |    7 +++----
->  fs/nfsd/nfssvc.c           |    6 +++---
->  include/linux/lockd/bind.h |    4 ++--
->  4 files changed, 16 insertions(+), 14 deletions(-)
-> 
-> diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
-> index ba1dc2e..ca0a080 100644
-> --- a/fs/lockd/clntlock.c
-> +++ b/fs/lockd/clntlock.c
-> @@ -56,7 +56,7 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
->  	u32 nlm_version = (nlm_init->nfs_version == 2) ? 1 : 4;
->  	int status;
->  
-> -	status = lockd_up();
-> +	status = lockd_up(nlm_init->net);
->  	if (status < 0)
->  		return ERR_PTR(status);
->  
-> @@ -65,7 +65,7 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
->  				   nlm_init->hostname, nlm_init->noresvport,
->  				   nlm_init->net);
->  	if (host == NULL) {
-> -		lockd_down();
-> +		lockd_down(nlm_init->net);
->  		return ERR_PTR(-ENOLCK);
->  	}
->  
-> @@ -80,8 +80,10 @@ EXPORT_SYMBOL_GPL(nlmclnt_init);
->   */
->  void nlmclnt_done(struct nlm_host *host)
->  {
-> +	struct net *net = host->net;
-> +
->  	nlmclnt_release_host(host);
-> -	lockd_down();
-> +	lockd_down(net);
->  }
->  EXPORT_SYMBOL_GPL(nlmclnt_done);
->  
-> @@ -220,11 +222,12 @@ reclaimer(void *ptr)
->  	struct nlm_wait	  *block;
->  	struct file_lock *fl, *next;
->  	u32 nsmstate;
-> +	struct net *net = host->net;
->  
->  	allow_signal(SIGKILL);
->  
->  	down_write(&host->h_rwsem);
-> -	lockd_up();	/* note: this cannot fail as lockd is already running */
-> +	lockd_up(net);	/* note: this cannot fail as lockd is already running */
->  
->  	dprintk("lockd: reclaiming locks for host %s\n", host->h_name);
->  
-> @@ -275,6 +278,6 @@ restart:
->  
->  	/* Release host handle after use */
->  	nlmclnt_release_host(host);
-> -	lockd_down();
-> +	lockd_down(net);
->  	return 0;
->  }
-> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-> index b34100e..ce4c80e 100644
-> --- a/fs/lockd/svc.c
-> +++ b/fs/lockd/svc.c
-> @@ -295,11 +295,10 @@ static void lockd_down_net(struct net *net)
->  /*
->   * Bring up the lockd process if it's not already up.
->   */
-> -int lockd_up(void)
-> +int lockd_up(struct net *net)
->  {
->  	struct svc_serv *serv;
->  	int		error = 0;
-> -	struct net *net = current->nsproxy->net_ns;
->  
->  	mutex_lock(&nlmsvc_mutex);
->  	/*
-> @@ -377,12 +376,12 @@ EXPORT_SYMBOL_GPL(lockd_up);
->   * Decrement the user count and bring down lockd if we're the last.
->   */
->  void
-> -lockd_down(void)
-> +lockd_down(struct net *net)
->  {
->  	mutex_lock(&nlmsvc_mutex);
->  	if (nlmsvc_users) {
->  		if (--nlmsvc_users) {
-> -			lockd_down_net(current->nsproxy->net_ns);
-> +			lockd_down_net(net);
->  			goto out;
->  		}
->  	} else {
-> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> index fce472f..0f3e35b 100644
-> --- a/fs/nfsd/nfssvc.c
-> +++ b/fs/nfsd/nfssvc.c
-> @@ -220,7 +220,7 @@ static int nfsd_startup(unsigned short port, int nrservs)
->  	ret = nfsd_init_socks(port);
->  	if (ret)
->  		goto out_racache;
-> -	ret = lockd_up();
-> +	ret = lockd_up(&init_net);
->  	if (ret)
->  		goto out_racache;
->  	ret = nfs4_state_start();
-> @@ -229,7 +229,7 @@ static int nfsd_startup(unsigned short port, int nrservs)
->  	nfsd_up = true;
->  	return 0;
->  out_lockd:
-> -	lockd_down();
-> +	lockd_down(&init_net);
->  out_racache:
->  	nfsd_racache_shutdown();
->  	return ret;
-> @@ -246,7 +246,7 @@ static void nfsd_shutdown(void)
->  	if (!nfsd_up)
->  		return;
->  	nfs4_state_shutdown();
-> -	lockd_down();
-> +	lockd_down(&init_net);
->  	nfsd_racache_shutdown();
->  	nfsd_up = false;
->  }
-> diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
-> index 11a966e..4d24d64 100644
-> --- a/include/linux/lockd/bind.h
-> +++ b/include/linux/lockd/bind.h
-> @@ -54,7 +54,7 @@ extern void	nlmclnt_done(struct nlm_host *host);
->  
->  extern int	nlmclnt_proc(struct nlm_host *host, int cmd,
->  					struct file_lock *fl);
-> -extern int	lockd_up(void);
-> -extern void	lockd_down(void);
-> +extern int	lockd_up(struct net *net);
-> +extern void	lockd_down(struct net *net);
->  
->  #endif /* LINUX_LOCKD_BIND_H */
-> 
+-	if (svc_uses_rpcbind(serv)) {
+-		if (svc_rpcb_setup(serv, current->nsproxy->net_ns) < 0) {
+-			kfree(serv->sv_pools);
+-			kfree(serv);
+-			return NULL;
+-		}
+-		if (!serv->sv_shutdown)
+-			serv->sv_shutdown = svc_rpcb_cleanup;
+-	}
+
+Now (with svc_bind() introduction) service can be created, but svc_bind() could 
+fail. And thus svc_destroy() have to be called. Which will call rpcb_put_local().
+
+And the problem here that svc_bind() can fail before incrementing of rpcb usage 
+counter.
+
+> --b.
+>
+>>
+>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
+>>
+>> ---
+>>   net/sunrpc/rpcb_clnt.c |   12 +++++++-----
+>>   1 files changed, 7 insertions(+), 5 deletions(-)
+>>
+>> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+>> index 78ac39f..4c38b33 100644
+>> --- a/net/sunrpc/rpcb_clnt.c
+>> +++ b/net/sunrpc/rpcb_clnt.c
+>> @@ -180,14 +180,16 @@ void rpcb_put_local(struct net *net)
+>>   	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+>>   	struct rpc_clnt *clnt = sn->rpcb_local_clnt;
+>>   	struct rpc_clnt *clnt4 = sn->rpcb_local_clnt4;
+>> -	int shutdown;
+>> +	int shutdown = 0;
+>>
+>>   	spin_lock(&sn->rpcb_clnt_lock);
+>> -	if (--sn->rpcb_users == 0) {
+>> -		sn->rpcb_local_clnt = NULL;
+>> -		sn->rpcb_local_clnt4 = NULL;
+>> +	if (sn->rpcb_users) {
+>> +		if (--sn->rpcb_users == 0) {
+>> +			sn->rpcb_local_clnt = NULL;
+>> +			sn->rpcb_local_clnt4 = NULL;
+>> +		}
+>> +		shutdown = !sn->rpcb_users;
+>>   	}
+>> -	shutdown = !sn->rpcb_users;
+>>   	spin_unlock(&sn->rpcb_clnt_lock);
+>>
+>>   	if (shutdown) {
+>>
+
+
+-- 
+Best regards,
+Stanislav Kinsbursky
