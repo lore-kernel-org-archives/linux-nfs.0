@@ -1,46 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:48757 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757495Ab2DTTqe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 15:46:34 -0400
-Received: from vmwexceht02-prd.hq.netapp.com (vmwexceht02-prd.hq.netapp.com [10.106.76.240])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q3KJkHsR012406
-	for <linux-nfs@vger.kernel.org>; Fri, 20 Apr 2012 12:46:17 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Isaman, Fred" <Fred.Isaman@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 18/25] NFS: prepare coalesce testing for directio
-Date: Fri, 20 Apr 2012 19:46:16 +0000
-Message-ID: <1334951175.3295.17.camel@lade.trondhjem.org>
-References: <1334947677-28864-1-git-send-email-iisaman@netapp.com>
-	 <1334947677-28864-19-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334947677-28864-19-git-send-email-iisaman@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-pz0-f51.google.com ([209.85.210.51]:53141 "EHLO
+	mail-pz0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761186Ab2D0Sn5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Apr 2012 14:43:57 -0400
+Received: by dadz8 with SMTP id z8so1352952dad.10
+        for <linux-nfs@vger.kernel.org>; Fri, 27 Apr 2012 11:43:57 -0700 (PDT)
+Subject: Re: [PATCH 0/6] Extended file stat system call
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+From: Andreas Dilger <adilger@whamcloud.com>
+In-Reply-To: <20120427010610.GE9541@dastard>
+Date: Thu, 26 Apr 2012 21:22:04 -0600
+Cc: David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
+        wine-devel@winehq.org, kfm-devel@kde.org, nautilus-list@gnome.org,
+        linux-api@vger.kernel.org, libc-alpha@sourceware.org
+Message-Id: <ED5B8F1B-6C99-4516-85FA-A767E94B635F@dilger.ca>
+References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <20120427010610.GE9541@dastard>
+To: Dave Chinner <david@fromorbit.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTA0LTIwIGF0IDE0OjQ3IC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
-VGhlIGNvYWxlc2NlIGNvZGUgbWFkZSBhc3N1bXB0aW9ucyB0aGF0IHdpbGwgbm8gbG9uZ2VyIGJl
-IHRydWUgb25jZQ0KPiBub24tcGFnZSBhbGlnbmVkIGlvIG9jY3Vycy4gIFRoaXMgaW50cm9kdWNl
-cyBubyBjaGFuZ2UgaW4NCj4gY3VycmVudCBiZWhhdmlvciwgYnV0IGFsbG93cyBmb3IgbW9yZSBn
-ZW5lcmFsIHNpdHVhdGlvbnMgdG8gY29tZS4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IEZyZWQgSXNh
-bWFuIDxpaXNhbWFuQG5ldGFwcC5jb20+DQo+IC0tLQ0KPiAgZnMvbmZzL25mczRmaWxlbGF5b3V0
-LmMgfCAgIDEyICsrKysrKysrKysrKw0KPiAgZnMvbmZzL3BhZ2VsaXN0LmMgICAgICAgfCAgICAy
-ICstDQo+ICBmcy9uZnMvcG5mcy5jICAgICAgICAgICB8ICAgIDggKysrKysrKysNCj4gIDMgZmls
-ZXMgY2hhbmdlZCwgMjEgaW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYg
-LS1naXQgYS9mcy9uZnMvcGFnZWxpc3QuYyBiL2ZzL25mcy9wYWdlbGlzdC5jDQo+IGluZGV4IDVk
-MDFhMTYuLmIzNDQ5NDYgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9wYWdlbGlzdC5jDQo+ICsrKyBi
-L2ZzL25mcy9wYWdlbGlzdC5jDQo+IEBAIC0yODAsNyArMjgwLDcgQEAgc3RhdGljIGJvb2wgbmZz
-X2Nhbl9jb2FsZXNjZV9yZXF1ZXN0cyhzdHJ1Y3QgbmZzX3BhZ2UgKnByZXYsDQo+ICAJCXJldHVy
-biBmYWxzZTsNCj4gIAlpZiAocmVxLT53Yl9jb250ZXh0LT5zdGF0ZSAhPSBwcmV2LT53Yl9jb250
-ZXh0LT5zdGF0ZSkNCj4gIAkJcmV0dXJuIGZhbHNlOw0KPiAtCWlmIChyZXEtPndiX2luZGV4ICE9
-IChwcmV2LT53Yl9pbmRleCArIDEpKQ0KPiArCWlmIChyZXFfb2Zmc2V0KHJlcSkgIT0gcmVxX29m
-ZnNldChwcmV2KSArIHByZXYtPndiX2J5dGVzKQ0KDQpDYW4gd2UgbWljcm8tb3B0aW1pc2UgdGhp
-cyBqdXN0IGEgdGVlbnN5IGJpdCBieSBtb3ZpbmcgaXQgdW50aWwgYWZ0ZXINCnRoZSByZXEtPndi
-X2Jhc2UgYW5kIHByZXYtPndiX2Jhc2UgdGVzdHM/IFNpbmNlIHRob3NlIGFyZQ0KY29tcHV0YXRp
-b25hbGx5IHNpbXBsZXIsIGRvaW5nIHRoZW0gZmlyc3QgbWlnaHQgbWFrZSB0aGUgImNhbid0DQpj
-b2FsZXNjZSIgdGVzdCBhIGxpdHRsZSBmYXN0ZXIuDQoNCj4gIAkJcmV0dXJuIGZhbHNlOw0KPiAg
-CWlmIChyZXEtPndiX3BnYmFzZSAhPSAwKQ0KPiAgCQlyZXR1cm4gZmFsc2U7DQoNCg0KLS0gDQpU
-cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRy
-b25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+On 2012-04-26, at 7:06 PM, Dave Chinner wrote:
+> On Thu, Apr 19, 2012 at 03:05:58PM +0100, David Howells wrote:
+>> 
+>> Implement a pair of new system calls to provide extended and further extensible stat functions.
+>> 
+>> The second of the associated patches is the main patch that provides these new system calls:
+>> 
+>> 	ssize_t ret = xstat(int dfd,
+>> 			    const char *filename,
+>> 			    unsigned atflag,
+>> 			    unsigned mask,
+>> 			    struct xstat *buffer);
+>> 
+>> 	ssize_t ret = fxstat(int fd,
+>> 			     unsigned atflag,
+>> 			     unsigned mask,
+>> 			     struct xstat *buffer);
+>> 
+>> which are more fully documented in the first patch's description.
+>> 
+>> These new stat functions provide a number of useful features, in summary:
+>> 
+>> (1) More information: creation time, inode generation number, data
+>>     version number, flags/attributes.  A subset of these is available
+>>     through a number of filesystems (CIFS, NFS, AFS, Ext4 and BTRFS).
+> 
+> If we are adding per-inode flags, then what do we do with filesystem
+> specific flags? e.g. XFS has quite a number of per-inode flags that
+> don't align with any other filesystem (e.g. filestream allocator,
+> real time file, behaviour inheritence flags, etc), but may be useful
+> to retrieve in such a call. We currently have an ioctl to get that
+> information from each inode. Have you thought about how to handle
+> such flags?
+
+I'm sympathetic to your cause, but I don't want this to degrade into
+the same morass that it did last time when every attribute under the
+sun was added to the call.  The intent is to replace the stat() call
+with something that can avoid overhead on filesystems for which some
+attributes are expensive, and that applications may not need.  Some
+common attributes were added that are used by multiple filesystems.
+
+If it is too filesystem-specific, and there is little possibility
+that these attributes will be usable on other filesystems, then it
+should remain a filesystem specific ioctl() call.  If you can make
+a case that these attributes have value on a few other filesystems,
+and applications are reasonably likely to be able to use them, and
+their addition does not make the API overly complex, then suggest
+away.
+
+> Along the same lines, filesytsems can have different allocation
+> constraints to IO the filesystem block size - ext4 with it's
+> bigalloc hack, XFS with it's per-inode extent size hints and the
+> realtime device, etc. Then there's optimal IO characteristics
+> (e.g. geometery hints like stripe unit/stripe width for the
+> allocation policy of that given file) that applications could use
+> if they were present rather than having to expose them through
+> ioctls that nobody even knows about...
+
+There is already "optimal IO size" that the application can use,
+how do the geometry hints differ?  Userspace is able to handle
+st_blksize of several MB in size without problems, and any sane
+application will do the IO sized + aligned on multiples of this.
+
+> Perhaps also exposing the project ID for quota purposes, like we do
+> UID and GID. That way we wouldn't need a filesystem specific ioctl
+> to read it....
+
+This seems reasonable and generic and simple.  This is similar to
+directory quotas in other filesystems.
+
+
+Cheers, Andreas
+
+
+
+
+
