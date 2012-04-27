@@ -1,132 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:4512 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:27315 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757465Ab2DTTIs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 15:08:48 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
-        Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v2 8/8] NFS: Remove extra rpc_clnt argument to proc_lookup
-Date: Fri, 20 Apr 2012 15:08:38 -0400
-Message-Id: <1334948918-4706-9-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1334948918-4706-1-git-send-email-bjschuma@netapp.com>
-References: <1334948918-4706-1-git-send-email-bjschuma@netapp.com>
+	id S1758837Ab2D0Osr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Apr 2012 10:48:47 -0400
+Date: Fri, 27 Apr 2012 10:48:40 -0400
+From: Josh Boyer <jwboyer@redhat.com>
+To: Jim Rees <rees@umich.edu>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] NFSv4: Add modalias for "nfs4"
+Message-ID: <20120427144840.GB13189@zod.bos.redhat.com>
+References: <20120427131031.GA13189@zod.bos.redhat.com>
+ <20120427141918.GA15506@umich.edu>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120427141918.GA15506@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Fri, Apr 27, 2012 at 10:19:18AM -0400, Jim Rees wrote:
+> Josh Boyer wrote:
+> 
+>   When NFSv4 is configured, the support goes into the nfs.ko module.
+>   However, nfs-utils seems to pass "nfs4" as the fileststem type for
+>   NFSv4 mounts.
+> 
+> Weren't we going to change that to nfs and use nfsvers to select nfs4?
 
-Now that I'm doing secinfo automatically in the v4 code this extra
-argument isn't needed.
+I have, approximately, no idea.  At least the version of nfs-utils found
+in Fedora 17 and rawhide, it's still using "nfs4".   I believe that is
+nfs-utils-1.2.6-rc6 based.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/dir.c            |    6 +++---
- fs/nfs/namespace.c      |    3 +--
- fs/nfs/nfs3proc.c       |    2 +-
- fs/nfs/nfs4proc.c       |    2 +-
- fs/nfs/proc.c           |    2 +-
- include/linux/nfs_xdr.h |    2 +-
- 6 files changed, 8 insertions(+), 9 deletions(-)
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 8789210..82b42e2 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1143,7 +1143,7 @@ static int nfs_lookup_revalidate(struct dentry *dentry, struct nameidata *nd)
- 	if (fhandle == NULL || fattr == NULL)
- 		goto out_error;
- 
--	error = NFS_PROTO(dir)->lookup(NFS_SERVER(dir)->client, dir, &dentry->d_name, fhandle, fattr);
-+	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr);
- 	if (error)
- 		goto out_bad;
- 	if (nfs_compare_fh(NFS_FH(inode), fhandle))
-@@ -1299,7 +1299,7 @@ static struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, stru
- 	parent = dentry->d_parent;
- 	/* Protect against concurrent sillydeletes */
- 	nfs_block_sillyrename(parent);
--	error = NFS_PROTO(dir)->lookup(NFS_SERVER(dir)->client, dir, &dentry->d_name, fhandle, fattr);
-+	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr);
- 	if (error == -ENOENT)
- 		goto no_entry;
- 	if (error < 0) {
-@@ -1646,7 +1646,7 @@ int nfs_instantiate(struct dentry *dentry, struct nfs_fh *fhandle,
- 	if (dentry->d_inode)
- 		goto out;
- 	if (fhandle->size == 0) {
--		error = NFS_PROTO(dir)->lookup(NFS_SERVER(dir)->client, dir, &dentry->d_name, fhandle, fattr);
-+		error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr);
- 		if (error)
- 			goto out_error;
- 	}
-diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-index e36fd8a..08b9c93 100644
---- a/fs/nfs/namespace.c
-+++ b/fs/nfs/namespace.c
-@@ -261,8 +261,7 @@ struct vfsmount *nfs_submount(struct nfs_server *server, struct dentry *dentry,
- 	struct dentry *parent = dget_parent(dentry);
- 
- 	/* Look it up again to get its attributes */
--	err = server->nfs_client->rpc_ops->lookup(server->client, parent->d_inode,
--						  &dentry->d_name, fh, fattr);
-+	err = server->nfs_client->rpc_ops->lookup(parent->d_inode, &dentry->d_name, fh, fattr);
- 	dput(parent);
- 	if (err != 0)
- 		return ERR_PTR(err);
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index d39d1d7..f03ab63 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -142,7 +142,7 @@ nfs3_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- }
- 
- static int
--nfs3_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
-+nfs3_proc_lookup(struct inode *dir, struct qstr *name,
- 		 struct nfs_fh *fhandle, struct nfs_fattr *fattr)
- {
- 	struct nfs3_diropargs	arg = {
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6a07dd3..e5c82e9 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2578,7 +2578,7 @@ out:
- 	return err;
- }
- 
--static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
-+static int nfs4_proc_lookup(struct inode *dir, struct qstr *name,
- 			    struct nfs_fh *fhandle, struct nfs_fattr *fattr)
- {
- 	int status;
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index 8dfe960..11645a2 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -178,7 +178,7 @@ nfs_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- }
- 
- static int
--nfs_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
-+nfs_proc_lookup(struct inode *dir, struct qstr *name,
- 		struct nfs_fh *fhandle, struct nfs_fattr *fattr)
- {
- 	struct nfs_diropargs	arg = {
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index fbacdc8..a02a537 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1235,7 +1235,7 @@ struct nfs_rpc_ops {
- 			    struct nfs_fattr *);
- 	int	(*setattr) (struct dentry *, struct nfs_fattr *,
- 			    struct iattr *);
--	int	(*lookup)  (struct rpc_clnt *clnt, struct inode *, struct qstr *,
-+	int	(*lookup)  (struct inode *, struct qstr *,
- 			    struct nfs_fh *, struct nfs_fattr *);
- 	int	(*access)  (struct inode *, struct nfs_access_entry *);
- 	int	(*readlink)(struct inode *, struct page *, unsigned int,
--- 
-1.7.10
-
+josh
