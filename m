@@ -1,55 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:51402 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:19167 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756165Ab2DZNeI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Apr 2012 09:34:08 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <5D4BF4AB-47E9-4E25-B2A3-F895C98BDAA3@dilger.ca>
-References: <5D4BF4AB-47E9-4E25-B2A3-F895C98BDAA3@dilger.ca> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <20120419140612.17272.57774.stgit@warthog.procyon.org.uk>
-To: Andreas Dilger <adilger@dilger.ca>
-Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
-        wine-devel@winehq.org, kfm-devel@kde.org, nautilus-list@gnome.org,
-        linux-api@vger.kernel.org, libc-alpha@sourceware.org
-Subject: Re: [PATCH 1/6] xstat: Add a pair of system calls to make extended file stats available
-Date: Thu, 26 Apr 2012 14:32:36 +0100
-Message-ID: <18195.1335447156@redhat.com>
+	id S1760638Ab2D0R1v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Apr 2012 13:27:51 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
+        Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v5 0/9] Fix SECINFO procedure
+Date: Fri, 27 Apr 2012 13:27:37 -0400
+Message-Id: <1335547666-28315-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Andreas Dilger <adilger@dilger.ca> wrote:
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-> > The idea was initially proposed as a set of xattrs that could be
-> > retrieved with getxattr(), but the general preferance proved to be
-> > for new syscalls with an extended stat structure.
-> 
-> I would comment that it was the opposite.  It was originally a
-> stat()-like extension that degraded into a messy getxattr() mess.
+My initial SECINFO implementation was merged in 2.6.39, but accidentally
+got disabled in 3.0.  These patches re-enable SECINFO as part of LOOKUP
+and push it down to the v4 layer, instead of existing as an rpc_op (I
+create a "submount" rpc_op instead, see patch 7).
 
-Ummm...  No, my first attempt was definitely through getxattr().  You even
-commented on it.
+I also noticed that SECINFO_NO_NAME was never run with the current xdr
+decoding logic.  I fix this in the first patch.
 
-> > The fields in struct xstat come in a number of classes:
-> > 
-> > (0) st_dev, st_blksize, st_information.
-> > 
-> >     These are local data and are always available.
-> 
-> For the extra two bits it would cost us, I don't think st_blksize
-> and st_information should always be returned.
+Changes in version 5:
+- Implement nfs_lookup_mountpoint() correctly in the patch it is added,
+  rather than as a bugfix in a patch doing something else...
 
-Fair enough.
+Changes in version 4:
+- Reorder patches to fix the bug first and then clean up files
 
-> st_blksize may be variable for a distributed filesystem,
+Comments are appreciated!
 
-I wonder if there's a way to make this explicit - or is it something that if
-the bit isn't set, you can't use the value in st_blksize.  I wonder if this
-value always has to be non-zero to make sure existing stat() doesn't explode.
+- Bryan
 
-> and some of the fields in st_information (offline) may not be free to access
-> either.
+Bryan Schumaker (9):
+  NFS: Fix SECINFO_NO_NAME
+  NFS: Handle exceptions coming out of nfs4_proc_fs_locations()
+  NFS: Do secinfo as part of lookup
+  NFS: Fix following referral mount points with different security
+  NFS: Honor the authflavor set in the clone mount data
+  NFS: Remove unused function nfs_lookup_with_sec()
+  NFS: Remove secinfo knowledge out of the generic client
+  NFS: Create a submount rpc_op
+  NFS: Remove extra rpc_clnt argument to proc_lookup
 
-True.
+ fs/nfs/client.c         |    5 +-
+ fs/nfs/dir.c            |    6 +-
+ fs/nfs/internal.h       |   22 ++------
+ fs/nfs/namespace.c      |  140 ++++++-----------------------------------------
+ fs/nfs/nfs3proc.c       |    3 +-
+ fs/nfs/nfs4_fs.h        |   13 ++++-
+ fs/nfs/nfs4namespace.c  |  107 +++++++++++++++++++++++++++++++++++-
+ fs/nfs/nfs4proc.c       |  111 +++++++++++++++++++++++++++++--------
+ fs/nfs/nfs4xdr.c        |   26 ++++++---
+ fs/nfs/proc.c           |    3 +-
+ fs/nfs/super.c          |    4 +-
+ include/linux/nfs_xdr.h |    5 +-
+ 12 files changed, 261 insertions(+), 184 deletions(-)
 
-David
+-- 
+1.7.10
+
