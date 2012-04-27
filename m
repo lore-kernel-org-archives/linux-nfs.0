@@ -1,151 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:65416 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:38993 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755506Ab2DSOHk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Apr 2012 10:07:40 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 4/6] xstat: NFS: Return extended attributes
-To: linux-fsdevel@vger.kernel.org
-Cc: dhowells@redhat.com, linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
-        wine-devel@winehq.org, kfm-devel@kde.org, nautilus-list@gnome.org,
-        linux-api@vger.kernel.org, libc-alpha@sourceware.org
-Date: Thu, 19 Apr 2012 15:06:53 +0100
-Message-ID: <20120419140653.17272.95035.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
-References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
-MIME-Version: 1.0
+	id S1760567Ab2D0PVd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Apr 2012 11:21:33 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Josh Boyer <jwboyer@redhat.com>
+CC: Jim Rees <rees@umich.edu>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: Add modalias for "nfs4"
+Date: Fri, 27 Apr 2012 15:21:15 +0000
+Message-ID: <1335540074.3910.9.camel@lade.trondhjem.org>
+References: <20120427131031.GA13189@zod.bos.redhat.com>
+	 <20120427141918.GA15506@umich.edu>
+	 <20120427144840.GB13189@zod.bos.redhat.com>
+	 <1335538228.3910.1.camel@lade.trondhjem.org>
+	 <20120427145352.GC13189@zod.bos.redhat.com>
+	 <1335538927.3910.3.camel@lade.trondhjem.org>
+	 <20120427151406.GD13189@zod.bos.redhat.com>
+In-Reply-To: <20120427151406.GD13189@zod.bos.redhat.com>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Return extended attributes from the NFS filesystem.  This includes the
-following:
-
- (1) The change attribute as st_data_version if NFSv4.
-
- (2) XSTAT_INFO_AUTOMOUNT and XSTAT_INFO_FABRICATED are set on referral or
-     submount directories that are automounted upon.  NFS shows one directory
-     with a different FSID, but the local filesystem has two: the mountpoint
-     directory and the root of the filesystem mounted upon it.
-
- (3) XSTAT_INFO_REMOTE is set on files acquired over NFS.
-
-Furthermore, what nfs_getattr() does can be controlled as follows:
-
- (1) If AT_FORCE_ATTR_SYNC is indicated, or mtime, ctime or data_version (NFSv4
-     only) are requested then the outstanding writes will be written to the
-     server first.
-
- (2) The inode's attributes may be synchronised with the server:
-
-     (a) If AT_FORCE_ATTR_SYNC is indicated or if atime is requested (and atime
-     	 updating is not suppressed by a mount flag) then the attributes will
-     	 be reread unconditionally.
-
-     (b) If the data version or any of basic stats are requested then the
-     	 attributes will be reread if the cached attributes have expired.
-
-     (c) Otherwise the cached attributes will be used - even if expired -
-     	 without reference to the server.
-
-Signed-off-by: David Howells <dhowells@redhat.com>
----
-
- fs/nfs/inode.c |   49 +++++++++++++++++++++++++++++++++++++------------
- fs/nfs/super.c |    1 +
- 2 files changed, 38 insertions(+), 12 deletions(-)
-
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index e8bbfa5..460fcf3 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -509,11 +509,18 @@ void nfs_setattr_update_inode(struct inode *inode, struct iattr *attr)
- int nfs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
- {
- 	struct inode *inode = dentry->d_inode;
-+	unsigned force = stat->query_flags & AT_FORCE_ATTR_SYNC;
- 	int need_atime = NFS_I(inode)->cache_validity & NFS_INO_INVALID_ATIME;
- 	int err;
- 
--	/* Flush out writes to the server in order to update c/mtime.  */
--	if (S_ISREG(inode->i_mode)) {
-+	if (NFS_SERVER(inode)->nfs_client->rpc_ops->version < 4)
-+		stat->request_mask &= ~XSTAT_VERSION;
-+
-+	/* Flush out writes to the server in order to update c/mtime
-+	 * or data version if the user wants them */
-+	if ((force || (stat->request_mask &
-+		       (XSTAT_MTIME | XSTAT_CTIME | XSTAT_VERSION))) &&
-+	    S_ISREG(inode->i_mode)) {
- 		err = filemap_write_and_wait(inode->i_mapping);
- 		if (err)
- 			goto out;
-@@ -528,18 +535,36 @@ int nfs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
- 	 *  - NFS never sets MS_NOATIME or MS_NODIRATIME so there is
- 	 *    no point in checking those.
- 	 */
-- 	if ((mnt->mnt_flags & MNT_NOATIME) ||
-- 	    ((mnt->mnt_flags & MNT_NODIRATIME) && S_ISDIR(inode->i_mode)))
-+	if (mnt->mnt_flags & MNT_NOATIME ||
-+	    (mnt->mnt_flags & MNT_NODIRATIME && S_ISDIR(inode->i_mode))) {
-+		stat->ioc_flags |= FS_NOATIME_FL;
-+		need_atime = 0;
-+	} else if (!(stat->request_mask & XSTAT_ATIME)) {
- 		need_atime = 0;
-+	}
- 
--	if (need_atime)
--		err = __nfs_revalidate_inode(NFS_SERVER(inode), inode);
--	else
--		err = nfs_revalidate_inode(NFS_SERVER(inode), inode);
--	if (!err) {
--		generic_fillattr(inode, stat);
--		stat->ino = nfs_compat_user_ino64(NFS_FILEID(inode));
-+	if (force || stat->request_mask & (XSTAT_BASIC_STATS | XSTAT_VERSION)) {
-+		if (force || need_atime)
-+			err = __nfs_revalidate_inode(NFS_SERVER(inode), inode);
-+		else
-+			err = nfs_revalidate_inode(NFS_SERVER(inode), inode);
-+		if (err)
-+			goto out;
- 	}
-+
-+	generic_fillattr(inode, stat);
-+	stat->ino = nfs_compat_user_ino64(NFS_FILEID(inode));
-+
-+	if (stat->request_mask & XSTAT_VERSION) {
-+		stat->version = inode->i_version;
-+		stat->result_mask |= XSTAT_VERSION;
-+	}
-+
-+	if (IS_AUTOMOUNT(inode))
-+		stat->information |= XSTAT_INFO_FABRICATED;
-+
-+	stat->information |= XSTAT_INFO_REMOTE;
-+
- out:
- 	return err;
- }
-@@ -852,7 +877,7 @@ int nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
- static int nfs_invalidate_mapping(struct inode *inode, struct address_space *mapping)
- {
- 	struct nfs_inode *nfsi = NFS_I(inode);
--	
-+
- 	if (mapping->nrpages != 0) {
- 		int ret = invalidate_inode_pages2(mapping);
- 		if (ret < 0)
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 37412f7..faa652c 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2222,6 +2222,7 @@ static int nfs_set_super(struct super_block *s, void *data)
- 	ret = set_anon_super(s, server);
- 	if (ret == 0)
- 		server->s_dev = s->s_dev;
-+	memcpy(&s->s_volume_id, &server->fsid, sizeof(s->s_volume_id));
- 	return ret;
- }
- 
-
+T24gRnJpLCAyMDEyLTA0LTI3IGF0IDExOjE0IC0wNDAwLCBKb3NoIEJveWVyIHdyb3RlOg0KPiBP
+biBGcmksIEFwciAyNywgMjAxMiBhdCAwMzowMjowN1BNICswMDAwLCBNeWtsZWJ1c3QsIFRyb25k
+IHdyb3RlOg0KPiA+IE9uIEZyaSwgMjAxMi0wNC0yNyBhdCAxMDo1MyAtMDQwMCwgSm9zaCBCb3ll
+ciB3cm90ZToNCj4gPiA+IE9uIEZyaSwgQXByIDI3LCAyMDEyIGF0IDAyOjUwOjI4UE0gKzAwMDAs
+IE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gPiA+IE9uIEZyaSwgMjAxMi0wNC0yNyBhdCAx
+MDo0OCAtMDQwMCwgSm9zaCBCb3llciB3cm90ZToNCj4gPiA+ID4gPiBPbiBGcmksIEFwciAyNywg
+MjAxMiBhdCAxMDoxOToxOEFNIC0wNDAwLCBKaW0gUmVlcyB3cm90ZToNCj4gPiA+ID4gPiA+IEpv
+c2ggQm95ZXIgd3JvdGU6DQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ICAgV2hlbiBORlN2NCBp
+cyBjb25maWd1cmVkLCB0aGUgc3VwcG9ydCBnb2VzIGludG8gdGhlIG5mcy5rbyBtb2R1bGUuDQo+
+ID4gPiA+ID4gPiAgIEhvd2V2ZXIsIG5mcy11dGlscyBzZWVtcyB0byBwYXNzICJuZnM0IiBhcyB0
+aGUgZmlsZXN0c3RlbSB0eXBlIGZvcg0KPiA+ID4gPiA+ID4gICBORlN2NCBtb3VudHMuDQo+ID4g
+PiA+ID4gPiANCj4gPiA+ID4gPiA+IFdlcmVuJ3Qgd2UgZ29pbmcgdG8gY2hhbmdlIHRoYXQgdG8g
+bmZzIGFuZCB1c2UgbmZzdmVycyB0byBzZWxlY3QgbmZzND8NCj4gPiA+ID4gPiANCj4gPiA+ID4g
+PiBJIGhhdmUsIGFwcHJveGltYXRlbHksIG5vIGlkZWEuICBBdCBsZWFzdCB0aGUgdmVyc2lvbiBv
+ZiBuZnMtdXRpbHMgZm91bmQNCj4gPiA+ID4gPiBpbiBGZWRvcmEgMTcgYW5kIHJhd2hpZGUsIGl0
+J3Mgc3RpbGwgdXNpbmcgIm5mczQiLiAgIEkgYmVsaWV2ZSB0aGF0IGlzDQo+ID4gPiA+ID4gbmZz
+LXV0aWxzLTEuMi42LXJjNiBiYXNlZC4NCj4gPiA+ID4gDQo+ID4gPiA+IG5mczQgaXMgc3RpbGwg
+X3N1cHBvcnRlZF8gaW4gRmVkb3JhIDE3LCByYXdoaWRlIGFuZCB1cHN0cmVhbSBhcyBhIGxlZ2Fj
+eQ0KPiA+ID4gPiBmZWF0dXJlLCBidXQgdGhlIHJlY29tbWVuZGVkIHByYWN0aWNlIHNob3VsZCBi
+ZSB0byBtb3VudCAtdCBuZnMgLW92ZXJzPTQNCj4gPiA+ID4gKG9yIC1vdmVycz00LjEpLg0KPiA+
+ID4gDQo+ID4gPiBPSy4gIFNvIGVpdGhlciB0aGlzIHBhdGNoIG5lZWRzIHRvIGdvIGluLCBvciBz
+b21ldGhpbmcgbmVlZHMgdG8gYWRkOg0KPiA+ID4gDQo+ID4gPiBhbGlhcyBuZnM0IG5mcw0KPiA+
+ID4gDQo+ID4gPiB0byBhIGNvbmYgZmlsZSBzbyBtb2Rwcm9iZSBwaWNrcyBpdCB1cC4gIEkgZmln
+dXJlZCB0aGUga2VybmVsIGNvdWxkIGFkZA0KPiA+ID4gdGhlIGFsaWFzIGl0c2VsZi4gIElzIHRo
+ZXJlIGEgcmVhc29uIG5vdCB0bz8NCj4gPiANCj4gPiBZZXMuIFRoaXMgaXMgYSBsZWdhY3kgZmVh
+dHVyZSB0aGF0IHdlIHdhbnQgdG8gZW5jb3VyYWdlIHBlb3BsZSB0byBtb3ZlDQo+ID4gdGhlaXIg
+c3lzdGVtcyBvZmYuLi4NCj4gDQo+IFNvIGVzc2VudGlhbGx5IHdoYXQgbmVlZHMgdG8gaGFwcGVu
+IGlzOg0KPiANCj4gLSBSZWNlbnQgZGlzdHJvcyBzdGlsbCBzaGlwIHRoZSBtb2RhbGlhcyBpbiBh
+IGNvbmYgZmlsZQ0KPiAtIFVwc3RyZWFtIG5mcy11dGlscyBzdGFydHMgdHJhbnNsYXRpbmcgJ21v
+dW50IC10IG5mczQnIGludG8gJ21vdW50IC10DQo+ICAgbmZzIC1vdmVycz00JyBpbiAvc2Jpbi9t
+b3VudC5uZnM0DQo+IC0gVXBzdHJlYW0gcmVsZWFzZXMgdGhhdA0KPiAtIERpc3Ryb3MgZHJvcCB0
+aGUgYWxpYXMuDQo+IA0KPiBSaWdodD8NCg0KTm8uIFJlYWxseSBhbGwgd2UgbmVlZCB0byBkbyBp
+cyBhZGQgYSBwcmludGYoKSB0byAvc2Jpbi9tb3VudC5uZnM0IHRvDQp0aGUgZWZmZWN0IHRoYXQg
+dGhpcyBpcyBhIGxlZ2FjeSBmZWF0dXJlIGFuZCB0aGF0ICctdCBuZnMgLW92ZXJzPTQnIGlzDQp0
+aGUgcmVjb21tZW5kZWQgbW91bnQgb3B0aW9uLiBQZXJoYXBzIHRoZSBkaXN0cm9zIGNhbiBhbHNv
+IGhhdmUgdGhlaXINCmRpc3RybyB1cGdyYWRlIHV0aWxpdGllcyBlZGl0IC9ldGMvZnN0YWIgdG8g
+dXBncmFkZSB0aG9zZSBhdXRvbWF0aWNhbGx5Lg0KDQpUaGVuIHRoZSBkaXN0cm9zIGNhbiBkcm9w
+IHRoZSBhbGlhcyB3aGVuZXZlciB0aGV5IHRoaW5rIGl0IGlzDQphcHByb3ByaWF0ZS4NCg0KLS0g
+DQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHAN
+ClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
