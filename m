@@ -1,118 +1,147 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from tur.go2.pl ([193.17.41.50]:45661 "EHLO tur.go2.pl"
+Received: from mx2.netapp.com ([216.240.18.37]:20489 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750789Ab2DMRoM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Apr 2012 13:44:12 -0400
-Subject: =?UTF-8?Q?Your_$5000_payment?=
-From: =?UTF-8?Q?jameswilliams84?= <jameswilliams84@o2.pl>
-Mime-Version: 1.0
-Message-ID: <4e7bccf0.168df166.4f8865c0.6d0ca@o2.pl>
-Date: Fri, 13 Apr 2012 19:43:28 +0200
-Content-Type: multipart/mixed;
-	boundary="==o2.pl-WebMail-7d6da76c.302184a5.6d0cf=="
-To: unlisted-recipients:; (no To-header on input)
+	id S1754487Ab2D0VpO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Apr 2012 17:45:14 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 4 05/13] NFSv4.1 data server timeo and retrans module parameters
+Date: Fri, 27 Apr 2012 17:53:45 -0400
+Message-Id: <1335563633-7191-6-git-send-email-andros@netapp.com>
+In-Reply-To: <1335563633-7191-1-git-send-email-andros@netapp.com>
+References: <1335563633-7191-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multi-part message in MIME format.
+From: Andy Adamson <andros@netapp.com>
 
---==o2.pl-WebMail-7d6da76c.302184a5.6d0cf==
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Set the recovery parameters for data servers.
 
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/client.c            |   12 ++++--------
+ fs/nfs/internal.h          |    4 +++-
+ fs/nfs/nfs4filelayout.h    |    7 +++++++
+ fs/nfs/nfs4filelayoutdev.c |   18 ++++++++++++++++--
+ 4 files changed, 30 insertions(+), 11 deletions(-)
 
---==o2.pl-WebMail-7d6da76c.302184a5.6d0cf==
-Content-Type: application/msword;
-	name="=?UTF-8?Q?OPEN_YOUR_ATTACHMENT_FILE_FOR_YOUR?=
-	=?UTF-8?Q?_TRANSFER_INFORMATION.rtf?="
-Content-Disposition: attachment;
-	filename="=?UTF-8?Q?OPEN_YOUR_ATTACHMENT_FILE_FOR_YOUR?=
-	=?UTF-8?Q?_TRANSFER_INFORMATION.rtf?="
-Content-Transfer-Encoding: base64
-
-e1xydGYxXGFuc2lcYW5zaWNwZzEyNTJcdWMxXGRlZmYwXHN0c2hmZGJjaDBcc3RzaGZsb2No
-MFxzdHNoZmhpY2gwXHN0c2hmYmkwXGRlZmxhbmcxMDMzXGRlZmxhbmdmZTEwMzN7XGZvbnR0
-Ymx7XGYwXGZyb21hblxmY2hhcnNldDBcZnBycTJ7XCpccGFub3NlIDAyMDIwNjAzMDUwNDA1
-MDIwMzA0fVRpbWVzIE5ldyBSb21hbjt9e1xmMVxmc3dpc3NcZmNoYXJzZXQwXGZwcnEye1wq
-XHBhbm9zZSAwMjBiMDYwNDAyMDIwMjAyMDIwNH1BcmlhbDt9DQp7XGYzN1xmcm9tYW5cZmNo
-YXJzZXQyMzhcZnBycTIgVGltZXMgTmV3IFJvbWFuIENFO317XGYzOFxmcm9tYW5cZmNoYXJz
-ZXQyMDRcZnBycTIgVGltZXMgTmV3IFJvbWFuIEN5cjt9e1xmNDBcZnJvbWFuXGZjaGFyc2V0
-MTYxXGZwcnEyIFRpbWVzIE5ldyBSb21hbiBHcmVlazt9e1xmNDFcZnJvbWFuXGZjaGFyc2V0
-MTYyXGZwcnEyIFRpbWVzIE5ldyBSb21hbiBUdXI7fQ0Ke1xmNDJcZnJvbWFuXGZjaGFyc2V0
-MTc3XGZwcnEyIFRpbWVzIE5ldyBSb21hbiAoSGVicmV3KTt9e1xmNDNcZnJvbWFuXGZjaGFy
-c2V0MTc4XGZwcnEyIFRpbWVzIE5ldyBSb21hbiAoQXJhYmljKTt9e1xmNDRcZnJvbWFuXGZj
-aGFyc2V0MTg2XGZwcnEyIFRpbWVzIE5ldyBSb21hbiBCYWx0aWM7fXtcZjQ1XGZyb21hblxm
-Y2hhcnNldDE2M1xmcHJxMiBUaW1lcyBOZXcgUm9tYW4gKFZpZXRuYW1lc2UpO30NCntcZjQ3
-XGZzd2lzc1xmY2hhcnNldDIzOFxmcHJxMiBBcmlhbCBDRTt9e1xmNDhcZnN3aXNzXGZjaGFy
-c2V0MjA0XGZwcnEyIEFyaWFsIEN5cjt9e1xmNTBcZnN3aXNzXGZjaGFyc2V0MTYxXGZwcnEy
-IEFyaWFsIEdyZWVrO317XGY1MVxmc3dpc3NcZmNoYXJzZXQxNjJcZnBycTIgQXJpYWwgVHVy
-O317XGY1Mlxmc3dpc3NcZmNoYXJzZXQxNzdcZnBycTIgQXJpYWwgKEhlYnJldyk7fQ0Ke1xm
-NTNcZnN3aXNzXGZjaGFyc2V0MTc4XGZwcnEyIEFyaWFsIChBcmFiaWMpO317XGY1NFxmc3dp
-c3NcZmNoYXJzZXQxODZcZnBycTIgQXJpYWwgQmFsdGljO317XGY1NVxmc3dpc3NcZmNoYXJz
-ZXQxNjNcZnBycTIgQXJpYWwgKFZpZXRuYW1lc2UpO319e1xjb2xvcnRibDtccmVkMFxncmVl
-bjBcYmx1ZTA7XHJlZDBcZ3JlZW4wXGJsdWUyNTU7XHJlZDBcZ3JlZW4yNTVcYmx1ZTI1NTtc
-cmVkMFxncmVlbjI1NVxibHVlMDsNClxyZWQyNTVcZ3JlZW4wXGJsdWUyNTU7XHJlZDI1NVxn
-cmVlbjBcYmx1ZTA7XHJlZDI1NVxncmVlbjI1NVxibHVlMDtccmVkMjU1XGdyZWVuMjU1XGJs
-dWUyNTU7XHJlZDBcZ3JlZW4wXGJsdWUxMjg7XHJlZDBcZ3JlZW4xMjhcYmx1ZTEyODtccmVk
-MFxncmVlbjEyOFxibHVlMDtccmVkMTI4XGdyZWVuMFxibHVlMTI4O1xyZWQxMjhcZ3JlZW4w
-XGJsdWUwO1xyZWQxMjhcZ3JlZW4xMjhcYmx1ZTA7XHJlZDEyOFxncmVlbjEyOFxibHVlMTI4
-Ow0KXHJlZDE5MlxncmVlbjE5MlxibHVlMTkyO317XHN0eWxlc2hlZXR7XHFsIFxsaTBccmkw
-XHdpZGN0bHBhclxhc3BhbHBoYVxhc3BudW1cZmFhdXRvXGFkanVzdHJpZ2h0XHJpbjBcbGlu
-MFxpdGFwMCBcZnMyNFxsYW5nMTAzM1xsYW5nZmUxMDMzXGNncmlkXGxhbmducDEwMzNcbGFu
-Z2ZlbnAxMDMzIFxzbmV4dDAgTm9ybWFsO317XCpcY3MxMCBcYWRkaXRpdmUgXHNzZW1paGlk
-ZGVuIERlZmF1bHQgUGFyYWdyYXBoIEZvbnQ7fXtcKg0KXHRzMTFcdHNyb3dkXHRyZnRzV2lk
-dGhCM1x0cnBhZGRsMTA4XHRycGFkZHIxMDhcdHJwYWRkZmwzXHRycGFkZGZ0M1x0cnBhZGRm
-YjNcdHJwYWRkZnIzXHRyY2JwYXQxXHRyY2ZwYXQxXHRzY2VsbHdpZHRoZnRzMFx0c3ZlcnRh
-bHRcdHNicmRydFx0c2JyZHJsXHRzYnJkcmJcdHNicmRyclx0c2JyZHJkZ2xcdHNicmRyZGdy
-XHRzYnJkcmhcdHNicmRydiANClxxbCBcbGkwXHJpMFx3aWRjdGxwYXJcYXNwYWxwaGFcYXNw
-bnVtXGZhYXV0b1xhZGp1c3RyaWdodFxyaW4wXGxpbjBcaXRhcDAgXGZzMjBcbGFuZzEwMjRc
-bGFuZ2ZlMTAyNFxjZ3JpZFxsYW5nbnAxMDI0XGxhbmdmZW5wMTAyNCBcc25leHQxMSBcc3Nl
-bWloaWRkZW4gTm9ybWFsIFRhYmxlO319e1wqXGxhdGVudHN0eWxlc1xsc2RzdGltYXgxNTZc
-bHNkbG9ja2VkZGVmMH17XCpccnNpZHRibCBccnNpZDE0MzE5Nlxyc2lkNzMwMTU3MH0NCntc
-KlxnZW5lcmF0b3IgTWljcm9zb2Z0IFdvcmQgMTEuMC42NTY4O317XGluZm97XGF1dGhvciBV
-U0VSfXtcb3BlcmF0b3IgVVNFUn17XGNyZWF0aW1ceXIyMDEyXG1vNFxkeTExXGhyMTBcbWlu
-NTV9e1xyZXZ0aW1ceXIyMDEyXG1vNFxkeTEyXGhyMTZcbWluMjV9e1x2ZXJzaW9uM317XGVk
-bWluczN9e1xub2ZwYWdlczF9e1xub2Z3b3JkczExNX17XG5vZmNoYXJzNjYyfXtcKlxjb21w
-YW55IDxhcmFiaWFuaG9yc2U+fXtcbm9mY2hhcnN3czc3Nn0NCntcdmVybjI0NTc5fX1cd2lk
-b3djdHJsXGZ0bmJqXGFlbmRkb2Ncbm94bGF0dG95ZW5cZXhwc2hydG5cbm91bHRybHNwY1xk
-bnRibG5zYmRiXG5vc3BhY2Vmb3J1bFxoeXBoY2FwczBcaG9yemRvY1xkZ2hzcGFjZTEyMFxk
-Z3ZzcGFjZTEyMFxkZ2hvcmlnaW4xNzAxXGRndm9yaWdpbjE5ODRcZGdoc2hvdzBcZGd2c2hv
-dzNcamNvbXByZXNzXHZpZXdraW5kNFx2aWV3c2NhbGUxMTBcbm9sbmh0YWRqdGJsXHJzaWRy
-b290MTQzMTk2IFxmZXQwXHNlY3RkIA0KXGxpbmV4MFxzZWN0ZGVmYXVsdGNsXHNmdG5iaiB7
-XCpccG5zZWNsdmwxXHBudWNybVxwbnN0YXJ0MVxwbmluZGVudDcyMFxwbmhhbmcge1xwbnR4
-dGEgLn19e1wqXHBuc2VjbHZsMlxwbnVjbHRyXHBuc3RhcnQxXHBuaW5kZW50NzIwXHBuaGFu
-ZyB7XHBudHh0YSAufX17XCpccG5zZWNsdmwzXHBuZGVjXHBuc3RhcnQxXHBuaW5kZW50NzIw
-XHBuaGFuZyB7XHBudHh0YSAufX17XCpccG5zZWNsdmw0DQpccG5sY2x0clxwbnN0YXJ0MVxw
-bmluZGVudDcyMFxwbmhhbmcge1xwbnR4dGEgKX19e1wqXHBuc2VjbHZsNVxwbmRlY1xwbnN0
-YXJ0MVxwbmluZGVudDcyMFxwbmhhbmcge1xwbnR4dGIgKH17XHBudHh0YSApfX17XCpccG5z
-ZWNsdmw2XHBubGNsdHJccG5zdGFydDFccG5pbmRlbnQ3MjBccG5oYW5nIHtccG50eHRiICh9
-e1xwbnR4dGEgKX19e1wqXHBuc2VjbHZsN1xwbmxjcm1ccG5zdGFydDFccG5pbmRlbnQ3MjBc
-cG5oYW5nIHtccG50eHRiICh9DQp7XHBudHh0YSApfX17XCpccG5zZWNsdmw4XHBubGNsdHJc
-cG5zdGFydDFccG5pbmRlbnQ3MjBccG5oYW5nIHtccG50eHRiICh9e1xwbnR4dGEgKX19e1wq
-XHBuc2VjbHZsOVxwbmxjcm1ccG5zdGFydDFccG5pbmRlbnQ3MjBccG5oYW5nIHtccG50eHRi
-ICh9e1xwbnR4dGEgKX19XHBhcmRccGxhaW4gXHFsIFxsaTBccmkwXG5vd2lkY3RscGFyXGZh
-YXV0b1xyaW4wXGxpbjBcaXRhcDAgDQpcZnMyNFxsYW5nMTAzM1xsYW5nZmUxMDMzXGNncmlk
-XGxhbmducDEwMzNcbGFuZ2ZlbnAxMDMzIHtcZjFcZnMyMFxpbnNyc2lkMTQzMTk2IEhlbGxv
-LA0KXHBhciANClxwYXIgSSBhbSBjb250YWN0aW5nIHlvdSBiZWNhdXNlIEkndmUgc2VudCB5
-b3UgdGhlIGZpcnN0IHBheW1lbnQgb2YgJDUsMDAwLjAwIHRvZGF5IGZyb20geW91ciB3aW5u
-aW5nIGZ1bmRzIHRvdGFsIGFtb3VudCBvZiAkMS41TWlsbGlvbiBVU0QsIFRoZXJlZm9yZSB5
-b3UgbmVlZCB0byBjb250YWN0IFdlc3Rlcm4gVW5pb24gYWdlbnQgTXIuIH17XGYxXGZzMjBc
-aW5zcnNpZDczMDE1NzAgSmVycnkgQ2hpa2EgLH17XGYxXGZzMjBcaW5zcnNpZDE0MzE5NiAN
-CmZvciBoaW0gdG8gZ2l2ZSB5b3UgdGhlIHRyYW5zZmVyIHBheW1lbnQgaW5mb3JtYXRpb24g
-YW5kIE1UQ04uDQpccGFyIA0KXHBhciBXLlUgQWdlbnQ6IE1yLiB9e1xmMVxmczIwXGluc3Jz
-aWQ3MzAxNTcwIEplcnJ5IENoaWthfXtcZjFcZnMyMFxpbnNyc2lkMTQzMTk2IA0KXHBhciB9
-e1xmMVxmczIwXGluc3JzaWQ3MzAxNTcwIEVtYWlsOiAgd2VzdGVybl91bmlvbnRyYW5zZmVy
-OEB5YWhvby5jb20ucGh9e1xmMVxmczIwXGluc3JzaWQxNDMxOTYgDQpccGFyIH17XGYxXGZz
-MjBcaW5zcnNpZDczMDE1NzAgUGhvbmU6ICArMjI5IC05NzgwNDE4M317XGYxXGZzMjBcaW5z
-cnNpZDE0MzE5NiANClxwYXIgDQpccGFyIFBsZWFzZSB0cnkgdG8gY29udGFjdCBoaW0gdG9k
-YXkgZm9yIGhpbSB0byBmdXJuaXNoIHlvdSB3aXRoIHRoZSBwYXltZW50IGluZm9ybWF0aW9u
-IGFsc28gcmVtZQ0KbWJlciB0byBpbmRpY2F0ZSB0aGUgcmVnaXN0cmF0aW9uIGNvZGUgb2Yg
-RUItMjUyMCB0byBoaW0gd2hlbiBlLW1haWxpbmcgb3IgY2FsbGluZyBoaW0sIHBlcmhhcHMg
-aGUgd2lsbCBiZSBzZW5kaW5nIHlvdSAkNSwwMDAuMDAgZGFpbHkgYXMgcGVyIG15IGRpc2N1
-c3Npb24gd2l0aCBoaW0uIFRyeSBhbmQgY29weSBoaXMgZW1haWwgYmVmb3JlIHJlcGx5DQpc
-cGFyIA0KXHBhciBEbyBsZXQgbWUga25vdyBvbmNlIHlvdSBoYXZlIHJlY2VpdmVkIHRoZSB0
-cmFuc2Zlci4NClxwYXIgDQpccGFyIFNpbmNlcmVseQ0KXHBhciBNci4gSmFtZXMgV2lsbGlh
-bXMNClxwYXIgSU1GIE1hbmFnaW5nIERpcmVjdG9yIEJlbmluLg0KXHBhciB9fQ==
-
---==o2.pl-WebMail-7d6da76c.302184a5.6d0cf==--
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index da7b5e4..0f54732 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1465,8 +1465,8 @@ error:
+  * the MDS.
+  */
+ struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
+-		const struct sockaddr *ds_addr,
+-		int ds_addrlen, int ds_proto)
++		const struct sockaddr *ds_addr, int ds_addrlen,
++		int ds_proto, unsigned int ds_timeo, unsigned int ds_retrans)
+ {
+ 	struct nfs_client_initdata cl_init = {
+ 		.addr = ds_addr,
+@@ -1476,12 +1476,7 @@ struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
+ 		.minorversion = mds_clp->cl_minorversion,
+ 		.net = mds_clp->net,
+ 	};
+-	struct rpc_timeout ds_timeout = {
+-		.to_initval = 15 * HZ,
+-		.to_maxval = 15 * HZ,
+-		.to_retries = 1,
+-		.to_exponential = 1,
+-	};
++	struct rpc_timeout ds_timeout;
+ 	struct nfs_client *clp;
+ 
+ 	/*
+@@ -1489,6 +1484,7 @@ struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
+ 	 * cl_ipaddr so as to use the same EXCHANGE_ID co_ownerid as the MDS
+ 	 * (section 13.1 RFC 5661).
+ 	 */
++	nfs_init_timeout_values(&ds_timeout, ds_proto, ds_timeo, ds_retrans);
+ 	clp = nfs_get_client(&cl_init, &ds_timeout, mds_clp->cl_ipaddr,
+ 			     mds_clp->cl_rpcclient->cl_auth->au_flavor, 0);
+ 
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 5026bcc..f38e099 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -170,7 +170,9 @@ extern void nfs_mark_client_ready(struct nfs_client *clp, int state);
+ extern int nfs4_check_client_ready(struct nfs_client *clp);
+ extern struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
+ 					     const struct sockaddr *ds_addr,
+-					     int ds_addrlen, int ds_proto);
++					     int ds_addrlen, int ds_proto,
++					     unsigned int ds_timeo,
++					     unsigned int ds_retrans);
+ #ifdef CONFIG_PROC_FS
+ extern int __init nfs_fs_proc_init(void);
+ extern void nfs_fs_proc_exit(void);
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+index 2f6330c..6fb1901 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/nfs4filelayout.h
+@@ -33,6 +33,13 @@
+ #include "pnfs.h"
+ 
+ /*
++ * Default data server connection timeout and retrans vaules.
++ * Set by module paramters dataserver_timeo and dataserver_retrans.
++ */
++#define NFS4_DEF_DS_TIMEO   60
++#define NFS4_DEF_DS_RETRANS 5
++
++/*
+  * Field testing shows we need to support up to 4096 stripe indices.
+  * We store each index as a u8 (u32 on the wire) to keep the memory footprint
+  * reasonable. This in turn means we support a maximum of 256
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 2b8ae96..d5a92cf 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -30,12 +30,16 @@
+ 
+ #include <linux/nfs_fs.h>
+ #include <linux/vmalloc.h>
++#include <linux/module.h>
+ 
+ #include "internal.h"
+ #include "nfs4filelayout.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_PNFS_LD
+ 
++static unsigned int dataserver_timeo = NFS4_DEF_DS_TIMEO;
++static unsigned int dataserver_retrans = NFS4_DEF_DS_RETRANS;
++
+ /*
+  * Data server cache
+  *
+@@ -165,8 +169,9 @@ nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
+ 			__func__, ds->ds_remotestr, da->da_remotestr);
+ 
+ 		clp = nfs4_set_ds_client(mds_srv->nfs_client,
+-				 (struct sockaddr *)&da->da_addr,
+-				 da->da_addrlen, IPPROTO_TCP);
++					(struct sockaddr *)&da->da_addr,
++					da->da_addrlen, IPPROTO_TCP,
++					dataserver_timeo, dataserver_retrans);
+ 		if (!IS_ERR(clp))
+ 			break;
+ 	}
+@@ -821,3 +826,12 @@ mark_dev_invalid:
+ 	filelayout_mark_devid_invalid(devid);
+ 	return NULL;
+ }
++
++module_param(dataserver_retrans, uint, 0644);
++MODULE_PARM_DESC(dataserver_retrans, "The  number of times the NFSv4.1 client "
++			"retries a request before it attempts further "
++			" recovery  action.");
++module_param(dataserver_timeo, uint, 0644);
++MODULE_PARM_DESC(dataserver_timeo, "The time (in tenths of a second) the "
++			"NFSv4.1  client  waits for a response from a "
++			" data server before it retries an NFS request.");
+-- 
+1.7.6.4
 
