@@ -1,84 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:41666 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:7812 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753151Ab2DXUvV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Apr 2012 16:51:21 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org,
-        Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] nfs4: fix referrals on mounts that use IPv6 addrs
-Date: Tue, 24 Apr 2012 16:50:37 -0400
-Message-Id: <1335300637-51397-1-git-send-email-dros@netapp.com>
+	id S1760501Ab2D0P0O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Apr 2012 11:26:14 -0400
+Date: Fri, 27 Apr 2012 11:27:09 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Josh Boyer <jwboyer@redhat.com>, Jim Rees <rees@umich.edu>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: Add modalias for "nfs4"
+Message-ID: <20120427112709.08c99ec3@corrin.poochiereds.net>
+In-Reply-To: <1335538927.3910.3.camel@lade.trondhjem.org>
+References: <20120427131031.GA13189@zod.bos.redhat.com>
+	<20120427141918.GA15506@umich.edu>
+	<20120427144840.GB13189@zod.bos.redhat.com>
+	<1335538228.3910.1.camel@lade.trondhjem.org>
+	<20120427145352.GC13189@zod.bos.redhat.com>
+	<1335538927.3910.3.camel@lade.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-All referrals (IPv4 addr, IPv6 addr, and DNS) are broken on mounts of
-IPv6 addresses, because validation code uses a path that is parsed
-from the dev_name ("<server>:<path>") by splitting on the first colon and
-colons are used in IPv6 addrs.
-This patch ignores colons within IPv6 addresses that are escaped by '[' and ']'.
+On Fri, 27 Apr 2012 15:02:07 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
-Reposted again to address a comment from Trond
+> On Fri, 2012-04-27 at 10:53 -0400, Josh Boyer wrote:
+> > On Fri, Apr 27, 2012 at 02:50:28PM +0000, Myklebust, Trond wrote:
+> > > On Fri, 2012-04-27 at 10:48 -0400, Josh Boyer wrote:
+> > > > On Fri, Apr 27, 2012 at 10:19:18AM -0400, Jim Rees wrote:
+> > > > > Josh Boyer wrote:
+> > > > > 
+> > > > >   When NFSv4 is configured, the support goes into the nfs.ko module.
+> > > > >   However, nfs-utils seems to pass "nfs4" as the fileststem type for
+> > > > >   NFSv4 mounts.
+> > > > > 
+> > > > > Weren't we going to change that to nfs and use nfsvers to select nfs4?
+> > > > 
+> > > > I have, approximately, no idea.  At least the version of nfs-utils found
+> > > > in Fedora 17 and rawhide, it's still using "nfs4".   I believe that is
+> > > > nfs-utils-1.2.6-rc6 based.
+> > > 
+> > > nfs4 is still _supported_ in Fedora 17, rawhide and upstream as a legacy
+> > > feature, but the recommended practice should be to mount -t nfs -overs=4
+> > > (or -overs=4.1).
+> > 
+> > OK.  So either this patch needs to go in, or something needs to add:
+> > 
+> > alias nfs4 nfs
+> > 
+> > to a conf file so modprobe picks it up.  I figured the kernel could add
+> > the alias itself.  Is there a reason not to?
+> 
+> Yes. This is a legacy feature that we want to encourage people to move
+> their systems off...
+> 
 
-This depends on commit 2f8e4bd91488f286e83e8abb14683102efaafb05
-"nfs: Enclose hostname in brackets when needed in nfs_do_root_mount".
+Ahh ok...I guess I didn't get that memo. In that case, is there a plan
+to deprecate the nfs4 fstype altogether?
 
+Otherwise, you're going to end up with inconsistent behavior with "-t
+nfs4", depending on whether nfs.ko is already plugged in at the time or
+not.
 
-
- fs/nfs/nfs4namespace.c |   30 +++++++++++++++++++++++++++---
- 1 files changed, 27 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index 9c8eca3..7483a17 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -52,6 +52,30 @@ Elong:
- }
- 
- /*
-+ * return the path component of "<server>:<path>"
-+ *  nfspath - the "<server>:<path>" string
-+ *  end - one past the last char that could contain "<server>:"
-+ * returns NULL on failure
-+ */
-+static char *nfs_path_component(const char *nfspath, const char *end)
-+{
-+	char *p;
-+
-+	if (*nfspath == '[') {
-+		/* parse [] escaped IPv6 addrs */
-+		p = strchr(nfspath, ']');
-+		if (p != NULL && ++p < end && *p == ':')
-+			return p + 1;
-+	} else {
-+		/* otherwise split on first colon */
-+		p = strchr(nfspath, ':');
-+		if (p != NULL && p < end)
-+			return p + 1;
-+	}
-+	return NULL;
-+}
-+
-+/*
-  * Determine the mount path as a string
-  */
- static char *nfs4_path(struct dentry *dentry, char *buffer, ssize_t buflen)
-@@ -59,9 +83,9 @@ static char *nfs4_path(struct dentry *dentry, char *buffer, ssize_t buflen)
- 	char *limit;
- 	char *path = nfs_path(&limit, dentry, buffer, buflen);
- 	if (!IS_ERR(path)) {
--		char *colon = strchr(path, ':');
--		if (colon && colon < limit)
--			path = colon + 1;
-+		char *path_component = nfs_path_component(path, limit);
-+		if (path_component)
-+			return path_component;
- 	}
- 	return path;
- }
 -- 
-1.7.4.4
-
+Jeff Layton <jlayton@redhat.com>
