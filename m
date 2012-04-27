@@ -1,36 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:25983 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:42274 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754128Ab2DET0j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Apr 2012 15:26:39 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 1/1] NFS: check for req==NULL in nfs_try_to_update_request cleanup
-Date: Thu,  5 Apr 2012 15:26:36 -0400
-Message-Id: <1333653996-4951-1-git-send-email-iisaman@netapp.com>
+	id S1760227Ab2D0Pll (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Apr 2012 11:41:41 -0400
+Date: Fri, 27 Apr 2012 11:41:33 -0400
+From: Josh Boyer <jwboyer@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Jim Rees <rees@umich.edu>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: Add modalias for "nfs4"
+Message-ID: <20120427154123.GE13189@zod.bos.redhat.com>
+References: <20120427131031.GA13189@zod.bos.redhat.com>
+ <20120427141918.GA15506@umich.edu>
+ <20120427144840.GB13189@zod.bos.redhat.com>
+ <1335538228.3910.1.camel@lade.trondhjem.org>
+ <20120427145352.GC13189@zod.bos.redhat.com>
+ <1335538927.3910.3.camel@lade.trondhjem.org>
+ <20120427151406.GD13189@zod.bos.redhat.com>
+ <1335540074.3910.9.camel@lade.trondhjem.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1335540074.3910.9.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/write.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+On Fri, Apr 27, 2012 at 03:21:15PM +0000, Myklebust, Trond wrote:
+> > > > OK.  So either this patch needs to go in, or something needs to add:
+> > > > 
+> > > > alias nfs4 nfs
+> > > > 
+> > > > to a conf file so modprobe picks it up.  I figured the kernel could add
+> > > > the alias itself.  Is there a reason not to?
+> > > 
+> > > Yes. This is a legacy feature that we want to encourage people to move
+> > > their systems off...
+> > 
+> > So essentially what needs to happen is:
+> > 
+> > - Recent distros still ship the modalias in a conf file
+> > - Upstream nfs-utils starts translating 'mount -t nfs4' into 'mount -t
+> >   nfs -overs=4' in /sbin/mount.nfs4
+> > - Upstream releases that
+> > - Distros drop the alias.
+> > 
+> > Right?
+> 
+> No. Really all we need to do is add a printf() to /sbin/mount.nfs4 to
+> the effect that this is a legacy feature and that '-t nfs -overs=4' is
+> the recommended mount option. Perhaps the distros can also have their
+> distro upgrade utilities edit /etc/fstab to upgrade those automatically.
+> 
+> Then the distros can drop the alias whenever they think it is
+> appropriate.
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 2c68818..9b8d4d4 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -682,7 +682,8 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
- 		req->wb_bytes = rqend - req->wb_offset;
- out_unlock:
- 	spin_unlock(&inode->i_lock);
--	nfs_clear_request_commit(req);
-+	if (req)
-+		nfs_clear_request_commit(req);
- 	return req;
- out_flushme:
- 	spin_unlock(&inode->i_lock);
--- 
-1.7.2.1
+My limited experience shows that people won't change their habits until
+those habits simply no longer work.  Adding a printf is probably a fine
+thing to do, but I'm not sure it will have much impact on how people go
+about mounting NFSv4 filesystems.  That leads me to believe that the
+alias will be carried along for quite a while.
 
+Anyway, the immediate problem can be solved by just keeping the alias in
+a conf file.  If that's what is recommended for now, OK.
+
+josh
