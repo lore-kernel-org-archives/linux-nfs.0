@@ -1,31 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from toast.topped-with-meat.com ([204.197.218.159]:53902 "EHLO
-	topped-with-meat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759385Ab2DZWCp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 18:02:45 -0400
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: Roland McGrath <roland@hack.frob.com>
-To: David Howells <dhowells@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-ext4@vger.kernel.org, wine-devel@winehq.org, kfm-devel@kde.org,
-        nautilus-list@gnome.org, linux-api@vger.kernel.org,
-        libc-alpha@sourceware.org
-Subject: Re: [PATCH 0/6] Extended file stat system call
-In-Reply-To: David Howells's message of  Thursday, 26 April 2012 22:54:41 +0100 <9931.1335477281@redhat.com>
-References: <20120426182524.E5ADF2C0EC@topped-with-meat.com>
-	<20120419163238.61D382C0DF@topped-with-meat.com>
-	<20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
-	<19184.1335448455@redhat.com>
-	<9931.1335477281@redhat.com>
-Message-Id: <20120426220242.53FC22C0D3@topped-with-meat.com>
-Date: Thu, 26 Apr 2012 15:02:42 -0700 (PDT)
+Received: from mx2.netapp.com ([216.240.18.37]:19167 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760638Ab2D0R2E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Apr 2012 13:28:04 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
+        Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v5 9/9] NFS: Remove extra rpc_clnt argument to proc_lookup
+Date: Fri, 27 Apr 2012 13:27:46 -0400
+Message-Id: <1335547666-28315-10-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1335547666-28315-1-git-send-email-bjschuma@netapp.com>
+References: <1335547666-28315-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> fileinfoat() perhaps?  I think stat*at() is better, though, as people are
-> used to the stat function family.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Names like that were all I had thought of when I said I hadn't thought of
-any good ones. ;-)
+Now that I'm doing secinfo automatically in the v4 code this extra
+argument isn't needed.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/dir.c            |    6 +++---
+ fs/nfs/namespace.c      |    3 +--
+ fs/nfs/nfs3proc.c       |    2 +-
+ fs/nfs/nfs4proc.c       |    2 +-
+ fs/nfs/proc.c           |    2 +-
+ include/linux/nfs_xdr.h |    2 +-
+ 6 files changed, 8 insertions(+), 9 deletions(-)
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 8789210..82b42e2 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1143,7 +1143,7 @@ static int nfs_lookup_revalidate(struct dentry *dentry, struct nameidata *nd)
+ 	if (fhandle == NULL || fattr == NULL)
+ 		goto out_error;
+ 
+-	error = NFS_PROTO(dir)->lookup(NFS_SERVER(dir)->client, dir, &dentry->d_name, fhandle, fattr);
++	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr);
+ 	if (error)
+ 		goto out_bad;
+ 	if (nfs_compare_fh(NFS_FH(inode), fhandle))
+@@ -1299,7 +1299,7 @@ static struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, stru
+ 	parent = dentry->d_parent;
+ 	/* Protect against concurrent sillydeletes */
+ 	nfs_block_sillyrename(parent);
+-	error = NFS_PROTO(dir)->lookup(NFS_SERVER(dir)->client, dir, &dentry->d_name, fhandle, fattr);
++	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr);
+ 	if (error == -ENOENT)
+ 		goto no_entry;
+ 	if (error < 0) {
+@@ -1646,7 +1646,7 @@ int nfs_instantiate(struct dentry *dentry, struct nfs_fh *fhandle,
+ 	if (dentry->d_inode)
+ 		goto out;
+ 	if (fhandle->size == 0) {
+-		error = NFS_PROTO(dir)->lookup(NFS_SERVER(dir)->client, dir, &dentry->d_name, fhandle, fattr);
++		error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr);
+ 		if (error)
+ 			goto out_error;
+ 	}
+diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
+index e36fd8a..08b9c93 100644
+--- a/fs/nfs/namespace.c
++++ b/fs/nfs/namespace.c
+@@ -261,8 +261,7 @@ struct vfsmount *nfs_submount(struct nfs_server *server, struct dentry *dentry,
+ 	struct dentry *parent = dget_parent(dentry);
+ 
+ 	/* Look it up again to get its attributes */
+-	err = server->nfs_client->rpc_ops->lookup(server->client, parent->d_inode,
+-						  &dentry->d_name, fh, fattr);
++	err = server->nfs_client->rpc_ops->lookup(parent->d_inode, &dentry->d_name, fh, fattr);
+ 	dput(parent);
+ 	if (err != 0)
+ 		return ERR_PTR(err);
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index d39d1d7..f03ab63 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -142,7 +142,7 @@ nfs3_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ }
+ 
+ static int
+-nfs3_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
++nfs3_proc_lookup(struct inode *dir, struct qstr *name,
+ 		 struct nfs_fh *fhandle, struct nfs_fattr *fattr)
+ {
+ 	struct nfs3_diropargs	arg = {
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index f587724..080957f 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2578,7 +2578,7 @@ out:
+ 	return err;
+ }
+ 
+-static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
++static int nfs4_proc_lookup(struct inode *dir, struct qstr *name,
+ 			    struct nfs_fh *fhandle, struct nfs_fattr *fattr)
+ {
+ 	int status;
+diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+index 8dfe960..11645a2 100644
+--- a/fs/nfs/proc.c
++++ b/fs/nfs/proc.c
+@@ -178,7 +178,7 @@ nfs_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ }
+ 
+ static int
+-nfs_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
++nfs_proc_lookup(struct inode *dir, struct qstr *name,
+ 		struct nfs_fh *fhandle, struct nfs_fattr *fattr)
+ {
+ 	struct nfs_diropargs	arg = {
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index ada3acd..3636fb6 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1240,7 +1240,7 @@ struct nfs_rpc_ops {
+ 			    struct nfs_fattr *);
+ 	int	(*setattr) (struct dentry *, struct nfs_fattr *,
+ 			    struct iattr *);
+-	int	(*lookup)  (struct rpc_clnt *clnt, struct inode *, struct qstr *,
++	int	(*lookup)  (struct inode *, struct qstr *,
+ 			    struct nfs_fh *, struct nfs_fattr *);
+ 	int	(*access)  (struct inode *, struct nfs_access_entry *);
+ 	int	(*readlink)(struct inode *, struct page *, unsigned int,
+-- 
+1.7.10
+
