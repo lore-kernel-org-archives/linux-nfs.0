@@ -1,74 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:55093 "EHLO e6.ny.us.ibm.com"
+Received: from mx2.netapp.com ([216.240.18.37]:12464 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753883Ab2DWVYW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Apr 2012 17:24:22 -0400
-Received: from /spool/local
-	by e6.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Mon, 23 Apr 2012 17:24:20 -0400
-Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
-	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 4B1A138C8063
-	for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2012 17:23:47 -0400 (EDT)
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q3NLNlAh293042
-	for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2012 17:23:47 -0400
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q3NLNk6r015592
-	for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2012 18:23:46 -0300
-Date: Mon, 23 Apr 2012 16:23:45 -0500
-From: Malahal Naineni <malahal@us.ibm.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 20/20] NFS: Clean up debugging messages in
- fs/nfs/client.c
-Message-ID: <20120423212345.GA17089@us.ibm.com>
-References: <20120423205312.11446.67081.stgit@degas.1015granger.net>
- <20120423205612.11446.89496.stgit@degas.1015granger.net>
+	id S1754520Ab2D0Acl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Apr 2012 20:32:41 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: David Howells <dhowells@redhat.com>
+CC: Steve French <smfrench@gmail.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
+        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "wine-devel@winehq.org" <wine-devel@winehq.org>,
+        "kfm-devel@kde.org" <kfm-devel@kde.org>,
+        "nautilus-list@gnome.org" <nautilus-list@gnome.org>,
+        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
+        "libc-alpha@sourceware.org" <libc-alpha@sourceware.org>
+Subject: Re: [PATCH 0/6] Extended file stat system call
+Date: Fri, 27 Apr 2012 00:30:30 +0000
+Message-ID: <1335486630.2559.3.camel@lade.trondhjem.org>
+References: <1335460011.9701.30.camel@lade.trondhjem.org>
+	 <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+	 <CAH2r5ms4WQV3DnTvqNN=2N71Cj8UHwj8Z6+RHXgrAOv6mSoyQg@mail.gmail.com>
+	 <20656.1335450358@redhat.com>
+	 <CAH2r5mv1Lijdwk5zsQwYJr4Etb6fhrRyNXm-iFCQX+HecboGrQ@mail.gmail.com>
+	 <1335453958.9701.10.camel@lade.trondhjem.org>
+	 <CAH2r5mt5af-_hxBRKK72iD5Gr99bo91ec78Rov8EGVEx8=21mA@mail.gmail.com>
+	 <1335459642.9701.27.camel@lade.trondhjem.org>
+	 <CAH2r5mvmCfLrxRHje6Wx5X84zxPEHwRMUJGsjvWBujMu7w841w@mail.gmail.com>
+	  <10104.1335477476@redhat.com>
+In-Reply-To: <10104.1335477476@redhat.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120423205612.11446.89496.stgit@degas.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck Lever [chuck.lever@oracle.com] wrote:
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  fs/nfs/client.c |   21 +++++++++++++++++----
->  1 files changed, 17 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index 7330673..beb001b 100644
-> --- a/fs/nfs/client.c
-> +++ b/fs/nfs/client.c
-> @@ -192,6 +192,8 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
->  		clp->cl_machine_cred = cred;
->  	nfs_fscache_get_client_cookie(clp);
-> 
-> +	dprintk("NFS: %s returning new nfs_client = %p ({1})\n",
-> +		__func__, clp);
->  	return clp;
-> 
->  error_cleanup:
-> @@ -291,7 +293,7 @@ static void pnfs_init_server(struct nfs_server *server)
->   */
->  static void nfs_free_client(struct nfs_client *clp)
->  {
-> -	dprintk("--> nfs_free_client(%u)\n", clp->rpc_ops->version);
-> +	dprintk("--> %s destroying nfs_client = %p\n", __func__, clp);
-> 
->  	nfs4_shutdown_client(clp);
-> 
-> @@ -308,7 +310,7 @@ static void nfs_free_client(struct nfs_client *clp)
->  	kfree(clp->cl_hostname);
->  	kfree(clp);
-> 
-> -	dprintk("<-- nfs_free_client()\n");
-> +	dprintk("<-- %s done\n", __func__);
-
-Many dprintk's seem to take __func__. How about pushing that to dprink
-macro itself. I have one and use it most of the time.
-
-Regards, Malahal.
-
+T24gVGh1LCAyMDEyLTA0LTI2IGF0IDIyOjU3ICswMTAwLCBEYXZpZCBIb3dlbGxzIHdyb3RlOg0K
+PiBNeWtsZWJ1c3QsIFRyb25kIDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+
+IA0KPiA+IFlvdSBhcmUgc3RpbGwgbm90IGV4cGxhaW5pbmcgd2h5IHRoZXkgbmVlZCB0byBrbm93
+IHRoZSB2YWx1ZXMgYXQgYWxsPyBJZg0KPiA+IHRoZSB2YWx1ZXMgYXJlIGJvZ3VzLCB0aGVuIGRv
+bid0IHJldHVybiB0aGVtLCBhbmQgZG9uJ3Qgc2V0IHRoZSBmbGFnDQo+ID4gdGhhdCBzYXlzIHRo
+ZXkgYXJlIGJlaW5nIHJldHVybmVkLg0KPiB0aA0KPiBXaGF0IGlmIHRoZSB4c3RhdCgpIGFuZCBz
+dHJ1Y3QgeHN0YXQgZXZlbnR1YWxseSBiZWNvbWVzIHdoYXQgdXNlcnNwYWNlIHVzZXMgYXMNCj4g
+c3RhdCgpIChhcyBhIHdyYXBwZXIpIGFuZCBzdHJ1Y3Qgc3RhdCAoaWYgc3VjaCBhIHRoaW5nIGlz
+IHBvc3NpYmxlIHdpdGggZ2xpYmMNCj4gdmVyc2lvbmluZyk/ICBEbyBvbGRlciBwcm9ncmFtcyB0
+aGF0IHRoaW5rIHRoZXkncmUgdXNpbmcgc3RhdCgpIGFuZCBkb24ndCBrbm93DQo+IGFib3V0IHRo
+ZSBleHRyYSBmaWVsZHMgYXZhaWxhYmxlIGV4cGVjdCB0byBzZWUgYSB1c2VmdWwgdmFsdWUgaW4g
+c3RfaW5vPw0KDQpEb2VzIGl0IHJlYWxseSBtYXR0ZXIgd2hldGhlciBpdCBpcyB0aGUga2VybmVs
+IG9yIHVzZXJsYW5kIHRoYXQgaXMNCnJlc3BvbnNpYmxlIGZvciBmYWtpbmcgdXAgaW5vZGUgbnVt
+YmVycz8gSWYgdXNlcmxhbmQgd2FudHMgdG8gdXNlDQp4c3RhdCgpIGluIG9yZGVyIHRvIGZha2Ug
+dXAgYSBzdGF0KCkgY2FsbCwgdGhlbiBpdCBnZXRzIHRvIHRha2UNCnJlc3BvbnNpYmlsaXR5IGZv
+ciB0aGUgcmVzdWx0cy4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQg
+bWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0
+YXBwLmNvbQ0KDQo=
