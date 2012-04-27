@@ -1,113 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:56983 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757753Ab2DLRc4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Apr 2012 13:32:56 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: global openowner_id and lockowner_id
-Date: Thu, 12 Apr 2012 17:32:54 +0000
-Message-ID: <1334251974.2237.95.camel@lade.trondhjem.org>
-References: <58E57AF8-1636-4017-93C0-8520488ED866@oracle.com>
-	 <1334245818.2237.55.camel@lade.trondhjem.org>
-	 <7212EB20-16EC-475E-993E-3F244C621AB0@oracle.com>
-	 <1334246326.2237.59.camel@lade.trondhjem.org>
-	 <6DD87307-2E70-4BC0-8920-70B5D4C34D62@oracle.com>
-In-Reply-To: <6DD87307-2E70-4BC0-8920-70B5D4C34D62@oracle.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from acsinet15.oracle.com ([141.146.126.227]:44951 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756904Ab2D0QFy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Apr 2012 12:05:54 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Subject: NFSv4 UCS client implementation experience
+Date: Fri, 27 Apr 2012 12:05:44 -0400
+Message-Id: <BF46E9F2-5675-4914-AD5F-9F43CDE9DBD4@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        David Noveck <david.noveck@emc.com>,
+        Bill Baker <Bill.Baker@oracle.com>,
+        piyush shivam <piyush.shivam@oracle.com>
+To: nfsv4@ietf.org
+Mime-Version: 1.0 (Apple Message framework v1257)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA0LTEyIGF0IDEyOjA1IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gQXByIDEyLCAyMDEyLCBhdCAxMTo1OCBBTSwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4g
-DQo+ID4gT24gVGh1LCAyMDEyLTA0LTEyIGF0IDExOjU0IC0wNDAwLCBDaHVjayBMZXZlciB3cm90
-ZToNCj4gPj4gT24gQXByIDEyLCAyMDEyLCBhdCAxMTo1MCBBTSwgTXlrbGVidXN0LCBUcm9uZCB3
-cm90ZToNCj4gPj4gDQo+ID4+PiBPbiBUaHUsIDIwMTItMDQtMTIgYXQgMTE6NDIgLTA0MDAsIENo
-dWNrIExldmVyIHdyb3RlOg0KPiA+Pj4+IEhpLQ0KPiA+Pj4+IA0KPiA+Pj4+IENoYW5naW5nIHRo
-ZSBTRVRDTElFTlRJRCBib290IHZlcmlmaWVyIHNvIGl0IGlzIGdsb2JhbCBmb3IgdGhlIHdob2xl
-IGNsaWVudCBleHBvc2VzIGEgcHJvYmxlbSB3aXRoIGhvdyB3ZSBhbGxvY2F0ZSBzdGF0ZSBvd25l
-cnMuDQo+ID4+Pj4gDQo+ID4+Pj4gQSBxdWljayB1bW91bnQgLyBtb3VudCBzZXF1ZW5jZSBkZXN0
-cm95cyBhbGwgc3RhdGUgb24gdGhlIGNsaWVudC4gIEJ1dCBzaW5jZSB0aGUgY2xpZW50IG5vdyBh
-bHdheXMgdXNlcyB0aGUgc2FtZSBib290IHZlcmlmaWVyIGFuZCBuZnNfY2xpZW50X2lkNCBzdHJp
-bmcsIHRoZSBzZXJ2ZXIgbm8gbG9uZ2VyIHJlY29nbml6ZXMgYSBjbGllbnQgcmVib290LiAgRk9y
-IGEgZnJlc2ggbW91bnQsIHRoZSBjbGllbnQgbWF5IHBlcmZvcm0gYSBTRVRDTElFTlRJRCwgYnV0
-IGl0IGlzIHRyZWF0ZWQgYXMgYSBjYWxsYmFjayB1cGRhdGUgKHN0YXRlIGlzIG5vdCBwdXJnZWQp
-IGlmIHRoZSBjbGllbnQncyBsZWFzZSBoYXMgbm90IHlldCBleHBpcmVkLg0KPiA+Pj4+IA0KPiA+
-Pj4+IE91ciBzdGF0ZSBvd25lcnMgYXJlIGdlbmVyYXRlZCBmcm9tIGEgcGFpciBvZiBpZGEgc3Ry
-dWN0dXJlcyBpbiB0aGUgbmZzX3NlcnZlciBmb3IgdGhhdCBtb3VudC4gIFRoZXkgYWx3YXlzIHN0
-YXJ0IGZyb20gemVybyBhZnRlciBhIG1vdW50IG9wZXJhdGlvbi4gIExpa2V3aXNlLCB0aGUgc2Vx
-dWVuY2UgSURzIGZvciB0aGVzZSBzdGF0ZSBvd25lcnMgYXJlIGFsc28gcmVzZXQgYnkgdW1vdW50
-IC8gbW91bnQuICBOb3RlIHRoYXQgZWFjaCBtb3VudCBwb2ludCBnZXRzIGEgZnJlc2ggbmZzX3Nl
-cnZlciwgc28gdGhlc2Ugc3RydWN0dXJlcyBhcmUgbm90IHJldGFpbmVkIGFjcm9zcyB1bW91bnQg
-LyBtb3VudC4NCj4gPj4+PiANCj4gPj4+PiBUaGlzIG1lYW5zIHVtb3VudCAvIG1vdW50IHdpdGgg
-bm8gbGVhc2UgZXhwaXJ5IHN0YXJ0cyB0byByZS1wbGF5IHN0YXRlIG93bmVycyB3aXRoIHJlc2V0
-IHNlcXVlbmNlIElEcy4gIFNlcnZlcnMgZG9uJ3QgcmVhbGx5IGNhcmUgZm9yIHRoYXQgYmVoYXZp
-b3IuICBJIGhhdmUgYSB0ZXN0IGNhc2UgdGhhdCByZWxpYWJseSBnZXRzIGEgQkFEX1NFUUlEIGVy
-cm9yIGZyb20gYSBzZXJ2ZXIgYWZ0ZXIgYSBxdWljayB1bW91bnQgLyBtb3VudCBmb2xsb3dlZCBi
-eSBhIHNpbmdsZSBmaWxlIGNyZWF0aW9uLg0KPiA+Pj4+IA0KPiA+Pj4+IE5vdyB0aGF0IHdlIGFy
-ZSBhYm91dCB0byBzd2l0Y2ggdG8gdXNpbmcgbW9yZS1vci1sZXNzIGdsb2JhbCBTRVRDTElFTlRJ
-RCBib290IHZlcmlmaWVycywgaXQgc2VlbXMgdG8gbWUgdGhhdCB3ZSByZWFsbHkgd2FudCBhIGds
-b2JhbCBvcGVub3duZXJfaWQgYW5kIGxvY2tvd25lcl9pZCBhcyB3ZWxsLg0KPiA+Pj4+IA0KPiA+
-Pj4+IFRoZSBwZXJmb3JtYW5jZSBpbXBhY3Qgb2Ygc3VjaCBhIGNoYW5nZSBtaWdodCBiZSBhY2Nl
-cHRhYmxlIGJlY2F1c2Ugd2UgY2FjaGUgYW5kIHJldXNlIHN0YXRlIG93bmVycyBub3cuDQo+ID4+
-Pj4gDQo+ID4+Pj4gVGhvdWdodHM/DQo+ID4+PiANCj4gPj4+IFRoYXQncyBhIGRlZmluaXRlIHNl
-cnZlciBidWcuIElmIHRoZSBjbGllbnQgaG9sZHMgbm8gb3BlbiBzdGF0ZSwgdGhlbiBpdA0KPiA+
-Pj4gaXMgYWxsb3dlZCB0byBmb3JnZXQgdGhlIG9wZW4gb3duZXIgYW5kIHN0YXJ0IHRoZSBzZXF1
-ZW5jZSBpZCBmcm9tIDANCj4gPj4+IGFnYWluLiBJdCBpcyBub3QgcmVxdWlyZWQgdG8gcmVtZW1i
-ZXIgc2VxdWVuY2UgaWRzIGZvciBvcGVuIG93bmVycyB0aGF0DQo+ID4+PiBhcmVuJ3QgaW4gdXNl
-Lg0KPiA+Pj4gDQo+ID4+PiBPdXIgY3VycmVudCBjbGllbnQgY291bGQgZWFzaWx5IHRyaWdnZXIg
-dGhpcyBidWcgZXZlbiB3aXRob3V0IGENCj4gPj4+IHVtb3VudC9tb3VudC4NCj4gPj4gDQo+ID4+
-IFRoZSBjbGllbnQgaXMgaG9sZGluZyBvcGVuIHN0YXRlLiAgSGVyZSdzIHRoZSBleGFjdCByZXBy
-b2R1Y2VyIG9uIG15IG1vZGlmaWVkIGNsaWVudDoNCj4gPj4gDQo+ID4+IDEuICBtb3VudCBzZXJ2
-ZXI6L2V4cG9ydCAvbW50DQo+ID4+IDIuICB0b3VjaCAvbW50L25ld2ZpbGUNCj4gPj4gMy4gIHVt
-b3VudCAvbW50DQo+ID4+IDQuICBtb3VudCBzZXJ2ZXI6L2V4cG9ydCAvbW50DQo+ID4+IDUuICB0
-b3VjaCAvbW50L25ld2ZpbGUyDQo+ID4+IA0KPiA+PiBTdGVwIDUgY2F1c2VzIHRoZSBjbGllbnQg
-dG8gcmVwbGF5IGFuIG9wZW4gb3duZXIgd2l0aCBhIHJlc2V0IHNlcXVlbmNlIElELCBhbmQgdGhl
-IHNlcnZlciByZXBsaWVzIEJBRF9TRVFJRC4NCj4gPiANCj4gPiB0b3VjaCB3b24ndCBrZWVwIHRo
-ZSBmaWxlIG9wZW4uIFRoZXJlIGlzIG5vIG9wZW4gc3RhdGUgb25jZSB0b3VjaCBoYXMNCj4gPiBm
-aW5pc2hlZCBleGVjdXRpbmcuDQo+IA0KPiBPSywgYWdyZWVkLg0KPiANCj4gPiBXaGF0IHlvdSBo
-YXZlIGV4cG9zZWQgYWJvdmUgaXMgYSBfc2VydmVyXyBidWcuIFRoZSBzZXJ2ZXIgaXMgX25vdF8N
-Cj4gPiBhbGxvd2VkIHRvIGFzc3VtZSB0aGF0IHRoZSBjbGllbnQgd2lsbCBjYWNoZSBhbiBvcGVu
-IG93bmVyIGZvcmV2ZXIgb25jZQ0KPiA+IGl0IG5vIGxvbmdlciBob2xkcyBhbnkgb3BlbiBzdGF0
-ZSB1c2luZyB0aGF0IG9wZW4gb3duZXIuIFdlIGhhZCBhIGxvb25nDQo+ID4gZGlzY3Vzc2lvbiBh
-Ym91dCB0aGlzIG9uIHRoZSBtYWlsaW5nIGxpc3QgYSBmZXcgeWVhcnMgYWdvIHdpdGggRGF2aWQN
-Cj4gPiBSb2JpbnNvbiBiZWluZyB0aGUgcGVyc29uIHdobyBmb3JtdWxhdGVkIHRoZSBhYm92ZSBy
-dWxlLg0KPiANCj4gSSdtIG5vdCBzdXJlIEkgd291bGQgY2hhcmFjdGVyaXplIHRoaXMgYXMgYSBz
-ZXJ2ZXIgYnVnIGp1c3QgeWV0LiAgT24gT1BFTiwgdGhlIHNlcnZlciBpcyBhbGxvd2VkIHRvIHRl
-bGwgdGhlIGNsaWVudCBpdCBpcyB1c2luZyBhIGJhZCBzZXF1ZW5jZSBJRCwgYW5kIHRoZSBjbGll
-bnQgaXMgc3VwcG9zZWQgdG8gcmVjb3ZlciBieSB0cnlpbmcgYWdhaW4gd2l0aCBhIGRpZmZlcmVu
-dCBPTy4gIE91ciBCQURfU0VRSUQgcmVjb3ZlcnkgbG9naWMgYXBwZWFycyB0byBiZSBicm9rZW4s
-IGJlY2F1c2Ugb3VyIGNsaWVudCBnb2VzIGludG8gYSBsb29wIHJldHJ5aW5nIHRoZSBPUEVOIHdp
-dGggdGhlIHNhbWUgT08uICBJZiByZWNvdmVyeSB3b3JrZWQsIHRoaXMgd291bGQgYWxsIGJlIHBl
-cmZlY3RseSB0cmFuc3BhcmVudCwgSSB0aGluay4NCg0KQWZ0ZXIgcmUtcmVhZGluZyB0aGUgdGhy
-ZWFkIG9uDQpodHRwOi8vd3d3LmlldGYub3JnL21haWwtYXJjaGl2ZS93ZWIvbmZzdjQvY3VycmVu
-dC9tc2cwMTcxOS5odG1sIEknbQ0KaGF2aW5nIHNlY29uZCB0aG91Z2h0cy4gSSBkaWQgcmVtZW1i
-ZXIgYmVpbmcgY29udmluY2VkIGJ5IERhdmlkJ3MNCmFyZ3VtZW50cywgYnV0IGxvb2tpbmcgYmFj
-ayBpdCBkb2VzIG5vdCBhcHBlYXIgdGhhdCB3ZSBhY2hpZXZlZA0KY29uc2Vuc3VzLg0KDQpUaGUg
-d2hvbGUgcHJvYmxlbSBpbiB0aGUgc3BlYyBpcyB0aGF0IGFsdGhvdWdoIHRoZSBzZXJ2ZXIgaXMg
-YWxsb3dlZCB0bw0KZm9yZ2V0IHRoZSBvcGVuIG93bmVyIHdoZW4gdGhlIGNsaWVudCBubyBsb25n
-ZXIgaG9sZHMgYW55IHN0YXRlLCBpdCBpcw0Kbm90IF9yZXF1aXJlZF8gdG8gZG8gc28uDQpJbiBv
-dGhlciB3b3JkcywgdGhlIGNsaWVudCBuZWVkcyB0byBiZSBwcmVwYXJlZCBmb3IgZWl0aGVyIEJB
-RF9TRVFJRCBvcg0KYW4gT1BFTl9DT05GSVJNIHJlcXVlc3QgaWYgaXQgdHJpZXMgdG8gT1BFTiB1
-c2luZyBhIHJlY3ljbGVkIG9wZW4gb3duZXIuDQoNCj4gSSB3YXMgdGFraW5nIGEgc3RlcCBiYWNr
-IGFuZCB3b25kZXJpbmcgaG93IHRoZSBjbGllbnQgY2hvc2UgdGhlIE9PIGluIHRoZSBmaXJzdCBw
-bGFjZS4NCj4gDQo+IEJ1dCB5b3UgY2xhaW1lZCBhYm92ZSB0aGF0IG91ciBjbGllbnQgY291bGQg
-dHJpZ2dlciB0aGlzIGJ1ZyB3aXRob3V0IGEgdW1vdW50IC8gbW91bnQgc2VxdWVuY2UuICBEbyB5
-b3UgaGF2ZSBhbiBleGFtcGxlIG9mIGhvdyBJIG1pZ2h0IHRyeSB0aGF0Pw0KDQpUaGUgbGF0ZXN0
-IGNsaWVudCB1c2VzIHRoZSBpZGEgYWxsb2NhdG9yIGluIG9yZGVyIHRvIGdlbmVyYXRlIHVuaXF1
-ZQ0KaWRlbnRpZmllcnMuIFRoYXQgcGFydGljdWxhciBhbGxvY2F0b3Igb2ZmZXJzIG5vIGd1YXJh
-bnRlZXMgdGhhdCBpdA0Kd29uJ3QgcmUtdXNlIGFuIGlkZW50aWZpZXIgdGhhdCBpcyBubyBsb25n
-ZXIgaW4gdXNlLiBJbiBmYWN0LCBiZWNhdXNlIGl0DQp1c2VzIGZpbmRfbmV4dF96ZXJvX2JpdCgp
-LCByZXVzZSBpcyBhY3R1YWxseSB0aGUgbm9ybS4NCg0KU28gSSBiZWxpZXZlIHRoYXQgYWxsIHlv
-dSBuZWVkIHRvIGRvIGhlcmUgaXMgY3JlYXRlIDIgb3BlbiBvd25lcnMgdXNpbmcNCnNpbXVsdGVu
-ZW91cyAnb3BlbigpJyBjYWxscyBmcm9tIDIgcHJvY2Vzc2VzIHdpdGggZGlmZmVyZW50IGNyZWRl
-bnRpYWxzLA0KdGhlbiBjbG9zZSBib3RoIGZpbGUgZGVzY3JpcHRvcnMsIHdhaXQgMSBsZWFzZSBw
-ZXJpb2QsIGFuZCB0aGVuIHRyeQ0KJ29wZW4oKScgZnJvbSBib3RoIHByb2Nlc3NlcyBhZ2Fpbi4N
-CkFzIGZhciBhcyBJIGNhbiBzZWUsIHRoZSBnYXJiYWdlIGNvbGxlY3RvciBzaG91bGQgdGhyb3cg
-b3V0IHRoZSBzZWNvbmQNCm9wZW4gb3duZXIgd2hlbiB5b3UgZG8gdGhlIHRoaXJkICdvcGVuKCkn
-LCBhbmQgc28gdGhlIGNsaWVudCB3aWxsDQpnZW5lcmF0ZSBhIG5ldyBvbmUgd2l0aCB0aGUgc2Ft
-ZSBpZGEgdmFsdWUgd2hlbiB5b3UgZG8gdGhlIGZvdXJ0aA0Kb3BlbigpLg0KDQotLSANClRyb25k
-IE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQu
-TXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+
+During the working group meeting at IETF 83, the WG chair asked me about the implementation status of the Linux client migration implementation.  I never properly answered his question, so let me open this note with a brief update.  This update provides context for what follows.
+
+Last summer I had support for NFS4ERR_MOVED, NFS4ERR_LEASE_MOVED, and transparent state migration working in the Linux NFS client.  At the time we used various protocol hacks to ensure that servers could recognize and manage migrated state.  After IETF 81 (Quebec City, August 2011), Dave Noveck conceived of using a Uniform Client String (UCS) model, where a client uses the same nfs_client_id4 string for all servers, to replace these hacks.  Since then I've been working on a UCS client prototype to test the idea.
+
+This UCS client does not yet support migration.  Migration support can be forward ported from last summer's prototype after a UCS implementation is in place and robust.  My UCS client uses the same nfs_client_id4 for all servers.  It performs the SETCLIENTID operation as the first operation after it first contacts a server.  It then performs a degenerate form of server trunking discovery, since the Linux client does not currently support either client or server trunking.  Trunking discovery is performed at mount time only, not during lease reclaim.
+
+Lastly, because not all server implementations are entirely compatible with UCS, the UCS client uses non-UCS by default.  UCS operation is enabled via a mount option when an administrator is certain the server can tolerate UCS clients.
+
+My focus has recently shifted so that current work is now intended to be merged into the Linux mainline kernel.  That is, this is no longer protocol prototyping work: it is meant to be a real implementation.
+
+However, we are still engaged in completing the NFSv4 migration draft which Dave started last fall.  As part of that engagement, I'd like to report further implementation experience since Connectathon 2012, when we last published the status of this work.
+
+
+1. UCS clients must sustain empty leases to make trunking discovery work
+
+The Linux client currently RENEWs its leases only when there is open or lock state.  It lets a lease expire if no state is held.  Thus a fresh SETCLIENTID / SETCLIENTID_CONFIRM sequence is needed before a subsequent OPEN can proceed.
+
+A server can return a different clientid4 at this time.  However, our trunking discovery algorithm depends on the clientid4 not changing during the lifetime of mounts, even if no open or lock state is held.
+
+For example, if I mount a server via address A, allow the lease to expire, then mount the same server via address B, the server may return a different clientid4 if it has no record of the expired lease.  The client then has no way to determine that address A and B represent the same server.
+
+Therefore, a UCS client is obliged to continue RENEWing an empty lease so that it pins a clientid4 that can be used for server trunking discovery during future mount operations.
+
+
+2.  The current Linux NFS server implementation does not tolerate UCS clients
+
+I tried a simple test with the Linux UCS client and current stock NFS server implementations.  I mounted each server via NFSv4.0 by its IPv4 and its IPv6 address.  The UCS client's server trunking discovery algorithm should recognize that these addresses represent the same server instance.  For a Solaris 11 FCS server, this worked as expected.
+
+For the Linux Fedora 16 server, this test failed.  The server returned a different clientid4 for the second mount, even though the client presented the same nfs_client_id4 and boot verifier, and the first mount's lease had not expired.  In addition, the server responded with NFS4ERR_CLID_INUSE when the client attempted a SETCLIENTID_CONFIRM.  The second mount was thus prevented.  The Linux NFS community agrees the Linux server's behavior is incorrect.
+
+More important, this is another example of a widely deployed server implementation that does not tolerate UCS clients.  At least one of these misbehaviors appears as far back as we have kernel source repository history (roughly 2.6.12).  I have not yet tested the Linux server's NFSv4.1 implementation to see if it is also a victim of these bugs.
+
+
+3.  NFSv4.0 UCS clients must merge callback IDs after trunking discovery
+
+Server trunking discovery proceeds after a client performs a SETCLIENTID against an unrecognized server address.  If the server has already been contacted by this client via a different address, it should treat the current SETCLIENTID as a callback update.
+
+However, if the client implementation uses a callback ID (or a uniquified callback RPC program number), it will likely have generated a fresh callback ID (or program number) for the current SETCLIENTID.  Thus this callback update will have replaced the existing callback information on the server that was established for previous mounts.
+
+A client must ensure that callbacks for all existing mounts are still recognized.  Therefore, after server trunking discovery identifies a trunked server, a client must ensure its own data structures are updated to reflect the changed callback endpoint which is a byproduct of trunking discovery.
+
+If callbacks using that ID will no longer be recognized by a client, it should consider terminating existing callback transport sessions for this clientid4 in order to signal that some callbacks could have been lost during the callback update.
+
+
+4.  CLID_INUSE recovery for UCS clients may be difficult or impossible
+
+RFC 3530bis suggests that a server returns CLID_INUSE only when an nfs_client_id4 string is presented with a different authentication flavor than a previous SETCLIENTID, and the lease for that string is still active.
+
+Some servers can be more paranoid about nfs_client_id4 spoofing than others.  They sometimes return CLID_INUSE if the same nfs_client_id4 string is presented from different source IP addresses.  We believe this is incorrect behavior, yet it does exist in the diaspora, as we saw in 2. above.
+
+For an NFSv4.0 UCS client, during server trunking discovery, a CLID_INUSE error is a sign that the server is trunked and does recognize the nfs_client_id4 string.  This is likely to occur, for example, if a client mounts a server via address A with authentication flavor X, then mounts address B with authentication flavor Y.
+
+Possible recovery steps are to retry the SETCLIENTID with all supported authentication flavors so that a clientid4 can be obtained to perform server trunking discovery.  The outcome is that the client should continue to use the authentication flavor of the original SETCLIENTID (X, in our example above).
+
+It may be difficult for either the client or server to distinguish trunking from nfs_client_id4 spoofing, however.
+
+During lease reclaim, a CLID_INUSE error signifies that either another client is using the same nfs_client_id4 string with a different authentication flavor, or that lease reclaim has raced with another mount request on this client.  We can prevent the race in our client, but there does not seem to be a robust automatic recovery mechanism when client spoofing is encountered.  At this point, a client should probably cause all further application requests associated with the spoofed nfs_client_id4/clientid4 to fail.
+
+Because nfs_client_id4 spoofing can be so destructive, my UCS client provides a mechanism for specifying a permanent client string uniquifier via a kernel boot option.  OS installation procedures can generate a UUID and then add it to the default kernel boot command line.  This provides a very strong (but still not perfect) guarantee of nfs_client_id4 uniqueness.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
