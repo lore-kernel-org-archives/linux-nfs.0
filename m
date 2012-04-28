@@ -1,112 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:39660 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:51077 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755427Ab2DXS6y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Apr 2012 14:58:54 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 2/2] NFS: Make v2 configurable
-Date: Tue, 24 Apr 2012 14:58:50 -0400
-Message-Id: <1335293930-20215-3-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1335293930-20215-1-git-send-email-bjschuma@netapp.com>
-References: <1335293930-20215-1-git-send-email-bjschuma@netapp.com>
+	id S1750962Ab2D1L0l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 28 Apr 2012 07:26:41 -0400
+Date: Sat, 28 Apr 2012 07:26:39 -0400
+To: NeilBrown <neilb@suse.de>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
+        Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 0/3] Fix use_ipaddr race
+Message-ID: <20120428112639.GA22396@fieldses.org>
+References: <1334961978-2843-1-git-send-email-bfields@redhat.com>
+ <20120423110419.1311c364@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120423110419.1311c364@notabene.brown>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Mon, Apr 23, 2012 at 11:04:19AM +1000, NeilBrown wrote:
+> On Fri, 20 Apr 2012 18:46:15 -0400 "J. Bruce Fields" <bfields@redhat.com>
+> wrote:
+> 
+> >   mountd: unconditionally resolve ip address
+> 
+> Not a good idea.  If /etc/exports only contains IP address and subnets, then
+> we don't ever want to do any address resolution.  The "resolve ip address"
+> must at least be conditional on "are there any domain-name, wild-cards,
+> netgroups in /etc/exports".
 
-With this patch NFS v2 will no longer be automatically compiled in.
-Instead, users will have to select NFS_V2 during Kconfig if they want to
-use v2.
+The bug is my changelog.  All we're really doing there is parsing the ip
+address, not resolving anything.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/Kconfig  |    9 +++++++++
- fs/nfs/Makefile |    5 +++--
- fs/nfs/client.c |   11 ++++++++++-
- 3 files changed, 22 insertions(+), 3 deletions(-)
+...
+> >   mountd: ignore use_ipaddr and just try both client types
+> 
+> Maybe ... though if we could syntactically distinguish "use_ipaddr" domains
+> from "!use_ipaddr" domain and still just choose one test to perform, I think
+> I'd prefer that.
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index 2a0e6c5..4995b24 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -29,6 +29,15 @@ config NFS_FS
- 
- 	  If unsure, say N.
- 
-+config NFS_V2
-+	bool "NFS client support for NFS version 2"
-+	depends on NFS_FS
-+	help
-+	  This option enables support for version 2 of the NFS protocol
-+	  (RFC 1094) in the kernel's NFS client.
-+
-+	  If unsure, say Y.
-+
- config NFS_V3
- 	bool "NFS client support for NFS version 3"
- 	depends on NFS_FS
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index b58613d..7ddd45d 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -4,11 +4,12 @@
- 
- obj-$(CONFIG_NFS_FS) += nfs.o
- 
--nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o nfs2xdr.o \
--			   direct.o pagelist.o proc.o read.o symlink.o unlink.o \
-+nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o \
-+			   direct.o pagelist.o read.o symlink.o unlink.o \
- 			   write.o namespace.o mount_clnt.o \
- 			   dns_resolve.o cache_lib.o
- nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
-+nfs-$(CONFIG_NFS_V2)	+= proc.o nfs2xdr.o
- nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
- nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
- nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 60f7e4e..b3922e6 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -90,7 +90,9 @@ static bool nfs4_disable_idmapping = true;
-  * RPC cruft for NFS
-  */
- static const struct rpc_version *nfs_version[5] = {
-+#ifdef CONFIG_NFS_V2
- 	[2]			= &nfs_version2,
-+#endif
- #ifdef CONFIG_NFS_V3
- 	[3]			= &nfs_version3,
- #endif
-@@ -847,7 +849,7 @@ static int nfs_init_server(struct nfs_server *server,
- 		.hostname = data->nfs_server.hostname,
- 		.addr = (const struct sockaddr *)&data->nfs_server.address,
- 		.addrlen = data->nfs_server.addrlen,
--		.rpc_ops = &nfs_v2_clientops,
-+		.rpc_ops = NULL,
- 		.proto = data->nfs_server.protocol,
- 		.net = data->net,
- 	};
-@@ -857,10 +859,17 @@ static int nfs_init_server(struct nfs_server *server,
- 
- 	dprintk("--> nfs_init_server()\n");
- 
-+
-+#ifdef CONFIG_NFS_V2
-+	if (data->version == 2)
-+		cl_init.rpc_ops = &nfs_v2_clientops;
-+#endif
- #ifdef CONFIG_NFS_V3
- 	if (data->version == 3)
- 		cl_init.rpc_ops = &nfs_v3_clientops;
- #endif
-+	if (cl_init.rpc_ops == NULL)
-+		return -EPROTONOSUPPORT;
- 
- 	nfs_init_timeout_values(&timeparms, data->nfs_server.protocol,
- 			data->timeo, data->retrans);
--- 
-1.7.10
+Hm, OK.  Something like the following?  (Totally untested.)
 
+--b.
