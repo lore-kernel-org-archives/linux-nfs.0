@@ -1,185 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:2740 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:37752 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756078Ab2DQOIS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Apr 2012 10:08:18 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q3HE8HKf007561
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 17 Apr 2012 10:08:18 -0400
-From: Simo Sorce <simo@redhat.com>
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
-Subject: [PATCH 3/5] SUNRPC: split upcall function to extract reusable parts
-Date: Tue, 17 Apr 2012 09:39:06 -0400
-Message-Id: <1334669948-4156-4-git-send-email-simo@redhat.com>
-In-Reply-To: <1334669948-4156-1-git-send-email-simo@redhat.com>
-References: <1334669948-4156-1-git-send-email-simo@redhat.com>
+	id S1750945Ab2D1P7T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 28 Apr 2012 11:59:19 -0400
+Date: Sat, 28 Apr 2012 11:59:17 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
+        Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 0/3] Fix use_ipaddr race
+Message-ID: <20120428155917.GA23348@fieldses.org>
+References: <1334961978-2843-1-git-send-email-bfields@redhat.com>
+ <20120423110419.1311c364@notabene.brown>
+ <20120428112639.GA22396@fieldses.org>
+ <20120428214726.1742c905@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120428214726.1742c905@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is needed to share code between the current server upcall mechanism
-and the new gssproxy upcall mechanism introduced in a following patch.
+On Sat, Apr 28, 2012 at 09:47:26PM +1000, NeilBrown wrote:
+> On Sat, 28 Apr 2012 07:26:39 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+> wrote:
+> 
+> > On Mon, Apr 23, 2012 at 11:04:19AM +1000, NeilBrown wrote:
+> > > On Fri, 20 Apr 2012 18:46:15 -0400 "J. Bruce Fields" <bfields@redhat.com>
+> > > wrote:
+> > > 
+> > > >   mountd: unconditionally resolve ip address
+> > > 
+> > > Not a good idea.  If /etc/exports only contains IP address and subnets, then
+> > > we don't ever want to do any address resolution.  The "resolve ip address"
+> > > must at least be conditional on "are there any domain-name, wild-cards,
+> > > netgroups in /etc/exports".
+> > 
+> > The bug is my changelog.  All we're really doing there is parsing the ip
+> > address, not resolving anything.
+> 
+> Ahhh. I see that now.  Thanks.
+> 
+> > 
+> > ...
+> > > >   mountd: ignore use_ipaddr and just try both client types
+> > > 
+> > > Maybe ... though if we could syntactically distinguish "use_ipaddr" domains
+> > > from "!use_ipaddr" domain and still just choose one test to perform, I think
+> > > I'd prefer that.
+> > 
+> > Hm, OK.  Something like the following?  (Totally untested.)
+> 
+> Yes, that looks good.
+> 
+> I could probably bike-shed for a while about the leading '?', and wonder if
+> '!' or '$' might be better choices, or if leading '[' and trailing ']' is
+> best but I won't.  He who writes the code makes the choice.
 
-Signed-off-by: Simo Sorce <simo@redhat.com>
----
- net/sunrpc/auth_gss/svcauth_gss.c |  110 +++++++++++++++++++++++--------------
- 1 files changed, 69 insertions(+), 41 deletions(-)
+Hah.  I think I had some vague idea like "the ? reminds us there's still
+some question to be answered about this".  Anyway, my one worry is that
+I'm not sure what the syntax of the existing client types.
 
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 274df6410057fa23e991545d80fdb90ab37e0b6f..aa1b649749741c82e60f0f528ac645197fd7ab35 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -965,16 +965,17 @@ svcauth_gss_set_client(struct svc_rqst *rqstp)
- }
- 
- static inline int
--gss_write_init_verf(struct cache_detail *cd, struct svc_rqst *rqstp, struct rsi *rsip)
-+gss_write_init_verf(struct cache_detail *cd, struct svc_rqst *rqstp,
-+		struct xdr_netobj *out_handle, int *major_status)
- {
- 	struct rsc *rsci;
- 	int        rc;
- 
--	if (rsip->major_status != GSS_S_COMPLETE)
-+	if (*major_status != GSS_S_COMPLETE)
- 		return gss_write_null_verf(rqstp);
--	rsci = gss_svc_searchbyctx(cd, &rsip->out_handle);
-+	rsci = gss_svc_searchbyctx(cd, out_handle);
- 	if (rsci == NULL) {
--		rsip->major_status = GSS_S_NO_CONTEXT;
-+		*major_status = GSS_S_NO_CONTEXT;
- 		return gss_write_null_verf(rqstp);
- 	}
- 	rc = gss_write_verf(rqstp, rsci->mechctx, GSS_SEQ_WIN);
-@@ -982,6 +983,61 @@ gss_write_init_verf(struct cache_detail *cd, struct svc_rqst *rqstp, struct rsi
- 	return rc;
- }
- 
-+static inline int
-+gss_read_verf(struct rpc_gss_wire_cred *gc,
-+	      struct kvec *argv, __be32 *authp,
-+	      struct xdr_netobj *in_handle,
-+	      struct xdr_netobj *in_token)
-+{
-+	struct xdr_netobj tmpobj;
-+
-+	/* Read the verifier; should be NULL: */
-+	*authp = rpc_autherr_badverf;
-+	if (argv->iov_len < 2 * 4)
-+		return SVC_DENIED;
-+	if (svc_getnl(argv) != RPC_AUTH_NULL)
-+		return SVC_DENIED;
-+	if (svc_getnl(argv) != 0)
-+		return SVC_DENIED;
-+	/* Martial context handle and token for upcall: */
-+	*authp = rpc_autherr_badcred;
-+	if (gc->gc_proc == RPC_GSS_PROC_INIT && gc->gc_ctx.len != 0)
-+		return SVC_DENIED;
-+	if (dup_netobj(in_handle, &gc->gc_ctx))
-+		return SVC_CLOSE;
-+	*authp = rpc_autherr_badverf;
-+	if (svc_safe_getnetobj(argv, &tmpobj)) {
-+		kfree(in_handle->data);
-+		return SVC_DENIED;
-+	}
-+	if (dup_netobj(in_token, &tmpobj)) {
-+		kfree(in_handle->data);
-+		return SVC_CLOSE;
-+	}
-+
-+	return 0;
-+}
-+
-+static inline int
-+gss_write_resv(struct kvec *resv, size_t size_limit,
-+	       struct xdr_netobj *out_handle, struct xdr_netobj *out_token,
-+	       int major_status, int minor_status)
-+{
-+	if (resv->iov_len + 4 > size_limit)
-+		return -1;
-+	svc_putnl(resv, RPC_SUCCESS);
-+	if (svc_safe_putnetobj(resv, out_handle))
-+		return -1;
-+	if (resv->iov_len + 3 * 4 > size_limit)
-+		return -1;
-+	svc_putnl(resv, major_status);
-+	svc_putnl(resv, minor_status);
-+	svc_putnl(resv, GSS_SEQ_WIN);
-+	if (svc_safe_putnetobj(resv, out_token))
-+		return -1;
-+	return 0;
-+}
-+
- /*
-  * Having read the cred already and found we're in the context
-  * initiation case, read the verifier and initiate (or check the results
-@@ -994,36 +1050,15 @@ static int svcauth_gss_handle_init(struct svc_rqst *rqstp,
- {
- 	struct kvec *argv = &rqstp->rq_arg.head[0];
- 	struct kvec *resv = &rqstp->rq_res.head[0];
--	struct xdr_netobj tmpobj;
- 	struct rsi *rsip, rsikey;
- 	int ret;
- 	struct sunrpc_net *sn = net_generic(rqstp->rq_xprt->xpt_net, sunrpc_net_id);
- 
--	/* Read the verifier; should be NULL: */
--	*authp = rpc_autherr_badverf;
--	if (argv->iov_len < 2 * 4)
--		return SVC_DENIED;
--	if (svc_getnl(argv) != RPC_AUTH_NULL)
--		return SVC_DENIED;
--	if (svc_getnl(argv) != 0)
--		return SVC_DENIED;
--
--	/* Martial context handle and token for upcall: */
--	*authp = rpc_autherr_badcred;
--	if (gc->gc_proc == RPC_GSS_PROC_INIT && gc->gc_ctx.len != 0)
--		return SVC_DENIED;
- 	memset(&rsikey, 0, sizeof(rsikey));
--	if (dup_netobj(&rsikey.in_handle, &gc->gc_ctx))
--		return SVC_CLOSE;
--	*authp = rpc_autherr_badverf;
--	if (svc_safe_getnetobj(argv, &tmpobj)) {
--		kfree(rsikey.in_handle.data);
--		return SVC_DENIED;
--	}
--	if (dup_netobj(&rsikey.in_token, &tmpobj)) {
--		kfree(rsikey.in_handle.data);
--		return SVC_CLOSE;
--	}
-+	ret = gss_read_verf(gc, argv, authp,
-+			    &rsikey.in_handle, &rsikey.in_token);
-+	if (ret)
-+		return ret;
- 
- 	/* Perform upcall, or find upcall result: */
- 	rsip = rsi_lookup(sn->rsi_cache, &rsikey);
-@@ -1036,19 +1071,12 @@ static int svcauth_gss_handle_init(struct svc_rqst *rqstp,
- 
- 	ret = SVC_CLOSE;
- 	/* Got an answer to the upcall; use it: */
--	if (gss_write_init_verf(sn->rsc_cache, rqstp, rsip))
-+	if (gss_write_init_verf(sn->rsc_cache, rqstp,
-+				&rsip->out_handle, &rsip->major_status))
- 		goto out;
--	if (resv->iov_len + 4 > PAGE_SIZE)
--		goto out;
--	svc_putnl(resv, RPC_SUCCESS);
--	if (svc_safe_putnetobj(resv, &rsip->out_handle))
--		goto out;
--	if (resv->iov_len + 3 * 4 > PAGE_SIZE)
--		goto out;
--	svc_putnl(resv, rsip->major_status);
--	svc_putnl(resv, rsip->minor_status);
--	svc_putnl(resv, GSS_SEQ_WIN);
--	if (svc_safe_putnetobj(resv, &rsip->out_token))
-+	if (gss_write_resv(resv, PAGE_SIZE,
-+			   &rsip->out_handle, &rsip->out_token,
-+			   rsip->major_status, rsip->minor_status))
- 		goto out;
- 
- 	ret = SVC_COMPLETE;
--- 
-1.7.7.6
+Hm, the documentation says "?" and "[character set]" can be used in
+wildcard domains, so maybe we do want '!' or '$'.
 
+--b.
