@@ -1,38 +1,129 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:22402 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:42250 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760020Ab2D0Ou3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Apr 2012 10:50:29 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Josh Boyer <jwboyer@redhat.com>
-CC: Jim Rees <rees@umich.edu>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: Add modalias for "nfs4"
-Date: Fri, 27 Apr 2012 14:50:28 +0000
-Message-ID: <1335538228.3910.1.camel@lade.trondhjem.org>
-References: <20120427131031.GA13189@zod.bos.redhat.com>
-	 <20120427141918.GA15506@umich.edu>
-	 <20120427144840.GB13189@zod.bos.redhat.com>
-In-Reply-To: <20120427144840.GB13189@zod.bos.redhat.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1753065Ab2D1UZl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 28 Apr 2012 16:25:41 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 06/11] NFSv2/v3: Simulate the change attribute
+Date: Sat, 28 Apr 2012 16:25:15 -0400
+Message-Id: <1335644720-28305-7-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1335644720-28305-6-git-send-email-Trond.Myklebust@netapp.com>
+References: <1335644720-28305-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1335644720-28305-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1335644720-28305-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1335644720-28305-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1335644720-28305-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1335644720-28305-6-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTA0LTI3IGF0IDEwOjQ4IC0wNDAwLCBKb3NoIEJveWVyIHdyb3RlOg0KPiBP
-biBGcmksIEFwciAyNywgMjAxMiBhdCAxMDoxOToxOEFNIC0wNDAwLCBKaW0gUmVlcyB3cm90ZToN
-Cj4gPiBKb3NoIEJveWVyIHdyb3RlOg0KPiA+IA0KPiA+ICAgV2hlbiBORlN2NCBpcyBjb25maWd1
-cmVkLCB0aGUgc3VwcG9ydCBnb2VzIGludG8gdGhlIG5mcy5rbyBtb2R1bGUuDQo+ID4gICBIb3dl
-dmVyLCBuZnMtdXRpbHMgc2VlbXMgdG8gcGFzcyAibmZzNCIgYXMgdGhlIGZpbGVzdHN0ZW0gdHlw
-ZSBmb3INCj4gPiAgIE5GU3Y0IG1vdW50cy4NCj4gPiANCj4gPiBXZXJlbid0IHdlIGdvaW5nIHRv
-IGNoYW5nZSB0aGF0IHRvIG5mcyBhbmQgdXNlIG5mc3ZlcnMgdG8gc2VsZWN0IG5mczQ/DQo+IA0K
-PiBJIGhhdmUsIGFwcHJveGltYXRlbHksIG5vIGlkZWEuICBBdCBsZWFzdCB0aGUgdmVyc2lvbiBv
-ZiBuZnMtdXRpbHMgZm91bmQNCj4gaW4gRmVkb3JhIDE3IGFuZCByYXdoaWRlLCBpdCdzIHN0aWxs
-IHVzaW5nICJuZnM0Ii4gICBJIGJlbGlldmUgdGhhdCBpcw0KPiBuZnMtdXRpbHMtMS4yLjYtcmM2
-IGJhc2VkLg0KDQpuZnM0IGlzIHN0aWxsIF9zdXBwb3J0ZWRfIGluIEZlZG9yYSAxNywgcmF3aGlk
-ZSBhbmQgdXBzdHJlYW0gYXMgYSBsZWdhY3kNCmZlYXR1cmUsIGJ1dCB0aGUgcmVjb21tZW5kZWQg
-cHJhY3RpY2Ugc2hvdWxkIGJlIHRvIG1vdW50IC10IG5mcyAtb3ZlcnM9NA0KKG9yIC1vdmVycz00
-LjEpLg0KDQpDaGVlcnMNCiAgVHJvbmQNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMg
-Y2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0K
-d3d3Lm5ldGFwcC5jb20NCg0K
+Use the ctime to simulate a change attribute for NFSv2 and NFSv3.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/client.c         |    2 +-
+ fs/nfs/internal.h       |   12 ++++++++++++
+ fs/nfs/nfs2xdr.c        |    2 ++
+ fs/nfs/nfs3xdr.c        |    3 +++
+ include/linux/nfs_xdr.h |    6 +++---
+ 5 files changed, 21 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 60f7e4e..a8f8de6 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -880,7 +880,7 @@ static int nfs_init_server(struct nfs_server *server,
+ 	server->options = data->options;
+ 	server->caps |= NFS_CAP_HARDLINKS|NFS_CAP_SYMLINKS|NFS_CAP_FILEID|
+ 		NFS_CAP_MODE|NFS_CAP_NLINK|NFS_CAP_OWNER|NFS_CAP_OWNER_GROUP|
+-		NFS_CAP_ATIME|NFS_CAP_CTIME|NFS_CAP_MTIME;
++		NFS_CAP_ATIME|NFS_CAP_CTIME|NFS_CAP_MTIME|NFS_CAP_CHANGE_ATTR;
+ 
+ 	if (data->rsize)
+ 		server->rsize = nfs_block_size(data->rsize, NULL);
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 0fd1efa..1855e8f 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -493,3 +493,15 @@ unsigned int nfs_page_array_len(unsigned int base, size_t len)
+ 		PAGE_SIZE - 1) >> PAGE_SHIFT;
+ }
+ 
++/*
++ * Convert a struct timespec into a 64-bit change attribute
++ *
++ * This does approximately the same thing as timespec_to_ns(),
++ * but for calculation efficiency, we multiply the seconds by
++ * 1024*1024*1024.
++ */
++static inline
++u64 nfs_timespec_to_change_attr(const struct timespec *ts)
++{
++	return ((u64)ts->tv_sec << 30) + ts->tv_nsec;
++}
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index 1f56000..c99008e 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -313,6 +313,8 @@ static int decode_fattr(struct xdr_stream *xdr, struct nfs_fattr *fattr)
+ 	p = xdr_decode_time(p, &fattr->atime);
+ 	p = xdr_decode_time(p, &fattr->mtime);
+ 	xdr_decode_time(p, &fattr->ctime);
++	fattr->change_attr = nfs_timespec_to_change_attr(&fattr->ctime);
++
+ 	return 0;
+ out_overflow:
+ 	print_overflow_msg(__func__, xdr);
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index 01e53e9..ee284c2 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -675,6 +675,7 @@ static int decode_fattr3(struct xdr_stream *xdr, struct nfs_fattr *fattr)
+ 	p = xdr_decode_nfstime3(p, &fattr->atime);
+ 	p = xdr_decode_nfstime3(p, &fattr->mtime);
+ 	xdr_decode_nfstime3(p, &fattr->ctime);
++	fattr->change_attr = nfs_timespec_to_change_attr(&fattr->ctime);
+ 
+ 	fattr->valid |= NFS_ATTR_FATTR_V3;
+ 	return 0;
+@@ -725,12 +726,14 @@ static int decode_wcc_attr(struct xdr_stream *xdr, struct nfs_fattr *fattr)
+ 		goto out_overflow;
+ 
+ 	fattr->valid |= NFS_ATTR_FATTR_PRESIZE
++		| NFS_ATTR_FATTR_PRECHANGE
+ 		| NFS_ATTR_FATTR_PREMTIME
+ 		| NFS_ATTR_FATTR_PRECTIME;
+ 
+ 	p = xdr_decode_size3(p, &fattr->pre_size);
+ 	p = xdr_decode_nfstime3(p, &fattr->pre_mtime);
+ 	xdr_decode_nfstime3(p, &fattr->pre_ctime);
++	fattr->pre_change_attr = nfs_timespec_to_change_attr(&fattr->pre_ctime);
+ 
+ 	return 0;
+ out_overflow:
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index c940d46..cd160ab 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -106,14 +106,14 @@ struct nfs_fattr {
+ 		| NFS_ATTR_FATTR_FILEID \
+ 		| NFS_ATTR_FATTR_ATIME \
+ 		| NFS_ATTR_FATTR_MTIME \
+-		| NFS_ATTR_FATTR_CTIME)
++		| NFS_ATTR_FATTR_CTIME \
++		| NFS_ATTR_FATTR_CHANGE)
+ #define NFS_ATTR_FATTR_V2 (NFS_ATTR_FATTR \
+ 		| NFS_ATTR_FATTR_BLOCKS_USED)
+ #define NFS_ATTR_FATTR_V3 (NFS_ATTR_FATTR \
+ 		| NFS_ATTR_FATTR_SPACE_USED)
+ #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
+-		| NFS_ATTR_FATTR_SPACE_USED \
+-		| NFS_ATTR_FATTR_CHANGE)
++		| NFS_ATTR_FATTR_SPACE_USED)
+ 
+ /*
+  * Info on the file system
+-- 
+1.7.7.6
+
