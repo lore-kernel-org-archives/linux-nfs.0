@@ -1,95 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:55610 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:42344 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754154Ab2D2Uu3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 29 Apr 2012 16:50:29 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 07/15] NFS: Simplify nfs_fhget()
-Date: Sun, 29 Apr 2012 16:50:12 -0400
-Message-Id: <1335732620-10445-8-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1335732620-10445-7-git-send-email-Trond.Myklebust@netapp.com>
-References: <1335732620-10445-1-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-2-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-3-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-4-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-5-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-6-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-7-git-send-email-Trond.Myklebust@netapp.com>
+	id S1751572Ab2D1L2Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 28 Apr 2012 07:28:16 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: NeilBrown <neilb@suse.de>
+Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 3/3] mountd: prepend '?' to make use_ipaddr clients self-describing
+Date: Sat, 28 Apr 2012 07:28:12 -0400
+Message-Id: <1335612492-22574-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <20120428112639.GA22396@fieldses.org>
+References: <20120428112639.GA22396@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the inode is being initialised, there is no point in
-setting flags such as NFS_INO_INVALID_ACCESS,
-NFS_INO_INVALID_ACL or NFS_INO_INVALID_DATA since there are
-no cached access calls, acls or data caches to invalidate.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Mountd is responsible for filling three interrelated kernel caches:
+
+	- auth_unix_ip maps an incoming ip addresses to a "domain".
+	- nfsd_fh maps (domain, filehandle-fragment) pairs to paths.
+	- nfsd_export maps (domain, path) pairs to export options.
+
+Note that each export is assocated with a "client" string--the part
+before the parentheses in an /etc/export line--which may be a domain
+name, a netgroup, etc.
+
+The "domain" string in the above three caches may be either:
+
+	- in the !use_ipaddr case, a comma-separated list of client
+	  strings.
+	- in the use_ipaddr case, an ip address.
+
+In the former case, mountd does the hard work of matching an ip address
+to the clients when doing the auth_unix_ip mapping.  In the latter case,
+it delays that until the nfsd_fh or nfsd_export upcall.
+
+We're currently depending on being able to flush the kernel caches
+completely when switching between the use_ipaddr and !use_ipaddr cases.
+However, the kernel's cache-flushing doesn't really provide reliable
+guarantees on return; it's still possible we could see nfsd_fh or
+nfsd_export upcalls with the old domain-type after flushing.
+
+So, instead, make the two domain types self-describing by prepending a
+"?" in the use_ipaddr case.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/inode.c |   23 ++++++-----------------
- 1 files changed, 6 insertions(+), 17 deletions(-)
+ utils/mountd/auth.c  |   16 ++++++++++++----
+ utils/mountd/cache.c |    2 +-
+ 2 files changed, 13 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 81946e7..8d67e5e 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -285,9 +285,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 		inode->i_mode = fattr->mode;
- 		if ((fattr->valid & NFS_ATTR_FATTR_MODE) == 0
- 				&& nfs_server_capable(inode, NFS_CAP_MODE))
--			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_ACCESS
--				| NFS_INO_INVALID_ACL;
-+			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
- 		/* Why so? Because we want revalidate for devices/FIFOs, and
- 		 * that's precisely what we have in nfs_file_inode_operations.
- 		 */
-@@ -337,24 +335,19 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 		if (fattr->valid & NFS_ATTR_FATTR_MTIME)
- 			inode->i_mtime = fattr->mtime;
- 		else if (nfs_server_capable(inode, NFS_CAP_MTIME))
--			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_DATA;
-+			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
- 		if (fattr->valid & NFS_ATTR_FATTR_CTIME)
- 			inode->i_ctime = fattr->ctime;
- 		else if (nfs_server_capable(inode, NFS_CAP_CTIME))
--			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_ACCESS
--				| NFS_INO_INVALID_ACL;
-+			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
- 		if (fattr->valid & NFS_ATTR_FATTR_CHANGE)
- 			inode->i_version = fattr->change_attr;
- 		else if (nfs_server_capable(inode, NFS_CAP_CHANGE_ATTR))
--			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_DATA;
-+			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
- 		if (fattr->valid & NFS_ATTR_FATTR_SIZE)
- 			inode->i_size = nfs_size_to_loff_t(fattr->size);
- 		else
- 			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_DATA
- 				| NFS_INO_REVAL_PAGECACHE;
- 		if (fattr->valid & NFS_ATTR_FATTR_NLINK)
- 			set_nlink(inode, fattr->nlink);
-@@ -363,15 +356,11 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 		if (fattr->valid & NFS_ATTR_FATTR_OWNER)
- 			inode->i_uid = fattr->uid;
- 		else if (nfs_server_capable(inode, NFS_CAP_OWNER))
--			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_ACCESS
--				| NFS_INO_INVALID_ACL;
-+			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
- 		if (fattr->valid & NFS_ATTR_FATTR_GROUP)
- 			inode->i_gid = fattr->gid;
- 		else if (nfs_server_capable(inode, NFS_CAP_OWNER_GROUP))
--			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_ACCESS
--				| NFS_INO_INVALID_ACL;
-+			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
- 		if (fattr->valid & NFS_ATTR_FATTR_BLOCKS_USED)
- 			inode->i_blocks = fattr->du.nfs2.blocks;
- 		if (fattr->valid & NFS_ATTR_FATTR_SPACE_USED) {
+diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
+index 7aa00c4..f5bdfa7 100644
+--- a/utils/mountd/auth.c
++++ b/utils/mountd/auth.c
+@@ -112,15 +112,23 @@ auth_reload()
+ 	return counter;
+ }
+ 
++static char *get_client_ipaddr_name(const struct sockaddr *caller)
++{
++	char buf[INET6_ADDRSTRLEN + 1];
++
++	buf[0] = '?';
++	host_ntop(caller, buf + 1, sizeof(buf) - 1);
++	return strdup(buf);
++}
++
+ static char *
+ get_client_hostname(const struct sockaddr *caller, struct addrinfo *ai,
+ 		enum auth_error *error)
+ {
+-	char buf[INET6_ADDRSTRLEN];
+ 	char *n;
+ 
+ 	if (use_ipaddr)
+-		return strdup(host_ntop(caller, buf, sizeof(buf)));
++		return get_client_ipaddr_name(caller);
+ 	n = client_compose(ai);
+ 	*error = unknown_host;
+ 	if (!n)
+@@ -133,12 +141,12 @@ get_client_hostname(const struct sockaddr *caller, struct addrinfo *ai,
+ 
+ bool ipaddr_client_matches(char *dom, nfs_export *exp, struct addrinfo *ai)
+ {
+-	return use_ipaddr && client_check(exp->m_client, ai);
++	return (dom[0] == '?') && client_check(exp->m_client, ai);
+ }
+ 
+ bool namelist_client_matches(char *dom, nfs_export *exp, struct addrinfo *ai)
+ {
+-	return !use_ipaddr && client_member(dom, exp->m_client->m_hostname);
++	return (dom[0] != '?') && client_member(dom, exp->m_client->m_hostname);
+ }
+ 
+ bool client_matches(char *dom, nfs_export *exp, struct addrinfo *ai)
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index 02d5313..0e270ba 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -551,7 +551,7 @@ static void nfsd_fh(FILE *f)
+ 
+ 	auth_reload();
+ 
+-	if (use_ipaddr) {
++	if (dom[0] == '?') {
+ 		ai = lookup_client_addr(dom);
+ 		if (!ai)
+ 			goto out;
 -- 
 1.7.7.6
 
