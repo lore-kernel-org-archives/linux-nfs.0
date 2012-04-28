@@ -1,99 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:34180 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:48847 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932171Ab2DTSgv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 14:36:51 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH v2 19/28] NFS: prepare coalesce testing for directio
-Date: Fri, 20 Apr 2012 14:36:01 -0400
-Message-Id: <1334946970-27470-20-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
-References: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
+	id S1753102Ab2D1Lrd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 28 Apr 2012 07:47:33 -0400
+Date: Sat, 28 Apr 2012 21:47:26 +1000
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
+        Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 0/3] Fix use_ipaddr race
+Message-ID: <20120428214726.1742c905@notabene.brown>
+In-Reply-To: <20120428112639.GA22396@fieldses.org>
+References: <1334961978-2843-1-git-send-email-bfields@redhat.com>
+	<20120423110419.1311c364@notabene.brown>
+	<20120428112639.GA22396@fieldses.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/Hq6M1UDyw1utNLBm1gu+0Z0"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The coalesce code made assumptions that will no longer be true once
-non-page aligned io occurs.  This introduces no change in
-current behavior, but allows for more general situations to come.
+--Sig_/Hq6M1UDyw1utNLBm1gu+0Z0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/nfs4filelayout.c |   12 ++++++++++++
- fs/nfs/pagelist.c       |    2 +-
- fs/nfs/pnfs.c           |    8 ++++++++
- 3 files changed, 21 insertions(+), 1 deletions(-)
+On Sat, 28 Apr 2012 07:26:39 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+wrote:
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 02d8170..e40523f 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -796,6 +796,16 @@ filelayout_pg_init_read(struct nfs_pageio_descriptor *pgio,
- {
- 	BUG_ON(pgio->pg_lseg != NULL);
- 
-+	if (req->wb_offset != req->wb_pgbase) {
-+		/*
-+		 * Handling unaligned pages is difficult, because have to
-+		 * somehow split a req in two in certain cases in the
-+		 * pg.test code.  Avoid this by just not using pnfs
-+		 * in this case.
-+		 */
-+		nfs_pageio_reset_read_mds(pgio);
-+		return;
-+	}
- 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
- 					   req->wb_context,
- 					   0,
-@@ -815,6 +825,8 @@ filelayout_pg_init_write(struct nfs_pageio_descriptor *pgio,
- 
- 	BUG_ON(pgio->pg_lseg != NULL);
- 
-+	if (req->wb_offset != req->wb_pgbase)
-+		goto out_mds;
- 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
- 					   req->wb_context,
- 					   0,
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 5d01a16..b344946 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -280,7 +280,7 @@ static bool nfs_can_coalesce_requests(struct nfs_page *prev,
- 		return false;
- 	if (req->wb_context->state != prev->wb_context->state)
- 		return false;
--	if (req->wb_index != (prev->wb_index + 1))
-+	if (req_offset(req) != req_offset(prev) + prev->wb_bytes)
- 		return false;
- 	if (req->wb_pgbase != 0)
- 		return false;
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 4fa43e0..5e11557 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1082,6 +1082,10 @@ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *r
- {
- 	BUG_ON(pgio->pg_lseg != NULL);
- 
-+	if (req->wb_offset != req->wb_pgbase) {
-+		nfs_pageio_reset_read_mds(pgio);
-+		return;
-+	}
- 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
- 					   req->wb_context,
- 					   req_offset(req),
-@@ -1100,6 +1104,10 @@ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *
- {
- 	BUG_ON(pgio->pg_lseg != NULL);
- 
-+	if (req->wb_offset != req->wb_pgbase) {
-+		nfs_pageio_reset_write_mds(pgio);
-+		return;
-+	}
- 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
- 					   req->wb_context,
- 					   req_offset(req),
--- 
-1.7.2.1
+> On Mon, Apr 23, 2012 at 11:04:19AM +1000, NeilBrown wrote:
+> > On Fri, 20 Apr 2012 18:46:15 -0400 "J. Bruce Fields" <bfields@redhat.co=
+m>
+> > wrote:
+> >=20
+> > >   mountd: unconditionally resolve ip address
+> >=20
+> > Not a good idea.  If /etc/exports only contains IP address and subnets,=
+ then
+> > we don't ever want to do any address resolution.  The "resolve ip addre=
+ss"
+> > must at least be conditional on "are there any domain-name, wild-cards,
+> > netgroups in /etc/exports".
+>=20
+> The bug is my changelog.  All we're really doing there is parsing the ip
+> address, not resolving anything.
 
+Ahhh. I see that now.  Thanks.
+
+>=20
+> ...
+> > >   mountd: ignore use_ipaddr and just try both client types
+> >=20
+> > Maybe ... though if we could syntactically distinguish "use_ipaddr" dom=
+ains
+> > from "!use_ipaddr" domain and still just choose one test to perform, I =
+think
+> > I'd prefer that.
+>=20
+> Hm, OK.  Something like the following?  (Totally untested.)
+
+Yes, that looks good.
+
+I could probably bike-shed for a while about the leading '?', and wonder if
+'!' or '$' might be better choices, or if leading '[' and trailing ']' is
+best but I won't.  He who writes the code makes the choice.
+
+Thanks,
+NeilBrown
+
+--Sig_/Hq6M1UDyw1utNLBm1gu+0Z0
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
+
+iQIVAwUBT5vYzjnsnt1WYoG5AQKjTRAAi3biAkMZjZgOC6pfEo9qAoOx7noYz+XG
+Wr2w0JYJ5k3W5izoHOr6X7015ITZ8ZlXzddBt3eCzQaT3p858Dhoxmmj2ZNRi0GB
+xvDO8OyCeNKW9ynH87/aJQsE8Qk4aWONaDFFyWSwSL8ULvXuexszCtcAqsHganPu
+tJgWnxNav6yZxG9BqUEtY51O6cN1Ml2bthY9VhhvU93k3TeUkepzSodbWfOZ+joC
+xXckny9gybgYuW/yLJ9Vv6cx8y901tfdIhS7pso/0wXEqvF4//bIygBTFSsPqFi0
+g94WyTRjebYOXUhhAc0wW3EWWLESppF+is4XBhtkKHcWQge/L78D8noJCrgMftPX
+GDwiNgE6r7+2SaKhWvFBrWcwVmMAYVEO0GRAEJZYqe489pb/Mh8arjXzcmeSVP5h
+aEsRf4Lk5xRItpPLRJPFpG8+tiQlSN3Gm28n30ocr56SasVygjAK2dD4VmBHCVsf
+fF31LGm0yzSuslwjCSaborw3G8xdbffkO7HRBnpXxPZUK0ihN3ItZbU4GwHUh2W2
+1IuPq2Htm4Q/v9+U7EAeKje8x89SDXfxYySXFYYUCCtSkp3a/LnfRRFAeHAEBjrP
+R7qCyfciXV0T0waYK+xbi97ymDgYC+5dgb1HsTAVBJPnN4HxqFj0d/6jR709mTMl
+5JOhnyptDLU=
+=id3+
+-----END PGP SIGNATURE-----
+
+--Sig_/Hq6M1UDyw1utNLBm1gu+0Z0--
