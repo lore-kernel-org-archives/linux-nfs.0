@@ -1,132 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:63026 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:57183 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932175Ab2DQNfm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Apr 2012 09:35:42 -0400
-Message-ID: <1334669739.5396.9.camel@localhost>
-Subject: [PATCH 1/2] Avoid reading past buffer when calling GETACL
-From: Sachin Prabhu <sprabhu@redhat.com>
-To: Andy Adamson <andros@netapp.com>,
-        Trond Myklebust <trond.myklebust@netapp.com>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Date: Tue, 17 Apr 2012 14:35:39 +0100
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1752812Ab2D1TbG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 28 Apr 2012 15:31:06 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 00/10] Optimise away unnecessary NFSv4 post-op attributes
+Date: Sat, 28 Apr 2012 15:30:50 -0400
+Message-Id: <1335641460-24839-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bug noticed in commit
-bf118a342f10dafe44b14451a1392c3254629a1f
+The following set of patches adds support for simulating 'change attributes'
+in NFSv2/v3 by converting the file ctime into a 64-bit value that can
+be stored in inode->i_version.
+With this change, we can then proceed to simplify the attribute cache
+consistency code so that it only uses the change attribute to determine
+whether or not the data and attribute caches are consistent.
 
-When calling GETACL, if the size of the bitmap array, the length
-attribute and the acl returned by the server is greater than the
-allocated buffer(args.acl_len), we can Oops with a General Protection
-fault at _copy_from_pages() when we attempt to read past the pages
-allocated.
+Once the cache consistency only depends on the change attribute, we
+can optimise away unnecessary requests for the directory post-op
+attributes on NFSv4 OPEN, CREATE, REMOVE, LINK and RENAME compounds,
+since those operations all supply a 'change_info4' field describing
+the directory change attribute.
 
-This patch allocates an extra PAGE for the bitmap and checks to see that
-the bitmap + attribute_length + ACLs don't exceed the buffer space
-allocated to it.
+Finally, we can stop requesting cache consistency attributes altogether
+for O_DIRECT writes and commits (they are uncached) as well as for
+delegated writes and commits.
 
-Signed-off-by: Sachin Prabhu <sprabhu@redhat.com>
-Reported-by: Jian Li <jiali@redhat.com>
----
- fs/nfs/nfs4proc.c |   16 ++++++++++------
- fs/nfs/nfs4xdr.c  |   18 +++++++++++-------
- 2 files changed, 21 insertions(+), 13 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index f82bde0..bd54803 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3675,19 +3675,23 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
- 	if (npages == 0)
- 		npages = 1;
- 
-+	/* Add an extra page to handle the bitmap returned */
-+	npages++;
-+
- 	for (i = 0; i < npages; i++) {
- 		pages[i] = alloc_page(GFP_KERNEL);
- 		if (!pages[i])
- 			goto out_free;
- 	}
--	if (npages > 1) {
--		/* for decoding across pages */
--		res.acl_scratch = alloc_page(GFP_KERNEL);
--		if (!res.acl_scratch)
--			goto out_free;
--	}
-+
-+	/* for decoding across pages */
-+	res.acl_scratch = alloc_page(GFP_KERNEL);
-+	if (!res.acl_scratch)
-+		goto out_free;
-+
- 	args.acl_len = npages * PAGE_SIZE;
- 	args.acl_pgbase = 0;
-+
- 	/* Let decode_getfacl know not to fail if the ACL data is larger than
- 	 * the page we send as a guess */
- 	if (buf == NULL)
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index c74fdb1..f74d87a 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4901,11 +4901,19 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
- 		 bitmap[3] = {0};
- 	struct kvec *iov = req->rq_rcv_buf.head;
- 	int status;
-+	size_t page_len = xdr->buf->page_len;
- 
- 	res->acl_len = 0;
- 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
- 		goto out;
-+
- 	bm_p = xdr->p;
-+	res->acl_data_offset = be32_to_cpup(bm_p) + 2;
-+	res->acl_data_offset <<= 2;
-+	/* Check if the acl data starts beyond the allocated buffer */
-+	if (res->acl_data_offset > page_len)
-+		return -ERANGE;
-+
- 	if ((status = decode_attr_bitmap(xdr, bitmap)) != 0)
- 		goto out;
- 	if ((status = decode_attr_length(xdr, &attrlen, &savep)) != 0)
-@@ -4915,28 +4923,24 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
- 		return -EIO;
- 	if (likely(bitmap[0] & FATTR4_WORD0_ACL)) {
- 		size_t hdrlen;
--		u32 recvd;
- 
- 		/* The bitmap (xdr len + bitmaps) and the attr xdr len words
- 		 * are stored with the acl data to handle the problem of
- 		 * variable length bitmaps.*/
- 		xdr->p = bm_p;
--		res->acl_data_offset = be32_to_cpup(bm_p) + 2;
--		res->acl_data_offset <<= 2;
- 
- 		/* We ignore &savep and don't do consistency checks on
- 		 * the attr length.  Let userspace figure it out.... */
- 		hdrlen = (u8 *)xdr->p - (u8 *)iov->iov_base;
- 		attrlen += res->acl_data_offset;
--		recvd = req->rq_rcv_buf.len - hdrlen;
--		if (attrlen > recvd) {
-+		if (attrlen > page_len) {
- 			if (res->acl_flags & NFS4_ACL_LEN_REQUEST) {
- 				/* getxattr interface called with a NULL buf */
- 				res->acl_len = attrlen;
- 				goto out;
- 			}
--			dprintk("NFS: acl reply: attrlen %u > recvd %u\n",
--					attrlen, recvd);
-+			dprintk("NFS: acl reply: attrlen %u > page_len %u\n",
-+					attrlen, page_len);
- 			return -EINVAL;
- 		}
- 		xdr_read_pages(xdr, attrlen);
+Trond Myklebust (10):
+  NFSv4: Fix a typo in NFS4_enc_link_sz
+  NFSv4: Delegreturn only needs the cache consistency bitmask
+  NFS: Simplify nfs_fhget()
+  NFS: Change attribute updates should set NFS_INO_REVAL_PAGECACHE
+  NFSv2/v3: Simulate the change attribute
+  NFS: Simplify the cache invalidation code
+  NFSv4: Simplify the NFSv4 OPEN compound
+  NFSv4: Simplify the NFSv4 CREATE compound
+  NFSv4: Simplify the NFSv4 REMOVE, LINK and RENAME compounds
+  NFSv4: Don't request cache consistency attributes on some writes and
+    commits
+
+ fs/nfs/client.c         |    2 +-
+ fs/nfs/inode.c          |   58 ++++++++-------------------------
+ fs/nfs/internal.h       |   12 +++++++
+ fs/nfs/nfs2xdr.c        |    2 +
+ fs/nfs/nfs3xdr.c        |    3 ++
+ fs/nfs/nfs4proc.c       |   81 +++++++++++++++++++----------------------------
+ fs/nfs/nfs4xdr.c        |   76 ++++----------------------------------------
+ include/linux/nfs_xdr.h |   11 ++-----
+ 8 files changed, 75 insertions(+), 170 deletions(-)
+
 -- 
 1.7.7.6
-
-
 
