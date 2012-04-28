@@ -1,66 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:13173 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:57183 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756893Ab2DZSde (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Apr 2012 14:33:34 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q3QIXWIw003753
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 26 Apr 2012 14:33:34 -0400
-Message-ID: <4F9987FE.3040605@RedHat.com>
-Date: Thu, 26 Apr 2012 13:38:06 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v5 0/9] nfsdcld: add a daemon to track NFSv4 client names
- on stable storage
-References: <1328111096-28430-1-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1328111096-28430-1-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1752950Ab2D1TbJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 28 Apr 2012 15:31:09 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 05/10] NFSv2/v3: Simulate the change attribute
+Date: Sat, 28 Apr 2012 15:30:55 -0400
+Message-Id: <1335641460-24839-6-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1335641460-24839-5-git-send-email-Trond.Myklebust@netapp.com>
+References: <1335641460-24839-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1335641460-24839-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1335641460-24839-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1335641460-24839-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1335641460-24839-5-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Use the ctime to simulate a change attribute for NFSv2 and NFSv3.
 
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/client.c         |    2 +-
+ fs/nfs/internal.h       |   12 ++++++++++++
+ fs/nfs/nfs2xdr.c        |    2 ++
+ fs/nfs/nfs3xdr.c        |    3 +++
+ include/linux/nfs_xdr.h |    6 +++---
+ 5 files changed, 21 insertions(+), 4 deletions(-)
 
-On 02/01/2012 10:44 AM, Jeff Layton wrote:
-> This patchset is the userspace portion of the knfsd client name tracking
-> overhaul. See this patch series for an explanation:
-> 
->     nfsd: overhaul the client name tracking code
-> 
-> This version scales back some of the changes in the last set. Since
-> then, it's become clear that I'm not entirely certain what changes we'll
-> need in order to handle this in a clustered configuration. Instead of
-> trying to anticipate those changes, I've decided just to focus on the
-> single-server case and leave any other changes for later once it becomes
-> more clear what (if anything) is needed.
-> 
-> The main changes from the last set are:
-> 
-> - the "remove" upcall has been readded
-> 
-> - the "init" upcall has been removed
-> 
-> - the "check" and "update" upcalls no longer return a client index
->   to the kernel
-> 
-> - the pipe open and reopen code has been overhauled and consolidated.
->   Instead of looping indefinitely when trying to reopen the file, it will
->   abort the daemon if the open fails with anything besides ENOENT. If
->   the pipe isn't present when the daemon starts, it now uses the inotify
->   event callback to handle the opening.
-> 
-> Jeff Layton (9):
->   nfsdcld: add client tracking daemon stub
->   nfsdcld: add autoconf goop for sqlite
->   nfsdcld: add routines for a sqlite backend database
->   nfsdcld: add remove functionality
->   nfsdcld: add check/update functionality
->   nfsdcld: add function to remove unreclaimed client records
->   nfsdcld: make it watch for inotify events in the containing directory
->   nfsdcld: add a manpage for nfsdcld
->   nfsdcld: update the README
-Committed.... My apologies for taking so long... 
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 60f7e4e..a8f8de6 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -880,7 +880,7 @@ static int nfs_init_server(struct nfs_server *server,
+ 	server->options = data->options;
+ 	server->caps |= NFS_CAP_HARDLINKS|NFS_CAP_SYMLINKS|NFS_CAP_FILEID|
+ 		NFS_CAP_MODE|NFS_CAP_NLINK|NFS_CAP_OWNER|NFS_CAP_OWNER_GROUP|
+-		NFS_CAP_ATIME|NFS_CAP_CTIME|NFS_CAP_MTIME;
++		NFS_CAP_ATIME|NFS_CAP_CTIME|NFS_CAP_MTIME|NFS_CAP_CHANGE_ATTR;
+ 
+ 	if (data->rsize)
+ 		server->rsize = nfs_block_size(data->rsize, NULL);
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 0fd1efa..1855e8f 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -493,3 +493,15 @@ unsigned int nfs_page_array_len(unsigned int base, size_t len)
+ 		PAGE_SIZE - 1) >> PAGE_SHIFT;
+ }
+ 
++/*
++ * Convert a struct timespec into a 64-bit change attribute
++ *
++ * This does approximately the same thing as timespec_to_ns(),
++ * but for calculation efficiency, we multiply the seconds by
++ * 1024*1024*1024.
++ */
++static inline
++u64 nfs_timespec_to_change_attr(const struct timespec *ts)
++{
++	return ((u64)ts->tv_sec << 30) + ts->tv_nsec;
++}
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index 1f56000..c99008e 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -313,6 +313,8 @@ static int decode_fattr(struct xdr_stream *xdr, struct nfs_fattr *fattr)
+ 	p = xdr_decode_time(p, &fattr->atime);
+ 	p = xdr_decode_time(p, &fattr->mtime);
+ 	xdr_decode_time(p, &fattr->ctime);
++	fattr->change_attr = nfs_timespec_to_change_attr(&fattr->ctime);
++
+ 	return 0;
+ out_overflow:
+ 	print_overflow_msg(__func__, xdr);
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index 01e53e9..ee284c2 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -675,6 +675,7 @@ static int decode_fattr3(struct xdr_stream *xdr, struct nfs_fattr *fattr)
+ 	p = xdr_decode_nfstime3(p, &fattr->atime);
+ 	p = xdr_decode_nfstime3(p, &fattr->mtime);
+ 	xdr_decode_nfstime3(p, &fattr->ctime);
++	fattr->change_attr = nfs_timespec_to_change_attr(&fattr->ctime);
+ 
+ 	fattr->valid |= NFS_ATTR_FATTR_V3;
+ 	return 0;
+@@ -725,12 +726,14 @@ static int decode_wcc_attr(struct xdr_stream *xdr, struct nfs_fattr *fattr)
+ 		goto out_overflow;
+ 
+ 	fattr->valid |= NFS_ATTR_FATTR_PRESIZE
++		| NFS_ATTR_FATTR_PRECHANGE
+ 		| NFS_ATTR_FATTR_PREMTIME
+ 		| NFS_ATTR_FATTR_PRECTIME;
+ 
+ 	p = xdr_decode_size3(p, &fattr->pre_size);
+ 	p = xdr_decode_nfstime3(p, &fattr->pre_mtime);
+ 	xdr_decode_nfstime3(p, &fattr->pre_ctime);
++	fattr->pre_change_attr = nfs_timespec_to_change_attr(&fattr->pre_ctime);
+ 
+ 	return 0;
+ out_overflow:
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index c940d46..cd160ab 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -106,14 +106,14 @@ struct nfs_fattr {
+ 		| NFS_ATTR_FATTR_FILEID \
+ 		| NFS_ATTR_FATTR_ATIME \
+ 		| NFS_ATTR_FATTR_MTIME \
+-		| NFS_ATTR_FATTR_CTIME)
++		| NFS_ATTR_FATTR_CTIME \
++		| NFS_ATTR_FATTR_CHANGE)
+ #define NFS_ATTR_FATTR_V2 (NFS_ATTR_FATTR \
+ 		| NFS_ATTR_FATTR_BLOCKS_USED)
+ #define NFS_ATTR_FATTR_V3 (NFS_ATTR_FATTR \
+ 		| NFS_ATTR_FATTR_SPACE_USED)
+ #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
+-		| NFS_ATTR_FATTR_SPACE_USED \
+-		| NFS_ATTR_FATTR_CHANGE)
++		| NFS_ATTR_FATTR_SPACE_USED)
+ 
+ /*
+  * Info on the file system
+-- 
+1.7.7.6
 
-steved.
