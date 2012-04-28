@@ -1,52 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from oproxy9.bluehost.com ([69.89.24.6]:50947 "HELO
-	oproxy9.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1756584Ab2D3TZK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Apr 2012 15:25:10 -0400
-Message-ID: <4F9EE72B.1020401@xenotime.net>
-Date: Mon, 30 Apr 2012 12:25:31 -0700
-From: Randy Dunlap <rdunlap@xenotime.net>
-MIME-Version: 1.0
-To: Randy Dunlap <rdunlap@xenotime.net>
-CC: Stephen Rothwell <sfr@canb.auug.org.au>, linux-next@vger.kernel.org,
-        LKML <linux-kernel@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Subject: [PATCH resend] nfsd: fix nfs4recover.c printk format warning
-References: <20120419164643.d9f918d44c890722b7707508@canb.auug.org.au> <4F909C78.7000008@xenotime.net>
-In-Reply-To: <4F909C78.7000008@xenotime.net>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:42250 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752417Ab2D1UZd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 28 Apr 2012 16:25:33 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 02/11] NFSv4: Delegreturn only needs the cache consistency bitmask
+Date: Sat, 28 Apr 2012 16:25:11 -0400
+Message-Id: <1335644720-28305-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1335644720-28305-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1335644720-28305-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1335644720-28305-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Randy Dunlap <rdunlap@xenotime.net>
+In order to do close-to-open cache consistency checking after
+a delegreturn, we don't need to retrieve the full set of
+attributes.
 
-Fix printk format warnings -- both items are size_t,
-so use %zu to print them.
-
-fs/nfsd/nfs4recover.c:580:3: warning: format '%lu' expects type 'long unsigned int', but argument 3 has type 'size_t'
-fs/nfsd/nfs4recover.c:580:3: warning: format '%lu' expects type 'long unsigned int', but argument 4 has type 'unsigned int'
-
-Signed-off-by: Randy Dunlap <rdunlap@xenotime.net>
-Cc:	"J. Bruce Fields" <bfields@fieldses.org>
-Cc:	linux-nfs@vger.kernel.org
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfsd/nfs4recover.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfs/nfs4proc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-This patch was originally sent on Apr.19/2012 for linux-next.
-It is still needed in linux-next and in mainline.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 1780391..111a3cc 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4117,7 +4117,7 @@ static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, co
+ 	nfs41_init_sequence(&data->args.seq_args, &data->res.seq_res, 1);
+ 	data->args.fhandle = &data->fh;
+ 	data->args.stateid = &data->stateid;
+-	data->args.bitmask = server->attr_bitmask;
++	data->args.bitmask = server->cache_consistency_bitmask;
+ 	nfs_copy_fh(&data->fh, NFS_FH(inode));
+ 	nfs4_stateid_copy(&data->stateid, stateid);
+ 	data->res.fattr = &data->fattr;
+-- 
+1.7.7.6
 
-
---- linux-next-20120419.orig/fs/nfsd/nfs4recover.c
-+++ linux-next-20120419/fs/nfsd/nfs4recover.c
-@@ -577,7 +577,7 @@ cld_pipe_downcall(struct file *filp, con
- 	struct cld_net *cn = nn->cld_net;
- 
- 	if (mlen != sizeof(*cmsg)) {
--		dprintk("%s: got %lu bytes, expected %lu\n", __func__, mlen,
-+		dprintk("%s: got %zu bytes, expected %zu\n", __func__, mlen,
- 			sizeof(*cmsg));
- 		return -EINVAL;
- 	}
