@@ -1,37 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37620 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:42250 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757758Ab2DLQqh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Apr 2012 12:46:37 -0400
-Date: Thu, 12 Apr 2012 12:46:36 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jim Rees <rees@umich.edu>
-Cc: Kevin Coffman <kwc@umich.edu>, NFS list <linux-nfs@vger.kernel.org>,
-        Steve Dickson <SteveD@redhat.com>
-Subject: Re: RFC: Handling GSS rotated data
-Message-ID: <20120412164636.GA4684@fieldses.org>
-References: <CAKnQG+dVhQ3JSXJnQihzs0FnS_aeyUKftDX7j7X6iJTjRGMzPQ@mail.gmail.com>
- <20120410215633.GL18465@fieldses.org>
- <20120410230202.GM18465@fieldses.org>
- <CAKnQG+fBw8--kfGmEvh4Fq0tzfAKq0gwi6kQHsKMQ38YmJNQ_A@mail.gmail.com>
- <20120412001224.GB2523@fieldses.org>
- <20120412010656.GA18591@umich.edu>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120412010656.GA18591@umich.edu>
+	id S1751840Ab2D1UZi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 28 Apr 2012 16:25:38 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 04/11] NFS: Simplify nfs_fhget()
+Date: Sat, 28 Apr 2012 16:25:13 -0400
+Message-Id: <1335644720-28305-5-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1335644720-28305-4-git-send-email-Trond.Myklebust@netapp.com>
+References: <1335644720-28305-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1335644720-28305-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1335644720-28305-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1335644720-28305-4-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 11, 2012 at 09:06:56PM -0400, Jim Rees wrote:
-> J. Bruce Fields wrote:
-> 
->   + * without using two much stack space.
-> 
-> "two" should be "too".
-> 
-> Sorry to violate the nfs list convention of quoting the entire patch in my
-> reply but it seems unnecessary in this case.
+If the inode is being initialised, there is no point in
+setting flags such as NFS_INO_INVALID_ACCESS,
+NFS_INO_INVALID_ACL or NFS_INO_INVALID_DATA since there are
+no cached access calls, acls or data caches to invalidate.
 
-We'll refer your case to the local netiquette committee for a judgement.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/inode.c |   23 ++++++-----------------
+ 1 files changed, 6 insertions(+), 17 deletions(-)
 
---b.
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 59a12c6..fdbf76a 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -285,9 +285,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ 		inode->i_mode = fattr->mode;
+ 		if ((fattr->valid & NFS_ATTR_FATTR_MODE) == 0
+ 				&& nfs_server_capable(inode, NFS_CAP_MODE))
+-			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
+-				| NFS_INO_INVALID_ACCESS
+-				| NFS_INO_INVALID_ACL;
++			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
+ 		/* Why so? Because we want revalidate for devices/FIFOs, and
+ 		 * that's precisely what we have in nfs_file_inode_operations.
+ 		 */
+@@ -337,24 +335,19 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ 		if (fattr->valid & NFS_ATTR_FATTR_MTIME)
+ 			inode->i_mtime = fattr->mtime;
+ 		else if (nfs_server_capable(inode, NFS_CAP_MTIME))
+-			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
+-				| NFS_INO_INVALID_DATA;
++			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
+ 		if (fattr->valid & NFS_ATTR_FATTR_CTIME)
+ 			inode->i_ctime = fattr->ctime;
+ 		else if (nfs_server_capable(inode, NFS_CAP_CTIME))
+-			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
+-				| NFS_INO_INVALID_ACCESS
+-				| NFS_INO_INVALID_ACL;
++			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
+ 		if (fattr->valid & NFS_ATTR_FATTR_CHANGE)
+ 			inode->i_version = fattr->change_attr;
+ 		else if (nfs_server_capable(inode, NFS_CAP_CHANGE_ATTR))
+-			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
+-				| NFS_INO_INVALID_DATA;
++			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
+ 		if (fattr->valid & NFS_ATTR_FATTR_SIZE)
+ 			inode->i_size = nfs_size_to_loff_t(fattr->size);
+ 		else
+ 			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
+-				| NFS_INO_INVALID_DATA
+ 				| NFS_INO_REVAL_PAGECACHE;
+ 		if (fattr->valid & NFS_ATTR_FATTR_NLINK)
+ 			set_nlink(inode, fattr->nlink);
+@@ -363,15 +356,11 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ 		if (fattr->valid & NFS_ATTR_FATTR_OWNER)
+ 			inode->i_uid = fattr->uid;
+ 		else if (nfs_server_capable(inode, NFS_CAP_OWNER))
+-			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
+-				| NFS_INO_INVALID_ACCESS
+-				| NFS_INO_INVALID_ACL;
++			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
+ 		if (fattr->valid & NFS_ATTR_FATTR_GROUP)
+ 			inode->i_gid = fattr->gid;
+ 		else if (nfs_server_capable(inode, NFS_CAP_OWNER_GROUP))
+-			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
+-				| NFS_INO_INVALID_ACCESS
+-				| NFS_INO_INVALID_ACL;
++			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
+ 		if (fattr->valid & NFS_ATTR_FATTR_BLOCKS_USED)
+ 			inode->i_blocks = fattr->du.nfs2.blocks;
+ 		if (fattr->valid & NFS_ATTR_FATTR_SPACE_USED) {
+-- 
+1.7.7.6
+
