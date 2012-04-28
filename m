@@ -1,150 +1,178 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:4036 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750808Ab2DROmO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Apr 2012 10:42:14 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: Luis Henriques <luis.henriques@canonical.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Regretion on NFS in mainline kernel
-Date: Wed, 18 Apr 2012 14:41:45 +0000
-Message-ID: <1334760105.4701.11.camel@lade.trondhjem.org>
-References: <20120418112610.GA3979@zeus>
-	 <20120418092822.07a4f944@tlielax.poochiereds.net>
-	 <20120418135738.GB3979@zeus> <1334757866.4701.6.camel@lade.trondhjem.org>
-	 <20120418141313.GC3979@zeus>
-	 <20120418101554.4aad0849@tlielax.poochiereds.net>
-In-Reply-To: <20120418101554.4aad0849@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:43196 "EHLO
+	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757665Ab2D1Aii (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Apr 2012 20:38:38 -0400
+Date: Sat, 28 Apr 2012 10:38:33 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: Andreas Dilger <adilger@whamcloud.com>
+Cc: David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
+        wine-devel@winehq.org, kfm-devel@kde.org, nautilus-list@gnome.org,
+        linux-api@vger.kernel.org, libc-alpha@sourceware.org
+Subject: Re: [PATCH 0/6] Extended file stat system call
+Message-ID: <20120428003833.GH9541@dastard>
+References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+ <20120427010610.GE9541@dastard>
+ <ED5B8F1B-6C99-4516-85FA-A767E94B635F@dilger.ca>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <ED5B8F1B-6C99-4516-85FA-A767E94B635F@dilger.ca>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTA0LTE4IGF0IDEwOjE1IC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-T24gV2VkLCAxOCBBcHIgMjAxMiAxNToxMzoxMyArMDEwMA0KPiBMdWlzIEhlbnJpcXVlcyA8bHVp
-cy5oZW5yaXF1ZXNAY2Fub25pY2FsLmNvbT4gd3JvdGU6DQo+IA0KPiA+IE9uIFdlZCwgQXByIDE4
-LCAyMDEyIGF0IDAyOjA0OjI2UE0gKzAwMDAsIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4g
-PiBPbiBXZWQsIDIwMTItMDQtMTggYXQgMTQ6NTcgKzAxMDAsIEx1aXMgSGVucmlxdWVzIHdyb3Rl
-Og0KPiA+ID4gPiBIaSBKZWZmLA0KPiA+ID4gPiANCj4gPiA+ID4gT24gV2VkLCBBcHIgMTgsIDIw
-MTIgYXQgMDk6Mjg6MjJBTSAtMDQwMCwgSmVmZiBMYXl0b24gd3JvdGU6DQo+ID4gPiA+ID4gT24g
-V2VkLCAxOCBBcHIgMjAxMiAxMjoyNjoxMCArMDEwMA0KPiA+ID4gPiA+IEx1aXMgSGVucmlxdWVz
-IDxsdWlzLmhlbnJpcXVlc0BjYW5vbmljYWwuY29tPiB3cm90ZToNCj4gPiA+ID4gPiANCj4gPiA+
-ID4gPiA+IEhpLA0KPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBXZSBoYXZlIGEgYnVnIHJlcG9y
-dGluZyBhIHJlZ3Jlc3Npb24gaW4gbWFpbmxpbmUga2VybmVsLiAgQmFzaWNhbGx5LCB0aGUNCj4g
-PiA+ID4gPiA+IGJ1ZyByZXBvcnRlcnMgYXJlIHNlZWluZyBsb3RzIG9mIG1lc3NhZ2VzOg0KPiA+
-ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBbIDQ4LjcwMTIxM10gTkZTOiBuZnM0X3JlY2xhaW1fb3Bl
-bl9zdGF0ZTogTG9jayByZWNsYWltIGZhaWxlZCENCj4gPiA+ID4gPiA+IFsgNDguNzAxOTkwXSBO
-RlM6IG5mczRfcmVjbGFpbV9vcGVuX3N0YXRlOiBMb2NrIHJlY2xhaW0gZmFpbGVkIQ0KPiA+ID4g
-PiA+ID4gWyA1My42OTYwNzZdIG5mczRfcmVjbGFpbV9vcGVuX3N0YXRlOiA2NDQwIGNhbGxiYWNr
-cyBzdXBwcmVzc2VkDQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IFRoaXMgaGFwcGVucyB3aGVu
-IG1vdW50aW5nIGEgdXNlcidzIGhvbWUgZGlyZWN0b3J5IG92ZXIgTkZTLg0KPiA+ID4gPiA+ID4g
-DQo+ID4gPiA+ID4gPiBJcyB0aGlzIGEga25vd24gaXNzdWUgYmVpbmcgYWRkcmVzc2VkIGF0IHRo
-ZSBtb21lbnQ/ICBJcyB0aGVyZSBhbnkNCj4gPiA+ID4gPiA+IGluZm9ybWF0aW9uIG5lZWRlZCB0
-byBoZWxwIGRlYnVnZ2luZyB0aGUgaXNzdWU/DQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IFRo
-ZSBvcmlnaW5hbCBidWcgcmVwb3J0IGNhbiBiZSBmb3VuZCBoZXJlOg0KPiA+ID4gPiA+ID4gDQo+
-ID4gPiA+ID4gPiBodHRwOi8vYnVncy5sYXVuY2hwYWQubmV0L2J1Z3MvOTc0NjY0DQo+ID4gPiA+
-ID4gPiANCj4gPiA+ID4gPiA+IEFuZCB0aGVyZSdzIGFsc28gYSBzaW1pbGFyIHJlcG9ydCBmb3Ig
-RmVkb3JhOg0KPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBodHRwczovL2J1Z3ppbGxhLnJlZGhh
-dC5jb20vc2hvd19idWcuY2dpP2lkPTgxMTEzOA0KPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBD
-aGVlcnMsDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gVGhpcyBjb2RlIGluIG5mczRfcmVjbGFpbV9v
-cGVuX3N0YXRlKCkgbG9va3Mgd3JvbmcgdG8gbWUsIGJ1dCBJJ20gbm90DQo+ID4gPiA+ID4gdGhh
-dCBmYW1pbGlhciB3aXRoIHRoaXMgY29kZSBzbyBJIGNvdWxkIGJlIHdyb25nOg0KPiA+ID4gPiA+
-IA0KPiA+ID4gPiA+IC0tLS0tLS0tLS0tLS0tLS0tLS1bc25pcF0tLS0tLS0tLS0tLS0tLS0tLS0t
-LQ0KPiA+ID4gPiA+ICAgICAgICAgICAgICAgICBzdGF0dXMgPSBvcHMtPnJlY292ZXJfb3Blbihz
-cCwgc3RhdGUpOw0KPiA+ID4gPiA+ICAgICAgICAgICAgICAgICBpZiAoc3RhdHVzID49IDApIHsN
-Cj4gPiA+ID4gPiAgICAgICAgICAgICAgICAgICAgICAgICBzdGF0dXMgPSBuZnM0X3JlY2xhaW1f
-bG9ja3Moc3RhdGUsIG9wcyk7DQo+ID4gPiA+ID4gICAgICAgICAgICAgICAgICAgICAgICAgaWYg
-KHN0YXR1cyA+PSAwKSB7DQo+ID4gPiA+ID4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICBzcGluX2xvY2soJnN0YXRlLT5zdGF0ZV9sb2NrKTsNCj4gPiA+ID4gPiAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgIGxpc3RfZm9yX2VhY2hfZW50cnkobG9jaywgJnN0YXRlLT5sb2Nr
-X3N0YXRlcywgbHNfbG9ja3MpIHsNCj4gPiA+ID4gPiAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgaWYgKCEobG9jay0+bHNfZmxhZ3MgJiBORlNfTE9DS19JTklUSUFMSVpF
-RCkpDQo+ID4gPiA+ID4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgcHJfd2Fybl9yYXRlbGltaXRlZCgiTkZTOiAiDQo+ID4gPiA+ID4gICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAiJXM6IExvY2sgcmVj
-bGFpbSAiDQo+ID4gPiA+ID4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAiZmFpbGVkIVxuIiwgX19mdW5jX18pOw0KPiA+ID4gPiA+ICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgfQ0KPiA+ID4gPiA+ICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgc3Bpbl91bmxvY2soJnN0YXRlLT5zdGF0ZV9sb2NrKTsNCj4gPiA+ID4g
-PiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIG5mczRfcHV0X29wZW5fc3RhdGUoc3Rh
-dGUpOw0KPiA+ID4gPiA+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgZ290byByZXN0
-YXJ0Ow0KPiA+ID4gPiA+ICAgICAgICAgICAgICAgICAgICAgICAgIH0NCj4gPiA+ID4gPiAgICAg
-ICAgICAgICAgICAgfQ0KPiA+ID4gPiA+IC0tLS0tLS0tLS0tLS0tLS0tLS1bc25pcF0tLS0tLS0t
-LS0tLS0tLS0tLS0tLQ0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IFNob3VsZG4ndCB0aGUgc3RhdHVz
-IGNoZWNrIGFmdGVyIG5mczRfcmVjbGFpbV9sb2NrcyBiZSByZXZlcnNlZD8NCj4gPiA+ID4gDQo+
-ID4gPiA+IFRoYW5rcyBhIGxvdCBmb3IgeW91ciBoZWxwLiAgQ291bGQgeW91IHBsZWFzZSB0YWtl
-IGEgbG9vayBhdCB0aGUgcGF0Y2gNCj4gPiA+ID4gYmVsb3csIGp1c3QgdG8gbWFrZSBzdXJlIEkg
-dW5kZXJzdG9vZCB5b3UncmUgc3VnZ2VzdGlvbiBjb3JyZWN0bHk/ICBJIHdpbGwNCj4gPiA+ID4g
-cHJlcGFyZSBhIHRlc3Qga2VybmVsIHNvIHRoYXQgd2UgY2FuIGNoZWNrIHdoZXRoZXIgaXQgYWN0
-dWFsbHkgc29sdmVzIHRoZQ0KPiA+ID4gPiBwcm9ibGVtIG9yIG5vdC4NCj4gPiA+ID4gDQo+ID4g
-PiA+IENoZWVycywNCj4gPiA+ID4gLS0NCj4gPiA+ID4gTHVpcw0KPiA+ID4gPiANCj4gPiA+ID4g
-DQo+ID4gPiA+ID5Gcm9tIGExMzQ4ZjQ3M2MxNTc0MzlhYzYyZjUwMmViNDVjYTQ4Zjk1ZTYyN2Yg
-TW9uIFNlcCAxNyAwMDowMDowMCAyMDAxDQo+ID4gPiA+IEZyb206IEx1aXMgSGVucmlxdWVzIDxs
-dWlzLmhlbnJpcXVlc0BjYW5vbmljYWwuY29tPg0KPiA+ID4gPiBEYXRlOiBXZWQsIDE4IEFwciAy
-MDEyIDE0OjUwOjEwICswMTAwDQo+ID4gPiA+IFN1YmplY3Q6IFtQQVRDSCAxLzFdIE5GUzogRml4
-IHN0YXR1cyBjaGVjayBvbiBuZnM0X3JlY2xhaW1fb3Blbl9zdGF0ZSgpDQo+ID4gPiA+IA0KPiA+
-ID4gPiBUaGVyZSBoYXZlIGJlZW4gc2V2ZXJhbCBidWcgcmVwb3J0cywgd2l0aCB0aGUgZm9sbG93
-aW5nIG1lc3NhZ2VzIG9uIHRoZQ0KPiA+ID4gPiBsb2dzOg0KPiA+ID4gPiANCj4gPiA+ID4gIFsg
-NDguNzAxMjEzXSBORlM6IG5mczRfcmVjbGFpbV9vcGVuX3N0YXRlOiBMb2NrIHJlY2xhaW0gZmFp
-bGVkIQ0KPiA+ID4gPiAgWyA0OC43MDE5OTBdIE5GUzogbmZzNF9yZWNsYWltX29wZW5fc3RhdGU6
-IExvY2sgcmVjbGFpbSBmYWlsZWQhDQo+ID4gPiA+ICBbIDUzLjY5NjA3Nl0gbmZzNF9yZWNsYWlt
-X29wZW5fc3RhdGU6IDY0NDAgY2FsbGJhY2tzIHN1cHByZXNzZWQNCj4gPiA+ID4gDQo+ID4gPiA+
-IFRoaXMgaGFwcGVucywgZm9yIGV4YW1wbGUsIHdoZW4gbW91bnRpbmcgYSB1c2VyJ3MgaG9tZSBk
-aXJlY3Rvcnkgb3ZlciBORlMuDQo+ID4gPiA+IA0KPiA+ID4gPiBUaGFua3MgdG8gSmVmZiBMYXl0
-b24gdGhhdCBpZGVudGlmaWVkIHRoZSBjYXVzZSwgdGhpcyBwYXRjaCBmaXhlcyBhbg0KPiA+ID4g
-PiBpbmNvcnJlY3Qgc3RhdHVzIGNoZWNrIG9uIG5mczRfcmVjbGFpbV9vcGVuX3N0YXRlKCkuDQo+
-ID4gPiA+IA0KPiA+ID4gPiBTaWduZWQtb2ZmLWJ5OiBMdWlzIEhlbnJpcXVlcyA8bHVpcy5oZW5y
-aXF1ZXNAY2Fub25pY2FsLmNvbT4NCj4gPiA+ID4gLS0tDQo+ID4gPiA+ICBmcy9uZnMvbmZzNHN0
-YXRlLmMgfCAgICAyICstDQo+ID4gPiA+ICAxIGZpbGUgY2hhbmdlZCwgMSBpbnNlcnRpb24oKyks
-IDEgZGVsZXRpb24oLSkNCj4gPiA+ID4gDQo+ID4gPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZz
-NHN0YXRlLmMgYi9mcy9uZnMvbmZzNHN0YXRlLmMNCj4gPiA+ID4gaW5kZXggMDczNTRiNy4uOGI2
-YWNlYyAxMDA2NDQNCj4gPiA+ID4gLS0tIGEvZnMvbmZzL25mczRzdGF0ZS5jDQo+ID4gPiA+ICsr
-KyBiL2ZzL25mcy9uZnM0c3RhdGUuYw0KPiA+ID4gPiBAQCAtMTE4MCw3ICsxMTgwLDcgQEAgcmVz
-dGFydDoNCj4gPiA+ID4gIAkJYXRvbWljX2luYygmc3RhdGUtPmNvdW50KTsNCj4gPiA+ID4gIAkJ
-c3Bpbl91bmxvY2soJnNwLT5zb19sb2NrKTsNCj4gPiA+ID4gIAkJc3RhdHVzID0gb3BzLT5yZWNv
-dmVyX29wZW4oc3AsIHN0YXRlKTsNCj4gPiA+ID4gLQkJaWYgKHN0YXR1cyA+PSAwKSB7DQo+ID4g
-PiA+ICsJCWlmIChzdGF0dXMgPCAwKSB7DQo+ID4gPiA+ICAJCQlzdGF0dXMgPSBuZnM0X3JlY2xh
-aW1fbG9ja3Moc3RhdGUsIG9wcyk7DQo+ID4gPiA+ICAJCQlpZiAoc3RhdHVzID49IDApIHsNCj4g
-PiA+ID4gIAkJCQlzcGluX2xvY2soJnN0YXRlLT5zdGF0ZV9sb2NrKTsNCj4gPiA+IA0KPiA+ID4g
-SGVsbCBubyEgDQo+ID4gDQo+ID4gT3VjaCEgIFdyb25nIG9uZS4uLg0KPiA+IA0KPiA+IEZyb20g
-MDA1OTE4YjVlZWY4NTNmZDRkNDk1NzQzZmVmNWE1MmFlNjJmODI1ZSBNb24gU2VwIDE3IDAwOjAw
-OjAwIDIwMDENCj4gPiBGcm9tOiBMdWlzIEhlbnJpcXVlcyA8bHVpcy5oZW5yaXF1ZXNAY2Fub25p
-Y2FsLmNvbT4NCj4gPiBEYXRlOiBXZWQsIDE4IEFwciAyMDEyIDE1OjA4OjM5ICswMTAwDQo+ID4g
-U3ViamVjdDogW1BBVENIIDEvMV0gTkZTOiBGaXggc3RhdHVzIGNoZWNrIG9uIG5mczRfcmVjbGFp
-bV9vcGVuX3N0YXRlKCkNCj4gPiANCj4gPiBUaGVyZSBoYXZlIGJlZW4gc2V2ZXJhbCBidWcgcmVw
-b3J0cywgd2l0aCB0aGUgZm9sbG93aW5nIG1lc3NhZ2VzIG9uIHRoZQ0KPiA+IGxvZ3M6DQo+ID4g
-DQo+ID4gIFsgNDguNzAxMjEzXSBORlM6IG5mczRfcmVjbGFpbV9vcGVuX3N0YXRlOiBMb2NrIHJl
-Y2xhaW0gZmFpbGVkIQ0KPiA+ICBbIDQ4LjcwMTk5MF0gTkZTOiBuZnM0X3JlY2xhaW1fb3Blbl9z
-dGF0ZTogTG9jayByZWNsYWltIGZhaWxlZCENCj4gPiAgWyA1My42OTYwNzZdIG5mczRfcmVjbGFp
-bV9vcGVuX3N0YXRlOiA2NDQwIGNhbGxiYWNrcyBzdXBwcmVzc2VkDQo+ID4gDQo+ID4gVGhpcyBo
-YXBwZW5zLCBmb3IgZXhhbXBsZSwgd2hlbiBtb3VudGluZyBhIHVzZXIncyBob21lIGRpcmVjdG9y
-eSBvdmVyIE5GUy4NCj4gPiANCj4gPiBUaGFua3MgdG8gSmVmZiBMYXl0b24gdGhhdCBpZGVudGlm
-aWVkIHRoZSBjYXVzZSwgdGhpcyBwYXRjaCBmaXhlcyBhbg0KPiA+IGluY29ycmVjdCBzdGF0dXMg
-Y2hlY2sgb24gbmZzNF9yZWNsYWltX29wZW5fc3RhdGUoKS4NCj4gPiANCj4gPiBTaWduZWQtb2Zm
-LWJ5OiBMdWlzIEhlbnJpcXVlcyA8bHVpcy5oZW5yaXF1ZXNAY2Fub25pY2FsLmNvbT4NCj4gPiAt
-LS0NCj4gPiAgZnMvbmZzL25mczRzdGF0ZS5jIHwgICAgMiArLQ0KPiA+ICAxIGZpbGUgY2hhbmdl
-ZCwgMSBpbnNlcnRpb24oKyksIDEgZGVsZXRpb24oLSkNCj4gPiANCj4gPiBkaWZmIC0tZ2l0IGEv
-ZnMvbmZzL25mczRzdGF0ZS5jIGIvZnMvbmZzL25mczRzdGF0ZS5jDQo+ID4gaW5kZXggMDczNTRi
-Ny4uMDIzZTA5ZiAxMDA2NDQNCj4gPiAtLS0gYS9mcy9uZnMvbmZzNHN0YXRlLmMNCj4gPiArKysg
-Yi9mcy9uZnMvbmZzNHN0YXRlLmMNCj4gPiBAQCAtMTE4Miw3ICsxMTgyLDcgQEAgcmVzdGFydDoN
-Cj4gPiAgCQlzdGF0dXMgPSBvcHMtPnJlY292ZXJfb3BlbihzcCwgc3RhdGUpOw0KPiA+ICAJCWlm
-IChzdGF0dXMgPj0gMCkgew0KPiA+ICAJCQlzdGF0dXMgPSBuZnM0X3JlY2xhaW1fbG9ja3Moc3Rh
-dGUsIG9wcyk7DQo+ID4gLQkJCWlmIChzdGF0dXMgPj0gMCkgew0KPiA+ICsJCQlpZiAoc3RhdHVz
-IDwgMCkgew0KPiA+ICAJCQkJc3Bpbl9sb2NrKCZzdGF0ZS0+c3RhdGVfbG9jayk7DQo+ID4gIAkJ
-CQlsaXN0X2Zvcl9lYWNoX2VudHJ5KGxvY2ssICZzdGF0ZS0+bG9ja19zdGF0ZXMsIGxzX2xvY2tz
-KSB7DQo+ID4gIAkJCQkJaWYgKCEobG9jay0+bHNfZmxhZ3MgJiBORlNfTE9DS19JTklUSUFMSVpF
-RCkpDQo+IA0KPiBZZWFoLCB0aGF0IGxvb2tzIG1vcmUgcmVhc29uYWJsZSwgYnV0IGFnYWluIEkn
-bSBub3Qgc3VyZSBhYm91dCB0aGlzDQo+IGVpdGhlciB3YXkuIFRoaXMgY29kZSBoYXMgYmVlbiB0
-aGlzIHdheSBmb3IgYSBsb25nIHRpbWUgYW5kIGl0J3Mgbm90DQo+IGNsZWFyIHRvIG1lIHdoeSBp
-dCdzIG9ubHkgbm93IGJlY29tZSBhIHByb2JsZW0gaWYgaXQgaXMgd3JvbmcuDQoNClJpZ2h0LiBS
-YW5kb20gKGFuZCB3cm9uZyEpIGNoYW5nZXMgc3VjaCBhcyB0aGUgYWJvdmUgd29uJ3QgZml4IHRo
-ZQ0KcHJvYmxlbS4gVGhhdCBjb2RlIGlzIHBlcmZlY3RseSBjb3JyZWN0IChsb29rIGF0IHRoZSBu
-ZnM0X3JlY2xhaW1fbG9ja3MNCmVycm9yIGNhc2VzIHRvIHNlZSB3aHkpLg0KDQpIYXZlIHlvdSBp
-bnN0ZWFkIGxvb2tlZCBpbnRvIHdoYXQgdGhlc2UgYXBwbGljYXRpb25zIGFyZSBkb2luZz8gQXJl
-IHRoZXkNCnBlcmhhcHMgb3BlbmluZyB0aGUgZmlsZSByZWFkIG9ubHksIHRoZW4gdHJ5aW5nIHRv
-IGFwcGx5IGFuIGV4Y2x1c2l2ZQ0KQlNEIGxvY2sgKHNvbWV0aGluZyB3aGljaCBORlN2NCBjYW5u
-b3Qgc3VwcG9ydCk/DQoNCklPVzogZG9lcyB0aGUgcHJvYmxlbSBnbyBhd2F5IGlmIHlvdSBtb3Vu
-dCB3aXRoICdsb2NhbF9sb2NrPWZsb2NrJz8NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4
-IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAu
-Y29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+On Thu, Apr 26, 2012 at 09:22:04PM -0600, Andreas Dilger wrote:
+> On 2012-04-26, at 7:06 PM, Dave Chinner wrote:
+> > On Thu, Apr 19, 2012 at 03:05:58PM +0100, David Howells wrote:
+> >> 
+> >> Implement a pair of new system calls to provide extended and further extensible stat functions.
+> >> 
+> >> The second of the associated patches is the main patch that provides these new system calls:
+> >> 
+> >> 	ssize_t ret = xstat(int dfd,
+> >> 			    const char *filename,
+> >> 			    unsigned atflag,
+> >> 			    unsigned mask,
+> >> 			    struct xstat *buffer);
+> >> 
+> >> 	ssize_t ret = fxstat(int fd,
+> >> 			     unsigned atflag,
+> >> 			     unsigned mask,
+> >> 			     struct xstat *buffer);
+> >> 
+> >> which are more fully documented in the first patch's description.
+> >> 
+> >> These new stat functions provide a number of useful features, in summary:
+> >> 
+> >> (1) More information: creation time, inode generation number, data
+> >>     version number, flags/attributes.  A subset of these is available
+> >>     through a number of filesystems (CIFS, NFS, AFS, Ext4 and BTRFS).
+> > 
+> > If we are adding per-inode flags, then what do we do with filesystem
+> > specific flags? e.g. XFS has quite a number of per-inode flags that
+> > don't align with any other filesystem (e.g. filestream allocator,
+> > real time file, behaviour inheritence flags, etc), but may be useful
+> > to retrieve in such a call. We currently have an ioctl to get that
+> > information from each inode. Have you thought about how to handle
+> > such flags?
+> 
+> I'm sympathetic to your cause, but I don't want this to degrade into
+> the same morass that it did last time when every attribute under the
+> sun was added to the call.
+
+Understood, which is why I'm not asking for everything under the sun
+to be supported. I'm more interested in finding the useful subset of
+information that a typical application might make use of.
+
+> The intent is to replace the stat() call
+> with something that can avoid overhead on filesystems for which some
+> attributes are expensive, and that applications may not need.  Some
+> common attributes were added that are used by multiple filesystems.
+> 
+> If it is too filesystem-specific, and there is little possibility
+> that these attributes will be usable on other filesystems, then it
+> should remain a filesystem specific ioctl() call.
+
+Right, that's why I didn't mention the real-time bits, the
+filestream allocation bits, or other things that are tightly bound
+to the way XFS works....
+
+> If you can make
+> a case that these attributes have value on a few other filesystems,
+> and applications are reasonably likely to be able to use them, and
+> their addition does not make the API overly complex, then suggest
+> away.
+
+Exactly my thoughts ;)
+
+> > Along the same lines, filesytsems can have different allocation
+> > constraints to IO the filesystem block size - ext4 with it's
+> > bigalloc hack, XFS with it's per-inode extent size hints and the
+> > realtime device, etc. Then there's optimal IO characteristics
+> > (e.g. geometery hints like stripe unit/stripe width for the
+> > allocation policy of that given file) that applications could use
+> > if they were present rather than having to expose them through
+> > ioctls that nobody even knows about...
+> 
+> There is already "optimal IO size" that the application can use,
+> how do the geometry hints differ?
+
+Have a look at how XFS overloads stat.st_blksize depending on the
+filesystem and inode config. It's amazingly convoluted, and based on
+a combination of filesystem geometry, inode bits and mount options:
+
+xfs_vn_getattr()
+....
+                if (XFS_IS_REALTIME_INODE(ip)) {
+                        /*
+                         * If the file blocks are being allocated from a
+                         * realtime volume, then return the inode's realtime
+                         * extent size or the realtime volume's extent size.
+                         */
+                        stat->blksize =
+                                xfs_get_extsz_hint(ip) << mp->m_sb.sb_blocklog;
+                } else
+                        stat->blksize = xfs_preferred_iosize(mp);
+......
+
+xfs_extlen_t
+xfs_get_extsz_hint(
+        struct xfs_inode        *ip)
+{
+        if ((ip->i_d.di_flags & XFS_DIFLAG_EXTSIZE) && ip->i_d.di_extsize)
+                return ip->i_d.di_extsize;
+        if (XFS_IS_REALTIME_INODE(ip))
+                return ip->i_mount->m_sb.sb_rextsize;
+        return 0;
+}
+
+....
+
+static inline unsigned long
+xfs_preferred_iosize(xfs_mount_t *mp)
+{
+        if (mp->m_flags & XFS_MOUNT_COMPAT_IOSIZE)
+                return PAGE_CACHE_SIZE;
+        return (mp->m_swidth ?
+                (mp->m_swidth << mp->m_sb.sb_blocklog) :
+                ((mp->m_flags & XFS_MOUNT_DFLT_IOSIZE) ?
+                        (1 << (int)MAX(mp->m_readio_log, mp->m_writeio_log)) :
+                        PAGE_CACHE_SIZE));
+}
+
+All of that can be exported as 4 parameters for normal files:
+
+	allocation block size 	(extent size hint)
+	minimum io size		(PAGE_CACHE_SIZE)
+	preferred minimum IO size (mp->m_readio_log/mp->m_writeio_log)
+	best aligned IO size	(stripe width)
+
+And for realtime files it's a bit different because of the
+block-based bitmap allocator it uses:
+
+	allocation block size	(extent size hint)
+	minimum io size		(PAGE_CACHE_SIZE)
+	preferred minimum IO size (extent size hint)
+	best aligned IO size	(some multiple of extent size hint)
+
+> Userspace is able to handle
+> st_blksize of several MB in size without problems, and any sane
+> application will do the IO sized + aligned on multiples of this.
+
+Actually, some applications still have problems with that. That's
+the reason we only expose stripe widths in st_blksize when a mount
+option is set. Stripe widths are known to get into the tens of MB,
+and applications using st_blksize for memory allocation of IO
+buffers tend to get into trouble with those.
+
+That's why I'd prefer specific optimal IO hints - we don't have to
+overload st_blksize with lots of meanings to pass what is relatively
+trivial information back to the application.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
