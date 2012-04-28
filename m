@@ -1,58 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:26209 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757434Ab2DIXZy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Apr 2012 19:25:54 -0400
-Subject: Re: [PATCH] fix page number calculation bug for block layout decode buffer
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1334013727-1931-1-git-send-email-rees@umich.edu>
-Date: Mon, 9 Apr 2012 19:25:42 -0400
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Message-Id: <787F4D40-6513-4424-A297-FD608268EA56@oracle.com>
-References: <1334013727-1931-1-git-send-email-rees@umich.edu>
-To: Jim Rees <rees@umich.edu>
+Received: from mx2.netapp.com ([216.240.18.37]:42250 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751748Ab2D1UZb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 28 Apr 2012 16:25:31 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 01/11] NFSv4: Fix a typo in NFS4_enc_link_sz
+Date: Sat, 28 Apr 2012 16:25:10 -0400
+Message-Id: <1335644720-28305-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1335644720-28305-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1335644720-28305-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi-
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4xdr.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-Since all the layouts (and I'm guessing the non-pNFS path too) seem to need this calculation, would it make sense to create an inline function in a header somewhere?
-
-On Apr 9, 2012, at 7:22 PM, Jim Rees wrote:
-
-> Signed-off-by: Jim Rees <rees@umich.edu>
-> Suggested-by: Andy Adamson <andros@netapp.com>
-> ---
-> fs/nfs/blocklayout/blocklayout.c |    2 +-
-> 1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-> index 48cfac3..576da5b 100644
-> --- a/fs/nfs/blocklayout/blocklayout.c
-> +++ b/fs/nfs/blocklayout/blocklayout.c
-> @@ -872,7 +872,7 @@ nfs4_blk_get_deviceinfo(struct nfs_server *server, const struct nfs_fh *fh,
-> 	 * GETDEVICEINFO's maxcount
-> 	 */
-> 	max_resp_sz = server->nfs_client->cl_session->fc_attrs.max_resp_sz;
-> -	max_pages = max_resp_sz >> PAGE_SHIFT;
-> +	max_pages = (max_resp_sz  + PAGE_SIZE - 1) >> PAGE_SHIFT;
-> 	dprintk("%s max_resp_sz %u max_pages %d\n",
-> 		__func__, max_resp_sz, max_pages);
-> 
-> -- 
-> 1.7.5.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 4c3cc0e..fe61424 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -626,9 +626,9 @@ static int nfs4_stat_to_errno(int);
+ 				encode_savefh_maxsz + \
+ 				encode_putfh_maxsz + \
+ 				encode_link_maxsz + \
+-				decode_getattr_maxsz + \
++				encode_getattr_maxsz + \
+ 				encode_restorefh_maxsz + \
+-				decode_getattr_maxsz)
++				encode_getattr_maxsz)
+ #define NFS4_dec_link_sz	(compound_decode_hdr_maxsz + \
+ 				decode_sequence_maxsz + \
+ 				decode_putfh_maxsz + \
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.7.6
 
