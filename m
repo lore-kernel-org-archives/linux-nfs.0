@@ -1,142 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44282 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:57183 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932867Ab2DKVbE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Apr 2012 17:31:04 -0400
-Date: Wed, 11 Apr 2012 17:31:02 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] RFC: export options for junctions
-Message-ID: <20120411213102.GC31706@fieldses.org>
-References: <20120302195451.18167.81861.stgit@degas.1015granger.net>
- <20120320195607.GD1431@fieldses.org>
- <FD566AE0-4B3E-413B-AA04-AD3BDB97A6E9@oracle.com>
- <20120321212937.GG12309@fieldses.org>
- <0F4CD350-9CAE-47B8-9FA3-FE80C5742A7F@oracle.com>
- <20120322105938.GB17569@fieldses.org>
- <D513613A-0CA8-4011-8371-2F2957A87317@oracle.com>
- <9C3B5489-2045-4D14-9FEE-81E831C56EA8@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <9C3B5489-2045-4D14-9FEE-81E831C56EA8@oracle.com>
+	id S1752982Ab2D1TbK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 28 Apr 2012 15:31:10 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 06/10] NFS: Simplify the cache invalidation code
+Date: Sat, 28 Apr 2012 15:30:56 -0400
+Message-Id: <1335641460-24839-7-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1335641460-24839-6-git-send-email-Trond.Myklebust@netapp.com>
+References: <1335641460-24839-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1335641460-24839-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1335641460-24839-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1335641460-24839-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1335641460-24839-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1335641460-24839-6-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 22, 2012 at 03:34:18PM -0400, Chuck Lever wrote:
-> 
-> On Mar 22, 2012, at 3:28 PM, Chuck Lever wrote:
-> 
-> > 
-> > On Mar 22, 2012, at 6:59 AM, J. Bruce Fields wrote:
-> > 
-> >> On Wed, Mar 21, 2012 at 05:35:17PM -0400, Chuck Lever wrote:
-> >>> 
-> >>> On Mar 21, 2012, at 5:29 PM, J. Bruce Fields wrote:
-> >>> 
-> >>>> On Wed, Mar 21, 2012 at 05:11:40PM -0400, Chuck Lever wrote:
-> >>>>> 1.  We have to create a version of lookup_export() that does exactly what's needed to find the junction's parent.
-> >>>>> 
-> >>>>> 2.  Once we find the parent's exportent, we have to reverse parse the data in that exportent to get an options string, and concatenate that to the options string we're building for the junction itself.
-> >>>>> 
-> >>>>> 3.  Once we have the full options string for the junction, we use mkexportent() to convert it all back into another exportent.  (or is there a simple way to merge the exportents?)
-> >> 
-> >> You should be able to skip steps 2 and 3 and use dupexportent.
-> >> 
-> >> Does that sound doable?
-> > 
-> > The current junction lookup logic uses mkexportent(), which returns a statically allocated exportent that doesn't need to be freed.  That makes the lookup_junction() call site simple, but that's too clever by half.  Using dupexportent() unchanged would require some reworking there in order to free the duplicated exportent.
-> > 
-> > Also I'm not quite sure how to safely combine the use of mkexportent(), which parses the referral options we just created, and dupexportent(), which would duplicate the options from the parent, but would walk on e_hostname.
-> > 
-> > I could address both those problems by constructing a new function which was an amalgam of the two.
-> 
-> updateexportent() might do the trick.
+Now that NFSv2 and NFSv3 have simulated change attributes,
+instead of using all three of mtime, ctime and change attribute to
+manage data cache consistency, we can simplify the code to just use
+the change attribute.
 
-Any luck with that?
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/inode.c |   29 +++--------------------------
+ 1 files changed, 3 insertions(+), 26 deletions(-)
 
---b.
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 072ff8f..8bfe9bf 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -949,7 +949,7 @@ static int nfs_check_inode_attributes(struct inode *inode, struct nfs_fattr *fat
+ 
+ 	/* Verify a few of the more important attributes */
+ 	if ((fattr->valid & NFS_ATTR_FATTR_MTIME) && !timespec_equal(&inode->i_mtime, &fattr->mtime))
+-		invalid |= NFS_INO_INVALID_ATTR|NFS_INO_REVAL_PAGECACHE;
++		invalid |= NFS_INO_INVALID_ATTR;
+ 
+ 	if (fattr->valid & NFS_ATTR_FATTR_SIZE) {
+ 		cur_size = i_size_read(inode);
+@@ -1316,38 +1316,15 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 		invalid |= save_cache_validity;
+ 
+ 	if (fattr->valid & NFS_ATTR_FATTR_MTIME) {
+-		/* NFSv2/v3: Check if the mtime agrees */
+-		if (!timespec_equal(&inode->i_mtime, &fattr->mtime)) {
+-			dprintk("NFS: mtime change on server for file %s/%ld\n",
+-					inode->i_sb->s_id, inode->i_ino);
+-			invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA;
+-			if (S_ISDIR(inode->i_mode))
+-				nfs_force_lookup_revalidate(inode);
+-			memcpy(&inode->i_mtime, &fattr->mtime, sizeof(inode->i_mtime));
+-		}
++		memcpy(&inode->i_mtime, &fattr->mtime, sizeof(inode->i_mtime));
+ 	} else if (server->caps & NFS_CAP_MTIME)
+ 		invalid |= save_cache_validity & (NFS_INO_INVALID_ATTR
+-				| NFS_INO_INVALID_DATA
+-				| NFS_INO_REVAL_PAGECACHE
+ 				| NFS_INO_REVAL_FORCED);
+ 
+ 	if (fattr->valid & NFS_ATTR_FATTR_CTIME) {
+-		/* If ctime has changed we should definitely clear access+acl caches */
+-		if (!timespec_equal(&inode->i_ctime, &fattr->ctime)) {
+-			invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_ACCESS|NFS_INO_INVALID_ACL;
+-			/* and probably clear data for a directory too as utimes can cause
+-			 * havoc with our cache.
+-			 */
+-			if (S_ISDIR(inode->i_mode)) {
+-				invalid |= NFS_INO_INVALID_DATA;
+-				nfs_force_lookup_revalidate(inode);
+-			}
+-			memcpy(&inode->i_ctime, &fattr->ctime, sizeof(inode->i_ctime));
+-		}
++		memcpy(&inode->i_ctime, &fattr->ctime, sizeof(inode->i_ctime));
+ 	} else if (server->caps & NFS_CAP_CTIME)
+ 		invalid |= save_cache_validity & (NFS_INO_INVALID_ATTR
+-				| NFS_INO_INVALID_ACCESS
+-				| NFS_INO_INVALID_ACL
+ 				| NFS_INO_REVAL_FORCED);
+ 
+ 	/* Check if our cached file size is stale */
+-- 
+1.7.7.6
 
-> 
-> > I still have to play with the lookup_export() logic to see how to find a junction's parent export.
-> > 
-> >> --b.
-> >> 
-> >>>>> 
-> >>>>> 4.  Then, we send the referral data to the kernel by converting that exportent back into a string with dump_to_cache().
-> >>>>> 
-> >>>>> For the time being, though a kludge, it seems easiest by far to simply stick the "insecure" option on all junctions.  I don't think this is otherwise terribly risky.
-> >>>>> 
-> >>>>> Maybe at some later point we can think of a cleaner way to approach this?  Is there a possible kernel solution for this (ie something that can be done in the kernel's export cache only for referrals)?
-> >>>>> 
-> >>>>>> --b.
-> >>>>>> 
-> >>>>>>> 
-> >>>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> >>>>>>> ---
-> >>>>>>> 
-> >>>>>>> utils/mountd/cache.c |    2 +-
-> >>>>>>> 1 files changed, 1 insertions(+), 1 deletions(-)
-> >>>>>>> 
-> >>>>>>> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> >>>>>>> index ac9cdbd..35bc2e9 100644
-> >>>>>>> --- a/utils/mountd/cache.c
-> >>>>>>> +++ b/utils/mountd/cache.c
-> >>>>>>> @@ -853,7 +853,7 @@ locations_to_options(struct jp_ops *ops, nfs_fsloc_set_t locations,
-> >>>>>>> 			ptr += len;
-> >>>>>>> 		} else {
-> >>>>>>> 			if (last_path == NULL)
-> >>>>>>> -				len = snprintf(ptr, remaining, "refer=%s@%s",
-> >>>>>>> +				len = snprintf(ptr, remaining, "insecure,refer=%s@%s",
-> >>>>>>> 							rootpath, server);
-> >>>>>>> 			else
-> >>>>>>> 				len = snprintf(ptr, remaining, ":%s@%s",
-> >>>>>>> 
-> >>>>>> --
-> >>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >>>>>> the body of a message to majordomo@vger.kernel.org
-> >>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >>>>> 
-> >>>>> -- 
-> >>>>> Chuck Lever
-> >>>>> chuck[dot]lever[at]oracle[dot]com
-> >>>>> 
-> >>>>> 
-> >>>>> 
-> >>>>> 
-> >>>> --
-> >>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >>>> the body of a message to majordomo@vger.kernel.org
-> >>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >>> 
-> >>> -- 
-> >>> Chuck Lever
-> >>> chuck[dot]lever[at]oracle[dot]com
-> >>> 
-> >>> 
-> >>> 
-> >>> 
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >> the body of a message to majordomo@vger.kernel.org
-> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> > -- 
-> > Chuck Lever
-> > chuck[dot]lever[at]oracle[dot]com
-> > 
-> > 
-> > 
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> -- 
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> 
