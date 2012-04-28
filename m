@@ -1,61 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:34021 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:42250 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751218Ab2DELjK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Apr 2012 07:39:10 -0400
-Date: Thu, 5 Apr 2012 07:39:01 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 high availability setups
-Message-ID: <20120405073901.63d1c749@tlielax.poochiereds.net>
-In-Reply-To: <20120405103124.GV4752@ics.muni.cz>
-References: <20120405103124.GV4752@ics.muni.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1751748Ab2D1UZ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 28 Apr 2012 16:25:29 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 00/11] Optimise away unnecessary NFSv4 post-op attributes
+Date: Sat, 28 Apr 2012 16:25:09 -0400
+Message-Id: <1335644720-28305-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 5 Apr 2012 12:31:24 +0200
-Lukas Hejtmanek <xhejtman@ics.muni.cz> wrote:
+The following set of patches adds support for simulating 'change attributes'
+in NFSv2/v3 by converting the file ctime into a 64-bit value that can
+be stored in inode->i_version.
+With this change, we can then proceed to simplify the attribute cache
+consistency code so that it only uses the change attribute to determine
+whether or not the data and attribute caches are consistent.
 
-> Hi,
-> 
-> we got several front-ends for a shared storage. We want to build HA setup so
-> that failed front-end fails over to another front-end (that is serving NFSv4
-> already). 
-> 
-> As I understand, NFS4 uses state dir somewhere in /var/lib/nfs/rpc_pipefs.
-> 
+Once the cache consistency only depends on the change attribute, we
+can optimise away unnecessary requests for the directory post-op
+attributes on NFSv4 OPEN, CREATE, REMOVE, LINK and RENAME compounds,
+since those operations all supply a 'change_info4' field describing
+the directory change attribute.
 
-You're probably thinking of /var/lib/nfs/v4recovery.
+Finally, we can stop requesting cache consistency attributes altogether
+for O_DIRECT writes and commits (they are uncached) as well as for
+delegated writes and commits.
 
-> Can we put this state dir on a shared volume so that this state dir is common
-> for all the front-ends serving the same content? Is is supposed to work and
-> NFSv4 can merge its state with existing state on a shared disk?
-> 
+v2: Don't request cache consistency attributes on writes and commits
+    Delegreturn only needs the cache consistency bitmask
+    Simplify the simulated change attribute calculation for v2/v3
+v3: Fix a race in delegreturn
 
-Not properly, no. nfsd expects to have complete control over that
-directory. There's no locking or merging of the data there. A node will
-also clean that directory out in some cases, and that will throw your
-state tracking off.
+Trond Myklebust (11):
+  NFSv4: Fix a typo in NFS4_enc_link_sz
+  NFSv4: Delegreturn only needs the cache consistency bitmask
+  NFSv4: Retrieve attributes _before_ calling delegreturn
+  NFS: Simplify nfs_fhget()
+  NFS: Change attribute updates should set NFS_INO_REVAL_PAGECACHE
+  NFSv2/v3: Simulate the change attribute
+  NFS: Simplify the cache invalidation code
+  NFSv4: Simplify the NFSv4 OPEN compound
+  NFSv4: Simplify the NFSv4 CREATE compound
+  NFSv4: Simplify the NFSv4 REMOVE, LINK and RENAME compounds
+  NFSv4: Don't request cache consistency attributes on some writes and
+    commits
 
-3.4 just got an overhaul of this code to use an upcall instead. At this
-point I'm waiting on Steve to merge the userspace portion of that. The
-legacy client tracking code will probably never be cluster-aware.
-
-This is actually a very complex problem to solve as you need to
-coordinate the grace periods between the different serving cluster
-nodes.
-
-I've been looking at this problem for the last few months, and am still
-working out a design that would allow active/active NFSv4 serving. For
-now, I'd advise against trying it since it won't work properly.
-
-If you want to follow along with the gory details of the design, I've
-been sporadically doing blog posts about it here:
-
-    http://jtlayton.wordpress.com/
+ fs/nfs/client.c         |    2 +-
+ fs/nfs/inode.c          |   58 +++++++-----------------------
+ fs/nfs/internal.h       |   12 ++++++
+ fs/nfs/nfs2xdr.c        |    2 +
+ fs/nfs/nfs3xdr.c        |    3 ++
+ fs/nfs/nfs4proc.c       |   88 ++++++++++++++++++++---------------------------
+ fs/nfs/nfs4xdr.c        |   82 +++++--------------------------------------
+ include/linux/nfs_xdr.h |   11 ++----
+ 8 files changed, 82 insertions(+), 176 deletions(-)
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.7.6
+
