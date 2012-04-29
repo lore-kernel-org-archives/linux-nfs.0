@@ -1,123 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:34178 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:55610 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757409Ab2DTSgt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 14:36:49 -0400
-From: Fred Isaman <iisaman@netapp.com>
+	id S1754213Ab2D2Uuc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 29 Apr 2012 16:50:32 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH v2 09/28] NFS: reverse arg order in nfs_initiate_[read|write]
-Date: Fri, 20 Apr 2012 14:35:51 -0400
-Message-Id: <1334946970-27470-10-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
-References: <1334946970-27470-1-git-send-email-iisaman@netapp.com>
+Subject: [PATCH v4 10/15] NFS: Simplify the cache invalidation code
+Date: Sun, 29 Apr 2012 16:50:15 -0400
+Message-Id: <1335732620-10445-11-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1335732620-10445-10-git-send-email-Trond.Myklebust@netapp.com>
+References: <1335732620-10445-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-10-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Make it consistent with nfs_initiate_commit.
+Now that NFSv2 and NFSv3 have simulated change attributes,
+instead of using all three of mtime, ctime and change attribute to
+manage data cache consistency, we can simplify the code to just use
+the change attribute.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/internal.h       |    7 ++++---
- fs/nfs/nfs4filelayout.c |    4 ++--
- fs/nfs/read.c           |    5 +++--
- fs/nfs/write.c          |    6 +++---
- 4 files changed, 12 insertions(+), 10 deletions(-)
+ fs/nfs/inode.c |   29 +++--------------------------
+ 1 files changed, 3 insertions(+), 26 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 87e899d..abdf40c 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -296,7 +296,8 @@ extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh);
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 9d76c0b..0d53113 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -958,7 +958,7 @@ static int nfs_check_inode_attributes(struct inode *inode, struct nfs_fattr *fat
  
- struct nfs_pageio_descriptor;
- /* read.c */
--extern int nfs_initiate_read(struct nfs_read_data *data, struct rpc_clnt *clnt,
-+extern int nfs_initiate_read(struct rpc_clnt *clnt,
-+			     struct nfs_read_data *data,
- 			     const struct rpc_call_ops *call_ops);
- extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
- extern int nfs_generic_pagein(struct nfs_pageio_descriptor *desc,
-@@ -315,8 +316,8 @@ extern void nfs_pageio_init_write_mds(struct nfs_pageio_descriptor *pgio,
- extern void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio);
- extern void nfs_writedata_release(struct nfs_write_data *wdata);
- extern void nfs_commit_free(struct nfs_commit_data *p);
--extern int nfs_initiate_write(struct nfs_write_data *data,
--			      struct rpc_clnt *clnt,
-+extern int nfs_initiate_write(struct rpc_clnt *clnt,
-+			      struct nfs_write_data *data,
- 			      const struct rpc_call_ops *call_ops,
- 			      int how);
- extern void nfs_write_prepare(struct rpc_task *task, void *calldata);
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 675ce3b..adbadcb 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -413,7 +413,7 @@ filelayout_read_pagelist(struct nfs_read_data *data)
- 	data->mds_offset = offset;
+ 	/* Verify a few of the more important attributes */
+ 	if ((fattr->valid & NFS_ATTR_FATTR_MTIME) && !timespec_equal(&inode->i_mtime, &fattr->mtime))
+-		invalid |= NFS_INO_INVALID_ATTR|NFS_INO_REVAL_PAGECACHE;
++		invalid |= NFS_INO_INVALID_ATTR;
  
- 	/* Perform an asynchronous read to ds */
--	status = nfs_initiate_read(data, ds->ds_clp->cl_rpcclient,
-+	status = nfs_initiate_read(ds->ds_clp->cl_rpcclient, data,
- 				   &filelayout_read_call_ops);
- 	BUG_ON(status != 0);
- 	return PNFS_ATTEMPTED;
-@@ -460,7 +460,7 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
- 	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
+ 	if (fattr->valid & NFS_ATTR_FATTR_SIZE) {
+ 		cur_size = i_size_read(inode);
+@@ -1325,38 +1325,15 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 		invalid |= save_cache_validity;
  
- 	/* Perform an asynchronous write */
--	status = nfs_initiate_write(data, ds->ds_clp->cl_rpcclient,
-+	status = nfs_initiate_write(ds->ds_clp->cl_rpcclient, data,
- 				    &filelayout_write_call_ops, sync);
- 	BUG_ON(status != 0);
- 	return PNFS_ATTEMPTED;
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 0a4be28..4ddba67 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -169,7 +169,8 @@ static void nfs_readpage_release(struct nfs_page *req)
- 	nfs_release_request(req);
- }
+ 	if (fattr->valid & NFS_ATTR_FATTR_MTIME) {
+-		/* NFSv2/v3: Check if the mtime agrees */
+-		if (!timespec_equal(&inode->i_mtime, &fattr->mtime)) {
+-			dprintk("NFS: mtime change on server for file %s/%ld\n",
+-					inode->i_sb->s_id, inode->i_ino);
+-			invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA;
+-			if (S_ISDIR(inode->i_mode))
+-				nfs_force_lookup_revalidate(inode);
+-			memcpy(&inode->i_mtime, &fattr->mtime, sizeof(inode->i_mtime));
+-		}
++		memcpy(&inode->i_mtime, &fattr->mtime, sizeof(inode->i_mtime));
+ 	} else if (server->caps & NFS_CAP_MTIME)
+ 		invalid |= save_cache_validity & (NFS_INO_INVALID_ATTR
+-				| NFS_INO_INVALID_DATA
+-				| NFS_INO_REVAL_PAGECACHE
+ 				| NFS_INO_REVAL_FORCED);
  
--int nfs_initiate_read(struct nfs_read_data *data, struct rpc_clnt *clnt,
-+int nfs_initiate_read(struct rpc_clnt *clnt,
-+		      struct nfs_read_data *data,
- 		      const struct rpc_call_ops *call_ops)
- {
- 	struct inode *inode = data->inode;
-@@ -240,7 +241,7 @@ static int nfs_do_read(struct nfs_read_data *data,
- {
- 	struct inode *inode = data->args.context->dentry->d_inode;
+ 	if (fattr->valid & NFS_ATTR_FATTR_CTIME) {
+-		/* If ctime has changed we should definitely clear access+acl caches */
+-		if (!timespec_equal(&inode->i_ctime, &fattr->ctime)) {
+-			invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_ACCESS|NFS_INO_INVALID_ACL;
+-			/* and probably clear data for a directory too as utimes can cause
+-			 * havoc with our cache.
+-			 */
+-			if (S_ISDIR(inode->i_mode)) {
+-				invalid |= NFS_INO_INVALID_DATA;
+-				nfs_force_lookup_revalidate(inode);
+-			}
+-			memcpy(&inode->i_ctime, &fattr->ctime, sizeof(inode->i_ctime));
+-		}
++		memcpy(&inode->i_ctime, &fattr->ctime, sizeof(inode->i_ctime));
+ 	} else if (server->caps & NFS_CAP_CTIME)
+ 		invalid |= save_cache_validity & (NFS_INO_INVALID_ATTR
+-				| NFS_INO_INVALID_ACCESS
+-				| NFS_INO_INVALID_ACL
+ 				| NFS_INO_REVAL_FORCED);
  
--	return nfs_initiate_read(data, NFS_CLIENT(inode), call_ops);
-+	return nfs_initiate_read(NFS_CLIENT(inode), data, call_ops);
- }
- 
- static int
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 54f7c0f..76735dd 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -836,8 +836,8 @@ static int flush_task_priority(int how)
- 	return RPC_PRIORITY_NORMAL;
- }
- 
--int nfs_initiate_write(struct nfs_write_data *data,
--		       struct rpc_clnt *clnt,
-+int nfs_initiate_write(struct rpc_clnt *clnt,
-+		       struct nfs_write_data *data,
- 		       const struct rpc_call_ops *call_ops,
- 		       int how)
- {
-@@ -937,7 +937,7 @@ static int nfs_do_write(struct nfs_write_data *data,
- {
- 	struct inode *inode = data->args.context->dentry->d_inode;
- 
--	return nfs_initiate_write(data, NFS_CLIENT(inode), call_ops, how);
-+	return nfs_initiate_write(NFS_CLIENT(inode), data, call_ops, how);
- }
- 
- static int nfs_do_multiple_writes(struct list_head *head,
+ 	/* Check if our cached file size is stale */
 -- 
-1.7.2.1
+1.7.7.6
 
