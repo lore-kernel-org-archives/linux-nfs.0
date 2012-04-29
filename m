@@ -1,67 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:58169 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758052Ab2DZP6L (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Apr 2012 11:58:11 -0400
-Received: by mail-yx0-f174.google.com with SMTP id l12so1014243yen.19
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Apr 2012 08:58:10 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
-        michael.brantley@deshaw.com
-Subject: [PATCH v1 03/12] vfs: fix readlinkat to retry on ESTALE
-Date: Thu, 26 Apr 2012 11:57:14 -0400
-Message-Id: <1335455843-16089-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1335455843-16089-1-git-send-email-jlayton@redhat.com>
-References: <1335455843-16089-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:55610 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754132Ab2D2Uu2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 29 Apr 2012 16:50:28 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 05/15] NFS: Optimise away nfs_check_inode_attributes() when holding a delegation
+Date: Sun, 29 Apr 2012 16:50:10 -0400
+Message-Id: <1335732620-10445-6-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1335732620-10445-5-git-send-email-Trond.Myklebust@netapp.com>
+References: <1335732620-10445-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-5-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/stat.c |   16 ++++++++++++----
- 1 files changed, 12 insertions(+), 4 deletions(-)
+We already know that the attribute cache is valid.
 
-diff --git a/fs/stat.c b/fs/stat.c
-index f3eef0d..f7904aa 100644
---- a/fs/stat.c
-+++ b/fs/stat.c
-@@ -299,14 +299,21 @@ SYSCALL_DEFINE4(readlinkat, int, dfd, const char __user *, pathname,
- 	struct path path;
- 	int error;
- 	int empty = 0;
-+	unsigned int try = 0;
-+	unsigned int lookup_flags = LOOKUP_EMPTY;
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/inode.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index fed27c0..81946e7 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -955,6 +955,8 @@ static int nfs_check_inode_attributes(struct inode *inode, struct nfs_fattr *fat
+ 	unsigned long invalid = 0;
  
- 	if (bufsiz <= 0)
- 		return -EINVAL;
  
--	error = user_path_at_empty(dfd, pathname, LOOKUP_EMPTY, &path, &empty);
--	if (!error) {
--		struct inode *inode = path.dentry->d_inode;
-+	do {
-+		struct inode *inode;
-+
-+		error = user_path_at_empty(dfd, pathname, lookup_flags, &path,
-+					   &empty);
-+		if (error)
-+			break;
- 
-+		inode = path.dentry->d_inode;
- 		error = empty ? -ENOENT : -EINVAL;
- 		if (inode->i_op->readlink) {
- 			error = security_inode_readlink(path.dentry);
-@@ -317,7 +324,8 @@ SYSCALL_DEFINE4(readlinkat, int, dfd, const char __user *, pathname,
- 			}
- 		}
- 		path_put(&path);
--	}
-+		lookup_flags |= LOOKUP_REVAL;
-+	} while (retry_estale(error, try++));
- 	return error;
- }
- 
++	if (nfs_have_delegated_attributes(inode))
++		return 0;
+ 	/* Has the inode gone and changed behind our back? */
+ 	if ((fattr->valid & NFS_ATTR_FATTR_FILEID) && nfsi->fileid != fattr->fileid)
+ 		return -EIO;
 -- 
 1.7.7.6
 
