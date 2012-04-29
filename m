@@ -1,138 +1,142 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:57951 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754013Ab2DMQub convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Apr 2012 12:50:31 -0400
-Received: by vcqp1 with SMTP id p1so2164668vcq.19
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Apr 2012 09:50:30 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1334332041.25130.16.camel@lade.trondhjem.org>
-References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
-	<1334004744-31842-4-git-send-email-iisaman@netapp.com>
-	<1334332041.25130.16.camel@lade.trondhjem.org>
-Date: Fri, 13 Apr 2012 12:50:30 -0400
-Message-ID: <CADnza45zA+dnO7cX9Q_y9B679kOGdV3+Cph5hTKit6gs1ZOUKA@mail.gmail.com>
-Subject: Re: [PATCH 03/26] NFS4.1: Add lseg to struct nfs4_fl_commit_bucket
-From: Fred Isaman <faisaman4@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "Isaman, Fred" <Fred.Isaman@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:55610 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754218Ab2D2Uud (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 29 Apr 2012 16:50:33 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 12/15] NFSv4: Simplify the NFSv4 CREATE compound
+Date: Sun, 29 Apr 2012 16:50:17 -0400
+Message-Id: <1335732620-10445-13-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1335732620-10445-12-git-send-email-Trond.Myklebust@netapp.com>
+References: <1335732620-10445-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-12-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 13, 2012 at 11:47 AM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Mon, 2012-04-09 at 16:52 -0400, Fred Isaman wrote:
->> Also create a commit_info structure to hold the bucket array and push
->> it up from the lseg to the layout where it really belongs.
->>
->> While we are at it, fix a refcounting bug due to an (incorrect)
->> implicit assumption that filelayout_scan_ds_commit_list always
->> completely emptied the src list.
->>
->> This clarifies refcounting, removes the ugly find_only_write_lseg
->> functions, and pushes the file layout commit code along on the path to
->> supporting multiple lsegs.
->>
->> Signed-off-by: Fred Isaman <iisaman@netapp.com>
->> ---
->>  fs/nfs/nfs4filelayout.c |  150 +++++++++++++++++++++++++----------------------
->>  fs/nfs/nfs4filelayout.h |   20 ++++++-
->>  2 files changed, 97 insertions(+), 73 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
->> index 5acfd9e..0bbc88a 100644
->> --- a/fs/nfs/nfs4filelayout.c
->> +++ b/fs/nfs/nfs4filelayout.c
->> @@ -650,7 +650,15 @@ filelayout_free_lseg(struct pnfs_layout_segment *lseg)
->>
->>       dprintk("--> %s\n", __func__);
->>       nfs4_fl_put_deviceid(fl->dsaddr);
->> -     kfree(fl->commit_buckets);
->> +     /* This assumes a single RW lseg */
->> +     if (lseg->pls_range.iomode == IOMODE_RW) {
->> +             struct nfs4_filelayout *flo;
->> +
->> +             flo = FILELAYOUT_FROM_HDR(lseg->pls_layout);
->> +             flo->commit_info.nbuckets = 0;
->> +             kfree(flo->commit_info.buckets);
->> +             flo->commit_info.buckets = NULL;
->> +     }
->>       _filelayout_free_lseg(fl);
->>  }
->>
->> @@ -681,19 +689,27 @@ filelayout_alloc_lseg(struct pnfs_layout_hdr *layoutid,
->>        * to filelayout_write_pagelist().
->>        * */
->>       if ((!fl->commit_through_mds) && (lgr->range.iomode == IOMODE_RW)) {
->> +             struct nfs4_filelayout *flo = FILELAYOUT_FROM_HDR(layoutid);
->>               int i;
->>               int size = (fl->stripe_type == STRIPE_SPARSE) ?
->>                       fl->dsaddr->ds_num : fl->dsaddr->stripe_count;
->>
->> -             fl->commit_buckets = kcalloc(size, sizeof(struct nfs4_fl_commit_bucket), gfp_flags);
->> -             if (!fl->commit_buckets) {
->> +             if (flo->commit_info.nbuckets != 0) {
->> +                     /* Shouldn't happen if only one IOMODE_RW lseg */
->>                       filelayout_free_lseg(&fl->generic_hdr);
->>                       return NULL;
->
-> Is this really the correct thing to do? If we're dealing with multiple
-> IOMODE_RW lsegs, then surely we might find ourselves in a situation
-> where we might have to add new commit buckets.
->
-> Doesn't the above deserve a WARN_ON() and a FIXME comment?
->
->>               }
->> -             fl->number_of_buckets = size;
->> +             flo->commit_info.buckets = kcalloc(size,
->> +                                                sizeof(struct nfs4_fl_commit_bucket),
->> +                                                gfp_flags);
->> +             if (!flo->commit_info.buckets) {
->> +                     filelayout_free_lseg(&fl->generic_hdr);
->> +                     return NULL;
->> +             }
->> +             flo->commit_info.nbuckets = size;
->>               for (i = 0; i < size; i++) {
->> -                     INIT_LIST_HEAD(&fl->commit_buckets[i].written);
->> -                     INIT_LIST_HEAD(&fl->commit_buckets[i].committing);
->> +                     INIT_LIST_HEAD(&flo->commit_info.buckets[i].written);
->> +                     INIT_LIST_HEAD(&flo->commit_info.buckets[i].committing);
->>               }
->
-> The commit_info allocation and initialisation should probably be moved
-> into a different function if it is no longer part of the lseg.
->
+Get rid of the post-op GETATTR on the directory in order to reduce
+the amount of processing done on the server.
 
-This is done in patch 26, and called from pg_init_write.  Perhaps I
-should move it earlier in the series
-This is also the reason for the lack of WARN_ON, as in the moved code
-it hits frequently.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c       |    4 ----
+ fs/nfs/nfs4xdr.c        |   19 +------------------
+ include/linux/nfs_xdr.h |    1 -
+ 3 files changed, 1 insertions(+), 23 deletions(-)
 
-My idea was that in a multi-layout scenerio, the check (for
-ncommits==0) would be replaced with code that
-would scan the existing buckets to see if any new needed to be added.
-Regarding taking the reference to the lseg,
-I am still not convinced that the bucket really needs to take a ref on
-the lseg.  Eventually buckets need to be tied to
-a ds, fh pair, though a ds, fh,lseg triple may be needed to deal with
-certain corner cases.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index f01c3d1..619bc1e 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2994,7 +2994,6 @@ struct nfs4_createdata {
+ 	struct nfs4_create_res res;
+ 	struct nfs_fh fh;
+ 	struct nfs_fattr fattr;
+-	struct nfs_fattr dir_fattr;
+ };
+ 
+ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
+@@ -3018,9 +3017,7 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
+ 		data->res.server = server;
+ 		data->res.fh = &data->fh;
+ 		data->res.fattr = &data->fattr;
+-		data->res.dir_fattr = &data->dir_fattr;
+ 		nfs_fattr_init(data->res.fattr);
+-		nfs_fattr_init(data->res.dir_fattr);
+ 	}
+ 	return data;
+ }
+@@ -3031,7 +3028,6 @@ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_
+ 				    &data->arg.seq_args, &data->res.seq_res, 1);
+ 	if (status == 0) {
+ 		update_changeattr(dir, &data->res.dir_cinfo);
+-		nfs_post_op_update_inode(dir, data->res.dir_fattr);
+ 		status = nfs_instantiate(dentry, data->res.fh, data->res.fattr);
+ 	}
+ 	return status;
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 6e878dc..1a70097 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -647,20 +647,14 @@ static int nfs4_stat_to_errno(int);
+ #define NFS4_enc_create_sz	(compound_encode_hdr_maxsz + \
+ 				encode_sequence_maxsz + \
+ 				encode_putfh_maxsz + \
+-				encode_savefh_maxsz + \
+ 				encode_create_maxsz + \
+ 				encode_getfh_maxsz + \
+-				encode_getattr_maxsz + \
+-				encode_restorefh_maxsz + \
+ 				encode_getattr_maxsz)
+ #define NFS4_dec_create_sz	(compound_decode_hdr_maxsz + \
+ 				decode_sequence_maxsz + \
+ 				decode_putfh_maxsz + \
+-				decode_savefh_maxsz + \
+ 				decode_create_maxsz + \
+ 				decode_getfh_maxsz + \
+-				decode_getattr_maxsz + \
+-				decode_restorefh_maxsz + \
+ 				decode_getattr_maxsz)
+ #define NFS4_enc_pathconf_sz	(compound_encode_hdr_maxsz + \
+ 				encode_sequence_maxsz + \
+@@ -2119,12 +2113,9 @@ static void nfs4_xdr_enc_create(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 	encode_compound_hdr(xdr, req, &hdr);
+ 	encode_sequence(xdr, &args->seq_args, &hdr);
+ 	encode_putfh(xdr, args->dir_fh, &hdr);
+-	encode_savefh(xdr, &hdr);
+ 	encode_create(xdr, args, &hdr);
+ 	encode_getfh(xdr, &hdr);
+ 	encode_getfattr(xdr, args->bitmask, &hdr);
+-	encode_restorefh(xdr, &hdr);
+-	encode_getfattr(xdr, args->bitmask, &hdr);
+ 	encode_nops(&hdr);
+ }
+ 
+@@ -5895,21 +5886,13 @@ static int nfs4_xdr_dec_create(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
+ 	status = decode_putfh(xdr);
+ 	if (status)
+ 		goto out;
+-	status = decode_savefh(xdr);
+-	if (status)
+-		goto out;
+ 	status = decode_create(xdr, &res->dir_cinfo);
+ 	if (status)
+ 		goto out;
+ 	status = decode_getfh(xdr, res->fh);
+ 	if (status)
+ 		goto out;
+-	if (decode_getfattr(xdr, res->fattr, res->server))
+-		goto out;
+-	status = decode_restorefh(xdr);
+-	if (status)
+-		goto out;
+-	decode_getfattr(xdr, res->dir_fattr, res->server);
++	decode_getfattr(xdr, res->fattr, res->server);
+ out:
+ 	return status;
+ }
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index fb25080..5a05739 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -855,7 +855,6 @@ struct nfs4_create_res {
+ 	struct nfs_fh *			fh;
+ 	struct nfs_fattr *		fattr;
+ 	struct nfs4_change_info		dir_cinfo;
+-	struct nfs_fattr *		dir_fattr;
+ 	struct nfs4_sequence_res	seq_res;
+ };
+ 
+-- 
+1.7.7.6
 
-Fred
-
-> That said, I'm having trouble seeing how this architecture can survive
-> in a future multiple-layout world. I'm thinking that since the
-> commit_buckets need to take a reference to the lseg, then maybe we
-> should keep the commit buckets tied to the lseg, and then let the commit
-> code iterate through the list of lsegs with something in their commit
-> buckets... What are your thoughts for how this might evolve?
->
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
->
