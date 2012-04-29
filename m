@@ -1,48 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:44256 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755011Ab2D3QN7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Apr 2012 12:13:59 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from nm10-vm0.bullet.mail.bf1.yahoo.com ([98.139.213.147]:44945 "HELO
+	nm10-vm0.bullet.mail.bf1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1750896Ab2D2GHM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Apr 2012 02:07:12 -0400
+Message-ID: <1335679256.79612.YahooMailClassic@web181019.mail.ne1.yahoo.com>
+Date: Sat, 28 Apr 2012 23:00:56 -0700 (PDT)
+From: Zack Perry <zack.perry@sbcglobal.net>
+Subject: To start testing Linux pNFS server?
 To: linux-nfs@vger.kernel.org
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH 2/2] NFSv4.1: Use the correct hostname in the client identifier string
-Date: Mon, 30 Apr 2012 12:13:48 -0400
-Message-Id: <1335802428-8132-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1335802428-8132-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1335802428-8132-1-git-send-email-Trond.Myklebust@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We need to use the hostname of the process that created the nfs_client.
-That hostname is now stored in the rpc_client->cl_nodename.
+Hi,
 
-Also remove the utsname()->domainname component. There is no reason
-to include the NIS/YP domainname in a client identifier string.
+This is my first message to this list. I have been using Fedora 16 and NFSv4 for sometime, and would like to give NFSv4.1 with the pNFS extension a try.  
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c |    5 ++---
- 1 files changed, 2 insertions(+), 3 deletions(-)
+I understand that according to  http://wiki.linux-nfs.org/wiki/index.php/NFSv41_Introduction NFSv4.1 is really developer-only at this point, but it should "mostly work" - that's good enough for me. 
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 75eb883..99650aa 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5122,10 +5122,9 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 	nfs4_construct_boot_verifier(clp, &verifier);
- 
- 	args.id_len = scnprintf(args.id, sizeof(args.id),
--				"%s/%s.%s/%u",
-+				"%s/%s/%u",
- 				clp->cl_ipaddr,
--				init_utsname()->nodename,
--				init_utsname()->domainname,
-+				clp->cl_rpcclient->cl_nodename,
- 				clp->cl_rpcclient->cl_auth->au_flavor);
- 
- 	res.server_scope = kzalloc(sizeof(struct server_scope), GFP_KERNEL);
--- 
-1.7.7.6
+The wiki http://wiki.linux-nfs.org/wiki/index.php/Configuring_pNFS/spnfsd, states that "As of early 2011, it is mostly unmaintained, and we no longer recommend its use". It then points to http://wiki.linux-nfs.org/wiki/index.php/PNFS_server_projects. But, as far as spNFS is concerned, the two wiki pages form a circular reference. The other options for file layout are no go either.
+
+Then, there is this: http://wiki.linux-nfs.org/wiki/index.php/PNFS_Setup_Instructions
+which seems to indicate that with a pNFS enabled kernel, a determined user can start testing NFSv4.1 + pNFS. Steve Dickson even has a repository here: http://steved.fedorapeople.org/repos/pnfs/devel/x86_64/rpms/
+
+Can anyone kind enough to give a short summary as to how to proceed for testing NFSv4.1 + pNFS using Fedora 16 nodes as servers?
+
+As of now, all my Fedora 16 nodes have the following from a regular kickstart install:
+[root@fedora0 ~]# uname -a
+Linux fedora0 3.3.2-6.fc16.x86_64 #1 SMP Sat Apr 21 12:43:20 UTC 2012 x86_64 x86_64 x86_64 GNU/Linux
+[root@fedora0 ~]# rpm -q nfs-utils
+nfs-utils-1.2.5-5.fc16.x86_64
+[root@fedora0 ~]# cat /proc/fs/nfsd/versions
++2 +3 +4 -4.1
+
+Thanks,
+
+Zack
 
