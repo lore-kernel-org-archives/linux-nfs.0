@@ -1,123 +1,175 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:64528 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:55610 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752176Ab2DRRqe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Apr 2012 13:46:34 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
-        Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 2/6] NFS: Pass alternate rpc_clnt to fs_locations()
-Date: Wed, 18 Apr 2012 13:46:21 -0400
-Message-Id: <1334771185-9841-3-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1334771185-9841-1-git-send-email-bjschuma@netapp.com>
-References: <1334771185-9841-1-git-send-email-bjschuma@netapp.com>
+	id S1754215Ab2D2Uuc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 29 Apr 2012 16:50:32 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 11/15] NFSv4: Simplify the NFSv4 OPEN compound
+Date: Sun, 29 Apr 2012 16:50:16 -0400
+Message-Id: <1335732620-10445-12-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1335732620-10445-11-git-send-email-Trond.Myklebust@netapp.com>
+References: <1335732620-10445-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-11-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Get rid of the post-op GETATTR on the directory in order to reduce
+the amount of processing done on the server.
 
-nfs4_proc_lookup() will soon create a new rpc_clnt with the results of a
-SECINFO call.  This patch prepares for a referral hidden behind a
-mountpoint with a different secflavor.
+The cost is that if we later need to stat() the directory, then we
+know that the ctime and mtime are likely to be invalid.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/nfs4_fs.h       |    2 +-
- fs/nfs/nfs4namespace.c |    3 ++-
- fs/nfs/nfs4proc.c      |   17 +++++++++--------
- 3 files changed, 12 insertions(+), 10 deletions(-)
+ fs/nfs/nfs4proc.c       |   11 +----------
+ fs/nfs/nfs4xdr.c        |   18 +-----------------
+ include/linux/nfs_xdr.h |    2 --
+ 3 files changed, 2 insertions(+), 29 deletions(-)
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 97ecc86..41a89d0 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -212,7 +212,7 @@ extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
- extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
- extern int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait, bool roc);
- extern int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle);
--extern int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
-+extern int nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir, const struct qstr *name,
- 		struct nfs4_fs_locations *fs_locations, struct page *page);
- extern int nfs4_release_lockowner(struct nfs4_lock_state *);
- extern const struct xattr_handler *nfs4_xattr_handlers[];
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index 28a4771..be5268d 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -250,7 +250,8 @@ struct vfsmount *nfs_do_refmount(struct dentry *dentry)
- 	dprintk("%s: getting locations for %s/%s\n",
- 		__func__, parent->d_name.name, dentry->d_name.name);
- 
--	err = nfs4_proc_fs_locations(parent->d_inode, &dentry->d_name, fs_locations, page);
-+	err = nfs4_proc_fs_locations(NFS_CLIENT(parent->d_inode), parent->d_inode,
-+				     &dentry->d_name, fs_locations, page);
- 	dput(parent);
- 	if (err != 0 ||
- 	    fs_locations->nlocations <= 0 ||
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index f82bde0..826c3d5 100644
+index 2e0fbff..f01c3d1 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -2368,8 +2368,9 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
-  * Note that we'll actually follow the referral later when
-  * we detect fsid mismatch in inode revalidation
-  */
--static int nfs4_get_referral(struct inode *dir, const struct qstr *name,
--			     struct nfs_fattr *fattr, struct nfs_fh *fhandle)
-+static int nfs4_get_referral(struct rpc_clnt *client, struct inode *dir,
-+			     const struct qstr *name, struct nfs_fattr *fattr,
-+			     struct nfs_fh *fhandle)
+@@ -788,7 +788,6 @@ struct nfs4_opendata {
+ 	struct nfs4_string owner_name;
+ 	struct nfs4_string group_name;
+ 	struct nfs_fattr f_attr;
+-	struct nfs_fattr dir_attr;
+ 	struct dentry *dir;
+ 	struct dentry *dentry;
+ 	struct nfs4_state_owner *owner;
+@@ -804,12 +803,10 @@ struct nfs4_opendata {
+ static void nfs4_init_opendata_res(struct nfs4_opendata *p)
  {
- 	int status = -ENOMEM;
- 	struct page *page = NULL;
-@@ -2382,7 +2383,7 @@ static int nfs4_get_referral(struct inode *dir, const struct qstr *name,
- 	if (locations == NULL)
- 		goto out;
- 
--	status = nfs4_proc_fs_locations(dir, name, locations, page);
-+	status = nfs4_proc_fs_locations(client, dir, name, locations, page);
- 	if (status != 0)
- 		goto out;
- 	/* Make sure server returned a different fsid for the referral */
-@@ -2542,7 +2543,7 @@ static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qst
- 		case -NFS4ERR_BADNAME:
- 			return -ENOENT;
- 		case -NFS4ERR_MOVED:
--			return nfs4_get_referral(dir, name, fattr, fhandle);
-+			return nfs4_get_referral(clnt, dir, name, fattr, fhandle);
- 		case -NFS4ERR_WRONGSEC:
- 			nfs_fixup_secinfo_attributes(fattr, fhandle);
- 		}
-@@ -4891,8 +4892,8 @@ static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr)
- 	fattr->nlink = 2;
+ 	p->o_res.f_attr = &p->f_attr;
+-	p->o_res.dir_attr = &p->dir_attr;
+ 	p->o_res.seqid = p->o_arg.seqid;
+ 	p->c_res.seqid = p->c_arg.seqid;
+ 	p->o_res.server = p->o_arg.server;
+ 	nfs_fattr_init(&p->f_attr);
+-	nfs_fattr_init(&p->dir_attr);
+ 	nfs_fattr_init_names(&p->f_attr, &p->owner_name, &p->group_name);
  }
  
--int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
--		struct nfs4_fs_locations *fs_locations, struct page *page)
-+int nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir, const struct qstr *name,
-+			   struct nfs4_fs_locations *fs_locations, struct page *page)
- {
- 	struct nfs_server *server = NFS_SERVER(dir);
- 	u32 bitmask[2] = {
-@@ -4918,7 +4919,7 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+@@ -843,7 +840,6 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	p->o_arg.name = &dentry->d_name;
+ 	p->o_arg.server = server;
+ 	p->o_arg.bitmask = server->attr_bitmask;
+-	p->o_arg.dir_bitmask = server->cache_consistency_bitmask;
+ 	p->o_arg.claim = NFS4_OPEN_CLAIM_NULL;
+ 	if (attrs != NULL && attrs->ia_valid != 0) {
+ 		__be32 verf[2];
+@@ -1611,8 +1607,6 @@ static int _nfs4_recover_proc_open(struct nfs4_opendata *data)
  
- 	/* Ask for the fileid of the absent filesystem if mounted_on_fileid
- 	 * is not supported */
--	if (NFS_SERVER(dir)->attr_bitmask[1] & FATTR4_WORD1_MOUNTED_ON_FILEID)
-+	if (server->attr_bitmask[1] & FATTR4_WORD1_MOUNTED_ON_FILEID)
- 		bitmask[1] |= FATTR4_WORD1_MOUNTED_ON_FILEID;
- 	else
- 		bitmask[0] |= FATTR4_WORD0_FILEID;
-@@ -4926,7 +4927,7 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
- 	nfs_fattr_init(&fs_locations->fattr);
- 	fs_locations->server = server;
- 	fs_locations->nlocations = 0;
--	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
-+	status = nfs4_call_sync(client, server, &msg, &args.seq_args, &res.seq_res, 0);
- 	dprintk("%s: returned status = %d\n", __func__, status);
+ 	nfs_fattr_map_and_free_names(NFS_SERVER(dir), &data->f_attr);
+ 
+-	nfs_refresh_inode(dir, o_res->dir_attr);
+-
+ 	if (o_res->rflags & NFS4_OPEN_RESULT_CONFIRM) {
+ 		status = _nfs4_proc_open_confirm(data);
+ 		if (status != 0)
+@@ -1645,11 +1639,8 @@ static int _nfs4_proc_open(struct nfs4_opendata *data)
+ 
+ 	nfs_fattr_map_and_free_names(server, &data->f_attr);
+ 
+-	if (o_arg->open_flags & O_CREAT) {
++	if (o_arg->open_flags & O_CREAT)
+ 		update_changeattr(dir, &o_res->cinfo);
+-		nfs_post_op_update_inode(dir, o_res->dir_attr);
+-	} else
+-		nfs_refresh_inode(dir, o_res->dir_attr);
+ 	if ((o_res->rflags & NFS4_OPEN_RESULT_LOCKTYPE_POSIX) == 0)
+ 		server->caps &= ~NFS_CAP_POSIX_LOCK;
+ 	if(o_res->rflags & NFS4_OPEN_RESULT_CONFIRM) {
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index ac7a3b0..6e878dc 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -431,20 +431,14 @@ static int nfs4_stat_to_errno(int);
+ #define NFS4_enc_open_sz        (compound_encode_hdr_maxsz + \
+ 				encode_sequence_maxsz + \
+ 				encode_putfh_maxsz + \
+-				encode_savefh_maxsz + \
+ 				encode_open_maxsz + \
+ 				encode_getfh_maxsz + \
+-				encode_getattr_maxsz + \
+-				encode_restorefh_maxsz + \
+ 				encode_getattr_maxsz)
+ #define NFS4_dec_open_sz        (compound_decode_hdr_maxsz + \
+ 				decode_sequence_maxsz + \
+ 				decode_putfh_maxsz + \
+-				decode_savefh_maxsz + \
+ 				decode_open_maxsz + \
+ 				decode_getfh_maxsz + \
+-				decode_getattr_maxsz + \
+-				decode_restorefh_maxsz + \
+ 				decode_getattr_maxsz)
+ #define NFS4_enc_open_confirm_sz \
+ 				(compound_encode_hdr_maxsz + \
+@@ -2191,12 +2185,9 @@ static void nfs4_xdr_enc_open(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 	encode_compound_hdr(xdr, req, &hdr);
+ 	encode_sequence(xdr, &args->seq_args, &hdr);
+ 	encode_putfh(xdr, args->fh, &hdr);
+-	encode_savefh(xdr, &hdr);
+ 	encode_open(xdr, args, &hdr);
+ 	encode_getfh(xdr, &hdr);
+ 	encode_getfattr(xdr, args->bitmask, &hdr);
+-	encode_restorefh(xdr, &hdr);
+-	encode_getfattr(xdr, args->dir_bitmask, &hdr);
+ 	encode_nops(&hdr);
+ }
+ 
+@@ -6075,19 +6066,12 @@ static int nfs4_xdr_dec_open(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
+ 	status = decode_putfh(xdr);
+ 	if (status)
+ 		goto out;
+-	status = decode_savefh(xdr);
+-	if (status)
+-		goto out;
+ 	status = decode_open(xdr, res);
+ 	if (status)
+ 		goto out;
+ 	if (decode_getfh(xdr, &res->fh) != 0)
+ 		goto out;
+-	if (decode_getfattr(xdr, res->f_attr, res->server) != 0)
+-		goto out;
+-	if (decode_restorefh(xdr) != 0)
+-		goto out;
+-	decode_getfattr(xdr, res->dir_attr, res->server);
++	decode_getfattr(xdr, res->f_attr, res->server);
+ out:
  	return status;
  }
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index cd160ab..fb25080 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -338,7 +338,6 @@ struct nfs_openargs {
+ 	const struct qstr *	name;
+ 	const struct nfs_server *server;	 /* Needed for ID mapping */
+ 	const u32 *		bitmask;
+-	const u32 *		dir_bitmask;
+ 	__u32			claim;
+ 	struct nfs4_sequence_args	seq_args;
+ };
+@@ -349,7 +348,6 @@ struct nfs_openres {
+ 	struct nfs4_change_info	cinfo;
+ 	__u32                   rflags;
+ 	struct nfs_fattr *      f_attr;
+-	struct nfs_fattr *      dir_attr;
+ 	struct nfs_seqid *	seqid;
+ 	const struct nfs_server *server;
+ 	fmode_t			delegation_type;
 -- 
-1.7.10
+1.7.7.6
 
