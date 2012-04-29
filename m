@@ -1,61 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33259 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:55610 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756525Ab2DYRaG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Apr 2012 13:30:06 -0400
-Date: Wed, 25 Apr 2012 13:30:05 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Subject: Re: [PATCH v2] SUNRPC: skip dead but not buried clients on PipeFS
- events
-Message-ID: <20120425173005.GD751@fieldses.org>
-References: <20120420141042.7205.62608.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120420141042.7205.62608.stgit@localhost6.localdomain6>
+	id S1752784Ab2D2Uu1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 29 Apr 2012 16:50:27 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 03/15] NFSv4: Retrieve attributes _before_ calling delegreturn
+Date: Sun, 29 Apr 2012 16:50:08 -0400
+Message-Id: <1335732620-10445-4-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1335732620-10445-3-git-send-email-Trond.Myklebust@netapp.com>
+References: <1335732620-10445-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-3-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 20, 2012 at 06:11:02PM +0400, Stanislav Kinsbursky wrote:
-> v2: atomic_inc_return() was replaced by atomic_inc_not_zero().
-> 
-> These clients can't be safely dereferenced if their counter in 0.
+In order to retrieve cache consistency attributes before
+anyone else has a chance to change the inode, we need to
+put the GETATTR op _before_ the DELEGRETURN op.
 
-I'm pretty confused by how these notifiers work....
+We can then use that as part of a 'nfs_post_op_update_inode_force_wcc()'
+call, to ensure that we update the attributes without clearing our
+cached data.
 
-rpc_release_client decrements cl_count to zero temporarily, to have it
-immediately re-incremented by rpc_free_auth.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c |    7 ++++---
+ fs/nfs/nfs4xdr.c  |    6 +++---
+ 2 files changed, 7 insertions(+), 6 deletions(-)
 
-So if we're called concurrently with rpc_release_client then it's sort
-of random whether someone gets this callback.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 111a3cc..2e0fbff 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4138,9 +4138,10 @@ static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, co
+ 	if (status != 0)
+ 		goto out;
+ 	status = data->rpc_status;
+-	if (status != 0)
+-		goto out;
+-	nfs_refresh_inode(inode, &data->fattr);
++	if (status == 0)
++		nfs_post_op_update_inode_force_wcc(inode, &data->fattr);
++	else
++		nfs_refresh_inode(inode, &data->fattr);
+ out:
+ 	rpc_put_task(task);
+ 	return status;
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index fe61424..ac7a3b0 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -2602,8 +2602,8 @@ static void nfs4_xdr_enc_delegreturn(struct rpc_rqst *req,
+ 	encode_compound_hdr(xdr, req, &hdr);
+ 	encode_sequence(xdr, &args->seq_args, &hdr);
+ 	encode_putfh(xdr, args->fhandle, &hdr);
+-	encode_delegreturn(xdr, args->stateid, &hdr);
+ 	encode_getfattr(xdr, args->bitmask, &hdr);
++	encode_delegreturn(xdr, args->stateid, &hdr);
+ 	encode_nops(&hdr);
+ }
+ 
+@@ -6527,10 +6527,10 @@ static int nfs4_xdr_dec_delegreturn(struct rpc_rqst *rqstp,
+ 	status = decode_putfh(xdr);
+ 	if (status != 0)
+ 		goto out;
+-	status = decode_delegreturn(xdr);
++	status = decode_getfattr(xdr, res->fattr, res->server);
+ 	if (status != 0)
+ 		goto out;
+-	decode_getfattr(xdr, res->fattr, res->server);
++	status = decode_delegreturn(xdr);
+ out:
+ 	return status;
+ }
+-- 
+1.7.7.6
 
-Is that a problem?
-
-Also, is this an existing bug?  (In which case Trond should take it
-now.)
-
---b.
-
-> 
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> 
-> ---
->  net/sunrpc/clnt.c |    3 ++-
->  1 files changed, 2 insertions(+), 1 deletions(-)
-> 
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index 6797246..d10ebc4 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -218,7 +218,8 @@ static struct rpc_clnt *rpc_get_client_for_event(struct net *net, int event)
->  		if (((event == RPC_PIPEFS_MOUNT) && clnt->cl_dentry) ||
->  		    ((event == RPC_PIPEFS_UMOUNT) && !clnt->cl_dentry))
->  			continue;
-> -		atomic_inc(&clnt->cl_count);
-> +		if (atomic_inc_not_zero(&clnt->cl_count) == 0)
-> +			continue;
->  		spin_unlock(&sn->rpc_client_lock);
->  		return clnt;
->  	}
-> 
