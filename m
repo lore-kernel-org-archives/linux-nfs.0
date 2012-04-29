@@ -1,54 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:57407 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:55610 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751674Ab2DXFsL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Apr 2012 01:48:11 -0400
-From: Neil Brown <neilb@suse.de>
-To: Steve Dickson <steved@redhat.com>
-Date: Tue, 24 Apr 2012 15:46:38 +1000
-Subject: [PATCH 4/6] v4set_root: force "fsid=0" for all exports of '/'
-Cc: linux-nfs@vger.kernel.org, NeilBrown <neilb@suse.de>
-Message-ID: <20120424054638.20130.5981.stgit@notabene.brown>
-In-Reply-To: <20120424054003.20130.16209.stgit@notabene.brown>
-References: <20120424054003.20130.16209.stgit@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1754154Ab2D2Uu3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 29 Apr 2012 16:50:29 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 07/15] NFS: Simplify nfs_fhget()
+Date: Sun, 29 Apr 2012 16:50:12 -0400
+Message-Id: <1335732620-10445-8-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1335732620-10445-7-git-send-email-Trond.Myklebust@netapp.com>
+References: <1335732620-10445-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1335732620-10445-7-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When "fsid=0" is not explicitly given in /etc/exports,
-v4set_root creates a pseudo (NFSEXP_V4ROOT) export for '/'
-with fsid 0 so that an NFSv4 client can find the root.
+If the inode is being initialised, there is no point in
+setting flags such as NFS_INO_INVALID_ACCESS,
+NFS_INO_INVALID_ACL or NFS_INO_INVALID_DATA since there are
+no cached access calls, acls or data caches to invalidate.
 
-However if '/' is explicitly exported to the client, then that
-explicit export must be used, and it will not have fsid=0.
-So we must impose fsid=0 on all exports of '/'.
-Without this, if '/' is exported to a client, that client will
-not be able to mount '/' with NFSv4.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
+ fs/nfs/inode.c |   23 ++++++-----------------
+ 1 files changed, 6 insertions(+), 17 deletions(-)
 
- utils/mountd/v4root.c |    7 +++++++
- 1 file changed, 7 insertions(+)
-
-diff --git a/utils/mountd/v4root.c b/utils/mountd/v4root.c
-index 81f813b..b4fdcce 100644
---- a/utils/mountd/v4root.c
-+++ b/utils/mountd/v4root.c
-@@ -192,6 +192,13 @@ v4root_set()
- 				 */
- 				continue;
- 
-+			if (strcmp(exp->m_export.e_path, "/") == 0 &&
-+			    !(exp->m_export.e_flags & NFSEXP_FSID)) {
-+				/* Force '/' to be exported as fsid == 0*/
-+				exp->m_export.e_flags |= NFSEXP_FSID;
-+				exp->m_export.e_fsid = 0;
-+			}
-+
- 			v4root_add_parents(exp);
- 			/* XXX: error handling! */
- 		}
-
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 81946e7..8d67e5e 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -285,9 +285,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ 		inode->i_mode = fattr->mode;
+ 		if ((fattr->valid & NFS_ATTR_FATTR_MODE) == 0
+ 				&& nfs_server_capable(inode, NFS_CAP_MODE))
+-			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
+-				| NFS_INO_INVALID_ACCESS
+-				| NFS_INO_INVALID_ACL;
++			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
+ 		/* Why so? Because we want revalidate for devices/FIFOs, and
+ 		 * that's precisely what we have in nfs_file_inode_operations.
+ 		 */
+@@ -337,24 +335,19 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ 		if (fattr->valid & NFS_ATTR_FATTR_MTIME)
+ 			inode->i_mtime = fattr->mtime;
+ 		else if (nfs_server_capable(inode, NFS_CAP_MTIME))
+-			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
+-				| NFS_INO_INVALID_DATA;
++			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
+ 		if (fattr->valid & NFS_ATTR_FATTR_CTIME)
+ 			inode->i_ctime = fattr->ctime;
+ 		else if (nfs_server_capable(inode, NFS_CAP_CTIME))
+-			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
+-				| NFS_INO_INVALID_ACCESS
+-				| NFS_INO_INVALID_ACL;
++			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
+ 		if (fattr->valid & NFS_ATTR_FATTR_CHANGE)
+ 			inode->i_version = fattr->change_attr;
+ 		else if (nfs_server_capable(inode, NFS_CAP_CHANGE_ATTR))
+-			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
+-				| NFS_INO_INVALID_DATA;
++			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
+ 		if (fattr->valid & NFS_ATTR_FATTR_SIZE)
+ 			inode->i_size = nfs_size_to_loff_t(fattr->size);
+ 		else
+ 			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
+-				| NFS_INO_INVALID_DATA
+ 				| NFS_INO_REVAL_PAGECACHE;
+ 		if (fattr->valid & NFS_ATTR_FATTR_NLINK)
+ 			set_nlink(inode, fattr->nlink);
+@@ -363,15 +356,11 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ 		if (fattr->valid & NFS_ATTR_FATTR_OWNER)
+ 			inode->i_uid = fattr->uid;
+ 		else if (nfs_server_capable(inode, NFS_CAP_OWNER))
+-			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
+-				| NFS_INO_INVALID_ACCESS
+-				| NFS_INO_INVALID_ACL;
++			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
+ 		if (fattr->valid & NFS_ATTR_FATTR_GROUP)
+ 			inode->i_gid = fattr->gid;
+ 		else if (nfs_server_capable(inode, NFS_CAP_OWNER_GROUP))
+-			nfsi->cache_validity |= NFS_INO_INVALID_ATTR
+-				| NFS_INO_INVALID_ACCESS
+-				| NFS_INO_INVALID_ACL;
++			nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
+ 		if (fattr->valid & NFS_ATTR_FATTR_BLOCKS_USED)
+ 			inode->i_blocks = fattr->du.nfs2.blocks;
+ 		if (fattr->valid & NFS_ATTR_FATTR_SPACE_USED) {
+-- 
+1.7.7.6
 
