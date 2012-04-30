@@ -1,36 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:17901 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:6403 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752324Ab2DMPw0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Apr 2012 11:52:26 -0400
-Received: from vmwexceht04-prd.hq.netapp.com (vmwexceht04-prd.hq.netapp.com [10.106.77.34])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q3DFqPQD011464
-	for <linux-nfs@vger.kernel.org>; Fri, 13 Apr 2012 08:52:26 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Isaman, Fred" <Fred.Isaman@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 10/26] NFS: put open context on error in nfs_pagein_multi
-Date: Fri, 13 Apr 2012 15:52:24 +0000
-Message-ID: <1334332344.25130.17.camel@lade.trondhjem.org>
-References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
-	 <1334004744-31842-11-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334004744-31842-11-git-send-email-iisaman@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1755993Ab2D3SAn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Apr 2012 14:00:43 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Fred Isaman <iisaman@netapp.com>
+Subject: [PATCH 1/3] NFS: Ensure that we break out of read/write_schedule_segment on error
+Date: Mon, 30 Apr 2012 14:00:39 -0400
+Message-Id: <1335808841-11623-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA0LTA5IGF0IDE2OjUyIC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
-U2lnbmVkLW9mZi1ieTogRnJlZCBJc2FtYW4gPGlpc2FtYW5AbmV0YXBwLmNvbT4NCj4gLS0tDQo+
-ICBmcy9uZnMvcmVhZC5jIHwgICAgMiArLQ0KPiAgMSBmaWxlcyBjaGFuZ2VkLCAxIGluc2VydGlv
-bnMoKyksIDEgZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL3JlYWQuYyBi
-L2ZzL25mcy9yZWFkLmMNCj4gaW5kZXggZTFkYjA0YS4uNGRkYmE2NyAxMDA2NDQNCj4gLS0tIGEv
-ZnMvbmZzL3JlYWQuYw0KPiArKysgYi9mcy9uZnMvcmVhZC5jDQo+IEBAIC0zMjMsNyArMzIzLDcg
-QEAgb3V0X2JhZDoNCj4gIAl3aGlsZSAoIWxpc3RfZW1wdHkocmVzKSkgew0KPiAgCQlkYXRhID0g
-bGlzdF9lbnRyeShyZXMtPm5leHQsIHN0cnVjdCBuZnNfcmVhZF9kYXRhLCBsaXN0KTsNCj4gIAkJ
-bGlzdF9kZWwoJmRhdGEtPmxpc3QpOw0KPiAtCQluZnNfcmVhZGRhdGFfZnJlZShkYXRhKTsNCj4g
-KwkJbmZzX3JlYWRkYXRhX3JlbGVhc2UoZGF0YSk7DQo+ICAJfQ0KPiAgCW5mc19yZWFkcGFnZV9y
-ZWxlYXNlKHJlcSk7DQo+ICAJcmV0dXJuIC1FTk9NRU07DQoNClNob3VsZCB0aGlzIGJlIGEgc3Rh
-YmxlIHRyZWUgY2FuZGlkYXRlPw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNs
-aWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3
-dy5uZXRhcHAuY29tDQoNCg==
+Currently we do break out of the for() loop, but we also need to
+break out of the enclosing do {} while()...
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/direct.c |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index d44de2f..5ce5c6b 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -396,7 +396,7 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *de
+ 			pos += req_len;
+ 			count -= req_len;
+ 		}
+-	} while (count != 0);
++	} while (count != 0 && result >= 0);
+ 
+ 	kfree(pagevec);
+ 
+@@ -689,6 +689,7 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *d
+ 				nfs_release_request(req);
+ 				nfs_direct_release_pages(pagevec + i,
+ 							 npages - i);
++				break;
+ 			}
+ 			pgbase = 0;
+ 			bytes -= req_len;
+@@ -697,7 +698,7 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *d
+ 			pos += req_len;
+ 			count -= req_len;
+ 		}
+-	} while (count != 0);
++	} while (count != 0 && result >= 0);
+ 
+ 	kfree(pagevec);
+ 
+-- 
+1.7.7.6
+
