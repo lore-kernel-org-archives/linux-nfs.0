@@ -1,39 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e39.co.us.ibm.com ([32.97.110.160]:60937 "EHLO
-	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750771Ab2DIVeW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Apr 2012 17:34:22 -0400
-Received: from /spool/local
-	by e39.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@almaden.ibm.com>;
-	Mon, 9 Apr 2012 15:34:21 -0600
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id DA611C90065
-	for <linux-nfs@vger.kernel.org>; Mon,  9 Apr 2012 17:34:16 -0400 (EDT)
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q39LXvEN295098
-	for <linux-nfs@vger.kernel.org>; Mon, 9 Apr 2012 17:33:58 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q39LXub5012839
-	for <linux-nfs@vger.kernel.org>; Mon, 9 Apr 2012 18:33:56 -0300
-Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q39LXuke012836
-	for <linux-nfs@vger.kernel.org>; Mon, 9 Apr 2012 18:33:56 -0300
-In-Reply-To: <OFA0CA5439.45832AAD-ON882579C1.005C1459-882579C1.005C3D51@us.ibm.com>
-References: <OF9A3BDB9C.189BECD1-ON882579B3.007FE19E-882579B3.0080227A@us.ibm.com> <OFA0CA5439.45832AAD-ON882579C1.005C1459-882579C1.005C3D51@us.ibm.com>
-To: Marc Eshel <eshel@almaden.ibm.com>
-Cc: linux-nfs@vger.kernel.org
-MIME-Version: 1.0
-Subject: Linux pNFS status meeting -- NEW HOST?
-Message-ID: <OF15A1729F.B5254D2C-ON882579DB.0075FAFC-882579DB.007670CE@us.ibm.com>
-From: Marc Eshel <eshel@almaden.ibm.com>
-Date: Mon, 9 Apr 2012 14:33:48 -0700
-Content-Type: text/plain; charset="US-ASCII"
+Received: from mx2.netapp.com ([216.240.18.37]:44256 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753988Ab2D3QN6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Apr 2012 12:13:58 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH 1/2] SUNRPC: RPC client must use the current utsname hostname string
+Date: Mon, 30 Apr 2012 12:13:47 -0400
+Message-Id: <1335802428-8132-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-After hosting this meeting for few years I am ready let someone else do 
-it. Any volunteers?
+Now that the rpc client is namespace aware, it needs to use the
+utsname of the process that created it instead of using the
+init_utsname. Both rpc_new_client and rpc_clone_client need to
+be fixed.
 
-Thanks, Marc. 
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ net/sunrpc/clnt.c |   14 ++++++++++----
+ 1 files changed, 10 insertions(+), 4 deletions(-)
+
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index d127bd7..adf2990 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -279,6 +279,14 @@ void rpc_clients_notifier_unregister(void)
+ 	return rpc_pipefs_notifier_unregister(&rpc_clients_block);
+ }
+ 
++static void rpc_clnt_set_nodename(struct rpc_clnt *clnt, const char *nodename)
++{
++	clnt->cl_nodelen = strlen(nodename);
++	if (clnt->cl_nodelen > UNX_MAXNODENAME)
++		clnt->cl_nodelen = UNX_MAXNODENAME;
++	memcpy(clnt->cl_nodename, nodename, clnt->cl_nodelen);
++}
++
+ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, struct rpc_xprt *xprt)
+ {
+ 	const struct rpc_program *program = args->program;
+@@ -359,10 +367,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ 	}
+ 
+ 	/* save the nodename */
+-	clnt->cl_nodelen = strlen(init_utsname()->nodename);
+-	if (clnt->cl_nodelen > UNX_MAXNODENAME)
+-		clnt->cl_nodelen = UNX_MAXNODENAME;
+-	memcpy(clnt->cl_nodename, init_utsname()->nodename, clnt->cl_nodelen);
++	rpc_clnt_set_nodename(clnt, utsname()->nodename);
+ 	rpc_register_client(clnt);
+ 	return clnt;
+ 
+@@ -521,6 +526,7 @@ rpc_clone_client(struct rpc_clnt *clnt)
+ 	err = rpc_setup_pipedir(new, clnt->cl_program->pipe_dir_name);
+ 	if (err != 0)
+ 		goto out_no_path;
++	rpc_clnt_set_nodename(new, utsname()->nodename);
+ 	if (new->cl_auth)
+ 		atomic_inc(&new->cl_auth->au_count);
+ 	atomic_inc(&clnt->cl_count);
+-- 
+1.7.7.6
 
