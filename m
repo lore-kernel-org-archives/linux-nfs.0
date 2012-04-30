@@ -1,90 +1,135 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:20251 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:6403 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752394Ab2DTVMf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Apr 2012 17:12:35 -0400
-Date: Fri, 20 Apr 2012 17:13:00 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, miklos@szeredi.hu,
-        viro@ZenIV.linux.org.uk, hch@infradead.org,
-        michael.brantley@deshaw.com, sven.breuner@itwm.fraunhofer.de,
-        chuck.lever@oracle.com, pstaubach@exagrid.com, malahal@us.ibm.com,
-        bfields@fieldses.org, trond.myklebust@fys.uio.no, rees@umich.edu
-Subject: Re: [PATCH RFC v3] vfs: make fstatat retry once on ESTALE errors
- from getattr call
-Message-ID: <20120420171300.326d6e36@corrin.poochiereds.net>
-In-Reply-To: <4F91C49D.8070908@RedHat.com>
-References: <1334316311-22331-1-git-send-email-jlayton@redhat.com>
-	<1334749927-26138-1-git-send-email-jlayton@redhat.com>
-	<20120420104055.511e15bc@tlielax.poochiereds.net>
-	<4F91C49D.8070908@RedHat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1756507Ab2D3SAo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Apr 2012 14:00:44 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Fred Isaman <iisaman@netapp.com>
+Subject: [PATCH 3/3] NFS: Simplify O_DIRECT page referencing
+Date: Mon, 30 Apr 2012 14:00:41 -0400
+Message-Id: <1335808841-11623-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1335808841-11623-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1335808841-11623-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1335808841-11623-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 20 Apr 2012 16:18:37 -0400
-Steve Dickson <SteveD@redhat.com> wrote:
+The O_DIRECT code shouldn't need to hold 2 references to each page. The
+reference held by the struct nfs_page should suffice.
 
-> On 04/20/2012 10:40 AM, Jeff Layton wrote:
-> > I guess the questions at this point is:
-> > 
-> > 1) How representative is Peter's mkdir_test() of a real-world workload?
-> Reading your email I had to wonder the same thing... What application 
-> removes hierarchy of directories in a loop from two different clients?
-> I would suspect not many, if any... esp over NFS... 
->  
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/direct.c |   22 ++++++----------------
+ 1 files changed, 6 insertions(+), 16 deletions(-)
 
-Peter's test just happens to demonstrate the problem well, but one
-could envision someone removing a heirarchy of directories on the
-server while we're trying to do other operations in it. At that point,
-we can easily end up hitting an ESTALE twice while doing the lookup and
-returning ESTALE back to userspace.
-
-> > 
-> > 2) if we assume that it is fairly representative of one, how can we
-> > achieve retrying indefinitely with NFS, or at least some large finite
-> > amount?
-> The amount of looping would be peer speculation. If the problem can
-> not be handled by one simple retry I would say we simply pass the
-> error up to the app... Its an application issue... 
->  
-
-It's not an application issue. The application just asked the kernel
-to do an operation on a pathname. The only reason you're getting an
-ESTALE back in this situation is a shortcoming of the implementation.
-
-We passed it a pathname after all, not a filehandle. ESTALE really has
-no place as a return code in that situation...
-
-> > 
-> > I have my doubts as to whether it would really be as big a problem for
-> > other filesystems as Miklos and others have asserted, but I'll take
-> > their word for it at the moment. What's the best way to contain this
-> > behavior to just those filesystems that want to retry indefinitely when
-> > they get an ESTALE? Would we need to go with an entirely new
-> > ESTALERETRY after all?
-> > 
-> Introducing a new errno to handle this problem would be overkill IMHO...
-> 
-> If we have to go to the looping approach, I would strong suggest we
-> make the file systems register for this type of behavior...
-> 
-
-Returning ESTALERETRY would be registering for it in a way and it is
-somewhat cleaner than having to go all the way back up to the fstype to
-figure out whether you want to retry it or not.
-
-There's also the non-trivial matter of needing to retry during the
-lookup itself. If the lookup just returns ESTALE, then you don't have
-any way to know whether the underlying fs wanted you to retry it or
-not...
-
-I'm not thrilled with having to do all of this ESTALE to ESTALERETRY
-conversion and back, but it does give us a way to neatly deal with and
-ESTALE during the lookup.
-
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 450ba54..31d0624 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -268,10 +268,9 @@ static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
+ 			}
+ 			bytes += req->wb_bytes;
+ 			nfs_list_remove_request(req);
+-			nfs_direct_readpage_release(req);
+ 			if (!PageCompound(page))
+ 				set_page_dirty(page);
+-			page_cache_release(page);
++			nfs_direct_readpage_release(req);
+ 		}
+ 	} else {
+ 		while (!list_empty(&hdr->pages)) {
+@@ -281,7 +280,6 @@ static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
+ 				if (!PageCompound(req->wb_page))
+ 					set_page_dirty(req->wb_page);
+ 			bytes += req->wb_bytes;
+-			page_cache_release(req->wb_page);
+ 			nfs_list_remove_request(req);
+ 			nfs_direct_readpage_release(req);
+ 		}
+@@ -375,8 +373,6 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *de
+ 						 pagevec[i],
+ 						 pgbase, req_len);
+ 			if (IS_ERR(req)) {
+-				nfs_direct_release_pages(pagevec + i,
+-							 npages - i);
+ 				result = PTR_ERR(req);
+ 				break;
+ 			}
+@@ -385,8 +381,6 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *de
+ 			if (!nfs_pageio_add_request(desc, req)) {
+ 				result = desc->pg_error;
+ 				nfs_release_request(req);
+-				nfs_direct_release_pages(pagevec + i,
+-							 npages - i);
+ 				break;
+ 			}
+ 			pgbase = 0;
+@@ -396,6 +390,8 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *de
+ 			pos += req_len;
+ 			count -= req_len;
+ 		}
++		/* The nfs_page now hold references to these pages */
++		nfs_direct_release_pages(pagevec, npages);
+ 	} while (count != 0 && result >= 0);
+ 
+ 	kfree(pagevec);
+@@ -509,7 +505,6 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+ 	nfs_pageio_complete(&desc);
+ 
+ 	while (!list_empty(&failed)) {
+-		page_cache_release(req->wb_page);
+ 		nfs_release_request(req);
+ 		nfs_unlock_request(req);
+ 	}
+@@ -542,10 +537,8 @@ static void nfs_direct_commit_complete(struct nfs_commit_data *data)
+ 		if (dreq->flags == NFS_ODIRECT_RESCHED_WRITES) {
+ 			/* Note the rewrite will go through mds */
+ 			nfs_mark_request_commit(req, NULL, &cinfo);
+-		} else {
+-			page_cache_release(req->wb_page);
++		} else
+ 			nfs_release_request(req);
+-		}
+ 		nfs_unlock_request(req);
+ 	}
+ 
+@@ -675,8 +668,6 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *d
+ 						 pagevec[i],
+ 						 pgbase, req_len);
+ 			if (IS_ERR(req)) {
+-				nfs_direct_release_pages(pagevec + i,
+-							 npages - i);
+ 				result = PTR_ERR(req);
+ 				break;
+ 			}
+@@ -687,8 +678,6 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *d
+ 				result = desc->pg_error;
+ 				nfs_unlock_request(req);
+ 				nfs_release_request(req);
+-				nfs_direct_release_pages(pagevec + i,
+-							 npages - i);
+ 				break;
+ 			}
+ 			pgbase = 0;
+@@ -698,6 +687,8 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *d
+ 			pos += req_len;
+ 			count -= req_len;
+ 		}
++		/* The nfs_page now hold references to these pages */
++		nfs_direct_release_pages(pagevec, npages);
+ 	} while (count != 0 && result >= 0);
+ 
+ 	kfree(pagevec);
+@@ -760,7 +751,6 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
+ 			nfs_mark_request_commit(req, hdr->lseg, &cinfo);
+ 			break;
+ 		default:
+-			page_cache_release(req->wb_page);
+ 			nfs_release_request(req);
+ 		}
+ 		nfs_unlock_request(req);
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.7.6
+
