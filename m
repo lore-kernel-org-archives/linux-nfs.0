@@ -1,64 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:44620 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:15969 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755506Ab2DSOHz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Apr 2012 10:07:55 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 6/6] xstat: eCryptFS: Return extended attributes
-To: linux-fsdevel@vger.kernel.org
-Cc: dhowells@redhat.com, linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
-        wine-devel@winehq.org, kfm-devel@kde.org, nautilus-list@gnome.org,
-        linux-api@vger.kernel.org, libc-alpha@sourceware.org
-Date: Thu, 19 Apr 2012 15:07:19 +0100
-Message-ID: <20120419140719.17272.39008.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
-References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+	id S1753049Ab2D3QLQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Apr 2012 12:11:16 -0400
+Message-ID: <4F9EB992.9040501@netapp.com>
+Date: Mon, 30 Apr 2012 12:10:58 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Fred Isaman <iisaman@netapp.com>
+CC: linux-nfs@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH v3 25/25] NFS: rewrite directio write to use async coalesce
+ code
+References: <1334947677-28864-1-git-send-email-iisaman@netapp.com> <1334947677-28864-26-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1334947677-28864-26-git-send-email-iisaman@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Return extended attributes from the eCryptFS filesystem, dredged up from the
-lower filesystem.  XSTAT_INFO_ENCRYPTED is set on the files whose cryptography
-is handled by eCryptFS.
+Hi Fred,
 
-Possibly eCryptFS should also set FS_COMPR_FL on its compressed files.
+On 04/20/2012 02:47 PM, Fred Isaman wrote:
 
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+> This also has the advantage that it allows directio to use pnfs.
+> 
+> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+> ---
+>  fs/nfs/direct.c         |  527 +++++++++++++++++++++--------------------------
+>  fs/nfs/internal.h       |   18 ++-
+>  fs/nfs/nfs4filelayout.c |   44 ++++-
+>  fs/nfs/pnfs.h           |   17 ++
+>  fs/nfs/write.c          |   36 ++--
+>  5 files changed, 319 insertions(+), 323 deletions(-)
+> 
+> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+> index 4ba9a2c..d44de2f 100644
+> --- a/fs/nfs/direct.c
+> +++ b/fs/nfs/direct.c
+> @@ -56,6 +56,7 @@
+>  
+>  #include "internal.h"
+>  #include "iostat.h"
+> +#include "pnfs.h"
+>  
+>  #define NFSDBG_FACILITY		NFSDBG_VFS
+>  
+> @@ -81,16 +82,19 @@ struct nfs_direct_req {
+>  	struct completion	completion;	/* wait for i/o completion */
+>  
+>  	/* commit state */
+> -	struct list_head	rewrite_list;	/* saved nfs_write_data structs */
+> -	struct nfs_commit_data *commit_data;	/* special write_data for commits */
+> +	struct nfs_mds_commit_info mds_cinfo;	/* Storage for cinfo */
+> +	struct pnfs_ds_commit_info ds_cinfo;	/* Storage for cinfo */
 
- fs/ecryptfs/inode.c |   14 ++++++++++++--
- 1 files changed, 12 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
-index ab35b11..62865e9 100644
---- a/fs/ecryptfs/inode.c
-+++ b/fs/ecryptfs/inode.c
-@@ -1060,13 +1060,23 @@ int ecryptfs_getattr(struct vfsmount *mnt, struct dentry *dentry,
- 	struct kstat lower_stat;
- 	int rc;
- 
--	rc = vfs_getattr(ecryptfs_dentry_to_lower_mnt(dentry),
--			 ecryptfs_dentry_to_lower(dentry), &lower_stat);
-+	lower_stat.query_flags = stat->query_flags;
-+	lower_stat.request_mask = stat->request_mask | XSTAT_BLOCKS;
-+	rc = vfs_xgetattr(ecryptfs_dentry_to_lower_mnt(dentry),
-+			  ecryptfs_dentry_to_lower(dentry), &lower_stat);
- 	if (!rc) {
- 		fsstack_copy_attr_all(dentry->d_inode,
- 				      ecryptfs_inode_to_lower(dentry->d_inode));
- 		generic_fillattr(dentry->d_inode, stat);
- 		stat->blocks = lower_stat.blocks;
-+		stat->result_mask = lower_stat.result_mask;
-+		stat->information = lower_stat.information;
-+		stat->information |= XSTAT_INFO_ENCRYPTED;
-+		stat->gen = lower_stat.gen;
-+		stat->version = lower_stat.version;
-+		stat->ioc_flags = lower_stat.ioc_flags;
-+		memcpy(&stat->volume_id, lower_stat.volume_id,
-+		       sizeof(stat->volume_id));
- 	}
- 	return rc;
- }
 
+When I compile without CONFIG_NFS_V4 enabled, I see this error:
+
+  CC [M]  fs/nfs/super.o
+  CC [M]  fs/nfs/direct.o
+fs/nfs/direct.c:86:29: error: field 'ds_cinfo' has incomplete type
+make[2]: *** [fs/nfs/direct.o] Error 1
+make[1]: *** [fs/nfs] Error 2
+make: *** [fs] Error 2
+
+- Bryan
