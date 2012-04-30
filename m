@@ -1,70 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:47449 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753787Ab2DPOie (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Apr 2012 10:38:34 -0400
-Message-ID: <4F8C2B6A.1000203@itwm.fraunhofer.de>
-Date: Mon, 16 Apr 2012 16:23:38 +0200
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:38990 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756336Ab2D3R3B convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Apr 2012 13:29:01 -0400
+Received: by vcqp1 with SMTP id p1so2199512vcq.19
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Apr 2012 10:29:01 -0700 (PDT)
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jeff Layton <jlayton@redhat.com>, Malahal Naineni <malahal@us.ibm.com>,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, pstaubach@exagrid.com, miklos@szeredi.hu,
-        viro@ZenIV.linux.org.uk, hch@infradead.org,
-        michael.brantley@deshaw.com, sven.breuner@itwm.fraunhofer.de
-Subject: Re: [PATCH RFC] vfs: make fstatat retry on ESTALE errors from getattr
- call
-References: <1334316311-22331-1-git-send-email-jlayton@redhat.com> <20120413150518.GA1987@us.ibm.com> <20120413114236.0e557e01@tlielax.poochiereds.net> <4F8B1B7B.3040304@itwm.fraunhofer.de> <20120415192714.GA3842@fieldses.org>
-In-Reply-To: <20120415192714.GA3842@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+In-Reply-To: <1335805613-23138-1-git-send-email-bjschuma@netapp.com>
+References: <1335805613-23138-1-git-send-email-bjschuma@netapp.com>
+Date: Mon, 30 Apr 2012 13:29:01 -0400
+Message-ID: <CADnza47DxqkuX1gc1T8jNuhu9s_vXWHdNBREOm6h1eS-sR4k8A@mail.gmail.com>
+Subject: Re: [PATCH] NFS: pnfs_pageio_init_read() and init_write() need an
+ extra argument
+From: Fred Isaman <iisaman@netapp.com>
+To: bjschuma@netapp.com
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/15/2012 09:27 PM, J. Bruce Fields wrote:
-> On Sun, Apr 15, 2012 at 09:03:23PM +0200, Bernd Schubert wrote:
->> On 04/13/2012 05:42 PM, Jeff Layton wrote:
->>> (note: please don't trim the CC list!)
->>>
->>> Indefinitely does make some sense (as Peter articulated in his original
->>> set). It's possible you could race several times in a row, or a server
->>> misconfiguration or something has happened and you have a transient
->>> error that will eventually recover. His assertion was that any limit on
->>> the number of retries is by definition wrong. For NFS, a fatal signal
->>> ought to interrupt things as well, so retrying indefinitely has some
->>> appeal there.
->>>
->>> OTOH, we do have to contend with filesystems that might return ESTALE
->>> persistently for other reasons and that might not respond to signals.
->>> Miklos pointed out that some FUSE fs' do this in his review of Peter's
->>> set.
->>>
->>> As a purely defensive coding measure, limiting the number of retries to
->>> something finite makes sense. If we're going to do that though, I'd
->>> probably recommend that we set the number of retries be something
->>> higher just so that this is more resilient in the face of multiple
->>> races. Those other fs' might "spin" a bit in that case but it is an
->>> error condition and IMO resiliency trumps performance -- at least in
->>   this case.
->>
->> I am definitely voting against an infinite number of retries. I'm
->> working on FhGFS, which supports distributed meta data servers. So when
->> a file is moved around between directories, its file handle, which
->> contains the meta-data target id might become invalid.  As NFSv3 is
->> stateless we cannot inform the client about that and must return ESTALE
->> then.
->
-> Note we're not talking about retrying the operation that returned ESTALE
-> with the same filehandle--probably any server would return ESTALE again
-> in that case.
->
-> We're talking about re-looking up the path (in the case where we're
-> implementing a system call that takes a path as an argument), and then
-> retrying the operation with the newly looked-up filehandle.
->
+ACK
 
-Oh, sorry my mistake. Somehow I missed that it is really _only_ about 
-path lookups and not already opened files.
+Fred
 
-Thanks,
-Bernd
+On Mon, Apr 30, 2012 at 1:06 PM,  <bjschuma@netapp.com> wrote:
+> From: Bryan Schumaker <bjschuma@netapp.com>
+>
+> This is only when CONFIG_NFS_V4_1 isn't enabled.
+>
+> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+> ---
+>  fs/nfs/pnfs.h |    6 ++++--
+>  1 file changed, 4 insertions(+), 2 deletions(-)
+>
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index 8efbee7..f20054b 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -424,12 +424,14 @@ static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
+>  {
+>  }
+>
+> -static inline bool pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode)
+> +static inline bool pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode,
+> +                                        const struct nfs_pgio_completion_ops *compl_ops)
+>  {
+>        return false;
+>  }
+>
+> -static inline bool pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode, int ioflags)
+> +static inline bool pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode, int ioflags,
+> +                                         const struct nfs_pgio_completion_ops *compl_ops)
+>  {
+>        return false;
+>  }
+> --
+> 1.7.10
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
