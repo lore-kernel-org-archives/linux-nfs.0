@@ -1,294 +1,487 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:55610 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:12008 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754344Ab2D2Uue (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 29 Apr 2012 16:50:34 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 13/15] NFSv4: Simplify the NFSv4 REMOVE, LINK and RENAME compounds
-Date: Sun, 29 Apr 2012 16:50:18 -0400
-Message-Id: <1335732620-10445-14-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1335732620-10445-13-git-send-email-Trond.Myklebust@netapp.com>
-References: <1335732620-10445-1-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-2-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-3-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-4-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-5-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-6-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-7-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-8-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-9-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-10-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-11-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-12-git-send-email-Trond.Myklebust@netapp.com>
- <1335732620-10445-13-git-send-email-Trond.Myklebust@netapp.com>
+	id S1756551Ab2D3Skg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Apr 2012 14:40:36 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 4/7] NFS: Create a common fs_mount() function
+Date: Mon, 30 Apr 2012 14:40:26 -0400
+Message-Id: <1335811229-2989-5-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1335811229-2989-1-git-send-email-bjschuma@netapp.com>
+References: <1335811229-2989-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Get rid of the post-op GETATTR on the directory in order to reduce
-the amount of processing done on the server.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+The nfs4_mount() function was only slightly different from the
+nfs_fs_mount() function used by the generic client.  I created a new
+nfs_mount_info structure to set different parameters to help combine
+these functions.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfs/nfs4proc.c       |   34 +++-------------------------------
- fs/nfs/nfs4xdr.c        |   37 ++++---------------------------------
- include/linux/nfs_xdr.h |    2 --
- 3 files changed, 7 insertions(+), 66 deletions(-)
+ fs/nfs/super.c |  327 +++++++++++++++-----------------------------------------
+ 1 file changed, 86 insertions(+), 241 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 619bc1e..c746b0c 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2775,7 +2775,6 @@ static int _nfs4_proc_remove(struct inode *dir, struct qstr *name)
- 		.fh = NFS_FH(dir),
- 		.name.len = name->len,
- 		.name.name = name->name,
--		.bitmask = server->attr_bitmask,
- 	};
- 	struct nfs_removeres res = {
- 		.server = server,
-@@ -2785,19 +2784,11 @@ static int _nfs4_proc_remove(struct inode *dir, struct qstr *name)
- 		.rpc_argp = &args,
- 		.rpc_resp = &res,
- 	};
--	int status = -ENOMEM;
--
--	res.dir_attr = nfs_alloc_fattr();
--	if (res.dir_attr == NULL)
--		goto out;
-+	int status;
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index b7a071d..b9ee798 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -325,10 +325,8 @@ static const struct super_operations nfs_sops = {
+ #ifdef CONFIG_NFS_V4
+ static int nfs4_validate_text_mount_data(void *options,
+ 	struct nfs_parsed_mount_data *args, const char *dev_name);
+-static struct dentry *nfs4_try_mount(int flags, const char *dev_name,
++struct dentry *nfs4_try_mount(int flags, const char *dev_name,
+ 	struct nfs_parsed_mount_data *data);
+-static struct dentry *nfs4_mount(struct file_system_type *fs_type,
+-	int flags, const char *dev_name, void *raw_data);
+ static struct dentry *nfs4_remote_mount(struct file_system_type *fs_type,
+ 	int flags, const char *dev_name, void *raw_data);
+ static struct dentry *nfs4_xdev_mount(struct file_system_type *fs_type,
+@@ -342,7 +340,7 @@ static void nfs4_kill_super(struct super_block *sb);
+ static struct file_system_type nfs4_fs_type = {
+ 	.owner		= THIS_MODULE,
+ 	.name		= "nfs4",
+-	.mount		= nfs4_mount,
++	.mount		= nfs_fs_mount,
+ 	.kill_sb	= nfs4_kill_super,
+ 	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
+ };
+@@ -2125,12 +2123,19 @@ static inline void nfs_initialise_sb(struct super_block *sb)
+ 	nfs_super_set_maxbytes(sb, server->maxfilesize);
+ }
  
- 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
--	if (status == 0) {
-+	if (status == 0)
- 		update_changeattr(dir, &res.cinfo);
--		nfs_post_op_update_inode(dir, res.dir_attr);
++struct nfs_mount_info {
++	void (*fill_super)(struct super_block *, struct nfs_mount_info *);
++	struct nfs_parsed_mount_data *parsed;
++	unsigned int unshared;
++};
++
+ /*
+  * Finish setting up an NFS2/3 superblock
+  */
+ static void nfs_fill_super(struct super_block *sb,
+-			   struct nfs_parsed_mount_data *data)
++			   struct nfs_mount_info *mount_info)
+ {
++	struct nfs_parsed_mount_data *data = mount_info->parsed;
+ 	struct nfs_server *server = NFS_SB(sb);
+ 
+ 	sb->s_blocksize_bits = 0;
+@@ -2283,13 +2288,13 @@ static int nfs_bdi_register(struct nfs_server *server)
+ 	return bdi_register_dev(&server->backing_dev_info, server->s_dev);
+ }
+ 
+-static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
+-	int flags, const char *dev_name, void *raw_data)
++struct dentry *nfs_fs_mount_common(struct file_system_type *fs_type,
++				   struct nfs_server *server,
++				   int flags, const char *dev_name,
++				   struct nfs_fh *mntfh,
++				   struct nfs_mount_info *mount_info)
+ {
+-	struct nfs_server *server = NULL;
+ 	struct super_block *s;
+-	struct nfs_parsed_mount_data *data;
+-	struct nfs_fh *mntfh;
+ 	struct dentry *mntroot = ERR_PTR(-ENOMEM);
+ 	int (*compare_super)(struct super_block *, void *) = nfs_compare_super;
+ 	struct nfs_sb_mountdata sb_mntdata = {
+@@ -2297,34 +2302,9 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
+ 	};
+ 	int error;
+ 
+-	data = nfs_alloc_parsed_mount_data(NFS_DEFAULT_VERSION);
+-	mntfh = nfs_alloc_fhandle();
+-	if (data == NULL || mntfh == NULL)
+-		goto out;
+-
+-	/* Validate the mount data */
+-	error = nfs_validate_mount_data(raw_data, data, mntfh, dev_name);
+-	if (error < 0) {
+-		mntroot = ERR_PTR(error);
+-		goto out;
 -	}
--	nfs_free_fattr(res.dir_attr);
--out:
- 	return status;
+-
+-#ifdef CONFIG_NFS_V4
+-	if (data->version == 4) {
+-		mntroot = nfs4_try_mount(flags, dev_name, data);
+-		goto out;
+-	}
+-#endif	/* CONFIG_NFS_V4 */
+-
+-	/* Get a volume representation */
+-	server = nfs_create_server(data, mntfh);
+-	if (IS_ERR(server)) {
+-		mntroot = ERR_CAST(server);
+-		goto out;
+-	}
+ 	sb_mntdata.server = server;
+ 
+-	if (server->flags & NFS_MOUNT_UNSHARED)
++	if (server->flags & mount_info->unshared)
+ 		compare_super = NULL;
+ 
+ 	/* -o noac implies -o sync */
+@@ -2351,23 +2331,21 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
+ 
+ 	if (!s->s_root) {
+ 		/* initial superblock/root creation */
+-		nfs_fill_super(s, data);
+-		nfs_fscache_get_super_cookie(s, data, NULL);
++		mount_info->fill_super(s, mount_info);
++		nfs_fscache_get_super_cookie(s, mount_info->parsed, NULL);
+ 	}
+ 
+ 	mntroot = nfs_get_root(s, mntfh, dev_name);
+ 	if (IS_ERR(mntroot))
+ 		goto error_splat_super;
+ 
+-	error = security_sb_set_mnt_opts(s, &data->lsm_opts);
++	error = security_sb_set_mnt_opts(s, &mount_info->parsed->lsm_opts);
+ 	if (error)
+ 		goto error_splat_root;
+ 
+ 	s->s_flags |= MS_ACTIVE;
+ 
+ out:
+-	nfs_free_parsed_mount_data(data);
+-	nfs_free_fhandle(mntfh);
+ 	return mntroot;
+ 
+ out_err_nosb:
+@@ -2385,6 +2363,58 @@ error_splat_bdi:
+ 	goto out;
  }
  
-@@ -2819,7 +2810,6 @@ static void nfs4_proc_unlink_setup(struct rpc_message *msg, struct inode *dir)
- 	struct nfs_removeargs *args = msg->rpc_argp;
- 	struct nfs_removeres *res = msg->rpc_resp;
- 
--	args->bitmask = server->cache_consistency_bitmask;
- 	res->server = server;
- 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_REMOVE];
- 	nfs41_init_sequence(&args->seq_args, &res->seq_res, 1);
-@@ -2844,7 +2834,6 @@ static int nfs4_proc_unlink_done(struct rpc_task *task, struct inode *dir)
- 	if (nfs4_async_handle_error(task, res->server, NULL) == -EAGAIN)
- 		return 0;
- 	update_changeattr(dir, &res->cinfo);
--	nfs_post_op_update_inode(dir, res->dir_attr);
- 	return 1;
++static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
++	int flags, const char *dev_name, void *raw_data)
++{
++	struct nfs_server *server;
++	struct nfs_parsed_mount_data *data = NULL;
++	struct nfs_mount_info mount_info = {
++		.fill_super = nfs_fill_super,
++		.unshared = NFS_MOUNT_UNSHARED,
++	};
++	struct nfs_fh *mntfh;
++	struct dentry *mntroot = ERR_PTR(-ENOMEM);
++	int error;
++
++	if (fs_type == &nfs_fs_type)
++		data = nfs_alloc_parsed_mount_data(NFS_DEFAULT_VERSION);
++#ifdef CONFIG_NFS_V4
++	else
++		data = nfs_alloc_parsed_mount_data(4);
++#endif
++	mntfh = nfs_alloc_fhandle();
++	if (data == NULL || mntfh == NULL)
++		goto out;
++
++	/* Validate the mount data */
++	error = nfs_validate_mount_data(raw_data, data, mntfh, dev_name);
++	if (error < 0) {
++		mntroot = ERR_PTR(error);
++		goto out;
++	}
++	mount_info.parsed = data;
++
++#ifdef CONFIG_NFS_V4
++	if (data->version == 4) {
++		mntroot = nfs4_try_mount(flags, dev_name, data);
++		goto out;
++	}
++#endif	/* CONFIG_NFS_V4 */
++
++	/* Get a volume representation */
++	server = nfs_create_server(data, mntfh);
++	if (IS_ERR(server)) {
++		mntroot = ERR_CAST(server);
++		goto out;
++	}
++
++	mntroot = nfs_fs_mount_common(fs_type, server, flags, dev_name, mntfh, &mount_info);
++out:
++	nfs_free_parsed_mount_data(data);
++	nfs_free_fhandle(mntfh);
++	return mntroot;
++}
++
+ /*
+  * Ensure that we unregister the bdi before kill_anon_super
+  * releases the device name
+@@ -2523,7 +2553,8 @@ static void nfs4_clone_super(struct super_block *sb,
+ /*
+  * Set up an NFS4 superblock
+  */
+-static void nfs4_fill_super(struct super_block *sb)
++static void nfs4_fill_super(struct super_block *sb,
++			    struct nfs_mount_info *mount_info)
+ {
+ 	sb->s_time_gran = 1;
+ 	sb->s_op = &nfs4_sops;
+@@ -2574,190 +2605,36 @@ static int nfs4_validate_text_mount_data(void *options,
  }
  
-@@ -2855,7 +2844,6 @@ static void nfs4_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
- 	struct nfs_renameres *res = msg->rpc_resp;
+ /*
+- * Validate NFSv4 mount options
+- */
+-static int nfs4_validate_mount_data(void *options,
+-				    struct nfs_parsed_mount_data *args,
+-				    const char *dev_name)
+-{
+-	struct sockaddr *sap = (struct sockaddr *)&args->nfs_server.address;
+-	struct nfs4_mount_data *data = (struct nfs4_mount_data *)options;
+-	char *c;
+-
+-	if (data == NULL)
+-		goto out_no_data;
+-
+-	switch (data->version) {
+-	case 1:
+-		if (data->host_addrlen > sizeof(args->nfs_server.address))
+-			goto out_no_address;
+-		if (data->host_addrlen == 0)
+-			goto out_no_address;
+-		args->nfs_server.addrlen = data->host_addrlen;
+-		if (copy_from_user(sap, data->host_addr, data->host_addrlen))
+-			return -EFAULT;
+-		if (!nfs_verify_server_address(sap))
+-			goto out_no_address;
+-
+-		if (data->auth_flavourlen) {
+-			if (data->auth_flavourlen > 1)
+-				goto out_inval_auth;
+-			if (copy_from_user(&args->auth_flavors[0],
+-					   data->auth_flavours,
+-					   sizeof(args->auth_flavors[0])))
+-				return -EFAULT;
+-		}
+-
+-		c = strndup_user(data->hostname.data, NFS4_MAXNAMLEN);
+-		if (IS_ERR(c))
+-			return PTR_ERR(c);
+-		args->nfs_server.hostname = c;
+-
+-		c = strndup_user(data->mnt_path.data, NFS4_MAXPATHLEN);
+-		if (IS_ERR(c))
+-			return PTR_ERR(c);
+-		args->nfs_server.export_path = c;
+-		dfprintk(MOUNT, "NFS: MNTPATH: '%s'\n", c);
+-
+-		c = strndup_user(data->client_addr.data, 16);
+-		if (IS_ERR(c))
+-			return PTR_ERR(c);
+-		args->client_address = c;
+-
+-		/*
+-		 * Translate to nfs_parsed_mount_data, which nfs4_fill_super
+-		 * can deal with.
+-		 */
+-
+-		args->flags	= data->flags & NFS4_MOUNT_FLAGMASK;
+-		args->rsize	= data->rsize;
+-		args->wsize	= data->wsize;
+-		args->timeo	= data->timeo;
+-		args->retrans	= data->retrans;
+-		args->acregmin	= data->acregmin;
+-		args->acregmax	= data->acregmax;
+-		args->acdirmin	= data->acdirmin;
+-		args->acdirmax	= data->acdirmax;
+-		args->nfs_server.protocol = data->proto;
+-		nfs_validate_transport_protocol(args);
+-
+-		break;
+-	default:
+-		if (nfs_parse_mount_options((char *)options, args) == 0)
+-			return -EINVAL;
+-
+-		if (!nfs_verify_server_address(sap))
+-			return -EINVAL;
+-
+-		return nfs4_validate_text_mount_data(options, args, dev_name);
+-	}
+-
+-	return 0;
+-
+-out_no_data:
+-	dfprintk(MOUNT, "NFS4: mount program didn't pass any mount data\n");
+-	return -EINVAL;
+-
+-out_inval_auth:
+-	dfprintk(MOUNT, "NFS4: Invalid number of RPC auth flavours %d\n",
+-		 data->auth_flavourlen);
+-	return -EINVAL;
+-
+-out_no_address:
+-	dfprintk(MOUNT, "NFS4: mount program didn't pass remote address\n");
+-	return -EINVAL;
+-}
+-
+-/*
+  * Get the superblock for the NFS4 root partition
+  */
+ static struct dentry *
+ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
+ 		  const char *dev_name, void *raw_data)
+ {
+-	struct nfs_parsed_mount_data *data = raw_data;
+-	struct super_block *s;
++	struct nfs_mount_info mount_info = {
++		.fill_super = nfs4_fill_super,
++		.parsed = raw_data,
++		.unshared = NFS4_MOUNT_UNSHARED,
++	};
+ 	struct nfs_server *server;
+ 	struct nfs_fh *mntfh;
+-	struct dentry *mntroot;
+-	int (*compare_super)(struct super_block *, void *) = nfs_compare_super;
+-	struct nfs_sb_mountdata sb_mntdata = {
+-		.mntflags = flags,
+-	};
+-	int error = -ENOMEM;
++	struct dentry *mntroot = ERR_PTR(-ENOMEM);
  
- 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_RENAME];
--	arg->bitmask = server->attr_bitmask;
- 	res->server = server;
- 	nfs41_init_sequence(&arg->seq_args, &res->seq_res, 1);
+ 	mntfh = nfs_alloc_fhandle();
+-	if (data == NULL || mntfh == NULL)
++	if (mount_info.parsed == NULL || mntfh == NULL)
+ 		goto out;
+ 
+ 	/* Get a volume representation */
+-	server = nfs4_create_server(data, mntfh);
++	server = nfs4_create_server(mount_info.parsed, mntfh);
+ 	if (IS_ERR(server)) {
+-		error = PTR_ERR(server);
++		mntroot = ERR_CAST(server);
+ 		goto out;
+ 	}
+-	sb_mntdata.server = server;
+-
+-	if (server->flags & NFS4_MOUNT_UNSHARED)
+-		compare_super = NULL;
+-
+-	/* -o noac implies -o sync */
+-	if (server->flags & NFS_MOUNT_NOAC)
+-		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
+-
+-	/* Get a superblock - note that we may end up sharing one that already exists */
+-	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
+-	if (IS_ERR(s)) {
+-		error = PTR_ERR(s);
+-		goto out_free;
+-	}
+-
+-	if (s->s_fs_info != server) {
+-		nfs_free_server(server);
+-		server = NULL;
+-	} else {
+-		error = nfs_bdi_register(server);
+-		if (error)
+-			goto error_splat_bdi;
+-	}
+-
+-	if (!s->s_root) {
+-		/* initial superblock/root creation */
+-		nfs4_fill_super(s);
+-		nfs_fscache_get_super_cookie(s, data, NULL);
+-	}
+-
+-	mntroot = nfs_get_root(s, mntfh, dev_name);
+-	if (IS_ERR(mntroot)) {
+-		error = PTR_ERR(mntroot);
+-		goto error_splat_super;
+-	}
+-
+-	error = security_sb_set_mnt_opts(s, &data->lsm_opts);
+-	if (error)
+-		goto error_splat_root;
+-
+-	s->s_flags |= MS_ACTIVE;
+-
+-	nfs_free_fhandle(mntfh);
+-	return mntroot;
+ 
++	mntroot = nfs_fs_mount_common(&nfs4_fs_type, server, flags, dev_name, mntfh, &mount_info);
+ out:
+ 	nfs_free_fhandle(mntfh);
+-	return ERR_PTR(error);
+-
+-out_free:
+-	nfs_free_server(server);
+-	goto out;
+-
+-error_splat_root:
+-	dput(mntroot);
+-error_splat_super:
+-	if (server && !s->s_root)
+-		bdi_unregister(&server->backing_dev_info);
+-error_splat_bdi:
+-	deactivate_locked_super(s);
+-	goto out;
++	return mntroot;
  }
-@@ -2881,9 +2869,7 @@ static int nfs4_proc_rename_done(struct rpc_task *task, struct inode *old_dir,
- 		return 0;
  
- 	update_changeattr(old_dir, &res->old_cinfo);
--	nfs_post_op_update_inode(old_dir, res->old_fattr);
- 	update_changeattr(new_dir, &res->new_cinfo);
--	nfs_post_op_update_inode(new_dir, res->new_fattr);
- 	return 1;
+ static struct vfsmount *nfs_do_root_mount(struct file_system_type *fs_type,
+@@ -2868,7 +2745,7 @@ static struct dentry *nfs_follow_remote_path(struct vfsmount *root_mnt,
+ 	return dentry;
  }
  
-@@ -2896,7 +2882,6 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 		.new_dir = NFS_FH(new_dir),
- 		.old_name = old_name,
- 		.new_name = new_name,
--		.bitmask = server->attr_bitmask,
- 	};
- 	struct nfs_renameres res = {
- 		.server = server,
-@@ -2908,21 +2893,11 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 	};
- 	int status = -ENOMEM;
- 	
--	res.old_fattr = nfs_alloc_fattr();
--	res.new_fattr = nfs_alloc_fattr();
--	if (res.old_fattr == NULL || res.new_fattr == NULL)
+-static struct dentry *nfs4_try_mount(int flags, const char *dev_name,
++struct dentry *nfs4_try_mount(int flags, const char *dev_name,
+ 			 struct nfs_parsed_mount_data *data)
+ {
+ 	char *export_path;
+@@ -2891,38 +2768,6 @@ static struct dentry *nfs4_try_mount(int flags, const char *dev_name,
+ 	return res;
+ }
+ 
+-/*
+- * Get the superblock for an NFS4 mountpoint
+- */
+-static struct dentry *nfs4_mount(struct file_system_type *fs_type,
+-	int flags, const char *dev_name, void *raw_data)
+-{
+-	struct nfs_parsed_mount_data *data;
+-	int error = -ENOMEM;
+-	struct dentry *res = ERR_PTR(-ENOMEM);
+-
+-	data = nfs_alloc_parsed_mount_data(4);
+-	if (data == NULL)
 -		goto out;
 -
- 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
- 		update_changeattr(old_dir, &res.old_cinfo);
--		nfs_post_op_update_inode(old_dir, res.old_fattr);
- 		update_changeattr(new_dir, &res.new_cinfo);
--		nfs_post_op_update_inode(new_dir, res.new_fattr);
- 	}
+-	/* Validate the mount data */
+-	error = nfs4_validate_mount_data(raw_data, data, dev_name);
+-	if (error < 0) {
+-		res = ERR_PTR(error);
+-		goto out;
+-	}
+-
+-	res = nfs4_try_mount(flags, dev_name, data);
+-	if (IS_ERR(res))
+-		error = PTR_ERR(res);
+-
 -out:
--	nfs_free_fattr(res.new_fattr);
--	nfs_free_fattr(res.old_fattr);
- 	return status;
- }
+-	nfs_free_parsed_mount_data(data);
+-	dprintk("<-- nfs4_mount() = %d%s\n", error,
+-			error != 0 ? " [error]" : "");
+-	return res;
+-}
+-
+ static void nfs4_kill_super(struct super_block *sb)
+ {
+ 	struct nfs_server *server = NFS_SB(sb);
+@@ -3078,7 +2923,7 @@ nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
  
-@@ -2960,18 +2935,15 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, struct qstr *
- 	int status = -ENOMEM;
- 
- 	res.fattr = nfs_alloc_fattr();
--	res.dir_attr = nfs_alloc_fattr();
--	if (res.fattr == NULL || res.dir_attr == NULL)
-+	if (res.fattr == NULL)
- 		goto out;
- 
- 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
- 		update_changeattr(dir, &res.cinfo);
--		nfs_post_op_update_inode(dir, res.dir_attr);
- 		nfs_post_op_update_inode(inode, res.fattr);
+ 	if (!s->s_root) {
+ 		/* initial superblock/root creation */
+-		nfs4_fill_super(s);
++		nfs4_fill_super(s, NULL);
+ 		nfs_fscache_get_super_cookie(s, NULL, data);
  	}
- out:
--	nfs_free_fattr(res.dir_attr);
- 	nfs_free_fattr(res.fattr);
- 	return status;
- }
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 1a70097..49483f1 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -589,38 +589,29 @@ static int nfs4_stat_to_errno(int);
- #define NFS4_enc_remove_sz	(compound_encode_hdr_maxsz + \
- 				encode_sequence_maxsz + \
- 				encode_putfh_maxsz + \
--				encode_remove_maxsz + \
--				encode_getattr_maxsz)
-+				encode_remove_maxsz)
- #define NFS4_dec_remove_sz	(compound_decode_hdr_maxsz + \
- 				decode_sequence_maxsz + \
- 				decode_putfh_maxsz + \
--				decode_remove_maxsz + \
--				decode_getattr_maxsz)
-+				decode_remove_maxsz)
- #define NFS4_enc_rename_sz	(compound_encode_hdr_maxsz + \
- 				encode_sequence_maxsz + \
- 				encode_putfh_maxsz + \
- 				encode_savefh_maxsz + \
- 				encode_putfh_maxsz + \
--				encode_rename_maxsz + \
--				encode_getattr_maxsz + \
--				encode_restorefh_maxsz + \
--				encode_getattr_maxsz)
-+				encode_rename_maxsz)
- #define NFS4_dec_rename_sz	(compound_decode_hdr_maxsz + \
- 				decode_sequence_maxsz + \
- 				decode_putfh_maxsz + \
- 				decode_savefh_maxsz + \
- 				decode_putfh_maxsz + \
--				decode_rename_maxsz + \
--				decode_getattr_maxsz + \
--				decode_restorefh_maxsz + \
--				decode_getattr_maxsz)
-+				decode_rename_maxsz)
- #define NFS4_enc_link_sz	(compound_encode_hdr_maxsz + \
- 				encode_sequence_maxsz + \
- 				encode_putfh_maxsz + \
- 				encode_savefh_maxsz + \
- 				encode_putfh_maxsz + \
- 				encode_link_maxsz + \
--				encode_getattr_maxsz + \
- 				encode_restorefh_maxsz + \
- 				encode_getattr_maxsz)
- #define NFS4_dec_link_sz	(compound_decode_hdr_maxsz + \
-@@ -629,7 +620,6 @@ static int nfs4_stat_to_errno(int);
- 				decode_savefh_maxsz + \
- 				decode_putfh_maxsz + \
- 				decode_link_maxsz + \
--				decode_getattr_maxsz + \
- 				decode_restorefh_maxsz + \
- 				decode_getattr_maxsz)
- #define NFS4_enc_symlink_sz	(compound_encode_hdr_maxsz + \
-@@ -2052,7 +2042,6 @@ static void nfs4_xdr_enc_remove(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	encode_sequence(xdr, &args->seq_args, &hdr);
- 	encode_putfh(xdr, args->fh, &hdr);
- 	encode_remove(xdr, &args->name, &hdr);
--	encode_getfattr(xdr, args->bitmask, &hdr);
- 	encode_nops(&hdr);
- }
- 
-@@ -2072,9 +2061,6 @@ static void nfs4_xdr_enc_rename(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	encode_savefh(xdr, &hdr);
- 	encode_putfh(xdr, args->new_dir, &hdr);
- 	encode_rename(xdr, args->old_name, args->new_name, &hdr);
--	encode_getfattr(xdr, args->bitmask, &hdr);
--	encode_restorefh(xdr, &hdr);
--	encode_getfattr(xdr, args->bitmask, &hdr);
- 	encode_nops(&hdr);
- }
- 
-@@ -2094,7 +2080,6 @@ static void nfs4_xdr_enc_link(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	encode_savefh(xdr, &hdr);
- 	encode_putfh(xdr, args->dir_fh, &hdr);
- 	encode_link(xdr, args->name, &hdr);
--	encode_getfattr(xdr, args->bitmask, &hdr);
- 	encode_restorefh(xdr, &hdr);
- 	encode_getfattr(xdr, args->bitmask, &hdr);
- 	encode_nops(&hdr);
-@@ -5782,9 +5767,6 @@ static int nfs4_xdr_dec_remove(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- 	if (status)
- 		goto out;
- 	status = decode_remove(xdr, &res->cinfo);
--	if (status)
--		goto out;
--	decode_getfattr(xdr, res->dir_attr, res->server);
- out:
- 	return status;
- }
-@@ -5814,15 +5796,6 @@ static int nfs4_xdr_dec_rename(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- 	if (status)
- 		goto out;
- 	status = decode_rename(xdr, &res->old_cinfo, &res->new_cinfo);
--	if (status)
--		goto out;
--	/* Current FH is target directory */
--	if (decode_getfattr(xdr, res->new_fattr, res->server))
--		goto out;
--	status = decode_restorefh(xdr);
--	if (status)
--		goto out;
--	decode_getfattr(xdr, res->old_fattr, res->server);
- out:
- 	return status;
- }
-@@ -5858,8 +5831,6 @@ static int nfs4_xdr_dec_link(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- 	 * Note order: OP_LINK leaves the directory as the current
- 	 *             filehandle.
- 	 */
--	if (decode_getfattr(xdr, res->dir_attr, res->server))
--		goto out;
- 	status = decode_restorefh(xdr);
- 	if (status)
- 		goto out;
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 5a05739..4bb1f9b 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -540,7 +540,6 @@ struct nfs_commitres {
- struct nfs_removeargs {
- 	const struct nfs_fh	*fh;
- 	struct qstr		name;
--	const u32 *		bitmask;
- 	struct nfs4_sequence_args	seq_args;
- };
- 
-@@ -559,7 +558,6 @@ struct nfs_renameargs {
- 	const struct nfs_fh		*new_dir;
- 	const struct qstr		*old_name;
- 	const struct qstr		*new_name;
--	const u32			*bitmask;
- 	struct nfs4_sequence_args	seq_args;
- };
  
 -- 
-1.7.7.6
+1.7.10
 
