@@ -1,98 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:30303 "EHLO mx2.netapp.com"
+Received: from e9.ny.us.ibm.com ([32.97.182.139]:52947 "EHLO e9.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754641Ab2DXO7k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Apr 2012 10:59:40 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: bfields@fieldses.org
-Cc: SteveD@redhat.com, linux-nfs@vger.kernel.org,
-        Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] nfsd: add IPv6 addr escaping to fs_location hosts
-Date: Tue, 24 Apr 2012 10:59:37 -0400
-Message-Id: <1335279577-46822-1-git-send-email-dros@netapp.com>
+	id S1752151Ab2D3QJt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Apr 2012 12:09:49 -0400
+Received: from /spool/local
+	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Mon, 30 Apr 2012 12:09:47 -0400
+Received: from d01relay05.pok.ibm.com (d01relay05.pok.ibm.com [9.56.227.237])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id DBE0838C8071
+	for <linux-nfs@vger.kernel.org>; Mon, 30 Apr 2012 12:09:44 -0400 (EDT)
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q3UG9hZv098054
+	for <linux-nfs@vger.kernel.org>; Mon, 30 Apr 2012 12:09:43 -0400
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q3ULeZjW013583
+	for <linux-nfs@vger.kernel.org>; Mon, 30 Apr 2012 17:40:35 -0400
+Received: from malahal (malahal.austin.ibm.com [9.53.40.203])
+	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q3ULeZmd013564
+	for <linux-nfs@vger.kernel.org>; Mon, 30 Apr 2012 17:40:35 -0400
+Date: Mon, 30 Apr 2012 11:09:42 -0500
+From: Malahal Naineni <malahal@us.ibm.com>
+To: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Fixed goto readability in nfs_update_inode.
+Message-ID: <20120430160942.GA536@us.ibm.com>
+References: <1335799977-5587-1-git-send-email-treinish@linux.vnet.ibm.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1335799977-5587-1-git-send-email-treinish@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The fs_location->hosts list is split on colons, but this doesn't work when
-IPv6 addresses are used (they contain colons).
-This patch adds the function nfsd4_encode_components_esc() to
-allow the caller to specify escape characters when splitting on 'sep'.
-In order to fix referrals, this patch must be used with the mountd patch
-that similarly fixes IPv6 [] escaping.
+Matthew Treinish [treinish@linux.vnet.ibm.com] wrote:
+> Simplified error gotos to make it slightly easier to read,
+> it doesn't affect the functionality of the routine.
+> 
+> Signed-off-by: Matthew Treinish <treinish@linux.vnet.ibm.com>
+> ---
+>  fs/nfs/inode.c |   34 +++++++++++++++++-----------------
+>  1 files changed, 17 insertions(+), 16 deletions(-)
+> 
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index e8bbfa5..943d1d0 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -1279,14 +1279,26 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+>  			nfs_display_fhandle_hash(NFS_FH(inode)),
+>  			atomic_read(&inode->i_count), fattr->valid);
+> 
+> -	if ((fattr->valid & NFS_ATTR_FATTR_FILEID) && nfsi->fileid != fattr->fileid)
+> -		goto out_fileid;
+> +	if ((fattr->valid & NFS_ATTR_FATTR_FILEID) && nfsi->fileid != fattr->fileid) {
+> +		printk(KERN_ERR "NFS: server %s error: fileid changed\n"
+> +			"fsid %s: expected fileid 0x%Lx, got 0x%Lx\n",
+> +			NFS_SERVER(inode)->nfs_client->cl_hostname,
+> +			inode->i_sb->s_id, (long long)nfsi->fileid,
+> +			(long long)fattr->fileid);
+> +		goto out_err;
+> +	}
+> 
+>  	/*
+>  	 * Make sure the inode's type hasn't changed.
+>  	 */
+> -	if ((fattr->valid & NFS_ATTR_FATTR_TYPE) && (inode->i_mode & S_IFMT) != (fattr->mode & S_IFMT))
+> -		goto out_changed;
+> +	if ((fattr->valid & NFS_ATTR_FATTR_TYPE) && (inode->i_mode & S_IFMT) != (fattr->mode & S_IFMT)) {
+> +		/*
+> +		* Big trouble! The inode has become a different object.
+> +		*/
+> +		printk(KERN_DEBUG "NFS: %s: inode %ld mode changed, %07o to %07o\n",
+> +				__func__, inode->i_ino, inode->i_mode, fattr->mode);
+> +		goto out_err;
+> +	}
+> 
+>  	server = NFS_SERVER(inode);
+>  	/* Update the fsid? */
+> @@ -1466,12 +1479,6 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+>  		nfsi->cache_validity |= invalid;
+> 
+>  	return 0;
+> - out_changed:
+> -	/*
+> -	 * Big trouble! The inode has become a different object.
+> -	 */
+> -	printk(KERN_DEBUG "NFS: %s: inode %ld mode changed, %07o to %07o\n",
+> -			__func__, inode->i_ino, inode->i_mode, fattr->mode);
+>   out_err:
+>  	/*
+>  	 * No need to worry about unhashing the dentry, as the
+> @@ -1480,13 +1487,6 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+>  	 */
+>  	nfs_invalidate_inode(inode);
+>  	return -ESTALE;
+> -
+> - out_fileid:
+> -	printk(KERN_ERR "NFS: server %s error: fileid changed\n"
+> -		"fsid %s: expected fileid 0x%Lx, got 0x%Lx\n",
+> -		NFS_SERVER(inode)->nfs_client->cl_hostname, inode->i_sb->s_id,
+> -		(long long)nfsi->fileid, (long long)fattr->fileid);
+> -	goto out_err;
+>  }
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- fs/nfsd/nfs4xdr.c |   35 +++++++++++++++++++++++++++++------
- 1 files changed, 29 insertions(+), 6 deletions(-)
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 74c00bc..782be6c 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1744,10 +1744,11 @@ static void encode_seqid_op_tail(struct nfsd4_compoundres *resp, __be32 *save, _
- }
- 
- /* Encode as an array of strings the string given with components
-- * separated @sep.
-+ * separated @sep, escaped with esc_enter and esc_exit.
-  */
--static __be32 nfsd4_encode_components(char sep, char *components,
--				   __be32 **pp, int *buflen)
-+static __be32 nfsd4_encode_components_esc(char sep, char *components,
-+				   __be32 **pp, int *buflen,
-+				   char esc_enter, char esc_exit)
- {
- 	__be32 *p = *pp;
- 	__be32 *countp = p;
-@@ -1760,8 +1761,20 @@ static __be32 nfsd4_encode_components(char sep, char *components,
- 	WRITE32(0); /* We will fill this in with @count later */
- 	end = str = components;
- 	while (*end) {
--		for (; *end && (*end != sep); end++)
--			; /* Point to end of component */
-+		bool found_esc = false;
-+
-+		/* try to parse as esc_start, ..., esc_end, sep */
-+		if (*str == esc_enter) {
-+			for (; *end && (*end != esc_exit); end++);
-+			if (*end && !*(end + 1) || (end + 1) == sep) {
-+				str++;
-+				found_esc = true;
-+			}
-+		}
-+
-+		if (!found_esc)
-+			for (; *end && (*end != sep); end++);
-+
- 		strlen = end - str;
- 		if (strlen) {
- 			if ((*buflen -= ((XDR_QUADLEN(strlen) << 2) + 4)) < 0)
-@@ -1780,6 +1793,15 @@ static __be32 nfsd4_encode_components(char sep, char *components,
- 	return 0;
- }
- 
-+/* Encode as an array of strings the string given with components
-+ * separated @sep.
-+ */
-+static __be32 nfsd4_encode_components(char sep, char *components,
-+				   __be32 **pp, int *buflen)
-+{
-+	return nfsd4_encode_components_esc(sep, components, pp, buflen, 0, 0);
-+}
-+
- /*
-  * encode a location element of a fs_locations structure
-  */
-@@ -1789,7 +1811,8 @@ static __be32 nfsd4_encode_fs_location4(struct nfsd4_fs_location *location,
- 	__be32 status;
- 	__be32 *p = *pp;
- 
--	status = nfsd4_encode_components(':', location->hosts, &p, buflen);
-+	status = nfsd4_encode_components_esc(':', location->hosts, &p, buflen,
-+						'[', ']');
- 	if (status)
- 		return status;
- 	status = nfsd4_encode_components('/', location->path, &p, buflen);
--- 
-1.7.4.4
+Reviewed-by: Malahal Naineni <malahal@us.ibm.com>
 
