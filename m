@@ -1,35 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:20951 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:38318 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752073Ab2DYOWp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Apr 2012 10:22:45 -0400
-Subject: [PATCH 0/6] Lockd: service start cleanup patch set
-To: bfields@fieldses.org, Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Wed, 25 Apr 2012 18:22:32 +0400
-Message-ID: <20120425141934.22909.53047.stgit@localhost6.localdomain6>
+	id S1756559Ab2D3Vlm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Apr 2012 17:41:42 -0400
+Date: Mon, 30 Apr 2012 17:41:37 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Randy Dunlap <rdunlap@xenotime.net>
+Cc: Stephen Rothwell <sfr@canb.auug.org.au>, linux-next@vger.kernel.org,
+        LKML <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [PATCH resend] nfsd: fix nfs4recover.c printk format warning
+Message-ID: <20120430214137.GC22323@fieldses.org>
+References: <20120419164643.d9f918d44c890722b7707508@canb.auug.org.au>
+ <4F909C78.7000008@xenotime.net>
+ <4F9EE72B.1020401@xenotime.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4F9EE72B.1020401@xenotime.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch set simplifies LockD start logic, makes code looks straight-forward
-and clear.
+On Mon, Apr 30, 2012 at 12:25:31PM -0700, Randy Dunlap wrote:
+> From: Randy Dunlap <rdunlap@xenotime.net>
+> 
+> Fix printk format warnings -- both items are size_t,
+> so use %zu to print them.
+> 
+> fs/nfsd/nfs4recover.c:580:3: warning: format '%lu' expects type 'long unsigned int', but argument 3 has type 'size_t'
+> fs/nfsd/nfs4recover.c:580:3: warning: format '%lu' expects type 'long unsigned int', but argument 4 has type 'unsigned int'
+> 
+> Signed-off-by: Randy Dunlap <rdunlap@xenotime.net>
+> Cc:	"J. Bruce Fields" <bfields@fieldses.org>
+> Cc:	linux-nfs@vger.kernel.org
 
-The following series consists of:
+Looks like Linus just took this.  (Thanks!)
 
----
+--b.
 
-Stanislav Kinsbursky (6):
-      LockD: pass service to per-net up and down functions
-      LockD: use existent per-net data function on service creation
-      LockD: service creation function introduced
-      LockD: move global usage counter manipulation from error path
-      LockD: service start function introduced
-      LockD: add debug message to start and stop functions
-
-
- fs/lockd/svc.c |  140 +++++++++++++++++++++++++++++++++-----------------------
- 1 files changed, 83 insertions(+), 57 deletions(-)
-
+> ---
+>  fs/nfsd/nfs4recover.c |    2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> This patch was originally sent on Apr.19/2012 for linux-next.
+> It is still needed in linux-next and in mainline.
+> 
+> 
+> --- linux-next-20120419.orig/fs/nfsd/nfs4recover.c
+> +++ linux-next-20120419/fs/nfsd/nfs4recover.c
+> @@ -577,7 +577,7 @@ cld_pipe_downcall(struct file *filp, con
+>  	struct cld_net *cn = nn->cld_net;
+>  
+>  	if (mlen != sizeof(*cmsg)) {
+> -		dprintk("%s: got %lu bytes, expected %lu\n", __func__, mlen,
+> +		dprintk("%s: got %zu bytes, expected %zu\n", __func__, mlen,
+>  			sizeof(*cmsg));
+>  		return -EINVAL;
+>  	}
