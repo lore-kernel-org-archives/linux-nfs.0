@@ -1,407 +1,208 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21733 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:12008 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753739Ab2DPOG7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Apr 2012 10:06:59 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q3GE6w7q031636
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Apr 2012 10:06:58 -0400
-Message-ID: <4F8C277F.2090707@RedHat.com>
-Date: Mon, 16 Apr 2012 10:06:55 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v5 1/9] nfsdcld: add client tracking daemon stub
-References: <1328111096-28430-1-git-send-email-jlayton@redhat.com> <1328111096-28430-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1328111096-28430-2-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1756531Ab2D3Ske (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Apr 2012 14:40:34 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 2/7] NFS: Create a single nfs_get_root()
+Date: Mon, 30 Apr 2012 14:40:24 -0400
+Message-Id: <1335811229-2989-3-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1335811229-2989-1-git-send-email-bjschuma@netapp.com>
+References: <1335811229-2989-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Bryan Schumaker <bjschuma@netapp.com>
 
+NFS v4 was doing something slightly different, so the difference can
+become the new rpc_ops->getroot() function rather than existing on its
+own.
 
-On 02/01/2012 10:44 AM, Jeff Layton wrote:
-> This program opens and "listens" on the new nfsd/cld rpc_pipefs pipe.
-> The code here doesn't actually do anything on stable storage yet. That
-> will be added in a later patch.
-> 
-> The patch also adds a autoconf enable switch for the new daemon that
-> defaults to "no", and a test for the upcall description header file.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  configure.ac              |   14 +++
->  utils/Makefile.am         |    4 +
->  utils/nfsdcld/Makefile.am |   14 +++
->  utils/nfsdcld/nfsdcld.c   |  275 +++++++++++++++++++++++++++++++++++++++++++++
->  4 files changed, 307 insertions(+), 0 deletions(-)
->  create mode 100644 utils/nfsdcld/Makefile.am
->  create mode 100644 utils/nfsdcld/nfsdcld.c
-> 
-> diff --git a/configure.ac b/configure.ac
-> index 920e8da..d50e54e 100644
-> --- a/configure.ac
-> +++ b/configure.ac
-> @@ -185,6 +185,12 @@ else
->  	AM_CONDITIONAL(MOUNT_CONFIG, [test "$enable_mount" = "yes"])
->  fi
->  
-> +AC_ARG_ENABLE(nfsdcld,
-> +	[AC_HELP_STRING([--enable-nfsdcld],
-> +			[Create nfsdcld NFSv4 clientid tracking daemon. <:@default=no@:>@])],
-> +	enable_nfsdcld=$enableval,
-> +	enable_nfsdcld="no")
-> +
->  dnl Check for TI-RPC library and headers
->  AC_LIBTIRPC
->  
-> @@ -260,6 +266,13 @@ if test "$enable_nfsv4" = yes; then
->    dnl check for the keyutils libraries and headers
->    AC_KEYUTILS
->  
-> +  if test "$enable_nfsdcld" = "yes"; then
-> +    AC_CHECK_HEADERS([linux/nfsd/cld.h], ,
-> +		     AC_MSG_ERROR([Cannot find header needed for nfsdcld]))
-> +  fi
-This adds a dependency on the kernel headers being present which 
-is unprecedented for nfs-utils or any other package I'm aware of
-and I just don't think its a good idea... 
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/getroot.c  |   83 -----------------------------------------------------
+ fs/nfs/nfs4proc.c |   28 +++++++++++++++++-
+ fs/nfs/super.c    |    6 ++--
+ 3 files changed, 30 insertions(+), 87 deletions(-)
 
-So I'm wondering if there is someway around creating this
-dependency...
+diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
+index 8a0f33e..8abfb19 100644
+--- a/fs/nfs/getroot.c
++++ b/fs/nfs/getroot.c
+@@ -178,87 +178,4 @@ out:
+ 	return ret;
+ }
+ 
+-/*
+- * get an NFS4 root dentry from the root filehandle
+- */
+-struct dentry *nfs4_get_root(struct super_block *sb, struct nfs_fh *mntfh,
+-			     const char *devname)
+-{
+-	struct nfs_server *server = NFS_SB(sb);
+-	struct nfs_fattr *fattr = NULL;
+-	struct dentry *ret;
+-	struct inode *inode;
+-	void *name = kstrdup(devname, GFP_KERNEL);
+-	int error;
+-
+-	dprintk("--> nfs4_get_root()\n");
+-
+-	if (!name)
+-		return ERR_PTR(-ENOMEM);
+-
+-	/* get the info about the server and filesystem */
+-	error = nfs4_server_capabilities(server, mntfh);
+-	if (error < 0) {
+-		dprintk("nfs_get_root: getcaps error = %d\n",
+-			-error);
+-		kfree(name);
+-		return ERR_PTR(error);
+-	}
+-
+-	fattr = nfs_alloc_fattr();
+-	if (fattr == NULL) {
+-		kfree(name);
+-		return ERR_PTR(-ENOMEM);
+-	}
+-
+-	/* get the actual root for this mount */
+-	error = server->nfs_client->rpc_ops->getattr(server, mntfh, fattr);
+-	if (error < 0) {
+-		dprintk("nfs_get_root: getattr error = %d\n", -error);
+-		ret = ERR_PTR(error);
+-		goto out;
+-	}
+-
+-	if (fattr->valid & NFS_ATTR_FATTR_FSID &&
+-	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
+-		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
+-
+-	inode = nfs_fhget(sb, mntfh, fattr);
+-	if (IS_ERR(inode)) {
+-		dprintk("nfs_get_root: get root inode failed\n");
+-		ret = ERR_CAST(inode);
+-		goto out;
+-	}
+-
+-	error = nfs_superblock_set_dummy_root(sb, inode);
+-	if (error != 0) {
+-		ret = ERR_PTR(error);
+-		goto out;
+-	}
+-
+-	/* root dentries normally start off anonymous and get spliced in later
+-	 * if the dentry tree reaches them; however if the dentry already
+-	 * exists, we'll pick it up at this point and use it as the root
+-	 */
+-	ret = d_obtain_alias(inode);
+-	if (IS_ERR(ret)) {
+-		dprintk("nfs_get_root: get root dentry failed\n");
+-		goto out;
+-	}
+-
+-	security_d_instantiate(ret, inode);
+-	spin_lock(&ret->d_lock);
+-	if (IS_ROOT(ret) && !(ret->d_flags & DCACHE_NFSFS_RENAMED)) {
+-		ret->d_fsdata = name;
+-		name = NULL;
+-	}
+-	spin_unlock(&ret->d_lock);
+-out:
+-	if (name)
+-		kfree(name);
+-	nfs_free_fattr(fattr);
+-	dprintk("<-- nfs4_get_root()\n");
+-	return ret;
+-}
+-
+ #endif /* CONFIG_NFS_V4 */
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 8182038..8d62d00 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -80,6 +80,7 @@ static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
+ static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
+ static int nfs4_async_handle_error(struct rpc_task *, const struct nfs_server *, struct nfs4_state *);
+ static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr);
++static int nfs4_proc_getattr(struct nfs_server *, struct nfs_fh *, struct nfs_fattr *);
+ static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
+ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 			    struct nfs_fattr *fattr, struct iattr *sattr,
+@@ -2372,6 +2373,31 @@ int nfs4_proc_get_rootfh(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	return nfs4_map_errors(status);
+ }
+ 
++static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *mntfh,
++			      struct nfs_fsinfo *info)
++{
++	int error;
++	struct nfs_fattr *fattr = info->fattr;
++
++	error = nfs4_server_capabilities(server, mntfh);
++	if (error < 0) {
++		dprintk("nfs4_get_root: getcaps error = %d\n", -error);
++		return error;
++	}
++
++	error = nfs4_proc_getattr(server, mntfh, fattr);
++	if (error < 0) {
++		dprintk("nfs4_get_root: getattr error = %d\n", -error);
++		return error;
++	}
++
++	if (fattr->valid & NFS_ATTR_FATTR_FSID &&
++	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
++		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
++
++	return error;
++}
++
+ /*
+  * Get locations and (maybe) other attributes of a referral.
+  * Note that we'll actually follow the referral later when
+@@ -6570,7 +6596,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
+ 	.dir_inode_ops	= &nfs4_dir_inode_operations,
+ 	.file_inode_ops	= &nfs4_file_inode_operations,
+ 	.file_ops	= &nfs4_file_operations,
+-	.getroot	= nfs4_proc_get_rootfh,
++	.getroot	= nfs4_proc_get_root,
+ 	.submount	= nfs4_submount,
+ 	.getattr	= nfs4_proc_getattr,
+ 	.setattr	= nfs4_proc_setattr,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 4ac7fca..75b1717 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2727,7 +2727,7 @@ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
+ 		nfs_fscache_get_super_cookie(s, data->fscache_uniq, NULL);
+ 	}
+ 
+-	mntroot = nfs4_get_root(s, mntfh, dev_name);
++	mntroot = nfs_get_root(s, mntfh, dev_name);
+ 	if (IS_ERR(mntroot)) {
+ 		error = PTR_ERR(mntroot);
+ 		goto error_splat_super;
+@@ -2991,7 +2991,7 @@ nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
+ 		nfs_fscache_get_super_cookie(s, NULL, data);
+ 	}
+ 
+-	mntroot = nfs4_get_root(s, data->fh, dev_name);
++	mntroot = nfs_get_root(s, data->fh, dev_name);
+ 	if (IS_ERR(mntroot)) {
+ 		error = PTR_ERR(mntroot);
+ 		goto error_splat_super;
+@@ -3082,7 +3082,7 @@ nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
+ 		nfs_fscache_get_super_cookie(s, NULL, data);
+ 	}
+ 
+-	mntroot = nfs4_get_root(s, mntfh, dev_name);
++	mntroot = nfs_get_root(s, mntfh, dev_name);
+ 	if (IS_ERR(mntroot)) {
+ 		error = PTR_ERR(mntroot);
+ 		goto error_splat_super;
+-- 
+1.7.10
 
-steved.
-
-
-> +
-> +  AM_CONDITIONAL(CONFIG_NFSDCLD, [test "$enable_nfsdcld" = "yes" ])
-> +
->    dnl librpcsecgss already has a dependency on libgssapi,
->    dnl but we need to make sure we get the right version
->    if test "$enable_gss" = yes; then
-> @@ -460,6 +473,7 @@ AC_CONFIG_FILES([
->  	tools/nfs-iostat/Makefile
->  	utils/Makefile
->  	utils/blkmapd/Makefile
-> +	utils/nfsdcld/Makefile
->  	utils/exportfs/Makefile
->  	utils/gssd/Makefile
->  	utils/idmapd/Makefile
-> diff --git a/utils/Makefile.am b/utils/Makefile.am
-> index d074b85..5df7ca7 100644
-> --- a/utils/Makefile.am
-> +++ b/utils/Makefile.am
-> @@ -21,6 +21,10 @@ if CONFIG_MOUNT
->  OPTDIRS += mount
->  endif
->  
-> +if CONFIG_NFSDCLD
-> +OPTDIRS += nfsdcld
-> +endif
-> +
->  SUBDIRS = \
->  	exportfs \
->  	mountd \
-> diff --git a/utils/nfsdcld/Makefile.am b/utils/nfsdcld/Makefile.am
-> new file mode 100644
-> index 0000000..ed7ed42
-> --- /dev/null
-> +++ b/utils/nfsdcld/Makefile.am
-> @@ -0,0 +1,14 @@
-> +## Process this file with automake to produce Makefile.in
-> +
-> +#man8_MANS	= nfsdcld.man
-> +#EXTRA_DIST = $(man8_MANS)
-> +
-> +AM_CFLAGS	+= -D_LARGEFILE64_SOURCE
-> +sbin_PROGRAMS	= nfsdcld
-> +
-> +nfsdcld_SOURCES = nfsdcld.c
-> +
-> +nfsdcld_LDADD = ../../support/nfs/libnfs.a $(LIBEVENT)
-> +
-> +MAINTAINERCLEANFILES = Makefile.in
-> +
-> diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
-> new file mode 100644
-> index 0000000..7a83fbe
-> --- /dev/null
-> +++ b/utils/nfsdcld/nfsdcld.c
-> @@ -0,0 +1,275 @@
-> +/*
-> + * nfsdcld.c -- NFSv4 client name tracking daemon
-> + *
-> + * Copyright (C) 2011  Red Hat, Jeff Layton <jlayton@redhat.com>
-> + *
-> + * This program is free software; you can redistribute it and/or
-> + * modify it under the terms of the GNU General Public License
-> + * as published by the Free Software Foundation; either version 2
-> + * of the License, or (at your option) any later version.
-> + *
-> + * This program is distributed in the hope that it will be useful,
-> + * but WITHOUT ANY WARRANTY; without even the implied warranty of
-> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-> + * GNU General Public License for more details.
-> + *
-> + * You should have received a copy of the GNU General Public License
-> + * along with this program; if not, write to the Free Software
-> + * Foundation, Inc., 51 Franklin Street, Fifth Floor,
-> + * Boston, MA 02110-1301, USA.
-> + */
-> +
-> +#ifdef HAVE_CONFIG_H
-> +#include "config.h"
-> +#endif /* HAVE_CONFIG_H */
-> +
-> +#include <errno.h>
-> +#include <event.h>
-> +#include <stdbool.h>
-> +#include <getopt.h>
-> +#include <string.h>
-> +#include <sys/stat.h>
-> +#include <sys/types.h>
-> +#include <fcntl.h>
-> +#include <unistd.h>
-> +#include <linux/nfsd/cld.h>
-> +
-> +#include "xlog.h"
-> +#include "nfslib.h"
-> +
-> +#ifndef PIPEFS_DIR
-> +#define PIPEFS_DIR NFS_STATEDIR "/rpc_pipefs"
-> +#endif
-> +
-> +#define DEFAULT_CLD_PATH	PIPEFS_DIR "/nfsd/cld"
-> +
-> +#define UPCALL_VERSION		1
-> +
-> +/* private data structures */
-> +struct cld_client {
-> +	int			cl_fd;
-> +	struct event		cl_event;
-> +	struct cld_msg	cl_msg;
-> +};
-> +
-> +/* global variables */
-> +static char *pipepath = DEFAULT_CLD_PATH;
-> +
-> +static struct option longopts[] =
-> +{
-> +	{ "help", 0, NULL, 'h' },
-> +	{ "foreground", 0, NULL, 'F' },
-> +	{ "debug", 0, NULL, 'd' },
-> +	{ "pipe", 1, NULL, 'p' },
-> +	{ NULL, 0, 0, 0 },
-> +};
-> +
-> +/* forward declarations */
-> +static void cldcb(int UNUSED(fd), short which, void *data);
-> +
-> +static void
-> +usage(char *progname)
-> +{
-> +	printf("Usage:\n");
-> +	printf("%s [ -hFd ] [ -p pipe ]\n", progname);
-> +}
-> +
-> +static int
-> +cld_pipe_open(struct cld_client *clnt)
-> +{
-> +	int fd;
-> +
-> +	xlog(D_GENERAL, "%s: opening upcall pipe %s", __func__, pipepath);
-> +	fd = open(pipepath, O_RDWR, 0);
-> +	if (fd < 0) {
-> +		xlog(L_ERROR, "%s: open of %s failed: %m", __func__, pipepath);
-> +		return -errno;
-> +	}
-> +
-> +	if (clnt->cl_event.ev_flags & EVLIST_INIT)
-> +		event_del(&clnt->cl_event);
-> +	if (clnt->cl_fd >= 0)
-> +		close(clnt->cl_fd);
-> +
-> +	clnt->cl_fd = fd;
-> +	event_set(&clnt->cl_event, clnt->cl_fd, EV_READ, cldcb, clnt);
-> +	/* event_add is done by the caller */
-> +	return 0;
-> +}
-> +
-> +static int
-> +cld_pipe_init(struct cld_client *clnt)
-> +{
-> +	int ret;
-> +
-> +	clnt->cl_fd = -1;
-> +	ret = cld_pipe_open(clnt);
-> +	if (ret)
-> +		return ret;
-> +
-> +	event_add(&clnt->cl_event, NULL);
-> +	return 0;
-> +}
-> +
-> +static void
-> +cld_not_implemented(struct cld_client *clnt)
-> +{
-> +	int ret;
-> +	ssize_t bsize, wsize;
-> +	struct cld_msg *cmsg = &clnt->cl_msg;
-> +
-> +	xlog(D_GENERAL, "%s: downcalling with not implemented error", __func__);
-> +
-> +	/* set up reply */
-> +	cmsg->cm_status = -EOPNOTSUPP;
-> +
-> +	bsize = sizeof(*cmsg);
-> +
-> +	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
-> +	if (wsize != bsize)
-> +		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
-> +			 __func__, wsize);
-> +
-> +	/* reopen pipe, just to be sure */
-> +	ret = cld_pipe_open(clnt);
-> +	if (ret) {
-> +		xlog(L_FATAL, "%s: unable to reopen pipe: %d", __func__, ret);
-> +		exit(ret);
-> +	}
-> +}
-> +
-> +static void
-> +cld_create(struct cld_client *clnt)
-> +{
-> +	int ret;
-> +	ssize_t bsize, wsize;
-> +	struct cld_msg *cmsg = &clnt->cl_msg;
-> +
-> +	xlog(D_GENERAL, "%s: create client record", __func__);
-> +
-> +	/* FIXME: create client record on storage here */
-> +
-> +	/* set up reply */
-> +	cmsg->cm_status = 0;
-> +
-> +	bsize = sizeof(*cmsg);
-> +
-> +	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
-> +	if (wsize != bsize) {
-> +		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
-> +			 __func__, wsize);
-> +		ret = cld_pipe_open(clnt);
-> +		if (ret) {
-> +			xlog(L_FATAL, "%s: unable to reopen pipe: %d",
-> +					__func__, ret);
-> +			exit(ret);
-> +		}
-> +	}
-> +}
-> +
-> +static void
-> +cldcb(int UNUSED(fd), short which, void *data)
-> +{
-> +	ssize_t len;
-> +	struct cld_client *clnt = data;
-> +	struct cld_msg *cmsg = &clnt->cl_msg;
-> +
-> +	if (which != EV_READ)
-> +		goto out;
-> +
-> +	len = atomicio(read, clnt->cl_fd, cmsg, sizeof(*cmsg));
-> +	if (len <= 0) {
-> +		xlog(L_ERROR, "%s: pipe read failed: %m", __func__);
-> +		cld_pipe_open(clnt);
-> +		goto out;
-> +	}
-> +
-> +	if (cmsg->cm_vers != UPCALL_VERSION) {
-> +		xlog(L_ERROR, "%s: unsupported upcall version: %hu",
-> +				cmsg->cm_vers);
-> +		cld_pipe_open(clnt);
-> +		goto out;
-> +	}
-> +
-> +	switch(cmsg->cm_cmd) {
-> +	case Cld_Create:
-> +		cld_create(clnt);
-> +		break;
-> +	default:
-> +		xlog(L_WARNING, "%s: command %u is not yet implemented",
-> +				__func__, cmsg->cm_cmd);
-> +		cld_not_implemented(clnt);
-> +	}
-> +out:
-> +	event_add(&clnt->cl_event, NULL);
-> +}
-> +
-> +int
-> +main(int argc, char **argv)
-> +{
-> +	char arg;
-> +	int rc = 0;
-> +	bool foreground = false;
-> +	char *progname;
-> +	struct cld_client clnt;
-> +
-> +	memset(&clnt, 0, sizeof(clnt));
-> +
-> +	progname = strdup(basename(argv[0]));
-> +	if (!progname) {
-> +		fprintf(stderr, "%s: unable to allocate memory.\n", argv[0]);
-> +		return 1;
-> +	}
-> +
-> +	event_init();
-> +	xlog_syslog(0);
-> +	xlog_stderr(1);
-> +
-> +	/* process command-line options */
-> +	while ((arg = getopt_long(argc, argv, "hdFp:", longopts,
-> +				  NULL)) != EOF) {
-> +		switch (arg) {
-> +		case 'd':
-> +			xlog_config(D_ALL, 1);
-> +			break;
-> +		case 'F':
-> +			foreground = true;
-> +			break;
-> +		case 'p':
-> +			pipepath = optarg;
-> +			break;
-> +		default:
-> +			usage(progname);
-> +			return 0;
-> +		}
-> +	}
-> +
-> +
-> +	xlog_open(progname);
-> +	if (!foreground) {
-> +		xlog_syslog(1);
-> +		xlog_stderr(0);
-> +		rc = daemon(0, 0);
-> +		if (rc) {
-> +			xlog(L_ERROR, "Unable to daemonize: %m");
-> +			goto out;
-> +		}
-> +	}
-> +
-> +	/* set up storage db */
-> +
-> +	/* set up event handler */
-> +	rc = cld_pipe_init(&clnt);
-> +	if (rc)
-> +		goto out;
-> +
-> +	xlog(D_GENERAL, "%s: Starting event dispatch handler.", __func__);
-> +	rc = event_dispatch();
-> +	if (rc < 0)
-> +		xlog(L_ERROR, "%s: event_dispatch failed: %m", __func__);
-> +
-> +	close(clnt.cl_fd);
-> +out:
-> +	free(progname);
-> +	return rc;
-> +}
