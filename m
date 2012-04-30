@@ -1,123 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:54329 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:30473 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758202Ab2DIUwx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Apr 2012 16:52:53 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 07/26] NFS: reverse arg order in nfs_initiate_[read|write]
-Date: Mon,  9 Apr 2012 16:52:05 -0400
-Message-Id: <1334004744-31842-8-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
-References: <1334004744-31842-1-git-send-email-iisaman@netapp.com>
+	id S1756114Ab2D3TKs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Apr 2012 15:10:48 -0400
+Message-ID: <4F9EE3B5.4060502@netapp.com>
+Date: Mon, 30 Apr 2012 15:10:45 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+MIME-Version: 1.0
+To: Jim Rees <rees@umich.edu>
+CC: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/7] NFS: Rename nfs4_proc_get_root()
+References: <1335811229-2989-1-git-send-email-bjschuma@netapp.com> <1335811229-2989-2-git-send-email-bjschuma@netapp.com> <20120430190743.GA2461@umich.edu>
+In-Reply-To: <20120430190743.GA2461@umich.edu>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Make it consistent with nfs_initiate_commit.
+On 04/30/2012 03:07 PM, Jim Rees wrote:
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/internal.h       |    7 ++++---
- fs/nfs/nfs4filelayout.c |    4 ++--
- fs/nfs/read.c           |    5 +++--
- fs/nfs/write.c          |    6 +++---
- 4 files changed, 12 insertions(+), 10 deletions(-)
+> bjschuma@netapp.com wrote:
+> 
+>   From: Bryan Schumaker <bjschuma@netapp.com>
+>   
+>   This function is really getting the root filehandle and not the root
+>   dentry of the filesystem.  I also removed the rpc_ops lookup from
+>   nfs4_get_rootfh() under the assumption that if we reach this function
+>   then we already know we are using NFS v4.
+> 
+> And when NFSv5 comes out?
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 87e899d..abdf40c 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -296,7 +296,8 @@ extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh);
- 
- struct nfs_pageio_descriptor;
- /* read.c */
--extern int nfs_initiate_read(struct nfs_read_data *data, struct rpc_clnt *clnt,
-+extern int nfs_initiate_read(struct rpc_clnt *clnt,
-+			     struct nfs_read_data *data,
- 			     const struct rpc_call_ops *call_ops);
- extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
- extern int nfs_generic_pagein(struct nfs_pageio_descriptor *desc,
-@@ -315,8 +316,8 @@ extern void nfs_pageio_init_write_mds(struct nfs_pageio_descriptor *pgio,
- extern void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio);
- extern void nfs_writedata_release(struct nfs_write_data *wdata);
- extern void nfs_commit_free(struct nfs_commit_data *p);
--extern int nfs_initiate_write(struct nfs_write_data *data,
--			      struct rpc_clnt *clnt,
-+extern int nfs_initiate_write(struct rpc_clnt *clnt,
-+			      struct nfs_write_data *data,
- 			      const struct rpc_call_ops *call_ops,
- 			      int how);
- extern void nfs_write_prepare(struct rpc_task *task, void *calldata);
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index d62c6ed..fe6a116 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -413,7 +413,7 @@ filelayout_read_pagelist(struct nfs_read_data *data)
- 	data->mds_offset = offset;
- 
- 	/* Perform an asynchronous read to ds */
--	status = nfs_initiate_read(data, ds->ds_clp->cl_rpcclient,
-+	status = nfs_initiate_read(ds->ds_clp->cl_rpcclient, data,
- 				   &filelayout_read_call_ops);
- 	BUG_ON(status != 0);
- 	return PNFS_ATTEMPTED;
-@@ -460,7 +460,7 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
- 	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
- 
- 	/* Perform an asynchronous write */
--	status = nfs_initiate_write(data, ds->ds_clp->cl_rpcclient,
-+	status = nfs_initiate_write(ds->ds_clp->cl_rpcclient, data,
- 				    &filelayout_write_call_ops, sync);
- 	BUG_ON(status != 0);
- 	return PNFS_ATTEMPTED;
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 9a0e8ef..e1db04a 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -169,7 +169,8 @@ static void nfs_readpage_release(struct nfs_page *req)
- 	nfs_release_request(req);
- }
- 
--int nfs_initiate_read(struct nfs_read_data *data, struct rpc_clnt *clnt,
-+int nfs_initiate_read(struct rpc_clnt *clnt,
-+		      struct nfs_read_data *data,
- 		      const struct rpc_call_ops *call_ops)
- {
- 	struct inode *inode = data->inode;
-@@ -240,7 +241,7 @@ static int nfs_do_read(struct nfs_read_data *data,
- {
- 	struct inode *inode = data->args.context->dentry->d_inode;
- 
--	return nfs_initiate_read(data, NFS_CLIENT(inode), call_ops);
-+	return nfs_initiate_read(NFS_CLIENT(inode), data, call_ops);
- }
- 
- static int
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 87dd76a..2ed93b8 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -836,8 +836,8 @@ static int flush_task_priority(int how)
- 	return RPC_PRIORITY_NORMAL;
- }
- 
--int nfs_initiate_write(struct nfs_write_data *data,
--		       struct rpc_clnt *clnt,
-+int nfs_initiate_write(struct rpc_clnt *clnt,
-+		       struct nfs_write_data *data,
- 		       const struct rpc_call_ops *call_ops,
- 		       int how)
- {
-@@ -937,7 +937,7 @@ static int nfs_do_write(struct nfs_write_data *data,
- {
- 	struct inode *inode = data->args.context->dentry->d_inode;
- 
--	return nfs_initiate_write(data, NFS_CLIENT(inode), call_ops, how);
-+	return nfs_initiate_write(NFS_CLIENT(inode), data, call_ops, how);
- }
- 
- static int nfs_do_multiple_writes(struct list_head *head,
--- 
-1.7.2.1
 
+Well, this function is called "nfs4_get_rootfh()".  nfs5_get_rootfh() will probably be something different and also not need an rpc op...
+
+- Bryan
