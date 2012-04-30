@@ -1,99 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:35147 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756755Ab2DKReW convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Apr 2012 13:34:22 -0400
-Message-ID: <4F85C087.7060106@parallels.com>
-Date: Wed, 11 Apr 2012 21:33:59 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH][RFC] nfsd/lockd: have locks_in_grace take a sb arg
-References: <1333455279-11200-1-git-send-email-jlayton@redhat.com> <4F841D2A.9020504@parallels.com> <20120410081612.65dd25fa@tlielax.poochiereds.net> <4F842BAE.2010804@parallels.com> <20120410202251.GH18465@fieldses.org> <4F855E3D.6090306@parallels.com> <20120411172019.GB29903@fieldses.org>
-In-Reply-To: <20120411172019.GB29903@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:33387 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755985Ab2D3RtO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Apr 2012 13:49:14 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, iisaman@netapp.com,
+        Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH] NFS: Define dummy nfs_init_cinfo() and nfs_init_cinfo_from_inode()
+Date: Mon, 30 Apr 2012 13:48:49 -0400
+Message-Id: <1335808129-6750-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-11.04.2012 21:20, J. Bruce Fields пишет:
-> On Wed, Apr 11, 2012 at 02:34:37PM +0400, Stanislav Kinsbursky wrote:
->> 11.04.2012 00:22, J. Bruce Fields пишет:
->>> On Tue, Apr 10, 2012 at 04:46:38PM +0400, Stanislav Kinsbursky wrote:
->>>> 10.04.2012 16:16, Jeff Layton пишет:
->>>>> On Tue, 10 Apr 2012 15:44:42 +0400
->>>>>
->>>>> (sorry about the earlier truncated reply, my MUA has a mind of its own
->>>>> this morning)
->>>>>
->>>>
->>>> OK then. Previous letter confused me a bit.
->>>>
->>>>>
->>>>> TBH, I haven't considered that in depth. That is a valid situation, but
->>>>> one that's discouraged. It's very difficult (and expensive) to
->>>>> sequester off portions of a filesystem for serving.
->>>>>
->>>>> A filehandle is somewhat analogous to a device/inode combination. When
->>>>> the server gets a filehandle, it has to determine "is this within a
->>>>> path that's exported to this host"? That process is called subtree
->>>>> checking. It's expensive and difficult to handle. It's always better to
->>>>> export along filesystem boundaries.
->>>>>
->>>>> My suggestion would be to simply not deal with those cases in this
->>>>> patch. Possibly we could force no_subtree_check when we export an fs
->>>>> with a locks_in_grace option defined.
->>>>>
->>>>
->>>> Sorry, but without dealing with those cases your patch looks a bit... Useless.
->>>> I.e. it changes nothing, it there will be no support from file
->>>> systems, going to be exported.
->>>> But how are you going to push developers to implement these calls?
->>>> Or, even if you'll try to implement them by yourself, how they will
->>>> looks like?
->>>> Simple check only for superblock looks bad to me, because any other
->>>> start of NFSd will lead to grace period for all other containers
->>>> (which uses the same filesystem).
->>>
->>> That's the correct behavior, and it sounds simple to implement.  Let's
->>> just do that.
->>>
->>> If somebody doesn't like the grace period from another container
->>> intruding on their use of the same filesystem, they should either
->>> arrange to export different filesystems (not just different subtrees)
->> >from their containers, or arrange to start all their containers at the
->>> same time so their grace periods overlap.
->>>
->>
->> Starting all at once is not a very good solution.
->> When you start 100 containers simultaneously - then you can't
->> predict, when the process as a whole will succeed (it will produce
->> heavy load on all subsystems). Moreover, there is also  server
->> restart...
->
-> So you really are exporting subtrees of the same filesystem from
-> multiple containers?  Why?
->
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Everything is very-very simple and obvious.
-We use "chroot jail". This is the most often and simple setup for containers.
-And, basicaly, Virtuozzo container file system consist of two parts: one of them 
-is it's private modified data, another part is a template, used for all 
-containers based on it (rhel6, for example; when it's content is modified my 
-some container - then modified file copied to private part of container, which 
-modified the file). Anyway, with properly configured environment it could be as 
-many containers on the same file system, as possible. And making sure, that no 
-data shared between them is root's responsibility.
-This approach gives us journal bottleneck. That's why, in future we are going to 
-use "ploop" device (a kind of a very smart loop device) per container. And thus 
-this problem with grace period for file systems will disappear.
+These are needed when v3 and v4 are not enabled.
 
-> And are you sure you're not vulnerable to filehandle-guessing attacks?
->
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/write.c |   12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
-No, I'm not. Could you give me some examples of such attacks?
-
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 3636191..f0045e0 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -567,6 +567,18 @@ int nfs_write_need_commit(struct nfs_write_data *data)
+ }
+ 
+ #else
++static void nfs_init_cinfo_from_inode(struct nfs_commit_info *cinfo,
++				      struct inode *inode)
++{
++}
++
++void nfs_init_cinfo(struct nfs_commit_info *cinfo,
++		    struct inode *inode,
++		    struct nfs_direct_req *dreq)
++{
++}
++EXPORT_SYMBOL_GPL(nfs_init_cinfo);
++
+ void
+ nfs_mark_request_commit(struct nfs_page *req, struct pnfs_layout_segment *lseg,
+ 			struct nfs_commit_info *cinfo)
 -- 
-Best regards,
-Stanislav Kinsbursky
+1.7.10
+
