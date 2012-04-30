@@ -1,55 +1,140 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:49866 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755205Ab2DWVrs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Apr 2012 17:47:48 -0400
-Subject: Re: [PATCH 18/20] NFS: Detect NFSv4 server trunking when mounting
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1335216465.11427.34.camel@lade.trondhjem.org>
-Date: Mon, 23 Apr 2012 17:47:42 -0400
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <D8A65C3B-980B-4A99-AE36-3A451568AE31@oracle.com>
-References: <20120423205312.11446.67081.stgit@degas.1015granger.net> <20120423205552.11446.58714.stgit@degas.1015granger.net> <1335216465.11427.34.camel@lade.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mx2.netapp.com ([216.240.18.37]:12008 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756561Ab2D3Skj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Apr 2012 14:40:39 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 7/7] NFS: Use nfs_fs_mount_common() for remote referral mounts
+Date: Mon, 30 Apr 2012 14:40:29 -0400
+Message-Id: <1335811229-2989-8-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1335811229-2989-1-git-send-email-bjschuma@netapp.com>
+References: <1335811229-2989-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-On Apr 23, 2012, at 5:27 PM, Myklebust, Trond wrote:
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/super.c |   90 +++++++++-----------------------------------------------
+ 1 file changed, 14 insertions(+), 76 deletions(-)
 
-> On Mon, 2012-04-23 at 16:55 -0400, Chuck Lever wrote:
->> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->> index 6a1a305..df59951 100644
->> --- a/fs/nfs/nfs4state.c
->> +++ b/fs/nfs/nfs4state.c
->> @@ -57,10 +57,12 @@
->> #include "internal.h"
->> #include "pnfs.h"
->> 
->> +#define NFSDBG_FACILITY		NFSDBG_CLIENT
-> 
-> Most of the stuff in nfs4state.c is dealing with NFSv4-specific state.
-> It does not make sense to lump that in with the nfs_client debugging.
-> 
-
-It was the closest convenient.  Shall I create an NFSDBG_STATE?
-
->> +
->> #define OPENOWNER_POOL_SIZE	8
->> 
->> const nfs4_stateid zero_stateid;
->> -
->> +static DEFINE_MUTEX(nfs_clid_init_mutex);
->> static LIST_HEAD(nfs4_clientid_list);
->> 
->> int nfs4_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
-
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 9ed670b..21b229c 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2774,95 +2774,33 @@ static struct dentry *
+ nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
+ 			   const char *dev_name, void *raw_data)
+ {
+-	struct nfs_clone_mount *data = raw_data;
+-	struct super_block *s;
++	struct nfs_mount_info mount_info = {
++		.fill_super = nfs4_fill_super,
++		.set_security = nfs_clone_sb_security,
++		.cloned = raw_data,
++		.unshared = NFS4_MOUNT_UNSHARED,
++	};
+ 	struct nfs_server *server;
+-	struct dentry *mntroot;
++	struct dentry *mntroot = ERR_PTR(-ENOMEM);
+ 	struct nfs_fh *mntfh;
+-	int (*compare_super)(struct super_block *, void *) = nfs_compare_super;
+-	struct nfs_sb_mountdata sb_mntdata = {
+-		.mntflags = flags,
+-	};
+-	int error = -ENOMEM;
+ 
+ 	dprintk("--> nfs4_referral_get_sb()\n");
+ 
+ 	mntfh = nfs_alloc_fhandle();
+-	if (mntfh == NULL)
+-		goto out_err_nofh;
++	if (mount_info.cloned == NULL || mntfh == NULL)
++		goto out;
+ 
+ 	/* create a new volume representation */
+-	server = nfs4_create_referral_server(data, mntfh);
++	server = nfs4_create_referral_server(mount_info.cloned, mntfh);
+ 	if (IS_ERR(server)) {
+-		error = PTR_ERR(server);
+-		goto out_err_noserver;
+-	}
+-	sb_mntdata.server = server;
+-
+-	if (server->flags & NFS4_MOUNT_UNSHARED)
+-		compare_super = NULL;
+-
+-	/* -o noac implies -o sync */
+-	if (server->flags & NFS_MOUNT_NOAC)
+-		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
+-
+-	/* Get a superblock - note that we may end up sharing one that already exists */
+-	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
+-	if (IS_ERR(s)) {
+-		error = PTR_ERR(s);
+-		goto out_err_nosb;
+-	}
+-
+-	if (s->s_fs_info != server) {
+-		nfs_free_server(server);
+-		server = NULL;
+-	} else {
+-		error = nfs_bdi_register(server);
+-		if (error)
+-			goto error_splat_bdi;
+-	}
+-
+-	if (!s->s_root) {
+-		/* initial superblock/root creation */
+-		nfs4_fill_super(s, NULL);
+-		nfs_fscache_get_super_cookie(s, NULL, data);
+-	}
+-
+-	mntroot = nfs_get_root(s, mntfh, dev_name);
+-	if (IS_ERR(mntroot)) {
+-		error = PTR_ERR(mntroot);
+-		goto error_splat_super;
+-	}
+-	if (mntroot->d_inode->i_op != NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops) {
+-		dput(mntroot);
+-		error = -ESTALE;
+-		goto error_splat_super;
++		mntroot = ERR_CAST(server);
++		goto out;
+ 	}
+ 
+-	s->s_flags |= MS_ACTIVE;
+-
+-	security_sb_clone_mnt_opts(data->sb, s);
+-
++	mntroot = nfs_fs_mount_common(&nfs4_fs_type, server, flags, dev_name, mntfh, &mount_info);
++out:
+ 	nfs_free_fhandle(mntfh);
+-	dprintk("<-- nfs4_referral_get_sb() = 0\n");
+ 	return mntroot;
+-
+-out_err_nosb:
+-	nfs_free_server(server);
+-out_err_noserver:
+-	nfs_free_fhandle(mntfh);
+-out_err_nofh:
+-	dprintk("<-- nfs4_referral_get_sb() = %d [error]\n", error);
+-	return ERR_PTR(error);
+-
+-error_splat_super:
+-	if (server && !s->s_root)
+-		bdi_unregister(&server->backing_dev_info);
+-error_splat_bdi:
+-	deactivate_locked_super(s);
+-	nfs_free_fhandle(mntfh);
+-	dprintk("<-- nfs4_referral_get_sb() = %d [splat]\n", error);
+-	return ERR_PTR(error);
+ }
+ 
+ /*
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.10
 
