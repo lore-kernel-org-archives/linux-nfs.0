@@ -1,95 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:50465 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:9602 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757594Ab2DZRB0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Apr 2012 13:01:26 -0400
+	id S1755972Ab2D3QVr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Apr 2012 12:21:47 -0400
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Steve French <smfrench@gmail.com>
-CC: David Howells <dhowells@redhat.com>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
-        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "wine-devel@winehq.org" <wine-devel@winehq.org>,
-        "kfm-devel@kde.org" <kfm-devel@kde.org>,
-        "nautilus-list@gnome.org" <nautilus-list@gnome.org>,
-        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
-        "libc-alpha@sourceware.org" <libc-alpha@sourceware.org>
-Subject: Re: [PATCH 0/6] Extended file stat system call
-Date: Thu, 26 Apr 2012 17:00:41 +0000
-Message-ID: <1335459642.9701.27.camel@lade.trondhjem.org>
-References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
-	 <CAH2r5ms4WQV3DnTvqNN=2N71Cj8UHwj8Z6+RHXgrAOv6mSoyQg@mail.gmail.com>
-	 <20656.1335450358@redhat.com>
-	 <CAH2r5mv1Lijdwk5zsQwYJr4Etb6fhrRyNXm-iFCQX+HecboGrQ@mail.gmail.com>
-	 <1335453958.9701.10.camel@lade.trondhjem.org>
-	 <CAH2r5mt5af-_hxBRKK72iD5Gr99bo91ec78Rov8EGVEx8=21mA@mail.gmail.com>
-In-Reply-To: <CAH2r5mt5af-_hxBRKK72iD5Gr99bo91ec78Rov8EGVEx8=21mA@mail.gmail.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Stanislav Kinsbursky" <skinsbursky@parallels.com>,
+        "Adamson, Andy" <William.Adamson@netapp.com>
+Subject: Re: [PATCH 2/2] NFSv4.1: Use the correct hostname in the client
+ identifier string
+Date: Mon, 30 Apr 2012 16:21:46 +0000
+Message-ID: <1335802908.2820.9.camel@lade.trondhjem.org>
+References: <1335802428-8132-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1335802428-8132-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <A56E8B66-1B33-4CFB-BD6D-B45B8F57E806@oracle.com>
+In-Reply-To: <A56E8B66-1B33-4CFB-BD6D-B45B8F57E806@oracle.com>
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA0LTI2IGF0IDExOjU2IC0wNTAwLCBTdGV2ZSBGcmVuY2ggd3JvdGU6DQo+
-IE9uIFRodSwgQXByIDI2LCAyMDEyIGF0IDEwOjI1IEFNLCBNeWtsZWJ1c3QsIFRyb25kDQo+IDxU
-cm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+ID4gT24gVGh1LCAyMDEyLTA0LTI2
-IGF0IDA5OjU0IC0wNTAwLCBTdGV2ZSBGcmVuY2ggd3JvdGU6DQo+ID4+IE9uIFRodSwgQXByIDI2
-LCAyMDEyIGF0IDk6MjUgQU0sIERhdmlkIEhvd2VsbHMgPGRob3dlbGxzQHJlZGhhdC5jb20+IHdy
-b3RlOg0KPiA+PiA+IFN0ZXZlIEZyZW5jaCA8c21mcmVuY2hAZ21haWwuY29tPiB3cm90ZToNCj4g
-Pj4gPg0KPiA+PiA+PiBXb3VsZCBpdCBiZSBiZXR0ZXIgdG8gbWFrZSB0aGUgc3RhYmxlIHZzIHZv
-bGF0aWxlIGlub2RlIG51bWJlciBhbiBhdHRyaWJ1dGUNCj4gPj4gPj4gb2YgdGhlIHZvbHVtZSAg
-b3Igc29tZXRoaW5nIHJldHVybmVkIGJ5IHRoZSBwcm9wb3NlZCB4c3RhdD8NCj4gPj4gPg0KPiA+
-PiA+IEknbSBub3Qgc3VyZSB3aGF0IHlvdSBtZWFuIGJ5IGEgc3RhYmxlIHZzIGEgdm9sYXRpbGUg
-aW5vZGUgbnVtYmVyLg0KPiA+Pg0KPiA+PiBCb3RoIE5GUyBhbmQgQ0lGUyAoYW5kIFNNQjIpIGNh
-biByZXR1cm4gaW5vZGUgbnVtYmVycyBvciBlcXVpdmFsZW50DQo+ID4+IHVuaXF1ZSBpZGVudGlm
-aWVyLCBidXQgaW4gdGhlIGNhc2Ugb2YgQ0lGUyBzb21lIG9sZCBzZXJ2ZXJzIGRvbid0IHN1cHBv
-cnQgdGhlDQo+ID4+IGNhbGxzIHdoaWNoIHJldHVybiBpbm9kZSBudW1iZXJzIChvciBkb24ndCBy
-ZXR1cm4gdGhlbSBmb3IgYWxsIGZpbGUgc3lzdGVtDQo+ID4+IHR5cGVzLCBXaW5kb3dzIEZBVD8p
-IHNvIGluIHRoZXNlIGNhc2VzIGNpZnMgaGFzIHRvIGNyZWF0ZSBpbm9kZQ0KPiA+PiBudW1iZXJz
-IG9uIHRoZSBmbHkNCj4gPj4gb24gdGhlIGNsaWVudC4gICBpbm9kZSBudW1iZXJzIGNyZWF0ZWQg
-b24gdGhlIGNsaWVudCBhcmUgbm90ICJzdGFibGUiIHRoZXkNCj4gPj4gY2FuIGNoYW5nZSBvbiB1
-bm1vdW50L3JlbW91bnQgKHdoaWNoIGNhbiBjYXVzZSBwcm9ibGVtcyBmb3IgYmFja3VwDQo+ID4+
-IGFwcGxpY2F0aW9ucykuDQo+ID4+DQo+ID4+IFNpbWlsYXJseSBORlN2NCBkb2VzIG5vdCByZXF1
-aXJlIHRoYXQgc2VydmVycyBhbHdheXMgcmV0dXJuIHN0YWJsZSBpbm9kZSBudW1iZXJzDQo+ID4+
-ICh0aGF0IHdpbGwgbmV2ZXIgY2hhbmdlKSBhbmQgaW50cm9kdWNlZCBhIGNvbmNlcHQgb2YgInZv
-bGF0aWxlIGZpbGUgaGFuZGxlLiINCj4gPj4gV2UgaGF2ZSBydW4gaW50byB0aGlzIGluIHR3byBj
-YXNlcyAodGhlcmUgYXJlIHByb2JhYmx5IG1vcmUpIC0NCj4gPj4gU3BlY2lhbGl6ZWQgTkZTIHNl
-cnZlcnMNCj4gPj4gZm9yIEhQQyB3aGljaCBkZWFsIHdpdGggbG90cyBvZiB0cmFuc2llbnQgaW5v
-ZGVzLCBhbmQgc2Vjb25kIHRob3NlIGZvciBzZXJ2ZXJzDQo+ID4+IHdoaWNoIGJhc2UgdGhlcmUg
-aW5vZGUgbnVtYmVyIG9uIHBhdGggKFdpbmRvd3MgTkZTPykuICBTZWUNCj4gPj4gaHR0cDovL2Rv
-Y3Mub3JhY2xlLmNvbS9jZC9FMTkwODItMDEvODE5LTE2MzQvcmZzcmVmZXItMTM3L2luZGV4Lmh0
-bWwNCj4gPj4gb3IgdGhlIE5GU3Y0IFJGQy4NCj4gPj4NCj4gPj4gQmFzaWNhbGx5IHRoZSBxdWVz
-dGlvbiBpcyB3aGV0aGVyIGl0IGlzIHdvcnRoIHJlcG9ydGluZyBhIGZsYWcgb24gdGhlDQo+ID4+
-IGNhbGwgd2hpY2ggcmV0dXJucw0KPiA+PiB0aGUgaW5vZGUgbnVtYmVyIHRvIGluZGljYXRlIHRo
-YXQgdGhlIGlub2RlIG51bWJlciBpcyAic3RhYmxlIiAod291bGQgbm90IGNoYW5nZQ0KPiA+PiBv
-biByZWJvb3Qgb3IgcmVjb25uZWN0aW9uKSBvciAidm9sYXRpbGUuIiAgICBTaW5jZSB0aGUgbWFq
-b3JpdHkgb2YgTkZTDQo+ID4+IGFuZCBTTUIyIHNlcnZlcnMNCj4gPj4gY2FuIHJldHVybiBzdGFi
-bGUgaW5vZGUgbnVtYmVycywgSSBkb24ndCBmZWVsIHN0cm9uZ2x5IGFib3V0IHRoZSBuZWVkDQo+
-ID4+IGZvciBhbiBpbmRpY2F0b3INCj4gPj4gb2YgInN0YWJsZSIgdnMuICJ2b2xhdGlsZSIgYnV0
-IEkgbWVudGlvbiBpdCBiZWNhdXNlIGJhY2t1cCBhbmQNCj4gPj4gbWlncmF0aW9uIGFwcGxpY2F0
-aW9ucw0KPiA+PiBtZW50aW9uIHRoaXMgKGlmIGlub2RlIG51bWJlcnMgYXJlIHZvbGF0aWxlLCB0
-aGV5IG1heSBoYXZlIHRvIGNoZWNrDQo+ID4+IGZvciBoYXJkbGlua3MgZGlmZmVyZW50bHkNCj4g
-Pj4gZm9yIGV4YW1wbGUpDQo+ID4NCj4gPiBJIGRvbid0IHVuZGVyc3RhbmQuIElmIHRoZSBmaWxl
-c3lzdGVtIGRvZXNuJ3Qgc3VwcG9ydCByZWFsIGlub2RlDQo+ID4gbnVtYmVycywgdGhlbiB3aHkg
-cmVwb3J0IHRoZW0gYXQgYWxsPyBXaGF0IHVzZSB3b3VsZCBhbiBhcHBsaWNhdGlvbiBoYXZlDQo+
-ID4gZm9yIGFuIGlub2RlIG51bWJlciB0aGF0IGNhbid0IGJlIHVzZWQgdG8gaWRlbnRpZnkgaGFy
-ZCBsaW5rZWQgZmlsZXM/DQo+IA0KPiBXZWxsIC4uLiB5b3UgaGF2ZSB0byBoYXZlIGFuIGlub2Rl
-IG51bWJlciBvbiB0aGUgTGludXggY2xpZW50IHNpZGUgZXZlbiBpZg0KPiB0aGUgc2VydmVyIGRv
-ZXNuJ3QgcmVwb3J0IHRoZW0gKG9yIGhhcyBhIGJ1ZyBhbmQgcmVwb3J0cyBkdXBsaWNhdGVzKS4N
-Cj4gSWYgeW91IGNhbid0IHRlbGwgaGFyZGxpbmtlZCBmaWxlcyBhcGFydCBmaXggdGhlIHNlcnZl
-ciAoYnV0IGluIHRoZQ0KPiBjYXNlcyB3aGVyZSB0aGUgZmlsZSBzeXN0ZW1zIGhhcyB0aGlzIHBy
-b2JsZW0gdGhlIHNlcnZlciBkb2Vzbid0IHVzdWFsbHkNCj4gc3VwcG9ydCBoYXJkbGlua3MgZWl0
-aGVyKS4NCj4gDQo+IElmIHRoZSBzZXJ2ZXIncyBmaWxlIHN5c3RlbSBpbnRlcm5hbCBzdHJ1Y3R1
-cmVzIGRvbid0IHN1cHBvcnQgcmVhbCBpbm9kZQ0KPiBudW1iZXJzIChzdWNoIGFzIEZBVCBvciBh
-IHJhbWRpc2spIHRoZW4gaXQgZWl0aGVyIGhhcyB0byBtYWtlIHRoZW0NCj4gdXAgYmFzZWQgb24g
-c29tZXRoaW5nIGxpa2UgcGF0aCBuYW1lIG9yIHNvbWUgb3RoZXIgYXR0cmlidXRlIG9mIHRoZQ0K
-PiBmaWxlIG9uIGRpc2suDQo+IA0KPiBTZXJ2ZXJzIGxpa2UgTmV0QXBwIGlzIHdoZXJlIHRoaXMg
-Z2V0cyBpbnRlcmVzdGluZyAtIGZvciBjaWZzIGUuZy4gbGV2ZWwgMTAwOQ0KPiBxdWVyeSBmaWxl
-IGluZm8gaXMgdXNlZCB0byBxdWVyeV9maWxlX2ludGVybmFsX2luZm8gKHRoZSBpbm9kZSBudW1i
-ZXIpIGJ1dA0KPiB3aGF0IGlmIHRoZSBzZXJ2ZXIgY2FuIG5vdCByZXBvcnQgaW5vZGUgbnVtYmVy
-cyAoZHVlIHRvIGEgYnVnKSBpbg0KPiBhbGwgY2FzZXMuDQoNClJpZ2h0LCBidXQgbm9uZSBvZiB0
-aGlzIGV4cGxhaW5zIHdoeSB3ZSBuZWVkIHRvIHJlcG9ydCB0aGVzZSBib2d1cyBpbm9kZQ0KbnVt
-YmVycyB0byB0aGUgYXBwbGljYXRpb24gaW4gdGhlIHhzdGF0KCkgcmVwbHkuDQoNCi0tIA0KVHJv
-bmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9u
-ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+T24gTW9uLCAyMDEyLTA0LTMwIGF0IDEyOjE3IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+SGktDQo+IA0KPiBPbiBBcHIgMzAsIDIwMTIsIGF0IDEyOjEzIFBNLCBUcm9uZCBNeWtsZWJ1c3Qg
+d3JvdGU6DQo+IA0KPiA+IFdlIG5lZWQgdG8gdXNlIHRoZSBob3N0bmFtZSBvZiB0aGUgcHJvY2Vz
+cyB0aGF0IGNyZWF0ZWQgdGhlIG5mc19jbGllbnQuDQo+ID4gVGhhdCBob3N0bmFtZSBpcyBub3cg
+c3RvcmVkIGluIHRoZSBycGNfY2xpZW50LT5jbF9ub2RlbmFtZS4NCj4gDQo+IFRoaXMgbG9va3Mg
+bGlrZSBleGFjdGx5IHdoYXQgSSBvdXRsaW5lZCBpbiBteSBVQ1MgcGF0Y2ggc2VyaWVzLCB0aGFu
+a3MuICBXaWxsIHlvdSBiZSBwdXNoaW5nIHRoaXMgaW50byAzLjQtcmM/DQoNClllcy4gSSBzZWUg
+dGhpcyBhcyBhIGJ1Z2ZpeCBhcyBmYXIgYXMgdGhlIG5ldCBuYW1lc3BhY2VzIGNvZGUgaXMNCmNv
+bmNlcm5lZC4NCkluIGFkZGl0aW9uLCBpdCB3YXMgYWx3YXlzIHdyb25nIHRvIGJlIGluY2x1ZGlu
+ZyB0aGUgTklTIGRvbWFpbm5hbWUuLi4NCg0KQ2hlZXJzDQogIFRyb25kDQoNCi0tIA0KVHJvbmQg
+TXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5N
+eWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
