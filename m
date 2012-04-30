@@ -1,50 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:27320 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:41994 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754779Ab2DIQJ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Apr 2012 12:09:29 -0400
-Message-ID: <4F830999.5000504@parallels.com>
-Date: Mon, 09 Apr 2012 20:08:57 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: Grace period
-References: <4F7F230A.6080506@parallels.com>	<20120406234039.GA20940@fieldses.org>	<4F82C6E3.3030009@parallels.com>	<20120409094743.56932677@tlielax.poochiereds.net>	<4F82F16C.7030303@parallels.com> <20120409112739.6a823d6f@corrin.poochiereds.net>
-In-Reply-To: <20120409112739.6a823d6f@corrin.poochiereds.net>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+	id S1756603Ab2D3WoA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Apr 2012 18:44:00 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Fred Isaman <iisaman@netapp.com>
+Subject: [PATCH 1/2] NFS: Use kmem_cache_zalloc() in nfs_direct_req_alloc
+Date: Mon, 30 Apr 2012 18:43:59 -0400
+Message-Id: <1335825840-22006-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-09.04.2012 19:27, Jeff Layton пишет:
->
-> If you allow one container to hand out conflicting locks while another
-> container is allowing reclaims, then you can end up with some very
-> difficult to debug silent data corruption. That's the worst possible
-> outcome, IMO. We really need to actively keep people from shooting
-> themselves in the foot here.
->
-> One possibility might be to only allow filesystems to be exported from
-> a single container at a time (and allow that to be overridable somehow
-> once we have a working active/active serving solution). With that, you
-> may be able limp along with a per-container grace period handling
-> scheme like you're proposing.
->
+Simplify the initialisation of O_DIRECT requests.
 
-Ok then. Keeping people from shooting themselves here sounds reasonable.
-And I like the idea of exporting a filesystem only from once per network 
-namespace. Looks like there should be a list of pairs "exported superblock - 
-network namespace". And if superblock is exported already in other namespace, 
-then export in new namespace have to be skipped (replaced?) with appropriate 
-warning (error?) message shown in log.
-Or maybe we even should deny starting of NFS server if one of it's exports is 
-shared already by other NFS server "instance"?
-But any of these ideas would be easy to implement in RAM, and thus it suits only 
-for containers...
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/direct.c |   12 +-----------
+ 1 files changed, 1 insertions(+), 11 deletions(-)
 
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 78d1ead..f17e469 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -149,26 +149,16 @@ static inline struct nfs_direct_req *nfs_direct_req_alloc(void)
+ {
+ 	struct nfs_direct_req *dreq;
+ 
+-	dreq = kmem_cache_alloc(nfs_direct_cachep, GFP_KERNEL);
++	dreq = kmem_cache_zalloc(nfs_direct_cachep, GFP_KERNEL);
+ 	if (!dreq)
+ 		return NULL;
+ 
+ 	kref_init(&dreq->kref);
+ 	kref_get(&dreq->kref);
+ 	init_completion(&dreq->completion);
+-	dreq->mds_cinfo.ncommit = 0;
+-	atomic_set(&dreq->mds_cinfo.rpcs_out, 0);
+ 	INIT_LIST_HEAD(&dreq->mds_cinfo.list);
+ 	INIT_WORK(&dreq->work, nfs_direct_write_schedule_work);
+-	memset(&dreq->ds_cinfo, 0, sizeof(dreq->ds_cinfo));
+-	dreq->iocb = NULL;
+-	dreq->ctx = NULL;
+-	dreq->l_ctx = NULL;
+ 	spin_lock_init(&dreq->lock);
+-	atomic_set(&dreq->io_count, 0);
+-	dreq->count = 0;
+-	dreq->error = 0;
+-	dreq->flags = 0;
+ 
+ 	return dreq;
+ }
 -- 
-Best regards,
-Stanislav Kinsbursky
+1.7.7.6
+
