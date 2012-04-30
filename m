@@ -1,69 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:57403 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:6557 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751674Ab2DXFsD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Apr 2012 01:48:03 -0400
-From: Neil Brown <neilb@suse.de>
-To: Steve Dickson <steved@redhat.com>
-Date: Tue, 24 Apr 2012 15:46:38 +1000
-Subject: [PATCH 3/6] nfsd_fh: if two exports are possible,
- choose the one without V4ROOT
-Cc: linux-nfs@vger.kernel.org, NeilBrown <neilb@suse.de>
-Message-ID: <20120424054638.20130.88078.stgit@notabene.brown>
-In-Reply-To: <20120424054003.20130.16209.stgit@notabene.brown>
-References: <20120424054003.20130.16209.stgit@notabene.brown>
-MIME-Version: 1.0
+	id S1754162Ab2D3Tic (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Apr 2012 15:38:32 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jim Rees <rees@umich.edu>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/7] NFS: Rename nfs4_proc_get_root()
+Date: Mon, 30 Apr 2012 19:38:29 +0000
+Message-ID: <1335814714.11828.18.camel@lade.trondhjem.org>
+References: <1335811229-2989-1-git-send-email-bjschuma@netapp.com>
+	 <1335811229-2989-2-git-send-email-bjschuma@netapp.com>
+	 <20120430190743.GA2461@umich.edu>
+In-Reply-To: <20120430190743.GA2461@umich.edu>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When nfsd_fh it looking for an export for a particular
-client and file-handle, it might find two exports for the same path:
-one with NFSEXP_V4ROOT, one with out.
-
-As nfsd_fh calls cache_export_ent to give the export information to
-the kernel it much choose the same export that auth_authenticate
-chooses for get_rootfh which it also passes cache_export_ent (via
-cache_export).
-i.e. it must choose the non-V4ROOT on where possible.
-
-Also change
-   strcmp(foo, bar)
-to
-   strcmp(foo, bar) == 0
-because I have a pathological fear of the former.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
----
-
- utils/mountd/cache.c |   11 ++++++++++-
- 1 file changed, 10 insertions(+), 1 deletion(-)
-
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index b01c0bd..0af6404 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -596,11 +596,20 @@ static void nfsd_fh(FILE *f)
- 				found_path = strdup(path);
- 				if (found_path == NULL)
- 					goto out;
--			} else if (strcmp(found->e_path, exp->m_export.e_path)
-+			} else if (strcmp(found->e_path, exp->m_export.e_path) != 0
- 				   && !subexport(found, &exp->m_export))
- 			{
- 				xlog(L_WARNING, "%s and %s have same filehandle for %s, using first",
- 				     found_path, path, dom);
-+			} else {
-+				/* same path, if one is V4ROOT, choose the other */
-+				if (found->e_flags & NFSEXP_V4ROOT) {
-+					found = &exp->m_export;
-+					free(found_path);
-+					found_path = strdup(path);
-+					if (found_path == NULL)
-+						goto out;
-+				}
- 			}
- 		}
- 	}
-
-
+T24gTW9uLCAyMDEyLTA0LTMwIGF0IDE1OjA3IC0wNDAwLCBKaW0gUmVlcyB3cm90ZToNCj4gYmpz
+Y2h1bWFAbmV0YXBwLmNvbSB3cm90ZToNCj4gDQo+ICAgRnJvbTogQnJ5YW4gU2NodW1ha2VyIDxi
+anNjaHVtYUBuZXRhcHAuY29tPg0KPiAgIA0KPiAgIFRoaXMgZnVuY3Rpb24gaXMgcmVhbGx5IGdl
+dHRpbmcgdGhlIHJvb3QgZmlsZWhhbmRsZSBhbmQgbm90IHRoZSByb290DQo+ICAgZGVudHJ5IG9m
+IHRoZSBmaWxlc3lzdGVtLiAgSSBhbHNvIHJlbW92ZWQgdGhlIHJwY19vcHMgbG9va3VwIGZyb20N
+Cj4gICBuZnM0X2dldF9yb290ZmgoKSB1bmRlciB0aGUgYXNzdW1wdGlvbiB0aGF0IGlmIHdlIHJl
+YWNoIHRoaXMgZnVuY3Rpb24NCj4gICB0aGVuIHdlIGFscmVhZHkga25vdyB3ZSBhcmUgdXNpbmcg
+TkZTIHY0Lg0KPiANCj4gQW5kIHdoZW4gTkZTdjUgY29tZXMgb3V0Pw0KDQpUaGUgY29tcHV0ZXJz
+IHdpbGwgYmUgcHJvZ3JhbW1pbmcgdGhlbXNlbHZlcywgYW5kIHdlJ2xsIGFsbCBiZSBzbGF2aW5n
+DQppbiB0aGUgc2FsdCBtaW5lcyBmb3Igb3VyIG1lY2hhbmljYWwgb3ZlcmxvcmRzLi4uDQoNCi0t
+IA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBw
+DQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
