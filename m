@@ -1,36 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:32133 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751486Ab2EGSwN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 May 2012 14:52:13 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Malahal Naineni <malahal@us.ibm.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: short read from NFS client
-Date: Mon, 7 May 2012 18:51:57 +0000
-Message-ID: <1336416721.9499.15.camel@lade.trondhjem.org>
-References: <20120507175225.GA15419@us.ibm.com>
-In-Reply-To: <20120507175225.GA15419@us.ibm.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from relay.parallels.com ([195.214.232.42]:41245 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750966Ab2EAIUc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 May 2012 04:20:32 -0400
+Message-ID: <4F9F9CCD.6060008@parallels.com>
+Date: Tue, 1 May 2012 12:20:29 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH 2/3] SUNRPC: check rpcbind clients usage counter before
+ decrement
+References: <20120425132314.13800.6813.stgit@localhost6.localdomain6> <20120425133749.13800.24003.stgit@localhost6.localdomain6> <20120427135507.GE14973@fieldses.org> <4F9AA84D.8090604@parallels.com> <20120430214504.GD22323@fieldses.org>
+In-Reply-To: <20120430214504.GD22323@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA1LTA3IGF0IDEyOjUyIC0wNTAwLCBNYWxhaGFsIE5haW5lbmkgd3JvdGU6
-DQo+IEhpIEFsbCwNCj4gDQo+IAlBbiBhcHBsaWNhdGlvbiBydW5uaW5nIG9uIGFuIE5GUyBmaWxl
-IGdvdCBzaG9ydCByZWFkIChyZWNlaXZlZA0KPiBmZXdlciBieXRlcyB0aGFuIHJlcXVlc3RlZCku
-IEF0IHRoZSBzYW1lIHRpbWUsIHdlIG5vdGljZWQgZmV3IEVTVEFMRQ0KPiBlcnJvcnMgZm9yIE5G
-UyBSRUFEIENhbGxzIGluIHRoZSB0Y3BkdW1wLiBXZSBsb3N0IGZldyBwYWNrZXRzIGluIHRoZQ0K
-PiB0Y3BkdW1wLCBzbyBjYW4ndCBzYXkgaWYgdGhlcmUgd2VyZSBhbnkgb3RoZXIgZXJyb3JzIGF0
-IHRoYXQgdGltZS4gV2hhdA0KPiBhcmUgdGhlIGNpcmN1bXN0YW5jZXMgKG90aGVyIHRoYW4gdGhl
-IG9uZXMgbGlzdGVkIGJlbG93KSB3aGVyZSBORlMNCj4gY2xpZW50IGNhbiBzZW5kIGEgc2hvcnQg
-cmVhZCB0byB0aGUgYXBwbGljYXRpb24gaW4gYnVmZmVyZWQgcmVhZCBzeXN0ZW0NCj4gY2FsbD8N
-Cj4gDQo+IEVPRiBpcyBub3QgcmVhY2hlZCwgbm8gZGlyZWN0IEkvTyBpcyBpbnZvbHZlZCwgYW5k
-IHRoZSByZWFkIHN5c2NhbGwgaXMgbm90DQo+IGludGVycnVwdGVkLCBvZiBjb3Vyc2UhDQoNCklm
-IHlvdSBhcmUgc2VlaW5nIEVTVEFMRSBlcnJvcnMgaW4gcmVzcG9uc2UgdG8gdGhlIFJFQUQgcnBj
-IGNhbGxzLCB0aGVuDQp0aGF0IG1lYW5zIHRoYXQgdGhlIGZpbGUgaXMgbm8gbG9uZ2VyIHJlYWRh
-YmxlLCBhbmQgc28gdGhlIHJlYWQgc3lzY2FsbA0Kd2lsbCByZXR1cm4gd2hhdGV2ZXIgYnVmZmVy
-ZWQgZGF0YSBpdCBoYWQgcHJpb3IgdG8gdGhlIEVTVEFMRSBvY2N1cnJpbmcuDQpUaGF0J3MgMTAw
-JSBQT1NJWGx5IGNvcnJlY3QgYmVoYXZpb3VyLi4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpM
-aW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0
-YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+01.05.2012 01:45, J. Bruce Fields написал:
+> On Fri, Apr 27, 2012 at 06:08:13PM +0400, Stanislav Kinsbursky wrote:
+>> On 27.04.2012 17:55, J. Bruce Fields wrote:
+>>> On Wed, Apr 25, 2012 at 05:37:49PM +0400, Stanislav Kinsbursky wrote:
+>>>> Registering service with svc_bind() can fail. In this case service will be
+>>>> destroyed and during destruction it will try to unregister itself from rpcbind.
+>>>> In this case unregister have to be skipped.
+>>> Isn't this a preexisting bug, in which case perhaps Trond should at it
+>>> to his list of bugs to submit now?
+>>>
+>> Not it's not.
+>>
+>> Previously, in case of bind operations failure, rpcb_put_local()
+>> wasn't called, but service data was destroyed instead:
+>>
+>> -	if (svc_uses_rpcbind(serv)) {
+>> -		if (svc_rpcb_setup(serv, current->nsproxy->net_ns)<  0) {
+>> -			kfree(serv->sv_pools);
+>> -			kfree(serv);
+>> -			return NULL;
+>> -		}
+>> -		if (!serv->sv_shutdown)
+>> -			serv->sv_shutdown = svc_rpcb_cleanup;
+>> -	}
+>>
+>> Now (with svc_bind() introduction) service can be created, but
+>> svc_bind() could fail. And thus svc_destroy() have to be called.
+>> Which will call rpcb_put_local().
+>>
+>> And the problem here that svc_bind() can fail before incrementing of
+>> rpcb usage counter.
+> OK, but then you're fixing a bug that you just introduced with the
+> previous patch.
+>
+> So this should be combined with the previous patch.
+>
+> --b.
+
+You, probably, right. I'll do this.
+Thanks.
+
+>>>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
+>>>>
+>>>> ---
+>>>>   net/sunrpc/rpcb_clnt.c |   12 +++++++-----
+>>>>   1 files changed, 7 insertions(+), 5 deletions(-)
+>>>>
+>>>> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+>>>> index 78ac39f..4c38b33 100644
+>>>> --- a/net/sunrpc/rpcb_clnt.c
+>>>> +++ b/net/sunrpc/rpcb_clnt.c
+>>>> @@ -180,14 +180,16 @@ void rpcb_put_local(struct net *net)
+>>>>   	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+>>>>   	struct rpc_clnt *clnt = sn->rpcb_local_clnt;
+>>>>   	struct rpc_clnt *clnt4 = sn->rpcb_local_clnt4;
+>>>> -	int shutdown;
+>>>> +	int shutdown = 0;
+>>>>
+>>>>   	spin_lock(&sn->rpcb_clnt_lock);
+>>>> -	if (--sn->rpcb_users == 0) {
+>>>> -		sn->rpcb_local_clnt = NULL;
+>>>> -		sn->rpcb_local_clnt4 = NULL;
+>>>> +	if (sn->rpcb_users) {
+>>>> +		if (--sn->rpcb_users == 0) {
+>>>> +			sn->rpcb_local_clnt = NULL;
+>>>> +			sn->rpcb_local_clnt4 = NULL;
+>>>> +		}
+>>>> +		shutdown = !sn->rpcb_users;
+>>>>   	}
+>>>> -	shutdown = !sn->rpcb_users;
+>>>>   	spin_unlock(&sn->rpcb_clnt_lock);
+>>>>
+>>>>   	if (shutdown) {
+>>>>
+>>
+>> -- 
+>> Best regards,
+>> Stanislav Kinsbursky
+
