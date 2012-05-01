@@ -1,95 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:4296 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:24628 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S966693Ab2EOUGE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 May 2012 16:06:04 -0400
-Date: Tue, 15 May 2012 16:05:34 -0400
-From: Josef Bacik <josef@redhat.com>
-To: Andreas Dilger <adilger@dilger.ca>
-Cc: Josef Bacik <josef@redhat.com>, Boaz Harrosh <bharrosh@panasas.com>,
-        linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
-        bfields@fieldses.org, tytso@mit.edu, jack@suse.cz
-Subject: Re: [PATCH] ext4: fix how i_version is modified and turn it on by
- default V2
-Message-ID: <20120515200533.GD1907@localhost.localdomain>
-References: <1337092396-3272-1-git-send-email-josef@redhat.com>
- <20120515175308.GB1907@localhost.localdomain>
- <4FB29DAC.3020801@panasas.com>
- <20120515182914.GC1907@localhost.localdomain>
- <AB91C817-DFEE-415F-8769-78831D72C6B7@dilger.ca>
+	id S1753173Ab2EATjI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 May 2012 15:39:08 -0400
+Received: from vmwexceht05-prd.hq.netapp.com (vmwexceht05-prd.hq.netapp.com [10.106.77.35])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q41JciZq028323
+	for <linux-nfs@vger.kernel.org>; Tue, 1 May 2012 12:38:44 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Isaman, Fred" <Fred.Isaman@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v3 3/3] NFS: Simplify the nfs_read_completion functions
+Date: Tue, 1 May 2012 19:38:43 +0000
+Message-ID: <1335901126.4060.27.camel@lade.trondhjem.org>
+References: <1335897434.4060.17.camel@lade.trondhjem.org>
+	 <1335897620-17569-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1335897620-17569-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <1335897620-17569-3-git-send-email-Trond.Myklebust@netapp.com>
+	 <CADnza47Cc+R68xmYCJHiytPJU9+-cDrzLm_caVn1tmons2kgDQ@mail.gmail.com>
+In-Reply-To: <CADnza47Cc+R68xmYCJHiytPJU9+-cDrzLm_caVn1tmons2kgDQ@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <AB91C817-DFEE-415F-8769-78831D72C6B7@dilger.ca>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 15, 2012 at 01:55:33PM -0600, Andreas Dilger wrote:
-
-<snip>
-
-> > 
-> > Yeah but for every write() call we have to do this in-memory operation (via file_update_time()), so in the worst case where you are doing 1
-> > byte writes where you would notice this sort of overhead you get a 40%
-> > overhead just from:
-> > 
-> > spin_lock(&inode->i_lock);
-> > inode->i_version++;
-> > spin_unlock(&inode->i_lock);
-> > 
-> > and then the subsequent mark_inode_dirty() call.
-> 
-> Right.  That this is so noticeable (40% wallclock slowdown for
-> filesystem IO) means that the CPU usage is higher with the
-> patch than without, likely MUCH more than the 40% shown by the
-> wallclock time.
-> 
-> > What is likely saving us here is that the 1 byte writes are happening
-> > fast enough that the normal ctime/mtime operations aren't triggering
-> > a mark_inode_dirty() since it appears to happen within the same time,
-> > but now that we're doing the i_version++ we are calling
-> > mark_inode_dirty() more than before.
-> 
-> Right, and hence my objection to the "basic" version of this patch
-> that just turns on i_version updating for everyone.
-> 
-
-Yeah agreed, I wasn't completely convinced this would happen until I ran the
-tests, and usual I was wrong.
-
-> > I'd have to profile it to verify that's what is actually happening,
-> > but that means turning on ftrace and parsing a bunch of output and
-> > man that sounds like more time than I want to waste on this.  The
-> > question is do we care that the worst case is so awful since the
-> > worst case is likely to not show up often if at all?
-> 
-> Based on my experience, there are a LOT of badly written applications
-> in the world, and I don't think anyone would be happy with a 40%
-> slowdown, PLUS 100% CPU usage on the node while doing IO.  I would
-> guess that the number of systems running badly-written applications
-> far exceeds the number of systems that are doing NFS exporting, so
-> I don't think this is a good tradeoff.
-> 
-> > If we do then I guess the next step is to add a fs flag for i_version
-> > so that people who are going to be exporting file systems can get
-> > this without having to use a special option all the time.
-> 
-> It should be fairly straight forward to have a flag set in the ext4
-> superblock (s_state flag?) that indicates that the filesystem has
-> been exported via NFS.  There might be other optimizations that can
-> be done based on this (e.g. avoid some of the directory cookie
-> hijinx that are only needed if NFS has exported the filesystem and
-> needs to keep persistent cookies across reboots).
-> 
-> I think that the ext4_mark_inode_dirty() performance problem could
-> be at least partially fixed by deferring the copy of in-core inode
-> to on-disk inode to use a journal commit callback.  This is far
-> more work than just setting a flag in the superblock, but it has
-> the potential to _improve_ performance rather than make it worse.
-> 
-
-Yeah Btrfs doesn't have this sort of problem since we delay inode updating sinc
-it is so costly, we simply let it hang around in the in-core inode until we feel
-like updating it at some point down the road.  I'll put together a feature flag
-or something to make it be enabled for always if somebody turns it on.  Thanks,
-
-Josef
+T24gVHVlLCAyMDEyLTA1LTAxIGF0IDE1OjEyIC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
+T24gVHVlLCBNYXkgMSwgMjAxMiBhdCAyOjQwIFBNLCBUcm9uZCBNeWtsZWJ1c3QNCj4gPFRyb25k
+Lk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPiBTaWduZWQtb2ZmLWJ5OiBUcm9uZCBN
+eWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KPiA+IENjOiBGcmVkIElzYW1h
+biA8aWlzYW1hbkBuZXRhcHAuY29tPg0KPiA+IC0tLQ0KPiA+ICBmcy9uZnMvZGlyZWN0LmMgfCAg
+IDQ2ICsrKysrKysrKysrKysrKysrKystLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCj4gPiAg
+ZnMvbmZzL3JlYWQuYyAgIHwgICA0MiArKysrKysrKysrKysrKysrKy0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0NCj4gPiAgMiBmaWxlcyBjaGFuZ2VkLCAzNiBpbnNlcnRpb25zKCspLCA1MiBkZWxl
+dGlvbnMoLSkNCj4gPg0KPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvZGlyZWN0LmMgYi9mcy9uZnMv
+ZGlyZWN0LmMNCj4gPiBpbmRleCBmMTdlNDY5Li5hMWQzNjZiIDEwMDY0NA0KPiA+IC0tLSBhL2Zz
+L25mcy9kaXJlY3QuYw0KPiA+ICsrKyBiL2ZzL25mcy9kaXJlY3QuYw0KPiA+IEBAIC0yNDMsMzYg
+KzI0MywyOCBAQCBzdGF0aWMgdm9pZCBuZnNfZGlyZWN0X3JlYWRfY29tcGxldGlvbihzdHJ1Y3Qg
+bmZzX3BnaW9faGVhZGVyICpoZHIpDQo+ID4gICAgICAgICAgICAgICAgZHJlcS0+Y291bnQgKz0g
+aGRyLT5nb29kX2J5dGVzOw0KPiA+ICAgICAgICBzcGluX3VubG9jaygmZHJlcS0+bG9jayk7DQo+
+ID4NCj4gPiAtICAgICAgIGlmICghdGVzdF9iaXQoTkZTX0lPSERSX0VSUk9SLCAmaGRyLT5mbGFn
+cykpIHsNCj4gPiAtICAgICAgICAgICAgICAgd2hpbGUgKCFsaXN0X2VtcHR5KCZoZHItPnBhZ2Vz
+KSkgew0KPiA+IC0gICAgICAgICAgICAgICAgICAgICAgIHN0cnVjdCBuZnNfcGFnZSAqcmVxID0g
+bmZzX2xpc3RfZW50cnkoaGRyLT5wYWdlcy5uZXh0KTsNCj4gPiAtICAgICAgICAgICAgICAgICAg
+ICAgICBzdHJ1Y3QgcGFnZSAqcGFnZSA9IHJlcS0+d2JfcGFnZTsNCj4gPiAtDQo+ID4gLSAgICAg
+ICAgICAgICAgICAgICAgICAgaWYgKHRlc3RfYml0KE5GU19JT0hEUl9FT0YsICZoZHItPmZsYWdz
+KSkgew0KPiA+IC0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgaWYgKGJ5dGVzID4gaGRy
+LT5nb29kX2J5dGVzKQ0KPiA+IC0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICB6ZXJvX3VzZXIocGFnZSwgMCwgUEFHRV9TSVpFKTsNCj4gPiAtICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgIGVsc2UgaWYgKGhkci0+Z29vZF9ieXRlcyAtIGJ5dGVzIDwgUEFHRV9TSVpF
+KQ0KPiA+IC0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB6ZXJvX3VzZXJf
+c2VnbWVudChwYWdlLA0KPiA+IC0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgIGhkci0+Z29vZF9ieXRlcyAmIH5QQUdFX01BU0ssDQo+ID4gLSAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgUEFHRV9TSVpFKTsNCj4gPiAtICAg
+ICAgICAgICAgICAgICAgICAgICB9DQo+ID4gLSAgICAgICAgICAgICAgICAgICAgICAgYnl0ZXMg
+Kz0gcmVxLT53Yl9ieXRlczsNCj4gPiAtICAgICAgICAgICAgICAgICAgICAgICBuZnNfbGlzdF9y
+ZW1vdmVfcmVxdWVzdChyZXEpOw0KPiA+IC0gICAgICAgICAgICAgICAgICAgICAgIGlmICghUGFn
+ZUNvbXBvdW5kKHBhZ2UpKQ0KPiA+IC0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgc2V0
+X3BhZ2VfZGlydHkocGFnZSk7DQo+ID4gLSAgICAgICAgICAgICAgICAgICAgICAgbmZzX2RpcmVj
+dF9yZWFkcGFnZV9yZWxlYXNlKHJlcSk7DQo+ID4gKyAgICAgICB3aGlsZSAoIWxpc3RfZW1wdHko
+Jmhkci0+cGFnZXMpKSB7DQo+ID4gKyAgICAgICAgICAgICAgIHN0cnVjdCBuZnNfcGFnZSAqcmVx
+ID0gbmZzX2xpc3RfZW50cnkoaGRyLT5wYWdlcy5uZXh0KTsNCj4gPiArICAgICAgICAgICAgICAg
+c3RydWN0IHBhZ2UgKnBhZ2UgPSByZXEtPndiX3BhZ2U7DQo+ID4gKw0KPiA+ICsgICAgICAgICAg
+ICAgICBpZiAodGVzdF9iaXQoTkZTX0lPSERSX0VPRiwgJmhkci0+ZmxhZ3MpKSB7DQo+ID4gKyAg
+ICAgICAgICAgICAgICAgICAgICAgaWYgKGJ5dGVzID4gaGRyLT5nb29kX2J5dGVzKQ0KPiA+ICsg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgemVyb191c2VyKHBhZ2UsIDAsIFBBR0VfU0la
+RSk7DQo+ID4gKyAgICAgICAgICAgICAgICAgICAgICAgZWxzZSBpZiAoaGRyLT5nb29kX2J5dGVz
+IC0gYnl0ZXMgPCBQQUdFX1NJWkUpDQo+ID4gKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICB6ZXJvX3VzZXJfc2VnbWVudChwYWdlLA0KPiA+ICsgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICBoZHItPmdvb2RfYnl0ZXMgJiB+UEFHRV9NQVNLLA0KPiA+ICsgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBQQUdFX1NJWkUpOw0KPiA+ICAgICAgICAg
+ICAgICAgIH0NCj4gPiAtICAgICAgIH0gZWxzZSB7DQo+ID4gLSAgICAgICAgICAgICAgIHdoaWxl
+ICghbGlzdF9lbXB0eSgmaGRyLT5wYWdlcykpIHsNCj4gPiAtICAgICAgICAgICAgICAgICAgICAg
+ICBzdHJ1Y3QgbmZzX3BhZ2UgKnJlcSA9IG5mc19saXN0X2VudHJ5KGhkci0+cGFnZXMubmV4dCk7
+DQo+ID4gLQ0KPiA+IC0gICAgICAgICAgICAgICAgICAgICAgIGlmIChieXRlcyA8IGhkci0+Z29v
+ZF9ieXRlcykNCj4gPiAtICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGlmICghUGFnZUNv
+bXBvdW5kKHJlcS0+d2JfcGFnZSkpDQo+ID4gKyAgICAgICAgICAgICAgIGlmICghUGFnZUNvbXBv
+dW5kKHBhZ2UpKSB7DQo+ID4gKyAgICAgICAgICAgICAgICAgICAgICAgaWYgKHRlc3RfYml0KE5G
+U19JT0hEUl9FUlJPUiwgJmhkci0+ZmxhZ3MpKSB7DQo+ID4gKyAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICBpZiAoYnl0ZXMgPCBoZHItPmdvb2RfYnl0ZXMpDQo+ID4gICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgc2V0X3BhZ2VfZGlydHkocmVxLT53Yl9wYWdlKTsN
+Cj4gDQo+IFlvdSBjYW4gcy9yZXEtPndiX3BhZ2UvcGFnZS8NCg0KWWVwLiBXaWxsIGRvLi4uDQoN
+Cj4gT3RoZXIgdGhhbiB0aGF0LCBsb29rcyBmaW5lLCBidXQgSSdsbCBub3RlIHRoYXQgbXkgaW50
+ZW50IGluIHdyaXRpbmcNCj4gaXQgYXMgaXQgd2FzIHdhcyB0byBtb3ZlIHRoZSB0ZXN0X2JpdCBv
+dXQgb2YgdGhlIGxvb3AuDQo+IEJ1dCBnaXZlbiB0aGUgRU9GIHRlc3QgdGhhdCB3YXMgc3RpbGwg
+dGhlcmUsIEkgZ3Vlc3MgaXQgZG9lc24ndCBtYWtlDQo+IG11Y2ggZGlmZmVyZW5jZS4NCg0KVGhl
+IG90aGVyIHRoaW5nIGlzIHRoYXQgaXQgYmVjb21lcyB1bm5lY2Vzc2FyaWx5IGRpZmZpY3VsdCB0
+byByZWFkDQpiZWNhdXNlIG9mIHRoZSBsb29wcyB0aGF0IGRvIG1vc3RseSB0aGUgc2FtZSB0aGlu
+ZywgZXhjZXB0IGZvciB0aGlzIG9uZQ0KbGl0dGxlIGJpdCBpbiB0aGUgbWlkZGxlLg0KDQotLSAN
+ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0K
+VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
