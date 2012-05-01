@@ -1,172 +1,165 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:21440 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756173Ab2ESUua (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 19 May 2012 16:50:30 -0400
-Received: from vmwexceht03-prd.hq.netapp.com (vmwexceht03-prd.hq.netapp.com [10.106.76.241])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q4JKoUbr016045
-	for <linux-nfs@vger.kernel.org>; Sat, 19 May 2012 13:50:30 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 9 1/4] NFSv4.1 mdsthreshold attribute xdr
-Date: Sat, 19 May 2012 20:49:45 +0000
-Message-ID: <1337460629.4831.45.camel@lade.trondhjem.org>
-References: <1337284102-3372-1-git-send-email-andros@netapp.com>
-	 <1337460376.4831.43.camel@lade.trondhjem.org>
-In-Reply-To: <1337460376.4831.43.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-vb0-f46.google.com ([209.85.212.46]:55086 "EHLO
+	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752392Ab2EATMM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 May 2012 15:12:12 -0400
+Received: by vbbff1 with SMTP id ff1so2969725vbb.19
+        for <linux-nfs@vger.kernel.org>; Tue, 01 May 2012 12:12:12 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <1335897620-17569-3-git-send-email-Trond.Myklebust@netapp.com>
+References: <1335897434.4060.17.camel@lade.trondhjem.org>
+	<1335897620-17569-1-git-send-email-Trond.Myklebust@netapp.com>
+	<1335897620-17569-2-git-send-email-Trond.Myklebust@netapp.com>
+	<1335897620-17569-3-git-send-email-Trond.Myklebust@netapp.com>
+Date: Tue, 1 May 2012 15:12:11 -0400
+Message-ID: <CADnza47Cc+R68xmYCJHiytPJU9+-cDrzLm_caVn1tmons2kgDQ@mail.gmail.com>
+Subject: Re: [PATCH v3 3/3] NFS: Simplify the nfs_read_completion functions
+From: Fred Isaman <iisaman@netapp.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU2F0LCAyMDEyLTA1LTE5IGF0IDE2OjQ2IC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+IE9uIFRodSwgMjAxMi0wNS0xNyBhdCAxNTo0OCAtMDQwMCwgYW5kcm9zQG5ldGFwcC5jb20g
-d3JvdGU6DQo+ID4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gPiAN
-Cj4gPiBXZSBvbmx5IHN1cHBvcnQgb25lIGxheW91dCB0eXBlIHBlciBmaWxlIHN5c3RlbSwgc28g
-b25lIHRocmVzaG9sZF9pdGVtNCBwZXINCj4gPiBtZHN0aHJlc2hvbGQ0Lg0KPiA+IA0KPiA+IFNp
-Z25lZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQo+ID4gLS0tDQo+
-ID4gIGZzL25mcy9uZnM0eGRyLmMgICAgICAgIHwgIDEyNSArKysrKysrKysrKysrKysrKysrKysr
-KysrKysrKysrKysrKysrKysrKysrKysrLQ0KPiA+ICBpbmNsdWRlL2xpbnV4L25mczQuaCAgICB8
-ICAgIDcgKysrDQo+ID4gIGluY2x1ZGUvbGludXgvbmZzX3hkci5oIHwgICAxMCArKysrDQo+ID4g
-IDMgZmlsZXMgY2hhbmdlZCwgMTQwIGluc2VydGlvbnMoKyksIDIgZGVsZXRpb25zKC0pDQo+ID4g
-DQo+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0eGRyLmMgYi9mcy9uZnMvbmZzNHhkci5jDQo+
-ID4gaW5kZXggZGIwNDBlOS4uMjdlYjg3MyAxMDA2NDQNCj4gPiAtLS0gYS9mcy9uZnMvbmZzNHhk
-ci5jDQo+ID4gKysrIGIvZnMvbmZzL25mczR4ZHIuYw0KPiA+IEBAIC05OSw5ICs5OSwxMiBAQCBz
-dGF0aWMgaW50IG5mczRfc3RhdF90b19lcnJubyhpbnQpOw0KPiA+ICAjZGVmaW5lIG5mczRfcGF0
-aF9tYXhzegkJKDEgKyAoKDMgKyBORlM0X01BWFBBVEhMRU4pID4+IDIpKQ0KPiA+ICAjZGVmaW5l
-IG5mczRfb3duZXJfbWF4c3oJKDEgKyBYRFJfUVVBRExFTihJRE1BUF9OQU1FU1opKQ0KPiA+ICAj
-ZGVmaW5lIG5mczRfZ3JvdXBfbWF4c3oJKDEgKyBYRFJfUVVBRExFTihJRE1BUF9OQU1FU1opKQ0K
-PiA+ICsvKiBXZSBzdXBwb3J0IG9ubHkgb25lIGxheW91dCB0eXBlIHBlciBmaWxlIHN5c3RlbSAq
-Lw0KPiA+ICsjZGVmaW5lIGRlY29kZV9tZHN0aHJlc2hvbGRfbWF4c3ogKDEgKyAxICsgbmZzNF9m
-YXR0cl9iaXRtYXBfbWF4c3ogKyAxICsgOCkNCj4gPiAgLyogVGhpcyBpcyBiYXNlZCBvbiBnZXRm
-YXR0ciwgd2hpY2ggdXNlcyB0aGUgbW9zdCBhdHRyaWJ1dGVzOiAqLw0KPiA+ICAjZGVmaW5lIG5m
-czRfZmF0dHJfdmFsdWVfbWF4c3oJKDEgKyAoMSArIDIgKyAyICsgNCArIDIgKyAxICsgMSArIDIg
-KyAyICsgXA0KPiA+IC0JCQkJMyArIDMgKyAzICsgbmZzNF9vd25lcl9tYXhzeiArIG5mczRfZ3Jv
-dXBfbWF4c3opKQ0KPiA+ICsJCQkJMyArIDMgKyAzICsgbmZzNF9vd25lcl9tYXhzeiArIFwNCj4g
-PiArCQkJCW5mczRfZ3JvdXBfbWF4c3ogKyBkZWNvZGVfbWRzdGhyZXNob2xkX21heHN6KSkNCj4g
-PiAgI2RlZmluZSBuZnM0X2ZhdHRyX21heHN6CShuZnM0X2ZhdHRyX2JpdG1hcF9tYXhzeiArIFwN
-Cj4gPiAgCQkJCW5mczRfZmF0dHJfdmFsdWVfbWF4c3opDQo+ID4gICNkZWZpbmUgZGVjb2RlX2dl
-dGF0dHJfbWF4c3ogICAgKG9wX2RlY29kZV9oZHJfbWF4c3ogKyBuZnM0X2ZhdHRyX21heHN6KQ0K
-PiA+IEBAIC0xMTcwLDYgKzExNzMsMTYgQEAgc3RhdGljIHZvaWQgZW5jb2RlX2dldGZhdHRyKHN0
-cnVjdCB4ZHJfc3RyZWFtICp4ZHIsIGNvbnN0IHUzMiogYml0bWFzaywgc3RydWN0IGMNCj4gPiAg
-CQkJICAgYml0bWFza1sxXSAmIG5mczRfZmF0dHJfYml0bWFwWzFdLCBoZHIpOw0KPiA+ICB9DQo+
-ID4gIA0KPiA+ICtzdGF0aWMgdm9pZCBlbmNvZGVfZ2V0ZmF0dHJfb3BlbihzdHJ1Y3QgeGRyX3N0
-cmVhbSAqeGRyLCBjb25zdCB1MzIgKmJpdG1hc2ssDQo+ID4gKwkJCQkgc3RydWN0IGNvbXBvdW5k
-X2hkciAqaGRyKQ0KPiA+ICt7DQo+ID4gKwllbmNvZGVfZ2V0YXR0cl90aHJlZSh4ZHIsDQo+ID4g
-KwkJCSAgICAgYml0bWFza1swXSAmIG5mczRfZmF0dHJfYml0bWFwWzBdLA0KPiA+ICsJCQkgICAg
-IGJpdG1hc2tbMV0gJiBuZnM0X2ZhdHRyX2JpdG1hcFsxXSwNCj4gPiArCQkJICAgICBiaXRtYXNr
-WzJdICYgRkFUVFI0X1dPUkQyX01EU1RIUkVTSE9MRCwNCj4gPiArCQkJICAgICBoZHIpOw0KPiA+
-ICt9DQo+ID4gKw0KPiA+ICBzdGF0aWMgdm9pZCBlbmNvZGVfZnNpbmZvKHN0cnVjdCB4ZHJfc3Ry
-ZWFtICp4ZHIsIGNvbnN0IHUzMiogYml0bWFzaywgc3RydWN0IGNvbXBvdW5kX2hkciAqaGRyKQ0K
-PiA+ICB7DQo+ID4gIAllbmNvZGVfZ2V0YXR0cl90aHJlZSh4ZHIsDQo+ID4gQEAgLTIxOTcsNyAr
-MjIxMCw3IEBAIHN0YXRpYyB2b2lkIG5mczRfeGRyX2VuY19vcGVuX25vYXR0cihzdHJ1Y3QgcnBj
-X3Jxc3QgKnJlcSwNCj4gPiAgCWVuY29kZV9zZXF1ZW5jZSh4ZHIsICZhcmdzLT5zZXFfYXJncywg
-Jmhkcik7DQo+ID4gIAllbmNvZGVfcHV0ZmgoeGRyLCBhcmdzLT5maCwgJmhkcik7DQo+ID4gIAll
-bmNvZGVfb3Blbih4ZHIsIGFyZ3MsICZoZHIpOw0KPiA+IC0JZW5jb2RlX2dldGZhdHRyKHhkciwg
-YXJncy0+Yml0bWFzaywgJmhkcik7DQo+ID4gKwllbmNvZGVfZ2V0ZmF0dHJfb3Blbih4ZHIsIGFy
-Z3MtPmJpdG1hc2ssICZoZHIpOw0KPiA+ICAJZW5jb2RlX25vcHMoJmhkcik7DQo+ID4gIH0NCj4g
-PiAgDQo+ID4gQEAgLTQxODMsNiArNDE5NiwxMTAgQEAgeGRyX2Vycm9yOg0KPiA+ICAJcmV0dXJu
-IHN0YXR1czsNCj4gPiAgfQ0KPiA+ICANCj4gPiArc3RhdGljIGludCBkZWNvZGVfdGhyZXNob2xk
-X2hpbnQoc3RydWN0IHhkcl9zdHJlYW0gKnhkciwNCj4gPiArCQkJCSAgdWludDMyX3QgKmJpdG1h
-cCwNCj4gPiArCQkJCSAgdWludDY0X3QgKnJlcywNCj4gPiArCQkJCSAgdWludDMyX3QgaGludF9i
-aXQpDQo+ID4gK3sNCj4gPiArCV9fYmUzMiAqcDsNCj4gPiArDQo+ID4gKwkqcmVzID0gMDsNCj4g
-PiArCWlmIChsaWtlbHkoYml0bWFwWzBdICYgaGludF9iaXQpKSB7DQo+ID4gKwkJcCA9IHhkcl9p
-bmxpbmVfZGVjb2RlKHhkciwgOCk7DQo+ID4gKwkJaWYgKHVubGlrZWx5KCFwKSkNCj4gPiArCQkJ
-Z290byBvdXRfb3ZlcmZsb3c7DQo+ID4gKwkJeGRyX2RlY29kZV9oeXBlcihwLCByZXMpOw0KPiA+
-ICsJfQ0KPiA+ICsJcmV0dXJuIDA7DQo+ID4gK291dF9vdmVyZmxvdzoNCj4gPiArCXByaW50X292
-ZXJmbG93X21zZyhfX2Z1bmNfXywgeGRyKTsNCj4gPiArCXJldHVybiAtRUlPOw0KPiA+ICt9DQo+
-ID4gKw0KPiA+ICtzdGF0aWMgaW50IGRlY29kZV9maXJzdF90aHJlc2hvbGRfaXRlbTQoc3RydWN0
-IHhkcl9zdHJlYW0gKnhkciwNCj4gPiArCQkJCQlzdHJ1Y3QgbmZzNF90aHJlc2hvbGQgKnJlcykN
-Cj4gPiArew0KPiA+ICsJX19iZTMyICpwLCAqc2F2ZXA7DQo+ID4gKwl1aW50MzJfdCBiaXRtYXBb
-M10gPSB7MCx9LCBhdHRybGVuOw0KPiA+ICsJaW50IHN0YXR1czsNCj4gPiArDQo+ID4gKwkvKiBs
-YXlvdXQgdHlwZSAqLw0KPiA+ICsJcCA9IHhkcl9pbmxpbmVfZGVjb2RlKHhkciwgNCk7DQo+ID4g
-KwlpZiAodW5saWtlbHkoIXApKSB7DQo+ID4gKwkJcHJpbnRfb3ZlcmZsb3dfbXNnKF9fZnVuY19f
-LCB4ZHIpOw0KPiA+ICsJCXJldHVybiAtRUlPOw0KPiA+ICsJfQ0KPiA+ICsJcmVzLT5sX3R5cGUg
-PSBiZTMyX3RvX2NwdXAocCk7DQo+ID4gKw0KPiA+ICsJLyogdGhpX2hpbnRzZXQgYml0bWFwICov
-DQo+ID4gKwlzdGF0dXMgPSBkZWNvZGVfYXR0cl9iaXRtYXAoeGRyLCBiaXRtYXApOw0KPiA+ICsJ
-aWYgKHN0YXR1cyA8IDApDQo+ID4gKwkJZ290byB4ZHJfZXJyb3I7DQo+ID4gKw0KPiA+ICsJLyog
-dGhpX2hpbnRsaXN0IGxlbmd0aCAqLw0KPiA+ICsJc3RhdHVzID0gZGVjb2RlX2F0dHJfbGVuZ3Ro
-KHhkciwgJmF0dHJsZW4sICZzYXZlcCk7DQo+ID4gKwlpZiAoc3RhdHVzIDwgMCkNCj4gPiArCQln
-b3RvIHhkcl9lcnJvcjsNCj4gPiArCS8qIHRoaV9oaW50bGlzdCAqLw0KPiA+ICsJc3RhdHVzID0g
-ZGVjb2RlX3RocmVzaG9sZF9oaW50KHhkciwgYml0bWFwLCAmcmVzLT5yZF9zeiwgVEhSRVNIT0xE
-X1JEKTsNCj4gPiArCWlmIChzdGF0dXMgPCAwKQ0KPiA+ICsJCWdvdG8geGRyX2Vycm9yOw0KPiA+
-ICsJc3RhdHVzID0gZGVjb2RlX3RocmVzaG9sZF9oaW50KHhkciwgYml0bWFwLCAmcmVzLT53cl9z
-eiwgVEhSRVNIT0xEX1dSKTsNCj4gPiArCWlmIChzdGF0dXMgPCAwKQ0KPiA+ICsJCWdvdG8geGRy
-X2Vycm9yOw0KPiA+ICsJc3RhdHVzID0gZGVjb2RlX3RocmVzaG9sZF9oaW50KHhkciwgYml0bWFw
-LCAmcmVzLT5yZF9pb19zeiwNCj4gPiArCQkJCSAgICAgICBUSFJFU0hPTERfUkRfSU8pOw0KPiA+
-ICsJaWYgKHN0YXR1cyA8IDApDQo+ID4gKwkJZ290byB4ZHJfZXJyb3I7DQo+ID4gKwlzdGF0dXMg
-PSBkZWNvZGVfdGhyZXNob2xkX2hpbnQoeGRyLCBiaXRtYXAsICZyZXMtPndyX2lvX3N6LA0KPiA+
-ICsJCQkJICAgICAgIFRIUkVTSE9MRF9XUl9JTyk7DQo+ID4gKwlpZiAoc3RhdHVzIDwgMCkNCj4g
-PiArCQlnb3RvIHhkcl9lcnJvcjsNCj4gPiArDQo+ID4gKwlzdGF0dXMgPSB2ZXJpZnlfYXR0cl9s
-ZW4oeGRyLCBzYXZlcCwgYXR0cmxlbik7DQo+ID4gKwlyZXMtPmJtID0gYml0bWFwWzBdOw0KPiA+
-ICsNCj4gPiArCWRwcmludGsoIiVzIGJtPTB4JXggcmRfc3o9JWxsdSB3cl9zej0lbGx1IHJkX2lv
-PSVsbHUgd3JfaW89JWxsdVxuIiwNCj4gPiArCQkgX19mdW5jX18sIHJlcy0+Ym0sIHJlcy0+cmRf
-c3osIHJlcy0+d3Jfc3osIHJlcy0+cmRfaW9fc3osDQo+ID4gKwkJcmVzLT53cl9pb19zeik7DQo+
-ID4gK3hkcl9lcnJvcjoNCj4gPiArCWRwcmludGsoIiVzIHJldD0lZCFcbiIsIF9fZnVuY19fLCBz
-dGF0dXMpOw0KPiA+ICsJcmV0dXJuIHN0YXR1czsNCj4gPiArfQ0KPiA+ICsNCj4gPiArLyoNCj4g
-PiArICogVGhyZXNob2xkcyBvbiBwTkZTIGRpcmVjdCBJL08gdnJzIE1EUyBJL08NCj4gPiArICov
-DQo+ID4gK3N0YXRpYyBpbnQgZGVjb2RlX2F0dHJfbWRzdGhyZXNob2xkKHN0cnVjdCB4ZHJfc3Ry
-ZWFtICp4ZHIsDQo+ID4gKwkJCQkgICAgdWludDMyX3QgKmJpdG1hcCwNCj4gPiArCQkJCSAgICBz
-dHJ1Y3QgbmZzNF90aHJlc2hvbGQgKnJlcykNCj4gPiArew0KPiA+ICsJX19iZTMyICpwOw0KPiA+
-ICsJaW50IHN0YXR1cyA9IDA7DQo+ID4gKwl1aW50MzJfdCBudW07DQo+ID4gKw0KPiA+ICsJaWYg
-KHVubGlrZWx5KGJpdG1hcFsyXSAmIChGQVRUUjRfV09SRDJfTURTVEhSRVNIT0xEIC0gMVUpKSkN
-Cj4gPiArCQlyZXR1cm4gLUVJTzsNCj4gPiArCWlmIChsaWtlbHkoYml0bWFwWzJdICYgRkFUVFI0
-X1dPUkQyX01EU1RIUkVTSE9MRCkpIHsNCj4gPiArCQlwID0geGRyX2lubGluZV9kZWNvZGUoeGRy
-LCA0KTsNCj4gPiArCQlpZiAodW5saWtlbHkoIXApKQ0KPiA+ICsJCQlnb3RvIG91dF9vdmVyZmxv
-dzsNCj4gPiArCQludW0gPSBiZTMyX3RvX2NwdXAocCk7DQo+ID4gKwkJaWYgKG51bSA9PSAwKQ0K
-PiA+ICsJCQlyZXR1cm4gMDsNCj4gPiArCQlpZiAobnVtID4gMSkNCj4gPiArCQkJcHJpbnRrKEtF
-Uk5fSU5GTyAiJXM6IFdhcm5pbmc6IE11bHRpcGxlIHBORlMgbGF5b3V0ICINCj4gPiArCQkJCSJk
-cml2ZXJzIHBlciBmaWxlc3lzdGVtIG5vdCBzdXBwb3J0ZWRcbiIsDQo+ID4gKwkJCQlfX2Z1bmNf
-Xyk7DQo+ID4gKw0KPiA+ICsJCXN0YXR1cyA9IGRlY29kZV9maXJzdF90aHJlc2hvbGRfaXRlbTQo
-eGRyLCByZXMpOw0KPiA+ICsJfQ0KPiA+ICsJcmV0dXJuIHN0YXR1czsNCj4gPiArb3V0X292ZXJm
-bG93Og0KPiA+ICsJcHJpbnRfb3ZlcmZsb3dfbXNnKF9fZnVuY19fLCB4ZHIpOw0KPiA+ICsJcmV0
-dXJuIC1FSU87DQo+ID4gK30NCj4gPiArDQo+ID4gIHN0YXRpYyBpbnQgZGVjb2RlX2dldGZhdHRy
-X2F0dHJzKHN0cnVjdCB4ZHJfc3RyZWFtICp4ZHIsIHVpbnQzMl90ICpiaXRtYXAsDQo+ID4gIAkJ
-c3RydWN0IG5mc19mYXR0ciAqZmF0dHIsIHN0cnVjdCBuZnNfZmggKmZoLA0KPiA+ICAJCXN0cnVj
-dCBuZnM0X2ZzX2xvY2F0aW9ucyAqZnNfbG9jLA0KPiA+IEBAIC00Mjg5LDYgKzQ0MDYsMTAgQEAg
-c3RhdGljIGludCBkZWNvZGVfZ2V0ZmF0dHJfYXR0cnMoc3RydWN0IHhkcl9zdHJlYW0gKnhkciwg
-dWludDMyX3QgKmJpdG1hcCwNCj4gPiAgCQlnb3RvIHhkcl9lcnJvcjsNCj4gPiAgCWZhdHRyLT52
-YWxpZCB8PSBzdGF0dXM7DQo+ID4gIA0KPiA+ICsJc3RhdHVzID0gZGVjb2RlX2F0dHJfbWRzdGhy
-ZXNob2xkKHhkciwgYml0bWFwLCAmZmF0dHItPm1kc3RocmVzaG9sZCk7DQo+ID4gKwlpZiAoc3Rh
-dHVzIDwgMCkNCj4gPiArCQlnb3RvIHhkcl9lcnJvcjsNCj4gPiArDQo+ID4gIHhkcl9lcnJvcjoN
-Cj4gPiAgCWRwcmludGsoIiVzOiB4ZHIgcmV0dXJuZWQgJWRcbiIsIF9fZnVuY19fLCAtc3RhdHVz
-KTsNCj4gPiAgCXJldHVybiBzdGF0dXM7DQo+ID4gZGlmZiAtLWdpdCBhL2luY2x1ZGUvbGludXgv
-bmZzNC5oIGIvaW5jbHVkZS9saW51eC9uZnM0LmgNCj4gPiBpbmRleCAwOTg3MTQ2Li43MmI2YmFk
-IDEwMDY0NA0KPiA+IC0tLSBhL2luY2x1ZGUvbGludXgvbmZzNC5oDQo+ID4gKysrIGIvaW5jbHVk
-ZS9saW51eC9uZnM0LmgNCj4gPiBAQCAtNTI2LDYgKzUyNiwxMyBAQCBlbnVtIGxvY2tfdHlwZTQg
-ew0KPiA+ICAjZGVmaW5lIEZBVFRSNF9XT1JEMV9NT1VOVEVEX09OX0ZJTEVJRCAgKDFVTCA8PCAy
-MykNCj4gPiAgI2RlZmluZSBGQVRUUjRfV09SRDFfRlNfTEFZT1VUX1RZUEVTICAgICgxVUwgPDwg
-MzApDQo+ID4gICNkZWZpbmUgRkFUVFI0X1dPUkQyX0xBWU9VVF9CTEtTSVpFICAgICAoMVVMIDw8
-IDEpDQo+ID4gKyNkZWZpbmUgRkFUVFI0X1dPUkQyX01EU1RIUkVTSE9MRCAgICAgICAoMVVMIDw8
-IDQpDQo+ID4gKw0KPiA+ICsvKiBNRFMgdGhyZXNob2xkIGJpdG1hcCBiaXRzICovDQo+ID4gKyNk
-ZWZpbmUgVEhSRVNIT0xEX1JEICAgICAgICAgICAgICAgICAgICAoMVVMIDw8IDApDQo+ID4gKyNk
-ZWZpbmUgVEhSRVNIT0xEX1dSICAgICAgICAgICAgICAgICAgICAoMVVMIDw8IDEpDQo+ID4gKyNk
-ZWZpbmUgVEhSRVNIT0xEX1JEX0lPICAgICAgICAgICAgICAgICAoMVVMIDw8IDIpDQo+ID4gKyNk
-ZWZpbmUgVEhSRVNIT0xEX1dSX0lPICAgICAgICAgICAgICAgICAoMVVMIDw8IDMpDQo+ID4gIA0K
-PiA+ICAjZGVmaW5lIE5GU1BST0M0X05VTEwgMA0KPiA+ICAjZGVmaW5lIE5GU1BST0M0X0NPTVBP
-VU5EIDENCj4gPiBkaWZmIC0tZ2l0IGEvaW5jbHVkZS9saW51eC9uZnNfeGRyLmggYi9pbmNsdWRl
-L2xpbnV4L25mc194ZHIuaA0KPiA+IGluZGV4IDJlNTNhM2YuLmQyMzM3OWQgMTAwNjQ0DQo+ID4g
-LS0tIGEvaW5jbHVkZS9saW51eC9uZnNfeGRyLmgNCj4gPiArKysgYi9pbmNsdWRlL2xpbnV4L25m
-c194ZHIuaA0KPiA+IEBAIC0zNSw2ICszNSwxNSBAQCBzdGF0aWMgaW5saW5lIGludCBuZnNfZnNp
-ZF9lcXVhbChjb25zdCBzdHJ1Y3QgbmZzX2ZzaWQgKmEsIGNvbnN0IHN0cnVjdCBuZnNfZnNpZA0K
-PiA+ICAJcmV0dXJuIGEtPm1ham9yID09IGItPm1ham9yICYmIGEtPm1pbm9yID09IGItPm1pbm9y
-Ow0KPiA+ICB9DQo+ID4gIA0KPiA+ICtzdHJ1Y3QgbmZzNF90aHJlc2hvbGQgew0KPiA+ICsJX191
-MzIJYm07DQo+ID4gKwlfX3UzMglsX3R5cGU7DQo+ID4gKwlfX3U2NAlyZF9zejsNCj4gPiArCV9f
-dTY0CXdyX3N6Ow0KPiA+ICsJX191NjQJcmRfaW9fc3o7DQo+ID4gKwlfX3U2NAl3cl9pb19zejsN
-Cj4gPiArfTsNCj4gPiArDQo+ID4gIHN0cnVjdCBuZnNfZmF0dHIgew0KPiA+ICAJdW5zaWduZWQg
-aW50CQl2YWxpZDsJCS8qIHdoaWNoIGZpZWxkcyBhcmUgdmFsaWQgKi8NCj4gPiAgCXVtb2RlX3QJ
-CQltb2RlOw0KPiA+IEBAIC02Nyw2ICs3Niw3IEBAIHN0cnVjdCBuZnNfZmF0dHIgew0KPiA+ICAJ
-dW5zaWduZWQgbG9uZwkJZ2VuY291bnQ7DQo+ID4gIAlzdHJ1Y3QgbmZzNF9zdHJpbmcJKm93bmVy
-X25hbWU7DQo+ID4gIAlzdHJ1Y3QgbmZzNF9zdHJpbmcJKmdyb3VwX25hbWU7DQo+ID4gKwlzdHJ1
-Y3QgbmZzNF90aHJlc2hvbGQJbWRzdGhyZXNob2xkOwkvKiBwTkZTIHRocmVzaG9sZCBoaW50cyAq
-Lw0KPiANCj4gSXQgc2hvdWxkIF9ub3RfIGJlIG5lY2Vzc2FyeSB0byBwdXQgb25lIG9mIHRoZXNl
-IGluIGVhY2ggYW5kIGV2ZXJ5DQo+IHN0cnVjdCBuZnNfZmF0dHI6IHRoYXQgaXMgYW4gaW5jcmVh
-c2Ugb2YgMzIgYnl0ZXMgZm9yIHNvbWV0aGluZyB0aGF0IGlzDQo+IG9ubHkgb2YgaW50ZXJlc3Qg
-dG8gTkZTdjQuMSwgYW5kIG9ubHkgb24gT1BFTiBhdCB0aGF0Lg0KPiANCj4gUGxlYXNlIG1ha2Ug
-aXQgYSBwb2ludGVyIHRvIGFuIG1kc3RocmVzaG9sZCBzdHJ1Y3R1cmUgdGhhdCBpcyBzdG9yZWQg
-aW4NCj4gdGhlIHN0cnVjdCBvcGVuZGF0YS4NCg0KQWN0dWFsbHksIGJldHRlciBzdGlsbDoganVz
-dCBtYWtlIGl0IGEgc2VwYXJhdGUgYWxsb2NhdGlvbiwgc28gdGhhdCBvbmNlDQpkb25lLCB5b3Ug
-Y2FuIGFzc2lnbiBpdCB0byB0aGUgc3RydWN0IG9wZW5fY29udGV4dCBpbiB0aGUgbmV4dCBwYXRj
-aC4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0K
-DQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+On Tue, May 1, 2012 at 2:40 PM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Cc: Fred Isaman <iisaman@netapp.com>
+> ---
+>  fs/nfs/direct.c |   46 +++++++++++++++++++---------------------------
+>  fs/nfs/read.c   |   42 +++++++++++++++++-------------------------
+>  2 files changed, 36 insertions(+), 52 deletions(-)
+>
+> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+> index f17e469..a1d366b 100644
+> --- a/fs/nfs/direct.c
+> +++ b/fs/nfs/direct.c
+> @@ -243,36 +243,28 @@ static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
+>                dreq->count += hdr->good_bytes;
+>        spin_unlock(&dreq->lock);
+>
+> -       if (!test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
+> -               while (!list_empty(&hdr->pages)) {
+> -                       struct nfs_page *req = nfs_list_entry(hdr->pages.next);
+> -                       struct page *page = req->wb_page;
+> -
+> -                       if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
+> -                               if (bytes > hdr->good_bytes)
+> -                                       zero_user(page, 0, PAGE_SIZE);
+> -                               else if (hdr->good_bytes - bytes < PAGE_SIZE)
+> -                                       zero_user_segment(page,
+> -                                               hdr->good_bytes & ~PAGE_MASK,
+> -                                               PAGE_SIZE);
+> -                       }
+> -                       bytes += req->wb_bytes;
+> -                       nfs_list_remove_request(req);
+> -                       if (!PageCompound(page))
+> -                               set_page_dirty(page);
+> -                       nfs_direct_readpage_release(req);
+> +       while (!list_empty(&hdr->pages)) {
+> +               struct nfs_page *req = nfs_list_entry(hdr->pages.next);
+> +               struct page *page = req->wb_page;
+> +
+> +               if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
+> +                       if (bytes > hdr->good_bytes)
+> +                               zero_user(page, 0, PAGE_SIZE);
+> +                       else if (hdr->good_bytes - bytes < PAGE_SIZE)
+> +                               zero_user_segment(page,
+> +                                       hdr->good_bytes & ~PAGE_MASK,
+> +                                       PAGE_SIZE);
+>                }
+> -       } else {
+> -               while (!list_empty(&hdr->pages)) {
+> -                       struct nfs_page *req = nfs_list_entry(hdr->pages.next);
+> -
+> -                       if (bytes < hdr->good_bytes)
+> -                               if (!PageCompound(req->wb_page))
+> +               if (!PageCompound(page)) {
+> +                       if (test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
+> +                               if (bytes < hdr->good_bytes)
+>                                        set_page_dirty(req->wb_page);
+
+You can s/req->wb_page/page/
+
+Other than that, looks fine, but I'll note that my intent in writing
+it as it was was to move the test_bit out of the loop.
+But given the EOF test that was still there, I guess it doesn't make
+much difference.
+
+Fred
+
+> -                       bytes += req->wb_bytes;
+> -                       nfs_list_remove_request(req);
+> -                       nfs_direct_readpage_release(req);
+> +                       } else
+> +                               set_page_dirty(page);
+>                }
+> +               bytes += req->wb_bytes;
+> +               nfs_list_remove_request(req);
+> +               nfs_direct_readpage_release(req);
+>        }
+>  out_put:
+>        if (put_dreq(dreq))
+> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+> index 1961a19..b81281b 100644
+> --- a/fs/nfs/read.c
+> +++ b/fs/nfs/read.c
+> @@ -179,34 +179,26 @@ static void nfs_read_completion(struct nfs_pgio_header *hdr)
+>
+>        if (test_bit(NFS_IOHDR_REDO, &hdr->flags))
+>                goto out;
+> -       if (!test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
+> -               while (!list_empty(&hdr->pages)) {
+> -                       struct nfs_page *req = nfs_list_entry(hdr->pages.next);
+> -                       struct page *page = req->wb_page;
+> -
+> -                       if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
+> -                               if (bytes > hdr->good_bytes)
+> -                                       zero_user(page, 0, PAGE_SIZE);
+> -                               else if (hdr->good_bytes - bytes < PAGE_SIZE)
+> -                                       zero_user_segment(page,
+> -                                               hdr->good_bytes & ~PAGE_MASK,
+> -                                               PAGE_SIZE);
+> -                       }
+> -                       SetPageUptodate(page);
+> -                       nfs_list_remove_request(req);
+> -                       nfs_readpage_release(req);
+> -                       bytes += PAGE_SIZE;
+> +       while (!list_empty(&hdr->pages)) {
+> +               struct nfs_page *req = nfs_list_entry(hdr->pages.next);
+> +               struct page *page = req->wb_page;
+> +
+> +               if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
+> +                       if (bytes > hdr->good_bytes)
+> +                               zero_user(page, 0, PAGE_SIZE);
+> +                       else if (hdr->good_bytes - bytes < PAGE_SIZE)
+> +                               zero_user_segment(page,
+> +                                       hdr->good_bytes & ~PAGE_MASK,
+> +                                       PAGE_SIZE);
+>                }
+> -       } else {
+> -               while (!list_empty(&hdr->pages)) {
+> -                       struct nfs_page *req = nfs_list_entry(hdr->pages.next);
+> -
+> -                       bytes += req->wb_bytes;
+> +               bytes += req->wb_bytes;
+> +               if (test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
+>                        if (bytes <= hdr->good_bytes)
+>                                SetPageUptodate(req->wb_page);
+> -                       nfs_list_remove_request(req);
+> -                       nfs_readpage_release(req);
+> -               }
+> +               } else
+> +                       SetPageUptodate(page);
+> +               nfs_list_remove_request(req);
+> +               nfs_readpage_release(req);
+>        }
+>  out:
+>        hdr->release(hdr);
+> --
+> 1.7.7.6
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
