@@ -1,83 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f44.google.com ([74.125.82.44]:55764 "EHLO
-	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753049Ab2E1R6V (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 13:58:21 -0400
-Received: by wgbdr13 with SMTP id dr13so3142197wgb.1
-        for <linux-nfs@vger.kernel.org>; Mon, 28 May 2012 10:58:20 -0700 (PDT)
-Message-ID: <4FC3BCB9.6040604@tonian.com>
-Date: Mon, 28 May 2012 20:58:17 +0300
-From: Benny Halevy <bhalevy@tonian.com>
-MIME-Version: 1.0
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 4/5] pnfsd-lexp: return_on_close config option
-References: <4FC3A235.8090908@tonian.com> <1338221387-22621-1-git-send-email-bhalevy@tonian.com> <4FC3AD59.4050703@panasas.com>
-In-Reply-To: <4FC3AD59.4050703@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from cantor2.suse.de ([195.135.220.15]:44536 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757397Ab2EAXW7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 May 2012 19:22:59 -0400
+Date: Wed, 2 May 2012 09:22:50 +1000
+From: NeilBrown <neilb@suse.de>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: Adapt readdirplus to application usage patterns
+Message-ID: <20120502092250.37fc03eb@notabene.brown>
+In-Reply-To: <1335913496.4060.49.camel@lade.trondhjem.org>
+References: <1335909983-26413-1-git-send-email-Trond.Myklebust@netapp.com>
+	<20120502083926.1583f5f7@notabene.brown>
+	<1335913496.4060.49.camel@lade.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/naInh9Fya4rMm9EFs.Mv93l"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2012-05-28 19:52, Boaz Harrosh wrote:
-> On 05/28/2012 07:09 PM, Benny Halevy wrote:
-> 
->> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
->> ---
->>  fs/nfsd/Kconfig      |    7 +++++++
->>  fs/nfsd/pnfsd_lexp.c |    5 +++++
->>  2 files changed, 12 insertions(+), 0 deletions(-)
->>
->> diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
->> index 9d4d79b..f9b3426 100644
->> --- a/fs/nfsd/Kconfig
->> +++ b/fs/nfsd/Kconfig
->> @@ -132,3 +132,10 @@ config PNFSD_LEXP_LAYOUT_SEGMENT_SIZE
->>  	  Set simulated layout segment size.
->>  
->>  	  If unsure, say N.
->> +
->> +config PNFSD_LEXP_RETURN_ON_CLOSE
->> +	bool "Reply to LAYOUTGET with return_on_close set to true"
->> +	depends on PNFSD_LOCAL_EXPORT
->> +	default false
->> +	help
->> +	  Set return_on_close response flag.
->> diff --git a/fs/nfsd/pnfsd_lexp.c b/fs/nfsd/pnfsd_lexp.c
->> index 30d9757..33a724c 100644
->> --- a/fs/nfsd/pnfsd_lexp.c
->> +++ b/fs/nfsd/pnfsd_lexp.c
->> @@ -153,6 +153,11 @@ static int get_stripe_unit(int blocksize)
->>  	res->lg_seg.offset = 0;
->>  	res->lg_seg.length = NFS4_MAX_UINT64;
->>  #endif  /* CONFIG_PNFSD_LEXP_LAYOUT_SEGMENTS */
->> +#ifdef     CONFIG_PNFSD_LEXP_RETURN_ON_CLOSE
->> +	res->lg_return_on_close = true;
->> +#else   /* CONFIG_PNFSD_LEXP_RETURN_ON_CLOSE */
->> +	res->lg_return_on_close = false;
-> 
-> 
-> Back to my original question. With current code this case is a BUG.
-> It will leak layouts and therefore file-reference in case of a layout-get
-> with open-state ID. 
-> 
-> So I suggest hardcoding to true until such time that we actually can
-> support it
+--Sig_/naInh9Fya4rMm9EFs.Mv93l
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-so how will you debug the leak case?
-pnfsd-lexp is for testing, and the default is on.
+On Tue, 1 May 2012 23:04:51 +0000 "Myklebust, Trond"
+<Trond.Myklebust@netapp.com> wrote:
 
-Benny
+> > Also, the current code will clear NFS_INO_ADVISE_RDPLUS if it gets -ETO=
+OSMALL,
+> > and it will stay cleared until the inode falls out of cache and is relo=
+aded.
+> > The new code will set it again a lot sooner.  Is that likely to be a pr=
+oblem
+> > (I don't remember what conditions lead to ETOOSMALL)?
+> > In fact I think it will ignore  the ETOOSMALL and always retry with
+> > readdirplus for the first read in a directory.  That doesn't seem good ?
+>=20
+> ETOOSMALL means that there isn't enough buffer space to fill a full
+> record. Given that we now provide > 32k buffer space, that seems like it
+> would be extremely difficult to produce. Even a Linux server, with its
+> 4k total limit should be able to provide at least 1 readdirplus record.
+>=20
+> If we do find a directory that keeps triggering the ETOOSMALL, then I
+> suppose we can add a NFS_INO_FORBID_RDPLUS flag to turn readdirplus off
+> permanently for that directory. However until I find that particular
+> beast, then I'd be inclined to wait.
+>=20
 
-> 
-> Boaz
-> 
->> +#endif  /* CONFIG_PNFSD_LEXP_RETURN_ON_CLOSE */
->>  
->>  	layout = kzalloc(sizeof(*layout), GFP_KERNEL);
->>  	if (layout == NULL) {
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I can't argue with that.  And looking at the code again it does disable
+readdirplus for at least the next request by setting "desc->plus =3D 0".
+So: all good.
+
+Thanks,
+NeilBrown
+
+--Sig_/naInh9Fya4rMm9EFs.Mv93l
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
+
+iQIVAwUBT6BwSjnsnt1WYoG5AQKSww/+OBwN3/hv6dF5C+zhJ4rlqPIFNCrRfYje
+h4Hmk3yYdD2xZ+Lt4pThEH2lhlxkuzwbMxieQFkt1S8TILKf6H5XQkrwceXZqkHX
+9sqllpAPIFaDI1TwxVtTzBYmsMKnOxpYbsFiMuDdWaRM7Il3LaJmG5ve4rQVANiZ
+7yDGTFyHtRj9fWgdXVu5SmYMw6/RAmftvYi3JCJ2zglam72s8bnxbpNzKZz8OGAz
+981BL828/AK+ktVA9nKtoIhmtwTna72dZUQwufa7Nhe4uwnsbY0O1NyqUoWkvyty
+U4A31bhM4/KpIVt57LJo1nrrShdvN6sK8Fr/V9+JSw7pT9DhD3Ob2c+p1OhOHDHZ
+UyVJPrBFqZW1fx1VWcWdymhGm85jrBjeNVqoZbCsKTIdTwoE3O4vVJ122KRTgOcC
+DK5NsFCZ3Zr6f5tRf6UEjN0kMneqbooyKxJv3uj7hAGJ0H7LnfZzAdzmQZQFtoJS
+UjlIKLluS0uo7API5D0X9cYu/NydYbxc3LcwWKEqfgkPszQcOSMfydP2IciqtZlO
+n6L+3rs/6XMoqqug9KPMJv12k9Q9/LaHt4oeKNisnJGu7cTxkW+Y3TcOSLbCGQFQ
+eHtaOWYrk1PWiMQXaNJexCFk97Zw9YCSbKCWkpaCEaTVKkDrLZo0/6tVLp5Scuw3
+UL9wj+KQmIs=
+=yflg
+-----END PGP SIGNATURE-----
+
+--Sig_/naInh9Fya4rMm9EFs.Mv93l--
