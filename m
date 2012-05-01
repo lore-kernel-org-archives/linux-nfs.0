@@ -1,100 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:59032 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:63459 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758360Ab2EIQvr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 May 2012 12:51:47 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH] NFS: Prevent a deadlock in the new read and write code
-Date: Wed,  9 May 2012 12:51:24 -0400
-Message-Id: <1336582284-8558-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1756864Ab2EAXFI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 May 2012 19:05:08 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: NeilBrown <neilb@suse.de>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: Adapt readdirplus to application usage patterns
+Date: Tue, 1 May 2012 23:04:51 +0000
+Message-ID: <1335913496.4060.49.camel@lade.trondhjem.org>
+References: <1335909983-26413-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <20120502083926.1583f5f7@notabene.brown>
+In-Reply-To: <20120502083926.1583f5f7@notabene.brown>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In order to avoid an ABBA lock ordering issue, the write code must
-unlock and release the nfs_page _before_ it calls end_page_writeback.
-Since the last release of the nfs_page will trigger a call to put
-the open_context, we need to ensure that something else holds a
-reference to the open context until we're done with the
-end_page_writeback so that we don't end up calling iput while we're
-still holding a PG_writeback lock.
-We can fix this by changing nfs_writedata_release to put the open
-context after we have processed all the page data.
-
-The read code does not suffer from the same problem, since it doesn't
-hold a lock on the nfs_page, so it just calls nfs_release_request after
-unlocking the page itself. However, for symmetry reasons, we make the
-same change to nfs_readdata_release.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/read.c  |    3 ++-
- fs/nfs/write.c |   13 ++++++++++++-
- 2 files changed, 14 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index f23cf25..dec47e5 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -87,8 +87,8 @@ void nfs_readdata_release(struct nfs_read_data *rdata)
- {
- 	struct nfs_pgio_header *hdr = rdata->header;
- 	struct nfs_read_header *read_header = container_of(hdr, struct nfs_read_header, header);
-+	struct nfs_open_context *ctx = rdata->args.context;
- 
--	put_nfs_open_context(rdata->args.context);
- 	if (rdata->pages.pagevec != rdata->pages.page_array)
- 		kfree(rdata->pages.pagevec);
- 	if (rdata != &read_header->rpc_data)
-@@ -97,6 +97,7 @@ void nfs_readdata_release(struct nfs_read_data *rdata)
- 		rdata->header = NULL;
- 	if (atomic_dec_and_test(&hdr->refcnt))
- 		hdr->completion_ops->completion(hdr);
-+	put_nfs_open_context(ctx);
- }
- 
- static
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 6f263da..69825f7 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -119,8 +119,8 @@ void nfs_writedata_release(struct nfs_write_data *wdata)
- {
- 	struct nfs_pgio_header *hdr = wdata->header;
- 	struct nfs_write_header *write_header = container_of(hdr, struct nfs_write_header, header);
-+	struct nfs_open_context *ctx = wdata->args.context;
- 
--	put_nfs_open_context(wdata->args.context);
- 	if (wdata->pages.pagevec != wdata->pages.page_array)
- 		kfree(wdata->pages.pagevec);
- 	if (wdata != &write_header->rpc_data)
-@@ -129,6 +129,10 @@ void nfs_writedata_release(struct nfs_write_data *wdata)
- 		wdata->header = NULL;
- 	if (atomic_dec_and_test(&hdr->refcnt))
- 		hdr->completion_ops->completion(hdr);
-+	/* Note: put the open context after processing all the
-+	 * page data in order to avoid a deadlock in nfs_write_completion.
-+	 */
-+	put_nfs_open_context(ctx);
- }
- 
- static void nfs_context_set_write_error(struct nfs_open_context *ctx, int error)
-@@ -597,6 +601,13 @@ int nfs_write_need_commit(struct nfs_write_data *data)
- 
- #endif
- 
-+/*
-+ * nfs_write_completion - process the results of the write RPC calls
-+ *
-+ * Note: this function assumes that the caller is holding a reference
-+ * to the nfs_open_context in order to avoid a deadlock when calling
-+ * nfs_end_page_writeback after nfs_unlock_request.
-+ */
- static void nfs_write_completion(struct nfs_pgio_header *hdr)
- {
- 	struct nfs_commit_info cinfo;
--- 
-1.7.7.6
-
+T24gV2VkLCAyMDEyLTA1LTAyIGF0IDA4OjM5ICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IE9u
+IFR1ZSwgIDEgTWF5IDIwMTIgMTg6MDY6MjMgLTA0MDAgVHJvbmQgTXlrbGVidXN0DQo+IDxUcm9u
+ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+IA0KPiA+IFdoaWxlIHRoZSB1c2Ugb2Yg
+UkVBRERJUlBMVVMgaXMgc2lnbmlmaWNhbnRseSBtb3JlIGVmZmljaWVudCB0aGFuDQo+ID4gUkVB
+RERJUiBmb2xsb3dlZCBieSBtYW55IExPT0tVUCBjYWxscywgaXQgaXMgc3RpbGwgbGVzcyBlZmZp
+Y2llbnQNCj4gPiB0aGFuIGp1c3QgUkVBRERJUiBpZiB0aGUgYXR0cmlidXRlcyBhcmUgbm90IHJl
+cXVpcmVkLg0KPiA+IA0KPiA+IFRoaXMgcGF0Y2ggdHJhY2tzIHdoZW4gbG9va3VwcyBhcmUgYXR0
+ZW1wdGVkIG9uIHRoZSBkaXJlY3RvcnksDQo+ID4gYW5kIHVzZXMgdGhhdCBpbmZvcm1hdGlvbiB0
+byBzZWxlY3RpdmVseSBkaXNhYmxlIFJFQURESVJQTFVTDQo+ID4gb24gdGhhdCBkaXJlY3Rvcnku
+DQo+ID4gVGhlIGZpcnN0ICdyZWFkZGlyJyBjYWxsIGlzIGFsd2F5cyBzZXJ2ZWQgdXNpbmcgUkVB
+RERJUlBMVVMuDQo+ID4gU3Vic2VxdWVudCBjYWxscyBvbmx5IHVzZSBSRUFERElSUExVUyBpZiB0
+aGVyZSB3YXMgYSBzdWNjZXNzZnVsDQo+ID4gbG9va3VwIG9yIHJldmFsaWRhdGlvbiBvbiBhIGNo
+aWxkIGluIHRoZSBtZWFuIHRpbWUuDQo+ID4gDQo+ID4gQ3JlZGl0IGZvciB0aGUgb3JpZ2luYWwg
+aWRlYSBzaG91bGQgZ28gdG8gTmVpbCBCcm93bi4gU2VlOg0KPiA+ICAgICAgIGh0dHA6Ly93d3cu
+c3Bpbmljcy5uZXQvbGlzdHMvbGludXgtbmZzL21zZzE5OTk2Lmh0bWwNCj4gPiBIb3dldmVyLCB0
+aGUgaW1wbGVtZW50YXRpb24gaW4gdGhpcyBwYXRjaCBkaWZmZXJzIGZyb20gTmVpbCdzDQo+ID4g
+aW4gdGhhdCBpdCBmb2N1c2VzIG9uIHRyYWNraW5nIGxvb2t1cHMgcmF0aGVyIHRoYW4gY2FsbHMg
+dG8NCj4gPiBzdGF0KCkuDQo+ID4gDQo+ID4gU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0
+IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4gPiBDYzogTmVpbCBCcm93biA8bmVpbGJA
+c3VzZS5kZT4NCj4gDQo+IFRoYW5rcyEgIExvb2tzIGdvb2QuDQo+IFRyYWNraW5nIGxvb2t1cHMg
+cmF0aGVyIHRoYW4gZ2V0YXR0ciBkb2VzIG1ha2Ugc2Vuc2UgLSBtb3JlIGdlbmVyYWwuDQoNClJp
+Z2h0LiBJdCBpcyBtb3JlIGluIGxpbmUgd2l0aCB0aGUgb3JpZ2luYWwgaW50ZW50aW9uIG9mIFJF
+QURESVJQTFVTLA0Kd2hpY2ggaXMgdG8gc2VydmUgYXMgYSBHQU5HX0xPT0tVUCByYXRoZXIgdGhh
+biBhICdscyAtbCcgc3Vic3RpdHV0ZS4uLg0KDQo+ID4gQEAgLTg3NCw3ICs4OTcsOSBAQCBzdGF0
+aWMgaW50IG5mc19yZWFkZGlyKHN0cnVjdCBmaWxlICpmaWxwLCB2b2lkICpkaXJlbnQsIGZpbGxk
+aXJfdCBmaWxsZGlyKQ0KPiA+ICAJZGVzYy0+ZmlsZSA9IGZpbHA7DQo+ID4gIAlkZXNjLT5kaXJf
+Y29va2llID0gJmRpcl9jdHgtPmRpcl9jb29raWU7DQo+ID4gIAlkZXNjLT5kZWNvZGUgPSBORlNf
+UFJPVE8oaW5vZGUpLT5kZWNvZGVfZGlyZW50Ow0KPiA+IC0JZGVzYy0+cGx1cyA9IE5GU19VU0Vf
+UkVBRERJUlBMVVMoaW5vZGUpOw0KPiA+ICsJZGVzYy0+cGx1cyA9IDA7DQo+ID4gKwlpZiAobmZz
+X3VzZV9yZWFkZGlycGx1cyhpbm9kZSwgZmlscCkpDQo+ID4gKwkJZGVzYy0+cGx1cyA9IDE7DQo+
+ID4gIA0KPiANCj4gVGhpcyBsb29rcyBhIGJpdCBvZGQgdG8gbWUuDQo+IA0KPiAgICAgICAgIGRl
+c2MtPnBsdXMgPSBuZnNfdXNlX3JlYWRkaXJwbHVzKGlub2RlLCBmaWxwKToNCj4gPz8NCj4gT3Ig
+aWYgeW91IHRoaW5rIHRoZXJlIGlzIGEgdHlwZSBjb25mbGljdDoNCj4gICAgICAgICBkZXNjLT5w
+bHVzID0gbmZzX3VzZV9yZWFkZGlycGx1cyhpbm9kZSwgZmlsZSkgPyAxIDogMDsNCg0KZGVzYy0+
+cGx1cyBpcyBhIGJpdCBmaWVsZCwgc28gdGhlIGNvbXBpbGVyIHdpbGwgYmUgdHJhbnNmb3JtaW5n
+IHRoZQ0KYWJvdmUgYW55d2F5LiBJIHRoZXJlZm9yZSBmaWd1cmUgd2UganVzdCB3YW50IHdoYXRl
+dmVyIGlzIGVhc2llc3Qgb24gdGhlDQpleWUuDQoNCj4gQnV0IG1heWJlIHlvdSBwcmVmZXIgdGhl
+IG9yaWdpbmFsIC0geW91ciBjaG9pY2Ugb2YgY291cnNlLg0KPiANCj4gQWxzbywgdGhlIGN1cnJl
+bnQgY29kZSB3aWxsIGNsZWFyIE5GU19JTk9fQURWSVNFX1JEUExVUyBpZiBpdCBnZXRzIC1FVE9P
+U01BTEwsDQo+IGFuZCBpdCB3aWxsIHN0YXkgY2xlYXJlZCB1bnRpbCB0aGUgaW5vZGUgZmFsbHMg
+b3V0IG9mIGNhY2hlIGFuZCBpcyByZWxvYWRlZC4NCj4gVGhlIG5ldyBjb2RlIHdpbGwgc2V0IGl0
+IGFnYWluIGEgbG90IHNvb25lci4gIElzIHRoYXQgbGlrZWx5IHRvIGJlIGEgcHJvYmxlbQ0KPiAo
+SSBkb24ndCByZW1lbWJlciB3aGF0IGNvbmRpdGlvbnMgbGVhZCB0byBFVE9PU01BTEwpPw0KPiBJ
+biBmYWN0IEkgdGhpbmsgaXQgd2lsbCBpZ25vcmUgIHRoZSBFVE9PU01BTEwgYW5kIGFsd2F5cyBy
+ZXRyeSB3aXRoDQo+IHJlYWRkaXJwbHVzIGZvciB0aGUgZmlyc3QgcmVhZCBpbiBhIGRpcmVjdG9y
+eS4gIFRoYXQgZG9lc24ndCBzZWVtIGdvb2QgPw0KDQpFVE9PU01BTEwgbWVhbnMgdGhhdCB0aGVy
+ZSBpc24ndCBlbm91Z2ggYnVmZmVyIHNwYWNlIHRvIGZpbGwgYSBmdWxsDQpyZWNvcmQuIEdpdmVu
+IHRoYXQgd2Ugbm93IHByb3ZpZGUgPiAzMmsgYnVmZmVyIHNwYWNlLCB0aGF0IHNlZW1zIGxpa2Ug
+aXQNCndvdWxkIGJlIGV4dHJlbWVseSBkaWZmaWN1bHQgdG8gcHJvZHVjZS4gRXZlbiBhIExpbnV4
+IHNlcnZlciwgd2l0aCBpdHMNCjRrIHRvdGFsIGxpbWl0IHNob3VsZCBiZSBhYmxlIHRvIHByb3Zp
+ZGUgYXQgbGVhc3QgMSByZWFkZGlycGx1cyByZWNvcmQuDQoNCklmIHdlIGRvIGZpbmQgYSBkaXJl
+Y3RvcnkgdGhhdCBrZWVwcyB0cmlnZ2VyaW5nIHRoZSBFVE9PU01BTEwsIHRoZW4gSQ0Kc3VwcG9z
+ZSB3ZSBjYW4gYWRkIGEgTkZTX0lOT19GT1JCSURfUkRQTFVTIGZsYWcgdG8gdHVybiByZWFkZGly
+cGx1cyBvZmYNCnBlcm1hbmVudGx5IGZvciB0aGF0IGRpcmVjdG9yeS4gSG93ZXZlciB1bnRpbCBJ
+IGZpbmQgdGhhdCBwYXJ0aWN1bGFyDQpiZWFzdCwgdGhlbiBJJ2QgYmUgaW5jbGluZWQgdG8gd2Fp
+dC4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0K
+DQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
