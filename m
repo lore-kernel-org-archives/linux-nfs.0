@@ -1,54 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:49219 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755344Ab2EJQFa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 May 2012 12:05:30 -0400
-Subject: Re: Extended file stat: Splitting file- and fs-specific info?
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-From: Andreas Dilger <adilger@dilger.ca>
-In-Reply-To: <14477.1336641794@redhat.com>
-Date: Thu, 10 May 2012 10:05:28 -0600
-Cc: Andreas Dilger <aedilger@gmail.com>, Dave Chinner <david@fromorbit.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "smfrench@gmail.com" <smfrench@gmail.com>,
-        "ben@decadent.org.uk" <ben@decadent.org.uk>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "roland@hack.frob.com" <roland@hack.frob.com>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
-        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
-        "libc-alpha@sourceware.org" <libc-alpha@sourceware.org>
-Message-Id: <3DA7C6A5-E47C-47D4-BFBB-3E608492BD0B@dilger.ca>
-References: <73759631-F1E4-4352-9FE6-E9F576F793FB@gmail.com> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <16281.1336508382@redhat.com> <20120509002420.GL5091@dastard> <14477.1336641794@redhat.com>
-To: David Howells <dhowells@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:60152 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757593Ab2EAPpz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 May 2012 11:45:55 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 5/6] nfsd4: fix free_stateid return endianness
+Date: Tue,  1 May 2012 11:45:48 -0400
+Message-Id: <1335887149-30420-6-git-send-email-bfields@redhat.com>
+In-Reply-To: <1335887149-30420-1-git-send-email-bfields@redhat.com>
+References: <1335887149-30420-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2012-05-10, at 3:23 AM, David Howells wrote:
-> Andreas Dilger <aedilger@gmail.com> wrote:
->> The main question I have about these fields is what the difference is
->> between st_blksize and st_alloc_blksize?
-> 
-> I would assume that st_blksize is some ideal I/O size, not the
-> allocation block size.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-But there are several optimal IO sizes, so unless there is a clear
-description of what each of these fields is intended to be used for,
-it doesn't make sense to add them in.
+Cc: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4xdr.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-> Dave Chinner might be able to answer better as he suggested these
-> I/O information fields.
-> 
-> David
-
-
-Cheers, Andreas
-
-
-
-
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index f7cc411..f839be1 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3362,7 +3362,7 @@ nfsd4_encode_destroy_session(struct nfsd4_compoundres *resp, __be32 nfserr,
+ }
+ 
+ static __be32
+-nfsd4_encode_free_stateid(struct nfsd4_compoundres *resp, int nfserr,
++nfsd4_encode_free_stateid(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 			  struct nfsd4_free_stateid *free_stateid)
+ {
+ 	__be32 *p;
+@@ -3371,7 +3371,7 @@ nfsd4_encode_free_stateid(struct nfsd4_compoundres *resp, int nfserr,
+ 		return nfserr;
+ 
+ 	RESERVE_SPACE(4);
+-	WRITE32(nfserr);
++	*p++ = nfserr;
+ 	ADJUST_ARGS();
+ 	return nfserr;
+ }
+-- 
+1.7.9.5
 
