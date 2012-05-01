@@ -1,167 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:26475 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:41119 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753191Ab2EZSkX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 26 May 2012 14:40:23 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 2/9] NFSv4: Clean up the error handling for nfs4_reclaim_lease
-Date: Sat, 26 May 2012 14:39:53 -0400
-Message-Id: <1338057600-11130-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1338057600-11130-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1338057600-11130-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1754670Ab2EATdX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 May 2012 15:33:23 -0400
+Message-ID: <4FA03A77.8070404@RedHat.com>
+Date: Tue, 01 May 2012 15:33:11 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Neil Brown <neilb@suse.de>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/6] fix some problems with v4root handling in mountd
+References: <20120424054003.20130.16209.stgit@notabene.brown>
+In-Reply-To: <20120424054003.20130.16209.stgit@notabene.brown>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Try to consolidate the error handling for nfs4_reclaim_lease into
-a single function instead of doing a bit here, and a bit there...
 
-Also ensure that NFS4CLNT_PURGE_STATE handles errors correctly.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4state.c |   99 ++++++++++++++++++++++++++-------------------------
- 1 files changed, 50 insertions(+), 49 deletions(-)
+On 04/24/2012 01:46 AM, Neil Brown wrote:
+> First I'd like to say that I love seeing comments that explain the
+> code..  What way when the code does something different to the
+> comment, I can be sure I'm on to something :-)
+> 
+> If I have exports:
+> 
+>  /  *(rw,no_root_squash)
+>  /home 192.168.1.2(rw,no_root_squash)
+> 
+> Then I want to export 'root' to everything (on my side of a firewall)
+> but '/home' only to one machine.
+> However this doesn't work for host 192.168.1.2.
+> If I try to mount '/' with NFSv3, it fails.
+> If I try to mount '/' with NFSv4, then it works but we only see
+> "home" in the mounted "/".
+> 
+> The problem is that the export of "/home" causes a V4ROOT export
+> of "/" to be created for 192.168.1.2 and as MCL_SUBNETWORK comes
+> before MCL_WILDCARD, the V4ROOT export wins and the other wildcard
+> export isn't even tried.
+> 
+> So the following patches:
+>  1/ fix the NFSv4 mount case so that we really see '/' and not a pseudo
+>     '/'.  This is the case where the comment says the right thing
+>     but the code doesn't.
+> 
+>  2/ fix 'mountd' lookup for NFSv2/v3 so they successfully mount
+>     the real export, and don't fail because only the V4ROOT export
+>     was found,
+> 
+>  3/ Fix a similar ordering problem in nfsd_fh.  Without this an
+>     NFSv4 client might see the V4ROOT export for '/' rather than
+>     the explicitly exported export.
+> 
+>  4/ Set a useful ttl on V4ROOT exports so they don't need to
+>     constantly be refreshed, an
+>   
+>  5/ fix a buglet which didn't cause any of these problems but
+>     certainly looks wrong.
+Committed all 6... thanks!
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 03fa802..758b9a8 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1574,26 +1574,57 @@ out:
- 	return nfs4_recovery_handle_error(clp, status);
- }
- 
-+/* Set NFS4CLNT_LEASE_EXPIRED for all v4.0 errors and for recoverable errors
-+ * on EXCHANGE_ID for v4.1
-+ */
-+static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
-+{
-+	switch (status) {
-+	case -NFS4ERR_CLID_INUSE:
-+	case -NFS4ERR_STALE_CLIENTID:
-+		clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
-+		break;
-+	case -EACCES:
-+		if (clp->cl_machine_cred == NULL)
-+			return -EACCES;
-+		/* Handle case where the user hasn't set up machine creds */
-+		nfs4_clear_machine_cred(clp);
-+	case -NFS4ERR_DELAY:
-+	case -ETIMEDOUT:
-+	case -EAGAIN:
-+		ssleep(1);
-+		break;
-+
-+	case -NFS4ERR_MINOR_VERS_MISMATCH:
-+		if (clp->cl_cons_state == NFS_CS_SESSION_INITING)
-+			nfs_mark_client_ready(clp, -EPROTONOSUPPORT);
-+		return -EPROTONOSUPPORT;
-+	case -EKEYEXPIRED:
-+		nfs4_warn_keyexpired(clp->cl_hostname);
-+	case -NFS4ERR_NOT_SAME: /* FixMe: implement recovery
-+				 * in nfs4_exchange_id */
-+	default:
-+		return status;
-+	}
-+	set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
-+	return 0;
-+}
-+
- static int nfs4_reclaim_lease(struct nfs_client *clp)
- {
- 	struct rpc_cred *cred;
- 	const struct nfs4_state_recovery_ops *ops =
- 		clp->cl_mvops->reboot_recovery_ops;
--	int status = -ENOENT;
-+	int status;
- 
- 	cred = ops->get_clid_cred(clp);
--	if (cred != NULL) {
--		status = ops->establish_clid(clp, cred);
--		put_rpccred(cred);
--		/* Handle case where the user hasn't set up machine creds */
--		if (status == -EACCES && cred == clp->cl_machine_cred) {
--			nfs4_clear_machine_cred(clp);
--			status = -EAGAIN;
--		}
--		if (status == -NFS4ERR_MINOR_VERS_MISMATCH)
--			status = -EPROTONOSUPPORT;
--	}
--	return status;
-+	if (cred == NULL)
-+		return -ENOENT;
-+	status = ops->establish_clid(clp, cred);
-+	put_rpccred(cred);
-+	if (status != 0)
-+		return nfs4_handle_reclaim_lease_error(clp, status);
-+	return 0;
- }
- 
- #ifdef CONFIG_NFS_V4_1
-@@ -1751,32 +1782,6 @@ static int nfs4_bind_conn_to_session(struct nfs_client *clp)
- }
- #endif /* CONFIG_NFS_V4_1 */
- 
--/* Set NFS4CLNT_LEASE_EXPIRED for all v4.0 errors and for recoverable errors
-- * on EXCHANGE_ID for v4.1
-- */
--static void nfs4_set_lease_expired(struct nfs_client *clp, int status)
--{
--	switch (status) {
--	case -NFS4ERR_CLID_INUSE:
--	case -NFS4ERR_STALE_CLIENTID:
--		clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
--		break;
--	case -NFS4ERR_DELAY:
--	case -ETIMEDOUT:
--	case -EAGAIN:
--		ssleep(1);
--		break;
--
--	case -EKEYEXPIRED:
--		nfs4_warn_keyexpired(clp->cl_hostname);
--	case -NFS4ERR_NOT_SAME: /* FixMe: implement recovery
--				 * in nfs4_exchange_id */
--	default:
--		return;
--	}
--	set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
--}
--
- static void nfs4_state_manager(struct nfs_client *clp)
- {
- 	int status = 0;
-@@ -1784,7 +1789,9 @@ static void nfs4_state_manager(struct nfs_client *clp)
- 	/* Ensure exclusive access to NFSv4 state */
- 	do {
- 		if (test_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state)) {
--			nfs4_reclaim_lease(clp);
-+			status = nfs4_reclaim_lease(clp);
-+			if (status < 0)
-+				goto out_error;
- 			clear_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state);
- 			set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
- 		}
-@@ -1792,16 +1799,10 @@ static void nfs4_state_manager(struct nfs_client *clp)
- 		if (test_and_clear_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state)) {
- 			/* We're going to have to re-establish a clientid */
- 			status = nfs4_reclaim_lease(clp);
--			if (status) {
--				nfs4_set_lease_expired(clp, status);
--				if (test_bit(NFS4CLNT_LEASE_EXPIRED,
--							&clp->cl_state))
--					continue;
--				if (clp->cl_cons_state ==
--							NFS_CS_SESSION_INITING)
--					nfs_mark_client_ready(clp, status);
-+			if (status < 0)
- 				goto out_error;
--			}
-+			if (test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state))
-+				continue;
- 			clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state);
- 
- 			if (test_and_clear_bit(NFS4CLNT_SERVER_SCOPE_MISMATCH,
--- 
-1.7.7.6
+steved.
 
+> 
+> Enjoy :-)
+> 
+> NeilBrown
+> 
+> ---
+> 
+> Neil Brown (6):
+>       v4_root_add_parents: remove a possible buffer overflow.
+>       v4root: set the time-to-live for V4ROOT exports to the DEFAULT.
+>       v4set_root: force "fsid=0" for all exports of '/'
+>       nfsd_fh: if two exports are possible, choose the one without V4ROOT
+>       auth_authenticate_newcache: prefer non-V4ROOT export over V4ROOT exports.
+>       lookup_export: really prefer nonV4ROOT exports.
+> 
+> 
+>  utils/mountd/auth.c   |    7 +++----
+>  utils/mountd/cache.c  |   21 +++++++++++++++++----
+>  utils/mountd/v4root.c |   12 ++++++++++--
+>  3 files changed, 30 insertions(+), 10 deletions(-)
+> 
