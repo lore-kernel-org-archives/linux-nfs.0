@@ -1,72 +1,246 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:61482 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757582Ab2EVOMd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 10:12:33 -0400
-Received: by mail-gh0-f174.google.com with SMTP id r11so777867ghr.19
-        for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 07:12:33 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: inux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
-        michael.brantley@deshaw.com, pstaubach@exagrid.com
-Subject: [PATCH v2 04/15] vfs: fix readlinkat to retry on ESTALE
-Date: Tue, 22 May 2012 10:12:08 -0400
-Message-Id: <1337695939-2741-5-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
-References: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:28745 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757101Ab2EARHA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 May 2012 13:07:00 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Fred Isaman <iisaman@netapp.com>
+Subject: [PATCH 2/3] NFS: Clean up nfs read and write error paths
+Date: Tue,  1 May 2012 13:06:55 -0400
+Message-Id: <1335892016-13195-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1335892016-13195-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1335892016-13195-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/stat.c |   21 +++++++++++++++++----
- 1 files changed, 17 insertions(+), 4 deletions(-)
+Move the error handling for nfs_generic_pagein() into a single function.
+Ditto for nfs_generic_flush().
 
-diff --git a/fs/stat.c b/fs/stat.c
-index 60a8813..671106d 100644
---- a/fs/stat.c
-+++ b/fs/stat.c
-@@ -307,14 +307,25 @@ SYSCALL_DEFINE4(readlinkat, int, dfd, const char __user *, pathname,
- 	struct path path;
- 	int error;
- 	int empty = 0;
-+	char *name;
-+	unsigned int try = 0;
-+	unsigned int lookup_flags = LOOKUP_EMPTY;
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pnfs.c  |    2 --
+ fs/nfs/read.c  |   38 +++++++++++++++++++++-----------------
+ fs/nfs/write.c |   46 +++++++++++++++++++++++-----------------------
+ 3 files changed, 44 insertions(+), 42 deletions(-)
+
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 39cbac5..6fdeca2 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1321,7 +1321,6 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+ 	if (ret != 0) {
+ 		put_lseg(desc->pg_lseg);
+ 		desc->pg_lseg = NULL;
+-		set_bit(NFS_IOHDR_REDO, &hdr->flags);
+ 	} else
+ 		pnfs_do_multiple_writes(desc, &hdr->rpc_list, desc->pg_ioflags);
+ 	if (atomic_dec_and_test(&hdr->refcnt))
+@@ -1476,7 +1475,6 @@ pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
+ 	if (ret != 0) {
+ 		put_lseg(desc->pg_lseg);
+ 		desc->pg_lseg = NULL;
+-		set_bit(NFS_IOHDR_REDO, &hdr->flags);
+ 	} else
+ 		pnfs_do_multiple_reads(desc, &hdr->rpc_list);
+ 	if (atomic_dec_and_test(&hdr->refcnt))
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 20a0293..1961a19 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -320,6 +320,19 @@ static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops = {
+ 	.completion = nfs_read_completion,
+ };
  
- 	if (bufsiz <= 0)
- 		return -EINVAL;
- 
--	error = user_path_at_empty(dfd, pathname, LOOKUP_EMPTY, &path, &empty);
--	if (!error) {
--		struct inode *inode = path.dentry->d_inode;
-+	name = getname_flags(pathname, lookup_flags, &empty);
-+	if (IS_ERR(name))
-+		return PTR_ERR(name);
++static void nfs_pagein_error(struct nfs_pageio_descriptor *desc,
++		struct nfs_pgio_header *hdr)
++{
++	set_bit(NFS_IOHDR_REDO, &hdr->flags);
++	while (!list_empty(&hdr->rpc_list)) {
++		struct nfs_read_data *data = list_first_entry(&hdr->rpc_list,
++				struct nfs_read_data, list);
++		list_del(&data->list);
++		nfs_readdata_release(data);
++	}
++	desc->pg_completion_ops->error_cleanup(&desc->pg_list);
++}
 +
-+	do {
-+		struct inode *inode;
-+
-+		error = kern_path_at(dfd, name, lookup_flags, &path);
-+		if (error)
-+			break;
+ /*
+  * Generate multiple requests to fill a single page.
+  *
+@@ -342,33 +355,27 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc,
+ 	size_t rsize = desc->pg_bsize, nbytes;
+ 	unsigned int offset;
  
-+		inode = path.dentry->d_inode;
- 		error = empty ? -ENOENT : -EINVAL;
- 		if (inode->i_op->readlink) {
- 			error = security_inode_readlink(path.dentry);
-@@ -325,7 +336,9 @@ SYSCALL_DEFINE4(readlinkat, int, dfd, const char __user *, pathname,
- 			}
- 		}
- 		path_put(&path);
+-	nfs_list_remove_request(req);
+-	nfs_list_add_request(req, &hdr->pages);
+-
+ 	offset = 0;
+ 	nbytes = desc->pg_count;
+ 	do {
+ 		size_t len = min(nbytes,rsize);
+ 
+ 		data = nfs_readdata_alloc(hdr, 1);
+-		if (!data)
+-			goto out_bad;
++		if (!data) {
++			nfs_pagein_error(desc, hdr);
++			return -ENOMEM;
++		}
+ 		data->pages.pagevec[0] = page;
+ 		nfs_read_rpcsetup(data, len, offset);
+ 		list_add(&data->list, &hdr->rpc_list);
+ 		nbytes -= len;
+ 		offset += len;
+ 	} while (nbytes != 0);
++
++	nfs_list_remove_request(req);
++	nfs_list_add_request(req, &hdr->pages);
+ 	desc->pg_rpc_callops = &nfs_read_common_ops;
+ 	return 0;
+-out_bad:
+-	while (!list_empty(&hdr->rpc_list)) {
+-		data = list_first_entry(&hdr->rpc_list, struct nfs_read_data, list);
+-		list_del(&data->list);
+-		nfs_readdata_release(data);
 -	}
-+		lookup_flags |= LOOKUP_REVAL;
-+	} while (retry_estale(error, try++));
-+	putname(name);
- 	return error;
+-	desc->pg_completion_ops->error_cleanup(&hdr->pages);
+-	return -ENOMEM;
  }
  
+ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc,
+@@ -378,12 +385,11 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc,
+ 	struct page		**pages;
+ 	struct nfs_read_data    *data;
+ 	struct list_head *head = &desc->pg_list;
+-	int ret = 0;
+ 
+ 	data = nfs_readdata_alloc(hdr, nfs_page_array_len(desc->pg_base,
+ 							  desc->pg_count));
+ 	if (!data) {
+-		desc->pg_completion_ops->error_cleanup(head);
++		nfs_pagein_error(desc, hdr);
+ 		return -ENOMEM;
+ 	}
+ 
+@@ -427,8 +433,6 @@ static int nfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
+ 	if (ret == 0)
+ 		ret = nfs_do_multiple_reads(&hdr->rpc_list,
+ 					    desc->pg_rpc_callops);
+-	else
+-		set_bit(NFS_IOHDR_REDO, &hdr->flags);
+ 	if (atomic_dec_and_test(&hdr->refcnt))
+ 		hdr->completion_ops->completion(hdr);
+ 	return ret;
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 41db7b7..6f263da 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1062,6 +1062,19 @@ static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops = {
+ 	.completion = nfs_write_completion,
+ };
+ 
++static void nfs_flush_error(struct nfs_pageio_descriptor *desc,
++		struct nfs_pgio_header *hdr)
++{
++	set_bit(NFS_IOHDR_REDO, &hdr->flags);
++	while (!list_empty(&hdr->rpc_list)) {
++		struct nfs_write_data *data = list_first_entry(&hdr->rpc_list,
++				struct nfs_write_data, list);
++		list_del(&data->list);
++		nfs_writedata_release(data);
++	}
++	desc->pg_completion_ops->error_cleanup(&desc->pg_list);
++}
++
+ /*
+  * Generate multiple small requests to write out a single
+  * contiguous dirty area on one page.
+@@ -1075,12 +1088,9 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc,
+ 	size_t wsize = desc->pg_bsize, nbytes;
+ 	unsigned int offset;
+ 	int requests = 0;
+-	int ret = 0;
+ 	struct nfs_commit_info cinfo;
+ 
+ 	nfs_init_cinfo(&cinfo, desc->pg_inode, desc->pg_dreq);
+-	nfs_list_remove_request(req);
+-	nfs_list_add_request(req, &hdr->pages);
+ 
+ 	if ((desc->pg_ioflags & FLUSH_COND_STABLE) &&
+ 	    (desc->pg_moreio || nfs_reqs_to_commit(&cinfo) ||
+@@ -1094,8 +1104,10 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc,
+ 		size_t len = min(nbytes, wsize);
+ 
+ 		data = nfs_writedata_alloc(hdr, 1);
+-		if (!data)
+-			goto out_bad;
++		if (!data) {
++			nfs_flush_error(desc, hdr);
++			return -ENOMEM;
++		}
+ 		data->pages.pagevec[0] = page;
+ 		nfs_write_rpcsetup(data, len, offset, desc->pg_ioflags, &cinfo);
+ 		list_add(&data->list, &hdr->rpc_list);
+@@ -1103,17 +1115,10 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc,
+ 		nbytes -= len;
+ 		offset += len;
+ 	} while (nbytes != 0);
++	nfs_list_remove_request(req);
++	nfs_list_add_request(req, &hdr->pages);
+ 	desc->pg_rpc_callops = &nfs_write_common_ops;
+-	return ret;
+-
+-out_bad:
+-	while (!list_empty(&hdr->rpc_list)) {
+-		data = list_first_entry(&hdr->rpc_list, struct nfs_write_data, list);
+-		list_del(&data->list);
+-		nfs_writedata_release(data);
+-	}
+-	desc->pg_completion_ops->error_cleanup(&hdr->pages);
+-	return -ENOMEM;
++	return 0;
+ }
+ 
+ /*
+@@ -1131,15 +1136,13 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc,
+ 	struct page		**pages;
+ 	struct nfs_write_data	*data;
+ 	struct list_head *head = &desc->pg_list;
+-	int ret = 0;
+ 	struct nfs_commit_info cinfo;
+ 
+ 	data = nfs_writedata_alloc(hdr, nfs_page_array_len(desc->pg_base,
+ 							   desc->pg_count));
+ 	if (!data) {
+-		desc->pg_completion_ops->error_cleanup(head);
+-		ret = -ENOMEM;
+-		goto out;
++		nfs_flush_error(desc, hdr);
++		return -ENOMEM;
+ 	}
+ 
+ 	nfs_init_cinfo(&cinfo, desc->pg_inode, desc->pg_dreq);
+@@ -1159,8 +1162,7 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc,
+ 	nfs_write_rpcsetup(data, desc->pg_count, 0, desc->pg_ioflags, &cinfo);
+ 	list_add(&data->list, &hdr->rpc_list);
+ 	desc->pg_rpc_callops = &nfs_write_common_ops;
+-out:
+-	return ret;
++	return 0;
+ }
+ 
+ int nfs_generic_flush(struct nfs_pageio_descriptor *desc,
+@@ -1190,8 +1192,6 @@ static int nfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+ 		ret = nfs_do_multiple_writes(&hdr->rpc_list,
+ 					     desc->pg_rpc_callops,
+ 					     desc->pg_ioflags);
+-	else
+-		set_bit(NFS_IOHDR_REDO, &hdr->flags);
+ 	if (atomic_dec_and_test(&hdr->refcnt))
+ 		hdr->completion_ops->completion(hdr);
+ 	return ret;
 -- 
 1.7.7.6
 
