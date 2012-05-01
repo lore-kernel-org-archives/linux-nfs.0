@@ -1,185 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57804 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:29484 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758122Ab2EaSY6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 31 May 2012 14:24:58 -0400
-Date: Thu, 31 May 2012 14:24:58 -0400
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: nfsd changes for 3.5
-Message-ID: <20120531182457.GB25955@fieldses.org>
+	id S1751877Ab2EAShR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 May 2012 14:37:17 -0400
+Received: from vmwexceht05-prd.hq.netapp.com (vmwexceht05-prd.hq.netapp.com [10.106.77.35])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q41IbD51011835
+	for <linux-nfs@vger.kernel.org>; Tue, 1 May 2012 11:37:17 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: "Isaman, Fred" <Fred.Isaman@netapp.com>
+Subject: Re: [PATCH v2 3/3] NFS: Simplify the nfs_read_completion functions
+Date: Tue, 1 May 2012 18:37:13 +0000
+Message-ID: <1335897434.4060.17.camel@lade.trondhjem.org>
+References: <1335892596-13667-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1335892596-13667-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <1335892596-13667-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1335892596-13667-3-git-send-email-Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull the following nfsd and file-locking changes from the for-3.5
-branch at:
-
-	git://linux-nfs.org/~bfields/linux.git for-3.5
-
-Sorry this is a bit late.  In fact I still have a review backlog (at a
-minimum some bugfixes), so will send a second pull later.
-
-This includes patches addressing a long-standing problem in our NFSv4
-implementation, which is that read delegations aren't broken on certain
-local operations.  (Hence a diffstat with a few lines in namei.c and
-attr.c).  The problem isn't solved completely in the case of rename,
-where a small race remains; the patches to fix that will come in from Al
-Viro if they pass review.  But there's no regression in nfsd behavior if
-those patches don't make it in.
-
-Other than that:
-
-	- From Stanislav Kinsbursky, a bunch of NFS containerization
-	  work (still in progress).
-	- Fix a failure to process encrypted rpc's from Windows clients
-	  and servers due to our (incorrect) failure to handle gss
-	  tokens with rotated data.
-	- Fix some stuff caught by sparse (actual bugs are fairly
-	  minor); thanks to Al for reminding me to add sparse to my
-	  regular testing.
-	- Fixes for some protocol bugs in the procedures that establish
-	  4.0 and 4.1 clients, and much cleaner code.  (Thanks also to
-	  Chuck for a bugfix here, and Bryan and Trond for finding
-	  another bug.)
-	- Some cleanup and bugfixes from Jeff, Simo, and Dros.
-
---b.
-
-
-Chuck Lever (1):
-      NFSD: SETCLIENTID_CONFIRM returns NFS4ERR_CLID_INUSE too often
-
-J. Bruce Fields (44):
-      locks: introduce new FL_DELEG lock flag
-      locks: implement delegations
-      locks: break delegations on unlink
-      locks: break delegations on rename
-      locks: break delegations on link
-      locks: break delegations on any attribute modification
-      nfsd4: minor nfs4_setlease cleanup
-      nfsd4: delay setting current_fh in open
-      nfsd4: close open-deleg/unlink/rename lease
-      nfsd4: break only delegations when appropriate
-      nfsd: state.c should include current_stateid.h
-      nfsd4: fix missing "static"
-      nfsd4: preserve __user annotation on cld downcall msg
-      nfsd4: int/__be32 fixes
-      nfsd4: fix free_stateid return endianness
-      nfsd4: fix change attribute endianness
-      rpc: handle rotated gss data for Windows interoperability
-      svcrpc: fix a comment typo
-      nfsd4: exchange_id has a pointless copy
-      nfsd4: exchange_id error cleanup
-      nfsd4: exchange_id: check creds before killing confirmed client
-      nfsd4: allow an EXCHANGE_ID to kill a 4.0 client
-      nfsd4: exchange_id cleanup: local shorthands for repeated tests
-      nfsd4: exchange_id cleanup: comments
-      nfsd4: rearrange exchange_id logic to simplify
-      nfsd4: allow removing clients not holding state
-      nfsd4: move principal name into svc_cred
-      nfsd4: stricter cred comparison for setclientid/exchange_id
-      nfsd4: move rq_flavor into svc_cred
-      nfsd4: setclientid remove unnecessary terms from a logical expression
-      nfsd4: setclientid/confirm comment cleanup
-      nfsd4: merge last two setclientid cases
-      nfsd4: pull out common code from setclientid cases
-      nfsd4: merge 3 setclientid cases to 2
-      nfsd4: fix setclientid_confirm same_cred check
-      nfsd4: fix error return in non-matching-creds case
-      nfsd4: setclientid: remove pointless assignment
-      nfsd4: simpler ordering of setclientid_confirm checks
-      nfsd4: clarify that renewing expired client is a bug
-      nfsd4: fix exchange_id to return confirm flag
-      nfsd4: return "real" sequence id in confirmed case
-      nfsd4: remove some dprintk's and a comment
-      nfsd4: don't remove rebooted client record until confirmation
-      nfsd4: fix, consolidate client_has_state
-
-Jeff Layton (8):
-      nfsd: trivial: remove unused variable from nfsd4_lock
-      nfsd: don't use locks_in_grace to determine whether to call nfs4_grace_end
-      nfsd: trivial: use SEEK_SET instead of 0 in vfs_llseek
-      sunrpc: do array overrun check in svc_recv before allocating pages
-      nfsd: consolidate set_access and set_deny
-      nfsd: make test_share a bool return
-      nfsd: wrap accesses to st_access_bmap
-      nfsd: wrap all accesses to st_deny_bmap
-
-Simo Sorce (2):
-      svcauth: remove unused define
-      SUNRPC: split upcall function to extract reusable parts
-
-Stanislav Kinsbursky (26):
-      nfsd: use passed cache_detail pointer expkey_parse()
-      nfsd: add link to owner cache detail to svc_export structure
-      nfsd: use cache detail pointer from svc_export structure on cache put
-      nfsd: use exp_put() for svc_export_cache put
-      nfsd: pass svc_export_cache pointer as private data to "exports" seq file ops
-      nfsd: use hash table from cache detail in nfsd export seq ops
-      nfsd: pass pointer to expkey cache down to stack wherever possible.
-      NFSd: remove hard-coded dereferences to name-to-id and id-to-name caches
-      Lockd: pass network namespace to creation and destruction routines
-      nfsd: pass network context to export caches init/shutdown routines
-      nfsd: pass pointer to export cache down to stack wherever possible.
-      nfsd: make export cache allocated per network namespace context
-      nfsd: make expkey cache allocated per network namespace context
-      nfsd: allocate export and expkey caches in per-net operations.
-      nfsd: pass network context to idmap init/exit functions
-      nfsd: make id-to-name cache allocated per network namespace context
-      nfsd: make name-to-id cache allocated per network namespace context
-      nfsd: allocate id-to-name and name-to-id caches in per-net operations.
-      SUNRPC: new svc_bind() routine introduced
-      SUNRPC: move per-net operations from svc_destroy()
-      LockD: pass service to per-net up and down functions
-      LockD: use existing per-net data function on service creation
-      LockD: service creation function introduced
-      LockD: move global usage counter manipulation from error path
-      LockD: service start function introduced
-      LockD: add debug message to start and stop functions
-
-Weston Andros Adamson (2):
-      nfsd: add IPv6 addr escaping to fs_location hosts
-      nfsd: return 0 on reads of fault injection files
-
- fs/attr.c                           |    3 +
- fs/lockd/clntlock.c                 |   13 +-
- fs/lockd/svc.c                      |  148 +++++----
- fs/locks.c                          |   51 ++-
- fs/namei.c                          |   19 +-
- fs/nfs/callback.c                   |   13 +-
- fs/nfsd/auth.c                      |    2 +-
- fs/nfsd/export.c                    |  181 ++++++-----
- fs/nfsd/fault_inject.c              |    1 +
- fs/nfsd/idmap.h                     |    8 +-
- fs/nfsd/netns.h                     |    6 +
- fs/nfsd/nfs4callback.c              |    5 +-
- fs/nfsd/nfs4idmap.c                 |  113 ++++---
- fs/nfsd/nfs4proc.c                  |   36 ++-
- fs/nfsd/nfs4recover.c               |    4 +-
- fs/nfsd/nfs4state.c                 |  599 +++++++++++++++++------------------
- fs/nfsd/nfs4xdr.c                   |   62 ++--
- fs/nfsd/nfsctl.c                    |   67 ++--
- fs/nfsd/nfsfh.c                     |    2 +-
- fs/nfsd/nfssvc.c                    |   31 +-
- fs/nfsd/state.h                     |    1 -
- fs/nfsd/vfs.c                       |   33 +-
- fs/nfsd/xdr4.h                      |    9 +-
- include/linux/fs.h                  |   19 +-
- include/linux/lockd/bind.h          |    4 +-
- include/linux/nfsd/export.h         |   13 +-
- include/linux/sunrpc/svc.h          |    2 +-
- include/linux/sunrpc/svcauth.h      |   13 +-
- include/linux/sunrpc/svcauth_gss.h  |    1 -
- net/sunrpc/auth_gss/gss_krb5_wrap.c |   61 +++-
- net/sunrpc/auth_gss/svcauth_gss.c   |  127 ++++----
- net/sunrpc/rpcb_clnt.c              |   12 +-
- net/sunrpc/svc.c                    |   23 +-
- net/sunrpc/svc_xprt.c               |    4 +-
- net/sunrpc/svcauth_unix.c           |   19 +-
- 35 files changed, 1009 insertions(+), 696 deletions(-)
-
---b.
+T24gVHVlLCAyMDEyLTA1LTAxIGF0IDEzOjE2IC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
+DQo+IC4uLmFuZCBjb3JyZWN0IGEgYnVnIHdoZW4gTkZTX0lPSERSX0VSUk9SIGlzIHNldDogd2Ug
+c2hvdWxkIG5vdCBiZQ0KPiBzZXR0aW5nIFBhZ2VVcHRvZGF0ZS9zZXRfcGFnZV9kaXJ0eSBvbiBh
+IHBhZ2UgdW5sZXNzIHRoZSBudW1iZXIgb2YNCj4gYnl0ZXMgcmVhZCA8PSBoZHItPmdvb2RfYnl0
+ZXMNCj4gDQo+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0
+QG5ldGFwcC5jb20+DQo+IENjOiBGcmVkIElzYW1hbiA8aWlzYW1hbkBuZXRhcHAuY29tPg0KPiAt
+LS0NCj4gdjI6IEFjdHVhbGx5IGFkZCB0aGUgYnVnZml4IHRvIGRpcmVjdC5jLi4uDQo+IA0KPiAg
+ZnMvbmZzL2RpcmVjdC5jIHwgICA0NiArKysrKysrKysrKysrKysrKysrLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tDQo+ICBmcy9uZnMvcmVhZC5jICAgfCAgIDQyICsrKysrKysrKysrKysrKysr
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KPiAgMiBmaWxlcyBjaGFuZ2VkLCAzNiBpbnNlcnRp
+b25zKCspLCA1MiBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvZGlyZWN0
+LmMgYi9mcy9uZnMvZGlyZWN0LmMNCj4gaW5kZXggNzhkMWVhZC4uMzQwMjdkNSAxMDA2NDQNCj4g
+LS0tIGEvZnMvbmZzL2RpcmVjdC5jDQo+ICsrKyBiL2ZzL25mcy9kaXJlY3QuYw0KPiBAQCAtMjUz
+LDM2ICsyNTMsMjggQEAgc3RhdGljIHZvaWQgbmZzX2RpcmVjdF9yZWFkX2NvbXBsZXRpb24oc3Ry
+dWN0IG5mc19wZ2lvX2hlYWRlciAqaGRyKQ0KPiAgCQlkcmVxLT5jb3VudCArPSBoZHItPmdvb2Rf
+Ynl0ZXM7DQo+ICAJc3Bpbl91bmxvY2soJmRyZXEtPmxvY2spOw0KPiAgDQo+IC0JaWYgKCF0ZXN0
+X2JpdChORlNfSU9IRFJfRVJST1IsICZoZHItPmZsYWdzKSkgew0KPiAtCQl3aGlsZSAoIWxpc3Rf
+ZW1wdHkoJmhkci0+cGFnZXMpKSB7DQo+IC0JCQlzdHJ1Y3QgbmZzX3BhZ2UgKnJlcSA9IG5mc19s
+aXN0X2VudHJ5KGhkci0+cGFnZXMubmV4dCk7DQo+IC0JCQlzdHJ1Y3QgcGFnZSAqcGFnZSA9IHJl
+cS0+d2JfcGFnZTsNCj4gLQ0KPiAtCQkJaWYgKHRlc3RfYml0KE5GU19JT0hEUl9FT0YsICZoZHIt
+PmZsYWdzKSkgew0KPiAtCQkJCWlmIChieXRlcyA+IGhkci0+Z29vZF9ieXRlcykNCj4gLQkJCQkJ
+emVyb191c2VyKHBhZ2UsIDAsIFBBR0VfU0laRSk7DQo+IC0JCQkJZWxzZSBpZiAoaGRyLT5nb29k
+X2J5dGVzIC0gYnl0ZXMgPCBQQUdFX1NJWkUpDQo+IC0JCQkJCXplcm9fdXNlcl9zZWdtZW50KHBh
+Z2UsDQo+IC0JCQkJCQloZHItPmdvb2RfYnl0ZXMgJiB+UEFHRV9NQVNLLA0KPiAtCQkJCQkJUEFH
+RV9TSVpFKTsNCj4gLQkJCX0NCj4gLQkJCWJ5dGVzICs9IHJlcS0+d2JfYnl0ZXM7DQo+IC0JCQlu
+ZnNfbGlzdF9yZW1vdmVfcmVxdWVzdChyZXEpOw0KPiAtCQkJaWYgKCFQYWdlQ29tcG91bmQocGFn
+ZSkpDQo+IC0JCQkJc2V0X3BhZ2VfZGlydHkocGFnZSk7DQo+IC0JCQluZnNfZGlyZWN0X3JlYWRw
+YWdlX3JlbGVhc2UocmVxKTsNCj4gKwl3aGlsZSAoIWxpc3RfZW1wdHkoJmhkci0+cGFnZXMpKSB7
+DQo+ICsJCXN0cnVjdCBuZnNfcGFnZSAqcmVxID0gbmZzX2xpc3RfZW50cnkoaGRyLT5wYWdlcy5u
+ZXh0KTsNCj4gKwkJc3RydWN0IHBhZ2UgKnBhZ2UgPSByZXEtPndiX3BhZ2U7DQo+ICsNCj4gKwkJ
+aWYgKHRlc3RfYml0KE5GU19JT0hEUl9FT0YsICZoZHItPmZsYWdzKSkgew0KPiArCQkJaWYgKGJ5
+dGVzID4gaGRyLT5nb29kX2J5dGVzKQ0KPiArCQkJCXplcm9fdXNlcihwYWdlLCAwLCBQQUdFX1NJ
+WkUpOw0KPiArCQkJZWxzZSBpZiAoaGRyLT5nb29kX2J5dGVzIC0gYnl0ZXMgPCBQQUdFX1NJWkUp
+DQo+ICsJCQkJemVyb191c2VyX3NlZ21lbnQocGFnZSwNCj4gKwkJCQkJaGRyLT5nb29kX2J5dGVz
+ICYgflBBR0VfTUFTSywNCj4gKwkJCQkJUEFHRV9TSVpFKTsNCj4gIAkJfQ0KPiAtCX0gZWxzZSB7
+DQo+IC0JCXdoaWxlICghbGlzdF9lbXB0eSgmaGRyLT5wYWdlcykpIHsNCj4gLQkJCXN0cnVjdCBu
+ZnNfcGFnZSAqcmVxID0gbmZzX2xpc3RfZW50cnkoaGRyLT5wYWdlcy5uZXh0KTsNCj4gLQ0KPiAt
+CQkJaWYgKGJ5dGVzIDwgaGRyLT5nb29kX2J5dGVzKQ0KPiAtCQkJCWlmICghUGFnZUNvbXBvdW5k
+KHJlcS0+d2JfcGFnZSkpDQo+ICsJCWJ5dGVzICs9IHJlcS0+d2JfYnl0ZXM7DQo+ICsJCWlmICgh
+UGFnZUNvbXBvdW5kKHBhZ2UpKSB7DQo+ICsJCQlpZiAodGVzdF9iaXQoTkZTX0lPSERSX0VSUk9S
+LCAmaGRyLT5mbGFncykpIHsNCj4gKwkJCQlpZiAoYnl0ZXMgPD0gaGRyLT5nb29kX2J5dGVzKQ0K
+PiAgCQkJCQlzZXRfcGFnZV9kaXJ0eShyZXEtPndiX3BhZ2UpOw0KDQpPSy4uLiBMb29raW5nIGF0
+IHRoaXMgbW9yZSBjbG9zZWx5LCBJIHRoaW5rIHRoYXQgSSdtIHdyb25nIGluIGNhbGxpbmcNCnRo
+ZSBvbGQgYmVoYXZpb3VyIGEgYnVnLiBTaW5jZSB3ZSBhcmUgc2F5aW5nIHRoYXQgdGhlIGJ1ZmZl
+ciBpcyBnb29kIHVwDQp0byBhbmQgaW5jbHVkaW5nIGhkci0+Z29vZF9ieXRlcyBvZiByZWFkIGJ5
+dGVzLCB3ZSBzaG91bGQgbWFyayB0aGUgcGFnZQ0KYXMgYmVpbmcgZGlydHkgc28gbG9uZyBhcyBp
+dCBjb250YWlucyBvbmUgb3IgbW9yZSBnb29kIGJ5dGVzLg0KDQpJJ2xsIHJlc2VuZCB0aGUgY2xl
+YW51cCB3aXRob3V0IHRoZSBlcnJvbmVvdXMgZml4Li4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0
+DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RA
+bmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
