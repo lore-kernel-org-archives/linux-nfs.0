@@ -1,30 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail160.messagelabs.com ([216.82.253.99]:28452 "EHLO
-	mail160.messagelabs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755329Ab2ERKuA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 May 2012 06:50:00 -0400
-Message-ID: <4FB62953.9000701@nexenta.com>
-Date: Fri, 18 May 2012 14:49:55 +0400
-From: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
-MIME-Version: 1.0
-To: <trond.myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: question about lost lock during reclaimation
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Received: from fieldses.org ([174.143.236.118]:45498 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754019Ab2EBV4S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 May 2012 17:56:18 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
+        NeilBrown <neilb@suse.de>, "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/5] mountd: parse ip address earlier
+Date: Wed,  2 May 2012 17:56:12 -0400
+Message-Id: <1335995775-12009-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1335995775-12009-1-git-send-email-bfields@redhat.com>
+References: <1335995775-12009-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello, Trond!
+From: "J. Bruce Fields" <bfields@redhat.com>
 
+I don't see the point of waiting to the last minute to parse the ip
+address.  If the client name isn't a legal ip address then this will
+fail fairly quickly, so there's not much of a performance penalty.
 
-Could you point to idea how userspace process can know about
-lost lock on NFSv4 server (due to server reboot) ?
+Also, note the previous code incorrectly assumed client_resolve would
+always return non-NULL.
 
-See "case -NFS4ERR_DENIED" at  nfs4_reclaim_locks():
+Also factor out some common code.
 
-    http://lxr.free-electrons.com/source/fs/nfs/nfs4state.c#L1184
-
-
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
-Thanks,
-Vitaliy
+ utils/mountd/cache.c |   40 ++++++++++++++++++++++------------------
+ 1 files changed, 22 insertions(+), 18 deletions(-)
+
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index cf07b56..d2ac258 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -495,6 +495,19 @@ static bool match_fsid(struct parsed_fsid *parsed, nfs_export *exp, char *path)
+ 	return false;
+ }
+ 
++struct addrinfo *lookup_client_addr(char *dom)
++{
++	struct addrinfo *ret;
++	struct addrinfo *tmp;
++
++	tmp = host_pton(dom);
++	if (tmp == NULL)
++		return NULL;
++	ret = client_resolve(tmp->ai_addr);
++	freeaddrinfo(tmp);
++	return ret;
++}
++
+ static void nfsd_fh(FILE *f)
+ {
+ 	/* request are:
+@@ -538,6 +551,12 @@ static void nfsd_fh(FILE *f)
+ 
+ 	auth_reload();
+ 
++	if (use_ipaddr) {
++		ai = lookup_client_addr(dom);
++		if (!ai)
++			goto out;
++	}
++
+ 	/* Now determine export point for this fsid/domain */
+ 	for (i=0 ; i < MCL_MAXTYPES; i++) {
+ 		nfs_export *next_exp;
+@@ -578,18 +597,8 @@ static void nfsd_fh(FILE *f)
+ 
+ 			if (!match_fsid(&parsed, exp, path))
+ 				continue;
+-			if (use_ipaddr) {
+-				if (ai == NULL) {
+-					struct addrinfo *tmp;
+-					tmp = host_pton(dom);
+-					if (tmp == NULL)
+-						goto out;
+-					ai = client_resolve(tmp->ai_addr);
+-					freeaddrinfo(tmp);
+-				}
+-				if (!client_check(exp->m_client, ai))
+-					continue;
+-			}
++			if (use_ipaddr && !client_check(exp->m_client, ai))
++				continue;
+ 			if (!found || subexport(&exp->m_export, found)) {
+ 				found = &exp->m_export;
+ 				free(found_path);
+@@ -1058,12 +1067,7 @@ static void nfsd_export(FILE *f)
+ 	auth_reload();
+ 
+ 	if (use_ipaddr) {
+-		struct addrinfo *tmp;
+-		tmp = host_pton(dom);
+-		if (tmp == NULL)
+-			goto out;
+-		ai = client_resolve(tmp->ai_addr);
+-		freeaddrinfo(tmp);
++		ai = lookup_client_addr(dom);
+ 		if (!ai)
+ 			goto out;
+ 	}
+-- 
+1.7.7.6
+
