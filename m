@@ -1,74 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:5562 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:48803 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755924Ab2ENNU7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 May 2012 09:20:59 -0400
-Subject: [RFC PATCH 14/13] NFSd: make grace end flag per network namespace
-To: bfields@fieldses.org, Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Mon, 14 May 2012 17:19:34 +0400
-Message-ID: <20120514131834.2055.54788.stgit@localhost.localdomain>
-In-Reply-To: <20120505170722.11559.74503.stgit@localhost.localdomain>
-References: <20120505170722.11559.74503.stgit@localhost.localdomain>
+	id S1753079Ab2EBWI3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 May 2012 18:08:29 -0400
+Date: Wed, 2 May 2012 18:08:28 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kevin Coffman <kwc@umich.edu>
+Cc: NFS list <linux-nfs@vger.kernel.org>, Steve Dickson <SteveD@redhat.com>,
+        aglo@citi.umich.edu
+Subject: Re: RFC: Handling GSS rotated data
+Message-ID: <20120502220828.GC12089@fieldses.org>
+References: <CAKnQG+dVhQ3JSXJnQihzs0FnS_aeyUKftDX7j7X6iJTjRGMzPQ@mail.gmail.com>
+ <20120410215633.GL18465@fieldses.org>
+ <20120410230202.GM18465@fieldses.org>
+ <CAKnQG+fBw8--kfGmEvh4Fq0tzfAKq0gwi6kQHsKMQ38YmJNQ_A@mail.gmail.com>
+ <20120412001224.GB2523@fieldses.org>
+ <20120412001922.GC2523@fieldses.org>
+ <20120501235210.GA2083@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120501235210.GA2083@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFSd's grace_ender flag is a part of grace period facility.
+On Tue, May 01, 2012 at 07:52:10PM -0400, J. Bruce Fields wrote:
+> On Wed, Apr 11, 2012 at 08:19:22PM -0400, J. Bruce Fields wrote:
+> > On Wed, Apr 11, 2012 at 08:12:24PM -0400, J. Bruce Fields wrote:
+> > > On Tue, Apr 10, 2012 at 08:56:56PM -0400, Kevin Coffman wrote:
+> > > > The rotation values we've seen from Microsoft clients/servers for AES
+> > > > have been 28.  Your code definitely looks simpler!
+> > > 
+> > > So, here's something that actually compiles.  I'll need someone else to
+> > > test, though, and I won't be at all surprised if it needs some
+> > > fixing....
+> 
+> By the way, handing it off to Olga for testing this afternoon I gave it
+> some more review and found some bugs; this is the version she's testing.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfsd/netns.h     |    1 +
- fs/nfsd/nfs4state.c |    8 +++-----
- 2 files changed, 4 insertions(+), 5 deletions(-)
+Looks like this is passing tests, so I'm commiting for 3.5.  Thanks to
+Olga for testing and to Kevin for the first implementation.
 
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index e99767d..b6deebd 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -36,6 +36,7 @@ struct nfsd_net {
- 	struct cache_detail *nametoid_cache;
- 
- 	struct lock_manager nfsd4_manager;
-+	bool grace_ended;
- };
- 
- extern int nfsd_net_id;
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2f940c1..7c88ee8 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3188,19 +3188,17 @@ out:
- 	return status;
- }
- 
--static bool grace_ended;
--
- static void
- nfsd4_end_grace(struct net *net)
- {
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
- 	/* do nothing if grace period already ended */
--	if (grace_ended)
-+	if (nn->grace_ended)
- 		return;
- 
- 	dprintk("NFSD: end of grace period\n");
--	grace_ended = true;
-+	nn->grace_ended = true;
- 	nfsd4_record_grace_done(net, boot_time);
- 	locks_end_grace(&nn->nfsd4_manager);
- 	/*
-@@ -4761,7 +4759,7 @@ nfs4_state_start(void)
- 	nfsd4_client_tracking_init(net);
- 	boot_time = get_seconds();
- 	locks_start_grace(net, &nn->nfsd4_manager);
--	grace_ended = false;
-+	nn->grace_ended = false;
- 	printk(KERN_INFO "NFSD: starting %ld-second grace period\n",
- 	       nfsd4_grace);
- 	ret = set_callback_cred();
-
+--b.
