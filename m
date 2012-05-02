@@ -1,104 +1,144 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57591 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:36419 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757705Ab2EXQ05 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 May 2012 12:26:57 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 2/2] nfs41: Use BIND_CONN_TO_SESSION for CB_PATH_DOWN*
-Date: Thu, 24 May 2012 12:26:37 -0400
-Message-Id: <1337876797-17706-2-git-send-email-dros@netapp.com>
-In-Reply-To: <1337876797-17706-1-git-send-email-dros@netapp.com>
-References: <1337876797-17706-1-git-send-email-dros@netapp.com>
+	id S1758289Ab2EBBni (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 May 2012 21:43:38 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
+        NeilBrown <neilb@suse.de>, "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 3/3] mountd: prepend '$' to make use_ipaddr clients self-describing
+Date: Tue,  1 May 2012 21:43:34 -0400
+Message-Id: <1335923014-2789-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <20120502014155.GA2684@fieldses.org>
+References: <20120502014155.GA2684@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The state manager can handle SEQ4_STATUS_CB_PATH_DOWN* flags with a
-BIND_CONN_TO_SESSION instead of destroying the session and creating a new one.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+Mountd is responsible for filling three interrelated kernel caches:
+
+	- auth_unix_ip maps an incoming ip addresses to a "domain".
+	- nfsd_fh maps (domain, filehandle-fragment) pairs to paths.
+	- nfsd_export maps (domain, path) pairs to export options.
+
+Note that each export is assocated with a "client" string--the part
+before the parentheses in an /etc/export line--which may be a domain
+name, a netgroup, etc.
+
+The "domain" string in the above three caches may be either:
+
+	- in the !use_ipaddr case, a comma-separated list of client
+	  strings.
+	- in the use_ipaddr case, an ip address.
+
+In the former case, mountd does the hard work of matching an ip address
+to the clients when doing the auth_unix_ip mapping.  In the latter case,
+it delays that until the nfsd_fh or nfsd_export upcall.
+
+We're currently depending on being able to flush the kernel caches
+completely when switching between the use_ipaddr and !use_ipaddr cases.
+However, the kernel's cache-flushing doesn't really provide reliable
+guarantees on return; it's still possible we could see nfsd_fh or
+nfsd_export upcalls with the old domain-type after flushing.
+
+So, instead, make the two domain types self-describing by prepending a
+"$" in the use_ipaddr case.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/nfs4_fs.h   |    1 +
- fs/nfs/nfs4state.c |   26 +++++++++++++++++++++-----
- 2 files changed, 22 insertions(+), 5 deletions(-)
+ utils/mountd/auth.c   |   14 +++++++++++---
+ utils/mountd/cache.c  |    8 +++++---
+ utils/mountd/mountd.h |    5 +++++
+ 3 files changed, 21 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index ad90bc7..9feff0f 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -24,6 +24,7 @@ enum nfs4_client_state {
- 	NFS4CLNT_RECALL_SLOT,
- 	NFS4CLNT_LEASE_CONFIRM,
- 	NFS4CLNT_SERVER_SCOPE_MISMATCH,
-+	NFS4CLNT_BIND_CONN_TO_SESSION,
- };
- 
- enum nfs4_session_state {
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 7f0fcfc..40558ca 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1639,13 +1639,20 @@ static void nfs41_handle_recallable_state_revoked(struct nfs_client *clp)
- 	nfs_expire_all_delegations(clp);
+diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
+index 1ed9a4b..15da54c 100644
+--- a/utils/mountd/auth.c
++++ b/utils/mountd/auth.c
+@@ -112,15 +112,23 @@ auth_reload()
+ 	return counter;
  }
  
--static void nfs41_handle_cb_path_down(struct nfs_client *clp)
-+static void nfs41_handle_backchannel_fault(struct nfs_client *clp)
- {
- 	nfs_expire_all_delegations(clp);
- 	if (test_and_set_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state) == 0)
- 		nfs4_schedule_state_manager(clp);
- }
- 
-+static void nfs41_handle_cb_path_down(struct nfs_client *clp)
++static char *get_client_ipaddr_name(const struct sockaddr *caller)
 +{
-+	if (test_and_set_bit(NFS4CLNT_BIND_CONN_TO_SESSION,
-+		&clp->cl_state) == 0)
-+		nfs4_schedule_state_manager(clp);
++	char buf[INET6_ADDRSTRLEN + 1];
++
++	buf[0] = '$';
++	host_ntop(caller, buf + 1, sizeof(buf) - 1);
++	return strdup(buf);
 +}
 +
- void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags)
+ static char *
+ get_client_hostname(const struct sockaddr *caller, struct addrinfo *ai,
+ 		enum auth_error *error)
  {
- 	if (!flags)
-@@ -1659,9 +1666,10 @@ void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags)
- 		nfs41_handle_state_revoked(clp);
- 	if (flags & SEQ4_STATUS_RECALLABLE_STATE_REVOKED)
- 		nfs41_handle_recallable_state_revoked(clp);
--	if (flags & (SEQ4_STATUS_CB_PATH_DOWN |
--			    SEQ4_STATUS_BACKCHANNEL_FAULT |
--			    SEQ4_STATUS_CB_PATH_DOWN_SESSION))
-+	if (flags & SEQ4_STATUS_BACKCHANNEL_FAULT)
-+		nfs41_handle_backchannel_fault(clp);
-+	else if (flags & (SEQ4_STATUS_CB_PATH_DOWN |
-+				SEQ4_STATUS_CB_PATH_DOWN_SESSION))
- 		nfs41_handle_cb_path_down(clp);
- }
+-	char buf[INET6_ADDRSTRLEN];
+ 	char *n;
  
-@@ -1721,7 +1729,6 @@ static int nfs4_recall_slot(struct nfs_client *clp)
- 	nfs4_end_drain_session(clp);
- 	return 0;
- }
--
- #else /* CONFIG_NFS_V4_1 */
- static int nfs4_reset_session(struct nfs_client *clp) { return 0; }
- static int nfs4_end_drain_session(struct nfs_client *clp) { return 0; }
-@@ -1803,6 +1810,15 @@ static void nfs4_state_manager(struct nfs_client *clp)
- 				goto out_error;
- 		}
+ 	if (use_ipaddr)
+-		return strdup(host_ntop(caller, buf, sizeof(buf)));
++		return get_client_ipaddr_name(caller);
+ 	n = client_compose(ai);
+ 	*error = unknown_host;
+ 	if (!n)
+@@ -143,7 +151,7 @@ bool namelist_client_matches(nfs_export *exp, char *dom)
  
-+		/* Send BIND_CONN_TO_SESSION */
-+		if (clp->cl_mvops->minor_version == 1 &&
-+		    test_and_clear_bit(NFS4CLNT_BIND_CONN_TO_SESSION,
-+				&clp->cl_state) && nfs4_has_session(clp)) {
-+			status = nfs4_proc_bind_conn_to_session(clp);
-+			if (status < 0)
-+				goto out_error;
-+		}
+ bool client_matches(nfs_export *exp, char *dom, struct addrinfo *ai)
+ {
+-	if (use_ipaddr)
++	if (is_ipaddr_client(dom))
+ 		return ipaddr_client_matches(exp, ai);
+ 	return namelist_client_matches(exp, dom);
+ }
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index 6cc58d2..1833b3a 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -551,7 +551,7 @@ static void nfsd_fh(FILE *f)
+ 
+ 	auth_reload();
+ 
+-	if (use_ipaddr) {
++	if (dom[0] == '$') {
+ 		ai = lookup_client_addr(dom);
+ 		if (!ai)
+ 			goto out;
+@@ -587,7 +587,8 @@ static void nfsd_fh(FILE *f)
+ 				next_exp = exp->m_next;
+ 			}
+ 
+-			if (!use_ipaddr && !namelist_client_matches(exp, dom))
++			if (!is_ipaddr_client(dom)
++					&& !namelist_client_matches(exp, dom))
+ 				continue;
+ 			if (exp->m_export.e_mountpoint &&
+ 			    !is_mountpoint(exp->m_export.e_mountpoint[0]?
+@@ -597,7 +598,8 @@ static void nfsd_fh(FILE *f)
+ 
+ 			if (!match_fsid(&parsed, exp, path))
+ 				continue;
+-			if (use_ipaddr && !ipaddr_client_matches(exp, ai))
++			if (is_ipaddr_client(dom)
++					&& !ipaddr_client_matches(exp, ai))
+ 				continue;
+ 			if (!found || subexport(&exp->m_export, found)) {
+ 				found = &exp->m_export;
+diff --git a/utils/mountd/mountd.h b/utils/mountd/mountd.h
+index c969a27..6d358a7 100644
+--- a/utils/mountd/mountd.h
++++ b/utils/mountd/mountd.h
+@@ -60,4 +60,9 @@ bool ipaddr_client_matches(nfs_export *exp, struct addrinfo *ai);
+ bool namelist_client_matches(nfs_export *exp, char *dom);
+ bool client_matches(nfs_export *exp, char *dom, struct addrinfo *ai);
+ 
++static inline bool is_ipaddr_client(char *dom)
++{
++	return dom[0] == '$';
++}
 +
- 		/* First recover reboot state... */
- 		if (test_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state)) {
- 			status = nfs4_do_reclaim(clp,
+ #endif /* MOUNTD_H */
 -- 
-1.7.4.4
+1.7.7.6
 
