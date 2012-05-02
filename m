@@ -1,147 +1,163 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41639 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:45506 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752432Ab2EYOFC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 May 2012 10:05:02 -0400
-Date: Fri, 25 May 2012 10:05:01 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Simo Sorce <simo@redhat.com>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 4/4] SUNRPC: Use gssproxy upcall for nfsd's RPCGSS
- authentication.
-Message-ID: <20120525140501.GB28842@fieldses.org>
-References: <1337087550-9821-1-git-send-email-simo@redhat.com>
- <1337087550-9821-5-git-send-email-simo@redhat.com>
- <20120522224818.GA6435@fieldses.org>
- <1337833911.16840.223.camel@willson.li.ssimo.org>
- <20120524110844.GB19875@fieldses.org>
- <1337865566.16840.234.camel@willson.li.ssimo.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1337865566.16840.234.camel@willson.li.ssimo.org>
+	id S1753466Ab2EBV4U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 May 2012 17:56:20 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
+        NeilBrown <neilb@suse.de>, "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 4/5] mountd: prepend '$' to make use_ipaddr clients self-describing
+Date: Wed,  2 May 2012 17:56:14 -0400
+Message-Id: <1335995775-12009-5-git-send-email-bfields@redhat.com>
+In-Reply-To: <1335995775-12009-1-git-send-email-bfields@redhat.com>
+References: <1335995775-12009-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 24, 2012 at 09:19:26AM -0400, Simo Sorce wrote:
-> On Thu, 2012-05-24 at 07:08 -0400, J. Bruce Fields wrote:
-> > On Thu, May 24, 2012 at 12:31:51AM -0400, Simo Sorce wrote:
-> > > On Tue, 2012-05-22 at 18:48 -0400, J. Bruce Fields wrote:
-> > > > On Tue, May 15, 2012 at 09:12:30AM -0400, Simo Sorce wrote:
-> > > 
-> > > > > +static inline int
-> > > > > +gss_read_proxy_verf(struct svc_rqst *rqstp,
-> > > > > +		    struct rpc_gss_wire_cred *gc, __be32 *authp,
-> > > > > +		    struct xdr_netobj *in_handle,
-> > > > > +		    struct gssp_in_token *in_token)
-> > > > > +{
-> > > [..]
-> > > > > +	/* FIXME: change argv to point to the end of in_token ? */
-> > > > 
-> > > > There's nothing left to read, so it looks like there's no problem here;
-> > > > drop the comment?
-> > > 
-> > > Dropping, was a reminder while I was working and it is not necessary
-> > > anymore indeed.
-> > >   
-> > > > > +static int gss_proxy_save_rsc(struct cache_detail *cd,
-> > > > > +				struct gssp_upcall_data *ud,
-> > > > > +				struct xdr_netobj *handle)
-> > > > > +{
-> > > > > +	struct rsc rsci, *rscp = NULL;
-> > > > > +	static atomic64_t ctxhctr;
-> > > > > +	long long ctxh;
-> > > > > +	struct gss_api_mech *gm = NULL;
-> > > > > +	time_t expiry;
-> > > > > +	char *c;
-> > > > > +	int status = -EINVAL;
-> > > > > +
-> > > > > +	memset(&rsci, 0, sizeof(rsci));
-> > > > > +	/* context handle */
-> > > > > +	status = -ENOMEM;
-> > > > > +	/* the handle needs to be just a unique id,
-> > > > > +	 * use a static counter */
-> > > > > +	ctxh = atomic64_inc_return(&ctxhctr);
-> > > > > +	handle->data = kmemdup(&ctxh, sizeof(ctxh), GFP_KERNEL);
-> > > > 
-> > > > Looks like you use this only to dup again immediately below in
-> > > > dup_to_netobj, so you should just be able to make that:
-> > > 
-> > > No this is duplicated on handle->data, where handle is a pointer passed
-> > > to us by the caller.
-> > 
-> > Obviously I can't read.
-> > 
-> > > 
-> > > It is later passed to gss_write_init_verf() and finally freed when
-> > > svcauth_gss_proxy_init exits, so no leak.
-> > > 
-> > > > 	handle->data = &ctxh;
-> > > > 
-> > > > That's simpler and looks like it avoids a leak on exit.
-> > > > 
-> > > > > +	if (handle->data == NULL)
-> > > > > +		goto out;
-> > > > > +	handle->len = sizeof(ctxh);
-> > > > > +	if (dup_to_netobj(&rsci.handle, handle->data, handle->len))
-> > 
-> > But why do we need two copies of the thing?
-> 
-> Yeah no great reason to, seemed the most expedient way at the time I
-> modified the function to get a unique handle, given the existing
-> prototype I had.
-> 
-> > Would it be simpler to pass the new rsc back to the caller?
-> 
-> I guess we could do that, I didn't because I am not sure if there is any
-> chance the rsc cache can be removed by another thread while we hold a
-> pointer to this data.
-> In the gss_write_init_verf() funciotn we use that handle to find again
-> the same rsc cache we just created, but I can't change that as it is the
-> same code used in the legacy upcall which needs to search it in there.
-> So the current approach seemed the least invasive and simpler.
-> 
-> However what I can do, perhaps is to pass in a static netobj allocated
-> on the callers stack, so we do not need the kmalloc, after all it is a
-> very small buffer so it wouldn't cause issues to put it on the stack,
-> what do you think ?
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Whatever results in the easier-to-understand code at the end.
+Mountd is responsible for filling three interrelated kernel caches:
 
-> > > > > +		goto out;
-> > > > > +
-> > > > > +	rscp = rsc_lookup(cd, &rsci);
-> > > > > +	if (!rscp)
-> > > > > +		goto out;
-> > > > > +
-> > > > > +	/* creds */
-> > > > > +	if (!ud->creds) {
-> > > > > +		dprintk("RPC:       No creds found, marking Negative!\n");
-> > > > > +		set_bit(CACHE_NEGATIVE, &rsci.h.flags);
-> > > > 
-> > > > When does this happen, out of curiosity?
-> > > 
-> > > Actually it shouldn't happen, but I maintained the same code structure
-> > > that was previously in place.
-> > > I think that with the latest changes now I always return (uid = -1, gid
-> > > = -1, no additional groups if a mapping can't be found).
-> > > However on the off chance that user space does not return a credential
-> > > struct we catch it here.
-> > 
-> > So the result will be to return success to the client on the
-> > init_sec_context call but then to fail their future attempts to use that
-> > handle?
-> 
-> > If so, seems like it would be better to return an error and not bother
-> > adding a negative entry to the cache.
-> 
-> Well if we do not add the negative cache we end up looping to user space
-> each time the client attempts to call in. If the result was just a fluke
-> in user space, then it will not be a problem, but if user space is
-> somehow misbehaving I would rather have the kernel 'blacklist' this
-> client for a while, no ?
+	- auth_unix_ip maps an incoming ip addresses to a "domain".
+	- nfsd_fh maps (domain, filehandle-fragment) pairs to paths.
+	- nfsd_export maps (domain, path) pairs to export options.
 
-Since this would be a bug in our code (kernel or userspace), let's do
-whatever makes it most obvious it's a bug.  At a minimum, a /* userspace
-is buggy */ comment there.
+Note that each export is assocated with a "client" string--the part
+before the parentheses in an /etc/export line--which may be a domain
+name, a netgroup, etc.
 
---b.
+The "domain" string in the above three caches may be either:
+
+	- in the !use_ipaddr case, a comma-separated list of client
+	  strings.
+	- in the use_ipaddr case, an ip address.
+
+In the former case, mountd does the hard work of matching an ip address
+to the clients when doing the auth_unix_ip mapping.  In the latter case,
+it delays that until the nfsd_fh or nfsd_export upcall.
+
+We're currently depending on being able to flush the kernel caches
+completely when switching between the use_ipaddr and !use_ipaddr cases.
+However, the kernel's cache-flushing doesn't really provide reliable
+guarantees on return; it's still possible we could see nfsd_fh or
+nfsd_export upcalls with the old domain-type after flushing.
+
+So, instead, make the two domain types self-describing by prepending a
+"$" in the use_ipaddr case.
+
+Reviewed-by: NeilBrown <neilb@suse.de>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ utils/mountd/auth.c   |   14 +++++++++++---
+ utils/mountd/cache.c  |   12 ++++++++----
+ utils/mountd/mountd.h |    5 +++++
+ 3 files changed, 24 insertions(+), 7 deletions(-)
+
+diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
+index 1ed9a4b..15da54c 100644
+--- a/utils/mountd/auth.c
++++ b/utils/mountd/auth.c
+@@ -112,15 +112,23 @@ auth_reload()
+ 	return counter;
+ }
+ 
++static char *get_client_ipaddr_name(const struct sockaddr *caller)
++{
++	char buf[INET6_ADDRSTRLEN + 1];
++
++	buf[0] = '$';
++	host_ntop(caller, buf + 1, sizeof(buf) - 1);
++	return strdup(buf);
++}
++
+ static char *
+ get_client_hostname(const struct sockaddr *caller, struct addrinfo *ai,
+ 		enum auth_error *error)
+ {
+-	char buf[INET6_ADDRSTRLEN];
+ 	char *n;
+ 
+ 	if (use_ipaddr)
+-		return strdup(host_ntop(caller, buf, sizeof(buf)));
++		return get_client_ipaddr_name(caller);
+ 	n = client_compose(ai);
+ 	*error = unknown_host;
+ 	if (!n)
+@@ -143,7 +151,7 @@ bool namelist_client_matches(nfs_export *exp, char *dom)
+ 
+ bool client_matches(nfs_export *exp, char *dom, struct addrinfo *ai)
+ {
+-	if (use_ipaddr)
++	if (is_ipaddr_client(dom))
+ 		return ipaddr_client_matches(exp, ai);
+ 	return namelist_client_matches(exp, dom);
+ }
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index 6e01b2f..6710eca 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -500,6 +500,8 @@ struct addrinfo *lookup_client_addr(char *dom)
+ 	struct addrinfo *ret;
+ 	struct addrinfo *tmp;
+ 
++	dom++; /* skip initial "$" */
++
+ 	tmp = host_pton(dom);
+ 	if (tmp == NULL)
+ 		return NULL;
+@@ -551,7 +553,7 @@ static void nfsd_fh(FILE *f)
+ 
+ 	auth_reload();
+ 
+-	if (use_ipaddr) {
++	if (is_ipaddr_client(dom)) {
+ 		ai = lookup_client_addr(dom);
+ 		if (!ai)
+ 			goto out;
+@@ -587,7 +589,8 @@ static void nfsd_fh(FILE *f)
+ 				next_exp = exp->m_next;
+ 			}
+ 
+-			if (!use_ipaddr && !namelist_client_matches(exp, dom))
++			if (!is_ipaddr_client(dom)
++					&& !namelist_client_matches(exp, dom))
+ 				continue;
+ 			if (exp->m_export.e_mountpoint &&
+ 			    !is_mountpoint(exp->m_export.e_mountpoint[0]?
+@@ -597,7 +600,8 @@ static void nfsd_fh(FILE *f)
+ 
+ 			if (!match_fsid(&parsed, exp, path))
+ 				continue;
+-			if (use_ipaddr && !ipaddr_client_matches(exp, ai))
++			if (is_ipaddr_client(dom)
++					&& !ipaddr_client_matches(exp, ai))
+ 				continue;
+ 			if (!found || subexport(&exp->m_export, found)) {
+ 				found = &exp->m_export;
+@@ -1058,7 +1062,7 @@ static void nfsd_export(FILE *f)
+ 
+ 	auth_reload();
+ 
+-	if (use_ipaddr) {
++	if (is_ipaddr_client(dom)) {
+ 		ai = lookup_client_addr(dom);
+ 		if (!ai)
+ 			goto out;
+diff --git a/utils/mountd/mountd.h b/utils/mountd/mountd.h
+index c969a27..6d358a7 100644
+--- a/utils/mountd/mountd.h
++++ b/utils/mountd/mountd.h
+@@ -60,4 +60,9 @@ bool ipaddr_client_matches(nfs_export *exp, struct addrinfo *ai);
+ bool namelist_client_matches(nfs_export *exp, char *dom);
+ bool client_matches(nfs_export *exp, char *dom, struct addrinfo *ai);
+ 
++static inline bool is_ipaddr_client(char *dom)
++{
++	return dom[0] == '$';
++}
++
+ #endif /* MOUNTD_H */
+-- 
+1.7.7.6
+
