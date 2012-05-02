@@ -1,48 +1,154 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:37973 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:34348 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754386Ab2E2TQd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 May 2012 15:16:33 -0400
-Message-ID: <4FC52067.5040101@RedHat.com>
-Date: Tue, 29 May 2012 15:15:51 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: linux-nfs@vger.kernel.org, chuck.lever@oracle.com
-Subject: Re: [PATCH] autoconf: make the test for prctl have an effect
-References: <1337267688-3957-1-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1337267688-3957-1-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1753546Ab2EBVh7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 May 2012 17:37:59 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
+        NeilBrown <neilb@suse.de>, "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 4/5] mountd: prepend '$' to make use_ipaddr clients self-describing
+Date: Wed,  2 May 2012 17:37:54 -0400
+Message-Id: <1335994675-11751-5-git-send-email-bfields@redhat.com>
+In-Reply-To: <1335994675-11751-1-git-send-email-bfields@redhat.com>
+References: <1335994675-11751-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
+Mountd is responsible for filling three interrelated kernel caches:
 
-On 05/17/2012 11:14 AM, Jeff Layton wrote:
-> We currently test to ensure that prctl() is available, but the results
-> of that test are a no-op either way. statd calls prctl()
-> unconditionally, so make configure bail out if prctl() isn't available
-> since the build will fail in that event anyway.
-> 
-> Cc: Chuck Lever <chuck.lever@oracle.com>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Committed....
+	- auth_unix_ip maps an incoming ip addresses to a "domain".
+	- nfsd_fh maps (domain, filehandle-fragment) pairs to paths.
+	- nfsd_export maps (domain, path) pairs to export options.
 
-steved.
-> ---
->  aclocal/libcap.m4 |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/aclocal/libcap.m4 b/aclocal/libcap.m4
-> index 68a624c..f8a0ed1 100644
-> --- a/aclocal/libcap.m4
-> +++ b/aclocal/libcap.m4
-> @@ -3,7 +3,7 @@ dnl
->  AC_DEFUN([AC_LIBCAP], [
->  
->    dnl look for prctl
-> -  AC_CHECK_FUNC([prctl], , )
-> +  AC_CHECK_FUNC([prctl], , AC_MSG_ERROR([prctl syscall is not available]))
->  
->    AC_ARG_ENABLE([caps],
->      [AS_HELP_STRING([--disable-caps], [Disable capabilities support])])
+Note that each export is assocated with a "client" string--the part
+before the parentheses in an /etc/export line--which may be a domain
+name, a netgroup, etc.
+
+The "domain" string in the above three caches may be either:
+
+	- in the !use_ipaddr case, a comma-separated list of client
+	  strings.
+	- in the use_ipaddr case, an ip address.
+
+In the former case, mountd does the hard work of matching an ip address
+to the clients when doing the auth_unix_ip mapping.  In the latter case,
+it delays that until the nfsd_fh or nfsd_export upcall.
+
+We're currently depending on being able to flush the kernel caches
+completely when switching between the use_ipaddr and !use_ipaddr cases.
+However, the kernel's cache-flushing doesn't really provide reliable
+guarantees on return; it's still possible we could see nfsd_fh or
+nfsd_export upcalls with the old domain-type after flushing.
+
+So, instead, make the two domain types self-describing by prepending a
+"$" in the use_ipaddr case.
+
+Reviewed-by: NeilBrown <neilb@suse.de>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ utils/mountd/auth.c   |   14 +++++++++++---
+ utils/mountd/cache.c  |   10 +++++++---
+ utils/mountd/mountd.h |    5 +++++
+ 3 files changed, 23 insertions(+), 6 deletions(-)
+
+diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
+index 1ed9a4b..15da54c 100644
+--- a/utils/mountd/auth.c
++++ b/utils/mountd/auth.c
+@@ -112,15 +112,23 @@ auth_reload()
+ 	return counter;
+ }
+ 
++static char *get_client_ipaddr_name(const struct sockaddr *caller)
++{
++	char buf[INET6_ADDRSTRLEN + 1];
++
++	buf[0] = '$';
++	host_ntop(caller, buf + 1, sizeof(buf) - 1);
++	return strdup(buf);
++}
++
+ static char *
+ get_client_hostname(const struct sockaddr *caller, struct addrinfo *ai,
+ 		enum auth_error *error)
+ {
+-	char buf[INET6_ADDRSTRLEN];
+ 	char *n;
+ 
+ 	if (use_ipaddr)
+-		return strdup(host_ntop(caller, buf, sizeof(buf)));
++		return get_client_ipaddr_name(caller);
+ 	n = client_compose(ai);
+ 	*error = unknown_host;
+ 	if (!n)
+@@ -143,7 +151,7 @@ bool namelist_client_matches(nfs_export *exp, char *dom)
+ 
+ bool client_matches(nfs_export *exp, char *dom, struct addrinfo *ai)
+ {
+-	if (use_ipaddr)
++	if (is_ipaddr_client(dom))
+ 		return ipaddr_client_matches(exp, ai);
+ 	return namelist_client_matches(exp, dom);
+ }
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index a62ac52..6710eca 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -500,6 +500,8 @@ struct addrinfo *lookup_client_addr(char *dom)
+ 	struct addrinfo *ret;
+ 	struct addrinfo *tmp;
+ 
++	dom++; /* skip initial "$" */
++
+ 	tmp = host_pton(dom);
+ 	if (tmp == NULL)
+ 		return NULL;
+@@ -551,7 +553,7 @@ static void nfsd_fh(FILE *f)
+ 
+ 	auth_reload();
+ 
+-	if (use_ipaddr) {
++	if (is_ipaddr_client(dom)) {
+ 		ai = lookup_client_addr(dom);
+ 		if (!ai)
+ 			goto out;
+@@ -587,7 +589,8 @@ static void nfsd_fh(FILE *f)
+ 				next_exp = exp->m_next;
+ 			}
+ 
+-			if (!use_ipaddr && !namelist_client_matches(exp, dom))
++			if (!is_ipaddr_client(dom)
++					&& !namelist_client_matches(exp, dom))
+ 				continue;
+ 			if (exp->m_export.e_mountpoint &&
+ 			    !is_mountpoint(exp->m_export.e_mountpoint[0]?
+@@ -597,7 +600,8 @@ static void nfsd_fh(FILE *f)
+ 
+ 			if (!match_fsid(&parsed, exp, path))
+ 				continue;
+-			if (use_ipaddr && !ipaddr_client_matches(exp, ai))
++			if (is_ipaddr_client(dom)
++					&& !ipaddr_client_matches(exp, ai))
+ 				continue;
+ 			if (!found || subexport(&exp->m_export, found)) {
+ 				found = &exp->m_export;
+diff --git a/utils/mountd/mountd.h b/utils/mountd/mountd.h
+index c969a27..6d358a7 100644
+--- a/utils/mountd/mountd.h
++++ b/utils/mountd/mountd.h
+@@ -60,4 +60,9 @@ bool ipaddr_client_matches(nfs_export *exp, struct addrinfo *ai);
+ bool namelist_client_matches(nfs_export *exp, char *dom);
+ bool client_matches(nfs_export *exp, char *dom, struct addrinfo *ai);
+ 
++static inline bool is_ipaddr_client(char *dom)
++{
++	return dom[0] == '$';
++}
++
+ #endif /* MOUNTD_H */
+-- 
+1.7.7.6
+
