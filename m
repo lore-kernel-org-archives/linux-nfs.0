@@ -1,34 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:53184 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751647Ab2EKNuy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 May 2012 09:50:54 -0400
-Message-ID: <4FAD1934.8070908@parallels.com>
-Date: Fri, 11 May 2012 17:50:44 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Jeff Layton <jlayton@redhat.com>
-Subject: [RFC] NFSd laundromat containerization
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Received: from fieldses.org ([174.143.236.118]:45500 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754139Ab2EBV4T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 May 2012 17:56:19 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
+        NeilBrown <neilb@suse.de>, "J. Bruce Fields" <bfields@redhat.com>,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/5] mountd: fix export upcall failure in use_ipaddr case.
+Date: Wed,  2 May 2012 17:56:11 -0400
+Message-Id: <1335995775-12009-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1335995775-12009-1-git-send-email-bfields@redhat.com>
+References: <1335995775-12009-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello.
-I'm currently looking on NFSd laundromat work, and it looks like have to be 
-performed per networks namespace context.
-It's easy to make corresponding delayed work per network namespace and thus gain 
-per-net data pointer in laundromat function.
-But here a problem appears: network namespace is required to skip clients from 
-other network namespaces while iterating over global lists (client_lru and friends).
-I see two possible solutions:
-1) Make these list per network namespace context. In this case network namespace 
-will not be required - per-net data will be enough.
-2) Put network namespace link on per-net data (this one is easier, but uglier).
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Would be appreciated for any comments.
+After 0509d3428f523 "mountd: Replace "struct hostent" with "struct
+addinfo"", the export upcall fails in the use_ipaddr case.
 
+I think we never noticed because a) the use_ipaddr case is rarer than
+the !use_ipaddr case, and b) the nfsd_fh upcall does a preemptive export
+downcall that renders the nfsd export call unnecessary in some cases.
+
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ utils/mountd/cache.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index ac9cdbd..cf07b56 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -1064,6 +1064,7 @@ static void nfsd_export(FILE *f)
+ 			goto out;
+ 		ai = client_resolve(tmp->ai_addr);
+ 		freeaddrinfo(tmp);
++		if (!ai)
+ 			goto out;
+ 	}
+ 
 -- 
-Best regards,
-Stanislav Kinsbursky
+1.7.7.6
+
