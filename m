@@ -1,47 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:6793 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:34341 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756794Ab2ECPrn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 May 2012 11:47:43 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/1] auth_gss: the list of pseudoflavors not being parsed correctly
-Date: Thu,  3 May 2012 11:47:08 -0400
-Message-Id: <1336060028-555-1-git-send-email-steved@redhat.com>
+	id S1752999Ab2EBVh7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 May 2012 17:37:59 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
+        NeilBrown <neilb@suse.de>, "J. Bruce Fields" <bfields@redhat.com>,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/5] mountd: fix export upcall failure in use_ipaddr case.
+Date: Wed,  2 May 2012 17:37:51 -0400
+Message-Id: <1335994675-11751-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1335994675-11751-1-git-send-email-bfields@redhat.com>
+References: <1335994675-11751-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-gss_mech_list_pseudoflavors() parses a list of registered mechanisms.
-On that list contains a list of pseudo flavors which was not being
-parsed correctly, causing only the first pseudo flavor to be found.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
+After 0509d3428f523 "mountd: Replace "struct hostent" with "struct
+addinfo"", the export upcall fails in the use_ipaddr case.
+
+I think we never noticed because a) the use_ipaddr case is rarer than
+the !use_ipaddr case, and b) the nfsd_fh upcall does a preemptive export
+downcall that renders the nfsd export call unnecessary in some cases.
+
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- net/sunrpc/auth_gss/gss_mech_switch.c |    7 ++++---
- 1 files changed, 4 insertions(+), 3 deletions(-)
+ utils/mountd/cache.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-index ca8cad8..782bfe1 100644
---- a/net/sunrpc/auth_gss/gss_mech_switch.c
-+++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-@@ -242,12 +242,13 @@ EXPORT_SYMBOL_GPL(gss_mech_get_by_pseudoflavor);
- int gss_mech_list_pseudoflavors(rpc_authflavor_t *array_ptr)
- {
- 	struct gss_api_mech *pos = NULL;
--	int i = 0;
-+	int j, i = 0;
- 
- 	spin_lock(&registered_mechs_lock);
- 	list_for_each_entry(pos, &registered_mechs, gm_list) {
--		array_ptr[i] = pos->gm_pfs->pseudoflavor;
--		i++;
-+		for (j=0; j < pos->gm_pf_num; j++) {
-+			array_ptr[i++] = pos->gm_pfs[j].pseudoflavor;
-+		}
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index ac9cdbd..cf07b56 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -1064,6 +1064,7 @@ static void nfsd_export(FILE *f)
+ 			goto out;
+ 		ai = client_resolve(tmp->ai_addr);
+ 		freeaddrinfo(tmp);
++		if (!ai)
+ 			goto out;
  	}
- 	spin_unlock(&registered_mechs_lock);
- 	return i;
+ 
 -- 
 1.7.7.6
 
