@@ -1,79 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:11669 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:36098 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752957Ab2ERPDw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 May 2012 11:03:52 -0400
-Date: Fri, 18 May 2012 11:05:07 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Diego Elio =?UTF-8?B?UGV0dGVuw7I=?= <flameeyes@flameeyes.eu>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [nfs-utils PATCH] build: avoid AM_CONDITIONAL in conditional
- execution.
-Message-ID: <20120518110507.75bbc20e@corrin.poochiereds.net>
-In-Reply-To: <1337297671-9614-1-git-send-email-flameeyes@flameeyes.eu>
-References: <1337297671-9614-1-git-send-email-flameeyes@flameeyes.eu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+	id S1752070Ab2EBKce (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 May 2012 06:32:34 -0400
+Message-ID: <4FA10D34.7090508@RedHat.com>
+Date: Wed, 02 May 2012 06:32:20 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: NeilBrown <neilb@suse.de>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/6] fix some problems with v4root handling in mountd
+References: <20120424054003.20130.16209.stgit@notabene.brown> <4FA03A77.8070404@RedHat.com> <20120502112326.6f00cc6a@notabene.brown>
+In-Reply-To: <20120502112326.6f00cc6a@notabene.brown>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 17 May 2012 16:34:31 -0700
-Diego Elio Pettenò <flameeyes@flameeyes.eu> wrote:
 
-> Automake does not support conditional AM_CONDITIONAL calls; what that
-> means is that you always have to execute AM_CONDITIONAL one way or the
-> other. Both the libsqlite3.m4 file and the nfsdcld conditionals are
-> executed only when NFSv4 is enabled, which breaks building with
-> --disable-nfsv4.
+
+On 05/01/2012 09:23 PM, NeilBrown wrote:
+> On Tue, 01 May 2012 15:33:11 -0400 Steve Dickson <SteveD@redhat.com> wrote:
 > 
-> Remove the SQLite3 conditional altogether as it's never used, and move
-> the nfsdcld conditional outside of the conditional code.
+>> Committed all 6... thanks!
+>>
+>> steved.
+>>
 > 
-> Signed-off-by: Diego Elio Pettenò <flameeyes@flameeyes.eu>
-> ---
->  aclocal/libsqlite3.m4 |    1 -
->  configure.ac          |    3 +--
->  2 files changed, 1 insertions(+), 3 deletions(-)
-> 
-> diff --git a/aclocal/libsqlite3.m4 b/aclocal/libsqlite3.m4
-> index 73d1e46..8c38993 100644
-> --- a/aclocal/libsqlite3.m4
-> +++ b/aclocal/libsqlite3.m4
-> @@ -29,5 +29,4 @@ AC_DEFUN([AC_SQLITE3_VERS], [
->      LIBS="$saved_LIBS"])
->  
->    AC_MSG_RESULT($libsqlite3_cv_is_recent)
-> -  AM_CONDITIONAL(CONFIG_SQLITE3, [test "$libsqlite3_cv_is_recent" = "yes"])
->  ])dnl
-> diff --git a/configure.ac b/configure.ac
-> index 9ba53e2..b408f1b 100644
-> --- a/configure.ac
-> +++ b/configure.ac
-> @@ -278,8 +278,6 @@ if test "$enable_nfsv4" = yes; then
->  	fi
->    fi
->  
-> -  AM_CONDITIONAL(CONFIG_NFSDCLD, [test "$enable_nfsdcld" = "yes" ])
-> -
->    dnl librpcsecgss already has a dependency on libgssapi,
->    dnl but we need to make sure we get the right version
->    if test "$enable_gss" = yes; then
-> @@ -293,6 +291,7 @@ if test "$enable_nfsv41" = yes; then
->  fi
->  
->  dnl enable nfsidmap when its support by libnfsidmap
-> +AM_CONDITIONAL(CONFIG_NFSDCLD, [test "$enable_nfsdcld" = "yes" ])
->  AM_CONDITIONAL(CONFIG_NFSIDMAP, [test "$ac_cv_header_keyutils_h$ac_cv_lib_nfsidmap_nfs4_owner_to_uid" = "yesyes"])
->  
->  
+> Thanks.
+> Any idea when 1.2.6-final might be expected?
+I'm was waiting on Bruce's use_ipaddr race patches to pull
+the trigger but I see they were posted last night... 
 
-Seems to do the right thing. Thanks for fixing this up.
+Depending on how the testing goes I'll hopeful to have the
+1.2.6 release out sometime next week... 
 
-I'll note too that on my machine the build also fails if you
---disable-nfsv4 and --disable-nfsv41, but do not --disable-gss. That's
-an entirely separate bug however and has probably been there a long
-time.
+steved.
 
-In any case..
-
-Acked-by: Jeff Layton <jlayton@redhat.com>
