@@ -1,126 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:30151 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:55010 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756932Ab2EITSv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 May 2012 15:18:51 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 3/5] NFS: Clean up - simplify nfs_lock_request()
-Date: Wed,  9 May 2012 15:18:41 -0400
-Message-Id: <1336591123-23400-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1336591123-23400-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1336591123-23400-1-git-send-email-Trond.Myklebust@netapp.com>
- <1336591123-23400-2-git-send-email-Trond.Myklebust@netapp.com>
+	id S1753394Ab2EBXIz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 May 2012 19:08:55 -0400
+Date: Thu, 3 May 2012 09:08:53 +1000
+From: NeilBrown <neilb@suse.de>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/6] fix some problems with v4root handling in mountd
+Message-ID: <20120503090853.7bedbf66@notabene.brown>
+In-Reply-To: <4FA10D34.7090508@RedHat.com>
+References: <20120424054003.20130.16209.stgit@notabene.brown>
+	<4FA03A77.8070404@RedHat.com>
+	<20120502112326.6f00cc6a@notabene.brown>
+	<4FA10D34.7090508@RedHat.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/SV5H9SjCT5ICgZxsYRuSSqr"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We only have two places where we need to grab a reference when trying
-to lock the nfs_page. We're better off making that explicit.
+--Sig_/SV5H9SjCT5ICgZxsYRuSSqr
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/direct.c          |    1 +
- fs/nfs/write.c           |   11 ++++++-----
- include/linux/nfs_page.h |   14 ++------------
- 3 files changed, 9 insertions(+), 17 deletions(-)
+On Wed, 02 May 2012 06:32:20 -0400 Steve Dickson <SteveD@redhat.com> wrote:
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 257d009..465ea84 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -657,6 +657,7 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *d
- 				break;
- 			}
- 			nfs_lock_request(req);
-+			kref_get(&req->wb_kref);
- 			req->wb_index = pos >> PAGE_SHIFT;
- 			req->wb_offset = pos & ~PAGE_MASK;
- 			if (!nfs_pageio_add_request(desc, req)) {
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 8382329..553f7ef 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -260,10 +260,10 @@ static struct nfs_page *nfs_find_and_lock_request(struct page *page, bool nonblo
- 		req = nfs_page_find_request_locked(page);
- 		if (req == NULL)
- 			break;
--		if (nfs_lock_request_dontget(req))
-+		if (nfs_lock_request(req))
- 			break;
- 		/* Note: If we hold the page lock, as is the case in nfs_writepage,
--		 *	 then the call to nfs_lock_request_dontget() will always
-+		 *	 then the call to nfs_lock_request() will always
- 		 *	 succeed provided that someone hasn't already marked the
- 		 *	 request as dirty (in which case we don't care).
- 		 */
-@@ -406,7 +406,7 @@ static void nfs_inode_add_request(struct inode *inode, struct nfs_page *req)
- 	struct nfs_inode *nfsi = NFS_I(inode);
- 
- 	/* Lock the request! */
--	nfs_lock_request_dontget(req);
-+	nfs_lock_request(req);
- 
- 	spin_lock(&inode->i_lock);
- 	if (!nfsi->npages && nfs_have_delegation(inode, FMODE_WRITE))
-@@ -651,6 +651,7 @@ nfs_scan_commit_list(struct list_head *src, struct list_head *dst,
- 	list_for_each_entry_safe(req, tmp, src, wb_list) {
- 		if (!nfs_lock_request(req))
- 			continue;
-+		kref_get(&req->wb_kref);
- 		if (cond_resched_lock(cinfo->lock))
- 			list_safe_reset_next(req, tmp, wb_list);
- 		nfs_request_remove_commit_list(req, cinfo);
-@@ -741,7 +742,7 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
- 		    || end < req->wb_offset)
- 			goto out_flushme;
- 
--		if (nfs_lock_request_dontget(req))
-+		if (nfs_lock_request(req))
- 			break;
- 
- 		/* The request is locked, so wait and then retry */
-@@ -1717,7 +1718,7 @@ int nfs_wb_page_cancel(struct inode *inode, struct page *page)
- 		req = nfs_page_find_request(page);
- 		if (req == NULL)
- 			break;
--		if (nfs_lock_request_dontget(req)) {
-+		if (nfs_lock_request(req)) {
- 			nfs_clear_request_commit(req);
- 			nfs_inode_remove_request(req);
- 			/*
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index ef75042..263f30a 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -99,24 +99,14 @@ extern	void nfs_unlock_request(struct nfs_page *req);
- extern void nfs_unlock_request_dont_release(struct nfs_page *req);
- 
- /*
-- * Lock the page of an asynchronous request without getting a new reference
-+ * Lock the page of an asynchronous request
-  */
- static inline int
--nfs_lock_request_dontget(struct nfs_page *req)
--{
--	return !test_and_set_bit(PG_BUSY, &req->wb_flags);
--}
--
--static inline int
- nfs_lock_request(struct nfs_page *req)
- {
--	if (test_and_set_bit(PG_BUSY, &req->wb_flags))
--		return 0;
--	kref_get(&req->wb_kref);
--	return 1;
-+	return !test_and_set_bit(PG_BUSY, &req->wb_flags);
- }
- 
--
- /**
-  * nfs_list_add_request - Insert a request into a list
-  * @req: request
--- 
-1.7.7.6
+>=20
+>=20
+> On 05/01/2012 09:23 PM, NeilBrown wrote:
+> > On Tue, 01 May 2012 15:33:11 -0400 Steve Dickson <SteveD@redhat.com> wr=
+ote:
+> >=20
+> >> Committed all 6... thanks!
+> >>
+> >> steved.
+> >>
+> >=20
+> > Thanks.
+> > Any idea when 1.2.6-final might be expected?
+> I'm was waiting on Bruce's use_ipaddr race patches to pull
+> the trigger but I see they were posted last night...=20
+>=20
+> Depending on how the testing goes I'll hopeful to have the
+> 1.2.6 release out sometime next week...=20
 
+Execellent, thanks.
+
+Thanks,
+NeilBrown
+
+--Sig_/SV5H9SjCT5ICgZxsYRuSSqr
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
+
+iQIVAwUBT6G+hTnsnt1WYoG5AQL3IQ/8D6/z7CAVKCi2KglZ40OeJM+Sc+FWu5iF
+GMYXI7dapDMgo6s+022qL+Uwt37ong7h75ZXLy6N4+MFtkeke4jtbsP6MsYuZV9o
+LCZo7pV7Wunl/3O+2cFFLl6rGua8Jy/ercezgnOxIi0yI4cjB5ySwH/W99ShzvTC
+Ib9m0/bXQ0I12XSjbljBjyRiUzTtIJ82DnnS7DnxvBInfrtxfR1cjwGWv4kzVSiD
+3IGAgx7FlCJiOB08PfRU5KA+N2j9k0VehD+3oxRJBmmygmOp14b3iSG+gWhbsk+L
+DquKT2ZhgzxOyaDX4EHaLF3RPbagEOk2eyrlYoBBWCCH/ykcd/i+Xknl3avDMDOz
+Qk2N7lslMW0lWOzdbk/95cF+jEtHGT8UPl8MmSL0CSUMcMJn89NWEXlXfVhp0VH7
+zPW/FidZvKfX7NgnNadxQ7Mkf2f+2dngl90ILZiSmVZF4NWhBtU8bEig30CgvDCH
+RahUH46isqscoaeA78t35TaJrI/dTUumMsGTWK3yRIyVio+oYLDY4bqHl5NdFF0A
+Iopqyx3QmxB9+zCXIQndla/L1zBsKjqH3bpSS7tQO9hxhDETvUqmj/8J92yFs+BV
+IodaiJOPhn0S0ymCDX7EBNXU7Yf5Sl3p5qJ5pm6HiQllV/7ydIUr5dNC6BiYdNMm
+D8vgmhxAfag=
+=8Nu+
+-----END PGP SIGNATURE-----
+
+--Sig_/SV5H9SjCT5ICgZxsYRuSSqr--
