@@ -1,80 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:33722 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759807Ab2EVQWK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 12:22:10 -0400
-Received: from ucsinet21.oracle.com (ucsinet21.oracle.com [156.151.31.93])
-	by acsinet15.oracle.com (Sentrion-MTA-4.2.2/Sentrion-MTA-4.2.2) with ESMTP id q4MGM7Bt005472
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 16:22:08 GMT
-Received: from acsmt358.oracle.com (acsmt358.oracle.com [141.146.40.158])
-	by ucsinet21.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id q4MGLxJh001442
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 16:21:59 GMT
-Received: from abhmt102.oracle.com (abhmt102.oracle.com [141.146.116.54])
-	by acsmt358.oracle.com (8.12.11.20060308/8.12.11) with ESMTP id q4MGLxUo026811
-	for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 11:21:59 -0500
-Message-ID: <4FBBBD26.2090203@oracle.com>
-Date: Tue, 22 May 2012 10:21:58 -0600
-From: Jeff Wright <jeff.wright@oracle.com>
-MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-CC: Jeff Wright <jeff.wright@oracle.com>,
-        Craig Flaskerud <Craig.flaskerud@oracle.com>,
-        Donna Harland <donna.harland@oracle.com>
-Subject: Help with NFS over 10GbE performance - possible NFS client to TCP
- bottleneck
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from fieldses.org ([174.143.236.118]:45494 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753466Ab2EBV4S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 May 2012 17:56:18 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
+        NeilBrown <neilb@suse.de>, "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 3/5] mountd: add trivial helpers for client-matching
+Date: Wed,  2 May 2012 17:56:13 -0400
+Message-Id: <1335995775-12009-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1335995775-12009-1-git-send-email-bfields@redhat.com>
+References: <1335995775-12009-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Team,
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-I am working on a team implementing a configuration with an OEL kernel 
-(2.6.32-300.3.1.el6uek.x86_64) and kernel NFS accessing an NFS server 
-over 10GbE a Solaris 10.  We are trying to resolve what appears to be a 
-bottleneck between the Linux kernel NFS client and the TCP stack.  
-Specifically, the TCP send queue on the Linux client is empty (save a 
-couple of bursts) when we are running write I/O from the file system, 
-the TCP receive queue on the Solaris 10 NFS server is empty, and the RPC 
-pending request queue on the Solaris 10 NFS server is zero.   If we dial 
-the network to 1GbE we get a nice deep TCP send queue on the client, 
-which is the bottleneck I was hoping to get to with 10GbE.  At this 
-point, we am pretty sure the S10 NFS server can run to at least 1000 MBPS.
+Pull out a tiny bit of common logic from three functions.
 
-So far, we have implemented the following Linux kernel tunes:
+Possibly minor overkill, but simplifies the next patch.
 
-sunrpc.tcp_slot_table_entries = 128
-net.core.rmem_default = 4194304
-net.core.wmem_default = 4194304
-net.core.rmem_max = 4194304
-net.core.wmem_max = 4194304
-net.ipv4.tcp_rmem = 4096 1048576 4194304
-net.ipv4.tcp_wmem = 4096 1048576 4194304
-net.ipv4.tcp_timestamps = 0
-net.ipv4.tcp_syncookies = 1
-net.core.netdev_max_backlog = 300000
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ utils/mountd/auth.c   |   21 ++++++++++++++++++---
+ utils/mountd/cache.c  |   12 ++----------
+ utils/mountd/mountd.h |    4 ++++
+ 3 files changed, 24 insertions(+), 13 deletions(-)
 
-In addition, we am running jumbo frames on the 10GbE NIC and we have 
-cpuspeed and irqbalance disabled (no noticeable changes when we did 
-this).  The mount options on the client side are as follows:
+diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
+index ccc849a..1ed9a4b 100644
+--- a/utils/mountd/auth.c
++++ b/utils/mountd/auth.c
+@@ -131,6 +131,23 @@ get_client_hostname(const struct sockaddr *caller, struct addrinfo *ai,
+ 	return strdup("DEFAULT");
+ }
+ 
++bool ipaddr_client_matches(nfs_export *exp, struct addrinfo *ai)
++{
++	return client_check(exp->m_client, ai);
++}
++
++bool namelist_client_matches(nfs_export *exp, char *dom)
++{
++	return client_member(dom, exp->m_client->m_hostname);
++}
++
++bool client_matches(nfs_export *exp, char *dom, struct addrinfo *ai)
++{
++	if (use_ipaddr)
++		return ipaddr_client_matches(exp, ai);
++	return namelist_client_matches(exp, dom);
++}
++
+ /* return static nfs_export with details filled in */
+ static nfs_export *
+ auth_authenticate_newcache(const struct sockaddr *caller,
+@@ -155,9 +172,7 @@ auth_authenticate_newcache(const struct sockaddr *caller,
+ 		for (exp = exportlist[i].p_head; exp; exp = exp->m_next) {
+ 			if (strcmp(path, exp->m_export.e_path))
+ 				continue;
+-			if (!use_ipaddr && !client_member(my_client.m_hostname, exp->m_client->m_hostname))
+-				continue;
+-			if (use_ipaddr && !client_check(exp->m_client, ai))
++			if (!client_matches(exp, my_client.m_hostname, ai))
+ 				continue;
+ 			break;
+ 		}
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index d2ac258..6e01b2f 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -587,7 +587,7 @@ static void nfsd_fh(FILE *f)
+ 				next_exp = exp->m_next;
+ 			}
+ 
+-			if (!use_ipaddr && !client_member(dom, exp->m_client->m_hostname))
++			if (!use_ipaddr && !namelist_client_matches(exp, dom))
+ 				continue;
+ 			if (exp->m_export.e_mountpoint &&
+ 			    !is_mountpoint(exp->m_export.e_mountpoint[0]?
+@@ -597,7 +597,7 @@ static void nfsd_fh(FILE *f)
+ 
+ 			if (!match_fsid(&parsed, exp, path))
+ 				continue;
+-			if (use_ipaddr && !client_check(exp->m_client, ai))
++			if (use_ipaddr && !ipaddr_client_matches(exp, ai))
+ 				continue;
+ 			if (!found || subexport(&exp->m_export, found)) {
+ 				found = &exp->m_export;
+@@ -751,14 +751,6 @@ static int path_matches(nfs_export *exp, char *path)
+ }
+ 
+ static int
+-client_matches(nfs_export *exp, char *dom, struct addrinfo *ai)
+-{
+-	if (use_ipaddr)
+-		return client_check(exp->m_client, ai);
+-	return client_member(dom, exp->m_client->m_hostname);
+-}
+-
+-static int
+ export_matches(nfs_export *exp, char *dom, char *path, struct addrinfo *ai)
+ {
+ 	return path_matches(exp, path) && client_matches(exp, dom, ai);
+diff --git a/utils/mountd/mountd.h b/utils/mountd/mountd.h
+index 4c184d2..c969a27 100644
+--- a/utils/mountd/mountd.h
++++ b/utils/mountd/mountd.h
+@@ -56,4 +56,8 @@ struct nfs_fh_len *
+ 		cache_get_filehandle(nfs_export *exp, int len, char *p);
+ int		cache_export(nfs_export *exp, char *path);
+ 
++bool ipaddr_client_matches(nfs_export *exp, struct addrinfo *ai);
++bool namelist_client_matches(nfs_export *exp, char *dom);
++bool client_matches(nfs_export *exp, char *dom, struct addrinfo *ai);
++
+ #endif /* MOUNTD_H */
+-- 
+1.7.7.6
 
-192.168.44.51:/export/share on /export/share type nfs 
-(rw,nointr,bg,hard,rsize=1048576,wsize=1048576,proto=tcp,vers=3,addr=192.168.44.51)
-
-In this configuration we get about 330 MBPS of write throughput with 16 
-pending stable (open with O_DIRECT) synchronous (no kernel aio in the 
-I/O application) writes.  If we scale beyond 16 pending I/O response 
-time increases but throughput remains fixed.  It feels like there is a 
-problem with getting more than 16 pending I/O out to TCP, but we can't 
-tell for sure based on our observations so far.  We did notice that 
-tuning the wsize down to 32kB increased throughput to 400 MBPS, but we 
-could not identify the root cause of this change.
-
-Please let us know if you have any suggestions for either diagnosing the 
-bottleneck more accurately or relieving the bottleneck.  Thank you in 
-advance.
-
-Sincerely,
-
-Jeff
