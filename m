@@ -1,85 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:52501 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:45509 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753593Ab2EDSJh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 May 2012 14:09:37 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Fred Isaman <iisaman@netapp.com>, Stephen Rothwell <sfr@canb.auug.org.au>
-Subject: [PATCH 1/2] NFS: Fix O_DIRECT compile warnings
-Date: Fri,  4 May 2012 14:09:18 -0400
-Message-Id: <1336154959-10705-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1754019Ab2EBV4U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 May 2012 17:56:20 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
+        NeilBrown <neilb@suse.de>, "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 5/5] mountd: handle allocation failures in auth_unix_ip upcall
+Date: Wed,  2 May 2012 17:56:15 -0400
+Message-Id: <1335995775-12009-6-git-send-email-bfields@redhat.com>
+In-Reply-To: <1335995775-12009-1-git-send-email-bfields@redhat.com>
+References: <1335995775-12009-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fix the following compile warnings:
-fs/nfs/direct.c: In function 'nfs_direct_read_schedule_segment':
-fs/nfs/direct.c:325:11: warning: comparison of distinct pointer types
-lacks a cast [enabled by default]
-fs/nfs/direct.c:325:11: warning: comparison of distinct pointer types
-lacks a cast [enabled by default]
-fs/nfs/direct.c:325:11: warning: comparison of distinct pointer types
-lacks a cast [enabled by default]
-fs/nfs/direct.c:352:27: warning: comparison of distinct pointer types
-lacks a cast [enabled by default]
-fs/nfs/direct.c: In function 'nfs_direct_write_schedule_segment':
-fs/nfs/direct.c:622:11: warning: comparison of distinct pointer types
-lacks a cast [enabled by default]
-fs/nfs/direct.c:622:11: warning: comparison of distinct pointer types
-lacks a cast [enabled by default]
-fs/nfs/direct.c:622:11: warning: comparison of distinct pointer types
-lacks a cast [enabled by default]
-fs/nfs/direct.c:650:27: warning: comparison of distinct pointer types
-lacks a cast [enabled by default]
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Reported-by: Stephen Rothwell <sfr@canb.auug.org.au>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Fred Isaman <iisaman@netapp.com>
-Cc: Stephen Rothwell <sfr@canb.auug.org.au>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/direct.c |    8 ++++----
- 1 files changed, 4 insertions(+), 4 deletions(-)
+ utils/mountd/cache.c |   12 +++++++++---
+ 1 files changed, 9 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index aab3016..dca9c81 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -322,7 +322,7 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *de
- 		int i;
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index 6710eca..8f14032 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -84,7 +84,6 @@ static void auth_unix_ip(FILE *f)
+ 	char ipaddr[INET6_ADDRSTRLEN];
+ 	char *client = NULL;
+ 	struct addrinfo *tmp = NULL;
+-	struct addrinfo *ai = NULL;
+ 	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
+ 		return;
  
- 		pgbase = user_addr & ~PAGE_MASK;
--		bytes = min(max(rsize, PAGE_SIZE), count);
-+		bytes = min(max_t(size_t, rsize, PAGE_SIZE), count);
+@@ -107,12 +106,16 @@ static void auth_unix_ip(FILE *f)
  
- 		result = -ENOMEM;
- 		npages = nfs_page_array_len(pgbase, bytes);
-@@ -349,7 +349,7 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *de
+ 	/* addr is a valid, interesting address, find the domain name... */
+ 	if (!use_ipaddr) {
++		struct addrinfo *ai = NULL;
++
+ 		ai = client_resolve(tmp->ai_addr);
++		if (ai == NULL)
++			goto out;
+ 		client = client_compose(ai);
+ 		freeaddrinfo(ai);
++		if (!client)
++			goto out;
+ 	}
+-	freeaddrinfo(tmp);
+-
+ 	qword_print(f, "nfsd");
+ 	qword_print(f, ipaddr);
+ 	qword_printuint(f, time(0) + DEFAULT_TTL);
+@@ -124,6 +127,9 @@ static void auth_unix_ip(FILE *f)
+ 	xlog(D_CALL, "auth_unix_ip: client %p '%s'", client, client?client: "DEFAULT");
  
- 		for (i = 0; i < npages; i++) {
- 			struct nfs_page *req;
--			unsigned int req_len = min(bytes, PAGE_SIZE - pgbase);
-+			unsigned int req_len = min_t(size_t, bytes, PAGE_SIZE - pgbase);
- 			/* XXX do we need to do the eof zeroing found in async_filler? */
- 			req = nfs_create_request(dreq->ctx, dreq->inode,
- 						 pagevec[i],
-@@ -619,7 +619,7 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *d
- 		int i;
+ 	free(client);
++out:
++	freeaddrinfo(tmp);
++
+ }
  
- 		pgbase = user_addr & ~PAGE_MASK;
--		bytes = min(max(wsize, PAGE_SIZE), count);
-+		bytes = min(max_t(size_t, wsize, PAGE_SIZE), count);
- 
- 		result = -ENOMEM;
- 		npages = nfs_page_array_len(pgbase, bytes);
-@@ -647,7 +647,7 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *d
- 
- 		for (i = 0; i < npages; i++) {
- 			struct nfs_page *req;
--			unsigned int req_len = min(bytes, PAGE_SIZE - pgbase);
-+			unsigned int req_len = min_t(size_t, bytes, PAGE_SIZE - pgbase);
- 
- 			req = nfs_create_request(dreq->ctx, dreq->inode,
- 						 pagevec[i],
+ static void auth_unix_gid(FILE *f)
 -- 
 1.7.7.6
 
