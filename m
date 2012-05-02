@@ -1,50 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:46845 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:34344 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754751Ab2EVHhW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 May 2012 03:37:22 -0400
-Subject: [PATCH v2 12/12] NFS: get module in idmap PipeFS notifier callback
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Tue, 22 May 2012 11:37:17 +0400
-Message-ID: <20120522073717.20602.33269.stgit@localhost.localdomain>
-In-Reply-To: <20120522073320.20602.87130.stgit@localhost.localdomain>
-References: <20120522073320.20602.87130.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1753543Ab2EBVh7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 May 2012 17:37:59 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
+        NeilBrown <neilb@suse.de>, "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 3/5] mountd: add trivial helpers for client-matching
+Date: Wed,  2 May 2012 17:37:53 -0400
+Message-Id: <1335994675-11751-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1335994675-11751-1-git-send-email-bfields@redhat.com>
+References: <1335994675-11751-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is bug fix.
-Notifier callback is called from SUNRPC module. So before dereferencing NFS
-module we have to make sure, that it's alive.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Pull out a tiny bit of common logic from three functions.
+
+Possibly minor overkill, but simplifies the next patch.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/idmap.c |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
+ utils/mountd/auth.c   |   21 ++++++++++++++++++---
+ utils/mountd/cache.c  |   12 ++----------
+ utils/mountd/mountd.h |    4 ++++
+ 3 files changed, 24 insertions(+), 13 deletions(-)
 
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index c9c3e1b..f55b80a 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -557,12 +557,16 @@ static int rpc_pipefs_event(struct notifier_block *nb, unsigned long event,
- 	struct nfs_client *clp;
- 	int error = 0;
- 
-+	if (!try_module_get(THIS_MODULE))
-+		return 0;
-+
- 	while ((clp = nfs_get_client_for_event(sb->s_fs_info, event))) {
- 		error = __rpc_pipefs_event(clp, event, sb);
- 		nfs_put_client(clp);
- 		if (error)
- 			break;
- 	}
-+	module_put(THIS_MODULE);
- 	return error;
+diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
+index ccc849a..1ed9a4b 100644
+--- a/utils/mountd/auth.c
++++ b/utils/mountd/auth.c
+@@ -131,6 +131,23 @@ get_client_hostname(const struct sockaddr *caller, struct addrinfo *ai,
+ 	return strdup("DEFAULT");
  }
  
++bool ipaddr_client_matches(nfs_export *exp, struct addrinfo *ai)
++{
++	return client_check(exp->m_client, ai);
++}
++
++bool namelist_client_matches(nfs_export *exp, char *dom)
++{
++	return client_member(dom, exp->m_client->m_hostname);
++}
++
++bool client_matches(nfs_export *exp, char *dom, struct addrinfo *ai)
++{
++	if (use_ipaddr)
++		return ipaddr_client_matches(exp, ai);
++	return namelist_client_matches(exp, dom);
++}
++
+ /* return static nfs_export with details filled in */
+ static nfs_export *
+ auth_authenticate_newcache(const struct sockaddr *caller,
+@@ -155,9 +172,7 @@ auth_authenticate_newcache(const struct sockaddr *caller,
+ 		for (exp = exportlist[i].p_head; exp; exp = exp->m_next) {
+ 			if (strcmp(path, exp->m_export.e_path))
+ 				continue;
+-			if (!use_ipaddr && !client_member(my_client.m_hostname, exp->m_client->m_hostname))
+-				continue;
+-			if (use_ipaddr && !client_check(exp->m_client, ai))
++			if (!client_matches(exp, my_client.m_hostname, ai))
+ 				continue;
+ 			break;
+ 		}
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index 5deca2e..a62ac52 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -587,7 +587,7 @@ static void nfsd_fh(FILE *f)
+ 				next_exp = exp->m_next;
+ 			}
+ 
+-			if (!use_ipaddr && !client_member(dom, exp->m_client->m_hostname))
++			if (!use_ipaddr && !namelist_client_matches(exp, dom))
+ 				continue;
+ 			if (exp->m_export.e_mountpoint &&
+ 			    !is_mountpoint(exp->m_export.e_mountpoint[0]?
+@@ -597,7 +597,7 @@ static void nfsd_fh(FILE *f)
+ 
+ 			if (!match_fsid(&parsed, exp, path))
+ 				continue;
+-			if (use_ipaddr && !client_check(exp->m_client, ai))
++			if (use_ipaddr && !ipaddr_client_matches(exp, ai))
+ 				continue;
+ 			if (!found || subexport(&exp->m_export, found)) {
+ 				found = &exp->m_export;
+@@ -751,14 +751,6 @@ static int path_matches(nfs_export *exp, char *path)
+ }
+ 
+ static int
+-client_matches(nfs_export *exp, char *dom, struct addrinfo *ai)
+-{
+-	if (use_ipaddr)
+-		return client_check(exp->m_client, ai);
+-	return client_member(dom, exp->m_client->m_hostname);
+-}
+-
+-static int
+ export_matches(nfs_export *exp, char *dom, char *path, struct addrinfo *ai)
+ {
+ 	return path_matches(exp, path) && client_matches(exp, dom, ai);
+diff --git a/utils/mountd/mountd.h b/utils/mountd/mountd.h
+index 4c184d2..c969a27 100644
+--- a/utils/mountd/mountd.h
++++ b/utils/mountd/mountd.h
+@@ -56,4 +56,8 @@ struct nfs_fh_len *
+ 		cache_get_filehandle(nfs_export *exp, int len, char *p);
+ int		cache_export(nfs_export *exp, char *path);
+ 
++bool ipaddr_client_matches(nfs_export *exp, struct addrinfo *ai);
++bool namelist_client_matches(nfs_export *exp, char *dom);
++bool client_matches(nfs_export *exp, char *dom, struct addrinfo *ai);
++
+ #endif /* MOUNTD_H */
+-- 
+1.7.7.6
 
