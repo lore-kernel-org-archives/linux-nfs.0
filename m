@@ -1,58 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:57232 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751280Ab2EVPKk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 11:10:40 -0400
-Message-ID: <4FBBAC68.60406@parallels.com>
-Date: Tue, 22 May 2012 19:10:32 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from mx1.redhat.com ([209.132.183.28]:7245 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755315Ab2ECPeH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 May 2012 11:34:07 -0400
+Message-ID: <4FA2A56B.1030208@redhat.com>
+Date: Thu, 03 May 2012 17:34:03 +0200
+From: Niels de Vos <ndevos@redhat.com>
 MIME-Version: 1.0
-To: Simo Sorce <simo@redhat.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        "bfields@redhat.com" <bfields@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/4] SUNRPC: Add RPC based upcall mechanism for RPCGSS
- auth
-References: <1337087550-9821-1-git-send-email-simo@redhat.com>  <1337087550-9821-4-git-send-email-simo@redhat.com>  <20120522124728.GB891@fieldses.org>  <1337691607.16840.178.camel@willson.li.ssimo.org>  <4FBB91EE.3010307@parallels.com>  <1337692966.16840.181.camel@willson.li.ssimo.org>  <4FBB9551.9010407@parallels.com> <1337698684.16840.184.camel@willson.li.ssimo.org>
-In-Reply-To: <1337698684.16840.184.camel@willson.li.ssimo.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+To: linux-nfs@vger.kernel.org
+CC: linux-fsdevel@vger.kernel.org, David Howells <dhowells@redhat.com>,
+        Jeffrey Layton <jlayton@redhat.com>
+Subject: [RFC] Dataloss on NFS-clients who modify an mmap()'d area after closing
+ the file-descriptor
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 22.05.2012 18:58, Simo Sorce wrote:
-> On Tue, 2012-05-22 at 17:32 +0400, Stanislav Kinsbursky wrote:
->> It actually means, that no hard-coded init_net references should appear - and
->> that's all. Required network context have to be taken from currently existent
->> objects (like RPC client, RPC service, etc) and, if not available (it's very
->> rare case - like NFS mount call), from current->nsproxy->net_ns.
->> You don't need to do anything special except this.
->> There will be a problem with your patches in container, because you are using
->> unix socket. But this problem is not in your patches but in unix sockets
->> themselves. So don't worry about it.
->
-> Can you tell me if the attached patches are all you think is needed ?
-> If they are, I'll squash them in with other fixes and will send out a
-> new patch set.
->
+When an application on an NFS-client (tested with NFSv3) executes the
+following steps, data written after the close() is never flushed to the
+server:
 
-Yep, looks good.
-Would be great, if you'll fix a couple of minor issues:
-1) rename "xprt_net" to "net" in prototypes (just to make things look in one 
-style with other places in SUNRPC layer)
-2) define net variable on stack in svcauth_gss_proxy_init() (looks simpler):
+1. open()
+2. mmap()
+3. close()
+4. <modify data in the mmap'ed area>
+5. munmap()
 
-+static int svcauth_gss_proxy_init(struct svc_rqst *rqstp,
-+                       struct rpc_gss_wire_cred *gc, __be32 *authp)
-....
-+       struct net *net = rqstp->rq_xprt->xpt_net;
-+       struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-....
-+       status = gssp_accept_sec_context_upcall(net, &ud);
+Dropping the caches (via /proc/sys/vm/drop_caches) or unmounting does not
+result in the data being sent to the server.
 
-> Simo.
->
+The man-page for mmap (man 2 mmap) does mention that closing the file-
+descriptor does not munmap() the area. Using the mmap'ed area after a
+close() sound valid to me (even if it may be bad practice).
 
+Investigation and checking showed that the NFS-client does not handle
+munmap(), and only flushes on close(). To solve this problem, least two
+solutions can be proposed:
 
--- 
-Best regards,
-Stanislav Kinsbursky
+a. f_ops->release() is called on munmap() as well as on close(),
+    therefore release() can be used to flush data as well.
+b. In the 'struct vm_operations_struct' add a .close to the
+    'struct vm_area_struct' on calling mmap()/nfs_file_mmap() and flush
+    the data in the new close() function.
+
+Solution a. contains currently very few code changes:
+
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -713,6 +713,8 @@ int nfs_open(struct inode *inode, struct file *filp)
+
+  int nfs_release(struct inode *inode, struct file *filp)
+  {
++       if (S_ISREG(inode->i_mode) && inode->i_mapping->nrpages != 0) {
++               nfs_sync_mapping(inode->i_mapping);
+         nfs_file_clear_open_context(filp);
+         return 0;
+  }
+
+The disadvantage is, that nfs_release() is called on close() too. That
+means this causes a flushing of dirty pages, and just after that the
+nfs_file_clear_open_context() might flush again. The advantage is that
+it is possible (though not done at the moment) to return an error in
+case flushing failed.
+
+Solution b. does not provide an option to return an error, but does not
+get called on each close():
+
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -547,9 +547,17 @@ out:
+  	return ret;
+  }
+
++static void nfs_vm_close(struct vm_area_struct * vma)
++{
++	struct file *filp = vma->vm_file;
++
++	nfs_file_flush(filp, (fl_owner_t)filp);
++}
++
+  static const struct vm_operations_struct nfs_file_vm_ops = {
+  	.fault = filemap_fault,
+  	.page_mkwrite = nfs_vm_page_mkwrite,
++	.close = nfs_vm_close,
+  };
+
+  static int nfs_need_sync_write(struct file *filp, struct inode *inode)
+
+I would like some feedback on what solution is most acceptable, or any
+other suggestions.
+
+Many thanks,
+Niels
