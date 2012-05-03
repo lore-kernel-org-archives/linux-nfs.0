@@ -1,124 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:33606 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:28423 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762064Ab2EQOvg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 May 2012 10:51:36 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 07/12] mm: Add support for direct_IO to highmem pages
-Date: Thu, 17 May 2012 15:51:20 +0100
-Message-Id: <1337266285-8102-8-git-send-email-mgorman@suse.de>
-In-Reply-To: <1337266285-8102-1-git-send-email-mgorman@suse.de>
-References: <1337266285-8102-1-git-send-email-mgorman@suse.de>
+	id S1752313Ab2ECR1u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 May 2012 13:27:50 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Niels de Vos <ndevos@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "David Howells" <dhowells@redhat.com>,
+        Jeffrey Layton <jlayton@redhat.com>
+Subject: Re: [RFC] Dataloss on NFS-clients who modify an mmap()'d area after
+ closing the file-descriptor
+Date: Thu, 3 May 2012 17:26:52 +0000
+Message-ID: <1336066014.5385.41.camel@lade.trondhjem.org>
+References: <4FA2A56B.1030208@redhat.com>
+	 <1336059797.5385.22.camel@lade.trondhjem.org> <4FA2BB68.7070304@redhat.com>
+In-Reply-To: <4FA2BB68.7070304@redhat.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The patch "mm: Add support for a filesystem to activate swap files and
-use direct_IO for writing swap pages" added support for using direct_IO
-to write swap pages but it is insufficient for highmem pages.
-
-To support highmem pages, this patch kmaps() the page before calling the
-direct_IO() handler. As direct_IO deals with virtual addresses an
-additional helper is necessary for get_kernel_pages() to lookup the
-struct page for a kmap virtual address.
-
-Signed-off-by: Mel Gorman <mgorman@suse.de>
----
- include/linux/highmem.h |    7 +++++++
- mm/highmem.c            |   12 ++++++++++++
- mm/memory.c             |    3 +--
- mm/page_io.c            |    3 ++-
- 4 files changed, 22 insertions(+), 3 deletions(-)
-
-diff --git a/include/linux/highmem.h b/include/linux/highmem.h
-index d3999b4..e186e3c 100644
---- a/include/linux/highmem.h
-+++ b/include/linux/highmem.h
-@@ -39,10 +39,17 @@ extern unsigned long totalhigh_pages;
- 
- void kmap_flush_unused(void);
- 
-+struct page *kmap_to_page(void *addr);
-+
- #else /* CONFIG_HIGHMEM */
- 
- static inline unsigned int nr_free_highpages(void) { return 0; }
- 
-+static inline struct page *kmap_to_page(void *addr)
-+{
-+	return virt_to_page(addr);
-+}
-+
- #define totalhigh_pages 0UL
- 
- #ifndef ARCH_HAS_KMAP
-diff --git a/mm/highmem.c b/mm/highmem.c
-index 57d82c6..d517cd1 100644
---- a/mm/highmem.c
-+++ b/mm/highmem.c
-@@ -94,6 +94,18 @@ static DECLARE_WAIT_QUEUE_HEAD(pkmap_map_wait);
- 		do { spin_unlock(&kmap_lock); (void)(flags); } while (0)
- #endif
- 
-+struct page *kmap_to_page(void *vaddr)
-+{
-+	unsigned long addr = (unsigned long)vaddr;
-+
-+	if (addr >= PKMAP_ADDR(0) && addr <= PKMAP_ADDR(LAST_PKMAP)) {
-+		int i = (addr - PKMAP_ADDR(0)) >> PAGE_SHIFT;
-+		return pte_page(pkmap_page_table[i]);
-+	}
-+
-+	return virt_to_page(addr);
-+}
-+
- static void flush_all_zero_pkmaps(void)
- {
- 	int i;
-diff --git a/mm/memory.c b/mm/memory.c
-index 0bc990e7..fd32a1a 100644
---- a/mm/memory.c
-+++ b/mm/memory.c
-@@ -1858,8 +1858,7 @@ int get_kernel_pages(const struct kvec *kiov, int nr_segs, int write,
- 		if (WARN_ON(kiov[seg].iov_len != PAGE_SIZE))
- 			return seg;
- 
--		/* virt_to_page sanity checks the PFN */
--		pages[seg] = virt_to_page(kiov[seg].iov_base);
-+		pages[seg] = kmap_to_page(kiov[seg].iov_base);
- 		page_cache_get(pages[seg]);
- 	}
- 
-diff --git a/mm/page_io.c b/mm/page_io.c
-index f363261..1e39e88 100644
---- a/mm/page_io.c
-+++ b/mm/page_io.c
-@@ -198,7 +198,7 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
- 		struct file *swap_file = sis->swap_file;
- 		struct address_space *mapping = swap_file->f_mapping;
- 		struct iovec iov = {
--			.iov_base = page_address(page),
-+			.iov_base = kmap(page),
- 			.iov_len  = PAGE_SIZE,
- 		};
- 
-@@ -211,6 +211,7 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
- 		ret = mapping->a_ops->direct_IO(KERNEL_WRITE,
- 						&kiocb, &iov,
- 						kiocb.ki_pos, 1);
-+		kunmap(page);
- 		if (ret == PAGE_SIZE) {
- 			count_vm_event(PSWPOUT);
- 			ret = 0;
--- 
-1.7.9.2
-
+T24gVGh1LCAyMDEyLTA1LTAzIGF0IDE5OjA3ICswMjAwLCBOaWVscyBkZSBWb3Mgd3JvdGU6DQo+
+IE9uIDA1LzAzLzIwMTIgMDU6NDMgUE0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ICA+IE9u
+IFRodSwgMjAxMi0wNS0wMyBhdCAxNzozNCArMDIwMCwgTmllbHMgZGUgVm9zIHdyb3RlOg0KPiAg
+Pj4gV2hlbiBhbiBhcHBsaWNhdGlvbiBvbiBhbiBORlMtY2xpZW50ICh0ZXN0ZWQgd2l0aCBORlN2
+MykgZXhlY3V0ZXMgdGhlDQo+ICA+PiBmb2xsb3dpbmcgc3RlcHMsIGRhdGEgd3JpdHRlbiBhZnRl
+ciB0aGUgY2xvc2UoKSBpcyBuZXZlciBmbHVzaGVkIHRvIHRoZQ0KPiAgPj4gc2VydmVyOg0KPiAg
+Pj4NCj4gID4+IDEuIG9wZW4oKQ0KPiAgPj4gMi4gbW1hcCgpDQo+ICA+PiAzLiBjbG9zZSgpDQo+
+ICA+PiA0Ljxtb2RpZnkgZGF0YSBpbiB0aGUgbW1hcCdlZCBhcmVhPg0KPiAgPj4gNS4gbXVubWFw
+KCkNCj4gID4+DQo+ICA+PiBEcm9wcGluZyB0aGUgY2FjaGVzICh2aWEgL3Byb2Mvc3lzL3ZtL2Ry
+b3BfY2FjaGVzKSBvciB1bm1vdW50aW5nIGRvZXMgbm90DQo+ICA+PiByZXN1bHQgaW4gdGhlIGRh
+dGEgYmVpbmcgc2VudCB0byB0aGUgc2VydmVyLg0KPiAgPj4NCj4gID4+IFRoZSBtYW4tcGFnZSBm
+b3IgbW1hcCAobWFuIDIgbW1hcCkgZG9lcyBtZW50aW9uIHRoYXQgY2xvc2luZyB0aGUgZmlsZS0N
+Cj4gID4+IGRlc2NyaXB0b3IgZG9lcyBub3QgbXVubWFwKCkgdGhlIGFyZWEuIFVzaW5nIHRoZSBt
+bWFwJ2VkIGFyZWEgYWZ0ZXIgYQ0KPiAgPj4gY2xvc2UoKSBzb3VuZCB2YWxpZCB0byBtZSAoZXZl
+biBpZiBpdCBtYXkgYmUgYmFkIHByYWN0aWNlKS4NCj4gID4+DQo+ICA+PiBJbnZlc3RpZ2F0aW9u
+IGFuZCBjaGVja2luZyBzaG93ZWQgdGhhdCB0aGUgTkZTLWNsaWVudCBkb2VzIG5vdCBoYW5kbGUN
+Cj4gID4+IG11bm1hcCgpLCBhbmQgb25seSBmbHVzaGVzIG9uIGNsb3NlKCkuIFRvIHNvbHZlIHRo
+aXMgcHJvYmxlbSwgbGVhc3QgdHdvDQo+ICA+PiBzb2x1dGlvbnMgY2FuIGJlIHByb3Bvc2VkOg0K
+PiAgPj4NCj4gID4+IGEuIGZfb3BzLT5yZWxlYXNlKCkgaXMgY2FsbGVkIG9uIG11bm1hcCgpIGFz
+IHdlbGwgYXMgb24gY2xvc2UoKSwNCj4gID4+ICAgICAgdGhlcmVmb3JlIHJlbGVhc2UoKSBjYW4g
+YmUgdXNlZCB0byBmbHVzaCBkYXRhIGFzIHdlbGwuDQo+ICA+PiBiLiBJbiB0aGUgJ3N0cnVjdCB2
+bV9vcGVyYXRpb25zX3N0cnVjdCcgYWRkIGEgLmNsb3NlIHRvIHRoZQ0KPiAgPj4gICAgICAnc3Ry
+dWN0IHZtX2FyZWFfc3RydWN0JyBvbiBjYWxsaW5nIG1tYXAoKS9uZnNfZmlsZV9tbWFwKCkgYW5k
+IGZsdXNoDQo+ICA+PiAgICAgIHRoZSBkYXRhIGluIHRoZSBuZXcgY2xvc2UoKSBmdW5jdGlvbi4N
+Cj4gID4+DQo+ICA+PiBTb2x1dGlvbiBhLiBjb250YWlucyBjdXJyZW50bHkgdmVyeSBmZXcgY29k
+ZSBjaGFuZ2VzOg0KPiAgPj4NCj4gID4+IC0tLSBhL2ZzL25mcy9pbm9kZS5jDQo+ICA+PiArKysg
+Yi9mcy9uZnMvaW5vZGUuYw0KPiAgPj4gQEAgLTcxMyw2ICs3MTMsOCBAQCBpbnQgbmZzX29wZW4o
+c3RydWN0IGlub2RlICppbm9kZSwgc3RydWN0IGZpbGUgKmZpbHApDQo+ICA+Pg0KPiAgPj4gICAg
+aW50IG5mc19yZWxlYXNlKHN0cnVjdCBpbm9kZSAqaW5vZGUsIHN0cnVjdCBmaWxlICpmaWxwKQ0K
+PiAgPj4gICAgew0KPiAgPj4gKyAgICAgICBpZiAoU19JU1JFRyhpbm9kZS0+aV9tb2RlKSYmICBp
+bm9kZS0+aV9tYXBwaW5nLT5ucnBhZ2VzICE9IDApIHsNCj4gID4+ICsgICAgICAgICAgICAgICBu
+ZnNfc3luY19tYXBwaW5nKGlub2RlLT5pX21hcHBpbmcpOw0KPiAgPj4gICAgICAgICAgIG5mc19m
+aWxlX2NsZWFyX29wZW5fY29udGV4dChmaWxwKTsNCj4gID4+ICAgICAgICAgICByZXR1cm4gMDsN
+Cj4gID4+ICAgIH0NCj4gID4+DQo+ICA+PiBUaGUgZGlzYWR2YW50YWdlIGlzLCB0aGF0IG5mc19y
+ZWxlYXNlKCkgaXMgY2FsbGVkIG9uIGNsb3NlKCkgdG9vLiBUaGF0DQo+ICA+PiBtZWFucyB0aGlz
+IGNhdXNlcyBhIGZsdXNoaW5nIG9mIGRpcnR5IHBhZ2VzLCBhbmQganVzdCBhZnRlciB0aGF0IHRo
+ZQ0KPiAgPj4gbmZzX2ZpbGVfY2xlYXJfb3Blbl9jb250ZXh0KCkgbWlnaHQgZmx1c2ggYWdhaW4u
+IFRoZSBhZHZhbnRhZ2UgaXMgdGhhdA0KPiAgPj4gaXQgaXMgcG9zc2libGUgKHRob3VnaCBub3Qg
+ZG9uZSBhdCB0aGUgbW9tZW50KSB0byByZXR1cm4gYW4gZXJyb3IgaW4NCj4gID4+IGNhc2UgZmx1
+c2hpbmcgZmFpbGVkLg0KPiAgPj4NCj4gID4+IFNvbHV0aW9uIGIuIGRvZXMgbm90IHByb3ZpZGUg
+YW4gb3B0aW9uIHRvIHJldHVybiBhbiBlcnJvciwgYnV0IGRvZXMgbm90DQo+ICA+PiBnZXQgY2Fs
+bGVkIG9uIGVhY2ggY2xvc2UoKToNCj4gID4+DQo+ICA+PiAtLS0gYS9mcy9uZnMvZmlsZS5jDQo+
+ICA+PiArKysgYi9mcy9uZnMvZmlsZS5jDQo+ICA+PiBAQCAtNTQ3LDkgKzU0NywxNyBAQCBvdXQ6
+DQo+ICA+PiAgICAJcmV0dXJuIHJldDsNCj4gID4+ICAgIH0NCj4gID4+DQo+ICA+PiArc3RhdGlj
+IHZvaWQgbmZzX3ZtX2Nsb3NlKHN0cnVjdCB2bV9hcmVhX3N0cnVjdCAqIHZtYSkNCj4gID4+ICt7
+DQo+ICA+PiArCXN0cnVjdCBmaWxlICpmaWxwID0gdm1hLT52bV9maWxlOw0KPiAgPj4gKw0KPiAg
+Pj4gKwluZnNfZmlsZV9mbHVzaChmaWxwLCAoZmxfb3duZXJfdClmaWxwKTsNCj4gID4+ICt9DQo+
+ICA+PiArDQo+ICA+PiAgICBzdGF0aWMgY29uc3Qgc3RydWN0IHZtX29wZXJhdGlvbnNfc3RydWN0
+IG5mc19maWxlX3ZtX29wcyA9IHsNCj4gID4+ICAgIAkuZmF1bHQgPSBmaWxlbWFwX2ZhdWx0LA0K
+PiAgPj4gICAgCS5wYWdlX21rd3JpdGUgPSBuZnNfdm1fcGFnZV9ta3dyaXRlLA0KPiAgPj4gKwku
+Y2xvc2UgPSBuZnNfdm1fY2xvc2UsDQo+ICA+PiAgICB9Ow0KPiAgPj4NCj4gID4+ICAgIHN0YXRp
+YyBpbnQgbmZzX25lZWRfc3luY193cml0ZShzdHJ1Y3QgZmlsZSAqZmlscCwgc3RydWN0IGlub2Rl
+ICppbm9kZSkNCj4gID4+DQo+ICA+PiBJIHdvdWxkIGxpa2Ugc29tZSBmZWVkYmFjayBvbiB3aGF0
+IHNvbHV0aW9uIGlzIG1vc3QgYWNjZXB0YWJsZSwgb3IgYW55DQo+ICA+PiBvdGhlciBzdWdnZXN0
+aW9ucy4NCj4gID4NCj4gID4gTmVpdGhlciBzb2x1dGlvbiBpcyBhY2NlcHRhYmxlLiBUaGlzIGlz
+bid0IGEgY2xvc2UtdG8tb3BlbiBjYWNoZQ0KPiAgPiBjb25zaXN0ZW5jeSBpc3N1ZS4NCj4gID4N
+Cj4gID4gVGhlIHN5bnRheCBvZiBtbWFwKCkgZm9yIGJvdGggYmxvY2sgYW5kIE5GUyBtb3VudHMg
+aXMgdGhlIHNhbWU6IHdyaXRlcw0KPiAgPiBhcmUgbm90IGd1YXJhbnRlZWQgdG8gaGl0IHRoZSBk
+aXNrIHVudGlsIHlvdXIgYXBwbGljYXRpb24gZXhwbGljaXRseQ0KPiAgPiBjYWxscyBtc3luYygp
+Lg0KPiAgPg0KPiANCj4gT2theSwgdGhhdCBtYWtlcyBzZW5zZS4gQnV0IGlmIHRoZSBhcHBsaWNh
+dGlvbiBuZXZlciBjYWxscyBtc3luYygpLCBhbmQNCj4ganVzdCBtdW5tYXAoKSdzIHRoZSBhcmVh
+LCB3aGVuIHNob3VsZCB0aGUgY2hhbmdlcyBiZSB3cml0dGVuPyBJIGRpZCBub3QNCj4gZXhwZWN0
+IHRoYXQgdW5tb3VudGluZyBqdXN0IGRpc3JlZ2FyZHMgdGhlIGRhdGEuDQoNClRoYXQgc3VnZ2Vz
+dHMgdGhhdCB0aGUgVk0gaXMgZmFpbGluZyB0byBkaXJ0eSB0aGUgcGFnZXMgb24gbXVubWFwKCkN
+CmJlZm9yZSByZWxlYXNpbmcgdGhlIHZtYS0+dm1fZmlsZS4gSWYgc28sIHRoZW4gdGhhdCB3b3Vs
+ZCBiZSBhIFZNIGJ1Zy4uLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVu
+dCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5u
+ZXRhcHAuY29tDQoNCg==
