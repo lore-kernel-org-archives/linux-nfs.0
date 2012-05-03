@@ -1,52 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:4164 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:43520 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751941Ab2EYWDl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 May 2012 18:03:41 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/8] NFSv4.1: Exchange ID must use GFP_NOFS allocation mode
-Date: Fri, 25 May 2012 18:03:15 -0400
-Message-Id: <1337983402-24677-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1756215Ab2ECO5T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 May 2012 10:57:19 -0400
+Date: Thu, 3 May 2012 15:57:14 +0100
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>
+Subject: Re: [PATCH 05/11] mm: swap: Implement generic handler for
+ swap_activate
+Message-ID: <20120503145714.GH11435@suse.de>
+References: <1334578675-23445-1-git-send-email-mgorman@suse.de>
+ <1334578675-23445-6-git-send-email-mgorman@suse.de>
+ <20120501155747.368a1d36.akpm@linux-foundation.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-15
+In-Reply-To: <20120501155747.368a1d36.akpm@linux-foundation.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Exchange ID can be called in a lease reclaim situation, so it
-will deadlock if it then tries to write out dirty NFS pages.
+On Tue, May 01, 2012 at 03:57:47PM -0700, Andrew Morton wrote:
+> On Mon, 16 Apr 2012 13:17:49 +0100
+> Mel Gorman <mgorman@suse.de> wrote:
+> 
+> > The version of swap_activate introduced is sufficient for swap-over-NFS
+> > but would not provide enough information to implement a generic handler.
+> > This patch shuffles things slightly to ensure the same information is
+> > available for aops->swap_activate() as is available to the core.
+> > 
+> > No functionality change.
+> > 
+> > ...
+> >
+> > --- a/include/linux/fs.h
+> > +++ b/include/linux/fs.h
+> > @@ -587,6 +587,8 @@ typedef struct {
+> >  typedef int (*read_actor_t)(read_descriptor_t *, struct page *,
+> >  		unsigned long, unsigned long);
+> >  
+> > +struct swap_info_struct;
+> 
+> Please put forward declarations at top-of-file.  To prevent accidental
+> duplication later on.
+> 
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
+Done.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index e8988c0..f8817e8 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5192,20 +5192,20 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 				clp->cl_rpcclient->cl_auth->au_flavor);
- 
- 	res.server_owner = kzalloc(sizeof(struct nfs41_server_owner),
--					GFP_KERNEL);
-+					GFP_NOFS);
- 	if (unlikely(res.server_owner == NULL)) {
- 		status = -ENOMEM;
- 		goto out;
- 	}
- 
- 	res.server_scope = kzalloc(sizeof(struct nfs41_server_scope),
--					GFP_KERNEL);
-+					GFP_NOFS);
- 	if (unlikely(res.server_scope == NULL)) {
- 		status = -ENOMEM;
- 		goto out_server_owner;
- 	}
- 
--	res.impl_id = kzalloc(sizeof(struct nfs41_impl_id), GFP_KERNEL);
-+	res.impl_id = kzalloc(sizeof(struct nfs41_impl_id), GFP_NOFS);
- 	if (unlikely(res.impl_id == NULL)) {
- 		status = -ENOMEM;
- 		goto out_server_scope;
+> >  struct address_space_operations {
+> >  	int (*writepage)(struct page *page, struct writeback_control *wbc);
+> >  	int (*readpage)(struct file *, struct page *);
+> >
+> > ...
+> >
+> > --- a/mm/page_io.c
+> > +++ b/mm/page_io.c
+> 
+> Have you tested all this code with CONFIG_SWAP=n?
+> 
+
+Emm, it builds. That counts, right?
+
+> Have you sought to minimise additional new code when CONFIG_SWAP=n?
+> 
+
+Not specifically, but generic_swapfile_activate() is defined in page_io.c
+and that is built only if CONFIG_SWAP=y. Similarly swapon is in
+swapfile.c which is only build when swap is enabled.
+
 -- 
-1.7.7.6
-
+Mel Gorman
+SUSE Labs
