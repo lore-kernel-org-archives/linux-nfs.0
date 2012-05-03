@@ -1,150 +1,232 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:37999 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757328Ab2EJNya (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 May 2012 09:54:30 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 01/12] netvm: Prevent a stream-specific deadlock
-Date: Thu, 10 May 2012 14:54:14 +0100
-Message-Id: <1336658065-24851-2-git-send-email-mgorman@suse.de>
-In-Reply-To: <1336658065-24851-1-git-send-email-mgorman@suse.de>
-References: <1336658065-24851-1-git-send-email-mgorman@suse.de>
+Received: from smtp02.citrix.com ([66.165.176.63]:60785 "EHLO
+	SMTP02.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757331Ab2ECO7Y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 May 2012 10:59:24 -0400
+From: Ian Campbell <ian.campbell@citrix.com>
+To: netdev@vger.kernel.org
+CC: David Miller <davem@davemloft.net>, Eric Dumazet <eric.dumazet@gmail.com>,
+        "Michael S. Tsirkin" <mst@redhat.com>,
+        Ian Campbell <ian.campbell@citrix.com>, Neil Brown <neilb@suse.de>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH 9/9] sunrpc: use SKB fragment destructors to delay completion until page is released by network stack.
+Date: Thu, 3 May 2012 15:56:11 +0100
+Message-ID: <1336056971-7839-9-git-send-email-ian.campbell@citrix.com>
+In-Reply-To: <1336056915.20716.96.camel@zakaz.uk.xensource.com>
+References: <1336056915.20716.96.camel@zakaz.uk.xensource.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It could happen that all !SOCK_MEMALLOC sockets have buffered so
-much data that we're over the global rmem limit. This will prevent
-SOCK_MEMALLOC buffers from receiving data, which will prevent userspace
-from running, which is needed to reduce the buffered data.
+This prevents an issue where an ACK is delayed, a retransmit is queued (either
+at the RPC or TCP level) and the ACK arrives before the retransmission hits the
+wire. If this happens to an NFS WRITE RPC then the write() system call
+completes and the userspace process can continue, potentially modifying data
+referenced by the retransmission before the retransmission occurs.
 
-Fix this by exempting the SOCK_MEMALLOC sockets from the rmem limit.
-
-Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
+Signed-off-by: Ian Campbell <ian.campbell@citrix.com>
+Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: Neil Brown <neilb@suse.de>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Cc: netdev@vger.kernel.org
 ---
- include/net/sock.h     |    7 ++++---
- net/caif/caif_socket.c |    2 +-
- net/core/sock.c        |    2 +-
- net/ipv4/tcp_input.c   |   12 ++++++------
- net/sctp/ulpevent.c    |    2 +-
- 5 files changed, 13 insertions(+), 12 deletions(-)
+ include/linux/sunrpc/xdr.h  |    2 ++
+ include/linux/sunrpc/xprt.h |    5 ++++-
+ net/sunrpc/clnt.c           |   27 ++++++++++++++++++++++-----
+ net/sunrpc/svcsock.c        |    3 ++-
+ net/sunrpc/xprt.c           |   12 ++++++++++++
+ net/sunrpc/xprtsock.c       |    3 ++-
+ 6 files changed, 44 insertions(+), 8 deletions(-)
 
-diff --git a/include/net/sock.h b/include/net/sock.h
-index 7f04aa8..3a8cce7 100644
---- a/include/net/sock.h
-+++ b/include/net/sock.h
-@@ -1280,12 +1280,13 @@ static inline int sk_wmem_schedule(struct sock *sk, int size)
- 		__sk_mem_schedule(sk, size, SK_MEM_SEND);
- }
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index af70af3..ff1b121 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -16,6 +16,7 @@
+ #include <asm/byteorder.h>
+ #include <asm/unaligned.h>
+ #include <linux/scatterlist.h>
++#include <linux/skbuff.h>
  
--static inline int sk_rmem_schedule(struct sock *sk, int size)
-+static inline int sk_rmem_schedule(struct sock *sk, struct sk_buff *skb)
+ /*
+  * Buffer adjustment
+@@ -57,6 +58,7 @@ struct xdr_buf {
+ 			tail[1];	/* Appended after page data */
+ 
+ 	struct page **	pages;		/* Array of contiguous pages */
++	struct skb_frag_destructor *destructor;
+ 	unsigned int	page_base,	/* Start of page data */
+ 			page_len,	/* Length of page data */
+ 			flags;		/* Flags for data disposition */
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 77d278d..e8d3f18 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -92,7 +92,10 @@ struct rpc_rqst {
+ 						/* A cookie used to track the
+ 						   state of the transport
+ 						   connection */
+-	
++	struct skb_frag_destructor destructor;	/* SKB paged fragment
++						 * destructor for
++						 * transmitted pages*/
++
+ 	/*
+ 	 * Partial send handling
+ 	 */
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 6797246..351bf3d 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -61,6 +61,7 @@ static void	call_reserve(struct rpc_task *task);
+ static void	call_reserveresult(struct rpc_task *task);
+ static void	call_allocate(struct rpc_task *task);
+ static void	call_decode(struct rpc_task *task);
++static void	call_complete(struct rpc_task *task);
+ static void	call_bind(struct rpc_task *task);
+ static void	call_bind_status(struct rpc_task *task);
+ static void	call_transmit(struct rpc_task *task);
+@@ -1416,6 +1417,8 @@ rpc_xdr_encode(struct rpc_task *task)
+ 			 (char *)req->rq_buffer + req->rq_callsize,
+ 			 req->rq_rcvsize);
+ 
++	req->rq_snd_buf.destructor = &req->destructor;
++
+ 	p = rpc_encode_header(task);
+ 	if (p == NULL) {
+ 		printk(KERN_INFO "RPC: couldn't encode RPC header, exit EIO\n");
+@@ -1581,6 +1584,7 @@ call_connect_status(struct rpc_task *task)
+ static void
+ call_transmit(struct rpc_task *task)
  {
- 	if (!sk_has_account(sk))
- 		return 1;
--	return size <= sk->sk_forward_alloc ||
--		__sk_mem_schedule(sk, size, SK_MEM_RECV);
-+	return skb->truesize <= sk->sk_forward_alloc ||
-+		__sk_mem_schedule(sk, skb->truesize, SK_MEM_RECV) ||
-+		skb_pfmemalloc(skb);
- }
++	struct rpc_rqst *req = task->tk_rqstp;
+ 	dprint_status(task);
  
- static inline void sk_mem_reclaim(struct sock *sk)
-diff --git a/net/caif/caif_socket.c b/net/caif/caif_socket.c
-index 5016fa5..aaf711c 100644
---- a/net/caif/caif_socket.c
-+++ b/net/caif/caif_socket.c
-@@ -142,7 +142,7 @@ static int caif_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
- 	err = sk_filter(sk, skb);
- 	if (err)
- 		return err;
--	if (!sk_rmem_schedule(sk, skb->truesize) && rx_flow_is_on(cf_sk)) {
-+	if (!sk_rmem_schedule(sk, skb) && rx_flow_is_on(cf_sk)) {
- 		set_rx_flow_off(cf_sk);
- 		if (net_ratelimit())
- 			pr_debug("sending flow OFF due to rmem_schedule\n");
-diff --git a/net/core/sock.c b/net/core/sock.c
-index 9ad1ed9..4193266 100644
---- a/net/core/sock.c
-+++ b/net/core/sock.c
-@@ -391,7 +391,7 @@ int sock_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
- 	if (err)
- 		return err;
- 
--	if (!sk_rmem_schedule(sk, skb->truesize)) {
-+	if (!sk_rmem_schedule(sk, skb)) {
- 		atomic_inc(&sk->sk_drops);
- 		return -ENOBUFS;
- 	}
-diff --git a/net/ipv4/tcp_input.c b/net/ipv4/tcp_input.c
-index 3ff36406..686642c 100644
---- a/net/ipv4/tcp_input.c
-+++ b/net/ipv4/tcp_input.c
-@@ -4431,19 +4431,19 @@ static void tcp_ofo_queue(struct sock *sk)
- static int tcp_prune_ofo_queue(struct sock *sk);
- static int tcp_prune_queue(struct sock *sk);
- 
--static inline int tcp_try_rmem_schedule(struct sock *sk, unsigned int size)
-+static inline int tcp_try_rmem_schedule(struct sock *sk, struct sk_buff *skb)
- {
- 	if (atomic_read(&sk->sk_rmem_alloc) > sk->sk_rcvbuf ||
--	    !sk_rmem_schedule(sk, size)) {
-+	    !sk_rmem_schedule(sk, skb)) {
- 
- 		if (tcp_prune_queue(sk) < 0)
- 			return -1;
- 
--		if (!sk_rmem_schedule(sk, size)) {
-+		if (!sk_rmem_schedule(sk, skb)) {
- 			if (!tcp_prune_ofo_queue(sk))
- 				return -1;
- 
--			if (!sk_rmem_schedule(sk, size))
-+			if (!sk_rmem_schedule(sk, skb))
- 				return -1;
- 		}
- 	}
-@@ -4458,7 +4458,7 @@ static void tcp_data_queue_ofo(struct sock *sk, struct sk_buff *skb)
- 
- 	TCP_ECN_check_ce(tp, skb);
- 
--	if (tcp_try_rmem_schedule(sk, skb->truesize)) {
-+	if (tcp_try_rmem_schedule(sk, skb)) {
- 		/* TODO: should increment a counter */
- 		__kfree_skb(skb);
+ 	task->tk_action = call_status;
+@@ -1614,8 +1618,8 @@ call_transmit(struct rpc_task *task)
+ 	call_transmit_status(task);
+ 	if (rpc_reply_expected(task))
  		return;
-@@ -4627,7 +4627,7 @@ static void tcp_data_queue(struct sock *sk, struct sk_buff *skb)
- 		if (eaten <= 0) {
- queue_and_out:
- 			if (eaten < 0 &&
--			    tcp_try_rmem_schedule(sk, skb->truesize))
-+			    tcp_try_rmem_schedule(sk, skb))
- 				goto drop;
+-	task->tk_action = rpc_exit_task;
+-	rpc_wake_up_queued_task(&task->tk_xprt->pending, task);
++	task->tk_action = call_complete;
++	skb_frag_destructor_unref(&req->destructor);
+ }
  
- 			skb_set_owner_r(skb, sk);
-diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
-index 8a84017..6c6ed2d 100644
---- a/net/sctp/ulpevent.c
-+++ b/net/sctp/ulpevent.c
-@@ -702,7 +702,7 @@ struct sctp_ulpevent *sctp_ulpevent_make_rcvmsg(struct sctp_association *asoc,
- 	if (rx_count >= asoc->base.sk->sk_rcvbuf) {
- 
- 		if ((asoc->base.sk->sk_userlocks & SOCK_RCVBUF_LOCK) ||
--		    (!sk_rmem_schedule(asoc->base.sk, chunk->skb->truesize)))
-+		    (!sk_rmem_schedule(asoc->base.sk, chunk->skb)))
- 			goto fail;
+ /*
+@@ -1688,7 +1692,8 @@ call_bc_transmit(struct rpc_task *task)
+ 		return;
  	}
  
+-	task->tk_action = rpc_exit_task;
++	task->tk_action = call_complete;
++	skb_frag_destructor_unref(&req->destructor);
+ 	if (task->tk_status < 0) {
+ 		printk(KERN_NOTICE "RPC: Could not send backchannel reply "
+ 			"error: %d\n", task->tk_status);
+@@ -1728,7 +1733,6 @@ call_bc_transmit(struct rpc_task *task)
+ 			"error: %d\n", task->tk_status);
+ 		break;
+ 	}
+-	rpc_wake_up_queued_task(&req->rq_xprt->pending, task);
+ }
+ #endif /* CONFIG_SUNRPC_BACKCHANNEL */
+ 
+@@ -1906,12 +1910,14 @@ call_decode(struct rpc_task *task)
+ 		return;
+ 	}
+ 
+-	task->tk_action = rpc_exit_task;
++	task->tk_action = call_complete;
+ 
+ 	if (decode) {
+ 		task->tk_status = rpcauth_unwrap_resp(task, decode, req, p,
+ 						      task->tk_msg.rpc_resp);
+ 	}
++	rpc_sleep_on(&req->rq_xprt->pending, task, NULL);
++	skb_frag_destructor_unref(&req->destructor);
+ 	dprintk("RPC: %5u call_decode result %d\n", task->tk_pid,
+ 			task->tk_status);
+ 	return;
+@@ -1926,6 +1932,17 @@ out_retry:
+ 	}
+ }
+ 
++/*
++ * 8.	Wait for pages to be released by the network stack.
++ */
++static void
++call_complete(struct rpc_task *task)
++{
++	dprintk("RPC: %5u call_complete result %d\n",
++		task->tk_pid, task->tk_status);
++	task->tk_action = rpc_exit_task;
++}
++
+ static __be32 *
+ rpc_encode_header(struct rpc_task *task)
+ {
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index f6d8c73..1145929 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -198,7 +198,8 @@ int svc_send_common(struct socket *sock, struct xdr_buf *xdr,
+ 	while (pglen > 0) {
+ 		if (slen == size)
+ 			flags = 0;
+-		result = kernel_sendpage(sock, *ppage, NULL, base, size, flags);
++		result = kernel_sendpage(sock, *ppage, xdr->destructor,
++					 base, size, flags);
+ 		if (result > 0)
+ 			len += result;
+ 		if (result != size)
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 6fe2dce..f8418a0 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1108,6 +1108,16 @@ static inline void xprt_init_xid(struct rpc_xprt *xprt)
+ 	xprt->xid = net_random();
+ }
+ 
++static int xprt_complete_skb_pages(struct skb_frag_destructor *destroy)
++{
++	struct rpc_rqst	*req =
++		container_of(destroy, struct rpc_rqst, destructor);
++
++	dprintk("RPC: %5u completing skb pages\n", req->rq_task->tk_pid);
++	rpc_wake_up_queued_task(&req->rq_xprt->pending, req->rq_task);
++	return 0;
++}
++
+ static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
+ {
+ 	struct rpc_rqst	*req = task->tk_rqstp;
+@@ -1120,6 +1130,8 @@ static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
+ 	req->rq_xid     = xprt_alloc_xid(xprt);
+ 	req->rq_release_snd_buf = NULL;
+ 	xprt_reset_majortimeo(req);
++	atomic_set(&req->destructor.ref, 1);
++	req->destructor.destroy = &xprt_complete_skb_pages;
+ 	dprintk("RPC: %5u reserved req %p xid %08x\n", task->tk_pid,
+ 			req, ntohl(req->rq_xid));
+ }
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index f1995dc..44e07f3 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -408,7 +408,8 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned i
+ 		remainder -= len;
+ 		if (remainder != 0 || more)
+ 			flags |= MSG_MORE;
+-		err = sock->ops->sendpage(sock, *ppage, NULL, base, len, flags);
++		err = sock->ops->sendpage(sock, *ppage, xdr->destructor,
++					  base, len, flags);
+ 		if (remainder == 0 || err != len)
+ 			break;
+ 		sent += err;
 -- 
-1.7.9.2
+1.7.2.5
 
