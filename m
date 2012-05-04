@@ -1,49 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35686 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:22893 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756124Ab2ENPXg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 May 2012 11:23:36 -0400
-Date: Mon, 14 May 2012 11:23:34 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Andreas Dilger <adilger@dilger.ca>
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: Re: [PATCH] ext4: turn on i_version updates by default
-Message-ID: <20120514152334.GB29902@fieldses.org>
-References: <20120514140618.GA29902@fieldses.org>
- <9124E59E-2479-4C32-A528-3237B48DEC01@dilger.ca>
+	id S1751454Ab2EDQEC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 May 2012 12:04:02 -0400
+Message-ID: <4FA3FDDB.6070600@redhat.com>
+Date: Fri, 04 May 2012 18:03:39 +0200
+From: Niels de Vos <ndevos@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <9124E59E-2479-4C32-A528-3237B48DEC01@dilger.ca>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        David Howells <dhowells@redhat.com>,
+        Jeffrey Layton <jlayton@redhat.com>
+Subject: Re: [RFC] Dataloss on NFS-clients who modify an mmap()'d area after
+ closing the file-descriptor
+References: <4FA2A56B.1030208@redhat.com>  <1336059797.5385.22.camel@lade.trondhjem.org> <4FA2BB68.7070304@redhat.com> <1336066014.5385.41.camel@lade.trondhjem.org>
+In-Reply-To: <1336066014.5385.41.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 14, 2012 at 09:02:12AM -0600, Andreas Dilger wrote:
-> On 2012-05-14, at 8:06, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > knfsd needs i_version updates on, as will userspace nfs servers and
-> > probably others.
-> > 
-> > The only effects are that inode->i_version is bumped (under the i_lock)
-> > in more places, and that ->dirty_inode(I_DIRTY_DATASYNC) may be called
-> > more frequently than once per jiffy on write (see file_update_time).
-> > However the latter appears to be mostly a no-op in that case.
-> 
-> I thought this can have noticeable performance impact, since ext4_mark_inode_dirty() is quite heavyweight?
+On 05/03/2012 07:26 PM, Myklebust, Trond wrote:
+ > On Thu, 2012-05-03 at 19:07 +0200, Niels de Vos wrote:
+ >> On 05/03/2012 05:43 PM, Myklebust, Trond wrote:
+ >>   >  On Thu, 2012-05-03 at 17:34 +0200, Niels de Vos wrote:
+ >>   >>  When an application on an NFS-client (tested with NFSv3) executes the
+ >>   >>  following steps, data written after the close() is never flushed to the
+ >>   >>  server:
+ >>   >>
+ >>   >>  1. open()
+ >>   >>  2. mmap()
+ >>   >>  3. close()
+ >>   >>  4.<modify data in the mmap'ed area>
+ >>   >>  5. munmap()
+ >>   >>
+ >>   >>  Dropping the caches (via /proc/sys/vm/drop_caches) or unmounting does not
+ >>   >>  result in the data being sent to the server.
+ >>   >>
+ >>   >>  The man-page for mmap (man 2 mmap) does mention that closing the file-
+ >>   >>  descriptor does not munmap() the area. Using the mmap'ed area after a
+ >>   >>  close() sound valid to me (even if it may be bad practice).
+ >>   >>
+ >>   >>  Investigation and checking showed that the NFS-client does not handle
+ >>   >>  munmap(), and only flushes on close(). To solve this problem, least two
+ >>   >>  solutions can be proposed:
+ >>   >>
+ >>   >>  a. f_ops->release() is called on munmap() as well as on close(),
+ >>   >>       therefore release() can be used to flush data as well.
+ >>   >>  b. In the 'struct vm_operations_struct' add a .close to the
+ >>   >>       'struct vm_area_struct' on calling mmap()/nfs_file_mmap() and flush
+ >>   >>       the data in the new close() function.
+ >>   >>
+ >>   >>  Solution a. contains currently very few code changes:
+ >>   >>
+ >>   >>  --- a/fs/nfs/inode.c
+ >>   >>  +++ b/fs/nfs/inode.c
+ >>   >>  @@ -713,6 +713,8 @@ int nfs_open(struct inode *inode, struct file *filp)
+ >>   >>
+ >>   >>     int nfs_release(struct inode *inode, struct file *filp)
+ >>   >>     {
+ >>   >>  +       if (S_ISREG(inode->i_mode)&&   inode->i_mapping->nrpages != 0) {
+ >>   >>  +               nfs_sync_mapping(inode->i_mapping);
+ >>   >>            nfs_file_clear_open_context(filp);
+ >>   >>            return 0;
+ >>   >>     }
+ >>   >>
+ >>   >>  The disadvantage is, that nfs_release() is called on close() too. That
+ >>   >>  means this causes a flushing of dirty pages, and just after that the
+ >>   >>  nfs_file_clear_open_context() might flush again. The advantage is that
+ >>   >>  it is possible (though not done at the moment) to return an error in
+ >>   >>  case flushing failed.
+ >>   >>
+ >>   >>  Solution b. does not provide an option to return an error, but does not
+ >>   >>  get called on each close():
+ >>   >>
+ >>   >>  --- a/fs/nfs/file.c
+ >>   >>  +++ b/fs/nfs/file.c
+ >>   >>  @@ -547,9 +547,17 @@ out:
+ >>   >>     	return ret;
+ >>   >>     }
+ >>   >>
+ >>   >>  +static void nfs_vm_close(struct vm_area_struct * vma)
+ >>   >>  +{
+ >>   >>  +	struct file *filp = vma->vm_file;
+ >>   >>  +
+ >>   >>  +	nfs_file_flush(filp, (fl_owner_t)filp);
+ >>   >>  +}
+ >>   >>  +
+ >>   >>     static const struct vm_operations_struct nfs_file_vm_ops = {
+ >>   >>     	.fault = filemap_fault,
+ >>   >>     	.page_mkwrite = nfs_vm_page_mkwrite,
+ >>   >>  +	.close = nfs_vm_close,
+ >>   >>     };
+ >>   >>
+ >>   >>     static int nfs_need_sync_write(struct file *filp, struct inode *inode)
+ >>   >>
+ >>   >>  I would like some feedback on what solution is most acceptable, or any
+ >>   >>  other suggestions.
+ >>   >
+ >>   >  Neither solution is acceptable. This isn't a close-to-open cache
+ >>   >  consistency issue.
+ >>   >
+ >>   >  The syntax of mmap() for both block and NFS mounts is the same: writes
+ >>   >  are not guaranteed to hit the disk until your application explicitly
+ >>   >  calls msync().
+ >>   >
+ >>
+ >> Okay, that makes sense. But if the application never calls msync(), and
+ >> just munmap()'s the area, when should the changes be written? I did not
+ >> expect that unmounting just disregards the data.
+ >
+ > That suggests that the VM is failing to dirty the pages on munmap()
+ > before releasing the vma->vm_file. If so, then that would be a VM bug...
+ >
 
-There's no reason it should be, should it, if we already just dirtied
-the inode a moment ago?
+I've checked if the VM tags the pages as dirty:
+- f_ops->release() is called on munmap(). An added printk there, shows
+   that inode->i_state is set to I_DIRTY_PAGE.
+- mapping_tagged(filp->f_mapping, PAGECACHE_TAG_DIRTY) also returns true
 
-> This is one of the reasons that the i_version update is conditional.
-> If someone is exporting a filesystem from userspace the should be able
-> to turn this on as a mount option, and knfsd could do it from inside
-> the kernel. Why add overhead when it is not needed?
+ From my understanding this is what the VM is expected to do, and the
+pages are marked dirty correctly.
 
-Any user of the change attribute also wants it to function correctly
-while they're away.
+However, nfs_inode->ndirty and nfs_inode->ncommit are both 0. It is
+unclear to me how the VM is supposed to interact with the nfs_inode.
+Some clarification or suggestion what to look into would be much
+appreciated.
 
-And if it at all possible I'd rather have it be something that Just
-Works rather than something that requires extra configuration.
-
---b.
+Cheers,
+Niels
