@@ -1,69 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:18254 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:10896 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760304Ab2EJTHu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 May 2012 15:07:50 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v4 00/14] Clean up mount functions
-Date: Thu, 10 May 2012 15:07:29 -0400
-Message-Id: <1336676863-9698-1-git-send-email-bjschuma@netapp.com>
+	id S1757214Ab2EERYG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 5 May 2012 13:24:06 -0400
+Subject: [PATCH RFC 05/13] Lockd: host complaining function introduced
+To: bfields@fieldses.org, Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Sat, 05 May 2012 21:22:08 +0400
+Message-ID: <20120505172208.11559.61956.stgit@localhost.localdomain>
+In-Reply-To: <20120505170722.11559.74503.stgit@localhost.localdomain>
+References: <20120505170722.11559.74503.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Just a small cleanup.
 
-I noticed that we had 5 almost identical mount functions in super.c.  I
-collapsed them all into one common function to make everything easier to
-maintain and work with.  Patches 1 - 4 are cleanups, 5 - 8 drop us down to
-one common mount path, and 9 - 14 are cleanups to remove the nfs4_mount()
-function.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/lockd/host.c |   57 +++++++++++++++++++++++++++++--------------------------
+ 1 files changed, 30 insertions(+), 27 deletions(-)
 
-These patches also help simplify my modules changes since I no longer have
-to split these functions out of the generic code.
-
-Changes in v4
--------------
-- Fix up the commit message on patch 6
-- Don't delete the dprintks saying that the nfs_xdev_mount() function is exiting
-
-Changes in v3
--------------
-- Remove the NFS4_MOUNT_UNSHARED flag
-- nfs_validate_mount_data() selects between the v2/3 function and the v4 function
-- Created a generic function for parsing text mount data
-
-Comments or suggestions are appreciated!
-
-- Bryan
-
-Bryan Schumaker (14):
-  NFS: Rename nfs4_proc_get_root()
-  NFS: Create a single nfs_get_root()
-  NFS: Don't pass mount data to nfs_fscache_get_super_cookie()
-  NFS: Remove NFS4_MOUNT_UNSHARED
-  NFS: Create a common fs_mount() function
-  NFS: Create a common xdev_mount() function
-  NFS: Use nfs_fs_mount_common() for xdev mounts
-  NFS: Use nfs_fs_mount_common() for remote referral mounts
-  NFS: Let mount data parsing set the NFS version
-  NFS: Create a new nfs_try_mount()
-  NFS: Create a single function for text mount data
-  NFS: Create a single nfs_validate_mount_data() function
-  NFS: Allocate parsed mount data directly to the nfs_mount_info
-    structure
-  NFS: Pass mntfh as part of the nfs_mount_info structure
-
- fs/nfs/fscache.c  |   15 +-
- fs/nfs/fscache.h  |    4 +-
- fs/nfs/getroot.c  |   85 +-----
- fs/nfs/internal.h |    1 +
- fs/nfs/nfs4_fs.h  |    1 +
- fs/nfs/nfs4proc.c |   30 ++-
- fs/nfs/super.c    |  748 ++++++++++++++++++++---------------------------------
- 7 files changed, 309 insertions(+), 575 deletions(-)
-
--- 
-1.7.10.1
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index 6c56090..8cbf53d 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -572,6 +572,35 @@ void nlm_host_rebooted(const struct nlm_reboot *info)
+ 	nsm_release(nsm);
+ }
+ 
++static void nlm_complain_hosts(struct net *net)
++{
++	struct hlist_head *chain;
++	struct hlist_node *pos;
++	struct nlm_host	*host;
++
++	if (net) {
++		struct lockd_net *ln = net_generic(net, lockd_net_id);
++
++		if (ln->nrhosts == 0)
++			return;
++		printk(KERN_WARNING "lockd: couldn't shutdown host module for net %p!\n", net);
++		dprintk("lockd: %lu hosts left in net %p:\n", ln->nrhosts, net);
++	} else {
++		if (nrhosts == 0)
++			return;
++		printk(KERN_WARNING "lockd: couldn't shutdown host module!\n");
++		dprintk("lockd: %lu hosts left:\n", nrhosts);
++	}
++
++	for_each_host(host, pos, chain, nlm_server_hosts) {
++		if (net && host->net != net)
++			continue;
++		dprintk("       %s (cnt %d use %d exp %ld net %p)\n",
++			host->h_name, atomic_read(&host->h_count),
++			host->h_inuse, host->h_expires, host->net);
++	}
++}
++
+ void
+ nlm_shutdown_hosts_net(struct net *net)
+ {
+@@ -598,18 +627,7 @@ nlm_shutdown_hosts_net(struct net *net)
+ 	nlm_gc_hosts(net);
+ 	mutex_unlock(&nlm_host_mutex);
+ 
+-	/* complain if any hosts are left */
+-	if (net) {
+-		struct lockd_net *ln = net_generic(net, lockd_net_id);
+-
+-		printk(KERN_WARNING "lockd: couldn't shutdown host module for net %p!\n", net);
+-		dprintk("lockd: %lu hosts left in net %p:\n", ln->nrhosts, net);
+-		for_each_host(host, pos, chain, nlm_server_hosts) {
+-			dprintk("       %s (cnt %d use %d exp %ld net %p)\n",
+-				host->h_name, atomic_read(&host->h_count),
+-				host->h_inuse, host->h_expires, host->net);
+-		}
+-	}
++	nlm_complain_hosts(net);
+ }
+ 
+ /*
+@@ -619,22 +637,7 @@ nlm_shutdown_hosts_net(struct net *net)
+ void
+ nlm_shutdown_hosts(void)
+ {
+-	struct hlist_head *chain;
+-	struct hlist_node *pos;
+-	struct nlm_host	*host;
+-
+ 	nlm_shutdown_hosts_net(NULL);
+-
+-	/* complain if any hosts are left */
+-	if (nrhosts != 0) {
+-		printk(KERN_WARNING "lockd: couldn't shutdown host module!\n");
+-		dprintk("lockd: %lu hosts left:\n", nrhosts);
+-		for_each_host(host, pos, chain, nlm_server_hosts) {
+-			dprintk("       %s (cnt %d use %d exp %ld net %p)\n",
+-				host->h_name, atomic_read(&host->h_count),
+-				host->h_inuse, host->h_expires, host->net);
+-		}
+-	}
+ }
+ 
+ /*
 
