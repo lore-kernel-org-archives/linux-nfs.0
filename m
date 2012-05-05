@@ -1,57 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from nm15.access.bullet.mail.mud.yahoo.com ([66.94.237.216]:23518
-	"HELO nm15.access.bullet.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1753170Ab2EJOVi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 May 2012 10:21:38 -0400
-Message-ID: <4FABCD55.9000504@schaufler-ca.com>
-Date: Thu, 10 May 2012 07:14:45 -0700
-From: Casey Schaufler <casey@schaufler-ca.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:2664 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757574Ab2EERYs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 5 May 2012 13:24:48 -0400
+Subject: [PATCH RFC 11/13] LockD: manage grace list per network namespace
+To: bfields@fieldses.org, Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Sat, 05 May 2012 21:22:51 +0400
+Message-ID: <20120505172251.11559.24422.stgit@localhost.localdomain>
+In-Reply-To: <20120505170722.11559.74503.stgit@localhost.localdomain>
+References: <20120505170722.11559.74503.stgit@localhost.localdomain>
 MIME-Version: 1.0
-To: Mel Gorman <mgorman@suse.de>
-CC: Andrew Morton <akpm@linux-foundation.org>, Linux-MM <linux-mm@kvack.org>,
-        Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>,
-        LSM <linux-security-module@vger.kernel.org>,
-        SE Linux <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 02/12] selinux: tag avc cache alloc as non-critical
-References: <1336658065-24851-1-git-send-email-mgorman@suse.de> <1336658065-24851-3-git-send-email-mgorman@suse.de>
-In-Reply-To: <1336658065-24851-3-git-send-email-mgorman@suse.de>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 5/10/2012 6:54 AM, Mel Gorman wrote:
-> Failing to allocate a cache entry will only harm performance not
-> correctness.  Do not consume valuable reserve pages for something
-> like that.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/lockd/grace.c |   14 +++++++++++---
+ fs/lockd/netns.h |    1 +
+ fs/lockd/svc.c   |    1 +
+ 3 files changed, 13 insertions(+), 3 deletions(-)
 
-Copying to the LSM and SELinux lists.
+diff --git a/fs/lockd/grace.c b/fs/lockd/grace.c
+index 183cc1f..8dbaff7 100644
+--- a/fs/lockd/grace.c
++++ b/fs/lockd/grace.c
+@@ -4,8 +4,10 @@
  
->
-> Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-> Signed-off-by: Mel Gorman <mgorman@suse.de>
-> ---
->  security/selinux/avc.c |    2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
->
-> diff --git a/security/selinux/avc.c b/security/selinux/avc.c
-> index 8ee42b2..75c2977 100644
-> --- a/security/selinux/avc.c
-> +++ b/security/selinux/avc.c
-> @@ -280,7 +280,7 @@ static struct avc_node *avc_alloc_node(void)
->  {
->  	struct avc_node *node;
->  
-> -	node = kmem_cache_zalloc(avc_node_cachep, GFP_ATOMIC);
-> +	node = kmem_cache_zalloc(avc_node_cachep, GFP_ATOMIC|__GFP_NOMEMALLOC);
->  	if (!node)
->  		goto out;
->  
+ #include <linux/module.h>
+ #include <linux/lockd/bind.h>
++#include <net/net_namespace.h>
++
++#include "netns.h"
+ 
+-static LIST_HEAD(grace_list);
+ static DEFINE_SPINLOCK(grace_lock);
+ 
+ /**
+@@ -21,8 +23,11 @@ static DEFINE_SPINLOCK(grace_lock);
+  */
+ void locks_start_grace(struct lock_manager *lm)
+ {
++	struct net *net = &init_net;
++	struct lockd_net *ln = net_generic(net, lockd_net_id);
++
+ 	spin_lock(&grace_lock);
+-	list_add(&lm->list, &grace_list);
++	list_add(&lm->list, &ln->grace_list);
+ 	spin_unlock(&grace_lock);
+ }
+ EXPORT_SYMBOL_GPL(locks_start_grace);
+@@ -54,6 +59,9 @@ EXPORT_SYMBOL_GPL(locks_end_grace);
+  */
+ int locks_in_grace(void)
+ {
+-	return !list_empty(&grace_list);
++	struct net *net = &init_net;
++	struct lockd_net *ln = net_generic(net, lockd_net_id);
++
++	return !list_empty(&ln->grace_list);
+ }
+ EXPORT_SYMBOL_GPL(locks_in_grace);
+diff --git a/fs/lockd/netns.h b/fs/lockd/netns.h
+index e78650c..4eee248 100644
+--- a/fs/lockd/netns.h
++++ b/fs/lockd/netns.h
+@@ -11,6 +11,7 @@ struct lockd_net {
+ 
+ 	struct delayed_work grace_period_end;
+ 	struct lock_manager lockd_manager;
++	struct list_head grace_list;
+ };
+ 
+ extern int lockd_net_id;
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index a9c436b..834dfe2 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -596,6 +596,7 @@ static int lockd_init_net(struct net *net)
+ 	struct lockd_net *ln = net_generic(net, lockd_net_id);
+ 
+ 	INIT_DELAYED_WORK(&ln->grace_period_end, grace_ender);
++	INIT_LIST_HEAD(&ln->grace_list);
+ 	return 0;
+ }
+ 
 
