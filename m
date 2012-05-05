@@ -1,134 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:49255 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757082Ab2EVCpf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 May 2012 22:45:35 -0400
-Received: by obbtb18 with SMTP id tb18so8963785obb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 21 May 2012 19:45:34 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 09/14] NFS: Force server to drop NFSv4 state
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 21 May 2012 22:45:33 -0400
-Message-ID: <20120522024533.1787.27771.stgit@degas.1015granger.net>
-In-Reply-To: <20120522022702.1787.45940.stgit@degas.1015granger.net>
-References: <20120522022702.1787.45940.stgit@degas.1015granger.net>
+Received: from mailhub.sw.ru ([195.214.232.25]:1785 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757834Ab2EERYe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 5 May 2012 13:24:34 -0400
+Subject: [PATCH RFC 09/13] NFSd: make nfsd4_manager allocated per network
+	namespace context.
+To: bfields@fieldses.org, Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Sat, 05 May 2012 21:22:37 +0400
+Message-ID: <20120505172236.11559.97256.stgit@localhost.localdomain>
+In-Reply-To: <20120505170722.11559.74503.stgit@localhost.localdomain>
+References: <20120505170722.11559.74503.stgit@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfs4_reset_all_state() refreshes the boot verifier a server sees to
-trigger that server to wipe this client's state.  This function is
-invoked when an NFSv4.1 server reports that it has revoked some or
-all of a client's NFSv4 state.
-
-To facilitate server trunking discovery, we will eventually want to
-move the cl_boot_time field to a more global structure.  The Uniform
-Client String model (and specifically, server trunking detection)
-requires that all servers see the same boot verifier until the client
-actually does reboot, and not a fresh verifier every time the client
-unmounts and remounts the server.
-
-Without the cl_boot_time field, however, nfs4_reset_all_state() will
-have to find some other way to force the server to purge the client's
-NFSv4 state.
-
-Because these verifiers are opaque (ie, the server doesn't know or
-care that they happen to be timestamps), we can force the server
-to wipe NFSv4 state by updating the boot verifier as we do now, then
-immediately afterwards establish a fresh client ID using the old boot
-verifier again.
-
-Hopefully there are no extra paranoid server implementations that keep
-track of the client's boot verifiers and prevent clients from reusing
-a previous one.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 ---
+ fs/nfsd/netns.h     |    2 ++
+ fs/nfsd/nfs4state.c |   32 +++++++++++++++++++-------------
+ 2 files changed, 21 insertions(+), 13 deletions(-)
 
- fs/nfs/nfs4_fs.h   |    1 +
- fs/nfs/nfs4proc.c  |   11 +++++++++--
- fs/nfs/nfs4state.c |   13 +++++++++++--
- 3 files changed, 21 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 1526fdf..e6da021 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -24,6 +24,7 @@ enum nfs4_client_state {
- 	NFS4CLNT_RECALL_SLOT,
- 	NFS4CLNT_LEASE_CONFIRM,
- 	NFS4CLNT_SERVER_SCOPE_MISMATCH,
-+	NFS4CLNT_PURGE_STATE,
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index 3936563..e99767d 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -34,6 +34,8 @@ struct nfsd_net {
+ 
+ 	struct cache_detail *idtoname_cache;
+ 	struct cache_detail *nametoid_cache;
++
++	struct lock_manager nfsd4_manager;
  };
  
- enum nfs4_session_state {
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ab6b2e5..81ccdbb 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3908,8 +3908,15 @@ static void nfs4_construct_boot_verifier(struct nfs_client *clp,
- {
- 	__be32 verf[2];
+ extern int nfsd_net_id;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index c33f052..c6c1be9 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -44,6 +44,8 @@
+ #include "vfs.h"
+ #include "current_stateid.h"
  
--	verf[0] = (__be32)clp->cl_boot_time.tv_sec;
--	verf[1] = (__be32)clp->cl_boot_time.tv_nsec;
-+	if (test_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state)) {
-+		/* An impossible timestamp guarantees this value
-+		 * will never match a generated boot time. */
-+		verf[0] = 0;
-+		verf[1] = (__be32)(NSEC_PER_SEC + 1);
-+	} else {
-+		verf[0] = (__be32)clp->cl_boot_time.tv_sec;
-+		verf[1] = (__be32)clp->cl_boot_time.tv_nsec;
-+	}
- 	memcpy(bootverf->data, verf, sizeof(bootverf->data));
++#include "netns.h"
++
+ #define NFSDDBG_FACILITY                NFSDDBG_PROC
+ 
+ /* Globals */
+@@ -3184,22 +3186,21 @@ out:
+ 	return status;
  }
  
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index f8c06de..32cce4a 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1615,7 +1615,7 @@ void nfs41_handle_recall_slot(struct nfs_client *clp)
- static void nfs4_reset_all_state(struct nfs_client *clp)
- {
- 	if (test_and_set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state) == 0) {
--		clp->cl_boot_time = CURRENT_TIME;
-+		set_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state);
- 		nfs4_state_start_reclaim_nograce(clp);
- 		nfs4_schedule_state_manager(clp);
- 	}
-@@ -1631,7 +1631,6 @@ static void nfs41_handle_server_reboot(struct nfs_client *clp)
+-static struct lock_manager nfsd4_manager = {
+-};
+-
+ static bool grace_ended;
  
- static void nfs41_handle_state_revoked(struct nfs_client *clp)
+ static void
+-nfsd4_end_grace(void)
++nfsd4_end_grace(struct net *net)
  {
--	/* Temporary */
- 	nfs4_reset_all_state(clp);
- }
- 
-@@ -1652,6 +1651,10 @@ void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags)
- {
- 	if (!flags)
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++
+ 	/* do nothing if grace period already ended */
+ 	if (grace_ended)
  		return;
-+
-+	dprintk("%s: \"%s\" (client ID %llx) flags=0x%08x\n",
-+		__func__, clp->cl_hostname, clp->cl_clientid, flags);
-+
- 	if (flags & SEQ4_STATUS_RESTART_RECLAIM_NEEDED)
- 		nfs41_handle_server_reboot(clp);
- 	if (flags & (SEQ4_STATUS_EXPIRED_ALL_STATE_REVOKED |
-@@ -1762,6 +1765,12 @@ static void nfs4_state_manager(struct nfs_client *clp)
  
- 	/* Ensure exclusive access to NFSv4 state */
- 	do {
-+		if (test_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state)) {
-+			nfs4_reclaim_lease(clp);
-+			clear_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state);
-+			set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
-+		}
+ 	dprintk("NFSD: end of grace period\n");
+ 	grace_ended = true;
+-	nfsd4_record_grace_done(&init_net, boot_time);
+-	locks_end_grace(&nfsd4_manager);
++	nfsd4_record_grace_done(net, boot_time);
++	locks_end_grace(&nn->nfsd4_manager);
+ 	/*
+ 	 * Now that every NFSv4 client has had the chance to recover and
+ 	 * to see the (possibly new, possibly shorter) lease time, we
+@@ -3222,7 +3223,7 @@ nfs4_laundromat(void)
+ 	nfs4_lock_state();
+ 
+ 	dprintk("NFSD: laundromat service - starting\n");
+-	nfsd4_end_grace();
++	nfsd4_end_grace(&init_net);
+ 	INIT_LIST_HEAD(&reaplist);
+ 	spin_lock(&client_lock);
+ 	list_for_each_safe(pos, next, &client_lru) {
+@@ -4743,6 +4744,8 @@ set_max_delegations(void)
+ int
+ nfs4_state_start(void)
+ {
++	struct net *net = &init_net;
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 	int ret;
+ 
+ 	/*
+@@ -4752,10 +4755,10 @@ nfs4_state_start(void)
+ 	 * to that instead and then do most of the rest of this on a per-net
+ 	 * basis.
+ 	 */
+-	get_net(&init_net);
+-	nfsd4_client_tracking_init(&init_net);
++	get_net(net);
++	nfsd4_client_tracking_init(net);
+ 	boot_time = get_seconds();
+-	locks_start_grace(&nfsd4_manager);
++	locks_start_grace(&nn->nfsd4_manager);
+ 	grace_ended = false;
+ 	printk(KERN_INFO "NFSD: starting %ld-second grace period\n",
+ 	       nfsd4_grace);
+@@ -4778,8 +4781,8 @@ nfs4_state_start(void)
+ out_free_laundry:
+ 	destroy_workqueue(laundry_wq);
+ out_recovery:
+-	nfsd4_client_tracking_exit(&init_net);
+-	put_net(&init_net);
++	nfsd4_client_tracking_exit(net);
++	put_net(net);
+ 	return ret;
+ }
+ 
+@@ -4820,9 +4823,12 @@ __nfs4_state_shutdown(void)
+ void
+ nfs4_state_shutdown(void)
+ {
++	struct net *net = &init_net;
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
 +
- 		if (test_and_clear_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state)) {
- 			/* We're going to have to re-establish a clientid */
- 			status = nfs4_reclaim_lease(clp);
+ 	cancel_delayed_work_sync(&laundromat_work);
+ 	destroy_workqueue(laundry_wq);
+-	locks_end_grace(&nfsd4_manager);
++	locks_end_grace(&nn->nfsd4_manager);
+ 	nfs4_lock_state();
+ 	__nfs4_state_shutdown();
+ 	nfs4_unlock_state();
 
