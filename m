@@ -1,78 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:57688 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751422Ab2EVPTh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 11:19:37 -0400
-Message-ID: <4FBBAE81.9010708@parallels.com>
-Date: Tue, 22 May 2012 19:19:29 +0400
+Received: from mailhub.sw.ru ([195.214.232.25]:15120 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757708Ab2EERY1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 5 May 2012 13:24:27 -0400
+Subject: [PATCH RFC 08/13] LockD: make lockd manager allocated per network
+	namespace
+To: bfields@fieldses.org, Trond.Myklebust@netapp.com
 From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Sat, 05 May 2012 21:22:29 +0400
+Message-ID: <20120505172229.11559.63825.stgit@localhost.localdomain>
+In-Reply-To: <20120505170722.11559.74503.stgit@localhost.localdomain>
+References: <20120505170722.11559.74503.stgit@localhost.localdomain>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Simo Sorce <simo@redhat.com>, "bfields@redhat.com" <bfields@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/4] SUNRPC: Add RPC based upcall mechanism for RPCGSS
- auth
-References: <1337087550-9821-1-git-send-email-simo@redhat.com> <1337087550-9821-4-git-send-email-simo@redhat.com> <20120522124728.GB891@fieldses.org> <1337691607.16840.178.camel@willson.li.ssimo.org> <4FBB91EE.3010307@parallels.com> <1337692966.16840.181.camel@willson.li.ssimo.org> <4FBB9551.9010407@parallels.com> <20120522142035.GC891@fieldses.org> <4FBBA667.4090409@parallels.com> <20120522150748.GF891@fieldses.org>
-In-Reply-To: <20120522150748.GF891@fieldses.org>
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 22.05.2012 19:07, J. Bruce Fields wrote:
-> On Tue, May 22, 2012 at 06:44:55PM +0400, Stanislav Kinsbursky wrote:
->> Yep, we discussed it already.
->> The problem is that connect call to unix sockets is done from rpciod
->> workqueue because of selinux restrictions.
->> IOW UNIX socket path will be traversed staring from rpciod kernel
->> thread root. Currently this problem is existent for portmapper
->> registration calls - for example LockD, started in container with
->> nested root, will be registered in global rpcbind instead of local
->> (container's) one.
->
-> Thanks for the reminder!
->
->> One of solutions was to export set_fs_root(), but Al Viro doesn't like it.
->>
->> So currently I'm thinking about patching network layer - i.e.
->> implementing an ability to pass desired path to unix sockets connect
->> and bind calls.
->> IOW, I'm talking about introducing of "bindat" and "connectat" system calls...
->
-> So then we'd resolve the path in the right context and pass down a
-> (vfsmount, dentry) that rpciod could use in bindat/connectat calls?
->
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/lockd/netns.h |    2 ++
+ fs/lockd/svc.c   |   18 ++++++++++--------
+ 2 files changed, 12 insertions(+), 8 deletions(-)
 
-A kind of this, yes. Of course, if community will accept the idea.
-Actually, bindat/connectat will be user space interfaces (they will be useful 
-for out CRIU project and also will allow to remove UNIX socket path length 
-limitation to 108 bytes).
-On kernel level I'm going to add some way to pass "struct path" to connect/bind 
-calls.
+diff --git a/fs/lockd/netns.h b/fs/lockd/netns.h
+index 94653ae..e78650c 100644
+--- a/fs/lockd/netns.h
++++ b/fs/lockd/netns.h
+@@ -1,6 +1,7 @@
+ #ifndef __LOCKD_NETNS_H__
+ #define __LOCKD_NETNS_H__
+ 
++#include <linux/fs.h>
+ #include <net/netns/generic.h>
+ 
+ struct lockd_net {
+@@ -9,6 +10,7 @@ struct lockd_net {
+ 	unsigned long nrhosts;
+ 
+ 	struct delayed_work grace_period_end;
++	struct lock_manager lockd_manager;
+ };
+ 
+ extern int lockd_net_id;
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 70c4177..a9c436b 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -87,12 +87,14 @@ static unsigned long get_lockd_grace_period(void)
+ 		return nlm_timeout * 5 * HZ;
+ }
+ 
+-static struct lock_manager lockd_manager = {
+-};
+-
+-static void grace_ender(struct work_struct *not_used)
++static void grace_ender(struct work_struct *grace)
+ {
+-	locks_end_grace(&lockd_manager);
++	struct delayed_work *dwork = container_of(grace, struct delayed_work,
++						  work);
++	struct lockd_net *ln = container_of(dwork, struct lockd_net,
++					    grace_period_end);
++
++	locks_end_grace(&ln->lockd_manager);
+ }
+ 
+ static void set_grace_period(void)
+@@ -100,7 +102,7 @@ static void set_grace_period(void)
+ 	unsigned long grace_period = get_lockd_grace_period();
+ 	struct lockd_net *ln = net_generic(&init_net, lockd_net_id);
+ 
+-	locks_start_grace(&lockd_manager);
++	locks_start_grace(&ln->lockd_manager);
+ 	cancel_delayed_work_sync(&ln->grace_period_end);
+ 	schedule_delayed_work(&ln->grace_period_end, grace_period);
+ }
+@@ -111,7 +113,7 @@ static void restart_grace(void)
+ 		struct lockd_net *ln = net_generic(&init_net, lockd_net_id);
+ 
+ 		cancel_delayed_work_sync(&ln->grace_period_end);
+-		locks_end_grace(&lockd_manager);
++		locks_end_grace(&ln->lockd_manager);
+ 		nlmsvc_invalidate_all();
+ 		set_grace_period();
+ 	}
+@@ -187,7 +189,7 @@ lockd(void *vrqstp)
+ 	}
+ 	flush_signals(current);
+ 	cancel_delayed_work_sync(&ln->grace_period_end);
+-	locks_end_grace(&lockd_manager);
++	locks_end_grace(&ln->lockd_manager);
+ 	if (nlmsvc_ops)
+ 		nlmsvc_invalidate_all();
+ 	nlm_shutdown_hosts();
 
->>> In particular: the current svcgssd communication method is using one of
->>> the sunrpc caches.  If we convert now to this method (which uses a unix
->>> socket) would there be a loss in functionality, until the unix sockets
->>> problems are fixed?
->>>
->>
->> I'm afraid, that you are right...
->> This new client will connect to root daemon - not containerized one...
->> How soon this new unix-socket way will become common practice?
->> Maybe I'd be able to patch unix sockets before distro's will use this new version.
->> But I don't know, what would be best to do...
->
-> Ugh.
->
-> Simo, remind me of the reasons for using a unix socket?
->
-
-Just a reminder: abstract (is it the right name?) UNIX sockets (with '\0' as a 
-first character in name) are containerized already.
-If UNIX socket is the only way. then maybe this "abstract" socket can be used?
-
-> --b.
-
-
--- 
-Best regards,
-Stanislav Kinsbursky
