@@ -1,80 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:49086 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752889Ab2EVODi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 May 2012 10:03:38 -0400
-Message-ID: <4FBB9CB8.5020200@netapp.com>
-Date: Tue, 22 May 2012 10:03:36 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+Received: from mail1.trendhosting.net ([195.8.117.5]:46410 "EHLO
+	mail1.trendhosting.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754679Ab2EFVXt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 6 May 2012 17:23:49 -0400
+Message-ID: <4FA6EBD4.7040308@pocock.com.au>
+Date: Sun, 06 May 2012 21:23:32 +0000
+From: Daniel Pocock <daniel@pocock.com.au>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: TEST / FREE STATEID error recovery
-References: <88F4DB05-5625-4E40-B057-04FCDE21E9C2@oracle.com> <4FBB9AC0.2040102@netapp.com> <379CE82E-0B25-4DCD-A834-A4EF413CA582@oracle.com>
-In-Reply-To: <379CE82E-0B25-4DCD-A834-A4EF413CA582@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: extremely slow nfs when sync enabled
+References: <4FA5E950.5080304@pocock.com.au> <1336328594.2593.14.camel@lade.trondhjem.org>
+In-Reply-To: <1336328594.2593.14.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/22/2012 10:02 AM, Chuck Lever wrote:
 
+
+On 06/05/12 18:23, Myklebust, Trond wrote:
+> On Sun, 2012-05-06 at 03:00 +0000, Daniel Pocock wrote:
+>>
+>> I've been observing some very slow nfs write performance when the server
+>> has `sync' in /etc/exports
+>>
+>> I want to avoid using async, but I have tested it and on my gigabit
+>> network, it gives almost the same speed as if I was on the server
+>> itself. (e.g. 30MB/sec to one disk, or less than 1MB/sec to the same
+>> disk over NFS with `sync')
+>>
+>> I'm using Debian 6 with 2.6.38 kernels on client and server, NFSv3
+>>
+>> I've also tried a client running Debian 7/Linux 3.2.0 with both NFSv3
+>> and NFSv4, speed is still slow
+>>
+>> Looking at iostat on the server, I notice that avgrq-sz = 8 sectors
+>> (4096 bytes) throughout the write operations
+>>
+>> I've tried various tests, e.g. dd a large file, or unpack a tarball with
+>> many small files, the iostat output is always the same
 > 
-> On May 22, 2012, at 9:55 AM, Bryan Schumaker wrote:
+> Were you using 'conv=sync'?
+
+No, it was not using conv=sync, just the vanilla dd:
+
+dd if=/dev/zero of=some-fat-file bs=65536 count=65536
+
+>> Looking at /proc/mounts on the clients, everything looks good, large
+>> wsize, tcp:
+>>
+>> rw,relatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.x.x.x,mountvers=3,mountport=58727,mountproto=udp,local_lock=none,addr=192.x.x.x
+>> 0 0
+>>
+>> and
+>>  rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=192.x.x.x.,minorversion=0,local_lock=none,addr=192.x.x.x 0 0
+>>
+>> and in /proc/fs/nfs/exports on the server, I have sync and wdelay:
+>>
+>> /nfs4/daniel
+>> 192.168.1.0/24,192.x.x.x(rw,insecure,root_squash,sync,wdelay,no_subtree_check,uuid=aa2a6f37:9cc94eeb:bcbf983c:d6e041d9,sec=1)
+>> /home/daniel
+>> 192.168.1.0/24,192.x.x.x(rw,root_squash,sync,wdelay,no_subtree_check,uuid=aa2a6f37:9cc94eeb:bcbf983c:d6e041d9)
+>>
+>> Can anyone suggest anything else?  Or is this really the performance hit
+>> of `sync'?
 > 
->> On 05/21/2012 11:31 PM, Chuck Lever wrote:
->>
->>> Hi-
->>>
->>> I'm trying to understand the error recovery logic in the new TEST_STATEID and FREE_STATEID procedures.
->>>
->>> For TEST_STATEID, we have this:
->>>
->>> 6395 static int nfs41_test_stateid(struct nfs_server *server, nfs4_stateid *stateid)
->>> 6396 {
->>> 6397         struct nfs4_exception exception = { };
->>> 6398         int err;
->>> 6399         do {
->>> 6400                 err = nfs4_handle_exception(server,
->>> 6401                                 _nfs41_test_stateid(server, stateid),
->>> 6402                                 &exception);
->>> 6403         } while (exception.retry);
->>> 6404         return err;
->>> 6405 }
->>>
->>> According to RFC 5661, the TEST_STATEID and FREE_STATEID procedures can return NFS4ERR_BAD_STATEID, NFS4ERR_OLD_STATEID, and NFS4ERR_DEADSESSION, among other things.  Do you really want to enter the exception handler here?  Seems to me that nfs41_{test,free}_stateid() are invoked mainly (only?) by the state manager, and thus you don't want to kick the state manager here and wait, as that would deadlock.  About the only error code you might want to pass into nfs4_handle_exception() is NFS4ERR_DELAY.  Everything else probably ought to be returned outright to the caller to let her figure out how to recover.
->>>
->>
->> Sounds about right.  At least passing NFS4ERR_BAD_STATEID will trigger stateid recovery again on the same stateid... probably not what we want.
->>
->>> Also, _nfs41_test_stateid() does this:
->>>
->>> 6390         if (status == NFS_OK)
->>> 6391                 return res.status;
->>> 6392         return status;
->>>
->>> status will contain NFS4_OK or a negative NFS4ERR value.  But the "if / return" will return res.status, which could be NFS4_OK, but it could also be (according to RFC 5661 section 18.48.3) NFS4ERR_BAD_STATEID, NFS4ERR_OLD_STATEID, NFS4ERR_EXPIRED, NFS4ERR_ADMIN_REVOKED, or NFS4ERR_DELEG_REVOKED.  Note that these are positive values, and the above logic returns them directly to the caller.
->>>
->>
->> So that should be "return -res.status" then?  Easy enough to change.
->>
->>> The caller then passes the positive result to nfs4_handle_exception().  Now I think nfs4_handle_exception() will ignore positive values.  And, I don't see any caller who is not doing "if (status != NFS4_OK)" so maybe this doesn't matter.  But it sure is confusing.
->>>
->>
->> This might be why it doesn't deadlock now.
->>
->>> Do you remember what was intended?  Was it positive NFS4ERR values for res.status and negative NFS4ERR values if the operation failed?  If that's the case, then that intention should be carefully documented.  Otherwise, maybe that should read "return -res.status;" (as long as we aren't passing that to the exception handler!).
->>>
->>
->>
->> My intention was to handle errors coming from the test / free stateid calls.  I didn't realize the RPC call returned a positive value instead of a negative one, so it's only an accident that we don't deadlock now if the server returns NFS4ERR_BAD_STATEID.  This should be fixed though, thanks for catching it!
-> 
-> I've got most of a patch, and a nice test case.  I can wrap this up for you if you like.
+> It really depends on your disk setup. Particularly when your filesystem
+> is using barriers (enabled by default on ext4 and xfs), a lot of raid
+
+On the server, I've tried both ext3 and ext4, explicitly changing things
+like data=writeback,barrier=0, but the problem remains
+
+The only thing that made it faster was using hdparm -W1 /dev/sd[ab] to
+enable the write-back cache on the disk
+
+> setups really _suck_ at dealing with fsync(). The latter is used every
+
+I'm using md RAID1, my setup is like this:
+
+2x 1TB SATA disks ST31000528AS (7200rpm with 32MB cache and NCQ)
+
+SATA controller: ATI Technologies Inc SB700/SB800 SATA Controller [AHCI
+mode] (rev 40)
+- not using any of the BIOS softraid stuff
+
+Both devices have identical partitioning:
+1. 128MB boot
+2. md volume (1TB - 128MB)
+
+The entire md volume (/dev/md2) is then used as a PV for LVM
+
+I do my write tests on a fresh LV with no fragmentation
+
+> time the NFS client sends a COMMIT or trunc() instruction, and for
+> pretty much all file and directory creation operations (you can use
+> 'nfsstat' to monitor how many such operations the NFS client is sending
+> as part of your test).
+
+I know that my two tests are very different in that way:
+
+- dd is just writing one big file, no fsync
+
+- unpacking a tarball (or compiling a large C++ project) does a lot of
+small writes with many fsyncs
+
+In both cases, it is slow
+
+> Local disk can get away with doing a lot less fsync(), because the cache
+> consistency guarantees are different:
+>       * in NFS, the server is allowed to crash or reboot without
+>         affecting the client's view of the filesystem.
+>       * in the local file system, the expectation is that on reboot any
+>         data lost is won't need to be recovered (the application will
+>         have used fsync() for any data that does need to be persistent).
+>         Only the disk filesystem structures need to be recovered, and
+>         that is done using the journal (or fsck).
 
 
-Sure, especially if you've already done most of the work!  Thanks!
+Is this an intractable problem though?
 
-- Bryan
-
-> 
-
-
+Or do people just work around this, for example, enable async and
+write-back cache, and then try to manage the risk by adding a UPS and/or
+battery backed cache to their RAID setup (to reduce the probability of
+unclean shutdown)?
