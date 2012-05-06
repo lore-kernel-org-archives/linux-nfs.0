@@ -1,297 +1,170 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61537 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757797Ab2EXVTg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 May 2012 17:19:36 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 1/2] nfs4.1: add BIND_CONN_TO_SESSION operation
-Date: Thu, 24 May 2012 17:19:33 -0400
-Message-Id: <1337894374-23340-1-git-send-email-dros@netapp.com>
+Received: from mail1.trendhosting.net ([195.8.117.5]:46913 "EHLO
+	mail1.trendhosting.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754758Ab2EFWMf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 6 May 2012 18:12:35 -0400
+Message-ID: <4FA6F74C.7000505@pocock.com.au>
+Date: Sun, 06 May 2012 22:12:28 +0000
+From: Daniel Pocock <daniel@pocock.com.au>
+MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: extremely slow nfs when sync enabled
+References: <4FA5E950.5080304@pocock.com.au>  <1336328594.2593.14.camel@lade.trondhjem.org>  <4FA6EBD4.7040308@pocock.com.au> <1336340993.2600.11.camel@lade.trondhjem.org>
+In-Reply-To: <1336340993.2600.11.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch adds the BIND_CONN_TO_SESSION operation which is needed for
-upcoming SP4_MACH_CRED work and useful for recovering from broken connections
-without destroying the session.
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
-Updated with comment from Trond
 
- fs/nfs/nfs4_fs.h        |    1 +
- fs/nfs/nfs4proc.c       |   54 ++++++++++++++++++++++++++
- fs/nfs/nfs4xdr.c        |   95 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/nfs4.h    |    5 ++
- include/linux/nfs_xdr.h |    6 +++
- 5 files changed, 161 insertions(+), 0 deletions(-)
+On 06/05/12 21:49, Myklebust, Trond wrote:
+> On Sun, 2012-05-06 at 21:23 +0000, Daniel Pocock wrote:
+>>
+>> On 06/05/12 18:23, Myklebust, Trond wrote:
+>>> On Sun, 2012-05-06 at 03:00 +0000, Daniel Pocock wrote:
+>>>>
+>>>> I've been observing some very slow nfs write performance when the server
+>>>> has `sync' in /etc/exports
+>>>>
+>>>> I want to avoid using async, but I have tested it and on my gigabit
+>>>> network, it gives almost the same speed as if I was on the server
+>>>> itself. (e.g. 30MB/sec to one disk, or less than 1MB/sec to the same
+>>>> disk over NFS with `sync')
+>>>>
+>>>> I'm using Debian 6 with 2.6.38 kernels on client and server, NFSv3
+>>>>
+>>>> I've also tried a client running Debian 7/Linux 3.2.0 with both NFSv3
+>>>> and NFSv4, speed is still slow
+>>>>
+>>>> Looking at iostat on the server, I notice that avgrq-sz = 8 sectors
+>>>> (4096 bytes) throughout the write operations
+>>>>
+>>>> I've tried various tests, e.g. dd a large file, or unpack a tarball with
+>>>> many small files, the iostat output is always the same
+>>>
+>>> Were you using 'conv=sync'?
+>>
+>> No, it was not using conv=sync, just the vanilla dd:
+>>
+>> dd if=/dev/zero of=some-fat-file bs=65536 count=65536
+> 
+> Then the results are not comparable.
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index edeef71..ad90bc7 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -215,6 +215,7 @@ struct vfsmount *nfs4_submount(struct nfs_server *, struct dentry *,
- extern int nfs4_proc_setclientid(struct nfs_client *, u32, unsigned short, struct rpc_cred *, struct nfs4_setclientid_res *);
- extern int nfs4_proc_setclientid_confirm(struct nfs_client *, struct nfs4_setclientid_res *arg, struct rpc_cred *);
- extern int nfs4_proc_get_rootfh(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
-+extern int nfs4_proc_bind_conn_to_session(struct nfs_client *);
- extern int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred);
- extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
- extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 78784e5..1d1bef6 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5062,6 +5062,60 @@ nfs41_same_server_scope(struct server_scope *a, struct server_scope *b)
- }
- 
- /*
-+ * nfs4_proc_bind_conn_to_session()
-+ *
-+ * The 4.1 client currently uses the same TCP connection for the
-+ * fore and backchannel.
-+ */
-+int nfs4_proc_bind_conn_to_session(struct nfs_client *clp)
-+{
-+	int status;
-+	struct nfs41_bind_conn_to_session_res res;
-+	struct rpc_message msg = {
-+		.rpc_proc =
-+			&nfs4_procedures[NFSPROC4_CLNT_BIND_CONN_TO_SESSION],
-+		.rpc_argp = clp,
-+		.rpc_resp = &res,
-+	};
-+
-+	dprintk("--> %s\n", __func__);
-+	BUG_ON(clp == NULL);
-+
-+	res.session = kzalloc(sizeof(struct nfs4_session), GFP_NOFS);
-+	if (unlikely(res.session == NULL)) {
-+		status = -ENOMEM;
-+		goto out;
-+	}
-+
-+	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
-+	if (status == 0) {
-+		if (memcmp(res.session->sess_id.data,
-+		    clp->cl_session->sess_id.data, NFS4_MAX_SESSIONID_LEN)) {
-+			dprintk("NFS: %s: Session ID mismatch\n", __func__);
-+			status = -EIO;
-+			goto out_session;
-+		}
-+		if (res.dir != NFS4_CDFS4_BOTH) {
-+			dprintk("NFS: %s: Unexpected direction from server\n",
-+				__func__);
-+			status = -EIO;
-+			goto out_session;
-+		}
-+		if (res.use_conn_in_rdma_mode) {
-+			dprintk("NFS: %s: Server returned RDMA mode = true\n",
-+				__func__);
-+			status = -EIO;
-+			goto out_session;
-+		}
-+	}
-+out_session:
-+	kfree(res.session);
-+out:
-+	dprintk("<-- %s status= %d\n", __func__, status);
-+	return status;
-+}
-+
-+/*
-  * nfs4_proc_exchange_id()
-  *
-  * Since the clientid has expired, all compounds using sessions
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index db040e9..e9be74f 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -321,6 +321,16 @@ static int nfs4_stat_to_errno(int);
- 				     1 /* csr_flags */ + \
- 				     decode_channel_attrs_maxsz + \
- 				     decode_channel_attrs_maxsz)
-+#define encode_bind_conn_to_session_maxsz  (op_encode_hdr_maxsz + \
-+				     /* bctsa_sessid */ \
-+				     XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + \
-+				     1 /* bctsa_dir */ + \
-+				     1 /* bctsa_use_conn_in_rdma_mode */)
-+#define decode_bind_conn_to_session_maxsz  (op_decode_hdr_maxsz +	\
-+				     /* bctsr_sessid */ \
-+				     XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + \
-+				     1 /* bctsr_dir */ + \
-+				     1 /* bctsr_use_conn_in_rdma_mode */)
- #define encode_destroy_session_maxsz    (op_encode_hdr_maxsz + 4)
- #define decode_destroy_session_maxsz    (op_decode_hdr_maxsz)
- #define encode_sequence_maxsz	(op_encode_hdr_maxsz + \
-@@ -714,6 +724,12 @@ static int nfs4_stat_to_errno(int);
- 				decode_putfh_maxsz + \
- 				decode_secinfo_maxsz)
- #if defined(CONFIG_NFS_V4_1)
-+#define NFS4_enc_bind_conn_to_session_sz \
-+				(compound_encode_hdr_maxsz + \
-+				 encode_bind_conn_to_session_maxsz)
-+#define NFS4_dec_bind_conn_to_session_sz \
-+				(compound_decode_hdr_maxsz + \
-+				 decode_bind_conn_to_session_maxsz)
- #define NFS4_enc_exchange_id_sz \
- 				(compound_encode_hdr_maxsz + \
- 				 encode_exchange_id_maxsz)
-@@ -1654,6 +1670,20 @@ static void encode_secinfo(struct xdr_stream *xdr, const struct qstr *name, stru
- 
- #if defined(CONFIG_NFS_V4_1)
- /* NFSv4.1 operations */
-+static void encode_bind_conn_to_session(struct xdr_stream *xdr,
-+				   struct nfs4_session *session,
-+				   struct compound_hdr *hdr)
-+{
-+	__be32 *p;
-+
-+	encode_op_hdr(xdr, OP_BIND_CONN_TO_SESSION,
-+		decode_bind_conn_to_session_maxsz, hdr);
-+	encode_opaque_fixed(xdr, session->sess_id.data, NFS4_MAX_SESSIONID_LEN);
-+	p = xdr_reserve_space(xdr, 8);
-+	*p++ = cpu_to_be32(NFS4_CDFC4_BACK_OR_BOTH);
-+	*p = 0;	/* use_conn_in_rdma_mode = False */
-+}
-+
- static void encode_exchange_id(struct xdr_stream *xdr,
- 			       struct nfs41_exchange_id_args *args,
- 			       struct compound_hdr *hdr)
-@@ -2614,6 +2644,22 @@ static void nfs4_xdr_enc_secinfo(struct rpc_rqst *req,
- 
- #if defined(CONFIG_NFS_V4_1)
- /*
-+ * BIND_CONN_TO_SESSION request
-+ */
-+static void nfs4_xdr_enc_bind_conn_to_session(struct rpc_rqst *req,
-+				struct xdr_stream *xdr,
-+				struct nfs_client *clp)
-+{
-+	struct compound_hdr hdr = {
-+		.minorversion = clp->cl_mvops->minor_version,
-+	};
-+
-+	encode_compound_hdr(xdr, req, &hdr);
-+	encode_bind_conn_to_session(xdr, clp->cl_session, &hdr);
-+	encode_nops(&hdr);
-+}
-+
-+/*
-  * EXCHANGE_ID request
-  */
- static void nfs4_xdr_enc_exchange_id(struct rpc_rqst *req,
-@@ -5239,6 +5285,37 @@ static int decode_sessionid(struct xdr_stream *xdr, struct nfs4_sessionid *sid)
- 	return decode_opaque_fixed(xdr, sid->data, NFS4_MAX_SESSIONID_LEN);
- }
- 
-+static int decode_bind_conn_to_session(struct xdr_stream *xdr,
-+				struct nfs41_bind_conn_to_session_res *res)
-+{
-+	__be32 *p;
-+	int status;
-+
-+	status = decode_op_hdr(xdr, OP_BIND_CONN_TO_SESSION);
-+	if (!status)
-+		status = decode_sessionid(xdr, &res->session->sess_id);
-+	if (unlikely(status))
-+		return status;
-+
-+	/* dir flags, rdma mode bool */
-+	p = xdr_inline_decode(xdr, 8);
-+	if (unlikely(!p))
-+		goto out_overflow;
-+
-+	res->dir = be32_to_cpup(p++);
-+	if (res->dir == 0 || res->dir > NFS4_CDFS4_BOTH)
-+		return -EIO;
-+	if (be32_to_cpup(p) == 0)
-+		res->use_conn_in_rdma_mode = false;
-+	else
-+		res->use_conn_in_rdma_mode = true;
-+
-+	return 0;
-+out_overflow:
-+	print_overflow_msg(__func__, xdr);
-+	return -EIO;
-+}
-+
- static int decode_create_session(struct xdr_stream *xdr,
- 				 struct nfs41_create_session_res *res)
- {
-@@ -6521,6 +6598,22 @@ out:
- 
- #if defined(CONFIG_NFS_V4_1)
- /*
-+ * Decode BIND_CONN_TO_SESSION response
-+ */
-+static int nfs4_xdr_dec_bind_conn_to_session(struct rpc_rqst *rqstp,
-+					struct xdr_stream *xdr,
-+					void *res)
-+{
-+	struct compound_hdr hdr;
-+	int status;
-+
-+	status = decode_compound_hdr(xdr, &hdr);
-+	if (!status)
-+		status = decode_bind_conn_to_session(xdr, res);
-+	return status;
-+}
-+
-+/*
-  * Decode EXCHANGE_ID response
-  */
- static int nfs4_xdr_dec_exchange_id(struct rpc_rqst *rqstp,
-@@ -7001,6 +7094,8 @@ struct rpc_procinfo	nfs4_procedures[] = {
- 	PROC(RELEASE_LOCKOWNER,	enc_release_lockowner,	dec_release_lockowner),
- 	PROC(SECINFO,		enc_secinfo,		dec_secinfo),
- #if defined(CONFIG_NFS_V4_1)
-+	PROC(BIND_CONN_TO_SESSION,
-+			enc_bind_conn_to_session, dec_bind_conn_to_session),
- 	PROC(EXCHANGE_ID,	enc_exchange_id,	dec_exchange_id),
- 	PROC(CREATE_SESSION,	enc_create_session,	dec_create_session),
- 	PROC(DESTROY_SESSION,	enc_destroy_session,	dec_destroy_session),
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 0987146..5b1a504 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -69,6 +69,10 @@
- #define NFS4_CDFC4_FORE_OR_BOTH 0x3
- #define NFS4_CDFC4_BACK_OR_BOTH 0x7
- 
-+#define NFS4_CDFS4_FORE 0x1
-+#define NFS4_CDFS4_BACK 0x2
-+#define NFS4_CDFS4_BOTH 0x3
-+
- #define NFS4_SET_TO_SERVER_TIME	0
- #define NFS4_SET_TO_CLIENT_TIME	1
- 
-@@ -582,6 +586,7 @@ enum {
- 	NFSPROC4_CLNT_SECINFO,
- 
- 	/* nfs41 */
-+	NFSPROC4_CLNT_BIND_CONN_TO_SESSION,
- 	NFSPROC4_CLNT_EXCHANGE_ID,
- 	NFSPROC4_CLNT_CREATE_SESSION,
- 	NFSPROC4_CLNT_DESTROY_SESSION,
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 2e53a3f..aa2a3bb 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1115,6 +1115,12 @@ struct nfs41_impl_id {
- 	struct nfstime4			date;
- };
- 
-+struct nfs41_bind_conn_to_session_res {
-+	struct nfs4_session		*session;
-+	u32				dir;
-+	bool				use_conn_in_rdma_mode;
-+};
-+
- struct nfs41_exchange_id_res {
- 	struct nfs_client		*client;
- 	u32				flags;
--- 
-1.7.4.4
+If I run dd with conv=sync on the server, then I still notice that OS
+caching plays a factor and write performance just appears really fast
+
+>>>> Looking at /proc/mounts on the clients, everything looks good, large
+>>>> wsize, tcp:
+>>>>
+>>>> rw,relatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.x.x.x,mountvers=3,mountport=58727,mountproto=udp,local_lock=none,addr=192.x.x.x
+>>>> 0 0
+>>>>
+>>>> and
+>>>>  rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=192.x.x.x.,minorversion=0,local_lock=none,addr=192.x.x.x 0 0
+>>>>
+>>>> and in /proc/fs/nfs/exports on the server, I have sync and wdelay:
+>>>>
+>>>> /nfs4/daniel
+>>>> 192.168.1.0/24,192.x.x.x(rw,insecure,root_squash,sync,wdelay,no_subtree_check,uuid=aa2a6f37:9cc94eeb:bcbf983c:d6e041d9,sec=1)
+>>>> /home/daniel
+>>>> 192.168.1.0/24,192.x.x.x(rw,root_squash,sync,wdelay,no_subtree_check,uuid=aa2a6f37:9cc94eeb:bcbf983c:d6e041d9)
+>>>>
+>>>> Can anyone suggest anything else?  Or is this really the performance hit
+>>>> of `sync'?
+>>>
+>>> It really depends on your disk setup. Particularly when your filesystem
+>>> is using barriers (enabled by default on ext4 and xfs), a lot of raid
+>>
+>> On the server, I've tried both ext3 and ext4, explicitly changing things
+>> like data=writeback,barrier=0, but the problem remains
+>>
+>> The only thing that made it faster was using hdparm -W1 /dev/sd[ab] to
+>> enable the write-back cache on the disk
+> 
+> That should in principle be safe to do as long as you are using
+> barrier=1.
+
+Ok, so the combination of:
+
+- enable writeback with hdparm
+- use ext4 (and not ext3)
+- barrier=1 and data=writeback?  or data=?
+
+- is there a particular kernel version (on either client or server side)
+that will offer more stability using this combination of features?
+
+I think there are some other variations of my workflow that I can
+attempt too, e.g. I've contemplated compiling C++ code onto a RAM disk
+because I don't need to keep the hundreds of object files.
+
+>>> setups really _suck_ at dealing with fsync(). The latter is used every
+>>
+>> I'm using md RAID1, my setup is like this:
+>>
+>> 2x 1TB SATA disks ST31000528AS (7200rpm with 32MB cache and NCQ)
+>>
+>> SATA controller: ATI Technologies Inc SB700/SB800 SATA Controller [AHCI
+>> mode] (rev 40)
+>> - not using any of the BIOS softraid stuff
+>>
+>> Both devices have identical partitioning:
+>> 1. 128MB boot
+>> 2. md volume (1TB - 128MB)
+>>
+>> The entire md volume (/dev/md2) is then used as a PV for LVM
+>>
+>> I do my write tests on a fresh LV with no fragmentation
+>>
+>>> time the NFS client sends a COMMIT or trunc() instruction, and for
+>>> pretty much all file and directory creation operations (you can use
+>>> 'nfsstat' to monitor how many such operations the NFS client is sending
+>>> as part of your test).
+>>
+>> I know that my two tests are very different in that way:
+>>
+>> - dd is just writing one big file, no fsync
+>>
+>> - unpacking a tarball (or compiling a large C++ project) does a lot of
+>> small writes with many fsyncs
+>>
+>> In both cases, it is slow
+>>
+>>> Local disk can get away with doing a lot less fsync(), because the cache
+>>> consistency guarantees are different:
+>>>       * in NFS, the server is allowed to crash or reboot without
+>>>         affecting the client's view of the filesystem.
+>>>       * in the local file system, the expectation is that on reboot any
+>>>         data lost is won't need to be recovered (the application will
+>>>         have used fsync() for any data that does need to be persistent).
+>>>         Only the disk filesystem structures need to be recovered, and
+>>>         that is done using the journal (or fsck).
+>>
+>>
+>> Is this an intractable problem though?
+>>
+>> Or do people just work around this, for example, enable async and
+>> write-back cache, and then try to manage the risk by adding a UPS and/or
+>> battery backed cache to their RAID setup (to reduce the probability of
+>> unclean shutdown)?
+> 
+> It all boils down to what kind of consistency guarantees you are
+> comfortable living with. The default NFS server setup offers much
+> stronger data consistency guarantees than local disk, and is therefore
+> likely to be slower when using cheap hardware.
+> 
+
+I'm keen for consistency, because I don't like the idea of corrupting
+some source code or a whole git repository for example.
+
+How did you know I'm using cheap hardware?  It is a HP MicroServer, I
+even got the £100 cash-back cheque:
+
+http://www8.hp.com/uk/en/campaign/focus-for-smb/solution.html#/tab2/
+
+Seriously though, I've worked with some very large arrays in my business
+environment, but I use this hardware at home because of the low noise
+and low heat dissipation rather than for saving money, so I would like
+to try and get the most out of it if possible.
+
 
