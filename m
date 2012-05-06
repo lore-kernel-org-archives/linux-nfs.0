@@ -1,92 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:31155 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752521Ab2EGSKU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 May 2012 14:10:20 -0400
-Received: from vmwexceht04-prd.hq.netapp.com (vmwexceht04-prd.hq.netapp.com [10.106.77.34])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q47IAKXB018238
-	for <linux-nfs@vger.kernel.org>; Mon, 7 May 2012 11:10:20 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 7/7] NFS: Use nfs_fs_mount_common() for remote referral
- mounts
-Date: Mon, 7 May 2012 18:10:18 +0000
-Message-ID: <1336414224.9499.5.camel@lade.trondhjem.org>
-References: <1335811229-2989-1-git-send-email-bjschuma@netapp.com>
-	 <1335811229-2989-8-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1335811229-2989-8-git-send-email-bjschuma@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail1.trendhosting.net ([195.8.117.5]:38768 "EHLO
+	mail1.trendhosting.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751202Ab2EFJ0F (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 6 May 2012 05:26:05 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by mail1.trendhosting.net (Postfix) with ESMTP id F07661586A
+	for <linux-nfs@vger.kernel.org>; Sun,  6 May 2012 10:26:04 +0100 (BST)
+Received: from mail1.trendhosting.net ([127.0.0.1])
+	by localhost (thp003.trendhosting.net [127.0.0.1]) (amavisd-new, port 10024)
+	with LMTP id Fp0KS3UxT-Xi for <linux-nfs@vger.kernel.org>;
+	Sun,  6 May 2012 10:26:02 +0100 (BST)
+Message-ID: <4FA643A9.3010406@pocock.com.au>
+Date: Sun, 06 May 2012 09:26:01 +0000
+From: Daniel Pocock <daniel@pocock.com.au>
 MIME-Version: 1.0
+To: linux-nfs@vger.kernel.org
+Subject: extremely slow nfs when sync enabled
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA0LTMwIGF0IDE0OjQwIC0wNDAwLCBianNjaHVtYUBuZXRhcHAuY29tIHdy
-b3RlOg0KPiBGcm9tOiBCcnlhbiBTY2h1bWFrZXIgPGJqc2NodW1hQG5ldGFwcC5jb20+DQo+IA0K
-PiBTaWduZWQtb2ZmLWJ5OiBCcnlhbiBTY2h1bWFrZXIgPGJqc2NodW1hQG5ldGFwcC5jb20+DQo+
-IC0tLQ0KPiAgZnMvbmZzL3N1cGVyLmMgfCAgIDkwICsrKysrKysrKy0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+ICAxIGZpbGUgY2hhbmdlZCwgMTQgaW5z
-ZXJ0aW9ucygrKSwgNzYgZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL3N1
-cGVyLmMgYi9mcy9uZnMvc3VwZXIuYw0KPiBpbmRleCA5ZWQ2NzBiLi4yMWIyMjljIDEwMDY0NA0K
-PiAtLS0gYS9mcy9uZnMvc3VwZXIuYw0KPiArKysgYi9mcy9uZnMvc3VwZXIuYw0KPiBAQCAtMjc3
-NCw5NSArMjc3NCwzMyBAQCBzdGF0aWMgc3RydWN0IGRlbnRyeSAqDQo+ICBuZnM0X3JlbW90ZV9y
-ZWZlcnJhbF9tb3VudChzdHJ1Y3QgZmlsZV9zeXN0ZW1fdHlwZSAqZnNfdHlwZSwgaW50IGZsYWdz
-LA0KPiAgCQkJICAgY29uc3QgY2hhciAqZGV2X25hbWUsIHZvaWQgKnJhd19kYXRhKQ0KPiAgew0K
-PiAtCXN0cnVjdCBuZnNfY2xvbmVfbW91bnQgKmRhdGEgPSByYXdfZGF0YTsNCj4gLQlzdHJ1Y3Qg
-c3VwZXJfYmxvY2sgKnM7DQo+ICsJc3RydWN0IG5mc19tb3VudF9pbmZvIG1vdW50X2luZm8gPSB7
-DQo+ICsJCS5maWxsX3N1cGVyID0gbmZzNF9maWxsX3N1cGVyLA0KPiArCQkuc2V0X3NlY3VyaXR5
-ID0gbmZzX2Nsb25lX3NiX3NlY3VyaXR5LA0KPiArCQkuY2xvbmVkID0gcmF3X2RhdGEsDQo+ICsJ
-CS51bnNoYXJlZCA9IE5GUzRfTU9VTlRfVU5TSEFSRUQsDQoNClRoaXMgc2VlbXMgdG8gYmUgc2V0
-dGluZyBhbGwgcmVmZXJyYWwgbW91bnRzIHRvIE5GUzRfTU9VTlRfVU5TSEFSRUQuIFdoeQ0KdGhl
-IGNoYW5nZSBpbiBiZWhhdmlvdXI/DQoNCj4gKwl9Ow0KPiAgCXN0cnVjdCBuZnNfc2VydmVyICpz
-ZXJ2ZXI7DQo+IC0Jc3RydWN0IGRlbnRyeSAqbW50cm9vdDsNCj4gKwlzdHJ1Y3QgZGVudHJ5ICpt
-bnRyb290ID0gRVJSX1BUUigtRU5PTUVNKTsNCj4gIAlzdHJ1Y3QgbmZzX2ZoICptbnRmaDsNCj4g
-LQlpbnQgKCpjb21wYXJlX3N1cGVyKShzdHJ1Y3Qgc3VwZXJfYmxvY2sgKiwgdm9pZCAqKSA9IG5m
-c19jb21wYXJlX3N1cGVyOw0KPiAtCXN0cnVjdCBuZnNfc2JfbW91bnRkYXRhIHNiX21udGRhdGEg
-PSB7DQo+IC0JCS5tbnRmbGFncyA9IGZsYWdzLA0KPiAtCX07DQo+IC0JaW50IGVycm9yID0gLUVO
-T01FTTsNCj4gIA0KPiAgCWRwcmludGsoIi0tPiBuZnM0X3JlZmVycmFsX2dldF9zYigpXG4iKTsN
-Cj4gIA0KPiAgCW1udGZoID0gbmZzX2FsbG9jX2ZoYW5kbGUoKTsNCj4gLQlpZiAobW50ZmggPT0g
-TlVMTCkNCj4gLQkJZ290byBvdXRfZXJyX25vZmg7DQo+ICsJaWYgKG1vdW50X2luZm8uY2xvbmVk
-ID09IE5VTEwgfHwgbW50ZmggPT0gTlVMTCkNCj4gKwkJZ290byBvdXQ7DQo+ICANCj4gIAkvKiBj
-cmVhdGUgYSBuZXcgdm9sdW1lIHJlcHJlc2VudGF0aW9uICovDQo+IC0Jc2VydmVyID0gbmZzNF9j
-cmVhdGVfcmVmZXJyYWxfc2VydmVyKGRhdGEsIG1udGZoKTsNCj4gKwlzZXJ2ZXIgPSBuZnM0X2Ny
-ZWF0ZV9yZWZlcnJhbF9zZXJ2ZXIobW91bnRfaW5mby5jbG9uZWQsIG1udGZoKTsNCj4gIAlpZiAo
-SVNfRVJSKHNlcnZlcikpIHsNCj4gLQkJZXJyb3IgPSBQVFJfRVJSKHNlcnZlcik7DQo+IC0JCWdv
-dG8gb3V0X2Vycl9ub3NlcnZlcjsNCj4gLQl9DQo+IC0Jc2JfbW50ZGF0YS5zZXJ2ZXIgPSBzZXJ2
-ZXI7DQo+IC0NCj4gLQlpZiAoc2VydmVyLT5mbGFncyAmIE5GUzRfTU9VTlRfVU5TSEFSRUQpDQo+
-IC0JCWNvbXBhcmVfc3VwZXIgPSBOVUxMOw0KPiAtDQo+IC0JLyogLW8gbm9hYyBpbXBsaWVzIC1v
-IHN5bmMgKi8NCj4gLQlpZiAoc2VydmVyLT5mbGFncyAmIE5GU19NT1VOVF9OT0FDKQ0KPiAtCQlz
-Yl9tbnRkYXRhLm1udGZsYWdzIHw9IE1TX1NZTkNIUk9OT1VTOw0KPiAtDQo+IC0JLyogR2V0IGEg
-c3VwZXJibG9jayAtIG5vdGUgdGhhdCB3ZSBtYXkgZW5kIHVwIHNoYXJpbmcgb25lIHRoYXQgYWxy
-ZWFkeSBleGlzdHMgKi8NCj4gLQlzID0gc2dldCgmbmZzNF9mc190eXBlLCBjb21wYXJlX3N1cGVy
-LCBuZnNfc2V0X3N1cGVyLCAmc2JfbW50ZGF0YSk7DQo+IC0JaWYgKElTX0VSUihzKSkgew0KPiAt
-CQllcnJvciA9IFBUUl9FUlIocyk7DQo+IC0JCWdvdG8gb3V0X2Vycl9ub3NiOw0KPiAtCX0NCj4g
-LQ0KPiAtCWlmIChzLT5zX2ZzX2luZm8gIT0gc2VydmVyKSB7DQo+IC0JCW5mc19mcmVlX3NlcnZl
-cihzZXJ2ZXIpOw0KPiAtCQlzZXJ2ZXIgPSBOVUxMOw0KPiAtCX0gZWxzZSB7DQo+IC0JCWVycm9y
-ID0gbmZzX2JkaV9yZWdpc3RlcihzZXJ2ZXIpOw0KPiAtCQlpZiAoZXJyb3IpDQo+IC0JCQlnb3Rv
-IGVycm9yX3NwbGF0X2JkaTsNCj4gLQl9DQo+IC0NCj4gLQlpZiAoIXMtPnNfcm9vdCkgew0KPiAt
-CQkvKiBpbml0aWFsIHN1cGVyYmxvY2svcm9vdCBjcmVhdGlvbiAqLw0KPiAtCQluZnM0X2ZpbGxf
-c3VwZXIocywgTlVMTCk7DQo+IC0JCW5mc19mc2NhY2hlX2dldF9zdXBlcl9jb29raWUocywgTlVM
-TCwgZGF0YSk7DQo+IC0JfQ0KPiAtDQo+IC0JbW50cm9vdCA9IG5mc19nZXRfcm9vdChzLCBtbnRm
-aCwgZGV2X25hbWUpOw0KPiAtCWlmIChJU19FUlIobW50cm9vdCkpIHsNCj4gLQkJZXJyb3IgPSBQ
-VFJfRVJSKG1udHJvb3QpOw0KPiAtCQlnb3RvIGVycm9yX3NwbGF0X3N1cGVyOw0KPiAtCX0NCj4g
-LQlpZiAobW50cm9vdC0+ZF9pbm9kZS0+aV9vcCAhPSBORlNfU0IocyktPm5mc19jbGllbnQtPnJw
-Y19vcHMtPmRpcl9pbm9kZV9vcHMpIHsNCj4gLQkJZHB1dChtbnRyb290KTsNCj4gLQkJZXJyb3Ig
-PSAtRVNUQUxFOw0KPiAtCQlnb3RvIGVycm9yX3NwbGF0X3N1cGVyOw0KPiArCQltbnRyb290ID0g
-RVJSX0NBU1Qoc2VydmVyKTsNCj4gKwkJZ290byBvdXQ7DQo+ICAJfQ0KPiAgDQo+IC0Jcy0+c19m
-bGFncyB8PSBNU19BQ1RJVkU7DQo+IC0NCj4gLQlzZWN1cml0eV9zYl9jbG9uZV9tbnRfb3B0cyhk
-YXRhLT5zYiwgcyk7DQo+IC0NCj4gKwltbnRyb290ID0gbmZzX2ZzX21vdW50X2NvbW1vbigmbmZz
-NF9mc190eXBlLCBzZXJ2ZXIsIGZsYWdzLCBkZXZfbmFtZSwgbW50ZmgsICZtb3VudF9pbmZvKTsN
-Cj4gK291dDoNCj4gIAluZnNfZnJlZV9maGFuZGxlKG1udGZoKTsNCj4gLQlkcHJpbnRrKCI8LS0g
-bmZzNF9yZWZlcnJhbF9nZXRfc2IoKSA9IDBcbiIpOw0KPiAgCXJldHVybiBtbnRyb290Ow0KPiAt
-DQo+IC1vdXRfZXJyX25vc2I6DQo+IC0JbmZzX2ZyZWVfc2VydmVyKHNlcnZlcik7DQo+IC1vdXRf
-ZXJyX25vc2VydmVyOg0KPiAtCW5mc19mcmVlX2ZoYW5kbGUobW50ZmgpOw0KPiAtb3V0X2Vycl9u
-b2ZoOg0KPiAtCWRwcmludGsoIjwtLSBuZnM0X3JlZmVycmFsX2dldF9zYigpID0gJWQgW2Vycm9y
-XVxuIiwgZXJyb3IpOw0KPiAtCXJldHVybiBFUlJfUFRSKGVycm9yKTsNCj4gLQ0KPiAtZXJyb3Jf
-c3BsYXRfc3VwZXI6DQo+IC0JaWYgKHNlcnZlciAmJiAhcy0+c19yb290KQ0KPiAtCQliZGlfdW5y
-ZWdpc3Rlcigmc2VydmVyLT5iYWNraW5nX2Rldl9pbmZvKTsNCj4gLWVycm9yX3NwbGF0X2JkaToN
-Cj4gLQlkZWFjdGl2YXRlX2xvY2tlZF9zdXBlcihzKTsNCj4gLQluZnNfZnJlZV9maGFuZGxlKG1u
-dGZoKTsNCj4gLQlkcHJpbnRrKCI8LS0gbmZzNF9yZWZlcnJhbF9nZXRfc2IoKSA9ICVkIFtzcGxh
-dF1cbiIsIGVycm9yKTsNCj4gLQlyZXR1cm4gRVJSX1BUUihlcnJvcik7DQo+ICB9DQo+ICANCj4g
-IC8qDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIN
-Cg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+
+
+I've been observing some very slow nfs write performance when the server
+has `sync' in /etc/exports
+
+I want to avoid using async, but I have tested it and on my gigabit
+network, it gives almost the same speed as if I was on the server
+itself. (e.g. 30MB/sec to one disk, or less than 1MB/sec to the same
+disk over NFS with `sync')
+
+I'm using Debian 6 with 2.6.38 kernels on client and server, NFSv3
+
+I've also tried a client running Debian 7/Linux 3.2.0 with both NFSv3
+and NFSv4, speed is still slow
+
+Looking at iostat on the server, I notice that avgrq-sz = 8 sectors
+(4096 bytes) throughout the write operations
+
+I've tried various tests, e.g. dd a large file, or unpack a tarball with
+many small files, the iostat output is always the same
+
+Looking at /proc/mounts on the clients, everything looks good, large
+wsize, tcp:
+
+rw,relatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.x.x.x,mountvers=3,mountport=58727,mountproto=udp,local_lock=none,addr=192.x.x.x
+0 0
+
+and
+ rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=192.x.x.x.,minorversion=0,local_lock=none,addr=192.x.x.x 0 0
+
+and in /proc/fs/nfs/exports on the server, I have sync and wdelay:
+
+/nfs4/daniel
+192.168.1.0/24,192.x.x.x(rw,insecure,root_squash,sync,wdelay,no_subtree_check,uuid=aa2a6f37:9cc94eeb:bcbf983c:d6e041d9,sec=1)
+/home/daniel
+192.168.1.0/24,192.x.x.x(rw,root_squash,sync,wdelay,no_subtree_check,uuid=aa2a6f37:9cc94eeb:bcbf983c:d6e041d9)
+
+Can anyone suggest anything else?  Or is this really the performance hit
+of `sync'?
+
+
