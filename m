@@ -1,97 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:11867 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932073Ab2ENSvp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 May 2012 14:51:45 -0400
-Date: Mon, 14 May 2012 14:51:38 -0400
-From: Josef Bacik <josef@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Josef Bacik <josef@redhat.com>, "Ted Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger@dilger.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: Re: [PATCH] ext4: turn on i_version updates by default
-Message-ID: <20120514185138.GB1894@localhost.localdomain>
-References: <20120514140618.GA29902@fieldses.org>
- <9124E59E-2479-4C32-A528-3237B48DEC01@dilger.ca>
- <20120514152334.GB29902@fieldses.org>
- <14B38D68-FAE4-444A-BCD9-7EBF7E1BBFE1@dilger.ca>
- <20120514175822.GC1439@thunk.org>
- <20120514183316.GA1894@localhost.localdomain>
- <20120514144802.679551fa@corrin.poochiereds.net>
+Received: from mail1.trendhosting.net ([195.8.117.5]:34870 "EHLO
+	mail1.trendhosting.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753112Ab2EFDIH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 5 May 2012 23:08:07 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by mail1.trendhosting.net (Postfix) with ESMTP id C71D815828
+	for <linux-nfs@vger.kernel.org>; Sun,  6 May 2012 04:00:48 +0100 (BST)
+Received: from mail1.trendhosting.net ([127.0.0.1])
+	by localhost (thp003.trendhosting.net [127.0.0.1]) (amavisd-new, port 10024)
+	with LMTP id nsRC9OlJD9AN for <linux-nfs@vger.kernel.org>;
+	Sun,  6 May 2012 04:00:37 +0100 (BST)
+Message-ID: <4FA5E950.5080304@pocock.com.au>
+Date: Sun, 06 May 2012 03:00:32 +0000
+From: Daniel Pocock <daniel@pocock.com.au>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120514144802.679551fa@corrin.poochiereds.net>
+To: linux-nfs@vger.kernel.org
+Subject: extremely slow nfs when sync enabled
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 14, 2012 at 02:48:02PM -0400, Jeff Layton wrote:
-> On Mon, 14 May 2012 14:33:17 -0400
-> Josef Bacik <josef@redhat.com> wrote:
-> 
-> > On Mon, May 14, 2012 at 01:58:22PM -0400, Ted Ts'o wrote:
-> > > On Mon, May 14, 2012 at 11:27:42AM -0600, Andreas Dilger wrote:
-> > > > > And if it at all possible I'd rather have it be something that Just
-> > > > > Works rather than something that requires extra configuration.
-> > > > 
-> > > > Sure, but this is only useful for NFSv4, but costs everyone using
-> > > > ext4 continuous overhead, so it isn't a clear-cut case to enable
-> > > > the version just on the thought that NFS might one day be used on
-> > > > any particular filesystem.
-> > > 
-> > > It's not a matter of "NFSv4 might one day be used"; if we don't turn
-> > > on i_version updates until the file system is actually exported via
-> > > NFSv4, there would be no deleterious effects.
-> > > 
-> > > I always thought that was going to be the plan; that there would be
-> > > some flag that would be set in struct super_block when the file system
-> > > was exported that would enable i_version updates.
-> > > 
-> > > That way we satisfy the "no extra configuration" needed requirement,
-> > > which I agree is ideal, but we also don't waste any CPU overhead if
-> > > the file system is not exported via NFSv4.  I tried to implement
-> > > anything along these lines because I don't care enough, and I don't
-> > > use NFSv4 personally....
-> > > 
-> > 
-> > Seems like this is just a bad place to be doing inode_inc_iversion().  If
-> > MS_IVERSION is set we will update iversion in file_update_time() and then call
-> > mark_inode_dirty which will jack up the iversion again.  In btrfs we just change
-> > it wherever we change ctime and that way you don't really notice the extra
-> > overhead since you are doing it in paths where you are changing a bunch of stuff
-> > in the inode already, and mostly where you hold the i_mutex so you aren't going
-> > to be hitting any contention on the i_lock.  Thanks,
-> > 
-> 
-> Well, you do incur a bit more overhead in btrfs too:
-> 
-> ------------------[snip]----------------------
->         if (!timespec_equal(&inode->i_mtime, &now))
->                 sync_it = S_MTIME;
-> 
->         if (!timespec_equal(&inode->i_ctime, &now))
->                 sync_it |= S_CTIME;
-> 
->         if (IS_I_VERSION(inode))
->                 sync_it |= S_VERSION;
-> ------------------[snip]----------------------
-> 
-> So you'll end up with sync_it being 0 if i_version updates are
-> disabled, and the mtime/ctime didn't visibly change.
-> 
-> If your jiffies are coarse-grained enough, then you might get "lucky"
-> rather often, but is that a case worth optimizing for? How often does
-> it happen that you mark the inode dirty, flush it to disk and then
-> re-mark it dirty within the same jiffy?
-> 
 
-Well sync_it just means do we need to call mark_inode_dirty, not necessarily do
-we need to write it to disk, so you are just updating a field in memory.  Now if
-your jiffies are coarse enough for you to not notice the ctime update then yes
-you are incurring an extra lock/inc/unlock, but this is called in the write path
-where you are going to do much more latency inducting operations than locking
-and unlocking a generally uncontended spin lock.  Thanks,
 
-Josef
+I've been observing some very slow nfs write performance when the server
+has `sync' in /etc/exports
+
+I want to avoid using async, but I have tested it and on my gigabit
+network, it gives almost the same speed as if I was on the server
+itself. (e.g. 30MB/sec to one disk, or less than 1MB/sec to the same
+disk over NFS with `sync')
+
+I'm using Debian 6 with 2.6.38 kernels on client and server, NFSv3
+
+I've also tried a client running Debian 7/Linux 3.2.0 with both NFSv3
+and NFSv4, speed is still slow
+
+Looking at iostat on the server, I notice that avgrq-sz = 8 sectors
+(4096 bytes) throughout the write operations
+
+I've tried various tests, e.g. dd a large file, or unpack a tarball with
+many small files, the iostat output is always the same
+
+Looking at /proc/mounts on the clients, everything looks good, large
+wsize, tcp:
+
+rw,relatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.x.x.x,mountvers=3,mountport=58727,mountproto=udp,local_lock=none,addr=192.x.x.x
+0 0
+
+and
+ rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=192.x.x.x.,minorversion=0,local_lock=none,addr=192.x.x.x 0 0
+
+and in /proc/fs/nfs/exports on the server, I have sync and wdelay:
+
+/nfs4/daniel
+192.168.1.0/24,192.x.x.x(rw,insecure,root_squash,sync,wdelay,no_subtree_check,uuid=aa2a6f37:9cc94eeb:bcbf983c:d6e041d9,sec=1)
+/home/daniel
+192.168.1.0/24,192.x.x.x(rw,root_squash,sync,wdelay,no_subtree_check,uuid=aa2a6f37:9cc94eeb:bcbf983c:d6e041d9)
+
+Can anyone suggest anything else?  Or is this really the performance hit
+of `sync'?
+
+
