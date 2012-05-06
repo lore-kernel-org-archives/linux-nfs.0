@@ -1,92 +1,171 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:38176 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932855Ab2EOVmK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 17:42:10 -0400
-Received: by gglu4 with SMTP id u4so87337ggl.19
-        for <linux-nfs@vger.kernel.org>; Tue, 15 May 2012 14:42:09 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/2] NFSD: SETCLIENTID_CONFIRM returns NFS4ERR_CLID_INUSE too
- often
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 15 May 2012 17:42:08 -0400
-Message-ID: <20120515214207.1518.78590.stgit@lebasque.1015granger.net>
-In-Reply-To: <20120515213808.1518.81260.stgit@lebasque.1015granger.net>
-References: <20120515213808.1518.81260.stgit@lebasque.1015granger.net>
+Received: from mail1.trendhosting.net ([195.8.117.5]:46929 "EHLO
+	mail1.trendhosting.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754758Ab2EFWMv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 6 May 2012 18:12:51 -0400
+Message-ID: <4FA6F75E.6090300@pocock.com.au>
+Date: Sun, 06 May 2012 22:12:46 +0000
+From: Daniel Pocock <daniel@pocock.com.au>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: extremely slow nfs when sync enabled
+References: <4FA5E950.5080304@pocock.com.au>  <1336328594.2593.14.camel@lade.trondhjem.org>  <4FA6EBD4.7040308@pocock.com.au> <1336340993.2600.11.camel@lade.trondhjem.org>
+In-Reply-To: <1336340993.2600.11.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-According to RFC 3530bis, the only items SETCLIENTID_CONFIRM
-processing should be concerned with is the clientid, clientid
-verifier, and authentication flavor.  The client's IP address
-is not supposed to be interesting.
 
-And, NFS4ERR_CLID_INUSE is meant only for authentication flavor
-mismatches.
 
-I triggered this logic with a prototype UCS client -- one that
-uses the same nfs_client_id4 string for all servers.  The client
-mounted our server via its IPv4, then via its IPv6 address.
+On 06/05/12 21:49, Myklebust, Trond wrote:
+> On Sun, 2012-05-06 at 21:23 +0000, Daniel Pocock wrote:
+>>
+>> On 06/05/12 18:23, Myklebust, Trond wrote:
+>>> On Sun, 2012-05-06 at 03:00 +0000, Daniel Pocock wrote:
+>>>>
+>>>> I've been observing some very slow nfs write performance when the server
+>>>> has `sync' in /etc/exports
+>>>>
+>>>> I want to avoid using async, but I have tested it and on my gigabit
+>>>> network, it gives almost the same speed as if I was on the server
+>>>> itself. (e.g. 30MB/sec to one disk, or less than 1MB/sec to the same
+>>>> disk over NFS with `sync')
+>>>>
+>>>> I'm using Debian 6 with 2.6.38 kernels on client and server, NFSv3
+>>>>
+>>>> I've also tried a client running Debian 7/Linux 3.2.0 with both NFSv3
+>>>> and NFSv4, speed is still slow
+>>>>
+>>>> Looking at iostat on the server, I notice that avgrq-sz = 8 sectors
+>>>> (4096 bytes) throughout the write operations
+>>>>
+>>>> I've tried various tests, e.g. dd a large file, or unpack a tarball with
+>>>> many small files, the iostat output is always the same
+>>>
+>>> Were you using 'conv=sync'?
+>>
+>> No, it was not using conv=sync, just the vanilla dd:
+>>
+>> dd if=/dev/zero of=some-fat-file bs=65536 count=65536
+> 
+> Then the results are not comparable.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+If I run dd with conv=sync on the server, then I still notice that OS
+caching plays a factor and write performance just appears really fast
 
- fs/nfsd/nfs4state.c |   14 ++------------
- 1 files changed, 2 insertions(+), 12 deletions(-)
+>>>> Looking at /proc/mounts on the clients, everything looks good, large
+>>>> wsize, tcp:
+>>>>
+>>>> rw,relatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.x.x.x,mountvers=3,mountport=58727,mountproto=udp,local_lock=none,addr=192.x.x.x
+>>>> 0 0
+>>>>
+>>>> and
+>>>>  rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=192.x.x.x.,minorversion=0,local_lock=none,addr=192.x.x.x 0 0
+>>>>
+>>>> and in /proc/fs/nfs/exports on the server, I have sync and wdelay:
+>>>>
+>>>> /nfs4/daniel
+>>>> 192.168.1.0/24,192.x.x.x(rw,insecure,root_squash,sync,wdelay,no_subtree_check,uuid=aa2a6f37:9cc94eeb:bcbf983c:d6e041d9,sec=1)
+>>>> /home/daniel
+>>>> 192.168.1.0/24,192.x.x.x(rw,root_squash,sync,wdelay,no_subtree_check,uuid=aa2a6f37:9cc94eeb:bcbf983c:d6e041d9)
+>>>>
+>>>> Can anyone suggest anything else?  Or is this really the performance hit
+>>>> of `sync'?
+>>>
+>>> It really depends on your disk setup. Particularly when your filesystem
+>>> is using barriers (enabled by default on ext4 and xfs), a lot of raid
+>>
+>> On the server, I've tried both ext3 and ext4, explicitly changing things
+>> like data=writeback,barrier=0, but the problem remains
+>>
+>> The only thing that made it faster was using hdparm -W1 /dev/sd[ab] to
+>> enable the write-back cache on the disk
+> 
+> That should in principle be safe to do as long as you are using
+> barrier=1.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 7f71c69..27e6401 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2213,7 +2213,6 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
- 			 struct nfsd4_compound_state *cstate,
- 			 struct nfsd4_setclientid_confirm *setclientid_confirm)
- {
--	struct sockaddr *sa = svc_addr(rqstp);
- 	struct nfs4_client *conf, *unconf;
- 	nfs4_verifier confirm = setclientid_confirm->sc_confirm; 
- 	clientid_t * clid = &setclientid_confirm->sc_clientid;
-@@ -2231,17 +2230,12 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
- 	conf = find_confirmed_client(clid);
- 	unconf = find_unconfirmed_client(clid);
- 
--	status = nfserr_clid_inuse;
--	if (conf && !rpc_cmp_addr((struct sockaddr *) &conf->cl_addr, sa))
--		goto out;
--	if (unconf && !rpc_cmp_addr((struct sockaddr *) &unconf->cl_addr, sa))
--		goto out;
--
- 	/*
- 	 * section 14.2.34 of RFC 3530 has a description of
- 	 * SETCLIENTID_CONFIRM request processing consisting
- 	 * of 4 bullet points, labeled as CASE1 - CASE4 below.
- 	 */
-+	status = nfserr_clid_inuse;
- 	if (conf && unconf && same_verf(&confirm, &unconf->cl_confirm)) {
- 		/*
- 		 * RFC 3530 14.2.34 CASE 1:
-@@ -2254,7 +2248,6 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
- 			nfsd4_probe_callback(conf);
- 			expire_client(unconf);
- 			status = nfs_ok;
--
- 		}
- 	} else if (conf && !unconf) {
- 		/*
-@@ -2296,11 +2289,8 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
- 		 * Client probably hasn't noticed that we rebooted yet.
- 		 */
- 		status = nfserr_stale_clientid;
--	} else {
--		/* check that we have hit one of the cases...*/
--		status = nfserr_clid_inuse;
- 	}
--out:
-+
- 	nfs4_unlock_state();
- 	return status;
- }
+Ok, so the combination of:
+
+- enable writeback with hdparm
+- use ext4 (and not ext3)
+- barrier=1 and data=writeback?  or data=?
+
+- is there a particular kernel version (on either client or server side)
+that will offer more stability using this combination of features?
+
+I think there are some other variations of my workflow that I can
+attempt too, e.g. I've contemplated compiling C++ code onto a RAM disk
+because I don't need to keep the hundreds of object files.
+
+>>> setups really _suck_ at dealing with fsync(). The latter is used every
+>>
+>> I'm using md RAID1, my setup is like this:
+>>
+>> 2x 1TB SATA disks ST31000528AS (7200rpm with 32MB cache and NCQ)
+>>
+>> SATA controller: ATI Technologies Inc SB700/SB800 SATA Controller [AHCI
+>> mode] (rev 40)
+>> - not using any of the BIOS softraid stuff
+>>
+>> Both devices have identical partitioning:
+>> 1. 128MB boot
+>> 2. md volume (1TB - 128MB)
+>>
+>> The entire md volume (/dev/md2) is then used as a PV for LVM
+>>
+>> I do my write tests on a fresh LV with no fragmentation
+>>
+>>> time the NFS client sends a COMMIT or trunc() instruction, and for
+>>> pretty much all file and directory creation operations (you can use
+>>> 'nfsstat' to monitor how many such operations the NFS client is sending
+>>> as part of your test).
+>>
+>> I know that my two tests are very different in that way:
+>>
+>> - dd is just writing one big file, no fsync
+>>
+>> - unpacking a tarball (or compiling a large C++ project) does a lot of
+>> small writes with many fsyncs
+>>
+>> In both cases, it is slow
+>>
+>>> Local disk can get away with doing a lot less fsync(), because the cache
+>>> consistency guarantees are different:
+>>>       * in NFS, the server is allowed to crash or reboot without
+>>>         affecting the client's view of the filesystem.
+>>>       * in the local file system, the expectation is that on reboot any
+>>>         data lost is won't need to be recovered (the application will
+>>>         have used fsync() for any data that does need to be persistent).
+>>>         Only the disk filesystem structures need to be recovered, and
+>>>         that is done using the journal (or fsck).
+>>
+>>
+>> Is this an intractable problem though?
+>>
+>> Or do people just work around this, for example, enable async and
+>> write-back cache, and then try to manage the risk by adding a UPS and/or
+>> battery backed cache to their RAID setup (to reduce the probability of
+>> unclean shutdown)?
+> 
+> It all boils down to what kind of consistency guarantees you are
+> comfortable living with. The default NFS server setup offers much
+> stronger data consistency guarantees than local disk, and is therefore
+> likely to be slower when using cheap hardware.
+> 
+
+I'm keen for consistency, because I don't like the idea of corrupting
+some source code or a whole git repository for example.
+
+How did you know I'm using cheap hardware?  It is a HP MicroServer, I
+even got the £100 cash-back cheque:
+
+http://www8.hp.com/uk/en/campaign/focus-for-smb/solution.html#/tab2/
+
+Seriously though, I've worked with some very large arrays in my business
+environment, but I use this hardware at home because of the low noise
+and low heat dissipation rather than for saving money, so I would like
+to try and get the most out of it if possible and I'm very grateful for
+these suggestions.
+
 
