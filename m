@@ -1,49 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57961 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:1780 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964792Ab2EaUL7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 31 May 2012 16:11:59 -0400
-Date: Thu, 31 May 2012 16:11:50 -0400
-To: Jan Kara <jack@suse.cz>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 2/6] vfs: fix outdated i_mutex_lock_class documentation
-Message-ID: <20120531201150.GE25955@fieldses.org>
-References: <1338429016-20119-1-git-send-email-bfields@redhat.com>
- <1338429016-20119-3-git-send-email-bfields@redhat.com>
- <20120531185111.GA13647@quack.suse.cz>
- <20120531185439.GB13647@quack.suse.cz>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120531185439.GB13647@quack.suse.cz>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1756571Ab2EGOHe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 May 2012 10:07:34 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/3] NFS: Don't do a full flush to disk on close() if we hold a delegation
+Date: Mon,  7 May 2012 10:07:29 -0400
+Message-Id: <1336399651-6596-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 31, 2012 at 08:54:39PM +0200, Jan Kara wrote:
-> On Thu 31-05-12 20:51:11, Jan Kara wrote:
-> > On Wed 30-05-12 21:50:12, J. Bruce Fields wrote:
-> > > From: "J. Bruce Fields" <bfields@redhat.com>
-> > > 
-> > > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > > ---
-> > >  include/linux/fs.h |    3 ++-
-> > >  1 file changed, 2 insertions(+), 1 deletion(-)
-> > > 
-> > > diff --git a/include/linux/fs.h b/include/linux/fs.h
-> > > index 038076b..5584a29 100644
-> > > --- a/include/linux/fs.h
-> > > +++ b/include/linux/fs.h
-> > > @@ -861,7 +861,8 @@ static inline int inode_unhashed(struct inode *inode)
-> > >   * 0: the object of the current VFS operation
-> > >   * 1: parent
-> > >   * 2: child/target
-> > > - * 3: quota file
-> > > + * 3: xattr
-> > > + * 4: quota file
-> >   This isn't correct anymore, is it? Just remove references to quota in this
-> > comment...
->   Oh, now I've noticed patch 6/6. Maybe this patch and 6/6 should be just
-> joined into one?
+If we hold a delegation then we know that it should be safe to continue
+to cache the data beyond the close(). However since the process that wrote
+the data may die after close(), we may still want to send the data to
+server before those RPCSEC_GSS credentials expire. We therefore compromise
+by starting writeback to the server, but don't wait for completion.
 
-Sure.--b.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/file.c |    7 +++++++
+ 1 files changed, 7 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index aa9b709..8eda8a6 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -174,6 +174,13 @@ nfs_file_flush(struct file *file, fl_owner_t id)
+ 	if ((file->f_mode & FMODE_WRITE) == 0)
+ 		return 0;
+ 
++	/*
++	 * If we're holding a write delegation, then just start the i/o
++	 * but don't wait for completion (or send a commit).
++	 */
++	if (nfs_have_delegation(inode, FMODE_WRITE))
++		return filemap_fdatawrite(file->f_mapping);
++
+ 	/* Flush writes to the server and return any errors */
+ 	return vfs_fsync(file, 0);
+ }
+-- 
+1.7.7.6
+
