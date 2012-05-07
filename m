@@ -1,134 +1,199 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45770 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753645Ab2EUVwk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 May 2012 17:52:40 -0400
-Date: Mon, 21 May 2012 17:52:39 -0400
-To: Simo Sorce <simo@redhat.com>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/4] SUNRPC: conditionally return endtime from
- import_sec_context
-Message-ID: <20120521215239.GC28221@fieldses.org>
-References: <1337087550-9821-1-git-send-email-simo@redhat.com>
- <1337087550-9821-2-git-send-email-simo@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1337087550-9821-2-git-send-email-simo@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:34806 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756877Ab2EGOMY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 May 2012 10:12:24 -0400
+Received: by mail-gg0-f174.google.com with SMTP id u4so295791ggl.19
+        for <linux-nfs@vger.kernel.org>; Mon, 07 May 2012 07:12:24 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
+        michael.brantley@deshaw.com
+Subject: [PATCH v1 RESEND 04/12] vfs: add new "reval" argument to kern_path_create and user_path_create
+Date: Mon,  7 May 2012 10:12:03 -0400
+Message-Id: <1336399931-20234-5-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1336399931-20234-1-git-send-email-jlayton@redhat.com>
+References: <1336399931-20234-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 15, 2012 at 09:12:27AM -0400, Simo Sorce wrote:
-> We expose this parameter for a future caller.
-> It will be used to extract the endtime from the gss-proxy upcall mechanism,
-> in order to set the rsc cache expiration time.
+...for now, all of the callers pass in "false". Eventually, we'll set
+that to "true" when we retry the lookup after getting back an ESTALE on
+a call.
 
-Looks fine, thanks.--b.
+While we're at it, change the is_dir arg to a bool since that's how
+it's used currently.
 
-> 
-> Signed-off-by: Simo Sorce <simo@redhat.com>
-> ---
->  include/linux/sunrpc/gss_api.h        |    2 ++
->  net/sunrpc/auth_gss/auth_gss.c        |    2 +-
->  net/sunrpc/auth_gss/gss_krb5_mech.c   |    3 +++
->  net/sunrpc/auth_gss/gss_mech_switch.c |    5 +++--
->  net/sunrpc/auth_gss/svcauth_gss.c     |    3 ++-
->  5 files changed, 11 insertions(+), 4 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
-> index 332da61cf8b71fc73d802b2609210f46641a9ea1..7bd486d50f0861b45c98e695751c2f92f1b3bdfa 100644
-> --- a/include/linux/sunrpc/gss_api.h
-> +++ b/include/linux/sunrpc/gss_api.h
-> @@ -36,6 +36,7 @@ int gss_import_sec_context(
->  		size_t			bufsize,
->  		struct gss_api_mech	*mech,
->  		struct gss_ctx		**ctx_id,
-> +		time_t			*endtime,
->  		gfp_t			gfp_mask);
->  u32 gss_get_mic(
->  		struct gss_ctx		*ctx_id,
-> @@ -91,6 +92,7 @@ struct gss_api_ops {
->  			const void		*input_token,
->  			size_t			bufsize,
->  			struct gss_ctx		*ctx_id,
-> +			time_t			*endtime,
->  			gfp_t			gfp_mask);
->  	u32 (*gss_get_mic)(
->  			struct gss_ctx		*ctx_id,
-> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-> index d3ad81f8da5b79551c36b17a7d53007406946699..836cbecb1947235d38c62eadf79ae96ad73906e6 100644
-> --- a/net/sunrpc/auth_gss/auth_gss.c
-> +++ b/net/sunrpc/auth_gss/auth_gss.c
-> @@ -232,7 +232,7 @@ gss_fill_context(const void *p, const void *end, struct gss_cl_ctx *ctx, struct
->  		p = ERR_PTR(-EFAULT);
->  		goto err;
->  	}
-> -	ret = gss_import_sec_context(p, seclen, gm, &ctx->gc_gss_ctx, GFP_NOFS);
-> +	ret = gss_import_sec_context(p, seclen, gm, &ctx->gc_gss_ctx, NULL, GFP_NOFS);
->  	if (ret < 0) {
->  		p = ERR_PTR(ret);
->  		goto err;
-> diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-> index 8eff8c32d1b9b403c2365326c16e44df7c0923e6..329c36b9aa269a414932df86d89650c7a39528fd 100644
-> --- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-> +++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-> @@ -679,6 +679,7 @@ out_err:
->  static int
->  gss_import_sec_context_kerberos(const void *p, size_t len,
->  				struct gss_ctx *ctx_id,
-> +				time_t *endtime,
->  				gfp_t gfp_mask)
->  {
->  	const void *end = (const void *)((const char *)p + len);
-> @@ -696,6 +697,8 @@ gss_import_sec_context_kerberos(const void *p, size_t len,
->  
->  	if (ret == 0)
->  		ctx_id->internal_ctx_id = ctx;
-> +		if (endtime)
-> +			*endtime = ctx->endtime;
->  	else
->  		kfree(ctx);
->  
-> diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-> index ca8cad8251c7ff1c13c9bff6757e098c4f1cd9b2..b22cc24fac482351876c8f4a6c10d8b203a95045 100644
-> --- a/net/sunrpc/auth_gss/gss_mech_switch.c
-> +++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-> @@ -312,14 +312,15 @@ int
->  gss_import_sec_context(const void *input_token, size_t bufsize,
->  		       struct gss_api_mech	*mech,
->  		       struct gss_ctx		**ctx_id,
-> +		       time_t			*endtime,
->  		       gfp_t gfp_mask)
->  {
->  	if (!(*ctx_id = kzalloc(sizeof(**ctx_id), gfp_mask)))
->  		return -ENOMEM;
->  	(*ctx_id)->mech_type = gss_mech_get(mech);
->  
-> -	return mech->gm_ops
-> -		->gss_import_sec_context(input_token, bufsize, *ctx_id, gfp_mask);
-> +	return mech->gm_ops->gss_import_sec_context(input_token, bufsize,
-> +						*ctx_id, endtime, gfp_mask);
->  }
->  
->  /* gss_get_mic: compute a mic over message and return mic_token. */
-> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-> index f0a0cd4470b7a23ab46a08a68b4ef78c7400db4c..aa1b649749741c82e60f0f528ac645197fd7ab35 100644
-> --- a/net/sunrpc/auth_gss/svcauth_gss.c
-> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
-> @@ -489,7 +489,8 @@ static int rsc_parse(struct cache_detail *cd,
->  		len = qword_get(&mesg, buf, mlen);
->  		if (len < 0)
->  			goto out;
-> -		status = gss_import_sec_context(buf, len, gm, &rsci.mechctx, GFP_KERNEL);
-> +		status = gss_import_sec_context(buf, len, gm, &rsci.mechctx,
-> +						NULL, GFP_KERNEL);
->  		if (status)
->  			goto out;
->  
-> -- 
-> 1.7.7.6
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ arch/powerpc/platforms/cell/spufs/syscalls.c |    2 +-
+ drivers/base/devtmpfs.c                      |    7 ++++---
+ fs/namei.c                                   |   22 ++++++++++++++--------
+ fs/ocfs2/refcounttree.c                      |    3 ++-
+ include/linux/namei.h                        |    4 ++--
+ net/unix/af_unix.c                           |    3 ++-
+ 6 files changed, 25 insertions(+), 16 deletions(-)
+
+diff --git a/arch/powerpc/platforms/cell/spufs/syscalls.c b/arch/powerpc/platforms/cell/spufs/syscalls.c
+index 5665dcc..3c222cc 100644
+--- a/arch/powerpc/platforms/cell/spufs/syscalls.c
++++ b/arch/powerpc/platforms/cell/spufs/syscalls.c
+@@ -66,7 +66,7 @@ static long do_spu_create(const char __user *pathname, unsigned int flags,
+ 	struct dentry *dentry;
+ 	int ret;
+ 
+-	dentry = user_path_create(AT_FDCWD, pathname, &path, 1);
++	dentry = user_path_create(AT_FDCWD, pathname, &path, true, false);
+ 	ret = PTR_ERR(dentry);
+ 	if (!IS_ERR(dentry)) {
+ 		ret = spufs_create(&path, dentry, flags, mode, neighbor);
+diff --git a/drivers/base/devtmpfs.c b/drivers/base/devtmpfs.c
+index 8493536..70eb0b0 100644
+--- a/drivers/base/devtmpfs.c
++++ b/drivers/base/devtmpfs.c
+@@ -148,7 +148,7 @@ static int dev_mkdir(const char *name, umode_t mode)
+ 	struct path path;
+ 	int err;
+ 
+-	dentry = kern_path_create(AT_FDCWD, name, &path, 1);
++	dentry = kern_path_create(AT_FDCWD, name, &path, false, false);
+ 	if (IS_ERR(dentry))
+ 		return PTR_ERR(dentry);
+ 
+@@ -195,10 +195,11 @@ static int handle_create(const char *nodename, umode_t mode, struct device *dev)
+ 	struct path path;
+ 	int err;
+ 
+-	dentry = kern_path_create(AT_FDCWD, nodename, &path, 0);
++	dentry = kern_path_create(AT_FDCWD, nodename, &path, false, false);
+ 	if (dentry == ERR_PTR(-ENOENT)) {
+ 		create_path(nodename);
+-		dentry = kern_path_create(AT_FDCWD, nodename, &path, 0);
++		dentry = kern_path_create(AT_FDCWD, nodename, &path,
++								false, false);
+ 	}
+ 	if (IS_ERR(dentry))
+ 		return PTR_ERR(dentry);
+diff --git a/fs/namei.c b/fs/namei.c
+index c427919..43e568b 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2460,11 +2460,17 @@ struct file *do_file_open_root(struct dentry *dentry, struct vfsmount *mnt,
+ 	return file;
+ }
+ 
+-struct dentry *kern_path_create(int dfd, const char *pathname, struct path *path, int is_dir)
++struct dentry *kern_path_create(int dfd, const char *pathname, struct path *path, bool is_dir, bool reval)
+ {
+ 	struct dentry *dentry = ERR_PTR(-EEXIST);
+ 	struct nameidata nd;
+-	int error = do_path_lookup(dfd, pathname, LOOKUP_PARENT, &nd);
++	int error;
++	unsigned int lookup_flags = LOOKUP_PARENT;
++
++	if (reval)
++		lookup_flags |= LOOKUP_REVAL;
++
++	error = do_path_lookup(dfd, pathname, lookup_flags, &nd);
+ 	if (error)
+ 		return ERR_PTR(error);
+ 
+@@ -2512,13 +2518,13 @@ out:
+ }
+ EXPORT_SYMBOL(kern_path_create);
+ 
+-struct dentry *user_path_create(int dfd, const char __user *pathname, struct path *path, int is_dir)
++struct dentry *user_path_create(int dfd, const char __user *pathname, struct path *path, bool is_dir, bool reval)
+ {
+ 	char *tmp = getname(pathname);
+ 	struct dentry *res;
+ 	if (IS_ERR(tmp))
+ 		return ERR_CAST(tmp);
+-	res = kern_path_create(dfd, tmp, path, is_dir);
++	res = kern_path_create(dfd, tmp, path, is_dir, reval);
+ 	putname(tmp);
+ 	return res;
+ }
+@@ -2579,7 +2585,7 @@ SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, umode_t, mode,
+ 	if (S_ISDIR(mode))
+ 		return -EPERM;
+ 
+-	dentry = user_path_create(dfd, filename, &path, 0);
++	dentry = user_path_create(dfd, filename, &path, false, false);
+ 	if (IS_ERR(dentry))
+ 		return PTR_ERR(dentry);
+ 
+@@ -2652,7 +2658,7 @@ SYSCALL_DEFINE3(mkdirat, int, dfd, const char __user *, pathname, umode_t, mode)
+ 	struct path path;
+ 	int error;
+ 
+-	dentry = user_path_create(dfd, pathname, &path, 1);
++	dentry = user_path_create(dfd, pathname, &path, true, false);
+ 	if (IS_ERR(dentry))
+ 		return PTR_ERR(dentry);
+ 
+@@ -2939,7 +2945,7 @@ SYSCALL_DEFINE3(symlinkat, const char __user *, oldname,
+ 	if (IS_ERR(from))
+ 		return PTR_ERR(from);
+ 
+-	dentry = user_path_create(newdfd, newname, &path, 0);
++	dentry = user_path_create(newdfd, newname, &path, false, false);
+ 	error = PTR_ERR(dentry);
+ 	if (IS_ERR(dentry))
+ 		goto out_putname;
+@@ -3048,7 +3054,7 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
+ 	if (error)
+ 		return error;
+ 
+-	new_dentry = user_path_create(newdfd, newname, &new_path, 0);
++	new_dentry = user_path_create(newdfd, newname, &new_path, false, false);
+ 	error = PTR_ERR(new_dentry);
+ 	if (IS_ERR(new_dentry))
+ 		goto out;
+diff --git a/fs/ocfs2/refcounttree.c b/fs/ocfs2/refcounttree.c
+index 9f32d7c..b52b24d 100644
+--- a/fs/ocfs2/refcounttree.c
++++ b/fs/ocfs2/refcounttree.c
+@@ -4453,7 +4453,8 @@ int ocfs2_reflink_ioctl(struct inode *inode,
+ 		return error;
+ 	}
+ 
+-	new_dentry = user_path_create(AT_FDCWD, newname, &new_path, 0);
++	new_dentry = user_path_create(AT_FDCWD, newname, &new_path,
++								false, false);
+ 	error = PTR_ERR(new_dentry);
+ 	if (IS_ERR(new_dentry)) {
+ 		mlog_errno(error);
+diff --git a/include/linux/namei.h b/include/linux/namei.h
+index ffc0213..3e90dcd 100644
+--- a/include/linux/namei.h
++++ b/include/linux/namei.h
+@@ -76,8 +76,8 @@ extern int user_path_at_empty(int, const char __user *, unsigned, struct path *,
+ 
+ extern int kern_path(const char *, unsigned, struct path *);
+ 
+-extern struct dentry *kern_path_create(int, const char *, struct path *, int);
+-extern struct dentry *user_path_create(int, const char __user *, struct path *, int);
++extern struct dentry *kern_path_create(int, const char *, struct path *, bool, bool);
++extern struct dentry *user_path_create(int, const char __user *, struct path *, bool, bool);
+ extern int kern_path_parent(const char *, struct nameidata *);
+ extern int vfs_path_lookup(struct dentry *, struct vfsmount *,
+ 			   const char *, unsigned int, struct path *);
+diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c
+index d510353..9951294 100644
+--- a/net/unix/af_unix.c
++++ b/net/unix/af_unix.c
+@@ -865,7 +865,8 @@ static int unix_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
+ 		 * Get the parent directory, calculate the hash for last
+ 		 * component.
+ 		 */
+-		dentry = kern_path_create(AT_FDCWD, sun_path, &path, 0);
++		dentry = kern_path_create(AT_FDCWD, sun_path, &path,
++								false, false);
+ 		err = PTR_ERR(dentry);
+ 		if (IS_ERR(dentry))
+ 			goto out_mknod_parent;
+-- 
+1.7.7.6
+
