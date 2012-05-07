@@ -1,113 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:18138 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751572Ab2EVR4c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 May 2012 13:56:32 -0400
-Message-ID: <4FBBD347.6040309@netapp.com>
-Date: Tue, 22 May 2012 13:56:23 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: TEST / FREE STATEID error recovery
-References: <88F4DB05-5625-4E40-B057-04FCDE21E9C2@oracle.com> <4FBB9AC0.2040102@netapp.com> <379CE82E-0B25-4DCD-A834-A4EF413CA582@oracle.com> <4FBB9CB8.5020200@netapp.com> <1761A0B6-634E-4E6C-96ED-8E23C13F5EA5@oracle.com>
-In-Reply-To: <1761A0B6-634E-4E6C-96ED-8E23C13F5EA5@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:35981 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756194Ab2EGOMT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 May 2012 10:12:19 -0400
+Received: by yenm10 with SMTP id m10so3663285yen.19
+        for <linux-nfs@vger.kernel.org>; Mon, 07 May 2012 07:12:18 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
+        michael.brantley@deshaw.com
+Subject: [PATCH v1 RESEND 00/12] vfs: add the ability to retry on ESTALE to several syscalls
+Date: Mon,  7 May 2012 10:11:59 -0400
+Message-Id: <1336399931-20234-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/22/2012 11:58 AM, Chuck Lever wrote:
+ESTALE errors are a source of pain for many users, primarily those who
+are doing work on NFS. When userspace provides a path to a syscall, then
+there's really little excuse for returning ESTALE. If userspace gave us
+a path that we had to lookup in order to do the call, then it's not
+particularly helpful to return ESTALE just because that path went stale
+before we could do the actual operation.
 
-> 
-> On May 22, 2012, at 10:03 AM, Bryan Schumaker wrote:
-> 
->> On 05/22/2012 10:02 AM, Chuck Lever wrote:
->>
->>>
->>> On May 22, 2012, at 9:55 AM, Bryan Schumaker wrote:
->>>
->>>> On 05/21/2012 11:31 PM, Chuck Lever wrote:
->>>>
->>>>> Hi-
->>>>>
->>>>> I'm trying to understand the error recovery logic in the new TEST_STATEID and FREE_STATEID procedures.
->>>>>
->>>>> For TEST_STATEID, we have this:
->>>>>
->>>>> 6395 static int nfs41_test_stateid(struct nfs_server *server, nfs4_stateid *stateid)
->>>>> 6396 {
->>>>> 6397         struct nfs4_exception exception = { };
->>>>> 6398         int err;
->>>>> 6399         do {
->>>>> 6400                 err = nfs4_handle_exception(server,
->>>>> 6401                                 _nfs41_test_stateid(server, stateid),
->>>>> 6402                                 &exception);
->>>>> 6403         } while (exception.retry);
->>>>> 6404         return err;
->>>>> 6405 }
->>>>>
->>>>> According to RFC 5661, the TEST_STATEID and FREE_STATEID procedures can return NFS4ERR_BAD_STATEID, NFS4ERR_OLD_STATEID, and NFS4ERR_DEADSESSION, among other things.  Do you really want to enter the exception handler here?  Seems to me that nfs41_{test,free}_stateid() are invoked mainly (only?) by the state manager, and thus you don't want to kick the state manager here and wait, as that would deadlock.  About the only error code you might want to pass into nfs4_handle_exception() is NFS4ERR_DELAY.  Everything else probably ought to be returned outright to the caller to let her figure out how to recover.
->>>>>
->>>>
->>>> Sounds about right.  At least passing NFS4ERR_BAD_STATEID will trigger stateid recovery again on the same stateid... probably not what we want.
->>>>
->>>>> Also, _nfs41_test_stateid() does this:
->>>>>
->>>>> 6390         if (status == NFS_OK)
->>>>> 6391                 return res.status;
->>>>> 6392         return status;
->>>>>
->>>>> status will contain NFS4_OK or a negative NFS4ERR value.  But the "if / return" will return res.status, which could be NFS4_OK, but it could also be (according to RFC 5661 section 18.48.3) NFS4ERR_BAD_STATEID, NFS4ERR_OLD_STATEID, NFS4ERR_EXPIRED, NFS4ERR_ADMIN_REVOKED, or NFS4ERR_DELEG_REVOKED.  Note that these are positive values, and the above logic returns them directly to the caller.
->>>>>
->>>>
->>>> So that should be "return -res.status" then?  Easy enough to change.
->>>>
->>>>> The caller then passes the positive result to nfs4_handle_exception().  Now I think nfs4_handle_exception() will ignore positive values.  And, I don't see any caller who is not doing "if (status != NFS4_OK)" so maybe this doesn't matter.  But it sure is confusing.
->>>>>
->>>>
->>>> This might be why it doesn't deadlock now.
->>>>
->>>>> Do you remember what was intended?  Was it positive NFS4ERR values for res.status and negative NFS4ERR values if the operation failed?  If that's the case, then that intention should be carefully documented.  Otherwise, maybe that should read "return -res.status;" (as long as we aren't passing that to the exception handler!).
->>>>>
->>>>
->>>>
->>>> My intention was to handle errors coming from the test / free stateid calls.  I didn't realize the RPC call returned a positive value instead of a negative one, so it's only an accident that we don't deadlock now if the server returns NFS4ERR_BAD_STATEID.  This should be fixed though, thanks for catching it!
->>>
->>> I've got most of a patch, and a nice test case.  I can wrap this up for you if you like.
->>
->>
->> Sure, especially if you've already done most of the work!  Thanks!
-> 
-> OK, if we make these changes, then nfs41_check_expired_stateid() still doesn't make sense:
-> 
-> 1741         if (state->flags & flags) {
-> 1742                 status = nfs41_test_stateid(server, stateid);
-> 1743                 if (status != NFS_OK) {
-> 1744                         nfs41_free_stateid(server, stateid);
-> 1745                         state->flags &= ~flags;
-> 1746                 }
-> 1747         }
-> 
-> If nfs41_test_stateid() returns an error, that generally indicates that the server doesn't recognize the state ID, so the client doesn't need to free it.  (But maybe here is where we need to make a careful distinction between a failed state ID test and a successful test that returns BAD_STATEID?).  However, if nfs41_test_stateid() returns NFS4_OK, then the server does recognize the state ID, and the client does need to free it.  So is the above logic backwards?  We have the same logic in nfs41_check_expired_locks().
-> 
+We can and should do better here. The kernel should instead catch that
+error and retry the lookup and call, while forcing a revalidation of all
+dentries involved.
 
-If we get NFS_OK back, wouldn't that mean we can still use the state id?  I agree that telling the server to free a stateid it doesn't recognize seems backwards.
+Unfortunately fixing this requires touching the syscalls themselves, or
+at least their immediate helper functions. Not all syscalls can be
+retried -- only those that take a pathname as an argument.
 
-> Also, it seems that during a nograce recovery, nfs4_clear_open_state() clears the state flags that nfs41_check_expired_stateid() uses to decide whether to perform an on-the-wire test.  So nfs41_check_expired_stateid() is always a no-op for nograce recovery, and simply returns NFS4_OK.
-> 
-> Perhaps that's fine, as we don't expect the server to know about this state ID... but maybe it just happens to, and we should check for it anyway?  I think the "state->flags & flags" optimization is probably going to bite us.  We should always check with the server.  Is there harm in doing that?
-> 
+This set is a first "official" pass at adding ESTALE retry handling to
+various syscalls.  With this patchset, I've decided to take the
+relatively less controversial approach of just having the kernel retry
+once when it gets an ESTALE error. I still think that it's not as strong
+as it should be, but it should improve the situation in many common
+cases.
 
-> But when nfs41_check_expired_stateid() returns NFS4_OK, this logic in nfs41_open_expired():
-> 
-> 1760         if ((deleg_status == NFS_OK) && (open_status == NFS_OK))
-> 1761                 return NFS_OK;
-> 1762         return nfs4_open_expired(sp, state);
-> 
-> means that nfs4_open_expired() is never invoked, even though, during nograce recovery, we do have a state ID that needs to be recovered.  If we have an open file to recover, shouldn't we try nfs4_open_expired() no matter what?
-> 
-> I'm guessing that the nograce recovery case is not the same as the use cases you were thinking about when you wrote this, so I'm probably not thinking clearly or at all about other uses of this code.
-> 
+I've also tried to engineer this in such a way that if we do decide that
+we need to retry more than once, then it should be easy to change that
+later. This should cover all of the syscalls in fs/stat.c and
+fs/namei.c.
 
+If this approach is reasonable I'll look at adding similar handling to
+other path-based vfs calls in a another set. A quick look shows that
+we have about 50-odd path-based syscalls that will need similar
+handling, so this is just a start.
 
-Right, I wasn't thinking about nograce recovery when I wrote it but I do see what you're saying about calling nfs4_open_expired() in this case.  What if nfs41_check_expired_state() checks if state->flags has been cleared and then returns a value other than NFS_OK so nfs4_open_expired() will get called?
+Comments welcome...
+
+Jeff Layton (12):
+  vfs: add a retry_estale helper function to handle retries on ESTALE
+  vfs: make fstatat retry on ESTALE errors from getattr call
+  vfs: fix readlinkat to retry on ESTALE
+  vfs: add new "reval" argument to kern_path_create and
+    user_path_create
+  vfs: fix mknodat to retry on ESTALE errors
+  vfs: fix mkdir to retry on ESTALE errors
+  vfs: add a "reval" flag to args for user_path_parent
+  vfs: make rmdir retry on ESTALE errors
+  vfs: make do_unlinkat retry on ESTALE errors
+  vfs: fix symlinkat to retry on ESTALE errors
+  vfs: fix linkat to retry on ESTALE errors
+  vfs: fix renameat to retry on ESTALE errors
+
+ arch/powerpc/platforms/cell/spufs/syscalls.c |    2 +-
+ drivers/base/devtmpfs.c                      |    7 +-
+ fs/namei.c                                   |  233 +++++++++++++++-----------
+ fs/ocfs2/refcounttree.c                      |    3 +-
+ fs/stat.c                                    |   32 +++-
+ include/linux/fs.h                           |   21 +++
+ include/linux/namei.h                        |    4 +-
+ net/unix/af_unix.c                           |    3 +-
+ 8 files changed, 191 insertions(+), 114 deletions(-)
+
+-- 
+1.7.7.6
+
