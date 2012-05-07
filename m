@@ -1,49 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from li9-11.members.linode.com ([67.18.176.11]:45429 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756767Ab2EPBgs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 May 2012 21:36:48 -0400
-Date: Tue, 15 May 2012 21:36:42 -0400
-From: "Ted Ts'o" <tytso@mit.edu>
-To: Josef Bacik <josef@redhat.com>
-Cc: linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
-        bfields@fieldses.org, adilger@dilger.ca, jack@suse.cz
-Subject: Re: [PATCH] ext4: fix how i_version is modified and turn it on by
- default V2
-Message-ID: <20120516013642.GB7360@thunk.org>
-References: <1337092396-3272-1-git-send-email-josef@redhat.com>
- <20120515175308.GB1907@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120515175308.GB1907@localhost.localdomain>
+Received: from mx2.netapp.com ([216.240.18.37]:1780 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756766Ab2EGOHg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 May 2012 10:07:36 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 3/3] NFSv4: nfs_client_return_marked_delegations can't flush data
+Date: Mon,  7 May 2012 10:07:31 -0400
+Message-Id: <1336399651-6596-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1336399651-6596-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1336399651-6596-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1336399651-6596-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 15, 2012 at 01:53:08PM -0400, Josef Bacik wrote:
-> 
-> Ok did some basic benchmarking with dd, I ran
-> 
-> dd if=/dev/zero of=/mnt/btrfs-test/file bs=1 count=10485760
-> dd if=/dev/zero of=/mnt/btrfs-test/file bs=1M count=1000
-> dd if=/dev/zero of=/mnt/btrfs-test/file bs=1M count=5000
-> 
-> 3 times with the patch and without the patch.  With the worst case
-> scenario there is about a 40% longer run time, going from on average
-> 12 seconds to 17 seconds.  With the other two runs they are the same
-> runtime with the 1 megabyte blocks.  So the question is, do we care
-> about this worst case since any sane application developer isn't
-> going to do writes that small?  
+Since even filemap_flush() needs to lock pages that are dirty, we
+cannot risk calling it from the state manager context. Therefore,
+we need to move the call to filemap_flush() to
+nfs_async_inode_return_delegation().
 
-Even if there's no runtime change, it's also useful to measure the CPU
-utilization.  If there's an increase in CPU utilization, then it can
-show up in workloads and benchmarks which are sensitive to CPU
-utilization as well as disk utilization, e.g., TPC-C/H.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/delegation.c |   10 +++++++---
+ 1 files changed, 7 insertions(+), 3 deletions(-)
 
-But since it takes so long for performance teams to notice, they tend
-to get very cranky when they observe regressions.  So for changes like
-this it's really important to measure any changes in CPU utilization,
-especially on larger on SMP systems when there multiple processes
-writing to the same file at high rates --- you know, like what an
-Enterprise database might do to a table space file.  :-)
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index a19cb5a..bd3a960 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -316,6 +316,10 @@ out:
+  * nfs_client_return_marked_delegations - return previously marked delegations
+  * @clp: nfs_client to process
+  *
++ * Note that this function is designed to be called by the state
++ * manager thread. For this reason, it cannot flush the dirty data,
++ * since that could deadlock in case of a state recovery error.
++ *
+  * Returns zero on success, or a negative errno value.
+  */
+ int nfs_client_return_marked_delegations(struct nfs_client *clp)
+@@ -340,11 +344,9 @@ restart:
+ 								server);
+ 			rcu_read_unlock();
+ 
+-			if (delegation != NULL) {
+-				filemap_flush(inode->i_mapping);
++			if (delegation != NULL)
+ 				err = __nfs_inode_return_delegation(inode,
+ 								delegation, 0);
+-			}
+ 			iput(inode);
+ 			if (!err)
+ 				goto restart;
+@@ -542,6 +544,8 @@ int nfs_async_inode_return_delegation(struct inode *inode,
+ 	struct nfs_client *clp = server->nfs_client;
+ 	struct nfs_delegation *delegation;
+ 
++	filemap_flush(inode->i_mapping);
++
+ 	rcu_read_lock();
+ 	delegation = rcu_dereference(NFS_I(inode)->delegation);
+ 
+-- 
+1.7.7.6
 
-    		   	   		     	   - Ted
