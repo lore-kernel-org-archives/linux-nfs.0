@@ -1,76 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:44122 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756624Ab2ECPnP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 May 2012 11:43:15 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Niels de Vos <ndevos@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "David Howells" <dhowells@redhat.com>,
-        Jeffrey Layton <jlayton@redhat.com>
-Subject: Re: [RFC] Dataloss on NFS-clients who modify an mmap()'d area after
- closing the file-descriptor
-Date: Thu, 3 May 2012 15:43:12 +0000
-Message-ID: <1336059797.5385.22.camel@lade.trondhjem.org>
-References: <4FA2A56B.1030208@redhat.com>
-In-Reply-To: <4FA2A56B.1030208@redhat.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-wi0-f172.google.com ([209.85.212.172]:38120 "EHLO
+	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755580Ab2EGI6O (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 May 2012 04:58:14 -0400
+Date: Mon, 7 May 2012 10:58:09 +0200
+From: Ingo Molnar <mingo@kernel.org>
+To: Sasha Levin <levinsasha928@gmail.com>
+Cc: torvalds@linux-foundation.org, chuck.lever@oracle.com, linux@razik.name,
+        Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, mingo@elte.hu
+Subject: Re: [PATCH] init: don't try mounting device as nfs root unless type
+ fully matches
+Message-ID: <20120507085809.GA23002@gmail.com>
+References: <1336230395-5215-1-git-send-email-levinsasha928@gmail.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1336230395-5215-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA1LTAzIGF0IDE3OjM0ICswMjAwLCBOaWVscyBkZSBWb3Mgd3JvdGU6DQo+
-IFdoZW4gYW4gYXBwbGljYXRpb24gb24gYW4gTkZTLWNsaWVudCAodGVzdGVkIHdpdGggTkZTdjMp
-IGV4ZWN1dGVzIHRoZQ0KPiBmb2xsb3dpbmcgc3RlcHMsIGRhdGEgd3JpdHRlbiBhZnRlciB0aGUg
-Y2xvc2UoKSBpcyBuZXZlciBmbHVzaGVkIHRvIHRoZQ0KPiBzZXJ2ZXI6DQo+IA0KPiAxLiBvcGVu
-KCkNCj4gMi4gbW1hcCgpDQo+IDMuIGNsb3NlKCkNCj4gNC4gPG1vZGlmeSBkYXRhIGluIHRoZSBt
-bWFwJ2VkIGFyZWE+DQo+IDUuIG11bm1hcCgpDQo+IA0KPiBEcm9wcGluZyB0aGUgY2FjaGVzICh2
-aWEgL3Byb2Mvc3lzL3ZtL2Ryb3BfY2FjaGVzKSBvciB1bm1vdW50aW5nIGRvZXMgbm90DQo+IHJl
-c3VsdCBpbiB0aGUgZGF0YSBiZWluZyBzZW50IHRvIHRoZSBzZXJ2ZXIuDQo+IA0KPiBUaGUgbWFu
-LXBhZ2UgZm9yIG1tYXAgKG1hbiAyIG1tYXApIGRvZXMgbWVudGlvbiB0aGF0IGNsb3NpbmcgdGhl
-IGZpbGUtDQo+IGRlc2NyaXB0b3IgZG9lcyBub3QgbXVubWFwKCkgdGhlIGFyZWEuIFVzaW5nIHRo
-ZSBtbWFwJ2VkIGFyZWEgYWZ0ZXIgYQ0KPiBjbG9zZSgpIHNvdW5kIHZhbGlkIHRvIG1lIChldmVu
-IGlmIGl0IG1heSBiZSBiYWQgcHJhY3RpY2UpLg0KPiANCj4gSW52ZXN0aWdhdGlvbiBhbmQgY2hl
-Y2tpbmcgc2hvd2VkIHRoYXQgdGhlIE5GUy1jbGllbnQgZG9lcyBub3QgaGFuZGxlDQo+IG11bm1h
-cCgpLCBhbmQgb25seSBmbHVzaGVzIG9uIGNsb3NlKCkuIFRvIHNvbHZlIHRoaXMgcHJvYmxlbSwg
-bGVhc3QgdHdvDQo+IHNvbHV0aW9ucyBjYW4gYmUgcHJvcG9zZWQ6DQo+IA0KPiBhLiBmX29wcy0+
-cmVsZWFzZSgpIGlzIGNhbGxlZCBvbiBtdW5tYXAoKSBhcyB3ZWxsIGFzIG9uIGNsb3NlKCksDQo+
-ICAgICB0aGVyZWZvcmUgcmVsZWFzZSgpIGNhbiBiZSB1c2VkIHRvIGZsdXNoIGRhdGEgYXMgd2Vs
-bC4NCj4gYi4gSW4gdGhlICdzdHJ1Y3Qgdm1fb3BlcmF0aW9uc19zdHJ1Y3QnIGFkZCBhIC5jbG9z
-ZSB0byB0aGUNCj4gICAgICdzdHJ1Y3Qgdm1fYXJlYV9zdHJ1Y3QnIG9uIGNhbGxpbmcgbW1hcCgp
-L25mc19maWxlX21tYXAoKSBhbmQgZmx1c2gNCj4gICAgIHRoZSBkYXRhIGluIHRoZSBuZXcgY2xv
-c2UoKSBmdW5jdGlvbi4NCj4gDQo+IFNvbHV0aW9uIGEuIGNvbnRhaW5zIGN1cnJlbnRseSB2ZXJ5
-IGZldyBjb2RlIGNoYW5nZXM6DQo+IA0KPiAtLS0gYS9mcy9uZnMvaW5vZGUuYw0KPiArKysgYi9m
-cy9uZnMvaW5vZGUuYw0KPiBAQCAtNzEzLDYgKzcxMyw4IEBAIGludCBuZnNfb3BlbihzdHJ1Y3Qg
-aW5vZGUgKmlub2RlLCBzdHJ1Y3QgZmlsZSAqZmlscCkNCj4gDQo+ICAgaW50IG5mc19yZWxlYXNl
-KHN0cnVjdCBpbm9kZSAqaW5vZGUsIHN0cnVjdCBmaWxlICpmaWxwKQ0KPiAgIHsNCj4gKyAgICAg
-ICBpZiAoU19JU1JFRyhpbm9kZS0+aV9tb2RlKSAmJiBpbm9kZS0+aV9tYXBwaW5nLT5ucnBhZ2Vz
-ICE9IDApIHsNCj4gKyAgICAgICAgICAgICAgIG5mc19zeW5jX21hcHBpbmcoaW5vZGUtPmlfbWFw
-cGluZyk7DQo+ICAgICAgICAgIG5mc19maWxlX2NsZWFyX29wZW5fY29udGV4dChmaWxwKTsNCj4g
-ICAgICAgICAgcmV0dXJuIDA7DQo+ICAgfQ0KPiANCj4gVGhlIGRpc2FkdmFudGFnZSBpcywgdGhh
-dCBuZnNfcmVsZWFzZSgpIGlzIGNhbGxlZCBvbiBjbG9zZSgpIHRvby4gVGhhdA0KPiBtZWFucyB0
-aGlzIGNhdXNlcyBhIGZsdXNoaW5nIG9mIGRpcnR5IHBhZ2VzLCBhbmQganVzdCBhZnRlciB0aGF0
-IHRoZQ0KPiBuZnNfZmlsZV9jbGVhcl9vcGVuX2NvbnRleHQoKSBtaWdodCBmbHVzaCBhZ2Fpbi4g
-VGhlIGFkdmFudGFnZSBpcyB0aGF0DQo+IGl0IGlzIHBvc3NpYmxlICh0aG91Z2ggbm90IGRvbmUg
-YXQgdGhlIG1vbWVudCkgdG8gcmV0dXJuIGFuIGVycm9yIGluDQo+IGNhc2UgZmx1c2hpbmcgZmFp
-bGVkLg0KPiANCj4gU29sdXRpb24gYi4gZG9lcyBub3QgcHJvdmlkZSBhbiBvcHRpb24gdG8gcmV0
-dXJuIGFuIGVycm9yLCBidXQgZG9lcyBub3QNCj4gZ2V0IGNhbGxlZCBvbiBlYWNoIGNsb3NlKCk6
-DQo+IA0KPiAtLS0gYS9mcy9uZnMvZmlsZS5jDQo+ICsrKyBiL2ZzL25mcy9maWxlLmMNCj4gQEAg
-LTU0Nyw5ICs1NDcsMTcgQEAgb3V0Og0KPiAgIAlyZXR1cm4gcmV0Ow0KPiAgIH0NCj4gDQo+ICtz
-dGF0aWMgdm9pZCBuZnNfdm1fY2xvc2Uoc3RydWN0IHZtX2FyZWFfc3RydWN0ICogdm1hKQ0KPiAr
-ew0KPiArCXN0cnVjdCBmaWxlICpmaWxwID0gdm1hLT52bV9maWxlOw0KPiArDQo+ICsJbmZzX2Zp
-bGVfZmx1c2goZmlscCwgKGZsX293bmVyX3QpZmlscCk7DQo+ICt9DQo+ICsNCj4gICBzdGF0aWMg
-Y29uc3Qgc3RydWN0IHZtX29wZXJhdGlvbnNfc3RydWN0IG5mc19maWxlX3ZtX29wcyA9IHsNCj4g
-ICAJLmZhdWx0ID0gZmlsZW1hcF9mYXVsdCwNCj4gICAJLnBhZ2VfbWt3cml0ZSA9IG5mc192bV9w
-YWdlX21rd3JpdGUsDQo+ICsJLmNsb3NlID0gbmZzX3ZtX2Nsb3NlLA0KPiAgIH07DQo+IA0KPiAg
-IHN0YXRpYyBpbnQgbmZzX25lZWRfc3luY193cml0ZShzdHJ1Y3QgZmlsZSAqZmlscCwgc3RydWN0
-IGlub2RlICppbm9kZSkNCj4gDQo+IEkgd291bGQgbGlrZSBzb21lIGZlZWRiYWNrIG9uIHdoYXQg
-c29sdXRpb24gaXMgbW9zdCBhY2NlcHRhYmxlLCBvciBhbnkNCj4gb3RoZXIgc3VnZ2VzdGlvbnMu
-DQoNCk5laXRoZXIgc29sdXRpb24gaXMgYWNjZXB0YWJsZS4gVGhpcyBpc24ndCBhIGNsb3NlLXRv
-LW9wZW4gY2FjaGUNCmNvbnNpc3RlbmN5IGlzc3VlLg0KDQpUaGUgc3ludGF4IG9mIG1tYXAoKSBm
-b3IgYm90aCBibG9jayBhbmQgTkZTIG1vdW50cyBpcyB0aGUgc2FtZTogd3JpdGVzDQphcmUgbm90
-IGd1YXJhbnRlZWQgdG8gaGl0IHRoZSBkaXNrIHVudGlsIHlvdXIgYXBwbGljYXRpb24gZXhwbGlj
-aXRseQ0KY2FsbHMgbXN5bmMoKS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBj
-bGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3
-d3cubmV0YXBwLmNvbQ0KDQo=
+
+* Sasha Levin <levinsasha928@gmail.com> wrote:
+
+> Currently, we'll try mounting any device who's major device number is
+> UNNAMED_MAJOR as NFS root. This would happen for non-NFS devices as well (such
+> as 9p devices) but it wouldn't cause any issues since mounting the device
+> as NFS would fail quickly and the code proceeded to doing the proper mount:
+> 
+>        [  101.522716] VFS: Unable to mount root fs via NFS, trying floppy.
+>        [  101.534499] VFS: Mounted root (9p filesystem) on device 0:18.
+> 
+> Commit 6829a048 ("NFS: Retry mounting NFSROOT") has introduced retries when
+> mounting NFS root, which means that now we don't immediately fail and instead
+> it takes an additional 90+ seconds until we stop retrying, which has revealed
+> the issue this patch fixes.
+> 
+> This meant that it would take an additional 90 seconds to boot when we're not
+> using a device type which gets detected in order before NFS.
+> 
+> This patch modifies the NFS type check to require device type to be
+> 'Root_NFS' instead of requiring the device to have an UNNAMED_MAJOR major.
+> This makes boot process cleaner since we now won't go through the NFS mounting
+> code at all when the device isn't an NFS root ("/dev/nfs").
+> 
+> Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+> ---
+>  init/do_mounts.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/init/do_mounts.c b/init/do_mounts.c
+> index 8dfa0de..d3f0aee 100644
+> --- a/init/do_mounts.c
+> +++ b/init/do_mounts.c
+> @@ -482,7 +482,7 @@ void __init change_floppy(char *fmt, ...)
+>  void __init mount_root(void)
+>  {
+>  #ifdef CONFIG_ROOT_NFS
+> -	if (MAJOR(ROOT_DEV) == UNNAMED_MAJOR) {
+> +	if (ROOT_DEV == Root_NFS) {
+>  		if (mount_nfs_root())
+>  			return;
+
+Acked-by: Ingo Molnar <mingo@elte.hu>
+
+This bug actively broke my KVM bootup, it gave the impression 
+that the bootup was hung, while it was just retrying for a 
+looong time.
+
+Thanks,
+
+	Ingo
