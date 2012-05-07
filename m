@@ -1,80 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:47211 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757357Ab2EVPMS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 May 2012 11:12:18 -0400
-Subject: Re: [PATCH 3/4] SUNRPC: Add RPC based upcall mechanism for RPCGSS
- auth
-From: Simo Sorce <simo@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-In-Reply-To: <20120522150356.GE891@fieldses.org>
-References: <1337087550-9821-1-git-send-email-simo@redhat.com>
-	 <1337087550-9821-4-git-send-email-simo@redhat.com>
-	 <20120522150356.GE891@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 22 May 2012 11:12:11 -0400
-Message-ID: <1337699531.16840.185.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:35981 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756853Ab2EGOMV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 May 2012 10:12:21 -0400
+Received: by mail-yx0-f174.google.com with SMTP id m10so3663285yen.19
+        for <linux-nfs@vger.kernel.org>; Mon, 07 May 2012 07:12:21 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
+        michael.brantley@deshaw.com
+Subject: [PATCH v1 RESEND 02/12] vfs: make fstatat retry on ESTALE errors from getattr call
+Date: Mon,  7 May 2012 10:12:01 -0400
+Message-Id: <1336399931-20234-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1336399931-20234-1-git-send-email-jlayton@redhat.com>
+References: <1336399931-20234-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2012-05-22 at 11:03 -0400, J. Bruce Fields wrote:
-> Note also if you rebase to my latest for-3.5 you need something like
-> the following (untested).
-> 
-> --b.
-> 
-> commit 2cc8f0912880a177eee73e08c4305ac3692b8ff9
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Tue May 22 08:44:08 2012 -0400
-> 
->     client_name->cred.cr_principal
-> 
-> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-> index 0211265..95104ae 100644
-> --- a/net/sunrpc/auth_gss/svcauth_gss.c
-> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
-> @@ -1182,26 +1182,27 @@ static int gss_proxy_save_rsc(struct cache_detail *cd,
->  
->  		/* get client name */
->  		if (ud->client_name.len != 0) {
-> +			struct svc_cred *cred = &rsci.cred;
->  			status = -ENOMEM;
->  			/* convert to GSS_NT_HOSTBASED_SERVICE form */
-> -			rsci.client_name = kstrndup(ud->client_name.data,
-> +			cred->cr_principal = kstrndup(ud->client_name.data,
->  							ud->client_name.len,
->  							GFP_KERNEL);
-> -			if (!rsci.client_name)
-> +			if (!cred->cr_principal)
->  				goto out;
->  			/* terminate and remove realm part */
-> -			c = strchr(rsci.client_name, '@');
-> +			c = strchr(cred->cr_principal, '@');
->  			if (c) {
->  				*c = '\0';
->  
->  				/* change service-hostname delimiter */
-> -				c = strchr(rsci.client_name, '/');
-> +				c = strchr(cred->cr_principal, '/');
->  				if (c) *c = '@';
->  			}
->  			if (!c) {
->  				/* not a service principal */
-> -				kfree(rsci.client_name);
-> -				rsci.client_name = NULL;
-> +				kfree(cred->cr_principal);
-> +				cred->cr_principal = NULL;
->  			}
->  		}
->  	}
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/stat.c |   16 ++++++++++------
+ 1 files changed, 10 insertions(+), 6 deletions(-)
 
-I have a patch to move this in gss_rpc_upcall.c instead, it's cleaner, I
-think.
-
-Simo.
-
+diff --git a/fs/stat.c b/fs/stat.c
+index c733dc5..f3eef0d 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -73,7 +73,8 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
+ {
+ 	struct path path;
+ 	int error = -EINVAL;
+-	int lookup_flags = 0;
++	unsigned int try = 0;
++	unsigned int lookup_flags = 0;
+ 
+ 	if ((flag & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
+ 		      AT_EMPTY_PATH)) != 0)
+@@ -84,12 +85,15 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
+ 	if (flag & AT_EMPTY_PATH)
+ 		lookup_flags |= LOOKUP_EMPTY;
+ 
+-	error = user_path_at(dfd, filename, lookup_flags, &path);
+-	if (error)
+-		goto out;
++	do {
++		error = user_path_at(dfd, filename, lookup_flags, &path);
++		if (error)
++			break;
+ 
+-	error = vfs_getattr(path.mnt, path.dentry, stat);
+-	path_put(&path);
++		error = vfs_getattr(path.mnt, path.dentry, stat);
++		path_put(&path);
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
+ out:
+ 	return error;
+ }
 -- 
-Simo Sorce * Red Hat, Inc * New York
+1.7.7.6
 
