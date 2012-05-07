@@ -1,76 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:60449 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761462Ab2EJTIC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 May 2012 15:08:02 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v4 13/14] NFS: Allocate parsed mount data directly to the nfs_mount_info structure
-Date: Thu, 10 May 2012 15:07:42 -0400
-Message-Id: <1336676863-9698-14-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1336676863-9698-1-git-send-email-bjschuma@netapp.com>
-References: <1336676863-9698-1-git-send-email-bjschuma@netapp.com>
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:59102 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1756964Ab2EGOMc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 May 2012 10:12:32 -0400
+Received: by ghrr11 with SMTP id r11so4295708ghr.19
+        for <linux-nfs@vger.kernel.org>; Mon, 07 May 2012 07:12:31 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
+        michael.brantley@deshaw.com
+Subject: [PATCH v1 RESEND 10/12] vfs: fix symlinkat to retry on ESTALE errors
+Date: Mon,  7 May 2012 10:12:09 -0400
+Message-Id: <1336399931-20234-11-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1336399931-20234-1-git-send-email-jlayton@redhat.com>
+References: <1336399931-20234-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/super.c |   16 +++++++---------
- 1 file changed, 7 insertions(+), 9 deletions(-)
+ fs/namei.c |    6 +++++-
+ 1 files changed, 5 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 5b025b0..fc62701 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2468,7 +2468,6 @@ error_splat_bdi:
- static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
- 	int flags, const char *dev_name, void *raw_data)
- {
--	struct nfs_parsed_mount_data *data = NULL;
- 	struct nfs_mount_info mount_info = {
- 		.fill_super = nfs_fill_super,
- 		.set_security = nfs_set_sb_security,
-@@ -2477,30 +2476,29 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
- 	struct dentry *mntroot = ERR_PTR(-ENOMEM);
- 	int error;
+diff --git a/fs/namei.c b/fs/namei.c
+index cee62f1..b5d28fe 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2957,12 +2957,14 @@ SYSCALL_DEFINE3(symlinkat, const char __user *, oldname,
+ 	char *from;
+ 	struct dentry *dentry;
+ 	struct path path;
++	unsigned int try = 0;
  
--	data = nfs_alloc_parsed_mount_data();
-+	mount_info.parsed = nfs_alloc_parsed_mount_data();
- 	mntfh = nfs_alloc_fhandle();
--	if (data == NULL || mntfh == NULL)
-+	if (mount_info.parsed == NULL || mntfh == NULL)
- 		goto out;
+ 	from = getname(oldname);
+ 	if (IS_ERR(from))
+ 		return PTR_ERR(from);
  
- 	/* Validate the mount data */
--	error = nfs_validate_mount_data(fs_type, raw_data, data, mntfh, dev_name);
-+	error = nfs_validate_mount_data(fs_type, raw_data, mount_info.parsed, mntfh, dev_name);
- 	if (error == NFS_TEXT_DATA)
--		error = nfs_validate_text_mount_data(raw_data, data, dev_name);
-+		error = nfs_validate_text_mount_data(raw_data, mount_info.parsed, dev_name);
- 	if (error < 0) {
- 		mntroot = ERR_PTR(error);
- 		goto out;
- 	}
--	mount_info.parsed = data;
- 
- #ifdef CONFIG_NFS_V4
--	if (data->version == 4)
--		mntroot = nfs4_try_mount(flags, dev_name, data);
-+	if (mount_info.parsed->version == 4)
-+		mntroot = nfs4_try_mount(flags, dev_name, mount_info.parsed);
- 	else
- #endif	/* CONFIG_NFS_V4 */
- 		mntroot = nfs_try_mount(flags, dev_name, mntfh, &mount_info);
- 
- out:
--	nfs_free_parsed_mount_data(data);
-+	nfs_free_parsed_mount_data(mount_info.parsed);
- 	nfs_free_fhandle(mntfh);
- 	return mntroot;
- }
+-	dentry = user_path_create(newdfd, newname, &path, false, false);
++retry:
++	dentry = user_path_create(newdfd, newname, &path, false, try);
+ 	error = PTR_ERR(dentry);
+ 	if (IS_ERR(dentry))
+ 		goto out_putname;
+@@ -2980,6 +2982,8 @@ out_dput:
+ 	dput(dentry);
+ 	mutex_unlock(&path.dentry->d_inode->i_mutex);
+ 	path_put(&path);
++	if (retry_estale(error, try++))
++		goto retry;
+ out_putname:
+ 	putname(from);
+ 	return error;
 -- 
-1.7.10.1
+1.7.7.6
 
