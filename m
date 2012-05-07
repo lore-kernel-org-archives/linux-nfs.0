@@ -1,96 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:48252 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751573Ab2EMNIl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 May 2012 09:08:41 -0400
-Received: by bkcji2 with SMTP id ji2so3171164bkc.19
-        for <linux-nfs@vger.kernel.org>; Sun, 13 May 2012 06:08:39 -0700 (PDT)
-Message-ID: <4FAFB255.1040804@tonian.com>
-Date: Sun, 13 May 2012 16:08:37 +0300
-From: Lior <lior@tonian.com>
+Received: from e33.co.us.ibm.com ([32.97.110.151]:44811 "EHLO
+	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751904Ab2EGRxg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 May 2012 13:53:36 -0400
+Received: from /spool/local
+	by e33.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Mon, 7 May 2012 11:53:34 -0600
+Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
+	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id 7BB71C9005E
+	for <linux-nfs@vger.kernel.org>; Mon,  7 May 2012 13:52:25 -0400 (EDT)
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q47HqRMM119898
+	for <linux-nfs@vger.kernel.org>; Mon, 7 May 2012 13:52:27 -0400
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q47HqRlU005510
+	for <linux-nfs@vger.kernel.org>; Mon, 7 May 2012 14:52:27 -0300
+Received: from malahal (malahal.austin.ibm.com [9.53.40.203])
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q47HqQeP005499
+	for <linux-nfs@vger.kernel.org>; Mon, 7 May 2012 14:52:26 -0300
+Date: Mon, 7 May 2012 12:52:25 -0500
+From: Malahal Naineni <malahal@us.ibm.com>
+To: linux-nfs@vger.kernel.org
+Subject: short read from NFS client
+Message-ID: <20120507175225.GA15419@us.ibm.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@redhat.com>, Benny Halevy <bhalevy@tonian.com>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: nfs 4.1 server returns available file lyaout type when the file
- system is exported without pNFS (updated)
-References: <4FAFA79A.2030007@tonian.com>
-In-Reply-To: <4FAFA79A.2030007@tonian.com>
-Content-Type: text/plain; charset=windows-1255; format=flowed
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-בתאריך 13/05/2012 15:22, ציטוט Lior:
-> Hi,
->
-> Steps to reproduce:
->
-> insert this in /etc/export on the server side:
-> /mnt/testnfs 
-> *(rw,sync,wdelay,hide,nocrossmnt,insecure,no_root_squash,no_all_squash,no_subtree_check,secure_locks,acl,fsid=0,anonuid=65534,anongid=65534)
->
-> on the server side:
-> exportfs -ra
->
-> from client run connectathon:
->
-> The settings for connectathon are for nfs 4.1 without Pnfs ( although 
-> the module of: nfs_layout_nfsv41_files is loaded on the client due to 
-> the fact that the current clients design does not have an option of a 
-> module of nfs 4.1 WITHOUT pNFS)
->
-> Connectathon tests passed , but when I looked at nfsstat, I saw this ( 
-> relevant to Pnfs):
-> layoutget activity
-> layout return activity
-> (NO getdevice info activity)
->
-> (When I tried running the same , this time the server had this line in 
-> its /etc/exports:
-> /mnt/testnfs 
-> *(rw,sync,wdelay,hide,nocrossmnt,insecure,no_root_squash,no_all_squash,no_subtree_check,secure_locks,acl,fsid=0,anonuid=65534,anongid=65534,pnfs)
-> (NOTE: with Pnfs flag.)
->
-> connectathon tests passed , and when I looked at nfsstat, I saw this ( 
-> relevant to Pnfs):
-> layoutget activity
-> layoutreturn activity
-> getdevice info activity.)
->
->
->  When we look at the logs and code, we saw that layoutget and layout 
-> return are sent by the client, and the server returns error messages 
-> to both ( as expected in regard to layoutget & layout return being 
-> sent by the client when the server is not pNFS enabled , BUT then 
-> again , the client wouldn't have sent layoutget & layout return 
-> ,originally, if it were to get the correct flag from the server, see 
-> Actuall behavior analysis below). we could also see that  there was NO 
-> getdevice info activity after that, and the server/client went on with 
-> regular nfs activity.
->
-> the no getdevice info activity was confirmed by the connectathon runs 
-> ( could be seen above).
-> expected results are:
->
->     NO pNFS commands shown in nfsstat.
->     NO pNFS module should be loaded in the client.
->
-> Actual behavior analysis
-> The FATTR4_FS_LAYOUT_TYPE field returned from the server, which should 
-> be empty, contains LAYOUT4_NFSV4_1_FILES, which causes the module to 
-> be loaded and the client to think pNFS is available.
->
-> Diagnosis:
-> This server behaviour is currently hard coded regardless of if we 
-> export a file system over pnfs or not. which doesn't seem right.
->
-This was done with :
+Hi All,
 
-pnfsd-lexp (local export) testing
-back end that exports a local file system over pnfs, playing both the MDS and a single DS
-on the server.
+	An application running on an NFS file got short read (received
+fewer bytes than requested). At the same time, we noticed few ESTALE
+errors for NFS READ Calls in the tcpdump. We lost few packets in the
+tcpdump, so can't say if there were any other errors at that time. What
+are the circumstances (other than the ones listed below) where NFS
+client can send a short read to the application in buffered read system
+call?
 
-Thanks
+EOF is not reached, no direct I/O is involved, and the read syscall is not
+interrupted, of course!
 
-Lior K.
-
+Thanks, Malahal.
 
