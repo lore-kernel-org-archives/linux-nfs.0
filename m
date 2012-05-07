@@ -1,65 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f174.google.com ([209.85.216.174]:46828 "EHLO
-	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754097Ab2EJOZw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 May 2012 10:25:52 -0400
-Received: by qcro28 with SMTP id o28so1141810qcr.19
-        for <linux-nfs@vger.kernel.org>; Thu, 10 May 2012 07:25:51 -0700 (PDT)
+Received: from mail1.trendhosting.net ([195.8.117.5]:53706 "EHLO
+	mail1.trendhosting.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755497Ab2EGJTr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 May 2012 05:19:47 -0400
+Message-ID: <4FA793AB.70107@pocock.com.au>
+Date: Mon, 07 May 2012 09:19:39 +0000
+From: Daniel Pocock <daniel@pocock.com.au>
 MIME-Version: 1.0
-In-Reply-To: <1336658065-24851-3-git-send-email-mgorman@suse.de>
-References: <1336658065-24851-1-git-send-email-mgorman@suse.de>
-	<1336658065-24851-3-git-send-email-mgorman@suse.de>
-Date: Thu, 10 May 2012 10:25:51 -0400
-Message-ID: <CACLa4punzEWjxQ79GF2o5h-up5A43oBuP-LEXGiA-kKQxcG1iQ@mail.gmail.com>
-Subject: Re: [PATCH 02/12] selinux: tag avc cache alloc as non-critical
-From: Eric Paris <eparis@parisplace.org>
-To: Mel Gorman <mgorman@suse.de>
-Cc: Andrew Morton <akpm@linux-foundation.org>, Linux-MM <linux-mm@kvack.org>,
-        Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>
-Content-Type: text/plain; charset=ISO-8859-1
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: extremely slow nfs when sync enabled
+References: <4FA5E950.5080304@pocock.com.au>   <1336328594.2593.14.camel@lade.trondhjem.org>   <4FA6EBD4.7040308@pocock.com.au>  <1336340993.2600.11.camel@lade.trondhjem.org>  <4FA6F75E.6090300@pocock.com.au> <1336344160.2600.30.camel@lade.trondhjem.org>
+In-Reply-To: <1336344160.2600.30.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 10, 2012 at 9:54 AM, Mel Gorman <mgorman@suse.de> wrote:
-> Failing to allocate a cache entry will only harm performance not
-> correctness.  Do not consume valuable reserve pages for something
-> like that.
->
-> Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-> Signed-off-by: Mel Gorman <mgorman@suse.de>
 
-Acked-by: Eric Paris <eparis@redhat.com>
+>> Ok, so the combination of:
+>>
+>> - enable writeback with hdparm
+>> - use ext4 (and not ext3)
+>> - barrier=1 and data=writeback?  or data=?
+>>
+>> - is there a particular kernel version (on either client or server side)
+>> that will offer more stability using this combination of features?
+> 
+> Not that I'm aware of. As long as you have a kernel > 2.6.29, then LVM
+> should work correctly. The main problem is that some SATA hardware tends
+> to be buggy, defeating the methods used by the barrier code to ensure
+> data is truly on disk. I believe that XFS will therefore actually test
+> the hardware when you mount with write caching and barriers, and should
+> report if the test fails in the syslogs.
+> See http://xfs.org/index.php/XFS_FAQ#Write_barrier_support.
+> 
+>> I think there are some other variations of my workflow that I can
+>> attempt too, e.g. I've contemplated compiling C++ code onto a RAM disk
+>> because I don't need to keep the hundreds of object files.
+> 
+> You might also consider using something like ccache and set the
+> CCACHE_DIR to a local disk if you have one.
+> 
 
-> ---
->  security/selinux/avc.c |    2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
->
-> diff --git a/security/selinux/avc.c b/security/selinux/avc.c
-> index 8ee42b2..75c2977 100644
-> --- a/security/selinux/avc.c
-> +++ b/security/selinux/avc.c
-> @@ -280,7 +280,7 @@ static struct avc_node *avc_alloc_node(void)
->  {
->        struct avc_node *node;
->
-> -       node = kmem_cache_zalloc(avc_node_cachep, GFP_ATOMIC);
-> +       node = kmem_cache_zalloc(avc_node_cachep, GFP_ATOMIC|__GFP_NOMEMALLOC);
->        if (!node)
->                goto out;
->
-> --
-> 1.7.9.2
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
+
+Thanks for the feedback about these options, I am going to look at these
+strategies more closely
+
+
+>>>>> setups really _suck_ at dealing with fsync(). The latter is used every
+>>>>
+>>>> I'm using md RAID1, my setup is like this:
+>>>>
+>>>> 2x 1TB SATA disks ST31000528AS (7200rpm with 32MB cache and NCQ)
+>>>>
+>>>> SATA controller: ATI Technologies Inc SB700/SB800 SATA Controller [AHCI
+>>>> mode] (rev 40)
+>>>> - not using any of the BIOS softraid stuff
+>>>>
+>>>> Both devices have identical partitioning:
+>>>> 1. 128MB boot
+>>>> 2. md volume (1TB - 128MB)
+>>>>
+>>>> The entire md volume (/dev/md2) is then used as a PV for LVM
+>>>>
+>>>> I do my write tests on a fresh LV with no fragmentation
+>>>>
+>>>>> time the NFS client sends a COMMIT or trunc() instruction, and for
+>>>>> pretty much all file and directory creation operations (you can use
+>>>>> 'nfsstat' to monitor how many such operations the NFS client is sending
+>>>>> as part of your test).
+>>>>
+>>>> I know that my two tests are very different in that way:
+>>>>
+>>>> - dd is just writing one big file, no fsync
+>>>>
+>>>> - unpacking a tarball (or compiling a large C++ project) does a lot of
+>>>> small writes with many fsyncs
+>>>>
+>>>> In both cases, it is slow
+>>>>
+>>>>> Local disk can get away with doing a lot less fsync(), because the cache
+>>>>> consistency guarantees are different:
+>>>>>       * in NFS, the server is allowed to crash or reboot without
+>>>>>         affecting the client's view of the filesystem.
+>>>>>       * in the local file system, the expectation is that on reboot any
+>>>>>         data lost is won't need to be recovered (the application will
+>>>>>         have used fsync() for any data that does need to be persistent).
+>>>>>         Only the disk filesystem structures need to be recovered, and
+>>>>>         that is done using the journal (or fsck).
+>>>>
+>>>>
+>>>> Is this an intractable problem though?
+>>>>
+>>>> Or do people just work around this, for example, enable async and
+>>>> write-back cache, and then try to manage the risk by adding a UPS and/or
+>>>> battery backed cache to their RAID setup (to reduce the probability of
+>>>> unclean shutdown)?
+>>>
+>>> It all boils down to what kind of consistency guarantees you are
+>>> comfortable living with. The default NFS server setup offers much
+>>> stronger data consistency guarantees than local disk, and is therefore
+>>> likely to be slower when using cheap hardware.
+>>>
+>>
+>> I'm keen for consistency, because I don't like the idea of corrupting
+>> some source code or a whole git repository for example.
+>>
+>> How did you know I'm using cheap hardware?  It is a HP MicroServer, I
+>> even got the Â£100 cash-back cheque:
+>>
+>> http://www8.hp.com/uk/en/campaign/focus-for-smb/solution.html#/tab2/
+>>
+>> Seriously though, I've worked with some very large arrays in my business
+>> environment, but I use this hardware at home because of the low noise
+>> and low heat dissipation rather than for saving money, so I would like
+>> to try and get the most out of it if possible and I'm very grateful for
+>> these suggestions.
+> 
+> Right. All I'm saying is that when comparing local disk and NFS
+> performance, then make sure that you are doing an apples-to-apples
+> comparison.
+> The main reason for wanting to use NFS in a home setup would usually be
+> in order to simultaneously access the same data through several clients.
+> If that is not a concern, then perhaps transforming your NFS server into
+> an iSCSI target might fit your performance requirements better?
+
+There are various types of content, some things, like VM images, are
+only accessed by one client at a time, those could be iSCSI.
+
+However, some of the code I'm compiling needs to be built on different
+platforms (e.g. I have a Debian squeeze desktop, and Debian wheezy in a
+VM), consequently, it is convenient for me to have access to the git
+workspaces from all these hosts using NFS.
+
+
+
