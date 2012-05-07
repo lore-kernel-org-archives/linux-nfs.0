@@ -1,169 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:38649 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932647Ab2EXLJz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 May 2012 07:09:55 -0400
-Message-ID: <4FBE16FC.4070009@parallels.com>
-Date: Thu, 24 May 2012 15:09:48 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from fieldses.org ([174.143.236.118]:42681 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932080Ab2EGRSG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 May 2012 13:18:06 -0400
+Date: Mon, 7 May 2012 13:18:00 -0400
+To: Daniel Pocock <daniel@pocock.com.au>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: extremely slow nfs when sync enabled
+Message-ID: <20120507171759.GA10137@fieldses.org>
+References: <4FA5E950.5080304@pocock.com.au>
+ <1336328594.2593.14.camel@lade.trondhjem.org>
+ <4FA6EBD4.7040308@pocock.com.au>
+ <1336340993.2600.11.camel@lade.trondhjem.org>
+ <4FA6F75E.6090300@pocock.com.au>
+ <1336344160.2600.30.camel@lade.trondhjem.org>
+ <4FA793AB.70107@pocock.com.au>
+ <4FA7D54E.9080309@pocock.com.au>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH] NFSd: fix locking in nfsd_forget_delegations()
-References: <20120522102444.6988.45434.stgit@localhost.localdomain> <20120523213158.GB13710@fieldses.org> <4FBDBBFF.2000000@parallels.com> <20120524105648.GA19875@fieldses.org>
-In-Reply-To: <20120524105648.GA19875@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FA7D54E.9080309@pocock.com.au>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 24.05.2012 14:56, J. Bruce Fields wrote:
-> On Thu, May 24, 2012 at 08:41:35AM +0400, Stanislav Kinsbursky wrote:
->> 24.05.2012 01:31, J. Bruce Fields написал:
->>> On Tue, May 22, 2012 at 02:25:14PM +0400, Stanislav Kinsbursky wrote:
->>>> This patch adds recall_lock hold to nfsd_forget_delegations() to protect
->>>> nfsd_process_n_delegations() call.
->>>> Also, looks like it would be better to collect delegations to some local
->>>> on-stack list, and then unhash collected list. This split allows to simplify
->>>> locking, because delegation traversing is protected by recall_lock, when
->>>> delegation unhash is protected by client_mutex.
->>> All this indirection is getting a little much.
->>>
->>> How about replacing nfsd_process_n_delegations by something that always
->>> does the list-move?:
->>
->> Is it correct?
->> List move is suitable for unhash delegations since we anyway remove
->> delegation from fi_delegations list.
->> But seems we don't do this for delegations recall...
->
-> Oh, blah, you're right of course.
->
-> Still, this seems a little tangled, and I'd prefer not to have to add
-> the useless extra parameter to break_one_deleg().
->
+On Mon, May 07, 2012 at 01:59:42PM +0000, Daniel Pocock wrote:
+> 
+> 
+> On 07/05/12 09:19, Daniel Pocock wrote:
+> > 
+> >>> Ok, so the combination of:
+> >>>
+> >>> - enable writeback with hdparm
+> >>> - use ext4 (and not ext3)
+> >>> - barrier=1 and data=writeback?  or data=?
+> >>>
+> >>> - is there a particular kernel version (on either client or server side)
+> >>> that will offer more stability using this combination of features?
+> >>
+> >> Not that I'm aware of. As long as you have a kernel > 2.6.29, then LVM
+> >> should work correctly. The main problem is that some SATA hardware tends
+> >> to be buggy, defeating the methods used by the barrier code to ensure
+> >> data is truly on disk. I believe that XFS will therefore actually test
+> >> the hardware when you mount with write caching and barriers, and should
+> >> report if the test fails in the syslogs.
+> >> See http://xfs.org/index.php/XFS_FAQ#Write_barrier_support.
+> >>
+> >>> I think there are some other variations of my workflow that I can
+> >>> attempt too, e.g. I've contemplated compiling C++ code onto a RAM disk
+> >>> because I don't need to keep the hundreds of object files.
+> >>
+> >> You might also consider using something like ccache and set the
+> >> CCACHE_DIR to a local disk if you have one.
+> >>
+> > 
+> > 
+> > Thanks for the feedback about these options, I am going to look at these
+> > strategies more closely
+> > 
+> 
+> 
+> I decided to try and take md and LVM out of the picture, I tried two
+> variations:
+> 
+> a) the boot partitions are not mirrored, so I reformatted one of them as
+> ext4,
+> - enabled write-cache for the whole of sdb,
+> - mounted ext4, barrier=1,data=ordered
+> - and exported this volume over NFS
+> 
+> unpacking a large source tarball on this volume, iostat reports write
+> speeds that are even slower, barely 300kBytes/sec
 
+How many file creates per second?
 
-Ok, I'll try to handle it somehow...
+--b.
 
-
-> --b.
->
->>
->>
->>> void nfsd_forget_delegations(u64 num)
->>> {
->>> 	unsigned int count;
->>> 	list_head victims;
->>>
->>> 	nfs4_lock_state();
->>> 	count = nfsd_get_n_delegations(num,&victims);
->>> 	list_for_each_entry_safe(...,&victims, ...)
->>> 		unhash_delegation();
->>> 	unlock_state();
->>> }
->>>
->>> ditto for recall_delegations, and take the recall_lock inside
->>> nfsd_get_n_delegations?
->>>
->>> Or something like that.
->>>
->>> --b.
->>>
->>>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
->>>> ---
->>>>   fs/nfsd/nfs4state.c |   32 ++++++++++++++++++++++++--------
->>>>   1 files changed, 24 insertions(+), 8 deletions(-)
->>>>
->>>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->>>> index 21266c7..f004e61 100644
->>>> --- a/fs/nfsd/nfs4state.c
->>>> +++ b/fs/nfsd/nfs4state.c
->>>> @@ -2597,7 +2597,7 @@ out:
->>>>   	return ret;
->>>>   }
->>>>
->>>> -static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
->>>> +static void nfsd_break_one_deleg(struct nfs4_delegation *dp, void *data)
->>>>   {
->>>>   	/* We're assuming the state code never drops its reference
->>>>   	 * without first removing the lease.  Since we're in this lease
->>>> @@ -2633,7 +2633,7 @@ static void nfsd_break_deleg_cb(struct file_lock *fl)
->>>>   	spin_lock(&recall_lock);
->>>>   	fp->fi_had_conflict = true;
->>>>   	list_for_each_entry(dp,&fp->fi_delegations, dl_perfile)
->>>> -		nfsd_break_one_deleg(dp);
->>>> +		nfsd_break_one_deleg(dp, NULL);
->>>>   	spin_unlock(&recall_lock);
->>>>   }
->>>>
->>>> @@ -4694,7 +4694,7 @@ void nfsd_forget_openowners(u64 num)
->>>>   	printk(KERN_INFO "NFSD: Forgot %d open owners", count);
->>>>   }
->>>>
->>>> -int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegation *))
->>>> +int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegation *, void *), void *data)
->>>>   {
->>>>   	int i, count = 0;
->>>>   	struct nfs4_file *fp, *fnext;
->>>> @@ -4703,7 +4703,7 @@ int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegatio
->>>>   	for (i = 0; i<   FILE_HASH_SIZE; i++) {
->>>>   		list_for_each_entry_safe(fp, fnext,&file_hashtbl[i], fi_hash) {
->>>>   			list_for_each_entry_safe(dp, dnext,&fp->fi_delegations, dl_perfile) {
->>>> -				deleg_func(dp);
->>>> +				deleg_func(dp, data);
->>>>   				if (++count == num)
->>>>   					return count;
->>>>   			}
->>>> @@ -4713,15 +4713,31 @@ int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegatio
->>>>   	return count;
->>>>   }
->>>>
->>>> +/* Called under the recall_lock spinlock. */
->>>> +static void
->>>> +collect_delegation(struct nfs4_delegation *dp, void *data)
->>>> +{
->>>> +	struct list_head *list = data;
->>>> +
->>>> +	list_move(&dp->dl_perfile, list);
->>>> +}
->>>> +
->>>>   void nfsd_forget_delegations(u64 num)
->>>>   {
->>>>   	unsigned int count;
->>>> +	struct nfs4_delegation *dp, *dnext;
->>>> +	LIST_HEAD(unhash_list);
->>>>
->>>> -	nfs4_lock_state();
->>>> -	count = nfsd_process_n_delegations(num, unhash_delegation);
->>>> -	nfs4_unlock_state();
->>>> +	spin_lock(&recall_lock);
->>>> +	count = nfsd_process_n_delegations(num, collect_delegation,&unhash_list);
->>>> +	spin_unlock(&recall_lock);
->>>>
->>>>   	printk(KERN_INFO "NFSD: Forgot %d delegations", count);
->>>> +
->>>> +	nfs4_lock_state();
->>>> +	list_for_each_entry_safe(dp, dnext,&unhash_list, dl_perfile)
->>>> +		unhash_delegation(dp);
->>>> +	nfs4_unlock_state();
->>>>   }
->>>>
->>>>   void nfsd_recall_delegations(u64 num)
->>>> @@ -4730,7 +4746,7 @@ void nfsd_recall_delegations(u64 num)
->>>>
->>>>   	nfs4_lock_state();
->>>>   	spin_lock(&recall_lock);
->>>> -	count = nfsd_process_n_delegations(num, nfsd_break_one_deleg);
->>>> +	count = nfsd_process_n_delegations(num, nfsd_break_one_deleg, NULL);
->>>>   	spin_unlock(&recall_lock);
->>>>   	nfs4_unlock_state();
->>>>
->>>>
->>
-
-
--- 
-Best regards,
-Stanislav Kinsbursky
+> 
+> b) I took an external USB HDD,
+> - created two 20GB partitions sdc1 and sdc2
+> - formatted sdc1 as btrfs
+> - formatted sdc2 as ext4
+> - mounted sdc2 the same as sdb1 in test (a),
+>       ext4, barrier=1,data=ordered
+> - exported both volumes over NFS
+> 
+> unpacking a large source tarball on these two volumes, iostat reports
+> write speeds that are around 5MB/sec - much faster than the original
+> problem I was having
+> 
+> Bottom line, this leaves me with the impression that either
+> - the server's SATA controller or disks need a firmware upgrade,
+> - or there is some issue with the kernel barriers and/or cache flushing
+> on this specific SATA hardware.
+> 
+> I think it is fair to say that the NFS client is not at fault, however,
+> I can imagine many people would be tempted to just use `async' when
+> faced with a problem like this, given that async makes everything just
+> run fast.
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
