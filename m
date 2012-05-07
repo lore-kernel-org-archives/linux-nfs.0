@@ -1,84 +1,155 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:44502 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753352Ab2EDInW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 May 2012 04:43:22 -0400
-Message-ID: <4FA3969A.5080205@parallels.com>
-Date: Fri, 4 May 2012 12:43:06 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH v3 0/2] SUNRPC: separate per-net data creation from service
-References: <20120502120536.8794.22210.stgit@localhost.localdomain> <20120502215837.GA12089@fieldses.org> <20120503142735.GA16940@fieldses.org>
-In-Reply-To: <20120503142735.GA16940@fieldses.org>
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:30827 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757382Ab2EGSmx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 May 2012 14:42:53 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v2 3/8] NFS: Don't pass mount data to nfs_fscache_get_super_cookie()
+Date: Mon,  7 May 2012 14:42:41 -0400
+Message-Id: <1336416166-20533-4-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1336416166-20533-1-git-send-email-bjschuma@netapp.com>
+References: <1336416166-20533-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03.05.2012 18:27, J. Bruce Fields wrote:
-> On Wed, May 02, 2012 at 05:58:37PM -0400, J. Bruce Fields wrote:
->> Thanks, applying.
->
-> Whoops, no--I'm hitting the BUG at net/sunrpc/svc.c:558 (the first of
-> the two BUG_ON()s in svc_destroy()) when restarting nfsd.  Could you
-> look into this?
->
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-My fault. Sorry. Investigating.
+I intend on creating a single nfs_fs_mount() function used by all our
+mount paths.  To avoid checking between new mounts and clone mounts, I
+instead pass both structures to a new function in super.c that finds the
+cache key and then looks up the super cookie.
 
-> --b.
->
->>
->> --b.
->>
->> On Wed, May 02, 2012 at 04:08:29PM +0400, Stanislav Kinsbursky wrote:
->>> creation
->>>
->>> v3: "SUNRPC: new svc_bind() routine introduced" patch was squashed with the
->>>      "SUNRPC: check rpcbind clients usage counter before decrement" patch.
->>>
->>> v2: Increase per-net usage counted in lockd_up_net().
->>>
->>> This is a cleanup patch set.
->>> It will be followed my LockD start/stop cleanup patch set and NFS callback
->>> service containerization patch set (yes, I forgot to implement it).
->>>
->>> Today per-net data is created with service, and then is service is starting in
->>> other network namespace. And thus it's destroyed with service too. Moreover,
->>> network context for destroying of per-net data is taken from current process.
->>> This is correct, but code looks ugly.
->>> This patch set separates per-net data allocation from service allocation and
->>> destruction.
->>> IOW, per-net data have to be destroyed by service users - not service itself.
->>>
->>> BTW, NFSd code become uglier with this patch set. Sorry.
->>> But I assume, that these new ugly parts will be replaced later by NFSd service
->>> containerization code.
->>>
->>> The following series implements...
->>>
->>> ---
->>>
->>> Stanislav Kinsbursky (2):
->>>        SUNRPC: new svc_bind() routine introduced
->>>        SUNRPC: move per-net operations from svc_destroy()
->>>
->>>
->>>   fs/lockd/svc.c             |   33 +++++++++++++++++++++------------
->>>   fs/nfs/callback.c          |   11 +++++++++++
->>>   fs/nfsd/nfsctl.c           |    4 ++++
->>>   fs/nfsd/nfssvc.c           |   16 ++++++++++++++++
->>>   include/linux/sunrpc/svc.h |    1 +
->>>   net/sunrpc/rpcb_clnt.c     |   12 +++++++-----
->>>   net/sunrpc/svc.c           |   23 ++++++++++-------------
->>>   7 files changed, 70 insertions(+), 30 deletions(-)
->>>
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/fscache.c |   15 ++-------------
+ fs/nfs/fscache.h |    4 +---
+ fs/nfs/super.c   |   31 ++++++++++++++++++++++++++-----
+ 3 files changed, 29 insertions(+), 21 deletions(-)
 
-
+diff --git a/fs/nfs/fscache.c b/fs/nfs/fscache.c
+index ae65c16..c817787 100644
+--- a/fs/nfs/fscache.c
++++ b/fs/nfs/fscache.c
+@@ -64,23 +64,12 @@ void nfs_fscache_release_client_cookie(struct nfs_client *clp)
+  * either by the 'fsc=xxx' option to mount, or by inheriting it from the parent
+  * superblock across an automount point of some nature.
+  */
+-void nfs_fscache_get_super_cookie(struct super_block *sb, const char *uniq,
+-				  struct nfs_clone_mount *mntdata)
++void nfs_fscache_get_super_cookie(struct super_block *sb, const char *uniq, int ulen)
+ {
+ 	struct nfs_fscache_key *key, *xkey;
+ 	struct nfs_server *nfss = NFS_SB(sb);
+ 	struct rb_node **p, *parent;
+-	int diff, ulen;
+-
+-	if (uniq) {
+-		ulen = strlen(uniq);
+-	} else if (mntdata) {
+-		struct nfs_server *mnt_s = NFS_SB(mntdata->sb);
+-		if (mnt_s->fscache_key) {
+-			uniq = mnt_s->fscache_key->key.uniquifier;
+-			ulen = mnt_s->fscache_key->key.uniq_len;
+-		}
+-	}
++	int diff;
+ 
+ 	if (!uniq) {
+ 		uniq = "";
+diff --git a/fs/nfs/fscache.h b/fs/nfs/fscache.h
+index b9c572d..2a08b91 100644
+--- a/fs/nfs/fscache.h
++++ b/fs/nfs/fscache.h
+@@ -73,9 +73,7 @@ extern void nfs_fscache_unregister(void);
+ extern void nfs_fscache_get_client_cookie(struct nfs_client *);
+ extern void nfs_fscache_release_client_cookie(struct nfs_client *);
+ 
+-extern void nfs_fscache_get_super_cookie(struct super_block *,
+-					 const char *,
+-					 struct nfs_clone_mount *);
++extern void nfs_fscache_get_super_cookie(struct super_block *, const char *, int);
+ extern void nfs_fscache_release_super_cookie(struct super_block *);
+ 
+ extern void nfs_fscache_init_inode_cookie(struct inode *);
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 75b1717..f56fb35 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2278,6 +2278,27 @@ static int nfs_compare_super(struct super_block *sb, void *data)
+ 	return nfs_compare_mount_options(sb, server, mntflags);
+ }
+ 
++static void nfs_get_cache_cookie(struct super_block *sb,
++				 struct nfs_parsed_mount_data *parsed,
++				 struct nfs_clone_mount *cloned)
++{
++	char *uniq = NULL;
++	int ulen = 0;
++
++	if (parsed && parsed->fscache_uniq) {
++		uniq = parsed->fscache_uniq;
++		ulen = strlen(parsed->fscache_uniq);
++	} else if (cloned) {
++		struct nfs_server *mnt_s = NFS_SB(cloned->sb);
++		if (mnt_s->fscache_key) {
++			uniq = mnt_s->fscache_key->key.uniquifier;
++			ulen = mnt_s->fscache_key->key.uniq_len;
++		};
++	}
++
++	nfs_fscache_get_super_cookie(sb, uniq, ulen);
++}
++
+ static int nfs_bdi_register(struct nfs_server *server)
+ {
+ 	return bdi_register_dev(&server->backing_dev_info, server->s_dev);
+@@ -2352,7 +2373,7 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
+ 	if (!s->s_root) {
+ 		/* initial superblock/root creation */
+ 		nfs_fill_super(s, data);
+-		nfs_fscache_get_super_cookie(s, data->fscache_uniq, NULL);
++		nfs_get_cache_cookie(s, data, NULL);
+ 	}
+ 
+ 	mntroot = nfs_get_root(s, mntfh, dev_name);
+@@ -2461,7 +2482,7 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
+ 	if (!s->s_root) {
+ 		/* initial superblock/root creation */
+ 		nfs_clone_super(s, data->sb);
+-		nfs_fscache_get_super_cookie(s, NULL, data);
++		nfs_get_cache_cookie(s, NULL, data);
+ 	}
+ 
+ 	mntroot = nfs_get_root(s, data->fh, dev_name);
+@@ -2724,7 +2745,7 @@ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
+ 	if (!s->s_root) {
+ 		/* initial superblock/root creation */
+ 		nfs4_fill_super(s);
+-		nfs_fscache_get_super_cookie(s, data->fscache_uniq, NULL);
++		nfs_get_cache_cookie(s, data, NULL);
+ 	}
+ 
+ 	mntroot = nfs_get_root(s, mntfh, dev_name);
+@@ -2988,7 +3009,7 @@ nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
+ 	if (!s->s_root) {
+ 		/* initial superblock/root creation */
+ 		nfs4_clone_super(s, data->sb);
+-		nfs_fscache_get_super_cookie(s, NULL, data);
++		nfs_get_cache_cookie(s, NULL, data);
+ 	}
+ 
+ 	mntroot = nfs_get_root(s, data->fh, dev_name);
+@@ -3079,7 +3100,7 @@ nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
+ 	if (!s->s_root) {
+ 		/* initial superblock/root creation */
+ 		nfs4_fill_super(s);
+-		nfs_fscache_get_super_cookie(s, NULL, data);
++		nfs_get_cache_cookie(s, NULL, data);
+ 	}
+ 
+ 	mntroot = nfs_get_root(s, mntfh, dev_name);
 -- 
-Best regards,
-Stanislav Kinsbursky
+1.7.10.1
+
