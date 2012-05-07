@@ -1,101 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:41245 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750966Ab2EAIUc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 May 2012 04:20:32 -0400
-Message-ID: <4F9F9CCD.6060008@parallels.com>
-Date: Tue, 1 May 2012 12:20:29 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 2/3] SUNRPC: check rpcbind clients usage counter before
- decrement
-References: <20120425132314.13800.6813.stgit@localhost6.localdomain6> <20120425133749.13800.24003.stgit@localhost6.localdomain6> <20120427135507.GE14973@fieldses.org> <4F9AA84D.8090604@parallels.com> <20120430214504.GD22323@fieldses.org>
-In-Reply-To: <20120430214504.GD22323@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:65048 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1756729Ab2EGOMW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 May 2012 10:12:22 -0400
+Received: by mail-gy0-f174.google.com with SMTP id r11so4295487ghr.19
+        for <linux-nfs@vger.kernel.org>; Mon, 07 May 2012 07:12:22 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
+        michael.brantley@deshaw.com
+Subject: [PATCH v1 RESEND 03/12] vfs: fix readlinkat to retry on ESTALE
+Date: Mon,  7 May 2012 10:12:02 -0400
+Message-Id: <1336399931-20234-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1336399931-20234-1-git-send-email-jlayton@redhat.com>
+References: <1336399931-20234-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-01.05.2012 01:45, J. Bruce Fields написал:
-> On Fri, Apr 27, 2012 at 06:08:13PM +0400, Stanislav Kinsbursky wrote:
->> On 27.04.2012 17:55, J. Bruce Fields wrote:
->>> On Wed, Apr 25, 2012 at 05:37:49PM +0400, Stanislav Kinsbursky wrote:
->>>> Registering service with svc_bind() can fail. In this case service will be
->>>> destroyed and during destruction it will try to unregister itself from rpcbind.
->>>> In this case unregister have to be skipped.
->>> Isn't this a preexisting bug, in which case perhaps Trond should at it
->>> to his list of bugs to submit now?
->>>
->> Not it's not.
->>
->> Previously, in case of bind operations failure, rpcb_put_local()
->> wasn't called, but service data was destroyed instead:
->>
->> -	if (svc_uses_rpcbind(serv)) {
->> -		if (svc_rpcb_setup(serv, current->nsproxy->net_ns)<  0) {
->> -			kfree(serv->sv_pools);
->> -			kfree(serv);
->> -			return NULL;
->> -		}
->> -		if (!serv->sv_shutdown)
->> -			serv->sv_shutdown = svc_rpcb_cleanup;
->> -	}
->>
->> Now (with svc_bind() introduction) service can be created, but
->> svc_bind() could fail. And thus svc_destroy() have to be called.
->> Which will call rpcb_put_local().
->>
->> And the problem here that svc_bind() can fail before incrementing of
->> rpcb usage counter.
-> OK, but then you're fixing a bug that you just introduced with the
-> previous patch.
->
-> So this should be combined with the previous patch.
->
-> --b.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/stat.c |   16 ++++++++++++----
+ 1 files changed, 12 insertions(+), 4 deletions(-)
 
-You, probably, right. I'll do this.
-Thanks.
-
->>>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
->>>>
->>>> ---
->>>>   net/sunrpc/rpcb_clnt.c |   12 +++++++-----
->>>>   1 files changed, 7 insertions(+), 5 deletions(-)
->>>>
->>>> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
->>>> index 78ac39f..4c38b33 100644
->>>> --- a/net/sunrpc/rpcb_clnt.c
->>>> +++ b/net/sunrpc/rpcb_clnt.c
->>>> @@ -180,14 +180,16 @@ void rpcb_put_local(struct net *net)
->>>>   	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
->>>>   	struct rpc_clnt *clnt = sn->rpcb_local_clnt;
->>>>   	struct rpc_clnt *clnt4 = sn->rpcb_local_clnt4;
->>>> -	int shutdown;
->>>> +	int shutdown = 0;
->>>>
->>>>   	spin_lock(&sn->rpcb_clnt_lock);
->>>> -	if (--sn->rpcb_users == 0) {
->>>> -		sn->rpcb_local_clnt = NULL;
->>>> -		sn->rpcb_local_clnt4 = NULL;
->>>> +	if (sn->rpcb_users) {
->>>> +		if (--sn->rpcb_users == 0) {
->>>> +			sn->rpcb_local_clnt = NULL;
->>>> +			sn->rpcb_local_clnt4 = NULL;
->>>> +		}
->>>> +		shutdown = !sn->rpcb_users;
->>>>   	}
->>>> -	shutdown = !sn->rpcb_users;
->>>>   	spin_unlock(&sn->rpcb_clnt_lock);
->>>>
->>>>   	if (shutdown) {
->>>>
->>
->> -- 
->> Best regards,
->> Stanislav Kinsbursky
+diff --git a/fs/stat.c b/fs/stat.c
+index f3eef0d..f7904aa 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -299,14 +299,21 @@ SYSCALL_DEFINE4(readlinkat, int, dfd, const char __user *, pathname,
+ 	struct path path;
+ 	int error;
+ 	int empty = 0;
++	unsigned int try = 0;
++	unsigned int lookup_flags = LOOKUP_EMPTY;
+ 
+ 	if (bufsiz <= 0)
+ 		return -EINVAL;
+ 
+-	error = user_path_at_empty(dfd, pathname, LOOKUP_EMPTY, &path, &empty);
+-	if (!error) {
+-		struct inode *inode = path.dentry->d_inode;
++	do {
++		struct inode *inode;
++
++		error = user_path_at_empty(dfd, pathname, lookup_flags, &path,
++					   &empty);
++		if (error)
++			break;
+ 
++		inode = path.dentry->d_inode;
+ 		error = empty ? -ENOENT : -EINVAL;
+ 		if (inode->i_op->readlink) {
+ 			error = security_inode_readlink(path.dentry);
+@@ -317,7 +324,8 @@ SYSCALL_DEFINE4(readlinkat, int, dfd, const char __user *, pathname,
+ 			}
+ 		}
+ 		path_put(&path);
+-	}
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
+ 	return error;
+ }
+ 
+-- 
+1.7.7.6
 
