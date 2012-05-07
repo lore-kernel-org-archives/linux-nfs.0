@@ -1,50 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:4164 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:30827 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751941Ab2EYWDm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 May 2012 18:03:42 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 4/8] NFSv4.1: Handle NFS4ERR_SEQ_MISORDERED when confirming the lease
-Date: Fri, 25 May 2012 18:03:18 -0400
-Message-Id: <1337983402-24677-4-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1337983402-24677-3-git-send-email-Trond.Myklebust@netapp.com>
-References: <1337983402-24677-1-git-send-email-Trond.Myklebust@netapp.com>
- <1337983402-24677-2-git-send-email-Trond.Myklebust@netapp.com>
- <1337983402-24677-3-git-send-email-Trond.Myklebust@netapp.com>
+	id S1757382Ab2EGSmw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 May 2012 14:42:52 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v2 0/8] Clean up mount functions
+Date: Mon,  7 May 2012 14:42:38 -0400
+Message-Id: <1336416166-20533-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Apparently the patch "NFS: Always use the same SETCLIENTID boot verifier"
-is tickling a Linux nfs server bug, and causing a regression: the server
-can get into a situation where it keeps replying NFS4ERR_SEQ_MISORDERED
-to our CREATE_SESSION request even when we are sending the correct
-sequence ID.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Fix this by purging the lease and then retrying.
+I noticed that we had 5 almost identical mount functions in super.c.  I
+collapsed them all into one common function to make everything easier to
+maintain and work with.  The first few patches are basic cleanups, the last
+four drop us down to one common mount path.
 
-Reported-by: Bryan Schumaker <bjschuma@netapp.com>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4state.c |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
+These patches also help simplify my modules changes since I no longer have
+to split these functions out of the generic code.
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 604c600..419f8c4 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1580,6 +1580,11 @@ out:
- static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
- {
- 	switch (status) {
-+	case -NFS4ERR_SEQ_MISORDERED:
-+		if (test_and_set_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state))
-+			return -ESERVERFAULT;
-+		/* Lease confirmation error: retry after purging the lease */
-+		ssleep(1);
- 	case -NFS4ERR_CLID_INUSE:
- 	case -NFS4ERR_STALE_CLIENTID:
- 		clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
+Changes in v2
+-------------
+- Reword commit message on patch 2: Create a single nfs_get_root()
+- Change arguments to nfs_fscache_get_super_cookie() in patch 3
+- Introduce a new patch 4 to remove the NFS4_MOUNT_UNSHARED flag
+
+Comments or suggestions are appreciated!
+
+- Bryan
+
+Bryan Schumaker (8):
+  NFS: Rename nfs4_proc_get_root()
+  NFS: Create a single nfs_get_root()
+  NFS: Don't pass mount data to nfs_fscache_get_super_cookie()
+  NFS: Remove NFS4_MOUNT_UNSHARED
+  NFS: Create a common fs_mount() function
+  NFS: Create a common xdev_mount() function
+  NFS: Use nfs_fs_mount_common() for xdev mounts
+  NFS: Use nfs_fs_mount_common() for remote referral mounts
+
+ fs/nfs/fscache.c           |   15 +-
+ fs/nfs/fscache.h           |    4 +-
+ fs/nfs/getroot.c           |   85 +-----
+ fs/nfs/nfs4_fs.h           |    1 +
+ fs/nfs/nfs4proc.c          |   30 ++-
+ fs/nfs/super.c             |  635 ++++++++++++--------------------------------
+ include/linux/nfs4_mount.h |    1 -
+ 7 files changed, 199 insertions(+), 572 deletions(-)
+
 -- 
-1.7.7.6
+1.7.10.1
 
