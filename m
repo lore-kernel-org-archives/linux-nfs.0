@@ -1,86 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from haggis.pcug.org.au ([203.10.76.10]:33609 "EHLO
-	members.tip.net.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754861Ab2EGANP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 6 May 2012 20:13:15 -0400
-Date: Mon, 7 May 2012 10:13:08 +1000
-From: Stephen Rothwell <sfr@canb.auug.org.au>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Fred Isaman <iisaman@netapp.com>
-Subject: Re: [PATCH 1/2] NFS: Fix O_DIRECT compile warnings
-Message-Id: <20120507101308.2d0e3278e118728c8dfd01d6@canb.auug.org.au>
-In-Reply-To: <1336154959-10705-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1336154959-10705-1-git-send-email-Trond.Myklebust@netapp.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; protocol="application/pgp-signature";
- micalg="PGP-SHA256";
- boundary="Signature=_Mon__7_May_2012_10_13_08_+1000_t1Vb739zoQJq+FEY"
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:53748 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756897Ab2EGOMZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 May 2012 10:12:25 -0400
+Received: by gglu4 with SMTP id u4so295845ggl.19
+        for <linux-nfs@vger.kernel.org>; Mon, 07 May 2012 07:12:25 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
+        michael.brantley@deshaw.com
+Subject: [PATCH v1 RESEND 05/12] vfs: fix mknodat to retry on ESTALE errors
+Date: Mon,  7 May 2012 10:12:04 -0400
+Message-Id: <1336399931-20234-6-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1336399931-20234-1-git-send-email-jlayton@redhat.com>
+References: <1336399931-20234-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Signature=_Mon__7_May_2012_10_13_08_+1000_t1Vb739zoQJq+FEY
-Content-Type: text/plain; charset=US-ASCII
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c |   62 ++++++++++++++++++++++++++++++-----------------------------
+ 1 files changed, 32 insertions(+), 30 deletions(-)
 
-Hi Trond,
+diff --git a/fs/namei.c b/fs/namei.c
+index 43e568b..471c038 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2581,44 +2581,46 @@ SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, umode_t, mode,
+ 	struct dentry *dentry;
+ 	struct path path;
+ 	int error;
++	unsigned int try = 0;
+ 
+ 	if (S_ISDIR(mode))
+ 		return -EPERM;
+ 
+-	dentry = user_path_create(dfd, filename, &path, false, false);
+-	if (IS_ERR(dentry))
+-		return PTR_ERR(dentry);
++	do {
++		dentry = user_path_create(dfd, filename, &path, false, try);
++		if (IS_ERR(dentry))
++			return PTR_ERR(dentry);
+ 
+-	if (!IS_POSIXACL(path.dentry->d_inode))
+-		mode &= ~current_umask();
+-	error = may_mknod(mode);
+-	if (error)
+-		goto out_dput;
+-	error = mnt_want_write(path.mnt);
+-	if (error)
+-		goto out_dput;
+-	error = security_path_mknod(&path, dentry, mode, dev);
+-	if (error)
+-		goto out_drop_write;
+-	switch (mode & S_IFMT) {
+-		case 0: case S_IFREG:
+-			error = vfs_create(path.dentry->d_inode,dentry,mode,NULL);
+-			break;
+-		case S_IFCHR: case S_IFBLK:
+-			error = vfs_mknod(path.dentry->d_inode,dentry,mode,
+-					new_decode_dev(dev));
+-			break;
+-		case S_IFIFO: case S_IFSOCK:
+-			error = vfs_mknod(path.dentry->d_inode,dentry,mode,0);
++		if (!IS_POSIXACL(path.dentry->d_inode))
++			mode &= ~current_umask();
++		error = may_mknod(mode);
++		if (error)
++			goto out_dput;
++		error = mnt_want_write(path.mnt);
++		if (error)
++			goto out_dput;
++		error = security_path_mknod(&path, dentry, mode, dev);
++		if (error)
++			goto out_drop_write;
++		switch (mode & S_IFMT) {
++			case 0: case S_IFREG:
++				error = vfs_create(path.dentry->d_inode, dentry, mode, NULL);
++				break;
++			case S_IFCHR: case S_IFBLK:
++				error = vfs_mknod(path.dentry->d_inode, dentry, mode,
++						new_decode_dev(dev));
++				break;
++			case S_IFIFO: case S_IFSOCK:
++				error = vfs_mknod(path.dentry->d_inode, dentry, mode, 0);
+ 			break;
+-	}
++		}
+ out_drop_write:
+-	mnt_drop_write(path.mnt);
++		mnt_drop_write(path.mnt);
+ out_dput:
+-	dput(dentry);
+-	mutex_unlock(&path.dentry->d_inode->i_mutex);
+-	path_put(&path);
+-
++		dput(dentry);
++		mutex_unlock(&path.dentry->d_inode->i_mutex);
++		path_put(&path);
++	} while (retry_estale(error, try++));
+ 	return error;
+ }
+ 
+-- 
+1.7.7.6
 
-On Fri,  4 May 2012 14:09:18 -0400 Trond Myklebust <Trond.Myklebust@netapp.=
-com> wrote:
->
-> Fix the following compile warnings:
-> fs/nfs/direct.c: In function 'nfs_direct_read_schedule_segment':
-> fs/nfs/direct.c:325:11: warning: comparison of distinct pointer types
-> lacks a cast [enabled by default]
-> fs/nfs/direct.c:325:11: warning: comparison of distinct pointer types
-> lacks a cast [enabled by default]
-> fs/nfs/direct.c:325:11: warning: comparison of distinct pointer types
-> lacks a cast [enabled by default]
-> fs/nfs/direct.c:352:27: warning: comparison of distinct pointer types
-> lacks a cast [enabled by default]
-> fs/nfs/direct.c: In function 'nfs_direct_write_schedule_segment':
-> fs/nfs/direct.c:622:11: warning: comparison of distinct pointer types
-> lacks a cast [enabled by default]
-> fs/nfs/direct.c:622:11: warning: comparison of distinct pointer types
-> lacks a cast [enabled by default]
-> fs/nfs/direct.c:622:11: warning: comparison of distinct pointer types
-> lacks a cast [enabled by default]
-> fs/nfs/direct.c:650:27: warning: comparison of distinct pointer types
-> lacks a cast [enabled by default]
->=20
-> Reported-by: Stephen Rothwell <sfr@canb.auug.org.au>
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Cc: Fred Isaman <iisaman@netapp.com>
-> Cc: Stephen Rothwell <sfr@canb.auug.org.au>
-
-That works for me.
-
-Acked-by: Stephen Rothwell <sfr@canb.auug.org.au>
-
---=20
-Cheers,
-Stephen Rothwell                    sfr@canb.auug.org.au
-http://www.canb.auug.org.au/~sfr/
-
---Signature=_Mon__7_May_2012_10_13_08_+1000_t1Vb739zoQJq+FEY
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iQIcBAEBCAAGBQJPpxOUAAoJEECxmPOUX5FEkMkP/i+OOx/Elln/rblVbo485apT
-7GYeBkuq/Thg6ObEiGGRwmLl2hqyN/MVB2RS1i2Nz8FvpRJRikzpxwmcWrvifH3t
-oPJG+5mVqQtSHFHaCS3ma7A8K2pLTUZZ1it/1PvaAL4xskYNigeLwNizua7JgBZX
-N8uvqrg/3DwMa//YVDsBSTYvSKn6Wg9B4qHhNucC7hn85HQCgZSfW+KojAjJ3UbO
-5N7hFr1gRPrEHzedAFKii40IBkmeK/l6byuObkU5cw67PX4SDYj0jfl3F9pY4GQp
-6o+PrLD1q1Qx+SHmvTmX60rlWddI9/t7OX+RkfpS1zG2QcrBVlvodoPxn0ju8P9b
-6zi42akqf+KjwnBzcGRiBUKE/ppfGZDwtTPQfg0wAFQl7ILjAVnyKdMnGbzUjLqo
-uKkEEMpW2hJMfwb4aIOhCP0dng6ySNVPaC2UMBO8WZ6tr1Lgx4JcjVyYqW4DMp+Q
-6aZbWb3GOxAzQn4UWwohUv/5x6Od2j+39pO+UAUxtzVc/S+9BbZLwYMb9DHinTgR
-h1mRKPNwPUCwPkAuNpvTj6EGVg7PVoO9Aha3AskV/iGahm4wQLuBt3HvH2ksf1sN
-fW3w9LXi0VzIWGBeMtBsNJXWyXFKndWPc2KqfcPJG+LMWadll2X//Xzf3q0JEqAC
-cJ6oZ6bbM587I6PtpaHQ
-=2SX5
------END PGP SIGNATURE-----
-
---Signature=_Mon__7_May_2012_10_13_08_+1000_t1Vb739zoQJq+FEY--
