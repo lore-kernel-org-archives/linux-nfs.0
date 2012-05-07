@@ -1,56 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f44.google.com ([74.125.82.44]:64153 "EHLO
-	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751876Ab2EXMa4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 May 2012 08:30:56 -0400
-Received: by wgbdr13 with SMTP id dr13so8268886wgb.1
-        for <linux-nfs@vger.kernel.org>; Thu, 24 May 2012 05:30:54 -0700 (PDT)
-Message-ID: <4FBE29FB.9030405@tonian.com>
-Date: Thu, 24 May 2012 15:30:51 +0300
-From: Benny Halevy <bhalevy@tonian.com>
-MIME-Version: 1.0
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-CC: bfields@fieldses.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Subject: Re: [PATCH] NFSd: simplify locking in nfsd_recall_delegations()
-References: <20120522102839.12440.14555.stgit@localhost.localdomain>
-In-Reply-To: <20120522102839.12440.14555.stgit@localhost.localdomain>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:1780 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756571Ab2EGOHf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 May 2012 10:07:35 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/3] NFS: nfs_inode_return_delegation() should always flush dirty data
+Date: Mon,  7 May 2012 10:07:30 -0400
+Message-Id: <1336399651-6596-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1336399651-6596-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1336399651-6596-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2012-05-22 13:28, Stanislav Kinsbursky wrote:
-> Holding of client_mutex looks redundant here - holding of recall_lock looks
-> enough.
+The assumption is that if you are in a situation where you need to
+return the delegation, then you should probably stop caching the
+data anyway.
 
-Looking at the code, agreed.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/delegation.c |    6 +++++-
+ fs/nfs/delegation.h |    1 +
+ 2 files changed, 6 insertions(+), 1 deletions(-)
 
-Benny
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 89af1d2..a19cb5a 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -380,6 +380,10 @@ void nfs_inode_return_delegation_noreclaim(struct inode *inode)
+  * nfs_inode_return_delegation - synchronously return a delegation
+  * @inode: inode to process
+  *
++ * This routine will always flush any dirty data to disk on the
++ * assumption that if we need to return the delegation, then
++ * we should stop caching.
++ *
+  * Returns zero on success, or a negative errno value.
+  */
+ int nfs_inode_return_delegation(struct inode *inode)
+@@ -389,10 +393,10 @@ int nfs_inode_return_delegation(struct inode *inode)
+ 	struct nfs_delegation *delegation;
+ 	int err = 0;
+ 
++	nfs_wb_all(inode);
+ 	if (rcu_access_pointer(nfsi->delegation) != NULL) {
+ 		delegation = nfs_detach_delegation(nfsi, server);
+ 		if (delegation != NULL) {
+-			nfs_wb_all(inode);
+ 			err = __nfs_inode_return_delegation(inode, delegation, 1);
+ 		}
+ 	}
+diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
+index cd6a7a8..72709c4 100644
+--- a/fs/nfs/delegation.h
++++ b/fs/nfs/delegation.h
+@@ -66,6 +66,7 @@ static inline int nfs_have_delegation(struct inode *inode, fmode_t flags)
+ 
+ static inline int nfs_inode_return_delegation(struct inode *inode)
+ {
++	nfs_wb_all(inode);
+ 	return 0;
+ }
+ #endif
+-- 
+1.7.7.6
 
-> 
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> ---
->  fs/nfsd/nfs4state.c |    2 --
->  1 files changed, 0 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index f004e61..fdef9fc 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -4744,11 +4744,9 @@ void nfsd_recall_delegations(u64 num)
->  {
->  	unsigned int count;
->  
-> -	nfs4_lock_state();
->  	spin_lock(&recall_lock);
->  	count = nfsd_process_n_delegations(num, nfsd_break_one_deleg, NULL);
->  	spin_unlock(&recall_lock);
-> -	nfs4_unlock_state();
->  
->  	printk(KERN_INFO "NFSD: Recalled %d delegations", count);
->  }
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
