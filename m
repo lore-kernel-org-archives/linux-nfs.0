@@ -1,71 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:33681 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:46639 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762064Ab2EQOvm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 May 2012 10:51:42 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 12/12] Avoid dereferencing bd_disk during swap_entry_free for network storage
-Date: Thu, 17 May 2012 15:51:25 +0100
-Message-Id: <1337266285-8102-13-git-send-email-mgorman@suse.de>
-In-Reply-To: <1337266285-8102-1-git-send-email-mgorman@suse.de>
-References: <1337266285-8102-1-git-send-email-mgorman@suse.de>
+	id S1754503Ab2EHMqD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 May 2012 08:46:03 -0400
+Date: Tue, 8 May 2012 08:45:59 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Daniel Pocock <daniel@pocock.com.au>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: extremely slow nfs when sync enabled
+Message-ID: <20120508124559.GA15448@fieldses.org>
+References: <4FA5E950.5080304@pocock.com.au>
+ <1336328594.2593.14.camel@lade.trondhjem.org>
+ <4FA6EBD4.7040308@pocock.com.au>
+ <1336340993.2600.11.camel@lade.trondhjem.org>
+ <4FA6F75E.6090300@pocock.com.au>
+ <1336344160.2600.30.camel@lade.trondhjem.org>
+ <4FA793AB.70107@pocock.com.au>
+ <4FA7D54E.9080309@pocock.com.au>
+ <20120507171759.GA10137@fieldses.org>
+ <4FA90C63.7000505@pocock.com.au>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FA90C63.7000505@pocock.com.au>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit [b3a27d: swap: Add swap slot free callback to
-block_device_operations] dereferences p->bdev->bd_disk but this is a
-NULL dereference if using swap-over-NFS. This patch checks SWP_BLKDEV
-on the swap_info_struct before dereferencing.
+On Tue, May 08, 2012 at 12:06:59PM +0000, Daniel Pocock wrote:
+> 
+> 
+> On 07/05/12 17:18, J. Bruce Fields wrote:
+> > How many file creates per second?
+> > 
+> 
+> I ran:
+> nfsstat -s -o all -l -Z5
+> and during the test (unpacking the tarball), I see numbers like these
+> every 5 seconds for about 2 minutes:
+> 
+> nfs v3 server        total:      319
+> ------------- ------------- --------
+> nfs v3 server      getattr:        1
+> nfs v3 server      setattr:      126
+> nfs v3 server       access:        6
+> nfs v3 server        write:       61
+> nfs v3 server       create:       61
+> nfs v3 server        mkdir:        3
+> nfs v3 server       commit:       61
 
-With reference to this callback, Christoph Hellwig stated "Please
-just remove the callback entirely.  It has no user outside the staging
-tree and was added clearly against the rules for that staging tree".
-This would also be my preference but there was not an obvious way of
-keeping zram in staging/ happy.
+OK, so it's probably creating about 60 new files, each requiring a
+create, write, commit, and two setattrs?
 
-Signed-off-by: Xiaotian Feng <dfeng@redhat.com>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
----
- mm/swapfile.c |    9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
+Each of those operations is synchronous, so probably has to wait for at
+least one disk seek.  About 300 such operations every 5 seconds is about
+60 per second, or about 16ms each.  That doesn't sound so far off.
 
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index 80b3415..d85d842 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -547,7 +547,6 @@ static unsigned char swap_entry_free(struct swap_info_struct *p,
- 
- 	/* free if no reference */
- 	if (!usage) {
--		struct gendisk *disk = p->bdev->bd_disk;
- 		if (offset < p->lowest_bit)
- 			p->lowest_bit = offset;
- 		if (offset > p->highest_bit)
-@@ -557,9 +556,11 @@ static unsigned char swap_entry_free(struct swap_info_struct *p,
- 			swap_list.next = p->type;
- 		nr_swap_pages++;
- 		p->inuse_pages--;
--		if ((p->flags & SWP_BLKDEV) &&
--				disk->fops->swap_slot_free_notify)
--			disk->fops->swap_slot_free_notify(p->bdev, offset);
-+		if (p->flags & SWP_BLKDEV) {
-+			struct gendisk *disk = p->bdev->bd_disk;
-+			if (disk->fops->swap_slot_free_notify)
-+				disk->fops->swap_slot_free_notify(p->bdev, offset);
-+		}
- 	}
- 
- 	return usage;
--- 
-1.7.9.2
+(I wonder why it needs two setattrs?)
 
+> I decided to expand the scope of my testing too, I want to rule out the
+> possibility that my HP Microserver with onboard SATA is the culprit.  I
+> set up two other NFS servers (all Debian 6, kernel 2.6.38):
+> 
+> HP Z800 Xeon workstation
+> Intel Corporation 82801 SATA RAID Controller (operating as AHCI)
+> VB0250EAVER (250GB 7200rpm)
+> 
+> Lenovo Thinkpad X220
+> Intel Corporation Cougar Point 6 port SATA AHCI Controller (rev 04)
+> SSDSA2BW160G3L  (160GB SSD)
+> 
+> Both the Z800 and X220 run as NFSv3 servers
+> Each one has a fresh 10GB logical volume formatted ext4,
+> mount options: barrier=1,data=ordered
+> write cache (hdparm -W 1): enabled
+> 
+> Results:
+> NFS client: X220
+> NFS server: Z800 (regular disk)
+> iostat reports about 1,000kbytes/sec when unpacking the tarball
+> This is just as slow as the original NFS server
+
+Again, reporting kbytes/second alone isn't useful--data throughput isn't
+interesting for a workload like unpacking a tarball with a lot of small
+files.  The limiting factor is the synchronous operations.
+
+> NFS client: Z800
+> NFS server: X220 (SSD disk)
+> iostat reports about 22,000kbytes/sec when unpacking the tarball
+> 
+> It seems that buying a pair of SSDs for my HP MicroServer will let me
+> use NFS `sync' and enjoy healthy performance - 20x faster.
+
+And an SSD has much lower write latency, so this isn't surprising.
+
+> However, is there really no other way to get more speed out of NFS when
+> using the `sync' option?
+
+I've heard reports of people being able to get better performance on
+this kind of workload by using an external journal on an SSD.
+
+(Last I tried this--with a machine at home, using (if I remember
+correctly) ext4 on software raid with the journal on an intel x25-m, I
+wasn't able to get any improvement.  I didn't try to figure out why.)
+
+--b.
