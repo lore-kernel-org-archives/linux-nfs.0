@@ -1,148 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:25671 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751494Ab2EISPE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 May 2012 14:15:04 -0400
-Message-ID: <4FAAB40D.50503@RedHat.com>
-Date: Wed, 09 May 2012 14:14:37 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail1.trendhosting.net ([195.8.117.5]:44440 "EHLO
+	mail1.trendhosting.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754991Ab2EHNoC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 May 2012 09:44:02 -0400
+Message-ID: <4FA92319.6000007@pocock.com.au>
+Date: Tue, 08 May 2012 13:43:53 +0000
+From: Daniel Pocock <daniel@pocock.com.au>
 MIME-Version: 1.0
-To: Harshula Jayasuriya <harshula@redhat.com>
-CC: Jeff Layton <jlayton@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Chuck Lever <chuck.lever@oracle.com>, Olaf Kirch <okir@suse.de>
-Subject: Re: [PATCH] nfs-utils: Add a warning to the nfs manpage regarding
- using NFS over UDP on high-speed links
-References: <1330406521.9157.16.camel@serendib>  <20120228065218.7e110936@tlielax.poochiereds.net>  <20120228124646.GA2528@umich.edu>  <BC3988C4-CC1A-4DFA-89AE-7046C674A873@oracle.com>  <7C4B183F-8357-4D08-B30A-73196954A5D4@oracle.com>  <1330913825.9157.61.camel@serendib>  <2194470C-5FD9-4317-9A30-2E6C244138D5@oracle.com> <1336525164.21032.9.camel@serendib>
-In-Reply-To: <1336525164.21032.9.camel@serendib>
-Content-Type: text/plain; charset=UTF-8
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: extremely slow nfs when sync enabled
+References: <4FA5E950.5080304@pocock.com.au> <1336328594.2593.14.camel@lade.trondhjem.org> <4FA6EBD4.7040308@pocock.com.au> <1336340993.2600.11.camel@lade.trondhjem.org> <4FA6F75E.6090300@pocock.com.au> <1336344160.2600.30.camel@lade.trondhjem.org> <4FA793AB.70107@pocock.com.au> <4FA7D54E.9080309@pocock.com.au> <20120507171759.GA10137@fieldses.org> <4FA90C63.7000505@pocock.com.au> <20120508124559.GA15448@fieldses.org>
+In-Reply-To: <20120508124559.GA15448@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 05/08/2012 08:59 PM, Harshula Jayasuriya wrote:
-> * Using NFS over UDP on high-speed links such as Gigabit can cause
->   silent data corruption.
-> * The man page text was written by Olaf Kirch and committed to (but not
->   upstream):
-> https://build.opensuse.org/package/view_file?file=warn-nfs-udp.patch&package=nfs-utils&project=openSUSE%3AFactory&rev=8e3e60c70e8270cd4afa036e13f6b2bb
+On 08/05/12 12:45, J. Bruce Fields wrote:
+> On Tue, May 08, 2012 at 12:06:59PM +0000, Daniel Pocock wrote:
+>>
+>>
+>> On 07/05/12 17:18, J. Bruce Fields wrote:
+>>> How many file creates per second?
+>>>
+>>
+>> I ran:
+>> nfsstat -s -o all -l -Z5
+>> and during the test (unpacking the tarball), I see numbers like these
+>> every 5 seconds for about 2 minutes:
+>>
+>> nfs v3 server        total:      319
+>> ------------- ------------- --------
+>> nfs v3 server      getattr:        1
+>> nfs v3 server      setattr:      126
+>> nfs v3 server       access:        6
+>> nfs v3 server        write:       61
+>> nfs v3 server       create:       61
+>> nfs v3 server        mkdir:        3
+>> nfs v3 server       commit:       61
 > 
-> Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
-> Acked-by: Chuck Lever <chuck.lever@oracle.com>
-> Signed-off-by: Olaf Kirch <okir@suse.com>
-Committed...
+> OK, so it's probably creating about 60 new files, each requiring a
+> create, write, commit, and two setattrs?
+> 
+> Each of those operations is synchronous, so probably has to wait for at
+> least one disk seek.  About 300 such operations every 5 seconds is about
+> 60 per second, or about 16ms each.  That doesn't sound so far off.
+> 
+> (I wonder why it needs two setattrs?)
 
-steved.
-> ---
->  utils/mount/nfs.man |   81 +++++++++++++++++++++++++++++++++++++++++++++++++++
->  1 files changed, 81 insertions(+), 0 deletions(-)
-> 
-> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-> index 0d20cf0..87e27e1 100644
-> --- a/utils/mount/nfs.man
-> +++ b/utils/mount/nfs.man
-> @@ -500,6 +500,8 @@ Specifying a netid that uses TCP forces all traffic from the
->  command and the NFS client to use TCP.
->  Specifying a netid that uses UDP forces all traffic types to use UDP.
->  .IP
-> +.B Before using NFS over UDP, refer to the TRANSPORT METHODS section.
-> +.IP
->  If the
->  .B proto
->  mount option is not specified, the
-> @@ -514,6 +516,8 @@ The
->  option is an alternative to specifying
->  .BR proto=udp.
->  It is included for compatibility with other operating systems.
-> +.IP
-> +.B Before using NFS over UDP, refer to the TRANSPORT METHODS section.
->  .TP 1.5i
->  .B tcp
->  The
-> @@ -1070,6 +1074,83 @@ or
->  options are specified more than once on the same mount command line,
->  then the value of the rightmost instance of each of these options
->  takes effect.
-> +.SS "Using NFS over UDP on high-speed links"
-> +Using NFS over UDP on high-speed links such as Gigabit
-> +.BR "can cause silent data corruption" .
-> +.P
-> +The problem can be triggered at high loads, and is caused by problems in
-> +IP fragment reassembly. NFS read and writes typically transmit UDP packets
-> +of 4 Kilobytes or more, which have to be broken up into several fragments
-> +in order to be sent over the Ethernet link, which limits packets to 1500
-> +bytes by default. This process happens at the IP network layer and is
-> +called fragmentation.
-> +.P
-> +In order to identify fragments that belong together, IP assigns a 16bit
-> +.I IP ID
-> +value to each packet; fragments generated from the same UDP packet
-> +will have the same IP ID. The receiving system will collect these
-> +fragments and combine them to form the original UDP packet. This process
-> +is called reassembly. The default timeout for packet reassembly is
-> +30 seconds; if the network stack does not receive all fragments of
-> +a given packet within this interval, it assumes the missing fragment(s)
-> +got lost and discards those it already received.
-> +.P
-> +The problem this creates over high-speed links is that it is possible
-> +to send more than 65536 packets within 30 seconds. In fact, with
-> +heavy NFS traffic one can observe that the IP IDs repeat after about
-> +5 seconds.
-> +.P
-> +This has serious effects on reassembly: if one fragment gets lost,
-> +another fragment
-> +.I from a different packet
-> +but with the
-> +.I same IP ID
-> +will arrive within the 30 second timeout, and the network stack will
-> +combine these fragments to form a new packet. Most of the time, network
-> +layers above IP will detect this mismatched reassembly - in the case
-> +of UDP, the UDP checksum, which is a 16 bit checksum over the entire
-> +packet payload, will usually not match, and UDP will discard the
-> +bad packet.
-> +.P
-> +However, the UDP checksum is 16 bit only, so there is a chance of 1 in
-> +65536 that it will match even if the packet payload is completely
-> +random (which very often isn't the case). If that is the case,
-> +silent data corruption will occur.
-> +.P
-> +This potential should be taken seriously, at least on Gigabit
-> +Ethernet.
-> +Network speeds of 100Mbit/s should be considered less
-> +problematic, because with most traffic patterns IP ID wrap around
-> +will take much longer than 30 seconds.
-> +.P
-> +It is therefore strongly recommended to use
-> +.BR "NFS over TCP where possible" ,
-> +since TCP does not perform fragmentation.
-> +.P
-> +If you absolutely have to use NFS over UDP over Gigabit Ethernet,
-> +some steps can be taken to mitigate the problem and reduce the
-> +probability of corruption:
-> +.TP +1.5i
-> +.I Jumbo frames:
-> +Many Gigabit network cards are capable of transmitting
-> +frames bigger than the 1500 byte limit of traditional Ethernet, typically
-> +9000 bytes. Using jumbo frames of 9000 bytes will allow you to run NFS over
-> +UDP at a page size of 8K without fragmentation. Of course, this is
-> +only feasible if all involved stations support jumbo frames.
-> +.IP
-> +To enable a machine to send jumbo frames on cards that support it,
-> +it is sufficient to configure the interface for a MTU value of 9000.
-> +.TP +1.5i
-> +.I Lower reassembly timeout:
-> +By lowering this timeout below the time it takes the IP ID counter
-> +to wrap around, incorrect reassembly of fragments can be prevented
-> +as well. To do so, simply write the new timeout value (in seconds)
-> +to the file
-> +.BR /proc/sys/net/ipv4/ipfrag_time .
-> +.IP
-> +A value of 2 seconds will greatly reduce the probability of IPID clashes on
-> +a single Gigabit link, while still allowing for a reasonable timeout
-> +when receiving fragmented traffic from distant peers.
->  .SH "DATA AND METADATA COHERENCE"
->  Some modern cluster file systems provide
->  perfect cache coherence among their clients.
-> -- 1.7.7.6
-> 
+I checked that with wireshark:
+- first SETATTR sets mode=0644 and atime=mtime=`set to server time'
+- second SETATTR sets atime and mtime using client values (atime=now,
+mtime= some time in the past)
+
+Is this likely to be an application issue (e.g. in tar), or should the
+NFS client be able to merge those two requests somehow?
+
+If I add `m' to my tar command (tar xzmf) the nfsstat results change:
+
+nfs v3 server        total:      300
+------------- ------------- --------
+nfs v3 server      setattr:       82
+nfs v3 server       lookup:       17
+nfs v3 server       access:        5
+nfs v3 server        write:       90
+nfs v3 server       create:       83
+nfs v3 server        mkdir:        3
+nfs v3 server       remove:       15
+nfs v3 server       commit:        5
+
+and iostat reports that w/s is about the same (290/sec) but throughput
+is now in the region 1.1 - 1.5MBytes/sec
+
+
+Without using `m', here are the full stats from the Z800 acting as NFSv3
+server:
+
+nfs v3 server        total:      299
+------------- ------------- --------
+nfs v3 server      setattr:      132
+nfs v3 server       access:        6
+nfs v3 server        write:       88
+nfs v3 server       create:       62
+nfs v3 server        mkdir:        6
+nfs v3 server       commit:        5
+
+Device:         rrqm/s   wrqm/s     r/s     w/s    rMB/s    wMB/s
+avgrq-sz avgqu-sz   await  svctm  %util
+
+dm-10             0.00     0.00    0.00  294.00     0.00     1.15
+8.00     1.04    3.55   3.26  95.92
+
+The other thing that stands out is this:
+avgrq-sz = 8  (units = 512 byte sectors)
+
+If the server filesystem is btrfs, the wMB/s figure is the same, but I
+notice avgrq-sz = 16, so it seems to be combining more requests into
+bigger writes
+
+
+Here is the entry from /proc/mounts:
+/dev/mapper/vg01-test1 /mnt/test1 ext4
+rw,relatime,barrier=1,data=ordered 0 0
+
+
+
+
