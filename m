@@ -1,136 +1,134 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:26475 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754270Ab2EZSkZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 26 May 2012 14:40:25 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 9/9] NFSv4.1: Don't clobber the seqid if exchange_id returns a confirmed clientid
-Date: Sat, 26 May 2012 14:40:00 -0400
-Message-Id: <1338057600-11130-9-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1338057600-11130-8-git-send-email-Trond.Myklebust@netapp.com>
-References: <1338057600-11130-1-git-send-email-Trond.Myklebust@netapp.com>
- <1338057600-11130-2-git-send-email-Trond.Myklebust@netapp.com>
- <1338057600-11130-3-git-send-email-Trond.Myklebust@netapp.com>
- <1338057600-11130-4-git-send-email-Trond.Myklebust@netapp.com>
- <1338057600-11130-5-git-send-email-Trond.Myklebust@netapp.com>
- <1338057600-11130-6-git-send-email-Trond.Myklebust@netapp.com>
- <1338057600-11130-7-git-send-email-Trond.Myklebust@netapp.com>
- <1338057600-11130-8-git-send-email-Trond.Myklebust@netapp.com>
+Received: from countercultured.net ([209.51.175.25]:54925 "HELO
+	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1754810Ab2EHQZI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 May 2012 12:25:08 -0400
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
+Date: Tue, 08 May 2012 12:25:05 -0400
+From: David Quigley <dpquigl@davequigley.com>
+To: "Myklebust, Trond" <trond.myklebust@netapp.com>
+Cc: <linux-nfs@vger.kernel.org>
+Subject: Re: Another try at =?UTF-8?Q?LNFS=3F?=
+In-Reply-To: <1336488394.5307.2.camel@lade.trondhjem.org>
+References: <775e0a2cd5e2e4c8f52401214dbd9413@countercultured.net>
+ <1333646141.4573.1.camel@lade.trondhjem.org>
+ <85614613274dbfef5253665a84a36374@countercultured.net>
+ <7193f15f28e7483021244c72ee285516@countercultured.net>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA915A300@SACEXCMBX04-PRD.hq.netapp.com>
+ <4FA8AE22.3000305@davequigley.com>
+ <1336488394.5307.2.camel@lade.trondhjem.org>
+Message-ID: <ddb5deaa88c1c43c695149b0c7d1c2cd@countercultured.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the EXCHGID4_FLAG_CONFIRMED_R flag is set, the client is in theory
-supposed to already know the correct value of the seqid, in which case
-RFC5661 states that it should ignore the value returned.
+On 05/08/2012 10:46, Myklebust, Trond wrote:
+> On Tue, 2012-05-08 at 01:24 -0400, Dave Quigley wrote:
+>> On 4/5/2012 10:20 PM, Myklebust, Trond wrote:
+>> >> -----Original Message-----
+>> >> From: David Quigley [mailto:dpquigl@davequigley.com]
+>> >> Sent: Thursday, April 05, 2012 2:38 PM
+>> >> To: Myklebust, Trond
+>> >> Cc: linux-nfs@vger.kernel.org
+>> >> Subject: Re: Another try at LNFS?
+>> >>
+>> >> On 04/05/2012 17:26, David Quigley wrote:
+>> >>> On 04/05/2012 13:15, Myklebust, Trond wrote:
+>> >>>> On Thu, 2012-04-05 at 13:02 -0400, David Quigley wrote:
+>> >>>>> Now that we're past the 3.4 merge window should I post the 
+>> LNFS
+>> >>>>> modifications for review for when 3.5 rolls around?
+>> >>>>
+>> >>>> The sooner the better. It looks as if there will be quite a bit 
+>> of
+>> >>>> stuff going into 3.5, so it would be nice to maximise our 
+>> testing
+>> >>>> window.
+>> >>>>
+>> >>>> Thanks!
+>> >>>>    Trond
+>> >>>
+>> >>> I have a mostly working copy for 3.2 which I can forward port 
+>> but I'm
+>> >>> having an issue with it. The revalidate code changed at some 
+>> point and
+>> >>> just to get things working I dropped a piece of code from the 
+>> patch
+>> >>> set that I couldn't figure out how to transition to the new 
+>> revalidate
+>> >>> code. Unfortunately this is the initial get of the security 
+>> label so
+>> >>> the security label is invalid until the first cache 
+>> invalidation. Any
+>> >>> suggestions on where to place this code? I can give you the 
+>> original
+>> >>> code snippet when I get home that I dropped.
+>> >>>
+>> >>> Dave
+>> >>> --
+>> >>> To unsubscribe from this list: send the line "unsubscribe 
+>> linux-nfs"
+>> >>> in
+>> >>> the body of a message to majordomo@vger.kernel.org More 
+>> majordomo
+>> >> info
+>> >>> at  http://vger.kernel.org/majordomo-info.html
+>> >>
+>> >> Looking at my patches it looks like nfs_lookup_revalidate was 
+>> changed and at
+>> >> the time I couldn't figure out what it was changed to.
+>> >
+>> > Hi Dave,
+>> >    There shouldn't be much in the way of changes in 
+>> nfs_lookup_revalidate(): I was just trying to clean it up in 
+>> preparation for the atomic open patches that Miklos is currently 
+>> working on.
+>> > At this point, it looks as if most of that functionality will in 
+>> any case be moved into the struct file_operations->open callback, so 
+>> that we can keep ->d_revalidate() as a pure lookup function.
+>> >
+>> > Cheers
+>> >    Trond
+>>
+>>
+>> Ok I looked at the code again finally and I think I figured out the
+>> problem. nfs_prime_dcache is new and there are a couple of calls in
+>> there that should be taking a label that I just passed null to. We 
+>> don't
+>> store the nfs4_label in the inode so I'm not sure how to get the 
+>> label
+>> back for the nfs_refresh_inode call and then we have a call to 
+>> nfs_fhget
+>> which would normally get us label data. I think the nature of this
+>> function is what I don't quite understand. When is it called? What I
+>> think is happening is that I should be pulling the label data into 
+>> the
+>> inode in this function but I'm not because I'm passing nulls here. 
+>> if I
+>> figure out how to get real label data into the inode at this point I
+>> should be able to fix the bug where we aren't getting labels until 
+>> the
+>> first cache invalidation.
+>>
+>> Dave
+>
+> nfs_prime_dcache is called after a READDIRPLUS operation. In the case 
+> of
+> NFSv4, that means that we request a filehandle and full file 
+> attributes
+> in our READDIR operation. We then use the results to create dentries
+> that we then populate the dcache with:
+> IOW: as far as the VFS is concerned, it looks as if we've done a 
+> bunch
+> of lookups of these files.
 
-Also ensure that if the sanity check in nfs4_check_cl_exchange_flags
-fails, then we must not change the nfs_client fields.
+Does it seem like this might be the problem area though or am I barking 
+up the wrong tree? I could look through my porting again and make sure I 
+didn't miss anything but that would take a lot of time I don't have at 
+the moment. I have a telecon tonight at 9pm with some people in Asia who 
+want to help with development so I may have them look into this bug and 
+try to take care of it. After that it should just be a forward port to 
+3.5/3.6.
 
-Finally, clean up the code: we don't need to retest the value of
-'status' unless it can change.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c       |   17 +++++++++--------
- fs/nfs/nfs4xdr.c        |    7 +++----
- include/linux/nfs_xdr.h |    3 ++-
- 3 files changed, 14 insertions(+), 13 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 485a6c0..9f0a96f 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5171,7 +5171,7 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 		.flags = EXCHGID4_FLAG_SUPP_MOVED_REFER,
- 	};
- 	struct nfs41_exchange_id_res res = {
--		.client = clp,
-+		0
- 	};
- 	int status;
- 	struct rpc_message msg = {
-@@ -5214,22 +5214,22 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 
- 	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
- 	if (status == 0)
--		status = nfs4_check_cl_exchange_flags(clp->cl_exchange_flags);
-+		status = nfs4_check_cl_exchange_flags(res.flags);
- 
- 	if (status == 0) {
-+		clp->cl_clientid = res.clientid;
-+		clp->cl_exchange_flags = (res.flags & ~EXCHGID4_FLAG_CONFIRMED_R);
-+		if (!(res.flags & EXCHGID4_FLAG_CONFIRMED_R))
-+			clp->cl_seqid = res.seqid;
-+
- 		kfree(clp->cl_serverowner);
- 		clp->cl_serverowner = res.server_owner;
- 		res.server_owner = NULL;
--	}
- 
--	if (status == 0) {
- 		/* use the most recent implementation id */
- 		kfree(clp->cl_implid);
- 		clp->cl_implid = res.impl_id;
--	} else
--		kfree(res.impl_id);
- 
--	if (status == 0) {
- 		if (clp->cl_serverscope != NULL &&
- 		    !nfs41_same_server_scope(clp->cl_serverscope,
- 					     res.server_scope)) {
-@@ -5244,7 +5244,8 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 			clp->cl_serverscope = res.server_scope;
- 			goto out;
- 		}
--	}
-+	} else
-+		kfree(res.impl_id);
- 
- out_server_owner:
- 	kfree(res.server_owner);
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index b9ce3fd..ee4a74d 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -5319,7 +5319,6 @@ static int decode_exchange_id(struct xdr_stream *xdr,
- 	uint32_t dummy;
- 	char *dummy_str;
- 	int status;
--	struct nfs_client *clp = res->client;
- 	uint32_t impl_id_count;
- 
- 	status = decode_op_hdr(xdr, OP_EXCHANGE_ID);
-@@ -5329,12 +5328,12 @@ static int decode_exchange_id(struct xdr_stream *xdr,
- 	p = xdr_inline_decode(xdr, 8);
- 	if (unlikely(!p))
- 		goto out_overflow;
--	xdr_decode_hyper(p, &clp->cl_clientid);
-+	xdr_decode_hyper(p, &res->clientid);
- 	p = xdr_inline_decode(xdr, 12);
- 	if (unlikely(!p))
- 		goto out_overflow;
--	clp->cl_seqid = be32_to_cpup(p++);
--	clp->cl_exchange_flags = be32_to_cpup(p++);
-+	res->seqid = be32_to_cpup(p++);
-+	res->flags = be32_to_cpup(p++);
- 
- 	/* We ask for SP4_NONE */
- 	dummy = be32_to_cpup(p);
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 6387fc0..d1a7bf5 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1132,7 +1132,8 @@ struct nfs41_bind_conn_to_session_res {
- };
- 
- struct nfs41_exchange_id_res {
--	struct nfs_client		*client;
-+	u64				clientid;
-+	u32				seqid;
- 	u32				flags;
- 	struct nfs41_server_owner	*server_owner;
- 	struct nfs41_server_scope	*server_scope;
--- 
-1.7.7.6
-
+Dave
