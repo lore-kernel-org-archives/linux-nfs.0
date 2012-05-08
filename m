@@ -1,122 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45494 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:51892 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753466Ab2EBV4S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 May 2012 17:56:18 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
-        NeilBrown <neilb@suse.de>, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 3/5] mountd: add trivial helpers for client-matching
-Date: Wed,  2 May 2012 17:56:13 -0400
-Message-Id: <1335995775-12009-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1335995775-12009-1-git-send-email-bfields@redhat.com>
-References: <1335995775-12009-1-git-send-email-bfields@redhat.com>
+	id S1756443Ab2EHUIt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 May 2012 16:08:49 -0400
+Date: Tue, 8 May 2012 16:08:48 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsdcld: add support for dropping capabilities
+Message-ID: <20120508200848.GD17669@fieldses.org>
+References: <1336491712-29445-1-git-send-email-jlayton@redhat.com>
+ <20120508193429.GA17669@fieldses.org>
+ <20120508160343.1114f01c@corrin.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120508160343.1114f01c@corrin.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Tue, May 08, 2012 at 04:03:43PM -0400, Jeff Layton wrote:
+> With this, root is basically a user like any other. He has to have
+> explicit permissions to access anything. If another user owns a file
+> and it's not world readable (or group readable by a group to which root
+> is a member), then the process won't be able to read it. Granted, a lot
+> of files are owned by root on a typical machine,
 
-Pull out a tiny bit of common logic from three functions.
+... including, looking at my Fedora box, /etc/passwd, /etc/shadow, the
+entire contents of /usr/bin, all sorts of interesting /proc files....
 
-Possibly minor overkill, but simplifies the next patch.
+Sounds like game over?  Maybe not if selinux or something else
+intervenes.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- utils/mountd/auth.c   |   21 ++++++++++++++++++---
- utils/mountd/cache.c  |   12 ++----------
- utils/mountd/mountd.h |    4 ++++
- 3 files changed, 24 insertions(+), 13 deletions(-)
+> but this should still
+> prevent access to any that aren't.
 
-diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
-index ccc849a..1ed9a4b 100644
---- a/utils/mountd/auth.c
-+++ b/utils/mountd/auth.c
-@@ -131,6 +131,23 @@ get_client_hostname(const struct sockaddr *caller, struct addrinfo *ai,
- 	return strdup("DEFAULT");
- }
- 
-+bool ipaddr_client_matches(nfs_export *exp, struct addrinfo *ai)
-+{
-+	return client_check(exp->m_client, ai);
-+}
-+
-+bool namelist_client_matches(nfs_export *exp, char *dom)
-+{
-+	return client_member(dom, exp->m_client->m_hostname);
-+}
-+
-+bool client_matches(nfs_export *exp, char *dom, struct addrinfo *ai)
-+{
-+	if (use_ipaddr)
-+		return ipaddr_client_matches(exp, ai);
-+	return namelist_client_matches(exp, dom);
-+}
-+
- /* return static nfs_export with details filled in */
- static nfs_export *
- auth_authenticate_newcache(const struct sockaddr *caller,
-@@ -155,9 +172,7 @@ auth_authenticate_newcache(const struct sockaddr *caller,
- 		for (exp = exportlist[i].p_head; exp; exp = exp->m_next) {
- 			if (strcmp(path, exp->m_export.e_path))
- 				continue;
--			if (!use_ipaddr && !client_member(my_client.m_hostname, exp->m_client->m_hostname))
--				continue;
--			if (use_ipaddr && !client_check(exp->m_client, ai))
-+			if (!client_matches(exp, my_client.m_hostname, ai))
- 				continue;
- 			break;
- 		}
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index d2ac258..6e01b2f 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -587,7 +587,7 @@ static void nfsd_fh(FILE *f)
- 				next_exp = exp->m_next;
- 			}
- 
--			if (!use_ipaddr && !client_member(dom, exp->m_client->m_hostname))
-+			if (!use_ipaddr && !namelist_client_matches(exp, dom))
- 				continue;
- 			if (exp->m_export.e_mountpoint &&
- 			    !is_mountpoint(exp->m_export.e_mountpoint[0]?
-@@ -597,7 +597,7 @@ static void nfsd_fh(FILE *f)
- 
- 			if (!match_fsid(&parsed, exp, path))
- 				continue;
--			if (use_ipaddr && !client_check(exp->m_client, ai))
-+			if (use_ipaddr && !ipaddr_client_matches(exp, ai))
- 				continue;
- 			if (!found || subexport(&exp->m_export, found)) {
- 				found = &exp->m_export;
-@@ -751,14 +751,6 @@ static int path_matches(nfs_export *exp, char *path)
- }
- 
- static int
--client_matches(nfs_export *exp, char *dom, struct addrinfo *ai)
--{
--	if (use_ipaddr)
--		return client_check(exp->m_client, ai);
--	return client_member(dom, exp->m_client->m_hostname);
--}
--
--static int
- export_matches(nfs_export *exp, char *dom, char *path, struct addrinfo *ai)
- {
- 	return path_matches(exp, path) && client_matches(exp, dom, ai);
-diff --git a/utils/mountd/mountd.h b/utils/mountd/mountd.h
-index 4c184d2..c969a27 100644
---- a/utils/mountd/mountd.h
-+++ b/utils/mountd/mountd.h
-@@ -56,4 +56,8 @@ struct nfs_fh_len *
- 		cache_get_filehandle(nfs_export *exp, int len, char *p);
- int		cache_export(nfs_export *exp, char *path);
- 
-+bool ipaddr_client_matches(nfs_export *exp, struct addrinfo *ai);
-+bool namelist_client_matches(nfs_export *exp, char *dom);
-+bool client_matches(nfs_export *exp, char *dom, struct addrinfo *ai);
-+
- #endif /* MOUNTD_H */
--- 
-1.7.7.6
+> 
+> This also trims out all of the other extraneous stuff we don't need --
+> being able to bind to low sockets, traverse directories in which root
+> has no explicit access, chown ability, etc...
+> 
+> There are a couple of other approaches we could take here instead:
+> 
+> 1) we could run as an unprivileged user and keep CAP_DAC_OVERRIDE.
+> I think that's less safe than what I'm doing here though...
+> 
+> 2) we could teach the kernel to create the pipe with a different owner
+> and then run the daemon as a non-root user. That means we'd need some
+> mechanism to tell the kernel what we want that owner to be. I'm not
+> sure how that would work in practice -- maybe a new file
+> in /proc/fs/nfsd ?
+> 
+> In any case, I think this is probably good enough for now. This daemon
+> doesn't listen on a socket or anything so any compromise of it would
+> be a local one. Users also don't generally interact with it directly,
+> so you'd need to jump through some hoops in order to break it I'd
+> think.
 
+Sure.
+
+--b.
