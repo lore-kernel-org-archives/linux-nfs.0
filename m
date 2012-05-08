@@ -1,86 +1,155 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:55525 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755093Ab2ENJZq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 May 2012 05:25:46 -0400
-Message-ID: <4FB0CF8C.8090405@panasas.com>
-Date: Mon, 14 May 2012 12:25:32 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from nm13-vm0.bullet.mail.bf1.yahoo.com ([98.139.213.79]:39332 "HELO
+	nm13-vm0.bullet.mail.bf1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1755334Ab2EHOvA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 May 2012 10:51:00 -0400
+Message-ID: <1336488323.26287.YahooMailClassic@web2801.biz.mail.ne1.yahoo.com>
+Date: Tue, 8 May 2012 07:45:23 -0700 (PDT)
+From: Mr Raymond Khumalo <raymondkhumaloo3@hotmail.com>
+Reply-To: raymondkhumaloo@hotmail.com
+Subject: Your urgent response is needed
+To: undisclosed recipients:;
 MIME-Version: 1.0
-To: Lior <lior@tonian.com>
-CC: <tigran.mkrtchyan@desy.de>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: nfs v4.1 client without pNFS
-References: <4FAF9E19.4060802@tonian.com> <CAGue13rFG30EzmQX7sfYA_ouPBxaUu1Xs8sb1ee4fBMtaufKpA@mail.gmail.com> <4FAFBD04.8020301@tonian.com>
-In-Reply-To: <4FAFBD04.8020301@tonian.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: multipart/mixed; boundary="36908767-57495887-1336488323=:26287"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/13/2012 04:54 PM, Lior wrote:
+--36908767-57495887-1336488323=:26287
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: quoted-printable
 
-> Hi Tigran,
-> 
-> I guess that's one way ( a dark white box way, which still needs to be 
-> looked into)... but I was more thinking of a more high level built in 
-> user method  (e.g module option ,or mount option)
-> 
+=0AGreetings, Please go through the attached file for details=0A=0A=A0
+--36908767-57495887-1336488323=:26287
+Content-Type: application/msword; name=Raymond
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="Raymond Khumalo.rtf"
 
+e1xydGYxXGFuc2lcYW5zaWNwZzEyNTJcdWMxXGRlZmYwXHN0c2hmZGJjaDBc
+c3RzaGZsb2NoMFxzdHNoZmhpY2gwXHN0c2hmYmkwXGRlZmxhbmcxMDMzXGRl
+ZmxhbmdmZTEwMzN7XGZvbnR0Ymx7XGYwXGZyb21hblxmY2hhcnNldDBcZnBy
+cTJ7XCpccGFub3NlIDAyMDIwNjAzMDUwNDA1MDIwMzA0fVRpbWVzIE5ldyBS
+b21hbjt9e1xmMVxmc3dpc3NcZmNoYXJzZXQwXGZwcnEye1wqXHBhbm9zZSAw
+MjBiMDYwNDAyMDIwMjAyMDIwNH1BcmlhbDt9DQp7XGYzNlxmcm9tYW5cZmNo
+YXJzZXQyMzhcZnBycTIgVGltZXMgTmV3IFJvbWFuIENFO317XGYzN1xmcm9t
+YW5cZmNoYXJzZXQyMDRcZnBycTIgVGltZXMgTmV3IFJvbWFuIEN5cjt9e1xm
+MzlcZnJvbWFuXGZjaGFyc2V0MTYxXGZwcnEyIFRpbWVzIE5ldyBSb21hbiBH
+cmVlazt9e1xmNDBcZnJvbWFuXGZjaGFyc2V0MTYyXGZwcnEyIFRpbWVzIE5l
+dyBSb21hbiBUdXI7fQ0Ke1xmNDFcZnJvbWFuXGZjaGFyc2V0MTc3XGZwcnEy
+IFRpbWVzIE5ldyBSb21hbiAoSGVicmV3KTt9e1xmNDJcZnJvbWFuXGZjaGFy
+c2V0MTc4XGZwcnEyIFRpbWVzIE5ldyBSb21hbiAoQXJhYmljKTt9e1xmNDNc
+ZnJvbWFuXGZjaGFyc2V0MTg2XGZwcnEyIFRpbWVzIE5ldyBSb21hbiBCYWx0
+aWM7fXtcZjQ0XGZyb21hblxmY2hhcnNldDE2M1xmcHJxMiBUaW1lcyBOZXcg
+Um9tYW4gKFZpZXRuYW1lc2UpO30NCntcZjQ2XGZzd2lzc1xmY2hhcnNldDIz
+OFxmcHJxMiBBcmlhbCBDRTt9e1xmNDdcZnN3aXNzXGZjaGFyc2V0MjA0XGZw
+cnEyIEFyaWFsIEN5cjt9e1xmNDlcZnN3aXNzXGZjaGFyc2V0MTYxXGZwcnEy
+IEFyaWFsIEdyZWVrO317XGY1MFxmc3dpc3NcZmNoYXJzZXQxNjJcZnBycTIg
+QXJpYWwgVHVyO317XGY1MVxmc3dpc3NcZmNoYXJzZXQxNzdcZnBycTIgQXJp
+YWwgKEhlYnJldyk7fQ0Ke1xmNTJcZnN3aXNzXGZjaGFyc2V0MTc4XGZwcnEy
+IEFyaWFsIChBcmFiaWMpO317XGY1M1xmc3dpc3NcZmNoYXJzZXQxODZcZnBy
+cTIgQXJpYWwgQmFsdGljO317XGY1NFxmc3dpc3NcZmNoYXJzZXQxNjNcZnBy
+cTIgQXJpYWwgKFZpZXRuYW1lc2UpO319e1xjb2xvcnRibDtccmVkMFxncmVl
+bjBcYmx1ZTA7XHJlZDBcZ3JlZW4wXGJsdWUyNTU7XHJlZDBcZ3JlZW4yNTVc
+Ymx1ZTI1NTtccmVkMFxncmVlbjI1NVxibHVlMDsNClxyZWQyNTVcZ3JlZW4w
+XGJsdWUyNTU7XHJlZDI1NVxncmVlbjBcYmx1ZTA7XHJlZDI1NVxncmVlbjI1
+NVxibHVlMDtccmVkMjU1XGdyZWVuMjU1XGJsdWUyNTU7XHJlZDBcZ3JlZW4w
+XGJsdWUxMjg7XHJlZDBcZ3JlZW4xMjhcYmx1ZTEyODtccmVkMFxncmVlbjEy
+OFxibHVlMDtccmVkMTI4XGdyZWVuMFxibHVlMTI4O1xyZWQxMjhcZ3JlZW4w
+XGJsdWUwO1xyZWQxMjhcZ3JlZW4xMjhcYmx1ZTA7XHJlZDEyOFxncmVlbjEy
+OFxibHVlMTI4Ow0KXHJlZDE5MlxncmVlbjE5MlxibHVlMTkyO317XHN0eWxl
+c2hlZXR7XHFsIFxsaTBccmkwXHdpZGN0bHBhclxhc3BhbHBoYVxhc3BudW1c
+ZmFhdXRvXGFkanVzdHJpZ2h0XHJpbjBcbGluMFxpdGFwMCBcZnMyNFxsYW5n
+MTAzM1xsYW5nZmUxMDMzXGNncmlkXGxhbmducDEwMzNcbGFuZ2ZlbnAxMDMz
+IFxzbmV4dDAgTm9ybWFsO317XCpcY3MxMCBcYWRkaXRpdmUgXHNzZW1paGlk
+ZGVuIERlZmF1bHQgUGFyYWdyYXBoIEZvbnQ7fXtcKg0KXHRzMTFcdHNyb3dk
+XHRyZnRzV2lkdGhCM1x0cnBhZGRsMTA4XHRycGFkZHIxMDhcdHJwYWRkZmwz
+XHRycGFkZGZ0M1x0cnBhZGRmYjNcdHJwYWRkZnIzXHRyY2JwYXQxXHRyY2Zw
+YXQxXHRzY2VsbHdpZHRoZnRzMFx0c3ZlcnRhbHRcdHNicmRydFx0c2JyZHJs
+XHRzYnJkcmJcdHNicmRyclx0c2JyZHJkZ2xcdHNicmRyZGdyXHRzYnJkcmhc
+dHNicmRydiANClxxbCBcbGkwXHJpMFx3aWRjdGxwYXJcYXNwYWxwaGFcYXNw
+bnVtXGZhYXV0b1xhZGp1c3RyaWdodFxyaW4wXGxpbjBcaXRhcDAgXGZzMjBc
+bGFuZzEwMjRcbGFuZ2ZlMTAyNFxjZ3JpZFxsYW5nbnAxMDI0XGxhbmdmZW5w
+MTAyNCBcc25leHQxMSBcc3NlbWloaWRkZW4gTm9ybWFsIFRhYmxlO319e1wq
+XGxhdGVudHN0eWxlc1xsc2RzdGltYXgxNTZcbHNkbG9ja2VkZGVmMH17XCpc
+cnNpZHRibCBccnNpZDUxMzE3NjR9e1wqXGdlbmVyYXRvciBNaWNybw0Kc29m
+dCBXb3JkIDExLjAuNTYwNDt9e1xpbmZve1x0aXRsZSBNUn17XGF1dGhvciBQ
+QzE0fXtcb3BlcmF0b3IgUEMxNH17XGNyZWF0aW1ceXIyMDEyXG1vNVxkeTNc
+aHIxMFxtaW41fXtccmV2dGltXHlyMjAxMlxtbzVcZHkzXGhyMTBcbWluNX17
+XHZlcnNpb24yfXtcZWRtaW5zMX17XG5vZnBhZ2VzMX17XG5vZndvcmRzMzE3
+fXtcbm9mY2hhcnMxODA5fXtcbm9mY2hhcnN3czIxMjJ9e1x2ZXJuMjQ2ODl9
+fQ0KXHdpZG93Y3RybFxmdG5ialxhZW5kZG9jXG5veGxhdHRveWVuXGV4cHNo
+cnRuXG5vdWx0cmxzcGNcZG50Ymxuc2JkYlxub3NwYWNlZm9ydWxcaHlwaGNh
+cHMwXGhvcnpkb2NcZGdoc3BhY2UxMjBcZGd2c3BhY2UxMjBcZGdob3JpZ2lu
+MTcwMVxkZ3ZvcmlnaW4xOTg0XGRnaHNob3cwXGRndnNob3czXGpjb21wcmVz
+c1x2aWV3a2luZDRcdmlld3NjYWxlMTAwXG5vbG5odGFkanRibFxyc2lkcm9v
+dDUxMzE3NjQgXGZldDBcc2VjdGQgDQpcbGluZXgwXHNlY3RkZWZhdWx0Y2xc
+c2Z0bmJqIHtcKlxwbnNlY2x2bDFccG51Y3JtXHBuc3RhcnQxXHBuaW5kZW50
+NzIwXHBuaGFuZyB7XHBudHh0YSAufX17XCpccG5zZWNsdmwyXHBudWNsdHJc
+cG5zdGFydDFccG5pbmRlbnQ3MjBccG5oYW5nIHtccG50eHRhIC59fXtcKlxw
+bnNlY2x2bDNccG5kZWNccG5zdGFydDFccG5pbmRlbnQ3MjBccG5oYW5nIHtc
+cG50eHRhIC59fXtcKlxwbnNlY2x2bDQNClxwbmxjbHRyXHBuc3RhcnQxXHBu
+aW5kZW50NzIwXHBuaGFuZyB7XHBudHh0YSApfX17XCpccG5zZWNsdmw1XHBu
+ZGVjXHBuc3RhcnQxXHBuaW5kZW50NzIwXHBuaGFuZyB7XHBudHh0YiAofXtc
+cG50eHRhICl9fXtcKlxwbnNlY2x2bDZccG5sY2x0clxwbnN0YXJ0MVxwbmlu
+ZGVudDcyMFxwbmhhbmcge1xwbnR4dGIgKH17XHBudHh0YSApfX17XCpccG5z
+ZWNsdmw3XHBubGNybVxwbnN0YXJ0MVxwbmluZGVudDcyMFxwbmhhbmcge1xw
+bnR4dGIgKH0NCntccG50eHRhICl9fXtcKlxwbnNlY2x2bDhccG5sY2x0clxw
+bnN0YXJ0MVxwbmluZGVudDcyMFxwbmhhbmcge1xwbnR4dGIgKH17XHBudHh0
+YSApfX17XCpccG5zZWNsdmw5XHBubGNybVxwbnN0YXJ0MVxwbmluZGVudDcy
+MFxwbmhhbmcge1xwbnR4dGIgKH17XHBudHh0YSApfX1ccGFyZFxwbGFpbiBc
+cWwgXGxpMFxyaTBcbm93aWRjdGxwYXJcZmFhdXRvXHJpbjBcbGluMFxpdGFw
+MCANClxmczI0XGxhbmcxMDMzXGxhbmdmZTEwMzNcY2dyaWRcbGFuZ25wMTAz
+M1xsYW5nZmVucDEwMzMge1xiXGYxXGZzMjBcaW5zcnNpZDUxMzE3NjQgTVIu
+IFJBWU1PTkQgS0hVTUFMTw0KXHBhciBUZWwgOiArMjctNzMtMTc1OS0xNjEN
+ClxwYXIgRU1BSUw6IHJheW1vbmRraHVtYWxvb0Bob3RtYWlsLmNvbQ0KXHBh
+ciAgDQpccGFyIEdyZWV0aW5ncy4NClxwYXIgIA0KXHBhciBJIGFtLiBNUi4g
+UkFZTU9ORCBLSFVNQUxPLCBIZWFkIEFjY291bnRzIE1hbmFnZW1lbnQgU2Vj
+dGlvbiBvZiBhIHdlbGwta25vd24gQmFuayBoZXJlIGluICBTb3V0aCBBZnJp
+Y2EgLiAgIE9uZSBvZiBvdXIgYWNjb3VudHMgd2l0aCBob2xkaW5nIGJhbGFu
+Y2Ugb2YgVVMkMTAsMDAwLDAwMCAoIFRlbiBNaWxsaW9uIFVuaXRlZCBTdGF0
+ZXMgRG9sbGFyKSBoYXMgYmVlbiBkb3JtYW50IGFuZCBsYXN0IG9wZXJhdGVk
+IGluIHRoZSBwYXN0IGZvdXIgKDQNCikgeWVhcnMuIEZyb20gaW52ZXN0aWdh
+dGlvbnMgYW5kIGNvbmZpcm1hdGlvbnMsIHRoZSBvd25lciBvZiB0aGlzIGFj
+Y291bnQgaXMgYSBIb25nIEtvbmcgRm9yZWlnbmVyIGJ5IG5hbWUgRW5nciBX
+aW5nIENoaXUgTGVlIGRpZWQgb24gdGhlIDR0aCBvZiBKYW51YXJ5IDIwMDMg
+aW4gYW4gYXV0b21vYmlsZSBhY2NpZGVudCBhbG9uZyBQcmV0b3JpYSBOMSBI
+aWdoLVdheS4NClxwYXIgIA0KXHBhciBTaW5jZSB0aGVuIG5vYm9keSBoYXMg
+ZG9uZSBhbnl0aGluZyBhcyByZWdhDQpyZHMgdG8gdGhlIGNsYWltaW5nIG9m
+IHRoaXMgbW9uZXkgYXMgaGUgaGFzIG5vIGZhbWlseSBtZW1iZXIgdGhhdCBp
+cyBhd2FyZSBvZiB0aGUgZXhpc3RlbmNlIG9mIGVpdGhlciB0aGUgYWNjb3Vu
+dCBvciB0aGUgZnVuZC4gU2V2ZXJhbCBhdHRlbXB0IHRvIHRyYWNlIGFueSBv
+ZiBoaXMgcmVsYXRpdmUgcHJvb2YgYWJvcnRpdmUgYW5kIGFsc28gSW5mb3Jt
+YXRpb24gZnJvbSB0aGUgTmF0aW9uYWwgSW1taWdyYXRpb24gb2ZmaWNlIHN0
+YXRlcyB0aGENCnQgbGF0ZSBFbmdyIFdpbmcgQ2hpdSBMZWUgd2FzIHNpbmds
+ZSBvbiBwb2ludCBvZiBlbnRyeSBpbnRvIFNvdXRoIEFmcmljYQ0KXHBhciAu
+DQpccGFyIE91ciBGaW5hbmNpYWwgSW5zdGl0dXRpb24gaXMgcHJlc2VudGx5
+IGFuZCBieSBsYXcgdGhlIGN1c3RvZGlhbiBvZiB0aGUgbW9uZXkgYmVsb25n
+aW5nIHRvIHRoZSBkZWNlYXNlZCwgd2hvc2UgYWNjb3VudCBJIGFtIHJlc3Bv
+bnNpYmxlIGZvciBtb25pdG9yaW5nIGFuZCBvZmZpY2lhdGluZy4gVGhlIHBy
+ZXNlbnQgbWFuDQpkYXRlIEkgaGF2ZSB0byBwcmVzZW50IGEgY3JlZGlibGUg
+YmVuZWZpY2lhcnkgb3BlbnMgdGhlIHdheSBmb3IgdXMgdG8gdGFrZSBhZHZh
+bnRhZ2Ugb2YgdGhlIHNpdHVhdGlvbiBhbmQgdXNlIHRoZSBtb25leSB0byBw
+b3NpdGl2ZWx5IGFmZmVjdCB0aGUgbGl2ZXMgb2YgbWFueSBpbnN0ZWFkIG9m
+IGFsbG93aW5nIHRoZSBmdW5kcyB0byBiZQ0KXHBhciBjb21wbGV0ZWx5IGxv
+c3QsIHNpbmNlIG5vIG9uZSBrbm93cyBhYm91dCB0aGUgbW9uZXkgYW5kIG5v
+IG9uZSB3aWxsIGNvbWUgZm9yd2FyZCB0byBjbGFpbSB0aGUgbW9uZXkgYXMg
+d2UgYWxyZWFkeSBrbm93Lg0KXHBhciAgDQpccGFyIEkgaGF2ZSBjb25maWRl
+bnRpYWxseSBkaXNjdXNzZWQgdGhpcyBpc3N1ZSB3aXRoIHNvbWUgb2YgdGhl
+IGJhbmsgb2ZmaWNpYWxzIGFuZCB3ZSBoYXZlIGFncmVlZCB0byBmaW5kIGEg
+cmVsaWFibGUgZm9yZWlnbiBwYXJ0bmVyIHRvIGRlYWwgd2l0aC4gV2UgdGh1
+cyBwcm9wb3NlIHRvIGRvIGJ1c2luZXNzIHdpdGggeW91LCBzdGFuZGluZyBp
+bg0KIGFzIHRoZSBuZXh0IG9mIGtpbiBvZiB0aGlzIGZ1bmQgZnJvbSB0aGUg
+ZGVjZWFzZWQgYW5kIGZ1bmQgcmVsZWFzZWQgdG8geW91IGFmdGVyIGR1ZSBw
+cm9jZXNzZXMgaGF2ZSBiZWVuIGZvbGxvd2VkLlRoaXMgdHJhbnNhY3Rpb24g
+aXMgdG90YWxseSBmcmVlIG9mIHJpc2sgYW5kIHRyb3VibGVzIGFzIHRoZSBm
+dW5kIGlzIExlZ2l0aW1hdGUgYW5kIGRvZXMgbm90IG9yaWdpbmF0ZSBmcm9t
+IGRydWcgb3IgbW9uZXkgbGF1bmRyeS5PbiB5b3VyIGluDQp0ZXJlc3QsIElm
+IHlvdSBhcmUgaW50ZXJlc3RlZCBpbiB0aGlzIHRyYW5zYWN0aW9uLCBraW5k
+bHkgcHJvdmlkZSBtZSB3aXRoDQpccGFyIA0KXHBhciBZT1VSIEZVTEwgTkFN
+RQ0KXHBhciBDT05UQUNUIEFERFJFU1MNClxwYXIgVEVMRVBIT05FIEFORCBG
+QVgNClxwYXIgT0NDVVBBVElPTg0KXHBhciBBR0UNClxwYXIgDQpccGFyIFBs
+ZWFzZSBkbyBsZXQgbWUga25vdyBpbW1lZGlhdGVseSBzbyB0aGF0IHdlIGNh
+biBwcm9jZWVkLiANClxwYXIgDQpccGFyIFJlZ2FyZHMNClxwYXIgIA0KXHBh
+ciBTaW5jZXJlbHksIA0KXHBhciBNUi5SQVlNT05EIEtIVU1BTE8uDQpccGFy
+IH17XGYxXGZzMjBcaW5zcnNpZDUxMzE3NjQgDQpccGFyIH19
 
-We used to have it but it was removed, being pointless. 4.1 means pNFS.
-
-The optional clause in the STD means client need no implement it but since
-we slaved so hard to do implement it we see no point ever disabling it.
-
-As an administrator policy it is best controlled in a single place at the
-Server. Instead of having a crap option set at every client. What does that
-give you?
-
-If the admin wants to let you have a choice, for what ever reason that I
-can't currently imagine, He can setup two exports of the same FS one
-with the pnfs option, one without.
-
-The point of the all pNFS support is that everything is automatic, Server
-upgraded/extended/scaled boom transparently works.
-
-NACK on any user visible disables. It's a maintenance disaster. If you
-do find any real bugs with the pNFS option left on, please report ASAP
-and we'll fix it
-
-Cheers
-Boaz
-
-> Thanks for the fast response,
-> Lior K.
-> 
-> בתאריך 13/05/2012 16:37, ציטוט Tigran Mkrtchyan:
->> Hi Lior,
->>
->> you can blacklist the layout driver in /etc/modprobe.d/nfsv41.conf
->>
->> blacklist nfs_layout_nfsv41_files
->>
->>
->> Tigran.
->> On Sun, May 13, 2012 at 1:42 PM, Lior<lior@tonian.com>  wrote:
->>> Hi Trond,
->>>
->>> The rfc 5661 states that pNFS is an optional feature.
->>> Is there currently an intent to implement some sort of an option (module
->>> option ,or mount option) to run the NFSv4.1 client without pNFS
->>> functionality?
->>>
->>> Thanks,
->>>   Lior K.
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
+--36908767-57495887-1336488323=:26287--
