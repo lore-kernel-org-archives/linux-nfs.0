@@ -1,57 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:55880 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753305Ab2E1SKD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 14:10:03 -0400
-Message-ID: <4FC3BF67.7010402@panasas.com>
-Date: Mon, 28 May 2012 21:09:43 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:52192 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753815Ab2EHN36 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 May 2012 09:29:58 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Daniel Pocock <daniel@pocock.com.au>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: extremely slow nfs when sync enabled
+Date: Tue, 8 May 2012 13:29:40 +0000
+Message-ID: <1336483786.2861.8.camel@lade.trondhjem.org>
+References: <4FA5E950.5080304@pocock.com.au>
+	 <1336328594.2593.14.camel@lade.trondhjem.org>
+	 <4FA6EBD4.7040308@pocock.com.au>
+	 <1336340993.2600.11.camel@lade.trondhjem.org>
+	 <4FA6F75E.6090300@pocock.com.au>
+	 <1336344160.2600.30.camel@lade.trondhjem.org>
+	 <4FA793AB.70107@pocock.com.au> <4FA7D54E.9080309@pocock.com.au>
+	 <20120507171759.GA10137@fieldses.org> <4FA90C63.7000505@pocock.com.au>
+	 <20120508124559.GA15448@fieldses.org>
+In-Reply-To: <20120508124559.GA15448@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Benny Halevy <bhalevy@tonian.com>
-CC: NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: Does our Kernel PNFSD-Server supports recurring layout_get with
- open_state_id
-References: <4FBD7DE8.9090002@panasas.com> <4FBE2C8C.9090403@tonian.com> <4FBE3C4D.7050507@panasas.com> <4FC3A235.8090908@tonian.com> <4FC3A974.60107@panasas.com> <4FC3BC2B.6060709@tonian.com>
-In-Reply-To: <4FC3BC2B.6060709@tonian.com>
-Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/28/2012 08:55 PM, Benny Halevy wrote:
-
-> On 2012-05-28 19:36, Boaz Harrosh wrote:
->> On 05/28/2012 07:05 PM, Benny Halevy wrote:
->>
->>> Yup, see patchset in reply.
->>>
->>
->>
->> That I wish you wouldn't do. I have a patchset pending that makes
->> major changes to all this and totally conflicts with your code.
-> 
-> Sorry, I didn't know that.
-> 
->>
->> You can carry this for a while but I might revert your core
->> code in my new patchset.
-> 
-> I hope that at least it will all be for the better.
-> 
-> Benny
-> 
-
-
-NP. Yes it is all for the better. I think you'll like what I did.
-
-BTW after I finish implementing my stuff. I think it would be easy
-to implement that open_state_id thing. All we need is to save the
-open_state_id somewhere per-file or somehow identify it's receive,
-And then just call nfs4_roc() which will do the proper work.
-
-But please wait for me to finish.
-
-(It is all done and debugged, but will be divided and patched
- on Wednesday) 
-
-Thanks
-Boaz
+T24gVHVlLCAyMDEyLTA1LTA4IGF0IDA4OjQ1IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIFR1ZSwgTWF5IDA4LCAyMDEyIGF0IDEyOjA2OjU5UE0gKzAwMDAsIERhbmllbCBQb2Nv
+Y2sgd3JvdGU6DQo+ID4gDQo+ID4gDQo+ID4gT24gMDcvMDUvMTIgMTc6MTgsIEouIEJydWNlIEZp
+ZWxkcyB3cm90ZToNCj4gPiA+IEhvdyBtYW55IGZpbGUgY3JlYXRlcyBwZXIgc2Vjb25kPw0KPiA+
+ID4gDQo+ID4gDQo+ID4gSSByYW46DQo+ID4gbmZzc3RhdCAtcyAtbyBhbGwgLWwgLVo1DQo+ID4g
+YW5kIGR1cmluZyB0aGUgdGVzdCAodW5wYWNraW5nIHRoZSB0YXJiYWxsKSwgSSBzZWUgbnVtYmVy
+cyBsaWtlIHRoZXNlDQo+ID4gZXZlcnkgNSBzZWNvbmRzIGZvciBhYm91dCAyIG1pbnV0ZXM6DQo+
+ID4gDQo+ID4gbmZzIHYzIHNlcnZlciAgICAgICAgdG90YWw6ICAgICAgMzE5DQo+ID4gLS0tLS0t
+LS0tLS0tLSAtLS0tLS0tLS0tLS0tIC0tLS0tLS0tDQo+ID4gbmZzIHYzIHNlcnZlciAgICAgIGdl
+dGF0dHI6ICAgICAgICAxDQo+ID4gbmZzIHYzIHNlcnZlciAgICAgIHNldGF0dHI6ICAgICAgMTI2
+DQo+ID4gbmZzIHYzIHNlcnZlciAgICAgICBhY2Nlc3M6ICAgICAgICA2DQo+ID4gbmZzIHYzIHNl
+cnZlciAgICAgICAgd3JpdGU6ICAgICAgIDYxDQo+ID4gbmZzIHYzIHNlcnZlciAgICAgICBjcmVh
+dGU6ICAgICAgIDYxDQo+ID4gbmZzIHYzIHNlcnZlciAgICAgICAgbWtkaXI6ICAgICAgICAzDQo+
+ID4gbmZzIHYzIHNlcnZlciAgICAgICBjb21taXQ6ICAgICAgIDYxDQo+IA0KPiBPSywgc28gaXQn
+cyBwcm9iYWJseSBjcmVhdGluZyBhYm91dCA2MCBuZXcgZmlsZXMsIGVhY2ggcmVxdWlyaW5nIGEN
+Cj4gY3JlYXRlLCB3cml0ZSwgY29tbWl0LCBhbmQgdHdvIHNldGF0dHJzPw0KPiANCj4gRWFjaCBv
+ZiB0aG9zZSBvcGVyYXRpb25zIGlzIHN5bmNocm9ub3VzLCBzbyBwcm9iYWJseSBoYXMgdG8gd2Fp
+dCBmb3IgYXQNCj4gbGVhc3Qgb25lIGRpc2sgc2Vlay4gIEFib3V0IDMwMCBzdWNoIG9wZXJhdGlv
+bnMgZXZlcnkgNSBzZWNvbmRzIGlzIGFib3V0DQo+IDYwIHBlciBzZWNvbmQsIG9yIGFib3V0IDE2
+bXMgZWFjaC4gIFRoYXQgZG9lc24ndCBzb3VuZCBzbyBmYXIgb2ZmLg0KPiANCj4gKEkgd29uZGVy
+IHdoeSBpdCBuZWVkcyB0d28gc2V0YXR0cnM/KQ0KDQpJdCBpcyBhbiB1bnRhciB3b3JrbG9hZCwg
+c28gaXQgbmVlZHMgdG8gcmVzZXQgdGhlIGF0aW1lL210aW1lIGFmdGVyDQp3cml0aW5nIHRoZSBm
+aWxlLg0KDQpOb3RlIHRoYXQgdGhlIGFib3ZlIHdvcmtsb2FkIGlzIGV4YWN0bHkgdGhlIG9uZSBJ
+IHdhcyB0YXJnZXRpbmcgd2l0aCB0aGUNCnVuc3RhYmxlIGZpbGUgY3JlYXRpb24gZHJhZnQ6DQoN
+Cmh0dHA6Ly90b29scy5pZXRmLm9yZy9odG1sL2RyYWZ0LW15a2xlYnVzdC1uZnN2NC11bnN0YWJs
+ZS1maWxlLWNyZWF0aW9uLTAxDQoNCkknbSBnb2luZyB0byB0cnkgcHVzaGluZyB0aGF0IGFnYWlu
+IGZvciBORlN2NC4zLi4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50
+IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5l
+dGFwcC5jb20NCg0K
