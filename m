@@ -1,73 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:37427 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757373Ab2EGSmx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 May 2012 14:42:53 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v2 4/8] NFS: Remove NFS4_MOUNT_UNSHARED
-Date: Mon,  7 May 2012 14:42:42 -0400
-Message-Id: <1336416166-20533-5-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1336416166-20533-1-git-send-email-bjschuma@netapp.com>
-References: <1336416166-20533-1-git-send-email-bjschuma@netapp.com>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:38565 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756443Ab2EHUMC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 May 2012 16:12:02 -0400
+Received: by yenm10 with SMTP id m10so5259096yen.19
+        for <linux-nfs@vger.kernel.org>; Tue, 08 May 2012 13:12:01 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: chuck.lever@oracle.com
+Subject: [PATCH][RFC] statd: drop all capabilities from the bounding set as well
+Date: Tue,  8 May 2012 16:11:55 -0400
+Message-Id: <1336507915-2194-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+statd drops all capabilities except for CAP_NET_BIND when it starts. It's
+possible though that if it ever had a compromise that an attacker would be
+able to invoke a setuid process (or something with file capabilities) in
+order to reinstate some caps.
 
-This flag is numerically equivalent to NFS_MOUNT_UNSHARED, so I can
-remove it to make collapsing functions more straightforward.
+In order to prevent that, have statd also prune the bounding set to nothing
+prior to dropping capabilities.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/super.c             |    6 +++---
- include/linux/nfs4_mount.h |    1 -
- 2 files changed, 3 insertions(+), 4 deletions(-)
+ support/nsm/file.c |   12 ++++++++++++
+ 1 files changed, 12 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index f56fb35..40d43e0 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2719,7 +2719,7 @@ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
- 	}
- 	sb_mntdata.server = server;
+diff --git a/support/nsm/file.c b/support/nsm/file.c
+index 5dd52c1..2d86f95 100644
+--- a/support/nsm/file.c
++++ b/support/nsm/file.c
+@@ -342,8 +342,20 @@ static _Bool
+ nsm_clear_capabilities(void)
+ {
+ #ifdef HAVE_SYS_CAPABILITY_H
++	int ret;
++	unsigned long i;
+ 	cap_t caps;
  
--	if (server->flags & NFS4_MOUNT_UNSHARED)
-+	if (server->flags & NFS_MOUNT_UNSHARED)
- 		compare_super = NULL;
- 
- 	/* -o noac implies -o sync */
-@@ -2983,7 +2983,7 @@ nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
- 	}
- 	sb_mntdata.server = server;
- 
--	if (server->flags & NFS4_MOUNT_UNSHARED)
-+	if (server->flags & NFS_MOUNT_UNSHARED)
- 		compare_super = NULL;
- 
- 	/* -o noac implies -o sync */
-@@ -3074,7 +3074,7 @@ nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
- 	}
- 	sb_mntdata.server = server;
- 
--	if (server->flags & NFS4_MOUNT_UNSHARED)
-+	if (server->flags & NFS_MOUNT_UNSHARED)
- 		compare_super = NULL;
- 
- 	/* -o noac implies -o sync */
-diff --git a/include/linux/nfs4_mount.h b/include/linux/nfs4_mount.h
-index a0dcf66..a89ad72 100644
---- a/include/linux/nfs4_mount.h
-+++ b/include/linux/nfs4_mount.h
-@@ -65,7 +65,6 @@ struct nfs4_mount_data {
- #define NFS4_MOUNT_NOCTO	0x0010	/* 1 */
- #define NFS4_MOUNT_NOAC		0x0020	/* 1 */
- #define NFS4_MOUNT_STRICTLOCK	0x1000	/* 1 */
--#define NFS4_MOUNT_UNSHARED	0x8000	/* 1 */
- #define NFS4_MOUNT_FLAGMASK	0x9033
- 
- #endif
++	/* prune the bounding set to nothing */
++	for (i = 0; i <= CAP_LAST_CAP; ++i) {
++		ret = prctl(PR_CAPBSET_DROP, i);
++		if (ret) {
++			xlog(L_ERROR, "Unable to prune capability %lu from "
++				      "bounding set: %m", i);
++			return false;
++		}
++	}
++
+ 	caps = cap_from_text("cap_net_bind_service=ep");
+ 	if (caps == NULL) {
+ 		xlog(L_ERROR, "Failed to allocate capability: %m");
 -- 
-1.7.10.1
+1.7.7.6
 
