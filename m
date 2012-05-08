@@ -1,66 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:63790 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750797Ab2E1RH0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 13:07:26 -0400
-Received: by dady13 with SMTP id y13so4351793dad.19
-        for <linux-nfs@vger.kernel.org>; Mon, 28 May 2012 10:07:26 -0700 (PDT)
+Received: from mx2.netapp.com ([216.240.18.37]:27472 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755505Ab2EHVNk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 May 2012 17:13:40 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: David Howells <dhowells@redhat.com>
+CC: "adilger@dilger.ca" <adilger@dilger.ca>,
+        "david@fromorbit.com" <david@fromorbit.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "smfrench@gmail.com" <smfrench@gmail.com>,
+        "ben@decadent.org.uk" <ben@decadent.org.uk>,
+        "roland@hack.frob.com" <roland@hack.frob.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
+        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
+        "libc-alpha@sourceware.org" <libc-alpha@sourceware.org>
+Subject: Re: Extended file stat: Splitting file- and fs-specific info?
+Date: Tue, 8 May 2012 21:13:21 +0000
+Message-ID: <1336511603.12198.11.camel@lade.trondhjem.org>
+References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+	 <16281.1336508382@redhat.com>
+In-Reply-To: <16281.1336508382@redhat.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <1338222809.3472.13.camel@lade.trondhjem.org>
-References: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>
- <1338096780-2763-4-git-send-email-bergwolf@gmail.com> <1338136717.3044.13.camel@lade.trondhjem.org>
- <F19688880B763E40B28B2B462677FBF805F0BADF36@MX09A.corp.emc.com>
- <1338176720.2265.8.camel@lade.trondhjem.org> <F19688880B763E40B28B2B462677FBF805F0BADF5D@MX09A.corp.emc.com>
- <1338222809.3472.13.camel@lade.trondhjem.org>
-From: Peng Tao <tao.peng@emc.com>
-Date: Tue, 29 May 2012 01:07:05 +0800
-Message-ID: <CA+a=Yy5J8KaVNVWSwprUeZKsUMTV09C-OoaS59CUsd0ohii2OA@mail.gmail.com>
-Subject: Re: [PATCH 3/3] pnfsblock: bail out unaligned DIO
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 29, 2012 at 12:33 AM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Mon, 2012-05-28 at 00:26 -0400, tao.peng@emc.com wrote:
->> > -----Original Message-----
->> > From: Myklebust, Trond [mailto:Trond.Myklebust@netapp.com]
->> > Sent: Monday, May 28, 2012 11:45 AM
->> > To: Peng, Tao
->> > Cc: bergwolf@gmail.com; linux-nfs@vger.kernel.org
->> > Subject: RE: [PATCH 3/3] pnfsblock: bail out unaligned DIO
->> >
->> > On Sun, 2012-05-27 at 22:30 -0400, tao.peng@emc.com wrote:
->> > > As explain in the other mail, it is necessary to have pnfs_dio_begin/end, so I prefer to do the test
->> > as early as possible, which is in pnfs_dio_begin.
->> >
->> > There is no pnfs_dio_begin/end.
->> OK. I will put DIO alignment tests inside pg_init.
->>
->> And any comments on for stable patch in the thread ([PATCH] pnfsblock: bail out page unaligned IO)? If you agree, I will base DIO changes on top of it to avoid conflicts.
->> There are reasons to test alignment at different place for buffer IO and DIO. For buffer IO, pg_init isn't the right place because we don't have nfs page there. For DIO, pg_test isn't the right place because we need to check cross page boundary.
->
-> Since all pages in the struct nfs_pageio_descriptor are guaranteed to be
-> contiguous, you really only need to check the first and last page in the
-> series for alignment.
->
-> pg_init() does take the first nfs_page request as its argument and so it
-> should be possible to check the alignment of the first page in the
-> series there.
-> You can then check the alignment of the last page in your
-> ->write_pagelist() and return PNFS_NOT_ATTEMPTED if appropriate.
->
-Thanks. Will do it as you suggested.
-
-> Note that all applications that use O_DIRECT are expected to use aligned
-> memory, since that's what the open() manpage implies is the safe option
-> for all filesystems. Unaligned memory is therefore not something that we
-> need to optimise for.
->
-do_blockdev_direct_IO() is checking memory alignment for direct IO. Is
-there any difference between NFS and other FS here?
-
-Cheers,
-Tao
+T24gVHVlLCAyMDEyLTA1LTA4IGF0IDIxOjE5ICswMTAwLCBEYXZpZCBIb3dlbGxzIHdyb3RlOg0K
+PiBTaG91bGQgSSBzcGxpdCB0aGUgZmlsZS1zcGVjaWZpYyBpbmZvIGFuZCB0aGUgZnMtc3BlY2lm
+aWMgaW5mbyBhbmQgbWFrZSB0aGUNCj4gc2Vjb25kIG9wdGlvbmFsPyAgV2hhdCBJJ20gdGhpbmtp
+bmcgb2YgaXMgc29tZXRoaW5nIGxpa2UgdGhpczoNCj4gDQo+IEhhdmUgYSBmaWxlIGluZm9ybWF0
+aW9uIHN0cnVjdHVyZToNCj4gDQo+IHN0cnVjdCBzdGF0eCB7DQo+IAkvKiAweDAwICovDQo+IAl1
+aW50MzJfdAlzdF9tYXNrOwkvKiBXaGF0IHJlc3VsdHMgd2VyZSB3cml0dGVuICovDQo+IAl1aW50
+MzJfdAlzdF9pbmZvcm1hdGlvbjsJLyogSW5mb3JtYXRpb24gYWJvdXQgdGhlIGZpbGUgKi8NCj4g
+CXVpbnQxNl90CXN0X21vZGU7CS8qIEZpbGUgbW9kZSAqLw0KPiAJdWludDE2X3QJX19zcGFyZTBb
+M107DQo+IAkvKiAweDEwICovDQo+IAl1aW50MzJfdAlzdF91aWQ7CQkvKiBVc2VyIElEIG9mIG93
+bmVyICovDQo+IAl1aW50MzJfdAlzdF9naWQ7CQkvKiBHcm91cCBJRCBvZiBvd25lciAqLw0KPiAJ
+dWludDMyX3QJc3Rfbmxpbms7CS8qIE51bWJlciBvZiBoYXJkIGxpbmtzICovDQo+IAl1aW50MzJf
+dAlzdF9ibGtzaXplOwkvKiBPcHRpbWFsIHNpemUgZm9yIGZpbGVzeXN0ZW0gSS9PICovDQo+IAkv
+KiAweDIwICovDQo+IAlzdHJ1Y3Qgc3RhdHhfZGV2IHN0X3JkZXY7CS8qIERldmljZSBJRCBvZiBz
+cGVjaWFsIGZpbGUgKi8NCj4gCXN0cnVjdCBzdGF0eF9kZXYgc3RfZGV2OwkvKiBJRCBvZiBkZXZp
+Y2UgY29udGFpbmluZyBmaWxlICovDQo+IAkvKiAweDMwICovDQo+IAlpbnQzMl90CQlzdF9hdGlt
+ZV9uczsJLyogTGFzdCBhY2Nlc3MgdGltZSAobnMgcGFydCkgKi8NCj4gCWludDMyX3QJCXN0X2J0
+aW1lX25zOwkvKiBGaWxlIGNyZWF0aW9uIHRpbWUgKG5zIHBhcnQpICovDQo+IAlpbnQzMl90CQlz
+dF9jdGltZV9uczsJLyogTGFzdCBhdHRyaWJ1dGUgY2hhbmdlIHRpbWUgKG5zIHBhcnQpICovDQo+
+IAlpbnQzMl90CQlzdF9tdGltZV9uczsJLyogTGFzdCBkYXRhIG1vZGlmaWNhdGlvbiB0aW1lIChu
+cyBwYXJ0KSAqLw0KPiAJLyogMHg0MCAqLw0KPiAJaW50NjRfdAkJc3RfYXRpbWU7CS8qIExhc3Qg
+YWNjZXNzIHRpbWUgKi8NCj4gCWludDY0X3QJCXN0X2J0aW1lOwkvKiBGaWxlIGNyZWF0aW9uIHRp
+bWUgKi8NCj4gCWludDY0X3QJCXN0X2N0aW1lOwkvKiBMYXN0IGF0dHJpYnV0ZSBjaGFuZ2UgdGlt
+ZSAqLw0KPiAJaW50NjRfdAkJc3RfbXRpbWU7CS8qIExhc3QgZGF0YSBtb2RpZmljYXRpb24gdGlt
+ZSAqLw0KPiAJLyogMHg2MCAqLw0KPiAJdWludDY0X3QJc3RfaW5vOwkJLyogSW5vZGUgbnVtYmVy
+ICovDQo+IAl1aW50NjRfdAlzdF9zaXplOwkvKiBGaWxlIHNpemUgKi8NCg0KU2hvdWxkIHdlIGNv
+bnNpZGVyIG1ha2luZyB0aGUgc3Rfc2l6ZSBhbmQgc3RfYmxvY2tzIDEyOC1iaXQgdmFsdWVzIHdo
+aWxlDQp3ZSdyZSBhdCBpdD8gQWx0ZXJuYXRpdmVseSwgd2UgY291bGQgYWRkIGFuIHN0X2lvY19m
+bGFnIGZvciBpdCBsYXRlci4uLg0KDQo+IAl1aW50NjRfdAlzdF9ibG9ja3M7CS8qIE51bWJlciBv
+ZiA1MTItYnl0ZSBibG9ja3MgYWxsb2NhdGVkICovDQo+IAl1aW50NjRfdAlzdF9nZW47CQkvKiBJ
+bm9kZSBnZW5lcmF0aW9uIG51bWJlciAqLw0KPiAJdWludDY0X3QJc3RfdmVyc2lvbjsJLyogRGF0
+YSB2ZXJzaW9uIG51bWJlciAqLw0KPiAJdWludDY0X3QJc3RfaW9jX2ZsYWdzOwkvKiBBcyBGU19J
+T0NfR0VURkxBR1MgKi8NCj4gCS8qIDB4OTAgKi8NCj4gCXVpbnQ2NF90CV9fc3BhcmUxWzEzXTsJ
+LyogU3BhcmUgc3BhY2UgZm9yIGZ1dHVyZSBleHBhbnNpb24gKi8NCj4gCS8qIDB4MTAwICovDQo+
+IH07DQo+IA0KPiBBbmQgYW4gZnMgaW5mb3JtYXRpb24gc3RydWN0dXJlIGZvciBsZXNzIGNvbW1v
+bmx5IG5lZWRlZCBkYXRhOg0KPiANCj4gc3RydWN0IHN0YXR4X2ZzaW5mbyB7DQo+IAkvKiAweDAw
+IC0gR2VuZXJhbCBpbmZvICovDQo+IAl1aW50MzJfdAlzdF9tYXNrOwkvKiBXaGF0IG9wdGlvbmFs
+IGZpZWxkcyBhcmUgZmlsbGVkIGluICovDQo+IAl1aW50MzJfdAlzdF90eXBlOwkvKiBGaWxlc3lz
+dGVtIHR5cGUgZnJvbSBsaW51eC9tYWdpYy5oICovDQo+IA0KPiAJLyogMHgwOCAtIGZpbGUgdGlt
+ZXN0YW1wIGdyYW51bGFyaXR5IGluZm8gKi8NCj4gCXVpbnQxNl90CXN0X2F0aW1lX2dyYW5fbWFu
+dGlzc2E7CS8qIGdyYW4oc2VjcykgPSBtYW50ICogMTBeZXhwICovDQo+IAl1aW50MTZfdAlzdF9i
+dGltZV9ncmFuX21hbnRpc3NhOw0KPiAJdWludDE2X3QJc3RfY3RpbWVfZ3Jhbl9tYW50aXNzYTsN
+Cj4gCXVpbnQxNl90CXN0X210aW1lX2dyYW5fbWFudGlzc2E7DQo+IAkvKiAweDEwICovDQo+IAlp
+bnQ4X3QJCXN0X2F0aW1lX2dyYW5fZXhwb25lbnQ7DQo+IAlpbnQ4X3QJCXN0X2J0aW1lX2dyYW5f
+ZXhwb25lbnQ7DQo+IAlpbnQ4X3QJCXN0X2N0aW1lX2dyYW5fZXhwb25lbnQ7DQo+IAlpbnQ4X3QJ
+CXN0X210aW1lX2dyYW5fZXhwb25lbnQ7DQo+IA0KPiAJLyogMHgxNCAtIEkvTyBwYXJhbWV0ZXJz
+ICovDQo+IAl1aW50MzJfdAlzdF9ibGtzaXplOwkgIC8qIEZpbGUgYmxvY2sgc2l6ZSAqLw0KPiAJ
+dWludDMyX3QJc3RfYWxsb2NfYmxrc2l6ZTsgLyogQWxsb2NhdGlvbiBibG9jayBzaXplL2FsaWdu
+bWVudCAqLw0KPiAJdWludDMyX3QJc3Rfc21hbGxfaW9fc2l6ZTsgLyogSU8gc2l6ZS9hbGlnbm1l
+bnQgdGhhdCBhdm9pZHMgZnMvcGFnZSBjYWNoZSBSTVcgKi8NCj4gCXVpbnQzMl90CXN0X3ByZWZf
+aW9fc2l6ZTsgIC8qIFByZWZlcnJlZCBJTyBzaXplIGZvciBnZW5lcmFsIHVzYWdlICovDQo+IAl1
+aW50MzJfdAlzdF9sYXJnZV9pb19zaXplOyAvKiBJTyBzaXplL2FsaWdubWVudCBmb3IgaGlnaCBi
+YW5kd2lkdGggc2VxdWVudGlhbCBJTyAqLw0KPiANCj4gCS8qIDB4MjggLSBSZXN0cmljdGlvbnMg
+b24gc3RydWN0IHN0YXR4IGNvbnRlbnRzICovDQo+IAl1aW50NjRfdAlzdF9zdXBwb3J0ZWRfaW9j
+X2ZsYWdzOyAvKiBGU19JT0NfR0VURkxBR1MgZmxhZ3Mgc3VwcG9ydGVkICAqLw0KPiANCj4gCS8q
+IDB4MzAgLSBWb2x1bWUvZmlsZXN5c3RlbSBpbmZvcm1hdGlvbiAqLw0KPiAJdWludDY0X3QJc3Rf
+ZnNpZDsJLyogU2hvcnQgNjQtYml0IEZpbGVzeXN0ZW0gSUQgKGFzIHN0YXRmcykgKi8NCj4gCXVp
+bnQ2NF90CV9fc3BhcmUwWzNdOw0KPiAJLyogMHg1MCAqLw0KPiAJdWludDhfdAkJc3Rfdm9sdW1l
+X2lkWzE2XTsgLyogVm9sdW1lL2ZzIGlkZW50aWZpZXIgKi8NCj4gCXVpbnQ4X3QJCXN0X3ZvbHVt
+ZV91dWlkWzE2XTsgLyogVm9sdW1lL2ZzIFVVSUQgKi8NCj4gCS8qIDB4ODAgKi8NCj4gCXVpbnQ2
+NF90CV9fc3BhcmUxWzhdOw0KPiAJLyogMHhjMCAqLw0KPiAJdWludDhfdAkJc3Rfdm9sdW1lX25h
+bWVbNjRdOyAvKiBWb2x1bWUgbmFtZSAodXAgdG8gNjQgY2hhcnMpICovDQo+IAkvKiAweDEwMCAq
+Lw0KPiAJdWludDhfdAkJc3RfZG9tYWluX25hbWVbMjU2XTsgLyogRG9tYWluL2NlbGwvd29ya2dy
+b3VwIG5hbWUgKHVwIHRvIDI1NiBjaGFycykgKi8NCj4gCS8qIDB4MjAwICovDQo+IH07DQoNCklm
+IHlvdSBhcmUgbWFraW5nIGEgc2VwYXJhdGUgZnNpbmZvIHN0cnVjdHVyZSwgdGhlbiBpdCB3b3Vs
+ZCBiZSBuaWNlIHRvDQpoYXZlIGZsYWdzIHRvIGluZGljYXRlIHdoYXQga2luZCBvZiBhY2xzIHRo
+ZSBmaWxlc3lzdGVtIHN1cHBvcnRzLCBhbmQgaWYNCml0IHN1cHBvcnRzIGZlYXR1cmVzIHN1Y2gg
+YXMgeGF0dHJzLCBzdWJmaWxlcyBhbmQvb3Igc25hcHNob3RzLg0KDQoNCg0KLS0gDQpUcm9uZCBN
+eWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15
+a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
