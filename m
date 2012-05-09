@@ -1,98 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:38955 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:45142 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755921Ab2EVUcw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 May 2012 16:32:52 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH] NFS: init client before declaration
-Date: Tue, 22 May 2012 20:32:51 +0000
-Message-ID: <1337718771.4269.29.camel@lade.trondhjem.org>
-References: <20120522124018.338.20817.stgit@localhost.localdomain>
-	 <1337696984.4269.4.camel@lade.trondhjem.org>
-	 <1337698816.4269.15.camel@lade.trondhjem.org>
-	 <4FBBB0DB.6050708@parallels.com>
-	 <1337701904.4269.16.camel@lade.trondhjem.org>
-	 <4FBBBC4C.5010103@parallels.com>
-	 <1337705000.4269.23.camel@lade.trondhjem.org>
-In-Reply-To: <1337705000.4269.23.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="utf-8"
+	id S1754296Ab2EITXN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 May 2012 15:23:13 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q49JNDwQ027172
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 9 May 2012 15:23:13 -0400
+Message-ID: <4FAAC40B.3000407@RedHat.com>
+Date: Wed, 09 May 2012 15:22:51 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: Steve Dickson <SteveD@redhat.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: Linux pNFS status meeting 05/09/12
+References: <4FAAB880.7090800@RedHat.com>
+In-Reply-To: <4FAAB880.7090800@RedHat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA1LTIyIGF0IDEyOjQzIC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+IE9uIFR1ZSwgMjAxMi0wNS0yMiBhdCAyMDoxOCArMDQwMCwgU3RhbmlzbGF2IEtpbnNidXJz
-a3kgd3JvdGU6DQo+ID4gV2UgaGF2ZSBhbm90aGVyIHByb2JsZW0gaGVyZS4NCj4gPiBuZnM0X2lu
-aXRfY2xpZW50KCkgd2lsbCB0cnkgdG8gY3JlYXRlIHBpcGUgZGVudHJpZXMgcHJpb3IgdG8gc2V0
-IG9mIE5GU19DU19SRUFEWSANCj4gPiB0byB0aGUgY2xpZW50LiBBbmQgZGVudHJpZXMgd2lsbCBi
-ZSBjcmVhdGVkIHNpbmNlIHNlbWFwaG9yZSBpcyBkcm9wcGVkIGFuZCANCj4gPiBwZXItbmV0IHN1
-cGVyYmxvY2sgdmFyaWFibGUgaXMgaW5pdGlhbGl6ZWQgYWxyZWFkeS4NCj4gPiBCdXQgX19ycGNf
-cGlwZWZzX2V2ZW50KCkgcmVsYXlzIG9uIHRoZSBmYWN0LCB0aGF0IG5vIGRlbnRyaWVzIHByZXNl
-bnQuDQo+ID4gTG9va3MgbGlrZSB0aGUgcHJvYmxlbSB3YXMgaW50cm9kdWNlZCBieSBtZSBpbiBh
-YWQ5NDg3Yy4uLg0KPiA+IFNvIG1heWJlIHdlIHNob3VsZCBub3QgY2FsbCAiY29udGludWUiIGlu
-c3RlYWQgIl9fcnBjX3BpcGVmc19ldmVudCgpIiwgd2hlbiANCj4gPiBjbGllbnQgYmVjb21lcyBy
-ZWFkeT8NCj4gPiBMb29rcyBsaWtlIHRoaXMgd2lsbCBhbGxvdyB1cyB0byBoYW5kbGUgc3VjaCBy
-YWNlcy4NCj4gDQo+IExldCBtZSByZXdvcmsgdGhpcyBwYXRjaCBhIGJpdC4uLg0KDQpUaGUgZm9s
-bG93aW5nIGlzIHVnbHksIGJ1dCBpdCBzaG91bGQgYmUgZGVtb25zdHJhYmx5IGNvcnJlY3QsIGFu
-ZCB3aWxsDQplbnN1cmUgdGhhdCBfX3JwY19waXBlZnNfZXZlbnQoKSB3aWxsIG9ubHkgYmUgY2Fs
-bGVkIGZvciBmdWxseQ0KaW5pdGlhbGlzZWQgbmZzX2NsaWVudHMuLi4NCg0KODwtLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0NCkZyb20gOTBjM2I5ZmU5ZmFlYWUzMmM4ZjYyOWU4YjZjYmY1ZjUwYmI5YjI5NSBNb24gU2Vw
-IDE3IDAwOjAwOjAwIDIwMDENCkZyb206IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0
-QG5ldGFwcC5jb20+DQpEYXRlOiBUdWUsIDIyIE1heSAyMDEyIDE2OjIyOjUwIC0wNDAwDQpTdWJq
-ZWN0OiBbUEFUQ0ggMS8yXSBORlN2NDogRml4IGEgcmFjZSBpbiB0aGUgbmV0IG5hbWVzcGFjZSBt
-b3VudA0KIG5vdGlmaWNhdGlvbg0KDQpTaW5jZSB0aGUgc3RydWN0IG5mc19jbGllbnQgZ2V0cyBh
-ZGRlZCB0byB0aGUgZ2xvYmFsIG5mc19jbGllbnRfbGlzdA0KYmVmb3JlIGl0IGlzIGluaXRpYWxp
-c2VkLCBpdCBpcyBwb3NzaWJsZSB0aGF0IHJwY19waXBlZnNfZXZlbnQgY2FuDQplbmQgdXAgdHJ5
-aW5nIHRvIGNyZWF0ZSBpZG1hcHBlciBlbnRyaWVzIG9uIHN1Y2ggYSB0aGluZy4NCg0KVGhlIHNv
-bHV0aW9uIGlzIHRvIGhhdmUgdGhlIG1vdW50IG5vdGlmaWNhdGlvbiB3YWl0IGZvciB0aGUNCmlu
-aXRpYWxpc2F0aW9uIG9mIGVhY2ggbmZzX2NsaWVudCB0byBjb21wbGV0ZSwgYW5kIHRoZW4gdG8N
-CnNraXAgYW55IGVudHJpZXMgZm9yIHdoaWNoIHRoZSBpdCBmYWlsZWQuDQoNClJlcG9ydGVkLWJ5
-OiBTdGFuaXNsYXYgS2luc2J1cnNreSA8c2tpbnNidXJza3lAcGFyYWxsZWxzLmNvbT4NClNpZ25l
-ZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQot
-LS0NCiBmcy9uZnMvY2xpZW50LmMgICB8ICAgMTAgKysrKysrKysrKw0KIGZzL25mcy9pZG1hcC5j
-ICAgIHwgICAxNSArKysrKysrKysrKysrKysNCiBmcy9uZnMvaW50ZXJuYWwuaCB8ICAgIDEgKw0K
-IDMgZmlsZXMgY2hhbmdlZCwgMjYgaW5zZXJ0aW9ucygrKSwgMCBkZWxldGlvbnMoLSkNCg0KZGlm
-ZiAtLWdpdCBhL2ZzL25mcy9jbGllbnQuYyBiL2ZzL25mcy9jbGllbnQuYw0KaW5kZXggNjBmN2U0
-ZS4uZDNjODU1MyAxMDA2NDQNCi0tLSBhL2ZzL25mcy9jbGllbnQuYw0KKysrIGIvZnMvbmZzL2Ns
-aWVudC5jDQpAQCAtNTgzLDYgKzU4MywxNiBAQCBmb3VuZF9jbGllbnQ6DQogCXJldHVybiBjbHA7
-DQogfQ0KIA0KK3N0YXRpYyBib29sIG5mc19jbGllbnRfcmVhZHkoY29uc3Qgc3RydWN0IG5mc19j
-bGllbnQgKmNscCkNCit7DQorCXJldHVybiBjbHAtPmNsX2NvbnNfc3RhdGUgPD0gTkZTX0NTX1JF
-QURZOw0KK30NCisNCitpbnQgbmZzX3dhaXRfY2xpZW50X3JlYWR5KGNvbnN0IHN0cnVjdCBuZnNf
-Y2xpZW50ICpjbHApDQorew0KKwlyZXR1cm4gd2FpdF9ldmVudF9raWxsYWJsZShuZnNfY2xpZW50
-X2FjdGl2ZV93cSwgbmZzX2NsaWVudF9yZWFkeShjbHApKTsNCit9DQorDQogLyoNCiAgKiBNYXJr
-IGEgc2VydmVyIGFzIHJlYWR5IG9yIGZhaWxlZA0KICAqLw0KZGlmZiAtLWdpdCBhL2ZzL25mcy9p
-ZG1hcC5jIGIvZnMvbmZzL2lkbWFwLmMNCmluZGV4IDNlOGVkYmUuLmMwNzUzYzUgMTAwNjQ0DQot
-LS0gYS9mcy9uZnMvaWRtYXAuYw0KKysrIGIvZnMvbmZzL2lkbWFwLmMNCkBAIC01MzAsOSArNTMw
-LDI0IEBAIHN0YXRpYyBzdHJ1Y3QgbmZzX2NsaWVudCAqbmZzX2dldF9jbGllbnRfZm9yX2V2ZW50
-KHN0cnVjdCBuZXQgKm5ldCwgaW50IGV2ZW50KQ0KIAlzdHJ1Y3QgbmZzX25ldCAqbm4gPSBuZXRf
-Z2VuZXJpYyhuZXQsIG5mc19uZXRfaWQpOw0KIAlzdHJ1Y3QgZGVudHJ5ICpjbF9kZW50cnk7DQog
-CXN0cnVjdCBuZnNfY2xpZW50ICpjbHA7DQorCWludCBlcnI7DQogDQorcmVzdGFydDoNCiAJc3Bp
-bl9sb2NrKCZubi0+bmZzX2NsaWVudF9sb2NrKTsNCiAJbGlzdF9mb3JfZWFjaF9lbnRyeShjbHAs
-ICZubi0+bmZzX2NsaWVudF9saXN0LCBjbF9zaGFyZV9saW5rKSB7DQorCQkvKiBXYWl0IGZvciBp
-bml0aWFsaXNhdGlvbiB0byBmaW5pc2ggKi8NCisJCWlmIChjbHAtPmNsX2NvbnNfc3RhdGUgPiBO
-RlNfQ1NfUkVBRFkpIHsNCisJCQlhdG9taWNfaW5jKCZjbHAtPmNsX2NvdW50KTsNCisJCQlzcGlu
-X3VubG9jaygmbm4tPm5mc19jbGllbnRfbG9jayk7DQorCQkJZXJyID0gbmZzX3dhaXRfY2xpZW50
-X3JlYWR5KGNscCk7DQorCQkJbmZzX3B1dF9jbGllbnQoY2xwKTsNCisJCQlpZiAoZXJyKQ0KKwkJ
-CQlyZXR1cm4gTlVMTDsNCisJCQlnb3RvIHJlc3RhcnQ7DQorCQl9DQorCQkvKiBTa2lwIG5mc19j
-bGllbnRzIHRoYXQgZmFpbGVkIHRvIGluaXRpYWxpc2UgKi8NCisJCWlmIChjbHAtPmNsX2NvbnNf
-c3RhdGUgPCAwKQ0KKwkJCWNvbnRpbnVlOw0KIAkJaWYgKGNscC0+cnBjX29wcyAhPSAmbmZzX3Y0
-X2NsaWVudG9wcykNCiAJCQljb250aW51ZTsNCiAJCWNsX2RlbnRyeSA9IGNscC0+Y2xfaWRtYXAt
-PmlkbWFwX3BpcGUtPmRlbnRyeTsNCmRpZmYgLS1naXQgYS9mcy9uZnMvaW50ZXJuYWwuaCBiL2Zz
-L25mcy9pbnRlcm5hbC5oDQppbmRleCBiNzc3YmRhLi4zZWU0MDQwIDEwMDY0NA0KLS0tIGEvZnMv
-bmZzL2ludGVybmFsLmgNCisrKyBiL2ZzL25mcy9pbnRlcm5hbC5oDQpAQCAtMTY4LDYgKzE2OCw3
-IEBAIGV4dGVybiBzdHJ1Y3QgbmZzX3NlcnZlciAqbmZzX2Nsb25lX3NlcnZlcihzdHJ1Y3QgbmZz
-X3NlcnZlciAqLA0KIAkJCQkJICAgc3RydWN0IG5mc19mYXR0ciAqLA0KIAkJCQkJICAgcnBjX2F1
-dGhmbGF2b3JfdCk7DQogZXh0ZXJuIHZvaWQgbmZzX21hcmtfY2xpZW50X3JlYWR5KHN0cnVjdCBu
-ZnNfY2xpZW50ICpjbHAsIGludCBzdGF0ZSk7DQorZXh0ZXJuIGludCBuZnNfd2FpdF9jbGllbnRf
-cmVhZHkoY29uc3Qgc3RydWN0IG5mc19jbGllbnQgKmNscCk7DQogZXh0ZXJuIGludCBuZnM0X2No
-ZWNrX2NsaWVudF9yZWFkeShzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwKTsNCiBleHRlcm4gc3RydWN0
-IG5mc19jbGllbnQgKm5mczRfc2V0X2RzX2NsaWVudChzdHJ1Y3QgbmZzX2NsaWVudCogbWRzX2Ns
-cCwNCiAJCQkJCSAgICAgY29uc3Qgc3RydWN0IHNvY2thZGRyICpkc19hZGRyLA0KLS0gDQoxLjcu
-Ny42DQoNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5l
-cg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
-DQo=
+oops... Let me revert this... send out another one that has the correct information.... sorry about that... 
+
+steved.
+
+On 05/09/2012 02:33 PM, Steve Dickson wrote:
+> 
+> The call in numbers are:
+> 
+> U.S. and Canada: (800) 451-8679
+> International dial-in number: (212) 729-5016
+> Israel Toll-Free: 1-809-462-557
+> Conference code: 564.272.1552
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
