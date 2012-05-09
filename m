@@ -1,92 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:61482 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757928Ab2EVOMn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 10:12:43 -0400
-Received: by mail-gh0-f174.google.com with SMTP id r11so777867ghr.19
-        for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 07:12:43 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: inux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
-        michael.brantley@deshaw.com, pstaubach@exagrid.com
-Subject: [PATCH v2 10/15] vfs: fix symlinkat to retry on ESTALE errors
-Date: Tue, 22 May 2012 10:12:14 -0400
-Message-Id: <1337695939-2741-11-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
-References: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:38422 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759494Ab2EIO0S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 May 2012 10:26:18 -0400
+Date: Wed, 9 May 2012 10:26:17 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: per-net rpc shutdown
+Message-ID: <20120509142617.GA24233@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c |   43 ++++++++++++++++++++++++++-----------------
- 1 files changed, 26 insertions(+), 17 deletions(-)
+Reviewing your more recent patches I think we have a problem with some
+of the code that's already merged.  See the comment in svc_shutdown_net:
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 812b978..5c8ceb9 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2966,33 +2966,42 @@ SYSCALL_DEFINE3(symlinkat, const char __user *, oldname,
- 		int, newdfd, const char __user *, newname)
- {
- 	int error;
--	char *from;
-+	char *from, *to;
- 	struct dentry *dentry;
- 	struct path path;
-+	unsigned int try = 0;
- 
- 	from = getname(oldname);
- 	if (IS_ERR(from))
- 		return PTR_ERR(from);
- 
--	dentry = user_path_create(newdfd, newname, &path, 0);
--	error = PTR_ERR(dentry);
--	if (IS_ERR(dentry))
--		goto out_putname;
-+	to = getname(newname);
-+	if (IS_ERR(to)) {
-+		putname(from);
-+		return PTR_ERR(to);
-+	}
- 
--	error = mnt_want_write(path.mnt);
--	if (error)
--		goto out_dput;
--	error = security_path_symlink(&path, dentry, from);
--	if (error)
--		goto out_drop_write;
--	error = vfs_symlink(path.dentry->d_inode, dentry, from);
-+	do {
-+		dentry = kern_path_create(newdfd, to, &path, 0, try);
-+		error = PTR_ERR(dentry);
-+		if (IS_ERR(dentry))
-+			break;
-+
-+		error = mnt_want_write(path.mnt);
-+		if (error)
-+			goto out_dput;
-+		error = security_path_symlink(&path, dentry, from);
-+		if (error)
-+			goto out_drop_write;
-+		error = vfs_symlink(path.dentry->d_inode, dentry, from);
- out_drop_write:
--	mnt_drop_write(path.mnt);
-+		mnt_drop_write(path.mnt);
- out_dput:
--	dput(dentry);
--	mutex_unlock(&path.dentry->d_inode->i_mutex);
--	path_put(&path);
--out_putname:
-+		dput(dentry);
-+		mutex_unlock(&path.dentry->d_inode->i_mutex);
-+		path_put(&path);
-+	} while (retry_estale(error, try++));
-+	putname(to);
- 	putname(from);
- 	return error;
- }
--- 
-1.7.7.6
+	void svc_shutdown_net(struct svc_serv *serv, struct net *net)
+	{               
+		/*      
+		 * The set of xprts (contained in the sv_tempsocks and
+		 * sv_permsocks lists) is now constant, since it is modified
+		 * only by accepting new sockets (done by service threads in
+		 * svc_recv) or aging old ones (done by sv_temptimer), or
+		 * configuration changes (excluded by whatever locking the
+		 * caller is using--nfsd_mutex in the case of nfsd).  So it's
+		 * safe to traverse those lists and shut everything down:
+		 */       
+		svc_close_net(serv, net);
+	
+		if (serv->sv_shutdown)
+			serv->sv_shutdown(serv, net);
+	}
 
+So we depend on the fact that neither the server threads nor
+sv_temptimer are running here to be able to safely traverse those lists
+of sockets.
+
+But it looks to me like that's no longer true--we're shutting down just
+one namespace here, and others may still be running.  If so and if they
+modify sv_tempsocks or sv_permsocks while we're running through them
+then we're going to get a crash.
+
+--b.
