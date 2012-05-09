@@ -1,62 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:58222 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933301Ab2EPAgB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 20:36:01 -0400
-Received: by dady13 with SMTP id y13so221673dad.19
-        for <linux-nfs@vger.kernel.org>; Tue, 15 May 2012 17:36:01 -0700 (PDT)
+Received: from relay.parallels.com ([195.214.232.42]:55045 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932205Ab2EIVEV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 May 2012 17:04:21 -0400
+Message-ID: <4FAADBD3.7020109@parallels.com>
+Date: Thu, 10 May 2012 01:04:19 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-In-Reply-To: <4FB282F7.5090408@panasas.com>
-References: <1337096303-2516-1-git-send-email-bergwolf@gmail.com>
- <20120515160855.GA5911@infradead.org> <4FB282F7.5090408@panasas.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Wed, 16 May 2012 08:35:41 +0800
-Message-ID: <CA+a=Yy73hqYxgbBhroJmGpvJOkNRPoTiX6uLeSjY1-PXT=t7jQ@mail.gmail.com>
-Subject: Re: [PATCH 1/2] NFS: call block plug around direct write
-To: Boaz Harrosh <bharrosh@panasas.com>, Christoph Hellwig <hch@infradead.org>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH 0/6] Lockd: service start cleanup patch set
+References: <20120425141934.22909.53047.stgit@localhost6.localdomain6> <20120509190855.GB27077@fieldses.org>
+In-Reply-To: <20120509190855.GB27077@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 16, 2012 at 12:23 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> On 05/15/2012 07:08 PM, Christoph Hellwig wrote:
+09.05.2012 23:08, J. Bruce Fields написал:
+> On Wed, Apr 25, 2012 at 06:22:32PM +0400, Stanislav Kinsbursky wrote:
+>> This patch set simplifies LockD start logic, makes code looks straight-forward
+>> and clear.
+> I've applied and pushed these out.
 >
->> On Tue, May 15, 2012 at 11:38:22PM +0800, Peng Tao wrote:
->>> We bypass generic_file_aio_write() but would want to call block plug.
->>
->> We in this case is the pnfs block driver at most.  Thus these should
->> be pnfs block code.
-Agreed. Just that for buffer IO case all call into block plug, so I
-thought it might be OK in DIO case as well... Anyway. I will make it
-block specific and call it LD()->dio_begin and LD()->dio_end. I am
-cooking some dio alignment patches for block layout driver and would
-love to put them there as well.
+> I believe I now have everything from you except your latest grace-period
+> handling rfc.  Could you check and make sure that I'm not missing
+> anything else, and that I haven't messed up anything else?
 
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
-> I thought so too.
->
-> But reading the code more closely it might be hard for the blocklayout
-> to figure out the right state to call these two. Specially the call to
-> blk_finish_plug(). So you might need to add a new LD API such as
-> LD()->finish_plug() which is empty for others.
->
-> But again inspecting the code it looks like blk_start_plug() is a no-op
-> and blk_finish_plug() is specially optimized for the empty case.
->
-They are empty only when !CONFIG_BLOCK. I will make it block layout
-specific as said above.
+Sure, Bruce.
+I'll check and reply in few days.
 
-Thanks,
-Tao
-> So is it worth it, the extra effort? I do understand the temptation
-> to get lazy here.
+> --b.
 >
-> Just my $0.017
-> Boaz
+>> The following series consists of:
+>>
+>> ---
+>>
+>> Stanislav Kinsbursky (6):
+>>        LockD: pass service to per-net up and down functions
+>>        LockD: use existent per-net data function on service creation
+>>        LockD: service creation function introduced
+>>        LockD: move global usage counter manipulation from error path
+>>        LockD: service start function introduced
+>>        LockD: add debug message to start and stop functions
+>>
+>>
+>>   fs/lockd/svc.c |  140 +++++++++++++++++++++++++++++++++-----------------------
+>>   1 files changed, 83 insertions(+), 57 deletions(-)
+>>
+
