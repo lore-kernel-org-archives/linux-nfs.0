@@ -1,137 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f174.google.com ([209.85.216.174]:39465 "EHLO
-	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753302Ab2EVKlR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 06:41:17 -0400
-Received: by qcro28 with SMTP id o28so3839291qcr.19
-        for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 03:41:17 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com
-Subject: [PATCH v4] statd: drop all capabilities from the bounding set as well
-Date: Tue, 22 May 2012 06:41:10 -0400
-Message-Id: <1337683270-14260-1-git-send-email-jlayton@redhat.com>
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:38030
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756897Ab2EIMF4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 May 2012 08:05:56 -0400
+Date: Wed, 9 May 2012 08:05:44 -0400
+From: Christoph Hellwig <hch@infradead.org>
+To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: Christoph Hellwig <hch@infradead.org>, David Howells <dhowells@redhat.com>,
+        Dave Chinner <david@fromorbit.com>, adilger@dilger.ca,
+        bfields@fieldses.org, smfrench@gmail.com, ben@decadent.org.uk,
+        Trond.Myklebust@netapp.com, roland@hack.frob.com, jra@samba.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-ext4@vger.kernel.org, linux-api@vger.kernel.org,
+        libc-alpha@sourceware.org
+Subject: Re: Extended file stat: Splitting file- and fs-specific info?
+Message-ID: <20120509120544.GA17535@infradead.org>
+References: <20120509002420.GL5091@dastard>
+ <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+ <16281.1336508382@redhat.com>
+ <20170.1336555274@redhat.com>
+ <20120509111958.GA11345@infradead.org>
+ <4FAA5B24.1020306@itwm.fraunhofer.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FAA5B24.1020306@itwm.fraunhofer.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-statd drops all capabilities except for CAP_NET_BIND when it starts. It's
-possible though that if it ever had a compromise that an attacker would be
-able to invoke a setuid process (or something with file capabilities) in
-order to reinstate some caps.
+On Wed, May 09, 2012 at 01:55:16PM +0200, Bernd Schubert wrote:
+> The basic idea of generation numbers is to check if an inode was
+> recycled, so only if the tuple of inode-number and generation-number
+> matches we still have the same file. Kernel nfs
 
-This could happen as a result of the daemon becoming compromised, or
-possibly as a result of the ha-callout program becoming compromised.
-
-In order to prevent that, have statd also prune the capability bounding
-set to nothing prior to dropping capabilities. That ensures that the
-process won't be able to reacquire capabilities via any means --
-including exec'ing a setuid program.
-
-We do however need to be cognizant of the fact that PR_CAPBSET_DROP was
-only added in 2.6.25, so check to make sure that #define exists via
-autoconf before we rely on it. In order to do that, we must add
-ax_check_define.m4 from the GNU autoconf macro archive.
-
-Furthermore, do a runtime check to see if /proc/sys/kernel/cap-bound
-exists before attempting to clear the bounding set. If it does, then
-don't bother trying since it won't work. In that event though, do
-throw a warning however since the presence of that file indicates that
-there is a disconnect between the build and runtime environments.
-
-Cc: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- support/nsm/file.c |   57 ++++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 files changed, 55 insertions(+), 2 deletions(-)
-
-diff --git a/support/nsm/file.c b/support/nsm/file.c
-index 5dd52c1..5476446 100644
---- a/support/nsm/file.c
-+++ b/support/nsm/file.c
-@@ -338,10 +338,10 @@ nsm_is_default_parentdir(void)
-  *
-  * Returns true if successful, or false if some error occurred.
-  */
-+#ifdef HAVE_SYS_CAPABILITY_H
- static _Bool
- nsm_clear_capabilities(void)
- {
--#ifdef HAVE_SYS_CAPABILITY_H
- 	cap_t caps;
- 
- 	caps = cap_from_text("cap_net_bind_service=ep");
-@@ -357,10 +357,60 @@ nsm_clear_capabilities(void)
- 	}
- 
- 	(void)cap_free(caps);
--#endif
- 	return true;
- }
- 
-+#define CAP_BOUND_PROCFILE "/proc/sys/kernel/cap-bound"
-+static _Bool
-+prune_bounding_set(void)
-+{
-+#ifdef PR_CAPBSET_DROP
-+	int ret;
-+	unsigned long i;
-+	struct stat st;
-+
-+	/*
-+	 * Prior to kernel 2.6.25, the capabilities bounding set was a global
-+	 * value. Check to see if /proc/sys/kernel/cap-bound exists and don't
-+	 * bother to clear the bounding set if it does.
-+	 */
-+	ret = stat(CAP_BOUND_PROCFILE, &st);
-+	if (!ret) {
-+		xlog(L_WARNING, "%s exists. Not attempting to clear "
-+				"capabilities bounding set.",
-+				CAP_BOUND_PROCFILE);
-+		return true;
-+	} else if (errno != ENOENT) {
-+		/* Warn, but attempt to clear the bounding set anyway. */
-+		xlog(L_WARNING, "Unable to stat %s: %m", CAP_BOUND_PROCFILE);
-+	}
-+
-+	/* prune the bounding set to nothing */
-+	for (i = 0; i <= CAP_LAST_CAP; ++i) {
-+		ret = prctl(PR_CAPBSET_DROP, i, 0, 0, 0);
-+		if (ret) {
-+			xlog(L_ERROR, "Unable to prune capability %lu from "
-+				      "bounding set: %m", i);
-+			return false;
-+		}
-+	}
-+#endif /* PR_CAPBSET_DROP */
-+	return true;
-+}
-+#else /* !HAVE_SYS_CAPABILITY_H */
-+static _Bool
-+nsm_clear_capabilities(void)
-+{
-+	return true;
-+}
-+
-+static _Bool
-+prune_bounding_set(void)
-+{
-+	return true;
-+}
-+#endif /* HAVE_SYS_CAPABILITY_H */
-+
- /**
-  * nsm_drop_privileges - drop root privileges
-  * @pidfd: file descriptor of a pid file
-@@ -393,6 +443,9 @@ nsm_drop_privileges(const int pidfd)
- 		return false;
- 	}
- 
-+	if (!prune_bounding_set())
-+		return false;
-+
- 	if (st.st_uid == 0) {
- 		xlog_warn("Running as root.  "
- 			"chown %s to choose different user", nsm_base_dirname);
--- 
-1.7.7.6
-
+NFS does not and should not look at the inode generation.  Except for a
+bit of legacy code for the old pre-Linux 2.4 filehandles it looks at the
+opaque file handle returned and only interpreted by the filesystem.  Any
+userspace NFS server should do the same.
