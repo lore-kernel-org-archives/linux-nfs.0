@@ -1,51 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:59355 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:43746 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754655Ab2EQM3P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 May 2012 08:29:15 -0400
-Message-ID: <4FB4EEFB.7070102@RedHat.com>
-Date: Thu, 17 May 2012 08:28:43 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1759661Ab2EIOfS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 May 2012 10:35:18 -0400
+Date: Wed, 9 May 2012 10:35:18 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: per-net rpc shutdown
+Message-ID: <20120509143518.GB24233@fieldses.org>
+References: <20120509142617.GA24233@fieldses.org>
 MIME-Version: 1.0
-To: Jim Rees <rees@umich.edu>
-CC: Mike Frysinger <vapier@gentoo.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] osd_login: fix DESTDIR install
-References: <1337232243-18088-1-git-send-email-vapier@gentoo.org> <20120517115330.GA3733@umich.edu>
-In-Reply-To: <20120517115330.GA3733@umich.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120509142617.GA24233@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Jim,
-
-On 05/17/2012 07:53 AM, Jim Rees wrote:
-> Mike Frysinger wrote:
+On Wed, May 09, 2012 at 10:26:17AM -0400, J. Bruce Fields wrote:
+> Reviewing your more recent patches I think we have a problem with some
+> of the code that's already merged.  See the comment in svc_shutdown_net:
 > 
->   diff --git a/utils/osd_login/Makefile.am b/utils/osd_login/Makefile.am
->   index adc493a..c85584c 100644
->   --- a/utils/osd_login/Makefile.am
->   +++ b/utils/osd_login/Makefile.am
->   @@ -1,12 +1,11 @@
->    ## Process this file with automake to produce Makefile.in
->    
->   -OSD_LOGIN_FILES= osd_login
->   -
->   -EXTRA_DIST= $(OSD_LOGIN_FILES)
->   +# These scripts go in /sbin (not /usr/sbin), and that cannot be
->   +# overriden at config time.
->   +sbindir = /sbin
-> 
-> You misspelled "overridden."  Yes, I know you just copied this line from
-> mount/Makefile.am, but there is no sense compounding the error.
-Thanks for pointing out the misspelling in mount/Makefile.am... its
-been corrected... 
+> 	void svc_shutdown_net(struct svc_serv *serv, struct net *net)
+> 	{               
 
-steved.
+By the way, note there's some preexisting trouble here:
 
+> 		/*      
+> 		 * The set of xprts (contained in the sv_tempsocks and
+> 		 * sv_permsocks lists) is now constant, since it is modified
+> 		 * only by accepting new sockets (done by service threads in
+> 		 * svc_recv) or aging old ones (done by sv_temptimer), or
+> 		 * configuration changes (excluded by whatever locking the
+> 		 * caller is using--nfsd_mutex in the case of nfsd).
+
+I don't think the callers are as careful about this as they should be,
+so I think there may be some cases where we could crash if there are
+multiple processes concurrently trying to start, stop, and/or modify the
+listening sockets of a server.
+
+We need to fix that too.
+
+(I haven't actually seen that bug in practice.  We *did* see people hit
+bugs on shutdown of a busy server before fixing the receive/shutdown
+races, though.)
+
+--b.
+
+>		   So it's
+> 		 * safe to traverse those lists and shut everything down:
+> 		 */       
+> 		svc_close_net(serv, net);
+> 	
+> 		if (serv->sv_shutdown)
+> 			serv->sv_shutdown(serv, net);
+> 	}
 > 
-> Also it might be worth mentioning in the comment why we have this
-> restriction.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> So we depend on the fact that neither the server threads nor
+> sv_temptimer are running here to be able to safely traverse those lists
+> of sockets.
+> 
+> But it looks to me like that's no longer true--we're shutting down just
+> one namespace here, and others may still be running.  If so and if they
+> modify sv_tempsocks or sv_permsocks while we're running through them
+> then we're going to get a crash.
+> 
+> --b.
