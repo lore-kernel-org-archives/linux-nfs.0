@@ -1,178 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:41784 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965929Ab2EORVM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 13:21:12 -0400
-Message-ID: <4FB29074.6010606@panasas.com>
-Date: Tue, 15 May 2012 20:20:52 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:49548 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757852Ab2EILzc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 May 2012 07:55:32 -0400
+Message-ID: <4FAA5B24.1020306@itwm.fraunhofer.de>
+Date: Wed, 09 May 2012 13:55:16 +0200
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
 MIME-Version: 1.0
-To: Idan Kedar <idank@tonian.com>
-CC: Johannes Schild <JSchild@gmx.de>, <osd-dev@open-osd.org>,
-        <linux-nfs@vger.kernel.org>
-Subject: Re: Questions about Exofs
-References: <20120515090332.182970@gmx.net> <4FB22658.9010909@panasas.com> <20120515121931.192500@gmx.net> <CABpMAy+bV7-UZU0gGOFWk+ZfHLGi+D=ntNLjRHFYZzTtwXG_RA@mail.gmail.com> <4FB25D2F.1070403@panasas.com> <CABpMAyJ9F5c52ntMCL1+gwDCcbMYMEkxVEHW7bfpjm6H5boSCg@mail.gmail.com> <4FB270E9.5000904@panasas.com> <CABpMAy+OWcp7VAOGK4nYWfcY4iZ9a1WQHPUbh5pxotYL9yy+KA@mail.gmail.com>
-In-Reply-To: <CABpMAy+OWcp7VAOGK4nYWfcY4iZ9a1WQHPUbh5pxotYL9yy+KA@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
+To: Christoph Hellwig <hch@infradead.org>
+CC: David Howells <dhowells@redhat.com>, Dave Chinner <david@fromorbit.com>,
+        adilger@dilger.ca, bfields@fieldses.org, smfrench@gmail.com,
+        ben@decadent.org.uk, Trond.Myklebust@netapp.com, roland@hack.frob.com,
+        jra@samba.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
+        linux-api@vger.kernel.org, libc-alpha@sourceware.org
+Subject: Re: Extended file stat: Splitting file- and fs-specific info?
+References: <20120509002420.GL5091@dastard> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <16281.1336508382@redhat.com> <20170.1336555274@redhat.com> <20120509111958.GA11345@infradead.org>
+In-Reply-To: <20120509111958.GA11345@infradead.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/15/2012 07:21 PM, Idan Kedar wrote:
-<snip>
-
->> 8 OSDs with a mirror ? what was the mkfs.exofs command line you used?
-> Something along the lines of
-> # LD_LIBRARY_PATH=lib ./usr/mkfs.exofs --pid=0x10000 --format
-> --mirrors=1 --group_width=2 --group_depth=2 --dev=/dev/osd0
-> --osdname=$(uuid) --dev=/dev/osd1 --osdname=$(uuid) --dev=/dev/osd2
-> --osdname=$(uuid) ...
-> 
-> I don't remember exactly at the moment, but I will bump this thread
-> when I'll start using RAID again.
-
-
-Certainly missing the --format thing.  --osdname= without an --format
-is ignored.
-
-Again if you never set an OSD_NAME on the devices in the past this will
-not work.
-
-But perhaps you did --format and forgot
-
+On 05/09/2012 01:19 PM, Christoph Hellwig wrote:
+> On Wed, May 09, 2012 at 10:21:14AM +0100, David Howells wrote:
+>> Dave Chinner<david@fromorbit.com>  wrote:
 >>
->> And did you use one otgtd with 8 targets, or 8 targets (8 IP addresses)
->> with one target each, or a combination?
-> one target with 8 LUNs
+>>> I don't think we want to expose the inode generation numbers. It is
+>>> trivial to construct NFS file handles (usually just fsid, inode
+>>> number and generation) with that information and hence bypass
+>>> security checks to access files.
 >>
->> What is the otgtd platform? what file system? what HW and HD environment?
-> osc-osd over ext4, 64 bit VirtualBox VM over x86_64.
+>> I was asked for it by Bernd Schubert for userspace NFS servers and FUSE -
+>> maybe he can say what he wants it for.
+>
+> It's entirely broken, as a generation number might be part of the file
+> handle (and for Linux-like filesystems normally is), but it's entirely
+> up to the filesystem to decide how it works.  That's why we added system
+> calls to do operations on opaque file handles that the file system
+> controls.  Exposing a completely meaningless "generation" is a bad idea.
+>
+
+The basic idea of generation numbers is to check if an inode was 
+recycled, so only if the tuple of inode-number and generation-number 
+matches we still have the same file. Kernel nfs uses that and unfs3 uses 
+it via EXT2_IOC_GETVERSION, which has the overhead of an additional 
+syscall. Unionfs-fuse usually keeps file open, however, it might run out 
+of the maximum allowed files and I plan to add a mode to close and 
+re-open files as failback mode. For that the definite knowledge if a 
+file/inode is still the very same and the inode was not just recycled is 
+crucial.
+
+All of that being said, I think with open_by_handle_at() syscall we 
+don't need the inode generation number any more.
 
 
-OK that's a fishy setup.
 
-The otgtd is sensitive to timeouts which I never investigated properly.
-It looks like the OSD_VM-to-host, probably a single link, is very slow
-and imagine 8 initiators actually banging on the same single slow link.
-One of the commands times out, probably just a guess
-
-The best for a VM setup, that I have is:
-
-VM1	- exofs+MDS
-VM2	- pnfs client.
-   (On my dev machine I have VM2+VM1 combined, and mount on localhost)
-
-HOST	- Run otgtd naively on host for best results.
-          Best is to spread all targets on as many physical HD devices.
-	  Note that multiple targets from the same OSD-host only makes
-          "preformance" sense if they each serve a different spindle.
-          Unless in a simulated test environment as yourself
-
-Which reminds me that upstream tgtd as a few fixes in this area I should
-integrate.
-
->>
->> And yes otgtd has some instabilities.
->>
->> There are two I can think off:
->> * Over xfs the --format command crashes the otgtd (aborted exit no
->>  crash dump) Debugging welcome.
->>
->> * When lots of pnfs clients do heavy writing to the same otgtd, it
->>  times-out and disconnects.
-> it was a single client performing git-clone of the kernel tree.
->>  At Panasas we have a watch-dog that reloads it in a loop.
->>  I have only seen this on FreeBSD, in Linux it never happened
->>  to me.
->>
->> Please give me more details on what you did before it exited
->> like that.
-> Nothing special, just git-clone. at some point it hanged (at a
-> different place every time), and when investigated a bit I saw that
-> otgtd is dead.
->>
->>
->> In anyway I pushed a tree I tested with at:
->>        git://git.open-osd.org/linux-open-osd.git
->>
->> checkout the *merge_and_compile-3.3* branch. But in principal they are the
->> same:
->>        fs/exofs                - Added autologin support
->>        fs/nfs/objlayout        - Added autologin support
->>        fs/nfsd                 - Same
->>        fs/nfs                  - Few fixes that are in benny's tree are not in linux-open-osd
-> Thanks, I will try it soon.
->>
->> So it should all be the same. For a proper cluster setup you will probably
->> need my do-ect scripts which take a cluster descriptor file and does
->> generic loops on everything.
-> Please note that I didn't try a cluster setup, just a single DS with 8
-> LUNs, single MDS, and single pNFS client, all 3 different VMs on the
-> same host.
-
-
-Just semantics so we speak the same language. Yes you do have a cluster.
-
-In pnfs-objects world there are no such thing as DSs there is MDS and
-there are OSDs. (objects). The OSDs are the equivalent of DSs in "files"
-and LUNs in "blocks"
-
-A none cluster is when you have a single OSD. (No striping, no multiple
-devices, what I call the trivial layout)
-
->>
->> Thanks
->> Boaz
-> 
-
-
-If you want there is a new tree at:
-	git://git.open-osd.org/tests.git
-
-There is one script that does everything. ./do-ect (exofs cluster test)
-
-You edit the ect.conf file (or run ./do-ect -f alternate.conf file)
-
-In turn inside ect.conf you edit your topology and setup. It also points
-to a device-table file (osds_list=XXX.olst) see lots of *.olst example
-files.
-
-list of operations.
-* Read the scripts and study what they do. They are just a convenience
-  not a black-box application.
-* Edit a new XXX.olst file
-* Edit ect.conf with your setup.
-[On MDS]
-* ./do-ect login2	- login to all devices specified by osds_list=
-* ./do-ect format2	- Set up an FS as specified by ect.conf
-* ./do-ect mount2	- mount the exofs file system
-* ./do-ect seturi	- If you have the autologin version and want an autologin support.
-
-[On pnfs client]
-* ./do-ect login2	- Only if autologin is not enabled. You will need the
-                          /sbin/osd_login script, which is part of the newest nfs-utils
-		          (Tell me if you can't find it)
-
-* ./do-ect pnfs_start  - mount the pnfs server on pnfs_dir as specified in ect.conf
-
-And there are other facilities as well. In principal the commands that end with "2"
-are those that preform an action on the XXX.olst file and receive an optional parameter
-as the OSDs list. For example:
-
-./do-ect login2		
-	- login to default list specified in ect.conf
-
-./do-ect -f clusterXYZ.conf format2 device_table7.olst
-	- Format according to setup in clusterXYZ.conf file but override the OSDs list
-	  instead use device_table7.olst.
-
-Again please read the scripts before using. the .conf and .olst files are yours, I
-just have them in git as an history of the tests I conducted.
-
-But if you have any changes to the do-ect and fn-osd.sh please send me a patch.
-
-There are other interesting scripts in there for example the target/ dir as a
-way of controlling lots of OSD hosts in a single command using the closh script (CLuster Output SHell)
-which also operate on the .olst and .clst files. Have fun
-
-Cheers
-Boaz
+Cheers,
+Bernd
