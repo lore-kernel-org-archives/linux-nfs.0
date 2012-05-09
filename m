@@ -1,131 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:22893 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:30151 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751454Ab2EDQEC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 May 2012 12:04:02 -0400
-Message-ID: <4FA3FDDB.6070600@redhat.com>
-Date: Fri, 04 May 2012 18:03:39 +0200
-From: Niels de Vos <ndevos@redhat.com>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        David Howells <dhowells@redhat.com>,
-        Jeffrey Layton <jlayton@redhat.com>
-Subject: Re: [RFC] Dataloss on NFS-clients who modify an mmap()'d area after
- closing the file-descriptor
-References: <4FA2A56B.1030208@redhat.com>  <1336059797.5385.22.camel@lade.trondhjem.org> <4FA2BB68.7070304@redhat.com> <1336066014.5385.41.camel@lade.trondhjem.org>
-In-Reply-To: <1336066014.5385.41.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+	id S1756932Ab2EITSx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 May 2012 15:18:53 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Fred Isaman <iisaman@netapp.com>
+Subject: [PATCH 5/5] NFS: Clean up - Simplify reference counting in fs/nfs/direct.c
+Date: Wed,  9 May 2012 15:18:43 -0400
+Message-Id: <1336591123-23400-5-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1336591123-23400-4-git-send-email-Trond.Myklebust@netapp.com>
+References: <1336591123-23400-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1336591123-23400-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1336591123-23400-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1336591123-23400-4-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/03/2012 07:26 PM, Myklebust, Trond wrote:
- > On Thu, 2012-05-03 at 19:07 +0200, Niels de Vos wrote:
- >> On 05/03/2012 05:43 PM, Myklebust, Trond wrote:
- >>   >  On Thu, 2012-05-03 at 17:34 +0200, Niels de Vos wrote:
- >>   >>  When an application on an NFS-client (tested with NFSv3) executes the
- >>   >>  following steps, data written after the close() is never flushed to the
- >>   >>  server:
- >>   >>
- >>   >>  1. open()
- >>   >>  2. mmap()
- >>   >>  3. close()
- >>   >>  4.<modify data in the mmap'ed area>
- >>   >>  5. munmap()
- >>   >>
- >>   >>  Dropping the caches (via /proc/sys/vm/drop_caches) or unmounting does not
- >>   >>  result in the data being sent to the server.
- >>   >>
- >>   >>  The man-page for mmap (man 2 mmap) does mention that closing the file-
- >>   >>  descriptor does not munmap() the area. Using the mmap'ed area after a
- >>   >>  close() sound valid to me (even if it may be bad practice).
- >>   >>
- >>   >>  Investigation and checking showed that the NFS-client does not handle
- >>   >>  munmap(), and only flushes on close(). To solve this problem, least two
- >>   >>  solutions can be proposed:
- >>   >>
- >>   >>  a. f_ops->release() is called on munmap() as well as on close(),
- >>   >>       therefore release() can be used to flush data as well.
- >>   >>  b. In the 'struct vm_operations_struct' add a .close to the
- >>   >>       'struct vm_area_struct' on calling mmap()/nfs_file_mmap() and flush
- >>   >>       the data in the new close() function.
- >>   >>
- >>   >>  Solution a. contains currently very few code changes:
- >>   >>
- >>   >>  --- a/fs/nfs/inode.c
- >>   >>  +++ b/fs/nfs/inode.c
- >>   >>  @@ -713,6 +713,8 @@ int nfs_open(struct inode *inode, struct file *filp)
- >>   >>
- >>   >>     int nfs_release(struct inode *inode, struct file *filp)
- >>   >>     {
- >>   >>  +       if (S_ISREG(inode->i_mode)&&   inode->i_mapping->nrpages != 0) {
- >>   >>  +               nfs_sync_mapping(inode->i_mapping);
- >>   >>            nfs_file_clear_open_context(filp);
- >>   >>            return 0;
- >>   >>     }
- >>   >>
- >>   >>  The disadvantage is, that nfs_release() is called on close() too. That
- >>   >>  means this causes a flushing of dirty pages, and just after that the
- >>   >>  nfs_file_clear_open_context() might flush again. The advantage is that
- >>   >>  it is possible (though not done at the moment) to return an error in
- >>   >>  case flushing failed.
- >>   >>
- >>   >>  Solution b. does not provide an option to return an error, but does not
- >>   >>  get called on each close():
- >>   >>
- >>   >>  --- a/fs/nfs/file.c
- >>   >>  +++ b/fs/nfs/file.c
- >>   >>  @@ -547,9 +547,17 @@ out:
- >>   >>     	return ret;
- >>   >>     }
- >>   >>
- >>   >>  +static void nfs_vm_close(struct vm_area_struct * vma)
- >>   >>  +{
- >>   >>  +	struct file *filp = vma->vm_file;
- >>   >>  +
- >>   >>  +	nfs_file_flush(filp, (fl_owner_t)filp);
- >>   >>  +}
- >>   >>  +
- >>   >>     static const struct vm_operations_struct nfs_file_vm_ops = {
- >>   >>     	.fault = filemap_fault,
- >>   >>     	.page_mkwrite = nfs_vm_page_mkwrite,
- >>   >>  +	.close = nfs_vm_close,
- >>   >>     };
- >>   >>
- >>   >>     static int nfs_need_sync_write(struct file *filp, struct inode *inode)
- >>   >>
- >>   >>  I would like some feedback on what solution is most acceptable, or any
- >>   >>  other suggestions.
- >>   >
- >>   >  Neither solution is acceptable. This isn't a close-to-open cache
- >>   >  consistency issue.
- >>   >
- >>   >  The syntax of mmap() for both block and NFS mounts is the same: writes
- >>   >  are not guaranteed to hit the disk until your application explicitly
- >>   >  calls msync().
- >>   >
- >>
- >> Okay, that makes sense. But if the application never calls msync(), and
- >> just munmap()'s the area, when should the changes be written? I did not
- >> expect that unmounting just disregards the data.
- >
- > That suggests that the VM is failing to dirty the pages on munmap()
- > before releasing the vma->vm_file. If so, then that would be a VM bug...
- >
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/direct.c |   15 ++++-----------
+ 1 files changed, 4 insertions(+), 11 deletions(-)
 
-I've checked if the VM tags the pages as dirty:
-- f_ops->release() is called on munmap(). An added printk there, shows
-   that inode->i_state is set to I_DIRTY_PAGE.
-- mapping_tagged(filp->f_mapping, PAGECACHE_TAG_DIRTY) also returns true
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 845e201..c47a46e 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -486,10 +486,8 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+ 	}
+ 	nfs_pageio_complete(&desc);
+ 
+-	while (!list_empty(&failed)) {
+-		nfs_release_request(req);
++	while (!list_empty(&failed))
+ 		nfs_unlock_and_release_request(req);
+-	}
+ 
+ 	if (put_dreq(dreq))
+ 		nfs_direct_write_complete(dreq, dreq->inode);
+@@ -518,9 +516,9 @@ static void nfs_direct_commit_complete(struct nfs_commit_data *data)
+ 		nfs_list_remove_request(req);
+ 		if (dreq->flags == NFS_ODIRECT_RESCHED_WRITES) {
+ 			/* Note the rewrite will go through mds */
++			kref_get(&req->wb_kref);
+ 			nfs_mark_request_commit(req, NULL, &cinfo);
+-		} else
+-			nfs_release_request(req);
++		}
+ 		nfs_unlock_and_release_request(req);
+ 	}
+ 
+@@ -657,13 +655,11 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *d
+ 				break;
+ 			}
+ 			nfs_lock_request(req);
+-			kref_get(&req->wb_kref);
+ 			req->wb_index = pos >> PAGE_SHIFT;
+ 			req->wb_offset = pos & ~PAGE_MASK;
+ 			if (!nfs_pageio_add_request(desc, req)) {
+ 				result = desc->pg_error;
+ 				nfs_unlock_and_release_request(req);
+-				nfs_release_request(req);
+ 				break;
+ 			}
+ 			pgbase = 0;
+@@ -734,10 +730,8 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
+ 		switch (bit) {
+ 		case NFS_IOHDR_NEED_RESCHED:
+ 		case NFS_IOHDR_NEED_COMMIT:
++			kref_get(&req->wb_kref);
+ 			nfs_mark_request_commit(req, hdr->lseg, &cinfo);
+-			break;
+-		default:
+-			nfs_release_request(req);
+ 		}
+ 		nfs_unlock_and_release_request(req);
+ 	}
+@@ -755,7 +749,6 @@ static void nfs_write_sync_pgio_error(struct list_head *head)
+ 	while (!list_empty(head)) {
+ 		req = nfs_list_entry(head->next);
+ 		nfs_list_remove_request(req);
+-		nfs_release_request(req);
+ 		nfs_unlock_and_release_request(req);
+ 	}
+ }
+-- 
+1.7.7.6
 
- From my understanding this is what the VM is expected to do, and the
-pages are marked dirty correctly.
-
-However, nfs_inode->ndirty and nfs_inode->ncommit are both 0. It is
-unclear to me how the VM is supposed to interact with the nfs_inode.
-Some clarification or suggestion what to look into would be much
-appreciated.
-
-Cheers,
-Niels
