@@ -1,71 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:38192 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756963Ab2EGOMe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 May 2012 10:12:34 -0400
-Received: by mail-yw0-f46.google.com with SMTP id m54so4163244yhm.19
-        for <linux-nfs@vger.kernel.org>; Mon, 07 May 2012 07:12:34 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
-        michael.brantley@deshaw.com
-Subject: [PATCH v1 RESEND 12/12] vfs: fix renameat to retry on ESTALE errors
-Date: Mon,  7 May 2012 10:12:11 -0400
-Message-Id: <1336399931-20234-13-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1336399931-20234-1-git-send-email-jlayton@redhat.com>
-References: <1336399931-20234-1-git-send-email-jlayton@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:53288 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757174Ab2EILOd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 May 2012 07:14:33 -0400
+Date: Wed, 9 May 2012 07:14:20 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Dave Chinner <david@fromorbit.com>
+Cc: David Howells <dhowells@redhat.com>, adilger@dilger.ca, smfrench@gmail.com,
+        ben@decadent.org.uk, Trond.Myklebust@netapp.com, roland@hack.frob.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-ext4@vger.kernel.org, linux-api@vger.kernel.org,
+        libc-alpha@sourceware.org
+Subject: Re: Extended file stat: Splitting file- and fs-specific info?
+Message-ID: <20120509111420.GA23636@fieldses.org>
+References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+ <16281.1336508382@redhat.com>
+ <20120509002420.GL5091@dastard>
+ <20120509010941.GC20160@fieldses.org>
+ <20120509042532.GO5091@dastard>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120509042532.GO5091@dastard>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...as always, rename is the messiest of the bunch...
+On Wed, May 09, 2012 at 02:25:32PM +1000, Dave Chinner wrote:
+> On Tue, May 08, 2012 at 09:09:41PM -0400, J. Bruce Fields wrote:
+> > On Wed, May 09, 2012 at 10:24:20AM +1000, Dave Chinner wrote:
+> > > On Tue, May 08, 2012 at 09:19:42PM +0100, David Howells wrote:
+> > > > 
+> > > > Should I split the file-specific info and the fs-specific info and make the
+> > > > second optional?  What I'm thinking of is something like this:
+> > > > 
+> > > > Have a file information structure:
+> > > > 
+> > > > struct statx {
+> > > > 	/* 0x00 */
+> > > > 	uint32_t	st_mask;	/* What results were written */
+> > > > 	uint32_t	st_information;	/* Information about the file */
+> > > > 	uint16_t	st_mode;	/* File mode */
+> > > > 	uint16_t	__spare0[3];
+> > > > 	/* 0x10 */
+> > > > 	uint32_t	st_uid;		/* User ID of owner */
+> > > > 	uint32_t	st_gid;		/* Group ID of owner */
+> > > > 	uint32_t	st_nlink;	/* Number of hard links */
+> > > > 	uint32_t	st_blksize;	/* Optimal size for filesystem I/O */
+> > > > 	/* 0x20 */
+> > > > 	struct statx_dev st_rdev;	/* Device ID of special file */
+> > > > 	struct statx_dev st_dev;	/* ID of device containing file */
+> > > > 	/* 0x30 */
+> > > > 	int32_t		st_atime_ns;	/* Last access time (ns part) */
+> > > > 	int32_t		st_btime_ns;	/* File creation time (ns part) */
+> > > > 	int32_t		st_ctime_ns;	/* Last attribute change time (ns part) */
+> > > > 	int32_t		st_mtime_ns;	/* Last data modification time (ns part) */
+> > > > 	/* 0x40 */
+> > > > 	int64_t		st_atime;	/* Last access time */
+> > > > 	int64_t		st_btime;	/* File creation time */
+> > > > 	int64_t		st_ctime;	/* Last attribute change time */
+> > > > 	int64_t		st_mtime;	/* Last data modification time */
+> > > > 	/* 0x60 */
+> > > > 	uint64_t	st_ino;		/* Inode number */
+> > > > 	uint64_t	st_size;	/* File size */
+> > > > 	uint64_t	st_blocks;	/* Number of 512-byte blocks allocated */
+> > > > 	uint64_t	st_gen;		/* Inode generation number */
+> > > 
+> > > I don't think we want to expose the inode generation numbers. It is
+> > > trivial to construct NFS file handles (usually just fsid, inode
+> > > number and generation) with that information and hence bypass
+> > > security checks to access files.
+> > 
+> > I'm not convinced there's much value in trying to keep filehandles
+> > secret.
+> 
+> Sure, but I can't really see any good reason to expose filesystem
+> internal implementation details like this - a generation number is
+> usually used to differentiate between inode life cycles which
+> userspace has no concept of and is different for every filesystem,
+> so it's behaviour and values are not going to be consistent across
+> filesystems.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c |   13 +++++++++++--
- 1 files changed, 11 insertions(+), 2 deletions(-)
+That's OK.  The only requirement would be that the (inode number, inode
+generation) pair be different for different inodes on the same
+filesystem.
 
-diff --git a/fs/namei.c b/fs/namei.c
-index a40dcbb..3e15aea 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3274,12 +3274,15 @@ SYSCALL_DEFINE4(renameat, int, olddfd, const char __user *, oldname,
- 	char *from;
- 	char *to;
- 	int error;
-+	unsigned int try = 0;
-+	bool should_retry = false;
- 
--	error = user_path_parent(olddfd, oldname, &oldnd, &from, false);
-+retry:
-+	error = user_path_parent(olddfd, oldname, &oldnd, &from, try);
- 	if (error)
- 		goto exit;
- 
--	error = user_path_parent(newdfd, newname, &newnd, &to, false);
-+	error = user_path_parent(newdfd, newname, &newnd, &to, try);
- 	if (error)
- 		goto exit1;
- 
-@@ -3348,12 +3351,18 @@ exit4:
- 	dput(old_dentry);
- exit3:
- 	unlock_rename(new_dir, old_dir);
-+	if (retry_estale(error, try++))
-+		should_retry = true;
- exit2:
- 	path_put(&newnd.path);
- 	putname(to);
- exit1:
- 	path_put(&oldnd.path);
- 	putname(from);
-+	if (should_retry) {
-+		should_retry = false;
-+		goto retry;
-+	}
- exit:
- 	return error;
- }
--- 
-1.7.7.6
+> Some filesystems might not even have a generation
+> number they can export, and that makes me wonder if there is any
+> good reason for exposing it at all.
 
+That's true of a number of these new attributes.
+
+> If you need to discriminate between versions of files with the same
+> name, then use name_to_handle_at() and compare filehandles....
+
+Sure.
+
+Since the only use case given for this has been constructing
+filehandles, and since we already have an interface for that, I don't
+feel particularly strongly about this.
+
+--b.
