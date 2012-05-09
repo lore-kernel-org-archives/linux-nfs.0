@@ -1,147 +1,223 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:28745 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757418Ab2EARHC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 May 2012 13:07:02 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 3/3] NFS: Simplify the nfs_read_completion functions
-Date: Tue,  1 May 2012 13:06:56 -0400
-Message-Id: <1335892016-13195-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1335892016-13195-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1335892016-13195-1-git-send-email-Trond.Myklebust@netapp.com>
- <1335892016-13195-2-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:43426 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756697Ab2EILpE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 May 2012 07:45:04 -0400
+Received: by yenm10 with SMTP id m10so138966yen.19
+        for <linux-nfs@vger.kernel.org>; Wed, 09 May 2012 04:45:03 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2] nfsdcld: add support for dropping capabilities
+Date: Wed,  9 May 2012 07:44:58 -0400
+Message-Id: <1336563898-23218-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...and correct a bug when NFS_IOHDR_ERROR is set: we should not be
-setting PageUptodate/set_page_dirty on a page unless the number of
-bytes read <= hdr->good_bytes
+As a long running daemon, we need to be security-conscious with nfsdcld,
+so let's prune what it can do down to nearly nothing.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Fred Isaman <iisaman@netapp.com>
+We want the daemon to run as root so that it has access to open and
+reopen the rpc_pipefs pipe, but we don't actually need any of the
+superuser caps that come with it. Have it drop all capabilities early
+on. We don't need any of them as long as the fsuid continues to be 0.
+
+Once we do that though, check to ensure that the db dir is actually
+usable by root w/o CAP_DAC_OVERRIDE. Do an access() check on it and
+throw a warning if it's not. Hopefully that will assist users in
+debugging if they get the ownership of the DB dir wrong.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/direct.c |   46 +++++++++++++++++++---------------------------
- fs/nfs/read.c   |   42 +++++++++++++++++-------------------------
- 2 files changed, 36 insertions(+), 52 deletions(-)
+ utils/nfsdcld/Makefile.am |    2 +-
+ utils/nfsdcld/nfsdcld.c   |   82 ++++++++++++++++++++++++++++++++++++++++++++-
+ utils/nfsdcld/nfsdcld.man |    7 +++-
+ utils/nfsdcld/sqlite.c    |    6 +---
+ 4 files changed, 89 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 78d1ead..59ad4ce 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -253,36 +253,28 @@ static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
- 		dreq->count += hdr->good_bytes;
- 	spin_unlock(&dreq->lock);
+diff --git a/utils/nfsdcld/Makefile.am b/utils/nfsdcld/Makefile.am
+index f320dff..073a71b 100644
+--- a/utils/nfsdcld/Makefile.am
++++ b/utils/nfsdcld/Makefile.am
+@@ -8,7 +8,7 @@ sbin_PROGRAMS	= nfsdcld
  
--	if (!test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
--		while (!list_empty(&hdr->pages)) {
--			struct nfs_page *req = nfs_list_entry(hdr->pages.next);
--			struct page *page = req->wb_page;
--
--			if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
--				if (bytes > hdr->good_bytes)
--					zero_user(page, 0, PAGE_SIZE);
--				else if (hdr->good_bytes - bytes < PAGE_SIZE)
--					zero_user_segment(page,
--						hdr->good_bytes & ~PAGE_MASK,
--						PAGE_SIZE);
--			}
--			bytes += req->wb_bytes;
--			nfs_list_remove_request(req);
--			if (!PageCompound(page))
--				set_page_dirty(page);
--			nfs_direct_readpage_release(req);
-+	while (!list_empty(&hdr->pages)) {
-+		struct nfs_page *req = nfs_list_entry(hdr->pages.next);
-+		struct page *page = req->wb_page;
-+
-+		if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
-+			if (bytes > hdr->good_bytes)
-+				zero_user(page, 0, PAGE_SIZE);
-+			else if (hdr->good_bytes - bytes < PAGE_SIZE)
-+				zero_user_segment(page,
-+					hdr->good_bytes & ~PAGE_MASK,
-+					PAGE_SIZE);
- 		}
--	} else {
--		while (!list_empty(&hdr->pages)) {
--			struct nfs_page *req = nfs_list_entry(hdr->pages.next);
--
--			if (bytes < hdr->good_bytes)
--				if (!PageCompound(req->wb_page))
-+		if (!PageCompound(page)) {
-+			if (test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
-+				if (bytes < hdr->good_bytes)
- 					set_page_dirty(req->wb_page);
--			bytes += req->wb_bytes;
--			nfs_list_remove_request(req);
--			nfs_direct_readpage_release(req);
-+			} else
-+				set_page_dirty(page);
- 		}
-+		bytes += req->wb_bytes;
-+		nfs_list_remove_request(req);
-+		nfs_direct_readpage_release(req);
- 	}
- out_put:
- 	if (put_dreq(dreq))
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 1961a19..b81281b 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -179,34 +179,26 @@ static void nfs_read_completion(struct nfs_pgio_header *hdr)
+ nfsdcld_SOURCES = nfsdcld.c sqlite.c
  
- 	if (test_bit(NFS_IOHDR_REDO, &hdr->flags))
- 		goto out;
--	if (!test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
--		while (!list_empty(&hdr->pages)) {
--			struct nfs_page *req = nfs_list_entry(hdr->pages.next);
--			struct page *page = req->wb_page;
--
--			if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
--				if (bytes > hdr->good_bytes)
--					zero_user(page, 0, PAGE_SIZE);
--				else if (hdr->good_bytes - bytes < PAGE_SIZE)
--					zero_user_segment(page,
--						hdr->good_bytes & ~PAGE_MASK,
--						PAGE_SIZE);
--			}
--			SetPageUptodate(page);
--			nfs_list_remove_request(req);
--			nfs_readpage_release(req);
--			bytes += PAGE_SIZE;
-+	while (!list_empty(&hdr->pages)) {
-+		struct nfs_page *req = nfs_list_entry(hdr->pages.next);
-+		struct page *page = req->wb_page;
+-nfsdcld_LDADD = ../../support/nfs/libnfs.a $(LIBEVENT) $(LIBSQLITE)
++nfsdcld_LDADD = ../../support/nfs/libnfs.a $(LIBEVENT) $(LIBSQLITE) $(LIBCAP)
+ 
+ MAINTAINERCLEANFILES = Makefile.in
+ 
+diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
+index 2f0b004..f4e9502 100644
+--- a/utils/nfsdcld/nfsdcld.c
++++ b/utils/nfsdcld/nfsdcld.c
+@@ -34,6 +34,10 @@
+ #include <unistd.h>
+ #include <libgen.h>
+ #include <sys/inotify.h>
++#ifdef HAVE_SYS_CAPABILITY_H
++#include <sys/prctl.h>
++#include <sys/capability.h>
++#endif
+ 
+ #include "xlog.h"
+ #include "nfslib.h"
+@@ -46,6 +50,10 @@
+ 
+ #define DEFAULT_CLD_PATH	PIPEFS_DIR "/nfsd/cld"
+ 
++#ifndef CLD_DEFAULT_STORAGEDIR
++#define CLD_DEFAULT_STORAGEDIR NFS_STATEDIR "/nfsdcld"
++#endif
 +
-+		if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
-+			if (bytes > hdr->good_bytes)
-+				zero_user(page, 0, PAGE_SIZE);
-+			else if (hdr->good_bytes - bytes < PAGE_SIZE)
-+				zero_user_segment(page,
-+					hdr->good_bytes & ~PAGE_MASK,
-+					PAGE_SIZE);
+ #define UPCALL_VERSION		1
+ 
+ /* private data structures */
+@@ -79,6 +87,47 @@ usage(char *progname)
+ 	printf("%s [ -hFd ] [ -p pipe ] [ -s dir ]\n", progname);
+ }
+ 
++static int
++cld_set_caps(void)
++{
++	int ret = 0;
++#ifdef HAVE_SYS_CAPABILITY_H
++	unsigned long i;
++	cap_t caps;
++
++	if (getuid() != 0) {
++		xlog(L_ERROR, "Not running as root. Daemon won't be able to "
++			      "open the pipe after dropping capabilities!");
++		return -EINVAL;
++	}
++
++	/* prune the bounding set to nothing */
++	for (i = 0; i <= CAP_LAST_CAP; ++i) {
++		ret = prctl(PR_CAPBSET_DROP, i);
++		if (ret) {
++			xlog(L_ERROR, "Unable to prune capability %lu from "
++				      "bounding set: %m", i);
++			return -errno;
++		}
++	}
++
++	/* get a blank capset */
++	caps = cap_init();
++	if (caps == NULL) {
++		xlog(L_ERROR, "Unable to get blank capability set: %m");
++		return -errno;
++	}
++
++	/* reset the process capabilities */
++	if (cap_set_proc(caps) != 0) {
++		xlog(L_ERROR, "Unable to set process capabilities: %m");
++		ret = -errno;
++	}
++	cap_free(caps);
++#endif
++	return ret;
++}
++
+ #define INOTIFY_EVENT_MAX (sizeof(struct inotify_event) + NAME_MAX)
+ 
+ static int
+@@ -453,7 +502,7 @@ main(int argc, char **argv)
+ 	int rc = 0;
+ 	bool foreground = false;
+ 	char *progname;
+-	char *storagedir = NULL;
++	char *storagedir = CLD_DEFAULT_STORAGEDIR;
+ 	struct cld_client clnt;
+ 
+ 	memset(&clnt, 0, sizeof(clnt));
+@@ -502,6 +551,37 @@ main(int argc, char **argv)
  		}
--	} else {
--		while (!list_empty(&hdr->pages)) {
--			struct nfs_page *req = nfs_list_entry(hdr->pages.next);
--
--			bytes += req->wb_bytes;
-+		bytes += req->wb_bytes;
-+		if (test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
- 			if (bytes <= hdr->good_bytes)
- 				SetPageUptodate(req->wb_page);
--			nfs_list_remove_request(req);
--			nfs_readpage_release(req);
--		}
-+		} else
-+			SetPageUptodate(page);
-+		nfs_list_remove_request(req);
-+		nfs_readpage_release(req);
  	}
- out:
- 	hdr->release(hdr);
+ 
++	/* drop all capabilities */
++	rc = cld_set_caps();
++	if (rc)
++		goto out;
++
++	/*
++	 * now see if the storagedir is writable by root w/o CAP_DAC_OVERRIDE.
++	 * If it isn't then give the user a warning but proceed as if
++	 * everything is OK. If the DB has already been created, then
++	 * everything might still work. If it doesn't exist at all, then
++	 * assume that the maindb init will be able to create it. Fail on
++	 * anything else.
++	 */
++	if (access(storagedir, W_OK) == -1) {
++		switch (errno) {
++		case EACCES:
++			xlog(L_WARNING, "Storage directory %s is not writable. "
++					"Should be owned by root and writable "
++					"by owner!", storagedir);
++			break;
++		case ENOENT:
++			/* ignore and assume that we can create dir as root */
++			break;
++		default:
++			xlog(L_ERROR, "Unexpected error when checking access "
++				      "on %s: %m", storagedir);
++			rc = -errno;
++			goto out;
++		}
++	}
++
+ 	/* set up storage db */
+ 	rc = sqlite_maindb_init(storagedir);
+ 	if (rc) {
+diff --git a/utils/nfsdcld/nfsdcld.man b/utils/nfsdcld/nfsdcld.man
+index bad5f34..9ddaf64 100644
+--- a/utils/nfsdcld/nfsdcld.man
++++ b/utils/nfsdcld/nfsdcld.man
+@@ -160,7 +160,7 @@ Runs the daemon in the foreground and prints all output to stderr
+ Location of the \*(L"cld\*(R" upcall pipe. The default value is
+ \&\fI/var/lib/nfs/rpc_pipefs/nfsd/cld\fR. If the pipe does not exist when the
+ daemon starts then it will wait for it to be created.
+-.IP "\fB\-s\fR \fIstoragedir\fR, \fB\-\-storagedir\fR=\fIstorage_dir\fR" 4
++.IP "\fB\-s\fR \fIstorage_dir\fR, \fB\-\-storagedir\fR=\fIstorage_dir\fR" 4
+ .IX Item "-s storagedir, --storagedir=storage_dir"
+ Directory where stable storage information should be kept. The default
+ value is \fI/var/lib/nfs/nfsdcld\fR.
+@@ -175,6 +175,11 @@ This daemon requires a kernel that supports the nfsdcld upcall. If the
+ kernel does not support the new upcall, or is using the legacy client
+ name tracking code then it will not create the pipe that nfsdcld uses to
+ talk to the kernel.
++.PP
++This daemon should be run as root, as the pipe that it uses to communicate
++with the kernel is only accessable by root. The daemon however does drop all
++superuser capabilities after starting. Because of this, the \fIstoragedir\fR
++should be owned by root, and be readable and writable by owner.
+ .SH "AUTHORS"
+ .IX Header "AUTHORS"
+ The nfsdcld daemon was developed by Jeff Layton <jlayton@redhat.com>.
+diff --git a/utils/nfsdcld/sqlite.c b/utils/nfsdcld/sqlite.c
+index 9e35774..bb2519d 100644
+--- a/utils/nfsdcld/sqlite.c
++++ b/utils/nfsdcld/sqlite.c
+@@ -54,10 +54,6 @@
+ 
+ #define CLD_SQLITE_SCHEMA_VERSION 1
+ 
+-#ifndef CLD_SQLITE_TOPDIR
+-#define CLD_SQLITE_TOPDIR NFS_STATEDIR "/nfsdcld"
+-#endif
+-
+ /* in milliseconds */
+ #define CLD_SQLITE_BUSY_TIMEOUT 10000
+ 
+@@ -112,7 +108,7 @@ sqlite_maindb_init(char *topdir)
+ 	char *err = NULL;
+ 	sqlite3_stmt *stmt = NULL;
+ 
+-	sqlite_topdir = topdir ? topdir : CLD_SQLITE_TOPDIR;
++	sqlite_topdir = topdir;
+ 
+ 	ret = mkdir_if_not_exist(sqlite_topdir);
+ 	if (ret)
 -- 
 1.7.7.6
 
