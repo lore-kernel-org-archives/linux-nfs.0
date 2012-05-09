@@ -1,141 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34716 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:44507 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758864Ab2EWVb7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 May 2012 17:31:59 -0400
-Date: Wed, 23 May 2012 17:31:58 -0400
+	id S1755452Ab2EITI5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 May 2012 15:08:57 -0400
+Date: Wed, 9 May 2012 15:08:55 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Subject: Re: [PATCH] NFSd: fix locking in nfsd_forget_delegations()
-Message-ID: <20120523213158.GB13710@fieldses.org>
-References: <20120522102444.6988.45434.stgit@localhost.localdomain>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Subject: Re: [PATCH 0/6] Lockd: service start cleanup patch set
+Message-ID: <20120509190855.GB27077@fieldses.org>
+References: <20120425141934.22909.53047.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120522102444.6988.45434.stgit@localhost.localdomain>
+In-Reply-To: <20120425141934.22909.53047.stgit@localhost6.localdomain6>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 22, 2012 at 02:25:14PM +0400, Stanislav Kinsbursky wrote:
-> This patch adds recall_lock hold to nfsd_forget_delegations() to protect
-> nfsd_process_n_delegations() call.
-> Also, looks like it would be better to collect delegations to some local
-> on-stack list, and then unhash collected list. This split allows to simplify
-> locking, because delegation traversing is protected by recall_lock, when
-> delegation unhash is protected by client_mutex.
+On Wed, Apr 25, 2012 at 06:22:32PM +0400, Stanislav Kinsbursky wrote:
+> This patch set simplifies LockD start logic, makes code looks straight-forward
+> and clear.
 
-All this indirection is getting a little much.
+I've applied and pushed these out.
 
-How about replacing nfsd_process_n_delegations by something that always
-does the list-move?:
-
-void nfsd_forget_delegations(u64 num)
-{
-	unsigned int count;
-	list_head victims;
-
-	nfs4_lock_state();
-	count = nfsd_get_n_delegations(num, &victims);
-	list_for_each_entry_safe(..., &victims, ...)
-		unhash_delegation();
-	unlock_state();
-}
-
-ditto for recall_delegations, and take the recall_lock inside
-nfsd_get_n_delegations?
-
-Or something like that.
+I believe I now have everything from you except your latest grace-period
+handling rfc.  Could you check and make sure that I'm not missing
+anything else, and that I haven't messed up anything else?
 
 --b.
 
 > 
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> ---
->  fs/nfsd/nfs4state.c |   32 ++++++++++++++++++++++++--------
->  1 files changed, 24 insertions(+), 8 deletions(-)
+> The following series consists of:
 > 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 21266c7..f004e61 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -2597,7 +2597,7 @@ out:
->  	return ret;
->  }
->  
-> -static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
-> +static void nfsd_break_one_deleg(struct nfs4_delegation *dp, void *data)
->  {
->  	/* We're assuming the state code never drops its reference
->  	 * without first removing the lease.  Since we're in this lease
-> @@ -2633,7 +2633,7 @@ static void nfsd_break_deleg_cb(struct file_lock *fl)
->  	spin_lock(&recall_lock);
->  	fp->fi_had_conflict = true;
->  	list_for_each_entry(dp, &fp->fi_delegations, dl_perfile)
-> -		nfsd_break_one_deleg(dp);
-> +		nfsd_break_one_deleg(dp, NULL);
->  	spin_unlock(&recall_lock);
->  }
->  
-> @@ -4694,7 +4694,7 @@ void nfsd_forget_openowners(u64 num)
->  	printk(KERN_INFO "NFSD: Forgot %d open owners", count);
->  }
->  
-> -int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegation *))
-> +int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegation *, void *), void *data)
->  {
->  	int i, count = 0;
->  	struct nfs4_file *fp, *fnext;
-> @@ -4703,7 +4703,7 @@ int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegatio
->  	for (i = 0; i < FILE_HASH_SIZE; i++) {
->  		list_for_each_entry_safe(fp, fnext, &file_hashtbl[i], fi_hash) {
->  			list_for_each_entry_safe(dp, dnext, &fp->fi_delegations, dl_perfile) {
-> -				deleg_func(dp);
-> +				deleg_func(dp, data);
->  				if (++count == num)
->  					return count;
->  			}
-> @@ -4713,15 +4713,31 @@ int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegatio
->  	return count;
->  }
->  
-> +/* Called under the recall_lock spinlock. */
-> +static void
-> +collect_delegation(struct nfs4_delegation *dp, void *data)
-> +{
-> +	struct list_head *list = data;
-> +
-> +	list_move(&dp->dl_perfile, list);
-> +}
-> +
->  void nfsd_forget_delegations(u64 num)
->  {
->  	unsigned int count;
-> +	struct nfs4_delegation *dp, *dnext;
-> +	LIST_HEAD(unhash_list);
->  
-> -	nfs4_lock_state();
-> -	count = nfsd_process_n_delegations(num, unhash_delegation);
-> -	nfs4_unlock_state();
-> +	spin_lock(&recall_lock);
-> +	count = nfsd_process_n_delegations(num, collect_delegation, &unhash_list);
-> +	spin_unlock(&recall_lock);
->  
->  	printk(KERN_INFO "NFSD: Forgot %d delegations", count);
-> +
-> +	nfs4_lock_state();
-> +	list_for_each_entry_safe(dp, dnext, &unhash_list, dl_perfile)
-> +		unhash_delegation(dp);
-> +	nfs4_unlock_state();
->  }
->  
->  void nfsd_recall_delegations(u64 num)
-> @@ -4730,7 +4746,7 @@ void nfsd_recall_delegations(u64 num)
->  
->  	nfs4_lock_state();
->  	spin_lock(&recall_lock);
-> -	count = nfsd_process_n_delegations(num, nfsd_break_one_deleg);
-> +	count = nfsd_process_n_delegations(num, nfsd_break_one_deleg, NULL);
->  	spin_unlock(&recall_lock);
->  	nfs4_unlock_state();
->  
+> ---
+> 
+> Stanislav Kinsbursky (6):
+>       LockD: pass service to per-net up and down functions
+>       LockD: use existent per-net data function on service creation
+>       LockD: service creation function introduced
+>       LockD: move global usage counter manipulation from error path
+>       LockD: service start function introduced
+>       LockD: add debug message to start and stop functions
+> 
+> 
+>  fs/lockd/svc.c |  140 +++++++++++++++++++++++++++++++++-----------------------
+>  1 files changed, 83 insertions(+), 57 deletions(-)
 > 
