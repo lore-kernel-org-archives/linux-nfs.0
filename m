@@ -1,68 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:22209 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:65005 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756619Ab2EHUCi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 May 2012 16:02:38 -0400
-Date: Tue, 8 May 2012 16:03:43 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsdcld: add support for dropping capabilities
-Message-ID: <20120508160343.1114f01c@corrin.poochiereds.net>
-In-Reply-To: <20120508193429.GA17669@fieldses.org>
-References: <1336491712-29445-1-git-send-email-jlayton@redhat.com>
-	<20120508193429.GA17669@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1756545Ab2EITP5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 May 2012 15:15:57 -0400
+Received: from vmwexceht02-prd.hq.netapp.com (vmwexceht02-prd.hq.netapp.com [10.106.76.240])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q49JF2KU026565
+	for <linux-nfs@vger.kernel.org>; Wed, 9 May 2012 12:15:41 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+CC: linux-nfs list <linux-nfs@vger.kernel.org>,
+        "Isaman, Fred" <Fred.Isaman@netapp.com>
+Subject: Re: [PATCH] NFS: Prevent a deadlock in the new read and write code
+Date: Wed, 9 May 2012 19:15:14 +0000
+Message-ID: <1336590915.3127.135.camel@lade.trondhjem.org>
+References: <1336582284-8558-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <A96F9C32-8B2A-441A-BBE9-91747BB585FF@netapp.com>
+	 <31612217-5DE3-43D0-BFAF-40A23530FEC8@netapp.com>
+In-Reply-To: <31612217-5DE3-43D0-BFAF-40A23530FEC8@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 8 May 2012 15:34:29 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Tue, May 08, 2012 at 11:41:52AM -0400, Jeff Layton wrote:
-> > As a long running daemon, we need to be security-conscious with nfsdcld,
-> > so let's prune what it can do down to nearly nothing.
-> > 
-> > We want the daemon to run as root so that it has access to open and
-> > reopen the rpc_pipefs pipe, but we don't actually need any of the
-> > superuser caps that come with it. Have it drop all capabilities early
-> > on. We don't need any of them as long as the fsuid continues to be 0.
-> 
-> Makes sense to me.
-> 
-> (In practice, though, surely fsuid=0 is often enough to get everything?)
-> 
-> --b.
-> 
-
-With this, root is basically a user like any other. He has to have
-explicit permissions to access anything. If another user owns a file
-and it's not world readable (or group readable by a group to which root
-is a member), then the process won't be able to read it. Granted, a lot
-of files are owned by root on a typical machine, but this should still
-prevent access to any that aren't.
-
-This also trims out all of the other extraneous stuff we don't need --
-being able to bind to low sockets, traverse directories in which root
-has no explicit access, chown ability, etc...
-
-There are a couple of other approaches we could take here instead:
-
-1) we could run as an unprivileged user and keep CAP_DAC_OVERRIDE.
-I think that's less safe than what I'm doing here though...
-
-2) we could teach the kernel to create the pipe with a different owner
-and then run the daemon as a non-root user. That means we'd need some
-mechanism to tell the kernel what we want that owner to be. I'm not
-sure how that would work in practice -- maybe a new file
-in /proc/fs/nfsd ?
-
-In any case, I think this is probably good enough for now. This daemon
-doesn't listen on a socket or anything so any compromise of it would
-be a local one. Users also don't generally interact with it directly,
-so you'd need to jump through some hoops in order to break it I'd
-think.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+T24gV2VkLCAyMDEyLTA1LTA5IGF0IDE4OjIyICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
+PiBPbiBNYXkgOSwgMjAxMiwgYXQgMjoyMCBQTSwgQWRhbXNvbiwgRHJvcyB3cm90ZToNCj4gDQo+
+ID4gQUNLIC0gVGhpcyBmaXhlcyB0aGUgZXJyYW50IGJlaGF2aW9yIEkgd2FzIHNlZWluZy4NCj4g
+PiANCj4gPiBCZWZvcmUgKG9uIGFueSBwcm90b2NvbCB2ZXJzaW9uIG1vdW50ZWQgYXQgL21udCk6
+DQo+ID4gJCBkZCBpZj0vZGV2L3plcm8gb2Y9emVyb2ZpbGUgYnM9MTAwMjQgY291bnQ9MTAwMCA7
+IHdoaWxlIHRydWU7IGRvIChybSAtcmYgL21udC9mb28gJiYgZWNobyBybSBvaykgfHwgbHMgLWxh
+IC9tbnQvZm9vIDsgbWtkaXIgLXAgL21udC9mb28vOyBjcCB6ZXJvZmlsZSAvbW50L2Zvby9maWxl
+IDsgZG9uZQ0KPiA+IDEwMDArMCByZWNvcmRzIGluDQo+ID4gMTAwMCswIHJlY29yZHMgb3V0DQo+
+ID4gMTAwMjQwMDAgYnl0ZXMgKDEwIE1CKSBjb3BpZWQsIDAuMTQ2NzM4IHMsIDY4LjMgTUIvcw0K
+PiA+IHJtIG9rDQo+ID4gcm06IGNhbm5vdCByZW1vdmUgYC9tbnQvZm9vJzogRGlyZWN0b3J5IG5v
+dCBlbXB0eQ0KPiA+IGxzOiAvbW50L2Zvby8ubmZzMDAwMDAwMDAwMDA0MDg5ZDAwMDAwMDAxOiBO
+byBzdWNoIGZpbGUgb3IgZGlyZWN0b3J5DQo+ID4gdG90YWwgOTgwMA0KPiA+IGRyd3hyd3hyLXgg
+MiBkcm9zIGRyb3MgICAgIDQwOTYgTWF5ICA5IDA5OjQ2IC4NCj4gPiBkcnd4cnd4cnd4IDUgcm9v
+dCByb290ICAgICA0MDk2IE1heSAgOSAwOTo0NiAuLg0KPiA+IC1ydy1ydy1yLS0gMCBkcm9zIGRy
+b3MgMTAwMjQwMDAgTWF5ICA5IDA5OjQ2IC5uZnMwMDAwMDAwMDAwMDQwODlkMDAwMDAwMDENCj4g
+PiBybTogY2Fubm90IHJlbW92ZSBgL21udC9mb28nOiBEaXJlY3Rvcnkgbm90IGVtcHR5DQo+ID4g
+Li4uDQo+ID4gDQo+IA0KPiBPb3BzLCB0aGlzIGlzIGFmdGVyIHRoZSBwYXRjaCBpcyBhcHBsaWVk
+Og0KPiANCj4gPiAkIGRkIGlmPS9kZXYvemVybyBvZj16ZXJvZmlsZSBicz0xMDAyNCBjb3VudD0x
+MDAwIDsgd2hpbGUgdHJ1ZTsgZG8gKHJtIC1yZiAvbW50L2ZvbyAmJiBlY2hvIHJtIG9rKSB8fCBs
+cyAtbGEgL21udC9mb28gOyBta2RpciAtcCAvbW50L2Zvby87IGNwIHplcm9maWxlIC9tbnQvZm9v
+L2ZpbGUgOyBkb25lDQo+ID4gMTAwMCswIHJlY29yZHMgaW4NCj4gPiAxMDAwKzAgcmVjb3JkcyBv
+dXQNCj4gPiAxMDAyNDAwMCBieXRlcyAoMTAgTUIpIGNvcGllZCwgMC4xMzc1OTYgcywgNzIuOSBN
+Qi9zDQo+ID4gcm0gb2sNCj4gPiBybSBvaw0KPiA+IHJtIG9rDQo+ID4gcm0gb2sNCj4gPiAuLi4N
+Cj4gPiANCj4gPiAtZHJvcw0KDQpPSy4uLiBIYXZpbmcgdGhvdWdodCBhIGJpdCBtb3JlIGFib3V0
+IHRoZSBwcm9ibGVtLCBJJ2QgcHJlZmVyIHRvIHNlZSB0aGUNCndyaXRlIGNvZGUgZG8gdGhlIHNh
+bWUgcmVhbGx5IGFzIHRoZSByZWFkIGNvZGUgaXMgZG9pbmcuIGkuZS4gcmVsZWFzZQ0KdGhlIG5m
+c19wYWdlIGFmdGVyIHRoZSBwYWdlX3dyaXRlYmFjayBsb2NrIGhhcyBiZWVuIHJlbGVhc2VkLg0K
+DQpJJ3ZlIGp1c3Qgd3JpdHRlbiBhIHNlcmllcyBvZiBwYXRjaGVzIHRvIGRvIHRoaXMuIFRoZSBm
+aXJzdCBwYXRjaCBpbiB0aGUNCnNlcmllcyBpcyB0aGUgYWN0dWFsIGZpeC4gVGhlIHJlc3QgaXMg
+Y2xlYW4gdXBzIGluIG9yZGVyIHRvIG1ha2UgdGhlDQpjb2RlIGEgYml0IG1vcmUgcmVhZGFibGUu
+Li4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0K
+DQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
