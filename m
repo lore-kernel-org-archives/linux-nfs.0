@@ -1,68 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:45519 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756814Ab2EGOMV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 May 2012 10:12:21 -0400
-Received: by yenm10 with SMTP id m10so3663322yen.19
-        for <linux-nfs@vger.kernel.org>; Mon, 07 May 2012 07:12:20 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
-        michael.brantley@deshaw.com
-Subject: [PATCH v1 RESEND 01/12] vfs: add a retry_estale helper function to handle retries on ESTALE
-Date: Mon,  7 May 2012 10:12:00 -0400
-Message-Id: <1336399931-20234-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1336399931-20234-1-git-send-email-jlayton@redhat.com>
-References: <1336399931-20234-1-git-send-email-jlayton@redhat.com>
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:49412 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755041Ab2EIONN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 May 2012 10:13:13 -0400
+Message-ID: <4FAA7B69.7060300@itwm.fraunhofer.de>
+Date: Wed, 09 May 2012 16:12:57 +0200
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+MIME-Version: 1.0
+To: Andreas Dilger <adilger@dilger.ca>
+CC: Christoph Hellwig <hch@infradead.org>, David Howells <dhowells@redhat.com>,
+        Dave Chinner <david@fromorbit.com>, bfields@fieldses.org,
+        smfrench@gmail.com, ben@decadent.org.uk, Trond.Myklebust@netapp.com,
+        roland@hack.frob.com, jra@samba.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
+        linux-api@vger.kernel.org, libc-alpha@sourceware.org
+Subject: Re: Extended file stat: Splitting file- and fs-specific info?
+References: <20120509002420.GL5091@dastard> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <16281.1336508382@redhat.com> <20170.1336555274@redhat.com> <20120509111958.GA11345@infradead.org> <4FAA5B24.1020306@itwm.fraunhofer.de> <20120509120544.GA17535@infradead.org> <4FAA6230.7040700@itwm.fraunhofer.de> <F6D8E5E4-D187-4EE6-8827-6BB90BE6E8BC@dilger.ca>
+In-Reply-To: <F6D8E5E4-D187-4EE6-8827-6BB90BE6E8BC@dilger.ca>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This function is expected to be called from path-based syscalls to help
-them decide whether to try the lookup and call again in the event that
-they got an -ESTALE return back on an earier try.
+On 05/09/2012 03:51 PM, Andreas Dilger wrote:
+> On 2012-05-09, at 6:25 AM, Bernd Schubert wrote:
+>> On 05/09/2012 02:05 PM, Christoph Hellwig wrote:
+>>> On Wed, May 09, 2012 at 01:55:16PM +0200, Bernd Schubert wrote:
+>>>> The basic idea of generation numbers is to check if an inode was
+>>>> recycled, so only if the tuple of inode-number and generation-number
+>>>> matches we still have the same file. Kernel nfs
+>>>
+>>> NFS does not and should not look at the inode generation.  Except for a
+>>> bit of legacy code for the old pre-Linux 2.4 filehandles it looks at the
+>>> opaque file handle returned and only interpreted by the filesystem.  Any
+>>> userspace NFS server should do the same.
+>>
+>> Ok, I didn't look how kernel NFS does it for quite some time already...
+>> User space NFS only can do it beginning with 2.6.39 - given that user space also needs to support older kernels and other OSs, which might not have open_by_handle, userspace unfortunately cannot entirely rely on that feature.
+>
+> But even fewer kernels have sys_statxat() in them (i.e. none), so you can rely on that even less than open_by_handle()...
 
-Currently, we only retry the call once on an ESTALE error, but in the
-event that we decide that that's not enough in the future, we should be
-able to change the logic in this helper without too much effort.
+Well, I didn't say that :) In summary, an application needs to try to 
+use the open-by-handle call and if that is not supported, it has to fall 
+back to traditional stat and generation-number-ioctl. And as I said 
+before, open-by-handle very likely removes the requirement for 
+generation numbers in sys_statxat().
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- include/linux/fs.h |   21 +++++++++++++++++++++
- 1 files changed, 21 insertions(+), 0 deletions(-)
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 8de6755..3c0bcda 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2026,6 +2026,27 @@ extern struct file * dentry_open(struct dentry *, struct vfsmount *, int,
- extern int filp_close(struct file *, fl_owner_t id);
- extern char * getname(const char __user *);
- 
-+/**
-+ * retry_estale - determine whether the caller should retry an operation
-+ *
-+ * @error: the error we'll be returning
-+ * @try: number of retries already performed
-+ *
-+ * Check to see if the error code was -ESTALE, and then determine whether
-+ * to retry the call based on the number of retries so far. Currently, we only
-+ * retry the call once.
-+ *
-+ * Returns true if the caller should try again.
-+ */
-+static inline bool
-+retry_estale(const long error, const unsigned int try)
-+{
-+	if (likely(error != -ESTALE))
-+		return false;
-+
-+	return !try;
-+}
-+
- /* fs/ioctl.c */
- 
- extern int ioctl_preallocate(struct file *filp, void __user *argp);
--- 
-1.7.7.6
+Cheers,
+Bernd
 
