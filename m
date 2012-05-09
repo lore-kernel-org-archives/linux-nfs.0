@@ -1,68 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:11947 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:30151 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759211Ab2EVQKV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 May 2012 12:10:21 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/4] NFSv4.1 Just use nfs_put_client in filelayout release
-Date: Tue, 22 May 2012 08:09:26 -0400
-Message-Id: <1337688569-1515-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1337688569-1515-1-git-send-email-andros@netapp.com>
-References: <1337688569-1515-1-git-send-email-andros@netapp.com>
+	id S1756932Ab2EITSv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 May 2012 15:18:51 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Fred Isaman <iisaman@netapp.com>
+Subject: [PATCH 2/5] NFS: nfs_set_page_writeback no longer needs to reference the page
+Date: Wed,  9 May 2012 15:18:40 -0400
+Message-Id: <1336591123-23400-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1336591123-23400-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1336591123-23400-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+We now hold a reference to the nfs_page across the calls to
+nfs_set_page_writeback and nfs_end_page_writeback, and that
+means we already have a reference to the struct page.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/nfs4filelayout.c |   12 ++----------
- 1 files changed, 2 insertions(+), 10 deletions(-)
+ fs/nfs/write.c |   11 +++--------
+ 1 files changed, 3 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 474c630..8df91be 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -101,9 +101,6 @@ static void filelayout_reset_write(struct nfs_write_data *data)
- 							&hdr->pages,
- 							hdr->completion_ops);
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index fd36b31..8382329 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -230,7 +230,6 @@ static int nfs_set_page_writeback(struct page *page)
+ 		struct inode *inode = page->mapping->host;
+ 		struct nfs_server *nfss = NFS_SERVER(inode);
+ 
+-		page_cache_get(page);
+ 		if (atomic_long_inc_return(&nfss->writeback) >
+ 				NFS_CONGESTION_ON_THRESH) {
+ 			set_bdi_congested(&nfss->backing_dev_info,
+@@ -246,7 +245,6 @@ static void nfs_end_page_writeback(struct page *page)
+ 	struct nfs_server *nfss = NFS_SERVER(inode);
+ 
+ 	end_page_writeback(page);
+-	page_cache_release(page);
+ 	if (atomic_long_dec_return(&nfss->writeback) < NFS_CONGESTION_OFF_THRESH)
+ 		clear_bdi_congested(&nfss->backing_dev_info, BLK_RW_ASYNC);
+ }
+@@ -607,13 +605,12 @@ static void nfs_write_completion(struct nfs_pgio_header *hdr)
+ 	nfs_init_cinfo_from_inode(&cinfo, hdr->inode);
+ 	while (!list_empty(&hdr->pages)) {
+ 		struct nfs_page *req = nfs_list_entry(hdr->pages.next);
+-		struct page *page = req->wb_page;
+ 
+ 		bytes += req->wb_bytes;
+ 		nfs_list_remove_request(req);
+ 		if (test_bit(NFS_IOHDR_ERROR, &hdr->flags) &&
+ 		    (hdr->good_bytes < bytes)) {
+-			nfs_set_pageerror(page);
++			nfs_set_pageerror(req->wb_page);
+ 			nfs_context_set_write_error(req->wb_context, hdr->error);
+ 			goto remove_req;
+ 		}
+@@ -629,7 +626,7 @@ remove_req:
+ 		nfs_inode_remove_request(req);
+ next:
+ 		nfs_unlock_request_dont_release(req);
+-		nfs_end_page_writeback(page);
++		nfs_end_page_writeback(req->wb_page);
+ 		nfs_release_request(req);
  	}
--	/* balance nfs_get_client in filelayout_write_pagelist */
--	nfs_put_client(data->ds_clp);
--	data->ds_clp     = NULL;
- }
- 
- static void filelayout_reset_read(struct nfs_read_data *data)
-@@ -125,9 +122,6 @@ static void filelayout_reset_read(struct nfs_read_data *data)
- 							&hdr->pages,
- 							hdr->completion_ops);
- 	}
--	/* balance nfs_get_client in filelayout_read_pagelist */
--	nfs_put_client(data->ds_clp);
--	data->ds_clp = NULL;
- }
- 
- static int filelayout_async_handle_error(struct rpc_task *task,
-@@ -326,8 +320,7 @@ static void filelayout_read_release(void *data)
+ out:
+@@ -1040,11 +1037,9 @@ static int nfs_do_multiple_writes(struct list_head *head,
+  */
+ static void nfs_redirty_request(struct nfs_page *req)
  {
- 	struct nfs_read_data *rdata = data;
- 
--	if (!test_bit(NFS_IOHDR_REDO, &rdata->header->flags))
--		nfs_put_client(rdata->ds_clp);
-+	nfs_put_client(rdata->ds_clp);
- 	rdata->header->mds_ops->rpc_release(data);
- }
- 
-@@ -424,8 +417,7 @@ static void filelayout_write_release(void *data)
- {
- 	struct nfs_write_data *wdata = data;
- 
--	if (!test_bit(NFS_IOHDR_REDO, &wdata->header->flags))
--		nfs_put_client(wdata->ds_clp);
-+	nfs_put_client(wdata->ds_clp);
- 	wdata->header->mds_ops->rpc_release(data);
+-	struct page *page = req->wb_page;
+-
+ 	nfs_mark_request_dirty(req);
+ 	nfs_unlock_request_dont_release(req);
+-	nfs_end_page_writeback(page);
++	nfs_end_page_writeback(req->wb_page);
+ 	nfs_release_request(req);
  }
  
 -- 
