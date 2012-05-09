@@ -1,129 +1,174 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:63305 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750892Ab2E1QvK convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 12:51:10 -0400
-Received: by pbbrp8 with SMTP id rp8so4848506pbb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 28 May 2012 09:51:10 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:34527 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753819Ab2EIBJx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 May 2012 21:09:53 -0400
+Date: Tue, 8 May 2012 21:09:41 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Dave Chinner <david@fromorbit.com>
+Cc: David Howells <dhowells@redhat.com>, adilger@dilger.ca, smfrench@gmail.com,
+        ben@decadent.org.uk, Trond.Myklebust@netapp.com, roland@hack.frob.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-ext4@vger.kernel.org, linux-api@vger.kernel.org,
+        libc-alpha@sourceware.org
+Subject: Re: Extended file stat: Splitting file- and fs-specific info?
+Message-ID: <20120509010941.GC20160@fieldses.org>
+References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+ <16281.1336508382@redhat.com>
+ <20120509002420.GL5091@dastard>
 MIME-Version: 1.0
-In-Reply-To: <4FC360D2.4030006@panasas.com>
-References: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>
- <1338096780-2763-4-git-send-email-bergwolf@gmail.com> <1338136717.3044.13.camel@lade.trondhjem.org>
- <F19688880B763E40B28B2B462677FBF805F0BADF36@MX09A.corp.emc.com> <4FC360D2.4030006@panasas.com>
-From: Peng Tao <tao.peng@emc.com>
-Date: Tue, 29 May 2012 00:50:49 +0800
-Message-ID: <CA+a=Yy5SFqXPhSO0W4kttycNGjJLE-y_rTbDmQsTm+sgnjF6=Q@mail.gmail.com>
-Subject: Re: [PATCH 3/3] pnfsblock: bail out unaligned DIO
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Sorin Faibish <sfaibish@emc.com>, Trond.Myklebust@netapp.com,
-        linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20120509002420.GL5091@dastard>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 28, 2012 at 7:26 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> On 05/28/2012 05:30 AM, tao.peng@emc.com wrote:
->
->>> -----Original Message-----
->>> From: Myklebust, Trond [mailto:Trond.Myklebust@netapp.com]
->
-> <>
->
->>> Also, why do you consider it to be direct i/o specific? If the
->>> application is using byte range locking, and the locks aren't page/block
->>> aligned then you are in the same position of having to deal with partial
->>> page writes even in the read/write from page cache situation.
->
->
->> You are right about byte range locking + buffered IO, and it should
->> be fixed in pg_test with bellow patch and it could be a stable
->> candidate.
->
->
-> What?? please explain. It sounds like you are saying that there is a
-> very *serious* bug in current block-layout.
->
-> From my experiment I know that lots and lots of IO is done none-paged
-> aligned even in buffered IO. Actually NFS goes to great length not to do
-> the usual read-modify-write per page, but keeps the byte range that
-> was written per page and only RPCs the exact offset-length of the modification.
-> Because by definition NFS is byte aligned IO, not "blocks" or "sectors".
->
-> Please explain what happens now. Is it a data corruption? Or just
-> performance slowness.
->
-> I don't understand. Don't you do the proper read-copy-modify-write that's
-> mandated by block layout RFC? byte aligned? And what are sectors and PAGES
-> got to do with it? I thought all IO must be "block" aligned.
->
-block layout code assumes all IO passed to LD is page aligned. For
-aligned IO, if extent is initialized, we don't need to write in block
-size. And if extent is not initialized, code takes care to zero extra
-sectors and handle copy on write extents properly as well. The
-statement "all IO must be block aligned" is only valid for
-uninitialized extents and it is strictly followed.
+On Wed, May 09, 2012 at 10:24:20AM +1000, Dave Chinner wrote:
+> On Tue, May 08, 2012 at 09:19:42PM +0100, David Howells wrote:
+> > 
+> > Should I split the file-specific info and the fs-specific info and make the
+> > second optional?  What I'm thinking of is something like this:
+> > 
+> > Have a file information structure:
+> > 
+> > struct statx {
+> > 	/* 0x00 */
+> > 	uint32_t	st_mask;	/* What results were written */
+> > 	uint32_t	st_information;	/* Information about the file */
+> > 	uint16_t	st_mode;	/* File mode */
+> > 	uint16_t	__spare0[3];
+> > 	/* 0x10 */
+> > 	uint32_t	st_uid;		/* User ID of owner */
+> > 	uint32_t	st_gid;		/* Group ID of owner */
+> > 	uint32_t	st_nlink;	/* Number of hard links */
+> > 	uint32_t	st_blksize;	/* Optimal size for filesystem I/O */
+> > 	/* 0x20 */
+> > 	struct statx_dev st_rdev;	/* Device ID of special file */
+> > 	struct statx_dev st_dev;	/* ID of device containing file */
+> > 	/* 0x30 */
+> > 	int32_t		st_atime_ns;	/* Last access time (ns part) */
+> > 	int32_t		st_btime_ns;	/* File creation time (ns part) */
+> > 	int32_t		st_ctime_ns;	/* Last attribute change time (ns part) */
+> > 	int32_t		st_mtime_ns;	/* Last data modification time (ns part) */
+> > 	/* 0x40 */
+> > 	int64_t		st_atime;	/* Last access time */
+> > 	int64_t		st_btime;	/* File creation time */
+> > 	int64_t		st_ctime;	/* Last attribute change time */
+> > 	int64_t		st_mtime;	/* Last data modification time */
+> > 	/* 0x60 */
+> > 	uint64_t	st_ino;		/* Inode number */
+> > 	uint64_t	st_size;	/* File size */
+> > 	uint64_t	st_blocks;	/* Number of 512-byte blocks allocated */
+> > 	uint64_t	st_gen;		/* Inode generation number */
+> 
+> I don't think we want to expose the inode generation numbers. It is
+> trivial to construct NFS file handles (usually just fsid, inode
+> number and generation) with that information and hence bypass
+> security checks to access files.
 
-> In objects-layout we have even worse alignment constrains with raid5
-> (stripe_size alignment). It was needed to do a (very simple BTW)
-> read-modify-write. Involving not just partial pages but also full pages read.
-> BTW we read into the page-cache the surrounding pages, so not to read them multiple
-> times.
->
->> It is different from DIO case because for DIO we have to
->> be sure each page is blocksize aligned. And it can't easily be done
->> in pg_test because in pg_test we only have one nfs_page to test
->> against.
->>
->
-> <snip>
->
->> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
->> index 7ae8a60..a84a0da 100644
->> --- a/fs/nfs/blocklayout/blocklayout.c
->> +++ b/fs/nfs/blocklayout/blocklayout.c
->> @@ -925,6 +925,18 @@ nfs4_blk_get_deviceinfo(struct nfs_server *server, const struct nfs_fh *fh,
->>       return rv;
->>  }
->>
->> +static bool
->> +bl_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
->> +        struct nfs_page *req)
->> +{
->> +     /* Bail out page unligned IO */
->> +     if (req->wb_offset || req->wb_pgbase ||
->> +         req->wb_bytes != PAGE_CACHE_SIZE)
->> +             return false;
->> +
->
->
-> This is very serious. Not many applications will currently pass
-> this test. (And hence will not do direct IO)
->
-> What happens today without this patch?
->
-block layout IO path assumes IO is page aligned in many places.
-Without the patch, it is likely to cause data corruption when
-unaligned IO is passed in to LD. E.g., Page will be submitted to block
-layer entirely even if only part of its data is valid. Therefore if
-application does byte range locking + partial page write, garbage data
-will get written and cause data corruption.
+I'm not convinced there's much value in trying to keep filehandles
+secret.
 
-In most buffered write cases, nfs_write_begin takes case of starting
-read-modify-write cycle for partial page writes. Please see
-nfs_want_read_modify_write(). I guess that's the reason we pass most
-test cases. But it is not always the case. And when it isn't, it may
-cause data corruption.
+If you're going to base your security on a secret, then it should be
+hard to guess, easy to keep secret, and changeable in case it ever does
+get out.
 
-I'm really sorry to leave such serious bug here.
+Filehandles are pretty easy to guess (even without help like this), they
+usually go over the wire in cleartext, and they can't be changed.
 
-Thanks,
-Tao
->> +     return pnfs_generic_pg_test(pgio, prev, req);
->> +}
->> +
->
->
-> <>
->
-> Thanks
-> Boaz
+--b.
+
+> 
+> > 	uint64_t	st_version;	/* Data version number */
+> > 	uint64_t	st_ioc_flags;	/* As FS_IOC_GETFLAGS */
+> > 	/* 0x90 */
+> > 	uint64_t	__spare1[13];	/* Spare space for future expansion */
+> > 	/* 0x100 */
+> > };
+> > 
+> > And an fs information structure for less commonly needed data:
+> > 
+> > struct statx_fsinfo {
+> > 	/* 0x00 - General info */
+> > 	uint32_t	st_mask;	/* What optional fields are filled in */
+> > 	uint32_t	st_type;	/* Filesystem type from linux/magic.h */
+> > 
+> > 	/* 0x08 - file timestamp granularity info */
+> > 	uint16_t	st_atime_gran_mantissa;	/* gran(secs) = mant * 10^exp */
+> > 	uint16_t	st_btime_gran_mantissa;
+> > 	uint16_t	st_ctime_gran_mantissa;
+> > 	uint16_t	st_mtime_gran_mantissa;
+> > 	/* 0x10 */
+> > 	int8_t		st_atime_gran_exponent;
+> > 	int8_t		st_btime_gran_exponent;
+> > 	int8_t		st_ctime_gran_exponent;
+> > 	int8_t		st_mtime_gran_exponent;
+> > 
+> > 	/* 0x14 - I/O parameters */
+> > 	uint32_t	st_blksize;	  /* File block size */
+> > 	uint32_t	st_alloc_blksize; /* Allocation block size/alignment */
+> > 	uint32_t	st_small_io_size; /* IO size/alignment that avoids fs/page cache RMW */
+> > 	uint32_t	st_pref_io_size;  /* Preferred IO size for general usage */
+> > 	uint32_t	st_large_io_size; /* IO size/alignment for high bandwidth sequential IO */
+> 
+> That's per file information, not per filesystem. XFS definitely
+> needs this IO information per-file....
+> 
+> > 
+> > 	/* 0x28 - Restrictions on struct statx contents */
+> > 	uint64_t	st_supported_ioc_flags; /* FS_IOC_GETFLAGS flags supported  */
+> > 
+> > 	/* 0x30 - Volume/filesystem information */
+> > 	uint64_t	st_fsid;	/* Short 64-bit Filesystem ID (as statfs) */
+> > 	uint64_t	__spare0[3];
+> > 	/* 0x50 */
+> > 	uint8_t		st_volume_id[16]; /* Volume/fs identifier */
+> > 	uint8_t		st_volume_uuid[16]; /* Volume/fs UUID */
+> 
+> And there's all the remaining information needed to construct file
+> NFS handles without root priviledges...
+> 
+> > 	/* 0x80 */
+> > 	uint64_t	__spare1[8];
+> > 	/* 0xc0 */
+> > 	uint8_t		st_volume_name[64]; /* Volume name (up to 64 chars) */
+> > 	/* 0x100 */
+> > 	uint8_t		st_domain_name[256]; /* Domain/cell/workgroup name (up to 256 chars) */
+> > 	/* 0x200 */
+> > };
+> > 
+> > One could argue a bit over what goes in which, should we go for this.  This
+> > may be better split between multiple syscalls though (with the race that that
+> > implies) and potentially merging with statfs.
+> > 
+> > 
+> > The statxat() syscall [née xstat] could then use the 6th parameter thusly:
+> > 
+> > asmlinkage long sys_statxat(int dfd, const char __user *path, unsigned flags,
+> > 			    unsigned mask, struct statx __user *buffer,
+> > 			    struct statx_fsinfo __user *fsinfo);
+> > 
+> > 
+> > letting fsinfo be NULL to indicate a lack of interest.  I'm not sure we want
+> > to do that, though.
+> > 
+> > 
+> > Also, do Dave Chinner's ideas for indicating five I/O parameters want to be
+> > 32-bit numbers?  Larger?  Smaller?  Can they be log2?
+> 
+> Definitely 32 bit, IMO, as it's not uncommon to see optimal IO sizes
+> in the tens of megabytes on large, high bandwidth storage systems.
+> As for being log2 - that's just making it more complex to use and
+> making code ugly - we'd have to convert to log2 in kernel, then
+> convert back in every single application....
+> 
+> > Note also, that I've suggested that we represent the timestamp granularity
+> > information as a decimal float (which requires 3 bytes per timestamp) and that
+> > we provide separate granularities for each timestamp.
+> > 
+> > David
+> > 
+> 
+> -- 
+> Dave Chinner
+> david@fromorbit.com
