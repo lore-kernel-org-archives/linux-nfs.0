@@ -1,72 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from plane.gmane.org ([80.91.229.3]:51566 "EHLO plane.gmane.org"
+Received: from mx2.netapp.com ([216.240.18.37]:59032 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756549Ab2EJUZE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 May 2012 16:25:04 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1SSZv3-00011i-DI
-	for linux-nfs@vger.kernel.org; Thu, 10 May 2012 22:25:01 +0200
-Received: from NORTHWEST-R.edge3.Denver1.Level3.net ([4.28.99.98])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Thu, 10 May 2012 22:25:01 +0200
-Received: from orion by NORTHWEST-R.edge3.Denver1.Level3.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Thu, 10 May 2012 22:25:01 +0200
+	id S1758360Ab2EIQvr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 May 2012 12:51:47 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-From: Orion Poplawski <orion@cora.nwra.com>
-Subject: Cannot unmount nfs4 sec=krb5 mount if network is down
-Date: Thu, 10 May 2012 20:24:53 +0000 (UTC)
-Message-ID: <loom.20120510T222025-23@post.gmane.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Cc: Fred Isaman <iisaman@netapp.com>
+Subject: [PATCH] NFS: Prevent a deadlock in the new read and write code
+Date: Wed,  9 May 2012 12:51:24 -0400
+Message-Id: <1336582284-8558-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-See https://bugzilla.redhat.com/show_bug.cgi?id=820707
+In order to avoid an ABBA lock ordering issue, the write code must
+unlock and release the nfs_page _before_ it calls end_page_writeback.
+Since the last release of the nfs_page will trigger a call to put
+the open_context, we need to ensure that something else holds a
+reference to the open context until we're done with the
+end_page_writeback so that we don't end up calling iput while we're
+still holding a PG_writeback lock.
+We can fix this by changing nfs_writedata_release to put the open
+context after we have processed all the page data.
 
-We're using nfs4/krb5 mounts via autofs (although I get the same result without
-autofs and mounting the directory directly):
+The read code does not suffer from the same problem, since it doesn't
+hold a lock on the nfs_page, so it just calls nfs_release_request after
+unlocking the page itself. However, for symmetry reasons, we make the
+same change to nfs_readdata_release.
 
-earth:/export/home/orion on /home/orion type nfs4
-(rw,noatime,vers=4,rsize=32768,wsize=32768,namlen=255,acregmin=1,acregmax=1,
-acdirmin=1,acdirmax=1,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=krb5,
-clientaddr=10.10.30.4,minorversion=0,local_lock=none,addr=10.10.10.1)
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/read.c  |    3 ++-
+ fs/nfs/write.c |   13 ++++++++++++-
+ 2 files changed, 14 insertions(+), 2 deletions(-)
 
-If the network is disconnected it is impossible to unmount, even if no
-processes are accessing the mount.  umount -f and umount -l both hang on
-readlink("/home/orion").  At this point it is impossible to shutdown cleanly
-and you must hold the power button down until the machine powers off.
-
-I can unmount non-krb5 nfs4/nfs3 mounts just fine.
-
-I tried running rpc.gssd and nfsidmap with -vvv but nothing else showed up in
-the log.
-
-Sometimes get:
-
-May 10 12:00:10 makani kernel: [ 2018.272071] nfs: server earth not responding,
-still trying
-
-but that's it.  I can exit umount -l with ctrl-c.
-
-Version-Release number of selected component (if applicable):
-nfs-utils-1.2.5-15.fc17.x86_64
-3.3.4-5.fc17.x86_64
-
-How reproducible:
-Every time
-
-Steps to Reproduce:
-1. mount nfs4 sec=krb5 mount
-2. pull network
-3. umount -l <mount>
-
-Actual results:
-umount -l hangs
-
-Expected results:
-umount succeeds, perhaps with delay.
-
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index f23cf25..dec47e5 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -87,8 +87,8 @@ void nfs_readdata_release(struct nfs_read_data *rdata)
+ {
+ 	struct nfs_pgio_header *hdr = rdata->header;
+ 	struct nfs_read_header *read_header = container_of(hdr, struct nfs_read_header, header);
++	struct nfs_open_context *ctx = rdata->args.context;
+ 
+-	put_nfs_open_context(rdata->args.context);
+ 	if (rdata->pages.pagevec != rdata->pages.page_array)
+ 		kfree(rdata->pages.pagevec);
+ 	if (rdata != &read_header->rpc_data)
+@@ -97,6 +97,7 @@ void nfs_readdata_release(struct nfs_read_data *rdata)
+ 		rdata->header = NULL;
+ 	if (atomic_dec_and_test(&hdr->refcnt))
+ 		hdr->completion_ops->completion(hdr);
++	put_nfs_open_context(ctx);
+ }
+ 
+ static
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 6f263da..69825f7 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -119,8 +119,8 @@ void nfs_writedata_release(struct nfs_write_data *wdata)
+ {
+ 	struct nfs_pgio_header *hdr = wdata->header;
+ 	struct nfs_write_header *write_header = container_of(hdr, struct nfs_write_header, header);
++	struct nfs_open_context *ctx = wdata->args.context;
+ 
+-	put_nfs_open_context(wdata->args.context);
+ 	if (wdata->pages.pagevec != wdata->pages.page_array)
+ 		kfree(wdata->pages.pagevec);
+ 	if (wdata != &write_header->rpc_data)
+@@ -129,6 +129,10 @@ void nfs_writedata_release(struct nfs_write_data *wdata)
+ 		wdata->header = NULL;
+ 	if (atomic_dec_and_test(&hdr->refcnt))
+ 		hdr->completion_ops->completion(hdr);
++	/* Note: put the open context after processing all the
++	 * page data in order to avoid a deadlock in nfs_write_completion.
++	 */
++	put_nfs_open_context(ctx);
+ }
+ 
+ static void nfs_context_set_write_error(struct nfs_open_context *ctx, int error)
+@@ -597,6 +601,13 @@ int nfs_write_need_commit(struct nfs_write_data *data)
+ 
+ #endif
+ 
++/*
++ * nfs_write_completion - process the results of the write RPC calls
++ *
++ * Note: this function assumes that the caller is holding a reference
++ * to the nfs_open_context in order to avoid a deadlock when calling
++ * nfs_end_page_writeback after nfs_unlock_request.
++ */
+ static void nfs_write_completion(struct nfs_pgio_header *hdr)
+ {
+ 	struct nfs_commit_info cinfo;
+-- 
+1.7.7.6
 
