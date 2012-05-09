@@ -1,83 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:37911 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:56187 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754239Ab2EXUjI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 May 2012 16:39:08 -0400
-Received: from vmwexceht04-prd.hq.netapp.com (vmwexceht04-prd.hq.netapp.com [10.106.77.34])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q4OKd7Km028588
-	for <linux-nfs@vger.kernel.org>; Thu, 24 May 2012 13:39:08 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] nfs41: Use BIND_CONN_TO_SESSION for CB_PATH_DOWN*
-Date: Thu, 24 May 2012 20:39:06 +0000
-Message-ID: <1337891951.3054.31.camel@lade.trondhjem.org>
-References: <1337876797-17706-1-git-send-email-dros@netapp.com>
-	 <1337876797-17706-2-git-send-email-dros@netapp.com>
-In-Reply-To: <1337876797-17706-2-git-send-email-dros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1756100Ab2EIVSL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 May 2012 17:18:11 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/2] vfs: remove unused __d_splice_alias argument
+Date: Wed,  9 May 2012 17:18:06 -0400
+Message-Id: <1336598286-28636-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1336598286-28636-1-git-send-email-bfields@redhat.com>
+References: <1336598286-28636-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA1LTI0IGF0IDEyOjI2IC0wNDAwLCBXZXN0b24gQW5kcm9zIEFkYW1zb24g
-d3JvdGU6DQo+IFRoZSBzdGF0ZSBtYW5hZ2VyIGNhbiBoYW5kbGUgU0VRNF9TVEFUVVNfQ0JfUEFU
-SF9ET1dOKiBmbGFncyB3aXRoIGENCj4gQklORF9DT05OX1RPX1NFU1NJT04gaW5zdGVhZCBvZiBk
-ZXN0cm95aW5nIHRoZSBzZXNzaW9uIGFuZCBjcmVhdGluZyBhIG5ldyBvbmUuDQo+IA0KPiBTaWdu
-ZWQtb2ZmLWJ5OiBXZXN0b24gQW5kcm9zIEFkYW1zb24gPGRyb3NAbmV0YXBwLmNvbT4NCj4gLS0t
-DQo+ICBmcy9uZnMvbmZzNF9mcy5oICAgfCAgICAxICsNCj4gIGZzL25mcy9uZnM0c3RhdGUuYyB8
-ICAgMjYgKysrKysrKysrKysrKysrKysrKysrLS0tLS0NCj4gIDIgZmlsZXMgY2hhbmdlZCwgMjIg
-aW5zZXJ0aW9ucygrKSwgNSBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMv
-bmZzNF9mcy5oIGIvZnMvbmZzL25mczRfZnMuaA0KPiBpbmRleCBhZDkwYmM3Li45ZmVmZjBmIDEw
-MDY0NA0KPiAtLS0gYS9mcy9uZnMvbmZzNF9mcy5oDQo+ICsrKyBiL2ZzL25mcy9uZnM0X2ZzLmgN
-Cj4gQEAgLTI0LDYgKzI0LDcgQEAgZW51bSBuZnM0X2NsaWVudF9zdGF0ZSB7DQo+ICAJTkZTNENM
-TlRfUkVDQUxMX1NMT1QsDQo+ICAJTkZTNENMTlRfTEVBU0VfQ09ORklSTSwNCj4gIAlORlM0Q0xO
-VF9TRVJWRVJfU0NPUEVfTUlTTUFUQ0gsDQo+ICsJTkZTNENMTlRfQklORF9DT05OX1RPX1NFU1NJ
-T04sDQo+ICB9Ow0KPiAgDQo+ICBlbnVtIG5mczRfc2Vzc2lvbl9zdGF0ZSB7DQo+IGRpZmYgLS1n
-aXQgYS9mcy9uZnMvbmZzNHN0YXRlLmMgYi9mcy9uZnMvbmZzNHN0YXRlLmMNCj4gaW5kZXggN2Yw
-ZmNmYy4uNDA1NThjYSAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL25mczRzdGF0ZS5jDQo+ICsrKyBi
-L2ZzL25mcy9uZnM0c3RhdGUuYw0KPiBAQCAtMTYzOSwxMyArMTYzOSwyMCBAQCBzdGF0aWMgdm9p
-ZCBuZnM0MV9oYW5kbGVfcmVjYWxsYWJsZV9zdGF0ZV9yZXZva2VkKHN0cnVjdCBuZnNfY2xpZW50
-ICpjbHApDQo+ICAJbmZzX2V4cGlyZV9hbGxfZGVsZWdhdGlvbnMoY2xwKTsNCj4gIH0NCj4gIA0K
-PiAtc3RhdGljIHZvaWQgbmZzNDFfaGFuZGxlX2NiX3BhdGhfZG93bihzdHJ1Y3QgbmZzX2NsaWVu
-dCAqY2xwKQ0KPiArc3RhdGljIHZvaWQgbmZzNDFfaGFuZGxlX2JhY2tjaGFubmVsX2ZhdWx0KHN0
-cnVjdCBuZnNfY2xpZW50ICpjbHApDQo+ICB7DQo+ICAJbmZzX2V4cGlyZV9hbGxfZGVsZWdhdGlv
-bnMoY2xwKTsNCj4gIAlpZiAodGVzdF9hbmRfc2V0X2JpdChORlM0Q0xOVF9TRVNTSU9OX1JFU0VU
-LCAmY2xwLT5jbF9zdGF0ZSkgPT0gMCkNCj4gIAkJbmZzNF9zY2hlZHVsZV9zdGF0ZV9tYW5hZ2Vy
-KGNscCk7DQo+ICB9DQo+ICANCj4gK3N0YXRpYyB2b2lkIG5mczQxX2hhbmRsZV9jYl9wYXRoX2Rv
-d24oc3RydWN0IG5mc19jbGllbnQgKmNscCkNCj4gK3sNCj4gKwlpZiAodGVzdF9hbmRfc2V0X2Jp
-dChORlM0Q0xOVF9CSU5EX0NPTk5fVE9fU0VTU0lPTiwNCj4gKwkJJmNscC0+Y2xfc3RhdGUpID09
-IDApDQo+ICsJCW5mczRfc2NoZWR1bGVfc3RhdGVfbWFuYWdlcihjbHApOw0KPiArfQ0KPiArDQo+
-ICB2b2lkIG5mczQxX2hhbmRsZV9zZXF1ZW5jZV9mbGFnX2Vycm9ycyhzdHJ1Y3QgbmZzX2NsaWVu
-dCAqY2xwLCB1MzIgZmxhZ3MpDQo+ICB7DQo+ICAJaWYgKCFmbGFncykNCj4gQEAgLTE2NTksOSAr
-MTY2NiwxMCBAQCB2b2lkIG5mczQxX2hhbmRsZV9zZXF1ZW5jZV9mbGFnX2Vycm9ycyhzdHJ1Y3Qg
-bmZzX2NsaWVudCAqY2xwLCB1MzIgZmxhZ3MpDQo+ICAJCW5mczQxX2hhbmRsZV9zdGF0ZV9yZXZv
-a2VkKGNscCk7DQo+ICAJaWYgKGZsYWdzICYgU0VRNF9TVEFUVVNfUkVDQUxMQUJMRV9TVEFURV9S
-RVZPS0VEKQ0KPiAgCQluZnM0MV9oYW5kbGVfcmVjYWxsYWJsZV9zdGF0ZV9yZXZva2VkKGNscCk7
-DQo+IC0JaWYgKGZsYWdzICYgKFNFUTRfU1RBVFVTX0NCX1BBVEhfRE9XTiB8DQo+IC0JCQkgICAg
-U0VRNF9TVEFUVVNfQkFDS0NIQU5ORUxfRkFVTFQgfA0KPiAtCQkJICAgIFNFUTRfU1RBVFVTX0NC
-X1BBVEhfRE9XTl9TRVNTSU9OKSkNCj4gKwlpZiAoZmxhZ3MgJiBTRVE0X1NUQVRVU19CQUNLQ0hB
-Tk5FTF9GQVVMVCkNCj4gKwkJbmZzNDFfaGFuZGxlX2JhY2tjaGFubmVsX2ZhdWx0KGNscCk7DQo+
-ICsJZWxzZSBpZiAoZmxhZ3MgJiAoU0VRNF9TVEFUVVNfQ0JfUEFUSF9ET1dOIHwNCj4gKwkJCQlT
-RVE0X1NUQVRVU19DQl9QQVRIX0RPV05fU0VTU0lPTikpDQo+ICAJCW5mczQxX2hhbmRsZV9jYl9w
-YXRoX2Rvd24oY2xwKTsNCj4gIH0NCj4gIA0KPiBAQCAtMTcyMSw3ICsxNzI5LDYgQEAgc3RhdGlj
-IGludCBuZnM0X3JlY2FsbF9zbG90KHN0cnVjdCBuZnNfY2xpZW50ICpjbHApDQo+ICAJbmZzNF9l
-bmRfZHJhaW5fc2Vzc2lvbihjbHApOw0KPiAgCXJldHVybiAwOw0KPiAgfQ0KPiAtDQo+ICAjZWxz
-ZSAvKiBDT05GSUdfTkZTX1Y0XzEgKi8NCj4gIHN0YXRpYyBpbnQgbmZzNF9yZXNldF9zZXNzaW9u
-KHN0cnVjdCBuZnNfY2xpZW50ICpjbHApIHsgcmV0dXJuIDA7IH0NCj4gIHN0YXRpYyBpbnQgbmZz
-NF9lbmRfZHJhaW5fc2Vzc2lvbihzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwKSB7IHJldHVybiAwOyB9
-DQo+IEBAIC0xODAzLDYgKzE4MTAsMTUgQEAgc3RhdGljIHZvaWQgbmZzNF9zdGF0ZV9tYW5hZ2Vy
-KHN0cnVjdCBuZnNfY2xpZW50ICpjbHApDQo+ICAJCQkJZ290byBvdXRfZXJyb3I7DQo+ICAJCX0N
-Cj4gIA0KPiArCQkvKiBTZW5kIEJJTkRfQ09OTl9UT19TRVNTSU9OICovDQo+ICsJCWlmIChjbHAt
-PmNsX212b3BzLT5taW5vcl92ZXJzaW9uID09IDEgJiYNCj4gKwkJICAgIHRlc3RfYW5kX2NsZWFy
-X2JpdChORlM0Q0xOVF9CSU5EX0NPTk5fVE9fU0VTU0lPTiwNCj4gKwkJCQkmY2xwLT5jbF9zdGF0
-ZSkgJiYgbmZzNF9oYXNfc2Vzc2lvbihjbHApKSB7DQo+ICsJCQlzdGF0dXMgPSBuZnM0X3Byb2Nf
-YmluZF9jb25uX3RvX3Nlc3Npb24oY2xwKTsNCj4gKwkJCWlmIChzdGF0dXMgPCAwKQ0KPiArCQkJ
-CWdvdG8gb3V0X2Vycm9yOw0KPiArCQl9DQo+ICsNCj4gIAkJLyogRmlyc3QgcmVjb3ZlciByZWJv
-b3Qgc3RhdGUuLi4gKi8NCj4gIAkJaWYgKHRlc3RfYml0KE5GUzRDTE5UX1JFQ0xBSU1fUkVCT09U
-LCAmY2xwLT5jbF9zdGF0ZSkpIHsNCj4gIAkJCXN0YXR1cyA9IG5mczRfZG9fcmVjbGFpbShjbHAs
-DQoNCkNvbW1pdHRlZCBhZnRlciBmaXhpbmcgaWZuZGVmIENPTkZJR19ORlNfVjRfMSBpc3N1ZXMg
-YW5kIGFkZGluZyBhDQpjbGVhcl9iaXQoKSBmb3IgTkZTNENMTlRfQklORF9DT05OX1RPX1NFU1NJ
-T04gaW4gbmZzNF9yZXNldF9zZXNzaW9uLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
-TkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
-b20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+Nobody sets want_disconn any more.
+
+Reported-by: Peng Tao <bergwolf@gmail.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/dcache.c |   13 +++++--------
+ 1 file changed, 5 insertions(+), 8 deletions(-)
+
+diff --git a/fs/dcache.c b/fs/dcache.c
+index 2434c1e..8e34e91 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -649,8 +649,6 @@ EXPORT_SYMBOL(dget_parent);
+ /**
+  * d_find_alias - grab a hashed alias of inode
+  * @inode: inode in question
+- * @want_discon:  flag, used by d_splice_alias, to request
+- *          that only a DISCONNECTED alias be returned.
+  *
+  * If inode has a hashed alias, or is a directory and has any alias,
+  * acquire the reference to alias and return it. Otherwise return NULL.
+@@ -659,10 +657,9 @@ EXPORT_SYMBOL(dget_parent);
+  * of a filesystem.
+  *
+  * If the inode has an IS_ROOT, DCACHE_DISCONNECTED alias, then prefer
+- * any other hashed alias over that one unless @want_discon is set,
+- * in which case only return an IS_ROOT, DCACHE_DISCONNECTED alias.
++ * any other hashed alias over that.
+  */
+-static struct dentry *__d_find_alias(struct inode *inode, int want_discon)
++static struct dentry *__d_find_alias(struct inode *inode)
+ {
+ 	struct dentry *alias, *discon_alias;
+ 
+@@ -674,7 +671,7 @@ again:
+ 			if (IS_ROOT(alias) &&
+ 			    (alias->d_flags & DCACHE_DISCONNECTED)) {
+ 				discon_alias = alias;
+-			} else if (!want_discon) {
++			} else {
+ 				__dget_dlock(alias);
+ 				spin_unlock(&alias->d_lock);
+ 				return alias;
+@@ -705,7 +702,7 @@ struct dentry *d_find_alias(struct inode *inode)
+ 
+ 	if (!list_empty(&inode->i_dentry)) {
+ 		spin_lock(&inode->i_lock);
+-		de = __d_find_alias(inode, 0);
++		de = __d_find_alias(inode);
+ 		spin_unlock(&inode->i_lock);
+ 	}
+ 	return de;
+@@ -2395,7 +2392,7 @@ struct dentry *d_materialise_unique(struct dentry *dentry, struct inode *inode)
+ 		struct dentry *alias;
+ 
+ 		/* Does an aliased dentry already exist? */
+-		alias = __d_find_alias(inode, 0);
++		alias = __d_find_alias(inode);
+ 		if (alias) {
+ 			actual = alias;
+ 			write_seqlock(&rename_lock);
+-- 
+1.7.9.5
+
