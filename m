@@ -1,169 +1,149 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:38099 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:3202 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758563Ab2EJNym (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 May 2012 09:54:42 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 09/12] nfs: disable data cache revalidation for swapfiles
-Date: Thu, 10 May 2012 14:54:22 +0100
-Message-Id: <1336658065-24851-10-git-send-email-mgorman@suse.de>
-In-Reply-To: <1336658065-24851-1-git-send-email-mgorman@suse.de>
-References: <1336658065-24851-1-git-send-email-mgorman@suse.de>
+	id S1755268Ab2EIA7b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 May 2012 20:59:31 -0400
+Message-ID: <1336525164.21032.9.camel@serendib>
+Subject: [PATCH] nfs-utils: Add a warning to the nfs manpage regarding using
+ NFS over UDP on high-speed links
+From: Harshula Jayasuriya <harshula@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Jeff Layton <jlayton@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>, Olaf Kirch <okir@suse.de>
+Date: Wed, 09 May 2012 10:59:24 +1000
+In-Reply-To: <2194470C-5FD9-4317-9A30-2E6C244138D5@oracle.com>
+References: <1330406521.9157.16.camel@serendib>
+	 <20120228065218.7e110936@tlielax.poochiereds.net>
+	 <20120228124646.GA2528@umich.edu>
+	 <BC3988C4-CC1A-4DFA-89AE-7046C674A873@oracle.com>
+	 <7C4B183F-8357-4D08-B30A-73196954A5D4@oracle.com>
+	 <1330913825.9157.61.camel@serendib>
+	 <2194470C-5FD9-4317-9A30-2E6C244138D5@oracle.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The VM does not like PG_private set on PG_swapcache pages. As suggested
-by Trond in http://lkml.org/lkml/2006/8/25/348, this patch disables
-NFS data cache revalidation on swap files.  as it does not make
-sense to have other clients change the file while it is being used as
-swap. This avoids setting PG_private on swap pages, since there ought
-to be no further races with invalidate_inode_pages2() to deal with.
+* Using NFS over UDP on high-speed links such as Gigabit can cause
+  silent data corruption.
+* The man page text was written by Olaf Kirch and committed to (but not
+  upstream):
+https://build.opensuse.org/package/view_file?file=warn-nfs-udp.patch&package=nfs-utils&project=openSUSE%3AFactory&rev=8e3e60c70e8270cd4afa036e13f6b2bb
 
-Since we cannot set PG_private we cannot use page->private which
-is already used by PG_swapcache pages to store the nfs_page. Thus
-augment the new nfs_page_find_request logic.
-
-Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
+Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
+Acked-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Olaf Kirch <okir@suse.com>
 ---
- fs/nfs/inode.c |    6 ++++++
- fs/nfs/write.c |   49 +++++++++++++++++++++++++++++++++++--------------
- 2 files changed, 41 insertions(+), 14 deletions(-)
+ utils/mount/nfs.man |   81 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 81 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index e8bbfa5..af43ef6 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -880,6 +880,12 @@ int nfs_revalidate_mapping(struct inode *inode, struct address_space *mapping)
- 	struct nfs_inode *nfsi = NFS_I(inode);
- 	int ret = 0;
- 
-+	/*
-+	 * swapfiles are not supposed to be shared.
-+	 */
-+	if (IS_SWAPFILE(inode))
-+		goto out;
-+
- 	if ((nfsi->cache_validity & NFS_INO_REVAL_PAGECACHE)
- 			|| nfs_attribute_cache_expired(inode)
- 			|| NFS_STALE(inode)) {
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 8223b2c..21cfe71 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -111,15 +111,28 @@ static void nfs_context_set_write_error(struct nfs_open_context *ctx, int error)
- 	set_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
- }
- 
--static struct nfs_page *nfs_page_find_request_locked(struct page *page)
-+static struct nfs_page *
-+nfs_page_find_request_locked(struct nfs_inode *nfsi, struct page *page)
- {
- 	struct nfs_page *req = NULL;
- 
--	if (PagePrivate(page)) {
-+	if (PagePrivate(page))
- 		req = (struct nfs_page *)page_private(page);
--		if (req != NULL)
--			kref_get(&req->wb_kref);
-+	else if (unlikely(PageSwapCache(page))) {
-+		struct nfs_page *freq, *t;
-+
-+		/* Linearly search the commit list for the correct req */
-+		list_for_each_entry_safe(freq, t, &nfsi->commit_list, wb_list) {
-+			if (freq->wb_page == page) {
-+				req = freq;
-+				break;
-+			}
-+		}
- 	}
-+
-+	if (req)
-+		kref_get(&req->wb_kref);
-+
- 	return req;
- }
- 
-@@ -129,7 +142,7 @@ static struct nfs_page *nfs_page_find_request(struct page *page)
- 	struct nfs_page *req = NULL;
- 
- 	spin_lock(&inode->i_lock);
--	req = nfs_page_find_request_locked(page);
-+	req = nfs_page_find_request_locked(NFS_I(inode), page);
- 	spin_unlock(&inode->i_lock);
- 	return req;
- }
-@@ -232,7 +245,7 @@ static struct nfs_page *nfs_find_and_lock_request(struct page *page, bool nonblo
- 
- 	spin_lock(&inode->i_lock);
- 	for (;;) {
--		req = nfs_page_find_request_locked(page);
-+		req = nfs_page_find_request_locked(NFS_I(inode), page);
- 		if (req == NULL)
- 			break;
- 		if (nfs_lock_request_dontget(req))
-@@ -385,9 +398,15 @@ static void nfs_inode_add_request(struct inode *inode, struct nfs_page *req)
- 	spin_lock(&inode->i_lock);
- 	if (!nfsi->npages && nfs_have_delegation(inode, FMODE_WRITE))
- 		inode->i_version++;
--	set_bit(PG_MAPPED, &req->wb_flags);
--	SetPagePrivate(req->wb_page);
--	set_page_private(req->wb_page, (unsigned long)req);
-+	/*
-+	 * Swap-space should not get truncated. Hence no need to plug the race
-+	 * with invalidate/truncate.
-+	 */
-+	if (likely(!PageSwapCache(req->wb_page))) {
-+		set_bit(PG_MAPPED, &req->wb_flags);
-+		SetPagePrivate(req->wb_page);
-+		set_page_private(req->wb_page, (unsigned long)req);
-+	}
- 	nfsi->npages++;
- 	kref_get(&req->wb_kref);
- 	spin_unlock(&inode->i_lock);
-@@ -404,9 +423,11 @@ static void nfs_inode_remove_request(struct nfs_page *req)
- 	BUG_ON (!NFS_WBACK_BUSY(req));
- 
- 	spin_lock(&inode->i_lock);
--	set_page_private(req->wb_page, 0);
--	ClearPagePrivate(req->wb_page);
--	clear_bit(PG_MAPPED, &req->wb_flags);
-+	if (likely(!PageSwapCache(req->wb_page))) {
-+		set_page_private(req->wb_page, 0);
-+		ClearPagePrivate(req->wb_page);
-+		clear_bit(PG_MAPPED, &req->wb_flags);
-+	}
- 	nfsi->npages--;
- 	spin_unlock(&inode->i_lock);
- 	nfs_release_request(req);
-@@ -646,7 +667,7 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
- 	spin_lock(&inode->i_lock);
- 
- 	for (;;) {
--		req = nfs_page_find_request_locked(page);
-+		req = nfs_page_find_request_locked(NFS_I(inode), page);
- 		if (req == NULL)
- 			goto out_unlock;
- 
-@@ -1691,7 +1712,7 @@ int nfs_wb_page_cancel(struct inode *inode, struct page *page)
-  */
- int nfs_wb_page(struct inode *inode, struct page *page)
- {
--	loff_t range_start = page_offset(page);
-+	loff_t range_start = page_file_offset(page);
- 	loff_t range_end = range_start + (loff_t)(PAGE_CACHE_SIZE - 1);
- 	struct writeback_control wbc = {
- 		.sync_mode = WB_SYNC_ALL,
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index 0d20cf0..87e27e1 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -500,6 +500,8 @@ Specifying a netid that uses TCP forces all traffic from the
+ command and the NFS client to use TCP.
+ Specifying a netid that uses UDP forces all traffic types to use UDP.
+ .IP
++.B Before using NFS over UDP, refer to the TRANSPORT METHODS section.
++.IP
+ If the
+ .B proto
+ mount option is not specified, the
+@@ -514,6 +516,8 @@ The
+ option is an alternative to specifying
+ .BR proto=udp.
+ It is included for compatibility with other operating systems.
++.IP
++.B Before using NFS over UDP, refer to the TRANSPORT METHODS section.
+ .TP 1.5i
+ .B tcp
+ The
+@@ -1070,6 +1074,83 @@ or
+ options are specified more than once on the same mount command line,
+ then the value of the rightmost instance of each of these options
+ takes effect.
++.SS "Using NFS over UDP on high-speed links"
++Using NFS over UDP on high-speed links such as Gigabit
++.BR "can cause silent data corruption" .
++.P
++The problem can be triggered at high loads, and is caused by problems in
++IP fragment reassembly. NFS read and writes typically transmit UDP packets
++of 4 Kilobytes or more, which have to be broken up into several fragments
++in order to be sent over the Ethernet link, which limits packets to 1500
++bytes by default. This process happens at the IP network layer and is
++called fragmentation.
++.P
++In order to identify fragments that belong together, IP assigns a 16bit
++.I IP ID
++value to each packet; fragments generated from the same UDP packet
++will have the same IP ID. The receiving system will collect these
++fragments and combine them to form the original UDP packet. This process
++is called reassembly. The default timeout for packet reassembly is
++30 seconds; if the network stack does not receive all fragments of
++a given packet within this interval, it assumes the missing fragment(s)
++got lost and discards those it already received.
++.P
++The problem this creates over high-speed links is that it is possible
++to send more than 65536 packets within 30 seconds. In fact, with
++heavy NFS traffic one can observe that the IP IDs repeat after about
++5 seconds.
++.P
++This has serious effects on reassembly: if one fragment gets lost,
++another fragment
++.I from a different packet
++but with the
++.I same IP ID
++will arrive within the 30 second timeout, and the network stack will
++combine these fragments to form a new packet. Most of the time, network
++layers above IP will detect this mismatched reassembly - in the case
++of UDP, the UDP checksum, which is a 16 bit checksum over the entire
++packet payload, will usually not match, and UDP will discard the
++bad packet.
++.P
++However, the UDP checksum is 16 bit only, so there is a chance of 1 in
++65536 that it will match even if the packet payload is completely
++random (which very often isn't the case). If that is the case,
++silent data corruption will occur.
++.P
++This potential should be taken seriously, at least on Gigabit
++Ethernet.
++Network speeds of 100Mbit/s should be considered less
++problematic, because with most traffic patterns IP ID wrap around
++will take much longer than 30 seconds.
++.P
++It is therefore strongly recommended to use
++.BR "NFS over TCP where possible" ,
++since TCP does not perform fragmentation.
++.P
++If you absolutely have to use NFS over UDP over Gigabit Ethernet,
++some steps can be taken to mitigate the problem and reduce the
++probability of corruption:
++.TP +1.5i
++.I Jumbo frames:
++Many Gigabit network cards are capable of transmitting
++frames bigger than the 1500 byte limit of traditional Ethernet, typically
++9000 bytes. Using jumbo frames of 9000 bytes will allow you to run NFS over
++UDP at a page size of 8K without fragmentation. Of course, this is
++only feasible if all involved stations support jumbo frames.
++.IP
++To enable a machine to send jumbo frames on cards that support it,
++it is sufficient to configure the interface for a MTU value of 9000.
++.TP +1.5i
++.I Lower reassembly timeout:
++By lowering this timeout below the time it takes the IP ID counter
++to wrap around, incorrect reassembly of fragments can be prevented
++as well. To do so, simply write the new timeout value (in seconds)
++to the file
++.BR /proc/sys/net/ipv4/ipfrag_time .
++.IP
++A value of 2 seconds will greatly reduce the probability of IPID clashes on
++a single Gigabit link, while still allowing for a reasonable timeout
++when receiving fragmented traffic from distant peers.
+ .SH "DATA AND METADATA COHERENCE"
+ Some modern cluster file systems provide
+ perfect cache coherence among their clients.
 -- 
-1.7.9.2
+1.7.7.6
 
