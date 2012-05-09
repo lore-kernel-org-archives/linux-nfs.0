@@ -1,243 +1,159 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:15340 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757382Ab2EGSnL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 May 2012 14:43:11 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>, Al Viro <viro@zeniv.linux.org.uk>
-Subject: [PATCH v2] NFS: Ensure that setattr and getattr wait for O_DIRECT write completion
-Date: Mon,  7 May 2012 14:43:11 -0400
-Message-Id: <1336416191-13520-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:58149 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751774Ab2EIAYZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 May 2012 20:24:25 -0400
+Date: Wed, 9 May 2012 10:24:20 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: David Howells <dhowells@redhat.com>
+Cc: adilger@dilger.ca, bfields@fieldses.org, smfrench@gmail.com,
+        ben@decadent.org.uk, Trond.Myklebust@netapp.com, roland@hack.frob.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-ext4@vger.kernel.org, linux-api@vger.kernel.org,
+        libc-alpha@sourceware.org
+Subject: Re: Extended file stat: Splitting file- and fs-specific info?
+Message-ID: <20120509002420.GL5091@dastard>
+References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+ <16281.1336508382@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <16281.1336508382@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use the same mechanism as the block devices are using, but move the
-helper functions from fs/direct-io.c into fs/inode.c to remove the
-dependency on CONFIG_BLOCK.
+On Tue, May 08, 2012 at 09:19:42PM +0100, David Howells wrote:
+> 
+> Should I split the file-specific info and the fs-specific info and make the
+> second optional?  What I'm thinking of is something like this:
+> 
+> Have a file information structure:
+> 
+> struct statx {
+> 	/* 0x00 */
+> 	uint32_t	st_mask;	/* What results were written */
+> 	uint32_t	st_information;	/* Information about the file */
+> 	uint16_t	st_mode;	/* File mode */
+> 	uint16_t	__spare0[3];
+> 	/* 0x10 */
+> 	uint32_t	st_uid;		/* User ID of owner */
+> 	uint32_t	st_gid;		/* Group ID of owner */
+> 	uint32_t	st_nlink;	/* Number of hard links */
+> 	uint32_t	st_blksize;	/* Optimal size for filesystem I/O */
+> 	/* 0x20 */
+> 	struct statx_dev st_rdev;	/* Device ID of special file */
+> 	struct statx_dev st_dev;	/* ID of device containing file */
+> 	/* 0x30 */
+> 	int32_t		st_atime_ns;	/* Last access time (ns part) */
+> 	int32_t		st_btime_ns;	/* File creation time (ns part) */
+> 	int32_t		st_ctime_ns;	/* Last attribute change time (ns part) */
+> 	int32_t		st_mtime_ns;	/* Last data modification time (ns part) */
+> 	/* 0x40 */
+> 	int64_t		st_atime;	/* Last access time */
+> 	int64_t		st_btime;	/* File creation time */
+> 	int64_t		st_ctime;	/* Last attribute change time */
+> 	int64_t		st_mtime;	/* Last data modification time */
+> 	/* 0x60 */
+> 	uint64_t	st_ino;		/* Inode number */
+> 	uint64_t	st_size;	/* File size */
+> 	uint64_t	st_blocks;	/* Number of 512-byte blocks allocated */
+> 	uint64_t	st_gen;		/* Inode generation number */
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Christoph Hellwig <hch@infradead.org>
-Cc: Al Viro <viro@zeniv.linux.org.uk>
----
- fs/direct-io.c    |   44 --------------------------------------------
- fs/inode.c        |   48 ++++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/direct.c   |   15 ++++++++++++---
- fs/nfs/inode.c    |    5 ++++-
- fs/nfs/internal.h |    4 ++++
- 5 files changed, 68 insertions(+), 48 deletions(-)
+I don't think we want to expose the inode generation numbers. It is
+trivial to construct NFS file handles (usually just fsid, inode
+number and generation) with that information and hence bypass
+security checks to access files.
 
-diff --git a/fs/direct-io.c b/fs/direct-io.c
-index f4aadd1..0c85fae 100644
---- a/fs/direct-io.c
-+++ b/fs/direct-io.c
-@@ -145,50 +145,6 @@ struct dio {
- 
- static struct kmem_cache *dio_cache __read_mostly;
- 
--static void __inode_dio_wait(struct inode *inode)
--{
--	wait_queue_head_t *wq = bit_waitqueue(&inode->i_state, __I_DIO_WAKEUP);
--	DEFINE_WAIT_BIT(q, &inode->i_state, __I_DIO_WAKEUP);
--
--	do {
--		prepare_to_wait(wq, &q.wait, TASK_UNINTERRUPTIBLE);
--		if (atomic_read(&inode->i_dio_count))
--			schedule();
--	} while (atomic_read(&inode->i_dio_count));
--	finish_wait(wq, &q.wait);
--}
--
--/**
-- * inode_dio_wait - wait for outstanding DIO requests to finish
-- * @inode: inode to wait for
-- *
-- * Waits for all pending direct I/O requests to finish so that we can
-- * proceed with a truncate or equivalent operation.
-- *
-- * Must be called under a lock that serializes taking new references
-- * to i_dio_count, usually by inode->i_mutex.
-- */
--void inode_dio_wait(struct inode *inode)
--{
--	if (atomic_read(&inode->i_dio_count))
--		__inode_dio_wait(inode);
--}
--EXPORT_SYMBOL(inode_dio_wait);
--
--/*
-- * inode_dio_done - signal finish of a direct I/O requests
-- * @inode: inode the direct I/O happens on
-- *
-- * This is called once we've finished processing a direct I/O request,
-- * and is used to wake up callers waiting for direct I/O to be quiesced.
-- */
--void inode_dio_done(struct inode *inode)
--{
--	if (atomic_dec_and_test(&inode->i_dio_count))
--		wake_up_bit(&inode->i_state, __I_DIO_WAKEUP);
--}
--EXPORT_SYMBOL(inode_dio_done);
--
- /*
-  * How many pages are in the queue?
-  */
-diff --git a/fs/inode.c b/fs/inode.c
-index 9f4f5fe..a8138d8 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -1741,3 +1741,51 @@ bool inode_owner_or_capable(const struct inode *inode)
- 	return false;
- }
- EXPORT_SYMBOL(inode_owner_or_capable);
-+
-+/*
-+ * Direct i/o helper functions
-+ */
-+static void __inode_dio_wait(struct inode *inode)
-+{
-+	wait_queue_head_t *wq = bit_waitqueue(&inode->i_state, __I_DIO_WAKEUP);
-+	DEFINE_WAIT_BIT(q, &inode->i_state, __I_DIO_WAKEUP);
-+
-+	do {
-+		prepare_to_wait(wq, &q.wait, TASK_UNINTERRUPTIBLE);
-+		if (atomic_read(&inode->i_dio_count))
-+			schedule();
-+	} while (atomic_read(&inode->i_dio_count));
-+	finish_wait(wq, &q.wait);
-+}
-+
-+/**
-+ * inode_dio_wait - wait for outstanding DIO requests to finish
-+ * @inode: inode to wait for
-+ *
-+ * Waits for all pending direct I/O requests to finish so that we can
-+ * proceed with a truncate or equivalent operation.
-+ *
-+ * Must be called under a lock that serializes taking new references
-+ * to i_dio_count, usually by inode->i_mutex.
-+ */
-+void inode_dio_wait(struct inode *inode)
-+{
-+	if (atomic_read(&inode->i_dio_count))
-+		__inode_dio_wait(inode);
-+}
-+EXPORT_SYMBOL(inode_dio_wait);
-+
-+/*
-+ * inode_dio_done - signal finish of a direct I/O requests
-+ * @inode: inode the direct I/O happens on
-+ *
-+ * This is called once we've finished processing a direct I/O request,
-+ * and is used to wake up callers waiting for direct I/O to be quiesced.
-+ */
-+void inode_dio_done(struct inode *inode)
-+{
-+	if (atomic_dec_and_test(&inode->i_dio_count))
-+		wake_up_bit(&inode->i_state, __I_DIO_WAKEUP);
-+}
-+EXPORT_SYMBOL(inode_dio_done);
-+
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index aab3016..11ec2be 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -453,6 +453,12 @@ out:
- 	return result;
- }
- 
-+static void nfs_inode_dio_write_done(struct inode *inode)
-+{
-+	nfs_zap_mapping(inode, inode->i_mapping);
-+	inode_dio_done(inode);
-+}
-+
- #if defined(CONFIG_NFS_V3) || defined(CONFIG_NFS_V4)
- static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
- {
-@@ -565,7 +571,7 @@ static void nfs_direct_write_schedule_work(struct work_struct *work)
- 			nfs_direct_write_reschedule(dreq);
- 			break;
- 		default:
--			nfs_zap_mapping(dreq->inode, dreq->inode->i_mapping);
-+			nfs_inode_dio_write_done(dreq->inode);
- 			nfs_direct_complete(dreq);
- 	}
- }
-@@ -582,7 +588,7 @@ static void nfs_direct_write_schedule_work(struct work_struct *work)
- 
- static void nfs_direct_write_complete(struct nfs_direct_req *dreq, struct inode *inode)
- {
--	nfs_zap_mapping(inode, inode->i_mapping);
-+	nfs_inode_dio_write_done(inode);
- 	nfs_direct_complete(dreq);
- }
- #endif
-@@ -771,14 +777,16 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
- 					       loff_t pos)
- {
- 	struct nfs_pageio_descriptor desc;
-+	struct inode *inode = dreq->inode;
- 	ssize_t result = 0;
- 	size_t requested_bytes = 0;
- 	unsigned long seg;
- 
--	nfs_pageio_init_write(&desc, dreq->inode, FLUSH_COND_STABLE,
-+	nfs_pageio_init_write(&desc, inode, FLUSH_COND_STABLE,
- 			      &nfs_direct_write_completion_ops);
- 	desc.pg_dreq = dreq;
- 	get_dreq(dreq);
-+	atomic_inc(&inode->i_dio_count);
- 
- 	for (seg = 0; seg < nr_segs; seg++) {
- 		const struct iovec *vec = &iov[seg];
-@@ -797,6 +805,7 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
- 	 * generic layer handle the completion.
- 	 */
- 	if (requested_bytes == 0) {
-+		inode_dio_done(inode);
- 		nfs_direct_req_release(dreq);
- 		return result < 0 ? result : -EIO;
- 	}
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 9f17cd1..6663bc2 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -416,8 +416,10 @@ nfs_setattr(struct dentry *dentry, struct iattr *attr)
- 		return 0;
- 
- 	/* Write all dirty data */
--	if (S_ISREG(inode->i_mode))
-+	if (S_ISREG(inode->i_mode)) {
-+		nfs_inode_dio_wait(inode);
- 		nfs_wb_all(inode);
-+	}
- 
- 	fattr = nfs_alloc_fattr();
- 	if (fattr == NULL)
-@@ -501,6 +503,7 @@ int nfs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
- 
- 	/* Flush out writes to the server in order to update c/mtime.  */
- 	if (S_ISREG(inode->i_mode)) {
-+		nfs_inode_dio_wait(inode);
- 		err = filemap_write_and_wait(inode->i_mapping);
- 		if (err)
- 			goto out;
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 1855e8f..e2cf283 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -368,6 +368,10 @@ extern int nfs_migrate_page(struct address_space *,
- /* direct.c */
- void nfs_init_cinfo_from_dreq(struct nfs_commit_info *cinfo,
- 			      struct nfs_direct_req *dreq);
-+static inline void nfs_inode_dio_wait(struct inode *inode);
-+{
-+	inode_dio_wait(inode);
-+}
- 
- /* nfs4proc.c */
- extern void __nfs4_read_done_cb(struct nfs_read_data *);
+> 	uint64_t	st_version;	/* Data version number */
+> 	uint64_t	st_ioc_flags;	/* As FS_IOC_GETFLAGS */
+> 	/* 0x90 */
+> 	uint64_t	__spare1[13];	/* Spare space for future expansion */
+> 	/* 0x100 */
+> };
+> 
+> And an fs information structure for less commonly needed data:
+> 
+> struct statx_fsinfo {
+> 	/* 0x00 - General info */
+> 	uint32_t	st_mask;	/* What optional fields are filled in */
+> 	uint32_t	st_type;	/* Filesystem type from linux/magic.h */
+> 
+> 	/* 0x08 - file timestamp granularity info */
+> 	uint16_t	st_atime_gran_mantissa;	/* gran(secs) = mant * 10^exp */
+> 	uint16_t	st_btime_gran_mantissa;
+> 	uint16_t	st_ctime_gran_mantissa;
+> 	uint16_t	st_mtime_gran_mantissa;
+> 	/* 0x10 */
+> 	int8_t		st_atime_gran_exponent;
+> 	int8_t		st_btime_gran_exponent;
+> 	int8_t		st_ctime_gran_exponent;
+> 	int8_t		st_mtime_gran_exponent;
+> 
+> 	/* 0x14 - I/O parameters */
+> 	uint32_t	st_blksize;	  /* File block size */
+> 	uint32_t	st_alloc_blksize; /* Allocation block size/alignment */
+> 	uint32_t	st_small_io_size; /* IO size/alignment that avoids fs/page cache RMW */
+> 	uint32_t	st_pref_io_size;  /* Preferred IO size for general usage */
+> 	uint32_t	st_large_io_size; /* IO size/alignment for high bandwidth sequential IO */
+
+That's per file information, not per filesystem. XFS definitely
+needs this IO information per-file....
+
+> 
+> 	/* 0x28 - Restrictions on struct statx contents */
+> 	uint64_t	st_supported_ioc_flags; /* FS_IOC_GETFLAGS flags supported  */
+> 
+> 	/* 0x30 - Volume/filesystem information */
+> 	uint64_t	st_fsid;	/* Short 64-bit Filesystem ID (as statfs) */
+> 	uint64_t	__spare0[3];
+> 	/* 0x50 */
+> 	uint8_t		st_volume_id[16]; /* Volume/fs identifier */
+> 	uint8_t		st_volume_uuid[16]; /* Volume/fs UUID */
+
+And there's all the remaining information needed to construct file
+NFS handles without root priviledges...
+
+> 	/* 0x80 */
+> 	uint64_t	__spare1[8];
+> 	/* 0xc0 */
+> 	uint8_t		st_volume_name[64]; /* Volume name (up to 64 chars) */
+> 	/* 0x100 */
+> 	uint8_t		st_domain_name[256]; /* Domain/cell/workgroup name (up to 256 chars) */
+> 	/* 0x200 */
+> };
+> 
+> One could argue a bit over what goes in which, should we go for this.  This
+> may be better split between multiple syscalls though (with the race that that
+> implies) and potentially merging with statfs.
+> 
+> 
+> The statxat() syscall [née xstat] could then use the 6th parameter thusly:
+> 
+> asmlinkage long sys_statxat(int dfd, const char __user *path, unsigned flags,
+> 			    unsigned mask, struct statx __user *buffer,
+> 			    struct statx_fsinfo __user *fsinfo);
+> 
+> 
+> letting fsinfo be NULL to indicate a lack of interest.  I'm not sure we want
+> to do that, though.
+> 
+> 
+> Also, do Dave Chinner's ideas for indicating five I/O parameters want to be
+> 32-bit numbers?  Larger?  Smaller?  Can they be log2?
+
+Definitely 32 bit, IMO, as it's not uncommon to see optimal IO sizes
+in the tens of megabytes on large, high bandwidth storage systems.
+As for being log2 - that's just making it more complex to use and
+making code ugly - we'd have to convert to log2 in kernel, then
+convert back in every single application....
+
+> Note also, that I've suggested that we represent the timestamp granularity
+> information as a decimal float (which requires 3 bytes per timestamp) and that
+> we provide separate granularities for each timestamp.
+> 
+> David
+> 
+
 -- 
-1.7.7.6
-
+Dave Chinner
+david@fromorbit.com
