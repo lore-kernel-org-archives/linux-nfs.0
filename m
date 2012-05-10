@@ -1,223 +1,308 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60148 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:62131 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757940Ab2EAPpy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 May 2012 11:45:54 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 4/6] nfsd4: int/__be32 fixes
-Date: Tue,  1 May 2012 11:45:47 -0400
-Message-Id: <1335887149-30420-5-git-send-email-bfields@redhat.com>
-In-Reply-To: <1335887149-30420-1-git-send-email-bfields@redhat.com>
-References: <1335887149-30420-1-git-send-email-bfields@redhat.com>
+	id S1755526Ab2EJUrZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 May 2012 16:47:25 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v2 1/3] NFS: Create an NFS v3 stat_to_errno()
+Date: Thu, 10 May 2012 16:47:18 -0400
+Message-Id: <1336682840-10799-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-In each of these cases there's a simple unambiguous correct choice, and
-no actual bug.
+In theory, NFS v3 can have different error versions than NFS v2. v4 is
+already using its own nfs4_stat_to_errno() to mapp error codes, so
+rather than create something in the generic client for v2 and v3 to
+share I instead give v3 its own function.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfsd/nfs4state.c |   22 +++++++++++-----------
- fs/nfsd/nfs4xdr.c   |   12 ++++++------
- fs/nfsd/xdr4.h      |    6 +++---
- 3 files changed, 20 insertions(+), 20 deletions(-)
+ fs/nfs/internal.h |    1 -
+ fs/nfs/nfs2xdr.c  |    3 +-
+ fs/nfs/nfs3xdr.c  |  103 +++++++++++++++++++++++++++++++++++++++++++----------
+ 3 files changed, 87 insertions(+), 20 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 7fe95ec..c33f052 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -886,7 +886,7 @@ static struct nfsd4_session *alloc_init_session(struct svc_rqst *rqstp, struct n
- 	struct nfsd4_session *new;
- 	struct nfsd4_channel_attrs *fchan = &cses->fore_channel;
- 	int numslots, slotsize;
--	int status;
-+	__be32 status;
- 	int idx;
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 1855e8f..4cf76e9 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -207,7 +207,6 @@ extern void nfs_pgheader_init(struct nfs_pageio_descriptor *desc,
+ void nfs_set_pgio_error(struct nfs_pgio_header *hdr, int error, loff_t pos);
  
- 	/*
-@@ -1477,7 +1477,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 		  struct nfsd4_exchange_id *exid)
- {
- 	struct nfs4_client *unconf, *conf, *new;
--	int status;
-+	__be32 status;
- 	unsigned int		strhashval;
- 	char			dname[HEXDIR_LEN];
- 	char			addr_str[INET6_ADDRSTRLEN];
-@@ -1599,7 +1599,7 @@ error:
- 	return status;
- }
+ /* nfs2xdr.c */
+-extern int nfs_stat_to_errno(enum nfs_stat);
+ extern struct rpc_procinfo nfs_procedures[];
+ extern int nfs2_decode_dirent(struct xdr_stream *,
+ 				struct nfs_entry *, int);
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index c99008e..baf759b 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -61,6 +61,7 @@
+ #define NFS_readdirres_sz	(1)
+ #define NFS_statfsres_sz	(1+NFS_info_sz)
  
--static int
-+static __be32
- check_slot_seqid(u32 seqid, u32 slot_seqid, int slot_inuse)
- {
- 	dprintk("%s enter. seqid %d slot_seqid %d\n", __func__, seqid,
-@@ -1627,7 +1627,7 @@ check_slot_seqid(u32 seqid, u32 slot_seqid, int slot_inuse)
++static int nfs_stat_to_errno(enum nfs_stat);
+ 
+ /*
+  * While encoding arguments, set up the reply buffer in advance to
+@@ -1111,7 +1112,7 @@ static const struct {
+  * Returns a local errno value, or -EIO if the NFS status code is
+  * not recognized.  This function is used jointly by NFSv2 and NFSv3.
   */
- static void
- nfsd4_cache_create_session(struct nfsd4_create_session *cr_ses,
--			   struct nfsd4_clid_slot *slot, int nfserr)
-+			   struct nfsd4_clid_slot *slot, __be32 nfserr)
+-int nfs_stat_to_errno(enum nfs_stat status)
++static int nfs_stat_to_errno(enum nfs_stat status)
  {
- 	slot->sl_status = nfserr;
- 	memcpy(&slot->sl_cr_ses, cr_ses, sizeof(*cr_ses));
-@@ -1658,7 +1658,7 @@ nfsd4_replay_create_session(struct nfsd4_create_session *cr_ses,
- 				/* seqid, slotID, slotID, slotID, status */ \
- 			5 ) * sizeof(__be32))
+ 	int i;
  
--static __be32 check_forechannel_attrs(struct nfsd4_channel_attrs fchannel)
-+static bool check_forechannel_attrs(struct nfsd4_channel_attrs fchannel)
- {
- 	return fchannel.maxreq_sz < NFSD_MIN_REQ_HDR_SEQ_SZ
- 		|| fchannel.maxresp_sz < NFSD_MIN_RESP_HDR_SEQ_SZ;
-@@ -1674,7 +1674,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 	struct nfsd4_session *new;
- 	struct nfsd4_clid_slot *cs_slot = NULL;
- 	bool confirm_me = false;
--	int status = 0;
-+	__be32 status = 0;
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index ee284c2..902de48 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -86,6 +86,8 @@
+ 				XDR_QUADLEN(NFS_ACL_INLINE_BUFSIZE))
+ #define ACL3_setaclres_sz	(1+NFS3_post_op_attr_sz)
  
- 	if (cr_ses->flags & ~SESSION4_FLAG_MASK_A)
- 		return nfserr_inval;
-@@ -1819,7 +1819,7 @@ nfsd4_destroy_session(struct svc_rqst *r,
- 		      struct nfsd4_destroy_session *sessionid)
- {
- 	struct nfsd4_session *ses;
--	u32 status = nfserr_badsession;
-+	__be32 status = nfserr_badsession;
- 
- 	/* Notes:
- 	 * - The confirmed nfs4_client->cl_sessionid holds destroyed sessinid
-@@ -1915,7 +1915,7 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	struct nfsd4_session *session;
- 	struct nfsd4_slot *slot;
- 	struct nfsd4_conn *conn;
--	int status;
-+	__be32 status;
- 
- 	if (resp->opcnt != 1)
- 		return nfserr_sequence_pos;
-@@ -2020,7 +2020,7 @@ __be32
- nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_destroy_clientid *dc)
- {
- 	struct nfs4_client *conf, *unconf, *clp;
--	int status = 0;
-+	__be32 status = 0;
- 
- 	nfs4_lock_state();
- 	unconf = find_unconfirmed_client(&dc->clientid);
-@@ -2056,7 +2056,7 @@ out:
- __be32
- nfsd4_reclaim_complete(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_reclaim_complete *rc)
- {
--	int status = 0;
-+	__be32 status = 0;
- 
- 	if (rc->rca_one_fs) {
- 		if (!cstate->current_fh.fh_dentry)
-@@ -3378,7 +3378,7 @@ static bool stateid_generation_after(stateid_t *a, stateid_t *b)
- 	return (s32)a->si_generation - (s32)b->si_generation > 0;
- }
- 
--static int check_stateid_generation(stateid_t *in, stateid_t *ref, bool has_session)
-+static __be32 check_stateid_generation(stateid_t *in, stateid_t *ref, bool has_session)
- {
- 	/*
- 	 * When sessions are used the stateid generation number is ignored
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 59c5184..f7cc411 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3251,7 +3251,7 @@ nfsd4_encode_write(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_w
- }
- 
- static __be32
--nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, int nfserr,
-+nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
- 			 struct nfsd4_exchange_id *exid)
- {
- 	__be32 *p;
-@@ -3306,7 +3306,7 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, int nfserr,
- }
- 
- static __be32
--nfsd4_encode_create_session(struct nfsd4_compoundres *resp, int nfserr,
-+nfsd4_encode_create_session(struct nfsd4_compoundres *resp, __be32 nfserr,
- 			    struct nfsd4_create_session *sess)
- {
- 	__be32 *p;
-@@ -3355,7 +3355,7 @@ nfsd4_encode_create_session(struct nfsd4_compoundres *resp, int nfserr,
- }
- 
- static __be32
--nfsd4_encode_destroy_session(struct nfsd4_compoundres *resp, int nfserr,
-+nfsd4_encode_destroy_session(struct nfsd4_compoundres *resp, __be32 nfserr,
- 			     struct nfsd4_destroy_session *destroy_session)
- {
- 	return nfserr;
-@@ -3377,7 +3377,7 @@ nfsd4_encode_free_stateid(struct nfsd4_compoundres *resp, int nfserr,
- }
- 
- static __be32
--nfsd4_encode_sequence(struct nfsd4_compoundres *resp, int nfserr,
-+nfsd4_encode_sequence(struct nfsd4_compoundres *resp, __be32 nfserr,
- 		      struct nfsd4_sequence *seq)
- {
- 	__be32 *p;
-@@ -3400,7 +3400,7 @@ nfsd4_encode_sequence(struct nfsd4_compoundres *resp, int nfserr,
- }
- 
- static __be32
--nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, int nfserr,
-+nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, __be32 nfserr,
- 			  struct nfsd4_test_stateid *test_stateid)
- {
- 	struct nfsd4_test_stateid_id *stateid, *next;
-@@ -3503,7 +3503,7 @@ static nfsd4_enc nfsd4_enc_ops[] = {
-  * Our se_fmaxresp_cached will always be a multiple of PAGE_SIZE, and so
-  * will be at least a page and will therefore hold the xdr_buf head.
++static int nfs3_stat_to_errno(enum nfs_stat);
++
+ /*
+  * Map file type to S_IFMT bits
   */
--int nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 pad)
-+__be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 pad)
- {
- 	struct xdr_buf *xb = &resp->rqstp->rq_res;
- 	struct nfsd4_session *session = NULL;
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 2a55814..c3a8aa1 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -60,7 +60,7 @@ struct nfsd4_compound_state {
- 	__be32			*datap;
- 	size_t			iovlen;
- 	u32			minorversion;
--	u32			status;
-+	__be32			status;
- 	stateid_t	current_stateid;
- 	stateid_t	save_stateid;
- 	/* to indicate current and saved state id presents */
-@@ -364,7 +364,7 @@ struct nfsd4_test_stateid_id {
- };
+@@ -1388,7 +1390,7 @@ static int nfs3_xdr_dec_getattr3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_default:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
  
- struct nfsd4_test_stateid {
--	__be32		ts_num_ids;
-+	u32		ts_num_ids;
- 	struct list_head ts_stateid_list;
- };
+ /*
+@@ -1427,7 +1429,7 @@ static int nfs3_xdr_dec_setattr3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
  
-@@ -549,7 +549,7 @@ int nfs4svc_decode_compoundargs(struct svc_rqst *, __be32 *,
- 		struct nfsd4_compoundargs *);
- int nfs4svc_encode_compoundres(struct svc_rqst *, __be32 *,
- 		struct nfsd4_compoundres *);
--int nfsd4_check_resp_size(struct nfsd4_compoundres *, u32);
-+__be32 nfsd4_check_resp_size(struct nfsd4_compoundres *, u32);
- void nfsd4_encode_operation(struct nfsd4_compoundres *, struct nfsd4_op *);
- void nfsd4_encode_replay(struct nfsd4_compoundres *resp, struct nfsd4_op *op);
- __be32 nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+ /*
+@@ -1475,7 +1477,7 @@ out_default:
+ 	error = decode_post_op_attr(xdr, result->dir_attr);
+ 	if (unlikely(error))
+ 		goto out;
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1516,7 +1518,7 @@ static int nfs3_xdr_dec_access3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_default:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1557,7 +1559,7 @@ static int nfs3_xdr_dec_readlink3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_default:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1639,7 +1641,7 @@ static int nfs3_xdr_dec_read3res(struct rpc_rqst *req, struct xdr_stream *xdr,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1709,7 +1711,7 @@ static int nfs3_xdr_dec_write3res(struct rpc_rqst *req, struct xdr_stream *xdr,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1773,7 +1775,7 @@ out_default:
+ 	error = decode_wcc_data(xdr, result->dir_attr);
+ 	if (unlikely(error))
+ 		goto out;
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1812,7 +1814,7 @@ static int nfs3_xdr_dec_remove3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1856,7 +1858,7 @@ static int nfs3_xdr_dec_rename3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1899,7 +1901,7 @@ static int nfs3_xdr_dec_link3res(struct rpc_rqst *req, struct xdr_stream *xdr,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /**
+@@ -2091,7 +2093,7 @@ out_default:
+ 	error = decode_post_op_attr(xdr, result->dir_attr);
+ 	if (unlikely(error))
+ 		goto out;
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -2159,7 +2161,7 @@ static int nfs3_xdr_dec_fsstat3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -2235,7 +2237,7 @@ static int nfs3_xdr_dec_fsinfo3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -2298,7 +2300,7 @@ static int nfs3_xdr_dec_pathconf3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -2339,7 +2341,7 @@ static int nfs3_xdr_dec_commit3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ #ifdef CONFIG_NFS_V3_ACL
+@@ -2404,7 +2406,7 @@ static int nfs3_xdr_dec_getacl3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_default:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ static int nfs3_xdr_dec_setacl3res(struct rpc_rqst *req,
+@@ -2423,11 +2425,76 @@ static int nfs3_xdr_dec_setacl3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_default:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ #endif  /* CONFIG_NFS_V3_ACL */
+ 
++
++/*
++ * We need to translate between nfs status return values and
++ * the local errno values which may not be the same.
++ */
++static const struct {
++	int stat;
++	int errno;
++} nfs_errtbl[] = {
++	{ NFS_OK,		0		},
++	{ NFSERR_PERM,		-EPERM		},
++	{ NFSERR_NOENT,		-ENOENT		},
++	{ NFSERR_IO,		-errno_NFSERR_IO},
++	{ NFSERR_NXIO,		-ENXIO		},
++/*	{ NFSERR_EAGAIN,	-EAGAIN		}, */
++	{ NFSERR_ACCES,		-EACCES		},
++	{ NFSERR_EXIST,		-EEXIST		},
++	{ NFSERR_XDEV,		-EXDEV		},
++	{ NFSERR_NODEV,		-ENODEV		},
++	{ NFSERR_NOTDIR,	-ENOTDIR	},
++	{ NFSERR_ISDIR,		-EISDIR		},
++	{ NFSERR_INVAL,		-EINVAL		},
++	{ NFSERR_FBIG,		-EFBIG		},
++	{ NFSERR_NOSPC,		-ENOSPC		},
++	{ NFSERR_ROFS,		-EROFS		},
++	{ NFSERR_MLINK,		-EMLINK		},
++	{ NFSERR_NAMETOOLONG,	-ENAMETOOLONG	},
++	{ NFSERR_NOTEMPTY,	-ENOTEMPTY	},
++	{ NFSERR_DQUOT,		-EDQUOT		},
++	{ NFSERR_STALE,		-ESTALE		},
++	{ NFSERR_REMOTE,	-EREMOTE	},
++#ifdef EWFLUSH
++	{ NFSERR_WFLUSH,	-EWFLUSH	},
++#endif
++	{ NFSERR_BADHANDLE,	-EBADHANDLE	},
++	{ NFSERR_NOT_SYNC,	-ENOTSYNC	},
++	{ NFSERR_BAD_COOKIE,	-EBADCOOKIE	},
++	{ NFSERR_NOTSUPP,	-ENOTSUPP	},
++	{ NFSERR_TOOSMALL,	-ETOOSMALL	},
++	{ NFSERR_SERVERFAULT,	-EREMOTEIO	},
++	{ NFSERR_BADTYPE,	-EBADTYPE	},
++	{ NFSERR_JUKEBOX,	-EJUKEBOX	},
++	{ -1,			-EIO		}
++};
++
++/**
++ * nfs3_stat_to_errno - convert an NFS status code to a local errno
++ * @status: NFS status code to convert
++ *
++ * Returns a local errno value, or -EIO if the NFS status code is
++ * not recognized.  This function is used jointly by NFSv2 and NFSv3.
++ */
++static int nfs3_stat_to_errno(enum nfs_stat status)
++{
++	int i;
++
++	for (i = 0; nfs_errtbl[i].stat != -1; i++) {
++		if (nfs_errtbl[i].stat == (int)status)
++			return nfs_errtbl[i].errno;
++	}
++	dprintk("NFS: Unrecognized nfs status value: %u\n", status);
++	return nfs_errtbl[i].errno;
++}
++
++
+ #define PROC(proc, argtype, restype, timer)				\
+ [NFS3PROC_##proc] = {							\
+ 	.p_proc      = NFS3PROC_##proc,					\
 -- 
-1.7.9.5
+1.7.10.1
 
