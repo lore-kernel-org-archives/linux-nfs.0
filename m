@@ -1,122 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:47819 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759032Ab2EPCel (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 22:34:41 -0400
-Subject: Re: [PATCH 1/2] NFSD: SETCLIENTID_CONFIRM returns NFS4ERR_CLID_INUSE too often
-Mime-Version: 1.0 (Apple Message framework v1278)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20120516013239.GA24133@pad.fieldses.org>
-Date: Tue, 15 May 2012 22:34:34 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <4F3FD332-AD16-4319-BB00-9B19517BE95C@oracle.com>
-References: <20120515213808.1518.81260.stgit@lebasque.1015granger.net> <20120515214207.1518.78590.stgit@lebasque.1015granger.net> <20120516013239.GA24133@pad.fieldses.org>
-To: "J. Bruce Fields" <bfields@redhat.com>
+Received: from smtp.ctxuk.citrix.com ([62.200.22.115]:7207 "EHLO
+	SMTP.EU.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755716Ab2EJN0P (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 May 2012 09:26:15 -0400
+Message-ID: <1336656372.7098.123.camel@zakaz.uk.xensource.com>
+Subject: Re: [PATCH 9/9] sunrpc: use SKB fragment destructors to delay
+ completion until page is released by network stack.
+From: Ian Campbell <Ian.Campbell@citrix.com>
+To: "Michael S. Tsirkin" <mst@redhat.com>
+CC: "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Eric Dumazet <eric.dumazet@gmail.com>, Neil Brown <neilb@suse.de>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Thu, 10 May 2012 14:26:12 +0100
+In-Reply-To: <20120510111948.GA9609@redhat.com>
+References: <1336056915.20716.96.camel@zakaz.uk.xensource.com>
+	 <1336056971-7839-9-git-send-email-ian.campbell@citrix.com>
+	 <20120510111948.GA9609@redhat.com>
+Content-Type: multipart/mixed; boundary="=-TVV/8epBSDeywCmlzimD"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--=-TVV/8epBSDeywCmlzimD
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
 
-On May 15, 2012, at 9:32 PM, J. Bruce Fields wrote:
-
-> On Tue, May 15, 2012 at 05:42:08PM -0400, Chuck Lever wrote:
->> According to RFC 3530bis, the only items SETCLIENTID_CONFIRM
->> processing should be concerned with is the clientid, clientid
->> verifier, and authentication flavor.
+On Thu, 2012-05-10 at 12:19 +0100, Michael S. Tsirkin wrote:
+> On Thu, May 03, 2012 at 03:56:11PM +0100, Ian Campbell wrote:
+> > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> > index f6d8c73..1145929 100644
+> > --- a/net/sunrpc/svcsock.c
+> > +++ b/net/sunrpc/svcsock.c
+> > @@ -198,7 +198,8 @@ int svc_send_common(struct socket *sock, struct xdr_buf *xdr,
+> >  	while (pglen > 0) {
+> >  		if (slen == size)
+> >  			flags = 0;
+> > -		result = kernel_sendpage(sock, *ppage, NULL, base, size, flags);
+> > +		result = kernel_sendpage(sock, *ppage, xdr->destructor,
+> > +					 base, size, flags);
+> >  		if (result > 0)
+> >  			len += result;
+> >  		if (result != size)
 > 
-> Nit: the spec says "principal", not "authentication flavor".
-
-Fair enough... feel free to correct the description.
-
-> (I was looking at this yesterday because our current code only compares
-> uid's, which is pretty meaningless--any client using a krb5 service
-> principal, for example, will likely get mapped to the same uid--so I
-> have patches that instead compare flavor, principal name (when we have
-> it--our current userspace only passes it down for service principals)
-> and groups and auxiliary groups as well as uid.  But not IP address...)
+> So I tried triggering this by simply creating an nfs export on localhost
+> and copying a large file out with dd, but this never seems to trigger
+> this code.
 > 
-> Anyway, this patch looks reasonable, thanks.
-> 
-> --b.
-> 
->> The client's IP address
->> is not supposed to be interesting.
->> 
->> And, NFS4ERR_CLID_INUSE is meant only for authentication flavor
->> mismatches.
->> 
->> I triggered this logic with a prototype UCS client -- one that
->> uses the same nfs_client_id4 string for all servers.  The client
->> mounted our server via its IPv4, then via its IPv6 address.
->> 
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> 
->> fs/nfsd/nfs4state.c |   14 ++------------
->> 1 files changed, 2 insertions(+), 12 deletions(-)
->> 
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index 7f71c69..27e6401 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -2213,7 +2213,6 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
->> 			 struct nfsd4_compound_state *cstate,
->> 			 struct nfsd4_setclientid_confirm *setclientid_confirm)
->> {
->> -	struct sockaddr *sa = svc_addr(rqstp);
->> 	struct nfs4_client *conf, *unconf;
->> 	nfs4_verifier confirm = setclientid_confirm->sc_confirm; 
->> 	clientid_t * clid = &setclientid_confirm->sc_clientid;
->> @@ -2231,17 +2230,12 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
->> 	conf = find_confirmed_client(clid);
->> 	unconf = find_unconfirmed_client(clid);
->> 
->> -	status = nfserr_clid_inuse;
->> -	if (conf && !rpc_cmp_addr((struct sockaddr *) &conf->cl_addr, sa))
->> -		goto out;
->> -	if (unconf && !rpc_cmp_addr((struct sockaddr *) &unconf->cl_addr, sa))
->> -		goto out;
->> -
->> 	/*
->> 	 * section 14.2.34 of RFC 3530 has a description of
->> 	 * SETCLIENTID_CONFIRM request processing consisting
->> 	 * of 4 bullet points, labeled as CASE1 - CASE4 below.
->> 	 */
->> +	status = nfserr_clid_inuse;
->> 	if (conf && unconf && same_verf(&confirm, &unconf->cl_confirm)) {
->> 		/*
->> 		 * RFC 3530 14.2.34 CASE 1:
->> @@ -2254,7 +2248,6 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
->> 			nfsd4_probe_callback(conf);
->> 			expire_client(unconf);
->> 			status = nfs_ok;
->> -
->> 		}
->> 	} else if (conf && !unconf) {
->> 		/*
->> @@ -2296,11 +2289,8 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
->> 		 * Client probably hasn't noticed that we rebooted yet.
->> 		 */
->> 		status = nfserr_stale_clientid;
->> -	} else {
->> -		/* check that we have hit one of the cases...*/
->> -		status = nfserr_clid_inuse;
->> 	}
->> -out:
->> +
->> 	nfs4_unlock_state();
->> 	return status;
->> }
->> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Any idea how to test?
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+My test code, which is a bit overly complex for this because it also
+tries to demonstrate corruption on the wire, is attached.
 
+Using dd I suspect you probably need to increase the block size, and
+possibly enable O_DIRECT (conv=direct?)
 
+My typical scenario has been to mount a remote NFS and run
+tcpdump -s 4096 -x -ne -v -i eth0 'host $client and ip[184:4] == 0x55555555'
+to watch for on-wire corruption.
 
+FYI I've triggered a BUG_ON in my local debug patches with your series
+applied, I'm just investigating whether its my debugging or something in
+the series which causes it.
 
+After that I'll try it with local NFS and VMs with bridging etc to test
+the extra aspects which your series is exercising.
+
+Ian.
+
+--=-TVV/8epBSDeywCmlzimD
+Content-Disposition: attachment; filename="blktest3.c"
+Content-Type: text/x-csrc; name="blktest3.c"; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+
+#include <fcntl.h>
+
+#include <err.h>
+#include <errno.h>
+
+#define NR 256
+#define SIZE 4096
+
+int main(int argc, char **argv)
+{
+	int fd, rc, n, iter = 0;
+	const char *path;
+	static unsigned char  __attribute__ ((aligned (4096))) buf[NR][SIZE];
+
+	if (argc != 2) {
+		fprintf(stderr, "usage: blktest2 [PATH]\n");
+		exit(1);
+	}
+	path = argv[1];
+
+	printf("opening %s for O_DIRECT access\n", path);
+	fd = open(path, O_CREAT/*|O_DIRECT*/|O_RDWR, 0666);
+	if (fd < 0)
+		err(1,"unable to open file");
+
+	while(1) {
+		if ((iter%10)==0)
+			printf("iteration %d ...", iter);
+		if (lseek(fd, (iter%NR)*SIZE, SEEK_SET) < 0)
+			err(1, "seek for write %d %d\n", iter, n);
+		memset(buf[iter%NR], 0xaa, SIZE);
+		rc = write(fd, buf[iter%NR], SIZE);
+		memset(buf[iter%NR], 0x55, SIZE);
+		if (rc == -1)
+			//warn("write failed");
+			err(1, "write failed");
+		else if (rc != SIZE)
+			err(1, "only wrote %d/%d bytes\n", rc, SIZE);
+		if ((iter%10)==0)
+			printf("\n", iter);
+
+		iter++;
+	}
+}
+
+--=-TVV/8epBSDeywCmlzimD--
