@@ -1,204 +1,154 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:42439 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:59884 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752509Ab2EISWY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 May 2012 14:22:24 -0400
-Received: from vmwexceht01-prd.hq.netapp.com (vmwexceht01-prd.hq.netapp.com [10.106.76.239])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q49IMCwq009053
-	for <linux-nfs@vger.kernel.org>; Wed, 9 May 2012 11:22:12 -0700 (PDT)
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: linux-nfs list <linux-nfs@vger.kernel.org>,
-        "Isaman, Fred" <Fred.Isaman@netapp.com>
-Subject: Re: [PATCH] NFS: Prevent a deadlock in the new read and write code
-Date: Wed, 9 May 2012 18:22:11 +0000
-Message-ID: <31612217-5DE3-43D0-BFAF-40A23530FEC8@netapp.com>
-References: <1336582284-8558-1-git-send-email-Trond.Myklebust@netapp.com>
- <A96F9C32-8B2A-441A-BBE9-91747BB585FF@netapp.com>
-In-Reply-To: <A96F9C32-8B2A-441A-BBE9-91747BB585FF@netapp.com>
-Content-Type: multipart/signed;
-	boundary="Apple-Mail=_CD90DF2D-27F5-4F9A-9E8B-A73048006237";
-	protocol="application/pkcs7-signature"; micalg=sha1
+	id S1760304Ab2EJSoH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 May 2012 14:44:07 -0400
+Received: from vmwexceht05-prd.hq.netapp.com (vmwexceht05-prd.hq.netapp.com [10.106.77.35])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q4AIi6h4008779
+	for <linux-nfs@vger.kernel.org>; Thu, 10 May 2012 11:44:06 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v3 06/14] NFS: Create a common xdev_mount() function
+Date: Thu, 10 May 2012 18:44:05 +0000
+Message-ID: <1336675445.3962.9.camel@lade.trondhjem.org>
+References: <1336663205-23886-1-git-send-email-bjschuma@netapp.com>
+	 <1336663205-23886-7-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1336663205-23886-7-git-send-email-bjschuma@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Apple-Mail=_CD90DF2D-27F5-4F9A-9E8B-A73048006237
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
-
-
-On May 9, 2012, at 2:20 PM, Adamson, Dros wrote:
-
-> ACK - This fixes the errant behavior I was seeing.
->=20
-> Before (on any protocol version mounted at /mnt):
-> $ dd if=3D/dev/zero of=3Dzerofile bs=3D10024 count=3D1000 ; while =
-true; do (rm -rf /mnt/foo && echo rm ok) || ls -la /mnt/foo ; mkdir -p =
-/mnt/foo/; cp zerofile /mnt/foo/file ; done
-> 1000+0 records in
-> 1000+0 records out
-> 10024000 bytes (10 MB) copied, 0.146738 s, 68.3 MB/s
-> rm ok
-> rm: cannot remove `/mnt/foo': Directory not empty
-> ls: /mnt/foo/.nfs000000000004089d00000001: No such file or directory
-> total 9800
-> drwxrwxr-x 2 dros dros     4096 May  9 09:46 .
-> drwxrwxrwx 5 root root     4096 May  9 09:46 ..
-> -rw-rw-r-- 0 dros dros 10024000 May  9 09:46 =
-.nfs000000000004089d00000001
-> rm: cannot remove `/mnt/foo': Directory not empty
-> ...
->=20
-
-Oops, this is after the patch is applied:
-
-> $ dd if=3D/dev/zero of=3Dzerofile bs=3D10024 count=3D1000 ; while =
-true; do (rm -rf /mnt/foo && echo rm ok) || ls -la /mnt/foo ; mkdir -p =
-/mnt/foo/; cp zerofile /mnt/foo/file ; done
-> 1000+0 records in
-> 1000+0 records out
-> 10024000 bytes (10 MB) copied, 0.137596 s, 72.9 MB/s
-> rm ok
-> rm ok
-> rm ok
-> rm ok
-> ...
->=20
-> -dros
->=20
-> On May 9, 2012, at 12:51 PM, Trond Myklebust wrote:
->=20
->> In order to avoid an ABBA lock ordering issue, the write code must
->> unlock and release the nfs_page _before_ it calls end_page_writeback.
->> Since the last release of the nfs_page will trigger a call to put
->> the open_context, we need to ensure that something else holds a
->> reference to the open context until we're done with the
->> end_page_writeback so that we don't end up calling iput while we're
->> still holding a PG_writeback lock.
->> We can fix this by changing nfs_writedata_release to put the open
->> context after we have processed all the page data.
->>=20
->> The read code does not suffer from the same problem, since it doesn't
->> hold a lock on the nfs_page, so it just calls nfs_release_request =
-after
->> unlocking the page itself. However, for symmetry reasons, we make the
->> same change to nfs_readdata_release.
->>=20
->> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
->> Cc: Fred Isaman <iisaman@netapp.com>
->> ---
->> fs/nfs/read.c  |    3 ++-
->> fs/nfs/write.c |   13 ++++++++++++-
->> 2 files changed, 14 insertions(+), 2 deletions(-)
->>=20
->> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
->> index f23cf25..dec47e5 100644
->> --- a/fs/nfs/read.c
->> +++ b/fs/nfs/read.c
->> @@ -87,8 +87,8 @@ void nfs_readdata_release(struct nfs_read_data =
-*rdata)
->> {
->> 	struct nfs_pgio_header *hdr =3D rdata->header;
->> 	struct nfs_read_header *read_header =3D container_of(hdr, struct =
-nfs_read_header, header);
->> +	struct nfs_open_context *ctx =3D rdata->args.context;
->>=20
->> -	put_nfs_open_context(rdata->args.context);
->> 	if (rdata->pages.pagevec !=3D rdata->pages.page_array)
->> 		kfree(rdata->pages.pagevec);
->> 	if (rdata !=3D &read_header->rpc_data)
->> @@ -97,6 +97,7 @@ void nfs_readdata_release(struct nfs_read_data =
-*rdata)
->> 		rdata->header =3D NULL;
->> 	if (atomic_dec_and_test(&hdr->refcnt))
->> 		hdr->completion_ops->completion(hdr);
->> +	put_nfs_open_context(ctx);
->> }
->>=20
->> static
->> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
->> index 6f263da..69825f7 100644
->> --- a/fs/nfs/write.c
->> +++ b/fs/nfs/write.c
->> @@ -119,8 +119,8 @@ void nfs_writedata_release(struct nfs_write_data =
-*wdata)
->> {
->> 	struct nfs_pgio_header *hdr =3D wdata->header;
->> 	struct nfs_write_header *write_header =3D container_of(hdr, =
-struct nfs_write_header, header);
->> +	struct nfs_open_context *ctx =3D wdata->args.context;
->>=20
->> -	put_nfs_open_context(wdata->args.context);
->> 	if (wdata->pages.pagevec !=3D wdata->pages.page_array)
->> 		kfree(wdata->pages.pagevec);
->> 	if (wdata !=3D &write_header->rpc_data)
->> @@ -129,6 +129,10 @@ void nfs_writedata_release(struct nfs_write_data =
-*wdata)
->> 		wdata->header =3D NULL;
->> 	if (atomic_dec_and_test(&hdr->refcnt))
->> 		hdr->completion_ops->completion(hdr);
->> +	/* Note: put the open context after processing all the
->> +	 * page data in order to avoid a deadlock in =
-nfs_write_completion.
->> +	 */
->> +	put_nfs_open_context(ctx);
->> }
->>=20
->> static void nfs_context_set_write_error(struct nfs_open_context *ctx, =
-int error)
->> @@ -597,6 +601,13 @@ int nfs_write_need_commit(struct nfs_write_data =
-*data)
->>=20
->> #endif
->>=20
->> +/*
->> + * nfs_write_completion - process the results of the write RPC calls
->> + *
->> + * Note: this function assumes that the caller is holding a =
-reference
->> + * to the nfs_open_context in order to avoid a deadlock when calling
->> + * nfs_end_page_writeback after nfs_unlock_request.
->> + */
->> static void nfs_write_completion(struct nfs_pgio_header *hdr)
->> {
->> 	struct nfs_commit_info cinfo;
->> --=20
->> 1.7.7.6
->>=20
->=20
-
-
---Apple-Mail=_CD90DF2D-27F5-4F9A-9E8B-A73048006237
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-
-MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIDTzCCA0sw
-ggIzoAMCAQICAQEwCwYJKoZIhvcNAQEFMEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYD
-VQQGEwJVUzEeMBwGCSqGSIb3DQEJARYPZHJvc0BuZXRhcHAuY29tMB4XDTExMDYwODIyMDc0NloX
-DTEyMDYwNzIyMDc0NlowRjEXMBUGA1UEAwwOV2VzdG9uIEFkYW1zb24xCzAJBgNVBAYTAlVTMR4w
-HAYJKoZIhvcNAQkBFg9kcm9zQG5ldGFwcC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
-AoIBAQC8/tJxtovJEXYRfSsrFOWKHxIZGY7/2mBee1DpWuoGDbVNapefCC7WXe+Nqxz609w2J/Mk
-/k3trZ3Ge2NXK0tGnP9NzjkzpGA7rSpM3wUFsvbLMUEGfQpvV24/nYvcLHTvOOEUaDPpHduN94bD
-dwvyowzDIRIpF2MeRnOzBNeHkrGHlZdzPmGjm8tkhrDRRkDYHhlxaiG4z30KCfAazxomuINiy1kj
-vbndXooYMDoh9H63hgW4NkOedtLdflLa322DXQ3nFU7YbyOIjHVl1tgWJLDWf7WT3lsAB8KvuJZ5
-zhsUB+fqxCKPJVRPDO1gjChvvtGiG1tGUUZz0H9Wx00zAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIH
-gDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDBDAaBgNVHREEEzARgQ9kcm9zQG5ldGFwcC5jb20wDQYJ
-KoZIhvcNAQEFBQADggEBACv0niZSmW+psB1sJXULh3mecDbN2mj0bFpN1YNdjcV7BiOLJ1Rs1ibV
-f13h73z8C7SBsPXTM5si8gmJtOnXM5jsgtlql44h/RrjUr8+mtK5DPCZls9J7iz3cGthzwOPvxUj
-nMSv3BpRX5oJom5ESgCM9Nn4u/ECTlLMhEIOYnBFiN0eDxcxz+r1cpbHg3r0otIKyxLpeaCjP6AH
-F93EHp4T8Rb63y3CcDgxrQGHlTdVi3QvxaMUexUXD81fiA+UqsB/MKmRxB1Hs4Vf3Q/+ejcm78K1
-ROF8TNPmNWRlKg3Y7cSFjZGzLuzXsvSsCbw4HLn0oZe/OfgSbarTAxttL5IxggHRMIIBzQIBATBL
-MEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYDVQQGEwJVUzEeMBwGCSqGSIb3DQEJARYP
-ZHJvc0BuZXRhcHAuY29tAgEBMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
-MBwGCSqGSIb3DQEJBTEPFw0xMjA1MDkxODIyMTFaMCMGCSqGSIb3DQEJBDEWBBQ3X4mmDNRHhGoX
-DoklaPNy0BtH4TANBgkqhkiG9w0BAQEFAASCAQAzPmL2OquBawE+//gzLNiNsqqSUfRLHvWm0Bkj
-MGqYGhoadL8mCi9GKOZ35BTCMuF2wueC8dZ5sTKIsKC6ygMdWnm/hGUD0E3bbFsdEbCFqJwSSgRb
-3IDiKuqJdEApzaehjfqZnsEo4TodGAAWT1VDpL/kj1IyuJUsT9ARwRPfvO7Ga5wHjMByKqVcyb54
-0AIJQY15l5CbOaUpeV2cP7CYWmKJP6E3KpDzKOGP5UDtTG1zrUgam6Ottlqi/ksYVq/y0GAUtDnp
-yfdC36sExTkMWGUNQbSQOUW/9/6t3Om+PNrKJaPg5We0R4NwOncGLQ2Eb7JgJaOL2OPjibhmMUhj
-AAAAAAAA
-
---Apple-Mail=_CD90DF2D-27F5-4F9A-9E8B-A73048006237--
+T24gVGh1LCAyMDEyLTA1LTEwIGF0IDExOjE5IC0wNDAwLCBianNjaHVtYUBuZXRhcHAuY29tIHdy
+b3RlOg0KPiBGcm9tOiBCcnlhbiBTY2h1bWFrZXIgPGJqc2NodW1hQG5ldGFwcC5jb20+DQo+IA0K
+PiBUaGUgb25seSBkaWZmZXJlbmNlIGJldHdlZW4gbmZzX3hkZXZfbW91bnQoKSBhbmQgbmZzNF94
+ZGV2X21vdW50KCkgaXMgdGhlDQo+IHVuc2hhcmVkIGZsYWcsIHNvIEkgcGFzcyB0aGlzIGFzIGFu
+IG5mc19tb3VudF9pbmZvIHBhcmFtZXRlciBzbyB3ZSBjYW4NCj4gc2hhcmUgbW9yZSBjb2RlLg0K
+DQpUaGUgY2hhbmdlbG9nIHNlZW1zIG5vdCB0byByZWxhdGUgdG8gdGhlIGFjdHVhbCBwYXRjaDog
+eW91IGFyZSBhZGRpbmcgYQ0Kc3RydWN0IG5mc19jbG9uZV9tb3VudCB0byB0aGUgbmZzX21vdW50
+X2luZm8sIG5vdCBhbiB1bnNoYXJlZCBmbGFnLg0KDQo+IFNpZ25lZC1vZmYtYnk6IEJyeWFuIFNj
+aHVtYWtlciA8YmpzY2h1bWFAbmV0YXBwLmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvc3VwZXIuYyB8
+ICAxMjIgKysrKysrKysrKysrKysrLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0NCj4gIDEgZmlsZSBjaGFuZ2VkLCAzMiBpbnNlcnRpb25zKCspLCA5MCBkZWxldGlvbnMo
+LSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvc3VwZXIuYyBiL2ZzL25mcy9zdXBlci5jDQo+
+IGluZGV4IDY0YTYyZGEuLjcwN2QxZjYgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9zdXBlci5jDQo+
+ICsrKyBiL2ZzL25mcy9zdXBlci5jDQo+IEBAIC0yODAsNiArMjgwLDcgQEAgc3RhdGljIG1hdGNo
+X3RhYmxlX3QgbmZzX3ZlcnNfdG9rZW5zID0gew0KPiAgc3RydWN0IG5mc19tb3VudF9pbmZvIHsN
+Cj4gIAl2b2lkICgqZmlsbF9zdXBlcikoc3RydWN0IHN1cGVyX2Jsb2NrICosIHN0cnVjdCBuZnNf
+bW91bnRfaW5mbyAqKTsNCj4gIAlzdHJ1Y3QgbmZzX3BhcnNlZF9tb3VudF9kYXRhICpwYXJzZWQ7
+DQo+ICsJc3RydWN0IG5mc19jbG9uZV9tb3VudCAqY2xvbmVkOw0KPiAgfTsNCj4gIA0KPiAgc3Rh
+dGljIHZvaWQgbmZzX3Vtb3VudF9iZWdpbihzdHJ1Y3Qgc3VwZXJfYmxvY2sgKik7DQo+IEBAIC0y
+MTYwLDggKzIxNjEsOSBAQCBzdGF0aWMgdm9pZCBuZnNfZmlsbF9zdXBlcihzdHJ1Y3Qgc3VwZXJf
+YmxvY2sgKnNiLA0KPiAgICogRmluaXNoIHNldHRpbmcgdXAgYSBjbG9uZWQgTkZTMi8zIHN1cGVy
+YmxvY2sNCj4gICAqLw0KPiAgc3RhdGljIHZvaWQgbmZzX2Nsb25lX3N1cGVyKHN0cnVjdCBzdXBl
+cl9ibG9jayAqc2IsDQo+IC0JCQkgICAgY29uc3Qgc3RydWN0IHN1cGVyX2Jsb2NrICpvbGRfc2Ip
+DQo+ICsJCQkgICAgc3RydWN0IG5mc19tb3VudF9pbmZvICptb3VudF9pbmZvKQ0KPiAgew0KPiAr
+CWNvbnN0IHN0cnVjdCBzdXBlcl9ibG9jayAqb2xkX3NiID0gbW91bnRfaW5mby0+Y2xvbmVkLT5z
+YjsNCj4gIAlzdHJ1Y3QgbmZzX3NlcnZlciAqc2VydmVyID0gTkZTX1NCKHNiKTsNCj4gIA0KPiAg
+CXNiLT5zX2Jsb2Nrc2l6ZV9iaXRzID0gb2xkX3NiLT5zX2Jsb2Nrc2l6ZV9iaXRzOw0KPiBAQCAt
+MjQ1NCwxMyArMjQ1NiwxMyBAQCBzdGF0aWMgdm9pZCBuZnNfa2lsbF9zdXBlcihzdHJ1Y3Qgc3Vw
+ZXJfYmxvY2sgKnMpDQo+ICB9DQo+ICANCj4gIC8qDQo+IC0gKiBDbG9uZSBhbiBORlMyLzMgc2Vy
+dmVyIHJlY29yZCBvbiB4ZGV2IHRyYXZlcnNhbCAoRlNJRC1jaGFuZ2UpDQo+ICsgKiBDbG9uZSBh
+biBORlMyLzMvNCBzZXJ2ZXIgcmVjb3JkIG9uIHhkZXYgdHJhdmVyc2FsIChGU0lELWNoYW5nZSkN
+Cj4gICAqLw0KPiAgc3RhdGljIHN0cnVjdCBkZW50cnkgKg0KPiAtbmZzX3hkZXZfbW91bnQoc3Ry
+dWN0IGZpbGVfc3lzdGVtX3R5cGUgKmZzX3R5cGUsIGludCBmbGFncywNCj4gLQkJY29uc3QgY2hh
+ciAqZGV2X25hbWUsIHZvaWQgKnJhd19kYXRhKQ0KPiArbmZzX3hkZXZfbW91bnRfY29tbW9uKHN0
+cnVjdCBmaWxlX3N5c3RlbV90eXBlICpmc190eXBlLCBpbnQgZmxhZ3MsDQo+ICsJCWNvbnN0IGNo
+YXIgKmRldl9uYW1lLCBzdHJ1Y3QgbmZzX21vdW50X2luZm8gKm1vdW50X2luZm8pDQo+ICB7DQo+
+IC0Jc3RydWN0IG5mc19jbG9uZV9tb3VudCAqZGF0YSA9IHJhd19kYXRhOw0KPiArCXN0cnVjdCBu
+ZnNfY2xvbmVfbW91bnQgKmRhdGEgPSBtb3VudF9pbmZvLT5jbG9uZWQ7DQo+ICAJc3RydWN0IHN1
+cGVyX2Jsb2NrICpzOw0KPiAgCXN0cnVjdCBuZnNfc2VydmVyICpzZXJ2ZXI7DQo+ICAJc3RydWN0
+IGRlbnRyeSAqbW50cm9vdDsNCj4gQEAgLTI0NzAsNyArMjQ3Miw3IEBAIG5mc194ZGV2X21vdW50
+KHN0cnVjdCBmaWxlX3N5c3RlbV90eXBlICpmc190eXBlLCBpbnQgZmxhZ3MsDQo+ICAJfTsNCj4g
+IAlpbnQgZXJyb3I7DQo+ICANCj4gLQlkcHJpbnRrKCItLT4gbmZzX3hkZXZfbW91bnQoKVxuIik7
+DQo+ICsJZHByaW50aygiLS0+IG5mc194ZGV2X21vdW50X2NvbW1vbigpXG4iKTsNCj4gIA0KPiAg
+CS8qIGNyZWF0ZSBhIG5ldyB2b2x1bWUgcmVwcmVzZW50YXRpb24gKi8NCj4gIAlzZXJ2ZXIgPSBu
+ZnNfY2xvbmVfc2VydmVyKE5GU19TQihkYXRhLT5zYiksIGRhdGEtPmZoLCBkYXRhLT5mYXR0ciwg
+ZGF0YS0+YXV0aGZsYXZvcik7DQo+IEBAIC0yNTA1LDcgKzI1MDcsNyBAQCBuZnNfeGRldl9tb3Vu
+dChzdHJ1Y3QgZmlsZV9zeXN0ZW1fdHlwZSAqZnNfdHlwZSwgaW50IGZsYWdzLA0KPiAgDQo+ICAJ
+aWYgKCFzLT5zX3Jvb3QpIHsNCj4gIAkJLyogaW5pdGlhbCBzdXBlcmJsb2NrL3Jvb3QgY3JlYXRp
+b24gKi8NCj4gLQkJbmZzX2Nsb25lX3N1cGVyKHMsIGRhdGEtPnNiKTsNCj4gKwkJbW91bnRfaW5m
+by0+ZmlsbF9zdXBlcihzLCBtb3VudF9pbmZvKTsNCj4gIAkJbmZzX2dldF9jYWNoZV9jb29raWUo
+cywgTlVMTCwgZGF0YSk7DQo+ICAJfQ0KPiAgDQo+IEBAIC0yNTI1LDEzICsyNTI3LDEzIEBAIG5m
+c194ZGV2X21vdW50KHN0cnVjdCBmaWxlX3N5c3RlbV90eXBlICpmc190eXBlLCBpbnQgZmxhZ3Ms
+DQo+ICAJLyogY2xvbmUgYW55IGxzbSBzZWN1cml0eSBvcHRpb25zIGZyb20gdGhlIHBhcmVudCB0
+byB0aGUgbmV3IHNiICovDQo+ICAJc2VjdXJpdHlfc2JfY2xvbmVfbW50X29wdHMoZGF0YS0+c2Is
+IHMpOw0KPiAgDQo+IC0JZHByaW50aygiPC0tIG5mc194ZGV2X21vdW50KCkgPSAwXG4iKTsNCj4g
+KwlkcHJpbnRrKCI8LS0gbmZzX3hkZXZfbW91bnRfY29tbW9uKCkgPSAwXG4iKTsNCj4gIAlyZXR1
+cm4gbW50cm9vdDsNCj4gIA0KPiAgb3V0X2Vycl9ub3NiOg0KPiAgCW5mc19mcmVlX3NlcnZlcihz
+ZXJ2ZXIpOw0KPiAgb3V0X2Vycl9ub3NlcnZlcjoNCj4gLQlkcHJpbnRrKCI8LS0gbmZzX3hkZXZf
+bW91bnQoKSA9ICVkIFtlcnJvcl1cbiIsIGVycm9yKTsNCj4gKwlkcHJpbnRrKCI8LS0gbmZzX3hk
+ZXZfbW91bnRfY29tbW9uKCkgPSAlZCBbZXJyb3JdXG4iLCBlcnJvcik7DQo+ICAJcmV0dXJuIEVS
+Ul9QVFIoZXJyb3IpOw0KPiAgDQo+ICBlcnJvcl9zcGxhdF9zdXBlcjoNCj4gQEAgLTI1MzksMTgg
+KzI1NDEsMzMgQEAgZXJyb3Jfc3BsYXRfc3VwZXI6DQo+ICAJCWJkaV91bnJlZ2lzdGVyKCZzZXJ2
+ZXItPmJhY2tpbmdfZGV2X2luZm8pOw0KPiAgZXJyb3Jfc3BsYXRfYmRpOg0KPiAgCWRlYWN0aXZh
+dGVfbG9ja2VkX3N1cGVyKHMpOw0KPiAtCWRwcmludGsoIjwtLSBuZnNfeGRldl9tb3VudCgpID0g
+JWQgW3NwbGF0XVxuIiwgZXJyb3IpOw0KPiArCWRwcmludGsoIjwtLSBuZnNfeGRldl9tb3VudF9j
+b21tb24oKSA9ICVkIFtzcGxhdF1cbiIsIGVycm9yKTsNCj4gIAlyZXR1cm4gRVJSX1BUUihlcnJv
+cik7DQo+ICB9DQo+ICANCj4gKy8qDQo+ICsgKiBDbG9uZSBhbiBORlMyLzMgc2VydmVyIHJlY29y
+ZCBvbiB4ZGV2IHRyYXZlcnNhbCAoRlNJRC1jaGFuZ2UpDQo+ICsgKi8NCj4gK3N0YXRpYyBzdHJ1
+Y3QgZGVudHJ5ICoNCj4gK25mc194ZGV2X21vdW50KHN0cnVjdCBmaWxlX3N5c3RlbV90eXBlICpm
+c190eXBlLCBpbnQgZmxhZ3MsDQo+ICsJCWNvbnN0IGNoYXIgKmRldl9uYW1lLCB2b2lkICpyYXdf
+ZGF0YSkNCj4gK3sNCj4gKwlzdHJ1Y3QgbmZzX21vdW50X2luZm8gbW91bnRfaW5mbyA9IHsNCj4g
+KwkJLmZpbGxfc3VwZXIgPSBuZnNfY2xvbmVfc3VwZXIsDQo+ICsJCS5jbG9uZWQgICA9IHJhd19k
+YXRhLA0KPiArCX07DQo+ICsJcmV0dXJuIG5mc194ZGV2X21vdW50X2NvbW1vbigmbmZzX2ZzX3R5
+cGUsIGZsYWdzLCBkZXZfbmFtZSwgJm1vdW50X2luZm8pOw0KPiArfQ0KPiArDQo+ICAjaWZkZWYg
+Q09ORklHX05GU19WNA0KPiAgDQo+ICAvKg0KPiAgICogRmluaXNoIHNldHRpbmcgdXAgYSBjbG9u
+ZWQgTkZTNCBzdXBlcmJsb2NrDQo+ICAgKi8NCj4gIHN0YXRpYyB2b2lkIG5mczRfY2xvbmVfc3Vw
+ZXIoc3RydWN0IHN1cGVyX2Jsb2NrICpzYiwNCj4gLQkJCSAgICBjb25zdCBzdHJ1Y3Qgc3VwZXJf
+YmxvY2sgKm9sZF9zYikNCj4gKwkJCSAgICAgc3RydWN0IG5mc19tb3VudF9pbmZvICptb3VudF9p
+bmZvKQ0KPiAgew0KPiArCWNvbnN0IHN0cnVjdCBzdXBlcl9ibG9jayAqb2xkX3NiID0gbW91bnRf
+aW5mby0+Y2xvbmVkLT5zYjsNCj4gIAlzYi0+c19ibG9ja3NpemVfYml0cyA9IG9sZF9zYi0+c19i
+bG9ja3NpemVfYml0czsNCj4gIAlzYi0+c19ibG9ja3NpemUgPSBvbGRfc2ItPnNfYmxvY2tzaXpl
+Ow0KPiAgCXNiLT5zX21heGJ5dGVzID0gb2xkX3NiLT5zX21heGJ5dGVzOw0KPiBAQCAtMjkzMCw4
+NiArMjk0NywxMSBAQCBzdGF0aWMgc3RydWN0IGRlbnRyeSAqDQo+ICBuZnM0X3hkZXZfbW91bnQo
+c3RydWN0IGZpbGVfc3lzdGVtX3R5cGUgKmZzX3R5cGUsIGludCBmbGFncywNCj4gIAkJIGNvbnN0
+IGNoYXIgKmRldl9uYW1lLCB2b2lkICpyYXdfZGF0YSkNCj4gIHsNCj4gLQlzdHJ1Y3QgbmZzX2Ns
+b25lX21vdW50ICpkYXRhID0gcmF3X2RhdGE7DQo+IC0Jc3RydWN0IHN1cGVyX2Jsb2NrICpzOw0K
+PiAtCXN0cnVjdCBuZnNfc2VydmVyICpzZXJ2ZXI7DQo+IC0Jc3RydWN0IGRlbnRyeSAqbW50cm9v
+dDsNCj4gLQlpbnQgKCpjb21wYXJlX3N1cGVyKShzdHJ1Y3Qgc3VwZXJfYmxvY2sgKiwgdm9pZCAq
+KSA9IG5mc19jb21wYXJlX3N1cGVyOw0KPiAtCXN0cnVjdCBuZnNfc2JfbW91bnRkYXRhIHNiX21u
+dGRhdGEgPSB7DQo+IC0JCS5tbnRmbGFncyA9IGZsYWdzLA0KPiArCXN0cnVjdCBuZnNfbW91bnRf
+aW5mbyBtb3VudF9pbmZvID0gew0KPiArCQkuZmlsbF9zdXBlciA9IG5mczRfY2xvbmVfc3VwZXIs
+DQo+ICsJCS5jbG9uZWQgPSByYXdfZGF0YSwNCj4gIAl9Ow0KPiAtCWludCBlcnJvcjsNCj4gLQ0K
+PiAtCWRwcmludGsoIi0tPiBuZnM0X3hkZXZfbW91bnQoKVxuIik7DQo+IC0NCj4gLQkvKiBjcmVh
+dGUgYSBuZXcgdm9sdW1lIHJlcHJlc2VudGF0aW9uICovDQo+IC0Jc2VydmVyID0gbmZzX2Nsb25l
+X3NlcnZlcihORlNfU0IoZGF0YS0+c2IpLCBkYXRhLT5maCwgZGF0YS0+ZmF0dHIsIGRhdGEtPmF1
+dGhmbGF2b3IpOw0KPiAtCWlmIChJU19FUlIoc2VydmVyKSkgew0KPiAtCQllcnJvciA9IFBUUl9F
+UlIoc2VydmVyKTsNCj4gLQkJZ290byBvdXRfZXJyX25vc2VydmVyOw0KPiAtCX0NCj4gLQlzYl9t
+bnRkYXRhLnNlcnZlciA9IHNlcnZlcjsNCj4gLQ0KPiAtCWlmIChzZXJ2ZXItPmZsYWdzICYgTkZT
+X01PVU5UX1VOU0hBUkVEKQ0KPiAtCQljb21wYXJlX3N1cGVyID0gTlVMTDsNCj4gLQ0KPiAtCS8q
+IC1vIG5vYWMgaW1wbGllcyAtbyBzeW5jICovDQo+IC0JaWYgKHNlcnZlci0+ZmxhZ3MgJiBORlNf
+TU9VTlRfTk9BQykNCj4gLQkJc2JfbW50ZGF0YS5tbnRmbGFncyB8PSBNU19TWU5DSFJPTk9VUzsN
+Cj4gLQ0KPiAtCS8qIEdldCBhIHN1cGVyYmxvY2sgLSBub3RlIHRoYXQgd2UgbWF5IGVuZCB1cCBz
+aGFyaW5nIG9uZSB0aGF0IGFscmVhZHkgZXhpc3RzICovDQo+IC0JcyA9IHNnZXQoJm5mczRfZnNf
+dHlwZSwgY29tcGFyZV9zdXBlciwgbmZzX3NldF9zdXBlciwgJnNiX21udGRhdGEpOw0KPiAtCWlm
+IChJU19FUlIocykpIHsNCj4gLQkJZXJyb3IgPSBQVFJfRVJSKHMpOw0KPiAtCQlnb3RvIG91dF9l
+cnJfbm9zYjsNCj4gLQl9DQo+IC0NCj4gLQlpZiAocy0+c19mc19pbmZvICE9IHNlcnZlcikgew0K
+PiAtCQluZnNfZnJlZV9zZXJ2ZXIoc2VydmVyKTsNCj4gLQkJc2VydmVyID0gTlVMTDsNCj4gLQl9
+IGVsc2Ugew0KPiAtCQllcnJvciA9IG5mc19iZGlfcmVnaXN0ZXIoc2VydmVyKTsNCj4gLQkJaWYg
+KGVycm9yKQ0KPiAtCQkJZ290byBlcnJvcl9zcGxhdF9iZGk7DQo+IC0JfQ0KPiAtDQo+IC0JaWYg
+KCFzLT5zX3Jvb3QpIHsNCj4gLQkJLyogaW5pdGlhbCBzdXBlcmJsb2NrL3Jvb3QgY3JlYXRpb24g
+Ki8NCj4gLQkJbmZzNF9jbG9uZV9zdXBlcihzLCBkYXRhLT5zYik7DQo+IC0JCW5mc19nZXRfY2Fj
+aGVfY29va2llKHMsIE5VTEwsIGRhdGEpOw0KPiAtCX0NCj4gLQ0KPiAtCW1udHJvb3QgPSBuZnNf
+Z2V0X3Jvb3QocywgZGF0YS0+ZmgsIGRldl9uYW1lKTsNCj4gLQlpZiAoSVNfRVJSKG1udHJvb3Qp
+KSB7DQo+IC0JCWVycm9yID0gUFRSX0VSUihtbnRyb290KTsNCj4gLQkJZ290byBlcnJvcl9zcGxh
+dF9zdXBlcjsNCj4gLQl9DQo+IC0JaWYgKG1udHJvb3QtPmRfaW5vZGUtPmlfb3AgIT0gTkZTX1NC
+KHMpLT5uZnNfY2xpZW50LT5ycGNfb3BzLT5kaXJfaW5vZGVfb3BzKSB7DQo+IC0JCWRwdXQobW50
+cm9vdCk7DQo+IC0JCWVycm9yID0gLUVTVEFMRTsNCj4gLQkJZ290byBlcnJvcl9zcGxhdF9zdXBl
+cjsNCj4gLQl9DQo+IC0NCj4gLQlzLT5zX2ZsYWdzIHw9IE1TX0FDVElWRTsNCj4gLQ0KPiAtCXNl
+Y3VyaXR5X3NiX2Nsb25lX21udF9vcHRzKGRhdGEtPnNiLCBzKTsNCj4gLQ0KPiAtCWRwcmludGso
+IjwtLSBuZnM0X3hkZXZfbW91bnQoKSA9IDBcbiIpOw0KPiAtCXJldHVybiBtbnRyb290Ow0KPiAt
+DQo+IC1vdXRfZXJyX25vc2I6DQo+IC0JbmZzX2ZyZWVfc2VydmVyKHNlcnZlcik7DQo+IC1vdXRf
+ZXJyX25vc2VydmVyOg0KPiAtCWRwcmludGsoIjwtLSBuZnM0X3hkZXZfbW91bnQoKSA9ICVkIFtl
+cnJvcl1cbiIsIGVycm9yKTsNCj4gLQlyZXR1cm4gRVJSX1BUUihlcnJvcik7DQo+IC0NCj4gLWVy
+cm9yX3NwbGF0X3N1cGVyOg0KPiAtCWlmIChzZXJ2ZXIgJiYgIXMtPnNfcm9vdCkNCj4gLQkJYmRp
+X3VucmVnaXN0ZXIoJnNlcnZlci0+YmFja2luZ19kZXZfaW5mbyk7DQo+IC1lcnJvcl9zcGxhdF9i
+ZGk6DQo+IC0JZGVhY3RpdmF0ZV9sb2NrZWRfc3VwZXIocyk7DQo+IC0JZHByaW50aygiPC0tIG5m
+czRfeGRldl9tb3VudCgpID0gJWQgW3NwbGF0XVxuIiwgZXJyb3IpOw0KPiAtCXJldHVybiBFUlJf
+UFRSKGVycm9yKTsNCj4gKwlyZXR1cm4gbmZzX3hkZXZfbW91bnRfY29tbW9uKCZuZnM0X2ZzX3R5
+cGUsIGZsYWdzLCBkZXZfbmFtZSwgJm1vdW50X2luZm8pOw0KPiAgfQ0KPiAgDQo+ICBzdGF0aWMg
+c3RydWN0IGRlbnRyeSAqDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50
+IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5l
+dGFwcC5jb20NCg0K
