@@ -1,45 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from he.sipsolutions.net ([78.46.109.217]:46905 "EHLO
-	sipsolutions.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932383Ab2EOSVj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 14:21:39 -0400
-Message-ID: <1337106094.15553.5.camel@jlt3.sipsolutions.net>
-Subject: Re: [RFC net-next 0/2] net: Use net_<level>_ratelimit
-From: Johannes Berg <johannes@sipsolutions.net>
-To: David Miller <davem@davemloft.net>
-Cc: joe@perches.com, netdev@vger.kernel.org,
-        linux-decnet-user@lists.sourceforge.net,
-        netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org,
-        coreteam@netfilter.org, linux-wireless@vger.kernel.org,
-        dev@openvswitch.org, linux-sctp@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Tue, 15 May 2012 20:21:34 +0200
-In-Reply-To: <20120515.141348.892964316296815698.davem@davemloft.net>
-References: <20120515.134531.530903973750646107.davem@davemloft.net>
-	 <1337104765.7050.24.camel@joe2Laptop>
-	 <1337105028.15553.3.camel@jlt3.sipsolutions.net>
-	 <20120515.141348.892964316296815698.davem@davemloft.net>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx2.netapp.com ([216.240.18.37]:31832 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751783Ab2EJQpM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 May 2012 12:45:12 -0400
+Date: Thu, 10 May 2012 09:45:10 -0700
+From: "Haynes, Tom" <thomas@netapp.com>
+To: Mahmoud TAZI <ma.tazi@hotmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [nfsv4] problem with nfsv4_getfacl
+Message-ID: <20120510164509.GB32299@netapp.com>
+References: <SNT128-W8F875E866DAA64DF4476EEB160@phx.gbl>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <SNT128-W8F875E866DAA64DF4476EEB160@phx.gbl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2012-05-15 at 14:13 -0400, David Miller wrote:
-> From: Johannes Berg <johannes@sipsolutions.net>
-> Date: Tue, 15 May 2012 20:03:48 +0200
+On Thu, May 10, 2012 at 02:28:12PM +0100, Mahmoud TAZI wrote:
 > 
-> > Oops. Yes, please do that, mac80211 doesn't have DEBUG yet
+> hello,
 > 
-> If you want debugging messages you would turn on dynamic_debug
-> via sysctl or whatever, not define DEBUG in your sources.
+> I have problems when implementing the nfsv4_ACL,
 > 
-> I don't think we should add yet another interface just to get
-> KERN_DEBUG in there.
+> I have a NetAPP server where we share two files system (UNIX,Windows), i can mount the unix file ystem with NFSv4 (mount -t nfs4 -o acl server:/ /mnt) from suse entreprise 11 SP1, but when i try to get acl i have the errors bellow
+> 
+> nfs4_getfacl test
+> Failed getxattr operation: Input/output error
+> 
+> i tried from an AIX server and Solaris server, and i can get and set the nfsv4 ACLs
+> 
+> In SUSE i also insall the nfs4-acl-tools package 
+> 
+>  		 	   		  
 
-But don't you have to do something in the sources to actually get
-dynamic_debug enabled? I'm concerned this will make mac80211 debugging
-inconsistent - the normal bits are just printk() still, and the
-rate-limited bits need some special enabling? That seems odd.
+Hi Mahmoud,
 
-johannes
+Wrong list - this is not for help on implementations. In this case, you want to try linux-nfs@vger.kernel.org
 
+I've pushed you there and BCC'ed the NFSv4 WG alias.
+
+Enjoy,
+
+-- 
+thomas@netapp.com, ex-cfb
