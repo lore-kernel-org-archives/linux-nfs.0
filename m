@@ -1,40 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51825 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:38010 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752064Ab2EKNxI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 May 2012 09:53:08 -0400
-Date: Fri, 11 May 2012 09:53:07 -0400
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Jeff Layton <jlayton@redhat.com>
-Subject: Re: [RFC] NFSd laundromat containerization
-Message-ID: <20120511135306.GA12795@fieldses.org>
-References: <4FAD1934.8070908@parallels.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FAD1934.8070908@parallels.com>
+	id S932283Ab2EJNyb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 May 2012 09:54:31 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 02/12] selinux: tag avc cache alloc as non-critical
+Date: Thu, 10 May 2012 14:54:15 +0100
+Message-Id: <1336658065-24851-3-git-send-email-mgorman@suse.de>
+In-Reply-To: <1336658065-24851-1-git-send-email-mgorman@suse.de>
+References: <1336658065-24851-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 11, 2012 at 05:50:44PM +0400, Stanislav Kinsbursky wrote:
-> Hello.
-> I'm currently looking on NFSd laundromat work, and it looks like
-> have to be performed per networks namespace context.
-> It's easy to make corresponding delayed work per network namespace
-> and thus gain per-net data pointer in laundromat function.
-> But here a problem appears: network namespace is required to skip
-> clients from other network namespaces while iterating over global
-> lists (client_lru and friends).
-> I see two possible solutions:
-> 1) Make these list per network namespace context. In this case
-> network namespace will not be required - per-net data will be
-> enough.
-> 2) Put network namespace link on per-net data (this one is easier, but uglier).
+Failing to allocate a cache entry will only harm performance not
+correctness.  Do not consume valuable reserve pages for something
+like that.
 
-I'd rather there be as few shared data structures between network
-namespaces as possible--I think that will simplify things.
+Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ security/selinux/avc.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-So, of those two choices, #1.
+diff --git a/security/selinux/avc.c b/security/selinux/avc.c
+index 8ee42b2..75c2977 100644
+--- a/security/selinux/avc.c
++++ b/security/selinux/avc.c
+@@ -280,7 +280,7 @@ static struct avc_node *avc_alloc_node(void)
+ {
+ 	struct avc_node *node;
+ 
+-	node = kmem_cache_zalloc(avc_node_cachep, GFP_ATOMIC);
++	node = kmem_cache_zalloc(avc_node_cachep, GFP_ATOMIC|__GFP_NOMEMALLOC);
+ 	if (!node)
+ 		goto out;
+ 
+-- 
+1.7.9.2
 
---b.
