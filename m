@@ -1,67 +1,155 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:50863 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761133Ab2EQXeh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 May 2012 19:34:37 -0400
-Received: by mail-pb0-f46.google.com with SMTP id rp8so3158300pbb.19
-        for <linux-nfs@vger.kernel.org>; Thu, 17 May 2012 16:34:37 -0700 (PDT)
-From: =?UTF-8?q?Diego=20Elio=20Petten=C3=B2?= <flameeyes@flameeyes.eu>
-To: linux-nfs@vger.kernel.org
-Cc: =?UTF-8?q?Diego=20Elio=20Petten=C3=B2?= <flameeyes@flameeyes.eu>
-Subject: [nfs-utils PATCH] build: avoid AM_CONDITIONAL in conditional execution.
-Date: Thu, 17 May 2012 16:34:31 -0700
-Message-Id: <1337297671-9614-1-git-send-email-flameeyes@flameeyes.eu>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:60449 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760490Ab2EJTHx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 May 2012 15:07:53 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v4 03/14] NFS: Don't pass mount data to nfs_fscache_get_super_cookie()
+Date: Thu, 10 May 2012 15:07:32 -0400
+Message-Id: <1336676863-9698-4-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1336676863-9698-1-git-send-email-bjschuma@netapp.com>
+References: <1336676863-9698-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Automake does not support conditional AM_CONDITIONAL calls; what that
-means is that you always have to execute AM_CONDITIONAL one way or the
-other. Both the libsqlite3.m4 file and the nfsdcld conditionals are
-executed only when NFSv4 is enabled, which breaks building with
---disable-nfsv4.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Remove the SQLite3 conditional altogether as it's never used, and move
-the nfsdcld conditional outside of the conditional code.
+I intend on creating a single nfs_fs_mount() function used by all our
+mount paths.  To avoid checking between new mounts and clone mounts, I
+instead pass both structures to a new function in super.c that finds the
+cache key and then looks up the super cookie.
 
-Signed-off-by: Diego Elio Pettenò <flameeyes@flameeyes.eu>
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- aclocal/libsqlite3.m4 |    1 -
- configure.ac          |    3 +--
- 2 files changed, 1 insertions(+), 3 deletions(-)
+ fs/nfs/fscache.c |   15 ++-------------
+ fs/nfs/fscache.h |    4 +---
+ fs/nfs/super.c   |   31 ++++++++++++++++++++++++++-----
+ 3 files changed, 29 insertions(+), 21 deletions(-)
 
-diff --git a/aclocal/libsqlite3.m4 b/aclocal/libsqlite3.m4
-index 73d1e46..8c38993 100644
---- a/aclocal/libsqlite3.m4
-+++ b/aclocal/libsqlite3.m4
-@@ -29,5 +29,4 @@ AC_DEFUN([AC_SQLITE3_VERS], [
-     LIBS="$saved_LIBS"])
- 
-   AC_MSG_RESULT($libsqlite3_cv_is_recent)
--  AM_CONDITIONAL(CONFIG_SQLITE3, [test "$libsqlite3_cv_is_recent" = "yes"])
- ])dnl
-diff --git a/configure.ac b/configure.ac
-index 9ba53e2..b408f1b 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -278,8 +278,6 @@ if test "$enable_nfsv4" = yes; then
- 	fi
-   fi
- 
--  AM_CONDITIONAL(CONFIG_NFSDCLD, [test "$enable_nfsdcld" = "yes" ])
+diff --git a/fs/nfs/fscache.c b/fs/nfs/fscache.c
+index ae65c16..c817787 100644
+--- a/fs/nfs/fscache.c
++++ b/fs/nfs/fscache.c
+@@ -64,23 +64,12 @@ void nfs_fscache_release_client_cookie(struct nfs_client *clp)
+  * either by the 'fsc=xxx' option to mount, or by inheriting it from the parent
+  * superblock across an automount point of some nature.
+  */
+-void nfs_fscache_get_super_cookie(struct super_block *sb, const char *uniq,
+-				  struct nfs_clone_mount *mntdata)
++void nfs_fscache_get_super_cookie(struct super_block *sb, const char *uniq, int ulen)
+ {
+ 	struct nfs_fscache_key *key, *xkey;
+ 	struct nfs_server *nfss = NFS_SB(sb);
+ 	struct rb_node **p, *parent;
+-	int diff, ulen;
 -
-   dnl librpcsecgss already has a dependency on libgssapi,
-   dnl but we need to make sure we get the right version
-   if test "$enable_gss" = yes; then
-@@ -293,6 +291,7 @@ if test "$enable_nfsv41" = yes; then
- fi
+-	if (uniq) {
+-		ulen = strlen(uniq);
+-	} else if (mntdata) {
+-		struct nfs_server *mnt_s = NFS_SB(mntdata->sb);
+-		if (mnt_s->fscache_key) {
+-			uniq = mnt_s->fscache_key->key.uniquifier;
+-			ulen = mnt_s->fscache_key->key.uniq_len;
+-		}
+-	}
++	int diff;
  
- dnl enable nfsidmap when its support by libnfsidmap
-+AM_CONDITIONAL(CONFIG_NFSDCLD, [test "$enable_nfsdcld" = "yes" ])
- AM_CONDITIONAL(CONFIG_NFSIDMAP, [test "$ac_cv_header_keyutils_h$ac_cv_lib_nfsidmap_nfs4_owner_to_uid" = "yesyes"])
+ 	if (!uniq) {
+ 		uniq = "";
+diff --git a/fs/nfs/fscache.h b/fs/nfs/fscache.h
+index b9c572d..2a08b91 100644
+--- a/fs/nfs/fscache.h
++++ b/fs/nfs/fscache.h
+@@ -73,9 +73,7 @@ extern void nfs_fscache_unregister(void);
+ extern void nfs_fscache_get_client_cookie(struct nfs_client *);
+ extern void nfs_fscache_release_client_cookie(struct nfs_client *);
  
+-extern void nfs_fscache_get_super_cookie(struct super_block *,
+-					 const char *,
+-					 struct nfs_clone_mount *);
++extern void nfs_fscache_get_super_cookie(struct super_block *, const char *, int);
+ extern void nfs_fscache_release_super_cookie(struct super_block *);
  
+ extern void nfs_fscache_init_inode_cookie(struct inode *);
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 75b1717..f56fb35 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2278,6 +2278,27 @@ static int nfs_compare_super(struct super_block *sb, void *data)
+ 	return nfs_compare_mount_options(sb, server, mntflags);
+ }
+ 
++static void nfs_get_cache_cookie(struct super_block *sb,
++				 struct nfs_parsed_mount_data *parsed,
++				 struct nfs_clone_mount *cloned)
++{
++	char *uniq = NULL;
++	int ulen = 0;
++
++	if (parsed && parsed->fscache_uniq) {
++		uniq = parsed->fscache_uniq;
++		ulen = strlen(parsed->fscache_uniq);
++	} else if (cloned) {
++		struct nfs_server *mnt_s = NFS_SB(cloned->sb);
++		if (mnt_s->fscache_key) {
++			uniq = mnt_s->fscache_key->key.uniquifier;
++			ulen = mnt_s->fscache_key->key.uniq_len;
++		};
++	}
++
++	nfs_fscache_get_super_cookie(sb, uniq, ulen);
++}
++
+ static int nfs_bdi_register(struct nfs_server *server)
+ {
+ 	return bdi_register_dev(&server->backing_dev_info, server->s_dev);
+@@ -2352,7 +2373,7 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
+ 	if (!s->s_root) {
+ 		/* initial superblock/root creation */
+ 		nfs_fill_super(s, data);
+-		nfs_fscache_get_super_cookie(s, data->fscache_uniq, NULL);
++		nfs_get_cache_cookie(s, data, NULL);
+ 	}
+ 
+ 	mntroot = nfs_get_root(s, mntfh, dev_name);
+@@ -2461,7 +2482,7 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
+ 	if (!s->s_root) {
+ 		/* initial superblock/root creation */
+ 		nfs_clone_super(s, data->sb);
+-		nfs_fscache_get_super_cookie(s, NULL, data);
++		nfs_get_cache_cookie(s, NULL, data);
+ 	}
+ 
+ 	mntroot = nfs_get_root(s, data->fh, dev_name);
+@@ -2724,7 +2745,7 @@ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
+ 	if (!s->s_root) {
+ 		/* initial superblock/root creation */
+ 		nfs4_fill_super(s);
+-		nfs_fscache_get_super_cookie(s, data->fscache_uniq, NULL);
++		nfs_get_cache_cookie(s, data, NULL);
+ 	}
+ 
+ 	mntroot = nfs_get_root(s, mntfh, dev_name);
+@@ -2988,7 +3009,7 @@ nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
+ 	if (!s->s_root) {
+ 		/* initial superblock/root creation */
+ 		nfs4_clone_super(s, data->sb);
+-		nfs_fscache_get_super_cookie(s, NULL, data);
++		nfs_get_cache_cookie(s, NULL, data);
+ 	}
+ 
+ 	mntroot = nfs_get_root(s, data->fh, dev_name);
+@@ -3079,7 +3100,7 @@ nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
+ 	if (!s->s_root) {
+ 		/* initial superblock/root creation */
+ 		nfs4_fill_super(s);
+-		nfs_fscache_get_super_cookie(s, NULL, data);
++		nfs_get_cache_cookie(s, NULL, data);
+ 	}
+ 
+ 	mntroot = nfs_get_root(s, mntfh, dev_name);
 -- 
-1.7.8.6
+1.7.10.1
 
