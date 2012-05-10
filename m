@@ -1,224 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57765 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:38141 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760650Ab2EWRcu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 May 2012 13:32:50 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/3] NFSv4.1: Fix session initialisation races
-Date: Wed, 23 May 2012 13:32:41 -0400
-Message-Id: <1337794363-11905-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1759545Ab2EJNyr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 May 2012 09:54:47 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 12/12] Avoid dereferencing bd_disk during swap_entry_free for network storage
+Date: Thu, 10 May 2012 14:54:25 +0100
+Message-Id: <1336658065-24851-13-git-send-email-mgorman@suse.de>
+In-Reply-To: <1336658065-24851-1-git-send-email-mgorman@suse.de>
+References: <1336658065-24851-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Session initialisation is not complete until the lease manager
-has run. We need to ensure that both nfs4_init_session and
-nfs4_init_ds_session do so, and that they check for any resulting
-errors in clp->cl_cons_state.
+Commit [b3a27d: swap: Add swap slot free callback to
+block_device_operations] dereferences p->bdev->bd_disk but this is a
+NULL dereference if using swap-over-NFS. This patch checks SWP_BLKDEV
+on the swap_info_struct before dereferencing.
 
-Only after this is done, can nfs4_ds_connect check the contents
-of clp->cl_exchange_flags.
+With reference to this callback, Christoph Hellwig stated "Please
+just remove the callback entirely.  It has no user outside the staging
+tree and was added clearly against the rules for that staging tree".
+This would also be my preference but there was not an obvious way of
+keeping zram in staging/ happy.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Andy Adamson <andros@netapp.com>
+Signed-off-by: Xiaotian Feng <dfeng@redhat.com>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
 ---
- fs/nfs/client.c            |   16 ---------
- fs/nfs/internal.h          |    3 +-
- fs/nfs/nfs4filelayoutdev.c |   23 +------------
- fs/nfs/nfs4proc.c          |   77 ++++++++++++++++++++++++++++---------------
- 4 files changed, 52 insertions(+), 67 deletions(-)
+ mm/swapfile.c |    9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 60f7e4e..78970a1 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -593,22 +593,6 @@ void nfs_mark_client_ready(struct nfs_client *clp, int state)
- }
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index 80b3415..d85d842 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -547,7 +547,6 @@ static unsigned char swap_entry_free(struct swap_info_struct *p,
  
- /*
-- * With sessions, the client is not marked ready until after a
-- * successful EXCHANGE_ID and CREATE_SESSION.
-- *
-- * Map errors cl_cons_state errors to EPROTONOSUPPORT to indicate
-- * other versions of NFS can be tried.
-- */
--int nfs4_check_client_ready(struct nfs_client *clp)
--{
--	if (!nfs4_has_session(clp))
--		return 0;
--	if (clp->cl_cons_state < NFS_CS_READY)
--		return -EPROTONOSUPPORT;
--	return 0;
--}
--
--/*
-  * Initialise the timeout values for a connection
-  */
- static void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index b777bda..00b66de 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -168,7 +168,6 @@ extern struct nfs_server *nfs_clone_server(struct nfs_server *,
- 					   struct nfs_fattr *,
- 					   rpc_authflavor_t);
- extern void nfs_mark_client_ready(struct nfs_client *clp, int state);
--extern int nfs4_check_client_ready(struct nfs_client *clp);
- extern struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
- 					     const struct sockaddr *ds_addr,
- 					     int ds_addrlen, int ds_proto);
-@@ -237,7 +236,7 @@ extern const u32 nfs41_maxwrite_overhead;
- extern struct rpc_procinfo nfs4_procedures[];
- #endif
- 
--extern int nfs4_init_ds_session(struct nfs_client *clp);
-+extern int nfs4_init_ds_session(struct nfs_client *, unsigned long);
- 
- /* proc.c */
- void nfs_close_context(struct nfs_open_context *ctx, int is_sync);
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index c9cff9a..0764c98 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -176,28 +176,7 @@ nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
- 		goto out;
+ 	/* free if no reference */
+ 	if (!usage) {
+-		struct gendisk *disk = p->bdev->bd_disk;
+ 		if (offset < p->lowest_bit)
+ 			p->lowest_bit = offset;
+ 		if (offset > p->highest_bit)
+@@ -557,9 +556,11 @@ static unsigned char swap_entry_free(struct swap_info_struct *p,
+ 			swap_list.next = p->type;
+ 		nr_swap_pages++;
+ 		p->inuse_pages--;
+-		if ((p->flags & SWP_BLKDEV) &&
+-				disk->fops->swap_slot_free_notify)
+-			disk->fops->swap_slot_free_notify(p->bdev, offset);
++		if (p->flags & SWP_BLKDEV) {
++			struct gendisk *disk = p->bdev->bd_disk;
++			if (disk->fops->swap_slot_free_notify)
++				disk->fops->swap_slot_free_notify(p->bdev, offset);
++		}
  	}
  
--	if ((clp->cl_exchange_flags & EXCHGID4_FLAG_MASK_PNFS) != 0) {
--		if (!is_ds_client(clp)) {
--			status = -ENODEV;
--			goto out_put;
--		}
--		ds->ds_clp = clp;
--		dprintk("%s [existing] server=%s\n", __func__,
--			ds->ds_remotestr);
--		goto out;
--	}
--
--	/*
--	 * Do not set NFS_CS_CHECK_LEASE_TIME instead set the DS lease to
--	 * be equal to the MDS lease. Renewal is scheduled in create_session.
--	 */
--	spin_lock(&mds_srv->nfs_client->cl_lock);
--	clp->cl_lease_time = mds_srv->nfs_client->cl_lease_time;
--	spin_unlock(&mds_srv->nfs_client->cl_lock);
--	clp->cl_last_renewal = jiffies;
--
--	/* New nfs_client */
--	status = nfs4_init_ds_session(clp);
-+	status = nfs4_init_ds_session(clp, mds_srv->nfs_client->cl_lease_time);
- 	if (status)
- 		goto out_put;
- 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 99650aa..272c4ad 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5605,53 +5605,76 @@ int nfs4_proc_destroy_session(struct nfs4_session *session)
- 	return status;
- }
- 
-+/*
-+ * With sessions, the client is not marked ready until after a
-+ * successful EXCHANGE_ID and CREATE_SESSION.
-+ *
-+ * Map errors cl_cons_state errors to EPROTONOSUPPORT to indicate
-+ * other versions of NFS can be tried.
-+ */
-+static int nfs41_check_session_ready(struct nfs_client *clp)
-+{
-+	int ret;
-+	
-+	ret = nfs4_client_recover_expired_lease(clp);
-+	if (ret)
-+		return ret;
-+	if (clp->cl_cons_state < NFS_CS_READY)
-+		return -EPROTONOSUPPORT;
-+	return 0;
-+}
-+
- int nfs4_init_session(struct nfs_server *server)
- {
- 	struct nfs_client *clp = server->nfs_client;
- 	struct nfs4_session *session;
- 	unsigned int rsize, wsize;
--	int ret;
- 
- 	if (!nfs4_has_session(clp))
- 		return 0;
- 
- 	session = clp->cl_session;
--	if (!test_and_clear_bit(NFS4_SESSION_INITING, &session->session_state))
--		return 0;
-+	spin_lock(&clp->cl_lock);
-+	if (test_and_clear_bit(NFS4_SESSION_INITING, &session->session_state)) {
- 
--	rsize = server->rsize;
--	if (rsize == 0)
--		rsize = NFS_MAX_FILE_IO_SIZE;
--	wsize = server->wsize;
--	if (wsize == 0)
--		wsize = NFS_MAX_FILE_IO_SIZE;
-+		rsize = server->rsize;
-+		if (rsize == 0)
-+			rsize = NFS_MAX_FILE_IO_SIZE;
-+		wsize = server->wsize;
-+		if (wsize == 0)
-+			wsize = NFS_MAX_FILE_IO_SIZE;
- 
--	session->fc_attrs.max_rqst_sz = wsize + nfs41_maxwrite_overhead;
--	session->fc_attrs.max_resp_sz = rsize + nfs41_maxread_overhead;
-+		session->fc_attrs.max_rqst_sz = wsize + nfs41_maxwrite_overhead;
-+		session->fc_attrs.max_resp_sz = rsize + nfs41_maxread_overhead;
-+	}
-+	spin_unlock(&clp->cl_lock);
- 
--	ret = nfs4_recover_expired_lease(server);
--	if (!ret)
--		ret = nfs4_check_client_ready(clp);
--	return ret;
-+	return nfs41_check_session_ready(clp);
- }
- 
--int nfs4_init_ds_session(struct nfs_client *clp)
-+int nfs4_init_ds_session(struct nfs_client *clp, unsigned long lease_time)
- {
- 	struct nfs4_session *session = clp->cl_session;
- 	int ret;
- 
--	if (!test_and_clear_bit(NFS4_SESSION_INITING, &session->session_state))
--		return 0;
--
--	ret = nfs4_client_recover_expired_lease(clp);
--	if (!ret)
--		/* Test for the DS role */
--		if (!is_ds_client(clp))
--			ret = -ENODEV;
--	if (!ret)
--		ret = nfs4_check_client_ready(clp);
--	return ret;
-+	spin_lock(&clp->cl_lock);
-+	if (test_and_clear_bit(NFS4_SESSION_INITING, &session->session_state)) {
-+		/*
-+		 * Do not set NFS_CS_CHECK_LEASE_TIME instead set the
-+		 * DS lease to be equal to the MDS lease.
-+		 */
-+		clp->cl_lease_time = lease_time;
-+		clp->cl_last_renewal = jiffies;
-+	}
-+	spin_unlock(&clp->cl_lock);
- 
-+	ret = nfs41_check_session_ready(clp);
-+	if (ret)
-+		return ret;
-+	/* Test for the DS role */
-+	if (!is_ds_client(clp))
-+		return -ENODEV;
-+	return 0;
- }
- EXPORT_SYMBOL_GPL(nfs4_init_ds_session);
- 
+ 	return usage;
 -- 
-1.7.7.6
+1.7.9.2
 
