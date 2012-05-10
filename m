@@ -1,56 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:46431 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753359Ab2E1Kob (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 06:44:31 -0400
-Message-ID: <4FC356FA.2070008@panasas.com>
-Date: Mon, 28 May 2012 13:44:10 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: <tao.peng@emc.com>
-CC: <Trond.Myklebust@netapp.com>, <bergwolf@gmail.com>,
-        <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/3] NFS41: add pnfs_dio_begin/dio_end
-References: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>  <1338096780-2763-2-git-send-email-bergwolf@gmail.com>  <1338136170.3044.7.camel@lade.trondhjem.org>  <F19688880B763E40B28B2B462677FBF805F0BADF35@MX09A.corp.emc.com> <1338176574.2265.7.camel@lade.trondhjem.org> <F19688880B763E40B28B2B462677FBF805F0BADF5C@MX09A.corp.emc.com>
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805F0BADF5C@MX09A.corp.emc.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from plane.gmane.org ([80.91.229.3]:51566 "EHLO plane.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756549Ab2EJUZE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 May 2012 16:25:04 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1SSZv3-00011i-DI
+	for linux-nfs@vger.kernel.org; Thu, 10 May 2012 22:25:01 +0200
+Received: from NORTHWEST-R.edge3.Denver1.Level3.net ([4.28.99.98])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Thu, 10 May 2012 22:25:01 +0200
+Received: from orion by NORTHWEST-R.edge3.Denver1.Level3.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Thu, 10 May 2012 22:25:01 +0200
+To: linux-nfs@vger.kernel.org
+From: Orion Poplawski <orion@cora.nwra.com>
+Subject: Cannot unmount nfs4 sec=krb5 mount if network is down
+Date: Thu, 10 May 2012 20:24:53 +0000 (UTC)
+Message-ID: <loom.20120510T222025-23@post.gmane.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/28/2012 07:13 AM, tao.peng@emc.com wrote:
+See https://bugzilla.redhat.com/show_bug.cgi?id=820707
 
->> -----Original Message-----
->> From: Myklebust, Trond [mailto:Trond.Myklebust@netapp.com]
->> Sent: Monday, May 28, 2012 11:43 AM
->> To: Peng, Tao
->> Cc: bergwolf@gmail.com; linux-nfs@vger.kernel.org
->> Subject: RE: [PATCH 1/3] NFS41: add pnfs_dio_begin/dio_end
->>
->> On Sun, 2012-05-27 at 22:30 -0400, tao.peng@emc.com wrote:
->>> I'm afraid there is. There is no way to pass struct blk_plug around pg_init/pg_doio, unless we put
->> it in struct nfs_pageio_descriptor, which I think is more intrusive and less efficient as it is only
->> useful for block layout driver in DIO case.
->>
->> Then add a 'void *pg_layout_private' field to nfs_pageio_descriptor and
->> allocate the struct blk_plug dynamically.
->>
+We're using nfs4/krb5 mounts via autofs (although I get the same result without
+autofs and mounting the directory directly):
 
-> OK. I thought data structure change is more intrusive because it
-> affects all layout drivers and generic NFS as well. But since you
-> think it is OK, I will change it as you suggested.
-> 
+earth:/export/home/orion on /home/orion type nfs4
+(rw,noatime,vers=4,rsize=32768,wsize=32768,namlen=255,acregmin=1,acregmax=1,
+acdirmin=1,acdirmax=1,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=krb5,
+clientaddr=10.10.30.4,minorversion=0,local_lock=none,addr=10.10.10.1)
+
+If the network is disconnected it is impossible to unmount, even if no
+processes are accessing the mount.  umount -f and umount -l both hang on
+readlink("/home/orion").  At this point it is impossible to shutdown cleanly
+and you must hold the power button down until the machine powers off.
+
+I can unmount non-krb5 nfs4/nfs3 mounts just fine.
+
+I tried running rpc.gssd and nfsidmap with -vvv but nothing else showed up in
+the log.
+
+Sometimes get:
+
+May 10 12:00:10 makani kernel: [ 2018.272071] nfs: server earth not responding,
+still trying
+
+but that's it.  I can exit umount -l with ctrl-c.
+
+Version-Release number of selected component (if applicable):
+nfs-utils-1.2.5-15.fc17.x86_64
+3.3.4-5.fc17.x86_64
+
+How reproducible:
+Every time
+
+Steps to Reproduce:
+1. mount nfs4 sec=krb5 mount
+2. pull network
+3. umount -l <mount>
+
+Actual results:
+umount -l hangs
+
+Expected results:
+umount succeeds, perhaps with delay.
 
 
-I want a pg_layout_private in nfs_pageio_descriptor as well. I even wrote
-the ML about it. And everyone agreed. (Just never had time to finish)
-
-So yes please do add it. it will have more users.
-
-
-> Thanks,
-> Tao
-> 
-
-
-Thanks
-Boaz
