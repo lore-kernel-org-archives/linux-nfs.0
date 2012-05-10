@@ -1,88 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from oproxy7-pub.bluehost.com ([67.222.55.9]:47261 "HELO
-	oproxy7-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751865Ab2EMRf3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 May 2012 13:35:29 -0400
-Message-ID: <4FAFF0EC.7080504@xenotime.net>
-Date: Sun, 13 May 2012 10:35:40 -0700
-From: Randy Dunlap <rdunlap@xenotime.net>
-MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Andrew Morton <akpm@linux-foundation.org>, netdev@vger.kernel.org
-Subject: [PATCH resend] sunrpc: fix kernel-doc warnings
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:28800 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760084Ab2EJPUl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 May 2012 11:20:41 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v3 13/14] NFS: Allocate parsed mount data directly to the nfs_mount_info structure
+Date: Thu, 10 May 2012 11:20:04 -0400
+Message-Id: <1336663205-23886-14-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1336663205-23886-1-git-send-email-bjschuma@netapp.com>
+References: <1336663205-23886-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Randy Dunlap <rdunlap@xenotime.net>
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Fix kernel-doc warnings in sunrpc/rpc_pipe.c and
-sunrpc/rpcb_clnt.c:
-
-Warning(net/sunrpc/rpcb_clnt.c:428): No description found for parameter 'net'
-Warning(net/sunrpc/rpcb_clnt.c:567): No description found for parameter 'net'
-
-Warning(net/sunrpc/rpc_pipe.c:133): No description found for parameter 'pipe'
-Warning(net/sunrpc/rpc_pipe.c:133): Excess function parameter 'inode' description in 'rpc_queue_upcall'
-Warning(net/sunrpc/rpc_pipe.c:839): No description found for parameter 'pipe'
-Warning(net/sunrpc/rpc_pipe.c:839): Excess function parameter 'ops' description in 'rpc_mkpipe_dentry'
-Warning(net/sunrpc/rpc_pipe.c:839): Excess function parameter 'flags' description in 'rpc_mkpipe_dentry'
-Warning(net/sunrpc/rpc_pipe.c:949): No description found for parameter 'dentry'
-Warning(net/sunrpc/rpc_pipe.c:949): Excess function parameter 'clnt' description in 'rpc_remove_client_dir'
-
-Signed-off-by: Randy Dunlap <rdunlap@xenotime.net>
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- net/sunrpc/rpc_pipe.c |    8 +++-----
- 1 file changed, 3 insertions(+), 5 deletions(-)
+ fs/nfs/super.c |   16 +++++++---------
+ 1 file changed, 7 insertions(+), 9 deletions(-)
 
---- lnx-34-rc3.orig/net/sunrpc/rpcb_clnt.c
-+++ lnx-34-rc3/net/sunrpc/rpcb_clnt.c
-@@ -394,6 +394,7 @@ static int rpcb_register_call(struct rpc
- 
- /**
-  * rpcb_register - set or unset a port registration with the local rpcbind svc
-+ * @net: target network namespace
-  * @prog: RPC program number to bind
-  * @vers: RPC version number to bind
-  * @prot: transport protocol to register
-@@ -521,6 +522,7 @@ static int rpcb_unregister_all_protofami
- 
- /**
-  * rpcb_v4_register - set or unset a port registration with the local rpcbind
-+ * @net: target network namespace
-  * @program: RPC program number of service to (un)register
-  * @version: RPC version number of service to (un)register
-  * @address: address family, IP address, and port to (un)register
---- lnx-34-rc3.orig/net/sunrpc/rpc_pipe.c
-+++ lnx-34-rc3/net/sunrpc/rpc_pipe.c
-@@ -120,7 +120,7 @@ EXPORT_SYMBOL_GPL(rpc_pipe_generic_upcal
- 
- /**
-  * rpc_queue_upcall - queue an upcall message to userspace
-- * @inode: inode of upcall pipe on which to queue given message
-+ * @pipe: upcall pipe on which to queue given message
-  * @msg: message to queue
-  *
-  * Call with an @inode created by rpc_mkpipe() to queue an upcall.
-@@ -819,9 +819,7 @@ static int rpc_rmdir_depopulate(struct d
-  * @parent: dentry of directory to create new "pipe" in
-  * @name: name of pipe
-  * @private: private data to associate with the pipe, for the caller's use
-- * @ops: operations defining the behavior of the pipe: upcall, downcall,
-- *	release_pipe, open_pipe, and destroy_msg.
-- * @flags: rpc_pipe flags
-+ * @pipe: &rpc_pipe containing input parameters
-  *
-  * Data is made available for userspace to read by calls to
-  * rpc_queue_upcall().  The actual reads will result in calls to
-@@ -943,7 +941,7 @@ struct dentry *rpc_create_client_dir(str
- 
- /**
-  * rpc_remove_client_dir - Remove a directory created with rpc_create_client_dir()
-- * @clnt: rpc client
-+ * @dentry: dentry for the pipe
-  */
- int rpc_remove_client_dir(struct dentry *dentry)
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 466b299..61b47da 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2468,7 +2468,6 @@ error_splat_bdi:
+ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
+ 	int flags, const char *dev_name, void *raw_data)
  {
+-	struct nfs_parsed_mount_data *data = NULL;
+ 	struct nfs_mount_info mount_info = {
+ 		.fill_super = nfs_fill_super,
+ 		.set_security = nfs_set_sb_security,
+@@ -2477,30 +2476,29 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
+ 	struct dentry *mntroot = ERR_PTR(-ENOMEM);
+ 	int error;
+ 
+-	data = nfs_alloc_parsed_mount_data();
++	mount_info.parsed = nfs_alloc_parsed_mount_data();
+ 	mntfh = nfs_alloc_fhandle();
+-	if (data == NULL || mntfh == NULL)
++	if (mount_info.parsed == NULL || mntfh == NULL)
+ 		goto out;
+ 
+ 	/* Validate the mount data */
+-	error = nfs_validate_mount_data(fs_type, raw_data, data, mntfh, dev_name);
++	error = nfs_validate_mount_data(fs_type, raw_data, mount_info.parsed, mntfh, dev_name);
+ 	if (error == NFS_TEXT_DATA)
+-		error = nfs_validate_text_mount_data(raw_data, data, dev_name);
++		error = nfs_validate_text_mount_data(raw_data, mount_info.parsed, dev_name);
+ 	if (error < 0) {
+ 		mntroot = ERR_PTR(error);
+ 		goto out;
+ 	}
+-	mount_info.parsed = data;
+ 
+ #ifdef CONFIG_NFS_V4
+-	if (data->version == 4)
+-		mntroot = nfs4_try_mount(flags, dev_name, data);
++	if (mount_info.parsed->version == 4)
++		mntroot = nfs4_try_mount(flags, dev_name, mount_info.parsed);
+ 	else
+ #endif	/* CONFIG_NFS_V4 */
+ 		mntroot = nfs_try_mount(flags, dev_name, mntfh, &mount_info);
+ 
+ out:
+-	nfs_free_parsed_mount_data(data);
++	nfs_free_parsed_mount_data(mount_info.parsed);
+ 	nfs_free_fhandle(mntfh);
+ 	return mntroot;
+ }
+-- 
+1.7.10.1
+
