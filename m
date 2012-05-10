@@ -1,76 +1,204 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f174.google.com ([209.85.216.174]:48618 "EHLO
-	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759318Ab2EKNpk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 May 2012 09:45:40 -0400
-Received: by qcro28 with SMTP id o28so1953866qcr.19
-        for <linux-nfs@vger.kernel.org>; Fri, 11 May 2012 06:45:39 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/4] nfsd: consolidate set_access and set_deny
-Date: Fri, 11 May 2012 09:45:11 -0400
-Message-Id: <1336743914-944-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1336743914-944-1-git-send-email-jlayton@redhat.com>
-References: <1336743914-944-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:28800 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760084Ab2EJPUj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 May 2012 11:20:39 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v3 07/14] NFS: Use nfs_fs_mount_common() for xdev mounts
+Date: Thu, 10 May 2012 11:19:58 -0400
+Message-Id: <1336663205-23886-8-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1336663205-23886-1-git-send-email-bjschuma@netapp.com>
+References: <1336663205-23886-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These functions are identical. Also, rename them to bmap_to_share_mode
-to better reflect what they do, and have them just return the result
-instead of passing in a pointer to the storage location.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+At this point, there are only a few small differences between these two
+functions.  I can set a few function pointers in the nfs_mount_info
+struct to get around these differences.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfsd/nfs4state.c |   24 +++++++-----------------
- 1 files changed, 7 insertions(+), 17 deletions(-)
+ fs/nfs/super.c |   97 ++++++++++++++++----------------------------------------
+ 1 file changed, 27 insertions(+), 70 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 7f71c69..64aeaa0 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -447,34 +447,24 @@ static struct list_head close_lru;
-  *
-  * which we should reject.
-  */
--static void
--set_access(unsigned int *access, unsigned long bmap) {
-+static unsigned int
-+bmap_to_share_mode(unsigned long bmap) {
- 	int i;
-+	unsigned int access = 0;
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 707d1f6..a3bc530 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -279,6 +279,7 @@ static match_table_t nfs_vers_tokens = {
  
--	*access = 0;
- 	for (i = 1; i < 4; i++) {
- 		if (test_bit(i, &bmap))
--			*access |= i;
--	}
--}
--
--static void
--set_deny(unsigned int *deny, unsigned long bmap) {
--	int i;
--
--	*deny = 0;
--	for (i = 0; i < 4; i++) {
--		if (test_bit(i, &bmap))
--			*deny |= i ;
-+			access |= i;
- 	}
-+	return access;
+ struct nfs_mount_info {
+ 	void (*fill_super)(struct super_block *, struct nfs_mount_info *);
++	int (*set_security)(struct super_block *, struct dentry *, struct nfs_mount_info *);
+ 	struct nfs_parsed_mount_data *parsed;
+ 	struct nfs_clone_mount *cloned;
+ };
+@@ -2312,6 +2313,22 @@ static int nfs_bdi_register(struct nfs_server *server)
+ 	return bdi_register_dev(&server->backing_dev_info, server->s_dev);
  }
  
- static int
- test_share(struct nfs4_ol_stateid *stp, struct nfsd4_open *open) {
- 	unsigned int access, deny;
++static int nfs_set_sb_security(struct super_block *s, struct dentry *mntroot,
++			       struct nfs_mount_info *mount_info)
++{
++	return security_sb_set_mnt_opts(s, &mount_info->parsed->lsm_opts);
++}
++
++static int nfs_clone_sb_security(struct super_block *s, struct dentry *mntroot,
++				 struct nfs_mount_info *mount_info)
++{
++	/* clone any lsm security options from the parent to the new sb */
++	security_sb_clone_mnt_opts(mount_info->cloned->sb, s);
++	if (mntroot->d_inode->i_op != NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops)
++		return -ESTALE;
++	return 0;
++}
++
+ static struct dentry *nfs_fs_mount_common(struct file_system_type *fs_type,
+ 					  struct nfs_server *server,
+ 					  int flags, const char *dev_name,
+@@ -2355,14 +2372,14 @@ static struct dentry *nfs_fs_mount_common(struct file_system_type *fs_type,
+ 	if (!s->s_root) {
+ 		/* initial superblock/root creation */
+ 		mount_info->fill_super(s, mount_info);
+-		nfs_get_cache_cookie(s, mount_info->parsed, NULL);
++		nfs_get_cache_cookie(s, mount_info->parsed, mount_info->cloned);
+ 	}
  
--	set_access(&access, stp->st_access_bmap);
--	set_deny(&deny, stp->st_deny_bmap);
-+	access = bmap_to_share_mode(stp->st_access_bmap);
-+	deny = bmap_to_share_mode(stp->st_deny_bmap);
- 	if ((access & open->op_share_deny) || (deny & open->op_share_access))
- 		return 0;
- 	return 1;
+ 	mntroot = nfs_get_root(s, mntfh, dev_name);
+ 	if (IS_ERR(mntroot))
+ 		goto error_splat_super;
+ 
+-	error = security_sb_set_mnt_opts(s, &mount_info->parsed->lsm_opts);
++	error = mount_info->set_security(s, mntroot, mount_info);
+ 	if (error)
+ 		goto error_splat_root;
+ 
+@@ -2393,6 +2410,7 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
+ 	struct nfs_parsed_mount_data *data = NULL;
+ 	struct nfs_mount_info mount_info = {
+ 		.fill_super = nfs_fill_super,
++		.set_security = nfs_set_sb_security,
+ 	};
+ 	struct nfs_fh *mntfh;
+ 	struct dentry *mntroot = ERR_PTR(-ENOMEM);
+@@ -2463,13 +2481,8 @@ nfs_xdev_mount_common(struct file_system_type *fs_type, int flags,
+ 		const char *dev_name, struct nfs_mount_info *mount_info)
+ {
+ 	struct nfs_clone_mount *data = mount_info->cloned;
+-	struct super_block *s;
+ 	struct nfs_server *server;
+-	struct dentry *mntroot;
+-	int (*compare_super)(struct super_block *, void *) = nfs_compare_super;
+-	struct nfs_sb_mountdata sb_mntdata = {
+-		.mntflags = flags,
+-	};
++	struct dentry *mntroot = ERR_PTR(-ENOMEM);
+ 	int error;
+ 
+ 	dprintk("--> nfs_xdev_mount_common()\n");
+@@ -2478,71 +2491,12 @@ nfs_xdev_mount_common(struct file_system_type *fs_type, int flags,
+ 	server = nfs_clone_server(NFS_SB(data->sb), data->fh, data->fattr, data->authflavor);
+ 	if (IS_ERR(server)) {
+ 		error = PTR_ERR(server);
+-		goto out_err_noserver;
+-	}
+-	sb_mntdata.server = server;
+-
+-	if (server->flags & NFS_MOUNT_UNSHARED)
+-		compare_super = NULL;
+-
+-	/* -o noac implies -o sync */
+-	if (server->flags & NFS_MOUNT_NOAC)
+-		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
+-
+-	/* Get a superblock - note that we may end up sharing one that already exists */
+-	s = sget(&nfs_fs_type, compare_super, nfs_set_super, &sb_mntdata);
+-	if (IS_ERR(s)) {
+-		error = PTR_ERR(s);
+-		goto out_err_nosb;
+-	}
+-
+-	if (s->s_fs_info != server) {
+-		nfs_free_server(server);
+-		server = NULL;
+-	} else {
+-		error = nfs_bdi_register(server);
+-		if (error)
+-			goto error_splat_bdi;
+-	}
+-
+-	if (!s->s_root) {
+-		/* initial superblock/root creation */
+-		mount_info->fill_super(s, mount_info);
+-		nfs_get_cache_cookie(s, NULL, data);
+-	}
+-
+-	mntroot = nfs_get_root(s, data->fh, dev_name);
+-	if (IS_ERR(mntroot)) {
+-		error = PTR_ERR(mntroot);
+-		goto error_splat_super;
+-	}
+-	if (mntroot->d_inode->i_op != NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops) {
+-		dput(mntroot);
+-		error = -ESTALE;
+-		goto error_splat_super;
++		goto out;
+ 	}
+ 
+-	s->s_flags |= MS_ACTIVE;
+-
+-	/* clone any lsm security options from the parent to the new sb */
+-	security_sb_clone_mnt_opts(data->sb, s);
+-
+-	dprintk("<-- nfs_xdev_mount_common() = 0\n");
++	mntroot = nfs_fs_mount_common(fs_type, server, flags, dev_name, data->fh, mount_info);
++out:
+ 	return mntroot;
+-
+-out_err_nosb:
+-	nfs_free_server(server);
+-out_err_noserver:
+-	dprintk("<-- nfs_xdev_mount_common() = %d [error]\n", error);
+-	return ERR_PTR(error);
+-
+-error_splat_super:
+-	if (server && !s->s_root)
+-		bdi_unregister(&server->backing_dev_info);
+-error_splat_bdi:
+-	deactivate_locked_super(s);
+-	dprintk("<-- nfs_xdev_mount_common() = %d [splat]\n", error);
+-	return ERR_PTR(error);
+ }
+ 
+ /*
+@@ -2554,6 +2508,7 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
+ {
+ 	struct nfs_mount_info mount_info = {
+ 		.fill_super = nfs_clone_super,
++		.set_security = nfs_clone_sb_security,
+ 		.cloned   = raw_data,
+ 	};
+ 	return nfs_xdev_mount_common(&nfs_fs_type, flags, dev_name, &mount_info);
+@@ -2740,6 +2695,7 @@ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
+ {
+ 	struct nfs_mount_info mount_info = {
+ 		.fill_super = nfs4_fill_super,
++		.set_security = nfs_set_sb_security,
+ 		.parsed = raw_data,
+ 	};
+ 	struct nfs_server *server;
+@@ -2949,6 +2905,7 @@ nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
+ {
+ 	struct nfs_mount_info mount_info = {
+ 		.fill_super = nfs4_clone_super,
++		.set_security = nfs_clone_sb_security,
+ 		.cloned = raw_data,
+ 	};
+ 	return nfs_xdev_mount_common(&nfs4_fs_type, flags, dev_name, &mount_info);
 -- 
-1.7.7.6
+1.7.10.1
 
