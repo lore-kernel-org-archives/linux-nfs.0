@@ -1,65 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.linuxfoundation.org ([140.211.169.12]:60800 "EHLO
-	mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755564Ab2EAW6J (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 May 2012 18:58:09 -0400
-Date: Tue, 1 May 2012 15:57:47 -0700
-From: Andrew Morton <akpm@linux-foundation.org>
-To: Mel Gorman <mgorman@suse.de>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>
-Subject: Re: [PATCH 05/11] mm: swap: Implement generic handler for
- swap_activate
-Message-Id: <20120501155747.368a1d36.akpm@linux-foundation.org>
-In-Reply-To: <1334578675-23445-6-git-send-email-mgorman@suse.de>
-References: <1334578675-23445-1-git-send-email-mgorman@suse.de>
-	<1334578675-23445-6-git-send-email-mgorman@suse.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from toast.topped-with-meat.com ([204.197.218.159]:44782 "EHLO
+	topped-with-meat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754998Ab2EJRKU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 May 2012 13:10:20 -0400
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+From: Roland McGrath <roland@hack.frob.com>
+To: David Howells <dhowells@redhat.com>
+Cc: Andreas Dilger <aedilger@gmail.com>, Dave Chinner <david@fromorbit.com>,
+        "adilger@dilger.ca" <adilger@dilger.ca>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "smfrench@gmail.com" <smfrench@gmail.com>,
+        "ben@decadent.org.uk" <ben@decadent.org.uk>,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
+        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
+        "libc-alpha@sourceware.org" <libc-alpha@sourceware.org>
+Subject: Re: Extended file stat: Splitting file- and fs-specific info?
+In-Reply-To: David Howells's message of  Thursday, 10 May 2012 10:23:14 +0100 <14477.1336641794@redhat.com>
+References: <73759631-F1E4-4352-9FE6-E9F576F793FB@gmail.com>
+	<20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+	<16281.1336508382@redhat.com>
+	<20120509002420.GL5091@dastard>
+	<14477.1336641794@redhat.com>
+Message-Id: <20120510171016.B45BA2C096@topped-with-meat.com>
+Date: Thu, 10 May 2012 10:10:16 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 16 Apr 2012 13:17:49 +0100
-Mel Gorman <mgorman@suse.de> wrote:
+POSIX specifies st_blksize thusly: "A file system-specific preferred I/O
+block size for this object. In some file system types, this may vary from
+file to file."
 
-> The version of swap_activate introduced is sufficient for swap-over-NFS
-> but would not provide enough information to implement a generic handler.
-> This patch shuffles things slightly to ensure the same information is
-> available for aops->swap_activate() as is available to the core.
-> 
-> No functionality change.
-> 
-> ...
->
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -587,6 +587,8 @@ typedef struct {
->  typedef int (*read_actor_t)(read_descriptor_t *, struct page *,
->  		unsigned long, unsigned long);
->  
-> +struct swap_info_struct;
+Since there is only one available to POSIX applications, it should map to
+the one that's described as "preferred IO size for general usage".
 
-Please put forward declarations at top-of-file.  To prevent accidental
-duplication later on.
 
->  struct address_space_operations {
->  	int (*writepage)(struct page *page, struct writeback_control *wbc);
->  	int (*readpage)(struct file *, struct page *);
->
-> ...
->
-> --- a/mm/page_io.c
-> +++ b/mm/page_io.c
-
-Have you tested all this code with CONFIG_SWAP=n?
-
-Have you sought to minimise additional new code when CONFIG_SWAP=n?
-
+Thanks,
+Roland
 
