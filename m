@@ -1,148 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:38020 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:62131 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754122Ab2EJNyd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 May 2012 09:54:33 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 03/12] mm: Methods for teaching filesystems about PG_swapcache pages
-Date: Thu, 10 May 2012 14:54:16 +0100
-Message-Id: <1336658065-24851-4-git-send-email-mgorman@suse.de>
-In-Reply-To: <1336658065-24851-1-git-send-email-mgorman@suse.de>
-References: <1336658065-24851-1-git-send-email-mgorman@suse.de>
+	id S1756618Ab2EJUr0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 May 2012 16:47:26 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v2 2/3] NFS: Make v2 configurable
+Date: Thu, 10 May 2012 16:47:19 -0400
+Message-Id: <1336682840-10799-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1336682840-10799-1-git-send-email-bjschuma@netapp.com>
+References: <1336682840-10799-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In order to teach filesystems to handle swap cache pages, three new
-page functions are introduced:
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-  pgoff_t page_file_index(struct page *);
-  loff_t page_file_offset(struct page *);
-  struct address_space *page_file_mapping(struct page *);
+With this patch NFS v2 can be disabled during Kconfig.  I default the
+option to "y" to match the current behavior.
 
-page_file_index() - gives the offset of this page in the file in
-PAGE_CACHE_SIZE blocks. Like page->index is for mapped pages, this
-function also gives the correct index for PG_swapcache pages.
-
-page_file_offset() - uses page_file_index(), so that it will give
-the expected result, even for PG_swapcache pages.
-
-page_file_mapping() - gives the mapping backing the actual page;
-that is for swap cache pages it will give swap_file->f_mapping.
-
-Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- include/linux/mm.h      |   25 +++++++++++++++++++++++++
- include/linux/pagemap.h |    5 +++++
- mm/swapfile.c           |   19 +++++++++++++++++++
- 3 files changed, 49 insertions(+)
+ fs/nfs/Kconfig  |   10 ++++++++++
+ fs/nfs/Makefile |    5 +++--
+ fs/nfs/client.c |   16 ++++++++++++++--
+ 3 files changed, 27 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index 74aa71b..58cc925 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -803,6 +803,17 @@ static inline void *page_rmapping(struct page *page)
- 	return (void *)((unsigned long)page->mapping & ~PAGE_MAPPING_FLAGS);
- }
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 2a0e6c5..66b0f4c 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -29,6 +29,16 @@ config NFS_FS
  
-+extern struct address_space *__page_file_mapping(struct page *);
-+
-+static inline
-+struct address_space *page_file_mapping(struct page *page)
-+{
-+	if (unlikely(PageSwapCache(page)))
-+		return __page_file_mapping(page);
-+
-+	return page->mapping;
-+}
-+
- static inline int PageAnon(struct page *page)
- {
- 	return ((unsigned long)page->mapping & PAGE_MAPPING_ANON) != 0;
-@@ -819,6 +830,20 @@ static inline pgoff_t page_index(struct page *page)
- 	return page->index;
- }
+ 	  If unsure, say N.
  
-+extern pgoff_t __page_file_index(struct page *page);
++config NFS_V2
++	bool "NFS client support for NFS version 2"
++	depends on NFS_FS
++	default y
++	help
++	  This option enables support for version 2 of the NFS protocol
++	  (RFC 1094) in the kernel's NFS client.
 +
-+/*
-+ * Return the file index of the page. Regular pagecache pages use ->index
-+ * whereas swapcache pages use swp_offset(->private)
-+ */
-+static inline pgoff_t page_file_index(struct page *page)
-+{
-+	if (unlikely(PageSwapCache(page)))
-+		return __page_file_index(page);
++	  If unsure, say Y.
 +
-+	return page->index;
-+}
-+
- /*
-  * Return true if this page is mapped into pagetables.
+ config NFS_V3
+ 	bool "NFS client support for NFS version 3"
+ 	depends on NFS_FS
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index b58613d..7ddd45d 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -4,11 +4,12 @@
+ 
+ obj-$(CONFIG_NFS_FS) += nfs.o
+ 
+-nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o nfs2xdr.o \
+-			   direct.o pagelist.o proc.o read.o symlink.o unlink.o \
++nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o \
++			   direct.o pagelist.o read.o symlink.o unlink.o \
+ 			   write.o namespace.o mount_clnt.o \
+ 			   dns_resolve.o cache_lib.o
+ nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
++nfs-$(CONFIG_NFS_V2)	+= proc.o nfs2xdr.o
+ nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
+ nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
+ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index a8f8de6..8f1c652 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -90,7 +90,9 @@ static bool nfs4_disable_idmapping = true;
+  * RPC cruft for NFS
   */
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index cfaaa69..d4d4bda 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -286,6 +286,11 @@ static inline loff_t page_offset(struct page *page)
- 	return ((loff_t)page->index) << PAGE_CACHE_SHIFT;
- }
+ static const struct rpc_version *nfs_version[5] = {
++#ifdef CONFIG_NFS_V2
+ 	[2]			= &nfs_version2,
++#endif
+ #ifdef CONFIG_NFS_V3
+ 	[3]			= &nfs_version3,
+ #endif
+@@ -847,7 +849,7 @@ static int nfs_init_server(struct nfs_server *server,
+ 		.hostname = data->nfs_server.hostname,
+ 		.addr = (const struct sockaddr *)&data->nfs_server.address,
+ 		.addrlen = data->nfs_server.addrlen,
+-		.rpc_ops = &nfs_v2_clientops,
++		.rpc_ops = NULL,
+ 		.proto = data->nfs_server.protocol,
+ 		.net = data->net,
+ 	};
+@@ -857,10 +859,20 @@ static int nfs_init_server(struct nfs_server *server,
  
-+static inline loff_t page_file_offset(struct page *page)
-+{
-+	return ((loff_t)page_file_index(page)) << PAGE_CACHE_SHIFT;
-+}
-+
- extern pgoff_t linear_hugepage_index(struct vm_area_struct *vma,
- 				     unsigned long address);
+ 	dprintk("--> nfs_init_server()\n");
  
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index fafc26d..df5f148 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -31,6 +31,7 @@
- #include <linux/memcontrol.h>
- #include <linux/poll.h>
- #include <linux/oom.h>
-+#include <linux/export.h>
++	switch (data->version) {
++#ifdef CONFIG_NFS_V2
++	case 2:
++		cl_init.rpc_ops = &nfs_v2_clientops;
++		break;
++#endif
+ #ifdef CONFIG_NFS_V3
+-	if (data->version == 3)
++	case 3:
+ 		cl_init.rpc_ops = &nfs_v3_clientops;
++		break;
+ #endif
++	default:
++		return -EPROTONOSUPPORT;
++	}
  
- #include <asm/pgtable.h>
- #include <asm/tlbflush.h>
-@@ -2293,6 +2294,24 @@ int swapcache_prepare(swp_entry_t entry)
- }
- 
- /*
-+ * out-of-line __page_file_ methods to avoid include hell.
-+ */
-+struct address_space *__page_file_mapping(struct page *page)
-+{
-+	VM_BUG_ON(!PageSwapCache(page));
-+	return page_swap_info(page)->swap_file->f_mapping;
-+}
-+EXPORT_SYMBOL_GPL(__page_file_mapping);
-+
-+pgoff_t __page_file_index(struct page *page)
-+{
-+	swp_entry_t swap = { .val = page_private(page) };
-+	VM_BUG_ON(!PageSwapCache(page));
-+	return swp_offset(swap);
-+}
-+EXPORT_SYMBOL_GPL(__page_file_index);
-+
-+/*
-  * add_swap_count_continuation - called when a swap count is duplicated
-  * beyond SWAP_MAP_MAX, it allocates a new page and links that to the entry's
-  * page of the original vmalloc'ed swap_map, to hold the continuation count
+ 	nfs_init_timeout_values(&timeparms, data->nfs_server.protocol,
+ 			data->timeo, data->retrans);
 -- 
-1.7.9.2
+1.7.10.1
 
