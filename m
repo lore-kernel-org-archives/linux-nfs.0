@@ -1,48 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:64077 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S968091Ab2ERWGS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 May 2012 18:06:18 -0400
-Received: by yenm10 with SMTP id m10so3324481yen.19
-        for <linux-nfs@vger.kernel.org>; Fri, 18 May 2012 15:06:17 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 07/14] NFS: Don't swap bytes in nfs4_construct_boot_verifier()
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 18 May 2012 18:06:16 -0400
-Message-ID: <20120518220615.774.43776.stgit@degas.1015granger.net>
-In-Reply-To: <20120518220145.774.53741.stgit@degas.1015granger.net>
-References: <20120518220145.774.53741.stgit@degas.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:28800 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760035Ab2EJPUi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 May 2012 11:20:38 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v3 04/14] NFS: Remove NFS4_MOUNT_UNSHARED
+Date: Thu, 10 May 2012 11:19:55 -0400
+Message-Id: <1336663205-23886-5-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1336663205-23886-1-git-send-email-bjschuma@netapp.com>
+References: <1336663205-23886-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The SETCLIENTID boot verifier is opaque to NFSv4 servers, thus there
-is no requirement for byte swapping before the client puts the
-verifier on the wire.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-This treatment is similar to other timestamp-based verifiers.
+This flag is numerically equivalent to NFS_MOUNT_UNSHARED, so I can
+remove it to make collapsing functions more straightforward.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
+ fs/nfs/super.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
- fs/nfs/nfs4proc.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index db7b76a..73cfd9e 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3937,8 +3937,8 @@ static void nfs4_construct_boot_verifier(struct nfs_client *clp,
- {
- 	__be32 verf[2];
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index f56fb35..40d43e0 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2719,7 +2719,7 @@ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
+ 	}
+ 	sb_mntdata.server = server;
  
--	verf[0] = htonl((u32)clp->cl_boot_time.tv_sec);
--	verf[1] = htonl((u32)clp->cl_boot_time.tv_nsec);
-+	verf[0] = (__be32)clp->cl_boot_time.tv_sec;
-+	verf[1] = (__be32)clp->cl_boot_time.tv_nsec;
- 	memcpy(bootverf->data, verf, sizeof(bootverf->data));
- }
+-	if (server->flags & NFS4_MOUNT_UNSHARED)
++	if (server->flags & NFS_MOUNT_UNSHARED)
+ 		compare_super = NULL;
  
+ 	/* -o noac implies -o sync */
+@@ -2983,7 +2983,7 @@ nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
+ 	}
+ 	sb_mntdata.server = server;
+ 
+-	if (server->flags & NFS4_MOUNT_UNSHARED)
++	if (server->flags & NFS_MOUNT_UNSHARED)
+ 		compare_super = NULL;
+ 
+ 	/* -o noac implies -o sync */
+@@ -3074,7 +3074,7 @@ nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
+ 	}
+ 	sb_mntdata.server = server;
+ 
+-	if (server->flags & NFS4_MOUNT_UNSHARED)
++	if (server->flags & NFS_MOUNT_UNSHARED)
+ 		compare_super = NULL;
+ 
+ 	/* -o noac implies -o sync */
+-- 
+1.7.10.1
 
