@@ -1,79 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:42689 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:38124 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757119Ab2EaM7d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 31 May 2012 08:59:33 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Michael Tokarev <mjt@tls.msk.ru>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Linux-kernel <linux-kernel@vger.kernel.org>
-Subject: Re: 3.0+ NFS issues
-Date: Thu, 31 May 2012 12:59:31 +0000
-Message-ID: <1338469169.2420.7.camel@lade.trondhjem.org>
-References: <4FBF2C57.3070203@msgid.tls.msk.ru>
-	 <20120529152416.GC3441@fieldses.org> <4FC5C82E.4020806@msgid.tls.msk.ru>
-	 <20120530132518.GA13794@fieldses.org> <4FC713ED.5040807@msgid.tls.msk.ru>
-In-Reply-To: <4FC713ED.5040807@msgid.tls.msk.ru>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1759481Ab2EJNyp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 May 2012 09:54:45 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 11/12] nfs: Prevent page allocator recursions with swap over NFS.
+Date: Thu, 10 May 2012 14:54:24 +0100
+Message-Id: <1336658065-24851-12-git-send-email-mgorman@suse.de>
+In-Reply-To: <1336658065-24851-1-git-send-email-mgorman@suse.de>
+References: <1336658065-24851-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA1LTMxIGF0IDEwOjQ3ICswNDAwLCBNaWNoYWVsIFRva2FyZXYgd3JvdGU6
-DQoNCj4gMTA6Mzg6NTMuODI3MzU1IElQICh0b3MgMHgwLCB0dGwgNjQsIGlkIDM1MTYwLCBvZmZz
-ZXQgMCwgZmxhZ3MgW0RGXSwgcHJvdG8gVENQICg2KSwgbGVuZ3RoIDI2OCkNCj4gICAgIDE5Mi4x
-NjguODguMi4xMzk2NTQ4MDk4ID4gMTkyLjE2OC44OC40LjIwNDk6IDIxMiBnZXRhdHRyIGZoIDAs
-MC8yMg0KPiAxMDozODo1My44MjczNzkgSVAgKHRvcyAweDAsIHR0bCA2NCwgaWQgMzUxNjEsIG9m
-ZnNldCAwLCBmbGFncyBbREZdLCBwcm90byBUQ1AgKDYpLCBsZW5ndGggMjY4KQ0KPiAgICAgMTky
-LjE2OC44OC4yLjE0MTMzMjUzMTQgPiAxOTIuMTY4Ljg4LjQuMjA0OTogMjEyIGdldGF0dHIgZmgg
-MCwwLzIyDQo+IDEwOjM4OjUzLjgyNzM4NSBJUCAodG9zIDB4MCwgdHRsIDY0LCBpZCAzNTE2Miwg
-b2Zmc2V0IDAsIGZsYWdzIFtERl0sIHByb3RvIFRDUCAoNiksIGxlbmd0aCAyNjgpDQo+ICAgICAx
-OTIuMTY4Ljg4LjIuMTQzMDEwMjUzMCA+IDE5Mi4xNjguODguNC4yMDQ5OiAyMTIgZ2V0YXR0ciBm
-aCAwLDAvMjINCj4gMTA6Mzg6NTMuODI3NDAwIElQICh0b3MgMHgwLCB0dGwgNjQsIGlkIDM1MTYz
-LCBvZmZzZXQgMCwgZmxhZ3MgW0RGXSwgcHJvdG8gVENQICg2KSwgbGVuZ3RoIDI2OCkNCj4gICAg
-IDE5Mi4xNjguODguMi4xNDQ2ODc5NzQ2ID4gMTkyLjE2OC44OC40LjIwNDk6IDIxMiBnZXRhdHRy
-IGZoIDAsMC8yMg0KPiAxMDozODo1My44Mjc0MDYgSVAgKHRvcyAweDAsIHR0bCA2NCwgaWQgMzUx
-NjQsIG9mZnNldCAwLCBmbGFncyBbREZdLCBwcm90byBUQ1AgKDYpLCBsZW5ndGggMjY4KQ0KPiAg
-ICAgMTkyLjE2OC44OC4yLjE0NjM2NTY5NjIgPiAxOTIuMTY4Ljg4LjQuMjA0OTogMjEyIGdldGF0
-dHIgZmggMCwwLzIyDQo+IDEwOjM4OjUzLjgyNzQwOSBJUCAodG9zIDB4MCwgdHRsIDY0LCBpZCAz
-NTE2NSwgb2Zmc2V0IDAsIGZsYWdzIFtERl0sIHByb3RvIFRDUCAoNiksIGxlbmd0aCAyNjgpDQo+
-ICAgICAxOTIuMTY4Ljg4LjIuMTQ4MDQzNDE3OCA+IDE5Mi4xNjguODguNC4yMDQ5OiAyMTIgZ2V0
-YXR0ciBmaCAwLDAvMjINCj4gMTA6Mzg6NTMuODI3NDEzIElQICh0b3MgMHgwLCB0dGwgNjQsIGlk
-IDM1MTY2LCBvZmZzZXQgMCwgZmxhZ3MgW0RGXSwgcHJvdG8gVENQICg2KSwgbGVuZ3RoIDI2OCkN
-Cj4gICAgIDE5Mi4xNjguODguMi4xNDk3MjExMzk0ID4gMTkyLjE2OC44OC40LjIwNDk6IDIxMiBn
-ZXRhdHRyIGZoIDAsMC8yMg0KPiAxMDozODo1My44Mjc0MTcgSVAgKHRvcyAweDAsIHR0bCA2NCwg
-aWQgMzUxNjcsIG9mZnNldCAwLCBmbGFncyBbREZdLCBwcm90byBUQ1AgKDYpLCBsZW5ndGggMjY4
-KQ0KPiAgICAgMTkyLjE2OC44OC4yLjE1MTM5ODg2MTAgPiAxOTIuMTY4Ljg4LjQuMjA0OTogMjEy
-IGdldGF0dHIgZmggMCwwLzIyDQo+IDEwOjM4OjUzLjgyNzQyMCBJUCAodG9zIDB4MCwgdHRsIDY0
-LCBpZCAzNTE2OCwgb2Zmc2V0IDAsIGZsYWdzIFtERl0sIHByb3RvIFRDUCAoNiksIGxlbmd0aCAy
-NjgpDQo+ICAgICAxOTIuMTY4Ljg4LjIuMTUzMDc2NTgyNiA+IDE5Mi4xNjguODguNC4yMDQ5OiAy
-MTIgZ2V0YXR0ciBmaCAwLDAvMjINCj4gMTA6Mzg6NTMuODI3NDI0IElQICh0b3MgMHgwLCB0dGwg
-NjQsIGlkIDM1MTY5LCBvZmZzZXQgMCwgZmxhZ3MgW0RGXSwgcHJvdG8gVENQICg2KSwgbGVuZ3Ro
-IDI2OCkNCj4gICAgIDE5Mi4xNjguODguMi4xNTQ3NTQzMDQyID4gMTkyLjE2OC44OC40LjIwNDk6
-IDIxMiBnZXRhdHRyIGZoIDAsMC8yMg0KPiAxMDozODo1My44Mjc0MjcgSVAgKHRvcyAweDAsIHR0
-bCA2NCwgaWQgMzUxNzAsIG9mZnNldCAwLCBmbGFncyBbREZdLCBwcm90byBUQ1AgKDYpLCBsZW5n
-dGggMjY4KQ0KPiAgICAgMTkyLjE2OC44OC4yLjE1NjQzMjAyNTggPiAxOTIuMTY4Ljg4LjQuMjA0
-OTogMjEyIGdldGF0dHIgZmggMCwwLzIyDQo+IDEwOjM4OjUzLjgyNzQzNCBJUCAodG9zIDB4MCwg
-dHRsIDY0LCBpZCAzNTE3MSwgb2Zmc2V0IDAsIGZsYWdzIFtERl0sIHByb3RvIFRDUCAoNiksIGxl
-bmd0aCAyNjgpDQo+ICAgICAxOTIuMTY4Ljg4LjIuMTU4MTA5NzQ3NCA+IDE5Mi4xNjguODguNC4y
-MDQ5OiAyMTIgZ2V0YXR0ciBmaCAwLDAvMjINCj4gMTA6Mzg6NTMuODI3NDM4IElQICh0b3MgMHgw
-LCB0dGwgNjQsIGlkIDM1MTcyLCBvZmZzZXQgMCwgZmxhZ3MgW0RGXSwgcHJvdG8gVENQICg2KSwg
-bGVuZ3RoIDI2OCkNCj4gICAgIDE5Mi4xNjguODguMi4xNTk3ODc0NjkwID4gMTkyLjE2OC44OC40
-LjIwNDk6IDIxMiBnZXRhdHRyIGZoIDAsMC8yMg0KPiAxMDozODo1My44Mjc0NDMgSVAgKHRvcyAw
-eDAsIHR0bCA2NCwgaWQgMzUxNzMsIG9mZnNldCAwLCBmbGFncyBbREZdLCBwcm90byBUQ1AgKDYp
-LCBsZW5ndGggMjY4KQ0KPiAgICAgMTkyLjE2OC44OC4yLjE2MTQ2NTE5MDYgPiAxOTIuMTY4Ljg4
-LjQuMjA0OTogMjEyIGdldGF0dHIgZmggMCwwLzIyDQo+IDEwOjM4OjUzLjgyNzQ0NyBJUCAodG9z
-IDB4MCwgdHRsIDY0LCBpZCAzNTE3NCwgb2Zmc2V0IDAsIGZsYWdzIFtERl0sIHByb3RvIFRDUCAo
-NiksIGxlbmd0aCAyNjgpDQo+ICAgICAxOTIuMTY4Ljg4LjIuMTYzMTQyOTEyMiA+IDE5Mi4xNjgu
-ODguNC4yMDQ5OiAyMTIgZ2V0YXR0ciBmaCAwLDAvMjINCg0KVGhhdCBpcyB0Y3BkdW1wIHRyeWlu
-ZyB0byBpbnRlcnByZXQgeW91ciBORlN2NCB0cmFjZSBhcyBORlN2Mi92My4NCg0KQ2FuIHlvdSBl
-aXRoZXIgcGxlYXNlIHVzZSB3aXJlc2hhcmsgdG8gcHJvdmlkZSBhIGZ1bGwgdGV4dCBkdW1wICh1
-c2luZw0Kc29tZXRoaW5nIGxpa2UgJ3RzaGFyayAtViAtTyBuZnMscnBjJyksIG9yIGp1c3Qgc2Vu
-ZCB1cyB0aGUgYmluYXJ5DQp0Y3BkdW1wIG91dHB1dCB1c2luZyAndGNwZHVtcCAtdyAvdG1wL2Zv
-byAtcyA5MDAwMCc/DQoNCj4gPj4gQ2FuIGF0IGxlYXN0IHRoZSBjbGllbnQgYmUgbWFkZSBpbnRl
-cnJ1cHRpYmxlPyAgTW91bnRpbmcgd2l0aA0KPiA+PiAtbyBpbnRyLHNvZnQgbWFrZXMgbm8gdmlz
-aWJsZSBkaWZmZXJlbmNlLi4uDQo+IA0KPiBwbGVhc2U/IDopDQoNCkl0IGFscmVhZHkgaXMgaW50
-ZXJydXB0aWJsZTogdHJ5ICdraWxsIC05JyBvciBhbnkgb3RoZXIgZmF0YWwgc2lnbmFsLg0KDQot
-LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFw
-cA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+GFP_NOFS is _more_ permissive than GFP_NOIO in that it will initiate
+IO, just not of any filesystem data.
+
+The problem is that previously NOFS was correct because that avoids
+recursion into the NFS code. With swap-over-NFS, it is no longer
+correct as swap IO can lead to this recursion.
+
+Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ fs/nfs/pagelist.c |    2 +-
+ fs/nfs/write.c    |    7 ++++---
+ 2 files changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 77aa83e..8e80d71 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -29,7 +29,7 @@ static struct kmem_cache *nfs_page_cachep;
+ static inline struct nfs_page *
+ nfs_page_alloc(void)
+ {
+-	struct nfs_page	*p = kmem_cache_zalloc(nfs_page_cachep, GFP_KERNEL);
++	struct nfs_page	*p = kmem_cache_zalloc(nfs_page_cachep, GFP_NOIO);
+ 	if (p)
+ 		INIT_LIST_HEAD(&p->wb_list);
+ 	return p;
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 21cfe71..abdbe61 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -52,7 +52,7 @@ static mempool_t *nfs_commit_mempool;
+ 
+ struct nfs_write_data *nfs_commitdata_alloc(void)
+ {
+-	struct nfs_write_data *p = mempool_alloc(nfs_commit_mempool, GFP_NOFS);
++	struct nfs_write_data *p = mempool_alloc(nfs_commit_mempool, GFP_NOIO);
+ 
+ 	if (p) {
+ 		memset(p, 0, sizeof(*p));
+@@ -72,7 +72,7 @@ EXPORT_SYMBOL_GPL(nfs_commit_free);
+ 
+ struct nfs_write_data *nfs_writedata_alloc(unsigned int pagecount)
+ {
+-	struct nfs_write_data *p = mempool_alloc(nfs_wdata_mempool, GFP_NOFS);
++	struct nfs_write_data *p = mempool_alloc(nfs_wdata_mempool, GFP_NOIO);
+ 
+ 	if (p) {
+ 		memset(p, 0, sizeof(*p));
+@@ -81,7 +81,8 @@ struct nfs_write_data *nfs_writedata_alloc(unsigned int pagecount)
+ 		if (pagecount <= ARRAY_SIZE(p->page_array))
+ 			p->pagevec = p->page_array;
+ 		else {
+-			p->pagevec = kcalloc(pagecount, sizeof(struct page *), GFP_NOFS);
++			p->pagevec = kcalloc(pagecount, sizeof(struct page *),
++					GFP_NOIO);
+ 			if (!p->pagevec) {
+ 				mempool_free(p, nfs_wdata_mempool);
+ 				p = NULL;
+-- 
+1.7.9.2
+
