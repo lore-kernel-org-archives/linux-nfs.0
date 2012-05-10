@@ -1,297 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:11596 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933610Ab2EXRWw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 May 2012 13:22:52 -0400
-From: Weston Andros Adamson <dros@netapp.com>
+Received: from mailout4.samsung.com ([203.254.224.34]:46272 "EHLO
+	mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756666Ab2EJG7j (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 May 2012 02:59:39 -0400
+Received: from epcpsbge3.samsung.com (mailout4.samsung.com [203.254.224.34])
+ by mailout4.samsung.com
+ (Oracle Communications Messaging Server 7u4-24.01(7.0.4.24.0) 64bit (built Nov
+ 17 2011)) with ESMTP id <0M3S00F94OPJE2G0@mailout4.samsung.com> for
+ linux-nfs@vger.kernel.org; Thu, 10 May 2012 15:59:31 +0900 (KST)
+Date: Thu, 10 May 2012 06:59:31 +0000 (GMT)
+From: AMIT SAHRAWAT <a.sahrawat@samsung.com>
+Subject: =?windows-1252?Q?[Problem]NFS_Server_=96_Umount_results_in_Device_Busy.?=
 To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 1/2] nfs4.1: add BIND_CONN_TO_SESSION operation
-Date: Thu, 24 May 2012 13:22:50 -0400
-Message-Id: <1337880170-19009-1-git-send-email-dros@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org,
+        "namjae.jeon@samsung.com" <namjae.jeon@samsung.com>
+Reply-to: a.sahrawat@samsung.com
+MIME-version: 1.0
+Content-type: text/plain; charset=windows-1252
+MIME-version: 1.0
+Message-id: <32336989.330131336633170527.JavaMail.weblogic@epml01>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch adds the BIND_CONN_TO_SESSION operation which is needed for
-upcoming SP4_MACH_CRED work and useful for recovering from broken connections
-without destroying the session.
+TGludXggS2VybmVsOiAyLjYuMzUuMTQNCiANCldlIGFyZSB1c2luZyBORlMgZm9yIGRhdGEgdHJh
+bnNmZXIgZnJvbSBvbmUgdGFyZ2V0IHRvIGFub3RoZXIgdGFyZ2V0Lg0KT24gU2VydmVyIHdlIGFy
+ZSB1c2luZyAzIG1vdW50IHBvaW50cyCWIHRvIGJlIHVzZWQgYnkgYXBwbGljYXRpb24uIEFuZCB0
+aGV5IGFyZSBtZW50aW9uZWQgaW4gL2V0Yy9leHBvcnRzDQogDQpXaGVuIGluaXRpYWxseSBqdXN0
+IE5GUyBTZXJ2ZXIgaXMgc3RhcnRlZCAtV2UgY2FuIG1vdW50IGFuZCBzYWZlbHkgdW4tbW91bnQg
+dGhlIE5GUyBtb3VudCBwb2ludC4NCk5vdywgd2hlbiBORlMgY2xpZW50IGlzIHN0YXJ0ZWQgYW5k
+IHdlIG1vdW50IGF0IHRoZSBjbGllbnQuIFdpdGhvdXQgZG9pbmcgYW55IElPIJYgaWYgd2UgZG8g
+dW4tbW91bnQgYXQgdGhlIE5GUyBDbGllbnQglml0IHVuLW1vdW50cyBzYWZlbHkuDQpCdXQgliB3
+aGVuIHRyaWVkIHRvIHVuLW1vdW50IHRoZSBkZXZpY2UgYXQgdGhlIE5GUyBzZXJ2ZXIgliBpdCBy
+ZXN1bHRzIGluIGVycm9yIJNEZXZpY2UgQnVzeZQNCpN1bW91bnQ6IGNhbid0IHVtb3VudCAvbW50
+OiBEZXZpY2Ugb3IgcmVzb3VyY2UgYnVzeZQNCiANCk5vdyAsIGluIG9yZGVyIHRvIHVtb3VudCB0
+aGUgZGV2aWNlIC0gIHdlIGhhdmUgdG8ga2lsbCB0aGUgcHJvY2VzcyCRbmZzZJIgliBhbmQgdGhl
+biBpdCB1bi1tb3VudHMgZWFzaWx5Lg0KIA0KQXMgcGVyIG91ciB1bmRlcnN0YW5kaW5nIJYgaXQg
+c2hvdWxkIG5vdCBiZSBhbiBpc3N1ZSB3aXRoIHRoZSB1bi1tb3VudCB3aGVuIGl0IGlzIG5vdCBi
+ZWluZyB1c2VkIGFuZCBhbHNvIHRoZXJlIHNob3VsZCBiZSBubyBkZXBlbmRlbmN5IHRvIGtpbGwg
+kW5mc2SSIHRvIHVuLW1vdW50IHRoZSBkZXZpY2UuDQogDQpJdCBsZWFkcyB0byBwcm9ibGVtIG9m
+IGtpbGxpbmcgkW5mc2SSIGFuZCByZXN0YXJ0aW5nIGl0IJYgdG8gbWFrZSBvdGhlciBtb3VudCBw
+b2ludHMgd29yayB3aXRob3V0IGlzc3VlLg0KIA0KSXMgdGhlcmUgYW55IG1ldGhvZCB0byB1bi1t
+b3VudCB0aGUgZGV2aWNlIHdpdGhvdXQgZ2V0dGluZyB0aGlzIJFCVVNZkiBlcnJvcj8gT3IgY2Fu
+IHdlIGtpbGwgb25seSBuZnNkIHNlcnZpY2Ugd2hpY2ggd2FzIHVzaW5nIHRoYXQgbW91bnQgcG9p
+bnQ/DQpQbGVhc2Ugc2hhcmUgeW91ciBpbnB1dCBvbiB0aGUgc29sdXRpb24gdG8gdGhlIGFib3Zl
+IHByb2JsZW0uIElzIHRoaXMgZXhwZWN0ZWQgYmVoYXZpb3I/DQogDQpUaGFua3MgJiBSZWdhcmRz
+LA0KQW1pdCBTYWhyYXdhdA==
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
-Reposted with changes addressing Chuck's comments.
-
- fs/nfs/nfs4_fs.h        |    1 +
- fs/nfs/nfs4proc.c       |   54 ++++++++++++++++++++++++++
- fs/nfs/nfs4xdr.c        |   95 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/nfs4.h    |    5 ++
- include/linux/nfs_xdr.h |    6 +++
- 5 files changed, 161 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index edeef71..ad90bc7 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -215,6 +215,7 @@ struct vfsmount *nfs4_submount(struct nfs_server *, struct dentry *,
- extern int nfs4_proc_setclientid(struct nfs_client *, u32, unsigned short, struct rpc_cred *, struct nfs4_setclientid_res *);
- extern int nfs4_proc_setclientid_confirm(struct nfs_client *, struct nfs4_setclientid_res *arg, struct rpc_cred *);
- extern int nfs4_proc_get_rootfh(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
-+extern int nfs4_proc_bind_conn_to_session(struct nfs_client *);
- extern int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred);
- extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
- extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 78784e5..95aca62 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5062,6 +5062,60 @@ nfs41_same_server_scope(struct server_scope *a, struct server_scope *b)
- }
- 
- /*
-+ * nfs4_proc_bind_conn_to_session()
-+ *
-+ * The 4.1 client currently uses the same TCP connection for the
-+ * fore and backchannel.
-+ */
-+int nfs4_proc_bind_conn_to_session(struct nfs_client *clp)
-+{
-+	int status;
-+	struct nfs41_bind_conn_to_session_res res;
-+	struct rpc_message msg = {
-+		.rpc_proc =
-+			&nfs4_procedures[NFSPROC4_CLNT_BIND_CONN_TO_SESSION],
-+		.rpc_argp = clp,
-+		.rpc_resp = &res,
-+	};
-+
-+	dprintk("--> %s\n", __func__);
-+	BUG_ON(clp == NULL);
-+
-+	res.session = kzalloc(sizeof(struct nfs4_session), GFP_KERNEL);
-+	if (unlikely(res.session == NULL)) {
-+		status = -ENOMEM;
-+		goto out;
-+	}
-+
-+	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
-+	if (status == 0) {
-+		if (memcmp(res.session->sess_id.data,
-+		    clp->cl_session->sess_id.data, NFS4_MAX_SESSIONID_LEN)) {
-+			dprintk("NFS: %s: Session ID mismatch\n", __func__);
-+			status = -EIO;
-+			goto out_session;
-+		}
-+		if (res.dir != NFS4_CDFS4_BOTH) {
-+			dprintk("NFS: %s: Unexpected direction from server\n",
-+				__func__);
-+			status = -EIO;
-+			goto out_session;
-+		}
-+		if (res.use_conn_in_rdma_mode) {
-+			dprintk("NFS: %s: Server returned RDMA mode = true\n",
-+				__func__);
-+			status = -EIO;
-+			goto out_session;
-+		}
-+	}
-+out_session:
-+	kfree(res.session);
-+out:
-+	dprintk("<-- %s status= %d\n", __func__, status);
-+	return status;
-+}
-+
-+/*
-  * nfs4_proc_exchange_id()
-  *
-  * Since the clientid has expired, all compounds using sessions
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index db040e9..e9be74f 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -321,6 +321,16 @@ static int nfs4_stat_to_errno(int);
- 				     1 /* csr_flags */ + \
- 				     decode_channel_attrs_maxsz + \
- 				     decode_channel_attrs_maxsz)
-+#define encode_bind_conn_to_session_maxsz  (op_encode_hdr_maxsz + \
-+				     /* bctsa_sessid */ \
-+				     XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + \
-+				     1 /* bctsa_dir */ + \
-+				     1 /* bctsa_use_conn_in_rdma_mode */)
-+#define decode_bind_conn_to_session_maxsz  (op_decode_hdr_maxsz +	\
-+				     /* bctsr_sessid */ \
-+				     XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + \
-+				     1 /* bctsr_dir */ + \
-+				     1 /* bctsr_use_conn_in_rdma_mode */)
- #define encode_destroy_session_maxsz    (op_encode_hdr_maxsz + 4)
- #define decode_destroy_session_maxsz    (op_decode_hdr_maxsz)
- #define encode_sequence_maxsz	(op_encode_hdr_maxsz + \
-@@ -714,6 +724,12 @@ static int nfs4_stat_to_errno(int);
- 				decode_putfh_maxsz + \
- 				decode_secinfo_maxsz)
- #if defined(CONFIG_NFS_V4_1)
-+#define NFS4_enc_bind_conn_to_session_sz \
-+				(compound_encode_hdr_maxsz + \
-+				 encode_bind_conn_to_session_maxsz)
-+#define NFS4_dec_bind_conn_to_session_sz \
-+				(compound_decode_hdr_maxsz + \
-+				 decode_bind_conn_to_session_maxsz)
- #define NFS4_enc_exchange_id_sz \
- 				(compound_encode_hdr_maxsz + \
- 				 encode_exchange_id_maxsz)
-@@ -1654,6 +1670,20 @@ static void encode_secinfo(struct xdr_stream *xdr, const struct qstr *name, stru
- 
- #if defined(CONFIG_NFS_V4_1)
- /* NFSv4.1 operations */
-+static void encode_bind_conn_to_session(struct xdr_stream *xdr,
-+				   struct nfs4_session *session,
-+				   struct compound_hdr *hdr)
-+{
-+	__be32 *p;
-+
-+	encode_op_hdr(xdr, OP_BIND_CONN_TO_SESSION,
-+		decode_bind_conn_to_session_maxsz, hdr);
-+	encode_opaque_fixed(xdr, session->sess_id.data, NFS4_MAX_SESSIONID_LEN);
-+	p = xdr_reserve_space(xdr, 8);
-+	*p++ = cpu_to_be32(NFS4_CDFC4_BACK_OR_BOTH);
-+	*p = 0;	/* use_conn_in_rdma_mode = False */
-+}
-+
- static void encode_exchange_id(struct xdr_stream *xdr,
- 			       struct nfs41_exchange_id_args *args,
- 			       struct compound_hdr *hdr)
-@@ -2614,6 +2644,22 @@ static void nfs4_xdr_enc_secinfo(struct rpc_rqst *req,
- 
- #if defined(CONFIG_NFS_V4_1)
- /*
-+ * BIND_CONN_TO_SESSION request
-+ */
-+static void nfs4_xdr_enc_bind_conn_to_session(struct rpc_rqst *req,
-+				struct xdr_stream *xdr,
-+				struct nfs_client *clp)
-+{
-+	struct compound_hdr hdr = {
-+		.minorversion = clp->cl_mvops->minor_version,
-+	};
-+
-+	encode_compound_hdr(xdr, req, &hdr);
-+	encode_bind_conn_to_session(xdr, clp->cl_session, &hdr);
-+	encode_nops(&hdr);
-+}
-+
-+/*
-  * EXCHANGE_ID request
-  */
- static void nfs4_xdr_enc_exchange_id(struct rpc_rqst *req,
-@@ -5239,6 +5285,37 @@ static int decode_sessionid(struct xdr_stream *xdr, struct nfs4_sessionid *sid)
- 	return decode_opaque_fixed(xdr, sid->data, NFS4_MAX_SESSIONID_LEN);
- }
- 
-+static int decode_bind_conn_to_session(struct xdr_stream *xdr,
-+				struct nfs41_bind_conn_to_session_res *res)
-+{
-+	__be32 *p;
-+	int status;
-+
-+	status = decode_op_hdr(xdr, OP_BIND_CONN_TO_SESSION);
-+	if (!status)
-+		status = decode_sessionid(xdr, &res->session->sess_id);
-+	if (unlikely(status))
-+		return status;
-+
-+	/* dir flags, rdma mode bool */
-+	p = xdr_inline_decode(xdr, 8);
-+	if (unlikely(!p))
-+		goto out_overflow;
-+
-+	res->dir = be32_to_cpup(p++);
-+	if (res->dir == 0 || res->dir > NFS4_CDFS4_BOTH)
-+		return -EIO;
-+	if (be32_to_cpup(p) == 0)
-+		res->use_conn_in_rdma_mode = false;
-+	else
-+		res->use_conn_in_rdma_mode = true;
-+
-+	return 0;
-+out_overflow:
-+	print_overflow_msg(__func__, xdr);
-+	return -EIO;
-+}
-+
- static int decode_create_session(struct xdr_stream *xdr,
- 				 struct nfs41_create_session_res *res)
- {
-@@ -6521,6 +6598,22 @@ out:
- 
- #if defined(CONFIG_NFS_V4_1)
- /*
-+ * Decode BIND_CONN_TO_SESSION response
-+ */
-+static int nfs4_xdr_dec_bind_conn_to_session(struct rpc_rqst *rqstp,
-+					struct xdr_stream *xdr,
-+					void *res)
-+{
-+	struct compound_hdr hdr;
-+	int status;
-+
-+	status = decode_compound_hdr(xdr, &hdr);
-+	if (!status)
-+		status = decode_bind_conn_to_session(xdr, res);
-+	return status;
-+}
-+
-+/*
-  * Decode EXCHANGE_ID response
-  */
- static int nfs4_xdr_dec_exchange_id(struct rpc_rqst *rqstp,
-@@ -7001,6 +7094,8 @@ struct rpc_procinfo	nfs4_procedures[] = {
- 	PROC(RELEASE_LOCKOWNER,	enc_release_lockowner,	dec_release_lockowner),
- 	PROC(SECINFO,		enc_secinfo,		dec_secinfo),
- #if defined(CONFIG_NFS_V4_1)
-+	PROC(BIND_CONN_TO_SESSION,
-+			enc_bind_conn_to_session, dec_bind_conn_to_session),
- 	PROC(EXCHANGE_ID,	enc_exchange_id,	dec_exchange_id),
- 	PROC(CREATE_SESSION,	enc_create_session,	dec_create_session),
- 	PROC(DESTROY_SESSION,	enc_destroy_session,	dec_destroy_session),
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 0987146..5b1a504 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -69,6 +69,10 @@
- #define NFS4_CDFC4_FORE_OR_BOTH 0x3
- #define NFS4_CDFC4_BACK_OR_BOTH 0x7
- 
-+#define NFS4_CDFS4_FORE 0x1
-+#define NFS4_CDFS4_BACK 0x2
-+#define NFS4_CDFS4_BOTH 0x3
-+
- #define NFS4_SET_TO_SERVER_TIME	0
- #define NFS4_SET_TO_CLIENT_TIME	1
- 
-@@ -582,6 +586,7 @@ enum {
- 	NFSPROC4_CLNT_SECINFO,
- 
- 	/* nfs41 */
-+	NFSPROC4_CLNT_BIND_CONN_TO_SESSION,
- 	NFSPROC4_CLNT_EXCHANGE_ID,
- 	NFSPROC4_CLNT_CREATE_SESSION,
- 	NFSPROC4_CLNT_DESTROY_SESSION,
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 2e53a3f..aa2a3bb 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1115,6 +1115,12 @@ struct nfs41_impl_id {
- 	struct nfstime4			date;
- };
- 
-+struct nfs41_bind_conn_to_session_res {
-+	struct nfs4_session		*session;
-+	u32				dir;
-+	bool				use_conn_in_rdma_mode;
-+};
-+
- struct nfs41_exchange_id_res {
- 	struct nfs_client		*client;
- 	u32				flags;
--- 
-1.7.4.4
 
