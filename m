@@ -1,103 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:36593 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757422Ab2EKJUZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 May 2012 05:20:25 -0400
-Date: Fri, 11 May 2012 04:20:20 -0500
-From: Jonathan Nieder <jrnieder@gmail.com>
-To: stable@vger.kernel.org
-Cc: Rik Theys <Rik.Theys@esat.kuleuven.be>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, David Flyn <davidf@rd.bbc.co.uk>,
-        Jeff Layton <jlayton@redhat.com>, 659111@bugs.debian.org
-Subject: [PATCH 3.0.y, 3.2.y] NFSv4: Revalidate uid/gid after open
-Message-ID: <20120511092020.GD5733@burratino>
-References: <alpine.LRH.2.00.1204242156380.28096@helium.esat.kuleuven.be>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <alpine.LRH.2.00.1204242156380.28096@helium.esat.kuleuven.be>
+Received: from mx1.redhat.com ([209.132.183.28]:39841 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757822Ab2EJJwX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 May 2012 05:52:23 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <20120428005856.GI9541@dastard>
+References: <20120428005856.GI9541@dastard> <20120427010610.GE9541@dastard> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <4111.1335519545@redhat.com> <20120427131306.GG9541@dastard> <F2018580-9ACC-4A63-A8D1-155FA371749A@dilger.ca>
+To: Dave Chinner <david@fromorbit.com>
+Cc: dhowells@redhat.com, Andreas Dilger <adilger@dilger.ca>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-ext4@vger.kernel.org, wine-devel@winehq.org, kfm-devel@kde.org,
+        nautilus-list@gnome.org, linux-api@vger.kernel.org,
+        libc-alpha@sourceware.org
+Subject: Re: [PATCH 0/6] Extended file stat system call
+Date: Thu, 10 May 2012 10:51:38 +0100
+Message-ID: <10044.1336643498@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a shorter (and more appropriate for stable kernels) analog to
-the following upstream commit:
+Dave Chinner <david@fromorbit.com> wrote:
 
-commit 6926afd1925a54a13684ebe05987868890665e2b
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Sat Jan 7 13:22:46 2012 -0500
+> 	st_blksize		- file block size
+> 	st_alloc_blksize	- allocation block size/alignment
+> 	st_small_io_size	- IO size/alignment that avoids
+> 				  filesystem/page cache RMW
+> 	st_preferred_io_size	- preferred IO size for general
+> 				  usage.
+> 	st_large_io_size	- IO size/alignment for high
+> 				  bandwidth sequential IO
 
-    NFSv4: Save the owner/group name string when doing open
+What is st_blksize here?  Is it directly comparable (if such a thing is
+possible) to st_blksize in struct stat?  Or does st_preferred_io_size map to
+the current st_blksize and your st_blksize map to actual media block size (and
+if so, is that the same as st_alloc_blksize?  - I presume st_alloc_blksize
+must be a multiple of the media block size).
 
-    ...so that we can do the uid/gid mapping outside the asynchronous RPC
-    context.
-    This fixes a bug in the current NFSv4 atomic open code where the client
-    isn't able to determine what the true uid/gid fields of the file are,
-    (because the asynchronous nature of the OPEN call denies it the ability
-    to do an upcall) and so fills them with default values, marking the
-    inode as needing revalidation.
-    Unfortunately, in some cases, the VFS will do some additional sanity
-    checks on the file, and may override the server's decision to allow
-    the open because it sees the wrong owner/group fields.
-
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-Without this patch, logging into two different machines with home
-directories mounted over NFS4 and then running "vim" and typing ":q"
-in each reliably produces the following error on the second machine:
-
-	E137: Viminfo file is not writable: /users/system/rtheys/.viminfo
-
-This regression was introduced by 80e52aced138 ("NFSv4: Don't do
-idmapper upcalls for asynchronous RPC calls", merged during the 2.6.32
-cycle) --- after the OPEN call, .viminfo has the default values for
-st_uid and st_gid (0xfffffffe) cached because we do not want to let
-rpciod wait for an idmapper upcall to fill them in.
-
-The fix used in mainline is to save the owner and group as strings and
-perform the upcall in _nfs4_proc_open outside the rpciod context,
-which takes about 600 lines.  For stable, we can do something similar
-with a one-liner: make open check for the stale fields and make a
-(synchronous) GETATTR call to fill them when needed.
-
-Trond dictated the patch, I typed it in, and Rik tested it.
-
-Addresses http://bugs.debian.org/659111 and
-          https://bugzilla.redhat.com/789298
-
-Reported-by: Rik Theys <Rik.Theys@esat.kuleuven.be>
-Explained-by: David Flyn <davidf@rd.bbc.co.uk>
-Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
-Tested-by: Rik Theys <Rik.Theys@esat.kuleuven.be>
----
-Hi Ben and Greg,
-
-Please consider this patch for inclusion in 3.0.y and 3.2.y kernels.
-3.3.y doesn't need it since 6926afd1925a was merged during the 3.3
-merge window.
-
-Rik tested it against a 3.2.16-based kernel and found it to work.
-[1] has details.
-
-Thanks,
-Jonathan
-
-[1] http://bugs.debian.org/659111
-
- fs/nfs/nfs4proc.c |    1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 3d6730213f9d..30f6548f2b99 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1771,6 +1771,7 @@ static int _nfs4_do_open(struct inode *dir, struct path *path, fmode_t fmode, in
- 			nfs_setattr_update_inode(state->inode, sattr);
- 		nfs_post_op_update_inode(state->inode, opendata->o_res.f_attr);
- 	}
-+	nfs_revalidate_inode(server, state->inode);
- 	nfs4_opendata_put(opendata);
- 	nfs4_put_state_owner(sp);
- 	*res = state;
--- 
-1.7.10.1
-
+David
