@@ -1,54 +1,309 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from shards.monkeyblade.net ([198.137.202.13]:59014 "EHLO
-	shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757861Ab2ENU2E (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 May 2012 16:28:04 -0400
-Date: Mon, 14 May 2012 16:26:34 -0400 (EDT)
-Message-Id: <20120514.162634.1094732813264319951.davem@davemloft.net>
-To: mgorman@suse.de
-Cc: akpm@linux-foundation.org, linux-mm@kvack.org, netdev@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Trond.Myklebust@netapp.com, neilb@suse.de, hch@infradead.org,
-        a.p.zijlstra@chello.nl, michaelc@cs.wisc.edu, emunson@mgebm.net
-Subject: Re: [PATCH 01/12] netvm: Prevent a stream-specific deadlock
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <20120514105604.GB29102@suse.de>
-References: <1336658065-24851-2-git-send-email-mgorman@suse.de>
-	<20120511.011034.557833140906762226.davem@davemloft.net>
-	<20120514105604.GB29102@suse.de>
-Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
+Received: from cantor2.suse.de ([195.135.220.15]:38047 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932515Ab2EJNyg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 May 2012 09:54:36 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 05/12] mm: swap: Implement generic handler for swap_activate
+Date: Thu, 10 May 2012 14:54:18 +0100
+Message-Id: <1336658065-24851-6-git-send-email-mgorman@suse.de>
+In-Reply-To: <1336658065-24851-1-git-send-email-mgorman@suse.de>
+References: <1336658065-24851-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Mel Gorman <mgorman@suse.de>
-Date: Mon, 14 May 2012 11:56:04 +0100
+The version of swap_activate introduced is sufficient for swap-over-NFS
+but would not provide enough information to implement a generic handler.
+This patch shuffles things slightly to ensure the same information is
+available for aops->swap_activate() as is available to the core.
 
-> On Fri, May 11, 2012 at 01:10:34AM -0400, David Miller wrote:
->> From: Mel Gorman <mgorman@suse.de>
->> Date: Thu, 10 May 2012 14:54:14 +0100
->> 
->> > It could happen that all !SOCK_MEMALLOC sockets have buffered so
->> > much data that we're over the global rmem limit. This will prevent
->> > SOCK_MEMALLOC buffers from receiving data, which will prevent userspace
->> > from running, which is needed to reduce the buffered data.
->> > 
->> > Fix this by exempting the SOCK_MEMALLOC sockets from the rmem limit.
->> > 
->> > Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
->> > Signed-off-by: Mel Gorman <mgorman@suse.de>
->> 
->> This introduces an invariant which I am not so sure is enforced.
->> 
->> With this change it is absolutely required that once a socket
->> becomes SOCK_MEMALLOC it must never _ever_ lose that attribute.
->> 
-> 
-> This is effectively true. In the NFS case, the flag is cleared on
-> swapoff after all the entries have been paged in. In the NBD case,
-> SOCK_MEMALLOC is left set until the socket is destroyed. I'll update the
-> changelog.
+No functionality change.
 
-Bugs happen, you need to find a way to assert that nobody every does
-this.  Because if a bug is introduced which makes this happen, it will
-otherwise be very difficult to debug.
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ include/linux/fs.h   |    6 ++--
+ include/linux/swap.h |    5 +++
+ mm/page_io.c         |   92 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ mm/swapfile.c        |   91 +++----------------------------------------------
+ 4 files changed, 106 insertions(+), 88 deletions(-)
+
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 0dcd1e8..d48e8b8 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -417,6 +417,7 @@ struct kstatfs;
+ struct vm_area_struct;
+ struct vfsmount;
+ struct cred;
++struct swap_info_struct;
+ 
+ extern void __init inode_init(void);
+ extern void __init inode_init_early(void);
+@@ -628,8 +629,9 @@ struct address_space_operations {
+ 	int (*error_remove_page)(struct address_space *, struct page *);
+ 
+ 	/* swapfile support */
+-	int (*swap_activate)(struct file *file);
+-	int (*swap_deactivate)(struct file *file);
++	int (*swap_activate)(struct swap_info_struct *sis, struct file *file,
++				sector_t *span);
++	void (*swap_deactivate)(struct file *file);
+ };
+ 
+ extern const struct address_space_operations empty_aops;
+diff --git a/include/linux/swap.h b/include/linux/swap.h
+index 6b40350..4ab2276 100644
+--- a/include/linux/swap.h
++++ b/include/linux/swap.h
+@@ -320,6 +320,11 @@ extern int swap_writepage(struct page *page, struct writeback_control *wbc);
+ extern int swap_set_page_dirty(struct page *page);
+ extern void end_swap_bio_read(struct bio *bio, int err);
+ 
++int add_swap_extent(struct swap_info_struct *sis, unsigned long start_page,
++		unsigned long nr_pages, sector_t start_block);
++int generic_swapfile_activate(struct swap_info_struct *, struct file *,
++		sector_t *);
++
+ /* linux/mm/swap_state.c */
+ extern struct address_space swapper_space;
+ #define total_swapcache_pages  swapper_space.nrpages
+diff --git a/mm/page_io.c b/mm/page_io.c
+index 68d8357..f363261 100644
+--- a/mm/page_io.c
++++ b/mm/page_io.c
+@@ -86,6 +86,98 @@ void end_swap_bio_read(struct bio *bio, int err)
+ 	bio_put(bio);
+ }
+ 
++int generic_swapfile_activate(struct swap_info_struct *sis,
++				struct file *swap_file,
++				sector_t *span)
++{
++	struct address_space *mapping = swap_file->f_mapping;
++	struct inode *inode = mapping->host;
++	unsigned blocks_per_page;
++	unsigned long page_no;
++	unsigned blkbits;
++	sector_t probe_block;
++	sector_t last_block;
++	sector_t lowest_block = -1;
++	sector_t highest_block = 0;
++	int nr_extents = 0;
++	int ret;
++
++	blkbits = inode->i_blkbits;
++	blocks_per_page = PAGE_SIZE >> blkbits;
++
++	/*
++	 * Map all the blocks into the extent list.  This code doesn't try
++	 * to be very smart.
++	 */
++	probe_block = 0;
++	page_no = 0;
++	last_block = i_size_read(inode) >> blkbits;
++	while ((probe_block + blocks_per_page) <= last_block &&
++			page_no < sis->max) {
++		unsigned block_in_page;
++		sector_t first_block;
++
++		first_block = bmap(inode, probe_block);
++		if (first_block == 0)
++			goto bad_bmap;
++
++		/*
++		 * It must be PAGE_SIZE aligned on-disk
++		 */
++		if (first_block & (blocks_per_page - 1)) {
++			probe_block++;
++			goto reprobe;
++		}
++
++		for (block_in_page = 1; block_in_page < blocks_per_page;
++					block_in_page++) {
++			sector_t block;
++
++			block = bmap(inode, probe_block + block_in_page);
++			if (block == 0)
++				goto bad_bmap;
++			if (block != first_block + block_in_page) {
++				/* Discontiguity */
++				probe_block++;
++				goto reprobe;
++			}
++		}
++
++		first_block >>= (PAGE_SHIFT - blkbits);
++		if (page_no) {	/* exclude the header page */
++			if (first_block < lowest_block)
++				lowest_block = first_block;
++			if (first_block > highest_block)
++				highest_block = first_block;
++		}
++
++		/*
++		 * We found a PAGE_SIZE-length, PAGE_SIZE-aligned run of blocks
++		 */
++		ret = add_swap_extent(sis, page_no, 1, first_block);
++		if (ret < 0)
++			goto out;
++		nr_extents += ret;
++		page_no++;
++		probe_block += blocks_per_page;
++reprobe:
++		continue;
++	}
++	ret = nr_extents;
++	*span = 1 + highest_block - lowest_block;
++	if (page_no == 0)
++		page_no = 1;	/* force Empty message */
++	sis->max = page_no;
++	sis->pages = page_no - 1;
++	sis->highest_bit = page_no - 1;
++out:
++	return ret;
++bad_bmap:
++	printk(KERN_ERR "swapon: swapfile has holes\n");
++	ret = -EINVAL;
++	goto out;
++}
++
+ /*
+  * We may have stale swap cache pages in memory: notice
+  * them here and get rid of the unnecessary final write.
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index fe2ed44..80b3415 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -1358,7 +1358,7 @@ static void destroy_swap_extents(struct swap_info_struct *sis)
+  *
+  * This function rather assumes that it is called in ascending page order.
+  */
+-static int
++int
+ add_swap_extent(struct swap_info_struct *sis, unsigned long start_page,
+ 		unsigned long nr_pages, sector_t start_block)
+ {
+@@ -1434,106 +1434,25 @@ static int setup_swap_extents(struct swap_info_struct *sis, sector_t *span)
+ 	struct file *swap_file = sis->swap_file;
+ 	struct address_space *mapping = swap_file->f_mapping;
+ 	struct inode *inode = mapping->host;
+-	unsigned blocks_per_page;
+-	unsigned long page_no;
+-	unsigned blkbits;
+-	sector_t probe_block;
+-	sector_t last_block;
+-	sector_t lowest_block = -1;
+-	sector_t highest_block = 0;
+-	int nr_extents = 0;
+ 	int ret;
+ 
+ 	if (S_ISBLK(inode->i_mode)) {
+ 		ret = add_swap_extent(sis, 0, sis->max, 0);
+ 		*span = sis->pages;
+-		goto out;
++		return ret;
+ 	}
+ 
+ 	if (mapping->a_ops->swap_activate) {
+-		ret = mapping->a_ops->swap_activate(swap_file);
++		ret = mapping->a_ops->swap_activate(sis, swap_file, span);
+ 		if (!ret) {
+ 			sis->flags |= SWP_FILE;
+ 			ret = add_swap_extent(sis, 0, sis->max, 0);
+ 			*span = sis->pages;
+ 		}
+-		goto out;
++		return ret;
+ 	}
+ 
+-	blkbits = inode->i_blkbits;
+-	blocks_per_page = PAGE_SIZE >> blkbits;
+-
+-	/*
+-	 * Map all the blocks into the extent list.  This code doesn't try
+-	 * to be very smart.
+-	 */
+-	probe_block = 0;
+-	page_no = 0;
+-	last_block = i_size_read(inode) >> blkbits;
+-	while ((probe_block + blocks_per_page) <= last_block &&
+-			page_no < sis->max) {
+-		unsigned block_in_page;
+-		sector_t first_block;
+-
+-		first_block = bmap(inode, probe_block);
+-		if (first_block == 0)
+-			goto bad_bmap;
+-
+-		/*
+-		 * It must be PAGE_SIZE aligned on-disk
+-		 */
+-		if (first_block & (blocks_per_page - 1)) {
+-			probe_block++;
+-			goto reprobe;
+-		}
+-
+-		for (block_in_page = 1; block_in_page < blocks_per_page;
+-					block_in_page++) {
+-			sector_t block;
+-
+-			block = bmap(inode, probe_block + block_in_page);
+-			if (block == 0)
+-				goto bad_bmap;
+-			if (block != first_block + block_in_page) {
+-				/* Discontiguity */
+-				probe_block++;
+-				goto reprobe;
+-			}
+-		}
+-
+-		first_block >>= (PAGE_SHIFT - blkbits);
+-		if (page_no) {	/* exclude the header page */
+-			if (first_block < lowest_block)
+-				lowest_block = first_block;
+-			if (first_block > highest_block)
+-				highest_block = first_block;
+-		}
+-
+-		/*
+-		 * We found a PAGE_SIZE-length, PAGE_SIZE-aligned run of blocks
+-		 */
+-		ret = add_swap_extent(sis, page_no, 1, first_block);
+-		if (ret < 0)
+-			goto out;
+-		nr_extents += ret;
+-		page_no++;
+-		probe_block += blocks_per_page;
+-reprobe:
+-		continue;
+-	}
+-	ret = nr_extents;
+-	*span = 1 + highest_block - lowest_block;
+-	if (page_no == 0)
+-		page_no = 1;	/* force Empty message */
+-	sis->max = page_no;
+-	sis->pages = page_no - 1;
+-	sis->highest_bit = page_no - 1;
+-out:
+-	return ret;
+-bad_bmap:
+-	printk(KERN_ERR "swapon: swapfile has holes\n");
+-	ret = -EINVAL;
+-	goto out;
++	return generic_swapfile_activate(sis, swap_file, span);
+ }
+ 
+ static void enable_swap_info(struct swap_info_struct *p, int prio,
+-- 
+1.7.9.2
+
