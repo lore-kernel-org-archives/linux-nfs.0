@@ -1,44 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:46138 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757727Ab2EIMZf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 May 2012 08:25:35 -0400
-Message-ID: <4FAA6230.7040700@itwm.fraunhofer.de>
-Date: Wed, 09 May 2012 14:25:20 +0200
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:55878 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755043Ab2EJAS4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 May 2012 20:18:56 -0400
+Date: Wed, 9 May 2012 19:18:42 -0500
+From: Jonathan Nieder <jrnieder@gmail.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Rik Theys <Rik.Theys@esat.kuleuven.be>,
+        David Flyn <davidf@rd.bbc.co.uk>, Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH v2] NFSv4: Save the owner/group name string when doing
+ open
+Message-ID: <20120510001842.GB8228@burratino>
+References: <1325956115-21767-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1325960863-31742-1-git-send-email-Trond.Myklebust@netapp.com>
+ <20120302050813.GA32761@burratino>
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>
-CC: David Howells <dhowells@redhat.com>, Dave Chinner <david@fromorbit.com>,
-        adilger@dilger.ca, bfields@fieldses.org, smfrench@gmail.com,
-        ben@decadent.org.uk, Trond.Myklebust@netapp.com, roland@hack.frob.com,
-        jra@samba.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
-        linux-api@vger.kernel.org, libc-alpha@sourceware.org
-Subject: Re: Extended file stat: Splitting file- and fs-specific info?
-References: <20120509002420.GL5091@dastard> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <16281.1336508382@redhat.com> <20170.1336555274@redhat.com> <20120509111958.GA11345@infradead.org> <4FAA5B24.1020306@itwm.fraunhofer.de> <20120509120544.GA17535@infradead.org>
-In-Reply-To: <20120509120544.GA17535@infradead.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120302050813.GA32761@burratino>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/09/2012 02:05 PM, Christoph Hellwig wrote:
-> On Wed, May 09, 2012 at 01:55:16PM +0200, Bernd Schubert wrote:
->> The basic idea of generation numbers is to check if an inode was
->> recycled, so only if the tuple of inode-number and generation-number
->> matches we still have the same file. Kernel nfs
+Jonathan Nieder wrote:
+
+[...]
+> | and then log into machine B and do:
+> |
+> | vim
+> | :q
+> |
+> | I get E137: Viminfo file is not writable: /users/system/rtheys/.viminfo
+> |
+> | Every invocation of 'vim and :q' will trigger this.
+> |
+> | Explicitely doing a stat of the file fixes this.
 >
-> NFS does not and should not look at the inode generation.  Except for a
-> bit of legacy code for the old pre-Linux 2.4 filehandles it looks at the
-> opaque file handle returned and only interpreted by the filesystem.  Any
-> userspace NFS server should do the same.
+> Rik Theys bisected and found the bug reproducible after and not before
+> v2.6.32-rc1~412^2~48^2~15 (NFSv4: Don't do idmapper upcalls for
+> asynchronous RPC calls, 2009-08-09).
+>
+> [...]
+>>  6 files changed, 162 insertions(+), 64 deletions(-)
+>
+> Now I am wondering what, if anything, can be done to fix this in the
+> 2.6.32.y, 3.0.y, and 3.2.y stable kernels.  The patch looks too big
+> for inclusion under the usual stable_kernel_rules:
 
-Ok, I didn't look how kernel NFS does it for quite some time already...
-User space NFS only can do it beginning with 2.6.39 - given that user 
-space also needs to support older kernels and other OSs, which might not 
-have open_by_handle, userspace unfortunately cannot entirely rely on 
-that feature.
+Trond had a neat idea for fixing this.  Let's see how easy it is for a
+novice like me to understand.
 
-Cheers,
-Bernd
+As explained at [1], the problem is that after the OPEN call .viminfo
+has the default values for st_uid and st_gid cached (i.e., 0xfffffffe)
+because it does not want to let rpciod wait during an idmapper upcall
+to fill them in.  The fix used in mainline is to save the owner and
+group as strings and perform the upcall in _nfs4_proc_open outside the
+rpciod context.
 
+The fix for stable kernels that Trond suggests is to notice when
+st_uid and st_gid have not been filled in and perform a separate
+GETATTR call.  The patch is nice and small.  My (ignorant) worry: does
+nfs4_open_reclaim need the same fix?
+
+[1] http://thread.gmane.org/gmane.linux.nfs/37230/focus=37250
+---
+Rik, results from testing would be interesting if you have a chance to
+try it.  Thanks again for your help, all.
+
+Jonathan
+
+ fs/nfs/nfs4proc.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git i/fs/nfs/nfs4proc.c w/fs/nfs/nfs4proc.c
+index 3d6730213f9d..30f6548f2b99 100644
+--- i/fs/nfs/nfs4proc.c
++++ w/fs/nfs/nfs4proc.c
+@@ -1771,6 +1771,7 @@ static int _nfs4_do_open(struct inode *dir, struct path *path, fmode_t fmode, in
+ 			nfs_setattr_update_inode(state->inode, sattr);
+ 		nfs_post_op_update_inode(state->inode, opendata->o_res.f_attr);
+ 	}
++	nfs_revalidate_inode(server, state->inode);
+ 	nfs4_opendata_put(opendata);
+ 	nfs4_put_state_owner(sp);
+ 	*res = state;
+-- 
