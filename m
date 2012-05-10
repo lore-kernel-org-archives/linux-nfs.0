@@ -1,81 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:61918 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:48755 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S966328Ab2EQULS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 May 2012 16:11:18 -0400
-Date: Thu, 17 May 2012 16:11:14 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2] statd: drop all capabilities from the bounding set
- as well
-Message-ID: <20120517161114.5cebfa68@tlielax.poochiereds.net>
-In-Reply-To: <73BC4C93-9192-4FE7-B32E-58345EB28AAD@oracle.com>
-References: <1337277259-5101-1-git-send-email-jlayton@redhat.com>
-	<73BC4C93-9192-4FE7-B32E-58345EB28AAD@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1750902Ab2EJKiK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 May 2012 06:38:10 -0400
+Date: Thu, 10 May 2012 06:38:08 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: AMIT SAHRAWAT <a.sahrawat@samsung.com>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        "namjae.jeon@samsung.com" <namjae.jeon@samsung.com>
+Subject: Re: [Problem]NFS Server =?utf-8?B?4oCTIFVt?=
+	=?utf-8?Q?ount?= results in Device Busy.
+Message-ID: <20120510103807.GA32608@fieldses.org>
+References: <32336989.330131336633170527.JavaMail.weblogic@epml01>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <32336989.330131336633170527.JavaMail.weblogic@epml01>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 17 May 2012 14:52:58 -0400
-Chuck Lever <chuck.lever@oracle.com> wrote:
+On Thu, May 10, 2012 at 06:59:32AM +0000, AMIT SAHRAWAT wrote:
+> Linux Kernel: 2.6.35.14
+>  
+> We are using NFS for data transfer from one target to another target.
+> On Server we are using 3 mount points – to be used by application. And they are mentioned in /etc/exports
+>  
+> When initially just NFS Server is started -We can mount and safely un-mount the NFS mount point.
+> Now, when NFS client is started and we mount at the client. Without doing any IO – if we do un-mount at the NFS Client –it un-mounts safely.
+> But – when tried to un-mount the device at the NFS server – it results in error “Device Busy”
+> “umount: can't umount /mnt: Device or resource busy”
+>  
+> Now , in order to umount the device -  we have to kill the process ‘nfsd’ – and then it un-mounts easily.
+>  
+> As per our understanding – it should not be an issue with the un-mount when it is not being used and also there should be no dependency to kill ‘nfsd’ to un-mount the device.
+>  
+> It leads to problem of killing ‘nfsd’ and restarting it – to make other mount points work without issue.
+>  
+> Is there any method to un-mount the device without getting this ‘BUSY’ error? Or can we kill only nfsd service which was using that mount point?
 
-> 
-> On May 17, 2012, at 1:54 PM, Jeff Layton wrote:
-> 
-> > statd drops all capabilities except for CAP_NET_BIND when it starts. It's
-> > possible though that if it ever had a compromise that an attacker would be
-> > able to invoke a setuid process (or something with file capabilities) in
-> > order to reinstate some caps.
-> > 
-> > This could happen as a result of the daemon becoming compromised, or
-> > possibly as a result of the ha-callout program becoming compromised.
-> 
-> Generally, I wonder what our exposure to this attack for a statd built without capability support.  Just musing out loud.
-> 
+If all the clients unmount, and then you run "exportfs -f" on the
+server, you'll probably find you can then unmount the export.
 
-It is difficult to qualify this without a specific attack in mind. The
-story I've always gotten from those who work with capabilities for a
-living however is that unless you prune the bounding set, the job isn't
-complete.
+But stopping nfsd is the most reliable way to ensure you can unmount the
+exported filesystems.  I'd recommend doing that using your distro's nfs
+scripts (so "service nfs stop" or "systemctl nfs-server.service stop" or
+equivalent) rather than killing nfsd yourself.
 
-Given the right circumstances, a process could reacquire capabilities
-via exec'ing a (possibly compromised) setuid program or one with file
-caps.
+--b.
 
-Since we've taken a step to trim out capabilities that we do not deem
-necessary for normal statd functioning, you can consider this to be
-trimming that list even further. This patch effectively says that statd
-should never be able to reacquire caps that it has dropped under any
-circumstances.
-
-> > In order to prevent that, have statd also prune the capability bounding
-> > set to nothing prior to dropping capabilities. That ensures that the
-> > process won't be able to reacquire capabilities via any means --
-> > including exec'ing a setuid program.
-> > 
-> > We do however need to be cognizant of the fact that PR_CAPBSET_DROP was
-> > only added in 2.6.25, so check to make sure that #define exists via
-> > autoconf before we rely on it. In order to do that, we must add
-> > ax_check_define.m4 from the GNU autoconf macro archive.
-> 
-> On pre-2.6.25 kernels, the bounding set is a fixed system-wide setting.  What we decided is to forego a run-time check here in favor of a build-time check.  Would it be difficult to do both?
-> 
-
-So you're suggesting that we should do something like see
-if /proc/sys/kernel/cap-bound exists at runtime and only try to drop
-the capabilities if doesn't? I suppose that's a reasonable thing to
-do. I'll plan to respin it with that.
-
-It occurs to me here too that this may fail incorrectly if the kernel
-is built w/o capabilities support period. So I probably need to do
-another respin anyway and either not attempt to prune the bounding set
-unless statd is built with caps support, or handle an EINVAL return
-here as if the kernel were not built with it.
-
-The latter is probably the safest method...
-
-Thanks for the review,
--- 
-Jeff Layton <jlayton@redhat.com>
+> Please share your input on the solution to the above problem. Is this expected behavior?
