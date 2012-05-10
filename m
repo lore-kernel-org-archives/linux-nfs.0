@@ -1,308 +1,233 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:62131 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:60449 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755526Ab2EJUrZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 May 2012 16:47:25 -0400
+	id S1761193Ab2EJTH4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 May 2012 15:07:56 -0400
 From: bjschuma@netapp.com
 To: Trond.Myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v2 1/3] NFS: Create an NFS v3 stat_to_errno()
-Date: Thu, 10 May 2012 16:47:18 -0400
-Message-Id: <1336682840-10799-1-git-send-email-bjschuma@netapp.com>
+Subject: [PATCH v4 06/14] NFS: Create a common xdev_mount() function
+Date: Thu, 10 May 2012 15:07:35 -0400
+Message-Id: <1336676863-9698-7-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1336676863-9698-1-git-send-email-bjschuma@netapp.com>
+References: <1336676863-9698-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Bryan Schumaker <bjschuma@netapp.com>
 
-In theory, NFS v3 can have different error versions than NFS v2. v4 is
-already using its own nfs4_stat_to_errno() to mapp error codes, so
-rather than create something in the generic client for v2 and v3 to
-share I instead give v3 its own function.
+The only difference between nfs_xdev_mount() and nfs4_xdev_mount() is the
+clone_super() function called to clone the super block.  I can combine
+these two functions by using the fill_super field in the mount_info
+structure.
 
 Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfs/internal.h |    1 -
- fs/nfs/nfs2xdr.c  |    3 +-
- fs/nfs/nfs3xdr.c  |  103 +++++++++++++++++++++++++++++++++++++++++++----------
- 3 files changed, 87 insertions(+), 20 deletions(-)
+ fs/nfs/super.c |  122 +++++++++++++++-----------------------------------------
+ 1 file changed, 32 insertions(+), 90 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 1855e8f..4cf76e9 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -207,7 +207,6 @@ extern void nfs_pgheader_init(struct nfs_pageio_descriptor *desc,
- void nfs_set_pgio_error(struct nfs_pgio_header *hdr, int error, loff_t pos);
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 64a62da..707d1f6 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -280,6 +280,7 @@ static match_table_t nfs_vers_tokens = {
+ struct nfs_mount_info {
+ 	void (*fill_super)(struct super_block *, struct nfs_mount_info *);
+ 	struct nfs_parsed_mount_data *parsed;
++	struct nfs_clone_mount *cloned;
+ };
  
- /* nfs2xdr.c */
--extern int nfs_stat_to_errno(enum nfs_stat);
- extern struct rpc_procinfo nfs_procedures[];
- extern int nfs2_decode_dirent(struct xdr_stream *,
- 				struct nfs_entry *, int);
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index c99008e..baf759b 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -61,6 +61,7 @@
- #define NFS_readdirres_sz	(1)
- #define NFS_statfsres_sz	(1+NFS_info_sz)
- 
-+static int nfs_stat_to_errno(enum nfs_stat);
- 
- /*
-  * While encoding arguments, set up the reply buffer in advance to
-@@ -1111,7 +1112,7 @@ static const struct {
-  * Returns a local errno value, or -EIO if the NFS status code is
-  * not recognized.  This function is used jointly by NFSv2 and NFSv3.
+ static void nfs_umount_begin(struct super_block *);
+@@ -2160,8 +2161,9 @@ static void nfs_fill_super(struct super_block *sb,
+  * Finish setting up a cloned NFS2/3 superblock
   */
--int nfs_stat_to_errno(enum nfs_stat status)
-+static int nfs_stat_to_errno(enum nfs_stat status)
+ static void nfs_clone_super(struct super_block *sb,
+-			    const struct super_block *old_sb)
++			    struct nfs_mount_info *mount_info)
  {
- 	int i;
++	const struct super_block *old_sb = mount_info->cloned->sb;
+ 	struct nfs_server *server = NFS_SB(sb);
  
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index ee284c2..902de48 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -86,6 +86,8 @@
- 				XDR_QUADLEN(NFS_ACL_INLINE_BUFSIZE))
- #define ACL3_setaclres_sz	(1+NFS3_post_op_attr_sz)
+ 	sb->s_blocksize_bits = old_sb->s_blocksize_bits;
+@@ -2454,13 +2456,13 @@ static void nfs_kill_super(struct super_block *s)
+ }
  
-+static int nfs3_stat_to_errno(enum nfs_stat);
-+
  /*
-  * Map file type to S_IFMT bits
+- * Clone an NFS2/3 server record on xdev traversal (FSID-change)
++ * Clone an NFS2/3/4 server record on xdev traversal (FSID-change)
   */
-@@ -1388,7 +1390,7 @@ static int nfs3_xdr_dec_getattr3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_default:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
+ static struct dentry *
+-nfs_xdev_mount(struct file_system_type *fs_type, int flags,
+-		const char *dev_name, void *raw_data)
++nfs_xdev_mount_common(struct file_system_type *fs_type, int flags,
++		const char *dev_name, struct nfs_mount_info *mount_info)
+ {
+-	struct nfs_clone_mount *data = raw_data;
++	struct nfs_clone_mount *data = mount_info->cloned;
+ 	struct super_block *s;
+ 	struct nfs_server *server;
+ 	struct dentry *mntroot;
+@@ -2470,7 +2472,7 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
+ 	};
+ 	int error;
+ 
+-	dprintk("--> nfs_xdev_mount()\n");
++	dprintk("--> nfs_xdev_mount_common()\n");
+ 
+ 	/* create a new volume representation */
+ 	server = nfs_clone_server(NFS_SB(data->sb), data->fh, data->fattr, data->authflavor);
+@@ -2505,7 +2507,7 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
+ 
+ 	if (!s->s_root) {
+ 		/* initial superblock/root creation */
+-		nfs_clone_super(s, data->sb);
++		mount_info->fill_super(s, mount_info);
+ 		nfs_get_cache_cookie(s, NULL, data);
+ 	}
+ 
+@@ -2525,13 +2527,13 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
+ 	/* clone any lsm security options from the parent to the new sb */
+ 	security_sb_clone_mnt_opts(data->sb, s);
+ 
+-	dprintk("<-- nfs_xdev_mount() = 0\n");
++	dprintk("<-- nfs_xdev_mount_common() = 0\n");
+ 	return mntroot;
+ 
+ out_err_nosb:
+ 	nfs_free_server(server);
+ out_err_noserver:
+-	dprintk("<-- nfs_xdev_mount() = %d [error]\n", error);
++	dprintk("<-- nfs_xdev_mount_common() = %d [error]\n", error);
+ 	return ERR_PTR(error);
+ 
+ error_splat_super:
+@@ -2539,18 +2541,33 @@ error_splat_super:
+ 		bdi_unregister(&server->backing_dev_info);
+ error_splat_bdi:
+ 	deactivate_locked_super(s);
+-	dprintk("<-- nfs_xdev_mount() = %d [splat]\n", error);
++	dprintk("<-- nfs_xdev_mount_common() = %d [splat]\n", error);
+ 	return ERR_PTR(error);
  }
  
- /*
-@@ -1427,7 +1429,7 @@ static int nfs3_xdr_dec_setattr3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1475,7 +1477,7 @@ out_default:
- 	error = decode_post_op_attr(xdr, result->dir_attr);
- 	if (unlikely(error))
- 		goto out;
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1516,7 +1518,7 @@ static int nfs3_xdr_dec_access3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_default:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1557,7 +1559,7 @@ static int nfs3_xdr_dec_readlink3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_default:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1639,7 +1641,7 @@ static int nfs3_xdr_dec_read3res(struct rpc_rqst *req, struct xdr_stream *xdr,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1709,7 +1711,7 @@ static int nfs3_xdr_dec_write3res(struct rpc_rqst *req, struct xdr_stream *xdr,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1773,7 +1775,7 @@ out_default:
- 	error = decode_wcc_data(xdr, result->dir_attr);
- 	if (unlikely(error))
- 		goto out;
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1812,7 +1814,7 @@ static int nfs3_xdr_dec_remove3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1856,7 +1858,7 @@ static int nfs3_xdr_dec_rename3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1899,7 +1901,7 @@ static int nfs3_xdr_dec_link3res(struct rpc_rqst *req, struct xdr_stream *xdr,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /**
-@@ -2091,7 +2093,7 @@ out_default:
- 	error = decode_post_op_attr(xdr, result->dir_attr);
- 	if (unlikely(error))
- 		goto out;
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -2159,7 +2161,7 @@ static int nfs3_xdr_dec_fsstat3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -2235,7 +2237,7 @@ static int nfs3_xdr_dec_fsinfo3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -2298,7 +2300,7 @@ static int nfs3_xdr_dec_pathconf3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -2339,7 +2341,7 @@ static int nfs3_xdr_dec_commit3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- #ifdef CONFIG_NFS_V3_ACL
-@@ -2404,7 +2406,7 @@ static int nfs3_xdr_dec_getacl3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_default:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- static int nfs3_xdr_dec_setacl3res(struct rpc_rqst *req,
-@@ -2423,11 +2425,76 @@ static int nfs3_xdr_dec_setacl3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_default:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- #endif  /* CONFIG_NFS_V3_ACL */
- 
-+
 +/*
-+ * We need to translate between nfs status return values and
-+ * the local errno values which may not be the same.
++ * Clone an NFS2/3 server record on xdev traversal (FSID-change)
 + */
-+static const struct {
-+	int stat;
-+	int errno;
-+} nfs_errtbl[] = {
-+	{ NFS_OK,		0		},
-+	{ NFSERR_PERM,		-EPERM		},
-+	{ NFSERR_NOENT,		-ENOENT		},
-+	{ NFSERR_IO,		-errno_NFSERR_IO},
-+	{ NFSERR_NXIO,		-ENXIO		},
-+/*	{ NFSERR_EAGAIN,	-EAGAIN		}, */
-+	{ NFSERR_ACCES,		-EACCES		},
-+	{ NFSERR_EXIST,		-EEXIST		},
-+	{ NFSERR_XDEV,		-EXDEV		},
-+	{ NFSERR_NODEV,		-ENODEV		},
-+	{ NFSERR_NOTDIR,	-ENOTDIR	},
-+	{ NFSERR_ISDIR,		-EISDIR		},
-+	{ NFSERR_INVAL,		-EINVAL		},
-+	{ NFSERR_FBIG,		-EFBIG		},
-+	{ NFSERR_NOSPC,		-ENOSPC		},
-+	{ NFSERR_ROFS,		-EROFS		},
-+	{ NFSERR_MLINK,		-EMLINK		},
-+	{ NFSERR_NAMETOOLONG,	-ENAMETOOLONG	},
-+	{ NFSERR_NOTEMPTY,	-ENOTEMPTY	},
-+	{ NFSERR_DQUOT,		-EDQUOT		},
-+	{ NFSERR_STALE,		-ESTALE		},
-+	{ NFSERR_REMOTE,	-EREMOTE	},
-+#ifdef EWFLUSH
-+	{ NFSERR_WFLUSH,	-EWFLUSH	},
-+#endif
-+	{ NFSERR_BADHANDLE,	-EBADHANDLE	},
-+	{ NFSERR_NOT_SYNC,	-ENOTSYNC	},
-+	{ NFSERR_BAD_COOKIE,	-EBADCOOKIE	},
-+	{ NFSERR_NOTSUPP,	-ENOTSUPP	},
-+	{ NFSERR_TOOSMALL,	-ETOOSMALL	},
-+	{ NFSERR_SERVERFAULT,	-EREMOTEIO	},
-+	{ NFSERR_BADTYPE,	-EBADTYPE	},
-+	{ NFSERR_JUKEBOX,	-EJUKEBOX	},
-+	{ -1,			-EIO		}
-+};
-+
-+/**
-+ * nfs3_stat_to_errno - convert an NFS status code to a local errno
-+ * @status: NFS status code to convert
-+ *
-+ * Returns a local errno value, or -EIO if the NFS status code is
-+ * not recognized.  This function is used jointly by NFSv2 and NFSv3.
-+ */
-+static int nfs3_stat_to_errno(enum nfs_stat status)
++static struct dentry *
++nfs_xdev_mount(struct file_system_type *fs_type, int flags,
++		const char *dev_name, void *raw_data)
 +{
-+	int i;
-+
-+	for (i = 0; nfs_errtbl[i].stat != -1; i++) {
-+		if (nfs_errtbl[i].stat == (int)status)
-+			return nfs_errtbl[i].errno;
-+	}
-+	dprintk("NFS: Unrecognized nfs status value: %u\n", status);
-+	return nfs_errtbl[i].errno;
++	struct nfs_mount_info mount_info = {
++		.fill_super = nfs_clone_super,
++		.cloned   = raw_data,
++	};
++	return nfs_xdev_mount_common(&nfs_fs_type, flags, dev_name, &mount_info);
 +}
 +
-+
- #define PROC(proc, argtype, restype, timer)				\
- [NFS3PROC_##proc] = {							\
- 	.p_proc      = NFS3PROC_##proc,					\
+ #ifdef CONFIG_NFS_V4
+ 
+ /*
+  * Finish setting up a cloned NFS4 superblock
+  */
+ static void nfs4_clone_super(struct super_block *sb,
+-			    const struct super_block *old_sb)
++			     struct nfs_mount_info *mount_info)
+ {
++	const struct super_block *old_sb = mount_info->cloned->sb;
+ 	sb->s_blocksize_bits = old_sb->s_blocksize_bits;
+ 	sb->s_blocksize = old_sb->s_blocksize;
+ 	sb->s_maxbytes = old_sb->s_maxbytes;
+@@ -2930,86 +2947,11 @@ static struct dentry *
+ nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
+ 		 const char *dev_name, void *raw_data)
+ {
+-	struct nfs_clone_mount *data = raw_data;
+-	struct super_block *s;
+-	struct nfs_server *server;
+-	struct dentry *mntroot;
+-	int (*compare_super)(struct super_block *, void *) = nfs_compare_super;
+-	struct nfs_sb_mountdata sb_mntdata = {
+-		.mntflags = flags,
++	struct nfs_mount_info mount_info = {
++		.fill_super = nfs4_clone_super,
++		.cloned = raw_data,
+ 	};
+-	int error;
+-
+-	dprintk("--> nfs4_xdev_mount()\n");
+-
+-	/* create a new volume representation */
+-	server = nfs_clone_server(NFS_SB(data->sb), data->fh, data->fattr, data->authflavor);
+-	if (IS_ERR(server)) {
+-		error = PTR_ERR(server);
+-		goto out_err_noserver;
+-	}
+-	sb_mntdata.server = server;
+-
+-	if (server->flags & NFS_MOUNT_UNSHARED)
+-		compare_super = NULL;
+-
+-	/* -o noac implies -o sync */
+-	if (server->flags & NFS_MOUNT_NOAC)
+-		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
+-
+-	/* Get a superblock - note that we may end up sharing one that already exists */
+-	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
+-	if (IS_ERR(s)) {
+-		error = PTR_ERR(s);
+-		goto out_err_nosb;
+-	}
+-
+-	if (s->s_fs_info != server) {
+-		nfs_free_server(server);
+-		server = NULL;
+-	} else {
+-		error = nfs_bdi_register(server);
+-		if (error)
+-			goto error_splat_bdi;
+-	}
+-
+-	if (!s->s_root) {
+-		/* initial superblock/root creation */
+-		nfs4_clone_super(s, data->sb);
+-		nfs_get_cache_cookie(s, NULL, data);
+-	}
+-
+-	mntroot = nfs_get_root(s, data->fh, dev_name);
+-	if (IS_ERR(mntroot)) {
+-		error = PTR_ERR(mntroot);
+-		goto error_splat_super;
+-	}
+-	if (mntroot->d_inode->i_op != NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops) {
+-		dput(mntroot);
+-		error = -ESTALE;
+-		goto error_splat_super;
+-	}
+-
+-	s->s_flags |= MS_ACTIVE;
+-
+-	security_sb_clone_mnt_opts(data->sb, s);
+-
+-	dprintk("<-- nfs4_xdev_mount() = 0\n");
+-	return mntroot;
+-
+-out_err_nosb:
+-	nfs_free_server(server);
+-out_err_noserver:
+-	dprintk("<-- nfs4_xdev_mount() = %d [error]\n", error);
+-	return ERR_PTR(error);
+-
+-error_splat_super:
+-	if (server && !s->s_root)
+-		bdi_unregister(&server->backing_dev_info);
+-error_splat_bdi:
+-	deactivate_locked_super(s);
+-	dprintk("<-- nfs4_xdev_mount() = %d [splat]\n", error);
+-	return ERR_PTR(error);
++	return nfs_xdev_mount_common(&nfs4_fs_type, flags, dev_name, &mount_info);
+ }
+ 
+ static struct dentry *
 -- 
 1.7.10.1
 
