@@ -1,90 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:24628 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:59152 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753173Ab2EATjI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 May 2012 15:39:08 -0400
-Received: from vmwexceht05-prd.hq.netapp.com (vmwexceht05-prd.hq.netapp.com [10.106.77.35])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q41JciZq028323
-	for <linux-nfs@vger.kernel.org>; Tue, 1 May 2012 12:38:44 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Isaman, Fred" <Fred.Isaman@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 3/3] NFS: Simplify the nfs_read_completion functions
-Date: Tue, 1 May 2012 19:38:43 +0000
-Message-ID: <1335901126.4060.27.camel@lade.trondhjem.org>
-References: <1335897434.4060.17.camel@lade.trondhjem.org>
-	 <1335897620-17569-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <1335897620-17569-2-git-send-email-Trond.Myklebust@netapp.com>
-	 <1335897620-17569-3-git-send-email-Trond.Myklebust@netapp.com>
-	 <CADnza47Cc+R68xmYCJHiytPJU9+-cDrzLm_caVn1tmons2kgDQ@mail.gmail.com>
-In-Reply-To: <CADnza47Cc+R68xmYCJHiytPJU9+-cDrzLm_caVn1tmons2kgDQ@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1758051Ab2EJTb1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 May 2012 15:31:27 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: bfields@fieldses.org
+Cc: bjschuma@netapp.com, linux-nfs@vger.kernel.org,
+        Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH] nfsd: return 0 on reads of fault injection files
+Date: Thu, 10 May 2012 15:31:10 -0400
+Message-Id: <1336678270-791-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA1LTAxIGF0IDE1OjEyIC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
-T24gVHVlLCBNYXkgMSwgMjAxMiBhdCAyOjQwIFBNLCBUcm9uZCBNeWtsZWJ1c3QNCj4gPFRyb25k
-Lk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPiBTaWduZWQtb2ZmLWJ5OiBUcm9uZCBN
-eWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KPiA+IENjOiBGcmVkIElzYW1h
-biA8aWlzYW1hbkBuZXRhcHAuY29tPg0KPiA+IC0tLQ0KPiA+ICBmcy9uZnMvZGlyZWN0LmMgfCAg
-IDQ2ICsrKysrKysrKysrKysrKysrKystLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCj4gPiAg
-ZnMvbmZzL3JlYWQuYyAgIHwgICA0MiArKysrKysrKysrKysrKysrKy0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0NCj4gPiAgMiBmaWxlcyBjaGFuZ2VkLCAzNiBpbnNlcnRpb25zKCspLCA1MiBkZWxl
-dGlvbnMoLSkNCj4gPg0KPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvZGlyZWN0LmMgYi9mcy9uZnMv
-ZGlyZWN0LmMNCj4gPiBpbmRleCBmMTdlNDY5Li5hMWQzNjZiIDEwMDY0NA0KPiA+IC0tLSBhL2Zz
-L25mcy9kaXJlY3QuYw0KPiA+ICsrKyBiL2ZzL25mcy9kaXJlY3QuYw0KPiA+IEBAIC0yNDMsMzYg
-KzI0MywyOCBAQCBzdGF0aWMgdm9pZCBuZnNfZGlyZWN0X3JlYWRfY29tcGxldGlvbihzdHJ1Y3Qg
-bmZzX3BnaW9faGVhZGVyICpoZHIpDQo+ID4gICAgICAgICAgICAgICAgZHJlcS0+Y291bnQgKz0g
-aGRyLT5nb29kX2J5dGVzOw0KPiA+ICAgICAgICBzcGluX3VubG9jaygmZHJlcS0+bG9jayk7DQo+
-ID4NCj4gPiAtICAgICAgIGlmICghdGVzdF9iaXQoTkZTX0lPSERSX0VSUk9SLCAmaGRyLT5mbGFn
-cykpIHsNCj4gPiAtICAgICAgICAgICAgICAgd2hpbGUgKCFsaXN0X2VtcHR5KCZoZHItPnBhZ2Vz
-KSkgew0KPiA+IC0gICAgICAgICAgICAgICAgICAgICAgIHN0cnVjdCBuZnNfcGFnZSAqcmVxID0g
-bmZzX2xpc3RfZW50cnkoaGRyLT5wYWdlcy5uZXh0KTsNCj4gPiAtICAgICAgICAgICAgICAgICAg
-ICAgICBzdHJ1Y3QgcGFnZSAqcGFnZSA9IHJlcS0+d2JfcGFnZTsNCj4gPiAtDQo+ID4gLSAgICAg
-ICAgICAgICAgICAgICAgICAgaWYgKHRlc3RfYml0KE5GU19JT0hEUl9FT0YsICZoZHItPmZsYWdz
-KSkgew0KPiA+IC0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgaWYgKGJ5dGVzID4gaGRy
-LT5nb29kX2J5dGVzKQ0KPiA+IC0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICB6ZXJvX3VzZXIocGFnZSwgMCwgUEFHRV9TSVpFKTsNCj4gPiAtICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgIGVsc2UgaWYgKGhkci0+Z29vZF9ieXRlcyAtIGJ5dGVzIDwgUEFHRV9TSVpF
-KQ0KPiA+IC0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB6ZXJvX3VzZXJf
-c2VnbWVudChwYWdlLA0KPiA+IC0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgIGhkci0+Z29vZF9ieXRlcyAmIH5QQUdFX01BU0ssDQo+ID4gLSAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgUEFHRV9TSVpFKTsNCj4gPiAtICAg
-ICAgICAgICAgICAgICAgICAgICB9DQo+ID4gLSAgICAgICAgICAgICAgICAgICAgICAgYnl0ZXMg
-Kz0gcmVxLT53Yl9ieXRlczsNCj4gPiAtICAgICAgICAgICAgICAgICAgICAgICBuZnNfbGlzdF9y
-ZW1vdmVfcmVxdWVzdChyZXEpOw0KPiA+IC0gICAgICAgICAgICAgICAgICAgICAgIGlmICghUGFn
-ZUNvbXBvdW5kKHBhZ2UpKQ0KPiA+IC0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgc2V0
-X3BhZ2VfZGlydHkocGFnZSk7DQo+ID4gLSAgICAgICAgICAgICAgICAgICAgICAgbmZzX2RpcmVj
-dF9yZWFkcGFnZV9yZWxlYXNlKHJlcSk7DQo+ID4gKyAgICAgICB3aGlsZSAoIWxpc3RfZW1wdHko
-Jmhkci0+cGFnZXMpKSB7DQo+ID4gKyAgICAgICAgICAgICAgIHN0cnVjdCBuZnNfcGFnZSAqcmVx
-ID0gbmZzX2xpc3RfZW50cnkoaGRyLT5wYWdlcy5uZXh0KTsNCj4gPiArICAgICAgICAgICAgICAg
-c3RydWN0IHBhZ2UgKnBhZ2UgPSByZXEtPndiX3BhZ2U7DQo+ID4gKw0KPiA+ICsgICAgICAgICAg
-ICAgICBpZiAodGVzdF9iaXQoTkZTX0lPSERSX0VPRiwgJmhkci0+ZmxhZ3MpKSB7DQo+ID4gKyAg
-ICAgICAgICAgICAgICAgICAgICAgaWYgKGJ5dGVzID4gaGRyLT5nb29kX2J5dGVzKQ0KPiA+ICsg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgemVyb191c2VyKHBhZ2UsIDAsIFBBR0VfU0la
-RSk7DQo+ID4gKyAgICAgICAgICAgICAgICAgICAgICAgZWxzZSBpZiAoaGRyLT5nb29kX2J5dGVz
-IC0gYnl0ZXMgPCBQQUdFX1NJWkUpDQo+ID4gKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICB6ZXJvX3VzZXJfc2VnbWVudChwYWdlLA0KPiA+ICsgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICBoZHItPmdvb2RfYnl0ZXMgJiB+UEFHRV9NQVNLLA0KPiA+ICsgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBQQUdFX1NJWkUpOw0KPiA+ICAgICAgICAg
-ICAgICAgIH0NCj4gPiAtICAgICAgIH0gZWxzZSB7DQo+ID4gLSAgICAgICAgICAgICAgIHdoaWxl
-ICghbGlzdF9lbXB0eSgmaGRyLT5wYWdlcykpIHsNCj4gPiAtICAgICAgICAgICAgICAgICAgICAg
-ICBzdHJ1Y3QgbmZzX3BhZ2UgKnJlcSA9IG5mc19saXN0X2VudHJ5KGhkci0+cGFnZXMubmV4dCk7
-DQo+ID4gLQ0KPiA+IC0gICAgICAgICAgICAgICAgICAgICAgIGlmIChieXRlcyA8IGhkci0+Z29v
-ZF9ieXRlcykNCj4gPiAtICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGlmICghUGFnZUNv
-bXBvdW5kKHJlcS0+d2JfcGFnZSkpDQo+ID4gKyAgICAgICAgICAgICAgIGlmICghUGFnZUNvbXBv
-dW5kKHBhZ2UpKSB7DQo+ID4gKyAgICAgICAgICAgICAgICAgICAgICAgaWYgKHRlc3RfYml0KE5G
-U19JT0hEUl9FUlJPUiwgJmhkci0+ZmxhZ3MpKSB7DQo+ID4gKyAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICBpZiAoYnl0ZXMgPCBoZHItPmdvb2RfYnl0ZXMpDQo+ID4gICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgc2V0X3BhZ2VfZGlydHkocmVxLT53Yl9wYWdlKTsN
-Cj4gDQo+IFlvdSBjYW4gcy9yZXEtPndiX3BhZ2UvcGFnZS8NCg0KWWVwLiBXaWxsIGRvLi4uDQoN
-Cj4gT3RoZXIgdGhhbiB0aGF0LCBsb29rcyBmaW5lLCBidXQgSSdsbCBub3RlIHRoYXQgbXkgaW50
-ZW50IGluIHdyaXRpbmcNCj4gaXQgYXMgaXQgd2FzIHdhcyB0byBtb3ZlIHRoZSB0ZXN0X2JpdCBv
-dXQgb2YgdGhlIGxvb3AuDQo+IEJ1dCBnaXZlbiB0aGUgRU9GIHRlc3QgdGhhdCB3YXMgc3RpbGwg
-dGhlcmUsIEkgZ3Vlc3MgaXQgZG9lc24ndCBtYWtlDQo+IG11Y2ggZGlmZmVyZW5jZS4NCg0KVGhl
-IG90aGVyIHRoaW5nIGlzIHRoYXQgaXQgYmVjb21lcyB1bm5lY2Vzc2FyaWx5IGRpZmZpY3VsdCB0
-byByZWFkDQpiZWNhdXNlIG9mIHRoZSBsb29wcyB0aGF0IGRvIG1vc3RseSB0aGUgc2FtZSB0aGlu
-ZywgZXhjZXB0IGZvciB0aGlzIG9uZQ0KbGl0dGxlIGJpdCBpbiB0aGUgbWlkZGxlLg0KDQotLSAN
-ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0K
-VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+debugfs read operations were returning the contents of an uninitialized u64.
+
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+I found this while working on (forthcoming) fault injection tests for 
+CB_PATH_DOWN.
+
+ fs/nfsd/fault_inject.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index 46b7696..ab81144 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -62,6 +62,7 @@ static int nfsd_inject_set(void *op_ptr, u64 val)
+ 
+ static int nfsd_inject_get(void *data, u64 *val)
+ {
++	*val = 0;
+ 	return 0;
+ }
+ 
+-- 
+1.7.4.4
+
