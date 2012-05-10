@@ -1,59 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f172.google.com ([209.85.212.172]:38664 "EHLO
-	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756261Ab2EBTrS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 May 2012 15:47:18 -0400
-Received: by wibhj6 with SMTP id hj6so5105712wib.1
-        for <linux-nfs@vger.kernel.org>; Wed, 02 May 2012 12:47:17 -0700 (PDT)
-Message-ID: <4FA18F41.7030901@tonian.com>
-Date: Wed, 02 May 2012 22:47:13 +0300
-From: Benny Halevy <bhalevy@tonian.com>
-MIME-Version: 1.0
-To: Zack Perry <zack.perry@sbcglobal.net>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: To start testing Linux pNFS server?
-References: <1335818012.19482.YahooMailClassic@web181020.mail.ne1.yahoo.com>
-In-Reply-To: <1335818012.19482.YahooMailClassic@web181020.mail.ne1.yahoo.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:18254 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760490Ab2EJTHv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 May 2012 15:07:51 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v4 01/14] NFS: Rename nfs4_proc_get_root()
+Date: Thu, 10 May 2012 15:07:30 -0400
+Message-Id: <1336676863-9698-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1336676863-9698-1-git-send-email-bjschuma@netapp.com>
+References: <1336676863-9698-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-hi, sorry for the late reply, and thanks Bruce!
-The linux-pnfs tree is here:
-git://linux-nfs.org/~bhalevy/linux-pnfs.git
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-What layout type are you interested to test?
-Currently, the block layout back-end is not in an operational state and unfortunately
-it's not actively maintained.
+This function is really getting the root filehandle and not the root
+dentry of the filesystem.  I also removed the rpc_ops lookup from
+nfs4_get_rootfh() under the assumption that if we reach this function
+then we already know we are using NFS v4.
 
-For the files layout, as Bruce mentioned, you can use the gfs2-based server that does
-parallel reads, but writes only via the MDS, and the pnfsd-lexp (local export) testing
-back end that exports a local file system over pnfs, playing both the MDS and a single DS
-on the server.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/getroot.c  |    2 +-
+ fs/nfs/nfs4_fs.h  |    1 +
+ fs/nfs/nfs4proc.c |    6 +++---
+ 3 files changed, 5 insertions(+), 4 deletions(-)
 
-The objects layout can be tested using the pnfsd-exofs back end, which is the most complete
-implementation right now.  Again, as Bruce correctly pointed out :)
-Boaz Harrosh <bharrosh@panasas.com> would be able to help you with that.
+diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
+index 4ca6f5c..8a0f33e 100644
+--- a/fs/nfs/getroot.c
++++ b/fs/nfs/getroot.c
+@@ -150,7 +150,7 @@ int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh)
+ 		goto out;
+ 
+ 	/* Start by getting the root filehandle from the server */
+-	ret = server->nfs_client->rpc_ops->getroot(server, mntfh, &fsinfo);
++	ret = nfs4_proc_get_rootfh(server, mntfh, &fsinfo);
+ 	if (ret < 0) {
+ 		dprintk("nfs4_get_rootfh: getroot error = %d\n", -ret);
+ 		goto out;
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 97365b0..edeef71 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -214,6 +214,7 @@ struct vfsmount *nfs4_submount(struct nfs_server *, struct dentry *,
+ /* nfs4proc.c */
+ extern int nfs4_proc_setclientid(struct nfs_client *, u32, unsigned short, struct rpc_cred *, struct nfs4_setclientid_res *);
+ extern int nfs4_proc_setclientid_confirm(struct nfs_client *, struct nfs4_setclientid_res *arg, struct rpc_cred *);
++extern int nfs4_proc_get_rootfh(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
+ extern int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred);
+ extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
+ extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 98eb48d..69212d2 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2345,8 +2345,8 @@ static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
+ /*
+  * get the file handle for the "/" directory on the server
+  */
+-static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
+-			      struct nfs_fsinfo *info)
++int nfs4_proc_get_rootfh(struct nfs_server *server, struct nfs_fh *fhandle,
++			 struct nfs_fsinfo *info)
+ {
+ 	int minor_version = server->nfs_client->cl_minorversion;
+ 	int status = nfs4_lookup_root(server, fhandle, info);
+@@ -6539,7 +6539,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
+ 	.dir_inode_ops	= &nfs4_dir_inode_operations,
+ 	.file_inode_ops	= &nfs4_file_inode_operations,
+ 	.file_ops	= &nfs4_file_operations,
+-	.getroot	= nfs4_proc_get_root,
++	.getroot	= nfs4_proc_get_rootfh,
+ 	.submount	= nfs4_submount,
+ 	.getattr	= nfs4_proc_getattr,
+ 	.setattr	= nfs4_proc_setattr,
+-- 
+1.7.10.1
 
-Benny
-
-On 2012-04-30 23:33, Zack Perry wrote:
-> Hi Bruce,
-> 
-> Thanks for your suggestion.
-> 
-> Zack
-> 
->>
->> My impression is that the most likely to work possibilities
->> are either the exofs-based or gfs2-based servers.  Boaz Harosh
->> might be able to help with the latter.  I don't know if the wiki
->> instructions are up to date.  You probably need to build a kernel
->> from Benny's git tree in either case.
->>
->> --b.
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
