@@ -1,159 +1,153 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:19058 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:38057 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754802Ab2EFWoW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 6 May 2012 18:44:22 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Daniel Pocock <daniel@pocock.com.au>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: extremely slow nfs when sync enabled
-Date: Sun, 6 May 2012 22:42:36 +0000
-Message-ID: <1336344160.2600.30.camel@lade.trondhjem.org>
-References: <4FA5E950.5080304@pocock.com.au>
-	  <1336328594.2593.14.camel@lade.trondhjem.org>
-	  <4FA6EBD4.7040308@pocock.com.au>
-	 <1336340993.2600.11.camel@lade.trondhjem.org>
-	 <4FA6F75E.6090300@pocock.com.au>
-In-Reply-To: <4FA6F75E.6090300@pocock.com.au>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S932599Ab2EJNyi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 May 2012 09:54:38 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 06/12] mm: Add get_kernel_page[s] for pinning of kernel addresses for I/O
+Date: Thu, 10 May 2012 14:54:19 +0100
+Message-Id: <1336658065-24851-7-git-send-email-mgorman@suse.de>
+In-Reply-To: <1336658065-24851-1-git-send-email-mgorman@suse.de>
+References: <1336658065-24851-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU3VuLCAyMDEyLTA1LTA2IGF0IDIyOjEyICswMDAwLCBEYW5pZWwgUG9jb2NrIHdyb3RlOg0K
-PiANCj4gT24gMDYvMDUvMTIgMjE6NDksIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gT24g
-U3VuLCAyMDEyLTA1LTA2IGF0IDIxOjIzICswMDAwLCBEYW5pZWwgUG9jb2NrIHdyb3RlOg0KPiA+
-Pg0KPiA+PiBPbiAwNi8wNS8xMiAxODoyMywgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4gPj4+
-IE9uIFN1biwgMjAxMi0wNS0wNiBhdCAwMzowMCArMDAwMCwgRGFuaWVsIFBvY29jayB3cm90ZToN
-Cj4gPj4+Pg0KPiA+Pj4+IEkndmUgYmVlbiBvYnNlcnZpbmcgc29tZSB2ZXJ5IHNsb3cgbmZzIHdy
-aXRlIHBlcmZvcm1hbmNlIHdoZW4gdGhlIHNlcnZlcg0KPiA+Pj4+IGhhcyBgc3luYycgaW4gL2V0
-Yy9leHBvcnRzDQo+ID4+Pj4NCj4gPj4+PiBJIHdhbnQgdG8gYXZvaWQgdXNpbmcgYXN5bmMsIGJ1
-dCBJIGhhdmUgdGVzdGVkIGl0IGFuZCBvbiBteSBnaWdhYml0DQo+ID4+Pj4gbmV0d29yaywgaXQg
-Z2l2ZXMgYWxtb3N0IHRoZSBzYW1lIHNwZWVkIGFzIGlmIEkgd2FzIG9uIHRoZSBzZXJ2ZXINCj4g
-Pj4+PiBpdHNlbGYuIChlLmcuIDMwTUIvc2VjIHRvIG9uZSBkaXNrLCBvciBsZXNzIHRoYW4gMU1C
-L3NlYyB0byB0aGUgc2FtZQ0KPiA+Pj4+IGRpc2sgb3ZlciBORlMgd2l0aCBgc3luYycpDQo+ID4+
-Pj4NCj4gPj4+PiBJJ20gdXNpbmcgRGViaWFuIDYgd2l0aCAyLjYuMzgga2VybmVscyBvbiBjbGll
-bnQgYW5kIHNlcnZlciwgTkZTdjMNCj4gPj4+Pg0KPiA+Pj4+IEkndmUgYWxzbyB0cmllZCBhIGNs
-aWVudCBydW5uaW5nIERlYmlhbiA3L0xpbnV4IDMuMi4wIHdpdGggYm90aCBORlN2Mw0KPiA+Pj4+
-IGFuZCBORlN2NCwgc3BlZWQgaXMgc3RpbGwgc2xvdw0KPiA+Pj4+DQo+ID4+Pj4gTG9va2luZyBh
-dCBpb3N0YXQgb24gdGhlIHNlcnZlciwgSSBub3RpY2UgdGhhdCBhdmdycS1zeiA9IDggc2VjdG9y
-cw0KPiA+Pj4+ICg0MDk2IGJ5dGVzKSB0aHJvdWdob3V0IHRoZSB3cml0ZSBvcGVyYXRpb25zDQo+
-ID4+Pj4NCj4gPj4+PiBJJ3ZlIHRyaWVkIHZhcmlvdXMgdGVzdHMsIGUuZy4gZGQgYSBsYXJnZSBm
-aWxlLCBvciB1bnBhY2sgYSB0YXJiYWxsIHdpdGgNCj4gPj4+PiBtYW55IHNtYWxsIGZpbGVzLCB0
-aGUgaW9zdGF0IG91dHB1dCBpcyBhbHdheXMgdGhlIHNhbWUNCj4gPj4+DQo+ID4+PiBXZXJlIHlv
-dSB1c2luZyAnY29udj1zeW5jJz8NCj4gPj4NCj4gPj4gTm8sIGl0IHdhcyBub3QgdXNpbmcgY29u
-dj1zeW5jLCBqdXN0IHRoZSB2YW5pbGxhIGRkOg0KPiA+Pg0KPiA+PiBkZCBpZj0vZGV2L3plcm8g
-b2Y9c29tZS1mYXQtZmlsZSBicz02NTUzNiBjb3VudD02NTUzNg0KPiA+IA0KPiA+IFRoZW4gdGhl
-IHJlc3VsdHMgYXJlIG5vdCBjb21wYXJhYmxlLg0KPiANCj4gSWYgSSBydW4gZGQgd2l0aCBjb252
-PXN5bmMgb24gdGhlIHNlcnZlciwgdGhlbiBJIHN0aWxsIG5vdGljZSB0aGF0IE9TDQo+IGNhY2hp
-bmcgcGxheXMgYSBmYWN0b3IgYW5kIHdyaXRlIHBlcmZvcm1hbmNlIGp1c3QgYXBwZWFycyByZWFs
-bHkgZmFzdA0KPiANCj4gPj4+PiBMb29raW5nIGF0IC9wcm9jL21vdW50cyBvbiB0aGUgY2xpZW50
-cywgZXZlcnl0aGluZyBsb29rcyBnb29kLCBsYXJnZQ0KPiA+Pj4+IHdzaXplLCB0Y3A6DQo+ID4+
-Pj4NCj4gPj4+PiBydyxyZWxhdGltZSx2ZXJzPTMscnNpemU9MTA0ODU3Nix3c2l6ZT0xMDQ4NTc2
-LG5hbWxlbj0yNTUsaGFyZCxwcm90bz10Y3AsdGltZW89NjAwLHJldHJhbnM9MixzZWM9c3lzLG1v
-dW50YWRkcj0xOTIueC54LngsbW91bnR2ZXJzPTMsbW91bnRwb3J0PTU4NzI3LG1vdW50cHJvdG89
-dWRwLGxvY2FsX2xvY2s9bm9uZSxhZGRyPTE5Mi54LngueA0KPiA+Pj4+IDAgMA0KPiA+Pj4+DQo+
-ID4+Pj4gYW5kDQo+ID4+Pj4gIHJ3LHJlbGF0aW1lLHZlcnM9NCxyc2l6ZT0xMDQ4NTc2LHdzaXpl
-PTEwNDg1NzYsbmFtbGVuPTI1NSxoYXJkLHByb3RvPXRjcCxwb3J0PTAsdGltZW89NjAwLHJldHJh
-bnM9MixzZWM9c3lzLGNsaWVudGFkZHI9MTkyLngueC54LixtaW5vcnZlcnNpb249MCxsb2NhbF9s
-b2NrPW5vbmUsYWRkcj0xOTIueC54LnggMCAwDQo+ID4+Pj4NCj4gPj4+PiBhbmQgaW4gL3Byb2Mv
-ZnMvbmZzL2V4cG9ydHMgb24gdGhlIHNlcnZlciwgSSBoYXZlIHN5bmMgYW5kIHdkZWxheToNCj4g
-Pj4+Pg0KPiA+Pj4+IC9uZnM0L2RhbmllbA0KPiA+Pj4+IDE5Mi4xNjguMS4wLzI0LDE5Mi54Lngu
-eChydyxpbnNlY3VyZSxyb290X3NxdWFzaCxzeW5jLHdkZWxheSxub19zdWJ0cmVlX2NoZWNrLHV1
-aWQ9YWEyYTZmMzc6OWNjOTRlZWI6YmNiZjk4M2M6ZDZlMDQxZDksc2VjPTEpDQo+ID4+Pj4gL2hv
-bWUvZGFuaWVsDQo+ID4+Pj4gMTkyLjE2OC4xLjAvMjQsMTkyLngueC54KHJ3LHJvb3Rfc3F1YXNo
-LHN5bmMsd2RlbGF5LG5vX3N1YnRyZWVfY2hlY2ssdXVpZD1hYTJhNmYzNzo5Y2M5NGVlYjpiY2Jm
-OTgzYzpkNmUwNDFkOSkNCj4gPj4+Pg0KPiA+Pj4+IENhbiBhbnlvbmUgc3VnZ2VzdCBhbnl0aGlu
-ZyBlbHNlPyAgT3IgaXMgdGhpcyByZWFsbHkgdGhlIHBlcmZvcm1hbmNlIGhpdA0KPiA+Pj4+IG9m
-IGBzeW5jJz8NCj4gPj4+DQo+ID4+PiBJdCByZWFsbHkgZGVwZW5kcyBvbiB5b3VyIGRpc2sgc2V0
-dXAuIFBhcnRpY3VsYXJseSB3aGVuIHlvdXIgZmlsZXN5c3RlbQ0KPiA+Pj4gaXMgdXNpbmcgYmFy
-cmllcnMgKGVuYWJsZWQgYnkgZGVmYXVsdCBvbiBleHQ0IGFuZCB4ZnMpLCBhIGxvdCBvZiByYWlk
-DQo+ID4+DQo+ID4+IE9uIHRoZSBzZXJ2ZXIsIEkndmUgdHJpZWQgYm90aCBleHQzIGFuZCBleHQ0
-LCBleHBsaWNpdGx5IGNoYW5naW5nIHRoaW5ncw0KPiA+PiBsaWtlIGRhdGE9d3JpdGViYWNrLGJh
-cnJpZXI9MCwgYnV0IHRoZSBwcm9ibGVtIHJlbWFpbnMNCj4gPj4NCj4gPj4gVGhlIG9ubHkgdGhp
-bmcgdGhhdCBtYWRlIGl0IGZhc3RlciB3YXMgdXNpbmcgaGRwYXJtIC1XMSAvZGV2L3NkW2FiXSB0
-bw0KPiA+PiBlbmFibGUgdGhlIHdyaXRlLWJhY2sgY2FjaGUgb24gdGhlIGRpc2sNCj4gPiANCj4g
-PiBUaGF0IHNob3VsZCBpbiBwcmluY2lwbGUgYmUgc2FmZSB0byBkbyBhcyBsb25nIGFzIHlvdSBh
-cmUgdXNpbmcNCj4gPiBiYXJyaWVyPTEuDQo+IA0KPiBPaywgc28gdGhlIGNvbWJpbmF0aW9uIG9m
-Og0KPiANCj4gLSBlbmFibGUgd3JpdGViYWNrIHdpdGggaGRwYXJtDQo+IC0gdXNlIGV4dDQgKGFu
-ZCBub3QgZXh0MykNCj4gLSBiYXJyaWVyPTEgYW5kIGRhdGE9d3JpdGViYWNrPyAgb3IgZGF0YT0/
-DQo+IA0KPiAtIGlzIHRoZXJlIGEgcGFydGljdWxhciBrZXJuZWwgdmVyc2lvbiAob24gZWl0aGVy
-IGNsaWVudCBvciBzZXJ2ZXIgc2lkZSkNCj4gdGhhdCB3aWxsIG9mZmVyIG1vcmUgc3RhYmlsaXR5
-IHVzaW5nIHRoaXMgY29tYmluYXRpb24gb2YgZmVhdHVyZXM/DQoNCk5vdCB0aGF0IEknbSBhd2Fy
-ZSBvZi4gQXMgbG9uZyBhcyB5b3UgaGF2ZSBhIGtlcm5lbCA+IDIuNi4yOSwgdGhlbiBMVk0NCnNo
-b3VsZCB3b3JrIGNvcnJlY3RseS4gVGhlIG1haW4gcHJvYmxlbSBpcyB0aGF0IHNvbWUgU0FUQSBo
-YXJkd2FyZSB0ZW5kcw0KdG8gYmUgYnVnZ3ksIGRlZmVhdGluZyB0aGUgbWV0aG9kcyB1c2VkIGJ5
-IHRoZSBiYXJyaWVyIGNvZGUgdG8gZW5zdXJlDQpkYXRhIGlzIHRydWx5IG9uIGRpc2suIEkgYmVs
-aWV2ZSB0aGF0IFhGUyB3aWxsIHRoZXJlZm9yZSBhY3R1YWxseSB0ZXN0DQp0aGUgaGFyZHdhcmUg
-d2hlbiB5b3UgbW91bnQgd2l0aCB3cml0ZSBjYWNoaW5nIGFuZCBiYXJyaWVycywgYW5kIHNob3Vs
-ZA0KcmVwb3J0IGlmIHRoZSB0ZXN0IGZhaWxzIGluIHRoZSBzeXNsb2dzLg0KU2VlIGh0dHA6Ly94
-ZnMub3JnL2luZGV4LnBocC9YRlNfRkFRI1dyaXRlX2JhcnJpZXJfc3VwcG9ydC4NCg0KPiBJIHRo
-aW5rIHRoZXJlIGFyZSBzb21lIG90aGVyIHZhcmlhdGlvbnMgb2YgbXkgd29ya2Zsb3cgdGhhdCBJ
-IGNhbg0KPiBhdHRlbXB0IHRvbywgZS5nLiBJJ3ZlIGNvbnRlbXBsYXRlZCBjb21waWxpbmcgQysr
-IGNvZGUgb250byBhIFJBTSBkaXNrDQo+IGJlY2F1c2UgSSBkb24ndCBuZWVkIHRvIGtlZXAgdGhl
-IGh1bmRyZWRzIG9mIG9iamVjdCBmaWxlcy4NCg0KWW91IG1pZ2h0IGFsc28gY29uc2lkZXIgdXNp
-bmcgc29tZXRoaW5nIGxpa2UgY2NhY2hlIGFuZCBzZXQgdGhlDQpDQ0FDSEVfRElSIHRvIGEgbG9j
-YWwgZGlzayBpZiB5b3UgaGF2ZSBvbmUuDQoNCj4gPj4+IHNldHVwcyByZWFsbHkgX3N1Y2tfIGF0
-IGRlYWxpbmcgd2l0aCBmc3luYygpLiBUaGUgbGF0dGVyIGlzIHVzZWQgZXZlcnkNCj4gPj4NCj4g
-Pj4gSSdtIHVzaW5nIG1kIFJBSUQxLCBteSBzZXR1cCBpcyBsaWtlIHRoaXM6DQo+ID4+DQo+ID4+
-IDJ4IDFUQiBTQVRBIGRpc2tzIFNUMzEwMDA1MjhBUyAoNzIwMHJwbSB3aXRoIDMyTUIgY2FjaGUg
-YW5kIE5DUSkNCj4gPj4NCj4gPj4gU0FUQSBjb250cm9sbGVyOiBBVEkgVGVjaG5vbG9naWVzIElu
-YyBTQjcwMC9TQjgwMCBTQVRBIENvbnRyb2xsZXIgW0FIQ0kNCj4gPj4gbW9kZV0gKHJldiA0MCkN
-Cj4gPj4gLSBub3QgdXNpbmcgYW55IG9mIHRoZSBCSU9TIHNvZnRyYWlkIHN0dWZmDQo+ID4+DQo+
-ID4+IEJvdGggZGV2aWNlcyBoYXZlIGlkZW50aWNhbCBwYXJ0aXRpb25pbmc6DQo+ID4+IDEuIDEy
-OE1CIGJvb3QNCj4gPj4gMi4gbWQgdm9sdW1lICgxVEIgLSAxMjhNQikNCj4gPj4NCj4gPj4gVGhl
-IGVudGlyZSBtZCB2b2x1bWUgKC9kZXYvbWQyKSBpcyB0aGVuIHVzZWQgYXMgYSBQViBmb3IgTFZN
-DQo+ID4+DQo+ID4+IEkgZG8gbXkgd3JpdGUgdGVzdHMgb24gYSBmcmVzaCBMViB3aXRoIG5vIGZy
-YWdtZW50YXRpb24NCj4gPj4NCj4gPj4+IHRpbWUgdGhlIE5GUyBjbGllbnQgc2VuZHMgYSBDT01N
-SVQgb3IgdHJ1bmMoKSBpbnN0cnVjdGlvbiwgYW5kIGZvcg0KPiA+Pj4gcHJldHR5IG11Y2ggYWxs
-IGZpbGUgYW5kIGRpcmVjdG9yeSBjcmVhdGlvbiBvcGVyYXRpb25zICh5b3UgY2FuIHVzZQ0KPiA+
-Pj4gJ25mc3N0YXQnIHRvIG1vbml0b3IgaG93IG1hbnkgc3VjaCBvcGVyYXRpb25zIHRoZSBORlMg
-Y2xpZW50IGlzIHNlbmRpbmcNCj4gPj4+IGFzIHBhcnQgb2YgeW91ciB0ZXN0KS4NCj4gPj4NCj4g
-Pj4gSSBrbm93IHRoYXQgbXkgdHdvIHRlc3RzIGFyZSB2ZXJ5IGRpZmZlcmVudCBpbiB0aGF0IHdh
-eToNCj4gPj4NCj4gPj4gLSBkZCBpcyBqdXN0IHdyaXRpbmcgb25lIGJpZyBmaWxlLCBubyBmc3lu
-Yw0KPiA+Pg0KPiA+PiAtIHVucGFja2luZyBhIHRhcmJhbGwgKG9yIGNvbXBpbGluZyBhIGxhcmdl
-IEMrKyBwcm9qZWN0KSBkb2VzIGEgbG90IG9mDQo+ID4+IHNtYWxsIHdyaXRlcyB3aXRoIG1hbnkg
-ZnN5bmNzDQo+ID4+DQo+ID4+IEluIGJvdGggY2FzZXMsIGl0IGlzIHNsb3cNCj4gPj4NCj4gPj4+
-IExvY2FsIGRpc2sgY2FuIGdldCBhd2F5IHdpdGggZG9pbmcgYSBsb3QgbGVzcyBmc3luYygpLCBi
-ZWNhdXNlIHRoZSBjYWNoZQ0KPiA+Pj4gY29uc2lzdGVuY3kgZ3VhcmFudGVlcyBhcmUgZGlmZmVy
-ZW50Og0KPiA+Pj4gICAgICAgKiBpbiBORlMsIHRoZSBzZXJ2ZXIgaXMgYWxsb3dlZCB0byBjcmFz
-aCBvciByZWJvb3Qgd2l0aG91dA0KPiA+Pj4gICAgICAgICBhZmZlY3RpbmcgdGhlIGNsaWVudCdz
-IHZpZXcgb2YgdGhlIGZpbGVzeXN0ZW0uDQo+ID4+PiAgICAgICAqIGluIHRoZSBsb2NhbCBmaWxl
-IHN5c3RlbSwgdGhlIGV4cGVjdGF0aW9uIGlzIHRoYXQgb24gcmVib290IGFueQ0KPiA+Pj4gICAg
-ICAgICBkYXRhIGxvc3QgaXMgd29uJ3QgbmVlZCB0byBiZSByZWNvdmVyZWQgKHRoZSBhcHBsaWNh
-dGlvbiB3aWxsDQo+ID4+PiAgICAgICAgIGhhdmUgdXNlZCBmc3luYygpIGZvciBhbnkgZGF0YSB0
-aGF0IGRvZXMgbmVlZCB0byBiZSBwZXJzaXN0ZW50KS4NCj4gPj4+ICAgICAgICAgT25seSB0aGUg
-ZGlzayBmaWxlc3lzdGVtIHN0cnVjdHVyZXMgbmVlZCB0byBiZSByZWNvdmVyZWQsIGFuZA0KPiA+
-Pj4gICAgICAgICB0aGF0IGlzIGRvbmUgdXNpbmcgdGhlIGpvdXJuYWwgKG9yIGZzY2spLg0KPiA+
-Pg0KPiA+Pg0KPiA+PiBJcyB0aGlzIGFuIGludHJhY3RhYmxlIHByb2JsZW0gdGhvdWdoPw0KPiA+
-Pg0KPiA+PiBPciBkbyBwZW9wbGUganVzdCB3b3JrIGFyb3VuZCB0aGlzLCBmb3IgZXhhbXBsZSwg
-ZW5hYmxlIGFzeW5jIGFuZA0KPiA+PiB3cml0ZS1iYWNrIGNhY2hlLCBhbmQgdGhlbiB0cnkgdG8g
-bWFuYWdlIHRoZSByaXNrIGJ5IGFkZGluZyBhIFVQUyBhbmQvb3INCj4gPj4gYmF0dGVyeSBiYWNr
-ZWQgY2FjaGUgdG8gdGhlaXIgUkFJRCBzZXR1cCAodG8gcmVkdWNlIHRoZSBwcm9iYWJpbGl0eSBv
-Zg0KPiA+PiB1bmNsZWFuIHNodXRkb3duKT8NCj4gPiANCj4gPiBJdCBhbGwgYm9pbHMgZG93biB0
-byB3aGF0IGtpbmQgb2YgY29uc2lzdGVuY3kgZ3VhcmFudGVlcyB5b3UgYXJlDQo+ID4gY29tZm9y
-dGFibGUgbGl2aW5nIHdpdGguIFRoZSBkZWZhdWx0IE5GUyBzZXJ2ZXIgc2V0dXAgb2ZmZXJzIG11
-Y2gNCj4gPiBzdHJvbmdlciBkYXRhIGNvbnNpc3RlbmN5IGd1YXJhbnRlZXMgdGhhbiBsb2NhbCBk
-aXNrLCBhbmQgaXMgdGhlcmVmb3JlDQo+ID4gbGlrZWx5IHRvIGJlIHNsb3dlciB3aGVuIHVzaW5n
-IGNoZWFwIGhhcmR3YXJlLg0KPiA+IA0KPiANCj4gSSdtIGtlZW4gZm9yIGNvbnNpc3RlbmN5LCBi
-ZWNhdXNlIEkgZG9uJ3QgbGlrZSB0aGUgaWRlYSBvZiBjb3JydXB0aW5nDQo+IHNvbWUgc291cmNl
-IGNvZGUgb3IgYSB3aG9sZSBnaXQgcmVwb3NpdG9yeSBmb3IgZXhhbXBsZS4NCj4gDQo+IEhvdyBk
-aWQgeW91IGtub3cgSSdtIHVzaW5nIGNoZWFwIGhhcmR3YXJlPyAgSXQgaXMgYSBIUCBNaWNyb1Nl
-cnZlciwgSQ0KPiBldmVuIGdvdCB0aGUgwqMxMDAgY2FzaC1iYWNrIGNoZXF1ZToNCj4gDQo+IGh0
-dHA6Ly93d3c4LmhwLmNvbS91ay9lbi9jYW1wYWlnbi9mb2N1cy1mb3Itc21iL3NvbHV0aW9uLmh0
-bWwjL3RhYjIvDQo+IA0KPiBTZXJpb3VzbHkgdGhvdWdoLCBJJ3ZlIHdvcmtlZCB3aXRoIHNvbWUg
-dmVyeSBsYXJnZSBhcnJheXMgaW4gbXkgYnVzaW5lc3MNCj4gZW52aXJvbm1lbnQsIGJ1dCBJIHVz
-ZSB0aGlzIGhhcmR3YXJlIGF0IGhvbWUgYmVjYXVzZSBvZiB0aGUgbG93IG5vaXNlDQo+IGFuZCBs
-b3cgaGVhdCBkaXNzaXBhdGlvbiByYXRoZXIgdGhhbiBmb3Igc2F2aW5nIG1vbmV5LCBzbyBJIHdv
-dWxkIGxpa2UNCj4gdG8gdHJ5IGFuZCBnZXQgdGhlIG1vc3Qgb3V0IG9mIGl0IGlmIHBvc3NpYmxl
-IGFuZCBJJ20gdmVyeSBncmF0ZWZ1bCBmb3INCj4gdGhlc2Ugc3VnZ2VzdGlvbnMuDQoNClJpZ2h0
-LiBBbGwgSSdtIHNheWluZyBpcyB0aGF0IHdoZW4gY29tcGFyaW5nIGxvY2FsIGRpc2sgYW5kIE5G
-Uw0KcGVyZm9ybWFuY2UsIHRoZW4gbWFrZSBzdXJlIHRoYXQgeW91IGFyZSBkb2luZyBhbiBhcHBs
-ZXMtdG8tYXBwbGVzDQpjb21wYXJpc29uLg0KVGhlIG1haW4gcmVhc29uIGZvciB3YW50aW5nIHRv
-IHVzZSBORlMgaW4gYSBob21lIHNldHVwIHdvdWxkIHVzdWFsbHkgYmUNCmluIG9yZGVyIHRvIHNp
-bXVsdGFuZW91c2x5IGFjY2VzcyB0aGUgc2FtZSBkYXRhIHRocm91Z2ggc2V2ZXJhbCBjbGllbnRz
-Lg0KSWYgdGhhdCBpcyBub3QgYSBjb25jZXJuLCB0aGVuIHBlcmhhcHMgdHJhbnNmb3JtaW5nIHlv
-dXIgTkZTIHNlcnZlciBpbnRvDQphbiBpU0NTSSB0YXJnZXQgbWlnaHQgZml0IHlvdXIgcGVyZm9y
-bWFuY2UgcmVxdWlyZW1lbnRzIGJldHRlcj8NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4
-IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAu
-Y29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+This patch adds two new APIs get_kernel_pages() and get_kernel_page()
+that may be used to pin a vector of kernel addresses for IO. The initial
+user is expected to be NFS for allowing pages to be written to swap
+using aops->direct_IO(). Strictly speaking, swap-over-NFS only needs
+to pin one page for IO but it makes sense to express the API in terms
+of a vector and add a helper for pinning single pages.
+
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ include/linux/blk_types.h |    2 ++
+ include/linux/fs.h        |    2 ++
+ include/linux/mm.h        |    4 ++++
+ mm/memory.c               |   53 +++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 61 insertions(+)
+
+diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
+index 4053cbd..1e62642 100644
+--- a/include/linux/blk_types.h
++++ b/include/linux/blk_types.h
+@@ -150,6 +150,7 @@ enum rq_flag_bits {
+ 	__REQ_FLUSH_SEQ,	/* request for flush sequence */
+ 	__REQ_IO_STAT,		/* account I/O stat */
+ 	__REQ_MIXED_MERGE,	/* merge of different types, fail separately */
++	__REQ_KERNEL, 		/* direct IO to kernel pages */
+ 	__REQ_NR_BITS,		/* stops here */
+ };
+ 
+@@ -191,5 +192,6 @@ enum rq_flag_bits {
+ #define REQ_IO_STAT		(1 << __REQ_IO_STAT)
+ #define REQ_MIXED_MERGE		(1 << __REQ_MIXED_MERGE)
+ #define REQ_SECURE		(1 << __REQ_SECURE)
++#define REQ_KERNEL		(1 << __REQ_KERNEL)
+ 
+ #endif /* __LINUX_BLK_TYPES_H */
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index d48e8b8..150bc85 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -165,6 +165,8 @@ struct inodes_stat_t {
+ #define READ			0
+ #define WRITE			RW_MASK
+ #define READA			RWA_MASK
++#define KERNEL_READ		(READ|REQ_KERNEL)
++#define KERNEL_WRITE		(WRITE|REQ_KERNEL)
+ 
+ #define READ_SYNC		(READ | REQ_SYNC)
+ #define WRITE_SYNC		(WRITE | REQ_SYNC | REQ_NOIDLE)
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index 58cc925..cf4a730 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -1023,6 +1023,10 @@ int get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
+ 			struct page **pages, struct vm_area_struct **vmas);
+ int get_user_pages_fast(unsigned long start, int nr_pages, int write,
+ 			struct page **pages);
++struct kvec;
++int get_kernel_pages(const struct kvec *iov, int nr_pages, int write,
++			struct page **pages);
++int get_kernel_page(unsigned long start, int write, struct page **pages);
+ struct page *get_dump_page(unsigned long addr);
+ 
+ extern int try_to_release_page(struct page * page, gfp_t gfp_mask);
+diff --git a/mm/memory.c b/mm/memory.c
+index 6105f47..0bc990e7 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -1837,6 +1837,59 @@ next_page:
+ EXPORT_SYMBOL(__get_user_pages);
+ 
+ /*
++ * get_kernel_pages() - pin kernel pages in memory
++ * @kiov:	An array of struct kvec structures
++ * @nr_segs:	number of segments to pin
++ * @write:	pinning for read/write, currently ignored
++ * @pages:	array that receives pointers to the pages pinned.
++ *		Should be at least nr_segs long.
++ *
++ * Returns number of pages pinned. This may be fewer than the number
++ * requested. If nr_pages is 0 or negative, returns 0. If no pages
++ * were pinned, returns -errno. Each page returned must be released
++ * with a put_page() call when it is finished with.
++ */
++int get_kernel_pages(const struct kvec *kiov, int nr_segs, int write,
++		struct page **pages)
++{
++	int seg;
++
++	for (seg = 0; seg < nr_segs; seg++) {
++		if (WARN_ON(kiov[seg].iov_len != PAGE_SIZE))
++			return seg;
++
++		/* virt_to_page sanity checks the PFN */
++		pages[seg] = virt_to_page(kiov[seg].iov_base);
++		page_cache_get(pages[seg]);
++	}
++
++	return seg;
++}
++EXPORT_SYMBOL_GPL(get_kernel_pages);
++
++/*
++ * get_kernel_page() - pin a kernel page in memory
++ * @start:	starting kernel address
++ * @write:	pinning for read/write, currently ignored
++ * @pages:	array that receives pointer to the page pinned.
++ *		Must be at least nr_segs long.
++ *
++ * Returns 1 if page is pinned. If the page was not pinned, returns
++ * -errno. The page returned must be released with a put_page() call
++ * when it is finished with.
++ */
++int get_kernel_page(unsigned long start, int write, struct page **pages)
++{
++	const struct kvec kiov = {
++		.iov_base = (void *)start,
++		.iov_len = PAGE_SIZE
++	};
++
++	return get_kernel_pages(&kiov, 1, write, pages);
++}
++EXPORT_SYMBOL_GPL(get_kernel_page);
++
++/*
+  * fixup_user_fault() - manually resolve a user page fault
+  * @tsk:	the task_struct to use for page fault accounting, or
+  *		NULL if faults are not to be recorded.
+-- 
+1.7.9.2
+
