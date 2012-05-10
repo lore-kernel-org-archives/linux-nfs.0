@@ -1,66 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:49164 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:60449 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757697Ab2EATfz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 May 2012 15:35:55 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q41JZtCe002673
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 1 May 2012 15:35:55 -0400
-Message-ID: <4FA03B11.1020302@RedHat.com>
-Date: Tue, 01 May 2012 15:35:45 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Steve Dickson <steved@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] mounts.nfs: v2 and v3 background mounts should retry
- when server is down.
-References: <1335368390-26767-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1335368390-26767-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1761462Ab2EJTIC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 May 2012 15:08:02 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v4 13/14] NFS: Allocate parsed mount data directly to the nfs_mount_info structure
+Date: Thu, 10 May 2012 15:07:42 -0400
+Message-Id: <1336676863-9698-14-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1336676863-9698-1-git-send-email-bjschuma@netapp.com>
+References: <1336676863-9698-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Bryan Schumaker <bjschuma@netapp.com>
 
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/super.c |   16 +++++++---------
+ 1 file changed, 7 insertions(+), 9 deletions(-)
 
-On 04/25/2012 11:39 AM, Steve Dickson wrote:
-> The point of background mounts is to have the mount
-> retried if the mount fails. This patch allows the v2/v3
-> background mount to proceed in the case when the server
-> is down by not making EOPNOTSUPP a permanent error.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-Committed...
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 5b025b0..fc62701 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2468,7 +2468,6 @@ error_splat_bdi:
+ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
+ 	int flags, const char *dev_name, void *raw_data)
+ {
+-	struct nfs_parsed_mount_data *data = NULL;
+ 	struct nfs_mount_info mount_info = {
+ 		.fill_super = nfs_fill_super,
+ 		.set_security = nfs_set_sb_security,
+@@ -2477,30 +2476,29 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
+ 	struct dentry *mntroot = ERR_PTR(-ENOMEM);
+ 	int error;
+ 
+-	data = nfs_alloc_parsed_mount_data();
++	mount_info.parsed = nfs_alloc_parsed_mount_data();
+ 	mntfh = nfs_alloc_fhandle();
+-	if (data == NULL || mntfh == NULL)
++	if (mount_info.parsed == NULL || mntfh == NULL)
+ 		goto out;
+ 
+ 	/* Validate the mount data */
+-	error = nfs_validate_mount_data(fs_type, raw_data, data, mntfh, dev_name);
++	error = nfs_validate_mount_data(fs_type, raw_data, mount_info.parsed, mntfh, dev_name);
+ 	if (error == NFS_TEXT_DATA)
+-		error = nfs_validate_text_mount_data(raw_data, data, dev_name);
++		error = nfs_validate_text_mount_data(raw_data, mount_info.parsed, dev_name);
+ 	if (error < 0) {
+ 		mntroot = ERR_PTR(error);
+ 		goto out;
+ 	}
+-	mount_info.parsed = data;
+ 
+ #ifdef CONFIG_NFS_V4
+-	if (data->version == 4)
+-		mntroot = nfs4_try_mount(flags, dev_name, data);
++	if (mount_info.parsed->version == 4)
++		mntroot = nfs4_try_mount(flags, dev_name, mount_info.parsed);
+ 	else
+ #endif	/* CONFIG_NFS_V4 */
+ 		mntroot = nfs_try_mount(flags, dev_name, mntfh, &mount_info);
+ 
+ out:
+-	nfs_free_parsed_mount_data(data);
++	nfs_free_parsed_mount_data(mount_info.parsed);
+ 	nfs_free_fhandle(mntfh);
+ 	return mntroot;
+ }
+-- 
+1.7.10.1
 
-steved.
-
-> ---
->  utils/mount/stropts.c |    6 ++++--
->  1 files changed, 4 insertions(+), 2 deletions(-)
-> 
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index d52e21a..e09aa7c 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -911,7 +911,8 @@ static int nfsmount_parent(struct nfsmount_info *mi)
->  	if (nfs_try_mount(mi))
->  		return EX_SUCCESS;
->  
-> -	if (nfs_is_permanent_error(errno)) {
-> +	/* retry background mounts when the server is not up */
-> +	if (nfs_is_permanent_error(errno) && errno != EOPNOTSUPP) {
->  		mount_error(mi->spec, mi->node, errno);
->  		return EX_FAIL;
->  	}
-> @@ -946,7 +947,8 @@ static int nfsmount_child(struct nfsmount_info *mi)
->  		if (nfs_try_mount(mi))
->  			return EX_SUCCESS;
->  
-> -		if (nfs_is_permanent_error(errno))
-> +		/* retry background mounts when the server is not up */
-> +		if (nfs_is_permanent_error(errno) && errno != EOPNOTSUPP)
->  			break;
->  
->  		if (time(NULL) > timeout)
-> -- 1.7.7.6 -- To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org More majordomo info at http://vger.kernel.org/majordomo-info.html
-> 
