@@ -1,38 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:23375 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:30803 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751165Ab2EVNAR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 May 2012 09:00:17 -0400
-Subject: Re: [PATCH 3/4] SUNRPC: Add RPC based upcall mechanism for RPCGSS
- auth
-From: Simo Sorce <simo@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>
-In-Reply-To: <20120522124728.GB891@fieldses.org>
-References: <1337087550-9821-1-git-send-email-simo@redhat.com>
-	 <1337087550-9821-4-git-send-email-simo@redhat.com>
-	 <20120522124728.GB891@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 22 May 2012 09:00:07 -0400
-Message-ID: <1337691607.16840.178.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+	id S1757799Ab2EJJO7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 May 2012 05:14:59 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <20120509002420.GL5091@dastard>
+References: <20120509002420.GL5091@dastard> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <16281.1336508382@redhat.com>
+To: Dave Chinner <david@fromorbit.com>
+Cc: dhowells@redhat.com, adilger@dilger.ca, bfields@fieldses.org,
+        smfrench@gmail.com, ben@decadent.org.uk, Trond.Myklebust@netapp.com,
+        roland@hack.frob.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
+        linux-api@vger.kernel.org, libc-alpha@sourceware.org
+Subject: Re: Extended file stat: Splitting file- and fs-specific info?
+Date: Thu, 10 May 2012 10:14:11 +0100
+Message-ID: <13791.1336641251@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2012-05-22 at 08:47 -0400, J. Bruce Fields wrote:
-> Have you and Stanislav talked about fitting this with the ongoing
-> container work?
+Dave Chinner <david@fromorbit.com> wrote:
 
-No, I wanted to make it work for the normal case first, I assume it will
-be simple enough to change the code to work with containers later.
-Main reason is that I have no way to test containerized stuff.
+> > Also, do Dave Chinner's ideas for indicating five I/O parameters want to be
+> > 32-bit numbers?  Larger?  Smaller?  Can they be log2?
+> 
+> Definitely 32 bit, IMO, as it's not uncommon to see optimal IO sizes
+> in the tens of megabytes on large, high bandwidth storage systems.
+> As for being log2 - that's just making it more complex to use and
+> making code ugly - we'd have to convert to log2 in kernel, then
+> convert back in every single application....
 
-If I understand it correctly, all is needed is to allow attaching to
-different sockets for different containers ?
+ilog2() in the kernel uses the CPU's bit-scan instruction if it has one and
+converting back is just a bitshift operator.
 
-Simo.
+But let's go with 32-bit fields for the moment.  I presume we aren't worried
+about a driver that wants to do a 4GB transfer...
 
--- 
-Simo Sorce * Red Hat, Inc * New York
-
+David
