@@ -1,64 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:52570 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:45969 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756599Ab2EQUzp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 May 2012 16:55:45 -0400
-Date: Thu, 17 May 2012 16:55:42 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2] statd: drop all capabilities from the bounding set
- as well
-Message-ID: <20120517165542.3b10740d@tlielax.poochiereds.net>
-In-Reply-To: <07DEAF11-29E7-4292-A425-2587BF682269@oracle.com>
-References: <1337277259-5101-1-git-send-email-jlayton@redhat.com>
-	<73BC4C93-9192-4FE7-B32E-58345EB28AAD@oracle.com>
-	<20120517161114.5cebfa68@tlielax.poochiereds.net>
-	<07DEAF11-29E7-4292-A425-2587BF682269@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1752368Ab2EKLng (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 May 2012 07:43:36 -0400
+Subject: [RFC PATCH] SUNRPC: protect service sockets lists during per-net
+	shutdown
+To: bfields@fieldses.org, Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Fri, 11 May 2012 15:41:56 +0400
+Message-ID: <20120511114126.8399.2554.stgit@localhost.localdomain>
+In-Reply-To: <20120509143518.GB24233@fieldses.org>
+References: <20120509143518.GB24233@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 17 May 2012 16:20:40 -0400
-Chuck Lever <chuck.lever@oracle.com> wrote:
+Service sv_tempsocks and sv_permsocks lists are accessible by tasks with
+different network namespaces, and thus per-net service destruction must be
+protected.
+These lists are protected by service sv_lock. So lets wrap list munipulations
+with this lock and move tranports destruction outside wrapped area to prevent
+deadlocks.
 
-> 
-> On May 17, 2012, at 4:11 PM, Jeff Layton wrote:
-> 
-> > On Thu, 17 May 2012 14:52:58 -0400
-> > Chuck Lever <chuck.lever@oracle.com> wrote:
-> > 
-> >> 
-> >> On May 17, 2012, at 1:54 PM, Jeff Layton wrote:
-> >> 
-> >>> statd drops all capabilities except for CAP_NET_BIND when it starts. It's
-> >>> possible though that if it ever had a compromise that an attacker would be
-> >>> able to invoke a setuid process (or something with file capabilities) in
-> >>> order to reinstate some caps.
-> >>> 
-> >>> This could happen as a result of the daemon becoming compromised, or
-> >>> possibly as a result of the ha-callout program becoming compromised.
-> >> 
-> >> Generally, I wonder what our exposure to this attack for a statd built without capability support.  Just musing out loud.
-> >> 
-> > 
-> > It is difficult to qualify this without a specific attack in mind. The
-> > story I've always gotten from those who work with capabilities for a
-> > living however is that unless you prune the bounding set, the job isn't
-> > complete.
-> 
-> My question was muddled.  I'll try again.  If statd is built with "--disable-caps", then I think statd won't drop capabilities at all.  Are we agreeing that nothing can be done in that case to mitigate this kind of attack?
-> 
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ net/sunrpc/svc_xprt.c |   29 +++++++++++++++++++++++++----
+ 1 files changed, 25 insertions(+), 4 deletions(-)
 
-Probably not...
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 8195c6a..233f993 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -954,7 +954,8 @@ static void svc_clear_pools(struct svc_serv *serv, struct net *net)
+ 	}
+ }
+ 
+-static void svc_clear_list(struct list_head *xprt_list, struct net *net)
++static void svc_clear_list(struct list_head *xprt_list, struct net *net,
++			   struct list_head *kill_list)
+ {
+ 	struct svc_xprt *xprt;
+ 	struct svc_xprt *tmp;
+@@ -962,7 +963,8 @@ static void svc_clear_list(struct list_head *xprt_list, struct net *net)
+ 	list_for_each_entry_safe(xprt, tmp, xprt_list, xpt_list) {
+ 		if (xprt->xpt_net != net)
+ 			continue;
+-		svc_delete_xprt(xprt);
++		list_move(&xprt->xpt_list, kill_list);
++		set_bit(XPT_DETACHED, &xprt->xpt_flags);
+ 	}
+ 	list_for_each_entry(xprt, xprt_list, xpt_list)
+ 		BUG_ON(xprt->xpt_net == net);
+@@ -970,6 +972,15 @@ static void svc_clear_list(struct list_head *xprt_list, struct net *net)
+ 
+ void svc_close_net(struct svc_serv *serv, struct net *net)
+ {
++	struct svc_xprt *xprt;
++	LIST_HEAD(kill_list);
++
++	/*
++	 * Protect the lists, since they can be by tasks with different network
++	 * namespace contexts.
++	 */
++	spin_lock(&serv->sv_lock);
++
+ 	svc_close_list(&serv->sv_tempsocks, net);
+ 	svc_close_list(&serv->sv_permsocks, net);
+ 
+@@ -979,8 +990,18 @@ void svc_close_net(struct svc_serv *serv, struct net *net)
+ 	 * svc_enqueue will not add new entries without taking the
+ 	 * sp_lock and checking XPT_BUSY.
+ 	 */
+-	svc_clear_list(&serv->sv_tempsocks, net);
+-	svc_clear_list(&serv->sv_permsocks, net);
++	svc_clear_list(&serv->sv_tempsocks, net, &kill_list);
++	svc_clear_list(&serv->sv_permsocks, net, &kill_list);
++
++	spin_unlock(&serv->sv_lock);
++
++	/*
++	 * Destroy collected transports.
++	 * Note: tranports has been marked as XPT_DETACHED on svc_clear_list(),
++	 * so no need to protect againt list_del() in svc_delete_xprt().
++	 */
++	list_for_each_entry(xprt, &kill_list, xpt_list)
++		svc_delete_xprt(xprt);
+ }
+ 
+ /*
 
-If a build specifies --disable-caps, then I take that to mean that it
-shouldn't try to do anything with capabilities. I see that increased
-exposure as the price you pay for not building against libcap.
-
-Given that, I'll ensure that we don't attempt to modify the bounding
-set too in that case...
-
--- 
-Jeff Layton <jlayton@redhat.com>
