@@ -1,56 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:65005 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756545Ab2EITP5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 May 2012 15:15:57 -0400
-Received: from vmwexceht02-prd.hq.netapp.com (vmwexceht02-prd.hq.netapp.com [10.106.76.240])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q49JF2KU026565
-	for <linux-nfs@vger.kernel.org>; Wed, 9 May 2012 12:15:41 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: linux-nfs list <linux-nfs@vger.kernel.org>,
-        "Isaman, Fred" <Fred.Isaman@netapp.com>
-Subject: Re: [PATCH] NFS: Prevent a deadlock in the new read and write code
-Date: Wed, 9 May 2012 19:15:14 +0000
-Message-ID: <1336590915.3127.135.camel@lade.trondhjem.org>
-References: <1336582284-8558-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <A96F9C32-8B2A-441A-BBE9-91747BB585FF@netapp.com>
-	 <31612217-5DE3-43D0-BFAF-40A23530FEC8@netapp.com>
-In-Reply-To: <31612217-5DE3-43D0-BFAF-40A23530FEC8@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-qa0-f46.google.com ([209.85.216.46]:41865 "EHLO
+	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757962Ab2EKNpa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 May 2012 09:45:30 -0400
+Received: by qadb17 with SMTP id b17so1246328qad.19
+        for <linux-nfs@vger.kernel.org>; Fri, 11 May 2012 06:45:29 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/4] nfsd: clean up share access with accessor functions
+Date: Fri, 11 May 2012 09:45:10 -0400
+Message-Id: <1336743914-944-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTA1LTA5IGF0IDE4OjIyICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
-PiBPbiBNYXkgOSwgMjAxMiwgYXQgMjoyMCBQTSwgQWRhbXNvbiwgRHJvcyB3cm90ZToNCj4gDQo+
-ID4gQUNLIC0gVGhpcyBmaXhlcyB0aGUgZXJyYW50IGJlaGF2aW9yIEkgd2FzIHNlZWluZy4NCj4g
-PiANCj4gPiBCZWZvcmUgKG9uIGFueSBwcm90b2NvbCB2ZXJzaW9uIG1vdW50ZWQgYXQgL21udCk6
-DQo+ID4gJCBkZCBpZj0vZGV2L3plcm8gb2Y9emVyb2ZpbGUgYnM9MTAwMjQgY291bnQ9MTAwMCA7
-IHdoaWxlIHRydWU7IGRvIChybSAtcmYgL21udC9mb28gJiYgZWNobyBybSBvaykgfHwgbHMgLWxh
-IC9tbnQvZm9vIDsgbWtkaXIgLXAgL21udC9mb28vOyBjcCB6ZXJvZmlsZSAvbW50L2Zvby9maWxl
-IDsgZG9uZQ0KPiA+IDEwMDArMCByZWNvcmRzIGluDQo+ID4gMTAwMCswIHJlY29yZHMgb3V0DQo+
-ID4gMTAwMjQwMDAgYnl0ZXMgKDEwIE1CKSBjb3BpZWQsIDAuMTQ2NzM4IHMsIDY4LjMgTUIvcw0K
-PiA+IHJtIG9rDQo+ID4gcm06IGNhbm5vdCByZW1vdmUgYC9tbnQvZm9vJzogRGlyZWN0b3J5IG5v
-dCBlbXB0eQ0KPiA+IGxzOiAvbW50L2Zvby8ubmZzMDAwMDAwMDAwMDA0MDg5ZDAwMDAwMDAxOiBO
-byBzdWNoIGZpbGUgb3IgZGlyZWN0b3J5DQo+ID4gdG90YWwgOTgwMA0KPiA+IGRyd3hyd3hyLXgg
-MiBkcm9zIGRyb3MgICAgIDQwOTYgTWF5ICA5IDA5OjQ2IC4NCj4gPiBkcnd4cnd4cnd4IDUgcm9v
-dCByb290ICAgICA0MDk2IE1heSAgOSAwOTo0NiAuLg0KPiA+IC1ydy1ydy1yLS0gMCBkcm9zIGRy
-b3MgMTAwMjQwMDAgTWF5ICA5IDA5OjQ2IC5uZnMwMDAwMDAwMDAwMDQwODlkMDAwMDAwMDENCj4g
-PiBybTogY2Fubm90IHJlbW92ZSBgL21udC9mb28nOiBEaXJlY3Rvcnkgbm90IGVtcHR5DQo+ID4g
-Li4uDQo+ID4gDQo+IA0KPiBPb3BzLCB0aGlzIGlzIGFmdGVyIHRoZSBwYXRjaCBpcyBhcHBsaWVk
-Og0KPiANCj4gPiAkIGRkIGlmPS9kZXYvemVybyBvZj16ZXJvZmlsZSBicz0xMDAyNCBjb3VudD0x
-MDAwIDsgd2hpbGUgdHJ1ZTsgZG8gKHJtIC1yZiAvbW50L2ZvbyAmJiBlY2hvIHJtIG9rKSB8fCBs
-cyAtbGEgL21udC9mb28gOyBta2RpciAtcCAvbW50L2Zvby87IGNwIHplcm9maWxlIC9tbnQvZm9v
-L2ZpbGUgOyBkb25lDQo+ID4gMTAwMCswIHJlY29yZHMgaW4NCj4gPiAxMDAwKzAgcmVjb3JkcyBv
-dXQNCj4gPiAxMDAyNDAwMCBieXRlcyAoMTAgTUIpIGNvcGllZCwgMC4xMzc1OTYgcywgNzIuOSBN
-Qi9zDQo+ID4gcm0gb2sNCj4gPiBybSBvaw0KPiA+IHJtIG9rDQo+ID4gcm0gb2sNCj4gPiAuLi4N
-Cj4gPiANCj4gPiAtZHJvcw0KDQpPSy4uLiBIYXZpbmcgdGhvdWdodCBhIGJpdCBtb3JlIGFib3V0
-IHRoZSBwcm9ibGVtLCBJJ2QgcHJlZmVyIHRvIHNlZSB0aGUNCndyaXRlIGNvZGUgZG8gdGhlIHNh
-bWUgcmVhbGx5IGFzIHRoZSByZWFkIGNvZGUgaXMgZG9pbmcuIGkuZS4gcmVsZWFzZQ0KdGhlIG5m
-c19wYWdlIGFmdGVyIHRoZSBwYWdlX3dyaXRlYmFjayBsb2NrIGhhcyBiZWVuIHJlbGVhc2VkLg0K
-DQpJJ3ZlIGp1c3Qgd3JpdHRlbiBhIHNlcmllcyBvZiBwYXRjaGVzIHRvIGRvIHRoaXMuIFRoZSBm
-aXJzdCBwYXRjaCBpbiB0aGUNCnNlcmllcyBpcyB0aGUgYWN0dWFsIGZpeC4gVGhlIHJlc3QgaXMg
-Y2xlYW4gdXBzIGluIG9yZGVyIHRvIG1ha2UgdGhlDQpjb2RlIGEgYml0IG1vcmUgcmVhZGFibGUu
-Li4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0K
-DQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+While looking over the share/deny mode stuff in knfsd, I ended up doing
+some cleanup to make the code a bit easier to understand. In the future
+this may help us by encapsulating the share/deny code to some degree.
+
+This set should introduce no behavioral changes, it's just cleanup for
+now, but is probably reasonable for 3.5.
+
+Jeff Layton (4):
+  nfsd: consolidate set_access and set_deny
+  nfsd: make test_share a bool return
+  nfsd: wrap accesses to st_access_bmap
+  nfsd: wrap all accesses to st_deny_bmap
+
+ fs/nfsd/nfs4state.c |  149 ++++++++++++++++++++++++++++++++-------------------
+ 1 files changed, 93 insertions(+), 56 deletions(-)
+
+-- 
+1.7.7.6
+
