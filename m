@@ -1,81 +1,351 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60145 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:36664 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757929Ab2EAPpy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 May 2012 11:45:54 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/6] nfsd4: fix missing "static"
-Date: Tue,  1 May 2012 11:45:45 -0400
-Message-Id: <1335887149-30420-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1335887149-30420-1-git-send-email-bfields@redhat.com>
-References: <1335887149-30420-1-git-send-email-bfields@redhat.com>
+	id S1760292Ab2EKQKe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 May 2012 12:10:34 -0400
+Message-ID: <4FAD39E6.5020905@netapp.com>
+Date: Fri, 11 May 2012 12:10:14 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        Lev Solomonov <solo@tonian.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 1/3] NFS: Create an NFS v3 stat_to_errno()
+References: <1336682840-10799-1-git-send-email-bjschuma@netapp.com> <CAOdHTRDOxOvPo-uAOGNMnF2+Nf+p0Ni0KoaZTvh8kM2QU=r1oQ@mail.gmail.com> <4FAD08BE.4060408@netapp.com> <EE86D78C-D697-42E7-AD75-3168008B7FFB@netapp.com>
+In-Reply-To: <EE86D78C-D697-42E7-AD75-3168008B7FFB@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On 05/11/2012 10:32 AM, Myklebust, Trond wrote:
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> Yes, please resend
+
+
+Here is a new patch with a fixed commit message.  Let me know if I should rename everything to "NFS3ERR_*"
+
+- Bryan
+
+>From 49585b06eee64b0695422afa759ae6c791eb8fe4 Mon Sep 17 00:00:00 2001
+From: Bryan Schumaker <bjschuma@netapp.com>
+Date: Mon, 30 Apr 2012 14:36:30 -0400
+Subject: [PATCH 1/3] NFS: Create an NFS v3 stat_to_errno()
+
+In theory, NFS v3 can have different error versions than NFS v2. v4 is
+already using its own nfs4_stat_to_errno() to map error codes, so
+rather than create something in the generic client for v2 and v3 to
+share I instead give v3 its own function.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfsd/export.c      |    2 +-
- fs/nfsd/nfs4recover.c |    2 +-
- fs/nfsd/nfs4state.c   |    2 +-
- fs/nfsd/nfs4xdr.c     |    2 +-
- 4 files changed, 4 insertions(+), 4 deletions(-)
+ fs/nfs/internal.h |    1 -
+ fs/nfs/nfs2xdr.c  |    3 +-
+ fs/nfs/nfs3xdr.c  |  103 +++++++++++++++++++++++++++++++++++++++++++----------
+ 3 files changed, 87 insertions(+), 20 deletions(-)
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index dcb52b8..ec16364 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -706,7 +706,7 @@ static struct cache_head *svc_export_alloc(void)
- 		return NULL;
- }
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 1855e8f..4cf76e9 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -207,7 +207,6 @@ extern void nfs_pgheader_init(struct nfs_pageio_descriptor *desc,
+ void nfs_set_pgio_error(struct nfs_pgio_header *hdr, int error, loff_t pos);
  
--struct cache_detail svc_export_cache_template = {
-+static struct cache_detail svc_export_cache_template = {
- 	.owner		= THIS_MODULE,
- 	.hash_size	= EXPORT_HASHMAX,
- 	.name		= "nfsd.export",
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index 4767429..2b8e9a9 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -1029,7 +1029,7 @@ rpc_pipefs_event(struct notifier_block *nb, unsigned long event, void *ptr)
- 	return ret;
- }
+ /* nfs2xdr.c */
+-extern int nfs_stat_to_errno(enum nfs_stat);
+ extern struct rpc_procinfo nfs_procedures[];
+ extern int nfs2_decode_dirent(struct xdr_stream *,
+ 				struct nfs_entry *, int);
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index c99008e..baf759b 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -61,6 +61,7 @@
+ #define NFS_readdirres_sz	(1)
+ #define NFS_statfsres_sz	(1+NFS_info_sz)
  
--struct notifier_block nfsd4_cld_block = {
-+static struct notifier_block nfsd4_cld_block = {
- 	.notifier_call = rpc_pipefs_event,
- };
++static int nfs_stat_to_errno(enum nfs_stat);
  
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 307dd9c..7fe95ec 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4052,7 +4052,7 @@ static void get_lock_access(struct nfs4_ol_stateid *lock_stp, u32 access)
- 	__set_bit(access, &lock_stp->st_access_bmap);
- }
- 
--__be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate, struct nfs4_ol_stateid *ost, struct nfsd4_lock *lock, struct nfs4_ol_stateid **lst, bool *new)
-+static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate, struct nfs4_ol_stateid *ost, struct nfsd4_lock *lock, struct nfs4_ol_stateid **lst, bool *new)
+ /*
+  * While encoding arguments, set up the reply buffer in advance to
+@@ -1111,7 +1112,7 @@ static const struct {
+  * Returns a local errno value, or -EIO if the NFS status code is
+  * not recognized.  This function is used jointly by NFSv2 and NFSv3.
+  */
+-int nfs_stat_to_errno(enum nfs_stat status)
++static int nfs_stat_to_errno(enum nfs_stat status)
  {
- 	struct nfs4_file *fi = ost->st_file;
- 	struct nfs4_openowner *oo = openowner(ost->st_stateowner);
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index bcd8904..59c5184 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3399,7 +3399,7 @@ nfsd4_encode_sequence(struct nfsd4_compoundres *resp, int nfserr,
- 	return 0;
+ 	int i;
+ 
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index ee284c2..902de48 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -86,6 +86,8 @@
+ 				XDR_QUADLEN(NFS_ACL_INLINE_BUFSIZE))
+ #define ACL3_setaclres_sz	(1+NFS3_post_op_attr_sz)
+ 
++static int nfs3_stat_to_errno(enum nfs_stat);
++
+ /*
+  * Map file type to S_IFMT bits
+  */
+@@ -1388,7 +1390,7 @@ static int nfs3_xdr_dec_getattr3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_default:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
  }
  
--__be32
-+static __be32
- nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, int nfserr,
- 			  struct nfsd4_test_stateid *test_stateid)
- {
+ /*
+@@ -1427,7 +1429,7 @@ static int nfs3_xdr_dec_setattr3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1475,7 +1477,7 @@ out_default:
+ 	error = decode_post_op_attr(xdr, result->dir_attr);
+ 	if (unlikely(error))
+ 		goto out;
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1516,7 +1518,7 @@ static int nfs3_xdr_dec_access3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_default:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1557,7 +1559,7 @@ static int nfs3_xdr_dec_readlink3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_default:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1639,7 +1641,7 @@ static int nfs3_xdr_dec_read3res(struct rpc_rqst *req, struct xdr_stream *xdr,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1709,7 +1711,7 @@ static int nfs3_xdr_dec_write3res(struct rpc_rqst *req, struct xdr_stream *xdr,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1773,7 +1775,7 @@ out_default:
+ 	error = decode_wcc_data(xdr, result->dir_attr);
+ 	if (unlikely(error))
+ 		goto out;
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1812,7 +1814,7 @@ static int nfs3_xdr_dec_remove3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1856,7 +1858,7 @@ static int nfs3_xdr_dec_rename3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -1899,7 +1901,7 @@ static int nfs3_xdr_dec_link3res(struct rpc_rqst *req, struct xdr_stream *xdr,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /**
+@@ -2091,7 +2093,7 @@ out_default:
+ 	error = decode_post_op_attr(xdr, result->dir_attr);
+ 	if (unlikely(error))
+ 		goto out;
+-	return nfs_stat_to_errno(status);
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -2235,7 +2237,7 @@ static int nfs3_xdr_dec_fsinfo3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -2298,7 +2300,7 @@ static int nfs3_xdr_dec_pathconf3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ /*
+@@ -2339,7 +2341,7 @@ static int nfs3_xdr_dec_commit3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_status:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ #ifdef CONFIG_NFS_V3_ACL
+@@ -2404,7 +2406,7 @@ static int nfs3_xdr_dec_getacl3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_default:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ static int nfs3_xdr_dec_setacl3res(struct rpc_rqst *req,
+@@ -2423,11 +2425,76 @@ static int nfs3_xdr_dec_setacl3res(struct rpc_rqst *req,
+ out:
+ 	return error;
+ out_default:
+-	return nfs_stat_to_errno(status);
++	return nfs3_stat_to_errno(status);
+ }
+ 
+ #endif  /* CONFIG_NFS_V3_ACL */
+ 
++
++/*
++ * We need to translate between nfs status return values and
++ * the local errno values which may not be the same.
++ */
++static const struct {
++	int stat;
++	int errno;
++} nfs_errtbl[] = {
++	{ NFS_OK,		0		},
++	{ NFSERR_PERM,		-EPERM		},
++	{ NFSERR_NOENT,		-ENOENT		},
++	{ NFSERR_IO,		-errno_NFSERR_IO},
++	{ NFSERR_NXIO,		-ENXIO		},
++/*	{ NFSERR_EAGAIN,	-EAGAIN		}, */
++	{ NFSERR_ACCES,		-EACCES		},
++	{ NFSERR_EXIST,		-EEXIST		},
++	{ NFSERR_XDEV,		-EXDEV		},
++	{ NFSERR_NODEV,		-ENODEV		},
++	{ NFSERR_NOTDIR,	-ENOTDIR	},
++	{ NFSERR_ISDIR,		-EISDIR		},
++	{ NFSERR_INVAL,		-EINVAL		},
++	{ NFSERR_FBIG,		-EFBIG		},
++	{ NFSERR_NOSPC,		-ENOSPC		},
++	{ NFSERR_ROFS,		-EROFS		},
++	{ NFSERR_MLINK,		-EMLINK		},
++	{ NFSERR_NAMETOOLONG,	-ENAMETOOLONG	},
++	{ NFSERR_NOTEMPTY,	-ENOTEMPTY	},
++	{ NFSERR_DQUOT,		-EDQUOT		},
++	{ NFSERR_STALE,		-ESTALE		},
++	{ NFSERR_REMOTE,	-EREMOTE	},
++#ifdef EWFLUSH
++	{ NFSERR_WFLUSH,	-EWFLUSH	},
++#endif
++	{ NFSERR_BADHANDLE,	-EBADHANDLE	},
++	{ NFSERR_NOT_SYNC,	-ENOTSYNC	},
++	{ NFSERR_BAD_COOKIE,	-EBADCOOKIE	},
++	{ NFSERR_NOTSUPP,	-ENOTSUPP	},
++	{ NFSERR_TOOSMALL,	-ETOOSMALL	},
++	{ NFSERR_SERVERFAULT,	-EREMOTEIO	},
++	{ NFSERR_BADTYPE,	-EBADTYPE	},
++	{ NFSERR_JUKEBOX,	-EJUKEBOX	},
++	{ -1,			-EIO		}
++};
++
++/**
++ * nfs3_stat_to_errno - convert an NFS status code to a local errno
++ * @status: NFS status code to convert
++ *
++ * Returns a local errno value, or -EIO if the NFS status code is
++ * not recognized.  This function is used jointly by NFSv2 and NFSv3.
++ */
++static int nfs3_stat_to_errno(enum nfs_stat status)
++{
++	int i;
++
++	for (i = 0; nfs_errtbl[i].stat != -1; i++) {
++		if (nfs_errtbl[i].stat == (int)status)
++			return nfs_errtbl[i].errno;
++	}
++	dprintk("NFS: Unrecognized nfs status value: %u\n", status);
++	return nfs_errtbl[i].errno;
++}
++
++
+ #define PROC(proc, argtype, restype, timer)				\
+ [NFS3PROC_##proc] = {							\
+ 	.p_proc      = NFS3PROC_##proc,					\
 -- 
-1.7.9.5
+1.7.10.1
+
+
+> 
+> Cheers
+>  Trond
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
+> On May 11, 2012, at 8:40 AM, Bryan Schumaker wrote:
+> 
+>> On 05/11/2012 04:12 AM, Lev Solomonov wrote:
+>>
+>>> On Thu, May 10, 2012 at 11:47 PM,  <bjschuma@netapp.com> wrote:
+>>>> From: Bryan Schumaker <bjschuma@netapp.com>
+>>>>
+>>>> In theory, NFS v3 can have different error versions than NFS v2. v4 is
+>>>> already using its own nfs4_stat_to_errno() to mapp error codes, so
+>>>
+>>> ^mapp^map ?
+>>
+>>
+>> Good catch.  Trond, should I resend the patch?
+>>
+> 
+
 
