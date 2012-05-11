@@ -1,100 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55359 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758733Ab2FAA4F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 31 May 2012 20:56:05 -0400
-Date: Thu, 31 May 2012 20:56:03 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>
-Subject: Re: nfsd changes for 3.5
-Message-ID: <20120601005603.GA28542@fieldses.org>
-References: <20120531182457.GB25955@fieldses.org>
- <CA+55aFwGpVM2Dbe02gL5=cGJZ_t3b4PTAhqwrs5MHjsb5R6BaA@mail.gmail.com>
- <20120531200138.GD25955@fieldses.org>
- <CA+55aFyuHz5Vn8G_kpKgnSStX0s125gwwQij2KXmnhfwaajhkg@mail.gmail.com>
- <20120531205300.GG25955@fieldses.org>
- <CA+55aFxY+WJmMu=1Wvdh24kK0JWEuQ1vwcqZdaNDbp1_wUsZ4A@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <CA+55aFxY+WJmMu=1Wvdh24kK0JWEuQ1vwcqZdaNDbp1_wUsZ4A@mail.gmail.com>
+Received: from mail-qc0-f174.google.com ([209.85.216.174]:48618 "EHLO
+	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759318Ab2EKNpk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 May 2012 09:45:40 -0400
+Received: by qcro28 with SMTP id o28so1953866qcr.19
+        for <linux-nfs@vger.kernel.org>; Fri, 11 May 2012 06:45:39 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/4] nfsd: consolidate set_access and set_deny
+Date: Fri, 11 May 2012 09:45:11 -0400
+Message-Id: <1336743914-944-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1336743914-944-1-git-send-email-jlayton@redhat.com>
+References: <1336743914-944-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 31, 2012 at 03:14:57PM -0700, Linus Torvalds wrote:
-> On Thu, May 31, 2012 at 1:53 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Thu, May 31, 2012 at 01:17:26PM -0700, Linus Torvalds wrote:
-> >
-> > Uh, that means ditching some work in my public git tree.  Which I
-> > haven't rebased in years.  So, a stupid process question; would you
-> > rather I:
-> >
-> >        - continue to be strict about rebasing and apply a bunch of
-> >          reverts?
-> >        - ditch it and start over?
-> 
-> I think in this case rebasing is the right thing to do.
-> 
-> I hate rebasing, but what I hate about it is how people who use it as
-> a development model cause problems for anybody else. I don't think it
-> will cause problems in this particular case, but if somebody hollers,
-> let me know.
+These functions are identical. Also, rename them to bmap_to_share_mode
+to better reflect what they do, and have them just return the result
+instead of passing in a pointer to the storage location.
 
-OK, will do.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   24 +++++++-----------------
+ 1 files changed, 7 insertions(+), 17 deletions(-)
 
-For now, would you mind pulling this?:
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 7f71c69..64aeaa0 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -447,34 +447,24 @@ static struct list_head close_lru;
+  *
+  * which we should reject.
+  */
+-static void
+-set_access(unsigned int *access, unsigned long bmap) {
++static unsigned int
++bmap_to_share_mode(unsigned long bmap) {
+ 	int i;
++	unsigned int access = 0;
+ 
+-	*access = 0;
+ 	for (i = 1; i < 4; i++) {
+ 		if (test_bit(i, &bmap))
+-			*access |= i;
+-	}
+-}
+-
+-static void
+-set_deny(unsigned int *deny, unsigned long bmap) {
+-	int i;
+-
+-	*deny = 0;
+-	for (i = 0; i < 4; i++) {
+-		if (test_bit(i, &bmap))
+-			*deny |= i ;
++			access |= i;
+ 	}
++	return access;
+ }
+ 
+ static int
+ test_share(struct nfs4_ol_stateid *stp, struct nfsd4_open *open) {
+ 	unsigned int access, deny;
+ 
+-	set_access(&access, stp->st_access_bmap);
+-	set_deny(&deny, stp->st_deny_bmap);
++	access = bmap_to_share_mode(stp->st_access_bmap);
++	deny = bmap_to_share_mode(stp->st_deny_bmap);
+ 	if ((access & open->op_share_deny) || (deny & open->op_share_access))
+ 		return 0;
+ 	return 1;
+-- 
+1.7.7.6
 
-	git://linux-nfs.org/~bfields/linux.git for-3.5-take-2
-
-It's literally just the previous tree cut off before the delegation
-stuff--so it's been in -next for a month, etc.
-
---b.
-
-Jeff Layton (3):
-      nfsd: trivial: remove unused variable from nfsd4_lock
-      nfsd: don't use locks_in_grace to determine whether to call nfs4_grace_end
-      nfsd: trivial: use SEEK_SET instead of 0 in vfs_llseek
-
-Simo Sorce (2):
-      svcauth: remove unused define
-      SUNRPC: split upcall function to extract reusable parts
-
-Stanislav Kinsbursky (18):
-      nfsd: use passed cache_detail pointer expkey_parse()
-      nfsd: add link to owner cache detail to svc_export structure
-      nfsd: use cache detail pointer from svc_export structure on cache put
-      nfsd: use exp_put() for svc_export_cache put
-      nfsd: pass svc_export_cache pointer as private data to "exports" seq file ops
-      nfsd: use hash table from cache detail in nfsd export seq ops
-      nfsd: pass pointer to expkey cache down to stack wherever possible.
-      NFSd: remove hard-coded dereferences to name-to-id and id-to-name caches
-      Lockd: pass network namespace to creation and destruction routines
-      nfsd: pass network context to export caches init/shutdown routines
-      nfsd: pass pointer to export cache down to stack wherever possible.
-      nfsd: make export cache allocated per network namespace context
-      nfsd: make expkey cache allocated per network namespace context
-      nfsd: allocate export and expkey caches in per-net operations.
-      nfsd: pass network context to idmap init/exit functions
-      nfsd: make id-to-name cache allocated per network namespace context
-      nfsd: make name-to-id cache allocated per network namespace context
-      nfsd: allocate id-to-name and name-to-id caches in per-net operations.
-
- fs/lockd/clntlock.c               |   13 +--
- fs/lockd/svc.c                    |    7 +-
- fs/nfsd/export.c                  |  175 ++++++++++++++++++++++---------------
- fs/nfsd/idmap.h                   |    8 +-
- fs/nfsd/netns.h                   |    6 ++
- fs/nfsd/nfs4idmap.c               |  109 +++++++++++++----------
- fs/nfsd/nfs4state.c               |   13 ++-
- fs/nfsd/nfsctl.c                  |   55 ++++++++----
- fs/nfsd/nfsfh.c                   |    2 +-
- fs/nfsd/nfssvc.c                  |    8 +-
- fs/nfsd/vfs.c                     |    2 +-
- include/linux/lockd/bind.h        |    4 +-
- include/linux/nfsd/export.h       |   13 ++-
- include/linux/sunrpc/svcauth.h    |    3 +-
- net/sunrpc/auth_gss/svcauth_gss.c |  100 +++++++++++++--------
- net/sunrpc/svcauth_unix.c         |   13 +--
- 16 files changed, 322 insertions(+), 209 deletions(-)
