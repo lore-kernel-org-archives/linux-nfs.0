@@ -1,82 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50080 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:56820 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757701Ab2EaBuU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 May 2012 21:50:20 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Jan Kara <jack@suse.cz>, Steven Whitehouse <swhiteho@redhat.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/6] gfs2: Get rid of I_MUTEX_QUOTA usage
-Date: Wed, 30 May 2012 21:50:11 -0400
-Message-Id: <1338429016-20119-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1338429016-20119-1-git-send-email-bfields@redhat.com>
-References: <1338429016-20119-1-git-send-email-bfields@redhat.com>
+	id S1760421Ab2EKOcg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 May 2012 10:32:36 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+CC: Lev Solomonov <solo@tonian.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 1/3] NFS: Create an NFS v3 stat_to_errno()
+Date: Fri, 11 May 2012 14:32:34 +0000
+Message-ID: <C4A6A7FE-5F58-45C5-AFA2-0AF47C6811B2@netapp.com>
+References: <1336682840-10799-1-git-send-email-bjschuma@netapp.com>
+ <CAOdHTRDOxOvPo-uAOGNMnF2+Nf+p0Ni0KoaZTvh8kM2QU=r1oQ@mail.gmail.com>
+ <4FAD08BE.4060408@netapp.com>
+In-Reply-To: <4FAD08BE.4060408@netapp.com>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Jan Kara <jack@suse.cz>
+Yes, please resend
 
-GFS2 uses i_mutex on its system quota inode to synchronize writes to
-quota file. Since this is an internal inode to GFS2 (not part of directory
-hiearchy or visible by user) we are safe to define locking rules for it. So
-let's just get it its own locking class to make it clear.
+Cheers
+  Trond
+--
+Trond Myklebust
+Linux NFS client maintainer
 
-CC: Steven Whitehouse <swhiteho@redhat.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/gfs2/ops_fstype.c |    8 ++++++++
- fs/gfs2/quota.c      |    2 +-
- 2 files changed, 9 insertions(+), 1 deletion(-)
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
-diff --git a/fs/gfs2/ops_fstype.c b/fs/gfs2/ops_fstype.c
-index b8c250f..c714ef7 100644
---- a/fs/gfs2/ops_fstype.c
-+++ b/fs/gfs2/ops_fstype.c
-@@ -19,6 +19,7 @@
- #include <linux/mount.h>
- #include <linux/gfs2_ondisk.h>
- #include <linux/quotaops.h>
-+#include <linux/lockdep.h>
- 
- #include "gfs2.h"
- #include "incore.h"
-@@ -766,6 +767,7 @@ fail:
- 	return error;
- }
- 
-+static struct lock_class_key gfs2_quota_imutex_key;
- 
- static int init_inodes(struct gfs2_sbd *sdp, int undo)
- {
-@@ -803,6 +805,12 @@ static int init_inodes(struct gfs2_sbd *sdp, int undo)
- 		fs_err(sdp, "can't get quota file inode: %d\n", error);
- 		goto fail_rindex;
- 	}
-+	/*
-+	 * i_mutex on quota files is special. Since this inode is hidden system
-+	 * file, we are safe to define locking ourselves.
-+	 */
-+	lockdep_set_class(&sdp->sd_quota_inode->i_mutex,
-+			  &gfs2_quota_imutex_key);
- 
- 	error = gfs2_rindex_update(sdp);
- 	if (error)
-diff --git a/fs/gfs2/quota.c b/fs/gfs2/quota.c
-index b97178e..8ed70e7 100644
---- a/fs/gfs2/quota.c
-+++ b/fs/gfs2/quota.c
-@@ -772,7 +772,7 @@ static int do_sync(unsigned int num_qd, struct gfs2_quota_data **qda)
- 		return -ENOMEM;
- 
- 	sort(qda, num_qd, sizeof(struct gfs2_quota_data *), sort_qd, NULL);
--	mutex_lock_nested(&ip->i_inode.i_mutex, I_MUTEX_QUOTA);
-+	mutex_lock(&ip->i_inode.i_mutex);
- 	for (qx = 0; qx < num_qd; qx++) {
- 		error = gfs2_glock_nq_init(qda[qx]->qd_gl, LM_ST_EXCLUSIVE,
- 					   GL_NOCACHE, &ghs[qx]);
--- 
-1.7.9.5
+On May 11, 2012, at 8:40 AM, Bryan Schumaker wrote:
+
+> On 05/11/2012 04:12 AM, Lev Solomonov wrote:
+> 
+>> On Thu, May 10, 2012 at 11:47 PM,  <bjschuma@netapp.com> wrote:
+>>> From: Bryan Schumaker <bjschuma@netapp.com>
+>>> 
+>>> In theory, NFS v3 can have different error versions than NFS v2. v4 is
+>>> already using its own nfs4_stat_to_errno() to mapp error codes, so
+>> 
+>> ^mapp^map ?
+> 
+> 
+> Good catch.  Trond, should I resend the patch?
+> 
 
