@@ -1,75 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:53215 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750837Ab2ECGNq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 May 2012 02:13:46 -0400
-From: <tao.peng@emc.com>
-To: <thomas@netapp.com>
-CC: <linux-nfs@vger.kernel.org>
-Date: Thu, 3 May 2012 02:13:29 -0400
-Subject: RE: Difference in tshark displays
-Message-ID: <F19688880B763E40B28B2B462677FBF805EF42C0AB@MX09A.corp.emc.com>
-References: <20120503034101.GA24583@netapp.com>
-In-Reply-To: <20120503034101.GA24583@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:50960 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760393Ab2EKOcx convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 May 2012 10:32:53 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+CC: Lev Solomonov <solo@tonian.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 1/3] NFS: Create an NFS v3 stat_to_errno()
+Date: Fri, 11 May 2012 14:32:51 +0000
+Message-ID: <EE86D78C-D697-42E7-AD75-3168008B7FFB@netapp.com>
+References: <1336682840-10799-1-git-send-email-bjschuma@netapp.com>
+ <CAOdHTRDOxOvPo-uAOGNMnF2+Nf+p0Ni0KoaZTvh8kM2QU=r1oQ@mail.gmail.com>
+ <4FAD08BE.4060408@netapp.com>
+In-Reply-To: <4FAD08BE.4060408@netapp.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
-ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24g
-QmVoYWxmIE9mIFRvbSBIYXluZXMNCj4gU2VudDogVGh1cnNkYXksIE1heSAwMywgMjAxMiAxMTo0
-MSBBTQ0KPiBUbzogbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiBTdWJqZWN0OiBEaWZmZXJl
-bmNlIGluIHRzaGFyayBkaXNwbGF5cw0KPiANCj4gT24gbXkgQXJjaCBjbGllbnQsIHRzaGFyayAo
-dmVyc2lvbiAxLjYuNykgZGlzcGxheXMgYSBzaW5nbGUgcHJvY2VkdXJlIG91dCBvZiB0aGUgY29t
-cG91bmQuDQo+IA0KSSd2ZSBzZWVuIGl0IGJlZm9yZSB3LyB3aXJlc2hhcmsuIERvZXMgdHNoYXJr
-IHVzZSB0aGUgc2FtZSBzb3VyY2UgY29kZSBiYXNlPyBJZiBzbywgaXQgd2FzIGZpeGVkIGJ1dCB0
-aGUgcmVsZWFzZSBkb2Vzbid0IGNvbWUgb3V0IHlldC4gWW91IGNhbiB1c2UgMS40IG9sZCBzdGFi
-bGUgb3IgMS43IGRldmVsb3BtZW50IHZlcnNpb24uDQoNClNlZSBodHRwczovL2J1Z3Mud2lyZXNo
-YXJrLm9yZy9idWd6aWxsYS9zaG93X2J1Zy5jZ2k/aWQ9NzEyNyBmb3IgZGV0YWlscy4NCg0KQ2hl
-ZXJzLA0KVGFvDQoNCj4gW3Rob21hc0Bwc3lrbG8gdG1wXSQgc3VkbyB0c2hhcmsgImhvc3QgMTky
-LjE2OC4yLjEwMiAmJiBob3N0IDE5Mi4xNjguMi4xMDUiIC1SIG5mcw0KPiB0c2hhcms6IEx1YTog
-RXJyb3IgZHVyaW5nIGxvYWRpbmc6DQo+ICBbc3RyaW5nICIvdXNyL3NoYXJlL3dpcmVzaGFyay9p
-bml0Lmx1YSJdOjQ1OiBkb2ZpbGUgaGFzIGJlZW4gZGlzYWJsZWQNCj4gUnVubmluZyBhcyB1c2Vy
-ICJyb290IiBhbmQgZ3JvdXAgInJvb3QiLiBUaGlzIGNvdWxkIGJlIGRhbmdlcm91cy4NCj4gQ2Fw
-dHVyaW5nIG9uIGV0aDANCj4gICAwLjAwMDAwMCAxOTIuMTY4LjIuMTAyIC0+IDE5Mi4xNjguMi4x
-MDUgTkZTIDMwNiBWNCBDYWxsIE9QRU4gREg6MHg3ZDdkOGY1ZS8uZ2l0Y29uZmlnDQo+ICAgMC4w
-MDAyMzIgMTkyLjE2OC4yLjEwNSAtPiAxOTIuMTY4LjIuMTAyIE5GUyA1MjIgVjQgUmVwbHkgKENh
-bGwgSW4gMSkgT1BFTiBTdGF0ZUlEOjB4MjE5Yw0KPiAgIDAuMDAwMzMxIDE5Mi4xNjguMi4xMDIg
-LT4gMTkyLjE2OC4yLjEwNSBORlMgMjA2IFY0IENhbGwgR0VUQVRUUiBGSDoweGExMDlmM2FiDQo+
-ICAgMC4wMDA0ODEgMTkyLjE2OC4yLjEwNSAtPiAxOTIuMTY4LjIuMTAyIE5GUyAzMDIgVjQgUmVw
-bHkgKENhbGwgSW4gNCkgR0VUQVRUUg0KPiAgIDAuMDAwNTg2IDE5Mi4xNjguMi4xMDIgLT4gMTky
-LjE2OC4yLjEwNSBORlMgMjIyIFY0IENhbGwgUkVBRCBTdGF0ZUlEOjB4MDQ1MSBPZmZzZXQ6MCBM
-ZW46MTQyDQo+ICAgMC4wMDA4MTIgMTkyLjE2OC4yLjEwNSAtPiAxOTIuMTY4LjIuMTAyIE5GUyAy
-NzQgVjQgUmVwbHkgKENhbGwgSW4gNikgUkVBRA0KPiAgIDAuMDAwODc0IDE5Mi4xNjguMi4xMDIg
-LT4gMTkyLjE2OC4yLjEwNSBORlMgMjMwIFY0IENhbGwgQ0xPU0UgU3RhdGVJRDoweDIxOWMNCj4g
-ICAwLjAwMTEwMyAxOTIuMTY4LjIuMTA1IC0+IDE5Mi4xNjguMi4xMDIgTkZTIDIwMiBWNCBSZXBs
-eSAoQ2FsbCBJbiA4KSBDTE9TRQ0KPiBbdGhvbWFzQHBzeWtsbyB0aG9tYXNdJCB0c2hhcmsgLXYN
-Cj4gVFNoYXJrIDEuNi43IChTVk4gUmV2IFVua25vd24gZnJvbSB1bmtub3duKQ0KPiANCj4gT24g
-bXkgRmVkb3JhIDE1IHNlcnZlciwgdHNoYXJrICh2ZXJzaW9uIDEuNC4xMikgZGlzcGxheXMgYWxs
-IG9mIHRoZSBwcm9jZWR1cmVzIGluIHRoZSBjb21wb3VuZDoNCj4gDQo+IFt0aG9tYXNAd29udCB+
-XSQgc3VkbyB0c2hhcmsgImhvc3QgMTkyLjE2OC4yLjEwMiAmJiBob3N0IDE5Mi4xNjguMi4xMDUi
-IC1SIG5mcw0KPiBSdW5uaW5nIGFzIHVzZXIgInJvb3QiIGFuZCBncm91cCAicm9vdCIuIFRoaXMg
-Y291bGQgYmUgZGFuZ2Vyb3VzLg0KPiBDYXB0dXJpbmcgb24gZXRoMA0KPiAgIDAuMDAwMjU4IDE5
-Mi4xNjguMi4xMDIgLT4gMTkyLjE2OC4yLjEwNSBORlMgVjQgQ09NUCBDYWxsIFBVVEZIIEdFVEFU
-VFINCj4gICAwLjAwMDYxMCAxOTIuMTY4LjIuMTA1IC0+IDE5Mi4xNjguMi4xMDIgTkZTIFY0IENP
-TVAgUmVwbHkgKENhbGwgSW4gNikgUFVURkggR0VUQVRUUg0KPiAgIDAuMDAwOTQwIDE5Mi4xNjgu
-Mi4xMDIgLT4gMTkyLjE2OC4yLjEwNSBORlMgVjQgQ09NUCBDYWxsIFBVVEZIIEFDQ0VTUyBHRVRB
-VFRSDQo+ICAgMC4wMDA5NzMgMTkyLjE2OC4yLjEwNSAtPiAxOTIuMTY4LjIuMTAyIE5GUyBWNCBD
-T01QIFJlcGx5IChDYWxsIEluIDEwKSBQVVRGSCBBQ0NFU1MgR0VUQVRUUg0KPiAgIDAuMDAxMTY5
-IDE5Mi4xNjguMi4xMDIgLT4gMTkyLjE2OC4yLjEwNSBORlMgVjQgQ09NUCBDYWxsIFBVVEZIIEdF
-VEFUVFINCj4gICAwLjAwMTIwMyAxOTIuMTY4LjIuMTA1IC0+IDE5Mi4xNjguMi4xMDIgTkZTIFY0
-IENPTVAgUmVwbHkgKENhbGwgSW4gMTIpIFBVVEZIIEdFVEFUVFINCj4gICAwLjAwMTQyNSAxOTIu
-MTY4LjIuMTAyIC0+IDE5Mi4xNjguMi4xMDUgTkZTIFY0IENPTVAgQ2FsbCBQVVRGSCBBQ0NFU1Mg
-R0VUQVRUUg0KPiAgIDAuMDAxNDU5IDE5Mi4xNjguMi4xMDUgLT4gMTkyLjE2OC4yLjEwMiBORlMg
-VjQgQ09NUCBSZXBseSAoQ2FsbCBJbiAxNCkgUFVURkggQUNDRVNTIEdFVEFUVFINCj4gW3Rob21h
-c0B3b250IH5dJCB0c2hhcmsgLXYNCj4gVFNoYXJrIDEuNC4xMg0KPiANCj4gSXMgdGhlcmUgYW55
-d2F5IHRvIGhhdmUgdGhlIG91dHB1dCBkaXNwbGF5IGFsbCBvZiB0aGUgcHJvY2VkdXJlcyBvbiBv
-bmUgbGluZSBsaWtlIHdpdGggdGhlIG9sZCBmb3JtYXQ/DQo+IA0KPiBJLmUuLCBzb21ldGltZXMg
-aXQgaXMgbmljZSB0byBoYXZlIHRoZSBuZXcgd2F5LCBhIHF1aWNrIHN1bW1hcnksIGJ1dCBvdGhl
-ciB0aW1lcyBJJ2QgbGlrZSB0byBiZSBhYmxlDQo+IHRvIHNlZSB0aGUgc3VtbWFyeSBvZiB0aGUg
-d2hvbGUgY29tcG91bmQuDQo+IA0KPiAtLQ0KPiB0aG9tYXNAbmV0YXBwLmNvbSwgZXgtY2ZiDQo+
-IC0tDQo+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1
-YnNjcmliZSBsaW51eC1uZnMiIGluDQo+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRv
-bW9Admdlci5rZXJuZWwub3JnDQo+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2Vy
-Lmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KDQo=
+Yes, please resend
+
+Cheers
+ Trond
+--
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
+On May 11, 2012, at 8:40 AM, Bryan Schumaker wrote:
+
+> On 05/11/2012 04:12 AM, Lev Solomonov wrote:
+> 
+>> On Thu, May 10, 2012 at 11:47 PM,  <bjschuma@netapp.com> wrote:
+>>> From: Bryan Schumaker <bjschuma@netapp.com>
+>>> 
+>>> In theory, NFS v3 can have different error versions than NFS v2. v4 is
+>>> already using its own nfs4_stat_to_errno() to mapp error codes, so
+>> 
+>> ^mapp^map ?
+> 
+> 
+> Good catch.  Trond, should I resend the patch?
+> 
+
