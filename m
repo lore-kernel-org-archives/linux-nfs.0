@@ -1,110 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34342 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753428Ab2EBVh7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 May 2012 17:37:59 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
-        NeilBrown <neilb@suse.de>, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/5] mountd: parse ip address earlier
-Date: Wed,  2 May 2012 17:37:52 -0400
-Message-Id: <1335994675-11751-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1335994675-11751-1-git-send-email-bfields@redhat.com>
-References: <1335994675-11751-1-git-send-email-bfields@redhat.com>
+Received: from relay.parallels.com ([195.214.232.42]:59641 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760012Ab2EKOPm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 May 2012 10:15:42 -0400
+Message-ID: <4FAD1F03.8060909@parallels.com>
+Date: Fri, 11 May 2012 18:15:31 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: Jeff Layton <jlayton@redhat.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC] NFSd laundromat containerization
+References: <4FAD1934.8070908@parallels.com> <20120511135306.GA12795@fieldses.org> <20120511100238.1c3f2bd4@tlielax.poochiereds.net>
+In-Reply-To: <20120511100238.1c3f2bd4@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On 11.05.2012 18:02, Jeff Layton wrote:
+> On Fri, 11 May 2012 09:53:07 -0400
+> "bfields@fieldses.org"<bfields@fieldses.org>  wrote:
+>
+>> On Fri, May 11, 2012 at 05:50:44PM +0400, Stanislav Kinsbursky wrote:
+>>> Hello.
+>>> I'm currently looking on NFSd laundromat work, and it looks like
+>>> have to be performed per networks namespace context.
+>>> It's easy to make corresponding delayed work per network namespace
+>>> and thus gain per-net data pointer in laundromat function.
+>>> But here a problem appears: network namespace is required to skip
+>>> clients from other network namespaces while iterating over global
+>>> lists (client_lru and friends).
+>>> I see two possible solutions:
+>>> 1) Make these list per network namespace context. In this case
+>>> network namespace will not be required - per-net data will be
+>>> enough.
+>>> 2) Put network namespace link on per-net data (this one is easier, but uglier).
+>>
+>> I'd rather there be as few shared data structures between network
+>> namespaces as possible--I think that will simplify things.
+>>
+>> So, of those two choices, #1.
+>>
+>
+> Agreed, that's sort of how I envisioned things going. In general,
+> you'll want to move things that were one global structures to struct
+> nfsd_net, and fix up the code to manage that on a per-ns basis.
+>
 
-I don't see the point of waiting to the last minute to parse the ip
-address.  If the client name isn't a legal ip address then this will
-fail fairly quickly, so there's not much of a performance penalty.
+Ok. I'll do it in first way.
+Anyway, this patch set with laundromat will depends on grace period 
+containerization.
 
-Also, note the previous code incorrectly assumed client_resolve would
-always return non-NULL.
+> The catch here is that the laundromat is somewhat intertwined with the
+> grace period, and you need to consider how to handle the grace period
+> between different namespaces. Do we keep a single grace period
+> per-machine as we have today? Or do we move to a per-ns grace period
+> that is started whenever someone starts up knfsd within the container?
+>
 
-Also factor out some common code.
+Second one. You can have a look at "Lockd: grace period containerization" patch 
+set I've sent last week.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- utils/mountd/cache.c |   42 +++++++++++++++++++++++-------------------
- 1 files changed, 23 insertions(+), 19 deletions(-)
-
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index cf07b56..5deca2e 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -495,6 +495,19 @@ static bool match_fsid(struct parsed_fsid *parsed, nfs_export *exp, char *path)
- 	return false;
- }
- 
-+struct addrinfo *lookup_client_addr(char *dom)
-+{
-+	struct addrinfo *ret;
-+	struct addrinfo *tmp;
-+
-+	tmp = host_pton(dom);
-+	if (tmp == NULL)
-+		return NULL;
-+	ret = client_resolve(tmp->ai_addr);
-+	freeaddrinfo(tmp);
-+	return ret;
-+}
-+
- static void nfsd_fh(FILE *f)
- {
- 	/* request are:
-@@ -538,6 +551,12 @@ static void nfsd_fh(FILE *f)
- 
- 	auth_reload();
- 
-+	if (use_ipaddr) {
-+		ai = lookup_client_addr(dom);
-+		if (!ai)
-+			goto out;
-+	}
-+
- 	/* Now determine export point for this fsid/domain */
- 	for (i=0 ; i < MCL_MAXTYPES; i++) {
- 		nfs_export *next_exp;
-@@ -578,18 +597,8 @@ static void nfsd_fh(FILE *f)
- 
- 			if (!match_fsid(&parsed, exp, path))
- 				continue;
--			if (use_ipaddr) {
--				if (ai == NULL) {
--					struct addrinfo *tmp;
--					tmp = host_pton(dom);
--					if (tmp == NULL)
--						goto out;
--					ai = client_resolve(tmp->ai_addr);
--					freeaddrinfo(tmp);
--				}
--				if (!client_check(exp->m_client, ai))
--					continue;
--			}
-+			if (use_ipaddr && !client_check(exp->m_client, ai))
-+				continue;
- 			if (!found || subexport(&exp->m_export, found)) {
- 				found = &exp->m_export;
- 				free(found_path);
-@@ -1057,13 +1066,8 @@ static void nfsd_export(FILE *f)
- 
- 	auth_reload();
- 
--	if (use_ipaddr) {
--		struct addrinfo *tmp;
--		tmp = host_pton(dom);
--		if (tmp == NULL)
--			goto out;
--		ai = client_resolve(tmp->ai_addr);
--		freeaddrinfo(tmp);
-+	if (is_ipaddr_client(dom)) {
-+		ai = lookup_client_addr(dom);
- 		if (!ai)
- 			goto out;
- 	}
 -- 
-1.7.7.6
-
+Best regards,
+Stanislav Kinsbursky
