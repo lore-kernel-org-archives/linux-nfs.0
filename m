@@ -1,154 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34348 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753546Ab2EBVh7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 May 2012 17:37:59 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
-        NeilBrown <neilb@suse.de>, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 4/5] mountd: prepend '$' to make use_ipaddr clients self-describing
-Date: Wed,  2 May 2012 17:37:54 -0400
-Message-Id: <1335994675-11751-5-git-send-email-bfields@redhat.com>
-In-Reply-To: <1335994675-11751-1-git-send-email-bfields@redhat.com>
-References: <1335994675-11751-1-git-send-email-bfields@redhat.com>
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:48252 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751573Ab2EMNIl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 May 2012 09:08:41 -0400
+Received: by bkcji2 with SMTP id ji2so3171164bkc.19
+        for <linux-nfs@vger.kernel.org>; Sun, 13 May 2012 06:08:39 -0700 (PDT)
+Message-ID: <4FAFB255.1040804@tonian.com>
+Date: Sun, 13 May 2012 16:08:37 +0300
+From: Lior <lior@tonian.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@redhat.com>, Benny Halevy <bhalevy@tonian.com>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: nfs 4.1 server returns available file lyaout type when the file
+ system is exported without pNFS (updated)
+References: <4FAFA79A.2030007@tonian.com>
+In-Reply-To: <4FAFA79A.2030007@tonian.com>
+Content-Type: text/plain; charset=windows-1255; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+בתאריך 13/05/2012 15:22, ציטוט Lior:
+> Hi,
+>
+> Steps to reproduce:
+>
+> insert this in /etc/export on the server side:
+> /mnt/testnfs 
+> *(rw,sync,wdelay,hide,nocrossmnt,insecure,no_root_squash,no_all_squash,no_subtree_check,secure_locks,acl,fsid=0,anonuid=65534,anongid=65534)
+>
+> on the server side:
+> exportfs -ra
+>
+> from client run connectathon:
+>
+> The settings for connectathon are for nfs 4.1 without Pnfs ( although 
+> the module of: nfs_layout_nfsv41_files is loaded on the client due to 
+> the fact that the current clients design does not have an option of a 
+> module of nfs 4.1 WITHOUT pNFS)
+>
+> Connectathon tests passed , but when I looked at nfsstat, I saw this ( 
+> relevant to Pnfs):
+> layoutget activity
+> layout return activity
+> (NO getdevice info activity)
+>
+> (When I tried running the same , this time the server had this line in 
+> its /etc/exports:
+> /mnt/testnfs 
+> *(rw,sync,wdelay,hide,nocrossmnt,insecure,no_root_squash,no_all_squash,no_subtree_check,secure_locks,acl,fsid=0,anonuid=65534,anongid=65534,pnfs)
+> (NOTE: with Pnfs flag.)
+>
+> connectathon tests passed , and when I looked at nfsstat, I saw this ( 
+> relevant to Pnfs):
+> layoutget activity
+> layoutreturn activity
+> getdevice info activity.)
+>
+>
+>  When we look at the logs and code, we saw that layoutget and layout 
+> return are sent by the client, and the server returns error messages 
+> to both ( as expected in regard to layoutget & layout return being 
+> sent by the client when the server is not pNFS enabled , BUT then 
+> again , the client wouldn't have sent layoutget & layout return 
+> ,originally, if it were to get the correct flag from the server, see 
+> Actuall behavior analysis below). we could also see that  there was NO 
+> getdevice info activity after that, and the server/client went on with 
+> regular nfs activity.
+>
+> the no getdevice info activity was confirmed by the connectathon runs 
+> ( could be seen above).
+> expected results are:
+>
+>     NO pNFS commands shown in nfsstat.
+>     NO pNFS module should be loaded in the client.
+>
+> Actual behavior analysis
+> The FATTR4_FS_LAYOUT_TYPE field returned from the server, which should 
+> be empty, contains LAYOUT4_NFSV4_1_FILES, which causes the module to 
+> be loaded and the client to think pNFS is available.
+>
+> Diagnosis:
+> This server behaviour is currently hard coded regardless of if we 
+> export a file system over pnfs or not. which doesn't seem right.
+>
+This was done with :
 
-Mountd is responsible for filling three interrelated kernel caches:
+pnfsd-lexp (local export) testing
+back end that exports a local file system over pnfs, playing both the MDS and a single DS
+on the server.
 
-	- auth_unix_ip maps an incoming ip addresses to a "domain".
-	- nfsd_fh maps (domain, filehandle-fragment) pairs to paths.
-	- nfsd_export maps (domain, path) pairs to export options.
+Thanks
 
-Note that each export is assocated with a "client" string--the part
-before the parentheses in an /etc/export line--which may be a domain
-name, a netgroup, etc.
+Lior K.
 
-The "domain" string in the above three caches may be either:
-
-	- in the !use_ipaddr case, a comma-separated list of client
-	  strings.
-	- in the use_ipaddr case, an ip address.
-
-In the former case, mountd does the hard work of matching an ip address
-to the clients when doing the auth_unix_ip mapping.  In the latter case,
-it delays that until the nfsd_fh or nfsd_export upcall.
-
-We're currently depending on being able to flush the kernel caches
-completely when switching between the use_ipaddr and !use_ipaddr cases.
-However, the kernel's cache-flushing doesn't really provide reliable
-guarantees on return; it's still possible we could see nfsd_fh or
-nfsd_export upcalls with the old domain-type after flushing.
-
-So, instead, make the two domain types self-describing by prepending a
-"$" in the use_ipaddr case.
-
-Reviewed-by: NeilBrown <neilb@suse.de>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- utils/mountd/auth.c   |   14 +++++++++++---
- utils/mountd/cache.c  |   10 +++++++---
- utils/mountd/mountd.h |    5 +++++
- 3 files changed, 23 insertions(+), 6 deletions(-)
-
-diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
-index 1ed9a4b..15da54c 100644
---- a/utils/mountd/auth.c
-+++ b/utils/mountd/auth.c
-@@ -112,15 +112,23 @@ auth_reload()
- 	return counter;
- }
- 
-+static char *get_client_ipaddr_name(const struct sockaddr *caller)
-+{
-+	char buf[INET6_ADDRSTRLEN + 1];
-+
-+	buf[0] = '$';
-+	host_ntop(caller, buf + 1, sizeof(buf) - 1);
-+	return strdup(buf);
-+}
-+
- static char *
- get_client_hostname(const struct sockaddr *caller, struct addrinfo *ai,
- 		enum auth_error *error)
- {
--	char buf[INET6_ADDRSTRLEN];
- 	char *n;
- 
- 	if (use_ipaddr)
--		return strdup(host_ntop(caller, buf, sizeof(buf)));
-+		return get_client_ipaddr_name(caller);
- 	n = client_compose(ai);
- 	*error = unknown_host;
- 	if (!n)
-@@ -143,7 +151,7 @@ bool namelist_client_matches(nfs_export *exp, char *dom)
- 
- bool client_matches(nfs_export *exp, char *dom, struct addrinfo *ai)
- {
--	if (use_ipaddr)
-+	if (is_ipaddr_client(dom))
- 		return ipaddr_client_matches(exp, ai);
- 	return namelist_client_matches(exp, dom);
- }
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index a62ac52..6710eca 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -500,6 +500,8 @@ struct addrinfo *lookup_client_addr(char *dom)
- 	struct addrinfo *ret;
- 	struct addrinfo *tmp;
- 
-+	dom++; /* skip initial "$" */
-+
- 	tmp = host_pton(dom);
- 	if (tmp == NULL)
- 		return NULL;
-@@ -551,7 +553,7 @@ static void nfsd_fh(FILE *f)
- 
- 	auth_reload();
- 
--	if (use_ipaddr) {
-+	if (is_ipaddr_client(dom)) {
- 		ai = lookup_client_addr(dom);
- 		if (!ai)
- 			goto out;
-@@ -587,7 +589,8 @@ static void nfsd_fh(FILE *f)
- 				next_exp = exp->m_next;
- 			}
- 
--			if (!use_ipaddr && !namelist_client_matches(exp, dom))
-+			if (!is_ipaddr_client(dom)
-+					&& !namelist_client_matches(exp, dom))
- 				continue;
- 			if (exp->m_export.e_mountpoint &&
- 			    !is_mountpoint(exp->m_export.e_mountpoint[0]?
-@@ -597,7 +600,8 @@ static void nfsd_fh(FILE *f)
- 
- 			if (!match_fsid(&parsed, exp, path))
- 				continue;
--			if (use_ipaddr && !ipaddr_client_matches(exp, ai))
-+			if (is_ipaddr_client(dom)
-+					&& !ipaddr_client_matches(exp, ai))
- 				continue;
- 			if (!found || subexport(&exp->m_export, found)) {
- 				found = &exp->m_export;
-diff --git a/utils/mountd/mountd.h b/utils/mountd/mountd.h
-index c969a27..6d358a7 100644
---- a/utils/mountd/mountd.h
-+++ b/utils/mountd/mountd.h
-@@ -60,4 +60,9 @@ bool ipaddr_client_matches(nfs_export *exp, struct addrinfo *ai);
- bool namelist_client_matches(nfs_export *exp, char *dom);
- bool client_matches(nfs_export *exp, char *dom, struct addrinfo *ai);
- 
-+static inline bool is_ipaddr_client(char *dom)
-+{
-+	return dom[0] == '$';
-+}
-+
- #endif /* MOUNTD_H */
--- 
-1.7.7.6
 
