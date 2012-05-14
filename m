@@ -1,48 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41417 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:35686 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752999Ab2E3Sgb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 May 2012 14:36:31 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/5] nfsd4: return "real" sequence id in confirmed case
-Date: Wed, 30 May 2012 14:36:25 -0400
-Message-Id: <1338402988-17356-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1338402988-17356-1-git-send-email-bfields@redhat.com>
-References: <1338402988-17356-1-git-send-email-bfields@redhat.com>
+	id S1756124Ab2ENPXg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 May 2012 11:23:36 -0400
+Date: Mon, 14 May 2012 11:23:34 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Andreas Dilger <adilger@dilger.ca>
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Subject: Re: [PATCH] ext4: turn on i_version updates by default
+Message-ID: <20120514152334.GB29902@fieldses.org>
+References: <20120514140618.GA29902@fieldses.org>
+ <9124E59E-2479-4C32-A528-3237B48DEC01@dilger.ca>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <9124E59E-2479-4C32-A528-3237B48DEC01@dilger.ca>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Mon, May 14, 2012 at 09:02:12AM -0600, Andreas Dilger wrote:
+> On 2012-05-14, at 8:06, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > knfsd needs i_version updates on, as will userspace nfs servers and
+> > probably others.
+> > 
+> > The only effects are that inode->i_version is bumped (under the i_lock)
+> > in more places, and that ->dirty_inode(I_DIRTY_DATASYNC) may be called
+> > more frequently than once per jiffy on write (see file_update_time).
+> > However the latter appears to be mostly a no-op in that case.
+> 
+> I thought this can have noticeable performance impact, since ext4_mark_inode_dirty() is quite heavyweight?
 
-The client should ignore the returned sequence_id in the case where the
-CONFIRMED flag is set on an exchange_id reply--and in the unconfirmed
-case "1" is always the right response.  So it shouldn't actually matter
-what we return here.
+There's no reason it should be, should it, if we already just dirtied
+the inode a moment ago?
 
-We could continue returning 1 just to catch clients ignoring the spec
-here, but I'd rather be generous.  Other things equal, returning the
-existing sequence_id seems more informative.
+> This is one of the reasons that the i_version update is conditional.
+> If someone is exporting a filesystem from userspace the should be able
+> to turn this on as a mount option, and knfsd could do it from inside
+> the kernel. Why add overhead when it is not needed?
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Any user of the change attribute also wants it to function correctly
+while they're away.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d53ad72..bcb4b50 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1650,7 +1650,7 @@ out_copy:
- 	exid->clientid.cl_boot = new->cl_clientid.cl_boot;
- 	exid->clientid.cl_id = new->cl_clientid.cl_id;
- 
--	exid->seqid = 1;
-+	exid->seqid = new->cl_cs_slot.sl_seqid + 1;
- 	nfsd4_set_ex_flags(new, exid);
- 
- 	dprintk("nfsd4_exchange_id seqid %d flags %x\n",
--- 
-1.7.10.2
+And if it at all possible I'd rather have it be something that Just
+Works rather than something that requires extra configuration.
 
+--b.
