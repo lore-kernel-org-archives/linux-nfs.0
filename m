@@ -1,94 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.14.81]:44257 "EHLO
-	hackers.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932428Ab2EOMUa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 08:20:30 -0400
-Date: Tue, 15 May 2012 08:20:28 -0400
-From: Jim Rees <rees@umich.edu>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: ANNOUNCE: nfs-utils-1.2.6 released.
-Message-ID: <20120515122028.GA25625@umich.edu>
-References: <4FB159DA.2070800@RedHat.com>
-MIME-Version: 1.0
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:16990 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932402Ab2ENXdG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 May 2012 19:33:06 -0400
+Subject: Re: [PATCH] ext4: turn on i_version updates by default
+Mime-Version: 1.0 (Apple Message framework v1084)
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FB159DA.2070800@RedHat.com>
+From: Andreas Dilger <adilger@dilger.ca>
+In-Reply-To: <1337036918.2522.32.camel@lade.trondhjem.org>
+Date: Mon, 14 May 2012 17:33:04 -0600
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, "Theodore Ts'o" <tytso@mit.edu>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Message-Id: <A0359961-B147-4343-BFA3-E82F38C6700B@dilger.ca>
+References: <20120514140618.GA29902@fieldses.org> <9124E59E-2479-4C32-A528-3237B48DEC01@dilger.ca> <1337036918.2522.32.camel@lade.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If you're going to use the block layout driver, you'll also want to apply
-this patch on top of 1.2.6 to prevent your log from filling with garbage.
+On 2012-05-14, at 5:08 PM, Myklebust, Trond wrote:
+> On Mon, 2012-05-14 at 09:02 -0600, Andreas Dilger wrote:
+>> On 2012-05-14, at 8:06, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+>>> knfsd needs i_version updates on, as will userspace nfs servers and
+>>> probably others.
+>>> 
+>>> The only effects are that inode->i_version is bumped (under the i_lock)
+>>> in more places, and that ->dirty_inode(I_DIRTY_DATASYNC) may be called
+>>> more frequently than once per jiffy on write (see file_update_time).
+>>> However the latter appears to be mostly a no-op in that case.
+>> 
+>> I thought this can have noticeable performance impact, since ext4_mark_inode_dirty() is quite heavyweight?
+>> 
+>> This is one of the reasons that the i_version update is conditional.
+>> If someone is exporting a filesystem from userspace the should be
+>> able to turn this on as a mount option, and knfsd could do it from inside the kernel. Why add overhead when it is not needed?
+> 
+> No. Having knfsd doing something like that under the covers is a BAD
+> idea. It is way too easy to get into situations where someone starts
+> changing files after the mount and before knfsd is started. As soon as
+> you allow files to be changed without i_version changing, then you are
+> setting yourself up for future corruption.
+> 
+> Ideally, an NFSv4-exported filesystem should be required to set the
+> tune2fs mount_opts to include the 'i_version' flag to make it hard to
+> inadvertently mount that filesystem without it.
 
->From 76e9f814b0c6a9ef996b14123780bb39f448cafb Mon Sep 17 00:00:00 2001
-From: Jim Rees <rees@umich.edu>
-Date: Tue, 27 Mar 2012 10:18:39 -0400
-Subject: [PATCH 1/2] remove pretty_sig()
+I said as much in another reply - that once i_version is used on
+a filesystem, it should be made "sticky" (i.e. permanently enabled
+for that filesystem).  However, until that time it shouldn't be
+enabled just because it might one day be used.
 
-This really only works against EMC servers.  There is at least one server
-that returns unprintable signatures, which fill the log with garbage (the
-spec does not mandate printable signatures).  It could be made more generic,
-for example by checking each byte for isprint().  But the signatures are
-really only of interest to developers, not admins, so it seems better to
-just remove it.
+Even better than just blindly bumping the i_version on every change,
+it would be better to have users of i_version (i.e. knfsd) flag the
+inode with "needs i_version update" then read the version.  When the
+filesystem/VFS bumps i_version the next time it can clear this flag
+and not update i_version again until after the next time i_version
+is actually used.
 
-Signed-off-by: Jim Rees <rees@umich.edu>
----
- utils/blkmapd/device-process.c |   29 -----------------------------
- 1 file changed, 29 deletions(-)
+Cheers, Andreas
 
-diff --git a/utils/blkmapd/device-process.c b/utils/blkmapd/device-process.c
-index 652a7a8..5fe3dff 100644
---- a/utils/blkmapd/device-process.c
-+++ b/utils/blkmapd/device-process.c
-@@ -49,28 +49,6 @@
- 
- #include "device-discovery.h"
- 
--static char *pretty_sig(char *sig, uint32_t siglen)
--{
--	static char rs[100];
--	uint64_t sigval;
--	unsigned int i;
--
--	if (siglen <= sizeof(sigval)) {
--		sigval = 0;
--		for (i = 0; i < siglen; i++)
--			sigval |= ((unsigned char *)sig)[i] << (i * 8);
--		sprintf(rs, "0x%0llx", (unsigned long long) sigval);
--	} else {
--		if (siglen > sizeof rs - 4) {
--			siglen = sizeof rs - 4;
--			sprintf(&rs[siglen], "...");
--		} else
--			rs[siglen] = '\0';
--		memcpy(rs, sig, siglen);
--	}
--	return rs;
--}
--
- uint32_t *blk_overflow(uint32_t * p, uint32_t * end, size_t nbytes)
- {
- 	uint32_t *q = p + ((nbytes + 3) >> 2);
-@@ -109,9 +87,6 @@ static int decode_blk_signature(uint32_t **pp, uint32_t * end,
- 		 * for mapping, then thrown away.
- 		 */
- 		comp->bs_string = (char *)p;
--		BL_LOG_INFO("%s: si_comps[%d]: bs_length %d, bs_string %s\n",
--			    __func__, i, siglen,
--			    pretty_sig(comp->bs_string, siglen));
- 		p += ((siglen + 3) >> 2);
- 	}
- 	*pp = p;
-@@ -152,10 +127,6 @@ read_cmp_blk_sig(struct bl_disk *disk, int fd, struct bl_sig_comp *comp)
- 	}
- 
- 	ret = memcmp(sig, comp->bs_string, siglen);
--	if (!ret)
--		BL_LOG_INFO("%s: %s sig %s at %lld\n", __func__, dev_name,
--			    pretty_sig(sig, siglen),
--			    (long long)comp->bs_offset);
- 
-  out:
- 	if (sig)
--- 
-1.7.9.5
+
+
+
 
