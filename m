@@ -1,90 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:2664 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:45424 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757574Ab2EERYs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 5 May 2012 13:24:48 -0400
-Subject: [PATCH RFC 11/13] LockD: manage grace list per network namespace
-To: bfields@fieldses.org, Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Sat, 05 May 2012 21:22:51 +0400
-Message-ID: <20120505172251.11559.24422.stgit@localhost.localdomain>
-In-Reply-To: <20120505170722.11559.74503.stgit@localhost.localdomain>
-References: <20120505170722.11559.74503.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1753955Ab2ENSq5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 May 2012 14:46:57 -0400
+Date: Mon, 14 May 2012 14:48:02 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Josef Bacik <josef@redhat.com>
+Cc: "Ted Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Subject: Re: [PATCH] ext4: turn on i_version updates by default
+Message-ID: <20120514144802.679551fa@corrin.poochiereds.net>
+In-Reply-To: <20120514183316.GA1894@localhost.localdomain>
+References: <20120514140618.GA29902@fieldses.org>
+	<9124E59E-2479-4C32-A528-3237B48DEC01@dilger.ca>
+	<20120514152334.GB29902@fieldses.org>
+	<14B38D68-FAE4-444A-BCD9-7EBF7E1BBFE1@dilger.ca>
+	<20120514175822.GC1439@thunk.org>
+	<20120514183316.GA1894@localhost.localdomain>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/lockd/grace.c |   14 +++++++++++---
- fs/lockd/netns.h |    1 +
- fs/lockd/svc.c   |    1 +
- 3 files changed, 13 insertions(+), 3 deletions(-)
+On Mon, 14 May 2012 14:33:17 -0400
+Josef Bacik <josef@redhat.com> wrote:
 
-diff --git a/fs/lockd/grace.c b/fs/lockd/grace.c
-index 183cc1f..8dbaff7 100644
---- a/fs/lockd/grace.c
-+++ b/fs/lockd/grace.c
-@@ -4,8 +4,10 @@
- 
- #include <linux/module.h>
- #include <linux/lockd/bind.h>
-+#include <net/net_namespace.h>
-+
-+#include "netns.h"
- 
--static LIST_HEAD(grace_list);
- static DEFINE_SPINLOCK(grace_lock);
- 
- /**
-@@ -21,8 +23,11 @@ static DEFINE_SPINLOCK(grace_lock);
-  */
- void locks_start_grace(struct lock_manager *lm)
- {
-+	struct net *net = &init_net;
-+	struct lockd_net *ln = net_generic(net, lockd_net_id);
-+
- 	spin_lock(&grace_lock);
--	list_add(&lm->list, &grace_list);
-+	list_add(&lm->list, &ln->grace_list);
- 	spin_unlock(&grace_lock);
- }
- EXPORT_SYMBOL_GPL(locks_start_grace);
-@@ -54,6 +59,9 @@ EXPORT_SYMBOL_GPL(locks_end_grace);
-  */
- int locks_in_grace(void)
- {
--	return !list_empty(&grace_list);
-+	struct net *net = &init_net;
-+	struct lockd_net *ln = net_generic(net, lockd_net_id);
-+
-+	return !list_empty(&ln->grace_list);
- }
- EXPORT_SYMBOL_GPL(locks_in_grace);
-diff --git a/fs/lockd/netns.h b/fs/lockd/netns.h
-index e78650c..4eee248 100644
---- a/fs/lockd/netns.h
-+++ b/fs/lockd/netns.h
-@@ -11,6 +11,7 @@ struct lockd_net {
- 
- 	struct delayed_work grace_period_end;
- 	struct lock_manager lockd_manager;
-+	struct list_head grace_list;
- };
- 
- extern int lockd_net_id;
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index a9c436b..834dfe2 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -596,6 +596,7 @@ static int lockd_init_net(struct net *net)
- 	struct lockd_net *ln = net_generic(net, lockd_net_id);
- 
- 	INIT_DELAYED_WORK(&ln->grace_period_end, grace_ender);
-+	INIT_LIST_HEAD(&ln->grace_list);
- 	return 0;
- }
- 
+> On Mon, May 14, 2012 at 01:58:22PM -0400, Ted Ts'o wrote:
+> > On Mon, May 14, 2012 at 11:27:42AM -0600, Andreas Dilger wrote:
+> > > > And if it at all possible I'd rather have it be something that Just
+> > > > Works rather than something that requires extra configuration.
+> > > 
+> > > Sure, but this is only useful for NFSv4, but costs everyone using
+> > > ext4 continuous overhead, so it isn't a clear-cut case to enable
+> > > the version just on the thought that NFS might one day be used on
+> > > any particular filesystem.
+> > 
+> > It's not a matter of "NFSv4 might one day be used"; if we don't turn
+> > on i_version updates until the file system is actually exported via
+> > NFSv4, there would be no deleterious effects.
+> > 
+> > I always thought that was going to be the plan; that there would be
+> > some flag that would be set in struct super_block when the file system
+> > was exported that would enable i_version updates.
+> > 
+> > That way we satisfy the "no extra configuration" needed requirement,
+> > which I agree is ideal, but we also don't waste any CPU overhead if
+> > the file system is not exported via NFSv4.  I tried to implement
+> > anything along these lines because I don't care enough, and I don't
+> > use NFSv4 personally....
+> > 
+> 
+> Seems like this is just a bad place to be doing inode_inc_iversion().  If
+> MS_IVERSION is set we will update iversion in file_update_time() and then call
+> mark_inode_dirty which will jack up the iversion again.  In btrfs we just change
+> it wherever we change ctime and that way you don't really notice the extra
+> overhead since you are doing it in paths where you are changing a bunch of stuff
+> in the inode already, and mostly where you hold the i_mutex so you aren't going
+> to be hitting any contention on the i_lock.  Thanks,
+> 
 
+Well, you do incur a bit more overhead in btrfs too:
+
+------------------[snip]----------------------
+        if (!timespec_equal(&inode->i_mtime, &now))
+                sync_it = S_MTIME;
+
+        if (!timespec_equal(&inode->i_ctime, &now))
+                sync_it |= S_CTIME;
+
+        if (IS_I_VERSION(inode))
+                sync_it |= S_VERSION;
+------------------[snip]----------------------
+
+So you'll end up with sync_it being 0 if i_version updates are
+disabled, and the mtime/ctime didn't visibly change.
+
+If your jiffies are coarse-grained enough, then you might get "lucky"
+rather often, but is that a case worth optimizing for? How often does
+it happen that you mark the inode dirty, flush it to disk and then
+re-mark it dirty within the same jiffy?
+
+If that's a common occurrence then you might see some performance
+impact here from turning i_version on all the time. Otherwise, it seems
+like it wouldn't make that big a difference.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
