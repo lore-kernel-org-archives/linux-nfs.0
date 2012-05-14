@@ -1,47 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-out-04.shaw.ca ([64.59.134.12]:51978 "EHLO
-	smtp-out-04.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754136Ab2EKJD4 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 May 2012 05:03:56 -0400
-Subject: Re: Extended file stat: Splitting file- and fs-specific info?
-Mime-Version: 1.0 (Apple Message framework v1084)
+Received: from mx1.redhat.com ([209.132.183.28]:48435 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757208Ab2ENTFS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 May 2012 15:05:18 -0400
+Date: Mon, 14 May 2012 15:05:08 -0400
+From: Josef Bacik <josef@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Josef Bacik <josef@redhat.com>, "Ted Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger@dilger.ca>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Subject: Re: [PATCH] ext4: turn on i_version updates by default
+Message-ID: <20120514190500.GC1894@localhost.localdomain>
+References: <20120514140618.GA29902@fieldses.org>
+ <9124E59E-2479-4C32-A528-3237B48DEC01@dilger.ca>
+ <20120514152334.GB29902@fieldses.org>
+ <14B38D68-FAE4-444A-BCD9-7EBF7E1BBFE1@dilger.ca>
+ <20120514175822.GC1439@thunk.org>
+ <20120514183316.GA1894@localhost.localdomain>
+ <20120514185400.GA32026@fieldses.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-From: Andreas Dilger <adilger@dilger.ca>
-In-Reply-To: <20120510171016.B45BA2C096@topped-with-meat.com>
-Date: Fri, 11 May 2012 02:54:13 -0600
-Cc: David Howells <dhowells@redhat.com>, Dave Chinner <david@fromorbit.com>,
-        "bfields@fieldses.org Fields" <bfields@fieldses.org>,
-        "smfrench@gmail.com French" <smfrench@gmail.com>,
-        "ben@decadent.org.uk Hutchings" <ben@decadent.org.uk>,
-        "Trond.Myklebust@netapp.com Myklebust" <Trond.Myklebust@netapp.com>,
-        "linux-fsdevel@vger.kernel.org Devel" <linux-fsdevel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org,
-        "linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>,
-        linux-api@vger.kernel.org, libc-alpha@sourceware.org
-Message-Id: <258C4ED4-2FB3-4E3F-A99E-842D231BA869@dilger.ca>
-References: <73759631-F1E4-4352-9FE6-E9F576F793FB@gmail.com> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <16281.1336508382@redhat.com> <20120509002420.GL5091@dastard> <14477.1336641794@redhat.com> <20120510171016.B45BA2C096@topped-with-meat.com>
-To: Roland McGrath <roland@hack.frob.com>
+In-Reply-To: <20120514185400.GA32026@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2012-05-10, at 11:10 AM, Roland McGrath wrote:
-> POSIX specifies st_blksize thusly: "A file system-specific preferred
-> I/O block size for this object. In some file system types, this may
-> vary from file to file."
+On Mon, May 14, 2012 at 02:54:00PM -0400, J. Bruce Fields wrote:
+> On Mon, May 14, 2012 at 02:33:17PM -0400, Josef Bacik wrote:
+> > On Mon, May 14, 2012 at 01:58:22PM -0400, Ted Ts'o wrote:
+> > > On Mon, May 14, 2012 at 11:27:42AM -0600, Andreas Dilger wrote:
+> > > > > And if it at all possible I'd rather have it be something that Just
+> > > > > Works rather than something that requires extra configuration.
+> > > > 
+> > > > Sure, but this is only useful for NFSv4, but costs everyone using
+> > > > ext4 continuous overhead, so it isn't a clear-cut case to enable
+> > > > the version just on the thought that NFS might one day be used on
+> > > > any particular filesystem.
+> > > 
+> > > It's not a matter of "NFSv4 might one day be used"; if we don't turn
+> > > on i_version updates until the file system is actually exported via
+> > > NFSv4, there would be no deleterious effects.
+> > > 
+> > > I always thought that was going to be the plan; that there would be
+> > > some flag that would be set in struct super_block when the file system
+> > > was exported that would enable i_version updates.
+> > > 
+> > > That way we satisfy the "no extra configuration" needed requirement,
+> > > which I agree is ideal, but we also don't waste any CPU overhead if
+> > > the file system is not exported via NFSv4.  I tried to implement
+> > > anything along these lines because I don't care enough, and I don't
+> > > use NFSv4 personally....
+> > > 
+> > 
+> > Seems like this is just a bad place to be doing inode_inc_iversion().  If
+> > MS_IVERSION is set we will update iversion in file_update_time() and then call
+> > mark_inode_dirty which will jack up the iversion again.
 > 
-> Since there is only one available to POSIX applications, it should map
-> to the one that's described as "preferred IO size for general usage".
+> Agreed, that's weird.
+> 
+> > In btrfs we just change
+> > it wherever we change ctime and that way you don't really notice the extra
+> > overhead since you are doing it in paths where you are changing a bunch of stuff
+> > in the inode already, and mostly where you hold the i_mutex so you aren't going
+> > to be hitting any contention on the i_lock.  Thanks,
+> 
+> I don't think they're worried about the inode_inc_iversion() calls
+> themselves, but the behavior of file_update_time():
+> 
+>         if (!timespec_equal(&inode->i_mtime, &now))
+>                 sync_it = S_MTIME;
+> 
+>         if (!timespec_equal(&inode->i_ctime, &now))
+>                 sync_it |= S_CTIME;
+> 
+>         if (IS_I_VERSION(inode))
+>                 sync_it |= S_VERSION;
+> 
+>         if (!sync_it)
+>                 return;
+> 	...
+> 	mark_inode_dirty_sync(inode);
+> 
+> So now mark_inode_dirty_sync() is called on every update, instead of
+> merely on every update that sees a time change (so at most once a
+> jiffy).
+> 
+> So mark_inode_dirty_sync (and hence ->dirty_inode = ext4_dirty_inode)
+> may get called more often if you're writing very frequently.
+> 
+> I'm a bit surprised that's expected to add significant overhead to the
+> write.
+> 
+> I guess I should stare at the code and try to follow Andreas's
+> explanation....
+>
 
-Sure, but statxat() isn't a POSIX API.
+It shouldn't, let's be honest, most systems aren't going to have such a coarse
+jiffie counter that they'll be able to get away with doing 2 calls to write() or
+->page_mkwrite() in the same jiffie and skip the update to mtime/ctime anyway.
+If they do they are damned lucky, and again the amount of overhead added even if
+they are should be negligible since 99% of us all incur the overhead from having
+to update mtime/ctime anyway.  Thanks,
 
-While I agree with the idea that there should be enough information about the underlying layout for applications to be able to submit good IO, it doesn't help if we have a bunch of extra fields that have vague meanings. 
-
-They will get filled in by the filesystem in a haphazard way, and will not be used by application developers that don't understand what they mean.
-
-Cheers, Andreas
-
-
-
-
-
+Josef 
