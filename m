@@ -1,63 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from isrv.corpit.ru ([86.62.121.231]:41273 "EHLO isrv.corpit.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757409Ab2EaNvV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 31 May 2012 09:51:21 -0400
-Message-ID: <4FC77755.5060606@msgid.tls.msk.ru>
-Date: Thu, 31 May 2012 17:51:17 +0400
-From: Michael Tokarev <mjt@tls.msk.ru>
+Received: from relay.parallels.com ([195.214.232.42]:43177 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754894Ab2ENJAW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 May 2012 05:00:22 -0400
+Message-ID: <4FB0C9A1.6080406@parallels.com>
+Date: Mon, 14 May 2012 13:00:17 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Linux-kernel <linux-kernel@vger.kernel.org>
-Subject: Re: 3.0+ NFS issues
-References: <4FBF2C57.3070203@msgid.tls.msk.ru>   <20120529152416.GC3441@fieldses.org> <4FC5C82E.4020806@msgid.tls.msk.ru>   <20120530132518.GA13794@fieldses.org> <4FC713ED.5040807@msgid.tls.msk.ru>  <1338469169.2420.7.camel@lade.trondhjem.org>  <4FC77128.9090206@msgid.tls.msk.ru> <1338471975.7732.5.camel@lade.trondhjem.org>
-In-Reply-To: <1338471975.7732.5.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Jeff Layton <jlayton@redhat.com>
+Subject: Re: [RFC] NFSd laundromat containerization
+References: <4FAD1934.8070908@parallels.com> <20120511135306.GA12795@fieldses.org> <4FAE2659.4090107@parallels.com> <20120512141653.GA19757@fieldses.org>
+In-Reply-To: <20120512141653.GA19757@fieldses.org>
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 31.05.2012 17:46, Myklebust, Trond wrote:
-> On Thu, 2012-05-31 at 17:24 +0400, Michael Tokarev wrote:
-[]
->> I started tcpdump:
+On 12.05.2012 18:16, bfields@fieldses.org wrote:
+> On Sat, May 12, 2012 at 12:59:05PM +0400, Stanislav Kinsbursky wrote:
+>> On 11.05.2012 17:53, bfields@fieldses.org wrote:
+>>> On Fri, May 11, 2012 at 05:50:44PM +0400, Stanislav Kinsbursky wrote:
+>>>> Hello.
+>>>> I'm currently looking on NFSd laundromat work, and it looks like
+>>>> have to be performed per networks namespace context.
+>>>> It's easy to make corresponding delayed work per network namespace
+>>>> and thus gain per-net data pointer in laundromat function.
+>>>> But here a problem appears: network namespace is required to skip
+>>>> clients from other network namespaces while iterating over global
+>>>> lists (client_lru and friends).
+>>>> I see two possible solutions:
+>>>> 1) Make these list per network namespace context. In this case
+>>>> network namespace will not be required - per-net data will be
+>>>> enough.
+>>>> 2) Put network namespace link on per-net data (this one is easier, but uglier).
+>>>
+>>> I'd rather there be as few shared data structures between network
+>>> namespaces as possible--I think that will simplify things.
+>>>
+>>> So, of those two choices, #1.
+>>>
 >>
->>  tcpdump -npvi br0 -s 0 host 192.168.88.4 and \( proto ICMP or port 2049 \) -w nfsdump
+>> Guys, I would like to discuss few ideas about caches and lists containerization.
+>> Currently, it look to me, that these hash tables:
 >>
->> on the client (192.168.88.2).  Next I mounted a directory on the client,
->> and started reading (tar'ing) a directory into /dev/null.  It captured a
->> few stalls.  Tcpdump shows number of packets it got, the stalls are at
->> packet counts 58090, 97069 and 97071.  I cancelled the capture after that.
+>> reclaim_str, conf_id, conf_str, unconf_str, unconf_id, sessionid
 >>
->> The resulting file is available at http://www.corpit.ru/mjt/tmp/nfsdump.xz ,
->> it is 220Mb uncompressed and 1.3Mb compressed.  The source files are
->> 10 files of 1Gb each, all made by using `truncate' utility, so does not
->> take place on disk at all.  This also makes it obvious that the issue
->> does not depend on the speed of disk on the server (since in this case,
->> the server disk isn't even in use).
-> 
-> OK. So from the above file it looks as if the traffic is mainly READ
-> requests.
+>> and these lists:
+>>
+>> client_lru, close_lru
+>>
+>> have to be per net, while hash tables
+>>
+>> file, ownerstr, lockowner_ino
+>>
+>> and
+>>
+>> del_recall_lru lists
+>>
+>> have not, because they are about file system access.
+>
+> Actually, ownerstr and lockowner_ino should also both be per-container.
+>
+> So it's only file and del_recall_lru that should be global.  (And
+> del_recall_lru might work either way, actually.)
+>
+>> If I'd containerize it this way, then looks like nfs4_lock_state()
+>> and nfs4_unlock_state() functions will protect only
+>> non-containerized data, while containerized data have to protected
+>> by some per-net lock.
+>
+> Sounds about right.
+>
 
-The issue here happens only with reads.
+Bruce, Jeff, I've implemented these per-net hashes and lists (file hash and 
+del_recall_lru remains global).
+But now I'm confused with locking.
 
-> In 2 places the server stops responding. In both cases, the client seems
-> to be sending a single TCP frame containing several COMPOUNDS containing
-> READ requests (which should be legal) just prior to the hang. When the
-> server doesn't respond, the client pings it with a RENEW, before it ends
-> up severing the TCP connection and then retransmitting.
+For example, let's consider file hash and del_recall_lru lists.
+It looks like they are protected by recall_lock. But in 
+nfsd_forget_delegations() this lock is not taken. Is it a bug?
+If yes and recall_lock is used for file hash protection, then why do we need to 
+protect nfsd_process_n_delegations() by nfs4_un/lock_state() calls?
 
-And sometimes -- speaking only from the behavour I've seen, not from the
-actual frames sent -- server does not respond to the RENEW too, in which
-case the client reports "nfs server no responding", and on the next
-renew it may actually respond.  This happens too, but much more rare.
+Actually, the problem I'm trying to solve is to replace global client_lock by 
+per-net one where possible. But I don't clearly understand, what it protects.
 
-During these stalls, ie, when there's no network activity at all,
-the server NFSD threads are busy eating all available CPU.
+Could you, guys, clarify the state locking to me.
 
-What does it all tell us? :)
-
-Thank you!
-
-/mjt
+-- 
+Best regards,
+Stanislav Kinsbursky
