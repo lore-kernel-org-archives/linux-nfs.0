@@ -1,103 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:29686 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754414Ab2E2Qtu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 May 2012 12:49:50 -0400
-Message-ID: <4FC4FE05.5020708@RedHat.com>
-Date: Tue, 29 May 2012 12:49:09 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Honor the no_root_squash flag on pseudo roots.
-References: <1338296836-28243-1-git-send-email-steved@redhat.com>  <1338303611.5433.14.camel@lade.trondhjem.org> <4FC4F17E.90000@RedHat.com> <1338308959.5433.48.camel@lade.trondhjem.org>
-In-Reply-To: <1338308959.5433.48.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:59684 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757683Ab2ENV1t (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 May 2012 17:27:49 -0400
+Subject: Re: [PATCH] ext4: turn on i_version updates by default
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+From: Andreas Dilger <adilger@dilger.ca>
+In-Reply-To: <20120514190500.GC1894@localhost.localdomain>
+Date: Mon, 14 May 2012 15:27:47 -0600
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, "Ted Ts'o" <tytso@mit.edu>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Message-Id: <60F0B94D-FDB9-4401-B0EA-1A1C6DE4086F@dilger.ca>
+References: <20120514140618.GA29902@fieldses.org> <9124E59E-2479-4C32-A528-3237B48DEC01@dilger.ca> <20120514152334.GB29902@fieldses.org> <14B38D68-FAE4-444A-BCD9-7EBF7E1BBFE1@dilger.ca> <20120514175822.GC1439@thunk.org> <20120514183316.GA1894@localhost.localdomain> <20120514185400.GA32026@fieldses.org> <20120514190500.GC1894@localhost.localdomain>
+To: Josef Bacik <josef@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 05/29/2012 12:29 PM, Myklebust, Trond wrote:
-> On Tue, 2012-05-29 at 11:55 -0400, Steve Dickson wrote:
->>
->> On 05/29/2012 11:00 AM, Trond Myklebust wrote:
->>> On Tue, 2012-05-29 at 09:07 -0400, Steve Dickson wrote:
->>>> If root squashing is turned off on a export that
->>>> has multiple directories, the parent directories
->>>> of the pseudo exports that's built, also needs to
->>>> have root squashing turned off.
->>>>
->>>> Signed-off-by: Steve Dickson <steved@redhat.com>
->>>> ---
->>>>  utils/mountd/v4root.c |    9 ++++++++-
->>>>  1 files changed, 8 insertions(+), 1 deletions(-)
->>>>
->>>> diff --git a/utils/mountd/v4root.c b/utils/mountd/v4root.c
->>>> index 708eb61..ad8a3e7 100644
->>>> --- a/utils/mountd/v4root.c
->>>> +++ b/utils/mountd/v4root.c
->>>> @@ -92,7 +92,14 @@ v4root_create(char *path, nfs_export *export)
->>>>  	exp = export_create(&eep, 0);
->>>>  	if (exp == NULL)
->>>>  		return NULL;
->>>> -	xlog(D_CALL, "v4root_create: path '%s'", exp->m_export.e_path);
->>>> +	/*
->>>> +	 * Honor the no_root_squash flag 
->>>> +	 */
->>>> +	if ((curexp->e_flags & NFSEXP_ROOTSQUASH) == 0)
->>>> +		exp->m_export.e_flags &= ~NFSEXP_ROOTSQUASH;
->>>> +	xlog(D_CALL, "v4root_create: path '%s' flags 0x%x", 
->>>> +		exp->m_export.e_path, exp->m_export.e_flags);
->>>> +
->>>>  	return &exp->m_export;
->>>>  }
->>>
->>>
->>> As long as the user is authenticated, why do we care whether or not they
->>> are squashed to user 'nobody' for authorisation purposes? There
->>> shouldn't be any permission checks enforced on the pseudo-root, should
->>> there?
->>>
->> The access checks come during the lookup of the pseudo-root. 
->>
->> For example
->>      /home/steved/work *(rw,no_root_squash)
->>
->> This is the  export which causes mountd builds the pseudo-roots of 
->>      '/', '/home', and '/home/steved'
->>
->> Now if the no_root_squash is not set on those pseudo-roots the
->> access bits returned by server will cause the lookup of
->> /home/steved/work to fail. 
+On 2012-05-14, at 1:05 PM, Josef Bacik wrote:
+> On Mon, May 14, 2012 at 02:54:00PM -0400, J. Bruce Fields wrote:
+>> I don't think they're worried about the inode_inc_iversion() calls
+>> themselves, but the behavior of file_update_time():
+>> 
+>>        if (!timespec_equal(&inode->i_mtime, &now))
+>>                sync_it = S_MTIME;
+>> 
+>>        if (!timespec_equal(&inode->i_ctime, &now))
+>>                sync_it |= S_CTIME;
+>> 
+>>        if (IS_I_VERSION(inode))
+>>                sync_it |= S_VERSION;
+>> 
+>>        if (!sync_it)
+>>                return;
+>> 	...
+>> 	mark_inode_dirty_sync(inode);
+>> 
+>> So now mark_inode_dirty_sync() is called on every update, instead of
+>> merely on every update that sees a time change (so at most once a
+>> jiffy).
+>> 
+>> So mark_inode_dirty_sync (and hence ->dirty_inode = ext4_dirty_inode)
+>> may get called more often if you're writing very frequently.
+>> 
+>> I'm a bit surprised that's expected to add significant overhead to the
+>> write.
 > 
-> If '/', '/home' and '/home/steved' aren't exported directories, then how
-> can they have properties such as acls? 
-They don't. '/', '/home' and '/home/steved' are not being exported. Only
-/home/steved/work is being exported in the namespace. So /home/steved/work
-can have properties such as acls, but the components in the path can't.
+> It shouldn't, let's be honest, most systems aren't going to have such
+> a coarse jiffie counter that they'll be able to get away with doing
+> 2 calls to write() or ->page_mkwrite() in the same jiffie and skip the
+> update to mtime/ctime anyway.  If they do they are damned lucky, and
+> again the amount of overhead added even if they are should be
+> negligible since 99% of us all incur the overhead from having
+> to update mtime/ctime anyway.  Thanks,
 
-If you wanted those to those type of properties on the path components, 
-you would have to explicitly export them.
+Seriously?  The whole reason the above checks for timespec_equal()
+are there is to avoid calling mark_inode_dirty_sync() thousands of
+times per second.  If doing write() calls in the same jiffie were
+so rare as you suggest then I don't think such an optimization
+would ever have appeared in the first place.
+
+For writes to a high-IOPS device (e.g. SSD) can run far higher than
+1000 IOPS, and this is an important use case that people care about
+today, so why add useless overhead when it isn't needed?
+
+Cheers, Andreas
 
 
-> I thought the whole point of the
-> pseudo-filesystem was to just provide a namespace that bridges between
-> actual exported filesystems.
-That's exactly what happens.... 
 
-> As long as I'm authenticated (i.e. my RPC credential matches the 'sec='
-> line in /etc/exports), then why shouldn't I be able to 'cd'
-> into /home/steved and run an 'ls'?
-And you can. But all you are going to see is the exported directory, in
-this case 'work'. For example: say you mount '/' on /mnt and do an ls.
-This would be the tree:
 
-# ls /mnt
-./  ../  home/
-# ls /mnt/work/home
-./  ../  steved/
-# ls /mnt/work/home/steved
-./  ../  work/
 
-steved.
