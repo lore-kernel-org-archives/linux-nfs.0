@@ -1,40 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44915 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933200Ab2EPMsm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 May 2012 08:48:42 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 01/11] nfsd4: exchange_id has a pointless copy
-Date: Wed, 16 May 2012 08:48:29 -0400
-Message-Id: <1337172519-17335-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1337172519-17335-1-git-send-email-bfields@redhat.com>
-References: <1337172519-17335-1-git-send-email-bfields@redhat.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:60436 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757199Ab2ENR60 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 May 2012 13:58:26 -0400
+Date: Mon, 14 May 2012 13:58:22 -0400
+From: "Ted Ts'o" <tytso@mit.edu>
+To: Andreas Dilger <adilger@dilger.ca>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Subject: Re: [PATCH] ext4: turn on i_version updates by default
+Message-ID: <20120514175822.GC1439@thunk.org>
+References: <20120514140618.GA29902@fieldses.org>
+ <9124E59E-2479-4C32-A528-3237B48DEC01@dilger.ca>
+ <20120514152334.GB29902@fieldses.org>
+ <14B38D68-FAE4-444A-BCD9-7EBF7E1BBFE1@dilger.ca>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <14B38D68-FAE4-444A-BCD9-7EBF7E1BBFE1@dilger.ca>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Mon, May 14, 2012 at 11:27:42AM -0600, Andreas Dilger wrote:
+> > And if it at all possible I'd rather have it be something that Just
+> > Works rather than something that requires extra configuration.
+> 
+> Sure, but this is only useful for NFSv4, but costs everyone using
+> ext4 continuous overhead, so it isn't a clear-cut case to enable
+> the version just on the thought that NFS might one day be used on
+> any particular filesystem.
 
-We just verified above that these two verifiers are already the same.
+It's not a matter of "NFSv4 might one day be used"; if we don't turn
+on i_version updates until the file system is actually exported via
+NFSv4, there would be no deleterious effects.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |    1 -
- 1 file changed, 1 deletion(-)
+I always thought that was going to be the plan; that there would be
+some flag that would be set in struct super_block when the file system
+was exported that would enable i_version updates.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index c33f052..b699c27f 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1550,7 +1550,6 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 		 * Falling into 18.35.4 case 2, possible router replay.
- 		 * Leave confirmed record intact and return same result.
- 		 */
--		copy_verf(conf, &verf);
- 		new = conf;
- 		goto out_copy;
- 	}
--- 
-1.7.9.5
+That way we satisfy the "no extra configuration" needed requirement,
+which I agree is ideal, but we also don't waste any CPU overhead if
+the file system is not exported via NFSv4.  I tried to implement
+anything along these lines because I don't care enough, and I don't
+use NFSv4 personally....
 
+							- Ted
