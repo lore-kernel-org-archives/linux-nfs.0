@@ -1,49 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:37436 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751227Ab2EDPoS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 May 2012 11:44:18 -0400
-Received: by ghrr11 with SMTP id r11so2894043ghr.19
-        for <linux-nfs@vger.kernel.org>; Fri, 04 May 2012 08:44:18 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] sunrpc: do array overrun check in svc_recv before allocating pages
-Date: Fri,  4 May 2012 11:44:12 -0400
-Message-Id: <1336146252-8669-1-git-send-email-jlayton@redhat.com>
+Received: from natasha.panasas.com ([67.152.220.90]:57278 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755595Ab2ENLmS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 May 2012 07:42:18 -0400
+Message-ID: <4FB0EF6A.3080404@panasas.com>
+Date: Mon, 14 May 2012 14:41:30 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Lior <lior@tonian.com>
+CC: <tigran.mkrtchyan@desy.de>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: nfs v4.1 client without pNFS
+References: <4FAF9E19.4060802@tonian.com> <CAGue13rFG30EzmQX7sfYA_ouPBxaUu1Xs8sb1ee4fBMtaufKpA@mail.gmail.com> <4FAFBD04.8020301@tonian.com> <4FB0CF8C.8090405@panasas.com> <4FB0ECBE.2060503@tonian.com>
+In-Reply-To: <4FB0ECBE.2060503@tonian.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There's little point in waiting until after we allocate all of the pages
-to see if we're going to overrun the array. In the event that this
-calculation is really off we could end up scribbling over a bunch of
-memory and make it tougher to debug.
+On 05/14/2012 02:30 PM, Lior wrote:
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- net/sunrpc/svc_xprt.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+> I don't think you can export the same FS ( same path ) twice in 2 
+> different ways...
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 4bda09d..8195c6a 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -601,6 +601,7 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
- 
- 	/* now allocate needed pages.  If we get a failure, sleep briefly */
- 	pages = (serv->sv_max_mesg + PAGE_SIZE) / PAGE_SIZE;
-+	BUG_ON(pages >= RPCSVC_MAXPAGES);
- 	for (i = 0; i < pages ; i++)
- 		while (rqstp->rq_pages[i] == NULL) {
- 			struct page *p = alloc_page(GFP_KERNEL);
-@@ -615,7 +616,6 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
- 			rqstp->rq_pages[i] = p;
- 		}
- 	rqstp->rq_pages[i++] = NULL; /* this might be seen in nfs_read_actor */
--	BUG_ON(pages >= RPCSVC_MAXPAGES);
- 
- 	/* Make arg->head point to first page and arg->pages point to rest */
- 	arg = &rqstp->rq_arg;
--- 
-1.7.7.6
+
+Look into bind mounts. 
+
+In lots of admin schools they teach you that you actually export an
+alias of a path at /export and not expose the real path on Server.
+So you can change in the future with out changing Clients fstabs or
+scripts.
+
+Cheers
+Boaz
 
