@@ -1,92 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36417 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:57092 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758223Ab2EBBni (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 May 2012 21:43:38 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
-        NeilBrown <neilb@suse.de>, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/3] mountd: parse ip address earlier
-Date: Tue,  1 May 2012 21:43:32 -0400
-Message-Id: <1335923014-2789-1-git-send-email-bfields@redhat.com>
-In-Reply-To: <20120502014155.GA2684@fieldses.org>
-References: <20120502014155.GA2684@fieldses.org>
+	id S1757449Ab2ENSyD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 May 2012 14:54:03 -0400
+Date: Mon, 14 May 2012 14:54:00 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Josef Bacik <josef@redhat.com>
+Cc: "Ted Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Subject: Re: [PATCH] ext4: turn on i_version updates by default
+Message-ID: <20120514185400.GA32026@fieldses.org>
+References: <20120514140618.GA29902@fieldses.org>
+ <9124E59E-2479-4C32-A528-3237B48DEC01@dilger.ca>
+ <20120514152334.GB29902@fieldses.org>
+ <14B38D68-FAE4-444A-BCD9-7EBF7E1BBFE1@dilger.ca>
+ <20120514175822.GC1439@thunk.org>
+ <20120514183316.GA1894@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120514183316.GA1894@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Mon, May 14, 2012 at 02:33:17PM -0400, Josef Bacik wrote:
+> On Mon, May 14, 2012 at 01:58:22PM -0400, Ted Ts'o wrote:
+> > On Mon, May 14, 2012 at 11:27:42AM -0600, Andreas Dilger wrote:
+> > > > And if it at all possible I'd rather have it be something that Just
+> > > > Works rather than something that requires extra configuration.
+> > > 
+> > > Sure, but this is only useful for NFSv4, but costs everyone using
+> > > ext4 continuous overhead, so it isn't a clear-cut case to enable
+> > > the version just on the thought that NFS might one day be used on
+> > > any particular filesystem.
+> > 
+> > It's not a matter of "NFSv4 might one day be used"; if we don't turn
+> > on i_version updates until the file system is actually exported via
+> > NFSv4, there would be no deleterious effects.
+> > 
+> > I always thought that was going to be the plan; that there would be
+> > some flag that would be set in struct super_block when the file system
+> > was exported that would enable i_version updates.
+> > 
+> > That way we satisfy the "no extra configuration" needed requirement,
+> > which I agree is ideal, but we also don't waste any CPU overhead if
+> > the file system is not exported via NFSv4.  I tried to implement
+> > anything along these lines because I don't care enough, and I don't
+> > use NFSv4 personally....
+> > 
+> 
+> Seems like this is just a bad place to be doing inode_inc_iversion().  If
+> MS_IVERSION is set we will update iversion in file_update_time() and then call
+> mark_inode_dirty which will jack up the iversion again.
 
-I don't see the point of waiting to the last minute to parse the ip
-address.  If the client name isn't a legal ip address then this will
-fail fairly quickly, so there's not much of a performance penalty.
+Agreed, that's weird.
 
-Also, note the previous code incorrectly assumed client_resolve would
-always return non-NULL.
+> In btrfs we just change
+> it wherever we change ctime and that way you don't really notice the extra
+> overhead since you are doing it in paths where you are changing a bunch of stuff
+> in the inode already, and mostly where you hold the i_mutex so you aren't going
+> to be hitting any contention on the i_lock.  Thanks,
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- utils/mountd/cache.c |   33 +++++++++++++++++++++------------
- 1 files changed, 21 insertions(+), 12 deletions(-)
+I don't think they're worried about the inode_inc_iversion() calls
+themselves, but the behavior of file_update_time():
 
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index ac9cdbd..08ff150 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -495,6 +495,19 @@ static bool match_fsid(struct parsed_fsid *parsed, nfs_export *exp, char *path)
- 	return false;
- }
- 
-+struct addrinfo *lookup_client_addr(char *dom)
-+{
-+	struct addrinfo *ret;
-+	struct addrinfo *tmp;
-+
-+	tmp = host_pton(dom);
-+	if (tmp == NULL)
-+		return NULL;
-+	ret = client_resolve(tmp->ai_addr);
-+	freeaddrinfo(tmp);
-+	return ret;
-+}
-+
- static void nfsd_fh(FILE *f)
- {
- 	/* request are:
-@@ -538,6 +551,12 @@ static void nfsd_fh(FILE *f)
- 
- 	auth_reload();
- 
-+	if (use_ipaddr) {
-+		ai = lookup_client_addr(dom);
-+		if (!ai)
-+			goto out;
-+	}
-+
- 	/* Now determine export point for this fsid/domain */
- 	for (i=0 ; i < MCL_MAXTYPES; i++) {
- 		nfs_export *next_exp;
-@@ -578,18 +597,8 @@ static void nfsd_fh(FILE *f)
- 
- 			if (!match_fsid(&parsed, exp, path))
- 				continue;
--			if (use_ipaddr) {
--				if (ai == NULL) {
--					struct addrinfo *tmp;
--					tmp = host_pton(dom);
--					if (tmp == NULL)
--						goto out;
--					ai = client_resolve(tmp->ai_addr);
--					freeaddrinfo(tmp);
--				}
--				if (!client_check(exp->m_client, ai))
--					continue;
--			}
-+			if (use_ipaddr && !client_check(exp->m_client, ai))
-+				continue;
- 			if (!found || subexport(&exp->m_export, found)) {
- 				found = &exp->m_export;
- 				free(found_path);
--- 
-1.7.7.6
+        if (!timespec_equal(&inode->i_mtime, &now))
+                sync_it = S_MTIME;
 
+        if (!timespec_equal(&inode->i_ctime, &now))
+                sync_it |= S_CTIME;
+
+        if (IS_I_VERSION(inode))
+                sync_it |= S_VERSION;
+
+        if (!sync_it)
+                return;
+	...
+	mark_inode_dirty_sync(inode);
+
+So now mark_inode_dirty_sync() is called on every update, instead of
+merely on every update that sees a time change (so at most once a
+jiffy).
+
+So mark_inode_dirty_sync (and hence ->dirty_inode = ext4_dirty_inode)
+may get called more often if you're writing very frequently.
+
+I'm a bit surprised that's expected to add significant overhead to the
+write.
+
+I guess I should stare at the code and try to follow Andreas's
+explanation....
+
+--b.
