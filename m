@@ -1,137 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail1.trendhosting.net ([195.8.117.5]:53706 "EHLO
-	mail1.trendhosting.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755497Ab2EGJTr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 May 2012 05:19:47 -0400
-Message-ID: <4FA793AB.70107@pocock.com.au>
-Date: Mon, 07 May 2012 09:19:39 +0000
-From: Daniel Pocock <daniel@pocock.com.au>
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:35662 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755708Ab2ENLaJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 May 2012 07:30:09 -0400
+Received: by bkcji2 with SMTP id ji2so3693212bkc.19
+        for <linux-nfs@vger.kernel.org>; Mon, 14 May 2012 04:30:08 -0700 (PDT)
+Message-ID: <4FB0ECBE.2060503@tonian.com>
+Date: Mon, 14 May 2012 14:30:06 +0300
+From: Lior <lior@tonian.com>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: extremely slow nfs when sync enabled
-References: <4FA5E950.5080304@pocock.com.au>   <1336328594.2593.14.camel@lade.trondhjem.org>   <4FA6EBD4.7040308@pocock.com.au>  <1336340993.2600.11.camel@lade.trondhjem.org>  <4FA6F75E.6090300@pocock.com.au> <1336344160.2600.30.camel@lade.trondhjem.org>
-In-Reply-To: <1336344160.2600.30.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: tigran.mkrtchyan@desy.de, "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: nfs v4.1 client without pNFS
+References: <4FAF9E19.4060802@tonian.com> <CAGue13rFG30EzmQX7sfYA_ouPBxaUu1Xs8sb1ee4fBMtaufKpA@mail.gmail.com> <4FAFBD04.8020301@tonian.com> <4FB0CF8C.8090405@panasas.com>
+In-Reply-To: <4FB0CF8C.8090405@panasas.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
->> Ok, so the combination of:
+בתאריך 14/05/2012 12:25, ציטוט Boaz Harrosh:
+> On 05/13/2012 04:54 PM, Lior wrote:
+>
+>> Hi Tigran,
 >>
->> - enable writeback with hdparm
->> - use ext4 (and not ext3)
->> - barrier=1 and data=writeback?  or data=?
+>> I guess that's one way ( a dark white box way, which still needs to be
+>> looked into)... but I was more thinking of a more high level built in
+>> user method  (e.g module option ,or mount option)
 >>
->> - is there a particular kernel version (on either client or server side)
->> that will offer more stability using this combination of features?
-> 
-> Not that I'm aware of. As long as you have a kernel > 2.6.29, then LVM
-> should work correctly. The main problem is that some SATA hardware tends
-> to be buggy, defeating the methods used by the barrier code to ensure
-> data is truly on disk. I believe that XFS will therefore actually test
-> the hardware when you mount with write caching and barriers, and should
-> report if the test fails in the syslogs.
-> See http://xfs.org/index.php/XFS_FAQ#Write_barrier_support.
-> 
->> I think there are some other variations of my workflow that I can
->> attempt too, e.g. I've contemplated compiling C++ code onto a RAM disk
->> because I don't need to keep the hundreds of object files.
-> 
-> You might also consider using something like ccache and set the
-> CCACHE_DIR to a local disk if you have one.
-> 
+>
+> We used to have it but it was removed, being pointless. 4.1 means pNFS.
+>
+> The optional clause in the STD means client need no implement it but since
+> we slaved so hard to do implement it we see no point ever disabling it.
+>
+> As an administrator policy it is best controlled in a single place at the
+> Server. Instead of having a crap option set at every client. What does that
+> give you?
+>
+> If the admin wants to let you have a choice, for what ever reason that I
+> can't currently imagine, He can setup two exports of the same FS one
+> with the pnfs option, one without.
+I don't think you can export the same FS ( same path ) twice in 2 
+different ways...
+In any case, I understand the explanation above concerning the design. 
+just tried to check if this line of thinking (4.1 without pNFS) is 
+needed and/or /wanted.
 
+Thanks,
 
-Thanks for the feedback about these options, I am going to look at these
-strategies more closely
-
-
->>>>> setups really _suck_ at dealing with fsync(). The latter is used every
->>>>
->>>> I'm using md RAID1, my setup is like this:
->>>>
->>>> 2x 1TB SATA disks ST31000528AS (7200rpm with 32MB cache and NCQ)
->>>>
->>>> SATA controller: ATI Technologies Inc SB700/SB800 SATA Controller [AHCI
->>>> mode] (rev 40)
->>>> - not using any of the BIOS softraid stuff
->>>>
->>>> Both devices have identical partitioning:
->>>> 1. 128MB boot
->>>> 2. md volume (1TB - 128MB)
->>>>
->>>> The entire md volume (/dev/md2) is then used as a PV for LVM
->>>>
->>>> I do my write tests on a fresh LV with no fragmentation
->>>>
->>>>> time the NFS client sends a COMMIT or trunc() instruction, and for
->>>>> pretty much all file and directory creation operations (you can use
->>>>> 'nfsstat' to monitor how many such operations the NFS client is sending
->>>>> as part of your test).
->>>>
->>>> I know that my two tests are very different in that way:
->>>>
->>>> - dd is just writing one big file, no fsync
->>>>
->>>> - unpacking a tarball (or compiling a large C++ project) does a lot of
->>>> small writes with many fsyncs
->>>>
->>>> In both cases, it is slow
->>>>
->>>>> Local disk can get away with doing a lot less fsync(), because the cache
->>>>> consistency guarantees are different:
->>>>>       * in NFS, the server is allowed to crash or reboot without
->>>>>         affecting the client's view of the filesystem.
->>>>>       * in the local file system, the expectation is that on reboot any
->>>>>         data lost is won't need to be recovered (the application will
->>>>>         have used fsync() for any data that does need to be persistent).
->>>>>         Only the disk filesystem structures need to be recovered, and
->>>>>         that is done using the journal (or fsck).
->>>>
->>>>
->>>> Is this an intractable problem though?
->>>>
->>>> Or do people just work around this, for example, enable async and
->>>> write-back cache, and then try to manage the risk by adding a UPS and/or
->>>> battery backed cache to their RAID setup (to reduce the probability of
->>>> unclean shutdown)?
+Lior K.
+> The point of the all pNFS support is that everything is automatic, Server
+> upgraded/extended/scaled boom transparently works.
+>
+> NACK on any user visible disables. It's a maintenance disaster. If you
+> do find any real bugs with the pNFS option left on, please report ASAP
+> and we'll fix it
+>
+> Cheers
+> Boaz
+>
+>> Thanks for the fast response,
+>> Lior K.
+>>
+>> בתאריך 13/05/2012 16:37, ציטוט Tigran Mkrtchyan:
+>>> Hi Lior,
 >>>
->>> It all boils down to what kind of consistency guarantees you are
->>> comfortable living with. The default NFS server setup offers much
->>> stronger data consistency guarantees than local disk, and is therefore
->>> likely to be slower when using cheap hardware.
+>>> you can blacklist the layout driver in /etc/modprobe.d/nfsv41.conf
 >>>
->>
->> I'm keen for consistency, because I don't like the idea of corrupting
->> some source code or a whole git repository for example.
->>
->> How did you know I'm using cheap hardware?  It is a HP MicroServer, I
->> even got the £100 cash-back cheque:
->>
->> http://www8.hp.com/uk/en/campaign/focus-for-smb/solution.html#/tab2/
->>
->> Seriously though, I've worked with some very large arrays in my business
->> environment, but I use this hardware at home because of the low noise
->> and low heat dissipation rather than for saving money, so I would like
->> to try and get the most out of it if possible and I'm very grateful for
->> these suggestions.
-> 
-> Right. All I'm saying is that when comparing local disk and NFS
-> performance, then make sure that you are doing an apples-to-apples
-> comparison.
-> The main reason for wanting to use NFS in a home setup would usually be
-> in order to simultaneously access the same data through several clients.
-> If that is not a concern, then perhaps transforming your NFS server into
-> an iSCSI target might fit your performance requirements better?
-
-There are various types of content, some things, like VM images, are
-only accessed by one client at a time, those could be iSCSI.
-
-However, some of the code I'm compiling needs to be built on different
-platforms (e.g. I have a Debian squeeze desktop, and Debian wheezy in a
-VM), consequently, it is convenient for me to have access to the git
-workspaces from all these hosts using NFS.
-
-
+>>> blacklist nfs_layout_nfsv41_files
+>>>
+>>>
+>>> Tigran.
+>>> On Sun, May 13, 2012 at 1:42 PM, Lior<lior@tonian.com>   wrote:
+>>>> Hi Trond,
+>>>>
+>>>> The rfc 5661 states that pNFS is an optional feature.
+>>>> Is there currently an intent to implement some sort of an option (module
+>>>> option ,or mount option) to run the NFSv4.1 client without pNFS
+>>>> functionality?
+>>>>
+>>>> Thanks,
+>>>>    Lior K.
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
 
