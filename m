@@ -1,43 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f174.google.com ([209.85.216.174]:64813 "EHLO
-	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933231Ab2EQPOx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 May 2012 11:14:53 -0400
-Received: by qcro28 with SMTP id o28so1306000qcr.19
-        for <linux-nfs@vger.kernel.org>; Thu, 17 May 2012 08:14:52 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com
-Subject: [PATCH] autoconf: make the test for prctl have an effect
-Date: Thu, 17 May 2012 11:14:48 -0400
-Message-Id: <1337267688-3957-1-git-send-email-jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:32335 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755846Ab2ENTQB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 May 2012 15:16:01 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q4EJG1dX018357
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 14 May 2012 15:16:01 -0400
+Received: from badhat.bos.devel.redhat.com (vpn-10-78.rdu.redhat.com [10.11.10.78])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q4EJG0hH012610
+	for <linux-nfs@vger.kernel.org>; Mon, 14 May 2012 15:16:00 -0400
+Message-ID: <4FB159DA.2070800@RedHat.com>
+Date: Mon, 14 May 2012 15:15:38 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: ANNOUNCE: nfs-utils-1.2.6 released.
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We currently test to ensure that prctl() is available, but the results
-of that test are a no-op either way. statd calls prctl()
-unconditionally, so make configure bail out if prctl() isn't available
-since the build will fail in that event anyway.
+New Features in this release:
+   * The addition the nfsdcld daemon
+   * The addition of the osd_login script which is mandated by the
+         pnfs-objects standard
+   * The addition of -l option to rpcgssd to enforce legacy behaviour
 
-Cc: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- aclocal/libcap.m4 |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+As well as the usual assorted bug fixes...  
 
-diff --git a/aclocal/libcap.m4 b/aclocal/libcap.m4
-index 68a624c..f8a0ed1 100644
---- a/aclocal/libcap.m4
-+++ b/aclocal/libcap.m4
-@@ -3,7 +3,7 @@ dnl
- AC_DEFUN([AC_LIBCAP], [
- 
-   dnl look for prctl
--  AC_CHECK_FUNC([prctl], , )
-+  AC_CHECK_FUNC([prctl], , AC_MSG_ERROR([prctl syscall is not available]))
- 
-   AC_ARG_ENABLE([caps],
-     [AS_HELP_STRING([--disable-caps], [Disable capabilities support])])
--- 
-1.7.7.6
+The tarball can only be found at Sourceforge.net since 
+still unable to access ftp://ftp.kernel.org (I'm working
+on it):
+  http://sourceforge.net/projects/nfs
 
+The git tree is at:
+   git://linux-nfs.org/nfs-utils
+
+The change log is also only on Sourceforge.net:
+   http://sourceforge.net/projects/nfs/files/nfs-utils/1.2.6/Changelog-1.2.6/download
+
+steved.
