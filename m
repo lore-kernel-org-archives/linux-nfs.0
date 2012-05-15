@@ -1,52 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:51270 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753054Ab2E0Qij (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 27 May 2012 12:38:39 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Peng Tao <bergwolf@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Peng Tao <tao.peng@emc.com>
-Subject: Re: [PATCH 3/3] pnfsblock: bail out unaligned DIO
-Date: Sun, 27 May 2012 16:38:37 +0000
-Message-ID: <1338136717.3044.13.camel@lade.trondhjem.org>
-References: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>
-	 <1338096780-2763-4-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1338096780-2763-4-git-send-email-bergwolf@gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from he.sipsolutions.net ([78.46.109.217]:48334 "EHLO
+	sipsolutions.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932419Ab2EOSkw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 14:40:52 -0400
+Message-ID: <1337107245.15553.14.camel@jlt3.sipsolutions.net>
+Subject: Re: [RFC net-next 0/2] net: Use net_<level>_ratelimit
+From: Johannes Berg <johannes@sipsolutions.net>
+To: David Miller <davem@davemloft.net>
+Cc: joe@perches.com, netdev@vger.kernel.org,
+        linux-decnet-user@lists.sourceforge.net,
+        netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org,
+        coreteam@netfilter.org, linux-wireless@vger.kernel.org,
+        dev@openvswitch.org, linux-sctp@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Tue, 15 May 2012 20:40:45 +0200
+In-Reply-To: <20120515.142922.1434224550630736456.davem@davemloft.net>
+References: <20120515.134531.530903973750646107.davem@davemloft.net>
+	 <1337104765.7050.24.camel@joe2Laptop>
+	 <1337106430.15553.6.camel@jlt3.sipsolutions.net>
+	 <20120515.142922.1434224550630736456.davem@davemloft.net>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU3VuLCAyMDEyLTA1LTI3IGF0IDEzOjMzICswODAwLCBQZW5nIFRhbyB3cm90ZToNCj4gU2ln
-bmVkLW9mZi1ieTogUGVuZyBUYW8gPHRhby5wZW5nQGVtYy5jb20+DQo+IC0tLQ0KPiAgZnMvbmZz
-L2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMgfCAgIDIwICsrKysrKysrKysrKysrKysrKysrDQo+
-ICAxIGZpbGVzIGNoYW5nZWQsIDIwIGluc2VydGlvbnMoKyksIDAgZGVsZXRpb25zKC0pDQo+IA0K
-PiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMgYi9mcy9uZnMv
-YmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYw0KPiBpbmRleCA1M2NiNDUwLi5jZGI4N2E5IDEwMDY0
-NA0KPiAtLS0gYS9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYw0KPiArKysgYi9mcy9u
-ZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYw0KPiBAQCAtMTAwMCw3ICsxMDAwLDI3IEBAIHN0
-YXRpYyBib29sIGJsX2Rpb19iZWdpbihzdHJ1Y3QgaW5vZGUgKmlub2RlLCBjb25zdCBzdHJ1Y3Qg
-aW92ZWMgKmlvdiwNCj4gIAkJCSB1bnNpZ25lZCBsb25nIG5yX3NlZ3MsIGxvZmZfdCBwb3MsDQo+
-ICAJCQkgc3RydWN0IGJsa19wbHVnICpwbHVnKQ0KPiAgew0KPiArCXVuc2lnbmVkIGJsa21hc2sg
-PSBORlNfU0VSVkVSKGlub2RlKS0+cG5mc19ibGtzaXplIC0gMTsNCj4gKwlzaXplX3QgY291bnQ7
-DQo+ICsJaW50IHNlZzsNCj4gKwl1bnNpZ25lZCBsb25nIGFkZHI7DQo+ICsNCj4gIAlibGtfc3Rh
-cnRfcGx1ZyhwbHVnKTsNCj4gKw0KPiArCS8qIE9ubHkgYWxsb3cgYmxrc2l6ZWQgRElPIGZvciBu
-b3cuDQo+ICsJICogSW4gdGhlb3J5IHdlIGNhbiBoYW5kbGUgcGFnZSBhbGlnbmVkIERJTyBpbiBj
-dXJyZW50IGJsb2NrIGxheW91dA0KPiArCSAqIHJlYWQvd3JpdGUgY29kZSwgYnV0IGl0IHdvdWxk
-IHJlcXVpcmUgc2VyaWFsaXphdGlvbiBiZXR3ZWVuDQo+ICsJICogY29uY3VycmVudCB3cml0ZXJz
-IGFuZCBpdCBpcyBmYXIgbGVzcyBlZmZlY2llbnQgdGhhbiBqdXN0IHNlbmQgSU8NCj4gKwkgKiB0
-byBNRFMuDQo+ICsJICovDQo+ICsJaWYgKHBvcyAmIGJsa21hc2spDQo+ICsJCXJldHVybiBmYWxz
-ZTsNCj4gKwlmb3IgKHNlZyA9IDA7IHNlZyA8IG5yX3NlZ3M7IHNlZysrKSB7DQo+ICsJCWFkZHIg
-PSAodW5zaWduZWQgbG9uZylpb3Zbc2VnXS5pb3ZfYmFzZTsNCj4gKwkJY291bnQgPSBpb3Zbc2Vn
-XS5pb3ZfbGVuOw0KPiArCQlpZiAodW5saWtlbHkoKGFkZHIgJiBibGttYXNrKSB8fCAoY291bnQg
-JiBibGttYXNrKSkpDQo+ICsJCQlyZXR1cm4gZmFsc2U7DQo+ICsJfQ0KPiAgCXJldHVybiB0cnVl
-Ow0KPiAgfQ0KDQpBZ2FpbiwgdGhpcyBjYW4gYW5kIHNob3VsZCBnbyBpbiB0aGUgZXhpc3Rpbmcg
-bmZzX3BhZ2Vpb19vcHMgZWl0aGVyIGluDQp0aGUgcGdfaW5pdCBvciBpbiB0aGUgcGdfdGVzdC4N
-Cg0KQWxzbywgd2h5IGRvIHlvdSBjb25zaWRlciBpdCB0byBiZSBkaXJlY3QgaS9vIHNwZWNpZmlj
-PyBJZiB0aGUNCmFwcGxpY2F0aW9uIGlzIHVzaW5nIGJ5dGUgcmFuZ2UgbG9ja2luZywgYW5kIHRo
-ZSBsb2NrcyBhcmVuJ3QgcGFnZS9ibG9jaw0KYWxpZ25lZCB0aGVuIHlvdSBhcmUgaW4gdGhlIHNh
-bWUgcG9zaXRpb24gb2YgaGF2aW5nIHRvIGRlYWwgd2l0aCBwYXJ0aWFsDQpwYWdlIHdyaXRlcyBl
-dmVuIGluIHRoZSByZWFkL3dyaXRlIGZyb20gcGFnZSBjYWNoZSBzaXR1YXRpb24uDQoNCi0tIA0K
-VHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpU
-cm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+On Tue, 2012-05-15 at 14:29 -0400, David Miller wrote:
+> From: Johannes Berg <johannes@sipsolutions.net>
+> Date: Tue, 15 May 2012 20:27:10 +0200
+> 
+> > On Tue, 2012-05-15 at 10:59 -0700, Joe Perches wrote:
+> > 
+> >> OK, but fyi, there's a possible issue with !CONFIG_DEBUG
+> >> builds because these patches converted some uses of
+> >> 	if (net_ratelimit())
+> >> 		printk(KERN_DEBUG ...
+> >> to
+> >> 	net_dbg_ratelimited()
+> >> 
+> >> These messages are no longer emitted when DEBUG isn't defined
+> >> and not using dynamic_debug.  I'm not sure that's a real
+> >> problem, but it's a difference.
+> >> 
+> >> I could produce a net_printk_ratelimited that would keep
+> >> the original behavior if necessary.
+> >> 
+> >> 	net_printk_ratelimited(KERN_DEBUG etc...)
+> > 
+> > Btw, what would the difference be to just plain printk_ratelimited()?
+> 
+> printk_ratelimited() drops a local ratelimit cookie into each call-site,
+> whereas we have a global one for the networking which these new interfaces
+> use.
+> 
+> Joe explained this completely in his 0/2 patch posting.
+
+I don't see that explicitly mentioned, but it doesn't matter much
+anyway.
+
+In the mac80211 case, messages are warnings/hints to the user, we just
+don't want them to flood the logs too much. I'd rather have that kind of
+change (limit cookie per callsite) in the rate limiting semantics than
+the change in the when it gets printed at all.
+
+I simply feel that obscuring the debugging even further wouldn't be a
+good thing to do right now. I'd rather have somebody convert all of it
+to the new debugging infrastructure but that seems a lot more effort
+than changing these back to something that isn't impacted by dynamic
+printk.
+
+johannes
+
