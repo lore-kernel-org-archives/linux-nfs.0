@@ -1,40 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f174.google.com ([209.85.216.174]:58408 "EHLO
-	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757152Ab2EPREc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 May 2012 13:04:32 -0400
-Received: by qcro28 with SMTP id o28so637502qcr.19
-        for <linux-nfs@vger.kernel.org>; Wed, 16 May 2012 10:04:31 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] rpc_pipefs: clear write bit from top level rpc_pipefs directory
-Date: Wed, 16 May 2012 13:04:26 -0400
-Message-Id: <1337187866-20263-1-git-send-email-jlayton@redhat.com>
+Received: from shards.monkeyblade.net ([198.137.202.13]:40845 "EHLO
+	shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932887Ab2EOSQP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 14:16:15 -0400
+Date: Tue, 15 May 2012 14:13:48 -0400 (EDT)
+Message-Id: <20120515.141348.892964316296815698.davem@davemloft.net>
+To: johannes@sipsolutions.net
+Cc: joe@perches.com, netdev@vger.kernel.org,
+        linux-decnet-user@lists.sourceforge.net,
+        netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org,
+        coreteam@netfilter.org, linux-wireless@vger.kernel.org,
+        dev@openvswitch.org, linux-sctp@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [RFC net-next 0/2] net: Use net_<level>_ratelimit
+From: David Miller <davem@davemloft.net>
+In-Reply-To: <1337105028.15553.3.camel@jlt3.sipsolutions.net>
+References: <20120515.134531.530903973750646107.davem@davemloft.net>
+	<1337104765.7050.24.camel@joe2Laptop>
+	<1337105028.15553.3.camel@jlt3.sipsolutions.net>
+Mime-Version: 1.0
+Content-Type: Text/Plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We can't create new files or directories here from userspace, so let's
-not pretend that this directory is writable.
+From: Johannes Berg <johannes@sipsolutions.net>
+Date: Tue, 15 May 2012 20:03:48 +0200
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- net/sunrpc/rpc_pipe.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+> Oops. Yes, please do that, mac80211 doesn't have DEBUG yet
 
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 3b62cf2..f955d72 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -1118,7 +1118,7 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
- 	sb->s_op = &s_ops;
- 	sb->s_time_gran = 1;
- 
--	inode = rpc_get_inode(sb, S_IFDIR | 0755);
-+	inode = rpc_get_inode(sb, S_IFDIR | S_IRUGO | S_IXUGO);
- 	sb->s_root = root = d_make_root(inode);
- 	if (!root)
- 		return -ENOMEM;
--- 
-1.7.7.6
+If you want debugging messages you would turn on dynamic_debug
+via sysctl or whatever, not define DEBUG in your sources.
 
+I don't think we should add yet another interface just to get
+KERN_DEBUG in there.
