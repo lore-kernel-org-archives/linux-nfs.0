@@ -1,210 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:37687 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:59996 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751548Ab2EIK5D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 May 2012 06:57:03 -0400
-Date: Wed, 9 May 2012 06:57:56 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: viro@ZenIV.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        miklos@szeredi.hu, hch@infradead.org, michael.brantley@deshaw.com
-Subject: Re: [PATCH v1 RESEND 04/12] vfs: add new "reval" argument to
- kern_path_create and user_path_create
-Message-ID: <20120509065756.755eb09a@corrin.poochiereds.net>
-In-Reply-To: <1336399931-20234-5-git-send-email-jlayton@redhat.com>
-References: <1336399931-20234-1-git-send-email-jlayton@redhat.com>
-	<1336399931-20234-5-git-send-email-jlayton@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1758666Ab2EOMgR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 May 2012 08:36:17 -0400
+Date: Tue, 15 May 2012 08:35:50 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jan Kara <jack@suse.cz>
+Cc: Andreas Dilger <adilger@dilger.ca>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Subject: Re: [PATCH] ext4: turn on i_version updates by default
+Message-ID: <20120515123550.GA7053@fieldses.org>
+References: <20120514140618.GA29902@fieldses.org>
+ <9124E59E-2479-4C32-A528-3237B48DEC01@dilger.ca>
+ <1337036918.2522.32.camel@lade.trondhjem.org>
+ <A0359961-B147-4343-BFA3-E82F38C6700B@dilger.ca>
+ <20120514235432.GA3199@fieldses.org>
+ <20120515103021.GD22359@quack.suse.cz>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120515103021.GD22359@quack.suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon,  7 May 2012 10:12:03 -0400
-Jeff Layton <jlayton@redhat.com> wrote:
-
-> ...for now, all of the callers pass in "false". Eventually, we'll set
-> that to "true" when we retry the lookup after getting back an ESTALE on
-> a call.
+On Tue, May 15, 2012 at 12:30:21PM +0200, Jan Kara wrote:
+> On Mon 14-05-12 19:54:32, J. Bruce Fields wrote:
+> > On Mon, May 14, 2012 at 05:33:04PM -0600, Andreas Dilger wrote:
+> > > I said as much in another reply - that once i_version is used on
+> > > a filesystem, it should be made "sticky" (i.e. permanently enabled
+> > > for that filesystem).  However, until that time it shouldn't be
+> > > enabled just because it might one day be used.
+> > > 
+> > > Even better than just blindly bumping the i_version on every change,
+> > > it would be better to have users of i_version (i.e. knfsd) flag the
+> > > inode with "needs i_version update" then read the version.  When the
+> > > filesystem/VFS bumps i_version the next time it can clear this flag
+> > > and not update i_version again until after the next time i_version
+> > > is actually used.
+> > 
+> > I really don't want to do anything more complicated than necessary.
+> > 
+> > What would be the worst-case test for the extra inode dirtying, so we
+> > can see what the numbers actually are?
+>   Something like:
 > 
-> While we're at it, change the is_dir arg to a bool since that's how
-> it's used currently.
+>   int fd, i;
+>   struct timeval tv[2];
 > 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  arch/powerpc/platforms/cell/spufs/syscalls.c |    2 +-
->  drivers/base/devtmpfs.c                      |    7 ++++---
->  fs/namei.c                                   |   22 ++++++++++++++--------
->  fs/ocfs2/refcounttree.c                      |    3 ++-
->  include/linux/namei.h                        |    4 ++--
->  net/unix/af_unix.c                           |    3 ++-
->  6 files changed, 25 insertions(+), 16 deletions(-)
+>   fd = open("file", O_CREAT | O_RDWR, 0644);
+>   if (fd < 0)
+>     return 1;
+>   for (i = 0; i < 1000000; i++) {
+>     gettimeofday(tv);
+>     tv[1] = tv[0];
+>     if (futimes(fd, tv) < 0)
+>       return 1;
+>   }
+>   return 0;
 > 
-> diff --git a/arch/powerpc/platforms/cell/spufs/syscalls.c b/arch/powerpc/platforms/cell/spufs/syscalls.c
-> index 5665dcc..3c222cc 100644
-> --- a/arch/powerpc/platforms/cell/spufs/syscalls.c
-> +++ b/arch/powerpc/platforms/cell/spufs/syscalls.c
-> @@ -66,7 +66,7 @@ static long do_spu_create(const char __user *pathname, unsigned int flags,
->  	struct dentry *dentry;
->  	int ret;
->  
-> -	dentry = user_path_create(AT_FDCWD, pathname, &path, 1);
-> +	dentry = user_path_create(AT_FDCWD, pathname, &path, true, false);
->  	ret = PTR_ERR(dentry);
->  	if (!IS_ERR(dentry)) {
->  		ret = spufs_create(&path, dentry, flags, mode, neighbor);
-> diff --git a/drivers/base/devtmpfs.c b/drivers/base/devtmpfs.c
-> index 8493536..70eb0b0 100644
-> --- a/drivers/base/devtmpfs.c
-> +++ b/drivers/base/devtmpfs.c
-> @@ -148,7 +148,7 @@ static int dev_mkdir(const char *name, umode_t mode)
->  	struct path path;
->  	int err;
->  
-> -	dentry = kern_path_create(AT_FDCWD, name, &path, 1);
-> +	dentry = kern_path_create(AT_FDCWD, name, &path, false, false);
+>   And see how long does it take with and without i_version?
 
-Peter Staubach pointed out to me that I flipped the above "is_dir" flag
-from true to false. I've fixed this in my patch stack so the next respin
-should have that fixed.
+The complaint I hear from Andreas is that we'll cause file_update_time()
+to call mark_inode_dirty() more often.
 
->  	if (IS_ERR(dentry))
->  		return PTR_ERR(dentry);
->  
-> @@ -195,10 +195,11 @@ static int handle_create(const char *nodename, umode_t mode, struct device *dev)
->  	struct path path;
->  	int err;
->  
-> -	dentry = kern_path_create(AT_FDCWD, nodename, &path, 0);
-> +	dentry = kern_path_create(AT_FDCWD, nodename, &path, false, false);
->  	if (dentry == ERR_PTR(-ENOENT)) {
->  		create_path(nodename);
-> -		dentry = kern_path_create(AT_FDCWD, nodename, &path, 0);
-> +		dentry = kern_path_create(AT_FDCWD, nodename, &path,
-> +								false, false);
->  	}
->  	if (IS_ERR(dentry))
->  		return PTR_ERR(dentry);
-> diff --git a/fs/namei.c b/fs/namei.c
-> index c427919..43e568b 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -2460,11 +2460,17 @@ struct file *do_file_open_root(struct dentry *dentry, struct vfsmount *mnt,
->  	return file;
->  }
->  
-> -struct dentry *kern_path_create(int dfd, const char *pathname, struct path *path, int is_dir)
-> +struct dentry *kern_path_create(int dfd, const char *pathname, struct path *path, bool is_dir, bool reval)
->  {
->  	struct dentry *dentry = ERR_PTR(-EEXIST);
->  	struct nameidata nd;
-> -	int error = do_path_lookup(dfd, pathname, LOOKUP_PARENT, &nd);
-> +	int error;
-> +	unsigned int lookup_flags = LOOKUP_PARENT;
-> +
-> +	if (reval)
-> +		lookup_flags |= LOOKUP_REVAL;
-> +
-> +	error = do_path_lookup(dfd, pathname, lookup_flags, &nd);
->  	if (error)
->  		return ERR_PTR(error);
->  
-> @@ -2512,13 +2518,13 @@ out:
->  }
->  EXPORT_SYMBOL(kern_path_create);
->  
-> -struct dentry *user_path_create(int dfd, const char __user *pathname, struct path *path, int is_dir)
-> +struct dentry *user_path_create(int dfd, const char __user *pathname, struct path *path, bool is_dir, bool reval)
->  {
->  	char *tmp = getname(pathname);
->  	struct dentry *res;
->  	if (IS_ERR(tmp))
->  		return ERR_CAST(tmp);
-> -	res = kern_path_create(dfd, tmp, path, is_dir);
-> +	res = kern_path_create(dfd, tmp, path, is_dir, reval);
->  	putname(tmp);
->  	return res;
->  }
-> @@ -2579,7 +2585,7 @@ SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, umode_t, mode,
->  	if (S_ISDIR(mode))
->  		return -EPERM;
->  
-> -	dentry = user_path_create(dfd, filename, &path, 0);
-> +	dentry = user_path_create(dfd, filename, &path, false, false);
->  	if (IS_ERR(dentry))
->  		return PTR_ERR(dentry);
->  
-> @@ -2652,7 +2658,7 @@ SYSCALL_DEFINE3(mkdirat, int, dfd, const char __user *, pathname, umode_t, mode)
->  	struct path path;
->  	int error;
->  
-> -	dentry = user_path_create(dfd, pathname, &path, 1);
-> +	dentry = user_path_create(dfd, pathname, &path, true, false);
->  	if (IS_ERR(dentry))
->  		return PTR_ERR(dentry);
->  
-> @@ -2939,7 +2945,7 @@ SYSCALL_DEFINE3(symlinkat, const char __user *, oldname,
->  	if (IS_ERR(from))
->  		return PTR_ERR(from);
->  
-> -	dentry = user_path_create(newdfd, newname, &path, 0);
-> +	dentry = user_path_create(newdfd, newname, &path, false, false);
->  	error = PTR_ERR(dentry);
->  	if (IS_ERR(dentry))
->  		goto out_putname;
-> @@ -3048,7 +3054,7 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
->  	if (error)
->  		return error;
->  
-> -	new_dentry = user_path_create(newdfd, newname, &new_path, 0);
-> +	new_dentry = user_path_create(newdfd, newname, &new_path, false, false);
->  	error = PTR_ERR(new_dentry);
->  	if (IS_ERR(new_dentry))
->  		goto out;
-> diff --git a/fs/ocfs2/refcounttree.c b/fs/ocfs2/refcounttree.c
-> index 9f32d7c..b52b24d 100644
-> --- a/fs/ocfs2/refcounttree.c
-> +++ b/fs/ocfs2/refcounttree.c
-> @@ -4453,7 +4453,8 @@ int ocfs2_reflink_ioctl(struct inode *inode,
->  		return error;
->  	}
->  
-> -	new_dentry = user_path_create(AT_FDCWD, newname, &new_path, 0);
-> +	new_dentry = user_path_create(AT_FDCWD, newname, &new_path,
-> +								false, false);
->  	error = PTR_ERR(new_dentry);
->  	if (IS_ERR(new_dentry)) {
->  		mlog_errno(error);
-> diff --git a/include/linux/namei.h b/include/linux/namei.h
-> index ffc0213..3e90dcd 100644
-> --- a/include/linux/namei.h
-> +++ b/include/linux/namei.h
-> @@ -76,8 +76,8 @@ extern int user_path_at_empty(int, const char __user *, unsigned, struct path *,
->  
->  extern int kern_path(const char *, unsigned, struct path *);
->  
-> -extern struct dentry *kern_path_create(int, const char *, struct path *, int);
-> -extern struct dentry *user_path_create(int, const char __user *, struct path *, int);
-> +extern struct dentry *kern_path_create(int, const char *, struct path *, bool, bool);
-> +extern struct dentry *user_path_create(int, const char __user *, struct path *, bool, bool);
->  extern int kern_path_parent(const char *, struct nameidata *);
->  extern int vfs_path_lookup(struct dentry *, struct vfsmount *,
->  			   const char *, unsigned int, struct path *);
-> diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c
-> index d510353..9951294 100644
-> --- a/net/unix/af_unix.c
-> +++ b/net/unix/af_unix.c
-> @@ -865,7 +865,8 @@ static int unix_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
->  		 * Get the parent directory, calculate the hash for last
->  		 * component.
->  		 */
-> -		dentry = kern_path_create(AT_FDCWD, sun_path, &path, 0);
-> +		dentry = kern_path_create(AT_FDCWD, sun_path, &path,
-> +								false, false);
->  		err = PTR_ERR(dentry);
->  		if (IS_ERR(dentry))
->  			goto out_mknod_parent;
+I don't believe futimes() calls file_update_time().
 
+So maybe replace that futimes() by a one-byte write?
 
--- 
-Jeff Layton <jlayton@redhat.com>
+--b.
