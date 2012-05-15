@@ -1,95 +1,288 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:33244 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750974Ab2E1Cat (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 May 2012 22:30:49 -0400
-From: <tao.peng@emc.com>
-To: <Trond.Myklebust@netapp.com>, <bergwolf@gmail.com>
-CC: <linux-nfs@vger.kernel.org>
-Date: Sun, 27 May 2012 22:30:23 -0400
-Subject: RE: [PATCH 3/3] pnfsblock: bail out unaligned DIO
-Message-ID: <F19688880B763E40B28B2B462677FBF805F0BADF36@MX09A.corp.emc.com>
-References: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>
-	 <1338096780-2763-4-git-send-email-bergwolf@gmail.com>
- <1338136717.3044.13.camel@lade.trondhjem.org>
-In-Reply-To: <1338136717.3044.13.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:61663 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755946Ab2EOOWk convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 10:22:40 -0400
+Received: by yhmm54 with SMTP id m54so5328149yhm.19
+        for <linux-nfs@vger.kernel.org>; Tue, 15 May 2012 07:22:39 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <4FB25D2F.1070403@panasas.com>
+References: <20120515090332.182970@gmx.net>
+	<4FB22658.9010909@panasas.com>
+	<20120515121931.192500@gmx.net>
+	<CABpMAy+bV7-UZU0gGOFWk+ZfHLGi+D=ntNLjRHFYZzTtwXG_RA@mail.gmail.com>
+	<4FB25D2F.1070403@panasas.com>
+Date: Tue, 15 May 2012 17:22:39 +0300
+Message-ID: <CABpMAyJ9F5c52ntMCL1+gwDCcbMYMEkxVEHW7bfpjm6H5boSCg@mail.gmail.com>
+Subject: Re: Questions about Exofs
+From: Idan Kedar <idank@tonian.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Johannes Schild <JSchild@gmx.de>, osd-dev@open-osd.org,
+        linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBNeWtsZWJ1c3QsIFRyb25kIFtt
-YWlsdG86VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb21dDQo+IFNlbnQ6IE1vbmRheSwgTWF5IDI4
-LCAyMDEyIDEyOjM5IEFNDQo+IFRvOiBQZW5nIFRhbw0KPiBDYzogbGludXgtbmZzQHZnZXIua2Vy
-bmVsLm9yZzsgUGVuZywgVGFvDQo+IFN1YmplY3Q6IFJlOiBbUEFUQ0ggMy8zXSBwbmZzYmxvY2s6
-IGJhaWwgb3V0IHVuYWxpZ25lZCBESU8NCj4gDQo+IE9uIFN1biwgMjAxMi0wNS0yNyBhdCAxMzoz
-MyArMDgwMCwgUGVuZyBUYW8gd3JvdGU6DQo+ID4gU2lnbmVkLW9mZi1ieTogUGVuZyBUYW8gPHRh
-by5wZW5nQGVtYy5jb20+DQo+ID4gLS0tDQo+ID4gIGZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xh
-eW91dC5jIHwgICAyMCArKysrKysrKysrKysrKysrKysrKw0KPiA+ICAxIGZpbGVzIGNoYW5nZWQs
-IDIwIGluc2VydGlvbnMoKyksIDAgZGVsZXRpb25zKC0pDQo+ID4NCj4gPiBkaWZmIC0tZ2l0IGEv
-ZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMgYi9mcy9uZnMvYmxvY2tsYXlvdXQvYmxv
-Y2tsYXlvdXQuYw0KPiA+IGluZGV4IDUzY2I0NTAuLmNkYjg3YTkgMTAwNjQ0DQo+ID4gLS0tIGEv
-ZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMNCj4gPiArKysgYi9mcy9uZnMvYmxvY2ts
-YXlvdXQvYmxvY2tsYXlvdXQuYw0KPiA+IEBAIC0xMDAwLDcgKzEwMDAsMjcgQEAgc3RhdGljIGJv
-b2wgYmxfZGlvX2JlZ2luKHN0cnVjdCBpbm9kZSAqaW5vZGUsIGNvbnN0IHN0cnVjdCBpb3ZlYyAq
-aW92LA0KPiA+ICAJCQkgdW5zaWduZWQgbG9uZyBucl9zZWdzLCBsb2ZmX3QgcG9zLA0KPiA+ICAJ
-CQkgc3RydWN0IGJsa19wbHVnICpwbHVnKQ0KPiA+ICB7DQo+ID4gKwl1bnNpZ25lZCBibGttYXNr
-ID0gTkZTX1NFUlZFUihpbm9kZSktPnBuZnNfYmxrc2l6ZSAtIDE7DQo+ID4gKwlzaXplX3QgY291
-bnQ7DQo+ID4gKwlpbnQgc2VnOw0KPiA+ICsJdW5zaWduZWQgbG9uZyBhZGRyOw0KPiA+ICsNCj4g
-PiAgCWJsa19zdGFydF9wbHVnKHBsdWcpOw0KPiA+ICsNCj4gPiArCS8qIE9ubHkgYWxsb3cgYmxr
-c2l6ZWQgRElPIGZvciBub3cuDQo+ID4gKwkgKiBJbiB0aGVvcnkgd2UgY2FuIGhhbmRsZSBwYWdl
-IGFsaWduZWQgRElPIGluIGN1cnJlbnQgYmxvY2sgbGF5b3V0DQo+ID4gKwkgKiByZWFkL3dyaXRl
-IGNvZGUsIGJ1dCBpdCB3b3VsZCByZXF1aXJlIHNlcmlhbGl6YXRpb24gYmV0d2Vlbg0KPiA+ICsJ
-ICogY29uY3VycmVudCB3cml0ZXJzIGFuZCBpdCBpcyBmYXIgbGVzcyBlZmZlY2llbnQgdGhhbiBq
-dXN0IHNlbmQgSU8NCj4gPiArCSAqIHRvIE1EUy4NCj4gPiArCSAqLw0KPiA+ICsJaWYgKHBvcyAm
-IGJsa21hc2spDQo+ID4gKwkJcmV0dXJuIGZhbHNlOw0KPiA+ICsJZm9yIChzZWcgPSAwOyBzZWcg
-PCBucl9zZWdzOyBzZWcrKykgew0KPiA+ICsJCWFkZHIgPSAodW5zaWduZWQgbG9uZylpb3Zbc2Vn
-XS5pb3ZfYmFzZTsNCj4gPiArCQljb3VudCA9IGlvdltzZWddLmlvdl9sZW47DQo+ID4gKwkJaWYg
-KHVubGlrZWx5KChhZGRyICYgYmxrbWFzaykgfHwgKGNvdW50ICYgYmxrbWFzaykpKQ0KPiA+ICsJ
-CQlyZXR1cm4gZmFsc2U7DQo+ID4gKwl9DQo+ID4gIAlyZXR1cm4gdHJ1ZTsNCj4gPiAgfQ0KPiAN
-Cj4gQWdhaW4sIHRoaXMgY2FuIGFuZCBzaG91bGQgZ28gaW4gdGhlIGV4aXN0aW5nIG5mc19wYWdl
-aW9fb3BzIGVpdGhlciBpbg0KPiB0aGUgcGdfaW5pdCBvciBpbiB0aGUgcGdfdGVzdC4NCj4gDQpB
-cyBleHBsYWluIGluIHRoZSBvdGhlciBtYWlsLCBpdCBpcyBuZWNlc3NhcnkgdG8gaGF2ZSBwbmZz
-X2Rpb19iZWdpbi9lbmQsIHNvIEkgcHJlZmVyIHRvIGRvIHRoZSB0ZXN0IGFzIGVhcmx5IGFzIHBv
-c3NpYmxlLCB3aGljaCBpcyBpbiBwbmZzX2Rpb19iZWdpbi4NCg0KPiBBbHNvLCB3aHkgZG8geW91
-IGNvbnNpZGVyIGl0IHRvIGJlIGRpcmVjdCBpL28gc3BlY2lmaWM/IElmIHRoZQ0KPiBhcHBsaWNh
-dGlvbiBpcyB1c2luZyBieXRlIHJhbmdlIGxvY2tpbmcsIGFuZCB0aGUgbG9ja3MgYXJlbid0IHBh
-Z2UvYmxvY2sNCj4gYWxpZ25lZCB0aGVuIHlvdSBhcmUgaW4gdGhlIHNhbWUgcG9zaXRpb24gb2Yg
-aGF2aW5nIHRvIGRlYWwgd2l0aCBwYXJ0aWFsDQo+IHBhZ2Ugd3JpdGVzIGV2ZW4gaW4gdGhlIHJl
-YWQvd3JpdGUgZnJvbSBwYWdlIGNhY2hlIHNpdHVhdGlvbi4NCllvdSBhcmUgcmlnaHQgYWJvdXQg
-Ynl0ZSByYW5nZSBsb2NraW5nICsgYnVmZmVyZWQgSU8sIGFuZCBpdCBzaG91bGQgYmUgZml4ZWQg
-aW4gcGdfdGVzdCB3aXRoIGJlbGxvdyBwYXRjaCBhbmQgaXQgY291bGQgYmUgYSBzdGFibGUgY2Fu
-ZGlkYXRlLiBJdCBpcyBkaWZmZXJlbnQgZnJvbSBESU8gY2FzZSBiZWNhdXNlIGZvciBESU8gd2Ug
-aGF2ZSB0byBiZSBzdXJlIGVhY2ggcGFnZSBpcyBibG9ja3NpemUgYWxpZ25lZC4gQW5kIGl0IGNh
-bid0IGVhc2lseSBiZSBkb25lIGluIHBnX3Rlc3QgYmVjYXVzZSBpbiBwZ190ZXN0IHdlIG9ubHkg
-aGF2ZSBvbmUgbmZzX3BhZ2UgdG8gdGVzdCBhZ2FpbnN0Lg0KDQpUaGFua3MgZm9yIHJldmlld2lu
-Zy4NCg0KQ2hlZXJzLA0KVGFvDQoNCkZyb20gMTRhNGQ1ODNmYWU4ZWUwMWMzNGZkMTdkOTIzMDAx
-YWFkYTFkNDI2ZCBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206IFBlbmcgVGFvIDxiZXJn
-d29sZkBnbWFpbC5jb20+DQpEYXRlOiBGcmksIDI1IE1heSAyMDEyIDIxOjI1OjA3ICswODAwDQpT
-dWJqZWN0OiBbUEFUQ0hdIHBuZnNibG9jazogYmFpbCBvdXQgcGFnZSB1bmFsaWduZWQgSU8NCg0K
-YmxvY2sgbGF5b3V0IGRyaXZlciBjYW5ub3QgaGFuZGxlIHRoZXNlIElPLg0KDQpDYzogc3RhYmxl
-QHZnZXIua2VybmVsLm9yZw0KU2lnbmVkLW9mZi1ieTogUGVuZyBUYW8gPGJlcmd3b2xmQGdtYWls
-LmNvbT4NCi0tLQ0KIGZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91dC5jIHwgICAxNiArKysr
-KysrKysrKysrKy0tDQogMSBmaWxlcyBjaGFuZ2VkLCAxNCBpbnNlcnRpb25zKCspLCAyIGRlbGV0
-aW9ucygtKQ0KDQpkaWZmIC0tZ2l0IGEvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMg
-Yi9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYw0KaW5kZXggN2FlOGE2MC4uYTg0YTBk
-YSAxMDA2NDQNCi0tLSBhL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91dC5jDQorKysgYi9m
-cy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYw0KQEAgLTkyNSw2ICs5MjUsMTggQEAgbmZz
-NF9ibGtfZ2V0X2RldmljZWluZm8oc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlciwgY29uc3Qgc3Ry
-dWN0IG5mc19maCAqZmgsDQogCXJldHVybiBydjsNCiB9DQogDQorc3RhdGljIGJvb2wNCitibF9w
-Z190ZXN0KHN0cnVjdCBuZnNfcGFnZWlvX2Rlc2NyaXB0b3IgKnBnaW8sIHN0cnVjdCBuZnNfcGFn
-ZSAqcHJldiwNCisJICAgc3RydWN0IG5mc19wYWdlICpyZXEpDQorew0KKwkvKiBCYWlsIG91dCBw
-YWdlIHVubGlnbmVkIElPICovDQorCWlmIChyZXEtPndiX29mZnNldCB8fCByZXEtPndiX3BnYmFz
-ZSB8fA0KKwkgICAgcmVxLT53Yl9ieXRlcyAhPSBQQUdFX0NBQ0hFX1NJWkUpDQorCQlyZXR1cm4g
-ZmFsc2U7DQorDQorCXJldHVybiBwbmZzX2dlbmVyaWNfcGdfdGVzdChwZ2lvLCBwcmV2LCByZXEp
-Ow0KK30NCisNCiBzdGF0aWMgaW50DQogYmxfc2V0X2xheW91dGRyaXZlcihzdHJ1Y3QgbmZzX3Nl
-cnZlciAqc2VydmVyLCBjb25zdCBzdHJ1Y3QgbmZzX2ZoICpmaCkNCiB7DQpAQCAtOTk4LDEzICsx
-MDEwLDEzIEBAIGJsX2NsZWFyX2xheW91dGRyaXZlcihzdHJ1Y3QgbmZzX3NlcnZlciAqc2VydmVy
-KQ0KIA0KIHN0YXRpYyBjb25zdCBzdHJ1Y3QgbmZzX3BhZ2Vpb19vcHMgYmxfcGdfcmVhZF9vcHMg
-PSB7DQogCS5wZ19pbml0ID0gcG5mc19nZW5lcmljX3BnX2luaXRfcmVhZCwNCi0JLnBnX3Rlc3Qg
-PSBwbmZzX2dlbmVyaWNfcGdfdGVzdCwNCisJLnBnX3Rlc3QgPSBibF9wZ190ZXN0LA0KIAkucGdf
-ZG9pbyA9IHBuZnNfZ2VuZXJpY19wZ19yZWFkcGFnZXMsDQogfTsNCiANCiBzdGF0aWMgY29uc3Qg
-c3RydWN0IG5mc19wYWdlaW9fb3BzIGJsX3BnX3dyaXRlX29wcyA9IHsNCiAJLnBnX2luaXQgPSBw
-bmZzX2dlbmVyaWNfcGdfaW5pdF93cml0ZSwNCi0JLnBnX3Rlc3QgPSBwbmZzX2dlbmVyaWNfcGdf
-dGVzdCwNCisJLnBnX3Rlc3QgPSBibF9wZ190ZXN0LA0KIAkucGdfZG9pbyA9IHBuZnNfZ2VuZXJp
-Y19wZ193cml0ZXBhZ2VzLA0KIH07DQogDQotLSANCjEuNy43LjYNCg==
+On Tue, May 15, 2012 at 4:42 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+> On 05/15/2012 04:09 PM, Idan Kedar wrote:
+>
+>> On Tue, May 15, 2012 at 3:19 PM, Johannes Schild <JSchild@gmx.de> wrote:
+>>> Hi,
+>>>
+>>> thanks for your fast reply.
+>>>
+>>> But now i run into a nullpointer exception while mounting /dev/osd0
+>>>
+>>>
+>>> [  329.919112] Modules linked in: raid456 async_raid6_recov async_pq raid6_pq async_memcpy bnx2i cnic cxgb4i cxgb3i iscsi_tcp be2iscsi iscsi_boot_sysfs uio cxgb4 libcxgbi cxgb3 mdio libiscsi_tcp libiscsi scsi_transport_iscsi fuse ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 xt_state nf_conntrack 8021q ip6table_filter ip6_tables garp stp llc fcoe libfcoe libfc scsi_transport_fc scsi_tgt snd_ens1371 gameport snd_rawmidi snd_ac97_codec ac97_bus joydev snd_seq snd_seq_device snd_pcm ppdev vmw_balloon floppy parport_pc snd_timer snd pcnet32 microcode parport pcspkr mii snd_page_alloc i2c_piix4 i2c_core shpchp uinput mptspi mptscsih mptbase scsi_transport_spi [last unloaded: iscsi_tcp]
+>>> [  329.919133]
+>>> [  329.919134] Pid: 2234, comm: mount Not tainted 3.3.0-pnfs #1 VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform
+>>> [  329.919137] RIP: 0010:[<ffffffff81259799>]  [<ffffffff81259799>] exofs_free_sbi+0x59/0xa0
+>>> [  329.919139] RSP: 0018:ffff88003c4e5bc8  EFLAGS: 00010246
+>>> [  329.919141] RAX: 0000000000000000 RBX: 0000000000000000 RCX: 0000000000001795
+>>> [  329.919142] RDX: 0000000000000000 RSI: 0000000000000046 RDI: ffff88003c4f5000
+>>> [  329.919143] RBP: ffff88003c4e5bd8 R08: 0000000000000000 R09: 0000000000000000
+>>> [  329.919144] R10: 0000000000000000 R11: 0000000000000001 R12: ffff88003c4f5000
+>>> [  329.919145] R13: ffff88003c4e5d58 R14: 00000000fffffffb R15: ffff88003bd4e360
+>>> [  329.919146] FS:  00007f68ce81d800(0000) GS:ffff88003fc00000(0000) knlGS:0000000000000000
+>>> [  329.919148] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+>>> [  329.919149] CR2: 0000000000000000 CR3: 000000003cbfd000 CR4: 00000000000406f0
+>>> [  329.919152] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+>>> [  329.919155] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+>>> [  329.919156] Process mount (pid: 2234, threadinfo ffff88003c4e4000, task ffff88003aa42e40)
+>>> [  329.919157] Stack:
+>>> [  329.919158]  ffff88003c4f5000 ffff88003c4f5800 ffff88003c4e5d18 ffffffff8125a780
+>>> [  329.919160]  ffff88003c4e5c84 0000000081f27618 ffffffff81f27600 ffff88003f80c288
+>>> [  329.919162]  ffff88003ddbeee0 0000000000000000 ffff88003c4e5c48 ffffffff812c8433
+>>> [  329.919164] Call Trace:
+>>> [  329.919166]  [<ffffffff8125a780>] exofs_fill_super+0x440/0x6e0
+>>> [  329.919171]  [<ffffffff812c8433>] ? idr_pre_get+0x53/0x90
+>>> [  329.919173]  [<ffffffff8125a340>] ? exofs_read_lookup_dev_table+0x480/0x480
+>>> [  329.919176]  [<ffffffff81180e18>] mount_nodev+0x58/0xb0
+>>> [  329.919178]  [<ffffffff812594ff>] exofs_mount+0x4f/0x80
+>>> [  329.919179]  [<ffffffff81181e13>] mount_fs+0x43/0x1b0
+>>> [  329.919182]  [<ffffffff8119b56a>] vfs_kern_mount+0x6a/0xf0
+>>> [  329.919183]  [<ffffffff8119bd44>] do_kern_mount+0x54/0x110
+>>> [  329.919185]  [<ffffffff8119d4b4>] do_mount+0x1a4/0x830
+>>> [  329.919188]  [<ffffffff8115da33>] ? alloc_pages_current+0xa3/0x110
+>>> [  329.919191]  [<ffffffff811229e4>] ? __get_free_pages+0x14/0x50
+>>> [  329.919193]  [<ffffffff8119d18a>] ? copy_mount_options+0x3a/0x170
+>>> [  329.919194]  [<ffffffff8119dc80>] sys_mount+0x90/0xe0
+>>> [  329.919199]  [<ffffffff81605aa9>] system_call_fastpath+0x16/0x1b
+>>> [  329.919200] Code: 66 90 41 8b 84 24 70 03 00 00 83 eb 01 39 c3 72 50 41 8b 94 24 74 03 00 00 01 c2 39 d3 73 42 89 da 29 c2 49 8b 84 24 88 03 00 00 <48> 8b 04 d0 48 8b 38 48 85 ff 74 0c 48 c7 00 00 00 00 00 e8 6f
+>>> [  329.919214] RIP  [<ffffffff81259799>] exofs_free_sbi+0x59/0xa0
+>>> [  329.919216]  RSP <ffff88003c4e5bc8>
+>>> [  329.919217] CR2: 0000000000000000
+>>> [  329.919220] ---[ end trace e5a3b1124e42d9e3 ]---
+>>>
+>>>
+>>> Is there any possibility to avoid these failure?
+>>>
+>>> Just now i am using the 3.3.0 kernel from the linux-pnfs repository.
+>>>
+>>>
+>>> Thanks in adavance
+>>>
+>>> Cheers
+>>> Johannes
+>>>
+>>> -------- Original-Nachricht --------
+>>>> Datum: Tue, 15 May 2012 12:48:08 +0300
+>>>> Von: Boaz Harrosh <bharrosh@panasas.com>
+>>>> An: Johannes Schild <JSchild@gmx.de>
+>>>> CC: linux-nfs@vger.kernel.org, open-osd <osd-dev@open-osd.org>
+>>>> Betreff: Re: Questions about Exofs
+>>>
+>>>> On 05/15/2012 12:03 PM, Johannes Schild wrote:
+>>>>
+>>>>> Hi,
+>>>>>
+>>>>> i try to set up the object-based layout with pnfs.
+>>>>> I am using the OSC-OSD as target. It works well and i can login.
+>>>>> Trying the scripts "do-*" from git://git.open-osd.org/open-osd.git the
+>>>> do-osd script works for me. The do-exofs doesnt, here i have some question:
+>>>>>
+>>>>> 1. Is the UUID in the do-exofs script optional?
+>>>>>
+>>>>
+>>>>
+>>>> No it is not optional
+>>>>
+>>>>> 2. If no how can i get it for my device?
+>>>>>
+>>>>
+>>>>
+>>>> Exactly! the ./do-exofs format command will set this for you, as well as
+>>>> mkfs.exofs the
+>>>> FS for you.
+>>>>
+>>>>> 3. It is mandatory to use raid-driver (raid456) in the script? Why?
+>>>>>
+>>>>
+>>>>
+>>>> What? where? Rrrr you are right. this is a very old tree. Let me see
+>>>> if I have something newer to push. It should all load automatically now.
+>>>>
+>>>> But yes the dependency on raid456.ko is built in. Though if you use
+>>>> raid=0 on the format command line it will not be used in run time.
+>>>>
+>>>>>
+>>>>> The error is:
+>>>>> mount -t exofs -o
+>>>> osdname=d2683732-c906-4ee1-9dbd-c10c27bb40df,pid=0x10000,_netdev /dev/osd0 /mnt/osd0/
+>>>>> mount: wrong fs type, bad option, bad superblock on /dev/osd0,
+>>>>>        missing codepage or helper program, or other error
+>>>>>        In some cases useful info is found in syslog - try
+>>>>>        dmesg | tail  or so
+>>>>>
+>>>>> dmesg says:
+>>>>> exofs: Unable to mount exofs on (null) pid=0x0 err=-22
+>>>>>
+>>>>
+>>>>
+>>>> Probably you forgot the "./do-exofs format" stage. Please read the script
+>>>> before, you might need to edit it. It is the stage that calls mkfs.exofs
+>>>> to make a new filesystem for you. (An OSD is a raw device that can host
+>>>> many filesystems each in it's own osd-partition.
+>>>>
+>>>>>
+>>>>> Thanks for answering my questions.
+>>>>
+>>>>
+>>>>> Regards
+>>>>> Johannes
+>>>>>
+>>>>
+>>>>
+>>>> Cheers
+>>>> Boaz
+>>>>
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
+>>> --
+>>> NEU: FreePhone 3-fach-Flat mit kostenlosem Smartphone!
+>>> Jetzt informieren: http://mobile.1und1.de/?ac=OM.PW.PW003K20328T7073a
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>> Hi,
+>> This crash has happened to me as well. I was not able to explicitly
+>> resolve it, but I have managed to set up a working pNFS object layout
+>> environment. I'll try to give the instructions I use for setting up
+>> the MDS, without using the do-* scripts, assuming you managed to set
+>> up the data server. (I'm assuming a fedora distro):
+>>
+>> setup the iscsi initiator:
+>>
+>> # yum -y install iscsi-initiator-utils
+>> # service iscsid start
+>> # modprobe osd
+>> # iscsiadm -m discovery -t sendtargets -p <your DS> --login
+>>
+>> on my setup, in some (most) cases, the MDS machine hangs when you
+>> power it off. I don't know why this happens.
+>>
+>> format and mount the OSD device:
+>>
+>> # modprobe raid456
+>
+>
+> This should not be needed exofs is dependent on ore, dependent on raid456
+True, but when setting up the environment my goal was to have a
+working environment. If a bug is introduced to this dependence system
+and the module wouldn't be loaded, I would have to reluctantly spend
+time finding the problem, when I can actually live with such a bug if
+the workaround is simply loading the module manually. so as a policy,
+I always explicitly load the modules I need when setting up a pNFS
+environment.
+>
+>> # modprobe exofs
+>
+>> # cd /your/open-osd/project/directory
+>> # LD_LIBRARY_PATH=lib ./usr/mkfs.exofs --pid=0x10000 --dev=/dev/osd0
+>>
+>
+>
+> NO you must --format with a UUID at least once.
+>
+> After the iscsiadm --login stage, there is an osd.ko print in dmesg
+> Do you see a print of the form:
+>        OSD_NAME               [%s]
+> where %s might be empty or it might have something
+> If there is something (not []) then maybe it was specified on the
+> osd-target (otgtd) command line and all is well. But if not then
+> it can never work.
+>
+>> to me, this works without UUID. I had trouble in setting up exofs with
+>> RAID, but if you're not interested in RAID that will do. note that
+>> this setup is from the old tree (commit
+>> df9cc23ca0e15f2fc7f1d16a21acb87c63038f50), I don't know if and what
+>> have been pushed to it recently.
+>>
+>> note that if you use the --format flag you would have to supply a UUID.
+>>
+>
+>
+> You must do that at least once in the lifetime of the device or set
+> an osd_name at the otgtd command line.
+>
+>> now you can mount the object file system. /dev/osd0 is seen as a char
+>> device and not a block device, so the system can't read its superblock
+>> and tell which file system is it. you have to explicitly specify exofs
+>> as the file system, and exofs will do the hard work.:
+>
+>
+> Whaoo I've been using ./do-exofs for ever and did not realize this. I should
+> fix that. Thanks It's now on my todo list.
+You're welcome :)
+>
+>>
+>> # mount -t exofs -o pid=0x10000 /dev/osd0 /mnt/pnfs
+>>
+>
+>
+> Are you sure you have an exofs FS at /mnt/pnfs ? please do an
+> # df -h /mnt/pnfs I want to see ?
+# df -hT /mnt/pnfs/
+Filesystem    Type    Size  Used Avail Use% Mounted on
+/dev/osd0    exofs     55G   12G   44G  21% /mnt/pnfs
+
+>
+> Does it actually work? OK you know maybe it does. I can see this now.
+> If you have a single device it might work, I didn't realize this. I thought
+> the mkfs.exofs would not let you.
+>
+> For sure if you have more then one device (pnfs right?) then it will not
+> let you, because the devices have strict order in the device table. Device
+> names are not reliable and may change from login to login. You need some
+> kind of device-id
+Indeed it is a pNFS setup. And indeed I've had trouble when using more
+than one OSD.
+
+By the way, several weeks I have tried setting up a RAID 5 environment
+with 8 OSDs, 1 mirror and RAID nesting. I then tried cloning and
+compiling the kernel tree over this pNFS-OSD-RAID. The result was that
+otgtd died, and I don't know why. It didn't dump core anywhere I could
+find and the only "log" it has - stdout - didn't give any useful info.
+I was going to inquire about this in a couple of weeks when I need to
+get this environment working, but since this issue came up, maybe we
+can somehow resolve it sooner.
+>
+>>
+>
+>
+> Sorry guys for the lack of DOCs and proper trees. I neglected
+> that for a while now. No one cared.
+>
+> Let me push some better tested trees.
+>
+> Thanks
+> Boaz
+
+Thanks,
+IdanK
