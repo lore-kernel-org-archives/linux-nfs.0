@@ -1,66 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:36081 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752612Ab2EOOSa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 10:18:30 -0400
-Message-ID: <4FB2659C.5090005@panasas.com>
-Date: Tue, 15 May 2012 17:18:04 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Dan Carpenter <dan.carpenter@oracle.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
-        <kernel-janitors@vger.kernel.org>
-Subject: Re: [patch] NFS: kmalloc() doesn't return an ERR_PTR()
-References: <20120514194528.GA19613@elgon.mountain> <4FB25EA7.9050702@panasas.com> <20120515135733.GJ16984@mwanda>
-In-Reply-To: <20120515135733.GJ16984@mwanda>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:49696 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965299Ab2EOPjY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 11:39:24 -0400
+Received: by dady13 with SMTP id y13so7470818dad.19
+        for <linux-nfs@vger.kernel.org>; Tue, 15 May 2012 08:39:24 -0700 (PDT)
+From: Peng Tao <bergwolf@gmail.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Peng Tao <tao.peng@emc.com>
+Subject: [PATCH 1/2] NFS: call block plug around direct write
+Date: Tue, 15 May 2012 23:38:22 +0800
+Message-Id: <1337096303-2516-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/15/2012 04:57 PM, Dan Carpenter wrote:
+We bypass generic_file_aio_write() but would want to call block plug.
 
-> On Tue, May 15, 2012 at 04:48:23PM +0300, Boaz Harrosh wrote:
->> On 05/14/2012 10:45 PM, Dan Carpenter wrote:
->>
->>> Obviously we should check for NULL here instead of IS_ERR().
->>>
->>> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
->>>
->>> diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
->>> index ba3019f..233beea 100644
->>> --- a/fs/nfs/idmap.c
->>> +++ b/fs/nfs/idmap.c
->>> @@ -644,14 +644,14 @@ static int nfs_idmap_legacy_upcall(struct key_construction *cons,
->>>  
->>>  	/* msg and im are freed in idmap_pipe_destroy_msg */
->>>  	msg = kmalloc(sizeof(*msg), GFP_KERNEL);
->>> -	if (IS_ERR(msg)) {
->>> -		ret = PTR_ERR(msg);
->>> +	if (!msg) {
->>
->>
->> While at it please put an unlikely()
->>
-> 
-> Normally we wouldn't put an unlikely() here.  It makes the code
-> less readable and it's not going to affect benchmarks.  But I can
-> add one if people prefer.
-> 
+Signed-off-by: Peng Tao <tao.peng@emc.com>
+---
+ fs/nfs/direct.c |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
 
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index a1b81dd..a485560 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -46,6 +46,7 @@
+ #include <linux/kref.h>
+ #include <linux/slab.h>
+ #include <linux/task_io_accounting_ops.h>
++#include <linux/blkdev.h>
+ 
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs_page.h>
+@@ -922,6 +923,7 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
+ 	struct file *file = iocb->ki_filp;
+ 	struct address_space *mapping = file->f_mapping;
+ 	size_t count;
++	struct blk_plug plug;
+ 
+ 	count = iov_length(iov, nr_segs);
+ 	nfs_add_stats(mapping->host, NFSIOS_DIRECTWRITTENBYTES, count);
+@@ -948,7 +950,9 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
+ 
+ 	task_io_account_write(count);
+ 
++	blk_start_plug(&plug);
+ 	retval = nfs_direct_write(iocb, iov, nr_segs, pos, count);
++	blk_finish_plug(&plug);
+ 	if (retval > 0) {
+ 		struct inode *inode = mapping->host;
+ 
+-- 
+1.7.1.262.g5ef3d
 
-Personally It makes it more readable for me. It's like a statement:
-"error, always slow-path case here". I have brain parsers set
-for these.
-
-Specifically here the if () is very small but if it is more code
-it is exactly where it counts. But as a general rule I like the
-error/slow-path case to be in an unlikely(). Later someone
-might add more code which will matter.
-
-> regards,
-> dan carpenter
-> 
-
-
-Thanks
-Boaz
