@@ -1,81 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:18018 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756308Ab2EVWwu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 May 2012 18:52:50 -0400
-Subject: Re: [PATCH 3/4] SUNRPC: Add RPC based upcall mechanism for RPCGSS
- auth
-From: Simo Sorce <simo@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-In-Reply-To: <20120522224904.GB6435@fieldses.org>
-References: <1337087550-9821-1-git-send-email-simo@redhat.com>
-	 <1337087550-9821-4-git-send-email-simo@redhat.com>
-	 <20120522150221.GD891@fieldses.org>
-	 <1337699722.16840.189.camel@willson.li.ssimo.org>
-	 <20120522152917.GB11739@pad.fieldses.org>
-	 <1337701251.16840.201.camel@willson.li.ssimo.org>
-	 <20120522224904.GB6435@fieldses.org>
+Received: from natasha.panasas.com ([67.152.220.90]:39512 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758156Ab2EOQHW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 12:07:22 -0400
+Message-ID: <4FB27F0C.30306@panasas.com>
+Date: Tue, 15 May 2012 19:06:36 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Jim Rees <rees@umich.edu>
+CC: Dan Carpenter <dan.carpenter@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        <linux-nfs@vger.kernel.org>, <kernel-janitors@vger.kernel.org>
+Subject: Re: [patch] NFS: kmalloc() doesn't return an ERR_PTR()
+References: <20120514194528.GA19613@elgon.mountain> <4FB25EA7.9050702@panasas.com> <20120515135733.GJ16984@mwanda> <4FB2659C.5090005@panasas.com> <20120515152735.GA11230@umich.edu>
+In-Reply-To: <20120515152735.GA11230@umich.edu>
 Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 22 May 2012 18:52:43 -0400
-Message-ID: <1337727163.16840.207.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2012-05-22 at 18:49 -0400, J. Bruce Fields wrote:
-> On Tue, May 22, 2012 at 11:40:51AM -0400, Simo Sorce wrote:
-> > On Tue, 2012-05-22 at 11:29 -0400, J. Bruce Fields wrote:
-> > > On Tue, May 22, 2012 at 11:15:22AM -0400, Simo Sorce wrote:
-> > > > On Tue, 2012-05-22 at 11:02 -0400, J. Bruce Fields wrote:
-> > > > >  This seems
-> > > > > likely to break in subtle ways if we ever change one of those constants
-> > > > > to not be a multiple of a large enough power of 2.  And makes the memory
-> > > > > handling a little more obscure.  I'd rather just allocate those
-> > > > > separately if that's the choice.
-> > > > 
-> > > > I do not see why it would break, the only limit we have is the total
-> > > > size of the kmembuf.
-> > > 
-> > > Oh, just because the svc_cred at the end wouldn't be aligned nicely any
-> > > more.  Doesn't that bother some architectures?
-> > 
-> > Ah yeah I see, indeed some architecture require memory to be aligned.
-> > I will change that code back to kmallocs, which is what I always
-> > preferred anyway.
-> > 
-> > > > > Whatever, I don't really care how the various xdr_netobj->data's are
-> > > > > allocated, honestly there's no crusade to eliminate kmalloc()'s, I'll
-> > > > > only object in a case (like the struct svc_cred field above) where it
-> > > > > seems obviously unnecessary.
-> > > > 
-> > > > Ok, so what should I do ?
-> > > > I can remove the static allocation and let the code allocate the data
-> > > > with kmalloc, in the xdr unmarshalling code.
-> > > > Whatever you like best.
-> > > 
-> > > Just embed the svc_cred:
-> > > 
-> > > > > -	struct svc_cred *creds;
-> > > > > +	struct svc_cred creds;
-> > 
-> > Can't do, it needs to be allocated, because we steal it in scvauth_gss.c
+On 05/15/2012 06:27 PM, Jim Rees wrote:
+
+> Boaz Harrosh wrote:
 > 
-> Are you sure?  Looks to me like it's only the group list that's "stolen"
-> there, the rest is copied.
+>   > Normally we wouldn't put an unlikely() here.  It makes the code
+>   > less readable and it's not going to affect benchmarks.  But I can
+>   > add one if people prefer.
+>   > 
+> 
+>   Personally It makes it more readable for me. It's like a statement:
+>   "error, always slow-path case here". I have brain parsers set
+>   for these.
+> 
+> Personally I don't like it.  It's a hint for the compiler.  Remember when
+> code was liberally sprinkled with "register" modifiers on local variables?
+> Turned out the compiler was smarter than we were, and those modifiers were
+> hurting performance.  I'd rather let the compiler decide how to optimize.
 
-Yeah, I ended up doing what you asked, I was mis-remembering one detail.
 
-I have a patchset here:
-http://fedorapeople.org/gitweb?p=simo/public_git/kernel.git;a=shortlog;h=refs/heads/for-3.5
+Actually the compiler cannot. This is specifying: 
+  "against all judgment I consider this path as the cold path, even if it is
+   taken more times or generates less compact code. Remove this branch from
+   branch prediction permanently, and never pre-fetch this path"
 
-But it does not include the last changes you just requested, and has not
-been tested yet.
+Again for me it's a programming style programmer-to-programmer hint. And is
+very unlike "register".
 
-However it shows the kmalloc changes and the principal handling changes.
+The Kernel style does use unlikely() extensively in error paths, so it's not
+only me. I'm not sure what the official stance is though.
 
-Simo.
+I agree that it's all just shop talk ;-)
 
--- 
-Simo Sorce * Red Hat, Inc * New York
-
+Thanks
+Boaz
