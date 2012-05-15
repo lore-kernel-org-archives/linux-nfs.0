@@ -1,34 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:54054 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752026Ab2E1QgU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 12:36:20 -0400
-Message-ID: <4FC3A974.60107@panasas.com>
-Date: Mon, 28 May 2012 19:36:04 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:45341 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932855Ab2EOVmC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 17:42:02 -0400
+Received: by yenm10 with SMTP id m10so70303yen.19
+        for <linux-nfs@vger.kernel.org>; Tue, 15 May 2012 14:42:01 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/2] NFSD patches for 3.5
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 15 May 2012 17:41:58 -0400
+Message-ID: <20120515213808.1518.81260.stgit@lebasque.1015granger.net>
 MIME-Version: 1.0
-To: Benny Halevy <bhalevy@tonian.com>
-CC: NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: Does our Kernel PNFSD-Server supports recurring layout_get with
- open_state_id
-References: <4FBD7DE8.9090002@panasas.com> <4FBE2C8C.9090403@tonian.com> <4FBE3C4D.7050507@panasas.com> <4FC3A235.8090908@tonian.com>
-In-Reply-To: <4FC3A235.8090908@tonian.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/28/2012 07:05 PM, Benny Halevy wrote:
+Hi Bruce-
 
-> Yup, see patchset in reply.
-> 
+Here's the SETCLIENTID_CONFIRM fix from a couple of weeks ago, and a
+separate clean-up patch.
+
+I haven't been able to reproduce the other issue, where the server
+hands out different clientid4's for the same nfs_client_id4 string.
+The logic in nfsd4_setclientid() appears to be working as designed.
+
+I may have mistaken the clientid4 verifier for the clientid4, but
+I didn't save the original network capture, unfortunately.
+
+---
+
+Chuck Lever (2):
+      NFSD: Use __be32 for variable holding return value
+      NFSD: SETCLIENTID_CONFIRM returns NFS4ERR_CLID_INUSE too often
 
 
-That I wish you wouldn't do. I have a patchset pending that makes
-major changes to all this and totally conflicts with your code.
+ fs/nfsd/nfs4state.c |   33 ++++++++++++---------------------
+ 1 files changed, 12 insertions(+), 21 deletions(-)
 
-You can carry this for a while but I might revert your core
-code in my new patchset.
-
-Sigh, more work for me.
-
-Boaz
+-- 
+Chuck Lever
