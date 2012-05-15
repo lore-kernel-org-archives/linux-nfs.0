@@ -1,131 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:52315 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758081Ab2EVOMq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 10:12:46 -0400
-Received: by yenm10 with SMTP id m10so5396862yen.19
-        for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 07:12:46 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: inux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
-        michael.brantley@deshaw.com, pstaubach@exagrid.com
-Subject: [PATCH v2 12/15] vfs: make rmdir retry on ESTALE errors
-Date: Tue, 22 May 2012 10:12:16 -0400
-Message-Id: <1337695939-2741-13-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
-References: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
+Received: from shards.monkeyblade.net ([198.137.202.13]:41060 "EHLO
+	shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965999Ab2EOSbn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 14:31:43 -0400
+Date: Tue, 15 May 2012 14:29:22 -0400 (EDT)
+Message-Id: <20120515.142922.1434224550630736456.davem@davemloft.net>
+To: johannes@sipsolutions.net
+Cc: joe@perches.com, netdev@vger.kernel.org,
+        linux-decnet-user@lists.sourceforge.net,
+        netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org,
+        coreteam@netfilter.org, linux-wireless@vger.kernel.org,
+        dev@openvswitch.org, linux-sctp@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [RFC net-next 0/2] net: Use net_<level>_ratelimit
+From: David Miller <davem@davemloft.net>
+In-Reply-To: <1337106430.15553.6.camel@jlt3.sipsolutions.net>
+References: <20120515.134531.530903973750646107.davem@davemloft.net>
+	<1337104765.7050.24.camel@joe2Laptop>
+	<1337106430.15553.6.camel@jlt3.sipsolutions.net>
+Mime-Version: 1.0
+Content-Type: Text/Plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c |   82 +++++++++++++++++++++++++++++++++--------------------------
- 1 files changed, 46 insertions(+), 36 deletions(-)
+From: Johannes Berg <johannes@sipsolutions.net>
+Date: Tue, 15 May 2012 20:27:10 +0200
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 402f469..a11fcc7 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2778,52 +2778,62 @@ out:
- static long do_rmdir(int dfd, const char __user *pathname)
- {
- 	int error = 0;
--	char * name;
-+	char *name;
- 	struct dentry *dentry;
- 	struct nameidata nd;
-+	unsigned int try = 0;
-+	unsigned int lookup_flags = LOOKUP_PARENT;
- 
--	error = user_path_parent(dfd, pathname, &nd, &name);
--	if (error)
--		return error;
-+	name = getname(pathname);
-+	if (IS_ERR(name))
-+		return PTR_ERR(name);
- 
--	switch(nd.last_type) {
--	case LAST_DOTDOT:
--		error = -ENOTEMPTY;
--		goto exit1;
--	case LAST_DOT:
--		error = -EINVAL;
--		goto exit1;
--	case LAST_ROOT:
--		error = -EBUSY;
--		goto exit1;
--	}
-+	do {
-+		error = do_path_lookup(dfd, name, lookup_flags, &nd);
-+		if (error)
-+			break;
- 
--	nd.flags &= ~LOOKUP_PARENT;
-+		switch (nd.last_type) {
-+		case LAST_DOTDOT:
-+			error = -ENOTEMPTY;
-+			goto exit1;
-+		case LAST_DOT:
-+			error = -EINVAL;
-+			goto exit1;
-+		case LAST_ROOT:
-+			error = -EBUSY;
-+			goto exit1;
-+		}
- 
--	mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex, I_MUTEX_PARENT);
--	dentry = lookup_hash(&nd);
--	error = PTR_ERR(dentry);
--	if (IS_ERR(dentry))
--		goto exit2;
--	if (!dentry->d_inode) {
--		error = -ENOENT;
--		goto exit3;
--	}
--	error = mnt_want_write(nd.path.mnt);
--	if (error)
--		goto exit3;
--	error = security_path_rmdir(&nd.path, dentry);
--	if (error)
--		goto exit4;
--	error = vfs_rmdir(nd.path.dentry->d_inode, dentry);
-+		nd.flags &= ~LOOKUP_PARENT;
-+
-+		mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex,
-+							I_MUTEX_PARENT);
-+		dentry = lookup_hash(&nd);
-+		error = PTR_ERR(dentry);
-+		if (IS_ERR(dentry))
-+			goto exit2;
-+		if (!dentry->d_inode) {
-+			error = -ENOENT;
-+			goto exit3;
-+		}
-+		error = mnt_want_write(nd.path.mnt);
-+		if (error)
-+			goto exit3;
-+		error = security_path_rmdir(&nd.path, dentry);
-+		if (error)
-+			goto exit4;
-+		error = vfs_rmdir(nd.path.dentry->d_inode, dentry);
- exit4:
--	mnt_drop_write(nd.path.mnt);
-+		mnt_drop_write(nd.path.mnt);
- exit3:
--	dput(dentry);
-+		dput(dentry);
- exit2:
--	mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
-+		mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
- exit1:
--	path_put(&nd.path);
-+		path_put(&nd.path);
-+		lookup_flags |= LOOKUP_REVAL;
-+	} while (retry_estale(error, try++));
- 	putname(name);
- 	return error;
- }
--- 
-1.7.7.6
+> On Tue, 2012-05-15 at 10:59 -0700, Joe Perches wrote:
+> 
+>> OK, but fyi, there's a possible issue with !CONFIG_DEBUG
+>> builds because these patches converted some uses of
+>> 	if (net_ratelimit())
+>> 		printk(KERN_DEBUG ...
+>> to
+>> 	net_dbg_ratelimited()
+>> 
+>> These messages are no longer emitted when DEBUG isn't defined
+>> and not using dynamic_debug.  I'm not sure that's a real
+>> problem, but it's a difference.
+>> 
+>> I could produce a net_printk_ratelimited that would keep
+>> the original behavior if necessary.
+>> 
+>> 	net_printk_ratelimited(KERN_DEBUG etc...)
+> 
+> Btw, what would the difference be to just plain printk_ratelimited()?
 
+printk_ratelimited() drops a local ratelimit cookie into each call-site,
+whereas we have a global one for the networking which these new interfaces
+use.
+
+Joe explained this completely in his 0/2 patch posting.
