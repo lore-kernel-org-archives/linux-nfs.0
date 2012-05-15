@@ -1,53 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40279 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756131Ab2EPVQW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 May 2012 17:16:22 -0400
-Date: Wed, 16 May 2012 17:16:21 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Weston Andros Adamson <dros@netapp.com>
-Cc: bjschuma@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: return 0 on reads of fault injection files
-Message-ID: <20120516211621.GE20487@fieldses.org>
-References: <1336678270-791-1-git-send-email-dros@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1336678270-791-1-git-send-email-dros@netapp.com>
+Received: from he.sipsolutions.net ([78.46.109.217]:54385 "EHLO
+	sipsolutions.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965999Ab2EOS1P (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 14:27:15 -0400
+Message-ID: <1337106430.15553.6.camel@jlt3.sipsolutions.net>
+Subject: Re: [RFC net-next 0/2] net: Use net_<level>_ratelimit
+From: Johannes Berg <johannes@sipsolutions.net>
+To: Joe Perches <joe@perches.com>
+Cc: David Miller <davem@davemloft.net>, netdev@vger.kernel.org,
+        linux-decnet-user@lists.sourceforge.net,
+        netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org,
+        coreteam@netfilter.org, linux-wireless@vger.kernel.org,
+        dev@openvswitch.org, linux-sctp@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Tue, 15 May 2012 20:27:10 +0200
+In-Reply-To: <1337104765.7050.24.camel@joe2Laptop> (sfid-20120515_195955_463081_DA730895)
+References: <cover.1336981915.git.joe@perches.com>
+	 <20120515.134531.530903973750646107.davem@davemloft.net>
+	 <1337104765.7050.24.camel@joe2Laptop>
+	 (sfid-20120515_195955_463081_DA730895)
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 10, 2012 at 03:31:10PM -0400, Weston Andros Adamson wrote:
-> debugfs read operations were returning the contents of an uninitialized u64.
+On Tue, 2012-05-15 at 10:59 -0700, Joe Perches wrote:
 
-Thanks, applied.
-
+> OK, but fyi, there's a possible issue with !CONFIG_DEBUG
+> builds because these patches converted some uses of
+> 	if (net_ratelimit())
+> 		printk(KERN_DEBUG ...
+> to
+> 	net_dbg_ratelimited()
 > 
-> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
-> ---
-> I found this while working on (forthcoming) fault injection tests for 
-> CB_PATH_DOWN.
-
-Did you ever confirm whether the latest nfsd is setting that flag when
-it should be?
-
---b.
-
+> These messages are no longer emitted when DEBUG isn't defined
+> and not using dynamic_debug.  I'm not sure that's a real
+> problem, but it's a difference.
 > 
->  fs/nfsd/fault_inject.c |    1 +
->  1 files changed, 1 insertions(+), 0 deletions(-)
+> I could produce a net_printk_ratelimited that would keep
+> the original behavior if necessary.
 > 
-> diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-> index 46b7696..ab81144 100644
-> --- a/fs/nfsd/fault_inject.c
-> +++ b/fs/nfsd/fault_inject.c
-> @@ -62,6 +62,7 @@ static int nfsd_inject_set(void *op_ptr, u64 val)
->  
->  static int nfsd_inject_get(void *data, u64 *val)
->  {
-> +	*val = 0;
->  	return 0;
->  }
->  
-> -- 
-> 1.7.4.4
-> 
+> 	net_printk_ratelimited(KERN_DEBUG etc...)
+
+Btw, what would the difference be to just plain printk_ratelimited()?
+
+johannes
+
