@@ -1,48 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:57358 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757082Ab2EVCpS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 May 2012 22:45:18 -0400
-Received: by mail-yw0-f46.google.com with SMTP id m54so5053606yhm.19
-        for <linux-nfs@vger.kernel.org>; Mon, 21 May 2012 19:45:17 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 07/14] NFS: Don't swap bytes in nfs4_construct_boot_verifier()
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 21 May 2012 22:45:16 -0400
-Message-ID: <20120522024516.1787.23068.stgit@degas.1015granger.net>
-In-Reply-To: <20120522022702.1787.45940.stgit@degas.1015granger.net>
-References: <20120522022702.1787.45940.stgit@degas.1015granger.net>
+Received: from natasha.panasas.com ([67.152.220.90]:59099 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752437Ab2EOJsV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 05:48:21 -0400
+Message-ID: <4FB22658.9010909@panasas.com>
+Date: Tue, 15 May 2012 12:48:08 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Johannes Schild <JSchild@gmx.de>
+CC: <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Subject: Re: Questions about Exofs
+References: <20120515090332.182970@gmx.net>
+In-Reply-To: <20120515090332.182970@gmx.net>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The SETCLIENTID boot verifier is opaque to NFSv4 servers, thus there
-is no requirement for byte swapping before the client puts the
-verifier on the wire.
+On 05/15/2012 12:03 PM, Johannes Schild wrote:
 
-This treatment is similar to other timestamp-based verifiers.
+> Hi,
+> 
+> i try to set up the object-based layout with pnfs.
+> I am using the OSC-OSD as target. It works well and i can login.
+> Trying the scripts "do-*" from git://git.open-osd.org/open-osd.git the do-osd script works for me. The do-exofs doesnt, here i have some question:
+> 
+> 1. Is the UUID in the do-exofs script optional?
+> 
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
 
- fs/nfs/nfs4proc.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+No it is not optional
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 0b9b55c..ab6b2e5 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3908,8 +3908,8 @@ static void nfs4_construct_boot_verifier(struct nfs_client *clp,
- {
- 	__be32 verf[2];
- 
--	verf[0] = htonl((u32)clp->cl_boot_time.tv_sec);
--	verf[1] = htonl((u32)clp->cl_boot_time.tv_nsec);
-+	verf[0] = (__be32)clp->cl_boot_time.tv_sec;
-+	verf[1] = (__be32)clp->cl_boot_time.tv_nsec;
- 	memcpy(bootverf->data, verf, sizeof(bootverf->data));
- }
- 
+> 2. If no how can i get it for my device?
+> 
+
+
+Exactly! the ./do-exofs format command will set this for you, as well as mkfs.exofs the
+FS for you.
+
+> 3. It is mandatory to use raid-driver (raid456) in the script? Why?
+> 
+
+
+What? where? Rrrr you are right. this is a very old tree. Let me see
+if I have something newer to push. It should all load automatically now.
+
+But yes the dependency on raid456.ko is built in. Though if you use
+raid=0 on the format command line it will not be used in run time.
+
+> 
+> The error is: 
+> mount -t exofs -o osdname=d2683732-c906-4ee1-9dbd-c10c27bb40df,pid=0x10000,_netdev /dev/osd0 /mnt/osd0/
+> mount: wrong fs type, bad option, bad superblock on /dev/osd0,
+>        missing codepage or helper program, or other error
+>        In some cases useful info is found in syslog - try
+>        dmesg | tail  or so
+> 
+> dmesg says:
+> exofs: Unable to mount exofs on (null) pid=0x0 err=-22
+> 
+
+
+Probably you forgot the "./do-exofs format" stage. Please read the script
+before, you might need to edit it. It is the stage that calls mkfs.exofs
+to make a new filesystem for you. (An OSD is a raw device that can host
+many filesystems each in it's own osd-partition.
+
+> 
+> Thanks for answering my questions.
+
+
+> Regards
+> Johannes
+> 
+
+
+Cheers
+Boaz
 
