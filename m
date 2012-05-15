@@ -1,151 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:42878 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752706Ab2E2HH7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 May 2012 03:07:59 -0400
-Message-ID: <4FC475AB.3010607@panasas.com>
-Date: Tue, 29 May 2012 10:07:23 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Peng Tao <bergwolf@gmail.com>
-CC: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
-        <stable@vger.kernel.org>, Peng Tao <tao.peng@emc.com>
-Subject: Re: [PATCH] pnfsblock: bail out partial page IO
-References: <1338228443-4883-1-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1338228443-4883-1-git-send-email-bergwolf@gmail.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from shards.monkeyblade.net ([198.137.202.13]:41074 "EHLO
+	shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S966047Ab2EOSc1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 14:32:27 -0400
+Date: Tue, 15 May 2012 14:30:09 -0400 (EDT)
+Message-Id: <20120515.143009.2103212327515966852.davem@davemloft.net>
+To: johannes@sipsolutions.net
+Cc: joe@perches.com, netdev@vger.kernel.org,
+        linux-decnet-user@lists.sourceforge.net,
+        netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org,
+        coreteam@netfilter.org, linux-wireless@vger.kernel.org,
+        dev@openvswitch.org, linux-sctp@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [RFC net-next 0/2] net: Use net_<level>_ratelimit
+From: David Miller <davem@davemloft.net>
+In-Reply-To: <1337106548.15553.8.camel@jlt3.sipsolutions.net>
+References: <1337106094.15553.5.camel@jlt3.sipsolutions.net>
+	<20120515.142405.633851408201128056.davem@davemloft.net>
+	<1337106548.15553.8.camel@jlt3.sipsolutions.net>
+Mime-Version: 1.0
+Content-Type: Text/Plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/28/2012 09:07 PM, Peng Tao wrote:
+From: Johannes Berg <johannes@sipsolutions.net>
+Date: Tue, 15 May 2012 20:29:08 +0200
 
-> Current block layout driver read/write code assumes page
-> aligned IO in many places. Add a checker to validate the assumption.
+> On Tue, 2012-05-15 at 14:24 -0400, David Miller wrote:
 > 
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Peng Tao <tao.peng@emc.com>
-> ---
-> This is the minimal patch for buffer IO case. I will cook DIO alignment checker
-> based on it, since DIO isn't needed for stable.
+>> > But don't you have to do something in the sources to actually get
+>> > dynamic_debug enabled? I'm concerned this will make mac80211 debugging
+>> > inconsistent - the normal bits are just printk() still, and the
+>> > rate-limited bits need some special enabling? That seems odd.
+>> 
+>> You can turn them all off or on with a simple flip of a boolean switch
+>> at run-time.  Or, alternatively, you can turn them on or off in a
+>> finer grained manner with other run-time facilities.
+>> 
+>> There should be a transition away from explicit KERN_DEBUG.
 > 
->  fs/nfs/blocklayout/blocklayout.c |   39 +++++++++++++++++++++++++++++++++++--
->  1 files changed, 36 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-> index 7ae8a60..447f8d1 100644
-> --- a/fs/nfs/blocklayout/blocklayout.c
-> +++ b/fs/nfs/blocklayout/blocklayout.c
-> @@ -228,6 +228,14 @@ bl_end_par_io_read(void *data, int unused)
->  	schedule_work(&rdata->task.u.tk_work);
->  }
->  
-> +static bool
-> +bl_nfspage_aligned(u64 offset, u32 len, u32 blkmask)
-> +{
-> +	if ((offset & blkmask) || (len & blkmask))
-> +		return false;
-> +	return true;
-> +}
-> +
->  static enum pnfs_try_status
->  bl_read_pagelist(struct nfs_read_data *rdata)
->  {
-> @@ -244,6 +252,9 @@ bl_read_pagelist(struct nfs_read_data *rdata)
->  	dprintk("%s enter nr_pages %u offset %lld count %u\n", __func__,
->  	       rdata->pages.npages, f_offset, (unsigned int)rdata->args.count);
->  
-> +	if (!bl_nfspage_aligned(f_offset, rdata->args.count, PAGE_CACHE_MASK))
-> +		goto use_mds;
-> +
+> I support that, but I think it's confusing to have things mixed. Also,
+> we seem to have printk_ratelimit(), so I'd prefer to have that used in
+> mac80211 instead until everything there moves over to newer facilities.
 
-
-Please put a dprint in the true case so we can see if this hits a lot.
-What you are saying is that this should happen very rarely.
-
-After you put the print. Does it hit? what is the test case that causes it?
-
->  	par = alloc_parallel(rdata);
->  	if (!par)
->  		goto use_mds;
-> @@ -552,7 +563,7 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
->  	struct bio *bio = NULL;
->  	struct pnfs_block_extent *be = NULL, *cow_read = NULL;
->  	sector_t isect, last_isect = 0, extent_length = 0;
-> -	struct parallel_io *par;
-> +	struct parallel_io *par = NULL;
->  	loff_t offset = wdata->args.offset;
->  	size_t count = wdata->args.count;
->  	struct page **pages = wdata->args.pages;
-> @@ -563,6 +574,10 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
->  	    NFS_SERVER(header->inode)->pnfs_blksize >> PAGE_CACHE_SHIFT;
->  
->  	dprintk("%s enter, %Zu@%lld\n", __func__, count, offset);
-> +	/* Check for alignment first */
-> +	if (!bl_nfspage_aligned(offset, count, PAGE_CACHE_MASK))
-> +		goto out_mds;
-> +
-
-
-Also here
-
->  	/* At this point, wdata->pages is a (sequential) list of nfs_pages.
->  	 * We want to write each, and if there is an error set pnfs_error
->  	 * to have it redone using nfs.
-> @@ -996,14 +1011,32 @@ bl_clear_layoutdriver(struct nfs_server *server)
->  	return 0;
->  }
->  
-> +static void
-> +bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
-> +{
-> +	if (!bl_nfspage_aligned(req->wb_offset, req->wb_bytes, PAGE_CACHE_MASK))
-> +		nfs_pageio_reset_read_mds(pgio);
-
-
-Also here
-
-> +	else
-> +		pnfs_generic_pg_init_read(pgio, req);
-> +}
-> +
-> +static void
-> +bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
-> +{
-> +	if (!bl_nfspage_aligned(req->wb_offset, req->wb_bytes, PAGE_CACHE_MASK))
-> +		nfs_pageio_reset_write_mds(pgio);
-
-
-And here
-
-> +	else
-> +		pnfs_generic_pg_init_write(pgio, req);
-> +}
-> +
->  static const struct nfs_pageio_ops bl_pg_read_ops = {
-> -	.pg_init = pnfs_generic_pg_init_read,
-> +	.pg_init = bl_pg_init_read,
->  	.pg_test = pnfs_generic_pg_test,
->  	.pg_doio = pnfs_generic_pg_readpages,
->  };
->  
->  static const struct nfs_pageio_ops bl_pg_write_ops = {
-> -	.pg_init = pnfs_generic_pg_init_write,
-> +	.pg_init = bl_pg_init_write,
->  	.pg_test = pnfs_generic_pg_test,
->  	.pg_doio = pnfs_generic_pg_writepages,
->  };
-
-
-If the prints actually never hit except with some rare applications
-than that's fine. But if they do Perhaps a fix is not that hard.
-
-Specially the read case should not be that hard to fix. Because you
-are reading into pages, and page boundaries are aligned to page boundaries
-in the stream, so all you need to do is read the reminders (at both ends)
-as well.
-
-Also the write case is not that hard. You just need to call a read-for-write()
-routine that does a sync read, when done continues with today's write.
-
-Cheers
-Boaz
+No, you don't want that, it's different from the networking ratelimit
+mechanism.  Joe explained this, and I just explaing it to you once
+again in another reply.
