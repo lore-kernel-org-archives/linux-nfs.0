@@ -1,68 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34350 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:43614 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753726Ab2EBVh7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 May 2012 17:37:59 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
-        NeilBrown <neilb@suse.de>, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 5/5] mountd: handle allocation failures in auth_unix_ip upcall
-Date: Wed,  2 May 2012 17:37:55 -0400
-Message-Id: <1335994675-11751-6-git-send-email-bfields@redhat.com>
-In-Reply-To: <1335994675-11751-1-git-send-email-bfields@redhat.com>
-References: <1335994675-11751-1-git-send-email-bfields@redhat.com>
+	id S932729Ab2EONkR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 May 2012 09:40:17 -0400
+Date: Tue, 15 May 2012 09:40:08 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC] NFSd laundromat containerization
+Message-ID: <20120515094008.698e538b@tlielax.poochiereds.net>
+In-Reply-To: <4FB0C9A1.6080406@parallels.com>
+References: <4FAD1934.8070908@parallels.com>
+	<20120511135306.GA12795@fieldses.org>
+	<4FAE2659.4090107@parallels.com>
+	<20120512141653.GA19757@fieldses.org>
+	<4FB0C9A1.6080406@parallels.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Mon, 14 May 2012 13:00:17 +0400
+Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- utils/mountd/cache.c |   12 +++++++++---
- 1 files changed, 9 insertions(+), 3 deletions(-)
+> On 12.05.2012 18:16, bfields@fieldses.org wrote:
+> > On Sat, May 12, 2012 at 12:59:05PM +0400, Stanislav Kinsbursky wrote:
+> >> On 11.05.2012 17:53, bfields@fieldses.org wrote:
+> >>> On Fri, May 11, 2012 at 05:50:44PM +0400, Stanislav Kinsbursky wrote:
+> >>>> Hello.
+> >>>> I'm currently looking on NFSd laundromat work, and it looks like
+> >>>> have to be performed per networks namespace context.
+> >>>> It's easy to make corresponding delayed work per network namespace
+> >>>> and thus gain per-net data pointer in laundromat function.
+> >>>> But here a problem appears: network namespace is required to skip
+> >>>> clients from other network namespaces while iterating over global
+> >>>> lists (client_lru and friends).
+> >>>> I see two possible solutions:
+> >>>> 1) Make these list per network namespace context. In this case
+> >>>> network namespace will not be required - per-net data will be
+> >>>> enough.
+> >>>> 2) Put network namespace link on per-net data (this one is easier, but uglier).
+> >>>
+> >>> I'd rather there be as few shared data structures between network
+> >>> namespaces as possible--I think that will simplify things.
+> >>>
+> >>> So, of those two choices, #1.
+> >>>
+> >>
+> >> Guys, I would like to discuss few ideas about caches and lists containerization.
+> >> Currently, it look to me, that these hash tables:
+> >>
+> >> reclaim_str, conf_id, conf_str, unconf_str, unconf_id, sessionid
+> >>
+> >> and these lists:
+> >>
+> >> client_lru, close_lru
+> >>
+> >> have to be per net, while hash tables
+> >>
+> >> file, ownerstr, lockowner_ino
+> >>
+> >> and
+> >>
+> >> del_recall_lru lists
+> >>
+> >> have not, because they are about file system access.
+> >
+> > Actually, ownerstr and lockowner_ino should also both be per-container.
+> >
+> > So it's only file and del_recall_lru that should be global.  (And
+> > del_recall_lru might work either way, actually.)
+> >
+> >> If I'd containerize it this way, then looks like nfs4_lock_state()
+> >> and nfs4_unlock_state() functions will protect only
+> >> non-containerized data, while containerized data have to protected
+> >> by some per-net lock.
+> >
+> > Sounds about right.
+> >
+> 
+> Bruce, Jeff, I've implemented these per-net hashes and lists (file hash and 
+> del_recall_lru remains global).
+> But now I'm confused with locking.
+> 
+> For example, let's consider file hash and del_recall_lru lists.
+> It looks like they are protected by recall_lock. But in 
+> nfsd_forget_delegations() this lock is not taken. Is it a bug?
 
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 6710eca..8f14032 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -84,7 +84,6 @@ static void auth_unix_ip(FILE *f)
- 	char ipaddr[INET6_ADDRSTRLEN];
- 	char *client = NULL;
- 	struct addrinfo *tmp = NULL;
--	struct addrinfo *ai = NULL;
- 	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
- 		return;
- 
-@@ -107,12 +106,16 @@ static void auth_unix_ip(FILE *f)
- 
- 	/* addr is a valid, interesting address, find the domain name... */
- 	if (!use_ipaddr) {
-+		struct addrinfo *ai = NULL;
-+
- 		ai = client_resolve(tmp->ai_addr);
-+		if (ai == NULL)
-+			goto out;
- 		client = client_compose(ai);
- 		freeaddrinfo(ai);
-+		if (!client)
-+			goto out;
- 	}
--	freeaddrinfo(tmp);
--
- 	qword_print(f, "nfsd");
- 	qword_print(f, ipaddr);
- 	qword_printuint(f, time(0) + DEFAULT_TTL);
-@@ -124,6 +127,9 @@ static void auth_unix_ip(FILE *f)
- 	xlog(D_CALL, "auth_unix_ip: client %p '%s'", client, client?client: "DEFAULT");
- 
- 	free(client);
-+out:
-+	freeaddrinfo(tmp);
-+
- }
- 
- static void auth_unix_gid(FILE *f)
+It looks like a bug to me. If another thread is modifying the
+file_hashtbl while you're calling nfsd_forget_delegations, then you
+could oops here.
+
+Perhaps we only ever modify that table while holding the state mutex in
+which case the code won't oops, but the recall lock seems rather
+superfluous at that point.
+
+I'd have to unwind the locking and see...
+
+> If yes and recall_lock is used for file hash protection, then why do we need to 
+> protect nfsd_process_n_delegations() by nfs4_un/lock_state() calls?
+> 
+> Actually, the problem I'm trying to solve is to replace global client_lock by 
+> per-net one where possible. But I don't clearly understand, what it protects.
+> 
+> Could you, guys, clarify the state locking to me.
+> 
+
+I wish I could -- I'm still wrapping my brain around it too...
+
 -- 
-1.7.7.6
-
+Jeff Layton <jlayton@redhat.com>
