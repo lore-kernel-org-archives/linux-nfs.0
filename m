@@ -1,123 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:41057 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933793Ab2EWS7U convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 May 2012 14:59:20 -0400
-Message-ID: <4FBD3371.1070109@parallels.com>
-Date: Wed, 23 May 2012 22:58:57 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from mx1.redhat.com ([209.132.183.28]:43681 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S966836Ab2EOVIs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 May 2012 17:08:48 -0400
+Date: Tue, 15 May 2012 17:08:15 -0400
+From: Josef Bacik <josef@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Josef Bacik <josef@redhat.com>, Andreas Dilger <adilger@dilger.ca>,
+        Boaz Harrosh <bharrosh@panasas.com>, linux-ext4@vger.kernel.org,
+        linux-nfs@vger.kernel.org, tytso@mit.edu, jack@suse.cz
+Subject: Re: [PATCH] ext4: fix how i_version is modified and turn it on by
+ default V2
+Message-ID: <20120515210815.GE1907@localhost.localdomain>
+References: <1337092396-3272-1-git-send-email-josef@redhat.com>
+ <20120515175308.GB1907@localhost.localdomain>
+ <4FB29DAC.3020801@panasas.com>
+ <20120515182914.GC1907@localhost.localdomain>
+ <AB91C817-DFEE-415F-8769-78831D72C6B7@dilger.ca>
+ <20120515200533.GD1907@localhost.localdomain>
+ <20120515210029.GA11932@fieldses.org>
 MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/3] NFSv4: Fix a race in the net namespace mount notification
-References: <1337794363-11905-1-git-send-email-Trond.Myklebust@netapp.com> <1337794363-11905-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1337794363-11905-2-git-send-email-Trond.Myklebust@netapp.com>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120515210029.GA11932@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Looks good to me.
+On Tue, May 15, 2012 at 05:00:29PM -0400, J. Bruce Fields wrote:
+> On Tue, May 15, 2012 at 04:05:34PM -0400, Josef Bacik wrote:
+> > On Tue, May 15, 2012 at 01:55:33PM -0600, Andreas Dilger wrote:
+> > > It should be fairly straight forward to have a flag set in the ext4
+> > > superblock (s_state flag?) that indicates that the filesystem has
+> > > been exported via NFS.  There might be other optimizations that can
+> > > be done based on this (e.g. avoid some of the directory cookie
+> > > hijinx that are only needed if NFS has exported the filesystem and
+> > > needs to keep persistent cookies across reboots).
+> > > 
+> > > I think that the ext4_mark_inode_dirty() performance problem could
+> > > be at least partially fixed by deferring the copy of in-core inode
+> > > to on-disk inode to use a journal commit callback.  This is far more
+> > > work than just setting a flag in the superblock, but it has the
+> > > potential to _improve_ performance rather than make it worse.
+> 
+> Could you give any more pointers for an ext4 ignoramus?  (Where *is* the
+> journal commit code that would need the callback?  And where is the copy
+> currently done?)
+> 
 
-Acked-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+The copy is currently done in mark_inode_dirty(), I'm looking into what would
+need to be done to get the inodes to update the on disk stuff on journal commit
+only, but I worry that will make commits take way longer than normal and cause
+other issues.
 
-23.05.2012 21:32, Trond Myklebust написал:
-> Since the struct nfs_client gets added to the global nfs_client_list
-> before it is initialised, it is possible that rpc_pipefs_event can
-> end up trying to create idmapper entries on such a thing.
->
-> The solution is to have the mount notification wait for the
-> initialisation of each nfs_client to complete, and then to
-> skip any entries for which the it failed.
->
-> Reported-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
-> Signed-off-by: Trond Myklebust<Trond.Myklebust@netapp.com>
-> Cc: Stanislav Kinsbursky<skinsbursky@parallels.com>
-> ---
->   fs/nfs/client.c   |   16 +++++++++++++---
->   fs/nfs/idmap.c    |   15 +++++++++++++++
->   fs/nfs/internal.h |    1 +
->   3 files changed, 29 insertions(+), 3 deletions(-)
->
-> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index 78970a1..e6070ea 100644
-> --- a/fs/nfs/client.c
-> +++ b/fs/nfs/client.c
-> @@ -504,6 +504,17 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
->   	return NULL;
->   }
->
-> +static bool nfs_client_init_is_complete(const struct nfs_client *clp)
-> +{
-> +	return clp->cl_cons_state != NFS_CS_INITING;
-> +}
-> +
-> +int nfs_wait_client_init_complete(const struct nfs_client *clp)
-> +{
-> +	return wait_event_killable(nfs_client_active_wq,
-> +			nfs_client_init_is_complete(clp));
-> +}
-> +
->   /*
->    * Look up a client by IP address and protocol version
->    * - creates a new record if one doesn't yet exist
-> @@ -564,8 +575,7 @@ found_client:
->   	if (new)
->   		nfs_free_client(new);
->
-> -	error = wait_event_killable(nfs_client_active_wq,
-> -				clp->cl_cons_state<  NFS_CS_INITING);
-> +	error = nfs_wait_client_init_complete(clp);
->   	if (error<  0) {
->   		nfs_put_client(clp);
->   		return ERR_PTR(-ERESTARTSYS);
-> @@ -1317,7 +1327,7 @@ static int nfs4_init_client_minor_version(struct nfs_client *clp)
->   		 * so that the client back channel can find the
->   		 * nfs_client struct
->   		 */
-> -		clp->cl_cons_state = NFS_CS_SESSION_INITING;
-> +		nfs_mark_client_ready(clp, NFS_CS_SESSION_INITING);
->   	}
->   #endif /* CONFIG_NFS_V4_1 */
->
-> diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-> index 3e8edbe..6ca949b 100644
-> --- a/fs/nfs/idmap.c
-> +++ b/fs/nfs/idmap.c
-> @@ -530,9 +530,24 @@ static struct nfs_client *nfs_get_client_for_event(struct net *net, int event)
->   	struct nfs_net *nn = net_generic(net, nfs_net_id);
->   	struct dentry *cl_dentry;
->   	struct nfs_client *clp;
-> +	int err;
->
-> +restart:
->   	spin_lock(&nn->nfs_client_lock);
->   	list_for_each_entry(clp,&nn->nfs_client_list, cl_share_link) {
-> +		/* Wait for initialisation to finish */
-> +		if (clp->cl_cons_state == NFS_CS_INITING) {
-> +			atomic_inc(&clp->cl_count);
-> +			spin_unlock(&nn->nfs_client_lock);
-> +			err = nfs_wait_client_init_complete(clp);
-> +			nfs_put_client(clp);
-> +			if (err)
-> +				return NULL;
-> +			goto restart;
-> +		}
-> +		/* Skip nfs_clients that failed to initialise */
-> +		if (clp->cl_cons_state<  0)
-> +			continue;
->   		if (clp->rpc_ops !=&nfs_v4_clientops)
->   			continue;
->   		cl_dentry = clp->cl_idmap->idmap_pipe->dentry;
-> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-> index 00b66de..a23daa9 100644
-> --- a/fs/nfs/internal.h
-> +++ b/fs/nfs/internal.h
-> @@ -167,6 +167,7 @@ extern struct nfs_server *nfs_clone_server(struct nfs_server *,
->   					   struct nfs_fh *,
->   					   struct nfs_fattr *,
->   					   rpc_authflavor_t);
-> +extern int nfs_wait_client_init_complete(const struct nfs_client *clp);
->   extern void nfs_mark_client_ready(struct nfs_client *clp, int state);
->   extern struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
->   					     const struct sockaddr *ds_addr,
+> > Yeah Btrfs doesn't have this sort of problem since we delay inode
+> > updating sinc it is so costly, we simply let it hang around in the
+> > in-core inode until we feel like updating it at some point down the
+> > road.  I'll put together a feature flag or something to make it be
+> > enabled for always if somebody turns it on.
+> 
+> Thanks for looking at this.
+> 
+> A feature flag would be an improvement over a mount option.
+> 
+> If the flag makes a noticeable difference to performance, then it makes
+> me nervous toggling it automatically.  And what will we do if statx
+> starts returning i_version to userspace?
+> 
 
+Well statx can return flags right?  I'm sure we could just have a flag that says
+"hey iversion is completely useless."  Thanks,
+
+Josef
