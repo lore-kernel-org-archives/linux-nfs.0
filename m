@@ -1,96 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:53033 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758545Ab2EaVWT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 31 May 2012 17:22:19 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Peng Tao <bergwolf@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "bharrosh@panasas.com" <bharrosh@panasas.com>,
-        Peng Tao <tao.peng@emc.com>
-Subject: Re: [PATCH-v2 3/3] pnfsblock: call blk_plug functions for direct IO
-Date: Thu, 31 May 2012 21:22:18 +0000
-Message-ID: <1338499336.20167.48.camel@lade.trondhjem.org>
-References: <1338266334-11490-1-git-send-email-bergwolf@gmail.com>
-	 <1338266334-11490-4-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1338266334-11490-4-git-send-email-bergwolf@gmail.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from smtp-outbound-2.vmware.com ([208.91.2.13]:35656 "EHLO
+	smtp-outbound-2.vmware.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757693Ab2EORon (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 13:44:43 -0400
+Date: Tue, 15 May 2012 10:44:43 -0700 (PDT)
+From: Alexandre Depoutovitch <adepoutovitch@vmware.com>
+To: Dean <seattleplus@gmail.com>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Message-ID: <745238188.5696519.1337103883067.JavaMail.root@zimbra-prod-mbox-3.vmware.com>
+In-Reply-To: <4FAD5C44.50407@gmail.com>
+Subject: Re: [PATCH RFC v2] Performing direct I/O on sector-aligned requests
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA1LTI5IGF0IDEyOjM4ICswODAwLCBQZW5nIFRhbyB3cm90ZToNCj4gTkZT
-IERJTyBieXBhc3NlcyBnZW5lcmljIERJTyBjb2RlIHBhdGguIFNvIHdlIG5lZWQgdG8gcGx1Zy91
-bnBsdWcNCj4gb24gb3VyIG93bi4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IFBlbmcgVGFvIDx0YW8u
-cGVuZ0BlbWMuY29tPg0KPiAtLS0NCj4gIGZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91dC5j
-IHwgICA0NyArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrLQ0KPiAgMSBmaWxl
-cyBjaGFuZ2VkLCA0NiBpbnNlcnRpb25zKCspLCAxIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAt
-LWdpdCBhL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91dC5jIGIvZnMvbmZzL2Jsb2NrbGF5
-b3V0L2Jsb2NrbGF5b3V0LmMNCj4gaW5kZXggYmFiNDMyZi4uYjQ4YjA4YiAxMDA2NDQNCj4gLS0t
-IGEvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMNCj4gKysrIGIvZnMvbmZzL2Jsb2Nr
-bGF5b3V0L2Jsb2NrbGF5b3V0LmMNCj4gQEAgLTI1MSw2ICsyNTEsNyBAQCBibF9yZWFkX3BhZ2Vs
-aXN0KHN0cnVjdCBuZnNfcmVhZF9kYXRhICpyZGF0YSkNCj4gIA0KPiAgCWRwcmludGsoIiVzIGVu
-dGVyIG5yX3BhZ2VzICV1IG9mZnNldCAlbGxkIGNvdW50ICV1XG4iLCBfX2Z1bmNfXywNCj4gIAkg
-ICAgICAgcmRhdGEtPnBhZ2VzLm5wYWdlcywgZl9vZmZzZXQsICh1bnNpZ25lZCBpbnQpcmRhdGEt
-PmFyZ3MuY291bnQpOw0KPiArCUJVR19PTihoZWFkZXItPmRyZXEgJiYgaGVhZGVyLT5sYXlvdXRf
-cHJpdmF0ZSA9PSBOVUxMKTsNCj4gIA0KPiAgCWlmICghYmxfY2hlY2tfYWxpZ25tZW50KGZfb2Zm
-c2V0LCByZGF0YS0+YXJncy5jb3VudCwgUEFHRV9DQUNIRV9NQVNLKSkNCj4gIAkJZ290byB1c2Vf
-bWRzOw0KPiBAQCAtMzIwLDkgKzMyMSwxNyBAQCBvdXQ6DQo+ICAJYmxfcHV0X2V4dGVudChjb3df
-cmVhZCk7DQo+ICAJYmxfc3VibWl0X2JpbyhSRUFELCBiaW8pOw0KPiAgCXB1dF9wYXJhbGxlbChw
-YXIpOw0KPiArCWlmIChoZWFkZXItPmRyZXEgJiYgIWhlYWRlci0+bW9yZWlvKSB7DQo+ICsJCWJs
-a19maW5pc2hfcGx1Zygoc3RydWN0IGJsa19wbHVnICopaGVhZGVyLT5sYXlvdXRfcHJpdmF0ZSk7
-DQo+ICsJCWtmcmVlKGhlYWRlci0+bGF5b3V0X3ByaXZhdGUpOw0KDQpXYWl0Li4uIFdoeSBjYW4n
-dCB0aGlzIGp1c3QgZ28gaW4gdGhlIGJsb2NrLXNwZWNpZmljIC0+cGdfZG9pbygpDQpjYWxsYmFj
-az8gV2h5IGRvZXMgaXQgbmVlZCB0byBnbyB0byB5b3VyDQpyZWFkX3BhZ2VsaXN0KCkvd3JpdGVf
-cGFnZWxpc3QoKT8NCg0KPiArCX0NCj4gIAlyZXR1cm4gUE5GU19BVFRFTVBURUQ7DQo+ICANCj4g
-LSB1c2VfbWRzOg0KPiArdXNlX21kczoNCj4gKwlpZiAoaGVhZGVyLT5kcmVxKSB7DQo+ICsJCWJs
-a19maW5pc2hfcGx1Zygoc3RydWN0IGJsa19wbHVnICopaGVhZGVyLT5sYXlvdXRfcHJpdmF0ZSk7
-DQo+ICsJCWtmcmVlKGhlYWRlci0+bGF5b3V0X3ByaXZhdGUpOw0KPiArCX0NCj4gIAlkcHJpbnRr
-KCJHaXZpbmcgdXAgYW5kIHVzaW5nIG5vcm1hbCBORlNcbiIpOw0KPiAgCXJldHVybiBQTkZTX05P
-VF9BVFRFTVBURUQ7DQo+ICB9DQo+IEBAIC01NzUsNiArNTg0LDggQEAgYmxfd3JpdGVfcGFnZWxp
-c3Qoc3RydWN0IG5mc193cml0ZV9kYXRhICp3ZGF0YSwgaW50IHN5bmMpDQo+ICAJdW5zaWduZWQg
-bG9uZyBibGttYXNrID0gUEFHRV9DQUNIRV9NQVNLOw0KPiAgDQo+ICAJZHByaW50aygiJXMgZW50
-ZXIsICVadUAlbGxkXG4iLCBfX2Z1bmNfXywgY291bnQsIG9mZnNldCk7DQo+ICsJQlVHX09OKGhl
-YWRlci0+ZHJlcSAmJiBoZWFkZXItPmxheW91dF9wcml2YXRlID09IE5VTEwpOw0KPiArDQo+ICAJ
-LyogQ2hlY2sgZm9yIGFsaWdubWVudCBmaXJzdCAqLw0KPiAgCWlmIChoZWFkZXItPmRyZXEpDQo+
-ICAJCWJsa21hc2sgPSBORlNfU0VSVkVSKGhlYWRlci0+aW5vZGUpLT5wbmZzX2Jsa3NpemUgLSAx
-Ow0KPiBAQCAtNzQwLDggKzc1MSwxNiBAQCBvdXQ6DQo+ICAJYmxfcHV0X2V4dGVudChiZSk7DQo+
-ICAJYmxfc3VibWl0X2JpbyhXUklURSwgYmlvKTsNCj4gIAlwdXRfcGFyYWxsZWwocGFyKTsNCj4g
-KwlpZiAoaGVhZGVyLT5kcmVxICYmICFoZWFkZXItPm1vcmVpbykgew0KPiArCQlibGtfZmluaXNo
-X3BsdWcoKHN0cnVjdCBibGtfcGx1ZyAqKWhlYWRlci0+bGF5b3V0X3ByaXZhdGUpOw0KPiArCQlr
-ZnJlZShoZWFkZXItPmxheW91dF9wcml2YXRlKTsNCj4gKwl9DQo+ICAJcmV0dXJuIFBORlNfQVRU
-RU1QVEVEOw0KPiAgb3V0X21kczoNCj4gKwlpZiAoaGVhZGVyLT5kcmVxKSB7DQo+ICsJCWJsa19m
-aW5pc2hfcGx1Zygoc3RydWN0IGJsa19wbHVnICopaGVhZGVyLT5sYXlvdXRfcHJpdmF0ZSk7DQo+
-ICsJCWtmcmVlKGhlYWRlci0+bGF5b3V0X3ByaXZhdGUpOw0KPiArCX0NCj4gIAlibF9wdXRfZXh0
-ZW50KGJlKTsNCj4gIAlrZnJlZShwYXIpOw0KPiAgCXJldHVybiBQTkZTX05PVF9BVFRFTVBURUQ7
-DQo+IEBAIC0xMDE3LDE1ICsxMDM2LDMwIEBAIGJsX2NsZWFyX2xheW91dGRyaXZlcihzdHJ1Y3Qg
-bmZzX3NlcnZlciAqc2VydmVyKQ0KPiAgc3RhdGljIHZvaWQNCj4gIGJsX3BnX2luaXRfcmVhZChz
-dHJ1Y3QgbmZzX3BhZ2Vpb19kZXNjcmlwdG9yICpwZ2lvLCBzdHJ1Y3QgbmZzX3BhZ2UgKnJlcSkN
-Cj4gIHsNCj4gKwlCVUdfT04ocGdpby0+cGdfbGF5b3V0X3ByaXZhdGUgIT0gTlVMTCk7DQo+ICsN
-Cj4gIAlpZiAoIWJsX2NoZWNrX2FsaWdubWVudChyZXEtPndiX29mZnNldCwgcmVxLT53Yl9ieXRl
-cywgUEFHRV9DQUNIRV9NQVNLKSkNCj4gIAkJbmZzX3BhZ2Vpb19yZXNldF9yZWFkX21kcyhwZ2lv
-KTsNCj4gIAllbHNlDQo+ICAJCXBuZnNfZ2VuZXJpY19wZ19pbml0X3JlYWQocGdpbywgcmVxKTsN
-Cj4gKw0KPiArCWlmIChwZ2lvLT5wZ19kcmVxICYmIHBnaW8tPnBnX2xzZWcpIHsNCj4gKwkJc3Ry
-dWN0IGJsa19wbHVnICpwbHVnOw0KPiArCQkvKiBGcmVlZCBpbiBibF9yZWFkX3BhZ2VsaXN0ICov
-DQo+ICsJCXBsdWcgPSBrbWFsbG9jKHNpemVvZihzdHJ1Y3QgYmxrX3BsdWcpLCBHRlBfS0VSTkVM
-KTsNCj4gKwkJaWYgKHBsdWcgIT0gTlVMTCkgew0KPiArCQkJYmxrX3N0YXJ0X3BsdWcocGx1Zyk7
-DQo+ICsJCQlwZ2lvLT5wZ19sYXlvdXRfcHJpdmF0ZSA9IHBsdWc7DQo+ICsJCX0gZWxzZQ0KPiAr
-CQkJbmZzX3BhZ2Vpb19yZXNldF9yZWFkX21kcyhwZ2lvKTsNCj4gKwl9DQo+ICB9DQo+ICANCj4g
-IHN0YXRpYyB2b2lkDQo+ICBibF9wZ19pbml0X3dyaXRlKHN0cnVjdCBuZnNfcGFnZWlvX2Rlc2Ny
-aXB0b3IgKnBnaW8sIHN0cnVjdCBuZnNfcGFnZSAqcmVxKQ0KPiAgew0KPiArCUJVR19PTihwZ2lv
-LT5wZ19sYXlvdXRfcHJpdmF0ZSAhPSBOVUxMKTsNCj4gKw0KPiAgCWlmIChwZ2lvLT5wZ19kcmVx
-KSB7DQo+ICAJCS8qIERpcmVjdCB3cml0ZSBzaG91bGQgYmUgYmxrc2l6ZSBhbGlnbmVkICovDQo+
-ICAJCXVuc2lnbmVkIGJsa21hc2sgPSBORlNfU0VSVkVSKHBnaW8tPnBnX2lub2RlKS0+cG5mc19i
-bGtzaXplIC0gMTsNCj4gQEAgLTEwMzgsNiArMTA3MiwxNyBAQCBibF9wZ19pbml0X3dyaXRlKHN0
-cnVjdCBuZnNfcGFnZWlvX2Rlc2NyaXB0b3IgKnBnaW8sIHN0cnVjdCBuZnNfcGFnZSAqcmVxKQ0K
-PiAgCQluZnNfcGFnZWlvX3Jlc2V0X3dyaXRlX21kcyhwZ2lvKTsNCj4gIAllbHNlDQo+ICAJCXBu
-ZnNfZ2VuZXJpY19wZ19pbml0X3dyaXRlKHBnaW8sIHJlcSk7DQo+ICsNCj4gKwlpZiAocGdpby0+
-cGdfZHJlcSAmJiBwZ2lvLT5wZ19sc2VnKSB7DQo+ICsJCXN0cnVjdCBibGtfcGx1ZyAqcGx1ZzsN
-Cj4gKwkJLyogRnJlZWQgaW4gYmxfd3JpdGVfcGFnZWxpc3QgKi8NCj4gKwkJcGx1ZyA9IGttYWxs
-b2Moc2l6ZW9mKHN0cnVjdCBibGtfcGx1ZyksIEdGUF9OT0ZTKTsNCj4gKwkJaWYgKHBsdWcgIT0g
-TlVMTCkgew0KPiArCQkJYmxrX3N0YXJ0X3BsdWcocGx1Zyk7DQo+ICsJCQlwZ2lvLT5wZ19sYXlv
-dXRfcHJpdmF0ZSA9IHBsdWc7DQo+ICsJCX0gZWxzZQ0KPiArCQkJbmZzX3BhZ2Vpb19yZXNldF93
-cml0ZV9tZHMocGdpbyk7DQo+ICsJfQ0KPiAgfQ0KPiAgDQo+ICBzdGF0aWMgY29uc3Qgc3RydWN0
-IG5mc19wYWdlaW9fb3BzIGJsX3BnX3JlYWRfb3BzID0gew0KDQotLSANClRyb25kIE15a2xlYnVz
-dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0
-QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+
+
+----- Original Message -----
+> From: "Dean" <seattleplus@gmail.com>
+> To: "Alexandre Depoutovitch" <adepoutovitch@vmware.com>
+> Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+> Sent: Friday, May 11, 2012 2:36:52 PM
+> Subject: Re: [PATCH RFC v2] Performing direct I/O on sector-aligned requests
+> 
+> 
+> 
+> On 4/29/12 2:03 PM, Alexandre Depoutovitch wrote:
+> > A new flag is exposed to users through /proc/fs/nfsd/direct_io
+> > node. The
+> > default value of 1 results in the above behavior. Writing 0 to the
+> > node
+> > turns off the direct I/O completely, and forces NFS daemon to
+> > always use
+> > buffered IO (as it has done before). Writing 2 to the node tells
+> > NFS
+> > daemon to use direct I/O whenever possible, even if  requests are
+> > aligned
+> > at file system block boundary.
+> 
+> Not sure if this was previously discussed, but I assume the default
+> would remain the same (value 0)?
+> 
+> Dean
+> 
+> 
+
+
+Yes. The default should be 0 (the behavior will not change, unless the user explicitly enables it).
