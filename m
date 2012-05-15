@@ -1,254 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f49.google.com ([209.85.216.49]:38721 "EHLO
-	mail-qa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756400Ab2ERQQk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 May 2012 12:16:40 -0400
-Received: by qabj40 with SMTP id j40so444240qab.1
-        for <linux-nfs@vger.kernel.org>; Fri, 18 May 2012 09:16:39 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com
-Subject: [PATCH v3] statd: drop all capabilities from the bounding set as well
-Date: Fri, 18 May 2012 12:16:34 -0400
-Message-Id: <1337357794-4051-1-git-send-email-jlayton@redhat.com>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:53604 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965299Ab2EOPjl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 11:39:41 -0400
+Received: by mail-pb0-f46.google.com with SMTP id rp8so7677495pbb.19
+        for <linux-nfs@vger.kernel.org>; Tue, 15 May 2012 08:39:41 -0700 (PDT)
+From: Peng Tao <bergwolf@gmail.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Peng Tao <tao.peng@emc.com>
+Subject: [PATCH 2/2] NFS: call block plug around direct read
+Date: Tue, 15 May 2012 23:38:23 +0800
+Message-Id: <1337096303-2516-2-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1337096303-2516-1-git-send-email-bergwolf@gmail.com>
+References: <1337096303-2516-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-statd drops all capabilities except for CAP_NET_BIND when it starts. It's
-possible though that if it ever had a compromise that an attacker would be
-able to invoke a setuid process (or something with file capabilities) in
-order to reinstate some caps.
-
-This could happen as a result of the daemon becoming compromised, or
-possibly as a result of the ha-callout program becoming compromised.
-
-In order to prevent that, have statd also prune the capability bounding
-set to nothing prior to dropping capabilities. That ensures that the
-process won't be able to reacquire capabilities via any means --
-including exec'ing a setuid program.
-
-We do however need to be cognizant of the fact that PR_CAPBSET_DROP was
-only added in 2.6.25, so check to make sure that #define exists via
-autoconf before we rely on it. In order to do that, we must add
-ax_check_define.m4 from the GNU autoconf macro archive.
-
-Furthermore, do a runtime check to see if /proc/sys/kernel/cap-bound
-exists before attempting to clear the bounding set. If it does, then
-don't bother trying since it won't work. In that event though, do
-throw a warning however since the presence of that file indicates that
-there is a disconnect between the build and runtime environments.
-
-Cc: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Peng Tao <tao.peng@emc.com>
 ---
- aclocal/ax_check_define.m4 |   92 ++++++++++++++++++++++++++++++++++++++++++++
- aclocal/libcap.m4          |    5 ++
- support/nsm/file.c         |   57 ++++++++++++++++++++++++++-
- 3 files changed, 152 insertions(+), 2 deletions(-)
- create mode 100644 aclocal/ax_check_define.m4
+ fs/nfs/direct.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
 
-diff --git a/aclocal/ax_check_define.m4 b/aclocal/ax_check_define.m4
-new file mode 100644
-index 0000000..4bc6948
---- /dev/null
-+++ b/aclocal/ax_check_define.m4
-@@ -0,0 +1,92 @@
-+# ===========================================================================
-+#      http://www.gnu.org/software/autoconf-archive/ax_check_define.html
-+# ===========================================================================
-+#
-+# SYNOPSIS
-+#
-+#   AC_CHECK_DEFINE([symbol], [ACTION-IF-FOUND], [ACTION-IF-NOT])
-+#   AX_CHECK_DEFINE([includes],[symbol], [ACTION-IF-FOUND], [ACTION-IF-NOT])
-+#
-+# DESCRIPTION
-+#
-+#   Complements AC_CHECK_FUNC but it does not check for a function but for a
-+#   define to exist. Consider a usage like:
-+#
-+#    AC_CHECK_DEFINE(__STRICT_ANSI__, CFLAGS="$CFLAGS -D_XOPEN_SOURCE=500")
-+#
-+# LICENSE
-+#
-+#   Copyright (c) 2008 Guido U. Draheim <guidod@gmx.de>
-+#
-+#   This program is free software; you can redistribute it and/or modify it
-+#   under the terms of the GNU General Public License as published by the
-+#   Free Software Foundation; either version 3 of the License, or (at your
-+#   option) any later version.
-+#
-+#   This program is distributed in the hope that it will be useful, but
-+#   WITHOUT ANY WARRANTY; without even the implied warranty of
-+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
-+#   Public License for more details.
-+#
-+#   You should have received a copy of the GNU General Public License along
-+#   with this program. If not, see <http://www.gnu.org/licenses/>.
-+#
-+#   As a special exception, the respective Autoconf Macro's copyright owner
-+#   gives unlimited permission to copy, distribute and modify the configure
-+#   scripts that are the output of Autoconf when processing the Macro. You
-+#   need not follow the terms of the GNU General Public License when using
-+#   or distributing such scripts, even though portions of the text of the
-+#   Macro appear in them. The GNU General Public License (GPL) does govern
-+#   all other use of the material that constitutes the Autoconf Macro.
-+#
-+#   This special exception to the GPL applies to versions of the Autoconf
-+#   Macro released by the Autoconf Archive. When you make and distribute a
-+#   modified version of the Autoconf Macro, you may extend this special
-+#   exception to the GPL to apply to your modified version as well.
-+
-+#serial 8
-+
-+AU_ALIAS([AC_CHECK_DEFINED], [AC_CHECK_DEFINE])
-+AC_DEFUN([AC_CHECK_DEFINE],[
-+AS_VAR_PUSHDEF([ac_var],[ac_cv_defined_$1])dnl
-+AC_CACHE_CHECK([for $1 defined], ac_var,
-+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
-+  #ifdef $1
-+  int ok;
-+  #else
-+  choke me
-+  #endif
-+]])],[AS_VAR_SET(ac_var, yes)],[AS_VAR_SET(ac_var, no)]))
-+AS_IF([test AS_VAR_GET(ac_var) != "no"], [$2], [$3])dnl
-+AS_VAR_POPDEF([ac_var])dnl
-+])
-+
-+AU_ALIAS([AX_CHECK_DEFINED], [AX_CHECK_DEFINE])
-+AC_DEFUN([AX_CHECK_DEFINE],[
-+AS_VAR_PUSHDEF([ac_var],[ac_cv_defined_$2_$1])dnl
-+AC_CACHE_CHECK([for $2 defined in $1], ac_var,
-+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <$1>]], [[
-+  #ifdef $2
-+  int ok;
-+  #else
-+  choke me
-+  #endif
-+]])],[AS_VAR_SET(ac_var, yes)],[AS_VAR_SET(ac_var, no)]))
-+AS_IF([test AS_VAR_GET(ac_var) != "no"], [$3], [$4])dnl
-+AS_VAR_POPDEF([ac_var])dnl
-+])
-+
-+AC_DEFUN([AX_CHECK_FUNC],
-+[AS_VAR_PUSHDEF([ac_var], [ac_cv_func_$2])dnl
-+AC_CACHE_CHECK([for $2], ac_var,
-+dnl AC_LANG_FUNC_LINK_TRY
-+[AC_LINK_IFELSE([AC_LANG_PROGRAM([$1
-+                #undef $2
-+                char $2 ();],[
-+                char (*f) () = $2;
-+                return f != $2; ])],
-+                [AS_VAR_SET(ac_var, yes)],
-+                [AS_VAR_SET(ac_var, no)])])
-+AS_IF([test AS_VAR_GET(ac_var) = yes], [$3], [$4])dnl
-+AS_VAR_POPDEF([ac_var])dnl
-+])# AC_CHECK_FUNC
-diff --git a/aclocal/libcap.m4 b/aclocal/libcap.m4
-index f8a0ed1..a310366 100644
---- a/aclocal/libcap.m4
-+++ b/aclocal/libcap.m4
-@@ -5,6 +5,11 @@ AC_DEFUN([AC_LIBCAP], [
-   dnl look for prctl
-   AC_CHECK_FUNC([prctl], , AC_MSG_ERROR([prctl syscall is not available]))
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index a485560..2cf3b45 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -866,6 +866,7 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, const struct iovec *iov,
+ 	ssize_t retval = -EINVAL;
+ 	struct file *file = iocb->ki_filp;
+ 	struct address_space *mapping = file->f_mapping;
++	struct blk_plug plug;
+ 	size_t count;
  
-+  dnl check to see if PR_CAPBSET_DROP is defined
-+  AX_CHECK_DEFINE([linux/prctl.h], [PR_CAPBSET_DROP],
-+    AC_DEFINE([HAVE_PR_CAPBSET_DROP], 1, [Define to 1 if you have the 'PR_CAPBSET_DROP' capability defined.]),
-+    AC_MSG_WARN([PR_CAPBSET_DROP not defined! Unable to build in support for dropping the capabilities bounding set]))
-+
-   AC_ARG_ENABLE([caps],
-     [AS_HELP_STRING([--disable-caps], [Disable capabilities support])])
+ 	count = iov_length(iov, nr_segs);
+@@ -886,7 +887,9 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, const struct iovec *iov,
  
-diff --git a/support/nsm/file.c b/support/nsm/file.c
-index 5dd52c1..25ed028 100644
---- a/support/nsm/file.c
-+++ b/support/nsm/file.c
-@@ -338,10 +338,10 @@ nsm_is_default_parentdir(void)
-  *
-  * Returns true if successful, or false if some error occurred.
-  */
-+#ifdef HAVE_SYS_CAPABILITY_H
- static _Bool
- nsm_clear_capabilities(void)
- {
--#ifdef HAVE_SYS_CAPABILITY_H
- 	cap_t caps;
+ 	task_io_account_read(count);
  
- 	caps = cap_from_text("cap_net_bind_service=ep");
-@@ -357,10 +357,60 @@ nsm_clear_capabilities(void)
- 	}
++	blk_start_plug(&plug);
+ 	retval = nfs_direct_read(iocb, iov, nr_segs, pos);
++	blk_finish_plug(&plug);
+ 	if (retval > 0)
+ 		iocb->ki_pos = pos + retval;
  
- 	(void)cap_free(caps);
--#endif
- 	return true;
- }
- 
-+#define CAP_BOUND_PROCFILE "/proc/sys/kernel/cap-bound"
-+static _Bool
-+prune_bounding_set(void)
-+{
-+#ifdef HAVE_PR_CAPBSET_DROP
-+	int ret;
-+	unsigned long i;
-+	struct stat st;
-+
-+	/*
-+	 * Prior to kernel 2.6.25, the capabilities bounding set was a global
-+	 * value. Check to see if /proc/sys/kernel/cap-bound exists and don't
-+	 * bother to clear the bounding set if it does.
-+	 */
-+	ret = stat(CAP_BOUND_PROCFILE, &st);
-+	if (!ret) {
-+		xlog(L_WARNING, "%s exists. Not attempting to clear "
-+				"capabilities bounding set.",
-+				CAP_BOUND_PROCFILE);
-+		return true;
-+	} else if (errno != ENOENT) {
-+		/* Warn, but attempt to clear the bounding set anyway. */
-+		xlog(L_WARNING, "Unable to stat %s: %m", CAP_BOUND_PROCFILE);
-+	}
-+
-+	/* prune the bounding set to nothing */
-+	for (i = 0; i <= CAP_LAST_CAP; ++i) {
-+		ret = prctl(PR_CAPBSET_DROP, i, 0, 0, 0);
-+		if (ret) {
-+			xlog(L_ERROR, "Unable to prune capability %lu from "
-+				      "bounding set: %m", i);
-+			return false;
-+		}
-+	}
-+#endif /* HAVE_PR_CAPBSET_DROP */
-+	return true;
-+}
-+#else /* !HAVE_SYS_CAPABILITY_H */
-+static _Bool
-+nsm_clear_capabilities(void)
-+{
-+	return true;
-+}
-+
-+static _Bool
-+prune_bounding_set(void)
-+{
-+	return true;
-+}
-+#endif /* HAVE_SYS_CAPABILITY_H */
-+
- /**
-  * nsm_drop_privileges - drop root privileges
-  * @pidfd: file descriptor of a pid file
-@@ -393,6 +443,9 @@ nsm_drop_privileges(const int pidfd)
- 		return false;
- 	}
- 
-+	if (!prune_bounding_set())
-+		return false;
-+
- 	if (st.st_uid == 0) {
- 		xlog_warn("Running as root.  "
- 			"chown %s to choose different user", nsm_base_dirname);
 -- 
-1.7.7.6
+1.7.1.262.g5ef3d
 
