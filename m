@@ -1,136 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:34858 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754329Ab2EVHgV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 May 2012 03:36:21 -0400
-Subject: [PATCH v2 04/12] NFS: callback up - transport backchannel cleanup
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Tue, 22 May 2012 11:36:17 +0400
-Message-ID: <20120522073617.20602.97113.stgit@localhost.localdomain>
-In-Reply-To: <20120522073320.20602.87130.stgit@localhost.localdomain>
-References: <20120522073320.20602.87130.stgit@localhost.localdomain>
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:41064 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752612Ab2EOVrd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 17:47:33 -0400
+Received: by gglu4 with SMTP id u4so92544ggl.19
+        for <linux-nfs@vger.kernel.org>; Tue, 15 May 2012 14:47:33 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 2/2] NFSD: Use __be32 for variable holding return value
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 15 May 2012 17:42:16 -0400
+Message-ID: <20120515214216.1518.85136.stgit@lebasque.1015granger.net>
+In-Reply-To: <20120515213808.1518.81260.stgit@lebasque.1015granger.net>
+References: <20120515213808.1518.81260.stgit@lebasque.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-No need to assign transports backchannel server explicitly in
-nfs41_callback_up() -  there is nfs_callback_bc_serv() function for this.
-By using it, nfs4_callback_up() and nfs41_callback_up() can be called without
-transport argument.
+Clean up: Use __be32 constants and variables consistently when
+handling pre-encoded NFS error values.
 
-Note: service have to be passed to nfs_callback_bc_serv() instead of callback,
-since callback link can be uninitialized.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/callback.c |   34 +++++++++++++++++-----------------
- 1 files changed, 17 insertions(+), 17 deletions(-)
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 2ecea36..3e6aead 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -129,7 +129,7 @@ nfs4_callback_svc(void *vrqstp)
-  * Prepare to bring up the NFSv4 callback service
-  */
- static struct svc_rqst *
--nfs4_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
-+nfs4_callback_up(struct svc_serv *serv)
+ fs/nfsd/nfs4state.c |   19 ++++++++++---------
+ 1 files changed, 10 insertions(+), 9 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 27e6401..9235cfa 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -885,7 +885,7 @@ static struct nfsd4_session *alloc_init_session(struct svc_rqst *rqstp, struct n
+ 	struct nfsd4_session *new;
+ 	struct nfsd4_channel_attrs *fchan = &cses->fore_channel;
+ 	int numslots, slotsize;
+-	int status;
++	__be32 status;
+ 	int idx;
+ 
+ 	/*
+@@ -1476,12 +1476,12 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 		  struct nfsd4_exchange_id *exid)
  {
- 	return svc_prepare_thread(serv, &serv->sv_pools[0], NUMA_NO_NODE);
- }
-@@ -185,16 +185,10 @@ nfs41_callback_svc(void *vrqstp)
-  * Bring up the NFSv4.1 callback service
-  */
- static struct svc_rqst *
--nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
-+nfs41_callback_up(struct svc_serv *serv)
+ 	struct nfs4_client *unconf, *conf, *new;
+-	int status;
+ 	unsigned int		strhashval;
+ 	char			dname[HEXDIR_LEN];
+ 	char			addr_str[INET6_ADDRSTRLEN];
+ 	nfs4_verifier		verf = exid->verifier;
+ 	struct sockaddr		*sa = svc_addr(rqstp);
++	__be32 status;
+ 
+ 	rpc_ntop(sa, addr_str, sizeof(addr_str));
+ 	dprintk("%s rqstp=%p exid=%p clname.len=%u clname.data=%p "
+@@ -1673,7 +1673,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 	struct nfsd4_session *new;
+ 	struct nfsd4_clid_slot *cs_slot = NULL;
+ 	bool confirm_me = false;
+-	int status = 0;
++	__be32 status = nfs_ok;
+ 
+ 	if (cr_ses->flags & ~SESSION4_FLAG_MASK_A)
+ 		return nfserr_inval;
+@@ -1914,7 +1914,7 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 	struct nfsd4_session *session;
+ 	struct nfsd4_slot *slot;
+ 	struct nfsd4_conn *conn;
+-	int status;
++	__be32 status;
+ 
+ 	if (resp->opcnt != 1)
+ 		return nfserr_sequence_pos;
+@@ -2019,7 +2019,7 @@ __be32
+ nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_destroy_clientid *dc)
  {
- 	struct svc_rqst *rqstp;
+ 	struct nfs4_client *conf, *unconf, *clp;
+-	int status = 0;
++	__be32 status = nfs_ok;
  
--	/*
--	 * Save the svc_serv in the transport so that it can
--	 * be referenced when the session backchannel is initialized
--	 */
--	xprt->bc_serv = serv;
--
- 	INIT_LIST_HEAD(&serv->sv_cb_list);
- 	spin_lock_init(&serv->sv_cb_lock);
- 	init_waitqueue_head(&serv->sv_cb_waitq);
-@@ -209,21 +203,25 @@ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
- }
- 
- static inline int nfs_minorversion_callback_svc_setup(u32 minorversion,
--		struct svc_serv *serv, struct rpc_xprt *xprt,
-+		struct svc_serv *serv,
- 		struct svc_rqst **rqstpp, int (**callback_svc)(void *vrqstp))
+ 	nfs4_lock_state();
+ 	unconf = find_unconfirmed_client(&dc->clientid);
+@@ -2055,7 +2055,7 @@ out:
+ __be32
+ nfsd4_reclaim_complete(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_reclaim_complete *rc)
  {
- 	if (minorversion) {
--		*rqstpp = nfs41_callback_up(serv, xprt);
-+		*rqstpp = nfs41_callback_up(serv);
- 		*callback_svc = nfs41_callback_svc;
- 	}
- 	return minorversion;
+-	int status = 0;
++	__be32 status = nfs_ok;
+ 
+ 	if (rc->rca_one_fs) {
+ 		if (!cstate->current_fh.fh_dentry)
+@@ -3330,7 +3330,8 @@ static bool stateid_generation_after(stateid_t *a, stateid_t *b)
+ 	return (s32)a->si_generation - (s32)b->si_generation > 0;
  }
  
- static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
--		struct nfs_callback_data *cb_info)
-+		struct svc_serv *serv)
+-static int check_stateid_generation(stateid_t *in, stateid_t *ref, bool has_session)
++static __be32 check_stateid_generation(stateid_t *in, stateid_t *ref,
++				       bool has_session)
  {
- 	if (minorversion)
--		xprt->bc_serv = cb_info->serv;
-+		/*
-+		 * Save the svc_serv in the transport so that it can
-+		 * be referenced when the session backchannel is initialized
-+		 */
-+		xprt->bc_serv = serv;
- }
- #else
- static int nfs41_callback_up_net(struct svc_serv *serv, struct net *net)
-@@ -232,14 +230,14 @@ static int nfs41_callback_up_net(struct svc_serv *serv, struct net *net)
- }
- 
- static inline int nfs_minorversion_callback_svc_setup(u32 minorversion,
--		struct svc_serv *serv, struct rpc_xprt *xprt,
-+		struct svc_serv *serv,
- 		struct svc_rqst **rqstpp, int (**callback_svc)(void *vrqstp))
- {
- 	return 0;
- }
- 
- static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
--		struct nfs_callback_data *cb_info)
-+		struct svc_serv *serv)
- {
- }
- #endif /* CONFIG_NFS_V4_1 */
-@@ -331,7 +329,7 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
- 	}
- 
- 	if (cb_info->users++ || cb_info->task != NULL) {
--		nfs_callback_bc_serv(minorversion, xprt, cb_info);
-+		nfs_callback_bc_serv(minorversion, xprt, serv);
- 		goto out;
- 	}
- 
-@@ -339,11 +337,13 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
- 	if (ret < 0)
- 		goto err_net;
- 
-+	nfs_callback_bc_serv(minorversion, xprt, serv);
-+
- 	minorversion_setup =  nfs_minorversion_callback_svc_setup(minorversion,
--					serv, xprt, &rqstp, &callback_svc);
-+					serv, &rqstp, &callback_svc);
- 	if (!minorversion_setup) {
- 		/* v4.0 callback setup */
--		rqstp = nfs4_callback_up(serv, xprt);
-+		rqstp = nfs4_callback_up(serv);
- 		callback_svc = nfs4_callback_svc;
- 	}
- 
+ 	/*
+ 	 * When sessions are used the stateid generation number is ignored
+@@ -4049,7 +4050,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	struct file *filp = NULL;
+ 	struct file_lock file_lock;
+ 	struct file_lock conflock;
+-	__be32 status = 0;
++	__be32 status = nfs_ok;
+ 	bool new_state = false;
+ 	int lkflg;
+ 	int err;
+@@ -4172,7 +4173,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		update_stateid(&lock_stp->st_stid.sc_stateid);
+ 		memcpy(&lock->lk_resp_stateid, &lock_stp->st_stid.sc_stateid, 
+ 				sizeof(stateid_t));
+-		status = 0;
++		status = nfs_ok;
+ 		break;
+ 	case (EAGAIN):		/* conflock holds conflicting lock */
+ 		status = nfserr_denied;
 
