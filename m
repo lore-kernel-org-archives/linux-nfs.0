@@ -1,174 +1,178 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34527 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753819Ab2EIBJx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 May 2012 21:09:53 -0400
-Date: Tue, 8 May 2012 21:09:41 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Dave Chinner <david@fromorbit.com>
-Cc: David Howells <dhowells@redhat.com>, adilger@dilger.ca, smfrench@gmail.com,
-        ben@decadent.org.uk, Trond.Myklebust@netapp.com, roland@hack.frob.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-ext4@vger.kernel.org, linux-api@vger.kernel.org,
-        libc-alpha@sourceware.org
-Subject: Re: Extended file stat: Splitting file- and fs-specific info?
-Message-ID: <20120509010941.GC20160@fieldses.org>
-References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
- <16281.1336508382@redhat.com>
- <20120509002420.GL5091@dastard>
+Received: from natasha.panasas.com ([67.152.220.90]:41784 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965929Ab2EORVM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 13:21:12 -0400
+Message-ID: <4FB29074.6010606@panasas.com>
+Date: Tue, 15 May 2012 20:20:52 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20120509002420.GL5091@dastard>
+To: Idan Kedar <idank@tonian.com>
+CC: Johannes Schild <JSchild@gmx.de>, <osd-dev@open-osd.org>,
+        <linux-nfs@vger.kernel.org>
+Subject: Re: Questions about Exofs
+References: <20120515090332.182970@gmx.net> <4FB22658.9010909@panasas.com> <20120515121931.192500@gmx.net> <CABpMAy+bV7-UZU0gGOFWk+ZfHLGi+D=ntNLjRHFYZzTtwXG_RA@mail.gmail.com> <4FB25D2F.1070403@panasas.com> <CABpMAyJ9F5c52ntMCL1+gwDCcbMYMEkxVEHW7bfpjm6H5boSCg@mail.gmail.com> <4FB270E9.5000904@panasas.com> <CABpMAy+OWcp7VAOGK4nYWfcY4iZ9a1WQHPUbh5pxotYL9yy+KA@mail.gmail.com>
+In-Reply-To: <CABpMAy+OWcp7VAOGK4nYWfcY4iZ9a1WQHPUbh5pxotYL9yy+KA@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 09, 2012 at 10:24:20AM +1000, Dave Chinner wrote:
-> On Tue, May 08, 2012 at 09:19:42PM +0100, David Howells wrote:
-> > 
-> > Should I split the file-specific info and the fs-specific info and make the
-> > second optional?  What I'm thinking of is something like this:
-> > 
-> > Have a file information structure:
-> > 
-> > struct statx {
-> > 	/* 0x00 */
-> > 	uint32_t	st_mask;	/* What results were written */
-> > 	uint32_t	st_information;	/* Information about the file */
-> > 	uint16_t	st_mode;	/* File mode */
-> > 	uint16_t	__spare0[3];
-> > 	/* 0x10 */
-> > 	uint32_t	st_uid;		/* User ID of owner */
-> > 	uint32_t	st_gid;		/* Group ID of owner */
-> > 	uint32_t	st_nlink;	/* Number of hard links */
-> > 	uint32_t	st_blksize;	/* Optimal size for filesystem I/O */
-> > 	/* 0x20 */
-> > 	struct statx_dev st_rdev;	/* Device ID of special file */
-> > 	struct statx_dev st_dev;	/* ID of device containing file */
-> > 	/* 0x30 */
-> > 	int32_t		st_atime_ns;	/* Last access time (ns part) */
-> > 	int32_t		st_btime_ns;	/* File creation time (ns part) */
-> > 	int32_t		st_ctime_ns;	/* Last attribute change time (ns part) */
-> > 	int32_t		st_mtime_ns;	/* Last data modification time (ns part) */
-> > 	/* 0x40 */
-> > 	int64_t		st_atime;	/* Last access time */
-> > 	int64_t		st_btime;	/* File creation time */
-> > 	int64_t		st_ctime;	/* Last attribute change time */
-> > 	int64_t		st_mtime;	/* Last data modification time */
-> > 	/* 0x60 */
-> > 	uint64_t	st_ino;		/* Inode number */
-> > 	uint64_t	st_size;	/* File size */
-> > 	uint64_t	st_blocks;	/* Number of 512-byte blocks allocated */
-> > 	uint64_t	st_gen;		/* Inode generation number */
-> 
-> I don't think we want to expose the inode generation numbers. It is
-> trivial to construct NFS file handles (usually just fsid, inode
-> number and generation) with that information and hence bypass
-> security checks to access files.
+On 05/15/2012 07:21 PM, Idan Kedar wrote:
+<snip>
 
-I'm not convinced there's much value in trying to keep filehandles
-secret.
+>> 8 OSDs with a mirror ? what was the mkfs.exofs command line you used?
+> Something along the lines of
+> # LD_LIBRARY_PATH=lib ./usr/mkfs.exofs --pid=0x10000 --format
+> --mirrors=1 --group_width=2 --group_depth=2 --dev=/dev/osd0
+> --osdname=$(uuid) --dev=/dev/osd1 --osdname=$(uuid) --dev=/dev/osd2
+> --osdname=$(uuid) ...
+> 
+> I don't remember exactly at the moment, but I will bump this thread
+> when I'll start using RAID again.
 
-If you're going to base your security on a secret, then it should be
-hard to guess, easy to keep secret, and changeable in case it ever does
-get out.
 
-Filehandles are pretty easy to guess (even without help like this), they
-usually go over the wire in cleartext, and they can't be changed.
+Certainly missing the --format thing.  --osdname= without an --format
+is ignored.
 
---b.
+Again if you never set an OSD_NAME on the devices in the past this will
+not work.
 
+But perhaps you did --format and forgot
+
+>>
+>> And did you use one otgtd with 8 targets, or 8 targets (8 IP addresses)
+>> with one target each, or a combination?
+> one target with 8 LUNs
+>>
+>> What is the otgtd platform? what file system? what HW and HD environment?
+> osc-osd over ext4, 64 bit VirtualBox VM over x86_64.
+
+
+OK that's a fishy setup.
+
+The otgtd is sensitive to timeouts which I never investigated properly.
+It looks like the OSD_VM-to-host, probably a single link, is very slow
+and imagine 8 initiators actually banging on the same single slow link.
+One of the commands times out, probably just a guess
+
+The best for a VM setup, that I have is:
+
+VM1	- exofs+MDS
+VM2	- pnfs client.
+   (On my dev machine I have VM2+VM1 combined, and mount on localhost)
+
+HOST	- Run otgtd naively on host for best results.
+          Best is to spread all targets on as many physical HD devices.
+	  Note that multiple targets from the same OSD-host only makes
+          "preformance" sense if they each serve a different spindle.
+          Unless in a simulated test environment as yourself
+
+Which reminds me that upstream tgtd as a few fixes in this area I should
+integrate.
+
+>>
+>> And yes otgtd has some instabilities.
+>>
+>> There are two I can think off:
+>> * Over xfs the --format command crashes the otgtd (aborted exit no
+>>  crash dump) Debugging welcome.
+>>
+>> * When lots of pnfs clients do heavy writing to the same otgtd, it
+>>  times-out and disconnects.
+> it was a single client performing git-clone of the kernel tree.
+>>  At Panasas we have a watch-dog that reloads it in a loop.
+>>  I have only seen this on FreeBSD, in Linux it never happened
+>>  to me.
+>>
+>> Please give me more details on what you did before it exited
+>> like that.
+> Nothing special, just git-clone. at some point it hanged (at a
+> different place every time), and when investigated a bit I saw that
+> otgtd is dead.
+>>
+>>
+>> In anyway I pushed a tree I tested with at:
+>>        git://git.open-osd.org/linux-open-osd.git
+>>
+>> checkout the *merge_and_compile-3.3* branch. But in principal they are the
+>> same:
+>>        fs/exofs                - Added autologin support
+>>        fs/nfs/objlayout        - Added autologin support
+>>        fs/nfsd                 - Same
+>>        fs/nfs                  - Few fixes that are in benny's tree are not in linux-open-osd
+> Thanks, I will try it soon.
+>>
+>> So it should all be the same. For a proper cluster setup you will probably
+>> need my do-ect scripts which take a cluster descriptor file and does
+>> generic loops on everything.
+> Please note that I didn't try a cluster setup, just a single DS with 8
+> LUNs, single MDS, and single pNFS client, all 3 different VMs on the
+> same host.
+
+
+Just semantics so we speak the same language. Yes you do have a cluster.
+
+In pnfs-objects world there are no such thing as DSs there is MDS and
+there are OSDs. (objects). The OSDs are the equivalent of DSs in "files"
+and LUNs in "blocks"
+
+A none cluster is when you have a single OSD. (No striping, no multiple
+devices, what I call the trivial layout)
+
+>>
+>> Thanks
+>> Boaz
 > 
-> > 	uint64_t	st_version;	/* Data version number */
-> > 	uint64_t	st_ioc_flags;	/* As FS_IOC_GETFLAGS */
-> > 	/* 0x90 */
-> > 	uint64_t	__spare1[13];	/* Spare space for future expansion */
-> > 	/* 0x100 */
-> > };
-> > 
-> > And an fs information structure for less commonly needed data:
-> > 
-> > struct statx_fsinfo {
-> > 	/* 0x00 - General info */
-> > 	uint32_t	st_mask;	/* What optional fields are filled in */
-> > 	uint32_t	st_type;	/* Filesystem type from linux/magic.h */
-> > 
-> > 	/* 0x08 - file timestamp granularity info */
-> > 	uint16_t	st_atime_gran_mantissa;	/* gran(secs) = mant * 10^exp */
-> > 	uint16_t	st_btime_gran_mantissa;
-> > 	uint16_t	st_ctime_gran_mantissa;
-> > 	uint16_t	st_mtime_gran_mantissa;
-> > 	/* 0x10 */
-> > 	int8_t		st_atime_gran_exponent;
-> > 	int8_t		st_btime_gran_exponent;
-> > 	int8_t		st_ctime_gran_exponent;
-> > 	int8_t		st_mtime_gran_exponent;
-> > 
-> > 	/* 0x14 - I/O parameters */
-> > 	uint32_t	st_blksize;	  /* File block size */
-> > 	uint32_t	st_alloc_blksize; /* Allocation block size/alignment */
-> > 	uint32_t	st_small_io_size; /* IO size/alignment that avoids fs/page cache RMW */
-> > 	uint32_t	st_pref_io_size;  /* Preferred IO size for general usage */
-> > 	uint32_t	st_large_io_size; /* IO size/alignment for high bandwidth sequential IO */
-> 
-> That's per file information, not per filesystem. XFS definitely
-> needs this IO information per-file....
-> 
-> > 
-> > 	/* 0x28 - Restrictions on struct statx contents */
-> > 	uint64_t	st_supported_ioc_flags; /* FS_IOC_GETFLAGS flags supported  */
-> > 
-> > 	/* 0x30 - Volume/filesystem information */
-> > 	uint64_t	st_fsid;	/* Short 64-bit Filesystem ID (as statfs) */
-> > 	uint64_t	__spare0[3];
-> > 	/* 0x50 */
-> > 	uint8_t		st_volume_id[16]; /* Volume/fs identifier */
-> > 	uint8_t		st_volume_uuid[16]; /* Volume/fs UUID */
-> 
-> And there's all the remaining information needed to construct file
-> NFS handles without root priviledges...
-> 
-> > 	/* 0x80 */
-> > 	uint64_t	__spare1[8];
-> > 	/* 0xc0 */
-> > 	uint8_t		st_volume_name[64]; /* Volume name (up to 64 chars) */
-> > 	/* 0x100 */
-> > 	uint8_t		st_domain_name[256]; /* Domain/cell/workgroup name (up to 256 chars) */
-> > 	/* 0x200 */
-> > };
-> > 
-> > One could argue a bit over what goes in which, should we go for this.  This
-> > may be better split between multiple syscalls though (with the race that that
-> > implies) and potentially merging with statfs.
-> > 
-> > 
-> > The statxat() syscall [née xstat] could then use the 6th parameter thusly:
-> > 
-> > asmlinkage long sys_statxat(int dfd, const char __user *path, unsigned flags,
-> > 			    unsigned mask, struct statx __user *buffer,
-> > 			    struct statx_fsinfo __user *fsinfo);
-> > 
-> > 
-> > letting fsinfo be NULL to indicate a lack of interest.  I'm not sure we want
-> > to do that, though.
-> > 
-> > 
-> > Also, do Dave Chinner's ideas for indicating five I/O parameters want to be
-> > 32-bit numbers?  Larger?  Smaller?  Can they be log2?
-> 
-> Definitely 32 bit, IMO, as it's not uncommon to see optimal IO sizes
-> in the tens of megabytes on large, high bandwidth storage systems.
-> As for being log2 - that's just making it more complex to use and
-> making code ugly - we'd have to convert to log2 in kernel, then
-> convert back in every single application....
-> 
-> > Note also, that I've suggested that we represent the timestamp granularity
-> > information as a decimal float (which requires 3 bytes per timestamp) and that
-> > we provide separate granularities for each timestamp.
-> > 
-> > David
-> > 
-> 
-> -- 
-> Dave Chinner
-> david@fromorbit.com
+
+
+If you want there is a new tree at:
+	git://git.open-osd.org/tests.git
+
+There is one script that does everything. ./do-ect (exofs cluster test)
+
+You edit the ect.conf file (or run ./do-ect -f alternate.conf file)
+
+In turn inside ect.conf you edit your topology and setup. It also points
+to a device-table file (osds_list=XXX.olst) see lots of *.olst example
+files.
+
+list of operations.
+* Read the scripts and study what they do. They are just a convenience
+  not a black-box application.
+* Edit a new XXX.olst file
+* Edit ect.conf with your setup.
+[On MDS]
+* ./do-ect login2	- login to all devices specified by osds_list=
+* ./do-ect format2	- Set up an FS as specified by ect.conf
+* ./do-ect mount2	- mount the exofs file system
+* ./do-ect seturi	- If you have the autologin version and want an autologin support.
+
+[On pnfs client]
+* ./do-ect login2	- Only if autologin is not enabled. You will need the
+                          /sbin/osd_login script, which is part of the newest nfs-utils
+		          (Tell me if you can't find it)
+
+* ./do-ect pnfs_start  - mount the pnfs server on pnfs_dir as specified in ect.conf
+
+And there are other facilities as well. In principal the commands that end with "2"
+are those that preform an action on the XXX.olst file and receive an optional parameter
+as the OSDs list. For example:
+
+./do-ect login2		
+	- login to default list specified in ect.conf
+
+./do-ect -f clusterXYZ.conf format2 device_table7.olst
+	- Format according to setup in clusterXYZ.conf file but override the OSDs list
+	  instead use device_table7.olst.
+
+Again please read the scripts before using. the .conf and .olst files are yours, I
+just have them in git as an history of the tests I conducted.
+
+But if you have any changes to the do-ect and fn-osd.sh please send me a patch.
+
+There are other interesting scripts in there for example the target/ dir as a
+way of controlling lots of OSD hosts in a single command using the closh script (CLuster Output SHell)
+which also operate on the .olst and .clst files. Have fun
+
+Cheers
+Boaz
