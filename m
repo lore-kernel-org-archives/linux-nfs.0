@@ -1,109 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:10896 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757214Ab2EERYG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 5 May 2012 13:24:06 -0400
-Subject: [PATCH RFC 05/13] Lockd: host complaining function introduced
-To: bfields@fieldses.org, Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Sat, 05 May 2012 21:22:08 +0400
-Message-ID: <20120505172208.11559.61956.stgit@localhost.localdomain>
-In-Reply-To: <20120505170722.11559.74503.stgit@localhost.localdomain>
-References: <20120505170722.11559.74503.stgit@localhost.localdomain>
+Received: from smtp.mail.umich.edu ([141.211.14.81]:44257 "EHLO
+	hackers.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932428Ab2EOMUa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 08:20:30 -0400
+Date: Tue, 15 May 2012 08:20:28 -0400
+From: Jim Rees <rees@umich.edu>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: ANNOUNCE: nfs-utils-1.2.6 released.
+Message-ID: <20120515122028.GA25625@umich.edu>
+References: <4FB159DA.2070800@RedHat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FB159DA.2070800@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Just a small cleanup.
+If you're going to use the block layout driver, you'll also want to apply
+this patch on top of 1.2.6 to prevent your log from filling with garbage.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+>From 76e9f814b0c6a9ef996b14123780bb39f448cafb Mon Sep 17 00:00:00 2001
+From: Jim Rees <rees@umich.edu>
+Date: Tue, 27 Mar 2012 10:18:39 -0400
+Subject: [PATCH 1/2] remove pretty_sig()
+
+This really only works against EMC servers.  There is at least one server
+that returns unprintable signatures, which fill the log with garbage (the
+spec does not mandate printable signatures).  It could be made more generic,
+for example by checking each byte for isprint().  But the signatures are
+really only of interest to developers, not admins, so it seems better to
+just remove it.
+
+Signed-off-by: Jim Rees <rees@umich.edu>
 ---
- fs/lockd/host.c |   57 +++++++++++++++++++++++++++++--------------------------
- 1 files changed, 30 insertions(+), 27 deletions(-)
+ utils/blkmapd/device-process.c |   29 -----------------------------
+ 1 file changed, 29 deletions(-)
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 6c56090..8cbf53d 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -572,6 +572,35 @@ void nlm_host_rebooted(const struct nlm_reboot *info)
- 	nsm_release(nsm);
- }
+diff --git a/utils/blkmapd/device-process.c b/utils/blkmapd/device-process.c
+index 652a7a8..5fe3dff 100644
+--- a/utils/blkmapd/device-process.c
++++ b/utils/blkmapd/device-process.c
+@@ -49,28 +49,6 @@
  
-+static void nlm_complain_hosts(struct net *net)
-+{
-+	struct hlist_head *chain;
-+	struct hlist_node *pos;
-+	struct nlm_host	*host;
-+
-+	if (net) {
-+		struct lockd_net *ln = net_generic(net, lockd_net_id);
-+
-+		if (ln->nrhosts == 0)
-+			return;
-+		printk(KERN_WARNING "lockd: couldn't shutdown host module for net %p!\n", net);
-+		dprintk("lockd: %lu hosts left in net %p:\n", ln->nrhosts, net);
-+	} else {
-+		if (nrhosts == 0)
-+			return;
-+		printk(KERN_WARNING "lockd: couldn't shutdown host module!\n");
-+		dprintk("lockd: %lu hosts left:\n", nrhosts);
-+	}
-+
-+	for_each_host(host, pos, chain, nlm_server_hosts) {
-+		if (net && host->net != net)
-+			continue;
-+		dprintk("       %s (cnt %d use %d exp %ld net %p)\n",
-+			host->h_name, atomic_read(&host->h_count),
-+			host->h_inuse, host->h_expires, host->net);
-+	}
-+}
-+
- void
- nlm_shutdown_hosts_net(struct net *net)
- {
-@@ -598,18 +627,7 @@ nlm_shutdown_hosts_net(struct net *net)
- 	nlm_gc_hosts(net);
- 	mutex_unlock(&nlm_host_mutex);
+ #include "device-discovery.h"
  
--	/* complain if any hosts are left */
--	if (net) {
--		struct lockd_net *ln = net_generic(net, lockd_net_id);
+-static char *pretty_sig(char *sig, uint32_t siglen)
+-{
+-	static char rs[100];
+-	uint64_t sigval;
+-	unsigned int i;
 -
--		printk(KERN_WARNING "lockd: couldn't shutdown host module for net %p!\n", net);
--		dprintk("lockd: %lu hosts left in net %p:\n", ln->nrhosts, net);
--		for_each_host(host, pos, chain, nlm_server_hosts) {
--			dprintk("       %s (cnt %d use %d exp %ld net %p)\n",
--				host->h_name, atomic_read(&host->h_count),
--				host->h_inuse, host->h_expires, host->net);
--		}
+-	if (siglen <= sizeof(sigval)) {
+-		sigval = 0;
+-		for (i = 0; i < siglen; i++)
+-			sigval |= ((unsigned char *)sig)[i] << (i * 8);
+-		sprintf(rs, "0x%0llx", (unsigned long long) sigval);
+-	} else {
+-		if (siglen > sizeof rs - 4) {
+-			siglen = sizeof rs - 4;
+-			sprintf(&rs[siglen], "...");
+-		} else
+-			rs[siglen] = '\0';
+-		memcpy(rs, sig, siglen);
 -	}
-+	nlm_complain_hosts(net);
- }
- 
- /*
-@@ -619,22 +637,7 @@ nlm_shutdown_hosts_net(struct net *net)
- void
- nlm_shutdown_hosts(void)
+-	return rs;
+-}
+-
+ uint32_t *blk_overflow(uint32_t * p, uint32_t * end, size_t nbytes)
  {
--	struct hlist_head *chain;
--	struct hlist_node *pos;
--	struct nlm_host	*host;
--
- 	nlm_shutdown_hosts_net(NULL);
--
--	/* complain if any hosts are left */
--	if (nrhosts != 0) {
--		printk(KERN_WARNING "lockd: couldn't shutdown host module!\n");
--		dprintk("lockd: %lu hosts left:\n", nrhosts);
--		for_each_host(host, pos, chain, nlm_server_hosts) {
--			dprintk("       %s (cnt %d use %d exp %ld net %p)\n",
--				host->h_name, atomic_read(&host->h_count),
--				host->h_inuse, host->h_expires, host->net);
--		}
--	}
- }
+ 	uint32_t *q = p + ((nbytes + 3) >> 2);
+@@ -109,9 +87,6 @@ static int decode_blk_signature(uint32_t **pp, uint32_t * end,
+ 		 * for mapping, then thrown away.
+ 		 */
+ 		comp->bs_string = (char *)p;
+-		BL_LOG_INFO("%s: si_comps[%d]: bs_length %d, bs_string %s\n",
+-			    __func__, i, siglen,
+-			    pretty_sig(comp->bs_string, siglen));
+ 		p += ((siglen + 3) >> 2);
+ 	}
+ 	*pp = p;
+@@ -152,10 +127,6 @@ read_cmp_blk_sig(struct bl_disk *disk, int fd, struct bl_sig_comp *comp)
+ 	}
  
- /*
+ 	ret = memcmp(sig, comp->bs_string, siglen);
+-	if (!ret)
+-		BL_LOG_INFO("%s: %s sig %s at %lld\n", __func__, dev_name,
+-			    pretty_sig(sig, siglen),
+-			    (long long)comp->bs_offset);
+ 
+  out:
+ 	if (sig)
+-- 
+1.7.9.5
 
