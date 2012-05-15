@@ -1,56 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:30827 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:38941 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757382Ab2EGSmw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 May 2012 14:42:52 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v2 0/8] Clean up mount functions
-Date: Mon,  7 May 2012 14:42:38 -0400
-Message-Id: <1336416166-20533-1-git-send-email-bjschuma@netapp.com>
+	id S966022Ab2EOVAv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 May 2012 17:00:51 -0400
+Date: Tue, 15 May 2012 17:00:29 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Josef Bacik <josef@redhat.com>
+Cc: Andreas Dilger <adilger@dilger.ca>, Boaz Harrosh <bharrosh@panasas.com>,
+        linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org, tytso@mit.edu,
+        jack@suse.cz
+Subject: Re: [PATCH] ext4: fix how i_version is modified and turn it on by
+ default V2
+Message-ID: <20120515210029.GA11932@fieldses.org>
+References: <1337092396-3272-1-git-send-email-josef@redhat.com>
+ <20120515175308.GB1907@localhost.localdomain>
+ <4FB29DAC.3020801@panasas.com>
+ <20120515182914.GC1907@localhost.localdomain>
+ <AB91C817-DFEE-415F-8769-78831D72C6B7@dilger.ca>
+ <20120515200533.GD1907@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120515200533.GD1907@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Tue, May 15, 2012 at 04:05:34PM -0400, Josef Bacik wrote:
+> On Tue, May 15, 2012 at 01:55:33PM -0600, Andreas Dilger wrote:
+> > It should be fairly straight forward to have a flag set in the ext4
+> > superblock (s_state flag?) that indicates that the filesystem has
+> > been exported via NFS.  There might be other optimizations that can
+> > be done based on this (e.g. avoid some of the directory cookie
+> > hijinx that are only needed if NFS has exported the filesystem and
+> > needs to keep persistent cookies across reboots).
+> > 
+> > I think that the ext4_mark_inode_dirty() performance problem could
+> > be at least partially fixed by deferring the copy of in-core inode
+> > to on-disk inode to use a journal commit callback.  This is far more
+> > work than just setting a flag in the superblock, but it has the
+> > potential to _improve_ performance rather than make it worse.
 
-I noticed that we had 5 almost identical mount functions in super.c.  I
-collapsed them all into one common function to make everything easier to
-maintain and work with.  The first few patches are basic cleanups, the last
-four drop us down to one common mount path.
+Could you give any more pointers for an ext4 ignoramus?  (Where *is* the
+journal commit code that would need the callback?  And where is the copy
+currently done?)
 
-These patches also help simplify my modules changes since I no longer have
-to split these functions out of the generic code.
+> Yeah Btrfs doesn't have this sort of problem since we delay inode
+> updating sinc it is so costly, we simply let it hang around in the
+> in-core inode until we feel like updating it at some point down the
+> road.  I'll put together a feature flag or something to make it be
+> enabled for always if somebody turns it on.
 
-Changes in v2
--------------
-- Reword commit message on patch 2: Create a single nfs_get_root()
-- Change arguments to nfs_fscache_get_super_cookie() in patch 3
-- Introduce a new patch 4 to remove the NFS4_MOUNT_UNSHARED flag
+Thanks for looking at this.
 
-Comments or suggestions are appreciated!
+A feature flag would be an improvement over a mount option.
 
-- Bryan
+If the flag makes a noticeable difference to performance, then it makes
+me nervous toggling it automatically.  And what will we do if statx
+starts returning i_version to userspace?
 
-Bryan Schumaker (8):
-  NFS: Rename nfs4_proc_get_root()
-  NFS: Create a single nfs_get_root()
-  NFS: Don't pass mount data to nfs_fscache_get_super_cookie()
-  NFS: Remove NFS4_MOUNT_UNSHARED
-  NFS: Create a common fs_mount() function
-  NFS: Create a common xdev_mount() function
-  NFS: Use nfs_fs_mount_common() for xdev mounts
-  NFS: Use nfs_fs_mount_common() for remote referral mounts
-
- fs/nfs/fscache.c           |   15 +-
- fs/nfs/fscache.h           |    4 +-
- fs/nfs/getroot.c           |   85 +-----
- fs/nfs/nfs4_fs.h           |    1 +
- fs/nfs/nfs4proc.c          |   30 ++-
- fs/nfs/super.c             |  635 ++++++++++++--------------------------------
- include/linux/nfs4_mount.h |    1 -
- 7 files changed, 199 insertions(+), 572 deletions(-)
-
--- 
-1.7.10.1
-
+--b.
