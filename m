@@ -1,58 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:50396 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756208Ab2EEPFt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 5 May 2012 11:05:49 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: chuck.lever@oracle.com, linux@razik.name, Trond.Myklebust@netapp.com,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, mingo@elte.hu,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH] init: don't try mounting device as nfs root unless type fully matches
-Date: Sat,  5 May 2012 17:06:35 +0200
-Message-Id: <1336230395-5215-1-git-send-email-levinsasha928@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:51733 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751752Ab2EONMf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 May 2012 09:12:35 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q4FDCZpu013693
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 15 May 2012 09:12:35 -0400
+From: Simo Sorce <simo@redhat.com>
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
+Subject: [PATCH 0/4] Add support for new upcall mechanism for nfsd
+Date: Tue, 15 May 2012 09:12:26 -0400
+Message-Id: <1337087550-9821-1-git-send-email-simo@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, we'll try mounting any device who's major device number is
-UNNAMED_MAJOR as NFS root. This would happen for non-NFS devices as well (such
-as 9p devices) but it wouldn't cause any issues since mounting the device
-as NFS would fail quickly and the code proceeded to doing the proper mount:
+NOTE: Rebased on top of Bruce Field's for-3.5 tree.
 
-       [  101.522716] VFS: Unable to mount root fs via NFS, trying floppy.
-       [  101.534499] VFS: Mounted root (9p filesystem) on device 0:18.
+This patchset implements a new upcall mechanism that uses the sunrpc
+client to talk to gssproxy[1], a new userspace daemon to handle gssapi
+operations on behalf of other processes on the system.
 
-Commit 6829a048 ("NFS: Retry mounting NFSROOT") has introduced retries when
-mounting NFS root, which means that now we don't immediately fail and instead
-it takes an additional 90+ seconds until we stop retrying, which has revealed
-the issue this patch fixes.
+The main driver for this new mechanism is to overcome limitations with
+the current daemon and upcall. The current code cannot handle tickets
+larger than approximatively 2k and cannot handle sending back large user
+credential sets to the kernel.
 
-This meant that it would take an additional 90 seconds to boot when we're not
-using a device type which gets detected in order before NFS.
+These patches have been tested against the development version of gssproxy
+tagged as kernel_v0.1 in the master repo[2].
 
-This patch modifies the NFS type check to require device type to be
-'Root_NFS' instead of requiring the device to have an UNNAMED_MAJOR major.
-This makes boot process cleaner since we now won't go through the NFS mounting
-code at all when the device isn't an NFS root ("/dev/nfs").
+I have tested walking into mountpoints using tickets artificially pumped
+up to 64k and the user is properly authorized, after the accept_se_context
+call is performed through the new upcall mechanism and gssproxy.
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
- init/do_mounts.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+The gssproxy has the potential of handling also init_sec_context calls,
+but at the moment the only targeted system is nfsd.
 
-diff --git a/init/do_mounts.c b/init/do_mounts.c
-index 8dfa0de..d3f0aee 100644
---- a/init/do_mounts.c
-+++ b/init/do_mounts.c
-@@ -482,7 +482,7 @@ void __init change_floppy(char *fmt, ...)
- void __init mount_root(void)
- {
- #ifdef CONFIG_ROOT_NFS
--	if (MAJOR(ROOT_DEV) == UNNAMED_MAJOR) {
-+	if (ROOT_DEV == Root_NFS) {
- 		if (mount_nfs_root())
- 			return;
- 
+Simo.
+
+
+[1] https://fedorahosted.org/gss-proxy/
+[2] http://git.fedorahosted.org/git/?p=gss-proxy.git;a=shortlog;h=refs/tags/kernel_v0.1
+
+Simo Sorce (4):
+  SUNRPC: conditionally return endtime from import_sec_context
+  SUNRPC: Document a bit RPCGSS handling in the NFS Server
+  SUNRPC: Add RPC based upcall mechanism for RPCGSS auth
+  SUNRPC: Use gssproxy upcall for nfsd's RPCGSS authentication.
+
+ Documentation/filesystems/nfs/00-INDEX         |    2 +
+ Documentation/filesystems/nfs/knfsd-rpcgss.txt |   65 ++
+ include/linux/sunrpc/auth_gss.h                |    3 +
+ include/linux/sunrpc/gss_api.h                 |    2 +
+ include/linux/sunrpc/svcauth_gss.h             |    2 +-
+ net/sunrpc/auth_gss/Makefile                   |    4 +-
+ net/sunrpc/auth_gss/auth_gss.c                 |   11 +-
+ net/sunrpc/auth_gss/gss_krb5_mech.c            |    3 +
+ net/sunrpc/auth_gss/gss_mech_switch.c          |    5 +-
+ net/sunrpc/auth_gss/gss_rpc_upcall.c           |  341 +++++++++
+ net/sunrpc/auth_gss/gss_rpc_upcall.h           |   43 ++
+ net/sunrpc/auth_gss/gss_rpc_xdr.c              |  904 ++++++++++++++++++++++++
+ net/sunrpc/auth_gss/gss_rpc_xdr.h              |  269 +++++++
+ net/sunrpc/auth_gss/svcauth_gss.c              |  252 +++++++-
+ 14 files changed, 1886 insertions(+), 20 deletions(-)
+ create mode 100644 Documentation/filesystems/nfs/knfsd-rpcgss.txt
+ create mode 100644 net/sunrpc/auth_gss/gss_rpc_upcall.c
+ create mode 100644 net/sunrpc/auth_gss/gss_rpc_upcall.h
+ create mode 100644 net/sunrpc/auth_gss/gss_rpc_xdr.c
+ create mode 100644 net/sunrpc/auth_gss/gss_rpc_xdr.h
+
 -- 
-1.7.8.5
+1.7.7.6
 
