@@ -1,198 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:47075 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755085Ab2EBMKO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 May 2012 08:10:14 -0400
-Subject: [PATCH v3 1/2] SUNRPC: new svc_bind() routine introduced
-To: bfields@fieldses.org, Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Wed, 02 May 2012 16:08:38 +0400
-Message-ID: <20120502120838.8794.42817.stgit@localhost.localdomain>
-In-Reply-To: <20120502120536.8794.22210.stgit@localhost.localdomain>
-References: <20120502120536.8794.22210.stgit@localhost.localdomain>
+Received: from natasha.panasas.com ([67.152.220.90]:52231 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932277Ab2EOUba (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 16:31:30 -0400
+Message-ID: <4FB2BB90.30900@panasas.com>
+Date: Tue, 15 May 2012 23:24:48 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Josef Bacik <josef@redhat.com>
+CC: <linux-ext4@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
+        <bfields@fieldses.org>, <adilger@dilger.ca>, <tytso@mit.edu>,
+        <jack@suse.cz>
+Subject: Re: [PATCH] ext4: fix how i_version is modified and turn it on by
+ default V2
+References: <1337092396-3272-1-git-send-email-josef@redhat.com> <20120515175308.GB1907@localhost.localdomain> <4FB29DAC.3020801@panasas.com> <20120515182914.GC1907@localhost.localdomain>
+In-Reply-To: <20120515182914.GC1907@localhost.localdomain>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v3: this patch was squashed with the "SUNRPC: check rpcbind clients usage
-counter before decrement" patch.
+On 05/15/2012 09:29 PM, Josef Bacik wrote:
 
-New routine is responsible for service registration in specified network
-context.
-The idea is to separate service creation from per-net operations.
-Since registering service with svc_bind() can fail, then service will be
-destroyed and during destruction it will try to unregister itself from
-rpcbind. In this case unregister have to be skipped.
+> On Tue, May 15, 2012 at 09:17:16PM +0300, Boaz Harrosh wrote:
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/lockd/svc.c             |    6 ++++++
- fs/nfs/callback.c          |    8 ++++++++
- fs/nfsd/nfssvc.c           |    9 +++++++++
- include/linux/sunrpc/svc.h |    1 +
- net/sunrpc/rpcb_clnt.c     |   12 +++++++-----
- net/sunrpc/svc.c           |   19 ++++++++++---------
- 6 files changed, 41 insertions(+), 14 deletions(-)
+<snip>
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 1ead075..b7e92ed 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -324,6 +324,12 @@ int lockd_up(struct net *net)
- 		goto out;
- 	}
- 
-+	error = svc_bind(serv, net);
-+	if (error < 0) {
-+		printk(KERN_WARNING "lockd_up: bind service failed\n");
-+		goto destroy_and_out;
-+	}
-+
- 	error = make_socks(serv, net);
- 	if (error < 0)
- 		goto destroy_and_out;
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index eb95f50..26b38fb 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -17,6 +17,7 @@
- #include <linux/kthread.h>
- #include <linux/sunrpc/svcauth_gss.h>
- #include <linux/sunrpc/bc_xprt.h>
-+#include <linux/nsproxy.h>
- 
- #include <net/inet_sock.h>
- 
-@@ -253,6 +254,7 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
- 	char svc_name[12];
- 	int ret = 0;
- 	int minorversion_setup;
-+	struct net *net = current->nsproxy->net_ns;
- 
- 	mutex_lock(&nfs_callback_mutex);
- 	if (cb_info->users++ || cb_info->task != NULL) {
-@@ -265,6 +267,12 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
- 		goto out_err;
- 	}
- 
-+	ret = svc_bind(serv, net);
-+	if (ret < 0) {
-+		printk(KERN_WARNING "NFS: bind callback service failed\n");
-+		goto out_err;
-+	}
-+
- 	minorversion_setup =  nfs_minorversion_callback_svc_setup(minorversion,
- 					serv, xprt, &rqstp, &callback_svc);
- 	if (!minorversion_setup) {
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index cb4d51d..0762f3c 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -11,6 +11,7 @@
- #include <linux/module.h>
- #include <linux/fs_struct.h>
- #include <linux/swap.h>
-+#include <linux/nsproxy.h>
- 
- #include <linux/sunrpc/stats.h>
- #include <linux/sunrpc/svcsock.h>
-@@ -330,6 +331,8 @@ static int nfsd_get_default_max_blksize(void)
- 
- int nfsd_create_serv(void)
- {
-+	int error;
-+
- 	WARN_ON(!mutex_is_locked(&nfsd_mutex));
- 	if (nfsd_serv) {
- 		svc_get(nfsd_serv);
-@@ -343,6 +346,12 @@ int nfsd_create_serv(void)
- 	if (nfsd_serv == NULL)
- 		return -ENOMEM;
- 
-+	error = svc_bind(nfsd_serv, current->nsproxy->net_ns);
-+	if (error < 0) {
-+		svc_destroy(nfsd_serv);
-+		return error;
-+	}
-+
- 	set_max_drc();
- 	do_gettimeofday(&nfssvc_boot);		/* record boot time */
- 	return 0;
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 51b29ac..2b43e02 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -416,6 +416,7 @@ struct svc_procedure {
-  */
- int svc_rpcb_setup(struct svc_serv *serv, struct net *net);
- void svc_rpcb_cleanup(struct svc_serv *serv, struct net *net);
-+int svc_bind(struct svc_serv *serv, struct net *net);
- struct svc_serv *svc_create(struct svc_program *, unsigned int,
- 			    void (*shutdown)(struct svc_serv *, struct net *net));
- struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 78ac39f..4c38b33 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -180,14 +180,16 @@ void rpcb_put_local(struct net *net)
- 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
- 	struct rpc_clnt *clnt = sn->rpcb_local_clnt;
- 	struct rpc_clnt *clnt4 = sn->rpcb_local_clnt4;
--	int shutdown;
-+	int shutdown = 0;
- 
- 	spin_lock(&sn->rpcb_clnt_lock);
--	if (--sn->rpcb_users == 0) {
--		sn->rpcb_local_clnt = NULL;
--		sn->rpcb_local_clnt4 = NULL;
-+	if (sn->rpcb_users) {
-+		if (--sn->rpcb_users == 0) {
-+			sn->rpcb_local_clnt = NULL;
-+			sn->rpcb_local_clnt4 = NULL;
-+		}
-+		shutdown = !sn->rpcb_users;
- 	}
--	shutdown = !sn->rpcb_users;
- 	spin_unlock(&sn->rpcb_clnt_lock);
- 
- 	if (shutdown) {
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 4153846..e6d542c 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -407,6 +407,14 @@ static int svc_uses_rpcbind(struct svc_serv *serv)
- 	return 0;
- }
- 
-+int svc_bind(struct svc_serv *serv, struct net *net)
-+{
-+	if (!svc_uses_rpcbind(serv))
-+		return 0;
-+	return svc_rpcb_setup(serv, net);
-+}
-+EXPORT_SYMBOL_GPL(svc_bind);
-+
- /*
-  * Create an RPC service
-  */
-@@ -471,15 +479,8 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
- 		spin_lock_init(&pool->sp_lock);
- 	}
- 
--	if (svc_uses_rpcbind(serv)) {
--		if (svc_rpcb_setup(serv, current->nsproxy->net_ns) < 0) {
--			kfree(serv->sv_pools);
--			kfree(serv);
--			return NULL;
--		}
--		if (!serv->sv_shutdown)
--			serv->sv_shutdown = svc_rpcb_cleanup;
--	}
-+	if (svc_uses_rpcbind(serv) && (!serv->sv_shutdown))
-+		serv->sv_shutdown = svc_rpcb_cleanup;
- 
- 	return serv;
- }
+>>
+>> do you mean that the "with the patch" is 40% slower then "without the patch"
+>> 	in the same "bs=1 count=10485760 test" ?
+>>
+>> Then count me clueless. Do you understand this difference?
+>>
+>> The way I read your patch the inode is copied and written to disk exactly the
+>> same number of times, as before. Only that now i_version is also updated
+>> together with ctime and/or mtime. What is the fundamental difference then?
+>> Is it just that i_version++ in-memory operation?
+>>
+> 
+> Yeah but for every write() call we have to do this in-memory operation (via
+> file_update_time()), so in the worst case where you are doing 1 byte writes
+> where you would notice this sort of overhead you get a 40% overhead just from
+> 
+> spin_lock(&inode->i_lock);
+> inode->i_version++;
+> spin_unlock(&inode->i_lock);
+> 
 
+
+We should be optimizing this we can take the spin_lock once and change
+the i_version and ctime/mtime at the same locking cycle.
+
+> and then the subsequent mark_inode_dirty() call.  What is likely saving us here
+> is that the 1 byte writes are happening fast enough that the normal ctime/mtime
+> operations aren't triggering a mark_inode_dirty() since it appears to happen
+> wihtin the same time, 
+
+
+Ha, OK that Jiffy resolution of ctime. Hence the core problem BTW, changes come
+in and we can't differentiate them.
+
+So you are saying that there is somewhere in code that does
+if (old_ctime != cur_ctime)
+	mark_inode_dirty()
+
+Isn't the mark_inode_dirty() called every-time regardless of the value set
+at ctime ?
+
+> but now that we're doing the i_version++ we are calling
+> mark_inode_dirty() more than before.  
+
+
+Can we fix that. Can we mark the inode dirty at Jiffy resolution?
+
+In the case of a Server crash the nfs_changed attr is expected to reset
+back to old value until such time that some client did a COMMIT. Up to
+COMMIT it might happen that on disk version is older than runtime.
+
+But the Jiffy resolution is a real bummer believe me.
+
+> I'd have to profile it to verify that's
+> what is actually happening, but that means turning on ftrace and parsing a bunch
+> of output and man that sounds like more time than I want to waste on this.  The
+> question is do we care that the worst case is so awful since the worst case is
+> likely to not show up often if at all?  If we do then I guess the next step is
+> to add a fs flag for i_version so that people who are going to be exporting file
+> systems can get this without having to use a special option all the time.
+> Thanks,
+> 
+
+
+Lets just think about it a bit, Can we make it that disk updates happen just
+as often as today and no more. But in memory inquiry of i_version gives us
+a much higher resolution.
+
+What about that Al's proposal of incrementing only after an NFSD inquiry
+
+> Josef 
+
+
+Thanks for looking into this. We all hate this for a long time but never
+took the time to fix it.
+
+Boaz
