@@ -1,89 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:35981 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756926Ab2EGOM2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 May 2012 10:12:28 -0400
-Received: by mail-yx0-f174.google.com with SMTP id m10so3663285yen.19
-        for <linux-nfs@vger.kernel.org>; Mon, 07 May 2012 07:12:28 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
-        michael.brantley@deshaw.com
-Subject: [PATCH v1 RESEND 07/12] vfs: add a "reval" flag to args for user_path_parent
-Date: Mon,  7 May 2012 10:12:06 -0400
-Message-Id: <1336399931-20234-8-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1336399931-20234-1-git-send-email-jlayton@redhat.com>
-References: <1336399931-20234-1-git-send-email-jlayton@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:42717 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S966435Ab2EOTSM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 May 2012 15:18:12 -0400
+Date: Tue, 15 May 2012 15:18:10 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Marco Stornelli <marco.stornelli@gmail.com>
+Cc: Josef Bacik <josef@redhat.com>, Andreas Dilger <adilger@dilger.ca>,
+        "Ted Ts'o" <tytso@mit.edu>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Subject: Re: [PATCH] ext4: turn on i_version updates by default
+Message-ID: <20120515191810.GA11028@fieldses.org>
+References: <9124E59E-2479-4C32-A528-3237B48DEC01@dilger.ca>
+ <20120514152334.GB29902@fieldses.org>
+ <14B38D68-FAE4-444A-BCD9-7EBF7E1BBFE1@dilger.ca>
+ <20120514175822.GC1439@thunk.org>
+ <20120514183316.GA1894@localhost.localdomain>
+ <20120514185400.GA32026@fieldses.org>
+ <20120514190500.GC1894@localhost.localdomain>
+ <60F0B94D-FDB9-4401-B0EA-1A1C6DE4086F@dilger.ca>
+ <20120515132857.GA1907@localhost.localdomain>
+ <4FB2996F.40708@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FB2996F.40708@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-All of the current callers set this to "false" for now, but we'll fix
-them later to set it to true when they retry on an ESTALE error.
+On Tue, May 15, 2012 at 07:59:11PM +0200, Marco Stornelli wrote:
+> Only a really really stupid question (I don't know NFS protocol well
+> enough). In 3.3 kernel, I see that only ext4 uses MS_I_VERSION, so I
+> wonder: if i_version change it's needed for exportable fs and so for
+> nfs, other exportable fs?
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c |   16 ++++++++++------
- 1 files changed, 10 insertions(+), 6 deletions(-)
+Yes, it's needed for others as well.  I believe btrfs and xfs are both
+adding it.
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 3238a82..c8254de 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -1908,15 +1908,19 @@ int user_path_at(int dfd, const char __user *name, unsigned flags,
- }
- 
- static int user_path_parent(int dfd, const char __user *path,
--			struct nameidata *nd, char **name)
-+			struct nameidata *nd, char **name, bool reval)
- {
- 	char *s = getname(path);
- 	int error;
-+	unsigned int lookup_flags = LOOKUP_PARENT;
- 
- 	if (IS_ERR(s))
- 		return PTR_ERR(s);
- 
--	error = do_path_lookup(dfd, s, LOOKUP_PARENT, nd);
-+	if (reval)
-+		lookup_flags |= LOOKUP_REVAL;
-+
-+	error = do_path_lookup(dfd, s, lookup_flags, nd);
- 	if (error)
- 		putname(s);
- 	else
-@@ -2759,7 +2763,7 @@ static long do_rmdir(int dfd, const char __user *pathname)
- 	struct dentry *dentry;
- 	struct nameidata nd;
- 
--	error = user_path_parent(dfd, pathname, &nd, &name);
-+	error = user_path_parent(dfd, pathname, &nd, &name, false);
- 	if (error)
- 		return error;
- 
-@@ -2856,7 +2860,7 @@ static long do_unlinkat(int dfd, const char __user *pathname)
- 	struct nameidata nd;
- 	struct inode *inode = NULL;
- 
--	error = user_path_parent(dfd, pathname, &nd, &name);
-+	error = user_path_parent(dfd, pathname, &nd, &name, false);
- 	if (error)
- 		return error;
- 
-@@ -3255,11 +3259,11 @@ SYSCALL_DEFINE4(renameat, int, olddfd, const char __user *, oldname,
- 	char *to;
- 	int error;
- 
--	error = user_path_parent(olddfd, oldname, &oldnd, &from);
-+	error = user_path_parent(olddfd, oldname, &oldnd, &from, false);
- 	if (error)
- 		goto exit;
- 
--	error = user_path_parent(newdfd, newname, &newnd, &to);
-+	error = user_path_parent(newdfd, newname, &newnd, &to, false);
- 	if (error)
- 		goto exit1;
- 
--- 
-1.7.7.6
+We're currently using ctime for the nfs change attribute.  That's
+effectively jiffy granularity.  So to see the problem at a minimum you'd
+need two writes to be processed within one jiffy, and a stat to come
+between them.  But that's a correctness problem, and we'd like to see it
+fixed before it becomes more common.
 
+More generally, it's useful to be able to ask whether a file changed
+without rereading all its data, and a clock that registers every change
+and is consistent across a filesystem sounds difficult to scale.  We may
+eventually find we need something like this outside nfs.
+
+--b.
