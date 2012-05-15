@@ -1,66 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:47683 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753746Ab2E1Lou (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 07:44:50 -0400
-Message-ID: <4FC364F9.4090308@panasas.com>
-Date: Mon, 28 May 2012 14:43:53 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Peng Tao <bergwolf@gmail.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, <tao.peng@emc.com>,
-        <skinsbursky@parallels.com>, <linux-nfs@vger.kernel.org>,
-        <xemul@parallels.com>, <neilb@suse.de>, <netdev@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>, <jbottomley@parallels.com>,
-        <davem@davemloft.net>, <devel@openvz.org>,
-        Steve Dickson <steved@redhat.com>
-Subject: Re: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference from
- blocklayout routines
-References: <20111129090754.20730.64567.stgit@localhost6.localdomain6> <20111129091037.20730.59391.stgit@localhost6.localdomain6> <F19688880B763E40B28B2B462677FBF805E3A4AFF2@MX09A.corp.emc.com> <4ED4CDCE.9080804@parallels.com> <F19688880B763E40B28B2B462677FBF805E3A4AFFD@MX09A.corp.emc.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C3CBC23@SACMVEXC2-PRD.hq.netapp.com> <CA+a=Yy5GKMu8rbh8y3fOtK6pmqygPNBr=a+p7LfcmTqtXFH3iA@mail.gmail.com> <1322579906.3619.1.camel@lade.trondhjem.org> <CA+a=Yy6kJe0NemSiRwM+t8gz5-UF5fOdwdS2so+q=nSYjBx--w@mail.gmail.com> <1322584830.4174.16.camel@lade.trondhjem.org> <20111129164252.GA19528@fieldses.org> <1322587165.4174.20.camel@lade.trondhjem.org> <CA+a=Yy4bEKaeUihjYLRzXVbjA3fc2EuZ3ToAkf0w-oL3PnZJKQ@mail.gmail.com>
-In-Reply-To: <CA+a=Yy4bEKaeUihjYLRzXVbjA3fc2EuZ3ToAkf0w-oL3PnZJKQ@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from shards.monkeyblade.net ([198.137.202.13]:41262 "EHLO
+	shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932419Ab2EOSx3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 14:53:29 -0400
+Date: Tue, 15 May 2012 14:51:07 -0400 (EDT)
+Message-Id: <20120515.145107.834395619191754306.davem@davemloft.net>
+To: johannes@sipsolutions.net
+Cc: joe@perches.com, netdev@vger.kernel.org,
+        linux-decnet-user@lists.sourceforge.net,
+        netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org,
+        coreteam@netfilter.org, linux-wireless@vger.kernel.org,
+        dev@openvswitch.org, linux-sctp@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [RFC net-next 0/2] net: Use net_<level>_ratelimit
+From: David Miller <davem@davemloft.net>
+In-Reply-To: <1337107245.15553.14.camel@jlt3.sipsolutions.net>
+References: <1337106430.15553.6.camel@jlt3.sipsolutions.net>
+	<20120515.142922.1434224550630736456.davem@davemloft.net>
+	<1337107245.15553.14.camel@jlt3.sipsolutions.net>
+Mime-Version: 1.0
+Content-Type: Text/Plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/29/2011 07:30 PM, Peng Tao wrote:
+From: Johannes Berg <johannes@sipsolutions.net>
+Date: Tue, 15 May 2012 20:40:45 +0200
 
-> On Wed, Nov 30, 2011 at 1:19 AM, Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
->> On Tue, 2011-11-29 at 11:42 -0500, J. Bruce Fields wrote:
->>> On Tue, Nov 29, 2011 at 11:40:30AM -0500, Trond Myklebust wrote:
->>>> I mean that I'm perfectly entitled to do
->>>>
->>>> 'modprobe -r blocklayoutdriver'
->>>>
->>>> and when I do that, then I expect blkmapd to close the rpc pipe and wait
->>>> for a new one to be created just like rpc.idmapd and rpc.gssd do when I
->>>> remove the nfs and sunrpc modules.
->>>
->>> The rpc pipefs mount doesn't hold a reference on the sunrpc module?
->>
->> I stand corrected: the mount does hold a reference to the sunrpc
->> module.
->> However nothing holds a reference to the blocklayoutdriver module, so
->> the main point that the "blocklayout" pipe can disappear from underneath
->> the blkmapd stands.
-> Thanks for the explanation and I agree it can cause problem if user
-> reload blocklayout module. I will look into a fix to blkmapd.
-> 
+> In the mac80211 case, messages are warnings/hints to the user, we just
+> don't want them to flood the logs too much. I'd rather have that kind of
+> change (limit cookie per callsite) in the rate limiting semantics than
+> the change in the when it gets printed at all.
 
-
-You might want to consider converting to call_usermodehelper()
-
-I know that it greatly simplified our code both in Kernel and
-in user-mode. And it made nfs-utils maintainer much happier
-as well.
-
-The speed is not Cardinal here I think. Like in objects it's
-done once per new device_id
-
-> Best,
-> Tao
-
-
-Just my $0.017
-Boaz
+Then they aren't KERN_DEBUG, they are KERN_INFO or KERN_WARN.
