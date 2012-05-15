@@ -1,50 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-outbound-2.vmware.com ([208.91.2.13]:40836 "EHLO
-	smtp-outbound-2.vmware.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755426Ab2EHTv2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 May 2012 15:51:28 -0400
-From: "Alexandre Depoutovitch" <adepoutovitch@vmware.com>
-To: <linux-nfs@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>
-References: <9c0b78d1.00001bd8.00000533@aldep-VC.vmware.com> <1508773761.4854678.1335731939770.JavaMail.root@zimbra-prod-mbox-3.vmware.com>
-In-Reply-To: <1508773761.4854678.1335731939770.JavaMail.root@zimbra-prod-mbox-3.vmware.com>
-Subject: RE: [PATCH RFC v2] Performing direct I/O on sector-aligned requests
-Date: Tue, 8 May 2012 12:51:28 -0700 (PDT)
-Message-ID: <a4ab669d.00001670.0000002d@aldep-VC.vmware.com>
+Received: from cantor2.suse.de ([195.135.220.15]:56780 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932120Ab2EOJOI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 May 2012 05:14:08 -0400
+Date: Tue, 15 May 2012 10:14:02 +0100
+From: Mel Gorman <mgorman@suse.de>
+To: David Miller <davem@davemloft.net>
+Cc: akpm@linux-foundation.org, linux-mm@kvack.org, netdev@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Trond.Myklebust@netapp.com, neilb@suse.de, hch@infradead.org,
+        a.p.zijlstra@chello.nl, michaelc@cs.wisc.edu, emunson@mgebm.net
+Subject: Re: [PATCH 01/12] netvm: Prevent a stream-specific deadlock
+Message-ID: <20120515091402.GG29102@suse.de>
+References: <1336658065-24851-2-git-send-email-mgorman@suse.de>
+ <20120511.011034.557833140906762226.davem@davemloft.net>
+ <20120514105604.GB29102@suse.de>
+ <20120514.162634.1094732813264319951.davem@davemloft.net>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
+Content-Type: text/plain; charset=iso-8859-15
+In-Reply-To: <20120514.162634.1094732813264319951.davem@davemloft.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, May 14, 2012 at 04:26:34PM -0400, David Miller wrote:
+> From: Mel Gorman <mgorman@suse.de>
+> Date: Mon, 14 May 2012 11:56:04 +0100
+> 
+> > On Fri, May 11, 2012 at 01:10:34AM -0400, David Miller wrote:
+> >> From: Mel Gorman <mgorman@suse.de>
+> >> Date: Thu, 10 May 2012 14:54:14 +0100
+> >> 
+> >> > It could happen that all !SOCK_MEMALLOC sockets have buffered so
+> >> > much data that we're over the global rmem limit. This will prevent
+> >> > SOCK_MEMALLOC buffers from receiving data, which will prevent userspace
+> >> > from running, which is needed to reduce the buffered data.
+> >> > 
+> >> > Fix this by exempting the SOCK_MEMALLOC sockets from the rmem limit.
+> >> > 
+> >> > Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+> >> > Signed-off-by: Mel Gorman <mgorman@suse.de>
+> >> 
+> >> This introduces an invariant which I am not so sure is enforced.
+> >> 
+> >> With this change it is absolutely required that once a socket
+> >> becomes SOCK_MEMALLOC it must never _ever_ lose that attribute.
+> >> 
+> > 
+> > This is effectively true. In the NFS case, the flag is cleared on
+> > swapoff after all the entries have been paged in. In the NBD case,
+> > SOCK_MEMALLOC is left set until the socket is destroyed. I'll update the
+> > changelog.
+> 
+> Bugs happen, you need to find a way to assert that nobody every does
+> this.  Because if a bug is introduced which makes this happen, it will
+> otherwise be very difficult to debug.
 
------ Original Message -----
-> From: "J. Bruce Fields" <bfields@fieldses.org>
-> To: "Alexandre Depoutovitch" <adepoutovitch@vmware.com>
-> Sent: Friday, April 27, 2012 4:51:20 PM
-> Subject: Re: About Direct I/O
->
-> On Fri, Apr 27, 2012 at 01:22:46PM -0700, Alexandre Depoutovitch
-> wrote:
+Ok, fair point. I looked at how we could ensure it could never happen but
+that would require failing sk_clear_memalloc() and it's less clear how
+that should be properly recovered from. Instead, it can be detected that
+there are rmem tokens allocations, warn about it and fix it up albeit it
+in a fairly heavy-handed fashion. How about this on top of the existing
+patch?
 
-> >
-> > The tests have been done on a hardware RAID10 array with 8 10K 450GB
-> > SAS drives. Raid adapter was HP P410i.
->
-> It might be worth also testing with a single drive if you want to see
-> the worst case for synchronous writes.  (That adapater may have a
-> battery-backed cache that lets it respond to writes immediately?)
-
-Yes, the adapter has battery backed cache (1GB), and you are right, it is 
-the main reason for significant improvement when doing direct I/O. Sync 
-random writes happen order of magnitude faster than reads. I also tested 
-Direct I/O on a cheap Western Digital 7.2K SATA drive (WD10EALX) on an Intel 
-82801 SATA controller. There was no performance gain with direct I/O because 
-write speed was in fact 1.5 slower than read speed. However, there was no 
-performance degradation either, whether direct of buffered I/O was used (in 
-sync mode).
-So looks like that Direct I/O for NFS is beneficial for random, f/s 
-unaligned,  synchronous writes on adapters with NVRAM. In other cases it can 
-be turned on/off either automatically, based on alignment and O_SYNC flag, 
-or manually, based on hardware characteristics.
-
-Alex
+---8<---
+diff --git a/net/core/sock.c b/net/core/sock.c
+index 22ff2ea..e3dea27 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -289,6 +289,18 @@ void sk_clear_memalloc(struct sock *sk)
+ 	sock_reset_flag(sk, SOCK_MEMALLOC);
+ 	sk->sk_allocation &= ~__GFP_MEMALLOC;
+ 	static_key_slow_dec(&memalloc_socks);
++
++	/*
++	 * SOCK_MEMALLOC is allowed to ignore rmem limits to ensure forward
++	 * progress of swapping. However, if SOCK_MEMALLOC is cleared while
++	 * it has rmem allocations there is a risk that the user of the
++	 * socket cannot make forward progress due to exceeding the rmem
++	 * limits. By rights, sk_clear_memalloc() should only be called
++	 * on sockets being torn down but warn and reset the accounting if
++	 * that assumption breaks.
++	 */
++	if (WARN_ON(sk->sk_forward_alloc))
++		sk_mem_reclaim(sk);
+ }
+ EXPORT_SYMBOL_GPL(sk_clear_memalloc);
+ 
