@@ -1,94 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:31768 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755936Ab2EXTmT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 May 2012 15:42:19 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 1/2] nfsd: add fault injection for CB_PATH_DOWN
-Date: Thu, 24 May 2012 15:42:16 -0400
-Message-Id: <1337888537-21754-1-git-send-email-dros@netapp.com>
+Received: from natasha.panasas.com ([67.152.220.90]:40045 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965642Ab2EOQXh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 12:23:37 -0400
+Message-ID: <4FB282F7.5090408@panasas.com>
+Date: Tue, 15 May 2012 19:23:19 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Christoph Hellwig <hch@infradead.org>
+CC: Peng Tao <bergwolf@gmail.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        <linux-nfs@vger.kernel.org>, Peng Tao <tao.peng@emc.com>
+Subject: Re: [PATCH 1/2] NFS: call block plug around direct write
+References: <1337096303-2516-1-git-send-email-bergwolf@gmail.com> <20120515160855.GA5911@infradead.org>
+In-Reply-To: <20120515160855.GA5911@infradead.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This fault injection hook causes all SEQUENCE operation replies to have the
-SEQ4_STATUS_CB_PATH_DOWN flag set until the client calls BIND_CONN_TO_SESSION
-or creates a new session.
+On 05/15/2012 07:08 PM, Christoph Hellwig wrote:
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- fs/nfsd/fault_inject.c |    4 ++++
- fs/nfsd/fault_inject.h |    2 ++
- fs/nfsd/nfs4state.c    |   20 ++++++++++++++++++++
- 3 files changed, 26 insertions(+), 0 deletions(-)
+> On Tue, May 15, 2012 at 11:38:22PM +0800, Peng Tao wrote:
+>> We bypass generic_file_aio_write() but would want to call block plug.
+> 
+> We in this case is the pnfs block driver at most.  Thus these should
+> be pnfs block code.
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index e6c3815..ab81144 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -38,6 +38,10 @@ static struct nfsd_fault_inject_op inject_ops[] = {
- 		.file   = "recall_delegations",
- 		.func   = nfsd_recall_delegations,
- 	},
-+	{
-+		.file   = "kill_backchannel",
-+		.func   = nfsd_kill_backchannel,
-+	},
- };
- 
- static long int NUM_INJECT_OPS = sizeof(inject_ops) / sizeof(struct nfsd_fault_inject_op);
-diff --git a/fs/nfsd/fault_inject.h b/fs/nfsd/fault_inject.h
-index 90bd057..b058e03 100644
---- a/fs/nfsd/fault_inject.h
-+++ b/fs/nfsd/fault_inject.h
-@@ -15,6 +15,7 @@ void nfsd_forget_locks(u64);
- void nfsd_forget_openowners(u64);
- void nfsd_forget_delegations(u64);
- void nfsd_recall_delegations(u64);
-+void nfsd_kill_backchannel(u64);
- #else /* CONFIG_NFSD_FAULT_INJECTION */
- static inline int nfsd_fault_inject_init(void) { return 0; }
- static inline void nfsd_fault_inject_cleanup(void) {}
-@@ -23,6 +24,7 @@ static inline void nfsd_forget_locks(u64 num) {}
- static inline void nfsd_forget_openowners(u64 num) {}
- static inline void nfsd_forget_delegations(u64 num) {}
- static inline void nfsd_recall_delegations(u64 num) {}
-+static inline void nfsd_kill_backchannel(u64 num) {}
- #endif /* CONFIG_NFSD_FAULT_INJECTION */
- 
- #endif /* LINUX_NFSD_FAULT_INJECT_H */
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 21266c7..9afc902 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4737,6 +4737,26 @@ void nfsd_recall_delegations(u64 num)
- 	printk(KERN_INFO "NFSD: Recalled %d delegations", count);
- }
- 
-+/*
-+ * Force SEQUENCE operations to have SEQ4_STATUS_CB_PATH_DOWN flag set
-+ * until backchannel is reestablished by BIND_CONN_TO_SESSION or
-+ * DESTROY_SESSION/CREATE_SESSION with SP4_NONE.
-+ *
-+ * The argument 'num' is ignored, any value will trigger the fault on
-+ * all clients.
-+ */
-+void nfsd_kill_backchannel(u64 num)
-+{
-+	struct nfs4_client *clp, *next;
-+
-+	nfs4_lock_state();
-+	list_for_each_entry_safe(clp, next, &client_lru, cl_lru) {
-+		clp->cl_cb_state = NFSD4_CB_DOWN;
-+	}
-+	nfs4_unlock_state();
-+
-+	printk(KERN_INFO "NFSD: killed backchannel");
-+}
- #endif /* CONFIG_NFSD_FAULT_INJECTION */
- 
- /* initialization to perform at module load time: */
--- 
-1.7.4.4
 
+I thought so too.
+
+But reading the code more closely it might be hard for the blocklayout
+to figure out the right state to call these two. Specially the call to
+blk_finish_plug(). So you might need to add a new LD API such as
+LD()->finish_plug() which is empty for others.
+
+But again inspecting the code it looks like blk_start_plug() is a no-op
+and blk_finish_plug() is specially optimized for the empty case.
+
+So is it worth it, the extra effort? I do understand the temptation
+to get lazy here.
+
+Just my $0.017
+Boaz
