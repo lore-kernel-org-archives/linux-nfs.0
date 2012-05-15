@@ -1,54 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60632 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:35736 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759512Ab2EWVkm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 May 2012 17:40:42 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 06/10] nfsd4: fix setclientid_confirm same_cred check
-Date: Wed, 23 May 2012 17:40:36 -0400
-Message-Id: <1337809240-15770-7-git-send-email-bfields@redhat.com>
-In-Reply-To: <1337809240-15770-1-git-send-email-bfields@redhat.com>
-References: <1337809240-15770-1-git-send-email-bfields@redhat.com>
+	id S1751705Ab2EOKag (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 May 2012 06:30:36 -0400
+Date: Tue, 15 May 2012 12:30:21 +0200
+From: Jan Kara <jack@suse.cz>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Andreas Dilger <adilger@dilger.ca>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Subject: Re: [PATCH] ext4: turn on i_version updates by default
+Message-ID: <20120515103021.GD22359@quack.suse.cz>
+References: <20120514140618.GA29902@fieldses.org>
+ <9124E59E-2479-4C32-A528-3237B48DEC01@dilger.ca>
+ <1337036918.2522.32.camel@lade.trondhjem.org>
+ <A0359961-B147-4343-BFA3-E82F38C6700B@dilger.ca>
+ <20120514235432.GA3199@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120514235432.GA3199@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Mon 14-05-12 19:54:32, J. Bruce Fields wrote:
+> On Mon, May 14, 2012 at 05:33:04PM -0600, Andreas Dilger wrote:
+> > I said as much in another reply - that once i_version is used on
+> > a filesystem, it should be made "sticky" (i.e. permanently enabled
+> > for that filesystem).  However, until that time it shouldn't be
+> > enabled just because it might one day be used.
+> > 
+> > Even better than just blindly bumping the i_version on every change,
+> > it would be better to have users of i_version (i.e. knfsd) flag the
+> > inode with "needs i_version update" then read the version.  When the
+> > filesystem/VFS bumps i_version the next time it can clear this flag
+> > and not update i_version again until after the next time i_version
+> > is actually used.
+> 
+> I really don't want to do anything more complicated than necessary.
+> 
+> What would be the worst-case test for the extra inode dirtying, so we
+> can see what the numbers actually are?
+  Something like:
 
-New clients are created only by nfsd4_setclientid(), which always gives
-any new client a unique clientid.  The only exception is in the
-"callback update" case, in which case it may create an unconfirmed
-client with the same clientid as a confirmed client.  In that case it
-also checks that the confirmed client has the same credential.
+  int fd, i;
+  struct timeval tv[2];
 
-Therefore, it is pointless for setclientid_confirm to check whether a
-confirmed and unconfirmed client with the same clientid have matching
-credentials--they're guaranteed to.
+  fd = open("file", O_CREAT | O_RDWR, 0644);
+  if (fd < 0)
+    return 1;
+  for (i = 0; i < 1000000; i++) {
+    gettimeofday(tv);
+    tv[1] = tv[0];
+    if (futimes(fd, tv) < 0)
+      return 1;
+  }
+  return 0;
 
-Instead, it should be checking whether the credential on the
-setclientid_confirm matches either of those.  Otherwise, it could be
-anyone sending the setclientid_confirm.  Granted, I can't see why anyone
-would, but still it's probalby safer to check.
+  And see how long does it take with and without i_version?
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2d28abf..286710d 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2243,7 +2243,7 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
- 	status = nfserr_clid_inuse;
- 	if (conf && unconf && same_verf(&confirm, &unconf->cl_confirm)) {
- 		/* case 1: callback update */
--		if (!same_creds(&conf->cl_cred, &unconf->cl_cred))
-+		if (!same_creds(&conf->cl_cred, &rqstp->rq_cred))
- 			status = nfserr_clid_inuse;
- 		else {
- 			nfsd4_change_callback(conf, &unconf->cl_cb_conn);
+								Honza
 -- 
-1.7.9.5
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
