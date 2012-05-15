@@ -1,160 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47136 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755985Ab2EXK4t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 May 2012 06:56:49 -0400
-Date: Thu, 24 May 2012 06:56:48 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH] NFSd: fix locking in nfsd_forget_delegations()
-Message-ID: <20120524105648.GA19875@fieldses.org>
-References: <20120522102444.6988.45434.stgit@localhost.localdomain>
- <20120523213158.GB13710@fieldses.org>
- <4FBDBBFF.2000000@parallels.com>
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:38176 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932855Ab2EOVmK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 17:42:10 -0400
+Received: by gglu4 with SMTP id u4so87337ggl.19
+        for <linux-nfs@vger.kernel.org>; Tue, 15 May 2012 14:42:09 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/2] NFSD: SETCLIENTID_CONFIRM returns NFS4ERR_CLID_INUSE too
+ often
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 15 May 2012 17:42:08 -0400
+Message-ID: <20120515214207.1518.78590.stgit@lebasque.1015granger.net>
+In-Reply-To: <20120515213808.1518.81260.stgit@lebasque.1015granger.net>
+References: <20120515213808.1518.81260.stgit@lebasque.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <4FBDBBFF.2000000@parallels.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 24, 2012 at 08:41:35AM +0400, Stanislav Kinsbursky wrote:
-> 24.05.2012 01:31, J. Bruce Fields написал:
-> >On Tue, May 22, 2012 at 02:25:14PM +0400, Stanislav Kinsbursky wrote:
-> >>This patch adds recall_lock hold to nfsd_forget_delegations() to protect
-> >>nfsd_process_n_delegations() call.
-> >>Also, looks like it would be better to collect delegations to some local
-> >>on-stack list, and then unhash collected list. This split allows to simplify
-> >>locking, because delegation traversing is protected by recall_lock, when
-> >>delegation unhash is protected by client_mutex.
-> >All this indirection is getting a little much.
-> >
-> >How about replacing nfsd_process_n_delegations by something that always
-> >does the list-move?:
-> 
-> Is it correct?
-> List move is suitable for unhash delegations since we anyway remove
-> delegation from fi_delegations list.
-> But seems we don't do this for delegations recall...
+According to RFC 3530bis, the only items SETCLIENTID_CONFIRM
+processing should be concerned with is the clientid, clientid
+verifier, and authentication flavor.  The client's IP address
+is not supposed to be interesting.
 
-Oh, blah, you're right of course.
+And, NFS4ERR_CLID_INUSE is meant only for authentication flavor
+mismatches.
 
-Still, this seems a little tangled, and I'd prefer not to have to add
-the useless extra parameter to break_one_deleg().
+I triggered this logic with a prototype UCS client -- one that
+uses the same nfs_client_id4 string for all servers.  The client
+mounted our server via its IPv4, then via its IPv6 address.
 
---b.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-> 
-> 
-> >void nfsd_forget_delegations(u64 num)
-> >{
-> >	unsigned int count;
-> >	list_head victims;
-> >
-> >	nfs4_lock_state();
-> >	count = nfsd_get_n_delegations(num,&victims);
-> >	list_for_each_entry_safe(...,&victims, ...)
-> >		unhash_delegation();
-> >	unlock_state();
-> >}
-> >
-> >ditto for recall_delegations, and take the recall_lock inside
-> >nfsd_get_n_delegations?
-> >
-> >Or something like that.
-> >
-> >--b.
-> >
-> >>Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
-> >>---
-> >>  fs/nfsd/nfs4state.c |   32 ++++++++++++++++++++++++--------
-> >>  1 files changed, 24 insertions(+), 8 deletions(-)
-> >>
-> >>diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> >>index 21266c7..f004e61 100644
-> >>--- a/fs/nfsd/nfs4state.c
-> >>+++ b/fs/nfsd/nfs4state.c
-> >>@@ -2597,7 +2597,7 @@ out:
-> >>  	return ret;
-> >>  }
-> >>
-> >>-static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
-> >>+static void nfsd_break_one_deleg(struct nfs4_delegation *dp, void *data)
-> >>  {
-> >>  	/* We're assuming the state code never drops its reference
-> >>  	 * without first removing the lease.  Since we're in this lease
-> >>@@ -2633,7 +2633,7 @@ static void nfsd_break_deleg_cb(struct file_lock *fl)
-> >>  	spin_lock(&recall_lock);
-> >>  	fp->fi_had_conflict = true;
-> >>  	list_for_each_entry(dp,&fp->fi_delegations, dl_perfile)
-> >>-		nfsd_break_one_deleg(dp);
-> >>+		nfsd_break_one_deleg(dp, NULL);
-> >>  	spin_unlock(&recall_lock);
-> >>  }
-> >>
-> >>@@ -4694,7 +4694,7 @@ void nfsd_forget_openowners(u64 num)
-> >>  	printk(KERN_INFO "NFSD: Forgot %d open owners", count);
-> >>  }
-> >>
-> >>-int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegation *))
-> >>+int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegation *, void *), void *data)
-> >>  {
-> >>  	int i, count = 0;
-> >>  	struct nfs4_file *fp, *fnext;
-> >>@@ -4703,7 +4703,7 @@ int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegatio
-> >>  	for (i = 0; i<  FILE_HASH_SIZE; i++) {
-> >>  		list_for_each_entry_safe(fp, fnext,&file_hashtbl[i], fi_hash) {
-> >>  			list_for_each_entry_safe(dp, dnext,&fp->fi_delegations, dl_perfile) {
-> >>-				deleg_func(dp);
-> >>+				deleg_func(dp, data);
-> >>  				if (++count == num)
-> >>  					return count;
-> >>  			}
-> >>@@ -4713,15 +4713,31 @@ int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegatio
-> >>  	return count;
-> >>  }
-> >>
-> >>+/* Called under the recall_lock spinlock. */
-> >>+static void
-> >>+collect_delegation(struct nfs4_delegation *dp, void *data)
-> >>+{
-> >>+	struct list_head *list = data;
-> >>+
-> >>+	list_move(&dp->dl_perfile, list);
-> >>+}
-> >>+
-> >>  void nfsd_forget_delegations(u64 num)
-> >>  {
-> >>  	unsigned int count;
-> >>+	struct nfs4_delegation *dp, *dnext;
-> >>+	LIST_HEAD(unhash_list);
-> >>
-> >>-	nfs4_lock_state();
-> >>-	count = nfsd_process_n_delegations(num, unhash_delegation);
-> >>-	nfs4_unlock_state();
-> >>+	spin_lock(&recall_lock);
-> >>+	count = nfsd_process_n_delegations(num, collect_delegation,&unhash_list);
-> >>+	spin_unlock(&recall_lock);
-> >>
-> >>  	printk(KERN_INFO "NFSD: Forgot %d delegations", count);
-> >>+
-> >>+	nfs4_lock_state();
-> >>+	list_for_each_entry_safe(dp, dnext,&unhash_list, dl_perfile)
-> >>+		unhash_delegation(dp);
-> >>+	nfs4_unlock_state();
-> >>  }
-> >>
-> >>  void nfsd_recall_delegations(u64 num)
-> >>@@ -4730,7 +4746,7 @@ void nfsd_recall_delegations(u64 num)
-> >>
-> >>  	nfs4_lock_state();
-> >>  	spin_lock(&recall_lock);
-> >>-	count = nfsd_process_n_delegations(num, nfsd_break_one_deleg);
-> >>+	count = nfsd_process_n_delegations(num, nfsd_break_one_deleg, NULL);
-> >>  	spin_unlock(&recall_lock);
-> >>  	nfs4_unlock_state();
-> >>
-> >>
-> 
+ fs/nfsd/nfs4state.c |   14 ++------------
+ 1 files changed, 2 insertions(+), 12 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 7f71c69..27e6401 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2213,7 +2213,6 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+ 			 struct nfsd4_compound_state *cstate,
+ 			 struct nfsd4_setclientid_confirm *setclientid_confirm)
+ {
+-	struct sockaddr *sa = svc_addr(rqstp);
+ 	struct nfs4_client *conf, *unconf;
+ 	nfs4_verifier confirm = setclientid_confirm->sc_confirm; 
+ 	clientid_t * clid = &setclientid_confirm->sc_clientid;
+@@ -2231,17 +2230,12 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+ 	conf = find_confirmed_client(clid);
+ 	unconf = find_unconfirmed_client(clid);
+ 
+-	status = nfserr_clid_inuse;
+-	if (conf && !rpc_cmp_addr((struct sockaddr *) &conf->cl_addr, sa))
+-		goto out;
+-	if (unconf && !rpc_cmp_addr((struct sockaddr *) &unconf->cl_addr, sa))
+-		goto out;
+-
+ 	/*
+ 	 * section 14.2.34 of RFC 3530 has a description of
+ 	 * SETCLIENTID_CONFIRM request processing consisting
+ 	 * of 4 bullet points, labeled as CASE1 - CASE4 below.
+ 	 */
++	status = nfserr_clid_inuse;
+ 	if (conf && unconf && same_verf(&confirm, &unconf->cl_confirm)) {
+ 		/*
+ 		 * RFC 3530 14.2.34 CASE 1:
+@@ -2254,7 +2248,6 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+ 			nfsd4_probe_callback(conf);
+ 			expire_client(unconf);
+ 			status = nfs_ok;
+-
+ 		}
+ 	} else if (conf && !unconf) {
+ 		/*
+@@ -2296,11 +2289,8 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+ 		 * Client probably hasn't noticed that we rebooted yet.
+ 		 */
+ 		status = nfserr_stale_clientid;
+-	} else {
+-		/* check that we have hit one of the cases...*/
+-		status = nfserr_clid_inuse;
+ 	}
+-out:
++
+ 	nfs4_unlock_state();
+ 	return status;
+ }
+
