@@ -1,58 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:50297 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755922Ab2E3U2g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 May 2012 16:28:36 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/1] NFSv4 do not send an empty SETATTR compound
-Date: Wed, 30 May 2012 16:12:24 -0400
-Message-Id: <1338408744-2226-1-git-send-email-andros@netapp.com>
+Received: from natasha.panasas.com ([67.152.220.90]:43506 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757952Ab2EOSYS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 14:24:18 -0400
+Message-ID: <4FB29DAC.3020801@panasas.com>
+Date: Tue, 15 May 2012 21:17:16 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Josef Bacik <josef@redhat.com>
+CC: <linux-ext4@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
+        <bfields@fieldses.org>, <adilger@dilger.ca>, <tytso@mit.edu>,
+        <jack@suse.cz>
+Subject: Re: [PATCH] ext4: fix how i_version is modified and turn it on by
+ default V2
+References: <1337092396-3272-1-git-send-email-josef@redhat.com> <20120515175308.GB1907@localhost.localdomain>
+In-Reply-To: <20120515175308.GB1907@localhost.localdomain>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On 05/15/2012 08:53 PM, Josef Bacik wrote:
 
-Commit 536e43d12b9517bbbf6114cd1a12be27857a4d7a ATTR_OPEN check can result in
-an ia_valid with only ATTR_FILE set, and no NFS_VALID_ATTRS attributes to
-request from the server.
+> On Tue, May 15, 2012 at 10:33:16AM -0400, Josef Bacik wrote:
+>> This makes MS_I_VERSION be turned on by default.  Ext4 had been
+>> unconditionally doing i_version++ in a few cases anway so the mount option
+>> was kind of silly.  This patch also removes the update in mark_inode_dirty
+>> and makes all of the cases where we update ctime also do inode_inc_ב.
+>> file_update_time takes care of the write case and all the places where we
+>> update iversion are protected by the i_mutex so there should be no extra
+>> i_lock overhead in the normal non-exported fs case.  Thanks,
+>>
+> 
+> Ok did some basic benchmarking with dd, I ran
+> 
+> dd if=/dev/zero of=/mnt/btrfs-test/file bs=1 count=10485760
+> dd if=/dev/zero of=/mnt/btrfs-test/file bs=1M count=1000
+> dd if=/dev/zero of=/mnt/btrfs-test/file bs=1M count=5000
+> 
+> 3 times with the patch and without the patch.  With the worst case scenario
+> there is about a 40% longer run time, going from on average 12 seconds to 17
+> seconds.  
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4proc.c |   12 ++++++++----
- 1 files changed, 8 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5a87beb..65e1df8 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2524,6 +2524,14 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 
- 	nfs_fattr_init(fattr);
- 	
-+	/* Deal with open(O_TRUNC) */
-+	if (sattr->ia_valid & ATTR_OPEN)
-+		sattr->ia_valid &= ~(ATTR_MTIME|ATTR_CTIME|ATTR_OPEN);
-+
-+	/* Optimization: if the end result is no change, don't RPC */
-+	if ((sattr->ia_valid & ~(ATTR_FILE)) == 0)
-+		return 0;
-+
- 	/* Search for an existing open(O_WRITE) file */
- 	if (sattr->ia_valid & ATTR_FILE) {
- 		struct nfs_open_context *ctx;
-@@ -2535,10 +2543,6 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 		}
- 	}
- 
--	/* Deal with open(O_TRUNC) */
--	if (sattr->ia_valid & ATTR_OPEN)
--		sattr->ia_valid &= ~(ATTR_MTIME|ATTR_CTIME|ATTR_OPEN);
--
- 	status = nfs4_do_setattr(inode, cred, fattr, sattr, state);
- 	if (status == 0)
- 		nfs_setattr_update_inode(inode, sattr);
--- 
-1.7.6.4
+do you mean that the "with the patch" is 40% slower then "without the patch"
+	in the same "bs=1 count=10485760 test" ?
+
+Then count me clueless. Do you understand this difference?
+
+The way I read your patch the inode is copied and written to disk exactly the
+same number of times, as before. Only that now i_version is also updated
+together with ctime and/or mtime. What is the fundamental difference then?
+Is it just that i_version++ in-memory operation?
+
+> With the other two runs they are the same runtime with the 1 megabyte
+> blocks.  So the question is, do we care about this worst case since any sane
+> application developer isn't going to do writes that small?  Thanks,
+
+> Josef
+Thanks
+Boaz
 
