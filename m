@@ -1,219 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:47977 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:34352 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753054Ab2EYWDo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 May 2012 18:03:44 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 8/8] NFSv4.1: Add DESTROY_CLIENTID
-Date: Fri, 25 May 2012 18:03:22 -0400
-Message-Id: <1337983402-24677-8-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1337983402-24677-7-git-send-email-Trond.Myklebust@netapp.com>
-References: <1337983402-24677-1-git-send-email-Trond.Myklebust@netapp.com>
- <1337983402-24677-2-git-send-email-Trond.Myklebust@netapp.com>
- <1337983402-24677-3-git-send-email-Trond.Myklebust@netapp.com>
- <1337983402-24677-4-git-send-email-Trond.Myklebust@netapp.com>
- <1337983402-24677-5-git-send-email-Trond.Myklebust@netapp.com>
- <1337983402-24677-6-git-send-email-Trond.Myklebust@netapp.com>
- <1337983402-24677-7-git-send-email-Trond.Myklebust@netapp.com>
+	id S1750745Ab2EOKId (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 May 2012 06:08:33 -0400
+Date: Tue, 15 May 2012 11:08:29 +0100
+From: Mel Gorman <mgorman@suse.de>
+To: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Cc: David Miller <davem@davemloft.net>, akpm@linux-foundation.org,
+        linux-mm@kvack.org, netdev@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Trond.Myklebust@netapp.com,
+        neilb@suse.de, hch@infradead.org, michaelc@cs.wisc.edu,
+        emunson@mgebm.net
+Subject: Re: [PATCH 01/12] netvm: Prevent a stream-specific deadlock
+Message-ID: <20120515100829.GH29102@suse.de>
+References: <1336658065-24851-2-git-send-email-mgorman@suse.de>
+ <20120511.011034.557833140906762226.davem@davemloft.net>
+ <20120514105604.GB29102@suse.de>
+ <20120514.162634.1094732813264319951.davem@davemloft.net>
+ <20120515091402.GG29102@suse.de>
+ <1337075234.27694.9.camel@twins>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-15
+In-Reply-To: <1337075234.27694.9.camel@twins>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that we destroy our lease on last unmount
+On Tue, May 15, 2012 at 11:47:14AM +0200, Peter Zijlstra wrote:
+> On Tue, 2012-05-15 at 10:14 +0100, Mel Gorman wrote:
+> > @@ -289,6 +289,18 @@ void sk_clear_memalloc(struct sock *sk)
+> >         sock_reset_flag(sk, SOCK_MEMALLOC);
+> >         sk->sk_allocation &= ~__GFP_MEMALLOC;
+> >         static_key_slow_dec(&memalloc_socks);
+> > +
+> > +       /*
+> > +        * SOCK_MEMALLOC is allowed to ignore rmem limits to ensure forward
+> > +        * progress of swapping. However, if SOCK_MEMALLOC is cleared while
+> > +        * it has rmem allocations there is a risk that the user of the
+> > +        * socket cannot make forward progress due to exceeding the rmem
+> > +        * limits. By rights, sk_clear_memalloc() should only be called
+> > +        * on sockets being torn down but warn and reset the accounting if
+> > +        * that assumption breaks.
+> > +        */
+> > +       if (WARN_ON(sk->sk_forward_alloc))
+> 
+> WARN_ON_ONCE() perhaps?
+> 
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/client.c      |    1 +
- fs/nfs/nfs4_fs.h     |    1 +
- fs/nfs/nfs4proc.c    |   32 ++++++++++++++++++++++++++++++
- fs/nfs/nfs4xdr.c     |   52 ++++++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/nfs4.h |    1 +
- 5 files changed, 87 insertions(+), 0 deletions(-)
+I do not expect SOCK_MEMALLOC to be cleared frequently at all with the
+possible exception of swapon/swapoff stress tests. If the flag is being
+cleared regularly with rmem tokens then that is interesting in itself
+but a WARN_ON_ONCE would miss it.
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index a50bdfb..7d10875 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -209,6 +209,7 @@ static void nfs4_shutdown_session(struct nfs_client *clp)
- 	if (nfs4_has_session(clp)) {
- 		nfs4_deviceid_purge_client(clp);
- 		nfs4_destroy_session(clp->cl_session);
-+		nfs4_destroy_clientid(clp);
- 	}
- 
- }
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index f730730..b20b516 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -214,6 +214,7 @@ extern int nfs4_proc_setclientid_confirm(struct nfs_client *, struct nfs4_setcli
- extern int nfs4_proc_get_rootfh(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
- extern int nfs4_proc_bind_conn_to_session(struct nfs_client *, struct rpc_cred *cred);
- extern int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred);
-+extern int nfs4_destroy_clientid(struct nfs_client *clp);
- extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
- extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
- extern int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait, bool roc);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 3fdff0c..0415825 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5261,6 +5261,38 @@ out:
- 	return status;
- }
- 
-+static int nfs4_proc_destroy_clientid(struct nfs_client *clp,
-+		struct rpc_cred *cred)
-+{
-+	struct rpc_message msg = {
-+		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_DESTROY_CLIENTID],
-+		.rpc_argp = clp,
-+		.rpc_cred = cred,
-+	};
-+	int status;
-+
-+	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
-+	if (status)
-+		pr_warn("NFS: Got error %d from the server %s on "
-+			"DESTROY_CLIENTID.", status, clp->cl_hostname);
-+	return status;
-+}
-+
-+int nfs4_destroy_clientid(struct nfs_client *clp)
-+{
-+	struct rpc_cred *cred;
-+	int ret = 0;
-+
-+	if (clp->cl_mvops->minor_version < 1)
-+		goto out;
-+	cred = nfs4_get_exchange_id_cred(clp);
-+	ret = nfs4_proc_destroy_clientid(clp, cred);
-+	if (cred)
-+		put_rpccred(cred);
-+out:
-+	return ret;
-+}
-+
- struct nfs4_get_lease_time_data {
- 	struct nfs4_get_lease_time_args *args;
- 	struct nfs4_get_lease_time_res *res;
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 1d4d259..b9ce3fd 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -338,6 +338,8 @@ static int nfs4_stat_to_errno(int);
- 				     1 /* bctsr_use_conn_in_rdma_mode */)
- #define encode_destroy_session_maxsz    (op_encode_hdr_maxsz + 4)
- #define decode_destroy_session_maxsz    (op_decode_hdr_maxsz)
-+#define encode_destroy_clientid_maxsz   (op_encode_hdr_maxsz + 2)
-+#define decode_destroy_clientid_maxsz   (op_decode_hdr_maxsz)
- #define encode_sequence_maxsz	(op_encode_hdr_maxsz + \
- 				XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + 4)
- #define decode_sequence_maxsz	(op_decode_hdr_maxsz + \
-@@ -751,6 +753,10 @@ static int nfs4_stat_to_errno(int);
- 					 encode_destroy_session_maxsz)
- #define NFS4_dec_destroy_session_sz	(compound_decode_hdr_maxsz + \
- 					 decode_destroy_session_maxsz)
-+#define NFS4_enc_destroy_clientid_sz	(compound_encode_hdr_maxsz + \
-+					 encode_destroy_clientid_maxsz)
-+#define NFS4_dec_destroy_clientid_sz	(compound_decode_hdr_maxsz + \
-+					 decode_destroy_clientid_maxsz)
- #define NFS4_enc_sequence_sz \
- 				(compound_decode_hdr_maxsz + \
- 				 encode_sequence_maxsz)
-@@ -1804,6 +1810,14 @@ static void encode_destroy_session(struct xdr_stream *xdr,
- 	encode_opaque_fixed(xdr, session->sess_id.data, NFS4_MAX_SESSIONID_LEN);
- }
- 
-+static void encode_destroy_clientid(struct xdr_stream *xdr,
-+				   uint64_t clientid,
-+				   struct compound_hdr *hdr)
-+{
-+	encode_op_hdr(xdr, OP_DESTROY_CLIENTID, decode_destroy_clientid_maxsz, hdr);
-+	encode_uint64(xdr, clientid);
-+}
-+
- static void encode_reclaim_complete(struct xdr_stream *xdr,
- 				    struct nfs41_reclaim_complete_args *args,
- 				    struct compound_hdr *hdr)
-@@ -2724,6 +2738,22 @@ static void nfs4_xdr_enc_destroy_session(struct rpc_rqst *req,
- }
- 
- /*
-+ * a DESTROY_CLIENTID request
-+ */
-+static void nfs4_xdr_enc_destroy_clientid(struct rpc_rqst *req,
-+					 struct xdr_stream *xdr,
-+					 struct nfs_client *clp)
-+{
-+	struct compound_hdr hdr = {
-+		.minorversion = clp->cl_mvops->minor_version,
-+	};
-+
-+	encode_compound_hdr(xdr, req, &hdr);
-+	encode_destroy_clientid(xdr, clp->cl_clientid, &hdr);
-+	encode_nops(&hdr);
-+}
-+
-+/*
-  * a SEQUENCE request
-  */
- static void nfs4_xdr_enc_sequence(struct rpc_rqst *req, struct xdr_stream *xdr,
-@@ -5479,6 +5509,11 @@ static int decode_destroy_session(struct xdr_stream *xdr, void *dummy)
- 	return decode_op_hdr(xdr, OP_DESTROY_SESSION);
- }
- 
-+static int decode_destroy_clientid(struct xdr_stream *xdr, void *dummy)
-+{
-+	return decode_op_hdr(xdr, OP_DESTROY_CLIENTID);
-+}
-+
- static int decode_reclaim_complete(struct xdr_stream *xdr, void *dummy)
- {
- 	return decode_op_hdr(xdr, OP_RECLAIM_COMPLETE);
-@@ -6789,6 +6824,22 @@ static int nfs4_xdr_dec_destroy_session(struct rpc_rqst *rqstp,
- }
- 
- /*
-+ * Decode DESTROY_CLIENTID response
-+ */
-+static int nfs4_xdr_dec_destroy_clientid(struct rpc_rqst *rqstp,
-+					struct xdr_stream *xdr,
-+					void *res)
-+{
-+	struct compound_hdr hdr;
-+	int status;
-+
-+	status = decode_compound_hdr(xdr, &hdr);
-+	if (!status)
-+		status = decode_destroy_clientid(xdr, res);
-+	return status;
-+}
-+
-+/*
-  * Decode SEQUENCE response
-  */
- static int nfs4_xdr_dec_sequence(struct rpc_rqst *rqstp,
-@@ -7237,6 +7288,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
- 	PROC(GETDEVICELIST,	enc_getdevicelist,	dec_getdevicelist),
- 	PROC(BIND_CONN_TO_SESSION,
- 			enc_bind_conn_to_session, dec_bind_conn_to_session),
-+	PROC(DESTROY_CLIENTID,	enc_destroy_clientid,	dec_destroy_clientid),
- #endif /* CONFIG_NFS_V4_1 */
- };
- 
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 54006a9..af2d2fa 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -608,6 +608,7 @@ enum {
- 	NFSPROC4_CLNT_FREE_STATEID,
- 	NFSPROC4_CLNT_GETDEVICELIST,
- 	NFSPROC4_CLNT_BIND_CONN_TO_SESSION,
-+	NFSPROC4_CLNT_DESTROY_CLIENTID,
- };
- 
- /* nfs41 types */
+> > +               sk_mem_reclaim(sk);
+> >  } 
+
 -- 
-1.7.7.6
-
+Mel Gorman
+SUSE Labs
