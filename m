@@ -1,56 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:9165 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:44927 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757948Ab2EaNqc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 31 May 2012 09:46:32 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Michael Tokarev <mjt@tls.msk.ru>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Linux-kernel <linux-kernel@vger.kernel.org>
-Subject: Re: 3.0+ NFS issues
-Date: Thu, 31 May 2012 13:46:16 +0000
-Message-ID: <1338471975.7732.5.camel@lade.trondhjem.org>
-References: <4FBF2C57.3070203@msgid.tls.msk.ru>
-	  <20120529152416.GC3441@fieldses.org> <4FC5C82E.4020806@msgid.tls.msk.ru>
-	  <20120530132518.GA13794@fieldses.org> <4FC713ED.5040807@msgid.tls.msk.ru>
-	 <1338469169.2420.7.camel@lade.trondhjem.org>
-	 <4FC77128.9090206@msgid.tls.msk.ru>
-In-Reply-To: <4FC77128.9090206@msgid.tls.msk.ru>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S933387Ab2EPMsn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 May 2012 08:48:43 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 07/11] nfsd4: rearrange exchange_id logic to simplify
+Date: Wed, 16 May 2012 08:48:35 -0400
+Message-Id: <1337172519-17335-8-git-send-email-bfields@redhat.com>
+In-Reply-To: <1337172519-17335-1-git-send-email-bfields@redhat.com>
+References: <1337172519-17335-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA1LTMxIGF0IDE3OjI0ICswNDAwLCBNaWNoYWVsIFRva2FyZXYgd3JvdGU6
-DQo+IE9uIDMxLjA1LjIwMTIgMTY6NTksIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+IFtdDQo+
-ID4gVGhhdCBpcyB0Y3BkdW1wIHRyeWluZyB0byBpbnRlcnByZXQgeW91ciBORlN2NCB0cmFjZSBh
-cyBORlN2Mi92My4NCj4gDQo+IE9oLg0KPiANCj4gPiBDYW4geW91IGVpdGhlciBwbGVhc2UgdXNl
-IHdpcmVzaGFyayB0byBwcm92aWRlIGEgZnVsbCB0ZXh0IGR1bXAgKHVzaW5nDQo+ID4gc29tZXRo
-aW5nIGxpa2UgJ3RzaGFyayAtViAtTyBuZnMscnBjJyksIG9yIGp1c3Qgc2VuZCB1cyB0aGUgYmlu
-YXJ5DQo+ID4gdGNwZHVtcCBvdXRwdXQgdXNpbmcgJ3RjcGR1bXAgLXcgL3RtcC9mb28gLXMgOTAw
-MDAnPw0KPiANCj4gSSBzdGFydGVkIHRjcGR1bXA6DQo+IA0KPiAgdGNwZHVtcCAtbnB2aSBicjAg
-LXMgMCBob3N0IDE5Mi4xNjguODguNCBhbmQgXCggcHJvdG8gSUNNUCBvciBwb3J0IDIwNDkgXCkg
-LXcgbmZzZHVtcA0KPiANCj4gb24gdGhlIGNsaWVudCAoMTkyLjE2OC44OC4yKS4gIE5leHQgSSBt
-b3VudGVkIGEgZGlyZWN0b3J5IG9uIHRoZSBjbGllbnQsDQo+IGFuZCBzdGFydGVkIHJlYWRpbmcg
-KHRhcidpbmcpIGEgZGlyZWN0b3J5IGludG8gL2Rldi9udWxsLiAgSXQgY2FwdHVyZWQgYQ0KPiBm
-ZXcgc3RhbGxzLiAgVGNwZHVtcCBzaG93cyBudW1iZXIgb2YgcGFja2V0cyBpdCBnb3QsIHRoZSBz
-dGFsbHMgYXJlIGF0DQo+IHBhY2tldCBjb3VudHMgNTgwOTAsIDk3MDY5IGFuZCA5NzA3MS4gIEkg
-Y2FuY2VsbGVkIHRoZSBjYXB0dXJlIGFmdGVyIHRoYXQuDQo+IA0KPiBUaGUgcmVzdWx0aW5nIGZp
-bGUgaXMgYXZhaWxhYmxlIGF0IGh0dHA6Ly93d3cuY29ycGl0LnJ1L21qdC90bXAvbmZzZHVtcC54
-eiAsDQo+IGl0IGlzIDIyME1iIHVuY29tcHJlc3NlZCBhbmQgMS4zTWIgY29tcHJlc3NlZC4gIFRo
-ZSBzb3VyY2UgZmlsZXMgYXJlDQo+IDEwIGZpbGVzIG9mIDFHYiBlYWNoLCBhbGwgbWFkZSBieSB1
-c2luZyBgdHJ1bmNhdGUnIHV0aWxpdHksIHNvIGRvZXMgbm90DQo+IHRha2UgcGxhY2Ugb24gZGlz
-ayBhdCBhbGwuICBUaGlzIGFsc28gbWFrZXMgaXQgb2J2aW91cyB0aGF0IHRoZSBpc3N1ZQ0KPiBk
-b2VzIG5vdCBkZXBlbmQgb24gdGhlIHNwZWVkIG9mIGRpc2sgb24gdGhlIHNlcnZlciAoc2luY2Ug
-aW4gdGhpcyBjYXNlLA0KPiB0aGUgc2VydmVyIGRpc2sgaXNuJ3QgZXZlbiBpbiB1c2UpLg0KDQpP
-Sy4gU28gZnJvbSB0aGUgYWJvdmUgZmlsZSBpdCBsb29rcyBhcyBpZiB0aGUgdHJhZmZpYyBpcyBt
-YWlubHkgUkVBRA0KcmVxdWVzdHMuDQoNCkluIDIgcGxhY2VzIHRoZSBzZXJ2ZXIgc3RvcHMgcmVz
-cG9uZGluZy4gSW4gYm90aCBjYXNlcywgdGhlIGNsaWVudCBzZWVtcw0KdG8gYmUgc2VuZGluZyBh
-IHNpbmdsZSBUQ1AgZnJhbWUgY29udGFpbmluZyBzZXZlcmFsIENPTVBPVU5EUyBjb250YWluaW5n
-DQpSRUFEIHJlcXVlc3RzICh3aGljaCBzaG91bGQgYmUgbGVnYWwpIGp1c3QgcHJpb3IgdG8gdGhl
-IGhhbmcuIFdoZW4gdGhlDQpzZXJ2ZXIgZG9lc24ndCByZXNwb25kLCB0aGUgY2xpZW50IHBpbmdz
-IGl0IHdpdGggYSBSRU5FVywgYmVmb3JlIGl0IGVuZHMNCnVwIHNldmVyaW5nIHRoZSBUQ1AgY29u
-bmVjdGlvbiBhbmQgdGhlbiByZXRyYW5zbWl0dGluZy4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QN
-CkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBu
-ZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+Minor cleanup: it's simpler to have separate code paths for the update
+and non-update cases.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   40 ++++++++++++++++++++--------------------
+ 1 file changed, 20 insertions(+), 20 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 1239ff4..0c553af 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1520,36 +1520,36 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 		bool creds_match = same_creds(&conf->cl_cred, &rqstp->rq_cred);
+ 		bool verfs_match = same_verf(&verf, &conf->cl_verifier);
+ 
+-		if (!clp_used_exchangeid(conf)) {
+-			if (update) { /* buggy client */
++		if (update) {
++			if (!clp_used_exchangeid(conf)) { /* buggy client */
+ 				status = nfserr_inval;
+ 				goto out;
+ 			}
+-		}
+-		if (!creds_match) { /* case 9 */
+-			if (update)
++			if (!creds_match) { /* case 9 */
+ 				status = nfserr_perm;
+-			else /* case 3 */
+-				status = nfserr_clid_inuse;
+-			goto out;
+-		}
+-		if (!verfs_match) { /* case 8 */
+-			if (update) {
++				goto out;
++			}
++			if (!verfs_match) { /* case 8 */
+ 				status = nfserr_not_same;
+ 				goto out;
+ 			}
+-			/* case 5, client reboot */
+-			expire_client(conf);
+-			goto out_new;
++			/* case 6 */
++			exid->flags |= EXCHGID4_FLAG_CONFIRMED_R;
++			new = conf;
++			goto out_copy;
+ 		}
+-		if (!clp_used_exchangeid(conf)) {
+-			status = nfserr_inval;
++		if (!creds_match) { /* case 3 */
++			status = nfserr_clid_inuse;
+ 			goto out;
+ 		}
+-		/* case 2 */
+-		exid->flags |= EXCHGID4_FLAG_CONFIRMED_R;
+-		new = conf;
+-		goto out_copy;
++		if (verfs_match) { /* case 2 */
++			exid->flags |= EXCHGID4_FLAG_CONFIRMED_R;
++			new = conf;
++			goto out_copy;
++		}
++		/* case 5, client reboot */
++		expire_client(conf);
++		goto out_new;
+ 	}
+ 
+ 	if (update) { /* case 7 */
+-- 
+1.7.9.5
+
