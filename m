@@ -1,122 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:34959 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:44919 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760971Ab2ERBX6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 May 2012 21:23:58 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 9 4/4] NFSv4.1 test the mdsthreshold hint parameters
-Date: Thu, 17 May 2012 15:48:22 -0400
-Message-Id: <1337284102-3372-4-git-send-email-andros@netapp.com>
-In-Reply-To: <1337284102-3372-1-git-send-email-andros@netapp.com>
-References: <1337284102-3372-1-git-send-email-andros@netapp.com>
+	id S933342Ab2EPMsm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 May 2012 08:48:42 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 03/11] nfsd4: exchange_id: check creds before killing confirmed client
+Date: Wed, 16 May 2012 08:48:31 -0400
+Message-Id: <1337172519-17335-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1337172519-17335-1-git-send-email-bfields@redhat.com>
+References: <1337172519-17335-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
+We mustn't allow a client to destroy another client with established
+state unless it has the right credential.
+
+And some minor cleanup.
+
+(Note: our comparison of credentials is actually pretty bogus currently;
+that will need to be fixed in another patch.)
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/pnfs.c |   78 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 78 insertions(+), 0 deletions(-)
+ fs/nfsd/nfs4state.c |   17 ++++++++---------
+ 1 file changed, 8 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 924dce1..1db7416 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -934,6 +934,80 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo,
- }
- 
- /*
-+ * Use mdsthreshold hints set at each OPEN to determine if I/O should go
-+ * to the MDS or over pNFS
-+ *
-+ * The nfs_inode read_io and write_io fields are cumulative counters reset
-+ * before each LAYOUTGET. Note that in pnfs_update_layout iomode is set to
-+ * IOMODE_READ for a READ request, and set to IOMODE_RW for a WRITE request.
-+ * A return of true means use MDS I/O.
-+ *
-+ * From rfc 5661:
-+ * If a file's length is less than the value of threshold4 read or write size,
-+ * then it is RECOMMENDED that the client read from the file via the MDS and
-+ * not a storage device.
-+ *
-+ * For I/O sizes below the threshold4 read or write iosize, it is RECOMMENDED
-+ * to access data through the MDS.
-+ */
-+static bool pnfs_within_mdsthreshold(struct nfs_open_context *ctx,
-+				     struct inode *ino, int iomode)
-+{
-+	struct nfs4_threshold *t = ctx->mdsthreshold;
-+	struct nfs_inode *nfsi = NFS_I(ino);
-+	loff_t fsize = i_size_read(ino);
-+	bool size = false, size_set = false, io = false, io_set = false;
-+	bool ret = false;
-+
-+	if (t == NULL || t->bm == 0)
-+		return ret;
-+
-+	dprintk("%s bm=0x%x rd_sz=%llu wr_sz=%llu rd_io=%llu wr_io=%llu\n",
-+		__func__, t->bm, t->rd_sz, t->wr_sz, t->rd_io_sz, t->wr_io_sz);
-+
-+	switch (iomode) {
-+	case IOMODE_READ:
-+		if (t->bm & THRESHOLD_RD) {
-+			dprintk("%s fsize %llu\n", __func__, fsize);
-+			size_set = true;
-+			if (fsize < t->rd_sz)
-+				size = true;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 6b7b884..9d77181 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1519,6 +1519,14 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 			status = nfserr_clid_inuse; /* XXX: ? */
+ 			goto out;
+ 		}
++		if (!same_creds(&conf->cl_cred, &rqstp->rq_cred)) {
++			/* 18.35.4 case 9 */
++			if (exid->flags & EXCHGID4_FLAG_UPD_CONFIRMED_REC_A)
++				status = nfserr_perm;
++			else /* case 3 */
++				status = nfserr_clid_inuse;
++			goto out;
 +		}
-+		if (t->bm & THRESHOLD_RD_IO) {
-+			dprintk("%s nfsi->read_io %llu\n", __func__,
-+				nfsi->read_io);
-+			io_set = true;
-+			if (nfsi->read_io < t->rd_io_sz)
-+				io = true;
-+		}
-+		break;
-+	case IOMODE_RW:
-+		if (t->bm & THRESHOLD_WR) {
-+			dprintk("%s fsize %llu\n", __func__, fsize);
-+			size_set = true;
-+			if (fsize < t->wr_sz)
-+				size = true;
-+		}
-+		if (t->bm & THRESHOLD_WR_IO) {
-+			dprintk("%s nfsi->write_io %llu\n", __func__,
-+				nfsi->write_io);
-+			io_set = true;
-+			if (nfsi->write_io < t->wr_io_sz)
-+				io = true;
-+		}
-+		break;
-+	}
-+	if (size_set && io_set) {
-+		if (size && io)
-+			ret = true;
-+	} else if (size || io)
-+		ret = true;
-+
-+	dprintk("<-- %s size %d io %d ret %d\n", __func__, size, io, ret);
-+	return ret;
-+}
-+
-+/*
-  * Layout segment is retreived from the server if not cached.
-  * The appropriate layout segment is referenced and returned to the caller.
-  */
-@@ -960,6 +1034,10 @@ pnfs_update_layout(struct inode *ino,
- 
- 	if (!pnfs_enabled_sb(NFS_SERVER(ino)))
- 		return NULL;
-+
-+	if (pnfs_within_mdsthreshold(ctx, ino, iomode))
-+		return NULL;
-+
- 	spin_lock(&ino->i_lock);
- 	lo = pnfs_find_alloc_layout(ino, ctx, gfp_flags);
- 	if (lo == NULL) {
+ 		if (!same_verf(&verf, &conf->cl_verifier)) {
+ 			/* 18.35.4 case 8 */
+ 			if (exid->flags & EXCHGID4_FLAG_UPD_CONFIRMED_REC_A) {
+@@ -1529,15 +1537,6 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 			expire_client(conf);
+ 			goto out_new;
+ 		}
+-		if (!same_creds(&conf->cl_cred, &rqstp->rq_cred)) {
+-			/* 18.35.4 case 9 */
+-			if (exid->flags & EXCHGID4_FLAG_UPD_CONFIRMED_REC_A) {
+-				status = nfserr_perm;
+-				goto out;
+-			}
+-			expire_client(conf);
+-			goto out_new;
+-		}
+ 		/*
+ 		 * Set bit when the owner id and verifier map to an already
+ 		 * confirmed client id (18.35.3).
 -- 
-1.7.7.6
+1.7.9.5
 
