@@ -1,134 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:37982 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:43175 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754122Ab2EJNy2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 May 2012 09:54:28 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 00/12] Swap-over-NFS without deadlocking V4
-Date: Thu, 10 May 2012 14:54:13 +0100
-Message-Id: <1336658065-24851-1-git-send-email-mgorman@suse.de>
+	id S1756371Ab2EPV6s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 May 2012 17:58:48 -0400
+Date: Wed, 16 May 2012 17:58:47 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+Cc: linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsd: return 0 on reads of fault injection files
+Message-ID: <20120516215847.GF20487@fieldses.org>
+References: <1336678270-791-1-git-send-email-dros@netapp.com>
+ <20120516211621.GE20487@fieldses.org>
+ <E560542A-DCC3-4093-8B69-438783DD9451@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <E560542A-DCC3-4093-8B69-438783DD9451@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Changelog since V3
-  o Rebase to 3.4-rc5
-  o kmap pages for writing to swap				(akpm)
-  o Move forward declaration to reduce chance of duplication	(akpm)
+On Wed, May 16, 2012 at 09:50:32PM +0000, Adamson, Dros wrote:
+> No, I haven't messed with it that much - I had other tasks take a
+> higher priority, but I'm back on it as of this afternoon.
+> 
+> I'll try nfsd-next to get CB_PATH_DOWN without fault_injection and
+> report back to you.  Also, I think we need to modify nfsd
+> (nfsd4_new_conn()) to set cl_cb_state to NFSD4_CB_UNKNOWN on a
+> successful BIND_CONN_TO_SESSION (IFF it's CB_DOWN with the right
+> direction), otherwise the CB_PATH_DOWN flag will be set on every
+> sequence OP
 
-Changelog since V2
-  o Nothing significant, just rebases. A radix tree lookup is replaced with
-    a linear search would be the biggest rebase artifact
+That's intentional:
 
-This patch series is based on top of "Swap-over-NBD without deadlocking v9"
-as it depends on the same reservation of PF_MEMALLOC reserves logic.
+	http://www.ietf.org/mail-archive/web/nfsv4/current/msg10840.html
 
-When a user or administrator requires swap for their application, they
-create a swap partition and file, format it with mkswap and activate it with
-swapon. In diskless systems this is not an option so if swap if required
-then swapping over the network is considered.  The two likely scenarios
-are when blade servers are used as part of a cluster where the form factor
-or maintenance costs do not allow the use of disks and thin clients.
+> and the client will keep sending BIND_CONN_TO_SESSION.
+> The idea is that once we call nfsd4_new_conn, we won't know if the
+> back channel is really up until a callback is attempted.
 
-The Linux Terminal Server Project recommends the use of the Network
-Block Device (NBD) for swap but this is not always an option.  There is
-no guarantee that the network attached storage (NAS) device is running
-Linux or supports NBD. However, it is likely that it supports NFS so there
-are users that want support for swapping over NFS despite any performance
-concern. Some distributions currently carry patches that support swapping
-over NFS but it would be preferable to support it in the mainline kernel.
+If the client hasn't given us a connection to use as the backchannel,
+then we *know* the backchannel is down, we don't need to try sending a
+callback (how could we?).
 
-Patch 1 avoids a stream-specific deadlock that potentially affects TCP.
+> Setting it to CB_UNKNOWN stops the loop of (sequence, bind_conn,
+> sequence, bind_conn, …), but doesn't actually mark it as "UP" until a
+> callback is successful.
 
-Patch 2 is a small modification to SELinux to avoid using PFMEMALLOC
-	reserves.
+If the client is attempting to clear the CB_PATH_DOWN flag by sending us
+a BIND_CONN_TO_SESSION that doesn't actually give us a backchannel, then
+it's confused.
 
-Patch 3 adds three helpers for filesystems to handle swap cache pages.
-	For example, page_file_mapping() returns page->mapping for
-	file-backed pages and the address_space of the underlying
-	swap file for swap cache pages.
+If the client really doesn't care whether the backchannel is down or not
+then it can ignore the flag--it's a flag, not an error.
 
-Patch 4 adds two address_space_operations to allow a filesystem
-	to pin all metadata relevant to a swapfile in memory. Upon
-	successful activation, the swapfile is marked SWP_FILE and
-	the address space operation ->direct_IO is used for writing
-	and ->readpage for reading in swap pages.
-
-Patch 5 notes that patch 3 is bolting
-	filesystem-specific-swapfile-support onto the side and that
-	the default handlers have different information to what
-	is available to the filesystem. This patch refactors the
-	code so that there are generic handlers for each of the new
-	address_space operations.
-
-Patch 6 adds an API to allow a vector of kernel addresses to be
-	translated to struct pages and pinned for IO.
-
-Patch 7 adds support for using highmem pages for swap by kmapping
-	the pages before calling the direct_IO handler.
-
-Patch 8 updates NFS to use the helpers from patch 3 where necessary.
-
-Patch 9 avoids setting PF_private on PG_swapcache pages within NFS.
-
-Patch 10 implements the new swapfile-related address_space operations
-	for NFS and teaches the direct IO handler how to manage
-	kernel addresses.
-
-Patch 11 prevents page allocator recursions in NFS by using GFP_NOIO
-	where appropriate.
-
-Patch 12 fixes a NULL pointer dereference that occurs when using
-	swap-over-NFS.
-
-With the patches applied, it is possible to mount a swapfile that is on an
-NFS filesystem. Swap performance is not great with a swap stress test taking
-roughly twice as long to complete than if the swap device was backed by NBD.
-
- Documentation/filesystems/Locking |   13 ++++
- Documentation/filesystems/vfs.txt |   12 +++
- fs/nfs/Kconfig                    |    8 ++
- fs/nfs/direct.c                   |   94 ++++++++++++++++--------
- fs/nfs/file.c                     |   28 +++++--
- fs/nfs/inode.c                    |    6 ++
- fs/nfs/internal.h                 |    7 +-
- fs/nfs/pagelist.c                 |    6 +-
- fs/nfs/read.c                     |    6 +-
- fs/nfs/write.c                    |   96 +++++++++++++++---------
- include/linux/blk_types.h         |    2 +
- include/linux/fs.h                |    8 ++
- include/linux/highmem.h           |    7 ++
- include/linux/mm.h                |   29 ++++++++
- include/linux/nfs_fs.h            |    4 +-
- include/linux/pagemap.h           |    5 ++
- include/linux/sunrpc/xprt.h       |    3 +
- include/linux/swap.h              |    8 ++
- include/net/sock.h                |    7 +-
- mm/highmem.c                      |   12 +++
- mm/memory.c                       |   52 +++++++++++++
- mm/page_io.c                      |  145 +++++++++++++++++++++++++++++++++++++
- mm/swap_state.c                   |    2 +-
- mm/swapfile.c                     |  141 ++++++++++++++----------------------
- net/caif/caif_socket.c            |    2 +-
- net/core/sock.c                   |    2 +-
- net/ipv4/tcp_input.c              |   12 +--
- net/sctp/ulpevent.c               |    2 +-
- net/sunrpc/Kconfig                |    5 ++
- net/sunrpc/clnt.c                 |    2 +
- net/sunrpc/sched.c                |    7 +-
- net/sunrpc/xprtsock.c             |   53 ++++++++++++++
- security/selinux/avc.c            |    2 +-
- 33 files changed, 601 insertions(+), 187 deletions(-)
-
--- 
-1.7.9.2
-
+--b.
