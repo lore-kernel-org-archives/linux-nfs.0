@@ -1,55 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43175 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:44929 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756371Ab2EPV6s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 May 2012 17:58:48 -0400
-Date: Wed, 16 May 2012 17:58:47 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-Cc: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: return 0 on reads of fault injection files
-Message-ID: <20120516215847.GF20487@fieldses.org>
-References: <1336678270-791-1-git-send-email-dros@netapp.com>
- <20120516211621.GE20487@fieldses.org>
- <E560542A-DCC3-4093-8B69-438783DD9451@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <E560542A-DCC3-4093-8B69-438783DD9451@netapp.com>
+	id S933328Ab2EPMso (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 May 2012 08:48:44 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 08/11] nfsd4: allow removing clients not holding state
+Date: Wed, 16 May 2012 08:48:36 -0400
+Message-Id: <1337172519-17335-9-git-send-email-bfields@redhat.com>
+In-Reply-To: <1337172519-17335-1-git-send-email-bfields@redhat.com>
+References: <1337172519-17335-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 16, 2012 at 09:50:32PM +0000, Adamson, Dros wrote:
-> No, I haven't messed with it that much - I had other tasks take a
-> higher priority, but I'm back on it as of this afternoon.
-> 
-> I'll try nfsd-next to get CB_PATH_DOWN without fault_injection and
-> report back to you.  Also, I think we need to modify nfsd
-> (nfsd4_new_conn()) to set cl_cb_state to NFSD4_CB_UNKNOWN on a
-> successful BIND_CONN_TO_SESSION (IFF it's CB_DOWN with the right
-> direction), otherwise the CB_PATH_DOWN flag will be set on every
-> sequence OP
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-That's intentional:
+RFC 5661 actually says we should allow an exchange_id to remove a
+matching client, even if the exchange_id comes from a different
+principal, *if* the victim client lacks any state.
 
-	http://www.ietf.org/mail-archive/web/nfsv4/current/msg10840.html
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   21 +++++++++++++++++++--
+ 1 file changed, 19 insertions(+), 2 deletions(-)
 
-> and the client will keep sending BIND_CONN_TO_SESSION.
-> The idea is that once we call nfsd4_new_conn, we won't know if the
-> back channel is really up until a callback is attempted.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 0c553af..e7f61d3 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1471,6 +1471,19 @@ nfsd4_set_ex_flags(struct nfs4_client *new, struct nfsd4_exchange_id *clid)
+ 	clid->flags = new->cl_exchange_flags;
+ }
+ 
++static bool client_has_state(struct nfs4_client *clp)
++{
++	/*
++	 * Note clp->cl_openowners check isn't quite right: there's no
++	 * need to count owners without stateid's.
++	 *
++	 * Also note we should probably be using this in 4.0 case too.
++	 */
++	return list_empty(&clp->cl_openowners)
++		&& list_empty(&clp->cl_delegations)
++		&& list_empty(&clp->cl_sessions);
++}
++
+ __be32
+ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 		  struct nfsd4_compound_state *cstate,
+@@ -1539,8 +1552,11 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 			goto out_copy;
+ 		}
+ 		if (!creds_match) { /* case 3 */
+-			status = nfserr_clid_inuse;
+-			goto out;
++			if (client_has_state(conf)) {
++				status = nfserr_clid_inuse;
++				goto out;
++			}
++			goto expire_client;
+ 		}
+ 		if (verfs_match) { /* case 2 */
+ 			exid->flags |= EXCHGID4_FLAG_CONFIRMED_R;
+@@ -1548,6 +1564,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 			goto out_copy;
+ 		}
+ 		/* case 5, client reboot */
++expire_client:
+ 		expire_client(conf);
+ 		goto out_new;
+ 	}
+-- 
+1.7.9.5
 
-If the client hasn't given us a connection to use as the backchannel,
-then we *know* the backchannel is down, we don't need to try sending a
-callback (how could we?).
-
-> Setting it to CB_UNKNOWN stops the loop of (sequence, bind_conn,
-> sequence, bind_conn, …), but doesn't actually mark it as "UP" until a
-> callback is successful.
-
-If the client is attempting to clear the CB_PATH_DOWN flag by sending us
-a BIND_CONN_TO_SESSION that doesn't actually give us a backchannel, then
-it's confused.
-
-If the client really doesn't care whether the backchannel is down or not
-then it can ignore the flag--it's a flag, not an error.
-
---b.
