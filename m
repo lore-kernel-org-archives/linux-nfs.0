@@ -1,109 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:12718 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757975Ab2FADAS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 May 2012 23:00:18 -0400
-From: <tao.peng@emc.com>
-To: <Trond.Myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, <bharrosh@panasas.com>
-Date: Thu, 31 May 2012 22:59:58 -0400
-Subject: RE: [PATCH-v2 3/3] pnfsblock: call blk_plug functions for direct IO
-Message-ID: <F19688880B763E40B28B2B462677FBF8105EBA12B4@MX09A.corp.emc.com>
-References: <1338266334-11490-1-git-send-email-bergwolf@gmail.com>
-	 <1338266334-11490-4-git-send-email-bergwolf@gmail.com>
- <1338499336.20167.48.camel@lade.trondhjem.org>
-In-Reply-To: <1338499336.20167.48.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from plane.gmane.org ([80.91.229.3]:53513 "EHLO plane.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757473Ab2EPVeg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 May 2012 17:34:36 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1SUlrf-0002dE-4V
+	for linux-nfs@vger.kernel.org; Wed, 16 May 2012 23:34:35 +0200
+Received: from NORTHWEST-R.edge3.Denver1.Level3.net ([4.28.99.98])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Wed, 16 May 2012 23:34:35 +0200
+Received: from orion by NORTHWEST-R.edge3.Denver1.Level3.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Wed, 16 May 2012 23:34:35 +0200
+To: linux-nfs@vger.kernel.org
+From: Orion Poplawski <orion@cora.nwra.com>
+Subject: Re: Cannot unmount nfs4 sec=krb5 mount if network is down
+Date: Wed, 16 May 2012 21:34:27 +0000 (UTC)
+Message-ID: <loom.20120516T233017-710@post.gmane.org>
+References: <loom.20120510T222025-23@post.gmane.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBNeWtsZWJ1c3QsIFRyb25kIFtt
-YWlsdG86VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb21dDQo+IFNlbnQ6IEZyaWRheSwgSnVuZSAw
-MSwgMjAxMiA1OjIyIEFNDQo+IFRvOiBQZW5nIFRhbw0KPiBDYzogbGludXgtbmZzQHZnZXIua2Vy
-bmVsLm9yZzsgYmhhcnJvc2hAcGFuYXNhcy5jb207IFBlbmcsIFRhbw0KPiBTdWJqZWN0OiBSZTog
-W1BBVENILXYyIDMvM10gcG5mc2Jsb2NrOiBjYWxsIGJsa19wbHVnIGZ1bmN0aW9ucyBmb3IgZGly
-ZWN0IElPDQo+IA0KPiBPbiBUdWUsIDIwMTItMDUtMjkgYXQgMTI6MzggKzA4MDAsIFBlbmcgVGFv
-IHdyb3RlOg0KPiA+IE5GUyBESU8gYnlwYXNzZXMgZ2VuZXJpYyBESU8gY29kZSBwYXRoLiBTbyB3
-ZSBuZWVkIHRvIHBsdWcvdW5wbHVnDQo+ID4gb24gb3VyIG93bi4NCj4gPg0KPiA+IFNpZ25lZC1v
-ZmYtYnk6IFBlbmcgVGFvIDx0YW8ucGVuZ0BlbWMuY29tPg0KPiA+IC0tLQ0KPiA+ICBmcy9uZnMv
-YmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYyB8ICAgNDcgKysrKysrKysrKysrKysrKysrKysrKysr
-KysrKysrKysrKysrKy0NCj4gPiAgMSBmaWxlcyBjaGFuZ2VkLCA0NiBpbnNlcnRpb25zKCspLCAx
-IGRlbGV0aW9ucygtKQ0KPiA+DQo+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9ibG9ja2xheW91dC9i
-bG9ja2xheW91dC5jIGIvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMNCj4gPiBpbmRl
-eCBiYWI0MzJmLi5iNDhiMDhiIDEwMDY0NA0KPiA+IC0tLSBhL2ZzL25mcy9ibG9ja2xheW91dC9i
-bG9ja2xheW91dC5jDQo+ID4gKysrIGIvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMN
-Cj4gPiBAQCAtMjUxLDYgKzI1MSw3IEBAIGJsX3JlYWRfcGFnZWxpc3Qoc3RydWN0IG5mc19yZWFk
-X2RhdGEgKnJkYXRhKQ0KPiA+DQo+ID4gIAlkcHJpbnRrKCIlcyBlbnRlciBucl9wYWdlcyAldSBv
-ZmZzZXQgJWxsZCBjb3VudCAldVxuIiwgX19mdW5jX18sDQo+ID4gIAkgICAgICAgcmRhdGEtPnBh
-Z2VzLm5wYWdlcywgZl9vZmZzZXQsICh1bnNpZ25lZCBpbnQpcmRhdGEtPmFyZ3MuY291bnQpOw0K
-PiA+ICsJQlVHX09OKGhlYWRlci0+ZHJlcSAmJiBoZWFkZXItPmxheW91dF9wcml2YXRlID09IE5V
-TEwpOw0KPiA+DQo+ID4gIAlpZiAoIWJsX2NoZWNrX2FsaWdubWVudChmX29mZnNldCwgcmRhdGEt
-PmFyZ3MuY291bnQsIFBBR0VfQ0FDSEVfTUFTSykpDQo+ID4gIAkJZ290byB1c2VfbWRzOw0KPiA+
-IEBAIC0zMjAsOSArMzIxLDE3IEBAIG91dDoNCj4gPiAgCWJsX3B1dF9leHRlbnQoY293X3JlYWQp
-Ow0KPiA+ICAJYmxfc3VibWl0X2JpbyhSRUFELCBiaW8pOw0KPiA+ICAJcHV0X3BhcmFsbGVsKHBh
-cik7DQo+ID4gKwlpZiAoaGVhZGVyLT5kcmVxICYmICFoZWFkZXItPm1vcmVpbykgew0KPiA+ICsJ
-CWJsa19maW5pc2hfcGx1Zygoc3RydWN0IGJsa19wbHVnICopaGVhZGVyLT5sYXlvdXRfcHJpdmF0
-ZSk7DQo+ID4gKwkJa2ZyZWUoaGVhZGVyLT5sYXlvdXRfcHJpdmF0ZSk7DQo+IA0KPiBXYWl0Li4u
-IFdoeSBjYW4ndCB0aGlzIGp1c3QgZ28gaW4gdGhlIGJsb2NrLXNwZWNpZmljIC0+cGdfZG9pbygp
-DQo+IGNhbGxiYWNrPyBXaHkgZG9lcyBpdCBuZWVkIHRvIGdvIHRvIHlvdXINCj4gcmVhZF9wYWdl
-bGlzdCgpL3dyaXRlX3BhZ2VsaXN0KCk/DQo+IA0KWW91IGFyZSByaWdodC4gSXQgY2FuIGJlIG1v
-dmVkIHRvIC5wZ19kb2lvLiBUaGUgRElPIGFsaWdubWVudCBjaGVjayBzaG91bGQgYmUgbW92ZWQg
-dGhlcmUgYXMgd2VsbCBhbmQgdGhlbiB3ZSBjYW4gYXZvaWQgYWxsb2NhdGluZyB1bm5lY2Vzc2Fy
-eSBuZnNfcmVhZC93cml0ZV9kYXRhLiBJdCBhbHNvIGVsaW1pbmF0ZXMgdGhlIGNoYW5nZSBpbiBz
-dHJ1Y3QgbmZzX3BnaW9faGVhZGVyLg0KDQpUaGFua3MsDQpUYW8NCg0KPiA+ICsJfQ0KPiA+ICAJ
-cmV0dXJuIFBORlNfQVRURU1QVEVEOw0KPiA+DQo+ID4gLSB1c2VfbWRzOg0KPiA+ICt1c2VfbWRz
-Og0KPiA+ICsJaWYgKGhlYWRlci0+ZHJlcSkgew0KPiA+ICsJCWJsa19maW5pc2hfcGx1Zygoc3Ry
-dWN0IGJsa19wbHVnICopaGVhZGVyLT5sYXlvdXRfcHJpdmF0ZSk7DQo+ID4gKwkJa2ZyZWUoaGVh
-ZGVyLT5sYXlvdXRfcHJpdmF0ZSk7DQo+ID4gKwl9DQo+ID4gIAlkcHJpbnRrKCJHaXZpbmcgdXAg
-YW5kIHVzaW5nIG5vcm1hbCBORlNcbiIpOw0KPiA+ICAJcmV0dXJuIFBORlNfTk9UX0FUVEVNUFRF
-RDsNCj4gPiAgfQ0KPiA+IEBAIC01NzUsNiArNTg0LDggQEAgYmxfd3JpdGVfcGFnZWxpc3Qoc3Ry
-dWN0IG5mc193cml0ZV9kYXRhICp3ZGF0YSwgaW50IHN5bmMpDQo+ID4gIAl1bnNpZ25lZCBsb25n
-IGJsa21hc2sgPSBQQUdFX0NBQ0hFX01BU0s7DQo+ID4NCj4gPiAgCWRwcmludGsoIiVzIGVudGVy
-LCAlWnVAJWxsZFxuIiwgX19mdW5jX18sIGNvdW50LCBvZmZzZXQpOw0KPiA+ICsJQlVHX09OKGhl
-YWRlci0+ZHJlcSAmJiBoZWFkZXItPmxheW91dF9wcml2YXRlID09IE5VTEwpOw0KPiA+ICsNCj4g
-PiAgCS8qIENoZWNrIGZvciBhbGlnbm1lbnQgZmlyc3QgKi8NCj4gPiAgCWlmIChoZWFkZXItPmRy
-ZXEpDQo+ID4gIAkJYmxrbWFzayA9IE5GU19TRVJWRVIoaGVhZGVyLT5pbm9kZSktPnBuZnNfYmxr
-c2l6ZSAtIDE7DQo+ID4gQEAgLTc0MCw4ICs3NTEsMTYgQEAgb3V0Og0KPiA+ICAJYmxfcHV0X2V4
-dGVudChiZSk7DQo+ID4gIAlibF9zdWJtaXRfYmlvKFdSSVRFLCBiaW8pOw0KPiA+ICAJcHV0X3Bh
-cmFsbGVsKHBhcik7DQo+ID4gKwlpZiAoaGVhZGVyLT5kcmVxICYmICFoZWFkZXItPm1vcmVpbykg
-ew0KPiA+ICsJCWJsa19maW5pc2hfcGx1Zygoc3RydWN0IGJsa19wbHVnICopaGVhZGVyLT5sYXlv
-dXRfcHJpdmF0ZSk7DQo+ID4gKwkJa2ZyZWUoaGVhZGVyLT5sYXlvdXRfcHJpdmF0ZSk7DQo+ID4g
-Kwl9DQo+ID4gIAlyZXR1cm4gUE5GU19BVFRFTVBURUQ7DQo+ID4gIG91dF9tZHM6DQo+ID4gKwlp
-ZiAoaGVhZGVyLT5kcmVxKSB7DQo+ID4gKwkJYmxrX2ZpbmlzaF9wbHVnKChzdHJ1Y3QgYmxrX3Bs
-dWcgKiloZWFkZXItPmxheW91dF9wcml2YXRlKTsNCj4gPiArCQlrZnJlZShoZWFkZXItPmxheW91
-dF9wcml2YXRlKTsNCj4gPiArCX0NCj4gPiAgCWJsX3B1dF9leHRlbnQoYmUpOw0KPiA+ICAJa2Zy
-ZWUocGFyKTsNCj4gPiAgCXJldHVybiBQTkZTX05PVF9BVFRFTVBURUQ7DQo+ID4gQEAgLTEwMTcs
-MTUgKzEwMzYsMzAgQEAgYmxfY2xlYXJfbGF5b3V0ZHJpdmVyKHN0cnVjdCBuZnNfc2VydmVyICpz
-ZXJ2ZXIpDQo+ID4gIHN0YXRpYyB2b2lkDQo+ID4gIGJsX3BnX2luaXRfcmVhZChzdHJ1Y3QgbmZz
-X3BhZ2Vpb19kZXNjcmlwdG9yICpwZ2lvLCBzdHJ1Y3QgbmZzX3BhZ2UgKnJlcSkNCj4gPiAgew0K
-PiA+ICsJQlVHX09OKHBnaW8tPnBnX2xheW91dF9wcml2YXRlICE9IE5VTEwpOw0KPiA+ICsNCj4g
-PiAgCWlmICghYmxfY2hlY2tfYWxpZ25tZW50KHJlcS0+d2Jfb2Zmc2V0LCByZXEtPndiX2J5dGVz
-LCBQQUdFX0NBQ0hFX01BU0spKQ0KPiA+ICAJCW5mc19wYWdlaW9fcmVzZXRfcmVhZF9tZHMocGdp
-byk7DQo+ID4gIAllbHNlDQo+ID4gIAkJcG5mc19nZW5lcmljX3BnX2luaXRfcmVhZChwZ2lvLCBy
-ZXEpOw0KPiA+ICsNCj4gPiArCWlmIChwZ2lvLT5wZ19kcmVxICYmIHBnaW8tPnBnX2xzZWcpIHsN
-Cj4gPiArCQlzdHJ1Y3QgYmxrX3BsdWcgKnBsdWc7DQo+ID4gKwkJLyogRnJlZWQgaW4gYmxfcmVh
-ZF9wYWdlbGlzdCAqLw0KPiA+ICsJCXBsdWcgPSBrbWFsbG9jKHNpemVvZihzdHJ1Y3QgYmxrX3Bs
-dWcpLCBHRlBfS0VSTkVMKTsNCj4gPiArCQlpZiAocGx1ZyAhPSBOVUxMKSB7DQo+ID4gKwkJCWJs
-a19zdGFydF9wbHVnKHBsdWcpOw0KPiA+ICsJCQlwZ2lvLT5wZ19sYXlvdXRfcHJpdmF0ZSA9IHBs
-dWc7DQo+ID4gKwkJfSBlbHNlDQo+ID4gKwkJCW5mc19wYWdlaW9fcmVzZXRfcmVhZF9tZHMocGdp
-byk7DQo+ID4gKwl9DQo+ID4gIH0NCj4gPg0KPiA+ICBzdGF0aWMgdm9pZA0KPiA+ICBibF9wZ19p
-bml0X3dyaXRlKHN0cnVjdCBuZnNfcGFnZWlvX2Rlc2NyaXB0b3IgKnBnaW8sIHN0cnVjdCBuZnNf
-cGFnZSAqcmVxKQ0KPiA+ICB7DQo+ID4gKwlCVUdfT04ocGdpby0+cGdfbGF5b3V0X3ByaXZhdGUg
-IT0gTlVMTCk7DQo+ID4gKw0KPiA+ICAJaWYgKHBnaW8tPnBnX2RyZXEpIHsNCj4gPiAgCQkvKiBE
-aXJlY3Qgd3JpdGUgc2hvdWxkIGJlIGJsa3NpemUgYWxpZ25lZCAqLw0KPiA+ICAJCXVuc2lnbmVk
-IGJsa21hc2sgPSBORlNfU0VSVkVSKHBnaW8tPnBnX2lub2RlKS0+cG5mc19ibGtzaXplIC0gMTsN
-Cj4gPiBAQCAtMTAzOCw2ICsxMDcyLDE3IEBAIGJsX3BnX2luaXRfd3JpdGUoc3RydWN0IG5mc19w
-YWdlaW9fZGVzY3JpcHRvciAqcGdpbywgc3RydWN0IG5mc19wYWdlICpyZXEpDQo+ID4gIAkJbmZz
-X3BhZ2Vpb19yZXNldF93cml0ZV9tZHMocGdpbyk7DQo+ID4gIAllbHNlDQo+ID4gIAkJcG5mc19n
-ZW5lcmljX3BnX2luaXRfd3JpdGUocGdpbywgcmVxKTsNCj4gPiArDQo+ID4gKwlpZiAocGdpby0+
-cGdfZHJlcSAmJiBwZ2lvLT5wZ19sc2VnKSB7DQo+ID4gKwkJc3RydWN0IGJsa19wbHVnICpwbHVn
-Ow0KPiA+ICsJCS8qIEZyZWVkIGluIGJsX3dyaXRlX3BhZ2VsaXN0ICovDQo+ID4gKwkJcGx1ZyA9
-IGttYWxsb2Moc2l6ZW9mKHN0cnVjdCBibGtfcGx1ZyksIEdGUF9OT0ZTKTsNCj4gPiArCQlpZiAo
-cGx1ZyAhPSBOVUxMKSB7DQo+ID4gKwkJCWJsa19zdGFydF9wbHVnKHBsdWcpOw0KPiA+ICsJCQlw
-Z2lvLT5wZ19sYXlvdXRfcHJpdmF0ZSA9IHBsdWc7DQo+ID4gKwkJfSBlbHNlDQo+ID4gKwkJCW5m
-c19wYWdlaW9fcmVzZXRfd3JpdGVfbWRzKHBnaW8pOw0KPiA+ICsJfQ0KPiA+ICB9DQo+ID4NCj4g
-PiAgc3RhdGljIGNvbnN0IHN0cnVjdCBuZnNfcGFnZWlvX29wcyBibF9wZ19yZWFkX29wcyA9IHsN
-Cj4gDQo+IC0tDQo+IFRyb25kIE15a2xlYnVzdA0KPiBMaW51eCBORlMgY2xpZW50IG1haW50YWlu
-ZXINCj4gDQo+IE5ldEFwcA0KPiBUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0KPiB3d3cubmV0
-YXBwLmNvbQ0KDQo=
+Orion Poplawski <orion@...> writes:
+> 
+> See https://bugzilla.redhat.com/show_bug.cgi?id=820707
+>
+> If the network is disconnected it is impossible to unmount, even if no
+> processes are accessing the mount.  umount -f and umount -l both hang on
+> readlink("/home/orion"). 
+
+umount needs to canonicalize the path so it does a readlink on the path given to
+it.  This hangs.  Here's the kernel trace.
+
+[94630.673017] umount.nfs      D 0000009c     0 14999  14882 0x00000080
+[94630.673017]  c30f5c38 00000086 00000001 0000009c ed110004 1b928142 0000560e
+00000000
+[94630.673017]  c0c4b180 ed37c000 c0c4b180 f5007180 f6b37110 c32ef110 c30f5c28
+f7fd6243
+[94630.673017]  c2f9c580 c30f5c20 f7fd9ff2 f82520c0 00000246 c30f5c0c c0927c33
+c30f5c30
+[94630.673017] Call Trace:
+[94630.673017]  [<f7fd6243>] ? xs_sendpages+0x63/0x1f0 [sunrpc]
+[94630.673017]  [<f7fd9ff2>] ? __rpc_sleep_on_priority+0x122/0x210 [sunrpc]
+[94630.673017]  [<c0927c33>] ? _raw_spin_unlock_bh+0x13/0x20
+[94630.673017]  [<c0927c33>] ? _raw_spin_unlock_bh+0x13/0x20
+[94630.673017]  [<c0926ed5>] schedule+0x35/0x50
+[94630.673017]  [<f7fd96fd>] rpc_wait_bit_killable+0x2d/0x70 [sunrpc]
+[94630.673017]  [<c09259a1>] __wait_on_bit+0x51/0x70
+[94630.673017]  [<f7fd96d0>] ? __rpc_wait_for_completion_task+0x30/0x30 [sunrpc]
+[94630.673017]  [<f7fd96d0>] ? __rpc_wait_for_completion_task+0x30/0x30 [sunrpc]
+[94630.673017]  [<c0925a21>] out_of_line_wait_on_bit+0x61/0x70
+[94630.673017]  [<c0455480>] ? autoremove_wake_function+0x50/0x50
+[94630.673017]  [<f7fda2e7>] __rpc_execute+0x187/0x2a0 [sunrpc]
+[94630.673017]  [<c0455423>] ? wake_up_bit+0x23/0x30
+[94630.673017]  [<f7fda548>] rpc_execute+0x38/0x40 [sunrpc]
+[94630.673017]  [<f7fd30a9>] rpc_run_task+0x59/0x70 [sunrpc]
+[94630.673017]  [<f7fd31bc>] rpc_call_sync+0x3c/0x60 [sunrpc]
+[94630.673017]  [<f84aff63>] _nfs4_call_sync+0x23/0x30 [nfs]
+[94630.673017]  [<f84afc3e>] _nfs4_proc_getattr+0x8e/0xa0 [nfs]
+[94630.673017]  [<f84b385b>] nfs4_proc_getattr+0x3b/0x60 [nfs]
+[94630.673017]  [<f849d311>] __nfs_revalidate_inode+0x81/0x210 [nfs]
+[94630.673017]  [<f849d5df>] nfs_revalidate_inode+0x2f/0x50 [nfs]
+[94630.673017]  [<f8496b3f>] nfs_check_verifier+0x4f/0x80 [nfs]
+[94630.673017]  [<f8498ca2>] nfs_lookup_revalidate+0x232/0x450 [nfs]
+[94630.673017]  [<c05ead5e>] ? autofs4_d_manage+0x8e/0xf0
+[94630.673017]  [<f8499811>] nfs_open_revalidate+0x41/0x220 [nfs]
+[94630.673017]  [<c053e79b>] ? follow_managed+0x19b/0x1f0
+[94630.673017]  [<c053ff00>] ? unlazy_walk+0xd0/0x180
+[94630.673017]  [<c0540153>] ? do_lookup+0x1a3/0x350
+[94630.673017]  [<c053f748>] complete_walk+0x88/0xc0
+[94630.673017]  [<c0540cc3>] path_lookupat+0x63/0x620
+[94630.673017]  [<c0523b89>] ? kmem_cache_alloc+0x29/0x120
+[94630.673017]  [<c065a998>] ? strncpy_from_user+0x38/0x70
+[94630.673017]  [<c05412aa>] do_path_lookup+0x2a/0xb0
+[94630.673017]  [<c0542466>] user_path_at_empty+0x46/0x80
+[94630.673017]  [<c092b557>] ? do_page_fault+0x1b7/0x450
+[94630.673017]  [<c050c074>] ? remove_vma+0x44/0x60
+[94630.673017]  [<c054e233>] ? mntput_no_expire+0x23/0x100
+[94630.673017]  [<c0539313>] sys_readlinkat+0x43/0xb0
+[94630.673017]  [<c05393ac>] sys_readlink+0x2c/0x30
+[94630.673017]  [<c0927ed4>] syscall_call+0x7/0xb
+
+This appears to wait forever.  This pretty much makes it impossible to use krb5
+nfs4 with laptops where the network can disappear.
+
