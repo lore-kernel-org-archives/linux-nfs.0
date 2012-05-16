@@ -1,63 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail1.trendhosting.net ([195.8.117.5]:34870 "EHLO
-	mail1.trendhosting.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753112Ab2EFDIH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 5 May 2012 23:08:07 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by mail1.trendhosting.net (Postfix) with ESMTP id C71D815828
-	for <linux-nfs@vger.kernel.org>; Sun,  6 May 2012 04:00:48 +0100 (BST)
-Received: from mail1.trendhosting.net ([127.0.0.1])
-	by localhost (thp003.trendhosting.net [127.0.0.1]) (amavisd-new, port 10024)
-	with LMTP id nsRC9OlJD9AN for <linux-nfs@vger.kernel.org>;
-	Sun,  6 May 2012 04:00:37 +0100 (BST)
-Message-ID: <4FA5E950.5080304@pocock.com.au>
-Date: Sun, 06 May 2012 03:00:32 +0000
-From: Daniel Pocock <daniel@pocock.com.au>
-MIME-Version: 1.0
+Received: from fieldses.org ([174.143.236.118]:44923 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933386Ab2EPMsn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 May 2012 08:48:43 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
 To: linux-nfs@vger.kernel.org
-Subject: extremely slow nfs when sync enabled
-Content-Type: text/plain; charset=ISO-8859-1
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 06/11] nfsd4: exchange_id cleanup: comments
+Date: Wed, 16 May 2012 08:48:34 -0400
+Message-Id: <1337172519-17335-7-git-send-email-bfields@redhat.com>
+In-Reply-To: <1337172519-17335-1-git-send-email-bfields@redhat.com>
+References: <1337172519-17335-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
+Make these comments a bit more concise and uniform.
 
-I've been observing some very slow nfs write performance when the server
-has `sync' in /etc/exports
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   36 ++++++++++--------------------------
+ 1 file changed, 10 insertions(+), 26 deletions(-)
 
-I want to avoid using async, but I have tested it and on my gigabit
-network, it gives almost the same speed as if I was on the server
-itself. (e.g. 30MB/sec to one disk, or less than 1MB/sec to the same
-disk over NFS with `sync')
-
-I'm using Debian 6 with 2.6.38 kernels on client and server, NFSv3
-
-I've also tried a client running Debian 7/Linux 3.2.0 with both NFSv3
-and NFSv4, speed is still slow
-
-Looking at iostat on the server, I notice that avgrq-sz = 8 sectors
-(4096 bytes) throughout the write operations
-
-I've tried various tests, e.g. dd a large file, or unpack a tarball with
-many small files, the iostat output is always the same
-
-Looking at /proc/mounts on the clients, everything looks good, large
-wsize, tcp:
-
-rw,relatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.x.x.x,mountvers=3,mountport=58727,mountproto=udp,local_lock=none,addr=192.x.x.x
-0 0
-
-and
- rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=192.x.x.x.,minorversion=0,local_lock=none,addr=192.x.x.x 0 0
-
-and in /proc/fs/nfs/exports on the server, I have sync and wdelay:
-
-/nfs4/daniel
-192.168.1.0/24,192.x.x.x(rw,insecure,root_squash,sync,wdelay,no_subtree_check,uuid=aa2a6f37:9cc94eeb:bcbf983c:d6e041d9,sec=1)
-/home/daniel
-192.168.1.0/24,192.x.x.x(rw,root_squash,sync,wdelay,no_subtree_check,uuid=aa2a6f37:9cc94eeb:bcbf983c:d6e041d9)
-
-Can anyone suggest anything else?  Or is this really the performance hit
-of `sync'?
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e7c4b04..1239ff4 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1513,6 +1513,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 
+ 	strhashval = clientstr_hashval(dname);
+ 
++	/* Cases below refer to rfc 5661 section 18.35.4: */
+ 	nfs4_lock_state();
+ 	conf = find_confirmed_client_by_str(dname, strhashval);
+ 	if (conf) {
+@@ -1520,26 +1521,24 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 		bool verfs_match = same_verf(&verf, &conf->cl_verifier);
+ 
+ 		if (!clp_used_exchangeid(conf)) {
+-			if (update) {
+-				status = nfserr_inval; /* buggy client */
++			if (update) { /* buggy client */
++				status = nfserr_inval;
+ 				goto out;
+ 			}
+ 		}
+-		if (!creds_match) {
+-			/* 18.35.4 case 9 */
++		if (!creds_match) { /* case 9 */
+ 			if (update)
+ 				status = nfserr_perm;
+ 			else /* case 3 */
+ 				status = nfserr_clid_inuse;
+ 			goto out;
+ 		}
+-		if (!verfs_match) {
+-			/* 18.35.4 case 8 */
++		if (!verfs_match) { /* case 8 */
+ 			if (update) {
+ 				status = nfserr_not_same;
+ 				goto out;
+ 			}
+-			/* Client reboot: destroy old state */
++			/* case 5, client reboot */
+ 			expire_client(conf);
+ 			goto out_new;
+ 		}
+@@ -1547,38 +1546,23 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 			status = nfserr_inval;
+ 			goto out;
+ 		}
+-		/*
+-		 * Set bit when the owner id and verifier map to an already
+-		 * confirmed client id (18.35.3).
+-		 */
++		/* case 2 */
+ 		exid->flags |= EXCHGID4_FLAG_CONFIRMED_R;
+-
+-		/*
+-		 * Falling into 18.35.4 case 2, possible router replay.
+-		 * Leave confirmed record intact and return same result.
+-		 */
+ 		new = conf;
+ 		goto out_copy;
+ 	}
+ 
+-	/* 18.35.4 case 7 */
+-	if (update) {
++	if (update) { /* case 7 */
+ 		status = nfserr_noent;
+ 		goto out;
+ 	}
+ 
+ 	unconf  = find_unconfirmed_client_by_str(dname, strhashval);
+-	if (unconf) {
+-		/*
+-		 * Possible retry or client restart.  Per 18.35.4 case 4,
+-		 * a new unconfirmed record should be generated regardless
+-		 * of whether any properties have changed.
+-		 */
++	if (unconf) /* case 4, possible retry or client restart */
+ 		expire_client(unconf);
+-	}
+ 
++	/* case 1 (normal case) */
+ out_new:
+-	/* Normal case */
+ 	new = create_client(exid->clname, dname, rqstp, &verf);
+ 	if (new == NULL) {
+ 		status = nfserr_jukebox;
+-- 
+1.7.9.5
 
