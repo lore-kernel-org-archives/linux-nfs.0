@@ -1,139 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:60449 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:19630 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761193Ab2EJTH6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 May 2012 15:07:58 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v4 08/14] NFS: Use nfs_fs_mount_common() for remote referral mounts
-Date: Thu, 10 May 2012 15:07:37 -0400
-Message-Id: <1336676863-9698-9-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1336676863-9698-1-git-send-email-bjschuma@netapp.com>
-References: <1336676863-9698-1-git-send-email-bjschuma@netapp.com>
+	id S1754330Ab2EPBcm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 May 2012 21:32:42 -0400
+Date: Tue, 15 May 2012 21:32:39 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] NFSD: SETCLIENTID_CONFIRM returns NFS4ERR_CLID_INUSE
+ too often
+Message-ID: <20120516013239.GA24133@pad.fieldses.org>
+References: <20120515213808.1518.81260.stgit@lebasque.1015granger.net>
+ <20120515214207.1518.78590.stgit@lebasque.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120515214207.1518.78590.stgit@lebasque.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Tue, May 15, 2012 at 05:42:08PM -0400, Chuck Lever wrote:
+> According to RFC 3530bis, the only items SETCLIENTID_CONFIRM
+> processing should be concerned with is the clientid, clientid
+> verifier, and authentication flavor.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/super.c |   89 +++++++++-----------------------------------------------
- 1 file changed, 13 insertions(+), 76 deletions(-)
+Nit: the spec says "principal", not "authentication flavor".
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index e93a6e9..1157189 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2920,95 +2920,32 @@ static struct dentry *
- nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
- 			   const char *dev_name, void *raw_data)
- {
--	struct nfs_clone_mount *data = raw_data;
--	struct super_block *s;
-+	struct nfs_mount_info mount_info = {
-+		.fill_super = nfs4_fill_super,
-+		.set_security = nfs_clone_sb_security,
-+		.cloned = raw_data,
-+	};
- 	struct nfs_server *server;
--	struct dentry *mntroot;
-+	struct dentry *mntroot = ERR_PTR(-ENOMEM);
- 	struct nfs_fh *mntfh;
--	int (*compare_super)(struct super_block *, void *) = nfs_compare_super;
--	struct nfs_sb_mountdata sb_mntdata = {
--		.mntflags = flags,
--	};
--	int error = -ENOMEM;
- 
- 	dprintk("--> nfs4_referral_get_sb()\n");
- 
- 	mntfh = nfs_alloc_fhandle();
--	if (mntfh == NULL)
--		goto out_err_nofh;
-+	if (mount_info.cloned == NULL || mntfh == NULL)
-+		goto out;
- 
- 	/* create a new volume representation */
--	server = nfs4_create_referral_server(data, mntfh);
-+	server = nfs4_create_referral_server(mount_info.cloned, mntfh);
- 	if (IS_ERR(server)) {
--		error = PTR_ERR(server);
--		goto out_err_noserver;
--	}
--	sb_mntdata.server = server;
--
--	if (server->flags & NFS_MOUNT_UNSHARED)
--		compare_super = NULL;
--
--	/* -o noac implies -o sync */
--	if (server->flags & NFS_MOUNT_NOAC)
--		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
--
--	/* Get a superblock - note that we may end up sharing one that already exists */
--	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
--	if (IS_ERR(s)) {
--		error = PTR_ERR(s);
--		goto out_err_nosb;
--	}
--
--	if (s->s_fs_info != server) {
--		nfs_free_server(server);
--		server = NULL;
--	} else {
--		error = nfs_bdi_register(server);
--		if (error)
--			goto error_splat_bdi;
--	}
--
--	if (!s->s_root) {
--		/* initial superblock/root creation */
--		nfs4_fill_super(s, NULL);
--		nfs_get_cache_cookie(s, NULL, data);
--	}
--
--	mntroot = nfs_get_root(s, mntfh, dev_name);
--	if (IS_ERR(mntroot)) {
--		error = PTR_ERR(mntroot);
--		goto error_splat_super;
--	}
--	if (mntroot->d_inode->i_op != NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops) {
--		dput(mntroot);
--		error = -ESTALE;
--		goto error_splat_super;
-+		mntroot = ERR_CAST(server);
-+		goto out;
- 	}
- 
--	s->s_flags |= MS_ACTIVE;
--
--	security_sb_clone_mnt_opts(data->sb, s);
--
-+	mntroot = nfs_fs_mount_common(&nfs4_fs_type, server, flags, dev_name, mntfh, &mount_info);
-+out:
- 	nfs_free_fhandle(mntfh);
--	dprintk("<-- nfs4_referral_get_sb() = 0\n");
- 	return mntroot;
--
--out_err_nosb:
--	nfs_free_server(server);
--out_err_noserver:
--	nfs_free_fhandle(mntfh);
--out_err_nofh:
--	dprintk("<-- nfs4_referral_get_sb() = %d [error]\n", error);
--	return ERR_PTR(error);
--
--error_splat_super:
--	if (server && !s->s_root)
--		bdi_unregister(&server->backing_dev_info);
--error_splat_bdi:
--	deactivate_locked_super(s);
--	nfs_free_fhandle(mntfh);
--	dprintk("<-- nfs4_referral_get_sb() = %d [splat]\n", error);
--	return ERR_PTR(error);
- }
- 
- /*
--- 
-1.7.10.1
+(I was looking at this yesterday because our current code only compares
+uid's, which is pretty meaningless--any client using a krb5 service
+principal, for example, will likely get mapped to the same uid--so I
+have patches that instead compare flavor, principal name (when we have
+it--our current userspace only passes it down for service principals)
+and groups and auxiliary groups as well as uid.  But not IP address...)
 
+Anyway, this patch looks reasonable, thanks.
+
+--b.
+
+> The client's IP address
+> is not supposed to be interesting.
+> 
+> And, NFS4ERR_CLID_INUSE is meant only for authentication flavor
+> mismatches.
+> 
+> I triggered this logic with a prototype UCS client -- one that
+> uses the same nfs_client_id4 string for all servers.  The client
+> mounted our server via its IPv4, then via its IPv6 address.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  fs/nfsd/nfs4state.c |   14 ++------------
+>  1 files changed, 2 insertions(+), 12 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 7f71c69..27e6401 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -2213,7 +2213,6 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+>  			 struct nfsd4_compound_state *cstate,
+>  			 struct nfsd4_setclientid_confirm *setclientid_confirm)
+>  {
+> -	struct sockaddr *sa = svc_addr(rqstp);
+>  	struct nfs4_client *conf, *unconf;
+>  	nfs4_verifier confirm = setclientid_confirm->sc_confirm; 
+>  	clientid_t * clid = &setclientid_confirm->sc_clientid;
+> @@ -2231,17 +2230,12 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+>  	conf = find_confirmed_client(clid);
+>  	unconf = find_unconfirmed_client(clid);
+>  
+> -	status = nfserr_clid_inuse;
+> -	if (conf && !rpc_cmp_addr((struct sockaddr *) &conf->cl_addr, sa))
+> -		goto out;
+> -	if (unconf && !rpc_cmp_addr((struct sockaddr *) &unconf->cl_addr, sa))
+> -		goto out;
+> -
+>  	/*
+>  	 * section 14.2.34 of RFC 3530 has a description of
+>  	 * SETCLIENTID_CONFIRM request processing consisting
+>  	 * of 4 bullet points, labeled as CASE1 - CASE4 below.
+>  	 */
+> +	status = nfserr_clid_inuse;
+>  	if (conf && unconf && same_verf(&confirm, &unconf->cl_confirm)) {
+>  		/*
+>  		 * RFC 3530 14.2.34 CASE 1:
+> @@ -2254,7 +2248,6 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+>  			nfsd4_probe_callback(conf);
+>  			expire_client(unconf);
+>  			status = nfs_ok;
+> -
+>  		}
+>  	} else if (conf && !unconf) {
+>  		/*
+> @@ -2296,11 +2289,8 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+>  		 * Client probably hasn't noticed that we rebooted yet.
+>  		 */
+>  		status = nfserr_stale_clientid;
+> -	} else {
+> -		/* check that we have hit one of the cases...*/
+> -		status = nfserr_clid_inuse;
+>  	}
+> -out:
+> +
+>  	nfs4_unlock_state();
+>  	return status;
+>  }
+> 
