@@ -1,51 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f46.google.com ([209.85.216.46]:41865 "EHLO
-	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759318Ab2EKNpl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 May 2012 09:45:41 -0400
-Received: by mail-qa0-f46.google.com with SMTP id b17so1246328qad.19
-        for <linux-nfs@vger.kernel.org>; Fri, 11 May 2012 06:45:41 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/4] nfsd: make test_share a bool return
-Date: Fri, 11 May 2012 09:45:12 -0400
-Message-Id: <1336743914-944-3-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1336743914-944-1-git-send-email-jlayton@redhat.com>
-References: <1336743914-944-1-git-send-email-jlayton@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:44921 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933378Ab2EPMsm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 May 2012 08:48:42 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 04/11] nfsd4: allow an EXCHANGE_ID to kill a 4.0 client
+Date: Wed, 16 May 2012 08:48:32 -0400
+Message-Id: <1337172519-17335-5-git-send-email-bfields@redhat.com>
+In-Reply-To: <1337172519-17335-1-git-send-email-bfields@redhat.com>
+References: <1337172519-17335-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-All of the callers treat the return that way already.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Following rfc 5661 section 2.4.1, we can permit a 4.1 client to remove
+an established 4.0 client's state.
+
+(But we don't allow updates.)
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4state.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
+ fs/nfsd/nfs4state.c |   10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 64aeaa0..bb9e00e 100644
+index 9d77181..76459a7 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -459,15 +459,15 @@ bmap_to_share_mode(unsigned long bmap) {
- 	return access;
- }
- 
--static int
-+static bool
- test_share(struct nfs4_ol_stateid *stp, struct nfsd4_open *open) {
- 	unsigned int access, deny;
- 
- 	access = bmap_to_share_mode(stp->st_access_bmap);
- 	deny = bmap_to_share_mode(stp->st_deny_bmap);
- 	if ((access & open->op_share_deny) || (deny & open->op_share_access))
--		return 0;
--	return 1;
-+		return false;
-+	return true;
- }
- 
- static int nfs4_access_to_omode(u32 access)
+@@ -1516,8 +1516,10 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 	conf = find_confirmed_client_by_str(dname, strhashval);
+ 	if (conf) {
+ 		if (!clp_used_exchangeid(conf)) {
+-			status = nfserr_clid_inuse; /* XXX: ? */
+-			goto out;
++			if (exid->flags & EXCHGID4_FLAG_UPD_CONFIRMED_REC_A) {
++				status = nfserr_inval; /* buggy client */
++				goto out;
++			}
+ 		}
+ 		if (!same_creds(&conf->cl_cred, &rqstp->rq_cred)) {
+ 			/* 18.35.4 case 9 */
+@@ -1537,6 +1539,10 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 			expire_client(conf);
+ 			goto out_new;
+ 		}
++		if (!clp_used_exchangeid(conf)) {
++			status = nfserr_inval;
++			goto out;
++		}
+ 		/*
+ 		 * Set bit when the owner id and verifier map to an already
+ 		 * confirmed client id (18.35.3).
 -- 
-1.7.7.6
+1.7.9.5
 
