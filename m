@@ -1,48 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:25203 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:60506 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758912Ab2EVOwz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 May 2012 10:52:55 -0400
-Subject: [PATCH v4] NFS: get client net after idr allocation
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Tue, 22 May 2012 18:52:56 +0400
-Message-ID: <20120522145154.20579.17666.stgit@localhost.localdomain>
-In-Reply-To: <1337697906.4269.10.camel@lade.trondhjem.org>
-References: <1337697906.4269.10.camel@lade.trondhjem.org>
-MIME-Version: 1.0
+	id S1753758Ab2EPRM4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 May 2012 13:12:56 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Peng Tao <bergwolf@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Peng Tao <tao.peng@emc.com>
+Subject: Re: [PATCH 1/2] NFS: call block plug around direct write
+Date: Wed, 16 May 2012 17:12:26 +0000
+Message-ID: <1337188374.3008.2.camel@lade.trondhjem.org>
+References: <1337096303-2516-1-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1337096303-2516-1-git-send-email-bergwolf@gmail.com>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allocation can fail. So instead of put net in case of failure, get net after
-allocation.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfs/client.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index b59419a..b694971 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -172,7 +172,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
- 	clp->cl_rpcclient = ERR_PTR(-EINVAL);
- 
- 	clp->cl_proto = cl_init->proto;
--	clp->net = get_net(cl_init->net);
-+	clp->net = cl_init->net;
- 
- #ifdef CONFIG_NFS_V4
- 	err = nfs_get_cb_ident_idr(clp, cl_init->minorversion);
-@@ -187,6 +187,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
- 	clp->cl_minorversion = cl_init->minorversion;
- 	clp->cl_mvops = nfs_v4_minor_ops[cl_init->minorversion];
- #endif
-+	get_net(clp->net);
- 	cred = rpc_lookup_machine_cred("*");
- 	if (!IS_ERR(cred))
- 		clp->cl_machine_cred = cred;
-
+T24gVHVlLCAyMDEyLTA1LTE1IGF0IDIzOjM4ICswODAwLCBQZW5nIFRhbyB3cm90ZToNCj4gV2Ug
+YnlwYXNzIGdlbmVyaWNfZmlsZV9haW9fd3JpdGUoKSBidXQgd291bGQgd2FudCB0byBjYWxsIGJs
+b2NrIHBsdWcuDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBQZW5nIFRhbyA8dGFvLnBlbmdAZW1jLmNv
+bT4NCj4gLS0tDQo+ICBmcy9uZnMvZGlyZWN0LmMgfCAgICA0ICsrKysNCj4gIDEgZmlsZXMgY2hh
+bmdlZCwgNCBpbnNlcnRpb25zKCspLCAwIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBh
+L2ZzL25mcy9kaXJlY3QuYyBiL2ZzL25mcy9kaXJlY3QuYw0KPiBpbmRleCBhMWI4MWRkLi5hNDg1
+NTYwIDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvZGlyZWN0LmMNCj4gKysrIGIvZnMvbmZzL2RpcmVj
+dC5jDQo+IEBAIC00Niw2ICs0Niw3IEBADQo+ICAjaW5jbHVkZSA8bGludXgva3JlZi5oPg0KPiAg
+I2luY2x1ZGUgPGxpbnV4L3NsYWIuaD4NCj4gICNpbmNsdWRlIDxsaW51eC90YXNrX2lvX2FjY291
+bnRpbmdfb3BzLmg+DQo+ICsjaW5jbHVkZSA8bGludXgvYmxrZGV2Lmg+DQo+ICANCj4gICNpbmNs
+dWRlIDxsaW51eC9uZnNfZnMuaD4NCj4gICNpbmNsdWRlIDxsaW51eC9uZnNfcGFnZS5oPg0KPiBA
+QCAtOTIyLDYgKzkyMyw3IEBAIHNzaXplX3QgbmZzX2ZpbGVfZGlyZWN0X3dyaXRlKHN0cnVjdCBr
+aW9jYiAqaW9jYiwgY29uc3Qgc3RydWN0IGlvdmVjICppb3YsDQo+ICAJc3RydWN0IGZpbGUgKmZp
+bGUgPSBpb2NiLT5raV9maWxwOw0KPiAgCXN0cnVjdCBhZGRyZXNzX3NwYWNlICptYXBwaW5nID0g
+ZmlsZS0+Zl9tYXBwaW5nOw0KPiAgCXNpemVfdCBjb3VudDsNCj4gKwlzdHJ1Y3QgYmxrX3BsdWcg
+cGx1ZzsNCj4gIA0KPiAgCWNvdW50ID0gaW92X2xlbmd0aChpb3YsIG5yX3NlZ3MpOw0KPiAgCW5m
+c19hZGRfc3RhdHMobWFwcGluZy0+aG9zdCwgTkZTSU9TX0RJUkVDVFdSSVRURU5CWVRFUywgY291
+bnQpOw0KPiBAQCAtOTQ4LDcgKzk1MCw5IEBAIHNzaXplX3QgbmZzX2ZpbGVfZGlyZWN0X3dyaXRl
+KHN0cnVjdCBraW9jYiAqaW9jYiwgY29uc3Qgc3RydWN0IGlvdmVjICppb3YsDQo+ICANCj4gIAl0
+YXNrX2lvX2FjY291bnRfd3JpdGUoY291bnQpOw0KPiAgDQo+ICsJYmxrX3N0YXJ0X3BsdWcoJnBs
+dWcpOw0KPiAgCXJldHZhbCA9IG5mc19kaXJlY3Rfd3JpdGUoaW9jYiwgaW92LCBucl9zZWdzLCBw
+b3MsIGNvdW50KTsNCj4gKwlibGtfZmluaXNoX3BsdWcoJnBsdWcpOw0KPiAgCWlmIChyZXR2YWwg
+PiAwKSB7DQo+ICAJCXN0cnVjdCBpbm9kZSAqaW5vZGUgPSBtYXBwaW5nLT5ob3N0Ow0KPiAgDQoN
+CmJpZyBOQUNLLi4uIFRoaXMgZG9lcyBub3QgYmVsb25nIGluIGdlbmVyaWMgTkZTIGNvZGU6IGl0
+IGlzIDEwMCUgYmxvY2sNCnNwZWNpZmljLCBhbmQgbmVlZHMgdG8gZ28gaW4gdGhlIHBORlMgYmxv
+Y2tzIGNvZGUuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50
+YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5j
+b20NCg0K
