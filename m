@@ -1,98 +1,169 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40028 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:33627 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964807Ab2EaUOI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 31 May 2012 16:14:08 -0400
-Date: Thu, 31 May 2012 16:14:02 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jan Kara <jack@suse.cz>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH 6/6 (v2)] vfs: rename I_MUTEX_QUOTA now that it's not used
- for quotas
-Message-ID: <20120531201402.GF25955@fieldses.org>
-References: <1338429016-20119-1-git-send-email-bfields@redhat.com>
- <1338429016-20119-3-git-send-email-bfields@redhat.com>
- <20120531185111.GA13647@quack.suse.cz>
- <20120531185439.GB13647@quack.suse.cz>
- <20120531201150.GE25955@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120531201150.GE25955@fieldses.org>
+	id S1762136Ab2EQOvj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 May 2012 10:51:39 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 09/12] nfs: disable data cache revalidation for swapfiles
+Date: Thu, 17 May 2012 15:51:22 +0100
+Message-Id: <1337266285-8102-10-git-send-email-mgorman@suse.de>
+In-Reply-To: <1337266285-8102-1-git-send-email-mgorman@suse.de>
+References: <1337266285-8102-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+The VM does not like PG_private set on PG_swapcache pages. As suggested
+by Trond in http://lkml.org/lkml/2006/8/25/348, this patch disables
+NFS data cache revalidation on swap files.  as it does not make
+sense to have other clients change the file while it is being used as
+swap. This avoids setting PG_private on swap pages, since there ought
+to be no further races with invalidate_inode_pages2() to deal with.
 
-I_MUTEX_QUOTA is now just being used whenever we want to lock two
-non-directories.  So the name isn't right.  I_MUTEX_NONDIR2 isn't
-especially elegant but it's the best I could think of.
+Since we cannot set PG_private we cannot use page->private which
+is already used by PG_swapcache pages to store the nfs_page. Thus
+augment the new nfs_page_find_request logic.
 
-Also fix some outdated documentation.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
 ---
- fs/inode.c         |    4 ++--
- include/linux/fs.h |    9 ++++++---
- 2 files changed, 8 insertions(+), 5 deletions(-)
+ fs/nfs/inode.c |    6 ++++++
+ fs/nfs/write.c |   49 +++++++++++++++++++++++++++++++++++--------------
+ 2 files changed, 41 insertions(+), 14 deletions(-)
 
-On Thu, May 31, 2012 at 04:11:50PM -0400, bfields wrote:
-> On Thu, May 31, 2012 at 08:54:39PM +0200, Jan Kara wrote:
-> >   Oh, now I've noticed patch 6/6. Maybe this patch and 6/6 should be just
-> > joined into one?
-> 
-> Sure.--b.
-
-So, we'd omit patch 2 and replace the previous patch 6 by this.  The
-other patches are unchanged.
-
-diff --git a/fs/inode.c b/fs/inode.c
-index 0272ac3..9c828ab 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -979,11 +979,11 @@ void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
- 		mutex_lock(&inode1->i_mutex);
- 	else if (inode1 < inode2) {
- 		mutex_lock(&inode1->i_mutex);
--		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_QUOTA);
-+		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_NONDIR2);
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index e8bbfa5..af43ef6 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -880,6 +880,12 @@ int nfs_revalidate_mapping(struct inode *inode, struct address_space *mapping)
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+ 	int ret = 0;
  
- 	} else {
- 		mutex_lock(&inode2->i_mutex);
--		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_QUOTA);
-+		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_NONDIR2);
- 	}
++	/*
++	 * swapfiles are not supposed to be shared.
++	 */
++	if (IS_SWAPFILE(inode))
++		goto out;
++
+ 	if ((nfsi->cache_validity & NFS_INO_REVAL_PAGECACHE)
+ 			|| nfs_attribute_cache_expired(inode)
+ 			|| NFS_STALE(inode)) {
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 8223b2c..21cfe71 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -111,15 +111,28 @@ static void nfs_context_set_write_error(struct nfs_open_context *ctx, int error)
+ 	set_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
  }
- EXPORT_SYMBOL(lock_two_nondirectories);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 09434db..f0b5a5d 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -861,10 +861,13 @@ static inline int inode_unhashed(struct inode *inode)
-  * 0: the object of the current VFS operation
-  * 1: parent
-  * 2: child/target
-- * 3: quota file
-+ * 3: xattr
-+ * 4: second non-directory
-+ * The last is for certain operations (such as rename) which lock two
-+ * non-directories at once.
-  *
-  * The locking order between these classes is
-- * parent -> child -> normal -> xattr -> quota
-+ * parent -> child -> normal -> xattr -> second non-directory
-  */
- enum inode_i_mutex_lock_class
- {
-@@ -872,7 +875,7 @@ enum inode_i_mutex_lock_class
- 	I_MUTEX_PARENT,
- 	I_MUTEX_CHILD,
- 	I_MUTEX_XATTR,
--	I_MUTEX_QUOTA
-+	I_MUTEX_NONDIR2
- };
  
- void lock_two_nondirectories(struct inode *, struct inode*);
+-static struct nfs_page *nfs_page_find_request_locked(struct page *page)
++static struct nfs_page *
++nfs_page_find_request_locked(struct nfs_inode *nfsi, struct page *page)
+ {
+ 	struct nfs_page *req = NULL;
+ 
+-	if (PagePrivate(page)) {
++	if (PagePrivate(page))
+ 		req = (struct nfs_page *)page_private(page);
+-		if (req != NULL)
+-			kref_get(&req->wb_kref);
++	else if (unlikely(PageSwapCache(page))) {
++		struct nfs_page *freq, *t;
++
++		/* Linearly search the commit list for the correct req */
++		list_for_each_entry_safe(freq, t, &nfsi->commit_list, wb_list) {
++			if (freq->wb_page == page) {
++				req = freq;
++				break;
++			}
++		}
+ 	}
++
++	if (req)
++		kref_get(&req->wb_kref);
++
+ 	return req;
+ }
+ 
+@@ -129,7 +142,7 @@ static struct nfs_page *nfs_page_find_request(struct page *page)
+ 	struct nfs_page *req = NULL;
+ 
+ 	spin_lock(&inode->i_lock);
+-	req = nfs_page_find_request_locked(page);
++	req = nfs_page_find_request_locked(NFS_I(inode), page);
+ 	spin_unlock(&inode->i_lock);
+ 	return req;
+ }
+@@ -232,7 +245,7 @@ static struct nfs_page *nfs_find_and_lock_request(struct page *page, bool nonblo
+ 
+ 	spin_lock(&inode->i_lock);
+ 	for (;;) {
+-		req = nfs_page_find_request_locked(page);
++		req = nfs_page_find_request_locked(NFS_I(inode), page);
+ 		if (req == NULL)
+ 			break;
+ 		if (nfs_lock_request_dontget(req))
+@@ -385,9 +398,15 @@ static void nfs_inode_add_request(struct inode *inode, struct nfs_page *req)
+ 	spin_lock(&inode->i_lock);
+ 	if (!nfsi->npages && nfs_have_delegation(inode, FMODE_WRITE))
+ 		inode->i_version++;
+-	set_bit(PG_MAPPED, &req->wb_flags);
+-	SetPagePrivate(req->wb_page);
+-	set_page_private(req->wb_page, (unsigned long)req);
++	/*
++	 * Swap-space should not get truncated. Hence no need to plug the race
++	 * with invalidate/truncate.
++	 */
++	if (likely(!PageSwapCache(req->wb_page))) {
++		set_bit(PG_MAPPED, &req->wb_flags);
++		SetPagePrivate(req->wb_page);
++		set_page_private(req->wb_page, (unsigned long)req);
++	}
+ 	nfsi->npages++;
+ 	kref_get(&req->wb_kref);
+ 	spin_unlock(&inode->i_lock);
+@@ -404,9 +423,11 @@ static void nfs_inode_remove_request(struct nfs_page *req)
+ 	BUG_ON (!NFS_WBACK_BUSY(req));
+ 
+ 	spin_lock(&inode->i_lock);
+-	set_page_private(req->wb_page, 0);
+-	ClearPagePrivate(req->wb_page);
+-	clear_bit(PG_MAPPED, &req->wb_flags);
++	if (likely(!PageSwapCache(req->wb_page))) {
++		set_page_private(req->wb_page, 0);
++		ClearPagePrivate(req->wb_page);
++		clear_bit(PG_MAPPED, &req->wb_flags);
++	}
+ 	nfsi->npages--;
+ 	spin_unlock(&inode->i_lock);
+ 	nfs_release_request(req);
+@@ -646,7 +667,7 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
+ 	spin_lock(&inode->i_lock);
+ 
+ 	for (;;) {
+-		req = nfs_page_find_request_locked(page);
++		req = nfs_page_find_request_locked(NFS_I(inode), page);
+ 		if (req == NULL)
+ 			goto out_unlock;
+ 
+@@ -1691,7 +1712,7 @@ int nfs_wb_page_cancel(struct inode *inode, struct page *page)
+  */
+ int nfs_wb_page(struct inode *inode, struct page *page)
+ {
+-	loff_t range_start = page_offset(page);
++	loff_t range_start = page_file_offset(page);
+ 	loff_t range_end = range_start + (loff_t)(PAGE_CACHE_SIZE - 1);
+ 	struct writeback_control wbc = {
+ 		.sync_mode = WB_SYNC_ALL,
 -- 
-1.7.9.5
+1.7.9.2
 
