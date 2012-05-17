@@ -1,95 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:35662 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755708Ab2ENLaJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 May 2012 07:30:09 -0400
-Received: by bkcji2 with SMTP id ji2so3693212bkc.19
-        for <linux-nfs@vger.kernel.org>; Mon, 14 May 2012 04:30:08 -0700 (PDT)
-Message-ID: <4FB0ECBE.2060503@tonian.com>
-Date: Mon, 14 May 2012 14:30:06 +0300
-From: Lior <lior@tonian.com>
-MIME-Version: 1.0
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: tigran.mkrtchyan@desy.de, "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: nfs v4.1 client without pNFS
-References: <4FAF9E19.4060802@tonian.com> <CAGue13rFG30EzmQX7sfYA_ouPBxaUu1Xs8sb1ee4fBMtaufKpA@mail.gmail.com> <4FAFBD04.8020301@tonian.com> <4FB0CF8C.8090405@panasas.com>
-In-Reply-To: <4FB0CF8C.8090405@panasas.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from cantor2.suse.de ([195.135.220.15]:33530 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1762035Ab2EQOv2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 May 2012 10:51:28 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 00/12] Swap-over-NFS without deadlocking V5
+Date: Thu, 17 May 2012 15:51:13 +0100
+Message-Id: <1337266285-8102-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-בתאריך 14/05/2012 12:25, ציטוט Boaz Harrosh:
-> On 05/13/2012 04:54 PM, Lior wrote:
->
->> Hi Tigran,
->>
->> I guess that's one way ( a dark white box way, which still needs to be
->> looked into)... but I was more thinking of a more high level built in
->> user method  (e.g module option ,or mount option)
->>
->
-> We used to have it but it was removed, being pointless. 4.1 means pNFS.
->
-> The optional clause in the STD means client need no implement it but since
-> we slaved so hard to do implement it we see no point ever disabling it.
->
-> As an administrator policy it is best controlled in a single place at the
-> Server. Instead of having a crap option set at every client. What does that
-> give you?
->
-> If the admin wants to let you have a choice, for what ever reason that I
-> can't currently imagine, He can setup two exports of the same FS one
-> with the pnfs option, one without.
-I don't think you can export the same FS ( same path ) twice in 2 
-different ways...
-In any case, I understand the explanation above concerning the design. 
-just tried to check if this line of thinking (4.1 without pNFS) is 
-needed and/or /wanted.
+Changelog since V4
+  o Catch if SOCK_MEMALLOC flag is cleared with rmem tokens	(davem)
 
-Thanks,
+Changelog since V3
+  o Rebase to 3.4-rc5
+  o kmap pages for writing to swap				(akpm)
+  o Move forward declaration to reduce chance of duplication	(akpm)
 
-Lior K.
-> The point of the all pNFS support is that everything is automatic, Server
-> upgraded/extended/scaled boom transparently works.
->
-> NACK on any user visible disables. It's a maintenance disaster. If you
-> do find any real bugs with the pNFS option left on, please report ASAP
-> and we'll fix it
->
-> Cheers
-> Boaz
->
->> Thanks for the fast response,
->> Lior K.
->>
->> בתאריך 13/05/2012 16:37, ציטוט Tigran Mkrtchyan:
->>> Hi Lior,
->>>
->>> you can blacklist the layout driver in /etc/modprobe.d/nfsv41.conf
->>>
->>> blacklist nfs_layout_nfsv41_files
->>>
->>>
->>> Tigran.
->>> On Sun, May 13, 2012 at 1:42 PM, Lior<lior@tonian.com>   wrote:
->>>> Hi Trond,
->>>>
->>>> The rfc 5661 states that pNFS is an optional feature.
->>>> Is there currently an intent to implement some sort of an option (module
->>>> option ,or mount option) to run the NFSv4.1 client without pNFS
->>>> functionality?
->>>>
->>>> Thanks,
->>>>    Lior K.
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
+Changelog since V2
+  o Nothing significant, just rebases. A radix tree lookup is replaced with
+    a linear search would be the biggest rebase artifact
+
+This patch series is based on top of "Swap-over-NBD without deadlocking v11"
+as it depends on the same reservation of PF_MEMALLOC reserves logic.
+
+When a user or administrator requires swap for their application, they
+create a swap partition and file, format it with mkswap and activate it with
+swapon. In diskless systems this is not an option so if swap if required
+then swapping over the network is considered.  The two likely scenarios
+are when blade servers are used as part of a cluster where the form factor
+or maintenance costs do not allow the use of disks and thin clients.
+
+The Linux Terminal Server Project recommends the use of the Network
+Block Device (NBD) for swap but this is not always an option.  There is
+no guarantee that the network attached storage (NAS) device is running
+Linux or supports NBD. However, it is likely that it supports NFS so there
+are users that want support for swapping over NFS despite any performance
+concern. Some distributions currently carry patches that support swapping
+over NFS but it would be preferable to support it in the mainline kernel.
+
+Patch 1 avoids a stream-specific deadlock that potentially affects TCP.
+
+Patch 2 is a small modification to SELinux to avoid using PFMEMALLOC
+	reserves.
+
+Patch 3 adds three helpers for filesystems to handle swap cache pages.
+	For example, page_file_mapping() returns page->mapping for
+	file-backed pages and the address_space of the underlying
+	swap file for swap cache pages.
+
+Patch 4 adds two address_space_operations to allow a filesystem
+	to pin all metadata relevant to a swapfile in memory. Upon
+	successful activation, the swapfile is marked SWP_FILE and
+	the address space operation ->direct_IO is used for writing
+	and ->readpage for reading in swap pages.
+
+Patch 5 notes that patch 3 is bolting
+	filesystem-specific-swapfile-support onto the side and that
+	the default handlers have different information to what
+	is available to the filesystem. This patch refactors the
+	code so that there are generic handlers for each of the new
+	address_space operations.
+
+Patch 6 adds an API to allow a vector of kernel addresses to be
+	translated to struct pages and pinned for IO.
+
+Patch 7 adds support for using highmem pages for swap by kmapping
+	the pages before calling the direct_IO handler.
+
+Patch 8 updates NFS to use the helpers from patch 3 where necessary.
+
+Patch 9 avoids setting PF_private on PG_swapcache pages within NFS.
+
+Patch 10 implements the new swapfile-related address_space operations
+	for NFS and teaches the direct IO handler how to manage
+	kernel addresses.
+
+Patch 11 prevents page allocator recursions in NFS by using GFP_NOIO
+	where appropriate.
+
+Patch 12 fixes a NULL pointer dereference that occurs when using
+	swap-over-NFS.
+
+With the patches applied, it is possible to mount a swapfile that is on an
+NFS filesystem. Swap performance is not great with a swap stress test taking
+roughly twice as long to complete than if the swap device was backed by NBD.
+
+ Documentation/filesystems/Locking |   13 ++++
+ Documentation/filesystems/vfs.txt |   12 +++
+ fs/nfs/Kconfig                    |    8 ++
+ fs/nfs/direct.c                   |   94 ++++++++++++++++--------
+ fs/nfs/file.c                     |   28 +++++--
+ fs/nfs/inode.c                    |    6 ++
+ fs/nfs/internal.h                 |    7 +-
+ fs/nfs/pagelist.c                 |    6 +-
+ fs/nfs/read.c                     |    6 +-
+ fs/nfs/write.c                    |   96 +++++++++++++++---------
+ include/linux/blk_types.h         |    2 +
+ include/linux/fs.h                |    8 ++
+ include/linux/highmem.h           |    7 ++
+ include/linux/mm.h                |   29 ++++++++
+ include/linux/nfs_fs.h            |    4 +-
+ include/linux/pagemap.h           |    5 ++
+ include/linux/sunrpc/xprt.h       |    3 +
+ include/linux/swap.h              |    8 ++
+ include/net/sock.h                |    7 +-
+ mm/highmem.c                      |   12 +++
+ mm/memory.c                       |   52 +++++++++++++
+ mm/page_io.c                      |  145 +++++++++++++++++++++++++++++++++++++
+ mm/swap_state.c                   |    2 +-
+ mm/swapfile.c                     |  141 ++++++++++++++----------------------
+ net/caif/caif_socket.c            |    2 +-
+ net/core/sock.c                   |   14 +++-
+ net/ipv4/tcp_input.c              |   12 +--
+ net/sctp/ulpevent.c               |    2 +-
+ net/sunrpc/Kconfig                |    5 ++
+ net/sunrpc/clnt.c                 |    2 +
+ net/sunrpc/sched.c                |    7 +-
+ net/sunrpc/xprtsock.c             |   53 ++++++++++++++
+ security/selinux/avc.c            |    2 +-
+ 33 files changed, 613 insertions(+), 187 deletions(-)
+
+-- 
+1.7.9.2
 
