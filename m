@@ -1,159 +1,354 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:35746 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:33575 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753941Ab2EGSL4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 May 2012 14:11:56 -0400
-Received: from vmwexceht05-prd.hq.netapp.com (vmwexceht05-prd.hq.netapp.com [10.106.77.35])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q47IBiPv019795
-	for <linux-nfs@vger.kernel.org>; Mon, 7 May 2012 11:11:44 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 5/7] NFS: Create a common xdev_mount() function
-Date: Mon, 7 May 2012 18:11:43 +0000
-Message-ID: <1336414303.9499.6.camel@lade.trondhjem.org>
-References: <1335811229-2989-1-git-send-email-bjschuma@netapp.com>
-	 <1335811229-2989-6-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1335811229-2989-6-git-send-email-bjschuma@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1762108Ab2EQOvd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 May 2012 10:51:33 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 04/12] mm: Add support for a filesystem to activate swap files and use direct_IO for writing swap pages
+Date: Thu, 17 May 2012 15:51:17 +0100
+Message-Id: <1337266285-8102-5-git-send-email-mgorman@suse.de>
+In-Reply-To: <1337266285-8102-1-git-send-email-mgorman@suse.de>
+References: <1337266285-8102-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA0LTMwIGF0IDE0OjQwIC0wNDAwLCBianNjaHVtYUBuZXRhcHAuY29tIHdy
-b3RlOg0KPiBGcm9tOiBCcnlhbiBTY2h1bWFrZXIgPGJqc2NodW1hQG5ldGFwcC5jb20+DQo+IA0K
-PiBUaGUgb25seSBkaWZmZXJlbmNlIGJldHdlZW4gbmZzX3hkZXZfbW91bnQoKSBhbmQgbmZzNF94
-ZGV2X21vdW50KCkgaXMgdGhlDQo+IHVuc2hhcmVkIGZsYWcsIHNvIEkgcGFzcyB0aGlzIGFzIGFu
-IG5mc19tb3VudF9pbmZvIHBhcmFtZXRlciBzbyB3ZSBjYW4NCj4gc2hhcmUgbW9yZSBjb2RlLg0K
-PiANCj4gU2lnbmVkLW9mZi1ieTogQnJ5YW4gU2NodW1ha2VyIDxianNjaHVtYUBuZXRhcHAuY29t
-Pg0KPiAtLS0NCj4gIGZzL25mcy9zdXBlci5jIHwgIDEyNiArKysrKysrKysrKysrKysrLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KPiAgMSBmaWxlIGNoYW5nZWQsIDM1
-IGluc2VydGlvbnMoKyksIDkxIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25m
-cy9zdXBlci5jIGIvZnMvbmZzL3N1cGVyLmMNCj4gaW5kZXggYjllZTc5OC4uZWVmYjNlZCAxMDA2
-NDQNCj4gLS0tIGEvZnMvbmZzL3N1cGVyLmMNCj4gKysrIGIvZnMvbmZzL3N1cGVyLmMNCj4gQEAg
-LTIxMjYsNiArMjEyNiw3IEBAIHN0YXRpYyBpbmxpbmUgdm9pZCBuZnNfaW5pdGlhbGlzZV9zYihz
-dHJ1Y3Qgc3VwZXJfYmxvY2sgKnNiKQ0KPiAgc3RydWN0IG5mc19tb3VudF9pbmZvIHsNCj4gIAl2
-b2lkICgqZmlsbF9zdXBlcikoc3RydWN0IHN1cGVyX2Jsb2NrICosIHN0cnVjdCBuZnNfbW91bnRf
-aW5mbyAqKTsNCj4gIAlzdHJ1Y3QgbmZzX3BhcnNlZF9tb3VudF9kYXRhICpwYXJzZWQ7DQo+ICsJ
-c3RydWN0IG5mc19jbG9uZV9tb3VudCAqY2xvbmVkOw0KPiAgCXVuc2lnbmVkIGludCB1bnNoYXJl
-ZDsNCj4gIH07DQo+ICANCj4gQEAgLTIxNTksOCArMjE2MCw5IEBAIHN0YXRpYyB2b2lkIG5mc19m
-aWxsX3N1cGVyKHN0cnVjdCBzdXBlcl9ibG9jayAqc2IsDQo+ICAgKiBGaW5pc2ggc2V0dGluZyB1
-cCBhIGNsb25lZCBORlMyLzMgc3VwZXJibG9jaw0KPiAgICovDQo+ICBzdGF0aWMgdm9pZCBuZnNf
-Y2xvbmVfc3VwZXIoc3RydWN0IHN1cGVyX2Jsb2NrICpzYiwNCj4gLQkJCSAgICBjb25zdCBzdHJ1
-Y3Qgc3VwZXJfYmxvY2sgKm9sZF9zYikNCj4gKwkJCSAgICBzdHJ1Y3QgbmZzX21vdW50X2luZm8g
-Km1vdW50X2luZm8pDQo+ICB7DQo+ICsJY29uc3Qgc3RydWN0IHN1cGVyX2Jsb2NrICpvbGRfc2Ig
-PSBtb3VudF9pbmZvLT5jbG9uZWQtPnNiOw0KPiAgCXN0cnVjdCBuZnNfc2VydmVyICpzZXJ2ZXIg
-PSBORlNfU0Ioc2IpOw0KPiAgDQo+ICAJc2ItPnNfYmxvY2tzaXplX2JpdHMgPSBvbGRfc2ItPnNf
-YmxvY2tzaXplX2JpdHM7DQo+IEBAIC0yNDM5LDEzICsyNDQxLDEzIEBAIHN0YXRpYyB2b2lkIG5m
-c19raWxsX3N1cGVyKHN0cnVjdCBzdXBlcl9ibG9jayAqcykNCj4gIH0NCj4gIA0KPiAgLyoNCj4g
-LSAqIENsb25lIGFuIE5GUzIvMyBzZXJ2ZXIgcmVjb3JkIG9uIHhkZXYgdHJhdmVyc2FsIChGU0lE
-LWNoYW5nZSkNCj4gKyAqIENsb25lIGFuIE5GUzIvMy80IHNlcnZlciByZWNvcmQgb24geGRldiB0
-cmF2ZXJzYWwgKEZTSUQtY2hhbmdlKQ0KPiAgICovDQo+ICBzdGF0aWMgc3RydWN0IGRlbnRyeSAq
-DQo+IC1uZnNfeGRldl9tb3VudChzdHJ1Y3QgZmlsZV9zeXN0ZW1fdHlwZSAqZnNfdHlwZSwgaW50
-IGZsYWdzLA0KPiAtCQljb25zdCBjaGFyICpkZXZfbmFtZSwgdm9pZCAqcmF3X2RhdGEpDQo+ICtu
-ZnNfeGRldl9tb3VudF9jb21tb24oc3RydWN0IGZpbGVfc3lzdGVtX3R5cGUgKmZzX3R5cGUsIGlu
-dCBmbGFncywNCj4gKwkJY29uc3QgY2hhciAqZGV2X25hbWUsIHN0cnVjdCBuZnNfbW91bnRfaW5m
-byAqbW91bnRfaW5mbykNCj4gIHsNCj4gLQlzdHJ1Y3QgbmZzX2Nsb25lX21vdW50ICpkYXRhID0g
-cmF3X2RhdGE7DQo+ICsJc3RydWN0IG5mc19jbG9uZV9tb3VudCAqZGF0YSA9IG1vdW50X2luZm8t
-PmNsb25lZDsNCj4gIAlzdHJ1Y3Qgc3VwZXJfYmxvY2sgKnM7DQo+ICAJc3RydWN0IG5mc19zZXJ2
-ZXIgKnNlcnZlcjsNCj4gIAlzdHJ1Y3QgZGVudHJ5ICptbnRyb290Ow0KPiBAQCAtMjQ1NSw3ICsy
-NDU3LDcgQEAgbmZzX3hkZXZfbW91bnQoc3RydWN0IGZpbGVfc3lzdGVtX3R5cGUgKmZzX3R5cGUs
-IGludCBmbGFncywNCj4gIAl9Ow0KPiAgCWludCBlcnJvcjsNCj4gIA0KPiAtCWRwcmludGsoIi0t
-PiBuZnNfeGRldl9tb3VudCgpXG4iKTsNCj4gKwlkcHJpbnRrKCItLT4gbmZzX3hkZXZfbW91bnRf
-Y29tbW9uKClcbiIpOw0KPiAgDQo+ICAJLyogY3JlYXRlIGEgbmV3IHZvbHVtZSByZXByZXNlbnRh
-dGlvbiAqLw0KPiAgCXNlcnZlciA9IG5mc19jbG9uZV9zZXJ2ZXIoTkZTX1NCKGRhdGEtPnNiKSwg
-ZGF0YS0+ZmgsIGRhdGEtPmZhdHRyLCBkYXRhLT5hdXRoZmxhdm9yKTsNCj4gQEAgLTI0NjUsNyAr
-MjQ2Nyw3IEBAIG5mc194ZGV2X21vdW50KHN0cnVjdCBmaWxlX3N5c3RlbV90eXBlICpmc190eXBl
-LCBpbnQgZmxhZ3MsDQo+ICAJfQ0KPiAgCXNiX21udGRhdGEuc2VydmVyID0gc2VydmVyOw0KPiAg
-DQo+IC0JaWYgKHNlcnZlci0+ZmxhZ3MgJiBORlNfTU9VTlRfVU5TSEFSRUQpDQo+ICsJaWYgKHNl
-cnZlci0+ZmxhZ3MgJiBtb3VudF9pbmZvLT51bnNoYXJlZCkNCj4gIAkJY29tcGFyZV9zdXBlciA9
-IE5VTEw7DQo+ICANCj4gIAkvKiAtbyBub2FjIGltcGxpZXMgLW8gc3luYyAqLw0KPiBAQCAtMjQ5
-MCw3ICsyNDkyLDcgQEAgbmZzX3hkZXZfbW91bnQoc3RydWN0IGZpbGVfc3lzdGVtX3R5cGUgKmZz
-X3R5cGUsIGludCBmbGFncywNCj4gIA0KPiAgCWlmICghcy0+c19yb290KSB7DQo+ICAJCS8qIGlu
-aXRpYWwgc3VwZXJibG9jay9yb290IGNyZWF0aW9uICovDQo+IC0JCW5mc19jbG9uZV9zdXBlcihz
-LCBkYXRhLT5zYik7DQo+ICsJCW1vdW50X2luZm8tPmZpbGxfc3VwZXIocywgbW91bnRfaW5mbyk7
-DQo+ICAJCW5mc19mc2NhY2hlX2dldF9zdXBlcl9jb29raWUocywgTlVMTCwgZGF0YSk7DQo+ICAJ
-fQ0KPiAgDQo+IEBAIC0yNTEwLDEzICsyNTEyLDEzIEBAIG5mc194ZGV2X21vdW50KHN0cnVjdCBm
-aWxlX3N5c3RlbV90eXBlICpmc190eXBlLCBpbnQgZmxhZ3MsDQo+ICAJLyogY2xvbmUgYW55IGxz
-bSBzZWN1cml0eSBvcHRpb25zIGZyb20gdGhlIHBhcmVudCB0byB0aGUgbmV3IHNiICovDQo+ICAJ
-c2VjdXJpdHlfc2JfY2xvbmVfbW50X29wdHMoZGF0YS0+c2IsIHMpOw0KPiAgDQo+IC0JZHByaW50
-aygiPC0tIG5mc194ZGV2X21vdW50KCkgPSAwXG4iKTsNCj4gKwlkcHJpbnRrKCI8LS0gbmZzX3hk
-ZXZfbW91bnRfY29tbW9uKCkgPSAwXG4iKTsNCj4gIAlyZXR1cm4gbW50cm9vdDsNCj4gIA0KPiAg
-b3V0X2Vycl9ub3NiOg0KPiAgCW5mc19mcmVlX3NlcnZlcihzZXJ2ZXIpOw0KPiAgb3V0X2Vycl9u
-b3NlcnZlcjoNCj4gLQlkcHJpbnRrKCI8LS0gbmZzX3hkZXZfbW91bnQoKSA9ICVkIFtlcnJvcl1c
-biIsIGVycm9yKTsNCj4gKwlkcHJpbnRrKCI8LS0gbmZzX3hkZXZfbW91bnRfY29tbW9uKCkgPSAl
-ZCBbZXJyb3JdXG4iLCBlcnJvcik7DQo+ICAJcmV0dXJuIEVSUl9QVFIoZXJyb3IpOw0KPiAgDQo+
-ICBlcnJvcl9zcGxhdF9zdXBlcjoNCj4gQEAgLTI1MjQsMTggKzI1MjYsMzQgQEAgZXJyb3Jfc3Bs
-YXRfc3VwZXI6DQo+ICAJCWJkaV91bnJlZ2lzdGVyKCZzZXJ2ZXItPmJhY2tpbmdfZGV2X2luZm8p
-Ow0KPiAgZXJyb3Jfc3BsYXRfYmRpOg0KPiAgCWRlYWN0aXZhdGVfbG9ja2VkX3N1cGVyKHMpOw0K
-PiAtCWRwcmludGsoIjwtLSBuZnNfeGRldl9tb3VudCgpID0gJWQgW3NwbGF0XVxuIiwgZXJyb3Ip
-Ow0KPiArCWRwcmludGsoIjwtLSBuZnNfeGRldl9tb3VudF9jb21tb24oKSA9ICVkIFtzcGxhdF1c
-biIsIGVycm9yKTsNCj4gIAlyZXR1cm4gRVJSX1BUUihlcnJvcik7DQo+ICB9DQo+ICANCj4gKy8q
-DQo+ICsgKiBDbG9uZSBhbiBORlMyLzMgc2VydmVyIHJlY29yZCBvbiB4ZGV2IHRyYXZlcnNhbCAo
-RlNJRC1jaGFuZ2UpDQo+ICsgKi8NCj4gK3N0YXRpYyBzdHJ1Y3QgZGVudHJ5ICoNCj4gK25mc194
-ZGV2X21vdW50KHN0cnVjdCBmaWxlX3N5c3RlbV90eXBlICpmc190eXBlLCBpbnQgZmxhZ3MsDQo+
-ICsJCWNvbnN0IGNoYXIgKmRldl9uYW1lLCB2b2lkICpyYXdfZGF0YSkNCj4gK3sNCj4gKwlzdHJ1
-Y3QgbmZzX21vdW50X2luZm8gbW91bnRfaW5mbyA9IHsNCj4gKwkJLmZpbGxfc3VwZXIgPSBuZnNf
-Y2xvbmVfc3VwZXIsDQo+ICsJCS5jbG9uZWQgICA9IHJhd19kYXRhLA0KPiArCQkudW5zaGFyZWQg
-PSBORlNfTU9VTlRfVU5TSEFSRUQsDQoNCldoeSB0aGUgY2hhbmdlIGluIHNoYXJlIGJlaGF2aW91
-cj8NCg0KPiArCX07DQo+ICsJcmV0dXJuIG5mc194ZGV2X21vdW50X2NvbW1vbigmbmZzX2ZzX3R5
-cGUsIGZsYWdzLCBkZXZfbmFtZSwgJm1vdW50X2luZm8pOw0KPiArfQ0KPiArDQo+ICAjaWZkZWYg
-Q09ORklHX05GU19WNA0KPiAgDQo+ICAvKg0KPiAgICogRmluaXNoIHNldHRpbmcgdXAgYSBjbG9u
-ZWQgTkZTNCBzdXBlcmJsb2NrDQo+ICAgKi8NCj4gIHN0YXRpYyB2b2lkIG5mczRfY2xvbmVfc3Vw
-ZXIoc3RydWN0IHN1cGVyX2Jsb2NrICpzYiwNCj4gLQkJCSAgICBjb25zdCBzdHJ1Y3Qgc3VwZXJf
-YmxvY2sgKm9sZF9zYikNCj4gKwkJCSAgICAgc3RydWN0IG5mc19tb3VudF9pbmZvICptb3VudF9p
-bmZvKQ0KPiAgew0KPiArCWNvbnN0IHN0cnVjdCBzdXBlcl9ibG9jayAqb2xkX3NiID0gbW91bnRf
-aW5mby0+Y2xvbmVkLT5zYjsNCj4gIAlzYi0+c19ibG9ja3NpemVfYml0cyA9IG9sZF9zYi0+c19i
-bG9ja3NpemVfYml0czsNCj4gIAlzYi0+c19ibG9ja3NpemUgPSBvbGRfc2ItPnNfYmxvY2tzaXpl
-Ow0KPiAgCXNiLT5zX21heGJ5dGVzID0gb2xkX3NiLT5zX21heGJ5dGVzOw0KPiBAQCAtMjc4Nyw4
-NiArMjgwNSwxMiBAQCBzdGF0aWMgc3RydWN0IGRlbnRyeSAqDQo+ICBuZnM0X3hkZXZfbW91bnQo
-c3RydWN0IGZpbGVfc3lzdGVtX3R5cGUgKmZzX3R5cGUsIGludCBmbGFncywNCj4gIAkJIGNvbnN0
-IGNoYXIgKmRldl9uYW1lLCB2b2lkICpyYXdfZGF0YSkNCj4gIHsNCj4gLQlzdHJ1Y3QgbmZzX2Ns
-b25lX21vdW50ICpkYXRhID0gcmF3X2RhdGE7DQo+IC0Jc3RydWN0IHN1cGVyX2Jsb2NrICpzOw0K
-PiAtCXN0cnVjdCBuZnNfc2VydmVyICpzZXJ2ZXI7DQo+IC0Jc3RydWN0IGRlbnRyeSAqbW50cm9v
-dDsNCj4gLQlpbnQgKCpjb21wYXJlX3N1cGVyKShzdHJ1Y3Qgc3VwZXJfYmxvY2sgKiwgdm9pZCAq
-KSA9IG5mc19jb21wYXJlX3N1cGVyOw0KPiAtCXN0cnVjdCBuZnNfc2JfbW91bnRkYXRhIHNiX21u
-dGRhdGEgPSB7DQo+IC0JCS5tbnRmbGFncyA9IGZsYWdzLA0KPiArCXN0cnVjdCBuZnNfbW91bnRf
-aW5mbyBtb3VudF9pbmZvID0gew0KPiArCQkuZmlsbF9zdXBlciA9IG5mczRfY2xvbmVfc3VwZXIs
-DQo+ICsJCS5jbG9uZWQgPSByYXdfZGF0YSwNCj4gKwkJLnVuc2hhcmVkID0gTkZTNF9NT1VOVF9V
-TlNIQVJFRCwNCj4gIAl9Ow0KPiAtCWludCBlcnJvcjsNCj4gLQ0KPiAtCWRwcmludGsoIi0tPiBu
-ZnM0X3hkZXZfbW91bnQoKVxuIik7DQo+IC0NCj4gLQkvKiBjcmVhdGUgYSBuZXcgdm9sdW1lIHJl
-cHJlc2VudGF0aW9uICovDQo+IC0Jc2VydmVyID0gbmZzX2Nsb25lX3NlcnZlcihORlNfU0IoZGF0
-YS0+c2IpLCBkYXRhLT5maCwgZGF0YS0+ZmF0dHIsIGRhdGEtPmF1dGhmbGF2b3IpOw0KPiAtCWlm
-IChJU19FUlIoc2VydmVyKSkgew0KPiAtCQllcnJvciA9IFBUUl9FUlIoc2VydmVyKTsNCj4gLQkJ
-Z290byBvdXRfZXJyX25vc2VydmVyOw0KPiAtCX0NCj4gLQlzYl9tbnRkYXRhLnNlcnZlciA9IHNl
-cnZlcjsNCj4gLQ0KPiAtCWlmIChzZXJ2ZXItPmZsYWdzICYgTkZTNF9NT1VOVF9VTlNIQVJFRCkN
-Cj4gLQkJY29tcGFyZV9zdXBlciA9IE5VTEw7DQo+IC0NCj4gLQkvKiAtbyBub2FjIGltcGxpZXMg
-LW8gc3luYyAqLw0KPiAtCWlmIChzZXJ2ZXItPmZsYWdzICYgTkZTX01PVU5UX05PQUMpDQo+IC0J
-CXNiX21udGRhdGEubW50ZmxhZ3MgfD0gTVNfU1lOQ0hST05PVVM7DQo+IC0NCj4gLQkvKiBHZXQg
-YSBzdXBlcmJsb2NrIC0gbm90ZSB0aGF0IHdlIG1heSBlbmQgdXAgc2hhcmluZyBvbmUgdGhhdCBh
-bHJlYWR5IGV4aXN0cyAqLw0KPiAtCXMgPSBzZ2V0KCZuZnM0X2ZzX3R5cGUsIGNvbXBhcmVfc3Vw
-ZXIsIG5mc19zZXRfc3VwZXIsICZzYl9tbnRkYXRhKTsNCj4gLQlpZiAoSVNfRVJSKHMpKSB7DQo+
-IC0JCWVycm9yID0gUFRSX0VSUihzKTsNCj4gLQkJZ290byBvdXRfZXJyX25vc2I7DQo+IC0JfQ0K
-PiAtDQo+IC0JaWYgKHMtPnNfZnNfaW5mbyAhPSBzZXJ2ZXIpIHsNCj4gLQkJbmZzX2ZyZWVfc2Vy
-dmVyKHNlcnZlcik7DQo+IC0JCXNlcnZlciA9IE5VTEw7DQo+IC0JfSBlbHNlIHsNCj4gLQkJZXJy
-b3IgPSBuZnNfYmRpX3JlZ2lzdGVyKHNlcnZlcik7DQo+IC0JCWlmIChlcnJvcikNCj4gLQkJCWdv
-dG8gZXJyb3Jfc3BsYXRfYmRpOw0KPiAtCX0NCj4gLQ0KPiAtCWlmICghcy0+c19yb290KSB7DQo+
-IC0JCS8qIGluaXRpYWwgc3VwZXJibG9jay9yb290IGNyZWF0aW9uICovDQo+IC0JCW5mczRfY2xv
-bmVfc3VwZXIocywgZGF0YS0+c2IpOw0KPiAtCQluZnNfZnNjYWNoZV9nZXRfc3VwZXJfY29va2ll
-KHMsIE5VTEwsIGRhdGEpOw0KPiAtCX0NCj4gLQ0KPiAtCW1udHJvb3QgPSBuZnNfZ2V0X3Jvb3Qo
-cywgZGF0YS0+ZmgsIGRldl9uYW1lKTsNCj4gLQlpZiAoSVNfRVJSKG1udHJvb3QpKSB7DQo+IC0J
-CWVycm9yID0gUFRSX0VSUihtbnRyb290KTsNCj4gLQkJZ290byBlcnJvcl9zcGxhdF9zdXBlcjsN
-Cj4gLQl9DQo+IC0JaWYgKG1udHJvb3QtPmRfaW5vZGUtPmlfb3AgIT0gTkZTX1NCKHMpLT5uZnNf
-Y2xpZW50LT5ycGNfb3BzLT5kaXJfaW5vZGVfb3BzKSB7DQo+IC0JCWRwdXQobW50cm9vdCk7DQo+
-IC0JCWVycm9yID0gLUVTVEFMRTsNCj4gLQkJZ290byBlcnJvcl9zcGxhdF9zdXBlcjsNCj4gLQl9
-DQo+IC0NCj4gLQlzLT5zX2ZsYWdzIHw9IE1TX0FDVElWRTsNCj4gLQ0KPiAtCXNlY3VyaXR5X3Ni
-X2Nsb25lX21udF9vcHRzKGRhdGEtPnNiLCBzKTsNCj4gLQ0KPiAtCWRwcmludGsoIjwtLSBuZnM0
-X3hkZXZfbW91bnQoKSA9IDBcbiIpOw0KPiAtCXJldHVybiBtbnRyb290Ow0KPiAtDQo+IC1vdXRf
-ZXJyX25vc2I6DQo+IC0JbmZzX2ZyZWVfc2VydmVyKHNlcnZlcik7DQo+IC1vdXRfZXJyX25vc2Vy
-dmVyOg0KPiAtCWRwcmludGsoIjwtLSBuZnM0X3hkZXZfbW91bnQoKSA9ICVkIFtlcnJvcl1cbiIs
-IGVycm9yKTsNCj4gLQlyZXR1cm4gRVJSX1BUUihlcnJvcik7DQo+IC0NCj4gLWVycm9yX3NwbGF0
-X3N1cGVyOg0KPiAtCWlmIChzZXJ2ZXIgJiYgIXMtPnNfcm9vdCkNCj4gLQkJYmRpX3VucmVnaXN0
-ZXIoJnNlcnZlci0+YmFja2luZ19kZXZfaW5mbyk7DQo+IC1lcnJvcl9zcGxhdF9iZGk6DQo+IC0J
-ZGVhY3RpdmF0ZV9sb2NrZWRfc3VwZXIocyk7DQo+IC0JZHByaW50aygiPC0tIG5mczRfeGRldl9t
-b3VudCgpID0gJWQgW3NwbGF0XVxuIiwgZXJyb3IpOw0KPiAtCXJldHVybiBFUlJfUFRSKGVycm9y
-KTsNCj4gKwlyZXR1cm4gbmZzX3hkZXZfbW91bnRfY29tbW9uKCZuZnM0X2ZzX3R5cGUsIGZsYWdz
-LCBkZXZfbmFtZSwgJm1vdW50X2luZm8pOw0KPiAgfQ0KPiAgDQo+ICBzdGF0aWMgc3RydWN0IGRl
-bnRyeSAqDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
-ZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20N
-Cg0K
+Currently swapfiles are managed entirely by the core VM by using ->bmap
+to allocate space and write to the blocks directly. This effectively
+ensures that the underlying blocks are allocated and avoids the need
+for the swap subsystem to locate what physical blocks store offsets
+within a file.
+
+If the swap subsystem is to use the filesystem information to locate
+the blocks, it is critical that information such as block groups,
+block bitmaps and the block descriptor table that map the swap file
+were resident in memory. This patch adds address_space_operations that
+the VM can call when activating or deactivating swap backed by a file.
+
+  int swap_activate(struct file *);
+  int swap_deactivate(struct file *);
+
+The ->swap_activate() method is used to communicate to the
+file that the VM relies on it, and the address_space should take
+adequate measures such as reserving space in the underlying device,
+reserving memory for mempools and pinning information such as the
+block descriptor table in memory. The ->swap_deactivate() method is
+called on sys_swapoff() if ->swap_activate() returned success.
+
+After a successful swapfile ->swap_activate, the swapfile
+is marked SWP_FILE and swapper_space.a_ops will proxy to
+sis->swap_file->f_mappings->a_ops using ->direct_io to write swapcache
+pages and ->readpage to read.
+
+It is perfectly possible that direct_IO be used to read the swap
+pages but it is an unnecessary complication. Similarly, it is possible
+that ->writepage be used instead of direct_io to write the pages but
+filesystem developers have stated that calling writepage from the VM
+is undesirable for a variety of reasons and using direct_IO opens up
+the possibility of writing back batches of swap pages in the future.
+
+[a.p.zijlstra@chello.nl: Original patch]
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ Documentation/filesystems/Locking |   13 ++++++++++
+ Documentation/filesystems/vfs.txt |   12 +++++++++
+ include/linux/fs.h                |    4 +++
+ include/linux/swap.h              |    3 +++
+ mm/page_io.c                      |   52 +++++++++++++++++++++++++++++++++++++
+ mm/swap_state.c                   |    2 +-
+ mm/swapfile.c                     |   30 +++++++++++++++++++--
+ 7 files changed, 113 insertions(+), 3 deletions(-)
+
+diff --git a/Documentation/filesystems/Locking b/Documentation/filesystems/Locking
+index 4fca82e..b01c2d7 100644
+--- a/Documentation/filesystems/Locking
++++ b/Documentation/filesystems/Locking
+@@ -202,6 +202,8 @@ prototypes:
+ 	int (*launder_page)(struct page *);
+ 	int (*is_partially_uptodate)(struct page *, read_descriptor_t *, unsigned long);
+ 	int (*error_remove_page)(struct address_space *, struct page *);
++	int (*swap_activate)(struct file *);
++	int (*swap_deactivate)(struct file *);
+ 
+ locking rules:
+ 	All except set_page_dirty and freepage may block
+@@ -225,6 +227,8 @@ migratepage:		yes (both)
+ launder_page:		yes
+ is_partially_uptodate:	yes
+ error_remove_page:	yes
++swap_activate:		no
++swap_deactivate:	no
+ 
+ 	->write_begin(), ->write_end(), ->sync_page() and ->readpage()
+ may be called from the request handler (/dev/loop).
+@@ -326,6 +330,15 @@ cleaned, or an error value if not. Note that in order to prevent the page
+ getting mapped back in and redirtied, it needs to be kept locked
+ across the entire operation.
+ 
++	->swap_activate will be called with a non-zero argument on
++files backing (non block device backed) swapfiles. A return value
++of zero indicates success, in which case this file can be used for
++backing swapspace. The swapspace operations will be proxied to the
++address space operations.
++
++	->swap_deactivate() will be called in the sys_swapoff()
++path after ->swap_activate() returned success.
++
+ ----------------------- file_lock_operations ------------------------------
+ prototypes:
+ 	void (*fl_copy_lock)(struct file_lock *, struct file_lock *);
+diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
+index 0d04920..fbd357b 100644
+--- a/Documentation/filesystems/vfs.txt
++++ b/Documentation/filesystems/vfs.txt
+@@ -581,6 +581,8 @@ struct address_space_operations {
+ 	int (*migratepage) (struct page *, struct page *);
+ 	int (*launder_page) (struct page *);
+ 	int (*error_remove_page) (struct mapping *mapping, struct page *page);
++	int (*swap_activate)(struct file *);
++	int (*swap_deactivate)(struct file *);
+ };
+ 
+   writepage: called by the VM to write a dirty page to backing store.
+@@ -749,6 +751,16 @@ struct address_space_operations {
+ 	Setting this implies you deal with pages going away under you,
+ 	unless you have them locked or reference counts increased.
+ 
++  swap_activate: Called when swapon is used on a file to allocate
++	space if necessary and pin the block lookup information in
++	memory. A return value of zero indicates success,
++	in which case this file can be used to back swapspace. The
++	swapspace operations will be proxied to this address space's
++	->swap_{out,in} methods.
++
++  swap_deactivate: Called during swapoff on files where swap_activate
++  	was successful.
++
+ 
+ The File Object
+ ===============
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 8de6755..0dcd1e8 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -626,6 +626,10 @@ struct address_space_operations {
+ 	int (*is_partially_uptodate) (struct page *, read_descriptor_t *,
+ 					unsigned long);
+ 	int (*error_remove_page)(struct address_space *, struct page *);
++
++	/* swapfile support */
++	int (*swap_activate)(struct file *file);
++	int (*swap_deactivate)(struct file *file);
+ };
+ 
+ extern const struct address_space_operations empty_aops;
+diff --git a/include/linux/swap.h b/include/linux/swap.h
+index b1fd5c7..6b40350 100644
+--- a/include/linux/swap.h
++++ b/include/linux/swap.h
+@@ -151,6 +151,7 @@ enum {
+ 	SWP_SOLIDSTATE	= (1 << 4),	/* blkdev seeks are cheap */
+ 	SWP_CONTINUED	= (1 << 5),	/* swap_map has count continuation */
+ 	SWP_BLKDEV	= (1 << 6),	/* its a block device */
++	SWP_FILE	= (1 << 7),	/* set after swap_activate success */
+ 					/* add others here before... */
+ 	SWP_SCANNING	= (1 << 8),	/* refcount in scan_swap_map */
+ };
+@@ -316,6 +317,7 @@ static inline void mem_cgroup_uncharge_swap(swp_entry_t ent)
+ /* linux/mm/page_io.c */
+ extern int swap_readpage(struct page *);
+ extern int swap_writepage(struct page *page, struct writeback_control *wbc);
++extern int swap_set_page_dirty(struct page *page);
+ extern void end_swap_bio_read(struct bio *bio, int err);
+ 
+ /* linux/mm/swap_state.c */
+@@ -351,6 +353,7 @@ extern int swap_type_of(dev_t, sector_t, struct block_device **);
+ extern unsigned int count_swap_pages(int, int);
+ extern sector_t map_swap_page(struct page *, struct block_device **);
+ extern sector_t swapdev_block(int, pgoff_t);
++extern struct swap_info_struct *page_swap_info(struct page *);
+ extern int reuse_swap_page(struct page *);
+ extern int try_to_free_swap(struct page *);
+ struct backing_dev_info;
+diff --git a/mm/page_io.c b/mm/page_io.c
+index dc76b4d..68d8357 100644
+--- a/mm/page_io.c
++++ b/mm/page_io.c
+@@ -17,6 +17,7 @@
+ #include <linux/swap.h>
+ #include <linux/bio.h>
+ #include <linux/swapops.h>
++#include <linux/buffer_head.h>
+ #include <linux/writeback.h>
+ #include <asm/pgtable.h>
+ 
+@@ -93,11 +94,38 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
+ {
+ 	struct bio *bio;
+ 	int ret = 0, rw = WRITE;
++	struct swap_info_struct *sis = page_swap_info(page);
+ 
+ 	if (try_to_free_swap(page)) {
+ 		unlock_page(page);
+ 		goto out;
+ 	}
++
++	if (sis->flags & SWP_FILE) {
++		struct kiocb kiocb;
++		struct file *swap_file = sis->swap_file;
++		struct address_space *mapping = swap_file->f_mapping;
++		struct iovec iov = {
++			.iov_base = page_address(page),
++			.iov_len  = PAGE_SIZE,
++		};
++
++		init_sync_kiocb(&kiocb, swap_file);
++		kiocb.ki_pos = page_file_offset(page);
++		kiocb.ki_left = PAGE_SIZE;
++		kiocb.ki_nbytes = PAGE_SIZE;
++
++		unlock_page(page);
++		ret = mapping->a_ops->direct_IO(KERNEL_WRITE,
++						&kiocb, &iov,
++						kiocb.ki_pos, 1);
++		if (ret == PAGE_SIZE) {
++			count_vm_event(PSWPOUT);
++			ret = 0;
++		}
++		return ret;
++	}
++
+ 	bio = get_swap_bio(GFP_NOIO, page, end_swap_bio_write);
+ 	if (bio == NULL) {
+ 		set_page_dirty(page);
+@@ -119,9 +147,21 @@ int swap_readpage(struct page *page)
+ {
+ 	struct bio *bio;
+ 	int ret = 0;
++	struct swap_info_struct *sis = page_swap_info(page);
+ 
+ 	VM_BUG_ON(!PageLocked(page));
+ 	VM_BUG_ON(PageUptodate(page));
++
++	if (sis->flags & SWP_FILE) {
++		struct file *swap_file = sis->swap_file;
++		struct address_space *mapping = swap_file->f_mapping;
++
++		ret = mapping->a_ops->readpage(swap_file, page);
++		if (!ret)
++			count_vm_event(PSWPIN);
++		return ret;
++	}
++
+ 	bio = get_swap_bio(GFP_KERNEL, page, end_swap_bio_read);
+ 	if (bio == NULL) {
+ 		unlock_page(page);
+@@ -133,3 +173,15 @@ int swap_readpage(struct page *page)
+ out:
+ 	return ret;
+ }
++
++int swap_set_page_dirty(struct page *page)
++{
++	struct swap_info_struct *sis = page_swap_info(page);
++
++	if (sis->flags & SWP_FILE) {
++		struct address_space *mapping = sis->swap_file->f_mapping;
++		return mapping->a_ops->set_page_dirty(page);
++	} else {
++		return __set_page_dirty_no_writeback(page);
++	}
++}
+diff --git a/mm/swap_state.c b/mm/swap_state.c
+index 4c5ff7f..c25b9cf 100644
+--- a/mm/swap_state.c
++++ b/mm/swap_state.c
+@@ -26,7 +26,7 @@
+  */
+ static const struct address_space_operations swap_aops = {
+ 	.writepage	= swap_writepage,
+-	.set_page_dirty	= __set_page_dirty_no_writeback,
++	.set_page_dirty	= swap_set_page_dirty,
+ 	.migratepage	= migrate_page,
+ };
+ 
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index df5f148..fe2ed44 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -1342,6 +1342,14 @@ static void destroy_swap_extents(struct swap_info_struct *sis)
+ 		list_del(&se->list);
+ 		kfree(se);
+ 	}
++
++	if (sis->flags & SWP_FILE) {
++		struct file *swap_file = sis->swap_file;
++		struct address_space *mapping = swap_file->f_mapping;
++
++		sis->flags &= ~SWP_FILE;
++		mapping->a_ops->swap_deactivate(swap_file);
++	}
+ }
+ 
+ /*
+@@ -1423,7 +1431,9 @@ add_swap_extent(struct swap_info_struct *sis, unsigned long start_page,
+  */
+ static int setup_swap_extents(struct swap_info_struct *sis, sector_t *span)
+ {
+-	struct inode *inode;
++	struct file *swap_file = sis->swap_file;
++	struct address_space *mapping = swap_file->f_mapping;
++	struct inode *inode = mapping->host;
+ 	unsigned blocks_per_page;
+ 	unsigned long page_no;
+ 	unsigned blkbits;
+@@ -1434,13 +1444,22 @@ static int setup_swap_extents(struct swap_info_struct *sis, sector_t *span)
+ 	int nr_extents = 0;
+ 	int ret;
+ 
+-	inode = sis->swap_file->f_mapping->host;
+ 	if (S_ISBLK(inode->i_mode)) {
+ 		ret = add_swap_extent(sis, 0, sis->max, 0);
+ 		*span = sis->pages;
+ 		goto out;
+ 	}
+ 
++	if (mapping->a_ops->swap_activate) {
++		ret = mapping->a_ops->swap_activate(swap_file);
++		if (!ret) {
++			sis->flags |= SWP_FILE;
++			ret = add_swap_extent(sis, 0, sis->max, 0);
++			*span = sis->pages;
++		}
++		goto out;
++	}
++
+ 	blkbits = inode->i_blkbits;
+ 	blocks_per_page = PAGE_SIZE >> blkbits;
+ 
+@@ -2293,6 +2312,13 @@ int swapcache_prepare(swp_entry_t entry)
+ 	return __swap_duplicate(entry, SWAP_HAS_CACHE);
+ }
+ 
++struct swap_info_struct *page_swap_info(struct page *page)
++{
++	swp_entry_t swap = { .val = page_private(page) };
++	BUG_ON(!PageSwapCache(page));
++	return swap_info[swp_type(swap)];
++}
++
+ /*
+  * out-of-line __page_file_ methods to avoid include hell.
+  */
+-- 
+1.7.9.2
+
