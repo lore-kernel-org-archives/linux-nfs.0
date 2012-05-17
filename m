@@ -1,81 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from isrv.corpit.ru ([86.62.121.231]:48267 "EHLO isrv.corpit.ru"
+Received: from cantor2.suse.de ([195.135.220.15]:33681 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752728Ab2E3HLp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 May 2012 03:11:45 -0400
-Message-ID: <4FC5C82E.4020806@msgid.tls.msk.ru>
-Date: Wed, 30 May 2012 11:11:42 +0400
-From: Michael Tokarev <mjt@tls.msk.ru>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org, Linux-kernel <linux-kernel@vger.kernel.org>
-Subject: Re: 3.0+ NFS issues
-References: <4FBF2C57.3070203@msgid.tls.msk.ru> <20120529152416.GC3441@fieldses.org>
-In-Reply-To: <20120529152416.GC3441@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1762064Ab2EQOvm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 May 2012 10:51:42 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 12/12] Avoid dereferencing bd_disk during swap_entry_free for network storage
+Date: Thu, 17 May 2012 15:51:25 +0100
+Message-Id: <1337266285-8102-13-git-send-email-mgorman@suse.de>
+In-Reply-To: <1337266285-8102-1-git-send-email-mgorman@suse.de>
+References: <1337266285-8102-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 29.05.2012 19:24, J. Bruce Fields wrote:
-> On Fri, May 25, 2012 at 10:53:11AM +0400, Michael Tokarev wrote:
->> I updated my nfs server machine to kernel 3.0, and
->> noticed that its main usage become, well, problematic.
->>
->> While trying to dig deeper, I also found a few other
->> interesting issues, which are mentioned below.
->>
->> But first thing first: nfs.
->>
->> i686pae kernel, lots of RAM, Atom-based (cedar trail)
->> machine with usual rtl8169 NIC.  3.0 or 3.2 kernel
->> (I will try current 3.4 but I don't have much hopes
->> there).  NFSv4.
->>
->> When a client machine (also 3.0 kernel) does some reading,
->> the process often stalls somewhere in the read syscall,
->> or, rarer, during close, for up to two MINUTES.  During
->> this time, the client (kernel) reports "NFS server <foo>
->> does not respond" several times, and finally "NFS server
->> <foo> ok", client process "unstucks" from the read(2),
->> and is able to perform a few more reads till the whole
->> thing repeats.
-> 
-> You say 2.6.32 was OK; have you tried anything else between?
+Commit [b3a27d: swap: Add swap slot free callback to
+block_device_operations] dereferences p->bdev->bd_disk but this is a
+NULL dereference if using swap-over-NFS. This patch checks SWP_BLKDEV
+on the swap_info_struct before dereferencing.
 
-Well, I thought bisecting between 2.6.32 and 3.0 will be quite
-painful...  But I'll try if nothing else helps.  And no, I haven't
-tried anything in-between.
+With reference to this callback, Christoph Hellwig stated "Please
+just remove the callback entirely.  It has no user outside the staging
+tree and was added clearly against the rules for that staging tree".
+This would also be my preference but there was not an obvious way of
+keeping zram in staging/ happy.
 
-> And you're holding the client constant while varying only the server
-> version, right?
+Signed-off-by: Xiaotian Feng <dfeng@redhat.com>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ mm/swapfile.c |    9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
 
-Yes.
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index 80b3415..d85d842 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -547,7 +547,6 @@ static unsigned char swap_entry_free(struct swap_info_struct *p,
+ 
+ 	/* free if no reference */
+ 	if (!usage) {
+-		struct gendisk *disk = p->bdev->bd_disk;
+ 		if (offset < p->lowest_bit)
+ 			p->lowest_bit = offset;
+ 		if (offset > p->highest_bit)
+@@ -557,9 +556,11 @@ static unsigned char swap_entry_free(struct swap_info_struct *p,
+ 			swap_list.next = p->type;
+ 		nr_swap_pages++;
+ 		p->inuse_pages--;
+-		if ((p->flags & SWP_BLKDEV) &&
+-				disk->fops->swap_slot_free_notify)
+-			disk->fops->swap_slot_free_notify(p->bdev, offset);
++		if (p->flags & SWP_BLKDEV) {
++			struct gendisk *disk = p->bdev->bd_disk;
++			if (disk->fops->swap_slot_free_notify)
++				disk->fops->swap_slot_free_notify(p->bdev, offset);
++		}
+ 	}
+ 
+ 	return usage;
+-- 
+1.7.9.2
 
-> Is your network otherwise working?  (E.g. does transferring a bunch of
-> data from server to client using some other protocol work reliably?)
-
-Yes, it works flawlessly, all other protocols works so far.
-
-To the date, I resorted to using a small webserver plus wget as an ugly
-workaround for the problem - http works for reads from the server, while
-nfs works for writes.
-
-> Is there anything happening on the network during these stalls?  (You
-> can watch the network with wireshark, for example.)
-
-The network load is irrelevant - it behaves the same way with
-100% idle network or with network busy doing other stuff.
-
-> Does NFSv3 behave the same way?
-
-Yes it does.  With all NFSDs on server eating all available CPUs for
-quite some time, and with being "ghosts" for perf top.
-
-And with the client being unkillable again.
-
-Can at least the client be made interruptible?  Mounting with
--o intr,soft makes no visible difference...
-
-Thanks,
-
-/mjt
