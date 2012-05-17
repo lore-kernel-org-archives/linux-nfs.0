@@ -1,94 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:34231 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:33556 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752059Ab2EaHvq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 31 May 2012 03:51:46 -0400
-Subject: Re: [PATCH 1/6] gfs2: Get rid of I_MUTEX_QUOTA usage
-From: Steven Whitehouse <swhiteho@redhat.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.cz>
-In-Reply-To: <1338429016-20119-2-git-send-email-bfields@redhat.com>
-References: <1338429016-20119-1-git-send-email-bfields@redhat.com>
-	 <1338429016-20119-2-git-send-email-bfields@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 31 May 2012 08:50:38 +0100
-Message-ID: <1338450638.2714.0.camel@menhir>
-Mime-Version: 1.0
+	id S1762085Ab2EQOva (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 May 2012 10:51:30 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 02/12] selinux: tag avc cache alloc as non-critical
+Date: Thu, 17 May 2012 15:51:15 +0100
+Message-Id: <1337266285-8102-3-git-send-email-mgorman@suse.de>
+In-Reply-To: <1337266285-8102-1-git-send-email-mgorman@suse.de>
+References: <1337266285-8102-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+Failing to allocate a cache entry will only harm performance not
+correctness.  Do not consume valuable reserve pages for something
+like that.
 
-Acked-by: Steven Whitehouse <swhiteho@redhat.com>
+Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+Acked-by: Eric Paris <eparis@redhat.com>
+---
+ security/selinux/avc.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Eventually we should be able to drop i_mutex from here entirely, but
-that proved more problematic that I'd expected, so this is a good
-interim fix,
-
-Steve.
-
-On Wed, 2012-05-30 at 21:50 -0400, J. Bruce Fields wrote:
-> From: Jan Kara <jack@suse.cz>
-> 
-> GFS2 uses i_mutex on its system quota inode to synchronize writes to
-> quota file. Since this is an internal inode to GFS2 (not part of directory
-> hiearchy or visible by user) we are safe to define locking rules for it. So
-> let's just get it its own locking class to make it clear.
-> 
-> CC: Steven Whitehouse <swhiteho@redhat.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/gfs2/ops_fstype.c |    8 ++++++++
->  fs/gfs2/quota.c      |    2 +-
->  2 files changed, 9 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/gfs2/ops_fstype.c b/fs/gfs2/ops_fstype.c
-> index b8c250f..c714ef7 100644
-> --- a/fs/gfs2/ops_fstype.c
-> +++ b/fs/gfs2/ops_fstype.c
-> @@ -19,6 +19,7 @@
->  #include <linux/mount.h>
->  #include <linux/gfs2_ondisk.h>
->  #include <linux/quotaops.h>
-> +#include <linux/lockdep.h>
->  
->  #include "gfs2.h"
->  #include "incore.h"
-> @@ -766,6 +767,7 @@ fail:
->  	return error;
->  }
->  
-> +static struct lock_class_key gfs2_quota_imutex_key;
->  
->  static int init_inodes(struct gfs2_sbd *sdp, int undo)
->  {
-> @@ -803,6 +805,12 @@ static int init_inodes(struct gfs2_sbd *sdp, int undo)
->  		fs_err(sdp, "can't get quota file inode: %d\n", error);
->  		goto fail_rindex;
->  	}
-> +	/*
-> +	 * i_mutex on quota files is special. Since this inode is hidden system
-> +	 * file, we are safe to define locking ourselves.
-> +	 */
-> +	lockdep_set_class(&sdp->sd_quota_inode->i_mutex,
-> +			  &gfs2_quota_imutex_key);
->  
->  	error = gfs2_rindex_update(sdp);
->  	if (error)
-> diff --git a/fs/gfs2/quota.c b/fs/gfs2/quota.c
-> index b97178e..8ed70e7 100644
-> --- a/fs/gfs2/quota.c
-> +++ b/fs/gfs2/quota.c
-> @@ -772,7 +772,7 @@ static int do_sync(unsigned int num_qd, struct gfs2_quota_data **qda)
->  		return -ENOMEM;
->  
->  	sort(qda, num_qd, sizeof(struct gfs2_quota_data *), sort_qd, NULL);
-> -	mutex_lock_nested(&ip->i_inode.i_mutex, I_MUTEX_QUOTA);
-> +	mutex_lock(&ip->i_inode.i_mutex);
->  	for (qx = 0; qx < num_qd; qx++) {
->  		error = gfs2_glock_nq_init(qda[qx]->qd_gl, LM_ST_EXCLUSIVE,
->  					   GL_NOCACHE, &ghs[qx]);
-
+diff --git a/security/selinux/avc.c b/security/selinux/avc.c
+index 8ee42b2..75c2977 100644
+--- a/security/selinux/avc.c
++++ b/security/selinux/avc.c
+@@ -280,7 +280,7 @@ static struct avc_node *avc_alloc_node(void)
+ {
+ 	struct avc_node *node;
+ 
+-	node = kmem_cache_zalloc(avc_node_cachep, GFP_ATOMIC);
++	node = kmem_cache_zalloc(avc_node_cachep, GFP_ATOMIC|__GFP_NOMEMALLOC);
+ 	if (!node)
+ 		goto out;
+ 
+-- 
+1.7.9.2
 
