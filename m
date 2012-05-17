@@ -1,104 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:5910 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:61918 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760093Ab2EJPUl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 May 2012 11:20:41 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v3 12/14] NFS: Create a single nfs_validate_mount_data() function
-Date: Thu, 10 May 2012 11:20:03 -0400
-Message-Id: <1336663205-23886-13-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1336663205-23886-1-git-send-email-bjschuma@netapp.com>
-References: <1336663205-23886-1-git-send-email-bjschuma@netapp.com>
+	id S966328Ab2EQULS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 May 2012 16:11:18 -0400
+Date: Thu, 17 May 2012 16:11:14 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2] statd: drop all capabilities from the bounding set
+ as well
+Message-ID: <20120517161114.5cebfa68@tlielax.poochiereds.net>
+In-Reply-To: <73BC4C93-9192-4FE7-B32E-58345EB28AAD@oracle.com>
+References: <1337277259-5101-1-git-send-email-jlayton@redhat.com>
+	<73BC4C93-9192-4FE7-B32E-58345EB28AAD@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Thu, 17 May 2012 14:52:58 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-This new function chooses between the v2/3 parser and the v4 parser by
-filesystem type.
+> 
+> On May 17, 2012, at 1:54 PM, Jeff Layton wrote:
+> 
+> > statd drops all capabilities except for CAP_NET_BIND when it starts. It's
+> > possible though that if it ever had a compromise that an attacker would be
+> > able to invoke a setuid process (or something with file capabilities) in
+> > order to reinstate some caps.
+> > 
+> > This could happen as a result of the daemon becoming compromised, or
+> > possibly as a result of the ha-callout program becoming compromised.
+> 
+> Generally, I wonder what our exposure to this attack for a statd built without capability support.  Just musing out loud.
+> 
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/super.c |   36 ++++++++++++++++++++++++++++++------
- 1 file changed, 30 insertions(+), 6 deletions(-)
+It is difficult to qualify this without a specific attack in mind. The
+story I've always gotten from those who work with capabilities for a
+living however is that unless you prune the bounding set, the job isn't
+complete.
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 2746d11..466b299 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -335,6 +335,8 @@ static const struct super_operations nfs_sops = {
- 
- #ifdef CONFIG_NFS_V4
- static void nfs4_validate_mount_flags(struct nfs_parsed_mount_data *);
-+static int nfs4_validate_mount_data(void *options,
-+	struct nfs_parsed_mount_data *args, const char *dev_name);
- static struct dentry *nfs4_try_mount(int flags, const char *dev_name,
- 	struct nfs_parsed_mount_data *data);
- static struct dentry *nfs4_mount(struct file_system_type *fs_type,
-@@ -1857,10 +1859,10 @@ out_path:
-  * + breaking back: trying proto=udp after proto=tcp, v2 after v3,
-  *   mountproto=tcp after mountproto=udp, and so on
-  */
--static int nfs_validate_mount_data(void *options,
--				   struct nfs_parsed_mount_data *args,
--				   struct nfs_fh *mntfh,
--				   const char *dev_name)
-+static int nfs23_validate_mount_data(void *options,
-+				     struct nfs_parsed_mount_data *args,
-+				     struct nfs_fh *mntfh,
-+				     const char *dev_name)
- {
- 	struct nfs_mount_data *data = (struct nfs_mount_data *)options;
- 	struct sockaddr *sap = (struct sockaddr *)&args->nfs_server.address;
-@@ -2009,6 +2011,28 @@ out_invalid_fh:
- 	return -EINVAL;
- }
- 
-+#ifdef CONFIG_NFS_V4
-+static int nfs_validate_mount_data(struct file_system_type *fs_type,
-+				   void *options,
-+				   struct nfs_parsed_mount_data *args,
-+				   struct nfs_fh *mntfh,
-+				   const char *dev_name)
-+{
-+	if (fs_type == &nfs_fs_type)
-+		return nfs23_validate_mount_data(options, args, mntfh, dev_name);
-+	return nfs4_validate_mount_data(options, args, dev_name);
-+}
-+#else
-+static int nfs_validate_mount_data(struct file_system_type *fs_type,
-+				   void *options,
-+				   struct nfs_parsed_mount_data *args,
-+				   struct nfs_fh *mntfh,
-+				   const char *dev_name)
-+{
-+	return nfs23_validate_mount_data(options, args, mntfh, dev_name);
-+}
-+#endif
-+
- static int nfs_validate_text_mount_data(void *options,
- 					struct nfs_parsed_mount_data *args,
- 					const char *dev_name)
-@@ -2459,7 +2483,7 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
- 		goto out;
- 
- 	/* Validate the mount data */
--	error = nfs_validate_mount_data(raw_data, data, mntfh, dev_name);
-+	error = nfs_validate_mount_data(fs_type, raw_data, data, mntfh, dev_name);
- 	if (error == NFS_TEXT_DATA)
- 		error = nfs_validate_text_mount_data(raw_data, data, dev_name);
- 	if (error < 0) {
-@@ -2861,7 +2885,7 @@ static struct dentry *nfs4_mount(struct file_system_type *fs_type,
- 		goto out;
- 
- 	/* Validate the mount data */
--	error = nfs4_validate_mount_data(raw_data, data, dev_name);
-+	error = nfs_validate_mount_data(fs_type, raw_data, data, NULL, dev_name);
- 	if (error == NFS_TEXT_DATA)
- 		error = nfs_validate_text_mount_data(raw_data, data, dev_name);
- 	if (error < 0) {
+Given the right circumstances, a process could reacquire capabilities
+via exec'ing a (possibly compromised) setuid program or one with file
+caps.
+
+Since we've taken a step to trim out capabilities that we do not deem
+necessary for normal statd functioning, you can consider this to be
+trimming that list even further. This patch effectively says that statd
+should never be able to reacquire caps that it has dropped under any
+circumstances.
+
+> > In order to prevent that, have statd also prune the capability bounding
+> > set to nothing prior to dropping capabilities. That ensures that the
+> > process won't be able to reacquire capabilities via any means --
+> > including exec'ing a setuid program.
+> > 
+> > We do however need to be cognizant of the fact that PR_CAPBSET_DROP was
+> > only added in 2.6.25, so check to make sure that #define exists via
+> > autoconf before we rely on it. In order to do that, we must add
+> > ax_check_define.m4 from the GNU autoconf macro archive.
+> 
+> On pre-2.6.25 kernels, the bounding set is a fixed system-wide setting.  What we decided is to forego a run-time check here in favor of a build-time check.  Would it be difficult to do both?
+> 
+
+So you're suggesting that we should do something like see
+if /proc/sys/kernel/cap-bound exists at runtime and only try to drop
+the capabilities if doesn't? I suppose that's a reasonable thing to
+do. I'll plan to respin it with that.
+
+It occurs to me here too that this may fail incorrectly if the kernel
+is built w/o capabilities support period. So I probably need to do
+another respin anyway and either not attempt to prune the bounding set
+unless statd is built with caps support, or handle an EINVAL return
+here as if the kernel were not built with it.
+
+The latter is probably the safest method...
+
+Thanks for the review,
 -- 
-1.7.10.1
-
+Jeff Layton <jlayton@redhat.com>
