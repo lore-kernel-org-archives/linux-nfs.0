@@ -1,92 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45734 "EHLO fieldses.org"
+Received: from smtp.gentoo.org ([140.211.166.183]:36320 "EHLO smtp.gentoo.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753788Ab2E3NZW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 May 2012 09:25:22 -0400
-Date: Wed, 30 May 2012 09:25:18 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Michael Tokarev <mjt@tls.msk.ru>
-Cc: linux-nfs@vger.kernel.org, Linux-kernel <linux-kernel@vger.kernel.org>
-Subject: Re: 3.0+ NFS issues
-Message-ID: <20120530132518.GA13794@fieldses.org>
-References: <4FBF2C57.3070203@msgid.tls.msk.ru>
- <20120529152416.GC3441@fieldses.org>
- <4FC5C82E.4020806@msgid.tls.msk.ru>
+	id S1755666Ab2EQQIO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 May 2012 12:08:14 -0400
+From: Mike Frysinger <vapier@gentoo.org>
+To: Jim Rees <rees@umich.edu>
+Subject: Re: [PATCH] osd_login: fix DESTDIR install
+Date: Thu, 17 May 2012 12:08:40 -0400
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
+References: <1337232243-18088-1-git-send-email-vapier@gentoo.org> <4FB4ECDA.2080506@panasas.com> <20120517130925.GA10380@umich.edu>
+In-Reply-To: <20120517130925.GA10380@umich.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FC5C82E.4020806@msgid.tls.msk.ru>
+Content-Type: multipart/signed;
+  boundary="nextPart3046833.Sm0D6MDraL";
+  protocol="application/pgp-signature";
+  micalg=pgp-sha1
+Message-Id: <201205171208.42226.vapier@gentoo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 30, 2012 at 11:11:42AM +0400, Michael Tokarev wrote:
-> On 29.05.2012 19:24, J. Bruce Fields wrote:
-> > On Fri, May 25, 2012 at 10:53:11AM +0400, Michael Tokarev wrote:
-> >> I updated my nfs server machine to kernel 3.0, and
-> >> noticed that its main usage become, well, problematic.
-> >>
-> >> While trying to dig deeper, I also found a few other
-> >> interesting issues, which are mentioned below.
-> >>
-> >> But first thing first: nfs.
-> >>
-> >> i686pae kernel, lots of RAM, Atom-based (cedar trail)
-> >> machine with usual rtl8169 NIC.  3.0 or 3.2 kernel
-> >> (I will try current 3.4 but I don't have much hopes
-> >> there).  NFSv4.
-> >>
-> >> When a client machine (also 3.0 kernel) does some reading,
-> >> the process often stalls somewhere in the read syscall,
-> >> or, rarer, during close, for up to two MINUTES.  During
-> >> this time, the client (kernel) reports "NFS server <foo>
-> >> does not respond" several times, and finally "NFS server
-> >> <foo> ok", client process "unstucks" from the read(2),
-> >> and is able to perform a few more reads till the whole
-> >> thing repeats.
-> > 
-> > You say 2.6.32 was OK; have you tried anything else between?
-> 
-> Well, I thought bisecting between 2.6.32 and 3.0 will be quite
-> painful...  But I'll try if nothing else helps.  And no, I haven't
-> tried anything in-between.
-> 
-> > And you're holding the client constant while varying only the server
-> > version, right?
-> 
-> Yes.
-> 
-> > Is your network otherwise working?  (E.g. does transferring a bunch of
-> > data from server to client using some other protocol work reliably?)
-> 
-> Yes, it works flawlessly, all other protocols works so far.
-> 
-> To the date, I resorted to using a small webserver plus wget as an ugly
-> workaround for the problem - http works for reads from the server, while
-> nfs works for writes.
-> 
-> > Is there anything happening on the network during these stalls?  (You
-> > can watch the network with wireshark, for example.)
-> 
-> The network load is irrelevant - it behaves the same way with
-> 100% idle network or with network busy doing other stuff.
+--nextPart3046833.Sm0D6MDraL
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-That's not what I meant.  During one of these read stalls, if you watch
-the network with wireshark, do you see any NFS traffic between the
-client and server?
+On Thursday 17 May 2012 09:09:25 Jim Rees wrote:
+> Boaz Harrosh wrote:
+>=20
+>   On second thought, You know, I'm not sure about this fix.
+>=20
+>   A lot of times we install to a side folder, so we can later
+>   tar and package the sub-folder without actually affecting
+>   our live system. What will happen with the packagers that
+>   are not RPM don't they rely on this?
+>=20
+>   I would like to let the user to install nfs-utils on the
+>   side and to not conflict with the running system. Someone
+>   how knows what he is doing can override the Kernel path
+>   to what he wants. Just as he will need to override the
+>   nfs init scripts.
+>=20
+>   So I would prefer if we can just create the $(DESTDIR)/sbin/
+>=20
+> I think the makefiles already create $(DESTDIR)$(sbindir).  The problem w=
+as
+> that you weren't using $(DESTDIR)$(sbindir), you were using
+> $(DESTDIR)/sbin.  The patch sets $(sbindir) to /sbin, so everything should
+> just work.
+>=20
+> But I could be wrong, automake is a black box to me.
 
-Also: do you have a reliable way of reproducing this quickly?
+i don't think that was the issue.  the osd_login dir wasn't telling automak=
+e=20
+that it was installing anything (whether sbindir or /sbin or anywhere else)=
+,=20
+so this makefile didn't create the destdir automatically.
 
---b.
+now that automake knows we have things to install into $sbindir (regardless=
+ of=20
+its value), it knows it has to create it before trying to install things.
 
-> > Does NFSv3 behave the same way?
-> 
-> Yes it does.  With all NFSDs on server eating all available CPUs for
-> quite some time, and with being "ghosts" for perf top.
-> 
-> And with the client being unkillable again.
-> 
-> Can at least the client be made interruptible?  Mounting with
-> -o intr,soft makes no visible difference...
-> 
-> Thanks,
-> 
-> /mjt
+it might have worked in the past for people because either (1) they didn't =
+use=20
+DESTDIR into an empty path or (2) they weren't running in parallel so the=20
+other subdir (that installs `mount`) took care of implicitly creating=20
+$(DESTDIR)/sbin for them.
+=2Dmike
+
+--nextPart3046833.Sm0D6MDraL
+Content-Type: application/pgp-signature; name=signature.asc 
+Content-Description: This is a digitally signed message part.
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.17 (GNU/Linux)
+
+iQIcBAABAgAGBQJPtSKKAAoJEEFjO5/oN/WBClgQAJbTOQefkRKmJwPmT/6W8l3w
+dsZMJA+pTajSsLIP51z8uv47lQ3GXKDi/AvjRSNnNfhlHc7w9Rg/OneneXtP7o/4
+2NTrsi7leCuJxuV8KBf9sGC3BQrOwXV30ocqkpfmLGi47xL9jZ6+AIcbWpAxX7if
+bhqaZlKwEDMFNJ2koV5uhN408M7rNEA0UosILxyLjT7+mI8dwzMQa9bsnFN+2yO6
+mdUe+1ZQNwSqQnJv8LzWio8F43/rsHT3AVD3yrSMzy3+7CVulqO/+hIlxxNwxYZR
+b/+fqh4+7t4l9/8vMut9WatkKp2WKQ9quca6B/tal4WjizY2xVzXb6451kYwFUE0
+LMzyy3AsYzmVvMr3hC7Sf/rBc7KMbp1um/dwOCD6WoM9fFYKRa0nMGwGEfrH2oLh
+6nLE+yLRliuQk7yY7SWnEasCi73YjbxNGb7aCYKv1RcgfzU92cwNQHBoe0XuQ+f+
+Vgr1SMeDZJyLZDJ4xh9VrVzO5IoB1Mr5AGuUgfhlJewyAuDUY6iwp9+MyLrDyG1V
+dkt/99r1FfuIwRxDx5PkMnlAyr6ic3mNW84a2OHiGxl3HG8z0ZGntF4n7vBwtoEk
+XfUOSykW7aVMe7BClivRkPhPP00Sxu/yjnUiF+zBhHtH4/BzcY947EJE3p8SxaZN
+p1bsywma6cxzeRjKmEsQ
+=8SxU
+-----END PGP SIGNATURE-----
+
+--nextPart3046833.Sm0D6MDraL--
