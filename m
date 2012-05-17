@@ -1,49 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f172.google.com ([209.85.212.172]:63523 "EHLO
-	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753565Ab2E1Rz7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 13:55:59 -0400
-Received: by wibhj8 with SMTP id hj8so1910856wib.1
-        for <linux-nfs@vger.kernel.org>; Mon, 28 May 2012 10:55:58 -0700 (PDT)
-Message-ID: <4FC3BC2B.6060709@tonian.com>
-Date: Mon, 28 May 2012 20:55:55 +0300
-From: Benny Halevy <bhalevy@tonian.com>
-MIME-Version: 1.0
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: Does our Kernel PNFSD-Server supports recurring layout_get with
- open_state_id
-References: <4FBD7DE8.9090002@panasas.com> <4FBE2C8C.9090403@tonian.com> <4FBE3C4D.7050507@panasas.com> <4FC3A235.8090908@tonian.com> <4FC3A974.60107@panasas.com>
-In-Reply-To: <4FC3A974.60107@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from cantor2.suse.de ([195.135.220.15]:36798 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759137Ab2EQGod (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 May 2012 02:44:33 -0400
+Date: Thu, 17 May 2012 16:44:20 +1000
+From: NeilBrown <neilb@suse.de>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: ANNOUNCE: nfs-utils-1.2.6 released.
+Message-ID: <20120517164420.3fe761a5@notabene.brown>
+In-Reply-To: <4FB159DA.2070800@RedHat.com>
+References: <4FB159DA.2070800@RedHat.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/tJa7kt9IOM/J5=93825tehu"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2012-05-28 19:36, Boaz Harrosh wrote:
-> On 05/28/2012 07:05 PM, Benny Halevy wrote:
-> 
->> Yup, see patchset in reply.
->>
-> 
-> 
-> That I wish you wouldn't do. I have a patchset pending that makes
-> major changes to all this and totally conflicts with your code.
+--Sig_/tJa7kt9IOM/J5=93825tehu
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Sorry, I didn't know that.
+On Mon, 14 May 2012 15:15:38 -0400 Steve Dickson <SteveD@redhat.com> wrote:
 
-> 
-> You can carry this for a while but I might revert your core
-> code in my new patchset.
+> New Features in this release:
+>    * The addition the nfsdcld daemon
+>    * The addition of the osd_login script which is mandated by the
+>          pnfs-objects standard
 
-I hope that at least it will all be for the better.
+Don't you hate it when people don't bother to test all your -rc's, then
+report bugs against your final release?  Me too.
 
-Benny
+  mkdir /tmp/dest
+  make DESTDIR=3D/tmp/dest install
 
-> 
-> Sigh, more work for me.
-> 
-> Boaz
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+fails because it tries to install osd_login in /tmp/dest/sbin/osd_login
+without first creating /tmp/dest/sbin.  All other required directories get
+created first.
+
+This patch - stealing an idea from utils/mount - seem to fix it.
+
+Thanks,
+NeilBrown
+
+
+commit 03bb227402ab023f4badb515022d49f82e01ff8d
+Author: Neil Brown <neilb@suse.de>
+Date:   Thu May 17 16:40:40 2012 +1000
+
+    osd_login - ensure /sbin is created before installation.
+   =20
+    If we use a more standard approach to describing the osd_login
+    script, the automake infrastructure will create /sbin before
+    attempting installation.
+    This is important for: make DESTDIR=3D/empty-dir install
+   =20
+    Signed-off-by: NeilBrown <neilb@suse.de>
+
+diff --git a/utils/osd_login/Makefile.am b/utils/osd_login/Makefile.am
+index adc493a..d17ffa7 100644
+--- a/utils/osd_login/Makefile.am
++++ b/utils/osd_login/Makefile.am
+@@ -1,12 +1,9 @@
+ ## Process this file with automake to produce Makefile.in
+=20
+-OSD_LOGIN_FILES=3D osd_login
++# These binaries go in /sbin (not /usr/sbin), and that cannot be
++# overriden at config time.
++sbindir =3D /sbin
+=20
+-EXTRA_DIST=3D $(OSD_LOGIN_FILES)
+-
+-all-local: $(OSD_LOGIN_FILES)
+-
+-install-data-hook:
+-	$(INSTALL) --mode 755 osd_login $(DESTDIR)/sbin/osd_login
++sbin_SCRIPTS =3D osd_login
+=20
+ MAINTAINERCLEANFILES =3D Makefile.in
+
+--Sig_/tJa7kt9IOM/J5=93825tehu
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
+
+iQIVAwUBT7SeRDnsnt1WYoG5AQKQ7g//Y9aoOuBEc9TU8Sy2dyXsaVOzt6zwLOwX
+vrCfqm28uVZslBKFRjPf8RupGMNpRkl5YNLkidUwKqubpwt0aePHsTo4mLHVtTcH
+87LCSMyUgxAaTcvnerYZDHeeY26vd2ymg3GS8QadRa2ldx6S5nAt2XRkBCRwAID+
+g44NVNjbVgAo+PCp0814swXFiqo1wMyEB6/0rvqPBpjah1NNiLVbeHChmBSayCrF
+GCd0opd/WPJ9Crs5n7mVZFyTHmq9hECXZIeaqvy25LGMyKSJSMbTO3k5TpYGfAUt
+OKjmUt0yr7Ou7aAfPTZZdBVVgG3lZemMPj4skQZmiH4cL+RBzw5zo2jfbSTJhIv2
+gv4+hqug9kSCRvZhWRcTzr8Uj3cqN+r0iGoCgQv4Ohanrsyi26ogW8KBnJVgx8m0
+4g9g1/9cD0+wm3OwD33M7csOM5iovtU73bQ55E/NlYjUEwZBdcQz9e8cWGvNkPh1
+oJOePrkwjQ2vQeb/uhM+bdK0wB518mxiATIC14KblWaetNEuFOL+fIM+2Ff0j3cX
+O0jvmq+oNgBEESOlAQ0AODUWNurrC86jkjxdq/0umFXrDEcvjMQKi7R/IQMjJ4UP
+F07HFLftT8cJI4Jn+me3+ASHRTdsym8Gf3EM85KpSOiRM56Mbly/Y9hTFoU2gfoP
+F9O2dSO4R74=
+=dgSB
+-----END PGP SIGNATURE-----
+
+--Sig_/tJa7kt9IOM/J5=93825tehu--
