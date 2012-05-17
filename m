@@ -1,39 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:39580 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:27092 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754751Ab2EVHhG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 May 2012 03:37:06 -0400
-Subject: [PATCH v2 10/12] NFS: add debug messages to callback down function
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Tue, 22 May 2012 11:37:02 +0400
-Message-ID: <20120522073701.20602.40146.stgit@localhost.localdomain>
-In-Reply-To: <20120522073320.20602.87130.stgit@localhost.localdomain>
-References: <20120522073320.20602.87130.stgit@localhost.localdomain>
+	id S1754655Ab2EQM2P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 May 2012 08:28:15 -0400
+Message-ID: <4FB4EEBF.3040005@RedHat.com>
+Date: Thu, 17 May 2012 08:27:43 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Mike Frysinger <vapier@gentoo.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] osd_login: fix DESTDIR install
+References: <1337232243-18088-1-git-send-email-vapier@gentoo.org>
+In-Reply-To: <1337232243-18088-1-git-send-email-vapier@gentoo.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfs/callback.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index dbedd7e..2db796a 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -423,7 +423,9 @@ void nfs_callback_down(int minorversion, struct net *net)
- 	cb_info->users--;
- 	if (cb_info->users == 0 && cb_info->task != NULL) {
- 		kthread_stop(cb_info->task);
-+		dprintk("nfs_callback_down: service stopped\n");
- 		svc_exit_thread(cb_info->rqst);
-+		dprintk("nfs_callback_down: service destroyed\n");
- 		cb_info->serv = NULL;
- 		cb_info->rqst = NULL;
- 		cb_info->task = NULL;
 
+On 05/17/2012 01:24 AM, Mike Frysinger wrote:
+> If the destination dir doesn't exist, the current install fails:
+> make  install-data-hook
+> make[4]: Entering directory `/var/tmp/portage/net-fs/nfs-utils-1.2.6/work/nfs-utils-1.2.6/utils/osd_login'
+> /usr/bin/install -c --mode 755 osd_login /var/tmp/portage/net-fs/nfs-utils-1.2.6/image//sbin/osd_login
+> /usr/bin/install: cannot create regular file ‘/var/tmp/portage/net-fs/nfs-utils-1.2.6/image//sbin/osd_login’: No such file or directory
+> make[4]: *** [install-data-hook] Error 1
+> 
+> Rewrite the code to use automake's existing script support rather
+> than trying to install the file by hand.
+> 
+> Reported-by: Branko BAdrljica <brankob@avtomatika.com>
+> Signed-off-by: Mike Frysinger <vapier@gentoo.org>I
+I took Neil's patch... commit d4d3920 which basically does
+the same thing... (I believe)...  
+
+steved.
+ 
+> ---
+>  utils/osd_login/Makefile.am |   11 +++++------
+>  1 files changed, 5 insertions(+), 6 deletions(-)
+> 
+> diff --git a/utils/osd_login/Makefile.am b/utils/osd_login/Makefile.am
+> index adc493a..c85584c 100644
+> --- a/utils/osd_login/Makefile.am
+> +++ b/utils/osd_login/Makefile.am
+> @@ -1,12 +1,11 @@
+>  ## Process this file with automake to produce Makefile.in
+>  
+> -OSD_LOGIN_FILES= osd_login
+> -
+> -EXTRA_DIST= $(OSD_LOGIN_FILES)
+> +# These scripts go in /sbin (not /usr/sbin), and that cannot be
+> +# overriden at config time.
+> +sbindir = /sbin
+>  
+> -all-local: $(OSD_LOGIN_FILES)
+> +OSD_LOGIN_FILES= osd_login
+>  
+> -install-data-hook:
+> -	$(INSTALL) --mode 755 osd_login $(DESTDIR)/sbin/osd_login
+> +sbin_SCRIPTS= osd_login
+>  
+>  MAINTAINERCLEANFILES = Makefile.in
