@@ -1,204 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:28800 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52570 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760084Ab2EJPUj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 May 2012 11:20:39 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v3 07/14] NFS: Use nfs_fs_mount_common() for xdev mounts
-Date: Thu, 10 May 2012 11:19:58 -0400
-Message-Id: <1336663205-23886-8-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1336663205-23886-1-git-send-email-bjschuma@netapp.com>
-References: <1336663205-23886-1-git-send-email-bjschuma@netapp.com>
+	id S1756599Ab2EQUzp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 May 2012 16:55:45 -0400
+Date: Thu, 17 May 2012 16:55:42 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2] statd: drop all capabilities from the bounding set
+ as well
+Message-ID: <20120517165542.3b10740d@tlielax.poochiereds.net>
+In-Reply-To: <07DEAF11-29E7-4292-A425-2587BF682269@oracle.com>
+References: <1337277259-5101-1-git-send-email-jlayton@redhat.com>
+	<73BC4C93-9192-4FE7-B32E-58345EB28AAD@oracle.com>
+	<20120517161114.5cebfa68@tlielax.poochiereds.net>
+	<07DEAF11-29E7-4292-A425-2587BF682269@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Thu, 17 May 2012 16:20:40 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-At this point, there are only a few small differences between these two
-functions.  I can set a few function pointers in the nfs_mount_info
-struct to get around these differences.
+> 
+> On May 17, 2012, at 4:11 PM, Jeff Layton wrote:
+> 
+> > On Thu, 17 May 2012 14:52:58 -0400
+> > Chuck Lever <chuck.lever@oracle.com> wrote:
+> > 
+> >> 
+> >> On May 17, 2012, at 1:54 PM, Jeff Layton wrote:
+> >> 
+> >>> statd drops all capabilities except for CAP_NET_BIND when it starts. It's
+> >>> possible though that if it ever had a compromise that an attacker would be
+> >>> able to invoke a setuid process (or something with file capabilities) in
+> >>> order to reinstate some caps.
+> >>> 
+> >>> This could happen as a result of the daemon becoming compromised, or
+> >>> possibly as a result of the ha-callout program becoming compromised.
+> >> 
+> >> Generally, I wonder what our exposure to this attack for a statd built without capability support.  Just musing out loud.
+> >> 
+> > 
+> > It is difficult to qualify this without a specific attack in mind. The
+> > story I've always gotten from those who work with capabilities for a
+> > living however is that unless you prune the bounding set, the job isn't
+> > complete.
+> 
+> My question was muddled.  I'll try again.  If statd is built with "--disable-caps", then I think statd won't drop capabilities at all.  Are we agreeing that nothing can be done in that case to mitigate this kind of attack?
+> 
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/super.c |   97 ++++++++++++++++----------------------------------------
- 1 file changed, 27 insertions(+), 70 deletions(-)
+Probably not...
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 707d1f6..a3bc530 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -279,6 +279,7 @@ static match_table_t nfs_vers_tokens = {
- 
- struct nfs_mount_info {
- 	void (*fill_super)(struct super_block *, struct nfs_mount_info *);
-+	int (*set_security)(struct super_block *, struct dentry *, struct nfs_mount_info *);
- 	struct nfs_parsed_mount_data *parsed;
- 	struct nfs_clone_mount *cloned;
- };
-@@ -2312,6 +2313,22 @@ static int nfs_bdi_register(struct nfs_server *server)
- 	return bdi_register_dev(&server->backing_dev_info, server->s_dev);
- }
- 
-+static int nfs_set_sb_security(struct super_block *s, struct dentry *mntroot,
-+			       struct nfs_mount_info *mount_info)
-+{
-+	return security_sb_set_mnt_opts(s, &mount_info->parsed->lsm_opts);
-+}
-+
-+static int nfs_clone_sb_security(struct super_block *s, struct dentry *mntroot,
-+				 struct nfs_mount_info *mount_info)
-+{
-+	/* clone any lsm security options from the parent to the new sb */
-+	security_sb_clone_mnt_opts(mount_info->cloned->sb, s);
-+	if (mntroot->d_inode->i_op != NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops)
-+		return -ESTALE;
-+	return 0;
-+}
-+
- static struct dentry *nfs_fs_mount_common(struct file_system_type *fs_type,
- 					  struct nfs_server *server,
- 					  int flags, const char *dev_name,
-@@ -2355,14 +2372,14 @@ static struct dentry *nfs_fs_mount_common(struct file_system_type *fs_type,
- 	if (!s->s_root) {
- 		/* initial superblock/root creation */
- 		mount_info->fill_super(s, mount_info);
--		nfs_get_cache_cookie(s, mount_info->parsed, NULL);
-+		nfs_get_cache_cookie(s, mount_info->parsed, mount_info->cloned);
- 	}
- 
- 	mntroot = nfs_get_root(s, mntfh, dev_name);
- 	if (IS_ERR(mntroot))
- 		goto error_splat_super;
- 
--	error = security_sb_set_mnt_opts(s, &mount_info->parsed->lsm_opts);
-+	error = mount_info->set_security(s, mntroot, mount_info);
- 	if (error)
- 		goto error_splat_root;
- 
-@@ -2393,6 +2410,7 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
- 	struct nfs_parsed_mount_data *data = NULL;
- 	struct nfs_mount_info mount_info = {
- 		.fill_super = nfs_fill_super,
-+		.set_security = nfs_set_sb_security,
- 	};
- 	struct nfs_fh *mntfh;
- 	struct dentry *mntroot = ERR_PTR(-ENOMEM);
-@@ -2463,13 +2481,8 @@ nfs_xdev_mount_common(struct file_system_type *fs_type, int flags,
- 		const char *dev_name, struct nfs_mount_info *mount_info)
- {
- 	struct nfs_clone_mount *data = mount_info->cloned;
--	struct super_block *s;
- 	struct nfs_server *server;
--	struct dentry *mntroot;
--	int (*compare_super)(struct super_block *, void *) = nfs_compare_super;
--	struct nfs_sb_mountdata sb_mntdata = {
--		.mntflags = flags,
--	};
-+	struct dentry *mntroot = ERR_PTR(-ENOMEM);
- 	int error;
- 
- 	dprintk("--> nfs_xdev_mount_common()\n");
-@@ -2478,71 +2491,12 @@ nfs_xdev_mount_common(struct file_system_type *fs_type, int flags,
- 	server = nfs_clone_server(NFS_SB(data->sb), data->fh, data->fattr, data->authflavor);
- 	if (IS_ERR(server)) {
- 		error = PTR_ERR(server);
--		goto out_err_noserver;
--	}
--	sb_mntdata.server = server;
--
--	if (server->flags & NFS_MOUNT_UNSHARED)
--		compare_super = NULL;
--
--	/* -o noac implies -o sync */
--	if (server->flags & NFS_MOUNT_NOAC)
--		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
--
--	/* Get a superblock - note that we may end up sharing one that already exists */
--	s = sget(&nfs_fs_type, compare_super, nfs_set_super, &sb_mntdata);
--	if (IS_ERR(s)) {
--		error = PTR_ERR(s);
--		goto out_err_nosb;
--	}
--
--	if (s->s_fs_info != server) {
--		nfs_free_server(server);
--		server = NULL;
--	} else {
--		error = nfs_bdi_register(server);
--		if (error)
--			goto error_splat_bdi;
--	}
--
--	if (!s->s_root) {
--		/* initial superblock/root creation */
--		mount_info->fill_super(s, mount_info);
--		nfs_get_cache_cookie(s, NULL, data);
--	}
--
--	mntroot = nfs_get_root(s, data->fh, dev_name);
--	if (IS_ERR(mntroot)) {
--		error = PTR_ERR(mntroot);
--		goto error_splat_super;
--	}
--	if (mntroot->d_inode->i_op != NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops) {
--		dput(mntroot);
--		error = -ESTALE;
--		goto error_splat_super;
-+		goto out;
- 	}
- 
--	s->s_flags |= MS_ACTIVE;
--
--	/* clone any lsm security options from the parent to the new sb */
--	security_sb_clone_mnt_opts(data->sb, s);
--
--	dprintk("<-- nfs_xdev_mount_common() = 0\n");
-+	mntroot = nfs_fs_mount_common(fs_type, server, flags, dev_name, data->fh, mount_info);
-+out:
- 	return mntroot;
--
--out_err_nosb:
--	nfs_free_server(server);
--out_err_noserver:
--	dprintk("<-- nfs_xdev_mount_common() = %d [error]\n", error);
--	return ERR_PTR(error);
--
--error_splat_super:
--	if (server && !s->s_root)
--		bdi_unregister(&server->backing_dev_info);
--error_splat_bdi:
--	deactivate_locked_super(s);
--	dprintk("<-- nfs_xdev_mount_common() = %d [splat]\n", error);
--	return ERR_PTR(error);
- }
- 
- /*
-@@ -2554,6 +2508,7 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
- {
- 	struct nfs_mount_info mount_info = {
- 		.fill_super = nfs_clone_super,
-+		.set_security = nfs_clone_sb_security,
- 		.cloned   = raw_data,
- 	};
- 	return nfs_xdev_mount_common(&nfs_fs_type, flags, dev_name, &mount_info);
-@@ -2740,6 +2695,7 @@ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
- {
- 	struct nfs_mount_info mount_info = {
- 		.fill_super = nfs4_fill_super,
-+		.set_security = nfs_set_sb_security,
- 		.parsed = raw_data,
- 	};
- 	struct nfs_server *server;
-@@ -2949,6 +2905,7 @@ nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
- {
- 	struct nfs_mount_info mount_info = {
- 		.fill_super = nfs4_clone_super,
-+		.set_security = nfs_clone_sb_security,
- 		.cloned = raw_data,
- 	};
- 	return nfs_xdev_mount_common(&nfs4_fs_type, flags, dev_name, &mount_info);
+If a build specifies --disable-caps, then I take that to mean that it
+shouldn't try to do anything with capabilities. I see that increased
+exposure as the price you pay for not building against libcap.
+
+Given that, I'll ensure that we don't attempt to modify the bounding
+set too in that case...
+
 -- 
-1.7.10.1
-
+Jeff Layton <jlayton@redhat.com>
