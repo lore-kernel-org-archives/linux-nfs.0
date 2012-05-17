@@ -1,63 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56663 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:34959 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759114Ab2EPUzB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 May 2012 16:55:01 -0400
-Date: Wed, 16 May 2012 16:54:58 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Subject: Re: [PATCH RFC 00/13] Lockd: grace period containerization
-Message-ID: <20120516205458.GC20487@fieldses.org>
-References: <20120505170722.11559.74503.stgit@localhost.localdomain>
- <20120516200630.GB20487@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120516200630.GB20487@fieldses.org>
+	id S1760971Ab2ERBX6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 May 2012 21:23:58 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 9 4/4] NFSv4.1 test the mdsthreshold hint parameters
+Date: Thu, 17 May 2012 15:48:22 -0400
+Message-Id: <1337284102-3372-4-git-send-email-andros@netapp.com>
+In-Reply-To: <1337284102-3372-1-git-send-email-andros@netapp.com>
+References: <1337284102-3372-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 16, 2012 at 04:06:30PM -0400, J. Bruce Fields wrote:
-> On Sat, May 05, 2012 at 09:21:30PM +0400, Stanislav Kinsbursky wrote:
-> > This patch set is marked with RFC, because I'm still not quite sure, that this
-> > implementation will satisfy other interested people.
-> > So, would be appreciated for any comments.
-> > 
-> > This patch set makes grace period and hosts reclaiming network namespace
-> > aware.
-> > 
-> > Main ideas:
-> > 1)  moving of 
-> > 
-> > 	unsigned long next_gc;
-> > 	unsigned long nrhosts;
-> > 
-> > 	struct delayed_work grace_period_end;
-> > 	struct lock_manager lockd_manager;
-> > 	struct list_head grace_list;
-> > 
-> > to per-net Lockd data.
-> > 
-> > 2) moving of 
-> > 
-> > 	struct lock_manager nfsd4_manager;
-> > 
-> > to per-net NFSd data.
-> > 
-> > 3) shutdown + gc of NLM hosts done now network namespace aware.
-> 
-> That all sounds reasonable to me.
-> 
-> > 4) restart_grace() now works only for init_net.
-> 
-> Eventually we might just remove that.  I doubt it's used anywhere.
+From: Andy Adamson <andros@netapp.com>
 
-And on a quick skim I don't see anything wrong with the patches
-themselves; let me know when you consider them ready.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/pnfs.c |   78 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 78 insertions(+), 0 deletions(-)
 
-The per-net grace period management probably isn't what we'll want
-eventually, but as I said on the other thread I think it's a reasonable
-starting point.
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 924dce1..1db7416 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -934,6 +934,80 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo,
+ }
+ 
+ /*
++ * Use mdsthreshold hints set at each OPEN to determine if I/O should go
++ * to the MDS or over pNFS
++ *
++ * The nfs_inode read_io and write_io fields are cumulative counters reset
++ * before each LAYOUTGET. Note that in pnfs_update_layout iomode is set to
++ * IOMODE_READ for a READ request, and set to IOMODE_RW for a WRITE request.
++ * A return of true means use MDS I/O.
++ *
++ * From rfc 5661:
++ * If a file's length is less than the value of threshold4 read or write size,
++ * then it is RECOMMENDED that the client read from the file via the MDS and
++ * not a storage device.
++ *
++ * For I/O sizes below the threshold4 read or write iosize, it is RECOMMENDED
++ * to access data through the MDS.
++ */
++static bool pnfs_within_mdsthreshold(struct nfs_open_context *ctx,
++				     struct inode *ino, int iomode)
++{
++	struct nfs4_threshold *t = ctx->mdsthreshold;
++	struct nfs_inode *nfsi = NFS_I(ino);
++	loff_t fsize = i_size_read(ino);
++	bool size = false, size_set = false, io = false, io_set = false;
++	bool ret = false;
++
++	if (t == NULL || t->bm == 0)
++		return ret;
++
++	dprintk("%s bm=0x%x rd_sz=%llu wr_sz=%llu rd_io=%llu wr_io=%llu\n",
++		__func__, t->bm, t->rd_sz, t->wr_sz, t->rd_io_sz, t->wr_io_sz);
++
++	switch (iomode) {
++	case IOMODE_READ:
++		if (t->bm & THRESHOLD_RD) {
++			dprintk("%s fsize %llu\n", __func__, fsize);
++			size_set = true;
++			if (fsize < t->rd_sz)
++				size = true;
++		}
++		if (t->bm & THRESHOLD_RD_IO) {
++			dprintk("%s nfsi->read_io %llu\n", __func__,
++				nfsi->read_io);
++			io_set = true;
++			if (nfsi->read_io < t->rd_io_sz)
++				io = true;
++		}
++		break;
++	case IOMODE_RW:
++		if (t->bm & THRESHOLD_WR) {
++			dprintk("%s fsize %llu\n", __func__, fsize);
++			size_set = true;
++			if (fsize < t->wr_sz)
++				size = true;
++		}
++		if (t->bm & THRESHOLD_WR_IO) {
++			dprintk("%s nfsi->write_io %llu\n", __func__,
++				nfsi->write_io);
++			io_set = true;
++			if (nfsi->write_io < t->wr_io_sz)
++				io = true;
++		}
++		break;
++	}
++	if (size_set && io_set) {
++		if (size && io)
++			ret = true;
++	} else if (size || io)
++		ret = true;
++
++	dprintk("<-- %s size %d io %d ret %d\n", __func__, size, io, ret);
++	return ret;
++}
++
++/*
+  * Layout segment is retreived from the server if not cached.
+  * The appropriate layout segment is referenced and returned to the caller.
+  */
+@@ -960,6 +1034,10 @@ pnfs_update_layout(struct inode *ino,
+ 
+ 	if (!pnfs_enabled_sb(NFS_SERVER(ino)))
+ 		return NULL;
++
++	if (pnfs_within_mdsthreshold(ctx, ino, iomode))
++		return NULL;
++
+ 	spin_lock(&ino->i_lock);
+ 	lo = pnfs_find_alloc_layout(ino, ctx, gfp_flags);
+ 	if (lo == NULL) {
+-- 
+1.7.7.6
 
---b.
