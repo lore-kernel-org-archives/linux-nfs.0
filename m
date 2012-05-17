@@ -1,86 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:8849 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752826Ab2EZSkY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 26 May 2012 14:40:24 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH v2 7/9] NFSv4.1: Ensure we use the correct credentials for bind_conn_to_session
-Date: Sat, 26 May 2012 14:39:58 -0400
-Message-Id: <1338057600-11130-7-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1338057600-11130-6-git-send-email-Trond.Myklebust@netapp.com>
-References: <1338057600-11130-1-git-send-email-Trond.Myklebust@netapp.com>
- <1338057600-11130-2-git-send-email-Trond.Myklebust@netapp.com>
- <1338057600-11130-3-git-send-email-Trond.Myklebust@netapp.com>
- <1338057600-11130-4-git-send-email-Trond.Myklebust@netapp.com>
- <1338057600-11130-5-git-send-email-Trond.Myklebust@netapp.com>
- <1338057600-11130-6-git-send-email-Trond.Myklebust@netapp.com>
+Received: from natasha.panasas.com ([67.152.220.90]:56454 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754084Ab2EQRPT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 May 2012 13:15:19 -0400
+Message-ID: <4FB532D1.5090402@panasas.com>
+Date: Thu, 17 May 2012 10:18:09 -0700
+From: Sachin Bhamare <sbhamare@panasas.com>
+MIME-Version: 1.0
+To: NeilBrown <neilb@suse.de>
+CC: Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        "Harrosh, Boaz" <bharrosh@panasas.com>
+Subject: Re: ANNOUNCE: nfs-utils-1.2.6 released.
+References: <4FB159DA.2070800@RedHat.com> <20120517164420.3fe761a5@notabene.brown>
+In-Reply-To: <20120517164420.3fe761a5@notabene.brown>
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Weston Andros Adamson <dros@netapp.com>
----
- fs/nfs/nfs4_fs.h   |    2 +-
- fs/nfs/nfs4proc.c  |    3 ++-
- fs/nfs/nfs4state.c |    9 ++++++++-
- 3 files changed, 11 insertions(+), 3 deletions(-)
+On 5/16/12 11:44 PM, NeilBrown wrote:
+> On Mon, 14 May 2012 15:15:38 -0400 Steve Dickson <SteveD@redhat.com> wrote:
+> 
+>> New Features in this release:
+>>    * The addition the nfsdcld daemon
+>>    * The addition of the osd_login script which is mandated by the
+>>          pnfs-objects standard
+> 
+> Don't you hate it when people don't bother to test all your -rc's, then
+> report bugs against your final release?  Me too.
+> 
+>   mkdir /tmp/dest
+>   make DESTDIR=/tmp/dest install
+> 
+> fails because it tries to install osd_login in /tmp/dest/sbin/osd_login
+> without first creating /tmp/dest/sbin.  All other required directories get
+> created first.
+> 
+> This patch - stealing an idea from utils/mount - seem to fix it.
+> 
+> Thanks,
+> NeilBrown
+> 
+> 
+> commit 03bb227402ab023f4badb515022d49f82e01ff8d
+> Author: Neil Brown <neilb@suse.de>
+> Date:   Thu May 17 16:40:40 2012 +1000
+> 
+>     osd_login - ensure /sbin is created before installation.
+>     
+>     If we use a more standard approach to describing the osd_login
+>     script, the automake infrastructure will create /sbin before
+>     attempting installation.
+>     This is important for: make DESTDIR=/empty-dir install
+>     
+>     Signed-off-by: NeilBrown <neilb@suse.de>
+> 
+> diff --git a/utils/osd_login/Makefile.am b/utils/osd_login/Makefile.am
+> index adc493a..d17ffa7 100644
+> --- a/utils/osd_login/Makefile.am
+> +++ b/utils/osd_login/Makefile.am
+> @@ -1,12 +1,9 @@
+>  ## Process this file with automake to produce Makefile.in
+>  
+> -OSD_LOGIN_FILES= osd_login
+> +# These binaries go in /sbin (not /usr/sbin), and that cannot be
+> +# overriden at config time.
+> +sbindir = /sbin
+>  
+> -EXTRA_DIST= $(OSD_LOGIN_FILES)
+> -
+> -all-local: $(OSD_LOGIN_FILES)
+> -
+> -install-data-hook:
+> -	$(INSTALL) --mode 755 osd_login $(DESTDIR)/sbin/osd_login
+> +sbin_SCRIPTS = osd_login
+>  
+>  MAINTAINERCLEANFILES = Makefile.in
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index a5dbe62..f730730 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -212,7 +212,7 @@ struct vfsmount *nfs4_submount(struct nfs_server *, struct dentry *,
- extern int nfs4_proc_setclientid(struct nfs_client *, u32, unsigned short, struct rpc_cred *, struct nfs4_setclientid_res *);
- extern int nfs4_proc_setclientid_confirm(struct nfs_client *, struct nfs4_setclientid_res *arg, struct rpc_cred *);
- extern int nfs4_proc_get_rootfh(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
--extern int nfs4_proc_bind_conn_to_session(struct nfs_client *);
-+extern int nfs4_proc_bind_conn_to_session(struct nfs_client *, struct rpc_cred *cred);
- extern int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred);
- extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
- extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8fa3a36..3fdff0c 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5105,7 +5105,7 @@ nfs41_same_server_scope(struct nfs41_server_scope *a,
-  * The 4.1 client currently uses the same TCP connection for the
-  * fore and backchannel.
-  */
--int nfs4_proc_bind_conn_to_session(struct nfs_client *clp)
-+int nfs4_proc_bind_conn_to_session(struct nfs_client *clp, struct rpc_cred *cred)
- {
- 	int status;
- 	struct nfs41_bind_conn_to_session_res res;
-@@ -5114,6 +5114,7 @@ int nfs4_proc_bind_conn_to_session(struct nfs_client *clp)
- 			&nfs4_procedures[NFSPROC4_CLNT_BIND_CONN_TO_SESSION],
- 		.rpc_argp = clp,
- 		.rpc_resp = &res,
-+		.rpc_cred = cred,
- 	};
- 
- 	dprintk("--> %s\n", __func__);
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 1587840..7dbca66 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1779,7 +1779,14 @@ static int nfs4_recall_slot(struct nfs_client *clp)
- 
- static int nfs4_bind_conn_to_session(struct nfs_client *clp)
- {
--	return nfs4_proc_bind_conn_to_session(clp);
-+	struct rpc_cred *cred;
-+	int ret;
-+
-+	cred = nfs4_get_exchange_id_cred(clp);
-+	ret = nfs4_proc_bind_conn_to_session(clp, cred);
-+	if (cred)
-+		put_rpccred(cred);
-+	return ret;
- }
- #else /* CONFIG_NFS_V4_1 */
- static int nfs4_reset_session(struct nfs_client *clp) { return 0; }
--- 
-1.7.7.6
+ACK-by: Sachin Bhamare <sbhamare@panasas.com>
 
+Thanks for fixing this. My bad for not testing it with a non-empty DESTDIR.
+
+- sachin
+
+-----
+Sachin Bhamare
+Panasas Inc.
