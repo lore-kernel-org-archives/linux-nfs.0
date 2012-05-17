@@ -1,94 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f174.google.com ([74.125.82.174]:40247 "EHLO
-	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753305Ab2E1SIc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 14:08:32 -0400
-Received: by weyu7 with SMTP id u7so2078070wey.19
-        for <linux-nfs@vger.kernel.org>; Mon, 28 May 2012 11:08:31 -0700 (PDT)
-Message-ID: <4FC3BF1B.3000103@tonian.com>
-Date: Mon, 28 May 2012 21:08:27 +0300
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:52331 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1762214Ab2EQRkr convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 May 2012 13:40:47 -0400
+Received: from hop04-l1d11-si01.isus.emc.com (HOP04-L1D11-SI01.isus.emc.com [10.254.111.54])
+	by mexforward.lss.emc.com (Switch-3.4.3/Switch-3.4.3) with ESMTP id q4HHekPe022875
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Thu, 17 May 2012 13:40:46 -0400
+Received: from mailhub.lss.emc.com (mailhub.lss.emc.com [10.254.221.253]) by hop04-l1d11-si01.isus.emc.com (RSA Interceptor) for <linux-nfs@vger.kernel.org>; Thu, 17 May 2012 13:40:39 -0400
+Received: from usensfaibishl1e.corp.emc.com (AUTGZHUR1L2C.corp.emc.com [10.13.34.41])
+	by mailhub.lss.emc.com (Switch-3.4.3/Switch-3.4.3) with ESMTP id q4HHebwt017573
+	for <linux-nfs@vger.kernel.org>; Thu, 17 May 2012 13:40:38 -0400
+Content-Type: text/plain; charset=utf-8; format=flowed; delsp=yes
+Subject: Re: [PATCH 2.6.32-131.6.1.el6.x86_64] idmapd.c: deactivate the ASCII
+ characters check
+References: <4F4603EC.9030404@redhat.com> <4F4E8F3A.8070708@RedHat.com>
+Date: Thu, 17 May 2012 13:40:33 -0400
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 MIME-Version: 1.0
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 4/5] pnfsd-lexp: return_on_close config option
-References: <4FC3A235.8090908@tonian.com> <1338221387-22621-1-git-send-email-bhalevy@tonian.com> <4FC3AD59.4050703@panasas.com> <4FC3BCB9.6040604@tonian.com> <4FC3BD6C.5030904@tonian.com>
-In-Reply-To: <4FC3BD6C.5030904@tonian.com>
-Content-Type: text/plain; charset=ISO-8859-1
+From: "Sorin Faibish" <sfaibish@emc.com>
+Message-ID: <op.wegrdvmsrwwil4@usensfaibishl1e.corp.emc.com>
+In-Reply-To: <4F4E8F3A.8070708@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2012-05-28 21:01, Benny Halevy wrote:
-> On 2012-05-28 20:58, Benny Halevy wrote:
->> On 2012-05-28 19:52, Boaz Harrosh wrote:
->>> On 05/28/2012 07:09 PM, Benny Halevy wrote:
->>>
->>>> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
->>>> ---
->>>>  fs/nfsd/Kconfig      |    7 +++++++
->>>>  fs/nfsd/pnfsd_lexp.c |    5 +++++
->>>>  2 files changed, 12 insertions(+), 0 deletions(-)
->>>>
->>>> diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
->>>> index 9d4d79b..f9b3426 100644
->>>> --- a/fs/nfsd/Kconfig
->>>> +++ b/fs/nfsd/Kconfig
->>>> @@ -132,3 +132,10 @@ config PNFSD_LEXP_LAYOUT_SEGMENT_SIZE
->>>>  	  Set simulated layout segment size.
->>>>  
->>>>  	  If unsure, say N.
->>>> +
->>>> +config PNFSD_LEXP_RETURN_ON_CLOSE
->>>> +	bool "Reply to LAYOUTGET with return_on_close set to true"
->>>> +	depends on PNFSD_LOCAL_EXPORT
->>>> +	default false
->>>> +	help
->>>> +	  Set return_on_close response flag.
->>>> diff --git a/fs/nfsd/pnfsd_lexp.c b/fs/nfsd/pnfsd_lexp.c
->>>> index 30d9757..33a724c 100644
->>>> --- a/fs/nfsd/pnfsd_lexp.c
->>>> +++ b/fs/nfsd/pnfsd_lexp.c
->>>> @@ -153,6 +153,11 @@ static int get_stripe_unit(int blocksize)
->>>>  	res->lg_seg.offset = 0;
->>>>  	res->lg_seg.length = NFS4_MAX_UINT64;
->>>>  #endif  /* CONFIG_PNFSD_LEXP_LAYOUT_SEGMENTS */
->>>> +#ifdef     CONFIG_PNFSD_LEXP_RETURN_ON_CLOSE
->>>> +	res->lg_return_on_close = true;
->>>> +#else   /* CONFIG_PNFSD_LEXP_RETURN_ON_CLOSE */
->>>> +	res->lg_return_on_close = false;
->>>
->>>
->>> Back to my original question. With current code this case is a BUG.
->>> It will leak layouts and therefore file-reference in case of a layout-get
->>> with open-state ID. 
->>>
->>> So I suggest hardcoding to true until such time that we actually can
->>> support it
->>
->> so how will you debug the leak case?
->> pnfsd-lexp is for testing, and the default is on.
-> 
-> oops, the default is actually off in this patch.
-> I do need to code what I wish :)
+Team,
 
-Fixed.
+These are some preliminary results with pNFS block. They look very  
+promising both performance and scalability. They uncovered some  
+instability but mainly due to HW issues; no SW issues. These results are  
+our prove that the latest pNFS block code is stable and performing  
+reasonably well.
 
-> 
-> Benny
-> 
->>
->> Benny
->>
->>>
->>> Boaz
->>>
->>>> +#endif  /* CONFIG_PNFSD_LEXP_RETURN_ON_CLOSE */
->>>>  
->>>>  	layout = kzalloc(sizeof(*layout), GFP_KERNEL);
->>>>  	if (layout == NULL) {
->>>
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Single client pNFS performance was 86MB/sec write performance for  
+reference. Thank you very much for your patience and support
+
+
+
+We’ve finished the testing and analysis of pNFS vs. MPFS.  It took much  
+longer than expected due to several stability issues uncovered on both the  
+client and the server.  Some of the issues occurred during read testing,  
+which had never been a focus of previous testing efforts.  Anyway, please  
+find the results below.  To help with the below interpretation, please  
+reference the following key:
+
+SW8xN-MPFS              Sequential Write 8 clients by N threads using MPFS  
+(special build using latest kernel on Fedora 15)
+SR8xN-MPFS              Sequential Read 8 clients by N threads using MPFS  
+(special build on Fedora 15)
+SW8xN-pNFS              Sequential Write 8 clients by N threads using pNFS  
+(on Fedora 15)
+SR8xN-pNFS              Sequential Read 8 clients by N threads using pNFS  
+(on Fedora 15)
+SW8xN-pNFS2             Sequential Write 8 clients by N threads using pNFS  
+(on Fedora 15)
+SR8xN-pNFS2             Sequential Read 8 clients by N threads using pNFS  
+(on Fedora 15)
+SR8xN-pNFS3             Sequential Read 8 clients by N threads using pNFS  
+(on Fedora 15)
+SW8xN-MPFS2             Sequential Write 8 clients by N threads using MPFS
+SR8xN-MPFS2             Sequential Read 8 clients by N threads using MPFS
+
+I think/hope the rest is self-explanatory based on labels, etc.  To  
+summarize:
+
+
+	pNFS2	pNFS4vs.MPFS
+SW8x1	653121.85	-8%
+SW8x2	835101.05	-10%
+SW8x3	846188.63	-8%
+SW8x4	852617.66	-6%
+SR8x1	674129.88	43%
+SR8x2	634800.33	34%
+SR8x3	629843.20	28%
+SR8x4	577197.70	19%
+
+Let me know what you think or if you have any questions.  I’m moving on to  
+other projects that I’ve committed to and am currently behind on.
+
+-- 
+--
+Best Regards
+
+Sorin Faibish
+Corporate Distinguished Engineer
+Fast Data Group - Office of CTO
+                           EMC2
+where information lives
+
+Phone: 508-249-5745
+Mobile: 617-510-0422
+email: sfaibish@emc.com
