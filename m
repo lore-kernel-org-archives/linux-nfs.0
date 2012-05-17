@@ -1,73 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:33044 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757287Ab2EARQh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 May 2012 13:16:37 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH v2 1/3] NFS: Read cleanups
-Date: Tue,  1 May 2012 13:16:34 -0400
-Message-Id: <1335892596-13667-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from shards.monkeyblade.net ([198.137.202.13]:34703 "EHLO
+	shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965962Ab2EQUPs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 May 2012 16:15:48 -0400
+Date: Thu, 17 May 2012 16:14:09 -0400 (EDT)
+Message-Id: <20120517.161409.1978274725713298734.davem@davemloft.net>
+To: mgorman@suse.de
+Cc: akpm@linux-foundation.org, linux-mm@kvack.org, netdev@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Trond.Myklebust@netapp.com, neilb@suse.de, hch@infradead.org,
+        a.p.zijlstra@chello.nl, michaelc@cs.wisc.edu, emunson@mgebm.net
+Subject: Re: [PATCH 01/12] netvm: Prevent a stream-specific deadlock
+From: David Miller <davem@davemloft.net>
+In-Reply-To: <1337266285-8102-2-git-send-email-mgorman@suse.de>
+References: <1337266285-8102-1-git-send-email-mgorman@suse.de>
+	<1337266285-8102-2-git-send-email-mgorman@suse.de>
+Mime-Version: 1.0
+Content-Type: Text/Plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Remove unused variables, and reformat some code.
+From: Mel Gorman <mgorman@suse.de>
+Date: Thu, 17 May 2012 15:51:14 +0100
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/read.c |   13 ++++---------
- 1 files changed, 4 insertions(+), 9 deletions(-)
+> It could happen that all !SOCK_MEMALLOC sockets have buffered so
+> much data that we're over the global rmem limit. This will prevent
+> SOCK_MEMALLOC buffers from receiving data, which will prevent userspace
+> from running, which is needed to reduce the buffered data.
+> 
+> Fix this by exempting the SOCK_MEMALLOC sockets from the rmem limit.
+> Once this change it applied, it is important that sockets that set
+> SOCK_MEMALLOC do not clear the flag until the socket is being torn down.
+> If this happens, a warning is generated and the tokens reclaimed to
+> avoid accounting errors until the bug is fixed.
+> 
+> [davem@davemloft.net: Warning about clearing SOCK_MEMALLOC]
+> Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+> Signed-off-by: Mel Gorman <mgorman@suse.de>
 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 35e2dce..20a0293 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -341,8 +341,6 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc,
- 	struct nfs_read_data *data;
- 	size_t rsize = desc->pg_bsize, nbytes;
- 	unsigned int offset;
--	int requests = 0;
--	int ret = 0;
- 
- 	nfs_list_remove_request(req);
- 	nfs_list_add_request(req, &hdr->pages);
-@@ -358,12 +356,11 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc,
- 		data->pages.pagevec[0] = page;
- 		nfs_read_rpcsetup(data, len, offset);
- 		list_add(&data->list, &hdr->rpc_list);
--		requests++;
- 		nbytes -= len;
- 		offset += len;
--	} while(nbytes != 0);
-+	} while (nbytes != 0);
- 	desc->pg_rpc_callops = &nfs_read_common_ops;
--	return ret;
-+	return 0;
- out_bad:
- 	while (!list_empty(&hdr->rpc_list)) {
- 		data = list_first_entry(&hdr->rpc_list, struct nfs_read_data, list);
-@@ -387,8 +384,7 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc,
- 							  desc->pg_count));
- 	if (!data) {
- 		desc->pg_completion_ops->error_cleanup(head);
--		ret = -ENOMEM;
--		goto out;
-+		return -ENOMEM;
- 	}
- 
- 	pages = data->pages.pagevec;
-@@ -402,8 +398,7 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc,
- 	nfs_read_rpcsetup(data, desc->pg_count, 0);
- 	list_add(&data->list, &hdr->rpc_list);
- 	desc->pg_rpc_callops = &nfs_read_common_ops;
--out:
--	return ret;
-+	return 0;
- }
- 
- int nfs_generic_pagein(struct nfs_pageio_descriptor *desc,
--- 
-1.7.7.6
-
+Acked-by: David S. Miller <davem@davemloft.net>
