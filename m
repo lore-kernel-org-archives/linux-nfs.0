@@ -1,51 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48755 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750902Ab2EJKiK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 May 2012 06:38:10 -0400
-Date: Thu, 10 May 2012 06:38:08 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: AMIT SAHRAWAT <a.sahrawat@samsung.com>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        "namjae.jeon@samsung.com" <namjae.jeon@samsung.com>
-Subject: Re: [Problem]NFS Server =?utf-8?B?4oCTIFVt?=
-	=?utf-8?Q?ount?= results in Device Busy.
-Message-ID: <20120510103807.GA32608@fieldses.org>
-References: <32336989.330131336633170527.JavaMail.weblogic@epml01>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <32336989.330131336633170527.JavaMail.weblogic@epml01>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:39219 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761726Ab2EQNqr convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 May 2012 09:46:47 -0400
+Subject: Re: ls stalls
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=US-ASCII
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4FB4F932.8060104@fhcrc.org>
+Date: Thu, 17 May 2012 09:46:42 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <A364E35B-CDE6-44D7-8D99-06EDB31666D7@oracle.com>
+References: <4FB43655.5040907@fhcrc.org> <4FB4397A.6060104@fhcrc.org> <C7DE94F7-9A05-43C1-81EF-10136AE3394E@oracle.com> <4FB4F932.8060104@fhcrc.org>
+To: Stuart Kendrick <skendric@fhcrc.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 10, 2012 at 06:59:32AM +0000, AMIT SAHRAWAT wrote:
-> Linux Kernel: 2.6.35.14
->  
-> We are using NFS for data transfer from one target to another target.
-> On Server we are using 3 mount points – to be used by application. And they are mentioned in /etc/exports
->  
-> When initially just NFS Server is started -We can mount and safely un-mount the NFS mount point.
-> Now, when NFS client is started and we mount at the client. Without doing any IO – if we do un-mount at the NFS Client –it un-mounts safely.
-> But – when tried to un-mount the device at the NFS server – it results in error “Device Busy”
-> “umount: can't umount /mnt: Device or resource busy”
->  
-> Now , in order to umount the device -  we have to kill the process ‘nfsd’ – and then it un-mounts easily.
->  
-> As per our understanding – it should not be an issue with the un-mount when it is not being used and also there should be no dependency to kill ‘nfsd’ to un-mount the device.
->  
-> It leads to problem of killing ‘nfsd’ and restarting it – to make other mount points work without issue.
->  
-> Is there any method to un-mount the device without getting this ‘BUSY’ error? Or can we kill only nfsd service which was using that mount point?
 
-If all the clients unmount, and then you run "exportfs -f" on the
-server, you'll probably find you can then unmount the export.
+On May 17, 2012, at 9:12 AM, Stuart Kendrick wrote:
 
-But stopping nfsd is the most reliable way to ensure you can unmount the
-exported filesystems.  I'd recommend doing that using your distro's nfs
-scripts (so "service nfs stop" or "systemctl nfs-server.service stop" or
-equivalent) rather than killing nfsd yourself.
+>> My starting guess is that there is some task on that client that has dirtied the pages of one of the files in the directory you are trying to list.  A GETATTR is required to flush outstanding writes to a file so the server can provide size and mtime attributes that reflect the last most recent write to that file.
+>> 
+>> Possible work-arounds: You can reduce the dirty_ratio setting on the client to force it to starting flushing outstanding writes sooner, you can change the writing applications to use synchronous writes (or flush manually), or you can alter your "ls" command so that it doesn't require a GETATTR for each file.
+>> 
+> How might I replicate this?
+> 
+> I'm trying a continuous write to a file ... but 'ls -l' remains snappy.
 
---b.
+The file must reside in the directory you are listing, and it should be very large.  Typically dd'ing zeroes into a large file is a good way to starve non-writers.
 
-> Please share your input on the solution to the above problem. Is this expected behavior?
+> #!/bin/bash
+> while [ true ]
+> 	cp foo.1 foo.2
+> 	echo Do it again
+> done
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
