@@ -1,105 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:63320 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:33606 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753105Ab2EOOUA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 May 2012 10:20:00 -0400
-Message-ID: <4FB265F6.3090700@RedHat.com>
-Date: Tue, 15 May 2012 10:19:34 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Jim Rees <rees@umich.edu>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: ANNOUNCE: nfs-utils-1.2.6 released.
-References: <4FB159DA.2070800@RedHat.com> <20120515122028.GA25625@umich.edu>
-In-Reply-To: <20120515122028.GA25625@umich.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1762064Ab2EQOvg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 May 2012 10:51:36 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 07/12] mm: Add support for direct_IO to highmem pages
+Date: Thu, 17 May 2012 15:51:20 +0100
+Message-Id: <1337266285-8102-8-git-send-email-mgorman@suse.de>
+In-Reply-To: <1337266285-8102-1-git-send-email-mgorman@suse.de>
+References: <1337266285-8102-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Jim,
+The patch "mm: Add support for a filesystem to activate swap files and
+use direct_IO for writing swap pages" added support for using direct_IO
+to write swap pages but it is insufficient for highmem pages.
 
-On 05/15/2012 08:20 AM, Jim Rees wrote:
-> If you're going to use the block layout driver, you'll also want to apply
-> this patch on top of 1.2.6 to prevent your log from filling with garbage.
-> 
-> From 76e9f814b0c6a9ef996b14123780bb39f448cafb Mon Sep 17 00:00:00 2001
-> From: Jim Rees <rees@umich.edu>
-> Date: Tue, 27 Mar 2012 10:18:39 -0400
-> Subject: [PATCH 1/2] remove pretty_sig()
-> 
-> This really only works against EMC servers.  There is at least one server
-> that returns unprintable signatures, which fill the log with garbage (the
-> spec does not mandate printable signatures).  It could be made more generic,
-> for example by checking each byte for isprint().  But the signatures are
-> really only of interest to developers, not admins, so it seems better to
-> just remove it.
-> 
-> Signed-off-by: Jim Rees <rees@umich.edu>
-First let me apologise for dropping this.... I have on idea why
-it did not make it on my TODO list... A total space out on my part! 
+To support highmem pages, this patch kmaps() the page before calling the
+direct_IO() handler. As direct_IO deals with virtual addresses an
+additional helper is necessary for get_kernel_pages() to lookup the
+struct page for a kmap virtual address.
 
-I just committed it (d68e4b5) and I will make sure its include in
-update releases in Fedora.... 
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ include/linux/highmem.h |    7 +++++++
+ mm/highmem.c            |   12 ++++++++++++
+ mm/memory.c             |    3 +--
+ mm/page_io.c            |    3 ++-
+ 4 files changed, 22 insertions(+), 3 deletions(-)
 
-Again, sorry for spacing out... 
+diff --git a/include/linux/highmem.h b/include/linux/highmem.h
+index d3999b4..e186e3c 100644
+--- a/include/linux/highmem.h
++++ b/include/linux/highmem.h
+@@ -39,10 +39,17 @@ extern unsigned long totalhigh_pages;
+ 
+ void kmap_flush_unused(void);
+ 
++struct page *kmap_to_page(void *addr);
++
+ #else /* CONFIG_HIGHMEM */
+ 
+ static inline unsigned int nr_free_highpages(void) { return 0; }
+ 
++static inline struct page *kmap_to_page(void *addr)
++{
++	return virt_to_page(addr);
++}
++
+ #define totalhigh_pages 0UL
+ 
+ #ifndef ARCH_HAS_KMAP
+diff --git a/mm/highmem.c b/mm/highmem.c
+index 57d82c6..d517cd1 100644
+--- a/mm/highmem.c
++++ b/mm/highmem.c
+@@ -94,6 +94,18 @@ static DECLARE_WAIT_QUEUE_HEAD(pkmap_map_wait);
+ 		do { spin_unlock(&kmap_lock); (void)(flags); } while (0)
+ #endif
+ 
++struct page *kmap_to_page(void *vaddr)
++{
++	unsigned long addr = (unsigned long)vaddr;
++
++	if (addr >= PKMAP_ADDR(0) && addr <= PKMAP_ADDR(LAST_PKMAP)) {
++		int i = (addr - PKMAP_ADDR(0)) >> PAGE_SHIFT;
++		return pte_page(pkmap_page_table[i]);
++	}
++
++	return virt_to_page(addr);
++}
++
+ static void flush_all_zero_pkmaps(void)
+ {
+ 	int i;
+diff --git a/mm/memory.c b/mm/memory.c
+index 0bc990e7..fd32a1a 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -1858,8 +1858,7 @@ int get_kernel_pages(const struct kvec *kiov, int nr_segs, int write,
+ 		if (WARN_ON(kiov[seg].iov_len != PAGE_SIZE))
+ 			return seg;
+ 
+-		/* virt_to_page sanity checks the PFN */
+-		pages[seg] = virt_to_page(kiov[seg].iov_base);
++		pages[seg] = kmap_to_page(kiov[seg].iov_base);
+ 		page_cache_get(pages[seg]);
+ 	}
+ 
+diff --git a/mm/page_io.c b/mm/page_io.c
+index f363261..1e39e88 100644
+--- a/mm/page_io.c
++++ b/mm/page_io.c
+@@ -198,7 +198,7 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
+ 		struct file *swap_file = sis->swap_file;
+ 		struct address_space *mapping = swap_file->f_mapping;
+ 		struct iovec iov = {
+-			.iov_base = page_address(page),
++			.iov_base = kmap(page),
+ 			.iov_len  = PAGE_SIZE,
+ 		};
+ 
+@@ -211,6 +211,7 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
+ 		ret = mapping->a_ops->direct_IO(KERNEL_WRITE,
+ 						&kiocb, &iov,
+ 						kiocb.ki_pos, 1);
++		kunmap(page);
+ 		if (ret == PAGE_SIZE) {
+ 			count_vm_event(PSWPOUT);
+ 			ret = 0;
+-- 
+1.7.9.2
 
-steved.
-
-> ---
->  utils/blkmapd/device-process.c |   29 -----------------------------
->  1 file changed, 29 deletions(-)
-> 
-> diff --git a/utils/blkmapd/device-process.c b/utils/blkmapd/device-process.c
-> index 652a7a8..5fe3dff 100644
-> --- a/utils/blkmapd/device-process.c
-> +++ b/utils/blkmapd/device-process.c
-> @@ -49,28 +49,6 @@
->  
->  #include "device-discovery.h"
->  
-> -static char *pretty_sig(char *sig, uint32_t siglen)
-> -{
-> -	static char rs[100];
-> -	uint64_t sigval;
-> -	unsigned int i;
-> -
-> -	if (siglen <= sizeof(sigval)) {
-> -		sigval = 0;
-> -		for (i = 0; i < siglen; i++)
-> -			sigval |= ((unsigned char *)sig)[i] << (i * 8);
-> -		sprintf(rs, "0x%0llx", (unsigned long long) sigval);
-> -	} else {
-> -		if (siglen > sizeof rs - 4) {
-> -			siglen = sizeof rs - 4;
-> -			sprintf(&rs[siglen], "...");
-> -		} else
-> -			rs[siglen] = '\0';
-> -		memcpy(rs, sig, siglen);
-> -	}
-> -	return rs;
-> -}
-> -
->  uint32_t *blk_overflow(uint32_t * p, uint32_t * end, size_t nbytes)
->  {
->  	uint32_t *q = p + ((nbytes + 3) >> 2);
-> @@ -109,9 +87,6 @@ static int decode_blk_signature(uint32_t **pp, uint32_t * end,
->  		 * for mapping, then thrown away.
->  		 */
->  		comp->bs_string = (char *)p;
-> -		BL_LOG_INFO("%s: si_comps[%d]: bs_length %d, bs_string %s\n",
-> -			    __func__, i, siglen,
-> -			    pretty_sig(comp->bs_string, siglen));
->  		p += ((siglen + 3) >> 2);
->  	}
->  	*pp = p;
-> @@ -152,10 +127,6 @@ read_cmp_blk_sig(struct bl_disk *disk, int fd, struct bl_sig_comp *comp)
->  	}
->  
->  	ret = memcmp(sig, comp->bs_string, siglen);
-> -	if (!ret)
-> -		BL_LOG_INFO("%s: %s sig %s at %lld\n", __func__, dev_name,
-> -			    pretty_sig(sig, siglen),
-> -			    (long long)comp->bs_offset);
->  
->   out:
->  	if (sig)
