@@ -1,82 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:41490 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751156Ab2EXNtP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 May 2012 09:49:15 -0400
-Message-ID: <4FBE3C4D.7050507@panasas.com>
-Date: Thu, 24 May 2012 16:49:01 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from fieldses.org ([174.143.236.118]:32905 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756945Ab2EQLdG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 May 2012 07:33:06 -0400
+Date: Thu, 17 May 2012 07:33:04 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+Cc: linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsd: return 0 on reads of fault injection files
+Message-ID: <20120517113304.GB25274@fieldses.org>
+References: <1336678270-791-1-git-send-email-dros@netapp.com>
+ <20120516211621.GE20487@fieldses.org>
+ <E560542A-DCC3-4093-8B69-438783DD9451@netapp.com>
+ <20120516215847.GF20487@fieldses.org>
+ <99C4F6D8-3BBF-4502-B41C-A71B2ADB6207@netapp.com>
 MIME-Version: 1.0
-To: Benny Halevy <bhalevy@tonian.com>
-CC: NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: Does our Kernel PNFSD-Server supports recurring layout_get with
- open_state_id
-References: <4FBD7DE8.9090002@panasas.com> <4FBE2C8C.9090403@tonian.com>
-In-Reply-To: <4FBE2C8C.9090403@tonian.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <99C4F6D8-3BBF-4502-B41C-A71B2ADB6207@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/24/2012 03:41 PM, Benny Halevy wrote:
-
-> On 2012-05-24 03:16, Boaz Harrosh wrote:
->>
->> Benny hi
->>
->> If I remember/understand correctly, there is a mode in the RFC errata
->> about the layout forgetful-model and a client sending a layout_get with
->> an open_state_id after he already had previous state (layouts) on the file.
->>
->> As I understood this is an indication to the server that client has
->> "forgotten" all it's layouts on a file, and Server can assume their
->> return.
->>
->> Is my understanding correct?
+On Wed, May 16, 2012 at 10:10:55PM +0000, Adamson, Dros wrote:
 > 
-> Yes
+> On May 16, 2012, at 5:58 PM, J. Bruce Fields wrote:
 > 
->>
->> If Yes:
->> 	Did we implement the internal return of all layouts, if above
->> 	open_state_id is encountered?
->> 	I thought we did but I can't find this code.
+> > On Wed, May 16, 2012 at 09:50:32PM +0000, Adamson, Dros wrote:
+> >> No, I haven't messed with it that much - I had other tasks take a
+> >> higher priority, but I'm back on it as of this afternoon.
+> >> 
+> >> I'll try nfsd-next to get CB_PATH_DOWN without fault_injection and
+> >> report back to you.  Also, I think we need to modify nfsd
+> >> (nfsd4_new_conn()) to set cl_cb_state to NFSD4_CB_UNKNOWN on a
+> >> successful BIND_CONN_TO_SESSION (IFF it's CB_DOWN with the right
+> >> direction), otherwise the CB_PATH_DOWN flag will be set on every
+> >> sequence OP
+> > 
+> > That's intentional:
+> > 
+> > 	http://www.ietf.org/mail-archive/web/nfsv4/current/msg10840.html
 > 
-> True.  This is not implemented yet.
+> Right...
 > 
->>
->> Currently, I always set ROC so there is no leak. But theoretically
->> ROC does not have to be set. I'm doing some heavy lifting of
->> layout_return, and I want to make sure I have not missed a spot.
->>
->> If I'm correct that it is needed, and it's missing:
->> My suggestion for now is that we always set ROC, disregarding FS so not to
->> leak layouts and therefor inode-refs, until such time that we implement it.
+> > 
+> >> and the client will keep sending BIND_CONN_TO_SESSION.
+> >> The idea is that once we call nfsd4_new_conn, we won't know if the
+> >> back channel is really up until a callback is attempted.
+> > 
+> > If the client hasn't given us a connection to use as the backchannel,
+> > then we *know* the backchannel is down, we don't need to try sending a
+> > callback (how could we?).
 > 
-> According to the new errata the server will have to simulate layout returns in the ROC
-> case on last CLOSE if the (forgetful) client did not explicitly return the layout.
-> This is not implemented either :-(
+> The point is that the client *has* given us a connection to use as the backchannel with the BIND_CONN_TO_SESSION call.
+> On the server, nfs4_new_conn() was called and was successful, but cl_cb_state is still set to CB_DOWN and will never change.
 > 
-
-
-Yes Benny it is implemented. I implemented it and you fix a bug I had. See:
-	nfs4pnfsd.c::pnfsd_roc(...) 
-and it's call site. It is called on last call and all is working well (except some locking
-bugs I'll send a fix to later). Otherwise both exofs and DF would have crapped out for sure.
-
-With ROC set all work well. This is why I say we should set it for now to make sure we do
-not have the above bug.
-
-Thanks
-Boaz
-
-> Benny
+> > 
+> >> Setting it to CB_UNKNOWN stops the loop of (sequence, bind_conn,
+> >> sequence, bind_conn, …), but doesn't actually mark it as "UP" until a
+> >> callback is successful.
+> > 
+> > If the client is attempting to clear the CB_PATH_DOWN flag by sending us
+> > a BIND_CONN_TO_SESSION that doesn't actually give us a backchannel, then
+> > it's confused.
 > 
->>
->> Thanks
->> Boaz
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> The client *is* giving us a backchannel by sending the server a BIND_CONNN_TO_SESSION! The server accepts the call, adds the "new connection" via nfs4_new_conn(), but the problem is the internal state of nfsd never changes from CB_DOWN.
 
+Oh, I see, thanks!  Sorry, I was reading too fast....
 
+Yes, your fix sounds about right.
+
+--b.
