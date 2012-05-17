@@ -1,50 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:42932 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752706Ab2E2HOO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 May 2012 03:14:14 -0400
-Message-ID: <4FC47724.5070407@panasas.com>
-Date: Tue, 29 May 2012 10:13:40 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from smtp.mail.umich.edu ([141.211.12.86]:51402 "EHLO
+	tombraider.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1758047Ab2EQNJc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 May 2012 09:09:32 -0400
+Date: Thu, 17 May 2012 09:09:25 -0400
+From: Jim Rees <rees@umich.edu>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Mike Frysinger <vapier@gentoo.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] osd_login: fix DESTDIR install
+Message-ID: <20120517130925.GA10380@umich.edu>
+References: <1337232243-18088-1-git-send-email-vapier@gentoo.org>
+ <4FB4ECDA.2080506@panasas.com>
 MIME-Version: 1.0
-To: Benny Halevy <bhalevy@tonian.com>
-CC: NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: Does our Kernel PNFSD-Server supports recurring layout_get with
- open_state_id
-References: <4FBD7DE8.9090002@panasas.com> <4FBE2C8C.9090403@tonian.com> <4FBE3C4D.7050507@panasas.com> <4FC3A235.8090908@tonian.com> <4FC3A974.60107@panasas.com> <4FC3BC2B.6060709@tonian.com> <4FC3BF67.7010402@panasas.com> <4FC3C3F1.8090507@tonian.com>
-In-Reply-To: <4FC3C3F1.8090507@tonian.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FB4ECDA.2080506@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/28/2012 09:29 PM, Benny Halevy wrote:
+Boaz Harrosh wrote:
 
-> On 2012-05-28 21:09, Boaz Harrosh wrote:
+  On second thought, You know, I'm not sure about this fix.
+  
+  A lot of times we install to a side folder, so we can later
+  tar and package the sub-folder without actually affecting
+  our live system. What will happen with the packagers that
+  are not RPM don't they rely on this?
+  
+  I would like to let the user to install nfs-utils on the
+  side and to not conflict with the running system. Someone
+  how knows what he is doing can override the Kernel path
+  to what he wants. Just as he will need to override the
+  nfs init scripts.
+  
+  So I would prefer if we can just create the $(DESTDIR)/sbin/
 
+I think the makefiles already create $(DESTDIR)$(sbindir).  The problem was
+that you weren't using $(DESTDIR)$(sbindir), you were using
+$(DESTDIR)/sbin.  The patch sets $(sbindir) to /sbin, so everything should
+just work.
 
->> BTW after I finish implementing my stuff. I think it would be easy
->> to implement that open_state_id thing. All we need is to save the
->> open_state_id somewhere per-file or somehow identify it's receive,
->> And then just call nfs4_roc() which will do the proper work.
-> 
-> It's any non layout stateid so it should be pretty easy (in theory :).
-> See nfs4_process_layout_stateid()
-> if (stid->sc_type != NFS4_LAYOUT_STID) {}
-> 
-> We should be able to locate the layout stateid, if any, on the
-> fp->fi_layout_states list by matching stid->sc_client.
-> 
-
-
-Does look easy, then. I thought it should be. I will have a shot
-at it and add it to my patchset.
-
-Do you know if we have a test case for this in pyNFS?
-
-I need to think if we can cause this with the Linux client?
-Perhaps: not set ROC, access a file and close, clear caches
-at both ends, re access, something like that, I'll try.
-
-Thanks
-Boaz
-
+But I could be wrong, automake is a black box to me.
