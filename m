@@ -1,281 +1,174 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:33649 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760092Ab2EJPUl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 May 2012 11:20:41 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v3 11/14] NFS: Create a single function for text mount data
-Date: Thu, 10 May 2012 11:20:02 -0400
-Message-Id: <1336663205-23886-12-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1336663205-23886-1-git-send-email-bjschuma@netapp.com>
-References: <1336663205-23886-1-git-send-email-bjschuma@netapp.com>
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:62275 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S967313Ab2ERWFf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 May 2012 18:05:35 -0400
+Received: by mail-gg0-f174.google.com with SMTP id u4so3328926ggl.19
+        for <linux-nfs@vger.kernel.org>; Fri, 18 May 2012 15:05:34 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 02/14] NFS: Use proper naming conventions for NFSv4.1 server
+ scope fields
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 18 May 2012 18:05:33 -0400
+Message-ID: <20120518220532.774.19903.stgit@degas.1015granger.net>
+In-Reply-To: <20120518220145.774.53741.stgit@degas.1015granger.net>
+References: <20120518220145.774.53741.stgit@degas.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Clean up:  When naming fields and data types, follow established
+conventions to facilitate accurate grep/cscope searches.
 
-The v2/3 and v4 cases were very similar, with just a few parameters
-changed.  This makes it easy to share code.
+Additionally, for consistency, move the scope field into the NFSv4-
+specific part of the nfs_client, and free that memory in the logic
+that shuts down NFSv4 nfs_clients.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Introduced by commit 99fe60d0 "nfs41: exchange_id operation", April
+1 2009.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/internal.h |    1 +
- fs/nfs/super.c    |  151 +++++++++++++++++++++++++----------------------------
- 2 files changed, 71 insertions(+), 81 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 4cf76e9..bf64095 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -103,6 +103,7 @@ struct nfs_parsed_mount_data {
- 	unsigned int		version;
- 	unsigned int		minorversion;
- 	char			*fscache_uniq;
-+	bool			need_mount;
+ fs/nfs/client.c           |    2 +-
+ fs/nfs/nfs4_fs.h          |    2 +-
+ fs/nfs/nfs4proc.c         |   18 ++++++++++--------
+ include/linux/nfs_fs_sb.h |    4 ++--
+ include/linux/nfs_xdr.h   |    4 ++--
+ 5 files changed, 16 insertions(+), 14 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 60f7e4e..1285f70 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -235,6 +235,7 @@ static void nfs4_shutdown_client(struct nfs_client *clp)
+ 		nfs_idmap_delete(clp);
  
- 	struct {
- 		struct sockaddr_storage	address;
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 8ebdd5f..2746d11 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -66,6 +66,7 @@
- #include "pnfs.h"
+ 	rpc_destroy_wait_queue(&clp->cl_rpcwaitq);
++	kfree(clp->cl_serverscope);
+ }
  
- #define NFSDBG_FACILITY		NFSDBG_VFS
-+#define NFS_TEXT_DATA		1
+ /* idr_remove_all is not needed as all id's are removed by nfs_put_client */
+@@ -303,7 +304,6 @@ static void nfs_free_client(struct nfs_client *clp)
  
- #ifdef CONFIG_NFS_V3
- #define NFS_DEFAULT_VERSION 3
-@@ -333,8 +334,7 @@ static const struct super_operations nfs_sops = {
- };
+ 	put_net(clp->net);
+ 	kfree(clp->cl_hostname);
+-	kfree(clp->server_scope);
+ 	kfree(clp->impl_id);
+ 	kfree(clp);
  
- #ifdef CONFIG_NFS_V4
--static int nfs4_validate_text_mount_data(void *options,
--	struct nfs_parsed_mount_data *args, const char *dev_name);
-+static void nfs4_validate_mount_flags(struct nfs_parsed_mount_data *);
- static struct dentry *nfs4_try_mount(int flags, const char *dev_name,
- 	struct nfs_parsed_mount_data *data);
- static struct dentry *nfs4_mount(struct file_system_type *fs_type,
-@@ -964,6 +964,7 @@ static struct nfs_parsed_mount_data *nfs_alloc_parsed_mount_data(void)
- 		data->auth_flavors[0]	= RPC_AUTH_UNIX;
- 		data->auth_flavor_len	= 1;
- 		data->minorversion	= 0;
-+		data->need_mount	= true;
- 		data->net		= current->nsproxy->net_ns;
- 		security_init_mnt_opts(&data->lsm_opts);
- 	}
-@@ -1754,9 +1755,11 @@ static struct dentry *nfs_try_mount(int flags, const char *dev_name,
- 	int status;
- 	struct nfs_server *server;
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 8d75021..d05719e 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -334,7 +334,7 @@ extern void nfs4_schedule_stateid_recovery(const struct nfs_server *, struct nfs
+ extern void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags);
+ extern void nfs41_handle_recall_slot(struct nfs_client *clp);
+ extern void nfs41_handle_server_scope(struct nfs_client *,
+-				      struct server_scope **);
++				      struct nfs41_server_scope **);
+ extern void nfs4_put_lock_state(struct nfs4_lock_state *lsp);
+ extern int nfs4_set_lock_state(struct nfs4_state *state, struct file_lock *fl);
+ extern void nfs4_select_rw_stateid(nfs4_stateid *, struct nfs4_state *,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 99650aa..35585ef 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5080,7 +5080,8 @@ out_inval:
+ }
  
--	status = nfs_request_mount(mount_info->parsed, mntfh);
--	if (status)
--		return ERR_PTR(status);
-+	if (mount_info->parsed->need_mount) {
-+		status = nfs_request_mount(mount_info->parsed, mntfh);
-+		if (status)
-+			return ERR_PTR(status);
-+	}
+ static bool
+-nfs41_same_server_scope(struct server_scope *a, struct server_scope *b)
++nfs41_same_server_scope(struct nfs41_server_scope *a,
++			struct nfs41_server_scope *b)
+ {
+ 	if (a->server_scope_sz == b->server_scope_sz &&
+ 	    memcmp(a->server_scope, b->server_scope, a->server_scope_sz) == 0)
+@@ -5127,7 +5128,8 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ 				clp->cl_rpcclient->cl_nodename,
+ 				clp->cl_rpcclient->cl_auth->au_flavor);
  
- 	/* Get a volume representation */
- 	server = nfs_create_server(mount_info->parsed, mntfh);
-@@ -1911,6 +1914,7 @@ static int nfs_validate_mount_data(void *options,
- 		args->acregmax		= data->acregmax;
- 		args->acdirmin		= data->acdirmin;
- 		args->acdirmax		= data->acdirmax;
-+		args->need_mount	= false;
+-	res.server_scope = kzalloc(sizeof(struct server_scope), GFP_KERNEL);
++	res.server_scope = kzalloc(sizeof(struct nfs41_server_scope),
++					GFP_KERNEL);
+ 	if (unlikely(!res.server_scope)) {
+ 		status = -ENOMEM;
+ 		goto out;
+@@ -5151,18 +5153,18 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ 		kfree(res.impl_id);
  
- 		memcpy(sap, &data->addr, sizeof(data->addr));
- 		args->nfs_server.addrlen = sizeof(data->addr);
-@@ -1962,38 +1966,8 @@ static int nfs_validate_mount_data(void *options,
+ 	if (!status) {
+-		if (clp->server_scope &&
+-		    !nfs41_same_server_scope(clp->server_scope,
++		if (clp->cl_serverscope &&
++		    !nfs41_same_server_scope(clp->cl_serverscope,
+ 					     res.server_scope)) {
+ 			dprintk("%s: server_scope mismatch detected\n",
+ 				__func__);
+ 			set_bit(NFS4CLNT_SERVER_SCOPE_MISMATCH, &clp->cl_state);
+-			kfree(clp->server_scope);
+-			clp->server_scope = NULL;
++			kfree(clp->cl_serverscope);
++			clp->cl_serverscope = NULL;
  		}
  
- 		break;
--	default: {
--		int status;
--
--		if (nfs_parse_mount_options((char *)options, args) == 0)
--			return -EINVAL;
--
--		if (!nfs_verify_server_address(sap))
--			goto out_no_address;
--
--		if (args->version == 4)
--#ifdef CONFIG_NFS_V4
--			return nfs4_validate_text_mount_data(options,
--							     args, dev_name);
--#else
--			goto out_v4_not_compiled;
--#endif
--
--		nfs_set_port(sap, &args->nfs_server.port, 0);
--
--		nfs_set_mount_transport_protocol(args);
--
--		status = nfs_parse_devname(dev_name,
--					   &args->nfs_server.hostname,
--					   PAGE_SIZE,
--					   &args->nfs_server.export_path,
--					   NFS_MAXPATHLEN);
--
--		if (status)
--			return status;
--
--		break;
--		}
-+	default:
-+		return NFS_TEXT_DATA;
+-		if (!clp->server_scope) {
+-			clp->server_scope = res.server_scope;
++		if (!clp->cl_serverscope) {
++			clp->cl_serverscope = res.server_scope;
+ 			goto out;
+ 		}
  	}
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 5498e9d..900d733 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -17,7 +17,7 @@ struct nfs4_sequence_args;
+ struct nfs4_sequence_res;
+ struct nfs_server;
+ struct nfs4_minor_version_ops;
+-struct server_scope;
++struct nfs41_server_scope;
+ struct nfs41_impl_id;
  
- #ifndef CONFIG_NFS_V3
-@@ -2022,12 +1996,6 @@ out_v3_not_compiled:
- 	return -EPROTONOSUPPORT;
- #endif /* !CONFIG_NFS_V3 */
- 
--#ifndef CONFIG_NFS_V4
--out_v4_not_compiled:
--	dfprintk(MOUNT, "NFS: NFSv4 is not compiled into kernel\n");
--	return -EPROTONOSUPPORT;
--#endif /* !CONFIG_NFS_V4 */
--
- out_nomem:
- 	dfprintk(MOUNT, "NFS: not enough memory to handle mount options\n");
- 	return -ENOMEM;
-@@ -2041,6 +2009,60 @@ out_invalid_fh:
- 	return -EINVAL;
- }
- 
-+static int nfs_validate_text_mount_data(void *options,
-+					struct nfs_parsed_mount_data *args,
-+					const char *dev_name)
-+{
-+	int port = 0;
-+	int max_namelen = PAGE_SIZE;
-+	int max_pathlen = NFS_MAXPATHLEN;
-+	struct sockaddr *sap = (struct sockaddr *)&args->nfs_server.address;
-+
-+	if (nfs_parse_mount_options((char *)options, args) == 0)
-+		return -EINVAL;
-+
-+	if (!nfs_verify_server_address(sap))
-+		goto out_no_address;
-+
-+	if (args->version == 4) {
-+#ifdef CONFIG_NFS_V4
-+		port = NFS_PORT;
-+		max_namelen = NFS4_MAXNAMLEN;
-+		max_pathlen = NFS4_MAXPATHLEN;
-+		nfs_validate_transport_protocol(args);
-+		nfs4_validate_mount_flags(args);
-+#else
-+		goto out_v4_not_compiled;
-+#endif /* CONFIG_NFS_V4 */
-+	} else
-+		nfs_set_mount_transport_protocol(args);
-+
-+	nfs_set_port(sap, &args->nfs_server.port, port);
-+
-+	if (args->auth_flavor_len > 1)
-+		goto out_bad_auth;
-+
-+	return nfs_parse_devname(dev_name,
-+				   &args->nfs_server.hostname,
-+				   max_namelen,
-+				   &args->nfs_server.export_path,
-+				   max_pathlen);
-+
-+#ifndef CONFIG_NFS_V4
-+out_v4_not_compiled:
-+	dfprintk(MOUNT, "NFS: NFSv4 is not compiled into kernel\n");
-+	return -EPROTONOSUPPORT;
-+#endif /* !CONFIG_NFS_V4 */
-+
-+out_no_address:
-+	dfprintk(MOUNT, "NFS: mount program didn't pass remote address\n");
-+	return -EINVAL;
-+
-+out_bad_auth:
-+	dfprintk(MOUNT, "NFS: Too many RPC auth flavours specified\n");
-+	return -EINVAL;
-+}
-+
- static int
- nfs_compare_remount_data(struct nfs_server *nfss,
- 			 struct nfs_parsed_mount_data *data)
-@@ -2438,6 +2460,8 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
- 
- 	/* Validate the mount data */
- 	error = nfs_validate_mount_data(raw_data, data, mntfh, dev_name);
-+	if (error == NFS_TEXT_DATA)
-+		error = nfs_validate_text_mount_data(raw_data, data, dev_name);
- 	if (error < 0) {
- 		mntroot = ERR_PTR(error);
- 		goto out;
-@@ -2567,37 +2591,6 @@ static void nfs4_validate_mount_flags(struct nfs_parsed_mount_data *args)
- 			 NFS_MOUNT_LOCAL_FLOCK|NFS_MOUNT_LOCAL_FCNTL);
- }
- 
--static int nfs4_validate_text_mount_data(void *options,
--					 struct nfs_parsed_mount_data *args,
--					 const char *dev_name)
--{
--	struct sockaddr *sap = (struct sockaddr *)&args->nfs_server.address;
--
--	nfs_set_port(sap, &args->nfs_server.port, NFS_PORT);
--
--	nfs_validate_transport_protocol(args);
--
--	nfs4_validate_mount_flags(args);
--
--	if (args->version != 4) {
--		dfprintk(MOUNT,
--			 "NFS4: Illegal mount version\n");
--		return -EINVAL;
--	}
--
--	if (args->auth_flavor_len > 1) {
--		dfprintk(MOUNT,
--			 "NFS4: Too many RPC auth flavours specified\n");
--		return -EINVAL;
--	}
--
--	return nfs_parse_devname(dev_name,
--				   &args->nfs_server.hostname,
--				   NFS4_MAXNAMLEN,
--				   &args->nfs_server.export_path,
--				   NFS4_MAXPATHLEN);
--}
--
  /*
-  * Validate NFSv4 mount options
-  */
-@@ -2668,13 +2661,7 @@ static int nfs4_validate_mount_data(void *options,
+@@ -80,13 +80,13 @@ struct nfs_client {
+ 	/* The flags used for obtaining the clientid during EXCHANGE_ID */
+ 	u32			cl_exchange_flags;
+ 	struct nfs4_session	*cl_session;	/* shared session */
++	struct nfs41_server_scope *cl_serverscope;
+ #endif /* CONFIG_NFS_V4 */
  
- 		break;
- 	default:
--		if (nfs_parse_mount_options((char *)options, args) == 0)
--			return -EINVAL;
--
--		if (!nfs_verify_server_address(sap))
--			return -EINVAL;
--
--		return nfs4_validate_text_mount_data(options, args, dev_name);
-+		return NFS_TEXT_DATA;
- 	}
+ #ifdef CONFIG_NFS_FSCACHE
+ 	struct fscache_cookie	*fscache;	/* client index cache cookie */
+ #endif
  
- 	return 0;
-@@ -2875,6 +2862,8 @@ static struct dentry *nfs4_mount(struct file_system_type *fs_type,
+-	struct server_scope	*server_scope;	/* from exchange_id */
+ 	struct nfs41_impl_id	*impl_id;	/* from exchange_id */
+ 	struct net		*net;
+ };
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 7ba3551..b23029d 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1076,7 +1076,7 @@ struct server_owner {
+ 	char				major_id[NFS4_OPAQUE_LIMIT];
+ };
  
- 	/* Validate the mount data */
- 	error = nfs4_validate_mount_data(raw_data, data, dev_name);
-+	if (error == NFS_TEXT_DATA)
-+		error = nfs_validate_text_mount_data(raw_data, data, dev_name);
- 	if (error < 0) {
- 		res = ERR_PTR(error);
- 		goto out;
--- 
-1.7.10.1
+-struct server_scope {
++struct nfs41_server_scope {
+ 	uint32_t			server_scope_sz;
+ 	char 				server_scope[NFS4_OPAQUE_LIMIT];
+ };
+@@ -1090,7 +1090,7 @@ struct nfs41_impl_id {
+ struct nfs41_exchange_id_res {
+ 	struct nfs_client		*client;
+ 	u32				flags;
+-	struct server_scope		*server_scope;
++	struct nfs41_server_scope	*server_scope;
+ 	struct nfs41_impl_id		*impl_id;
+ };
+ 
 
