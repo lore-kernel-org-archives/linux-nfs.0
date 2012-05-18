@@ -1,208 +1,202 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:45769 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757082Ab2EVCpo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 May 2012 22:45:44 -0400
-Received: by gglu4 with SMTP id u4so4992913ggl.19
-        for <linux-nfs@vger.kernel.org>; Mon, 21 May 2012 19:45:43 -0700 (PDT)
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:42786 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S968091Ab2ERWFw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 May 2012 18:05:52 -0400
+Received: by mail-yw0-f46.google.com with SMTP id m54so3385192yhm.19
+        for <linux-nfs@vger.kernel.org>; Fri, 18 May 2012 15:05:52 -0700 (PDT)
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 10/14] NFS: Always use the same SETCLIENTID boot verifier
+Subject: [PATCH 04/14] NFS: Use proper naming conventions for the
+ nfs_client.net field
 To: trond.myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Date: Mon, 21 May 2012 22:45:41 -0400
-Message-ID: <20120522024541.1787.9904.stgit@degas.1015granger.net>
-In-Reply-To: <20120522022702.1787.45940.stgit@degas.1015granger.net>
-References: <20120522022702.1787.45940.stgit@degas.1015granger.net>
+Date: Fri, 18 May 2012 18:05:50 -0400
+Message-ID: <20120518220550.774.9837.stgit@degas.1015granger.net>
+In-Reply-To: <20120518220145.774.53741.stgit@degas.1015granger.net>
+References: <20120518220145.774.53741.stgit@degas.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently our NFS client assigns a unique SETCLIENTID boot verifier
-for each server IP address it knows about.  It's set to CURRENT_TIME
-when the struct nfs_client for that server IP is created.
+Clean up:  When naming fields and data types, follow established
+conventions to facilitate accurate grep/cscope searches.
 
-During the SETCLIENTID operation, our client also presents an
-nfs_client_id4 string to servers, as an identifier on which the server
-can hang all of this client's NFSv4 state.  Our client's
-nfs_client_id4 string is unique for each server IP address.
-
-An NFSv4 server is obligated to wipe all NFSv4 state associated with
-an nfs_client_id4 string when the client presents the same
-nfs_client_id4 string along with a changed SETCLIENTID boot verifier.
-
-When our client unmounts the last of a server's shares, it destroys
-that server's struct nfs_client.  The next time the client mounts that
-NFS server, it creates a fresh struct nfs_client with a fresh boot
-verifier.  On seeing the fresh verifer, the server wipes any previous
-NFSv4 state associated with that nfs_client_id4.
-
-However, NFSv4.1 clients are supposed to present the same
-nfs_client_id4 string to all servers.  And, to support Transparent
-State Migration, the same nfs_client_id4 string should be presented
-to all NFSv4.0 servers so they recognize that migrated state for this
-client belongs with state a server may already have for this client.
-(This is known as the Uniform Client String model).
-
-If the nfs_client_id4 string is the same but the boot verifier changes
-for each server IP address, SETCLIENTID and EXCHANGE_ID operations
-from such a client could unintentionally result in a server wiping a
-client's previously obtained lease.
-
-Thus, if our NFS client is going to use a fixed nfs_client_id4 string,
-either for NFSv4.0 or NFSv4.1 mounts, our NFS client should use a
-boot verifier that does not change depending on server IP address.
-Replace our current per-nfs_client boot verifier with a per-nfs_net
-boot verifier.
+Introduced by commit e50a7a1a "NFS: make NFS client allocated per
+network namespace context," Tue Jan 10, 2012.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/client.c           |    2 +-
- fs/nfs/netns.h            |    5 +++++
- fs/nfs/nfs4proc.c         |   14 ++++++++------
- fs/nfs/nfs4xdr.c          |    5 ++++-
- include/linux/nfs_fs_sb.h |    3 ---
- 5 files changed, 18 insertions(+), 11 deletions(-)
+ fs/nfs/blocklayout/blocklayoutdev.c |    2 +-
+ fs/nfs/client.c                     |   22 +++++++++++-----------
+ fs/nfs/idmap.c                      |    4 ++--
+ fs/nfs/nfs4filelayoutdev.c          |    2 +-
+ include/linux/nfs_fs_sb.h           |    2 +-
+ 5 files changed, 16 insertions(+), 16 deletions(-)
 
+diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
+index a5c88a5..c965542 100644
+--- a/fs/nfs/blocklayout/blocklayoutdev.c
++++ b/fs/nfs/blocklayout/blocklayoutdev.c
+@@ -123,7 +123,7 @@ nfs4_blk_decode_device(struct nfs_server *server,
+ 	uint8_t *dataptr;
+ 	DECLARE_WAITQUEUE(wq, current);
+ 	int offset, len, i, rc;
+-	struct net *net = server->nfs_client->net;
++	struct net *net = server->nfs_client->cl_net;
+ 	struct nfs_net *nn = net_generic(net, nfs_net_id);
+ 	struct bl_dev_msg *reply = &nn->bl_mount_reply;
+ 
 diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 9b9df71..af9b7e4 100644
+index ec5a276..c430acd 100644
 --- a/fs/nfs/client.c
 +++ b/fs/nfs/client.c
-@@ -184,7 +184,6 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
- 	spin_lock_init(&clp->cl_lock);
- 	INIT_DELAYED_WORK(&clp->cl_renewd, nfs4_renew_state);
- 	rpc_init_wait_queue(&clp->cl_rpcwaitq, "NFS client");
--	clp->cl_boot_time = CURRENT_TIME;
- 	clp->cl_state = 1 << NFS4CLNT_LEASE_EXPIRED;
- 	clp->cl_minorversion = cl_init->minorversion;
- 	clp->cl_mvops = nfs_v4_minor_ops[cl_init->minorversion];
-@@ -1813,6 +1812,7 @@ void nfs_clients_init(struct net *net)
- 	idr_init(&nn->cb_ident_idr);
- #endif
- 	spin_lock_init(&nn->nfs_client_lock);
-+	nn->boot_time = CURRENT_TIME;
- }
- 
- #ifdef CONFIG_PROC_FS
-diff --git a/fs/nfs/netns.h b/fs/nfs/netns.h
-index aa14ec3..8a6394e 100644
---- a/fs/nfs/netns.h
-+++ b/fs/nfs/netns.h
-@@ -1,3 +1,7 @@
-+/*
-+ * NFS-private data for each "struct net".  Accessed with net_generic().
-+ */
-+
- #ifndef __NFS_NETNS_H__
- #define __NFS_NETNS_H__
- 
-@@ -20,6 +24,7 @@ struct nfs_net {
- 	struct idr cb_ident_idr; /* Protected by nfs_client_lock */
- #endif
- 	spinlock_t nfs_client_lock;
-+	struct timespec boot_time;
- };
- 
- extern int nfs_net_id;
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 81ccdbb..9e9334a 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -64,6 +64,7 @@
- #include "iostat.h"
- #include "callback.h"
- #include "pnfs.h"
-+#include "netns.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_PROC
- 
-@@ -3903,8 +3904,8 @@ wait_on_recovery:
- 	return -EAGAIN;
- }
- 
--static void nfs4_construct_boot_verifier(struct nfs_client *clp,
--					 nfs4_verifier *bootverf)
-+static void nfs4_init_boot_verifier(const struct nfs_client *clp,
-+				    nfs4_verifier *bootverf)
+@@ -65,7 +65,7 @@ static DECLARE_WAIT_QUEUE_HEAD(nfs_client_active_wq);
+ static int nfs_get_cb_ident_idr(struct nfs_client *clp, int minorversion)
  {
- 	__be32 verf[2];
- 
-@@ -3914,8 +3915,9 @@ static void nfs4_construct_boot_verifier(struct nfs_client *clp,
- 		verf[0] = 0;
- 		verf[1] = (__be32)(NSEC_PER_SEC + 1);
- 	} else {
--		verf[0] = (__be32)clp->cl_boot_time.tv_sec;
--		verf[1] = (__be32)clp->cl_boot_time.tv_nsec;
-+		struct nfs_net *nn = net_generic(clp->cl_net, nfs_net_id);
-+		verf[0] = (__be32)nn->boot_time.tv_sec;
-+		verf[1] = (__be32)nn->boot_time.tv_nsec;
- 	}
- 	memcpy(bootverf->data, verf, sizeof(bootverf->data));
- }
-@@ -3939,7 +3941,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 	int loop = 0;
- 	int status;
- 
--	nfs4_construct_boot_verifier(clp, &sc_verifier);
-+	nfs4_init_boot_verifier(clp, &sc_verifier);
- 
- 	for(;;) {
- 		rcu_read_lock();
-@@ -5099,7 +5101,7 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 	dprintk("--> %s\n", __func__);
- 	BUG_ON(clp == NULL);
- 
--	nfs4_construct_boot_verifier(clp, &verifier);
-+	nfs4_init_boot_verifier(clp, &verifier);
- 
- 	args.id_len = scnprintf(args.id, sizeof(args.id),
- 				"%s/%s/%u",
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index db040e9..12b9982 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -53,9 +53,11 @@
- #include <linux/nfs4.h>
- #include <linux/nfs_fs.h>
- #include <linux/nfs_idmap.h>
-+
- #include "nfs4_fs.h"
- #include "internal.h"
- #include "pnfs.h"
-+#include "netns.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_XDR
- 
-@@ -1702,6 +1704,7 @@ static void encode_create_session(struct xdr_stream *xdr,
- 	char machine_name[NFS4_MAX_MACHINE_NAME_LEN];
- 	uint32_t len;
- 	struct nfs_client *clp = args->client;
+ 	int ret = 0;
+-	struct nfs_net *nn = net_generic(clp->net, nfs_net_id);
 +	struct nfs_net *nn = net_generic(clp->cl_net, nfs_net_id);
- 	u32 max_resp_sz_cached;
  
- 	/*
-@@ -1743,7 +1746,7 @@ static void encode_create_session(struct xdr_stream *xdr,
- 	*p++ = cpu_to_be32(RPC_AUTH_UNIX);			/* auth_sys */
+ 	if (clp->rpc_ops->version != 4 || minorversion != 0)
+ 		return ret;
+@@ -172,7 +172,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+ 	clp->cl_rpcclient = ERR_PTR(-EINVAL);
  
- 	/* authsys_parms rfc1831 */
--	*p++ = cpu_to_be32((u32)clp->cl_boot_time.tv_nsec);	/* stamp */
-+	*p++ = (__be32)nn->boot_time.tv_nsec;		/* stamp */
- 	p = xdr_encode_opaque(p, machine_name, len);
- 	*p++ = cpu_to_be32(0);				/* UID */
- 	*p++ = cpu_to_be32(0);				/* GID */
+ 	clp->cl_proto = cl_init->proto;
+-	clp->net = get_net(cl_init->net);
++	clp->cl_net = get_net(cl_init->net);
+ 
+ #ifdef CONFIG_NFS_V4
+ 	err = nfs_get_cb_ident_idr(clp, cl_init->minorversion);
+@@ -250,7 +250,7 @@ void nfs_cleanup_cb_ident_idr(struct net *net)
+ /* nfs_client_lock held */
+ static void nfs_cb_idr_remove_locked(struct nfs_client *clp)
+ {
+-	struct nfs_net *nn = net_generic(clp->net, nfs_net_id);
++	struct nfs_net *nn = net_generic(clp->cl_net, nfs_net_id);
+ 
+ 	if (clp->cl_cb_ident)
+ 		idr_remove(&nn->cb_ident_idr, clp->cl_cb_ident);
+@@ -303,7 +303,7 @@ static void nfs_free_client(struct nfs_client *clp)
+ 	if (clp->cl_machine_cred != NULL)
+ 		put_rpccred(clp->cl_machine_cred);
+ 
+-	put_net(clp->net);
++	put_net(clp->cl_net);
+ 	kfree(clp->cl_hostname);
+ 	kfree(clp);
+ 
+@@ -321,7 +321,7 @@ void nfs_put_client(struct nfs_client *clp)
+ 		return;
+ 
+ 	dprintk("--> nfs_put_client({%d})\n", atomic_read(&clp->cl_count));
+-	nn = net_generic(clp->net, nfs_net_id);
++	nn = net_generic(clp->cl_net, nfs_net_id);
+ 
+ 	if (atomic_dec_and_lock(&clp->cl_count, &nn->nfs_client_lock)) {
+ 		list_del(&clp->cl_share_link);
+@@ -659,7 +659,7 @@ static int nfs_create_rpc_client(struct nfs_client *clp,
+ {
+ 	struct rpc_clnt		*clnt = NULL;
+ 	struct rpc_create_args args = {
+-		.net		= clp->net,
++		.net		= clp->cl_net,
+ 		.protocol	= clp->cl_proto,
+ 		.address	= (struct sockaddr *)&clp->cl_addr,
+ 		.addrsize	= clp->cl_addrlen,
+@@ -713,7 +713,7 @@ static int nfs_start_lockd(struct nfs_server *server)
+ 		.nfs_version	= clp->rpc_ops->version,
+ 		.noresvport	= server->flags & NFS_MOUNT_NORESVPORT ?
+ 					1 : 0,
+-		.net		= clp->net,
++		.net		= clp->cl_net,
+ 	};
+ 
+ 	if (nlm_init.nfs_version > 3)
+@@ -1048,7 +1048,7 @@ static void nfs_server_copy_userdata(struct nfs_server *target, struct nfs_serve
+ static void nfs_server_insert_lists(struct nfs_server *server)
+ {
+ 	struct nfs_client *clp = server->nfs_client;
+-	struct nfs_net *nn = net_generic(clp->net, nfs_net_id);
++	struct nfs_net *nn = net_generic(clp->cl_net, nfs_net_id);
+ 
+ 	spin_lock(&nn->nfs_client_lock);
+ 	list_add_tail_rcu(&server->client_link, &clp->cl_superblocks);
+@@ -1065,7 +1065,7 @@ static void nfs_server_remove_lists(struct nfs_server *server)
+ 
+ 	if (clp == NULL)
+ 		return;
+-	nn = net_generic(clp->net, nfs_net_id);
++	nn = net_generic(clp->cl_net, nfs_net_id);
+ 	spin_lock(&nn->nfs_client_lock);
+ 	list_del_rcu(&server->client_link);
+ 	if (list_empty(&clp->cl_superblocks))
+@@ -1474,7 +1474,7 @@ struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
+ 		.rpc_ops = &nfs_v4_clientops,
+ 		.proto = ds_proto,
+ 		.minorversion = mds_clp->cl_minorversion,
+-		.net = mds_clp->net,
++		.net = mds_clp->cl_net,
+ 	};
+ 	struct rpc_timeout ds_timeout = {
+ 		.to_initval = 15 * HZ,
+@@ -1701,7 +1701,7 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
+ 				rpc_protocol(parent_server->client),
+ 				parent_server->client->cl_timeout,
+ 				parent_client->cl_mvops->minor_version,
+-				parent_client->net);
++				parent_client->cl_net);
+ 	if (error < 0)
+ 		goto error;
+ 
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index ba3019f..dded556 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -415,7 +415,7 @@ static int __nfs_idmap_register(struct dentry *dir,
+ static void nfs_idmap_unregister(struct nfs_client *clp,
+ 				      struct rpc_pipe *pipe)
+ {
+-	struct net *net = clp->net;
++	struct net *net = clp->cl_net;
+ 	struct super_block *pipefs_sb;
+ 
+ 	pipefs_sb = rpc_get_sb_net(net);
+@@ -429,7 +429,7 @@ static int nfs_idmap_register(struct nfs_client *clp,
+ 				   struct idmap *idmap,
+ 				   struct rpc_pipe *pipe)
+ {
+-	struct net *net = clp->net;
++	struct net *net = clp->cl_net;
+ 	struct super_block *pipefs_sb;
+ 	int err = 0;
+ 
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index c9cff9a..22ab5ca 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -602,7 +602,7 @@ decode_device(struct inode *ino, struct pnfs_device *pdev, gfp_t gfp_flags)
+ 
+ 		mp_count = be32_to_cpup(p); /* multipath count */
+ 		for (j = 0; j < mp_count; j++) {
+-			da = decode_ds_addr(NFS_SERVER(ino)->nfs_client->net,
++			da = decode_ds_addr(NFS_SERVER(ino)->nfs_client->cl_net,
+ 					    &stream, gfp_flags);
+ 			if (da)
+ 				list_add_tail(&da->da_node, &dsaddrs);
 diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 59410b3..fbec57d 100644
+index 773e021..59410b3 100644
 --- a/include/linux/nfs_fs_sb.h
 +++ b/include/linux/nfs_fs_sb.h
-@@ -61,9 +61,6 @@ struct nfs_client {
+@@ -88,7 +88,7 @@ struct nfs_client {
+ 	struct fscache_cookie	*fscache;	/* client index cache cookie */
+ #endif
  
- 	struct rpc_wait_queue	cl_rpcwaitq;
+-	struct net		*net;
++	struct net		*cl_net;
+ };
  
--	/* used for the setclientid verifier */
--	struct timespec		cl_boot_time;
--
- 	/* idmapper */
- 	struct idmap *		cl_idmap;
- 
+ /*
 
