@@ -1,126 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:45190 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758862Ab2EYWKD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 May 2012 18:10:03 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q4PMA3eQ005735
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Fri, 25 May 2012 18:10:03 -0400
-From: Simo Sorce <simo@redhat.com>
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
-Subject: [PATCH 1/4] SUNRPC: conditionally return endtime from import_sec_context
-Date: Fri, 25 May 2012 18:09:53 -0400
-Message-Id: <1337983796-26476-2-git-send-email-simo@redhat.com>
-In-Reply-To: <1337983796-26476-1-git-send-email-simo@redhat.com>
-References: <1337983796-26476-1-git-send-email-simo@redhat.com>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:41301 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932585Ab2ERADH convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 May 2012 20:03:07 -0400
+Subject: Re: [nfs-utils PATCH] build: avoid AM_CONDITIONAL in conditional execution.
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=iso-8859-1
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4FB5915B.2020800@flameeyes.eu>
+Date: Thu, 17 May 2012 20:03:04 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <018E141A-53BE-4445-A563-B3E6BC1E5A08@oracle.com>
+References: <1337297671-9614-1-git-send-email-flameeyes@flameeyes.eu> <F2544999-60EA-4192-90D5-44C79DEE82CC@oracle.com> <4FB5915B.2020800@flameeyes.eu>
+To: =?iso-8859-1?Q?Diego_Elio_Petten=F2?= <flameeyes@flameeyes.eu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We expose this parameter for a future caller.
-It will be used to extract the endtime from the gss-proxy upcall mechanism,
-in order to set the rsc cache expiration time.
 
-Signed-off-by: Simo Sorce <simo@redhat.com>
----
- include/linux/sunrpc/gss_api.h        |    2 ++
- net/sunrpc/auth_gss/auth_gss.c        |    2 +-
- net/sunrpc/auth_gss/gss_krb5_mech.c   |    3 +++
- net/sunrpc/auth_gss/gss_mech_switch.c |    5 +++--
- net/sunrpc/auth_gss/svcauth_gss.c     |    3 ++-
- 5 files changed, 11 insertions(+), 4 deletions(-)
+On May 17, 2012, at 8:01 PM, Diego Elio Pettenò wrote:
 
-diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
-index 332da61cf8b71fc73d802b2609210f46641a9ea1..7bd486d50f0861b45c98e695751c2f92f1b3bdfa 100644
---- a/include/linux/sunrpc/gss_api.h
-+++ b/include/linux/sunrpc/gss_api.h
-@@ -36,6 +36,7 @@ int gss_import_sec_context(
- 		size_t			bufsize,
- 		struct gss_api_mech	*mech,
- 		struct gss_ctx		**ctx_id,
-+		time_t			*endtime,
- 		gfp_t			gfp_mask);
- u32 gss_get_mic(
- 		struct gss_ctx		*ctx_id,
-@@ -91,6 +92,7 @@ struct gss_api_ops {
- 			const void		*input_token,
- 			size_t			bufsize,
- 			struct gss_ctx		*ctx_id,
-+			time_t			*endtime,
- 			gfp_t			gfp_mask);
- 	u32 (*gss_get_mic)(
- 			struct gss_ctx		*ctx_id,
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index d3ad81f8da5b79551c36b17a7d53007406946699..836cbecb1947235d38c62eadf79ae96ad73906e6 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -232,7 +232,7 @@ gss_fill_context(const void *p, const void *end, struct gss_cl_ctx *ctx, struct
- 		p = ERR_PTR(-EFAULT);
- 		goto err;
- 	}
--	ret = gss_import_sec_context(p, seclen, gm, &ctx->gc_gss_ctx, GFP_NOFS);
-+	ret = gss_import_sec_context(p, seclen, gm, &ctx->gc_gss_ctx, NULL, GFP_NOFS);
- 	if (ret < 0) {
- 		p = ERR_PTR(ret);
- 		goto err;
-diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-index 8eff8c32d1b9b403c2365326c16e44df7c0923e6..329c36b9aa269a414932df86d89650c7a39528fd 100644
---- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-@@ -679,6 +679,7 @@ out_err:
- static int
- gss_import_sec_context_kerberos(const void *p, size_t len,
- 				struct gss_ctx *ctx_id,
-+				time_t *endtime,
- 				gfp_t gfp_mask)
- {
- 	const void *end = (const void *)((const char *)p + len);
-@@ -696,6 +697,8 @@ gss_import_sec_context_kerberos(const void *p, size_t len,
- 
- 	if (ret == 0)
- 		ctx_id->internal_ctx_id = ctx;
-+		if (endtime)
-+			*endtime = ctx->endtime;
- 	else
- 		kfree(ctx);
- 
-diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-index ca8cad8251c7ff1c13c9bff6757e098c4f1cd9b2..b22cc24fac482351876c8f4a6c10d8b203a95045 100644
---- a/net/sunrpc/auth_gss/gss_mech_switch.c
-+++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-@@ -312,14 +312,15 @@ int
- gss_import_sec_context(const void *input_token, size_t bufsize,
- 		       struct gss_api_mech	*mech,
- 		       struct gss_ctx		**ctx_id,
-+		       time_t			*endtime,
- 		       gfp_t gfp_mask)
- {
- 	if (!(*ctx_id = kzalloc(sizeof(**ctx_id), gfp_mask)))
- 		return -ENOMEM;
- 	(*ctx_id)->mech_type = gss_mech_get(mech);
- 
--	return mech->gm_ops
--		->gss_import_sec_context(input_token, bufsize, *ctx_id, gfp_mask);
-+	return mech->gm_ops->gss_import_sec_context(input_token, bufsize,
-+						*ctx_id, endtime, gfp_mask);
- }
- 
- /* gss_get_mic: compute a mic over message and return mic_token. */
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index bcb773781ec08cbf0a2f00a4034126bfffc7e1cb..5008672f920e8bdda6a4753bd7c7262a90d11eab 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -486,7 +486,8 @@ static int rsc_parse(struct cache_detail *cd,
- 		len = qword_get(&mesg, buf, mlen);
- 		if (len < 0)
- 			goto out;
--		status = gss_import_sec_context(buf, len, gm, &rsci.mechctx, GFP_KERNEL);
-+		status = gss_import_sec_context(buf, len, gm, &rsci.mechctx,
-+						NULL, GFP_KERNEL);
- 		if (status)
- 			goto out;
- 
+> Il 17/05/2012 17:00, Chuck Lever ha scritto:
+>> Are we using sqlite3 at all at this point?
+> 
+> As far as I can tell it's still a requisite for nfsdcld...
+
+OK, I forgot about that.  Never mind.
+
+> I honestly
+> haven't looked at the code yet simply because I don't use NFSv4 at all
+> (which is why I found this build failure).
+
 -- 
-1.7.7.6
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
