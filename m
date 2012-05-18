@@ -1,71 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:26399 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752332Ab2E0Q3c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 27 May 2012 12:29:32 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Peng Tao <bergwolf@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Peng Tao <tao.peng@emc.com>
-Subject: Re: [PATCH 1/3] NFS41: add pnfs_dio_begin/dio_end
-Date: Sun, 27 May 2012 16:29:30 +0000
-Message-ID: <1338136170.3044.7.camel@lade.trondhjem.org>
-References: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>
-	 <1338096780-2763-2-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1338096780-2763-2-git-send-email-bergwolf@gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-qa0-f49.google.com ([209.85.216.49]:55283 "EHLO
+	mail-qa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S966094Ab2ERUQe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 May 2012 16:16:34 -0400
+Received: by qabj40 with SMTP id j40so660260qab.1
+        for <linux-nfs@vger.kernel.org>; Fri, 18 May 2012 13:16:33 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: andros@netapp.com, linux-nfs@vger.kernel.org
+Subject: [PATCH] sunrpc: fix loss of task->tk_status after rpc_delay call in xprt_alloc_slot
+Date: Fri, 18 May 2012 16:16:28 -0400
+Message-Id: <1337372188-5565-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU3VuLCAyMDEyLTA1LTI3IGF0IDEzOjMyICswODAwLCBQZW5nIFRhbyB3cm90ZToNCj4gVG8g
-YWxsb3cgbGF5b3V0IGRyaXZlciBzcGVjaWZpYyBwcmVwYXJhdGlvbiBmb3IgRElPLg0KPiANCj4g
-U2lnbmVkLW9mZi1ieTogUGVuZyBUYW8gPHRhby5wZW5nQGVtYy5jb20+DQo+IC0tLQ0KPiAgZnMv
-bmZzL2RpcmVjdC5jIHwgICA0MyArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
-KystLS0tDQo+ICBmcy9uZnMvcG5mcy5oICAgfCAgIDM4ICsrKysrKysrKysrKysrKysrKysrKysr
-KysrKysrKysrKysrKysrDQo+ICAyIGZpbGVzIGNoYW5nZWQsIDc3IGluc2VydGlvbnMoKyksIDQg
-ZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2RpcmVjdC5jIGIvZnMvbmZz
-L2RpcmVjdC5jDQo+IGluZGV4IGFkMjc3NWQuLjhlOWM4ZTEgMTAwNjQ0DQo+IC0tLSBhL2ZzL25m
-cy9kaXJlY3QuYw0KPiArKysgYi9mcy9uZnMvZGlyZWN0LmMNCj4gQEAgLTM4Myw2ICszODMsMzcg
-QEAgc3RhdGljIHNzaXplX3QgbmZzX2RpcmVjdF9yZWFkX3NjaGVkdWxlX3NlZ21lbnQoc3RydWN0
-IG5mc19wYWdlaW9fZGVzY3JpcHRvciAqZGUNCj4gIAlyZXR1cm4gcmVzdWx0IDwgMCA/IChzc2l6
-ZV90KSByZXN1bHQgOiAtRUZBVUxUOw0KPiAgfQ0KPiAgDQo+ICtzdGF0aWMgdm9pZCBuZnNfZGly
-ZWN0X3JlYWRfaW5pdChzdHJ1Y3QgbmZzX3BhZ2Vpb19kZXNjcmlwdG9yICpwZ2lvLA0KPiArCQkJ
-CSBzdHJ1Y3QgaW5vZGUgKmlub2RlLCBjb25zdCBzdHJ1Y3QgaW92ZWMgKmlvdiwNCj4gKwkJCQkg
-dW5zaWduZWQgbG9uZyBucl9zZWdzLCBsb2ZmX3QgcG9zLA0KPiArCQkJCSBzdHJ1Y3QgYmxrX3Bs
-dWcgKnBsdWcpDQo+ICt7DQo+ICsJaWYgKHBuZnNfZGlvX2JlZ2luKGlub2RlLCBpb3YsIG5yX3Nl
-Z3MsIHBvcywgcGx1ZykpDQo+ICsJCXBuZnNfcGFnZWlvX2luaXRfcmVhZChwZ2lvLCBpbm9kZSwN
-Cj4gKwkJCQkgICAgICAmbmZzX2RpcmVjdF9yZWFkX2NvbXBsZXRpb25fb3BzKTsNCj4gKwllbHNl
-DQo+ICsJCW5mc19wYWdlaW9faW5pdF9yZWFkX21kcyhwZ2lvLCBpbm9kZSwNCj4gKwkJCQkJICZu
-ZnNfZGlyZWN0X3JlYWRfY29tcGxldGlvbl9vcHMpOw0KPiArfQ0KPiArDQo+ICtzdGF0aWMgdm9p
-ZCBuZnNfZGlyZWN0X3dyaXRlX2luaXQoc3RydWN0IG5mc19wYWdlaW9fZGVzY3JpcHRvciAqcGdp
-bywNCj4gKwkJCQkgIHN0cnVjdCBpbm9kZSAqaW5vZGUsIGNvbnN0IHN0cnVjdCBpb3ZlYyAqaW92
-LA0KPiArCQkJCSAgdW5zaWduZWQgbG9uZyBucl9zZWdzLCBsb2ZmX3QgcG9zLA0KPiArCQkJCSAg
-c3RydWN0IGJsa19wbHVnICpwbHVnKQ0KPiArew0KPiArCWlmIChwbmZzX2Rpb19iZWdpbihpbm9k
-ZSwgaW92LCBucl9zZWdzLCBwb3MsIHBsdWcpKQ0KPiArCQlwbmZzX3BhZ2Vpb19pbml0X3dyaXRl
-KHBnaW8sIGlub2RlLCBGTFVTSF9DT05EX1NUQUJMRSwNCj4gKwkJCQkgICAgICAgJm5mc19kaXJl
-Y3Rfd3JpdGVfY29tcGxldGlvbl9vcHMpOw0KPiArCWVsc2UNCj4gKwkJbmZzX3BhZ2Vpb19pbml0
-X3dyaXRlX21kcyhwZ2lvLCBpbm9kZSwgRkxVU0hfQ09ORF9TVEFCTEUsDQo+ICsJCQkJCSAgJm5m
-c19kaXJlY3Rfd3JpdGVfY29tcGxldGlvbl9vcHMpOw0KPiArfQ0KPiArDQo+ICtzdGF0aWMgdm9p
-ZCBuZnNfZGlvX2VuZChzdHJ1Y3QgaW5vZGUgKmlub2RlLCBzdHJ1Y3QgYmxrX3BsdWcgKnBsdWcp
-DQo+ICt7DQo+ICsJcG5mc19kaW9fZW5kKGlub2RlLCBwbHVnKTsNCj4gK30NCj4gKw0KPiAgc3Rh
-dGljIHNzaXplX3QgbmZzX2RpcmVjdF9yZWFkX3NjaGVkdWxlX2lvdmVjKHN0cnVjdCBuZnNfZGly
-ZWN0X3JlcSAqZHJlcSwNCj4gIAkJCQkJICAgICAgY29uc3Qgc3RydWN0IGlvdmVjICppb3YsDQo+
-ICAJCQkJCSAgICAgIHVuc2lnbmVkIGxvbmcgbnJfc2VncywNCj4gQEAgLTM5Miw5ICs0MjMsMTAg
-QEAgc3RhdGljIHNzaXplX3QgbmZzX2RpcmVjdF9yZWFkX3NjaGVkdWxlX2lvdmVjKHN0cnVjdCBu
-ZnNfZGlyZWN0X3JlcSAqZHJlcSwNCj4gIAlzc2l6ZV90IHJlc3VsdCA9IC1FSU5WQUw7DQo+ICAJ
-c2l6ZV90IHJlcXVlc3RlZF9ieXRlcyA9IDA7DQo+ICAJdW5zaWduZWQgbG9uZyBzZWc7DQo+ICsJ
-c3RydWN0IGJsa19wbHVnIHBsdWc7DQo+ICsNCj4gKwluZnNfZGlyZWN0X3JlYWRfaW5pdCgmZGVz
-YywgZHJlcS0+aW5vZGUsIGlvdiwgbnJfc2VncywgcG9zLCAmcGx1Zyk7DQo+ICANCj4gLQluZnNf
-cGFnZWlvX2luaXRfcmVhZCgmZGVzYywgZHJlcS0+aW5vZGUsDQo+IC0JCQkgICAgICZuZnNfZGly
-ZWN0X3JlYWRfY29tcGxldGlvbl9vcHMpOw0KPiAgCWdldF9kcmVxKGRyZXEpOw0KPiAgCWRlc2Mu
-cGdfZHJlcSA9IGRyZXE7DQo+ICANCj4gQEAgLTQxMCw2ICs0NDIsNyBAQCBzdGF0aWMgc3NpemVf
-dCBuZnNfZGlyZWN0X3JlYWRfc2NoZWR1bGVfaW92ZWMoc3RydWN0IG5mc19kaXJlY3RfcmVxICpk
-cmVxLA0KPiAgCX0NCj4gIA0KPiAgCW5mc19wYWdlaW9fY29tcGxldGUoJmRlc2MpOw0KPiArCW5m
-c19kaW9fZW5kKGRyZXEtPmlub2RlLCAmcGx1Zyk7DQoNCldoeSBjYW4ndCB5b3UganVzdCBwdXQg
-dGhpcyBpbiBwZ19pbml0L3BnX2RvaW8/IFRoZXJlIGlzIGFscmVhZHkgYSBmbGFnDQppbiB0aGUg
-bmZzX3BhZ2Vpb19kZXNjcmlwdG9yIHRoYXQgdGVsbHMgeW91IGlmIG1vcmUgaS9vIGlzIGR1ZSAo
-c2VlDQpwZ19tb3JlaW8pLg0KVGhlcmUgc2hvdWxkIGJlIG5vIG5lZWQgdG8gYWRkIGV4dHJhIGNh
-bGxiYWNrcyBpbiB0aGUgZ2VuZXJpYyBjb2RlIGZvcg0KYW55IG9mIHRoaXMuDQoNCi0tIA0KVHJv
-bmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9u
-ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+xprt_alloc_slot will call rpc_delay() to make the task wait a bit before
+retrying when it gets back an -ENOMEM error from xprt_dynamic_alloc_slot.
+
+The problem there is that rpc_delay does this:
+
+    rpc_sleep_on(&delay_queue, task, __rpc_atrun);
+
+...and __rpc_atrun will reset the task->tk_status back to 0 when the
+task wakes back up. This makes call_reserveresult abort the task with
+-EIO.
+
+The RH QA group discovered this problem when testing with low-memory
+clients and this patch fixed it:
+
+    https://bugzilla.redhat.com/show_bug.cgi?id=822189
+
+Fix this by adding a new rpc_delay_action() variant that makes allows
+us to pass in a rpc_action to reset the status back to -EAGAIN instead.
+
+Cc: Andy Adamson <andros@netapp.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ include/linux/sunrpc/sched.h |    1 +
+ net/sunrpc/sched.c           |    9 +++++++--
+ net/sunrpc/xprt.c            |    7 ++++++-
+ 3 files changed, 14 insertions(+), 3 deletions(-)
+
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index dc0c3cc..6cafdbb 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -241,6 +241,7 @@ struct rpc_task *rpc_wake_up_first(struct rpc_wait_queue *,
+ 					void *);
+ void		rpc_wake_up_status(struct rpc_wait_queue *, int);
+ int		rpc_queue_empty(struct rpc_wait_queue *);
++void		rpc_delay_action(struct rpc_task *, unsigned long, rpc_action);
+ void		rpc_delay(struct rpc_task *, unsigned long);
+ void *		rpc_malloc(struct rpc_task *, size_t);
+ void		rpc_free(void *);
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index 994cfea..f2ff98d 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -613,13 +613,18 @@ static void __rpc_atrun(struct rpc_task *task)
+ 	task->tk_status = 0;
+ }
+ 
++void rpc_delay_action(struct rpc_task *task, unsigned long delay, rpc_action action)
++{
++	task->tk_timeout = delay;
++	rpc_sleep_on(&delay_queue, task, action);
++}
++
+ /*
+  * Run a task at a later time
+  */
+ void rpc_delay(struct rpc_task *task, unsigned long delay)
+ {
+-	task->tk_timeout = delay;
+-	rpc_sleep_on(&delay_queue, task, __rpc_atrun);
++	rpc_delay_action(task, delay, __rpc_atrun);
+ }
+ EXPORT_SYMBOL_GPL(rpc_delay);
+ 
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index b239e75..a5dc816 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -969,6 +969,11 @@ static bool xprt_dynamic_free_slot(struct rpc_xprt *xprt, struct rpc_rqst *req)
+ 	return false;
+ }
+ 
++static void xprt_alloc_delay_reset_status(struct rpc_task *task)
++{
++	task->tk_status = -EAGAIN;
++}
++
+ static void xprt_alloc_slot(struct rpc_task *task)
+ {
+ 	struct rpc_xprt	*xprt = task->tk_xprt;
+@@ -984,7 +989,7 @@ static void xprt_alloc_slot(struct rpc_task *task)
+ 		goto out_init_req;
+ 	switch (PTR_ERR(req)) {
+ 	case -ENOMEM:
+-		rpc_delay(task, HZ >> 2);
++		rpc_delay_action(task, HZ >> 2, xprt_alloc_delay_reset_status);
+ 		dprintk("RPC:       dynamic allocation of request slot "
+ 				"failed! Retrying\n");
+ 		break;
+-- 
+1.7.7.6
+
