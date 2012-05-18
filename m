@@ -1,91 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52733 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:29761 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751526Ab2EWWHl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 May 2012 18:07:41 -0400
-Date: Wed, 23 May 2012 18:07:39 -0400
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] vfs: stop d_splice_alias creating directory aliases
-Message-ID: <20120523220739.GA16274@fieldses.org>
-References: <1337810746-16240-1-git-send-email-bfields@redhat.com>
+	id S1751730Ab2ERP0n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 May 2012 11:26:43 -0400
+Subject: [PATCH] NFSd: set nfsd_serv to NULL after service destruction
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Fri, 18 May 2012 19:26:02 +0400
+Message-ID: <20120518152314.15569.21878.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1337810746-16240-1-git-send-email-bfields@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These two patches are a resend.  I think they're appropriate for 3.5.
+Otherwise we will get NULL pointer dereference after
+svc_shutdown_net->sv_shutdown (nfsd_last_thread) call.
+This looks safe, because all such operations (svc_destroy) are performed with
+nfsd_mutex being held.
 
---b.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfsd/nfsctl.c |    4 ++--
+ fs/nfsd/nfsd.h   |    6 ++++++
+ fs/nfsd/nfssvc.c |   10 ++++------
+ 3 files changed, 12 insertions(+), 8 deletions(-)
 
-On Wed, May 23, 2012 at 06:05:45PM -0400, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> A directory should never have more than one dentry pointing to it.
-> 
-> But d_splice_alias() will add one if it finds a directory with an
-> already-existing non-DISCONNECTED dentry.
-> 
-> I can't find an obvious reproducer, but I also can't see what prevents
-> d_splice_alias() from encountering such a case.
-> 
-> It therefore seems safest to allow d_splice_alias to use any dentry it
-> finds.
-> 
-> (Prior to the removal of dentry_unhash() from vfs_rmdir(), around v3.0,
-> this could cause an nfsd deadlock like this:
-> 
-> 	- Somebody attempts to remove a non-empty directory.
-> 	- The dentry_unhash() in vfs_rmdir() unhashes the dentry
-> 	  pointing to the non-empty directory.
-> 	- ->rmdir() then fails with -ENOTEMPTY
-> 	- Before the vfs_rmdir() caller reaches dput(), an nfsd process
-> 	  in rename looks up the directory by filehandle; at the end of
-> 	  that lookup, this dentry is found by d_alloc_anon(), and a
-> 	  reference is taken on it, preventing dput() from removing it.
-> 	- A regular lookup of the directory calls d_splice_alias(),
-> 	  finds only an unhashed (not a DISCONNECTED) dentry, and
-> 	  insteads adds a new one, so the directory now has two
-> 	  dentries.
-> 	- The nfsd process in rename, which was previously looking up
-> 	  the source directory of the rename, now looks up the target
-> 	  directory (which is the same), and gets the dentry newly
-> 	  created by the previous lookup.
-> 	- The rename, seeing two different dentries, assumes this is a
-> 	  cross-directory rename and attempts to take the i_mutex on the
-> 	  directory twice.
-> 
-> That reproducer no longer exists, but I don't think there was anything
-> fundamentally incorrect about the vfs_rmdir() behavior there, so I think
-> the real fault was here in d_splice_alias().)
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/dcache.c |    3 +--
->  1 file changed, 1 insertion(+), 2 deletions(-)
-> 
-> diff --git a/fs/dcache.c b/fs/dcache.c
-> index b60ddc4..2434c1e 100644
-> --- a/fs/dcache.c
-> +++ b/fs/dcache.c
-> @@ -1606,9 +1606,8 @@ struct dentry *d_splice_alias(struct inode *inode, struct dentry *dentry)
->  
->  	if (inode && S_ISDIR(inode->i_mode)) {
->  		spin_lock(&inode->i_lock);
-> -		new = __d_find_alias(inode, 1);
-> +		new = __d_find_any_alias(inode);
->  		if (new) {
-> -			BUG_ON(!(new->d_flags & DCACHE_DISCONNECTED));
->  			spin_unlock(&inode->i_lock);
->  			security_d_instantiate(new, inode);
->  			d_move(new, dentry);
-> -- 
-> 1.7.9.5
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index c55298e..82cca1e 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -675,7 +675,7 @@ static ssize_t __write_ports_addfd(char *buf)
+ 	if (err < 0) {
+ 		if (nfsd_serv->sv_nrthreads == 1)
+ 			svc_shutdown_net(nfsd_serv, net);
+-		svc_destroy(nfsd_serv);
++		nfsd_destroy();
+ 		return err;
+ 	}
+ 
+@@ -746,7 +746,7 @@ out_close:
+ out_err:
+ 	if (nfsd_serv->sv_nrthreads == 1)
+ 		svc_shutdown_net(nfsd_serv, net);
+-	svc_destroy(nfsd_serv);
++	nfsd_destroy();
+ 	return err;
+ }
+ 
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 1671429..35db369 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -73,6 +73,12 @@ int		nfsd_nrpools(void);
+ int		nfsd_get_nrthreads(int n, int *);
+ int		nfsd_set_nrthreads(int n, int *);
+ 
++static inline void nfsd_destroy(void)
++{
++	svc_destroy(nfsd_serv);
++	nfsd_serv = NULL;
++}
++
+ #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
+ #ifdef CONFIG_NFSD_V2_ACL
+ extern struct svc_version nfsd_acl_version2;
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index ee709fc..ab89fe0 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -254,8 +254,6 @@ static void nfsd_shutdown(void)
+ 
+ static void nfsd_last_thread(struct svc_serv *serv, struct net *net)
+ {
+-	/* When last nfsd thread exits we need to do some clean-up */
+-	nfsd_serv = NULL;
+ 	nfsd_shutdown();
+ 
+ 	svc_rpcb_cleanup(serv, net);
+@@ -348,7 +346,7 @@ int nfsd_create_serv(void)
+ 
+ 	error = svc_bind(nfsd_serv, current->nsproxy->net_ns);
+ 	if (error < 0) {
+-		svc_destroy(nfsd_serv);
++		nfsd_destroy();
+ 		return error;
+ 	}
+ 
+@@ -430,7 +428,7 @@ int nfsd_set_nrthreads(int n, int *nthreads)
+ 
+ 	if (nfsd_serv->sv_nrthreads == 1)
+ 		svc_shutdown_net(nfsd_serv, net);
+-	svc_destroy(nfsd_serv);
++	nfsd_destroy();
+ 
+ 	return err;
+ }
+@@ -480,7 +478,7 @@ out_shutdown:
+ out_destroy:
+ 	if (nfsd_serv->sv_nrthreads == 1)
+ 		svc_shutdown_net(nfsd_serv, net);
+-	svc_destroy(nfsd_serv);		/* Release server */
++	nfsd_destroy();		/* Release server */
+ out:
+ 	mutex_unlock(&nfsd_mutex);
+ 	return error;
+@@ -684,7 +682,7 @@ int nfsd_pool_stats_release(struct inode *inode, struct file *file)
+ 	/* this function really, really should have been called svc_put() */
+ 	if (nfsd_serv->sv_nrthreads == 1)
+ 		svc_shutdown_net(nfsd_serv, net);
+-	svc_destroy(nfsd_serv);
++	nfsd_destroy();
+ 	mutex_unlock(&nfsd_mutex);
+ 	return ret;
+ }
+
