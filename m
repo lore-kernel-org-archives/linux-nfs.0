@@ -1,125 +1,30 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61537 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757797Ab2EXVTi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 May 2012 17:19:38 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 2/2] nfs41: Use BIND_CONN_TO_SESSION for CB_PATH_DOWN*
-Date: Thu, 24 May 2012 17:19:34 -0400
-Message-Id: <1337894374-23340-2-git-send-email-dros@netapp.com>
-In-Reply-To: <1337894374-23340-1-git-send-email-dros@netapp.com>
-References: <1337894374-23340-1-git-send-email-dros@netapp.com>
+Received: from mail160.messagelabs.com ([216.82.253.99]:28452 "EHLO
+	mail160.messagelabs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755329Ab2ERKuA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 May 2012 06:50:00 -0400
+Message-ID: <4FB62953.9000701@nexenta.com>
+Date: Fri, 18 May 2012 14:49:55 +0400
+From: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+MIME-Version: 1.0
+To: <trond.myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: question about lost lock during reclaimation
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The state manager can handle SEQ4_STATUS_CB_PATH_DOWN* flags with a
-BIND_CONN_TO_SESSION instead of destroying the session and creating a new one.
+Hello, Trond!
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+
+Could you point to idea how userspace process can know about
+lost lock on NFSv4 server (due to server reboot) ?
+
+See "case -NFS4ERR_DENIED" at  nfs4_reclaim_locks():
+
+    http://lxr.free-electrons.com/source/fs/nfs/nfs4state.c#L1184
+
+
 ---
-Updated with comments from Trond.
-
-I got to remember to test with different CONFIG options *after* I clean up the
-patch :)
-
- fs/nfs/nfs4_fs.h   |    1 +
- fs/nfs/nfs4state.c |   31 +++++++++++++++++++++++++++----
- 2 files changed, 28 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index ad90bc7..9feff0f 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -24,6 +24,7 @@ enum nfs4_client_state {
- 	NFS4CLNT_RECALL_SLOT,
- 	NFS4CLNT_LEASE_CONFIRM,
- 	NFS4CLNT_SERVER_SCOPE_MISMATCH,
-+	NFS4CLNT_BIND_CONN_TO_SESSION,
- };
- 
- enum nfs4_session_state {
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 7f0fcfc..4f41144 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1639,13 +1639,20 @@ static void nfs41_handle_recallable_state_revoked(struct nfs_client *clp)
- 	nfs_expire_all_delegations(clp);
- }
- 
--static void nfs41_handle_cb_path_down(struct nfs_client *clp)
-+static void nfs41_handle_backchannel_fault(struct nfs_client *clp)
- {
- 	nfs_expire_all_delegations(clp);
- 	if (test_and_set_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state) == 0)
- 		nfs4_schedule_state_manager(clp);
- }
- 
-+static void nfs41_handle_cb_path_down(struct nfs_client *clp)
-+{
-+	if (test_and_set_bit(NFS4CLNT_BIND_CONN_TO_SESSION,
-+		&clp->cl_state) == 0)
-+		nfs4_schedule_state_manager(clp);
-+}
-+
- void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags)
- {
- 	if (!flags)
-@@ -1659,9 +1666,10 @@ void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags)
- 		nfs41_handle_state_revoked(clp);
- 	if (flags & SEQ4_STATUS_RECALLABLE_STATE_REVOKED)
- 		nfs41_handle_recallable_state_revoked(clp);
--	if (flags & (SEQ4_STATUS_CB_PATH_DOWN |
--			    SEQ4_STATUS_BACKCHANNEL_FAULT |
--			    SEQ4_STATUS_CB_PATH_DOWN_SESSION))
-+	if (flags & SEQ4_STATUS_BACKCHANNEL_FAULT)
-+		nfs41_handle_backchannel_fault(clp);
-+	else if (flags & (SEQ4_STATUS_CB_PATH_DOWN |
-+				SEQ4_STATUS_CB_PATH_DOWN_SESSION))
- 		nfs41_handle_cb_path_down(clp);
- }
- 
-@@ -1686,6 +1694,7 @@ static int nfs4_reset_session(struct nfs_client *clp)
- 	clear_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state);
- 	/* create_session negotiated new slot table */
- 	clear_bit(NFS4CLNT_RECALL_SLOT, &clp->cl_state);
-+	clear_bit(NFS4CLNT_BIND_CONN_TO_SESSION, &clp->cl_state);
- 
- 	 /* Let the state manager reestablish state */
- 	if (!test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state))
-@@ -1722,10 +1731,15 @@ static int nfs4_recall_slot(struct nfs_client *clp)
- 	return 0;
- }
- 
-+static int nfs4_do_bind_conn_to_session(struct nfs_client *clp)
-+{
-+	return nfs4_proc_bind_conn_to_session(clp);
-+}
- #else /* CONFIG_NFS_V4_1 */
- static int nfs4_reset_session(struct nfs_client *clp) { return 0; }
- static int nfs4_end_drain_session(struct nfs_client *clp) { return 0; }
- static int nfs4_recall_slot(struct nfs_client *clp) { return 0; }
-+static int nfs4_do_bind_conn_to_session(struct nfs_client *clp) { return 0; }
- #endif /* CONFIG_NFS_V4_1 */
- 
- /* Set NFS4CLNT_LEASE_EXPIRED for all v4.0 errors and for recoverable errors
-@@ -1803,6 +1817,15 @@ static void nfs4_state_manager(struct nfs_client *clp)
- 				goto out_error;
- 		}
- 
-+		/* Send BIND_CONN_TO_SESSION */
-+		if (clp->cl_mvops->minor_version == 1 &&
-+		    test_and_clear_bit(NFS4CLNT_BIND_CONN_TO_SESSION,
-+				&clp->cl_state) && nfs4_has_session(clp)) {
-+			status = nfs4_do_bind_conn_to_session(clp);
-+			if (status < 0)
-+				goto out_error;
-+		}
-+
- 		/* First recover reboot state... */
- 		if (test_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state)) {
- 			status = nfs4_do_reclaim(clp,
--- 
-1.7.4.4
-
+Thanks,
+Vitaliy
