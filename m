@@ -1,118 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57765 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760650Ab2EWRcv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 May 2012 13:32:51 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Subject: [PATCH 2/3] NFSv4: Fix a race in the net namespace mount notification
-Date: Wed, 23 May 2012 13:32:42 -0400
-Message-Id: <1337794363-11905-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1337794363-11905-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1337794363-11905-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:64077 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S968091Ab2ERWGw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 May 2012 18:06:52 -0400
+Received: by mail-yx0-f174.google.com with SMTP id m10so3324481yen.19
+        for <linux-nfs@vger.kernel.org>; Fri, 18 May 2012 15:06:52 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 11/14] NFS: Refactor nfs_get_client(): add nfs_found_client()
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 18 May 2012 18:06:50 -0400
+Message-ID: <20120518220650.774.2715.stgit@degas.1015granger.net>
+In-Reply-To: <20120518220145.774.53741.stgit@degas.1015granger.net>
+References: <20120518220145.774.53741.stgit@degas.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since the struct nfs_client gets added to the global nfs_client_list
-before it is initialised, it is possible that rpc_pipefs_event can
-end up trying to create idmapper entries on such a thing.
+Clean up: Code that takes and releases nfs_client_lock remains in
+nfs_get_client().  Logic that handles a pre-existing nfs_client is
+moved to a separate function.
 
-The solution is to have the mount notification wait for the
-initialisation of each nfs_client to complete, and then to
-skip any entries for which the it failed.
+No behavior change is expected.
 
-Reported-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/client.c   |   16 +++++++++++++---
- fs/nfs/idmap.c    |   15 +++++++++++++++
- fs/nfs/internal.h |    1 +
- 3 files changed, 29 insertions(+), 3 deletions(-)
+
+ fs/nfs/client.c |   67 ++++++++++++++++++++++++++++++-------------------------
+ 1 files changed, 37 insertions(+), 30 deletions(-)
 
 diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 78970a1..e6070ea 100644
+index 84bca37..e3bf0bd 100644
 --- a/fs/nfs/client.c
 +++ b/fs/nfs/client.c
-@@ -504,6 +504,17 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
- 	return NULL;
+@@ -504,6 +504,35 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
  }
  
-+static bool nfs_client_init_is_complete(const struct nfs_client *clp)
-+{
-+	return clp->cl_cons_state != NFS_CS_INITING;
-+}
-+
-+int nfs_wait_client_init_complete(const struct nfs_client *clp)
-+{
-+	return wait_event_killable(nfs_client_active_wq,
-+			nfs_client_init_is_complete(clp));
-+}
-+
  /*
++ * Found an existing client.  Make sure it's ready before returning.
++ */
++static struct nfs_client *
++nfs_found_client(const struct nfs_client_initdata *cl_init,
++		 struct nfs_client *clp)
++{
++	int error;
++
++	error = wait_event_killable(nfs_client_active_wq,
++				clp->cl_cons_state < NFS_CS_INITING);
++	if (error < 0) {
++		nfs_put_client(clp);
++		return ERR_PTR(-ERESTARTSYS);
++	}
++
++	if (clp->cl_cons_state < NFS_CS_READY) {
++		error = clp->cl_cons_state;
++		nfs_put_client(clp);
++		return ERR_PTR(error);
++	}
++
++	BUG_ON(clp->cl_cons_state != NFS_CS_READY);
++
++	dprintk("<-- %s found nfs_client %p for %s\n",
++		__func__, clp, cl_init->hostname ?: "");
++	return clp;
++}
++
++/*
   * Look up a client by IP address and protocol version
   * - creates a new record if one doesn't yet exist
-@@ -564,8 +575,7 @@ found_client:
- 	if (new)
- 		nfs_free_client(new);
+  */
+@@ -526,8 +555,12 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
+ 		spin_lock(&nn->nfs_client_lock);
  
+ 		clp = nfs_match_client(cl_init);
+-		if (clp)
+-			goto found_client;
++		if (clp) {
++			spin_unlock(&nn->nfs_client_lock);
++			if (new)
++				nfs_free_client(new);
++			return nfs_found_client(cl_init, clp);
++		}
+ 		if (new)
+ 			goto install_client;
+ 
+@@ -536,7 +569,8 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
+ 		new = nfs_alloc_client(cl_init);
+ 	} while (!IS_ERR(new));
+ 
+-	dprintk("--> nfs_get_client() = %ld [failed]\n", PTR_ERR(new));
++	dprintk("<-- nfs_get_client() Failed to find %s (%ld)\n",
++		cl_init->hostname ?: "", PTR_ERR(new));
+ 	return new;
+ 
+ 	/* install a new client and return with it unready */
+@@ -553,33 +587,6 @@ install_client:
+ 	}
+ 	dprintk("--> nfs_get_client() = %p [new]\n", clp);
+ 	return clp;
+-
+-	/* found an existing client
+-	 * - make sure it's ready before returning
+-	 */
+-found_client:
+-	spin_unlock(&nn->nfs_client_lock);
+-
+-	if (new)
+-		nfs_free_client(new);
+-
 -	error = wait_event_killable(nfs_client_active_wq,
 -				clp->cl_cons_state < NFS_CS_INITING);
-+	error = nfs_wait_client_init_complete(clp);
- 	if (error < 0) {
- 		nfs_put_client(clp);
- 		return ERR_PTR(-ERESTARTSYS);
-@@ -1317,7 +1327,7 @@ static int nfs4_init_client_minor_version(struct nfs_client *clp)
- 		 * so that the client back channel can find the
- 		 * nfs_client struct
- 		 */
--		clp->cl_cons_state = NFS_CS_SESSION_INITING;
-+		nfs_mark_client_ready(clp, NFS_CS_SESSION_INITING);
- 	}
- #endif /* CONFIG_NFS_V4_1 */
+-	if (error < 0) {
+-		nfs_put_client(clp);
+-		return ERR_PTR(-ERESTARTSYS);
+-	}
+-
+-	if (clp->cl_cons_state < NFS_CS_READY) {
+-		error = clp->cl_cons_state;
+-		nfs_put_client(clp);
+-		return ERR_PTR(error);
+-	}
+-
+-	BUG_ON(clp->cl_cons_state != NFS_CS_READY);
+-
+-	dprintk("--> nfs_get_client() = %p [share]\n", clp);
+-	return clp;
+ }
  
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index 3e8edbe..6ca949b 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -530,9 +530,24 @@ static struct nfs_client *nfs_get_client_for_event(struct net *net, int event)
- 	struct nfs_net *nn = net_generic(net, nfs_net_id);
- 	struct dentry *cl_dentry;
- 	struct nfs_client *clp;
-+	int err;
- 
-+restart:
- 	spin_lock(&nn->nfs_client_lock);
- 	list_for_each_entry(clp, &nn->nfs_client_list, cl_share_link) {
-+		/* Wait for initialisation to finish */
-+		if (clp->cl_cons_state == NFS_CS_INITING) {
-+			atomic_inc(&clp->cl_count);
-+			spin_unlock(&nn->nfs_client_lock);
-+			err = nfs_wait_client_init_complete(clp);
-+			nfs_put_client(clp);
-+			if (err)
-+				return NULL;
-+			goto restart;
-+		}
-+		/* Skip nfs_clients that failed to initialise */
-+		if (clp->cl_cons_state < 0)
-+			continue;
- 		if (clp->rpc_ops != &nfs_v4_clientops)
- 			continue;
- 		cl_dentry = clp->cl_idmap->idmap_pipe->dentry;
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 00b66de..a23daa9 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -167,6 +167,7 @@ extern struct nfs_server *nfs_clone_server(struct nfs_server *,
- 					   struct nfs_fh *,
- 					   struct nfs_fattr *,
- 					   rpc_authflavor_t);
-+extern int nfs_wait_client_init_complete(const struct nfs_client *clp);
- extern void nfs_mark_client_ready(struct nfs_client *clp, int state);
- extern struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
- 					     const struct sockaddr *ds_addr,
--- 
-1.7.7.6
+ /*
 
