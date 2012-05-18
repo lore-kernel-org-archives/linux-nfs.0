@@ -1,109 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from perches-mx.perches.com ([206.117.179.246]:55589 "EHLO
-	labridge.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754170Ab2ENH5I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 May 2012 03:57:08 -0400
-From: Joe Perches <joe@perches.com>
-To: netdev@vger.kernel.org, linux-decnet-user@lists.sourceforge.net,
-        netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org,
-        coreteam@netfilter.org, linux-wireless@vger.kernel.org,
-        dev@openvswitch.org, linux-sctp@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-Subject: [RFC net-next 0/2] net: Use net_<level>_ratelimit
-Date: Mon, 14 May 2012 00:56:24 -0700
-Message-Id: <cover.1336981915.git.joe@perches.com>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:42786 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S968102Ab2ERWFo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 May 2012 18:05:44 -0400
+Received: by yhmm54 with SMTP id m54so3385192yhm.19
+        for <linux-nfs@vger.kernel.org>; Fri, 18 May 2012 15:05:43 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 03/14] NFS: Use proper naming conventions for
+ nfs_client.impl_id field
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 18 May 2012 18:05:41 -0400
+Message-ID: <20120518220541.774.82062.stgit@degas.1015granger.net>
+In-Reply-To: <20120518220145.774.53741.stgit@degas.1015granger.net>
+References: <20120518220145.774.53741.stgit@degas.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-net_ratelimit() like __ratelimit() is too easy to misuse.
+Clean up:  When naming fields and data types, follow established
+conventions to facilitate accurate grep/cscope searches.
 
-Add simplifying macros similar to pr_<level>_ratelimited
-that combines the test of net_ratelimit and logging.
+Additionally, for consistency, move the impl_id field into the NFSv4-
+specific part of the nfs_client, and free that memory in the logic
+that shuts down NFSv4 nfs_clients.
 
-Joe Perches (2):
-  net: Add net_ratelimited_function and net_<level>_ratelimited macros
-  net: Convert net_ratelimit uses to net_<level>_ratelimited
+Introduced by commit 7d2ed9ac "NFSv4: parse and display server
+implementation ids," Fri Feb 17, 2012.
 
- include/linux/net.h                            |   23 +++++++++++
- net/atm/ioctl.c                                |    8 +--
- net/caif/caif_socket.c                         |   10 ++---
- net/core/dev.c                                 |   30 ++++++--------
- net/core/pktgen.c                              |    7 +--
- net/core/rtnetlink.c                           |    8 +--
- net/core/skbuff.c                              |   11 ++---
- net/decnet/dn_fib.c                            |    5 +-
- net/decnet/dn_neigh.c                          |   22 ++++-------
- net/decnet/dn_nsp_in.c                         |   11 +++--
- net/decnet/dn_nsp_out.c                        |    5 +-
- net/decnet/dn_route.c                          |   15 ++-----
- net/decnet/dn_table.c                          |    4 +-
- net/decnet/netfilter/dn_rtmsg.c                |    3 +-
- net/ipv4/icmp.c                                |   20 ++++-----
- net/ipv4/ip_fragment.c                         |    3 +-
- net/ipv4/ip_input.c                            |   13 +++---
- net/ipv4/ip_options.c                          |    6 ++-
- net/ipv4/ip_output.c                           |    4 +-
- net/ipv4/ipconfig.c                            |   11 ++---
- net/ipv4/ipmr.c                                |    3 +-
- net/ipv4/netfilter/arp_tables.c                |    5 +-
- net/ipv4/netfilter/ip_tables.c                 |    3 +-
- net/ipv4/netfilter/ipt_CLUSTERIP.c             |    3 +-
- net/ipv4/netfilter/nf_nat_h323.c               |   26 ++++--------
- net/ipv4/netfilter/nf_nat_snmp_basic.c         |    8 +--
- net/ipv4/route.c                               |   40 ++++++++-----------
- net/ipv4/tcp.c                                 |   14 +++---
- net/ipv4/tcp_input.c                           |    7 +--
- net/ipv4/tcp_ipv4.c                            |   11 ++---
- net/ipv4/tcp_output.c                          |    3 +-
- net/ipv6/addrconf.c                            |   17 +++-----
- net/ipv6/ah6.c                                 |    4 +-
- net/ipv6/ip6_output.c                          |    3 +-
- net/ipv6/ip6_tunnel.c                          |   33 +++++----------
- net/ipv6/ip6mr.c                               |    3 +-
- net/ipv6/netfilter/ip6_tables.c                |    3 +-
- net/ipv6/netfilter/ip6t_REJECT.c               |    6 +--
- net/ipv6/netfilter/ip6table_mangle.c           |    3 +-
- net/ipv6/netfilter/nf_conntrack_l3proto_ipv6.c |    3 +-
- net/ipv6/netfilter/nf_conntrack_reasm.c        |    7 +--
- net/ipv6/reassembly.c                          |    6 +--
- net/ipv6/route.c                               |   12 +----
- net/ipv6/sit.c                                 |    6 +--
- net/ipv6/tcp_ipv6.c                            |   10 ++---
- net/llc/af_llc.c                               |    7 +--
- net/mac80211/agg-rx.c                          |   13 ++----
- net/mac80211/ht.c                              |    8 ++--
- net/mac80211/ibss.c                            |   10 ++---
- net/mac80211/mlme.c                            |   12 ++---
- net/mac80211/rx.c                              |   11 ++---
- net/mac80211/tx.c                              |   17 +++-----
- net/netfilter/nf_conntrack_amanda.c            |    3 +-
- net/netfilter/nf_conntrack_core.c              |    5 +--
- net/netfilter/nf_conntrack_expect.c            |    4 +-
- net/netfilter/nf_conntrack_h323_main.c         |    9 +---
- net/netfilter/nf_conntrack_irc.c               |    8 +--
- net/netfilter/nfnetlink_queue.c                |    9 +---
- net/netfilter/xt_TCPMSS.c                      |   10 ++---
- net/netfilter/xt_hashlimit.c                   |    3 +-
- net/openvswitch/vport-netdev.c                 |    6 +-
- net/sched/act_ipt.c                            |    7 +--
- net/sched/act_mirred.c                         |    5 +-
- net/sched/cls_u32.c                            |    3 +-
- net/sched/ematch.c                             |    4 +-
- net/sched/sch_api.c                            |   10 ++---
- net/sched/sch_generic.c                        |   11 ++---
- net/sched/sch_gred.c                           |   12 ++----
- net/sctp/sm_sideeffect.c                       |    5 +-
- net/sctp/sm_statefuns.c                        |   18 ++++-----
- net/sctp/socket.c                              |    6 +--
- net/socket.c                                   |    3 +-
- net/sunrpc/svc.c                               |   18 ++++-----
- net/sunrpc/svc_xprt.c                          |   13 ++----
- net/sunrpc/svcsock.c                           |   28 +++++--------
- net/wireless/lib80211_crypt_ccmp.c             |   33 +++++----------
- net/wireless/lib80211_crypt_tkip.c             |   50 ++++++++----------------
- 77 files changed, 329 insertions(+), 490 deletions(-)
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
--- 
-1.7.8.111.gad25c.dirty
+ fs/nfs/client.c           |    2 +-
+ fs/nfs/nfs4proc.c         |   12 ++++++------
+ fs/nfs/super.c            |    4 ++--
+ include/linux/nfs_fs_sb.h |    2 +-
+ 4 files changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 1285f70..ec5a276 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -236,6 +236,7 @@ static void nfs4_shutdown_client(struct nfs_client *clp)
+ 
+ 	rpc_destroy_wait_queue(&clp->cl_rpcwaitq);
+ 	kfree(clp->cl_serverscope);
++	kfree(clp->cl_implid);
+ }
+ 
+ /* idr_remove_all is not needed as all id's are removed by nfs_put_client */
+@@ -304,7 +305,6 @@ static void nfs_free_client(struct nfs_client *clp)
+ 
+ 	put_net(clp->net);
+ 	kfree(clp->cl_hostname);
+-	kfree(clp->impl_id);
+ 	kfree(clp);
+ 
+ 	dprintk("<-- nfs_free_client()\n");
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 35585ef..386a756 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5147,8 +5147,8 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ 
+ 	if (!status) {
+ 		/* use the most recent implementation id */
+-		kfree(clp->impl_id);
+-		clp->impl_id = res.impl_id;
++		kfree(clp->cl_implid);
++		clp->cl_implid = res.impl_id;
+ 	} else
+ 		kfree(res.impl_id);
+ 
+@@ -5172,12 +5172,12 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ out_server_scope:
+ 	kfree(res.server_scope);
+ out:
+-	if (clp->impl_id)
++	if (clp->cl_implid)
+ 		dprintk("%s: Server Implementation ID: "
+ 			"domain: %s, name: %s, date: %llu,%u\n",
+-			__func__, clp->impl_id->domain, clp->impl_id->name,
+-			clp->impl_id->date.seconds,
+-			clp->impl_id->date.nseconds);
++			__func__, clp->cl_implid->domain, clp->cl_implid->name,
++			clp->cl_implid->date.seconds,
++			clp->cl_implid->date.nseconds);
+ 	dprintk("<-- %s status= %d\n", __func__, status);
+ 	return status;
+ }
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 4ac7fca..2c5390e 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -786,8 +786,8 @@ static void show_pnfs(struct seq_file *m, struct nfs_server *server)
+ 
+ static void show_implementation_id(struct seq_file *m, struct nfs_server *nfss)
+ {
+-	if (nfss->nfs_client && nfss->nfs_client->impl_id) {
+-		struct nfs41_impl_id *impl_id = nfss->nfs_client->impl_id;
++	if (nfss->nfs_client && nfss->nfs_client->cl_implid) {
++		struct nfs41_impl_id *impl_id = nfss->nfs_client->cl_implid;
+ 		seq_printf(m, "\n\timpl_id:\tname='%s',domain='%s',"
+ 			   "date='%llu,%u'",
+ 			   impl_id->name, impl_id->domain,
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 900d733..773e021 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -81,13 +81,13 @@ struct nfs_client {
+ 	u32			cl_exchange_flags;
+ 	struct nfs4_session	*cl_session;	/* shared session */
+ 	struct nfs41_server_scope *cl_serverscope;
++	struct nfs41_impl_id	*cl_implid;
+ #endif /* CONFIG_NFS_V4 */
+ 
+ #ifdef CONFIG_NFS_FSCACHE
+ 	struct fscache_cookie	*fscache;	/* client index cache cookie */
+ #endif
+ 
+-	struct nfs41_impl_id	*impl_id;	/* from exchange_id */
+ 	struct net		*net;
+ };
+ 
 
