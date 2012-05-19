@@ -1,51 +1,28 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:16200 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:1989 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758196Ab2EUUft (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 May 2012 16:35:49 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH] NFS: Fix compiler warnings
-Date: Mon, 21 May 2012 16:35:44 -0400
-Message-Id: <1337632544-2982-1-git-send-email-bjschuma@netapp.com>
+	id S1756811Ab2ESUvV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 19 May 2012 16:51:21 -0400
+Received: from vmwexceht05-prd.hq.netapp.com (vmwexceht05-prd.hq.netapp.com [10.106.77.35])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q4JKpLd0016330
+	for <linux-nfs@vger.kernel.org>; Sat, 19 May 2012 13:51:21 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 9 2/4] NFSv4.1 cache mdsthreshold values on OPEN
+Date: Sat, 19 May 2012 20:50:35 +0000
+Message-ID: <1337460679.4831.46.camel@lade.trondhjem.org>
+References: <1337284102-3372-1-git-send-email-andros@netapp.com>
+	 <1337284102-3372-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1337284102-3372-2-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
-
-The "struct inode *inode" was only used in a dprintk, so it can be
-removed if CONFIG_SUNRPC_DEBUG isn't enabled.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/nfs4filelayout.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 474c630..54c8c5a 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -85,8 +85,8 @@ filelayout_get_dserver_offset(struct pnfs_layout_segment *lseg, loff_t offset)
- static void filelayout_reset_write(struct nfs_write_data *data)
- {
- 	struct nfs_pgio_header *hdr = data->header;
--	struct inode *inode = hdr->inode;
- 	struct rpc_task *task = &data->task;
-+	RPC_IFDEBUG(struct inode *inode = hdr->inode);
- 
- 	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags)) {
- 		dprintk("%s Reset task %5u for i/o through MDS "
-@@ -109,8 +109,8 @@ static void filelayout_reset_write(struct nfs_write_data *data)
- static void filelayout_reset_read(struct nfs_read_data *data)
- {
- 	struct nfs_pgio_header *hdr = data->header;
--	struct inode *inode = hdr->inode;
- 	struct rpc_task *task = &data->task;
-+	RPC_IFDEBUG(struct inode *inode = hdr->inode);
- 
- 	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags)) {
- 		dprintk("%s Reset task %5u for i/o through MDS "
--- 
-1.7.10.2
-
+T24gVGh1LCAyMDEyLTA1LTE3IGF0IDE1OjQ4IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
+ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFNpZ25l
+ZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQo+IA0KPiAJbmV0L3N1
+bnJwYy94cHJ0LmMucmVqDQoNCj8/Pz8/DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBO
+RlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
+bQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
