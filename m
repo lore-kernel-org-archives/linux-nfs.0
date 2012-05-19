@@ -1,132 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:64077 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S968091Ab2ERWGw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 May 2012 18:06:52 -0400
-Received: by mail-yx0-f174.google.com with SMTP id m10so3324481yen.19
-        for <linux-nfs@vger.kernel.org>; Fri, 18 May 2012 15:06:52 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 11/14] NFS: Refactor nfs_get_client(): add nfs_found_client()
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 18 May 2012 18:06:50 -0400
-Message-ID: <20120518220650.774.2715.stgit@degas.1015granger.net>
-In-Reply-To: <20120518220145.774.53741.stgit@degas.1015granger.net>
-References: <20120518220145.774.53741.stgit@degas.1015granger.net>
-MIME-Version: 1.0
+Received: from mx2.netapp.com ([216.240.18.37]:20579 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753717Ab2ESTeV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 19 May 2012 15:34:21 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] sunrpc: fix loss of task->tk_status after rpc_delay
+ call in xprt_alloc_slot
+Date: Sat, 19 May 2012 19:33:19 +0000
+Message-ID: <1337456043.4831.6.camel@lade.trondhjem.org>
+References: <1337372188-5565-1-git-send-email-jlayton@redhat.com>
+	 <20120518163302.26c73bc0@corrin.poochiereds.net>
+In-Reply-To: <20120518163302.26c73bc0@corrin.poochiereds.net>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Code that takes and releases nfs_client_lock remains in
-nfs_get_client().  Logic that handles a pre-existing nfs_client is
-moved to a separate function.
-
-No behavior change is expected.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- fs/nfs/client.c |   67 ++++++++++++++++++++++++++++++-------------------------
- 1 files changed, 37 insertions(+), 30 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 84bca37..e3bf0bd 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -504,6 +504,35 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
- }
- 
- /*
-+ * Found an existing client.  Make sure it's ready before returning.
-+ */
-+static struct nfs_client *
-+nfs_found_client(const struct nfs_client_initdata *cl_init,
-+		 struct nfs_client *clp)
-+{
-+	int error;
-+
-+	error = wait_event_killable(nfs_client_active_wq,
-+				clp->cl_cons_state < NFS_CS_INITING);
-+	if (error < 0) {
-+		nfs_put_client(clp);
-+		return ERR_PTR(-ERESTARTSYS);
-+	}
-+
-+	if (clp->cl_cons_state < NFS_CS_READY) {
-+		error = clp->cl_cons_state;
-+		nfs_put_client(clp);
-+		return ERR_PTR(error);
-+	}
-+
-+	BUG_ON(clp->cl_cons_state != NFS_CS_READY);
-+
-+	dprintk("<-- %s found nfs_client %p for %s\n",
-+		__func__, clp, cl_init->hostname ?: "");
-+	return clp;
-+}
-+
-+/*
-  * Look up a client by IP address and protocol version
-  * - creates a new record if one doesn't yet exist
-  */
-@@ -526,8 +555,12 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
- 		spin_lock(&nn->nfs_client_lock);
- 
- 		clp = nfs_match_client(cl_init);
--		if (clp)
--			goto found_client;
-+		if (clp) {
-+			spin_unlock(&nn->nfs_client_lock);
-+			if (new)
-+				nfs_free_client(new);
-+			return nfs_found_client(cl_init, clp);
-+		}
- 		if (new)
- 			goto install_client;
- 
-@@ -536,7 +569,8 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
- 		new = nfs_alloc_client(cl_init);
- 	} while (!IS_ERR(new));
- 
--	dprintk("--> nfs_get_client() = %ld [failed]\n", PTR_ERR(new));
-+	dprintk("<-- nfs_get_client() Failed to find %s (%ld)\n",
-+		cl_init->hostname ?: "", PTR_ERR(new));
- 	return new;
- 
- 	/* install a new client and return with it unready */
-@@ -553,33 +587,6 @@ install_client:
- 	}
- 	dprintk("--> nfs_get_client() = %p [new]\n", clp);
- 	return clp;
--
--	/* found an existing client
--	 * - make sure it's ready before returning
--	 */
--found_client:
--	spin_unlock(&nn->nfs_client_lock);
--
--	if (new)
--		nfs_free_client(new);
--
--	error = wait_event_killable(nfs_client_active_wq,
--				clp->cl_cons_state < NFS_CS_INITING);
--	if (error < 0) {
--		nfs_put_client(clp);
--		return ERR_PTR(-ERESTARTSYS);
--	}
--
--	if (clp->cl_cons_state < NFS_CS_READY) {
--		error = clp->cl_cons_state;
--		nfs_put_client(clp);
--		return ERR_PTR(error);
--	}
--
--	BUG_ON(clp->cl_cons_state != NFS_CS_READY);
--
--	dprintk("--> nfs_get_client() = %p [share]\n", clp);
--	return clp;
- }
- 
- /*
-
+T24gRnJpLCAyMDEyLTA1LTE4IGF0IDE2OjMzIC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
+T24gRnJpLCAxOCBNYXkgMjAxMiAxNjoxNjoyOCAtMDQwMA0KPiBKZWZmIExheXRvbiA8amxheXRv
+bkByZWRoYXQuY29tPiB3cm90ZToNCj4gDQo+ID4geHBydF9hbGxvY19zbG90IHdpbGwgY2FsbCBy
+cGNfZGVsYXkoKSB0byBtYWtlIHRoZSB0YXNrIHdhaXQgYSBiaXQgYmVmb3JlDQo+ID4gcmV0cnlp
+bmcgd2hlbiBpdCBnZXRzIGJhY2sgYW4gLUVOT01FTSBlcnJvciBmcm9tIHhwcnRfZHluYW1pY19h
+bGxvY19zbG90Lg0KPiA+IA0KPiA+IFRoZSBwcm9ibGVtIHRoZXJlIGlzIHRoYXQgcnBjX2RlbGF5
+IGRvZXMgdGhpczoNCj4gPiANCj4gPiAgICAgcnBjX3NsZWVwX29uKCZkZWxheV9xdWV1ZSwgdGFz
+aywgX19ycGNfYXRydW4pOw0KPiA+IA0KPiA+IC4uLmFuZCBfX3JwY19hdHJ1biB3aWxsIHJlc2V0
+IHRoZSB0YXNrLT50a19zdGF0dXMgYmFjayB0byAwIHdoZW4gdGhlDQo+ID4gdGFzayB3YWtlcyBi
+YWNrIHVwLiBUaGlzIG1ha2VzIGNhbGxfcmVzZXJ2ZXJlc3VsdCBhYm9ydCB0aGUgdGFzayB3aXRo
+DQo+ID4gLUVJTy4NCj4gPiANCj4gPiBUaGUgUkggUUEgZ3JvdXAgZGlzY292ZXJlZCB0aGlzIHBy
+b2JsZW0gd2hlbiB0ZXN0aW5nIHdpdGggbG93LW1lbW9yeQ0KPiA+IGNsaWVudHMgYW5kIHRoaXMg
+cGF0Y2ggZml4ZWQgaXQ6DQo+ID4gDQo+ID4gICAgIGh0dHBzOi8vYnVnemlsbGEucmVkaGF0LmNv
+bS9zaG93X2J1Zy5jZ2k/aWQ9ODIyMTg5DQo+ID4gDQo+ID4gRml4IHRoaXMgYnkgYWRkaW5nIGEg
+bmV3IHJwY19kZWxheV9hY3Rpb24oKSB2YXJpYW50IHRoYXQgbWFrZXMgYWxsb3dzDQo+ID4gdXMg
+dG8gcGFzcyBpbiBhIHJwY19hY3Rpb24gdG8gcmVzZXQgdGhlIHN0YXR1cyBiYWNrIHRvIC1FQUdB
+SU4gaW5zdGVhZC4NCj4gPiANCj4gPiBDYzogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNv
+bT4NCj4gPiBTaWduZWQtb2ZmLWJ5OiBKZWZmIExheXRvbiA8amxheXRvbkByZWRoYXQuY29tPg0K
+PiA+IC0tLQ0KPiA+ICBpbmNsdWRlL2xpbnV4L3N1bnJwYy9zY2hlZC5oIHwgICAgMSArDQo+ID4g
+IG5ldC9zdW5ycGMvc2NoZWQuYyAgICAgICAgICAgfCAgICA5ICsrKysrKystLQ0KPiA+ICBuZXQv
+c3VucnBjL3hwcnQuYyAgICAgICAgICAgIHwgICAgNyArKysrKystDQo+ID4gIDMgZmlsZXMgY2hh
+bmdlZCwgMTQgaW5zZXJ0aW9ucygrKSwgMyBkZWxldGlvbnMoLSkNCj4gPiANCj4gPiBkaWZmIC0t
+Z2l0IGEvaW5jbHVkZS9saW51eC9zdW5ycGMvc2NoZWQuaCBiL2luY2x1ZGUvbGludXgvc3VucnBj
+L3NjaGVkLmgNCj4gPiBpbmRleCBkYzBjM2NjLi42Y2FmZGJiIDEwMDY0NA0KPiA+IC0tLSBhL2lu
+Y2x1ZGUvbGludXgvc3VucnBjL3NjaGVkLmgNCj4gPiArKysgYi9pbmNsdWRlL2xpbnV4L3N1bnJw
+Yy9zY2hlZC5oDQo+ID4gQEAgLTI0MSw2ICsyNDEsNyBAQCBzdHJ1Y3QgcnBjX3Rhc2sgKnJwY193
+YWtlX3VwX2ZpcnN0KHN0cnVjdCBycGNfd2FpdF9xdWV1ZSAqLA0KPiA+ICAJCQkJCXZvaWQgKik7
+DQo+ID4gIHZvaWQJCXJwY193YWtlX3VwX3N0YXR1cyhzdHJ1Y3QgcnBjX3dhaXRfcXVldWUgKiwg
+aW50KTsNCj4gPiAgaW50CQlycGNfcXVldWVfZW1wdHkoc3RydWN0IHJwY193YWl0X3F1ZXVlICop
+Ow0KPiA+ICt2b2lkCQlycGNfZGVsYXlfYWN0aW9uKHN0cnVjdCBycGNfdGFzayAqLCB1bnNpZ25l
+ZCBsb25nLCBycGNfYWN0aW9uKTsNCj4gPiAgdm9pZAkJcnBjX2RlbGF5KHN0cnVjdCBycGNfdGFz
+ayAqLCB1bnNpZ25lZCBsb25nKTsNCj4gPiAgdm9pZCAqCQlycGNfbWFsbG9jKHN0cnVjdCBycGNf
+dGFzayAqLCBzaXplX3QpOw0KPiA+ICB2b2lkCQlycGNfZnJlZSh2b2lkICopOw0KPiA+IGRpZmYg
+LS1naXQgYS9uZXQvc3VucnBjL3NjaGVkLmMgYi9uZXQvc3VucnBjL3NjaGVkLmMNCj4gPiBpbmRl
+eCA5OTRjZmVhLi5mMmZmOThkIDEwMDY0NA0KPiA+IC0tLSBhL25ldC9zdW5ycGMvc2NoZWQuYw0K
+PiA+ICsrKyBiL25ldC9zdW5ycGMvc2NoZWQuYw0KPiA+IEBAIC02MTMsMTMgKzYxMywxOCBAQCBz
+dGF0aWMgdm9pZCBfX3JwY19hdHJ1bihzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2spDQo+ID4gIAl0YXNr
+LT50a19zdGF0dXMgPSAwOw0KPiA+ICB9DQo+ID4gIA0KPiA+ICt2b2lkIHJwY19kZWxheV9hY3Rp
+b24oc3RydWN0IHJwY190YXNrICp0YXNrLCB1bnNpZ25lZCBsb25nIGRlbGF5LCBycGNfYWN0aW9u
+IGFjdGlvbikNCj4gPiArew0KPiA+ICsJdGFzay0+dGtfdGltZW91dCA9IGRlbGF5Ow0KPiA+ICsJ
+cnBjX3NsZWVwX29uKCZkZWxheV9xdWV1ZSwgdGFzaywgYWN0aW9uKTsNCj4gPiArfQ0KPiA+ICsN
+Cj4gPiAgLyoNCj4gPiAgICogUnVuIGEgdGFzayBhdCBhIGxhdGVyIHRpbWUNCj4gPiAgICovDQo+
+ID4gIHZvaWQgcnBjX2RlbGF5KHN0cnVjdCBycGNfdGFzayAqdGFzaywgdW5zaWduZWQgbG9uZyBk
+ZWxheSkNCj4gPiAgew0KPiA+IC0JdGFzay0+dGtfdGltZW91dCA9IGRlbGF5Ow0KPiA+IC0JcnBj
+X3NsZWVwX29uKCZkZWxheV9xdWV1ZSwgdGFzaywgX19ycGNfYXRydW4pOw0KPiA+ICsJcnBjX2Rl
+bGF5X2FjdGlvbih0YXNrLCBkZWxheSwgX19ycGNfYXRydW4pOw0KPiA+ICB9DQo+ID4gIEVYUE9S
+VF9TWU1CT0xfR1BMKHJwY19kZWxheSk7DQo+ID4gIA0KPiA+IGRpZmYgLS1naXQgYS9uZXQvc3Vu
+cnBjL3hwcnQuYyBiL25ldC9zdW5ycGMveHBydC5jDQo+ID4gaW5kZXggYjIzOWU3NS4uYTVkYzgx
+NiAxMDA2NDQNCj4gPiAtLS0gYS9uZXQvc3VucnBjL3hwcnQuYw0KPiA+ICsrKyBiL25ldC9zdW5y
+cGMveHBydC5jDQo+ID4gQEAgLTk2OSw2ICs5NjksMTEgQEAgc3RhdGljIGJvb2wgeHBydF9keW5h
+bWljX2ZyZWVfc2xvdChzdHJ1Y3QgcnBjX3hwcnQgKnhwcnQsIHN0cnVjdCBycGNfcnFzdCAqcmVx
+KQ0KPiA+ICAJcmV0dXJuIGZhbHNlOw0KPiA+ICB9DQo+ID4gIA0KPiA+ICtzdGF0aWMgdm9pZCB4
+cHJ0X2FsbG9jX2RlbGF5X3Jlc2V0X3N0YXR1cyhzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2spDQo+ID4g
+K3sNCj4gPiArCXRhc2stPnRrX3N0YXR1cyA9IC1FQUdBSU47DQo+ID4gK30NCj4gPiArDQo+ID4g
+IHN0YXRpYyB2b2lkIHhwcnRfYWxsb2Nfc2xvdChzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2spDQo+ID4g
+IHsNCj4gPiAgCXN0cnVjdCBycGNfeHBydAkqeHBydCA9IHRhc2stPnRrX3hwcnQ7DQo+ID4gQEAg
+LTk4NCw3ICs5ODksNyBAQCBzdGF0aWMgdm9pZCB4cHJ0X2FsbG9jX3Nsb3Qoc3RydWN0IHJwY190
+YXNrICp0YXNrKQ0KPiA+ICAJCWdvdG8gb3V0X2luaXRfcmVxOw0KPiA+ICAJc3dpdGNoIChQVFJf
+RVJSKHJlcSkpIHsNCj4gPiAgCWNhc2UgLUVOT01FTToNCj4gPiAtCQlycGNfZGVsYXkodGFzaywg
+SFogPj4gMik7DQo+ID4gKwkJcnBjX2RlbGF5X2FjdGlvbih0YXNrLCBIWiA+PiAyLCB4cHJ0X2Fs
+bG9jX2RlbGF5X3Jlc2V0X3N0YXR1cyk7DQo+ID4gIAkJZHByaW50aygiUlBDOiAgICAgICBkeW5h
+bWljIGFsbG9jYXRpb24gb2YgcmVxdWVzdCBzbG90ICINCj4gPiAgCQkJCSJmYWlsZWQhIFJldHJ5
+aW5nXG4iKTsNCj4gPiAgCQlicmVhazsNCj4gDQo+IA0KPiBOb3cgdGhhdCBJIGxvb2sgYXQgdGhp
+cyBtb3JlIGNsb3NlbHkgdGhvdWdoLi4uSSB3b25kZXIgaWYgd2UncmUgZ29pbmcNCj4gdG8gZW5k
+IHVwIHdpdGggc2ltaWxhciBwcm9ibGVtcyBpbiB0aGUgRUFHQUlOIGNhc2UuIEJlY2F1c2Ugd2Ug
+aGF2ZQ0KPiB0a190aW1lb3V0PT0wIGF0IHRoaXMgcG9pbnQsIEkgdGhpbmsgd2UnbGwgYWx3YXlz
+IGVuZCB1cCBoYXZpbmcgdGhlDQo+IHRrX3N0YXR1cyBzZXQgdG8gLUVUSU1FRE9VVCBpbiB0aGUg
+ZXZlbnQgdGhhdCB4cHJ0X2R5bmFtaWNfYWxsb2Nfc2xvdA0KPiByZXR1cm5zIEVBR0FJTiAoZHVl
+IHRvIF9fcnBjX3F1ZXVlX3RpbWVyX2ZuKS4NCg0KQW0gSSBtaXNzaW5nIHNvbWV0aGluZz8NCg0K
+eHBydF9hbGxvY19zbG90IGNhbGxzIHJwY19zbGVlcF9vbiB3aXRoIHRhc2stPnRrX3RpbWVvdXQg
+PT0gMCwgd2hpY2gNCm1lYW5zIF9fcnBjX2FkZF90aW1lciBxdWl0cyB3aXRob3V0IGFkZGluZyB0
+aGUgdGFzayB0byB0aGUNCnF1ZXVlLT50aW1lcl9saXN0LiBIb3cgd291bGQgX19ycGNfcXVldWVf
+dGltZXJfZm4gZmluZCBpdD8NCg0KPiBQZXJoYXBzIHdlIG5lZWQgYSBzaW1pbGFyIGZpeCB0aGVy
+ZT8gT3IgbWF5YmUgd2Ugc2hvdWxkIGp1c3QgcHVzaCB0aGUNCj4gZXJyb3IgaGFuZGxpbmcgZm9y
+IHhwcnRfYWxsb2Nfc2xvdCBpbnRvIGNhbGxfcmVzZXJ2ZXJlc3VsdCBhbmQgYnlwYXNzDQo+IHRo
+ZSB3aG9sZSBwcm9ibGVtIHRoYXQgd2F5Pw0KPiANCj4gVGhvdWdodHM/DQoNClNlZSB0aGUgcGF0
+Y2ggSSBzZW50IG91dCBiZWZvcmUgSSBzYXcgdGhpcyBlbWFpbC4gV2UnbGwgc29sdmUgdGhpcyBp
+bg0KY2FsbF9yZXNlcnZlcmVzdWx0Lg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZT
+IGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20N
+Cnd3dy5uZXRhcHAuY29tDQoNCg==
