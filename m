@@ -1,72 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:43681 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:21913 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S966836Ab2EOVIs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 May 2012 17:08:48 -0400
-Date: Tue, 15 May 2012 17:08:15 -0400
-From: Josef Bacik <josef@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Josef Bacik <josef@redhat.com>, Andreas Dilger <adilger@dilger.ca>,
-        Boaz Harrosh <bharrosh@panasas.com>, linux-ext4@vger.kernel.org,
-        linux-nfs@vger.kernel.org, tytso@mit.edu, jack@suse.cz
-Subject: Re: [PATCH] ext4: fix how i_version is modified and turn it on by
- default V2
-Message-ID: <20120515210815.GE1907@localhost.localdomain>
-References: <1337092396-3272-1-git-send-email-josef@redhat.com>
- <20120515175308.GB1907@localhost.localdomain>
- <4FB29DAC.3020801@panasas.com>
- <20120515182914.GC1907@localhost.localdomain>
- <AB91C817-DFEE-415F-8769-78831D72C6B7@dilger.ca>
- <20120515200533.GD1907@localhost.localdomain>
- <20120515210029.GA11932@fieldses.org>
+	id S1751950Ab2ESQYy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 19 May 2012 12:24:54 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] sunrpc: fix loss of task->tk_status after rpc_delay
+ call in xprt_alloc_slot
+Date: Sat, 19 May 2012 16:23:52 +0000
+Message-ID: <1337444676.4831.3.camel@lade.trondhjem.org>
+References: <1337372188-5565-1-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1337372188-5565-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120515210029.GA11932@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 15, 2012 at 05:00:29PM -0400, J. Bruce Fields wrote:
-> On Tue, May 15, 2012 at 04:05:34PM -0400, Josef Bacik wrote:
-> > On Tue, May 15, 2012 at 01:55:33PM -0600, Andreas Dilger wrote:
-> > > It should be fairly straight forward to have a flag set in the ext4
-> > > superblock (s_state flag?) that indicates that the filesystem has
-> > > been exported via NFS.  There might be other optimizations that can
-> > > be done based on this (e.g. avoid some of the directory cookie
-> > > hijinx that are only needed if NFS has exported the filesystem and
-> > > needs to keep persistent cookies across reboots).
-> > > 
-> > > I think that the ext4_mark_inode_dirty() performance problem could
-> > > be at least partially fixed by deferring the copy of in-core inode
-> > > to on-disk inode to use a journal commit callback.  This is far more
-> > > work than just setting a flag in the superblock, but it has the
-> > > potential to _improve_ performance rather than make it worse.
-> 
-> Could you give any more pointers for an ext4 ignoramus?  (Where *is* the
-> journal commit code that would need the callback?  And where is the copy
-> currently done?)
-> 
-
-The copy is currently done in mark_inode_dirty(), I'm looking into what would
-need to be done to get the inodes to update the on disk stuff on journal commit
-only, but I worry that will make commits take way longer than normal and cause
-other issues.
-
-> > Yeah Btrfs doesn't have this sort of problem since we delay inode
-> > updating sinc it is so costly, we simply let it hang around in the
-> > in-core inode until we feel like updating it at some point down the
-> > road.  I'll put together a feature flag or something to make it be
-> > enabled for always if somebody turns it on.
-> 
-> Thanks for looking at this.
-> 
-> A feature flag would be an improvement over a mount option.
-> 
-> If the flag makes a noticeable difference to performance, then it makes
-> me nervous toggling it automatically.  And what will we do if statx
-> starts returning i_version to userspace?
-> 
-
-Well statx can return flags right?  I'm sure we could just have a flag that says
-"hey iversion is completely useless."  Thanks,
-
-Josef
+T24gRnJpLCAyMDEyLTA1LTE4IGF0IDE2OjE2IC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
+eHBydF9hbGxvY19zbG90IHdpbGwgY2FsbCBycGNfZGVsYXkoKSB0byBtYWtlIHRoZSB0YXNrIHdh
+aXQgYSBiaXQgYmVmb3JlDQo+IHJldHJ5aW5nIHdoZW4gaXQgZ2V0cyBiYWNrIGFuIC1FTk9NRU0g
+ZXJyb3IgZnJvbSB4cHJ0X2R5bmFtaWNfYWxsb2Nfc2xvdC4NCj4gDQo+IFRoZSBwcm9ibGVtIHRo
+ZXJlIGlzIHRoYXQgcnBjX2RlbGF5IGRvZXMgdGhpczoNCj4gDQo+ICAgICBycGNfc2xlZXBfb24o
+JmRlbGF5X3F1ZXVlLCB0YXNrLCBfX3JwY19hdHJ1bik7DQo+IA0KPiAuLi5hbmQgX19ycGNfYXRy
+dW4gd2lsbCByZXNldCB0aGUgdGFzay0+dGtfc3RhdHVzIGJhY2sgdG8gMCB3aGVuIHRoZQ0KPiB0
+YXNrIHdha2VzIGJhY2sgdXAuIFRoaXMgbWFrZXMgY2FsbF9yZXNlcnZlcmVzdWx0IGFib3J0IHRo
+ZSB0YXNrIHdpdGgNCj4gLUVJTy4NCj4gDQo+IFRoZSBSSCBRQSBncm91cCBkaXNjb3ZlcmVkIHRo
+aXMgcHJvYmxlbSB3aGVuIHRlc3Rpbmcgd2l0aCBsb3ctbWVtb3J5DQo+IGNsaWVudHMgYW5kIHRo
+aXMgcGF0Y2ggZml4ZWQgaXQ6DQo+IA0KPiAgICAgaHR0cHM6Ly9idWd6aWxsYS5yZWRoYXQuY29t
+L3Nob3dfYnVnLmNnaT9pZD04MjIxODkNCj4gDQo+IEZpeCB0aGlzIGJ5IGFkZGluZyBhIG5ldyBy
+cGNfZGVsYXlfYWN0aW9uKCkgdmFyaWFudCB0aGF0IG1ha2VzIGFsbG93cw0KPiB1cyB0byBwYXNz
+IGluIGEgcnBjX2FjdGlvbiB0byByZXNldCB0aGUgc3RhdHVzIGJhY2sgdG8gLUVBR0FJTiBpbnN0
+ZWFkLg0KDQpIaSBKZWZmLA0KDQpJJ20gbm90IHN1cmUgdGhhdCBJIGxpa2UgdGhlIGlkZWEgb2Yg
+YW4gcnBjX2RlbGF5IHZhcmlhbnQgdGhhdCBmYWlscyB0bw0KcmVzZXQgdGhlIHRrX3N0YXR1cy4g
+SG93IGFib3V0IHNvbWV0aGluZyBsaWtlIHRoZSBmb2xsb3dpbmcgc29sdXRpb24NCmluc3RlYWQ/
+DQoNCkNoZWVycw0KICBUcm9uZA0KODwtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCkZyb20gMWFmZWFmNWMyOWFhMDdk
+YjI1NzYwZDJmYmVkNWMwOGEzYWVjMzQ5OCBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206
+IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQpEYXRlOiBTYXQs
+IDE5IE1heSAyMDEyIDEyOjEyOjUzIC0wNDAwDQpTdWJqZWN0OiBbUEFUQ0hdIHN1bnJwYzogZml4
+IGxvc3Mgb2YgdGFzay0+dGtfc3RhdHVzIGFmdGVyIHJwY19kZWxheSBjYWxsIGluDQogeHBydF9h
+bGxvY19zbG90DQoNCnhwcnRfYWxsb2Nfc2xvdCB3aWxsIGNhbGwgcnBjX2RlbGF5KCkgdG8gbWFr
+ZSB0aGUgdGFzayB3YWl0IGEgYml0IGJlZm9yZQ0KcmV0cnlpbmcgd2hlbiBpdCBnZXRzIGJhY2sg
+YW4gLUVOT01FTSBlcnJvciBmcm9tIHhwcnRfZHluYW1pY19hbGxvY19zbG90Lg0KVGhlIHByb2Js
+ZW0gaXMgdGhhdCBycGNfZGVsYXkgd2lsbCBjbGVhciB0aGUgdGFzay0+dGtfc3RhdHVzLCBjYXVz
+aW5nDQpjYWxsX3Jlc2VydmVyZXN1bHQgdG8gYWJvcnQgdGhlIHRhc2suDQoNClRoZSBzb2x1dGlv
+biBpcyBzaW1wbHkgdG8gbGV0IGNhbGxfcmVzZXJ2ZXJlc3VsdCBoYW5kbGUgdGhlIEVOT01FTSBl
+cnJvcg0KZGlyZWN0bHkuDQoNClJlcG9ydGVkLWJ5OiBKZWZmIExheXRvbiA8amxheXRvbkByZWRo
+YXQuY29tPg0KQ2M6IHN0YWJsZUB2Z2VyLmtlcm5lbC5vcmcgWz49IDMuMV0NClNpZ25lZC1vZmYt
+Ynk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQotLS0NCiBu
+ZXQvc3VucnBjL2NsbnQuYyB8ICAgIDIgKysNCiBuZXQvc3VucnBjL3hwcnQuYyB8ICAgIDUgKysr
+LS0NCiAyIGZpbGVzIGNoYW5nZWQsIDUgaW5zZXJ0aW9ucygrKSwgMiBkZWxldGlvbnMoLSkNCg0K
+ZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMvY2xudC5jIGIvbmV0L3N1bnJwYy9jbG50LmMNCmluZGV4
+IGFkZjI5OTAuLjI1MzAyYzggMTAwNjQ0DQotLS0gYS9uZXQvc3VucnBjL2NsbnQuYw0KKysrIGIv
+bmV0L3N1bnJwYy9jbG50LmMNCkBAIC0xMjg4LDYgKzEyODgsOCBAQCBjYWxsX3Jlc2VydmVyZXN1
+bHQoc3RydWN0IHJwY190YXNrICp0YXNrKQ0KIAl9DQogDQogCXN3aXRjaCAoc3RhdHVzKSB7DQor
+CWNhc2UgLUVOT01FTToNCisJCXJwY19kZWxheSh0YXNrLCBIWiA+PiAyKTsNCiAJY2FzZSAtRUFH
+QUlOOgkvKiB3b2tlbiB1cDsgcmV0cnkgKi8NCiAJCXRhc2stPnRrX2FjdGlvbiA9IGNhbGxfcmVz
+ZXJ2ZTsNCiAJCXJldHVybjsNCmRpZmYgLS1naXQgYS9uZXQvc3VucnBjL3hwcnQuYyBiL25ldC9z
+dW5ycGMveHBydC5jDQppbmRleCBiMjM5ZTc1Li5kN2NjZDc5IDEwMDY0NA0KLS0tIGEvbmV0L3N1
+bnJwYy94cHJ0LmMNCisrKyBiL25ldC9zdW5ycGMveHBydC5jDQpAQCAtOTg0LDE1ICs5ODQsMTYg
+QEAgc3RhdGljIHZvaWQgeHBydF9hbGxvY19zbG90KHN0cnVjdCBycGNfdGFzayAqdGFzaykNCiAJ
+CWdvdG8gb3V0X2luaXRfcmVxOw0KIAlzd2l0Y2ggKFBUUl9FUlIocmVxKSkgew0KIAljYXNlIC1F
+Tk9NRU06DQotCQlycGNfZGVsYXkodGFzaywgSFogPj4gMik7DQogCQlkcHJpbnRrKCJSUEM6ICAg
+ICAgIGR5bmFtaWMgYWxsb2NhdGlvbiBvZiByZXF1ZXN0IHNsb3QgIg0KIAkJCQkiZmFpbGVkISBS
+ZXRyeWluZ1xuIik7DQorCQl0YXNrLT50a19zdGF0dXMgPSAtRU5PTUVNOw0KIAkJYnJlYWs7DQog
+CWNhc2UgLUVBR0FJTjoNCiAJCXJwY19zbGVlcF9vbigmeHBydC0+YmFja2xvZywgdGFzaywgTlVM
+TCk7DQogCQlkcHJpbnRrKCJSUEM6ICAgICAgIHdhaXRpbmcgZm9yIHJlcXVlc3Qgc2xvdFxuIik7
+DQorCWRlZmF1bHQ6DQorCQl0YXNrLT50a19zdGF0dXMgPSAtRUFHQUlOOw0KIAl9DQotCXRhc2st
+PnRrX3N0YXR1cyA9IC1FQUdBSU47DQogCXJldHVybjsNCiBvdXRfaW5pdF9yZXE6DQogCXRhc2st
+PnRrX3N0YXR1cyA9IDA7DQotLSANCjEuNy43LjYNCg0KDQotLSANClRyb25kIE15a2xlYnVzdA0K
+TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5l
+dGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
