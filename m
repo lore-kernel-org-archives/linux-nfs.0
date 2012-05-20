@@ -1,53 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from shards.monkeyblade.net ([198.137.202.13]:41060 "EHLO
-	shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965999Ab2EOSbn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 14:31:43 -0400
-Date: Tue, 15 May 2012 14:29:22 -0400 (EDT)
-Message-Id: <20120515.142922.1434224550630736456.davem@davemloft.net>
-To: johannes@sipsolutions.net
-Cc: joe@perches.com, netdev@vger.kernel.org,
-        linux-decnet-user@lists.sourceforge.net,
-        netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org,
-        coreteam@netfilter.org, linux-wireless@vger.kernel.org,
-        dev@openvswitch.org, linux-sctp@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [RFC net-next 0/2] net: Use net_<level>_ratelimit
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <1337106430.15553.6.camel@jlt3.sipsolutions.net>
-References: <20120515.134531.530903973750646107.davem@davemloft.net>
-	<1337104765.7050.24.camel@joe2Laptop>
-	<1337106430.15553.6.camel@jlt3.sipsolutions.net>
-Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
+Received: from s15434952.onlinehome-server.info ([82.165.150.156]:59370 "EHLO
+	s15434952.onlinehome-server.info" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753132Ab2ETQ6A (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 20 May 2012 12:58:00 -0400
+Received: from s15434952.onlinehome-server.info (unknown [127.0.0.1])
+	by s15434952.onlinehome-server.info (Postfix) with ESMTP id D2E424382DB
+	for <linux-nfs@vger.kernel.org>; Sun, 20 May 2012 16:45:21 +0000 (UTC)
+To: linux-nfs@vger.kernel.org
+Subject: Order Enquiry
+From: Mcckoy Robertson <nbmglobalsupply@gmail.com>
+Reply-To: nbmglobalsupply@gmail.com
+MIME-Version: 1.0
+Content-Type: text/plain
+Message-Id: <20120520162408.A00FC45B9F9@s15434952.onlinehome-server.info>
+Date: Sun, 20 May 2012 17:09:44 +0100 (BST)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Johannes Berg <johannes@sipsolutions.net>
-Date: Tue, 15 May 2012 20:27:10 +0200
 
-> On Tue, 2012-05-15 at 10:59 -0700, Joe Perches wrote:
-> 
->> OK, but fyi, there's a possible issue with !CONFIG_DEBUG
->> builds because these patches converted some uses of
->> 	if (net_ratelimit())
->> 		printk(KERN_DEBUG ...
->> to
->> 	net_dbg_ratelimited()
->> 
->> These messages are no longer emitted when DEBUG isn't defined
->> and not using dynamic_debug.  I'm not sure that's a real
->> problem, but it's a difference.
->> 
->> I could produce a net_printk_ratelimited that would keep
->> the original behavior if necessary.
->> 
->> 	net_printk_ratelimited(KERN_DEBUG etc...)
-> 
-> Btw, what would the difference be to just plain printk_ratelimited()?
+Hello Sales
+     I went over your contact online and found some items which we have interest in purchasing to our store in Spain for urgent supply. I will like to know the prices per each items plus the shipping cost. I also want to know if Letter of Credit or T/T is acceptable for payment. I await your quick response asap so i can proceed with my needed items and quantity.
 
-printk_ratelimited() drops a local ratelimit cookie into each call-site,
-whereas we have a global one for the networking which these new interfaces
-use.
+Thank you
+mcckoy robertson
 
-Joe explained this completely in his 0/2 patch posting.
+
+N.B.M Global Supply Inc
+Address: Autovía A-5,
+salidas 22 y 26.
+Arroyomolinos,
+28939 Madrid Spain
+Tel: +34 902 26 77 26
+Email: nbmglobalsupply@gmail.com
+Website : http://www.brplastics.com
+
+
