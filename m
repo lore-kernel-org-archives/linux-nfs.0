@@ -1,62 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:43506 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757952Ab2EOSYS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 14:24:18 -0400
-Message-ID: <4FB29DAC.3020801@panasas.com>
-Date: Tue, 15 May 2012 21:17:16 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from s15434952.onlinehome-server.info ([82.165.150.156]:37778 "EHLO
+	s15434952.onlinehome-server.info" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754845Ab2ETPB5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 20 May 2012 11:01:57 -0400
+Received: from s15434952.onlinehome-server.info (unknown [127.0.0.1])
+	by s15434952.onlinehome-server.info (Postfix) with ESMTP id C4E43405EEA
+	for <linux-nfs@vger.kernel.org>; Sun, 20 May 2012 15:01:55 +0000 (UTC)
+To: linux-nfs@vger.kernel.org
+Subject: Order Enquiry
+From: Mcckoy Robertson <nbmglobalsupply@gmail.com>
+Reply-To: nbmglobalsupply@gmail.com
 MIME-Version: 1.0
-To: Josef Bacik <josef@redhat.com>
-CC: <linux-ext4@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        <bfields@fieldses.org>, <adilger@dilger.ca>, <tytso@mit.edu>,
-        <jack@suse.cz>
-Subject: Re: [PATCH] ext4: fix how i_version is modified and turn it on by
- default V2
-References: <1337092396-3272-1-git-send-email-josef@redhat.com> <20120515175308.GB1907@localhost.localdomain>
-In-Reply-To: <20120515175308.GB1907@localhost.localdomain>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain
+Message-Id: <20120520150155.60B76405984@s15434952.onlinehome-server.info>
+Date: Sun, 20 May 2012 16:01:55 +0100 (BST)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/15/2012 08:53 PM, Josef Bacik wrote:
 
-> On Tue, May 15, 2012 at 10:33:16AM -0400, Josef Bacik wrote:
->> This makes MS_I_VERSION be turned on by default.  Ext4 had been
->> unconditionally doing i_version++ in a few cases anway so the mount option
->> was kind of silly.  This patch also removes the update in mark_inode_dirty
->> and makes all of the cases where we update ctime also do inode_inc_×‘.
->> file_update_time takes care of the write case and all the places where we
->> update iversion are protected by the i_mutex so there should be no extra
->> i_lock overhead in the normal non-exported fs case.  Thanks,
->>
-> 
-> Ok did some basic benchmarking with dd, I ran
-> 
-> dd if=/dev/zero of=/mnt/btrfs-test/file bs=1 count=10485760
-> dd if=/dev/zero of=/mnt/btrfs-test/file bs=1M count=1000
-> dd if=/dev/zero of=/mnt/btrfs-test/file bs=1M count=5000
-> 
-> 3 times with the patch and without the patch.  With the worst case scenario
-> there is about a 40% longer run time, going from on average 12 seconds to 17
-> seconds.  
+Hello Sales
+     I went over your contact online and found some items which we have interest in purchasing to our store in Spain for urgent supply. I will like to know the prices per each items plus the shipping cost. I also want to know if Letter of Credit or T/T is acceptable for payment. I await your quick response asap so i can proceed with my needed items and quantity.
+
+Thank you
+mcckoy robertson
 
 
-do you mean that the "with the patch" is 40% slower then "without the patch"
-	in the same "bs=1 count=10485760 test" ?
+N.B.M Global Supply Inc
+Address: Autovía A-5,
+salidas 22 y 26.
+Arroyomolinos,
+28939 Madrid Spain
+Tel: +34 902 26 77 26
+Email: nbmglobalsupply@gmail.com
+Website : http://www.brplastics.com
 
-Then count me clueless. Do you understand this difference?
-
-The way I read your patch the inode is copied and written to disk exactly the
-same number of times, as before. Only that now i_version is also updated
-together with ctime and/or mtime. What is the fundamental difference then?
-Is it just that i_version++ in-memory operation?
-
-> With the other two runs they are the same runtime with the 1 megabyte
-> blocks.  So the question is, do we care about this worst case since any sane
-> application developer isn't going to do writes that small?  Thanks,
-
-> Josef
-Thanks
-Boaz
 
