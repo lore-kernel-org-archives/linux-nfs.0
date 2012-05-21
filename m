@@ -1,73 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:29484 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751877Ab2EAShR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 May 2012 14:37:17 -0400
-Received: from vmwexceht05-prd.hq.netapp.com (vmwexceht05-prd.hq.netapp.com [10.106.77.35])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q41IbD51011835
-	for <linux-nfs@vger.kernel.org>; Tue, 1 May 2012 11:37:17 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: "Isaman, Fred" <Fred.Isaman@netapp.com>
-Subject: Re: [PATCH v2 3/3] NFS: Simplify the nfs_read_completion functions
-Date: Tue, 1 May 2012 18:37:13 +0000
-Message-ID: <1335897434.4060.17.camel@lade.trondhjem.org>
-References: <1335892596-13667-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <1335892596-13667-2-git-send-email-Trond.Myklebust@netapp.com>
-	 <1335892596-13667-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1335892596-13667-3-git-send-email-Trond.Myklebust@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-wi0-f178.google.com ([209.85.212.178]:63430 "EHLO
+	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751543Ab2EUPXE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 May 2012 11:23:04 -0400
+Received: by wibhn6 with SMTP id hn6so2535976wib.1
+        for <linux-nfs@vger.kernel.org>; Mon, 21 May 2012 08:23:04 -0700 (PDT)
+From: Benny Halevy <bhalevy@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] pnfsd: provide helper for xdr encoding of deviceid
+Date: Mon, 21 May 2012 18:22:54 +0300
+Message-Id: <1337613774-4011-1-git-send-email-bhalevy@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA1LTAxIGF0IDEzOjE2IC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+IC4uLmFuZCBjb3JyZWN0IGEgYnVnIHdoZW4gTkZTX0lPSERSX0VSUk9SIGlzIHNldDogd2Ug
-c2hvdWxkIG5vdCBiZQ0KPiBzZXR0aW5nIFBhZ2VVcHRvZGF0ZS9zZXRfcGFnZV9kaXJ0eSBvbiBh
-IHBhZ2UgdW5sZXNzIHRoZSBudW1iZXIgb2YNCj4gYnl0ZXMgcmVhZCA8PSBoZHItPmdvb2RfYnl0
-ZXMNCj4gDQo+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0
-QG5ldGFwcC5jb20+DQo+IENjOiBGcmVkIElzYW1hbiA8aWlzYW1hbkBuZXRhcHAuY29tPg0KPiAt
-LS0NCj4gdjI6IEFjdHVhbGx5IGFkZCB0aGUgYnVnZml4IHRvIGRpcmVjdC5jLi4uDQo+IA0KPiAg
-ZnMvbmZzL2RpcmVjdC5jIHwgICA0NiArKysrKysrKysrKysrKysrKysrLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tDQo+ICBmcy9uZnMvcmVhZC5jICAgfCAgIDQyICsrKysrKysrKysrKysrKysr
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KPiAgMiBmaWxlcyBjaGFuZ2VkLCAzNiBpbnNlcnRp
-b25zKCspLCA1MiBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvZGlyZWN0
-LmMgYi9mcy9uZnMvZGlyZWN0LmMNCj4gaW5kZXggNzhkMWVhZC4uMzQwMjdkNSAxMDA2NDQNCj4g
-LS0tIGEvZnMvbmZzL2RpcmVjdC5jDQo+ICsrKyBiL2ZzL25mcy9kaXJlY3QuYw0KPiBAQCAtMjUz
-LDM2ICsyNTMsMjggQEAgc3RhdGljIHZvaWQgbmZzX2RpcmVjdF9yZWFkX2NvbXBsZXRpb24oc3Ry
-dWN0IG5mc19wZ2lvX2hlYWRlciAqaGRyKQ0KPiAgCQlkcmVxLT5jb3VudCArPSBoZHItPmdvb2Rf
-Ynl0ZXM7DQo+ICAJc3Bpbl91bmxvY2soJmRyZXEtPmxvY2spOw0KPiAgDQo+IC0JaWYgKCF0ZXN0
-X2JpdChORlNfSU9IRFJfRVJST1IsICZoZHItPmZsYWdzKSkgew0KPiAtCQl3aGlsZSAoIWxpc3Rf
-ZW1wdHkoJmhkci0+cGFnZXMpKSB7DQo+IC0JCQlzdHJ1Y3QgbmZzX3BhZ2UgKnJlcSA9IG5mc19s
-aXN0X2VudHJ5KGhkci0+cGFnZXMubmV4dCk7DQo+IC0JCQlzdHJ1Y3QgcGFnZSAqcGFnZSA9IHJl
-cS0+d2JfcGFnZTsNCj4gLQ0KPiAtCQkJaWYgKHRlc3RfYml0KE5GU19JT0hEUl9FT0YsICZoZHIt
-PmZsYWdzKSkgew0KPiAtCQkJCWlmIChieXRlcyA+IGhkci0+Z29vZF9ieXRlcykNCj4gLQkJCQkJ
-emVyb191c2VyKHBhZ2UsIDAsIFBBR0VfU0laRSk7DQo+IC0JCQkJZWxzZSBpZiAoaGRyLT5nb29k
-X2J5dGVzIC0gYnl0ZXMgPCBQQUdFX1NJWkUpDQo+IC0JCQkJCXplcm9fdXNlcl9zZWdtZW50KHBh
-Z2UsDQo+IC0JCQkJCQloZHItPmdvb2RfYnl0ZXMgJiB+UEFHRV9NQVNLLA0KPiAtCQkJCQkJUEFH
-RV9TSVpFKTsNCj4gLQkJCX0NCj4gLQkJCWJ5dGVzICs9IHJlcS0+d2JfYnl0ZXM7DQo+IC0JCQlu
-ZnNfbGlzdF9yZW1vdmVfcmVxdWVzdChyZXEpOw0KPiAtCQkJaWYgKCFQYWdlQ29tcG91bmQocGFn
-ZSkpDQo+IC0JCQkJc2V0X3BhZ2VfZGlydHkocGFnZSk7DQo+IC0JCQluZnNfZGlyZWN0X3JlYWRw
-YWdlX3JlbGVhc2UocmVxKTsNCj4gKwl3aGlsZSAoIWxpc3RfZW1wdHkoJmhkci0+cGFnZXMpKSB7
-DQo+ICsJCXN0cnVjdCBuZnNfcGFnZSAqcmVxID0gbmZzX2xpc3RfZW50cnkoaGRyLT5wYWdlcy5u
-ZXh0KTsNCj4gKwkJc3RydWN0IHBhZ2UgKnBhZ2UgPSByZXEtPndiX3BhZ2U7DQo+ICsNCj4gKwkJ
-aWYgKHRlc3RfYml0KE5GU19JT0hEUl9FT0YsICZoZHItPmZsYWdzKSkgew0KPiArCQkJaWYgKGJ5
-dGVzID4gaGRyLT5nb29kX2J5dGVzKQ0KPiArCQkJCXplcm9fdXNlcihwYWdlLCAwLCBQQUdFX1NJ
-WkUpOw0KPiArCQkJZWxzZSBpZiAoaGRyLT5nb29kX2J5dGVzIC0gYnl0ZXMgPCBQQUdFX1NJWkUp
-DQo+ICsJCQkJemVyb191c2VyX3NlZ21lbnQocGFnZSwNCj4gKwkJCQkJaGRyLT5nb29kX2J5dGVz
-ICYgflBBR0VfTUFTSywNCj4gKwkJCQkJUEFHRV9TSVpFKTsNCj4gIAkJfQ0KPiAtCX0gZWxzZSB7
-DQo+IC0JCXdoaWxlICghbGlzdF9lbXB0eSgmaGRyLT5wYWdlcykpIHsNCj4gLQkJCXN0cnVjdCBu
-ZnNfcGFnZSAqcmVxID0gbmZzX2xpc3RfZW50cnkoaGRyLT5wYWdlcy5uZXh0KTsNCj4gLQ0KPiAt
-CQkJaWYgKGJ5dGVzIDwgaGRyLT5nb29kX2J5dGVzKQ0KPiAtCQkJCWlmICghUGFnZUNvbXBvdW5k
-KHJlcS0+d2JfcGFnZSkpDQo+ICsJCWJ5dGVzICs9IHJlcS0+d2JfYnl0ZXM7DQo+ICsJCWlmICgh
-UGFnZUNvbXBvdW5kKHBhZ2UpKSB7DQo+ICsJCQlpZiAodGVzdF9iaXQoTkZTX0lPSERSX0VSUk9S
-LCAmaGRyLT5mbGFncykpIHsNCj4gKwkJCQlpZiAoYnl0ZXMgPD0gaGRyLT5nb29kX2J5dGVzKQ0K
-PiAgCQkJCQlzZXRfcGFnZV9kaXJ0eShyZXEtPndiX3BhZ2UpOw0KDQpPSy4uLiBMb29raW5nIGF0
-IHRoaXMgbW9yZSBjbG9zZWx5LCBJIHRoaW5rIHRoYXQgSSdtIHdyb25nIGluIGNhbGxpbmcNCnRo
-ZSBvbGQgYmVoYXZpb3VyIGEgYnVnLiBTaW5jZSB3ZSBhcmUgc2F5aW5nIHRoYXQgdGhlIGJ1ZmZl
-ciBpcyBnb29kIHVwDQp0byBhbmQgaW5jbHVkaW5nIGhkci0+Z29vZF9ieXRlcyBvZiByZWFkIGJ5
-dGVzLCB3ZSBzaG91bGQgbWFyayB0aGUgcGFnZQ0KYXMgYmVpbmcgZGlydHkgc28gbG9uZyBhcyBp
-dCBjb250YWlucyBvbmUgb3IgbW9yZSBnb29kIGJ5dGVzLg0KDQpJJ2xsIHJlc2VuZCB0aGUgY2xl
-YW51cCB3aXRob3V0IHRoZSBlcnJvbmVvdXMgZml4Li4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0
-DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RA
-bmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/exportfs/nfs4filelayoutxdr.c |    3 +--
+ fs/nfsd/nfs4callback.c          |    3 +--
+ fs/nfsd/nfs4xdr.c               |    2 +-
+ include/linux/nfsd/nfsd4_pnfs.h |    7 +++++++
+ 4 files changed, 10 insertions(+), 5 deletions(-)
+
+diff --git a/fs/exportfs/nfs4filelayoutxdr.c b/fs/exportfs/nfs4filelayoutxdr.c
+index f63c311..e5b9a92 100644
+--- a/fs/exportfs/nfs4filelayoutxdr.c
++++ b/fs/exportfs/nfs4filelayoutxdr.c
+@@ -174,8 +174,7 @@ enum nfsstat4
+ 	p++;
+ 
+ 	/* encode device id */
+-	p = exp_xdr_encode_u64(p, flp->device_id.sbid);
+-	p = exp_xdr_encode_u64(p, flp->device_id.devid);
++	p = nfsd4_encode_deviceid(p, &flp->device_id);
+ 
+ 	/* set and encode flags */
+ 	nfl_util = flp->lg_stripe_unit;
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 8734ef0..0a37f3a 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -511,8 +511,7 @@ static void encode_cb_device4args(struct xdr_stream *xdr,
+ 		else
+ 			*p++ = cpu_to_be32(20);
+ 		*p++ = cpu_to_be32(cbd[i].cbd_layout_type);
+-		p = xdr_encode_hyper(p, cbd[i].cbd_devid.sbid);
+-		xdr_encode_hyper(p, cbd[i].cbd_devid.devid);
++		p = nfsd4_encode_deviceid(p, &cbd[i].cbd_devid);
+ 
+ 		if (cbd[i].cbd_notify_type == NOTIFY_DEVICEID4_CHANGE) {
+ 			p = xdr_reserve_space(xdr, 4);
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index d57ccb1..ee227f7 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3641,7 +3641,7 @@ static __be32 nfsd4_encode_bind_conn_to_session(struct nfsd4_compoundres *resp,
+ 
+ 		/* Encode device id and layout type */
+ 		RESERVE_SPACE(sizeof(struct nfsd4_pnfs_deviceid));
+-		WRITE64((__be64)sbid);
++		WRITE64(sbid);
+ 		WRITE64(res.gd_devid);	/* devid minor */
+ 		ADJUST_ARGS();
+ 		(*dev_count)++;
+diff --git a/include/linux/nfsd/nfsd4_pnfs.h b/include/linux/nfsd/nfsd4_pnfs.h
+index d5195b6..8d3d384 100644
+--- a/include/linux/nfsd/nfsd4_pnfs.h
++++ b/include/linux/nfsd/nfsd4_pnfs.h
+@@ -44,6 +44,13 @@ struct nfsd4_pnfs_deviceid {
+ 	u64	devid;			/* filesystem-wide unique device ID */
+ };
+ 
++static inline __be32 *nfsd4_encode_deviceid(__be32 *p,
++					const struct nfsd4_pnfs_deviceid *dp)
++{
++        p = exp_xdr_encode_u64(p, dp->sbid);
++        return exp_xdr_encode_u64(p, dp->devid);
++}
++
+ struct nfsd4_pnfs_dev_iter_res {
+ 	u64		gd_cookie;	/* request/repsonse */
+ 	u64		gd_verf;	/* request/repsonse */
+-- 
+1.7.6.5
+
