@@ -1,67 +1,175 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:56759 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:33389 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751876Ab2EVRqV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 May 2012 13:46:21 -0400
-Received: from vmwexceht04-prd.hq.netapp.com (vmwexceht04-prd.hq.netapp.com [10.106.77.34])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q4MHk6pb024067
-	for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 10:46:06 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "Isaman, Fred" <Fred.Isaman@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 4/4] NFSv4.1 do not release page on commit mismatch
-Date: Tue, 22 May 2012 17:46:06 +0000
-Message-ID: <1337708765.4269.26.camel@lade.trondhjem.org>
-References: <1337688569-1515-1-git-send-email-andros@netapp.com>
-	 <1337688569-1515-5-git-send-email-andros@netapp.com>
-	 <1337703865.4269.21.camel@lade.trondhjem.org>
-	 <4D70BD9B-4F81-4E57-8689-DCE6F8B1A1C2@netapp.com>
-In-Reply-To: <4D70BD9B-4F81-4E57-8689-DCE6F8B1A1C2@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1757188Ab2EUIv7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 May 2012 04:51:59 -0400
+Subject: [RFC PATCH v2] SUNRPC: protect service sockets lists during per-net
+	shutdown
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Mon, 21 May 2012 12:51:47 +0400
+Message-ID: <20120521085144.8253.31010.stgit@localhost.localdomain>
+In-Reply-To: <20120511114126.8399.2554.stgit@localhost.localdomain>
+References: <20120511114126.8399.2554.stgit@localhost.localdomain>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA1LTIyIGF0IDE2OjMwICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0K
-PiBPbiBNYXkgMjIsIDIwMTIsIGF0IDEyOjI0IFBNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0K
-PiANCj4gPiBPbiBUdWUsIDIwMTItMDUtMjIgYXQgMDg6MDkgLTA0MDAsIGFuZHJvc0BuZXRhcHAu
-Y29tIHdyb3RlOg0KPiA+PiBGcm9tOiBBbmR5IEFkYW1zb24gPGFuZHJvc0BuZXRhcHAuY29tPg0K
-PiA+PiANCj4gPj4gU2lnbmVkLW9mZi1ieTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNv
-bT4NCj4gPj4gLS0tDQo+ID4+IGZzL25mcy93cml0ZS5jIHwgICAgMiArKw0KPiA+PiAxIGZpbGVz
-IGNoYW5nZWQsIDIgaW5zZXJ0aW9ucygrKSwgMCBkZWxldGlvbnMoLSkNCj4gPj4gDQo+ID4+IGRp
-ZmYgLS1naXQgYS9mcy9uZnMvd3JpdGUuYyBiL2ZzL25mcy93cml0ZS5jDQo+ID4+IGluZGV4IGU2
-ZmUzZDYuLmM3Mjk1ZGUgMTAwNjQ0DQo+ID4+IC0tLSBhL2ZzL25mcy93cml0ZS5jDQo+ID4+ICsr
-KyBiL2ZzL25mcy93cml0ZS5jDQo+ID4+IEBAIC0xNTU1LDYgKzE1NTUsOCBAQCBzdGF0aWMgdm9p
-ZCBuZnNfY29tbWl0X3JlbGVhc2VfcGFnZXMoc3RydWN0IG5mc19jb21taXRfZGF0YSAqZGF0YSkN
-Cj4gPj4gCQkvKiBXZSBoYXZlIGEgbWlzbWF0Y2guIFdyaXRlIHRoZSBwYWdlIGFnYWluICovDQo+
-ID4+IAkJZHByaW50aygiIG1pc21hdGNoXG4iKTsNCj4gPj4gCQluZnNfbWFya19yZXF1ZXN0X2Rp
-cnR5KHJlcSk7DQo+ID4+ICsJCW5mc191bmxvY2tfcmVxdWVzdChyZXEpOw0KPiA+PiArCQljb250
-aW51ZTsNCj4gPj4gCW5leHQ6DQo+ID4+IAkJbmZzX3VubG9ja19hbmRfcmVsZWFzZV9yZXF1ZXN0
-KHJlcSk7DQo+ID4+IAl9DQo+ID4gDQo+ID4gV2hhdCBpcyB0aGlzIHBhdGNoIHRyeWluZyB0byBm
-aXg/IEFzIGZhciBhcyBJIGNhbiBzZWUgaXQgd2lsbCBsZWFkIHRvIGENCj4gPiByZWZlcmVuY2Ug
-bGVhay4NCj4gDQo+IFRoZSByZWxlYXNlIG9mIHRoZSBwYWdlIGRyb3BzIHRoZSByZWZjb3VudCB0
-byB6ZXJvLiBTaW5jZSBpdCBpcyBhIG1pc21hdGNoLCB3ZSB3YW50IHRvIGNvbnRpbnVlIHRvIHVz
-ZSB0aGUgcGFnZSwgc28gbmZzX3BhZ2VfZmluZF9yZXF1ZXN0X2xvY2tlZCBpcyBjYWxsZWQgd2Ug
-Z2V0IHRoZSBXQVJOSU5HIGluIGtyZWZfZ2V0LCBhbmQgYW4gT29wcyBpbiB2YXJpb3VzIHBsYWNl
-cyBpbiBwbmZzX3VwZGF0ZV9sYXlvdXQuDQo+IA0KPiBIZXJlIGlzIHRoZSBvdXRwdXQgb2YgYWRk
-ZWQgcHJpbnRrJ3MuDQo+IA0KPiAtLT5BbmR5DQo+IA0KPiBNYXkgMjEgMTg6MjU6MzMgZmVkb3Jh
-LTY0LTIga2VybmVsOiBbICAxNTIuOTg4OTIxXSBORlM6ICAgICAgIGNvbW1pdCAoMDozNS8yIDQw
-OTZAMTg0MzIwKQ0KPiBNYXkgMjEgMTg6MjU6MzMgZmVkb3JhLTY0LTIga2VybmVsOiBbICAxNTIu
-OTg4OTIzXSAgbWlzbWF0Y2ggcmVxIGZmZmY4ODAwNDJkYmI4MDANCj4gTWF5IDIxIDE4OjI1OjMz
-IGZlZG9yYS02NC0yIGtlcm5lbDogWyAgMTUyLjk4ODkyN10gbmZzX3JlbGVhc2VfcmVxdWVzdCBX
-QiByZXEgZmZmZjg4MDA0MmRiYjgwMCB3Yl9rcmVmIDENCj4gTWF5IDIxIDE4OjI1OjMzIGZlZG9y
-YS02NC0yIGtlcm5lbDogWyAgMTUyLjk4ODkzMl0gcHV0X2xzZWc6IGxzZWcgZmZmZjg4MDA0MmQ5
-NTM4MCByZWYgNCB2YWxpZCAwDQo+IE1heSAyMSAxODoyNTozMyBmZWRvcmEtNjQtMiBrZXJuZWw6
-IFsgIDE1Mi45ODg5NDVdIG5mc19wYWdlX2ZpbmRfcmVxdWVzdF9sb2NrZWQgcmVxIGZmZmY4ODAw
-M2UwMzM4MDANCj4gTWF5IDIxIDE4OjI1OjMzIGZlZG9yYS02NC0yIGtlcm5lbDogWyAgMTUyLjk4
-ODk0OV0gbmZzX3BhZ2VfZmluZF9yZXF1ZXN0X2xvY2tlZCBXQiByZXEgZmZmZjg4MDAzZTAzMzgw
-MCB3Yl9rcmVmIDANCj4gTWF5IDIxIDE4OjI1OjMzIGZlZG9yYS02NC0yIGtlcm5lbDogWyAgMTUy
-Ljk4ODk1M10gLS0tLS0tLS0tLS0tWyBjdXQgaGVyZSBdLS0tLS0tLS0tLS0tDQo+IE1heSAyMSAx
-ODoyNTozMyBmZWRvcmEtNjQtMiBrZXJuZWw6IFsgIDE1Mi45ODkwODJdIFdBUk5JTkc6IGF0IGlu
-Y2x1ZGUvbGludXgva3JlZi5oOjQxIGtyZWZfZ2V0KzB4MjAvMHgyYyBbbmZzXSgpDQoNCkFyZSB0
-aGVzZSBjb21taXQtdG8tZHMgcmVxdWVzdHM/IEFzIGZhciBhcyBJIGNhbiBzZWUsIHRoZXJlIGlz
-IGEgYnVnIGluDQp0cmFuc2Zlcl9jb21taXRfbGlzdCgpIGluIHRoYXQgaXQgbG9ja3MgdGhlIHJl
-cXVlc3RzLCBidXQgZG9lcyBub3QNCnJlZmVyZW5jZSB0aGVtLg0KDQpGcmVkPw0KDQotLSANClRy
-b25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJv
-bmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+v2: destruction of currently processing transport added:
+1) Added marking of currently processing transports with XPT_CLOSE on per-net
+shutdown. These transports will be destroy in svc_xprt_enqueue() (instead of
+enqueueing).
+2) newly created temporary transport in svc_recv() will be destroyed, if it's
+"parent" was marked wof currently processing transports ith XPT_CLOSE.
+3) spin_lock(&serv->sv_lock) was replaced by spin_lock_bh() in
+svc_close_net(&serv->sv_lock).
+
+Service sv_tempsocks and sv_permsocks lists are accessible by tasks with
+different network namespaces, and thus per-net service destruction must be
+protected.
+These lists are protected by service sv_lock. So lets wrap list munipulations
+with this lock and move tranports destruction outside wrapped area to prevent
+deadlocks.
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ net/sunrpc/svc_xprt.c |   56 ++++++++++++++++++++++++++++++++++++++++++++++---
+ 1 files changed, 52 insertions(+), 4 deletions(-)
+
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 37a1f66..947d3cb 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -320,6 +320,7 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
+ 	struct svc_pool *pool;
+ 	struct svc_rqst	*rqstp;
+ 	int cpu;
++	int destroy = 0;
+ 
+ 	if (!svc_xprt_has_something_to_do(xprt))
+ 		return;
+@@ -338,6 +339,17 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
+ 
+ 	pool->sp_stats.packets++;
+ 
++	/*
++	 * Check transport close flag. It could be marked as closed on per-net
++	 * service shutdown.
++	 */
++	if (test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
++		/* Don't enqueue transport if it has to be destroyed. */
++		dprintk("svc: transport %p have to be closed\n", xprt);
++		destroy++;
++		goto out_unlock;
++	}
++
+ 	/* Mark transport as busy. It will remain in this state until
+ 	 * the provider calls svc_xprt_received. We update XPT_BUSY
+ 	 * atomically because it also guards against trying to enqueue
+@@ -374,6 +386,8 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
+ 
+ out_unlock:
+ 	spin_unlock_bh(&pool->sp_lock);
++	if (destroy)
++		svc_delete_xprt(xprt);
+ }
+ EXPORT_SYMBOL_GPL(svc_xprt_enqueue);
+ 
+@@ -717,6 +731,13 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+ 			__module_get(newxpt->xpt_class->xcl_owner);
+ 			svc_check_conn_limits(xprt->xpt_server);
+ 			spin_lock_bh(&serv->sv_lock);
++			if (test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
++				dprintk("svc_recv: found XPT_CLOSE on listener\n");
++				set_bit(XPT_DETACHED, &newxpt->xpt_flags);
++				spin_unlock_bh(&pool->sp_lock);
++				svc_delete_xprt(newxpt);
++				goto out_closed;
++			}
+ 			set_bit(XPT_TEMP, &newxpt->xpt_flags);
+ 			list_add(&newxpt->xpt_list, &serv->sv_tempsocks);
+ 			serv->sv_tmpcnt++;
+@@ -742,6 +763,7 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+ 			len = xprt->xpt_ops->xpo_recvfrom(rqstp);
+ 		dprintk("svc: got len=%d\n", len);
+ 	}
++out_closed:
+ 	svc_xprt_received(xprt);
+ 
+ 	/* No data, incomplete (TCP) read, or accept() */
+@@ -939,6 +961,7 @@ static void svc_clear_pools(struct svc_serv *serv, struct net *net)
+ 	struct svc_pool *pool;
+ 	struct svc_xprt *xprt;
+ 	struct svc_xprt *tmp;
++	struct svc_rqst *rqstp;
+ 	int i;
+ 
+ 	for (i = 0; i < serv->sv_nrpools; i++) {
+@@ -950,11 +973,16 @@ static void svc_clear_pools(struct svc_serv *serv, struct net *net)
+ 				continue;
+ 			list_del_init(&xprt->xpt_ready);
+ 		}
++		list_for_each_entry(rqstp, &pool->sp_all_threads, rq_all) {
++			if (rqstp->rq_xprt && rqstp->rq_xprt->xpt_net == net)
++				set_bit(XPT_CLOSE, &rqstp->rq_xprt->xpt_flags);
++		}
+ 		spin_unlock_bh(&pool->sp_lock);
+ 	}
+ }
+ 
+-static void svc_clear_list(struct list_head *xprt_list, struct net *net)
++static void svc_clear_list(struct list_head *xprt_list, struct net *net,
++			   struct list_head *kill_list)
+ {
+ 	struct svc_xprt *xprt;
+ 	struct svc_xprt *tmp;
+@@ -962,7 +990,8 @@ static void svc_clear_list(struct list_head *xprt_list, struct net *net)
+ 	list_for_each_entry_safe(xprt, tmp, xprt_list, xpt_list) {
+ 		if (xprt->xpt_net != net)
+ 			continue;
+-		svc_delete_xprt(xprt);
++		list_move(&xprt->xpt_list, kill_list);
++		set_bit(XPT_DETACHED, &xprt->xpt_flags);
+ 	}
+ 	list_for_each_entry(xprt, xprt_list, xpt_list)
+ 		BUG_ON(xprt->xpt_net == net);
+@@ -970,6 +999,15 @@ static void svc_clear_list(struct list_head *xprt_list, struct net *net)
+ 
+ void svc_close_net(struct svc_serv *serv, struct net *net)
+ {
++	struct svc_xprt *xprt, *tmp;
++	LIST_HEAD(kill_list);
++
++	/*
++	 * Protect the lists, since they can be by tasks with different network
++	 * namespace contexts.
++	 */
++	spin_lock_bh(&serv->sv_lock);
++
+ 	svc_close_list(&serv->sv_tempsocks, net);
+ 	svc_close_list(&serv->sv_permsocks, net);
+ 
+@@ -979,8 +1017,18 @@ void svc_close_net(struct svc_serv *serv, struct net *net)
+ 	 * svc_xprt_enqueue will not add new entries without taking the
+ 	 * sp_lock and checking XPT_BUSY.
+ 	 */
+-	svc_clear_list(&serv->sv_tempsocks, net);
+-	svc_clear_list(&serv->sv_permsocks, net);
++	svc_clear_list(&serv->sv_tempsocks, net, &kill_list);
++	svc_clear_list(&serv->sv_permsocks, net, &kill_list);
++
++	spin_unlock_bh(&serv->sv_lock);
++
++	/*
++	 * Destroy collected transports.
++	 * Note: tranports has been marked as XPT_DETACHED on svc_clear_list(),
++	 * so no need to protect againt list_del() in svc_delete_xprt().
++	 */
++	list_for_each_entry_safe(xprt, tmp, &kill_list, xpt_list)
++		svc_delete_xprt(xprt);
+ }
+ 
+ /*
+
