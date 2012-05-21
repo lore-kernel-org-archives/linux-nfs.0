@@ -1,54 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:37211 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:47294 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757041Ab2EGOxa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 May 2012 10:53:30 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+	id S1752601Ab2EUPkI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 May 2012 11:40:08 -0400
+Date: Mon, 21 May 2012 11:40:06 -0400
 To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/3] NFS: Don't do a full flush to disk on close() if we
- hold a delegation
-Date: Mon, 7 May 2012 14:53:29 +0000
-Message-ID: <1336402411.9499.1.camel@lade.trondhjem.org>
-References: <1336399651-6596-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <B1119637-19EE-44E5-B25A-9655D2ACA8DF@oracle.com>
-In-Reply-To: <B1119637-19EE-44E5-B25A-9655D2ACA8DF@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 07/14] NFS: Don't swap bytes in
+ nfs4_construct_boot_verifier()
+Message-ID: <20120521154006.GF24299@fieldses.org>
+References: <20120518220145.774.53741.stgit@degas.1015granger.net>
+ <20120518220615.774.43776.stgit@degas.1015granger.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120518220615.774.43776.stgit@degas.1015granger.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA1LTA3IGF0IDEwOjQ4IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-SSB0aG91Z2h0IHRoZSByZWFzb24gd2Ugd2FpdCBmb3IgZmx1c2ggY29tcGxldGlvbiBvbiBjbG9z
-ZSgpIHdhcyB0byByZXBvcnQgZXJyb3JzLg0KDQpOby4gVGhlIHJlYXNvbiB3aHkgd2Ugd2FpdCBp
-cyB0byBlbnN1cmUgY2xvc2UtdG8tb3BlbiBjYWNoZSBjb25zaXN0ZW5jeS4NCg0KQ2hlZXJzDQog
-IFRyb25kDQoNCj4gU2VudCBmcm9tIG15IGlQYWQNCj4gDQo+IE9uIE1heSA3LCAyMDEyLCBhdCAx
-MDowNyBBTSwgVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3Jv
-dGU6DQo+IA0KPiA+IElmIHdlIGhvbGQgYSBkZWxlZ2F0aW9uIHRoZW4gd2Uga25vdyB0aGF0IGl0
-IHNob3VsZCBiZSBzYWZlIHRvIGNvbnRpbnVlDQo+ID4gdG8gY2FjaGUgdGhlIGRhdGEgYmV5b25k
-IHRoZSBjbG9zZSgpLiBIb3dldmVyIHNpbmNlIHRoZSBwcm9jZXNzIHRoYXQgd3JvdGUNCj4gPiB0
-aGUgZGF0YSBtYXkgZGllIGFmdGVyIGNsb3NlKCksIHdlIG1heSBzdGlsbCB3YW50IHRvIHNlbmQg
-dGhlIGRhdGEgdG8NCj4gPiBzZXJ2ZXIgYmVmb3JlIHRob3NlIFJQQ1NFQ19HU1MgY3JlZGVudGlh
-bHMgZXhwaXJlLiBXZSB0aGVyZWZvcmUgY29tcHJvbWlzZQ0KPiA+IGJ5IHN0YXJ0aW5nIHdyaXRl
-YmFjayB0byB0aGUgc2VydmVyLCBidXQgZG9uJ3Qgd2FpdCBmb3IgY29tcGxldGlvbi4NCj4gPiAN
-Cj4gPiBTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRh
-cHAuY29tPg0KPiA+IC0tLQ0KPiA+IGZzL25mcy9maWxlLmMgfCAgICA3ICsrKysrKysNCj4gPiAx
-IGZpbGVzIGNoYW5nZWQsIDcgaW5zZXJ0aW9ucygrKSwgMCBkZWxldGlvbnMoLSkNCj4gPiANCj4g
-PiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2ZpbGUuYyBiL2ZzL25mcy9maWxlLmMNCj4gPiBpbmRleCBh
-YTliNzA5Li44ZWRhOGE2IDEwMDY0NA0KPiA+IC0tLSBhL2ZzL25mcy9maWxlLmMNCj4gPiArKysg
-Yi9mcy9uZnMvZmlsZS5jDQo+ID4gQEAgLTE3NCw2ICsxNzQsMTMgQEAgbmZzX2ZpbGVfZmx1c2go
-c3RydWN0IGZpbGUgKmZpbGUsIGZsX293bmVyX3QgaWQpDQo+ID4gICAgaWYgKChmaWxlLT5mX21v
-ZGUgJiBGTU9ERV9XUklURSkgPT0gMCkNCj4gPiAgICAgICAgcmV0dXJuIDA7DQo+ID4gDQo+ID4g
-KyAgICAvKg0KPiA+ICsgICAgICogSWYgd2UncmUgaG9sZGluZyBhIHdyaXRlIGRlbGVnYXRpb24s
-IHRoZW4ganVzdCBzdGFydCB0aGUgaS9vDQo+ID4gKyAgICAgKiBidXQgZG9uJ3Qgd2FpdCBmb3Ig
-Y29tcGxldGlvbiAob3Igc2VuZCBhIGNvbW1pdCkuDQo+ID4gKyAgICAgKi8NCj4gPiArICAgIGlm
-IChuZnNfaGF2ZV9kZWxlZ2F0aW9uKGlub2RlLCBGTU9ERV9XUklURSkpDQo+ID4gKyAgICAgICAg
-cmV0dXJuIGZpbGVtYXBfZmRhdGF3cml0ZShmaWxlLT5mX21hcHBpbmcpOw0KPiA+ICsNCj4gPiAg
-ICAvKiBGbHVzaCB3cml0ZXMgdG8gdGhlIHNlcnZlciBhbmQgcmV0dXJuIGFueSBlcnJvcnMgKi8N
-Cj4gPiAgICByZXR1cm4gdmZzX2ZzeW5jKGZpbGUsIDApOw0KPiA+IH0NCj4gPiAtLSANCj4gPiAx
-LjcuNy42DQo+ID4gDQo+ID4gLS0NCj4gPiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDog
-c2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbg0KPiA+IHRoZSBib2R5IG9m
-IGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnDQo+ID4gTW9yZSBtYWpvcmRv
-bW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQoN
-Ci0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0
-QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+On Fri, May 18, 2012 at 06:06:16PM -0400, Chuck Lever wrote:
+> The SETCLIENTID boot verifier is opaque to NFSv4 servers, thus there
+> is no requirement for byte swapping before the client puts the
+> verifier on the wire.
+> 
+> This treatment is similar to other timestamp-based verifiers.
+
+The fact that it's opaque means we don't *have* to be consistent about
+byte-order.  But we can still choose to do so.  It may help debugging a
+little (by making it just a little easier to decode the on-the-wire
+verifier).  And changing the encoding of the verifier means it won't
+work over boots that cross kernel versions.  (I'll admit that's *not* a
+big deal--most clients probably take longer than most servers' lease
+times anyway--but why do this without a reason?)
+
+--b.
+
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  fs/nfs/nfs4proc.c |    4 ++--
+>  1 files changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index db7b76a..73cfd9e 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -3937,8 +3937,8 @@ static void nfs4_construct_boot_verifier(struct nfs_client *clp,
+>  {
+>  	__be32 verf[2];
+>  
+> -	verf[0] = htonl((u32)clp->cl_boot_time.tv_sec);
+> -	verf[1] = htonl((u32)clp->cl_boot_time.tv_nsec);
+> +	verf[0] = (__be32)clp->cl_boot_time.tv_sec;
+> +	verf[1] = (__be32)clp->cl_boot_time.tv_nsec;
+>  	memcpy(bootverf->data, verf, sizeof(bootverf->data));
+>  }
+>  
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
