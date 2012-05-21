@@ -1,53 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:56522 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753659Ab2ENIPv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 May 2012 04:15:51 -0400
-Received: by bkcji2 with SMTP id ji2so3530137bkc.19
-        for <linux-nfs@vger.kernel.org>; Mon, 14 May 2012 01:15:50 -0700 (PDT)
+Received: from mail-wg0-f44.google.com ([74.125.82.44]:46084 "EHLO
+	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751508Ab2EUPKf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 May 2012 11:10:35 -0400
+Received: by wgbdr13 with SMTP id dr13so5090545wgb.1
+        for <linux-nfs@vger.kernel.org>; Mon, 21 May 2012 08:10:34 -0700 (PDT)
+Message-ID: <4FBA5AE5.8080707@tonian.com>
+Date: Mon, 21 May 2012 18:10:29 +0300
 From: Benny Halevy <bhalevy@tonian.com>
-To: lior@tonian.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] pnfsd: apply pnfs export option on pnfs export ops setup
-Date: Mon, 14 May 2012 11:15:47 +0300
-Message-Id: <1336983347-18737-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <4FAFB255.1040804@tonian.com>
-References: <4FAFB255.1040804@tonian.com>
+MIME-Version: 1.0
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: Andy Adamson <andros@netapp.com>, NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] SQUASHME: pnfsd-lexp: Fix compiler warning when CONFIG_SUNRPC_DEBUG
+ is not set
+References: <4FBA1BD4.7090303@panasas.com>
+In-Reply-To: <4FBA1BD4.7090303@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfsd/export.c |    9 ++++++++-
- 1 files changed, 8 insertions(+), 1 deletions(-)
+On 2012-05-21 13:41, Boaz Harrosh wrote:
+> 
+> Fix "Unused variable" warning if CONFIG_SUNRPC_DEBUG is not set
+> 
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index b6e46ab..b2fa749 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -421,7 +421,7 @@ static int check_export(struct inode *inode, int *flags, unsigned char *uuid)
- 		return -EINVAL;
- 	}
- 
--	return pnfsd_check_export(inode, flags);
-+	return 0;
- }
- 
- #ifdef CONFIG_NFSD_V4
-@@ -624,6 +624,13 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
- 				   exp.ex_uuid);
- 		if (err)
- 			goto out4;
-+
-+		if (exp.ex_pnfs) {
-+			err = pnfsd_check_export(exp.ex_path.dentry->d_inode,
-+						 &exp.ex_flags);
-+			if (err)
-+				goto out4;
-+		}
- 	}
- 
- 	expp = svc_export_lookup(&exp);
--- 
-1.7.6.5
+Merged, thanks!
 
+> Signed-off-by: Boaz Harrosh <boazharrosh@gmail.com>
+> ---
+> git diff --stat -p -M fs/nfsd/nfs4pnfsds.c
+>  fs/nfsd/nfs4pnfsds.c | 3 +--
+>  1 file changed, 1 insertion(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4pnfsds.c b/fs/nfsd/nfs4pnfsds.c
+> index 2732f20..ab67523 100644
+> --- a/fs/nfsd/nfs4pnfsds.c
+> +++ b/fs/nfsd/nfs4pnfsds.c
+> @@ -170,10 +170,9 @@ static int stateid_hashval(stateid_t *stidp)
+>  	hashval = stateid_hashval(stidp);
+>  	list_for_each_entry(local, &ds_stid_hashtbl[hashval], ds_hash)
+>  		if (!memcmp(&local->ds_stid.si_opaque, &stidp->si_opaque, sizeof(stidp->si_opaque))) {
+> -			stateid_t *sid = &local->ds_stid;
+>  			dprintk("NFSD: %s <-- %p ds_flags %lx " STATEID_FMT "\n",
+>  				__func__, local, local->ds_flags,
+> -				STATEID_VAL(sid));
+> +				STATEID_VAL(&local->ds_stid));
+>  			return local;
+>  		}
+>  	return NULL;
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
