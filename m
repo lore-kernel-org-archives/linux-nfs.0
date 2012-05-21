@@ -1,66 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:27762 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:48089 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756283Ab2EVNz3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 May 2012 09:55:29 -0400
-Message-ID: <4FBB9AC0.2040102@netapp.com>
-Date: Tue, 22 May 2012 09:55:12 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-MIME-Version: 1.0
+	id S1756990Ab2EUQuC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 May 2012 12:50:02 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 To: Chuck Lever <chuck.lever@oracle.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: TEST / FREE STATEID error recovery
-References: <88F4DB05-5625-4E40-B057-04FCDE21E9C2@oracle.com>
-In-Reply-To: <88F4DB05-5625-4E40-B057-04FCDE21E9C2@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 09/14] NFS: Force server to drop NFSv4 state
+Date: Mon, 21 May 2012 16:49:06 +0000
+Message-ID: <1337619000.9583.3.camel@lade.trondhjem.org>
+References: <20120518220145.774.53741.stgit@degas.1015granger.net>
+	 <20120518220632.774.79191.stgit@degas.1015granger.net>
+	 <20120521160844.GH24299@fieldses.org>
+	 <F7B056E4-D6FC-450B-98E2-129C051CFAE7@oracle.com>
+	 <20120521161646.GJ24299@fieldses.org>
+	 <2BAAEA69-CC7B-42F8-811D-7C320E9AA680@oracle.com>
+In-Reply-To: <2BAAEA69-CC7B-42F8-811D-7C320E9AA680@oracle.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/21/2012 11:31 PM, Chuck Lever wrote:
-
-> Hi-
-> 
-> I'm trying to understand the error recovery logic in the new TEST_STATEID and FREE_STATEID procedures.
-> 
-> For TEST_STATEID, we have this:
-> 
-> 6395 static int nfs41_test_stateid(struct nfs_server *server, nfs4_stateid *stateid)
-> 6396 {
-> 6397         struct nfs4_exception exception = { };
-> 6398         int err;
-> 6399         do {
-> 6400                 err = nfs4_handle_exception(server,
-> 6401                                 _nfs41_test_stateid(server, stateid),
-> 6402                                 &exception);
-> 6403         } while (exception.retry);
-> 6404         return err;
-> 6405 }
-> 
-> According to RFC 5661, the TEST_STATEID and FREE_STATEID procedures can return NFS4ERR_BAD_STATEID, NFS4ERR_OLD_STATEID, and NFS4ERR_DEADSESSION, among other things.  Do you really want to enter the exception handler here?  Seems to me that nfs41_{test,free}_stateid() are invoked mainly (only?) by the state manager, and thus you don't want to kick the state manager here and wait, as that would deadlock.  About the only error code you might want to pass into nfs4_handle_exception() is NFS4ERR_DELAY.  Everything else probably ought to be returned outright to the caller to let her figure out how to recover.
-> 
-
-Sounds about right.  At least passing NFS4ERR_BAD_STATEID will trigger stateid recovery again on the same stateid... probably not what we want.
-
-> Also, _nfs41_test_stateid() does this:
-> 
-> 6390         if (status == NFS_OK)
-> 6391                 return res.status;
-> 6392         return status;
-> 
-> status will contain NFS4_OK or a negative NFS4ERR value.  But the "if / return" will return res.status, which could be NFS4_OK, but it could also be (according to RFC 5661 section 18.48.3) NFS4ERR_BAD_STATEID, NFS4ERR_OLD_STATEID, NFS4ERR_EXPIRED, NFS4ERR_ADMIN_REVOKED, or NFS4ERR_DELEG_REVOKED.  Note that these are positive values, and the above logic returns them directly to the caller.
-> 
-
-So that should be "return -res.status" then?  Easy enough to change.
-
-> The caller then passes the positive result to nfs4_handle_exception().  Now I think nfs4_handle_exception() will ignore positive values.  And, I don't see any caller who is not doing "if (status != NFS4_OK)" so maybe this doesn't matter.  But it sure is confusing.
-> 
-
-This might be why it doesn't deadlock now.
-
-> Do you remember what was intended?  Was it positive NFS4ERR values for res.status and negative NFS4ERR values if the operation failed?  If that's the case, then that intention should be carefully documented.  Otherwise, maybe that should read "return -res.status;" (as long as we aren't passing that to the exception handler!).
-> 
-
-
-My intention was to handle errors coming from the test / free stateid calls.  I didn't realize the RPC call returned a positive value instead of a negative one, so it's only an accident that we don't deadlock now if the server returns NFS4ERR_BAD_STATEID.  This should be fixed though, thanks for catching it!
-
-- Bryan
+T24gTW9uLCAyMDEyLTA1LTIxIGF0IDEyOjI0IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+T24gTWF5IDIxLCAyMDEyLCBhdCAxMjoxNiBQTSwgSi4gQnJ1Y2UgRmllbGRzIHdyb3RlOg0KPiAN
+Cj4gPiBPbiBNb24sIE1heSAyMSwgMjAxMiBhdCAxMjoxMTo0OFBNIC0wNDAwLCBDaHVjayBMZXZl
+ciB3cm90ZToNCj4gPj4gDQo+ID4+IE9uIE1heSAyMSwgMjAxMiwgYXQgMTI6MDggUE0sIEouIEJy
+dWNlIEZpZWxkcyB3cm90ZToNCj4gPj4gDQo+ID4+PiBPbiBGcmksIE1heSAxOCwgMjAxMiBhdCAw
+NjowNjozM1BNIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4gPj4+PiBAQCAtMzkzNyw4ICsz
+OTM3LDEzIEBAIHN0YXRpYyB2b2lkIG5mczRfY29uc3RydWN0X2Jvb3RfdmVyaWZpZXIoc3RydWN0
+IG5mc19jbGllbnQgKmNscCwNCj4gPj4+PiB7DQo+ID4+Pj4gCV9fYmUzMiB2ZXJmWzJdOw0KPiA+
+Pj4+IA0KPiA+Pj4+IC0JdmVyZlswXSA9IChfX2JlMzIpY2xwLT5jbF9ib290X3RpbWUudHZfc2Vj
+Ow0KPiA+Pj4+IC0JdmVyZlsxXSA9IChfX2JlMzIpY2xwLT5jbF9ib290X3RpbWUudHZfbnNlYzsN
+Cj4gPj4+PiArCWlmICh0ZXN0X2JpdChORlM0Q0xOVF9QVVJHRV9TVEFURSwgJmNscC0+Y2xfc3Rh
+dGUpKSB7DQo+ID4+Pj4gKwkJdmVyZlswXSA9IChfX2JlMzIpQ1VSUkVOVF9USU1FLnR2X3NlYzsN
+Cj4gPj4+PiArCQl2ZXJmWzFdID0gKF9fYmUzMilDVVJSRU5UX1RJTUUudHZfbnNlYzsNCj4gPj4+
+IA0KPiA+Pj4gSSBzdXBwb3NlIGl0J3MgcHJldHR5IHVubGlrZWx5IHRoaXMgY291bGQgaGFwcGVu
+IHdpdGhpbiBhIGppZmZ5IG9mDQo+ID4+PiBzZXR0aW5nIGNsX2Jvb3RfdGltZT8NCj4gPj4gDQo+
+ID4+IEJvb3QgdGltZSBoYXMgbmFub3NlY29uZCByZXNvbHV0aW9uLiAgSSdtIHByZXR0eSBzdXJl
+IHdlIGFyZSBzYWZlIGhlcmUuDQo+ID4gDQo+ID4gQ1VSUkVOVF9USU1FIGlzIG9ubHkgdXBkYXRl
+ZCBldmVyeSBqaWZmeS4gIEl0IHdvdWxkIHN0aWxsIGhhdmUgdG8gaGFwcGVuDQo+ID4gcmlkaWN1
+bG91c2x5IGZhc3QsIGJ1dCBJIHRoaW5rIHRoYXQncyBtaWxsaXNlY29uZHMgcmF0aGVyIHRoYW4N
+Cj4gPiBuYW5vc2Vjb25kcy4NCj4gPiANCj4gPj4+IFdvdWxkIGl0IGJlIHNpbXBsZXIgdG8gdXNl
+IHNvbWUgc3BlY2lhbCB2YWx1ZSAoYWxsLXplcm9zPykgaW5zdGVhZD8NCj4gPj4gDQo+ID4+IFdl
+J2QgaGF2ZSB0byBwaWNrIGEgdmFsdWUgdGhhdCB3YXMgZ3VhcmFudGVlZCBuZXZlciB0byBiZSBh
+IHZhbGlkIHRpbWUgc3RhbXAuDQo+ID4gDQo+ID4gQSBjbGllbnQgdGhhdCB0aGlua3MgaXQncyBj
+dXJyZW50bHkgSmFuLiAxIDE5NzAgcHJvYmFibHkgaGFzIGJpZ2dlcg0KPiA+IHByb2JsZW1zLg0K
+PiA+IA0KPiA+IEkgZHVubm8sIHlvdXIgY2FsbC4NCj4gDQo+IFVzaW5nIGFuIG91dC1vZi1kYXRl
+IHRpbWVzdGFtcCAoc3VjaCBhcyBhbGwgemVyb2VzKSBjb3VsZCB3b3JrLiAgV2UnZCBqdXN0IGhh
+dmUgdG8gYnVpbGQgYW4gYXBwcm9wcmlhdGUgY29uc3RhbnQuDQoNCkJldHRlciB5ZXQ6IHVzZSBh
+biBpbnZhbGlkIHRpbWVzdGFtcC4gQW55dGhpbmcgd2l0aCBhIHR2X25zZWMgPj0NCjEwMDAwMDAw
+MDBMIHdvdWxkIHdvcmsuDQoNCj4gVHJvbmQsIGRvIHlvdSByZW1lbWJlciB3aHkgeW91IGxpa2Vk
+IENVUlJFTlRfVElNRT8NCg0KSSBkb24ndCB0aGluayB0aGF0IEkgd2FzIHRoZSBvbmUgd2hvIGNo
+b3NlIENVUlJFTlRfVElNRSBmb3IgdGhlDQpwdXJnZV9zdGF0ZS4gSSdtIGZpbmUgd2l0aCBhbnl0
+aGluZyB0aGF0IGlzIGd1YXJhbnRlZWQgdG8gYWx3YXlzIGRpZmZlcg0KZnJvbSBjbHAtPmNsX2Jv
+b3RfdGltZS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
+aW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNv
+bQ0KDQo=
