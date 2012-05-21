@@ -1,99 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f44.google.com ([74.125.82.44]:41662 "EHLO
-	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751214Ab2E1QFS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 12:05:18 -0400
-Received: by wgbdr13 with SMTP id dr13so3075164wgb.1
-        for <linux-nfs@vger.kernel.org>; Mon, 28 May 2012 09:05:17 -0700 (PDT)
-Message-ID: <4FC3A235.8090908@tonian.com>
-Date: Mon, 28 May 2012 19:05:09 +0300
-From: Benny Halevy <bhalevy@tonian.com>
-MIME-Version: 1.0
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: Does our Kernel PNFSD-Server supports recurring layout_get with
- open_state_id
-References: <4FBD7DE8.9090002@panasas.com> <4FBE2C8C.9090403@tonian.com> <4FBE3C4D.7050507@panasas.com>
-In-Reply-To: <4FBE3C4D.7050507@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from rcsinet15.oracle.com ([148.87.113.117]:19851 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752823Ab2EUQYy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 May 2012 12:24:54 -0400
+Subject: Re: [PATCH 09/14] NFS: Force server to drop NFSv4 state
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20120521161646.GJ24299@fieldses.org>
+Date: Mon, 21 May 2012 12:24:40 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <2BAAEA69-CC7B-42F8-811D-7C320E9AA680@oracle.com>
+References: <20120518220145.774.53741.stgit@degas.1015granger.net> <20120518220632.774.79191.stgit@degas.1015granger.net> <20120521160844.GH24299@fieldses.org> <F7B056E4-D6FC-450B-98E2-129C051CFAE7@oracle.com> <20120521161646.GJ24299@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2012-05-24 16:49, Boaz Harrosh wrote:
-> On 05/24/2012 03:41 PM, Benny Halevy wrote:
-> 
->> On 2012-05-24 03:16, Boaz Harrosh wrote:
->>>
->>> Benny hi
->>>
->>> If I remember/understand correctly, there is a mode in the RFC errata
->>> about the layout forgetful-model and a client sending a layout_get with
->>> an open_state_id after he already had previous state (layouts) on the file.
->>>
->>> As I understood this is an indication to the server that client has
->>> "forgotten" all it's layouts on a file, and Server can assume their
->>> return.
->>>
->>> Is my understanding correct?
->>
->> Yes
->>
->>>
->>> If Yes:
->>> 	Did we implement the internal return of all layouts, if above
->>> 	open_state_id is encountered?
->>> 	I thought we did but I can't find this code.
->>
->> True.  This is not implemented yet.
->>
->>>
->>> Currently, I always set ROC so there is no leak. But theoretically
->>> ROC does not have to be set. I'm doing some heavy lifting of
->>> layout_return, and I want to make sure I have not missed a spot.
->>>
->>> If I'm correct that it is needed, and it's missing:
->>> My suggestion for now is that we always set ROC, disregarding FS so not to
->>> leak layouts and therefor inode-refs, until such time that we implement it.
->>
->> According to the new errata the server will have to simulate layout returns in the ROC
->> case on last CLOSE if the (forgetful) client did not explicitly return the layout.
->> This is not implemented either :-(
->>
-> 
-> 
-> Yes Benny it is implemented. I implemented it and you fix a bug I had. See:
-> 	nfs4pnfsd.c::pnfsd_roc(...) 
-> and it's call site. It is called on last call and all is working well (except some locking
-> bugs I'll send a fix to later). Otherwise both exofs and DF would have crapped out for sure.
 
-Duh, you're right of course.
+On May 21, 2012, at 12:16 PM, J. Bruce Fields wrote:
 
+> On Mon, May 21, 2012 at 12:11:48PM -0400, Chuck Lever wrote:
+>> 
+>> On May 21, 2012, at 12:08 PM, J. Bruce Fields wrote:
+>> 
+>>> On Fri, May 18, 2012 at 06:06:33PM -0400, Chuck Lever wrote:
+>>>> @@ -3937,8 +3937,13 @@ static void nfs4_construct_boot_verifier(struct nfs_client *clp,
+>>>> {
+>>>> 	__be32 verf[2];
+>>>> 
+>>>> -	verf[0] = (__be32)clp->cl_boot_time.tv_sec;
+>>>> -	verf[1] = (__be32)clp->cl_boot_time.tv_nsec;
+>>>> +	if (test_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state)) {
+>>>> +		verf[0] = (__be32)CURRENT_TIME.tv_sec;
+>>>> +		verf[1] = (__be32)CURRENT_TIME.tv_nsec;
+>>> 
+>>> I suppose it's pretty unlikely this could happen within a jiffy of
+>>> setting cl_boot_time?
+>> 
+>> Boot time has nanosecond resolution.  I'm pretty sure we are safe here.
 > 
-> With ROC set all work well. This is why I say we should set it for now to make sure we do
-> not have the above bug.
+> CURRENT_TIME is only updated every jiffy.  It would still have to happen
+> ridiculously fast, but I think that's milliseconds rather than
+> nanoseconds.
+> 
+>>> Would it be simpler to use some special value (all-zeros?) instead?
+>> 
+>> We'd have to pick a value that was guaranteed never to be a valid time stamp.
+> 
+> A client that thinks it's currently Jan. 1 1970 probably has bigger
+> problems.
+> 
+> I dunno, your call.
 
-Yup, see patchset in reply.
+Using an out-of-date timestamp (such as all zeroes) could work.  We'd just have to build an appropriate constant.
 
-Thanks!
+Trond, do you remember why you liked CURRENT_TIME?
 
-Benny
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-> 
-> Thanks
-> Boaz
-> 
->> Benny
->>
->>>
->>> Thanks
->>> Boaz
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+
