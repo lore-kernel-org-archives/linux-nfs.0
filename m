@@ -1,75 +1,136 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:51733 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:34858 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751752Ab2EONMf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 May 2012 09:12:35 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q4FDCZpu013693
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 15 May 2012 09:12:35 -0400
-From: Simo Sorce <simo@redhat.com>
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
-Subject: [PATCH 0/4] Add support for new upcall mechanism for nfsd
-Date: Tue, 15 May 2012 09:12:26 -0400
-Message-Id: <1337087550-9821-1-git-send-email-simo@redhat.com>
+	id S1754329Ab2EVHgV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 03:36:21 -0400
+Subject: [PATCH v2 04/12] NFS: callback up - transport backchannel cleanup
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Tue, 22 May 2012 11:36:17 +0400
+Message-ID: <20120522073617.20602.97113.stgit@localhost.localdomain>
+In-Reply-To: <20120522073320.20602.87130.stgit@localhost.localdomain>
+References: <20120522073320.20602.87130.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NOTE: Rebased on top of Bruce Field's for-3.5 tree.
+No need to assign transports backchannel server explicitly in
+nfs41_callback_up() -  there is nfs_callback_bc_serv() function for this.
+By using it, nfs4_callback_up() and nfs41_callback_up() can be called without
+transport argument.
 
-This patchset implements a new upcall mechanism that uses the sunrpc
-client to talk to gssproxy[1], a new userspace daemon to handle gssapi
-operations on behalf of other processes on the system.
+Note: service have to be passed to nfs_callback_bc_serv() instead of callback,
+since callback link can be uninitialized.
 
-The main driver for this new mechanism is to overcome limitations with
-the current daemon and upcall. The current code cannot handle tickets
-larger than approximatively 2k and cannot handle sending back large user
-credential sets to the kernel.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfs/callback.c |   34 +++++++++++++++++-----------------
+ 1 files changed, 17 insertions(+), 17 deletions(-)
 
-These patches have been tested against the development version of gssproxy
-tagged as kernel_v0.1 in the master repo[2].
-
-I have tested walking into mountpoints using tickets artificially pumped
-up to 64k and the user is properly authorized, after the accept_se_context
-call is performed through the new upcall mechanism and gssproxy.
-
-The gssproxy has the potential of handling also init_sec_context calls,
-but at the moment the only targeted system is nfsd.
-
-Simo.
-
-
-[1] https://fedorahosted.org/gss-proxy/
-[2] http://git.fedorahosted.org/git/?p=gss-proxy.git;a=shortlog;h=refs/tags/kernel_v0.1
-
-Simo Sorce (4):
-  SUNRPC: conditionally return endtime from import_sec_context
-  SUNRPC: Document a bit RPCGSS handling in the NFS Server
-  SUNRPC: Add RPC based upcall mechanism for RPCGSS auth
-  SUNRPC: Use gssproxy upcall for nfsd's RPCGSS authentication.
-
- Documentation/filesystems/nfs/00-INDEX         |    2 +
- Documentation/filesystems/nfs/knfsd-rpcgss.txt |   65 ++
- include/linux/sunrpc/auth_gss.h                |    3 +
- include/linux/sunrpc/gss_api.h                 |    2 +
- include/linux/sunrpc/svcauth_gss.h             |    2 +-
- net/sunrpc/auth_gss/Makefile                   |    4 +-
- net/sunrpc/auth_gss/auth_gss.c                 |   11 +-
- net/sunrpc/auth_gss/gss_krb5_mech.c            |    3 +
- net/sunrpc/auth_gss/gss_mech_switch.c          |    5 +-
- net/sunrpc/auth_gss/gss_rpc_upcall.c           |  341 +++++++++
- net/sunrpc/auth_gss/gss_rpc_upcall.h           |   43 ++
- net/sunrpc/auth_gss/gss_rpc_xdr.c              |  904 ++++++++++++++++++++++++
- net/sunrpc/auth_gss/gss_rpc_xdr.h              |  269 +++++++
- net/sunrpc/auth_gss/svcauth_gss.c              |  252 +++++++-
- 14 files changed, 1886 insertions(+), 20 deletions(-)
- create mode 100644 Documentation/filesystems/nfs/knfsd-rpcgss.txt
- create mode 100644 net/sunrpc/auth_gss/gss_rpc_upcall.c
- create mode 100644 net/sunrpc/auth_gss/gss_rpc_upcall.h
- create mode 100644 net/sunrpc/auth_gss/gss_rpc_xdr.c
- create mode 100644 net/sunrpc/auth_gss/gss_rpc_xdr.h
-
--- 
-1.7.7.6
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 2ecea36..3e6aead 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -129,7 +129,7 @@ nfs4_callback_svc(void *vrqstp)
+  * Prepare to bring up the NFSv4 callback service
+  */
+ static struct svc_rqst *
+-nfs4_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
++nfs4_callback_up(struct svc_serv *serv)
+ {
+ 	return svc_prepare_thread(serv, &serv->sv_pools[0], NUMA_NO_NODE);
+ }
+@@ -185,16 +185,10 @@ nfs41_callback_svc(void *vrqstp)
+  * Bring up the NFSv4.1 callback service
+  */
+ static struct svc_rqst *
+-nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
++nfs41_callback_up(struct svc_serv *serv)
+ {
+ 	struct svc_rqst *rqstp;
+ 
+-	/*
+-	 * Save the svc_serv in the transport so that it can
+-	 * be referenced when the session backchannel is initialized
+-	 */
+-	xprt->bc_serv = serv;
+-
+ 	INIT_LIST_HEAD(&serv->sv_cb_list);
+ 	spin_lock_init(&serv->sv_cb_lock);
+ 	init_waitqueue_head(&serv->sv_cb_waitq);
+@@ -209,21 +203,25 @@ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+ }
+ 
+ static inline int nfs_minorversion_callback_svc_setup(u32 minorversion,
+-		struct svc_serv *serv, struct rpc_xprt *xprt,
++		struct svc_serv *serv,
+ 		struct svc_rqst **rqstpp, int (**callback_svc)(void *vrqstp))
+ {
+ 	if (minorversion) {
+-		*rqstpp = nfs41_callback_up(serv, xprt);
++		*rqstpp = nfs41_callback_up(serv);
+ 		*callback_svc = nfs41_callback_svc;
+ 	}
+ 	return minorversion;
+ }
+ 
+ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
+-		struct nfs_callback_data *cb_info)
++		struct svc_serv *serv)
+ {
+ 	if (minorversion)
+-		xprt->bc_serv = cb_info->serv;
++		/*
++		 * Save the svc_serv in the transport so that it can
++		 * be referenced when the session backchannel is initialized
++		 */
++		xprt->bc_serv = serv;
+ }
+ #else
+ static int nfs41_callback_up_net(struct svc_serv *serv, struct net *net)
+@@ -232,14 +230,14 @@ static int nfs41_callback_up_net(struct svc_serv *serv, struct net *net)
+ }
+ 
+ static inline int nfs_minorversion_callback_svc_setup(u32 minorversion,
+-		struct svc_serv *serv, struct rpc_xprt *xprt,
++		struct svc_serv *serv,
+ 		struct svc_rqst **rqstpp, int (**callback_svc)(void *vrqstp))
+ {
+ 	return 0;
+ }
+ 
+ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
+-		struct nfs_callback_data *cb_info)
++		struct svc_serv *serv)
+ {
+ }
+ #endif /* CONFIG_NFS_V4_1 */
+@@ -331,7 +329,7 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ 	}
+ 
+ 	if (cb_info->users++ || cb_info->task != NULL) {
+-		nfs_callback_bc_serv(minorversion, xprt, cb_info);
++		nfs_callback_bc_serv(minorversion, xprt, serv);
+ 		goto out;
+ 	}
+ 
+@@ -339,11 +337,13 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ 	if (ret < 0)
+ 		goto err_net;
+ 
++	nfs_callback_bc_serv(minorversion, xprt, serv);
++
+ 	minorversion_setup =  nfs_minorversion_callback_svc_setup(minorversion,
+-					serv, xprt, &rqstp, &callback_svc);
++					serv, &rqstp, &callback_svc);
+ 	if (!minorversion_setup) {
+ 		/* v4.0 callback setup */
+-		rqstp = nfs4_callback_up(serv, xprt);
++		rqstp = nfs4_callback_up(serv);
+ 		callback_svc = nfs4_callback_svc;
+ 	}
+ 
 
