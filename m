@@ -1,116 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:30260 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:42833 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754108Ab2EVHgn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 May 2012 03:36:43 -0400
-Subject: [PATCH v2 07/12] NFS: make nfs_callback_tcpport per network context
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Tue, 22 May 2012 11:36:38 +0400
-Message-ID: <20120522073638.20602.40125.stgit@localhost.localdomain>
-In-Reply-To: <20120522073320.20602.87130.stgit@localhost.localdomain>
-References: <20120522073320.20602.87130.stgit@localhost.localdomain>
-MIME-Version: 1.0
+	id S1758724Ab2EVOpH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 10:45:07 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v3] NFS: put net on idr allocation failure
+Date: Tue, 22 May 2012 14:45:06 +0000
+Message-ID: <1337697906.4269.10.camel@lade.trondhjem.org>
+References: <20120522073709.20602.33027.stgit@localhost.localdomain>
+	  <20120522080307.21303.60025.stgit@localhost.localdomain>
+	 <1337697459.4269.7.camel@lade.trondhjem.org>
+	 <4FBBA59F.2050001@parallels.com>
+In-Reply-To: <4FBBA59F.2050001@parallels.com>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfs/callback.c  |    7 ++++---
- fs/nfs/callback.h  |    1 -
- fs/nfs/netns.h     |    1 +
- fs/nfs/nfs4state.c |    5 ++++-
- 4 files changed, 9 insertions(+), 5 deletions(-)
-
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 11201dd..9380184 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -24,6 +24,7 @@
- #include "nfs4_fs.h"
- #include "callback.h"
- #include "internal.h"
-+#include "netns.h"
- 
- #define NFSDBG_FACILITY NFSDBG_CALLBACK
- 
-@@ -39,7 +40,6 @@ static DEFINE_MUTEX(nfs_callback_mutex);
- static struct svc_program nfs4_callback_program;
- 
- unsigned int nfs_callback_set_tcpport;
--unsigned short nfs_callback_tcpport;
- unsigned short nfs_callback_tcpport6;
- #define NFS_CALLBACK_MAXPORTNR (65535U)
- 
-@@ -67,14 +67,15 @@ module_param_named(callback_tcpport, nfs_callback_set_tcpport, portnr, 0644);
- static int nfs4_callback_up_net(struct svc_serv *serv, struct net *net)
- {
- 	int ret;
-+	struct nfs_net *nn = net_generic(net, nfs_net_id);
- 
- 	ret = svc_create_xprt(serv, "tcp", net, PF_INET,
- 				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
- 	if (ret <= 0)
- 		goto out_err;
--	nfs_callback_tcpport = ret;
-+	nn->nfs_callback_tcpport = ret;
- 	dprintk("NFS: Callback listener port = %u (af %u, net %p)\n",
--			nfs_callback_tcpport, PF_INET, net);
-+			nn->nfs_callback_tcpport, PF_INET, net);
- 
- 	ret = svc_create_xprt(serv, "tcp", net, PF_INET6,
- 				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index 6d900cf..8006959 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -208,7 +208,6 @@ extern int nfs4_set_callback_sessionid(struct nfs_client *clp);
- #define NFS41_BC_MAX_CALLBACKS 1
- 
- extern unsigned int nfs_callback_set_tcpport;
--extern unsigned short nfs_callback_tcpport;
- extern unsigned short nfs_callback_tcpport6;
- 
- #endif /* __LINUX_FS_NFS_CALLBACK_H */
-diff --git a/fs/nfs/netns.h b/fs/nfs/netns.h
-index aa14ec3..8e4e8f8 100644
---- a/fs/nfs/netns.h
-+++ b/fs/nfs/netns.h
-@@ -18,6 +18,7 @@ struct nfs_net {
- 	struct list_head nfs_volume_list;
- #ifdef CONFIG_NFS_V4
- 	struct idr cb_ident_idr; /* Protected by nfs_client_lock */
-+	unsigned short nfs_callback_tcpport;
- #endif
- 	spinlock_t nfs_client_lock;
- };
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 0f43414..5d68b3b 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -57,6 +57,8 @@
- #include "internal.h"
- #include "pnfs.h"
- 
-+#include "netns.h"
-+
- #define OPENOWNER_POOL_SIZE	8
- 
- const nfs4_stateid zero_stateid;
-@@ -71,10 +73,11 @@ int nfs4_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
- 	};
- 	unsigned short port;
- 	int status;
-+	struct nfs_net *nn = net_generic(clp->net, nfs_net_id);
- 
- 	if (test_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state))
- 		goto do_confirm;
--	port = nfs_callback_tcpport;
-+	port = nn->nfs_callback_tcpport;
- 	if (clp->cl_addr.ss_family == AF_INET6)
- 		port = nfs_callback_tcpport6;
- 
-
+T24gVHVlLCAyMDEyLTA1LTIyIGF0IDE4OjQxICswNDAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3
+cm90ZToNCj4gT24gMjIuMDUuMjAxMiAxODozNywgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4g
+PiBPbiBUdWUsIDIwMTItMDUtMjIgYXQgMTI6MDMgKzA0MDAsIFN0YW5pc2xhdiBLaW5zYnVyc2t5
+IHdyb3RlOg0KPiA+PiBTaWduZWQtb2ZmLWJ5OiBTdGFuaXNsYXYgS2luc2J1cnNreTxza2luc2J1
+cnNreUBwYXJhbGxlbHMuY29tPg0KPiA+PiAtLS0NCj4gPj4gICBmcy9uZnMvY2xpZW50LmMgfCAg
+ICA0ICsrKy0NCj4gPj4gICAxIGZpbGVzIGNoYW5nZWQsIDMgaW5zZXJ0aW9ucygrKSwgMSBkZWxl
+dGlvbnMoLSkNCj4gPj4NCj4gPj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9jbGllbnQuYyBiL2ZzL25m
+cy9jbGllbnQuYw0KPiA+PiBpbmRleCA0NGNkNzBmLi5hZTI5ZDRmIDEwMDY0NA0KPiA+PiAtLS0g
+YS9mcy9uZnMvY2xpZW50LmMNCj4gPj4gKysrIGIvZnMvbmZzL2NsaWVudC5jDQo+ID4+IEBAIC0x
+NzYsOCArMTc2LDEwIEBAIHN0YXRpYyBzdHJ1Y3QgbmZzX2NsaWVudCAqbmZzX2FsbG9jX2NsaWVu
+dChjb25zdCBzdHJ1Y3QgbmZzX2NsaWVudF9pbml0ZGF0YSAqY2xfDQo+ID4+DQo+ID4+ICAgI2lm
+ZGVmIENPTkZJR19ORlNfVjQNCj4gPj4gICAJZXJyID0gbmZzX2dldF9jYl9pZGVudF9pZHIoY2xw
+LCBjbF9pbml0LT5taW5vcnZlcnNpb24pOw0KPiA+PiAtCWlmIChlcnIpDQo+ID4+ICsJaWYgKGVy
+cikgew0KPiA+PiArCQlwdXRfbmV0KGNscC0+bmV0KTsNCj4gPj4gICAJCWdvdG8gZXJyb3JfY2xl
+YW51cDsNCj4gPj4gKwl9DQo+ID4+DQo+ID4+ICAgCXNwaW5fbG9ja19pbml0KCZjbHAtPmNsX2xv
+Y2spOw0KPiA+PiAgIAlJTklUX0RFTEFZRURfV09SSygmY2xwLT5jbF9yZW5ld2QsIG5mczRfcmVu
+ZXdfc3RhdGUpOw0KPiA+Pg0KPiA+DQo+ID4gTGV0J3MganVzdCBtb3ZlIHRoZSBhY3R1YWwgZ2V0
+X25ldCgpIGNhbGwgdG8gdGhlIGVuZCBvZiB0aGUgZnVuY3Rpb24uDQo+ID4NCj4gDQo+IE9rLiBC
+dXQgaXQgd2lsbCBsb29rIGEgYml0IHN0cmFuZ2UsIGxpa2UgdGhpczoNCj4gDQo+IGNscC0+bmV0
+ID0gbmV0Ow0KPiAuLi4NCj4gbmZzX2dldF9jYl9pZGVudF9pZHINCj4gLi4uDQo+IGdldF9uZXQo
+Y2xwLT5uZXQpDQo+IA0KPiBPciBJIGNhbiBwYXNzIG5ldCB0byBuZnNfZ2V0X2NiX2lkZW50X2lk
+cigpIGFzIGEgcGFyYW1ldGVyLg0KPiBXaGljaCBzb2x1dGlvbiBpcyBtb3JlIHByZWZlcmFibGUm
+Pw0KDQpKdXN0IHB1dCB0aGUgZ2V0X25ldCgpIGF0IHRoZSBlbmQuIEl0IGRvZXNuJ3QgbWF0dGVy
+IGlmIGl0IGxvb2tzIGEgYml0DQpvZGQ6IHRoZSBpbnRlbnQgaXMgc3RpbGwgb2J2aW91cy4NCg0K
+LS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRB
+cHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
