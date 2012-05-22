@@ -1,52 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:57425 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753102Ab2EISPP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 May 2012 14:15:15 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q49IFFQM015171
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 9 May 2012 14:15:15 -0400
-Message-ID: <4FAAB41D.70801@RedHat.com>
-Date: Wed, 09 May 2012 14:14:53 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from relay.parallels.com ([195.214.232.42]:41180 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754905Ab2EVSlW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 14:41:22 -0400
+Message-ID: <4FBBDDCF.4070803@parallels.com>
+Date: Tue, 22 May 2012 22:41:19 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsdcld: demote pipe opening error to D_GENERAL
-References: <1336508786-2531-1-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1336508786-2531-1-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Simo Sorce <simo@redhat.com>, "bfields@redhat.com" <bfields@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/4] SUNRPC: Add RPC based upcall mechanism for RPCGSS
+ auth
+References: <1337087550-9821-4-git-send-email-simo@redhat.com> <20120522124728.GB891@fieldses.org> <1337691607.16840.178.camel@willson.li.ssimo.org> <4FBB91EE.3010307@parallels.com> <1337692966.16840.181.camel@willson.li.ssimo.org> <4FBB9551.9010407@parallels.com> <20120522142035.GC891@fieldses.org> <4FBBA667.4090409@parallels.com> <20120522150748.GF891@fieldses.org> <4FBBAE81.9010708@parallels.com> <20120522181129.GB4697@fieldses.org>
+In-Reply-To: <20120522181129.GB4697@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+22.05.2012 22:11, J. Bruce Fields написал:
+> On Tue, May 22, 2012 at 07:19:29PM +0400, Stanislav Kinsbursky wrote:
+>> Just a reminder: abstract (is it the right name?) UNIX sockets (with
+>> '\0' as a first character in name) are containerized already.
+>> If UNIX socket is the only way. then maybe this "abstract" socket can be used?
+> Huh.  Reading the section on abstract addresses in unix(7)....  Maybe
+> that would work.  I don't quite understand the namespace.  If we fix a
+> name for gss-proxy to use, what's to prevent somebody else from binding
+> to the same name and preventing us from using it?
 
+Alien network namespace.
+Abstract sockets address consist of two parts: name istelf and network 
+namespace.
+Have a look at unix_bind () - you'll see, that sockets with the same 
+name but different network namespace are skipped.
 
-On 05/08/2012 04:26 PM, Jeff Layton wrote:
-> It's actually expected that this will fail initially when we start the
-> daemon. Until knfsd has been started, the pipe doesn't exist, and we
-> generally want to start nfsdcld before starting knfsd.
-> 
-> Avoid the scary error message by demoting this message to D_GENERAL.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Committed...
+>
+> --b.
 
-steved.
-> ---
->  utils/nfsdcld/nfsdcld.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
-> index f4e9502..e7af4e3 100644
-> --- a/utils/nfsdcld/nfsdcld.c
-> +++ b/utils/nfsdcld/nfsdcld.c
-> @@ -138,7 +138,7 @@ cld_pipe_open(struct cld_client *clnt)
->  	xlog(D_GENERAL, "%s: opening upcall pipe %s", __func__, pipepath);
->  	fd = open(pipepath, O_RDWR, 0);
->  	if (fd < 0) {
-> -		xlog(L_ERROR, "%s: open of %s failed: %m", __func__, pipepath);
-> +		xlog(D_GENERAL, "%s: open of %s failed: %m", __func__, pipepath);
->  		return -errno;
->  	}
->  
