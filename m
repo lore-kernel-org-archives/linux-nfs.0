@@ -1,75 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from filtteri5.pp.htv.fi ([213.243.153.188]:57667 "EHLO
-	filtteri5.pp.htv.fi" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752658Ab2ETUnB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 20 May 2012 16:43:01 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by filtteri5.pp.htv.fi (Postfix) with ESMTP id 1D5D75A63B5
-	for <linux-nfs@vger.kernel.org>; Sun, 20 May 2012 23:33:25 +0300 (EEST)
-Received: from smtp6.welho.com ([213.243.153.40])
-	by localhost (filtteri5.pp.htv.fi [213.243.153.188]) (amavisd-new, port 10024)
-	with ESMTP id B1tOnuxfc3yi for <linux-nfs@vger.kernel.org>;
-	Sun, 20 May 2012 23:33:24 +0300 (EEST)
-Received: from michael.steam.fi.bobcat.mine.nu (cs78200229.pp.htv.fi [62.78.200.229])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by smtp6.welho.com (Postfix) with ESMTPS id 5A4345BC003
-	for <linux-nfs@vger.kernel.org>; Sun, 20 May 2012 23:33:24 +0300 (EEST)
-From: =?UTF-8?q?Ville=20Skytt=C3=A4?= <ville.skytta@iki.fi>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] idmapd.conf.5: Syntax fixes.
-Date: Sun, 20 May 2012 23:33:23 +0300
-Message-Id: <1337546003-5218-1-git-send-email-ville.skytta@iki.fi>
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:41181 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757091Ab2EVCon (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 May 2012 22:44:43 -0400
+Received: by mail-gg0-f174.google.com with SMTP id u4so4992272ggl.19
+        for <linux-nfs@vger.kernel.org>; Mon, 21 May 2012 19:44:42 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 03/14] NFS: Use proper naming conventions for
+ nfs_client.impl_id field
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 21 May 2012 22:44:41 -0400
+Message-ID: <20120522024440.1787.60778.stgit@degas.1015granger.net>
+In-Reply-To: <20120522022702.1787.45940.stgit@degas.1015granger.net>
+References: <20120522022702.1787.45940.stgit@degas.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Clean up:  When naming fields and data types, follow established
+conventions to facilitate accurate grep/cscope searches.
 
-Signed-off-by: Ville Skyttä <ville.skytta@iki.fi>
+Additionally, for consistency, move the impl_id field into the NFSv4-
+specific part of the nfs_client, and free that memory in the logic
+that shuts down NFSv4 nfs_clients.
+
+Introduced by commit 7d2ed9ac "NFSv4: parse and display server
+implementation ids," Fri Feb 17, 2012.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- idmapd.conf.5 |   15 +++++++--------
- 1 file changed, 7 insertions(+), 8 deletions(-)
 
-diff --git a/idmapd.conf.5 b/idmapd.conf.5
-index 9c7f1ae..7b9e762 100644
---- a/idmapd.conf.5
-+++ b/idmapd.conf.5
-@@ -234,7 +234,6 @@ Number of seconds before timing out an LDAP request
- .\" -------------------------------------------------------------------
- .\"
- .SH EXAMPLES
--."
- An example
- .I /etc/idmapd.conf
- file:
-@@ -266,7 +265,7 @@ johndoe@OTHER.DOMAIN.ORG = johnny
- LDAP_server = ldap.domain.org
- LDAP_base = dc=org,dc=domain
+ fs/nfs/client.c           |    2 +-
+ fs/nfs/nfs4proc.c         |   12 ++++++------
+ fs/nfs/super.c            |    4 ++--
+ include/linux/nfs_fs_sb.h |    2 +-
+ 4 files changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 471fc9b..39db1be 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -238,6 +238,7 @@ static void nfs4_shutdown_client(struct nfs_client *clp)
  
--.fo
-+.fi
- .\"
- .\" -------------------------------------------------------------------
- .\" Additional sections
-@@ -275,11 +274,11 @@ LDAP_base = dc=org,dc=domain
- .SH SEE ALSO
- .BR idmapd (8)
- .BR svcgssd (8)
--.".SH COMPATIBILITY
--.".SH STANDARDS
--.".SH ACKNOWLEDGEMENTS
--.".SH AUTHORS
--.".SH HISTORY
-+.\".SH COMPATIBILITY
-+.\".SH STANDARDS
-+.\".SH ACKNOWLEDGEMENTS
-+.\".SH AUTHORS
-+.\".SH HISTORY
- .SH BUGS
- Report bugs to <nfsv4@linux-nfs.org>
--.".SH CAVEATS
-+.\".SH CAVEATS
--- 
-1.7.10.1
+ 	rpc_destroy_wait_queue(&clp->cl_rpcwaitq);
+ 	kfree(clp->cl_serverscope);
++	kfree(clp->cl_implid);
+ }
+ 
+ /* idr_remove_all is not needed as all id's are removed by nfs_put_client */
+@@ -306,7 +307,6 @@ static void nfs_free_client(struct nfs_client *clp)
+ 
+ 	put_net(clp->net);
+ 	kfree(clp->cl_hostname);
+-	kfree(clp->impl_id);
+ 	kfree(clp);
+ 
+ 	dprintk("<-- nfs_free_client()\n");
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 2c1e57e..e182134 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5119,8 +5119,8 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ 
+ 	if (!status) {
+ 		/* use the most recent implementation id */
+-		kfree(clp->impl_id);
+-		clp->impl_id = res.impl_id;
++		kfree(clp->cl_implid);
++		clp->cl_implid = res.impl_id;
+ 	} else
+ 		kfree(res.impl_id);
+ 
+@@ -5144,12 +5144,12 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ out_server_scope:
+ 	kfree(res.server_scope);
+ out:
+-	if (clp->impl_id)
++	if (clp->cl_implid)
+ 		dprintk("%s: Server Implementation ID: "
+ 			"domain: %s, name: %s, date: %llu,%u\n",
+-			__func__, clp->impl_id->domain, clp->impl_id->name,
+-			clp->impl_id->date.seconds,
+-			clp->impl_id->date.nseconds);
++			__func__, clp->cl_implid->domain, clp->cl_implid->name,
++			clp->cl_implid->date.seconds,
++			clp->cl_implid->date.nseconds);
+ 	dprintk("<-- %s status= %d\n", __func__, status);
+ 	return status;
+ }
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index a973eb1..ff656c0 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -796,8 +796,8 @@ static void show_pnfs(struct seq_file *m, struct nfs_server *server)
+ 
+ static void show_implementation_id(struct seq_file *m, struct nfs_server *nfss)
+ {
+-	if (nfss->nfs_client && nfss->nfs_client->impl_id) {
+-		struct nfs41_impl_id *impl_id = nfss->nfs_client->impl_id;
++	if (nfss->nfs_client && nfss->nfs_client->cl_implid) {
++		struct nfs41_impl_id *impl_id = nfss->nfs_client->cl_implid;
+ 		seq_printf(m, "\n\timpl_id:\tname='%s',domain='%s',"
+ 			   "date='%llu,%u'",
+ 			   impl_id->name, impl_id->domain,
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 900d733..773e021 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -81,13 +81,13 @@ struct nfs_client {
+ 	u32			cl_exchange_flags;
+ 	struct nfs4_session	*cl_session;	/* shared session */
+ 	struct nfs41_server_scope *cl_serverscope;
++	struct nfs41_impl_id	*cl_implid;
+ #endif /* CONFIG_NFS_V4 */
+ 
+ #ifdef CONFIG_NFS_FSCACHE
+ 	struct fscache_cookie	*fscache;	/* client index cache cookie */
+ #endif
+ 
+-	struct nfs41_impl_id	*impl_id;	/* from exchange_id */
+ 	struct net		*net;
+ };
+ 
 
