@@ -1,76 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:63459 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:46845 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756864Ab2EAXFI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 May 2012 19:05:08 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: NeilBrown <neilb@suse.de>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: Adapt readdirplus to application usage patterns
-Date: Tue, 1 May 2012 23:04:51 +0000
-Message-ID: <1335913496.4060.49.camel@lade.trondhjem.org>
-References: <1335909983-26413-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <20120502083926.1583f5f7@notabene.brown>
-In-Reply-To: <20120502083926.1583f5f7@notabene.brown>
-Content-Type: text/plain; charset="utf-8"
+	id S1754751Ab2EVHhW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 03:37:22 -0400
+Subject: [PATCH v2 12/12] NFS: get module in idmap PipeFS notifier callback
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Tue, 22 May 2012 11:37:17 +0400
+Message-ID: <20120522073717.20602.33269.stgit@localhost.localdomain>
+In-Reply-To: <20120522073320.20602.87130.stgit@localhost.localdomain>
+References: <20120522073320.20602.87130.stgit@localhost.localdomain>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTA1LTAyIGF0IDA4OjM5ICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IE9u
-IFR1ZSwgIDEgTWF5IDIwMTIgMTg6MDY6MjMgLTA0MDAgVHJvbmQgTXlrbGVidXN0DQo+IDxUcm9u
-ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+IA0KPiA+IFdoaWxlIHRoZSB1c2Ugb2Yg
-UkVBRERJUlBMVVMgaXMgc2lnbmlmaWNhbnRseSBtb3JlIGVmZmljaWVudCB0aGFuDQo+ID4gUkVB
-RERJUiBmb2xsb3dlZCBieSBtYW55IExPT0tVUCBjYWxscywgaXQgaXMgc3RpbGwgbGVzcyBlZmZp
-Y2llbnQNCj4gPiB0aGFuIGp1c3QgUkVBRERJUiBpZiB0aGUgYXR0cmlidXRlcyBhcmUgbm90IHJl
-cXVpcmVkLg0KPiA+IA0KPiA+IFRoaXMgcGF0Y2ggdHJhY2tzIHdoZW4gbG9va3VwcyBhcmUgYXR0
-ZW1wdGVkIG9uIHRoZSBkaXJlY3RvcnksDQo+ID4gYW5kIHVzZXMgdGhhdCBpbmZvcm1hdGlvbiB0
-byBzZWxlY3RpdmVseSBkaXNhYmxlIFJFQURESVJQTFVTDQo+ID4gb24gdGhhdCBkaXJlY3Rvcnku
-DQo+ID4gVGhlIGZpcnN0ICdyZWFkZGlyJyBjYWxsIGlzIGFsd2F5cyBzZXJ2ZWQgdXNpbmcgUkVB
-RERJUlBMVVMuDQo+ID4gU3Vic2VxdWVudCBjYWxscyBvbmx5IHVzZSBSRUFERElSUExVUyBpZiB0
-aGVyZSB3YXMgYSBzdWNjZXNzZnVsDQo+ID4gbG9va3VwIG9yIHJldmFsaWRhdGlvbiBvbiBhIGNo
-aWxkIGluIHRoZSBtZWFuIHRpbWUuDQo+ID4gDQo+ID4gQ3JlZGl0IGZvciB0aGUgb3JpZ2luYWwg
-aWRlYSBzaG91bGQgZ28gdG8gTmVpbCBCcm93bi4gU2VlOg0KPiA+ICAgICAgIGh0dHA6Ly93d3cu
-c3Bpbmljcy5uZXQvbGlzdHMvbGludXgtbmZzL21zZzE5OTk2Lmh0bWwNCj4gPiBIb3dldmVyLCB0
-aGUgaW1wbGVtZW50YXRpb24gaW4gdGhpcyBwYXRjaCBkaWZmZXJzIGZyb20gTmVpbCdzDQo+ID4g
-aW4gdGhhdCBpdCBmb2N1c2VzIG9uIHRyYWNraW5nIGxvb2t1cHMgcmF0aGVyIHRoYW4gY2FsbHMg
-dG8NCj4gPiBzdGF0KCkuDQo+ID4gDQo+ID4gU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0
-IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4gPiBDYzogTmVpbCBCcm93biA8bmVpbGJA
-c3VzZS5kZT4NCj4gDQo+IFRoYW5rcyEgIExvb2tzIGdvb2QuDQo+IFRyYWNraW5nIGxvb2t1cHMg
-cmF0aGVyIHRoYW4gZ2V0YXR0ciBkb2VzIG1ha2Ugc2Vuc2UgLSBtb3JlIGdlbmVyYWwuDQoNClJp
-Z2h0LiBJdCBpcyBtb3JlIGluIGxpbmUgd2l0aCB0aGUgb3JpZ2luYWwgaW50ZW50aW9uIG9mIFJF
-QURESVJQTFVTLA0Kd2hpY2ggaXMgdG8gc2VydmUgYXMgYSBHQU5HX0xPT0tVUCByYXRoZXIgdGhh
-biBhICdscyAtbCcgc3Vic3RpdHV0ZS4uLg0KDQo+ID4gQEAgLTg3NCw3ICs4OTcsOSBAQCBzdGF0
-aWMgaW50IG5mc19yZWFkZGlyKHN0cnVjdCBmaWxlICpmaWxwLCB2b2lkICpkaXJlbnQsIGZpbGxk
-aXJfdCBmaWxsZGlyKQ0KPiA+ICAJZGVzYy0+ZmlsZSA9IGZpbHA7DQo+ID4gIAlkZXNjLT5kaXJf
-Y29va2llID0gJmRpcl9jdHgtPmRpcl9jb29raWU7DQo+ID4gIAlkZXNjLT5kZWNvZGUgPSBORlNf
-UFJPVE8oaW5vZGUpLT5kZWNvZGVfZGlyZW50Ow0KPiA+IC0JZGVzYy0+cGx1cyA9IE5GU19VU0Vf
-UkVBRERJUlBMVVMoaW5vZGUpOw0KPiA+ICsJZGVzYy0+cGx1cyA9IDA7DQo+ID4gKwlpZiAobmZz
-X3VzZV9yZWFkZGlycGx1cyhpbm9kZSwgZmlscCkpDQo+ID4gKwkJZGVzYy0+cGx1cyA9IDE7DQo+
-ID4gIA0KPiANCj4gVGhpcyBsb29rcyBhIGJpdCBvZGQgdG8gbWUuDQo+IA0KPiAgICAgICAgIGRl
-c2MtPnBsdXMgPSBuZnNfdXNlX3JlYWRkaXJwbHVzKGlub2RlLCBmaWxwKToNCj4gPz8NCj4gT3Ig
-aWYgeW91IHRoaW5rIHRoZXJlIGlzIGEgdHlwZSBjb25mbGljdDoNCj4gICAgICAgICBkZXNjLT5w
-bHVzID0gbmZzX3VzZV9yZWFkZGlycGx1cyhpbm9kZSwgZmlsZSkgPyAxIDogMDsNCg0KZGVzYy0+
-cGx1cyBpcyBhIGJpdCBmaWVsZCwgc28gdGhlIGNvbXBpbGVyIHdpbGwgYmUgdHJhbnNmb3JtaW5n
-IHRoZQ0KYWJvdmUgYW55d2F5LiBJIHRoZXJlZm9yZSBmaWd1cmUgd2UganVzdCB3YW50IHdoYXRl
-dmVyIGlzIGVhc2llc3Qgb24gdGhlDQpleWUuDQoNCj4gQnV0IG1heWJlIHlvdSBwcmVmZXIgdGhl
-IG9yaWdpbmFsIC0geW91ciBjaG9pY2Ugb2YgY291cnNlLg0KPiANCj4gQWxzbywgdGhlIGN1cnJl
-bnQgY29kZSB3aWxsIGNsZWFyIE5GU19JTk9fQURWSVNFX1JEUExVUyBpZiBpdCBnZXRzIC1FVE9P
-U01BTEwsDQo+IGFuZCBpdCB3aWxsIHN0YXkgY2xlYXJlZCB1bnRpbCB0aGUgaW5vZGUgZmFsbHMg
-b3V0IG9mIGNhY2hlIGFuZCBpcyByZWxvYWRlZC4NCj4gVGhlIG5ldyBjb2RlIHdpbGwgc2V0IGl0
-IGFnYWluIGEgbG90IHNvb25lci4gIElzIHRoYXQgbGlrZWx5IHRvIGJlIGEgcHJvYmxlbQ0KPiAo
-SSBkb24ndCByZW1lbWJlciB3aGF0IGNvbmRpdGlvbnMgbGVhZCB0byBFVE9PU01BTEwpPw0KPiBJ
-biBmYWN0IEkgdGhpbmsgaXQgd2lsbCBpZ25vcmUgIHRoZSBFVE9PU01BTEwgYW5kIGFsd2F5cyBy
-ZXRyeSB3aXRoDQo+IHJlYWRkaXJwbHVzIGZvciB0aGUgZmlyc3QgcmVhZCBpbiBhIGRpcmVjdG9y
-eS4gIFRoYXQgZG9lc24ndCBzZWVtIGdvb2QgPw0KDQpFVE9PU01BTEwgbWVhbnMgdGhhdCB0aGVy
-ZSBpc24ndCBlbm91Z2ggYnVmZmVyIHNwYWNlIHRvIGZpbGwgYSBmdWxsDQpyZWNvcmQuIEdpdmVu
-IHRoYXQgd2Ugbm93IHByb3ZpZGUgPiAzMmsgYnVmZmVyIHNwYWNlLCB0aGF0IHNlZW1zIGxpa2Ug
-aXQNCndvdWxkIGJlIGV4dHJlbWVseSBkaWZmaWN1bHQgdG8gcHJvZHVjZS4gRXZlbiBhIExpbnV4
-IHNlcnZlciwgd2l0aCBpdHMNCjRrIHRvdGFsIGxpbWl0IHNob3VsZCBiZSBhYmxlIHRvIHByb3Zp
-ZGUgYXQgbGVhc3QgMSByZWFkZGlycGx1cyByZWNvcmQuDQoNCklmIHdlIGRvIGZpbmQgYSBkaXJl
-Y3RvcnkgdGhhdCBrZWVwcyB0cmlnZ2VyaW5nIHRoZSBFVE9PU01BTEwsIHRoZW4gSQ0Kc3VwcG9z
-ZSB3ZSBjYW4gYWRkIGEgTkZTX0lOT19GT1JCSURfUkRQTFVTIGZsYWcgdG8gdHVybiByZWFkZGly
-cGx1cyBvZmYNCnBlcm1hbmVudGx5IGZvciB0aGF0IGRpcmVjdG9yeS4gSG93ZXZlciB1bnRpbCBJ
-IGZpbmQgdGhhdCBwYXJ0aWN1bGFyDQpiZWFzdCwgdGhlbiBJJ2QgYmUgaW5jbGluZWQgdG8gd2Fp
-dC4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0K
-DQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+This is bug fix.
+Notifier callback is called from SUNRPC module. So before dereferencing NFS
+module we have to make sure, that it's alive.
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfs/idmap.c |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index c9c3e1b..f55b80a 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -557,12 +557,16 @@ static int rpc_pipefs_event(struct notifier_block *nb, unsigned long event,
+ 	struct nfs_client *clp;
+ 	int error = 0;
+ 
++	if (!try_module_get(THIS_MODULE))
++		return 0;
++
+ 	while ((clp = nfs_get_client_for_event(sb->s_fs_info, event))) {
+ 		error = __rpc_pipefs_event(clp, event, sb);
+ 		nfs_put_client(clp);
+ 		if (error)
+ 			break;
+ 	}
++	module_put(THIS_MODULE);
+ 	return error;
+ }
+ 
+
