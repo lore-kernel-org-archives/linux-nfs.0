@@ -1,97 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:56676 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754118Ab2EPPS5 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 May 2012 11:18:57 -0400
-Received: by pbbrp8 with SMTP id rp8so1231551pbb.19
-        for <linux-nfs@vger.kernel.org>; Wed, 16 May 2012 08:18:57 -0700 (PDT)
+Received: from relay.parallels.com ([195.214.232.42]:57688 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751422Ab2EVPTh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 11:19:37 -0400
+Message-ID: <4FBBAE81.9010708@parallels.com>
+Date: Tue, 22 May 2012 19:19:29 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-In-Reply-To: <4FB39A64.1040909@panasas.com>
-References: <20120515090332.182970@gmx.net>
-	<4FB22658.9010909@panasas.com>
-	<20120515121931.192500@gmx.net>
-	<CABpMAy+bV7-UZU0gGOFWk+ZfHLGi+D=ntNLjRHFYZzTtwXG_RA@mail.gmail.com>
-	<4FB25D2F.1070403@panasas.com>
-	<CABpMAyJ9F5c52ntMCL1+gwDCcbMYMEkxVEHW7bfpjm6H5boSCg@mail.gmail.com>
-	<4FB270E9.5000904@panasas.com>
-	<CABpMAy+OWcp7VAOGK4nYWfcY4iZ9a1WQHPUbh5pxotYL9yy+KA@mail.gmail.com>
-	<4FB39A64.1040909@panasas.com>
-Date: Wed, 16 May 2012 18:18:56 +0300
-Message-ID: <CABpMAyLqjQUr14piB_6U6nQeU1ao-cauqzz3m2GVyFVUkCS49w@mail.gmail.com>
-Subject: Re: Questions about Exofs
-From: Idan Kedar <idank@tonian.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Johannes Schild <JSchild@gmx.de>, osd-dev@open-osd.org,
-        linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Simo Sorce <simo@redhat.com>, "bfields@redhat.com" <bfields@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/4] SUNRPC: Add RPC based upcall mechanism for RPCGSS
+ auth
+References: <1337087550-9821-1-git-send-email-simo@redhat.com> <1337087550-9821-4-git-send-email-simo@redhat.com> <20120522124728.GB891@fieldses.org> <1337691607.16840.178.camel@willson.li.ssimo.org> <4FBB91EE.3010307@parallels.com> <1337692966.16840.181.camel@willson.li.ssimo.org> <4FBB9551.9010407@parallels.com> <20120522142035.GC891@fieldses.org> <4FBBA667.4090409@parallels.com> <20120522150748.GF891@fieldses.org>
+In-Reply-To: <20120522150748.GF891@fieldses.org>
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 16, 2012 at 3:15 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> On 05/15/2012 07:21 PM, Idan Kedar wrote:
+On 22.05.2012 19:07, J. Bruce Fields wrote:
+> On Tue, May 22, 2012 at 06:44:55PM +0400, Stanislav Kinsbursky wrote:
+>> Yep, we discussed it already.
+>> The problem is that connect call to unix sockets is done from rpciod
+>> workqueue because of selinux restrictions.
+>> IOW UNIX socket path will be traversed staring from rpciod kernel
+>> thread root. Currently this problem is existent for portmapper
+>> registration calls - for example LockD, started in container with
+>> nested root, will be registered in global rpcbind instead of local
+>> (container's) one.
 >
->>>> By the way, several weeks I have tried setting up a RAID 5 environment
->>>> >> with 8 OSDs, 1 mirror and RAID nesting. I then tried cloning and
->>>> >> compiling the kernel tree over this pNFS-OSD-RAID. The result was that
->>>> >> otgtd died, and I don't know why. It didn't dump core anywhere I could
->>>> >> find and the only "log" it has - stdout - didn't give any useful info.
->>>> >> I was going to inquire about this in a couple of weeks when I need to
->>>> >> get this environment working, but since this issue came up, maybe we
->>>> >> can somehow resolve it sooner.
->>> >
->>> >
->>> > 8 OSDs with a mirror ? what was the mkfs.exofs command line you used?
->> Something along the lines of
->> # LD_LIBRARY_PATH=lib ./usr/mkfs.exofs --pid=0x10000 --format
->> --mirrors=1 --group_width=2 --group_depth=2 --dev=/dev/osd0
->> --osdname=$(uuid) --dev=/dev/osd1 --osdname=$(uuid) --dev=/dev/osd2
->> --osdname=$(uuid) ...
+> Thanks for the reminder!
+>
+>> One of solutions was to export set_fs_root(), but Al Viro doesn't like it.
 >>
->> I don't remember exactly at the moment, but I will bump this thread
->> when I'll start using RAID again.
->>> >
+>> So currently I'm thinking about patching network layer - i.e.
+>> implementing an ability to pass desired path to unix sockets connect
+>> and bind calls.
+>> IOW, I'm talking about introducing of "bindat" and "connectat" system calls...
 >
+> So then we'd resolve the path in the right context and pass down a
+> (vfsmount, dentry) that rpciod could use in bindat/connectat calls?
 >
-> BTW I don't see a --raid=5 above but a raid5 of --group_width=2 is just
-> a mirror. The minimum for --raid=5 is 3. (I'm not sure if
-> the system checks and optimizes for this)
->
-> So the above should probably be:
->
-> # LD_LIBRARY_PATH=lib ./usr/mkfs.exofs --pid=0x10000    \
->  --mirrors=2 --group_width=2 --group_depth=1000        \
->  --dev=/dev/osd0 --format --osdname=$(uuid)            \
->  --dev=/dev/osd1 --format --osdname=$(uuid)            \
->  --dev=/dev/osd2 --format --osdname=$(uuid)            \
->  ...
->
-> group_depth is how many times to repeat this group until
-> advancing to the next group.
->
-> The group_count is:
->        group_count = int( (total_devices / mirrors+1) / group_width )
->
-> an interesting raid5 configuration with 8 devices mirrors and groups
-> can be:
->
-> # LD_LIBRARY_PATH=lib ./usr/mkfs.exofs --pid=0x10000    \
->  --mirrors=1 --raid=5 --group_width=3 --group_depth=1000       \
->  --dev=/dev/osd0 --format --osdname=$(uuid)            \
->  --dev=/dev/osd1 --format --osdname=$(uuid)            \
->  --dev=/dev/osd2 --format --osdname=$(uuid)            \
->
-> Which means each file will have only a single group  - 3-out-of-4.
-> but the next file will use another set of 3 devices out of the 4.
->
-> And I think you need a --stripe_pages= right?
->
-> Cheers
-> Boaz
-As I said, I don't remember the exact line, so you are probably right.
-I will be testing the object RAID functionality, so the more
-"interesting" - the better. I'll use the last one you suggested, and I
-would appreciate any input about which topologies give the RAID code a
-hard time.
 
-thanks,
-idank
+A kind of this, yes. Of course, if community will accept the idea.
+Actually, bindat/connectat will be user space interfaces (they will be useful 
+for out CRIU project and also will allow to remove UNIX socket path length 
+limitation to 108 bytes).
+On kernel level I'm going to add some way to pass "struct path" to connect/bind 
+calls.
+
+>>> In particular: the current svcgssd communication method is using one of
+>>> the sunrpc caches.  If we convert now to this method (which uses a unix
+>>> socket) would there be a loss in functionality, until the unix sockets
+>>> problems are fixed?
+>>>
+>>
+>> I'm afraid, that you are right...
+>> This new client will connect to root daemon - not containerized one...
+>> How soon this new unix-socket way will become common practice?
+>> Maybe I'd be able to patch unix sockets before distro's will use this new version.
+>> But I don't know, what would be best to do...
+>
+> Ugh.
+>
+> Simo, remind me of the reasons for using a unix socket?
+>
+
+Just a reminder: abstract (is it the right name?) UNIX sockets (with '\0' as a 
+first character in name) are containerized already.
+If UNIX socket is the only way. then maybe this "abstract" socket can be used?
+
+> --b.
+
+
+-- 
+Best regards,
+Stanislav Kinsbursky
