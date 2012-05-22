@@ -1,52 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42717 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:20319 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S966435Ab2EOTSM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 May 2012 15:18:12 -0400
-Date: Tue, 15 May 2012 15:18:10 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Marco Stornelli <marco.stornelli@gmail.com>
-Cc: Josef Bacik <josef@redhat.com>, Andreas Dilger <adilger@dilger.ca>,
-        "Ted Ts'o" <tytso@mit.edu>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: Re: [PATCH] ext4: turn on i_version updates by default
-Message-ID: <20120515191810.GA11028@fieldses.org>
-References: <9124E59E-2479-4C32-A528-3237B48DEC01@dilger.ca>
- <20120514152334.GB29902@fieldses.org>
- <14B38D68-FAE4-444A-BCD9-7EBF7E1BBFE1@dilger.ca>
- <20120514175822.GC1439@thunk.org>
- <20120514183316.GA1894@localhost.localdomain>
- <20120514185400.GA32026@fieldses.org>
- <20120514190500.GC1894@localhost.localdomain>
- <60F0B94D-FDB9-4401-B0EA-1A1C6DE4086F@dilger.ca>
- <20120515132857.GA1907@localhost.localdomain>
- <4FB2996F.40708@gmail.com>
+	id S1753360Ab2EVMku (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 08:40:50 -0400
+Subject: [PATCH] NFS: init client before declaration
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Tue, 22 May 2012 16:40:49 +0400
+Message-ID: <20120522124018.338.20817.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FB2996F.40708@gmail.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 15, 2012 at 07:59:11PM +0200, Marco Stornelli wrote:
-> Only a really really stupid question (I don't know NFS protocol well
-> enough). In 3.3 kernel, I see that only ext4 uses MS_I_VERSION, so I
-> wonder: if i_version change it's needed for exportable fs and so for
-> nfs, other exportable fs?
+Client have to be initialized prior to adding it to per-net clients list,
+because otherwise there are races, shown below:
 
-Yes, it's needed for others as well.  I believe btrfs and xfs are both
-adding it.
+CPU#0					CPU#1
+_____					_____
 
-We're currently using ctime for the nfs change attribute.  That's
-effectively jiffy granularity.  So to see the problem at a minimum you'd
-need two writes to be processed within one jiffy, and a stat to come
-between them.  But that's a correctness problem, and we'd like to see it
-fixed before it becomes more common.
+nfs_get_client
+nfs_alloc_client
+list_add(..., nfs_client_list)
+					rpc_fill_super
+					rpc_pipefs_event
+					nfs_get_client_for_event
+					__rpc_pipefs_event
+					(clp->cl_rpcclient is uninitialized)
+					BUG()
+init_client
+clp->cl_rpcclient = ...
 
-More generally, it's useful to be able to ask whether a file changed
-without rereading all its data, and a clock that registers every change
-and is consistent across a filesystem sounds difficult to scale.  We may
-eventually find we need something like this outside nfs.
 
---b.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfs/client.c |   22 ++++++++++++----------
+ 1 files changed, 12 insertions(+), 10 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index ae29d4f..9bf4702 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -525,7 +525,7 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
+ 		cl_init->hostname ?: "", cl_init->rpc_ops->version);
+ 
+ 	/* see if the client already exists */
+-	do {
++	while (1) {
+ 		spin_lock(&nn->nfs_client_lock);
+ 
+ 		clp = nfs_match_client(cl_init);
+@@ -537,10 +537,18 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
+ 		spin_unlock(&nn->nfs_client_lock);
+ 
+ 		new = nfs_alloc_client(cl_init);
+-	} while (!IS_ERR(new));
++		if (IS_ERR(new)) {
++			dprintk("--> nfs_get_client() = %ld [failed]\n", PTR_ERR(new));
++			return new;
++		}
+ 
+-	dprintk("--> nfs_get_client() = %ld [failed]\n", PTR_ERR(new));
+-	return new;
++		error = cl_init->rpc_ops->init_client(new, timeparms, ip_addr,
++						      authflavour, noresvport);
++		if (error < 0) {
++			nfs_put_client(new);
++			return ERR_PTR(error);
++		}
++	}
+ 
+ 	/* install a new client and return with it unready */
+ install_client:
+@@ -548,12 +556,6 @@ install_client:
+ 	list_add(&clp->cl_share_link, &nn->nfs_client_list);
+ 	spin_unlock(&nn->nfs_client_lock);
+ 
+-	error = cl_init->rpc_ops->init_client(clp, timeparms, ip_addr,
+-					      authflavour, noresvport);
+-	if (error < 0) {
+-		nfs_put_client(clp);
+-		return ERR_PTR(error);
+-	}
+ 	dprintk("--> nfs_get_client() = %p [new]\n", clp);
+ 	return clp;
+ 
+
