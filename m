@@ -1,87 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:42485 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755334Ab2EHOrA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 May 2012 10:47:00 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Dave Quigley <dpquigl@davequigley.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Another try at LNFS?
-Date: Tue, 8 May 2012 14:46:29 +0000
-Message-ID: <1336488394.5307.2.camel@lade.trondhjem.org>
-References: <775e0a2cd5e2e4c8f52401214dbd9413@countercultured.net>
-	 <1333646141.4573.1.camel@lade.trondhjem.org>
-	 <85614613274dbfef5253665a84a36374@countercultured.net>
-	 <7193f15f28e7483021244c72ee285516@countercultured.net>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA915A300@SACEXCMBX04-PRD.hq.netapp.com>
-	 <4FA8AE22.3000305@davequigley.com>
-In-Reply-To: <4FA8AE22.3000305@davequigley.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from acsinet15.oracle.com ([141.146.126.227]:22737 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752889Ab2EVOCK convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 10:02:10 -0400
+Subject: Re: TEST / FREE STATEID error recovery
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=US-ASCII
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4FBB9AC0.2040102@netapp.com>
+Date: Tue, 22 May 2012 10:02:04 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <379CE82E-0B25-4DCD-A834-A4EF413CA582@oracle.com>
+References: <88F4DB05-5625-4E40-B057-04FCDE21E9C2@oracle.com> <4FBB9AC0.2040102@netapp.com>
+To: Bryan Schumaker <bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA1LTA4IGF0IDAxOjI0IC0wNDAwLCBEYXZlIFF1aWdsZXkgd3JvdGU6DQo+
-IE9uIDQvNS8yMDEyIDEwOjIwIFBNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+PiAtLS0t
-LU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiA+PiBGcm9tOiBEYXZpZCBRdWlnbGV5IFttYWlsdG86
-ZHBxdWlnbEBkYXZlcXVpZ2xleS5jb21dDQo+ID4+IFNlbnQ6IFRodXJzZGF5LCBBcHJpbCAwNSwg
-MjAxMiAyOjM4IFBNDQo+ID4+IFRvOiBNeWtsZWJ1c3QsIFRyb25kDQo+ID4+IENjOiBsaW51eC1u
-ZnNAdmdlci5rZXJuZWwub3JnDQo+ID4+IFN1YmplY3Q6IFJlOiBBbm90aGVyIHRyeSBhdCBMTkZT
-Pw0KPiA+Pg0KPiA+PiBPbiAwNC8wNS8yMDEyIDE3OjI2LCBEYXZpZCBRdWlnbGV5IHdyb3RlOg0K
-PiA+Pj4gT24gMDQvMDUvMjAxMiAxMzoxNSwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4gPj4+
-PiBPbiBUaHUsIDIwMTItMDQtMDUgYXQgMTM6MDIgLTA0MDAsIERhdmlkIFF1aWdsZXkgd3JvdGU6
-DQo+ID4+Pj4+IE5vdyB0aGF0IHdlJ3JlIHBhc3QgdGhlIDMuNCBtZXJnZSB3aW5kb3cgc2hvdWxk
-IEkgcG9zdCB0aGUgTE5GUw0KPiA+Pj4+PiBtb2RpZmljYXRpb25zIGZvciByZXZpZXcgZm9yIHdo
-ZW4gMy41IHJvbGxzIGFyb3VuZD8NCj4gPj4+Pg0KPiA+Pj4+IFRoZSBzb29uZXIgdGhlIGJldHRl
-ci4gSXQgbG9va3MgYXMgaWYgdGhlcmUgd2lsbCBiZSBxdWl0ZSBhIGJpdCBvZg0KPiA+Pj4+IHN0
-dWZmIGdvaW5nIGludG8gMy41LCBzbyBpdCB3b3VsZCBiZSBuaWNlIHRvIG1heGltaXNlIG91ciB0
-ZXN0aW5nDQo+ID4+Pj4gd2luZG93Lg0KPiA+Pj4+DQo+ID4+Pj4gVGhhbmtzIQ0KPiA+Pj4+ICAg
-IFRyb25kDQo+ID4+Pg0KPiA+Pj4gSSBoYXZlIGEgbW9zdGx5IHdvcmtpbmcgY29weSBmb3IgMy4y
-IHdoaWNoIEkgY2FuIGZvcndhcmQgcG9ydCBidXQgSSdtDQo+ID4+PiBoYXZpbmcgYW4gaXNzdWUg
-d2l0aCBpdC4gVGhlIHJldmFsaWRhdGUgY29kZSBjaGFuZ2VkIGF0IHNvbWUgcG9pbnQgYW5kDQo+
-ID4+PiBqdXN0IHRvIGdldCB0aGluZ3Mgd29ya2luZyBJIGRyb3BwZWQgYSBwaWVjZSBvZiBjb2Rl
-IGZyb20gdGhlIHBhdGNoDQo+ID4+PiBzZXQgdGhhdCBJIGNvdWxkbid0IGZpZ3VyZSBvdXQgaG93
-IHRvIHRyYW5zaXRpb24gdG8gdGhlIG5ldyByZXZhbGlkYXRlDQo+ID4+PiBjb2RlLiBVbmZvcnR1
-bmF0ZWx5IHRoaXMgaXMgdGhlIGluaXRpYWwgZ2V0IG9mIHRoZSBzZWN1cml0eSBsYWJlbCBzbw0K
-PiA+Pj4gdGhlIHNlY3VyaXR5IGxhYmVsIGlzIGludmFsaWQgdW50aWwgdGhlIGZpcnN0IGNhY2hl
-IGludmFsaWRhdGlvbi4gQW55DQo+ID4+PiBzdWdnZXN0aW9ucyBvbiB3aGVyZSB0byBwbGFjZSB0
-aGlzIGNvZGU/IEkgY2FuIGdpdmUgeW91IHRoZSBvcmlnaW5hbA0KPiA+Pj4gY29kZSBzbmlwcGV0
-IHdoZW4gSSBnZXQgaG9tZSB0aGF0IEkgZHJvcHBlZC4NCj4gPj4+DQo+ID4+PiBEYXZlDQo+ID4+
-PiAtLQ0KPiA+Pj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUg
-InVuc3Vic2NyaWJlIGxpbnV4LW5mcyINCj4gPj4+IGluDQo+ID4+PiB0aGUgYm9keSBvZiBhIG1l
-c3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZyBNb3JlIG1ham9yZG9tbw0KPiA+PiBp
-bmZvDQo+ID4+PiBhdCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1s
-DQo+ID4+DQo+ID4+IExvb2tpbmcgYXQgbXkgcGF0Y2hlcyBpdCBsb29rcyBsaWtlIG5mc19sb29r
-dXBfcmV2YWxpZGF0ZSB3YXMgY2hhbmdlZCBhbmQgYXQNCj4gPj4gdGhlIHRpbWUgSSBjb3VsZG4n
-dCBmaWd1cmUgb3V0IHdoYXQgaXQgd2FzIGNoYW5nZWQgdG8uDQo+ID4NCj4gPiBIaSBEYXZlLA0K
-PiA+ICAgIFRoZXJlIHNob3VsZG4ndCBiZSBtdWNoIGluIHRoZSB3YXkgb2YgY2hhbmdlcyBpbiBu
-ZnNfbG9va3VwX3JldmFsaWRhdGUoKTogSSB3YXMganVzdCB0cnlpbmcgdG8gY2xlYW4gaXQgdXAg
-aW4gcHJlcGFyYXRpb24gZm9yIHRoZSBhdG9taWMgb3BlbiBwYXRjaGVzIHRoYXQgTWlrbG9zIGlz
-IGN1cnJlbnRseSB3b3JraW5nIG9uLg0KPiA+IEF0IHRoaXMgcG9pbnQsIGl0IGxvb2tzIGFzIGlm
-IG1vc3Qgb2YgdGhhdCBmdW5jdGlvbmFsaXR5IHdpbGwgaW4gYW55IGNhc2UgYmUgbW92ZWQgaW50
-byB0aGUgc3RydWN0IGZpbGVfb3BlcmF0aW9ucy0+b3BlbiBjYWxsYmFjaywgc28gdGhhdCB3ZSBj
-YW4ga2VlcCAtPmRfcmV2YWxpZGF0ZSgpIGFzIGEgcHVyZSBsb29rdXAgZnVuY3Rpb24uDQo+ID4N
-Cj4gPiBDaGVlcnMNCj4gPiAgICBUcm9uZA0KPiANCj4gDQo+IE9rIEkgbG9va2VkIGF0IHRoZSBj
-b2RlIGFnYWluIGZpbmFsbHkgYW5kIEkgdGhpbmsgSSBmaWd1cmVkIG91dCB0aGUgDQo+IHByb2Js
-ZW0uIG5mc19wcmltZV9kY2FjaGUgaXMgbmV3IGFuZCB0aGVyZSBhcmUgYSBjb3VwbGUgb2YgY2Fs
-bHMgaW4gDQo+IHRoZXJlIHRoYXQgc2hvdWxkIGJlIHRha2luZyBhIGxhYmVsIHRoYXQgSSBqdXN0
-IHBhc3NlZCBudWxsIHRvLiBXZSBkb24ndCANCj4gc3RvcmUgdGhlIG5mczRfbGFiZWwgaW4gdGhl
-IGlub2RlIHNvIEknbSBub3Qgc3VyZSBob3cgdG8gZ2V0IHRoZSBsYWJlbCANCj4gYmFjayBmb3Ig
-dGhlIG5mc19yZWZyZXNoX2lub2RlIGNhbGwgYW5kIHRoZW4gd2UgaGF2ZSBhIGNhbGwgdG8gbmZz
-X2ZoZ2V0IA0KPiB3aGljaCB3b3VsZCBub3JtYWxseSBnZXQgdXMgbGFiZWwgZGF0YS4gSSB0aGlu
-ayB0aGUgbmF0dXJlIG9mIHRoaXMgDQo+IGZ1bmN0aW9uIGlzIHdoYXQgSSBkb24ndCBxdWl0ZSB1
-bmRlcnN0YW5kLiBXaGVuIGlzIGl0IGNhbGxlZD8gV2hhdCBJIA0KPiB0aGluayBpcyBoYXBwZW5p
-bmcgaXMgdGhhdCBJIHNob3VsZCBiZSBwdWxsaW5nIHRoZSBsYWJlbCBkYXRhIGludG8gdGhlIA0K
-PiBpbm9kZSBpbiB0aGlzIGZ1bmN0aW9uIGJ1dCBJJ20gbm90IGJlY2F1c2UgSSdtIHBhc3Npbmcg
-bnVsbHMgaGVyZS4gaWYgSSANCj4gZmlndXJlIG91dCBob3cgdG8gZ2V0IHJlYWwgbGFiZWwgZGF0
-YSBpbnRvIHRoZSBpbm9kZSBhdCB0aGlzIHBvaW50IEkgDQo+IHNob3VsZCBiZSBhYmxlIHRvIGZp
-eCB0aGUgYnVnIHdoZXJlIHdlIGFyZW4ndCBnZXR0aW5nIGxhYmVscyB1bnRpbCB0aGUgDQo+IGZp
-cnN0IGNhY2hlIGludmFsaWRhdGlvbi4NCj4gDQo+IERhdmUNCg0KbmZzX3ByaW1lX2RjYWNoZSBp
-cyBjYWxsZWQgYWZ0ZXIgYSBSRUFERElSUExVUyBvcGVyYXRpb24uIEluIHRoZSBjYXNlIG9mDQpO
-RlN2NCwgdGhhdCBtZWFucyB0aGF0IHdlIHJlcXVlc3QgYSBmaWxlaGFuZGxlIGFuZCBmdWxsIGZp
-bGUgYXR0cmlidXRlcw0KaW4gb3VyIFJFQURESVIgb3BlcmF0aW9uLiBXZSB0aGVuIHVzZSB0aGUg
-cmVzdWx0cyB0byBjcmVhdGUgZGVudHJpZXMNCnRoYXQgd2UgdGhlbiBwb3B1bGF0ZSB0aGUgZGNh
-Y2hlIHdpdGg6DQpJT1c6IGFzIGZhciBhcyB0aGUgVkZTIGlzIGNvbmNlcm5lZCwgaXQgbG9va3Mg
-YXMgaWYgd2UndmUgZG9uZSBhIGJ1bmNoDQpvZiBsb29rdXBzIG9mIHRoZXNlIGZpbGVzLg0KDQot
-LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFw
-cA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+
+On May 22, 2012, at 9:55 AM, Bryan Schumaker wrote:
+
+> On 05/21/2012 11:31 PM, Chuck Lever wrote:
+> 
+>> Hi-
+>> 
+>> I'm trying to understand the error recovery logic in the new TEST_STATEID and FREE_STATEID procedures.
+>> 
+>> For TEST_STATEID, we have this:
+>> 
+>> 6395 static int nfs41_test_stateid(struct nfs_server *server, nfs4_stateid *stateid)
+>> 6396 {
+>> 6397         struct nfs4_exception exception = { };
+>> 6398         int err;
+>> 6399         do {
+>> 6400                 err = nfs4_handle_exception(server,
+>> 6401                                 _nfs41_test_stateid(server, stateid),
+>> 6402                                 &exception);
+>> 6403         } while (exception.retry);
+>> 6404         return err;
+>> 6405 }
+>> 
+>> According to RFC 5661, the TEST_STATEID and FREE_STATEID procedures can return NFS4ERR_BAD_STATEID, NFS4ERR_OLD_STATEID, and NFS4ERR_DEADSESSION, among other things.  Do you really want to enter the exception handler here?  Seems to me that nfs41_{test,free}_stateid() are invoked mainly (only?) by the state manager, and thus you don't want to kick the state manager here and wait, as that would deadlock.  About the only error code you might want to pass into nfs4_handle_exception() is NFS4ERR_DELAY.  Everything else probably ought to be returned outright to the caller to let her figure out how to recover.
+>> 
+> 
+> Sounds about right.  At least passing NFS4ERR_BAD_STATEID will trigger stateid recovery again on the same stateid... probably not what we want.
+> 
+>> Also, _nfs41_test_stateid() does this:
+>> 
+>> 6390         if (status == NFS_OK)
+>> 6391                 return res.status;
+>> 6392         return status;
+>> 
+>> status will contain NFS4_OK or a negative NFS4ERR value.  But the "if / return" will return res.status, which could be NFS4_OK, but it could also be (according to RFC 5661 section 18.48.3) NFS4ERR_BAD_STATEID, NFS4ERR_OLD_STATEID, NFS4ERR_EXPIRED, NFS4ERR_ADMIN_REVOKED, or NFS4ERR_DELEG_REVOKED.  Note that these are positive values, and the above logic returns them directly to the caller.
+>> 
+> 
+> So that should be "return -res.status" then?  Easy enough to change.
+> 
+>> The caller then passes the positive result to nfs4_handle_exception().  Now I think nfs4_handle_exception() will ignore positive values.  And, I don't see any caller who is not doing "if (status != NFS4_OK)" so maybe this doesn't matter.  But it sure is confusing.
+>> 
+> 
+> This might be why it doesn't deadlock now.
+> 
+>> Do you remember what was intended?  Was it positive NFS4ERR values for res.status and negative NFS4ERR values if the operation failed?  If that's the case, then that intention should be carefully documented.  Otherwise, maybe that should read "return -res.status;" (as long as we aren't passing that to the exception handler!).
+>> 
+> 
+> 
+> My intention was to handle errors coming from the test / free stateid calls.  I didn't realize the RPC call returned a positive value instead of a negative one, so it's only an accident that we don't deadlock now if the server returns NFS4ERR_BAD_STATEID.  This should be fixed though, thanks for catching it!
+
+I've got most of a patch, and a nice test case.  I can wrap this up for you if you like.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
