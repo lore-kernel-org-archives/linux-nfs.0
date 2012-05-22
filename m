@@ -1,60 +1,134 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:49548 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757852Ab2EILzc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 May 2012 07:55:32 -0400
-Message-ID: <4FAA5B24.1020306@itwm.fraunhofer.de>
-Date: Wed, 09 May 2012 13:55:16 +0200
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:49255 "EHLO
+	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757082Ab2EVCpf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 May 2012 22:45:35 -0400
+Received: by obbtb18 with SMTP id tb18so8963785obb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 21 May 2012 19:45:34 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 09/14] NFS: Force server to drop NFSv4 state
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 21 May 2012 22:45:33 -0400
+Message-ID: <20120522024533.1787.27771.stgit@degas.1015granger.net>
+In-Reply-To: <20120522022702.1787.45940.stgit@degas.1015granger.net>
+References: <20120522022702.1787.45940.stgit@degas.1015granger.net>
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>
-CC: David Howells <dhowells@redhat.com>, Dave Chinner <david@fromorbit.com>,
-        adilger@dilger.ca, bfields@fieldses.org, smfrench@gmail.com,
-        ben@decadent.org.uk, Trond.Myklebust@netapp.com, roland@hack.frob.com,
-        jra@samba.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
-        linux-api@vger.kernel.org, libc-alpha@sourceware.org
-Subject: Re: Extended file stat: Splitting file- and fs-specific info?
-References: <20120509002420.GL5091@dastard> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <16281.1336508382@redhat.com> <20170.1336555274@redhat.com> <20120509111958.GA11345@infradead.org>
-In-Reply-To: <20120509111958.GA11345@infradead.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/09/2012 01:19 PM, Christoph Hellwig wrote:
-> On Wed, May 09, 2012 at 10:21:14AM +0100, David Howells wrote:
->> Dave Chinner<david@fromorbit.com>  wrote:
->>
->>> I don't think we want to expose the inode generation numbers. It is
->>> trivial to construct NFS file handles (usually just fsid, inode
->>> number and generation) with that information and hence bypass
->>> security checks to access files.
->>
->> I was asked for it by Bernd Schubert for userspace NFS servers and FUSE -
->> maybe he can say what he wants it for.
->
-> It's entirely broken, as a generation number might be part of the file
-> handle (and for Linux-like filesystems normally is), but it's entirely
-> up to the filesystem to decide how it works.  That's why we added system
-> calls to do operations on opaque file handles that the file system
-> controls.  Exposing a completely meaningless "generation" is a bad idea.
->
+nfs4_reset_all_state() refreshes the boot verifier a server sees to
+trigger that server to wipe this client's state.  This function is
+invoked when an NFSv4.1 server reports that it has revoked some or
+all of a client's NFSv4 state.
 
-The basic idea of generation numbers is to check if an inode was 
-recycled, so only if the tuple of inode-number and generation-number 
-matches we still have the same file. Kernel nfs uses that and unfs3 uses 
-it via EXT2_IOC_GETVERSION, which has the overhead of an additional 
-syscall. Unionfs-fuse usually keeps file open, however, it might run out 
-of the maximum allowed files and I plan to add a mode to close and 
-re-open files as failback mode. For that the definite knowledge if a 
-file/inode is still the very same and the inode was not just recycled is 
-crucial.
+To facilitate server trunking discovery, we will eventually want to
+move the cl_boot_time field to a more global structure.  The Uniform
+Client String model (and specifically, server trunking detection)
+requires that all servers see the same boot verifier until the client
+actually does reboot, and not a fresh verifier every time the client
+unmounts and remounts the server.
 
-All of that being said, I think with open_by_handle_at() syscall we 
-don't need the inode generation number any more.
+Without the cl_boot_time field, however, nfs4_reset_all_state() will
+have to find some other way to force the server to purge the client's
+NFSv4 state.
 
+Because these verifiers are opaque (ie, the server doesn't know or
+care that they happen to be timestamps), we can force the server
+to wipe NFSv4 state by updating the boot verifier as we do now, then
+immediately afterwards establish a fresh client ID using the old boot
+verifier again.
 
+Hopefully there are no extra paranoid server implementations that keep
+track of the client's boot verifiers and prevent clients from reusing
+a previous one.
 
-Cheers,
-Bernd
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ fs/nfs/nfs4_fs.h   |    1 +
+ fs/nfs/nfs4proc.c  |   11 +++++++++--
+ fs/nfs/nfs4state.c |   13 +++++++++++--
+ 3 files changed, 21 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 1526fdf..e6da021 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -24,6 +24,7 @@ enum nfs4_client_state {
+ 	NFS4CLNT_RECALL_SLOT,
+ 	NFS4CLNT_LEASE_CONFIRM,
+ 	NFS4CLNT_SERVER_SCOPE_MISMATCH,
++	NFS4CLNT_PURGE_STATE,
+ };
+ 
+ enum nfs4_session_state {
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ab6b2e5..81ccdbb 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3908,8 +3908,15 @@ static void nfs4_construct_boot_verifier(struct nfs_client *clp,
+ {
+ 	__be32 verf[2];
+ 
+-	verf[0] = (__be32)clp->cl_boot_time.tv_sec;
+-	verf[1] = (__be32)clp->cl_boot_time.tv_nsec;
++	if (test_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state)) {
++		/* An impossible timestamp guarantees this value
++		 * will never match a generated boot time. */
++		verf[0] = 0;
++		verf[1] = (__be32)(NSEC_PER_SEC + 1);
++	} else {
++		verf[0] = (__be32)clp->cl_boot_time.tv_sec;
++		verf[1] = (__be32)clp->cl_boot_time.tv_nsec;
++	}
+ 	memcpy(bootverf->data, verf, sizeof(bootverf->data));
+ }
+ 
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index f8c06de..32cce4a 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1615,7 +1615,7 @@ void nfs41_handle_recall_slot(struct nfs_client *clp)
+ static void nfs4_reset_all_state(struct nfs_client *clp)
+ {
+ 	if (test_and_set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state) == 0) {
+-		clp->cl_boot_time = CURRENT_TIME;
++		set_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state);
+ 		nfs4_state_start_reclaim_nograce(clp);
+ 		nfs4_schedule_state_manager(clp);
+ 	}
+@@ -1631,7 +1631,6 @@ static void nfs41_handle_server_reboot(struct nfs_client *clp)
+ 
+ static void nfs41_handle_state_revoked(struct nfs_client *clp)
+ {
+-	/* Temporary */
+ 	nfs4_reset_all_state(clp);
+ }
+ 
+@@ -1652,6 +1651,10 @@ void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags)
+ {
+ 	if (!flags)
+ 		return;
++
++	dprintk("%s: \"%s\" (client ID %llx) flags=0x%08x\n",
++		__func__, clp->cl_hostname, clp->cl_clientid, flags);
++
+ 	if (flags & SEQ4_STATUS_RESTART_RECLAIM_NEEDED)
+ 		nfs41_handle_server_reboot(clp);
+ 	if (flags & (SEQ4_STATUS_EXPIRED_ALL_STATE_REVOKED |
+@@ -1762,6 +1765,12 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 
+ 	/* Ensure exclusive access to NFSv4 state */
+ 	do {
++		if (test_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state)) {
++			nfs4_reclaim_lease(clp);
++			clear_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state);
++			set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
++		}
++
+ 		if (test_and_clear_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state)) {
+ 			/* We're going to have to re-establish a clientid */
+ 			status = nfs4_reclaim_lease(clp);
+
