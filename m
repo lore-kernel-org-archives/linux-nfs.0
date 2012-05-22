@@ -1,55 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailout-de.gmx.net ([213.165.64.23]:53387 "HELO
-	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S932120Ab2EOJDf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 05:03:35 -0400
-Content-Type: text/plain; charset="utf-8"
-Date: Tue, 15 May 2012 11:03:32 +0200
-From: "Johannes Schild" <JSchild@gmx.de>
-Message-ID: <20120515090332.182970@gmx.net>
+Received: from relay.parallels.com ([195.214.232.42]:38945 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758768Ab2EVOlm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 10:41:42 -0400
+Message-ID: <4FBBA59F.2050001@parallels.com>
+Date: Tue, 22 May 2012 18:41:35 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Subject: Questions about Exofs
-To: linux-nfs@vger.kernel.org
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v3] NFS: put net on idr allocation failure
+References: <20120522073709.20602.33027.stgit@localhost.localdomain>  <20120522080307.21303.60025.stgit@localhost.localdomain> <1337697459.4269.7.camel@lade.trondhjem.org>
+In-Reply-To: <1337697459.4269.7.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On 22.05.2012 18:37, Myklebust, Trond wrote:
+> On Tue, 2012-05-22 at 12:03 +0400, Stanislav Kinsbursky wrote:
+>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
+>> ---
+>>   fs/nfs/client.c |    4 +++-
+>>   1 files changed, 3 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+>> index 44cd70f..ae29d4f 100644
+>> --- a/fs/nfs/client.c
+>> +++ b/fs/nfs/client.c
+>> @@ -176,8 +176,10 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+>>
+>>   #ifdef CONFIG_NFS_V4
+>>   	err = nfs_get_cb_ident_idr(clp, cl_init->minorversion);
+>> -	if (err)
+>> +	if (err) {
+>> +		put_net(clp->net);
+>>   		goto error_cleanup;
+>> +	}
+>>
+>>   	spin_lock_init(&clp->cl_lock);
+>>   	INIT_DELAYED_WORK(&clp->cl_renewd, nfs4_renew_state);
+>>
+>
+> Let's just move the actual get_net() call to the end of the function.
+>
 
-i try to set up the object-based layout with pnfs.
-I am using the OSC-OSD as target. It works well and i can login.
-Trying the scripts "do-*" from git://git.open-osd.org/open-osd.git the do-osd script works for me. The do-exofs doesnt, here i have some question:
+Ok. But it will look a bit strange, like this:
 
-1. Is the UUID in the do-exofs script optional?
+clp->net = net;
+...
+nfs_get_cb_ident_idr
+...
+get_net(clp->net)
 
-2. If no how can i get it for my device?
-
-3. It is mandatory to use raid-driver (raid456) in the script? Why?
-
-
-The error is: 
-mount -t exofs -o osdname=d2683732-c906-4ee1-9dbd-c10c27bb40df,pid=0x10000,_netdev /dev/osd0 /mnt/osd0/
-mount: wrong fs type, bad option, bad superblock on /dev/osd0,
-       missing codepage or helper program, or other error
-       In some cases useful info is found in syslog - try
-       dmesg | tail  or so
-
-dmesg says:
-exofs: Unable to mount exofs on (null) pid=0x0 err=-22
-
-
-Thanks for answering my questions.
-
-
-Regards
-
-Johannes
-
-
-
-
-
-
+Or I can pass net to nfs_get_cb_ident_idr() as a parameter.
+Which solution is more preferable&?
 
 -- 
-NEU: FreePhone 3-fach-Flat mit kostenlosem Smartphone!                                  
-Jetzt informieren: http://mobile.1und1.de/?ac=OM.PW.PW003K20328T7073a
+Best regards,
+Stanislav Kinsbursky
