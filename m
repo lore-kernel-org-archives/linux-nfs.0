@@ -1,81 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:53296 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932143Ab2EOOnr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 May 2012 10:43:47 -0400
-Date: Tue, 15 May 2012 16:43:34 +0200
-From: Jan Kara <jack@suse.cz>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: Re: [PATCH] ext4: turn on i_version updates by default
-Message-ID: <20120515144334.GA26579@quack.suse.cz>
-References: <20120514140618.GA29902@fieldses.org>
- <9124E59E-2479-4C32-A528-3237B48DEC01@dilger.ca>
- <1337036918.2522.32.camel@lade.trondhjem.org>
- <A0359961-B147-4343-BFA3-E82F38C6700B@dilger.ca>
- <20120514235432.GA3199@fieldses.org>
- <20120515103021.GD22359@quack.suse.cz>
- <20120515123550.GA7053@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120515123550.GA7053@fieldses.org>
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:53920 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757122Ab2EVOMk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 10:12:40 -0400
+Received: by mail-gg0-f174.google.com with SMTP id u4so5398453ggl.19
+        for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 07:12:40 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: inux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
+        michael.brantley@deshaw.com, pstaubach@exagrid.com
+Subject: [PATCH v2 08/15] vfs: fix mknodat to retry on ESTALE errors
+Date: Tue, 22 May 2012 10:12:12 -0400
+Message-Id: <1337695939-2741-9-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
+References: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue 15-05-12 08:35:50, J. Bruce Fields wrote:
-> On Tue, May 15, 2012 at 12:30:21PM +0200, Jan Kara wrote:
-> > On Mon 14-05-12 19:54:32, J. Bruce Fields wrote:
-> > > On Mon, May 14, 2012 at 05:33:04PM -0600, Andreas Dilger wrote:
-> > > > I said as much in another reply - that once i_version is used on
-> > > > a filesystem, it should be made "sticky" (i.e. permanently enabled
-> > > > for that filesystem).  However, until that time it shouldn't be
-> > > > enabled just because it might one day be used.
-> > > > 
-> > > > Even better than just blindly bumping the i_version on every change,
-> > > > it would be better to have users of i_version (i.e. knfsd) flag the
-> > > > inode with "needs i_version update" then read the version.  When the
-> > > > filesystem/VFS bumps i_version the next time it can clear this flag
-> > > > and not update i_version again until after the next time i_version
-> > > > is actually used.
-> > > 
-> > > I really don't want to do anything more complicated than necessary.
-> > > 
-> > > What would be the worst-case test for the extra inode dirtying, so we
-> > > can see what the numbers actually are?
-> >   Something like:
-> > 
-> >   int fd, i;
-> >   struct timeval tv[2];
-> > 
-> >   fd = open("file", O_CREAT | O_RDWR, 0644);
-> >   if (fd < 0)
-> >     return 1;
-> >   for (i = 0; i < 1000000; i++) {
-> >     gettimeofday(tv);
-> >     tv[1] = tv[0];
-> >     if (futimes(fd, tv) < 0)
-> >       return 1;
-> >   }
-> >   return 0;
-> > 
-> >   And see how long does it take with and without i_version?
-> 
-> The complaint I hear from Andreas is that we'll cause file_update_time()
-> to call mark_inode_dirty() more often.
-> 
-> I don't believe futimes() calls file_update_time().
-  Yeah, right. I didn't check and I was wrong...
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c |   68 +++++++++++++++++++++++++++++++++++------------------------
+ 1 files changed, 40 insertions(+), 28 deletions(-)
 
-> So maybe replace that futimes() by a one-byte write?
-  Yes, "pwrite(fd, "data", 1, 0);" should be then a proper test instead of
-futimes().
-
-								Honza
+diff --git a/fs/namei.c b/fs/namei.c
+index 7025001..c3fbd44 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2589,44 +2589,56 @@ SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, umode_t, mode,
+ 	struct dentry *dentry;
+ 	struct path path;
+ 	int error;
++	char *name;
++	unsigned int try = 0;
+ 
+ 	if (S_ISDIR(mode))
+ 		return -EPERM;
+ 
+-	dentry = user_path_create(dfd, filename, &path, 0);
+-	if (IS_ERR(dentry))
+-		return PTR_ERR(dentry);
++	name = getname(filename);
++	if (IS_ERR(name))
++		return PTR_ERR(name);
+ 
+-	if (!IS_POSIXACL(path.dentry->d_inode))
+-		mode &= ~current_umask();
+-	error = may_mknod(mode);
+-	if (error)
+-		goto out_dput;
+-	error = mnt_want_write(path.mnt);
+-	if (error)
+-		goto out_dput;
+-	error = security_path_mknod(&path, dentry, mode, dev);
+-	if (error)
+-		goto out_drop_write;
+-	switch (mode & S_IFMT) {
+-		case 0: case S_IFREG:
+-			error = vfs_create(path.dentry->d_inode,dentry,mode,NULL);
++	do {
++		dentry = kern_path_create(dfd, name, &path, false, try);
++		if (IS_ERR(dentry))
++			return PTR_ERR(dentry);
++
++		if (!IS_POSIXACL(path.dentry->d_inode))
++			mode &= ~current_umask();
++		error = may_mknod(mode);
++		if (error)
++			goto out_dput;
++		error = mnt_want_write(path.mnt);
++		if (error)
++			goto out_dput;
++		error = security_path_mknod(&path, dentry, mode, dev);
++		if (error)
++			goto out_drop_write;
++		switch (mode & S_IFMT) {
++		case 0:
++		case S_IFREG:
++			error = vfs_create(path.dentry->d_inode, dentry,
++					mode, NULL);
+ 			break;
+-		case S_IFCHR: case S_IFBLK:
+-			error = vfs_mknod(path.dentry->d_inode,dentry,mode,
++		case S_IFCHR:
++		case S_IFBLK:
++			error = vfs_mknod(path.dentry->d_inode, dentry, mode,
+ 					new_decode_dev(dev));
+ 			break;
+-		case S_IFIFO: case S_IFSOCK:
+-			error = vfs_mknod(path.dentry->d_inode,dentry,mode,0);
+-			break;
+-	}
++		case S_IFIFO:
++		case S_IFSOCK:
++			error = vfs_mknod(path.dentry->d_inode, dentry,
++					mode, 0);
++		}
+ out_drop_write:
+-	mnt_drop_write(path.mnt);
++		mnt_drop_write(path.mnt);
+ out_dput:
+-	dput(dentry);
+-	mutex_unlock(&path.dentry->d_inode->i_mutex);
+-	path_put(&path);
+-
++		dput(dentry);
++		mutex_unlock(&path.dentry->d_inode->i_mutex);
++		path_put(&path);
++	} while (retry_estale(error, try++));
++	putname(name);
+ 	return error;
+ }
+ 
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.7.6
+
