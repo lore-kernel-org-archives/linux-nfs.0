@@ -1,80 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56189 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756355Ab2EIVSL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 May 2012 17:18:11 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/2] vfs: stop d_splice_alias creating directory aliases
-Date: Wed,  9 May 2012 17:18:05 -0400
-Message-Id: <1336598286-28636-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1336598286-28636-1-git-send-email-bfields@redhat.com>
-References: <1336598286-28636-1-git-send-email-bfields@redhat.com>
+Received: from mail-qc0-f174.google.com ([209.85.216.174]:39465 "EHLO
+	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753302Ab2EVKlR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 06:41:17 -0400
+Received: by qcro28 with SMTP id o28so3839291qcr.19
+        for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 03:41:17 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com
+Subject: [PATCH v4] statd: drop all capabilities from the bounding set as well
+Date: Tue, 22 May 2012 06:41:10 -0400
+Message-Id: <1337683270-14260-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+statd drops all capabilities except for CAP_NET_BIND when it starts. It's
+possible though that if it ever had a compromise that an attacker would be
+able to invoke a setuid process (or something with file capabilities) in
+order to reinstate some caps.
 
-A directory should never have more than one dentry pointing to it.
+This could happen as a result of the daemon becoming compromised, or
+possibly as a result of the ha-callout program becoming compromised.
 
-But d_splice_alias() will add one if it finds a directory with an
-already-existing non-DISCONNECTED dentry.
+In order to prevent that, have statd also prune the capability bounding
+set to nothing prior to dropping capabilities. That ensures that the
+process won't be able to reacquire capabilities via any means --
+including exec'ing a setuid program.
 
-I can't find an obvious reproducer, but I also can't see what prevents
-d_splice_alias() from encountering such a case.
+We do however need to be cognizant of the fact that PR_CAPBSET_DROP was
+only added in 2.6.25, so check to make sure that #define exists via
+autoconf before we rely on it. In order to do that, we must add
+ax_check_define.m4 from the GNU autoconf macro archive.
 
-It therefore seems safest to allow d_splice_alias to use any dentry it
-finds.
+Furthermore, do a runtime check to see if /proc/sys/kernel/cap-bound
+exists before attempting to clear the bounding set. If it does, then
+don't bother trying since it won't work. In that event though, do
+throw a warning however since the presence of that file indicates that
+there is a disconnect between the build and runtime environments.
 
-(Prior to the removal of dentry_unhash() from vfs_rmdir(), around v3.0,
-this could cause an nfsd deadlock like this:
-
-	- Somebody attempts to remove a non-empty directory.
-	- The dentry_unhash() in vfs_rmdir() unhashes the dentry
-	  pointing to the non-empty directory.
-	- ->rmdir() then fails with -ENOTEMPTY
-	- Before the vfs_rmdir() caller reaches dput(), an nfsd process
-	  in rename looks up the directory by filehandle; at the end of
-	  that lookup, this dentry is found by d_alloc_anon(), and a
-	  reference is taken on it, preventing dput() from removing it.
-	- A regular lookup of the directory calls d_splice_alias(),
-	  finds only an unhashed (not a DISCONNECTED) dentry, and
-	  insteads adds a new one, so the directory now has two
-	  dentries.
-	- The nfsd process in rename, which was previously looking up
-	  the source directory of the rename, now looks up the target
-	  directory (which is the same), and gets the dentry newly
-	  created by the previous lookup.
-	- The rename, seeing two different dentries, assumes this is a
-	  cross-directory rename and attempts to take the i_mutex on the
-	  directory twice.
-
-That reproducer no longer exists, but I don't think there was anything
-fundamentally incorrect about the vfs_rmdir() behavior there, so I think
-the real fault was here in d_splice_alias().)
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/dcache.c |    3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ support/nsm/file.c |   57 ++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 55 insertions(+), 2 deletions(-)
 
-diff --git a/fs/dcache.c b/fs/dcache.c
-index b60ddc4..2434c1e 100644
---- a/fs/dcache.c
-+++ b/fs/dcache.c
-@@ -1606,9 +1606,8 @@ struct dentry *d_splice_alias(struct inode *inode, struct dentry *dentry)
+diff --git a/support/nsm/file.c b/support/nsm/file.c
+index 5dd52c1..5476446 100644
+--- a/support/nsm/file.c
++++ b/support/nsm/file.c
+@@ -338,10 +338,10 @@ nsm_is_default_parentdir(void)
+  *
+  * Returns true if successful, or false if some error occurred.
+  */
++#ifdef HAVE_SYS_CAPABILITY_H
+ static _Bool
+ nsm_clear_capabilities(void)
+ {
+-#ifdef HAVE_SYS_CAPABILITY_H
+ 	cap_t caps;
  
- 	if (inode && S_ISDIR(inode->i_mode)) {
- 		spin_lock(&inode->i_lock);
--		new = __d_find_alias(inode, 1);
-+		new = __d_find_any_alias(inode);
- 		if (new) {
--			BUG_ON(!(new->d_flags & DCACHE_DISCONNECTED));
- 			spin_unlock(&inode->i_lock);
- 			security_d_instantiate(new, inode);
- 			d_move(new, dentry);
+ 	caps = cap_from_text("cap_net_bind_service=ep");
+@@ -357,10 +357,60 @@ nsm_clear_capabilities(void)
+ 	}
+ 
+ 	(void)cap_free(caps);
+-#endif
+ 	return true;
+ }
+ 
++#define CAP_BOUND_PROCFILE "/proc/sys/kernel/cap-bound"
++static _Bool
++prune_bounding_set(void)
++{
++#ifdef PR_CAPBSET_DROP
++	int ret;
++	unsigned long i;
++	struct stat st;
++
++	/*
++	 * Prior to kernel 2.6.25, the capabilities bounding set was a global
++	 * value. Check to see if /proc/sys/kernel/cap-bound exists and don't
++	 * bother to clear the bounding set if it does.
++	 */
++	ret = stat(CAP_BOUND_PROCFILE, &st);
++	if (!ret) {
++		xlog(L_WARNING, "%s exists. Not attempting to clear "
++				"capabilities bounding set.",
++				CAP_BOUND_PROCFILE);
++		return true;
++	} else if (errno != ENOENT) {
++		/* Warn, but attempt to clear the bounding set anyway. */
++		xlog(L_WARNING, "Unable to stat %s: %m", CAP_BOUND_PROCFILE);
++	}
++
++	/* prune the bounding set to nothing */
++	for (i = 0; i <= CAP_LAST_CAP; ++i) {
++		ret = prctl(PR_CAPBSET_DROP, i, 0, 0, 0);
++		if (ret) {
++			xlog(L_ERROR, "Unable to prune capability %lu from "
++				      "bounding set: %m", i);
++			return false;
++		}
++	}
++#endif /* PR_CAPBSET_DROP */
++	return true;
++}
++#else /* !HAVE_SYS_CAPABILITY_H */
++static _Bool
++nsm_clear_capabilities(void)
++{
++	return true;
++}
++
++static _Bool
++prune_bounding_set(void)
++{
++	return true;
++}
++#endif /* HAVE_SYS_CAPABILITY_H */
++
+ /**
+  * nsm_drop_privileges - drop root privileges
+  * @pidfd: file descriptor of a pid file
+@@ -393,6 +443,9 @@ nsm_drop_privileges(const int pidfd)
+ 		return false;
+ 	}
+ 
++	if (!prune_bounding_set())
++		return false;
++
+ 	if (st.st_uid == 0) {
+ 		xlog_warn("Running as root.  "
+ 			"chown %s to choose different user", nsm_base_dirname);
 -- 
-1.7.9.5
+1.7.7.6
 
