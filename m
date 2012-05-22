@@ -1,66 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:16990 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932402Ab2ENXdG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 May 2012 19:33:06 -0400
-Subject: Re: [PATCH] ext4: turn on i_version updates by default
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-From: Andreas Dilger <adilger@dilger.ca>
-In-Reply-To: <1337036918.2522.32.camel@lade.trondhjem.org>
-Date: Mon, 14 May 2012 17:33:04 -0600
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, "Theodore Ts'o" <tytso@mit.edu>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Message-Id: <A0359961-B147-4343-BFA3-E82F38C6700B@dilger.ca>
-References: <20120514140618.GA29902@fieldses.org> <9124E59E-2479-4C32-A528-3237B48DEC01@dilger.ca> <1337036918.2522.32.camel@lade.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:39403 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757431Ab2EVOMb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 10:12:31 -0400
+Received: by mail-yx0-f174.google.com with SMTP id m10so5396471yen.19
+        for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 07:12:31 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: inux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
+        michael.brantley@deshaw.com, pstaubach@exagrid.com
+Subject: [PATCH v2 03/15] vfs: make fstatat retry on ESTALE errors from getattr call
+Date: Tue, 22 May 2012 10:12:07 -0400
+Message-Id: <1337695939-2741-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
+References: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2012-05-14, at 5:08 PM, Myklebust, Trond wrote:
-> On Mon, 2012-05-14 at 09:02 -0600, Andreas Dilger wrote:
->> On 2012-05-14, at 8:06, "J. Bruce Fields" <bfields@fieldses.org> wrote:
->>> knfsd needs i_version updates on, as will userspace nfs servers and
->>> probably others.
->>> 
->>> The only effects are that inode->i_version is bumped (under the i_lock)
->>> in more places, and that ->dirty_inode(I_DIRTY_DATASYNC) may be called
->>> more frequently than once per jiffy on write (see file_update_time).
->>> However the latter appears to be mostly a no-op in that case.
->> 
->> I thought this can have noticeable performance impact, since ext4_mark_inode_dirty() is quite heavyweight?
->> 
->> This is one of the reasons that the i_version update is conditional.
->> If someone is exporting a filesystem from userspace the should be
->> able to turn this on as a mount option, and knfsd could do it from inside the kernel. Why add overhead when it is not needed?
-> 
-> No. Having knfsd doing something like that under the covers is a BAD
-> idea. It is way too easy to get into situations where someone starts
-> changing files after the mount and before knfsd is started. As soon as
-> you allow files to be changed without i_version changing, then you are
-> setting yourself up for future corruption.
-> 
-> Ideally, an NFSv4-exported filesystem should be required to set the
-> tune2fs mount_opts to include the 'i_version' flag to make it hard to
-> inadvertently mount that filesystem without it.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c         |    2 +-
+ fs/stat.c          |   21 ++++++++++++++++-----
+ include/linux/fs.h |    3 ++-
+ 3 files changed, 19 insertions(+), 7 deletions(-)
 
-I said as much in another reply - that once i_version is used on
-a filesystem, it should be made "sticky" (i.e. permanently enabled
-for that filesystem).  However, until that time it shouldn't be
-enabled just because it might one day be used.
-
-Even better than just blindly bumping the i_version on every change,
-it would be better to have users of i_version (i.e. knfsd) flag the
-inode with "needs i_version update" then read the version.  When the
-filesystem/VFS bumps i_version the next time it can clear this flag
-and not update i_version again until after the next time i_version
-is actually used.
-
-Cheers, Andreas
-
-
-
-
+diff --git a/fs/namei.c b/fs/namei.c
+index c63242f..516be34 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -116,7 +116,7 @@
+  * POSIX.1 2.4: an empty pathname is invalid (ENOENT).
+  * PATH_MAX includes the nul terminator --RR.
+  */
+-static char *getname_flags(const char __user *filename, int flags, int *empty)
++char *getname_flags(const char __user *filename, int flags, int *empty)
+ {
+ 	char *result = __getname(), *err;
+ 	int len;
+diff --git a/fs/stat.c b/fs/stat.c
+index 0cef336..60a8813 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -72,9 +72,11 @@ EXPORT_SYMBOL(vfs_fstat);
+ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
+ 		int flag)
+ {
++	char *name;
+ 	struct path path;
+ 	int error = -EINVAL;
+-	int lookup_flags = 0;
++	unsigned int try = 0;
++	unsigned int lookup_flags = 0;
+ 
+ 	if ((flag & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
+ 		      AT_EMPTY_PATH)) != 0)
+@@ -85,12 +87,21 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
+ 	if (flag & AT_EMPTY_PATH)
+ 		lookup_flags |= LOOKUP_EMPTY;
+ 
+-	error = user_path_at(dfd, filename, lookup_flags, &path);
+-	if (error)
++	name = getname_flags(filename, lookup_flags, NULL);
++	if (IS_ERR(name)) {
++		error = PTR_ERR(name);
+ 		goto out;
++	}
++	do {
++		error = kern_path_at(dfd, name, lookup_flags, &path);
++		if (error)
++			break;
+ 
+-	error = vfs_getattr(path.mnt, path.dentry, stat);
+-	path_put(&path);
++		error = vfs_getattr(path.mnt, path.dentry, stat);
++		path_put(&path);
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
++	putname(name);
+ out:
+ 	return error;
+ }
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 0b8003b..2f92b93 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2024,7 +2024,8 @@ extern struct file *file_open_root(struct dentry *, struct vfsmount *,
+ extern struct file * dentry_open(struct dentry *, struct vfsmount *, int,
+ 				 const struct cred *);
+ extern int filp_close(struct file *, fl_owner_t id);
+-extern char * getname(const char __user *);
++extern char *getname_flags(const char __user *, int, int *);
++extern char *getname(const char __user *);
+ 
+ /**
+  * retry_estale - determine whether the caller should retry an operation
+-- 
+1.7.7.6
 
