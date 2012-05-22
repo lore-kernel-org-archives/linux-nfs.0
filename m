@@ -1,38 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from shards.monkeyblade.net ([198.137.202.13]:40562 "EHLO
-	shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754656Ab2EORqw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 13:46:52 -0400
-Date: Tue, 15 May 2012 13:45:31 -0400 (EDT)
-Message-Id: <20120515.134531.530903973750646107.davem@davemloft.net>
-To: joe@perches.com
-Cc: netdev@vger.kernel.org, linux-decnet-user@lists.sourceforge.net,
-        netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org,
-        coreteam@netfilter.org, linux-wireless@vger.kernel.org,
-        dev@openvswitch.org, linux-sctp@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [RFC net-next 0/2] net: Use net_<level>_ratelimit
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <cover.1336981915.git.joe@perches.com>
-References: <cover.1336981915.git.joe@perches.com>
-Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
+Received: from mx2.netapp.com ([216.240.18.37]:56759 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751876Ab2EVRqV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 13:46:21 -0400
+Received: from vmwexceht04-prd.hq.netapp.com (vmwexceht04-prd.hq.netapp.com [10.106.77.34])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q4MHk6pb024067
+	for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 10:46:06 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "Isaman, Fred" <Fred.Isaman@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 4/4] NFSv4.1 do not release page on commit mismatch
+Date: Tue, 22 May 2012 17:46:06 +0000
+Message-ID: <1337708765.4269.26.camel@lade.trondhjem.org>
+References: <1337688569-1515-1-git-send-email-andros@netapp.com>
+	 <1337688569-1515-5-git-send-email-andros@netapp.com>
+	 <1337703865.4269.21.camel@lade.trondhjem.org>
+	 <4D70BD9B-4F81-4E57-8689-DCE6F8B1A1C2@netapp.com>
+In-Reply-To: <4D70BD9B-4F81-4E57-8689-DCE6F8B1A1C2@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Joe Perches <joe@perches.com>
-Date: Mon, 14 May 2012 00:56:24 -0700
-
-> net_ratelimit() like __ratelimit() is too easy to misuse.
-> 
-> Add simplifying macros similar to pr_<level>_ratelimited
-> that combines the test of net_ratelimit and logging.
-> 
-> Joe Perches (2):
->   net: Add net_ratelimited_function and net_<level>_ratelimited macros
->   net: Convert net_ratelimit uses to net_<level>_ratelimited
-
-These look fine to me so I've applied them to net-next and am
-sanity checking the build right now.
-
-Thanks Joe.
+T24gVHVlLCAyMDEyLTA1LTIyIGF0IDE2OjMwICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0K
+PiBPbiBNYXkgMjIsIDIwMTIsIGF0IDEyOjI0IFBNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0K
+PiANCj4gPiBPbiBUdWUsIDIwMTItMDUtMjIgYXQgMDg6MDkgLTA0MDAsIGFuZHJvc0BuZXRhcHAu
+Y29tIHdyb3RlOg0KPiA+PiBGcm9tOiBBbmR5IEFkYW1zb24gPGFuZHJvc0BuZXRhcHAuY29tPg0K
+PiA+PiANCj4gPj4gU2lnbmVkLW9mZi1ieTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNv
+bT4NCj4gPj4gLS0tDQo+ID4+IGZzL25mcy93cml0ZS5jIHwgICAgMiArKw0KPiA+PiAxIGZpbGVz
+IGNoYW5nZWQsIDIgaW5zZXJ0aW9ucygrKSwgMCBkZWxldGlvbnMoLSkNCj4gPj4gDQo+ID4+IGRp
+ZmYgLS1naXQgYS9mcy9uZnMvd3JpdGUuYyBiL2ZzL25mcy93cml0ZS5jDQo+ID4+IGluZGV4IGU2
+ZmUzZDYuLmM3Mjk1ZGUgMTAwNjQ0DQo+ID4+IC0tLSBhL2ZzL25mcy93cml0ZS5jDQo+ID4+ICsr
+KyBiL2ZzL25mcy93cml0ZS5jDQo+ID4+IEBAIC0xNTU1LDYgKzE1NTUsOCBAQCBzdGF0aWMgdm9p
+ZCBuZnNfY29tbWl0X3JlbGVhc2VfcGFnZXMoc3RydWN0IG5mc19jb21taXRfZGF0YSAqZGF0YSkN
+Cj4gPj4gCQkvKiBXZSBoYXZlIGEgbWlzbWF0Y2guIFdyaXRlIHRoZSBwYWdlIGFnYWluICovDQo+
+ID4+IAkJZHByaW50aygiIG1pc21hdGNoXG4iKTsNCj4gPj4gCQluZnNfbWFya19yZXF1ZXN0X2Rp
+cnR5KHJlcSk7DQo+ID4+ICsJCW5mc191bmxvY2tfcmVxdWVzdChyZXEpOw0KPiA+PiArCQljb250
+aW51ZTsNCj4gPj4gCW5leHQ6DQo+ID4+IAkJbmZzX3VubG9ja19hbmRfcmVsZWFzZV9yZXF1ZXN0
+KHJlcSk7DQo+ID4+IAl9DQo+ID4gDQo+ID4gV2hhdCBpcyB0aGlzIHBhdGNoIHRyeWluZyB0byBm
+aXg/IEFzIGZhciBhcyBJIGNhbiBzZWUgaXQgd2lsbCBsZWFkIHRvIGENCj4gPiByZWZlcmVuY2Ug
+bGVhay4NCj4gDQo+IFRoZSByZWxlYXNlIG9mIHRoZSBwYWdlIGRyb3BzIHRoZSByZWZjb3VudCB0
+byB6ZXJvLiBTaW5jZSBpdCBpcyBhIG1pc21hdGNoLCB3ZSB3YW50IHRvIGNvbnRpbnVlIHRvIHVz
+ZSB0aGUgcGFnZSwgc28gbmZzX3BhZ2VfZmluZF9yZXF1ZXN0X2xvY2tlZCBpcyBjYWxsZWQgd2Ug
+Z2V0IHRoZSBXQVJOSU5HIGluIGtyZWZfZ2V0LCBhbmQgYW4gT29wcyBpbiB2YXJpb3VzIHBsYWNl
+cyBpbiBwbmZzX3VwZGF0ZV9sYXlvdXQuDQo+IA0KPiBIZXJlIGlzIHRoZSBvdXRwdXQgb2YgYWRk
+ZWQgcHJpbnRrJ3MuDQo+IA0KPiAtLT5BbmR5DQo+IA0KPiBNYXkgMjEgMTg6MjU6MzMgZmVkb3Jh
+LTY0LTIga2VybmVsOiBbICAxNTIuOTg4OTIxXSBORlM6ICAgICAgIGNvbW1pdCAoMDozNS8yIDQw
+OTZAMTg0MzIwKQ0KPiBNYXkgMjEgMTg6MjU6MzMgZmVkb3JhLTY0LTIga2VybmVsOiBbICAxNTIu
+OTg4OTIzXSAgbWlzbWF0Y2ggcmVxIGZmZmY4ODAwNDJkYmI4MDANCj4gTWF5IDIxIDE4OjI1OjMz
+IGZlZG9yYS02NC0yIGtlcm5lbDogWyAgMTUyLjk4ODkyN10gbmZzX3JlbGVhc2VfcmVxdWVzdCBX
+QiByZXEgZmZmZjg4MDA0MmRiYjgwMCB3Yl9rcmVmIDENCj4gTWF5IDIxIDE4OjI1OjMzIGZlZG9y
+YS02NC0yIGtlcm5lbDogWyAgMTUyLjk4ODkzMl0gcHV0X2xzZWc6IGxzZWcgZmZmZjg4MDA0MmQ5
+NTM4MCByZWYgNCB2YWxpZCAwDQo+IE1heSAyMSAxODoyNTozMyBmZWRvcmEtNjQtMiBrZXJuZWw6
+IFsgIDE1Mi45ODg5NDVdIG5mc19wYWdlX2ZpbmRfcmVxdWVzdF9sb2NrZWQgcmVxIGZmZmY4ODAw
+M2UwMzM4MDANCj4gTWF5IDIxIDE4OjI1OjMzIGZlZG9yYS02NC0yIGtlcm5lbDogWyAgMTUyLjk4
+ODk0OV0gbmZzX3BhZ2VfZmluZF9yZXF1ZXN0X2xvY2tlZCBXQiByZXEgZmZmZjg4MDAzZTAzMzgw
+MCB3Yl9rcmVmIDANCj4gTWF5IDIxIDE4OjI1OjMzIGZlZG9yYS02NC0yIGtlcm5lbDogWyAgMTUy
+Ljk4ODk1M10gLS0tLS0tLS0tLS0tWyBjdXQgaGVyZSBdLS0tLS0tLS0tLS0tDQo+IE1heSAyMSAx
+ODoyNTozMyBmZWRvcmEtNjQtMiBrZXJuZWw6IFsgIDE1Mi45ODkwODJdIFdBUk5JTkc6IGF0IGlu
+Y2x1ZGUvbGludXgva3JlZi5oOjQxIGtyZWZfZ2V0KzB4MjAvMHgyYyBbbmZzXSgpDQoNCkFyZSB0
+aGVzZSBjb21taXQtdG8tZHMgcmVxdWVzdHM/IEFzIGZhciBhcyBJIGNhbiBzZWUsIHRoZXJlIGlz
+IGEgYnVnIGluDQp0cmFuc2Zlcl9jb21taXRfbGlzdCgpIGluIHRoYXQgaXQgbG9ja3MgdGhlIHJl
+cXVlc3RzLCBidXQgZG9lcyBub3QNCnJlZmVyZW5jZSB0aGVtLg0KDQpGcmVkPw0KDQotLSANClRy
+b25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJv
+bmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
