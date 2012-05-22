@@ -1,42 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:32335 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:56632 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755846Ab2ENTQB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 May 2012 15:16:01 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q4EJG1dX018357
+	id S1753253Ab2EVTj6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 15:39:58 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q4MJdwZe012942
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 14 May 2012 15:16:01 -0400
-Received: from badhat.bos.devel.redhat.com (vpn-10-78.rdu.redhat.com [10.11.10.78])
-	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q4EJG0hH012610
-	for <linux-nfs@vger.kernel.org>; Mon, 14 May 2012 15:16:00 -0400
-Message-ID: <4FB159DA.2070800@RedHat.com>
-Date: Mon, 14 May 2012 15:15:38 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
+	for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 15:39:58 -0400
+Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q4MJdvxH013762
+	for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 15:39:57 -0400
+From: Steve Dickson <steved@redhat.com>
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: ANNOUNCE: nfs-utils-1.2.6 released.
-Content-Type: text/plain; charset=ISO-8859-1
+Subject: [PATCH] nfsidmap: Allow verbosity level to be set in the config file.
+Date: Tue, 22 May 2012 15:38:17 -0400
+Message-Id: <1337715497-30592-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-New Features in this release:
-   * The addition the nfsdcld daemon
-   * The addition of the osd_login script which is mandated by the
-         pnfs-objects standard
-   * The addition of -l option to rpcgssd to enforce legacy behaviour
+To make it easier to enable ID mapping debugging, nfsidmap
+should read /etc/idmap.conf to see if the verbosity level
+is set, similar to what rpc.idmapd does
 
-As well as the usual assorted bug fixes...  
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ utils/nfsidmap/nfsidmap.c |   19 ++++++++++++++++++-
+ 1 files changed, 18 insertions(+), 1 deletions(-)
 
-The tarball can only be found at Sourceforge.net since 
-still unable to access ftp://ftp.kernel.org (I'm working
-on it):
-  http://sourceforge.net/projects/nfs
+diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+index cf11551..86cddd1 100644
+--- a/utils/nfsidmap/nfsidmap.c
++++ b/utils/nfsidmap/nfsidmap.c
+@@ -12,6 +12,7 @@
+ 
+ #include <unistd.h>
+ #include "xlog.h"
++#include "conffile.h"
+ 
+ int verbose = 0;
+ char *usage="Usage: %s [-v] [-c || [-u|-g|-r key] || [-t timeout] key desc]";
+@@ -26,12 +27,26 @@ char *usage="Usage: %s [-v] [-c || [-u|-g|-r key] || [-t timeout] key desc]";
+ #define DEFAULT_KEYRING "id_resolver"
+ #endif
+ 
++#ifndef PATH_IDMAPDCONF
++#define PATH_IDMAPDCONF "/etc/idmapd.conf"
++#endif
++
+ static int keyring_clear(char *keyring);
+ 
+ #define UIDKEYS 0x1
+ #define GIDKEYS 0x2
+ 
+ /*
++ * Check to the config file for the verbosity level
++ */
++get_config_verbose(char *path)
++{
++	conf_path = path;
++	conf_init();
++	return conf_get_num("General", "Verbosity", 0);
++}
++
++/*
+  * Find either a user or group id based on the name@domain string
+  */
+ int id_lookup(char *name_at_domain, key_serial_t key, int type)
+@@ -266,7 +281,9 @@ int main(int argc, char **argv)
+ 			break;
+ 		}
+ 	}
+-
++	if (!verbose) {
++		verbose = get_config_verbose(PATH_IDMAPDCONF);
++	}
+ 	if (keystr) {
+ 		rc = key_revoke(keystr, keymask);
+ 		return rc;		
+-- 
+1.7.7.6
 
-The git tree is at:
-   git://linux-nfs.org/nfs-utils
-
-The change log is also only on Sourceforge.net:
-   http://sourceforge.net/projects/nfs/files/nfs-utils/1.2.6/Changelog-1.2.6/download
-
-steved.
