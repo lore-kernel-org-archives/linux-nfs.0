@@ -1,59 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:60352 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758487Ab2EaVNj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 31 May 2012 17:13:39 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Peng Tao <bergwolf@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "bharrosh@panasas.com" <bharrosh@panasas.com>,
-        Peng Tao <tao.peng@emc.com>
-Subject: Re: [PATCH-v2 1/3] pnfsblock: bail out partial block direct write
-Date: Thu, 31 May 2012 21:13:37 +0000
-Message-ID: <1338498816.20167.45.camel@lade.trondhjem.org>
-References: <1338266334-11490-1-git-send-email-bergwolf@gmail.com>
-	 <1338266334-11490-2-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1338266334-11490-2-git-send-email-bergwolf@gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:61482 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757928Ab2EVOMn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 10:12:43 -0400
+Received: by mail-gh0-f174.google.com with SMTP id r11so777867ghr.19
+        for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 07:12:43 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: inux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
+        michael.brantley@deshaw.com, pstaubach@exagrid.com
+Subject: [PATCH v2 10/15] vfs: fix symlinkat to retry on ESTALE errors
+Date: Tue, 22 May 2012 10:12:14 -0400
+Message-Id: <1337695939-2741-11-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
+References: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA1LTI5IGF0IDEyOjM4ICswODAwLCBQZW5nIFRhbyB3cm90ZToNCj4gU2ln
-bmVkLW9mZi1ieTogUGVuZyBUYW8gPHRhby5wZW5nQGVtYy5jb20+DQo+IC0tLQ0KPiAgZnMvbmZz
-L2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMgfCAgIDE1ICsrKysrKysrKysrKystLQ0KPiAgMSBm
-aWxlcyBjaGFuZ2VkLCAxMyBpbnNlcnRpb25zKCspLCAyIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlm
-ZiAtLWdpdCBhL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91dC5jIGIvZnMvbmZzL2Jsb2Nr
-bGF5b3V0L2Jsb2NrbGF5b3V0LmMNCj4gaW5kZXggZGQzOTJlZC4uYmFiNDMyZiAxMDA2NDQNCj4g
-LS0tIGEvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMNCj4gKysrIGIvZnMvbmZzL2Js
-b2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMNCj4gQEAgLTU3MiwxMCArNTcyLDEzIEBAIGJsX3dyaXRl
-X3BhZ2VsaXN0KHN0cnVjdCBuZnNfd3JpdGVfZGF0YSAqd2RhdGEsIGludCBzeW5jKQ0KPiAgCXU2
-NCB0ZW1wOw0KPiAgCWludCBucGdfcGVyX2Jsb2NrID0NCj4gIAkgICAgTkZTX1NFUlZFUihoZWFk
-ZXItPmlub2RlKS0+cG5mc19ibGtzaXplID4+IFBBR0VfQ0FDSEVfU0hJRlQ7DQo+ICsJdW5zaWdu
-ZWQgbG9uZyBibGttYXNrID0gUEFHRV9DQUNIRV9NQVNLOw0KPiAgDQo+ICAJZHByaW50aygiJXMg
-ZW50ZXIsICVadUAlbGxkXG4iLCBfX2Z1bmNfXywgY291bnQsIG9mZnNldCk7DQo+ICAJLyogQ2hl
-Y2sgZm9yIGFsaWdubWVudCBmaXJzdCAqLw0KPiAtCWlmICghYmxfY2hlY2tfYWxpZ25tZW50KG9m
-ZnNldCwgY291bnQsIFBBR0VfQ0FDSEVfTUFTSykpDQo+ICsJaWYgKGhlYWRlci0+ZHJlcSkNCj4g
-KwkJYmxrbWFzayA9IE5GU19TRVJWRVIoaGVhZGVyLT5pbm9kZSktPnBuZnNfYmxrc2l6ZSAtIDE7
-DQo+ICsJaWYgKCFibF9jaGVja19hbGlnbm1lbnQob2Zmc2V0LCBjb3VudCwgYmxrbWFzaykpDQo+
-ICAJCWdvdG8gb3V0X21kczsNCj4gIA0KPiAgCS8qIEF0IHRoaXMgcG9pbnQsIHdkYXRhLT5wYWdl
-cyBpcyBhIChzZXF1ZW50aWFsKSBsaXN0IG9mIG5mc19wYWdlcy4NCj4gQEAgLTEwMjMsNyArMTAy
-NiwxNSBAQCBibF9wZ19pbml0X3JlYWQoc3RydWN0IG5mc19wYWdlaW9fZGVzY3JpcHRvciAqcGdp
-bywgc3RydWN0IG5mc19wYWdlICpyZXEpDQo+ICBzdGF0aWMgdm9pZA0KPiAgYmxfcGdfaW5pdF93
-cml0ZShzdHJ1Y3QgbmZzX3BhZ2Vpb19kZXNjcmlwdG9yICpwZ2lvLCBzdHJ1Y3QgbmZzX3BhZ2Ug
-KnJlcSkNCj4gIHsNCj4gLQlpZiAoIWJsX2NoZWNrX2FsaWdubWVudChyZXEtPndiX29mZnNldCwg
-cmVxLT53Yl9ieXRlcywgUEFHRV9DQUNIRV9NQVNLKSkNCj4gKwlpZiAocGdpby0+cGdfZHJlcSkg
-ew0KPiArCQkvKiBEaXJlY3Qgd3JpdGUgc2hvdWxkIGJlIGJsa3NpemUgYWxpZ25lZCAqLw0KPiAr
-CQl1bnNpZ25lZCBibGttYXNrID0gTkZTX1NFUlZFUihwZ2lvLT5wZ19pbm9kZSktPnBuZnNfYmxr
-c2l6ZSAtIDE7DQo+ICsJCXU2NCBwb3MgPSAocmVxLT53Yl9pbmRleCA8PCBQQUdFX0NBQ0hFX1NI
-SUZUKSArIHJlcS0+d2JfYnl0ZXM7DQoNClBsZWFzZSB1c2UgdGhlIHJlcV9vZmZzZXQoKSBoZWxw
-ZXIgZm9yIHRoaXMgY2FsY3VsYXRpb246IHRoZSBsaW5lIGFib3ZlDQpmYWlscyB0byBjYXN0IHJl
-cS0+d2JfaW5kZXggY29ycmVjdGx5Lg0KDQo+ICsJCWlmICghYmxfY2hlY2tfYWxpZ25tZW50KHBv
-cywgMCwgYmxrbWFzaykgfHwNCj4gKwkJICAgIHJlcS0+d2JfYnl0ZXMgIT0gUEFHRV9DQUNIRV9T
-SVpFKQ0KPiArCQkJbmZzX3BhZ2Vpb19yZXNldF93cml0ZV9tZHMocGdpbyk7DQo+ICsJfSBlbHNl
-IGlmICghYmxfY2hlY2tfYWxpZ25tZW50KHJlcS0+d2Jfb2Zmc2V0LCByZXEtPndiX2J5dGVzLA0K
-PiArCQkJCSAgICAgICBQQUdFX0NBQ0hFX01BU0spKQ0KPiAgCQluZnNfcGFnZWlvX3Jlc2V0X3dy
-aXRlX21kcyhwZ2lvKTsNCj4gIAllbHNlDQo+ICAJCXBuZnNfZ2VuZXJpY19wZ19pbml0X3dyaXRl
-KHBnaW8sIHJlcSk7DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1h
-aW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFw
-cC5jb20NCg0K
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c |   43 ++++++++++++++++++++++++++-----------------
+ 1 files changed, 26 insertions(+), 17 deletions(-)
+
+diff --git a/fs/namei.c b/fs/namei.c
+index 812b978..5c8ceb9 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2966,33 +2966,42 @@ SYSCALL_DEFINE3(symlinkat, const char __user *, oldname,
+ 		int, newdfd, const char __user *, newname)
+ {
+ 	int error;
+-	char *from;
++	char *from, *to;
+ 	struct dentry *dentry;
+ 	struct path path;
++	unsigned int try = 0;
+ 
+ 	from = getname(oldname);
+ 	if (IS_ERR(from))
+ 		return PTR_ERR(from);
+ 
+-	dentry = user_path_create(newdfd, newname, &path, 0);
+-	error = PTR_ERR(dentry);
+-	if (IS_ERR(dentry))
+-		goto out_putname;
++	to = getname(newname);
++	if (IS_ERR(to)) {
++		putname(from);
++		return PTR_ERR(to);
++	}
+ 
+-	error = mnt_want_write(path.mnt);
+-	if (error)
+-		goto out_dput;
+-	error = security_path_symlink(&path, dentry, from);
+-	if (error)
+-		goto out_drop_write;
+-	error = vfs_symlink(path.dentry->d_inode, dentry, from);
++	do {
++		dentry = kern_path_create(newdfd, to, &path, 0, try);
++		error = PTR_ERR(dentry);
++		if (IS_ERR(dentry))
++			break;
++
++		error = mnt_want_write(path.mnt);
++		if (error)
++			goto out_dput;
++		error = security_path_symlink(&path, dentry, from);
++		if (error)
++			goto out_drop_write;
++		error = vfs_symlink(path.dentry->d_inode, dentry, from);
+ out_drop_write:
+-	mnt_drop_write(path.mnt);
++		mnt_drop_write(path.mnt);
+ out_dput:
+-	dput(dentry);
+-	mutex_unlock(&path.dentry->d_inode->i_mutex);
+-	path_put(&path);
+-out_putname:
++		dput(dentry);
++		mutex_unlock(&path.dentry->d_inode->i_mutex);
++		path_put(&path);
++	} while (retry_estale(error, try++));
++	putname(to);
+ 	putname(from);
+ 	return error;
+ }
+-- 
+1.7.7.6
+
