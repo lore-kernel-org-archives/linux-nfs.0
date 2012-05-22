@@ -1,144 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:10364 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752650Ab2EASkY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 May 2012 14:40:24 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH v3 3/3] NFS: Simplify the nfs_read_completion functions
-Date: Tue,  1 May 2012 14:40:20 -0400
-Message-Id: <1335897620-17569-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1335897620-17569-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1335897434.4060.17.camel@lade.trondhjem.org>
- <1335897620-17569-1-git-send-email-Trond.Myklebust@netapp.com>
- <1335897620-17569-2-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:61482 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757399Ab2EVOM3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 10:12:29 -0400
+Received: by ghrr11 with SMTP id r11so777867ghr.19
+        for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 07:12:28 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: inux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
+        michael.brantley@deshaw.com, pstaubach@exagrid.com
+Subject: [PATCH v2 02/15] vfs: add a kern_path_at function
+Date: Tue, 22 May 2012 10:12:06 -0400
+Message-Id: <1337695939-2741-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
+References: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/direct.c |   46 +++++++++++++++++++---------------------------
- fs/nfs/read.c   |   42 +++++++++++++++++-------------------------
- 2 files changed, 36 insertions(+), 52 deletions(-)
+This will function like user_path_at, but does not do the getname and
+putname, leaving that to the caller.
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index f17e469..a1d366b 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -243,36 +243,28 @@ static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
- 		dreq->count += hdr->good_bytes;
- 	spin_unlock(&dreq->lock);
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c            |   27 +++++++++++++++++++--------
+ include/linux/namei.h |    1 +
+ 2 files changed, 20 insertions(+), 8 deletions(-)
+
+diff --git a/fs/namei.c b/fs/namei.c
+index f9e883c..c63242f 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -1886,20 +1886,31 @@ struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
+ 	return __lookup_hash(&this, base, NULL);
+ }
  
--	if (!test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
--		while (!list_empty(&hdr->pages)) {
--			struct nfs_page *req = nfs_list_entry(hdr->pages.next);
--			struct page *page = req->wb_page;
--
--			if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
--				if (bytes > hdr->good_bytes)
--					zero_user(page, 0, PAGE_SIZE);
--				else if (hdr->good_bytes - bytes < PAGE_SIZE)
--					zero_user_segment(page,
--						hdr->good_bytes & ~PAGE_MASK,
--						PAGE_SIZE);
--			}
--			bytes += req->wb_bytes;
--			nfs_list_remove_request(req);
--			if (!PageCompound(page))
--				set_page_dirty(page);
--			nfs_direct_readpage_release(req);
-+	while (!list_empty(&hdr->pages)) {
-+		struct nfs_page *req = nfs_list_entry(hdr->pages.next);
-+		struct page *page = req->wb_page;
++int kern_path_at(int dfd, const char *name, unsigned flags, struct path *path)
++{
++	struct nameidata nd;
++	int err;
 +
-+		if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
-+			if (bytes > hdr->good_bytes)
-+				zero_user(page, 0, PAGE_SIZE);
-+			else if (hdr->good_bytes - bytes < PAGE_SIZE)
-+				zero_user_segment(page,
-+					hdr->good_bytes & ~PAGE_MASK,
-+					PAGE_SIZE);
- 		}
--	} else {
--		while (!list_empty(&hdr->pages)) {
--			struct nfs_page *req = nfs_list_entry(hdr->pages.next);
++	BUG_ON(flags & LOOKUP_PARENT);
++
++	err = do_path_lookup(dfd, name, flags, &nd);
++	if (!err)
++		*path = nd.path;
++
++	return err;
++}
++
+ int user_path_at_empty(int dfd, const char __user *name, unsigned flags,
+ 		 struct path *path, int *empty)
+ {
+-	struct nameidata nd;
+ 	char *tmp = getname_flags(name, flags, empty);
+-	int err = PTR_ERR(tmp);
+-	if (!IS_ERR(tmp)) {
 -
--			if (bytes < hdr->good_bytes)
--				if (!PageCompound(req->wb_page))
-+		if (!PageCompound(page)) {
-+			if (test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
-+				if (bytes < hdr->good_bytes)
- 					set_page_dirty(req->wb_page);
--			bytes += req->wb_bytes;
--			nfs_list_remove_request(req);
--			nfs_direct_readpage_release(req);
-+			} else
-+				set_page_dirty(page);
- 		}
-+		bytes += req->wb_bytes;
-+		nfs_list_remove_request(req);
-+		nfs_direct_readpage_release(req);
- 	}
- out_put:
- 	if (put_dreq(dreq))
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 1961a19..b81281b 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -179,34 +179,26 @@ static void nfs_read_completion(struct nfs_pgio_header *hdr)
+-		BUG_ON(flags & LOOKUP_PARENT);
++	int err;
  
- 	if (test_bit(NFS_IOHDR_REDO, &hdr->flags))
- 		goto out;
--	if (!test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
--		while (!list_empty(&hdr->pages)) {
--			struct nfs_page *req = nfs_list_entry(hdr->pages.next);
--			struct page *page = req->wb_page;
--
--			if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
--				if (bytes > hdr->good_bytes)
--					zero_user(page, 0, PAGE_SIZE);
--				else if (hdr->good_bytes - bytes < PAGE_SIZE)
--					zero_user_segment(page,
--						hdr->good_bytes & ~PAGE_MASK,
--						PAGE_SIZE);
--			}
--			SetPageUptodate(page);
--			nfs_list_remove_request(req);
--			nfs_readpage_release(req);
--			bytes += PAGE_SIZE;
-+	while (!list_empty(&hdr->pages)) {
-+		struct nfs_page *req = nfs_list_entry(hdr->pages.next);
-+		struct page *page = req->wb_page;
-+
-+		if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
-+			if (bytes > hdr->good_bytes)
-+				zero_user(page, 0, PAGE_SIZE);
-+			else if (hdr->good_bytes - bytes < PAGE_SIZE)
-+				zero_user_segment(page,
-+					hdr->good_bytes & ~PAGE_MASK,
-+					PAGE_SIZE);
- 		}
--	} else {
--		while (!list_empty(&hdr->pages)) {
--			struct nfs_page *req = nfs_list_entry(hdr->pages.next);
--
--			bytes += req->wb_bytes;
-+		bytes += req->wb_bytes;
-+		if (test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
- 			if (bytes <= hdr->good_bytes)
- 				SetPageUptodate(req->wb_page);
--			nfs_list_remove_request(req);
--			nfs_readpage_release(req);
--		}
-+		} else
-+			SetPageUptodate(page);
-+		nfs_list_remove_request(req);
-+		nfs_readpage_release(req);
+-		err = do_path_lookup(dfd, tmp, flags, &nd);
++	if (IS_ERR(tmp)) {
++		err = PTR_ERR(tmp);
++	} else {
++		err = kern_path_at(dfd, tmp, flags, path);
+ 		putname(tmp);
+-		if (!err)
+-			*path = nd.path;
  	}
- out:
- 	hdr->release(hdr);
+ 	return err;
+ }
+diff --git a/include/linux/namei.h b/include/linux/namei.h
+index ffc0213..cd95fcb 100644
+--- a/include/linux/namei.h
++++ b/include/linux/namei.h
+@@ -66,6 +66,7 @@ enum {LAST_NORM, LAST_ROOT, LAST_DOT, LAST_DOTDOT, LAST_BIND};
+ #define LOOKUP_ROOT		0x2000
+ #define LOOKUP_EMPTY		0x4000
+ 
++extern int kern_path_at(int, const char *, unsigned, struct path *);
+ extern int user_path_at(int, const char __user *, unsigned, struct path *);
+ extern int user_path_at_empty(int, const char __user *, unsigned, struct path *, int *empty);
+ 
 -- 
 1.7.7.6
 
