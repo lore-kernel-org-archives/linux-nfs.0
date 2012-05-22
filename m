@@ -1,78 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50073 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757620Ab2EaBuT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 May 2012 21:50:19 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 6/6] vfs: rename I_MUTEX_QUOTA now that it's not used for quotas
-Date: Wed, 30 May 2012 21:50:16 -0400
-Message-Id: <1338429016-20119-7-git-send-email-bfields@redhat.com>
-In-Reply-To: <1338429016-20119-1-git-send-email-bfields@redhat.com>
-References: <1338429016-20119-1-git-send-email-bfields@redhat.com>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:53136 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758032Ab2EVOMv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 10:12:51 -0400
+Received: by mail-yw0-f46.google.com with SMTP id m54so5459399yhm.19
+        for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 07:12:50 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: inux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
+        michael.brantley@deshaw.com, pstaubach@exagrid.com
+Subject: [PATCH v2 15/15] vfs: remove user_path_parent
+Date: Tue, 22 May 2012 10:12:19 -0400
+Message-Id: <1337695939-2741-16-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
+References: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+...there are no more callers.
 
-I_MUTEX_QUOTA is now just being used whenever we want to lock two
-non-directories.  So the name isn't right.  I_MUTEX_NONDIR2 isn't
-especially elegant but it's the best I could think of.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/inode.c         |    4 ++--
- include/linux/fs.h |    8 +++++---
- 2 files changed, 7 insertions(+), 5 deletions(-)
+ fs/namei.c |   18 ------------------
+ 1 files changed, 0 insertions(+), 18 deletions(-)
 
-diff --git a/fs/inode.c b/fs/inode.c
-index 0272ac3..9c828ab 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -979,11 +979,11 @@ void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
- 		mutex_lock(&inode1->i_mutex);
- 	else if (inode1 < inode2) {
- 		mutex_lock(&inode1->i_mutex);
--		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_QUOTA);
-+		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_NONDIR2);
- 
- 	} else {
- 		mutex_lock(&inode2->i_mutex);
--		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_QUOTA);
-+		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_NONDIR2);
- 	}
+diff --git a/fs/namei.c b/fs/namei.c
+index 4d2b810..991306b 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -1915,24 +1915,6 @@ int user_path_at(int dfd, const char __user *name, unsigned flags,
+ 	return err;
  }
- EXPORT_SYMBOL(lock_two_nondirectories);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 308c2a0..f0b5a5d 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -862,10 +862,12 @@ static inline int inode_unhashed(struct inode *inode)
-  * 1: parent
-  * 2: child/target
-  * 3: xattr
-- * 4: quota file
-+ * 4: second non-directory
-+ * The last is for certain operations (such as rename) which lock two
-+ * non-directories at once.
-  *
-  * The locking order between these classes is
-- * parent -> child -> normal -> xattr -> quota
-+ * parent -> child -> normal -> xattr -> second non-directory
-  */
- enum inode_i_mutex_lock_class
- {
-@@ -873,7 +875,7 @@ enum inode_i_mutex_lock_class
- 	I_MUTEX_PARENT,
- 	I_MUTEX_CHILD,
- 	I_MUTEX_XATTR,
--	I_MUTEX_QUOTA
-+	I_MUTEX_NONDIR2
- };
  
- void lock_two_nondirectories(struct inode *, struct inode*);
+-static int user_path_parent(int dfd, const char __user *path,
+-			struct nameidata *nd, char **name)
+-{
+-	char *s = getname(path);
+-	int error;
+-
+-	if (IS_ERR(s))
+-		return PTR_ERR(s);
+-
+-	error = do_path_lookup(dfd, s, LOOKUP_PARENT, nd);
+-	if (error)
+-		putname(s);
+-	else
+-		*name = s;
+-
+-	return error;
+-}
+-
+ /*
+  * It's inline, so penalty for filesystems that don't use sticky bit is
+  * minimal.
 -- 
-1.7.9.5
+1.7.7.6
 
