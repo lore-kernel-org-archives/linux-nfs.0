@@ -1,39 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:41180 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754905Ab2EVSlW convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 14:41:22 -0400
-Message-ID: <4FBBDDCF.4070803@parallels.com>
-Date: Tue, 22 May 2012 22:41:19 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Simo Sorce <simo@redhat.com>, "bfields@redhat.com" <bfields@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/4] SUNRPC: Add RPC based upcall mechanism for RPCGSS
- auth
-References: <1337087550-9821-4-git-send-email-simo@redhat.com> <20120522124728.GB891@fieldses.org> <1337691607.16840.178.camel@willson.li.ssimo.org> <4FBB91EE.3010307@parallels.com> <1337692966.16840.181.camel@willson.li.ssimo.org> <4FBB9551.9010407@parallels.com> <20120522142035.GC891@fieldses.org> <4FBBA667.4090409@parallels.com> <20120522150748.GF891@fieldses.org> <4FBBAE81.9010708@parallels.com> <20120522181129.GB4697@fieldses.org>
-In-Reply-To: <20120522181129.GB4697@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:52315 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758081Ab2EVOMq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 10:12:46 -0400
+Received: by yenm10 with SMTP id m10so5396862yen.19
+        for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 07:12:46 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: inux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
+        michael.brantley@deshaw.com, pstaubach@exagrid.com
+Subject: [PATCH v2 12/15] vfs: make rmdir retry on ESTALE errors
+Date: Tue, 22 May 2012 10:12:16 -0400
+Message-Id: <1337695939-2741-13-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
+References: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-22.05.2012 22:11, J. Bruce Fields написал:
-> On Tue, May 22, 2012 at 07:19:29PM +0400, Stanislav Kinsbursky wrote:
->> Just a reminder: abstract (is it the right name?) UNIX sockets (with
->> '\0' as a first character in name) are containerized already.
->> If UNIX socket is the only way. then maybe this "abstract" socket can be used?
-> Huh.  Reading the section on abstract addresses in unix(7)....  Maybe
-> that would work.  I don't quite understand the namespace.  If we fix a
-> name for gss-proxy to use, what's to prevent somebody else from binding
-> to the same name and preventing us from using it?
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c |   82 +++++++++++++++++++++++++++++++++--------------------------
+ 1 files changed, 46 insertions(+), 36 deletions(-)
 
-Alien network namespace.
-Abstract sockets address consist of two parts: name istelf and network 
-namespace.
-Have a look at unix_bind () - you'll see, that sockets with the same 
-name but different network namespace are skipped.
-
->
-> --b.
+diff --git a/fs/namei.c b/fs/namei.c
+index 402f469..a11fcc7 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2778,52 +2778,62 @@ out:
+ static long do_rmdir(int dfd, const char __user *pathname)
+ {
+ 	int error = 0;
+-	char * name;
++	char *name;
+ 	struct dentry *dentry;
+ 	struct nameidata nd;
++	unsigned int try = 0;
++	unsigned int lookup_flags = LOOKUP_PARENT;
+ 
+-	error = user_path_parent(dfd, pathname, &nd, &name);
+-	if (error)
+-		return error;
++	name = getname(pathname);
++	if (IS_ERR(name))
++		return PTR_ERR(name);
+ 
+-	switch(nd.last_type) {
+-	case LAST_DOTDOT:
+-		error = -ENOTEMPTY;
+-		goto exit1;
+-	case LAST_DOT:
+-		error = -EINVAL;
+-		goto exit1;
+-	case LAST_ROOT:
+-		error = -EBUSY;
+-		goto exit1;
+-	}
++	do {
++		error = do_path_lookup(dfd, name, lookup_flags, &nd);
++		if (error)
++			break;
+ 
+-	nd.flags &= ~LOOKUP_PARENT;
++		switch (nd.last_type) {
++		case LAST_DOTDOT:
++			error = -ENOTEMPTY;
++			goto exit1;
++		case LAST_DOT:
++			error = -EINVAL;
++			goto exit1;
++		case LAST_ROOT:
++			error = -EBUSY;
++			goto exit1;
++		}
+ 
+-	mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex, I_MUTEX_PARENT);
+-	dentry = lookup_hash(&nd);
+-	error = PTR_ERR(dentry);
+-	if (IS_ERR(dentry))
+-		goto exit2;
+-	if (!dentry->d_inode) {
+-		error = -ENOENT;
+-		goto exit3;
+-	}
+-	error = mnt_want_write(nd.path.mnt);
+-	if (error)
+-		goto exit3;
+-	error = security_path_rmdir(&nd.path, dentry);
+-	if (error)
+-		goto exit4;
+-	error = vfs_rmdir(nd.path.dentry->d_inode, dentry);
++		nd.flags &= ~LOOKUP_PARENT;
++
++		mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex,
++							I_MUTEX_PARENT);
++		dentry = lookup_hash(&nd);
++		error = PTR_ERR(dentry);
++		if (IS_ERR(dentry))
++			goto exit2;
++		if (!dentry->d_inode) {
++			error = -ENOENT;
++			goto exit3;
++		}
++		error = mnt_want_write(nd.path.mnt);
++		if (error)
++			goto exit3;
++		error = security_path_rmdir(&nd.path, dentry);
++		if (error)
++			goto exit4;
++		error = vfs_rmdir(nd.path.dentry->d_inode, dentry);
+ exit4:
+-	mnt_drop_write(nd.path.mnt);
++		mnt_drop_write(nd.path.mnt);
+ exit3:
+-	dput(dentry);
++		dput(dentry);
+ exit2:
+-	mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
++		mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
+ exit1:
+-	path_put(&nd.path);
++		path_put(&nd.path);
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
+ 	putname(name);
+ 	return error;
+ }
+-- 
+1.7.7.6
 
