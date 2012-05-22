@@ -1,61 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:55739 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752274Ab2EKLEx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 May 2012 07:04:53 -0400
-Message-ID: <4FACF249.8050305@parallels.com>
-Date: Fri, 11 May 2012 15:04:41 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from fieldses.org ([174.143.236.118]:50448 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758997Ab2EVPD5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 11:03:57 -0400
+Date: Tue, 22 May 2012 11:03:56 -0400
+To: Simo Sorce <simo@redhat.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/4] SUNRPC: Add RPC based upcall mechanism for RPCGSS
+ auth
+Message-ID: <20120522150356.GE891@fieldses.org>
+References: <1337087550-9821-1-git-send-email-simo@redhat.com>
+ <1337087550-9821-4-git-send-email-simo@redhat.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 0/6] Lockd: service start cleanup patch set
-References: <20120425141934.22909.53047.stgit@localhost6.localdomain6> <20120509190855.GB27077@fieldses.org>
-In-Reply-To: <20120509190855.GB27077@fieldses.org>
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1337087550-9821-4-git-send-email-simo@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09.05.2012 23:08, J. Bruce Fields wrote:
-> On Wed, Apr 25, 2012 at 06:22:32PM +0400, Stanislav Kinsbursky wrote:
->> This patch set simplifies LockD start logic, makes code looks straight-forward
->> and clear.
->
-> I've applied and pushed these out.
->
-> I believe I now have everything from you except your latest grace-period
-> handling rfc.  Could you check and make sure that I'm not missing
-> anything else, and that I haven't messed up anything else?
->
+Note also if you rebase to my latest for-3.5 you need something like
+the following (untested).
 
-Looks like you took all except patches for Trond (NFS callback containerization).
-Thanks.
+--b.
 
+commit 2cc8f0912880a177eee73e08c4305ac3692b8ff9
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Tue May 22 08:44:08 2012 -0400
 
-> --b.
->
->>
->> The following series consists of:
->>
->> ---
->>
->> Stanislav Kinsbursky (6):
->>        LockD: pass service to per-net up and down functions
->>        LockD: use existent per-net data function on service creation
->>        LockD: service creation function introduced
->>        LockD: move global usage counter manipulation from error path
->>        LockD: service start function introduced
->>        LockD: add debug message to start and stop functions
->>
->>
->>   fs/lockd/svc.c |  140 +++++++++++++++++++++++++++++++++-----------------------
->>   1 files changed, 83 insertions(+), 57 deletions(-)
->>
+    client_name->cred.cr_principal
 
-
--- 
-Best regards,
-Stanislav Kinsbursky
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 0211265..95104ae 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -1182,26 +1182,27 @@ static int gss_proxy_save_rsc(struct cache_detail *cd,
+ 
+ 		/* get client name */
+ 		if (ud->client_name.len != 0) {
++			struct svc_cred *cred = &rsci.cred;
+ 			status = -ENOMEM;
+ 			/* convert to GSS_NT_HOSTBASED_SERVICE form */
+-			rsci.client_name = kstrndup(ud->client_name.data,
++			cred->cr_principal = kstrndup(ud->client_name.data,
+ 							ud->client_name.len,
+ 							GFP_KERNEL);
+-			if (!rsci.client_name)
++			if (!cred->cr_principal)
+ 				goto out;
+ 			/* terminate and remove realm part */
+-			c = strchr(rsci.client_name, '@');
++			c = strchr(cred->cr_principal, '@');
+ 			if (c) {
+ 				*c = '\0';
+ 
+ 				/* change service-hostname delimiter */
+-				c = strchr(rsci.client_name, '/');
++				c = strchr(cred->cr_principal, '/');
+ 				if (c) *c = '@';
+ 			}
+ 			if (!c) {
+ 				/* not a service principal */
+-				kfree(rsci.client_name);
+-				rsci.client_name = NULL;
++				kfree(cred->cr_principal);
++				cred->cr_principal = NULL;
+ 			}
+ 		}
+ 	}
