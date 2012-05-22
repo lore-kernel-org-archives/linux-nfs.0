@@ -1,223 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:34454 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752810Ab2EWNDk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 May 2012 09:03:40 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 2/4] NFSv4.1 cache mdsthreshold values on OPEN
-Date: Wed, 23 May 2012 05:02:35 -0400
-Message-Id: <1337763757-1566-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1337763757-1566-1-git-send-email-andros@netapp.com>
-References: <1337763757-1566-1-git-send-email-andros@netapp.com>
+Received: from acsinet15.oracle.com ([141.146.126.227]:33722 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759807Ab2EVQWK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 12:22:10 -0400
+Received: from ucsinet21.oracle.com (ucsinet21.oracle.com [156.151.31.93])
+	by acsinet15.oracle.com (Sentrion-MTA-4.2.2/Sentrion-MTA-4.2.2) with ESMTP id q4MGM7Bt005472
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 16:22:08 GMT
+Received: from acsmt358.oracle.com (acsmt358.oracle.com [141.146.40.158])
+	by ucsinet21.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id q4MGLxJh001442
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 16:21:59 GMT
+Received: from abhmt102.oracle.com (abhmt102.oracle.com [141.146.116.54])
+	by acsmt358.oracle.com (8.12.11.20060308/8.12.11) with ESMTP id q4MGLxUo026811
+	for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 11:21:59 -0500
+Message-ID: <4FBBBD26.2090203@oracle.com>
+Date: Tue, 22 May 2012 10:21:58 -0600
+From: Jeff Wright <jeff.wright@oracle.com>
+MIME-Version: 1.0
+To: linux-nfs@vger.kernel.org
+CC: Jeff Wright <jeff.wright@oracle.com>,
+        Craig Flaskerud <Craig.flaskerud@oracle.com>,
+        Donna Harland <donna.harland@oracle.com>
+Subject: Help with NFS over 10GbE performance - possible NFS client to TCP
+ bottleneck
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+Team,
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/inode.c         |    2 ++
- fs/nfs/nfs4proc.c      |   38 +++++++++++++++++++++++++++++++++-----
- fs/nfs/pnfs.c          |   12 ++++++++++++
- fs/nfs/pnfs.h          |   21 +++++++++++++++++++++
- include/linux/nfs_fs.h |    1 +
- 5 files changed, 69 insertions(+), 5 deletions(-)
+I am working on a team implementing a configuration with an OEL kernel 
+(2.6.32-300.3.1.el6uek.x86_64) and kernel NFS accessing an NFS server 
+over 10GbE a Solaris 10.  We are trying to resolve what appears to be a 
+bottleneck between the Linux kernel NFS client and the TCP stack.  
+Specifically, the TCP send queue on the Linux client is empty (save a 
+couple of bursts) when we are running write I/O from the file system, 
+the TCP receive queue on the Solaris 10 NFS server is empty, and the RPC 
+pending request queue on the Solaris 10 NFS server is zero.   If we dial 
+the network to 1GbE we get a nice deep TCP send queue on the client, 
+which is the bottleneck I was hoping to get to with 10GbE.  At this 
+point, we am pretty sure the S10 NFS server can run to at least 1000 MBPS.
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 9ad81ce..889f7e5 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -641,6 +641,7 @@ struct nfs_open_context *alloc_nfs_open_context(struct dentry *dentry, fmode_t f
- 	nfs_init_lock_context(&ctx->lock_context);
- 	ctx->lock_context.open_context = ctx;
- 	INIT_LIST_HEAD(&ctx->list);
-+	ctx->mdsthreshold = NULL;
- 	return ctx;
- }
- 
-@@ -669,6 +670,7 @@ static void __put_nfs_open_context(struct nfs_open_context *ctx, int is_sync)
- 		put_rpccred(ctx->cred);
- 	dput(ctx->dentry);
- 	nfs_sb_deactive(sb);
-+	kfree(ctx->mdsthreshold);
- 	kfree(ctx);
- }
- 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 78784e5..d84c633 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1781,7 +1781,14 @@ static inline void nfs4_exclusive_attrset(struct nfs4_opendata *opendata, struct
- /*
-  * Returns a referenced nfs4_state
-  */
--static int _nfs4_do_open(struct inode *dir, struct dentry *dentry, fmode_t fmode, int flags, struct iattr *sattr, struct rpc_cred *cred, struct nfs4_state **res)
-+static int _nfs4_do_open(struct inode *dir,
-+			struct dentry *dentry,
-+			fmode_t fmode,
-+			int flags,
-+			struct iattr *sattr,
-+			struct rpc_cred *cred,
-+			struct nfs4_state **res,
-+			struct nfs4_threshold **ctx_th)
- {
- 	struct nfs4_state_owner  *sp;
- 	struct nfs4_state     *state = NULL;
-@@ -1806,6 +1813,11 @@ static int _nfs4_do_open(struct inode *dir, struct dentry *dentry, fmode_t fmode
- 	if (opendata == NULL)
- 		goto err_put_state_owner;
- 
-+	if (ctx_th && server->attr_bitmask[2] & FATTR4_WORD2_MDSTHRESHOLD) {
-+		opendata->f_attr.mdsthreshold = pnfs_mdsthreshold_alloc();
-+		if (!opendata->f_attr.mdsthreshold)
-+			goto err_opendata_put;
-+	}
- 	if (dentry->d_inode != NULL)
- 		opendata->state = nfs4_get_open_state(dentry->d_inode, sp);
- 
-@@ -1831,11 +1843,19 @@ static int _nfs4_do_open(struct inode *dir, struct dentry *dentry, fmode_t fmode
- 			nfs_setattr_update_inode(state->inode, sattr);
- 		nfs_post_op_update_inode(state->inode, opendata->o_res.f_attr);
- 	}
-+
-+	if (pnfs_use_threshold(ctx_th, opendata->f_attr.mdsthreshold, server))
-+		*ctx_th = opendata->f_attr.mdsthreshold;
-+	else
-+		kfree(opendata->f_attr.mdsthreshold);
-+	opendata->f_attr.mdsthreshold = NULL;
-+
- 	nfs4_opendata_put(opendata);
- 	nfs4_put_state_owner(sp);
- 	*res = state;
- 	return 0;
- err_opendata_put:
-+	kfree(opendata->f_attr.mdsthreshold);
- 	nfs4_opendata_put(opendata);
- err_put_state_owner:
- 	nfs4_put_state_owner(sp);
-@@ -1845,14 +1865,21 @@ out_err:
- }
- 
- 
--static struct nfs4_state *nfs4_do_open(struct inode *dir, struct dentry *dentry, fmode_t fmode, int flags, struct iattr *sattr, struct rpc_cred *cred)
-+static struct nfs4_state *nfs4_do_open(struct inode *dir,
-+					struct dentry *dentry,
-+					fmode_t fmode,
-+					int flags,
-+					struct iattr *sattr,
-+					struct rpc_cred *cred,
-+					struct nfs4_threshold **ctx_th)
- {
- 	struct nfs4_exception exception = { };
- 	struct nfs4_state *res;
- 	int status;
- 
- 	do {
--		status = _nfs4_do_open(dir, dentry, fmode, flags, sattr, cred, &res);
-+		status = _nfs4_do_open(dir, dentry, fmode, flags, sattr, cred,
-+				       &res, ctx_th);
- 		if (status == 0)
- 			break;
- 		/* NOTE: BAD_SEQID means the server and client disagree about the
-@@ -2176,7 +2203,8 @@ nfs4_atomic_open(struct inode *dir, struct nfs_open_context *ctx, int open_flags
- 	struct nfs4_state *state;
- 
- 	/* Protect against concurrent sillydeletes */
--	state = nfs4_do_open(dir, ctx->dentry, ctx->mode, open_flags, attr, ctx->cred);
-+	state = nfs4_do_open(dir, ctx->dentry, ctx->mode, open_flags, attr,
-+			     ctx->cred, &ctx->mdsthreshold);
- 	if (IS_ERR(state))
- 		return ERR_CAST(state);
- 	ctx->state = state;
-@@ -2778,7 +2806,7 @@ nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
- 		fmode = ctx->mode;
- 	}
- 	sattr->ia_mode &= ~current_umask();
--	state = nfs4_do_open(dir, de, fmode, flags, sattr, cred);
-+	state = nfs4_do_open(dir, de, fmode, flags, sattr, cred, NULL);
- 	d_drop(dentry);
- 	if (IS_ERR(state)) {
- 		status = PTR_ERR(state);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 5d09a36..cbcb6ae 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1630,3 +1630,15 @@ out_free:
- 	kfree(data);
- 	goto out;
- }
-+
-+struct nfs4_threshold *pnfs_mdsthreshold_alloc(void)
-+{
-+	struct nfs4_threshold *thp;
-+
-+	thp = kzalloc(sizeof(*thp), GFP_NOFS);
-+	if (!thp) {
-+		dprintk("%s mdsthreshold allocation failed\n", __func__);
-+		return NULL;
-+	}
-+	return thp;
-+}
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 7980756..29fd23c 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -227,6 +227,7 @@ int pnfs_read_done_resend_to_mds(struct inode *inode, struct list_head *head,
- 			const struct nfs_pgio_completion_ops *compl_ops);
- int pnfs_write_done_resend_to_mds(struct inode *inode, struct list_head *head,
- 			const struct nfs_pgio_completion_ops *compl_ops);
-+struct nfs4_threshold *pnfs_mdsthreshold_alloc(void);
- 
- /* nfs4_deviceid_flags */
- enum {
-@@ -360,6 +361,14 @@ static inline int pnfs_return_layout(struct inode *ino)
- 	return 0;
- }
- 
-+static inline bool
-+pnfs_use_threshold(struct nfs4_threshold **dst, struct nfs4_threshold *src,
-+		   struct nfs_server *nfss)
-+{
-+	return (dst && src && src->bm != 0 &&
-+					nfss->pnfs_curr_ld->id == src->l_type);
-+}
-+
- #ifdef NFS_DEBUG
- void nfs4_print_deviceid(const struct nfs4_deviceid *dev_id);
- #else
-@@ -485,6 +494,18 @@ static inline int pnfs_layoutcommit_inode(struct inode *inode, bool sync)
- 	return 0;
- }
- 
-+static inline bool
-+pnfs_use_threshold(struct nfs4_threshold **dst, struct nfs4_threshold *src,
-+		   struct nfs_server *nfss)
-+{
-+	return false;
-+}
-+
-+static inline struct nfs4_threshold *pnfs_mdsthreshold_alloc(void)
-+{
-+	return NULL;
-+}
-+
- #endif /* CONFIG_NFS_V4_1 */
- 
- #endif /* FS_NFS_PNFS_H */
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 6cc7dba..ca4a707 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -102,6 +102,7 @@ struct nfs_open_context {
- 	int error;
- 
- 	struct list_head list;
-+	struct nfs4_threshold	*mdsthreshold;
- };
- 
- struct nfs_open_dir_context {
--- 
-1.7.7.6
+So far, we have implemented the following Linux kernel tunes:
 
+sunrpc.tcp_slot_table_entries = 128
+net.core.rmem_default = 4194304
+net.core.wmem_default = 4194304
+net.core.rmem_max = 4194304
+net.core.wmem_max = 4194304
+net.ipv4.tcp_rmem = 4096 1048576 4194304
+net.ipv4.tcp_wmem = 4096 1048576 4194304
+net.ipv4.tcp_timestamps = 0
+net.ipv4.tcp_syncookies = 1
+net.core.netdev_max_backlog = 300000
+
+In addition, we am running jumbo frames on the 10GbE NIC and we have 
+cpuspeed and irqbalance disabled (no noticeable changes when we did 
+this).  The mount options on the client side are as follows:
+
+192.168.44.51:/export/share on /export/share type nfs 
+(rw,nointr,bg,hard,rsize=1048576,wsize=1048576,proto=tcp,vers=3,addr=192.168.44.51)
+
+In this configuration we get about 330 MBPS of write throughput with 16 
+pending stable (open with O_DIRECT) synchronous (no kernel aio in the 
+I/O application) writes.  If we scale beyond 16 pending I/O response 
+time increases but throughput remains fixed.  It feels like there is a 
+problem with getting more than 16 pending I/O out to TCP, but we can't 
+tell for sure based on our observations so far.  We did notice that 
+tuning the wsize down to 32kB increased throughput to 400 MBPS, but we 
+could not identify the root cause of this change.
+
+Please let us know if you have any suggestions for either diagnosing the 
+bottleneck more accurately or relieving the bottleneck.  Thank you in 
+advance.
+
+Sincerely,
+
+Jeff
