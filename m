@@ -1,85 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:46665 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:2013 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750940Ab2EOEG7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 May 2012 00:06:59 -0400
-Date: Tue, 15 May 2012 14:06:46 +1000
-From: NeilBrown <neilb@suse.de>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: ANNOUNCE: nfs-utils-1.2.6 released.
-Message-ID: <20120515140646.554c378c@notabene.brown>
-In-Reply-To: <4FB159DA.2070800@RedHat.com>
-References: <4FB159DA.2070800@RedHat.com>
+	id S1752988Ab2EVPoS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 11:44:18 -0400
+Subject: Re: [PATCH 3/4] SUNRPC: Add RPC based upcall mechanism for RPCGSS
+ auth
+From: Simo Sorce <simo@redhat.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+In-Reply-To: <20120522153105.GC11739@pad.fieldses.org>
+References: <1337087550-9821-4-git-send-email-simo@redhat.com>
+	 <20120522124728.GB891@fieldses.org>
+	 <1337691607.16840.178.camel@willson.li.ssimo.org>
+	 <4FBB91EE.3010307@parallels.com>
+	 <1337692966.16840.181.camel@willson.li.ssimo.org>
+	 <4FBB9551.9010407@parallels.com> <20120522142035.GC891@fieldses.org>
+	 <4FBBA667.4090409@parallels.com> <20120522150748.GF891@fieldses.org>
+	 <1337699781.16840.190.camel@willson.li.ssimo.org>
+	 <20120522153105.GC11739@pad.fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 22 May 2012 11:44:10 -0400
+Message-ID: <1337701450.16840.205.camel@willson.li.ssimo.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/_52BPj3bUPw7JwEl26FJuUk"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/_52BPj3bUPw7JwEl26FJuUk
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Tue, 2012-05-22 at 11:31 -0400, J. Bruce Fields wrote:
+> On Tue, May 22, 2012 at 11:16:21AM -0400, Simo Sorce wrote:
+> > On Tue, 2012-05-22 at 11:07 -0400, J. Bruce Fields wrote:
+> > > On Tue, May 22, 2012 at 06:44:55PM +0400, Stanislav Kinsbursky wrote:
+> > > > Yep, we discussed it already.
+> > > > The problem is that connect call to unix sockets is done from rpciod
+> > > > workqueue because of selinux restrictions.
+> > > > IOW UNIX socket path will be traversed staring from rpciod kernel
+> > > > thread root. Currently this problem is existent for portmapper
+> > > > registration calls - for example LockD, started in container with
+> > > > nested root, will be registered in global rpcbind instead of local
+> > > > (container's) one.
+> > > 
+> > > Thanks for the reminder!
+> > > 
+> > > > One of solutions was to export set_fs_root(), but Al Viro doesn't like it.
+> > > > 
+> > > > So currently I'm thinking about patching network layer - i.e.
+> > > > implementing an ability to pass desired path to unix sockets connect
+> > > > and bind calls.
+> > > > IOW, I'm talking about introducing of "bindat" and "connectat" system calls...
+> > > 
+> > > So then we'd resolve the path in the right context and pass down a
+> > > (vfsmount, dentry) that rpciod could use in bindat/connectat calls?
+> > > 
+> > > > >In particular: the current svcgssd communication method is using one of
+> > > > >the sunrpc caches.  If we convert now to this method (which uses a unix
+> > > > >socket) would there be a loss in functionality, until the unix sockets
+> > > > >problems are fixed?
+> > > > >
+> > > > 
+> > > > I'm afraid, that you are right...
+> > > > This new client will connect to root daemon - not containerized one...
+> > > > How soon this new unix-socket way will become common practice?
+> > > > Maybe I'd be able to patch unix sockets before distro's will use this new version.
+> > > > But I don't know, what would be best to do...
+> > > 
+> > > Ugh.
+> > > 
+> > > Simo, remind me of the reasons for using a unix socket?
+> > 
+> > It's an RPC protocol, and we do not want the size limitations of other
+> > upcall mechanisms, we really want a stream.
+> 
+> So what ruled out TCP over lo?
 
-On Mon, 14 May 2012 15:15:38 -0400 Steve Dickson <SteveD@redhat.com> wrote:
+Well it's a local-only protocol, it is not supposed to be available over
+a network, listning on a tcp port would require filtering at some level.
+Also, in user space,  I depend on get_sockopts to get the peer creds and
+selinux context when user space client connect, I am not sure this info
+would be available over TCP, but in general it seem it would needlessly
+complicate things for the user space daemon, as you would need to use
+rpcbind to register the port and all that useless dance.
 
-> New Features in this release:
->    * The addition the nfsdcld daemon
->    * The addition of the osd_login script which is mandated by the
->          pnfs-objects standard
->    * The addition of -l option to rpcgssd to enforce legacy behaviour
->=20
-> As well as the usual assorted bug fixes... =20
->=20
-> The tarball can only be found at Sourceforge.net since=20
-> still unable to access ftp://ftp.kernel.org (I'm working
-> on it):
->   http://sourceforge.net/projects/nfs
->=20
-> The git tree is at:
->    git://linux-nfs.org/nfs-utils
->=20
-> The change log is also only on Sourceforge.net:
->    http://sourceforge.net/projects/nfs/files/nfs-utils/1.2.6/Changelog-1.=
-2.6/download
->=20
-> steved.
->
+Simo.
 
-Thanks Steve.
+-- 
+Simo Sorce * Red Hat, Inc * New York
 
-I noticed that the "default download" was still 1.2.5.
-
-I wondered why and eventually found this:
-
-https://sourceforge.net/apps/trac/sourceforge/ticket/20991
-
-So I took the liberty of making the appropriate change, and now the default
-download is 1.2.6.
-I hope that's OK.
-
-NeilBrown
-
---Sig_/_52BPj3bUPw7JwEl26FJuUk
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.18 (GNU/Linux)
-
-iQIVAwUBT7HWVjnsnt1WYoG5AQKMeQ//ZJpHI1SNrmDzaGCiFCmPUWJMofyjR0MI
-aN5U2NI42tNQoXjMdBAP+tQBPmjQAc2PWFKP1dfZYy9S9DbDVgk+7UvRUJ09gsGp
-bavjdfMnKSXmaoZRoVD7eYYJvxGgkruQfHmzlV1gS0rOD6cIXdwzTBs9HUuGOOU7
-etiq+3wYBFeCRELFEDSJlkSB36HVUicxnq2NptrbmVu3nJe3m7VTgFWo0luEzLpo
-Iub7T/5IxxUtK/UsgyF+J3qs14m1iF4bdbn0Qxg8ad5B6wt5Jek7OBdi4dwx1vUi
-nWSyBIjzxaGUN4YbvL0pHMqZ3muDwPfV5boUBPeotVndIHyKlAt4/OvGoKyyPsIo
-Ify3E14SKgx2sf0C8zDeEZtHcms/c7gCGunVC539u9zmK9CJoF/3ccXIf9srqGxh
-KZhujVjzGBPByOGX2gXu4VLDAXdrCxNUYhgnHjgeuZjntlRtyL1Ze0oEi26qx3wU
-5AfpSX9GqSyIfPKXc6rQj25uok0Kn4bcv5oR06A+/s38FTb58W9B8drl5L2Fk4xZ
-U+AG8qRzpCDIqcYVM3fKH3mgDLjf8e2pg7wMY4vQQ9IuHGQ4Lmc++DciLJEXMFB/
-hdVgilxaCsqZ53jCuFK1n5TUTLJkcxgqtO2QBeM6zP8YLa3MSGrLJ89//KvTKzyU
-10OyrHf0biY=
-=lGY8
------END PGP SIGNATURE-----
-
---Sig_/_52BPj3bUPw7JwEl26FJuUk--
