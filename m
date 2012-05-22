@@ -1,412 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:7217 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:47211 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753177Ab2EYWKG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 May 2012 18:10:06 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q4PMA6G3021073
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Fri, 25 May 2012 18:10:06 -0400
+	id S1757357Ab2EVPMS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 11:12:18 -0400
+Subject: Re: [PATCH 3/4] SUNRPC: Add RPC based upcall mechanism for RPCGSS
+ auth
 From: Simo Sorce <simo@redhat.com>
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
-Subject: [PATCH 4/4] SUNRPC: Use gssproxy upcall for nfsd's RPCGSS authentication.
-Date: Fri, 25 May 2012 18:09:56 -0400
-Message-Id: <1337983796-26476-5-git-send-email-simo@redhat.com>
-In-Reply-To: <1337983796-26476-1-git-send-email-simo@redhat.com>
-References: <1337983796-26476-1-git-send-email-simo@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+In-Reply-To: <20120522150356.GE891@fieldses.org>
+References: <1337087550-9821-1-git-send-email-simo@redhat.com>
+	 <1337087550-9821-4-git-send-email-simo@redhat.com>
+	 <20120522150356.GE891@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 22 May 2012 11:12:11 -0400
+Message-ID: <1337699531.16840.185.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The main advantge of this new upcall mechanism is that it can handle
-big tickets as seen in Kerberos implementations where tickets carry
-authorization data like the MS-PAC buffer with AD or the Posix Authorization
-Data being discussed in IETF on the krbwg working group.
+On Tue, 2012-05-22 at 11:03 -0400, J. Bruce Fields wrote:
+> Note also if you rebase to my latest for-3.5 you need something like
+> the following (untested).
+> 
+> --b.
+> 
+> commit 2cc8f0912880a177eee73e08c4305ac3692b8ff9
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Tue May 22 08:44:08 2012 -0400
+> 
+>     client_name->cred.cr_principal
+> 
+> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+> index 0211265..95104ae 100644
+> --- a/net/sunrpc/auth_gss/svcauth_gss.c
+> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
+> @@ -1182,26 +1182,27 @@ static int gss_proxy_save_rsc(struct cache_detail *cd,
+>  
+>  		/* get client name */
+>  		if (ud->client_name.len != 0) {
+> +			struct svc_cred *cred = &rsci.cred;
+>  			status = -ENOMEM;
+>  			/* convert to GSS_NT_HOSTBASED_SERVICE form */
+> -			rsci.client_name = kstrndup(ud->client_name.data,
+> +			cred->cr_principal = kstrndup(ud->client_name.data,
+>  							ud->client_name.len,
+>  							GFP_KERNEL);
+> -			if (!rsci.client_name)
+> +			if (!cred->cr_principal)
+>  				goto out;
+>  			/* terminate and remove realm part */
+> -			c = strchr(rsci.client_name, '@');
+> +			c = strchr(cred->cr_principal, '@');
+>  			if (c) {
+>  				*c = '\0';
+>  
+>  				/* change service-hostname delimiter */
+> -				c = strchr(rsci.client_name, '/');
+> +				c = strchr(cred->cr_principal, '/');
+>  				if (c) *c = '@';
+>  			}
+>  			if (!c) {
+>  				/* not a service principal */
+> -				kfree(rsci.client_name);
+> -				rsci.client_name = NULL;
+> +				kfree(cred->cr_principal);
+> +				cred->cr_principal = NULL;
+>  			}
+>  		}
+>  	}
 
-The Gssproxy program is used to perform the accept_sec_context call on the
-kernel's behalf. The code is changed to also pass the input buffer straight
-to upcall mechanism to avoid allocating and copying many pages as tokens can
-be as big (potentially more in future) as 64KiB.
+I have a patch to move this in gss_rpc_upcall.c instead, it's cleaner, I
+think.
 
-Signed-off-by: Simo Sorce <simo@redhat.com>
----
- include/linux/sunrpc/auth_gss.h    |    3 +
- include/linux/sunrpc/svcauth_gss.h |    2 +-
- net/sunrpc/auth_gss/auth_gss.c     |    9 ++-
- net/sunrpc/auth_gss/svcauth_gss.c  |  223 +++++++++++++++++++++++++++++++++--
- 4 files changed, 222 insertions(+), 15 deletions(-)
+Simo.
 
-diff --git a/include/linux/sunrpc/auth_gss.h b/include/linux/sunrpc/auth_gss.h
-index f1cfd4c85cd047c4b2fadd367eeb819aabc57d29..eb2670f6cf9113f1b4c161b9deda05ee4757fa85 100644
---- a/include/linux/sunrpc/auth_gss.h
-+++ b/include/linux/sunrpc/auth_gss.h
-@@ -19,6 +19,9 @@
- 
- #define RPC_GSS_VERSION		1
- 
-+#define GSS_UPCALL_LEGACY	0
-+#define GSS_UPCALL_GSSPROXY	1
-+
- #define MAXSEQ 0x80000000 /* maximum legal sequence number, from rfc 2203 */
- 
- enum rpc_gss_proc {
-diff --git a/include/linux/sunrpc/svcauth_gss.h b/include/linux/sunrpc/svcauth_gss.h
-index 726aff1a52011fcdfd3ab1e11b8a82ff1dbea703..7baccfcc6547ca738cb90063bf07c85c418f4874 100644
---- a/include/linux/sunrpc/svcauth_gss.h
-+++ b/include/linux/sunrpc/svcauth_gss.h
-@@ -16,7 +16,7 @@
- #include <linux/sunrpc/svcsock.h>
- #include <linux/sunrpc/auth_gss.h>
- 
--int gss_svc_init(void);
-+int gss_svc_init(unsigned int upcall_type);
- void gss_svc_shutdown(void);
- int gss_svc_init_net(struct net *net);
- void gss_svc_shutdown_net(struct net *net);
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 836cbecb1947235d38c62eadf79ae96ad73906e6..97fe72609387cb8b948bc3aa4d14db4956138d3c 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -60,6 +60,8 @@ static const struct rpc_credops gss_nullops;
- #define GSS_RETRY_EXPIRED 5
- static unsigned int gss_expired_cred_retry_delay = GSS_RETRY_EXPIRED;
- 
-+static unsigned int gss_upcall_daemon_type = GSS_UPCALL_LEGACY;
-+
- #ifdef RPC_DEBUG
- # define RPCDBG_FACILITY	RPCDBG_AUTH
- #endif
-@@ -1687,7 +1689,7 @@ static int __init init_rpcsec_gss(void)
- 	err = rpcauth_register(&authgss_ops);
- 	if (err)
- 		goto out;
--	err = gss_svc_init();
-+	err = gss_svc_init(gss_upcall_daemon_type);
- 	if (err)
- 		goto out_unregister;
- 	err = register_pernet_subsys(&rpcsec_gss_net_ops);
-@@ -1717,6 +1719,11 @@ module_param_named(expired_cred_retry_delay,
- 		   uint, 0644);
- MODULE_PARM_DESC(expired_cred_retry_delay, "Timeout (in seconds) until "
- 		"the RPC engine retries an expired credential");
-+module_param_named(upcall_daemon_type,
-+		   gss_upcall_daemon_type,
-+		   uint, 0644);
-+MODULE_PARM_DESC(upcall_daemon_type, "Type of svcgss upcall daemon used "
-+		"(legacy=0 or gssproxy=1)");
- 
- module_init(init_rpcsec_gss)
- module_exit(exit_rpcsec_gss)
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 5008672f920e8bdda6a4753bd7c7262a90d11eab..57b04cb741b840de773ed2cbb75a1245a7968ebe 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -47,6 +47,7 @@
- #include <linux/sunrpc/svcauth.h>
- #include <linux/sunrpc/svcauth_gss.h>
- #include <linux/sunrpc/cache.h>
-+#include "gss_rpc_upcall.h"
- 
- #include "../netns.h"
- 
-@@ -54,6 +55,8 @@
- # define RPCDBG_FACILITY	RPCDBG_AUTH
- #endif
- 
-+static bool use_gssp = false;
-+
- /* The rpcsec_init cache is used for mapping RPCSEC_GSS_{,CONT_}INIT requests
-  * into replies.
-  *
-@@ -551,6 +554,7 @@ static struct rsc *rsc_update(struct cache_detail *cd, struct rsc *new, struct r
- }
- 
- 
-+
- static struct rsc *
- gss_svc_searchbyctx(struct cache_detail *cd, struct xdr_netobj *handle)
- {
-@@ -971,13 +975,10 @@ gss_write_init_verf(struct cache_detail *cd, struct svc_rqst *rqstp,
- }
- 
- static inline int
--gss_read_verf(struct rpc_gss_wire_cred *gc,
--	      struct kvec *argv, __be32 *authp,
--	      struct xdr_netobj *in_handle,
--	      struct xdr_netobj *in_token)
-+gss_read_common_verf(struct rpc_gss_wire_cred *gc,
-+		     struct kvec *argv, __be32 *authp,
-+		     struct xdr_netobj *in_handle)
- {
--	struct xdr_netobj tmpobj;
--
- 	/* Read the verifier; should be NULL: */
- 	*authp = rpc_autherr_badverf;
- 	if (argv->iov_len < 2 * 4)
-@@ -993,6 +994,23 @@ gss_read_verf(struct rpc_gss_wire_cred *gc,
- 	if (dup_netobj(in_handle, &gc->gc_ctx))
- 		return SVC_CLOSE;
- 	*authp = rpc_autherr_badverf;
-+
-+	return 0;
-+}
-+
-+static inline int
-+gss_read_verf(struct rpc_gss_wire_cred *gc,
-+	      struct kvec *argv, __be32 *authp,
-+	      struct xdr_netobj *in_handle,
-+	      struct xdr_netobj *in_token)
-+{
-+	struct xdr_netobj tmpobj;
-+	int res;
-+
-+	res = gss_read_common_verf(gc, argv, authp, in_handle);
-+	if (res)
-+		return res;
-+
- 	if (svc_safe_getnetobj(argv, &tmpobj)) {
- 		kfree(in_handle->data);
- 		return SVC_DENIED;
-@@ -1005,6 +1023,40 @@ gss_read_verf(struct rpc_gss_wire_cred *gc,
- 	return 0;
- }
- 
-+/* Ok this is really heavily depending on a set of semantics in
-+ * how rqstp is set up by svc_recv and pages laid down by the
-+ * server when reading a request. We are basically guaranteed that
-+ * the token lays all down linearly across a set of pages, starting
-+ * at iov_base in rq_arg.head[0] which happens to be the first of a
-+ * set of pages stored in rq_pages[].
-+ * rq_arg.head[0].iov_base will provide us the page_base to pass
-+ * to the upcall.
-+ */
-+static inline int
-+gss_read_proxy_verf(struct svc_rqst *rqstp,
-+		    struct rpc_gss_wire_cred *gc, __be32 *authp,
-+		    struct xdr_netobj *in_handle,
-+		    struct gssp_in_token *in_token)
-+{
-+	struct kvec *argv = &rqstp->rq_arg.head[0];
-+	u32 inlen;
-+	int res;
-+
-+	res = gss_read_common_verf(gc, argv, authp, in_handle);
-+	if (res)
-+		return res;
-+
-+	inlen = svc_getnl(argv);
-+	if (inlen > (argv->iov_len + rqstp->rq_arg.page_len))
-+		return SVC_DENIED;
-+
-+	in_token->pages = rqstp->rq_pages;
-+	in_token->page_base = (ulong)argv->iov_base & ~PAGE_MASK;
-+	in_token->page_len = inlen;
-+
-+	return 0;
-+}
-+
- static inline int
- gss_write_resv(struct kvec *resv, size_t size_limit,
- 	       struct xdr_netobj *out_handle, struct xdr_netobj *out_token,
-@@ -1032,7 +1084,7 @@ gss_write_resv(struct kvec *resv, size_t size_limit,
-  * the upcall results are available, write the verifier and result.
-  * Otherwise, drop the request pending an answer to the upcall.
-  */
--static int svcauth_gss_handle_init(struct svc_rqst *rqstp,
-+static int svcauth_gss_legacy_init(struct svc_rqst *rqstp,
- 			struct rpc_gss_wire_cred *gc, __be32 *authp)
- {
- 	struct kvec *argv = &rqstp->rq_arg.head[0];
-@@ -1072,6 +1124,134 @@ out:
- 	return ret;
- }
- 
-+static int gss_proxy_save_rsc(struct cache_detail *cd,
-+				struct gssp_upcall_data *ud,
-+				uint64_t *handle)
-+{
-+	struct rsc rsci, *rscp = NULL;
-+	static atomic64_t ctxhctr;
-+	long long ctxh;
-+	struct gss_api_mech *gm = NULL;
-+	time_t expiry;
-+	int status = -EINVAL;
-+
-+	memset(&rsci, 0, sizeof(rsci));
-+	/* context handle */
-+	status = -ENOMEM;
-+	/* the handle needs to be just a unique id,
-+	 * use a static counter */
-+	ctxh = atomic64_inc_return(&ctxhctr);
-+
-+	/* make a copy for the caller */
-+	*handle = ctxh;
-+
-+	/* make a copy for the rsc cache */
-+	if (dup_to_netobj(&rsci.handle, (char *)handle, sizeof(uint64_t)))
-+		goto out;
-+	rscp = rsc_lookup(cd, &rsci);
-+	if (!rscp)
-+		goto out;
-+
-+	/* creds */
-+	if (!ud->found_creds) {
-+		/* userspace seem buggy, we should always get at least a
-+		 * mapping to nobody */
-+		dprintk("RPC:       No creds found, marking Negative!\n");
-+		set_bit(CACHE_NEGATIVE, &rsci.h.flags);
-+	} else {
-+
-+		/* steal creds */
-+		rsci.cred = ud->creds;
-+		memset(&ud->creds, 0, sizeof(struct svc_cred));
-+
-+		status = -EOPNOTSUPP;
-+		/* get mech handle from OID */
-+		gm = gss_mech_get_by_OID(&ud->mech_oid);
-+		if (!gm)
-+			goto out;
-+
-+		status = -EINVAL;
-+		/* mech-specific data: */
-+		status = gss_import_sec_context(ud->out_handle.data,
-+						ud->out_handle.len,
-+						gm, &rsci.mechctx,
-+						&expiry, GFP_KERNEL);
-+		if (status)
-+			goto out;
-+	}
-+
-+	rsci.h.expiry_time = expiry;
-+	rscp = rsc_update(cd, &rsci, rscp);
-+	status = 0;
-+out:
-+	gss_mech_put(gm);
-+	rsc_free(&rsci);
-+	if (rscp)
-+		cache_put(&rscp->h, cd);
-+	else
-+		status = -ENOMEM;
-+	return status;
-+}
-+
-+static int svcauth_gss_proxy_init(struct svc_rqst *rqstp,
-+			struct rpc_gss_wire_cred *gc, __be32 *authp)
-+{
-+	struct kvec *resv = &rqstp->rq_res.head[0];
-+	struct xdr_netobj cli_handle;
-+	struct gssp_upcall_data ud;
-+	uint64_t handle;
-+	int status;
-+	int ret;
-+	struct net *net = rqstp->rq_xprt->xpt_net;
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-+
-+	memset(&ud, 0, sizeof(ud));
-+	ret = gss_read_proxy_verf(rqstp, gc, authp,
-+				  &ud.in_handle, &ud.in_token);
-+	if (ret)
-+		return ret;
-+
-+	ret = SVC_CLOSE;
-+
-+	/* Perform synchronous upcall to gss-proxy */
-+	status = gssp_accept_sec_context_upcall(net, &ud);
-+	if (status)
-+		goto out;
-+
-+	dprintk("RPC:       svcauth_gss: gss major status = %d\n",
-+			ud.major_status);
-+
-+	switch (ud.major_status) {
-+	case GSS_S_CONTINUE_NEEDED:
-+		cli_handle = ud.out_handle;
-+		break;
-+	case GSS_S_COMPLETE:
-+		status = gss_proxy_save_rsc(sn->rsc_cache, &ud, &handle);
-+		if (status)
-+			goto out;
-+		cli_handle.data = (u8 *)&handle;
-+		cli_handle.len = sizeof(handle);
-+		break;
-+	default:
-+		ret = SVC_CLOSE;
-+		goto out;
-+	}
-+
-+	/* Got an answer to the upcall; use it: */
-+	if (gss_write_init_verf(sn->rsc_cache, rqstp,
-+				&cli_handle, &ud.major_status))
-+		goto out;
-+	if (gss_write_resv(resv, PAGE_SIZE,
-+			   &cli_handle, &ud.out_token,
-+			   ud.major_status, ud.minor_status))
-+		goto out;
-+
-+	ret = SVC_COMPLETE;
-+out:
-+	gssp_free_upcall_data(&ud);
-+	return ret;
-+}
-+
- /*
-  * Accept an rpcsec packet.
-  * If context establishment, punt to user space
-@@ -1138,7 +1318,10 @@ svcauth_gss_accept(struct svc_rqst *rqstp, __be32 *authp)
- 	switch (gc->gc_proc) {
- 	case RPC_GSS_PROC_INIT:
- 	case RPC_GSS_PROC_CONTINUE_INIT:
--		return svcauth_gss_handle_init(rqstp, gc, authp);
-+		if (use_gssp)
-+			return svcauth_gss_proxy_init(rqstp, gc, authp);
-+		else
-+			return svcauth_gss_legacy_init(rqstp, gc, authp);
- 	case RPC_GSS_PROC_DATA:
- 	case RPC_GSS_PROC_DESTROY:
- 		/* Look up the context, and check the verifier: */
-@@ -1510,9 +1693,12 @@ gss_svc_init_net(struct net *net)
- 	rv = rsc_cache_create_net(net);
- 	if (rv)
- 		return rv;
--	rv = rsi_cache_create_net(net);
--	if (rv)
--		goto out1;
-+	if (!use_gssp) {
-+		rv = rsi_cache_create_net(net);
-+		if (rv)
-+			goto out1;
-+	}
-+
- 	return 0;
- out1:
- 	rsc_cache_destroy_net(net);
-@@ -1522,13 +1708,24 @@ out1:
- void
- gss_svc_shutdown_net(struct net *net)
- {
--	rsi_cache_destroy_net(net);
-+	if (!use_gssp)
-+		rsi_cache_destroy_net(net);
- 	rsc_cache_destroy_net(net);
- }
- 
- int
--gss_svc_init(void)
-+gss_svc_init(unsigned int upcall_type)
- {
-+	switch (upcall_type) {
-+	case GSS_UPCALL_LEGACY:
-+		break;
-+	case GSS_UPCALL_GSSPROXY:
-+		dprintk("RPC:       svcauth_gss: Initializing for use with gss-proxy\n");
-+		use_gssp = true;
-+		break;
-+	default:
-+		return -EINVAL;
-+	}
- 	return svc_auth_register(RPC_AUTH_GSS, &svcauthops_gss);
- }
- 
 -- 
-1.7.7.6
+Simo Sorce * Red Hat, Inc * New York
 
