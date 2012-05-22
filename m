@@ -1,104 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:60449 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:18194 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761468Ab2EJTIB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 May 2012 15:08:01 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v4 12/14] NFS: Create a single nfs_validate_mount_data() function
-Date: Thu, 10 May 2012 15:07:41 -0400
-Message-Id: <1336676863-9698-13-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1336676863-9698-1-git-send-email-bjschuma@netapp.com>
-References: <1336676863-9698-1-git-send-email-bjschuma@netapp.com>
+	id S932474Ab2EVUkn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 16:40:43 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Andy Adamson <androsadamson@gmail.com>
+CC: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "Isaman, Fred" <Fred.Isaman@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 4/4] NFSv4.1 do not release page on commit mismatch
+Date: Tue, 22 May 2012 20:40:43 +0000
+Message-ID: <1337719244.4269.30.camel@lade.trondhjem.org>
+References: <1337688569-1515-1-git-send-email-andros@netapp.com>
+	 <1337688569-1515-5-git-send-email-andros@netapp.com>
+	 <1337703865.4269.21.camel@lade.trondhjem.org>
+	 <4D70BD9B-4F81-4E57-8689-DCE6F8B1A1C2@netapp.com>
+	 <1337708765.4269.26.camel@lade.trondhjem.org>
+	 <CAHVgHyV_mm6234=1CmS8+1Lcp0A1yGBRmhLX31m1cjGkFZJLcw@mail.gmail.com>
+In-Reply-To: <CAHVgHyV_mm6234=1CmS8+1Lcp0A1yGBRmhLX31m1cjGkFZJLcw@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
-
-This new function chooses between the v2/3 parser and the v4 parser by
-filesystem type.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/super.c |   36 ++++++++++++++++++++++++++++++------
- 1 file changed, 30 insertions(+), 6 deletions(-)
-
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index db636d7..5b025b0 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -335,6 +335,8 @@ static const struct super_operations nfs_sops = {
- 
- #ifdef CONFIG_NFS_V4
- static void nfs4_validate_mount_flags(struct nfs_parsed_mount_data *);
-+static int nfs4_validate_mount_data(void *options,
-+	struct nfs_parsed_mount_data *args, const char *dev_name);
- static struct dentry *nfs4_try_mount(int flags, const char *dev_name,
- 	struct nfs_parsed_mount_data *data);
- static struct dentry *nfs4_mount(struct file_system_type *fs_type,
-@@ -1857,10 +1859,10 @@ out_path:
-  * + breaking back: trying proto=udp after proto=tcp, v2 after v3,
-  *   mountproto=tcp after mountproto=udp, and so on
-  */
--static int nfs_validate_mount_data(void *options,
--				   struct nfs_parsed_mount_data *args,
--				   struct nfs_fh *mntfh,
--				   const char *dev_name)
-+static int nfs23_validate_mount_data(void *options,
-+				     struct nfs_parsed_mount_data *args,
-+				     struct nfs_fh *mntfh,
-+				     const char *dev_name)
- {
- 	struct nfs_mount_data *data = (struct nfs_mount_data *)options;
- 	struct sockaddr *sap = (struct sockaddr *)&args->nfs_server.address;
-@@ -2009,6 +2011,28 @@ out_invalid_fh:
- 	return -EINVAL;
- }
- 
-+#ifdef CONFIG_NFS_V4
-+static int nfs_validate_mount_data(struct file_system_type *fs_type,
-+				   void *options,
-+				   struct nfs_parsed_mount_data *args,
-+				   struct nfs_fh *mntfh,
-+				   const char *dev_name)
-+{
-+	if (fs_type == &nfs_fs_type)
-+		return nfs23_validate_mount_data(options, args, mntfh, dev_name);
-+	return nfs4_validate_mount_data(options, args, dev_name);
-+}
-+#else
-+static int nfs_validate_mount_data(struct file_system_type *fs_type,
-+				   void *options,
-+				   struct nfs_parsed_mount_data *args,
-+				   struct nfs_fh *mntfh,
-+				   const char *dev_name)
-+{
-+	return nfs23_validate_mount_data(options, args, mntfh, dev_name);
-+}
-+#endif
-+
- static int nfs_validate_text_mount_data(void *options,
- 					struct nfs_parsed_mount_data *args,
- 					const char *dev_name)
-@@ -2459,7 +2483,7 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
- 		goto out;
- 
- 	/* Validate the mount data */
--	error = nfs_validate_mount_data(raw_data, data, mntfh, dev_name);
-+	error = nfs_validate_mount_data(fs_type, raw_data, data, mntfh, dev_name);
- 	if (error == NFS_TEXT_DATA)
- 		error = nfs_validate_text_mount_data(raw_data, data, dev_name);
- 	if (error < 0) {
-@@ -2866,7 +2890,7 @@ static struct dentry *nfs4_mount(struct file_system_type *fs_type,
- 		goto out;
- 
- 	/* Validate the mount data */
--	error = nfs4_validate_mount_data(raw_data, data, dev_name);
-+	error = nfs_validate_mount_data(fs_type, raw_data, data, NULL, dev_name);
- 	if (error == NFS_TEXT_DATA)
- 		error = nfs_validate_text_mount_data(raw_data, data, dev_name);
- 	if (error < 0) {
--- 
-1.7.10.1
-
+T24gVHVlLCAyMDEyLTA1LTIyIGF0IDE0OjA3IC0wNDAwLCBBbmR5IEFkYW1zb24gd3JvdGU6DQo+
+IE9uIFR1ZSwgTWF5IDIyLCAyMDEyIGF0IDE6NDYgUE0sIE15a2xlYnVzdCwgVHJvbmQNCj4gPFRy
+b25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPiBPbiBUdWUsIDIwMTItMDUtMjIg
+YXQgMTY6MzAgKzAwMDAsIEFkYW1zb24sIEFuZHkgd3JvdGU6DQo+ID4+IE9uIE1heSAyMiwgMjAx
+MiwgYXQgMTI6MjQgUE0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4+DQo+ID4+ID4gT24g
+VHVlLCAyMDEyLTA1LTIyIGF0IDA4OjA5IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90ZToN
+Cj4gPj4gPj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gPj4gPj4N
+Cj4gPj4gPj4gU2lnbmVkLW9mZi1ieTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4N
+Cj4gPj4gPj4gLS0tDQo+ID4+ID4+IGZzL25mcy93cml0ZS5jIHwgICAgMiArKw0KPiA+PiA+PiAx
+IGZpbGVzIGNoYW5nZWQsIDIgaW5zZXJ0aW9ucygrKSwgMCBkZWxldGlvbnMoLSkNCj4gPj4gPj4N
+Cj4gPj4gPj4gZGlmZiAtLWdpdCBhL2ZzL25mcy93cml0ZS5jIGIvZnMvbmZzL3dyaXRlLmMNCj4g
+Pj4gPj4gaW5kZXggZTZmZTNkNi4uYzcyOTVkZSAxMDA2NDQNCj4gPj4gPj4gLS0tIGEvZnMvbmZz
+L3dyaXRlLmMNCj4gPj4gPj4gKysrIGIvZnMvbmZzL3dyaXRlLmMNCj4gPj4gPj4gQEAgLTE1NTUs
+NiArMTU1NSw4IEBAIHN0YXRpYyB2b2lkIG5mc19jb21taXRfcmVsZWFzZV9wYWdlcyhzdHJ1Y3Qg
+bmZzX2NvbW1pdF9kYXRhICpkYXRhKQ0KPiA+PiA+PiAgICAgICAgICAgIC8qIFdlIGhhdmUgYSBt
+aXNtYXRjaC4gV3JpdGUgdGhlIHBhZ2UgYWdhaW4gKi8NCj4gPj4gPj4gICAgICAgICAgICBkcHJp
+bnRrKCIgbWlzbWF0Y2hcbiIpOw0KPiA+PiA+PiAgICAgICAgICAgIG5mc19tYXJrX3JlcXVlc3Rf
+ZGlydHkocmVxKTsNCj4gPj4gPj4gKyAgICAgICAgICBuZnNfdW5sb2NrX3JlcXVlc3QocmVxKTsN
+Cj4gPj4gPj4gKyAgICAgICAgICBjb250aW51ZTsNCj4gPj4gPj4gICAgbmV4dDoNCj4gPj4gPj4g
+ICAgICAgICAgICBuZnNfdW5sb2NrX2FuZF9yZWxlYXNlX3JlcXVlc3QocmVxKTsNCj4gPj4gPj4g
+ICAgfQ0KPiA+PiA+DQo+ID4+ID4gV2hhdCBpcyB0aGlzIHBhdGNoIHRyeWluZyB0byBmaXg/IEFz
+IGZhciBhcyBJIGNhbiBzZWUgaXQgd2lsbCBsZWFkIHRvIGENCj4gPj4gPiByZWZlcmVuY2UgbGVh
+ay4NCj4gPj4NCj4gPj4gVGhlIHJlbGVhc2Ugb2YgdGhlIHBhZ2UgZHJvcHMgdGhlIHJlZmNvdW50
+IHRvIHplcm8uIFNpbmNlIGl0IGlzIGEgbWlzbWF0Y2gsIHdlIHdhbnQgdG8gY29udGludWUgdG8g
+dXNlIHRoZSBwYWdlLCBzbyBuZnNfcGFnZV9maW5kX3JlcXVlc3RfbG9ja2VkIGlzIGNhbGxlZCB3
+ZSBnZXQgdGhlIFdBUk5JTkcgaW4ga3JlZl9nZXQsIGFuZCBhbiBPb3BzIGluIHZhcmlvdXMgcGxh
+Y2VzIGluIHBuZnNfdXBkYXRlX2xheW91dC4NCj4gPj4NCj4gPj4gSGVyZSBpcyB0aGUgb3V0cHV0
+IG9mIGFkZGVkIHByaW50aydzLg0KPiA+Pg0KPiA+PiAtLT5BbmR5DQo+ID4+DQo+ID4+IE1heSAy
+MSAxODoyNTozMyBmZWRvcmEtNjQtMiBrZXJuZWw6IFsgIDE1Mi45ODg5MjFdIE5GUzogICAgICAg
+Y29tbWl0ICgwOjM1LzIgNDA5NkAxODQzMjApDQo+ID4+IE1heSAyMSAxODoyNTozMyBmZWRvcmEt
+NjQtMiBrZXJuZWw6IFsgIDE1Mi45ODg5MjNdICBtaXNtYXRjaCByZXEgZmZmZjg4MDA0MmRiYjgw
+MA0KPiA+PiBNYXkgMjEgMTg6MjU6MzMgZmVkb3JhLTY0LTIga2VybmVsOiBbICAxNTIuOTg4OTI3
+XSBuZnNfcmVsZWFzZV9yZXF1ZXN0IFdCIHJlcSBmZmZmODgwMDQyZGJiODAwIHdiX2tyZWYgMQ0K
+PiA+PiBNYXkgMjEgMTg6MjU6MzMgZmVkb3JhLTY0LTIga2VybmVsOiBbICAxNTIuOTg4OTMyXSBw
+dXRfbHNlZzogbHNlZyBmZmZmODgwMDQyZDk1MzgwIHJlZiA0IHZhbGlkIDANCj4gPj4gTWF5IDIx
+IDE4OjI1OjMzIGZlZG9yYS02NC0yIGtlcm5lbDogWyAgMTUyLjk4ODk0NV0gbmZzX3BhZ2VfZmlu
+ZF9yZXF1ZXN0X2xvY2tlZCByZXEgZmZmZjg4MDAzZTAzMzgwMA0KPiA+PiBNYXkgMjEgMTg6MjU6
+MzMgZmVkb3JhLTY0LTIga2VybmVsOiBbICAxNTIuOTg4OTQ5XSBuZnNfcGFnZV9maW5kX3JlcXVl
+c3RfbG9ja2VkIFdCIHJlcSBmZmZmODgwMDNlMDMzODAwIHdiX2tyZWYgMA0KPiA+PiBNYXkgMjEg
+MTg6MjU6MzMgZmVkb3JhLTY0LTIga2VybmVsOiBbICAxNTIuOTg4OTUzXSAtLS0tLS0tLS0tLS1b
+IGN1dCBoZXJlIF0tLS0tLS0tLS0tLS0NCj4gPj4gTWF5IDIxIDE4OjI1OjMzIGZlZG9yYS02NC0y
+IGtlcm5lbDogWyAgMTUyLjk4OTA4Ml0gV0FSTklORzogYXQgaW5jbHVkZS9saW51eC9rcmVmLmg6
+NDEga3JlZl9nZXQrMHgyMC8weDJjIFtuZnNdKCkNCj4gPg0KPiA+IEFyZSB0aGVzZSBjb21taXQt
+dG8tZHMgcmVxdWVzdHM/DQo+IA0KPiBZZXMNCg0KT0ssIHNvIGhvdyBhYm91dCB0aGUgZm9sbG93
+aW5nIGZpeDoNCg0KODwtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0NCkZyb20gNTNiOGVlMzQ2NDYzOTQ2Zjg4YjNlMTYzOWQ2ODhj
+Mzg0ZGYxMTY2YyBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206IFRyb25kIE15a2xlYnVz
+dCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQpEYXRlOiBUdWUsIDIyIE1heSAyMDEyIDE2
+OjM2OjI3IC0wNDAwDQpTdWJqZWN0OiBbUEFUQ0hdIE5GU3Y0LjE6IEZpeCBhIGJhZCByZWZlcmVu
+Y2UgY291bnQgaXNzdWUgaW4gdGhlIHBORlMgY29tbWl0DQogY29kZQ0KDQpmaWxlbGF5b3V0X3Nj
+YW5fY29tbWl0X2xpc3RzIG5lZWRzIHRvIGJ1bXAgdGhlIHJlZmVyZW5jZSBjb3VudCBvbg0KdGhl
+IHN0cnVjdCBuZnNfcGFnZSBqdXN0IGxpa2UgbmZzX3NjYW5fY29tbWl0X2xpc3QoKS4NCg0KUmVw
+b3J0ZWQtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQpTaWduZWQtb2ZmLWJ5
+OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KLS0tDQogZnMv
+bmZzL25mczRmaWxlbGF5b3V0LmMgfCAgICAxICsNCiAxIGZpbGVzIGNoYW5nZWQsIDEgaW5zZXJ0
+aW9ucygrKSwgMCBkZWxldGlvbnMoLSkNCg0KZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0ZmlsZWxh
+eW91dC5jIGIvZnMvbmZzL25mczRmaWxlbGF5b3V0LmMNCmluZGV4IDQ3NGM2MzAuLjMzODQ5ZDMg
+MTAwNjQ0DQotLS0gYS9mcy9uZnMvbmZzNGZpbGVsYXlvdXQuYw0KKysrIGIvZnMvbmZzL25mczRm
+aWxlbGF5b3V0LmMNCkBAIC0xMTA2LDYgKzExMDYsNyBAQCB0cmFuc2Zlcl9jb21taXRfbGlzdChz
+dHJ1Y3QgbGlzdF9oZWFkICpzcmMsIHN0cnVjdCBsaXN0X2hlYWQgKmRzdCwNCiAJbGlzdF9mb3Jf
+ZWFjaF9lbnRyeV9zYWZlKHJlcSwgdG1wLCBzcmMsIHdiX2xpc3QpIHsNCiAJCWlmICghbmZzX2xv
+Y2tfcmVxdWVzdChyZXEpKQ0KIAkJCWNvbnRpbnVlOw0KKwkJa3JlZl9nZXQoJnJlcS0+d2Jfa3Jl
+Zik7DQogCQlpZiAoY29uZF9yZXNjaGVkX2xvY2soY2luZm8tPmxvY2spKQ0KIAkJCWxpc3Rfc2Fm
+ZV9yZXNldF9uZXh0KHJlcSwgdG1wLCB3Yl9saXN0KTsNCiAJCW5mc19yZXF1ZXN0X3JlbW92ZV9j
+b21taXRfbGlzdChyZXEsIGNpbmZvKTsNCi0tIA0KMS43LjcuNg0KDQoNCi0tIA0KVHJvbmQgTXlr
+bGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWts
+ZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
