@@ -1,171 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail1.trendhosting.net ([195.8.117.5]:46929 "EHLO
-	mail1.trendhosting.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754758Ab2EFWMv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 6 May 2012 18:12:51 -0400
-Message-ID: <4FA6F75E.6090300@pocock.com.au>
-Date: Sun, 06 May 2012 22:12:46 +0000
-From: Daniel Pocock <daniel@pocock.com.au>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: extremely slow nfs when sync enabled
-References: <4FA5E950.5080304@pocock.com.au>  <1336328594.2593.14.camel@lade.trondhjem.org>  <4FA6EBD4.7040308@pocock.com.au> <1336340993.2600.11.camel@lade.trondhjem.org>
-In-Reply-To: <1336340993.2600.11.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:53920 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757729Ab2EVOMj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 10:12:39 -0400
+Received: by gglu4 with SMTP id u4so5398453ggl.19
+        for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 07:12:38 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: inux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
+        michael.brantley@deshaw.com, pstaubach@exagrid.com
+Subject: [PATCH v2 07/15] vfs: add new "reval" argument to kern_path_create
+Date: Tue, 22 May 2012 10:12:11 -0400
+Message-Id: <1337695939-2741-8-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
+References: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+...for now, all of the callers pass in "false". Eventually, we'll set
+that to "true" when we retry the lookup after getting back an ESTALE on
+a call.
 
+While we're at it, change the is_dir arg to a bool since that's how it's
+used currently.
 
-On 06/05/12 21:49, Myklebust, Trond wrote:
-> On Sun, 2012-05-06 at 21:23 +0000, Daniel Pocock wrote:
->>
->> On 06/05/12 18:23, Myklebust, Trond wrote:
->>> On Sun, 2012-05-06 at 03:00 +0000, Daniel Pocock wrote:
->>>>
->>>> I've been observing some very slow nfs write performance when the server
->>>> has `sync' in /etc/exports
->>>>
->>>> I want to avoid using async, but I have tested it and on my gigabit
->>>> network, it gives almost the same speed as if I was on the server
->>>> itself. (e.g. 30MB/sec to one disk, or less than 1MB/sec to the same
->>>> disk over NFS with `sync')
->>>>
->>>> I'm using Debian 6 with 2.6.38 kernels on client and server, NFSv3
->>>>
->>>> I've also tried a client running Debian 7/Linux 3.2.0 with both NFSv3
->>>> and NFSv4, speed is still slow
->>>>
->>>> Looking at iostat on the server, I notice that avgrq-sz = 8 sectors
->>>> (4096 bytes) throughout the write operations
->>>>
->>>> I've tried various tests, e.g. dd a large file, or unpack a tarball with
->>>> many small files, the iostat output is always the same
->>>
->>> Were you using 'conv=sync'?
->>
->> No, it was not using conv=sync, just the vanilla dd:
->>
->> dd if=/dev/zero of=some-fat-file bs=65536 count=65536
-> 
-> Then the results are not comparable.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ drivers/base/devtmpfs.c |    7 ++++---
+ fs/namei.c              |   12 +++++++++---
+ include/linux/namei.h   |    2 +-
+ net/unix/af_unix.c      |    3 ++-
+ 4 files changed, 16 insertions(+), 8 deletions(-)
 
-If I run dd with conv=sync on the server, then I still notice that OS
-caching plays a factor and write performance just appears really fast
-
->>>> Looking at /proc/mounts on the clients, everything looks good, large
->>>> wsize, tcp:
->>>>
->>>> rw,relatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.x.x.x,mountvers=3,mountport=58727,mountproto=udp,local_lock=none,addr=192.x.x.x
->>>> 0 0
->>>>
->>>> and
->>>>  rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=192.x.x.x.,minorversion=0,local_lock=none,addr=192.x.x.x 0 0
->>>>
->>>> and in /proc/fs/nfs/exports on the server, I have sync and wdelay:
->>>>
->>>> /nfs4/daniel
->>>> 192.168.1.0/24,192.x.x.x(rw,insecure,root_squash,sync,wdelay,no_subtree_check,uuid=aa2a6f37:9cc94eeb:bcbf983c:d6e041d9,sec=1)
->>>> /home/daniel
->>>> 192.168.1.0/24,192.x.x.x(rw,root_squash,sync,wdelay,no_subtree_check,uuid=aa2a6f37:9cc94eeb:bcbf983c:d6e041d9)
->>>>
->>>> Can anyone suggest anything else?  Or is this really the performance hit
->>>> of `sync'?
->>>
->>> It really depends on your disk setup. Particularly when your filesystem
->>> is using barriers (enabled by default on ext4 and xfs), a lot of raid
->>
->> On the server, I've tried both ext3 and ext4, explicitly changing things
->> like data=writeback,barrier=0, but the problem remains
->>
->> The only thing that made it faster was using hdparm -W1 /dev/sd[ab] to
->> enable the write-back cache on the disk
-> 
-> That should in principle be safe to do as long as you are using
-> barrier=1.
-
-Ok, so the combination of:
-
-- enable writeback with hdparm
-- use ext4 (and not ext3)
-- barrier=1 and data=writeback?  or data=?
-
-- is there a particular kernel version (on either client or server side)
-that will offer more stability using this combination of features?
-
-I think there are some other variations of my workflow that I can
-attempt too, e.g. I've contemplated compiling C++ code onto a RAM disk
-because I don't need to keep the hundreds of object files.
-
->>> setups really _suck_ at dealing with fsync(). The latter is used every
->>
->> I'm using md RAID1, my setup is like this:
->>
->> 2x 1TB SATA disks ST31000528AS (7200rpm with 32MB cache and NCQ)
->>
->> SATA controller: ATI Technologies Inc SB700/SB800 SATA Controller [AHCI
->> mode] (rev 40)
->> - not using any of the BIOS softraid stuff
->>
->> Both devices have identical partitioning:
->> 1. 128MB boot
->> 2. md volume (1TB - 128MB)
->>
->> The entire md volume (/dev/md2) is then used as a PV for LVM
->>
->> I do my write tests on a fresh LV with no fragmentation
->>
->>> time the NFS client sends a COMMIT or trunc() instruction, and for
->>> pretty much all file and directory creation operations (you can use
->>> 'nfsstat' to monitor how many such operations the NFS client is sending
->>> as part of your test).
->>
->> I know that my two tests are very different in that way:
->>
->> - dd is just writing one big file, no fsync
->>
->> - unpacking a tarball (or compiling a large C++ project) does a lot of
->> small writes with many fsyncs
->>
->> In both cases, it is slow
->>
->>> Local disk can get away with doing a lot less fsync(), because the cache
->>> consistency guarantees are different:
->>>       * in NFS, the server is allowed to crash or reboot without
->>>         affecting the client's view of the filesystem.
->>>       * in the local file system, the expectation is that on reboot any
->>>         data lost is won't need to be recovered (the application will
->>>         have used fsync() for any data that does need to be persistent).
->>>         Only the disk filesystem structures need to be recovered, and
->>>         that is done using the journal (or fsck).
->>
->>
->> Is this an intractable problem though?
->>
->> Or do people just work around this, for example, enable async and
->> write-back cache, and then try to manage the risk by adding a UPS and/or
->> battery backed cache to their RAID setup (to reduce the probability of
->> unclean shutdown)?
-> 
-> It all boils down to what kind of consistency guarantees you are
-> comfortable living with. The default NFS server setup offers much
-> stronger data consistency guarantees than local disk, and is therefore
-> likely to be slower when using cheap hardware.
-> 
-
-I'm keen for consistency, because I don't like the idea of corrupting
-some source code or a whole git repository for example.
-
-How did you know I'm using cheap hardware?  It is a HP MicroServer, I
-even got the £100 cash-back cheque:
-
-http://www8.hp.com/uk/en/campaign/focus-for-smb/solution.html#/tab2/
-
-Seriously though, I've worked with some very large arrays in my business
-environment, but I use this hardware at home because of the low noise
-and low heat dissipation rather than for saving money, so I would like
-to try and get the most out of it if possible and I'm very grateful for
-these suggestions.
-
+diff --git a/drivers/base/devtmpfs.c b/drivers/base/devtmpfs.c
+index 8493536..c9c8c76 100644
+--- a/drivers/base/devtmpfs.c
++++ b/drivers/base/devtmpfs.c
+@@ -148,7 +148,7 @@ static int dev_mkdir(const char *name, umode_t mode)
+ 	struct path path;
+ 	int err;
+ 
+-	dentry = kern_path_create(AT_FDCWD, name, &path, 1);
++	dentry = kern_path_create(AT_FDCWD, name, &path, true, false);
+ 	if (IS_ERR(dentry))
+ 		return PTR_ERR(dentry);
+ 
+@@ -195,10 +195,11 @@ static int handle_create(const char *nodename, umode_t mode, struct device *dev)
+ 	struct path path;
+ 	int err;
+ 
+-	dentry = kern_path_create(AT_FDCWD, nodename, &path, 0);
++	dentry = kern_path_create(AT_FDCWD, nodename, &path, false, false);
+ 	if (dentry == ERR_PTR(-ENOENT)) {
+ 		create_path(nodename);
+-		dentry = kern_path_create(AT_FDCWD, nodename, &path, 0);
++		dentry = kern_path_create(AT_FDCWD, nodename, &path,
++								false, false);
+ 	}
+ 	if (IS_ERR(dentry))
+ 		return PTR_ERR(dentry);
+diff --git a/fs/namei.c b/fs/namei.c
+index 1c3b922..7025001 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2468,11 +2468,17 @@ struct file *do_file_open_root(struct dentry *dentry, struct vfsmount *mnt,
+ 	return file;
+ }
+ 
+-struct dentry *kern_path_create(int dfd, const char *pathname, struct path *path, int is_dir)
++struct dentry *kern_path_create(int dfd, const char *pathname, struct path *path, bool is_dir, bool reval)
+ {
+ 	struct dentry *dentry = ERR_PTR(-EEXIST);
+ 	struct nameidata nd;
+-	int error = do_path_lookup(dfd, pathname, LOOKUP_PARENT, &nd);
++	int error;
++	unsigned int lookup_flags = LOOKUP_PARENT;
++
++	if (reval)
++		lookup_flags |= LOOKUP_REVAL;
++
++	error = do_path_lookup(dfd, pathname, lookup_flags, &nd);
+ 	if (error)
+ 		return ERR_PTR(error);
+ 
+@@ -2526,7 +2532,7 @@ struct dentry *user_path_create(int dfd, const char __user *pathname, struct pat
+ 	struct dentry *res;
+ 	if (IS_ERR(tmp))
+ 		return ERR_CAST(tmp);
+-	res = kern_path_create(dfd, tmp, path, is_dir);
++	res = kern_path_create(dfd, tmp, path, (bool)is_dir, false);
+ 	putname(tmp);
+ 	return res;
+ }
+diff --git a/include/linux/namei.h b/include/linux/namei.h
+index 1ea93d5..9e135e3 100644
+--- a/include/linux/namei.h
++++ b/include/linux/namei.h
+@@ -76,7 +76,7 @@ extern int user_path_at(int, const char __user *, unsigned, struct path *);
+ 
+ extern int kern_path(const char *, unsigned, struct path *);
+ 
+-extern struct dentry *kern_path_create(int, const char *, struct path *, int);
++extern struct dentry *kern_path_create(int, const char *, struct path *, bool, bool);
+ extern struct dentry *user_path_create(int, const char __user *, struct path *, int);
+ extern int kern_path_parent(const char *, struct nameidata *);
+ extern int vfs_path_lookup(struct dentry *, struct vfsmount *,
+diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c
+index 641f2e4..d94caa9 100644
+--- a/net/unix/af_unix.c
++++ b/net/unix/af_unix.c
+@@ -866,7 +866,8 @@ static int unix_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
+ 		 * Get the parent directory, calculate the hash for last
+ 		 * component.
+ 		 */
+-		dentry = kern_path_create(AT_FDCWD, sun_path, &path, 0);
++		dentry = kern_path_create(AT_FDCWD, sun_path, &path,
++								false, false);
+ 		err = PTR_ERR(dentry);
+ 		if (IS_ERR(dentry))
+ 			goto out_mknod_parent;
+-- 
+1.7.7.6
 
