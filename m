@@ -1,92 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.gentoo.org ([140.211.166.183]:36320 "EHLO smtp.gentoo.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:30260 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755666Ab2EQQIO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 May 2012 12:08:14 -0400
-From: Mike Frysinger <vapier@gentoo.org>
-To: Jim Rees <rees@umich.edu>
-Subject: Re: [PATCH] osd_login: fix DESTDIR install
-Date: Thu, 17 May 2012 12:08:40 -0400
-Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
-References: <1337232243-18088-1-git-send-email-vapier@gentoo.org> <4FB4ECDA.2080506@panasas.com> <20120517130925.GA10380@umich.edu>
-In-Reply-To: <20120517130925.GA10380@umich.edu>
+	id S1754108Ab2EVHgn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 03:36:43 -0400
+Subject: [PATCH v2 07/12] NFS: make nfs_callback_tcpport per network context
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Tue, 22 May 2012 11:36:38 +0400
+Message-ID: <20120522073638.20602.40125.stgit@localhost.localdomain>
+In-Reply-To: <20120522073320.20602.87130.stgit@localhost.localdomain>
+References: <20120522073320.20602.87130.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: multipart/signed;
-  boundary="nextPart3046833.Sm0D6MDraL";
-  protocol="application/pgp-signature";
-  micalg=pgp-sha1
-Message-Id: <201205171208.42226.vapier@gentoo.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---nextPart3046833.Sm0D6MDraL
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfs/callback.c  |    7 ++++---
+ fs/nfs/callback.h  |    1 -
+ fs/nfs/netns.h     |    1 +
+ fs/nfs/nfs4state.c |    5 ++++-
+ 4 files changed, 9 insertions(+), 5 deletions(-)
 
-On Thursday 17 May 2012 09:09:25 Jim Rees wrote:
-> Boaz Harrosh wrote:
->=20
->   On second thought, You know, I'm not sure about this fix.
->=20
->   A lot of times we install to a side folder, so we can later
->   tar and package the sub-folder without actually affecting
->   our live system. What will happen with the packagers that
->   are not RPM don't they rely on this?
->=20
->   I would like to let the user to install nfs-utils on the
->   side and to not conflict with the running system. Someone
->   how knows what he is doing can override the Kernel path
->   to what he wants. Just as he will need to override the
->   nfs init scripts.
->=20
->   So I would prefer if we can just create the $(DESTDIR)/sbin/
->=20
-> I think the makefiles already create $(DESTDIR)$(sbindir).  The problem w=
-as
-> that you weren't using $(DESTDIR)$(sbindir), you were using
-> $(DESTDIR)/sbin.  The patch sets $(sbindir) to /sbin, so everything should
-> just work.
->=20
-> But I could be wrong, automake is a black box to me.
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 11201dd..9380184 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -24,6 +24,7 @@
+ #include "nfs4_fs.h"
+ #include "callback.h"
+ #include "internal.h"
++#include "netns.h"
+ 
+ #define NFSDBG_FACILITY NFSDBG_CALLBACK
+ 
+@@ -39,7 +40,6 @@ static DEFINE_MUTEX(nfs_callback_mutex);
+ static struct svc_program nfs4_callback_program;
+ 
+ unsigned int nfs_callback_set_tcpport;
+-unsigned short nfs_callback_tcpport;
+ unsigned short nfs_callback_tcpport6;
+ #define NFS_CALLBACK_MAXPORTNR (65535U)
+ 
+@@ -67,14 +67,15 @@ module_param_named(callback_tcpport, nfs_callback_set_tcpport, portnr, 0644);
+ static int nfs4_callback_up_net(struct svc_serv *serv, struct net *net)
+ {
+ 	int ret;
++	struct nfs_net *nn = net_generic(net, nfs_net_id);
+ 
+ 	ret = svc_create_xprt(serv, "tcp", net, PF_INET,
+ 				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
+ 	if (ret <= 0)
+ 		goto out_err;
+-	nfs_callback_tcpport = ret;
++	nn->nfs_callback_tcpport = ret;
+ 	dprintk("NFS: Callback listener port = %u (af %u, net %p)\n",
+-			nfs_callback_tcpport, PF_INET, net);
++			nn->nfs_callback_tcpport, PF_INET, net);
+ 
+ 	ret = svc_create_xprt(serv, "tcp", net, PF_INET6,
+ 				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index 6d900cf..8006959 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -208,7 +208,6 @@ extern int nfs4_set_callback_sessionid(struct nfs_client *clp);
+ #define NFS41_BC_MAX_CALLBACKS 1
+ 
+ extern unsigned int nfs_callback_set_tcpport;
+-extern unsigned short nfs_callback_tcpport;
+ extern unsigned short nfs_callback_tcpport6;
+ 
+ #endif /* __LINUX_FS_NFS_CALLBACK_H */
+diff --git a/fs/nfs/netns.h b/fs/nfs/netns.h
+index aa14ec3..8e4e8f8 100644
+--- a/fs/nfs/netns.h
++++ b/fs/nfs/netns.h
+@@ -18,6 +18,7 @@ struct nfs_net {
+ 	struct list_head nfs_volume_list;
+ #ifdef CONFIG_NFS_V4
+ 	struct idr cb_ident_idr; /* Protected by nfs_client_lock */
++	unsigned short nfs_callback_tcpport;
+ #endif
+ 	spinlock_t nfs_client_lock;
+ };
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 0f43414..5d68b3b 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -57,6 +57,8 @@
+ #include "internal.h"
+ #include "pnfs.h"
+ 
++#include "netns.h"
++
+ #define OPENOWNER_POOL_SIZE	8
+ 
+ const nfs4_stateid zero_stateid;
+@@ -71,10 +73,11 @@ int nfs4_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
+ 	};
+ 	unsigned short port;
+ 	int status;
++	struct nfs_net *nn = net_generic(clp->net, nfs_net_id);
+ 
+ 	if (test_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state))
+ 		goto do_confirm;
+-	port = nfs_callback_tcpport;
++	port = nn->nfs_callback_tcpport;
+ 	if (clp->cl_addr.ss_family == AF_INET6)
+ 		port = nfs_callback_tcpport6;
+ 
 
-i don't think that was the issue.  the osd_login dir wasn't telling automak=
-e=20
-that it was installing anything (whether sbindir or /sbin or anywhere else)=
-,=20
-so this makefile didn't create the destdir automatically.
-
-now that automake knows we have things to install into $sbindir (regardless=
- of=20
-its value), it knows it has to create it before trying to install things.
-
-it might have worked in the past for people because either (1) they didn't =
-use=20
-DESTDIR into an empty path or (2) they weren't running in parallel so the=20
-other subdir (that installs `mount`) took care of implicitly creating=20
-$(DESTDIR)/sbin for them.
-=2Dmike
-
---nextPart3046833.Sm0D6MDraL
-Content-Type: application/pgp-signature; name=signature.asc 
-Content-Description: This is a digitally signed message part.
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.17 (GNU/Linux)
-
-iQIcBAABAgAGBQJPtSKKAAoJEEFjO5/oN/WBClgQAJbTOQefkRKmJwPmT/6W8l3w
-dsZMJA+pTajSsLIP51z8uv47lQ3GXKDi/AvjRSNnNfhlHc7w9Rg/OneneXtP7o/4
-2NTrsi7leCuJxuV8KBf9sGC3BQrOwXV30ocqkpfmLGi47xL9jZ6+AIcbWpAxX7if
-bhqaZlKwEDMFNJ2koV5uhN408M7rNEA0UosILxyLjT7+mI8dwzMQa9bsnFN+2yO6
-mdUe+1ZQNwSqQnJv8LzWio8F43/rsHT3AVD3yrSMzy3+7CVulqO/+hIlxxNwxYZR
-b/+fqh4+7t4l9/8vMut9WatkKp2WKQ9quca6B/tal4WjizY2xVzXb6451kYwFUE0
-LMzyy3AsYzmVvMr3hC7Sf/rBc7KMbp1um/dwOCD6WoM9fFYKRa0nMGwGEfrH2oLh
-6nLE+yLRliuQk7yY7SWnEasCi73YjbxNGb7aCYKv1RcgfzU92cwNQHBoe0XuQ+f+
-Vgr1SMeDZJyLZDJ4xh9VrVzO5IoB1Mr5AGuUgfhlJewyAuDUY6iwp9+MyLrDyG1V
-dkt/99r1FfuIwRxDx5PkMnlAyr6ic3mNW84a2OHiGxl3HG8z0ZGntF4n7vBwtoEk
-XfUOSykW7aVMe7BClivRkPhPP00Sxu/yjnUiF+zBhHtH4/BzcY947EJE3p8SxaZN
-p1bsywma6cxzeRjKmEsQ
-=8SxU
------END PGP SIGNATURE-----
-
---nextPart3046833.Sm0D6MDraL--
