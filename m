@@ -1,145 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:9515 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751689Ab2EAWGZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 May 2012 18:06:25 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Neil Brown <neilb@suse.de>
-Subject: [PATCH] NFS: Adapt readdirplus to application usage patterns
-Date: Tue,  1 May 2012 18:06:23 -0400
-Message-Id: <1335909983-26413-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:60644 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757615Ab2EVOMf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 10:12:35 -0400
+Received: by mail-gg0-f174.google.com with SMTP id u4so5398234ggl.19
+        for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 07:12:35 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: inux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
+        michael.brantley@deshaw.com, pstaubach@exagrid.com
+Subject: [PATCH v2 05/15] vfs: remove user_path_at_empty
+Date: Tue, 22 May 2012 10:12:09 -0400
+Message-Id: <1337695939-2741-6-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
+References: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-While the use of READDIRPLUS is significantly more efficient than
-READDIR followed by many LOOKUP calls, it is still less efficient
-than just READDIR if the attributes are not required.
+...there are no more callers.
 
-This patch tracks when lookups are attempted on the directory,
-and uses that information to selectively disable READDIRPLUS
-on that directory.
-The first 'readdir' call is always served using READDIRPLUS.
-Subsequent calls only use READDIRPLUS if there was a successful
-lookup or revalidation on a child in the mean time.
-
-Credit for the original idea should go to Neil Brown. See:
-      http://www.spinics.net/lists/linux-nfs/msg19996.html
-However, the implementation in this patch differs from Neil's
-in that it focuses on tracking lookups rather than calls to
-stat().
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Neil Brown <neilb@suse.de>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/dir.c           |   35 +++++++++++++++++++++++++++++++++--
- fs/nfs/inode.c         |    2 --
- include/linux/nfs_fs.h |    5 -----
- 3 files changed, 33 insertions(+), 9 deletions(-)
+ fs/namei.c            |   12 +++---------
+ include/linux/namei.h |    1 -
+ 2 files changed, 3 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 82b42e2..03a0220 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -475,6 +475,29 @@ different:
+diff --git a/fs/namei.c b/fs/namei.c
+index 516be34..f13ba02 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -1900,10 +1900,10 @@ int kern_path_at(int dfd, const char *name, unsigned flags, struct path *path)
+ 	return err;
  }
  
- static
-+bool nfs_use_readdirplus(struct inode *dir, struct file *filp)
-+{
-+	if (!nfs_server_capable(dir, NFS_CAP_READDIRPLUS))
-+		return false;
-+	if (test_and_clear_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(dir)->flags))
-+		return true;
-+	if (filp->f_pos == 0)
-+		return true;
-+	return false;
-+}
-+
-+/*
-+ * This function is called by the lookup code to request the use of
-+ * readdirplus to accelerate any future lookups in the same
-+ * directory.
-+ */
-+static
-+void nfs_advise_use_readdirplus(struct inode *dir)
-+{
-+	set_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(dir)->flags);
-+}
-+
-+static
- void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry)
+-int user_path_at_empty(int dfd, const char __user *name, unsigned flags,
+-		 struct path *path, int *empty)
++int user_path_at(int dfd, const char __user *name, unsigned flags,
++		 struct path *path)
  {
- 	struct qstr filename = {
-@@ -874,7 +897,9 @@ static int nfs_readdir(struct file *filp, void *dirent, filldir_t filldir)
- 	desc->file = filp;
- 	desc->dir_cookie = &dir_ctx->dir_cookie;
- 	desc->decode = NFS_PROTO(inode)->decode_dirent;
--	desc->plus = NFS_USE_READDIRPLUS(inode);
-+	desc->plus = 0;
-+	if (nfs_use_readdirplus(inode, filp))
-+		desc->plus = 1;
+-	char *tmp = getname_flags(name, flags, empty);
++	char *tmp = getname_flags(name, flags, NULL);
+ 	int err;
  
- 	nfs_block_sillyrename(dentry);
- 	res = nfs_revalidate_mapping(inode, filp->f_mapping);
-@@ -1114,7 +1139,7 @@ static int nfs_lookup_revalidate(struct dentry *dentry, struct nameidata *nd)
- 	if (!inode) {
- 		if (nfs_neg_need_reval(dir, dentry, nd))
- 			goto out_bad;
--		goto out_valid;
-+		goto out_valid_noent;
- 	}
- 
- 	if (is_bad_inode(inode)) {
-@@ -1156,6 +1181,9 @@ static int nfs_lookup_revalidate(struct dentry *dentry, struct nameidata *nd)
- out_set_verifier:
- 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
-  out_valid:
-+	/* Success: notify readdir to use READDIRPLUS */
-+	nfs_advise_use_readdirplus(dir);
-+ out_valid_noent:
- 	dput(parent);
- 	dfprintk(LOOKUPCACHE, "NFS: %s(%s/%s) is valid\n",
- 			__func__, dentry->d_parent->d_name.name,
-@@ -1311,6 +1339,9 @@ static struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, stru
- 	if (IS_ERR(res))
- 		goto out_unblock_sillyrename;
- 
-+	/* Success: notify readdir to use READDIRPLUS */
-+	nfs_advise_use_readdirplus(dir);
-+
- no_entry:
- 	res = d_materialise_unique(dentry, inode);
- 	if (res != NULL) {
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 0d53113..9f17cd1 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -298,8 +298,6 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 			inode->i_op = NFS_SB(sb)->nfs_client->rpc_ops->dir_inode_ops;
- 			inode->i_fop = &nfs_dir_operations;
- 			inode->i_data.a_ops = &nfs_dir_aops;
--			if (nfs_server_capable(inode, NFS_CAP_READDIRPLUS))
--				set_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(inode)->flags);
- 			/* Deal with crossing mountpoints */
- 			if (fattr->valid & NFS_ATTR_FATTR_MOUNTPOINT ||
- 					fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL) {
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 8a88c16..6cc7dba 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -314,11 +314,6 @@ static inline int nfs_server_capable(struct inode *inode, int cap)
- 	return NFS_SERVER(inode)->caps & cap;
+ 	if (IS_ERR(tmp)) {
+@@ -1915,12 +1915,6 @@ int user_path_at_empty(int dfd, const char __user *name, unsigned flags,
+ 	return err;
  }
  
--static inline int NFS_USE_READDIRPLUS(struct inode *inode)
+-int user_path_at(int dfd, const char __user *name, unsigned flags,
+-		 struct path *path)
 -{
--	return test_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(inode)->flags);
+-	return user_path_at_empty(dfd, name, flags, path, NULL);
 -}
 -
- static inline void nfs_set_verifier(struct dentry * dentry, unsigned long verf)
+ static int user_path_parent(int dfd, const char __user *path,
+ 			struct nameidata *nd, char **name)
  {
- 	dentry->d_time = verf;
+diff --git a/include/linux/namei.h b/include/linux/namei.h
+index cd95fcb..1ea93d5 100644
+--- a/include/linux/namei.h
++++ b/include/linux/namei.h
+@@ -68,7 +68,6 @@ enum {LAST_NORM, LAST_ROOT, LAST_DOT, LAST_DOTDOT, LAST_BIND};
+ 
+ extern int kern_path_at(int, const char *, unsigned, struct path *);
+ extern int user_path_at(int, const char __user *, unsigned, struct path *);
+-extern int user_path_at_empty(int, const char __user *, unsigned, struct path *, int *empty);
+ 
+ #define user_path(name, path) user_path_at(AT_FDCWD, name, LOOKUP_FOLLOW, path)
+ #define user_lpath(name, path) user_path_at(AT_FDCWD, name, 0, path)
 -- 
 1.7.7.6
 
