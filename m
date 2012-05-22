@@ -1,62 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:65292 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:40260 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932967Ab2EaTRE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 31 May 2012 15:17:04 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/1] NFSv4.1 handle OPEN O_CREATE mdsthreshold
-Date: Thu, 31 May 2012 15:16:03 -0400
-Message-Id: <1338491763-2767-1-git-send-email-andros@netapp.com>
+	id S1753431Ab2EVK27 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 06:28:59 -0400
+Subject: [PATCH] NFSd: simplify locking in nfsd_recall_delegations()
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Tue, 22 May 2012 14:28:55 +0400
+Message-ID: <20120522102839.12440.14555.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+Holding of client_mutex looks redundant here - holding of recall_lock looks
+enough.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 ---
- fs/nfs/nfs4proc.c |    4 +++-
- fs/nfs/nfs4xdr.c  |    2 ++
- 2 files changed, 5 insertions(+), 1 deletions(-)
+ fs/nfsd/nfs4state.c |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 65e1df8..698abe6 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2802,6 +2802,7 @@ nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
- 	struct dentry *de = dentry;
- 	struct nfs4_state *state;
- 	struct rpc_cred *cred = NULL;
-+	struct nfs4_threshold **thp = NULL;
- 	fmode_t fmode = 0;
- 	int status = 0;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index f004e61..fdef9fc 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4744,11 +4744,9 @@ void nfsd_recall_delegations(u64 num)
+ {
+ 	unsigned int count;
  
-@@ -2809,9 +2810,10 @@ nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
- 		cred = ctx->cred;
- 		de = ctx->dentry;
- 		fmode = ctx->mode;
-+		thp = &ctx->mdsthreshold;
- 	}
- 	sattr->ia_mode &= ~current_umask();
--	state = nfs4_do_open(dir, de, fmode, flags, sattr, cred, NULL);
-+	state = nfs4_do_open(dir, de, fmode, flags, sattr, cred, thp);
- 	d_drop(dentry);
- 	if (IS_ERR(state)) {
- 		status = PTR_ERR(state);
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index ee4a74d..30fa0a5 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4357,6 +4357,8 @@ static int decode_attr_mdsthreshold(struct xdr_stream *xdr,
- 	int status = 0;
- 	uint32_t num;
+-	nfs4_lock_state();
+ 	spin_lock(&recall_lock);
+ 	count = nfsd_process_n_delegations(num, nfsd_break_one_deleg, NULL);
+ 	spin_unlock(&recall_lock);
+-	nfs4_unlock_state();
  
-+	if (res == NULL)
-+		return 0;
- 	if (unlikely(bitmap[2] & (FATTR4_WORD2_MDSTHRESHOLD - 1U)))
- 		return -EIO;
- 	if (likely(bitmap[2] & FATTR4_WORD2_MDSTHRESHOLD)) {
--- 
-1.7.6.4
+ 	printk(KERN_INFO "NFSD: Recalled %d delegations", count);
+ }
 
