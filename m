@@ -1,71 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:49444 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758358Ab2EBCH2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 May 2012 22:07:28 -0400
-Date: Wed, 2 May 2012 12:07:12 +1000
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org,
-        Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 3/3] mountd: prepend '$' to make use_ipaddr clients
- self-describing
-Message-ID: <20120502120712.13b15f9a@notabene.brown>
-In-Reply-To: <1335923014-2789-3-git-send-email-bfields@redhat.com>
-References: <20120502014155.GA2684@fieldses.org>
-	<1335923014-2789-3-git-send-email-bfields@redhat.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/+6bYXkHWWF1MaZhh5fSZZgR"; protocol="application/pgp-signature"
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:53459 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756795Ab2EVOM0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 10:12:26 -0400
+Received: by mail-gg0-f174.google.com with SMTP id u4so5398212ggl.19
+        for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 07:12:26 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: inux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
+        michael.brantley@deshaw.com, pstaubach@exagrid.com
+Subject: [PATCH v2 01/15] vfs: add a retry_estale helper function to handle retries on ESTALE
+Date: Tue, 22 May 2012 10:12:05 -0400
+Message-Id: <1337695939-2741-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
+References: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/+6bYXkHWWF1MaZhh5fSZZgR
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+This function is expected to be called from path-based syscalls to help
+them decide whether to try the lookup and call again in the event that
+they got an -ESTALE return back on an earier try.
 
-On Tue,  1 May 2012 21:43:34 -0400 "J. Bruce Fields" <bfields@redhat.com>
-wrote:
-> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> index 6cc58d2..1833b3a 100644
-> --- a/utils/mountd/cache.c
-> +++ b/utils/mountd/cache.c
-> @@ -551,7 +551,7 @@ static void nfsd_fh(FILE *f)
-> =20
->  	auth_reload();
-> =20
-> -	if (use_ipaddr) {
-> +	if (dom[0] =3D=3D '$') {
+Currently, we only retry the call once on an ESTALE error, but in the
+event that we decide that that's not enough in the future, we should be
+able to change the logic in this helper without too much effort.
 
-        if (is_ipaddr_client(dom)) {
-??
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ include/linux/fs.h |   21 +++++++++++++++++++++
+ 1 files changed, 21 insertions(+), 0 deletions(-)
 
-Otherwise:
-  Reviewed-by: NeilBrown <neilb@suse.de>
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 25c40b9..0b8003b 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2026,6 +2026,27 @@ extern struct file * dentry_open(struct dentry *, struct vfsmount *, int,
+ extern int filp_close(struct file *, fl_owner_t id);
+ extern char * getname(const char __user *);
+ 
++/**
++ * retry_estale - determine whether the caller should retry an operation
++ *
++ * @error: the error we'll be returning
++ * @try: number of retries already performed
++ *
++ * Check to see if the error code was -ESTALE, and then determine whether
++ * to retry the call based on the number of retries so far. Currently, we only
++ * retry the call once.
++ *
++ * Returns true if the caller should try again.
++ */
++static inline bool
++retry_estale(const long error, const unsigned int try)
++{
++	if (likely(error != -ESTALE))
++		return false;
++
++	return !try;
++}
++
+ /* fs/ioctl.c */
+ 
+ extern int ioctl_preallocate(struct file *filp, void __user *argp);
+-- 
+1.7.7.6
 
-Thanks,
-NeilBrown
-
---Sig_/+6bYXkHWWF1MaZhh5fSZZgR
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.18 (GNU/Linux)
-
-iQIVAwUBT6CW0Dnsnt1WYoG5AQJtGw/9HQLw2rirloqUC7g8h8tKLhE3E4IWN3SG
-k/3evyuDo+1VgQzNUJ7SoTAbRuRgGmYcn6ZylFBN48aQb7SOuS9RvkIF3Uzv+r4u
-S4WacMtYW7sHgDbQ3FwJMAlRPCnqAfnUPyb6NO51mpzDP5p1THaFPL+ICW2gOUZ9
-pIiXGs90nJ6qPCFfeG+T9bdIZWJZOPPNOYbPAzWqUhMy+ViItzMjRZDoZHhawSYC
-qxlvF4Czu9OYJAQCkK0yxmSnT0fU4HNdlKOyz3aQ4CKSjusdYLY5SGj5C4RgUthh
-AldhmYUDevKCvHPQlyD0+Hv2LALt5jcgDCOqNnL5+6YlSJAhdCDlZtliDz2vUJ+2
-r+um6fsyy+3YOpiXlqZJmqkdeTInQgCdJcWUUfQivUy2VIiv/B6Hm+39qbm7yFb+
-/LB81h3EOMr8cWb0/Qi26M2QK+1ueRv8y2EIBW0O/pPhEtsafk5yCJ1ii/D7Spdu
-x78uUq4uYILHtpgY+rLvhJsgt+pnW3VwDtbJ18ObKtoue5g7P02x55U8OrD3z4W8
-dml1mwGL2aITa6O8EiBHdChEzdNMTmG1/JFa6hGe6YvklRZM3nhVqLjQSe0GLCw2
-BiIeUJM1zuNNwzKdxYehtGVV76ReZ2+x9QSSfSHuACjg7rLSucOP8HMU17+3a31E
-AJZu+8a+tFE=
-=CQ0c
------END PGP SIGNATURE-----
-
---Sig_/+6bYXkHWWF1MaZhh5fSZZgR--
