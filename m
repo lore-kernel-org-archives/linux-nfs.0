@@ -1,100 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:47271 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753895Ab2E1L0l (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 07:26:41 -0400
-Message-ID: <4FC360D2.4030006@panasas.com>
-Date: Mon, 28 May 2012 14:26:10 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:4522 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751205Ab2EVQnW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 12:43:22 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH] NFS: init client before declaration
+Date: Tue, 22 May 2012 16:43:23 +0000
+Message-ID: <1337705000.4269.23.camel@lade.trondhjem.org>
+References: <20120522124018.338.20817.stgit@localhost.localdomain>
+	   <1337696984.4269.4.camel@lade.trondhjem.org>
+	  <1337698816.4269.15.camel@lade.trondhjem.org>
+	  <4FBBB0DB.6050708@parallels.com>
+	 <1337701904.4269.16.camel@lade.trondhjem.org>
+	 <4FBBBC4C.5010103@parallels.com>
+In-Reply-To: <4FBBBC4C.5010103@parallels.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: <tao.peng@emc.com>, Sorin Faibish <sfaibish@emc.com>
-CC: <Trond.Myklebust@netapp.com>, <bergwolf@gmail.com>,
-        <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/3] pnfsblock: bail out unaligned DIO
-References: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>  <1338096780-2763-4-git-send-email-bergwolf@gmail.com> <1338136717.3044.13.camel@lade.trondhjem.org> <F19688880B763E40B28B2B462677FBF805F0BADF36@MX09A.corp.emc.com>
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805F0BADF36@MX09A.corp.emc.com>
-Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/28/2012 05:30 AM, tao.peng@emc.com wrote:
-
->> -----Original Message-----
->> From: Myklebust, Trond [mailto:Trond.Myklebust@netapp.com]
-
-<>
-
->> Also, why do you consider it to be direct i/o specific? If the
->> application is using byte range locking, and the locks aren't page/block
->> aligned then you are in the same position of having to deal with partial
->> page writes even in the read/write from page cache situation.
-
-
-> You are right about byte range locking + buffered IO, and it should
-> be fixed in pg_test with bellow patch and it could be a stable
-> candidate. 
-
-
-What?? please explain. It sounds like you are saying that there is a
-very *serious* bug in current block-layout.
-
->From my experiment I know that lots and lots of IO is done none-paged
-aligned even in buffered IO. Actually NFS goes to great length not to do
-the usual read-modify-write per page, but keeps the byte range that
-was written per page and only RPCs the exact offset-length of the modification.
-Because by definition NFS is byte aligned IO, not "blocks" or "sectors".
-
-Please explain what happens now. Is it a data corruption? Or just
-performance slowness.
-
-I don't understand. Don't you do the proper read-copy-modify-write that's
-mandated by block layout RFC? byte aligned? And what are sectors and PAGES
-got to do with it? I thought all IO must be "block" aligned.
-
-In objects-layout we have even worse alignment constrains with raid5
-(stripe_size alignment). It was needed to do a (very simple BTW)
-read-modify-write. Involving not just partial pages but also full pages read.
-BTW we read into the page-cache the surrounding pages, so not to read them multiple
-times.
-
-> It is different from DIO case because for DIO we have to
-> be sure each page is blocksize aligned. And it can't easily be done
-> in pg_test because in pg_test we only have one nfs_page to test
-> against.
-> 
-
-<snip>
-
-> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-> index 7ae8a60..a84a0da 100644
-> --- a/fs/nfs/blocklayout/blocklayout.c
-> +++ b/fs/nfs/blocklayout/blocklayout.c
-> @@ -925,6 +925,18 @@ nfs4_blk_get_deviceinfo(struct nfs_server *server, const struct nfs_fh *fh,
->  	return rv;
->  }
->  
-> +static bool
-> +bl_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
-> +	   struct nfs_page *req)
-> +{
-> +	/* Bail out page unligned IO */
-> +	if (req->wb_offset || req->wb_pgbase ||
-> +	    req->wb_bytes != PAGE_CACHE_SIZE)
-> +		return false;
-> +
-
-
-This is very serious. Not many applications will currently pass
-this test. (And hence will not do direct IO)
-
-What happens today without this patch?
-
-> +	return pnfs_generic_pg_test(pgio, prev, req);
-> +}
-> +
-
-
-<>
-
-Thanks
-Boaz
+T24gVHVlLCAyMDEyLTA1LTIyIGF0IDIwOjE4ICswNDAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3
+cm90ZToNCj4gT24gMjIuMDUuMjAxMiAxOTo1MSwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4g
+PiBPbiBUdWUsIDIwMTItMDUtMjIgYXQgMTk6MjkgKzA0MDAsIFN0YW5pc2xhdiBLaW5zYnVyc2t5
+IHdyb3RlOg0KPiA+PiBPbiAyMi4wNS4yMDEyIDE5OjAwLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3Rl
+Og0KPiA+Pj4gT24gVHVlLCAyMDEyLTA1LTIyIGF0IDEwOjI5IC0wNDAwLCBUcm9uZCBNeWtsZWJ1
+c3Qgd3JvdGU6DQo+ID4+Pj4gT24gVHVlLCAyMDEyLTA1LTIyIGF0IDE2OjQwICswNDAwLCBTdGFu
+aXNsYXYgS2luc2J1cnNreSB3cm90ZToNCj4gPj4+Pj4gQ2xpZW50IGhhdmUgdG8gYmUgaW5pdGlh
+bGl6ZWQgcHJpb3IgdG8gYWRkaW5nIGl0IHRvIHBlci1uZXQgY2xpZW50cyBsaXN0LA0KPiA+Pj4+
+PiBiZWNhdXNlIG90aGVyd2lzZSB0aGVyZSBhcmUgcmFjZXMsIHNob3duIGJlbG93Og0KPiA+Pj4+
+Pg0KPiA+Pj4+PiBDUFUjMAkJCQkJQ1BVIzENCj4gPj4+Pj4gX19fX18JCQkJCV9fX19fDQo+ID4+
+Pj4+DQo+ID4+Pj4+IG5mc19nZXRfY2xpZW50DQo+ID4+Pj4+IG5mc19hbGxvY19jbGllbnQNCj4g
+Pj4+Pj4gbGlzdF9hZGQoLi4uLCBuZnNfY2xpZW50X2xpc3QpDQo+ID4+Pj4+IAkJCQkJcnBjX2Zp
+bGxfc3VwZXINCj4gPj4+Pj4gCQkJCQlycGNfcGlwZWZzX2V2ZW50DQo+ID4+Pj4+IAkJCQkJbmZz
+X2dldF9jbGllbnRfZm9yX2V2ZW50DQo+ID4+Pj4+IAkJCQkJX19ycGNfcGlwZWZzX2V2ZW50DQo+
+ID4+Pj4+IAkJCQkJKGNscC0+Y2xfcnBjY2xpZW50IGlzIHVuaW5pdGlhbGl6ZWQpDQo+ID4+Pj4+
+IAkJCQkJQlVHKCkNCj4gPj4+Pj4gaW5pdF9jbGllbnQNCj4gPj4+Pj4gY2xwLT5jbF9ycGNjbGll
+bnQgPSAuLi4NCj4gPj4+Pj4NCj4gPj4+Pg0KPiA+Pj4+IFdoeSBub3Qgc2ltcGx5IGNoYW5nZSBu
+ZnNfZ2V0X2NsaWVudF9mb3JfZXZlbnQoKSBzbyB0aGF0IGl0IGRvZXNuJ3QNCj4gPj4+PiB0b3Vj
+aCBuZnNfY2xpZW50cyB0aGF0IGhhdmUgY2xwLT5jbF9jb25zX3N0YXRlIT1ORlNfQ1NfUkVBRFk/
+DQo+ID4+Pj4NCj4gPj4+PiBUaGF0IHNob3VsZCBlbnN1cmUgdGhhdCBpdCBkb2Vzbid0IHRvdWNo
+IG5mc19jbGllbnRzIHRoYXQgZmFpbGVkIHRvDQo+ID4+Pj4gaW5pdGlhbGlzZSBhbmQvb3IgYXJl
+IHN0aWxsIGluIHRoZSBwcm9jZXNzIG9mIGJlaW5nIGluaXRpYWxpc2VkLg0KPiA+Pj4NCj4gPj4+
+IC4uLmFjdHVhbGx5LCBjb21lIHRvIHRoaW5rIG9mIGl0LiBXaHkgbm90IGp1c3QgYWRkIGEgaGVs
+cGVyIGZ1bmN0aW9uDQo+ID4+PiAiYm9vbCBuZnNfY2xpZW50X2FjdGl2ZShjb25zdCBzdHJ1Y3Qg
+bmZzX2NsaWVudCAqY2xwKSIgdG8NCj4gPj4+IGZzL25mcy9jbGllbnQuYyB0aGF0IGRvZXMgYSBj
+YWxsIHRvDQo+ID4+PiAJd2FpdF9ldmVudF9raWxsYWJsZShuZnNfY2xpZW50X2FjdGl2ZV93cSwg
+Y2xwLT5jbF9jb25zX3N0YXRlPCAgIE5GU19DU19JTklUSU5HKTsNCj4gPj4+IGFuZCBjaGVja3Mg
+dGhlIHJlc3VsdGluZyB2YWx1ZSBvZiBjbHAtPmNsX2NvbnNfc3RhdGU/DQo+ID4+Pg0KPiA+Pg0K
+PiA+PiBTb3JyeSwgYnV0IEkgZG9uJ3QgdW5kZXJzdGFuZCB0aGUgaWRlYS4uLg0KPiA+PiBXaGVy
+ZSBhcmUgeW91IHByb3Bvc2luZyB0byBjYWxsIHRoaXMgZnVuY3Rpb24/DQo+ID4+IEluIF9fcnBj
+X3BpcGVmc19ldmVudCgpIHByaW9yIHRvIGRlbnRyaWVzIGNyZWF0aW9zPw0KPiA+DQo+ID4gU2Vl
+IGJlbG93Og0KPiA+DQo+ID4gODwtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+ID4gIEZyb20g
+ZjViOTBkZjYzODFhMjAzOTVkOWY4OGExOTllOWU1MmY0NDI2NzQ1NyBNb24gU2VwIDE3IDAwOjAw
+OjAwIDIwMDENCj4gPiBGcm9tOiBUcm9uZCBNeWtsZWJ1c3Q8VHJvbmQuTXlrbGVidXN0QG5ldGFw
+cC5jb20+DQo+ID4gRGF0ZTogVHVlLCAyMiBNYXkgMjAxMiAxMTo0OTo1NSAtMDQwMA0KPiA+IFN1
+YmplY3Q6IFtQQVRDSF0gTkZTdjQ6IEZpeCBhIHJhY2UgaW4gdGhlIG5ldCBuYW1lc3BhY2UgbW91
+bnQgbm90aWZpY2F0aW9uDQo+ID4NCj4gPiBTaW5jZSB0aGUgc3RydWN0IG5mc19jbGllbnQgZ2V0
+cyBhZGRlZCB0byB0aGUgZ2xvYmFsIG5mc19jbGllbnRfbGlzdA0KPiA+IGJlZm9yZSBpdCBpcyBp
+bml0aWFsaXNlZCwgaXQgaXMgcG9zc2libGUgdGhhdCBycGNfcGlwZWZzX2V2ZW50IGNhbg0KPiA+
+IGVuZCB1cCB0cnlpbmcgdG8gY3JlYXRlIGlkbWFwcGVyIGVudHJpZXMgZm9yIHN1Y2ggYSB0aGlu
+Zy4NCj4gPg0KPiA+IFRoZSBzb2x1dGlvbiBpcyB0byBoYXZlIHRoZSBtb3VudCBub3RpZmljYXRp
+b24gd2FpdCBmb3IgdGhlDQo+ID4gbmZzX2NsaWVudCBpbml0aWFsaXNhdGlvbiB0byBjb21wbGV0
+ZS4NCj4gPg0KPiA+IFJlcG9ydGVkLWJ5OiBTdGFuaXNsYXYgS2luc2J1cnNreTxza2luc2J1cnNr
+eUBwYXJhbGxlbHMuY29tPg0KPiA+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdDxUcm9u
+ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4gPiAtLS0NCj4gPiAgIGZzL25mcy9jbGllbnQuYyAg
+IHwgICAxNCArKysrKysrKysrKysrKw0KPiA+ICAgZnMvbmZzL2lkbWFwLmMgICAgfCAgICAzICsr
+LQ0KPiA+ICAgZnMvbmZzL2ludGVybmFsLmggfCAgICAxICsNCj4gPiAgIDMgZmlsZXMgY2hhbmdl
+ZCwgMTcgaW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbnMoLSkNCj4gPg0KPiA+IGRpZmYgLS1naXQg
+YS9mcy9uZnMvY2xpZW50LmMgYi9mcy9uZnMvY2xpZW50LmMNCj4gPiBpbmRleCA2MGY3ZTRlLi4z
+ZmE0NGVmIDEwMDY0NA0KPiA+IC0tLSBhL2ZzL25mcy9jbGllbnQuYw0KPiA+ICsrKyBiL2ZzL25m
+cy9jbGllbnQuYw0KPiA+IEBAIC01OTIsNiArNTkyLDIwIEBAIHZvaWQgbmZzX21hcmtfY2xpZW50
+X3JlYWR5KHN0cnVjdCBuZnNfY2xpZW50ICpjbHAsIGludCBzdGF0ZSkNCj4gPiAgIAl3YWtlX3Vw
+X2FsbCgmbmZzX2NsaWVudF9hY3RpdmVfd3EpOw0KPiA+ICAgfQ0KPiA+DQo+ID4gK3N0YXRpYyBi
+b29sIG5mc19jbGllbnRfcmVhZHkoc3RydWN0IG5mc19jbGllbnQgKmNscCkNCj4gPiArew0KPiA+
+ICsJcmV0dXJuIGNscC0+Y2xfY29uc19zdGF0ZTw9IE5GU19DU19SRUFEWTsNCj4gPiArfQ0KPiA+
+ICsNCj4gPiAraW50IG5mc193YWl0X2NsaWVudF9yZWFkeShzdHJ1Y3QgbmZzX2NsaWVudCAqY2xw
+KQ0KPiA+ICt7DQo+ID4gKwlpZiAod2FpdF9ldmVudF9raWxsYWJsZShuZnNfY2xpZW50X2FjdGl2
+ZV93cSwgbmZzX2NsaWVudF9yZWFkeShjbHApKTwgIDApDQo+ID4gKwkJcmV0dXJuIC1FUkVTVEFS
+VFNZUzsNCj4gDQo+IE9rLCBJIHNlZS4uLg0KPiBCVFcsIGNhbGxlciBvZiB0aGlzIGZ1bmN0aW9u
+IGlzIHBpcGVmcyBtb3VudCBvcGVyYXRpb24gY2FsbC4uLiBBbmQgd2hlbiB0aGlzIA0KPiBtb3Vu
+dCBjYWxsIHdhaXRzIGZvciBORlMgY2xpZW50cyAtIGl0IGxvb2sgYSBiaXQgb2RkIHRvIG1lLi4u
+DQo+IA0KPiANCj4gPiArCWlmIChjbHAtPmNsX2NvbnNfc3RhdGU8ICAwKQ0KPiA+ICsJCXJldHVy
+biBjbHAtPmNsX2NvbnNfc3RhdGU7DQo+ID4gKwlyZXR1cm4gMDsNCj4gPiArfQ0KPiA+ICsNCj4g
+PiAgIC8qDQo+ID4gICAgKiBXaXRoIHNlc3Npb25zLCB0aGUgY2xpZW50IGlzIG5vdCBtYXJrZWQg
+cmVhZHkgdW50aWwgYWZ0ZXIgYQ0KPiA+ICAgICogc3VjY2Vzc2Z1bCBFWENIQU5HRV9JRCBhbmQg
+Q1JFQVRFX1NFU1NJT04uDQo+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9pZG1hcC5jIGIvZnMvbmZz
+L2lkbWFwLmMNCj4gPiBpbmRleCAzZThlZGJlLi42Nzk2MmM4IDEwMDY0NA0KPiA+IC0tLSBhL2Zz
+L25mcy9pZG1hcC5jDQo+ID4gKysrIGIvZnMvbmZzL2lkbWFwLmMNCj4gPiBAQCAtNTU4LDcgKzU1
+OCw4IEBAIHN0YXRpYyBpbnQgcnBjX3BpcGVmc19ldmVudChzdHJ1Y3Qgbm90aWZpZXJfYmxvY2sg
+Km5iLCB1bnNpZ25lZCBsb25nIGV2ZW50LA0KPiA+ICAgCQlyZXR1cm4gMDsNCj4gPg0KPiA+ICAg
+CXdoaWxlICgoY2xwID0gbmZzX2dldF9jbGllbnRfZm9yX2V2ZW50KHNiLT5zX2ZzX2luZm8sIGV2
+ZW50KSkpIHsNCj4gPiAtCQllcnJvciA9IF9fcnBjX3BpcGVmc19ldmVudChjbHAsIGV2ZW50LCBz
+Yik7DQo+ID4gKwkJaWYgKG5mc193YWl0X2NsaWVudF9yZWFkeShjbHApID09IDApDQo+ID4gKwkJ
+CWVycm9yID0gX19ycGNfcGlwZWZzX2V2ZW50KGNscCwgZXZlbnQsIHNiKTsNCj4gDQo+IA0KPiBX
+ZSBoYXZlIGFub3RoZXIgcHJvYmxlbSBoZXJlLg0KPiBuZnM0X2luaXRfY2xpZW50KCkgd2lsbCB0
+cnkgdG8gY3JlYXRlIHBpcGUgZGVudHJpZXMgcHJpb3IgdG8gc2V0IG9mIE5GU19DU19SRUFEWSAN
+Cj4gdG8gdGhlIGNsaWVudC4gQW5kIGRlbnRyaWVzIHdpbGwgYmUgY3JlYXRlZCBzaW5jZSBzZW1h
+cGhvcmUgaXMgZHJvcHBlZCBhbmQgDQo+IHBlci1uZXQgc3VwZXJibG9jayB2YXJpYWJsZSBpcyBp
+bml0aWFsaXplZCBhbHJlYWR5Lg0KPiBCdXQgX19ycGNfcGlwZWZzX2V2ZW50KCkgcmVsYXlzIG9u
+IHRoZSBmYWN0LCB0aGF0IG5vIGRlbnRyaWVzIHByZXNlbnQuDQo+IExvb2tzIGxpa2UgdGhlIHBy
+b2JsZW0gd2FzIGludHJvZHVjZWQgYnkgbWUgaW4gYWFkOTQ4N2MuLi4NCj4gU28gbWF5YmUgd2Ug
+c2hvdWxkIG5vdCBjYWxsICJjb250aW51ZSIgaW5zdGVhZCAiX19ycGNfcGlwZWZzX2V2ZW50KCki
+LCB3aGVuIA0KPiBjbGllbnQgYmVjb21lcyByZWFkeT8NCj4gTG9va3MgbGlrZSB0aGlzIHdpbGwg
+YWxsb3cgdXMgdG8gaGFuZGxlIHN1Y2ggcmFjZXMuDQoNCkxldCBtZSByZXdvcmsgdGhpcyBwYXRj
+aCBhIGJpdC4uLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWlu
+dGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAu
+Y29tDQoNCg==
