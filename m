@@ -1,38 +1,233 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:8214 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:21117 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755937Ab2EVQY1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 May 2012 12:24:27 -0400
-Received: from vmwexceht05-prd.hq.netapp.com (vmwexceht05-prd.hq.netapp.com [10.106.77.35])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q4MGORXH022238
-	for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 09:24:27 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 4/4] NFSv4.1 do not release page on commit mismatch
-Date: Tue, 22 May 2012 16:24:27 +0000
-Message-ID: <1337703865.4269.21.camel@lade.trondhjem.org>
-References: <1337688569-1515-1-git-send-email-andros@netapp.com>
-	 <1337688569-1515-5-git-send-email-andros@netapp.com>
-In-Reply-To: <1337688569-1515-5-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1751522Ab2EVHgO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 03:36:14 -0400
+Subject: [PATCH v2 03/12] NFS: move per-net callback thread initialization to
+	nfs_callback_up_net()
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Tue, 22 May 2012 11:36:10 +0400
+Message-ID: <20120522073609.20602.98580.stgit@localhost.localdomain>
+In-Reply-To: <20120522073320.20602.87130.stgit@localhost.localdomain>
+References: <20120522073320.20602.87130.stgit@localhost.localdomain>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA1LTIyIGF0IDA4OjA5IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
-ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFNpZ25l
-ZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQo+IC0tLQ0KPiAgZnMv
-bmZzL3dyaXRlLmMgfCAgICAyICsrDQo+ICAxIGZpbGVzIGNoYW5nZWQsIDIgaW5zZXJ0aW9ucygr
-KSwgMCBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvd3JpdGUuYyBiL2Zz
-L25mcy93cml0ZS5jDQo+IGluZGV4IGU2ZmUzZDYuLmM3Mjk1ZGUgMTAwNjQ0DQo+IC0tLSBhL2Zz
-L25mcy93cml0ZS5jDQo+ICsrKyBiL2ZzL25mcy93cml0ZS5jDQo+IEBAIC0xNTU1LDYgKzE1NTUs
-OCBAQCBzdGF0aWMgdm9pZCBuZnNfY29tbWl0X3JlbGVhc2VfcGFnZXMoc3RydWN0IG5mc19jb21t
-aXRfZGF0YSAqZGF0YSkNCj4gIAkJLyogV2UgaGF2ZSBhIG1pc21hdGNoLiBXcml0ZSB0aGUgcGFn
-ZSBhZ2FpbiAqLw0KPiAgCQlkcHJpbnRrKCIgbWlzbWF0Y2hcbiIpOw0KPiAgCQluZnNfbWFya19y
-ZXF1ZXN0X2RpcnR5KHJlcSk7DQo+ICsJCW5mc191bmxvY2tfcmVxdWVzdChyZXEpOw0KPiArCQlj
-b250aW51ZTsNCj4gIAluZXh0Og0KPiAgCQluZnNfdW5sb2NrX2FuZF9yZWxlYXNlX3JlcXVlc3Qo
-cmVxKTsNCj4gIAl9DQoNCldoYXQgaXMgdGhpcyBwYXRjaCB0cnlpbmcgdG8gZml4PyBBcyBmYXIg
-YXMgSSBjYW4gc2VlIGl0IHdpbGwgbGVhZCB0byBhDQpyZWZlcmVuY2UgbGVhay4NCg0KLS0gDQpU
-cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRy
-b25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+This new function in now called before nfs_minorversion_callback_svc_setup()).
+
+Also few small changes:
+1) current network namespace in nfs_callback_up() was replaced by transport net.
+2) svc_shutdown_net() was moved prior to callback usage counter decrement
+(because in case of per-net data allocation faulure svc_shutdown_net() have to
+be skipped).
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfs/callback.c |  125 +++++++++++++++++++++++++++++++++--------------------
+ 1 files changed, 78 insertions(+), 47 deletions(-)
+
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index b34ccc6..2ecea36 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -64,6 +64,32 @@ static struct kernel_param_ops param_ops_portnr = {
+ 
+ module_param_named(callback_tcpport, nfs_callback_set_tcpport, portnr, 0644);
+ 
++static int nfs4_callback_up_net(struct svc_serv *serv, struct net *net)
++{
++	int ret;
++
++	ret = svc_create_xprt(serv, "tcp", net, PF_INET,
++				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
++	if (ret <= 0)
++		goto out_err;
++	nfs_callback_tcpport = ret;
++	dprintk("NFS: Callback listener port = %u (af %u, net %p)\n",
++			nfs_callback_tcpport, PF_INET, net);
++
++	ret = svc_create_xprt(serv, "tcp", net, PF_INET6,
++				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
++	if (ret > 0) {
++		nfs_callback_tcpport6 = ret;
++		dprintk("NFS: Callback listener port = %u (af %u, net %p)\n",
++				nfs_callback_tcpport6, PF_INET6, net);
++	} else if (ret != -EAFNOSUPPORT)
++		goto out_err;
++	return 0;
++
++out_err:
++	return (ret) ? ret : -ENOMEM;
++}
++
+ /*
+  * This is the NFSv4 callback kernel thread.
+  */
+@@ -105,36 +131,21 @@ nfs4_callback_svc(void *vrqstp)
+ static struct svc_rqst *
+ nfs4_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+ {
+-	int ret;
+-
+-	ret = svc_create_xprt(serv, "tcp", xprt->xprt_net, PF_INET,
+-				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
+-	if (ret <= 0)
+-		goto out_err;
+-	nfs_callback_tcpport = ret;
+-	dprintk("NFS: Callback listener port = %u (af %u)\n",
+-			nfs_callback_tcpport, PF_INET);
+-
+-	ret = svc_create_xprt(serv, "tcp", xprt->xprt_net, PF_INET6,
+-				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
+-	if (ret > 0) {
+-		nfs_callback_tcpport6 = ret;
+-		dprintk("NFS: Callback listener port = %u (af %u)\n",
+-				nfs_callback_tcpport6, PF_INET6);
+-	} else if (ret == -EAFNOSUPPORT)
+-		ret = 0;
+-	else
+-		goto out_err;
+-
+ 	return svc_prepare_thread(serv, &serv->sv_pools[0], NUMA_NO_NODE);
+-
+-out_err:
+-	if (ret == 0)
+-		ret = -ENOMEM;
+-	return ERR_PTR(ret);
+ }
+ 
+ #if defined(CONFIG_NFS_V4_1)
++static int nfs41_callback_up_net(struct svc_serv *serv, struct net *net)
++{
++	/*
++	 * Create an svc_sock for the back channel service that shares the
++	 * fore channel connection.
++	 * Returns the input port (0) and sets the svc_serv bc_xprt on success
++	 */
++	return svc_create_xprt(serv, "tcp-bc", net, PF_INET, 0,
++			      SVC_SOCK_ANONYMOUS);
++}
++
+ /*
+  * The callback service for NFSv4.1 callbacks
+  */
+@@ -177,19 +188,6 @@ static struct svc_rqst *
+ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+ {
+ 	struct svc_rqst *rqstp;
+-	int ret;
+-
+-	/*
+-	 * Create an svc_sock for the back channel service that shares the
+-	 * fore channel connection.
+-	 * Returns the input port (0) and sets the svc_serv bc_xprt on success
+-	 */
+-	ret = svc_create_xprt(serv, "tcp-bc", xprt->xprt_net, PF_INET, 0,
+-			      SVC_SOCK_ANONYMOUS);
+-	if (ret < 0) {
+-		rqstp = ERR_PTR(ret);
+-		goto out;
+-	}
+ 
+ 	/*
+ 	 * Save the svc_serv in the transport so that it can
+@@ -205,7 +203,6 @@ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+ 		svc_xprt_put(serv->sv_bc_xprt);
+ 		serv->sv_bc_xprt = NULL;
+ 	}
+-out:
+ 	dprintk("--> %s return %ld\n", __func__,
+ 		IS_ERR(rqstp) ? PTR_ERR(rqstp) : 0);
+ 	return rqstp;
+@@ -229,6 +226,11 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
+ 		xprt->bc_serv = cb_info->serv;
+ }
+ #else
++static int nfs41_callback_up_net(struct svc_serv *serv, struct net *net)
++{
++	return 0;
++}
++
+ static inline int nfs_minorversion_callback_svc_setup(u32 minorversion,
+ 		struct svc_serv *serv, struct rpc_xprt *xprt,
+ 		struct svc_rqst **rqstpp, int (**callback_svc)(void *vrqstp))
+@@ -242,6 +244,36 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
+ }
+ #endif /* CONFIG_NFS_V4_1 */
+ 
++static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct net *net)
++{
++	int ret;
++
++	dprintk("NFS: create per-net callback data; net=%p\n", net);
++
++	ret = svc_bind(serv, net);
++	if (ret < 0) {
++		printk(KERN_WARNING "NFS: bind callback service failed\n");
++		goto err_bind;
++	}
++
++	if (minorversion) {
++		ret = nfs41_callback_up_net(serv, net);
++		if (ret < 0)
++			goto err_socks;
++	}
++
++	if (ret == 0)
++		ret = nfs4_callback_up_net(serv, net);
++	if (ret < 0)
++		goto err_socks;
++	return 0;
++
++err_socks:
++	svc_rpcb_cleanup(serv, net);
++err_bind:
++	return ret;
++}
++
+ static struct svc_serv *nfs_callback_create_svc(int minorversion)
+ {
+ 	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
+@@ -288,7 +320,7 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ 	char svc_name[12];
+ 	int ret = 0;
+ 	int minorversion_setup;
+-	struct net *net = current->nsproxy->net_ns;
++	struct net *net = xprt->xprt_net;
+ 
+ 	mutex_lock(&nfs_callback_mutex);
+ 
+@@ -303,11 +335,9 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ 		goto out;
+ 	}
+ 
+-	ret = svc_bind(serv, net);
+-	if (ret < 0) {
+-		printk(KERN_WARNING "NFS: bind callback service failed\n");
+-		goto out_err;
+-	}
++	ret = nfs_callback_up_net(minorversion, serv, net);
++	if (ret < 0)
++		goto err_net;
+ 
+ 	minorversion_setup =  nfs_minorversion_callback_svc_setup(minorversion,
+ 					serv, xprt, &rqstp, &callback_svc);
+@@ -347,10 +377,11 @@ err_create:
+ 	mutex_unlock(&nfs_callback_mutex);
+ 	return ret;
+ out_err:
++	svc_shutdown_net(serv, net);
++err_net:
+ 	dprintk("NFS: Couldn't create callback socket or server thread; "
+ 		"err = %d\n", ret);
+ 	cb_info->users--;
+-	svc_shutdown_net(serv, net);
+ 	goto out;
+ }
+ 
+
