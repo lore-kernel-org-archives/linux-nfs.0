@@ -1,72 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from shadbolt.e.decadent.org.uk ([88.96.1.126]:41950 "EHLO
-	shadbolt.e.decadent.org.uk" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752475Ab2ELJUY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 May 2012 05:20:24 -0400
-Message-ID: <1336814414.8274.501.camel@deadeye>
-Subject: Re: [PATCH 3.0.y, 3.2.y] NFSv4: Revalidate uid/gid after open
-From: Ben Hutchings <ben@decadent.org.uk>
-To: Jonathan Nieder <jrnieder@gmail.com>
-Cc: stable@vger.kernel.org, Rik Theys <Rik.Theys@esat.kuleuven.be>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, David Flyn <davidf@rd.bbc.co.uk>,
-        Jeff Layton <jlayton@redhat.com>, 659111@bugs.debian.org
-Date: Sat, 12 May 2012 10:20:14 +0100
-In-Reply-To: <20120511092020.GD5733@burratino>
-References: <alpine.LRH.2.00.1204242156380.28096@helium.esat.kuleuven.be>
-	 <20120511092020.GD5733@burratino>
-Content-Type: multipart/signed; micalg="pgp-sha512";
-	protocol="application/pgp-signature"; boundary="=-12L0xInX7TK7G5G5UgpN"
-Mime-Version: 1.0
+Received: from relay.parallels.com ([195.214.232.42]:54644 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755487Ab2EVOq1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 10:46:27 -0400
+Message-ID: <4FBBA6BC.3070409@parallels.com>
+Date: Tue, 22 May 2012 18:46:20 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v3] NFS: put net on idr allocation failure
+References: <20120522073709.20602.33027.stgit@localhost.localdomain>   <20120522080307.21303.60025.stgit@localhost.localdomain>  <1337697459.4269.7.camel@lade.trondhjem.org>  <4FBBA59F.2050001@parallels.com> <1337697906.4269.10.camel@lade.trondhjem.org>
+In-Reply-To: <1337697906.4269.10.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 22.05.2012 18:45, Myklebust, Trond wrote:
+> On Tue, 2012-05-22 at 18:41 +0400, Stanislav Kinsbursky wrote:
+>> On 22.05.2012 18:37, Myklebust, Trond wrote:
+>>> On Tue, 2012-05-22 at 12:03 +0400, Stanislav Kinsbursky wrote:
+>>>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
+>>>> ---
+>>>>    fs/nfs/client.c |    4 +++-
+>>>>    1 files changed, 3 insertions(+), 1 deletions(-)
+>>>>
+>>>> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+>>>> index 44cd70f..ae29d4f 100644
+>>>> --- a/fs/nfs/client.c
+>>>> +++ b/fs/nfs/client.c
+>>>> @@ -176,8 +176,10 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+>>>>
+>>>>    #ifdef CONFIG_NFS_V4
+>>>>    	err = nfs_get_cb_ident_idr(clp, cl_init->minorversion);
+>>>> -	if (err)
+>>>> +	if (err) {
+>>>> +		put_net(clp->net);
+>>>>    		goto error_cleanup;
+>>>> +	}
+>>>>
+>>>>    	spin_lock_init(&clp->cl_lock);
+>>>>    	INIT_DELAYED_WORK(&clp->cl_renewd, nfs4_renew_state);
+>>>>
+>>>
+>>> Let's just move the actual get_net() call to the end of the function.
+>>>
+>>
+>> Ok. But it will look a bit strange, like this:
+>>
+>> clp->net = net;
+>> ...
+>> nfs_get_cb_ident_idr
+>> ...
+>> get_net(clp->net)
+>>
+>> Or I can pass net to nfs_get_cb_ident_idr() as a parameter.
+>> Which solution is more preferable&?
+>
+> Just put the get_net() at the end. It doesn't matter if it looks a bit
+> odd: the intent is still obvious.
+>
 
---=-12L0xInX7TK7G5G5UgpN
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Sure.
 
-On Fri, 2012-05-11 at 04:20 -0500, Jonathan Nieder wrote:
-> This is a shorter (and more appropriate for stable kernels) analog to
-> the following upstream commit:
->=20
-> commit 6926afd1925a54a13684ebe05987868890665e2b
-> Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date:   Sat Jan 7 13:22:46 2012 -0500
->=20
->     NFSv4: Save the owner/group name string when doing open
-[...]
-
-Added to the queue for 3.2.y, thanks.
-
-Ben.
-
---=20
-Ben Hutchings
-Experience is directly proportional to the value of equipment destroyed.
-                                                         - Carolyn Scheppne=
-r
-
---=-12L0xInX7TK7G5G5UgpN
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iQIVAwUAT64rTue/yOyVhhEJAQrj9g//fTbpODmG4hU8sZ3CfataqON/3sPUEZjx
-eNkAYKBVrow+wGxjdr/Ug/KFe82/GT26lhGc8pR1c4gZNVMy9xCXbovM/5CMsDSi
-w0Jo2x2MlP5jFNHpYlDH7VkT1oaVUyrIZ7f3fbrdbFwqNMsm/BNm0UJ1jZwJLQQn
-Ri9WBV5OCSEFSNoCtFuWgZF4LTyvxCvWm5ZxKCXra2rF3Ck9wrW3VOKoPKsbm3ff
-MhjmiMVAd1WXLU1AhVnYbIuT+i1h2TZJWuGHXBN0yTXjdY8FKDnQmfW1oW4dKywp
-3eGaj7axE37ZGRRhh9djdCAsF9yF4s58jX+riY7lyrOgNH+o8N1mSlQeHjHfrGJE
-kDhjKl4HHNM1d6GWpFexDAkHFF90fob2/DLxXNP40oHY5kzmp83FdgndoElw+I69
-wOAtaG7NeepjSPq1yK/ZMn7Lo326rKGxFz1yu9iBciwG+XcCYHFGdz0a3xuH6/rY
-JIY5IkOAuU972UnF+LwaQYGU5NXi5jE1OpEZuSxBXF4nAE+mg1Kp78I+8wEdvDof
-qwYv7j/6dj5TxAETgzX2cv22xjeENvVH2S3lM2sK04rbus0klSPiRgA/BQGsLqdE
-TKVAJZnoGa+q6ensNnyPQM5beyu5zVPaj3IvQt8Dq7qjri4vu8a6JnLos3hpnNvP
-KTfJCvbHV1E=
-=7/6d
------END PGP SIGNATURE-----
-
---=-12L0xInX7TK7G5G5UgpN--
+-- 
+Best regards,
+Stanislav Kinsbursky
