@@ -1,61 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51892 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:10181 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756443Ab2EHUIt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 May 2012 16:08:49 -0400
-Date: Tue, 8 May 2012 16:08:48 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsdcld: add support for dropping capabilities
-Message-ID: <20120508200848.GD17669@fieldses.org>
-References: <1336491712-29445-1-git-send-email-jlayton@redhat.com>
- <20120508193429.GA17669@fieldses.org>
- <20120508160343.1114f01c@corrin.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120508160343.1114f01c@corrin.poochiereds.net>
+	id S1756809Ab2EVPgW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 11:36:22 -0400
+Subject: Re: [PATCH 3/4] SUNRPC: Add RPC based upcall mechanism for RPCGSS
+ auth
+From: Simo Sorce <simo@redhat.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+In-Reply-To: <20120522152432.GA11739@pad.fieldses.org>
+References: <1337087550-9821-1-git-send-email-simo@redhat.com>
+	 <1337087550-9821-4-git-send-email-simo@redhat.com>
+	 <20120522150356.GE891@fieldses.org>
+	 <1337699531.16840.185.camel@willson.li.ssimo.org>
+	 <20120522152432.GA11739@pad.fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 22 May 2012 11:36:14 -0400
+Message-ID: <1337700974.16840.198.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 08, 2012 at 04:03:43PM -0400, Jeff Layton wrote:
-> With this, root is basically a user like any other. He has to have
-> explicit permissions to access anything. If another user owns a file
-> and it's not world readable (or group readable by a group to which root
-> is a member), then the process won't be able to read it. Granted, a lot
-> of files are owned by root on a typical machine,
-
-... including, looking at my Fedora box, /etc/passwd, /etc/shadow, the
-entire contents of /usr/bin, all sorts of interesting /proc files....
-
-Sounds like game over?  Maybe not if selinux or something else
-intervenes.
-
-> but this should still
-> prevent access to any that aren't.
-
+On Tue, 2012-05-22 at 11:24 -0400, J. Bruce Fields wrote:
+> On Tue, May 22, 2012 at 11:12:11AM -0400, Simo Sorce wrote:
+> > On Tue, 2012-05-22 at 11:03 -0400, J. Bruce Fields wrote:
+> > > Note also if you rebase to my latest for-3.5 you need something like
+> > > the following (untested).
+> > > 
+> > > --b.
+> > > 
+> > > commit 2cc8f0912880a177eee73e08c4305ac3692b8ff9
+> > > Author: J. Bruce Fields <bfields@redhat.com>
+> > > Date:   Tue May 22 08:44:08 2012 -0400
+> > > 
+> > >     client_name->cred.cr_principal
+> > > 
+> > > diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+> > > index 0211265..95104ae 100644
+> > > --- a/net/sunrpc/auth_gss/svcauth_gss.c
+> > > +++ b/net/sunrpc/auth_gss/svcauth_gss.c
+> > > @@ -1182,26 +1182,27 @@ static int gss_proxy_save_rsc(struct cache_detail *cd,
+> > >  
+> > >  		/* get client name */
+> > >  		if (ud->client_name.len != 0) {
+> > > +			struct svc_cred *cred = &rsci.cred;
+> > >  			status = -ENOMEM;
+> > >  			/* convert to GSS_NT_HOSTBASED_SERVICE form */
+> > > -			rsci.client_name = kstrndup(ud->client_name.data,
+> > > +			cred->cr_principal = kstrndup(ud->client_name.data,
+> > >  							ud->client_name.len,
+> > >  							GFP_KERNEL);
+> > > -			if (!rsci.client_name)
+> > > +			if (!cred->cr_principal)
+> > >  				goto out;
+> > >  			/* terminate and remove realm part */
+> > > -			c = strchr(rsci.client_name, '@');
+> > > +			c = strchr(cred->cr_principal, '@');
+> > >  			if (c) {
+> > >  				*c = '\0';
+> > >  
+> > >  				/* change service-hostname delimiter */
+> > > -				c = strchr(rsci.client_name, '/');
+> > > +				c = strchr(cred->cr_principal, '/');
+> > >  				if (c) *c = '@';
+> > >  			}
+> > >  			if (!c) {
+> > >  				/* not a service principal */
+> > > -				kfree(rsci.client_name);
+> > > -				rsci.client_name = NULL;
+> > > +				kfree(cred->cr_principal);
+> > > +				cred->cr_principal = NULL;
+> > >  			}
+> > >  		}
+> > >  	}
+> > 
+> > I have a patch to move this in gss_rpc_upcall.c instead, it's cleaner, I
+> > think.
 > 
-> This also trims out all of the other extraneous stuff we don't need --
-> being able to bind to low sockets, traverse directories in which root
-> has no explicit access, chown ability, etc...
-> 
-> There are a couple of other approaches we could take here instead:
-> 
-> 1) we could run as an unprivileged user and keep CAP_DAC_OVERRIDE.
-> I think that's less safe than what I'm doing here though...
-> 
-> 2) we could teach the kernel to create the pipe with a different owner
-> and then run the daemon as a non-root user. That means we'd need some
-> mechanism to tell the kernel what we want that owner to be. I'm not
-> sure how that would work in practice -- maybe a new file
-> in /proc/fs/nfsd ?
-> 
-> In any case, I think this is probably good enough for now. This daemon
-> doesn't listen on a socket or anything so any compromise of it would
-> be a local one. Users also don't generally interact with it directly,
-> so you'd need to jump through some hoops in order to break it I'd
-> think.
+> OK.  Also, could we just ditch the "not a service principal" case?  I
+> know svcgssd doesn't currently pass those down, but that's not really
+> right--I'd actually prefer to have those principals as well.
 
-Sure.
+I can include the user principal, but I will not have time to test if it
+breaks anything.
 
---b.
+> And, dumb question (have I asked this before?): is it a problem to throw
+> away the realm there?  If there exist both nfs/example.com@FOO and
+> nfs/example.com@BAR that shouldn't be treated identically, then does
+> that just mean our configuration is screwed up?
+
+Well, I was surprised to see the realm was removed, but the reason
+probably is that you are basically just relying on the fact that a
+specific client is a member of only a specific REALM, and the fqdn is
+used to resolve which realm it is part of. It is technically incorrect
+to rely on such assumption, but it is correct in all reasonable actual
+deployments because normally applications have no way to obtain a ticket
+unless they can map fqdn -> REALM.
+
+This does not hold true for users though, so if you want me to leave the
+user principal in there I will not strip the realm from it.
+
+Is it ok to keep the code as is and remove the principal 'exclusion' to
+a later patch ? That will make it also easier to spot with a bisect if
+this semantic change were to cause issues anywhere.
+
+Simo.
+
+-- 
+Simo Sorce * Red Hat, Inc * New York
+
