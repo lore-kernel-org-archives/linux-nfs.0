@@ -1,47 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f174.google.com ([74.125.82.174]:38845 "EHLO
-	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932576Ab2EaS64 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 May 2012 14:58:56 -0400
+Received: from mx2.netapp.com ([216.240.18.37]:45606 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759735Ab2EVPvp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 11:51:45 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH] NFS: init client before declaration
+Date: Tue, 22 May 2012 15:51:44 +0000
+Message-ID: <1337701904.4269.16.camel@lade.trondhjem.org>
+References: <20120522124018.338.20817.stgit@localhost.localdomain>
+	  <1337696984.4269.4.camel@lade.trondhjem.org>
+	 <1337698816.4269.15.camel@lade.trondhjem.org>
+	 <4FBBB0DB.6050708@parallels.com>
+In-Reply-To: <4FBBB0DB.6050708@parallels.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <20120531182457.GB25955@fieldses.org>
-References: <20120531182457.GB25955@fieldses.org>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Thu, 31 May 2012 11:58:34 -0700
-Message-ID: <CA+55aFwGpVM2Dbe02gL5=cGJZ_t3b4PTAhqwrs5MHjsb5R6BaA@mail.gmail.com>
-Subject: Re: nfsd changes for 3.5
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 31, 2012 at 11:24 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
->
-> Sorry this is a bit late.  In fact I still have a review backlog (at a
-> minimum some bugfixes), so will send a second pull later.
-
-Quite frankly, I'm not going to pull this without lots of explanations.
-
-The VFS-level changes have no acks or sign-offs from anybody else, and
-quite frankly, if I understand them correctly they look f*cking
-disgusting. If I read them right, they break delegations of a file
-(which can involve long waits for clients - no?) while holding on to
-the directory inode lock (both directories for cross-inode renames).
-Which seems to be a singularly idiotic thing to do and sounds to me
-like a fundamental design mistake.
-
-We simply don't do these kinds of VFS changes without having
-discussions and acks from people, notably Al.
-
-As to "second pull later" - if you haven't reviewed the code already,
-it's damn well much too late in the merge window to do it now.
-
-So quite frankly, this *all* looks like 3.6 material to me, and that's
-assuming you can convince people that file-delegation breaking really
-should happen with all lookups on the directory the file is in blocked
-by the directory inode mutex in the first place. Or tell me I'm a
-moron and I misread the patches and don't know what I'm talking about.
-
-          Linus
+T24gVHVlLCAyMDEyLTA1LTIyIGF0IDE5OjI5ICswNDAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3
+cm90ZToNCj4gT24gMjIuMDUuMjAxMiAxOTowMCwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4g
+PiBPbiBUdWUsIDIwMTItMDUtMjIgYXQgMTA6MjkgLTA0MDAsIFRyb25kIE15a2xlYnVzdCB3cm90
+ZToNCj4gPj4gT24gVHVlLCAyMDEyLTA1LTIyIGF0IDE2OjQwICswNDAwLCBTdGFuaXNsYXYgS2lu
+c2J1cnNreSB3cm90ZToNCj4gPj4+IENsaWVudCBoYXZlIHRvIGJlIGluaXRpYWxpemVkIHByaW9y
+IHRvIGFkZGluZyBpdCB0byBwZXItbmV0IGNsaWVudHMgbGlzdCwNCj4gPj4+IGJlY2F1c2Ugb3Ro
+ZXJ3aXNlIHRoZXJlIGFyZSByYWNlcywgc2hvd24gYmVsb3c6DQo+ID4+Pg0KPiA+Pj4gQ1BVIzAJ
+CQkJCUNQVSMxDQo+ID4+PiBfX19fXwkJCQkJX19fX18NCj4gPj4+DQo+ID4+PiBuZnNfZ2V0X2Ns
+aWVudA0KPiA+Pj4gbmZzX2FsbG9jX2NsaWVudA0KPiA+Pj4gbGlzdF9hZGQoLi4uLCBuZnNfY2xp
+ZW50X2xpc3QpDQo+ID4+PiAJCQkJCXJwY19maWxsX3N1cGVyDQo+ID4+PiAJCQkJCXJwY19waXBl
+ZnNfZXZlbnQNCj4gPj4+IAkJCQkJbmZzX2dldF9jbGllbnRfZm9yX2V2ZW50DQo+ID4+PiAJCQkJ
+CV9fcnBjX3BpcGVmc19ldmVudA0KPiA+Pj4gCQkJCQkoY2xwLT5jbF9ycGNjbGllbnQgaXMgdW5p
+bml0aWFsaXplZCkNCj4gPj4+IAkJCQkJQlVHKCkNCj4gPj4+IGluaXRfY2xpZW50DQo+ID4+PiBj
+bHAtPmNsX3JwY2NsaWVudCA9IC4uLg0KPiA+Pj4NCj4gPj4NCj4gPj4gV2h5IG5vdCBzaW1wbHkg
+Y2hhbmdlIG5mc19nZXRfY2xpZW50X2Zvcl9ldmVudCgpIHNvIHRoYXQgaXQgZG9lc24ndA0KPiA+
+PiB0b3VjaCBuZnNfY2xpZW50cyB0aGF0IGhhdmUgY2xwLT5jbF9jb25zX3N0YXRlIT1ORlNfQ1Nf
+UkVBRFk/DQo+ID4+DQo+ID4+IFRoYXQgc2hvdWxkIGVuc3VyZSB0aGF0IGl0IGRvZXNuJ3QgdG91
+Y2ggbmZzX2NsaWVudHMgdGhhdCBmYWlsZWQgdG8NCj4gPj4gaW5pdGlhbGlzZSBhbmQvb3IgYXJl
+IHN0aWxsIGluIHRoZSBwcm9jZXNzIG9mIGJlaW5nIGluaXRpYWxpc2VkLg0KPiA+DQo+ID4gLi4u
+YWN0dWFsbHksIGNvbWUgdG8gdGhpbmsgb2YgaXQuIFdoeSBub3QganVzdCBhZGQgYSBoZWxwZXIg
+ZnVuY3Rpb24NCj4gPiAiYm9vbCBuZnNfY2xpZW50X2FjdGl2ZShjb25zdCBzdHJ1Y3QgbmZzX2Ns
+aWVudCAqY2xwKSIgdG8NCj4gPiBmcy9uZnMvY2xpZW50LmMgdGhhdCBkb2VzIGEgY2FsbCB0bw0K
+PiA+IAl3YWl0X2V2ZW50X2tpbGxhYmxlKG5mc19jbGllbnRfYWN0aXZlX3dxLCBjbHAtPmNsX2Nv
+bnNfc3RhdGU8ICBORlNfQ1NfSU5JVElORyk7DQo+ID4gYW5kIGNoZWNrcyB0aGUgcmVzdWx0aW5n
+IHZhbHVlIG9mIGNscC0+Y2xfY29uc19zdGF0ZT8NCj4gPg0KPiANCj4gU29ycnksIGJ1dCBJIGRv
+bid0IHVuZGVyc3RhbmQgdGhlIGlkZWEuLi4NCj4gV2hlcmUgYXJlIHlvdSBwcm9wb3NpbmcgdG8g
+Y2FsbCB0aGlzIGZ1bmN0aW9uPw0KPiBJbiBfX3JwY19waXBlZnNfZXZlbnQoKSBwcmlvciB0byBk
+ZW50cmllcyBjcmVhdGlvcz8NCg0KU2VlIGJlbG93Og0KDQo4PC0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0NCkZyb20gZjViOTBkZjYzODFhMjAzOTVkOWY4OGExOTllOWU1MmY0NDI2NzQ1NyBNb24g
+U2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVi
+dXN0QG5ldGFwcC5jb20+DQpEYXRlOiBUdWUsIDIyIE1heSAyMDEyIDExOjQ5OjU1IC0wNDAwDQpT
+dWJqZWN0OiBbUEFUQ0hdIE5GU3Y0OiBGaXggYSByYWNlIGluIHRoZSBuZXQgbmFtZXNwYWNlIG1v
+dW50IG5vdGlmaWNhdGlvbg0KDQpTaW5jZSB0aGUgc3RydWN0IG5mc19jbGllbnQgZ2V0cyBhZGRl
+ZCB0byB0aGUgZ2xvYmFsIG5mc19jbGllbnRfbGlzdA0KYmVmb3JlIGl0IGlzIGluaXRpYWxpc2Vk
+LCBpdCBpcyBwb3NzaWJsZSB0aGF0IHJwY19waXBlZnNfZXZlbnQgY2FuDQplbmQgdXAgdHJ5aW5n
+IHRvIGNyZWF0ZSBpZG1hcHBlciBlbnRyaWVzIGZvciBzdWNoIGEgdGhpbmcuDQoNClRoZSBzb2x1
+dGlvbiBpcyB0byBoYXZlIHRoZSBtb3VudCBub3RpZmljYXRpb24gd2FpdCBmb3IgdGhlDQpuZnNf
+Y2xpZW50IGluaXRpYWxpc2F0aW9uIHRvIGNvbXBsZXRlLg0KDQpSZXBvcnRlZC1ieTogU3Rhbmlz
+bGF2IEtpbnNidXJza3kgPHNraW5zYnVyc2t5QHBhcmFsbGVscy5jb20+DQpTaWduZWQtb2ZmLWJ5
+OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KLS0tDQogZnMv
+bmZzL2NsaWVudC5jICAgfCAgIDE0ICsrKysrKysrKysrKysrDQogZnMvbmZzL2lkbWFwLmMgICAg
+fCAgICAzICsrLQ0KIGZzL25mcy9pbnRlcm5hbC5oIHwgICAgMSArDQogMyBmaWxlcyBjaGFuZ2Vk
+LCAxNyBpbnNlcnRpb25zKCspLCAxIGRlbGV0aW9ucygtKQ0KDQpkaWZmIC0tZ2l0IGEvZnMvbmZz
+L2NsaWVudC5jIGIvZnMvbmZzL2NsaWVudC5jDQppbmRleCA2MGY3ZTRlLi4zZmE0NGVmIDEwMDY0
+NA0KLS0tIGEvZnMvbmZzL2NsaWVudC5jDQorKysgYi9mcy9uZnMvY2xpZW50LmMNCkBAIC01OTIs
+NiArNTkyLDIwIEBAIHZvaWQgbmZzX21hcmtfY2xpZW50X3JlYWR5KHN0cnVjdCBuZnNfY2xpZW50
+ICpjbHAsIGludCBzdGF0ZSkNCiAJd2FrZV91cF9hbGwoJm5mc19jbGllbnRfYWN0aXZlX3dxKTsN
+CiB9DQogDQorc3RhdGljIGJvb2wgbmZzX2NsaWVudF9yZWFkeShzdHJ1Y3QgbmZzX2NsaWVudCAq
+Y2xwKQ0KK3sNCisJcmV0dXJuIGNscC0+Y2xfY29uc19zdGF0ZSA8PSBORlNfQ1NfUkVBRFk7DQor
+fQ0KKw0KK2ludCBuZnNfd2FpdF9jbGllbnRfcmVhZHkoc3RydWN0IG5mc19jbGllbnQgKmNscCkN
+Cit7DQorCWlmICh3YWl0X2V2ZW50X2tpbGxhYmxlKG5mc19jbGllbnRfYWN0aXZlX3dxLCBuZnNf
+Y2xpZW50X3JlYWR5KGNscCkpIDwgMCkNCisJCXJldHVybiAtRVJFU1RBUlRTWVM7DQorCWlmIChj
+bHAtPmNsX2NvbnNfc3RhdGUgPCAwKQ0KKwkJcmV0dXJuIGNscC0+Y2xfY29uc19zdGF0ZTsNCisJ
+cmV0dXJuIDA7DQorfQ0KKw0KIC8qDQogICogV2l0aCBzZXNzaW9ucywgdGhlIGNsaWVudCBpcyBu
+b3QgbWFya2VkIHJlYWR5IHVudGlsIGFmdGVyIGENCiAgKiBzdWNjZXNzZnVsIEVYQ0hBTkdFX0lE
+IGFuZCBDUkVBVEVfU0VTU0lPTi4NCmRpZmYgLS1naXQgYS9mcy9uZnMvaWRtYXAuYyBiL2ZzL25m
+cy9pZG1hcC5jDQppbmRleCAzZThlZGJlLi42Nzk2MmM4IDEwMDY0NA0KLS0tIGEvZnMvbmZzL2lk
+bWFwLmMNCisrKyBiL2ZzL25mcy9pZG1hcC5jDQpAQCAtNTU4LDcgKzU1OCw4IEBAIHN0YXRpYyBp
+bnQgcnBjX3BpcGVmc19ldmVudChzdHJ1Y3Qgbm90aWZpZXJfYmxvY2sgKm5iLCB1bnNpZ25lZCBs
+b25nIGV2ZW50LA0KIAkJcmV0dXJuIDA7DQogDQogCXdoaWxlICgoY2xwID0gbmZzX2dldF9jbGll
+bnRfZm9yX2V2ZW50KHNiLT5zX2ZzX2luZm8sIGV2ZW50KSkpIHsNCi0JCWVycm9yID0gX19ycGNf
+cGlwZWZzX2V2ZW50KGNscCwgZXZlbnQsIHNiKTsNCisJCWlmIChuZnNfd2FpdF9jbGllbnRfcmVh
+ZHkoY2xwKSA9PSAwKQ0KKwkJCWVycm9yID0gX19ycGNfcGlwZWZzX2V2ZW50KGNscCwgZXZlbnQs
+IHNiKTsNCiAJCW5mc19wdXRfY2xpZW50KGNscCk7DQogCQlpZiAoZXJyb3IpDQogCQkJYnJlYWs7
+DQpkaWZmIC0tZ2l0IGEvZnMvbmZzL2ludGVybmFsLmggYi9mcy9uZnMvaW50ZXJuYWwuaA0KaW5k
+ZXggYjc3N2JkYS4uM2JlMDBhMCAxMDA2NDQNCi0tLSBhL2ZzL25mcy9pbnRlcm5hbC5oDQorKysg
+Yi9mcy9uZnMvaW50ZXJuYWwuaA0KQEAgLTE2OCw2ICsxNjgsNyBAQCBleHRlcm4gc3RydWN0IG5m
+c19zZXJ2ZXIgKm5mc19jbG9uZV9zZXJ2ZXIoc3RydWN0IG5mc19zZXJ2ZXIgKiwNCiAJCQkJCSAg
+IHN0cnVjdCBuZnNfZmF0dHIgKiwNCiAJCQkJCSAgIHJwY19hdXRoZmxhdm9yX3QpOw0KIGV4dGVy
+biB2b2lkIG5mc19tYXJrX2NsaWVudF9yZWFkeShzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwLCBpbnQg
+c3RhdGUpOw0KK2V4dGVybiBpbnQgbmZzX3dhaXRfY2xpZW50X3JlYWR5KHN0cnVjdCBuZnNfY2xp
+ZW50ICpjbHApOw0KIGV4dGVybiBpbnQgbmZzNF9jaGVja19jbGllbnRfcmVhZHkoc3RydWN0IG5m
+c19jbGllbnQgKmNscCk7DQogZXh0ZXJuIHN0cnVjdCBuZnNfY2xpZW50ICpuZnM0X3NldF9kc19j
+bGllbnQoc3RydWN0IG5mc19jbGllbnQqIG1kc19jbHAsDQogCQkJCQkgICAgIGNvbnN0IHN0cnVj
+dCBzb2NrYWRkciAqZHNfYWRkciwNCi0tIA0KMS43LjcuNg0KDQoNCi0tIA0KVHJvbmQgTXlrbGVi
+dXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1
+c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
