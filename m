@@ -1,53 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:53748 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756927Ab2EGOMa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 May 2012 10:12:30 -0400
-Received: by mail-gg0-f174.google.com with SMTP id u4so295845ggl.19
-        for <linux-nfs@vger.kernel.org>; Mon, 07 May 2012 07:12:30 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
-        michael.brantley@deshaw.com
-Subject: [PATCH v1 RESEND 09/12] vfs: make do_unlinkat retry on ESTALE errors
-Date: Mon,  7 May 2012 10:12:08 -0400
-Message-Id: <1336399931-20234-10-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1336399931-20234-1-git-send-email-jlayton@redhat.com>
-References: <1336399931-20234-1-git-send-email-jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:51686 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754131Ab2EVP3X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 11:29:23 -0400
+Date: Tue, 22 May 2012 11:29:17 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Simo Sorce <simo@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/4] SUNRPC: Add RPC based upcall mechanism for RPCGSS
+ auth
+Message-ID: <20120522152917.GB11739@pad.fieldses.org>
+References: <1337087550-9821-1-git-send-email-simo@redhat.com>
+ <1337087550-9821-4-git-send-email-simo@redhat.com>
+ <20120522150221.GD891@fieldses.org>
+ <1337699722.16840.189.camel@willson.li.ssimo.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1337699722.16840.189.camel@willson.li.ssimo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c |    7 +++++--
- 1 files changed, 5 insertions(+), 2 deletions(-)
+On Tue, May 22, 2012 at 11:15:22AM -0400, Simo Sorce wrote:
+> On Tue, 2012-05-22 at 11:02 -0400, J. Bruce Fields wrote:
+> >  This seems
+> > likely to break in subtle ways if we ever change one of those constants
+> > to not be a multiple of a large enough power of 2.  And makes the memory
+> > handling a little more obscure.  I'd rather just allocate those
+> > separately if that's the choice.
+> 
+> I do not see why it would break, the only limit we have is the total
+> size of the kmembuf.
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 58f5eae..cee62f1 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2863,8 +2863,9 @@ static long do_unlinkat(int dfd, const char __user *pathname)
- 	struct dentry *dentry;
- 	struct nameidata nd;
- 	struct inode *inode = NULL;
--
--	error = user_path_parent(dfd, pathname, &nd, &name, false);
-+	unsigned int try = 0;
-+retry:
-+	error = user_path_parent(dfd, pathname, &nd, &name, try);
- 	if (error)
- 		return error;
- 
-@@ -2903,6 +2904,8 @@ exit3:
- exit1:
- 	path_put(&nd.path);
- 	putname(name);
-+	if (retry_estale(error, try++))
-+		goto retry;
- 	return error;
- 
- slashes:
--- 
-1.7.7.6
+Oh, just because the svc_cred at the end wouldn't be aligned nicely any
+more.  Doesn't that bother some architectures?
 
+> > Whatever, I don't really care how the various xdr_netobj->data's are
+> > allocated, honestly there's no crusade to eliminate kmalloc()'s, I'll
+> > only object in a case (like the struct svc_cred field above) where it
+> > seems obviously unnecessary.
+> 
+> Ok, so what should I do ?
+> I can remove the static allocation and let the code allocate the data
+> with kmalloc, in the xdr unmarshalling code.
+> Whatever you like best.
+
+Just embed the svc_cred:
+
+> > -	struct svc_cred *creds;
+> > +	struct svc_cred creds;
+
+and handle the rest whichever way seems cleanest to you.
+
+--b.
