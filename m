@@ -1,75 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:21913 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:25203 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751950Ab2ESQYy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 19 May 2012 12:24:54 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] sunrpc: fix loss of task->tk_status after rpc_delay
- call in xprt_alloc_slot
-Date: Sat, 19 May 2012 16:23:52 +0000
-Message-ID: <1337444676.4831.3.camel@lade.trondhjem.org>
-References: <1337372188-5565-1-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1337372188-5565-1-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1758912Ab2EVOwz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 10:52:55 -0400
+Subject: [PATCH v4] NFS: get client net after idr allocation
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Tue, 22 May 2012 18:52:56 +0400
+Message-ID: <20120522145154.20579.17666.stgit@localhost.localdomain>
+In-Reply-To: <1337697906.4269.10.camel@lade.trondhjem.org>
+References: <1337697906.4269.10.camel@lade.trondhjem.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTA1LTE4IGF0IDE2OjE2IC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-eHBydF9hbGxvY19zbG90IHdpbGwgY2FsbCBycGNfZGVsYXkoKSB0byBtYWtlIHRoZSB0YXNrIHdh
-aXQgYSBiaXQgYmVmb3JlDQo+IHJldHJ5aW5nIHdoZW4gaXQgZ2V0cyBiYWNrIGFuIC1FTk9NRU0g
-ZXJyb3IgZnJvbSB4cHJ0X2R5bmFtaWNfYWxsb2Nfc2xvdC4NCj4gDQo+IFRoZSBwcm9ibGVtIHRo
-ZXJlIGlzIHRoYXQgcnBjX2RlbGF5IGRvZXMgdGhpczoNCj4gDQo+ICAgICBycGNfc2xlZXBfb24o
-JmRlbGF5X3F1ZXVlLCB0YXNrLCBfX3JwY19hdHJ1bik7DQo+IA0KPiAuLi5hbmQgX19ycGNfYXRy
-dW4gd2lsbCByZXNldCB0aGUgdGFzay0+dGtfc3RhdHVzIGJhY2sgdG8gMCB3aGVuIHRoZQ0KPiB0
-YXNrIHdha2VzIGJhY2sgdXAuIFRoaXMgbWFrZXMgY2FsbF9yZXNlcnZlcmVzdWx0IGFib3J0IHRo
-ZSB0YXNrIHdpdGgNCj4gLUVJTy4NCj4gDQo+IFRoZSBSSCBRQSBncm91cCBkaXNjb3ZlcmVkIHRo
-aXMgcHJvYmxlbSB3aGVuIHRlc3Rpbmcgd2l0aCBsb3ctbWVtb3J5DQo+IGNsaWVudHMgYW5kIHRo
-aXMgcGF0Y2ggZml4ZWQgaXQ6DQo+IA0KPiAgICAgaHR0cHM6Ly9idWd6aWxsYS5yZWRoYXQuY29t
-L3Nob3dfYnVnLmNnaT9pZD04MjIxODkNCj4gDQo+IEZpeCB0aGlzIGJ5IGFkZGluZyBhIG5ldyBy
-cGNfZGVsYXlfYWN0aW9uKCkgdmFyaWFudCB0aGF0IG1ha2VzIGFsbG93cw0KPiB1cyB0byBwYXNz
-IGluIGEgcnBjX2FjdGlvbiB0byByZXNldCB0aGUgc3RhdHVzIGJhY2sgdG8gLUVBR0FJTiBpbnN0
-ZWFkLg0KDQpIaSBKZWZmLA0KDQpJJ20gbm90IHN1cmUgdGhhdCBJIGxpa2UgdGhlIGlkZWEgb2Yg
-YW4gcnBjX2RlbGF5IHZhcmlhbnQgdGhhdCBmYWlscyB0bw0KcmVzZXQgdGhlIHRrX3N0YXR1cy4g
-SG93IGFib3V0IHNvbWV0aGluZyBsaWtlIHRoZSBmb2xsb3dpbmcgc29sdXRpb24NCmluc3RlYWQ/
-DQoNCkNoZWVycw0KICBUcm9uZA0KODwtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCkZyb20gMWFmZWFmNWMyOWFhMDdk
-YjI1NzYwZDJmYmVkNWMwOGEzYWVjMzQ5OCBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206
-IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQpEYXRlOiBTYXQs
-IDE5IE1heSAyMDEyIDEyOjEyOjUzIC0wNDAwDQpTdWJqZWN0OiBbUEFUQ0hdIHN1bnJwYzogZml4
-IGxvc3Mgb2YgdGFzay0+dGtfc3RhdHVzIGFmdGVyIHJwY19kZWxheSBjYWxsIGluDQogeHBydF9h
-bGxvY19zbG90DQoNCnhwcnRfYWxsb2Nfc2xvdCB3aWxsIGNhbGwgcnBjX2RlbGF5KCkgdG8gbWFr
-ZSB0aGUgdGFzayB3YWl0IGEgYml0IGJlZm9yZQ0KcmV0cnlpbmcgd2hlbiBpdCBnZXRzIGJhY2sg
-YW4gLUVOT01FTSBlcnJvciBmcm9tIHhwcnRfZHluYW1pY19hbGxvY19zbG90Lg0KVGhlIHByb2Js
-ZW0gaXMgdGhhdCBycGNfZGVsYXkgd2lsbCBjbGVhciB0aGUgdGFzay0+dGtfc3RhdHVzLCBjYXVz
-aW5nDQpjYWxsX3Jlc2VydmVyZXN1bHQgdG8gYWJvcnQgdGhlIHRhc2suDQoNClRoZSBzb2x1dGlv
-biBpcyBzaW1wbHkgdG8gbGV0IGNhbGxfcmVzZXJ2ZXJlc3VsdCBoYW5kbGUgdGhlIEVOT01FTSBl
-cnJvcg0KZGlyZWN0bHkuDQoNClJlcG9ydGVkLWJ5OiBKZWZmIExheXRvbiA8amxheXRvbkByZWRo
-YXQuY29tPg0KQ2M6IHN0YWJsZUB2Z2VyLmtlcm5lbC5vcmcgWz49IDMuMV0NClNpZ25lZC1vZmYt
-Ynk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQotLS0NCiBu
-ZXQvc3VucnBjL2NsbnQuYyB8ICAgIDIgKysNCiBuZXQvc3VucnBjL3hwcnQuYyB8ICAgIDUgKysr
-LS0NCiAyIGZpbGVzIGNoYW5nZWQsIDUgaW5zZXJ0aW9ucygrKSwgMiBkZWxldGlvbnMoLSkNCg0K
-ZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMvY2xudC5jIGIvbmV0L3N1bnJwYy9jbG50LmMNCmluZGV4
-IGFkZjI5OTAuLjI1MzAyYzggMTAwNjQ0DQotLS0gYS9uZXQvc3VucnBjL2NsbnQuYw0KKysrIGIv
-bmV0L3N1bnJwYy9jbG50LmMNCkBAIC0xMjg4LDYgKzEyODgsOCBAQCBjYWxsX3Jlc2VydmVyZXN1
-bHQoc3RydWN0IHJwY190YXNrICp0YXNrKQ0KIAl9DQogDQogCXN3aXRjaCAoc3RhdHVzKSB7DQor
-CWNhc2UgLUVOT01FTToNCisJCXJwY19kZWxheSh0YXNrLCBIWiA+PiAyKTsNCiAJY2FzZSAtRUFH
-QUlOOgkvKiB3b2tlbiB1cDsgcmV0cnkgKi8NCiAJCXRhc2stPnRrX2FjdGlvbiA9IGNhbGxfcmVz
-ZXJ2ZTsNCiAJCXJldHVybjsNCmRpZmYgLS1naXQgYS9uZXQvc3VucnBjL3hwcnQuYyBiL25ldC9z
-dW5ycGMveHBydC5jDQppbmRleCBiMjM5ZTc1Li5kN2NjZDc5IDEwMDY0NA0KLS0tIGEvbmV0L3N1
-bnJwYy94cHJ0LmMNCisrKyBiL25ldC9zdW5ycGMveHBydC5jDQpAQCAtOTg0LDE1ICs5ODQsMTYg
-QEAgc3RhdGljIHZvaWQgeHBydF9hbGxvY19zbG90KHN0cnVjdCBycGNfdGFzayAqdGFzaykNCiAJ
-CWdvdG8gb3V0X2luaXRfcmVxOw0KIAlzd2l0Y2ggKFBUUl9FUlIocmVxKSkgew0KIAljYXNlIC1F
-Tk9NRU06DQotCQlycGNfZGVsYXkodGFzaywgSFogPj4gMik7DQogCQlkcHJpbnRrKCJSUEM6ICAg
-ICAgIGR5bmFtaWMgYWxsb2NhdGlvbiBvZiByZXF1ZXN0IHNsb3QgIg0KIAkJCQkiZmFpbGVkISBS
-ZXRyeWluZ1xuIik7DQorCQl0YXNrLT50a19zdGF0dXMgPSAtRU5PTUVNOw0KIAkJYnJlYWs7DQog
-CWNhc2UgLUVBR0FJTjoNCiAJCXJwY19zbGVlcF9vbigmeHBydC0+YmFja2xvZywgdGFzaywgTlVM
-TCk7DQogCQlkcHJpbnRrKCJSUEM6ICAgICAgIHdhaXRpbmcgZm9yIHJlcXVlc3Qgc2xvdFxuIik7
-DQorCWRlZmF1bHQ6DQorCQl0YXNrLT50a19zdGF0dXMgPSAtRUFHQUlOOw0KIAl9DQotCXRhc2st
-PnRrX3N0YXR1cyA9IC1FQUdBSU47DQogCXJldHVybjsNCiBvdXRfaW5pdF9yZXE6DQogCXRhc2st
-PnRrX3N0YXR1cyA9IDA7DQotLSANCjEuNy43LjYNCg0KDQotLSANClRyb25kIE15a2xlYnVzdA0K
-TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5l
-dGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+Allocation can fail. So instead of put net in case of failure, get net after
+allocation.
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfs/client.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index b59419a..b694971 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -172,7 +172,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+ 	clp->cl_rpcclient = ERR_PTR(-EINVAL);
+ 
+ 	clp->cl_proto = cl_init->proto;
+-	clp->net = get_net(cl_init->net);
++	clp->net = cl_init->net;
+ 
+ #ifdef CONFIG_NFS_V4
+ 	err = nfs_get_cb_ident_idr(clp, cl_init->minorversion);
+@@ -187,6 +187,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+ 	clp->cl_minorversion = cl_init->minorversion;
+ 	clp->cl_mvops = nfs_v4_minor_ops[cl_init->minorversion];
+ #endif
++	get_net(clp->net);
+ 	cred = rpc_lookup_machine_cred("*");
+ 	if (!IS_ERR(cred))
+ 		clp->cl_machine_cred = cred;
+
