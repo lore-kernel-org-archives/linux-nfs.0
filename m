@@ -1,124 +1,28 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f174.google.com ([74.125.82.174]:38024 "EHLO
-	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751214Ab2E1QJZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 12:09:25 -0400
-Received: by weyu7 with SMTP id u7so2021750wey.19
-        for <linux-nfs@vger.kernel.org>; Mon, 28 May 2012 09:09:23 -0700 (PDT)
-From: Benny Halevy <bhalevy@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/5] pnfsd: make return_on_close state layout-global for the file/client
-Date: Mon, 28 May 2012 19:09:18 +0300
-Message-Id: <1338221358-22447-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <4FC3A235.8090908@tonian.com>
-References: <4FC3A235.8090908@tonian.com>
+Received: from mx2.netapp.com ([216.240.18.37]:17229 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757241Ab2EVOii (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 10:38:38 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v2 11/12] Signed-off-by: Stanislav Kinsbursky
+ <skinsbursky@parallels.com>
+Date: Tue, 22 May 2012 14:38:38 +0000
+Message-ID: <1337697518.4269.8.camel@lade.trondhjem.org>
+References: <20120522073320.20602.87130.stgit@localhost.localdomain>
+	 <20120522073709.20602.33027.stgit@localhost.localdomain>
+In-Reply-To: <20120522073709.20602.33027.stgit@localhost.localdomain>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As per RFC5661 errata #3226
-http://www.ietf.org/mail-archive/web/nfsv4/current/msg10965.html
-Once the server returns the return_on_close flag set, all the layout
-for that client will be implicitly returned on last close.
-
-Reported-by: Boaz Harrosh <bharrosh@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfsd/nfs4pnfsd.c |   19 ++++++++++++++-----
- fs/nfsd/pnfsd.h     |    2 +-
- 2 files changed, 15 insertions(+), 6 deletions(-)
-
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index 9f94cd0..a95e96e 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -161,6 +161,7 @@ void pnfs_clear_device_notify(struct nfs4_client *clp)
- 	spin_lock(&layout_lock);
- 	list_add(&new->ls_perfile, &fp->fi_layout_states);
- 	spin_unlock(&layout_lock);
-+	new->ls_roc = false;
- 	return new;
- }
- 
-@@ -286,6 +287,15 @@ static void update_layout_stateid(struct nfs4_layout_state *ls, stateid_t *sid)
- 	spin_unlock(&layout_lock);
- }
- 
-+static void update_layout_roc(struct nfs4_layout_state *ls, bool roc)
-+{
-+	if (roc) {
-+		ls->ls_roc = true;
-+		dprintk("%s: Marked return_on_close on layoutstate %p\n",
-+			__func__, ls);
-+	}
-+}
-+
- static void
- init_layout(struct nfs4_layout *lp,
- 	    struct nfs4_layout_state *ls,
-@@ -293,8 +303,7 @@ static void update_layout_stateid(struct nfs4_layout_state *ls, stateid_t *sid)
- 	    struct nfs4_client *clp,
- 	    struct svc_fh *current_fh,
- 	    struct nfsd4_layout_seg *seg,
--	    stateid_t *stateid,
--	    bool roc)
-+	    stateid_t *stateid)
- {
- 	dprintk("pNFS %s: lp %p ls %p clp %p fp %p ino %p\n", __func__,
- 		lp, ls, clp, fp, fp->fi_inode);
-@@ -305,7 +314,6 @@ static void update_layout_stateid(struct nfs4_layout_state *ls, stateid_t *sid)
- 	memcpy(&lp->lo_seg, seg, sizeof(lp->lo_seg));
- 	get_layout_state(ls);		/* put on destroy_layout */
- 	lp->lo_state = ls;
--	lp->lo_roc = roc;
- 	update_layout_stateid(ls, stateid);
- 	list_add_tail(&lp->lo_perclnt, &clp->cl_layouts);
- 	list_add_tail(&lp->lo_perfile, &fp->fi_layouts);
-@@ -811,6 +819,7 @@ struct super_block *
- 
- 	lgp->lg_seg = res.lg_seg;
- 	lgp->lg_roc = res.lg_return_on_close;
-+	update_layout_roc(ls, res.lg_return_on_close);
- 
- 	/* SUCCESS!
- 	 * Can the new layout be merged into an existing one?
-@@ -820,7 +829,7 @@ struct super_block *
- 		goto out_freelayout;
- 
- 	/* Can't merge, so let's initialize this new layout */
--	init_layout(lp, ls, fp, clp, lgp->lg_fhp, &res.lg_seg, &lgp->lg_sid, res.lg_return_on_close);
-+	init_layout(lp, ls, fp, clp, lgp->lg_fhp, &res.lg_seg, &lgp->lg_sid);
- out_unlock:
- 	if (ls)
- 		put_layout_state(ls);
-@@ -1225,7 +1234,7 @@ void pnfsd_roc(struct nfs4_client *clp, struct nfs4_file *fp)
- 		bool empty;
- 
- 		/* Check for a match */
--		if (!lo->lo_roc || lo->lo_client != clp)
-+		if (!lo->lo_state->ls_roc || lo->lo_client != clp)
- 			continue;
- 
- 		/* Return the layout */
-diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
-index f0862fb..e960fd3 100644
---- a/fs/nfsd/pnfsd.h
-+++ b/fs/nfsd/pnfsd.h
-@@ -45,6 +45,7 @@ struct nfs4_layout_state {
- 	struct kref		ls_ref;
- 	struct nfs4_stid	ls_stid;
- 	struct list_head	ls_perfile;
-+	bool			ls_roc;
- };
- 
- /* outstanding layout */
-@@ -55,7 +56,6 @@ struct nfs4_layout {
- 	struct nfs4_client		*lo_client;
- 	struct nfs4_layout_state	*lo_state;
- 	struct nfsd4_layout_seg		lo_seg;
--	bool				lo_roc;
- };
- 
- struct pnfs_inval_state {
--- 
-1.7.6.5
-
+T24gVHVlLCAyMDEyLTA1LTIyIGF0IDExOjM3ICswNDAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3
+cm90ZToNCj4gRnJvbTogcm9vdCAobm9uZSkgPHJvb3RAc2lnaHRlZD4NCj4gDQoNCldoYXQgaGFw
+cGVuZWQgdG8gdGhlIFN1YmplY3Q6IGFuZCBjaGFuZ2Vsb2c/DQoNCi0tIA0KVHJvbmQgTXlrbGVi
+dXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1
+c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
