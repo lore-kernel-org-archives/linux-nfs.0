@@ -1,127 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:41181 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757091Ab2EVCon (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 May 2012 22:44:43 -0400
-Received: by mail-gg0-f174.google.com with SMTP id u4so4992272ggl.19
-        for <linux-nfs@vger.kernel.org>; Mon, 21 May 2012 19:44:42 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 03/14] NFS: Use proper naming conventions for
- nfs_client.impl_id field
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 21 May 2012 22:44:41 -0400
-Message-ID: <20120522024440.1787.60778.stgit@degas.1015granger.net>
-In-Reply-To: <20120522022702.1787.45940.stgit@degas.1015granger.net>
-References: <20120522022702.1787.45940.stgit@degas.1015granger.net>
+Received: from mailhub.sw.ru ([195.214.232.25]:39820 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754751Ab2EVHg7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 03:36:59 -0400
+Subject: [PATCH v2 09/12] NFS; callback per-net usage counting introduced
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Tue, 22 May 2012 11:36:54 +0400
+Message-ID: <20120522073654.20602.38599.stgit@localhost.localdomain>
+In-Reply-To: <20120522073320.20602.87130.stgit@localhost.localdomain>
+References: <20120522073320.20602.87130.stgit@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up:  When naming fields and data types, follow established
-conventions to facilitate accurate grep/cscope searches.
+This patch also introduces refcount-aware nfs_callback_down_net() wrapper for
+svc_shutdown_net().
 
-Additionally, for consistency, move the impl_id field into the NFSv4-
-specific part of the nfs_client, and free that memory in the logic
-that shuts down NFSv4 nfs_clients.
-
-Introduced by commit 7d2ed9ac "NFSv4: parse and display server
-implementation ids," Fri Feb 17, 2012.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 ---
+ fs/nfs/callback.c |   19 +++++++++++++++++--
+ fs/nfs/netns.h    |    1 +
+ 2 files changed, 18 insertions(+), 2 deletions(-)
 
- fs/nfs/client.c           |    2 +-
- fs/nfs/nfs4proc.c         |   12 ++++++------
- fs/nfs/super.c            |    4 ++--
- include/linux/nfs_fs_sb.h |    2 +-
- 4 files changed, 10 insertions(+), 10 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 471fc9b..39db1be 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -238,6 +238,7 @@ static void nfs4_shutdown_client(struct nfs_client *clp)
- 
- 	rpc_destroy_wait_queue(&clp->cl_rpcwaitq);
- 	kfree(clp->cl_serverscope);
-+	kfree(clp->cl_implid);
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index d25085f..dbedd7e 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -285,10 +285,25 @@ static int nfs_callback_start_svc(int minorversion, struct rpc_xprt *xprt,
+ 	return 0;
  }
  
- /* idr_remove_all is not needed as all id's are removed by nfs_put_client */
-@@ -306,7 +307,6 @@ static void nfs_free_client(struct nfs_client *clp)
- 
- 	put_net(clp->net);
- 	kfree(clp->cl_hostname);
--	kfree(clp->impl_id);
- 	kfree(clp);
- 
- 	dprintk("<-- nfs_free_client()\n");
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 2c1e57e..e182134 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5119,8 +5119,8 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 
- 	if (!status) {
- 		/* use the most recent implementation id */
--		kfree(clp->impl_id);
--		clp->impl_id = res.impl_id;
-+		kfree(clp->cl_implid);
-+		clp->cl_implid = res.impl_id;
- 	} else
- 		kfree(res.impl_id);
- 
-@@ -5144,12 +5144,12 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- out_server_scope:
- 	kfree(res.server_scope);
- out:
--	if (clp->impl_id)
-+	if (clp->cl_implid)
- 		dprintk("%s: Server Implementation ID: "
- 			"domain: %s, name: %s, date: %llu,%u\n",
--			__func__, clp->impl_id->domain, clp->impl_id->name,
--			clp->impl_id->date.seconds,
--			clp->impl_id->date.nseconds);
-+			__func__, clp->cl_implid->domain, clp->cl_implid->name,
-+			clp->cl_implid->date.seconds,
-+			clp->cl_implid->date.nseconds);
- 	dprintk("<-- %s status= %d\n", __func__, status);
- 	return status;
- }
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index a973eb1..ff656c0 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -796,8 +796,8 @@ static void show_pnfs(struct seq_file *m, struct nfs_server *server)
- 
- static void show_implementation_id(struct seq_file *m, struct nfs_server *nfss)
++static void nfs_callback_down_net(u32 minorversion, struct svc_serv *serv, struct net *net)
++{
++	struct nfs_net *nn = net_generic(net, nfs_net_id);
++
++	if (--nn->cb_users[minorversion])
++		return;
++
++	dprintk("NFS: destroy per-net callback data; net=%p\n", net);
++	svc_shutdown_net(serv, net);
++}
++
+ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct net *net)
  {
--	if (nfss->nfs_client && nfss->nfs_client->impl_id) {
--		struct nfs41_impl_id *impl_id = nfss->nfs_client->impl_id;
-+	if (nfss->nfs_client && nfss->nfs_client->cl_implid) {
-+		struct nfs41_impl_id *impl_id = nfss->nfs_client->cl_implid;
- 		seq_printf(m, "\n\timpl_id:\tname='%s',domain='%s',"
- 			   "date='%llu,%u'",
- 			   impl_id->name, impl_id->domain,
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 900d733..773e021 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -81,13 +81,13 @@ struct nfs_client {
- 	u32			cl_exchange_flags;
- 	struct nfs4_session	*cl_session;	/* shared session */
- 	struct nfs41_server_scope *cl_serverscope;
-+	struct nfs41_impl_id	*cl_implid;
- #endif /* CONFIG_NFS_V4 */
++	struct nfs_net *nn = net_generic(net, nfs_net_id);
+ 	int ret;
  
- #ifdef CONFIG_NFS_FSCACHE
- 	struct fscache_cookie	*fscache;	/* client index cache cookie */
++	if (nn->cb_users[minorversion]++)
++		return 0;
++
+ 	dprintk("NFS: create per-net callback data; net=%p\n", net);
+ 
+ 	ret = svc_bind(serv, net);
+@@ -391,7 +406,7 @@ err_create:
+ 	return ret;
+ 
+ err_start:
+-	svc_shutdown_net(serv, net);
++	nfs_callback_down_net(minorversion, serv, net);
+ 	dprintk("NFS: Couldn't create server thread; err = %d\n", ret);
+ 	goto err_net;
+ }
+@@ -404,10 +419,10 @@ void nfs_callback_down(int minorversion, struct net *net)
+ 	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
+ 
+ 	mutex_lock(&nfs_callback_mutex);
++	nfs_callback_down_net(minorversion, cb_info->serv, net);
+ 	cb_info->users--;
+ 	if (cb_info->users == 0 && cb_info->task != NULL) {
+ 		kthread_stop(cb_info->task);
+-		svc_shutdown_net(cb_info->serv, net);
+ 		svc_exit_thread(cb_info->rqst);
+ 		cb_info->serv = NULL;
+ 		cb_info->rqst = NULL;
+diff --git a/fs/nfs/netns.h b/fs/nfs/netns.h
+index bd72a55..db3e495 100644
+--- a/fs/nfs/netns.h
++++ b/fs/nfs/netns.h
+@@ -20,6 +20,7 @@ struct nfs_net {
+ 	struct idr cb_ident_idr; /* Protected by nfs_client_lock */
+ 	unsigned short nfs_callback_tcpport;
+ 	unsigned short nfs_callback_tcpport6;
++	int cb_users[NFS4_MAX_MINOR_VERSION + 1];
  #endif
- 
--	struct nfs41_impl_id	*impl_id;	/* from exchange_id */
- 	struct net		*net;
+ 	spinlock_t nfs_client_lock;
  };
- 
 
