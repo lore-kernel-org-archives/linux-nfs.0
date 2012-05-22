@@ -1,62 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:31768 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:8571 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755936Ab2EXTmU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 May 2012 15:42:20 -0400
-From: Weston Andros Adamson <dros@netapp.com>
+	id S1752167Ab2EVHgE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 03:36:04 -0400
+Subject: [PATCH v2 01/12] NFS: pass net to nfs_callback_down()
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 2/2] nfsd: probe the back channel on new connections
-Date: Thu, 24 May 2012 15:42:17 -0400
-Message-Id: <1337888537-21754-2-git-send-email-dros@netapp.com>
-In-Reply-To: <1337888537-21754-1-git-send-email-dros@netapp.com>
-References: <1337888537-21754-1-git-send-email-dros@netapp.com>
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Tue, 22 May 2012 11:35:55 +0400
+Message-ID: <20120522073555.20602.12874.stgit@localhost.localdomain>
+In-Reply-To: <20120522073320.20602.87130.stgit@localhost.localdomain>
+References: <20120522073320.20602.87130.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Initiate a CB probe when a new connection with the correct direction is added
-to a session (IFF backchannel is marked as down).  Without this a
-BIND_CONN_TO_SESSION has no effect on the internal backchannel state, which
-causes the server to reply to every SEQUENCE op with the
-SEQ4_STATUS_CB_PATH_DOWN flag set until DESTROY_SESSION.
-
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 ---
-Hey Bruce -
- In an earlier thread I mentioned that I was setting the backchannel state to
-CB_UNKNOWN to clear the SEQ4_STATUS flag, but this was wrong - I don't believe
-it would ever change (to CB_UP/CB_DOWN).  This patch seems like the right way
-to handle the internal backchannel state.
+ fs/nfs/callback.c |    4 ++--
+ fs/nfs/callback.h |    2 +-
+ fs/nfs/client.c   |    2 +-
+ 3 files changed, 4 insertions(+), 4 deletions(-)
 
-Also, I'm a bit confused as how we're supposed to maintain atomicity around
-cl_cb_state:
-
-from nfs4callback.c:nfsd4_probe_callback():
-  /* XXX: atomicity?  Also, should we be using cl_flags? */
-  clp->cl_cb_state = NFSD4_CB_UNKNOWN;
-
-and there are several places that check the value of cl_cb_state without holding
-a lock (as far as I can tell).
-
- fs/nfsd/nfs4state.c |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9afc902..99f092e 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -862,6 +862,11 @@ static __be32 nfsd4_new_conn(struct svc_rqst *rqstp, struct nfsd4_session *ses,
- 	if (ret)
- 		/* oops; xprt is already down: */
- 		nfsd4_conn_lost(&conn->cn_xpt_user);
-+	if (ses->se_client->cl_cb_state == NFSD4_CB_DOWN &&
-+		dir & NFS4_CDFC4_BACK) {
-+		/* callback channel may be back up */
-+		nfsd4_probe_callback(ses->se_client);
-+	}
- 	return nfs_ok;
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 970659d..f3d7ee2 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -322,7 +322,7 @@ out_err:
+ /*
+  * Kill the callback thread if it's no longer being used.
+  */
+-void nfs_callback_down(int minorversion)
++void nfs_callback_down(int minorversion, struct net *net)
+ {
+ 	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
+ 
+@@ -330,7 +330,7 @@ void nfs_callback_down(int minorversion)
+ 	cb_info->users--;
+ 	if (cb_info->users == 0 && cb_info->task != NULL) {
+ 		kthread_stop(cb_info->task);
+-		svc_shutdown_net(cb_info->serv, current->nsproxy->net_ns);
++		svc_shutdown_net(cb_info->serv, net);
+ 		svc_exit_thread(cb_info->rqst);
+ 		cb_info->serv = NULL;
+ 		cb_info->rqst = NULL;
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index a5527c9..6d900cf 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -194,7 +194,7 @@ extern __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy,
+ 				   struct cb_process_state *cps);
+ #ifdef CONFIG_NFS_V4
+ extern int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt);
+-extern void nfs_callback_down(int minorversion);
++extern void nfs_callback_down(int minorversion, struct net *net);
+ extern int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation,
+ 					    const nfs4_stateid *stateid);
+ extern int nfs4_set_callback_sessionid(struct nfs_client *clp);
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index da7b5e4..44cd70f 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -222,7 +222,7 @@ static void nfs4_shutdown_session(struct nfs_client *clp)
+ static void nfs4_destroy_callback(struct nfs_client *clp)
+ {
+ 	if (__test_and_clear_bit(NFS_CS_CALLBACK, &clp->cl_res_state))
+-		nfs_callback_down(clp->cl_mvops->minor_version);
++		nfs_callback_down(clp->cl_mvops->minor_version, clp->net);
  }
  
--- 
-1.7.4.4
+ static void nfs4_shutdown_client(struct nfs_client *clp)
 
