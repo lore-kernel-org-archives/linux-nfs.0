@@ -1,123 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:34806 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756934Ab2EGOM3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 May 2012 10:12:29 -0400
-Received: by mail-gg0-f174.google.com with SMTP id u4so295791ggl.19
-        for <linux-nfs@vger.kernel.org>; Mon, 07 May 2012 07:12:29 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
-        michael.brantley@deshaw.com
-Subject: [PATCH v1 RESEND 08/12] vfs: make rmdir retry on ESTALE errors
-Date: Mon,  7 May 2012 10:12:07 -0400
-Message-Id: <1336399931-20234-9-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1336399931-20234-1-git-send-email-jlayton@redhat.com>
-References: <1336399931-20234-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:49086 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752889Ab2EVODi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 10:03:38 -0400
+Message-ID: <4FBB9CB8.5020200@netapp.com>
+Date: Tue, 22 May 2012 10:03:36 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: TEST / FREE STATEID error recovery
+References: <88F4DB05-5625-4E40-B057-04FCDE21E9C2@oracle.com> <4FBB9AC0.2040102@netapp.com> <379CE82E-0B25-4DCD-A834-A4EF413CA582@oracle.com>
+In-Reply-To: <379CE82E-0B25-4DCD-A834-A4EF413CA582@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c |   76 +++++++++++++++++++++++++++++++----------------------------
- 1 files changed, 40 insertions(+), 36 deletions(-)
+On 05/22/2012 10:02 AM, Chuck Lever wrote:
 
-diff --git a/fs/namei.c b/fs/namei.c
-index c8254de..58f5eae 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2762,50 +2762,54 @@ static long do_rmdir(int dfd, const char __user *pathname)
- 	char * name;
- 	struct dentry *dentry;
- 	struct nameidata nd;
-+	unsigned int try = 0;
- 
--	error = user_path_parent(dfd, pathname, &nd, &name, false);
--	if (error)
--		return error;
-+	do {
-+		error = user_path_parent(dfd, pathname, &nd, &name, try);
-+		if (error)
-+			break;
- 
--	switch(nd.last_type) {
--	case LAST_DOTDOT:
--		error = -ENOTEMPTY;
--		goto exit1;
--	case LAST_DOT:
--		error = -EINVAL;
--		goto exit1;
--	case LAST_ROOT:
--		error = -EBUSY;
--		goto exit1;
--	}
-+		switch(nd.last_type) {
-+		case LAST_DOTDOT:
-+			error = -ENOTEMPTY;
-+			goto exit1;
-+		case LAST_DOT:
-+			error = -EINVAL;
-+			goto exit1;
-+		case LAST_ROOT:
-+			error = -EBUSY;
-+			goto exit1;
-+		}
- 
--	nd.flags &= ~LOOKUP_PARENT;
-+		nd.flags &= ~LOOKUP_PARENT;
- 
--	mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex, I_MUTEX_PARENT);
--	dentry = lookup_hash(&nd);
--	error = PTR_ERR(dentry);
--	if (IS_ERR(dentry))
--		goto exit2;
--	if (!dentry->d_inode) {
--		error = -ENOENT;
--		goto exit3;
--	}
--	error = mnt_want_write(nd.path.mnt);
--	if (error)
--		goto exit3;
--	error = security_path_rmdir(&nd.path, dentry);
--	if (error)
--		goto exit4;
--	error = vfs_rmdir(nd.path.dentry->d_inode, dentry);
-+		mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex,
-+							I_MUTEX_PARENT);
-+		dentry = lookup_hash(&nd);
-+		error = PTR_ERR(dentry);
-+		if (IS_ERR(dentry))
-+			goto exit2;
-+		if (!dentry->d_inode) {
-+			error = -ENOENT;
-+			goto exit3;
-+		}
-+		error = mnt_want_write(nd.path.mnt);
-+		if (error)
-+			goto exit3;
-+		error = security_path_rmdir(&nd.path, dentry);
-+		if (error)
-+			goto exit4;
-+		error = vfs_rmdir(nd.path.dentry->d_inode, dentry);
- exit4:
--	mnt_drop_write(nd.path.mnt);
-+		mnt_drop_write(nd.path.mnt);
- exit3:
--	dput(dentry);
-+		dput(dentry);
- exit2:
--	mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
-+		mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
- exit1:
--	path_put(&nd.path);
--	putname(name);
-+		path_put(&nd.path);
-+		putname(name);
-+	} while (retry_estale(error, try++));
- 	return error;
- }
- 
--- 
-1.7.7.6
+> 
+> On May 22, 2012, at 9:55 AM, Bryan Schumaker wrote:
+> 
+>> On 05/21/2012 11:31 PM, Chuck Lever wrote:
+>>
+>>> Hi-
+>>>
+>>> I'm trying to understand the error recovery logic in the new TEST_STATEID and FREE_STATEID procedures.
+>>>
+>>> For TEST_STATEID, we have this:
+>>>
+>>> 6395 static int nfs41_test_stateid(struct nfs_server *server, nfs4_stateid *stateid)
+>>> 6396 {
+>>> 6397         struct nfs4_exception exception = { };
+>>> 6398         int err;
+>>> 6399         do {
+>>> 6400                 err = nfs4_handle_exception(server,
+>>> 6401                                 _nfs41_test_stateid(server, stateid),
+>>> 6402                                 &exception);
+>>> 6403         } while (exception.retry);
+>>> 6404         return err;
+>>> 6405 }
+>>>
+>>> According to RFC 5661, the TEST_STATEID and FREE_STATEID procedures can return NFS4ERR_BAD_STATEID, NFS4ERR_OLD_STATEID, and NFS4ERR_DEADSESSION, among other things.  Do you really want to enter the exception handler here?  Seems to me that nfs41_{test,free}_stateid() are invoked mainly (only?) by the state manager, and thus you don't want to kick the state manager here and wait, as that would deadlock.  About the only error code you might want to pass into nfs4_handle_exception() is NFS4ERR_DELAY.  Everything else probably ought to be returned outright to the caller to let her figure out how to recover.
+>>>
+>>
+>> Sounds about right.  At least passing NFS4ERR_BAD_STATEID will trigger stateid recovery again on the same stateid... probably not what we want.
+>>
+>>> Also, _nfs41_test_stateid() does this:
+>>>
+>>> 6390         if (status == NFS_OK)
+>>> 6391                 return res.status;
+>>> 6392         return status;
+>>>
+>>> status will contain NFS4_OK or a negative NFS4ERR value.  But the "if / return" will return res.status, which could be NFS4_OK, but it could also be (according to RFC 5661 section 18.48.3) NFS4ERR_BAD_STATEID, NFS4ERR_OLD_STATEID, NFS4ERR_EXPIRED, NFS4ERR_ADMIN_REVOKED, or NFS4ERR_DELEG_REVOKED.  Note that these are positive values, and the above logic returns them directly to the caller.
+>>>
+>>
+>> So that should be "return -res.status" then?  Easy enough to change.
+>>
+>>> The caller then passes the positive result to nfs4_handle_exception().  Now I think nfs4_handle_exception() will ignore positive values.  And, I don't see any caller who is not doing "if (status != NFS4_OK)" so maybe this doesn't matter.  But it sure is confusing.
+>>>
+>>
+>> This might be why it doesn't deadlock now.
+>>
+>>> Do you remember what was intended?  Was it positive NFS4ERR values for res.status and negative NFS4ERR values if the operation failed?  If that's the case, then that intention should be carefully documented.  Otherwise, maybe that should read "return -res.status;" (as long as we aren't passing that to the exception handler!).
+>>>
+>>
+>>
+>> My intention was to handle errors coming from the test / free stateid calls.  I didn't realize the RPC call returned a positive value instead of a negative one, so it's only an accident that we don't deadlock now if the server returns NFS4ERR_BAD_STATEID.  This should be fixed though, thanks for catching it!
+> 
+> I've got most of a patch, and a nice test case.  I can wrap this up for you if you like.
+
+
+Sure, especially if you've already done most of the work!  Thanks!
+
+- Bryan
+
+> 
+
 
