@@ -1,123 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:34458 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754830Ab2EWNDk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 May 2012 09:03:40 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 4/4] NFSv4.1 test the mdsthreshold hint parameters
-Date: Wed, 23 May 2012 05:02:37 -0400
-Message-Id: <1337763757-1566-4-git-send-email-andros@netapp.com>
-In-Reply-To: <1337763757-1566-1-git-send-email-andros@netapp.com>
-References: <1337763757-1566-1-git-send-email-andros@netapp.com>
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:61482 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757582Ab2EVOMd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 10:12:33 -0400
+Received: by mail-gh0-f174.google.com with SMTP id r11so777867ghr.19
+        for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 07:12:33 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: inux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
+        michael.brantley@deshaw.com, pstaubach@exagrid.com
+Subject: [PATCH v2 04/15] vfs: fix readlinkat to retry on ESTALE
+Date: Tue, 22 May 2012 10:12:08 -0400
+Message-Id: <1337695939-2741-5-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
+References: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/pnfs.c |   79 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 79 insertions(+), 0 deletions(-)
+ fs/stat.c |   21 +++++++++++++++++----
+ 1 files changed, 17 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 6620606..b8323aa 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -936,6 +936,81 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo,
+diff --git a/fs/stat.c b/fs/stat.c
+index 60a8813..671106d 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -307,14 +307,25 @@ SYSCALL_DEFINE4(readlinkat, int, dfd, const char __user *, pathname,
+ 	struct path path;
+ 	int error;
+ 	int empty = 0;
++	char *name;
++	unsigned int try = 0;
++	unsigned int lookup_flags = LOOKUP_EMPTY;
+ 
+ 	if (bufsiz <= 0)
+ 		return -EINVAL;
+ 
+-	error = user_path_at_empty(dfd, pathname, LOOKUP_EMPTY, &path, &empty);
+-	if (!error) {
+-		struct inode *inode = path.dentry->d_inode;
++	name = getname_flags(pathname, lookup_flags, &empty);
++	if (IS_ERR(name))
++		return PTR_ERR(name);
++
++	do {
++		struct inode *inode;
++
++		error = kern_path_at(dfd, name, lookup_flags, &path);
++		if (error)
++			break;
+ 
++		inode = path.dentry->d_inode;
+ 		error = empty ? -ENOENT : -EINVAL;
+ 		if (inode->i_op->readlink) {
+ 			error = security_inode_readlink(path.dentry);
+@@ -325,7 +336,9 @@ SYSCALL_DEFINE4(readlinkat, int, dfd, const char __user *, pathname,
+ 			}
+ 		}
+ 		path_put(&path);
+-	}
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
++	putname(name);
+ 	return error;
  }
  
- /*
-+ * Use mdsthreshold hints set at each OPEN to determine if I/O should go
-+ * to the MDS or over pNFS
-+ *
-+ * The nfs_inode read_io and write_io fields are cumulative counters reset
-+ * when there are no layout segments. Note that in pnfs_update_layout iomode
-+ * is set to IOMODE_READ for a READ request, and set to IOMODE_RW for a
-+ * WRITE request.
-+ *
-+ * A return of true means use MDS I/O.
-+ *
-+ * From rfc 5661:
-+ * If a file's size is smaller than the file size threshold, data accesses
-+ * SHOULD be sent to the metadata server.  If an I/O request has a length that
-+ * is below the I/O size threshold, the I/O SHOULD be sent to the metadata
-+ * server.  If both file size and I/O size are provided, the client SHOULD
-+ * reach or exceed  both thresholds before sending its read or write
-+ * requests to the data server.
-+ */
-+static bool pnfs_within_mdsthreshold(struct nfs_open_context *ctx,
-+				     struct inode *ino, int iomode)
-+{
-+	struct nfs4_threshold *t = ctx->mdsthreshold;
-+	struct nfs_inode *nfsi = NFS_I(ino);
-+	loff_t fsize = i_size_read(ino);
-+	bool size = false, size_set = false, io = false, io_set = false, ret = false;
-+
-+	if (t == NULL)
-+		return ret;
-+
-+	dprintk("%s bm=0x%x rd_sz=%llu wr_sz=%llu rd_io=%llu wr_io=%llu\n",
-+		__func__, t->bm, t->rd_sz, t->wr_sz, t->rd_io_sz, t->wr_io_sz);
-+
-+	switch (iomode) {
-+	case IOMODE_READ:
-+		if (t->bm & THRESHOLD_RD) {
-+			dprintk("%s fsize %llu\n", __func__, fsize);
-+			size_set = true;
-+			if (fsize < t->rd_sz)
-+				size = true;
-+		}
-+		if (t->bm & THRESHOLD_RD_IO) {
-+			dprintk("%s nfsi->read_io %llu\n", __func__,
-+				nfsi->read_io);
-+			io_set = true;
-+			if (nfsi->read_io < t->rd_io_sz)
-+				io = true;
-+		}
-+		break;
-+	case IOMODE_RW:
-+		if (t->bm & THRESHOLD_WR) {
-+			dprintk("%s fsize %llu\n", __func__, fsize);
-+			size_set = true;
-+			if (fsize < t->wr_sz)
-+				size = true;
-+		}
-+		if (t->bm & THRESHOLD_WR_IO) {
-+			dprintk("%s nfsi->write_io %llu\n", __func__,
-+				nfsi->write_io);
-+			io_set = true;
-+			if (nfsi->write_io < t->wr_io_sz)
-+				io = true;
-+		}
-+		break;
-+	}
-+	if (size_set && io_set) {
-+		if (size && io)
-+			ret = true;
-+	} else if (size || io)
-+		ret = true;
-+
-+	dprintk("<-- %s size %d io %d ret %d\n", __func__, size, io, ret);
-+	return ret;
-+}
-+
-+/*
-  * Layout segment is retreived from the server if not cached.
-  * The appropriate layout segment is referenced and returned to the caller.
-  */
-@@ -962,6 +1037,10 @@ pnfs_update_layout(struct inode *ino,
- 
- 	if (!pnfs_enabled_sb(NFS_SERVER(ino)))
- 		return NULL;
-+
-+	if (pnfs_within_mdsthreshold(ctx, ino, iomode))
-+		return NULL;
-+
- 	spin_lock(&ino->i_lock);
- 	lo = pnfs_find_alloc_layout(ino, ctx, gfp_flags);
- 	if (lo == NULL) {
 -- 
 1.7.7.6
 
