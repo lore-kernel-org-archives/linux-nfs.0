@@ -1,84 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54679 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:27521 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751215Ab2ELOQy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 12 May 2012 10:16:54 -0400
-Date: Sat, 12 May 2012 10:16:53 -0400
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Jeff Layton <jlayton@redhat.com>
-Subject: Re: [RFC] NFSd laundromat containerization
-Message-ID: <20120512141653.GA19757@fieldses.org>
-References: <4FAD1934.8070908@parallels.com>
- <20120511135306.GA12795@fieldses.org>
- <4FAE2659.4090107@parallels.com>
+	id S1753020Ab2EVHgF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 03:36:05 -0400
+Subject: [PATCH v2 00/12] NFS: callback threads containerization
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Tue, 22 May 2012 11:35:47 +0400
+Message-ID: <20120522073320.20602.87130.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FAE2659.4090107@parallels.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, May 12, 2012 at 12:59:05PM +0400, Stanislav Kinsbursky wrote:
-> On 11.05.2012 17:53, bfields@fieldses.org wrote:
-> >On Fri, May 11, 2012 at 05:50:44PM +0400, Stanislav Kinsbursky wrote:
-> >>Hello.
-> >>I'm currently looking on NFSd laundromat work, and it looks like
-> >>have to be performed per networks namespace context.
-> >>It's easy to make corresponding delayed work per network namespace
-> >>and thus gain per-net data pointer in laundromat function.
-> >>But here a problem appears: network namespace is required to skip
-> >>clients from other network namespaces while iterating over global
-> >>lists (client_lru and friends).
-> >>I see two possible solutions:
-> >>1) Make these list per network namespace context. In this case
-> >>network namespace will not be required - per-net data will be
-> >>enough.
-> >>2) Put network namespace link on per-net data (this one is easier, but uglier).
-> >
-> >I'd rather there be as few shared data structures between network
-> >namespaces as possible--I think that will simplify things.
-> >
-> >So, of those two choices, #1.
-> >
-> 
-> Guys, I would like to discuss few ideas about caches and lists containerization.
-> Currently, it look to me, that these hash tables:
-> 
-> reclaim_str, conf_id, conf_str, unconf_str, unconf_id, sessionid
-> 
-> and these lists:
-> 
-> client_lru, close_lru
-> 
-> have to be per net, while hash tables
-> 
-> file, ownerstr, lockowner_ino
-> 
-> and
-> 
-> del_recall_lru lists
-> 
-> have not, because they are about file system access.
+v2: Rebased on Bruce's tree, "for-3.5" branch
 
-Actually, ownerstr and lockowner_ino should also both be per-container.
+This patch set depeneds on "SUNRPC: separate per-net data creation from service
+creation" patch set sent earlier.
 
-So it's only file and del_recall_lru that should be global.  (And
-del_recall_lru might work either way, actually.)
+The following series implements...
 
-> If I'd containerize it this way, then looks like nfs4_lock_state()
-> and nfs4_unlock_state() functions will protect only
-> non-containerized data, while containerized data have to protected
-> by some per-net lock.
+---
 
-Sounds about right.
+Stanislav Kinsbursky (11):
+      NFS: pass net to nfs_callback_down()
+      NFS: callback service creation function introduced
+      NFS: move per-net callback thread initialization to nfs_callback_up_net()
+      NFS: callback up - transport backchannel cleanup
+      NFS: callback service start function introduced
+      NFS: callback up - users counting cleanup
+      NFS: make nfs_callback_tcpport per network context
+      NFS: make nfs_callback_tcpport6 per network context
+      NFS; callback per-net usage counting introduced
+      NFS: add debug messages to callback down function
+      NFS: get module in idmap PipeFS notifier callback
 
---b.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-> 
-> How this approach looks to you?
-> 
-> 
-> -- 
-> Best regards,
-> Stanislav Kinsbursky
+
+ fs/nfs/callback.c  |  288 ++++++++++++++++++++++++++++++++++------------------
+ fs/nfs/callback.h  |    4 -
+ fs/nfs/client.c    |    6 +
+ fs/nfs/idmap.c     |    9 +-
+ fs/nfs/netns.h     |    3 +
+ fs/nfs/nfs4state.c |    7 +
+ 6 files changed, 212 insertions(+), 105 deletions(-)
+
