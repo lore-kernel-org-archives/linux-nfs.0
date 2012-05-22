@@ -1,68 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45509 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:11947 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754019Ab2EBV4U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 May 2012 17:56:20 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
-        NeilBrown <neilb@suse.de>, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 5/5] mountd: handle allocation failures in auth_unix_ip upcall
-Date: Wed,  2 May 2012 17:56:15 -0400
-Message-Id: <1335995775-12009-6-git-send-email-bfields@redhat.com>
-In-Reply-To: <1335995775-12009-1-git-send-email-bfields@redhat.com>
-References: <1335995775-12009-1-git-send-email-bfields@redhat.com>
+	id S1759211Ab2EVQKT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 12:10:19 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 1/4] NFSv4.1 just use nfs_put_client in filelayout release
+Date: Tue, 22 May 2012 08:09:25 -0400
+Message-Id: <1337688569-1515-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Andy Adamson <andros@netapp.com>
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- utils/mountd/cache.c |   12 +++++++++---
- 1 files changed, 9 insertions(+), 3 deletions(-)
+ fs/nfs/nfs4filelayout.c |   12 ++----------
+ 1 files changed, 2 insertions(+), 10 deletions(-)
 
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 6710eca..8f14032 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -84,7 +84,6 @@ static void auth_unix_ip(FILE *f)
- 	char ipaddr[INET6_ADDRSTRLEN];
- 	char *client = NULL;
- 	struct addrinfo *tmp = NULL;
--	struct addrinfo *ai = NULL;
- 	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
- 		return;
- 
-@@ -107,12 +106,16 @@ static void auth_unix_ip(FILE *f)
- 
- 	/* addr is a valid, interesting address, find the domain name... */
- 	if (!use_ipaddr) {
-+		struct addrinfo *ai = NULL;
-+
- 		ai = client_resolve(tmp->ai_addr);
-+		if (ai == NULL)
-+			goto out;
- 		client = client_compose(ai);
- 		freeaddrinfo(ai);
-+		if (!client)
-+			goto out;
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 474c630..8df91be 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -101,9 +101,6 @@ static void filelayout_reset_write(struct nfs_write_data *data)
+ 							&hdr->pages,
+ 							hdr->completion_ops);
  	}
--	freeaddrinfo(tmp);
--
- 	qword_print(f, "nfsd");
- 	qword_print(f, ipaddr);
- 	qword_printuint(f, time(0) + DEFAULT_TTL);
-@@ -124,6 +127,9 @@ static void auth_unix_ip(FILE *f)
- 	xlog(D_CALL, "auth_unix_ip: client %p '%s'", client, client?client: "DEFAULT");
- 
- 	free(client);
-+out:
-+	freeaddrinfo(tmp);
-+
+-	/* balance nfs_get_client in filelayout_write_pagelist */
+-	nfs_put_client(data->ds_clp);
+-	data->ds_clp     = NULL;
  }
  
- static void auth_unix_gid(FILE *f)
+ static void filelayout_reset_read(struct nfs_read_data *data)
+@@ -125,9 +122,6 @@ static void filelayout_reset_read(struct nfs_read_data *data)
+ 							&hdr->pages,
+ 							hdr->completion_ops);
+ 	}
+-	/* balance nfs_get_client in filelayout_read_pagelist */
+-	nfs_put_client(data->ds_clp);
+-	data->ds_clp = NULL;
+ }
+ 
+ static int filelayout_async_handle_error(struct rpc_task *task,
+@@ -326,8 +320,7 @@ static void filelayout_read_release(void *data)
+ {
+ 	struct nfs_read_data *rdata = data;
+ 
+-	if (!test_bit(NFS_IOHDR_REDO, &rdata->header->flags))
+-		nfs_put_client(rdata->ds_clp);
++	nfs_put_client(rdata->ds_clp);
+ 	rdata->header->mds_ops->rpc_release(data);
+ }
+ 
+@@ -424,8 +417,7 @@ static void filelayout_write_release(void *data)
+ {
+ 	struct nfs_write_data *wdata = data;
+ 
+-	if (!test_bit(NFS_IOHDR_REDO, &wdata->header->flags))
+-		nfs_put_client(wdata->ds_clp);
++	nfs_put_client(wdata->ds_clp);
+ 	wdata->header->mds_ops->rpc_release(data);
+ }
+ 
 -- 
 1.7.7.6
 
