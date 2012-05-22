@@ -1,59 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:51514 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:15731 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755152Ab2E2TTG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 May 2012 15:19:06 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q4TJJ6vq009426
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 29 May 2012 15:19:06 -0400
-Message-ID: <4FC52102.3000107@RedHat.com>
-Date: Tue, 29 May 2012 15:18:26 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Steve Dickson <steved@redhat.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Honor the no_root_squash flag on pseudo roots.
-References: <1338296836-28243-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1338296836-28243-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1759826Ab2EVQKV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 12:10:21 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 3/4] NFSv4.1 fix null state reference in filelayout_async_handle_error
+Date: Tue, 22 May 2012 08:09:28 -0400
+Message-Id: <1337688569-1515-4-git-send-email-andros@netapp.com>
+In-Reply-To: <1337688569-1515-1-git-send-email-andros@netapp.com>
+References: <1337688569-1515-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Andy Adamson <andros@netapp.com>
 
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
-On 05/29/2012 09:07 AM, Steve Dickson wrote:
-> If root squashing is turned off on a export that
-> has multiple directories, the parent directories
-> of the pseudo exports that's built, also needs to
-> have root squashing turned off.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-Committed...
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index db6f2a6..cd3d1ce 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -193,8 +193,8 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+ 		 * layout is destroyed and a new valid layout is obtained.
+ 		 */
+ 		set_bit(NFS_LAYOUT_INVALID,
+-				&NFS_I(state->inode)->layout->plh_flags);
+-		pnfs_destroy_layout(NFS_I(state->inode));
++				&NFS_I(inode)->layout->plh_flags);
++		pnfs_destroy_layout(NFS_I(inode));
+ 		rpc_wake_up(&tbl->slot_tbl_waitq);
+ 		goto reset;
+ 	/* RPC connection errors */
+@@ -208,7 +208,7 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+ 		dprintk("%s DS connection error %d\n", __func__,
+ 			task->tk_status);
+ 		if (!filelayout_test_devid_invalid(devid))
+-			_pnfs_return_layout(state->inode);
++			_pnfs_return_layout(inode);
+ 		filelayout_mark_devid_invalid(devid);
+ 		rpc_wake_up(&tbl->slot_tbl_waitq);
+ 		nfs4_ds_disconnect(clp);
+-- 
+1.7.7.6
 
-steved.
-
-> ---
->  utils/mountd/v4root.c |    9 ++++++++-
->  1 files changed, 8 insertions(+), 1 deletions(-)
-> 
-> diff --git a/utils/mountd/v4root.c b/utils/mountd/v4root.c
-> index 708eb61..ad8a3e7 100644
-> --- a/utils/mountd/v4root.c
-> +++ b/utils/mountd/v4root.c
-> @@ -92,7 +92,14 @@ v4root_create(char *path, nfs_export *export)
->  	exp = export_create(&eep, 0);
->  	if (exp == NULL)
->  		return NULL;
-> -	xlog(D_CALL, "v4root_create: path '%s'", exp->m_export.e_path);
-> +	/*
-> +	 * Honor the no_root_squash flag 
-> +	 */
-> +	if ((curexp->e_flags & NFSEXP_ROOTSQUASH) == 0)
-> +		exp->m_export.e_flags &= ~NFSEXP_ROOTSQUASH;
-> +	xlog(D_CALL, "v4root_create: path '%s' flags 0x%x", 
-> +		exp->m_export.e_path, exp->m_export.e_flags);
-> +
->  	return &exp->m_export;
->  }
->  
