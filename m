@@ -1,125 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail1.trendhosting.net ([195.8.117.5]:46410 "EHLO
-	mail1.trendhosting.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754679Ab2EFVXt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 6 May 2012 17:23:49 -0400
-Message-ID: <4FA6EBD4.7040308@pocock.com.au>
-Date: Sun, 06 May 2012 21:23:32 +0000
-From: Daniel Pocock <daniel@pocock.com.au>
-MIME-Version: 1.0
+Received: from mx2.netapp.com ([216.240.18.37]:27185 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750782Ab2EVQaa convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 12:30:30 -0400
+Received: from vmwexceht04-prd.hq.netapp.com (vmwexceht04-prd.hq.netapp.com [10.106.77.34])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q4MGUUQo028676
+	for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 09:30:30 -0700 (PDT)
+From: "Adamson, Andy" <William.Adamson@netapp.com>
 To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: extremely slow nfs when sync enabled
-References: <4FA5E950.5080304@pocock.com.au> <1336328594.2593.14.camel@lade.trondhjem.org>
-In-Reply-To: <1336328594.2593.14.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+CC: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 4/4] NFSv4.1 do not release page on commit mismatch
+Date: Tue, 22 May 2012 16:30:29 +0000
+Message-ID: <4D70BD9B-4F81-4E57-8689-DCE6F8B1A1C2@netapp.com>
+References: <1337688569-1515-1-git-send-email-andros@netapp.com>
+ <1337688569-1515-5-git-send-email-andros@netapp.com>
+ <1337703865.4269.21.camel@lade.trondhjem.org>
+In-Reply-To: <1337703865.4269.21.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+On May 22, 2012, at 12:24 PM, Myklebust, Trond wrote:
 
-On 06/05/12 18:23, Myklebust, Trond wrote:
-> On Sun, 2012-05-06 at 03:00 +0000, Daniel Pocock wrote:
->>
->> I've been observing some very slow nfs write performance when the server
->> has `sync' in /etc/exports
->>
->> I want to avoid using async, but I have tested it and on my gigabit
->> network, it gives almost the same speed as if I was on the server
->> itself. (e.g. 30MB/sec to one disk, or less than 1MB/sec to the same
->> disk over NFS with `sync')
->>
->> I'm using Debian 6 with 2.6.38 kernels on client and server, NFSv3
->>
->> I've also tried a client running Debian 7/Linux 3.2.0 with both NFSv3
->> and NFSv4, speed is still slow
->>
->> Looking at iostat on the server, I notice that avgrq-sz = 8 sectors
->> (4096 bytes) throughout the write operations
->>
->> I've tried various tests, e.g. dd a large file, or unpack a tarball with
->> many small files, the iostat output is always the same
+> On Tue, 2012-05-22 at 08:09 -0400, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>> 
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>> fs/nfs/write.c |    2 ++
+>> 1 files changed, 2 insertions(+), 0 deletions(-)
+>> 
+>> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+>> index e6fe3d6..c7295de 100644
+>> --- a/fs/nfs/write.c
+>> +++ b/fs/nfs/write.c
+>> @@ -1555,6 +1555,8 @@ static void nfs_commit_release_pages(struct nfs_commit_data *data)
+>> 		/* We have a mismatch. Write the page again */
+>> 		dprintk(" mismatch\n");
+>> 		nfs_mark_request_dirty(req);
+>> +		nfs_unlock_request(req);
+>> +		continue;
+>> 	next:
+>> 		nfs_unlock_and_release_request(req);
+>> 	}
 > 
-> Were you using 'conv=sync'?
+> What is this patch trying to fix? As far as I can see it will lead to a
+> reference leak.
 
-No, it was not using conv=sync, just the vanilla dd:
+The release of the page drops the refcount to zero. Since it is a mismatch, we want to continue to use the page, so nfs_page_find_request_locked is called we get the WARNING in kref_get, and an Oops in various places in pnfs_update_layout.
 
-dd if=/dev/zero of=some-fat-file bs=65536 count=65536
+Here is the output of added printk's.
 
->> Looking at /proc/mounts on the clients, everything looks good, large
->> wsize, tcp:
->>
->> rw,relatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.x.x.x,mountvers=3,mountport=58727,mountproto=udp,local_lock=none,addr=192.x.x.x
->> 0 0
->>
->> and
->>  rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=192.x.x.x.,minorversion=0,local_lock=none,addr=192.x.x.x 0 0
->>
->> and in /proc/fs/nfs/exports on the server, I have sync and wdelay:
->>
->> /nfs4/daniel
->> 192.168.1.0/24,192.x.x.x(rw,insecure,root_squash,sync,wdelay,no_subtree_check,uuid=aa2a6f37:9cc94eeb:bcbf983c:d6e041d9,sec=1)
->> /home/daniel
->> 192.168.1.0/24,192.x.x.x(rw,root_squash,sync,wdelay,no_subtree_check,uuid=aa2a6f37:9cc94eeb:bcbf983c:d6e041d9)
->>
->> Can anyone suggest anything else?  Or is this really the performance hit
->> of `sync'?
+-->Andy
+
+May 21 18:25:33 fedora-64-2 kernel: [  152.988921] NFS:       commit (0:35/2 4096@184320)
+May 21 18:25:33 fedora-64-2 kernel: [  152.988923]  mismatch req ffff880042dbb800
+May 21 18:25:33 fedora-64-2 kernel: [  152.988927] nfs_release_request WB req ffff880042dbb800 wb_kref 1
+May 21 18:25:33 fedora-64-2 kernel: [  152.988932] put_lseg: lseg ffff880042d95380 ref 4 valid 0
+May 21 18:25:33 fedora-64-2 kernel: [  152.988945] nfs_page_find_request_locked req ffff88003e033800
+May 21 18:25:33 fedora-64-2 kernel: [  152.988949] nfs_page_find_request_locked WB req ffff88003e033800 wb_kref 0
+May 21 18:25:33 fedora-64-2 kernel: [  152.988953] ------------[ cut here ]------------
+May 21 18:25:33 fedora-64-2 kernel: [  152.989082] WARNING: at include/linux/kref.h:41 kref_get+0x20/0x2c [nfs]()
+
+
+
+
+May 21 18:25:33 fedora-64-2 kernel: [  152.989484] kernel BUG at fs/nfs/pnfs.c:584!
+May 21 18:25:33 fedora-64-2 kernel: [  152.989488] invalid opcode: 0000 [#1] SMP
+May 21 18:25:33 fedora-64-2 kernel: [  152.989493] CPU 1
+May 21 18:25:33 fedora-64-2 kernel: [  152.989495] Modules linked in: nfs_layout_nfsv41_files nfs auth_rpcgss nfs_acl fuse lockd rfcomm bnep ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 nf_conntrack_ipv4 nf_defrag_ipv4 xt_state nf_conntrack ip6table_filter ip6_tables snd_ens1371 gameport snd_rawmidi snd_ac97_codec ac97_bus snd_seq snd_seq_device btusb snd_pcm joydev bluetooth rfkill ppdev snd_timer vmw_balloon microcode snd parport_pc parport soundcore snd_page_alloc e1000 i2c_piix4 i2c_core shpchp uinput sunrpc mptspi mptscsih mptbase scsi_transport_spi [last unloaded: scsi_wait_scan]
+May 21 18:25:33 fedora-64-2 kernel: [  152.989552]
+May 21 18:25:33 fedora-64-2 kernel: [  152.989557] Pid: 1595, comm: flush-0:35 Tainted: G        W    3.4.0-rc7+ #5 VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform
+May 21 18:25:33 fedora-64-2 kernel: [  152.989566] RIP: 0010:[<ffffffffa02c7377>]  [<ffffffffa02c7377>] pnfs_update_layout+0x460/0x6a6 [nfs]
+
 > 
-> It really depends on your disk setup. Particularly when your filesystem
-> is using barriers (enabled by default on ext4 and xfs), a lot of raid
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
 
-On the server, I've tried both ext3 and ext4, explicitly changing things
-like data=writeback,barrier=0, but the problem remains
-
-The only thing that made it faster was using hdparm -W1 /dev/sd[ab] to
-enable the write-back cache on the disk
-
-> setups really _suck_ at dealing with fsync(). The latter is used every
-
-I'm using md RAID1, my setup is like this:
-
-2x 1TB SATA disks ST31000528AS (7200rpm with 32MB cache and NCQ)
-
-SATA controller: ATI Technologies Inc SB700/SB800 SATA Controller [AHCI
-mode] (rev 40)
-- not using any of the BIOS softraid stuff
-
-Both devices have identical partitioning:
-1. 128MB boot
-2. md volume (1TB - 128MB)
-
-The entire md volume (/dev/md2) is then used as a PV for LVM
-
-I do my write tests on a fresh LV with no fragmentation
-
-> time the NFS client sends a COMMIT or trunc() instruction, and for
-> pretty much all file and directory creation operations (you can use
-> 'nfsstat' to monitor how many such operations the NFS client is sending
-> as part of your test).
-
-I know that my two tests are very different in that way:
-
-- dd is just writing one big file, no fsync
-
-- unpacking a tarball (or compiling a large C++ project) does a lot of
-small writes with many fsyncs
-
-In both cases, it is slow
-
-> Local disk can get away with doing a lot less fsync(), because the cache
-> consistency guarantees are different:
->       * in NFS, the server is allowed to crash or reboot without
->         affecting the client's view of the filesystem.
->       * in the local file system, the expectation is that on reboot any
->         data lost is won't need to be recovered (the application will
->         have used fsync() for any data that does need to be persistent).
->         Only the disk filesystem structures need to be recovered, and
->         that is done using the journal (or fsck).
-
-
-Is this an intractable problem though?
-
-Or do people just work around this, for example, enable async and
-write-back cache, and then try to manage the risk by adding a UPS and/or
-battery backed cache to their RAID setup (to reduce the probability of
-unclean shutdown)?
