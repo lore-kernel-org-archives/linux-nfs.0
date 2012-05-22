@@ -1,89 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:41181 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755626Ab2EVCpB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 May 2012 22:45:01 -0400
-Received: by mail-gg0-f174.google.com with SMTP id u4so4992272ggl.19
-        for <linux-nfs@vger.kernel.org>; Mon, 21 May 2012 19:45:01 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 05/14] NFS: Clean up return code checking in
- nfs4_proc_exchange_id()
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 21 May 2012 22:44:58 -0400
-Message-ID: <20120522024458.1787.92404.stgit@degas.1015granger.net>
-In-Reply-To: <20120522022702.1787.45940.stgit@degas.1015granger.net>
-References: <20120522022702.1787.45940.stgit@degas.1015granger.net>
+Received: from mailhub.sw.ru ([195.214.232.25]:36315 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753977Ab2EVHgH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 03:36:07 -0400
+Subject: [PATCH v2 02/12] NFS: callback service creation function introduced
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Tue, 22 May 2012 11:36:02 +0400
+Message-ID: <20120522073602.20602.39042.stgit@localhost.localdomain>
+In-Reply-To: <20120522073320.20602.87130.stgit@localhost.localdomain>
+References: <20120522073320.20602.87130.stgit@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: update to use matching types in "if" expressions.
+This function creates service if it's not exist, or increase usage counter of
+the existent, and returns pointer to it.
+Usage counter will be droppepd by svc_destroy() later in nfs_callback_up().
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 ---
+ fs/nfs/callback.c |   55 +++++++++++++++++++++++++++++++++++++++++++----------
+ 1 files changed, 45 insertions(+), 10 deletions(-)
 
- fs/nfs/nfs4proc.c |   16 ++++++++--------
- 1 files changed, 8 insertions(+), 8 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index e182134..0b9b55c 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5102,30 +5102,30 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index f3d7ee2..b34ccc6 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -242,12 +242,46 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
+ }
+ #endif /* CONFIG_NFS_V4_1 */
  
- 	res.server_scope = kzalloc(sizeof(struct nfs41_server_scope),
- 					GFP_KERNEL);
--	if (unlikely(!res.server_scope)) {
-+	if (unlikely(res.server_scope == NULL)) {
- 		status = -ENOMEM;
++static struct svc_serv *nfs_callback_create_svc(int minorversion)
++{
++	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
++	struct svc_serv *serv;
++
++	/*
++	 * Check whether we're already up and running.
++	 */
++	if (cb_info->task) {
++		/*
++		 * Note: increase service usage, because later in case of error
++		 * svc_destroy() will be called.
++		 */
++		svc_get(cb_info->serv);
++		return cb_info->serv;
++	}
++
++	/*
++	 * Sanity check: if there's no task,
++	 * we should be the first user ...
++	 */
++	if (cb_info->users)
++		printk(KERN_WARNING "nfs_callback_up: no kthread, %d users??\n",
++			cb_info->users);
++
++	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, NULL);
++	if (!serv) {
++		printk(KERN_ERR "lockd_up: create service failed\n");
++		return ERR_PTR(-ENOMEM);
++	}
++	dprintk("nfs_callback_up: service created\n");
++	return serv;
++}
++
+ /*
+  * Bring up the callback thread if it is not already up.
+  */
+ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ {
+-	struct svc_serv *serv = NULL;
++	struct svc_serv *serv;
+ 	struct svc_rqst *rqstp;
+ 	int (*callback_svc)(void *vrqstp);
+ 	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
+@@ -257,15 +291,17 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ 	struct net *net = current->nsproxy->net_ns;
+ 
+ 	mutex_lock(&nfs_callback_mutex);
++
++	serv = nfs_callback_create_svc(minorversion);
++	if (IS_ERR(serv)) {
++		ret = PTR_ERR(serv);
++		goto err_create;
++	}
++
+ 	if (cb_info->users++ || cb_info->task != NULL) {
+ 		nfs_callback_bc_serv(minorversion, xprt, cb_info);
  		goto out;
  	}
+-	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, NULL);
+-	if (!serv) {
+-		ret = -ENOMEM;
+-		goto out_err;
+-	}
  
- 	res.impl_id = kzalloc(sizeof(struct nfs41_impl_id), GFP_KERNEL);
--	if (unlikely(!res.impl_id)) {
-+	if (unlikely(res.impl_id == NULL)) {
- 		status = -ENOMEM;
- 		goto out_server_scope;
- 	}
+ 	ret = svc_bind(serv, net);
+ 	if (ret < 0) {
+@@ -306,16 +342,15 @@ out:
+ 	 * on both success and failure so that the refcount is 1 when the
+ 	 * thread exits.
+ 	 */
+-	if (serv)
+-		svc_destroy(serv);
++	svc_destroy(serv);
++err_create:
+ 	mutex_unlock(&nfs_callback_mutex);
+ 	return ret;
+ out_err:
+ 	dprintk("NFS: Couldn't create callback socket or server thread; "
+ 		"err = %d\n", ret);
+ 	cb_info->users--;
+-	if (serv)
+-		svc_shutdown_net(serv, net);
++	svc_shutdown_net(serv, net);
+ 	goto out;
+ }
  
- 	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
--	if (!status)
-+	if (status == 0)
- 		status = nfs4_check_cl_exchange_flags(clp->cl_exchange_flags);
- 
--	if (!status) {
-+	if (status == 0) {
- 		/* use the most recent implementation id */
- 		kfree(clp->cl_implid);
- 		clp->cl_implid = res.impl_id;
- 	} else
- 		kfree(res.impl_id);
- 
--	if (!status) {
--		if (clp->cl_serverscope &&
-+	if (status == 0) {
-+		if (clp->cl_serverscope != NULL &&
- 		    !nfs41_same_server_scope(clp->cl_serverscope,
- 					     res.server_scope)) {
- 			dprintk("%s: server_scope mismatch detected\n",
-@@ -5135,7 +5135,7 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 			clp->cl_serverscope = NULL;
- 		}
- 
--		if (!clp->cl_serverscope) {
-+		if (clp->cl_serverscope == NULL) {
- 			clp->cl_serverscope = res.server_scope;
- 			goto out;
- 		}
-@@ -5144,7 +5144,7 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- out_server_scope:
- 	kfree(res.server_scope);
- out:
--	if (clp->cl_implid)
-+	if (clp->cl_implid != NULL)
- 		dprintk("%s: Server Implementation ID: "
- 			"domain: %s, name: %s, date: %llu,%u\n",
- 			__func__, clp->cl_implid->domain, clp->cl_implid->name,
 
