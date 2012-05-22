@@ -1,87 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:42184 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753347Ab2EaO3N convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 May 2012 10:29:13 -0400
-Subject: Re: [PATCH] mount.nfs: try the next address after mount fails with ETIMEDOUT
-Mime-Version: 1.0 (Apple Message framework v1278)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1338469436-5411-1-git-send-email-jlayton@redhat.com>
-Date: Thu, 31 May 2012 10:28:49 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <C16A9517-8334-4B2D-BFB1-D2C02AD66972@oracle.com>
-References: <1338469436-5411-1-git-send-email-jlayton@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:30899 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754108Ab2EVHg3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 03:36:29 -0400
+Subject: [PATCH v2 05/12] NFS: callback service start function introduced
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Tue, 22 May 2012 11:36:24 +0400
+Message-ID: <20120522073624.20602.94605.stgit@localhost.localdomain>
+In-Reply-To: <20120522073320.20602.87130.stgit@localhost.localdomain>
+References: <20120522073320.20602.87130.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This is just a code move, which from my POW makes code looks better.
+I.e. now on start we have 3 different stages:
+1) Service creation.
+2) Service per-net data allocation.
+3) Service start.
 
-On May 31, 2012, at 9:03 AM, Jeff Layton wrote:
+Patch also renames goto label "out_err:" into "err_start:" to reflect new
+changes.
 
-> If a NFS mount attempt fails with an ETIMEDOUT error, the mount.nfs code
-> doesn't currently attempt the next address in the list. For a NFSv4 mount
-> the initial mount() call almost always ends up going over
-> NFS_DEF_FG_TIMEOUT_MINUTES and the mount is never retried.
-> 
-> For a v3 mount, it ends up continually retrying against the same IPv6
-> address, and never tries the IPv4 address. Eventually it gives up once
-> it hits the NFS_DEF_FG_TIMEOUT_MINUTES timeout.
-> 
-> It's possible that a server is just unreachable via IPv6 (due to a
-> routing misconfiguration for instance), or is dropping IPv6 frames on
-> the floor. In that situation, it might still be reachable via IPv4 and
-> trying the next address could have allowed the mount to succeed.
-> 
-> Fix this by treating ETIMEDOUT in a similar fashion to ECONNREFUSED.
-> Have the client try the next address in the list before giving up and
-> returning an error.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfs/callback.c |   77 +++++++++++++++++++++++++++++++----------------------
+ 1 files changed, 45 insertions(+), 32 deletions(-)
 
-Bzzzzt.  AF fallback is only legal to do if the admin did not specify a netid.
-
-Can you demonstrate that your patch works correctly if an IPv6 netid is specified?  "Correctly" here means that no fallback occurs.
-
-> Our QA folks noticed this after a routing problem in one of our test
-> labs. I was able to reproduce it by having the server drop incoming
-> IPv6 frames from the client's address.
-> 
-> With this patch, the mount eventually succeeds over IPv4 instead of
-> returning an error.
-> 
-> Cc: Chuck Lever <chuck.lever@oracle.com>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
-> utils/mount/stropts.c |    2 ++
-> 1 files changed, 2 insertions(+), 0 deletions(-)
-> 
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index e09aa7c..0aa9a75 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -665,6 +665,7 @@ static int nfs_try_mount_v3v2(struct nfsmount_info *mi)
-> 		case ECONNREFUSED:
-> 		case EOPNOTSUPP:
-> 		case EHOSTUNREACH:
-> +		case ETIMEDOUT:
-> 			continue;
-> 		default:
-> 			goto out;
-> @@ -752,6 +753,7 @@ static int nfs_try_mount_v4(struct nfsmount_info *mi)
-> 		switch (errno) {
-> 		case ECONNREFUSED:
-> 		case EHOSTUNREACH:
-> +		case ETIMEDOUT:
-> 			continue;
-> 		default:
-> 			goto out;
-> -- 
-> 1.7.1
-> 
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 3e6aead..8643ff7 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -242,6 +242,46 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
+ }
+ #endif /* CONFIG_NFS_V4_1 */
+ 
++static int nfs_callback_start_svc(int minorversion, struct rpc_xprt *xprt,
++				  struct svc_serv *serv)
++{
++	struct svc_rqst *rqstp;
++	int (*callback_svc)(void *vrqstp);
++	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
++	char svc_name[12];
++	int ret;
++	int minorversion_setup;
++
++	nfs_callback_bc_serv(minorversion, xprt, serv);
++
++	minorversion_setup =  nfs_minorversion_callback_svc_setup(minorversion,
++					serv, &rqstp, &callback_svc);
++	if (!minorversion_setup) {
++		/* v4.0 callback setup */
++		rqstp = nfs4_callback_up(serv);
++		callback_svc = nfs4_callback_svc;
++	}
++
++	if (IS_ERR(rqstp))
++		return PTR_ERR(rqstp);
++
++	svc_sock_update_bufs(serv);
++
++	sprintf(svc_name, "nfsv4.%u-svc", minorversion);
++	cb_info->serv = serv;
++	cb_info->rqst = rqstp;
++	cb_info->task = kthread_run(callback_svc, cb_info->rqst, svc_name);
++	if (IS_ERR(cb_info->task)) {
++		ret = PTR_ERR(cb_info->task);
++		svc_exit_thread(cb_info->rqst);
++		cb_info->rqst = NULL;
++		cb_info->task = NULL;
++		return PTR_ERR(cb_info->task);
++	}
++	dprintk("nfs_callback_up: service started\n");
++	return 0;
++}
++
+ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct net *net)
+ {
+ 	int ret;
+@@ -312,12 +352,8 @@ static struct svc_serv *nfs_callback_create_svc(int minorversion)
+ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ {
+ 	struct svc_serv *serv;
+-	struct svc_rqst *rqstp;
+-	int (*callback_svc)(void *vrqstp);
+ 	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
+-	char svc_name[12];
+ 	int ret = 0;
+-	int minorversion_setup;
+ 	struct net *net = xprt->xprt_net;
+ 
+ 	mutex_lock(&nfs_callback_mutex);
+@@ -337,34 +373,10 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ 	if (ret < 0)
+ 		goto err_net;
+ 
+-	nfs_callback_bc_serv(minorversion, xprt, serv);
+-
+-	minorversion_setup =  nfs_minorversion_callback_svc_setup(minorversion,
+-					serv, &rqstp, &callback_svc);
+-	if (!minorversion_setup) {
+-		/* v4.0 callback setup */
+-		rqstp = nfs4_callback_up(serv);
+-		callback_svc = nfs4_callback_svc;
+-	}
+-
+-	if (IS_ERR(rqstp)) {
+-		ret = PTR_ERR(rqstp);
+-		goto out_err;
+-	}
+-
+-	svc_sock_update_bufs(serv);
++	ret = nfs_callback_start_svc(minorversion, xprt, serv);
++	if (ret < 0)
++		goto err_start;
+ 
+-	sprintf(svc_name, "nfsv4.%u-svc", minorversion);
+-	cb_info->serv = serv;
+-	cb_info->rqst = rqstp;
+-	cb_info->task = kthread_run(callback_svc, cb_info->rqst, svc_name);
+-	if (IS_ERR(cb_info->task)) {
+-		ret = PTR_ERR(cb_info->task);
+-		svc_exit_thread(cb_info->rqst);
+-		cb_info->rqst = NULL;
+-		cb_info->task = NULL;
+-		goto out_err;
+-	}
+ out:
+ 	/*
+ 	 * svc_create creates the svc_serv with sv_nrthreads == 1, and then
+@@ -376,7 +388,8 @@ out:
+ err_create:
+ 	mutex_unlock(&nfs_callback_mutex);
+ 	return ret;
+-out_err:
++
++err_start:
+ 	svc_shutdown_net(serv, net);
+ err_net:
+ 	dprintk("NFS: Couldn't create callback socket or server thread; "
 
