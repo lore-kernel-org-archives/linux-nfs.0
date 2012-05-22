@@ -1,68 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:11947 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:46588 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759211Ab2EVQKT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 May 2012 12:10:19 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/4] NFSv4.1 just use nfs_put_client in filelayout release
-Date: Tue, 22 May 2012 08:09:25 -0400
-Message-Id: <1337688569-1515-1-git-send-email-andros@netapp.com>
+	id S1755275Ab2EVPQ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 11:16:29 -0400
+Subject: Re: [PATCH 3/4] SUNRPC: Add RPC based upcall mechanism for RPCGSS
+ auth
+From: Simo Sorce <simo@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        "bfields@redhat.com" <bfields@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+In-Reply-To: <20120522150748.GF891@fieldses.org>
+References: <1337087550-9821-1-git-send-email-simo@redhat.com>
+	 <1337087550-9821-4-git-send-email-simo@redhat.com>
+	 <20120522124728.GB891@fieldses.org>
+	 <1337691607.16840.178.camel@willson.li.ssimo.org>
+	 <4FBB91EE.3010307@parallels.com>
+	 <1337692966.16840.181.camel@willson.li.ssimo.org>
+	 <4FBB9551.9010407@parallels.com> <20120522142035.GC891@fieldses.org>
+	 <4FBBA667.4090409@parallels.com>  <20120522150748.GF891@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 22 May 2012 11:16:21 -0400
+Message-ID: <1337699781.16840.190.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Tue, 2012-05-22 at 11:07 -0400, J. Bruce Fields wrote:
+> On Tue, May 22, 2012 at 06:44:55PM +0400, Stanislav Kinsbursky wrote:
+> > Yep, we discussed it already.
+> > The problem is that connect call to unix sockets is done from rpciod
+> > workqueue because of selinux restrictions.
+> > IOW UNIX socket path will be traversed staring from rpciod kernel
+> > thread root. Currently this problem is existent for portmapper
+> > registration calls - for example LockD, started in container with
+> > nested root, will be registered in global rpcbind instead of local
+> > (container's) one.
+> 
+> Thanks for the reminder!
+> 
+> > One of solutions was to export set_fs_root(), but Al Viro doesn't like it.
+> > 
+> > So currently I'm thinking about patching network layer - i.e.
+> > implementing an ability to pass desired path to unix sockets connect
+> > and bind calls.
+> > IOW, I'm talking about introducing of "bindat" and "connectat" system calls...
+> 
+> So then we'd resolve the path in the right context and pass down a
+> (vfsmount, dentry) that rpciod could use in bindat/connectat calls?
+> 
+> > >In particular: the current svcgssd communication method is using one of
+> > >the sunrpc caches.  If we convert now to this method (which uses a unix
+> > >socket) would there be a loss in functionality, until the unix sockets
+> > >problems are fixed?
+> > >
+> > 
+> > I'm afraid, that you are right...
+> > This new client will connect to root daemon - not containerized one...
+> > How soon this new unix-socket way will become common practice?
+> > Maybe I'd be able to patch unix sockets before distro's will use this new version.
+> > But I don't know, what would be best to do...
+> 
+> Ugh.
+> 
+> Simo, remind me of the reasons for using a unix socket?
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4filelayout.c |   12 ++----------
- 1 files changed, 2 insertions(+), 10 deletions(-)
+It's an RPC protocol, and we do not want the size limitations of other
+upcall mechanisms, we really want a stream.
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 474c630..8df91be 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -101,9 +101,6 @@ static void filelayout_reset_write(struct nfs_write_data *data)
- 							&hdr->pages,
- 							hdr->completion_ops);
- 	}
--	/* balance nfs_get_client in filelayout_write_pagelist */
--	nfs_put_client(data->ds_clp);
--	data->ds_clp     = NULL;
- }
- 
- static void filelayout_reset_read(struct nfs_read_data *data)
-@@ -125,9 +122,6 @@ static void filelayout_reset_read(struct nfs_read_data *data)
- 							&hdr->pages,
- 							hdr->completion_ops);
- 	}
--	/* balance nfs_get_client in filelayout_read_pagelist */
--	nfs_put_client(data->ds_clp);
--	data->ds_clp = NULL;
- }
- 
- static int filelayout_async_handle_error(struct rpc_task *task,
-@@ -326,8 +320,7 @@ static void filelayout_read_release(void *data)
- {
- 	struct nfs_read_data *rdata = data;
- 
--	if (!test_bit(NFS_IOHDR_REDO, &rdata->header->flags))
--		nfs_put_client(rdata->ds_clp);
-+	nfs_put_client(rdata->ds_clp);
- 	rdata->header->mds_ops->rpc_release(data);
- }
- 
-@@ -424,8 +417,7 @@ static void filelayout_write_release(void *data)
- {
- 	struct nfs_write_data *wdata = data;
- 
--	if (!test_bit(NFS_IOHDR_REDO, &wdata->header->flags))
--		nfs_put_client(wdata->ds_clp);
-+	nfs_put_client(wdata->ds_clp);
- 	wdata->header->mds_ops->rpc_release(data);
- }
- 
+Simo.
+
 -- 
-1.7.7.6
+Simo Sorce * Red Hat, Inc * New York
 
