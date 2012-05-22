@@ -1,246 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:33044 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:47872 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757287Ab2EARQi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 May 2012 13:16:38 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH v2 2/3] NFS: Clean up nfs read and write error paths
-Date: Tue,  1 May 2012 13:16:35 -0400
-Message-Id: <1335892596-13667-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1335892596-13667-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1335892596-13667-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1751422Ab2EVPSf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 11:18:35 -0400
+Subject: Re: [PATCH 3/4] SUNRPC: Add RPC based upcall mechanism for RPCGSS
+ auth
+From: Simo Sorce <simo@redhat.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        "bfields@redhat.com" <bfields@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+In-Reply-To: <4FBBAC68.60406@parallels.com>
+References: <1337087550-9821-1-git-send-email-simo@redhat.com>
+	 <1337087550-9821-4-git-send-email-simo@redhat.com>
+	 <20120522124728.GB891@fieldses.org>
+	 <1337691607.16840.178.camel@willson.li.ssimo.org>
+	 <4FBB91EE.3010307@parallels.com>
+	 <1337692966.16840.181.camel@willson.li.ssimo.org>
+	 <4FBB9551.9010407@parallels.com>
+	 <1337698684.16840.184.camel@willson.li.ssimo.org>
+	 <4FBBAC68.60406@parallels.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 22 May 2012 11:18:26 -0400
+Message-ID: <1337699906.16840.192.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Move the error handling for nfs_generic_pagein() into a single function.
-Ditto for nfs_generic_flush().
+On Tue, 2012-05-22 at 19:10 +0400, Stanislav Kinsbursky wrote:
+> On 22.05.2012 18:58, Simo Sorce wrote:
+> > On Tue, 2012-05-22 at 17:32 +0400, Stanislav Kinsbursky wrote:
+> >> It actually means, that no hard-coded init_net references should appear - and
+> >> that's all. Required network context have to be taken from currently existent
+> >> objects (like RPC client, RPC service, etc) and, if not available (it's very
+> >> rare case - like NFS mount call), from current->nsproxy->net_ns.
+> >> You don't need to do anything special except this.
+> >> There will be a problem with your patches in container, because you are using
+> >> unix socket. But this problem is not in your patches but in unix sockets
+> >> themselves. So don't worry about it.
+> >
+> > Can you tell me if the attached patches are all you think is needed ?
+> > If they are, I'll squash them in with other fixes and will send out a
+> > new patch set.
+> >
+> 
+> Yep, looks good.
+> Would be great, if you'll fix a couple of minor issues:
+> 1) rename "xprt_net" to "net" in prototypes (just to make things look in one 
+> style with other places in SUNRPC layer)
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/pnfs.c  |    2 --
- fs/nfs/read.c  |   38 +++++++++++++++++++++-----------------
- fs/nfs/write.c |   46 +++++++++++++++++++++++-----------------------
- 3 files changed, 44 insertions(+), 42 deletions(-)
+TBH, I thikn using 'net' is the worst name you guys could come up with,
+try to 'git grep net' to see what I mean, but whatever, the damage is
+already done, I'll change it.
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 39cbac5..6fdeca2 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1321,7 +1321,6 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
- 	if (ret != 0) {
- 		put_lseg(desc->pg_lseg);
- 		desc->pg_lseg = NULL;
--		set_bit(NFS_IOHDR_REDO, &hdr->flags);
- 	} else
- 		pnfs_do_multiple_writes(desc, &hdr->rpc_list, desc->pg_ioflags);
- 	if (atomic_dec_and_test(&hdr->refcnt))
-@@ -1476,7 +1475,6 @@ pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
- 	if (ret != 0) {
- 		put_lseg(desc->pg_lseg);
- 		desc->pg_lseg = NULL;
--		set_bit(NFS_IOHDR_REDO, &hdr->flags);
- 	} else
- 		pnfs_do_multiple_reads(desc, &hdr->rpc_list);
- 	if (atomic_dec_and_test(&hdr->refcnt))
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 20a0293..1961a19 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -320,6 +320,19 @@ static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops = {
- 	.completion = nfs_read_completion,
- };
- 
-+static void nfs_pagein_error(struct nfs_pageio_descriptor *desc,
-+		struct nfs_pgio_header *hdr)
-+{
-+	set_bit(NFS_IOHDR_REDO, &hdr->flags);
-+	while (!list_empty(&hdr->rpc_list)) {
-+		struct nfs_read_data *data = list_first_entry(&hdr->rpc_list,
-+				struct nfs_read_data, list);
-+		list_del(&data->list);
-+		nfs_readdata_release(data);
-+	}
-+	desc->pg_completion_ops->error_cleanup(&desc->pg_list);
-+}
-+
- /*
-  * Generate multiple requests to fill a single page.
-  *
-@@ -342,33 +355,27 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc,
- 	size_t rsize = desc->pg_bsize, nbytes;
- 	unsigned int offset;
- 
--	nfs_list_remove_request(req);
--	nfs_list_add_request(req, &hdr->pages);
--
- 	offset = 0;
- 	nbytes = desc->pg_count;
- 	do {
- 		size_t len = min(nbytes,rsize);
- 
- 		data = nfs_readdata_alloc(hdr, 1);
--		if (!data)
--			goto out_bad;
-+		if (!data) {
-+			nfs_pagein_error(desc, hdr);
-+			return -ENOMEM;
-+		}
- 		data->pages.pagevec[0] = page;
- 		nfs_read_rpcsetup(data, len, offset);
- 		list_add(&data->list, &hdr->rpc_list);
- 		nbytes -= len;
- 		offset += len;
- 	} while (nbytes != 0);
-+
-+	nfs_list_remove_request(req);
-+	nfs_list_add_request(req, &hdr->pages);
- 	desc->pg_rpc_callops = &nfs_read_common_ops;
- 	return 0;
--out_bad:
--	while (!list_empty(&hdr->rpc_list)) {
--		data = list_first_entry(&hdr->rpc_list, struct nfs_read_data, list);
--		list_del(&data->list);
--		nfs_readdata_release(data);
--	}
--	desc->pg_completion_ops->error_cleanup(&hdr->pages);
--	return -ENOMEM;
- }
- 
- static int nfs_pagein_one(struct nfs_pageio_descriptor *desc,
-@@ -378,12 +385,11 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc,
- 	struct page		**pages;
- 	struct nfs_read_data    *data;
- 	struct list_head *head = &desc->pg_list;
--	int ret = 0;
- 
- 	data = nfs_readdata_alloc(hdr, nfs_page_array_len(desc->pg_base,
- 							  desc->pg_count));
- 	if (!data) {
--		desc->pg_completion_ops->error_cleanup(head);
-+		nfs_pagein_error(desc, hdr);
- 		return -ENOMEM;
- 	}
- 
-@@ -427,8 +433,6 @@ static int nfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
- 	if (ret == 0)
- 		ret = nfs_do_multiple_reads(&hdr->rpc_list,
- 					    desc->pg_rpc_callops);
--	else
--		set_bit(NFS_IOHDR_REDO, &hdr->flags);
- 	if (atomic_dec_and_test(&hdr->refcnt))
- 		hdr->completion_ops->completion(hdr);
- 	return ret;
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 41db7b7..6f263da 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1062,6 +1062,19 @@ static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops = {
- 	.completion = nfs_write_completion,
- };
- 
-+static void nfs_flush_error(struct nfs_pageio_descriptor *desc,
-+		struct nfs_pgio_header *hdr)
-+{
-+	set_bit(NFS_IOHDR_REDO, &hdr->flags);
-+	while (!list_empty(&hdr->rpc_list)) {
-+		struct nfs_write_data *data = list_first_entry(&hdr->rpc_list,
-+				struct nfs_write_data, list);
-+		list_del(&data->list);
-+		nfs_writedata_release(data);
-+	}
-+	desc->pg_completion_ops->error_cleanup(&desc->pg_list);
-+}
-+
- /*
-  * Generate multiple small requests to write out a single
-  * contiguous dirty area on one page.
-@@ -1075,12 +1088,9 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc,
- 	size_t wsize = desc->pg_bsize, nbytes;
- 	unsigned int offset;
- 	int requests = 0;
--	int ret = 0;
- 	struct nfs_commit_info cinfo;
- 
- 	nfs_init_cinfo(&cinfo, desc->pg_inode, desc->pg_dreq);
--	nfs_list_remove_request(req);
--	nfs_list_add_request(req, &hdr->pages);
- 
- 	if ((desc->pg_ioflags & FLUSH_COND_STABLE) &&
- 	    (desc->pg_moreio || nfs_reqs_to_commit(&cinfo) ||
-@@ -1094,8 +1104,10 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc,
- 		size_t len = min(nbytes, wsize);
- 
- 		data = nfs_writedata_alloc(hdr, 1);
--		if (!data)
--			goto out_bad;
-+		if (!data) {
-+			nfs_flush_error(desc, hdr);
-+			return -ENOMEM;
-+		}
- 		data->pages.pagevec[0] = page;
- 		nfs_write_rpcsetup(data, len, offset, desc->pg_ioflags, &cinfo);
- 		list_add(&data->list, &hdr->rpc_list);
-@@ -1103,17 +1115,10 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc,
- 		nbytes -= len;
- 		offset += len;
- 	} while (nbytes != 0);
-+	nfs_list_remove_request(req);
-+	nfs_list_add_request(req, &hdr->pages);
- 	desc->pg_rpc_callops = &nfs_write_common_ops;
--	return ret;
--
--out_bad:
--	while (!list_empty(&hdr->rpc_list)) {
--		data = list_first_entry(&hdr->rpc_list, struct nfs_write_data, list);
--		list_del(&data->list);
--		nfs_writedata_release(data);
--	}
--	desc->pg_completion_ops->error_cleanup(&hdr->pages);
--	return -ENOMEM;
-+	return 0;
- }
- 
- /*
-@@ -1131,15 +1136,13 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc,
- 	struct page		**pages;
- 	struct nfs_write_data	*data;
- 	struct list_head *head = &desc->pg_list;
--	int ret = 0;
- 	struct nfs_commit_info cinfo;
- 
- 	data = nfs_writedata_alloc(hdr, nfs_page_array_len(desc->pg_base,
- 							   desc->pg_count));
- 	if (!data) {
--		desc->pg_completion_ops->error_cleanup(head);
--		ret = -ENOMEM;
--		goto out;
-+		nfs_flush_error(desc, hdr);
-+		return -ENOMEM;
- 	}
- 
- 	nfs_init_cinfo(&cinfo, desc->pg_inode, desc->pg_dreq);
-@@ -1159,8 +1162,7 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc,
- 	nfs_write_rpcsetup(data, desc->pg_count, 0, desc->pg_ioflags, &cinfo);
- 	list_add(&data->list, &hdr->rpc_list);
- 	desc->pg_rpc_callops = &nfs_write_common_ops;
--out:
--	return ret;
-+	return 0;
- }
- 
- int nfs_generic_flush(struct nfs_pageio_descriptor *desc,
-@@ -1190,8 +1192,6 @@ static int nfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
- 		ret = nfs_do_multiple_writes(&hdr->rpc_list,
- 					     desc->pg_rpc_callops,
- 					     desc->pg_ioflags);
--	else
--		set_bit(NFS_IOHDR_REDO, &hdr->flags);
- 	if (atomic_dec_and_test(&hdr->refcnt))
- 		hdr->completion_ops->completion(hdr);
- 	return ret;
+> 2) define net variable on stack in svcauth_gss_proxy_init() (looks simpler):
+> 
+> +static int svcauth_gss_proxy_init(struct svc_rqst *rqstp,
+> +                       struct rpc_gss_wire_cred *gc, __be32 *authp)
+> ....
+> +       struct net *net = rqstp->rq_xprt->xpt_net;
+> +       struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+> ....
+> +       status = gssp_accept_sec_context_upcall(net, &ud);
+
+Heh, that is what I did at first, then changed. Works for me, I'll
+include these changes in the new patchset.
+
+Simo.
+
 -- 
-1.7.7.6
+Simo Sorce * Red Hat, Inc * New York
 
