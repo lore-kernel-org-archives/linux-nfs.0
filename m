@@ -1,63 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:38945 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758768Ab2EVOlm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 10:41:42 -0400
-Message-ID: <4FBBA59F.2050001@parallels.com>
-Date: Tue, 22 May 2012 18:41:35 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH v3] NFS: put net on idr allocation failure
-References: <20120522073709.20602.33027.stgit@localhost.localdomain>  <20120522080307.21303.60025.stgit@localhost.localdomain> <1337697459.4269.7.camel@lade.trondhjem.org>
-In-Reply-To: <1337697459.4269.7.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Received: from mx1.redhat.com ([209.132.183.28]:18018 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756308Ab2EVWwu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 May 2012 18:52:50 -0400
+Subject: Re: [PATCH 3/4] SUNRPC: Add RPC based upcall mechanism for RPCGSS
+ auth
+From: Simo Sorce <simo@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+In-Reply-To: <20120522224904.GB6435@fieldses.org>
+References: <1337087550-9821-1-git-send-email-simo@redhat.com>
+	 <1337087550-9821-4-git-send-email-simo@redhat.com>
+	 <20120522150221.GD891@fieldses.org>
+	 <1337699722.16840.189.camel@willson.li.ssimo.org>
+	 <20120522152917.GB11739@pad.fieldses.org>
+	 <1337701251.16840.201.camel@willson.li.ssimo.org>
+	 <20120522224904.GB6435@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 22 May 2012 18:52:43 -0400
+Message-ID: <1337727163.16840.207.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 22.05.2012 18:37, Myklebust, Trond wrote:
-> On Tue, 2012-05-22 at 12:03 +0400, Stanislav Kinsbursky wrote:
->> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
->> ---
->>   fs/nfs/client.c |    4 +++-
->>   1 files changed, 3 insertions(+), 1 deletions(-)
->>
->> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
->> index 44cd70f..ae29d4f 100644
->> --- a/fs/nfs/client.c
->> +++ b/fs/nfs/client.c
->> @@ -176,8 +176,10 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
->>
->>   #ifdef CONFIG_NFS_V4
->>   	err = nfs_get_cb_ident_idr(clp, cl_init->minorversion);
->> -	if (err)
->> +	if (err) {
->> +		put_net(clp->net);
->>   		goto error_cleanup;
->> +	}
->>
->>   	spin_lock_init(&clp->cl_lock);
->>   	INIT_DELAYED_WORK(&clp->cl_renewd, nfs4_renew_state);
->>
->
-> Let's just move the actual get_net() call to the end of the function.
->
+On Tue, 2012-05-22 at 18:49 -0400, J. Bruce Fields wrote:
+> On Tue, May 22, 2012 at 11:40:51AM -0400, Simo Sorce wrote:
+> > On Tue, 2012-05-22 at 11:29 -0400, J. Bruce Fields wrote:
+> > > On Tue, May 22, 2012 at 11:15:22AM -0400, Simo Sorce wrote:
+> > > > On Tue, 2012-05-22 at 11:02 -0400, J. Bruce Fields wrote:
+> > > > >  This seems
+> > > > > likely to break in subtle ways if we ever change one of those constants
+> > > > > to not be a multiple of a large enough power of 2.  And makes the memory
+> > > > > handling a little more obscure.  I'd rather just allocate those
+> > > > > separately if that's the choice.
+> > > > 
+> > > > I do not see why it would break, the only limit we have is the total
+> > > > size of the kmembuf.
+> > > 
+> > > Oh, just because the svc_cred at the end wouldn't be aligned nicely any
+> > > more.  Doesn't that bother some architectures?
+> > 
+> > Ah yeah I see, indeed some architecture require memory to be aligned.
+> > I will change that code back to kmallocs, which is what I always
+> > preferred anyway.
+> > 
+> > > > > Whatever, I don't really care how the various xdr_netobj->data's are
+> > > > > allocated, honestly there's no crusade to eliminate kmalloc()'s, I'll
+> > > > > only object in a case (like the struct svc_cred field above) where it
+> > > > > seems obviously unnecessary.
+> > > > 
+> > > > Ok, so what should I do ?
+> > > > I can remove the static allocation and let the code allocate the data
+> > > > with kmalloc, in the xdr unmarshalling code.
+> > > > Whatever you like best.
+> > > 
+> > > Just embed the svc_cred:
+> > > 
+> > > > > -	struct svc_cred *creds;
+> > > > > +	struct svc_cred creds;
+> > 
+> > Can't do, it needs to be allocated, because we steal it in scvauth_gss.c
+> 
+> Are you sure?  Looks to me like it's only the group list that's "stolen"
+> there, the rest is copied.
 
-Ok. But it will look a bit strange, like this:
+Yeah, I ended up doing what you asked, I was mis-remembering one detail.
 
-clp->net = net;
-...
-nfs_get_cb_ident_idr
-...
-get_net(clp->net)
+I have a patchset here:
+http://fedorapeople.org/gitweb?p=simo/public_git/kernel.git;a=shortlog;h=refs/heads/for-3.5
 
-Or I can pass net to nfs_get_cb_ident_idr() as a parameter.
-Which solution is more preferable&?
+But it does not include the last changes you just requested, and has not
+been tested yet.
+
+However it shows the kmalloc changes and the principal handling changes.
+
+Simo.
 
 -- 
-Best regards,
-Stanislav Kinsbursky
+Simo Sorce * Red Hat, Inc * New York
+
