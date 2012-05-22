@@ -1,202 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:41181 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932376Ab2EVCow (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 May 2012 22:44:52 -0400
-Received: by mail-gg0-f174.google.com with SMTP id u4so4992272ggl.19
-        for <linux-nfs@vger.kernel.org>; Mon, 21 May 2012 19:44:51 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 04/14] NFS: Use proper naming conventions for the
- nfs_client.net field
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 21 May 2012 22:44:50 -0400
-Message-ID: <20120522024449.1787.32716.stgit@degas.1015granger.net>
-In-Reply-To: <20120522022702.1787.45940.stgit@degas.1015granger.net>
-References: <20120522022702.1787.45940.stgit@degas.1015granger.net>
+Received: from relay.parallels.com ([195.214.232.42]:54441 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755555Ab2EVOpD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 10:45:03 -0400
+Message-ID: <4FBBA667.4090409@parallels.com>
+Date: Tue, 22 May 2012 18:44:55 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Simo Sorce <simo@redhat.com>, "bfields@redhat.com" <bfields@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/4] SUNRPC: Add RPC based upcall mechanism for RPCGSS
+ auth
+References: <1337087550-9821-1-git-send-email-simo@redhat.com> <1337087550-9821-4-git-send-email-simo@redhat.com> <20120522124728.GB891@fieldses.org> <1337691607.16840.178.camel@willson.li.ssimo.org> <4FBB91EE.3010307@parallels.com> <1337692966.16840.181.camel@willson.li.ssimo.org> <4FBB9551.9010407@parallels.com> <20120522142035.GC891@fieldses.org>
+In-Reply-To: <20120522142035.GC891@fieldses.org>
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up:  When naming fields and data types, follow established
-conventions to facilitate accurate grep/cscope searches.
+On 22.05.2012 18:20, J. Bruce Fields wrote:
+> On Tue, May 22, 2012 at 05:32:01PM +0400, Stanislav Kinsbursky wrote:
+>> On 22.05.2012 17:22, Simo Sorce wrote:
+>>> On Tue, 2012-05-22 at 17:17 +0400, Stanislav Kinsbursky wrote:
+>>>> On 22.05.2012 17:00, Simo Sorce wrote:
+>>>>> On Tue, 2012-05-22 at 08:47 -0400, J. Bruce Fields wrote:
+>>>>>> Have you and Stanislav talked about fitting this with the ongoing
+>>>>>> container work?
+>>>>>
+>>>>> No, I wanted to make it work for the normal case first, I assume it will
+>>>>> be simple enough to change the code to work with containers later.
+>>>>> Main reason is that I have no way to test containerized stuff.
+>>>>>
+>>>>
+>>>>
+>>>> It's not that hard to "containerize" this code.
+>>>> All you need is to bypass rqstp->rq_xprt->xpt_net to gssp_rpc_create().
+>>>> I.e. either add net as a parameter to
+>>>> gssp_accept_sec_context_upcall()->gssp_call()->get_clnt()->gssp_rpc_create()
+>>>> prototypes or pass it as a part of gssp_upcall_data structure and then pass as a
+>>>> parameter to gssp_call()->get_clnt()->gssp_rpc_create().
+>>>>
+>>>> This will suits you. I.e. I'm sure that you'll not experience any changes
+>>>> comparing to current behavior.
+>>>
+>>> This should be easy enough.
+>>>
+>>>>> If I understand it correctly, all is needed is to allow attaching to
+>>>>> different sockets for different containers ?
+>>>>>
+>>>>
+>>>> Sorry, but I don't understand the sentence.
+>>>> Starting from kernel 3.3 SUNRPC layer if fully containerized. I.e. all network
+>>>> related resources now carefully allocated and destroyed per and with network
+>>>> namespace.
+>>>> And it would be really great, if the layer will remain containerized in future.
+>>>
+>>> I need guidance here. I need to know what it means to 'remain
+>>> containerized', does it mean I need to do something special for the
+>>> socket handling ?
+>>>
+>>
+>> It actually means, that no hard-coded init_net references should
+>> appear - and that's all. Required network context have to be taken
+>> from currently existent objects (like RPC client, RPC service, etc)
+>> and, if not available (it's very rare case - like NFS mount call),
+>> from current->nsproxy->net_ns.
+>> You don't need to do anything special except this.
+>> There will be a problem with your patches in container, because you
+>> are using unix socket. But this problem is not in your patches but
+>> in unix sockets themselves. So don't worry about it.
+>
+> Could you remind me what the problem with unix sockets is?  (Or just
+> point me to old email....  I'm sure we've discussed it before.)
+>
 
-Introduced by commit e50a7a1a "NFS: make NFS client allocated per
-network namespace context," Tue Jan 10, 2012.
+Yep, we discussed it already.
+The problem is that connect call to unix sockets is done from rpciod workqueue 
+because of selinux restrictions.
+IOW UNIX socket path will be traversed staring from rpciod kernel thread root. 
+Currently this problem is existent for portmapper registration calls - for 
+example LockD, started in container with nested root, will be registered in 
+global rpcbind instead of local (container's) one.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+One of solutions was to export set_fs_root(), but Al Viro doesn't like it.
 
- fs/nfs/blocklayout/blocklayoutdev.c |    2 +-
- fs/nfs/client.c                     |   22 +++++++++++-----------
- fs/nfs/idmap.c                      |    4 ++--
- fs/nfs/nfs4filelayoutdev.c          |    2 +-
- include/linux/nfs_fs_sb.h           |    2 +-
- 5 files changed, 16 insertions(+), 16 deletions(-)
+So currently I'm thinking about patching network layer - i.e. implementing an 
+ability to pass desired path to unix sockets connect and bind calls.
+IOW, I'm talking about introducing of "bindat" and "connectat" system calls...
 
-diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
-index a5c88a5..c965542 100644
---- a/fs/nfs/blocklayout/blocklayoutdev.c
-+++ b/fs/nfs/blocklayout/blocklayoutdev.c
-@@ -123,7 +123,7 @@ nfs4_blk_decode_device(struct nfs_server *server,
- 	uint8_t *dataptr;
- 	DECLARE_WAITQUEUE(wq, current);
- 	int offset, len, i, rc;
--	struct net *net = server->nfs_client->net;
-+	struct net *net = server->nfs_client->cl_net;
- 	struct nfs_net *nn = net_generic(net, nfs_net_id);
- 	struct bl_dev_msg *reply = &nn->bl_mount_reply;
- 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 39db1be..9b9df71 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -65,7 +65,7 @@ static DECLARE_WAIT_QUEUE_HEAD(nfs_client_active_wq);
- static int nfs_get_cb_ident_idr(struct nfs_client *clp, int minorversion)
- {
- 	int ret = 0;
--	struct nfs_net *nn = net_generic(clp->net, nfs_net_id);
-+	struct nfs_net *nn = net_generic(clp->cl_net, nfs_net_id);
- 
- 	if (clp->rpc_ops->version != 4 || minorversion != 0)
- 		return ret;
-@@ -174,7 +174,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
- 	clp->cl_rpcclient = ERR_PTR(-EINVAL);
- 
- 	clp->cl_proto = cl_init->proto;
--	clp->net = get_net(cl_init->net);
-+	clp->cl_net = get_net(cl_init->net);
- 
- #ifdef CONFIG_NFS_V4
- 	err = nfs_get_cb_ident_idr(clp, cl_init->minorversion);
-@@ -252,7 +252,7 @@ void nfs_cleanup_cb_ident_idr(struct net *net)
- /* nfs_client_lock held */
- static void nfs_cb_idr_remove_locked(struct nfs_client *clp)
- {
--	struct nfs_net *nn = net_generic(clp->net, nfs_net_id);
-+	struct nfs_net *nn = net_generic(clp->cl_net, nfs_net_id);
- 
- 	if (clp->cl_cb_ident)
- 		idr_remove(&nn->cb_ident_idr, clp->cl_cb_ident);
-@@ -305,7 +305,7 @@ static void nfs_free_client(struct nfs_client *clp)
- 	if (clp->cl_machine_cred != NULL)
- 		put_rpccred(clp->cl_machine_cred);
- 
--	put_net(clp->net);
-+	put_net(clp->cl_net);
- 	kfree(clp->cl_hostname);
- 	kfree(clp);
- 
-@@ -323,7 +323,7 @@ void nfs_put_client(struct nfs_client *clp)
- 		return;
- 
- 	dprintk("--> nfs_put_client({%d})\n", atomic_read(&clp->cl_count));
--	nn = net_generic(clp->net, nfs_net_id);
-+	nn = net_generic(clp->cl_net, nfs_net_id);
- 
- 	if (atomic_dec_and_lock(&clp->cl_count, &nn->nfs_client_lock)) {
- 		list_del(&clp->cl_share_link);
-@@ -661,7 +661,7 @@ static int nfs_create_rpc_client(struct nfs_client *clp,
- {
- 	struct rpc_clnt		*clnt = NULL;
- 	struct rpc_create_args args = {
--		.net		= clp->net,
-+		.net		= clp->cl_net,
- 		.protocol	= clp->cl_proto,
- 		.address	= (struct sockaddr *)&clp->cl_addr,
- 		.addrsize	= clp->cl_addrlen,
-@@ -715,7 +715,7 @@ static int nfs_start_lockd(struct nfs_server *server)
- 		.nfs_version	= clp->rpc_ops->version,
- 		.noresvport	= server->flags & NFS_MOUNT_NORESVPORT ?
- 					1 : 0,
--		.net		= clp->net,
-+		.net		= clp->cl_net,
- 	};
- 
- 	if (nlm_init.nfs_version > 3)
-@@ -1060,7 +1060,7 @@ static void nfs_server_copy_userdata(struct nfs_server *target, struct nfs_serve
- static void nfs_server_insert_lists(struct nfs_server *server)
- {
- 	struct nfs_client *clp = server->nfs_client;
--	struct nfs_net *nn = net_generic(clp->net, nfs_net_id);
-+	struct nfs_net *nn = net_generic(clp->cl_net, nfs_net_id);
- 
- 	spin_lock(&nn->nfs_client_lock);
- 	list_add_tail_rcu(&server->client_link, &clp->cl_superblocks);
-@@ -1077,7 +1077,7 @@ static void nfs_server_remove_lists(struct nfs_server *server)
- 
- 	if (clp == NULL)
- 		return;
--	nn = net_generic(clp->net, nfs_net_id);
-+	nn = net_generic(clp->cl_net, nfs_net_id);
- 	spin_lock(&nn->nfs_client_lock);
- 	list_del_rcu(&server->client_link);
- 	if (list_empty(&clp->cl_superblocks))
-@@ -1486,7 +1486,7 @@ struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
- 		.rpc_ops = &nfs_v4_clientops,
- 		.proto = ds_proto,
- 		.minorversion = mds_clp->cl_minorversion,
--		.net = mds_clp->net,
-+		.net = mds_clp->cl_net,
- 	};
- 	struct rpc_timeout ds_timeout;
- 	struct nfs_client *clp;
-@@ -1709,7 +1709,7 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
- 				rpc_protocol(parent_server->client),
- 				parent_server->client->cl_timeout,
- 				parent_client->cl_mvops->minor_version,
--				parent_client->net);
-+				parent_client->cl_net);
- 	if (error < 0)
- 		goto error;
- 
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index 3e8edbe..2eaecf9 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -415,7 +415,7 @@ static int __nfs_idmap_register(struct dentry *dir,
- static void nfs_idmap_unregister(struct nfs_client *clp,
- 				      struct rpc_pipe *pipe)
- {
--	struct net *net = clp->net;
-+	struct net *net = clp->cl_net;
- 	struct super_block *pipefs_sb;
- 
- 	pipefs_sb = rpc_get_sb_net(net);
-@@ -429,7 +429,7 @@ static int nfs_idmap_register(struct nfs_client *clp,
- 				   struct idmap *idmap,
- 				   struct rpc_pipe *pipe)
- {
--	struct net *net = clp->net;
-+	struct net *net = clp->cl_net;
- 	struct super_block *pipefs_sb;
- 	int err = 0;
- 
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index bf49b78..c610f84 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -629,7 +629,7 @@ decode_device(struct inode *ino, struct pnfs_device *pdev, gfp_t gfp_flags)
- 
- 		mp_count = be32_to_cpup(p); /* multipath count */
- 		for (j = 0; j < mp_count; j++) {
--			da = decode_ds_addr(NFS_SERVER(ino)->nfs_client->net,
-+			da = decode_ds_addr(NFS_SERVER(ino)->nfs_client->cl_net,
- 					    &stream, gfp_flags);
- 			if (da)
- 				list_add_tail(&da->da_node, &dsaddrs);
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 773e021..59410b3 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -88,7 +88,7 @@ struct nfs_client {
- 	struct fscache_cookie	*fscache;	/* client index cache cookie */
- #endif
- 
--	struct net		*net;
-+	struct net		*cl_net;
- };
- 
- /*
+> In particular: the current svcgssd communication method is using one of
+> the sunrpc caches.  If we convert now to this method (which uses a unix
+> socket) would there be a loss in functionality, until the unix sockets
+> problems are fixed?
+>
 
+I'm afraid, that you are right...
+This new client will connect to root daemon - not containerized one...
+How soon this new unix-socket way will become common practice?
+Maybe I'd be able to patch unix sockets before distro's will use this new version.
+But I don't know, what would be best to do...
+
+> --b.
+
+
+-- 
+Best regards,
+Stanislav Kinsbursky
