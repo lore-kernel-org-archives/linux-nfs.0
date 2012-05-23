@@ -1,232 +1,149 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp02.citrix.com ([66.165.176.63]:60785 "EHLO
-	SMTP02.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757331Ab2ECO7Y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 May 2012 10:59:24 -0400
-From: Ian Campbell <ian.campbell@citrix.com>
-To: netdev@vger.kernel.org
-CC: David Miller <davem@davemloft.net>, Eric Dumazet <eric.dumazet@gmail.com>,
-        "Michael S. Tsirkin" <mst@redhat.com>,
-        Ian Campbell <ian.campbell@citrix.com>, Neil Brown <neilb@suse.de>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH 9/9] sunrpc: use SKB fragment destructors to delay completion until page is released by network stack.
-Date: Thu, 3 May 2012 15:56:11 +0100
-Message-ID: <1336056971-7839-9-git-send-email-ian.campbell@citrix.com>
-In-Reply-To: <1336056915.20716.96.camel@zakaz.uk.xensource.com>
-References: <1336056915.20716.96.camel@zakaz.uk.xensource.com>
+Received: from mx2.netapp.com ([216.240.18.37]:37449 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753046Ab2EWSlh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 May 2012 14:41:37 -0400
+Received: from vmwexceht05-prd.hq.netapp.com (vmwexceht05-prd.hq.netapp.com [10.106.77.35])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q4NIfa7p002396
+	for <linux-nfs@vger.kernel.org>; Wed, 23 May 2012 11:41:37 -0700 (PDT)
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/4] NFSv4.1 add nfs_inode book keeping for mdsthreshold
+Date: Wed, 23 May 2012 18:41:36 +0000
+Message-ID: <21DBA0D7-7C19-4DEA-8571-583967C7B7A7@netapp.com>
+References: <1337763757-1566-1-git-send-email-andros@netapp.com>
+ <1337763757-1566-3-git-send-email-andros@netapp.com>
+ <1337797196.12011.8.camel@lade.trondhjem.org>
+In-Reply-To: <1337797196.12011.8.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This prevents an issue where an ACK is delayed, a retransmit is queued (either
-at the RPC or TCP level) and the ACK arrives before the retransmission hits the
-wire. If this happens to an NFS WRITE RPC then the write() system call
-completes and the userspace process can continue, potentially modifying data
-referenced by the retransmission before the retransmission occurs.
 
-Signed-off-by: Ian Campbell <ian.campbell@citrix.com>
-Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: "David S. Miller" <davem@davemloft.net>
-Cc: Neil Brown <neilb@suse.de>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Cc: netdev@vger.kernel.org
----
- include/linux/sunrpc/xdr.h  |    2 ++
- include/linux/sunrpc/xprt.h |    5 ++++-
- net/sunrpc/clnt.c           |   27 ++++++++++++++++++++++-----
- net/sunrpc/svcsock.c        |    3 ++-
- net/sunrpc/xprt.c           |   12 ++++++++++++
- net/sunrpc/xprtsock.c       |    3 ++-
- 6 files changed, 44 insertions(+), 8 deletions(-)
+On May 23, 2012, at 2:19 PM, Myklebust, Trond wrote:
 
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index af70af3..ff1b121 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -16,6 +16,7 @@
- #include <asm/byteorder.h>
- #include <asm/unaligned.h>
- #include <linux/scatterlist.h>
-+#include <linux/skbuff.h>
- 
- /*
-  * Buffer adjustment
-@@ -57,6 +58,7 @@ struct xdr_buf {
- 			tail[1];	/* Appended after page data */
- 
- 	struct page **	pages;		/* Array of contiguous pages */
-+	struct skb_frag_destructor *destructor;
- 	unsigned int	page_base,	/* Start of page data */
- 			page_len,	/* Length of page data */
- 			flags;		/* Flags for data disposition */
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 77d278d..e8d3f18 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -92,7 +92,10 @@ struct rpc_rqst {
- 						/* A cookie used to track the
- 						   state of the transport
- 						   connection */
--	
-+	struct skb_frag_destructor destructor;	/* SKB paged fragment
-+						 * destructor for
-+						 * transmitted pages*/
-+
- 	/*
- 	 * Partial send handling
- 	 */
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 6797246..351bf3d 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -61,6 +61,7 @@ static void	call_reserve(struct rpc_task *task);
- static void	call_reserveresult(struct rpc_task *task);
- static void	call_allocate(struct rpc_task *task);
- static void	call_decode(struct rpc_task *task);
-+static void	call_complete(struct rpc_task *task);
- static void	call_bind(struct rpc_task *task);
- static void	call_bind_status(struct rpc_task *task);
- static void	call_transmit(struct rpc_task *task);
-@@ -1416,6 +1417,8 @@ rpc_xdr_encode(struct rpc_task *task)
- 			 (char *)req->rq_buffer + req->rq_callsize,
- 			 req->rq_rcvsize);
- 
-+	req->rq_snd_buf.destructor = &req->destructor;
-+
- 	p = rpc_encode_header(task);
- 	if (p == NULL) {
- 		printk(KERN_INFO "RPC: couldn't encode RPC header, exit EIO\n");
-@@ -1581,6 +1584,7 @@ call_connect_status(struct rpc_task *task)
- static void
- call_transmit(struct rpc_task *task)
- {
-+	struct rpc_rqst *req = task->tk_rqstp;
- 	dprint_status(task);
- 
- 	task->tk_action = call_status;
-@@ -1614,8 +1618,8 @@ call_transmit(struct rpc_task *task)
- 	call_transmit_status(task);
- 	if (rpc_reply_expected(task))
- 		return;
--	task->tk_action = rpc_exit_task;
--	rpc_wake_up_queued_task(&task->tk_xprt->pending, task);
-+	task->tk_action = call_complete;
-+	skb_frag_destructor_unref(&req->destructor);
- }
- 
- /*
-@@ -1688,7 +1692,8 @@ call_bc_transmit(struct rpc_task *task)
- 		return;
- 	}
- 
--	task->tk_action = rpc_exit_task;
-+	task->tk_action = call_complete;
-+	skb_frag_destructor_unref(&req->destructor);
- 	if (task->tk_status < 0) {
- 		printk(KERN_NOTICE "RPC: Could not send backchannel reply "
- 			"error: %d\n", task->tk_status);
-@@ -1728,7 +1733,6 @@ call_bc_transmit(struct rpc_task *task)
- 			"error: %d\n", task->tk_status);
- 		break;
- 	}
--	rpc_wake_up_queued_task(&req->rq_xprt->pending, task);
- }
- #endif /* CONFIG_SUNRPC_BACKCHANNEL */
- 
-@@ -1906,12 +1910,14 @@ call_decode(struct rpc_task *task)
- 		return;
- 	}
- 
--	task->tk_action = rpc_exit_task;
-+	task->tk_action = call_complete;
- 
- 	if (decode) {
- 		task->tk_status = rpcauth_unwrap_resp(task, decode, req, p,
- 						      task->tk_msg.rpc_resp);
- 	}
-+	rpc_sleep_on(&req->rq_xprt->pending, task, NULL);
-+	skb_frag_destructor_unref(&req->destructor);
- 	dprintk("RPC: %5u call_decode result %d\n", task->tk_pid,
- 			task->tk_status);
- 	return;
-@@ -1926,6 +1932,17 @@ out_retry:
- 	}
- }
- 
-+/*
-+ * 8.	Wait for pages to be released by the network stack.
-+ */
-+static void
-+call_complete(struct rpc_task *task)
-+{
-+	dprintk("RPC: %5u call_complete result %d\n",
-+		task->tk_pid, task->tk_status);
-+	task->tk_action = rpc_exit_task;
-+}
-+
- static __be32 *
- rpc_encode_header(struct rpc_task *task)
- {
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index f6d8c73..1145929 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -198,7 +198,8 @@ int svc_send_common(struct socket *sock, struct xdr_buf *xdr,
- 	while (pglen > 0) {
- 		if (slen == size)
- 			flags = 0;
--		result = kernel_sendpage(sock, *ppage, NULL, base, size, flags);
-+		result = kernel_sendpage(sock, *ppage, xdr->destructor,
-+					 base, size, flags);
- 		if (result > 0)
- 			len += result;
- 		if (result != size)
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 6fe2dce..f8418a0 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -1108,6 +1108,16 @@ static inline void xprt_init_xid(struct rpc_xprt *xprt)
- 	xprt->xid = net_random();
- }
- 
-+static int xprt_complete_skb_pages(struct skb_frag_destructor *destroy)
-+{
-+	struct rpc_rqst	*req =
-+		container_of(destroy, struct rpc_rqst, destructor);
-+
-+	dprintk("RPC: %5u completing skb pages\n", req->rq_task->tk_pid);
-+	rpc_wake_up_queued_task(&req->rq_xprt->pending, req->rq_task);
-+	return 0;
-+}
-+
- static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
- {
- 	struct rpc_rqst	*req = task->tk_rqstp;
-@@ -1120,6 +1130,8 @@ static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
- 	req->rq_xid     = xprt_alloc_xid(xprt);
- 	req->rq_release_snd_buf = NULL;
- 	xprt_reset_majortimeo(req);
-+	atomic_set(&req->destructor.ref, 1);
-+	req->destructor.destroy = &xprt_complete_skb_pages;
- 	dprintk("RPC: %5u reserved req %p xid %08x\n", task->tk_pid,
- 			req, ntohl(req->rq_xid));
- }
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index f1995dc..44e07f3 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -408,7 +408,8 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned i
- 		remainder -= len;
- 		if (remainder != 0 || more)
- 			flags |= MSG_MORE;
--		err = sock->ops->sendpage(sock, *ppage, NULL, base, len, flags);
-+		err = sock->ops->sendpage(sock, *ppage, xdr->destructor,
-+					  base, len, flags);
- 		if (remainder == 0 || err != len)
- 			break;
- 		sent += err;
--- 
-1.7.2.5
+> On Wed, 2012-05-23 at 05:02 -0400, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>> 
+>> Keep track of the number of bytes read or written, including those queued
+>> up to be flushed. For use by mdsthreshold i/o size hints.
+>> 
+>> No locking needed as this is used as hint information.
+>> 
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>> fs/nfs/file.c          |    8 ++++++--
+>> fs/nfs/inode.c         |    2 ++
+>> fs/nfs/pnfs.c          |    3 +++
+>> include/linux/nfs_fs.h |    3 +++
+>> 4 files changed, 14 insertions(+), 2 deletions(-)
+>> 
+>> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+>> index 8eda8a6..c4cc096 100644
+>> --- a/fs/nfs/file.c
+>> +++ b/fs/nfs/file.c
+>> @@ -203,8 +203,10 @@ nfs_file_read(struct kiocb *iocb, const struct iovec *iov,
+>> 	result = nfs_revalidate_mapping(inode, iocb->ki_filp->f_mapping);
+>> 	if (!result) {
+>> 		result = generic_file_aio_read(iocb, iov, nr_segs, pos);
+>> -		if (result > 0)
+>> +		if (result > 0) {
+>> +			NFS_I(inode)->read_io += result;
+> 
+> Should we perhaps rather do this from nfs_readpages(), nfs_readpage()
+> and nfs_direct_read()?
+> 
+> If we do it here in nfs_file_read, we miss mmaped reads, O_DIRECT reads,
+> as well as splice reads.
+
+Well that's not good.
+
+> We also count read cache hits where we don't
+> have to actually access the server.
+
+OK.
+
+> 
+>> 			nfs_add_stats(inode, NFSIOS_NORMALREADBYTES, result);
+>> +		}
+>> 	}
+>> 	return result;
+>> }
+>> @@ -613,8 +615,10 @@ static ssize_t nfs_file_write(struct kiocb *iocb, const struct iovec *iov,
+>> 		if (err < 0)
+>> 			result = err;
+>> 	}
+>> -	if (result > 0)
+>> +	if (result > 0) {
+>> +		NFS_I(inode)->write_io += written;
+> 
+> For the same reason, perhaps we should move this to
+> nfs_direct_write_schedule_iovec(), and nfs_write_end().
+> 
+>> 		nfs_add_stats(inode, NFSIOS_NORMALWRITTENBYTES, written);
+>> +	}
+>> out:
+>> 	return result;
+>> 
+>> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+>> index 889f7e5..a6f5fbb 100644
+>> --- a/fs/nfs/inode.c
+>> +++ b/fs/nfs/inode.c
+>> @@ -323,6 +323,8 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+>> 		inode->i_gid = -2;
+>> 		inode->i_blocks = 0;
+>> 		memset(nfsi->cookieverf, 0, sizeof(nfsi->cookieverf));
+>> +		nfsi->write_io = 0;
+>> +		nfsi->read_io = 0;
+>> 
+>> 		nfsi->read_cache_jiffies = fattr->time_start;
+>> 		nfsi->attr_gencount = fattr->gencount;
+>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>> index cbcb6ae..6620606 100644
+>> --- a/fs/nfs/pnfs.c
+>> +++ b/fs/nfs/pnfs.c
+>> @@ -395,6 +395,9 @@ mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+>> 	dprintk("%s:Begin lo %p\n", __func__, lo);
+>> 
+>> 	if (list_empty(&lo->plh_segs)) {
+>> +		/* Reset MDS Threshold I/O counters */
+>> +		NFS_I(lo->plh_inode)->write_io = 0;
+>> +		NFS_I(lo->plh_inode)->read_io = 0;
+>> 		if (!test_and_set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags))
+>> 			put_layout_hdr_locked(lo);
+>> 		return 0;
+>> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+>> index ca4a707..c6954ac 100644
+>> --- a/include/linux/nfs_fs.h
+>> +++ b/include/linux/nfs_fs.h
+>> @@ -201,6 +201,9 @@ struct nfs_inode {
+>> 
+>> 	/* pNFS layout information */
+>> 	struct pnfs_layout_hdr *layout;
+>> +	/* how many bytes have been written/read and how many bytes queued up */
+>> +	__u64 write_io;
+>> +	__u64 read_io;
+>> #endif /* CONFIG_NFS_V4*/
+> 
+> ^^^^ This doesn't look as if it will compile without CONFIG_NFS_V4.
+
+I'll fix and resend. Thanks for the review :)
+
+-->Andy
+
+> 
+>> #ifdef CONFIG_NFS_FSCACHE
+>> 	struct fscache_cookie	*fscache;
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
 
