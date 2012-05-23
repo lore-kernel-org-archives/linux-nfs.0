@@ -1,73 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:45474 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755241Ab2EIVCo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 May 2012 17:02:44 -0400
-Message-ID: <4FAADB70.3090007@parallels.com>
-Date: Thu, 10 May 2012 01:02:40 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mx2.netapp.com ([216.240.18.37]:55714 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760687Ab2EWSUP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 May 2012 14:20:15 -0400
+Received: from vmwexceht05-prd.hq.netapp.com (vmwexceht05-prd.hq.netapp.com [10.106.77.35])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q4NIJx3d005840
+	for <linux-nfs@vger.kernel.org>; Wed, 23 May 2012 11:19:59 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: per-net rpc shutdown
-References: <20120509142617.GA24233@fieldses.org> <20120509143518.GB24233@fieldses.org>
-In-Reply-To: <20120509143518.GB24233@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Subject: Re: [PATCH 3/4] NFSv4.1 add nfs_inode book keeping for mdsthreshold
+Date: Wed, 23 May 2012 18:19:54 +0000
+Message-ID: <1337797196.12011.8.camel@lade.trondhjem.org>
+References: <1337763757-1566-1-git-send-email-andros@netapp.com>
+	 <1337763757-1566-3-git-send-email-andros@netapp.com>
+In-Reply-To: <1337763757-1566-3-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-09.05.2012 18:35, J. Bruce Fields написал:
-> On Wed, May 09, 2012 at 10:26:17AM -0400, J. Bruce Fields wrote:
->> Reviewing your more recent patches I think we have a problem with some
->> of the code that's already merged.  See the comment in svc_shutdown_net:
->>
->> 	void svc_shutdown_net(struct svc_serv *serv, struct net *net)
->> 	{
-> By the way, note there's some preexisting trouble here:
->
->> 		/*
->> 		 * The set of xprts (contained in the sv_tempsocks and
->> 		 * sv_permsocks lists) is now constant, since it is modified
->> 		 * only by accepting new sockets (done by service threads in
->> 		 * svc_recv) or aging old ones (done by sv_temptimer), or
->> 		 * configuration changes (excluded by whatever locking the
->> 		 * caller is using--nfsd_mutex in the case of nfsd).
-> I don't think the callers are as careful about this as they should be,
-> so I think there may be some cases where we could crash if there are
-> multiple processes concurrently trying to start, stop, and/or modify the
-> listening sockets of a server.
->
-> We need to fix that too.
->
-> (I haven't actually seen that bug in practice.  We *did* see people hit
-> bugs on shutdown of a busy server before fixing the receive/shutdown
-> races, though.)
->
-> --b.
-
-Looks like we can introduce one more per-service lock, which can be used 
-for the list, and it will solve all the issues we have.
-One more question here is do we need to protect service shutdown on not. 
-Seems to me we don't.
-But I'll check it once more.
-
->> 		So it's
->> 		 * safe to traverse those lists and shut everything down:
->> 		 */
->> 		svc_close_net(serv, net);
->> 	
->> 		if (serv->sv_shutdown)
->> 			serv->sv_shutdown(serv, net);
->> 	}
->>
->> So we depend on the fact that neither the server threads nor
->> sv_temptimer are running here to be able to safely traverse those lists
->> of sockets.
->>
->> But it looks to me like that's no longer true--we're shutting down just
->> one namespace here, and others may still be running.  If so and if they
->> modify sv_tempsocks or sv_permsocks while we're running through them
->> then we're going to get a crash.
->>
->> --b.
-
+T24gV2VkLCAyMDEyLTA1LTIzIGF0IDA1OjAyIC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
+ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IEtlZXAg
+dHJhY2sgb2YgdGhlIG51bWJlciBvZiBieXRlcyByZWFkIG9yIHdyaXR0ZW4sIGluY2x1ZGluZyB0
+aG9zZSBxdWV1ZWQNCj4gdXAgdG8gYmUgZmx1c2hlZC4gRm9yIHVzZSBieSBtZHN0aHJlc2hvbGQg
+aS9vIHNpemUgaGludHMuDQo+IA0KPiBObyBsb2NraW5nIG5lZWRlZCBhcyB0aGlzIGlzIHVzZWQg
+YXMgaGludCBpbmZvcm1hdGlvbi4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8
+YW5kcm9zQG5ldGFwcC5jb20+DQo+IC0tLQ0KPiAgZnMvbmZzL2ZpbGUuYyAgICAgICAgICB8ICAg
+IDggKysrKysrLS0NCj4gIGZzL25mcy9pbm9kZS5jICAgICAgICAgfCAgICAyICsrDQo+ICBmcy9u
+ZnMvcG5mcy5jICAgICAgICAgIHwgICAgMyArKysNCj4gIGluY2x1ZGUvbGludXgvbmZzX2ZzLmgg
+fCAgICAzICsrKw0KPiAgNCBmaWxlcyBjaGFuZ2VkLCAxNCBpbnNlcnRpb25zKCspLCAyIGRlbGV0
+aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9maWxlLmMgYi9mcy9uZnMvZmlsZS5j
+DQo+IGluZGV4IDhlZGE4YTYuLmM0Y2MwOTYgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9maWxlLmMN
+Cj4gKysrIGIvZnMvbmZzL2ZpbGUuYw0KPiBAQCAtMjAzLDggKzIwMywxMCBAQCBuZnNfZmlsZV9y
+ZWFkKHN0cnVjdCBraW9jYiAqaW9jYiwgY29uc3Qgc3RydWN0IGlvdmVjICppb3YsDQo+ICAJcmVz
+dWx0ID0gbmZzX3JldmFsaWRhdGVfbWFwcGluZyhpbm9kZSwgaW9jYi0+a2lfZmlscC0+Zl9tYXBw
+aW5nKTsNCj4gIAlpZiAoIXJlc3VsdCkgew0KPiAgCQlyZXN1bHQgPSBnZW5lcmljX2ZpbGVfYWlv
+X3JlYWQoaW9jYiwgaW92LCBucl9zZWdzLCBwb3MpOw0KPiAtCQlpZiAocmVzdWx0ID4gMCkNCj4g
+KwkJaWYgKHJlc3VsdCA+IDApIHsNCj4gKwkJCU5GU19JKGlub2RlKS0+cmVhZF9pbyArPSByZXN1
+bHQ7DQoNClNob3VsZCB3ZSBwZXJoYXBzIHJhdGhlciBkbyB0aGlzIGZyb20gbmZzX3JlYWRwYWdl
+cygpLCBuZnNfcmVhZHBhZ2UoKQ0KYW5kIG5mc19kaXJlY3RfcmVhZCgpPw0KDQpJZiB3ZSBkbyBp
+dCBoZXJlIGluIG5mc19maWxlX3JlYWQsIHdlIG1pc3MgbW1hcGVkIHJlYWRzLCBPX0RJUkVDVCBy
+ZWFkcywNCmFzIHdlbGwgYXMgc3BsaWNlIHJlYWRzLiBXZSBhbHNvIGNvdW50IHJlYWQgY2FjaGUg
+aGl0cyB3aGVyZSB3ZSBkb24ndA0KaGF2ZSB0byBhY3R1YWxseSBhY2Nlc3MgdGhlIHNlcnZlci4N
+Cg0KPiAgCQkJbmZzX2FkZF9zdGF0cyhpbm9kZSwgTkZTSU9TX05PUk1BTFJFQURCWVRFUywgcmVz
+dWx0KTsNCj4gKwkJfQ0KPiAgCX0NCj4gIAlyZXR1cm4gcmVzdWx0Ow0KPiAgfQ0KPiBAQCAtNjEz
+LDggKzYxNSwxMCBAQCBzdGF0aWMgc3NpemVfdCBuZnNfZmlsZV93cml0ZShzdHJ1Y3Qga2lvY2Ig
+KmlvY2IsIGNvbnN0IHN0cnVjdCBpb3ZlYyAqaW92LA0KPiAgCQlpZiAoZXJyIDwgMCkNCj4gIAkJ
+CXJlc3VsdCA9IGVycjsNCj4gIAl9DQo+IC0JaWYgKHJlc3VsdCA+IDApDQo+ICsJaWYgKHJlc3Vs
+dCA+IDApIHsNCj4gKwkJTkZTX0koaW5vZGUpLT53cml0ZV9pbyArPSB3cml0dGVuOw0KDQpGb3Ig
+dGhlIHNhbWUgcmVhc29uLCBwZXJoYXBzIHdlIHNob3VsZCBtb3ZlIHRoaXMgdG8NCm5mc19kaXJl
+Y3Rfd3JpdGVfc2NoZWR1bGVfaW92ZWMoKSwgYW5kIG5mc193cml0ZV9lbmQoKS4NCg0KPiAgCQlu
+ZnNfYWRkX3N0YXRzKGlub2RlLCBORlNJT1NfTk9STUFMV1JJVFRFTkJZVEVTLCB3cml0dGVuKTsN
+Cj4gKwl9DQo+ICBvdXQ6DQo+ICAJcmV0dXJuIHJlc3VsdDsNCj4gIA0KPiBkaWZmIC0tZ2l0IGEv
+ZnMvbmZzL2lub2RlLmMgYi9mcy9uZnMvaW5vZGUuYw0KPiBpbmRleCA4ODlmN2U1Li5hNmY1ZmJi
+IDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvaW5vZGUuYw0KPiArKysgYi9mcy9uZnMvaW5vZGUuYw0K
+PiBAQCAtMzIzLDYgKzMyMyw4IEBAIG5mc19maGdldChzdHJ1Y3Qgc3VwZXJfYmxvY2sgKnNiLCBz
+dHJ1Y3QgbmZzX2ZoICpmaCwgc3RydWN0IG5mc19mYXR0ciAqZmF0dHIpDQo+ICAJCWlub2RlLT5p
+X2dpZCA9IC0yOw0KPiAgCQlpbm9kZS0+aV9ibG9ja3MgPSAwOw0KPiAgCQltZW1zZXQobmZzaS0+
+Y29va2lldmVyZiwgMCwgc2l6ZW9mKG5mc2ktPmNvb2tpZXZlcmYpKTsNCj4gKwkJbmZzaS0+d3Jp
+dGVfaW8gPSAwOw0KPiArCQluZnNpLT5yZWFkX2lvID0gMDsNCj4gIA0KPiAgCQluZnNpLT5yZWFk
+X2NhY2hlX2ppZmZpZXMgPSBmYXR0ci0+dGltZV9zdGFydDsNCj4gIAkJbmZzaS0+YXR0cl9nZW5j
+b3VudCA9IGZhdHRyLT5nZW5jb3VudDsNCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9wbmZzLmMgYi9m
+cy9uZnMvcG5mcy5jDQo+IGluZGV4IGNiY2I2YWUuLjY2MjA2MDYgMTAwNjQ0DQo+IC0tLSBhL2Zz
+L25mcy9wbmZzLmMNCj4gKysrIGIvZnMvbmZzL3BuZnMuYw0KPiBAQCAtMzk1LDYgKzM5NSw5IEBA
+IG1hcmtfbWF0Y2hpbmdfbHNlZ3NfaW52YWxpZChzdHJ1Y3QgcG5mc19sYXlvdXRfaGRyICpsbywN
+Cj4gIAlkcHJpbnRrKCIlczpCZWdpbiBsbyAlcFxuIiwgX19mdW5jX18sIGxvKTsNCj4gIA0KPiAg
+CWlmIChsaXN0X2VtcHR5KCZsby0+cGxoX3NlZ3MpKSB7DQo+ICsJCS8qIFJlc2V0IE1EUyBUaHJl
+c2hvbGQgSS9PIGNvdW50ZXJzICovDQo+ICsJCU5GU19JKGxvLT5wbGhfaW5vZGUpLT53cml0ZV9p
+byA9IDA7DQo+ICsJCU5GU19JKGxvLT5wbGhfaW5vZGUpLT5yZWFkX2lvID0gMDsNCj4gIAkJaWYg
+KCF0ZXN0X2FuZF9zZXRfYml0KE5GU19MQVlPVVRfREVTVFJPWUVELCAmbG8tPnBsaF9mbGFncykp
+DQo+ICAJCQlwdXRfbGF5b3V0X2hkcl9sb2NrZWQobG8pOw0KPiAgCQlyZXR1cm4gMDsNCj4gZGlm
+ZiAtLWdpdCBhL2luY2x1ZGUvbGludXgvbmZzX2ZzLmggYi9pbmNsdWRlL2xpbnV4L25mc19mcy5o
+DQo+IGluZGV4IGNhNGE3MDcuLmM2OTU0YWMgMTAwNjQ0DQo+IC0tLSBhL2luY2x1ZGUvbGludXgv
+bmZzX2ZzLmgNCj4gKysrIGIvaW5jbHVkZS9saW51eC9uZnNfZnMuaA0KPiBAQCAtMjAxLDYgKzIw
+MSw5IEBAIHN0cnVjdCBuZnNfaW5vZGUgew0KPiAgDQo+ICAJLyogcE5GUyBsYXlvdXQgaW5mb3Jt
+YXRpb24gKi8NCj4gIAlzdHJ1Y3QgcG5mc19sYXlvdXRfaGRyICpsYXlvdXQ7DQo+ICsJLyogaG93
+IG1hbnkgYnl0ZXMgaGF2ZSBiZWVuIHdyaXR0ZW4vcmVhZCBhbmQgaG93IG1hbnkgYnl0ZXMgcXVl
+dWVkIHVwICovDQo+ICsJX191NjQgd3JpdGVfaW87DQo+ICsJX191NjQgcmVhZF9pbzsNCj4gICNl
+bmRpZiAvKiBDT05GSUdfTkZTX1Y0Ki8NCg0KXl5eXiBUaGlzIGRvZXNuJ3QgbG9vayBhcyBpZiBp
+dCB3aWxsIGNvbXBpbGUgd2l0aG91dCBDT05GSUdfTkZTX1Y0Lg0KDQo+ICAjaWZkZWYgQ09ORklH
+X05GU19GU0NBQ0hFDQo+ICAJc3RydWN0IGZzY2FjaGVfY29va2llCSpmc2NhY2hlOw0KDQotLSAN
+ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0K
+VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
