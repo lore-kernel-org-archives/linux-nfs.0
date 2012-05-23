@@ -1,20 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.14.82]:33045 "EHLO
-	hellskitchen.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751473Ab2ESCfs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 May 2012 22:35:48 -0400
-Date: Fri, 18 May 2012 22:35:45 -0400
-From: Jim Rees <rees@umich.edu>
-To: linux-nfs@vger.kernel.org
-Subject: warning: the frame size of 1040 bytes is larger than 1024 bytes
-Message-ID: <20120519023545.GA28688@umich.edu>
+Received: from mx2.netapp.com ([216.240.18.37]:6790 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751051Ab2EWN5u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 May 2012 09:57:50 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH] NFS: init client before declaration
+Date: Wed, 23 May 2012 13:57:44 +0000
+Message-ID: <1337781466.3360.12.camel@lade.trondhjem.org>
+References: <20120522124018.338.20817.stgit@localhost.localdomain>
+	  <1337696984.4269.4.camel@lade.trondhjem.org>
+	  <1337698816.4269.15.camel@lade.trondhjem.org>
+	  <4FBBB0DB.6050708@parallels.com>
+	  <1337701904.4269.16.camel@lade.trondhjem.org>
+	  <4FBBBC4C.5010103@parallels.com>
+	  <1337705000.4269.23.camel@lade.trondhjem.org>
+	 <1337718771.4269.29.camel@lade.trondhjem.org>
+	 <4FBCCA4F.3020600@parallels.com>
+In-Reply-To: <4FBCCA4F.3020600@parallels.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I get this when I build 3.4.0-rc7 plus blklayout patches:
-
-  CC [M]  fs/nfs/nfs4xdr.o
-/home/rees/l/pnfs/linux/fs/nfs/nfs4xdr.c: In function ‘encode_exchange_id’:
-/home/rees/l/pnfs/linux/fs/nfs/nfs4xdr.c:1719:1: warning: the frame size of 1040 bytes is larger than 1024 bytes [-Wframe-larger-than=]
+T24gV2VkLCAyMDEyLTA1LTIzIGF0IDE1OjMwICswNDAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3
+cm90ZToNCj4gT24gMjMuMDUuMjAxMiAwMDozMiwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4g
+PiBPbiBUdWUsIDIwMTItMDUtMjIgYXQgMTI6NDMgLTA0MDAsIFRyb25kIE15a2xlYnVzdCB3cm90
+ZToNCj4gPj4gT24gVHVlLCAyMDEyLTA1LTIyIGF0IDIwOjE4ICswNDAwLCBTdGFuaXNsYXYgS2lu
+c2J1cnNreSB3cm90ZToNCj4gPj4+IFdlIGhhdmUgYW5vdGhlciBwcm9ibGVtIGhlcmUuDQo+ID4+
+PiBuZnM0X2luaXRfY2xpZW50KCkgd2lsbCB0cnkgdG8gY3JlYXRlIHBpcGUgZGVudHJpZXMgcHJp
+b3IgdG8gc2V0IG9mIE5GU19DU19SRUFEWQ0KPiA+Pj4gdG8gdGhlIGNsaWVudC4gQW5kIGRlbnRy
+aWVzIHdpbGwgYmUgY3JlYXRlZCBzaW5jZSBzZW1hcGhvcmUgaXMgZHJvcHBlZCBhbmQNCj4gPj4+
+IHBlci1uZXQgc3VwZXJibG9jayB2YXJpYWJsZSBpcyBpbml0aWFsaXplZCBhbHJlYWR5Lg0KPiA+
+Pj4gQnV0IF9fcnBjX3BpcGVmc19ldmVudCgpIHJlbGF5cyBvbiB0aGUgZmFjdCwgdGhhdCBubyBk
+ZW50cmllcyBwcmVzZW50Lg0KPiA+Pj4gTG9va3MgbGlrZSB0aGUgcHJvYmxlbSB3YXMgaW50cm9k
+dWNlZCBieSBtZSBpbiBhYWQ5NDg3Yy4uLg0KPiA+Pj4gU28gbWF5YmUgd2Ugc2hvdWxkIG5vdCBj
+YWxsICJjb250aW51ZSIgaW5zdGVhZCAiX19ycGNfcGlwZWZzX2V2ZW50KCkiLCB3aGVuDQo+ID4+
+PiBjbGllbnQgYmVjb21lcyByZWFkeT8NCj4gPj4+IExvb2tzIGxpa2UgdGhpcyB3aWxsIGFsbG93
+IHVzIHRvIGhhbmRsZSBzdWNoIHJhY2VzLg0KPiA+Pg0KPiA+PiBMZXQgbWUgcmV3b3JrIHRoaXMg
+cGF0Y2ggYSBiaXQuLi4NCj4gPg0KPiA+IFRoZSBmb2xsb3dpbmcgaXMgdWdseSwgYnV0IGl0IHNo
+b3VsZCBiZSBkZW1vbnN0cmFibHkgY29ycmVjdCwgYW5kIHdpbGwNCj4gPiBlbnN1cmUgdGhhdCBf
+X3JwY19waXBlZnNfZXZlbnQoKSB3aWxsIG9ubHkgYmUgY2FsbGVkIGZvciBmdWxseQ0KPiA+IGlu
+aXRpYWxpc2VkIG5mc19jbGllbnRzLi4uDQo+ID4NCj4gPiA4PC0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KPiA+ICBG
+cm9tIDkwYzNiOWZlOWZhZWFlMzJjOGY2MjllOGI2Y2JmNWY1MGJiOWIyOTUgTW9uIFNlcCAxNyAw
+MDowMDowMCAyMDAxDQo+ID4gRnJvbTogVHJvbmQgTXlrbGVidXN0PFRyb25kLk15a2xlYnVzdEBu
+ZXRhcHAuY29tPg0KPiA+IERhdGU6IFR1ZSwgMjIgTWF5IDIwMTIgMTY6MjI6NTAgLTA0MDANCj4g
+PiBTdWJqZWN0OiBbUEFUQ0ggMS8yXSBORlN2NDogRml4IGEgcmFjZSBpbiB0aGUgbmV0IG5hbWVz
+cGFjZSBtb3VudA0KPiA+ICAgbm90aWZpY2F0aW9uDQo+ID4NCj4gPiBTaW5jZSB0aGUgc3RydWN0
+IG5mc19jbGllbnQgZ2V0cyBhZGRlZCB0byB0aGUgZ2xvYmFsIG5mc19jbGllbnRfbGlzdA0KPiA+
+IGJlZm9yZSBpdCBpcyBpbml0aWFsaXNlZCwgaXQgaXMgcG9zc2libGUgdGhhdCBycGNfcGlwZWZz
+X2V2ZW50IGNhbg0KPiA+IGVuZCB1cCB0cnlpbmcgdG8gY3JlYXRlIGlkbWFwcGVyIGVudHJpZXMg
+b24gc3VjaCBhIHRoaW5nLg0KPiA+DQo+ID4gVGhlIHNvbHV0aW9uIGlzIHRvIGhhdmUgdGhlIG1v
+dW50IG5vdGlmaWNhdGlvbiB3YWl0IGZvciB0aGUNCj4gPiBpbml0aWFsaXNhdGlvbiBvZiBlYWNo
+IG5mc19jbGllbnQgdG8gY29tcGxldGUsIGFuZCB0aGVuIHRvDQo+ID4gc2tpcCBhbnkgZW50cmll
+cyBmb3Igd2hpY2ggdGhlIGl0IGZhaWxlZC4NCj4gPg0KPiA+IFJlcG9ydGVkLWJ5OiBTdGFuaXNs
+YXYgS2luc2J1cnNreTxza2luc2J1cnNreUBwYXJhbGxlbHMuY29tPg0KPiA+IFNpZ25lZC1vZmYt
+Ynk6IFRyb25kIE15a2xlYnVzdDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4gPiAtLS0N
+Cj4gPiAgIGZzL25mcy9jbGllbnQuYyAgIHwgICAxMCArKysrKysrKysrDQo+ID4gICBmcy9uZnMv
+aWRtYXAuYyAgICB8ICAgMTUgKysrKysrKysrKysrKysrDQo+ID4gICBmcy9uZnMvaW50ZXJuYWwu
+aCB8ICAgIDEgKw0KPiA+ICAgMyBmaWxlcyBjaGFuZ2VkLCAyNiBpbnNlcnRpb25zKCspLCAwIGRl
+bGV0aW9ucygtKQ0KPiA+DQo+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9jbGllbnQuYyBiL2ZzL25m
+cy9jbGllbnQuYw0KPiA+IGluZGV4IDYwZjdlNGUuLmQzYzg1NTMgMTAwNjQ0DQo+ID4gLS0tIGEv
+ZnMvbmZzL2NsaWVudC5jDQo+ID4gKysrIGIvZnMvbmZzL2NsaWVudC5jDQo+ID4gQEAgLTU4Myw2
+ICs1ODMsMTYgQEAgZm91bmRfY2xpZW50Og0KPiA+ICAgCXJldHVybiBjbHA7DQo+ID4gICB9DQo+
+ID4NCj4gPiArc3RhdGljIGJvb2wgbmZzX2NsaWVudF9yZWFkeShjb25zdCBzdHJ1Y3QgbmZzX2Ns
+aWVudCAqY2xwKQ0KPiA+ICt7DQo+ID4gKwlyZXR1cm4gY2xwLT5jbF9jb25zX3N0YXRlPD0gTkZT
+X0NTX1JFQURZOw0KPiA+ICt9DQo+ID4gKw0KPiA+ICtpbnQgbmZzX3dhaXRfY2xpZW50X3JlYWR5
+KGNvbnN0IHN0cnVjdCBuZnNfY2xpZW50ICpjbHApDQo+ID4gK3sNCj4gPiArCXJldHVybiB3YWl0
+X2V2ZW50X2tpbGxhYmxlKG5mc19jbGllbnRfYWN0aXZlX3dxLCBuZnNfY2xpZW50X3JlYWR5KGNs
+cCkpOw0KPiA+ICt9DQo+ID4gKw0KPiA+ICAgLyoNCj4gPiAgICAqIE1hcmsgYSBzZXJ2ZXIgYXMg
+cmVhZHkgb3IgZmFpbGVkDQo+ID4gICAgKi8NCj4gPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2lkbWFw
+LmMgYi9mcy9uZnMvaWRtYXAuYw0KPiA+IGluZGV4IDNlOGVkYmUuLmMwNzUzYzUgMTAwNjQ0DQo+
+ID4gLS0tIGEvZnMvbmZzL2lkbWFwLmMNCj4gPiArKysgYi9mcy9uZnMvaWRtYXAuYw0KPiA+IEBA
+IC01MzAsOSArNTMwLDI0IEBAIHN0YXRpYyBzdHJ1Y3QgbmZzX2NsaWVudCAqbmZzX2dldF9jbGll
+bnRfZm9yX2V2ZW50KHN0cnVjdCBuZXQgKm5ldCwgaW50IGV2ZW50KQ0KPiA+ICAgCXN0cnVjdCBu
+ZnNfbmV0ICpubiA9IG5ldF9nZW5lcmljKG5ldCwgbmZzX25ldF9pZCk7DQo+ID4gICAJc3RydWN0
+IGRlbnRyeSAqY2xfZGVudHJ5Ow0KPiA+ICAgCXN0cnVjdCBuZnNfY2xpZW50ICpjbHA7DQo+ID4g
+KwlpbnQgZXJyOw0KPiA+DQo+ID4gK3Jlc3RhcnQ6DQo+ID4gICAJc3Bpbl9sb2NrKCZubi0+bmZz
+X2NsaWVudF9sb2NrKTsNCj4gPiAgIAlsaXN0X2Zvcl9lYWNoX2VudHJ5KGNscCwmbm4tPm5mc19j
+bGllbnRfbGlzdCwgY2xfc2hhcmVfbGluaykgew0KPiA+ICsJCS8qIFdhaXQgZm9yIGluaXRpYWxp
+c2F0aW9uIHRvIGZpbmlzaCAqLw0KPiA+ICsJCWlmIChjbHAtPmNsX2NvbnNfc3RhdGU+ICBORlNf
+Q1NfUkVBRFkpIHsNCj4gPiArCQkJYXRvbWljX2luYygmY2xwLT5jbF9jb3VudCk7DQo+ID4gKwkJ
+CXNwaW5fdW5sb2NrKCZubi0+bmZzX2NsaWVudF9sb2NrKTsNCj4gPiArCQkJZXJyID0gbmZzX3dh
+aXRfY2xpZW50X3JlYWR5KGNscCk7DQo+IA0KPiANCj4gV2hhdCBhYm91dCBORlN2NC4xID8NCj4g
+SXQncyBjbGllbnRzIE5GU19DU19SRUFEWSBzdGF0dXMgZGVwZW5kcyBvbiBzZXNzaW9uIGVzdGFi
+bGlzaGluZyBSUEMgY2FsbHMuLi4NCj4gV2hpY2ggaW4gdHVybiBjYW4gaHVuZyB1cCBwaXBlZnMg
+bW91bnQgY2FsbC4uLg0KDQpUaGUgYWx0ZXJuYXRpdmUgdGhlbiBpcyB0byB3YWl0IGZvciBjbF9j
+b25zX3N0YXRlICE9IE5GU19DU19JTklUSU5HLg0KVGhhdCBzaG91bGRuJ3QgcmVxdWlyZSBhbnkg
+dXBjYWxscywgYW5kIHNvIHNob3VsZG4ndCBiZSBhYmxlIHRvDQpkZWFkbG9jay4NCg0KLS0gDQpU
+cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRy
+b25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
