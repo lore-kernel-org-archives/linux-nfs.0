@@ -1,86 +1,224 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43969 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:57765 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758695Ab2EVOUi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 May 2012 10:20:38 -0400
-Date: Tue, 22 May 2012 10:20:36 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Simo Sorce <simo@redhat.com>, "bfields@redhat.com" <bfields@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/4] SUNRPC: Add RPC based upcall mechanism for RPCGSS
- auth
-Message-ID: <20120522142035.GC891@fieldses.org>
-References: <1337087550-9821-1-git-send-email-simo@redhat.com>
- <1337087550-9821-4-git-send-email-simo@redhat.com>
- <20120522124728.GB891@fieldses.org>
- <1337691607.16840.178.camel@willson.li.ssimo.org>
- <4FBB91EE.3010307@parallels.com>
- <1337692966.16840.181.camel@willson.li.ssimo.org>
- <4FBB9551.9010407@parallels.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FBB9551.9010407@parallels.com>
+	id S1760650Ab2EWRcu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 May 2012 13:32:50 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Andy Adamson <andros@netapp.com>
+Subject: [PATCH 1/3] NFSv4.1: Fix session initialisation races
+Date: Wed, 23 May 2012 13:32:41 -0400
+Message-Id: <1337794363-11905-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 22, 2012 at 05:32:01PM +0400, Stanislav Kinsbursky wrote:
-> On 22.05.2012 17:22, Simo Sorce wrote:
-> >On Tue, 2012-05-22 at 17:17 +0400, Stanislav Kinsbursky wrote:
-> >>On 22.05.2012 17:00, Simo Sorce wrote:
-> >>>On Tue, 2012-05-22 at 08:47 -0400, J. Bruce Fields wrote:
-> >>>>Have you and Stanislav talked about fitting this with the ongoing
-> >>>>container work?
-> >>>
-> >>>No, I wanted to make it work for the normal case first, I assume it will
-> >>>be simple enough to change the code to work with containers later.
-> >>>Main reason is that I have no way to test containerized stuff.
-> >>>
-> >>
-> >>
-> >>It's not that hard to "containerize" this code.
-> >>All you need is to bypass rqstp->rq_xprt->xpt_net to gssp_rpc_create().
-> >>I.e. either add net as a parameter to
-> >>gssp_accept_sec_context_upcall()->gssp_call()->get_clnt()->gssp_rpc_create()
-> >>prototypes or pass it as a part of gssp_upcall_data structure and then pass as a
-> >>parameter to gssp_call()->get_clnt()->gssp_rpc_create().
-> >>
-> >>This will suits you. I.e. I'm sure that you'll not experience any changes
-> >>comparing to current behavior.
-> >
-> >This should be easy enough.
-> >
-> >>>If I understand it correctly, all is needed is to allow attaching to
-> >>>different sockets for different containers ?
-> >>>
-> >>
-> >>Sorry, but I don't understand the sentence.
-> >>Starting from kernel 3.3 SUNRPC layer if fully containerized. I.e. all network
-> >>related resources now carefully allocated and destroyed per and with network
-> >>namespace.
-> >>And it would be really great, if the layer will remain containerized in future.
-> >
-> >I need guidance here. I need to know what it means to 'remain
-> >containerized', does it mean I need to do something special for the
-> >socket handling ?
-> >
-> 
-> It actually means, that no hard-coded init_net references should
-> appear - and that's all. Required network context have to be taken
-> from currently existent objects (like RPC client, RPC service, etc)
-> and, if not available (it's very rare case - like NFS mount call),
-> from current->nsproxy->net_ns.
-> You don't need to do anything special except this.
-> There will be a problem with your patches in container, because you
-> are using unix socket. But this problem is not in your patches but
-> in unix sockets themselves. So don't worry about it.
+Session initialisation is not complete until the lease manager
+has run. We need to ensure that both nfs4_init_session and
+nfs4_init_ds_session do so, and that they check for any resulting
+errors in clp->cl_cons_state.
 
-Could you remind me what the problem with unix sockets is?  (Or just
-point me to old email....  I'm sure we've discussed it before.)
+Only after this is done, can nfs4_ds_connect check the contents
+of clp->cl_exchange_flags.
 
-In particular: the current svcgssd communication method is using one of
-the sunrpc caches.  If we convert now to this method (which uses a unix
-socket) would there be a loss in functionality, until the unix sockets
-problems are fixed?
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/client.c            |   16 ---------
+ fs/nfs/internal.h          |    3 +-
+ fs/nfs/nfs4filelayoutdev.c |   23 +------------
+ fs/nfs/nfs4proc.c          |   77 ++++++++++++++++++++++++++++---------------
+ 4 files changed, 52 insertions(+), 67 deletions(-)
 
---b.
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 60f7e4e..78970a1 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -593,22 +593,6 @@ void nfs_mark_client_ready(struct nfs_client *clp, int state)
+ }
+ 
+ /*
+- * With sessions, the client is not marked ready until after a
+- * successful EXCHANGE_ID and CREATE_SESSION.
+- *
+- * Map errors cl_cons_state errors to EPROTONOSUPPORT to indicate
+- * other versions of NFS can be tried.
+- */
+-int nfs4_check_client_ready(struct nfs_client *clp)
+-{
+-	if (!nfs4_has_session(clp))
+-		return 0;
+-	if (clp->cl_cons_state < NFS_CS_READY)
+-		return -EPROTONOSUPPORT;
+-	return 0;
+-}
+-
+-/*
+  * Initialise the timeout values for a connection
+  */
+ static void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index b777bda..00b66de 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -168,7 +168,6 @@ extern struct nfs_server *nfs_clone_server(struct nfs_server *,
+ 					   struct nfs_fattr *,
+ 					   rpc_authflavor_t);
+ extern void nfs_mark_client_ready(struct nfs_client *clp, int state);
+-extern int nfs4_check_client_ready(struct nfs_client *clp);
+ extern struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
+ 					     const struct sockaddr *ds_addr,
+ 					     int ds_addrlen, int ds_proto);
+@@ -237,7 +236,7 @@ extern const u32 nfs41_maxwrite_overhead;
+ extern struct rpc_procinfo nfs4_procedures[];
+ #endif
+ 
+-extern int nfs4_init_ds_session(struct nfs_client *clp);
++extern int nfs4_init_ds_session(struct nfs_client *, unsigned long);
+ 
+ /* proc.c */
+ void nfs_close_context(struct nfs_open_context *ctx, int is_sync);
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index c9cff9a..0764c98 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -176,28 +176,7 @@ nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
+ 		goto out;
+ 	}
+ 
+-	if ((clp->cl_exchange_flags & EXCHGID4_FLAG_MASK_PNFS) != 0) {
+-		if (!is_ds_client(clp)) {
+-			status = -ENODEV;
+-			goto out_put;
+-		}
+-		ds->ds_clp = clp;
+-		dprintk("%s [existing] server=%s\n", __func__,
+-			ds->ds_remotestr);
+-		goto out;
+-	}
+-
+-	/*
+-	 * Do not set NFS_CS_CHECK_LEASE_TIME instead set the DS lease to
+-	 * be equal to the MDS lease. Renewal is scheduled in create_session.
+-	 */
+-	spin_lock(&mds_srv->nfs_client->cl_lock);
+-	clp->cl_lease_time = mds_srv->nfs_client->cl_lease_time;
+-	spin_unlock(&mds_srv->nfs_client->cl_lock);
+-	clp->cl_last_renewal = jiffies;
+-
+-	/* New nfs_client */
+-	status = nfs4_init_ds_session(clp);
++	status = nfs4_init_ds_session(clp, mds_srv->nfs_client->cl_lease_time);
+ 	if (status)
+ 		goto out_put;
+ 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 99650aa..272c4ad 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5605,53 +5605,76 @@ int nfs4_proc_destroy_session(struct nfs4_session *session)
+ 	return status;
+ }
+ 
++/*
++ * With sessions, the client is not marked ready until after a
++ * successful EXCHANGE_ID and CREATE_SESSION.
++ *
++ * Map errors cl_cons_state errors to EPROTONOSUPPORT to indicate
++ * other versions of NFS can be tried.
++ */
++static int nfs41_check_session_ready(struct nfs_client *clp)
++{
++	int ret;
++	
++	ret = nfs4_client_recover_expired_lease(clp);
++	if (ret)
++		return ret;
++	if (clp->cl_cons_state < NFS_CS_READY)
++		return -EPROTONOSUPPORT;
++	return 0;
++}
++
+ int nfs4_init_session(struct nfs_server *server)
+ {
+ 	struct nfs_client *clp = server->nfs_client;
+ 	struct nfs4_session *session;
+ 	unsigned int rsize, wsize;
+-	int ret;
+ 
+ 	if (!nfs4_has_session(clp))
+ 		return 0;
+ 
+ 	session = clp->cl_session;
+-	if (!test_and_clear_bit(NFS4_SESSION_INITING, &session->session_state))
+-		return 0;
++	spin_lock(&clp->cl_lock);
++	if (test_and_clear_bit(NFS4_SESSION_INITING, &session->session_state)) {
+ 
+-	rsize = server->rsize;
+-	if (rsize == 0)
+-		rsize = NFS_MAX_FILE_IO_SIZE;
+-	wsize = server->wsize;
+-	if (wsize == 0)
+-		wsize = NFS_MAX_FILE_IO_SIZE;
++		rsize = server->rsize;
++		if (rsize == 0)
++			rsize = NFS_MAX_FILE_IO_SIZE;
++		wsize = server->wsize;
++		if (wsize == 0)
++			wsize = NFS_MAX_FILE_IO_SIZE;
+ 
+-	session->fc_attrs.max_rqst_sz = wsize + nfs41_maxwrite_overhead;
+-	session->fc_attrs.max_resp_sz = rsize + nfs41_maxread_overhead;
++		session->fc_attrs.max_rqst_sz = wsize + nfs41_maxwrite_overhead;
++		session->fc_attrs.max_resp_sz = rsize + nfs41_maxread_overhead;
++	}
++	spin_unlock(&clp->cl_lock);
+ 
+-	ret = nfs4_recover_expired_lease(server);
+-	if (!ret)
+-		ret = nfs4_check_client_ready(clp);
+-	return ret;
++	return nfs41_check_session_ready(clp);
+ }
+ 
+-int nfs4_init_ds_session(struct nfs_client *clp)
++int nfs4_init_ds_session(struct nfs_client *clp, unsigned long lease_time)
+ {
+ 	struct nfs4_session *session = clp->cl_session;
+ 	int ret;
+ 
+-	if (!test_and_clear_bit(NFS4_SESSION_INITING, &session->session_state))
+-		return 0;
+-
+-	ret = nfs4_client_recover_expired_lease(clp);
+-	if (!ret)
+-		/* Test for the DS role */
+-		if (!is_ds_client(clp))
+-			ret = -ENODEV;
+-	if (!ret)
+-		ret = nfs4_check_client_ready(clp);
+-	return ret;
++	spin_lock(&clp->cl_lock);
++	if (test_and_clear_bit(NFS4_SESSION_INITING, &session->session_state)) {
++		/*
++		 * Do not set NFS_CS_CHECK_LEASE_TIME instead set the
++		 * DS lease to be equal to the MDS lease.
++		 */
++		clp->cl_lease_time = lease_time;
++		clp->cl_last_renewal = jiffies;
++	}
++	spin_unlock(&clp->cl_lock);
+ 
++	ret = nfs41_check_session_ready(clp);
++	if (ret)
++		return ret;
++	/* Test for the DS role */
++	if (!is_ds_client(clp))
++		return -ENODEV;
++	return 0;
+ }
+ EXPORT_SYMBOL_GPL(nfs4_init_ds_session);
+ 
+-- 
+1.7.7.6
+
