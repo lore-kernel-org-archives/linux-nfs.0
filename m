@@ -1,65 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:36838 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:58480 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753141Ab2ECDlT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 May 2012 23:41:19 -0400
-Received: from loghyr.hq.netapp.com (loghyr.hq.netapp.com [10.34.16.47])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q433f2WY019082
-	for <linux-nfs@vger.kernel.org>; Wed, 2 May 2012 20:41:02 -0700 (PDT)
-Received: from loghyr.hq.netapp.com (localhost.localdomain [127.0.0.1])
-	by loghyr.hq.netapp.com (8.14.5/8.14.5) with ESMTP id q433f20R024588
-	for <linux-nfs@vger.kernel.org>; Wed, 2 May 2012 20:41:02 -0700
-Received: (from thomas@localhost)
-	by loghyr.hq.netapp.com (8.14.5/8.14.5/Submit) id q433f2S9024587
-	for linux-nfs@vger.kernel.org; Wed, 2 May 2012 20:41:02 -0700
-Date: Wed, 2 May 2012 20:41:01 -0700
-From: Tom Haynes <thomas@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: Difference in tshark displays
-Message-ID: <20120503034101.GA24583@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+	id S1751357Ab2EWWFu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 May 2012 18:05:50 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/2] vfs: remove unused __d_splice_alias argument
+Date: Wed, 23 May 2012 18:05:46 -0400
+Message-Id: <1337810746-16240-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1337810746-16240-1-git-send-email-bfields@redhat.com>
+References: <1337810746-16240-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On my Arch client, tshark (version 1.6.7) displays a single procedure out of the compound.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-[thomas@psyklo tmp]$ sudo tshark "host 192.168.2.102 && host 192.168.2.105" -R nfs
-tshark: Lua: Error during loading:
- [string "/usr/share/wireshark/init.lua"]:45: dofile has been disabled
-Running as user "root" and group "root". This could be dangerous.
-Capturing on eth0
-  0.000000 192.168.2.102 -> 192.168.2.105 NFS 306 V4 Call OPEN DH:0x7d7d8f5e/.gitconfig
-  0.000232 192.168.2.105 -> 192.168.2.102 NFS 522 V4 Reply (Call In 1) OPEN StateID:0x219c
-  0.000331 192.168.2.102 -> 192.168.2.105 NFS 206 V4 Call GETATTR FH:0xa109f3ab
-  0.000481 192.168.2.105 -> 192.168.2.102 NFS 302 V4 Reply (Call In 4) GETATTR
-  0.000586 192.168.2.102 -> 192.168.2.105 NFS 222 V4 Call READ StateID:0x0451 Offset:0 Len:142
-  0.000812 192.168.2.105 -> 192.168.2.102 NFS 274 V4 Reply (Call In 6) READ
-  0.000874 192.168.2.102 -> 192.168.2.105 NFS 230 V4 Call CLOSE StateID:0x219c
-  0.001103 192.168.2.105 -> 192.168.2.102 NFS 202 V4 Reply (Call In 8) CLOSE
-[thomas@psyklo thomas]$ tshark -v
-TShark 1.6.7 (SVN Rev Unknown from unknown)
+Nobody sets want_disconn any more.
 
-On my Fedora 15 server, tshark (version 1.4.12) displays all of the procedures in the compound:
+Reported-by: Peng Tao <bergwolf@gmail.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/dcache.c |   13 +++++--------
+ 1 file changed, 5 insertions(+), 8 deletions(-)
 
-[thomas@wont ~]$ sudo tshark "host 192.168.2.102 && host 192.168.2.105" -R nfs
-Running as user "root" and group "root". This could be dangerous.
-Capturing on eth0
-  0.000258 192.168.2.102 -> 192.168.2.105 NFS V4 COMP Call PUTFH GETATTR
-  0.000610 192.168.2.105 -> 192.168.2.102 NFS V4 COMP Reply (Call In 6) PUTFH GETATTR
-  0.000940 192.168.2.102 -> 192.168.2.105 NFS V4 COMP Call PUTFH ACCESS GETATTR
-  0.000973 192.168.2.105 -> 192.168.2.102 NFS V4 COMP Reply (Call In 10) PUTFH ACCESS GETATTR
-  0.001169 192.168.2.102 -> 192.168.2.105 NFS V4 COMP Call PUTFH GETATTR
-  0.001203 192.168.2.105 -> 192.168.2.102 NFS V4 COMP Reply (Call In 12) PUTFH GETATTR
-  0.001425 192.168.2.102 -> 192.168.2.105 NFS V4 COMP Call PUTFH ACCESS GETATTR
-  0.001459 192.168.2.105 -> 192.168.2.102 NFS V4 COMP Reply (Call In 14) PUTFH ACCESS GETATTR
-[thomas@wont ~]$ tshark -v
-TShark 1.4.12
-
-Is there anyway to have the output display all of the procedures on one line like with the old format?
-
-I.e., sometimes it is nice to have the new way, a quick summary, but other times I'd like to be able
-to see the summary of the whole compound.
-
+diff --git a/fs/dcache.c b/fs/dcache.c
+index 2434c1e..8e34e91 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -649,8 +649,6 @@ EXPORT_SYMBOL(dget_parent);
+ /**
+  * d_find_alias - grab a hashed alias of inode
+  * @inode: inode in question
+- * @want_discon:  flag, used by d_splice_alias, to request
+- *          that only a DISCONNECTED alias be returned.
+  *
+  * If inode has a hashed alias, or is a directory and has any alias,
+  * acquire the reference to alias and return it. Otherwise return NULL.
+@@ -659,10 +657,9 @@ EXPORT_SYMBOL(dget_parent);
+  * of a filesystem.
+  *
+  * If the inode has an IS_ROOT, DCACHE_DISCONNECTED alias, then prefer
+- * any other hashed alias over that one unless @want_discon is set,
+- * in which case only return an IS_ROOT, DCACHE_DISCONNECTED alias.
++ * any other hashed alias over that.
+  */
+-static struct dentry *__d_find_alias(struct inode *inode, int want_discon)
++static struct dentry *__d_find_alias(struct inode *inode)
+ {
+ 	struct dentry *alias, *discon_alias;
+ 
+@@ -674,7 +671,7 @@ again:
+ 			if (IS_ROOT(alias) &&
+ 			    (alias->d_flags & DCACHE_DISCONNECTED)) {
+ 				discon_alias = alias;
+-			} else if (!want_discon) {
++			} else {
+ 				__dget_dlock(alias);
+ 				spin_unlock(&alias->d_lock);
+ 				return alias;
+@@ -705,7 +702,7 @@ struct dentry *d_find_alias(struct inode *inode)
+ 
+ 	if (!list_empty(&inode->i_dentry)) {
+ 		spin_lock(&inode->i_lock);
+-		de = __d_find_alias(inode, 0);
++		de = __d_find_alias(inode);
+ 		spin_unlock(&inode->i_lock);
+ 	}
+ 	return de;
+@@ -2395,7 +2392,7 @@ struct dentry *d_materialise_unique(struct dentry *dentry, struct inode *inode)
+ 		struct dentry *alias;
+ 
+ 		/* Does an aliased dentry already exist? */
+-		alias = __d_find_alias(inode, 0);
++		alias = __d_find_alias(inode);
+ 		if (alias) {
+ 			actual = alias;
+ 			write_seqlock(&rename_lock);
 -- 
-thomas@netapp.com, ex-cfb
+1.7.9.5
+
