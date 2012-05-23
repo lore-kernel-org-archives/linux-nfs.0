@@ -1,28 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:60512 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750816Ab2E0Fdl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 May 2012 01:33:41 -0400
-Received: by pbbrp8 with SMTP id rp8so3356136pbb.19
-        for <linux-nfs@vger.kernel.org>; Sat, 26 May 2012 22:33:41 -0700 (PDT)
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/3] NFS41: make block layout driver work w/ NFS DIO changes
-Date: Sun, 27 May 2012 13:32:57 +0800
-Message-Id: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:57765 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760650Ab2EWRcw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 May 2012 13:32:52 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 3/3] NFS: Add memory barriers to the nfs_client->cl_cons_state initialisation
+Date: Wed, 23 May 2012 13:32:43 -0400
+Message-Id: <1337794363-11905-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1337794363-11905-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1337794363-11905-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1337794363-11905-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This applies to Trond's devel branch.
+Ensure that a process that uses the nfs_client->cl_cons_state test
+for whether the initialisation process is finished does not read
+stale data.
 
-Peng Tao (3):
-  NFS41: add pnfs_dio_begin/dio_end
-  pnfsblock: call block plug in bl_dio_begin/end
-  pnfsblock: bail out unaligned DIO
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/client.c |    5 +++++
+ fs/nfs/idmap.c  |    1 +
+ 2 files changed, 6 insertions(+), 0 deletions(-)
 
- fs/nfs/blocklayout/blocklayout.c |   35 ++++++++++++++++++++++++++++++
- fs/nfs/direct.c                  |   43 ++++++++++++++++++++++++++++++++++---
- fs/nfs/pnfs.h                    |   38 +++++++++++++++++++++++++++++++++
- 3 files changed, 112 insertions(+), 4 deletions(-)
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index e6070ea..4be85f9 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -456,6 +456,8 @@ static bool nfs4_cb_match_client(const struct sockaddr *addr,
+ 	    clp->cl_cons_state == NFS_CS_SESSION_INITING))
+ 		return false;
+ 
++	smp_rmb();
++
+ 	/* Match the version and minorversion */
+ 	if (clp->rpc_ops->version != 4 ||
+ 	    clp->cl_minorversion != minorversion)
+@@ -587,6 +589,8 @@ found_client:
+ 		return ERR_PTR(error);
+ 	}
+ 
++	smp_rmb();
++
+ 	BUG_ON(clp->cl_cons_state != NFS_CS_READY);
+ 
+ 	dprintk("--> nfs_get_client() = %p [share]\n", clp);
+@@ -598,6 +602,7 @@ found_client:
+  */
+ void nfs_mark_client_ready(struct nfs_client *clp, int state)
+ {
++	smp_wmb();
+ 	clp->cl_cons_state = state;
+ 	wake_up_all(&nfs_client_active_wq);
+ }
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index 6ca949b..7d4e8dd 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -548,6 +548,7 @@ restart:
+ 		/* Skip nfs_clients that failed to initialise */
+ 		if (clp->cl_cons_state < 0)
+ 			continue;
++		smp_rmb();
+ 		if (clp->rpc_ops != &nfs_v4_clientops)
+ 			continue;
+ 		cl_dentry = clp->cl_idmap->idmap_pipe->dentry;
+-- 
+1.7.7.6
 
