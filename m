@@ -1,89 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:20319 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:52733 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753360Ab2EVMku (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 May 2012 08:40:50 -0400
-Subject: [PATCH] NFS: init client before declaration
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Tue, 22 May 2012 16:40:49 +0400
-Message-ID: <20120522124018.338.20817.stgit@localhost.localdomain>
+	id S1751526Ab2EWWHl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 May 2012 18:07:41 -0400
+Date: Wed, 23 May 2012 18:07:39 -0400
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] vfs: stop d_splice_alias creating directory aliases
+Message-ID: <20120523220739.GA16274@fieldses.org>
+References: <1337810746-16240-1-git-send-email-bfields@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1337810746-16240-1-git-send-email-bfields@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Client have to be initialized prior to adding it to per-net clients list,
-because otherwise there are races, shown below:
+These two patches are a resend.  I think they're appropriate for 3.5.
 
-CPU#0					CPU#1
-_____					_____
+--b.
 
-nfs_get_client
-nfs_alloc_client
-list_add(..., nfs_client_list)
-					rpc_fill_super
-					rpc_pipefs_event
-					nfs_get_client_for_event
-					__rpc_pipefs_event
-					(clp->cl_rpcclient is uninitialized)
-					BUG()
-init_client
-clp->cl_rpcclient = ...
-
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfs/client.c |   22 ++++++++++++----------
- 1 files changed, 12 insertions(+), 10 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index ae29d4f..9bf4702 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -525,7 +525,7 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
- 		cl_init->hostname ?: "", cl_init->rpc_ops->version);
- 
- 	/* see if the client already exists */
--	do {
-+	while (1) {
- 		spin_lock(&nn->nfs_client_lock);
- 
- 		clp = nfs_match_client(cl_init);
-@@ -537,10 +537,18 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
- 		spin_unlock(&nn->nfs_client_lock);
- 
- 		new = nfs_alloc_client(cl_init);
--	} while (!IS_ERR(new));
-+		if (IS_ERR(new)) {
-+			dprintk("--> nfs_get_client() = %ld [failed]\n", PTR_ERR(new));
-+			return new;
-+		}
- 
--	dprintk("--> nfs_get_client() = %ld [failed]\n", PTR_ERR(new));
--	return new;
-+		error = cl_init->rpc_ops->init_client(new, timeparms, ip_addr,
-+						      authflavour, noresvport);
-+		if (error < 0) {
-+			nfs_put_client(new);
-+			return ERR_PTR(error);
-+		}
-+	}
- 
- 	/* install a new client and return with it unready */
- install_client:
-@@ -548,12 +556,6 @@ install_client:
- 	list_add(&clp->cl_share_link, &nn->nfs_client_list);
- 	spin_unlock(&nn->nfs_client_lock);
- 
--	error = cl_init->rpc_ops->init_client(clp, timeparms, ip_addr,
--					      authflavour, noresvport);
--	if (error < 0) {
--		nfs_put_client(clp);
--		return ERR_PTR(error);
--	}
- 	dprintk("--> nfs_get_client() = %p [new]\n", clp);
- 	return clp;
- 
-
+On Wed, May 23, 2012 at 06:05:45PM -0400, J. Bruce Fields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> A directory should never have more than one dentry pointing to it.
+> 
+> But d_splice_alias() will add one if it finds a directory with an
+> already-existing non-DISCONNECTED dentry.
+> 
+> I can't find an obvious reproducer, but I also can't see what prevents
+> d_splice_alias() from encountering such a case.
+> 
+> It therefore seems safest to allow d_splice_alias to use any dentry it
+> finds.
+> 
+> (Prior to the removal of dentry_unhash() from vfs_rmdir(), around v3.0,
+> this could cause an nfsd deadlock like this:
+> 
+> 	- Somebody attempts to remove a non-empty directory.
+> 	- The dentry_unhash() in vfs_rmdir() unhashes the dentry
+> 	  pointing to the non-empty directory.
+> 	- ->rmdir() then fails with -ENOTEMPTY
+> 	- Before the vfs_rmdir() caller reaches dput(), an nfsd process
+> 	  in rename looks up the directory by filehandle; at the end of
+> 	  that lookup, this dentry is found by d_alloc_anon(), and a
+> 	  reference is taken on it, preventing dput() from removing it.
+> 	- A regular lookup of the directory calls d_splice_alias(),
+> 	  finds only an unhashed (not a DISCONNECTED) dentry, and
+> 	  insteads adds a new one, so the directory now has two
+> 	  dentries.
+> 	- The nfsd process in rename, which was previously looking up
+> 	  the source directory of the rename, now looks up the target
+> 	  directory (which is the same), and gets the dentry newly
+> 	  created by the previous lookup.
+> 	- The rename, seeing two different dentries, assumes this is a
+> 	  cross-directory rename and attempts to take the i_mutex on the
+> 	  directory twice.
+> 
+> That reproducer no longer exists, but I don't think there was anything
+> fundamentally incorrect about the vfs_rmdir() behavior there, so I think
+> the real fault was here in d_splice_alias().)
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/dcache.c |    3 +--
+>  1 file changed, 1 insertion(+), 2 deletions(-)
+> 
+> diff --git a/fs/dcache.c b/fs/dcache.c
+> index b60ddc4..2434c1e 100644
+> --- a/fs/dcache.c
+> +++ b/fs/dcache.c
+> @@ -1606,9 +1606,8 @@ struct dentry *d_splice_alias(struct inode *inode, struct dentry *dentry)
+>  
+>  	if (inode && S_ISDIR(inode->i_mode)) {
+>  		spin_lock(&inode->i_lock);
+> -		new = __d_find_alias(inode, 1);
+> +		new = __d_find_any_alias(inode);
+>  		if (new) {
+> -			BUG_ON(!(new->d_flags & DCACHE_DISCONNECTED));
+>  			spin_unlock(&inode->i_lock);
+>  			security_d_instantiate(new, inode);
+>  			d_move(new, dentry);
+> -- 
+> 1.7.9.5
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
