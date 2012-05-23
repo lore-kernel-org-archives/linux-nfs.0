@@ -1,50 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:56820 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:60626 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760421Ab2EKOcg convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 May 2012 10:32:36 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: Lev Solomonov <solo@tonian.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 1/3] NFS: Create an NFS v3 stat_to_errno()
-Date: Fri, 11 May 2012 14:32:34 +0000
-Message-ID: <C4A6A7FE-5F58-45C5-AFA2-0AF47C6811B2@netapp.com>
-References: <1336682840-10799-1-git-send-email-bjschuma@netapp.com>
- <CAOdHTRDOxOvPo-uAOGNMnF2+Nf+p0Ni0KoaZTvh8kM2QU=r1oQ@mail.gmail.com>
- <4FAD08BE.4060408@netapp.com>
-In-Reply-To: <4FAD08BE.4060408@netapp.com>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+	id S1760347Ab2EWVkl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 May 2012 17:40:41 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 01/10] nfsd4: setclientid remove unnecessary terms from a logical expression
+Date: Wed, 23 May 2012 17:40:31 -0400
+Message-Id: <1337809240-15770-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1337809240-15770-1-git-send-email-bfields@redhat.com>
+References: <1337809240-15770-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Yes, please resend
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Cheers
-  Trond
---
-Trond Myklebust
-Linux NFS client maintainer
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |    5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
-On May 11, 2012, at 8:40 AM, Bryan Schumaker wrote:
-
-> On 05/11/2012 04:12 AM, Lev Solomonov wrote:
-> 
->> On Thu, May 10, 2012 at 11:47 PM,  <bjschuma@netapp.com> wrote:
->>> From: Bryan Schumaker <bjschuma@netapp.com>
->>> 
->>> In theory, NFS v3 can have different error versions than NFS v2. v4 is
->>> already using its own nfs4_stat_to_errno() to mapp error codes, so
->> 
->> ^mapp^map ?
-> 
-> 
-> Good catch.  Trond, should I resend the patch?
-> 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 21266c7..3dc0289 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2344,9 +2344,8 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+ 			nfsd4_probe_callback(conf);
+ 			status = nfs_ok;
+ 		}
+-	} else if ((!conf || (conf && !same_verf(&conf->cl_confirm, &confirm)))
+-	    && (!unconf || (unconf && !same_verf(&unconf->cl_confirm,
+-				    				&confirm)))) {
++	} else if ((!conf || !same_verf(&conf->cl_confirm, &confirm))
++	    && (!unconf || !same_verf(&unconf->cl_confirm, &confirm))) {
+ 		/*
+ 		 * RFC 3530 14.2.34 CASE 4:
+ 		 * Client probably hasn't noticed that we rebooted yet.
+-- 
+1.7.9.5
 
