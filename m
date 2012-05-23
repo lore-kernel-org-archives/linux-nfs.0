@@ -1,107 +1,164 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:19630 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:51870 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754330Ab2EPBcm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 May 2012 21:32:42 -0400
-Date: Tue, 15 May 2012 21:32:39 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] NFSD: SETCLIENTID_CONFIRM returns NFS4ERR_CLID_INUSE
- too often
-Message-ID: <20120516013239.GA24133@pad.fieldses.org>
-References: <20120515213808.1518.81260.stgit@lebasque.1015granger.net>
- <20120515214207.1518.78590.stgit@lebasque.1015granger.net>
+	id S933028Ab2EWTOb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 May 2012 15:14:31 -0400
+Received: from vmwexceht01-prd.hq.netapp.com (vmwexceht01-prd.hq.netapp.com [10.106.76.239])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q4NJEU9P000383
+	for <linux-nfs@vger.kernel.org>; Wed, 23 May 2012 12:14:30 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/3] NFSv4.1: Fix session initialisation races
+Date: Wed, 23 May 2012 19:14:26 +0000
+Message-ID: <1337800469.12011.20.camel@lade.trondhjem.org>
+References: <1337794363-11905-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <3BB64A14-905A-47D1-B3C2-65F7368C6007@netapp.com>
+In-Reply-To: <3BB64A14-905A-47D1-B3C2-65F7368C6007@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120515214207.1518.78590.stgit@lebasque.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 15, 2012 at 05:42:08PM -0400, Chuck Lever wrote:
-> According to RFC 3530bis, the only items SETCLIENTID_CONFIRM
-> processing should be concerned with is the clientid, clientid
-> verifier, and authentication flavor.
-
-Nit: the spec says "principal", not "authentication flavor".
-
-(I was looking at this yesterday because our current code only compares
-uid's, which is pretty meaningless--any client using a krb5 service
-principal, for example, will likely get mapped to the same uid--so I
-have patches that instead compare flavor, principal name (when we have
-it--our current userspace only passes it down for service principals)
-and groups and auxiliary groups as well as uid.  But not IP address...)
-
-Anyway, this patch looks reasonable, thanks.
-
---b.
-
-> The client's IP address
-> is not supposed to be interesting.
-> 
-> And, NFS4ERR_CLID_INUSE is meant only for authentication flavor
-> mismatches.
-> 
-> I triggered this logic with a prototype UCS client -- one that
-> uses the same nfs_client_id4 string for all servers.  The client
-> mounted our server via its IPv4, then via its IPv6 address.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  fs/nfsd/nfs4state.c |   14 ++------------
->  1 files changed, 2 insertions(+), 12 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 7f71c69..27e6401 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -2213,7 +2213,6 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
->  			 struct nfsd4_compound_state *cstate,
->  			 struct nfsd4_setclientid_confirm *setclientid_confirm)
->  {
-> -	struct sockaddr *sa = svc_addr(rqstp);
->  	struct nfs4_client *conf, *unconf;
->  	nfs4_verifier confirm = setclientid_confirm->sc_confirm; 
->  	clientid_t * clid = &setclientid_confirm->sc_clientid;
-> @@ -2231,17 +2230,12 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
->  	conf = find_confirmed_client(clid);
->  	unconf = find_unconfirmed_client(clid);
->  
-> -	status = nfserr_clid_inuse;
-> -	if (conf && !rpc_cmp_addr((struct sockaddr *) &conf->cl_addr, sa))
-> -		goto out;
-> -	if (unconf && !rpc_cmp_addr((struct sockaddr *) &unconf->cl_addr, sa))
-> -		goto out;
-> -
->  	/*
->  	 * section 14.2.34 of RFC 3530 has a description of
->  	 * SETCLIENTID_CONFIRM request processing consisting
->  	 * of 4 bullet points, labeled as CASE1 - CASE4 below.
->  	 */
-> +	status = nfserr_clid_inuse;
->  	if (conf && unconf && same_verf(&confirm, &unconf->cl_confirm)) {
->  		/*
->  		 * RFC 3530 14.2.34 CASE 1:
-> @@ -2254,7 +2248,6 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
->  			nfsd4_probe_callback(conf);
->  			expire_client(unconf);
->  			status = nfs_ok;
-> -
->  		}
->  	} else if (conf && !unconf) {
->  		/*
-> @@ -2296,11 +2289,8 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
->  		 * Client probably hasn't noticed that we rebooted yet.
->  		 */
->  		status = nfserr_stale_clientid;
-> -	} else {
-> -		/* check that we have hit one of the cases...*/
-> -		status = nfserr_clid_inuse;
->  	}
-> -out:
-> +
->  	nfs4_unlock_state();
->  	return status;
->  }
-> 
+T24gV2VkLCAyMDEyLTA1LTIzIGF0IDE4OjM3ICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0K
+PiANCj4gT24gTWF5IDIzLCAyMDEyLCBhdCAxOjMyIFBNLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
+DQo+IA0KPiA+IFNlc3Npb24gaW5pdGlhbGlzYXRpb24gaXMgbm90IGNvbXBsZXRlIHVudGlsIHRo
+ZSBsZWFzZSBtYW5hZ2VyDQo+ID4gaGFzIHJ1bi4gV2UgbmVlZCB0byBlbnN1cmUgdGhhdCBib3Ro
+IG5mczRfaW5pdF9zZXNzaW9uIGFuZA0KPiA+IG5mczRfaW5pdF9kc19zZXNzaW9uIGRvIHNvLCBh
+bmQgdGhhdCB0aGV5IGNoZWNrIGZvciBhbnkgcmVzdWx0aW5nDQo+ID4gZXJyb3JzIGluIGNscC0+
+Y2xfY29uc19zdGF0ZS4NCj4gPiANCj4gPiBPbmx5IGFmdGVyIHRoaXMgaXMgZG9uZSwgY2FuIG5m
+czRfZHNfY29ubmVjdCBjaGVjayB0aGUgY29udGVudHMNCj4gPiBvZiBjbHAtPmNsX2V4Y2hhbmdl
+X2ZsYWdzLg0KPiA+IA0KPiA+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQu
+TXlrbGVidXN0QG5ldGFwcC5jb20+DQo+ID4gQ2M6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFw
+cC5jb20+DQo+ID4gLS0tDQo+ID4gZnMvbmZzL2NsaWVudC5jICAgICAgICAgICAgfCAgIDE2IC0t
+LS0tLS0tLQ0KPiA+IGZzL25mcy9pbnRlcm5hbC5oICAgICAgICAgIHwgICAgMyArLQ0KPiA+IGZz
+L25mcy9uZnM0ZmlsZWxheW91dGRldi5jIHwgICAyMyArLS0tLS0tLS0tLS0tDQo+ID4gZnMvbmZz
+L25mczRwcm9jLmMgICAgICAgICAgfCAgIDc3ICsrKysrKysrKysrKysrKysrKysrKysrKysrKyst
+LS0tLS0tLS0tLS0tLS0NCj4gPiA0IGZpbGVzIGNoYW5nZWQsIDUyIGluc2VydGlvbnMoKyksIDY3
+IGRlbGV0aW9ucygtKQ0KPiA+IA0KPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvY2xpZW50LmMgYi9m
+cy9uZnMvY2xpZW50LmMNCj4gPiBpbmRleCA2MGY3ZTRlLi43ODk3MGExIDEwMDY0NA0KPiA+IC0t
+LSBhL2ZzL25mcy9jbGllbnQuYw0KPiA+ICsrKyBiL2ZzL25mcy9jbGllbnQuYw0KPiA+IEBAIC01
+OTMsMjIgKzU5Myw2IEBAIHZvaWQgbmZzX21hcmtfY2xpZW50X3JlYWR5KHN0cnVjdCBuZnNfY2xp
+ZW50ICpjbHAsIGludCBzdGF0ZSkNCj4gPiB9DQo+ID4gDQo+ID4gLyoNCj4gPiAtICogV2l0aCBz
+ZXNzaW9ucywgdGhlIGNsaWVudCBpcyBub3QgbWFya2VkIHJlYWR5IHVudGlsIGFmdGVyIGENCj4g
+PiAtICogc3VjY2Vzc2Z1bCBFWENIQU5HRV9JRCBhbmQgQ1JFQVRFX1NFU1NJT04uDQo+ID4gLSAq
+DQo+ID4gLSAqIE1hcCBlcnJvcnMgY2xfY29uc19zdGF0ZSBlcnJvcnMgdG8gRVBST1RPTk9TVVBQ
+T1JUIHRvIGluZGljYXRlDQo+ID4gLSAqIG90aGVyIHZlcnNpb25zIG9mIE5GUyBjYW4gYmUgdHJp
+ZWQuDQo+ID4gLSAqLw0KPiA+IC1pbnQgbmZzNF9jaGVja19jbGllbnRfcmVhZHkoc3RydWN0IG5m
+c19jbGllbnQgKmNscCkNCj4gPiAtew0KPiA+IC0JaWYgKCFuZnM0X2hhc19zZXNzaW9uKGNscCkp
+DQo+ID4gLQkJcmV0dXJuIDA7DQo+ID4gLQlpZiAoY2xwLT5jbF9jb25zX3N0YXRlIDwgTkZTX0NT
+X1JFQURZKQ0KPiA+IC0JCXJldHVybiAtRVBST1RPTk9TVVBQT1JUOw0KPiA+IC0JcmV0dXJuIDA7
+DQo+ID4gLX0NCj4gPiAtDQo+ID4gLS8qDQo+ID4gICogSW5pdGlhbGlzZSB0aGUgdGltZW91dCB2
+YWx1ZXMgZm9yIGEgY29ubmVjdGlvbg0KPiA+ICAqLw0KPiA+IHN0YXRpYyB2b2lkIG5mc19pbml0
+X3RpbWVvdXRfdmFsdWVzKHN0cnVjdCBycGNfdGltZW91dCAqdG8sIGludCBwcm90bywNCj4gPiBk
+aWZmIC0tZ2l0IGEvZnMvbmZzL2ludGVybmFsLmggYi9mcy9uZnMvaW50ZXJuYWwuaA0KPiA+IGlu
+ZGV4IGI3NzdiZGEuLjAwYjY2ZGUgMTAwNjQ0DQo+ID4gLS0tIGEvZnMvbmZzL2ludGVybmFsLmgN
+Cj4gPiArKysgYi9mcy9uZnMvaW50ZXJuYWwuaA0KPiA+IEBAIC0xNjgsNyArMTY4LDYgQEAgZXh0
+ZXJuIHN0cnVjdCBuZnNfc2VydmVyICpuZnNfY2xvbmVfc2VydmVyKHN0cnVjdCBuZnNfc2VydmVy
+ICosDQo+ID4gCQkJCQkgICBzdHJ1Y3QgbmZzX2ZhdHRyICosDQo+ID4gCQkJCQkgICBycGNfYXV0
+aGZsYXZvcl90KTsNCj4gPiBleHRlcm4gdm9pZCBuZnNfbWFya19jbGllbnRfcmVhZHkoc3RydWN0
+IG5mc19jbGllbnQgKmNscCwgaW50IHN0YXRlKTsNCj4gPiAtZXh0ZXJuIGludCBuZnM0X2NoZWNr
+X2NsaWVudF9yZWFkeShzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwKTsNCj4gPiBleHRlcm4gc3RydWN0
+IG5mc19jbGllbnQgKm5mczRfc2V0X2RzX2NsaWVudChzdHJ1Y3QgbmZzX2NsaWVudCogbWRzX2Ns
+cCwNCj4gPiAJCQkJCSAgICAgY29uc3Qgc3RydWN0IHNvY2thZGRyICpkc19hZGRyLA0KPiA+IAkJ
+CQkJICAgICBpbnQgZHNfYWRkcmxlbiwgaW50IGRzX3Byb3RvKTsNCj4gPiBAQCAtMjM3LDcgKzIz
+Niw3IEBAIGV4dGVybiBjb25zdCB1MzIgbmZzNDFfbWF4d3JpdGVfb3ZlcmhlYWQ7DQo+ID4gZXh0
+ZXJuIHN0cnVjdCBycGNfcHJvY2luZm8gbmZzNF9wcm9jZWR1cmVzW107DQo+ID4gI2VuZGlmDQo+
+ID4gDQo+ID4gLWV4dGVybiBpbnQgbmZzNF9pbml0X2RzX3Nlc3Npb24oc3RydWN0IG5mc19jbGll
+bnQgKmNscCk7DQo+ID4gK2V4dGVybiBpbnQgbmZzNF9pbml0X2RzX3Nlc3Npb24oc3RydWN0IG5m
+c19jbGllbnQgKiwgdW5zaWduZWQgbG9uZyk7DQo+ID4gDQo+ID4gLyogcHJvYy5jICovDQo+ID4g
+dm9pZCBuZnNfY2xvc2VfY29udGV4dChzdHJ1Y3QgbmZzX29wZW5fY29udGV4dCAqY3R4LCBpbnQg
+aXNfc3luYyk7DQo+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0ZmlsZWxheW91dGRldi5jIGIv
+ZnMvbmZzL25mczRmaWxlbGF5b3V0ZGV2LmMNCj4gPiBpbmRleCBjOWNmZjlhLi4wNzY0Yzk4IDEw
+MDY0NA0KPiA+IC0tLSBhL2ZzL25mcy9uZnM0ZmlsZWxheW91dGRldi5jDQo+ID4gKysrIGIvZnMv
+bmZzL25mczRmaWxlbGF5b3V0ZGV2LmMNCj4gPiBAQCAtMTc2LDI4ICsxNzYsNyBAQCBuZnM0X2Rz
+X2Nvbm5lY3Qoc3RydWN0IG5mc19zZXJ2ZXIgKm1kc19zcnYsIHN0cnVjdCBuZnM0X3BuZnNfZHMg
+KmRzKQ0KPiA+IAkJZ290byBvdXQ7DQo+ID4gCX0NCj4gPiANCj4gPiAtCWlmICgoY2xwLT5jbF9l
+eGNoYW5nZV9mbGFncyAmIEVYQ0hHSUQ0X0ZMQUdfTUFTS19QTkZTKSAhPSAwKSB7DQo+ID4gLQkJ
+aWYgKCFpc19kc19jbGllbnQoY2xwKSkgew0KPiA+IC0JCQlzdGF0dXMgPSAtRU5PREVWOw0KPiA+
+IC0JCQlnb3RvIG91dF9wdXQ7DQo+ID4gLQkJfQ0KPiA+IC0JCWRzLT5kc19jbHAgPSBjbHA7DQo+
+ID4gLQkJZHByaW50aygiJXMgW2V4aXN0aW5nXSBzZXJ2ZXI9JXNcbiIsIF9fZnVuY19fLA0KPiA+
+IC0JCQlkcy0+ZHNfcmVtb3Rlc3RyKTsNCj4gPiAtCQlnb3RvIG91dDsNCj4gPiAtCX0NCj4gPiAt
+DQo+ID4gLQkvKg0KPiA+IC0JICogRG8gbm90IHNldCBORlNfQ1NfQ0hFQ0tfTEVBU0VfVElNRSBp
+bnN0ZWFkIHNldCB0aGUgRFMgbGVhc2UgdG8NCj4gPiAtCSAqIGJlIGVxdWFsIHRvIHRoZSBNRFMg
+bGVhc2UuIFJlbmV3YWwgaXMgc2NoZWR1bGVkIGluIGNyZWF0ZV9zZXNzaW9uLg0KPiA+IC0JICov
+DQo+ID4gLQlzcGluX2xvY2soJm1kc19zcnYtPm5mc19jbGllbnQtPmNsX2xvY2spOw0KPiA+IC0J
+Y2xwLT5jbF9sZWFzZV90aW1lID0gbWRzX3Nydi0+bmZzX2NsaWVudC0+Y2xfbGVhc2VfdGltZTsN
+Cj4gPiAtCXNwaW5fdW5sb2NrKCZtZHNfc3J2LT5uZnNfY2xpZW50LT5jbF9sb2NrKTsNCj4gPiAt
+CWNscC0+Y2xfbGFzdF9yZW5ld2FsID0gamlmZmllczsNCj4gPiAtDQo+ID4gLQkvKiBOZXcgbmZz
+X2NsaWVudCAqLw0KPiA+IC0Jc3RhdHVzID0gbmZzNF9pbml0X2RzX3Nlc3Npb24oY2xwKTsNCj4g
+PiArCXN0YXR1cyA9IG5mczRfaW5pdF9kc19zZXNzaW9uKGNscCwgbWRzX3Nydi0+bmZzX2NsaWVu
+dC0+Y2xfbGVhc2VfdGltZSk7DQo+ID4gCWlmIChzdGF0dXMpDQo+ID4gCQlnb3RvIG91dF9wdXQ7
+DQo+ID4gDQo+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0cHJvYy5jIGIvZnMvbmZzL25mczRw
+cm9jLmMNCj4gPiBpbmRleCA5OTY1MGFhLi4yNzJjNGFkIDEwMDY0NA0KPiA+IC0tLSBhL2ZzL25m
+cy9uZnM0cHJvYy5jDQo+ID4gKysrIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gPiBAQCAtNTYwNSw1
+MyArNTYwNSw3NiBAQCBpbnQgbmZzNF9wcm9jX2Rlc3Ryb3lfc2Vzc2lvbihzdHJ1Y3QgbmZzNF9z
+ZXNzaW9uICpzZXNzaW9uKQ0KPiA+IAlyZXR1cm4gc3RhdHVzOw0KPiA+IH0NCj4gPiANCj4gPiAr
+LyoNCj4gPiArICogV2l0aCBzZXNzaW9ucywgdGhlIGNsaWVudCBpcyBub3QgbWFya2VkIHJlYWR5
+IHVudGlsIGFmdGVyIGENCj4gPiArICogc3VjY2Vzc2Z1bCBFWENIQU5HRV9JRCBhbmQgQ1JFQVRF
+X1NFU1NJT04uDQo+ID4gKyAqDQo+ID4gKyAqIE1hcCBlcnJvcnMgY2xfY29uc19zdGF0ZSBlcnJv
+cnMgdG8gRVBST1RPTk9TVVBQT1JUIHRvIGluZGljYXRlDQo+ID4gKyAqIG90aGVyIHZlcnNpb25z
+IG9mIE5GUyBjYW4gYmUgdHJpZWQuDQo+ID4gKyAqLw0KPiA+ICtzdGF0aWMgaW50IG5mczQxX2No
+ZWNrX3Nlc3Npb25fcmVhZHkoc3RydWN0IG5mc19jbGllbnQgKmNscCkNCj4gPiArew0KPiA+ICsJ
+aW50IHJldDsNCj4gPiArCQ0KPiA+ICsJcmV0ID0gbmZzNF9jbGllbnRfcmVjb3Zlcl9leHBpcmVk
+X2xlYXNlKGNscCk7DQo+ID4gKwlpZiAocmV0KQ0KPiA+ICsJCXJldHVybiByZXQ7DQo+ID4gKwlp
+ZiAoY2xwLT5jbF9jb25zX3N0YXRlIDwgTkZTX0NTX1JFQURZKQ0KPiA+ICsJCXJldHVybiAtRVBS
+T1RPTk9TVVBQT1JUOw0KPiA+ICsJcmV0dXJuIDA7DQo+ID4gK30NCj4gPiArDQo+ID4gaW50IG5m
+czRfaW5pdF9zZXNzaW9uKHN0cnVjdCBuZnNfc2VydmVyICpzZXJ2ZXIpDQo+ID4gew0KPiA+IAlz
+dHJ1Y3QgbmZzX2NsaWVudCAqY2xwID0gc2VydmVyLT5uZnNfY2xpZW50Ow0KPiA+IAlzdHJ1Y3Qg
+bmZzNF9zZXNzaW9uICpzZXNzaW9uOw0KPiA+IAl1bnNpZ25lZCBpbnQgcnNpemUsIHdzaXplOw0K
+PiA+IC0JaW50IHJldDsNCj4gPiANCj4gPiAJaWYgKCFuZnM0X2hhc19zZXNzaW9uKGNscCkpDQo+
+ID4gCQlyZXR1cm4gMDsNCj4gPiANCj4gPiAJc2Vzc2lvbiA9IGNscC0+Y2xfc2Vzc2lvbjsNCj4g
+PiAtCWlmICghdGVzdF9hbmRfY2xlYXJfYml0KE5GUzRfU0VTU0lPTl9JTklUSU5HLCAmc2Vzc2lv
+bi0+c2Vzc2lvbl9zdGF0ZSkpDQo+ID4gLQkJcmV0dXJuIDA7DQo+ID4gKwlzcGluX2xvY2soJmNs
+cC0+Y2xfbG9jayk7DQo+ID4gKwlpZiAodGVzdF9hbmRfY2xlYXJfYml0KE5GUzRfU0VTU0lPTl9J
+TklUSU5HLCAmc2Vzc2lvbi0+c2Vzc2lvbl9zdGF0ZSkpIHsNCj4gPiANCj4gPiAtCXJzaXplID0g
+c2VydmVyLT5yc2l6ZTsNCj4gPiAtCWlmIChyc2l6ZSA9PSAwKQ0KPiA+IC0JCXJzaXplID0gTkZT
+X01BWF9GSUxFX0lPX1NJWkU7DQo+ID4gLQl3c2l6ZSA9IHNlcnZlci0+d3NpemU7DQo+ID4gLQlp
+ZiAod3NpemUgPT0gMCkNCj4gPiAtCQl3c2l6ZSA9IE5GU19NQVhfRklMRV9JT19TSVpFOw0KPiA+
+ICsJCXJzaXplID0gc2VydmVyLT5yc2l6ZTsNCj4gPiArCQlpZiAocnNpemUgPT0gMCkNCj4gPiAr
+CQkJcnNpemUgPSBORlNfTUFYX0ZJTEVfSU9fU0laRTsNCj4gPiArCQl3c2l6ZSA9IHNlcnZlci0+
+d3NpemU7DQo+ID4gKwkJaWYgKHdzaXplID09IDApDQo+ID4gKwkJCXdzaXplID0gTkZTX01BWF9G
+SUxFX0lPX1NJWkU7DQo+ID4gDQo+ID4gLQlzZXNzaW9uLT5mY19hdHRycy5tYXhfcnFzdF9zeiA9
+IHdzaXplICsgbmZzNDFfbWF4d3JpdGVfb3ZlcmhlYWQ7DQo+ID4gLQlzZXNzaW9uLT5mY19hdHRy
+cy5tYXhfcmVzcF9zeiA9IHJzaXplICsgbmZzNDFfbWF4cmVhZF9vdmVyaGVhZDsNCj4gPiArCQlz
+ZXNzaW9uLT5mY19hdHRycy5tYXhfcnFzdF9zeiA9IHdzaXplICsgbmZzNDFfbWF4d3JpdGVfb3Zl
+cmhlYWQ7DQo+ID4gKwkJc2Vzc2lvbi0+ZmNfYXR0cnMubWF4X3Jlc3Bfc3ogPSByc2l6ZSArIG5m
+czQxX21heHJlYWRfb3ZlcmhlYWQ7DQo+ID4gKwl9DQo+ID4gKwlzcGluX3VubG9jaygmY2xwLT5j
+bF9sb2NrKTsNCj4gPiANCj4gPiAtCXJldCA9IG5mczRfcmVjb3Zlcl9leHBpcmVkX2xlYXNlKHNl
+cnZlcik7DQo+ID4gLQlpZiAoIXJldCkNCj4gPiAtCQlyZXQgPSBuZnM0X2NoZWNrX2NsaWVudF9y
+ZWFkeShjbHApOw0KPiA+IC0JcmV0dXJuIHJldDsNCj4gPiArCXJldHVybiBuZnM0MV9jaGVja19z
+ZXNzaW9uX3JlYWR5KGNscCk7DQo+ID4gfQ0KPiA+IA0KPiA+IC1pbnQgbmZzNF9pbml0X2RzX3Nl
+c3Npb24oc3RydWN0IG5mc19jbGllbnQgKmNscCkNCj4gPiAraW50IG5mczRfaW5pdF9kc19zZXNz
+aW9uKHN0cnVjdCBuZnNfY2xpZW50ICpjbHAsIHVuc2lnbmVkIGxvbmcgbGVhc2VfdGltZSkNCj4g
+PiB7DQo+ID4gCXN0cnVjdCBuZnM0X3Nlc3Npb24gKnNlc3Npb24gPSBjbHAtPmNsX3Nlc3Npb247
+DQo+ID4gCWludCByZXQ7DQo+ID4gDQo+ID4gLQlpZiAoIXRlc3RfYW5kX2NsZWFyX2JpdChORlM0
+X1NFU1NJT05fSU5JVElORywgJnNlc3Npb24tPnNlc3Npb25fc3RhdGUpKQ0KPiA+IC0JCXJldHVy
+biAwOw0KPiA+IC0NCj4gPiAtCXJldCA9IG5mczRfY2xpZW50X3JlY292ZXJfZXhwaXJlZF9sZWFz
+ZShjbHApOw0KPiA+IC0JaWYgKCFyZXQpDQo+ID4gLQkJLyogVGVzdCBmb3IgdGhlIERTIHJvbGUg
+Ki8NCj4gPiAtCQlpZiAoIWlzX2RzX2NsaWVudChjbHApKQ0KPiA+IC0JCQlyZXQgPSAtRU5PREVW
+Ow0KPiA+IC0JaWYgKCFyZXQpDQo+ID4gLQkJcmV0ID0gbmZzNF9jaGVja19jbGllbnRfcmVhZHko
+Y2xwKTsNCj4gPiAtCXJldHVybiByZXQ7DQo+ID4gKwlzcGluX2xvY2soJmNscC0+Y2xfbG9jayk7
+DQo+ID4gKwlpZiAodGVzdF9hbmRfY2xlYXJfYml0KE5GUzRfU0VTU0lPTl9JTklUSU5HLCAmc2Vz
+c2lvbi0+c2Vzc2lvbl9zdGF0ZSkpIHsNCj4gPiArCQkvKg0KPiA+ICsJCSAqIERvIG5vdCBzZXQg
+TkZTX0NTX0NIRUNLX0xFQVNFX1RJTUUgaW5zdGVhZCBzZXQgdGhlDQo+ID4gKwkJICogRFMgbGVh
+c2UgdG8gYmUgZXF1YWwgdG8gdGhlIE1EUyBsZWFzZS4NCj4gPiArCQkgKi8NCj4gPiArCQljbHAt
+PmNsX2xlYXNlX3RpbWUgPSBsZWFzZV90aW1lOw0KPiA+ICsJCWNscC0+Y2xfbGFzdF9yZW5ld2Fs
+ID0gamlmZmllczsNCj4gPiArCX0NCj4gPiArCXNwaW5fdW5sb2NrKCZjbHAtPmNsX2xvY2spOw0K
+PiA+IA0KPiA+ICsJcmV0ID0gbmZzNDFfY2hlY2tfc2Vzc2lvbl9yZWFkeShjbHApOw0KPiANCj4g
+SWYgSSByZWFkIHRoZSBjb2RlIGNvcnJlY3RseSwgb24gYW4gZXhpc3RpbmcgY2xpZW50LCAgdGhp
+cyBjYWxsIG5lZWRsZXNzbHkgd2FpdHMgZm9yIHRoZSBzdGF0ZSBtYW5hZ2VyIHRvIGZpbmlzaCB3
+aGF0ZXZlciBpdCBpcyBkb2luZy4gQXMgdGhlIHN0YXRlIG1hbmFnZXIgY291bGQgYmUgb3BlcmF0
+aW5nIG9uIGEgZGlmZmVyZW50IGZpbGUgc3lzdGVtIHRoYW4gdGhlIERTIGJlbG9uZ3MgdG8sICBh
+bmQgcmVjb3ZlcmluZyBhIGJ1bmNoIG9mIHN0YXRlLCAgaXQgbWlnaHQgYmUgd29ydGggd2hpbGUg
+dG8gYXZvaWQuICBUaGF0IHdhcyB0aGUgaW50ZW50aW9uIG9mIGNoZWNraW5nIHRoZSBjbF9leGNo
+YW5nZV9mbGFncyBpbiBuZnM0X2RzX2Nvbm5lY3QuDQo+IEluIGZhY3QsIG9uIGFuIGV4aXN0aW5n
+IGNsaWVudCwgbmZzNF9pbml0X2RzX3Nlc3Npb24gZG9lcyBub3QgbmVlZCB0byBiZSBjYWxsZWQu
+DQoNClllcyBpdCBkb2VzLiBSaWdodCBub3cgeW91IGhhdmUgbm8gZ3VhcmFudGVlIHRoYXQgdGhl
+IHN0YXRlIG1hbmFnZXIgaXMNCmZpbmlzaGVkIHNldHRpbmcgdXAgdGhlIHNlc3Npb24sIGFuZCBz
+byBubyBndWFyYW50ZWUgdGhhdCBpdCB3aWxsDQpzdWNjZWVkLg0KDQpXZSBjYW4gcGVyaGFwcyBz
+a2lwIHRoZSBjYWxsIHRvIG5mczRfcmVjb3Zlcl9leHBpcmVkX2xlYXNlKCkgaWYgKGFuZA0Kb25s
+eSBpZikgY2xwLT5jbF9jb25zX3N0YXRlIDw9IE5GU19DU19SRUFEWSwgYnV0IG90aGVyd2lzZSBp
+dCBkb2VzIG5lZWQNCnRvIGNvbXBsZXRlLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
+TkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
+b20NCnd3dy5uZXRhcHAuY29tDQoNCg==
