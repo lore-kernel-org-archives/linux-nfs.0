@@ -1,149 +1,223 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:3202 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:34454 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755268Ab2EIA7b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 May 2012 20:59:31 -0400
-Message-ID: <1336525164.21032.9.camel@serendib>
-Subject: [PATCH] nfs-utils: Add a warning to the nfs manpage regarding using
- NFS over UDP on high-speed links
-From: Harshula Jayasuriya <harshula@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Chuck Lever <chuck.lever@oracle.com>, Olaf Kirch <okir@suse.de>
-Date: Wed, 09 May 2012 10:59:24 +1000
-In-Reply-To: <2194470C-5FD9-4317-9A30-2E6C244138D5@oracle.com>
-References: <1330406521.9157.16.camel@serendib>
-	 <20120228065218.7e110936@tlielax.poochiereds.net>
-	 <20120228124646.GA2528@umich.edu>
-	 <BC3988C4-CC1A-4DFA-89AE-7046C674A873@oracle.com>
-	 <7C4B183F-8357-4D08-B30A-73196954A5D4@oracle.com>
-	 <1330913825.9157.61.camel@serendib>
-	 <2194470C-5FD9-4317-9A30-2E6C244138D5@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1752810Ab2EWNDk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 May 2012 09:03:40 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 2/4] NFSv4.1 cache mdsthreshold values on OPEN
+Date: Wed, 23 May 2012 05:02:35 -0400
+Message-Id: <1337763757-1566-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1337763757-1566-1-git-send-email-andros@netapp.com>
+References: <1337763757-1566-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* Using NFS over UDP on high-speed links such as Gigabit can cause
-  silent data corruption.
-* The man page text was written by Olaf Kirch and committed to (but not
-  upstream):
-https://build.opensuse.org/package/view_file?file=warn-nfs-udp.patch&package=nfs-utils&project=openSUSE%3AFactory&rev=8e3e60c70e8270cd4afa036e13f6b2bb
+From: Andy Adamson <andros@netapp.com>
 
-Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
-Acked-by: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Olaf Kirch <okir@suse.com>
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- utils/mount/nfs.man |   81 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 81 insertions(+), 0 deletions(-)
+ fs/nfs/inode.c         |    2 ++
+ fs/nfs/nfs4proc.c      |   38 +++++++++++++++++++++++++++++++++-----
+ fs/nfs/pnfs.c          |   12 ++++++++++++
+ fs/nfs/pnfs.h          |   21 +++++++++++++++++++++
+ include/linux/nfs_fs.h |    1 +
+ 5 files changed, 69 insertions(+), 5 deletions(-)
 
-diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index 0d20cf0..87e27e1 100644
---- a/utils/mount/nfs.man
-+++ b/utils/mount/nfs.man
-@@ -500,6 +500,8 @@ Specifying a netid that uses TCP forces all traffic from the
- command and the NFS client to use TCP.
- Specifying a netid that uses UDP forces all traffic types to use UDP.
- .IP
-+.B Before using NFS over UDP, refer to the TRANSPORT METHODS section.
-+.IP
- If the
- .B proto
- mount option is not specified, the
-@@ -514,6 +516,8 @@ The
- option is an alternative to specifying
- .BR proto=udp.
- It is included for compatibility with other operating systems.
-+.IP
-+.B Before using NFS over UDP, refer to the TRANSPORT METHODS section.
- .TP 1.5i
- .B tcp
- The
-@@ -1070,6 +1074,83 @@ or
- options are specified more than once on the same mount command line,
- then the value of the rightmost instance of each of these options
- takes effect.
-+.SS "Using NFS over UDP on high-speed links"
-+Using NFS over UDP on high-speed links such as Gigabit
-+.BR "can cause silent data corruption" .
-+.P
-+The problem can be triggered at high loads, and is caused by problems in
-+IP fragment reassembly. NFS read and writes typically transmit UDP packets
-+of 4 Kilobytes or more, which have to be broken up into several fragments
-+in order to be sent over the Ethernet link, which limits packets to 1500
-+bytes by default. This process happens at the IP network layer and is
-+called fragmentation.
-+.P
-+In order to identify fragments that belong together, IP assigns a 16bit
-+.I IP ID
-+value to each packet; fragments generated from the same UDP packet
-+will have the same IP ID. The receiving system will collect these
-+fragments and combine them to form the original UDP packet. This process
-+is called reassembly. The default timeout for packet reassembly is
-+30 seconds; if the network stack does not receive all fragments of
-+a given packet within this interval, it assumes the missing fragment(s)
-+got lost and discards those it already received.
-+.P
-+The problem this creates over high-speed links is that it is possible
-+to send more than 65536 packets within 30 seconds. In fact, with
-+heavy NFS traffic one can observe that the IP IDs repeat after about
-+5 seconds.
-+.P
-+This has serious effects on reassembly: if one fragment gets lost,
-+another fragment
-+.I from a different packet
-+but with the
-+.I same IP ID
-+will arrive within the 30 second timeout, and the network stack will
-+combine these fragments to form a new packet. Most of the time, network
-+layers above IP will detect this mismatched reassembly - in the case
-+of UDP, the UDP checksum, which is a 16 bit checksum over the entire
-+packet payload, will usually not match, and UDP will discard the
-+bad packet.
-+.P
-+However, the UDP checksum is 16 bit only, so there is a chance of 1 in
-+65536 that it will match even if the packet payload is completely
-+random (which very often isn't the case). If that is the case,
-+silent data corruption will occur.
-+.P
-+This potential should be taken seriously, at least on Gigabit
-+Ethernet.
-+Network speeds of 100Mbit/s should be considered less
-+problematic, because with most traffic patterns IP ID wrap around
-+will take much longer than 30 seconds.
-+.P
-+It is therefore strongly recommended to use
-+.BR "NFS over TCP where possible" ,
-+since TCP does not perform fragmentation.
-+.P
-+If you absolutely have to use NFS over UDP over Gigabit Ethernet,
-+some steps can be taken to mitigate the problem and reduce the
-+probability of corruption:
-+.TP +1.5i
-+.I Jumbo frames:
-+Many Gigabit network cards are capable of transmitting
-+frames bigger than the 1500 byte limit of traditional Ethernet, typically
-+9000 bytes. Using jumbo frames of 9000 bytes will allow you to run NFS over
-+UDP at a page size of 8K without fragmentation. Of course, this is
-+only feasible if all involved stations support jumbo frames.
-+.IP
-+To enable a machine to send jumbo frames on cards that support it,
-+it is sufficient to configure the interface for a MTU value of 9000.
-+.TP +1.5i
-+.I Lower reassembly timeout:
-+By lowering this timeout below the time it takes the IP ID counter
-+to wrap around, incorrect reassembly of fragments can be prevented
-+as well. To do so, simply write the new timeout value (in seconds)
-+to the file
-+.BR /proc/sys/net/ipv4/ipfrag_time .
-+.IP
-+A value of 2 seconds will greatly reduce the probability of IPID clashes on
-+a single Gigabit link, while still allowing for a reasonable timeout
-+when receiving fragmented traffic from distant peers.
- .SH "DATA AND METADATA COHERENCE"
- Some modern cluster file systems provide
- perfect cache coherence among their clients.
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 9ad81ce..889f7e5 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -641,6 +641,7 @@ struct nfs_open_context *alloc_nfs_open_context(struct dentry *dentry, fmode_t f
+ 	nfs_init_lock_context(&ctx->lock_context);
+ 	ctx->lock_context.open_context = ctx;
+ 	INIT_LIST_HEAD(&ctx->list);
++	ctx->mdsthreshold = NULL;
+ 	return ctx;
+ }
+ 
+@@ -669,6 +670,7 @@ static void __put_nfs_open_context(struct nfs_open_context *ctx, int is_sync)
+ 		put_rpccred(ctx->cred);
+ 	dput(ctx->dentry);
+ 	nfs_sb_deactive(sb);
++	kfree(ctx->mdsthreshold);
+ 	kfree(ctx);
+ }
+ 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 78784e5..d84c633 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1781,7 +1781,14 @@ static inline void nfs4_exclusive_attrset(struct nfs4_opendata *opendata, struct
+ /*
+  * Returns a referenced nfs4_state
+  */
+-static int _nfs4_do_open(struct inode *dir, struct dentry *dentry, fmode_t fmode, int flags, struct iattr *sattr, struct rpc_cred *cred, struct nfs4_state **res)
++static int _nfs4_do_open(struct inode *dir,
++			struct dentry *dentry,
++			fmode_t fmode,
++			int flags,
++			struct iattr *sattr,
++			struct rpc_cred *cred,
++			struct nfs4_state **res,
++			struct nfs4_threshold **ctx_th)
+ {
+ 	struct nfs4_state_owner  *sp;
+ 	struct nfs4_state     *state = NULL;
+@@ -1806,6 +1813,11 @@ static int _nfs4_do_open(struct inode *dir, struct dentry *dentry, fmode_t fmode
+ 	if (opendata == NULL)
+ 		goto err_put_state_owner;
+ 
++	if (ctx_th && server->attr_bitmask[2] & FATTR4_WORD2_MDSTHRESHOLD) {
++		opendata->f_attr.mdsthreshold = pnfs_mdsthreshold_alloc();
++		if (!opendata->f_attr.mdsthreshold)
++			goto err_opendata_put;
++	}
+ 	if (dentry->d_inode != NULL)
+ 		opendata->state = nfs4_get_open_state(dentry->d_inode, sp);
+ 
+@@ -1831,11 +1843,19 @@ static int _nfs4_do_open(struct inode *dir, struct dentry *dentry, fmode_t fmode
+ 			nfs_setattr_update_inode(state->inode, sattr);
+ 		nfs_post_op_update_inode(state->inode, opendata->o_res.f_attr);
+ 	}
++
++	if (pnfs_use_threshold(ctx_th, opendata->f_attr.mdsthreshold, server))
++		*ctx_th = opendata->f_attr.mdsthreshold;
++	else
++		kfree(opendata->f_attr.mdsthreshold);
++	opendata->f_attr.mdsthreshold = NULL;
++
+ 	nfs4_opendata_put(opendata);
+ 	nfs4_put_state_owner(sp);
+ 	*res = state;
+ 	return 0;
+ err_opendata_put:
++	kfree(opendata->f_attr.mdsthreshold);
+ 	nfs4_opendata_put(opendata);
+ err_put_state_owner:
+ 	nfs4_put_state_owner(sp);
+@@ -1845,14 +1865,21 @@ out_err:
+ }
+ 
+ 
+-static struct nfs4_state *nfs4_do_open(struct inode *dir, struct dentry *dentry, fmode_t fmode, int flags, struct iattr *sattr, struct rpc_cred *cred)
++static struct nfs4_state *nfs4_do_open(struct inode *dir,
++					struct dentry *dentry,
++					fmode_t fmode,
++					int flags,
++					struct iattr *sattr,
++					struct rpc_cred *cred,
++					struct nfs4_threshold **ctx_th)
+ {
+ 	struct nfs4_exception exception = { };
+ 	struct nfs4_state *res;
+ 	int status;
+ 
+ 	do {
+-		status = _nfs4_do_open(dir, dentry, fmode, flags, sattr, cred, &res);
++		status = _nfs4_do_open(dir, dentry, fmode, flags, sattr, cred,
++				       &res, ctx_th);
+ 		if (status == 0)
+ 			break;
+ 		/* NOTE: BAD_SEQID means the server and client disagree about the
+@@ -2176,7 +2203,8 @@ nfs4_atomic_open(struct inode *dir, struct nfs_open_context *ctx, int open_flags
+ 	struct nfs4_state *state;
+ 
+ 	/* Protect against concurrent sillydeletes */
+-	state = nfs4_do_open(dir, ctx->dentry, ctx->mode, open_flags, attr, ctx->cred);
++	state = nfs4_do_open(dir, ctx->dentry, ctx->mode, open_flags, attr,
++			     ctx->cred, &ctx->mdsthreshold);
+ 	if (IS_ERR(state))
+ 		return ERR_CAST(state);
+ 	ctx->state = state;
+@@ -2778,7 +2806,7 @@ nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
+ 		fmode = ctx->mode;
+ 	}
+ 	sattr->ia_mode &= ~current_umask();
+-	state = nfs4_do_open(dir, de, fmode, flags, sattr, cred);
++	state = nfs4_do_open(dir, de, fmode, flags, sattr, cred, NULL);
+ 	d_drop(dentry);
+ 	if (IS_ERR(state)) {
+ 		status = PTR_ERR(state);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 5d09a36..cbcb6ae 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1630,3 +1630,15 @@ out_free:
+ 	kfree(data);
+ 	goto out;
+ }
++
++struct nfs4_threshold *pnfs_mdsthreshold_alloc(void)
++{
++	struct nfs4_threshold *thp;
++
++	thp = kzalloc(sizeof(*thp), GFP_NOFS);
++	if (!thp) {
++		dprintk("%s mdsthreshold allocation failed\n", __func__);
++		return NULL;
++	}
++	return thp;
++}
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 7980756..29fd23c 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -227,6 +227,7 @@ int pnfs_read_done_resend_to_mds(struct inode *inode, struct list_head *head,
+ 			const struct nfs_pgio_completion_ops *compl_ops);
+ int pnfs_write_done_resend_to_mds(struct inode *inode, struct list_head *head,
+ 			const struct nfs_pgio_completion_ops *compl_ops);
++struct nfs4_threshold *pnfs_mdsthreshold_alloc(void);
+ 
+ /* nfs4_deviceid_flags */
+ enum {
+@@ -360,6 +361,14 @@ static inline int pnfs_return_layout(struct inode *ino)
+ 	return 0;
+ }
+ 
++static inline bool
++pnfs_use_threshold(struct nfs4_threshold **dst, struct nfs4_threshold *src,
++		   struct nfs_server *nfss)
++{
++	return (dst && src && src->bm != 0 &&
++					nfss->pnfs_curr_ld->id == src->l_type);
++}
++
+ #ifdef NFS_DEBUG
+ void nfs4_print_deviceid(const struct nfs4_deviceid *dev_id);
+ #else
+@@ -485,6 +494,18 @@ static inline int pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ 	return 0;
+ }
+ 
++static inline bool
++pnfs_use_threshold(struct nfs4_threshold **dst, struct nfs4_threshold *src,
++		   struct nfs_server *nfss)
++{
++	return false;
++}
++
++static inline struct nfs4_threshold *pnfs_mdsthreshold_alloc(void)
++{
++	return NULL;
++}
++
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ #endif /* FS_NFS_PNFS_H */
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 6cc7dba..ca4a707 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -102,6 +102,7 @@ struct nfs_open_context {
+ 	int error;
+ 
+ 	struct list_head list;
++	struct nfs4_threshold	*mdsthreshold;
+ };
+ 
+ struct nfs_open_dir_context {
 -- 
 1.7.7.6
 
