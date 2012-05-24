@@ -1,58 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:61075 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751190Ab2E0FeA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 May 2012 01:34:00 -0400
-Received: by dady13 with SMTP id y13so2849998dad.19
-        for <linux-nfs@vger.kernel.org>; Sat, 26 May 2012 22:33:59 -0700 (PDT)
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Peng Tao <tao.peng@emc.com>
-Subject: [PATCH 3/3] pnfsblock: bail out unaligned DIO
-Date: Sun, 27 May 2012 13:33:00 +0800
-Message-Id: <1338096780-2763-4-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>
-References: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:34056 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S965701Ab2EXTU7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 May 2012 15:20:59 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: Dave Jones <davej@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Linux Kernel <linux-kernel@vger.kernel.org>
+Subject: Re: 3.4. sunrpc oops during shutdown
+Date: Thu, 24 May 2012 19:20:41 +0000
+Message-ID: <1337887245.3054.21.camel@lade.trondhjem.org>
+References: <20120521171411.GA15562@redhat.com>
+	 <1337623475.9583.13.camel@lade.trondhjem.org>
+	 <20120524155531.GA21776@fieldses.org>
+In-Reply-To: <20120524155531.GA21776@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Peng Tao <tao.peng@emc.com>
----
- fs/nfs/blocklayout/blocklayout.c |   20 ++++++++++++++++++++
- 1 files changed, 20 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 53cb450..cdb87a9 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -1000,7 +1000,27 @@ static bool bl_dio_begin(struct inode *inode, const struct iovec *iov,
- 			 unsigned long nr_segs, loff_t pos,
- 			 struct blk_plug *plug)
- {
-+	unsigned blkmask = NFS_SERVER(inode)->pnfs_blksize - 1;
-+	size_t count;
-+	int seg;
-+	unsigned long addr;
-+
- 	blk_start_plug(plug);
-+
-+	/* Only allow blksized DIO for now.
-+	 * In theory we can handle page aligned DIO in current block layout
-+	 * read/write code, but it would require serialization between
-+	 * concurrent writers and it is far less effecient than just send IO
-+	 * to MDS.
-+	 */
-+	if (pos & blkmask)
-+		return false;
-+	for (seg = 0; seg < nr_segs; seg++) {
-+		addr = (unsigned long)iov[seg].iov_base;
-+		count = iov[seg].iov_len;
-+		if (unlikely((addr & blkmask) || (count & blkmask)))
-+			return false;
-+	}
- 	return true;
- }
- 
--- 
-1.7.1.262.g5ef3d
-
+T24gVGh1LCAyMDEyLTA1LTI0IGF0IDExOjU1IC0wNDAwLCBiZmllbGRzQGZpZWxkc2VzLm9yZyB3
+cm90ZToNCj4gT24gTW9uLCBNYXkgMjEsIDIwMTIgYXQgMDY6MDM6NDNQTSArMDAwMCwgTXlrbGVi
+dXN0LCBUcm9uZCB3cm90ZToNCj4gPiBPbiBNb24sIDIwMTItMDUtMjEgYXQgMTM6MTQgLTA0MDAs
+IERhdmUgSm9uZXMgd3JvdGU6DQo+ID4gPiBUcmllZCB0byBzaHV0ZG93biBhIG1hY2hpbmUsIGdv
+dCB0aGlzLCBhbmQgYSBidW5jaCBvZiBodW5nIHByb2Nlc3Nlcy4NCj4gPiA+IFRoZXJlIHdhcyBv
+bmUgTkZTIG1vdW50IG1vdW50ZWQgYXQgdGhlIHRpbWUuDQo+ID4gPiANCj4gPiA+IAlEYXZlDQo+
+ID4gPiANCj4gPiA+IEJVRzogdW5hYmxlIHRvIGhhbmRsZSBrZXJuZWwgTlVMTCBwb2ludGVyIGRl
+cmVmZXJlbmNlIGF0IDAwMDAwMDAwMDAwMDAwMjgNCj4gPiA+IElQOiBbPGZmZmZmZmZmYTAxMTkx
+ZGY+XSBzdmNfZGVzdHJveSsweDFmLzB4MTQwIFtzdW5ycGNdDQo+ID4gPiBQR0QgMTQzNGM0MDY3
+IFBVRCAxNDQ5NjQwNjcgUE1EIDAgDQo+ID4gPiBPb3BzOiAwMDAwIFsjMV0gUFJFRU1QVCBTTVAg
+DQo+ID4gPiBDUFUgNCANCj4gPiA+IE1vZHVsZXMgbGlua2VkIGluOiBpcDZ0YWJsZV9maWx0ZXIo
+LSkgaXA2X3RhYmxlcyBuZnNkIG5mcyBmc2NhY2hlIGF1dGhfcnBjZ3NzIG5mc19hY2wgbG9ja2Qg
+aXA2dF9SRUpFQ1QgbmZfY29ubnRyYWNrX2lwdjYgbmZfZGVmcmFnX2lwdjYNCj4gPiA+IA0KPiA+
+ID4gUGlkOiA2OTQ2LCBjb21tOiBudHBkIE5vdCB0YWludGVkIDMuNC4wKyAjMTMgDQo+ID4gPiBS
+SVA6IDAwMTA6WzxmZmZmZmZmZmEwMTE5MWRmPl0gIFs8ZmZmZmZmZmZhMDExOTFkZj5dIHN2Y19k
+ZXN0cm95KzB4MWYvMHgxNDAgW3N1bnJwY10NCj4gPiA+IFJTUDogMDAxODpmZmZmODgwMTQzYzY1
+YzQ4ICBFRkxBR1M6IDAwMDEwMjg2DQo+ID4gPiBSQVg6IDAwMDAwMDAwMDAwMDAwMDAgUkJYOiBm
+ZmZmODgwMTQyY2Q0MWEwIFJDWDogMDAwMDAwMDAwMDAwMDAwNg0KPiA+ID4gUkRYOiAwMDAwMDAw
+MDAwMDAwMDQwIFJTSTogZmZmZjg4MDE0MzEwNTAyOCBSREk6IGZmZmY4ODAxNDJjZDQxYTANCj4g
+PiA+IFJCUDogZmZmZjg4MDE0M2M2NWM1OCBSMDg6IDAwMDAwMDAwMDAwMDAwMDAgUjA5OiAwMDAw
+MDAwMDAwMDAwMDAxDQo+ID4gPiBSMTA6IDAwMDAwMDAwMDAwMDAwMDAgUjExOiAwMDAwMDAwMDAw
+MDAwMDAwIFIxMjogZmZmZjg4MDEzYmM1YTE0OA0KPiA+ID4gUjEzOiBmZmZmODgwMTQwOTgxNjU4
+IFIxNDogZmZmZjg4MDE0MmNkNDFhMCBSMTU6IGZmZmY4ODAxNDZjODgwMDANCj4gPiA+IEZTOiAg
+MDAwMDdmZGMwMzgyYTc0MCgwMDAwKSBHUzpmZmZmODgwMTQ5NDAwMDAwKDAwMDApIGtubEdTOjAw
+MDAwMDAwMDAwMDAwMDANCj4gPiA+IENTOiAgMDAxMCBEUzogMDAwMCBFUzogMDAwMCBDUjA6IDAw
+MDAwMDAwODAwNTAwMzMNCj4gPiA+IENSMjogMDAwMDAwMDAwMDAwMDAyOCBDUjM6IDAwMDAwMDAw
+MzZjYmIwMDAgQ1I0OiAwMDAwMDAwMDAwMTQwN2UwDQo+ID4gPiBEUjA6IDAwMDAwMDAwMDAwMDAw
+MDAgRFIxOiAwMDAwMDAwMDAwMDAwMDAwIERSMjogMDAwMDAwMDAwMDAwMDAwMA0KPiA+ID4gRFIz
+OiAwMDAwMDAwMDAwMDAwMDAwIERSNjogMDAwMDAwMDBmZmZmMGZmMCBEUjc6IDAwMDAwMDAwMDAw
+MDA0MDANCj4gPiA+IFByb2Nlc3MgbnRwZCAocGlkOiA2OTQ2LCB0aHJlYWRpbmZvIGZmZmY4ODAx
+NDNjNjQwMDAsIHRhc2sgZmZmZjg4MDE0MzEwNDk0MCkNCj4gPiA+IFN0YWNrOg0KPiA+ID4gIGZm
+ZmY4ODAxNDA5ODE2NjAgZmZmZjg4MDEzYmM1YTE0OCBmZmZmODgwMTQzYzY1Yzg4IGZmZmZmZmZm
+YTAxMTkzYTYNCj4gPiA+ICAwMDAwMDAwMDAwMDAwMDAwIGZmZmY4ODAxM2U1NjYwMjAgZmZmZjg4
+MDEzZTU2NWYyOCBmZmZmODgwMTQ2ZWU2YWMwDQo+ID4gPiAgZmZmZjg4MDE0M2M2NWNhOCBmZmZm
+ZmZmZmEwMjRmNDAzIGZmZmY4ODAxNDNjNjVjYTggZmZmZjg4MDE0M2QzYTRmOA0KPiA+ID4gQ2Fs
+bCBUcmFjZToNCj4gPiA+ICBbPGZmZmZmZmZmYTAxMTkzYTY+XSBzdmNfZXhpdF90aHJlYWQrMHhh
+Ni8weGIwIFtzdW5ycGNdDQo+ID4gPiAgWzxmZmZmZmZmZmEwMjRmNDAzPl0gbmZzX2NhbGxiYWNr
+X2Rvd24rMHg1My8weDkwIFtuZnNdDQo+ID4gPiAgWzxmZmZmZmZmZmEwMjE2NDJlPl0gbmZzX2Zy
+ZWVfY2xpZW50KzB4ZmUvMHgxMjAgW25mc10NCj4gPiA+ICBbPGZmZmZmZmZmYTAyMTg1ZGY+XSBu
+ZnNfcHV0X2NsaWVudCsweDI5Zi8weDQyMCBbbmZzXQ0KPiA+ID4gIFs8ZmZmZmZmZmZhMDIxODRl
+MD5dID8gbmZzX3B1dF9jbGllbnQrMHgxYTAvMHg0MjAgW25mc10NCj4gPiA+ICBbPGZmZmZmZmZm
+YTAyMTk2MmY+XSBuZnNfZnJlZV9zZXJ2ZXIrMHgxNmYvMHgyZTAgW25mc10NCj4gPiA+ICBbPGZm
+ZmZmZmZmYTAyMTk0ZTM+XSA/IG5mc19mcmVlX3NlcnZlcisweDIzLzB4MmUwIFtuZnNdDQo+ID4g
+PiAgWzxmZmZmZmZmZmEwMjIzNjNjPl0gbmZzNF9raWxsX3N1cGVyKzB4M2MvMHg1MCBbbmZzXQ0K
+PiA+ID4gIFs8ZmZmZmZmZmY4MTFhZDY3Yz5dIGRlYWN0aXZhdGVfbG9ja2VkX3N1cGVyKzB4M2Mv
+MHhhMA0KPiA+ID4gIFs8ZmZmZmZmZmY4MTFhZTI5ZT5dIGRlYWN0aXZhdGVfc3VwZXIrMHg0ZS8w
+eDcwDQo+ID4gPiAgWzxmZmZmZmZmZjgxMWNjYmE0Pl0gbW50cHV0X25vX2V4cGlyZSsweGI0LzB4
+MTAwDQo+ID4gPiAgWzxmZmZmZmZmZjgxMWNjYzE2Pl0gbW50cHV0KzB4MjYvMHg0MA0KPiA+ID4g
+IFs8ZmZmZmZmZmY4MTFjZDU5Nz5dIHJlbGVhc2VfbW91bnRzKzB4NzcvMHg5MA0KPiA+ID4gIFs8
+ZmZmZmZmZmY4MTFjZWZjNj5dIHB1dF9tbnRfbnMrMHg2Ni8weDgwDQo+ID4gPiAgWzxmZmZmZmZm
+ZjgxMDc4ZGZmPl0gZnJlZV9uc3Byb3h5KzB4MWYvMHhiMA0KPiA+ID4gIFs8ZmZmZmZmZmY4MTA3
+OTA1ZT5dIHN3aXRjaF90YXNrX25hbWVzcGFjZXMrMHg1ZS8weDcwDQo+ID4gPiAgWzxmZmZmZmZm
+ZjgxMDc5MDgwPl0gZXhpdF90YXNrX25hbWVzcGFjZXMrMHgxMC8weDIwDQo+ID4gPiAgWzxmZmZm
+ZmZmZjgxMDRlOTBlPl0gZG9fZXhpdCsweDRlZS8weGI4MA0KPiA+ID4gIFs8ZmZmZmZmZmY4MTYz
+OWMwYT5dID8gcmV0aW50X3N3YXBncysweGUvMHgxMw0KPiA+ID4gIFs8ZmZmZmZmZmY4MTA0ZjJl
+Zj5dIGRvX2dyb3VwX2V4aXQrMHg0Zi8weGMwDQo+ID4gPiAgWzxmZmZmZmZmZjgxMDRmMzc3Pl0g
+c3lzX2V4aXRfZ3JvdXArMHgxNy8weDIwDQo+ID4gPiAgWzxmZmZmZmZmZjgxNjQxMzUyPl0gc3lz
+dGVtX2NhbGxfZmFzdHBhdGgrMHgxNi8weDFiDQo+ID4gPiBDb2RlOiA0OCA4YiA1ZCBmMCA0YyA4
+YiA2NSBmOCBjOSBjMyA2NiA5MCA1NSA0OCA4OSBlNSA0MSA1NCA1MyA2NiA2NiA2NiA2NiA5MCA2
+NSA0OCA4YiAwNCAyNSA4MCBiYSAwMCAwMCA0OCA4YiA4MCA1MCAwNSAwMCAwMCA0OCA4OSBmYiA8
+NGM+IDhiIDYwIDI4IDhiIDQ3IDU4IDg1IGMwIDBmIDg0IGVjIDAwIDAwIDAwIDgzIGU4IDAxIDg1
+IGMwIDg5IA0KPiA+IA0KPiA+IEFzaWRlIGZyb20gdGhlIGZhY3QgdGhhdCB0aGUgY3VycmVudCBu
+ZXRfbmFtZXNwYWNlIGlzIG5vdCBndWFyYW50ZWVkIHRvDQo+ID4gZXhpc3Qgd2hlbiB3ZSBhcmUg
+Y2FsbGVkIGZyb20gZnJlZV9uc3Byb3h5LCBzdmNfZGVzdHJveSgpIGxvb2tzDQo+ID4gc2VyaW91
+c2x5IGJyb2tlbjoNCj4gPiANCj4gPiAgICAgICAqIE9uIHRoZSBvbmUgaGFuZCBpdCBpcyB0cnlp
+bmcgdG8gZnJlZSBzdHJ1Y3Qgc3ZjX3NlcnYgKGFuZA0KPiA+ICAgICAgICAgcHJlc3VtYWJseSBh
+bGwgc3RydWN0dXJlcyBvd25lZCBieSBzdHJ1Y3Qgc3ZjX3NlcnYpLg0KPiA+ICAgICAgICogT24g
+dGhlIG90aGVyIGhhbmQsIGl0IHRyaWVzIHRvIHBhc3MgYSBwYXJhbWV0ZXIgdG8NCj4gPiAgICAg
+ICAgIHN2Y19jbG9zZV9uZXQoKSBzYXlpbmcgInBsZWFzZSBkb24ndCBmcmVlIHN0cnVjdHVyZXMg
+b24gbXkNCj4gPiAgICAgICAgIHN2X3RlbXBzb2Nrcywgb3Igc3ZfcGVybXNvY2tzIGxpc3QgdW5s
+ZXNzIHRoZXkgbWF0Y2ggdGhpcyBuZXQNCj4gPiAgICAgICAgIG5hbWVzcGFjZSIuDQo+ID4gDQo+
+ID4gQnJ1Y2UsIGhvdyBpcyB0aGlzIHN1cHBvc2VkIHRvIGJlIHdvcmtpbmc/DQo+IA0KPiBZZWFo
+LCBJIGRvbid0IGtub3cuDQo+IA0KPiBGb3IgdGhlIG5mcyBjYWxsYmFjayBjYXNlLCBpdCBsb29r
+cyBsaWtlIHlvdSd2ZSBqdXN0IGdvdCBhIHNpbmdsZSANCj4gY2FsbGJhY2sgc2VydmljZSBzaGFy
+ZWQgYWNyb3NzIGFsbCBuYW1lc3BhY2VzLCBhbmQgYWxsIHlvdSB3YW50IHRvIGRvIA0KPiBpcyBk
+ZXN0cm95IHRoYXQgd2hvbGUgdGhpbmcgb24gbGFzdCBwdXQ7IG9yIGlzIGl0IG1vcmUgY29tcGxp
+Y2F0ZWQgdGhhbg0KPiB0aGF0Pw0KDQpGb3IgTkZTdjQsIEkgbmVlZCB0byBjcmVhdGUgc29ja2V0
+cyBmb3IgdGhlIHNhbWUgbmV0IG5hbWVzcGFjZSBhcyB0aGUNCnN0cnVjdCBuZnNfY2xpZW50IGlz
+IHJ1bm5pbmcgaW4uIFdoZW4gYWxsIHRoZSBzdHJ1Y3QgbmZzX2NsaWVudHMgb24gdGhhdA0KbmV0
+IG5hbWVzcGFjZSBhcmUgZGVzdHJveWVkLCBJIHdvdWxkIGlkZWFsbHkgZ2V0IHJpZCBvZiB0aG9z
+ZSBzb2NrZXRzLg0KDQpGb3IgTkZTdjQuMSwgYWxsIEkgd2FudCB0byBkbyBpcyBjcmVhdGUgYSBi
+YWNrIGNoYW5uZWwgdXNpbmcgdGhlIHNhbWUNCnNvY2tldCBhcyB0aGUgc3RydWN0IG5mc19jbGll
+bnQuDQoNCj4gRm9yIHRoZSBvdGhlciBzZXJ2ZXJzIGF0IGxlYXN0IHRoZSBwZXItbmV0IGFuZCBn
+bG9iYWwgcGFydHMgb2YgdGhlIA0KPiBzZXJ2ZXIgc2VlbSB0b28gZW50YW5nbGVkLg0KPiANCj4g
+VGhhdCdzIHVuYXZvaWRhYmxlIHRvIHNvbWUgZGVncmVlIHNpbmNlIHdlJ3JlIHNoYXJpbmcgdGhy
+ZWFkcyBhbW9uZyB0aGUNCj4gbmFtZXNwYWNlcy4gIEJ1dCBtYXliZSBzZXBhcmF0ZSBzdHJ1Y3R1
+cmVzIGZvciB0aGUgcGVyLW5hbWVzcGFjZSBhbmQNCj4gZ2xvYmFsIHBpZWNlcyB3b3VsZCBoZWxw
+Lg0KPiANCj4gQXQgYSBtaW5pbXVtIHRoZSBwZXItbmFtZXNwYWNlIHBpZWNlIHdvdWxkIGtlZXAg
+YSBjb3VudCBvZiB0aGUgdXNlcnMgaW4NCj4gdGhhdCBuYW1lc3BhY2UuDQo+IA0KPiBUbyBtYWtl
+IHRoZSBzaHV0ZG93biByYWNlLWZyZWUgSSB0aGluayB3ZSBhbHNvIG5lZWQgYSB3YXkgdG8gd2Fp
+dCBmb3INCj4gYWxsIHRocmVhZHMgcHJvY2Vzc2luZyByZXF1ZXN0cyBpbiB0aGF0IG5hbWVzcGFj
+ZSwgd2hpY2ggSSBkb24ndCBzZWUNCj4gdGhhdCB3ZSBoYXZlIHlldC4NCg0KDQotLSANClRyb25k
+IE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQu
+TXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
