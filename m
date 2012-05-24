@@ -1,87 +1,312 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:55878 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755043Ab2EJAS4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 May 2012 20:18:56 -0400
-Date: Wed, 9 May 2012 19:18:42 -0500
-From: Jonathan Nieder <jrnieder@gmail.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Rik Theys <Rik.Theys@esat.kuleuven.be>,
-        David Flyn <davidf@rd.bbc.co.uk>, Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH v2] NFSv4: Save the owner/group name string when doing
- open
-Message-ID: <20120510001842.GB8228@burratino>
-References: <1325956115-21767-1-git-send-email-Trond.Myklebust@netapp.com>
- <1325960863-31742-1-git-send-email-Trond.Myklebust@netapp.com>
- <20120302050813.GA32761@burratino>
-MIME-Version: 1.0
+Received: from rcsinet15.oracle.com ([148.87.113.117]:51288 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933322Ab2EXQaT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 May 2012 12:30:19 -0400
+Subject: Re: [PATCH 1/2] nfs4.1: add BIND_CONN_TO_SESSION operation
+Mime-Version: 1.0 (Apple Message framework v1278)
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120302050813.GA32761@burratino>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1337876797-17706-1-git-send-email-dros@netapp.com>
+Date: Thu, 24 May 2012 12:30:14 -0400
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Message-Id: <F379601B-45BA-411A-B8F9-4EEA918D3693@oracle.com>
+References: <1337876797-17706-1-git-send-email-dros@netapp.com>
+To: Weston Andros Adamson <dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jonathan Nieder wrote:
 
-[...]
-> | and then log into machine B and do:
-> |
-> | vim
-> | :q
-> |
-> | I get E137: Viminfo file is not writable: /users/system/rtheys/.viminfo
-> |
-> | Every invocation of 'vim and :q' will trigger this.
-> |
-> | Explicitely doing a stat of the file fixes this.
->
-> Rik Theys bisected and found the bug reproducible after and not before
-> v2.6.32-rc1~412^2~48^2~15 (NFSv4: Don't do idmapper upcalls for
-> asynchronous RPC calls, 2009-08-09).
->
-> [...]
->>  6 files changed, 162 insertions(+), 64 deletions(-)
->
-> Now I am wondering what, if anything, can be done to fix this in the
-> 2.6.32.y, 3.0.y, and 3.2.y stable kernels.  The patch looks too big
-> for inclusion under the usual stable_kernel_rules:
+On May 24, 2012, at 12:26 PM, Weston Andros Adamson wrote:
 
-Trond had a neat idea for fixing this.  Let's see how easy it is for a
-novice like me to understand.
+> This patch adds the BIND_CONN_TO_SESSION operation which is needed for
+> upcoming SP4_MACH_CRED work and useful for recovering from broken connections
+> without destroying the session.
+> 
+> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+> ---
+> fs/nfs/nfs4_fs.h        |    1 +
+> fs/nfs/nfs4proc.c       |   54 ++++++++++++++++++++++++++++
+> fs/nfs/nfs4xdr.c        |   90 +++++++++++++++++++++++++++++++++++++++++++++++
+> include/linux/nfs4.h    |    5 +++
+> include/linux/nfs_xdr.h |    6 +++
+> 5 files changed, 156 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+> index edeef71..ad90bc7 100644
+> --- a/fs/nfs/nfs4_fs.h
+> +++ b/fs/nfs/nfs4_fs.h
+> @@ -215,6 +215,7 @@ struct vfsmount *nfs4_submount(struct nfs_server *, struct dentry *,
+> extern int nfs4_proc_setclientid(struct nfs_client *, u32, unsigned short, struct rpc_cred *, struct nfs4_setclientid_res *);
+> extern int nfs4_proc_setclientid_confirm(struct nfs_client *, struct nfs4_setclientid_res *arg, struct rpc_cred *);
+> extern int nfs4_proc_get_rootfh(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
+> +extern int nfs4_proc_bind_conn_to_session(struct nfs_client *);
+> extern int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred);
+> extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
+> extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 78784e5..7a4b320 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -5062,6 +5062,60 @@ nfs41_same_server_scope(struct server_scope *a, struct server_scope *b)
+> }
+> 
+> /*
+> + * nfs4_proc_bind_conn_to_session()
+> + *
+> + * The 4.1 client currently uses the same TCP connection for the
+> + * fore and backchannel.
+> + */
+> +int nfs4_proc_bind_conn_to_session(struct nfs_client *clp)
+> +{
+> +	int status;
+> +	struct nfs41_bind_conn_to_session_res res;
+> +	struct rpc_message msg = {
+> +		.rpc_proc =
+> +			&nfs4_procedures[NFSPROC4_CLNT_BIND_CONN_TO_SESSION],
+> +		.rpc_argp = clp,
+> +		.rpc_resp = &res,
+> +	};
+> +
+> +	dprintk("--> %s\n", __func__);
+> +	BUG_ON(clp == NULL);
+> +
+> +	res.session = kzalloc(sizeof(struct nfs4_session), GFP_KERNEL);
+> +	if (unlikely(res.session == NULL)) {
+> +		status = -ENOMEM;
+> +		goto out;
+> +	}
+> +
+> +	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
+> +	if (status == 0) {
+> +		if (memcmp(res.session->sess_id.data,
+> +		    clp->cl_session->sess_id.data, NFS4_MAX_SESSIONID_LEN)) {
+> +			dprintk("NFS: %s: Session ID mismatch\n", __func__);
+> +			status = -EIO;
+> +			goto out_session;
+> +		}
+> +		if (res.dir != CDFS4_BOTH) {
+> +			dprintk("NFS: %s: Unexpected direction from server\n",
+> +				__func__);
+> +			status = -EIO;
+> +			goto out_session;
+> +		}
+> +		if (res.use_conn_in_rdma_mode != 0) {
+> +			dprintk("NFS: %s: Server returned RDMA mode = true\n",
+> +				__func__);
+> +			status = -EIO;
+> +			goto out_session;
+> +		}
+> +	}
+> +out_session:
+> +	kfree(res.session);
+> +out:
+> +	dprintk("<-- %s status= %d\n", __func__, status);
+> +	return status;
+> +}
+> +
+> +/*
+>  * nfs4_proc_exchange_id()
+>  *
+>  * Since the clientid has expired, all compounds using sessions
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index db040e9..37e09c8 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -321,6 +321,16 @@ static int nfs4_stat_to_errno(int);
+> 				     1 /* csr_flags */ + \
+> 				     decode_channel_attrs_maxsz + \
+> 				     decode_channel_attrs_maxsz)
+> +#define encode_bind_conn_to_session_maxsz  (op_encode_hdr_maxsz + \
+> +				     /* bctsa_sessid */ \
+> +				     XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + \
+> +				     1 /* bctsa_dir */ + \
+> +				     1 /* bctsa_use_conn_in_rdma_mode */)
+> +#define decode_bind_conn_to_session_maxsz  (op_decode_hdr_maxsz +	\
+> +				     /* bctsr_sessid */ \
+> +				     XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + \
+> +				     1 /* bctsr_dir */ + \
+> +				     1 /* bctsr_use_conn_in_rdma_mode */)
+> #define encode_destroy_session_maxsz    (op_encode_hdr_maxsz + 4)
+> #define decode_destroy_session_maxsz    (op_decode_hdr_maxsz)
+> #define encode_sequence_maxsz	(op_encode_hdr_maxsz + \
+> @@ -714,6 +724,12 @@ static int nfs4_stat_to_errno(int);
+> 				decode_putfh_maxsz + \
+> 				decode_secinfo_maxsz)
+> #if defined(CONFIG_NFS_V4_1)
+> +#define NFS4_enc_bind_conn_to_session_sz \
+> +				(compound_encode_hdr_maxsz + \
+> +				 encode_bind_conn_to_session_maxsz)
+> +#define NFS4_dec_bind_conn_to_session_sz \
+> +				(compound_decode_hdr_maxsz + \
+> +				 decode_bind_conn_to_session_maxsz)
+> #define NFS4_enc_exchange_id_sz \
+> 				(compound_encode_hdr_maxsz + \
+> 				 encode_exchange_id_maxsz)
+> @@ -1654,6 +1670,20 @@ static void encode_secinfo(struct xdr_stream *xdr, const struct qstr *name, stru
+> 
+> #if defined(CONFIG_NFS_V4_1)
+> /* NFSv4.1 operations */
+> +static void encode_bind_conn_to_session(struct xdr_stream *xdr,
+> +				   struct nfs4_session *session,
+> +				   struct compound_hdr *hdr)
+> +{
+> +	__be32 *p;
+> +
+> +	encode_op_hdr(xdr, OP_BIND_CONN_TO_SESSION,
+> +		decode_bind_conn_to_session_maxsz, hdr);
+> +	encode_opaque_fixed(xdr, session->sess_id.data, NFS4_MAX_SESSIONID_LEN);
+> +	p = xdr_reserve_space(xdr, 8);
+> +	*p++ = cpu_to_be32(NFS4_CDFC4_BACK_OR_BOTH);
+> +	*p = 0;	/* use_conn_in_rdma_mode = False */
+> +}
+> +
+> static void encode_exchange_id(struct xdr_stream *xdr,
+> 			       struct nfs41_exchange_id_args *args,
+> 			       struct compound_hdr *hdr)
+> @@ -2614,6 +2644,22 @@ static void nfs4_xdr_enc_secinfo(struct rpc_rqst *req,
+> 
+> #if defined(CONFIG_NFS_V4_1)
+> /*
+> + * BIND_CONN_TO_SESSION request
+> + */
+> +static void nfs4_xdr_enc_bind_conn_to_session(struct rpc_rqst *req,
+> +				struct xdr_stream *xdr,
+> +				struct nfs_client *clp)
+> +{
+> +	struct compound_hdr hdr = {
+> +		.minorversion = clp->cl_mvops->minor_version,
+> +	};
+> +
+> +	encode_compound_hdr(xdr, req, &hdr);
+> +	encode_bind_conn_to_session(xdr, clp->cl_session, &hdr);
+> +	encode_nops(&hdr);
+> +}
+> +
+> +/*
+>  * EXCHANGE_ID request
+>  */
+> static void nfs4_xdr_enc_exchange_id(struct rpc_rqst *req,
+> @@ -5239,6 +5285,32 @@ static int decode_sessionid(struct xdr_stream *xdr, struct nfs4_sessionid *sid)
+> 	return decode_opaque_fixed(xdr, sid->data, NFS4_MAX_SESSIONID_LEN);
+> }
+> 
+> +static int decode_bind_conn_to_session(struct xdr_stream *xdr,
+> +				struct nfs41_bind_conn_to_session_res *res)
+> +{
+> +	__be32 *p;
+> +	int status;
+> +
+> +	status = decode_op_hdr(xdr, OP_BIND_CONN_TO_SESSION);
+> +	if (!status)
+> +		status = decode_sessionid(xdr, &res->session->sess_id);
+> +	if (unlikely(status))
+> +		return status;
+> +
+> +	/* dir flags, rdma mode bool */
+> +	p = xdr_inline_decode(xdr, 8);
+> +	if (unlikely(!p))
+> +		goto out_overflow;
+> +
+> +	res->dir = be32_to_cpup(p++);
+> +	res->use_conn_in_rdma_mode = be32_to_cpup(p);
+> +
+> +	return 0;
+> +out_overflow:
+> +	print_overflow_msg(__func__, xdr);
+> +	return -EIO;
+> +}
+> +
+> static int decode_create_session(struct xdr_stream *xdr,
+> 				 struct nfs41_create_session_res *res)
+> {
+> @@ -6521,6 +6593,22 @@ out:
+> 
+> #if defined(CONFIG_NFS_V4_1)
+> /*
+> + * Decode BIND_CONN_TO_SESSION response
+> + */
+> +static int nfs4_xdr_dec_bind_conn_to_session(struct rpc_rqst *rqstp,
+> +					struct xdr_stream *xdr,
+> +					void *res)
+> +{
+> +	struct compound_hdr hdr;
+> +	int status;
+> +
+> +	status = decode_compound_hdr(xdr, &hdr);
+> +	if (!status)
+> +		status = decode_bind_conn_to_session(xdr, res);
+> +	return status;
+> +}
+> +
+> +/*
+>  * Decode EXCHANGE_ID response
+>  */
+> static int nfs4_xdr_dec_exchange_id(struct rpc_rqst *rqstp,
+> @@ -7001,6 +7089,8 @@ struct rpc_procinfo	nfs4_procedures[] = {
+> 	PROC(RELEASE_LOCKOWNER,	enc_release_lockowner,	dec_release_lockowner),
+> 	PROC(SECINFO,		enc_secinfo,		dec_secinfo),
+> #if defined(CONFIG_NFS_V4_1)
+> +	PROC(BIND_CONN_TO_SESSION,
+> +			enc_bind_conn_to_session, dec_bind_conn_to_session),
+> 	PROC(EXCHANGE_ID,	enc_exchange_id,	dec_exchange_id),
+> 	PROC(CREATE_SESSION,	enc_create_session,	dec_create_session),
+> 	PROC(DESTROY_SESSION,	enc_destroy_session,	dec_destroy_session),
+> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+> index 0987146..80fbbfc6 100644
+> --- a/include/linux/nfs4.h
+> +++ b/include/linux/nfs4.h
+> @@ -69,6 +69,10 @@
+> #define NFS4_CDFC4_FORE_OR_BOTH 0x3
+> #define NFS4_CDFC4_BACK_OR_BOTH 0x7
+> 
+> +#define CDFS4_FORE 0x1
+> +#define CDFS4_BACK 0x2
+> +#define CDFS4_BOTH 0x3
+> +
+> #define NFS4_SET_TO_SERVER_TIME	0
+> #define NFS4_SET_TO_CLIENT_TIME	1
+> 
+> @@ -582,6 +586,7 @@ enum {
+> 	NFSPROC4_CLNT_SECINFO,
+> 
+> 	/* nfs41 */
+> +	NFSPROC4_CLNT_BIND_CONN_TO_SESSION,
+> 	NFSPROC4_CLNT_EXCHANGE_ID,
+> 	NFSPROC4_CLNT_CREATE_SESSION,
+> 	NFSPROC4_CLNT_DESTROY_SESSION,
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index 2e53a3f..dd3bc2f 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -1115,6 +1115,12 @@ struct nfs41_impl_id {
+> 	struct nfstime4			date;
+> };
+> 
+> +struct nfs41_bind_conn_to_session_res {
+> +	struct nfs4_session		*session;
+> +	u32				dir;
+> +	u32				use_conn_in_rdma_mode;
 
-As explained at [1], the problem is that after the OPEN call .viminfo
-has the default values for st_uid and st_gid cached (i.e., 0xfffffffe)
-because it does not want to let rpciod wait during an idmapper upcall
-to fill them in.  The fix used in mainline is to save the owner and
-group as strings and perform the upcall in _nfs4_proc_open outside the
-rpciod context.
+Would it make sense to use a "bool" here instead?
 
-The fix for stable kernels that Trond suggests is to notice when
-st_uid and st_gid have not been filled in and perform a separate
-GETATTR call.  The patch is nice and small.  My (ignorant) worry: does
-nfs4_open_reclaim need the same fix?
+> +};
+> +
+> struct nfs41_exchange_id_res {
+> 	struct nfs_client		*client;
+> 	u32				flags;
+> -- 
+> 1.7.4.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-[1] http://thread.gmane.org/gmane.linux.nfs/37230/focus=37250
----
-Rik, results from testing would be interesting if you have a chance to
-try it.  Thanks again for your help, all.
-
-Jonathan
-
- fs/nfs/nfs4proc.c |    1 +
- 1 file changed, 1 insertion(+)
-
-diff --git i/fs/nfs/nfs4proc.c w/fs/nfs/nfs4proc.c
-index 3d6730213f9d..30f6548f2b99 100644
---- i/fs/nfs/nfs4proc.c
-+++ w/fs/nfs/nfs4proc.c
-@@ -1771,6 +1771,7 @@ static int _nfs4_do_open(struct inode *dir, struct path *path, fmode_t fmode, in
- 			nfs_setattr_update_inode(state->inode, sattr);
- 		nfs_post_op_update_inode(state->inode, opendata->o_res.f_attr);
- 	}
-+	nfs_revalidate_inode(server, state->inode);
- 	nfs4_opendata_put(opendata);
- 	nfs4_put_state_owner(sp);
- 	*res = state;
 -- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
