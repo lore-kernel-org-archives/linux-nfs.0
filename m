@@ -1,81 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail1.trendhosting.net ([195.8.117.5]:39728 "EHLO
-	mail1.trendhosting.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753138Ab2EFLDa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 6 May 2012 07:03:30 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by mail1.trendhosting.net (Postfix) with ESMTP id 99A7B1586B
-	for <linux-nfs@vger.kernel.org>; Sun,  6 May 2012 12:03:27 +0100 (BST)
-Received: from mail1.trendhosting.net ([127.0.0.1])
-	by localhost (thp003.trendhosting.net [127.0.0.1]) (amavisd-new, port 10024)
-	with LMTP id LlyUes-5yQhF for <linux-nfs@vger.kernel.org>;
-	Sun,  6 May 2012 12:03:15 +0100 (BST)
-Message-ID: <4FA65A6C.8090502@pocock.com.au>
-Date: Sun, 06 May 2012 11:03:08 +0000
-From: Daniel Pocock <daniel@pocock.com.au>
+Received: from mx2.netapp.com ([216.240.18.37]:39364 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755152Ab2EXL7G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 May 2012 07:59:06 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/3] NFS: Add memory barriers to the
+ nfs_client->cl_cons_state initialisation
+Date: Thu, 24 May 2012 11:59:04 +0000
+Message-ID: <1337860746.27392.3.camel@lade.trondhjem.org>
+References: <1337794363-11905-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1337794363-11905-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <1337794363-11905-3-git-send-email-Trond.Myklebust@netapp.com>
+	 <4FBDBAD4.7040500@parallels.com>
+In-Reply-To: <4FBDBAD4.7040500@parallels.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: Re: extremely slow nfs when sync enabled
-References: <4FA643A9.3010406@pocock.com.au>
-In-Reply-To: <4FA643A9.3010406@pocock.com.au>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 06/05/12 09:26, Daniel Pocock wrote:
-> 
-> 
-> I've been observing some very slow nfs write performance when the server
-> has `sync' in /etc/exports
-> 
-> I want to avoid using async, but I have tested it and on my gigabit
-> network, it gives almost the same speed as if I was on the server
-> itself. (e.g. 30MB/sec to one disk, or less than 1MB/sec to the same
-> disk over NFS with `sync')
-
-Just to clarify this point: if I log in to the server and run one of my
-tests (e.g. untar the linux source), it is very fast, iostat shows
-30MB/sec write)
-
-Also, I've tried write-back cache (hdparm -W 1), when this is enabled
-NFS writes go from about 1MB/sec up to about 10MB/sec, but still way
-below the speed of local disk access on the server.
-
-> 
-> I'm using Debian 6 with 2.6.38 kernels on client and server, NFSv3
-> 
-> I've also tried a client running Debian 7/Linux 3.2.0 with both NFSv3
-> and NFSv4, speed is still slow
-> 
-> Looking at iostat on the server, I notice that avgrq-sz = 8 sectors
-> (4096 bytes) throughout the write operations
-> 
-> I've tried various tests, e.g. dd a large file, or unpack a tarball with
-> many small files, the iostat output is always the same
-> 
-> Looking at /proc/mounts on the clients, everything looks good, large
-> wsize, tcp:
-> 
-> rw,relatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.x.x.x,mountvers=3,mountport=58727,mountproto=udp,local_lock=none,addr=192.x.x.x
-> 0 0
-> 
-> and
->  rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=192.x.x.x.,minorversion=0,local_lock=none,addr=192.x.x.x 0 0
-> 
-> and in /proc/fs/nfs/exports on the server, I have sync and wdelay:
-> 
-> /nfs4/daniel
-> 192.168.1.0/24,192.x.x.x(rw,insecure,root_squash,sync,wdelay,no_subtree_check,uuid=aa2a6f37:9cc94eeb:bcbf983c:d6e041d9,sec=1)
-> /home/daniel
-> 192.168.1.0/24,192.x.x.x(rw,root_squash,sync,wdelay,no_subtree_check,uuid=aa2a6f37:9cc94eeb:bcbf983c:d6e041d9)
-> 
-> Can anyone suggest anything else?  Or is this really the performance hit
-> of `sync'?
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+T24gVGh1LCAyMDEyLTA1LTI0IGF0IDA4OjM2ICswNDAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3
+cm90ZToNCj4gMjMuMDUuMjAxMiAyMTozMiwgVHJvbmQgTXlrbGVidXN0INC90LDQv9C40YHQsNC7
+Og0KPiA+IEVuc3VyZSB0aGF0IGEgcHJvY2VzcyB0aGF0IHVzZXMgdGhlIG5mc19jbGllbnQtPmNs
+X2NvbnNfc3RhdGUgdGVzdA0KPiA+IGZvciB3aGV0aGVyIHRoZSBpbml0aWFsaXNhdGlvbiBwcm9j
+ZXNzIGlzIGZpbmlzaGVkIGRvZXMgbm90IHJlYWQNCj4gPiBzdGFsZSBkYXRhLg0KPiA+DQo+ID4g
+U2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0PFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29t
+Pg0KPiA+IC0tLQ0KPiA+ICAgZnMvbmZzL2NsaWVudC5jIHwgICAgNSArKysrKw0KPiA+ICAgZnMv
+bmZzL2lkbWFwLmMgIHwgICAgMSArDQo+ID4gICAyIGZpbGVzIGNoYW5nZWQsIDYgaW5zZXJ0aW9u
+cygrKSwgMCBkZWxldGlvbnMoLSkNCj4gPg0KPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvY2xpZW50
+LmMgYi9mcy9uZnMvY2xpZW50LmMNCj4gPiBpbmRleCBlNjA3MGVhLi40YmU4NWY5IDEwMDY0NA0K
+PiA+IC0tLSBhL2ZzL25mcy9jbGllbnQuYw0KPiA+ICsrKyBiL2ZzL25mcy9jbGllbnQuYw0KPiA+
+IEBAIC00NTYsNiArNDU2LDggQEAgc3RhdGljIGJvb2wgbmZzNF9jYl9tYXRjaF9jbGllbnQoY29u
+c3Qgc3RydWN0IHNvY2thZGRyICphZGRyLA0KPiA+ICAgCSAgICBjbHAtPmNsX2NvbnNfc3RhdGUg
+PT0gTkZTX0NTX1NFU1NJT05fSU5JVElORykpDQo+ID4gICAJCXJldHVybiBmYWxzZTsNCj4gPg0K
+PiA+ICsJc21wX3JtYigpOw0KPiA+ICsNCj4gPiAgIAkvKiBNYXRjaCB0aGUgdmVyc2lvbiBhbmQg
+bWlub3J2ZXJzaW9uICovDQo+ID4gICAJaWYgKGNscC0+cnBjX29wcy0+dmVyc2lvbiAhPSA0IHx8
+DQo+ID4gICAJICAgIGNscC0+Y2xfbWlub3J2ZXJzaW9uICE9IG1pbm9ydmVyc2lvbikNCj4gPiBA
+QCAtNTg3LDYgKzU4OSw4IEBAIGZvdW5kX2NsaWVudDoNCj4gPiAgIAkJcmV0dXJuIEVSUl9QVFIo
+ZXJyb3IpOw0KPiA+ICAgCX0NCj4gPg0KPiA+ICsJc21wX3JtYigpOw0KPiA+ICsNCj4gPiAgIAlC
+VUdfT04oY2xwLT5jbF9jb25zX3N0YXRlICE9IE5GU19DU19SRUFEWSk7DQo+ID4NCj4gPiAgIAlk
+cHJpbnRrKCItLT4gIG5mc19nZXRfY2xpZW50KCkgPSAlcCBbc2hhcmVdXG4iLCBjbHApOw0KPiA+
+IEBAIC01OTgsNiArNjAyLDcgQEAgZm91bmRfY2xpZW50Og0KPiA+ICAgICovDQo+ID4gICB2b2lk
+IG5mc19tYXJrX2NsaWVudF9yZWFkeShzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwLCBpbnQgc3RhdGUp
+DQo+ID4gICB7DQo+ID4gKwlzbXBfd21iKCk7DQo+IA0KPiBCVFcsIHdoeSBiYXJyaWVyIGlzIGJl
+Zm9yZSBhc3NpZ25tZW50Pw0KDQpTbyB0aGF0IHdlIHdyaXRlIHRoZSBpbml0aWFsaXNhdGlvbiBj
+aGFuZ2VzIHRvIHRoZSBzdHJ1Y3QgbmZzX2NsaWVudA0KYmVmb3JlIGNoYW5naW5nIHRoZSB2YWx1
+ZSBvZiBjbHAtPmNsX2NvbnNfc3RhdGUuIE90aGVyd2lzZSwgYW5vdGhlcg0KcHJvY2Vzc29yIG1p
+Z2h0IHNlZSB0aGUgY2hhbmdlIHRvIGNscC0+Y2xfY29uc19zdGF0ZSBiZWZvcmUgdGhleSBzZWUg
+dGhlDQpyZXN0IG9mIHRoZSBpbml0aWFsaXNhdGlvbiBvZiBjbHAuDQoNCk5vdGUgdGhhdCB0aGVy
+ZSBpcyBhIHNlY29uZCB3cml0ZSBiYXJyaWVyIGluIHRoZSAnd2FrZV91cF9hbGwnIGNhbGwgdG8N
+CmVuc3VyZSB0aGF0IHNsZWVwaW5nIHByb2Nlc3NlcyB0aGF0IGFyZSBhY3R1YWxseSB3b2tlbiB1
+cCB3aWxsIHNlZSB0aGUNCmNoYW5nZSB0byBjbHAtPmNsX2NvbnNfc3RhdGUuDQoNCj4gPiAgIAlj
+bHAtPmNsX2NvbnNfc3RhdGUgPSBzdGF0ZTsNCj4gPiAgIAl3YWtlX3VwX2FsbCgmbmZzX2NsaWVu
+dF9hY3RpdmVfd3EpOw0KPiA+ICAgfQ0KPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvaWRtYXAuYyBi
+L2ZzL25mcy9pZG1hcC5jDQo+ID4gaW5kZXggNmNhOTQ5Yi4uN2Q0ZThkZCAxMDA2NDQNCj4gPiAt
+LS0gYS9mcy9uZnMvaWRtYXAuYw0KPiA+ICsrKyBiL2ZzL25mcy9pZG1hcC5jDQo+ID4gQEAgLTU0
+OCw2ICs1NDgsNyBAQCByZXN0YXJ0Og0KPiA+ICAgCQkvKiBTa2lwIG5mc19jbGllbnRzIHRoYXQg
+ZmFpbGVkIHRvIGluaXRpYWxpc2UgKi8NCj4gPiAgIAkJaWYgKGNscC0+Y2xfY29uc19zdGF0ZTwg
+IDApDQo+ID4gICAJCQljb250aW51ZTsNCj4gPiArCQlzbXBfcm1iKCk7DQo+ID4gICAJCWlmIChj
+bHAtPnJwY19vcHMgIT0mbmZzX3Y0X2NsaWVudG9wcykNCj4gPiAgIAkJCWNvbnRpbnVlOw0KPiA+
+ICAgCQljbF9kZW50cnkgPSBjbHAtPmNsX2lkbWFwLT5pZG1hcF9waXBlLT5kZW50cnk7DQo+IA0K
+DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5l
+dEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
