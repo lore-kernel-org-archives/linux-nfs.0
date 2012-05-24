@@ -1,132 +1,174 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46414 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:32401 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755846Ab2EPMwy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 May 2012 08:52:54 -0400
-Date: Wed, 16 May 2012 08:52:52 -0400
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] NFSD: SETCLIENTID_CONFIRM returns
- NFS4ERR_CLID_INUSE too often
-Message-ID: <20120516125252.GB17471@fieldses.org>
-References: <20120515213808.1518.81260.stgit@lebasque.1015granger.net>
- <20120515214207.1518.78590.stgit@lebasque.1015granger.net>
- <20120516013239.GA24133@pad.fieldses.org>
- <4F3FD332-AD16-4319-BB00-9B19517BE95C@oracle.com>
+	id S1755382Ab2EXVAn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 May 2012 17:00:43 -0400
+Received: from vmwexceht05-prd.hq.netapp.com (vmwexceht05-prd.hq.netapp.com [10.106.77.35])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q4OL0ggS026218
+	for <linux-nfs@vger.kernel.org>; Thu, 24 May 2012 14:00:42 -0700 (PDT)
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] nfs41: Use BIND_CONN_TO_SESSION for CB_PATH_DOWN*
+Date: Thu, 24 May 2012 21:00:40 +0000
+Message-ID: <2D8FF192-F8CB-4E12-8DB6-383DDEC76567@netapp.com>
+References: <1337876797-17706-1-git-send-email-dros@netapp.com>
+ <1337876797-17706-2-git-send-email-dros@netapp.com>
+ <1337891951.3054.31.camel@lade.trondhjem.org>
+In-Reply-To: <1337891951.3054.31.camel@lade.trondhjem.org>
+Content-Type: multipart/signed;
+	boundary="Apple-Mail=_E4B57FBF-93BB-4B0C-A57E-B757C33D9E09";
+	protocol="application/pkcs7-signature"; micalg=sha1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F3FD332-AD16-4319-BB00-9B19517BE95C@oracle.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 15, 2012 at 10:34:34PM -0400, Chuck Lever wrote:
-> 
-> On May 15, 2012, at 9:32 PM, J. Bruce Fields wrote:
-> 
-> > On Tue, May 15, 2012 at 05:42:08PM -0400, Chuck Lever wrote:
-> >> According to RFC 3530bis, the only items SETCLIENTID_CONFIRM
-> >> processing should be concerned with is the clientid, clientid
-> >> verifier, and authentication flavor.
-> > 
-> > Nit: the spec says "principal", not "authentication flavor".
-> 
-> Fair enough... feel free to correct the description.
+--Apple-Mail=_E4B57FBF-93BB-4B0C-A57E-B757C33D9E09
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-OK, applying.  Thanks for fixing this.
 
---b.
+On May 24, 2012, at 4:39 PM, Myklebust, Trond wrote:
 
-> 
-> > (I was looking at this yesterday because our current code only compares
-> > uid's, which is pretty meaningless--any client using a krb5 service
-> > principal, for example, will likely get mapped to the same uid--so I
-> > have patches that instead compare flavor, principal name (when we have
-> > it--our current userspace only passes it down for service principals)
-> > and groups and auxiliary groups as well as uid.  But not IP address...)
-> > 
-> > Anyway, this patch looks reasonable, thanks.
-> > 
-> > --b.
-> > 
-> >> The client's IP address
-> >> is not supposed to be interesting.
-> >> 
-> >> And, NFS4ERR_CLID_INUSE is meant only for authentication flavor
-> >> mismatches.
-> >> 
-> >> I triggered this logic with a prototype UCS client -- one that
-> >> uses the same nfs_client_id4 string for all servers.  The client
-> >> mounted our server via its IPv4, then via its IPv6 address.
-> >> 
-> >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> >> ---
-> >> 
-> >> fs/nfsd/nfs4state.c |   14 ++------------
-> >> 1 files changed, 2 insertions(+), 12 deletions(-)
-> >> 
-> >> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> >> index 7f71c69..27e6401 100644
-> >> --- a/fs/nfsd/nfs4state.c
-> >> +++ b/fs/nfsd/nfs4state.c
-> >> @@ -2213,7 +2213,6 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
-> >> 			 struct nfsd4_compound_state *cstate,
-> >> 			 struct nfsd4_setclientid_confirm *setclientid_confirm)
-> >> {
-> >> -	struct sockaddr *sa = svc_addr(rqstp);
-> >> 	struct nfs4_client *conf, *unconf;
-> >> 	nfs4_verifier confirm = setclientid_confirm->sc_confirm; 
-> >> 	clientid_t * clid = &setclientid_confirm->sc_clientid;
-> >> @@ -2231,17 +2230,12 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
-> >> 	conf = find_confirmed_client(clid);
-> >> 	unconf = find_unconfirmed_client(clid);
-> >> 
-> >> -	status = nfserr_clid_inuse;
-> >> -	if (conf && !rpc_cmp_addr((struct sockaddr *) &conf->cl_addr, sa))
-> >> -		goto out;
-> >> -	if (unconf && !rpc_cmp_addr((struct sockaddr *) &unconf->cl_addr, sa))
-> >> -		goto out;
-> >> -
-> >> 	/*
-> >> 	 * section 14.2.34 of RFC 3530 has a description of
-> >> 	 * SETCLIENTID_CONFIRM request processing consisting
-> >> 	 * of 4 bullet points, labeled as CASE1 - CASE4 below.
-> >> 	 */
-> >> +	status = nfserr_clid_inuse;
-> >> 	if (conf && unconf && same_verf(&confirm, &unconf->cl_confirm)) {
-> >> 		/*
-> >> 		 * RFC 3530 14.2.34 CASE 1:
-> >> @@ -2254,7 +2248,6 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
-> >> 			nfsd4_probe_callback(conf);
-> >> 			expire_client(unconf);
-> >> 			status = nfs_ok;
-> >> -
-> >> 		}
-> >> 	} else if (conf && !unconf) {
-> >> 		/*
-> >> @@ -2296,11 +2289,8 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
-> >> 		 * Client probably hasn't noticed that we rebooted yet.
-> >> 		 */
-> >> 		status = nfserr_stale_clientid;
-> >> -	} else {
-> >> -		/* check that we have hit one of the cases...*/
-> >> -		status = nfserr_clid_inuse;
-> >> 	}
-> >> -out:
-> >> +
-> >> 	nfs4_unlock_state();
-> >> 	return status;
-> >> }
-> >> 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> -- 
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> 
+> On Thu, 2012-05-24 at 12:26 -0400, Weston Andros Adamson wrote:
+>> The state manager can handle SEQ4_STATUS_CB_PATH_DOWN* flags with a
+>> BIND_CONN_TO_SESSION instead of destroying the session and creating a =
+new one.
+>>=20
+>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>> ---
+>> fs/nfs/nfs4_fs.h   |    1 +
+>> fs/nfs/nfs4state.c |   26 +++++++++++++++++++++-----
+>> 2 files changed, 22 insertions(+), 5 deletions(-)
+>>=20
+>> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+>> index ad90bc7..9feff0f 100644
+>> --- a/fs/nfs/nfs4_fs.h
+>> +++ b/fs/nfs/nfs4_fs.h
+>> @@ -24,6 +24,7 @@ enum nfs4_client_state {
+>> 	NFS4CLNT_RECALL_SLOT,
+>> 	NFS4CLNT_LEASE_CONFIRM,
+>> 	NFS4CLNT_SERVER_SCOPE_MISMATCH,
+>> +	NFS4CLNT_BIND_CONN_TO_SESSION,
+>> };
+>>=20
+>> enum nfs4_session_state {
+>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>> index 7f0fcfc..40558ca 100644
+>> --- a/fs/nfs/nfs4state.c
+>> +++ b/fs/nfs/nfs4state.c
+>> @@ -1639,13 +1639,20 @@ static void =
+nfs41_handle_recallable_state_revoked(struct nfs_client *clp)
+>> 	nfs_expire_all_delegations(clp);
+>> }
+>>=20
+>> -static void nfs41_handle_cb_path_down(struct nfs_client *clp)
+>> +static void nfs41_handle_backchannel_fault(struct nfs_client *clp)
+>> {
+>> 	nfs_expire_all_delegations(clp);
+>> 	if (test_and_set_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state) =3D=3D=
+ 0)
+>> 		nfs4_schedule_state_manager(clp);
+>> }
+>>=20
+>> +static void nfs41_handle_cb_path_down(struct nfs_client *clp)
+>> +{
+>> +	if (test_and_set_bit(NFS4CLNT_BIND_CONN_TO_SESSION,
+>> +		&clp->cl_state) =3D=3D 0)
+>> +		nfs4_schedule_state_manager(clp);
+>> +}
+>> +
+>> void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 =
+flags)
+>> {
+>> 	if (!flags)
+>> @@ -1659,9 +1666,10 @@ void nfs41_handle_sequence_flag_errors(struct =
+nfs_client *clp, u32 flags)
+>> 		nfs41_handle_state_revoked(clp);
+>> 	if (flags & SEQ4_STATUS_RECALLABLE_STATE_REVOKED)
+>> 		nfs41_handle_recallable_state_revoked(clp);
+>> -	if (flags & (SEQ4_STATUS_CB_PATH_DOWN |
+>> -			    SEQ4_STATUS_BACKCHANNEL_FAULT |
+>> -			    SEQ4_STATUS_CB_PATH_DOWN_SESSION))
+>> +	if (flags & SEQ4_STATUS_BACKCHANNEL_FAULT)
+>> +		nfs41_handle_backchannel_fault(clp);
+>> +	else if (flags & (SEQ4_STATUS_CB_PATH_DOWN |
+>> +				SEQ4_STATUS_CB_PATH_DOWN_SESSION))
+>> 		nfs41_handle_cb_path_down(clp);
+>> }
+>>=20
+>> @@ -1721,7 +1729,6 @@ static int nfs4_recall_slot(struct nfs_client =
+*clp)
+>> 	nfs4_end_drain_session(clp);
+>> 	return 0;
+>> }
+>> -
+>> #else /* CONFIG_NFS_V4_1 */
+>> static int nfs4_reset_session(struct nfs_client *clp) { return 0; }
+>> static int nfs4_end_drain_session(struct nfs_client *clp) { return 0; =
+}
+>> @@ -1803,6 +1810,15 @@ static void nfs4_state_manager(struct =
+nfs_client *clp)
+>> 				goto out_error;
+>> 		}
+>>=20
+>> +		/* Send BIND_CONN_TO_SESSION */
+>> +		if (clp->cl_mvops->minor_version =3D=3D 1 &&
+>> +		    test_and_clear_bit(NFS4CLNT_BIND_CONN_TO_SESSION,
+>> +				&clp->cl_state) && =
+nfs4_has_session(clp)) {
+>> +			status =3D nfs4_proc_bind_conn_to_session(clp);
+>> +			if (status < 0)
+>> +				goto out_error;
+>> +		}
+>> +
+>> 		/* First recover reboot state... */
+>> 		if (test_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state)) {
+>> 			status =3D nfs4_do_reclaim(clp,
+>=20
+> Committed after fixing ifndef CONFIG_NFS_V4_1 issues and adding a
+
+Ah, I actually did test with CONFIG_NFS_V4_1 undefined - it compiles, =
+but you're right, this should be #ifdef'd
+
+> clear_bit() for NFS4CLNT_BIND_CONN_TO_SESSION in nfs4_reset_session.
+
+Good catch.
+
+Thanks!
+-dros
+
+
+--Apple-Mail=_E4B57FBF-93BB-4B0C-A57E-B757C33D9E09
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Type: application/pkcs7-signature; name="smime.p7s"
+Content-Transfer-Encoding: base64
+
+MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIDTzCCA0sw
+ggIzoAMCAQICAQEwCwYJKoZIhvcNAQEFMEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYD
+VQQGEwJVUzEeMBwGCSqGSIb3DQEJARYPZHJvc0BuZXRhcHAuY29tMB4XDTExMDYwODIyMDc0NloX
+DTEyMDYwNzIyMDc0NlowRjEXMBUGA1UEAwwOV2VzdG9uIEFkYW1zb24xCzAJBgNVBAYTAlVTMR4w
+HAYJKoZIhvcNAQkBFg9kcm9zQG5ldGFwcC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
+AoIBAQC8/tJxtovJEXYRfSsrFOWKHxIZGY7/2mBee1DpWuoGDbVNapefCC7WXe+Nqxz609w2J/Mk
+/k3trZ3Ge2NXK0tGnP9NzjkzpGA7rSpM3wUFsvbLMUEGfQpvV24/nYvcLHTvOOEUaDPpHduN94bD
+dwvyowzDIRIpF2MeRnOzBNeHkrGHlZdzPmGjm8tkhrDRRkDYHhlxaiG4z30KCfAazxomuINiy1kj
+vbndXooYMDoh9H63hgW4NkOedtLdflLa322DXQ3nFU7YbyOIjHVl1tgWJLDWf7WT3lsAB8KvuJZ5
+zhsUB+fqxCKPJVRPDO1gjChvvtGiG1tGUUZz0H9Wx00zAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIH
+gDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDBDAaBgNVHREEEzARgQ9kcm9zQG5ldGFwcC5jb20wDQYJ
+KoZIhvcNAQEFBQADggEBACv0niZSmW+psB1sJXULh3mecDbN2mj0bFpN1YNdjcV7BiOLJ1Rs1ibV
+f13h73z8C7SBsPXTM5si8gmJtOnXM5jsgtlql44h/RrjUr8+mtK5DPCZls9J7iz3cGthzwOPvxUj
+nMSv3BpRX5oJom5ESgCM9Nn4u/ECTlLMhEIOYnBFiN0eDxcxz+r1cpbHg3r0otIKyxLpeaCjP6AH
+F93EHp4T8Rb63y3CcDgxrQGHlTdVi3QvxaMUexUXD81fiA+UqsB/MKmRxB1Hs4Vf3Q/+ejcm78K1
+ROF8TNPmNWRlKg3Y7cSFjZGzLuzXsvSsCbw4HLn0oZe/OfgSbarTAxttL5IxggHRMIIBzQIBATBL
+MEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYDVQQGEwJVUzEeMBwGCSqGSIb3DQEJARYP
+ZHJvc0BuZXRhcHAuY29tAgEBMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
+MBwGCSqGSIb3DQEJBTEPFw0xMjA1MjQyMTAwNDFaMCMGCSqGSIb3DQEJBDEWBBQ+MZpOlPCwPFuB
+JtWIKfkECePTPjANBgkqhkiG9w0BAQEFAASCAQCx1RAS59+JQaCSO/FHQa/D8bgHr0IFwcC+tiS2
+11yv+k9ZqdH43xoIyAe3GR0eVMyGPH6aOvxssjBm/BVbbf0MRRDrCys+lXgPm+FMPIM/syIabD7+
+CmcW+Kg7vb7r+wC6N4wmIQpIwMi0X20Pz5ZNtffeAWzVAy4IaohkTGCM76/ctcZduu19QB8Qvhuc
+0/H047JwEB5DEXG54kbKY2tDcnly6wzb0REvfE27uwK/xCBGFwY0/c1p5/VfC2OO9q4GLHWi3Avz
+zWUO6vD8lejO1QrRVQNL8fLy8EAAJB1Lk/iPHWZLOT4XiiJ1DicqPv/5pXWDBtvpz9NDN0T2IH63
+AAAAAAAA
+
+--Apple-Mail=_E4B57FBF-93BB-4B0C-A57E-B757C33D9E09--
