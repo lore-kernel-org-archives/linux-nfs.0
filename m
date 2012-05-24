@@ -1,88 +1,143 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:61482 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757399Ab2EVOM3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 10:12:29 -0400
-Received: by ghrr11 with SMTP id r11so777867ghr.19
-        for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 07:12:28 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: inux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
-        michael.brantley@deshaw.com, pstaubach@exagrid.com
-Subject: [PATCH v2 02/15] vfs: add a kern_path_at function
-Date: Tue, 22 May 2012 10:12:06 -0400
-Message-Id: <1337695939-2741-3-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
-References: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:40777 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752362Ab2EXNT3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 May 2012 09:19:29 -0400
+Subject: Re: [PATCH 4/4] SUNRPC: Use gssproxy upcall for nfsd's RPCGSS
+ authentication.
+From: Simo Sorce <simo@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+In-Reply-To: <20120524110844.GB19875@fieldses.org>
+References: <1337087550-9821-1-git-send-email-simo@redhat.com>
+	 <1337087550-9821-5-git-send-email-simo@redhat.com>
+	 <20120522224818.GA6435@fieldses.org>
+	 <1337833911.16840.223.camel@willson.li.ssimo.org>
+	 <20120524110844.GB19875@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 24 May 2012 09:19:26 -0400
+Message-ID: <1337865566.16840.234.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This will function like user_path_at, but does not do the getname and
-putname, leaving that to the caller.
+On Thu, 2012-05-24 at 07:08 -0400, J. Bruce Fields wrote:
+> On Thu, May 24, 2012 at 12:31:51AM -0400, Simo Sorce wrote:
+> > On Tue, 2012-05-22 at 18:48 -0400, J. Bruce Fields wrote:
+> > > On Tue, May 15, 2012 at 09:12:30AM -0400, Simo Sorce wrote:
+> > 
+> > > > +static inline int
+> > > > +gss_read_proxy_verf(struct svc_rqst *rqstp,
+> > > > +		    struct rpc_gss_wire_cred *gc, __be32 *authp,
+> > > > +		    struct xdr_netobj *in_handle,
+> > > > +		    struct gssp_in_token *in_token)
+> > > > +{
+> > [..]
+> > > > +	/* FIXME: change argv to point to the end of in_token ? */
+> > > 
+> > > There's nothing left to read, so it looks like there's no problem here;
+> > > drop the comment?
+> > 
+> > Dropping, was a reminder while I was working and it is not necessary
+> > anymore indeed.
+> >   
+> > > > +static int gss_proxy_save_rsc(struct cache_detail *cd,
+> > > > +				struct gssp_upcall_data *ud,
+> > > > +				struct xdr_netobj *handle)
+> > > > +{
+> > > > +	struct rsc rsci, *rscp = NULL;
+> > > > +	static atomic64_t ctxhctr;
+> > > > +	long long ctxh;
+> > > > +	struct gss_api_mech *gm = NULL;
+> > > > +	time_t expiry;
+> > > > +	char *c;
+> > > > +	int status = -EINVAL;
+> > > > +
+> > > > +	memset(&rsci, 0, sizeof(rsci));
+> > > > +	/* context handle */
+> > > > +	status = -ENOMEM;
+> > > > +	/* the handle needs to be just a unique id,
+> > > > +	 * use a static counter */
+> > > > +	ctxh = atomic64_inc_return(&ctxhctr);
+> > > > +	handle->data = kmemdup(&ctxh, sizeof(ctxh), GFP_KERNEL);
+> > > 
+> > > Looks like you use this only to dup again immediately below in
+> > > dup_to_netobj, so you should just be able to make that:
+> > 
+> > No this is duplicated on handle->data, where handle is a pointer passed
+> > to us by the caller.
+> 
+> Obviously I can't read.
+> 
+> > 
+> > It is later passed to gss_write_init_verf() and finally freed when
+> > svcauth_gss_proxy_init exits, so no leak.
+> > 
+> > > 	handle->data = &ctxh;
+> > > 
+> > > That's simpler and looks like it avoids a leak on exit.
+> > > 
+> > > > +	if (handle->data == NULL)
+> > > > +		goto out;
+> > > > +	handle->len = sizeof(ctxh);
+> > > > +	if (dup_to_netobj(&rsci.handle, handle->data, handle->len))
+> 
+> But why do we need two copies of the thing?
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c            |   27 +++++++++++++++++++--------
- include/linux/namei.h |    1 +
- 2 files changed, 20 insertions(+), 8 deletions(-)
+Yeah no great reason to, seemed the most expedient way at the time I
+modified the function to get a unique handle, given the existing
+prototype I had.
 
-diff --git a/fs/namei.c b/fs/namei.c
-index f9e883c..c63242f 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -1886,20 +1886,31 @@ struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
- 	return __lookup_hash(&this, base, NULL);
- }
- 
-+int kern_path_at(int dfd, const char *name, unsigned flags, struct path *path)
-+{
-+	struct nameidata nd;
-+	int err;
-+
-+	BUG_ON(flags & LOOKUP_PARENT);
-+
-+	err = do_path_lookup(dfd, name, flags, &nd);
-+	if (!err)
-+		*path = nd.path;
-+
-+	return err;
-+}
-+
- int user_path_at_empty(int dfd, const char __user *name, unsigned flags,
- 		 struct path *path, int *empty)
- {
--	struct nameidata nd;
- 	char *tmp = getname_flags(name, flags, empty);
--	int err = PTR_ERR(tmp);
--	if (!IS_ERR(tmp)) {
--
--		BUG_ON(flags & LOOKUP_PARENT);
-+	int err;
- 
--		err = do_path_lookup(dfd, tmp, flags, &nd);
-+	if (IS_ERR(tmp)) {
-+		err = PTR_ERR(tmp);
-+	} else {
-+		err = kern_path_at(dfd, tmp, flags, path);
- 		putname(tmp);
--		if (!err)
--			*path = nd.path;
- 	}
- 	return err;
- }
-diff --git a/include/linux/namei.h b/include/linux/namei.h
-index ffc0213..cd95fcb 100644
---- a/include/linux/namei.h
-+++ b/include/linux/namei.h
-@@ -66,6 +66,7 @@ enum {LAST_NORM, LAST_ROOT, LAST_DOT, LAST_DOTDOT, LAST_BIND};
- #define LOOKUP_ROOT		0x2000
- #define LOOKUP_EMPTY		0x4000
- 
-+extern int kern_path_at(int, const char *, unsigned, struct path *);
- extern int user_path_at(int, const char __user *, unsigned, struct path *);
- extern int user_path_at_empty(int, const char __user *, unsigned, struct path *, int *empty);
- 
+> Would it be simpler to pass the new rsc back to the caller?
+
+I guess we could do that, I didn't because I am not sure if there is any
+chance the rsc cache can be removed by another thread while we hold a
+pointer to this data.
+In the gss_write_init_verf() funciotn we use that handle to find again
+the same rsc cache we just created, but I can't change that as it is the
+same code used in the legacy upcall which needs to search it in there.
+So the current approach seemed the least invasive and simpler.
+
+However what I can do, perhaps is to pass in a static netobj allocated
+on the callers stack, so we do not need the kmalloc, after all it is a
+very small buffer so it wouldn't cause issues to put it on the stack,
+what do you think ?
+
+> > > > +		goto out;
+> > > > +
+> > > > +	rscp = rsc_lookup(cd, &rsci);
+> > > > +	if (!rscp)
+> > > > +		goto out;
+> > > > +
+> > > > +	/* creds */
+> > > > +	if (!ud->creds) {
+> > > > +		dprintk("RPC:       No creds found, marking Negative!\n");
+> > > > +		set_bit(CACHE_NEGATIVE, &rsci.h.flags);
+> > > 
+> > > When does this happen, out of curiosity?
+> > 
+> > Actually it shouldn't happen, but I maintained the same code structure
+> > that was previously in place.
+> > I think that with the latest changes now I always return (uid = -1, gid
+> > = -1, no additional groups if a mapping can't be found).
+> > However on the off chance that user space does not return a credential
+> > struct we catch it here.
+> 
+> So the result will be to return success to the client on the
+> init_sec_context call but then to fail their future attempts to use that
+> handle?
+
+> If so, seems like it would be better to return an error and not bother
+> adding a negative entry to the cache.
+
+Well if we do not add the negative cache we end up looping to user space
+each time the client attempts to call in. If the result was just a fluke
+in user space, then it will not be a problem, but if user space is
+somehow misbehaving I would rather have the kernel 'blacklist' this
+client for a while, no ?
+
+Simo.
+
 -- 
-1.7.7.6
+Simo Sorce * Red Hat, Inc * New York
 
