@@ -1,49 +1,149 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:40045 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965642Ab2EOQXh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 12:23:37 -0400
-Message-ID: <4FB282F7.5090408@panasas.com>
-Date: Tue, 15 May 2012 19:23:19 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from relay.parallels.com ([195.214.232.42]:42808 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750883Ab2EXElj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 May 2012 00:41:39 -0400
+Message-ID: <4FBDBBFF.2000000@parallels.com>
+Date: Thu, 24 May 2012 08:41:35 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>
-CC: Peng Tao <bergwolf@gmail.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        <linux-nfs@vger.kernel.org>, Peng Tao <tao.peng@emc.com>
-Subject: Re: [PATCH 1/2] NFS: call block plug around direct write
-References: <1337096303-2516-1-git-send-email-bergwolf@gmail.com> <20120515160855.GA5911@infradead.org>
-In-Reply-To: <20120515160855.GA5911@infradead.org>
-Content-Type: text/plain; charset="UTF-8"
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH] NFSd: fix locking in nfsd_forget_delegations()
+References: <20120522102444.6988.45434.stgit@localhost.localdomain> <20120523213158.GB13710@fieldses.org>
+In-Reply-To: <20120523213158.GB13710@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/15/2012 07:08 PM, Christoph Hellwig wrote:
+24.05.2012 01:31, J. Bruce Fields написал:
+> On Tue, May 22, 2012 at 02:25:14PM +0400, Stanislav Kinsbursky wrote:
+>> This patch adds recall_lock hold to nfsd_forget_delegations() to protect
+>> nfsd_process_n_delegations() call.
+>> Also, looks like it would be better to collect delegations to some local
+>> on-stack list, and then unhash collected list. This split allows to simplify
+>> locking, because delegation traversing is protected by recall_lock, when
+>> delegation unhash is protected by client_mutex.
+> All this indirection is getting a little much.
+>
+> How about replacing nfsd_process_n_delegations by something that always
+> does the list-move?:
 
-> On Tue, May 15, 2012 at 11:38:22PM +0800, Peng Tao wrote:
->> We bypass generic_file_aio_write() but would want to call block plug.
-> 
-> We in this case is the pnfs block driver at most.  Thus these should
-> be pnfs block code.
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Is it correct?
+List move is suitable for unhash delegations since we anyway remove 
+delegation from fi_delegations list.
+But seems we don't do this for delegations recall...
 
 
-I thought so too.
+> void nfsd_forget_delegations(u64 num)
+> {
+> 	unsigned int count;
+> 	list_head victims;
+>
+> 	nfs4_lock_state();
+> 	count = nfsd_get_n_delegations(num,&victims);
+> 	list_for_each_entry_safe(...,&victims, ...)
+> 		unhash_delegation();
+> 	unlock_state();
+> }
+>
+> ditto for recall_delegations, and take the recall_lock inside
+> nfsd_get_n_delegations?
+>
+> Or something like that.
+>
+> --b.
+>
+>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
+>> ---
+>>   fs/nfsd/nfs4state.c |   32 ++++++++++++++++++++++++--------
+>>   1 files changed, 24 insertions(+), 8 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 21266c7..f004e61 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -2597,7 +2597,7 @@ out:
+>>   	return ret;
+>>   }
+>>
+>> -static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
+>> +static void nfsd_break_one_deleg(struct nfs4_delegation *dp, void *data)
+>>   {
+>>   	/* We're assuming the state code never drops its reference
+>>   	 * without first removing the lease.  Since we're in this lease
+>> @@ -2633,7 +2633,7 @@ static void nfsd_break_deleg_cb(struct file_lock *fl)
+>>   	spin_lock(&recall_lock);
+>>   	fp->fi_had_conflict = true;
+>>   	list_for_each_entry(dp,&fp->fi_delegations, dl_perfile)
+>> -		nfsd_break_one_deleg(dp);
+>> +		nfsd_break_one_deleg(dp, NULL);
+>>   	spin_unlock(&recall_lock);
+>>   }
+>>
+>> @@ -4694,7 +4694,7 @@ void nfsd_forget_openowners(u64 num)
+>>   	printk(KERN_INFO "NFSD: Forgot %d open owners", count);
+>>   }
+>>
+>> -int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegation *))
+>> +int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegation *, void *), void *data)
+>>   {
+>>   	int i, count = 0;
+>>   	struct nfs4_file *fp, *fnext;
+>> @@ -4703,7 +4703,7 @@ int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegatio
+>>   	for (i = 0; i<  FILE_HASH_SIZE; i++) {
+>>   		list_for_each_entry_safe(fp, fnext,&file_hashtbl[i], fi_hash) {
+>>   			list_for_each_entry_safe(dp, dnext,&fp->fi_delegations, dl_perfile) {
+>> -				deleg_func(dp);
+>> +				deleg_func(dp, data);
+>>   				if (++count == num)
+>>   					return count;
+>>   			}
+>> @@ -4713,15 +4713,31 @@ int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegatio
+>>   	return count;
+>>   }
+>>
+>> +/* Called under the recall_lock spinlock. */
+>> +static void
+>> +collect_delegation(struct nfs4_delegation *dp, void *data)
+>> +{
+>> +	struct list_head *list = data;
+>> +
+>> +	list_move(&dp->dl_perfile, list);
+>> +}
+>> +
+>>   void nfsd_forget_delegations(u64 num)
+>>   {
+>>   	unsigned int count;
+>> +	struct nfs4_delegation *dp, *dnext;
+>> +	LIST_HEAD(unhash_list);
+>>
+>> -	nfs4_lock_state();
+>> -	count = nfsd_process_n_delegations(num, unhash_delegation);
+>> -	nfs4_unlock_state();
+>> +	spin_lock(&recall_lock);
+>> +	count = nfsd_process_n_delegations(num, collect_delegation,&unhash_list);
+>> +	spin_unlock(&recall_lock);
+>>
+>>   	printk(KERN_INFO "NFSD: Forgot %d delegations", count);
+>> +
+>> +	nfs4_lock_state();
+>> +	list_for_each_entry_safe(dp, dnext,&unhash_list, dl_perfile)
+>> +		unhash_delegation(dp);
+>> +	nfs4_unlock_state();
+>>   }
+>>
+>>   void nfsd_recall_delegations(u64 num)
+>> @@ -4730,7 +4746,7 @@ void nfsd_recall_delegations(u64 num)
+>>
+>>   	nfs4_lock_state();
+>>   	spin_lock(&recall_lock);
+>> -	count = nfsd_process_n_delegations(num, nfsd_break_one_deleg);
+>> +	count = nfsd_process_n_delegations(num, nfsd_break_one_deleg, NULL);
+>>   	spin_unlock(&recall_lock);
+>>   	nfs4_unlock_state();
+>>
+>>
 
-But reading the code more closely it might be hard for the blocklayout
-to figure out the right state to call these two. Specially the call to
-blk_finish_plug(). So you might need to add a new LD API such as
-LD()->finish_plug() which is empty for others.
-
-But again inspecting the code it looks like blk_start_plug() is a no-op
-and blk_finish_plug() is specially optimized for the empty case.
-
-So is it worth it, the extra effort? I do understand the temptation
-to get lazy here.
-
-Just my $0.017
-Boaz
