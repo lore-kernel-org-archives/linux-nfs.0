@@ -1,124 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:60449 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:61929 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761193Ab2EJTH7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 May 2012 15:07:59 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v4 10/14] NFS: Create a new nfs_try_mount()
-Date: Thu, 10 May 2012 15:07:39 -0400
-Message-Id: <1336676863-9698-11-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1336676863-9698-1-git-send-email-bjschuma@netapp.com>
-References: <1336676863-9698-1-git-send-email-bjschuma@netapp.com>
+	id S1756239Ab2EXROt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 May 2012 13:14:49 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 3/4] NFSv4.1 add nfs_inode book keeping for mdsthreshold
+Date: Thu, 24 May 2012 13:13:24 -0400
+Message-Id: <1337879604-24940-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1337879604-24940-1-git-send-email-andros@netapp.com>
+References: <1337879604-24940-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+From: Andy Adamson <andros@netapp.com>
 
-This function returns the same same return type as nfs4_try_mount() so
-they two can be more easily substituted.
+Keep track of the number of bytes read or written via buffered, direct, and
+mem-mapped i/o for use by mdsthreshold size_io hints.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/super.c |   46 +++++++++++++++++++++++++++-------------------
- 1 file changed, 27 insertions(+), 19 deletions(-)
+ fs/nfs/direct.c        |    2 ++
+ fs/nfs/file.c          |    1 +
+ fs/nfs/inode.c         |    2 ++
+ fs/nfs/pnfs.c          |    3 +++
+ fs/nfs/read.c          |    2 ++
+ include/linux/nfs_fs.h |    3 +++
+ 6 files changed, 13 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index db0952d..c69c806 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -290,6 +290,9 @@ static int  nfs_show_options(struct seq_file *, struct dentry *);
- static int  nfs_show_devname(struct seq_file *, struct dentry *);
- static int  nfs_show_path(struct seq_file *, struct dentry *);
- static int  nfs_show_stats(struct seq_file *, struct dentry *);
-+static struct dentry *nfs_fs_mount_common(struct file_system_type *,
-+		struct nfs_server *, int, const char *, struct nfs_fh *,
-+		struct nfs_mount_info *);
- static struct dentry *nfs_fs_mount(struct file_system_type *,
- 		int, const char *, void *);
- static struct dentry *nfs_xdev_mount(struct file_system_type *fs_type,
-@@ -1680,8 +1683,8 @@ static int nfs_walk_authlist(struct nfs_parsed_mount_data *args,
-  * Use the remote server's MOUNT service to request the NFS file handle
-  * corresponding to the provided path.
-  */
--static int nfs_try_mount(struct nfs_parsed_mount_data *args,
--			 struct nfs_fh *root_fh)
-+static int nfs_request_mount(struct nfs_parsed_mount_data *args,
-+			     struct nfs_fh *root_fh)
- {
- 	rpc_authflavor_t server_authlist[NFS_MAX_SECFLAVORS];
- 	unsigned int server_authlist_len = ARRAY_SIZE(server_authlist);
-@@ -1744,6 +1747,25 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 	return nfs_walk_authlist(args, &request);
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index c47a46e..23d170b 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -447,6 +447,7 @@ static ssize_t nfs_direct_read(struct kiocb *iocb, const struct iovec *iov,
+ 	result = nfs_direct_read_schedule_iovec(dreq, iov, nr_segs, pos);
+ 	if (!result)
+ 		result = nfs_direct_wait(dreq);
++	NFS_I(inode)->read_io += result;
+ out_release:
+ 	nfs_direct_req_release(dreq);
+ out:
+@@ -785,6 +786,7 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 		pos += vec->iov_len;
+ 	}
+ 	nfs_pageio_complete(&desc);
++	NFS_I(dreq->inode)->write_io += desc.pg_bytes_written;
+ 
+ 	/*
+ 	 * If no bytes were started, return the error, and let the
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 8eda8a6..56311ca 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -424,6 +424,7 @@ static int nfs_write_end(struct file *file, struct address_space *mapping,
+ 
+ 	if (status < 0)
+ 		return status;
++	NFS_I(mapping->host)->write_io += copied;
+ 	return copied;
  }
  
-+static struct dentry *nfs_try_mount(int flags, const char *dev_name,
-+				    struct nfs_fh *mntfh,
-+				    struct nfs_mount_info *mount_info)
-+{
-+	int status;
-+	struct nfs_server *server;
-+
-+	status = nfs_request_mount(mount_info->parsed, mntfh);
-+	if (status)
-+		return ERR_PTR(status);
-+
-+	/* Get a volume representation */
-+	server = nfs_create_server(mount_info->parsed, mntfh);
-+	if (IS_ERR(server))
-+		return ERR_CAST(server);
-+
-+	return nfs_fs_mount_common(&nfs_fs_type, server, flags, dev_name, mntfh, mount_info);
-+}
-+
- /*
-  * Split "dev_name" into "hostname:export_path".
-  *
-@@ -1966,11 +1988,6 @@ static int nfs_validate_mount_data(void *options,
- 					   PAGE_SIZE,
- 					   &args->nfs_server.export_path,
- 					   NFS_MAXPATHLEN);
--		if (!status)
--			status = nfs_try_mount(args, mntfh);
--
--		kfree(args->nfs_server.export_path);
--		args->nfs_server.export_path = NULL;
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 889f7e5..a6f5fbb 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -323,6 +323,8 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ 		inode->i_gid = -2;
+ 		inode->i_blocks = 0;
+ 		memset(nfsi->cookieverf, 0, sizeof(nfsi->cookieverf));
++		nfsi->write_io = 0;
++		nfsi->read_io = 0;
  
- 		if (status)
- 			return status;
-@@ -2405,7 +2422,6 @@ error_splat_bdi:
- static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
- 	int flags, const char *dev_name, void *raw_data)
- {
--	struct nfs_server *server;
- 	struct nfs_parsed_mount_data *data = NULL;
- 	struct nfs_mount_info mount_info = {
- 		.fill_super = nfs_fill_super,
-@@ -2429,20 +2445,12 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
- 	mount_info.parsed = data;
+ 		nfsi->read_cache_jiffies = fattr->time_start;
+ 		nfsi->attr_gencount = fattr->gencount;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index cbcb6ae..6620606 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -395,6 +395,9 @@ mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+ 	dprintk("%s:Begin lo %p\n", __func__, lo);
  
- #ifdef CONFIG_NFS_V4
--	if (data->version == 4) {
-+	if (data->version == 4)
- 		mntroot = nfs4_try_mount(flags, dev_name, data);
--		goto out;
--	}
-+	else
- #endif	/* CONFIG_NFS_V4 */
-+		mntroot = nfs_try_mount(flags, dev_name, mntfh, &mount_info);
+ 	if (list_empty(&lo->plh_segs)) {
++		/* Reset MDS Threshold I/O counters */
++		NFS_I(lo->plh_inode)->write_io = 0;
++		NFS_I(lo->plh_inode)->read_io = 0;
+ 		if (!test_and_set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags))
+ 			put_layout_hdr_locked(lo);
+ 		return 0;
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 2cfdd77..86ced78 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -152,6 +152,7 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
+ 	nfs_pageio_init_read(&pgio, inode, &nfs_async_read_completion_ops);
+ 	nfs_pageio_add_request(&pgio, new);
+ 	nfs_pageio_complete(&pgio);
++	NFS_I(inode)->read_io += pgio.pg_bytes_written;
+ 	return 0;
+ }
  
--	/* Get a volume representation */
--	server = nfs_create_server(data, mntfh);
--	if (IS_ERR(server)) {
--		mntroot = ERR_CAST(server);
--		goto out;
--	}
--
--	mntroot = nfs_fs_mount_common(fs_type, server, flags, dev_name, mntfh, &mount_info);
- out:
- 	nfs_free_parsed_mount_data(data);
- 	nfs_free_fhandle(mntfh);
+@@ -656,6 +657,7 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
+ 	ret = read_cache_pages(mapping, pages, readpage_async_filler, &desc);
+ 
+ 	nfs_pageio_complete(&pgio);
++	NFS_I(inode)->read_io += pgio.pg_bytes_written;
+ 	npages = (pgio.pg_bytes_written + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
+ 	nfs_add_stats(inode, NFSIOS_READPAGES, npages);
+ read_complete:
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index ca4a707..9d44860 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -202,6 +202,9 @@ struct nfs_inode {
+ 	/* pNFS layout information */
+ 	struct pnfs_layout_hdr *layout;
+ #endif /* CONFIG_NFS_V4*/
++	/* how many bytes have been written/read and how many bytes queued up */
++	__u64 write_io;
++	__u64 read_io;
+ #ifdef CONFIG_NFS_FSCACHE
+ 	struct fscache_cookie	*fscache;
+ #endif
 -- 
-1.7.10.1
+1.7.7.6
 
