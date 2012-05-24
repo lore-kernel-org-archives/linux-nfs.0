@@ -1,275 +1,297 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:35635 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:61537 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757978Ab2ENWoj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 May 2012 18:44:39 -0400
-Date: Tue, 15 May 2012 00:44:27 +0200
-From: Jan Kara <jack@suse.cz>
-To: Josef Bacik <josef@redhat.com>
-Cc: linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
-        bfields@fieldses.org, adilger@dilger.ca, tytso@mit.edu
-Subject: Re: [PATCH] ext4: fix how i_version is modified and turn it on by
- default
-Message-ID: <20120514224427.GY5353@quack.suse.cz>
-References: <1337021239-2790-1-git-send-email-josef@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1337021239-2790-1-git-send-email-josef@redhat.com>
+	id S1757797Ab2EXVTg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 May 2012 17:19:36 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 1/2] nfs4.1: add BIND_CONN_TO_SESSION operation
+Date: Thu, 24 May 2012 17:19:33 -0400
+Message-Id: <1337894374-23340-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon 14-05-12 14:47:19, Josef Bacik wrote:
-> This makes MS_I_VERSION be turned on by default.  Ext4 had been
-> unconditionally doing i_version++ in a few cases anway so the mount option
-> was kind of silly.  This patch also removes the update in mark_inode_dirty
-> and makes all of the cases where we update ctime also do inode_inc_iversion.
-> file_update_time takes care of the write case and all the places where we
-> update iversion are protected by the i_mutex so there should be no extra
-> i_lock overhead in the normal non-exported fs case.  Thanks,
-  Looks OK but it seems slightly fragile (forgetting to update i_version
-when we add a place where we update i_ctime looks rather easy). So maybe we
-should have a small helper like ext4_inode_update_time() which would update
-c/mtime and i_version?
+This patch adds the BIND_CONN_TO_SESSION operation which is needed for
+upcoming SP4_MACH_CRED work and useful for recovering from broken connections
+without destroying the session.
 
-								Honza
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+Updated with comment from Trond
+
+ fs/nfs/nfs4_fs.h        |    1 +
+ fs/nfs/nfs4proc.c       |   54 ++++++++++++++++++++++++++
+ fs/nfs/nfs4xdr.c        |   95 +++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfs4.h    |    5 ++
+ include/linux/nfs_xdr.h |    6 +++
+ 5 files changed, 161 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index edeef71..ad90bc7 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -215,6 +215,7 @@ struct vfsmount *nfs4_submount(struct nfs_server *, struct dentry *,
+ extern int nfs4_proc_setclientid(struct nfs_client *, u32, unsigned short, struct rpc_cred *, struct nfs4_setclientid_res *);
+ extern int nfs4_proc_setclientid_confirm(struct nfs_client *, struct nfs4_setclientid_res *arg, struct rpc_cred *);
+ extern int nfs4_proc_get_rootfh(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
++extern int nfs4_proc_bind_conn_to_session(struct nfs_client *);
+ extern int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred);
+ extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
+ extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 78784e5..1d1bef6 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5062,6 +5062,60 @@ nfs41_same_server_scope(struct server_scope *a, struct server_scope *b)
+ }
  
-> Signed-off-by: Josef Bacik <josef@redhat.com>
-> ---
->  fs/ext4/acl.c      |    1 +
->  fs/ext4/extents.c  |    3 +++
->  fs/ext4/indirect.c |    1 +
->  fs/ext4/inode.c    |    3 ---
->  fs/ext4/ioctl.c    |    2 ++
->  fs/ext4/namei.c    |   14 ++++++++++----
->  fs/ext4/super.c    |    5 +++--
->  fs/ext4/xattr.c    |    1 +
->  8 files changed, 21 insertions(+), 9 deletions(-)
-> 
-> diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
-> index a5c29bb..fb3ff80 100644
-> --- a/fs/ext4/acl.c
-> +++ b/fs/ext4/acl.c
-> @@ -202,6 +202,7 @@ ext4_set_acl(handle_t *handle, struct inode *inode, int type,
->  			if (error < 0)
->  				return error;
->  			else {
-> +				inode_inc_iversion(inode);
->  				inode->i_ctime = ext4_current_time(inode);
->  				ext4_mark_inode_dirty(handle, inode);
->  				if (error == 0)
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 74f23c2..a9ac029 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4249,6 +4249,7 @@ out_stop:
->  	if (inode->i_nlink)
->  		ext4_orphan_del(handle, inode);
->  
-> +	inode_inc_iversion(inode);
->  	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
->  	ext4_mark_inode_dirty(handle, inode);
->  	ext4_journal_stop(handle);
-> @@ -4261,6 +4262,7 @@ static void ext4_falloc_update_inode(struct inode *inode,
->  
->  	if (update_ctime) {
->  		now = current_fs_time(inode->i_sb);
-> +		inode_inc_iversion(inode);
->  		if (!timespec_equal(&inode->i_ctime, &now))
->  			inode->i_ctime = now;
->  	}
-> @@ -4905,6 +4907,7 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
->  
->  out:
->  	ext4_orphan_del(handle, inode);
-> +	inode_inc_iversion(inode);
->  	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
->  	ext4_mark_inode_dirty(handle, inode);
->  	ext4_journal_stop(handle);
-> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-> index 830e1b2..45ed6d4 100644
-> --- a/fs/ext4/indirect.c
-> +++ b/fs/ext4/indirect.c
-> @@ -1476,6 +1476,7 @@ do_indirects:
->  
->  out_unlock:
->  	up_write(&ei->i_data_sem);
-> +	inode_inc_iversion(inode);
->  	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
->  	ext4_mark_inode_dirty(handle, inode);
->  
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index feaa82f..d11b4e5 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -4314,9 +4314,6 @@ int ext4_mark_iloc_dirty(handle_t *handle,
->  {
->  	int err = 0;
->  
-> -	if (test_opt(inode->i_sb, I_VERSION))
-> -		inode_inc_iversion(inode);
-> -
->  	/* the do_update_inode consumes one bh->b_count */
->  	get_bh(iloc->bh);
->  
-> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-> index 6eee255..c79b874 100644
-> --- a/fs/ext4/ioctl.c
-> +++ b/fs/ext4/ioctl.c
-> @@ -120,6 +120,7 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
->  		ei->i_flags = flags;
->  
->  		ext4_set_inode_flags(inode);
-> +		inode_inc_iversion(inode);
->  		inode->i_ctime = ext4_current_time(inode);
->  
->  		err = ext4_mark_iloc_dirty(handle, inode, &iloc);
-> @@ -168,6 +169,7 @@ flags_out:
->  		}
->  		err = ext4_reserve_inode_write(handle, inode, &iloc);
->  		if (err == 0) {
-> +			inode_inc_iversion(inode);
->  			inode->i_ctime = ext4_current_time(inode);
->  			inode->i_generation = generation;
->  			err = ext4_mark_iloc_dirty(handle, inode, &iloc);
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index 2043f48..9bb533a 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -1316,9 +1316,9 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
->  	 * happen is that the times are slightly out of date
->  	 * and/or different from the directory change time.
->  	 */
-> +	inode_inc_iversion(dir);
->  	dir->i_mtime = dir->i_ctime = ext4_current_time(dir);
->  	ext4_update_dx_flag(dir);
-> -	dir->i_version++;
->  	ext4_mark_inode_dirty(handle, dir);
->  	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
->  	err = ext4_handle_dirty_metadata(handle, dir, bh);
-> @@ -1668,7 +1668,6 @@ static int ext4_delete_entry(handle_t *handle,
->  					blocksize);
->  			else
->  				de->inode = 0;
-> -			dir->i_version++;
->  			BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
->  			err = ext4_handle_dirty_metadata(handle, dir, bh);
->  			if (unlikely(err)) {
-> @@ -2158,13 +2157,14 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
->  		ext4_warning(inode->i_sb,
->  			     "empty directory has too many links (%d)",
->  			     inode->i_nlink);
-> -	inode->i_version++;
->  	clear_nlink(inode);
->  	/* There's no need to set i_disksize: the fact that i_nlink is
->  	 * zero will ensure that the right thing happens during any
->  	 * recovery. */
->  	inode->i_size = 0;
->  	ext4_orphan_add(handle, inode);
-> +	inode_inc_iversion(inode);
-> +	inode_inc_iversion(dir);
->  	inode->i_ctime = dir->i_ctime = dir->i_mtime = ext4_current_time(inode);
->  	ext4_mark_inode_dirty(handle, inode);
->  	ext4_dec_count(handle, dir);
-> @@ -2218,12 +2218,14 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
->  	retval = ext4_delete_entry(handle, dir, de, bh);
->  	if (retval)
->  		goto end_unlink;
-> +	inode_inc_iversion(dir);
->  	dir->i_ctime = dir->i_mtime = ext4_current_time(dir);
->  	ext4_update_dx_flag(dir);
->  	ext4_mark_inode_dirty(handle, dir);
->  	drop_nlink(inode);
->  	if (!inode->i_nlink)
->  		ext4_orphan_add(handle, inode);
-> +	inode_inc_iversion(inode);
->  	inode->i_ctime = ext4_current_time(inode);
->  	ext4_mark_inode_dirty(handle, inode);
->  	retval = 0;
-> @@ -2363,6 +2365,7 @@ retry:
->  	if (IS_DIRSYNC(dir))
->  		ext4_handle_sync(handle);
->  
-> +	inode_inc_iversion(inode);
->  	inode->i_ctime = ext4_current_time(inode);
->  	ext4_inc_count(handle, inode);
->  	ihold(inode);
-> @@ -2470,7 +2473,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
->  		if (EXT4_HAS_INCOMPAT_FEATURE(new_dir->i_sb,
->  					      EXT4_FEATURE_INCOMPAT_FILETYPE))
->  			new_de->file_type = old_de->file_type;
-> -		new_dir->i_version++;
-> +		inode_inc_iversion(new_dir);
->  		new_dir->i_ctime = new_dir->i_mtime =
->  					ext4_current_time(new_dir);
->  		ext4_mark_inode_dirty(handle, new_dir);
-> @@ -2488,6 +2491,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
->  	 * Like most other Unix systems, set the ctime for inodes on a
->  	 * rename.
->  	 */
-> +	inode_inc_iversion(old_inode);
->  	old_inode->i_ctime = ext4_current_time(old_inode);
->  	ext4_mark_inode_dirty(handle, old_inode);
->  
-> @@ -2521,8 +2525,10 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
->  
->  	if (new_inode) {
->  		ext4_dec_count(handle, new_inode);
-> +		inode_inc_iversion(new_inode);
->  		new_inode->i_ctime = ext4_current_time(new_inode);
->  	}
-> +	inode_inc_iversion(old_dir);
->  	old_dir->i_ctime = old_dir->i_mtime = ext4_current_time(old_dir);
->  	ext4_update_dx_flag(old_dir);
->  	if (dir_bh) {
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 502c61f..5866d38 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1813,8 +1813,7 @@ set_qf_format:
->  				 "Ignoring deprecated bh option");
->  			break;
->  		case Opt_i_version:
-> -			set_opt(sb, I_VERSION);
-> -			sb->s_flags |= MS_I_VERSION;
-> +			/* On by default now */
->  			break;
->  		case Opt_nodelalloc:
->  			clear_opt(sb, DELALLOC);
-> @@ -3132,6 +3131,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  		goto out_free_orig;
->  	}
->  	sb->s_fs_info = sbi;
-> +	sb->s_flags |= MS_I_VERSION;
->  	sbi->s_mount_opt = 0;
->  	sbi->s_resuid = EXT4_DEF_RESUID;
->  	sbi->s_resgid = EXT4_DEF_RESGID;
-> @@ -4831,6 +4831,7 @@ static int ext4_quota_off(struct super_block *sb, int type)
->  	handle = ext4_journal_start(inode, 1);
->  	if (IS_ERR(handle))
->  		goto out;
-> +	inode_inc_iversion(inode);
->  	inode->i_mtime = inode->i_ctime = CURRENT_TIME;
->  	ext4_mark_inode_dirty(handle, inode);
->  	ext4_journal_stop(handle);
-> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> index 93a00d8..48a3412 100644
-> --- a/fs/ext4/xattr.c
-> +++ b/fs/ext4/xattr.c
-> @@ -1048,6 +1048,7 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
->  	}
->  	if (!error) {
->  		ext4_xattr_update_super_block(handle, inode->i_sb);
-> +		inode_inc_iversion(inode);
->  		inode->i_ctime = ext4_current_time(inode);
->  		if (!value)
->  			ext4_clear_inode_state(inode, EXT4_STATE_NO_EXPAND);
-> -- 
-> 1.7.7.6
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ /*
++ * nfs4_proc_bind_conn_to_session()
++ *
++ * The 4.1 client currently uses the same TCP connection for the
++ * fore and backchannel.
++ */
++int nfs4_proc_bind_conn_to_session(struct nfs_client *clp)
++{
++	int status;
++	struct nfs41_bind_conn_to_session_res res;
++	struct rpc_message msg = {
++		.rpc_proc =
++			&nfs4_procedures[NFSPROC4_CLNT_BIND_CONN_TO_SESSION],
++		.rpc_argp = clp,
++		.rpc_resp = &res,
++	};
++
++	dprintk("--> %s\n", __func__);
++	BUG_ON(clp == NULL);
++
++	res.session = kzalloc(sizeof(struct nfs4_session), GFP_NOFS);
++	if (unlikely(res.session == NULL)) {
++		status = -ENOMEM;
++		goto out;
++	}
++
++	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
++	if (status == 0) {
++		if (memcmp(res.session->sess_id.data,
++		    clp->cl_session->sess_id.data, NFS4_MAX_SESSIONID_LEN)) {
++			dprintk("NFS: %s: Session ID mismatch\n", __func__);
++			status = -EIO;
++			goto out_session;
++		}
++		if (res.dir != NFS4_CDFS4_BOTH) {
++			dprintk("NFS: %s: Unexpected direction from server\n",
++				__func__);
++			status = -EIO;
++			goto out_session;
++		}
++		if (res.use_conn_in_rdma_mode) {
++			dprintk("NFS: %s: Server returned RDMA mode = true\n",
++				__func__);
++			status = -EIO;
++			goto out_session;
++		}
++	}
++out_session:
++	kfree(res.session);
++out:
++	dprintk("<-- %s status= %d\n", __func__, status);
++	return status;
++}
++
++/*
+  * nfs4_proc_exchange_id()
+  *
+  * Since the clientid has expired, all compounds using sessions
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index db040e9..e9be74f 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -321,6 +321,16 @@ static int nfs4_stat_to_errno(int);
+ 				     1 /* csr_flags */ + \
+ 				     decode_channel_attrs_maxsz + \
+ 				     decode_channel_attrs_maxsz)
++#define encode_bind_conn_to_session_maxsz  (op_encode_hdr_maxsz + \
++				     /* bctsa_sessid */ \
++				     XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + \
++				     1 /* bctsa_dir */ + \
++				     1 /* bctsa_use_conn_in_rdma_mode */)
++#define decode_bind_conn_to_session_maxsz  (op_decode_hdr_maxsz +	\
++				     /* bctsr_sessid */ \
++				     XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + \
++				     1 /* bctsr_dir */ + \
++				     1 /* bctsr_use_conn_in_rdma_mode */)
+ #define encode_destroy_session_maxsz    (op_encode_hdr_maxsz + 4)
+ #define decode_destroy_session_maxsz    (op_decode_hdr_maxsz)
+ #define encode_sequence_maxsz	(op_encode_hdr_maxsz + \
+@@ -714,6 +724,12 @@ static int nfs4_stat_to_errno(int);
+ 				decode_putfh_maxsz + \
+ 				decode_secinfo_maxsz)
+ #if defined(CONFIG_NFS_V4_1)
++#define NFS4_enc_bind_conn_to_session_sz \
++				(compound_encode_hdr_maxsz + \
++				 encode_bind_conn_to_session_maxsz)
++#define NFS4_dec_bind_conn_to_session_sz \
++				(compound_decode_hdr_maxsz + \
++				 decode_bind_conn_to_session_maxsz)
+ #define NFS4_enc_exchange_id_sz \
+ 				(compound_encode_hdr_maxsz + \
+ 				 encode_exchange_id_maxsz)
+@@ -1654,6 +1670,20 @@ static void encode_secinfo(struct xdr_stream *xdr, const struct qstr *name, stru
+ 
+ #if defined(CONFIG_NFS_V4_1)
+ /* NFSv4.1 operations */
++static void encode_bind_conn_to_session(struct xdr_stream *xdr,
++				   struct nfs4_session *session,
++				   struct compound_hdr *hdr)
++{
++	__be32 *p;
++
++	encode_op_hdr(xdr, OP_BIND_CONN_TO_SESSION,
++		decode_bind_conn_to_session_maxsz, hdr);
++	encode_opaque_fixed(xdr, session->sess_id.data, NFS4_MAX_SESSIONID_LEN);
++	p = xdr_reserve_space(xdr, 8);
++	*p++ = cpu_to_be32(NFS4_CDFC4_BACK_OR_BOTH);
++	*p = 0;	/* use_conn_in_rdma_mode = False */
++}
++
+ static void encode_exchange_id(struct xdr_stream *xdr,
+ 			       struct nfs41_exchange_id_args *args,
+ 			       struct compound_hdr *hdr)
+@@ -2614,6 +2644,22 @@ static void nfs4_xdr_enc_secinfo(struct rpc_rqst *req,
+ 
+ #if defined(CONFIG_NFS_V4_1)
+ /*
++ * BIND_CONN_TO_SESSION request
++ */
++static void nfs4_xdr_enc_bind_conn_to_session(struct rpc_rqst *req,
++				struct xdr_stream *xdr,
++				struct nfs_client *clp)
++{
++	struct compound_hdr hdr = {
++		.minorversion = clp->cl_mvops->minor_version,
++	};
++
++	encode_compound_hdr(xdr, req, &hdr);
++	encode_bind_conn_to_session(xdr, clp->cl_session, &hdr);
++	encode_nops(&hdr);
++}
++
++/*
+  * EXCHANGE_ID request
+  */
+ static void nfs4_xdr_enc_exchange_id(struct rpc_rqst *req,
+@@ -5239,6 +5285,37 @@ static int decode_sessionid(struct xdr_stream *xdr, struct nfs4_sessionid *sid)
+ 	return decode_opaque_fixed(xdr, sid->data, NFS4_MAX_SESSIONID_LEN);
+ }
+ 
++static int decode_bind_conn_to_session(struct xdr_stream *xdr,
++				struct nfs41_bind_conn_to_session_res *res)
++{
++	__be32 *p;
++	int status;
++
++	status = decode_op_hdr(xdr, OP_BIND_CONN_TO_SESSION);
++	if (!status)
++		status = decode_sessionid(xdr, &res->session->sess_id);
++	if (unlikely(status))
++		return status;
++
++	/* dir flags, rdma mode bool */
++	p = xdr_inline_decode(xdr, 8);
++	if (unlikely(!p))
++		goto out_overflow;
++
++	res->dir = be32_to_cpup(p++);
++	if (res->dir == 0 || res->dir > NFS4_CDFS4_BOTH)
++		return -EIO;
++	if (be32_to_cpup(p) == 0)
++		res->use_conn_in_rdma_mode = false;
++	else
++		res->use_conn_in_rdma_mode = true;
++
++	return 0;
++out_overflow:
++	print_overflow_msg(__func__, xdr);
++	return -EIO;
++}
++
+ static int decode_create_session(struct xdr_stream *xdr,
+ 				 struct nfs41_create_session_res *res)
+ {
+@@ -6521,6 +6598,22 @@ out:
+ 
+ #if defined(CONFIG_NFS_V4_1)
+ /*
++ * Decode BIND_CONN_TO_SESSION response
++ */
++static int nfs4_xdr_dec_bind_conn_to_session(struct rpc_rqst *rqstp,
++					struct xdr_stream *xdr,
++					void *res)
++{
++	struct compound_hdr hdr;
++	int status;
++
++	status = decode_compound_hdr(xdr, &hdr);
++	if (!status)
++		status = decode_bind_conn_to_session(xdr, res);
++	return status;
++}
++
++/*
+  * Decode EXCHANGE_ID response
+  */
+ static int nfs4_xdr_dec_exchange_id(struct rpc_rqst *rqstp,
+@@ -7001,6 +7094,8 @@ struct rpc_procinfo	nfs4_procedures[] = {
+ 	PROC(RELEASE_LOCKOWNER,	enc_release_lockowner,	dec_release_lockowner),
+ 	PROC(SECINFO,		enc_secinfo,		dec_secinfo),
+ #if defined(CONFIG_NFS_V4_1)
++	PROC(BIND_CONN_TO_SESSION,
++			enc_bind_conn_to_session, dec_bind_conn_to_session),
+ 	PROC(EXCHANGE_ID,	enc_exchange_id,	dec_exchange_id),
+ 	PROC(CREATE_SESSION,	enc_create_session,	dec_create_session),
+ 	PROC(DESTROY_SESSION,	enc_destroy_session,	dec_destroy_session),
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 0987146..5b1a504 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -69,6 +69,10 @@
+ #define NFS4_CDFC4_FORE_OR_BOTH 0x3
+ #define NFS4_CDFC4_BACK_OR_BOTH 0x7
+ 
++#define NFS4_CDFS4_FORE 0x1
++#define NFS4_CDFS4_BACK 0x2
++#define NFS4_CDFS4_BOTH 0x3
++
+ #define NFS4_SET_TO_SERVER_TIME	0
+ #define NFS4_SET_TO_CLIENT_TIME	1
+ 
+@@ -582,6 +586,7 @@ enum {
+ 	NFSPROC4_CLNT_SECINFO,
+ 
+ 	/* nfs41 */
++	NFSPROC4_CLNT_BIND_CONN_TO_SESSION,
+ 	NFSPROC4_CLNT_EXCHANGE_ID,
+ 	NFSPROC4_CLNT_CREATE_SESSION,
+ 	NFSPROC4_CLNT_DESTROY_SESSION,
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 2e53a3f..aa2a3bb 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1115,6 +1115,12 @@ struct nfs41_impl_id {
+ 	struct nfstime4			date;
+ };
+ 
++struct nfs41_bind_conn_to_session_res {
++	struct nfs4_session		*session;
++	u32				dir;
++	bool				use_conn_in_rdma_mode;
++};
++
+ struct nfs41_exchange_id_res {
+ 	struct nfs_client		*client;
+ 	u32				flags;
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.4.4
+
