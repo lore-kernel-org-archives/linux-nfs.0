@@ -1,100 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:39403 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757431Ab2EVOMb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 10:12:31 -0400
-Received: by mail-yx0-f174.google.com with SMTP id m10so5396471yen.19
-        for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 07:12:31 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: inux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
-        michael.brantley@deshaw.com, pstaubach@exagrid.com
-Subject: [PATCH v2 03/15] vfs: make fstatat retry on ESTALE errors from getattr call
-Date: Tue, 22 May 2012 10:12:07 -0400
-Message-Id: <1337695939-2741-4-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
-References: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
+Received: from natasha.panasas.com ([67.152.220.90]:41490 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751156Ab2EXNtP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 May 2012 09:49:15 -0400
+Message-ID: <4FBE3C4D.7050507@panasas.com>
+Date: Thu, 24 May 2012 16:49:01 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Benny Halevy <bhalevy@tonian.com>
+CC: NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: Does our Kernel PNFSD-Server supports recurring layout_get with
+ open_state_id
+References: <4FBD7DE8.9090002@panasas.com> <4FBE2C8C.9090403@tonian.com>
+In-Reply-To: <4FBE2C8C.9090403@tonian.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c         |    2 +-
- fs/stat.c          |   21 ++++++++++++++++-----
- include/linux/fs.h |    3 ++-
- 3 files changed, 19 insertions(+), 7 deletions(-)
+On 05/24/2012 03:41 PM, Benny Halevy wrote:
 
-diff --git a/fs/namei.c b/fs/namei.c
-index c63242f..516be34 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -116,7 +116,7 @@
-  * POSIX.1 2.4: an empty pathname is invalid (ENOENT).
-  * PATH_MAX includes the nul terminator --RR.
-  */
--static char *getname_flags(const char __user *filename, int flags, int *empty)
-+char *getname_flags(const char __user *filename, int flags, int *empty)
- {
- 	char *result = __getname(), *err;
- 	int len;
-diff --git a/fs/stat.c b/fs/stat.c
-index 0cef336..60a8813 100644
---- a/fs/stat.c
-+++ b/fs/stat.c
-@@ -72,9 +72,11 @@ EXPORT_SYMBOL(vfs_fstat);
- int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
- 		int flag)
- {
-+	char *name;
- 	struct path path;
- 	int error = -EINVAL;
--	int lookup_flags = 0;
-+	unsigned int try = 0;
-+	unsigned int lookup_flags = 0;
- 
- 	if ((flag & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
- 		      AT_EMPTY_PATH)) != 0)
-@@ -85,12 +87,21 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
- 	if (flag & AT_EMPTY_PATH)
- 		lookup_flags |= LOOKUP_EMPTY;
- 
--	error = user_path_at(dfd, filename, lookup_flags, &path);
--	if (error)
-+	name = getname_flags(filename, lookup_flags, NULL);
-+	if (IS_ERR(name)) {
-+		error = PTR_ERR(name);
- 		goto out;
-+	}
-+	do {
-+		error = kern_path_at(dfd, name, lookup_flags, &path);
-+		if (error)
-+			break;
- 
--	error = vfs_getattr(path.mnt, path.dentry, stat);
--	path_put(&path);
-+		error = vfs_getattr(path.mnt, path.dentry, stat);
-+		path_put(&path);
-+		lookup_flags |= LOOKUP_REVAL;
-+	} while (retry_estale(error, try++));
-+	putname(name);
- out:
- 	return error;
- }
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 0b8003b..2f92b93 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2024,7 +2024,8 @@ extern struct file *file_open_root(struct dentry *, struct vfsmount *,
- extern struct file * dentry_open(struct dentry *, struct vfsmount *, int,
- 				 const struct cred *);
- extern int filp_close(struct file *, fl_owner_t id);
--extern char * getname(const char __user *);
-+extern char *getname_flags(const char __user *, int, int *);
-+extern char *getname(const char __user *);
- 
- /**
-  * retry_estale - determine whether the caller should retry an operation
--- 
-1.7.7.6
+> On 2012-05-24 03:16, Boaz Harrosh wrote:
+>>
+>> Benny hi
+>>
+>> If I remember/understand correctly, there is a mode in the RFC errata
+>> about the layout forgetful-model and a client sending a layout_get with
+>> an open_state_id after he already had previous state (layouts) on the file.
+>>
+>> As I understood this is an indication to the server that client has
+>> "forgotten" all it's layouts on a file, and Server can assume their
+>> return.
+>>
+>> Is my understanding correct?
+> 
+> Yes
+> 
+>>
+>> If Yes:
+>> 	Did we implement the internal return of all layouts, if above
+>> 	open_state_id is encountered?
+>> 	I thought we did but I can't find this code.
+> 
+> True.  This is not implemented yet.
+> 
+>>
+>> Currently, I always set ROC so there is no leak. But theoretically
+>> ROC does not have to be set. I'm doing some heavy lifting of
+>> layout_return, and I want to make sure I have not missed a spot.
+>>
+>> If I'm correct that it is needed, and it's missing:
+>> My suggestion for now is that we always set ROC, disregarding FS so not to
+>> leak layouts and therefor inode-refs, until such time that we implement it.
+> 
+> According to the new errata the server will have to simulate layout returns in the ROC
+> case on last CLOSE if the (forgetful) client did not explicitly return the layout.
+> This is not implemented either :-(
+> 
+
+
+Yes Benny it is implemented. I implemented it and you fix a bug I had. See:
+	nfs4pnfsd.c::pnfsd_roc(...) 
+and it's call site. It is called on last call and all is working well (except some locking
+bugs I'll send a fix to later). Otherwise both exofs and DF would have crapped out for sure.
+
+With ROC set all work well. This is why I say we should set it for now to make sure we do
+not have the above bug.
+
+Thanks
+Boaz
+
+> Benny
+> 
+>>
+>> Thanks
+>> Boaz
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 
