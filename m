@@ -1,50 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:26475 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754234Ab2EZSkY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 26 May 2012 14:40:24 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 4/9] NFSv4.1: Handle NFS4ERR_SEQ_MISORDERED when confirming the lease
-Date: Sat, 26 May 2012 14:39:55 -0400
-Message-Id: <1338057600-11130-4-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1338057600-11130-3-git-send-email-Trond.Myklebust@netapp.com>
-References: <1338057600-11130-1-git-send-email-Trond.Myklebust@netapp.com>
- <1338057600-11130-2-git-send-email-Trond.Myklebust@netapp.com>
- <1338057600-11130-3-git-send-email-Trond.Myklebust@netapp.com>
+Received: from natasha.panasas.com ([67.152.220.90]:43798 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750739Ab2EXAQx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 May 2012 20:16:53 -0400
+Message-ID: <4FBD7DE8.9090002@panasas.com>
+Date: Thu, 24 May 2012 03:16:40 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Benny Halevy <bhalevy@tonian.com>, NFS list <linux-nfs@vger.kernel.org>
+Subject: Does our Kernel PNFSD-Server supports recurring layout_get with open_state_id
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Apparently the patch "NFS: Always use the same SETCLIENTID boot verifier"
-is tickling a Linux nfs server bug, and causing a regression: the server
-can get into a situation where it keeps replying NFS4ERR_SEQ_MISORDERED
-to our CREATE_SESSION request even when we are sending the correct
-sequence ID.
 
-Fix this by purging the lease and then retrying.
+Benny hi
 
-Reported-by: Bryan Schumaker <bjschuma@netapp.com>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4state.c |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
+If I remember/understand correctly, there is a mode in the RFC errata
+about the layout forgetful-model and a client sending a layout_get with
+an open_state_id after he already had previous state (layouts) on the file.
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 604c600..419f8c4 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1580,6 +1580,11 @@ out:
- static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
- {
- 	switch (status) {
-+	case -NFS4ERR_SEQ_MISORDERED:
-+		if (test_and_set_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state))
-+			return -ESERVERFAULT;
-+		/* Lease confirmation error: retry after purging the lease */
-+		ssleep(1);
- 	case -NFS4ERR_CLID_INUSE:
- 	case -NFS4ERR_STALE_CLIENTID:
- 		clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
--- 
-1.7.7.6
+As I understood this is an indication to the server that client has
+"forgotten" all it's layouts on a file, and Server can assume their
+return.
 
+Is my understanding correct?
+
+If Yes:
+	Did we implement the internal return of all layouts, if above
+	open_state_id is encountered?
+	I thought we did but I can't find this code.
+
+Currently, I always set ROC so there is no leak. But theoretically
+ROC does not have to be set. I'm doing some heavy lifting of
+layout_return, and I want to make sure I have not missed a spot.
+
+If I'm correct that it is needed, and it's missing:
+My suggestion for now is that we always set ROC, disregarding FS so not to
+leak layouts and therefor inode-refs, until such time that we implement it.
+
+Thanks
+Boaz
