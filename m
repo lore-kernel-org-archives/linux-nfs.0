@@ -1,40 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:24786 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:31768 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752220Ab2ESVgN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 19 May 2012 17:36:13 -0400
-Received: from vmwexceht01-prd.hq.netapp.com (vmwexceht01-prd.hq.netapp.com [10.106.76.239])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q4JLaCIo004061
-	for <linux-nfs@vger.kernel.org>; Sat, 19 May 2012 14:36:13 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] NFSv4.1 resend LAYOUTGET on data server invalid
- layout errors
-Date: Sat, 19 May 2012 21:35:27 +0000
-Message-ID: <1337463371.4831.54.camel@lade.trondhjem.org>
-References: <1333570957-2008-1-git-send-email-andros@netapp.com>
-	 <1333570957-2008-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1333570957-2008-2-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1755936Ab2EXTmU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 May 2012 15:42:20 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 2/2] nfsd: probe the back channel on new connections
+Date: Thu, 24 May 2012 15:42:17 -0400
+Message-Id: <1337888537-21754-2-git-send-email-dros@netapp.com>
+In-Reply-To: <1337888537-21754-1-git-send-email-dros@netapp.com>
+References: <1337888537-21754-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTA0LTA0IGF0IDE2OjIyIC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
-ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFRoZSAi
-aW52YWxpZCBsYXlvdXQiIGNsYXNzIG9mIGVycm9ycyBpcyBoYW5kbGVkIGJ5IGRlc3Ryb3lpbmcg
-dGhlIGxheW91dCBhbmQNCj4gZ2V0dGluZyBhIG5ldyBsYXlvdXQgZnJvbSB0aGUgc2VydmVyLiAg
-Q3VycmVudGx5LCB0aGUgbGF5b3V0IG11c3QgYmUNCj4gZGVzdHJveWVkIGJlZm9yZSBhIG5ldyBs
-YXlvdXQgY2FuIGJlIG9idGFpbmVkLg0KPiANCj4gVGhpcyBtZWFucyB0aGF0IGFsbCByZWZlcmVu
-Y2VzIChlLmcubHNlZ3MpIHRvIHRoZSAidG8gYmUgZGVzdHJveWVkIiBsYXlvdXQNCj4gaGVhZGVy
-IG11c3QgYmUgZHJvcHBlZCBiZWZvcmUgaXQgY2FuIGJlIGRlc3Ryb3llZC4gVGhpcyBpbiB0dXJu
-IG1lYW5zIHdhaXRpbmcNCj4gZm9yIGFsbCBpbiBmbGlnaHQgUlBDJ3MgdXNpbmcgdGhlIG9sZCBs
-YXlvdXQgYXMgd2VsbCBhcyBkcmFpbmluZyB0aGUgZGF0YQ0KPiBzZXJ2ZXIgc2Vzc2lvbiBzbG90
-IHRhYmxlIHdhaXQgcXVldWUuDQo+IA0KPiBTZXQgdGhlIE5GU19MQVlPVVRfSU5WQUxJRCBmbGFn
-IHRvIHJlZGlyZWN0IEkvTyB0byB0aGUgTURTIHdoaWxlIHdhaXRpbmcgZm9yDQo+IHRoZSBvbGQg
-bGF5b3V0IHRvIGJlIGRlc3Ryb3llZC4NCj4gDQoNCklzIHRoaXMgcGF0Y2ggc3RpbGwgb2YgaW50
-ZXJlc3Q/IGl0IGRvZXNuJ3Qgc2VlbSB0byBhcHBseSBub3cgdGhhdCBJJ3ZlDQphZGRlZCB5b3Vy
-IHF1aWNrIGZhaWxvdmVyIHBhdGNoZXMuDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZT
-IGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20N
-Cnd3dy5uZXRhcHAuY29tDQoNCg==
+Initiate a CB probe when a new connection with the correct direction is added
+to a session (IFF backchannel is marked as down).  Without this a
+BIND_CONN_TO_SESSION has no effect on the internal backchannel state, which
+causes the server to reply to every SEQUENCE op with the
+SEQ4_STATUS_CB_PATH_DOWN flag set until DESTROY_SESSION.
+
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+Hey Bruce -
+ In an earlier thread I mentioned that I was setting the backchannel state to
+CB_UNKNOWN to clear the SEQ4_STATUS flag, but this was wrong - I don't believe
+it would ever change (to CB_UP/CB_DOWN).  This patch seems like the right way
+to handle the internal backchannel state.
+
+Also, I'm a bit confused as how we're supposed to maintain atomicity around
+cl_cb_state:
+
+from nfs4callback.c:nfsd4_probe_callback():
+  /* XXX: atomicity?  Also, should we be using cl_flags? */
+  clp->cl_cb_state = NFSD4_CB_UNKNOWN;
+
+and there are several places that check the value of cl_cb_state without holding
+a lock (as far as I can tell).
+
+ fs/nfsd/nfs4state.c |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 9afc902..99f092e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -862,6 +862,11 @@ static __be32 nfsd4_new_conn(struct svc_rqst *rqstp, struct nfsd4_session *ses,
+ 	if (ret)
+ 		/* oops; xprt is already down: */
+ 		nfsd4_conn_lost(&conn->cn_xpt_user);
++	if (ses->se_client->cl_cb_state == NFSD4_CB_DOWN &&
++		dir & NFS4_CDFC4_BACK) {
++		/* callback channel may be back up */
++		nfsd4_probe_callback(ses->se_client);
++	}
+ 	return nfs_ok;
+ }
+ 
+-- 
+1.7.4.4
+
