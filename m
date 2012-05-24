@@ -1,54 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:55084 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932881Ab2EOWK1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 18:10:27 -0400
-Message-ID: <4FB2D447.50209@panasas.com>
-Date: Wed, 16 May 2012 01:10:15 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Rick Macklem <rmacklem@uoguelph.ca>
-CC: nfsv4 <nfsv4@ietf.org>, NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [nfsv4] commit thru DS at the bakeathon?
-References: <2053705292.441561.1337119098800.JavaMail.root@erie.cs.uoguelph.ca>
-In-Reply-To: <2053705292.441561.1337119098800.JavaMail.root@erie.cs.uoguelph.ca>
-Content-Type: text/plain; charset="UTF-8"
+Received: from rcsinet15.oracle.com ([148.87.113.117]:50135 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933675Ab2EXQqH convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 May 2012 12:46:07 -0400
+Subject: Re: [PATCH 1/2] nfs4.1: add BIND_CONN_TO_SESSION operation
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1337876797-17706-1-git-send-email-dros@netapp.com>
+Date: Thu, 24 May 2012 12:46:03 -0400
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Message-Id: <AB759F1A-91C0-4413-B2B9-9F7A9840AC7D@oracle.com>
+References: <1337876797-17706-1-git-send-email-dros@netapp.com>
+To: Weston Andros Adamson <dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/16/2012 12:58 AM, Rick Macklem wrote:
 
-> Hi,
+On May 24, 2012, at 12:26 PM, Weston Andros Adamson wrote:
+
+> This patch adds the BIND_CONN_TO_SESSION operation which is needed for
+> upcoming SP4_MACH_CRED work and useful for recovering from broken connections
+> without destroying the session.
 > 
-> I was just wondering if anyone was going to have a pNFS server
-> at the June bakeathon that does Files layout and requires
-> "commit through the DS"?
+> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+> ---
+> fs/nfs/nfs4_fs.h        |    1 +
+> fs/nfs/nfs4proc.c       |   54 ++++++++++++++++++++++++++++
+> fs/nfs/nfs4xdr.c        |   90 +++++++++++++++++++++++++++++++++++++++++++++++
+> include/linux/nfs4.h    |    5 +++
+> include/linux/nfs_xdr.h |    6 +++
+> 5 files changed, 156 insertions(+), 0 deletions(-)
+
+[ ... snipped ... ]
+
+> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+> index 0987146..80fbbfc6 100644
+> --- a/include/linux/nfs4.h
+> +++ b/include/linux/nfs4.h
+> @@ -69,6 +69,10 @@
+> #define NFS4_CDFC4_FORE_OR_BOTH 0x3
+> #define NFS4_CDFC4_BACK_OR_BOTH 0x7
 > 
+> +#define CDFS4_FORE 0x1
+> +#define CDFS4_BACK 0x2
+> +#define CDFS4_BOTH 0x3
 
+A few more nits:
 
-I bet it could be simple to implement with the Linux local-exp
-pnfs server. (If not already supported)
+I'm looking back at the patch I did last year to add BIND_CONN_TO_SESS for NFSv4.1 migration support... I used NFS4_CDFS4_FORE and so on here, to match the defines in the paragraph above.
 
-> It's one piece I haven't implemented yet and, although I do plan
-> on coding it, I was wondering if I should try and get it done in
-> the next couple of weeks?
+In the XDR decoder function, I check the "dir_from_server" field to ensure it is equal to or less than NFS4_CDFS4_BOTH (-EIO if not).
+
+> +
+> #define NFS4_SET_TO_SERVER_TIME	0
+> #define NFS4_SET_TO_CLIENT_TIME	1
 > 
-> Just fyi, I'll have a FreeBSD NFSv4.0 server and a NFSv4.1 client that
->      includes pNFS using the files layout only there for testing.
->      (excluding support for "commit through DS" maybe?)
+> @@ -582,6 +586,7 @@ enum {
+> 	NFSPROC4_CLNT_SECINFO,
 > 
+> 	/* nfs41 */
+> +	NFSPROC4_CLNT_BIND_CONN_TO_SESSION,
+> 	NFSPROC4_CLNT_EXCHANGE_ID,
+> 	NFSPROC4_CLNT_CREATE_SESSION,
+> 	NFSPROC4_CLNT_DESTROY_SESSION,
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
-Hey nice! a pnfs client for FBSD. Do you have a preliminary design
-for multiple layout-drivers like in Linux with a vector table?
-
-Should I be looking into objects implementation?
-
-> Looking forward to the bakeathon, rick
 
 
-Will not attend this time. Perhaps next time. Do you
-have a public git tree for review?
-
-Cheers
-Boaz
