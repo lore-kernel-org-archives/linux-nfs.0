@@ -1,148 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:33565 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762104Ab2EQOvb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 May 2012 10:51:31 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 03/12] mm: Methods for teaching filesystems about PG_swapcache pages
-Date: Thu, 17 May 2012 15:51:16 +0100
-Message-Id: <1337266285-8102-4-git-send-email-mgorman@suse.de>
-In-Reply-To: <1337266285-8102-1-git-send-email-mgorman@suse.de>
-References: <1337266285-8102-1-git-send-email-mgorman@suse.de>
+Received: from relay.parallels.com ([195.214.232.42]:54175 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757417Ab2EXTr4 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 May 2012 15:47:56 -0400
+Message-ID: <4FBE9069.6050602@parallels.com>
+Date: Thu, 24 May 2012 23:47:53 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v2 01/12] NFS: pass net to nfs_callback_down()
+References: <20120522073320.20602.87130.stgit@localhost.localdomain> <20120522073555.20602.12874.stgit@localhost.localdomain> <20120524160905.GB21776@fieldses.org>
+In-Reply-To: <20120524160905.GB21776@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In order to teach filesystems to handle swap cache pages, three new
-page functions are introduced:
+24.05.2012 20:09, J. Bruce Fields написал:
+> I can see that you're passing net to nfs_callback_down().  Could you
+> please remind me why?  What problem does this solve?
 
-  pgoff_t page_file_index(struct page *);
-  loff_t page_file_offset(struct page *);
-  struct address_space *page_file_mapping(struct page *);
+Callback in a kernel thread and this thread is one for all NFSv4.{0,1} 
+clients.
+Thus, is have to be cantainerized as Lockd kthread.
+This patch set does containerization in the same way as Lockd done.
+I forgot about it when I was working on NFS client containerization. So, 
+it really hope, that this patch set will be a part of 3.5 kernel.
 
-page_file_index() - gives the offset of this page in the file in
-PAGE_CACHE_SIZE blocks. Like page->index is for mapped pages, this
-function also gives the correct index for PG_swapcache pages.
-
-page_file_offset() - uses page_file_index(), so that it will give
-the expected result, even for PG_swapcache pages.
-
-page_file_mapping() - gives the mapping backing the actual page;
-that is for swap cache pages it will give swap_file->f_mapping.
-
-Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
----
- include/linux/mm.h      |   25 +++++++++++++++++++++++++
- include/linux/pagemap.h |    5 +++++
- mm/swapfile.c           |   19 +++++++++++++++++++
- 3 files changed, 49 insertions(+)
-
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index 74aa71b..58cc925 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -803,6 +803,17 @@ static inline void *page_rmapping(struct page *page)
- 	return (void *)((unsigned long)page->mapping & ~PAGE_MAPPING_FLAGS);
- }
- 
-+extern struct address_space *__page_file_mapping(struct page *);
-+
-+static inline
-+struct address_space *page_file_mapping(struct page *page)
-+{
-+	if (unlikely(PageSwapCache(page)))
-+		return __page_file_mapping(page);
-+
-+	return page->mapping;
-+}
-+
- static inline int PageAnon(struct page *page)
- {
- 	return ((unsigned long)page->mapping & PAGE_MAPPING_ANON) != 0;
-@@ -819,6 +830,20 @@ static inline pgoff_t page_index(struct page *page)
- 	return page->index;
- }
- 
-+extern pgoff_t __page_file_index(struct page *page);
-+
-+/*
-+ * Return the file index of the page. Regular pagecache pages use ->index
-+ * whereas swapcache pages use swp_offset(->private)
-+ */
-+static inline pgoff_t page_file_index(struct page *page)
-+{
-+	if (unlikely(PageSwapCache(page)))
-+		return __page_file_index(page);
-+
-+	return page->index;
-+}
-+
- /*
-  * Return true if this page is mapped into pagetables.
-  */
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index cfaaa69..d4d4bda 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -286,6 +286,11 @@ static inline loff_t page_offset(struct page *page)
- 	return ((loff_t)page->index) << PAGE_CACHE_SHIFT;
- }
- 
-+static inline loff_t page_file_offset(struct page *page)
-+{
-+	return ((loff_t)page_file_index(page)) << PAGE_CACHE_SHIFT;
-+}
-+
- extern pgoff_t linear_hugepage_index(struct vm_area_struct *vma,
- 				     unsigned long address);
- 
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index fafc26d..df5f148 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -31,6 +31,7 @@
- #include <linux/memcontrol.h>
- #include <linux/poll.h>
- #include <linux/oom.h>
-+#include <linux/export.h>
- 
- #include <asm/pgtable.h>
- #include <asm/tlbflush.h>
-@@ -2293,6 +2294,24 @@ int swapcache_prepare(swp_entry_t entry)
- }
- 
- /*
-+ * out-of-line __page_file_ methods to avoid include hell.
-+ */
-+struct address_space *__page_file_mapping(struct page *page)
-+{
-+	VM_BUG_ON(!PageSwapCache(page));
-+	return page_swap_info(page)->swap_file->f_mapping;
-+}
-+EXPORT_SYMBOL_GPL(__page_file_mapping);
-+
-+pgoff_t __page_file_index(struct page *page)
-+{
-+	swp_entry_t swap = { .val = page_private(page) };
-+	VM_BUG_ON(!PageSwapCache(page));
-+	return swp_offset(swap);
-+}
-+EXPORT_SYMBOL_GPL(__page_file_index);
-+
-+/*
-  * add_swap_count_continuation - called when a swap count is duplicated
-  * beyond SWAP_MAP_MAX, it allocates a new page and links that to the entry's
-  * page of the original vmalloc'ed swap_map, to hold the continuation count
--- 
-1.7.9.2
+> --b.
+>
+> On Tue, May 22, 2012 at 11:35:55AM +0400, Stanislav Kinsbursky wrote:
+>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
+>> ---
+>>   fs/nfs/callback.c |    4 ++--
+>>   fs/nfs/callback.h |    2 +-
+>>   fs/nfs/client.c   |    2 +-
+>>   3 files changed, 4 insertions(+), 4 deletions(-)
+>>
+>> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+>> index 970659d..f3d7ee2 100644
+>> --- a/fs/nfs/callback.c
+>> +++ b/fs/nfs/callback.c
+>> @@ -322,7 +322,7 @@ out_err:
+>>   /*
+>>    * Kill the callback thread if it's no longer being used.
+>>    */
+>> -void nfs_callback_down(int minorversion)
+>> +void nfs_callback_down(int minorversion, struct net *net)
+>>   {
+>>   	struct nfs_callback_data *cb_info =&nfs_callback_info[minorversion];
+>>
+>> @@ -330,7 +330,7 @@ void nfs_callback_down(int minorversion)
+>>   	cb_info->users--;
+>>   	if (cb_info->users == 0&&  cb_info->task != NULL) {
+>>   		kthread_stop(cb_info->task);
+>> -		svc_shutdown_net(cb_info->serv, current->nsproxy->net_ns);
+>> +		svc_shutdown_net(cb_info->serv, net);
+>>   		svc_exit_thread(cb_info->rqst);
+>>   		cb_info->serv = NULL;
+>>   		cb_info->rqst = NULL;
+>> diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+>> index a5527c9..6d900cf 100644
+>> --- a/fs/nfs/callback.h
+>> +++ b/fs/nfs/callback.h
+>> @@ -194,7 +194,7 @@ extern __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy,
+>>   				   struct cb_process_state *cps);
+>>   #ifdef CONFIG_NFS_V4
+>>   extern int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt);
+>> -extern void nfs_callback_down(int minorversion);
+>> +extern void nfs_callback_down(int minorversion, struct net *net);
+>>   extern int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation,
+>>   					    const nfs4_stateid *stateid);
+>>   extern int nfs4_set_callback_sessionid(struct nfs_client *clp);
+>> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+>> index da7b5e4..44cd70f 100644
+>> --- a/fs/nfs/client.c
+>> +++ b/fs/nfs/client.c
+>> @@ -222,7 +222,7 @@ static void nfs4_shutdown_session(struct nfs_client *clp)
+>>   static void nfs4_destroy_callback(struct nfs_client *clp)
+>>   {
+>>   	if (__test_and_clear_bit(NFS_CS_CALLBACK,&clp->cl_res_state))
+>> -		nfs_callback_down(clp->cl_mvops->minor_version);
+>> +		nfs_callback_down(clp->cl_mvops->minor_version, clp->net);
+>>   }
+>>
+>>   static void nfs4_shutdown_client(struct nfs_client *clp)
+>>
 
