@@ -1,71 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:38141 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759545Ab2EJNyr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 May 2012 09:54:47 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 12/12] Avoid dereferencing bd_disk during swap_entry_free for network storage
-Date: Thu, 10 May 2012 14:54:25 +0100
-Message-Id: <1336658065-24851-13-git-send-email-mgorman@suse.de>
-In-Reply-To: <1336658065-24851-1-git-send-email-mgorman@suse.de>
-References: <1336658065-24851-1-git-send-email-mgorman@suse.de>
+Received: from mail-wg0-f44.google.com ([74.125.82.44]:64153 "EHLO
+	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751876Ab2EXMa4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 May 2012 08:30:56 -0400
+Received: by wgbdr13 with SMTP id dr13so8268886wgb.1
+        for <linux-nfs@vger.kernel.org>; Thu, 24 May 2012 05:30:54 -0700 (PDT)
+Message-ID: <4FBE29FB.9030405@tonian.com>
+Date: Thu, 24 May 2012 15:30:51 +0300
+From: Benny Halevy <bhalevy@tonian.com>
+MIME-Version: 1.0
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+CC: bfields@fieldses.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Subject: Re: [PATCH] NFSd: simplify locking in nfsd_recall_delegations()
+References: <20120522102839.12440.14555.stgit@localhost.localdomain>
+In-Reply-To: <20120522102839.12440.14555.stgit@localhost.localdomain>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit [b3a27d: swap: Add swap slot free callback to
-block_device_operations] dereferences p->bdev->bd_disk but this is a
-NULL dereference if using swap-over-NFS. This patch checks SWP_BLKDEV
-on the swap_info_struct before dereferencing.
+On 2012-05-22 13:28, Stanislav Kinsbursky wrote:
+> Holding of client_mutex looks redundant here - holding of recall_lock looks
+> enough.
 
-With reference to this callback, Christoph Hellwig stated "Please
-just remove the callback entirely.  It has no user outside the staging
-tree and was added clearly against the rules for that staging tree".
-This would also be my preference but there was not an obvious way of
-keeping zram in staging/ happy.
+Looking at the code, agreed.
 
-Signed-off-by: Xiaotian Feng <dfeng@redhat.com>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
----
- mm/swapfile.c |    9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
+Benny
 
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index 80b3415..d85d842 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -547,7 +547,6 @@ static unsigned char swap_entry_free(struct swap_info_struct *p,
- 
- 	/* free if no reference */
- 	if (!usage) {
--		struct gendisk *disk = p->bdev->bd_disk;
- 		if (offset < p->lowest_bit)
- 			p->lowest_bit = offset;
- 		if (offset > p->highest_bit)
-@@ -557,9 +556,11 @@ static unsigned char swap_entry_free(struct swap_info_struct *p,
- 			swap_list.next = p->type;
- 		nr_swap_pages++;
- 		p->inuse_pages--;
--		if ((p->flags & SWP_BLKDEV) &&
--				disk->fops->swap_slot_free_notify)
--			disk->fops->swap_slot_free_notify(p->bdev, offset);
-+		if (p->flags & SWP_BLKDEV) {
-+			struct gendisk *disk = p->bdev->bd_disk;
-+			if (disk->fops->swap_slot_free_notify)
-+				disk->fops->swap_slot_free_notify(p->bdev, offset);
-+		}
- 	}
- 
- 	return usage;
--- 
-1.7.9.2
-
+> 
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> ---
+>  fs/nfsd/nfs4state.c |    2 --
+>  1 files changed, 0 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index f004e61..fdef9fc 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -4744,11 +4744,9 @@ void nfsd_recall_delegations(u64 num)
+>  {
+>  	unsigned int count;
+>  
+> -	nfs4_lock_state();
+>  	spin_lock(&recall_lock);
+>  	count = nfsd_process_n_delegations(num, nfsd_break_one_deleg, NULL);
+>  	spin_unlock(&recall_lock);
+> -	nfs4_unlock_state();
+>  
+>  	printk(KERN_INFO "NFSD: Recalled %d delegations", count);
+>  }
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
