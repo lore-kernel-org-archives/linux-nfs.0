@@ -1,97 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:16456 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:50501 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758823Ab2EON3C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 May 2012 09:29:02 -0400
-Date: Tue, 15 May 2012 09:28:57 -0400
-From: Josef Bacik <josef@redhat.com>
-To: Andreas Dilger <adilger@dilger.ca>
-Cc: Josef Bacik <josef@redhat.com>, "J. Bruce Fields" <bfields@fieldses.org>,
-        "Ted Ts'o" <tytso@mit.edu>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: Re: [PATCH] ext4: turn on i_version updates by default
-Message-ID: <20120515132857.GA1907@localhost.localdomain>
-References: <20120514140618.GA29902@fieldses.org>
- <9124E59E-2479-4C32-A528-3237B48DEC01@dilger.ca>
- <20120514152334.GB29902@fieldses.org>
- <14B38D68-FAE4-444A-BCD9-7EBF7E1BBFE1@dilger.ca>
- <20120514175822.GC1439@thunk.org>
- <20120514183316.GA1894@localhost.localdomain>
- <20120514185400.GA32026@fieldses.org>
- <20120514190500.GC1894@localhost.localdomain>
- <60F0B94D-FDB9-4401-B0EA-1A1C6DE4086F@dilger.ca>
+	id S933424Ab2EXQJI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 May 2012 12:09:08 -0400
+Date: Thu, 24 May 2012 12:09:05 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Subject: Re: [PATCH v2 01/12] NFS: pass net to nfs_callback_down()
+Message-ID: <20120524160905.GB21776@fieldses.org>
+References: <20120522073320.20602.87130.stgit@localhost.localdomain>
+ <20120522073555.20602.12874.stgit@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <60F0B94D-FDB9-4401-B0EA-1A1C6DE4086F@dilger.ca>
+In-Reply-To: <20120522073555.20602.12874.stgit@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 14, 2012 at 03:27:47PM -0600, Andreas Dilger wrote:
-> On 2012-05-14, at 1:05 PM, Josef Bacik wrote:
-> > On Mon, May 14, 2012 at 02:54:00PM -0400, J. Bruce Fields wrote:
-> >> I don't think they're worried about the inode_inc_iversion() calls
-> >> themselves, but the behavior of file_update_time():
-> >> 
-> >>        if (!timespec_equal(&inode->i_mtime, &now))
-> >>                sync_it = S_MTIME;
-> >> 
-> >>        if (!timespec_equal(&inode->i_ctime, &now))
-> >>                sync_it |= S_CTIME;
-> >> 
-> >>        if (IS_I_VERSION(inode))
-> >>                sync_it |= S_VERSION;
-> >> 
-> >>        if (!sync_it)
-> >>                return;
-> >> 	...
-> >> 	mark_inode_dirty_sync(inode);
-> >> 
-> >> So now mark_inode_dirty_sync() is called on every update, instead of
-> >> merely on every update that sees a time change (so at most once a
-> >> jiffy).
-> >> 
-> >> So mark_inode_dirty_sync (and hence ->dirty_inode = ext4_dirty_inode)
-> >> may get called more often if you're writing very frequently.
-> >> 
-> >> I'm a bit surprised that's expected to add significant overhead to the
-> >> write.
-> > 
-> > It shouldn't, let's be honest, most systems aren't going to have such
-> > a coarse jiffie counter that they'll be able to get away with doing
-> > 2 calls to write() or ->page_mkwrite() in the same jiffie and skip the
-> > update to mtime/ctime anyway.  If they do they are damned lucky, and
-> > again the amount of overhead added even if they are should be
-> > negligible since 99% of us all incur the overhead from having
-> > to update mtime/ctime anyway.  Thanks,
+I can see that you're passing net to nfs_callback_down().  Could you
+please remind me why?  What problem does this solve?
+
+--b.
+
+On Tue, May 22, 2012 at 11:35:55AM +0400, Stanislav Kinsbursky wrote:
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> ---
+>  fs/nfs/callback.c |    4 ++--
+>  fs/nfs/callback.h |    2 +-
+>  fs/nfs/client.c   |    2 +-
+>  3 files changed, 4 insertions(+), 4 deletions(-)
 > 
-> Seriously?  The whole reason the above checks for timespec_equal()
-> are there is to avoid calling mark_inode_dirty_sync() thousands of
-> times per second.  If doing write() calls in the same jiffie were
-> so rare as you suggest then I don't think such an optimization
-> would ever have appeared in the first place.
+> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+> index 970659d..f3d7ee2 100644
+> --- a/fs/nfs/callback.c
+> +++ b/fs/nfs/callback.c
+> @@ -322,7 +322,7 @@ out_err:
+>  /*
+>   * Kill the callback thread if it's no longer being used.
+>   */
+> -void nfs_callback_down(int minorversion)
+> +void nfs_callback_down(int minorversion, struct net *net)
+>  {
+>  	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
+>  
+> @@ -330,7 +330,7 @@ void nfs_callback_down(int minorversion)
+>  	cb_info->users--;
+>  	if (cb_info->users == 0 && cb_info->task != NULL) {
+>  		kthread_stop(cb_info->task);
+> -		svc_shutdown_net(cb_info->serv, current->nsproxy->net_ns);
+> +		svc_shutdown_net(cb_info->serv, net);
+>  		svc_exit_thread(cb_info->rqst);
+>  		cb_info->serv = NULL;
+>  		cb_info->rqst = NULL;
+> diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+> index a5527c9..6d900cf 100644
+> --- a/fs/nfs/callback.h
+> +++ b/fs/nfs/callback.h
+> @@ -194,7 +194,7 @@ extern __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy,
+>  				   struct cb_process_state *cps);
+>  #ifdef CONFIG_NFS_V4
+>  extern int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt);
+> -extern void nfs_callback_down(int minorversion);
+> +extern void nfs_callback_down(int minorversion, struct net *net);
+>  extern int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation,
+>  					    const nfs4_stateid *stateid);
+>  extern int nfs4_set_callback_sessionid(struct nfs_client *clp);
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index da7b5e4..44cd70f 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -222,7 +222,7 @@ static void nfs4_shutdown_session(struct nfs_client *clp)
+>  static void nfs4_destroy_callback(struct nfs_client *clp)
+>  {
+>  	if (__test_and_clear_bit(NFS_CS_CALLBACK, &clp->cl_res_state))
+> -		nfs_callback_down(clp->cl_mvops->minor_version);
+> +		nfs_callback_down(clp->cl_mvops->minor_version, clp->net);
+>  }
+>  
+>  static void nfs4_shutdown_client(struct nfs_client *clp)
 > 
-
-So here is the commit log
-
-commit ce06e0b21d6732a2bab10a585a3ec6909499be28
-Author: Andi Kleen <andi@firstfloor.org>
-Date:   Fri Sep 18 13:05:48 2009 -0700
-
-    vfs: optimize touch_time() too
-    
-    Do a similar optimization as earlier for touch_atime.  Getting the lock in
-    mnt_get_write is relatively costly, so try all avenues to avoid it first.
-    
-    This patch is careful to still only update inode fields inside the lock
-    region.
-    
-    This didn't show up in benchmarks, but it's easy enough to do.
-
-Notice that last bit?  I'm sure maybe at some point in the future we'll be able
-to see the overhead, but right now I highly doubt we can, and if we can I'd like
-to see benchmarks before blanket dismissing a feature that would be super
-helpful for people exporting nfs volumes.  Thanks,
-
-Josef
