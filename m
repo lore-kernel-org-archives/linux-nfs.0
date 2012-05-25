@@ -1,155 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:5021 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:33439 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753183Ab2ETK67 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 20 May 2012 06:58:59 -0400
-Date: Sun, 20 May 2012 06:58:56 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] sunrpc: fix loss of task->tk_status after rpc_delay
- call in xprt_alloc_slot
-Message-ID: <20120520065856.4a637833@tlielax.poochiereds.net>
-In-Reply-To: <1337456043.4831.6.camel@lade.trondhjem.org>
-References: <1337372188-5565-1-git-send-email-jlayton@redhat.com>
-	<20120518163302.26c73bc0@corrin.poochiereds.net>
-	<1337456043.4831.6.camel@lade.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1753528Ab2EYNHd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 May 2012 09:07:33 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+CC: Dave Jones <davej@redhat.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Linux Kernel <linux-kernel@vger.kernel.org>
+Subject: Re: 3.4. sunrpc oops during shutdown
+Date: Fri, 25 May 2012 13:07:30 +0000
+Message-ID: <1337951250.2535.5.camel@lade.trondhjem.org>
+References: <20120521171411.GA15562@redhat.com>
+	 <1337623475.9583.13.camel@lade.trondhjem.org>
+	 <4FBF3EF2.4090804@parallels.com>
+In-Reply-To: <4FBF3EF2.4090804@parallels.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 19 May 2012 19:33:19 +0000
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-
-> On Fri, 2012-05-18 at 16:33 -0400, Jeff Layton wrote:
-> > On Fri, 18 May 2012 16:16:28 -0400
-> > Jeff Layton <jlayton@redhat.com> wrote:
-> > 
-> > > xprt_alloc_slot will call rpc_delay() to make the task wait a bit before
-> > > retrying when it gets back an -ENOMEM error from xprt_dynamic_alloc_slot.
-> > > 
-> > > The problem there is that rpc_delay does this:
-> > > 
-> > >     rpc_sleep_on(&delay_queue, task, __rpc_atrun);
-> > > 
-> > > ...and __rpc_atrun will reset the task->tk_status back to 0 when the
-> > > task wakes back up. This makes call_reserveresult abort the task with
-> > > -EIO.
-> > > 
-> > > The RH QA group discovered this problem when testing with low-memory
-> > > clients and this patch fixed it:
-> > > 
-> > >     https://bugzilla.redhat.com/show_bug.cgi?id=822189
-> > > 
-> > > Fix this by adding a new rpc_delay_action() variant that makes allows
-> > > us to pass in a rpc_action to reset the status back to -EAGAIN instead.
-> > > 
-> > > Cc: Andy Adamson <andros@netapp.com>
-> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > > ---
-> > >  include/linux/sunrpc/sched.h |    1 +
-> > >  net/sunrpc/sched.c           |    9 +++++++--
-> > >  net/sunrpc/xprt.c            |    7 ++++++-
-> > >  3 files changed, 14 insertions(+), 3 deletions(-)
-> > > 
-> > > diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-> > > index dc0c3cc..6cafdbb 100644
-> > > --- a/include/linux/sunrpc/sched.h
-> > > +++ b/include/linux/sunrpc/sched.h
-> > > @@ -241,6 +241,7 @@ struct rpc_task *rpc_wake_up_first(struct rpc_wait_queue *,
-> > >  					void *);
-> > >  void		rpc_wake_up_status(struct rpc_wait_queue *, int);
-> > >  int		rpc_queue_empty(struct rpc_wait_queue *);
-> > > +void		rpc_delay_action(struct rpc_task *, unsigned long, rpc_action);
-> > >  void		rpc_delay(struct rpc_task *, unsigned long);
-> > >  void *		rpc_malloc(struct rpc_task *, size_t);
-> > >  void		rpc_free(void *);
-> > > diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-> > > index 994cfea..f2ff98d 100644
-> > > --- a/net/sunrpc/sched.c
-> > > +++ b/net/sunrpc/sched.c
-> > > @@ -613,13 +613,18 @@ static void __rpc_atrun(struct rpc_task *task)
-> > >  	task->tk_status = 0;
-> > >  }
-> > >  
-> > > +void rpc_delay_action(struct rpc_task *task, unsigned long delay, rpc_action action)
-> > > +{
-> > > +	task->tk_timeout = delay;
-> > > +	rpc_sleep_on(&delay_queue, task, action);
-> > > +}
-> > > +
-> > >  /*
-> > >   * Run a task at a later time
-> > >   */
-> > >  void rpc_delay(struct rpc_task *task, unsigned long delay)
-> > >  {
-> > > -	task->tk_timeout = delay;
-> > > -	rpc_sleep_on(&delay_queue, task, __rpc_atrun);
-> > > +	rpc_delay_action(task, delay, __rpc_atrun);
-> > >  }
-> > >  EXPORT_SYMBOL_GPL(rpc_delay);
-> > >  
-> > > diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-> > > index b239e75..a5dc816 100644
-> > > --- a/net/sunrpc/xprt.c
-> > > +++ b/net/sunrpc/xprt.c
-> > > @@ -969,6 +969,11 @@ static bool xprt_dynamic_free_slot(struct rpc_xprt *xprt, struct rpc_rqst *req)
-> > >  	return false;
-> > >  }
-> > >  
-> > > +static void xprt_alloc_delay_reset_status(struct rpc_task *task)
-> > > +{
-> > > +	task->tk_status = -EAGAIN;
-> > > +}
-> > > +
-> > >  static void xprt_alloc_slot(struct rpc_task *task)
-> > >  {
-> > >  	struct rpc_xprt	*xprt = task->tk_xprt;
-> > > @@ -984,7 +989,7 @@ static void xprt_alloc_slot(struct rpc_task *task)
-> > >  		goto out_init_req;
-> > >  	switch (PTR_ERR(req)) {
-> > >  	case -ENOMEM:
-> > > -		rpc_delay(task, HZ >> 2);
-> > > +		rpc_delay_action(task, HZ >> 2, xprt_alloc_delay_reset_status);
-> > >  		dprintk("RPC:       dynamic allocation of request slot "
-> > >  				"failed! Retrying\n");
-> > >  		break;
-> > 
-> > 
-> > Now that I look at this more closely though...I wonder if we're going
-> > to end up with similar problems in the EAGAIN case. Because we have
-> > tk_timeout==0 at this point, I think we'll always end up having the
-> > tk_status set to -ETIMEDOUT in the event that xprt_dynamic_alloc_slot
-> > returns EAGAIN (due to __rpc_queue_timer_fn).
-> 
-> Am I missing something?
-> 
-> xprt_alloc_slot calls rpc_sleep_on with task->tk_timeout == 0, which
-> means __rpc_add_timer quits without adding the task to the
-> queue->timer_list. How would __rpc_queue_timer_fn find it?
-> 
-
-No, you're correct.
-
-> > Perhaps we need a similar fix there? Or maybe we should just push the
-> > error handling for xprt_alloc_slot into call_reserveresult and bypass
-> > the whole problem that way?
-> > 
-> > Thoughts?
-> 
-> See the patch I sent out before I saw this email. We'll solve this in
-> call_reserveresult.
-> 
-
-Yes, I think that's a cleaner approach now that I look at it. That
-patch should solve the problem.
-
-Should we also move the rpc_sleep_on in the -EAGAIN case to
-call_reserveresult while we're at it? It seems a little confusing to
-handle the delay in those cases within different functions.
-
-Thanks,
--- 
-Jeff Layton <jlayton@redhat.com>
+T24gRnJpLCAyMDEyLTA1LTI1IGF0IDEyOjEyICswNDAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3
+cm90ZToNCj4gT24gMjEuMDUuMjAxMiAyMjowMywgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4g
+PiBPbiBNb24sIDIwMTItMDUtMjEgYXQgMTM6MTQgLTA0MDAsIERhdmUgSm9uZXMgd3JvdGU6DQo+
+ID4+IFRyaWVkIHRvIHNodXRkb3duIGEgbWFjaGluZSwgZ290IHRoaXMsIGFuZCBhIGJ1bmNoIG9m
+IGh1bmcgcHJvY2Vzc2VzLg0KPiA+PiBUaGVyZSB3YXMgb25lIE5GUyBtb3VudCBtb3VudGVkIGF0
+IHRoZSB0aW1lLg0KPiA+Pg0KPiA+PiAJRGF2ZQ0KPiA+Pg0KPiA+PiBCVUc6IHVuYWJsZSB0byBo
+YW5kbGUga2VybmVsIE5VTEwgcG9pbnRlciBkZXJlZmVyZW5jZSBhdCAwMDAwMDAwMDAwMDAwMDI4
+DQo+ID4+IElQOiBbPGZmZmZmZmZmYTAxMTkxZGY+XSBzdmNfZGVzdHJveSsweDFmLzB4MTQwIFtz
+dW5ycGNdDQo+ID4+IFBHRCAxNDM0YzQwNjcgUFVEIDE0NDk2NDA2NyBQTUQgMA0KPiA+PiBPb3Bz
+OiAwMDAwIFsjMV0gUFJFRU1QVCBTTVANCj4gPj4gQ1BVIDQNCj4gPj4gTW9kdWxlcyBsaW5rZWQg
+aW46IGlwNnRhYmxlX2ZpbHRlcigtKSBpcDZfdGFibGVzIG5mc2QgbmZzIGZzY2FjaGUgYXV0aF9y
+cGNnc3MgbmZzX2FjbCBsb2NrZCBpcDZ0X1JFSkVDVCBuZl9jb25udHJhY2tfaXB2NiBuZl9kZWZy
+YWdfaXB2Ng0KPiA+Pg0KPiA+PiBQaWQ6IDY5NDYsIGNvbW06IG50cGQgTm90IHRhaW50ZWQgMy40
+LjArICMxMw0KPiA+PiBSSVA6IDAwMTA6WzxmZmZmZmZmZmEwMTE5MWRmPl0gIFs8ZmZmZmZmZmZh
+MDExOTFkZj5dIHN2Y19kZXN0cm95KzB4MWYvMHgxNDAgW3N1bnJwY10NCj4gPj4gUlNQOiAwMDE4
+OmZmZmY4ODAxNDNjNjVjNDggIEVGTEFHUzogMDAwMTAyODYNCj4gPj4gUkFYOiAwMDAwMDAwMDAw
+MDAwMDAwIFJCWDogZmZmZjg4MDE0MmNkNDFhMCBSQ1g6IDAwMDAwMDAwMDAwMDAwMDYNCj4gPj4g
+UkRYOiAwMDAwMDAwMDAwMDAwMDQwIFJTSTogZmZmZjg4MDE0MzEwNTAyOCBSREk6IGZmZmY4ODAx
+NDJjZDQxYTANCj4gPj4gUkJQOiBmZmZmODgwMTQzYzY1YzU4IFIwODogMDAwMDAwMDAwMDAwMDAw
+MCBSMDk6IDAwMDAwMDAwMDAwMDAwMDENCj4gPj4gUjEwOiAwMDAwMDAwMDAwMDAwMDAwIFIxMTog
+MDAwMDAwMDAwMDAwMDAwMCBSMTI6IGZmZmY4ODAxM2JjNWExNDgNCj4gPj4gUjEzOiBmZmZmODgw
+MTQwOTgxNjU4IFIxNDogZmZmZjg4MDE0MmNkNDFhMCBSMTU6IGZmZmY4ODAxNDZjODgwMDANCj4g
+Pj4gRlM6ICAwMDAwN2ZkYzAzODJhNzQwKDAwMDApIEdTOmZmZmY4ODAxNDk0MDAwMDAoMDAwMCkg
+a25sR1M6MDAwMDAwMDAwMDAwMDAwMA0KPiA+PiBDUzogIDAwMTAgRFM6IDAwMDAgRVM6IDAwMDAg
+Q1IwOiAwMDAwMDAwMDgwMDUwMDMzDQo+ID4+IENSMjogMDAwMDAwMDAwMDAwMDAyOCBDUjM6IDAw
+MDAwMDAwMzZjYmIwMDAgQ1I0OiAwMDAwMDAwMDAwMTQwN2UwDQo+ID4+IERSMDogMDAwMDAwMDAw
+MDAwMDAwMCBEUjE6IDAwMDAwMDAwMDAwMDAwMDAgRFIyOiAwMDAwMDAwMDAwMDAwMDAwDQo+ID4+
+IERSMzogMDAwMDAwMDAwMDAwMDAwMCBEUjY6IDAwMDAwMDAwZmZmZjBmZjAgRFI3OiAwMDAwMDAw
+MDAwMDAwNDAwDQo+ID4+IFByb2Nlc3MgbnRwZCAocGlkOiA2OTQ2LCB0aHJlYWRpbmZvIGZmZmY4
+ODAxNDNjNjQwMDAsIHRhc2sgZmZmZjg4MDE0MzEwNDk0MCkNCj4gPj4gU3RhY2s6DQo+ID4+ICAg
+ZmZmZjg4MDE0MDk4MTY2MCBmZmZmODgwMTNiYzVhMTQ4IGZmZmY4ODAxNDNjNjVjODggZmZmZmZm
+ZmZhMDExOTNhNg0KPiA+PiAgIDAwMDAwMDAwMDAwMDAwMDAgZmZmZjg4MDEzZTU2NjAyMCBmZmZm
+ODgwMTNlNTY1ZjI4IGZmZmY4ODAxNDZlZTZhYzANCj4gPj4gICBmZmZmODgwMTQzYzY1Y2E4IGZm
+ZmZmZmZmYTAyNGY0MDMgZmZmZjg4MDE0M2M2NWNhOCBmZmZmODgwMTQzZDNhNGY4DQo+ID4+IENh
+bGwgVHJhY2U6DQo+ID4+ICAgWzxmZmZmZmZmZmEwMTE5M2E2Pl0gc3ZjX2V4aXRfdGhyZWFkKzB4
+YTYvMHhiMCBbc3VucnBjXQ0KPiA+PiAgIFs8ZmZmZmZmZmZhMDI0ZjQwMz5dIG5mc19jYWxsYmFj
+a19kb3duKzB4NTMvMHg5MCBbbmZzXQ0KPiA+PiAgIFs8ZmZmZmZmZmZhMDIxNjQyZT5dIG5mc19m
+cmVlX2NsaWVudCsweGZlLzB4MTIwIFtuZnNdDQo+ID4+ICAgWzxmZmZmZmZmZmEwMjE4NWRmPl0g
+bmZzX3B1dF9jbGllbnQrMHgyOWYvMHg0MjAgW25mc10NCj4gPj4gICBbPGZmZmZmZmZmYTAyMTg0
+ZTA+XSA/IG5mc19wdXRfY2xpZW50KzB4MWEwLzB4NDIwIFtuZnNdDQo+ID4+ICAgWzxmZmZmZmZm
+ZmEwMjE5NjJmPl0gbmZzX2ZyZWVfc2VydmVyKzB4MTZmLzB4MmUwIFtuZnNdDQo+ID4+ICAgWzxm
+ZmZmZmZmZmEwMjE5NGUzPl0gPyBuZnNfZnJlZV9zZXJ2ZXIrMHgyMy8weDJlMCBbbmZzXQ0KPiA+
+PiAgIFs8ZmZmZmZmZmZhMDIyMzYzYz5dIG5mczRfa2lsbF9zdXBlcisweDNjLzB4NTAgW25mc10N
+Cj4gPj4gICBbPGZmZmZmZmZmODExYWQ2N2M+XSBkZWFjdGl2YXRlX2xvY2tlZF9zdXBlcisweDNj
+LzB4YTANCj4gPj4gICBbPGZmZmZmZmZmODExYWUyOWU+XSBkZWFjdGl2YXRlX3N1cGVyKzB4NGUv
+MHg3MA0KPiA+PiAgIFs8ZmZmZmZmZmY4MTFjY2JhND5dIG1udHB1dF9ub19leHBpcmUrMHhiNC8w
+eDEwMA0KPiA+PiAgIFs8ZmZmZmZmZmY4MTFjY2MxNj5dIG1udHB1dCsweDI2LzB4NDANCj4gPj4g
+ICBbPGZmZmZmZmZmODExY2Q1OTc+XSByZWxlYXNlX21vdW50cysweDc3LzB4OTANCj4gPj4gICBb
+PGZmZmZmZmZmODExY2VmYzY+XSBwdXRfbW50X25zKzB4NjYvMHg4MA0KPiA+PiAgIFs8ZmZmZmZm
+ZmY4MTA3OGRmZj5dIGZyZWVfbnNwcm94eSsweDFmLzB4YjANCj4gPj4gICBbPGZmZmZmZmZmODEw
+NzkwNWU+XSBzd2l0Y2hfdGFza19uYW1lc3BhY2VzKzB4NWUvMHg3MA0KPiA+PiAgIFs8ZmZmZmZm
+ZmY4MTA3OTA4MD5dIGV4aXRfdGFza19uYW1lc3BhY2VzKzB4MTAvMHgyMA0KPiA+PiAgIFs8ZmZm
+ZmZmZmY4MTA0ZTkwZT5dIGRvX2V4aXQrMHg0ZWUvMHhiODANCj4gPj4gICBbPGZmZmZmZmZmODE2
+MzljMGE+XSA/IHJldGludF9zd2FwZ3MrMHhlLzB4MTMNCj4gPj4gICBbPGZmZmZmZmZmODEwNGYy
+ZWY+XSBkb19ncm91cF9leGl0KzB4NGYvMHhjMA0KPiA+PiAgIFs8ZmZmZmZmZmY4MTA0ZjM3Nz5d
+IHN5c19leGl0X2dyb3VwKzB4MTcvMHgyMA0KPiA+PiAgIFs8ZmZmZmZmZmY4MTY0MTM1Mj5dIHN5
+c3RlbV9jYWxsX2Zhc3RwYXRoKzB4MTYvMHgxYg0KPiA+PiBDb2RlOiA0OCA4YiA1ZCBmMCA0YyA4
+YiA2NSBmOCBjOSBjMyA2NiA5MCA1NSA0OCA4OSBlNSA0MSA1NCA1MyA2NiA2NiA2NiA2NiA5MCA2
+NSA0OCA4YiAwNCAyNSA4MCBiYSAwMCAwMCA0OCA4YiA4MCA1MCAwNSAwMCAwMCA0OCA4OSBmYjw0
+Yz4gIDhiIDYwIDI4IDhiIDQ3IDU4IDg1IGMwIDBmIDg0IGVjIDAwIDAwIDAwIDgzIGU4IDAxIDg1
+IGMwIDg5DQo+ID4NCj4gPiBBc2lkZSBmcm9tIHRoZSBmYWN0IHRoYXQgdGhlIGN1cnJlbnQgbmV0
+X25hbWVzcGFjZSBpcyBub3QgZ3VhcmFudGVlZCB0bw0KPiA+IGV4aXN0IHdoZW4gd2UgYXJlIGNh
+bGxlZCBmcm9tIGZyZWVfbnNwcm94eSwgc3ZjX2Rlc3Ryb3koKSBsb29rcw0KPiA+IHNlcmlvdXNs
+eSBicm9rZW46DQo+IA0KPiBUcm9uZCwgbG9va3MgbGlrZSB5b3UgYXJlIG1pc3Rha2VuIGhlcmUu
+DQo+IEFueSBwcm9jZXNzIGhvbGRzIHJlZmVyZW5jZXMgdG8gYWxsIG5hbWVzcGFjZXMgaXQgYmVs
+b25nIHRvIChjb3B5X25ldF9ucygpIA0KPiBpbmNyZWFzZSB1c2FnZSBjb3VudGVyKS4gQW5kIG5l
+dHdvcmsgbmFtZXNwYWNlIGlzIHJlbGVhc2VkIGFmdGVyIG1vdW50IG5hbWVzcGFjZSANCj4gaW4g
+ZnJlZV9uc3Byb3h5Lg0KDQpUaGF0IGRvZXNuJ3QgaGVscCB5b3UgdGhvdWdoLiBzd2l0Y2hfdGFz
+a19uYW1lc3BhY2VzIHdpbGwgaGF2ZSBhbHJlYWR5DQpzZXQgY3VycmVudC0+bnNwcm94eSB0byBO
+VUxMLCB3aGljaCBpcyB3aHkgd2UgT29wcyB3aGVuIHdlIHRyeSB0byByZWFkDQpjdXJyZW50LT5u
+c3Byb3h5LT5uZXRfbnMgaW4gc3ZjX2V4aXRfdGhyZWFkKCkuDQoNCj4gPg0KPiA+ICAgICAgICAq
+IE9uIHRoZSBvbmUgaGFuZCBpdCBpcyB0cnlpbmcgdG8gZnJlZSBzdHJ1Y3Qgc3ZjX3NlcnYgKGFu
+ZA0KPiA+ICAgICAgICAgIHByZXN1bWFibHkgYWxsIHN0cnVjdHVyZXMgb3duZWQgYnkgc3RydWN0
+IHN2Y19zZXJ2KS4NCj4gPiAgICAgICAgKiBPbiB0aGUgb3RoZXIgaGFuZCwgaXQgdHJpZXMgdG8g
+cGFzcyBhIHBhcmFtZXRlciB0bw0KPiA+ICAgICAgICAgIHN2Y19jbG9zZV9uZXQoKSBzYXlpbmcg
+InBsZWFzZSBkb24ndCBmcmVlIHN0cnVjdHVyZXMgb24gbXkNCj4gPiAgICAgICAgICBzdl90ZW1w
+c29ja3MsIG9yIHN2X3Blcm1zb2NrcyBsaXN0IHVubGVzcyB0aGV5IG1hdGNoIHRoaXMgbmV0DQo+
+ID4gICAgICAgICAgbmFtZXNwYWNlIi4NCj4gPg0KPiANCj4gSSd2ZSBzZW50IHBhdGNoZXMsIHdo
+aWNoIG1vdmVzIHN2Y19zaHV0ZG93bl9uZXQoKSBmcm9tIHN2Y19kZXN0cm95KCkgKCJTVU5SUEM6
+IA0KPiBzZXBhcmF0ZSBwZXItbmV0IGRhdGEgY3JlYXRpb24gZnJvbSBzZXJ2aWNlIikuDQo+IHdp
+dGggdGhpcyBwYXRjaCBzZXQgaXQncyBhc3N1bWVkLCB0aGF0IHBlci1uZXQgcmVzb3VyY2VzIHdp
+bGwgYmUgY3JlYXRlZCBvciANCj4gcmVsZWFzZWQgcHJpb3IgdG8gc2VydmljZSBjcmVhdGlvbiBh
+bmQgZGVzdHJ1Y3Rpb24uDQoNCkFyZSB0aG9zZSBwYXRjaGVzIGFwcHJvcHJpYXRlIGZvciBpbmNs
+dXNpb24gaW4gdGhlIHN0YWJsZSBrZXJuZWwgc2VyaWVzDQpzbyB0aGF0IHdlIGNhbiBmaXggMy40
+Pw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoN
+Ck5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
