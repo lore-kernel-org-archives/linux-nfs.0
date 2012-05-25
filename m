@@ -1,109 +1,412 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:37945 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:7217 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754738Ab2EFVva (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 6 May 2012 17:51:30 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Daniel Pocock <daniel@pocock.com.au>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: extremely slow nfs when sync enabled
-Date: Sun, 6 May 2012 21:49:47 +0000
-Message-ID: <1336340993.2600.11.camel@lade.trondhjem.org>
-References: <4FA5E950.5080304@pocock.com.au>
-	 <1336328594.2593.14.camel@lade.trondhjem.org>
-	 <4FA6EBD4.7040308@pocock.com.au>
-In-Reply-To: <4FA6EBD4.7040308@pocock.com.au>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1753177Ab2EYWKG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 May 2012 18:10:06 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q4PMA6G3021073
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 25 May 2012 18:10:06 -0400
+From: Simo Sorce <simo@redhat.com>
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
+Subject: [PATCH 4/4] SUNRPC: Use gssproxy upcall for nfsd's RPCGSS authentication.
+Date: Fri, 25 May 2012 18:09:56 -0400
+Message-Id: <1337983796-26476-5-git-send-email-simo@redhat.com>
+In-Reply-To: <1337983796-26476-1-git-send-email-simo@redhat.com>
+References: <1337983796-26476-1-git-send-email-simo@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU3VuLCAyMDEyLTA1LTA2IGF0IDIxOjIzICswMDAwLCBEYW5pZWwgUG9jb2NrIHdyb3RlOg0K
-PiANCj4gT24gMDYvMDUvMTIgMTg6MjMsIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gT24g
-U3VuLCAyMDEyLTA1LTA2IGF0IDAzOjAwICswMDAwLCBEYW5pZWwgUG9jb2NrIHdyb3RlOg0KPiA+
-Pg0KPiA+PiBJJ3ZlIGJlZW4gb2JzZXJ2aW5nIHNvbWUgdmVyeSBzbG93IG5mcyB3cml0ZSBwZXJm
-b3JtYW5jZSB3aGVuIHRoZSBzZXJ2ZXINCj4gPj4gaGFzIGBzeW5jJyBpbiAvZXRjL2V4cG9ydHMN
-Cj4gPj4NCj4gPj4gSSB3YW50IHRvIGF2b2lkIHVzaW5nIGFzeW5jLCBidXQgSSBoYXZlIHRlc3Rl
-ZCBpdCBhbmQgb24gbXkgZ2lnYWJpdA0KPiA+PiBuZXR3b3JrLCBpdCBnaXZlcyBhbG1vc3QgdGhl
-IHNhbWUgc3BlZWQgYXMgaWYgSSB3YXMgb24gdGhlIHNlcnZlcg0KPiA+PiBpdHNlbGYuIChlLmcu
-IDMwTUIvc2VjIHRvIG9uZSBkaXNrLCBvciBsZXNzIHRoYW4gMU1CL3NlYyB0byB0aGUgc2FtZQ0K
-PiA+PiBkaXNrIG92ZXIgTkZTIHdpdGggYHN5bmMnKQ0KPiA+Pg0KPiA+PiBJJ20gdXNpbmcgRGVi
-aWFuIDYgd2l0aCAyLjYuMzgga2VybmVscyBvbiBjbGllbnQgYW5kIHNlcnZlciwgTkZTdjMNCj4g
-Pj4NCj4gPj4gSSd2ZSBhbHNvIHRyaWVkIGEgY2xpZW50IHJ1bm5pbmcgRGViaWFuIDcvTGludXgg
-My4yLjAgd2l0aCBib3RoIE5GU3YzDQo+ID4+IGFuZCBORlN2NCwgc3BlZWQgaXMgc3RpbGwgc2xv
-dw0KPiA+Pg0KPiA+PiBMb29raW5nIGF0IGlvc3RhdCBvbiB0aGUgc2VydmVyLCBJIG5vdGljZSB0
-aGF0IGF2Z3JxLXN6ID0gOCBzZWN0b3JzDQo+ID4+ICg0MDk2IGJ5dGVzKSB0aHJvdWdob3V0IHRo
-ZSB3cml0ZSBvcGVyYXRpb25zDQo+ID4+DQo+ID4+IEkndmUgdHJpZWQgdmFyaW91cyB0ZXN0cywg
-ZS5nLiBkZCBhIGxhcmdlIGZpbGUsIG9yIHVucGFjayBhIHRhcmJhbGwgd2l0aA0KPiA+PiBtYW55
-IHNtYWxsIGZpbGVzLCB0aGUgaW9zdGF0IG91dHB1dCBpcyBhbHdheXMgdGhlIHNhbWUNCj4gPiAN
-Cj4gPiBXZXJlIHlvdSB1c2luZyAnY29udj1zeW5jJz8NCj4gDQo+IE5vLCBpdCB3YXMgbm90IHVz
-aW5nIGNvbnY9c3luYywganVzdCB0aGUgdmFuaWxsYSBkZDoNCj4gDQo+IGRkIGlmPS9kZXYvemVy
-byBvZj1zb21lLWZhdC1maWxlIGJzPTY1NTM2IGNvdW50PTY1NTM2DQoNClRoZW4gdGhlIHJlc3Vs
-dHMgYXJlIG5vdCBjb21wYXJhYmxlLg0KDQo+ID4+IExvb2tpbmcgYXQgL3Byb2MvbW91bnRzIG9u
-IHRoZSBjbGllbnRzLCBldmVyeXRoaW5nIGxvb2tzIGdvb2QsIGxhcmdlDQo+ID4+IHdzaXplLCB0
-Y3A6DQo+ID4+DQo+ID4+IHJ3LHJlbGF0aW1lLHZlcnM9Myxyc2l6ZT0xMDQ4NTc2LHdzaXplPTEw
-NDg1NzYsbmFtbGVuPTI1NSxoYXJkLHByb3RvPXRjcCx0aW1lbz02MDAscmV0cmFucz0yLHNlYz1z
-eXMsbW91bnRhZGRyPTE5Mi54LngueCxtb3VudHZlcnM9Myxtb3VudHBvcnQ9NTg3MjcsbW91bnRw
-cm90bz11ZHAsbG9jYWxfbG9jaz1ub25lLGFkZHI9MTkyLngueC54DQo+ID4+IDAgMA0KPiA+Pg0K
-PiA+PiBhbmQNCj4gPj4gIHJ3LHJlbGF0aW1lLHZlcnM9NCxyc2l6ZT0xMDQ4NTc2LHdzaXplPTEw
-NDg1NzYsbmFtbGVuPTI1NSxoYXJkLHByb3RvPXRjcCxwb3J0PTAsdGltZW89NjAwLHJldHJhbnM9
-MixzZWM9c3lzLGNsaWVudGFkZHI9MTkyLngueC54LixtaW5vcnZlcnNpb249MCxsb2NhbF9sb2Nr
-PW5vbmUsYWRkcj0xOTIueC54LnggMCAwDQo+ID4+DQo+ID4+IGFuZCBpbiAvcHJvYy9mcy9uZnMv
-ZXhwb3J0cyBvbiB0aGUgc2VydmVyLCBJIGhhdmUgc3luYyBhbmQgd2RlbGF5Og0KPiA+Pg0KPiA+
-PiAvbmZzNC9kYW5pZWwNCj4gPj4gMTkyLjE2OC4xLjAvMjQsMTkyLngueC54KHJ3LGluc2VjdXJl
-LHJvb3Rfc3F1YXNoLHN5bmMsd2RlbGF5LG5vX3N1YnRyZWVfY2hlY2ssdXVpZD1hYTJhNmYzNzo5
-Y2M5NGVlYjpiY2JmOTgzYzpkNmUwNDFkOSxzZWM9MSkNCj4gPj4gL2hvbWUvZGFuaWVsDQo+ID4+
-IDE5Mi4xNjguMS4wLzI0LDE5Mi54LngueChydyxyb290X3NxdWFzaCxzeW5jLHdkZWxheSxub19z
-dWJ0cmVlX2NoZWNrLHV1aWQ9YWEyYTZmMzc6OWNjOTRlZWI6YmNiZjk4M2M6ZDZlMDQxZDkpDQo+
-ID4+DQo+ID4+IENhbiBhbnlvbmUgc3VnZ2VzdCBhbnl0aGluZyBlbHNlPyAgT3IgaXMgdGhpcyBy
-ZWFsbHkgdGhlIHBlcmZvcm1hbmNlIGhpdA0KPiA+PiBvZiBgc3luYyc/DQo+ID4gDQo+ID4gSXQg
-cmVhbGx5IGRlcGVuZHMgb24geW91ciBkaXNrIHNldHVwLiBQYXJ0aWN1bGFybHkgd2hlbiB5b3Vy
-IGZpbGVzeXN0ZW0NCj4gPiBpcyB1c2luZyBiYXJyaWVycyAoZW5hYmxlZCBieSBkZWZhdWx0IG9u
-IGV4dDQgYW5kIHhmcyksIGEgbG90IG9mIHJhaWQNCj4gDQo+IE9uIHRoZSBzZXJ2ZXIsIEkndmUg
-dHJpZWQgYm90aCBleHQzIGFuZCBleHQ0LCBleHBsaWNpdGx5IGNoYW5naW5nIHRoaW5ncw0KPiBs
-aWtlIGRhdGE9d3JpdGViYWNrLGJhcnJpZXI9MCwgYnV0IHRoZSBwcm9ibGVtIHJlbWFpbnMNCj4g
-DQo+IFRoZSBvbmx5IHRoaW5nIHRoYXQgbWFkZSBpdCBmYXN0ZXIgd2FzIHVzaW5nIGhkcGFybSAt
-VzEgL2Rldi9zZFthYl0gdG8NCj4gZW5hYmxlIHRoZSB3cml0ZS1iYWNrIGNhY2hlIG9uIHRoZSBk
-aXNrDQoNClRoYXQgc2hvdWxkIGluIHByaW5jaXBsZSBiZSBzYWZlIHRvIGRvIGFzIGxvbmcgYXMg
-eW91IGFyZSB1c2luZw0KYmFycmllcj0xLg0KDQo+ID4gc2V0dXBzIHJlYWxseSBfc3Vja18gYXQg
-ZGVhbGluZyB3aXRoIGZzeW5jKCkuIFRoZSBsYXR0ZXIgaXMgdXNlZCBldmVyeQ0KPiANCj4gSSdt
-IHVzaW5nIG1kIFJBSUQxLCBteSBzZXR1cCBpcyBsaWtlIHRoaXM6DQo+IA0KPiAyeCAxVEIgU0FU
-QSBkaXNrcyBTVDMxMDAwNTI4QVMgKDcyMDBycG0gd2l0aCAzMk1CIGNhY2hlIGFuZCBOQ1EpDQo+
-IA0KPiBTQVRBIGNvbnRyb2xsZXI6IEFUSSBUZWNobm9sb2dpZXMgSW5jIFNCNzAwL1NCODAwIFNB
-VEEgQ29udHJvbGxlciBbQUhDSQ0KPiBtb2RlXSAocmV2IDQwKQ0KPiAtIG5vdCB1c2luZyBhbnkg
-b2YgdGhlIEJJT1Mgc29mdHJhaWQgc3R1ZmYNCj4gDQo+IEJvdGggZGV2aWNlcyBoYXZlIGlkZW50
-aWNhbCBwYXJ0aXRpb25pbmc6DQo+IDEuIDEyOE1CIGJvb3QNCj4gMi4gbWQgdm9sdW1lICgxVEIg
-LSAxMjhNQikNCj4gDQo+IFRoZSBlbnRpcmUgbWQgdm9sdW1lICgvZGV2L21kMikgaXMgdGhlbiB1
-c2VkIGFzIGEgUFYgZm9yIExWTQ0KPiANCj4gSSBkbyBteSB3cml0ZSB0ZXN0cyBvbiBhIGZyZXNo
-IExWIHdpdGggbm8gZnJhZ21lbnRhdGlvbg0KPiANCj4gPiB0aW1lIHRoZSBORlMgY2xpZW50IHNl
-bmRzIGEgQ09NTUlUIG9yIHRydW5jKCkgaW5zdHJ1Y3Rpb24sIGFuZCBmb3INCj4gPiBwcmV0dHkg
-bXVjaCBhbGwgZmlsZSBhbmQgZGlyZWN0b3J5IGNyZWF0aW9uIG9wZXJhdGlvbnMgKHlvdSBjYW4g
-dXNlDQo+ID4gJ25mc3N0YXQnIHRvIG1vbml0b3IgaG93IG1hbnkgc3VjaCBvcGVyYXRpb25zIHRo
-ZSBORlMgY2xpZW50IGlzIHNlbmRpbmcNCj4gPiBhcyBwYXJ0IG9mIHlvdXIgdGVzdCkuDQo+IA0K
-PiBJIGtub3cgdGhhdCBteSB0d28gdGVzdHMgYXJlIHZlcnkgZGlmZmVyZW50IGluIHRoYXQgd2F5
-Og0KPiANCj4gLSBkZCBpcyBqdXN0IHdyaXRpbmcgb25lIGJpZyBmaWxlLCBubyBmc3luYw0KPiAN
-Cj4gLSB1bnBhY2tpbmcgYSB0YXJiYWxsIChvciBjb21waWxpbmcgYSBsYXJnZSBDKysgcHJvamVj
-dCkgZG9lcyBhIGxvdCBvZg0KPiBzbWFsbCB3cml0ZXMgd2l0aCBtYW55IGZzeW5jcw0KPiANCj4g
-SW4gYm90aCBjYXNlcywgaXQgaXMgc2xvdw0KPiANCj4gPiBMb2NhbCBkaXNrIGNhbiBnZXQgYXdh
-eSB3aXRoIGRvaW5nIGEgbG90IGxlc3MgZnN5bmMoKSwgYmVjYXVzZSB0aGUgY2FjaGUNCj4gPiBj
-b25zaXN0ZW5jeSBndWFyYW50ZWVzIGFyZSBkaWZmZXJlbnQ6DQo+ID4gICAgICAgKiBpbiBORlMs
-IHRoZSBzZXJ2ZXIgaXMgYWxsb3dlZCB0byBjcmFzaCBvciByZWJvb3Qgd2l0aG91dA0KPiA+ICAg
-ICAgICAgYWZmZWN0aW5nIHRoZSBjbGllbnQncyB2aWV3IG9mIHRoZSBmaWxlc3lzdGVtLg0KPiA+
-ICAgICAgICogaW4gdGhlIGxvY2FsIGZpbGUgc3lzdGVtLCB0aGUgZXhwZWN0YXRpb24gaXMgdGhh
-dCBvbiByZWJvb3QgYW55DQo+ID4gICAgICAgICBkYXRhIGxvc3QgaXMgd29uJ3QgbmVlZCB0byBi
-ZSByZWNvdmVyZWQgKHRoZSBhcHBsaWNhdGlvbiB3aWxsDQo+ID4gICAgICAgICBoYXZlIHVzZWQg
-ZnN5bmMoKSBmb3IgYW55IGRhdGEgdGhhdCBkb2VzIG5lZWQgdG8gYmUgcGVyc2lzdGVudCkuDQo+
-ID4gICAgICAgICBPbmx5IHRoZSBkaXNrIGZpbGVzeXN0ZW0gc3RydWN0dXJlcyBuZWVkIHRvIGJl
-IHJlY292ZXJlZCwgYW5kDQo+ID4gICAgICAgICB0aGF0IGlzIGRvbmUgdXNpbmcgdGhlIGpvdXJu
-YWwgKG9yIGZzY2spLg0KPiANCj4gDQo+IElzIHRoaXMgYW4gaW50cmFjdGFibGUgcHJvYmxlbSB0
-aG91Z2g/DQo+IA0KPiBPciBkbyBwZW9wbGUganVzdCB3b3JrIGFyb3VuZCB0aGlzLCBmb3IgZXhh
-bXBsZSwgZW5hYmxlIGFzeW5jIGFuZA0KPiB3cml0ZS1iYWNrIGNhY2hlLCBhbmQgdGhlbiB0cnkg
-dG8gbWFuYWdlIHRoZSByaXNrIGJ5IGFkZGluZyBhIFVQUyBhbmQvb3INCj4gYmF0dGVyeSBiYWNr
-ZWQgY2FjaGUgdG8gdGhlaXIgUkFJRCBzZXR1cCAodG8gcmVkdWNlIHRoZSBwcm9iYWJpbGl0eSBv
-Zg0KPiB1bmNsZWFuIHNodXRkb3duKT8NCg0KSXQgYWxsIGJvaWxzIGRvd24gdG8gd2hhdCBraW5k
-IG9mIGNvbnNpc3RlbmN5IGd1YXJhbnRlZXMgeW91IGFyZQ0KY29tZm9ydGFibGUgbGl2aW5nIHdp
-dGguIFRoZSBkZWZhdWx0IE5GUyBzZXJ2ZXIgc2V0dXAgb2ZmZXJzIG11Y2gNCnN0cm9uZ2VyIGRh
-dGEgY29uc2lzdGVuY3kgZ3VhcmFudGVlcyB0aGFuIGxvY2FsIGRpc2ssIGFuZCBpcyB0aGVyZWZv
-cmUNCmxpa2VseSB0byBiZSBzbG93ZXIgd2hlbiB1c2luZyBjaGVhcCBoYXJkd2FyZS4NCg0KLS0g
-DQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHAN
-ClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+The main advantge of this new upcall mechanism is that it can handle
+big tickets as seen in Kerberos implementations where tickets carry
+authorization data like the MS-PAC buffer with AD or the Posix Authorization
+Data being discussed in IETF on the krbwg working group.
+
+The Gssproxy program is used to perform the accept_sec_context call on the
+kernel's behalf. The code is changed to also pass the input buffer straight
+to upcall mechanism to avoid allocating and copying many pages as tokens can
+be as big (potentially more in future) as 64KiB.
+
+Signed-off-by: Simo Sorce <simo@redhat.com>
+---
+ include/linux/sunrpc/auth_gss.h    |    3 +
+ include/linux/sunrpc/svcauth_gss.h |    2 +-
+ net/sunrpc/auth_gss/auth_gss.c     |    9 ++-
+ net/sunrpc/auth_gss/svcauth_gss.c  |  223 +++++++++++++++++++++++++++++++++--
+ 4 files changed, 222 insertions(+), 15 deletions(-)
+
+diff --git a/include/linux/sunrpc/auth_gss.h b/include/linux/sunrpc/auth_gss.h
+index f1cfd4c85cd047c4b2fadd367eeb819aabc57d29..eb2670f6cf9113f1b4c161b9deda05ee4757fa85 100644
+--- a/include/linux/sunrpc/auth_gss.h
++++ b/include/linux/sunrpc/auth_gss.h
+@@ -19,6 +19,9 @@
+ 
+ #define RPC_GSS_VERSION		1
+ 
++#define GSS_UPCALL_LEGACY	0
++#define GSS_UPCALL_GSSPROXY	1
++
+ #define MAXSEQ 0x80000000 /* maximum legal sequence number, from rfc 2203 */
+ 
+ enum rpc_gss_proc {
+diff --git a/include/linux/sunrpc/svcauth_gss.h b/include/linux/sunrpc/svcauth_gss.h
+index 726aff1a52011fcdfd3ab1e11b8a82ff1dbea703..7baccfcc6547ca738cb90063bf07c85c418f4874 100644
+--- a/include/linux/sunrpc/svcauth_gss.h
++++ b/include/linux/sunrpc/svcauth_gss.h
+@@ -16,7 +16,7 @@
+ #include <linux/sunrpc/svcsock.h>
+ #include <linux/sunrpc/auth_gss.h>
+ 
+-int gss_svc_init(void);
++int gss_svc_init(unsigned int upcall_type);
+ void gss_svc_shutdown(void);
+ int gss_svc_init_net(struct net *net);
+ void gss_svc_shutdown_net(struct net *net);
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 836cbecb1947235d38c62eadf79ae96ad73906e6..97fe72609387cb8b948bc3aa4d14db4956138d3c 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -60,6 +60,8 @@ static const struct rpc_credops gss_nullops;
+ #define GSS_RETRY_EXPIRED 5
+ static unsigned int gss_expired_cred_retry_delay = GSS_RETRY_EXPIRED;
+ 
++static unsigned int gss_upcall_daemon_type = GSS_UPCALL_LEGACY;
++
+ #ifdef RPC_DEBUG
+ # define RPCDBG_FACILITY	RPCDBG_AUTH
+ #endif
+@@ -1687,7 +1689,7 @@ static int __init init_rpcsec_gss(void)
+ 	err = rpcauth_register(&authgss_ops);
+ 	if (err)
+ 		goto out;
+-	err = gss_svc_init();
++	err = gss_svc_init(gss_upcall_daemon_type);
+ 	if (err)
+ 		goto out_unregister;
+ 	err = register_pernet_subsys(&rpcsec_gss_net_ops);
+@@ -1717,6 +1719,11 @@ module_param_named(expired_cred_retry_delay,
+ 		   uint, 0644);
+ MODULE_PARM_DESC(expired_cred_retry_delay, "Timeout (in seconds) until "
+ 		"the RPC engine retries an expired credential");
++module_param_named(upcall_daemon_type,
++		   gss_upcall_daemon_type,
++		   uint, 0644);
++MODULE_PARM_DESC(upcall_daemon_type, "Type of svcgss upcall daemon used "
++		"(legacy=0 or gssproxy=1)");
+ 
+ module_init(init_rpcsec_gss)
+ module_exit(exit_rpcsec_gss)
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 5008672f920e8bdda6a4753bd7c7262a90d11eab..57b04cb741b840de773ed2cbb75a1245a7968ebe 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -47,6 +47,7 @@
+ #include <linux/sunrpc/svcauth.h>
+ #include <linux/sunrpc/svcauth_gss.h>
+ #include <linux/sunrpc/cache.h>
++#include "gss_rpc_upcall.h"
+ 
+ #include "../netns.h"
+ 
+@@ -54,6 +55,8 @@
+ # define RPCDBG_FACILITY	RPCDBG_AUTH
+ #endif
+ 
++static bool use_gssp = false;
++
+ /* The rpcsec_init cache is used for mapping RPCSEC_GSS_{,CONT_}INIT requests
+  * into replies.
+  *
+@@ -551,6 +554,7 @@ static struct rsc *rsc_update(struct cache_detail *cd, struct rsc *new, struct r
+ }
+ 
+ 
++
+ static struct rsc *
+ gss_svc_searchbyctx(struct cache_detail *cd, struct xdr_netobj *handle)
+ {
+@@ -971,13 +975,10 @@ gss_write_init_verf(struct cache_detail *cd, struct svc_rqst *rqstp,
+ }
+ 
+ static inline int
+-gss_read_verf(struct rpc_gss_wire_cred *gc,
+-	      struct kvec *argv, __be32 *authp,
+-	      struct xdr_netobj *in_handle,
+-	      struct xdr_netobj *in_token)
++gss_read_common_verf(struct rpc_gss_wire_cred *gc,
++		     struct kvec *argv, __be32 *authp,
++		     struct xdr_netobj *in_handle)
+ {
+-	struct xdr_netobj tmpobj;
+-
+ 	/* Read the verifier; should be NULL: */
+ 	*authp = rpc_autherr_badverf;
+ 	if (argv->iov_len < 2 * 4)
+@@ -993,6 +994,23 @@ gss_read_verf(struct rpc_gss_wire_cred *gc,
+ 	if (dup_netobj(in_handle, &gc->gc_ctx))
+ 		return SVC_CLOSE;
+ 	*authp = rpc_autherr_badverf;
++
++	return 0;
++}
++
++static inline int
++gss_read_verf(struct rpc_gss_wire_cred *gc,
++	      struct kvec *argv, __be32 *authp,
++	      struct xdr_netobj *in_handle,
++	      struct xdr_netobj *in_token)
++{
++	struct xdr_netobj tmpobj;
++	int res;
++
++	res = gss_read_common_verf(gc, argv, authp, in_handle);
++	if (res)
++		return res;
++
+ 	if (svc_safe_getnetobj(argv, &tmpobj)) {
+ 		kfree(in_handle->data);
+ 		return SVC_DENIED;
+@@ -1005,6 +1023,40 @@ gss_read_verf(struct rpc_gss_wire_cred *gc,
+ 	return 0;
+ }
+ 
++/* Ok this is really heavily depending on a set of semantics in
++ * how rqstp is set up by svc_recv and pages laid down by the
++ * server when reading a request. We are basically guaranteed that
++ * the token lays all down linearly across a set of pages, starting
++ * at iov_base in rq_arg.head[0] which happens to be the first of a
++ * set of pages stored in rq_pages[].
++ * rq_arg.head[0].iov_base will provide us the page_base to pass
++ * to the upcall.
++ */
++static inline int
++gss_read_proxy_verf(struct svc_rqst *rqstp,
++		    struct rpc_gss_wire_cred *gc, __be32 *authp,
++		    struct xdr_netobj *in_handle,
++		    struct gssp_in_token *in_token)
++{
++	struct kvec *argv = &rqstp->rq_arg.head[0];
++	u32 inlen;
++	int res;
++
++	res = gss_read_common_verf(gc, argv, authp, in_handle);
++	if (res)
++		return res;
++
++	inlen = svc_getnl(argv);
++	if (inlen > (argv->iov_len + rqstp->rq_arg.page_len))
++		return SVC_DENIED;
++
++	in_token->pages = rqstp->rq_pages;
++	in_token->page_base = (ulong)argv->iov_base & ~PAGE_MASK;
++	in_token->page_len = inlen;
++
++	return 0;
++}
++
+ static inline int
+ gss_write_resv(struct kvec *resv, size_t size_limit,
+ 	       struct xdr_netobj *out_handle, struct xdr_netobj *out_token,
+@@ -1032,7 +1084,7 @@ gss_write_resv(struct kvec *resv, size_t size_limit,
+  * the upcall results are available, write the verifier and result.
+  * Otherwise, drop the request pending an answer to the upcall.
+  */
+-static int svcauth_gss_handle_init(struct svc_rqst *rqstp,
++static int svcauth_gss_legacy_init(struct svc_rqst *rqstp,
+ 			struct rpc_gss_wire_cred *gc, __be32 *authp)
+ {
+ 	struct kvec *argv = &rqstp->rq_arg.head[0];
+@@ -1072,6 +1124,134 @@ out:
+ 	return ret;
+ }
+ 
++static int gss_proxy_save_rsc(struct cache_detail *cd,
++				struct gssp_upcall_data *ud,
++				uint64_t *handle)
++{
++	struct rsc rsci, *rscp = NULL;
++	static atomic64_t ctxhctr;
++	long long ctxh;
++	struct gss_api_mech *gm = NULL;
++	time_t expiry;
++	int status = -EINVAL;
++
++	memset(&rsci, 0, sizeof(rsci));
++	/* context handle */
++	status = -ENOMEM;
++	/* the handle needs to be just a unique id,
++	 * use a static counter */
++	ctxh = atomic64_inc_return(&ctxhctr);
++
++	/* make a copy for the caller */
++	*handle = ctxh;
++
++	/* make a copy for the rsc cache */
++	if (dup_to_netobj(&rsci.handle, (char *)handle, sizeof(uint64_t)))
++		goto out;
++	rscp = rsc_lookup(cd, &rsci);
++	if (!rscp)
++		goto out;
++
++	/* creds */
++	if (!ud->found_creds) {
++		/* userspace seem buggy, we should always get at least a
++		 * mapping to nobody */
++		dprintk("RPC:       No creds found, marking Negative!\n");
++		set_bit(CACHE_NEGATIVE, &rsci.h.flags);
++	} else {
++
++		/* steal creds */
++		rsci.cred = ud->creds;
++		memset(&ud->creds, 0, sizeof(struct svc_cred));
++
++		status = -EOPNOTSUPP;
++		/* get mech handle from OID */
++		gm = gss_mech_get_by_OID(&ud->mech_oid);
++		if (!gm)
++			goto out;
++
++		status = -EINVAL;
++		/* mech-specific data: */
++		status = gss_import_sec_context(ud->out_handle.data,
++						ud->out_handle.len,
++						gm, &rsci.mechctx,
++						&expiry, GFP_KERNEL);
++		if (status)
++			goto out;
++	}
++
++	rsci.h.expiry_time = expiry;
++	rscp = rsc_update(cd, &rsci, rscp);
++	status = 0;
++out:
++	gss_mech_put(gm);
++	rsc_free(&rsci);
++	if (rscp)
++		cache_put(&rscp->h, cd);
++	else
++		status = -ENOMEM;
++	return status;
++}
++
++static int svcauth_gss_proxy_init(struct svc_rqst *rqstp,
++			struct rpc_gss_wire_cred *gc, __be32 *authp)
++{
++	struct kvec *resv = &rqstp->rq_res.head[0];
++	struct xdr_netobj cli_handle;
++	struct gssp_upcall_data ud;
++	uint64_t handle;
++	int status;
++	int ret;
++	struct net *net = rqstp->rq_xprt->xpt_net;
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++
++	memset(&ud, 0, sizeof(ud));
++	ret = gss_read_proxy_verf(rqstp, gc, authp,
++				  &ud.in_handle, &ud.in_token);
++	if (ret)
++		return ret;
++
++	ret = SVC_CLOSE;
++
++	/* Perform synchronous upcall to gss-proxy */
++	status = gssp_accept_sec_context_upcall(net, &ud);
++	if (status)
++		goto out;
++
++	dprintk("RPC:       svcauth_gss: gss major status = %d\n",
++			ud.major_status);
++
++	switch (ud.major_status) {
++	case GSS_S_CONTINUE_NEEDED:
++		cli_handle = ud.out_handle;
++		break;
++	case GSS_S_COMPLETE:
++		status = gss_proxy_save_rsc(sn->rsc_cache, &ud, &handle);
++		if (status)
++			goto out;
++		cli_handle.data = (u8 *)&handle;
++		cli_handle.len = sizeof(handle);
++		break;
++	default:
++		ret = SVC_CLOSE;
++		goto out;
++	}
++
++	/* Got an answer to the upcall; use it: */
++	if (gss_write_init_verf(sn->rsc_cache, rqstp,
++				&cli_handle, &ud.major_status))
++		goto out;
++	if (gss_write_resv(resv, PAGE_SIZE,
++			   &cli_handle, &ud.out_token,
++			   ud.major_status, ud.minor_status))
++		goto out;
++
++	ret = SVC_COMPLETE;
++out:
++	gssp_free_upcall_data(&ud);
++	return ret;
++}
++
+ /*
+  * Accept an rpcsec packet.
+  * If context establishment, punt to user space
+@@ -1138,7 +1318,10 @@ svcauth_gss_accept(struct svc_rqst *rqstp, __be32 *authp)
+ 	switch (gc->gc_proc) {
+ 	case RPC_GSS_PROC_INIT:
+ 	case RPC_GSS_PROC_CONTINUE_INIT:
+-		return svcauth_gss_handle_init(rqstp, gc, authp);
++		if (use_gssp)
++			return svcauth_gss_proxy_init(rqstp, gc, authp);
++		else
++			return svcauth_gss_legacy_init(rqstp, gc, authp);
+ 	case RPC_GSS_PROC_DATA:
+ 	case RPC_GSS_PROC_DESTROY:
+ 		/* Look up the context, and check the verifier: */
+@@ -1510,9 +1693,12 @@ gss_svc_init_net(struct net *net)
+ 	rv = rsc_cache_create_net(net);
+ 	if (rv)
+ 		return rv;
+-	rv = rsi_cache_create_net(net);
+-	if (rv)
+-		goto out1;
++	if (!use_gssp) {
++		rv = rsi_cache_create_net(net);
++		if (rv)
++			goto out1;
++	}
++
+ 	return 0;
+ out1:
+ 	rsc_cache_destroy_net(net);
+@@ -1522,13 +1708,24 @@ out1:
+ void
+ gss_svc_shutdown_net(struct net *net)
+ {
+-	rsi_cache_destroy_net(net);
++	if (!use_gssp)
++		rsi_cache_destroy_net(net);
+ 	rsc_cache_destroy_net(net);
+ }
+ 
+ int
+-gss_svc_init(void)
++gss_svc_init(unsigned int upcall_type)
+ {
++	switch (upcall_type) {
++	case GSS_UPCALL_LEGACY:
++		break;
++	case GSS_UPCALL_GSSPROXY:
++		dprintk("RPC:       svcauth_gss: Initializing for use with gss-proxy\n");
++		use_gssp = true;
++		break;
++	default:
++		return -EINVAL;
++	}
+ 	return svc_auth_register(RPC_AUTH_GSS, &svcauthops_gss);
+ }
+ 
+-- 
+1.7.7.6
+
