@@ -1,130 +1,261 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:64467 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S968091Ab2ERWGf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 May 2012 18:06:35 -0400
-Received: by yhmm54 with SMTP id m54so3385782yhm.19
-        for <linux-nfs@vger.kernel.org>; Fri, 18 May 2012 15:06:34 -0700 (PDT)
+Received: from acsinet15.oracle.com ([141.146.126.227]:33616 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753047Ab2EZTni convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 26 May 2012 15:43:38 -0400
+Subject: Re: [PATCH v2 8/9] NFSv4.1: Add DESTROY_CLIENTID
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=us-ascii
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 09/14] NFS: Force server to drop NFSv4 state
-To: trond.myklebust@netapp.com
+In-Reply-To: <1338057600-11130-8-git-send-email-Trond.Myklebust@netapp.com>
+Date: Sat, 26 May 2012 15:43:32 -0400
 Cc: linux-nfs@vger.kernel.org
-Date: Fri, 18 May 2012 18:06:33 -0400
-Message-ID: <20120518220632.774.79191.stgit@degas.1015granger.net>
-In-Reply-To: <20120518220145.774.53741.stgit@degas.1015granger.net>
-References: <20120518220145.774.53741.stgit@degas.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Message-Id: <8A0B2B0E-910C-4090-B3B1-DE04F8875175@oracle.com>
+References: <1338057600-11130-1-git-send-email-Trond.Myklebust@netapp.com> <1338057600-11130-2-git-send-email-Trond.Myklebust@netapp.com> <1338057600-11130-3-git-send-email-Trond.Myklebust@netapp.com> <1338057600-11130-4-git-send-email-Trond.Myklebust@netapp.com> <1338057600-11130-5-git-send-email-Trond.Myklebust@netapp.com> <1338057600-11130-6-git-send-email-Trond.Myklebust@netapp.com> <1338057600-11130-7-git-send-email-Trond.Myklebust@netapp.com> <1338057600-11130-8-git-send-email-Trond.Myklebust@netapp.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A SETCLIENTID boot verifier is nothing more than the client's boot
-timestamp.  An NFSv4 server is obligated to wipe all NFSv4 state for
-an NFS client when the client presents an updated SETCLIENTID boot
-verifier.  This is how servers detect client reboots.
 
-nfs4_reset_all_state() refreshes our client's boot verifier to trigger
-a server to wipe this client's state.  This function is invoked when
-an NFSv4.1 server reports that it has revoked some or all of a
-client's NFSv4 state.
+On May 26, 2012, at 2:39 PM, Trond Myklebust wrote:
 
-Soon we want to get rid of the per-nfs_client cl_boot_time field,
-however.  Without cl_boot_time, our NFS client will need to find a
-different way to force the server to purge the client's NFSv4 state.
+> Ensure that we destroy our lease on last unmount
 
-Because these verifiers are opaque (ie, the server doesn't know or
-care that they happen to be timestamps), we can do force the server
-to wipe NFSv4 state by using the same trick we use now, but then
-immediately afterwards establish a fresh client ID using the old boot
-verifier again.
+So why aren't we using DESTROY_CLIENTID in nfs4_reset_all_state() ?
 
-Hopefully there are no extra paranoid server implementations that keep
-track of the client's boot verifiers and prevent clients from reusing
-a previous one.
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+> fs/nfs/client.c      |    1 +
+> fs/nfs/nfs4_fs.h     |    1 +
+> fs/nfs/nfs4proc.c    |   59 ++++++++++++++++++++++++++++++++++++++++++++++++++
+> fs/nfs/nfs4xdr.c     |   52 ++++++++++++++++++++++++++++++++++++++++++++
+> include/linux/nfs4.h |    1 +
+> 5 files changed, 114 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index a50bdfb..7d10875 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -209,6 +209,7 @@ static void nfs4_shutdown_session(struct nfs_client *clp)
+> 	if (nfs4_has_session(clp)) {
+> 		nfs4_deviceid_purge_client(clp);
+> 		nfs4_destroy_session(clp->cl_session);
+> +		nfs4_destroy_clientid(clp);
+> 	}
+> 
+> }
+> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+> index f730730..b20b516 100644
+> --- a/fs/nfs/nfs4_fs.h
+> +++ b/fs/nfs/nfs4_fs.h
+> @@ -214,6 +214,7 @@ extern int nfs4_proc_setclientid_confirm(struct nfs_client *, struct nfs4_setcli
+> extern int nfs4_proc_get_rootfh(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
+> extern int nfs4_proc_bind_conn_to_session(struct nfs_client *, struct rpc_cred *cred);
+> extern int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred);
+> +extern int nfs4_destroy_clientid(struct nfs_client *clp);
+> extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
+> extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
+> extern int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait, bool roc);
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 3fdff0c..485a6c0 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -5261,6 +5261,65 @@ out:
+> 	return status;
+> }
+> 
+> +static int _nfs4_proc_destroy_clientid(struct nfs_client *clp,
+> +		struct rpc_cred *cred)
+> +{
+> +	struct rpc_message msg = {
+> +		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_DESTROY_CLIENTID],
+> +		.rpc_argp = clp,
+> +		.rpc_cred = cred,
+> +	};
+> +	int status;
+> +
+> +	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
+> +	if (status)
+> +		pr_warn("NFS: Got error %d from the server %s on "
+> +			"DESTROY_CLIENTID.", status, clp->cl_hostname);
+> +	return status;
+> +}
+> +
+> +static int nfs4_proc_destroy_clientid(struct nfs_client *clp,
+> +		struct rpc_cred *cred)
+> +{
+> +	unsigned int loop;
+> +	int ret;
+> +
+> +	for (loop = NFS4_MAX_LOOP_ON_RECOVER; loop != 0; loop--) {
+> +		ret = _nfs4_proc_destroy_clientid(clp, cred);
+> +		switch (ret) {
+> +		case -NFS4ERR_DELAY:
+> +		case -NFS4ERR_CLIENTID_BUSY:
+> +			ssleep(1);
+> +			break;
+> +		default:
+> +			return ret;
+> +		}
+> +	}
+> +	return 0;
+> +}
+> +
+> +int nfs4_destroy_clientid(struct nfs_client *clp)
+> +{
+> +	struct rpc_cred *cred;
+> +	int ret = 0;
+> +
+> +	if (clp->cl_mvops->minor_version < 1)
+> +		goto out;
+> +	if (clp->cl_exchange_flags == 0)
+> +		goto out;
+> +	cred = nfs4_get_exchange_id_cred(clp);
+> +	ret = nfs4_proc_destroy_clientid(clp, cred);
+> +	if (cred)
+> +		put_rpccred(cred);
+> +	switch (ret) {
+> +	case 0:
+> +	case -NFS4ERR_STALE_CLIENTID:
+> +		clp->cl_exchange_flags = 0;
+> +	}
+> +out:
+> +	return ret;
+> +}
+> +
+> struct nfs4_get_lease_time_data {
+> 	struct nfs4_get_lease_time_args *args;
+> 	struct nfs4_get_lease_time_res *res;
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index 1d4d259..b9ce3fd 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -338,6 +338,8 @@ static int nfs4_stat_to_errno(int);
+> 				     1 /* bctsr_use_conn_in_rdma_mode */)
+> #define encode_destroy_session_maxsz    (op_encode_hdr_maxsz + 4)
+> #define decode_destroy_session_maxsz    (op_decode_hdr_maxsz)
+> +#define encode_destroy_clientid_maxsz   (op_encode_hdr_maxsz + 2)
+> +#define decode_destroy_clientid_maxsz   (op_decode_hdr_maxsz)
+> #define encode_sequence_maxsz	(op_encode_hdr_maxsz + \
+> 				XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + 4)
+> #define decode_sequence_maxsz	(op_decode_hdr_maxsz + \
+> @@ -751,6 +753,10 @@ static int nfs4_stat_to_errno(int);
+> 					 encode_destroy_session_maxsz)
+> #define NFS4_dec_destroy_session_sz	(compound_decode_hdr_maxsz + \
+> 					 decode_destroy_session_maxsz)
+> +#define NFS4_enc_destroy_clientid_sz	(compound_encode_hdr_maxsz + \
+> +					 encode_destroy_clientid_maxsz)
+> +#define NFS4_dec_destroy_clientid_sz	(compound_decode_hdr_maxsz + \
+> +					 decode_destroy_clientid_maxsz)
+> #define NFS4_enc_sequence_sz \
+> 				(compound_decode_hdr_maxsz + \
+> 				 encode_sequence_maxsz)
+> @@ -1804,6 +1810,14 @@ static void encode_destroy_session(struct xdr_stream *xdr,
+> 	encode_opaque_fixed(xdr, session->sess_id.data, NFS4_MAX_SESSIONID_LEN);
+> }
+> 
+> +static void encode_destroy_clientid(struct xdr_stream *xdr,
+> +				   uint64_t clientid,
+> +				   struct compound_hdr *hdr)
+> +{
+> +	encode_op_hdr(xdr, OP_DESTROY_CLIENTID, decode_destroy_clientid_maxsz, hdr);
+> +	encode_uint64(xdr, clientid);
+> +}
+> +
+> static void encode_reclaim_complete(struct xdr_stream *xdr,
+> 				    struct nfs41_reclaim_complete_args *args,
+> 				    struct compound_hdr *hdr)
+> @@ -2724,6 +2738,22 @@ static void nfs4_xdr_enc_destroy_session(struct rpc_rqst *req,
+> }
+> 
+> /*
+> + * a DESTROY_CLIENTID request
+> + */
+> +static void nfs4_xdr_enc_destroy_clientid(struct rpc_rqst *req,
+> +					 struct xdr_stream *xdr,
+> +					 struct nfs_client *clp)
+> +{
+> +	struct compound_hdr hdr = {
+> +		.minorversion = clp->cl_mvops->minor_version,
+> +	};
+> +
+> +	encode_compound_hdr(xdr, req, &hdr);
+> +	encode_destroy_clientid(xdr, clp->cl_clientid, &hdr);
+> +	encode_nops(&hdr);
+> +}
+> +
+> +/*
+>  * a SEQUENCE request
+>  */
+> static void nfs4_xdr_enc_sequence(struct rpc_rqst *req, struct xdr_stream *xdr,
+> @@ -5479,6 +5509,11 @@ static int decode_destroy_session(struct xdr_stream *xdr, void *dummy)
+> 	return decode_op_hdr(xdr, OP_DESTROY_SESSION);
+> }
+> 
+> +static int decode_destroy_clientid(struct xdr_stream *xdr, void *dummy)
+> +{
+> +	return decode_op_hdr(xdr, OP_DESTROY_CLIENTID);
+> +}
+> +
+> static int decode_reclaim_complete(struct xdr_stream *xdr, void *dummy)
+> {
+> 	return decode_op_hdr(xdr, OP_RECLAIM_COMPLETE);
+> @@ -6789,6 +6824,22 @@ static int nfs4_xdr_dec_destroy_session(struct rpc_rqst *rqstp,
+> }
+> 
+> /*
+> + * Decode DESTROY_CLIENTID response
+> + */
+> +static int nfs4_xdr_dec_destroy_clientid(struct rpc_rqst *rqstp,
+> +					struct xdr_stream *xdr,
+> +					void *res)
+> +{
+> +	struct compound_hdr hdr;
+> +	int status;
+> +
+> +	status = decode_compound_hdr(xdr, &hdr);
+> +	if (!status)
+> +		status = decode_destroy_clientid(xdr, res);
+> +	return status;
+> +}
+> +
+> +/*
+>  * Decode SEQUENCE response
+>  */
+> static int nfs4_xdr_dec_sequence(struct rpc_rqst *rqstp,
+> @@ -7237,6 +7288,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
+> 	PROC(GETDEVICELIST,	enc_getdevicelist,	dec_getdevicelist),
+> 	PROC(BIND_CONN_TO_SESSION,
+> 			enc_bind_conn_to_session, dec_bind_conn_to_session),
+> +	PROC(DESTROY_CLIENTID,	enc_destroy_clientid,	dec_destroy_clientid),
+> #endif /* CONFIG_NFS_V4_1 */
+> };
+> 
+> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+> index 54006a9..af2d2fa 100644
+> --- a/include/linux/nfs4.h
+> +++ b/include/linux/nfs4.h
+> @@ -608,6 +608,7 @@ enum {
+> 	NFSPROC4_CLNT_FREE_STATEID,
+> 	NFSPROC4_CLNT_GETDEVICELIST,
+> 	NFSPROC4_CLNT_BIND_CONN_TO_SESSION,
+> +	NFSPROC4_CLNT_DESTROY_CLIENTID,
+> };
+> 
+> /* nfs41 types */
+> -- 
+> 1.7.7.6
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
- fs/nfs/nfs4_fs.h   |    1 +
- fs/nfs/nfs4proc.c  |    9 +++++++--
- fs/nfs/nfs4state.c |   13 +++++++++++--
- 3 files changed, 19 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 03d3ff0..f164c73 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -24,6 +24,7 @@ enum nfs4_client_state {
- 	NFS4CLNT_RECALL_SLOT,
- 	NFS4CLNT_LEASE_CONFIRM,
- 	NFS4CLNT_SERVER_SCOPE_MISMATCH,
-+	NFS4CLNT_PURGE_STATE,
- };
- 
- enum nfs4_session_state {
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 73cfd9e..c56d547 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3937,8 +3937,13 @@ static void nfs4_construct_boot_verifier(struct nfs_client *clp,
- {
- 	__be32 verf[2];
- 
--	verf[0] = (__be32)clp->cl_boot_time.tv_sec;
--	verf[1] = (__be32)clp->cl_boot_time.tv_nsec;
-+	if (test_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state)) {
-+		verf[0] = (__be32)CURRENT_TIME.tv_sec;
-+		verf[1] = (__be32)CURRENT_TIME.tv_nsec;
-+	} else {
-+		verf[0] = (__be32)clp->cl_boot_time.tv_sec;
-+		verf[1] = (__be32)clp->cl_boot_time.tv_nsec;
-+	}
- 	memcpy(bootverf->data, verf, sizeof(bootverf->data));
- }
- 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index f8c06de..32cce4a 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1615,7 +1615,7 @@ void nfs41_handle_recall_slot(struct nfs_client *clp)
- static void nfs4_reset_all_state(struct nfs_client *clp)
- {
- 	if (test_and_set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state) == 0) {
--		clp->cl_boot_time = CURRENT_TIME;
-+		set_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state);
- 		nfs4_state_start_reclaim_nograce(clp);
- 		nfs4_schedule_state_manager(clp);
- 	}
-@@ -1631,7 +1631,6 @@ static void nfs41_handle_server_reboot(struct nfs_client *clp)
- 
- static void nfs41_handle_state_revoked(struct nfs_client *clp)
- {
--	/* Temporary */
- 	nfs4_reset_all_state(clp);
- }
- 
-@@ -1652,6 +1651,10 @@ void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags)
- {
- 	if (!flags)
- 		return;
-+
-+	dprintk("%s: \"%s\" (client ID %llx) flags=0x%08x\n",
-+		__func__, clp->cl_hostname, clp->cl_clientid, flags);
-+
- 	if (flags & SEQ4_STATUS_RESTART_RECLAIM_NEEDED)
- 		nfs41_handle_server_reboot(clp);
- 	if (flags & (SEQ4_STATUS_EXPIRED_ALL_STATE_REVOKED |
-@@ -1762,6 +1765,12 @@ static void nfs4_state_manager(struct nfs_client *clp)
- 
- 	/* Ensure exclusive access to NFSv4 state */
- 	do {
-+		if (test_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state)) {
-+			nfs4_reclaim_lease(clp);
-+			clear_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state);
-+			set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
-+		}
-+
- 		if (test_and_clear_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state)) {
- 			/* We're going to have to re-establish a clientid */
- 			status = nfs4_reclaim_lease(clp);
+
 
