@@ -1,82 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:56632 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:26475 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753253Ab2EVTj6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 May 2012 15:39:58 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q4MJdwZe012942
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 15:39:58 -0400
-Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q4MJdvxH013762
-	for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 15:39:57 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] nfsidmap: Allow verbosity level to be set in the config file.
-Date: Tue, 22 May 2012 15:38:17 -0400
-Message-Id: <1337715497-30592-1-git-send-email-steved@redhat.com>
+	id S1754234Ab2EZSkY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 26 May 2012 14:40:24 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 4/9] NFSv4.1: Handle NFS4ERR_SEQ_MISORDERED when confirming the lease
+Date: Sat, 26 May 2012 14:39:55 -0400
+Message-Id: <1338057600-11130-4-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1338057600-11130-3-git-send-email-Trond.Myklebust@netapp.com>
+References: <1338057600-11130-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1338057600-11130-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1338057600-11130-3-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-To make it easier to enable ID mapping debugging, nfsidmap
-should read /etc/idmap.conf to see if the verbosity level
-is set, similar to what rpc.idmapd does
+Apparently the patch "NFS: Always use the same SETCLIENTID boot verifier"
+is tickling a Linux nfs server bug, and causing a regression: the server
+can get into a situation where it keeps replying NFS4ERR_SEQ_MISORDERED
+to our CREATE_SESSION request even when we are sending the correct
+sequence ID.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Fix this by purging the lease and then retrying.
+
+Reported-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- utils/nfsidmap/nfsidmap.c |   19 ++++++++++++++++++-
- 1 files changed, 18 insertions(+), 1 deletions(-)
+ fs/nfs/nfs4state.c |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
 
-diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
-index cf11551..86cddd1 100644
---- a/utils/nfsidmap/nfsidmap.c
-+++ b/utils/nfsidmap/nfsidmap.c
-@@ -12,6 +12,7 @@
- 
- #include <unistd.h>
- #include "xlog.h"
-+#include "conffile.h"
- 
- int verbose = 0;
- char *usage="Usage: %s [-v] [-c || [-u|-g|-r key] || [-t timeout] key desc]";
-@@ -26,12 +27,26 @@ char *usage="Usage: %s [-v] [-c || [-u|-g|-r key] || [-t timeout] key desc]";
- #define DEFAULT_KEYRING "id_resolver"
- #endif
- 
-+#ifndef PATH_IDMAPDCONF
-+#define PATH_IDMAPDCONF "/etc/idmapd.conf"
-+#endif
-+
- static int keyring_clear(char *keyring);
- 
- #define UIDKEYS 0x1
- #define GIDKEYS 0x2
- 
- /*
-+ * Check to the config file for the verbosity level
-+ */
-+get_config_verbose(char *path)
-+{
-+	conf_path = path;
-+	conf_init();
-+	return conf_get_num("General", "Verbosity", 0);
-+}
-+
-+/*
-  * Find either a user or group id based on the name@domain string
-  */
- int id_lookup(char *name_at_domain, key_serial_t key, int type)
-@@ -266,7 +281,9 @@ int main(int argc, char **argv)
- 			break;
- 		}
- 	}
--
-+	if (!verbose) {
-+		verbose = get_config_verbose(PATH_IDMAPDCONF);
-+	}
- 	if (keystr) {
- 		rc = key_revoke(keystr, keymask);
- 		return rc;		
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 604c600..419f8c4 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1580,6 +1580,11 @@ out:
+ static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
+ {
+ 	switch (status) {
++	case -NFS4ERR_SEQ_MISORDERED:
++		if (test_and_set_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state))
++			return -ESERVERFAULT;
++		/* Lease confirmation error: retry after purging the lease */
++		ssleep(1);
+ 	case -NFS4ERR_CLID_INUSE:
+ 	case -NFS4ERR_STALE_CLIENTID:
+ 		clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
 -- 
 1.7.7.6
 
