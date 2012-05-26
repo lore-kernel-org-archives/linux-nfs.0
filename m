@@ -1,97 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:48666 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:8849 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757567Ab2EERYZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 5 May 2012 13:24:25 -0400
-Subject: [PATCH RFC 07/13] LockD: manage grace period per network namespace
-To: bfields@fieldses.org, Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Sat, 05 May 2012 21:22:22 +0400
-Message-ID: <20120505172222.11559.12808.stgit@localhost.localdomain>
-In-Reply-To: <20120505170722.11559.74503.stgit@localhost.localdomain>
-References: <20120505170722.11559.74503.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1752826Ab2EZSkY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 26 May 2012 14:40:24 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH v2 7/9] NFSv4.1: Ensure we use the correct credentials for bind_conn_to_session
+Date: Sat, 26 May 2012 14:39:58 -0400
+Message-Id: <1338057600-11130-7-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1338057600-11130-6-git-send-email-Trond.Myklebust@netapp.com>
+References: <1338057600-11130-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1338057600-11130-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1338057600-11130-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1338057600-11130-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1338057600-11130-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1338057600-11130-6-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Weston Andros Adamson <dros@netapp.com>
 ---
- fs/lockd/netns.h |    2 ++
- fs/lockd/svc.c   |   17 +++++++++++------
- 2 files changed, 13 insertions(+), 6 deletions(-)
+ fs/nfs/nfs4_fs.h   |    2 +-
+ fs/nfs/nfs4proc.c  |    3 ++-
+ fs/nfs/nfs4state.c |    9 ++++++++-
+ 3 files changed, 11 insertions(+), 3 deletions(-)
 
-diff --git a/fs/lockd/netns.h b/fs/lockd/netns.h
-index 44c8f0b..94653ae 100644
---- a/fs/lockd/netns.h
-+++ b/fs/lockd/netns.h
-@@ -7,6 +7,8 @@ struct lockd_net {
- 	unsigned int nlmsvc_users;
- 	unsigned long next_gc;
- 	unsigned long nrhosts;
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index a5dbe62..f730730 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -212,7 +212,7 @@ struct vfsmount *nfs4_submount(struct nfs_server *, struct dentry *,
+ extern int nfs4_proc_setclientid(struct nfs_client *, u32, unsigned short, struct rpc_cred *, struct nfs4_setclientid_res *);
+ extern int nfs4_proc_setclientid_confirm(struct nfs_client *, struct nfs4_setclientid_res *arg, struct rpc_cred *);
+ extern int nfs4_proc_get_rootfh(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
+-extern int nfs4_proc_bind_conn_to_session(struct nfs_client *);
++extern int nfs4_proc_bind_conn_to_session(struct nfs_client *, struct rpc_cred *cred);
+ extern int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred);
+ extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
+ extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 8fa3a36..3fdff0c 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5105,7 +5105,7 @@ nfs41_same_server_scope(struct nfs41_server_scope *a,
+  * The 4.1 client currently uses the same TCP connection for the
+  * fore and backchannel.
+  */
+-int nfs4_proc_bind_conn_to_session(struct nfs_client *clp)
++int nfs4_proc_bind_conn_to_session(struct nfs_client *clp, struct rpc_cred *cred)
+ {
+ 	int status;
+ 	struct nfs41_bind_conn_to_session_res res;
+@@ -5114,6 +5114,7 @@ int nfs4_proc_bind_conn_to_session(struct nfs_client *clp)
+ 			&nfs4_procedures[NFSPROC4_CLNT_BIND_CONN_TO_SESSION],
+ 		.rpc_argp = clp,
+ 		.rpc_resp = &res,
++		.rpc_cred = cred,
+ 	};
+ 
+ 	dprintk("--> %s\n", __func__);
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 1587840..7dbca66 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1779,7 +1779,14 @@ static int nfs4_recall_slot(struct nfs_client *clp)
+ 
+ static int nfs4_bind_conn_to_session(struct nfs_client *clp)
+ {
+-	return nfs4_proc_bind_conn_to_session(clp);
++	struct rpc_cred *cred;
++	int ret;
 +
-+	struct delayed_work grace_period_end;
- };
- 
- extern int lockd_net_id;
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 80938fd..70c4177 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -95,21 +95,22 @@ static void grace_ender(struct work_struct *not_used)
- 	locks_end_grace(&lockd_manager);
++	cred = nfs4_get_exchange_id_cred(clp);
++	ret = nfs4_proc_bind_conn_to_session(clp, cred);
++	if (cred)
++		put_rpccred(cred);
++	return ret;
  }
- 
--static DECLARE_DELAYED_WORK(grace_period_end, grace_ender);
--
- static void set_grace_period(void)
- {
- 	unsigned long grace_period = get_lockd_grace_period();
-+	struct lockd_net *ln = net_generic(&init_net, lockd_net_id);
- 
- 	locks_start_grace(&lockd_manager);
--	cancel_delayed_work_sync(&grace_period_end);
--	schedule_delayed_work(&grace_period_end, grace_period);
-+	cancel_delayed_work_sync(&ln->grace_period_end);
-+	schedule_delayed_work(&ln->grace_period_end, grace_period);
- }
- 
- static void restart_grace(void)
- {
- 	if (nlmsvc_ops) {
--		cancel_delayed_work_sync(&grace_period_end);
-+		struct lockd_net *ln = net_generic(&init_net, lockd_net_id);
-+
-+		cancel_delayed_work_sync(&ln->grace_period_end);
- 		locks_end_grace(&lockd_manager);
- 		nlmsvc_invalidate_all();
- 		set_grace_period();
-@@ -124,6 +125,7 @@ lockd(void *vrqstp)
- {
- 	int		err = 0, preverr = 0;
- 	struct svc_rqst *rqstp = vrqstp;
-+	struct lockd_net *ln = net_generic(&init_net, lockd_net_id);
- 
- 	/* try_to_freeze() is called from svc_recv() */
- 	set_freezable();
-@@ -184,7 +186,7 @@ lockd(void *vrqstp)
- 		svc_process(rqstp);
- 	}
- 	flush_signals(current);
--	cancel_delayed_work_sync(&grace_period_end);
-+	cancel_delayed_work_sync(&ln->grace_period_end);
- 	locks_end_grace(&lockd_manager);
- 	if (nlmsvc_ops)
- 		nlmsvc_invalidate_all();
-@@ -589,6 +591,9 @@ module_param(nlm_max_connections, uint, 0644);
- 
- static int lockd_init_net(struct net *net)
- {
-+	struct lockd_net *ln = net_generic(net, lockd_net_id);
-+
-+	INIT_DELAYED_WORK(&ln->grace_period_end, grace_ender);
- 	return 0;
- }
- 
+ #else /* CONFIG_NFS_V4_1 */
+ static int nfs4_reset_session(struct nfs_client *clp) { return 0; }
+-- 
+1.7.7.6
 
