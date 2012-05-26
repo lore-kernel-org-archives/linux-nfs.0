@@ -1,70 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:57358 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757082Ab2EVCp0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 May 2012 22:45:26 -0400
-Received: by mail-yw0-f46.google.com with SMTP id m54so5053606yhm.19
-        for <linux-nfs@vger.kernel.org>; Mon, 21 May 2012 19:45:26 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 08/14] NFS: Add NFSDBG_STATE
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 21 May 2012 22:45:24 -0400
-Message-ID: <20120522024524.1787.66721.stgit@degas.1015granger.net>
-In-Reply-To: <20120522022702.1787.45940.stgit@degas.1015granger.net>
-References: <20120522022702.1787.45940.stgit@degas.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:26475 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752826Ab2EZSkX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 26 May 2012 14:40:23 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 1/9] NFSv4.1: Exchange ID must use GFP_NOFS allocation mode
+Date: Sat, 26 May 2012 14:39:52 -0400
+Message-Id: <1338057600-11130-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-fs/nfs/nfs4state.c does not yet have any dprintk() call sites, and I'm
-about to introduce some.  We will need a new flag for enabling them.
+Exchange ID can be called in a lease reclaim situation, so it
+will deadlock if it then tries to write out dirty NFS pages.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
+ fs/nfs/nfs4proc.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
- fs/nfs/nfs4renewd.c    |    2 +-
- fs/nfs/nfs4state.c     |    2 ++
- include/linux/nfs_fs.h |    1 +
- 3 files changed, 4 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfs/nfs4renewd.c b/fs/nfs/nfs4renewd.c
-index dc484c0..6930bec 100644
---- a/fs/nfs/nfs4renewd.c
-+++ b/fs/nfs/nfs4renewd.c
-@@ -49,7 +49,7 @@
- #include "nfs4_fs.h"
- #include "delegation.h"
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index e8988c0..f8817e8 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5192,20 +5192,20 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ 				clp->cl_rpcclient->cl_auth->au_flavor);
  
--#define NFSDBG_FACILITY	NFSDBG_PROC
-+#define NFSDBG_FACILITY		NFSDBG_STATE
+ 	res.server_owner = kzalloc(sizeof(struct nfs41_server_owner),
+-					GFP_KERNEL);
++					GFP_NOFS);
+ 	if (unlikely(res.server_owner == NULL)) {
+ 		status = -ENOMEM;
+ 		goto out;
+ 	}
  
- void
- nfs4_renew_state(struct work_struct *work)
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 7f0fcfc..f8c06de 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -57,6 +57,8 @@
- #include "internal.h"
- #include "pnfs.h"
+ 	res.server_scope = kzalloc(sizeof(struct nfs41_server_scope),
+-					GFP_KERNEL);
++					GFP_NOFS);
+ 	if (unlikely(res.server_scope == NULL)) {
+ 		status = -ENOMEM;
+ 		goto out_server_owner;
+ 	}
  
-+#define NFSDBG_FACILITY		NFSDBG_STATE
-+
- #define OPENOWNER_POOL_SIZE	8
- 
- const nfs4_stateid zero_stateid;
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 6cc7dba..80a9385 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -634,6 +634,7 @@ nfs_fileid_to_ino_t(u64 fileid)
- #define NFSDBG_FSCACHE		0x0800
- #define NFSDBG_PNFS		0x1000
- #define NFSDBG_PNFS_LD		0x2000
-+#define NFSDBG_STATE		0x4000
- #define NFSDBG_ALL		0xFFFF
- 
- #ifdef __KERNEL__
+-	res.impl_id = kzalloc(sizeof(struct nfs41_impl_id), GFP_KERNEL);
++	res.impl_id = kzalloc(sizeof(struct nfs41_impl_id), GFP_NOFS);
+ 	if (unlikely(res.impl_id == NULL)) {
+ 		status = -ENOMEM;
+ 		goto out_server_scope;
+-- 
+1.7.7.6
 
