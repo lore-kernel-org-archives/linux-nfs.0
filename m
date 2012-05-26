@@ -1,90 +1,120 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:32047 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755672Ab2EOPAP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 11:00:15 -0400
-Subject: Re: [PATCH] statd: drop all capabilities from the bounding set as well
-Mime-Version: 1.0 (Apple Message framework v1278)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1337091151-3385-1-git-send-email-jlayton@redhat.com>
-Date: Tue, 15 May 2012 11:00:10 -0400
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Message-Id: <AD2C2C58-2CB4-43A1-A21E-EB8D83D084F9@oracle.com>
-References: <1337091151-3385-1-git-send-email-jlayton@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
+Received: from fulla.mrothe.de ([85.17.207.87]:49621 "EHLO fulla.mrothe.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751208Ab2EZMoW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 26 May 2012 08:44:22 -0400
+Date: Sat, 26 May 2012 14:37:52 +0200
+From: Markus Rothe <markus@mrothe.de>
+To: linux-nfs@vger.kernel.org
+Subject: nfs-utils 1.2.6: error: #error It appears you have already
+ included the Heimdal gssapi.h file
+Message-ID: <20120526123752.GB24979@fulla.mrothe.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'll summarize our conversation on IRC:
+Hello,
 
-  o  This fix probably won't add any new vulnerabilities, but:
+I am trying to compile nfs-utils 1.2.6 with NFSv4 and gss support, but
+am running into the following error:
 
-  o  We don't have an existing exploit to see if this patch closes it
+./configure --prefix=/usr --host=x86_64-pc-linux-gnu --build=x86_64-pc-linux-gnu --mandir=/usr/share/man --infodir=/usr/share/info --datadir=/usr/share --docdir=/usr/share/doc/nfs-utils-1.2.6 --sysconfdir=/etc --localstatedir=/var/lib --disable-dependency-tracking --disable-silent-rules --enable-fast-install --libdir=/usr/lib64 --mandir=/usr/share/man --enable-largefile --enable-libmount-mount --enable-mount --enable-mountconfig --enable-tirpc --with-statduser=nobody --with-statedir=/var/lib/nfs --disable-caps --enable-gss --enable-ipv6 --enable-nfsv4 --enable-nfsv41 --enable-nfsdcld --with-tcp-wrappers
+[...]
+x86_64-pc-linux-gnu-gcc -DHAVE_CONFIG_H -I. -I../../support/include  -I/usr/include/tirpc -D_GNU_SOURCE -Wall -Wextra -Wstrict-prototypes  -pipe -march=native -O2 -pipe  -I/usr/include/gssglue   -I/usr/include  -march=native -O2 -pipe -c -o gssd-context_lucid.o `test -f 'context_lucid.c' || echo './'`context_lucid.c
+In file included from /usr/include/gssapi.h:39:0,
+                 from /usr/include/gssapi/gssapi_krb5.h:39,
+                 from context_lucid.c:47:
+/usr/include/gssglue/gssapi/gssapi.h:42:2: error: #error It appears you have already included the Heimdal gssapi.h file
+In file included from context_lucid.c:47:0:
+/usr/include/gssapi/gssapi_krb5.h:56:1: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘extern’
+/usr/include/gssapi/gssapi_krb5.h:63:41: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘__gss_krb5_mechanism_oid_desc’
+/usr/include/gssapi/gssapi_krb5.h:79:1: error: unknown type name ‘GSSAPI_LIB_FUNCTION’
+/usr/include/gssapi/gssapi_krb5.h:79:31: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:79:31: error: unknown type name ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:84:1: error: unknown type name ‘GSSAPI_LIB_FUNCTION’
+/usr/include/gssapi/gssapi_krb5.h:84:31: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:84:31: error: unknown type name ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:87:1: error: unknown type name ‘GSSAPI_LIB_FUNCTION’
+/usr/include/gssapi/gssapi_krb5.h:87:31: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:87:31: error: unknown type name ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:90:1: error: unknown type name ‘GSSAPI_LIB_FUNCTION’
+/usr/include/gssapi/gssapi_krb5.h:90:31: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:90:31: error: unknown type name ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:95:1: error: unknown type name ‘GSSAPI_LIB_FUNCTION’
+/usr/include/gssapi/gssapi_krb5.h:95:31: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:95:31: error: unknown type name ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:102:1: error: unknown type name ‘GSSAPI_LIB_FUNCTION’
+/usr/include/gssapi/gssapi_krb5.h:102:31: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:102:31: error: unknown type name ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:107:1: error: unknown type name ‘GSSAPI_LIB_FUNCTION’
+/usr/include/gssapi/gssapi_krb5.h:107:31: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:107:31: error: unknown type name ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:114:1: error: unknown type name ‘GSSAPI_LIB_FUNCTION’
+/usr/include/gssapi/gssapi_krb5.h:114:31: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:114:31: error: unknown type name ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:122:1: error: unknown type name ‘GSSAPI_LIB_FUNCTION’
+/usr/include/gssapi/gssapi_krb5.h:122:31: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:122:31: error: unknown type name ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:126:1: error: unknown type name ‘GSSAPI_LIB_FUNCTION’
+/usr/include/gssapi/gssapi_krb5.h:126:31: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:126:31: error: unknown type name ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:129:1: error: unknown type name ‘GSSAPI_LIB_FUNCTION’
+/usr/include/gssapi/gssapi_krb5.h:129:31: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:129:31: error: unknown type name ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:134:1: error: unknown type name ‘GSSAPI_LIB_FUNCTION’
+/usr/include/gssapi/gssapi_krb5.h:134:31: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:134:31: error: unknown type name ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:138:1: error: unknown type name ‘GSSAPI_LIB_FUNCTION’
+/usr/include/gssapi/gssapi_krb5.h:138:31: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:138:31: error: unknown type name ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:142:1: error: unknown type name ‘GSSAPI_LIB_FUNCTION’
+/usr/include/gssapi/gssapi_krb5.h:142:31: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:142:31: error: unknown type name ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:147:1: error: unknown type name ‘GSSAPI_LIB_FUNCTION’
+/usr/include/gssapi/gssapi_krb5.h:147:31: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:147:31: error: unknown type name ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:150:1: error: unknown type name ‘GSSAPI_LIB_FUNCTION’
+/usr/include/gssapi/gssapi_krb5.h:150:31: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:150:31: error: unknown type name ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:159:1: error: unknown type name ‘GSSAPI_LIB_FUNCTION’
+/usr/include/gssapi/gssapi_krb5.h:159:31: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:159:31: error: unknown type name ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:190:2: error: unknown type name ‘OM_uint64’
+/usr/include/gssapi/gssapi_krb5.h:191:2: error: unknown type name ‘OM_uint64’
+/usr/include/gssapi/gssapi_krb5.h:205:1: error: unknown type name ‘GSSAPI_LIB_FUNCTION’
+/usr/include/gssapi/gssapi_krb5.h:205:31: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:205:31: error: unknown type name ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:212:1: error: unknown type name ‘GSSAPI_LIB_FUNCTION’
+/usr/include/gssapi/gssapi_krb5.h:212:31: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:212:31: error: unknown type name ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:217:1: error: unknown type name ‘GSSAPI_LIB_FUNCTION’
+/usr/include/gssapi/gssapi_krb5.h:217:31: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘GSSAPI_LIB_CALL’
+/usr/include/gssapi/gssapi_krb5.h:217:31: error: unknown type name ‘GSSAPI_LIB_CALL’
+In file included from /usr/include/stdlib.h:33:0,
+                 from gss_util.h:34,
+                 from context_lucid.c:49:
+/usr/lib64/gcc/x86_64-pc-linux-gnu/4.6.3/include/stddef.h:324:1: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘typedef’
+In file included from gss_util.h:34:0,
+                 from context_lucid.c:49:
+/usr/include/stdlib.h:863:20: error: unknown type name ‘wchar_t’
+/usr/include/stdlib.h:867:31: error: unknown type name ‘wchar_t’
+/usr/include/stdlib.h:871:25: error: unknown type name ‘wchar_t’
+/usr/include/stdlib.h:875:4: error: unknown type name ‘wchar_t’
+make[2]: *** [gssd-context_lucid.o] Error 1
+make[2]: Leaving directory `/var/tmp/paludis/build/net-fs-nfs-utils-1.2.6/work/nfs-utils-1.2.6/utils/gssd'
+make[1]: *** [all-recursive] Error 1
+make[1]: Leaving directory `/var/tmp/paludis/build/net-fs-nfs-utils-1.2.6/work/nfs-utils-1.2.6/utils'
+make: *** [all-recursive] Error 1
 
-  o  We don't have any unit tests for this daemon anyway to see if we're breaking something else
 
-  o  An interesting test case is to try invoking a setuid callout and see if capabilities are dropped
+I have the following packages installed:
 
-  o  statd probably needs to know when it's running on a pre-2.6.25 kernel (which has a system-wide bounding set)
+libgssglue 0.4
+heimdal 1.5.2
 
-  o  statd probably needs to know when CONFIG_SECURITY_FILE_CAPABILITIES is not set on the system where it's running
+This is an error with nfs-utils or libgssglue/heimdal?
 
-So this fix needs a little more built-in cleverness.  NAK to this version, and let's see if the concerns above can be addressed.
+Regards,
 
-On May 15, 2012, at 10:12 AM, Jeff Layton wrote:
-
-> statd drops all capabilities except for CAP_NET_BIND when it starts. It's
-> possible though that if it ever had a compromise that an attacker would be
-> able to invoke a setuid process (or something with file capabilities) in
-> order to reinstate some caps.
-> 
-> In order to prevent that, have statd also prune the bounding set to nothing
-> prior to dropping capabilities.
-> 
-> Cc: Chuck Lever <chuck.lever@oracle.com>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
-> support/nsm/file.c |   12 ++++++++++++
-> 1 files changed, 12 insertions(+), 0 deletions(-)
-> 
-> diff --git a/support/nsm/file.c b/support/nsm/file.c
-> index 5dd52c1..2d86f95 100644
-> --- a/support/nsm/file.c
-> +++ b/support/nsm/file.c
-> @@ -342,8 +342,20 @@ static _Bool
-> nsm_clear_capabilities(void)
-> {
-> #ifdef HAVE_SYS_CAPABILITY_H
-> +	int ret;
-> +	unsigned long i;
-> 	cap_t caps;
-> 
-> +	/* prune the bounding set to nothing */
-> +	for (i = 0; i <= CAP_LAST_CAP; ++i) {
-> +		ret = prctl(PR_CAPBSET_DROP, i);
-> +		if (ret) {
-> +			xlog(L_ERROR, "Unable to prune capability %lu from "
-> +				      "bounding set: %m", i);
-> +			return false;
-> +		}
-> +	}
-> +
-> 	caps = cap_from_text("cap_net_bind_service=ep");
-> 	if (caps == NULL) {
-> 		xlog(L_ERROR, "Failed to allocate capability: %m");
-> -- 
-> 1.7.7.6
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Markus
