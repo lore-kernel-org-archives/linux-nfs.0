@@ -1,85 +1,183 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f178.google.com ([209.85.212.178]:63430 "EHLO
-	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751543Ab2EUPXE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 May 2012 11:23:04 -0400
-Received: by wibhn6 with SMTP id hn6so2535976wib.1
-        for <linux-nfs@vger.kernel.org>; Mon, 21 May 2012 08:23:04 -0700 (PDT)
-From: Benny Halevy <bhalevy@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] pnfsd: provide helper for xdr encoding of deviceid
-Date: Mon, 21 May 2012 18:22:54 +0300
-Message-Id: <1337613774-4011-1-git-send-email-bhalevy@tonian.com>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:60512 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750998Ab2E0Fdw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 May 2012 01:33:52 -0400
+Received: by mail-pb0-f46.google.com with SMTP id rp8so3356136pbb.19
+        for <linux-nfs@vger.kernel.org>; Sat, 26 May 2012 22:33:51 -0700 (PDT)
+From: Peng Tao <bergwolf@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Peng Tao <tao.peng@emc.com>
+Subject: [PATCH 1/3] NFS41: add pnfs_dio_begin/dio_end
+Date: Sun, 27 May 2012 13:32:58 +0800
+Message-Id: <1338096780-2763-2-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>
+References: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/exportfs/nfs4filelayoutxdr.c |    3 +--
- fs/nfsd/nfs4callback.c          |    3 +--
- fs/nfsd/nfs4xdr.c               |    2 +-
- include/linux/nfsd/nfsd4_pnfs.h |    7 +++++++
- 4 files changed, 10 insertions(+), 5 deletions(-)
+To allow layout driver specific preparation for DIO.
 
-diff --git a/fs/exportfs/nfs4filelayoutxdr.c b/fs/exportfs/nfs4filelayoutxdr.c
-index f63c311..e5b9a92 100644
---- a/fs/exportfs/nfs4filelayoutxdr.c
-+++ b/fs/exportfs/nfs4filelayoutxdr.c
-@@ -174,8 +174,7 @@ enum nfsstat4
- 	p++;
+Signed-off-by: Peng Tao <tao.peng@emc.com>
+---
+ fs/nfs/direct.c |   43 +++++++++++++++++++++++++++++++++++++++----
+ fs/nfs/pnfs.h   |   38 ++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 77 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index ad2775d..8e9c8e1 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -383,6 +383,37 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *de
+ 	return result < 0 ? (ssize_t) result : -EFAULT;
+ }
  
- 	/* encode device id */
--	p = exp_xdr_encode_u64(p, flp->device_id.sbid);
--	p = exp_xdr_encode_u64(p, flp->device_id.devid);
-+	p = nfsd4_encode_deviceid(p, &flp->device_id);
- 
- 	/* set and encode flags */
- 	nfl_util = flp->lg_stripe_unit;
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 8734ef0..0a37f3a 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -511,8 +511,7 @@ static void encode_cb_device4args(struct xdr_stream *xdr,
- 		else
- 			*p++ = cpu_to_be32(20);
- 		*p++ = cpu_to_be32(cbd[i].cbd_layout_type);
--		p = xdr_encode_hyper(p, cbd[i].cbd_devid.sbid);
--		xdr_encode_hyper(p, cbd[i].cbd_devid.devid);
-+		p = nfsd4_encode_deviceid(p, &cbd[i].cbd_devid);
- 
- 		if (cbd[i].cbd_notify_type == NOTIFY_DEVICEID4_CHANGE) {
- 			p = xdr_reserve_space(xdr, 4);
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index d57ccb1..ee227f7 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3641,7 +3641,7 @@ static __be32 nfsd4_encode_bind_conn_to_session(struct nfsd4_compoundres *resp,
- 
- 		/* Encode device id and layout type */
- 		RESERVE_SPACE(sizeof(struct nfsd4_pnfs_deviceid));
--		WRITE64((__be64)sbid);
-+		WRITE64(sbid);
- 		WRITE64(res.gd_devid);	/* devid minor */
- 		ADJUST_ARGS();
- 		(*dev_count)++;
-diff --git a/include/linux/nfsd/nfsd4_pnfs.h b/include/linux/nfsd/nfsd4_pnfs.h
-index d5195b6..8d3d384 100644
---- a/include/linux/nfsd/nfsd4_pnfs.h
-+++ b/include/linux/nfsd/nfsd4_pnfs.h
-@@ -44,6 +44,13 @@ struct nfsd4_pnfs_deviceid {
- 	u64	devid;			/* filesystem-wide unique device ID */
- };
- 
-+static inline __be32 *nfsd4_encode_deviceid(__be32 *p,
-+					const struct nfsd4_pnfs_deviceid *dp)
++static void nfs_direct_read_init(struct nfs_pageio_descriptor *pgio,
++				 struct inode *inode, const struct iovec *iov,
++				 unsigned long nr_segs, loff_t pos,
++				 struct blk_plug *plug)
 +{
-+        p = exp_xdr_encode_u64(p, dp->sbid);
-+        return exp_xdr_encode_u64(p, dp->devid);
++	if (pnfs_dio_begin(inode, iov, nr_segs, pos, plug))
++		pnfs_pageio_init_read(pgio, inode,
++				      &nfs_direct_read_completion_ops);
++	else
++		nfs_pageio_init_read_mds(pgio, inode,
++					 &nfs_direct_read_completion_ops);
 +}
 +
- struct nfsd4_pnfs_dev_iter_res {
- 	u64		gd_cookie;	/* request/repsonse */
- 	u64		gd_verf;	/* request/repsonse */
++static void nfs_direct_write_init(struct nfs_pageio_descriptor *pgio,
++				  struct inode *inode, const struct iovec *iov,
++				  unsigned long nr_segs, loff_t pos,
++				  struct blk_plug *plug)
++{
++	if (pnfs_dio_begin(inode, iov, nr_segs, pos, plug))
++		pnfs_pageio_init_write(pgio, inode, FLUSH_COND_STABLE,
++				       &nfs_direct_write_completion_ops);
++	else
++		nfs_pageio_init_write_mds(pgio, inode, FLUSH_COND_STABLE,
++					  &nfs_direct_write_completion_ops);
++}
++
++static void nfs_dio_end(struct inode *inode, struct blk_plug *plug)
++{
++	pnfs_dio_end(inode, plug);
++}
++
+ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+ 					      const struct iovec *iov,
+ 					      unsigned long nr_segs,
+@@ -392,9 +423,10 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+ 	ssize_t result = -EINVAL;
+ 	size_t requested_bytes = 0;
+ 	unsigned long seg;
++	struct blk_plug plug;
++
++	nfs_direct_read_init(&desc, dreq->inode, iov, nr_segs, pos, &plug);
+ 
+-	nfs_pageio_init_read(&desc, dreq->inode,
+-			     &nfs_direct_read_completion_ops);
+ 	get_dreq(dreq);
+ 	desc.pg_dreq = dreq;
+ 
+@@ -410,6 +442,7 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+ 	}
+ 
+ 	nfs_pageio_complete(&desc);
++	nfs_dio_end(dreq->inode, &plug);
+ 
+ 	/*
+ 	 * If no bytes were started, return the error, and let the
+@@ -776,9 +809,10 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 	ssize_t result = 0;
+ 	size_t requested_bytes = 0;
+ 	unsigned long seg;
++	struct blk_plug plug;
++
++	nfs_direct_write_init(&desc, inode, iov, nr_segs, pos, &plug);
+ 
+-	nfs_pageio_init_write(&desc, inode, FLUSH_COND_STABLE,
+-			      &nfs_direct_write_completion_ops);
+ 	desc.pg_dreq = dreq;
+ 	get_dreq(dreq);
+ 	atomic_inc(&inode->i_dio_count);
+@@ -794,6 +828,7 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 		pos += vec->iov_len;
+ 	}
+ 	nfs_pageio_complete(&desc);
++	nfs_dio_end(inode, &plug);
+ 	NFS_I(dreq->inode)->write_io += desc.pg_bytes_written;
+ 
+ 	/*
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 29fd23c..b4c7139 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -32,6 +32,7 @@
+ 
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs_page.h>
++#include <linux/blkdev.h>
+ 
+ enum {
+ 	NFS_LSEG_VALID = 0,	/* cleared when lseg is recalled/returned */
+@@ -110,6 +111,11 @@ struct pnfs_layoutdriver_type {
+ 			       int how,
+ 			       struct nfs_commit_info *cinfo);
+ 
++	bool (*dio_begin) (struct inode *inode, const struct iovec *iov,
++			   unsigned long nr_segs, loff_t pos,
++			   struct blk_plug *plug);
++	void (*dio_end) (struct blk_plug *plug);
++
+ 	/*
+ 	 * Return PNFS_ATTEMPTED to indicate the layout code has attempted
+ 	 * I/O, else return PNFS_NOT_ATTEMPTED to fall back to normal NFS
+@@ -369,6 +375,27 @@ pnfs_use_threshold(struct nfs4_threshold **dst, struct nfs4_threshold *src,
+ 					nfss->pnfs_curr_ld->id == src->l_type);
+ }
+ 
++static inline bool
++pnfs_dio_begin(struct inode *inode, const struct iovec *iov,
++	       unsigned long nr_segs, loff_t pos, struct blk_plug *plug)
++{
++	struct pnfs_layoutdriver_type *ld = NFS_SERVER(inode)->pnfs_curr_ld;
++
++	if (ld == NULL)
++		return false;
++	if (ld->dio_begin == NULL)
++		return true;
++	return ld->dio_begin(inode, iov, nr_segs, pos, plug);
++}
++
++static inline void pnfs_dio_end(struct inode *inode, struct blk_plug *plug)
++{
++	struct pnfs_layoutdriver_type *ld = NFS_SERVER(inode)->pnfs_curr_ld;
++
++	if (ld != NULL && ld->dio_end != NULL)
++		ld->dio_end(plug);
++}
++
+ #ifdef NFS_DEBUG
+ void nfs4_print_deviceid(const struct nfs4_deviceid *dev_id);
+ #else
+@@ -506,6 +533,17 @@ static inline struct nfs4_threshold *pnfs_mdsthreshold_alloc(void)
+ 	return NULL;
+ }
+ 
++static inline bool
++pnfs_dio_begin(struct inode *inode, const struct iovec *iov,
++	       unsigned long nr_segs, loff_t pos, struct blk_plug *plug)
++{
++	return false;
++}
++
++static inline void pnfs_dio_end(struct inode *inode, struct blk_plug *plug)
++{
++}
++
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ #endif /* FS_NFS_PNFS_H */
 -- 
-1.7.6.5
+1.7.1.262.g5ef3d
 
