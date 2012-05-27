@@ -1,31 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:38105 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:26399 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752526Ab2EWMJP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 May 2012 08:09:15 -0400
-Message-ID: <4FBCD35D.30702@openvz.org>
-Date: Wed, 23 May 2012 16:09:01 +0400
-From: Kinsbursky Stanislav <skinsbursky@openvz.org>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+	id S1752332Ab2E0Q3c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 27 May 2012 12:29:32 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Peng Tao <bergwolf@gmail.com>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH] NFS: init client before declaration
-References: <20120522124018.338.20817.stgit@localhost.localdomain>  <1337696984.4269.4.camel@lade.trondhjem.org>  <1337698816.4269.15.camel@lade.trondhjem.org>  <4FBBB0DB.6050708@parallels.com>  <1337701904.4269.16.camel@lade.trondhjem.org>  <4FBBBC4C.5010103@parallels.com>  <1337705000.4269.23.camel@lade.trondhjem.org> <1337718771.4269.29.camel@lade.trondhjem.org> <4FBCCA4F.3020600@parallels.com>
-In-Reply-To: <4FBCCA4F.3020600@parallels.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+        Peng Tao <tao.peng@emc.com>
+Subject: Re: [PATCH 1/3] NFS41: add pnfs_dio_begin/dio_end
+Date: Sun, 27 May 2012 16:29:30 +0000
+Message-ID: <1338136170.3044.7.camel@lade.trondhjem.org>
+References: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>
+	 <1338096780-2763-2-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1338096780-2763-2-git-send-email-bergwolf@gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 23.05.2012 15:30, Stanislav Kinsbursky wrote:
-> Moreover, looks like pipefs dentries creation have to be synchronized by
-> nfs_client_lock somehow... Otherwise because of races we can get a client
-> without pipe dentry....
-
-Taking this back.
-
--- 
-Best regards,
-Stanislav Kinsbursky
-
+T24gU3VuLCAyMDEyLTA1LTI3IGF0IDEzOjMyICswODAwLCBQZW5nIFRhbyB3cm90ZToNCj4gVG8g
+YWxsb3cgbGF5b3V0IGRyaXZlciBzcGVjaWZpYyBwcmVwYXJhdGlvbiBmb3IgRElPLg0KPiANCj4g
+U2lnbmVkLW9mZi1ieTogUGVuZyBUYW8gPHRhby5wZW5nQGVtYy5jb20+DQo+IC0tLQ0KPiAgZnMv
+bmZzL2RpcmVjdC5jIHwgICA0MyArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
+KystLS0tDQo+ICBmcy9uZnMvcG5mcy5oICAgfCAgIDM4ICsrKysrKysrKysrKysrKysrKysrKysr
+KysrKysrKysrKysrKysrDQo+ICAyIGZpbGVzIGNoYW5nZWQsIDc3IGluc2VydGlvbnMoKyksIDQg
+ZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2RpcmVjdC5jIGIvZnMvbmZz
+L2RpcmVjdC5jDQo+IGluZGV4IGFkMjc3NWQuLjhlOWM4ZTEgMTAwNjQ0DQo+IC0tLSBhL2ZzL25m
+cy9kaXJlY3QuYw0KPiArKysgYi9mcy9uZnMvZGlyZWN0LmMNCj4gQEAgLTM4Myw2ICszODMsMzcg
+QEAgc3RhdGljIHNzaXplX3QgbmZzX2RpcmVjdF9yZWFkX3NjaGVkdWxlX3NlZ21lbnQoc3RydWN0
+IG5mc19wYWdlaW9fZGVzY3JpcHRvciAqZGUNCj4gIAlyZXR1cm4gcmVzdWx0IDwgMCA/IChzc2l6
+ZV90KSByZXN1bHQgOiAtRUZBVUxUOw0KPiAgfQ0KPiAgDQo+ICtzdGF0aWMgdm9pZCBuZnNfZGly
+ZWN0X3JlYWRfaW5pdChzdHJ1Y3QgbmZzX3BhZ2Vpb19kZXNjcmlwdG9yICpwZ2lvLA0KPiArCQkJ
+CSBzdHJ1Y3QgaW5vZGUgKmlub2RlLCBjb25zdCBzdHJ1Y3QgaW92ZWMgKmlvdiwNCj4gKwkJCQkg
+dW5zaWduZWQgbG9uZyBucl9zZWdzLCBsb2ZmX3QgcG9zLA0KPiArCQkJCSBzdHJ1Y3QgYmxrX3Bs
+dWcgKnBsdWcpDQo+ICt7DQo+ICsJaWYgKHBuZnNfZGlvX2JlZ2luKGlub2RlLCBpb3YsIG5yX3Nl
+Z3MsIHBvcywgcGx1ZykpDQo+ICsJCXBuZnNfcGFnZWlvX2luaXRfcmVhZChwZ2lvLCBpbm9kZSwN
+Cj4gKwkJCQkgICAgICAmbmZzX2RpcmVjdF9yZWFkX2NvbXBsZXRpb25fb3BzKTsNCj4gKwllbHNl
+DQo+ICsJCW5mc19wYWdlaW9faW5pdF9yZWFkX21kcyhwZ2lvLCBpbm9kZSwNCj4gKwkJCQkJICZu
+ZnNfZGlyZWN0X3JlYWRfY29tcGxldGlvbl9vcHMpOw0KPiArfQ0KPiArDQo+ICtzdGF0aWMgdm9p
+ZCBuZnNfZGlyZWN0X3dyaXRlX2luaXQoc3RydWN0IG5mc19wYWdlaW9fZGVzY3JpcHRvciAqcGdp
+bywNCj4gKwkJCQkgIHN0cnVjdCBpbm9kZSAqaW5vZGUsIGNvbnN0IHN0cnVjdCBpb3ZlYyAqaW92
+LA0KPiArCQkJCSAgdW5zaWduZWQgbG9uZyBucl9zZWdzLCBsb2ZmX3QgcG9zLA0KPiArCQkJCSAg
+c3RydWN0IGJsa19wbHVnICpwbHVnKQ0KPiArew0KPiArCWlmIChwbmZzX2Rpb19iZWdpbihpbm9k
+ZSwgaW92LCBucl9zZWdzLCBwb3MsIHBsdWcpKQ0KPiArCQlwbmZzX3BhZ2Vpb19pbml0X3dyaXRl
+KHBnaW8sIGlub2RlLCBGTFVTSF9DT05EX1NUQUJMRSwNCj4gKwkJCQkgICAgICAgJm5mc19kaXJl
+Y3Rfd3JpdGVfY29tcGxldGlvbl9vcHMpOw0KPiArCWVsc2UNCj4gKwkJbmZzX3BhZ2Vpb19pbml0
+X3dyaXRlX21kcyhwZ2lvLCBpbm9kZSwgRkxVU0hfQ09ORF9TVEFCTEUsDQo+ICsJCQkJCSAgJm5m
+c19kaXJlY3Rfd3JpdGVfY29tcGxldGlvbl9vcHMpOw0KPiArfQ0KPiArDQo+ICtzdGF0aWMgdm9p
+ZCBuZnNfZGlvX2VuZChzdHJ1Y3QgaW5vZGUgKmlub2RlLCBzdHJ1Y3QgYmxrX3BsdWcgKnBsdWcp
+DQo+ICt7DQo+ICsJcG5mc19kaW9fZW5kKGlub2RlLCBwbHVnKTsNCj4gK30NCj4gKw0KPiAgc3Rh
+dGljIHNzaXplX3QgbmZzX2RpcmVjdF9yZWFkX3NjaGVkdWxlX2lvdmVjKHN0cnVjdCBuZnNfZGly
+ZWN0X3JlcSAqZHJlcSwNCj4gIAkJCQkJICAgICAgY29uc3Qgc3RydWN0IGlvdmVjICppb3YsDQo+
+ICAJCQkJCSAgICAgIHVuc2lnbmVkIGxvbmcgbnJfc2VncywNCj4gQEAgLTM5Miw5ICs0MjMsMTAg
+QEAgc3RhdGljIHNzaXplX3QgbmZzX2RpcmVjdF9yZWFkX3NjaGVkdWxlX2lvdmVjKHN0cnVjdCBu
+ZnNfZGlyZWN0X3JlcSAqZHJlcSwNCj4gIAlzc2l6ZV90IHJlc3VsdCA9IC1FSU5WQUw7DQo+ICAJ
+c2l6ZV90IHJlcXVlc3RlZF9ieXRlcyA9IDA7DQo+ICAJdW5zaWduZWQgbG9uZyBzZWc7DQo+ICsJ
+c3RydWN0IGJsa19wbHVnIHBsdWc7DQo+ICsNCj4gKwluZnNfZGlyZWN0X3JlYWRfaW5pdCgmZGVz
+YywgZHJlcS0+aW5vZGUsIGlvdiwgbnJfc2VncywgcG9zLCAmcGx1Zyk7DQo+ICANCj4gLQluZnNf
+cGFnZWlvX2luaXRfcmVhZCgmZGVzYywgZHJlcS0+aW5vZGUsDQo+IC0JCQkgICAgICZuZnNfZGly
+ZWN0X3JlYWRfY29tcGxldGlvbl9vcHMpOw0KPiAgCWdldF9kcmVxKGRyZXEpOw0KPiAgCWRlc2Mu
+cGdfZHJlcSA9IGRyZXE7DQo+ICANCj4gQEAgLTQxMCw2ICs0NDIsNyBAQCBzdGF0aWMgc3NpemVf
+dCBuZnNfZGlyZWN0X3JlYWRfc2NoZWR1bGVfaW92ZWMoc3RydWN0IG5mc19kaXJlY3RfcmVxICpk
+cmVxLA0KPiAgCX0NCj4gIA0KPiAgCW5mc19wYWdlaW9fY29tcGxldGUoJmRlc2MpOw0KPiArCW5m
+c19kaW9fZW5kKGRyZXEtPmlub2RlLCAmcGx1Zyk7DQoNCldoeSBjYW4ndCB5b3UganVzdCBwdXQg
+dGhpcyBpbiBwZ19pbml0L3BnX2RvaW8/IFRoZXJlIGlzIGFscmVhZHkgYSBmbGFnDQppbiB0aGUg
+bmZzX3BhZ2Vpb19kZXNjcmlwdG9yIHRoYXQgdGVsbHMgeW91IGlmIG1vcmUgaS9vIGlzIGR1ZSAo
+c2VlDQpwZ19tb3JlaW8pLg0KVGhlcmUgc2hvdWxkIGJlIG5vIG5lZWQgdG8gYWRkIGV4dHJhIGNh
+bGxiYWNrcyBpbiB0aGUgZ2VuZXJpYyBjb2RlIGZvcg0KYW55IG9mIHRoaXMuDQoNCi0tIA0KVHJv
+bmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9u
+ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
