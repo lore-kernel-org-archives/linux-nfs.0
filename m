@@ -1,54 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50077 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:51270 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757644Ab2EaBuT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 May 2012 21:50:19 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 4/6] vfs: don't use PARENT/CHILD lock classes for non-directories
-Date: Wed, 30 May 2012 21:50:14 -0400
-Message-Id: <1338429016-20119-5-git-send-email-bfields@redhat.com>
-In-Reply-To: <1338429016-20119-1-git-send-email-bfields@redhat.com>
-References: <1338429016-20119-1-git-send-email-bfields@redhat.com>
+	id S1753054Ab2E0Qij (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 27 May 2012 12:38:39 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Peng Tao <bergwolf@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Peng Tao <tao.peng@emc.com>
+Subject: Re: [PATCH 3/3] pnfsblock: bail out unaligned DIO
+Date: Sun, 27 May 2012 16:38:37 +0000
+Message-ID: <1338136717.3044.13.camel@lade.trondhjem.org>
+References: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>
+	 <1338096780-2763-4-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1338096780-2763-4-git-send-email-bergwolf@gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
-
-Reserve I_MUTEX_PARENT and I_MUTEX_CHILD for locking of actual
-directories.
-
-(Also I_MUTEX_QUOTA isn't really a meaningful name for this locking
-class any more; fixed in a later patch.)
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/inode.c |    8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
-
-diff --git a/fs/inode.c b/fs/inode.c
-index e48a96f..0272ac3 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -978,12 +978,12 @@ void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
- 	if (inode1 == inode2 || inode2 == NULL)
- 		mutex_lock(&inode1->i_mutex);
- 	else if (inode1 < inode2) {
--		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
--		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
-+		mutex_lock(&inode1->i_mutex);
-+		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_QUOTA);
- 
- 	} else {
--		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
--		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
-+		mutex_lock(&inode2->i_mutex);
-+		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_QUOTA);
- 	}
- }
- EXPORT_SYMBOL(lock_two_nondirectories);
--- 
-1.7.9.5
-
+T24gU3VuLCAyMDEyLTA1LTI3IGF0IDEzOjMzICswODAwLCBQZW5nIFRhbyB3cm90ZToNCj4gU2ln
+bmVkLW9mZi1ieTogUGVuZyBUYW8gPHRhby5wZW5nQGVtYy5jb20+DQo+IC0tLQ0KPiAgZnMvbmZz
+L2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMgfCAgIDIwICsrKysrKysrKysrKysrKysrKysrDQo+
+ICAxIGZpbGVzIGNoYW5nZWQsIDIwIGluc2VydGlvbnMoKyksIDAgZGVsZXRpb25zKC0pDQo+IA0K
+PiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMgYi9mcy9uZnMv
+YmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYw0KPiBpbmRleCA1M2NiNDUwLi5jZGI4N2E5IDEwMDY0
+NA0KPiAtLS0gYS9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYw0KPiArKysgYi9mcy9u
+ZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYw0KPiBAQCAtMTAwMCw3ICsxMDAwLDI3IEBAIHN0
+YXRpYyBib29sIGJsX2Rpb19iZWdpbihzdHJ1Y3QgaW5vZGUgKmlub2RlLCBjb25zdCBzdHJ1Y3Qg
+aW92ZWMgKmlvdiwNCj4gIAkJCSB1bnNpZ25lZCBsb25nIG5yX3NlZ3MsIGxvZmZfdCBwb3MsDQo+
+ICAJCQkgc3RydWN0IGJsa19wbHVnICpwbHVnKQ0KPiAgew0KPiArCXVuc2lnbmVkIGJsa21hc2sg
+PSBORlNfU0VSVkVSKGlub2RlKS0+cG5mc19ibGtzaXplIC0gMTsNCj4gKwlzaXplX3QgY291bnQ7
+DQo+ICsJaW50IHNlZzsNCj4gKwl1bnNpZ25lZCBsb25nIGFkZHI7DQo+ICsNCj4gIAlibGtfc3Rh
+cnRfcGx1ZyhwbHVnKTsNCj4gKw0KPiArCS8qIE9ubHkgYWxsb3cgYmxrc2l6ZWQgRElPIGZvciBu
+b3cuDQo+ICsJICogSW4gdGhlb3J5IHdlIGNhbiBoYW5kbGUgcGFnZSBhbGlnbmVkIERJTyBpbiBj
+dXJyZW50IGJsb2NrIGxheW91dA0KPiArCSAqIHJlYWQvd3JpdGUgY29kZSwgYnV0IGl0IHdvdWxk
+IHJlcXVpcmUgc2VyaWFsaXphdGlvbiBiZXR3ZWVuDQo+ICsJICogY29uY3VycmVudCB3cml0ZXJz
+IGFuZCBpdCBpcyBmYXIgbGVzcyBlZmZlY2llbnQgdGhhbiBqdXN0IHNlbmQgSU8NCj4gKwkgKiB0
+byBNRFMuDQo+ICsJICovDQo+ICsJaWYgKHBvcyAmIGJsa21hc2spDQo+ICsJCXJldHVybiBmYWxz
+ZTsNCj4gKwlmb3IgKHNlZyA9IDA7IHNlZyA8IG5yX3NlZ3M7IHNlZysrKSB7DQo+ICsJCWFkZHIg
+PSAodW5zaWduZWQgbG9uZylpb3Zbc2VnXS5pb3ZfYmFzZTsNCj4gKwkJY291bnQgPSBpb3Zbc2Vn
+XS5pb3ZfbGVuOw0KPiArCQlpZiAodW5saWtlbHkoKGFkZHIgJiBibGttYXNrKSB8fCAoY291bnQg
+JiBibGttYXNrKSkpDQo+ICsJCQlyZXR1cm4gZmFsc2U7DQo+ICsJfQ0KPiAgCXJldHVybiB0cnVl
+Ow0KPiAgfQ0KDQpBZ2FpbiwgdGhpcyBjYW4gYW5kIHNob3VsZCBnbyBpbiB0aGUgZXhpc3Rpbmcg
+bmZzX3BhZ2Vpb19vcHMgZWl0aGVyIGluDQp0aGUgcGdfaW5pdCBvciBpbiB0aGUgcGdfdGVzdC4N
+Cg0KQWxzbywgd2h5IGRvIHlvdSBjb25zaWRlciBpdCB0byBiZSBkaXJlY3QgaS9vIHNwZWNpZmlj
+PyBJZiB0aGUNCmFwcGxpY2F0aW9uIGlzIHVzaW5nIGJ5dGUgcmFuZ2UgbG9ja2luZywgYW5kIHRo
+ZSBsb2NrcyBhcmVuJ3QgcGFnZS9ibG9jaw0KYWxpZ25lZCB0aGVuIHlvdSBhcmUgaW4gdGhlIHNh
+bWUgcG9zaXRpb24gb2YgaGF2aW5nIHRvIGRlYWwgd2l0aCBwYXJ0aWFsDQpwYWdlIHdyaXRlcyBl
+dmVuIGluIHRoZSByZWFkL3dyaXRlIGZyb20gcGFnZSBjYWNoZSBzaXR1YXRpb24uDQoNCi0tIA0K
+VHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpU
+cm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
