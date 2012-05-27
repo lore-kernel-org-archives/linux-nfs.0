@@ -1,124 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:5217 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757610Ab2EERYm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 5 May 2012 13:24:42 -0400
-Subject: [PATCH RFC 10/13] SUNRPC: service request network namespace helper
-	introduced
-To: bfields@fieldses.org, Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Sat, 05 May 2012 21:22:44 +0400
-Message-ID: <20120505172244.11559.70873.stgit@localhost.localdomain>
-In-Reply-To: <20120505170722.11559.74503.stgit@localhost.localdomain>
-References: <20120505170722.11559.74503.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:60512 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751169Ab2E0Fd4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 May 2012 01:33:56 -0400
+Received: by mail-pb0-f46.google.com with SMTP id rp8so3356136pbb.19
+        for <linux-nfs@vger.kernel.org>; Sat, 26 May 2012 22:33:55 -0700 (PDT)
+From: Peng Tao <bergwolf@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Peng Tao <tao.peng@emc.com>
+Subject: [PATCH 2/3] pnfsblock: call block plug in bl_dio_begin/end
+Date: Sun, 27 May 2012 13:32:59 +0800
+Message-Id: <1338096780-2763-3-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>
+References: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a cleanup patch - makes code looks simplier.
-It replaces widely used rqstp->rq_xprt->xpt_net by introduced SVC_NET(rqstp).
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Signed-off-by: Peng Tao <tao.peng@emc.com>
 ---
- fs/lockd/host.c            |    2 +-
- fs/nfs/callback_xdr.c      |    4 ++--
- fs/nfsd/export.c           |    4 ++--
- fs/nfsd/nfs4idmap.c        |    4 ++--
- include/linux/sunrpc/svc.h |    2 ++
- 5 files changed, 9 insertions(+), 7 deletions(-)
+ fs/nfs/blocklayout/blocklayout.c |   15 +++++++++++++++
+ 1 files changed, 15 insertions(+), 0 deletions(-)
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 0084ab8..f9b22e5 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -331,7 +331,7 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
- 	struct nsm_handle *nsm = NULL;
- 	struct sockaddr *src_sap = svc_daddr(rqstp);
- 	size_t src_len = rqstp->rq_daddrlen;
--	struct net *net = rqstp->rq_xprt->xpt_net;
-+	struct net *net = SVC_NET(rqstp);
- 	struct nlm_lookup_host_info ni = {
- 		.server		= 1,
- 		.sap		= svc_addr(rqstp),
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 95bfc24..0ecb2e5 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -863,7 +863,7 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
- 		.drc_status = 0,
- 		.clp = NULL,
- 		.slotid = NFS4_NO_SLOT,
--		.net = rqstp->rq_xprt->xpt_net,
-+		.net = SVC_NET(rqstp),
- 	};
- 	unsigned int nops = 0;
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 7ae8a60..53cb450 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -996,6 +996,19 @@ bl_clear_layoutdriver(struct nfs_server *server)
+ 	return 0;
+ }
  
-@@ -879,7 +879,7 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
- 		return rpc_garbage_args;
- 
- 	if (hdr_arg.minorversion == 0) {
--		cps.clp = nfs4_find_client_ident(rqstp->rq_xprt->xpt_net, hdr_arg.cb_ident);
-+		cps.clp = nfs4_find_client_ident(SVC_NET(rqstp), hdr_arg.cb_ident);
- 		if (!cps.clp || !check_gss_callback_principal(cps.clp, rqstp))
- 			return rpc_drop_reply;
- 	}
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index ec16364..e0e1353 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -929,7 +929,7 @@ struct svc_export *
- rqst_exp_get_by_name(struct svc_rqst *rqstp, struct path *path)
- {
- 	struct svc_export *gssexp, *exp = ERR_PTR(-ENOENT);
--	struct nfsd_net *nn = net_generic(rqstp->rq_xprt->xpt_net, nfsd_net_id);
-+	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 	struct cache_detail *cd = nn->svc_export_cache;
- 
- 	if (rqstp->rq_client == NULL)
-@@ -960,7 +960,7 @@ struct svc_export *
- rqst_exp_find(struct svc_rqst *rqstp, int fsid_type, u32 *fsidv)
- {
- 	struct svc_export *gssexp, *exp = ERR_PTR(-ENOENT);
--	struct nfsd_net *nn = net_generic(rqstp->rq_xprt->xpt_net, nfsd_net_id);
-+	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 	struct cache_detail *cd = nn->svc_export_cache;
- 
- 	if (rqstp->rq_client == NULL)
-diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
-index 286a7f8..1c696c5 100644
---- a/fs/nfsd/nfs4idmap.c
-+++ b/fs/nfsd/nfs4idmap.c
-@@ -546,7 +546,7 @@ idmap_name_to_id(struct svc_rqst *rqstp, int type, const char *name, u32 namelen
- 		.type = type,
- 	};
- 	int ret;
--	struct nfsd_net *nn = net_generic(rqstp->rq_xprt->xpt_net, nfsd_net_id);
-+	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 
- 	if (namelen + 1 > sizeof(key.name))
- 		return nfserr_badowner;
-@@ -571,7 +571,7 @@ idmap_id_to_name(struct svc_rqst *rqstp, int type, uid_t id, char *name)
- 		.type = type,
- 	};
- 	int ret;
--	struct nfsd_net *nn = net_generic(rqstp->rq_xprt->xpt_net, nfsd_net_id);
-+	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 
- 	strlcpy(key.authname, rqst_authname(rqstp), sizeof(key.authname));
- 	ret = idmap_lookup(rqstp, idtoname_lookup, &key, nn->idtoname_cache, &item);
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 2b43e02..1ad3cd1 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -279,6 +279,8 @@ struct svc_rqst {
- 	struct task_struct	*rq_task;	/* service thread */
- };
- 
-+#define SVC_NET(svc_rqst)	(svc_rqst->rq_xprt->xpt_net)
++static bool bl_dio_begin(struct inode *inode, const struct iovec *iov,
++			 unsigned long nr_segs, loff_t pos,
++			 struct blk_plug *plug)
++{
++	blk_start_plug(plug);
++	return true;
++}
 +
- /*
-  * Rigorous type checking on sockaddr type conversions
-  */
++void bl_dio_end(struct blk_plug *plug)
++{
++	blk_finish_plug(plug);
++}
++
+ static const struct nfs_pageio_ops bl_pg_read_ops = {
+ 	.pg_init = pnfs_generic_pg_init_read,
+ 	.pg_test = pnfs_generic_pg_test,
+@@ -1013,6 +1026,8 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
+ 	.name				= "LAYOUT_BLOCK_VOLUME",
+ 	.read_pagelist			= bl_read_pagelist,
+ 	.write_pagelist			= bl_write_pagelist,
++	.dio_begin			= bl_dio_begin,
++	.dio_end			= bl_dio_end,
+ 	.alloc_layout_hdr		= bl_alloc_layout_hdr,
+ 	.free_layout_hdr		= bl_free_layout_hdr,
+ 	.alloc_lseg			= bl_alloc_lseg,
+-- 
+1.7.1.262.g5ef3d
 
