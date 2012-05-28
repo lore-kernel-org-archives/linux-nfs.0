@@ -1,281 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:60449 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761467Ab2EJTIA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 May 2012 15:08:00 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v4 11/14] NFS: Create a single function for text mount data
-Date: Thu, 10 May 2012 15:07:40 -0400
-Message-Id: <1336676863-9698-12-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1336676863-9698-1-git-send-email-bjschuma@netapp.com>
-References: <1336676863-9698-1-git-send-email-bjschuma@netapp.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:33288 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752924Ab2E1Ca5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 May 2012 22:30:57 -0400
+From: <tao.peng@emc.com>
+To: <Trond.Myklebust@netapp.com>, <bergwolf@gmail.com>
+CC: <linux-nfs@vger.kernel.org>
+Date: Sun, 27 May 2012 22:30:19 -0400
+Subject: RE: [PATCH 1/3] NFS41: add pnfs_dio_begin/dio_end
+Message-ID: <F19688880B763E40B28B2B462677FBF805F0BADF35@MX09A.corp.emc.com>
+References: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>
+	 <1338096780-2763-2-git-send-email-bergwolf@gmail.com>
+ <1338136170.3044.7.camel@lade.trondhjem.org>
+In-Reply-To: <1338136170.3044.7.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
-
-The v2/3 and v4 cases were very similar, with just a few parameters
-changed.  This makes it easy to share code.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/internal.h |    1 +
- fs/nfs/super.c    |  151 +++++++++++++++++++++++++----------------------------
- 2 files changed, 71 insertions(+), 81 deletions(-)
-
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 4cf76e9..bf64095 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -103,6 +103,7 @@ struct nfs_parsed_mount_data {
- 	unsigned int		version;
- 	unsigned int		minorversion;
- 	char			*fscache_uniq;
-+	bool			need_mount;
- 
- 	struct {
- 		struct sockaddr_storage	address;
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index c69c806..db636d7 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -66,6 +66,7 @@
- #include "pnfs.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_VFS
-+#define NFS_TEXT_DATA		1
- 
- #ifdef CONFIG_NFS_V3
- #define NFS_DEFAULT_VERSION 3
-@@ -333,8 +334,7 @@ static const struct super_operations nfs_sops = {
- };
- 
- #ifdef CONFIG_NFS_V4
--static int nfs4_validate_text_mount_data(void *options,
--	struct nfs_parsed_mount_data *args, const char *dev_name);
-+static void nfs4_validate_mount_flags(struct nfs_parsed_mount_data *);
- static struct dentry *nfs4_try_mount(int flags, const char *dev_name,
- 	struct nfs_parsed_mount_data *data);
- static struct dentry *nfs4_mount(struct file_system_type *fs_type,
-@@ -964,6 +964,7 @@ static struct nfs_parsed_mount_data *nfs_alloc_parsed_mount_data(void)
- 		data->auth_flavors[0]	= RPC_AUTH_UNIX;
- 		data->auth_flavor_len	= 1;
- 		data->minorversion	= 0;
-+		data->need_mount	= true;
- 		data->net		= current->nsproxy->net_ns;
- 		security_init_mnt_opts(&data->lsm_opts);
- 	}
-@@ -1754,9 +1755,11 @@ static struct dentry *nfs_try_mount(int flags, const char *dev_name,
- 	int status;
- 	struct nfs_server *server;
- 
--	status = nfs_request_mount(mount_info->parsed, mntfh);
--	if (status)
--		return ERR_PTR(status);
-+	if (mount_info->parsed->need_mount) {
-+		status = nfs_request_mount(mount_info->parsed, mntfh);
-+		if (status)
-+			return ERR_PTR(status);
-+	}
- 
- 	/* Get a volume representation */
- 	server = nfs_create_server(mount_info->parsed, mntfh);
-@@ -1911,6 +1914,7 @@ static int nfs_validate_mount_data(void *options,
- 		args->acregmax		= data->acregmax;
- 		args->acdirmin		= data->acdirmin;
- 		args->acdirmax		= data->acdirmax;
-+		args->need_mount	= false;
- 
- 		memcpy(sap, &data->addr, sizeof(data->addr));
- 		args->nfs_server.addrlen = sizeof(data->addr);
-@@ -1962,38 +1966,8 @@ static int nfs_validate_mount_data(void *options,
- 		}
- 
- 		break;
--	default: {
--		int status;
--
--		if (nfs_parse_mount_options((char *)options, args) == 0)
--			return -EINVAL;
--
--		if (!nfs_verify_server_address(sap))
--			goto out_no_address;
--
--		if (args->version == 4)
--#ifdef CONFIG_NFS_V4
--			return nfs4_validate_text_mount_data(options,
--							     args, dev_name);
--#else
--			goto out_v4_not_compiled;
--#endif
--
--		nfs_set_port(sap, &args->nfs_server.port, 0);
--
--		nfs_set_mount_transport_protocol(args);
--
--		status = nfs_parse_devname(dev_name,
--					   &args->nfs_server.hostname,
--					   PAGE_SIZE,
--					   &args->nfs_server.export_path,
--					   NFS_MAXPATHLEN);
--
--		if (status)
--			return status;
--
--		break;
--		}
-+	default:
-+		return NFS_TEXT_DATA;
- 	}
- 
- #ifndef CONFIG_NFS_V3
-@@ -2022,12 +1996,6 @@ out_v3_not_compiled:
- 	return -EPROTONOSUPPORT;
- #endif /* !CONFIG_NFS_V3 */
- 
--#ifndef CONFIG_NFS_V4
--out_v4_not_compiled:
--	dfprintk(MOUNT, "NFS: NFSv4 is not compiled into kernel\n");
--	return -EPROTONOSUPPORT;
--#endif /* !CONFIG_NFS_V4 */
--
- out_nomem:
- 	dfprintk(MOUNT, "NFS: not enough memory to handle mount options\n");
- 	return -ENOMEM;
-@@ -2041,6 +2009,60 @@ out_invalid_fh:
- 	return -EINVAL;
- }
- 
-+static int nfs_validate_text_mount_data(void *options,
-+					struct nfs_parsed_mount_data *args,
-+					const char *dev_name)
-+{
-+	int port = 0;
-+	int max_namelen = PAGE_SIZE;
-+	int max_pathlen = NFS_MAXPATHLEN;
-+	struct sockaddr *sap = (struct sockaddr *)&args->nfs_server.address;
-+
-+	if (nfs_parse_mount_options((char *)options, args) == 0)
-+		return -EINVAL;
-+
-+	if (!nfs_verify_server_address(sap))
-+		goto out_no_address;
-+
-+	if (args->version == 4) {
-+#ifdef CONFIG_NFS_V4
-+		port = NFS_PORT;
-+		max_namelen = NFS4_MAXNAMLEN;
-+		max_pathlen = NFS4_MAXPATHLEN;
-+		nfs_validate_transport_protocol(args);
-+		nfs4_validate_mount_flags(args);
-+#else
-+		goto out_v4_not_compiled;
-+#endif /* CONFIG_NFS_V4 */
-+	} else
-+		nfs_set_mount_transport_protocol(args);
-+
-+	nfs_set_port(sap, &args->nfs_server.port, port);
-+
-+	if (args->auth_flavor_len > 1)
-+		goto out_bad_auth;
-+
-+	return nfs_parse_devname(dev_name,
-+				   &args->nfs_server.hostname,
-+				   max_namelen,
-+				   &args->nfs_server.export_path,
-+				   max_pathlen);
-+
-+#ifndef CONFIG_NFS_V4
-+out_v4_not_compiled:
-+	dfprintk(MOUNT, "NFS: NFSv4 is not compiled into kernel\n");
-+	return -EPROTONOSUPPORT;
-+#endif /* !CONFIG_NFS_V4 */
-+
-+out_no_address:
-+	dfprintk(MOUNT, "NFS: mount program didn't pass remote address\n");
-+	return -EINVAL;
-+
-+out_bad_auth:
-+	dfprintk(MOUNT, "NFS: Too many RPC auth flavours specified\n");
-+	return -EINVAL;
-+}
-+
- static int
- nfs_compare_remount_data(struct nfs_server *nfss,
- 			 struct nfs_parsed_mount_data *data)
-@@ -2438,6 +2460,8 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
- 
- 	/* Validate the mount data */
- 	error = nfs_validate_mount_data(raw_data, data, mntfh, dev_name);
-+	if (error == NFS_TEXT_DATA)
-+		error = nfs_validate_text_mount_data(raw_data, data, dev_name);
- 	if (error < 0) {
- 		mntroot = ERR_PTR(error);
- 		goto out;
-@@ -2572,37 +2596,6 @@ static void nfs4_validate_mount_flags(struct nfs_parsed_mount_data *args)
- 			 NFS_MOUNT_LOCAL_FLOCK|NFS_MOUNT_LOCAL_FCNTL);
- }
- 
--static int nfs4_validate_text_mount_data(void *options,
--					 struct nfs_parsed_mount_data *args,
--					 const char *dev_name)
--{
--	struct sockaddr *sap = (struct sockaddr *)&args->nfs_server.address;
--
--	nfs_set_port(sap, &args->nfs_server.port, NFS_PORT);
--
--	nfs_validate_transport_protocol(args);
--
--	nfs4_validate_mount_flags(args);
--
--	if (args->version != 4) {
--		dfprintk(MOUNT,
--			 "NFS4: Illegal mount version\n");
--		return -EINVAL;
--	}
--
--	if (args->auth_flavor_len > 1) {
--		dfprintk(MOUNT,
--			 "NFS4: Too many RPC auth flavours specified\n");
--		return -EINVAL;
--	}
--
--	return nfs_parse_devname(dev_name,
--				   &args->nfs_server.hostname,
--				   NFS4_MAXNAMLEN,
--				   &args->nfs_server.export_path,
--				   NFS4_MAXPATHLEN);
--}
--
- /*
-  * Validate NFSv4 mount options
-  */
-@@ -2673,13 +2666,7 @@ static int nfs4_validate_mount_data(void *options,
- 
- 		break;
- 	default:
--		if (nfs_parse_mount_options((char *)options, args) == 0)
--			return -EINVAL;
--
--		if (!nfs_verify_server_address(sap))
--			return -EINVAL;
--
--		return nfs4_validate_text_mount_data(options, args, dev_name);
-+		return NFS_TEXT_DATA;
- 	}
- 
- 	return 0;
-@@ -2880,6 +2867,8 @@ static struct dentry *nfs4_mount(struct file_system_type *fs_type,
- 
- 	/* Validate the mount data */
- 	error = nfs4_validate_mount_data(raw_data, data, dev_name);
-+	if (error == NFS_TEXT_DATA)
-+		error = nfs_validate_text_mount_data(raw_data, data, dev_name);
- 	if (error < 0) {
- 		res = ERR_PTR(error);
- 		goto out;
--- 
-1.7.10.1
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
+ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24g
+QmVoYWxmIE9mIE15a2xlYnVzdCwNCj4gVHJvbmQNCj4gU2VudDogTW9uZGF5LCBNYXkgMjgsIDIw
+MTIgMTI6MzAgQU0NCj4gVG86IFBlbmcgVGFvDQo+IENjOiBsaW51eC1uZnNAdmdlci5rZXJuZWwu
+b3JnOyBQZW5nLCBUYW8NCj4gU3ViamVjdDogUmU6IFtQQVRDSCAxLzNdIE5GUzQxOiBhZGQgcG5m
+c19kaW9fYmVnaW4vZGlvX2VuZA0KPiANCj4gT24gU3VuLCAyMDEyLTA1LTI3IGF0IDEzOjMyICsw
+ODAwLCBQZW5nIFRhbyB3cm90ZToNCj4gPiBUbyBhbGxvdyBsYXlvdXQgZHJpdmVyIHNwZWNpZmlj
+IHByZXBhcmF0aW9uIGZvciBESU8uDQo+ID4NCj4gPiBTaWduZWQtb2ZmLWJ5OiBQZW5nIFRhbyA8
+dGFvLnBlbmdAZW1jLmNvbT4NCj4gPiAtLS0NCj4gPiAgZnMvbmZzL2RpcmVjdC5jIHwgICA0MyAr
+KysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKystLS0tDQo+ID4gIGZzL25mcy9w
+bmZzLmggICB8ICAgMzggKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysNCj4g
+PiAgMiBmaWxlcyBjaGFuZ2VkLCA3NyBpbnNlcnRpb25zKCspLCA0IGRlbGV0aW9ucygtKQ0KPiA+
+DQo+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9kaXJlY3QuYyBiL2ZzL25mcy9kaXJlY3QuYw0KPiA+
+IGluZGV4IGFkMjc3NWQuLjhlOWM4ZTEgMTAwNjQ0DQo+ID4gLS0tIGEvZnMvbmZzL2RpcmVjdC5j
+DQo+ID4gKysrIGIvZnMvbmZzL2RpcmVjdC5jDQo+ID4gQEAgLTM4Myw2ICszODMsMzcgQEAgc3Rh
+dGljIHNzaXplX3QgbmZzX2RpcmVjdF9yZWFkX3NjaGVkdWxlX3NlZ21lbnQoc3RydWN0IG5mc19w
+YWdlaW9fZGVzY3JpcHRvcg0KPiAqZGUNCj4gPiAgCXJldHVybiByZXN1bHQgPCAwID8gKHNzaXpl
+X3QpIHJlc3VsdCA6IC1FRkFVTFQ7DQo+ID4gIH0NCj4gPg0KPiA+ICtzdGF0aWMgdm9pZCBuZnNf
+ZGlyZWN0X3JlYWRfaW5pdChzdHJ1Y3QgbmZzX3BhZ2Vpb19kZXNjcmlwdG9yICpwZ2lvLA0KPiA+
+ICsJCQkJIHN0cnVjdCBpbm9kZSAqaW5vZGUsIGNvbnN0IHN0cnVjdCBpb3ZlYyAqaW92LA0KPiA+
+ICsJCQkJIHVuc2lnbmVkIGxvbmcgbnJfc2VncywgbG9mZl90IHBvcywNCj4gPiArCQkJCSBzdHJ1
+Y3QgYmxrX3BsdWcgKnBsdWcpDQo+ID4gK3sNCj4gPiArCWlmIChwbmZzX2Rpb19iZWdpbihpbm9k
+ZSwgaW92LCBucl9zZWdzLCBwb3MsIHBsdWcpKQ0KPiA+ICsJCXBuZnNfcGFnZWlvX2luaXRfcmVh
+ZChwZ2lvLCBpbm9kZSwNCj4gPiArCQkJCSAgICAgICZuZnNfZGlyZWN0X3JlYWRfY29tcGxldGlv
+bl9vcHMpOw0KPiA+ICsJZWxzZQ0KPiA+ICsJCW5mc19wYWdlaW9faW5pdF9yZWFkX21kcyhwZ2lv
+LCBpbm9kZSwNCj4gPiArCQkJCQkgJm5mc19kaXJlY3RfcmVhZF9jb21wbGV0aW9uX29wcyk7DQo+
+ID4gK30NCj4gPiArDQo+ID4gK3N0YXRpYyB2b2lkIG5mc19kaXJlY3Rfd3JpdGVfaW5pdChzdHJ1
+Y3QgbmZzX3BhZ2Vpb19kZXNjcmlwdG9yICpwZ2lvLA0KPiA+ICsJCQkJICBzdHJ1Y3QgaW5vZGUg
+Kmlub2RlLCBjb25zdCBzdHJ1Y3QgaW92ZWMgKmlvdiwNCj4gPiArCQkJCSAgdW5zaWduZWQgbG9u
+ZyBucl9zZWdzLCBsb2ZmX3QgcG9zLA0KPiA+ICsJCQkJICBzdHJ1Y3QgYmxrX3BsdWcgKnBsdWcp
+DQo+ID4gK3sNCj4gPiArCWlmIChwbmZzX2Rpb19iZWdpbihpbm9kZSwgaW92LCBucl9zZWdzLCBw
+b3MsIHBsdWcpKQ0KPiA+ICsJCXBuZnNfcGFnZWlvX2luaXRfd3JpdGUocGdpbywgaW5vZGUsIEZM
+VVNIX0NPTkRfU1RBQkxFLA0KPiA+ICsJCQkJICAgICAgICZuZnNfZGlyZWN0X3dyaXRlX2NvbXBs
+ZXRpb25fb3BzKTsNCj4gPiArCWVsc2UNCj4gPiArCQluZnNfcGFnZWlvX2luaXRfd3JpdGVfbWRz
+KHBnaW8sIGlub2RlLCBGTFVTSF9DT05EX1NUQUJMRSwNCj4gPiArCQkJCQkgICZuZnNfZGlyZWN0
+X3dyaXRlX2NvbXBsZXRpb25fb3BzKTsNCj4gPiArfQ0KPiA+ICsNCj4gPiArc3RhdGljIHZvaWQg
+bmZzX2Rpb19lbmQoc3RydWN0IGlub2RlICppbm9kZSwgc3RydWN0IGJsa19wbHVnICpwbHVnKQ0K
+PiA+ICt7DQo+ID4gKwlwbmZzX2Rpb19lbmQoaW5vZGUsIHBsdWcpOw0KPiA+ICt9DQo+ID4gKw0K
+PiA+ICBzdGF0aWMgc3NpemVfdCBuZnNfZGlyZWN0X3JlYWRfc2NoZWR1bGVfaW92ZWMoc3RydWN0
+IG5mc19kaXJlY3RfcmVxICpkcmVxLA0KPiA+ICAJCQkJCSAgICAgIGNvbnN0IHN0cnVjdCBpb3Zl
+YyAqaW92LA0KPiA+ICAJCQkJCSAgICAgIHVuc2lnbmVkIGxvbmcgbnJfc2VncywNCj4gPiBAQCAt
+MzkyLDkgKzQyMywxMCBAQCBzdGF0aWMgc3NpemVfdCBuZnNfZGlyZWN0X3JlYWRfc2NoZWR1bGVf
+aW92ZWMoc3RydWN0IG5mc19kaXJlY3RfcmVxICpkcmVxLA0KPiA+ICAJc3NpemVfdCByZXN1bHQg
+PSAtRUlOVkFMOw0KPiA+ICAJc2l6ZV90IHJlcXVlc3RlZF9ieXRlcyA9IDA7DQo+ID4gIAl1bnNp
+Z25lZCBsb25nIHNlZzsNCj4gPiArCXN0cnVjdCBibGtfcGx1ZyBwbHVnOw0KPiA+ICsNCj4gPiAr
+CW5mc19kaXJlY3RfcmVhZF9pbml0KCZkZXNjLCBkcmVxLT5pbm9kZSwgaW92LCBucl9zZWdzLCBw
+b3MsICZwbHVnKTsNCj4gPg0KPiA+IC0JbmZzX3BhZ2Vpb19pbml0X3JlYWQoJmRlc2MsIGRyZXEt
+Pmlub2RlLA0KPiA+IC0JCQkgICAgICZuZnNfZGlyZWN0X3JlYWRfY29tcGxldGlvbl9vcHMpOw0K
+PiA+ICAJZ2V0X2RyZXEoZHJlcSk7DQo+ID4gIAlkZXNjLnBnX2RyZXEgPSBkcmVxOw0KPiA+DQo+
+ID4gQEAgLTQxMCw2ICs0NDIsNyBAQCBzdGF0aWMgc3NpemVfdCBuZnNfZGlyZWN0X3JlYWRfc2No
+ZWR1bGVfaW92ZWMoc3RydWN0IG5mc19kaXJlY3RfcmVxICpkcmVxLA0KPiA+ICAJfQ0KPiA+DQo+
+ID4gIAluZnNfcGFnZWlvX2NvbXBsZXRlKCZkZXNjKTsNCj4gPiArCW5mc19kaW9fZW5kKGRyZXEt
+Pmlub2RlLCAmcGx1Zyk7DQo+IA0KPiBXaHkgY2FuJ3QgeW91IGp1c3QgcHV0IHRoaXMgaW4gcGdf
+aW5pdC9wZ19kb2lvPyBUaGVyZSBpcyBhbHJlYWR5IGEgZmxhZw0KPiBpbiB0aGUgbmZzX3BhZ2Vp
+b19kZXNjcmlwdG9yIHRoYXQgdGVsbHMgeW91IGlmIG1vcmUgaS9vIGlzIGR1ZSAoc2VlDQo+IHBn
+X21vcmVpbykuDQo+IFRoZXJlIHNob3VsZCBiZSBubyBuZWVkIHRvIGFkZCBleHRyYSBjYWxsYmFj
+a3MgaW4gdGhlIGdlbmVyaWMgY29kZSBmb3INCj4gYW55IG9mIHRoaXMuDQo+IA0KSSdtIGFmcmFp
+ZCB0aGVyZSBpcy4gVGhlcmUgaXMgbm8gd2F5IHRvIHBhc3Mgc3RydWN0IGJsa19wbHVnIGFyb3Vu
+ZCBwZ19pbml0L3BnX2RvaW8sIHVubGVzcyB3ZSBwdXQgaXQgaW4gc3RydWN0IG5mc19wYWdlaW9f
+ZGVzY3JpcHRvciwgd2hpY2ggSSB0aGluayBpcyBtb3JlIGludHJ1c2l2ZSBhbmQgbGVzcyBlZmZp
+Y2llbnQgYXMgaXQgaXMgb25seSB1c2VmdWwgZm9yIGJsb2NrIGxheW91dCBkcml2ZXIgaW4gRElP
+IGNhc2UuDQoNCg0KVGhhbmtzLA0KVGFvDQoNCg==
