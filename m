@@ -1,75 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:46548 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751148Ab2E1Kw0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 06:52:26 -0400
-Message-ID: <4FC358CA.2090301@panasas.com>
-Date: Mon, 28 May 2012 13:51:54 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mail-wg0-f44.google.com ([74.125.82.44]:60108 "EHLO
+	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753305Ab2E1S3K (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 14:29:10 -0400
+Received: by wgbdr13 with SMTP id dr13so3158395wgb.1
+        for <linux-nfs@vger.kernel.org>; Mon, 28 May 2012 11:29:09 -0700 (PDT)
+Message-ID: <4FC3C3F1.8090507@tonian.com>
+Date: Mon, 28 May 2012 21:29:05 +0300
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-To: <tao.peng@emc.com>
-CC: <Trond.Myklebust@netapp.com>, <bergwolf@gmail.com>,
-        <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/3] NFS41: add pnfs_dio_begin/dio_end
-References: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>  <1338096780-2763-2-git-send-email-bergwolf@gmail.com>  <1338136170.3044.7.camel@lade.trondhjem.org>  <F19688880B763E40B28B2B462677FBF805F0BADF35@MX09A.corp.emc.com> <1338176574.2265.7.camel@lade.trondhjem.org> <F19688880B763E40B28B2B462677FBF805F0BADF5C@MX09A.corp.emc.com> <4FC356FA.2070008@panasas.com>
-In-Reply-To: <4FC356FA.2070008@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: Does our Kernel PNFSD-Server supports recurring layout_get with
+ open_state_id
+References: <4FBD7DE8.9090002@panasas.com> <4FBE2C8C.9090403@tonian.com> <4FBE3C4D.7050507@panasas.com> <4FC3A235.8090908@tonian.com> <4FC3A974.60107@panasas.com> <4FC3BC2B.6060709@tonian.com> <4FC3BF67.7010402@panasas.com>
+In-Reply-To: <4FC3BF67.7010402@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/28/2012 01:44 PM, Boaz Harrosh wrote:
-
-> On 05/28/2012 07:13 AM, tao.peng@emc.com wrote:
+On 2012-05-28 21:09, Boaz Harrosh wrote:
+> On 05/28/2012 08:55 PM, Benny Halevy wrote:
 > 
->>> -----Original Message-----
->>> From: Myklebust, Trond [mailto:Trond.Myklebust@netapp.com]
->>> Sent: Monday, May 28, 2012 11:43 AM
->>> To: Peng, Tao
->>> Cc: bergwolf@gmail.com; linux-nfs@vger.kernel.org
->>> Subject: RE: [PATCH 1/3] NFS41: add pnfs_dio_begin/dio_end
+>> On 2012-05-28 19:36, Boaz Harrosh wrote:
+>>> On 05/28/2012 07:05 PM, Benny Halevy wrote:
 >>>
->>> On Sun, 2012-05-27 at 22:30 -0400, tao.peng@emc.com wrote:
->>>> I'm afraid there is. There is no way to pass struct blk_plug around pg_init/pg_doio, unless we put
->>> it in struct nfs_pageio_descriptor, which I think is more intrusive and less efficient as it is only
->>> useful for block layout driver in DIO case.
+>>>> Yup, see patchset in reply.
+>>>>
 >>>
->>> Then add a 'void *pg_layout_private' field to nfs_pageio_descriptor and
->>> allocate the struct blk_plug dynamically.
 >>>
-> 
->> OK. I thought data structure change is more intrusive because it
->> affects all layout drivers and generic NFS as well. But since you
->> think it is OK, I will change it as you suggested.
+>>> That I wish you wouldn't do. I have a patchset pending that makes
+>>> major changes to all this and totally conflicts with your code.
+>>
+>> Sorry, I didn't know that.
+>>
+>>>
+>>> You can carry this for a while but I might revert your core
+>>> code in my new patchset.
+>>
+>> I hope that at least it will all be for the better.
+>>
+>> Benny
 >>
 > 
 > 
-> I want a pg_layout_private in nfs_pageio_descriptor as well. I even wrote
-> the ML about it. And everyone agreed. (Just never had time to finish)
+> NP. Yes it is all for the better. I think you'll like what I did.
 > 
-> So yes please do add it. it will have more users.
-> 
+> BTW after I finish implementing my stuff. I think it would be easy
+> to implement that open_state_id thing. All we need is to save the
+> open_state_id somewhere per-file or somehow identify it's receive,
+> And then just call nfs4_roc() which will do the proper work.
 
+It's any non layout stateid so it should be pretty easy (in theory :).
+See nfs4_process_layout_stateid()
+if (stid->sc_type != NFS4_LAYOUT_STID) {}
 
-I forgot to say. You might want/need to pass this pg_layout_private
-back to LD->paglist_write/read. (If you need to, I will)
+We should be able to locate the layout stateid, if any, on the
+fp->fi_layout_states list by matching stid->sc_client.
 
-(In fact one optimization I wanted for a long time is to pass
-nfs_pageio_descriptor to paglist_write/read directly instead of
-duplicating all it's members (back and forth). In a new invented
-structures where the worse is that the common code of read and write
-can't be common because it is not the same types.
-But that's for another patch)
-
-Ciao
-Boaz
+Benny
 
 > 
->> Thanks,
->> Tao
->>
+> But please wait for me to finish.
 > 
+> (It is all done and debugged, but will be divided and patched
+>  on Wednesday) 
+
+Sure.  Thanks!
+
+Benny
+
 > 
 > Thanks
 > Boaz
-
-
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
