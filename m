@@ -1,71 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:40268 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753920Ab2EFSYw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 6 May 2012 14:24:52 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Daniel Pocock <daniel@pocock.com.au>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: extremely slow nfs when sync enabled
-Date: Sun, 6 May 2012 18:23:11 +0000
-Message-ID: <1336328594.2593.14.camel@lade.trondhjem.org>
-References: <4FA5E950.5080304@pocock.com.au>
-In-Reply-To: <4FA5E950.5080304@pocock.com.au>
-Content-Type: text/plain; charset="utf-8"
+Received: from natasha.panasas.com ([67.152.220.90]:50131 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750866Ab2E1Nvl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 09:51:41 -0400
+Message-ID: <4FC382DD.7090102@panasas.com>
+Date: Mon, 28 May 2012 16:51:25 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
+To: Linus Torvalds <torvalds@linux-foundation.org>,
+        open-osd <osd-dev@open-osd.org>
+CC: NFS list <linux-nfs@vger.kernel.org>
+Subject: [GIT PULL] exofs changes for 3.5-rc1 merge Window
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU3VuLCAyMDEyLTA1LTA2IGF0IDAzOjAwICswMDAwLCBEYW5pZWwgUG9jb2NrIHdyb3RlOg0K
-PiANCj4gSSd2ZSBiZWVuIG9ic2VydmluZyBzb21lIHZlcnkgc2xvdyBuZnMgd3JpdGUgcGVyZm9y
-bWFuY2Ugd2hlbiB0aGUgc2VydmVyDQo+IGhhcyBgc3luYycgaW4gL2V0Yy9leHBvcnRzDQo+IA0K
-PiBJIHdhbnQgdG8gYXZvaWQgdXNpbmcgYXN5bmMsIGJ1dCBJIGhhdmUgdGVzdGVkIGl0IGFuZCBv
-biBteSBnaWdhYml0DQo+IG5ldHdvcmssIGl0IGdpdmVzIGFsbW9zdCB0aGUgc2FtZSBzcGVlZCBh
-cyBpZiBJIHdhcyBvbiB0aGUgc2VydmVyDQo+IGl0c2VsZi4gKGUuZy4gMzBNQi9zZWMgdG8gb25l
-IGRpc2ssIG9yIGxlc3MgdGhhbiAxTUIvc2VjIHRvIHRoZSBzYW1lDQo+IGRpc2sgb3ZlciBORlMg
-d2l0aCBgc3luYycpDQo+IA0KPiBJJ20gdXNpbmcgRGViaWFuIDYgd2l0aCAyLjYuMzgga2VybmVs
-cyBvbiBjbGllbnQgYW5kIHNlcnZlciwgTkZTdjMNCj4gDQo+IEkndmUgYWxzbyB0cmllZCBhIGNs
-aWVudCBydW5uaW5nIERlYmlhbiA3L0xpbnV4IDMuMi4wIHdpdGggYm90aCBORlN2Mw0KPiBhbmQg
-TkZTdjQsIHNwZWVkIGlzIHN0aWxsIHNsb3cNCj4gDQo+IExvb2tpbmcgYXQgaW9zdGF0IG9uIHRo
-ZSBzZXJ2ZXIsIEkgbm90aWNlIHRoYXQgYXZncnEtc3ogPSA4IHNlY3RvcnMNCj4gKDQwOTYgYnl0
-ZXMpIHRocm91Z2hvdXQgdGhlIHdyaXRlIG9wZXJhdGlvbnMNCj4gDQo+IEkndmUgdHJpZWQgdmFy
-aW91cyB0ZXN0cywgZS5nLiBkZCBhIGxhcmdlIGZpbGUsIG9yIHVucGFjayBhIHRhcmJhbGwgd2l0
-aA0KPiBtYW55IHNtYWxsIGZpbGVzLCB0aGUgaW9zdGF0IG91dHB1dCBpcyBhbHdheXMgdGhlIHNh
-bWUNCg0KV2VyZSB5b3UgdXNpbmcgJ2NvbnY9c3luYyc/DQoNCj4gTG9va2luZyBhdCAvcHJvYy9t
-b3VudHMgb24gdGhlIGNsaWVudHMsIGV2ZXJ5dGhpbmcgbG9va3MgZ29vZCwgbGFyZ2UNCj4gd3Np
-emUsIHRjcDoNCj4gDQo+IHJ3LHJlbGF0aW1lLHZlcnM9Myxyc2l6ZT0xMDQ4NTc2LHdzaXplPTEw
-NDg1NzYsbmFtbGVuPTI1NSxoYXJkLHByb3RvPXRjcCx0aW1lbz02MDAscmV0cmFucz0yLHNlYz1z
-eXMsbW91bnRhZGRyPTE5Mi54LngueCxtb3VudHZlcnM9Myxtb3VudHBvcnQ9NTg3MjcsbW91bnRw
-cm90bz11ZHAsbG9jYWxfbG9jaz1ub25lLGFkZHI9MTkyLngueC54DQo+IDAgMA0KPiANCj4gYW5k
-DQo+ICBydyxyZWxhdGltZSx2ZXJzPTQscnNpemU9MTA0ODU3Nix3c2l6ZT0xMDQ4NTc2LG5hbWxl
-bj0yNTUsaGFyZCxwcm90bz10Y3AscG9ydD0wLHRpbWVvPTYwMCxyZXRyYW5zPTIsc2VjPXN5cyxj
-bGllbnRhZGRyPTE5Mi54LngueC4sbWlub3J2ZXJzaW9uPTAsbG9jYWxfbG9jaz1ub25lLGFkZHI9
-MTkyLngueC54IDAgMA0KPiANCj4gYW5kIGluIC9wcm9jL2ZzL25mcy9leHBvcnRzIG9uIHRoZSBz
-ZXJ2ZXIsIEkgaGF2ZSBzeW5jIGFuZCB3ZGVsYXk6DQo+IA0KPiAvbmZzNC9kYW5pZWwNCj4gMTky
-LjE2OC4xLjAvMjQsMTkyLngueC54KHJ3LGluc2VjdXJlLHJvb3Rfc3F1YXNoLHN5bmMsd2RlbGF5
-LG5vX3N1YnRyZWVfY2hlY2ssdXVpZD1hYTJhNmYzNzo5Y2M5NGVlYjpiY2JmOTgzYzpkNmUwNDFk
-OSxzZWM9MSkNCj4gL2hvbWUvZGFuaWVsDQo+IDE5Mi4xNjguMS4wLzI0LDE5Mi54LngueChydyxy
-b290X3NxdWFzaCxzeW5jLHdkZWxheSxub19zdWJ0cmVlX2NoZWNrLHV1aWQ9YWEyYTZmMzc6OWNj
-OTRlZWI6YmNiZjk4M2M6ZDZlMDQxZDkpDQo+IA0KPiBDYW4gYW55b25lIHN1Z2dlc3QgYW55dGhp
-bmcgZWxzZT8gIE9yIGlzIHRoaXMgcmVhbGx5IHRoZSBwZXJmb3JtYW5jZSBoaXQNCj4gb2YgYHN5
-bmMnPw0KDQpJdCByZWFsbHkgZGVwZW5kcyBvbiB5b3VyIGRpc2sgc2V0dXAuIFBhcnRpY3VsYXJs
-eSB3aGVuIHlvdXIgZmlsZXN5c3RlbQ0KaXMgdXNpbmcgYmFycmllcnMgKGVuYWJsZWQgYnkgZGVm
-YXVsdCBvbiBleHQ0IGFuZCB4ZnMpLCBhIGxvdCBvZiByYWlkDQpzZXR1cHMgcmVhbGx5IF9zdWNr
-XyBhdCBkZWFsaW5nIHdpdGggZnN5bmMoKS4gVGhlIGxhdHRlciBpcyB1c2VkIGV2ZXJ5DQp0aW1l
-IHRoZSBORlMgY2xpZW50IHNlbmRzIGEgQ09NTUlUIG9yIHRydW5jKCkgaW5zdHJ1Y3Rpb24sIGFu
-ZCBmb3INCnByZXR0eSBtdWNoIGFsbCBmaWxlIGFuZCBkaXJlY3RvcnkgY3JlYXRpb24gb3BlcmF0
-aW9ucyAoeW91IGNhbiB1c2UNCiduZnNzdGF0JyB0byBtb25pdG9yIGhvdyBtYW55IHN1Y2ggb3Bl
-cmF0aW9ucyB0aGUgTkZTIGNsaWVudCBpcyBzZW5kaW5nDQphcyBwYXJ0IG9mIHlvdXIgdGVzdCku
-DQoNCkxvY2FsIGRpc2sgY2FuIGdldCBhd2F5IHdpdGggZG9pbmcgYSBsb3QgbGVzcyBmc3luYygp
-LCBiZWNhdXNlIHRoZSBjYWNoZQ0KY29uc2lzdGVuY3kgZ3VhcmFudGVlcyBhcmUgZGlmZmVyZW50
-Og0KICAgICAgKiBpbiBORlMsIHRoZSBzZXJ2ZXIgaXMgYWxsb3dlZCB0byBjcmFzaCBvciByZWJv
-b3Qgd2l0aG91dA0KICAgICAgICBhZmZlY3RpbmcgdGhlIGNsaWVudCdzIHZpZXcgb2YgdGhlIGZp
-bGVzeXN0ZW0uDQogICAgICAqIGluIHRoZSBsb2NhbCBmaWxlIHN5c3RlbSwgdGhlIGV4cGVjdGF0
-aW9uIGlzIHRoYXQgb24gcmVib290IGFueQ0KICAgICAgICBkYXRhIGxvc3QgaXMgd29uJ3QgbmVl
-ZCB0byBiZSByZWNvdmVyZWQgKHRoZSBhcHBsaWNhdGlvbiB3aWxsDQogICAgICAgIGhhdmUgdXNl
-ZCBmc3luYygpIGZvciBhbnkgZGF0YSB0aGF0IGRvZXMgbmVlZCB0byBiZSBwZXJzaXN0ZW50KS4N
-CiAgICAgICAgT25seSB0aGUgZGlzayBmaWxlc3lzdGVtIHN0cnVjdHVyZXMgbmVlZCB0byBiZSBy
-ZWNvdmVyZWQsIGFuZA0KICAgICAgICB0aGF0IGlzIGRvbmUgdXNpbmcgdGhlIGpvdXJuYWwgKG9y
-IGZzY2spLg0KDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50
-YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5j
-b20NCg0K
+The following changes since commit [36be5051] Linux 3.4-rc7 (2012-05-12 18:37:47 -0700)
+
+are available in the git repository at:
+
+  git://git.open-osd.org/linux-open-osd.git for-linus
+
+
+These are just a couple of patches. The first is a BUG fix destined for Stable
+which missed the 3.4-rc7 Kernel. 
+The second is just a fixture addition so exofs is able to be better exported as
+a cluster file system via pNFS.
+
+Thanks
+Boaz
+
+----------------------------------------------------------------
+Boaz Harrosh (1):
+      exofs: Fix CRASH on very early IO errors.
+
+Sachin Bhamare (1):
+      exofs:  Add SYSFS info for autologin/pNFS export
+
+ fs/exofs/Kbuild  |   2 +-
+ fs/exofs/exofs.h |  14 +++++++++++++
+ fs/exofs/super.c |  16 +++++++++++++-
+ fs/exofs/sys.c   | 200 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 230 insertions(+), 2 deletions(-)
+ create mode 100644 fs/exofs/sys.c
