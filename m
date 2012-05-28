@@ -1,87 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:36168 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758560Ab2EUSEy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 May 2012 14:04:54 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Dave Jones <davej@redhat.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Linux Kernel <linux-kernel@vger.kernel.org>
-Subject: Re: 3.4. sunrpc oops during shutdown
-Date: Mon, 21 May 2012 18:03:43 +0000
-Message-ID: <1337623475.9583.13.camel@lade.trondhjem.org>
-References: <20120521171411.GA15562@redhat.com>
-In-Reply-To: <20120521171411.GA15562@redhat.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-we0-f174.google.com ([74.125.82.174]:38024 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753727Ab2E1QKC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 12:10:02 -0400
+Received: by mail-we0-f174.google.com with SMTP id u7so2021750wey.19
+        for <linux-nfs@vger.kernel.org>; Mon, 28 May 2012 09:10:02 -0700 (PDT)
+From: Benny Halevy <bhalevy@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 5/5] SQUASHME: pnfsd: lrs_present is false by default
+Date: Mon, 28 May 2012 19:09:57 +0300
+Message-Id: <1338221397-22679-1-git-send-email-bhalevy@tonian.com>
+In-Reply-To: <4FC3A235.8090908@tonian.com>
+References: <4FC3A235.8090908@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA1LTIxIGF0IDEzOjE0IC0wNDAwLCBEYXZlIEpvbmVzIHdyb3RlOg0KPiBU
-cmllZCB0byBzaHV0ZG93biBhIG1hY2hpbmUsIGdvdCB0aGlzLCBhbmQgYSBidW5jaCBvZiBodW5n
-IHByb2Nlc3Nlcy4NCj4gVGhlcmUgd2FzIG9uZSBORlMgbW91bnQgbW91bnRlZCBhdCB0aGUgdGlt
-ZS4NCj4gDQo+IAlEYXZlDQo+IA0KPiBCVUc6IHVuYWJsZSB0byBoYW5kbGUga2VybmVsIE5VTEwg
-cG9pbnRlciBkZXJlZmVyZW5jZSBhdCAwMDAwMDAwMDAwMDAwMDI4DQo+IElQOiBbPGZmZmZmZmZm
-YTAxMTkxZGY+XSBzdmNfZGVzdHJveSsweDFmLzB4MTQwIFtzdW5ycGNdDQo+IFBHRCAxNDM0YzQw
-NjcgUFVEIDE0NDk2NDA2NyBQTUQgMCANCj4gT29wczogMDAwMCBbIzFdIFBSRUVNUFQgU01QIA0K
-PiBDUFUgNCANCj4gTW9kdWxlcyBsaW5rZWQgaW46IGlwNnRhYmxlX2ZpbHRlcigtKSBpcDZfdGFi
-bGVzIG5mc2QgbmZzIGZzY2FjaGUgYXV0aF9ycGNnc3MgbmZzX2FjbCBsb2NrZCBpcDZ0X1JFSkVD
-VCBuZl9jb25udHJhY2tfaXB2NiBuZl9kZWZyYWdfaXB2Ng0KPiANCj4gUGlkOiA2OTQ2LCBjb21t
-OiBudHBkIE5vdCB0YWludGVkIDMuNC4wKyAjMTMgDQo+IFJJUDogMDAxMDpbPGZmZmZmZmZmYTAx
-MTkxZGY+XSAgWzxmZmZmZmZmZmEwMTE5MWRmPl0gc3ZjX2Rlc3Ryb3krMHgxZi8weDE0MCBbc3Vu
-cnBjXQ0KPiBSU1A6IDAwMTg6ZmZmZjg4MDE0M2M2NWM0OCAgRUZMQUdTOiAwMDAxMDI4Ng0KPiBS
-QVg6IDAwMDAwMDAwMDAwMDAwMDAgUkJYOiBmZmZmODgwMTQyY2Q0MWEwIFJDWDogMDAwMDAwMDAw
-MDAwMDAwNg0KPiBSRFg6IDAwMDAwMDAwMDAwMDAwNDAgUlNJOiBmZmZmODgwMTQzMTA1MDI4IFJE
-STogZmZmZjg4MDE0MmNkNDFhMA0KPiBSQlA6IGZmZmY4ODAxNDNjNjVjNTggUjA4OiAwMDAwMDAw
-MDAwMDAwMDAwIFIwOTogMDAwMDAwMDAwMDAwMDAwMQ0KPiBSMTA6IDAwMDAwMDAwMDAwMDAwMDAg
-UjExOiAwMDAwMDAwMDAwMDAwMDAwIFIxMjogZmZmZjg4MDEzYmM1YTE0OA0KPiBSMTM6IGZmZmY4
-ODAxNDA5ODE2NTggUjE0OiBmZmZmODgwMTQyY2Q0MWEwIFIxNTogZmZmZjg4MDE0NmM4ODAwMA0K
-PiBGUzogIDAwMDA3ZmRjMDM4MmE3NDAoMDAwMCkgR1M6ZmZmZjg4MDE0OTQwMDAwMCgwMDAwKSBr
-bmxHUzowMDAwMDAwMDAwMDAwMDAwDQo+IENTOiAgMDAxMCBEUzogMDAwMCBFUzogMDAwMCBDUjA6
-IDAwMDAwMDAwODAwNTAwMzMNCj4gQ1IyOiAwMDAwMDAwMDAwMDAwMDI4IENSMzogMDAwMDAwMDAz
-NmNiYjAwMCBDUjQ6IDAwMDAwMDAwMDAxNDA3ZTANCj4gRFIwOiAwMDAwMDAwMDAwMDAwMDAwIERS
-MTogMDAwMDAwMDAwMDAwMDAwMCBEUjI6IDAwMDAwMDAwMDAwMDAwMDANCj4gRFIzOiAwMDAwMDAw
-MDAwMDAwMDAwIERSNjogMDAwMDAwMDBmZmZmMGZmMCBEUjc6IDAwMDAwMDAwMDAwMDA0MDANCj4g
-UHJvY2VzcyBudHBkIChwaWQ6IDY5NDYsIHRocmVhZGluZm8gZmZmZjg4MDE0M2M2NDAwMCwgdGFz
-ayBmZmZmODgwMTQzMTA0OTQwKQ0KPiBTdGFjazoNCj4gIGZmZmY4ODAxNDA5ODE2NjAgZmZmZjg4
-MDEzYmM1YTE0OCBmZmZmODgwMTQzYzY1Yzg4IGZmZmZmZmZmYTAxMTkzYTYNCj4gIDAwMDAwMDAw
-MDAwMDAwMDAgZmZmZjg4MDEzZTU2NjAyMCBmZmZmODgwMTNlNTY1ZjI4IGZmZmY4ODAxNDZlZTZh
-YzANCj4gIGZmZmY4ODAxNDNjNjVjYTggZmZmZmZmZmZhMDI0ZjQwMyBmZmZmODgwMTQzYzY1Y2E4
-IGZmZmY4ODAxNDNkM2E0ZjgNCj4gQ2FsbCBUcmFjZToNCj4gIFs8ZmZmZmZmZmZhMDExOTNhNj5d
-IHN2Y19leGl0X3RocmVhZCsweGE2LzB4YjAgW3N1bnJwY10NCj4gIFs8ZmZmZmZmZmZhMDI0ZjQw
-Mz5dIG5mc19jYWxsYmFja19kb3duKzB4NTMvMHg5MCBbbmZzXQ0KPiAgWzxmZmZmZmZmZmEwMjE2
-NDJlPl0gbmZzX2ZyZWVfY2xpZW50KzB4ZmUvMHgxMjAgW25mc10NCj4gIFs8ZmZmZmZmZmZhMDIx
-ODVkZj5dIG5mc19wdXRfY2xpZW50KzB4MjlmLzB4NDIwIFtuZnNdDQo+ICBbPGZmZmZmZmZmYTAy
-MTg0ZTA+XSA/IG5mc19wdXRfY2xpZW50KzB4MWEwLzB4NDIwIFtuZnNdDQo+ICBbPGZmZmZmZmZm
-YTAyMTk2MmY+XSBuZnNfZnJlZV9zZXJ2ZXIrMHgxNmYvMHgyZTAgW25mc10NCj4gIFs8ZmZmZmZm
-ZmZhMDIxOTRlMz5dID8gbmZzX2ZyZWVfc2VydmVyKzB4MjMvMHgyZTAgW25mc10NCj4gIFs8ZmZm
-ZmZmZmZhMDIyMzYzYz5dIG5mczRfa2lsbF9zdXBlcisweDNjLzB4NTAgW25mc10NCj4gIFs8ZmZm
-ZmZmZmY4MTFhZDY3Yz5dIGRlYWN0aXZhdGVfbG9ja2VkX3N1cGVyKzB4M2MvMHhhMA0KPiAgWzxm
-ZmZmZmZmZjgxMWFlMjllPl0gZGVhY3RpdmF0ZV9zdXBlcisweDRlLzB4NzANCj4gIFs8ZmZmZmZm
-ZmY4MTFjY2JhND5dIG1udHB1dF9ub19leHBpcmUrMHhiNC8weDEwMA0KPiAgWzxmZmZmZmZmZjgx
-MWNjYzE2Pl0gbW50cHV0KzB4MjYvMHg0MA0KPiAgWzxmZmZmZmZmZjgxMWNkNTk3Pl0gcmVsZWFz
-ZV9tb3VudHMrMHg3Ny8weDkwDQo+ICBbPGZmZmZmZmZmODExY2VmYzY+XSBwdXRfbW50X25zKzB4
-NjYvMHg4MA0KPiAgWzxmZmZmZmZmZjgxMDc4ZGZmPl0gZnJlZV9uc3Byb3h5KzB4MWYvMHhiMA0K
-PiAgWzxmZmZmZmZmZjgxMDc5MDVlPl0gc3dpdGNoX3Rhc2tfbmFtZXNwYWNlcysweDVlLzB4NzAN
-Cj4gIFs8ZmZmZmZmZmY4MTA3OTA4MD5dIGV4aXRfdGFza19uYW1lc3BhY2VzKzB4MTAvMHgyMA0K
-PiAgWzxmZmZmZmZmZjgxMDRlOTBlPl0gZG9fZXhpdCsweDRlZS8weGI4MA0KPiAgWzxmZmZmZmZm
-ZjgxNjM5YzBhPl0gPyByZXRpbnRfc3dhcGdzKzB4ZS8weDEzDQo+ICBbPGZmZmZmZmZmODEwNGYy
-ZWY+XSBkb19ncm91cF9leGl0KzB4NGYvMHhjMA0KPiAgWzxmZmZmZmZmZjgxMDRmMzc3Pl0gc3lz
-X2V4aXRfZ3JvdXArMHgxNy8weDIwDQo+ICBbPGZmZmZmZmZmODE2NDEzNTI+XSBzeXN0ZW1fY2Fs
-bF9mYXN0cGF0aCsweDE2LzB4MWINCj4gQ29kZTogNDggOGIgNWQgZjAgNGMgOGIgNjUgZjggYzkg
-YzMgNjYgOTAgNTUgNDggODkgZTUgNDEgNTQgNTMgNjYgNjYgNjYgNjYgOTAgNjUgNDggOGIgMDQg
-MjUgODAgYmEgMDAgMDAgNDggOGIgODAgNTAgMDUgMDAgMDAgNDggODkgZmIgPDRjPiA4YiA2MCAy
-OCA4YiA0NyA1OCA4NSBjMCAwZiA4NCBlYyAwMCAwMCAwMCA4MyBlOCAwMSA4NSBjMCA4OSANCg0K
-QXNpZGUgZnJvbSB0aGUgZmFjdCB0aGF0IHRoZSBjdXJyZW50IG5ldF9uYW1lc3BhY2UgaXMgbm90
-IGd1YXJhbnRlZWQgdG8NCmV4aXN0IHdoZW4gd2UgYXJlIGNhbGxlZCBmcm9tIGZyZWVfbnNwcm94
-eSwgc3ZjX2Rlc3Ryb3koKSBsb29rcw0Kc2VyaW91c2x5IGJyb2tlbjoNCg0KICAgICAgKiBPbiB0
-aGUgb25lIGhhbmQgaXQgaXMgdHJ5aW5nIHRvIGZyZWUgc3RydWN0IHN2Y19zZXJ2IChhbmQNCiAg
-ICAgICAgcHJlc3VtYWJseSBhbGwgc3RydWN0dXJlcyBvd25lZCBieSBzdHJ1Y3Qgc3ZjX3NlcnYp
-Lg0KICAgICAgKiBPbiB0aGUgb3RoZXIgaGFuZCwgaXQgdHJpZXMgdG8gcGFzcyBhIHBhcmFtZXRl
-ciB0bw0KICAgICAgICBzdmNfY2xvc2VfbmV0KCkgc2F5aW5nICJwbGVhc2UgZG9uJ3QgZnJlZSBz
-dHJ1Y3R1cmVzIG9uIG15DQogICAgICAgIHN2X3RlbXBzb2Nrcywgb3Igc3ZfcGVybXNvY2tzIGxp
-c3QgdW5sZXNzIHRoZXkgbWF0Y2ggdGhpcyBuZXQNCiAgICAgICAgbmFtZXNwYWNlIi4NCg0KQnJ1
-Y2UsIGhvdyBpcyB0aGlzIHN1cHBvc2VkIHRvIGJlIHdvcmtpbmc/DQoNCkNoZWVycw0KICBUcm9u
-ZA0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpO
-ZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+Set to true only on error free path.
+
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfsd/nfs4pnfsd.c |    1 +
+ fs/nfsd/nfs4proc.c  |    2 +-
+ 2 files changed, 2 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index 0a8d5b5..11bccdf 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -892,6 +892,7 @@ struct super_block *
+ 	struct nfs4_layout *lp, *nextlp;
+ 
+ 	dprintk("%s: clp %p fp %p\n", __func__, clp, fp);
++	lrp->lrs_present = 1;
+ 	spin_lock(&layout_lock);
+ 	list_for_each_entry_safe (lp, nextlp, &fp->fi_layouts, lo_perfile) {
+ 		dprintk("%s: lp %p client %p,%p lo_type %x,%x iomode %d,%d\n",
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 6328300..e76111c 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1299,7 +1299,7 @@ static __be32 nfsd4_do_lookupp(struct svc_rqst *rqstp, struct svc_fh *fh)
+ 
+ 	/* Set clientid from sessionid */
+ 	copy_clientid((clientid_t *)&lrp->args.lr_seg.clientid, cstate->session);
+-	lrp->lrs_present = (lrp->args.lr_return_type == RETURN_FILE);
++	lrp->lrs_present = 0;
+ 	status = nfs4_pnfs_return_layout(sb, current_fh, lrp);
+ out:
+ 	dprintk("pNFS %s: status %d return_type 0x%x lrs_present %d\n",
+-- 
+1.7.6.5
+
