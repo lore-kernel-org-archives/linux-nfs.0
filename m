@@ -1,117 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:39883 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757964Ab2EVOMp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 10:12:45 -0400
-Received: by ghrr11 with SMTP id r11so778011ghr.19
-        for <linux-nfs@vger.kernel.org>; Tue, 22 May 2012 07:12:44 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: inux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, miklos@szeredi.hu, hch@infradead.org,
-        michael.brantley@deshaw.com, pstaubach@exagrid.com
-Subject: [PATCH v2 11/15] vfs: fix linkat to retry on ESTALE errors
-Date: Tue, 22 May 2012 10:12:15 -0400
-Message-Id: <1337695939-2741-12-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
-References: <1337695939-2741-1-git-send-email-jlayton@redhat.com>
+Received: from natasha.panasas.com ([67.152.220.90]:54596 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753322Ab2E1RKj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 13:10:39 -0400
+Message-ID: <4FC3B16F.4020608@panasas.com>
+Date: Mon, 28 May 2012 20:10:07 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Peng Tao <tao.peng@emc.com>
+CC: Sorin Faibish <sfaibish@emc.com>, <Trond.Myklebust@netapp.com>,
+        <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/3] pnfsblock: bail out unaligned DIO
+References: <1338096780-2763-1-git-send-email-bergwolf@gmail.com> <1338096780-2763-4-git-send-email-bergwolf@gmail.com> <1338136717.3044.13.camel@lade.trondhjem.org> <F19688880B763E40B28B2B462677FBF805F0BADF36@MX09A.corp.emc.com> <4FC360D2.4030006@panasas.com> <CA+a=Yy5SFqXPhSO0W4kttycNGjJLE-y_rTbDmQsTm+sgnjF6=Q@mail.gmail.com>
+In-Reply-To: <CA+a=Yy5SFqXPhSO0W4kttycNGjJLE-y_rTbDmQsTm+sgnjF6=Q@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c |   67 ++++++++++++++++++++++++++++++++++++++---------------------
- 1 files changed, 43 insertions(+), 24 deletions(-)
+On 05/28/2012 07:50 PM, Peng Tao wrote:
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 5c8ceb9..402f469 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3071,6 +3071,8 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
- 	struct path old_path, new_path;
- 	int how = 0;
- 	int error;
-+	char *old, *new;
-+	unsigned int try = 0;
- 
- 	if ((flags & ~(AT_SYMLINK_FOLLOW | AT_EMPTY_PATH)) != 0)
- 		return -EINVAL;
-@@ -3088,34 +3090,51 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
- 	if (flags & AT_SYMLINK_FOLLOW)
- 		how |= LOOKUP_FOLLOW;
- 
--	error = user_path_at(olddfd, oldname, how, &old_path);
--	if (error)
--		return error;
-+	old = getname_flags(oldname, how, NULL);
-+	if (IS_ERR(old))
-+		return PTR_ERR(old);
- 
--	new_dentry = user_path_create(newdfd, newname, &new_path, 0);
--	error = PTR_ERR(new_dentry);
--	if (IS_ERR(new_dentry))
--		goto out;
-+	new = getname(newname);
-+	if (IS_ERR(new)) {
-+		putname(old);
-+		return PTR_ERR(new);
-+	}
- 
--	error = -EXDEV;
--	if (old_path.mnt != new_path.mnt)
--		goto out_dput;
--	error = mnt_want_write(new_path.mnt);
--	if (error)
--		goto out_dput;
--	error = security_path_link(old_path.dentry, &new_path, new_dentry);
--	if (error)
--		goto out_drop_write;
--	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry);
-+	do {
-+		error = kern_path_at(olddfd, old, how, &old_path);
-+		if (error)
-+			break;
-+
-+		new_dentry = kern_path_create(newdfd, new, &new_path, 0, try);
-+		error = PTR_ERR(new_dentry);
-+		if (IS_ERR(new_dentry)) {
-+			path_put(&old_path);
-+			break;
-+		}
-+
-+		error = -EXDEV;
-+		if (old_path.mnt != new_path.mnt)
-+			goto out_dput;
-+		error = mnt_want_write(new_path.mnt);
-+		if (error)
-+			goto out_dput;
-+		error = security_path_link(old_path.dentry, &new_path,
-+					new_dentry);
-+		if (error)
-+			goto out_drop_write;
-+		error = vfs_link(old_path.dentry, new_path.dentry->d_inode,
-+				new_dentry);
- out_drop_write:
--	mnt_drop_write(new_path.mnt);
-+		mnt_drop_write(new_path.mnt);
- out_dput:
--	dput(new_dentry);
--	mutex_unlock(&new_path.dentry->d_inode->i_mutex);
--	path_put(&new_path);
--out:
--	path_put(&old_path);
--
-+		dput(new_dentry);
-+		mutex_unlock(&new_path.dentry->d_inode->i_mutex);
-+		path_put(&new_path);
-+		path_put(&old_path);
-+		how |= LOOKUP_REVAL;
-+	} while (retry_estale(error, try++));
-+	putname(new);
-+	putname(old);
- 	return error;
- }
- 
--- 
-1.7.7.6
+>>> +static bool
+>>> +bl_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+>>> +        struct nfs_page *req)
+>>> +{
+>>> +     /* Bail out page unligned IO */
+>>> +     if (req->wb_offset || req->wb_pgbase ||
+>>> +         req->wb_bytes != PAGE_CACHE_SIZE)
+>>> +             return false;
+>>> +
+>>
+
+
+But are you sure these above carry the corrected offsets/sizes.
+
+I know from objlayout that these happen all the time. Is your
+nfs_want_read_modify_write() fixes the original offset as well
+as >wb_bytes to include more then submitted IO?
+
+I believe you, but just make sure.
+
+Perhaps a big fat dprint, so we can understand: "why the hell my
+IO goes through MDS"
+
+What you are saying is that this should not show up at all in prints
+unless these corner cases you haven't tested for.
+
+And do you have a test that fails which this patch now fixes?
+
+>>
+>> This is very serious. Not many applications will currently pass
+>> this test. (And hence will not do direct IO)
+>>
+>> What happens today without this patch?
+>>
+> block layout IO path assumes IO is page aligned in many places.
+> Without the patch, it is likely to cause data corruption when
+> unaligned IO is passed in to LD. E.g., Page will be submitted to block
+> layer entirely even if only part of its data is valid. Therefore if
+> application does byte range locking + partial page write, garbage data
+> will get written and cause data corruption.
+> 
+> In most buffered write cases, nfs_write_begin takes case of starting
+> read-modify-write cycle for partial page writes. Please see
+> nfs_want_read_modify_write(). I guess that's the reason we pass most
+> test cases. But it is not always the case. And when it isn't, it may
+> cause data corruption.
+> 
+> I'm really sorry to leave such serious bug here.
+> 
+
+
+Yes please make a small as possible fix to send to @stable.
+
+> Thanks,
+> Tao
+
+
+Thanks
+Boaz
 
