@@ -1,58 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:33818 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750797Ab2E1Qdr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 May 2012 12:33:47 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "tao.peng@emc.com" <tao.peng@emc.com>
-CC: "bergwolf@gmail.com" <bergwolf@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: [PATCH 3/3] pnfsblock: bail out unaligned DIO
-Date: Mon, 28 May 2012 16:33:31 +0000
-Message-ID: <1338222809.3472.13.camel@lade.trondhjem.org>
-References: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>
-	 <1338096780-2763-4-git-send-email-bergwolf@gmail.com>
-	 <1338136717.3044.13.camel@lade.trondhjem.org>
-	 <F19688880B763E40B28B2B462677FBF805F0BADF36@MX09A.corp.emc.com>
-	 <1338176720.2265.8.camel@lade.trondhjem.org>
-	 <F19688880B763E40B28B2B462677FBF805F0BADF5D@MX09A.corp.emc.com>
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805F0BADF5D@MX09A.corp.emc.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-wi0-f170.google.com ([209.85.212.170]:59331 "EHLO
+	mail-wi0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752711Ab2E1SBU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 14:01:20 -0400
+Received: by wibhm6 with SMTP id hm6so1600636wib.1
+        for <linux-nfs@vger.kernel.org>; Mon, 28 May 2012 11:01:19 -0700 (PDT)
+Message-ID: <4FC3BD6C.5030904@tonian.com>
+Date: Mon, 28 May 2012 21:01:16 +0300
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/5] pnfsd-lexp: return_on_close config option
+References: <4FC3A235.8090908@tonian.com> <1338221387-22621-1-git-send-email-bhalevy@tonian.com> <4FC3AD59.4050703@panasas.com> <4FC3BCB9.6040604@tonian.com>
+In-Reply-To: <4FC3BCB9.6040604@tonian.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA1LTI4IGF0IDAwOjI2IC0wNDAwLCB0YW8ucGVuZ0BlbWMuY29tIHdyb3Rl
-Og0KPiA+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+ID4gRnJvbTogTXlrbGVidXN0LCBU
-cm9uZCBbbWFpbHRvOlRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tXQ0KPiA+IFNlbnQ6IE1vbmRh
-eSwgTWF5IDI4LCAyMDEyIDExOjQ1IEFNDQo+ID4gVG86IFBlbmcsIFRhbw0KPiA+IENjOiBiZXJn
-d29sZkBnbWFpbC5jb207IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4gPiBTdWJqZWN0OiBS
-RTogW1BBVENIIDMvM10gcG5mc2Jsb2NrOiBiYWlsIG91dCB1bmFsaWduZWQgRElPDQo+ID4gDQo+
-ID4gT24gU3VuLCAyMDEyLTA1LTI3IGF0IDIyOjMwIC0wNDAwLCB0YW8ucGVuZ0BlbWMuY29tIHdy
-b3RlOg0KPiA+ID4gQXMgZXhwbGFpbiBpbiB0aGUgb3RoZXIgbWFpbCwgaXQgaXMgbmVjZXNzYXJ5
-IHRvIGhhdmUgcG5mc19kaW9fYmVnaW4vZW5kLCBzbyBJIHByZWZlciB0byBkbyB0aGUgdGVzdA0K
-PiA+IGFzIGVhcmx5IGFzIHBvc3NpYmxlLCB3aGljaCBpcyBpbiBwbmZzX2Rpb19iZWdpbi4NCj4g
-PiANCj4gPiBUaGVyZSBpcyBubyBwbmZzX2Rpb19iZWdpbi9lbmQuDQo+IE9LLiBJIHdpbGwgcHV0
-IERJTyBhbGlnbm1lbnQgdGVzdHMgaW5zaWRlIHBnX2luaXQuDQo+IA0KPiBBbmQgYW55IGNvbW1l
-bnRzIG9uIGZvciBzdGFibGUgcGF0Y2ggaW4gdGhlIHRocmVhZCAoW1BBVENIXSBwbmZzYmxvY2s6
-IGJhaWwgb3V0IHBhZ2UgdW5hbGlnbmVkIElPKT8gSWYgeW91IGFncmVlLCBJIHdpbGwgYmFzZSBE
-SU8gY2hhbmdlcyBvbiB0b3Agb2YgaXQgdG8gYXZvaWQgY29uZmxpY3RzLg0KPiBUaGVyZSBhcmUg
-cmVhc29ucyB0byB0ZXN0IGFsaWdubWVudCBhdCBkaWZmZXJlbnQgcGxhY2UgZm9yIGJ1ZmZlciBJ
-TyBhbmQgRElPLiBGb3IgYnVmZmVyIElPLCBwZ19pbml0IGlzbid0IHRoZSByaWdodCBwbGFjZSBi
-ZWNhdXNlIHdlIGRvbid0IGhhdmUgbmZzIHBhZ2UgdGhlcmUuIEZvciBESU8sIHBnX3Rlc3QgaXNu
-J3QgdGhlIHJpZ2h0IHBsYWNlIGJlY2F1c2Ugd2UgbmVlZCB0byBjaGVjayBjcm9zcyBwYWdlIGJv
-dW5kYXJ5Lg0KDQpTaW5jZSBhbGwgcGFnZXMgaW4gdGhlIHN0cnVjdCBuZnNfcGFnZWlvX2Rlc2Ny
-aXB0b3IgYXJlIGd1YXJhbnRlZWQgdG8gYmUNCmNvbnRpZ3VvdXMsIHlvdSByZWFsbHkgb25seSBu
-ZWVkIHRvIGNoZWNrIHRoZSBmaXJzdCBhbmQgbGFzdCBwYWdlIGluIHRoZQ0Kc2VyaWVzIGZvciBh
-bGlnbm1lbnQuDQoNCnBnX2luaXQoKSBkb2VzIHRha2UgdGhlIGZpcnN0IG5mc19wYWdlIHJlcXVl
-c3QgYXMgaXRzIGFyZ3VtZW50IGFuZCBzbyBpdA0Kc2hvdWxkIGJlIHBvc3NpYmxlIHRvIGNoZWNr
-IHRoZSBhbGlnbm1lbnQgb2YgdGhlIGZpcnN0IHBhZ2UgaW4gdGhlDQpzZXJpZXMgdGhlcmUuDQpZ
-b3UgY2FuIHRoZW4gY2hlY2sgdGhlIGFsaWdubWVudCBvZiB0aGUgbGFzdCBwYWdlIGluIHlvdXIN
-Ci0+d3JpdGVfcGFnZWxpc3QoKSBhbmQgcmV0dXJuIFBORlNfTk9UX0FUVEVNUFRFRCBpZiBhcHBy
-b3ByaWF0ZS4NCg0KTm90ZSB0aGF0IGFsbCBhcHBsaWNhdGlvbnMgdGhhdCB1c2UgT19ESVJFQ1Qg
-YXJlIGV4cGVjdGVkIHRvIHVzZSBhbGlnbmVkDQptZW1vcnksIHNpbmNlIHRoYXQncyB3aGF0IHRo
-ZSBvcGVuKCkgbWFucGFnZSBpbXBsaWVzIGlzIHRoZSBzYWZlIG9wdGlvbg0KZm9yIGFsbCBmaWxl
-c3lzdGVtcy4gVW5hbGlnbmVkIG1lbW9yeSBpcyB0aGVyZWZvcmUgbm90IHNvbWV0aGluZyB0aGF0
-IHdlDQpuZWVkIHRvIG9wdGltaXNlIGZvci4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4
-IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAu
-Y29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+On 2012-05-28 20:58, Benny Halevy wrote:
+> On 2012-05-28 19:52, Boaz Harrosh wrote:
+>> On 05/28/2012 07:09 PM, Benny Halevy wrote:
+>>
+>>> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+>>> ---
+>>>  fs/nfsd/Kconfig      |    7 +++++++
+>>>  fs/nfsd/pnfsd_lexp.c |    5 +++++
+>>>  2 files changed, 12 insertions(+), 0 deletions(-)
+>>>
+>>> diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+>>> index 9d4d79b..f9b3426 100644
+>>> --- a/fs/nfsd/Kconfig
+>>> +++ b/fs/nfsd/Kconfig
+>>> @@ -132,3 +132,10 @@ config PNFSD_LEXP_LAYOUT_SEGMENT_SIZE
+>>>  	  Set simulated layout segment size.
+>>>  
+>>>  	  If unsure, say N.
+>>> +
+>>> +config PNFSD_LEXP_RETURN_ON_CLOSE
+>>> +	bool "Reply to LAYOUTGET with return_on_close set to true"
+>>> +	depends on PNFSD_LOCAL_EXPORT
+>>> +	default false
+>>> +	help
+>>> +	  Set return_on_close response flag.
+>>> diff --git a/fs/nfsd/pnfsd_lexp.c b/fs/nfsd/pnfsd_lexp.c
+>>> index 30d9757..33a724c 100644
+>>> --- a/fs/nfsd/pnfsd_lexp.c
+>>> +++ b/fs/nfsd/pnfsd_lexp.c
+>>> @@ -153,6 +153,11 @@ static int get_stripe_unit(int blocksize)
+>>>  	res->lg_seg.offset = 0;
+>>>  	res->lg_seg.length = NFS4_MAX_UINT64;
+>>>  #endif  /* CONFIG_PNFSD_LEXP_LAYOUT_SEGMENTS */
+>>> +#ifdef     CONFIG_PNFSD_LEXP_RETURN_ON_CLOSE
+>>> +	res->lg_return_on_close = true;
+>>> +#else   /* CONFIG_PNFSD_LEXP_RETURN_ON_CLOSE */
+>>> +	res->lg_return_on_close = false;
+>>
+>>
+>> Back to my original question. With current code this case is a BUG.
+>> It will leak layouts and therefore file-reference in case of a layout-get
+>> with open-state ID. 
+>>
+>> So I suggest hardcoding to true until such time that we actually can
+>> support it
+> 
+> so how will you debug the leak case?
+> pnfsd-lexp is for testing, and the default is on.
+
+oops, the default is actually off in this patch.
+I do need to code what I wish :)
+
+Benny
+
+> 
+> Benny
+> 
+>>
+>> Boaz
+>>
+>>> +#endif  /* CONFIG_PNFSD_LEXP_RETURN_ON_CLOSE */
+>>>  
+>>>  	layout = kzalloc(sizeof(*layout), GFP_KERNEL);
+>>>  	if (layout == NULL) {
+>>
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
