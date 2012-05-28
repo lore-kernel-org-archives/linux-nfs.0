@@ -1,231 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:28790 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755178Ab2EBMKq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 May 2012 08:10:46 -0400
-Subject: [PATCH v3 2/2] SUNRPC: move per-net operations from svc_destroy()
-To: bfields@fieldses.org, Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Wed, 02 May 2012 16:08:45 +0400
-Message-ID: <20120502120845.8794.69118.stgit@localhost.localdomain>
-In-Reply-To: <20120502120536.8794.22210.stgit@localhost.localdomain>
-References: <20120502120536.8794.22210.stgit@localhost.localdomain>
-MIME-Version: 1.0
+Received: from mexforward.lss.emc.com ([128.222.32.20]:59854 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750735Ab2E1ENr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 00:13:47 -0400
+From: <tao.peng@emc.com>
+To: <Trond.Myklebust@netapp.com>
+CC: <bergwolf@gmail.com>, <linux-nfs@vger.kernel.org>
+Date: Mon, 28 May 2012 00:13:02 -0400
+Subject: RE: [PATCH 1/3] NFS41: add pnfs_dio_begin/dio_end
+Message-ID: <F19688880B763E40B28B2B462677FBF805F0BADF5C@MX09A.corp.emc.com>
+References: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>
+	 <1338096780-2763-2-git-send-email-bergwolf@gmail.com>
+	 <1338136170.3044.7.camel@lade.trondhjem.org>
+	 <F19688880B763E40B28B2B462677FBF805F0BADF35@MX09A.corp.emc.com>
+ <1338176574.2265.7.camel@lade.trondhjem.org>
+In-Reply-To: <1338176574.2265.7.camel@lade.trondhjem.org>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v2:
-1) Increase per-net usage counted in lockd_up_net(), because of note 2.
-
-The idea is to separate service destruction and per-net operations, because
-these are two different things and it's mix looks ugly.
-
-Notes:
-1) For NFS server this patch looks ugly (sorry for that). But these place will be
-rewritten soon during NFSd containerization.
-2) LockD per-net counter increase int lockd_up() was moved prior to
-make_socks() to make lockd_down_net() call safe in case of error.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/lockd/svc.c    |   27 +++++++++++++++------------
- fs/nfs/callback.c |    3 +++
- fs/nfsd/nfsctl.c  |    4 ++++
- fs/nfsd/nfssvc.c  |    7 +++++++
- net/sunrpc/svc.c  |    4 ----
- 5 files changed, 29 insertions(+), 16 deletions(-)
-
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index b7e92ed..3250f28 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -257,7 +257,7 @@ static int lockd_up_net(struct net *net)
- 	struct svc_serv *serv = nlmsvc_rqst->rq_server;
- 	int error;
- 
--	if (ln->nlmsvc_users)
-+	if (ln->nlmsvc_users++)
- 		return 0;
- 
- 	error = svc_rpcb_setup(serv, net);
-@@ -272,6 +272,7 @@ static int lockd_up_net(struct net *net)
- err_socks:
- 	svc_rpcb_cleanup(serv, net);
- err_rpcb:
-+	ln->nlmsvc_users--;
- 	return error;
- }
- 
-@@ -299,6 +300,7 @@ int lockd_up(struct net *net)
- {
- 	struct svc_serv *serv;
- 	int		error = 0;
-+	struct lockd_net *ln = net_generic(net, lockd_net_id);
- 
- 	mutex_lock(&nlmsvc_mutex);
- 	/*
-@@ -330,9 +332,11 @@ int lockd_up(struct net *net)
- 		goto destroy_and_out;
- 	}
- 
-+	ln->nlmsvc_users++;
-+
- 	error = make_socks(serv, net);
- 	if (error < 0)
--		goto destroy_and_out;
-+		goto err_start;
- 
- 	/*
- 	 * Create the kernel thread and wait for it to start.
-@@ -344,7 +348,7 @@ int lockd_up(struct net *net)
- 		printk(KERN_WARNING
- 			"lockd_up: svc_rqst allocation failed, error=%d\n",
- 			error);
--		goto destroy_and_out;
-+		goto err_start;
- 	}
- 
- 	svc_sock_update_bufs(serv);
-@@ -358,7 +362,7 @@ int lockd_up(struct net *net)
- 		nlmsvc_rqst = NULL;
- 		printk(KERN_WARNING
- 			"lockd_up: kthread_run failed, error=%d\n", error);
--		goto destroy_and_out;
-+		goto err_start;
- 	}
- 
- 	/*
-@@ -368,14 +372,14 @@ int lockd_up(struct net *net)
- destroy_and_out:
- 	svc_destroy(serv);
- out:
--	if (!error) {
--		struct lockd_net *ln = net_generic(net, lockd_net_id);
--
--		ln->nlmsvc_users++;
-+	if (!error)
- 		nlmsvc_users++;
--	}
- 	mutex_unlock(&nlmsvc_mutex);
- 	return error;
-+
-+err_start:
-+	lockd_down_net(net);
-+	goto destroy_and_out;
- }
- EXPORT_SYMBOL_GPL(lockd_up);
- 
-@@ -386,11 +390,10 @@ void
- lockd_down(struct net *net)
- {
- 	mutex_lock(&nlmsvc_mutex);
-+	lockd_down_net(net);
- 	if (nlmsvc_users) {
--		if (--nlmsvc_users) {
--			lockd_down_net(net);
-+		if (--nlmsvc_users)
- 			goto out;
--		}
- 	} else {
- 		printk(KERN_ERR "lockd_down: no users! task=%p\n",
- 			nlmsvc_task);
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 26b38fb..cff3940 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -314,6 +314,8 @@ out_err:
- 	dprintk("NFS: Couldn't create callback socket or server thread; "
- 		"err = %d\n", ret);
- 	cb_info->users--;
-+	if (serv)
-+		svc_shutdown_net(serv, net);
- 	goto out;
- }
- 
-@@ -328,6 +330,7 @@ void nfs_callback_down(int minorversion)
- 	cb_info->users--;
- 	if (cb_info->users == 0 && cb_info->task != NULL) {
- 		kthread_stop(cb_info->task);
-+		svc_shutdown_net(cb_info->serv, current->nsproxy->net_ns);
- 		svc_exit_thread(cb_info->rqst);
- 		cb_info->serv = NULL;
- 		cb_info->rqst = NULL;
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 7269988..efb3818 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -672,6 +672,8 @@ static ssize_t __write_ports_addfd(char *buf)
- 
- 	err = svc_addsock(nfsd_serv, fd, buf, SIMPLE_TRANSACTION_LIMIT);
- 	if (err < 0) {
-+		if (nfsd_serv->sv_nrthreads == 1)
-+			svc_shutdown_net(nfsd_serv, current->nsproxy->net_ns);
- 		svc_destroy(nfsd_serv);
- 		return err;
- 	}
-@@ -740,6 +742,8 @@ out_close:
- 		svc_xprt_put(xprt);
- 	}
- out_err:
-+	if (nfsd_serv->sv_nrthreads == 1)
-+		svc_shutdown_net(nfsd_serv, current->nsproxy->net_ns);
- 	svc_destroy(nfsd_serv);
- 	return err;
- }
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 0762f3c..3fffe6c 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -426,6 +426,9 @@ int nfsd_set_nrthreads(int n, int *nthreads)
- 		if (err)
- 			break;
- 	}
-+
-+	if (nfsd_serv->sv_nrthreads == 1)
-+		svc_shutdown_net(nfsd_serv, current->nsproxy->net_ns);
- 	svc_destroy(nfsd_serv);
- 
- 	return err;
-@@ -473,6 +476,8 @@ out_shutdown:
- 	if (error < 0 && !nfsd_up_before)
- 		nfsd_shutdown();
- out_destroy:
-+	if (nfsd_serv->sv_nrthreads == 1)
-+		svc_shutdown_net(nfsd_serv, current->nsproxy->net_ns);
- 	svc_destroy(nfsd_serv);		/* Release server */
- out:
- 	mutex_unlock(&nfsd_mutex);
-@@ -670,6 +675,8 @@ int nfsd_pool_stats_release(struct inode *inode, struct file *file)
- 	int ret = seq_release(inode, file);
- 	mutex_lock(&nfsd_mutex);
- 	/* this function really, really should have been called svc_put() */
-+	if (nfsd_serv->sv_nrthreads == 1)
-+		svc_shutdown_net(nfsd_serv, current->nsproxy->net_ns);
- 	svc_destroy(nfsd_serv);
- 	mutex_unlock(&nfsd_mutex);
- 	return ret;
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index e6d542c..b7210f5 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -537,8 +537,6 @@ EXPORT_SYMBOL_GPL(svc_shutdown_net);
- void
- svc_destroy(struct svc_serv *serv)
- {
--	struct net *net = current->nsproxy->net_ns;
--
- 	dprintk("svc: svc_destroy(%s, %d)\n",
- 				serv->sv_program->pg_name,
- 				serv->sv_nrthreads);
-@@ -553,8 +551,6 @@ svc_destroy(struct svc_serv *serv)
- 
- 	del_timer_sync(&serv->sv_temptimer);
- 
--	svc_shutdown_net(serv, net);
--
- 	/*
- 	 * The last user is gone and thus all sockets have to be destroyed to
- 	 * the point. Check this.
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBNeWtsZWJ1c3QsIFRyb25kIFtt
+YWlsdG86VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb21dDQo+IFNlbnQ6IE1vbmRheSwgTWF5IDI4
+LCAyMDEyIDExOjQzIEFNDQo+IFRvOiBQZW5nLCBUYW8NCj4gQ2M6IGJlcmd3b2xmQGdtYWlsLmNv
+bTsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiBTdWJqZWN0OiBSRTogW1BBVENIIDEvM10g
+TkZTNDE6IGFkZCBwbmZzX2Rpb19iZWdpbi9kaW9fZW5kDQo+IA0KPiBPbiBTdW4sIDIwMTItMDUt
+MjcgYXQgMjI6MzAgLTA0MDAsIHRhby5wZW5nQGVtYy5jb20gd3JvdGU6DQo+ID4gSSdtIGFmcmFp
+ZCB0aGVyZSBpcy4gVGhlcmUgaXMgbm8gd2F5IHRvIHBhc3Mgc3RydWN0IGJsa19wbHVnIGFyb3Vu
+ZCBwZ19pbml0L3BnX2RvaW8sIHVubGVzcyB3ZSBwdXQNCj4gaXQgaW4gc3RydWN0IG5mc19wYWdl
+aW9fZGVzY3JpcHRvciwgd2hpY2ggSSB0aGluayBpcyBtb3JlIGludHJ1c2l2ZSBhbmQgbGVzcyBl
+ZmZpY2llbnQgYXMgaXQgaXMgb25seQ0KPiB1c2VmdWwgZm9yIGJsb2NrIGxheW91dCBkcml2ZXIg
+aW4gRElPIGNhc2UuDQo+IA0KPiBUaGVuIGFkZCBhICd2b2lkICpwZ19sYXlvdXRfcHJpdmF0ZScg
+ZmllbGQgdG8gbmZzX3BhZ2Vpb19kZXNjcmlwdG9yIGFuZA0KPiBhbGxvY2F0ZSB0aGUgc3RydWN0
+IGJsa19wbHVnIGR5bmFtaWNhbGx5Lg0KPiANCk9LLiBJIHRob3VnaHQgZGF0YSBzdHJ1Y3R1cmUg
+Y2hhbmdlIGlzIG1vcmUgaW50cnVzaXZlIGJlY2F1c2UgaXQgYWZmZWN0cyBhbGwgbGF5b3V0IGRy
+aXZlcnMgYW5kIGdlbmVyaWMgTkZTIGFzIHdlbGwuIEJ1dCBzaW5jZSB5b3UgdGhpbmsgaXQgaXMg
+T0ssIEkgd2lsbCBjaGFuZ2UgaXQgYXMgeW91IHN1Z2dlc3RlZC4NCg0KVGhhbmtzLA0KVGFvDQoN
+Cg==
