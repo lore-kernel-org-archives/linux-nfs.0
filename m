@@ -1,101 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:49123 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755885Ab2ENKTr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 May 2012 06:19:47 -0400
-Message-ID: <4FB0DC3D.3020706@parallels.com>
-Date: Mon, 14 May 2012 14:19:41 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:33244 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750974Ab2E1Cat (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 May 2012 22:30:49 -0400
+From: <tao.peng@emc.com>
+To: <Trond.Myklebust@netapp.com>, <bergwolf@gmail.com>
+CC: <linux-nfs@vger.kernel.org>
+Date: Sun, 27 May 2012 22:30:23 -0400
+Subject: RE: [PATCH 3/3] pnfsblock: bail out unaligned DIO
+Message-ID: <F19688880B763E40B28B2B462677FBF805F0BADF36@MX09A.corp.emc.com>
+References: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>
+	 <1338096780-2763-4-git-send-email-bergwolf@gmail.com>
+ <1338136717.3044.13.camel@lade.trondhjem.org>
+In-Reply-To: <1338136717.3044.13.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Jeff Layton <jlayton@redhat.com>
-Subject: Re: [RFC] NFSd laundromat containerization
-References: <4FAD1934.8070908@parallels.com> <20120511135306.GA12795@fieldses.org> <4FAE2659.4090107@parallels.com> <20120512141653.GA19757@fieldses.org> <4FB0C9A1.6080406@parallels.com>
-In-Reply-To: <4FB0C9A1.6080406@parallels.com>
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 14.05.2012 13:00, Stanislav Kinsbursky wrote:
-> On 12.05.2012 18:16, bfields@fieldses.org wrote:
->> On Sat, May 12, 2012 at 12:59:05PM +0400, Stanislav Kinsbursky wrote:
->>> On 11.05.2012 17:53, bfields@fieldses.org wrote:
->>>> On Fri, May 11, 2012 at 05:50:44PM +0400, Stanislav Kinsbursky wrote:
->>>>> Hello.
->>>>> I'm currently looking on NFSd laundromat work, and it looks like
->>>>> have to be performed per networks namespace context.
->>>>> It's easy to make corresponding delayed work per network namespace
->>>>> and thus gain per-net data pointer in laundromat function.
->>>>> But here a problem appears: network namespace is required to skip
->>>>> clients from other network namespaces while iterating over global
->>>>> lists (client_lru and friends).
->>>>> I see two possible solutions:
->>>>> 1) Make these list per network namespace context. In this case
->>>>> network namespace will not be required - per-net data will be
->>>>> enough.
->>>>> 2) Put network namespace link on per-net data (this one is easier, but uglier).
->>>>
->>>> I'd rather there be as few shared data structures between network
->>>> namespaces as possible--I think that will simplify things.
->>>>
->>>> So, of those two choices, #1.
->>>>
->>>
->>> Guys, I would like to discuss few ideas about caches and lists containerization.
->>> Currently, it look to me, that these hash tables:
->>>
->>> reclaim_str, conf_id, conf_str, unconf_str, unconf_id, sessionid
->>>
->>> and these lists:
->>>
->>> client_lru, close_lru
->>>
->>> have to be per net, while hash tables
->>>
->>> file, ownerstr, lockowner_ino
->>>
->>> and
->>>
->>> del_recall_lru lists
->>>
->>> have not, because they are about file system access.
->>
->> Actually, ownerstr and lockowner_ino should also both be per-container.
->>
->> So it's only file and del_recall_lru that should be global.  (And
->> del_recall_lru might work either way, actually.)
->>
->>> If I'd containerize it this way, then looks like nfs4_lock_state()
->>> and nfs4_unlock_state() functions will protect only
->>> non-containerized data, while containerized data have to protected
->>> by some per-net lock.
->>
->> Sounds about right.
->>
->
-> Bruce, Jeff, I've implemented these per-net hashes and lists (file hash and
-> del_recall_lru remains global).
-> But now I'm confused with locking.
->
-> For example, let's consider file hash and del_recall_lru lists.
-> It looks like they are protected by recall_lock. But in
-> nfsd_forget_delegations() this lock is not taken. Is it a bug?
-> If yes and recall_lock is used for file hash protection, then why do we need to
-> protect nfsd_process_n_delegations() by nfs4_un/lock_state() calls?
->
-> Actually, the problem I'm trying to solve is to replace global client_lock by
-> per-net one where possible. But I don't clearly understand, what it protects.
->
-> Could you, guys, clarify the state locking to me.
->
-
-It looks like I can replace global lock with per-net one almost everywhere.
-But it also looks like there are several places, where additional (per-fs) 
-locking have to be performed (like nfs4proc calls: open, read, setattr, write).
-Is there any other places, where fs locking have to be used in addition to 
-per-net one?
-
--- 
-Best regards,
-Stanislav Kinsbursky
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBNeWtsZWJ1c3QsIFRyb25kIFtt
+YWlsdG86VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb21dDQo+IFNlbnQ6IE1vbmRheSwgTWF5IDI4
+LCAyMDEyIDEyOjM5IEFNDQo+IFRvOiBQZW5nIFRhbw0KPiBDYzogbGludXgtbmZzQHZnZXIua2Vy
+bmVsLm9yZzsgUGVuZywgVGFvDQo+IFN1YmplY3Q6IFJlOiBbUEFUQ0ggMy8zXSBwbmZzYmxvY2s6
+IGJhaWwgb3V0IHVuYWxpZ25lZCBESU8NCj4gDQo+IE9uIFN1biwgMjAxMi0wNS0yNyBhdCAxMzoz
+MyArMDgwMCwgUGVuZyBUYW8gd3JvdGU6DQo+ID4gU2lnbmVkLW9mZi1ieTogUGVuZyBUYW8gPHRh
+by5wZW5nQGVtYy5jb20+DQo+ID4gLS0tDQo+ID4gIGZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xh
+eW91dC5jIHwgICAyMCArKysrKysrKysrKysrKysrKysrKw0KPiA+ICAxIGZpbGVzIGNoYW5nZWQs
+IDIwIGluc2VydGlvbnMoKyksIDAgZGVsZXRpb25zKC0pDQo+ID4NCj4gPiBkaWZmIC0tZ2l0IGEv
+ZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMgYi9mcy9uZnMvYmxvY2tsYXlvdXQvYmxv
+Y2tsYXlvdXQuYw0KPiA+IGluZGV4IDUzY2I0NTAuLmNkYjg3YTkgMTAwNjQ0DQo+ID4gLS0tIGEv
+ZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMNCj4gPiArKysgYi9mcy9uZnMvYmxvY2ts
+YXlvdXQvYmxvY2tsYXlvdXQuYw0KPiA+IEBAIC0xMDAwLDcgKzEwMDAsMjcgQEAgc3RhdGljIGJv
+b2wgYmxfZGlvX2JlZ2luKHN0cnVjdCBpbm9kZSAqaW5vZGUsIGNvbnN0IHN0cnVjdCBpb3ZlYyAq
+aW92LA0KPiA+ICAJCQkgdW5zaWduZWQgbG9uZyBucl9zZWdzLCBsb2ZmX3QgcG9zLA0KPiA+ICAJ
+CQkgc3RydWN0IGJsa19wbHVnICpwbHVnKQ0KPiA+ICB7DQo+ID4gKwl1bnNpZ25lZCBibGttYXNr
+ID0gTkZTX1NFUlZFUihpbm9kZSktPnBuZnNfYmxrc2l6ZSAtIDE7DQo+ID4gKwlzaXplX3QgY291
+bnQ7DQo+ID4gKwlpbnQgc2VnOw0KPiA+ICsJdW5zaWduZWQgbG9uZyBhZGRyOw0KPiA+ICsNCj4g
+PiAgCWJsa19zdGFydF9wbHVnKHBsdWcpOw0KPiA+ICsNCj4gPiArCS8qIE9ubHkgYWxsb3cgYmxr
+c2l6ZWQgRElPIGZvciBub3cuDQo+ID4gKwkgKiBJbiB0aGVvcnkgd2UgY2FuIGhhbmRsZSBwYWdl
+IGFsaWduZWQgRElPIGluIGN1cnJlbnQgYmxvY2sgbGF5b3V0DQo+ID4gKwkgKiByZWFkL3dyaXRl
+IGNvZGUsIGJ1dCBpdCB3b3VsZCByZXF1aXJlIHNlcmlhbGl6YXRpb24gYmV0d2Vlbg0KPiA+ICsJ
+ICogY29uY3VycmVudCB3cml0ZXJzIGFuZCBpdCBpcyBmYXIgbGVzcyBlZmZlY2llbnQgdGhhbiBq
+dXN0IHNlbmQgSU8NCj4gPiArCSAqIHRvIE1EUy4NCj4gPiArCSAqLw0KPiA+ICsJaWYgKHBvcyAm
+IGJsa21hc2spDQo+ID4gKwkJcmV0dXJuIGZhbHNlOw0KPiA+ICsJZm9yIChzZWcgPSAwOyBzZWcg
+PCBucl9zZWdzOyBzZWcrKykgew0KPiA+ICsJCWFkZHIgPSAodW5zaWduZWQgbG9uZylpb3Zbc2Vn
+XS5pb3ZfYmFzZTsNCj4gPiArCQljb3VudCA9IGlvdltzZWddLmlvdl9sZW47DQo+ID4gKwkJaWYg
+KHVubGlrZWx5KChhZGRyICYgYmxrbWFzaykgfHwgKGNvdW50ICYgYmxrbWFzaykpKQ0KPiA+ICsJ
+CQlyZXR1cm4gZmFsc2U7DQo+ID4gKwl9DQo+ID4gIAlyZXR1cm4gdHJ1ZTsNCj4gPiAgfQ0KPiAN
+Cj4gQWdhaW4sIHRoaXMgY2FuIGFuZCBzaG91bGQgZ28gaW4gdGhlIGV4aXN0aW5nIG5mc19wYWdl
+aW9fb3BzIGVpdGhlciBpbg0KPiB0aGUgcGdfaW5pdCBvciBpbiB0aGUgcGdfdGVzdC4NCj4gDQpB
+cyBleHBsYWluIGluIHRoZSBvdGhlciBtYWlsLCBpdCBpcyBuZWNlc3NhcnkgdG8gaGF2ZSBwbmZz
+X2Rpb19iZWdpbi9lbmQsIHNvIEkgcHJlZmVyIHRvIGRvIHRoZSB0ZXN0IGFzIGVhcmx5IGFzIHBv
+c3NpYmxlLCB3aGljaCBpcyBpbiBwbmZzX2Rpb19iZWdpbi4NCg0KPiBBbHNvLCB3aHkgZG8geW91
+IGNvbnNpZGVyIGl0IHRvIGJlIGRpcmVjdCBpL28gc3BlY2lmaWM/IElmIHRoZQ0KPiBhcHBsaWNh
+dGlvbiBpcyB1c2luZyBieXRlIHJhbmdlIGxvY2tpbmcsIGFuZCB0aGUgbG9ja3MgYXJlbid0IHBh
+Z2UvYmxvY2sNCj4gYWxpZ25lZCB0aGVuIHlvdSBhcmUgaW4gdGhlIHNhbWUgcG9zaXRpb24gb2Yg
+aGF2aW5nIHRvIGRlYWwgd2l0aCBwYXJ0aWFsDQo+IHBhZ2Ugd3JpdGVzIGV2ZW4gaW4gdGhlIHJl
+YWQvd3JpdGUgZnJvbSBwYWdlIGNhY2hlIHNpdHVhdGlvbi4NCllvdSBhcmUgcmlnaHQgYWJvdXQg
+Ynl0ZSByYW5nZSBsb2NraW5nICsgYnVmZmVyZWQgSU8sIGFuZCBpdCBzaG91bGQgYmUgZml4ZWQg
+aW4gcGdfdGVzdCB3aXRoIGJlbGxvdyBwYXRjaCBhbmQgaXQgY291bGQgYmUgYSBzdGFibGUgY2Fu
+ZGlkYXRlLiBJdCBpcyBkaWZmZXJlbnQgZnJvbSBESU8gY2FzZSBiZWNhdXNlIGZvciBESU8gd2Ug
+aGF2ZSB0byBiZSBzdXJlIGVhY2ggcGFnZSBpcyBibG9ja3NpemUgYWxpZ25lZC4gQW5kIGl0IGNh
+bid0IGVhc2lseSBiZSBkb25lIGluIHBnX3Rlc3QgYmVjYXVzZSBpbiBwZ190ZXN0IHdlIG9ubHkg
+aGF2ZSBvbmUgbmZzX3BhZ2UgdG8gdGVzdCBhZ2FpbnN0Lg0KDQpUaGFua3MgZm9yIHJldmlld2lu
+Zy4NCg0KQ2hlZXJzLA0KVGFvDQoNCkZyb20gMTRhNGQ1ODNmYWU4ZWUwMWMzNGZkMTdkOTIzMDAx
+YWFkYTFkNDI2ZCBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206IFBlbmcgVGFvIDxiZXJn
+d29sZkBnbWFpbC5jb20+DQpEYXRlOiBGcmksIDI1IE1heSAyMDEyIDIxOjI1OjA3ICswODAwDQpT
+dWJqZWN0OiBbUEFUQ0hdIHBuZnNibG9jazogYmFpbCBvdXQgcGFnZSB1bmFsaWduZWQgSU8NCg0K
+YmxvY2sgbGF5b3V0IGRyaXZlciBjYW5ub3QgaGFuZGxlIHRoZXNlIElPLg0KDQpDYzogc3RhYmxl
+QHZnZXIua2VybmVsLm9yZw0KU2lnbmVkLW9mZi1ieTogUGVuZyBUYW8gPGJlcmd3b2xmQGdtYWls
+LmNvbT4NCi0tLQ0KIGZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91dC5jIHwgICAxNiArKysr
+KysrKysrKysrKy0tDQogMSBmaWxlcyBjaGFuZ2VkLCAxNCBpbnNlcnRpb25zKCspLCAyIGRlbGV0
+aW9ucygtKQ0KDQpkaWZmIC0tZ2l0IGEvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMg
+Yi9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYw0KaW5kZXggN2FlOGE2MC4uYTg0YTBk
+YSAxMDA2NDQNCi0tLSBhL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91dC5jDQorKysgYi9m
+cy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYw0KQEAgLTkyNSw2ICs5MjUsMTggQEAgbmZz
+NF9ibGtfZ2V0X2RldmljZWluZm8oc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlciwgY29uc3Qgc3Ry
+dWN0IG5mc19maCAqZmgsDQogCXJldHVybiBydjsNCiB9DQogDQorc3RhdGljIGJvb2wNCitibF9w
+Z190ZXN0KHN0cnVjdCBuZnNfcGFnZWlvX2Rlc2NyaXB0b3IgKnBnaW8sIHN0cnVjdCBuZnNfcGFn
+ZSAqcHJldiwNCisJICAgc3RydWN0IG5mc19wYWdlICpyZXEpDQorew0KKwkvKiBCYWlsIG91dCBw
+YWdlIHVubGlnbmVkIElPICovDQorCWlmIChyZXEtPndiX29mZnNldCB8fCByZXEtPndiX3BnYmFz
+ZSB8fA0KKwkgICAgcmVxLT53Yl9ieXRlcyAhPSBQQUdFX0NBQ0hFX1NJWkUpDQorCQlyZXR1cm4g
+ZmFsc2U7DQorDQorCXJldHVybiBwbmZzX2dlbmVyaWNfcGdfdGVzdChwZ2lvLCBwcmV2LCByZXEp
+Ow0KK30NCisNCiBzdGF0aWMgaW50DQogYmxfc2V0X2xheW91dGRyaXZlcihzdHJ1Y3QgbmZzX3Nl
+cnZlciAqc2VydmVyLCBjb25zdCBzdHJ1Y3QgbmZzX2ZoICpmaCkNCiB7DQpAQCAtOTk4LDEzICsx
+MDEwLDEzIEBAIGJsX2NsZWFyX2xheW91dGRyaXZlcihzdHJ1Y3QgbmZzX3NlcnZlciAqc2VydmVy
+KQ0KIA0KIHN0YXRpYyBjb25zdCBzdHJ1Y3QgbmZzX3BhZ2Vpb19vcHMgYmxfcGdfcmVhZF9vcHMg
+PSB7DQogCS5wZ19pbml0ID0gcG5mc19nZW5lcmljX3BnX2luaXRfcmVhZCwNCi0JLnBnX3Rlc3Qg
+PSBwbmZzX2dlbmVyaWNfcGdfdGVzdCwNCisJLnBnX3Rlc3QgPSBibF9wZ190ZXN0LA0KIAkucGdf
+ZG9pbyA9IHBuZnNfZ2VuZXJpY19wZ19yZWFkcGFnZXMsDQogfTsNCiANCiBzdGF0aWMgY29uc3Qg
+c3RydWN0IG5mc19wYWdlaW9fb3BzIGJsX3BnX3dyaXRlX29wcyA9IHsNCiAJLnBnX2luaXQgPSBw
+bmZzX2dlbmVyaWNfcGdfaW5pdF93cml0ZSwNCi0JLnBnX3Rlc3QgPSBwbmZzX2dlbmVyaWNfcGdf
+dGVzdCwNCisJLnBnX3Rlc3QgPSBibF9wZ190ZXN0LA0KIAkucGdfZG9pbyA9IHBuZnNfZ2VuZXJp
+Y19wZ193cml0ZXBhZ2VzLA0KIH07DQogDQotLSANCjEuNy43LjYNCg==
