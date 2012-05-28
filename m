@@ -1,153 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:38057 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932599Ab2EJNyi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 May 2012 09:54:38 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 06/12] mm: Add get_kernel_page[s] for pinning of kernel addresses for I/O
-Date: Thu, 10 May 2012 14:54:19 +0100
-Message-Id: <1336658065-24851-7-git-send-email-mgorman@suse.de>
-In-Reply-To: <1336658065-24851-1-git-send-email-mgorman@suse.de>
-References: <1336658065-24851-1-git-send-email-mgorman@suse.de>
+Received: from mail-we0-f174.google.com ([74.125.82.174]:38024 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751214Ab2E1QJo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 12:09:44 -0400
+Received: by mail-we0-f174.google.com with SMTP id u7so2021750wey.19
+        for <linux-nfs@vger.kernel.org>; Mon, 28 May 2012 09:09:44 -0700 (PDT)
+From: Benny Halevy <bhalevy@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 3/5] pnfsd: add debug printouts to pnfsd_roc
+Date: Mon, 28 May 2012 19:09:38 +0300
+Message-Id: <1338221378-22567-1-git-send-email-bhalevy@tonian.com>
+In-Reply-To: <4FC3A235.8090908@tonian.com>
+References: <4FC3A235.8090908@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch adds two new APIs get_kernel_pages() and get_kernel_page()
-that may be used to pin a vector of kernel addresses for IO. The initial
-user is expected to be NFS for allowing pages to be written to swap
-using aops->direct_IO(). Strictly speaking, swap-over-NFS only needs
-to pin one page for IO but it makes sense to express the API in terms
-of a vector and add a helper for pinning single pages.
-
-Signed-off-by: Mel Gorman <mgorman@suse.de>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
 ---
- include/linux/blk_types.h |    2 ++
- include/linux/fs.h        |    2 ++
- include/linux/mm.h        |    4 ++++
- mm/memory.c               |   53 +++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 61 insertions(+)
+ fs/nfsd/nfs4pnfsd.c |    6 ++++++
+ 1 files changed, 6 insertions(+), 0 deletions(-)
 
-diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
-index 4053cbd..1e62642 100644
---- a/include/linux/blk_types.h
-+++ b/include/linux/blk_types.h
-@@ -150,6 +150,7 @@ enum rq_flag_bits {
- 	__REQ_FLUSH_SEQ,	/* request for flush sequence */
- 	__REQ_IO_STAT,		/* account I/O stat */
- 	__REQ_MIXED_MERGE,	/* merge of different types, fail separately */
-+	__REQ_KERNEL, 		/* direct IO to kernel pages */
- 	__REQ_NR_BITS,		/* stops here */
- };
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index cfaac56..0a8d5b5 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -1227,7 +1227,9 @@ int nfs4_pnfs_return_layout(struct super_block *sb, struct svc_fh *current_fh,
+ void pnfsd_roc(struct nfs4_client *clp, struct nfs4_file *fp)
+ {
+ 	struct nfs4_layout *lo, *nextlp;
++	bool found = false;
  
-@@ -191,5 +192,6 @@ enum rq_flag_bits {
- #define REQ_IO_STAT		(1 << __REQ_IO_STAT)
- #define REQ_MIXED_MERGE		(1 << __REQ_MIXED_MERGE)
- #define REQ_SECURE		(1 << __REQ_SECURE)
-+#define REQ_KERNEL		(1 << __REQ_KERNEL)
++	dprintk("%s: fp=%p clp=%p", __func__, fp, clp);
+ 	spin_lock(&layout_lock);
+ 	list_for_each_entry_safe (lo, nextlp, &fp->fi_layouts, lo_perfile) {
+ 		struct nfsd4_pnfs_layoutreturn lr;
+@@ -1245,11 +1247,15 @@ void pnfsd_roc(struct nfs4_client *clp, struct nfs4_file *fp)
+ 		destroy_layout(lo); /* do not access lp after this */
  
- #endif /* __LINUX_BLK_TYPES_H */
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index d48e8b8..150bc85 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -165,6 +165,8 @@ struct inodes_stat_t {
- #define READ			0
- #define WRITE			RW_MASK
- #define READA			RWA_MASK
-+#define KERNEL_READ		(READ|REQ_KERNEL)
-+#define KERNEL_WRITE		(WRITE|REQ_KERNEL)
+ 		empty = list_empty(&fp->fi_layouts);
++		found = true;
++		dprintk("%s: fp=%p clp=%p: return on close", __func__, fp, clp);
+ 		fs_layout_return(fp->fi_inode->i_sb, fp->fi_inode, &lr,
+ 				 LR_FLAG_INTERN,
+ 				 empty ? PNFS_LAST_LAYOUT_NO_RECALLS : NULL);
+ 	}
+ 	spin_unlock(&layout_lock);
++	if (!found)
++		dprintk("%s: no layout found", __func__);
+ }
  
- #define READ_SYNC		(READ | REQ_SYNC)
- #define WRITE_SYNC		(WRITE | REQ_SYNC | REQ_NOIDLE)
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index 58cc925..cf4a730 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -1023,6 +1023,10 @@ int get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
- 			struct page **pages, struct vm_area_struct **vmas);
- int get_user_pages_fast(unsigned long start, int nr_pages, int write,
- 			struct page **pages);
-+struct kvec;
-+int get_kernel_pages(const struct kvec *iov, int nr_pages, int write,
-+			struct page **pages);
-+int get_kernel_page(unsigned long start, int write, struct page **pages);
- struct page *get_dump_page(unsigned long addr);
- 
- extern int try_to_release_page(struct page * page, gfp_t gfp_mask);
-diff --git a/mm/memory.c b/mm/memory.c
-index 6105f47..0bc990e7 100644
---- a/mm/memory.c
-+++ b/mm/memory.c
-@@ -1837,6 +1837,59 @@ next_page:
- EXPORT_SYMBOL(__get_user_pages);
- 
- /*
-+ * get_kernel_pages() - pin kernel pages in memory
-+ * @kiov:	An array of struct kvec structures
-+ * @nr_segs:	number of segments to pin
-+ * @write:	pinning for read/write, currently ignored
-+ * @pages:	array that receives pointers to the pages pinned.
-+ *		Should be at least nr_segs long.
-+ *
-+ * Returns number of pages pinned. This may be fewer than the number
-+ * requested. If nr_pages is 0 or negative, returns 0. If no pages
-+ * were pinned, returns -errno. Each page returned must be released
-+ * with a put_page() call when it is finished with.
-+ */
-+int get_kernel_pages(const struct kvec *kiov, int nr_segs, int write,
-+		struct page **pages)
-+{
-+	int seg;
-+
-+	for (seg = 0; seg < nr_segs; seg++) {
-+		if (WARN_ON(kiov[seg].iov_len != PAGE_SIZE))
-+			return seg;
-+
-+		/* virt_to_page sanity checks the PFN */
-+		pages[seg] = virt_to_page(kiov[seg].iov_base);
-+		page_cache_get(pages[seg]);
-+	}
-+
-+	return seg;
-+}
-+EXPORT_SYMBOL_GPL(get_kernel_pages);
-+
-+/*
-+ * get_kernel_page() - pin a kernel page in memory
-+ * @start:	starting kernel address
-+ * @write:	pinning for read/write, currently ignored
-+ * @pages:	array that receives pointer to the page pinned.
-+ *		Must be at least nr_segs long.
-+ *
-+ * Returns 1 if page is pinned. If the page was not pinned, returns
-+ * -errno. The page returned must be released with a put_page() call
-+ * when it is finished with.
-+ */
-+int get_kernel_page(unsigned long start, int write, struct page **pages)
-+{
-+	const struct kvec kiov = {
-+		.iov_base = (void *)start,
-+		.iov_len = PAGE_SIZE
-+	};
-+
-+	return get_kernel_pages(&kiov, 1, write, pages);
-+}
-+EXPORT_SYMBOL_GPL(get_kernel_page);
-+
-+/*
-  * fixup_user_fault() - manually resolve a user page fault
-  * @tsk:	the task_struct to use for page fault accounting, or
-  *		NULL if faults are not to be recorded.
+ void pnfs_expire_client(struct nfs4_client *clp)
 -- 
-1.7.9.2
+1.7.6.5
 
