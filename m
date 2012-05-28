@@ -1,63 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41221 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750887Ab2E2NNd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 May 2012 09:13:33 -0400
-Date: Tue, 29 May 2012 09:13:30 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Bryan Schumaker <bjschuma@netapp.com>
-Subject: Re: [PATCH] NFSD: TEST_STATEID should not return
- NFS4ERR_STALE_STATEID
-Message-ID: <20120529131330.GB2308@fieldses.org>
-References: <20120524192932.8296.44698.stgit@lebasque.1015granger.net>
- <20120525134636.GA28842@fieldses.org>
- <62C4F65F-B822-4B00-B7AC-185EF14E39D8@oracle.com>
- <B7E9175E-01AF-400D-9490-3E82F74478D5@oracle.com>
+Received: from mail-wi0-f172.google.com ([209.85.212.172]:63523 "EHLO
+	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753565Ab2E1Rz7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 13:55:59 -0400
+Received: by wibhj8 with SMTP id hj8so1910856wib.1
+        for <linux-nfs@vger.kernel.org>; Mon, 28 May 2012 10:55:58 -0700 (PDT)
+Message-ID: <4FC3BC2B.6060709@tonian.com>
+Date: Mon, 28 May 2012 20:55:55 +0300
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <B7E9175E-01AF-400D-9490-3E82F74478D5@oracle.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: Does our Kernel PNFSD-Server supports recurring layout_get with
+ open_state_id
+References: <4FBD7DE8.9090002@panasas.com> <4FBE2C8C.9090403@tonian.com> <4FBE3C4D.7050507@panasas.com> <4FC3A235.8090908@tonian.com> <4FC3A974.60107@panasas.com>
+In-Reply-To: <4FC3A974.60107@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, May 27, 2012 at 04:30:24PM -0400, Chuck Lever wrote:
-> Hi-
+On 2012-05-28 19:36, Boaz Harrosh wrote:
+> On 05/28/2012 07:05 PM, Benny Halevy wrote:
 > 
-> On May 25, 2012, at 7:30 PM, Chuck Lever wrote:
+>> Yup, see patchset in reply.
+>>
 > 
-> > On May 25, 2012, at 9:46 AM, J. Bruce Fields wrote:
-> > 
-> >> If you think it's worth checking for those buggy client cases, we could
-> >> instaed check that stateid->si_opaque.so_clid and cl->clientid agree.
-> >> That'd cover the special-stateid checks too.
-> > 
-> > That's interesting.  I can redrive this patch with this change.
 > 
-> Doesn't a positive find_stateid(cl, stateid) result guarantee that so_clid and clientid are the same?
+> That I wish you wouldn't do. I have a patchset pending that makes
+> major changes to all this and totally conflicts with your code.
 
-No, it only looks at the si_opaque.so_id, and assumes this stateid
-belongs to the given client.  The passed-in client was actually
-extracted from the sequence at the start of the compound:
+Sorry, I didn't know that.
 
-	nfsd4_sequence(...)
-	{
-		...
-		session = find_in_sessionid_hashtbl(&seq->sessionid);
-		...
-		cstate->session = session;
-	}
+> 
+> You can carry this for a while but I might revert your core
+> code in my new patchset.
 
-	nfsd4_free_stateid(...)
-	{
-		struct nfs4_client *cl = cstate->session->se_client;
-		...
-			... nfs4_validate_stateid(cl, &stateid->ts_id_stateid);
-	}
+I hope that at least it will all be for the better.
 
-So in theory a confused client sent a free_stateid referencing a stateid
-that belonged to a client other than the one that the session belonged
-to, and then we'd see this inconsistency.
+Benny
 
---b.
+> 
+> Sigh, more work for me.
+> 
+> Boaz
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
