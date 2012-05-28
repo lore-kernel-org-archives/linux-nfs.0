@@ -1,71 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:54644 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755487Ab2EVOq1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2012 10:46:27 -0400
-Message-ID: <4FBBA6BC.3070409@parallels.com>
-Date: Tue, 22 May 2012 18:46:20 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:63790 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750797Ab2E1RH0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 13:07:26 -0400
+Received: by dady13 with SMTP id y13so4351793dad.19
+        for <linux-nfs@vger.kernel.org>; Mon, 28 May 2012 10:07:26 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <1338222809.3472.13.camel@lade.trondhjem.org>
+References: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>
+ <1338096780-2763-4-git-send-email-bergwolf@gmail.com> <1338136717.3044.13.camel@lade.trondhjem.org>
+ <F19688880B763E40B28B2B462677FBF805F0BADF36@MX09A.corp.emc.com>
+ <1338176720.2265.8.camel@lade.trondhjem.org> <F19688880B763E40B28B2B462677FBF805F0BADF5D@MX09A.corp.emc.com>
+ <1338222809.3472.13.camel@lade.trondhjem.org>
+From: Peng Tao <tao.peng@emc.com>
+Date: Tue, 29 May 2012 01:07:05 +0800
+Message-ID: <CA+a=Yy5J8KaVNVWSwprUeZKsUMTV09C-OoaS59CUsd0ohii2OA@mail.gmail.com>
+Subject: Re: [PATCH 3/3] pnfsblock: bail out unaligned DIO
 To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH v3] NFS: put net on idr allocation failure
-References: <20120522073709.20602.33027.stgit@localhost.localdomain>   <20120522080307.21303.60025.stgit@localhost.localdomain>  <1337697459.4269.7.camel@lade.trondhjem.org>  <4FBBA59F.2050001@parallels.com> <1337697906.4269.10.camel@lade.trondhjem.org>
-In-Reply-To: <1337697906.4269.10.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 22.05.2012 18:45, Myklebust, Trond wrote:
-> On Tue, 2012-05-22 at 18:41 +0400, Stanislav Kinsbursky wrote:
->> On 22.05.2012 18:37, Myklebust, Trond wrote:
->>> On Tue, 2012-05-22 at 12:03 +0400, Stanislav Kinsbursky wrote:
->>>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
->>>> ---
->>>>    fs/nfs/client.c |    4 +++-
->>>>    1 files changed, 3 insertions(+), 1 deletions(-)
->>>>
->>>> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
->>>> index 44cd70f..ae29d4f 100644
->>>> --- a/fs/nfs/client.c
->>>> +++ b/fs/nfs/client.c
->>>> @@ -176,8 +176,10 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
->>>>
->>>>    #ifdef CONFIG_NFS_V4
->>>>    	err = nfs_get_cb_ident_idr(clp, cl_init->minorversion);
->>>> -	if (err)
->>>> +	if (err) {
->>>> +		put_net(clp->net);
->>>>    		goto error_cleanup;
->>>> +	}
->>>>
->>>>    	spin_lock_init(&clp->cl_lock);
->>>>    	INIT_DELAYED_WORK(&clp->cl_renewd, nfs4_renew_state);
->>>>
->>>
->>> Let's just move the actual get_net() call to the end of the function.
->>>
+On Tue, May 29, 2012 at 12:33 AM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Mon, 2012-05-28 at 00:26 -0400, tao.peng@emc.com wrote:
+>> > -----Original Message-----
+>> > From: Myklebust, Trond [mailto:Trond.Myklebust@netapp.com]
+>> > Sent: Monday, May 28, 2012 11:45 AM
+>> > To: Peng, Tao
+>> > Cc: bergwolf@gmail.com; linux-nfs@vger.kernel.org
+>> > Subject: RE: [PATCH 3/3] pnfsblock: bail out unaligned DIO
+>> >
+>> > On Sun, 2012-05-27 at 22:30 -0400, tao.peng@emc.com wrote:
+>> > > As explain in the other mail, it is necessary to have pnfs_dio_begin/end, so I prefer to do the test
+>> > as early as possible, which is in pnfs_dio_begin.
+>> >
+>> > There is no pnfs_dio_begin/end.
+>> OK. I will put DIO alignment tests inside pg_init.
 >>
->> Ok. But it will look a bit strange, like this:
->>
->> clp->net = net;
->> ...
->> nfs_get_cb_ident_idr
->> ...
->> get_net(clp->net)
->>
->> Or I can pass net to nfs_get_cb_ident_idr() as a parameter.
->> Which solution is more preferable&?
+>> And any comments on for stable patch in the thread ([PATCH] pnfsblock: bail out page unaligned IO)? If you agree, I will base DIO changes on top of it to avoid conflicts.
+>> There are reasons to test alignment at different place for buffer IO and DIO. For buffer IO, pg_init isn't the right place because we don't have nfs page there. For DIO, pg_test isn't the right place because we need to check cross page boundary.
 >
-> Just put the get_net() at the end. It doesn't matter if it looks a bit
-> odd: the intent is still obvious.
+> Since all pages in the struct nfs_pageio_descriptor are guaranteed to be
+> contiguous, you really only need to check the first and last page in the
+> series for alignment.
 >
+> pg_init() does take the first nfs_page request as its argument and so it
+> should be possible to check the alignment of the first page in the
+> series there.
+> You can then check the alignment of the last page in your
+> ->write_pagelist() and return PNFS_NOT_ATTEMPTED if appropriate.
+>
+Thanks. Will do it as you suggested.
 
-Sure.
+> Note that all applications that use O_DIRECT are expected to use aligned
+> memory, since that's what the open() manpage implies is the safe option
+> for all filesystems. Unaligned memory is therefore not something that we
+> need to optimise for.
+>
+do_blockdev_direct_IO() is checking memory alignment for direct IO. Is
+there any difference between NFS and other FS here?
 
--- 
-Best regards,
-Stanislav Kinsbursky
+Cheers,
+Tao
