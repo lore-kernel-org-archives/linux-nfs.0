@@ -1,302 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:58612 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753110Ab2EOJKY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 05:10:24 -0400
-Message-ID: <4FB21BE9.8080205@panasas.com>
-Date: Tue, 15 May 2012 12:03:37 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Jan Kara <jack@suse.cz>
-CC: Josef Bacik <josef@redhat.com>, <linux-ext4@vger.kernel.org>,
-        <linux-nfs@vger.kernel.org>, <bfields@fieldses.org>,
-        <adilger@dilger.ca>, <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix how i_version is modified and turn it on by
- default
-References: <1337021239-2790-1-git-send-email-josef@redhat.com> <20120514224427.GY5353@quack.suse.cz> <4FB20DC5.2040202@panasas.com>
-In-Reply-To: <4FB20DC5.2040202@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mail-we0-f174.google.com ([74.125.82.174]:38024 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751214Ab2E1QJZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 12:09:25 -0400
+Received: by weyu7 with SMTP id u7so2021750wey.19
+        for <linux-nfs@vger.kernel.org>; Mon, 28 May 2012 09:09:23 -0700 (PDT)
+From: Benny Halevy <bhalevy@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/5] pnfsd: make return_on_close state layout-global for the file/client
+Date: Mon, 28 May 2012 19:09:18 +0300
+Message-Id: <1338221358-22447-1-git-send-email-bhalevy@tonian.com>
+In-Reply-To: <4FC3A235.8090908@tonian.com>
+References: <4FC3A235.8090908@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/15/2012 11:03 AM, Boaz Harrosh wrote:
+As per RFC5661 errata #3226
+http://www.ietf.org/mail-archive/web/nfsv4/current/msg10965.html
+Once the server returns the return_on_close flag set, all the layout
+for that client will be implicitly returned on last close.
 
-> On 05/15/2012 01:44 AM, Jan Kara wrote:
-> 
->> On Mon 14-05-12 14:47:19, Josef Bacik wrote:
->>> This makes MS_I_VERSION be turned on by default.  Ext4 had been
->>> unconditionally doing i_version++ in a few cases anway so the mount option
->>> was kind of silly.  This patch also removes the update in mark_inode_dirty
->>> and makes all of the cases where we update ctime also do inode_inc_iversion.
->>> file_update_time takes care of the write case and all the places where we
->>> update iversion are protected by the i_mutex so there should be no extra
->>> i_lock overhead in the normal non-exported fs case.  Thanks,
->>   Looks OK but it seems slightly fragile (forgetting to update i_version
->> when we add a place where we update i_ctime looks rather easy). So maybe we
->> should have a small helper like ext4_inode_update_time() which would update
->> c/mtime and i_version?
->>
->> 								Honza
->>  
-> 
-> 
-> Exactly my thought. And there is already an helper function - inode_inc_iversion()
-> But I agree that a name change is appropriate.
-> 
+Reported-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfsd/nfs4pnfsd.c |   19 ++++++++++++++-----
+ fs/nfsd/pnfsd.h     |    2 +-
+ 2 files changed, 15 insertions(+), 6 deletions(-)
 
-
-Rrrr, strike that, need that morning coffee now. 
-
-But yes an helper was what I thought as well.
-
-Sorry
-Boaz
-
-> Cheers
-> Boaz
-> 
->>> Signed-off-by: Josef Bacik <josef@redhat.com>
->>> ---
->>>  fs/ext4/acl.c      |    1 +
->>>  fs/ext4/extents.c  |    3 +++
->>>  fs/ext4/indirect.c |    1 +
->>>  fs/ext4/inode.c    |    3 ---
->>>  fs/ext4/ioctl.c    |    2 ++
->>>  fs/ext4/namei.c    |   14 ++++++++++----
->>>  fs/ext4/super.c    |    5 +++--
->>>  fs/ext4/xattr.c    |    1 +
->>>  8 files changed, 21 insertions(+), 9 deletions(-)
->>>
->>> diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
->>> index a5c29bb..fb3ff80 100644
->>> --- a/fs/ext4/acl.c
->>> +++ b/fs/ext4/acl.c
->>> @@ -202,6 +202,7 @@ ext4_set_acl(handle_t *handle, struct inode *inode, int type,
->>>  			if (error < 0)
->>>  				return error;
->>>  			else {
->>> +				inode_inc_iversion(inode);
->>>  				inode->i_ctime = ext4_current_time(inode);
->>>  				ext4_mark_inode_dirty(handle, inode);
->>>  				if (error == 0)
->>> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
->>> index 74f23c2..a9ac029 100644
->>> --- a/fs/ext4/extents.c
->>> +++ b/fs/ext4/extents.c
->>> @@ -4249,6 +4249,7 @@ out_stop:
->>>  	if (inode->i_nlink)
->>>  		ext4_orphan_del(handle, inode);
->>>  
->>> +	inode_inc_iversion(inode);
->>>  	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
->>>  	ext4_mark_inode_dirty(handle, inode);
->>>  	ext4_journal_stop(handle);
->>> @@ -4261,6 +4262,7 @@ static void ext4_falloc_update_inode(struct inode *inode,
->>>  
->>>  	if (update_ctime) {
->>>  		now = current_fs_time(inode->i_sb);
->>> +		inode_inc_iversion(inode);
->>>  		if (!timespec_equal(&inode->i_ctime, &now))
->>>  			inode->i_ctime = now;
->>>  	}
->>> @@ -4905,6 +4907,7 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
->>>  
->>>  out:
->>>  	ext4_orphan_del(handle, inode);
->>> +	inode_inc_iversion(inode);
->>>  	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
->>>  	ext4_mark_inode_dirty(handle, inode);
->>>  	ext4_journal_stop(handle);
->>> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
->>> index 830e1b2..45ed6d4 100644
->>> --- a/fs/ext4/indirect.c
->>> +++ b/fs/ext4/indirect.c
->>> @@ -1476,6 +1476,7 @@ do_indirects:
->>>  
->>>  out_unlock:
->>>  	up_write(&ei->i_data_sem);
->>> +	inode_inc_iversion(inode);
->>>  	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
->>>  	ext4_mark_inode_dirty(handle, inode);
->>>  
->>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->>> index feaa82f..d11b4e5 100644
->>> --- a/fs/ext4/inode.c
->>> +++ b/fs/ext4/inode.c
->>> @@ -4314,9 +4314,6 @@ int ext4_mark_iloc_dirty(handle_t *handle,
->>>  {
->>>  	int err = 0;
->>>  
->>> -	if (test_opt(inode->i_sb, I_VERSION))
->>> -		inode_inc_iversion(inode);
->>> -
->>>  	/* the do_update_inode consumes one bh->b_count */
->>>  	get_bh(iloc->bh);
->>>  
->>> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
->>> index 6eee255..c79b874 100644
->>> --- a/fs/ext4/ioctl.c
->>> +++ b/fs/ext4/ioctl.c
->>> @@ -120,6 +120,7 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
->>>  		ei->i_flags = flags;
->>>  
->>>  		ext4_set_inode_flags(inode);
->>> +		inode_inc_iversion(inode);
->>>  		inode->i_ctime = ext4_current_time(inode);
->>>  
->>>  		err = ext4_mark_iloc_dirty(handle, inode, &iloc);
->>> @@ -168,6 +169,7 @@ flags_out:
->>>  		}
->>>  		err = ext4_reserve_inode_write(handle, inode, &iloc);
->>>  		if (err == 0) {
->>> +			inode_inc_iversion(inode);
->>>  			inode->i_ctime = ext4_current_time(inode);
->>>  			inode->i_generation = generation;
->>>  			err = ext4_mark_iloc_dirty(handle, inode, &iloc);
->>> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
->>> index 2043f48..9bb533a 100644
->>> --- a/fs/ext4/namei.c
->>> +++ b/fs/ext4/namei.c
->>> @@ -1316,9 +1316,9 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
->>>  	 * happen is that the times are slightly out of date
->>>  	 * and/or different from the directory change time.
->>>  	 */
->>> +	inode_inc_iversion(dir);
->>>  	dir->i_mtime = dir->i_ctime = ext4_current_time(dir);
->>>  	ext4_update_dx_flag(dir);
->>> -	dir->i_version++;
->>>  	ext4_mark_inode_dirty(handle, dir);
->>>  	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
->>>  	err = ext4_handle_dirty_metadata(handle, dir, bh);
->>> @@ -1668,7 +1668,6 @@ static int ext4_delete_entry(handle_t *handle,
->>>  					blocksize);
->>>  			else
->>>  				de->inode = 0;
->>> -			dir->i_version++;
->>>  			BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
->>>  			err = ext4_handle_dirty_metadata(handle, dir, bh);
->>>  			if (unlikely(err)) {
->>> @@ -2158,13 +2157,14 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
->>>  		ext4_warning(inode->i_sb,
->>>  			     "empty directory has too many links (%d)",
->>>  			     inode->i_nlink);
->>> -	inode->i_version++;
->>>  	clear_nlink(inode);
->>>  	/* There's no need to set i_disksize: the fact that i_nlink is
->>>  	 * zero will ensure that the right thing happens during any
->>>  	 * recovery. */
->>>  	inode->i_size = 0;
->>>  	ext4_orphan_add(handle, inode);
->>> +	inode_inc_iversion(inode);
->>> +	inode_inc_iversion(dir);
->>>  	inode->i_ctime = dir->i_ctime = dir->i_mtime = ext4_current_time(inode);
->>>  	ext4_mark_inode_dirty(handle, inode);
->>>  	ext4_dec_count(handle, dir);
->>> @@ -2218,12 +2218,14 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
->>>  	retval = ext4_delete_entry(handle, dir, de, bh);
->>>  	if (retval)
->>>  		goto end_unlink;
->>> +	inode_inc_iversion(dir);
->>>  	dir->i_ctime = dir->i_mtime = ext4_current_time(dir);
->>>  	ext4_update_dx_flag(dir);
->>>  	ext4_mark_inode_dirty(handle, dir);
->>>  	drop_nlink(inode);
->>>  	if (!inode->i_nlink)
->>>  		ext4_orphan_add(handle, inode);
->>> +	inode_inc_iversion(inode);
->>>  	inode->i_ctime = ext4_current_time(inode);
->>>  	ext4_mark_inode_dirty(handle, inode);
->>>  	retval = 0;
->>> @@ -2363,6 +2365,7 @@ retry:
->>>  	if (IS_DIRSYNC(dir))
->>>  		ext4_handle_sync(handle);
->>>  
->>> +	inode_inc_iversion(inode);
->>>  	inode->i_ctime = ext4_current_time(inode);
->>>  	ext4_inc_count(handle, inode);
->>>  	ihold(inode);
->>> @@ -2470,7 +2473,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
->>>  		if (EXT4_HAS_INCOMPAT_FEATURE(new_dir->i_sb,
->>>  					      EXT4_FEATURE_INCOMPAT_FILETYPE))
->>>  			new_de->file_type = old_de->file_type;
->>> -		new_dir->i_version++;
->>> +		inode_inc_iversion(new_dir);
->>>  		new_dir->i_ctime = new_dir->i_mtime =
->>>  					ext4_current_time(new_dir);
->>>  		ext4_mark_inode_dirty(handle, new_dir);
->>> @@ -2488,6 +2491,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
->>>  	 * Like most other Unix systems, set the ctime for inodes on a
->>>  	 * rename.
->>>  	 */
->>> +	inode_inc_iversion(old_inode);
->>>  	old_inode->i_ctime = ext4_current_time(old_inode);
->>>  	ext4_mark_inode_dirty(handle, old_inode);
->>>  
->>> @@ -2521,8 +2525,10 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
->>>  
->>>  	if (new_inode) {
->>>  		ext4_dec_count(handle, new_inode);
->>> +		inode_inc_iversion(new_inode);
->>>  		new_inode->i_ctime = ext4_current_time(new_inode);
->>>  	}
->>> +	inode_inc_iversion(old_dir);
->>>  	old_dir->i_ctime = old_dir->i_mtime = ext4_current_time(old_dir);
->>>  	ext4_update_dx_flag(old_dir);
->>>  	if (dir_bh) {
->>> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
->>> index 502c61f..5866d38 100644
->>> --- a/fs/ext4/super.c
->>> +++ b/fs/ext4/super.c
->>> @@ -1813,8 +1813,7 @@ set_qf_format:
->>>  				 "Ignoring deprecated bh option");
->>>  			break;
->>>  		case Opt_i_version:
->>> -			set_opt(sb, I_VERSION);
->>> -			sb->s_flags |= MS_I_VERSION;
->>> +			/* On by default now */
->>>  			break;
->>>  		case Opt_nodelalloc:
->>>  			clear_opt(sb, DELALLOC);
->>> @@ -3132,6 +3131,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->>>  		goto out_free_orig;
->>>  	}
->>>  	sb->s_fs_info = sbi;
->>> +	sb->s_flags |= MS_I_VERSION;
->>>  	sbi->s_mount_opt = 0;
->>>  	sbi->s_resuid = EXT4_DEF_RESUID;
->>>  	sbi->s_resgid = EXT4_DEF_RESGID;
->>> @@ -4831,6 +4831,7 @@ static int ext4_quota_off(struct super_block *sb, int type)
->>>  	handle = ext4_journal_start(inode, 1);
->>>  	if (IS_ERR(handle))
->>>  		goto out;
->>> +	inode_inc_iversion(inode);
->>>  	inode->i_mtime = inode->i_ctime = CURRENT_TIME;
->>>  	ext4_mark_inode_dirty(handle, inode);
->>>  	ext4_journal_stop(handle);
->>> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
->>> index 93a00d8..48a3412 100644
->>> --- a/fs/ext4/xattr.c
->>> +++ b/fs/ext4/xattr.c
->>> @@ -1048,6 +1048,7 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
->>>  	}
->>>  	if (!error) {
->>>  		ext4_xattr_update_super_block(handle, inode->i_sb);
->>> +		inode_inc_iversion(inode);
->>>  		inode->i_ctime = ext4_current_time(inode);
->>>  		if (!value)
->>>  			ext4_clear_inode_state(inode, EXT4_STATE_NO_EXPAND);
->>> -- 
->>> 1.7.7.6
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index 9f94cd0..a95e96e 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -161,6 +161,7 @@ void pnfs_clear_device_notify(struct nfs4_client *clp)
+ 	spin_lock(&layout_lock);
+ 	list_add(&new->ls_perfile, &fp->fi_layout_states);
+ 	spin_unlock(&layout_lock);
++	new->ls_roc = false;
+ 	return new;
+ }
+ 
+@@ -286,6 +287,15 @@ static void update_layout_stateid(struct nfs4_layout_state *ls, stateid_t *sid)
+ 	spin_unlock(&layout_lock);
+ }
+ 
++static void update_layout_roc(struct nfs4_layout_state *ls, bool roc)
++{
++	if (roc) {
++		ls->ls_roc = true;
++		dprintk("%s: Marked return_on_close on layoutstate %p\n",
++			__func__, ls);
++	}
++}
++
+ static void
+ init_layout(struct nfs4_layout *lp,
+ 	    struct nfs4_layout_state *ls,
+@@ -293,8 +303,7 @@ static void update_layout_stateid(struct nfs4_layout_state *ls, stateid_t *sid)
+ 	    struct nfs4_client *clp,
+ 	    struct svc_fh *current_fh,
+ 	    struct nfsd4_layout_seg *seg,
+-	    stateid_t *stateid,
+-	    bool roc)
++	    stateid_t *stateid)
+ {
+ 	dprintk("pNFS %s: lp %p ls %p clp %p fp %p ino %p\n", __func__,
+ 		lp, ls, clp, fp, fp->fi_inode);
+@@ -305,7 +314,6 @@ static void update_layout_stateid(struct nfs4_layout_state *ls, stateid_t *sid)
+ 	memcpy(&lp->lo_seg, seg, sizeof(lp->lo_seg));
+ 	get_layout_state(ls);		/* put on destroy_layout */
+ 	lp->lo_state = ls;
+-	lp->lo_roc = roc;
+ 	update_layout_stateid(ls, stateid);
+ 	list_add_tail(&lp->lo_perclnt, &clp->cl_layouts);
+ 	list_add_tail(&lp->lo_perfile, &fp->fi_layouts);
+@@ -811,6 +819,7 @@ struct super_block *
+ 
+ 	lgp->lg_seg = res.lg_seg;
+ 	lgp->lg_roc = res.lg_return_on_close;
++	update_layout_roc(ls, res.lg_return_on_close);
+ 
+ 	/* SUCCESS!
+ 	 * Can the new layout be merged into an existing one?
+@@ -820,7 +829,7 @@ struct super_block *
+ 		goto out_freelayout;
+ 
+ 	/* Can't merge, so let's initialize this new layout */
+-	init_layout(lp, ls, fp, clp, lgp->lg_fhp, &res.lg_seg, &lgp->lg_sid, res.lg_return_on_close);
++	init_layout(lp, ls, fp, clp, lgp->lg_fhp, &res.lg_seg, &lgp->lg_sid);
+ out_unlock:
+ 	if (ls)
+ 		put_layout_state(ls);
+@@ -1225,7 +1234,7 @@ void pnfsd_roc(struct nfs4_client *clp, struct nfs4_file *fp)
+ 		bool empty;
+ 
+ 		/* Check for a match */
+-		if (!lo->lo_roc || lo->lo_client != clp)
++		if (!lo->lo_state->ls_roc || lo->lo_client != clp)
+ 			continue;
+ 
+ 		/* Return the layout */
+diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
+index f0862fb..e960fd3 100644
+--- a/fs/nfsd/pnfsd.h
++++ b/fs/nfsd/pnfsd.h
+@@ -45,6 +45,7 @@ struct nfs4_layout_state {
+ 	struct kref		ls_ref;
+ 	struct nfs4_stid	ls_stid;
+ 	struct list_head	ls_perfile;
++	bool			ls_roc;
+ };
+ 
+ /* outstanding layout */
+@@ -55,7 +56,6 @@ struct nfs4_layout {
+ 	struct nfs4_client		*lo_client;
+ 	struct nfs4_layout_state	*lo_state;
+ 	struct nfsd4_layout_seg		lo_seg;
+-	bool				lo_roc;
+ };
+ 
+ struct pnfs_inval_state {
+-- 
+1.7.6.5
 
