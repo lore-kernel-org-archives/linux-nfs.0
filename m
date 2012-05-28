@@ -1,39 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.14.82]:41516 "EHLO
-	hellskitchen.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750835Ab2EQLxj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 May 2012 07:53:39 -0400
-Date: Thu, 17 May 2012 07:53:30 -0400
-From: Jim Rees <rees@umich.edu>
-To: Mike Frysinger <vapier@gentoo.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] osd_login: fix DESTDIR install
-Message-ID: <20120517115330.GA3733@umich.edu>
-References: <1337232243-18088-1-git-send-email-vapier@gentoo.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1337232243-18088-1-git-send-email-vapier@gentoo.org>
+Received: from mail-wi0-f178.google.com ([209.85.212.178]:39019 "EHLO
+	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751214Ab2E1QJe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 12:09:34 -0400
+Received: by wibhn6 with SMTP id hn6so1859146wib.1
+        for <linux-nfs@vger.kernel.org>; Mon, 28 May 2012 09:09:32 -0700 (PDT)
+From: Benny Halevy <bhalevy@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/5] SQUASHME: pnfsd: use LR_FLAG_INTERN for pnfsd_roc implicit layout return
+Date: Mon, 28 May 2012 19:09:29 +0300
+Message-Id: <1338221369-22515-1-git-send-email-bhalevy@tonian.com>
+In-Reply-To: <4FC3A235.8090908@tonian.com>
+References: <4FC3A235.8090908@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Mike Frysinger wrote:
+The client is not expired in the case, but rather we internally simulate
+a layout return based on return_on_close.
 
-  diff --git a/utils/osd_login/Makefile.am b/utils/osd_login/Makefile.am
-  index adc493a..c85584c 100644
-  --- a/utils/osd_login/Makefile.am
-  +++ b/utils/osd_login/Makefile.am
-  @@ -1,12 +1,11 @@
-   ## Process this file with automake to produce Makefile.in
-   
-  -OSD_LOGIN_FILES= osd_login
-  -
-  -EXTRA_DIST= $(OSD_LOGIN_FILES)
-  +# These scripts go in /sbin (not /usr/sbin), and that cannot be
-  +# overriden at config time.
-  +sbindir = /sbin
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfsd/nfs4pnfsd.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-You misspelled "overridden."  Yes, I know you just copied this line from
-mount/Makefile.am, but there is no sense compounding the error.
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index a95e96e..cfaac56 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -1246,7 +1246,7 @@ void pnfsd_roc(struct nfs4_client *clp, struct nfs4_file *fp)
+ 
+ 		empty = list_empty(&fp->fi_layouts);
+ 		fs_layout_return(fp->fi_inode->i_sb, fp->fi_inode, &lr,
+-				 LR_FLAG_EXPIRE,
++				 LR_FLAG_INTERN,
+ 				 empty ? PNFS_LAST_LAYOUT_NO_RECALLS : NULL);
+ 	}
+ 	spin_unlock(&layout_lock);
+-- 
+1.7.6.5
 
-Also it might be worth mentioning in the comment why we have this
-restriction.
