@@ -1,46 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38422 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759494Ab2EIO0S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 May 2012 10:26:18 -0400
-Date: Wed, 9 May 2012 10:26:17 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: per-net rpc shutdown
-Message-ID: <20120509142617.GA24233@fieldses.org>
+Received: from natasha.panasas.com ([67.152.220.90]:47271 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753895Ab2E1L0l (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 07:26:41 -0400
+Message-ID: <4FC360D2.4030006@panasas.com>
+Date: Mon, 28 May 2012 14:26:10 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+To: <tao.peng@emc.com>, Sorin Faibish <sfaibish@emc.com>
+CC: <Trond.Myklebust@netapp.com>, <bergwolf@gmail.com>,
+        <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/3] pnfsblock: bail out unaligned DIO
+References: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>  <1338096780-2763-4-git-send-email-bergwolf@gmail.com> <1338136717.3044.13.camel@lade.trondhjem.org> <F19688880B763E40B28B2B462677FBF805F0BADF36@MX09A.corp.emc.com>
+In-Reply-To: <F19688880B763E40B28B2B462677FBF805F0BADF36@MX09A.corp.emc.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Reviewing your more recent patches I think we have a problem with some
-of the code that's already merged.  See the comment in svc_shutdown_net:
+On 05/28/2012 05:30 AM, tao.peng@emc.com wrote:
 
-	void svc_shutdown_net(struct svc_serv *serv, struct net *net)
-	{               
-		/*      
-		 * The set of xprts (contained in the sv_tempsocks and
-		 * sv_permsocks lists) is now constant, since it is modified
-		 * only by accepting new sockets (done by service threads in
-		 * svc_recv) or aging old ones (done by sv_temptimer), or
-		 * configuration changes (excluded by whatever locking the
-		 * caller is using--nfsd_mutex in the case of nfsd).  So it's
-		 * safe to traverse those lists and shut everything down:
-		 */       
-		svc_close_net(serv, net);
-	
-		if (serv->sv_shutdown)
-			serv->sv_shutdown(serv, net);
-	}
+>> -----Original Message-----
+>> From: Myklebust, Trond [mailto:Trond.Myklebust@netapp.com]
 
-So we depend on the fact that neither the server threads nor
-sv_temptimer are running here to be able to safely traverse those lists
-of sockets.
+<>
 
-But it looks to me like that's no longer true--we're shutting down just
-one namespace here, and others may still be running.  If so and if they
-modify sv_tempsocks or sv_permsocks while we're running through them
-then we're going to get a crash.
+>> Also, why do you consider it to be direct i/o specific? If the
+>> application is using byte range locking, and the locks aren't page/block
+>> aligned then you are in the same position of having to deal with partial
+>> page writes even in the read/write from page cache situation.
 
---b.
+
+> You are right about byte range locking + buffered IO, and it should
+> be fixed in pg_test with bellow patch and it could be a stable
+> candidate. 
+
+
+What?? please explain. It sounds like you are saying that there is a
+very *serious* bug in current block-layout.
+
+>From my experiment I know that lots and lots of IO is done none-paged
+aligned even in buffered IO. Actually NFS goes to great length not to do
+the usual read-modify-write per page, but keeps the byte range that
+was written per page and only RPCs the exact offset-length of the modification.
+Because by definition NFS is byte aligned IO, not "blocks" or "sectors".
+
+Please explain what happens now. Is it a data corruption? Or just
+performance slowness.
+
+I don't understand. Don't you do the proper read-copy-modify-write that's
+mandated by block layout RFC? byte aligned? And what are sectors and PAGES
+got to do with it? I thought all IO must be "block" aligned.
+
+In objects-layout we have even worse alignment constrains with raid5
+(stripe_size alignment). It was needed to do a (very simple BTW)
+read-modify-write. Involving not just partial pages but also full pages read.
+BTW we read into the page-cache the surrounding pages, so not to read them multiple
+times.
+
+> It is different from DIO case because for DIO we have to
+> be sure each page is blocksize aligned. And it can't easily be done
+> in pg_test because in pg_test we only have one nfs_page to test
+> against.
+> 
+
+<snip>
+
+> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+> index 7ae8a60..a84a0da 100644
+> --- a/fs/nfs/blocklayout/blocklayout.c
+> +++ b/fs/nfs/blocklayout/blocklayout.c
+> @@ -925,6 +925,18 @@ nfs4_blk_get_deviceinfo(struct nfs_server *server, const struct nfs_fh *fh,
+>  	return rv;
+>  }
+>  
+> +static bool
+> +bl_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+> +	   struct nfs_page *req)
+> +{
+> +	/* Bail out page unligned IO */
+> +	if (req->wb_offset || req->wb_pgbase ||
+> +	    req->wb_bytes != PAGE_CACHE_SIZE)
+> +		return false;
+> +
+
+
+This is very serious. Not many applications will currently pass
+this test. (And hence will not do direct IO)
+
+What happens today without this patch?
+
+> +	return pnfs_generic_pg_test(pgio, prev, req);
+> +}
+> +
+
+
+<>
+
+Thanks
+Boaz
