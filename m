@@ -1,64 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:27092 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754655Ab2EQM2P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 May 2012 08:28:15 -0400
-Message-ID: <4FB4EEBF.3040005@RedHat.com>
-Date: Thu, 17 May 2012 08:27:43 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from natasha.panasas.com ([67.152.220.90]:54347 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753188Ab2E1Qxo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 12:53:44 -0400
+Message-ID: <4FC3AD86.7040509@panasas.com>
+Date: Mon, 28 May 2012 19:53:26 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-To: Mike Frysinger <vapier@gentoo.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] osd_login: fix DESTDIR install
-References: <1337232243-18088-1-git-send-email-vapier@gentoo.org>
-In-Reply-To: <1337232243-18088-1-git-send-email-vapier@gentoo.org>
-Content-Type: text/plain; charset=UTF-8
+To: Benny Halevy <bhalevy@tonian.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/5] pnfsd: add debug printouts to pnfsd_roc
+References: <4FC3A235.8090908@tonian.com> <1338221378-22567-1-git-send-email-bhalevy@tonian.com>
+In-Reply-To: <1338221378-22567-1-git-send-email-bhalevy@tonian.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 05/28/2012 07:09 PM, Benny Halevy wrote:
+
+> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
 
 
-On 05/17/2012 01:24 AM, Mike Frysinger wrote:
-> If the destination dir doesn't exist, the current install fails:
-> make  install-data-hook
-> make[4]: Entering directory `/var/tmp/portage/net-fs/nfs-utils-1.2.6/work/nfs-utils-1.2.6/utils/osd_login'
-> /usr/bin/install -c --mode 755 osd_login /var/tmp/portage/net-fs/nfs-utils-1.2.6/image//sbin/osd_login
-> /usr/bin/install: cannot create regular file ‘/var/tmp/portage/net-fs/nfs-utils-1.2.6/image//sbin/osd_login’: No such file or directory
-> make[4]: *** [install-data-hook] Error 1
-> 
-> Rewrite the code to use automake's existing script support rather
-> than trying to install the file by hand.
-> 
-> Reported-by: Branko BAdrljica <brankob@avtomatika.com>
-> Signed-off-by: Mike Frysinger <vapier@gentoo.org>I
-I took Neil's patch... commit d4d3920 which basically does
-the same thing... (I believe)...  
+Benny I disagree with this patch.
 
-steved.
- 
+Not specifically with the print but with the !found print.
+
+pnfsd_roc is always called layouts or not. So these
+!found print are bogus.
+
 > ---
->  utils/osd_login/Makefile.am |   11 +++++------
->  1 files changed, 5 insertions(+), 6 deletions(-)
+>  fs/nfsd/nfs4pnfsd.c |    6 ++++++
+>  1 files changed, 6 insertions(+), 0 deletions(-)
 > 
-> diff --git a/utils/osd_login/Makefile.am b/utils/osd_login/Makefile.am
-> index adc493a..c85584c 100644
-> --- a/utils/osd_login/Makefile.am
-> +++ b/utils/osd_login/Makefile.am
-> @@ -1,12 +1,11 @@
->  ## Process this file with automake to produce Makefile.in
+> diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+> index cfaac56..0a8d5b5 100644
+> --- a/fs/nfsd/nfs4pnfsd.c
+> +++ b/fs/nfsd/nfs4pnfsd.c
+> @@ -1227,7 +1227,9 @@ int nfs4_pnfs_return_layout(struct super_block *sb, struct svc_fh *current_fh,
+>  void pnfsd_roc(struct nfs4_client *clp, struct nfs4_file *fp)
+>  {
+>  	struct nfs4_layout *lo, *nextlp;
+> +	bool found = false;
 >  
-> -OSD_LOGIN_FILES= osd_login
-> -
-> -EXTRA_DIST= $(OSD_LOGIN_FILES)
-> +# These scripts go in /sbin (not /usr/sbin), and that cannot be
-> +# overriden at config time.
-> +sbindir = /sbin
+> +	dprintk("%s: fp=%p clp=%p", __func__, fp, clp);
+>  	spin_lock(&layout_lock);
+>  	list_for_each_entry_safe (lo, nextlp, &fp->fi_layouts, lo_perfile) {
+>  		struct nfsd4_pnfs_layoutreturn lr;
+> @@ -1245,11 +1247,15 @@ void pnfsd_roc(struct nfs4_client *clp, struct nfs4_file *fp)
+>  		destroy_layout(lo); /* do not access lp after this */
 >  
-> -all-local: $(OSD_LOGIN_FILES)
-> +OSD_LOGIN_FILES= osd_login
+>  		empty = list_empty(&fp->fi_layouts);
+> +		found = true;
+> +		dprintk("%s: fp=%p clp=%p: return on close", __func__, fp, clp);
+>  		fs_layout_return(fp->fi_inode->i_sb, fp->fi_inode, &lr,
+>  				 LR_FLAG_INTERN,
+>  				 empty ? PNFS_LAST_LAYOUT_NO_RECALLS : NULL);
+
+
+fs_layout_return already prints for each call. So we should only add one
+global print so to know we came from ROC
+
+Please don't fix it. I have this covered in my patches. In fact this
+function is totally changed.
+
+>  	}
+>  	spin_unlock(&layout_lock);
+> +	if (!found)
+> +		dprintk("%s: no layout found", __func__);
+
+
+Again please no prints here. pnfsd_roc is always called unconditionally
+from last close.
+(And found should be conditional on SUNRPC_DEBUG if is left)
+
+>  }
 >  
-> -install-data-hook:
-> -	$(INSTALL) --mode 755 osd_login $(DESTDIR)/sbin/osd_login
-> +sbin_SCRIPTS= osd_login
->  
->  MAINTAINERCLEANFILES = Makefile.in
+>  void pnfs_expire_client(struct nfs4_client *clp)
+
+
+Thanks
+Boaz
