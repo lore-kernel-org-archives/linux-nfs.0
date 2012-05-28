@@ -1,159 +1,114 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:3245 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752957Ab2EYPht (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 May 2012 11:37:49 -0400
-Subject: Re: [PATCH 4/4] SUNRPC: Use gssproxy upcall for nfsd's RPCGSS
- authentication.
-From: Simo Sorce <simo@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-In-Reply-To: <20120525140501.GB28842@fieldses.org>
-References: <1337087550-9821-1-git-send-email-simo@redhat.com>
-	 <1337087550-9821-5-git-send-email-simo@redhat.com>
-	 <20120522224818.GA6435@fieldses.org>
-	 <1337833911.16840.223.camel@willson.li.ssimo.org>
-	 <20120524110844.GB19875@fieldses.org>
-	 <1337865566.16840.234.camel@willson.li.ssimo.org>
-	 <20120525140501.GB28842@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 25 May 2012 11:37:42 -0400
-Message-ID: <1337960262.16840.377.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:56902 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753757Ab2E1SKm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 14:10:42 -0400
+From: Peng Tao <bergwolf@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org,
+        stable@vger.kernel.org, Peng Tao <tao.peng@emc.com>
+Subject: [PATCH] pnfsblock: bail out partial page IO
+Date: Tue, 29 May 2012 02:07:23 +0800
+Message-Id: <1338228443-4883-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2012-05-25 at 10:05 -0400, J. Bruce Fields wrote:
-> On Thu, May 24, 2012 at 09:19:26AM -0400, Simo Sorce wrote:
-> > On Thu, 2012-05-24 at 07:08 -0400, J. Bruce Fields wrote:
-> > > On Thu, May 24, 2012 at 12:31:51AM -0400, Simo Sorce wrote:
-> > > > On Tue, 2012-05-22 at 18:48 -0400, J. Bruce Fields wrote:
-> > > > > On Tue, May 15, 2012 at 09:12:30AM -0400, Simo Sorce wrote:
-> > > > 
-> > > > > > +static inline int
-> > > > > > +gss_read_proxy_verf(struct svc_rqst *rqstp,
-> > > > > > +		    struct rpc_gss_wire_cred *gc, __be32 *authp,
-> > > > > > +		    struct xdr_netobj *in_handle,
-> > > > > > +		    struct gssp_in_token *in_token)
-> > > > > > +{
-> > > > [..]
-> > > > > > +	/* FIXME: change argv to point to the end of in_token ? */
-> > > > > 
-> > > > > There's nothing left to read, so it looks like there's no problem here;
-> > > > > drop the comment?
-> > > > 
-> > > > Dropping, was a reminder while I was working and it is not necessary
-> > > > anymore indeed.
-> > > >   
-> > > > > > +static int gss_proxy_save_rsc(struct cache_detail *cd,
-> > > > > > +				struct gssp_upcall_data *ud,
-> > > > > > +				struct xdr_netobj *handle)
-> > > > > > +{
-> > > > > > +	struct rsc rsci, *rscp = NULL;
-> > > > > > +	static atomic64_t ctxhctr;
-> > > > > > +	long long ctxh;
-> > > > > > +	struct gss_api_mech *gm = NULL;
-> > > > > > +	time_t expiry;
-> > > > > > +	char *c;
-> > > > > > +	int status = -EINVAL;
-> > > > > > +
-> > > > > > +	memset(&rsci, 0, sizeof(rsci));
-> > > > > > +	/* context handle */
-> > > > > > +	status = -ENOMEM;
-> > > > > > +	/* the handle needs to be just a unique id,
-> > > > > > +	 * use a static counter */
-> > > > > > +	ctxh = atomic64_inc_return(&ctxhctr);
-> > > > > > +	handle->data = kmemdup(&ctxh, sizeof(ctxh), GFP_KERNEL);
-> > > > > 
-> > > > > Looks like you use this only to dup again immediately below in
-> > > > > dup_to_netobj, so you should just be able to make that:
-> > > > 
-> > > > No this is duplicated on handle->data, where handle is a pointer passed
-> > > > to us by the caller.
-> > > 
-> > > Obviously I can't read.
-> > > 
-> > > > 
-> > > > It is later passed to gss_write_init_verf() and finally freed when
-> > > > svcauth_gss_proxy_init exits, so no leak.
-> > > > 
-> > > > > 	handle->data = &ctxh;
-> > > > > 
-> > > > > That's simpler and looks like it avoids a leak on exit.
-> > > > > 
-> > > > > > +	if (handle->data == NULL)
-> > > > > > +		goto out;
-> > > > > > +	handle->len = sizeof(ctxh);
-> > > > > > +	if (dup_to_netobj(&rsci.handle, handle->data, handle->len))
-> > > 
-> > > But why do we need two copies of the thing?
-> > 
-> > Yeah no great reason to, seemed the most expedient way at the time I
-> > modified the function to get a unique handle, given the existing
-> > prototype I had.
-> > 
-> > > Would it be simpler to pass the new rsc back to the caller?
-> > 
-> > I guess we could do that, I didn't because I am not sure if there is any
-> > chance the rsc cache can be removed by another thread while we hold a
-> > pointer to this data.
-> > In the gss_write_init_verf() funciotn we use that handle to find again
-> > the same rsc cache we just created, but I can't change that as it is the
-> > same code used in the legacy upcall which needs to search it in there.
-> > So the current approach seemed the least invasive and simpler.
-> > 
-> > However what I can do, perhaps is to pass in a static netobj allocated
-> > on the callers stack, so we do not need the kmalloc, after all it is a
-> > very small buffer so it wouldn't cause issues to put it on the stack,
-> > what do you think ?
-> 
-> Whatever results in the easier-to-understand code at the end.
+Current block layout driver read/write code assumes page
+aligned IO in many places. Add a checker to validate the assumption.
 
-Ok, I think the easiest way is to pass in a pointer to a uin64_t to be
-filled with ctxh, and use it to fill cli_handle in the caller.
-This makes it all more understandable to me, and avoids the kmalloc.
+Cc: stable@vger.kernel.org
+Signed-off-by: Peng Tao <tao.peng@emc.com>
+---
+This is the minimal patch for buffer IO case. I will cook DIO alignment checker
+based on it, since DIO isn't needed for stable.
 
-> > > > > > +		goto out;
-> > > > > > +
-> > > > > > +	rscp = rsc_lookup(cd, &rsci);
-> > > > > > +	if (!rscp)
-> > > > > > +		goto out;
-> > > > > > +
-> > > > > > +	/* creds */
-> > > > > > +	if (!ud->creds) {
-> > > > > > +		dprintk("RPC:       No creds found, marking Negative!\n");
-> > > > > > +		set_bit(CACHE_NEGATIVE, &rsci.h.flags);
-> > > > > 
-> > > > > When does this happen, out of curiosity?
-> > > > 
-> > > > Actually it shouldn't happen, but I maintained the same code structure
-> > > > that was previously in place.
-> > > > I think that with the latest changes now I always return (uid = -1, gid
-> > > > = -1, no additional groups if a mapping can't be found).
-> > > > However on the off chance that user space does not return a credential
-> > > > struct we catch it here.
-> > > 
-> > > So the result will be to return success to the client on the
-> > > init_sec_context call but then to fail their future attempts to use that
-> > > handle?
-> > 
-> > > If so, seems like it would be better to return an error and not bother
-> > > adding a negative entry to the cache.
-> > 
-> > Well if we do not add the negative cache we end up looping to user space
-> > each time the client attempts to call in. If the result was just a fluke
-> > in user space, then it will not be a problem, but if user space is
-> > somehow misbehaving I would rather have the kernel 'blacklist' this
-> > client for a while, no ?
-> 
-> Since this would be a bug in our code (kernel or userspace), let's do
-> whatever makes it most obvious it's a bug.  At a minimum, a /* userspace
-> is buggy */ comment there.
+ fs/nfs/blocklayout/blocklayout.c |   39 +++++++++++++++++++++++++++++++++++--
+ 1 files changed, 36 insertions(+), 3 deletions(-)
 
-Will do.
-
-Simo.
-
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 7ae8a60..447f8d1 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -228,6 +228,14 @@ bl_end_par_io_read(void *data, int unused)
+ 	schedule_work(&rdata->task.u.tk_work);
+ }
+ 
++static bool
++bl_nfspage_aligned(u64 offset, u32 len, u32 blkmask)
++{
++	if ((offset & blkmask) || (len & blkmask))
++		return false;
++	return true;
++}
++
+ static enum pnfs_try_status
+ bl_read_pagelist(struct nfs_read_data *rdata)
+ {
+@@ -244,6 +252,9 @@ bl_read_pagelist(struct nfs_read_data *rdata)
+ 	dprintk("%s enter nr_pages %u offset %lld count %u\n", __func__,
+ 	       rdata->pages.npages, f_offset, (unsigned int)rdata->args.count);
+ 
++	if (!bl_nfspage_aligned(f_offset, rdata->args.count, PAGE_CACHE_MASK))
++		goto use_mds;
++
+ 	par = alloc_parallel(rdata);
+ 	if (!par)
+ 		goto use_mds;
+@@ -552,7 +563,7 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+ 	struct bio *bio = NULL;
+ 	struct pnfs_block_extent *be = NULL, *cow_read = NULL;
+ 	sector_t isect, last_isect = 0, extent_length = 0;
+-	struct parallel_io *par;
++	struct parallel_io *par = NULL;
+ 	loff_t offset = wdata->args.offset;
+ 	size_t count = wdata->args.count;
+ 	struct page **pages = wdata->args.pages;
+@@ -563,6 +574,10 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+ 	    NFS_SERVER(header->inode)->pnfs_blksize >> PAGE_CACHE_SHIFT;
+ 
+ 	dprintk("%s enter, %Zu@%lld\n", __func__, count, offset);
++	/* Check for alignment first */
++	if (!bl_nfspage_aligned(offset, count, PAGE_CACHE_MASK))
++		goto out_mds;
++
+ 	/* At this point, wdata->pages is a (sequential) list of nfs_pages.
+ 	 * We want to write each, and if there is an error set pnfs_error
+ 	 * to have it redone using nfs.
+@@ -996,14 +1011,32 @@ bl_clear_layoutdriver(struct nfs_server *server)
+ 	return 0;
+ }
+ 
++static void
++bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
++{
++	if (!bl_nfspage_aligned(req->wb_offset, req->wb_bytes, PAGE_CACHE_MASK))
++		nfs_pageio_reset_read_mds(pgio);
++	else
++		pnfs_generic_pg_init_read(pgio, req);
++}
++
++static void
++bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
++{
++	if (!bl_nfspage_aligned(req->wb_offset, req->wb_bytes, PAGE_CACHE_MASK))
++		nfs_pageio_reset_write_mds(pgio);
++	else
++		pnfs_generic_pg_init_write(pgio, req);
++}
++
+ static const struct nfs_pageio_ops bl_pg_read_ops = {
+-	.pg_init = pnfs_generic_pg_init_read,
++	.pg_init = bl_pg_init_read,
+ 	.pg_test = pnfs_generic_pg_test,
+ 	.pg_doio = pnfs_generic_pg_readpages,
+ };
+ 
+ static const struct nfs_pageio_ops bl_pg_write_ops = {
+-	.pg_init = pnfs_generic_pg_init_write,
++	.pg_init = bl_pg_init_write,
+ 	.pg_test = pnfs_generic_pg_test,
+ 	.pg_doio = pnfs_generic_pg_writepages,
+ };
 -- 
-Simo Sorce * Red Hat, Inc * New York
+1.7.1.262.g5ef3d
 
