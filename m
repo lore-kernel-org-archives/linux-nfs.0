@@ -1,129 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:48219 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751239Ab2EONzT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 May 2012 09:55:19 -0400
-Date: Tue, 15 May 2012 09:55:15 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC] NFSd laundromat containerization
-Message-ID: <20120515095515.64bcfa32@tlielax.poochiereds.net>
-In-Reply-To: <20120515094008.698e538b@tlielax.poochiereds.net>
-References: <4FAD1934.8070908@parallels.com>
-	<20120511135306.GA12795@fieldses.org>
-	<4FAE2659.4090107@parallels.com>
-	<20120512141653.GA19757@fieldses.org>
-	<4FB0C9A1.6080406@parallels.com>
-	<20120515094008.698e538b@tlielax.poochiereds.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from natasha.panasas.com ([67.152.220.90]:54338 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753322Ab2E1Qw4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 12:52:56 -0400
+Message-ID: <4FC3AD59.4050703@panasas.com>
+Date: Mon, 28 May 2012 19:52:41 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Benny Halevy <bhalevy@tonian.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 4/5] pnfsd-lexp: return_on_close config option
+References: <4FC3A235.8090908@tonian.com> <1338221387-22621-1-git-send-email-bhalevy@tonian.com>
+In-Reply-To: <1338221387-22621-1-git-send-email-bhalevy@tonian.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 15 May 2012 09:40:08 -0400
-Jeff Layton <jlayton@redhat.com> wrote:
+On 05/28/2012 07:09 PM, Benny Halevy wrote:
 
-> On Mon, 14 May 2012 13:00:17 +0400
-> Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+> ---
+>  fs/nfsd/Kconfig      |    7 +++++++
+>  fs/nfsd/pnfsd_lexp.c |    5 +++++
+>  2 files changed, 12 insertions(+), 0 deletions(-)
 > 
-> > On 12.05.2012 18:16, bfields@fieldses.org wrote:
-> > > On Sat, May 12, 2012 at 12:59:05PM +0400, Stanislav Kinsbursky wrote:
-> > >> On 11.05.2012 17:53, bfields@fieldses.org wrote:
-> > >>> On Fri, May 11, 2012 at 05:50:44PM +0400, Stanislav Kinsbursky wrote:
-> > >>>> Hello.
-> > >>>> I'm currently looking on NFSd laundromat work, and it looks like
-> > >>>> have to be performed per networks namespace context.
-> > >>>> It's easy to make corresponding delayed work per network namespace
-> > >>>> and thus gain per-net data pointer in laundromat function.
-> > >>>> But here a problem appears: network namespace is required to skip
-> > >>>> clients from other network namespaces while iterating over global
-> > >>>> lists (client_lru and friends).
-> > >>>> I see two possible solutions:
-> > >>>> 1) Make these list per network namespace context. In this case
-> > >>>> network namespace will not be required - per-net data will be
-> > >>>> enough.
-> > >>>> 2) Put network namespace link on per-net data (this one is easier, but uglier).
-> > >>>
-> > >>> I'd rather there be as few shared data structures between network
-> > >>> namespaces as possible--I think that will simplify things.
-> > >>>
-> > >>> So, of those two choices, #1.
-> > >>>
-> > >>
-> > >> Guys, I would like to discuss few ideas about caches and lists containerization.
-> > >> Currently, it look to me, that these hash tables:
-> > >>
-> > >> reclaim_str, conf_id, conf_str, unconf_str, unconf_id, sessionid
-> > >>
-> > >> and these lists:
-> > >>
-> > >> client_lru, close_lru
-> > >>
-> > >> have to be per net, while hash tables
-> > >>
-> > >> file, ownerstr, lockowner_ino
-> > >>
-> > >> and
-> > >>
-> > >> del_recall_lru lists
-> > >>
-> > >> have not, because they are about file system access.
-> > >
-> > > Actually, ownerstr and lockowner_ino should also both be per-container.
-> > >
-> > > So it's only file and del_recall_lru that should be global.  (And
-> > > del_recall_lru might work either way, actually.)
-> > >
-> > >> If I'd containerize it this way, then looks like nfs4_lock_state()
-> > >> and nfs4_unlock_state() functions will protect only
-> > >> non-containerized data, while containerized data have to protected
-> > >> by some per-net lock.
-> > >
-> > > Sounds about right.
-> > >
-> > 
-> > Bruce, Jeff, I've implemented these per-net hashes and lists (file hash and 
-> > del_recall_lru remains global).
-> > But now I'm confused with locking.
-> > 
-> > For example, let's consider file hash and del_recall_lru lists.
-> > It looks like they are protected by recall_lock. But in 
-> > nfsd_forget_delegations() this lock is not taken. Is it a bug?
-> 
-> It looks like a bug to me. If another thread is modifying the
-> file_hashtbl while you're calling nfsd_forget_delegations, then you
-> could oops here.
-> 
-> Perhaps we only ever modify that table while holding the state mutex in
-> which case the code won't oops, but the recall lock seems rather
-> superfluous at that point.
-> 
-> I'd have to unwind the locking and see...
-> 
-> > If yes and recall_lock is used for file hash protection, then why do we need to 
-> > protect nfsd_process_n_delegations() by nfs4_un/lock_state() calls?
-> > 
-> > Actually, the problem I'm trying to solve is to replace global client_lock by 
-> > per-net one where possible. But I don't clearly understand, what it protects.
-> > 
-> > Could you, guys, clarify the state locking to me.
-> > 
-> 
-> I wish I could -- I'm still wrapping my brain around it too...
-> 
+> diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+> index 9d4d79b..f9b3426 100644
+> --- a/fs/nfsd/Kconfig
+> +++ b/fs/nfsd/Kconfig
+> @@ -132,3 +132,10 @@ config PNFSD_LEXP_LAYOUT_SEGMENT_SIZE
+>  	  Set simulated layout segment size.
+>  
+>  	  If unsure, say N.
+> +
+> +config PNFSD_LEXP_RETURN_ON_CLOSE
+> +	bool "Reply to LAYOUTGET with return_on_close set to true"
+> +	depends on PNFSD_LOCAL_EXPORT
+> +	default false
+> +	help
+> +	  Set return_on_close response flag.
+> diff --git a/fs/nfsd/pnfsd_lexp.c b/fs/nfsd/pnfsd_lexp.c
+> index 30d9757..33a724c 100644
+> --- a/fs/nfsd/pnfsd_lexp.c
+> +++ b/fs/nfsd/pnfsd_lexp.c
+> @@ -153,6 +153,11 @@ static int get_stripe_unit(int blocksize)
+>  	res->lg_seg.offset = 0;
+>  	res->lg_seg.length = NFS4_MAX_UINT64;
+>  #endif  /* CONFIG_PNFSD_LEXP_LAYOUT_SEGMENTS */
+> +#ifdef     CONFIG_PNFSD_LEXP_RETURN_ON_CLOSE
+> +	res->lg_return_on_close = true;
+> +#else   /* CONFIG_PNFSD_LEXP_RETURN_ON_CLOSE */
+> +	res->lg_return_on_close = false;
 
-Ok, yeah that is a bug AFAICT.
 
-You really need to hold the recall_lock while walking that list, but
-that makes unhash_delegation tricky -- it can call fput and iput which
-can block (right?).
+Back to my original question. With current code this case is a BUG.
+It will leak layouts and therefore file-reference in case of a layout-get
+with open-state ID. 
 
-One possibility is to just have the loop move the entries to a private
-list. Then you can walk that list w/o holding the lock and do
-deleg_func on each entry.
+So I suggest hardcoding to true until such time that we actually can
+support it
 
--- 
-Jeff Layton <jlayton@redhat.com>
+Boaz
+
+> +#endif  /* CONFIG_PNFSD_LEXP_RETURN_ON_CLOSE */
+>  
+>  	layout = kzalloc(sizeof(*layout), GFP_KERNEL);
+>  	if (layout == NULL) {
+
+
