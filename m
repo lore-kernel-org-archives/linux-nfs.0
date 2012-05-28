@@ -1,66 +1,32 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:19851 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752823Ab2EUQYy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 May 2012 12:24:54 -0400
-Subject: Re: [PATCH 09/14] NFS: Force server to drop NFSv4 state
-Mime-Version: 1.0 (Apple Message framework v1278)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20120521161646.GJ24299@fieldses.org>
-Date: Mon, 21 May 2012 12:24:40 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <2BAAEA69-CC7B-42F8-811D-7C320E9AA680@oracle.com>
-References: <20120518220145.774.53741.stgit@degas.1015granger.net> <20120518220632.774.79191.stgit@degas.1015granger.net> <20120521160844.GH24299@fieldses.org> <F7B056E4-D6FC-450B-98E2-129C051CFAE7@oracle.com> <20120521161646.GJ24299@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@netapp.com>
+Received: from natasha.panasas.com ([67.152.220.90]:55854 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752711Ab2E1SF0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 14:05:26 -0400
+Message-ID: <4FC3BE55.50106@panasas.com>
+Date: Mon, 28 May 2012 21:05:09 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Benny Halevy <bhalevy@tonian.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 4/5] pnfsd-lexp: return_on_close config option
+References: <4FC3A235.8090908@tonian.com> <1338221387-22621-1-git-send-email-bhalevy@tonian.com> <4FC3AD59.4050703@panasas.com> <4FC3BCB9.6040604@tonian.com>
+In-Reply-To: <4FC3BCB9.6040604@tonian.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 05/28/2012 08:58 PM, Benny Halevy wrote:
 
-On May 21, 2012, at 12:16 PM, J. Bruce Fields wrote:
-
-> On Mon, May 21, 2012 at 12:11:48PM -0400, Chuck Lever wrote:
->> 
->> On May 21, 2012, at 12:08 PM, J. Bruce Fields wrote:
->> 
->>> On Fri, May 18, 2012 at 06:06:33PM -0400, Chuck Lever wrote:
->>>> @@ -3937,8 +3937,13 @@ static void nfs4_construct_boot_verifier(struct nfs_client *clp,
->>>> {
->>>> 	__be32 verf[2];
->>>> 
->>>> -	verf[0] = (__be32)clp->cl_boot_time.tv_sec;
->>>> -	verf[1] = (__be32)clp->cl_boot_time.tv_nsec;
->>>> +	if (test_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state)) {
->>>> +		verf[0] = (__be32)CURRENT_TIME.tv_sec;
->>>> +		verf[1] = (__be32)CURRENT_TIME.tv_nsec;
->>> 
->>> I suppose it's pretty unlikely this could happen within a jiffy of
->>> setting cl_boot_time?
->> 
->> Boot time has nanosecond resolution.  I'm pretty sure we are safe here.
+> On 2012-05-28 19:52, Boaz Harrosh wrote:
 > 
-> CURRENT_TIME is only updated every jiffy.  It would still have to happen
-> ridiculously fast, but I think that's milliseconds rather than
-> nanoseconds.
+> so how will you debug the leak case?
+> pnfsd-lexp is for testing, and the default is on.
 > 
->>> Would it be simpler to use some special value (all-zeros?) instead?
->> 
->> We'd have to pick a value that was guaranteed never to be a valid time stamp.
+> Benny
 > 
-> A client that thinks it's currently Jan. 1 1970 probably has bigger
-> problems.
-> 
-> I dunno, your call.
-
-Using an out-of-date timestamp (such as all zeroes) could work.  We'd just have to build an appropriate constant.
-
-Trond, do you remember why you liked CURRENT_TIME?
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
 
 
+Good point I agree
 
-
+Boaz
