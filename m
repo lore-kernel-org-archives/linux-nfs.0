@@ -1,86 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:29027 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752676Ab2EQMZD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 May 2012 08:25:03 -0400
-Message-ID: <4FB4EDFF.3020809@RedHat.com>
-Date: Thu, 17 May 2012 08:24:31 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:45702 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750892Ab2E1ROs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 13:14:48 -0400
+Received: by pbbrp8 with SMTP id rp8so4867495pbb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 28 May 2012 10:14:48 -0700 (PDT)
 MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: ANNOUNCE: nfs-utils-1.2.6 released.
-References: <4FB159DA.2070800@RedHat.com> <20120517164420.3fe761a5@notabene.brown>
-In-Reply-To: <20120517164420.3fe761a5@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1
+In-Reply-To: <4FC358CA.2090301@panasas.com>
+References: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>
+ <1338096780-2763-2-git-send-email-bergwolf@gmail.com> <1338136170.3044.7.camel@lade.trondhjem.org>
+ <F19688880B763E40B28B2B462677FBF805F0BADF35@MX09A.corp.emc.com>
+ <1338176574.2265.7.camel@lade.trondhjem.org> <F19688880B763E40B28B2B462677FBF805F0BADF5C@MX09A.corp.emc.com>
+ <4FC356FA.2070008@panasas.com> <4FC358CA.2090301@panasas.com>
+From: Peng Tao <tao.peng@emc.com>
+Date: Tue, 29 May 2012 01:14:19 +0800
+Message-ID: <CA+a=Yy5c2wCMvOnOSh2y+tHShmR6bnOtMWhoQPPRmkv_q-4D9w@mail.gmail.com>
+Subject: Re: [PATCH 1/3] NFS41: add pnfs_dio_begin/dio_end
+To: Boaz Harrosh <bharrosh@panasas.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Neil,
+On Mon, May 28, 2012 at 6:51 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+> On 05/28/2012 01:44 PM, Boaz Harrosh wrote:
+>
+>> On 05/28/2012 07:13 AM, tao.peng@emc.com wrote:
+>>
+>>>> -----Original Message-----
+>>>> From: Myklebust, Trond [mailto:Trond.Myklebust@netapp.com]
+>>>> Sent: Monday, May 28, 2012 11:43 AM
+>>>> To: Peng, Tao
+>>>> Cc: bergwolf@gmail.com; linux-nfs@vger.kernel.org
+>>>> Subject: RE: [PATCH 1/3] NFS41: add pnfs_dio_begin/dio_end
+>>>>
+>>>> On Sun, 2012-05-27 at 22:30 -0400, tao.peng@emc.com wrote:
+>>>>> I'm afraid there is. There is no way to pass struct blk_plug around pg_init/pg_doio, unless we put
+>>>> it in struct nfs_pageio_descriptor, which I think is more intrusive and less efficient as it is only
+>>>> useful for block layout driver in DIO case.
+>>>>
+>>>> Then add a 'void *pg_layout_private' field to nfs_pageio_descriptor and
+>>>> allocate the struct blk_plug dynamically.
+>>>>
+>>
+>>> OK. I thought data structure change is more intrusive because it
+>>> affects all layout drivers and generic NFS as well. But since you
+>>> think it is OK, I will change it as you suggested.
+>>>
+>>
+>>
+>> I want a pg_layout_private in nfs_pageio_descriptor as well. I even wrote
+>> the ML about it. And everyone agreed. (Just never had time to finish)
+>>
+>> So yes please do add it. it will have more users.
+>>
+>
+>
+> I forgot to say. You might want/need to pass this pg_layout_private
+> back to LD->paglist_write/read. (If you need to, I will)
+>
+> (In fact one optimization I wanted for a long time is to pass
+> nfs_pageio_descriptor to paglist_write/read directly instead of
+> duplicating all it's members (back and forth). In a new invented
+> structures where the worse is that the common code of read and write
+> can't be common because it is not the same types.
+> But that's for another patch)
+>
+I also plan to add void *layout_private and unsigned char moreio to
+nfs_pageio_header structure, in order to pass necessary information to
+pagelist_read/write. Are there any objections against doing so?
 
-On 05/17/2012 02:44 AM, NeilBrown wrote:
-> On Mon, 14 May 2012 15:15:38 -0400 Steve Dickson <SteveD@redhat.com> wrote:
-> 
->> New Features in this release:
->>    * The addition the nfsdcld daemon
->>    * The addition of the osd_login script which is mandated by the
->>          pnfs-objects standard
-> 
-> Don't you hate it when people don't bother to test all your -rc's, then
-> report bugs against your final release?  Me too.
-> 
->   mkdir /tmp/dest
->   make DESTDIR=/tmp/dest install
-I'll add this test to that makerel script you gave me way back when... 
-So hopefully I'll this type of breakage before I make a release! 
- 
-> 
-> fails because it tries to install osd_login in /tmp/dest/sbin/osd_login
-> without first creating /tmp/dest/sbin.  All other required directories get
-> created first.
-> 
-> This patch - stealing an idea from utils/mount - seem to fix it.
-Thanks for that patch... Its been applied with the correct spelling
-of overridden! ;-) 
+The alternative would be to extent pnfs_try_to_read/write_data() and
+read/write_pagelist() APIs to pass in the same information.
 
-steved.
+Which one do you prefer? Please share your thoughts. Thank you very much!
 
-> 
-> Thanks,
-> NeilBrown
-> 
-> 
-> commit 03bb227402ab023f4badb515022d49f82e01ff8d
-> Author: Neil Brown <neilb@suse.de>
-> Date:   Thu May 17 16:40:40 2012 +1000
-> 
->     osd_login - ensure /sbin is created before installation.
->     
->     If we use a more standard approach to describing the osd_login
->     script, the automake infrastructure will create /sbin before
->     attempting installation.
->     This is important for: make DESTDIR=/empty-dir install
->     
->     Signed-off-by: NeilBrown <neilb@suse.de>
-> 
-> diff --git a/utils/osd_login/Makefile.am b/utils/osd_login/Makefile.am
-> index adc493a..d17ffa7 100644
-> --- a/utils/osd_login/Makefile.am
-> +++ b/utils/osd_login/Makefile.am
-> @@ -1,12 +1,9 @@
->  ## Process this file with automake to produce Makefile.in
->  
-> -OSD_LOGIN_FILES= osd_login
-> +# These binaries go in /sbin (not /usr/sbin), and that cannot be
-> +# overriden at config time.
-> +sbindir = /sbin
->  
-> -EXTRA_DIST= $(OSD_LOGIN_FILES)
-> -
-> -all-local: $(OSD_LOGIN_FILES)
-> -
-> -install-data-hook:
-> -	$(INSTALL) --mode 755 osd_login $(DESTDIR)/sbin/osd_login
-> +sbin_SCRIPTS = osd_login
->  
->  MAINTAINERCLEANFILES = Makefile.in
+Thanks,
+Tao
+
+> Ciao
+> Boaz
+>
+>>
+>>> Thanks,
+>>> Tao
+>>>
+>>
+>>
+>> Thanks
+>> Boaz
+>
+>
