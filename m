@@ -1,100 +1,149 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:27472 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755505Ab2EHVNk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 May 2012 17:13:40 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: David Howells <dhowells@redhat.com>
-CC: "adilger@dilger.ca" <adilger@dilger.ca>,
-        "david@fromorbit.com" <david@fromorbit.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "smfrench@gmail.com" <smfrench@gmail.com>,
-        "ben@decadent.org.uk" <ben@decadent.org.uk>,
-        "roland@hack.frob.com" <roland@hack.frob.com>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
-        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
-        "libc-alpha@sourceware.org" <libc-alpha@sourceware.org>
-Subject: Re: Extended file stat: Splitting file- and fs-specific info?
-Date: Tue, 8 May 2012 21:13:21 +0000
-Message-ID: <1336511603.12198.11.camel@lade.trondhjem.org>
-References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
-	 <16281.1336508382@redhat.com>
-In-Reply-To: <16281.1336508382@redhat.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from relay.parallels.com ([195.214.232.42]:46404 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751592Ab2E2Ish (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 May 2012 04:48:37 -0400
+Message-ID: <4FC48D61.3080801@parallels.com>
+Date: Tue, 29 May 2012 12:48:33 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Dave Jones <davej@redhat.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Linux Kernel <linux-kernel@vger.kernel.org>
+Subject: Re: 3.4. sunrpc oops during shutdown
+References: <20120521171411.GA15562@redhat.com>   <1337623475.9583.13.camel@lade.trondhjem.org>   <4FBF3EF2.4090804@parallels.com>  <1337951250.2535.5.camel@lade.trondhjem.org>  <4FBF89C0.2030805@parallels.com> <1338248617.3057.5.camel@lade.trondhjem.org>
+In-Reply-To: <1338248617.3057.5.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA1LTA4IGF0IDIxOjE5ICswMTAwLCBEYXZpZCBIb3dlbGxzIHdyb3RlOg0K
-PiBTaG91bGQgSSBzcGxpdCB0aGUgZmlsZS1zcGVjaWZpYyBpbmZvIGFuZCB0aGUgZnMtc3BlY2lm
-aWMgaW5mbyBhbmQgbWFrZSB0aGUNCj4gc2Vjb25kIG9wdGlvbmFsPyAgV2hhdCBJJ20gdGhpbmtp
-bmcgb2YgaXMgc29tZXRoaW5nIGxpa2UgdGhpczoNCj4gDQo+IEhhdmUgYSBmaWxlIGluZm9ybWF0
-aW9uIHN0cnVjdHVyZToNCj4gDQo+IHN0cnVjdCBzdGF0eCB7DQo+IAkvKiAweDAwICovDQo+IAl1
-aW50MzJfdAlzdF9tYXNrOwkvKiBXaGF0IHJlc3VsdHMgd2VyZSB3cml0dGVuICovDQo+IAl1aW50
-MzJfdAlzdF9pbmZvcm1hdGlvbjsJLyogSW5mb3JtYXRpb24gYWJvdXQgdGhlIGZpbGUgKi8NCj4g
-CXVpbnQxNl90CXN0X21vZGU7CS8qIEZpbGUgbW9kZSAqLw0KPiAJdWludDE2X3QJX19zcGFyZTBb
-M107DQo+IAkvKiAweDEwICovDQo+IAl1aW50MzJfdAlzdF91aWQ7CQkvKiBVc2VyIElEIG9mIG93
-bmVyICovDQo+IAl1aW50MzJfdAlzdF9naWQ7CQkvKiBHcm91cCBJRCBvZiBvd25lciAqLw0KPiAJ
-dWludDMyX3QJc3Rfbmxpbms7CS8qIE51bWJlciBvZiBoYXJkIGxpbmtzICovDQo+IAl1aW50MzJf
-dAlzdF9ibGtzaXplOwkvKiBPcHRpbWFsIHNpemUgZm9yIGZpbGVzeXN0ZW0gSS9PICovDQo+IAkv
-KiAweDIwICovDQo+IAlzdHJ1Y3Qgc3RhdHhfZGV2IHN0X3JkZXY7CS8qIERldmljZSBJRCBvZiBz
-cGVjaWFsIGZpbGUgKi8NCj4gCXN0cnVjdCBzdGF0eF9kZXYgc3RfZGV2OwkvKiBJRCBvZiBkZXZp
-Y2UgY29udGFpbmluZyBmaWxlICovDQo+IAkvKiAweDMwICovDQo+IAlpbnQzMl90CQlzdF9hdGlt
-ZV9uczsJLyogTGFzdCBhY2Nlc3MgdGltZSAobnMgcGFydCkgKi8NCj4gCWludDMyX3QJCXN0X2J0
-aW1lX25zOwkvKiBGaWxlIGNyZWF0aW9uIHRpbWUgKG5zIHBhcnQpICovDQo+IAlpbnQzMl90CQlz
-dF9jdGltZV9uczsJLyogTGFzdCBhdHRyaWJ1dGUgY2hhbmdlIHRpbWUgKG5zIHBhcnQpICovDQo+
-IAlpbnQzMl90CQlzdF9tdGltZV9uczsJLyogTGFzdCBkYXRhIG1vZGlmaWNhdGlvbiB0aW1lIChu
-cyBwYXJ0KSAqLw0KPiAJLyogMHg0MCAqLw0KPiAJaW50NjRfdAkJc3RfYXRpbWU7CS8qIExhc3Qg
-YWNjZXNzIHRpbWUgKi8NCj4gCWludDY0X3QJCXN0X2J0aW1lOwkvKiBGaWxlIGNyZWF0aW9uIHRp
-bWUgKi8NCj4gCWludDY0X3QJCXN0X2N0aW1lOwkvKiBMYXN0IGF0dHJpYnV0ZSBjaGFuZ2UgdGlt
-ZSAqLw0KPiAJaW50NjRfdAkJc3RfbXRpbWU7CS8qIExhc3QgZGF0YSBtb2RpZmljYXRpb24gdGlt
-ZSAqLw0KPiAJLyogMHg2MCAqLw0KPiAJdWludDY0X3QJc3RfaW5vOwkJLyogSW5vZGUgbnVtYmVy
-ICovDQo+IAl1aW50NjRfdAlzdF9zaXplOwkvKiBGaWxlIHNpemUgKi8NCg0KU2hvdWxkIHdlIGNv
-bnNpZGVyIG1ha2luZyB0aGUgc3Rfc2l6ZSBhbmQgc3RfYmxvY2tzIDEyOC1iaXQgdmFsdWVzIHdo
-aWxlDQp3ZSdyZSBhdCBpdD8gQWx0ZXJuYXRpdmVseSwgd2UgY291bGQgYWRkIGFuIHN0X2lvY19m
-bGFnIGZvciBpdCBsYXRlci4uLg0KDQo+IAl1aW50NjRfdAlzdF9ibG9ja3M7CS8qIE51bWJlciBv
-ZiA1MTItYnl0ZSBibG9ja3MgYWxsb2NhdGVkICovDQo+IAl1aW50NjRfdAlzdF9nZW47CQkvKiBJ
-bm9kZSBnZW5lcmF0aW9uIG51bWJlciAqLw0KPiAJdWludDY0X3QJc3RfdmVyc2lvbjsJLyogRGF0
-YSB2ZXJzaW9uIG51bWJlciAqLw0KPiAJdWludDY0X3QJc3RfaW9jX2ZsYWdzOwkvKiBBcyBGU19J
-T0NfR0VURkxBR1MgKi8NCj4gCS8qIDB4OTAgKi8NCj4gCXVpbnQ2NF90CV9fc3BhcmUxWzEzXTsJ
-LyogU3BhcmUgc3BhY2UgZm9yIGZ1dHVyZSBleHBhbnNpb24gKi8NCj4gCS8qIDB4MTAwICovDQo+
-IH07DQo+IA0KPiBBbmQgYW4gZnMgaW5mb3JtYXRpb24gc3RydWN0dXJlIGZvciBsZXNzIGNvbW1v
-bmx5IG5lZWRlZCBkYXRhOg0KPiANCj4gc3RydWN0IHN0YXR4X2ZzaW5mbyB7DQo+IAkvKiAweDAw
-IC0gR2VuZXJhbCBpbmZvICovDQo+IAl1aW50MzJfdAlzdF9tYXNrOwkvKiBXaGF0IG9wdGlvbmFs
-IGZpZWxkcyBhcmUgZmlsbGVkIGluICovDQo+IAl1aW50MzJfdAlzdF90eXBlOwkvKiBGaWxlc3lz
-dGVtIHR5cGUgZnJvbSBsaW51eC9tYWdpYy5oICovDQo+IA0KPiAJLyogMHgwOCAtIGZpbGUgdGlt
-ZXN0YW1wIGdyYW51bGFyaXR5IGluZm8gKi8NCj4gCXVpbnQxNl90CXN0X2F0aW1lX2dyYW5fbWFu
-dGlzc2E7CS8qIGdyYW4oc2VjcykgPSBtYW50ICogMTBeZXhwICovDQo+IAl1aW50MTZfdAlzdF9i
-dGltZV9ncmFuX21hbnRpc3NhOw0KPiAJdWludDE2X3QJc3RfY3RpbWVfZ3Jhbl9tYW50aXNzYTsN
-Cj4gCXVpbnQxNl90CXN0X210aW1lX2dyYW5fbWFudGlzc2E7DQo+IAkvKiAweDEwICovDQo+IAlp
-bnQ4X3QJCXN0X2F0aW1lX2dyYW5fZXhwb25lbnQ7DQo+IAlpbnQ4X3QJCXN0X2J0aW1lX2dyYW5f
-ZXhwb25lbnQ7DQo+IAlpbnQ4X3QJCXN0X2N0aW1lX2dyYW5fZXhwb25lbnQ7DQo+IAlpbnQ4X3QJ
-CXN0X210aW1lX2dyYW5fZXhwb25lbnQ7DQo+IA0KPiAJLyogMHgxNCAtIEkvTyBwYXJhbWV0ZXJz
-ICovDQo+IAl1aW50MzJfdAlzdF9ibGtzaXplOwkgIC8qIEZpbGUgYmxvY2sgc2l6ZSAqLw0KPiAJ
-dWludDMyX3QJc3RfYWxsb2NfYmxrc2l6ZTsgLyogQWxsb2NhdGlvbiBibG9jayBzaXplL2FsaWdu
-bWVudCAqLw0KPiAJdWludDMyX3QJc3Rfc21hbGxfaW9fc2l6ZTsgLyogSU8gc2l6ZS9hbGlnbm1l
-bnQgdGhhdCBhdm9pZHMgZnMvcGFnZSBjYWNoZSBSTVcgKi8NCj4gCXVpbnQzMl90CXN0X3ByZWZf
-aW9fc2l6ZTsgIC8qIFByZWZlcnJlZCBJTyBzaXplIGZvciBnZW5lcmFsIHVzYWdlICovDQo+IAl1
-aW50MzJfdAlzdF9sYXJnZV9pb19zaXplOyAvKiBJTyBzaXplL2FsaWdubWVudCBmb3IgaGlnaCBi
-YW5kd2lkdGggc2VxdWVudGlhbCBJTyAqLw0KPiANCj4gCS8qIDB4MjggLSBSZXN0cmljdGlvbnMg
-b24gc3RydWN0IHN0YXR4IGNvbnRlbnRzICovDQo+IAl1aW50NjRfdAlzdF9zdXBwb3J0ZWRfaW9j
-X2ZsYWdzOyAvKiBGU19JT0NfR0VURkxBR1MgZmxhZ3Mgc3VwcG9ydGVkICAqLw0KPiANCj4gCS8q
-IDB4MzAgLSBWb2x1bWUvZmlsZXN5c3RlbSBpbmZvcm1hdGlvbiAqLw0KPiAJdWludDY0X3QJc3Rf
-ZnNpZDsJLyogU2hvcnQgNjQtYml0IEZpbGVzeXN0ZW0gSUQgKGFzIHN0YXRmcykgKi8NCj4gCXVp
-bnQ2NF90CV9fc3BhcmUwWzNdOw0KPiAJLyogMHg1MCAqLw0KPiAJdWludDhfdAkJc3Rfdm9sdW1l
-X2lkWzE2XTsgLyogVm9sdW1lL2ZzIGlkZW50aWZpZXIgKi8NCj4gCXVpbnQ4X3QJCXN0X3ZvbHVt
-ZV91dWlkWzE2XTsgLyogVm9sdW1lL2ZzIFVVSUQgKi8NCj4gCS8qIDB4ODAgKi8NCj4gCXVpbnQ2
-NF90CV9fc3BhcmUxWzhdOw0KPiAJLyogMHhjMCAqLw0KPiAJdWludDhfdAkJc3Rfdm9sdW1lX25h
-bWVbNjRdOyAvKiBWb2x1bWUgbmFtZSAodXAgdG8gNjQgY2hhcnMpICovDQo+IAkvKiAweDEwMCAq
-Lw0KPiAJdWludDhfdAkJc3RfZG9tYWluX25hbWVbMjU2XTsgLyogRG9tYWluL2NlbGwvd29ya2dy
-b3VwIG5hbWUgKHVwIHRvIDI1NiBjaGFycykgKi8NCj4gCS8qIDB4MjAwICovDQo+IH07DQoNCklm
-IHlvdSBhcmUgbWFraW5nIGEgc2VwYXJhdGUgZnNpbmZvIHN0cnVjdHVyZSwgdGhlbiBpdCB3b3Vs
-ZCBiZSBuaWNlIHRvDQpoYXZlIGZsYWdzIHRvIGluZGljYXRlIHdoYXQga2luZCBvZiBhY2xzIHRo
-ZSBmaWxlc3lzdGVtIHN1cHBvcnRzLCBhbmQgaWYNCml0IHN1cHBvcnRzIGZlYXR1cmVzIHN1Y2gg
-YXMgeGF0dHJzLCBzdWJmaWxlcyBhbmQvb3Igc25hcHNob3RzLg0KDQoNCg0KLS0gDQpUcm9uZCBN
-eWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15
-a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+On 29.05.2012 03:43, Myklebust, Trond wrote:
+> On Fri, 2012-05-25 at 17:31 +0400, Stanislav Kinsbursky wrote:
+>> On 25.05.2012 17:07, Myklebust, Trond wrote:
+>>> On Fri, 2012-05-25 at 12:12 +0400, Stanislav Kinsbursky wrote:
+>>>> On 21.05.2012 22:03, Myklebust, Trond wrote:
+>>>>> On Mon, 2012-05-21 at 13:14 -0400, Dave Jones wrote:
+>>>>>> Tried to shutdown a machine, got this, and a bunch of hung processes.
+>>>>>> There was one NFS mount mounted at the time.
+>>>>>>
+>>>>>> 	Dave
+>>>>>>
+>>>>>> BUG: unable to handle kernel NULL pointer dereference at 0000000000000028
+>>>>>> IP: [<ffffffffa01191df>] svc_destroy+0x1f/0x140 [sunrpc]
+>>>>>> PGD 1434c4067 PUD 144964067 PMD 0
+>>>>>> Oops: 0000 [#1] PREEMPT SMP
+>>>>>> CPU 4
+>>>>>> Modules linked in: ip6table_filter(-) ip6_tables nfsd nfs fscache auth_rpcgss nfs_acl lockd ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6
+>>>>>>
+>>>>>> Pid: 6946, comm: ntpd Not tainted 3.4.0+ #13
+>>>>>> RIP: 0010:[<ffffffffa01191df>]  [<ffffffffa01191df>] svc_destroy+0x1f/0x140 [sunrpc]
+>>>>>> RSP: 0018:ffff880143c65c48  EFLAGS: 00010286
+>>>>>> RAX: 0000000000000000 RBX: ffff880142cd41a0 RCX: 0000000000000006
+>>>>>> RDX: 0000000000000040 RSI: ffff880143105028 RDI: ffff880142cd41a0
+>>>>>> RBP: ffff880143c65c58 R08: 0000000000000000 R09: 0000000000000001
+>>>>>> R10: 0000000000000000 R11: 0000000000000000 R12: ffff88013bc5a148
+>>>>>> R13: ffff880140981658 R14: ffff880142cd41a0 R15: ffff880146c88000
+>>>>>> FS:  00007fdc0382a740(0000) GS:ffff880149400000(0000) knlGS:0000000000000000
+>>>>>> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+>>>>>> CR2: 0000000000000028 CR3: 0000000036cbb000 CR4: 00000000001407e0
+>>>>>> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+>>>>>> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+>>>>>> Process ntpd (pid: 6946, threadinfo ffff880143c64000, task ffff880143104940)
+>>>>>> Stack:
+>>>>>>     ffff880140981660 ffff88013bc5a148 ffff880143c65c88 ffffffffa01193a6
+>>>>>>     0000000000000000 ffff88013e566020 ffff88013e565f28 ffff880146ee6ac0
+>>>>>>     ffff880143c65ca8 ffffffffa024f403 ffff880143c65ca8 ffff880143d3a4f8
+>>>>>> Call Trace:
+>>>>>>     [<ffffffffa01193a6>] svc_exit_thread+0xa6/0xb0 [sunrpc]
+>>>>>>     [<ffffffffa024f403>] nfs_callback_down+0x53/0x90 [nfs]
+>>>>>>     [<ffffffffa021642e>] nfs_free_client+0xfe/0x120 [nfs]
+>>>>>>     [<ffffffffa02185df>] nfs_put_client+0x29f/0x420 [nfs]
+>>>>>>     [<ffffffffa02184e0>] ? nfs_put_client+0x1a0/0x420 [nfs]
+>>>>>>     [<ffffffffa021962f>] nfs_free_server+0x16f/0x2e0 [nfs]
+>>>>>>     [<ffffffffa02194e3>] ? nfs_free_server+0x23/0x2e0 [nfs]
+>>>>>>     [<ffffffffa022363c>] nfs4_kill_super+0x3c/0x50 [nfs]
+>>>>>>     [<ffffffff811ad67c>] deactivate_locked_super+0x3c/0xa0
+>>>>>>     [<ffffffff811ae29e>] deactivate_super+0x4e/0x70
+>>>>>>     [<ffffffff811ccba4>] mntput_no_expire+0xb4/0x100
+>>>>>>     [<ffffffff811ccc16>] mntput+0x26/0x40
+>>>>>>     [<ffffffff811cd597>] release_mounts+0x77/0x90
+>>>>>>     [<ffffffff811cefc6>] put_mnt_ns+0x66/0x80
+>>>>>>     [<ffffffff81078dff>] free_nsproxy+0x1f/0xb0
+>>>>>>     [<ffffffff8107905e>] switch_task_namespaces+0x5e/0x70
+>>>>>>     [<ffffffff81079080>] exit_task_namespaces+0x10/0x20
+>>>>>>     [<ffffffff8104e90e>] do_exit+0x4ee/0xb80
+>>>>>>     [<ffffffff81639c0a>] ? retint_swapgs+0xe/0x13
+>>>>>>     [<ffffffff8104f2ef>] do_group_exit+0x4f/0xc0
+>>>>>>     [<ffffffff8104f377>] sys_exit_group+0x17/0x20
+>>>>>>     [<ffffffff81641352>] system_call_fastpath+0x16/0x1b
+>>>>>> Code: 48 8b 5d f0 4c 8b 65 f8 c9 c3 66 90 55 48 89 e5 41 54 53 66 66 66 66 90 65 48 8b 04 25 80 ba 00 00 48 8b 80 50 05 00 00 48 89 fb<4c>    8b 60 28 8b 47 58 85 c0 0f 84 ec 00 00 00 83 e8 01 85 c0 89
+>>>>>
+>>>>> Aside from the fact that the current net_namespace is not guaranteed to
+>>>>> exist when we are called from free_nsproxy, svc_destroy() looks
+>>>>> seriously broken:
+>>>>
+>>>> Trond, looks like you are mistaken here.
+>>>> Any process holds references to all namespaces it belong to (copy_net_ns()
+>>>> increase usage counter). And network namespace is released after mount namespace
+>>>> in free_nsproxy.
+>>>
+>>> That doesn't help you though. switch_task_namespaces will have already
+>>> set current->nsproxy to NULL, which is why we Oops when we try to read
+>>> current->nsproxy->net_ns in svc_exit_thread().
+>>>
+>>>>>
+>>>>>          * On the one hand it is trying to free struct svc_serv (and
+>>>>>            presumably all structures owned by struct svc_serv).
+>>>>>          * On the other hand, it tries to pass a parameter to
+>>>>>            svc_close_net() saying "please don't free structures on my
+>>>>>            sv_tempsocks, or sv_permsocks list unless they match this net
+>>>>>            namespace".
+>>>>>
+>>>>
+>>>> I've sent patches, which moves svc_shutdown_net() from svc_destroy() ("SUNRPC:
+>>>> separate per-net data creation from service").
+>>>> with this patch set it's assumed, that per-net resources will be created or
+>>>> released prior to service creation and destruction.
+>>>
+>>> Are those patches appropriate for inclusion in the stable kernel series
+>>> so that we can fix 3.4?
+>>>
+>>
+>> Yes. But unfortunately, this won't be enough.
+>> "NFS: callback threads containerization" patch set is required as well.
+>>
+>> A a bugfix, I can suggest "SUNRPC: separate per-net data creation from service"
+>> patch set + pass hard-coded "init_net" for NFS callback shutdown routines
+>> (instead of current->nsproxy->net_ns). This should work.
+>
+> Hi Stanislav,
+>
+> My question is why should svc_destroy() care about net namespaces at
+> all? Once an application is calling svc_destroy(), it is trying to close
+> down the entire service. It really should not matter to which net
+> namespace a particular socket belongs: they _all_ need to be destroyed.
+>
+
+Hi, Trond.
+I have to mention, that from my pow svc_destroy() have to be split into two 
+functions: svc_put() and __svc_destroy().
+Anyway, previously we had one global counter per service, and we were used to 
+destroy service, when the counter reached zero.
+Today the situation remain almost the same except we have additional per-net 
+counter, which is used for per-net service resources management.
+IOW, when service starts, is creates per-net resources in current network 
+namespace and increase current per-net and global service counters.
+Next service start request will do the same and so on.
+It actually means, that:
+1) when per-net counter reaches zero, then per-net service resources have to be 
+released.
+2) when global counter reaches zero, then current user is the last one. And only 
+it's resources left.
+
+Something like this...
+
+-- 
+Best regards,
+Stanislav Kinsbursky
