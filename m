@@ -1,29 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:45474 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753895Ab2E1DpV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 27 May 2012 23:45:21 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "tao.peng@emc.com" <tao.peng@emc.com>
-CC: "bergwolf@gmail.com" <bergwolf@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: [PATCH 3/3] pnfsblock: bail out unaligned DIO
-Date: Mon, 28 May 2012 03:45:19 +0000
-Message-ID: <1338176720.2265.8.camel@lade.trondhjem.org>
-References: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>
-	 <1338096780-2763-4-git-send-email-bergwolf@gmail.com>
-	 <1338136717.3044.13.camel@lade.trondhjem.org>
-	 <F19688880B763E40B28B2B462677FBF805F0BADF36@MX09A.corp.emc.com>
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805F0BADF36@MX09A.corp.emc.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:37198 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750781Ab2E2Ebu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 May 2012 00:31:50 -0400
+From: Peng Tao <bergwolf@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: rees@umich.edu, bharrosh@panasas.com, linux-nfs@vger.kernel.org,
+        stable@vger.kernel.org, Peng Tao <tao.peng@emc.com>
+Subject: [PATCH-v2] pnfsblock: bail out partial page IO
+Date: Tue, 29 May 2012 12:29:53 +0800
+Message-Id: <1338265793-11387-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU3VuLCAyMDEyLTA1LTI3IGF0IDIyOjMwIC0wNDAwLCB0YW8ucGVuZ0BlbWMuY29tIHdyb3Rl
-Og0KPiBBcyBleHBsYWluIGluIHRoZSBvdGhlciBtYWlsLCBpdCBpcyBuZWNlc3NhcnkgdG8gaGF2
-ZSBwbmZzX2Rpb19iZWdpbi9lbmQsIHNvIEkgcHJlZmVyIHRvIGRvIHRoZSB0ZXN0IGFzIGVhcmx5
-IGFzIHBvc3NpYmxlLCB3aGljaCBpcyBpbiBwbmZzX2Rpb19iZWdpbi4NCg0KVGhlcmUgaXMgbm8g
-cG5mc19kaW9fYmVnaW4vZW5kLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNs
-aWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3
-dy5uZXRhcHAuY29tDQoNCg==
+Current block layout driver read/write code assumes page
+aligned IO in many places. Add a checker to validate the assumption.
+
+Cc: stable@vger.kernel.org
+Signed-off-by: Peng Tao <tao.peng@emc.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |   39 +++++++++++++++++++++++++++++++++++--
+ 1 files changed, 36 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 7ae8a60..dd392ed 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -228,6 +228,14 @@ bl_end_par_io_read(void *data, int unused)
+ 	schedule_work(&rdata->task.u.tk_work);
+ }
+ 
++static bool
++bl_check_alignment(u64 offset, u32 len, unsigned long blkmask)
++{
++	if ((offset & blkmask) || (len & blkmask))
++		return false;
++	return true;
++}
++
+ static enum pnfs_try_status
+ bl_read_pagelist(struct nfs_read_data *rdata)
+ {
+@@ -244,6 +252,9 @@ bl_read_pagelist(struct nfs_read_data *rdata)
+ 	dprintk("%s enter nr_pages %u offset %lld count %u\n", __func__,
+ 	       rdata->pages.npages, f_offset, (unsigned int)rdata->args.count);
+ 
++	if (!bl_check_alignment(f_offset, rdata->args.count, PAGE_CACHE_MASK))
++		goto use_mds;
++
+ 	par = alloc_parallel(rdata);
+ 	if (!par)
+ 		goto use_mds;
+@@ -552,7 +563,7 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+ 	struct bio *bio = NULL;
+ 	struct pnfs_block_extent *be = NULL, *cow_read = NULL;
+ 	sector_t isect, last_isect = 0, extent_length = 0;
+-	struct parallel_io *par;
++	struct parallel_io *par = NULL;
+ 	loff_t offset = wdata->args.offset;
+ 	size_t count = wdata->args.count;
+ 	struct page **pages = wdata->args.pages;
+@@ -563,6 +574,10 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+ 	    NFS_SERVER(header->inode)->pnfs_blksize >> PAGE_CACHE_SHIFT;
+ 
+ 	dprintk("%s enter, %Zu@%lld\n", __func__, count, offset);
++	/* Check for alignment first */
++	if (!bl_check_alignment(offset, count, PAGE_CACHE_MASK))
++		goto out_mds;
++
+ 	/* At this point, wdata->pages is a (sequential) list of nfs_pages.
+ 	 * We want to write each, and if there is an error set pnfs_error
+ 	 * to have it redone using nfs.
+@@ -996,14 +1011,32 @@ bl_clear_layoutdriver(struct nfs_server *server)
+ 	return 0;
+ }
+ 
++static void
++bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
++{
++	if (!bl_check_alignment(req->wb_offset, req->wb_bytes, PAGE_CACHE_MASK))
++		nfs_pageio_reset_read_mds(pgio);
++	else
++		pnfs_generic_pg_init_read(pgio, req);
++}
++
++static void
++bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
++{
++	if (!bl_check_alignment(req->wb_offset, req->wb_bytes, PAGE_CACHE_MASK))
++		nfs_pageio_reset_write_mds(pgio);
++	else
++		pnfs_generic_pg_init_write(pgio, req);
++}
++
+ static const struct nfs_pageio_ops bl_pg_read_ops = {
+-	.pg_init = pnfs_generic_pg_init_read,
++	.pg_init = bl_pg_init_read,
+ 	.pg_test = pnfs_generic_pg_test,
+ 	.pg_doio = pnfs_generic_pg_readpages,
+ };
+ 
+ static const struct nfs_pageio_ops bl_pg_write_ops = {
+-	.pg_init = pnfs_generic_pg_init_write,
++	.pg_init = bl_pg_init_write,
+ 	.pg_test = pnfs_generic_pg_test,
+ 	.pg_doio = pnfs_generic_pg_writepages,
+ };
+-- 
+1.7.1.262.g5ef3d
+
