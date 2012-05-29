@@ -1,319 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from p02c12o149.mxlogic.net ([208.65.145.82]:50465 "EHLO
-	p02c12o149.mxlogic.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756853Ab2EKPdc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 May 2012 11:33:32 -0400
-From: Peter Staubach <pstaubach@exagrid.com>
-To: "bjschuma@netapp.com" <bjschuma@netapp.com>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Fri, 11 May 2012 11:29:22 -0400
-Subject: RE: [PATCH v2 1/3] NFS: Create an NFS v3 stat_to_errno()
-Message-ID: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC064E7E5EE8@IT-1874.Isys.com>
-References: <1336682840-10799-1-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1336682840-10799-1-git-send-email-bjschuma@netapp.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mx1.redhat.com ([209.132.183.28]:28980 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754822Ab2E2TQ7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 May 2012 15:16:59 -0400
+Message-ID: <4FC52081.1090208@RedHat.com>
+Date: Tue, 29 May 2012 15:16:17 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: =?UTF-8?B?RGllZ28gRWxpbyBQZXR0ZW7Dsg==?= <flameeyes@flameeyes.eu>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [nfs-utils PATCH] build: avoid AM_CONDITIONAL in conditional
+ execution.
+References: <1337297671-9614-1-git-send-email-flameeyes@flameeyes.eu>
+In-Reply-To: <1337297671-9614-1-git-send-email-flameeyes@flameeyes.eu>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi.
-
-I'm wondering whether it makes sense to introduce a set of NFS3ERR_ defines for the NFSv3 error numbers?  And remove the NFSERR_ error codes which aren't valid for NFSv2?  And fix the NFSv2 error number to errno mapping to only include the NFSv2 valid error numbers?
-
-	Thanx...
-
-		ps
 
 
------Original Message-----
-From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of bjschuma@netapp.com
-Sent: Thursday, May 10, 2012 4:47 PM
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org; Bryan Schumaker
-Subject: [PATCH v2 1/3] NFS: Create an NFS v3 stat_to_errno()
+On 05/17/2012 07:34 PM, Diego Elio Pettenò wrote:
+> Automake does not support conditional AM_CONDITIONAL calls; what that
+> means is that you always have to execute AM_CONDITIONAL one way or the
+> other. Both the libsqlite3.m4 file and the nfsdcld conditionals are
+> executed only when NFSv4 is enabled, which breaks building with
+> --disable-nfsv4.
+> 
+> Remove the SQLite3 conditional altogether as it's never used, and move
+> the nfsdcld conditional outside of the conditional code.
+> 
+> Signed-off-by: Diego Elio Pettenò <flameeyes@flameeyes.eu>
+Committed... 
 
-From: Bryan Schumaker <bjschuma@netapp.com>
-
-In theory, NFS v3 can have different error versions than NFS v2. v4 is already using its own nfs4_stat_to_errno() to mapp error codes, so rather than create something in the generic client for v2 and v3 to share I instead give v3 its own function.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/internal.h |    1 -
- fs/nfs/nfs2xdr.c  |    3 +-
- fs/nfs/nfs3xdr.c  |  103 +++++++++++++++++++++++++++++++++++++++++++----------
- 3 files changed, 87 insertions(+), 20 deletions(-)
-
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h index 1855e8f..4cf76e9 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -207,7 +207,6 @@ extern void nfs_pgheader_init(struct nfs_pageio_descriptor *desc,  void nfs_set_pgio_error(struct nfs_pgio_header *hdr, int error, loff_t pos);
- 
- /* nfs2xdr.c */
--extern int nfs_stat_to_errno(enum nfs_stat);  extern struct rpc_procinfo nfs_procedures[];  extern int nfs2_decode_dirent(struct xdr_stream *,
- 				struct nfs_entry *, int);
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c index c99008e..baf759b 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -61,6 +61,7 @@
- #define NFS_readdirres_sz	(1)
- #define NFS_statfsres_sz	(1+NFS_info_sz)
- 
-+static int nfs_stat_to_errno(enum nfs_stat);
- 
- /*
-  * While encoding arguments, set up the reply buffer in advance to @@ -1111,7 +1112,7 @@ static const struct {
-  * Returns a local errno value, or -EIO if the NFS status code is
-  * not recognized.  This function is used jointly by NFSv2 and NFSv3.
-  */
--int nfs_stat_to_errno(enum nfs_stat status)
-+static int nfs_stat_to_errno(enum nfs_stat status)
- {
- 	int i;
- 
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c index ee284c2..902de48 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -86,6 +86,8 @@
- 				XDR_QUADLEN(NFS_ACL_INLINE_BUFSIZE))
- #define ACL3_setaclres_sz	(1+NFS3_post_op_attr_sz)
- 
-+static int nfs3_stat_to_errno(enum nfs_stat);
-+
- /*
-  * Map file type to S_IFMT bits
-  */
-@@ -1388,7 +1390,7 @@ static int nfs3_xdr_dec_getattr3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_default:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1427,7 +1429,7 @@ static int nfs3_xdr_dec_setattr3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1475,7 +1477,7 @@ out_default:
- 	error = decode_post_op_attr(xdr, result->dir_attr);
- 	if (unlikely(error))
- 		goto out;
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1516,7 +1518,7 @@ static int nfs3_xdr_dec_access3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_default:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1557,7 +1559,7 @@ static int nfs3_xdr_dec_readlink3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_default:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1639,7 +1641,7 @@ static int nfs3_xdr_dec_read3res(struct rpc_rqst *req, struct xdr_stream *xdr,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1709,7 +1711,7 @@ static int nfs3_xdr_dec_write3res(struct rpc_rqst *req, struct xdr_stream *xdr,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1773,7 +1775,7 @@ out_default:
- 	error = decode_wcc_data(xdr, result->dir_attr);
- 	if (unlikely(error))
- 		goto out;
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1812,7 +1814,7 @@ static int nfs3_xdr_dec_remove3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1856,7 +1858,7 @@ static int nfs3_xdr_dec_rename3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -1899,7 +1901,7 @@ static int nfs3_xdr_dec_link3res(struct rpc_rqst *req, struct xdr_stream *xdr,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /**
-@@ -2091,7 +2093,7 @@ out_default:
- 	error = decode_post_op_attr(xdr, result->dir_attr);
- 	if (unlikely(error))
- 		goto out;
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -2159,7 +2161,7 @@ static int nfs3_xdr_dec_fsstat3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -2235,7 +2237,7 @@ static int nfs3_xdr_dec_fsinfo3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -2298,7 +2300,7 @@ static int nfs3_xdr_dec_pathconf3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- /*
-@@ -2339,7 +2341,7 @@ static int nfs3_xdr_dec_commit3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_status:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- #ifdef CONFIG_NFS_V3_ACL
-@@ -2404,7 +2406,7 @@ static int nfs3_xdr_dec_getacl3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_default:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- static int nfs3_xdr_dec_setacl3res(struct rpc_rqst *req, @@ -2423,11 +2425,76 @@ static int nfs3_xdr_dec_setacl3res(struct rpc_rqst *req,
- out:
- 	return error;
- out_default:
--	return nfs_stat_to_errno(status);
-+	return nfs3_stat_to_errno(status);
- }
- 
- #endif  /* CONFIG_NFS_V3_ACL */
- 
-+
-+/*
-+ * We need to translate between nfs status return values and
-+ * the local errno values which may not be the same.
-+ */
-+static const struct {
-+	int stat;
-+	int errno;
-+} nfs_errtbl[] = {
-+	{ NFS_OK,		0		},
-+	{ NFSERR_PERM,		-EPERM		},
-+	{ NFSERR_NOENT,		-ENOENT		},
-+	{ NFSERR_IO,		-errno_NFSERR_IO},
-+	{ NFSERR_NXIO,		-ENXIO		},
-+/*	{ NFSERR_EAGAIN,	-EAGAIN		}, */
-+	{ NFSERR_ACCES,		-EACCES		},
-+	{ NFSERR_EXIST,		-EEXIST		},
-+	{ NFSERR_XDEV,		-EXDEV		},
-+	{ NFSERR_NODEV,		-ENODEV		},
-+	{ NFSERR_NOTDIR,	-ENOTDIR	},
-+	{ NFSERR_ISDIR,		-EISDIR		},
-+	{ NFSERR_INVAL,		-EINVAL		},
-+	{ NFSERR_FBIG,		-EFBIG		},
-+	{ NFSERR_NOSPC,		-ENOSPC		},
-+	{ NFSERR_ROFS,		-EROFS		},
-+	{ NFSERR_MLINK,		-EMLINK		},
-+	{ NFSERR_NAMETOOLONG,	-ENAMETOOLONG	},
-+	{ NFSERR_NOTEMPTY,	-ENOTEMPTY	},
-+	{ NFSERR_DQUOT,		-EDQUOT		},
-+	{ NFSERR_STALE,		-ESTALE		},
-+	{ NFSERR_REMOTE,	-EREMOTE	},
-+#ifdef EWFLUSH
-+	{ NFSERR_WFLUSH,	-EWFLUSH	},
-+#endif
-+	{ NFSERR_BADHANDLE,	-EBADHANDLE	},
-+	{ NFSERR_NOT_SYNC,	-ENOTSYNC	},
-+	{ NFSERR_BAD_COOKIE,	-EBADCOOKIE	},
-+	{ NFSERR_NOTSUPP,	-ENOTSUPP	},
-+	{ NFSERR_TOOSMALL,	-ETOOSMALL	},
-+	{ NFSERR_SERVERFAULT,	-EREMOTEIO	},
-+	{ NFSERR_BADTYPE,	-EBADTYPE	},
-+	{ NFSERR_JUKEBOX,	-EJUKEBOX	},
-+	{ -1,			-EIO		}
-+};
-+
-+/**
-+ * nfs3_stat_to_errno - convert an NFS status code to a local errno
-+ * @status: NFS status code to convert
-+ *
-+ * Returns a local errno value, or -EIO if the NFS status code is
-+ * not recognized.  This function is used jointly by NFSv2 and NFSv3.
-+ */
-+static int nfs3_stat_to_errno(enum nfs_stat status) {
-+	int i;
-+
-+	for (i = 0; nfs_errtbl[i].stat != -1; i++) {
-+		if (nfs_errtbl[i].stat == (int)status)
-+			return nfs_errtbl[i].errno;
-+	}
-+	dprintk("NFS: Unrecognized nfs status value: %u\n", status);
-+	return nfs_errtbl[i].errno;
-+}
-+
-+
- #define PROC(proc, argtype, restype, timer)				\
- [NFS3PROC_##proc] = {							\
- 	.p_proc      = NFS3PROC_##proc,					\
---
-1.7.10.1
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
+steved.
+> ---
+>  aclocal/libsqlite3.m4 |    1 -
+>  configure.ac          |    3 +--
+>  2 files changed, 1 insertions(+), 3 deletions(-)
+> 
+> diff --git a/aclocal/libsqlite3.m4 b/aclocal/libsqlite3.m4
+> index 73d1e46..8c38993 100644
+> --- a/aclocal/libsqlite3.m4
+> +++ b/aclocal/libsqlite3.m4
+> @@ -29,5 +29,4 @@ AC_DEFUN([AC_SQLITE3_VERS], [
+>      LIBS="$saved_LIBS"])
+>  
+>    AC_MSG_RESULT($libsqlite3_cv_is_recent)
+> -  AM_CONDITIONAL(CONFIG_SQLITE3, [test "$libsqlite3_cv_is_recent" = "yes"])
+>  ])dnl
+> diff --git a/configure.ac b/configure.ac
+> index 9ba53e2..b408f1b 100644
+> --- a/configure.ac
+> +++ b/configure.ac
+> @@ -278,8 +278,6 @@ if test "$enable_nfsv4" = yes; then
+>  	fi
+>    fi
+>  
+> -  AM_CONDITIONAL(CONFIG_NFSDCLD, [test "$enable_nfsdcld" = "yes" ])
+> -
+>    dnl librpcsecgss already has a dependency on libgssapi,
+>    dnl but we need to make sure we get the right version
+>    if test "$enable_gss" = yes; then
+> @@ -293,6 +291,7 @@ if test "$enable_nfsv41" = yes; then
+>  fi
+>  
+>  dnl enable nfsidmap when its support by libnfsidmap
+> +AM_CONDITIONAL(CONFIG_NFSDCLD, [test "$enable_nfsdcld" = "yes" ])
+>  AM_CONDITIONAL(CONFIG_NFSIDMAP, [test "$ac_cv_header_keyutils_h$ac_cv_lib_nfsidmap_nfs4_owner_to_uid" = "yesyes"])
+>  
+>  
