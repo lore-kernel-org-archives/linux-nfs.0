@@ -1,68 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:53763 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:36371 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754169Ab2FDNtW convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Jun 2012 09:49:22 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/3] NFSv4.1 fence all layouts with file layout data
- server connection errors
-Date: Mon, 4 Jun 2012 13:49:05 +0000
-Message-ID: <2D678724-1ED3-433F-AE4D-BCBC93D01783@netapp.com>
-References: <1338571178-2096-1-git-send-email-andros@netapp.com>
- <1338571178-2096-3-git-send-email-andros@netapp.com>
- <4FCA94A6.3070105@panasas.com>
-In-Reply-To: <4FCA94A6.3070105@panasas.com>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+	id S1758278Ab2FAVBg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Jun 2012 17:01:36 -0400
+From: andros@netapp.com
+To: iisaman@netapp.com
+Cc: linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@fedora-64-2.gateway.2wire.net>
+Subject: [PATCH 0/6] PYNFS various patches
+Date: Tue, 29 May 2012 17:57:53 -0400
+Message-Id: <1338328679-28837-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Andy Adamson <andros@fedora-64-2.gateway.2wire.net>
 
-On Jun 2, 2012, at 6:33 PM, Boaz Harrosh wrote:
-
-> On 06/01/2012 08:19 PM, andros@netapp.com wrote:
-> 
->> From: Andy Adamson <andros@netapp.com>
->> 
-> 
-> 
-> The tittle does not match at all the message text nor the patch.
-> 
-> More like: Don't send LAYOUTCOMMIT if data is rewritten through MDS 
-
-Well, the meat of this patch is the LAYOUTRETURN for fencing.
+Here is what I've been using to test DS recovery and MDSThreshold
 
 -->Andy
 
-> 
-> I think.
-> Boaz
-> 
->> Clear the inode LAYOUTCOMMIT flag as we will resend writes through the MDS.
->> 
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->> fs/nfs/nfs4filelayout.c |    4 ++--
->> 1 files changed, 2 insertions(+), 2 deletions(-)
->> 
->> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
->> index e134029..96a75d1 100644
->> --- a/fs/nfs/nfs4filelayout.c
->> +++ b/fs/nfs/nfs4filelayout.c
->> @@ -205,8 +205,8 @@ static int filelayout_async_handle_error(struct rpc_task *task,
->> 	case -EPIPE:
->> 		dprintk("%s DS connection error %d\n", __func__,
->> 			task->tk_status);
->> -		if (!filelayout_test_devid_invalid(devid))
->> -			_pnfs_return_layout(inode);
->> +		clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags);
->> +		_pnfs_return_layout(inode);
->> 		filelayout_mark_devid_invalid(devid);
->> 		rpc_wake_up(&tbl->slot_tbl_waitq);
->> 		nfs4_ds_disconnect(clp);
-> 
-> 
+Andy Adamson (3):
+  PYNFS use requested iomode on layoutget
+  PYNFS: add mdsthreshold to file layout server
+  PYNFS implement FREE_STATEID and TEST_STATEID operations
+
+Fred Isaman (1):
+  PYNFS rpc drop fix
+
+Weston Andros Adamson (2):
+  PYNFS fix rpcgen
+  PYNFS use loopback addresses for MDS<->DS communication
+
+ nfs4.1/dataserver.py |   28 ++++++++++++++++++++++------
+ nfs4.1/fs.py         |   12 ++++++++++--
+ nfs4.1/nfs4lib.py    |    2 +-
+ nfs4.1/nfs4server.py |   33 +++++++++++++++++++++++++++++++++
+ nfs4.1/nfs4state.py  |   11 ++++++-----
+ rpc/rpc.py           |    2 +-
+ xdr/xdrgen.py        |    2 ++
+ 7 files changed, 75 insertions(+), 15 deletions(-)
+
+-- 
+1.7.7.6
 
