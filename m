@@ -1,59 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:60512 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751169Ab2E0Fd4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 May 2012 01:33:56 -0400
-Received: by mail-pb0-f46.google.com with SMTP id rp8so3356136pbb.19
-        for <linux-nfs@vger.kernel.org>; Sat, 26 May 2012 22:33:55 -0700 (PDT)
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Peng Tao <tao.peng@emc.com>
-Subject: [PATCH 2/3] pnfsblock: call block plug in bl_dio_begin/end
-Date: Sun, 27 May 2012 13:32:59 +0800
-Message-Id: <1338096780-2763-3-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>
-References: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:49880 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754189Ab2E2Q3l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 May 2012 12:29:41 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Honor the no_root_squash flag on pseudo roots.
+Date: Tue, 29 May 2012 16:29:24 +0000
+Message-ID: <1338308959.5433.48.camel@lade.trondhjem.org>
+References: <1338296836-28243-1-git-send-email-steved@redhat.com>
+	 <1338303611.5433.14.camel@lade.trondhjem.org> <4FC4F17E.90000@RedHat.com>
+In-Reply-To: <4FC4F17E.90000@RedHat.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Peng Tao <tao.peng@emc.com>
----
- fs/nfs/blocklayout/blocklayout.c |   15 +++++++++++++++
- 1 files changed, 15 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 7ae8a60..53cb450 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -996,6 +996,19 @@ bl_clear_layoutdriver(struct nfs_server *server)
- 	return 0;
- }
- 
-+static bool bl_dio_begin(struct inode *inode, const struct iovec *iov,
-+			 unsigned long nr_segs, loff_t pos,
-+			 struct blk_plug *plug)
-+{
-+	blk_start_plug(plug);
-+	return true;
-+}
-+
-+void bl_dio_end(struct blk_plug *plug)
-+{
-+	blk_finish_plug(plug);
-+}
-+
- static const struct nfs_pageio_ops bl_pg_read_ops = {
- 	.pg_init = pnfs_generic_pg_init_read,
- 	.pg_test = pnfs_generic_pg_test,
-@@ -1013,6 +1026,8 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
- 	.name				= "LAYOUT_BLOCK_VOLUME",
- 	.read_pagelist			= bl_read_pagelist,
- 	.write_pagelist			= bl_write_pagelist,
-+	.dio_begin			= bl_dio_begin,
-+	.dio_end			= bl_dio_end,
- 	.alloc_layout_hdr		= bl_alloc_layout_hdr,
- 	.free_layout_hdr		= bl_free_layout_hdr,
- 	.alloc_lseg			= bl_alloc_lseg,
--- 
-1.7.1.262.g5ef3d
-
+T24gVHVlLCAyMDEyLTA1LTI5IGF0IDExOjU1IC0wNDAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0K
+PiANCj4gT24gMDUvMjkvMjAxMiAxMTowMCBBTSwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPiA+
+IE9uIFR1ZSwgMjAxMi0wNS0yOSBhdCAwOTowNyAtMDQwMCwgU3RldmUgRGlja3NvbiB3cm90ZToN
+Cj4gPj4gSWYgcm9vdCBzcXVhc2hpbmcgaXMgdHVybmVkIG9mZiBvbiBhIGV4cG9ydCB0aGF0DQo+
+ID4+IGhhcyBtdWx0aXBsZSBkaXJlY3RvcmllcywgdGhlIHBhcmVudCBkaXJlY3Rvcmllcw0KPiA+
+PiBvZiB0aGUgcHNldWRvIGV4cG9ydHMgdGhhdCdzIGJ1aWx0LCBhbHNvIG5lZWRzIHRvDQo+ID4+
+IGhhdmUgcm9vdCBzcXVhc2hpbmcgdHVybmVkIG9mZi4NCj4gPj4NCj4gPj4gU2lnbmVkLW9mZi1i
+eTogU3RldmUgRGlja3NvbiA8c3RldmVkQHJlZGhhdC5jb20+DQo+ID4+IC0tLQ0KPiA+PiAgdXRp
+bHMvbW91bnRkL3Y0cm9vdC5jIHwgICAgOSArKysrKysrKy0NCj4gPj4gIDEgZmlsZXMgY2hhbmdl
+ZCwgOCBpbnNlcnRpb25zKCspLCAxIGRlbGV0aW9ucygtKQ0KPiA+Pg0KPiA+PiBkaWZmIC0tZ2l0
+IGEvdXRpbHMvbW91bnRkL3Y0cm9vdC5jIGIvdXRpbHMvbW91bnRkL3Y0cm9vdC5jDQo+ID4+IGlu
+ZGV4IDcwOGViNjEuLmFkOGEzZTcgMTAwNjQ0DQo+ID4+IC0tLSBhL3V0aWxzL21vdW50ZC92NHJv
+b3QuYw0KPiA+PiArKysgYi91dGlscy9tb3VudGQvdjRyb290LmMNCj4gPj4gQEAgLTkyLDcgKzky
+LDE0IEBAIHY0cm9vdF9jcmVhdGUoY2hhciAqcGF0aCwgbmZzX2V4cG9ydCAqZXhwb3J0KQ0KPiA+
+PiAgCWV4cCA9IGV4cG9ydF9jcmVhdGUoJmVlcCwgMCk7DQo+ID4+ICAJaWYgKGV4cCA9PSBOVUxM
+KQ0KPiA+PiAgCQlyZXR1cm4gTlVMTDsNCj4gPj4gLQl4bG9nKERfQ0FMTCwgInY0cm9vdF9jcmVh
+dGU6IHBhdGggJyVzJyIsIGV4cC0+bV9leHBvcnQuZV9wYXRoKTsNCj4gPj4gKwkvKg0KPiA+PiAr
+CSAqIEhvbm9yIHRoZSBub19yb290X3NxdWFzaCBmbGFnIA0KPiA+PiArCSAqLw0KPiA+PiArCWlm
+ICgoY3VyZXhwLT5lX2ZsYWdzICYgTkZTRVhQX1JPT1RTUVVBU0gpID09IDApDQo+ID4+ICsJCWV4
+cC0+bV9leHBvcnQuZV9mbGFncyAmPSB+TkZTRVhQX1JPT1RTUVVBU0g7DQo+ID4+ICsJeGxvZyhE
+X0NBTEwsICJ2NHJvb3RfY3JlYXRlOiBwYXRoICclcycgZmxhZ3MgMHgleCIsIA0KPiA+PiArCQll
+eHAtPm1fZXhwb3J0LmVfcGF0aCwgZXhwLT5tX2V4cG9ydC5lX2ZsYWdzKTsNCj4gPj4gKw0KPiA+
+PiAgCXJldHVybiAmZXhwLT5tX2V4cG9ydDsNCj4gPj4gIH0NCj4gPiANCj4gPiANCj4gPiBBcyBs
+b25nIGFzIHRoZSB1c2VyIGlzIGF1dGhlbnRpY2F0ZWQsIHdoeSBkbyB3ZSBjYXJlIHdoZXRoZXIg
+b3Igbm90IHRoZXkNCj4gPiBhcmUgc3F1YXNoZWQgdG8gdXNlciAnbm9ib2R5JyBmb3IgYXV0aG9y
+aXNhdGlvbiBwdXJwb3Nlcz8gVGhlcmUNCj4gPiBzaG91bGRuJ3QgYmUgYW55IHBlcm1pc3Npb24g
+Y2hlY2tzIGVuZm9yY2VkIG9uIHRoZSBwc2V1ZG8tcm9vdCwgc2hvdWxkDQo+ID4gdGhlcmU/DQo+
+ID4NCj4gVGhlIGFjY2VzcyBjaGVja3MgY29tZSBkdXJpbmcgdGhlIGxvb2t1cCBvZiB0aGUgcHNl
+dWRvLXJvb3QuIA0KPiANCj4gRm9yIGV4YW1wbGUNCj4gICAgICAvaG9tZS9zdGV2ZWQvd29yayAq
+KHJ3LG5vX3Jvb3Rfc3F1YXNoKQ0KPiANCj4gVGhpcyBpcyB0aGUgIGV4cG9ydCB3aGljaCBjYXVz
+ZXMgbW91bnRkIGJ1aWxkcyB0aGUgcHNldWRvLXJvb3RzIG9mIA0KPiAgICAgICcvJywgJy9ob21l
+JywgYW5kICcvaG9tZS9zdGV2ZWQnDQo+IA0KPiBOb3cgaWYgdGhlIG5vX3Jvb3Rfc3F1YXNoIGlz
+IG5vdCBzZXQgb24gdGhvc2UgcHNldWRvLXJvb3RzIHRoZQ0KPiBhY2Nlc3MgYml0cyByZXR1cm5l
+ZCBieSBzZXJ2ZXIgd2lsbCBjYXVzZSB0aGUgbG9va3VwIG9mDQo+IC9ob21lL3N0ZXZlZC93b3Jr
+IHRvIGZhaWwuIA0KDQpJZiAnLycsICcvaG9tZScgYW5kICcvaG9tZS9zdGV2ZWQnIGFyZW4ndCBl
+eHBvcnRlZCBkaXJlY3RvcmllcywgdGhlbiBob3cNCmNhbiB0aGV5IGhhdmUgcHJvcGVydGllcyBz
+dWNoIGFzIGFjbHM/IEkgdGhvdWdodCB0aGUgd2hvbGUgcG9pbnQgb2YgdGhlDQpwc2V1ZG8tZmls
+ZXN5c3RlbSB3YXMgdG8ganVzdCBwcm92aWRlIGEgbmFtZXNwYWNlIHRoYXQgYnJpZGdlcyBiZXR3
+ZWVuDQphY3R1YWwgZXhwb3J0ZWQgZmlsZXN5c3RlbXMuDQpBcyBsb25nIGFzIEknbSBhdXRoZW50
+aWNhdGVkIChpLmUuIG15IFJQQyBjcmVkZW50aWFsIG1hdGNoZXMgdGhlICdzZWM9Jw0KbGluZSBp
+biAvZXRjL2V4cG9ydHMpLCB0aGVuIHdoeSBzaG91bGRuJ3QgSSBiZSBhYmxlIHRvICdjZCcNCmlu
+dG8gL2hvbWUvc3RldmVkIGFuZCBydW4gYW4gJ2xzJz8NCg0KQ2hlZXJzDQogIFRyb25kDQotLSAN
+ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0K
+VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
