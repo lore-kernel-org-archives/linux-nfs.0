@@ -1,79 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f178.google.com ([209.85.212.178]:34400 "EHLO
-	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754648Ab2EaWPT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 May 2012 18:15:19 -0400
+Received: from mx2.netapp.com ([216.240.18.37]:20934 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750860Ab2E2Pnl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 May 2012 11:43:41 -0400
+Received: from vmwexceht02-prd.hq.netapp.com (vmwexceht02-prd.hq.netapp.com [10.106.76.240])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q4TFhfXE020134
+	for <linux-nfs@vger.kernel.org>; Tue, 29 May 2012 08:43:41 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+CC: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 5/8] NFSv4.1: Move NFSPROC4_CLNT_BIND_CONN_TO_SESSION to
+ the end of the operations
+Date: Tue, 29 May 2012 15:43:40 +0000
+Message-ID: <1338306221.5433.27.camel@lade.trondhjem.org>
+References: <1337983402-24677-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1337983402-24677-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <1337983402-24677-3-git-send-email-Trond.Myklebust@netapp.com>
+	 <1337983402-24677-4-git-send-email-Trond.Myklebust@netapp.com>
+	 <1337983402-24677-5-git-send-email-Trond.Myklebust@netapp.com>
+	 <ACF824E6-0473-4E05-9350-8808A180AC15@netapp.com>
+In-Reply-To: <ACF824E6-0473-4E05-9350-8808A180AC15@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <20120531205300.GG25955@fieldses.org>
-References: <20120531182457.GB25955@fieldses.org> <CA+55aFwGpVM2Dbe02gL5=cGJZ_t3b4PTAhqwrs5MHjsb5R6BaA@mail.gmail.com>
- <20120531200138.GD25955@fieldses.org> <CA+55aFyuHz5Vn8G_kpKgnSStX0s125gwwQij2KXmnhfwaajhkg@mail.gmail.com>
- <20120531205300.GG25955@fieldses.org>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Thu, 31 May 2012 15:14:57 -0700
-Message-ID: <CA+55aFxY+WJmMu=1Wvdh24kK0JWEuQ1vwcqZdaNDbp1_wUsZ4A@mail.gmail.com>
-Subject: Re: nfsd changes for 3.5
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 31, 2012 at 1:53 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Thu, May 31, 2012 at 01:17:26PM -0700, Linus Torvalds wrote:
->
-> Uh, that means ditching some work in my public git tree.  Which I
-> haven't rebased in years.  So, a stupid process question; would you
-> rather I:
->
->        - continue to be strict about rebasing and apply a bunch of
->          reverts?
->        - ditch it and start over?
-
-I think in this case rebasing is the right thing to do.
-
-I hate rebasing, but what I hate about it is how people who use it as
-a development model cause problems for anybody else. I don't think it
-will cause problems in this particular case, but if somebody hollers,
-let me know.
-
->>  Making
->> it an rwsem might help readdir a tiny amount, but I suspect people
->> actually depend on the mutex in readdir right now.
->
-> Al called this all "highly non-trivial":
->
->        http://marc.info/?l=linux-fsdevel&m=132726495726326&w=2
->
-> I don't know who'd have the cycles.
-
-I agree, it's a rats nest.
-
-Doing lookups in particular is ridiculously single-threaded for almost
-no good reason, though (and create is just a special case of that). It
-*should* be possible that push the i_mutex down into the filesystem,
-if we just created some fake dentry (with the appropriate support for
-lookup to stall on it) to make sure that lookups of the same *name*
-are serialized.
-
-At that point, each filesystem could decide that they don't need the
-i_mutex for the whole thing.
-
-Maybe.
-
-And readdir() could be done mostly mechanically by changing i_mutex
-into an rwsem, making all lockers use a write lock, and pushing the
-locking down from the caller into the filesystem for ->readdir().
-Again, at that point, I suspect many filesystems could do with much
-less locking.
-
-But yeah, it's all nasty. Even the purely mechanical part of changing
-i_mutex to an rwsem would not only be a *huge* and painful patch, it
-would hit things like lockdep issues too (we don't support the nesting
-thing for rwsem annotations, afaik).
-
-So nobody has really done it, and it's so painful that maybe nobody
-will. There are loads that hit this serialization point, but they are
-*fairly* rare and specialized.
-
-                Linus
+T24gVHVlLCAyMDEyLTA1LTI5IGF0IDE1OjA1ICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
+PiBPbiBNYXkgMjUsIDIwMTIsIGF0IDY6MDMgUE0sIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4g
+DQo+ID4gRm9yIGJhY2t3YXJkIGNvbXBhdGliaWxpdHkgd2l0aCBuZnMtdXRpbHMuDQo+IA0KPiBD
+YW4geW91IGV4cGFuZCBvbiB0aGF0IGEgYml0PyBJIHB1dCB0aGVtIHdoZXJlIHRoZXkgYXJlIGJl
+Y2F1c2UgdGhleSBhcmUgaW4gb3JkZXIgb2Ygb3BlcmF0aW9uIGlkIChiaW5kX2Nvbm5fdG9fc2Vz
+c2lvbiA9IDQxLCBleGNoYW5nZV9pZCA9IDQyKS4NCg0KbmZzNF9wcm9jZWR1cmVzIGlzbid0IChh
+bmQgcmVhbGx5IGNhbid0IGJlKSBvcmRlcmVkIGJ5IG9wZXJhdGlvbi4gSXQgaXMNCmEgc2V0IG9m
+IENPTVBPVU5EcywgZWFjaCBvZiB3aGljaCByZWZsZWN0cyBhIGNlcnRhaW4gZnVuY3Rpb25hbGl0
+eQ0KcmF0aGVyIHRoYW4gYSBzcGVjaWZpYyBvcGVyYXRpb24uDQoNCj4gSWYgd2UgcmVhbGx5IG11
+c3Qgb25seSBhZGQgdG8gdGhlIGVuZCBvZiB0aGUgbGlzdCwgd2UgcmVhbGx5IHNob3VsZCBoYXZl
+IGEgY29tbWVudCBhYm92ZSBuZnM0X3Byb2NlZHVyZXMsIGV0Yy4NCg0KVGhlIHdob2xlIG5mc3N0
+YXQgaXMgY3VycmVudGx5IHByb2JsZW1hdGljIGJlY2F1c2Ugd2Ugb2NjYXNpb25hbGx5IGRvDQp3
+YW50IHRvIGJlIGFibGUgdG8gYWRkIHRvIHRoZSBORlN2NC4wIHByb2NlZHVyZXMgKGFib3ZlIHRo
+ZSAjaWZkZWYNCkNPTkZJR19ORlNfVjRfMSkgYXMgd2VsbCBhcyB0aGUgTkZTdjQuMSBwcm9jZWR1
+cmVzLg0KDQpBcHBlbmRpbmcgaXMgdXN1YWxseSB0aGUgcmlnaHQgdGhpbmcgdG8gZG8sIGJ1dCB0
+aGF0ICNpZmRlZiBtYWtlcyBpdA0KcHJvYmxlbWF0aWMgc2luY2UgaWYgd2Ugd2VyZSB0byBhcHBl
+bmQgTkZTdjQuMCByb3V0aW5lcywgdGhlbiB0aGV5IHdvdWxkDQptb3ZlIGRlcGVuZGluZyBvbiB3
+aGV0aGVyIG9yIG5vdCB3ZSBjb21waWxlIGluIE5GU3Y0LjEgb3Igbm90Lg0KDQpBZGRpbmcgaW4g
+TkZTdjQuMiB3aWxsIGdpdmUgcmlzZSB0byBldmVuIG1vcmUgJ2ludGVyZXN0aW5nJyBzaXR1YXRp
+b25zDQpzaG91bGQgd2Ugc3RhcnQgcHJvdGVjdGluZyBpdCB3aXRoIHlldCBtb3JlICNpZmRlZnMu
+Li4NCg0KVGhlIHNvbHV0aW9uIG1heSBiZSB0byBqdXN0IGFjY2VwdCB0aGF0IHdlIGNhbm5vdCBr
+ZWVwIHNlcGFyYXRpbmcNCk5GU3Y0LjAgYW5kIE5GU3Y0LjEgcm91dGluZXMsIGFuZCB0byBqdXN0
+IGdldCByaWQgb2YgdGhlICNpZmRlZnMgc28gdGhhdA0Kd2UgY2FuIGFsd2F5cyBhcHBlbmQgdG8g
+bmZzNF9wcm9jZWR1cmVzW10uIEhvd2V2ZXIgd2UgaGF2ZW4ndCB5ZXQgZG9uZQ0KdGhpcywgYW5k
+IHNvIHRoZXJlIGlzIG5vIGdvb2QgJ29mZmljaWFsJyBkb2N1bWVudGVkIHBvbGljeS4NCg0KLS0g
+DQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHAN
+ClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
