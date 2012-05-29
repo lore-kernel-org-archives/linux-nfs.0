@@ -1,104 +1,143 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:36798 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:12095 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759137Ab2EQGod (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 May 2012 02:44:33 -0400
-Date: Thu, 17 May 2012 16:44:20 +1000
-From: NeilBrown <neilb@suse.de>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: ANNOUNCE: nfs-utils-1.2.6 released.
-Message-ID: <20120517164420.3fe761a5@notabene.brown>
-In-Reply-To: <4FB159DA.2070800@RedHat.com>
-References: <4FB159DA.2070800@RedHat.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/tJa7kt9IOM/J5=93825tehu"; protocol="application/pgp-signature"
+	id S1754822Ab2E2TR1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 May 2012 15:17:27 -0400
+Message-ID: <4FC5209E.1090306@RedHat.com>
+Date: Tue, 29 May 2012 15:16:46 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Jeff Layton <jlayton@redhat.com>
+CC: linux-nfs@vger.kernel.org, chuck.lever@oracle.com
+Subject: Re: [PATCH v4] statd: drop all capabilities from the bounding set
+ as well
+References: <1337683270-14260-1-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1337683270-14260-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/tJa7kt9IOM/J5=93825tehu
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
-
-On Mon, 14 May 2012 15:15:38 -0400 Steve Dickson <SteveD@redhat.com> wrote:
-
-> New Features in this release:
->    * The addition the nfsdcld daemon
->    * The addition of the osd_login script which is mandated by the
->          pnfs-objects standard
-
-Don't you hate it when people don't bother to test all your -rc's, then
-report bugs against your final release?  Me too.
-
-  mkdir /tmp/dest
-  make DESTDIR=3D/tmp/dest install
-
-fails because it tries to install osd_login in /tmp/dest/sbin/osd_login
-without first creating /tmp/dest/sbin.  All other required directories get
-created first.
-
-This patch - stealing an idea from utils/mount - seem to fix it.
-
-Thanks,
-NeilBrown
 
 
-commit 03bb227402ab023f4badb515022d49f82e01ff8d
-Author: Neil Brown <neilb@suse.de>
-Date:   Thu May 17 16:40:40 2012 +1000
+On 05/22/2012 06:41 AM, Jeff Layton wrote:
+> statd drops all capabilities except for CAP_NET_BIND when it starts. It's
+> possible though that if it ever had a compromise that an attacker would be
+> able to invoke a setuid process (or something with file capabilities) in
+> order to reinstate some caps.
+> 
+> This could happen as a result of the daemon becoming compromised, or
+> possibly as a result of the ha-callout program becoming compromised.
+> 
+> In order to prevent that, have statd also prune the capability bounding
+> set to nothing prior to dropping capabilities. That ensures that the
+> process won't be able to reacquire capabilities via any means --
+> including exec'ing a setuid program.
+> 
+> We do however need to be cognizant of the fact that PR_CAPBSET_DROP was
+> only added in 2.6.25, so check to make sure that #define exists via
+> autoconf before we rely on it. In order to do that, we must add
+> ax_check_define.m4 from the GNU autoconf macro archive.
+> 
+> Furthermore, do a runtime check to see if /proc/sys/kernel/cap-bound
+> exists before attempting to clear the bounding set. If it does, then
+> don't bother trying since it won't work. In that event though, do
+> throw a warning however since the presence of that file indicates that
+> there is a disconnect between the build and runtime environments.
+> 
+> Cc: Chuck Lever <chuck.lever@oracle.com>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Committed....
 
-    osd_login - ensure /sbin is created before installation.
-   =20
-    If we use a more standard approach to describing the osd_login
-    script, the automake infrastructure will create /sbin before
-    attempting installation.
-    This is important for: make DESTDIR=3D/empty-dir install
-   =20
-    Signed-off-by: NeilBrown <neilb@suse.de>
-
-diff --git a/utils/osd_login/Makefile.am b/utils/osd_login/Makefile.am
-index adc493a..d17ffa7 100644
---- a/utils/osd_login/Makefile.am
-+++ b/utils/osd_login/Makefile.am
-@@ -1,12 +1,9 @@
- ## Process this file with automake to produce Makefile.in
-=20
--OSD_LOGIN_FILES=3D osd_login
-+# These binaries go in /sbin (not /usr/sbin), and that cannot be
-+# overriden at config time.
-+sbindir =3D /sbin
-=20
--EXTRA_DIST=3D $(OSD_LOGIN_FILES)
--
--all-local: $(OSD_LOGIN_FILES)
--
--install-data-hook:
--	$(INSTALL) --mode 755 osd_login $(DESTDIR)/sbin/osd_login
-+sbin_SCRIPTS =3D osd_login
-=20
- MAINTAINERCLEANFILES =3D Makefile.in
-
---Sig_/tJa7kt9IOM/J5=93825tehu
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.18 (GNU/Linux)
-
-iQIVAwUBT7SeRDnsnt1WYoG5AQKQ7g//Y9aoOuBEc9TU8Sy2dyXsaVOzt6zwLOwX
-vrCfqm28uVZslBKFRjPf8RupGMNpRkl5YNLkidUwKqubpwt0aePHsTo4mLHVtTcH
-87LCSMyUgxAaTcvnerYZDHeeY26vd2ymg3GS8QadRa2ldx6S5nAt2XRkBCRwAID+
-g44NVNjbVgAo+PCp0814swXFiqo1wMyEB6/0rvqPBpjah1NNiLVbeHChmBSayCrF
-GCd0opd/WPJ9Crs5n7mVZFyTHmq9hECXZIeaqvy25LGMyKSJSMbTO3k5TpYGfAUt
-OKjmUt0yr7Ou7aAfPTZZdBVVgG3lZemMPj4skQZmiH4cL+RBzw5zo2jfbSTJhIv2
-gv4+hqug9kSCRvZhWRcTzr8Uj3cqN+r0iGoCgQv4Ohanrsyi26ogW8KBnJVgx8m0
-4g9g1/9cD0+wm3OwD33M7csOM5iovtU73bQ55E/NlYjUEwZBdcQz9e8cWGvNkPh1
-oJOePrkwjQ2vQeb/uhM+bdK0wB518mxiATIC14KblWaetNEuFOL+fIM+2Ff0j3cX
-O0jvmq+oNgBEESOlAQ0AODUWNurrC86jkjxdq/0umFXrDEcvjMQKi7R/IQMjJ4UP
-F07HFLftT8cJI4Jn+me3+ASHRTdsym8Gf3EM85KpSOiRM56Mbly/Y9hTFoU2gfoP
-F9O2dSO4R74=
-=dgSB
------END PGP SIGNATURE-----
-
---Sig_/tJa7kt9IOM/J5=93825tehu--
+steved.
+> ---
+>  support/nsm/file.c |   57 ++++++++++++++++++++++++++++++++++++++++++++++++++-
+>  1 files changed, 55 insertions(+), 2 deletions(-)
+> 
+> diff --git a/support/nsm/file.c b/support/nsm/file.c
+> index 5dd52c1..5476446 100644
+> --- a/support/nsm/file.c
+> +++ b/support/nsm/file.c
+> @@ -338,10 +338,10 @@ nsm_is_default_parentdir(void)
+>   *
+>   * Returns true if successful, or false if some error occurred.
+>   */
+> +#ifdef HAVE_SYS_CAPABILITY_H
+>  static _Bool
+>  nsm_clear_capabilities(void)
+>  {
+> -#ifdef HAVE_SYS_CAPABILITY_H
+>  	cap_t caps;
+>  
+>  	caps = cap_from_text("cap_net_bind_service=ep");
+> @@ -357,10 +357,60 @@ nsm_clear_capabilities(void)
+>  	}
+>  
+>  	(void)cap_free(caps);
+> -#endif
+>  	return true;
+>  }
+>  
+> +#define CAP_BOUND_PROCFILE "/proc/sys/kernel/cap-bound"
+> +static _Bool
+> +prune_bounding_set(void)
+> +{
+> +#ifdef PR_CAPBSET_DROP
+> +	int ret;
+> +	unsigned long i;
+> +	struct stat st;
+> +
+> +	/*
+> +	 * Prior to kernel 2.6.25, the capabilities bounding set was a global
+> +	 * value. Check to see if /proc/sys/kernel/cap-bound exists and don't
+> +	 * bother to clear the bounding set if it does.
+> +	 */
+> +	ret = stat(CAP_BOUND_PROCFILE, &st);
+> +	if (!ret) {
+> +		xlog(L_WARNING, "%s exists. Not attempting to clear "
+> +				"capabilities bounding set.",
+> +				CAP_BOUND_PROCFILE);
+> +		return true;
+> +	} else if (errno != ENOENT) {
+> +		/* Warn, but attempt to clear the bounding set anyway. */
+> +		xlog(L_WARNING, "Unable to stat %s: %m", CAP_BOUND_PROCFILE);
+> +	}
+> +
+> +	/* prune the bounding set to nothing */
+> +	for (i = 0; i <= CAP_LAST_CAP; ++i) {
+> +		ret = prctl(PR_CAPBSET_DROP, i, 0, 0, 0);
+> +		if (ret) {
+> +			xlog(L_ERROR, "Unable to prune capability %lu from "
+> +				      "bounding set: %m", i);
+> +			return false;
+> +		}
+> +	}
+> +#endif /* PR_CAPBSET_DROP */
+> +	return true;
+> +}
+> +#else /* !HAVE_SYS_CAPABILITY_H */
+> +static _Bool
+> +nsm_clear_capabilities(void)
+> +{
+> +	return true;
+> +}
+> +
+> +static _Bool
+> +prune_bounding_set(void)
+> +{
+> +	return true;
+> +}
+> +#endif /* HAVE_SYS_CAPABILITY_H */
+> +
+>  /**
+>   * nsm_drop_privileges - drop root privileges
+>   * @pidfd: file descriptor of a pid file
+> @@ -393,6 +443,9 @@ nsm_drop_privileges(const int pidfd)
+>  		return false;
+>  	}
+>  
+> +	if (!prune_bounding_set())
+> +		return false;
+> +
+>  	if (st.st_uid == 0) {
+>  		xlog_warn("Running as root.  "
+>  			"chown %s to choose different user", nsm_base_dirname);
