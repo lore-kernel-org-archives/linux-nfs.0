@@ -1,57 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:7694 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:36371 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753418Ab2F0UrK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Jun 2012 16:47:10 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: Harshula <harshula@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: rpciod process is blocked in nfs_release_page waiting for
- nfs_commit_inode to complete
-Date: Wed, 27 Jun 2012 20:46:49 +0000
-Message-ID: <1340830004.2398.26.camel@lade.trondhjem.org>
-References: <1339764850.30233.11.camel@serendib>
-	 <20120615092103.15cc2b11@corrin.poochiereds.net>
-	 <1339795503.16363.9.camel@lade.trondhjem.org>
-	 <20120627115447.0fdf8c6e@corrin.poochiereds.net>
-	 <1340822635.2398.7.camel@lade.trondhjem.org>
-	 <20120627152814.4774048b@tlielax.poochiereds.net>
-	 <1340826996.2398.15.camel@lade.trondhjem.org>
-	 <20120627161913.05229538@tlielax.poochiereds.net>
-In-Reply-To: <20120627161913.05229538@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1758345Ab2FAVBk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Jun 2012 17:01:40 -0400
+From: andros@netapp.com
+To: iisaman@netapp.com
+Cc: linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@fedora-64-2.gateway.2wire.net>,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH 6/6] PYNFS implement FREE_STATEID and TEST_STATEID operations
+Date: Tue, 29 May 2012 17:57:59 -0400
+Message-Id: <1338328679-28837-7-git-send-email-andros@netapp.com>
+In-Reply-To: <1338328679-28837-1-git-send-email-andros@netapp.com>
+References: <1338328679-28837-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTA2LTI3IGF0IDE2OjE5IC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-T24gV2VkLCAyNyBKdW4gMjAxMiAxOTo1NjozOCArMDAwMA0KPiAiTXlrbGVidXN0LCBUcm9uZCIg
-PFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4gT24gV2VkLCAyMDEy
-LTA2LTI3IGF0IDE1OjI4IC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4gPiA+IE9uIFdlZCwg
-MjcgSnVuIDIwMTIgMTg6NDM6NTYgKzAwMDANCj4gPiA+ICJNeWtsZWJ1c3QsIFRyb25kIiA8VHJv
-bmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+ID4gSWYgdGhlcmUgcmVhbGx5IGlz
-IG5vIGFsdGVybmF0aXZlIHRvIGZyZWVpbmcgdGhlIHNvY2tldCwgdGhlbiB0aGUgb25seQ0KPiA+
-ID4gcmVhbCBmaXggSSBjYW4gc2VlIGlzIHRvIHNldCBQRl9NRU1BTExPQyB3aGVuIHdlIGdvIHRv
-IGNyZWF0ZSBpdCBhbmQNCj4gPiA+IHRoZW4gcmVzZXQgaXQgYWZ0ZXJ3YXJkLiBUaGF0J3MgYSBw
-cmV0dHkgdWdseSBmaXggdGhvdWdoLi4uDQo+ID4gDQo+ID4gSSBjYW4gdGhpbmsgb2YgMiBwb3Nz
-aWJsZSBhbHRlcm5hdGl2ZXM6DQo+ID4gDQo+ID4gICAgICAxLiBVc2UgdGhlIFBGX0ZTVFJBTlMg
-ZmxhZyB0byB0ZWxsIG5mc19yZWxlYXNlX3BhZ2UgdGhhdCB0aGlzIGlzIGENCj4gPiAgICAgICAg
-IGRpcmVjdCByZWNsYWltIGZyb20gcnBjaW9kLg0KPiANCj4gSG1tLi4udGhhdCdzIGEgYml0IGlu
-ZGlzY3JpbWluYXRlLCBpc24ndCBpdD8gTG9va3MgbGlrZSBvbmx5IFhGUyB1c2VzDQo+IHRoYXQg
-ZmxhZyBub3cuLi4NCj4gDQo+IFN1cHBvc2Ugd2UncmUgaW4gc29tZSBYRlMgYWxsb2NhdGlvbiBh
-bmQgdGhlbiB3YW50IHRvIGNvbW1pdCBhIE5GUw0KPiBwYWdlIHRvIHNhdGlzZnkgaXQuIFRoZXJl
-J3Mgbm8gcmVhbCByZWFzb24gd2UgY291bGRuJ3QgYnV0IHRoYXQgd291bGQNCj4gcHJldmVudCBp
-dC4uLg0KDQpTbyBkbyBhbGwgdGhlIEdGUF9OT0ZTIGFsbG9jYXRpb25zLiBIb3cgaXMgdGhpcyBh
-bnkgZGlmZmVyZW50Pw0KDQo+ID4gICAgICAyLiBBZGQgYSAnY29uZ2VzdGVkJyBmbGFnIHRvIHRo
-ZSBycGMgY2xpZW50IHRoYXQgY291bGQgdGVsbCByZWNsYWltDQo+ID4gICAgICAgICB0eXBlIG9w
-ZXJhdGlvbnMgdG8gZ2l2ZSB1cCBpZiBhIHNvY2tldCBhbGxvY2F0aW9uIGlzIGluDQo+ID4gICAg
-ICAgICBwcm9ncmVzcy4NCj4gPiANCj4gDQo+IFRoYXQncyBub3QgYSBiYWQgaWRlYS4gVGhhdCBo
-YXMgdGhlIGJlbmVmaXQgb2Ygb25seSBza2lwcGluZyByZWNsYWltDQo+IHdoZW4gaXQncyBkaXJl
-Y3RseSBhc3NvY2lhdGVkIHdpdGggdGhlIHNvY2tldCBiZWluZyByZWNvbm5lY3RlZC4gU2VlbXMN
-Cj4gbGlrZSB0aGF0IHdvdWxkIGhhdmUgdG8gaGFuZyBvZmYgb2YgdGhlIHJwY194cHJ0LCBidXQg
-d2UgY291bGQgZG8NCj4gc29tZXRoaW5nIGFsb25nIHRob3NlIGxpbmVzLiBQcmVzdW1hYmx5IE1l
-bCdzIHN3YXAtb3Zlci1uZnMgcGF0Y2hlcw0KPiBjb3VsZCBiZSBjb252ZXJ0ZWQgdG8gZG8gc29t
-ZXRoaW5nIHNpbWlsYXIgaW5zdGVhZCBvZiB1c2luZyBQRl9NRU1BTExPQw0KPiB0aGVyZSB0b28u
-DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0K
-TmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+From: Andy Adamson <andros@fedora-64-2.gateway.2wire.net>
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ nfs4.1/nfs4server.py |   33 +++++++++++++++++++++++++++++++++
+ nfs4.1/nfs4state.py  |   11 ++++++-----
+ 2 files changed, 39 insertions(+), 5 deletions(-)
+
+diff --git a/nfs4.1/nfs4server.py b/nfs4.1/nfs4server.py
+index b279292..8d0f112 100755
+--- a/nfs4.1/nfs4server.py
++++ b/nfs4.1/nfs4server.py
+@@ -1296,6 +1296,39 @@ class NFS4Server(rpc.Server):
+         res = READ4resok(eof, data)
+         return encode_status(NFS4_OK, res)
+ 
++    def op_free_stateid(self, arg, env):
++        check_session(env)
++        status = NFS4_OK
++        with find_state(env, arg.fsa_stateid, no_fh=True) as state:
++            try:
++                log_41.info("free_stateid found state DELETING state")
++                state.delete()
++            except NFS4Error, e:
++                log_41.info("free_stateid %s error: %d") % (arg.fsa_stateid, e.status)
++                status = e.status
++
++	res = FREE_STATEID4res(fsr_status = status)
++        return encode_status(NFS4_OK)
++
++    def op_test_stateid(self, arg, env):
++        check_session(env)
++	out = []
++        for stateid in arg.ts_stateids:
++            status = NFS4_OK
++            with find_state(env, stateid, no_fh=True) as state:
++                try:
++                    log_41.info("test_stateid found state")
++                    self.check_opsconfig(env, "test_stateid")
++                except NFS4Error, e:
++                    if (e.status == NFS4ERR_BAD_STATEID or e.status == NFS4ERR_ADMIN_REVOKED or e.status == NFS4ERR_OPENMODE):
++                        state.delete()
++                    status = e.status
++                finally:
++                    out.append(status)
++
++	res = TEST_STATEID4resok(tsr_status_codes = out)
++        return encode_status(NFS4_OK, res)
++
+     def op_open(self, arg, env):
+         self.check_opsconfig(env, "open")
+         check_session(env)
+diff --git a/nfs4.1/nfs4state.py b/nfs4.1/nfs4state.py
+index e8445e3..a6b21f4 100644
+--- a/nfs4.1/nfs4state.py
++++ b/nfs4.1/nfs4state.py
+@@ -23,7 +23,7 @@ NORMAL, CB_INIT, CB_SENT, CB_RECEIVED, INVALID = range(5) # delegation/layout st
+ DS_MAGIC = "\xa5" # STUB part of HACK code to ignore DS stateid
+ 
+ @contextmanager
+-def find_state(env, stateid, allow_0=True, allow_bypass=False):
++def find_state(env, stateid, allow_0=True, allow_bypass=False, no_fh=False):
+     """Find the matching StateTableEntry, and manage its lock."""
+     anon = False
+     if env.is_ds:
+@@ -57,10 +57,11 @@ def find_state(env, stateid, allow_0=True, allow_bypass=False):
+         state = env.session.client.state.get(stateid.other, None)
+         if state is None:
+             raise NFS4Error(NFS4ERR_BAD_STATEID, tag="stateid not known")
+-        if state.file != env.cfh:
+-            raise NFS4Error(NFS4ERR_BAD_STATEID,
+-                            tag="cfh %r does not match stateid %r" % 
+-                            (state.file.fh, env.cfh.fh))
++        if no_fh == False:
++            if state.file != env.cfh:
++                raise NFS4Error(NFS4ERR_BAD_STATEID,
++                                tag="cfh %r does not match stateid %r" % 
++                                (state.file.fh, env.cfh.fh))
+     state.lock.acquire()
+     # It is possible that while waiting to get the lock, the state has been
+     # removed.  In that case, the removal sets the invalid flag.
+-- 
+1.7.7.6
+
