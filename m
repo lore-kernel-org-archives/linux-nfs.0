@@ -1,85 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:35541 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:41221 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757317Ab2EERXd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 5 May 2012 13:23:33 -0400
-Subject: [PATCH RFC 00/13] Lockd: grace period containerization
-To: bfields@fieldses.org, Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Sat, 05 May 2012 21:21:30 +0400
-Message-ID: <20120505170722.11559.74503.stgit@localhost.localdomain>
+	id S1750887Ab2E2NNd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 May 2012 09:13:33 -0400
+Date: Tue, 29 May 2012 09:13:30 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Bryan Schumaker <bjschuma@netapp.com>
+Subject: Re: [PATCH] NFSD: TEST_STATEID should not return
+ NFS4ERR_STALE_STATEID
+Message-ID: <20120529131330.GB2308@fieldses.org>
+References: <20120524192932.8296.44698.stgit@lebasque.1015granger.net>
+ <20120525134636.GA28842@fieldses.org>
+ <62C4F65F-B822-4B00-B7AC-185EF14E39D8@oracle.com>
+ <B7E9175E-01AF-400D-9490-3E82F74478D5@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <B7E9175E-01AF-400D-9490-3E82F74478D5@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch set is marked with RFC, because I'm still not quite sure, that this
-implementation will satisfy other interested people.
-So, would be appreciated for any comments.
+On Sun, May 27, 2012 at 04:30:24PM -0400, Chuck Lever wrote:
+> Hi-
+> 
+> On May 25, 2012, at 7:30 PM, Chuck Lever wrote:
+> 
+> > On May 25, 2012, at 9:46 AM, J. Bruce Fields wrote:
+> > 
+> >> If you think it's worth checking for those buggy client cases, we could
+> >> instaed check that stateid->si_opaque.so_clid and cl->clientid agree.
+> >> That'd cover the special-stateid checks too.
+> > 
+> > That's interesting.  I can redrive this patch with this change.
+> 
+> Doesn't a positive find_stateid(cl, stateid) result guarantee that so_clid and clientid are the same?
 
-This patch set makes grace period and hosts reclaiming network namespace
-aware.
+No, it only looks at the si_opaque.so_id, and assumes this stateid
+belongs to the given client.  The passed-in client was actually
+extracted from the sequence at the start of the compound:
 
-Main ideas:
-1)  moving of 
+	nfsd4_sequence(...)
+	{
+		...
+		session = find_in_sessionid_hashtbl(&seq->sessionid);
+		...
+		cstate->session = session;
+	}
 
-	unsigned long next_gc;
-	unsigned long nrhosts;
+	nfsd4_free_stateid(...)
+	{
+		struct nfs4_client *cl = cstate->session->se_client;
+		...
+			... nfs4_validate_stateid(cl, &stateid->ts_id_stateid);
+	}
 
-	struct delayed_work grace_period_end;
-	struct lock_manager lockd_manager;
-	struct list_head grace_list;
+So in theory a confused client sent a free_stateid referencing a stateid
+that belonged to a client other than the one that the session belonged
+to, and then we'd see this inconsistency.
 
-to per-net Lockd data.
-
-2) moving of 
-
-	struct lock_manager nfsd4_manager;
-
-to per-net NFSd data.
-
-3) shutdown + gc of NLM hosts done now network namespace aware.
-
-4) restart_grace() now works only for init_net.
-
-The following series implements...
-
----
-
-Stanislav Kinsbursky (13):
-      LockD: mark host per network namespace on garbage collect
-      LockD: make garbage collector network namespace aware.
-      LockD: manage garbage collection timeout per networks namespace
-      LockD: manage used host count per networks namespace
-      Lockd: host complaining function introduced
-      Lockd: add more debug to host shutdown functions
-      LockD: manage grace period per network namespace
-      LockD: make lockd manager allocated per network namespace
-      NFSd: make nfsd4_manager allocated per network namespace context.
-      SUNRPC: service request network namespace helper introduced
-      LockD: manage grace list per network namespace
-      LockD: pass actual network namespace to grace period management functions
-      Lockd: move grace period management from lockd() to per-net functions
-
-
- fs/lockd/grace.c            |   16 +++++--
- fs/lockd/host.c             |   92 +++++++++++++++++++++++++++++--------------
- fs/lockd/netns.h            |    7 +++
- fs/lockd/svc.c              |   43 ++++++++++++--------
- fs/lockd/svc4proc.c         |   13 +++---
- fs/lockd/svclock.c          |   16 ++++---
- fs/lockd/svcproc.c          |   15 ++++---
- fs/lockd/svcsubs.c          |   19 ++++++---
- fs/nfs/callback_xdr.c       |    4 +-
- fs/nfsd/export.c            |    4 +-
- fs/nfsd/netns.h             |    2 +
- fs/nfsd/nfs4idmap.c         |    4 +-
- fs/nfsd/nfs4proc.c          |   18 +++++---
- fs/nfsd/nfs4state.c         |   60 ++++++++++++++++------------
- fs/nfsd/state.h             |    3 +
- include/linux/fs.h          |    5 +-
- include/linux/lockd/lockd.h |    6 +--
- include/linux/sunrpc/svc.h  |    2 +
- 18 files changed, 204 insertions(+), 125 deletions(-)
-
+--b.
