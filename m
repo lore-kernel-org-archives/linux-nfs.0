@@ -1,42 +1,136 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60626 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760347Ab2EWVkl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 May 2012 17:40:41 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 01/10] nfsd4: setclientid remove unnecessary terms from a logical expression
-Date: Wed, 23 May 2012 17:40:31 -0400
-Message-Id: <1337809240-15770-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1337809240-15770-1-git-send-email-bfields@redhat.com>
-References: <1337809240-15770-1-git-send-email-bfields@redhat.com>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:56796 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751025Ab2E2Ejj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 May 2012 00:39:39 -0400
+Received: by mail-pb0-f46.google.com with SMTP id rp8so5401164pbb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 28 May 2012 21:39:39 -0700 (PDT)
+From: Peng Tao <bergwolf@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, bharrosh@panasas.com,
+        Peng Tao <tao.peng@emc.com>
+Subject: [PATCH-v2 3/3] pnfsblock: call blk_plug functions for direct IO
+Date: Tue, 29 May 2012 12:38:54 +0800
+Message-Id: <1338266334-11490-4-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1338266334-11490-1-git-send-email-bergwolf@gmail.com>
+References: <1338266334-11490-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+NFS DIO bypasses generic DIO code path. So we need to plug/unplug
+on our own.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Peng Tao <tao.peng@emc.com>
 ---
- fs/nfsd/nfs4state.c |    5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+ fs/nfs/blocklayout/blocklayout.c |   47 +++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 46 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 21266c7..3dc0289 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2344,9 +2344,8 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
- 			nfsd4_probe_callback(conf);
- 			status = nfs_ok;
- 		}
--	} else if ((!conf || (conf && !same_verf(&conf->cl_confirm, &confirm)))
--	    && (!unconf || (unconf && !same_verf(&unconf->cl_confirm,
--				    				&confirm)))) {
-+	} else if ((!conf || !same_verf(&conf->cl_confirm, &confirm))
-+	    && (!unconf || !same_verf(&unconf->cl_confirm, &confirm))) {
- 		/*
- 		 * RFC 3530 14.2.34 CASE 4:
- 		 * Client probably hasn't noticed that we rebooted yet.
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index bab432f..b48b08b 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -251,6 +251,7 @@ bl_read_pagelist(struct nfs_read_data *rdata)
+ 
+ 	dprintk("%s enter nr_pages %u offset %lld count %u\n", __func__,
+ 	       rdata->pages.npages, f_offset, (unsigned int)rdata->args.count);
++	BUG_ON(header->dreq && header->layout_private == NULL);
+ 
+ 	if (!bl_check_alignment(f_offset, rdata->args.count, PAGE_CACHE_MASK))
+ 		goto use_mds;
+@@ -320,9 +321,17 @@ out:
+ 	bl_put_extent(cow_read);
+ 	bl_submit_bio(READ, bio);
+ 	put_parallel(par);
++	if (header->dreq && !header->moreio) {
++		blk_finish_plug((struct blk_plug *)header->layout_private);
++		kfree(header->layout_private);
++	}
+ 	return PNFS_ATTEMPTED;
+ 
+- use_mds:
++use_mds:
++	if (header->dreq) {
++		blk_finish_plug((struct blk_plug *)header->layout_private);
++		kfree(header->layout_private);
++	}
+ 	dprintk("Giving up and using normal NFS\n");
+ 	return PNFS_NOT_ATTEMPTED;
+ }
+@@ -575,6 +584,8 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+ 	unsigned long blkmask = PAGE_CACHE_MASK;
+ 
+ 	dprintk("%s enter, %Zu@%lld\n", __func__, count, offset);
++	BUG_ON(header->dreq && header->layout_private == NULL);
++
+ 	/* Check for alignment first */
+ 	if (header->dreq)
+ 		blkmask = NFS_SERVER(header->inode)->pnfs_blksize - 1;
+@@ -740,8 +751,16 @@ out:
+ 	bl_put_extent(be);
+ 	bl_submit_bio(WRITE, bio);
+ 	put_parallel(par);
++	if (header->dreq && !header->moreio) {
++		blk_finish_plug((struct blk_plug *)header->layout_private);
++		kfree(header->layout_private);
++	}
+ 	return PNFS_ATTEMPTED;
+ out_mds:
++	if (header->dreq) {
++		blk_finish_plug((struct blk_plug *)header->layout_private);
++		kfree(header->layout_private);
++	}
+ 	bl_put_extent(be);
+ 	kfree(par);
+ 	return PNFS_NOT_ATTEMPTED;
+@@ -1017,15 +1036,30 @@ bl_clear_layoutdriver(struct nfs_server *server)
+ static void
+ bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+ {
++	BUG_ON(pgio->pg_layout_private != NULL);
++
+ 	if (!bl_check_alignment(req->wb_offset, req->wb_bytes, PAGE_CACHE_MASK))
+ 		nfs_pageio_reset_read_mds(pgio);
+ 	else
+ 		pnfs_generic_pg_init_read(pgio, req);
++
++	if (pgio->pg_dreq && pgio->pg_lseg) {
++		struct blk_plug *plug;
++		/* Freed in bl_read_pagelist */
++		plug = kmalloc(sizeof(struct blk_plug), GFP_KERNEL);
++		if (plug != NULL) {
++			blk_start_plug(plug);
++			pgio->pg_layout_private = plug;
++		} else
++			nfs_pageio_reset_read_mds(pgio);
++	}
+ }
+ 
+ static void
+ bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+ {
++	BUG_ON(pgio->pg_layout_private != NULL);
++
+ 	if (pgio->pg_dreq) {
+ 		/* Direct write should be blksize aligned */
+ 		unsigned blkmask = NFS_SERVER(pgio->pg_inode)->pnfs_blksize - 1;
+@@ -1038,6 +1072,17 @@ bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+ 		nfs_pageio_reset_write_mds(pgio);
+ 	else
+ 		pnfs_generic_pg_init_write(pgio, req);
++
++	if (pgio->pg_dreq && pgio->pg_lseg) {
++		struct blk_plug *plug;
++		/* Freed in bl_write_pagelist */
++		plug = kmalloc(sizeof(struct blk_plug), GFP_NOFS);
++		if (plug != NULL) {
++			blk_start_plug(plug);
++			pgio->pg_layout_private = plug;
++		} else
++			nfs_pageio_reset_write_mds(pgio);
++	}
+ }
+ 
+ static const struct nfs_pageio_ops bl_pg_read_ops = {
 -- 
-1.7.9.5
+1.7.1.262.g5ef3d
 
