@@ -1,127 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:45716 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:36371 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932319Ab2F2Ndh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Jun 2012 09:33:37 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>,
-        Sebastian Andrzej Siewior <sebastian@breakpoint.cc>,
-        Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 07/12] mm: Add support for direct_IO to highmem pages
-Date: Fri, 29 Jun 2012 14:33:20 +0100
-Message-Id: <1340976805-5799-8-git-send-email-mgorman@suse.de>
-In-Reply-To: <1340976805-5799-1-git-send-email-mgorman@suse.de>
-References: <1340976805-5799-1-git-send-email-mgorman@suse.de>
+	id S1758345Ab2FAVBi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Jun 2012 17:01:38 -0400
+From: andros@netapp.com
+To: iisaman@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 3/6] PYNFS use loopback addresses for MDS<->DS communication
+Date: Tue, 29 May 2012 17:57:56 -0400
+Message-Id: <1338328679-28837-4-git-send-email-andros@netapp.com>
+In-Reply-To: <1338328679-28837-1-git-send-email-andros@netapp.com>
+References: <1338328679-28837-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The patch "mm: Add support for a filesystem to activate swap files and
-use direct_IO for writing swap pages" added support for using direct_IO
-to write swap pages but it is insufficient for highmem pages.
+From: Weston Andros Adamson <dros@netapp.com>
 
-To support highmem pages, this patch kmaps() the page before calling the
-direct_IO() handler. As direct_IO deals with virtual addresses an
-additional helper is necessary for get_kernel_pages() to lookup the
-struct page for a kmap virtual address.
+if a loopback addresses is specified for a DS, use that address for MDS to DS
+communication and remove it from the advertised addresses in getdeviceinfo
+(it obviously would never work).
 
-Signed-off-by: Mel Gorman <mgorman@suse.de>
-Acked-by: Rik van Riel <riel@redhat.com>
+this is useful for testing network partitions - you can bring down / firewall
+off an interface without breaking MDS<->DS communications.
+
+an example dataservers.conf:
+
+192.168.55.1:12345,127.0.0.1:12345/pynfs_mds
+192.168.55.1:12346,127.0.0.1:12346/pynfs_mds
+
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
 ---
- include/linux/highmem.h |    7 +++++++
- mm/highmem.c            |   12 ++++++++++++
- mm/memory.c             |    3 +--
- mm/page_io.c            |    3 ++-
- 4 files changed, 22 insertions(+), 3 deletions(-)
+ nfs4.1/dataserver.py |   28 ++++++++++++++++++++++------
+ 1 files changed, 22 insertions(+), 6 deletions(-)
 
-diff --git a/include/linux/highmem.h b/include/linux/highmem.h
-index 774fa47..ef788b5 100644
---- a/include/linux/highmem.h
-+++ b/include/linux/highmem.h
-@@ -39,10 +39,17 @@ extern unsigned long totalhigh_pages;
+diff --git a/nfs4.1/dataserver.py b/nfs4.1/dataserver.py
+index 65e4f55..dd2a535 100644
+--- a/nfs4.1/dataserver.py
++++ b/nfs4.1/dataserver.py
+@@ -187,9 +187,27 @@ class DSDevice(object):
+                     log.critical("Could not parse line: %r" % line)
+                     sys.exit(1)
  
- void kmap_flush_unused(void);
- 
-+struct page *kmap_to_page(void *addr);
+-                # for now, just use the last path for local connections
+-                server, port = server_list[-1]
+-                server_list = server_list[:-1]
++                # if there is a (IPv4) loopback address in the multipath list,
++                # use that as the connection to the DS, but dont advertise it
++                loopback_idx = -1
++                for i, serverport in enumerate(server_list):
++                    if serverport[0] == '127.0.0.1':
++                        loopback_idx = i
++                        break
 +
- #else /* CONFIG_HIGHMEM */
- 
- static inline unsigned int nr_free_highpages(void) { return 0; }
- 
-+static inline struct page *kmap_to_page(void *addr)
-+{
-+	return virt_to_page(addr);
-+}
++                if loopback_idx >= 0:
++                    print "Using loopback address for MDS->DS communication only"
++                    server_list = list(server_list)
++                    server, port = server_list.pop(loopback_idx)
++                else:
++                    # just use the last path for local connections
++                    server, port = server_list[-1]
 +
- #define totalhigh_pages 0UL
- 
- #ifndef ARCH_HAS_KMAP
-diff --git a/mm/highmem.c b/mm/highmem.c
-index 57d82c6..d517cd1 100644
---- a/mm/highmem.c
-+++ b/mm/highmem.c
-@@ -94,6 +94,18 @@ static DECLARE_WAIT_QUEUE_HEAD(pkmap_map_wait);
- 		do { spin_unlock(&kmap_lock); (void)(flags); } while (0)
- #endif
- 
-+struct page *kmap_to_page(void *vaddr)
-+{
-+	unsigned long addr = (unsigned long)vaddr;
++                if not server_list:
++                    log.critical("At least one non-loopback address must " +
++                                 "be specified for each DS")
++                    sys.exit(1)
 +
-+	if (addr >= PKMAP_ADDR(0) && addr <= PKMAP_ADDR(LAST_PKMAP)) {
-+		int i = (addr - PKMAP_ADDR(0)) >> PAGE_SHIFT;
-+		return pte_page(pkmap_page_table[i]);
-+	}
-+
-+	return virt_to_page(addr);
-+}
-+
- static void flush_all_zero_pkmaps(void)
- {
- 	int i;
-diff --git a/mm/memory.c b/mm/memory.c
-index c8153f5..94f916e 100644
---- a/mm/memory.c
-+++ b/mm/memory.c
-@@ -1864,8 +1864,7 @@ int get_kernel_pages(const struct kvec *kiov, int nr_segs, int write,
- 		if (WARN_ON(kiov[seg].iov_len != PAGE_SIZE))
- 			return seg;
- 
--		/* virt_to_page sanity checks the PFN */
--		pages[seg] = virt_to_page(kiov[seg].iov_base);
-+		pages[seg] = kmap_to_page(kiov[seg].iov_base);
- 		page_cache_get(pages[seg]);
- 	}
- 
-diff --git a/mm/page_io.c b/mm/page_io.c
-index 4a37962..78eee32 100644
---- a/mm/page_io.c
-+++ b/mm/page_io.c
-@@ -205,7 +205,7 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
- 		struct file *swap_file = sis->swap_file;
- 		struct address_space *mapping = swap_file->f_mapping;
- 		struct iovec iov = {
--			.iov_base = page_address(page),
-+			.iov_base = kmap(page),
- 			.iov_len  = PAGE_SIZE,
- 		};
- 
-@@ -218,6 +218,7 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
- 		ret = mapping->a_ops->direct_IO(KERNEL_WRITE,
- 						&kiocb, &iov,
- 						kiocb.ki_pos, 1);
-+		kunmap(page);
- 		if (ret == PAGE_SIZE) {
- 			count_vm_event(PSWPOUT);
- 			ret = 0;
+                 print server, port, path
+                 try:
+                     log.info("Adding dataserver ip:%s port:%s path:%s" %
+@@ -210,9 +228,7 @@ class DSDevice(object):
+         index = 0
+         for d in self.list:
+             if d.active:
+-                multipath = []
+-                multipath.extend(d.get_multipath_netaddr4s())
+-                multipath.append(d.get_netaddr4())
++                multipath = d.get_multipath_netaddr4s()
+                 netaddrs.append(multipath)
+                 stripe_indices.append(index)
+                 index = index + 1
 -- 
-1.7.9.2
+1.7.7.6
 
