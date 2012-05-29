@@ -1,126 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58279 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760814Ab2EWVwL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 May 2012 17:52:11 -0400
-Date: Wed, 23 May 2012 17:52:10 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Subject: Re: [PATCH] NFSd: set nfsd_serv to NULL after service destruction
-Message-ID: <20120523215210.GA15910@fieldses.org>
-References: <20120518152314.15569.21878.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120518152314.15569.21878.stgit@localhost.localdomain>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:56796 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750839Ab2E2Ej3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 May 2012 00:39:29 -0400
+Received: by mail-pb0-f46.google.com with SMTP id rp8so5401164pbb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 28 May 2012 21:39:29 -0700 (PDT)
+From: Peng Tao <bergwolf@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, bharrosh@panasas.com,
+        Peng Tao <tao.peng@emc.com>
+Subject: [PATCH-v2 2/3] NFS41: add pg_layout_private and moreio fields
+Date: Tue, 29 May 2012 12:38:53 +0800
+Message-Id: <1338266334-11490-3-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1338266334-11490-1-git-send-email-bergwolf@gmail.com>
+References: <1338266334-11490-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 18, 2012 at 07:26:02PM +0400, Stanislav Kinsbursky wrote:
-> Otherwise we will get NULL pointer dereference after
-> svc_shutdown_net->sv_shutdown (nfsd_last_thread) call.
-> This looks safe, because all such operations (svc_destroy) are performed with
-> nfsd_mutex being held.
-> 
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> ---
->  fs/nfsd/nfsctl.c |    4 ++--
->  fs/nfsd/nfsd.h   |    6 ++++++
->  fs/nfsd/nfssvc.c |   10 ++++------
->  3 files changed, 12 insertions(+), 8 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index c55298e..82cca1e 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -675,7 +675,7 @@ static ssize_t __write_ports_addfd(char *buf)
->  	if (err < 0) {
->  		if (nfsd_serv->sv_nrthreads == 1)
->  			svc_shutdown_net(nfsd_serv, net);
-> -		svc_destroy(nfsd_serv);
-> +		nfsd_destroy();
+To allow layout driver to pass private information around
+pg_init/pg_doio.
 
-The server could still be running here.  We don't want to set nfsd_serv
-to NULL.
+Cc: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Peng Tao <tao.peng@emc.com>
+---
+ fs/nfs/pagelist.c        |    3 +++
+ include/linux/nfs_page.h |    1 +
+ include/linux/nfs_xdr.h  |    2 ++
+ 3 files changed, 6 insertions(+), 0 deletions(-)
 
---b.
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index aed913c..a47d18a 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -49,6 +49,8 @@ void nfs_pgheader_init(struct nfs_pageio_descriptor *desc,
+ 	hdr->io_start = req_offset(hdr->req);
+ 	hdr->good_bytes = desc->pg_count;
+ 	hdr->dreq = desc->pg_dreq;
++	hdr->layout_private = desc->pg_layout_private;
++	hdr->moreio = desc->pg_moreio;
+ 	hdr->release = release;
+ 	hdr->completion_ops = desc->pg_completion_ops;
+ 	if (hdr->completion_ops->init_hdr)
+@@ -267,6 +269,7 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+ 	desc->pg_error = 0;
+ 	desc->pg_lseg = NULL;
+ 	desc->pg_dreq = NULL;
++	desc->pg_layout_private = NULL;
+ }
+ 
+ /**
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 88d166b..63093b1 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -69,6 +69,7 @@ struct nfs_pageio_descriptor {
+ 	const struct nfs_pgio_completion_ops *pg_completion_ops;
+ 	struct pnfs_layout_segment *pg_lseg;
+ 	struct nfs_direct_req	*pg_dreq;
++	void			*pg_layout_private;
+ };
+ 
+ #define NFS_WBACK_BUSY(req)	(test_bit(PG_BUSY,&(req)->wb_flags))
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 2e53a3f..88e95a7 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1224,6 +1224,8 @@ struct nfs_pgio_header {
+ 	void (*release) (struct nfs_pgio_header *hdr);
+ 	const struct nfs_pgio_completion_ops *completion_ops;
+ 	struct nfs_direct_req	*dreq;
++	void			*layout_private;
++	bool			moreio;
+ 	spinlock_t		lock;
+ 	/* fields protected by lock */
+ 	int			pnfs_error;
+-- 
+1.7.1.262.g5ef3d
 
->  		return err;
->  	}
->  
-> @@ -746,7 +746,7 @@ out_close:
->  out_err:
->  	if (nfsd_serv->sv_nrthreads == 1)
->  		svc_shutdown_net(nfsd_serv, net);
-> -	svc_destroy(nfsd_serv);
-> +	nfsd_destroy();
->  	return err;
->  }
->  
-> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-> index 1671429..35db369 100644
-> --- a/fs/nfsd/nfsd.h
-> +++ b/fs/nfsd/nfsd.h
-> @@ -73,6 +73,12 @@ int		nfsd_nrpools(void);
->  int		nfsd_get_nrthreads(int n, int *);
->  int		nfsd_set_nrthreads(int n, int *);
->  
-> +static inline void nfsd_destroy(void)
-> +{
-> +	svc_destroy(nfsd_serv);
-> +	nfsd_serv = NULL;
-> +}
-> +
->  #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
->  #ifdef CONFIG_NFSD_V2_ACL
->  extern struct svc_version nfsd_acl_version2;
-> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> index ee709fc..ab89fe0 100644
-> --- a/fs/nfsd/nfssvc.c
-> +++ b/fs/nfsd/nfssvc.c
-> @@ -254,8 +254,6 @@ static void nfsd_shutdown(void)
->  
->  static void nfsd_last_thread(struct svc_serv *serv, struct net *net)
->  {
-> -	/* When last nfsd thread exits we need to do some clean-up */
-> -	nfsd_serv = NULL;
->  	nfsd_shutdown();
->  
->  	svc_rpcb_cleanup(serv, net);
-> @@ -348,7 +346,7 @@ int nfsd_create_serv(void)
->  
->  	error = svc_bind(nfsd_serv, current->nsproxy->net_ns);
->  	if (error < 0) {
-> -		svc_destroy(nfsd_serv);
-> +		nfsd_destroy();
->  		return error;
->  	}
->  
-> @@ -430,7 +428,7 @@ int nfsd_set_nrthreads(int n, int *nthreads)
->  
->  	if (nfsd_serv->sv_nrthreads == 1)
->  		svc_shutdown_net(nfsd_serv, net);
-> -	svc_destroy(nfsd_serv);
-> +	nfsd_destroy();
->  
->  	return err;
->  }
-> @@ -480,7 +478,7 @@ out_shutdown:
->  out_destroy:
->  	if (nfsd_serv->sv_nrthreads == 1)
->  		svc_shutdown_net(nfsd_serv, net);
-> -	svc_destroy(nfsd_serv);		/* Release server */
-> +	nfsd_destroy();		/* Release server */
->  out:
->  	mutex_unlock(&nfsd_mutex);
->  	return error;
-> @@ -684,7 +682,7 @@ int nfsd_pool_stats_release(struct inode *inode, struct file *file)
->  	/* this function really, really should have been called svc_put() */
->  	if (nfsd_serv->sv_nrthreads == 1)
->  		svc_shutdown_net(nfsd_serv, net);
-> -	svc_destroy(nfsd_serv);
-> +	nfsd_destroy();
->  	mutex_unlock(&nfsd_mutex);
->  	return ret;
->  }
-> 
