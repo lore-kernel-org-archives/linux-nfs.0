@@ -1,33 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:35946 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755522Ab2FGTGn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jun 2012 15:06:43 -0400
-Received: by bkcji2 with SMTP id ji2so899257bkc.19
-        for <linux-nfs@vger.kernel.org>; Thu, 07 Jun 2012 12:06:42 -0700 (PDT)
-From: Idan Kedar <idank@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/2] pNFS: disable unloading a layout driver when mounted
-Date: Thu,  7 Jun 2012 22:06:29 +0300
-Message-Id: <1339095991-26753-1-git-send-email-idank@tonian.com>
+Received: from mx2.netapp.com ([216.240.18.37]:23881 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932460Ab2FAVPM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Jun 2012 17:15:12 -0400
+From: andros@netapp.com
+To: iisaman@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [[PATCH resend] 4/6] PYNFS use requested iomode on layoutget
+Date: Tue, 29 May 2012 18:11:27 -0400
+Message-Id: <1338329489-29178-5-git-send-email-andros@netapp.com>
+In-Reply-To: <1338329489-29178-1-git-send-email-andros@netapp.com>
+References: <1338329489-29178-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Layout drivers' refcount is incremented when a filesystem is mounted with
-the layout type exported by the driver. Object layout and Block layout
-drivers did not provide an owner, which means no refcount is incremented
-and that the module can be unloaded while the file system is mounted
-which, in turn, crashes in the layout driver when the NFS client attempts
-to do something with the layout driver (typically coalescing).
+From: Andy Adamson <andros@netapp.com>
 
-Idan Kedar (2):
-  pnfs-obj: disable unloading the module when mounted
-  pnfsblock: disable unloading the module when mounted
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ nfs4.1/fs.py |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
- fs/nfs/blocklayout/blocklayout.c |    1 +
- fs/nfs/objlayout/objio_osd.c     |    1 +
- 2 files changed, 2 insertions(+), 0 deletions(-)
-
+diff --git a/nfs4.1/fs.py b/nfs4.1/fs.py
+index adaa2d5..2d92d77 100644
+--- a/nfs4.1/fs.py
++++ b/nfs4.1/fs.py
+@@ -1382,7 +1382,8 @@ class FSLayoutFSObj(FSObject):
+         # as it facilitates commits, returns, recalls etc.
+         l_offset = 0
+         l_len = NFS4_UINT64_MAX
+-        l_mode = LAYOUTIOMODE4_RW
++        # use requested iomode
++        l_mode = arg.loga_iomode
+         l_type = LAYOUT4_NFSV4_1_FILES
+         self.current_layout = (l_type, l_offset, l_len, l_mode)
+         return layout4(l_offset, l_len, l_mode,
 -- 
-1.7.6.5
+1.7.7.6
 
