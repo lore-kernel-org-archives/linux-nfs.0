@@ -1,71 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:28980 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754822Ab2E2TQ7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 May 2012 15:16:59 -0400
-Message-ID: <4FC52081.1090208@RedHat.com>
-Date: Tue, 29 May 2012 15:16:17 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: =?UTF-8?B?RGllZ28gRWxpbyBQZXR0ZW7Dsg==?= <flameeyes@flameeyes.eu>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [nfs-utils PATCH] build: avoid AM_CONDITIONAL in conditional
- execution.
-References: <1337297671-9614-1-git-send-email-flameeyes@flameeyes.eu>
-In-Reply-To: <1337297671-9614-1-git-send-email-flameeyes@flameeyes.eu>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:59630 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751290Ab2E2F6T (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 May 2012 01:58:19 -0400
+From: Peng Tao <bergwolf@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: rees@umich.edu, bharrosh@panasas.com, jrnieder@gmail.com,
+        linux-nfs@vger.kernel.org, stable@vger.kernel.org,
+        Peng Tao <tao.peng@emc.com>
+Subject: [PATCH-v3] pnfsblock: bail out partial page IO
+Date: Tue, 29 May 2012 13:57:58 +0800
+Message-Id: <1338271078-11696-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Current block layout driver read/write code assumes page
+aligned IO in many places. Add a checker to validate the assumption.
+Otherwise there would be data corruption like when application does
+open(O_WRONLY) and page unaliged write.
 
+Cc: stable@vger.kernel.org
+Signed-off-by: Peng Tao <tao.peng@emc.com>
+---
+Change from v2:
+Add symptom in commit log.
 
-On 05/17/2012 07:34 PM, Diego Elio Pettenò wrote:
-> Automake does not support conditional AM_CONDITIONAL calls; what that
-> means is that you always have to execute AM_CONDITIONAL one way or the
-> other. Both the libsqlite3.m4 file and the nfsdcld conditionals are
-> executed only when NFSv4 is enabled, which breaks building with
-> --disable-nfsv4.
-> 
-> Remove the SQLite3 conditional altogether as it's never used, and move
-> the nfsdcld conditional outside of the conditional code.
-> 
-> Signed-off-by: Diego Elio Pettenò <flameeyes@flameeyes.eu>
-Committed... 
+ fs/nfs/blocklayout/blocklayout.c |   39 +++++++++++++++++++++++++++++++++++--
+ 1 files changed, 36 insertions(+), 3 deletions(-)
 
-steved.
-> ---
->  aclocal/libsqlite3.m4 |    1 -
->  configure.ac          |    3 +--
->  2 files changed, 1 insertions(+), 3 deletions(-)
-> 
-> diff --git a/aclocal/libsqlite3.m4 b/aclocal/libsqlite3.m4
-> index 73d1e46..8c38993 100644
-> --- a/aclocal/libsqlite3.m4
-> +++ b/aclocal/libsqlite3.m4
-> @@ -29,5 +29,4 @@ AC_DEFUN([AC_SQLITE3_VERS], [
->      LIBS="$saved_LIBS"])
->  
->    AC_MSG_RESULT($libsqlite3_cv_is_recent)
-> -  AM_CONDITIONAL(CONFIG_SQLITE3, [test "$libsqlite3_cv_is_recent" = "yes"])
->  ])dnl
-> diff --git a/configure.ac b/configure.ac
-> index 9ba53e2..b408f1b 100644
-> --- a/configure.ac
-> +++ b/configure.ac
-> @@ -278,8 +278,6 @@ if test "$enable_nfsv4" = yes; then
->  	fi
->    fi
->  
-> -  AM_CONDITIONAL(CONFIG_NFSDCLD, [test "$enable_nfsdcld" = "yes" ])
-> -
->    dnl librpcsecgss already has a dependency on libgssapi,
->    dnl but we need to make sure we get the right version
->    if test "$enable_gss" = yes; then
-> @@ -293,6 +291,7 @@ if test "$enable_nfsv41" = yes; then
->  fi
->  
->  dnl enable nfsidmap when its support by libnfsidmap
-> +AM_CONDITIONAL(CONFIG_NFSDCLD, [test "$enable_nfsdcld" = "yes" ])
->  AM_CONDITIONAL(CONFIG_NFSIDMAP, [test "$ac_cv_header_keyutils_h$ac_cv_lib_nfsidmap_nfs4_owner_to_uid" = "yesyes"])
->  
->  
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 7ae8a60..dd392ed 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -228,6 +228,14 @@ bl_end_par_io_read(void *data, int unused)
+ 	schedule_work(&rdata->task.u.tk_work);
+ }
+ 
++static bool
++bl_check_alignment(u64 offset, u32 len, unsigned long blkmask)
++{
++	if ((offset & blkmask) || (len & blkmask))
++		return false;
++	return true;
++}
++
+ static enum pnfs_try_status
+ bl_read_pagelist(struct nfs_read_data *rdata)
+ {
+@@ -244,6 +252,9 @@ bl_read_pagelist(struct nfs_read_data *rdata)
+ 	dprintk("%s enter nr_pages %u offset %lld count %u\n", __func__,
+ 	       rdata->pages.npages, f_offset, (unsigned int)rdata->args.count);
+ 
++	if (!bl_check_alignment(f_offset, rdata->args.count, PAGE_CACHE_MASK))
++		goto use_mds;
++
+ 	par = alloc_parallel(rdata);
+ 	if (!par)
+ 		goto use_mds;
+@@ -552,7 +563,7 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+ 	struct bio *bio = NULL;
+ 	struct pnfs_block_extent *be = NULL, *cow_read = NULL;
+ 	sector_t isect, last_isect = 0, extent_length = 0;
+-	struct parallel_io *par;
++	struct parallel_io *par = NULL;
+ 	loff_t offset = wdata->args.offset;
+ 	size_t count = wdata->args.count;
+ 	struct page **pages = wdata->args.pages;
+@@ -563,6 +574,10 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+ 	    NFS_SERVER(header->inode)->pnfs_blksize >> PAGE_CACHE_SHIFT;
+ 
+ 	dprintk("%s enter, %Zu@%lld\n", __func__, count, offset);
++	/* Check for alignment first */
++	if (!bl_check_alignment(offset, count, PAGE_CACHE_MASK))
++		goto out_mds;
++
+ 	/* At this point, wdata->pages is a (sequential) list of nfs_pages.
+ 	 * We want to write each, and if there is an error set pnfs_error
+ 	 * to have it redone using nfs.
+@@ -996,14 +1011,32 @@ bl_clear_layoutdriver(struct nfs_server *server)
+ 	return 0;
+ }
+ 
++static void
++bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
++{
++	if (!bl_check_alignment(req->wb_offset, req->wb_bytes, PAGE_CACHE_MASK))
++		nfs_pageio_reset_read_mds(pgio);
++	else
++		pnfs_generic_pg_init_read(pgio, req);
++}
++
++static void
++bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
++{
++	if (!bl_check_alignment(req->wb_offset, req->wb_bytes, PAGE_CACHE_MASK))
++		nfs_pageio_reset_write_mds(pgio);
++	else
++		pnfs_generic_pg_init_write(pgio, req);
++}
++
+ static const struct nfs_pageio_ops bl_pg_read_ops = {
+-	.pg_init = pnfs_generic_pg_init_read,
++	.pg_init = bl_pg_init_read,
+ 	.pg_test = pnfs_generic_pg_test,
+ 	.pg_doio = pnfs_generic_pg_readpages,
+ };
+ 
+ static const struct nfs_pageio_ops bl_pg_write_ops = {
+-	.pg_init = pnfs_generic_pg_init_write,
++	.pg_init = bl_pg_init_write,
+ 	.pg_test = pnfs_generic_pg_test,
+ 	.pg_doio = pnfs_generic_pg_writepages,
+ };
+-- 
+1.7.1.262.g5ef3d
+
