@@ -1,90 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:9423 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:29686 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755855Ab2EYOk1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 May 2012 10:40:27 -0400
-Subject: [PATCH v2] NFSd: fix locking in nfsd_forget_delegations()
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Fri, 25 May 2012 18:38:50 +0400
-Message-ID: <20120525143843.15863.27213.stgit@localhost.localdomain>
+	id S1754414Ab2E2Qtu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 May 2012 12:49:50 -0400
+Message-ID: <4FC4FE05.5020708@RedHat.com>
+Date: Tue, 29 May 2012 12:49:09 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Honor the no_root_squash flag on pseudo roots.
+References: <1338296836-28243-1-git-send-email-steved@redhat.com>  <1338303611.5433.14.camel@lade.trondhjem.org> <4FC4F17E.90000@RedHat.com> <1338308959.5433.48.camel@lade.trondhjem.org>
+In-Reply-To: <1338308959.5433.48.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v2: dl_recall_lru list is used for delegations collect because it's modified
-both in unhash_delegation() and nfsd_break_one_deleg().
 
-This patch adds recall_lock hold to nfsd_forget_delegations() to protect
-nfsd_process_n_delegations() call.
-Also, looks like it would be better to collect delegations to some local
-on-stack list, and then unhash collected list. This split allows to
-simplify locking, because delegation traversing is protected by recall_lock,
-when delegation unhash is protected by client_mutex.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfsd/nfs4state.c |   21 +++++++++++++++++----
- 1 files changed, 17 insertions(+), 4 deletions(-)
+On 05/29/2012 12:29 PM, Myklebust, Trond wrote:
+> On Tue, 2012-05-29 at 11:55 -0400, Steve Dickson wrote:
+>>
+>> On 05/29/2012 11:00 AM, Trond Myklebust wrote:
+>>> On Tue, 2012-05-29 at 09:07 -0400, Steve Dickson wrote:
+>>>> If root squashing is turned off on a export that
+>>>> has multiple directories, the parent directories
+>>>> of the pseudo exports that's built, also needs to
+>>>> have root squashing turned off.
+>>>>
+>>>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>>>> ---
+>>>>  utils/mountd/v4root.c |    9 ++++++++-
+>>>>  1 files changed, 8 insertions(+), 1 deletions(-)
+>>>>
+>>>> diff --git a/utils/mountd/v4root.c b/utils/mountd/v4root.c
+>>>> index 708eb61..ad8a3e7 100644
+>>>> --- a/utils/mountd/v4root.c
+>>>> +++ b/utils/mountd/v4root.c
+>>>> @@ -92,7 +92,14 @@ v4root_create(char *path, nfs_export *export)
+>>>>  	exp = export_create(&eep, 0);
+>>>>  	if (exp == NULL)
+>>>>  		return NULL;
+>>>> -	xlog(D_CALL, "v4root_create: path '%s'", exp->m_export.e_path);
+>>>> +	/*
+>>>> +	 * Honor the no_root_squash flag 
+>>>> +	 */
+>>>> +	if ((curexp->e_flags & NFSEXP_ROOTSQUASH) == 0)
+>>>> +		exp->m_export.e_flags &= ~NFSEXP_ROOTSQUASH;
+>>>> +	xlog(D_CALL, "v4root_create: path '%s' flags 0x%x", 
+>>>> +		exp->m_export.e_path, exp->m_export.e_flags);
+>>>> +
+>>>>  	return &exp->m_export;
+>>>>  }
+>>>
+>>>
+>>> As long as the user is authenticated, why do we care whether or not they
+>>> are squashed to user 'nobody' for authorisation purposes? There
+>>> shouldn't be any permission checks enforced on the pseudo-root, should
+>>> there?
+>>>
+>> The access checks come during the lookup of the pseudo-root. 
+>>
+>> For example
+>>      /home/steved/work *(rw,no_root_squash)
+>>
+>> This is the  export which causes mountd builds the pseudo-roots of 
+>>      '/', '/home', and '/home/steved'
+>>
+>> Now if the no_root_squash is not set on those pseudo-roots the
+>> access bits returned by server will cause the lookup of
+>> /home/steved/work to fail. 
+> 
+> If '/', '/home' and '/home/steved' aren't exported directories, then how
+> can they have properties such as acls? 
+They don't. '/', '/home' and '/home/steved' are not being exported. Only
+/home/steved/work is being exported in the namespace. So /home/steved/work
+can have properties such as acls, but the components in the path can't.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 21266c7..3d6848b 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4694,7 +4694,7 @@ void nfsd_forget_openowners(u64 num)
- 	printk(KERN_INFO "NFSD: Forgot %d open owners", count);
- }
- 
--int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegation *))
-+int nfsd_process_n_delegations(u64 num, struct list_head *list)
- {
- 	int i, count = 0;
- 	struct nfs4_file *fp, *fnext;
-@@ -4703,7 +4703,7 @@ int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegatio
- 	for (i = 0; i < FILE_HASH_SIZE; i++) {
- 		list_for_each_entry_safe(fp, fnext, &file_hashtbl[i], fi_hash) {
- 			list_for_each_entry_safe(dp, dnext, &fp->fi_delegations, dl_perfile) {
--				deleg_func(dp);
-+				list_move(&dp->dl_recall_lru, list);
- 				if (++count == num)
- 					return count;
- 			}
-@@ -4716,9 +4716,16 @@ int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegatio
- void nfsd_forget_delegations(u64 num)
- {
- 	unsigned int count;
-+	LIST_HEAD(victims);
-+	struct nfs4_delegation *dp, *dnext;
-+
-+	spin_lock(&recall_lock);
-+	count = nfsd_process_n_delegations(num, &victims);
-+	spin_unlock(&recall_lock);
- 
- 	nfs4_lock_state();
--	count = nfsd_process_n_delegations(num, unhash_delegation);
-+	list_for_each_entry_safe(dp, dnext, &victims, dl_recall_lru)
-+		unhash_delegation(dp);
- 	nfs4_unlock_state();
- 
- 	printk(KERN_INFO "NFSD: Forgot %d delegations", count);
-@@ -4727,10 +4734,16 @@ void nfsd_forget_delegations(u64 num)
- void nfsd_recall_delegations(u64 num)
- {
- 	unsigned int count;
-+	LIST_HEAD(victims);
-+	struct nfs4_delegation *dp, *dnext;
- 
- 	nfs4_lock_state();
- 	spin_lock(&recall_lock);
--	count = nfsd_process_n_delegations(num, nfsd_break_one_deleg);
-+	count = nfsd_process_n_delegations(num, &victims);
-+	list_for_each_entry_safe(dp, dnext, &victims, dl_recall_lru) {
-+		list_del(&dp->dl_recall_lru);
-+		nfsd_break_one_deleg(dp);
-+	}
- 	spin_unlock(&recall_lock);
- 	nfs4_unlock_state();
- 
+If you wanted those to those type of properties on the path components, 
+you would have to explicitly export them.
 
+
+> I thought the whole point of the
+> pseudo-filesystem was to just provide a namespace that bridges between
+> actual exported filesystems.
+That's exactly what happens.... 
+
+> As long as I'm authenticated (i.e. my RPC credential matches the 'sec='
+> line in /etc/exports), then why shouldn't I be able to 'cd'
+> into /home/steved and run an 'ls'?
+And you can. But all you are going to see is the exported directory, in
+this case 'work'. For example: say you mount '/' on /mnt and do an ls.
+This would be the tree:
+
+# ls /mnt
+./  ../  home/
+# ls /mnt/work/home
+./  ../  steved/
+# ls /mnt/work/home/steved
+./  ../  work/
+
+steved.
