@@ -1,62 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:52992 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:36371 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757628Ab2FTTDt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jun 2012 15:03:49 -0400
+	id S1759247Ab2FAVBk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Jun 2012 17:01:40 -0400
 From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 2 0/4] NFSv4.1 enable fencing of file layout data servers
-Date: Wed, 20 Jun 2012 15:03:30 -0400
-Message-Id: <1340219014-5749-1-git-send-email-andros@netapp.com>
+To: iisaman@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@fedora-2.andros.fake>,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH 5/6] PYNFS: add mdsthreshold to file layout server
+Date: Tue, 29 May 2012 17:57:58 -0400
+Message-Id: <1338328679-28837-6-git-send-email-andros@netapp.com>
+In-Reply-To: <1338328679-28837-1-git-send-email-andros@netapp.com>
+References: <1338328679-28837-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+From: Andy Adamson <andros@fedora-2.andros.fake>
 
-When I/O sent to a file layout data server has a connection error,the I/O
-is resent to the MDS. As with all mulipath I/O, we want to fence one path,
-the DS I/O path, ASAP to prevent data corruption.  PNFS provides the
-LAYOUTREURN call to fence file layout data servers.
+NOTE: values are hard coded and apply to all files. Edit nfs4server.py to
+change the values.
 
-The current implementation of _pnfs_return_layout does not take a layout range
-but returns all layouts. It also does not wait for all layout segments to
-be marked invalid prior to sending a LAYOUTRETURN. This works well for the
-file layout driver. Other drives can address these issues if needed.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ nfs4.1/fs.py      |    9 ++++++++-
+ nfs4.1/nfs4lib.py |    2 +-
+ 2 files changed, 9 insertions(+), 2 deletions(-)
 
-The first patch calls LAYOUTRETURN for each failed data server I/O.
-The second patch blocks sending a LAYOUTCOMMIT on the returned layouts.
-
-Because LAYOUTRETURN is called on each failed data server request, it can be
-called multiple times. The third patch addresses this by setting a flag. The
-flag is cleared on subsequent LAYOUTGETs.
-
-The DS connection error also causes the deviceid using the DS to be marked
-invalid. This prevents any new layouts from subsequent LAYOUTGETs that use the
-invalid deviceid from being cached - but the layout hdr is not reaped,
-resulting in a pnfs_layout_hdr with an empty plh_segs list.
-New LAYOUTGETs are allowed because they can use a new valid deviceid, and in
-fact, this is currently the only way an MDS can use pNFS again for files with
-layouts referring to an invalid deviceid.
-
-pnfs_layout_hdrs with empty plh_segs lists are prevented from sending a
-LAYOUTRETURN (on evict inode) by the last patch.
-
-Testing: Against the pynfs file layout server and network partioning the
-client from the DS.
-
-
-Andy Adamson (4):
-  NFSv4.1 return the LAYOUT for each file with failed DS connection I/O
-  NFSv4.1 don't send LAYOUTCOMMIT if data resent through MDS
-  NFSv4.1 mark layout when already returned
-  NFSv4.1 do not send LAYOUTRETURN on emtpy plh_segs list
-
- fs/nfs/nfs4filelayout.c |    4 ++--
- fs/nfs/pnfs.c           |   33 +++++++++++++++++++++++++++------
- fs/nfs/pnfs.h           |   19 +++++++++++++++++++
- 3 files changed, 48 insertions(+), 8 deletions(-)
-
+diff --git a/nfs4.1/fs.py b/nfs4.1/fs.py
+index 2d92d77..c0f18fa 100644
+--- a/nfs4.1/fs.py
++++ b/nfs4.1/fs.py
+@@ -1,6 +1,6 @@
+ from nfs4state import FileState
+ from nfs4_const import *
+-from nfs4_type import fsid4, layout4, layout_content4, nfsv4_1_file_layout4
++from nfs4_type import fsid4, layout4, layout_content4, nfsv4_1_file_layout4, mdsthreshold4, threshold_item4
+ import nfs4lib
+ from nfs4lib import NFS4Error
+ import struct
+@@ -1429,6 +1429,13 @@ class FileLayoutFS(FileSystem):
+         self.fattr4_maxread = 8192
+         self.fattr4_supported_attrs |= 1 << FATTR4_MAXWRITE
+         self.fattr4_supported_attrs |= 1 << FATTR4_MAXREAD
++        threshold_item4.thi_layout_type = LAYOUT4_NFSV4_1_FILES
++        # set mdsthreashold read_size, read_iosize and write_iosize
++        threshold_item4.thi_hintset = nfs4lib.list2bitmap([0, 2, 3])
++        threshold_item4.thi_hintlist = struct.pack('!QQQ',512,512,512)
++        mdsthreshold4.mth_hints = [threshold_item4]
++        self.fattr4_mdsthreshold = mdsthreshold4
++        self.fattr4_supported_attrs |= 1 << FATTR4_MDSTHRESHOLD
+         self.sync(self.root, FILE_SYNC4)
+ 
+     def attach_to_server(self, server):
+diff --git a/nfs4.1/nfs4lib.py b/nfs4.1/nfs4lib.py
+index 82045a7..a380cce 100644
+--- a/nfs4.1/nfs4lib.py
++++ b/nfs4.1/nfs4lib.py
+@@ -676,7 +676,7 @@ attr_info = { FATTR4_SUPPORTED_ATTRS : A("r", "fs"),
+               FATTR4_LAYOUT_BLKSIZE : A("r", "fs"),
+               FATTR4_LAYOUT_ALIGNMENT : A("r", "obj"),
+               FATTR4_FS_LOCATIONS_INFO : A("r", "fs"),
+-              FATTR4_MDSTHRESHOLD : A("r", "obj"),
++              FATTR4_MDSTHRESHOLD : A("r", "fs"),
+               FATTR4_RETENTION_GET : A("r", "obj"),
+               FATTR4_RETENTION_SET : A("w", "obj"),
+               FATTR4_RETENTEVT_GET : A("r", "obj"),
 -- 
-1.7.6.4
+1.7.7.6
 
