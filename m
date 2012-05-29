@@ -1,57 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60644 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:7856 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760902Ab2EWVkn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 May 2012 17:40:43 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 10/10] nfsd4: clarify that renewing expired client is a bug
-Date: Wed, 23 May 2012 17:40:40 -0400
-Message-Id: <1337809240-15770-11-git-send-email-bfields@redhat.com>
-In-Reply-To: <1337809240-15770-1-git-send-email-bfields@redhat.com>
-References: <1337809240-15770-1-git-send-email-bfields@redhat.com>
+	id S1754822Ab2E2TSt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 May 2012 15:18:49 -0400
+Message-ID: <4FC520EE.9080303@RedHat.com>
+Date: Tue, 29 May 2012 15:18:06 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Adam Sampson <ats@offog.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs-utils 1.2.6: nsm_client needs to link with libtirpc
+References: <20120526213213.GY25787@cartman.at.offog.org>
+In-Reply-To: <20120526213213.GY25787@cartman.at.offog.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Committed...
 
-This can't happen:
-	- cl_time is zeroed only by unhash_client_locked, which is only
-	  ever called under both the state lock and the client lock.
-	- every caller of renew_client() should have looked up a
-	  (non-expired) client and then called renew_client() all
-	  without dropping the state lock.
-	- the only other caller of renew_client_locked() is
-	  release_session_client(), which first checks under the
-	  client_lock that the cl_time is nonzero.
+steved.
 
-So make it clear that this is a bug, not something we handle.  I can't
-quite bring myself to make this a BUG(), though, as there are a lot of
-renew_client() callers, and returning here is probably safer than a
-BUG().
-
-We'll consider making it a BUG() after some more cleanup.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 72bc277..be1fc97 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1022,7 +1022,8 @@ static inline void
- renew_client_locked(struct nfs4_client *clp)
- {
- 	if (is_client_expired(clp)) {
--		dprintk("%s: client (clientid %08x/%08x) already expired\n",
-+		WARN_ON(1);
-+		printk("%s: client (clientid %08x/%08x) already expired\n",
- 			__func__,
- 			clp->cl_clientid.cl_boot,
- 			clp->cl_clientid.cl_id);
--- 
-1.7.9.5
-
+On 05/26/2012 05:32 PM, Adam Sampson wrote:
+> nsm_client needs to link against libtirpc.
+> 
+> diff -x config.log -x config.status -ru tmp/nfs-utils-1.2.6/tests/nsm_client/Makefile.am work/nfs-utils-1.2.6/tests/nsm_client/Makefile.am
+> --- tmp/nfs-utils-1.2.6/tests/nsm_client/Makefile.am	2012-05-14 15:40:52.000000000 +0100
+> +++ work/nfs-utils-1.2.6/tests/nsm_client/Makefile.am	2012-05-26 22:18:50.999001661 +0100
+> @@ -13,7 +13,7 @@
+>  
+>  BUILT_SOURCES = $(GENFILES)
+>  nsm_client_LDADD = ../../support/nfs/libnfs.a \
+> -		   ../../support/nsm/libnsm.a $(LIBCAP)
+> +		   ../../support/nsm/libnsm.a $(LIBCAP) $(LIBTIRPC)
+>  
+>  if CONFIG_RPCGEN
+>  RPCGEN	= $(top_builddir)/tools/rpcgen/rpcgen
+> 
