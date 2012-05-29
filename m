@@ -1,66 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:12110 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:23881 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752191Ab2FLLvX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Jun 2012 07:51:23 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q5CBpMNg012647
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 12 Jun 2012 07:51:23 -0400
-From: harald@redhat.com
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, jlayton@redhat.com,
-        Harald Hoyer <harald@redhat.com>
-Subject: [PATCH] Before clearing the capability bounding set, check if we have the cap
-Date: Tue, 12 Jun 2012 13:51:06 +0200
-Message-Id: <1339501866-18967-1-git-send-email-harald@redhat.com>
+	id S932282Ab2FAVPM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Jun 2012 17:15:12 -0400
+From: andros@netapp.com
+To: iisaman@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [[PATCH resend] 3/6] PYNFS use loopback addresses for MDS<->DS communication
+Date: Tue, 29 May 2012 18:11:26 -0400
+Message-Id: <1338329489-29178-4-git-send-email-andros@netapp.com>
+In-Reply-To: <1338329489-29178-1-git-send-email-andros@netapp.com>
+References: <1338329489-29178-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Harald Hoyer <harald@redhat.com>
+From: Weston Andros Adamson <dros@netapp.com>
 
-PR_CAPBSET_DROP can return EINVAL, if an older kernel does support
-some capabilities, which are defined by CAP_LAST_CAP, which results in
-a failure of the service.
+if a loopback addresses is specified for a DS, use that address for MDS to DS
+communication and remove it from the advertised addresses in getdeviceinfo
+(it obviously would never work).
 
-For example kernel 3.4 errors on CAP_EPOLLWAKEUP, which was newly
-introduced in 3.5.
+this is useful for testing network partitions - you can bring down / firewall
+off an interface without breaking MDS<->DS communications.
 
-So, for future capabilities, we clear until we get an EINVAL for
-PR_CAPBSET_READ.
+an example dataservers.conf:
+
+192.168.55.1:12345,127.0.0.1:12345/pynfs_mds
+192.168.55.1:12346,127.0.0.1:12346/pynfs_mds
+
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
 ---
- support/nsm/file.c      |    2 +-
- utils/nfsdcld/nfsdcld.c |    4 ++--
- 2 files changed, 3 insertions(+), 3 deletions(-)
+ nfs4.1/dataserver.py |   28 ++++++++++++++++++++++------
+ 1 files changed, 22 insertions(+), 6 deletions(-)
 
-diff --git a/support/nsm/file.c b/support/nsm/file.c
-index 5476446..4711c2c 100644
---- a/support/nsm/file.c
-+++ b/support/nsm/file.c
-@@ -386,7 +386,7 @@ prune_bounding_set(void)
- 	}
+diff --git a/nfs4.1/dataserver.py b/nfs4.1/dataserver.py
+index 65e4f55..dd2a535 100644
+--- a/nfs4.1/dataserver.py
++++ b/nfs4.1/dataserver.py
+@@ -187,9 +187,27 @@ class DSDevice(object):
+                     log.critical("Could not parse line: %r" % line)
+                     sys.exit(1)
  
- 	/* prune the bounding set to nothing */
--	for (i = 0; i <= CAP_LAST_CAP; ++i) {
-+	for (i = 0; prctl(PR_CAPBSET_READ, i, 0, 0, 0) >=0 ; ++i) {
- 		ret = prctl(PR_CAPBSET_DROP, i, 0, 0, 0);
- 		if (ret) {
- 			xlog(L_ERROR, "Unable to prune capability %lu from "
-diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
-index e7af4e3..473d069 100644
---- a/utils/nfsdcld/nfsdcld.c
-+++ b/utils/nfsdcld/nfsdcld.c
-@@ -102,8 +102,8 @@ cld_set_caps(void)
- 	}
- 
- 	/* prune the bounding set to nothing */
--	for (i = 0; i <= CAP_LAST_CAP; ++i) {
--		ret = prctl(PR_CAPBSET_DROP, i);
-+	for (i = 0; prctl(PR_CAPBSET_READ, i, 0, 0, 0) >= 0 ; ++i) {
-+		ret = prctl(PR_CAPBSET_DROP, i, 0, 0, 0);
- 		if (ret) {
- 			xlog(L_ERROR, "Unable to prune capability %lu from "
- 				      "bounding set: %m", i);
+-                # for now, just use the last path for local connections
+-                server, port = server_list[-1]
+-                server_list = server_list[:-1]
++                # if there is a (IPv4) loopback address in the multipath list,
++                # use that as the connection to the DS, but dont advertise it
++                loopback_idx = -1
++                for i, serverport in enumerate(server_list):
++                    if serverport[0] == '127.0.0.1':
++                        loopback_idx = i
++                        break
++
++                if loopback_idx >= 0:
++                    print "Using loopback address for MDS->DS communication only"
++                    server_list = list(server_list)
++                    server, port = server_list.pop(loopback_idx)
++                else:
++                    # just use the last path for local connections
++                    server, port = server_list[-1]
++
++                if not server_list:
++                    log.critical("At least one non-loopback address must " +
++                                 "be specified for each DS")
++                    sys.exit(1)
++
+                 print server, port, path
+                 try:
+                     log.info("Adding dataserver ip:%s port:%s path:%s" %
+@@ -210,9 +228,7 @@ class DSDevice(object):
+         index = 0
+         for d in self.list:
+             if d.active:
+-                multipath = []
+-                multipath.extend(d.get_multipath_netaddr4s())
+-                multipath.append(d.get_netaddr4())
++                multipath = d.get_multipath_netaddr4s()
+                 netaddrs.append(multipath)
+                 stripe_indices.append(index)
+                 index = index + 1
 -- 
-1.7.10.2
+1.7.7.6
 
