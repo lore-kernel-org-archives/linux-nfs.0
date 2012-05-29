@@ -1,62 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:34847 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752842Ab2FYJEi convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Jun 2012 05:04:38 -0400
-Received: by pbbrp8 with SMTP id rp8so6278904pbb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Jun 2012 02:04:38 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20120625074306.48500@gmx.net>
-References: <20120625074306.48500@gmx.net>
-Date: Mon, 25 Jun 2012 12:04:37 +0300
-Message-ID: <CABpMAyJi7wGB5Da_3dMXfK0wnDfAeWbpsUB=j0rpkOv7GfPb5g@mail.gmail.com>
-Subject: Re: LAYOUTCOMMIT/LAYOUTRETURN
-From: Idan Kedar <idank@tonian.com>
-To: Johannes Schild <JSchild@gmx.de>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:23881 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932538Ab2FAVPN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Jun 2012 17:15:13 -0400
+From: andros@netapp.com
+To: iisaman@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [[PATCH resend] 5/6] PYNFS: add mdsthreshold to file layout server
+Date: Tue, 29 May 2012 18:11:28 -0400
+Message-Id: <1338329489-29178-6-git-send-email-andros@netapp.com>
+In-Reply-To: <1338329489-29178-1-git-send-email-andros@netapp.com>
+References: <1338329489-29178-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 25, 2012 at 10:43 AM, Johannes Schild <JSchild@gmx.de> wrote:
-> Hi Guys,
->
-> i have another question on pNFS. I looked at my Wireshark protocols, while i used the FILE-Layout, and i wondered why i have no LAYOUTCOMMIT/LAYOUTRETURN statements in my protocols.
-> I transfered one file to my storage server (NETAPP Simulator 8.1 C-Mode) and i only got a LAYOUTGET.
->
-> cat /proc/self/mountstats | grep LAYOUT says:
-> nfsv4: bm0=0xfafe8fff,bml=0x60fdfffe,acl=0x3,sessions,pnfs=LAYOUT_NFSV4_1_FILES
->    LAYOUTGET: 1 1 0 216 236 0 1 1
->  LAYOUTCOMMIT: 0 0 0 0 0 0 0 0
->  LAYOUTRETURN: 0 0 0 0 0 0 0 0
->
->
-> Is there any other way to verify that pnfs is used on client site?
->
->
-> Thanks in advance
->
->
-> Best Regards
->
-> Johannes
->
->
->
-> --
-> Empfehlen Sie GMX DSL Ihren Freunden und Bekannten und wir
-> belohnen Sie mit bis zu 50,- Euro! https://freundschaftswerbung.gmx.de
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+From: Andy Adamson <andros@netapp.com>
 
-about layoutcommit:
-http://tools.ietf.org/rfcmarkup?doc=5661#section-13.7
+NOTE: values are hard coded and apply to all files. Edit nfs4server.py to
+change the values.
 
-about layoutreturn:
-http://tools.ietf.org/rfcmarkup?doc=5661#section-12.5.5.1
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ nfs4.1/fs.py      |    9 ++++++++-
+ nfs4.1/nfs4lib.py |    2 +-
+ 2 files changed, 9 insertions(+), 2 deletions(-)
 
+diff --git a/nfs4.1/fs.py b/nfs4.1/fs.py
+index 2d92d77..c0f18fa 100644
+--- a/nfs4.1/fs.py
++++ b/nfs4.1/fs.py
+@@ -1,6 +1,6 @@
+ from nfs4state import FileState
+ from nfs4_const import *
+-from nfs4_type import fsid4, layout4, layout_content4, nfsv4_1_file_layout4
++from nfs4_type import fsid4, layout4, layout_content4, nfsv4_1_file_layout4, mdsthreshold4, threshold_item4
+ import nfs4lib
+ from nfs4lib import NFS4Error
+ import struct
+@@ -1429,6 +1429,13 @@ class FileLayoutFS(FileSystem):
+         self.fattr4_maxread = 8192
+         self.fattr4_supported_attrs |= 1 << FATTR4_MAXWRITE
+         self.fattr4_supported_attrs |= 1 << FATTR4_MAXREAD
++        threshold_item4.thi_layout_type = LAYOUT4_NFSV4_1_FILES
++        # set mdsthreashold read_size, read_iosize and write_iosize
++        threshold_item4.thi_hintset = nfs4lib.list2bitmap([0, 2, 3])
++        threshold_item4.thi_hintlist = struct.pack('!QQQ',512,512,512)
++        mdsthreshold4.mth_hints = [threshold_item4]
++        self.fattr4_mdsthreshold = mdsthreshold4
++        self.fattr4_supported_attrs |= 1 << FATTR4_MDSTHRESHOLD
+         self.sync(self.root, FILE_SYNC4)
+ 
+     def attach_to_server(self, server):
+diff --git a/nfs4.1/nfs4lib.py b/nfs4.1/nfs4lib.py
+index 82045a7..a380cce 100644
+--- a/nfs4.1/nfs4lib.py
++++ b/nfs4.1/nfs4lib.py
+@@ -676,7 +676,7 @@ attr_info = { FATTR4_SUPPORTED_ATTRS : A("r", "fs"),
+               FATTR4_LAYOUT_BLKSIZE : A("r", "fs"),
+               FATTR4_LAYOUT_ALIGNMENT : A("r", "obj"),
+               FATTR4_FS_LOCATIONS_INFO : A("r", "fs"),
+-              FATTR4_MDSTHRESHOLD : A("r", "obj"),
++              FATTR4_MDSTHRESHOLD : A("r", "fs"),
+               FATTR4_RETENTION_GET : A("r", "obj"),
+               FATTR4_RETENTION_SET : A("w", "obj"),
+               FATTR4_RETENTEVT_GET : A("r", "obj"),
 -- 
-Idan Kedar
-Tonian
+1.7.7.6
+
