@@ -1,92 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:18194 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:41417 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932474Ab2EVUkn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 May 2012 16:40:43 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Andy Adamson <androsadamson@gmail.com>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "Isaman, Fred" <Fred.Isaman@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 4/4] NFSv4.1 do not release page on commit mismatch
-Date: Tue, 22 May 2012 20:40:43 +0000
-Message-ID: <1337719244.4269.30.camel@lade.trondhjem.org>
-References: <1337688569-1515-1-git-send-email-andros@netapp.com>
-	 <1337688569-1515-5-git-send-email-andros@netapp.com>
-	 <1337703865.4269.21.camel@lade.trondhjem.org>
-	 <4D70BD9B-4F81-4E57-8689-DCE6F8B1A1C2@netapp.com>
-	 <1337708765.4269.26.camel@lade.trondhjem.org>
-	 <CAHVgHyV_mm6234=1CmS8+1Lcp0A1yGBRmhLX31m1cjGkFZJLcw@mail.gmail.com>
-In-Reply-To: <CAHVgHyV_mm6234=1CmS8+1Lcp0A1yGBRmhLX31m1cjGkFZJLcw@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1752999Ab2E3Sgb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 May 2012 14:36:31 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/5] nfsd4: return "real" sequence id in confirmed case
+Date: Wed, 30 May 2012 14:36:25 -0400
+Message-Id: <1338402988-17356-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1338402988-17356-1-git-send-email-bfields@redhat.com>
+References: <1338402988-17356-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA1LTIyIGF0IDE0OjA3IC0wNDAwLCBBbmR5IEFkYW1zb24gd3JvdGU6DQo+
-IE9uIFR1ZSwgTWF5IDIyLCAyMDEyIGF0IDE6NDYgUE0sIE15a2xlYnVzdCwgVHJvbmQNCj4gPFRy
-b25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPiBPbiBUdWUsIDIwMTItMDUtMjIg
-YXQgMTY6MzAgKzAwMDAsIEFkYW1zb24sIEFuZHkgd3JvdGU6DQo+ID4+IE9uIE1heSAyMiwgMjAx
-MiwgYXQgMTI6MjQgUE0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4+DQo+ID4+ID4gT24g
-VHVlLCAyMDEyLTA1LTIyIGF0IDA4OjA5IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90ZToN
-Cj4gPj4gPj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gPj4gPj4N
-Cj4gPj4gPj4gU2lnbmVkLW9mZi1ieTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4N
-Cj4gPj4gPj4gLS0tDQo+ID4+ID4+IGZzL25mcy93cml0ZS5jIHwgICAgMiArKw0KPiA+PiA+PiAx
-IGZpbGVzIGNoYW5nZWQsIDIgaW5zZXJ0aW9ucygrKSwgMCBkZWxldGlvbnMoLSkNCj4gPj4gPj4N
-Cj4gPj4gPj4gZGlmZiAtLWdpdCBhL2ZzL25mcy93cml0ZS5jIGIvZnMvbmZzL3dyaXRlLmMNCj4g
-Pj4gPj4gaW5kZXggZTZmZTNkNi4uYzcyOTVkZSAxMDA2NDQNCj4gPj4gPj4gLS0tIGEvZnMvbmZz
-L3dyaXRlLmMNCj4gPj4gPj4gKysrIGIvZnMvbmZzL3dyaXRlLmMNCj4gPj4gPj4gQEAgLTE1NTUs
-NiArMTU1NSw4IEBAIHN0YXRpYyB2b2lkIG5mc19jb21taXRfcmVsZWFzZV9wYWdlcyhzdHJ1Y3Qg
-bmZzX2NvbW1pdF9kYXRhICpkYXRhKQ0KPiA+PiA+PiAgICAgICAgICAgIC8qIFdlIGhhdmUgYSBt
-aXNtYXRjaC4gV3JpdGUgdGhlIHBhZ2UgYWdhaW4gKi8NCj4gPj4gPj4gICAgICAgICAgICBkcHJp
-bnRrKCIgbWlzbWF0Y2hcbiIpOw0KPiA+PiA+PiAgICAgICAgICAgIG5mc19tYXJrX3JlcXVlc3Rf
-ZGlydHkocmVxKTsNCj4gPj4gPj4gKyAgICAgICAgICBuZnNfdW5sb2NrX3JlcXVlc3QocmVxKTsN
-Cj4gPj4gPj4gKyAgICAgICAgICBjb250aW51ZTsNCj4gPj4gPj4gICAgbmV4dDoNCj4gPj4gPj4g
-ICAgICAgICAgICBuZnNfdW5sb2NrX2FuZF9yZWxlYXNlX3JlcXVlc3QocmVxKTsNCj4gPj4gPj4g
-ICAgfQ0KPiA+PiA+DQo+ID4+ID4gV2hhdCBpcyB0aGlzIHBhdGNoIHRyeWluZyB0byBmaXg/IEFz
-IGZhciBhcyBJIGNhbiBzZWUgaXQgd2lsbCBsZWFkIHRvIGENCj4gPj4gPiByZWZlcmVuY2UgbGVh
-ay4NCj4gPj4NCj4gPj4gVGhlIHJlbGVhc2Ugb2YgdGhlIHBhZ2UgZHJvcHMgdGhlIHJlZmNvdW50
-IHRvIHplcm8uIFNpbmNlIGl0IGlzIGEgbWlzbWF0Y2gsIHdlIHdhbnQgdG8gY29udGludWUgdG8g
-dXNlIHRoZSBwYWdlLCBzbyBuZnNfcGFnZV9maW5kX3JlcXVlc3RfbG9ja2VkIGlzIGNhbGxlZCB3
-ZSBnZXQgdGhlIFdBUk5JTkcgaW4ga3JlZl9nZXQsIGFuZCBhbiBPb3BzIGluIHZhcmlvdXMgcGxh
-Y2VzIGluIHBuZnNfdXBkYXRlX2xheW91dC4NCj4gPj4NCj4gPj4gSGVyZSBpcyB0aGUgb3V0cHV0
-IG9mIGFkZGVkIHByaW50aydzLg0KPiA+Pg0KPiA+PiAtLT5BbmR5DQo+ID4+DQo+ID4+IE1heSAy
-MSAxODoyNTozMyBmZWRvcmEtNjQtMiBrZXJuZWw6IFsgIDE1Mi45ODg5MjFdIE5GUzogICAgICAg
-Y29tbWl0ICgwOjM1LzIgNDA5NkAxODQzMjApDQo+ID4+IE1heSAyMSAxODoyNTozMyBmZWRvcmEt
-NjQtMiBrZXJuZWw6IFsgIDE1Mi45ODg5MjNdICBtaXNtYXRjaCByZXEgZmZmZjg4MDA0MmRiYjgw
-MA0KPiA+PiBNYXkgMjEgMTg6MjU6MzMgZmVkb3JhLTY0LTIga2VybmVsOiBbICAxNTIuOTg4OTI3
-XSBuZnNfcmVsZWFzZV9yZXF1ZXN0IFdCIHJlcSBmZmZmODgwMDQyZGJiODAwIHdiX2tyZWYgMQ0K
-PiA+PiBNYXkgMjEgMTg6MjU6MzMgZmVkb3JhLTY0LTIga2VybmVsOiBbICAxNTIuOTg4OTMyXSBw
-dXRfbHNlZzogbHNlZyBmZmZmODgwMDQyZDk1MzgwIHJlZiA0IHZhbGlkIDANCj4gPj4gTWF5IDIx
-IDE4OjI1OjMzIGZlZG9yYS02NC0yIGtlcm5lbDogWyAgMTUyLjk4ODk0NV0gbmZzX3BhZ2VfZmlu
-ZF9yZXF1ZXN0X2xvY2tlZCByZXEgZmZmZjg4MDAzZTAzMzgwMA0KPiA+PiBNYXkgMjEgMTg6MjU6
-MzMgZmVkb3JhLTY0LTIga2VybmVsOiBbICAxNTIuOTg4OTQ5XSBuZnNfcGFnZV9maW5kX3JlcXVl
-c3RfbG9ja2VkIFdCIHJlcSBmZmZmODgwMDNlMDMzODAwIHdiX2tyZWYgMA0KPiA+PiBNYXkgMjEg
-MTg6MjU6MzMgZmVkb3JhLTY0LTIga2VybmVsOiBbICAxNTIuOTg4OTUzXSAtLS0tLS0tLS0tLS1b
-IGN1dCBoZXJlIF0tLS0tLS0tLS0tLS0NCj4gPj4gTWF5IDIxIDE4OjI1OjMzIGZlZG9yYS02NC0y
-IGtlcm5lbDogWyAgMTUyLjk4OTA4Ml0gV0FSTklORzogYXQgaW5jbHVkZS9saW51eC9rcmVmLmg6
-NDEga3JlZl9nZXQrMHgyMC8weDJjIFtuZnNdKCkNCj4gPg0KPiA+IEFyZSB0aGVzZSBjb21taXQt
-dG8tZHMgcmVxdWVzdHM/DQo+IA0KPiBZZXMNCg0KT0ssIHNvIGhvdyBhYm91dCB0aGUgZm9sbG93
-aW5nIGZpeDoNCg0KODwtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0NCkZyb20gNTNiOGVlMzQ2NDYzOTQ2Zjg4YjNlMTYzOWQ2ODhj
-Mzg0ZGYxMTY2YyBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206IFRyb25kIE15a2xlYnVz
-dCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQpEYXRlOiBUdWUsIDIyIE1heSAyMDEyIDE2
-OjM2OjI3IC0wNDAwDQpTdWJqZWN0OiBbUEFUQ0hdIE5GU3Y0LjE6IEZpeCBhIGJhZCByZWZlcmVu
-Y2UgY291bnQgaXNzdWUgaW4gdGhlIHBORlMgY29tbWl0DQogY29kZQ0KDQpmaWxlbGF5b3V0X3Nj
-YW5fY29tbWl0X2xpc3RzIG5lZWRzIHRvIGJ1bXAgdGhlIHJlZmVyZW5jZSBjb3VudCBvbg0KdGhl
-IHN0cnVjdCBuZnNfcGFnZSBqdXN0IGxpa2UgbmZzX3NjYW5fY29tbWl0X2xpc3QoKS4NCg0KUmVw
-b3J0ZWQtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQpTaWduZWQtb2ZmLWJ5
-OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KLS0tDQogZnMv
-bmZzL25mczRmaWxlbGF5b3V0LmMgfCAgICAxICsNCiAxIGZpbGVzIGNoYW5nZWQsIDEgaW5zZXJ0
-aW9ucygrKSwgMCBkZWxldGlvbnMoLSkNCg0KZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0ZmlsZWxh
-eW91dC5jIGIvZnMvbmZzL25mczRmaWxlbGF5b3V0LmMNCmluZGV4IDQ3NGM2MzAuLjMzODQ5ZDMg
-MTAwNjQ0DQotLS0gYS9mcy9uZnMvbmZzNGZpbGVsYXlvdXQuYw0KKysrIGIvZnMvbmZzL25mczRm
-aWxlbGF5b3V0LmMNCkBAIC0xMTA2LDYgKzExMDYsNyBAQCB0cmFuc2Zlcl9jb21taXRfbGlzdChz
-dHJ1Y3QgbGlzdF9oZWFkICpzcmMsIHN0cnVjdCBsaXN0X2hlYWQgKmRzdCwNCiAJbGlzdF9mb3Jf
-ZWFjaF9lbnRyeV9zYWZlKHJlcSwgdG1wLCBzcmMsIHdiX2xpc3QpIHsNCiAJCWlmICghbmZzX2xv
-Y2tfcmVxdWVzdChyZXEpKQ0KIAkJCWNvbnRpbnVlOw0KKwkJa3JlZl9nZXQoJnJlcS0+d2Jfa3Jl
-Zik7DQogCQlpZiAoY29uZF9yZXNjaGVkX2xvY2soY2luZm8tPmxvY2spKQ0KIAkJCWxpc3Rfc2Fm
-ZV9yZXNldF9uZXh0KHJlcSwgdG1wLCB3Yl9saXN0KTsNCiAJCW5mc19yZXF1ZXN0X3JlbW92ZV9j
-b21taXRfbGlzdChyZXEsIGNpbmZvKTsNCi0tIA0KMS43LjcuNg0KDQoNCi0tIA0KVHJvbmQgTXlr
-bGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWts
-ZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+The client should ignore the returned sequence_id in the case where the
+CONFIRMED flag is set on an exchange_id reply--and in the unconfirmed
+case "1" is always the right response.  So it shouldn't actually matter
+what we return here.
+
+We could continue returning 1 just to catch clients ignoring the spec
+here, but I'd rather be generous.  Other things equal, returning the
+existing sequence_id seems more informative.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index d53ad72..bcb4b50 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1650,7 +1650,7 @@ out_copy:
+ 	exid->clientid.cl_boot = new->cl_clientid.cl_boot;
+ 	exid->clientid.cl_id = new->cl_clientid.cl_id;
+ 
+-	exid->seqid = 1;
++	exid->seqid = new->cl_cs_slot.sl_seqid + 1;
+ 	nfsd4_set_ex_flags(new, exid);
+ 
+ 	dprintk("nfsd4_exchange_id seqid %d flags %x\n",
+-- 
+1.7.10.2
+
