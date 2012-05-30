@@ -1,39 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:37540 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750971Ab2EIJWD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 May 2012 05:22:03 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <20120509002420.GL5091@dastard>
-References: <20120509002420.GL5091@dastard> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <16281.1336508382@redhat.com>
-To: Dave Chinner <david@fromorbit.com>
-Cc: dhowells@redhat.com, adilger@dilger.ca, bfields@fieldses.org,
-        smfrench@gmail.com, ben@decadent.org.uk, Trond.Myklebust@netapp.com,
-        roland@hack.frob.com, jra@samba.org, bernd.schubert@itwm.fraunhofer.de,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-ext4@vger.kernel.org, linux-api@vger.kernel.org,
-        libc-alpha@sourceware.org
-Subject: Re: Extended file stat: Splitting file- and fs-specific info?
-Date: Wed, 09 May 2012 10:21:14 +0100
-Message-ID: <20170.1336555274@redhat.com>
+Received: from e06smtp10.uk.ibm.com ([195.75.94.106]:57177 "EHLO
+	e06smtp10.uk.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753540Ab2E3Mqu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 May 2012 08:46:50 -0400
+Received: from /spool/local
+	by e06smtp10.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <bmt@zurich.ibm.com>;
+	Wed, 30 May 2012 13:46:48 +0100
+In-Reply-To: <20120530122858.GB29006@nautica>
+References: <20120530114338.GA28445@nautica> <20120530122858.GB29006@nautica>
+Subject: Re: NFS/RDMA - client crash on mount
+To: Dominique Martinet <asmadeus@codewreck.org>
+Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org,
+        linux-rdma-owner@vger.kernel.org
+Message-ID: <OFE0E8C87E.2CEC4F01-ONC1257A0E.0045C64E-C1257A0E.004632D6@ch.ibm.com>
+From: Bernard Metzler <BMT@zurich.ibm.com>
+Date: Wed, 30 May 2012 14:46:33 +0200
+MIME-Version: 1.0
+Content-type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Dave Chinner <david@fromorbit.com> wrote:
 
-> I don't think we want to expose the inode generation numbers. It is
-> trivial to construct NFS file handles (usually just fsid, inode
-> number and generation) with that information and hence bypass
-> security checks to access files.
+For siw, the dma_device->bus is currently not set, which will cause
+the crash.
 
-I was asked for it by Bernd Schubert for userspace NFS servers and FUSE -
-maybe he can say what he wants it for.
+As we were testing NFS/RDMA we just disabled that fix for some Mellanox
+device.
 
-I also have a note that Jeremy Allison asked for it, but I can't find where or
-why, so that might be an error.
+I agree I probably have to find a more consistent way to fake real dma
+hardware. Any suggestions?
 
-It looks like FreeBSD do have an st_gen field in their stat struct, but it's
-only filled in for root.  Maybe I could do something like that?
+Thanks,
+Bernard.
 
-David
+linux-rdma-owner@vger.kernel.org wrote on 05/30/2012 02:28:58 PM:
+
+> From: Dominique Martinet <asmadeus@codewreck.org>
+> To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org,
+> Date: 05/30/2012 02:29 PM
+> Subject: Re: NFS/RDMA - client crash on mount
+> Sent by: linux-rdma-owner@vger.kernel.org
+>
+> Hi,
+>
+> Well don't mind me, it was soft-iwarp related afterall.
+> It would look like siw doesn't like 2K MTU like a few other devices,
+> adding it in the list in net/sunrpc/xprtrdma/verbs.c around line 880
+> made the crash just disappear.
+>
+> It's not something easy to patch though given siw is out of tree, why is
+> the MTU 2k by default? Isn't there a way to get capatibilities out of
+> the devices, other than an hard-coded list like this?
+>
+> (this:
+> /* XXX Tavor device performs badly with 2K MTU! */
+> if (strnicmp(ia->ri_id->device->dma_device->bus->name, "pci", 3) == 0)
+> {
+>    struct pci_dev *pcid = to_pci_dev(ia->ri_id->device->dma_device);
+>    if (pcid->device == PCI_DEVICE_ID_MELLANOX_TAVOR &&
+>        (pcid->vendor == PCI_VENDOR_ID_MELLANOX ||
+>        pcid->vendor == PCI_VENDOR_ID_TOPSPIN)) {
+>       struct ib_qp_attr attr = {
+>          .path_mtu = IB_MTU_1024
+>       };
+>       rc = ib_modify_qp(ia->ri_id->qp, &attr, IB_QP_PATH_MTU);
+>    }
+> })
+>
+>
+> Sorry for the noise then, thanks to everyone who bothered to read my
+> mail.
+>
+> --
+> Dominique Martinet
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+
