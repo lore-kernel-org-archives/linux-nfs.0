@@ -1,68 +1,23 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:60449 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761180Ab2EJTH6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 May 2012 15:07:58 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v4 09/14] NFS: Let mount data parsing set the NFS version
-Date: Thu, 10 May 2012 15:07:38 -0400
-Message-Id: <1336676863-9698-10-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1336676863-9698-1-git-send-email-bjschuma@netapp.com>
-References: <1336676863-9698-1-git-send-email-bjschuma@netapp.com>
+Received: from mail-wi0-f178.google.com ([209.85.212.178]:39946 "EHLO
+	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751491Ab2E3PmL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 May 2012 11:42:11 -0400
+Received: by wibhn6 with SMTP id hn6so4007957wib.1
+        for <linux-nfs@vger.kernel.org>; Wed, 30 May 2012 08:42:09 -0700 (PDT)
+Message-ID: <4FC63FCB.7020007@tonian.com>
+Date: Wed, 30 May 2012 18:42:03 +0300
+From: Benny Halevy <bhalevy@tonian.com>
+MIME-Version: 1.0
+To: nfsv4 list <nfsv4@ietf.org>
+CC: NFS list <linux-nfs@vger.kernel.org>, Lev Solomonov <solo@tonian.com>
+Subject: What should the server do for LAYOUTRETURN with lrf_length==0
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Since no bytes are covered in this case the spec. appears to indicate that the
+server will just be silent about that and do nothing.  However a 0 length return
+doesn't make much sense so would we like the server to return NFS4ERR_INVAL instead?
 
-This field is unconditionally set while parsing mount data, so there is
-no need to fill it in here.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/super.c |    7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 1157189..db0952d 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -945,7 +945,7 @@ static void nfs_umount_begin(struct super_block *sb)
- 		rpc_killall_tasks(rpc);
- }
- 
--static struct nfs_parsed_mount_data *nfs_alloc_parsed_mount_data(unsigned int version)
-+static struct nfs_parsed_mount_data *nfs_alloc_parsed_mount_data(void)
- {
- 	struct nfs_parsed_mount_data *data;
- 
-@@ -960,7 +960,6 @@ static struct nfs_parsed_mount_data *nfs_alloc_parsed_mount_data(unsigned int ve
- 		data->nfs_server.protocol = XPRT_TRANSPORT_TCP;
- 		data->auth_flavors[0]	= RPC_AUTH_UNIX;
- 		data->auth_flavor_len	= 1;
--		data->version		= version;
- 		data->minorversion	= 0;
- 		data->net		= current->nsproxy->net_ns;
- 		security_init_mnt_opts(&data->lsm_opts);
-@@ -2416,7 +2415,7 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
- 	struct dentry *mntroot = ERR_PTR(-ENOMEM);
- 	int error;
- 
--	data = nfs_alloc_parsed_mount_data(NFS_DEFAULT_VERSION);
-+	data = nfs_alloc_parsed_mount_data();
- 	mntfh = nfs_alloc_fhandle();
- 	if (data == NULL || mntfh == NULL)
- 		goto out;
-@@ -2867,7 +2866,7 @@ static struct dentry *nfs4_mount(struct file_system_type *fs_type,
- 	int error = -ENOMEM;
- 	struct dentry *res = ERR_PTR(-ENOMEM);
- 
--	data = nfs_alloc_parsed_mount_data(4);
-+	data = nfs_alloc_parsed_mount_data();
- 	if (data == NULL)
- 		goto out;
- 
--- 
-1.7.10.1
-
+Benny
