@@ -1,109 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:33439 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:58743 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753528Ab2EYNHd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 May 2012 09:07:33 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-CC: Dave Jones <davej@redhat.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Linux Kernel <linux-kernel@vger.kernel.org>
-Subject: Re: 3.4. sunrpc oops during shutdown
-Date: Fri, 25 May 2012 13:07:30 +0000
-Message-ID: <1337951250.2535.5.camel@lade.trondhjem.org>
-References: <20120521171411.GA15562@redhat.com>
-	 <1337623475.9583.13.camel@lade.trondhjem.org>
-	 <4FBF3EF2.4090804@parallels.com>
-In-Reply-To: <4FBF3EF2.4090804@parallels.com>
-Content-Type: text/plain; charset="utf-8"
+	id S932487Ab2EaUxA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 31 May 2012 16:53:00 -0400
+Date: Thu, 31 May 2012 16:53:00 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>
+Subject: Re: nfsd changes for 3.5
+Message-ID: <20120531205300.GG25955@fieldses.org>
+References: <20120531182457.GB25955@fieldses.org>
+ <CA+55aFwGpVM2Dbe02gL5=cGJZ_t3b4PTAhqwrs5MHjsb5R6BaA@mail.gmail.com>
+ <20120531200138.GD25955@fieldses.org>
+ <CA+55aFyuHz5Vn8G_kpKgnSStX0s125gwwQij2KXmnhfwaajhkg@mail.gmail.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <CA+55aFyuHz5Vn8G_kpKgnSStX0s125gwwQij2KXmnhfwaajhkg@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTA1LTI1IGF0IDEyOjEyICswNDAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3
-cm90ZToNCj4gT24gMjEuMDUuMjAxMiAyMjowMywgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4g
-PiBPbiBNb24sIDIwMTItMDUtMjEgYXQgMTM6MTQgLTA0MDAsIERhdmUgSm9uZXMgd3JvdGU6DQo+
-ID4+IFRyaWVkIHRvIHNodXRkb3duIGEgbWFjaGluZSwgZ290IHRoaXMsIGFuZCBhIGJ1bmNoIG9m
-IGh1bmcgcHJvY2Vzc2VzLg0KPiA+PiBUaGVyZSB3YXMgb25lIE5GUyBtb3VudCBtb3VudGVkIGF0
-IHRoZSB0aW1lLg0KPiA+Pg0KPiA+PiAJRGF2ZQ0KPiA+Pg0KPiA+PiBCVUc6IHVuYWJsZSB0byBo
-YW5kbGUga2VybmVsIE5VTEwgcG9pbnRlciBkZXJlZmVyZW5jZSBhdCAwMDAwMDAwMDAwMDAwMDI4
-DQo+ID4+IElQOiBbPGZmZmZmZmZmYTAxMTkxZGY+XSBzdmNfZGVzdHJveSsweDFmLzB4MTQwIFtz
-dW5ycGNdDQo+ID4+IFBHRCAxNDM0YzQwNjcgUFVEIDE0NDk2NDA2NyBQTUQgMA0KPiA+PiBPb3Bz
-OiAwMDAwIFsjMV0gUFJFRU1QVCBTTVANCj4gPj4gQ1BVIDQNCj4gPj4gTW9kdWxlcyBsaW5rZWQg
-aW46IGlwNnRhYmxlX2ZpbHRlcigtKSBpcDZfdGFibGVzIG5mc2QgbmZzIGZzY2FjaGUgYXV0aF9y
-cGNnc3MgbmZzX2FjbCBsb2NrZCBpcDZ0X1JFSkVDVCBuZl9jb25udHJhY2tfaXB2NiBuZl9kZWZy
-YWdfaXB2Ng0KPiA+Pg0KPiA+PiBQaWQ6IDY5NDYsIGNvbW06IG50cGQgTm90IHRhaW50ZWQgMy40
-LjArICMxMw0KPiA+PiBSSVA6IDAwMTA6WzxmZmZmZmZmZmEwMTE5MWRmPl0gIFs8ZmZmZmZmZmZh
-MDExOTFkZj5dIHN2Y19kZXN0cm95KzB4MWYvMHgxNDAgW3N1bnJwY10NCj4gPj4gUlNQOiAwMDE4
-OmZmZmY4ODAxNDNjNjVjNDggIEVGTEFHUzogMDAwMTAyODYNCj4gPj4gUkFYOiAwMDAwMDAwMDAw
-MDAwMDAwIFJCWDogZmZmZjg4MDE0MmNkNDFhMCBSQ1g6IDAwMDAwMDAwMDAwMDAwMDYNCj4gPj4g
-UkRYOiAwMDAwMDAwMDAwMDAwMDQwIFJTSTogZmZmZjg4MDE0MzEwNTAyOCBSREk6IGZmZmY4ODAx
-NDJjZDQxYTANCj4gPj4gUkJQOiBmZmZmODgwMTQzYzY1YzU4IFIwODogMDAwMDAwMDAwMDAwMDAw
-MCBSMDk6IDAwMDAwMDAwMDAwMDAwMDENCj4gPj4gUjEwOiAwMDAwMDAwMDAwMDAwMDAwIFIxMTog
-MDAwMDAwMDAwMDAwMDAwMCBSMTI6IGZmZmY4ODAxM2JjNWExNDgNCj4gPj4gUjEzOiBmZmZmODgw
-MTQwOTgxNjU4IFIxNDogZmZmZjg4MDE0MmNkNDFhMCBSMTU6IGZmZmY4ODAxNDZjODgwMDANCj4g
-Pj4gRlM6ICAwMDAwN2ZkYzAzODJhNzQwKDAwMDApIEdTOmZmZmY4ODAxNDk0MDAwMDAoMDAwMCkg
-a25sR1M6MDAwMDAwMDAwMDAwMDAwMA0KPiA+PiBDUzogIDAwMTAgRFM6IDAwMDAgRVM6IDAwMDAg
-Q1IwOiAwMDAwMDAwMDgwMDUwMDMzDQo+ID4+IENSMjogMDAwMDAwMDAwMDAwMDAyOCBDUjM6IDAw
-MDAwMDAwMzZjYmIwMDAgQ1I0OiAwMDAwMDAwMDAwMTQwN2UwDQo+ID4+IERSMDogMDAwMDAwMDAw
-MDAwMDAwMCBEUjE6IDAwMDAwMDAwMDAwMDAwMDAgRFIyOiAwMDAwMDAwMDAwMDAwMDAwDQo+ID4+
-IERSMzogMDAwMDAwMDAwMDAwMDAwMCBEUjY6IDAwMDAwMDAwZmZmZjBmZjAgRFI3OiAwMDAwMDAw
-MDAwMDAwNDAwDQo+ID4+IFByb2Nlc3MgbnRwZCAocGlkOiA2OTQ2LCB0aHJlYWRpbmZvIGZmZmY4
-ODAxNDNjNjQwMDAsIHRhc2sgZmZmZjg4MDE0MzEwNDk0MCkNCj4gPj4gU3RhY2s6DQo+ID4+ICAg
-ZmZmZjg4MDE0MDk4MTY2MCBmZmZmODgwMTNiYzVhMTQ4IGZmZmY4ODAxNDNjNjVjODggZmZmZmZm
-ZmZhMDExOTNhNg0KPiA+PiAgIDAwMDAwMDAwMDAwMDAwMDAgZmZmZjg4MDEzZTU2NjAyMCBmZmZm
-ODgwMTNlNTY1ZjI4IGZmZmY4ODAxNDZlZTZhYzANCj4gPj4gICBmZmZmODgwMTQzYzY1Y2E4IGZm
-ZmZmZmZmYTAyNGY0MDMgZmZmZjg4MDE0M2M2NWNhOCBmZmZmODgwMTQzZDNhNGY4DQo+ID4+IENh
-bGwgVHJhY2U6DQo+ID4+ICAgWzxmZmZmZmZmZmEwMTE5M2E2Pl0gc3ZjX2V4aXRfdGhyZWFkKzB4
-YTYvMHhiMCBbc3VucnBjXQ0KPiA+PiAgIFs8ZmZmZmZmZmZhMDI0ZjQwMz5dIG5mc19jYWxsYmFj
-a19kb3duKzB4NTMvMHg5MCBbbmZzXQ0KPiA+PiAgIFs8ZmZmZmZmZmZhMDIxNjQyZT5dIG5mc19m
-cmVlX2NsaWVudCsweGZlLzB4MTIwIFtuZnNdDQo+ID4+ICAgWzxmZmZmZmZmZmEwMjE4NWRmPl0g
-bmZzX3B1dF9jbGllbnQrMHgyOWYvMHg0MjAgW25mc10NCj4gPj4gICBbPGZmZmZmZmZmYTAyMTg0
-ZTA+XSA/IG5mc19wdXRfY2xpZW50KzB4MWEwLzB4NDIwIFtuZnNdDQo+ID4+ICAgWzxmZmZmZmZm
-ZmEwMjE5NjJmPl0gbmZzX2ZyZWVfc2VydmVyKzB4MTZmLzB4MmUwIFtuZnNdDQo+ID4+ICAgWzxm
-ZmZmZmZmZmEwMjE5NGUzPl0gPyBuZnNfZnJlZV9zZXJ2ZXIrMHgyMy8weDJlMCBbbmZzXQ0KPiA+
-PiAgIFs8ZmZmZmZmZmZhMDIyMzYzYz5dIG5mczRfa2lsbF9zdXBlcisweDNjLzB4NTAgW25mc10N
-Cj4gPj4gICBbPGZmZmZmZmZmODExYWQ2N2M+XSBkZWFjdGl2YXRlX2xvY2tlZF9zdXBlcisweDNj
-LzB4YTANCj4gPj4gICBbPGZmZmZmZmZmODExYWUyOWU+XSBkZWFjdGl2YXRlX3N1cGVyKzB4NGUv
-MHg3MA0KPiA+PiAgIFs8ZmZmZmZmZmY4MTFjY2JhND5dIG1udHB1dF9ub19leHBpcmUrMHhiNC8w
-eDEwMA0KPiA+PiAgIFs8ZmZmZmZmZmY4MTFjY2MxNj5dIG1udHB1dCsweDI2LzB4NDANCj4gPj4g
-ICBbPGZmZmZmZmZmODExY2Q1OTc+XSByZWxlYXNlX21vdW50cysweDc3LzB4OTANCj4gPj4gICBb
-PGZmZmZmZmZmODExY2VmYzY+XSBwdXRfbW50X25zKzB4NjYvMHg4MA0KPiA+PiAgIFs8ZmZmZmZm
-ZmY4MTA3OGRmZj5dIGZyZWVfbnNwcm94eSsweDFmLzB4YjANCj4gPj4gICBbPGZmZmZmZmZmODEw
-NzkwNWU+XSBzd2l0Y2hfdGFza19uYW1lc3BhY2VzKzB4NWUvMHg3MA0KPiA+PiAgIFs8ZmZmZmZm
-ZmY4MTA3OTA4MD5dIGV4aXRfdGFza19uYW1lc3BhY2VzKzB4MTAvMHgyMA0KPiA+PiAgIFs8ZmZm
-ZmZmZmY4MTA0ZTkwZT5dIGRvX2V4aXQrMHg0ZWUvMHhiODANCj4gPj4gICBbPGZmZmZmZmZmODE2
-MzljMGE+XSA/IHJldGludF9zd2FwZ3MrMHhlLzB4MTMNCj4gPj4gICBbPGZmZmZmZmZmODEwNGYy
-ZWY+XSBkb19ncm91cF9leGl0KzB4NGYvMHhjMA0KPiA+PiAgIFs8ZmZmZmZmZmY4MTA0ZjM3Nz5d
-IHN5c19leGl0X2dyb3VwKzB4MTcvMHgyMA0KPiA+PiAgIFs8ZmZmZmZmZmY4MTY0MTM1Mj5dIHN5
-c3RlbV9jYWxsX2Zhc3RwYXRoKzB4MTYvMHgxYg0KPiA+PiBDb2RlOiA0OCA4YiA1ZCBmMCA0YyA4
-YiA2NSBmOCBjOSBjMyA2NiA5MCA1NSA0OCA4OSBlNSA0MSA1NCA1MyA2NiA2NiA2NiA2NiA5MCA2
-NSA0OCA4YiAwNCAyNSA4MCBiYSAwMCAwMCA0OCA4YiA4MCA1MCAwNSAwMCAwMCA0OCA4OSBmYjw0
-Yz4gIDhiIDYwIDI4IDhiIDQ3IDU4IDg1IGMwIDBmIDg0IGVjIDAwIDAwIDAwIDgzIGU4IDAxIDg1
-IGMwIDg5DQo+ID4NCj4gPiBBc2lkZSBmcm9tIHRoZSBmYWN0IHRoYXQgdGhlIGN1cnJlbnQgbmV0
-X25hbWVzcGFjZSBpcyBub3QgZ3VhcmFudGVlZCB0bw0KPiA+IGV4aXN0IHdoZW4gd2UgYXJlIGNh
-bGxlZCBmcm9tIGZyZWVfbnNwcm94eSwgc3ZjX2Rlc3Ryb3koKSBsb29rcw0KPiA+IHNlcmlvdXNs
-eSBicm9rZW46DQo+IA0KPiBUcm9uZCwgbG9va3MgbGlrZSB5b3UgYXJlIG1pc3Rha2VuIGhlcmUu
-DQo+IEFueSBwcm9jZXNzIGhvbGRzIHJlZmVyZW5jZXMgdG8gYWxsIG5hbWVzcGFjZXMgaXQgYmVs
-b25nIHRvIChjb3B5X25ldF9ucygpIA0KPiBpbmNyZWFzZSB1c2FnZSBjb3VudGVyKS4gQW5kIG5l
-dHdvcmsgbmFtZXNwYWNlIGlzIHJlbGVhc2VkIGFmdGVyIG1vdW50IG5hbWVzcGFjZSANCj4gaW4g
-ZnJlZV9uc3Byb3h5Lg0KDQpUaGF0IGRvZXNuJ3QgaGVscCB5b3UgdGhvdWdoLiBzd2l0Y2hfdGFz
-a19uYW1lc3BhY2VzIHdpbGwgaGF2ZSBhbHJlYWR5DQpzZXQgY3VycmVudC0+bnNwcm94eSB0byBO
-VUxMLCB3aGljaCBpcyB3aHkgd2UgT29wcyB3aGVuIHdlIHRyeSB0byByZWFkDQpjdXJyZW50LT5u
-c3Byb3h5LT5uZXRfbnMgaW4gc3ZjX2V4aXRfdGhyZWFkKCkuDQoNCj4gPg0KPiA+ICAgICAgICAq
-IE9uIHRoZSBvbmUgaGFuZCBpdCBpcyB0cnlpbmcgdG8gZnJlZSBzdHJ1Y3Qgc3ZjX3NlcnYgKGFu
-ZA0KPiA+ICAgICAgICAgIHByZXN1bWFibHkgYWxsIHN0cnVjdHVyZXMgb3duZWQgYnkgc3RydWN0
-IHN2Y19zZXJ2KS4NCj4gPiAgICAgICAgKiBPbiB0aGUgb3RoZXIgaGFuZCwgaXQgdHJpZXMgdG8g
-cGFzcyBhIHBhcmFtZXRlciB0bw0KPiA+ICAgICAgICAgIHN2Y19jbG9zZV9uZXQoKSBzYXlpbmcg
-InBsZWFzZSBkb24ndCBmcmVlIHN0cnVjdHVyZXMgb24gbXkNCj4gPiAgICAgICAgICBzdl90ZW1w
-c29ja3MsIG9yIHN2X3Blcm1zb2NrcyBsaXN0IHVubGVzcyB0aGV5IG1hdGNoIHRoaXMgbmV0DQo+
-ID4gICAgICAgICAgbmFtZXNwYWNlIi4NCj4gPg0KPiANCj4gSSd2ZSBzZW50IHBhdGNoZXMsIHdo
-aWNoIG1vdmVzIHN2Y19zaHV0ZG93bl9uZXQoKSBmcm9tIHN2Y19kZXN0cm95KCkgKCJTVU5SUEM6
-IA0KPiBzZXBhcmF0ZSBwZXItbmV0IGRhdGEgY3JlYXRpb24gZnJvbSBzZXJ2aWNlIikuDQo+IHdp
-dGggdGhpcyBwYXRjaCBzZXQgaXQncyBhc3N1bWVkLCB0aGF0IHBlci1uZXQgcmVzb3VyY2VzIHdp
-bGwgYmUgY3JlYXRlZCBvciANCj4gcmVsZWFzZWQgcHJpb3IgdG8gc2VydmljZSBjcmVhdGlvbiBh
-bmQgZGVzdHJ1Y3Rpb24uDQoNCkFyZSB0aG9zZSBwYXRjaGVzIGFwcHJvcHJpYXRlIGZvciBpbmNs
-dXNpb24gaW4gdGhlIHN0YWJsZSBrZXJuZWwgc2VyaWVzDQpzbyB0aGF0IHdlIGNhbiBmaXggMy40
-Pw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoN
-Ck5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+On Thu, May 31, 2012 at 01:17:26PM -0700, Linus Torvalds wrote:
+> On Thu, May 31, 2012 at 1:01 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> >
+> > Right.  By default it's 90 seconds before we'll give up on the client.
+> 
+> So a slightly buggy client can basically DoS the server by getting a
+> delegation and then crashing or something. Everybody else that tries
+> to read that directory (not that file) will be dead in the water.
+> Definitely not good.
+> 
+> > I hate that too, and originally tried to avoid it with something like:
+> >
+> >        retry:
+> >                acquire locks
+> >                lookup inode
+> >                ret = try_to_break_deleg(inode);
+> >                if (ret)
+> >                        drop locks
+> >                        really_break_deleg(inode);
+> >                        goto retry;
+> >                ... do the real work ...
+> >                drop locks
+> >
+> > I felt like I was making already complicated code logic like rename's
+> > even harder to follow.
+> 
+> I do think it's the only thing we can reasonably do.
+
+OK, I can give that another try.  Al, does that sound like the more
+sensible choice to you?
+
+
+Uh, that means ditching some work in my public git tree.  Which I
+haven't rebased in years.  So, a stupid process question; would you
+rather I:
+
+	- continue to be strict about rebasing and apply a bunch of
+	  reverts?
+	- ditch it and start over?
+
+#1 looks like a mess to me, so I guess #2's my default.  Probably nobody
+will notice but me.
+
+> I'd love to have
+> some kind of per-dentry lock for unlink/rename, but we don't.
+> Long-term, we really do need to do something about the directory
+> locking, though, because it's also a huge problem for readdir()
+> concurrency. Or at least it used to be (samba in particular). Making
+> it an rwsem might help readdir a tiny amount, but I suspect people
+> actually depend on the mutex in readdir right now.
+
+Al called this all "highly non-trivial":
+
+	http://marc.info/?l=linux-fsdevel&m=132726495726326&w=2
+
+I don't know who'd have the cycles.
+
+--b.
+
+> 
+> > And those operations don't really know the inode till they acquire the
+> > locks, so in pathological cases that could continue forever.
+> 
+> I suspect at some point you just have to say "screw it".
