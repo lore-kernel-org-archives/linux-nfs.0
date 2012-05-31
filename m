@@ -1,111 +1,154 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:37198 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750781Ab2E2Ebu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 May 2012 00:31:50 -0400
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond.Myklebust@netapp.com
-Cc: rees@umich.edu, bharrosh@panasas.com, linux-nfs@vger.kernel.org,
-        stable@vger.kernel.org, Peng Tao <tao.peng@emc.com>
-Subject: [PATCH-v2] pnfsblock: bail out partial page IO
-Date: Tue, 29 May 2012 12:29:53 +0800
-Message-Id: <1338265793-11387-1-git-send-email-bergwolf@gmail.com>
+Received: from natasha.panasas.com ([67.152.220.90]:57890 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752724Ab2EaAZj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 May 2012 20:25:39 -0400
+Message-ID: <4FC6BA73.3060600@panasas.com>
+Date: Thu, 31 May 2012 03:25:23 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Benny Halevy <bhalevy@tonian.com>, NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] pnfsd-exofs: Two clients must not write to the same RAID
+ stripe
+References: <4FC6B29C.3030803@panasas.com>
+In-Reply-To: <4FC6B29C.3030803@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Current block layout driver read/write code assumes page
-aligned IO in many places. Add a checker to validate the assumption.
+If any one is interested the below is the behavior
+I'm striving for.
 
-Cc: stable@vger.kernel.org
-Signed-off-by: Peng Tao <tao.peng@emc.com>
+----
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: [PATCH] pnfsd-exofs: Two clients must not write to the same RAID stripe
+
+If we have file redundancy  RAID1/4/5/6 then two clients cannot
+write to the same stripe/region.
+
+We take care of this by giving out smaller regions of the file.
+Before any layout_get we make sure to recall the same exact
+region from any client. If a recall was issued we return
+NFS4ERR_RECALLCONFLICT. The client will come again later for
+it's layout.
+
+Meanwhile the fist client can flush data and release the
+layout. The next time the segment might be free and the
+lo_get succeed.
+
+It is very possible that multiple writers will fight and
+some clients will starve forever. But the smaller the
+region, and if the clients randomize a wait, it should
+statistically be OK.
+(We could manage a fairness queue. What about an lo_available
+ notification)
+
+On the other hand a very small segment will hurt performance,
+so default size is now set to 8 stripes.
+TODO: Let segment size be set in sysfs.
+
+TODO:
+  For debugging we always give out small segments. But we should
+  only start giving out small segments on a shared file. The
+  first/single writer should get a large seg as before.
+
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
- fs/nfs/blocklayout/blocklayout.c |   39 +++++++++++++++++++++++++++++++++++--
- 1 files changed, 36 insertions(+), 3 deletions(-)
+ fs/exofs/export.c | 48 ++++++++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 42 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 7ae8a60..dd392ed 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -228,6 +228,14 @@ bl_end_par_io_read(void *data, int unused)
- 	schedule_work(&rdata->task.u.tk_work);
- }
+diff --git a/fs/exofs/export.c b/fs/exofs/export.c
+index c5712f3..a1f112f 100644
+--- a/fs/exofs/export.c
++++ b/fs/exofs/export.c
+@@ -29,6 +29,9 @@
  
-+static bool
-+bl_check_alignment(u64 offset, u32 len, unsigned long blkmask)
-+{
-+	if ((offset & blkmask) || (len & blkmask))
-+		return false;
-+	return true;
-+}
+ #include "linux/nfsd/pnfs_osd_xdr_srv.h"
+ 
++/* TODO: put in sysfs per sb */
++const static unsigned sb_shared_num_stripes = 8;
 +
- static enum pnfs_try_status
- bl_read_pagelist(struct nfs_read_data *rdata)
+ static int exofs_layout_type(struct super_block *sb)
  {
-@@ -244,6 +252,9 @@ bl_read_pagelist(struct nfs_read_data *rdata)
- 	dprintk("%s enter nr_pages %u offset %lld count %u\n", __func__,
- 	       rdata->pages.npages, f_offset, (unsigned int)rdata->args.count);
- 
-+	if (!bl_check_alignment(f_offset, rdata->args.count, PAGE_CACHE_MASK))
-+		goto use_mds;
-+
- 	par = alloc_parallel(rdata);
- 	if (!par)
- 		goto use_mds;
-@@ -552,7 +563,7 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
- 	struct bio *bio = NULL;
- 	struct pnfs_block_extent *be = NULL, *cow_read = NULL;
- 	sector_t isect, last_isect = 0, extent_length = 0;
--	struct parallel_io *par;
-+	struct parallel_io *par = NULL;
- 	loff_t offset = wdata->args.offset;
- 	size_t count = wdata->args.count;
- 	struct page **pages = wdata->args.pages;
-@@ -563,6 +574,10 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
- 	    NFS_SERVER(header->inode)->pnfs_blksize >> PAGE_CACHE_SHIFT;
- 
- 	dprintk("%s enter, %Zu@%lld\n", __func__, count, offset);
-+	/* Check for alignment first */
-+	if (!bl_check_alignment(offset, count, PAGE_CACHE_MASK))
-+		goto out_mds;
-+
- 	/* At this point, wdata->pages is a (sequential) list of nfs_pages.
- 	 * We want to write each, and if there is an error set pnfs_error
- 	 * to have it redone using nfs.
-@@ -996,14 +1011,32 @@ bl_clear_layoutdriver(struct nfs_server *server)
- 	return 0;
+ 	return LAYOUT_OSD2_OBJECTS;
+@@ -94,14 +97,27 @@ void ore_layout_2_pnfs_layout(struct pnfs_osd_layout *pl,
+ 	}
  }
  
-+static void
-+bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
-+{
-+	if (!bl_check_alignment(req->wb_offset, req->wb_bytes, PAGE_CACHE_MASK))
-+		nfs_pageio_reset_read_mds(pgio);
-+	else
-+		pnfs_generic_pg_init_read(pgio, req);
-+}
-+
-+static void
-+bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
-+{
-+	if (!bl_check_alignment(req->wb_offset, req->wb_bytes, PAGE_CACHE_MASK))
-+		nfs_pageio_reset_write_mds(pgio);
-+	else
-+		pnfs_generic_pg_init_write(pgio, req);
-+}
-+
- static const struct nfs_pageio_ops bl_pg_read_ops = {
--	.pg_init = pnfs_generic_pg_init_read,
-+	.pg_init = bl_pg_init_read,
- 	.pg_test = pnfs_generic_pg_test,
- 	.pg_doio = pnfs_generic_pg_readpages,
- };
+-static void _align_io(struct ore_layout *layout, u64 *offset, u64 *length)
++static bool _align_io(struct ore_layout *layout, struct nfsd4_layout_seg *lseg,
++		      bool shared)
+ {
+ 	u64 stripe_size = (layout->group_width - layout->parity) *
+ 							layout->stripe_unit;
+ 	u64 group_size = stripe_size * layout->group_depth;
  
- static const struct nfs_pageio_ops bl_pg_write_ops = {
--	.pg_init = pnfs_generic_pg_init_write,
-+	.pg_init = bl_pg_init_write,
- 	.pg_test = pnfs_generic_pg_test,
- 	.pg_doio = pnfs_generic_pg_writepages,
- };
+-	*offset = div64_u64(*offset, group_size) * group_size;
+-	*length = group_size;
++	/* TODO: Don't ignore shared flag. Single writer can get a full group */
++	if (lseg->iomode != IOMODE_READ &&
++	    (layout->parity || (layout->mirrors_p1 > 1))) {
++		/* RAID writes */
++		lseg->offset = div64_u64(lseg->offset, stripe_size) *
++								stripe_size;
++		lseg->length = stripe_size * sb_shared_num_stripes;
++		return true;
++	} else {
++		/* reads or no data redundancy */
++		lseg->offset = div64_u64(lseg->offset, group_size) * group_size;
++		lseg->length = group_size;
++		return false;
++	}
+ }
+ 
+ static enum nfsstat4 exofs_layout_get(
+@@ -116,15 +132,15 @@ static enum nfsstat4 exofs_layout_get(
+ 	struct pnfs_osd_layout layout;
+ 	__be32 *start;
+ 	unsigned i;
+-	bool in_recall;
++	bool in_recall, need_recall;
+ 	enum nfsstat4 nfserr;
+ 
+ 	EXOFS_DBGMSG("(0x%lx) REQUESTED offset=0x%llx len=0x%llx iomod=0x%x\n",
+ 		     inode->i_ino, res->lg_seg.offset,
+ 		     res->lg_seg.length, res->lg_seg.iomode);
+ 
+-	_align_io(&sbi->layout, &res->lg_seg.offset, &res->lg_seg.length);
+-	res->lg_seg.iomode = IOMODE_RW;
++	need_recall = _align_io(&sbi->layout, &res->lg_seg,
++				test_bit(OBJ_LAYOUT_IS_GIVEN, &oi->i_flags));
+ 	res->lg_return_on_close = true;
+ 	res->lg_lo_cookie = inode; /* Just for debug prints */
+ 
+@@ -132,6 +148,26 @@ static enum nfsstat4 exofs_layout_get(
+ 		     inode->i_ino, res->lg_seg.offset,
+ 		     res->lg_seg.length, res->lg_seg.iomode);
+ 
++	if (need_recall) {
++		int rc = cb_layout_recall(inode, IOMODE_RW, res->lg_seg.offset,
++				      res->lg_seg.length, (void *)0x17);
++		switch (rc) {
++		case 0:
++		case -EAGAIN:
++			EXOFS_DBGMSG("(0x%lx) @@@ Sharing of RAID5/1 stripe\n",
++				     inode->i_ino);
++			return NFS4ERR_RECALLCONFLICT;
++		default:
++			/* This is fine for now */
++			/* TODO: Fence object off */
++			EXOFS_DBGMSG("(0x%lx) !!!cb_layout_recall => %d\n",
++				     inode->i_ino, rc);
++			/*fallthrough*/
++		case -ENOENT:
++			break;
++		}
++	}
++
+ 	/* skip opaque size, will be filled-in later */
+ 	start = exp_xdr_reserve_qwords(xdr, 1);
+ 	if (!start) {
 -- 
-1.7.1.262.g5ef3d
+1.7.10.2.677.gb6bc67f
+
 
