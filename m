@@ -1,88 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:2013 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:38626 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752988Ab2EVPoS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 May 2012 11:44:18 -0400
-Subject: Re: [PATCH 3/4] SUNRPC: Add RPC based upcall mechanism for RPCGSS
- auth
-From: Simo Sorce <simo@redhat.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-In-Reply-To: <20120522153105.GC11739@pad.fieldses.org>
-References: <1337087550-9821-4-git-send-email-simo@redhat.com>
-	 <20120522124728.GB891@fieldses.org>
-	 <1337691607.16840.178.camel@willson.li.ssimo.org>
-	 <4FBB91EE.3010307@parallels.com>
-	 <1337692966.16840.181.camel@willson.li.ssimo.org>
-	 <4FBB9551.9010407@parallels.com> <20120522142035.GC891@fieldses.org>
-	 <4FBBA667.4090409@parallels.com> <20120522150748.GF891@fieldses.org>
-	 <1337699781.16840.190.camel@willson.li.ssimo.org>
-	 <20120522153105.GC11739@pad.fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 22 May 2012 11:44:10 -0400
-Message-ID: <1337701450.16840.205.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+	id S1756853Ab2EaND6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 31 May 2012 09:03:58 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: chuck.lever@oracle.com
+Subject: [PATCH] mount.nfs: try the next address after mount fails with ETIMEDOUT
+Date: Thu, 31 May 2012 09:03:56 -0400
+Message-Id: <1338469436-5411-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2012-05-22 at 11:31 -0400, J. Bruce Fields wrote:
-> On Tue, May 22, 2012 at 11:16:21AM -0400, Simo Sorce wrote:
-> > On Tue, 2012-05-22 at 11:07 -0400, J. Bruce Fields wrote:
-> > > On Tue, May 22, 2012 at 06:44:55PM +0400, Stanislav Kinsbursky wrote:
-> > > > Yep, we discussed it already.
-> > > > The problem is that connect call to unix sockets is done from rpciod
-> > > > workqueue because of selinux restrictions.
-> > > > IOW UNIX socket path will be traversed staring from rpciod kernel
-> > > > thread root. Currently this problem is existent for portmapper
-> > > > registration calls - for example LockD, started in container with
-> > > > nested root, will be registered in global rpcbind instead of local
-> > > > (container's) one.
-> > > 
-> > > Thanks for the reminder!
-> > > 
-> > > > One of solutions was to export set_fs_root(), but Al Viro doesn't like it.
-> > > > 
-> > > > So currently I'm thinking about patching network layer - i.e.
-> > > > implementing an ability to pass desired path to unix sockets connect
-> > > > and bind calls.
-> > > > IOW, I'm talking about introducing of "bindat" and "connectat" system calls...
-> > > 
-> > > So then we'd resolve the path in the right context and pass down a
-> > > (vfsmount, dentry) that rpciod could use in bindat/connectat calls?
-> > > 
-> > > > >In particular: the current svcgssd communication method is using one of
-> > > > >the sunrpc caches.  If we convert now to this method (which uses a unix
-> > > > >socket) would there be a loss in functionality, until the unix sockets
-> > > > >problems are fixed?
-> > > > >
-> > > > 
-> > > > I'm afraid, that you are right...
-> > > > This new client will connect to root daemon - not containerized one...
-> > > > How soon this new unix-socket way will become common practice?
-> > > > Maybe I'd be able to patch unix sockets before distro's will use this new version.
-> > > > But I don't know, what would be best to do...
-> > > 
-> > > Ugh.
-> > > 
-> > > Simo, remind me of the reasons for using a unix socket?
-> > 
-> > It's an RPC protocol, and we do not want the size limitations of other
-> > upcall mechanisms, we really want a stream.
-> 
-> So what ruled out TCP over lo?
+If a NFS mount attempt fails with an ETIMEDOUT error, the mount.nfs code
+doesn't currently attempt the next address in the list. For a NFSv4 mount
+the initial mount() call almost always ends up going over
+NFS_DEF_FG_TIMEOUT_MINUTES and the mount is never retried.
 
-Well it's a local-only protocol, it is not supposed to be available over
-a network, listning on a tcp port would require filtering at some level.
-Also, in user space,  I depend on get_sockopts to get the peer creds and
-selinux context when user space client connect, I am not sure this info
-would be available over TCP, but in general it seem it would needlessly
-complicate things for the user space daemon, as you would need to use
-rpcbind to register the port and all that useless dance.
+For a v3 mount, it ends up continually retrying against the same IPv6
+address, and never tries the IPv4 address. Eventually it gives up once
+it hits the NFS_DEF_FG_TIMEOUT_MINUTES timeout.
 
-Simo.
+It's possible that a server is just unreachable via IPv6 (due to a
+routing misconfiguration for instance), or is dropping IPv6 frames on
+the floor. In that situation, it might still be reachable via IPv4 and
+trying the next address could have allowed the mount to succeed.
 
+Fix this by treating ETIMEDOUT in a similar fashion to ECONNREFUSED.
+Have the client try the next address in the list before giving up and
+returning an error.
+
+Our QA folks noticed this after a routing problem in one of our test
+labs. I was able to reproduce it by having the server drop incoming
+IPv6 frames from the client's address.
+
+With this patch, the mount eventually succeeds over IPv4 instead of
+returning an error.
+
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/mount/stropts.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index e09aa7c..0aa9a75 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -665,6 +665,7 @@ static int nfs_try_mount_v3v2(struct nfsmount_info *mi)
+ 		case ECONNREFUSED:
+ 		case EOPNOTSUPP:
+ 		case EHOSTUNREACH:
++		case ETIMEDOUT:
+ 			continue;
+ 		default:
+ 			goto out;
+@@ -752,6 +753,7 @@ static int nfs_try_mount_v4(struct nfsmount_info *mi)
+ 		switch (errno) {
+ 		case ECONNREFUSED:
+ 		case EHOSTUNREACH:
++		case ETIMEDOUT:
+ 			continue;
+ 		default:
+ 			goto out;
 -- 
-Simo Sorce * Red Hat, Inc * New York
+1.7.1
 
