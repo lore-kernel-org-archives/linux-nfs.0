@@ -1,103 +1,185 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:41946 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758440Ab2EXRGq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 May 2012 13:06:46 -0400
-Subject: Re: [PATCH 1/2] nfs4.1: add BIND_CONN_TO_SESSION operation
-Mime-Version: 1.0 (Apple Message framework v1278)
+Received: from fieldses.org ([174.143.236.118]:57804 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758122Ab2EaSY6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 31 May 2012 14:24:58 -0400
+Date: Thu, 31 May 2012 14:24:58 -0400
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: nfsd changes for 3.5
+Message-ID: <20120531182457.GB25955@fieldses.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <84CCEB7E-7677-4383-B986-C3612D25FB6D@netapp.com>
-Date: Thu, 24 May 2012 13:06:42 -0400
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Message-Id: <13A8DD85-EBD0-4A6D-9025-2FD83241EBD8@oracle.com>
-References: <1337876797-17706-1-git-send-email-dros@netapp.com> <AB759F1A-91C0-4413-B2B9-9F7A9840AC7D@oracle.com> <84CCEB7E-7677-4383-B986-C3612D25FB6D@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Please pull the following nfsd and file-locking changes from the for-3.5
+branch at:
 
-On May 24, 2012, at 12:49 PM, Adamson, Dros wrote:
+	git://linux-nfs.org/~bfields/linux.git for-3.5
 
-> 
-> On May 24, 2012, at 12:46 PM, Chuck Lever wrote:
-> 
->> 
->> On May 24, 2012, at 12:26 PM, Weston Andros Adamson wrote:
->> 
->>> This patch adds the BIND_CONN_TO_SESSION operation which is needed for
->>> upcoming SP4_MACH_CRED work and useful for recovering from broken connections
->>> without destroying the session.
->>> 
->>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
->>> ---
->>> fs/nfs/nfs4_fs.h        |    1 +
->>> fs/nfs/nfs4proc.c       |   54 ++++++++++++++++++++++++++++
->>> fs/nfs/nfs4xdr.c        |   90 +++++++++++++++++++++++++++++++++++++++++++++++
->>> include/linux/nfs4.h    |    5 +++
->>> include/linux/nfs_xdr.h |    6 +++
->>> 5 files changed, 156 insertions(+), 0 deletions(-)
->> 
->> [ ... snipped ... ]
->> 
->>> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
->>> index 0987146..80fbbfc6 100644
->>> --- a/include/linux/nfs4.h
->>> +++ b/include/linux/nfs4.h
->>> @@ -69,6 +69,10 @@
->>> #define NFS4_CDFC4_FORE_OR_BOTH 0x3
->>> #define NFS4_CDFC4_BACK_OR_BOTH 0x7
->>> 
->>> +#define CDFS4_FORE 0x1
->>> +#define CDFS4_BACK 0x2
->>> +#define CDFS4_BOTH 0x3
->> 
->> A few more nits:
->> 
->> I'm looking back at the patch I did last year to add BIND_CONN_TO_SESS for NFSv4.1 migration support... I used NFS4_CDFS4_FORE and so on here, to match the defines in the paragraph above.
-> 
-> Ah, good catch!  I'll change to NFS4_CDFS4_*
-> 
->> 
->> In the XDR decoder function, I check the "dir_from_server" field to ensure it is equal to or less than NFS4_CDFS4_BOTH (-EIO if not).
-> 
-> Ok, that can't hurt!  Note I'm already returning EIO in the proc handler if dir != NFS4_CDFS4_BOTH,
+Sorry this is a bit late.  In fact I still have a review backlog (at a
+minimum some bugfixes), so will send a second pull later.
 
-Right, that's an implementation-imposed limit.  proc is the right place for that.  The XDR check is to sanity check servers, and should allow all possible values of that field, and no more.  FWIW.
+This includes patches addressing a long-standing problem in our NFSv4
+implementation, which is that read delegations aren't broken on certain
+local operations.  (Hence a diffstat with a few lines in namei.c and
+attr.c).  The problem isn't solved completely in the case of rename,
+where a small race remains; the patches to fix that will come in from Al
+Viro if they pass review.  But there's no regression in nfsd behavior if
+those patches don't make it in.
 
-> but I think it makes sense to add this sanity check.
-> 
-> Thanks!
-> -dros
-> 
->> 
->>> +
->>> #define NFS4_SET_TO_SERVER_TIME	0
->>> #define NFS4_SET_TO_CLIENT_TIME	1
->>> 
->>> @@ -582,6 +586,7 @@ enum {
->>> 	NFSPROC4_CLNT_SECINFO,
->>> 
->>> 	/* nfs41 */
->>> +	NFSPROC4_CLNT_BIND_CONN_TO_SESSION,
->>> 	NFSPROC4_CLNT_EXCHANGE_ID,
->>> 	NFSPROC4_CLNT_CREATE_SESSION,
->>> 	NFSPROC4_CLNT_DESTROY_SESSION,
->> 
->> -- 
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->> 
->> 
->> 
->> 
-> 
+Other than that:
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+	- From Stanislav Kinsbursky, a bunch of NFS containerization
+	  work (still in progress).
+	- Fix a failure to process encrypted rpc's from Windows clients
+	  and servers due to our (incorrect) failure to handle gss
+	  tokens with rotated data.
+	- Fix some stuff caught by sparse (actual bugs are fairly
+	  minor); thanks to Al for reminding me to add sparse to my
+	  regular testing.
+	- Fixes for some protocol bugs in the procedures that establish
+	  4.0 and 4.1 clients, and much cleaner code.  (Thanks also to
+	  Chuck for a bugfix here, and Bryan and Trond for finding
+	  another bug.)
+	- Some cleanup and bugfixes from Jeff, Simo, and Dros.
+
+--b.
 
 
+Chuck Lever (1):
+      NFSD: SETCLIENTID_CONFIRM returns NFS4ERR_CLID_INUSE too often
 
+J. Bruce Fields (44):
+      locks: introduce new FL_DELEG lock flag
+      locks: implement delegations
+      locks: break delegations on unlink
+      locks: break delegations on rename
+      locks: break delegations on link
+      locks: break delegations on any attribute modification
+      nfsd4: minor nfs4_setlease cleanup
+      nfsd4: delay setting current_fh in open
+      nfsd4: close open-deleg/unlink/rename lease
+      nfsd4: break only delegations when appropriate
+      nfsd: state.c should include current_stateid.h
+      nfsd4: fix missing "static"
+      nfsd4: preserve __user annotation on cld downcall msg
+      nfsd4: int/__be32 fixes
+      nfsd4: fix free_stateid return endianness
+      nfsd4: fix change attribute endianness
+      rpc: handle rotated gss data for Windows interoperability
+      svcrpc: fix a comment typo
+      nfsd4: exchange_id has a pointless copy
+      nfsd4: exchange_id error cleanup
+      nfsd4: exchange_id: check creds before killing confirmed client
+      nfsd4: allow an EXCHANGE_ID to kill a 4.0 client
+      nfsd4: exchange_id cleanup: local shorthands for repeated tests
+      nfsd4: exchange_id cleanup: comments
+      nfsd4: rearrange exchange_id logic to simplify
+      nfsd4: allow removing clients not holding state
+      nfsd4: move principal name into svc_cred
+      nfsd4: stricter cred comparison for setclientid/exchange_id
+      nfsd4: move rq_flavor into svc_cred
+      nfsd4: setclientid remove unnecessary terms from a logical expression
+      nfsd4: setclientid/confirm comment cleanup
+      nfsd4: merge last two setclientid cases
+      nfsd4: pull out common code from setclientid cases
+      nfsd4: merge 3 setclientid cases to 2
+      nfsd4: fix setclientid_confirm same_cred check
+      nfsd4: fix error return in non-matching-creds case
+      nfsd4: setclientid: remove pointless assignment
+      nfsd4: simpler ordering of setclientid_confirm checks
+      nfsd4: clarify that renewing expired client is a bug
+      nfsd4: fix exchange_id to return confirm flag
+      nfsd4: return "real" sequence id in confirmed case
+      nfsd4: remove some dprintk's and a comment
+      nfsd4: don't remove rebooted client record until confirmation
+      nfsd4: fix, consolidate client_has_state
 
+Jeff Layton (8):
+      nfsd: trivial: remove unused variable from nfsd4_lock
+      nfsd: don't use locks_in_grace to determine whether to call nfs4_grace_end
+      nfsd: trivial: use SEEK_SET instead of 0 in vfs_llseek
+      sunrpc: do array overrun check in svc_recv before allocating pages
+      nfsd: consolidate set_access and set_deny
+      nfsd: make test_share a bool return
+      nfsd: wrap accesses to st_access_bmap
+      nfsd: wrap all accesses to st_deny_bmap
+
+Simo Sorce (2):
+      svcauth: remove unused define
+      SUNRPC: split upcall function to extract reusable parts
+
+Stanislav Kinsbursky (26):
+      nfsd: use passed cache_detail pointer expkey_parse()
+      nfsd: add link to owner cache detail to svc_export structure
+      nfsd: use cache detail pointer from svc_export structure on cache put
+      nfsd: use exp_put() for svc_export_cache put
+      nfsd: pass svc_export_cache pointer as private data to "exports" seq file ops
+      nfsd: use hash table from cache detail in nfsd export seq ops
+      nfsd: pass pointer to expkey cache down to stack wherever possible.
+      NFSd: remove hard-coded dereferences to name-to-id and id-to-name caches
+      Lockd: pass network namespace to creation and destruction routines
+      nfsd: pass network context to export caches init/shutdown routines
+      nfsd: pass pointer to export cache down to stack wherever possible.
+      nfsd: make export cache allocated per network namespace context
+      nfsd: make expkey cache allocated per network namespace context
+      nfsd: allocate export and expkey caches in per-net operations.
+      nfsd: pass network context to idmap init/exit functions
+      nfsd: make id-to-name cache allocated per network namespace context
+      nfsd: make name-to-id cache allocated per network namespace context
+      nfsd: allocate id-to-name and name-to-id caches in per-net operations.
+      SUNRPC: new svc_bind() routine introduced
+      SUNRPC: move per-net operations from svc_destroy()
+      LockD: pass service to per-net up and down functions
+      LockD: use existing per-net data function on service creation
+      LockD: service creation function introduced
+      LockD: move global usage counter manipulation from error path
+      LockD: service start function introduced
+      LockD: add debug message to start and stop functions
+
+Weston Andros Adamson (2):
+      nfsd: add IPv6 addr escaping to fs_location hosts
+      nfsd: return 0 on reads of fault injection files
+
+ fs/attr.c                           |    3 +
+ fs/lockd/clntlock.c                 |   13 +-
+ fs/lockd/svc.c                      |  148 +++++----
+ fs/locks.c                          |   51 ++-
+ fs/namei.c                          |   19 +-
+ fs/nfs/callback.c                   |   13 +-
+ fs/nfsd/auth.c                      |    2 +-
+ fs/nfsd/export.c                    |  181 ++++++-----
+ fs/nfsd/fault_inject.c              |    1 +
+ fs/nfsd/idmap.h                     |    8 +-
+ fs/nfsd/netns.h                     |    6 +
+ fs/nfsd/nfs4callback.c              |    5 +-
+ fs/nfsd/nfs4idmap.c                 |  113 ++++---
+ fs/nfsd/nfs4proc.c                  |   36 ++-
+ fs/nfsd/nfs4recover.c               |    4 +-
+ fs/nfsd/nfs4state.c                 |  599 +++++++++++++++++------------------
+ fs/nfsd/nfs4xdr.c                   |   62 ++--
+ fs/nfsd/nfsctl.c                    |   67 ++--
+ fs/nfsd/nfsfh.c                     |    2 +-
+ fs/nfsd/nfssvc.c                    |   31 +-
+ fs/nfsd/state.h                     |    1 -
+ fs/nfsd/vfs.c                       |   33 +-
+ fs/nfsd/xdr4.h                      |    9 +-
+ include/linux/fs.h                  |   19 +-
+ include/linux/lockd/bind.h          |    4 +-
+ include/linux/nfsd/export.h         |   13 +-
+ include/linux/sunrpc/svc.h          |    2 +-
+ include/linux/sunrpc/svcauth.h      |   13 +-
+ include/linux/sunrpc/svcauth_gss.h  |    1 -
+ net/sunrpc/auth_gss/gss_krb5_wrap.c |   61 +++-
+ net/sunrpc/auth_gss/svcauth_gss.c   |  127 ++++----
+ net/sunrpc/rpcb_clnt.c              |   12 +-
+ net/sunrpc/svc.c                    |   23 +-
+ net/sunrpc/svc_xprt.c               |    4 +-
+ net/sunrpc/svcauth_unix.c           |   19 +-
+ 35 files changed, 1009 insertions(+), 696 deletions(-)
+
+--b.
