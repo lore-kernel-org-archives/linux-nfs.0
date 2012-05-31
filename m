@@ -1,124 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:38068 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:65292 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754122Ab2EJNyj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 May 2012 09:54:39 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 07/12] mm: Add support for direct_IO to highmem pages
-Date: Thu, 10 May 2012 14:54:20 +0100
-Message-Id: <1336658065-24851-8-git-send-email-mgorman@suse.de>
-In-Reply-To: <1336658065-24851-1-git-send-email-mgorman@suse.de>
-References: <1336658065-24851-1-git-send-email-mgorman@suse.de>
+	id S932967Ab2EaTRE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 31 May 2012 15:17:04 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 1/1] NFSv4.1 handle OPEN O_CREATE mdsthreshold
+Date: Thu, 31 May 2012 15:16:03 -0400
+Message-Id: <1338491763-2767-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The patch "mm: Add support for a filesystem to activate swap files and
-use direct_IO for writing swap pages" added support for using direct_IO
-to write swap pages but it is insufficient for highmem pages.
+From: Andy Adamson <andros@netapp.com>
 
-To support highmem pages, this patch kmaps() the page before calling the
-direct_IO() handler. As direct_IO deals with virtual addresses an
-additional helper is necessary for get_kernel_pages() to lookup the
-struct page for a kmap virtual address.
-
-Signed-off-by: Mel Gorman <mgorman@suse.de>
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- include/linux/highmem.h |    7 +++++++
- mm/highmem.c            |   12 ++++++++++++
- mm/memory.c             |    3 +--
- mm/page_io.c            |    3 ++-
- 4 files changed, 22 insertions(+), 3 deletions(-)
+ fs/nfs/nfs4proc.c |    4 +++-
+ fs/nfs/nfs4xdr.c  |    2 ++
+ 2 files changed, 5 insertions(+), 1 deletions(-)
 
-diff --git a/include/linux/highmem.h b/include/linux/highmem.h
-index d3999b4..e186e3c 100644
---- a/include/linux/highmem.h
-+++ b/include/linux/highmem.h
-@@ -39,10 +39,17 @@ extern unsigned long totalhigh_pages;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 65e1df8..698abe6 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2802,6 +2802,7 @@ nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
+ 	struct dentry *de = dentry;
+ 	struct nfs4_state *state;
+ 	struct rpc_cred *cred = NULL;
++	struct nfs4_threshold **thp = NULL;
+ 	fmode_t fmode = 0;
+ 	int status = 0;
  
- void kmap_flush_unused(void);
- 
-+struct page *kmap_to_page(void *addr);
-+
- #else /* CONFIG_HIGHMEM */
- 
- static inline unsigned int nr_free_highpages(void) { return 0; }
- 
-+static inline struct page *kmap_to_page(void *addr)
-+{
-+	return virt_to_page(addr);
-+}
-+
- #define totalhigh_pages 0UL
- 
- #ifndef ARCH_HAS_KMAP
-diff --git a/mm/highmem.c b/mm/highmem.c
-index 57d82c6..d517cd1 100644
---- a/mm/highmem.c
-+++ b/mm/highmem.c
-@@ -94,6 +94,18 @@ static DECLARE_WAIT_QUEUE_HEAD(pkmap_map_wait);
- 		do { spin_unlock(&kmap_lock); (void)(flags); } while (0)
- #endif
- 
-+struct page *kmap_to_page(void *vaddr)
-+{
-+	unsigned long addr = (unsigned long)vaddr;
-+
-+	if (addr >= PKMAP_ADDR(0) && addr <= PKMAP_ADDR(LAST_PKMAP)) {
-+		int i = (addr - PKMAP_ADDR(0)) >> PAGE_SHIFT;
-+		return pte_page(pkmap_page_table[i]);
-+	}
-+
-+	return virt_to_page(addr);
-+}
-+
- static void flush_all_zero_pkmaps(void)
- {
- 	int i;
-diff --git a/mm/memory.c b/mm/memory.c
-index 0bc990e7..fd32a1a 100644
---- a/mm/memory.c
-+++ b/mm/memory.c
-@@ -1858,8 +1858,7 @@ int get_kernel_pages(const struct kvec *kiov, int nr_segs, int write,
- 		if (WARN_ON(kiov[seg].iov_len != PAGE_SIZE))
- 			return seg;
- 
--		/* virt_to_page sanity checks the PFN */
--		pages[seg] = virt_to_page(kiov[seg].iov_base);
-+		pages[seg] = kmap_to_page(kiov[seg].iov_base);
- 		page_cache_get(pages[seg]);
+@@ -2809,9 +2810,10 @@ nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
+ 		cred = ctx->cred;
+ 		de = ctx->dentry;
+ 		fmode = ctx->mode;
++		thp = &ctx->mdsthreshold;
  	}
+ 	sattr->ia_mode &= ~current_umask();
+-	state = nfs4_do_open(dir, de, fmode, flags, sattr, cred, NULL);
++	state = nfs4_do_open(dir, de, fmode, flags, sattr, cred, thp);
+ 	d_drop(dentry);
+ 	if (IS_ERR(state)) {
+ 		status = PTR_ERR(state);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index ee4a74d..30fa0a5 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -4357,6 +4357,8 @@ static int decode_attr_mdsthreshold(struct xdr_stream *xdr,
+ 	int status = 0;
+ 	uint32_t num;
  
-diff --git a/mm/page_io.c b/mm/page_io.c
-index f363261..1e39e88 100644
---- a/mm/page_io.c
-+++ b/mm/page_io.c
-@@ -198,7 +198,7 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
- 		struct file *swap_file = sis->swap_file;
- 		struct address_space *mapping = swap_file->f_mapping;
- 		struct iovec iov = {
--			.iov_base = page_address(page),
-+			.iov_base = kmap(page),
- 			.iov_len  = PAGE_SIZE,
- 		};
- 
-@@ -211,6 +211,7 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
- 		ret = mapping->a_ops->direct_IO(KERNEL_WRITE,
- 						&kiocb, &iov,
- 						kiocb.ki_pos, 1);
-+		kunmap(page);
- 		if (ret == PAGE_SIZE) {
- 			count_vm_event(PSWPOUT);
- 			ret = 0;
++	if (res == NULL)
++		return 0;
+ 	if (unlikely(bitmap[2] & (FATTR4_WORD2_MDSTHRESHOLD - 1U)))
+ 		return -EIO;
+ 	if (likely(bitmap[2] & FATTR4_WORD2_MDSTHRESHOLD)) {
 -- 
-1.7.9.2
+1.7.6.4
 
