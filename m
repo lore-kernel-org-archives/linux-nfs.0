@@ -1,144 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36419 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758289Ab2EBBni (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 May 2012 21:43:38 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
-        NeilBrown <neilb@suse.de>, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 3/3] mountd: prepend '$' to make use_ipaddr clients self-describing
-Date: Tue,  1 May 2012 21:43:34 -0400
-Message-Id: <1335923014-2789-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <20120502014155.GA2684@fieldses.org>
-References: <20120502014155.GA2684@fieldses.org>
+Received: from mail-wi0-f178.google.com ([209.85.212.178]:34400 "EHLO
+	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754648Ab2EaWPT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 May 2012 18:15:19 -0400
+MIME-Version: 1.0
+In-Reply-To: <20120531205300.GG25955@fieldses.org>
+References: <20120531182457.GB25955@fieldses.org> <CA+55aFwGpVM2Dbe02gL5=cGJZ_t3b4PTAhqwrs5MHjsb5R6BaA@mail.gmail.com>
+ <20120531200138.GD25955@fieldses.org> <CA+55aFyuHz5Vn8G_kpKgnSStX0s125gwwQij2KXmnhfwaajhkg@mail.gmail.com>
+ <20120531205300.GG25955@fieldses.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Thu, 31 May 2012 15:14:57 -0700
+Message-ID: <CA+55aFxY+WJmMu=1Wvdh24kK0JWEuQ1vwcqZdaNDbp1_wUsZ4A@mail.gmail.com>
+Subject: Re: nfsd changes for 3.5
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Thu, May 31, 2012 at 1:53 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Thu, May 31, 2012 at 01:17:26PM -0700, Linus Torvalds wrote:
+>
+> Uh, that means ditching some work in my public git tree.  Which I
+> haven't rebased in years.  So, a stupid process question; would you
+> rather I:
+>
+>        - continue to be strict about rebasing and apply a bunch of
+>          reverts?
+>        - ditch it and start over?
 
-Mountd is responsible for filling three interrelated kernel caches:
+I think in this case rebasing is the right thing to do.
 
-	- auth_unix_ip maps an incoming ip addresses to a "domain".
-	- nfsd_fh maps (domain, filehandle-fragment) pairs to paths.
-	- nfsd_export maps (domain, path) pairs to export options.
+I hate rebasing, but what I hate about it is how people who use it as
+a development model cause problems for anybody else. I don't think it
+will cause problems in this particular case, but if somebody hollers,
+let me know.
 
-Note that each export is assocated with a "client" string--the part
-before the parentheses in an /etc/export line--which may be a domain
-name, a netgroup, etc.
+>>  Making
+>> it an rwsem might help readdir a tiny amount, but I suspect people
+>> actually depend on the mutex in readdir right now.
+>
+> Al called this all "highly non-trivial":
+>
+>        http://marc.info/?l=linux-fsdevel&m=132726495726326&w=2
+>
+> I don't know who'd have the cycles.
 
-The "domain" string in the above three caches may be either:
+I agree, it's a rats nest.
 
-	- in the !use_ipaddr case, a comma-separated list of client
-	  strings.
-	- in the use_ipaddr case, an ip address.
+Doing lookups in particular is ridiculously single-threaded for almost
+no good reason, though (and create is just a special case of that). It
+*should* be possible that push the i_mutex down into the filesystem,
+if we just created some fake dentry (with the appropriate support for
+lookup to stall on it) to make sure that lookups of the same *name*
+are serialized.
 
-In the former case, mountd does the hard work of matching an ip address
-to the clients when doing the auth_unix_ip mapping.  In the latter case,
-it delays that until the nfsd_fh or nfsd_export upcall.
+At that point, each filesystem could decide that they don't need the
+i_mutex for the whole thing.
 
-We're currently depending on being able to flush the kernel caches
-completely when switching between the use_ipaddr and !use_ipaddr cases.
-However, the kernel's cache-flushing doesn't really provide reliable
-guarantees on return; it's still possible we could see nfsd_fh or
-nfsd_export upcalls with the old domain-type after flushing.
+Maybe.
 
-So, instead, make the two domain types self-describing by prepending a
-"$" in the use_ipaddr case.
+And readdir() could be done mostly mechanically by changing i_mutex
+into an rwsem, making all lockers use a write lock, and pushing the
+locking down from the caller into the filesystem for ->readdir().
+Again, at that point, I suspect many filesystems could do with much
+less locking.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- utils/mountd/auth.c   |   14 +++++++++++---
- utils/mountd/cache.c  |    8 +++++---
- utils/mountd/mountd.h |    5 +++++
- 3 files changed, 21 insertions(+), 6 deletions(-)
+But yeah, it's all nasty. Even the purely mechanical part of changing
+i_mutex to an rwsem would not only be a *huge* and painful patch, it
+would hit things like lockdep issues too (we don't support the nesting
+thing for rwsem annotations, afaik).
 
-diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
-index 1ed9a4b..15da54c 100644
---- a/utils/mountd/auth.c
-+++ b/utils/mountd/auth.c
-@@ -112,15 +112,23 @@ auth_reload()
- 	return counter;
- }
- 
-+static char *get_client_ipaddr_name(const struct sockaddr *caller)
-+{
-+	char buf[INET6_ADDRSTRLEN + 1];
-+
-+	buf[0] = '$';
-+	host_ntop(caller, buf + 1, sizeof(buf) - 1);
-+	return strdup(buf);
-+}
-+
- static char *
- get_client_hostname(const struct sockaddr *caller, struct addrinfo *ai,
- 		enum auth_error *error)
- {
--	char buf[INET6_ADDRSTRLEN];
- 	char *n;
- 
- 	if (use_ipaddr)
--		return strdup(host_ntop(caller, buf, sizeof(buf)));
-+		return get_client_ipaddr_name(caller);
- 	n = client_compose(ai);
- 	*error = unknown_host;
- 	if (!n)
-@@ -143,7 +151,7 @@ bool namelist_client_matches(nfs_export *exp, char *dom)
- 
- bool client_matches(nfs_export *exp, char *dom, struct addrinfo *ai)
- {
--	if (use_ipaddr)
-+	if (is_ipaddr_client(dom))
- 		return ipaddr_client_matches(exp, ai);
- 	return namelist_client_matches(exp, dom);
- }
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 6cc58d2..1833b3a 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -551,7 +551,7 @@ static void nfsd_fh(FILE *f)
- 
- 	auth_reload();
- 
--	if (use_ipaddr) {
-+	if (dom[0] == '$') {
- 		ai = lookup_client_addr(dom);
- 		if (!ai)
- 			goto out;
-@@ -587,7 +587,8 @@ static void nfsd_fh(FILE *f)
- 				next_exp = exp->m_next;
- 			}
- 
--			if (!use_ipaddr && !namelist_client_matches(exp, dom))
-+			if (!is_ipaddr_client(dom)
-+					&& !namelist_client_matches(exp, dom))
- 				continue;
- 			if (exp->m_export.e_mountpoint &&
- 			    !is_mountpoint(exp->m_export.e_mountpoint[0]?
-@@ -597,7 +598,8 @@ static void nfsd_fh(FILE *f)
- 
- 			if (!match_fsid(&parsed, exp, path))
- 				continue;
--			if (use_ipaddr && !ipaddr_client_matches(exp, ai))
-+			if (is_ipaddr_client(dom)
-+					&& !ipaddr_client_matches(exp, ai))
- 				continue;
- 			if (!found || subexport(&exp->m_export, found)) {
- 				found = &exp->m_export;
-diff --git a/utils/mountd/mountd.h b/utils/mountd/mountd.h
-index c969a27..6d358a7 100644
---- a/utils/mountd/mountd.h
-+++ b/utils/mountd/mountd.h
-@@ -60,4 +60,9 @@ bool ipaddr_client_matches(nfs_export *exp, struct addrinfo *ai);
- bool namelist_client_matches(nfs_export *exp, char *dom);
- bool client_matches(nfs_export *exp, char *dom, struct addrinfo *ai);
- 
-+static inline bool is_ipaddr_client(char *dom)
-+{
-+	return dom[0] == '$';
-+}
-+
- #endif /* MOUNTD_H */
--- 
-1.7.7.6
+So nobody has really done it, and it's so painful that maybe nobody
+will. There are loads that hit this serialization point, but they are
+*fairly* rare and specialized.
 
+                Linus
