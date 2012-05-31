@@ -1,39 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:59854 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750735Ab2E1ENr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2012 00:13:47 -0400
-From: <tao.peng@emc.com>
-To: <Trond.Myklebust@netapp.com>
-CC: <bergwolf@gmail.com>, <linux-nfs@vger.kernel.org>
-Date: Mon, 28 May 2012 00:13:02 -0400
-Subject: RE: [PATCH 1/3] NFS41: add pnfs_dio_begin/dio_end
-Message-ID: <F19688880B763E40B28B2B462677FBF805F0BADF5C@MX09A.corp.emc.com>
-References: <1338096780-2763-1-git-send-email-bergwolf@gmail.com>
-	 <1338096780-2763-2-git-send-email-bergwolf@gmail.com>
-	 <1338136170.3044.7.camel@lade.trondhjem.org>
-	 <F19688880B763E40B28B2B462677FBF805F0BADF35@MX09A.corp.emc.com>
- <1338176574.2265.7.camel@lade.trondhjem.org>
-In-Reply-To: <1338176574.2265.7.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:37672 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757879Ab2EaUBj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 31 May 2012 16:01:39 -0400
+Date: Thu, 31 May 2012 16:01:38 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>
+Subject: Re: nfsd changes for 3.5
+Message-ID: <20120531200138.GD25955@fieldses.org>
+References: <20120531182457.GB25955@fieldses.org>
+ <CA+55aFwGpVM2Dbe02gL5=cGJZ_t3b4PTAhqwrs5MHjsb5R6BaA@mail.gmail.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <CA+55aFwGpVM2Dbe02gL5=cGJZ_t3b4PTAhqwrs5MHjsb5R6BaA@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBNeWtsZWJ1c3QsIFRyb25kIFtt
-YWlsdG86VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb21dDQo+IFNlbnQ6IE1vbmRheSwgTWF5IDI4
-LCAyMDEyIDExOjQzIEFNDQo+IFRvOiBQZW5nLCBUYW8NCj4gQ2M6IGJlcmd3b2xmQGdtYWlsLmNv
-bTsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiBTdWJqZWN0OiBSRTogW1BBVENIIDEvM10g
-TkZTNDE6IGFkZCBwbmZzX2Rpb19iZWdpbi9kaW9fZW5kDQo+IA0KPiBPbiBTdW4sIDIwMTItMDUt
-MjcgYXQgMjI6MzAgLTA0MDAsIHRhby5wZW5nQGVtYy5jb20gd3JvdGU6DQo+ID4gSSdtIGFmcmFp
-ZCB0aGVyZSBpcy4gVGhlcmUgaXMgbm8gd2F5IHRvIHBhc3Mgc3RydWN0IGJsa19wbHVnIGFyb3Vu
-ZCBwZ19pbml0L3BnX2RvaW8sIHVubGVzcyB3ZSBwdXQNCj4gaXQgaW4gc3RydWN0IG5mc19wYWdl
-aW9fZGVzY3JpcHRvciwgd2hpY2ggSSB0aGluayBpcyBtb3JlIGludHJ1c2l2ZSBhbmQgbGVzcyBl
-ZmZpY2llbnQgYXMgaXQgaXMgb25seQ0KPiB1c2VmdWwgZm9yIGJsb2NrIGxheW91dCBkcml2ZXIg
-aW4gRElPIGNhc2UuDQo+IA0KPiBUaGVuIGFkZCBhICd2b2lkICpwZ19sYXlvdXRfcHJpdmF0ZScg
-ZmllbGQgdG8gbmZzX3BhZ2Vpb19kZXNjcmlwdG9yIGFuZA0KPiBhbGxvY2F0ZSB0aGUgc3RydWN0
-IGJsa19wbHVnIGR5bmFtaWNhbGx5Lg0KPiANCk9LLiBJIHRob3VnaHQgZGF0YSBzdHJ1Y3R1cmUg
-Y2hhbmdlIGlzIG1vcmUgaW50cnVzaXZlIGJlY2F1c2UgaXQgYWZmZWN0cyBhbGwgbGF5b3V0IGRy
-aXZlcnMgYW5kIGdlbmVyaWMgTkZTIGFzIHdlbGwuIEJ1dCBzaW5jZSB5b3UgdGhpbmsgaXQgaXMg
-T0ssIEkgd2lsbCBjaGFuZ2UgaXQgYXMgeW91IHN1Z2dlc3RlZC4NCg0KVGhhbmtzLA0KVGFvDQoN
-Cg==
+On Thu, May 31, 2012 at 11:58:34AM -0700, Linus Torvalds wrote:
+> On Thu, May 31, 2012 at 11:24 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> >
+> > Sorry this is a bit late.  In fact I still have a review backlog (at a
+> > minimum some bugfixes), so will send a second pull later.
+> 
+> Quite frankly, I'm not going to pull this without lots of explanations.
+> 
+> The VFS-level changes have no acks or sign-offs from anybody else,
+
+Sorry, yes, at best I had a verbal OK from Al (and maybe I'm wrong about
+that).  I got impatient.
+
+> and quite frankly, if I understand them correctly they look f*cking
+> disgusting. If I read them right, they break delegations of a file
+> (which can involve long waits for clients - no?)
+
+Right.  By default it's 90 seconds before we'll give up on the client.
+
+> while holding on to
+> the directory inode lock (both directories for cross-inode renames).
+> Which seems to be a singularly idiotic thing to do and sounds to me
+> like a fundamental design mistake.
+
+I hate that too, and originally tried to avoid it with something like:
+
+	retry:
+		acquire locks
+		lookup inode
+		ret = try_to_break_deleg(inode);
+		if (ret)
+			drop locks
+			really_break_deleg(inode);
+			goto retry;
+		... do the real work ...
+		drop locks
+
+I felt like I was making already complicated code logic like rename's
+even harder to follow.
+
+And those operations don't really know the inode till they acquire the
+locks, so in pathological cases that could continue forever.
+
+...
+> So quite frankly, this *all* looks like 3.6 material to me, and that's
+> assuming you can convince people that file-delegation breaking really
+> should happen with all lookups on the directory the file is in blocked
+> by the directory inode mutex in the first place. Or tell me I'm a
+> moron and I misread the patches and don't know what I'm talking about.
+
+No, I think you understand correctly.
+
+The presence of a delegation requires blocking certain operations until
+a client somewhere responds (or we time out).
+
+So the question as I understand it is whether there's a way to lessen
+the impact by blocking only what we really need to.
+
+I don't know if there's a way to do that without reworking the vfs
+directory locking to be much more fine-grained.
+
+--b.
