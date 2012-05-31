@@ -1,42 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from shards.monkeyblade.net ([198.137.202.13]:57270 "EHLO
-	shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753286Ab2EKFLw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 May 2012 01:11:52 -0400
-Date: Fri, 11 May 2012 01:10:34 -0400 (EDT)
-Message-Id: <20120511.011034.557833140906762226.davem@davemloft.net>
-To: mgorman@suse.de
-Cc: akpm@linux-foundation.org, linux-mm@kvack.org, netdev@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Trond.Myklebust@netapp.com, neilb@suse.de, hch@infradead.org,
-        a.p.zijlstra@chello.nl, michaelc@cs.wisc.edu, emunson@mgebm.net
-Subject: Re: [PATCH 01/12] netvm: Prevent a stream-specific deadlock
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <1336658065-24851-2-git-send-email-mgorman@suse.de>
-References: <1336658065-24851-1-git-send-email-mgorman@suse.de>
-	<1336658065-24851-2-git-send-email-mgorman@suse.de>
-Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
+Received: from fieldses.org ([174.143.236.118]:57961 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S964792Ab2EaUL7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 31 May 2012 16:11:59 -0400
+Date: Thu, 31 May 2012 16:11:50 -0400
+To: Jan Kara <jack@suse.cz>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 2/6] vfs: fix outdated i_mutex_lock_class documentation
+Message-ID: <20120531201150.GE25955@fieldses.org>
+References: <1338429016-20119-1-git-send-email-bfields@redhat.com>
+ <1338429016-20119-3-git-send-email-bfields@redhat.com>
+ <20120531185111.GA13647@quack.suse.cz>
+ <20120531185439.GB13647@quack.suse.cz>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120531185439.GB13647@quack.suse.cz>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Mel Gorman <mgorman@suse.de>
-Date: Thu, 10 May 2012 14:54:14 +0100
+On Thu, May 31, 2012 at 08:54:39PM +0200, Jan Kara wrote:
+> On Thu 31-05-12 20:51:11, Jan Kara wrote:
+> > On Wed 30-05-12 21:50:12, J. Bruce Fields wrote:
+> > > From: "J. Bruce Fields" <bfields@redhat.com>
+> > > 
+> > > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > > ---
+> > >  include/linux/fs.h |    3 ++-
+> > >  1 file changed, 2 insertions(+), 1 deletion(-)
+> > > 
+> > > diff --git a/include/linux/fs.h b/include/linux/fs.h
+> > > index 038076b..5584a29 100644
+> > > --- a/include/linux/fs.h
+> > > +++ b/include/linux/fs.h
+> > > @@ -861,7 +861,8 @@ static inline int inode_unhashed(struct inode *inode)
+> > >   * 0: the object of the current VFS operation
+> > >   * 1: parent
+> > >   * 2: child/target
+> > > - * 3: quota file
+> > > + * 3: xattr
+> > > + * 4: quota file
+> >   This isn't correct anymore, is it? Just remove references to quota in this
+> > comment...
+>   Oh, now I've noticed patch 6/6. Maybe this patch and 6/6 should be just
+> joined into one?
 
-> It could happen that all !SOCK_MEMALLOC sockets have buffered so
-> much data that we're over the global rmem limit. This will prevent
-> SOCK_MEMALLOC buffers from receiving data, which will prevent userspace
-> from running, which is needed to reduce the buffered data.
-> 
-> Fix this by exempting the SOCK_MEMALLOC sockets from the rmem limit.
-> 
-> Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-> Signed-off-by: Mel Gorman <mgorman@suse.de>
-
-This introduces an invariant which I am not so sure is enforced.
-
-With this change it is absolutely required that once a socket
-becomes SOCK_MEMALLOC it must never _ever_ lose that attribute.
-
-Otherwise we can end up liberating global rmem tokens which we never
-actually took.
+Sure.--b.
