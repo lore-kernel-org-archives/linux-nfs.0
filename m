@@ -1,202 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:42786 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S968091Ab2ERWFw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 May 2012 18:05:52 -0400
-Received: by mail-yw0-f46.google.com with SMTP id m54so3385192yhm.19
-        for <linux-nfs@vger.kernel.org>; Fri, 18 May 2012 15:05:52 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 04/14] NFS: Use proper naming conventions for the
- nfs_client.net field
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 18 May 2012 18:05:50 -0400
-Message-ID: <20120518220550.774.9837.stgit@degas.1015granger.net>
-In-Reply-To: <20120518220145.774.53741.stgit@degas.1015granger.net>
-References: <20120518220145.774.53741.stgit@degas.1015granger.net>
+Received: from e9.ny.us.ibm.com ([32.97.182.139]:50679 "EHLO e9.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933170Ab2EaTge (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 31 May 2012 15:36:34 -0400
+Received: from /spool/local
+	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Thu, 31 May 2012 15:36:33 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id 88ABE6E80FE
+	for <linux-nfs@vger.kernel.org>; Thu, 31 May 2012 15:36:10 -0400 (EDT)
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q4VJa6Kp070484
+	for <linux-nfs@vger.kernel.org>; Thu, 31 May 2012 15:36:08 -0400
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q4VJZjDl011329
+	for <linux-nfs@vger.kernel.org>; Thu, 31 May 2012 13:35:45 -0600
+Date: Thu, 31 May 2012 14:35:44 -0500
+From: Malahal Naineni <malahal@us.ibm.com>
+To: Sachin Prabhu <sprabhu@redhat.com>
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@netapp.com>
+Subject: Re: [PATCH] NFSv2: EOF incorrectly set on short read
+Message-ID: <20120531193544.GA4094@us.ibm.com>
+References: <1338482700-15470-1-git-send-email-sprabhu@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1338482700-15470-1-git-send-email-sprabhu@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up:  When naming fields and data types, follow established
-conventions to facilitate accurate grep/cscope searches.
+Sachin Prabhu [sprabhu@redhat.com] wrote:
+> In cases where the server returns fewer bytes then those requested, we
+> can incorrectly set the eof flag for the file. Fixing this allows the
+> request to be retried with updated offset and count arguments.
+> 
+> Signed-off-by: Sachin Prabhu <sprabhu@redhat.com>
+> ---
+>  fs/nfs/proc.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+> index a706b6b..617c741 100644
+> --- a/fs/nfs/proc.c
+> +++ b/fs/nfs/proc.c
+> @@ -651,7 +651,7 @@ static int nfs_read_done(struct rpc_task *task, struct nfs_read_data *data)
+>  		/* Emulate the eof flag, which isn't normally needed in NFSv2
+>  		 * as it is guaranteed to always return the file attributes
+>  		 */
+> -		if (data->args.offset + data->args.count >= data->res.fattr->size)
+> +		if (data->args.offset + data->res.count >= data->res.fattr->size)
+>  			data->res.eof = 1;
+>  	}
+>  	return 0;
 
-Introduced by commit e50a7a1a "NFS: make NFS client allocated per
-network namespace context," Tue Jan 10, 2012.
+Good catch!
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- fs/nfs/blocklayout/blocklayoutdev.c |    2 +-
- fs/nfs/client.c                     |   22 +++++++++++-----------
- fs/nfs/idmap.c                      |    4 ++--
- fs/nfs/nfs4filelayoutdev.c          |    2 +-
- include/linux/nfs_fs_sb.h           |    2 +-
- 5 files changed, 16 insertions(+), 16 deletions(-)
-
-diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
-index a5c88a5..c965542 100644
---- a/fs/nfs/blocklayout/blocklayoutdev.c
-+++ b/fs/nfs/blocklayout/blocklayoutdev.c
-@@ -123,7 +123,7 @@ nfs4_blk_decode_device(struct nfs_server *server,
- 	uint8_t *dataptr;
- 	DECLARE_WAITQUEUE(wq, current);
- 	int offset, len, i, rc;
--	struct net *net = server->nfs_client->net;
-+	struct net *net = server->nfs_client->cl_net;
- 	struct nfs_net *nn = net_generic(net, nfs_net_id);
- 	struct bl_dev_msg *reply = &nn->bl_mount_reply;
- 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index ec5a276..c430acd 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -65,7 +65,7 @@ static DECLARE_WAIT_QUEUE_HEAD(nfs_client_active_wq);
- static int nfs_get_cb_ident_idr(struct nfs_client *clp, int minorversion)
- {
- 	int ret = 0;
--	struct nfs_net *nn = net_generic(clp->net, nfs_net_id);
-+	struct nfs_net *nn = net_generic(clp->cl_net, nfs_net_id);
- 
- 	if (clp->rpc_ops->version != 4 || minorversion != 0)
- 		return ret;
-@@ -172,7 +172,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
- 	clp->cl_rpcclient = ERR_PTR(-EINVAL);
- 
- 	clp->cl_proto = cl_init->proto;
--	clp->net = get_net(cl_init->net);
-+	clp->cl_net = get_net(cl_init->net);
- 
- #ifdef CONFIG_NFS_V4
- 	err = nfs_get_cb_ident_idr(clp, cl_init->minorversion);
-@@ -250,7 +250,7 @@ void nfs_cleanup_cb_ident_idr(struct net *net)
- /* nfs_client_lock held */
- static void nfs_cb_idr_remove_locked(struct nfs_client *clp)
- {
--	struct nfs_net *nn = net_generic(clp->net, nfs_net_id);
-+	struct nfs_net *nn = net_generic(clp->cl_net, nfs_net_id);
- 
- 	if (clp->cl_cb_ident)
- 		idr_remove(&nn->cb_ident_idr, clp->cl_cb_ident);
-@@ -303,7 +303,7 @@ static void nfs_free_client(struct nfs_client *clp)
- 	if (clp->cl_machine_cred != NULL)
- 		put_rpccred(clp->cl_machine_cred);
- 
--	put_net(clp->net);
-+	put_net(clp->cl_net);
- 	kfree(clp->cl_hostname);
- 	kfree(clp);
- 
-@@ -321,7 +321,7 @@ void nfs_put_client(struct nfs_client *clp)
- 		return;
- 
- 	dprintk("--> nfs_put_client({%d})\n", atomic_read(&clp->cl_count));
--	nn = net_generic(clp->net, nfs_net_id);
-+	nn = net_generic(clp->cl_net, nfs_net_id);
- 
- 	if (atomic_dec_and_lock(&clp->cl_count, &nn->nfs_client_lock)) {
- 		list_del(&clp->cl_share_link);
-@@ -659,7 +659,7 @@ static int nfs_create_rpc_client(struct nfs_client *clp,
- {
- 	struct rpc_clnt		*clnt = NULL;
- 	struct rpc_create_args args = {
--		.net		= clp->net,
-+		.net		= clp->cl_net,
- 		.protocol	= clp->cl_proto,
- 		.address	= (struct sockaddr *)&clp->cl_addr,
- 		.addrsize	= clp->cl_addrlen,
-@@ -713,7 +713,7 @@ static int nfs_start_lockd(struct nfs_server *server)
- 		.nfs_version	= clp->rpc_ops->version,
- 		.noresvport	= server->flags & NFS_MOUNT_NORESVPORT ?
- 					1 : 0,
--		.net		= clp->net,
-+		.net		= clp->cl_net,
- 	};
- 
- 	if (nlm_init.nfs_version > 3)
-@@ -1048,7 +1048,7 @@ static void nfs_server_copy_userdata(struct nfs_server *target, struct nfs_serve
- static void nfs_server_insert_lists(struct nfs_server *server)
- {
- 	struct nfs_client *clp = server->nfs_client;
--	struct nfs_net *nn = net_generic(clp->net, nfs_net_id);
-+	struct nfs_net *nn = net_generic(clp->cl_net, nfs_net_id);
- 
- 	spin_lock(&nn->nfs_client_lock);
- 	list_add_tail_rcu(&server->client_link, &clp->cl_superblocks);
-@@ -1065,7 +1065,7 @@ static void nfs_server_remove_lists(struct nfs_server *server)
- 
- 	if (clp == NULL)
- 		return;
--	nn = net_generic(clp->net, nfs_net_id);
-+	nn = net_generic(clp->cl_net, nfs_net_id);
- 	spin_lock(&nn->nfs_client_lock);
- 	list_del_rcu(&server->client_link);
- 	if (list_empty(&clp->cl_superblocks))
-@@ -1474,7 +1474,7 @@ struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
- 		.rpc_ops = &nfs_v4_clientops,
- 		.proto = ds_proto,
- 		.minorversion = mds_clp->cl_minorversion,
--		.net = mds_clp->net,
-+		.net = mds_clp->cl_net,
- 	};
- 	struct rpc_timeout ds_timeout = {
- 		.to_initval = 15 * HZ,
-@@ -1701,7 +1701,7 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
- 				rpc_protocol(parent_server->client),
- 				parent_server->client->cl_timeout,
- 				parent_client->cl_mvops->minor_version,
--				parent_client->net);
-+				parent_client->cl_net);
- 	if (error < 0)
- 		goto error;
- 
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index ba3019f..dded556 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -415,7 +415,7 @@ static int __nfs_idmap_register(struct dentry *dir,
- static void nfs_idmap_unregister(struct nfs_client *clp,
- 				      struct rpc_pipe *pipe)
- {
--	struct net *net = clp->net;
-+	struct net *net = clp->cl_net;
- 	struct super_block *pipefs_sb;
- 
- 	pipefs_sb = rpc_get_sb_net(net);
-@@ -429,7 +429,7 @@ static int nfs_idmap_register(struct nfs_client *clp,
- 				   struct idmap *idmap,
- 				   struct rpc_pipe *pipe)
- {
--	struct net *net = clp->net;
-+	struct net *net = clp->cl_net;
- 	struct super_block *pipefs_sb;
- 	int err = 0;
- 
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index c9cff9a..22ab5ca 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -602,7 +602,7 @@ decode_device(struct inode *ino, struct pnfs_device *pdev, gfp_t gfp_flags)
- 
- 		mp_count = be32_to_cpup(p); /* multipath count */
- 		for (j = 0; j < mp_count; j++) {
--			da = decode_ds_addr(NFS_SERVER(ino)->nfs_client->net,
-+			da = decode_ds_addr(NFS_SERVER(ino)->nfs_client->cl_net,
- 					    &stream, gfp_flags);
- 			if (da)
- 				list_add_tail(&da->da_node, &dsaddrs);
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 773e021..59410b3 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -88,7 +88,7 @@ struct nfs_client {
- 	struct fscache_cookie	*fscache;	/* client index cache cookie */
- #endif
- 
--	struct net		*net;
-+	struct net		*cl_net;
- };
- 
- /*
+Regards, Malahal.
 
