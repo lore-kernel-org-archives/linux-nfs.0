@@ -1,149 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:37449 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:9165 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753046Ab2EWSlh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 May 2012 14:41:37 -0400
-Received: from vmwexceht05-prd.hq.netapp.com (vmwexceht05-prd.hq.netapp.com [10.106.77.35])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q4NIfa7p002396
-	for <linux-nfs@vger.kernel.org>; Wed, 23 May 2012 11:41:37 -0700 (PDT)
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/4] NFSv4.1 add nfs_inode book keeping for mdsthreshold
-Date: Wed, 23 May 2012 18:41:36 +0000
-Message-ID: <21DBA0D7-7C19-4DEA-8571-583967C7B7A7@netapp.com>
-References: <1337763757-1566-1-git-send-email-andros@netapp.com>
- <1337763757-1566-3-git-send-email-andros@netapp.com>
- <1337797196.12011.8.camel@lade.trondhjem.org>
-In-Reply-To: <1337797196.12011.8.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="us-ascii"
+	id S1757948Ab2EaNqc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 31 May 2012 09:46:32 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Michael Tokarev <mjt@tls.msk.ru>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Linux-kernel <linux-kernel@vger.kernel.org>
+Subject: Re: 3.0+ NFS issues
+Date: Thu, 31 May 2012 13:46:16 +0000
+Message-ID: <1338471975.7732.5.camel@lade.trondhjem.org>
+References: <4FBF2C57.3070203@msgid.tls.msk.ru>
+	  <20120529152416.GC3441@fieldses.org> <4FC5C82E.4020806@msgid.tls.msk.ru>
+	  <20120530132518.GA13794@fieldses.org> <4FC713ED.5040807@msgid.tls.msk.ru>
+	 <1338469169.2420.7.camel@lade.trondhjem.org>
+	 <4FC77128.9090206@msgid.tls.msk.ru>
+In-Reply-To: <4FC77128.9090206@msgid.tls.msk.ru>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On May 23, 2012, at 2:19 PM, Myklebust, Trond wrote:
-
-> On Wed, 2012-05-23 at 05:02 -0400, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
->> 
->> Keep track of the number of bytes read or written, including those queued
->> up to be flushed. For use by mdsthreshold i/o size hints.
->> 
->> No locking needed as this is used as hint information.
->> 
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->> fs/nfs/file.c          |    8 ++++++--
->> fs/nfs/inode.c         |    2 ++
->> fs/nfs/pnfs.c          |    3 +++
->> include/linux/nfs_fs.h |    3 +++
->> 4 files changed, 14 insertions(+), 2 deletions(-)
->> 
->> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
->> index 8eda8a6..c4cc096 100644
->> --- a/fs/nfs/file.c
->> +++ b/fs/nfs/file.c
->> @@ -203,8 +203,10 @@ nfs_file_read(struct kiocb *iocb, const struct iovec *iov,
->> 	result = nfs_revalidate_mapping(inode, iocb->ki_filp->f_mapping);
->> 	if (!result) {
->> 		result = generic_file_aio_read(iocb, iov, nr_segs, pos);
->> -		if (result > 0)
->> +		if (result > 0) {
->> +			NFS_I(inode)->read_io += result;
-> 
-> Should we perhaps rather do this from nfs_readpages(), nfs_readpage()
-> and nfs_direct_read()?
-> 
-> If we do it here in nfs_file_read, we miss mmaped reads, O_DIRECT reads,
-> as well as splice reads.
-
-Well that's not good.
-
-> We also count read cache hits where we don't
-> have to actually access the server.
-
-OK.
-
-> 
->> 			nfs_add_stats(inode, NFSIOS_NORMALREADBYTES, result);
->> +		}
->> 	}
->> 	return result;
->> }
->> @@ -613,8 +615,10 @@ static ssize_t nfs_file_write(struct kiocb *iocb, const struct iovec *iov,
->> 		if (err < 0)
->> 			result = err;
->> 	}
->> -	if (result > 0)
->> +	if (result > 0) {
->> +		NFS_I(inode)->write_io += written;
-> 
-> For the same reason, perhaps we should move this to
-> nfs_direct_write_schedule_iovec(), and nfs_write_end().
-> 
->> 		nfs_add_stats(inode, NFSIOS_NORMALWRITTENBYTES, written);
->> +	}
->> out:
->> 	return result;
->> 
->> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
->> index 889f7e5..a6f5fbb 100644
->> --- a/fs/nfs/inode.c
->> +++ b/fs/nfs/inode.c
->> @@ -323,6 +323,8 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
->> 		inode->i_gid = -2;
->> 		inode->i_blocks = 0;
->> 		memset(nfsi->cookieverf, 0, sizeof(nfsi->cookieverf));
->> +		nfsi->write_io = 0;
->> +		nfsi->read_io = 0;
->> 
->> 		nfsi->read_cache_jiffies = fattr->time_start;
->> 		nfsi->attr_gencount = fattr->gencount;
->> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->> index cbcb6ae..6620606 100644
->> --- a/fs/nfs/pnfs.c
->> +++ b/fs/nfs/pnfs.c
->> @@ -395,6 +395,9 @@ mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
->> 	dprintk("%s:Begin lo %p\n", __func__, lo);
->> 
->> 	if (list_empty(&lo->plh_segs)) {
->> +		/* Reset MDS Threshold I/O counters */
->> +		NFS_I(lo->plh_inode)->write_io = 0;
->> +		NFS_I(lo->plh_inode)->read_io = 0;
->> 		if (!test_and_set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags))
->> 			put_layout_hdr_locked(lo);
->> 		return 0;
->> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
->> index ca4a707..c6954ac 100644
->> --- a/include/linux/nfs_fs.h
->> +++ b/include/linux/nfs_fs.h
->> @@ -201,6 +201,9 @@ struct nfs_inode {
->> 
->> 	/* pNFS layout information */
->> 	struct pnfs_layout_hdr *layout;
->> +	/* how many bytes have been written/read and how many bytes queued up */
->> +	__u64 write_io;
->> +	__u64 read_io;
->> #endif /* CONFIG_NFS_V4*/
-> 
-> ^^^^ This doesn't look as if it will compile without CONFIG_NFS_V4.
-
-I'll fix and resend. Thanks for the review :)
-
--->Andy
-
-> 
->> #ifdef CONFIG_NFS_FSCACHE
->> 	struct fscache_cookie	*fscache;
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
-
+T24gVGh1LCAyMDEyLTA1LTMxIGF0IDE3OjI0ICswNDAwLCBNaWNoYWVsIFRva2FyZXYgd3JvdGU6
+DQo+IE9uIDMxLjA1LjIwMTIgMTY6NTksIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+IFtdDQo+
+ID4gVGhhdCBpcyB0Y3BkdW1wIHRyeWluZyB0byBpbnRlcnByZXQgeW91ciBORlN2NCB0cmFjZSBh
+cyBORlN2Mi92My4NCj4gDQo+IE9oLg0KPiANCj4gPiBDYW4geW91IGVpdGhlciBwbGVhc2UgdXNl
+IHdpcmVzaGFyayB0byBwcm92aWRlIGEgZnVsbCB0ZXh0IGR1bXAgKHVzaW5nDQo+ID4gc29tZXRo
+aW5nIGxpa2UgJ3RzaGFyayAtViAtTyBuZnMscnBjJyksIG9yIGp1c3Qgc2VuZCB1cyB0aGUgYmlu
+YXJ5DQo+ID4gdGNwZHVtcCBvdXRwdXQgdXNpbmcgJ3RjcGR1bXAgLXcgL3RtcC9mb28gLXMgOTAw
+MDAnPw0KPiANCj4gSSBzdGFydGVkIHRjcGR1bXA6DQo+IA0KPiAgdGNwZHVtcCAtbnB2aSBicjAg
+LXMgMCBob3N0IDE5Mi4xNjguODguNCBhbmQgXCggcHJvdG8gSUNNUCBvciBwb3J0IDIwNDkgXCkg
+LXcgbmZzZHVtcA0KPiANCj4gb24gdGhlIGNsaWVudCAoMTkyLjE2OC44OC4yKS4gIE5leHQgSSBt
+b3VudGVkIGEgZGlyZWN0b3J5IG9uIHRoZSBjbGllbnQsDQo+IGFuZCBzdGFydGVkIHJlYWRpbmcg
+KHRhcidpbmcpIGEgZGlyZWN0b3J5IGludG8gL2Rldi9udWxsLiAgSXQgY2FwdHVyZWQgYQ0KPiBm
+ZXcgc3RhbGxzLiAgVGNwZHVtcCBzaG93cyBudW1iZXIgb2YgcGFja2V0cyBpdCBnb3QsIHRoZSBz
+dGFsbHMgYXJlIGF0DQo+IHBhY2tldCBjb3VudHMgNTgwOTAsIDk3MDY5IGFuZCA5NzA3MS4gIEkg
+Y2FuY2VsbGVkIHRoZSBjYXB0dXJlIGFmdGVyIHRoYXQuDQo+IA0KPiBUaGUgcmVzdWx0aW5nIGZp
+bGUgaXMgYXZhaWxhYmxlIGF0IGh0dHA6Ly93d3cuY29ycGl0LnJ1L21qdC90bXAvbmZzZHVtcC54
+eiAsDQo+IGl0IGlzIDIyME1iIHVuY29tcHJlc3NlZCBhbmQgMS4zTWIgY29tcHJlc3NlZC4gIFRo
+ZSBzb3VyY2UgZmlsZXMgYXJlDQo+IDEwIGZpbGVzIG9mIDFHYiBlYWNoLCBhbGwgbWFkZSBieSB1
+c2luZyBgdHJ1bmNhdGUnIHV0aWxpdHksIHNvIGRvZXMgbm90DQo+IHRha2UgcGxhY2Ugb24gZGlz
+ayBhdCBhbGwuICBUaGlzIGFsc28gbWFrZXMgaXQgb2J2aW91cyB0aGF0IHRoZSBpc3N1ZQ0KPiBk
+b2VzIG5vdCBkZXBlbmQgb24gdGhlIHNwZWVkIG9mIGRpc2sgb24gdGhlIHNlcnZlciAoc2luY2Ug
+aW4gdGhpcyBjYXNlLA0KPiB0aGUgc2VydmVyIGRpc2sgaXNuJ3QgZXZlbiBpbiB1c2UpLg0KDQpP
+Sy4gU28gZnJvbSB0aGUgYWJvdmUgZmlsZSBpdCBsb29rcyBhcyBpZiB0aGUgdHJhZmZpYyBpcyBt
+YWlubHkgUkVBRA0KcmVxdWVzdHMuDQoNCkluIDIgcGxhY2VzIHRoZSBzZXJ2ZXIgc3RvcHMgcmVz
+cG9uZGluZy4gSW4gYm90aCBjYXNlcywgdGhlIGNsaWVudCBzZWVtcw0KdG8gYmUgc2VuZGluZyBh
+IHNpbmdsZSBUQ1AgZnJhbWUgY29udGFpbmluZyBzZXZlcmFsIENPTVBPVU5EUyBjb250YWluaW5n
+DQpSRUFEIHJlcXVlc3RzICh3aGljaCBzaG91bGQgYmUgbGVnYWwpIGp1c3QgcHJpb3IgdG8gdGhl
+IGhhbmcuIFdoZW4gdGhlDQpzZXJ2ZXIgZG9lc24ndCByZXNwb25kLCB0aGUgY2xpZW50IHBpbmdz
+IGl0IHdpdGggYSBSRU5FVywgYmVmb3JlIGl0IGVuZHMNCnVwIHNldmVyaW5nIHRoZSBUQ1AgY29u
+bmVjdGlvbiBhbmQgdGhlbiByZXRyYW5zbWl0dGluZy4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QN
+CkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBu
+ZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
