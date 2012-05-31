@@ -1,163 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45506 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753466Ab2EBV4U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 May 2012 17:56:20 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
-        NeilBrown <neilb@suse.de>, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 4/5] mountd: prepend '$' to make use_ipaddr clients self-describing
-Date: Wed,  2 May 2012 17:56:14 -0400
-Message-Id: <1335995775-12009-5-git-send-email-bfields@redhat.com>
-In-Reply-To: <1335995775-12009-1-git-send-email-bfields@redhat.com>
-References: <1335995775-12009-1-git-send-email-bfields@redhat.com>
+Received: from mail-wi0-f178.google.com ([209.85.212.178]:47410 "EHLO
+	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964860Ab2EaURs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 May 2012 16:17:48 -0400
+MIME-Version: 1.0
+In-Reply-To: <20120531200138.GD25955@fieldses.org>
+References: <20120531182457.GB25955@fieldses.org> <CA+55aFwGpVM2Dbe02gL5=cGJZ_t3b4PTAhqwrs5MHjsb5R6BaA@mail.gmail.com>
+ <20120531200138.GD25955@fieldses.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Thu, 31 May 2012 13:17:26 -0700
+Message-ID: <CA+55aFyuHz5Vn8G_kpKgnSStX0s125gwwQij2KXmnhfwaajhkg@mail.gmail.com>
+Subject: Re: nfsd changes for 3.5
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Thu, May 31, 2012 at 1:01 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>
+> Right.  By default it's 90 seconds before we'll give up on the client.
 
-Mountd is responsible for filling three interrelated kernel caches:
+So a slightly buggy client can basically DoS the server by getting a
+delegation and then crashing or something. Everybody else that tries
+to read that directory (not that file) will be dead in the water.
+Definitely not good.
 
-	- auth_unix_ip maps an incoming ip addresses to a "domain".
-	- nfsd_fh maps (domain, filehandle-fragment) pairs to paths.
-	- nfsd_export maps (domain, path) pairs to export options.
+> I hate that too, and originally tried to avoid it with something like:
+>
+>        retry:
+>                acquire locks
+>                lookup inode
+>                ret = try_to_break_deleg(inode);
+>                if (ret)
+>                        drop locks
+>                        really_break_deleg(inode);
+>                        goto retry;
+>                ... do the real work ...
+>                drop locks
+>
+> I felt like I was making already complicated code logic like rename's
+> even harder to follow.
 
-Note that each export is assocated with a "client" string--the part
-before the parentheses in an /etc/export line--which may be a domain
-name, a netgroup, etc.
+I do think it's the only thing we can reasonably do. I'd love to have
+some kind of per-dentry lock for unlink/rename, but we don't.
+Long-term, we really do need to do something about the directory
+locking, though, because it's also a huge problem for readdir()
+concurrency. Or at least it used to be (samba in particular). Making
+it an rwsem might help readdir a tiny amount, but I suspect people
+actually depend on the mutex in readdir right now.
 
-The "domain" string in the above three caches may be either:
+> And those operations don't really know the inode till they acquire the
+> locks, so in pathological cases that could continue forever.
 
-	- in the !use_ipaddr case, a comma-separated list of client
-	  strings.
-	- in the use_ipaddr case, an ip address.
+I suspect at some point you just have to say "screw it".
 
-In the former case, mountd does the hard work of matching an ip address
-to the clients when doing the auth_unix_ip mapping.  In the latter case,
-it delays that until the nfsd_fh or nfsd_export upcall.
-
-We're currently depending on being able to flush the kernel caches
-completely when switching between the use_ipaddr and !use_ipaddr cases.
-However, the kernel's cache-flushing doesn't really provide reliable
-guarantees on return; it's still possible we could see nfsd_fh or
-nfsd_export upcalls with the old domain-type after flushing.
-
-So, instead, make the two domain types self-describing by prepending a
-"$" in the use_ipaddr case.
-
-Reviewed-by: NeilBrown <neilb@suse.de>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- utils/mountd/auth.c   |   14 +++++++++++---
- utils/mountd/cache.c  |   12 ++++++++----
- utils/mountd/mountd.h |    5 +++++
- 3 files changed, 24 insertions(+), 7 deletions(-)
-
-diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
-index 1ed9a4b..15da54c 100644
---- a/utils/mountd/auth.c
-+++ b/utils/mountd/auth.c
-@@ -112,15 +112,23 @@ auth_reload()
- 	return counter;
- }
- 
-+static char *get_client_ipaddr_name(const struct sockaddr *caller)
-+{
-+	char buf[INET6_ADDRSTRLEN + 1];
-+
-+	buf[0] = '$';
-+	host_ntop(caller, buf + 1, sizeof(buf) - 1);
-+	return strdup(buf);
-+}
-+
- static char *
- get_client_hostname(const struct sockaddr *caller, struct addrinfo *ai,
- 		enum auth_error *error)
- {
--	char buf[INET6_ADDRSTRLEN];
- 	char *n;
- 
- 	if (use_ipaddr)
--		return strdup(host_ntop(caller, buf, sizeof(buf)));
-+		return get_client_ipaddr_name(caller);
- 	n = client_compose(ai);
- 	*error = unknown_host;
- 	if (!n)
-@@ -143,7 +151,7 @@ bool namelist_client_matches(nfs_export *exp, char *dom)
- 
- bool client_matches(nfs_export *exp, char *dom, struct addrinfo *ai)
- {
--	if (use_ipaddr)
-+	if (is_ipaddr_client(dom))
- 		return ipaddr_client_matches(exp, ai);
- 	return namelist_client_matches(exp, dom);
- }
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 6e01b2f..6710eca 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -500,6 +500,8 @@ struct addrinfo *lookup_client_addr(char *dom)
- 	struct addrinfo *ret;
- 	struct addrinfo *tmp;
- 
-+	dom++; /* skip initial "$" */
-+
- 	tmp = host_pton(dom);
- 	if (tmp == NULL)
- 		return NULL;
-@@ -551,7 +553,7 @@ static void nfsd_fh(FILE *f)
- 
- 	auth_reload();
- 
--	if (use_ipaddr) {
-+	if (is_ipaddr_client(dom)) {
- 		ai = lookup_client_addr(dom);
- 		if (!ai)
- 			goto out;
-@@ -587,7 +589,8 @@ static void nfsd_fh(FILE *f)
- 				next_exp = exp->m_next;
- 			}
- 
--			if (!use_ipaddr && !namelist_client_matches(exp, dom))
-+			if (!is_ipaddr_client(dom)
-+					&& !namelist_client_matches(exp, dom))
- 				continue;
- 			if (exp->m_export.e_mountpoint &&
- 			    !is_mountpoint(exp->m_export.e_mountpoint[0]?
-@@ -597,7 +600,8 @@ static void nfsd_fh(FILE *f)
- 
- 			if (!match_fsid(&parsed, exp, path))
- 				continue;
--			if (use_ipaddr && !ipaddr_client_matches(exp, ai))
-+			if (is_ipaddr_client(dom)
-+					&& !ipaddr_client_matches(exp, ai))
- 				continue;
- 			if (!found || subexport(&exp->m_export, found)) {
- 				found = &exp->m_export;
-@@ -1058,7 +1062,7 @@ static void nfsd_export(FILE *f)
- 
- 	auth_reload();
- 
--	if (use_ipaddr) {
-+	if (is_ipaddr_client(dom)) {
- 		ai = lookup_client_addr(dom);
- 		if (!ai)
- 			goto out;
-diff --git a/utils/mountd/mountd.h b/utils/mountd/mountd.h
-index c969a27..6d358a7 100644
---- a/utils/mountd/mountd.h
-+++ b/utils/mountd/mountd.h
-@@ -60,4 +60,9 @@ bool ipaddr_client_matches(nfs_export *exp, struct addrinfo *ai);
- bool namelist_client_matches(nfs_export *exp, char *dom);
- bool client_matches(nfs_export *exp, char *dom, struct addrinfo *ai);
- 
-+static inline bool is_ipaddr_client(char *dom)
-+{
-+	return dom[0] == '$';
-+}
-+
- #endif /* MOUNTD_H */
--- 
-1.7.7.6
-
+               Linus
