@@ -1,54 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:36590 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751304Ab2EMNyQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 May 2012 09:54:16 -0400
-Received: by bkcji2 with SMTP id ji2so3183337bkc.19
-        for <linux-nfs@vger.kernel.org>; Sun, 13 May 2012 06:54:15 -0700 (PDT)
-Message-ID: <4FAFBD04.8020301@tonian.com>
-Date: Sun, 13 May 2012 16:54:12 +0300
-From: Lior <lior@tonian.com>
+Received: from mail-we0-f174.google.com ([74.125.82.174]:38845 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932576Ab2EaS64 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 May 2012 14:58:56 -0400
 MIME-Version: 1.0
-To: tigran.mkrtchyan@desy.de
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: nfs v4.1 client without pNFS
-References: <4FAF9E19.4060802@tonian.com> <CAGue13rFG30EzmQX7sfYA_ouPBxaUu1Xs8sb1ee4fBMtaufKpA@mail.gmail.com>
-In-Reply-To: <CAGue13rFG30EzmQX7sfYA_ouPBxaUu1Xs8sb1ee4fBMtaufKpA@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+In-Reply-To: <20120531182457.GB25955@fieldses.org>
+References: <20120531182457.GB25955@fieldses.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Thu, 31 May 2012 11:58:34 -0700
+Message-ID: <CA+55aFwGpVM2Dbe02gL5=cGJZ_t3b4PTAhqwrs5MHjsb5R6BaA@mail.gmail.com>
+Subject: Re: nfsd changes for 3.5
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Tigran,
-
-I guess that's one way ( a dark white box way, which still needs to be 
-looked into)... but I was more thinking of a more high level built in 
-user method  (e.g module option ,or mount option)
-
-Thanks for the fast response,
-Lior K.
-
-בתאריך 13/05/2012 16:37, ציטוט Tigran Mkrtchyan:
-> Hi Lior,
+On Thu, May 31, 2012 at 11:24 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
 >
-> you can blacklist the layout driver in /etc/modprobe.d/nfsv41.conf
->
-> blacklist nfs_layout_nfsv41_files
->
->
-> Tigran.
-> On Sun, May 13, 2012 at 1:42 PM, Lior<lior@tonian.com>  wrote:
->> Hi Trond,
->>
->> The rfc 5661 states that pNFS is an optional feature.
->> Is there currently an intent to implement some sort of an option (module
->> option ,or mount option) to run the NFSv4.1 client without pNFS
->> functionality?
->>
->> Thanks,
->>   Lior K.
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Sorry this is a bit late. �In fact I still have a review backlog (at a
+> minimum some bugfixes), so will send a second pull later.
 
+Quite frankly, I'm not going to pull this without lots of explanations.
+
+The VFS-level changes have no acks or sign-offs from anybody else, and
+quite frankly, if I understand them correctly they look f*cking
+disgusting. If I read them right, they break delegations of a file
+(which can involve long waits for clients - no?) while holding on to
+the directory inode lock (both directories for cross-inode renames).
+Which seems to be a singularly idiotic thing to do and sounds to me
+like a fundamental design mistake.
+
+We simply don't do these kinds of VFS changes without having
+discussions and acks from people, notably Al.
+
+As to "second pull later" - if you haven't reviewed the code already,
+it's damn well much too late in the merge window to do it now.
+
+So quite frankly, this *all* looks like 3.6 material to me, and that's
+assuming you can convince people that file-delegation breaking really
+should happen with all lookups on the directory the file is in blocked
+by the directory inode mutex in the first place. Or tell me I'm a
+moron and I misread the patches and don't know what I'm talking about.
+
+          Linus
