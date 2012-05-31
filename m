@@ -1,34 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from shards.monkeyblade.net ([198.137.202.13]:41262 "EHLO
-	shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932419Ab2EOSx3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2012 14:53:29 -0400
-Date: Tue, 15 May 2012 14:51:07 -0400 (EDT)
-Message-Id: <20120515.145107.834395619191754306.davem@davemloft.net>
-To: johannes@sipsolutions.net
-Cc: joe@perches.com, netdev@vger.kernel.org,
-        linux-decnet-user@lists.sourceforge.net,
-        netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org,
-        coreteam@netfilter.org, linux-wireless@vger.kernel.org,
-        dev@openvswitch.org, linux-sctp@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [RFC net-next 0/2] net: Use net_<level>_ratelimit
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <1337107245.15553.14.camel@jlt3.sipsolutions.net>
-References: <1337106430.15553.6.camel@jlt3.sipsolutions.net>
-	<20120515.142922.1434224550630736456.davem@davemloft.net>
-	<1337107245.15553.14.camel@jlt3.sipsolutions.net>
-Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
+Received: from fieldses.org ([174.143.236.118]:50080 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757701Ab2EaBuU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 May 2012 21:50:20 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Jan Kara <jack@suse.cz>, Steven Whitehouse <swhiteho@redhat.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 1/6] gfs2: Get rid of I_MUTEX_QUOTA usage
+Date: Wed, 30 May 2012 21:50:11 -0400
+Message-Id: <1338429016-20119-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1338429016-20119-1-git-send-email-bfields@redhat.com>
+References: <1338429016-20119-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Johannes Berg <johannes@sipsolutions.net>
-Date: Tue, 15 May 2012 20:40:45 +0200
+From: Jan Kara <jack@suse.cz>
 
-> In the mac80211 case, messages are warnings/hints to the user, we just
-> don't want them to flood the logs too much. I'd rather have that kind of
-> change (limit cookie per callsite) in the rate limiting semantics than
-> the change in the when it gets printed at all.
+GFS2 uses i_mutex on its system quota inode to synchronize writes to
+quota file. Since this is an internal inode to GFS2 (not part of directory
+hiearchy or visible by user) we are safe to define locking rules for it. So
+let's just get it its own locking class to make it clear.
 
-Then they aren't KERN_DEBUG, they are KERN_INFO or KERN_WARN.
+CC: Steven Whitehouse <swhiteho@redhat.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/gfs2/ops_fstype.c |    8 ++++++++
+ fs/gfs2/quota.c      |    2 +-
+ 2 files changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/fs/gfs2/ops_fstype.c b/fs/gfs2/ops_fstype.c
+index b8c250f..c714ef7 100644
+--- a/fs/gfs2/ops_fstype.c
++++ b/fs/gfs2/ops_fstype.c
+@@ -19,6 +19,7 @@
+ #include <linux/mount.h>
+ #include <linux/gfs2_ondisk.h>
+ #include <linux/quotaops.h>
++#include <linux/lockdep.h>
+ 
+ #include "gfs2.h"
+ #include "incore.h"
+@@ -766,6 +767,7 @@ fail:
+ 	return error;
+ }
+ 
++static struct lock_class_key gfs2_quota_imutex_key;
+ 
+ static int init_inodes(struct gfs2_sbd *sdp, int undo)
+ {
+@@ -803,6 +805,12 @@ static int init_inodes(struct gfs2_sbd *sdp, int undo)
+ 		fs_err(sdp, "can't get quota file inode: %d\n", error);
+ 		goto fail_rindex;
+ 	}
++	/*
++	 * i_mutex on quota files is special. Since this inode is hidden system
++	 * file, we are safe to define locking ourselves.
++	 */
++	lockdep_set_class(&sdp->sd_quota_inode->i_mutex,
++			  &gfs2_quota_imutex_key);
+ 
+ 	error = gfs2_rindex_update(sdp);
+ 	if (error)
+diff --git a/fs/gfs2/quota.c b/fs/gfs2/quota.c
+index b97178e..8ed70e7 100644
+--- a/fs/gfs2/quota.c
++++ b/fs/gfs2/quota.c
+@@ -772,7 +772,7 @@ static int do_sync(unsigned int num_qd, struct gfs2_quota_data **qda)
+ 		return -ENOMEM;
+ 
+ 	sort(qda, num_qd, sizeof(struct gfs2_quota_data *), sort_qd, NULL);
+-	mutex_lock_nested(&ip->i_inode.i_mutex, I_MUTEX_QUOTA);
++	mutex_lock(&ip->i_inode.i_mutex);
+ 	for (qx = 0; qx < num_qd; qx++) {
+ 		error = gfs2_glock_nq_init(qda[qx]->qd_gl, LM_ST_EXCLUSIVE,
+ 					   GL_NOCACHE, &ghs[qx]);
+-- 
+1.7.9.5
+
