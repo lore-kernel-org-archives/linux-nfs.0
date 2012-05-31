@@ -1,45 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from pos.postmodernsublime.com ([174.121.243.129]:56224 "EHLO
-	pos.postmodernsublime.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751027Ab2ENIiW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 May 2012 04:38:22 -0400
-Received: from imthelaw by pos.postmodernsublime.com with local (Exim 4.77)
-	(envelope-from <imthelaw@pos.postmodernsublime.com>)
-	id 1STnii-0001sZ-F8
-	for linux-nfs@vger.kernel.org; Mon, 14 May 2012 00:21:20 -0500
-To: linux-nfs@vger.kernel.org
-Subject: HP  TONERS  Cartridge
-From: dan rhodes <n0_reply@e-mailusa.us>
-Reply-To: danstationeryproductsupply@gmail.com
+Received: from isrv.corpit.ru ([86.62.121.231]:38519 "EHLO isrv.corpit.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758036Ab2EaNZB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 31 May 2012 09:25:01 -0400
+Message-ID: <4FC77128.9090206@msgid.tls.msk.ru>
+Date: Thu, 31 May 2012 17:24:56 +0400
+From: Michael Tokarev <mjt@tls.msk.ru>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Message-Id: <E1STnii-0001sZ-F8@pos.postmodernsublime.com>
-Date: Mon, 14 May 2012 00:21:20 -0500
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Linux-kernel <linux-kernel@vger.kernel.org>
+Subject: Re: 3.0+ NFS issues
+References: <4FBF2C57.3070203@msgid.tls.msk.ru>  <20120529152416.GC3441@fieldses.org> <4FC5C82E.4020806@msgid.tls.msk.ru>  <20120530132518.GA13794@fieldses.org> <4FC713ED.5040807@msgid.tls.msk.ru> <1338469169.2420.7.camel@lade.trondhjem.org>
+In-Reply-To: <1338469169.2420.7.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Can  you  send  me  the pricing  and  availablity  of this  product
+On 31.05.2012 16:59, Myklebust, Trond wrote:
+[]
+> That is tcpdump trying to interpret your NFSv4 trace as NFSv2/v3.
 
- LASER JET PRINT CARTRIDGE, (OEM ONLY)
- HP LASER JET PRINT CARTRIDGE
- 1Q6000A (OEM ONLY)
- 2. HEWC9730A (30A) (OEM ONLY)
- 3. HEWC9731A (31A) (OEM ONLY)
- 4. Q5942A (42A)(OEM ONLY)
- 5. HP Q7551A (51A)(OEM ONLY)
- 6. HP Q3964A (64A) BLACK  COULOUR ONLY (OEM ONLY)
- 7  HP    Q7553A 53A)  OEM ONLY
- 8 NEW & USED, COMPUTERS  NOTEBOOK
-9 USB  FLASH  DRIVES
+Oh.
 
- The mode of our  payment  is   with  our visa, master
- cards
+> Can you either please use wireshark to provide a full text dump (using
+> something like 'tshark -V -O nfs,rpc'), or just send us the binary
+> tcpdump output using 'tcpdump -w /tmp/foo -s 90000'?
 
+I started tcpdump:
 
-Hope  to  read  from  you  asap
-DAN RHODES
-CA 90703
+ tcpdump -npvi br0 -s 0 host 192.168.88.4 and \( proto ICMP or port 2049 \) -w nfsdump
 
+on the client (192.168.88.2).  Next I mounted a directory on the client,
+and started reading (tar'ing) a directory into /dev/null.  It captured a
+few stalls.  Tcpdump shows number of packets it got, the stalls are at
+packet counts 58090, 97069 and 97071.  I cancelled the capture after that.
 
+The resulting file is available at http://www.corpit.ru/mjt/tmp/nfsdump.xz ,
+it is 220Mb uncompressed and 1.3Mb compressed.  The source files are
+10 files of 1Gb each, all made by using `truncate' utility, so does not
+take place on disk at all.  This also makes it obvious that the issue
+does not depend on the speed of disk on the server (since in this case,
+the server disk isn't even in use).
 
+What I noticed is: with default 8 NFSD threads, it takes quite a bit
+longer to hit this issue, but it still happens.  The capture was
+done using 2 threads.
 
+>>>> Can at least the client be made interruptible?  Mounting with
+>>>> -o intr,soft makes no visible difference...
+>>
+>> please? :)
+> 
+> It already is interruptible: try 'kill -9' or any other fatal signal.
+
+Oh.  Indeed, I can kill it from another terminal using -9.  That is
+great already!
+
+Thank you!
+
+/mjt
