@@ -1,113 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21748 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:42689 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758863Ab2EYWKE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 May 2012 18:10:04 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q4PMA4SR005743
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Fri, 25 May 2012 18:10:04 -0400
-From: Simo Sorce <simo@redhat.com>
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
-Subject: [PATCH 2/4] SUNRPC: Document a bit RPCGSS handling in the NFS Server
-Date: Fri, 25 May 2012 18:09:54 -0400
-Message-Id: <1337983796-26476-3-git-send-email-simo@redhat.com>
-In-Reply-To: <1337983796-26476-1-git-send-email-simo@redhat.com>
-References: <1337983796-26476-1-git-send-email-simo@redhat.com>
+	id S1757119Ab2EaM7d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 31 May 2012 08:59:33 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Michael Tokarev <mjt@tls.msk.ru>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Linux-kernel <linux-kernel@vger.kernel.org>
+Subject: Re: 3.0+ NFS issues
+Date: Thu, 31 May 2012 12:59:31 +0000
+Message-ID: <1338469169.2420.7.camel@lade.trondhjem.org>
+References: <4FBF2C57.3070203@msgid.tls.msk.ru>
+	 <20120529152416.GC3441@fieldses.org> <4FC5C82E.4020806@msgid.tls.msk.ru>
+	 <20120530132518.GA13794@fieldses.org> <4FC713ED.5040807@msgid.tls.msk.ru>
+In-Reply-To: <4FC713ED.5040807@msgid.tls.msk.ru>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Includes changes intorduced by GSS-Proxy.
-
-Signed-off-by: Simo Sorce <simo@redhat.com>
----
- Documentation/filesystems/nfs/00-INDEX         |    2 +
- Documentation/filesystems/nfs/knfsd-rpcgss.txt |   65 ++++++++++++++++++++++++
- 2 files changed, 67 insertions(+), 0 deletions(-)
- create mode 100644 Documentation/filesystems/nfs/knfsd-rpcgss.txt
-
-diff --git a/Documentation/filesystems/nfs/00-INDEX b/Documentation/filesystems/nfs/00-INDEX
-index 1716874a651e1c574e7ca9719dfb4e3521b0a5e9..66eb6c8c5334518ddbc10115c7b34b4dfb1b3c0e 100644
---- a/Documentation/filesystems/nfs/00-INDEX
-+++ b/Documentation/filesystems/nfs/00-INDEX
-@@ -20,3 +20,5 @@ rpc-cache.txt
- 	- introduction to the caching mechanisms in the sunrpc layer.
- idmapper.txt
- 	- information for configuring request-keys to be used by idmapper
-+knfsd-rpcgss.txt
-+	- Information on GSS authentication support in the NFS Server
-diff --git a/Documentation/filesystems/nfs/knfsd-rpcgss.txt b/Documentation/filesystems/nfs/knfsd-rpcgss.txt
-new file mode 100644
-index 0000000000000000000000000000000000000000..914aa536273b986539d7859092e2c0f139ce5535
---- /dev/null
-+++ b/Documentation/filesystems/nfs/knfsd-rpcgss.txt
-@@ -0,0 +1,65 @@
-+
-+Kernel NFS Server RPCGSS Support
-+================================
-+
-+This document gives references to the standards and protocols used to
-+implement RPCGSS authentication in the NFS Server.
-+
-+RPCGSS is specified in a few IETF documents:
-+ - RFC2203 v1: http://tools.ietf.org/rfc/rfc2203.txt
-+ - RFC5403 v2: http://tools.ietf.org/rfc/rfc5403.txt
-+and there is a 3rd version  being proposed:
-+ - http://tools.ietf.org/id/draft-williams-rpcsecgssv3.txt
-+   (At draft n. 02 at the time of writing)
-+
-+Background
-+----------
-+
-+The RPCGSS Authentication method describes a way to perform GSSAPI
-+Authentication for NFS.
-+Although GSSAPI is itself completely mechanism agnostic, in many cases only
-+the KRB5 mechanism is supported by NFS implementations.
-+
-+The Linux kernel, at the moment, supports only the KRB5 mechanism, and depends
-+on GSSAPI extensions that are KRB5 specific.
-+
-+GSSAPI is a complex library, and implementing it completely in kernel is
-+unwarranted. However GSSAPI operations are fundementally separable in 2 parts:
-+- context establishment
-+- integrity/privacy protection (read: signing and encrypting)
-+
-+The first part is the complex one, while the actual integrity and privacy
-+protecion is simple enough.
-+Because of the complexity of context establishment, the NFS Server defers the
-+operation to the userspace througuh the use of upcalls.
-+
-+NFS Server Legacy Upcall mechanism
-+----------------------------------
-+
-+The classic upcall mechanism uses a custom text based upcall mechanism to talk
-+to a custom daemon called rpc.svcgssd that is provide by the nfs-utils package.
-+
-+This upcall mechanism has 2 limitations:
-+A) Can handle tokens that are no bigger than 2KiB
-+
-+In some Kerberos deployment GSSAPI tokens can be quite big, up and beyond 64KiB
-+in size due to various authorization extensions attacked to the Kerberos
-+tickets, that needs to be sent through the GSS layer in order to perform
-+context establishment.
-+
-+B) Does not properly handle creds where the user is member of more than a few
-+housand groups (the current hard limit in the kernel is 65K groups) due to
-+limitation on the size of the buffer that can be send back to the kernel (4KiB).
-+
-+NFS Server New RPC Upcall mechanism
-+-----------------------------------
-+
-+A new upcall mechanism that uses RPC over a Unix socket is added. This
-+mechanism uses a protocol called gss-proxy, and user space program that
-+implements it called Gssproxy. The gss_proxy RPC protocol is currently document
-+here: https://fedorahosted.org/gss-proxy/wiki/ProtocolDocumentation
-+
-+This upcall mechanism uses the kernel rpc client and connects to the gssproxy
-+userspace program over a regular unix socket. The gssproxy protocol does not
-+suffer from the size limitations of the legacy protocol.
-+
--- 
-1.7.7.6
-
+T24gVGh1LCAyMDEyLTA1LTMxIGF0IDEwOjQ3ICswNDAwLCBNaWNoYWVsIFRva2FyZXYgd3JvdGU6
+DQoNCj4gMTA6Mzg6NTMuODI3MzU1IElQICh0b3MgMHgwLCB0dGwgNjQsIGlkIDM1MTYwLCBvZmZz
+ZXQgMCwgZmxhZ3MgW0RGXSwgcHJvdG8gVENQICg2KSwgbGVuZ3RoIDI2OCkNCj4gICAgIDE5Mi4x
+NjguODguMi4xMzk2NTQ4MDk4ID4gMTkyLjE2OC44OC40LjIwNDk6IDIxMiBnZXRhdHRyIGZoIDAs
+MC8yMg0KPiAxMDozODo1My44MjczNzkgSVAgKHRvcyAweDAsIHR0bCA2NCwgaWQgMzUxNjEsIG9m
+ZnNldCAwLCBmbGFncyBbREZdLCBwcm90byBUQ1AgKDYpLCBsZW5ndGggMjY4KQ0KPiAgICAgMTky
+LjE2OC44OC4yLjE0MTMzMjUzMTQgPiAxOTIuMTY4Ljg4LjQuMjA0OTogMjEyIGdldGF0dHIgZmgg
+MCwwLzIyDQo+IDEwOjM4OjUzLjgyNzM4NSBJUCAodG9zIDB4MCwgdHRsIDY0LCBpZCAzNTE2Miwg
+b2Zmc2V0IDAsIGZsYWdzIFtERl0sIHByb3RvIFRDUCAoNiksIGxlbmd0aCAyNjgpDQo+ICAgICAx
+OTIuMTY4Ljg4LjIuMTQzMDEwMjUzMCA+IDE5Mi4xNjguODguNC4yMDQ5OiAyMTIgZ2V0YXR0ciBm
+aCAwLDAvMjINCj4gMTA6Mzg6NTMuODI3NDAwIElQICh0b3MgMHgwLCB0dGwgNjQsIGlkIDM1MTYz
+LCBvZmZzZXQgMCwgZmxhZ3MgW0RGXSwgcHJvdG8gVENQICg2KSwgbGVuZ3RoIDI2OCkNCj4gICAg
+IDE5Mi4xNjguODguMi4xNDQ2ODc5NzQ2ID4gMTkyLjE2OC44OC40LjIwNDk6IDIxMiBnZXRhdHRy
+IGZoIDAsMC8yMg0KPiAxMDozODo1My44Mjc0MDYgSVAgKHRvcyAweDAsIHR0bCA2NCwgaWQgMzUx
+NjQsIG9mZnNldCAwLCBmbGFncyBbREZdLCBwcm90byBUQ1AgKDYpLCBsZW5ndGggMjY4KQ0KPiAg
+ICAgMTkyLjE2OC44OC4yLjE0NjM2NTY5NjIgPiAxOTIuMTY4Ljg4LjQuMjA0OTogMjEyIGdldGF0
+dHIgZmggMCwwLzIyDQo+IDEwOjM4OjUzLjgyNzQwOSBJUCAodG9zIDB4MCwgdHRsIDY0LCBpZCAz
+NTE2NSwgb2Zmc2V0IDAsIGZsYWdzIFtERl0sIHByb3RvIFRDUCAoNiksIGxlbmd0aCAyNjgpDQo+
+ICAgICAxOTIuMTY4Ljg4LjIuMTQ4MDQzNDE3OCA+IDE5Mi4xNjguODguNC4yMDQ5OiAyMTIgZ2V0
+YXR0ciBmaCAwLDAvMjINCj4gMTA6Mzg6NTMuODI3NDEzIElQICh0b3MgMHgwLCB0dGwgNjQsIGlk
+IDM1MTY2LCBvZmZzZXQgMCwgZmxhZ3MgW0RGXSwgcHJvdG8gVENQICg2KSwgbGVuZ3RoIDI2OCkN
+Cj4gICAgIDE5Mi4xNjguODguMi4xNDk3MjExMzk0ID4gMTkyLjE2OC44OC40LjIwNDk6IDIxMiBn
+ZXRhdHRyIGZoIDAsMC8yMg0KPiAxMDozODo1My44Mjc0MTcgSVAgKHRvcyAweDAsIHR0bCA2NCwg
+aWQgMzUxNjcsIG9mZnNldCAwLCBmbGFncyBbREZdLCBwcm90byBUQ1AgKDYpLCBsZW5ndGggMjY4
+KQ0KPiAgICAgMTkyLjE2OC44OC4yLjE1MTM5ODg2MTAgPiAxOTIuMTY4Ljg4LjQuMjA0OTogMjEy
+IGdldGF0dHIgZmggMCwwLzIyDQo+IDEwOjM4OjUzLjgyNzQyMCBJUCAodG9zIDB4MCwgdHRsIDY0
+LCBpZCAzNTE2OCwgb2Zmc2V0IDAsIGZsYWdzIFtERl0sIHByb3RvIFRDUCAoNiksIGxlbmd0aCAy
+NjgpDQo+ICAgICAxOTIuMTY4Ljg4LjIuMTUzMDc2NTgyNiA+IDE5Mi4xNjguODguNC4yMDQ5OiAy
+MTIgZ2V0YXR0ciBmaCAwLDAvMjINCj4gMTA6Mzg6NTMuODI3NDI0IElQICh0b3MgMHgwLCB0dGwg
+NjQsIGlkIDM1MTY5LCBvZmZzZXQgMCwgZmxhZ3MgW0RGXSwgcHJvdG8gVENQICg2KSwgbGVuZ3Ro
+IDI2OCkNCj4gICAgIDE5Mi4xNjguODguMi4xNTQ3NTQzMDQyID4gMTkyLjE2OC44OC40LjIwNDk6
+IDIxMiBnZXRhdHRyIGZoIDAsMC8yMg0KPiAxMDozODo1My44Mjc0MjcgSVAgKHRvcyAweDAsIHR0
+bCA2NCwgaWQgMzUxNzAsIG9mZnNldCAwLCBmbGFncyBbREZdLCBwcm90byBUQ1AgKDYpLCBsZW5n
+dGggMjY4KQ0KPiAgICAgMTkyLjE2OC44OC4yLjE1NjQzMjAyNTggPiAxOTIuMTY4Ljg4LjQuMjA0
+OTogMjEyIGdldGF0dHIgZmggMCwwLzIyDQo+IDEwOjM4OjUzLjgyNzQzNCBJUCAodG9zIDB4MCwg
+dHRsIDY0LCBpZCAzNTE3MSwgb2Zmc2V0IDAsIGZsYWdzIFtERl0sIHByb3RvIFRDUCAoNiksIGxl
+bmd0aCAyNjgpDQo+ICAgICAxOTIuMTY4Ljg4LjIuMTU4MTA5NzQ3NCA+IDE5Mi4xNjguODguNC4y
+MDQ5OiAyMTIgZ2V0YXR0ciBmaCAwLDAvMjINCj4gMTA6Mzg6NTMuODI3NDM4IElQICh0b3MgMHgw
+LCB0dGwgNjQsIGlkIDM1MTcyLCBvZmZzZXQgMCwgZmxhZ3MgW0RGXSwgcHJvdG8gVENQICg2KSwg
+bGVuZ3RoIDI2OCkNCj4gICAgIDE5Mi4xNjguODguMi4xNTk3ODc0NjkwID4gMTkyLjE2OC44OC40
+LjIwNDk6IDIxMiBnZXRhdHRyIGZoIDAsMC8yMg0KPiAxMDozODo1My44Mjc0NDMgSVAgKHRvcyAw
+eDAsIHR0bCA2NCwgaWQgMzUxNzMsIG9mZnNldCAwLCBmbGFncyBbREZdLCBwcm90byBUQ1AgKDYp
+LCBsZW5ndGggMjY4KQ0KPiAgICAgMTkyLjE2OC44OC4yLjE2MTQ2NTE5MDYgPiAxOTIuMTY4Ljg4
+LjQuMjA0OTogMjEyIGdldGF0dHIgZmggMCwwLzIyDQo+IDEwOjM4OjUzLjgyNzQ0NyBJUCAodG9z
+IDB4MCwgdHRsIDY0LCBpZCAzNTE3NCwgb2Zmc2V0IDAsIGZsYWdzIFtERl0sIHByb3RvIFRDUCAo
+NiksIGxlbmd0aCAyNjgpDQo+ICAgICAxOTIuMTY4Ljg4LjIuMTYzMTQyOTEyMiA+IDE5Mi4xNjgu
+ODguNC4yMDQ5OiAyMTIgZ2V0YXR0ciBmaCAwLDAvMjINCg0KVGhhdCBpcyB0Y3BkdW1wIHRyeWlu
+ZyB0byBpbnRlcnByZXQgeW91ciBORlN2NCB0cmFjZSBhcyBORlN2Mi92My4NCg0KQ2FuIHlvdSBl
+aXRoZXIgcGxlYXNlIHVzZSB3aXJlc2hhcmsgdG8gcHJvdmlkZSBhIGZ1bGwgdGV4dCBkdW1wICh1
+c2luZw0Kc29tZXRoaW5nIGxpa2UgJ3RzaGFyayAtViAtTyBuZnMscnBjJyksIG9yIGp1c3Qgc2Vu
+ZCB1cyB0aGUgYmluYXJ5DQp0Y3BkdW1wIG91dHB1dCB1c2luZyAndGNwZHVtcCAtdyAvdG1wL2Zv
+byAtcyA5MDAwMCc/DQoNCj4gPj4gQ2FuIGF0IGxlYXN0IHRoZSBjbGllbnQgYmUgbWFkZSBpbnRl
+cnJ1cHRpYmxlPyAgTW91bnRpbmcgd2l0aA0KPiA+PiAtbyBpbnRyLHNvZnQgbWFrZXMgbm8gdmlz
+aWJsZSBkaWZmZXJlbmNlLi4uDQo+IA0KPiBwbGVhc2U/IDopDQoNCkl0IGFscmVhZHkgaXMgaW50
+ZXJydXB0aWJsZTogdHJ5ICdraWxsIC05JyBvciBhbnkgb3RoZXIgZmF0YWwgc2lnbmFsLg0KDQot
+LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFw
+cA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
