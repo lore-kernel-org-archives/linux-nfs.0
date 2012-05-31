@@ -1,117 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:59630 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751290Ab2E2F6T (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 May 2012 01:58:19 -0400
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond.Myklebust@netapp.com
-Cc: rees@umich.edu, bharrosh@panasas.com, jrnieder@gmail.com,
-        linux-nfs@vger.kernel.org, stable@vger.kernel.org,
-        Peng Tao <tao.peng@emc.com>
-Subject: [PATCH-v3] pnfsblock: bail out partial page IO
-Date: Tue, 29 May 2012 13:57:58 +0800
-Message-Id: <1338271078-11696-1-git-send-email-bergwolf@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:40028 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S964807Ab2EaUOI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 31 May 2012 16:14:08 -0400
+Date: Thu, 31 May 2012 16:14:02 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jan Kara <jack@suse.cz>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: [PATCH 6/6 (v2)] vfs: rename I_MUTEX_QUOTA now that it's not used
+ for quotas
+Message-ID: <20120531201402.GF25955@fieldses.org>
+References: <1338429016-20119-1-git-send-email-bfields@redhat.com>
+ <1338429016-20119-3-git-send-email-bfields@redhat.com>
+ <20120531185111.GA13647@quack.suse.cz>
+ <20120531185439.GB13647@quack.suse.cz>
+ <20120531201150.GE25955@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120531201150.GE25955@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Current block layout driver read/write code assumes page
-aligned IO in many places. Add a checker to validate the assumption.
-Otherwise there would be data corruption like when application does
-open(O_WRONLY) and page unaliged write.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Cc: stable@vger.kernel.org
-Signed-off-by: Peng Tao <tao.peng@emc.com>
+I_MUTEX_QUOTA is now just being used whenever we want to lock two
+non-directories.  So the name isn't right.  I_MUTEX_NONDIR2 isn't
+especially elegant but it's the best I could think of.
+
+Also fix some outdated documentation.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
-Change from v2:
-Add symptom in commit log.
+ fs/inode.c         |    4 ++--
+ include/linux/fs.h |    9 ++++++---
+ 2 files changed, 8 insertions(+), 5 deletions(-)
 
- fs/nfs/blocklayout/blocklayout.c |   39 +++++++++++++++++++++++++++++++++++--
- 1 files changed, 36 insertions(+), 3 deletions(-)
+On Thu, May 31, 2012 at 04:11:50PM -0400, bfields wrote:
+> On Thu, May 31, 2012 at 08:54:39PM +0200, Jan Kara wrote:
+> >   Oh, now I've noticed patch 6/6. Maybe this patch and 6/6 should be just
+> > joined into one?
+> 
+> Sure.--b.
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 7ae8a60..dd392ed 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -228,6 +228,14 @@ bl_end_par_io_read(void *data, int unused)
- 	schedule_work(&rdata->task.u.tk_work);
- }
+So, we'd omit patch 2 and replace the previous patch 6 by this.  The
+other patches are unchanged.
+
+diff --git a/fs/inode.c b/fs/inode.c
+index 0272ac3..9c828ab 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -979,11 +979,11 @@ void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
+ 		mutex_lock(&inode1->i_mutex);
+ 	else if (inode1 < inode2) {
+ 		mutex_lock(&inode1->i_mutex);
+-		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_QUOTA);
++		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_NONDIR2);
  
-+static bool
-+bl_check_alignment(u64 offset, u32 len, unsigned long blkmask)
-+{
-+	if ((offset & blkmask) || (len & blkmask))
-+		return false;
-+	return true;
-+}
-+
- static enum pnfs_try_status
- bl_read_pagelist(struct nfs_read_data *rdata)
+ 	} else {
+ 		mutex_lock(&inode2->i_mutex);
+-		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_QUOTA);
++		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_NONDIR2);
+ 	}
+ }
+ EXPORT_SYMBOL(lock_two_nondirectories);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 09434db..f0b5a5d 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -861,10 +861,13 @@ static inline int inode_unhashed(struct inode *inode)
+  * 0: the object of the current VFS operation
+  * 1: parent
+  * 2: child/target
+- * 3: quota file
++ * 3: xattr
++ * 4: second non-directory
++ * The last is for certain operations (such as rename) which lock two
++ * non-directories at once.
+  *
+  * The locking order between these classes is
+- * parent -> child -> normal -> xattr -> quota
++ * parent -> child -> normal -> xattr -> second non-directory
+  */
+ enum inode_i_mutex_lock_class
  {
-@@ -244,6 +252,9 @@ bl_read_pagelist(struct nfs_read_data *rdata)
- 	dprintk("%s enter nr_pages %u offset %lld count %u\n", __func__,
- 	       rdata->pages.npages, f_offset, (unsigned int)rdata->args.count);
- 
-+	if (!bl_check_alignment(f_offset, rdata->args.count, PAGE_CACHE_MASK))
-+		goto use_mds;
-+
- 	par = alloc_parallel(rdata);
- 	if (!par)
- 		goto use_mds;
-@@ -552,7 +563,7 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
- 	struct bio *bio = NULL;
- 	struct pnfs_block_extent *be = NULL, *cow_read = NULL;
- 	sector_t isect, last_isect = 0, extent_length = 0;
--	struct parallel_io *par;
-+	struct parallel_io *par = NULL;
- 	loff_t offset = wdata->args.offset;
- 	size_t count = wdata->args.count;
- 	struct page **pages = wdata->args.pages;
-@@ -563,6 +574,10 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
- 	    NFS_SERVER(header->inode)->pnfs_blksize >> PAGE_CACHE_SHIFT;
- 
- 	dprintk("%s enter, %Zu@%lld\n", __func__, count, offset);
-+	/* Check for alignment first */
-+	if (!bl_check_alignment(offset, count, PAGE_CACHE_MASK))
-+		goto out_mds;
-+
- 	/* At this point, wdata->pages is a (sequential) list of nfs_pages.
- 	 * We want to write each, and if there is an error set pnfs_error
- 	 * to have it redone using nfs.
-@@ -996,14 +1011,32 @@ bl_clear_layoutdriver(struct nfs_server *server)
- 	return 0;
- }
- 
-+static void
-+bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
-+{
-+	if (!bl_check_alignment(req->wb_offset, req->wb_bytes, PAGE_CACHE_MASK))
-+		nfs_pageio_reset_read_mds(pgio);
-+	else
-+		pnfs_generic_pg_init_read(pgio, req);
-+}
-+
-+static void
-+bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
-+{
-+	if (!bl_check_alignment(req->wb_offset, req->wb_bytes, PAGE_CACHE_MASK))
-+		nfs_pageio_reset_write_mds(pgio);
-+	else
-+		pnfs_generic_pg_init_write(pgio, req);
-+}
-+
- static const struct nfs_pageio_ops bl_pg_read_ops = {
--	.pg_init = pnfs_generic_pg_init_read,
-+	.pg_init = bl_pg_init_read,
- 	.pg_test = pnfs_generic_pg_test,
- 	.pg_doio = pnfs_generic_pg_readpages,
+@@ -872,7 +875,7 @@ enum inode_i_mutex_lock_class
+ 	I_MUTEX_PARENT,
+ 	I_MUTEX_CHILD,
+ 	I_MUTEX_XATTR,
+-	I_MUTEX_QUOTA
++	I_MUTEX_NONDIR2
  };
  
- static const struct nfs_pageio_ops bl_pg_write_ops = {
--	.pg_init = pnfs_generic_pg_init_write,
-+	.pg_init = bl_pg_init_write,
- 	.pg_test = pnfs_generic_pg_test,
- 	.pg_doio = pnfs_generic_pg_writepages,
- };
+ void lock_two_nondirectories(struct inode *, struct inode*);
 -- 
-1.7.1.262.g5ef3d
+1.7.9.5
 
