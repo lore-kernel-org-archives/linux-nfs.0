@@ -1,142 +1,152 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:14828 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752124Ab2EaDdP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 May 2012 23:33:15 -0400
-From: <tao.peng@emc.com>
-To: <bharrosh@panasas.com>
-CC: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
-        <stable@vger.kernel.org>
-Date: Wed, 30 May 2012 23:33:01 -0400
-Subject: RE: [PATCH] pnfsblock: bail out partial page IO
-Message-ID: <F19688880B763E40B28B2B462677FBF8105EBA11AC@MX09A.corp.emc.com>
-References: <1338228443-4883-1-git-send-email-bergwolf@gmail.com>
- <4FC475AB.3010607@panasas.com>
-In-Reply-To: <4FC475AB.3010607@panasas.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from fieldses.org ([174.143.236.118]:50075 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757599Ab2EaBuT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 May 2012 21:50:19 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 5/6] vfs: take i_mutex on renamed file
+Date: Wed, 30 May 2012 21:50:15 -0400
+Message-Id: <1338429016-20119-6-git-send-email-bfields@redhat.com>
+In-Reply-To: <1338429016-20119-1-git-send-email-bfields@redhat.com>
+References: <1338429016-20119-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBCb2F6IEhhcnJvc2ggW21haWx0
-bzpiaGFycm9zaEBwYW5hc2FzLmNvbV0NCj4gU2VudDogVHVlc2RheSwgTWF5IDI5LCAyMDEyIDM6
-MDcgUE0NCj4gVG86IFBlbmcgVGFvDQo+IENjOiBUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbTsg
-bGludXgtbmZzQHZnZXIua2VybmVsLm9yZzsgc3RhYmxlQHZnZXIua2VybmVsLm9yZzsgUGVuZywg
-VGFvDQo+IFN1YmplY3Q6IFJlOiBbUEFUQ0hdIHBuZnNibG9jazogYmFpbCBvdXQgcGFydGlhbCBw
-YWdlIElPDQo+IA0KPiBPbiAwNS8yOC8yMDEyIDA5OjA3IFBNLCBQZW5nIFRhbyB3cm90ZToNCj4g
-DQo+ID4gQ3VycmVudCBibG9jayBsYXlvdXQgZHJpdmVyIHJlYWQvd3JpdGUgY29kZSBhc3N1bWVz
-IHBhZ2UNCj4gPiBhbGlnbmVkIElPIGluIG1hbnkgcGxhY2VzLiBBZGQgYSBjaGVja2VyIHRvIHZh
-bGlkYXRlIHRoZSBhc3N1bXB0aW9uLg0KPiA+DQo+ID4gQ2M6IHN0YWJsZUB2Z2VyLmtlcm5lbC5v
-cmcNCj4gPiBTaWduZWQtb2ZmLWJ5OiBQZW5nIFRhbyA8dGFvLnBlbmdAZW1jLmNvbT4NCj4gPiAt
-LS0NCj4gPiBUaGlzIGlzIHRoZSBtaW5pbWFsIHBhdGNoIGZvciBidWZmZXIgSU8gY2FzZS4gSSB3
-aWxsIGNvb2sgRElPIGFsaWdubWVudCBjaGVja2VyDQo+ID4gYmFzZWQgb24gaXQsIHNpbmNlIERJ
-TyBpc24ndCBuZWVkZWQgZm9yIHN0YWJsZS4NCj4gPg0KPiA+ICBmcy9uZnMvYmxvY2tsYXlvdXQv
-YmxvY2tsYXlvdXQuYyB8ICAgMzkgKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyst
-LQ0KPiA+ICAxIGZpbGVzIGNoYW5nZWQsIDM2IGluc2VydGlvbnMoKyksIDMgZGVsZXRpb25zKC0p
-DQo+ID4NCj4gPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMg
-Yi9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYw0KPiA+IGluZGV4IDdhZThhNjAuLjQ0
-N2Y4ZDEgMTAwNjQ0DQo+ID4gLS0tIGEvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMN
-Cj4gPiArKysgYi9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYw0KPiA+IEBAIC0yMjgs
-NiArMjI4LDE0IEBAIGJsX2VuZF9wYXJfaW9fcmVhZCh2b2lkICpkYXRhLCBpbnQgdW51c2VkKQ0K
-PiA+ICAJc2NoZWR1bGVfd29yaygmcmRhdGEtPnRhc2sudS50a193b3JrKTsNCj4gPiAgfQ0KPiA+
-DQo+ID4gK3N0YXRpYyBib29sDQo+ID4gK2JsX25mc3BhZ2VfYWxpZ25lZCh1NjQgb2Zmc2V0LCB1
-MzIgbGVuLCB1MzIgYmxrbWFzaykNCj4gPiArew0KPiA+ICsJaWYgKChvZmZzZXQgJiBibGttYXNr
-KSB8fCAobGVuICYgYmxrbWFzaykpDQo+ID4gKwkJcmV0dXJuIGZhbHNlOw0KPiA+ICsJcmV0dXJu
-IHRydWU7DQo+ID4gK30NCj4gPiArDQo+ID4gIHN0YXRpYyBlbnVtIHBuZnNfdHJ5X3N0YXR1cw0K
-PiA+ICBibF9yZWFkX3BhZ2VsaXN0KHN0cnVjdCBuZnNfcmVhZF9kYXRhICpyZGF0YSkNCj4gPiAg
-ew0KPiA+IEBAIC0yNDQsNiArMjUyLDkgQEAgYmxfcmVhZF9wYWdlbGlzdChzdHJ1Y3QgbmZzX3Jl
-YWRfZGF0YSAqcmRhdGEpDQo+ID4gIAlkcHJpbnRrKCIlcyBlbnRlciBucl9wYWdlcyAldSBvZmZz
-ZXQgJWxsZCBjb3VudCAldVxuIiwgX19mdW5jX18sDQo+ID4gIAkgICAgICAgcmRhdGEtPnBhZ2Vz
-Lm5wYWdlcywgZl9vZmZzZXQsICh1bnNpZ25lZCBpbnQpcmRhdGEtPmFyZ3MuY291bnQpOw0KPiA+
-DQo+ID4gKwlpZiAoIWJsX25mc3BhZ2VfYWxpZ25lZChmX29mZnNldCwgcmRhdGEtPmFyZ3MuY291
-bnQsIFBBR0VfQ0FDSEVfTUFTSykpDQo+ID4gKwkJZ290byB1c2VfbWRzOw0KPiA+ICsNCj4gDQo+
-IA0KPiBQbGVhc2UgcHV0IGEgZHByaW50IGluIHRoZSB0cnVlIGNhc2Ugc28gd2UgY2FuIHNlZSBp
-ZiB0aGlzIGhpdHMgYSBsb3QuDQo+IFdoYXQgeW91IGFyZSBzYXlpbmcgaXMgdGhhdCB0aGlzIHNo
-b3VsZCBoYXBwZW4gdmVyeSByYXJlbHkuDQo+IA0KPiBBZnRlciB5b3UgcHV0IHRoZSBwcmludC4g
-RG9lcyBpdCBoaXQ/IHdoYXQgaXMgdGhlIHRlc3QgY2FzZSB0aGF0IGNhdXNlcyBpdD8NCj4gDQo+
-ID4gIAlwYXIgPSBhbGxvY19wYXJhbGxlbChyZGF0YSk7DQo+ID4gIAlpZiAoIXBhcikNCj4gPiAg
-CQlnb3RvIHVzZV9tZHM7DQo+ID4gQEAgLTU1Miw3ICs1NjMsNyBAQCBibF93cml0ZV9wYWdlbGlz
-dChzdHJ1Y3QgbmZzX3dyaXRlX2RhdGEgKndkYXRhLCBpbnQgc3luYykNCj4gPiAgCXN0cnVjdCBi
-aW8gKmJpbyA9IE5VTEw7DQo+ID4gIAlzdHJ1Y3QgcG5mc19ibG9ja19leHRlbnQgKmJlID0gTlVM
-TCwgKmNvd19yZWFkID0gTlVMTDsNCj4gPiAgCXNlY3Rvcl90IGlzZWN0LCBsYXN0X2lzZWN0ID0g
-MCwgZXh0ZW50X2xlbmd0aCA9IDA7DQo+ID4gLQlzdHJ1Y3QgcGFyYWxsZWxfaW8gKnBhcjsNCj4g
-PiArCXN0cnVjdCBwYXJhbGxlbF9pbyAqcGFyID0gTlVMTDsNCj4gPiAgCWxvZmZfdCBvZmZzZXQg
-PSB3ZGF0YS0+YXJncy5vZmZzZXQ7DQo+ID4gIAlzaXplX3QgY291bnQgPSB3ZGF0YS0+YXJncy5j
-b3VudDsNCj4gPiAgCXN0cnVjdCBwYWdlICoqcGFnZXMgPSB3ZGF0YS0+YXJncy5wYWdlczsNCj4g
-PiBAQCAtNTYzLDYgKzU3NCwxMCBAQCBibF93cml0ZV9wYWdlbGlzdChzdHJ1Y3QgbmZzX3dyaXRl
-X2RhdGEgKndkYXRhLCBpbnQgc3luYykNCj4gPiAgCSAgICBORlNfU0VSVkVSKGhlYWRlci0+aW5v
-ZGUpLT5wbmZzX2Jsa3NpemUgPj4gUEFHRV9DQUNIRV9TSElGVDsNCj4gPg0KPiA+ICAJZHByaW50
-aygiJXMgZW50ZXIsICVadUAlbGxkXG4iLCBfX2Z1bmNfXywgY291bnQsIG9mZnNldCk7DQo+ID4g
-KwkvKiBDaGVjayBmb3IgYWxpZ25tZW50IGZpcnN0ICovDQo+ID4gKwlpZiAoIWJsX25mc3BhZ2Vf
-YWxpZ25lZChvZmZzZXQsIGNvdW50LCBQQUdFX0NBQ0hFX01BU0spKQ0KPiA+ICsJCWdvdG8gb3V0
-X21kczsNCj4gPiArDQo+IA0KPiANCj4gQWxzbyBoZXJlDQo+IA0KPiA+ICAJLyogQXQgdGhpcyBw
-b2ludCwgd2RhdGEtPnBhZ2VzIGlzIGEgKHNlcXVlbnRpYWwpIGxpc3Qgb2YgbmZzX3BhZ2VzLg0K
-PiA+ICAJICogV2Ugd2FudCB0byB3cml0ZSBlYWNoLCBhbmQgaWYgdGhlcmUgaXMgYW4gZXJyb3Ig
-c2V0IHBuZnNfZXJyb3INCj4gPiAgCSAqIHRvIGhhdmUgaXQgcmVkb25lIHVzaW5nIG5mcy4NCj4g
-PiBAQCAtOTk2LDE0ICsxMDExLDMyIEBAIGJsX2NsZWFyX2xheW91dGRyaXZlcihzdHJ1Y3QgbmZz
-X3NlcnZlciAqc2VydmVyKQ0KPiA+ICAJcmV0dXJuIDA7DQo+ID4gIH0NCj4gPg0KPiA+ICtzdGF0
-aWMgdm9pZA0KPiA+ICtibF9wZ19pbml0X3JlYWQoc3RydWN0IG5mc19wYWdlaW9fZGVzY3JpcHRv
-ciAqcGdpbywgc3RydWN0IG5mc19wYWdlICpyZXEpDQo+ID4gK3sNCj4gPiArCWlmICghYmxfbmZz
-cGFnZV9hbGlnbmVkKHJlcS0+d2Jfb2Zmc2V0LCByZXEtPndiX2J5dGVzLCBQQUdFX0NBQ0hFX01B
-U0spKQ0KPiA+ICsJCW5mc19wYWdlaW9fcmVzZXRfcmVhZF9tZHMocGdpbyk7DQo+IA0KPiANCj4g
-QWxzbyBoZXJlDQo+IA0KPiA+ICsJZWxzZQ0KPiA+ICsJCXBuZnNfZ2VuZXJpY19wZ19pbml0X3Jl
-YWQocGdpbywgcmVxKTsNCj4gPiArfQ0KPiA+ICsNCj4gPiArc3RhdGljIHZvaWQNCj4gPiArYmxf
-cGdfaW5pdF93cml0ZShzdHJ1Y3QgbmZzX3BhZ2Vpb19kZXNjcmlwdG9yICpwZ2lvLCBzdHJ1Y3Qg
-bmZzX3BhZ2UgKnJlcSkNCj4gPiArew0KPiA+ICsJaWYgKCFibF9uZnNwYWdlX2FsaWduZWQocmVx
-LT53Yl9vZmZzZXQsIHJlcS0+d2JfYnl0ZXMsIFBBR0VfQ0FDSEVfTUFTSykpDQo+ID4gKwkJbmZz
-X3BhZ2Vpb19yZXNldF93cml0ZV9tZHMocGdpbyk7DQo+IA0KPiANCj4gQW5kIGhlcmUNCj4gDQo+
-ID4gKwllbHNlDQo+ID4gKwkJcG5mc19nZW5lcmljX3BnX2luaXRfd3JpdGUocGdpbywgcmVxKTsN
-Cj4gPiArfQ0KPiA+ICsNCj4gPiAgc3RhdGljIGNvbnN0IHN0cnVjdCBuZnNfcGFnZWlvX29wcyBi
-bF9wZ19yZWFkX29wcyA9IHsNCj4gPiAtCS5wZ19pbml0ID0gcG5mc19nZW5lcmljX3BnX2luaXRf
-cmVhZCwNCj4gPiArCS5wZ19pbml0ID0gYmxfcGdfaW5pdF9yZWFkLA0KPiA+ICAJLnBnX3Rlc3Qg
-PSBwbmZzX2dlbmVyaWNfcGdfdGVzdCwNCj4gPiAgCS5wZ19kb2lvID0gcG5mc19nZW5lcmljX3Bn
-X3JlYWRwYWdlcywNCj4gPiAgfTsNCj4gPg0KPiA+ICBzdGF0aWMgY29uc3Qgc3RydWN0IG5mc19w
-YWdlaW9fb3BzIGJsX3BnX3dyaXRlX29wcyA9IHsNCj4gPiAtCS5wZ19pbml0ID0gcG5mc19nZW5l
-cmljX3BnX2luaXRfd3JpdGUsDQo+ID4gKwkucGdfaW5pdCA9IGJsX3BnX2luaXRfd3JpdGUsDQo+
-ID4gIAkucGdfdGVzdCA9IHBuZnNfZ2VuZXJpY19wZ190ZXN0LA0KPiA+ICAJLnBnX2RvaW8gPSBw
-bmZzX2dlbmVyaWNfcGdfd3JpdGVwYWdlcywNCj4gPiAgfTsNCj4gDQo+IA0KPiBJZiB0aGUgcHJp
-bnRzIGFjdHVhbGx5IG5ldmVyIGhpdCBleGNlcHQgd2l0aCBzb21lIHJhcmUgYXBwbGljYXRpb25z
-DQo+IHRoYW4gdGhhdCdzIGZpbmUuIEJ1dCBpZiB0aGV5IGRvIFBlcmhhcHMgYSBmaXggaXMgbm90
-IHRoYXQgaGFyZC4NCj4gDQpCb2F6LCBoaSwNCg0KVGhhbmsgeW91IHZlcnkgbXVjaCBmb3IgcmV2
-aWV3aW5nIHRoZXNlIHBhdGNoZXMuIFNvcnJ5IHRoYXQgSSd2ZSBiZWVuIGhhdmluZyBzb21lIGlz
-c3VlcyB3aXRoIG15IHRlc3RpbmcgZW52aXJvbm1lbnQuIEkgd2lsbCBjb21lIGJhY2sgdG8gdGhp
-cyBvbmNlIEkgc29ydCBvdXQgdGhlIGVudmlyb25tZW50IGlzc3Vlcy4NCg0KSSBoYXZlbid0IHRl
-c3RlZCB5ZXQgYnV0IEkgdGVuZCB0byBiZWxpZXZlIHlvdSBhcmUgY29ycmVjdC4gRXZlbiBpZiBn
-ZW5lcmljIE5GUyBpbml0aWF0ZXMgcmVhZC1tb2RpZnktd3JpdGUgY3ljbGUsIHRoZSBuZnNfcGFn
-ZSBwYXNzZWQgdG8gTEQgZG9lc24ndCBhbHdheXMgY29udGFpbiBlbnRpcmUgcGFnZSBidXQganVz
-dCB0aGUgcmFuZ2UgdGhhdCBpcyB3cml0dGVuIGJ5IGFwcGxpY2F0aW9uIGJlY2F1c2UgaW4gZmxv
-Y2sgb3IgT19EU1lOQyBjYXNlLCBuZnNfdXBkYXRlcGFnZSgpIGRvZXNuJ3QgZXh0ZW5kIHRoZSB3
-cml0ZSB0byBlbnRpcmUgcGFnZS4gU28gdGhlIHRlc3QgaW4gcGdfaW5pdCB3aWxsIGZhaWwgZXZl
-biB0aG91Z2ggaXQgaXMgc2FmZSBmb3IgTEQgdG8gd3JpdGUgb3V0IHRoZSBlbnRpcmUgcGFnZSBp
-biB0aGVzZSBjYXNlcy4NCg0KU28gdG8gc3VtbWFyeSwgSU1PIHRoZSBhbGlnbm1lbnQgdGVzdHMg
-d2lsbCBmYWlsIGluIGZvbGxvd2luZyBjYXNlcyB3aGVuIHBhcnRpYWwgcGFnZSB3cml0ZSBpcyBp
-c3N1ZWQ6DQoxLiBuZnNfd2FudF9yZWFkX21vZGlmeV93cml0ZSgpIHJldHVybnMgZmFsc2UgKGUu
-Zy4sIGZpbGUgb3BlbmVkIE9fV1JPTkxZKQ0KMi4gYnl0ZSByYW5nZSBsb2NraW5nIGlzIHVzZWQN
-CjMuIGZpbGUgb3BlbmVkIHdpdGggRF9TWU5DDQoNCkFuZCBvbmx5IHRoZSBmaXJzdCBjYXNlIHdp
-bGwgY2F1c2UgZGF0YSBjb3JydXB0aW9uIGlmIHdlIGRvIG5vdCBiYWlsb3V0IHRoZSB3cml0ZS4g
-U28gdGhlIGJhaWxvdXQgbG9naWMgaW4gdGhlIHBhdGNoIGlzIG11Y2ggc3RyaWN0ZXIgdGhhbiBp
-dCByZWFsbHkgbmVlZHMgdG8gYmUuDQoNCj4gU3BlY2lhbGx5IHRoZSByZWFkIGNhc2Ugc2hvdWxk
-IG5vdCBiZSB0aGF0IGhhcmQgdG8gZml4LiBCZWNhdXNlIHlvdQ0KPiBhcmUgcmVhZGluZyBpbnRv
-IHBhZ2VzLCBhbmQgcGFnZSBib3VuZGFyaWVzIGFyZSBhbGlnbmVkIHRvIHBhZ2UgYm91bmRhcmll
-cw0KPiBpbiB0aGUgc3RyZWFtLCBzbyBhbGwgeW91IG5lZWQgdG8gZG8gaXMgcmVhZCB0aGUgcmVt
-aW5kZXJzIChhdCBib3RoIGVuZHMpDQo+IGFzIHdlbGwuDQpZZXMuIEN1cnJlbnQgcmVhZCBjb2Rl
-IGlzIHN1ZmZpY2llbnQgZW5vdWdoLg0KDQo+IA0KPiBBbHNvIHRoZSB3cml0ZSBjYXNlIGlzIG5v
-dCB0aGF0IGhhcmQuIFlvdSBqdXN0IG5lZWQgdG8gY2FsbCBhIHJlYWQtZm9yLXdyaXRlKCkNCj4g
-cm91dGluZSB0aGF0IGRvZXMgYSBzeW5jIHJlYWQsIHdoZW4gZG9uZSBjb250aW51ZXMgd2l0aCB0
-b2RheSdzIHdyaXRlLg0KSW4gdGhlIHdyaXRlIGNhc2UsIHJlYWQtZm9yLXdyaXRlIHJvdXRpbmUg
-aXMgb25seSBuZWVkZWQgd2hlbiBhcHBsaWNhdGlvbiBkb2VzIHBhcnRpYWwgcGFnZSB3cml0ZSB0
-byB1bmluaXRpYWxpemVkIGV4dGVudC4gVGhlcmUgaXMgYWxyZWFkeSBzb21lIHJlYWQtZm9yLXdy
-aXRlIGxvZ2ljIHRoZXJlIGJ1dCBpdCBhc3N1bWVzIHBhZ2UgYWxpZ25lZCBJTy4gU28gaXQgbmVl
-ZHMgdG8gYmUgZXh0ZW5kZWQgdG8gaGFuZGxlIHBhcnRpYWwgcGFnZXMgYXMgd2VsbC4gQWxzbyB0
-aGUgaW8gc3VtbWl0IHJvdXRpbmUgbmVlZCB0byBiZSBjaGFuZ2VkIHRvIGhhbmRsZSBwYXJ0aWFs
-IHdyaXRlLCB3aGljaCBpcyBlYXN5IEJUVy4NCg0KSG93ZXZlciwgZXZlbiB3aXRoIGFib3ZlIGNo
-YW5nZSwgdGhlIGRpcmVjdCB3cml0ZSBjYXNlIHN0aWxsIG5lZWQgdG8gYmUgYmxvY2sgc2l6ZSBh
-bGlnbmVkIGJlY2F1c2Ugb3RoZXJ3aXNlIHdlIG5lZWQgdG8gYWxsb2NhdGUgZXh0cmEgcGFnZXMg
-dG8gemVybyBvdXQgcGFydGlhbCB1bmluaXRpYWxpemVkIGV4dGVudHMgYW5kIGl0IHdvdWxkIHJl
-cXVpcmUgc2VyaWFsaXphdGlvbiBiZXR3ZWVuIGNvbmN1cnJlbnQgd3JpdGVycy4gT25lIHBvc3Np
-YmxlIG9wdGltaXphdGlvbiBpcyB0byBwcmUtY2hlY2sgaW4gYmxfd3JpdGVfcGFnZWxpc3Qgd2hl
-dGhlciB0aGUgd3JpdGUgb3V0IHJhbmdlIGNvbnRhaW5zIHVuaW5pdGlhbGl6ZWQgZXh0ZW50cyB3
-aGVuIElPIGlzIHNlY3RvciBhbGlnbmVkIGJ1dCBibG9jayBzaXplIHVuYWxpZ25lZC4gQW5kIGlm
-IHRoZSByYW5nZSBkb2Vzbid0IGNvbnRhaW4gYW55IHVuaW5pdGlhbGl6ZWQgZXh0ZW50cywgaXQg
-Y2FuIHRoZW4gYmUgaXNzdWVkLCBvdGhlcndpc2UgaXQgc3RpbGwgbmVlZCB0byBiZSByZWplY3Rl
-ZC4NCg0KVGhhbmtzLA0KVGFvDQoNCg==
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+A read delegation is used by NFSv4 as a guarantee that a client can
+perform local read opens without informing the server.
+
+The open operation takes the last component of the pathname as an
+argument, thus is also a lookup operation, and giving the client the
+above guarantee means informing the client before we allow anything that
+would change the set of names pointing to the inode.
+
+Therefore, we need to break delegations on rename, link, and unlink.
+
+We also need to prevent new delegations from being acquired while one of
+these operations is in progress.
+
+We could add some completely new locking for that purpose, but it's
+simpler to use the i_mutex, since that's already taken by all the
+operations we care about.
+
+The single exception is rename.  So, modify rename to take the i_mutex
+on the file that is being renamed.
+
+Also fix up lockdep and Documentation/filesystems/directory-locking to
+reflect the change.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ Documentation/filesystems/directory-locking |   30 +++++++++++++++++++--------
+ fs/namei.c                                  |    7 +++----
+ 2 files changed, 24 insertions(+), 13 deletions(-)
+
+diff --git a/Documentation/filesystems/directory-locking b/Documentation/filesystems/directory-locking
+index ff7b611..9e8a629 100644
+--- a/Documentation/filesystems/directory-locking
++++ b/Documentation/filesystems/directory-locking
+@@ -2,6 +2,10 @@
+ kinds of locks - per-inode (->i_mutex) and per-filesystem
+ (->s_vfs_rename_mutex).
+ 
++	When taking the i_mutex on multiple non-directory objects, we
++always acquire the locks in order by increasing address.  We'll call
++that "inode pointer" order in the following.
++
+ 	For our purposes all operations fall in 5 classes:
+ 
+ 1) read access.  Locking rules: caller locks directory we are accessing.
+@@ -12,8 +16,9 @@ kinds of locks - per-inode (->i_mutex) and per-filesystem
+ locks victim and calls the method.
+ 
+ 4) rename() that is _not_ cross-directory.  Locking rules: caller locks
+-the parent, finds source and target, if target already exists - locks it
+-and then calls the method.
++the parent and finds source and target.  If source and target both
++exist, they are locked in inode pointer order.  Otherwise lock just
++source.  Then call method.
+ 
+ 5) link creation.  Locking rules:
+ 	* lock parent
+@@ -30,7 +35,8 @@ rules:
+ 		fail with -ENOTEMPTY
+ 	* if new parent is equal to or is a descendent of source
+ 		fail with -ELOOP
+-	* if target exists - lock it.
++	* If target exists, lock both source and target, in inode
++	  pointer order.  Otherwise lock just source.
+ 	* call the method.
+ 
+ 
+@@ -56,9 +62,11 @@ objects - A < B iff A is an ancestor of B.
+     renames will be blocked on filesystem lock and we don't start changing
+     the order until we had acquired all locks).
+ 
+-(3) any operation holds at most one lock on non-directory object and
+-    that lock is acquired after all other locks.  (Proof: see descriptions
+-    of operations).
++(3) locks on non-directory objects are acquired only after locks on
++    directory objects, and are acquired in inode pointer order.
++    (Proof: all operations but renames take lock on at most one
++    non-directory object, except renames, which take locks on source and
++    target in inode pointer order.)
+ 
+ 	Now consider the minimal deadlock.  Each process is blocked on
+ attempt to acquire some lock and already holds at least one lock.  Let's
+@@ -66,9 +74,13 @@ consider the set of contended locks.  First of all, filesystem lock is
+ not contended, since any process blocked on it is not holding any locks.
+ Thus all processes are blocked on ->i_mutex.
+ 
+-	Non-directory objects are not contended due to (3).  Thus link
+-creation can't be a part of deadlock - it can't be blocked on source
+-and it means that it doesn't hold any locks.
++	By (3), any process holding a non-directory lock can only be
++waiting on another non-directory lock with a larger address.  Therefore
++the process holding the "largest" such lock can always make progress, and
++non-directory objects are not included in the set of contended locks.
++
++	Thus link creation can't be a part of deadlock - it can't be
++blocked on source and it means that it doesn't hold any locks.
+ 
+ 	Any contended object is either held by cross-directory rename or
+ has a child that is also contended.  Indeed, suppose that it is held by
+diff --git a/fs/namei.c b/fs/namei.c
+index c651f02..421810b 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3162,6 +3162,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+ 			    struct inode *new_dir, struct dentry *new_dentry)
+ {
+ 	struct inode *target = new_dentry->d_inode;
++	struct inode *source = old_dentry->d_inode;
+ 	int error;
+ 
+ 	error = security_inode_rename(old_dir, old_dentry, new_dir, new_dentry);
+@@ -3169,8 +3170,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+ 		return error;
+ 
+ 	dget(new_dentry);
+-	if (target)
+-		mutex_lock(&target->i_mutex);
++	lock_two_nondirectories(source, target);
+ 
+ 	error = -EBUSY;
+ 	if (d_mountpoint(old_dentry)||d_mountpoint(new_dentry))
+@@ -3185,8 +3185,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+ 	if (!(old_dir->i_sb->s_type->fs_flags & FS_RENAME_DOES_D_MOVE))
+ 		d_move(old_dentry, new_dentry);
+ out:
+-	if (target)
+-		mutex_unlock(&target->i_mutex);
++	unlock_two_nondirectories(source, target);
+ 	dput(new_dentry);
+ 	return error;
+ }
+-- 
+1.7.9.5
+
