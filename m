@@ -1,61 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:1337 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752439Ab2EUTDN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 May 2012 15:03:13 -0400
-Received: from vmwexceht01-prd.hq.netapp.com (vmwexceht01-prd.hq.netapp.com [10.106.76.239])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q4LJ3CKQ025071
-	for <linux-nfs@vger.kernel.org>; Mon, 21 May 2012 12:03:12 -0700 (PDT)
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] NFSv4.1 resend LAYOUTGET on data server invalid
- layout errors
-Date: Mon, 21 May 2012 19:03:11 +0000
-Message-ID: <79F8EB45-D451-445B-BFA2-800D6FFDDEF4@netapp.com>
-References: <1333570957-2008-1-git-send-email-andros@netapp.com>
- <1333570957-2008-2-git-send-email-andros@netapp.com>
- <1337463371.4831.54.camel@lade.trondhjem.org>
-In-Reply-To: <1337463371.4831.54.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mexforward.lss.emc.com ([128.222.32.20]:12718 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757975Ab2FADAS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 May 2012 23:00:18 -0400
+From: <tao.peng@emc.com>
+To: <Trond.Myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, <bharrosh@panasas.com>
+Date: Thu, 31 May 2012 22:59:58 -0400
+Subject: RE: [PATCH-v2 3/3] pnfsblock: call blk_plug functions for direct IO
+Message-ID: <F19688880B763E40B28B2B462677FBF8105EBA12B4@MX09A.corp.emc.com>
+References: <1338266334-11490-1-git-send-email-bergwolf@gmail.com>
+	 <1338266334-11490-4-git-send-email-bergwolf@gmail.com>
+ <1338499336.20167.48.camel@lade.trondhjem.org>
+In-Reply-To: <1338499336.20167.48.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On May 19, 2012, at 5:35 PM, Myklebust, Trond wrote:
-
-> On Wed, 2012-04-04 at 16:22 -0400, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
->> 
->> The "invalid layout" class of errors is handled by destroying the layout and
->> getting a new layout from the server.  Currently, the layout must be
->> destroyed before a new layout can be obtained.
->> 
->> This means that all references (e.g.lsegs) to the "to be destroyed" layout
->> header must be dropped before it can be destroyed. This in turn means waiting
->> for all in flight RPC's using the old layout as well as draining the data
->> server session slot table wait queue.
->> 
->> Set the NFS_LAYOUT_INVALID flag to redirect I/O to the MDS while waiting for
->> the old layout to be destroyed.
->> 
-> 
-> Is this patch still of interest? it doesn't seem to apply now that I've
-> added your quick failover patches.
-
-
-Yes - it is still of interest. I'll resend.
-
--->Andy
-
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBNeWtsZWJ1c3QsIFRyb25kIFtt
+YWlsdG86VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb21dDQo+IFNlbnQ6IEZyaWRheSwgSnVuZSAw
+MSwgMjAxMiA1OjIyIEFNDQo+IFRvOiBQZW5nIFRhbw0KPiBDYzogbGludXgtbmZzQHZnZXIua2Vy
+bmVsLm9yZzsgYmhhcnJvc2hAcGFuYXNhcy5jb207IFBlbmcsIFRhbw0KPiBTdWJqZWN0OiBSZTog
+W1BBVENILXYyIDMvM10gcG5mc2Jsb2NrOiBjYWxsIGJsa19wbHVnIGZ1bmN0aW9ucyBmb3IgZGly
+ZWN0IElPDQo+IA0KPiBPbiBUdWUsIDIwMTItMDUtMjkgYXQgMTI6MzggKzA4MDAsIFBlbmcgVGFv
+IHdyb3RlOg0KPiA+IE5GUyBESU8gYnlwYXNzZXMgZ2VuZXJpYyBESU8gY29kZSBwYXRoLiBTbyB3
+ZSBuZWVkIHRvIHBsdWcvdW5wbHVnDQo+ID4gb24gb3VyIG93bi4NCj4gPg0KPiA+IFNpZ25lZC1v
+ZmYtYnk6IFBlbmcgVGFvIDx0YW8ucGVuZ0BlbWMuY29tPg0KPiA+IC0tLQ0KPiA+ICBmcy9uZnMv
+YmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYyB8ICAgNDcgKysrKysrKysrKysrKysrKysrKysrKysr
+KysrKysrKysrKysrKy0NCj4gPiAgMSBmaWxlcyBjaGFuZ2VkLCA0NiBpbnNlcnRpb25zKCspLCAx
+IGRlbGV0aW9ucygtKQ0KPiA+DQo+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9ibG9ja2xheW91dC9i
+bG9ja2xheW91dC5jIGIvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMNCj4gPiBpbmRl
+eCBiYWI0MzJmLi5iNDhiMDhiIDEwMDY0NA0KPiA+IC0tLSBhL2ZzL25mcy9ibG9ja2xheW91dC9i
+bG9ja2xheW91dC5jDQo+ID4gKysrIGIvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMN
+Cj4gPiBAQCAtMjUxLDYgKzI1MSw3IEBAIGJsX3JlYWRfcGFnZWxpc3Qoc3RydWN0IG5mc19yZWFk
+X2RhdGEgKnJkYXRhKQ0KPiA+DQo+ID4gIAlkcHJpbnRrKCIlcyBlbnRlciBucl9wYWdlcyAldSBv
+ZmZzZXQgJWxsZCBjb3VudCAldVxuIiwgX19mdW5jX18sDQo+ID4gIAkgICAgICAgcmRhdGEtPnBh
+Z2VzLm5wYWdlcywgZl9vZmZzZXQsICh1bnNpZ25lZCBpbnQpcmRhdGEtPmFyZ3MuY291bnQpOw0K
+PiA+ICsJQlVHX09OKGhlYWRlci0+ZHJlcSAmJiBoZWFkZXItPmxheW91dF9wcml2YXRlID09IE5V
+TEwpOw0KPiA+DQo+ID4gIAlpZiAoIWJsX2NoZWNrX2FsaWdubWVudChmX29mZnNldCwgcmRhdGEt
+PmFyZ3MuY291bnQsIFBBR0VfQ0FDSEVfTUFTSykpDQo+ID4gIAkJZ290byB1c2VfbWRzOw0KPiA+
+IEBAIC0zMjAsOSArMzIxLDE3IEBAIG91dDoNCj4gPiAgCWJsX3B1dF9leHRlbnQoY293X3JlYWQp
+Ow0KPiA+ICAJYmxfc3VibWl0X2JpbyhSRUFELCBiaW8pOw0KPiA+ICAJcHV0X3BhcmFsbGVsKHBh
+cik7DQo+ID4gKwlpZiAoaGVhZGVyLT5kcmVxICYmICFoZWFkZXItPm1vcmVpbykgew0KPiA+ICsJ
+CWJsa19maW5pc2hfcGx1Zygoc3RydWN0IGJsa19wbHVnICopaGVhZGVyLT5sYXlvdXRfcHJpdmF0
+ZSk7DQo+ID4gKwkJa2ZyZWUoaGVhZGVyLT5sYXlvdXRfcHJpdmF0ZSk7DQo+IA0KPiBXYWl0Li4u
+IFdoeSBjYW4ndCB0aGlzIGp1c3QgZ28gaW4gdGhlIGJsb2NrLXNwZWNpZmljIC0+cGdfZG9pbygp
+DQo+IGNhbGxiYWNrPyBXaHkgZG9lcyBpdCBuZWVkIHRvIGdvIHRvIHlvdXINCj4gcmVhZF9wYWdl
+bGlzdCgpL3dyaXRlX3BhZ2VsaXN0KCk/DQo+IA0KWW91IGFyZSByaWdodC4gSXQgY2FuIGJlIG1v
+dmVkIHRvIC5wZ19kb2lvLiBUaGUgRElPIGFsaWdubWVudCBjaGVjayBzaG91bGQgYmUgbW92ZWQg
+dGhlcmUgYXMgd2VsbCBhbmQgdGhlbiB3ZSBjYW4gYXZvaWQgYWxsb2NhdGluZyB1bm5lY2Vzc2Fy
+eSBuZnNfcmVhZC93cml0ZV9kYXRhLiBJdCBhbHNvIGVsaW1pbmF0ZXMgdGhlIGNoYW5nZSBpbiBz
+dHJ1Y3QgbmZzX3BnaW9faGVhZGVyLg0KDQpUaGFua3MsDQpUYW8NCg0KPiA+ICsJfQ0KPiA+ICAJ
+cmV0dXJuIFBORlNfQVRURU1QVEVEOw0KPiA+DQo+ID4gLSB1c2VfbWRzOg0KPiA+ICt1c2VfbWRz
+Og0KPiA+ICsJaWYgKGhlYWRlci0+ZHJlcSkgew0KPiA+ICsJCWJsa19maW5pc2hfcGx1Zygoc3Ry
+dWN0IGJsa19wbHVnICopaGVhZGVyLT5sYXlvdXRfcHJpdmF0ZSk7DQo+ID4gKwkJa2ZyZWUoaGVh
+ZGVyLT5sYXlvdXRfcHJpdmF0ZSk7DQo+ID4gKwl9DQo+ID4gIAlkcHJpbnRrKCJHaXZpbmcgdXAg
+YW5kIHVzaW5nIG5vcm1hbCBORlNcbiIpOw0KPiA+ICAJcmV0dXJuIFBORlNfTk9UX0FUVEVNUFRF
+RDsNCj4gPiAgfQ0KPiA+IEBAIC01NzUsNiArNTg0LDggQEAgYmxfd3JpdGVfcGFnZWxpc3Qoc3Ry
+dWN0IG5mc193cml0ZV9kYXRhICp3ZGF0YSwgaW50IHN5bmMpDQo+ID4gIAl1bnNpZ25lZCBsb25n
+IGJsa21hc2sgPSBQQUdFX0NBQ0hFX01BU0s7DQo+ID4NCj4gPiAgCWRwcmludGsoIiVzIGVudGVy
+LCAlWnVAJWxsZFxuIiwgX19mdW5jX18sIGNvdW50LCBvZmZzZXQpOw0KPiA+ICsJQlVHX09OKGhl
+YWRlci0+ZHJlcSAmJiBoZWFkZXItPmxheW91dF9wcml2YXRlID09IE5VTEwpOw0KPiA+ICsNCj4g
+PiAgCS8qIENoZWNrIGZvciBhbGlnbm1lbnQgZmlyc3QgKi8NCj4gPiAgCWlmIChoZWFkZXItPmRy
+ZXEpDQo+ID4gIAkJYmxrbWFzayA9IE5GU19TRVJWRVIoaGVhZGVyLT5pbm9kZSktPnBuZnNfYmxr
+c2l6ZSAtIDE7DQo+ID4gQEAgLTc0MCw4ICs3NTEsMTYgQEAgb3V0Og0KPiA+ICAJYmxfcHV0X2V4
+dGVudChiZSk7DQo+ID4gIAlibF9zdWJtaXRfYmlvKFdSSVRFLCBiaW8pOw0KPiA+ICAJcHV0X3Bh
+cmFsbGVsKHBhcik7DQo+ID4gKwlpZiAoaGVhZGVyLT5kcmVxICYmICFoZWFkZXItPm1vcmVpbykg
+ew0KPiA+ICsJCWJsa19maW5pc2hfcGx1Zygoc3RydWN0IGJsa19wbHVnICopaGVhZGVyLT5sYXlv
+dXRfcHJpdmF0ZSk7DQo+ID4gKwkJa2ZyZWUoaGVhZGVyLT5sYXlvdXRfcHJpdmF0ZSk7DQo+ID4g
+Kwl9DQo+ID4gIAlyZXR1cm4gUE5GU19BVFRFTVBURUQ7DQo+ID4gIG91dF9tZHM6DQo+ID4gKwlp
+ZiAoaGVhZGVyLT5kcmVxKSB7DQo+ID4gKwkJYmxrX2ZpbmlzaF9wbHVnKChzdHJ1Y3QgYmxrX3Bs
+dWcgKiloZWFkZXItPmxheW91dF9wcml2YXRlKTsNCj4gPiArCQlrZnJlZShoZWFkZXItPmxheW91
+dF9wcml2YXRlKTsNCj4gPiArCX0NCj4gPiAgCWJsX3B1dF9leHRlbnQoYmUpOw0KPiA+ICAJa2Zy
+ZWUocGFyKTsNCj4gPiAgCXJldHVybiBQTkZTX05PVF9BVFRFTVBURUQ7DQo+ID4gQEAgLTEwMTcs
+MTUgKzEwMzYsMzAgQEAgYmxfY2xlYXJfbGF5b3V0ZHJpdmVyKHN0cnVjdCBuZnNfc2VydmVyICpz
+ZXJ2ZXIpDQo+ID4gIHN0YXRpYyB2b2lkDQo+ID4gIGJsX3BnX2luaXRfcmVhZChzdHJ1Y3QgbmZz
+X3BhZ2Vpb19kZXNjcmlwdG9yICpwZ2lvLCBzdHJ1Y3QgbmZzX3BhZ2UgKnJlcSkNCj4gPiAgew0K
+PiA+ICsJQlVHX09OKHBnaW8tPnBnX2xheW91dF9wcml2YXRlICE9IE5VTEwpOw0KPiA+ICsNCj4g
+PiAgCWlmICghYmxfY2hlY2tfYWxpZ25tZW50KHJlcS0+d2Jfb2Zmc2V0LCByZXEtPndiX2J5dGVz
+LCBQQUdFX0NBQ0hFX01BU0spKQ0KPiA+ICAJCW5mc19wYWdlaW9fcmVzZXRfcmVhZF9tZHMocGdp
+byk7DQo+ID4gIAllbHNlDQo+ID4gIAkJcG5mc19nZW5lcmljX3BnX2luaXRfcmVhZChwZ2lvLCBy
+ZXEpOw0KPiA+ICsNCj4gPiArCWlmIChwZ2lvLT5wZ19kcmVxICYmIHBnaW8tPnBnX2xzZWcpIHsN
+Cj4gPiArCQlzdHJ1Y3QgYmxrX3BsdWcgKnBsdWc7DQo+ID4gKwkJLyogRnJlZWQgaW4gYmxfcmVh
+ZF9wYWdlbGlzdCAqLw0KPiA+ICsJCXBsdWcgPSBrbWFsbG9jKHNpemVvZihzdHJ1Y3QgYmxrX3Bs
+dWcpLCBHRlBfS0VSTkVMKTsNCj4gPiArCQlpZiAocGx1ZyAhPSBOVUxMKSB7DQo+ID4gKwkJCWJs
+a19zdGFydF9wbHVnKHBsdWcpOw0KPiA+ICsJCQlwZ2lvLT5wZ19sYXlvdXRfcHJpdmF0ZSA9IHBs
+dWc7DQo+ID4gKwkJfSBlbHNlDQo+ID4gKwkJCW5mc19wYWdlaW9fcmVzZXRfcmVhZF9tZHMocGdp
+byk7DQo+ID4gKwl9DQo+ID4gIH0NCj4gPg0KPiA+ICBzdGF0aWMgdm9pZA0KPiA+ICBibF9wZ19p
+bml0X3dyaXRlKHN0cnVjdCBuZnNfcGFnZWlvX2Rlc2NyaXB0b3IgKnBnaW8sIHN0cnVjdCBuZnNf
+cGFnZSAqcmVxKQ0KPiA+ICB7DQo+ID4gKwlCVUdfT04ocGdpby0+cGdfbGF5b3V0X3ByaXZhdGUg
+IT0gTlVMTCk7DQo+ID4gKw0KPiA+ICAJaWYgKHBnaW8tPnBnX2RyZXEpIHsNCj4gPiAgCQkvKiBE
+aXJlY3Qgd3JpdGUgc2hvdWxkIGJlIGJsa3NpemUgYWxpZ25lZCAqLw0KPiA+ICAJCXVuc2lnbmVk
+IGJsa21hc2sgPSBORlNfU0VSVkVSKHBnaW8tPnBnX2lub2RlKS0+cG5mc19ibGtzaXplIC0gMTsN
+Cj4gPiBAQCAtMTAzOCw2ICsxMDcyLDE3IEBAIGJsX3BnX2luaXRfd3JpdGUoc3RydWN0IG5mc19w
+YWdlaW9fZGVzY3JpcHRvciAqcGdpbywgc3RydWN0IG5mc19wYWdlICpyZXEpDQo+ID4gIAkJbmZz
+X3BhZ2Vpb19yZXNldF93cml0ZV9tZHMocGdpbyk7DQo+ID4gIAllbHNlDQo+ID4gIAkJcG5mc19n
+ZW5lcmljX3BnX2luaXRfd3JpdGUocGdpbywgcmVxKTsNCj4gPiArDQo+ID4gKwlpZiAocGdpby0+
+cGdfZHJlcSAmJiBwZ2lvLT5wZ19sc2VnKSB7DQo+ID4gKwkJc3RydWN0IGJsa19wbHVnICpwbHVn
+Ow0KPiA+ICsJCS8qIEZyZWVkIGluIGJsX3dyaXRlX3BhZ2VsaXN0ICovDQo+ID4gKwkJcGx1ZyA9
+IGttYWxsb2Moc2l6ZW9mKHN0cnVjdCBibGtfcGx1ZyksIEdGUF9OT0ZTKTsNCj4gPiArCQlpZiAo
+cGx1ZyAhPSBOVUxMKSB7DQo+ID4gKwkJCWJsa19zdGFydF9wbHVnKHBsdWcpOw0KPiA+ICsJCQlw
+Z2lvLT5wZ19sYXlvdXRfcHJpdmF0ZSA9IHBsdWc7DQo+ID4gKwkJfSBlbHNlDQo+ID4gKwkJCW5m
+c19wYWdlaW9fcmVzZXRfd3JpdGVfbWRzKHBnaW8pOw0KPiA+ICsJfQ0KPiA+ICB9DQo+ID4NCj4g
+PiAgc3RhdGljIGNvbnN0IHN0cnVjdCBuZnNfcGFnZWlvX29wcyBibF9wZ19yZWFkX29wcyA9IHsN
+Cj4gDQo+IC0tDQo+IFRyb25kIE15a2xlYnVzdA0KPiBMaW51eCBORlMgY2xpZW50IG1haW50YWlu
+ZXINCj4gDQo+IE5ldEFwcA0KPiBUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0KPiB3d3cubmV0
+YXBwLmNvbQ0KDQo=
