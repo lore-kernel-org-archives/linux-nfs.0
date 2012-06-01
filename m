@@ -1,67 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailout-de.gmx.net ([213.165.64.22]:46544 "HELO
-	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1754577Ab2FEJwN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jun 2012 05:52:13 -0400
-Cc: rees@umich.edu, linux-nfs@vger.kernel.org
+Received: from mx2.netapp.com ([216.240.18.37]:29607 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759155Ab2FAP6Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Jun 2012 11:58:24 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Orion Poplawski <orion@cora.nwra.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Spurious rpc.idmapd nss_getpwnam: name 'nobody' does not map
+ into domain messages
+Date: Fri, 1 Jun 2012 15:58:06 +0000
+Message-ID: <1338566283.2774.19.camel@lade.trondhjem.org>
+References: <loom.20120601T174414-583@post.gmane.org>
+In-Reply-To: <loom.20120601T174414-583@post.gmane.org>
 Content-Type: text/plain; charset="utf-8"
-Date: Tue, 05 Jun 2012 11:52:10 +0200
-From: "Johannes Schild" <JSchild@gmx.de>
-In-Reply-To: <4FCDD45C.2080400@panasas.com>
-Message-ID: <20120605095210.318650@gmx.net>
 MIME-Version: 1.0
-References: <20120605090323.251620@gmx.net> <4FCDD45C.2080400@panasas.com>
-Subject: Re: Block-Layout
-To: Boaz Harrosh <bharrosh@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Yes i mean the server, sorry i forgot to mention it... ;/
-
-
-Best Regards
-
-Johannes
-
--------- Original-Nachricht --------
-> Datum: Tue, 5 Jun 2012 12:41:48 +0300
-> Von: Boaz Harrosh <bharrosh@panasas.com>
-> An: Johannes Schild <JSchild@gmx.de>
-> CC: linux-nfs@vger.kernel.org, Jim Rees <rees@umich.edu>
-> Betreff: Re: Block-Layout
-
-> On 06/05/2012 12:03 PM, Johannes Schild wrote:
-> 
-> > Hi Guys,
-> > 
-> > after i got the Object-Layout to work (Thanks to Boaz :D)
-> > My next goal to achieve is the Block-Layout.
-> > I know its deprecated, Boaz told me too, but i need it for my paper.
-> > Could someone tell me which was the last working kernel and sources
-> which works?
-> > 
-> 
-> 
-> You mean the Server right? The client is very much alive.
-> 
-> I'm not sure what was the last spnfsd-blocks that worked? Jim?
-> 
-> > I would be very grateful if someone has further tips/tricks or
-> documentation ;)
-> > 
-> > Thanks in advance
-> > 
-> > Best Regards
-> > Johannes
-> > 
-> 
-> 
-> Boaz
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Empfehlen Sie GMX DSL Ihren Freunden und Bekannten und wir
-belohnen Sie mit bis zu 50,- Euro! https://freundschaftswerbung.gmx.de
+T24gRnJpLCAyMDEyLTA2LTAxIGF0IDE1OjUzICswMDAwLCBPcmlvbiBQb3BsYXdza2kgd3JvdGU6
+DQo+IEknbSBzZWVpbmcgYSBmYWlyIG51bWJlciBvZiB0aGVzZSBtZXNzYWdlcyBvbiBvdXIgZmls
+ZSBzZXJ2ZXI6DQo+IA0KPiBKdW4gIDEgMDk6Mzc6NTggYWxleGFuZHJpYSBycGMuaWRtYXBkWzI4
+ODkwXTogbnNzX2dldHB3bmFtOiBuYW1lICdub2JvZHknIGRvZXMNCj4gbm90IG1hcCBpbnRvIGRv
+bWFpbiAnY29yYS5ud3JhLmNvbScNCj4gDQo+IEkgdGhpbmsgdGhleSBhcmUgY29taW5nIGZyb20g
+YWNjZXNzaW5nIGZpbGVzIG9uIGFub3RoZXIgZmlsZSBzZXJ2ZXIgdGhhdCBhcmUNCj4gb3duZWQg
+YnkgYW4gdW5rbm93biB1aWQgKHVzZXIgbGVmdCBhbmQgd2FzIHJlbW92ZWQgZnJvbSB0aGUgdXNl
+ciBkYXRhYmFzZSkuIA0KPiBUaGVzZSBmaWxlcyBlbmQgdXAgb3duZWQgYnkgIm5vYm9keSIgKGFz
+IGV4cGVjdGVkKSBvbiB0aGUgcmVtb3RlIHN5c3RlbToNCj4gDQo+IGRyd3hyLXhyLXguICA3IG5v
+Ym9keSBud3JhIDQwOTYgTWFyIDE1ICAyMDEwIGFuYWx5c2lzX2RhdGENCj4gDQo+IE5vdywgdGhp
+cyBzZWVtcyBsaWtlIGEgcGVyZmVjdGx5IG5vcm1hbCBvcGVyYXRpb24gYW5kIHNvIHNob3VsZG4n
+dCBnZW5lcmF0ZSBhDQo+IHN5c3RlbSBsb2cgbWVzc2FnZS4gIEZpcnN0IHR3byBwb3NzaWJsZSBm
+aXhlcyBJIGNhbiB0aGluayBvZjoNCj4gDQo+IC0gU2hvdWxkIHRoZSByZW1vdGUgc3lzdGVtIHNl
+bmQgdGhlIHVzZXJuYW1lIGFzICJub2JvZHlAY29yYS5ud3JhLmNvbSIgaW5zdGVhZA0KPiBvZiBq
+dXN0ICJub2JvZHkiPw0KDQpOby4gQWNjb3JkaW5nIHRvIHNlY3Rpb24gNS44IG9mIFJGQzM1MzAs
+IGl0IHNob3VsZCB1c2UgdGhlIG5hbWUgIm5vYm9keSINCndpdGhvdXQgYSBkb21haW4sIGFuZCB0
+aGUgaWRtYXBwZXIgc2hvdWxkIGJlIG1hcHBpbmcgdGhhdCBzdHJpbmcgdG8gdGhlDQphbm9ueW1v
+dXMgdXNlciAoaS5lLiB1aWQgLTIpLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZT
+IGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20N
+Cnd3dy5uZXRhcHAuY29tDQoNCg==
