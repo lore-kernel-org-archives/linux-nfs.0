@@ -1,64 +1,216 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from audible.transient.net ([216.254.12.79]:53183 "HELO
-	audible.transient.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751205Ab2FJJLE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Jun 2012 05:11:04 -0400
-Date: Sun, 10 Jun 2012 09:03:42 +0000
-From: Jamie Heilman <jamie@audible.transient.net>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: NFSv4 regression, kernel BUG at fs/nfsd/nfs4state.c:1044!
-Message-ID: <20120610090342.GA5076@cucamonga.audible.transient.net>
+Received: from mailhub.sw.ru ([195.214.232.25]:20534 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759448Ab2FALT6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Jun 2012 07:19:58 -0400
+Subject: [PATCH 1/2] SUNRPC: new svc_bind() routine introduced
+To: bfields@fieldses.org, Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Fri, 01 Jun 2012 15:17:42 +0400
+Message-ID: <20120601111742.7846.99872.stgit@localhost.localdomain>
+In-Reply-To: <20120601111619.7846.95457.stgit@localhost.localdomain>
+References: <20120601111619.7846.95457.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Upgrading my NFSv4 server from 3.3.8 to 3.4.2 I've managed to
-reproduce this reliably:
+This patch was back-ported from 3.5 kernel.
 
-------------[ cut here ]------------
-kernel BUG at fs/nfsd/nfs4state.c:1044!
-invalid opcode: 0000 [#1] 
-Modules linked in: md5 cpufreq_conservative cpufreq_stats cpufreq_powersave cpufreq_ondemand autofs4 quota_v2 quota_tree nfsd nfs_acl exportfs nfs lockd fscache auth_rpcgss sunrpc xt_mark xt_dscp cls_fw sch_htb iptable_nat nf_nat ipt_REJECT xt_multiport xt_mac xt_tcpudp iptable_mangle nf_conntrack_ipv4 nf_defrag_ipv4 xt_state nf_conntrack xt_LOG xt_limit iptable_filter ip_tables x_tables dm_crypt dm_mod snd_hda_codec_via tpm_tis tpm via_rhine snd_hda_intel snd_hda_codec tpm_bios mii via_velocity snd_hwdep snd_pcm snd_timer snd soundcore snd_page_alloc evdev crc_ccitt via_agp agpgart button
+New routine is responsible for service registration in specified network
+context.
+The idea is to separate service creation from per-net operations.
+Since registering service with svc_bind() can fail, then service will be
+destroyed and during destruction it will try to unregister itself from
+rpcbind. In this case unregister have to be skipped.
 
-Pid: 1804, comm: nfsd Not tainted 3.4.2 #3 To Be Filled By O.E.M. To Be Filled By O.E.M./To be filled by O.E.M.
-EIP: 0060:[<f86ac683>] EFLAGS: 00010246 CPU: 0
-EIP is at free_client.isra.47+0x3/0x5 [nfsd]
-EAX: 00000000 EBX: e9d48800 ECX: e9d48030 EDX: f86b20f8
-ESI: e9d48810 EDI: e9cf9ec0 EBP: e9cf9eb4 ESP: e9cf9eb4
- DS: 007b ES: 007b FS: 0000 GS: 00e0 SS: 0068
-CR0: 8005003b CR2: b760bee0 CR3: 34d04000 CR4: 000006b0
-DR0: 00000000 DR1: 00000000 DR2: 00000000 DR3: 00000000
-DR6: ffff0ff0 DR7: 00000400
-Process nfsd (pid: 1804, ti=e9cf8000 task=e9cf4000 task.ti=e9cf8000)
-Stack:
- e9cf9ed4 f86a6c00 e9d48828 e9cf9ec0 e9cf9ec0 e9d48800 e9d48000 00000000
- e9cf9f00 f86a6d36 00000000 000555c0 f53c0001 4fd43f69 00000001 7ad0b2a0
- f4c45000 f4c44060 00000360 e9cf9f3c f869f63c f86aff20 e9cb9000 00000000
-Call Trace:
- [<f86a6c00>] expire_client+0xb1/0xb9 [nfsd]
- [<f86a6d36>] nfsd4_setclientid_confirm+0x12e/0x1c7 [nfsd]
- [<f869f63c>] nfsd4_proc_compound+0x1fd/0x354 [nfsd]
- [<f86946e3>] nfsd_dispatch+0x89/0x134 [nfsd]
- [<f86c6d64>] svc_process+0x327/0x4e3 [sunrpc]
- [<f86940d2>] nfsd+0xd2/0x10b [nfsd]
- [<f8694000>] ? 0xf8693fff
- [<c102d53a>] kthread+0x66/0x6b
- [<c102d4d4>] ? flush_kthread_worker+0x74/0x74
- [<c123193e>] kernel_thread_helper+0x6/0xd
-Code: 01 80 3e 00 74 04 89 f2 eb a2 8b 4d e8 8b 55 ec 8b 45 f0 0f c8 89 19 89 02 31 c0 83 c4 18 5b 5e 5f 5d c3 55 89 e5 0f 0b 55 89 e5 <0f> 0b 55 89 e5 57 56 89 d6 53 89 c3 8b 78 34 89 d0 e8 b4 8f ff 
-EIP: [<f86ac683>] free_client.isra.47+0x3/0x5 [nfsd] SS:ESP 0068:e9cf9eb4
----[ end trace bf1613e00e6f3bbe ]---
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/lockd/svc.c             |    6 ++++++
+ fs/nfs/callback.c          |   13 ++++++++++---
+ fs/nfsd/nfssvc.c           |    9 +++++++++
+ include/linux/sunrpc/svc.h |    1 +
+ net/sunrpc/rpcb_clnt.c     |   12 +++++++-----
+ net/sunrpc/svc.c           |   19 ++++++++++---------
+ 6 files changed, 43 insertions(+), 17 deletions(-)
 
-System is a 32-bit Via C7; to reproduce I need only establish a NFSv4
-mount from a client, then reboot the client.  The BUG happens when the
-client attempts to reconnect.  At this point nfs service on the server
-becomes something of a lost cause.  Userspace is Debian stable
-(nfs-utils 1.2.2 based).  I haven't had a chance to bisect the issue
-yet, I'll give that shot in the coming week if nobody knows of any
-obvious fixes.  Let me know if there's any other info I can provide
-that's useful.
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index f49b9af..b1d0708 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -325,6 +325,12 @@ int lockd_up(void)
+ 		goto out;
+ 	}
+ 
++	error = svc_bind(serv, net);
++	if (error < 0) {
++		printk(KERN_WARNING "lockd_up: bind service failed\n");
++		goto destroy_and_out;
++	}
++
+ 	error = make_socks(serv, net);
+ 	if (error < 0)
+ 		goto destroy_and_out;
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index eb95f50..0563237 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -106,7 +106,7 @@ nfs4_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+ {
+ 	int ret;
+ 
+-	ret = svc_create_xprt(serv, "tcp", xprt->xprt_net, PF_INET,
++	ret = svc_create_xprt(serv, "tcp", &init_net, PF_INET,
+ 				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
+ 	if (ret <= 0)
+ 		goto out_err;
+@@ -114,7 +114,7 @@ nfs4_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+ 	dprintk("NFS: Callback listener port = %u (af %u)\n",
+ 			nfs_callback_tcpport, PF_INET);
+ 
+-	ret = svc_create_xprt(serv, "tcp", xprt->xprt_net, PF_INET6,
++	ret = svc_create_xprt(serv, "tcp", &init_net, PF_INET6,
+ 				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
+ 	if (ret > 0) {
+ 		nfs_callback_tcpport6 = ret;
+@@ -183,7 +183,7 @@ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+ 	 * fore channel connection.
+ 	 * Returns the input port (0) and sets the svc_serv bc_xprt on success
+ 	 */
+-	ret = svc_create_xprt(serv, "tcp-bc", xprt->xprt_net, PF_INET, 0,
++	ret = svc_create_xprt(serv, "tcp-bc", &init_net, PF_INET, 0,
+ 			      SVC_SOCK_ANONYMOUS);
+ 	if (ret < 0) {
+ 		rqstp = ERR_PTR(ret);
+@@ -253,6 +253,7 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ 	char svc_name[12];
+ 	int ret = 0;
+ 	int minorversion_setup;
++	struct net *net = &init_net;
+ 
+ 	mutex_lock(&nfs_callback_mutex);
+ 	if (cb_info->users++ || cb_info->task != NULL) {
+@@ -265,6 +266,12 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ 		goto out_err;
+ 	}
+ 
++	ret = svc_bind(serv, net);
++	if (ret < 0) {
++		printk(KERN_WARNING "NFS: bind callback service failed\n");
++		goto out_err;
++	}
++
+ 	minorversion_setup =  nfs_minorversion_callback_svc_setup(minorversion,
+ 					serv, xprt, &rqstp, &callback_svc);
+ 	if (!minorversion_setup) {
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 28dfad3..a6461f3 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -11,6 +11,7 @@
+ #include <linux/module.h>
+ #include <linux/fs_struct.h>
+ #include <linux/swap.h>
++#include <linux/nsproxy.h>
+ 
+ #include <linux/sunrpc/stats.h>
+ #include <linux/sunrpc/svcsock.h>
+@@ -330,6 +331,8 @@ static int nfsd_get_default_max_blksize(void)
+ 
+ int nfsd_create_serv(void)
+ {
++	int error;
++
+ 	WARN_ON(!mutex_is_locked(&nfsd_mutex));
+ 	if (nfsd_serv) {
+ 		svc_get(nfsd_serv);
+@@ -343,6 +346,12 @@ int nfsd_create_serv(void)
+ 	if (nfsd_serv == NULL)
+ 		return -ENOMEM;
+ 
++	error = svc_bind(nfsd_serv, current->nsproxy->net_ns);
++	if (error < 0) {
++		svc_destroy(nfsd_serv);
++		return error;
++	}
++
+ 	set_max_drc();
+ 	do_gettimeofday(&nfssvc_boot);		/* record boot time */
+ 	return 0;
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 51b29ac..2b43e02 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -416,6 +416,7 @@ struct svc_procedure {
+  */
+ int svc_rpcb_setup(struct svc_serv *serv, struct net *net);
+ void svc_rpcb_cleanup(struct svc_serv *serv, struct net *net);
++int svc_bind(struct svc_serv *serv, struct net *net);
+ struct svc_serv *svc_create(struct svc_program *, unsigned int,
+ 			    void (*shutdown)(struct svc_serv *, struct net *net));
+ struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 78ac39f..4c38b33 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -180,14 +180,16 @@ void rpcb_put_local(struct net *net)
+ 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 	struct rpc_clnt *clnt = sn->rpcb_local_clnt;
+ 	struct rpc_clnt *clnt4 = sn->rpcb_local_clnt4;
+-	int shutdown;
++	int shutdown = 0;
+ 
+ 	spin_lock(&sn->rpcb_clnt_lock);
+-	if (--sn->rpcb_users == 0) {
+-		sn->rpcb_local_clnt = NULL;
+-		sn->rpcb_local_clnt4 = NULL;
++	if (sn->rpcb_users) {
++		if (--sn->rpcb_users == 0) {
++			sn->rpcb_local_clnt = NULL;
++			sn->rpcb_local_clnt4 = NULL;
++		}
++		shutdown = !sn->rpcb_users;
+ 	}
+-	shutdown = !sn->rpcb_users;
+ 	spin_unlock(&sn->rpcb_clnt_lock);
+ 
+ 	if (shutdown) {
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 4153846..e6d542c 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -407,6 +407,14 @@ static int svc_uses_rpcbind(struct svc_serv *serv)
+ 	return 0;
+ }
+ 
++int svc_bind(struct svc_serv *serv, struct net *net)
++{
++	if (!svc_uses_rpcbind(serv))
++		return 0;
++	return svc_rpcb_setup(serv, net);
++}
++EXPORT_SYMBOL_GPL(svc_bind);
++
+ /*
+  * Create an RPC service
+  */
+@@ -471,15 +479,8 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+ 		spin_lock_init(&pool->sp_lock);
+ 	}
+ 
+-	if (svc_uses_rpcbind(serv)) {
+-		if (svc_rpcb_setup(serv, current->nsproxy->net_ns) < 0) {
+-			kfree(serv->sv_pools);
+-			kfree(serv);
+-			return NULL;
+-		}
+-		if (!serv->sv_shutdown)
+-			serv->sv_shutdown = svc_rpcb_cleanup;
+-	}
++	if (svc_uses_rpcbind(serv) && (!serv->sv_shutdown))
++		serv->sv_shutdown = svc_rpcb_cleanup;
+ 
+ 	return serv;
+ }
 
--- 
-Jamie Heilman                     http://audible.transient.net/~jamie/
