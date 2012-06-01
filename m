@@ -1,59 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:48089 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:11851 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756990Ab2EUQuC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 May 2012 12:50:02 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 09/14] NFS: Force server to drop NFSv4 state
-Date: Mon, 21 May 2012 16:49:06 +0000
-Message-ID: <1337619000.9583.3.camel@lade.trondhjem.org>
-References: <20120518220145.774.53741.stgit@degas.1015granger.net>
-	 <20120518220632.774.79191.stgit@degas.1015granger.net>
-	 <20120521160844.GH24299@fieldses.org>
-	 <F7B056E4-D6FC-450B-98E2-129C051CFAE7@oracle.com>
-	 <20120521161646.GJ24299@fieldses.org>
-	 <2BAAEA69-CC7B-42F8-811D-7C320E9AA680@oracle.com>
-In-Reply-To: <2BAAEA69-CC7B-42F8-811D-7C320E9AA680@oracle.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1758863Ab2FADcS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 31 May 2012 23:32:18 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        David Howells <dhowells@redhat.com>
+Subject: [PATCH 2/2] Define ENONAMESERVICE and ENAMEUNKNOWN to indicate name service errors
+Date: Thu, 31 May 2012 23:32:08 -0400
+Message-Id: <1338521528-2490-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1338521528-2490-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1338521528-2490-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA1LTIxIGF0IDEyOjI0IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gTWF5IDIxLCAyMDEyLCBhdCAxMjoxNiBQTSwgSi4gQnJ1Y2UgRmllbGRzIHdyb3RlOg0KPiAN
-Cj4gPiBPbiBNb24sIE1heSAyMSwgMjAxMiBhdCAxMjoxMTo0OFBNIC0wNDAwLCBDaHVjayBMZXZl
-ciB3cm90ZToNCj4gPj4gDQo+ID4+IE9uIE1heSAyMSwgMjAxMiwgYXQgMTI6MDggUE0sIEouIEJy
-dWNlIEZpZWxkcyB3cm90ZToNCj4gPj4gDQo+ID4+PiBPbiBGcmksIE1heSAxOCwgMjAxMiBhdCAw
-NjowNjozM1BNIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4gPj4+PiBAQCAtMzkzNyw4ICsz
-OTM3LDEzIEBAIHN0YXRpYyB2b2lkIG5mczRfY29uc3RydWN0X2Jvb3RfdmVyaWZpZXIoc3RydWN0
-IG5mc19jbGllbnQgKmNscCwNCj4gPj4+PiB7DQo+ID4+Pj4gCV9fYmUzMiB2ZXJmWzJdOw0KPiA+
-Pj4+IA0KPiA+Pj4+IC0JdmVyZlswXSA9IChfX2JlMzIpY2xwLT5jbF9ib290X3RpbWUudHZfc2Vj
-Ow0KPiA+Pj4+IC0JdmVyZlsxXSA9IChfX2JlMzIpY2xwLT5jbF9ib290X3RpbWUudHZfbnNlYzsN
-Cj4gPj4+PiArCWlmICh0ZXN0X2JpdChORlM0Q0xOVF9QVVJHRV9TVEFURSwgJmNscC0+Y2xfc3Rh
-dGUpKSB7DQo+ID4+Pj4gKwkJdmVyZlswXSA9IChfX2JlMzIpQ1VSUkVOVF9USU1FLnR2X3NlYzsN
-Cj4gPj4+PiArCQl2ZXJmWzFdID0gKF9fYmUzMilDVVJSRU5UX1RJTUUudHZfbnNlYzsNCj4gPj4+
-IA0KPiA+Pj4gSSBzdXBwb3NlIGl0J3MgcHJldHR5IHVubGlrZWx5IHRoaXMgY291bGQgaGFwcGVu
-IHdpdGhpbiBhIGppZmZ5IG9mDQo+ID4+PiBzZXR0aW5nIGNsX2Jvb3RfdGltZT8NCj4gPj4gDQo+
-ID4+IEJvb3QgdGltZSBoYXMgbmFub3NlY29uZCByZXNvbHV0aW9uLiAgSSdtIHByZXR0eSBzdXJl
-IHdlIGFyZSBzYWZlIGhlcmUuDQo+ID4gDQo+ID4gQ1VSUkVOVF9USU1FIGlzIG9ubHkgdXBkYXRl
-ZCBldmVyeSBqaWZmeS4gIEl0IHdvdWxkIHN0aWxsIGhhdmUgdG8gaGFwcGVuDQo+ID4gcmlkaWN1
-bG91c2x5IGZhc3QsIGJ1dCBJIHRoaW5rIHRoYXQncyBtaWxsaXNlY29uZHMgcmF0aGVyIHRoYW4N
-Cj4gPiBuYW5vc2Vjb25kcy4NCj4gPiANCj4gPj4+IFdvdWxkIGl0IGJlIHNpbXBsZXIgdG8gdXNl
-IHNvbWUgc3BlY2lhbCB2YWx1ZSAoYWxsLXplcm9zPykgaW5zdGVhZD8NCj4gPj4gDQo+ID4+IFdl
-J2QgaGF2ZSB0byBwaWNrIGEgdmFsdWUgdGhhdCB3YXMgZ3VhcmFudGVlZCBuZXZlciB0byBiZSBh
-IHZhbGlkIHRpbWUgc3RhbXAuDQo+ID4gDQo+ID4gQSBjbGllbnQgdGhhdCB0aGlua3MgaXQncyBj
-dXJyZW50bHkgSmFuLiAxIDE5NzAgcHJvYmFibHkgaGFzIGJpZ2dlcg0KPiA+IHByb2JsZW1zLg0K
-PiA+IA0KPiA+IEkgZHVubm8sIHlvdXIgY2FsbC4NCj4gDQo+IFVzaW5nIGFuIG91dC1vZi1kYXRl
-IHRpbWVzdGFtcCAoc3VjaCBhcyBhbGwgemVyb2VzKSBjb3VsZCB3b3JrLiAgV2UnZCBqdXN0IGhh
-dmUgdG8gYnVpbGQgYW4gYXBwcm9wcmlhdGUgY29uc3RhbnQuDQoNCkJldHRlciB5ZXQ6IHVzZSBh
-biBpbnZhbGlkIHRpbWVzdGFtcC4gQW55dGhpbmcgd2l0aCBhIHR2X25zZWMgPj0NCjEwMDAwMDAw
-MDBMIHdvdWxkIHdvcmsuDQoNCj4gVHJvbmQsIGRvIHlvdSByZW1lbWJlciB3aHkgeW91IGxpa2Vk
-IENVUlJFTlRfVElNRT8NCg0KSSBkb24ndCB0aGluayB0aGF0IEkgd2FzIHRoZSBvbmUgd2hvIGNo
-b3NlIENVUlJFTlRfVElNRSBmb3IgdGhlDQpwdXJnZV9zdGF0ZS4gSSdtIGZpbmUgd2l0aCBhbnl0
-aGluZyB0aGF0IGlzIGd1YXJhbnRlZWQgdG8gYWx3YXlzIGRpZmZlcg0KZnJvbSBjbHAtPmNsX2Jv
-b3RfdGltZS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
-aW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNv
-bQ0KDQo=
+From: David Howells <dhowells@redhat.com>
+
+Now that the kernel has filesystems (and possibly other services) that want to
+look up internet addresses corresponding to arbitrary hostnames retrieved from
+the server, it would seem useful to provide a couple of error codes to indicate
+problems with the look up, rather than overloading some other error code.
+
+Define ENONAMESERVICE to indicate "Network name service unavailable".  This can
+be used to indicate, for example, that an attempt was made by dns_query() to
+make a query, but the name server (e.g. a DNS server) it is supposed to contact
+didn't answer or that it couldn't determine the location of a suitable server.
+
+Define ENAMEUNKNOWN to indicate "Network name unknown".  This can be used to
+indicate, for example, that an attempt was made by dns_query() to make a query,
+but the name server (e.g. a DNS server) replied indicating that it had no
+matching records.
+
+The DNS query upcall program can report these to keyctl_reject() so that cached
+failed queries will respond with these errors until they expire.
+
+Signed-off-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ arch/alpha/include/asm/errno.h  |    2 ++
+ arch/mips/include/asm/errno.h   |    2 ++
+ arch/parisc/include/asm/errno.h |    2 ++
+ arch/sparc/include/asm/errno.h  |    2 ++
+ include/asm-generic/errno.h     |    2 ++
+ 5 files changed, 10 insertions(+)
+
+diff --git a/arch/alpha/include/asm/errno.h b/arch/alpha/include/asm/errno.h
+index dce5fc9..a4fc77e 100644
+--- a/arch/alpha/include/asm/errno.h
++++ b/arch/alpha/include/asm/errno.h
+@@ -125,5 +125,7 @@
+ #define EHWPOISON	139	/* Memory page has hardware error */
+ 
+ #define	ENOAUTHSERVICE	140	/* Authentication service not available */
++#define	ENONAMESERVICE	141	/* Network name service unavailable */
++#define	ENAMEUNKNOWN	142	/* Network name unknown */
+ 
+ #endif
+diff --git a/arch/mips/include/asm/errno.h b/arch/mips/include/asm/errno.h
+index 67c46bd..ac95669 100644
+--- a/arch/mips/include/asm/errno.h
++++ b/arch/mips/include/asm/errno.h
+@@ -123,6 +123,8 @@
+ 
+ #define EHWPOISON	168	/* Memory page has hardware error */
+ #define	ENOAUTHSERVICE	169	/* Authentication service not available */
++#define	ENONAMESERVICE	170	/* Network name service unavailable */
++#define	ENAMEUNKNOWN	171	/* Network name unknown */
+ 
+ #define EDQUOT		1133	/* Quota exceeded */
+ 
+diff --git a/arch/parisc/include/asm/errno.h b/arch/parisc/include/asm/errno.h
+index 3a6ffcd..753cc5c 100644
+--- a/arch/parisc/include/asm/errno.h
++++ b/arch/parisc/include/asm/errno.h
+@@ -124,5 +124,7 @@
+ 
+ #define EHWPOISON	257	/* Memory page has hardware error */
+ #define	ENOAUTHSERVICE	258	/* Authentication service not available */
++#define	ENONAMESERVICE	259	/* Network name service unavailable */
++#define	ENAMEUNKNOWN	260	/* Network name unknown */
+ 
+ #endif
+diff --git a/arch/sparc/include/asm/errno.h b/arch/sparc/include/asm/errno.h
+index 94a878f..01c9769 100644
+--- a/arch/sparc/include/asm/errno.h
++++ b/arch/sparc/include/asm/errno.h
+@@ -114,5 +114,7 @@
+ 
+ #define EHWPOISON	135	/* Memory page has hardware error */
+ #define	ENOAUTHSERVICE	136	/* Authentication service not available */
++#define	ENONAMESERVICE	137	/* Network name service unavailable */
++#define	ENAMEUNKNOWN	138	/* Network name unknown */
+ 
+ #endif
+diff --git a/include/asm-generic/errno.h b/include/asm-generic/errno.h
+index 5e2b296..5d012c1 100644
+--- a/include/asm-generic/errno.h
++++ b/include/asm-generic/errno.h
+@@ -110,5 +110,7 @@
+ 
+ #define EHWPOISON	133	/* Memory page has hardware error */
+ #define	ENOAUTHSERVICE	134	/* Authentication service not available */
++#define	ENONAMESERVICE	135	/* Network name service unavailable */
++#define	ENAMEUNKNOWN	136	/* Network name unknown */
+ 
+ #endif
+-- 
+1.7.10.2
+
