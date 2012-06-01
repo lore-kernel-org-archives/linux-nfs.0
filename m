@@ -1,127 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:52799 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751320Ab2FKSlL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jun 2012 14:41:11 -0400
-Message-ID: <4FD63BAF.8040107@panasas.com>
-Date: Mon, 11 Jun 2012 21:40:47 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from earth.cora.nwra.com ([4.28.99.180]:45899 "EHLO
+	mail.cora.nwra.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1759188Ab2FAQ0P (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Jun 2012 12:26:15 -0400
+Message-ID: <4FC8ED22.40508@cora.nwra.com>
+Date: Fri, 01 Jun 2012 10:26:10 -0600
+From: Orion Poplawski <orion@cora.nwra.com>
 MIME-Version: 1.0
-To: Andy Adamson <androsadamson@gmail.com>
-CC: NFSv4 <nfsv4@ietf.org>, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Andy Adamson <andros@netapp.com>, NFS list <linux-nfs@vger.kernel.org>,
-        Benny Halevy <bhalevy@tonian.com>
-Subject: Re: RFC 5661 LAYOUTRETURN clarification.
-References: <CAHVgHyUpM0rQWqO5-id+FohPKm1Lk=kkekf7HqzpfKcfvxx23A@mail.gmail.com>
-In-Reply-To: <CAHVgHyUpM0rQWqO5-id+FohPKm1Lk=kkekf7HqzpfKcfvxx23A@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Spurious rpc.idmapd nss_getpwnam: name 'nobody' does not map
+ into domain messages
+References: <loom.20120601T174414-583@post.gmane.org> <1338566283.2774.19.camel@lade.trondhjem.org>
+In-Reply-To: <1338566283.2774.19.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/11/2012 07:01 PM, Andy Adamson wrote:
+On 06/01/2012 09:58 AM, Myklebust, Trond wrote:
+> On Fri, 2012-06-01 at 15:53 +0000, Orion Poplawski wrote:
+>> I'm seeing a fair number of these messages on our file server:
+>>
+>> Jun  1 09:37:58 alexandria rpc.idmapd[28890]: nss_getpwnam: name 'nobody' does
+>> not map into domain 'cora.nwra.com'
+>>
+>> I think they are coming from accessing files on another file server that are
+>> owned by an unknown uid (user left and was removed from the user database).
+>> These files end up owned by "nobody" (as expected) on the remote system:
+>>
+>> drwxr-xr-x.  7 nobody nwra 4096 Mar 15  2010 analysis_data
+>>
+>> Now, this seems like a perfectly normal operation and so shouldn't generate a
+>> system log message.  First two possible fixes I can think of:
+>>
+>> - Should the remote system send the username as "nobody@cora.nwra.com" instead
+>> of just "nobody"?
+>
+> No. According to section 5.8 of RFC3530, it should use the name "nobody"
+> without a domain, and the idmapper should be mapping that string to the
+> anonymous user (i.e. uid -2).
+>
 
-> I'm coding file layout data server recovery for the Linux NFS client,
-> and came across an issue with LAYOUTRETURN that
-> could use some comment from the list.
-> 
-> The error case I'm handling is an RPC layer dis-connection error
-> during heavy WRITE i/o to a file layout data server. Our response is
-> to internally mark the deviceid as invalid which prevents all pNFS
-> calls using the deviceid - e.g. no new I/O using any layout that uses
-> the invalid deviceid, and to redirect all I/O to the MDS (any queued
-> RPC request that has not been sent is redirected to the MDS).
-> 
-> Plus - and here is where the clarification is needed - we immediately
-> send a LAYOUTRETURN for any layout with in-flight requests to the
-> dis-connected data server.  By in-flight I mean transmitted WRT the
-> RPC layer.  The purpose of this LAYOUTRETURN is to notify the file
-> layout MDS to fence the DS for the specified LAYOUTs, as the WRITEs
-> will also be sent to the MDS.
-> 
+Well, it's mapping it to "nobody" id 99:
 
+drwxr-xr-x.  7 99 1001 4096 Mar 15  2010 analysis_data
 
-I do not disagree with this completely. The point here is very fine
-grained and should be specified explicitly. I would like to see text
-as of something like.
+Okay, so no domain.  Also according to 5.8:
 
-There are 3 types of in-flght RPC/IO
-1. Client has sent RPC header + all of associated data and is waiting
-   for DS WRITE/READ_DONE reply.
+    In the case where there is no translation available to the client or
+    server, the attribute value must be constructed without the "@".
+    Therefore, the absence of the @ from the owner or owner_group
+    attribute signifies that no translation was available at the sender
+    and that the receiver of the attribute should not use that string as
+    a basis for translation into its own internal format.  Even though
+    the attribute value can not be translated, it may still be useful.
+    In the case of a client, the attribute string may be used for local
+    display of ownership.
 
-   (For me this case can be, client may return LAYOUTRETURN as your
-    suggestion)
+So absence of @ indicates no need to translate locally, so don't complain 
+about it.  So how about this:
 
-2. Client has sent the RPC header but has got stuck sending the rest
-   of the RPC message. Then received a network disconnect. This is the
-   most common part. Putting aside the RPC that got the error for a second.
-   The most important is what to do with parallel RPC/IO which are in this
-   state. Are parallel RPCs allowed to continue sending network packets
-   after the LAYOUTRETURN was sent?
-
-   The specific RPC that got stuck is not interesting because it's kind of
-   1.5, We are not going to send any bytes on that channel. The interesting
-   is these other DSs which are still streaming
-
-3. Client has some internal RPC queue which do to some client parallelism
-   will start sending RPC header + data after the LAYOUTRETURN was sent
-   
-What my point was that with the code you submitted we are clearly violating
-2. and even 3. Because I do not see anything avoiding this.
-
-And if the STD allows you 2 and 3. Then that's a big change to the concept.
-Not like you let it seem.
-
-> I contend that sending the LAYOUTRETURN in this error case does not
-> violate the two sections of RFC 5661 below, as the client has stopped
-> sending any I/O requests using the returned layout.
-> 
-
-
-I would not mind if this was true. That is if the LAYOUTRETURN was
-a very clear barrier where our client would "magically" completely
-plug the network interface and will not continue to send a single
-byte on the wire to *any* DS involved with the layout. That's fine.
-
-That is only allow sate 1 and 1.5 RPCs above. Some/all bytes where
-presented on the wire, until the LAYOUTRETURN, from which point all
-RPCs are hard aborted and not a single byte is sent.
+--- ./libnfsidmap-0.25/nss.c.nobody     2011-12-05 13:28:10.000000000 -0700
++++ ./libnfsidmap-0.25/nss.c    2012-06-01 10:23:53.408603517 -0600
+@@ -177,9 +177,10 @@
+         IDMAP_LOG(4, ("nss_getpwnam: name '%s' domain '%s': "
+                   "resulting localname '%s'\n", name, domain, localname));
+         if (localname == NULL) {
+-               IDMAP_LOG(0, ("nss_getpwnam: name '%s' does not map "
+-                       "into domain '%s'\n", name,
+-                       domain ? domain : "<not-provided>"));
++               if (strchr(name, '@' != NULL)
++                       IDMAP_LOG(0, ("nss_getpwnam: name '%s' does not map "
++                               "into domain '%s'\n", name,
++                               domain ? domain : "<not-provided>"));
+                 goto err_free_buf;
+         }
 
 
-> Others contend that since the in-flight RPCs reference the returned
-> layout, the client is still 'using' the layout with these in-flight
-> requests, and can not call LAYOUTRETURN until all in-flight RPCs
-> return, with or without an error.
-> 
 
-
-With our client code I don't see how the guaranty of 2 and 3 above
-will happen without actually implementing this here.
-
-So in principal I agree with your principle, I only do not agree
-with your practice. In your new code you are violating 2 and 3
-which are not to be allowed.
-
-And again, please explain why do you want it. What is wrong with the
-case we all agree with? ie: "Client can not call LAYOUTRETURN until
-all in-flight RPCs return, with or without an error"
-
-Thanks
-Boaz
-
-> 
-> Section 18.44.3 - the description section of the LAYOUTRETURN operation:
-> 
->    After this call,
->    the client MUST NOT use the returned layout(s) and the associated
->    storage protocol to access the file data.
-> 
-> Section 13.6 Operations Sent to NFSv4.1 Data Servers
-> 
->   As described in Section 12.5.1, a client
->   MUST NOT send an I/O to a data server for which it does not hold a
->   valid layout; the data server MUST reject such an I/O.
-> 
-> 
-> -->Andy
-
-
+-- 
+Orion Poplawski
+Technical Manager                     303-415-9701 x222
+NWRA, Boulder Office                  FAX: 303-415-9702
+3380 Mitchell Lane                       orion@nwra.com
+Boulder, CO 80301                   http://www.nwra.com
