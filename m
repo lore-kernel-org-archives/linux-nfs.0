@@ -1,58 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:51226 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754368Ab2F0AEJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jun 2012 20:04:09 -0400
-Message-ID: <4FEA4DE7.3030606@gmail.com>
-Date: Tue, 26 Jun 2012 17:03:51 -0700
-From: Dean <seattleplus@gmail.com>
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:62088 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751217Ab2FAPh7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Jun 2012 11:37:59 -0400
+Received: by gglu4 with SMTP id u4so1852045ggl.19
+        for <linux-nfs@vger.kernel.org>; Fri, 01 Jun 2012 08:37:59 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/4] Address several issues with TEST_STATEID
+To: linux-nfs@vger.kernel.org
+Date: Fri, 01 Jun 2012 11:37:57 -0400
+Message-ID: <20120601153231.5626.89559.stgit@degas.1015granger.net>
 MIME-Version: 1.0
-To: Namjae Jeon <linkinjeon@gmail.com>
-CC: "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Namjae Jeon <namjae.jeon@samsung.com>,
-        VivekTrivedi <t.vivek@samsung.com>,
-        Amit Sahrawat <a.sahrawat@samsung.com>
-Subject: Re: [RFC PATCH] nfs: Support posix_fadvise(POSIX_FADV_RANDOM) on
- nfs server.
-References: <1340448446-10198-1-git-send-email-linkinjeon@gmail.com> <20120623115106.GA2742@umich.edu> <5AC2C9F0-EEFE-423E-BBB9-27102D1CA163@oracle.com> <CAKYAXd_QKsiTV86H4eykjOzfJc8Who1T8in5TmnJyxigw=+7AQ@mail.gmail.com> <20120624124625.GA15586@umich.edu> <CAKYAXd-OT9nV--vYOseGYHp35g3qo86rzYJPDiP454ipoGJ2Xw@mail.gmail.com>
-In-Reply-To: <CAKYAXd-OT9nV--vYOseGYHp35g3qo86rzYJPDiP454ipoGJ2Xw@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Namjae,
+Hi-
 
-I'm glad you also see the usefulness of sending such hints to the NFS 
-server.
+While testing the recently introduced PURGE_STATE logic, I found some
+issues with the error handling logic under nfs41_open_expired().
 
-Beyond reviewing the  NFSv4.2 spec, it would also be very useful to 
-implement a version of IO_ADVISE and show performance results with your 
-traverse test (among others).  If you have time for this, that would 
-really be helpful in ensuring the usefulness of IO_ADVISE.
+After fixing these issues, I am able to get Connectathon basic,
+general, and special tests to pass with a server rigged to assert
+SEQ4_STATUS_ADMIN_STATE_REVOKED at regular intervals.  The
+Connectathon lock tests encounter a deadlock, which I've already
+reported, that appears to pre-date PURGE_STATE.
 
-Dean Hildebrand
+---
 
-On 6/24/12 6:54 PM, Namjae Jeon wrote:
-> 2012/6/24, Jim Rees <rees@umich.edu>:
->> Namjae Jeon wrote:
->>
->>    > Yes, posix_fadvise support is part of NFSv4.2.
->>    Where can I check it ?
->>    Thanks.
->>
->> NFS is standardized throught the IETF.  4.2 is not out yet, so you'll find
->> it in the drafts rather than the RFCs.  You can search them here:
->> http://www.rfc-editor.org/idsearch.html
->>
->> Here is the current draft:
->> ftp://ftp.rfc-editor.org/in-notes/internet-drafts/draft-ietf-nfsv4-minorversion2-12.txt
->>
-> Okay, I will check, Thanks a lot Jim~. We hope to contribute NFSv4.2.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Chuck Lever (4):
+      NFS: Refactor nfs41_check_expired_stateid()
+      NFS: state reclaim clears OPEN state
+      NFS: Properly sort TEST_STATEID results
+      NFS: Clean up TEST_STATEID and FREE_STATEID proc error reporting
 
 
+ fs/nfs/nfs4proc.c |  144 ++++++++++++++++++++++++++++++++++++++++++-----------
+ 1 files changed, 115 insertions(+), 29 deletions(-)
+
+-- 
+Chuck Lever
