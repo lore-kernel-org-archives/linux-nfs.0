@@ -1,133 +1,136 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:41609 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932281Ab2FNQzT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jun 2012 12:55:19 -0400
-Message-ID: <4FDA1772.3040805@oracle.com>
-Date: Thu, 14 Jun 2012 10:55:14 -0600
-From: Jeff Wright <jeff.wright@oracle.com>
-MIME-Version: 1.0
-To: Andy Adamson <androsadamson@gmail.com>
-CC: linux-nfs@vger.kernel.org, Craig Flaskerud <Craig.flaskerud@oracle.com>,
-        Donna Harland <donna.harland@oracle.com>
-Subject: Re: Help with NFS over 10GbE performance - possible NFS client to
- TCP bottleneck
-References: <4FBBBD26.2090203@oracle.com> <CAHVgHyX3rXzWEgJwL2cHLQ4aZn9G0Vbz_kHU8ax-EHObEtYf1g@mail.gmail.com> <4FD8AF15.5010909@oracle.com> <CAHVgHyU-HntWo6e_nByeV1q0L2e2vkV0dwR=rn+7NeU9Lix8=Q@mail.gmail.com>
-In-Reply-To: <CAHVgHyU-HntWo6e_nByeV1q0L2e2vkV0dwR=rn+7NeU9Lix8=Q@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from rcsinet15.oracle.com ([148.87.113.117]:36312 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964937Ab2FAPwa convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Jun 2012 11:52:30 -0400
+Received: from acsinet22.oracle.com (acsinet22.oracle.com [141.146.126.238])
+	by rcsinet15.oracle.com (Sentrion-MTA-4.2.2/Sentrion-MTA-4.2.2) with ESMTP id q51FqSv6006071
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 1 Jun 2012 15:52:29 GMT
+Received: from acsmt358.oracle.com (acsmt358.oracle.com [141.146.40.158])
+	by acsinet22.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id q51FqSPa016044
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Fri, 1 Jun 2012 15:52:28 GMT
+Received: from abhmt119.oracle.com (abhmt119.oracle.com [141.146.116.71])
+	by acsmt358.oracle.com (8.12.11.20060308/8.12.11) with ESMTP id q51FqSHc019821
+	for <linux-nfs@vger.kernel.org>; Fri, 1 Jun 2012 10:52:28 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Apple Message framework v1278)
+Subject: Re: [PATCH 2/4] NFS: Properly sort TEST_STATEID results
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20120601153814.5626.16055.stgit@degas.1015granger.net>
+Date: Fri, 1 Jun 2012 11:52:26 -0400
+Message-Id: <FB17D5BF-1E45-4EBD-B920-0BCD04368B6B@oracle.com>
+References: <20120601153231.5626.89559.stgit@degas.1015granger.net> <20120601153814.5626.16055.stgit@degas.1015granger.net>
+To: linux-nfs@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/14/12 08:53, Andy Adamson wrote:
-> On Wed, Jun 13, 2012 at 11:17 AM, Jeff Wright<jeff.wright@oracle.com>  wrote:
->> Andy,
->>
->> We did not check the RPC statistics on the client, but on the target the
->> queue is nearly empty.  What is the command to check to see the RPC backlog
->> on the Linux client?
-> Hi Jeff
->
-> The command is
->
-> # mountstats<mountpoint>
-Thanks - we'll try this.
->
-> The RPC statistics 'average backlog queue length'
->
-> Have you tried iperf?
-Not yet - we'll put this in the next round of testing.
->
-> -->Andy
->
->> Thanks,
->>
->> Jeff
->>
->>
->> On 06/13/12 09:08, Andy Adamson wrote:
->>> Chuck recently brought this to my attention:
->>>
->>> Have you tried looking at the RPC statistics average backlog queue
->>> length in mountstats? The backlog queue gets filled with NFS requests
->>> that do not get an RPC slot.
->>>
->>> I assume that jumbo frames are turned on throughout the connection.
->>>
->>> I would try some iperf runs.  This will check the throughput of the
->>> memory<->    network<->    memory path and provide an upper bound on what
->>> to expect from NFS as well as displaying the MTU to check for jumbo
->>> frame compliance.
->>>
->>> I would then try some iozone tests, including the O_DIRECT tests. This
->>> will give some more data on the issue by separating throughput from
->>> the application specifics.
->>>
->>> -->Andy
->>>
->>> On Tue, May 22, 2012 at 12:21 PM, Jeff Wright<jeff.wright@oracle.com>
->>>   wrote:
->>>> Team,
->>>>
->>>> I am working on a team implementing a configuration with an OEL kernel
->>>> (2.6.32-300.3.1.el6uek.x86_64) and kernel NFS accessing an NFS server
->>>> over
->>>> 10GbE a Solaris 10.  We are trying to resolve what appears to be a
->>>> bottleneck between the Linux kernel NFS client and the TCP stack.
->>>>   Specifically, the TCP send queue on the Linux client is empty (save a
->>>> couple of bursts) when we are running write I/O from the file system, the
->>>> TCP receive queue on the Solaris 10 NFS server is empty, and the RPC
->>>> pending
->>>> request queue on the Solaris 10 NFS server is zero.   If we dial the
->>>> network
->>>> to 1GbE we get a nice deep TCP send queue on the client, which is the
->>>> bottleneck I was hoping to get to with 10GbE.  At this point, we am
->>>> pretty
->>>> sure the S10 NFS server can run to at least 1000 MBPS.
->>>>
->>>> So far, we have implemented the following Linux kernel tunes:
->>>>
->>>> sunrpc.tcp_slot_table_entries = 128
->>>> net.core.rmem_default = 4194304
->>>> net.core.wmem_default = 4194304
->>>> net.core.rmem_max = 4194304
->>>> net.core.wmem_max = 4194304
->>>> net.ipv4.tcp_rmem = 4096 1048576 4194304
->>>> net.ipv4.tcp_wmem = 4096 1048576 4194304
->>>> net.ipv4.tcp_timestamps = 0
->>>> net.ipv4.tcp_syncookies = 1
->>>> net.core.netdev_max_backlog = 300000
->>>>
->>>> In addition, we am running jumbo frames on the 10GbE NIC and we have
->>>> cpuspeed and irqbalance disabled (no noticeable changes when we did
->>>> this).
->>>>   The mount options on the client side are as follows:
->>>>
->>>> 192.168.44.51:/export/share on /export/share type nfs
->>>>
->>>> (rw,nointr,bg,hard,rsize=1048576,wsize=1048576,proto=tcp,vers=3,addr=192.168.44.51)
->>>>
->>>> In this configuration we get about 330 MBPS of write throughput with 16
->>>> pending stable (open with O_DIRECT) synchronous (no kernel aio in the I/O
->>>> application) writes.  If we scale beyond 16 pending I/O response time
->>>> increases but throughput remains fixed.  It feels like there is a problem
->>>> with getting more than 16 pending I/O out to TCP, but we can't tell for
->>>> sure
->>>> based on our observations so far.  We did notice that tuning the wsize
->>>> down
->>>> to 32kB increased throughput to 400 MBPS, but we could not identify the
->>>> root
->>>> cause of this change.
->>>>
->>>> Please let us know if you have any suggestions for either diagnosing the
->>>> bottleneck more accurately or relieving the bottleneck.  Thank you in
->>>> advance.
->>>>
->>>> Sincerely,
->>>>
->>>> Jeff
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+
+On Jun 1, 2012, at 11:38 AM, Chuck Lever wrote:
+
+> The result of a TEST_STATEID operation can indicate a few different
+> things.  If NFS_OK is returned, then the client can continue using the
+> state ID under test, and skip recovery.  RFC 5661 says that if and
+> only if the state ID was revoked, then the client must perform an
+> explicit FREE_STATEID before trying to re-open.
+> 
+> However, if the server doesn't recognize the state ID at all, then the
+> client should immediately continue with open recovery.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+> fs/nfs/nfs4proc.c |   38 ++++++++++++++++++++++++++++++++++++--
+> 1 files changed, 36 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 4f1e824..39d641a 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -1733,6 +1733,14 @@ static int nfs4_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *sta
+> }
+> 
+> #if defined(CONFIG_NFS_V4_1)
+> +/**
+> + * nfs41_check_expired_stateid - does a state ID need recovery?
+> + *
+> + * @state: NFSv4 open state for a file
+> + *
+> + * Returns NFS_OK if recovery for this state ID is now finished.
+> + * Otherwise a negative NFS4ERR value is returned.
+> + */
+> static int nfs41_check_expired_stateid(struct nfs4_state *state, nfs4_stateid *stateid, unsigned int flags)
+> {
+> 	int status = NFS_OK;
+> @@ -1740,9 +1748,19 @@ static int nfs41_check_expired_stateid(struct nfs4_state *state, nfs4_stateid *s
+> 
+> 	if (state->flags & flags) {
+> 		status = nfs41_test_stateid(server, stateid);
+> -		if (status != NFS_OK) {
+> +		switch (status) {
+> +		case NFS_OK:
+> +			/* server recognizes this one, don't re-open */
+> +			break;
+> +		case -NFS4ERR_ADMIN_REVOKED:
+> +		case -NFS4ERR_DELEG_REVOKED:
+> +			/* state was revoked, free then re-open */
+> 			nfs41_free_stateid(server, stateid);
+> 			state->flags &= ~flags;
+
+Actually, I think we want to clear these flags in any case when status != NFS_OK.
+
+> +			break;
+> +		default:
+> +			/* anything else: go ahead and re-open it */
+> +			break;
+> 		}
+> 	}
+> 	return status;
+> @@ -4642,6 +4660,14 @@ out:
+> }
+> 
+> #if defined(CONFIG_NFS_V4_1)
+> +/**
+> + * nfs41_check_expired_locks - clear lock state IDs
+> + *
+> + * @state: NFSv4 open state for a file
+> + *
+> + * Returns NFS_OK if recovery for this state ID is now finished.
+> + * Otherwise a negative NFS4ERR value is returned.
+> + */
+> static int nfs41_check_expired_locks(struct nfs4_state *state)
+> {
+> 	int status, ret = NFS_OK;
+> @@ -4651,9 +4677,17 @@ static int nfs41_check_expired_locks(struct nfs4_state *state)
+> 	list_for_each_entry(lsp, &state->lock_states, ls_locks) {
+> 		if (lsp->ls_flags & NFS_LOCK_INITIALIZED) {
+> 			status = nfs41_test_stateid(server, &lsp->ls_stateid);
+> -			if (status != NFS_OK) {
+> +			switch (status) {
+> +			case NFS_OK:
+> +				/* server recognizes this one, don't re-lock */
+> +				break;
+> +			case -NFS4ERR_ADMIN_REVOKED:
+> +			case -NFS4ERR_DELEG_REVOKED:
+> +				/* lock was revoked, free then re-lock */
+> 				nfs41_free_stateid(server, &lsp->ls_stateid);
+> 				lsp->ls_flags &= ~NFS_LOCK_INITIALIZED;
+> +				/*FALLTHROUGH*/
+> +			default:
+> 				ret = status;
+> 			}
+> 		}
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
