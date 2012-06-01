@@ -1,60 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:41153 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751371Ab2FKQOc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jun 2012 12:14:32 -0400
-Message-ID: <4FD61957.1070900@panasas.com>
-Date: Mon, 11 Jun 2012 19:14:15 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:35487 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964838Ab2FAPjQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Jun 2012 11:39:16 -0400
+Received: by yenm10 with SMTP id m10so1857987yen.19
+        for <linux-nfs@vger.kernel.org>; Fri, 01 Jun 2012 08:39:16 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 2/4] NFS: Properly sort TEST_STATEID results
+To: linux-nfs@vger.kernel.org
+Date: Fri, 01 Jun 2012 11:38:14 -0400
+Message-ID: <20120601153814.5626.16055.stgit@degas.1015granger.net>
+In-Reply-To: <20120601153231.5626.89559.stgit@degas.1015granger.net>
+References: <20120601153231.5626.89559.stgit@degas.1015granger.net>
 MIME-Version: 1.0
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: Benny Halevy <bhalevy@tonian.com>, "Welch, Brent" <welch@panasas.com>,
-        "Bhamare, Sachin" <sbhamare@panasas.com>,
-        Andy Adamson <androsadamson@gmail.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>,
-        "Huang, James" <jhuang@panasas.com>
-Subject: Re: [PATCH 2/3] NFSv4.1 mark layout when already returned
-References: <1338571178-2096-1-git-send-email-andros@netapp.com> <1338571178-2096-2-git-send-email-andros@netapp.com> <4FCA98E7.2030006@panasas.com> <1C92D18B-1977-4A12-A4DA-84DAC4B3E81E@netapp.com> <4FCE1DC1.6050100@panasas.com> <CAHVgHyXVCUdVFMO1WcRofOCvgDs7Reqsrs39qrZR7UnXWzG8RQ@mail.gmail.com> <4FD5C0EA.806@tonian.com> <4FD5CBF6.6030800@panasas.com> <4FD5FAEF.5040004@tonian.com> <47AB2031-76C2-4E10-9C55-D328E2994780@netapp.com> <4FD605DA.2070203@panasas.com> <005343AE-888D-4CE1-A928-685252AE9C84@netapp.com>
-In-Reply-To: <005343AE-888D-4CE1-A928-685252AE9C84@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/11/2012 06:41 PM, Adamson, Andy wrote:
+The result of a TEST_STATEID operation can indicate a few different
+things.  If NFS_OK is returned, then the client can continue using the
+state ID under test, and skip recovery.  RFC 5661 says that if and
+only if the state ID was revoked, then the client must perform an
+explicit FREE_STATEID before trying to re-open.
 
-> On Jun 11, 2012, at 10:51 AM, Boaz Harrosh wrote:
->> I'm not sure I understood what you meant.
->>
->> In the "normal behavior" we don't send a LAYOUTRETURN at all
->> in the forgetful model. Which proved beneficiary in the light
->> of concurrent GETs vs RETURNs.
->>
->> I thought we are only taking about the error case. Do you
->> mean there is a 3rd case? please explain.
-> 
-> The normal case of calling LAYOUTRETURN on evict inode. 
-> 
+However, if the server doesn't recognize the state ID at all, then the
+client should immediately continue with open recovery.
 
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-evict LAYOUTRETURN is mute because evict() means inode has no more
-references, which specifically means no more layout_segments which
-hold a reference on the inode.
+ fs/nfs/nfs4proc.c |   38 ++++++++++++++++++++++++++++++++++++--
+ 1 files changed, 36 insertions(+), 2 deletions(-)
 
-The interesting part is the error-handling case, on one of the
-layout_segments. What are we aloud to do after we send the
-LAYOUTRETURN to MDS.
-
-It's what I'm talking about, and is a part of of the general
-error-reporting in 4.2 to come.
-
-Boaz
-
-> -->Andy
-> 
->>
->> Thanks
->> Boaz
-> 
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 4f1e824..39d641a 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1733,6 +1733,14 @@ static int nfs4_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *sta
+ }
+ 
+ #if defined(CONFIG_NFS_V4_1)
++/**
++ * nfs41_check_expired_stateid - does a state ID need recovery?
++ *
++ * @state: NFSv4 open state for a file
++ *
++ * Returns NFS_OK if recovery for this state ID is now finished.
++ * Otherwise a negative NFS4ERR value is returned.
++ */
+ static int nfs41_check_expired_stateid(struct nfs4_state *state, nfs4_stateid *stateid, unsigned int flags)
+ {
+ 	int status = NFS_OK;
+@@ -1740,9 +1748,19 @@ static int nfs41_check_expired_stateid(struct nfs4_state *state, nfs4_stateid *s
+ 
+ 	if (state->flags & flags) {
+ 		status = nfs41_test_stateid(server, stateid);
+-		if (status != NFS_OK) {
++		switch (status) {
++		case NFS_OK:
++			/* server recognizes this one, don't re-open */
++			break;
++		case -NFS4ERR_ADMIN_REVOKED:
++		case -NFS4ERR_DELEG_REVOKED:
++			/* state was revoked, free then re-open */
+ 			nfs41_free_stateid(server, stateid);
+ 			state->flags &= ~flags;
++			break;
++		default:
++			/* anything else: go ahead and re-open it */
++			break;
+ 		}
+ 	}
+ 	return status;
+@@ -4642,6 +4660,14 @@ out:
+ }
+ 
+ #if defined(CONFIG_NFS_V4_1)
++/**
++ * nfs41_check_expired_locks - clear lock state IDs
++ *
++ * @state: NFSv4 open state for a file
++ *
++ * Returns NFS_OK if recovery for this state ID is now finished.
++ * Otherwise a negative NFS4ERR value is returned.
++ */
+ static int nfs41_check_expired_locks(struct nfs4_state *state)
+ {
+ 	int status, ret = NFS_OK;
+@@ -4651,9 +4677,17 @@ static int nfs41_check_expired_locks(struct nfs4_state *state)
+ 	list_for_each_entry(lsp, &state->lock_states, ls_locks) {
+ 		if (lsp->ls_flags & NFS_LOCK_INITIALIZED) {
+ 			status = nfs41_test_stateid(server, &lsp->ls_stateid);
+-			if (status != NFS_OK) {
++			switch (status) {
++			case NFS_OK:
++				/* server recognizes this one, don't re-lock */
++				break;
++			case -NFS4ERR_ADMIN_REVOKED:
++			case -NFS4ERR_DELEG_REVOKED:
++				/* lock was revoked, free then re-lock */
+ 				nfs41_free_stateid(server, &lsp->ls_stateid);
+ 				lsp->ls_flags &= ~NFS_LOCK_INITIALIZED;
++				/*FALLTHROUGH*/
++			default:
+ 				ret = status;
+ 			}
+ 		}
 
