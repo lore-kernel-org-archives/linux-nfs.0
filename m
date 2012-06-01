@@ -1,39 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from nm16-vm0.bullet.mail.sp2.yahoo.com ([98.139.91.210]:40917 "HELO
-	nm16-vm0.bullet.mail.sp2.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1751353Ab2FME6f convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Jun 2012 00:58:35 -0400
-Message-ID: <1339563514.39008.YahooMailNeo@web111722.mail.gq1.yahoo.com>
-Date: Tue, 12 Jun 2012 21:58:34 -0700 (PDT)
-From: Mahmood Naderan <nt_mahmood@yahoo.com>
-Reply-To: Mahmood Naderan <nt_mahmood@yahoo.com>
-Subject: Gave up waiting for root device
-To: nfs <linux-nfs@vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from plane.gmane.org ([80.91.229.3]:40006 "EHLO plane.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S964937Ab2FAPxO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Jun 2012 11:53:14 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1SaUA3-00047b-46
+	for linux-nfs@vger.kernel.org; Fri, 01 Jun 2012 17:53:11 +0200
+Received: from NORTHWEST-R.edge3.Denver1.Level3.net ([4.28.99.98])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Fri, 01 Jun 2012 17:53:11 +0200
+Received: from orion by NORTHWEST-R.edge3.Denver1.Level3.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Fri, 01 Jun 2012 17:53:11 +0200
+To: linux-nfs@vger.kernel.org
+From: Orion Poplawski <orion@cora.nwra.com>
+Subject: Spurious rpc.idmapd =?utf-8?b?bnNzX2dldHB3bmFtOg==?= name 'nobody' does not map into domain messages
+Date: Fri, 1 Jun 2012 15:53:02 +0000 (UTC)
+Message-ID: <loom.20120601T174414-583@post.gmane.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Dear all
-While setting up  a diskless cluster from this guide 
+I'm seeing a fair number of these messages on our file server:
 
-(https://help.ubuntu.com/community/DisklessUbuntuHowto), 
-clients end up with this message:
+Jun  1 09:37:58 alexandria rpc.idmapd[28890]: nss_getpwnam: name 'nobody' does
+not map into domain 'cora.nwra.com'
 
-Gave up waiting for root device. Common problems:
-- Boot args (cat /proc/cmdline)
-– Check rootdelay= (did the system wait long enough?)
-– Check root =(did the system wait for right device?)
-- Missing modules (cat /proc/modules; ls /dev)
-ALERT! /dev/nfs does not exist. Dropping to a shell!!
+I think they are coming from accessing files on another file server that are
+owned by an unknown uid (user left and was removed from the user database). 
+These files end up owned by "nobody" (as expected) on the remote system:
 
-In that guide /dev/nfs is used twice: 1) in /nfsroot/etc/fstab and 2) 
+drwxr-xr-x.  7 nobody nwra 4096 Mar 15  2010 analysis_data
 
-in /var/lib/tftpboot/pxelinux.cfg/default 
+Now, this seems like a perfectly normal operation and so shouldn't generate a
+system log message.  First two possible fixes I can think of:
 
+- Should the remote system send the username as "nobody@cora.nwra.com" instead
+of just "nobody"?
 
-I don't know why it complain... Can somebody help?
+                            recc_attr: FATTR4_OWNER (36)
+                                fattr4_owner: nobody
+                                    length: 6
+                                    contents: nobody
+                                    fill bytes: opaque data
+                            recc_attr: FATTR4_OWNER_GROUP (37)
+                                fattr4_owner_group: nwra@cora.nwra.com
+                                    length: 18
+                                    contents: nwra@cora.nwra.com
+                                    fill bytes: opaque data
 
- 
-// Naderan *Mahmood;
+- Don't log if the username is "nobody"?  Although since this is independently
+configurable on the different machines this seems like a bad idea.  Maybe don't
+log if there is no domain part at all?
+
+This is on EL6 with nfs-utils-1.2.3-15.el6_2.1
+
+Orion Poplawski
+
