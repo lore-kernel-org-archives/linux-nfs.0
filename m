@@ -1,56 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:39500 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S964978Ab2FAQT0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Jun 2012 12:19:26 -0400
-Subject: Re: [PATCH 2/4] NFS: Properly sort TEST_STATEID results
-Mime-Version: 1.0 (Apple Message framework v1278)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1338566483.2774.22.camel@lade.trondhjem.org>
-Date: Fri, 1 Jun 2012 12:19:15 -0400
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <1764FCF4-A0C9-4DEA-A6D0-5CCF7A6048D0@oracle.com>
-References: <20120601153231.5626.89559.stgit@degas.1015granger.net> <20120601153814.5626.16055.stgit@degas.1015granger.net> <1338566483.2774.22.camel@lade.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mx2.netapp.com ([216.240.18.37]:53843 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760121Ab2FARVQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Jun 2012 13:21:16 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 2/3] NFSv4.1 mark layout when already returned
+Date: Fri,  1 Jun 2012 13:19:37 -0400
+Message-Id: <1338571178-2096-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1338571178-2096-1-git-send-email-andros@netapp.com>
+References: <1338571178-2096-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Andy Adamson <andros@netapp.com>
 
-On Jun 1, 2012, at 12:01 PM, Myklebust, Trond wrote:
+When fencing, pnfs_return_layout can be called mulitple times with in-flight
+i/o referencing lsegs on it's plh_segs list.
 
-> On Fri, 2012-06-01 at 11:38 -0400, Chuck Lever wrote:
->> 
->> @@ -1740,9 +1748,19 @@ static int nfs41_check_expired_stateid(struct nfs4_state *state, nfs4_stateid *s
->> 
->> 	if (state->flags & flags) {
->> 		status = nfs41_test_stateid(server, stateid);
->> -		if (status != NFS_OK) {
->> +		switch (status) {
->> +		case NFS_OK:
->> +			/* server recognizes this one, don't re-open */
->> +			break;
->> +		case -NFS4ERR_ADMIN_REVOKED:
->> +		case -NFS4ERR_DELEG_REVOKED:
->> +			/* state was revoked, free then re-open */
->> 			nfs41_free_stateid(server, stateid);
->> 			state->flags &= ~flags;
->> +			break;
->> +		default:
-> 
-> Please don't add empty "default:" cases. 
-> 
->> +			/* anything else: go ahead and re-open it */
->> +			break;
-> 
-> That last "break" is unnecessary too in standard C99.
+Remember that LAYOUTRETURN has been called, and do not call it again.
 
-OK, all fixed for next version.  I'll wait for additional comments before reposting.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/pnfs.c |    6 ++++--
+ fs/nfs/pnfs.h |   13 +++++++++++++
+ 2 files changed, 17 insertions(+), 2 deletions(-)
 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 854df5e..9ffd5f8 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -664,11 +664,11 @@ _pnfs_return_layout(struct inode *ino)
+ 	nfs4_stateid stateid;
+ 	int status = 0, empty = 0;
+ 
+-	dprintk("--> %s\n", __func__);
++	dprintk("--> %s for inode %lu\n", __func__, ino->i_ino);
+ 
+ 	spin_lock(&ino->i_lock);
+ 	lo = nfsi->layout;
+-	if (!lo) {
++	if (!lo || pnfs_test_layout_returned(lo)) {
+ 		spin_unlock(&ino->i_lock);
+ 		dprintk("%s: no layout to return\n", __func__);
+ 		return status;
+@@ -705,6 +705,8 @@ _pnfs_return_layout(struct inode *ino)
+ 	lrp->clp = NFS_SERVER(ino)->nfs_client;
+ 
+ 	status = nfs4_proc_layoutreturn(lrp);
++	if (status == 0)
++		pnfs_mark_layout_returned(lo);
+ out:
+ 	dprintk("<-- %s status: %d\n", __func__, status);
+ 	return status;
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 29fd23c..8be6de2 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -64,6 +64,7 @@ enum {
+ 	NFS_LAYOUT_ROC,			/* some lseg had roc bit set */
+ 	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
+ 	NFS_LAYOUT_INVALID,		/* layout is being destroyed */
++	NFS_LAYOUT_RETURNED,		/* layout has already been returned */
+ };
+ 
+ enum layoutdriver_policy_flags {
+@@ -255,6 +256,18 @@ struct nfs4_deviceid_node *nfs4_insert_deviceid_node(struct nfs4_deviceid_node *
+ bool nfs4_put_deviceid_node(struct nfs4_deviceid_node *);
+ void nfs4_deviceid_purge_client(const struct nfs_client *);
+ 
++static inline void
++pnfs_mark_layout_returned(struct pnfs_layout_hdr *lo)
++{
++	set_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
++}
++
++static inline bool
++pnfs_test_layout_returned(struct pnfs_layout_hdr *lo)
++{
++	return test_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
++}
++
+ static inline int lo_fail_bit(u32 iomode)
+ {
+ 	return iomode == IOMODE_RW ?
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.6.4
 
