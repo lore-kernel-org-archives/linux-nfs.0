@@ -1,86 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37126 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:18810 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752265Ab2FOQ2M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Jun 2012 12:28:12 -0400
-Date: Fri, 15 Jun 2012 12:28:09 -0400
-From: bfields <bfields@fieldses.org>
-To: Joerg Platte <jplatte@naasa.net>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Kernel 3.4.X NFS server regression
-Message-ID: <20120615162808.GC18953@fieldses.org>
-References: <4FD47D4E.9070307@naasa.net>
- <1339340441.4751.1.camel@lade.trondhjem.org>
- <4FDB539A.8060409@naasa.net>
+	id S965469Ab2FAQlU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Jun 2012 12:41:20 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Orion Poplawski <orion@cora.nwra.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Spurious rpc.idmapd nss_getpwnam: name 'nobody' does not map
+ into domain messages
+Date: Fri, 1 Jun 2012 16:41:18 +0000
+Message-ID: <1338568876.2774.25.camel@lade.trondhjem.org>
+References: <loom.20120601T174414-583@post.gmane.org>
+	 <1338566283.2774.19.camel@lade.trondhjem.org>
+	 <4FC8ED22.40508@cora.nwra.com>
+In-Reply-To: <4FC8ED22.40508@cora.nwra.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FDB539A.8060409@naasa.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 15, 2012 at 05:24:10PM +0200, Joerg Platte wrote:
-> I'm replying to this bug report since I found another nfs server
-> regression with the same kernel version (3.4.2), so the subject
-> matches. This time it is a "kernel BUG at fs/nfsd/nfs4state.c:1044"
-> 
-> Since the machine was not responsive after the BUG and rebooted I
-> was only able to take a picture of the full stacktrace. You can
-> download it from here:
-> 
-> https://ferdi.naasa.net/url/jplatte/IMG_3139.JPG
-> 
-> The patch "[PATCH] rpc_pipefs: allow rpc_purge_list to take a NULL
-> waitq pointer" was not applied for this trace, but the bug is the
-> same with this patch applied. So there must be another problem.
-> 
-> The crash is reproducable just by creating some nfs traffic and I
-> can hit it within minutes.
-
-This is fixed by a patch submitted for 3.5.
-
-If things go normally I assume Linus will pull this when he bets back
-from vacation in the next few days and then it should go to stable not
-too long after.
-
---b.
-
-commit bc2df47a408f2d64cf81bcfd0f6e3e14c84cb0ab
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Tue Jun 12 08:28:48 2012 -0400
-
-    nfsd4: BUG_ON(!is_spin_locked()) no good on UP kernels
-    
-    Most frequent symptom was a BUG triggering in expire_client, with the
-    server locking up shortly thereafter.
-    
-    Introduced by 508dc6e110c6dbdc0bbe84298ccfe22de7538486 "nfsd41:
-    free_session/free_client must be called under the client_lock".
-    
-    Cc: stable@kernel.org
-    Cc: Benny Halevy <bhalevy@tonian.com>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 8fdc9ec..94effd5 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -900,7 +900,7 @@ static void free_session(struct kref *kref)
- 	struct nfsd4_session *ses;
- 	int mem;
- 
--	BUG_ON(!spin_is_locked(&client_lock));
-+	lockdep_assert_held(&client_lock);
- 	ses = container_of(kref, struct nfsd4_session, se_ref);
- 	nfsd4_del_conns(ses);
- 	spin_lock(&nfsd_drc_lock);
-@@ -1080,7 +1080,7 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
- static inline void
- free_client(struct nfs4_client *clp)
- {
--	BUG_ON(!spin_is_locked(&client_lock));
-+	lockdep_assert_held(&client_lock);
- 	while (!list_empty(&clp->cl_sessions)) {
- 		struct nfsd4_session *ses;
- 		ses = list_entry(clp->cl_sessions.next, struct nfsd4_session,
+T24gRnJpLCAyMDEyLTA2LTAxIGF0IDEwOjI2IC0wNjAwLCBPcmlvbiBQb3BsYXdza2kgd3JvdGU6
+DQo+IE9uIDA2LzAxLzIwMTIgMDk6NTggQU0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4g
+T24gRnJpLCAyMDEyLTA2LTAxIGF0IDE1OjUzICswMDAwLCBPcmlvbiBQb3BsYXdza2kgd3JvdGU6
+DQo+ID4+IEknbSBzZWVpbmcgYSBmYWlyIG51bWJlciBvZiB0aGVzZSBtZXNzYWdlcyBvbiBvdXIg
+ZmlsZSBzZXJ2ZXI6DQo+ID4+DQo+ID4+IEp1biAgMSAwOTozNzo1OCBhbGV4YW5kcmlhIHJwYy5p
+ZG1hcGRbMjg4OTBdOiBuc3NfZ2V0cHduYW06IG5hbWUgJ25vYm9keScgZG9lcw0KPiA+PiBub3Qg
+bWFwIGludG8gZG9tYWluICdjb3JhLm53cmEuY29tJw0KPiA+Pg0KPiA+PiBJIHRoaW5rIHRoZXkg
+YXJlIGNvbWluZyBmcm9tIGFjY2Vzc2luZyBmaWxlcyBvbiBhbm90aGVyIGZpbGUgc2VydmVyIHRo
+YXQgYXJlDQo+ID4+IG93bmVkIGJ5IGFuIHVua25vd24gdWlkICh1c2VyIGxlZnQgYW5kIHdhcyBy
+ZW1vdmVkIGZyb20gdGhlIHVzZXIgZGF0YWJhc2UpLg0KPiA+PiBUaGVzZSBmaWxlcyBlbmQgdXAg
+b3duZWQgYnkgIm5vYm9keSIgKGFzIGV4cGVjdGVkKSBvbiB0aGUgcmVtb3RlIHN5c3RlbToNCj4g
+Pj4NCj4gPj4gZHJ3eHIteHIteC4gIDcgbm9ib2R5IG53cmEgNDA5NiBNYXIgMTUgIDIwMTAgYW5h
+bHlzaXNfZGF0YQ0KPiA+Pg0KPiA+PiBOb3csIHRoaXMgc2VlbXMgbGlrZSBhIHBlcmZlY3RseSBu
+b3JtYWwgb3BlcmF0aW9uIGFuZCBzbyBzaG91bGRuJ3QgZ2VuZXJhdGUgYQ0KPiA+PiBzeXN0ZW0g
+bG9nIG1lc3NhZ2UuICBGaXJzdCB0d28gcG9zc2libGUgZml4ZXMgSSBjYW4gdGhpbmsgb2Y6DQo+
+ID4+DQo+ID4+IC0gU2hvdWxkIHRoZSByZW1vdGUgc3lzdGVtIHNlbmQgdGhlIHVzZXJuYW1lIGFz
+ICJub2JvZHlAY29yYS5ud3JhLmNvbSIgaW5zdGVhZA0KPiA+PiBvZiBqdXN0ICJub2JvZHkiPw0K
+PiA+DQo+ID4gTm8uIEFjY29yZGluZyB0byBzZWN0aW9uIDUuOCBvZiBSRkMzNTMwLCBpdCBzaG91
+bGQgdXNlIHRoZSBuYW1lICJub2JvZHkiDQo+ID4gd2l0aG91dCBhIGRvbWFpbiwgYW5kIHRoZSBp
+ZG1hcHBlciBzaG91bGQgYmUgbWFwcGluZyB0aGF0IHN0cmluZyB0byB0aGUNCj4gPiBhbm9ueW1v
+dXMgdXNlciAoaS5lLiB1aWQgLTIpLg0KPiA+DQo+IA0KPiBXZWxsLCBpdCdzIG1hcHBpbmcgaXQg
+dG8gIm5vYm9keSIgaWQgOTk6DQoNClllcywgdGhhdCdzIHRoZSBjb3JyZWN0IHRoaW5nIHRvIGRv
+IGlmIGEgdXNlciAibm9ib2R5IiBleGlzdHMuDQoNCj4gZHJ3eHIteHIteC4gIDcgOTkgMTAwMSA0
+MDk2IE1hciAxNSAgMjAxMCBhbmFseXNpc19kYXRhDQo+IA0KPiBPa2F5LCBzbyBubyBkb21haW4u
+ICBBbHNvIGFjY29yZGluZyB0byA1Ljg6DQo+IA0KPiAgICAgSW4gdGhlIGNhc2Ugd2hlcmUgdGhl
+cmUgaXMgbm8gdHJhbnNsYXRpb24gYXZhaWxhYmxlIHRvIHRoZSBjbGllbnQgb3INCj4gICAgIHNl
+cnZlciwgdGhlIGF0dHJpYnV0ZSB2YWx1ZSBtdXN0IGJlIGNvbnN0cnVjdGVkIHdpdGhvdXQgdGhl
+ICJAIi4NCj4gICAgIFRoZXJlZm9yZSwgdGhlIGFic2VuY2Ugb2YgdGhlIEAgZnJvbSB0aGUgb3du
+ZXIgb3Igb3duZXJfZ3JvdXANCj4gICAgIGF0dHJpYnV0ZSBzaWduaWZpZXMgdGhhdCBubyB0cmFu
+c2xhdGlvbiB3YXMgYXZhaWxhYmxlIGF0IHRoZSBzZW5kZXINCj4gICAgIGFuZCB0aGF0IHRoZSBy
+ZWNlaXZlciBvZiB0aGUgYXR0cmlidXRlIHNob3VsZCBub3QgdXNlIHRoYXQgc3RyaW5nIGFzDQo+
+ICAgICBhIGJhc2lzIGZvciB0cmFuc2xhdGlvbiBpbnRvIGl0cyBvd24gaW50ZXJuYWwgZm9ybWF0
+LiAgRXZlbiB0aG91Z2gNCj4gICAgIHRoZSBhdHRyaWJ1dGUgdmFsdWUgY2FuIG5vdCBiZSB0cmFu
+c2xhdGVkLCBpdCBtYXkgc3RpbGwgYmUgdXNlZnVsLg0KPiAgICAgSW4gdGhlIGNhc2Ugb2YgYSBj
+bGllbnQsIHRoZSBhdHRyaWJ1dGUgc3RyaW5nIG1heSBiZSB1c2VkIGZvciBsb2NhbA0KPiAgICAg
+ZGlzcGxheSBvZiBvd25lcnNoaXAuDQo+IA0KPiBTbyBhYnNlbmNlIG9mIEAgaW5kaWNhdGVzIG5v
+IG5lZWQgdG8gdHJhbnNsYXRlIGxvY2FsbHksIHNvIGRvbid0IGNvbXBsYWluIA0KPiBhYm91dCBp
+dC4gIFNvIGhvdyBhYm91dCB0aGlzOg0KPiANCj4gLS0tIC4vbGlibmZzaWRtYXAtMC4yNS9uc3Mu
+Yy5ub2JvZHkgICAgIDIwMTEtMTItMDUgMTM6Mjg6MTAuMDAwMDAwMDAwIC0wNzAwDQo+ICsrKyAu
+L2xpYm5mc2lkbWFwLTAuMjUvbnNzLmMgICAgMjAxMi0wNi0wMSAxMDoyMzo1My40MDg2MDM1MTcg
+LTA2MDANCj4gQEAgLTE3Nyw5ICsxNzcsMTAgQEANCj4gICAgICAgICAgSURNQVBfTE9HKDQsICgi
+bnNzX2dldHB3bmFtOiBuYW1lICclcycgZG9tYWluICclcyc6ICINCj4gICAgICAgICAgICAgICAg
+ICAgICJyZXN1bHRpbmcgbG9jYWxuYW1lICclcydcbiIsIG5hbWUsIGRvbWFpbiwgbG9jYWxuYW1l
+KSk7DQo+ICAgICAgICAgIGlmIChsb2NhbG5hbWUgPT0gTlVMTCkgew0KPiAtICAgICAgICAgICAg
+ICAgSURNQVBfTE9HKDAsICgibnNzX2dldHB3bmFtOiBuYW1lICclcycgZG9lcyBub3QgbWFwICIN
+Cj4gLSAgICAgICAgICAgICAgICAgICAgICAgImludG8gZG9tYWluICclcydcbiIsIG5hbWUsDQo+
+IC0gICAgICAgICAgICAgICAgICAgICAgIGRvbWFpbiA/IGRvbWFpbiA6ICI8bm90LXByb3ZpZGVk
+PiIpKTsNCj4gKyAgICAgICAgICAgICAgIGlmIChzdHJjaHIobmFtZSwgJ0AnICE9IE5VTEwpDQo+
+ICsgICAgICAgICAgICAgICAgICAgICAgIElETUFQX0xPRygwLCAoIm5zc19nZXRwd25hbTogbmFt
+ZSAnJXMnIGRvZXMgbm90IG1hcCAiDQo+ICsgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ImludG8gZG9tYWluICclcydcbiIsIG5hbWUsDQo+ICsgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgZG9tYWluID8gZG9tYWluIDogIjxub3QtcHJvdmlkZWQ+IikpOw0KPiAgICAgICAgICAg
+ICAgICAgIGdvdG8gZXJyX2ZyZWVfYnVmOw0KPiAgICAgICAgICB9DQoNCkFDSy4gVGhhdCBsb29r
+cyBhYm91dCByaWdodC4uLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVu
+dCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5u
+ZXRhcHAuY29tDQoNCg==
