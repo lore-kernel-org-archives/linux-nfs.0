@@ -1,201 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:33577 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:61939 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762307Ab2FVObL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Jun 2012 10:31:11 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 01/12] netvm: Prevent a stream-specific deadlock
-Date: Fri, 22 Jun 2012 15:30:57 +0100
-Message-Id: <1340375468-22509-2-git-send-email-mgorman@suse.de>
-In-Reply-To: <1340375468-22509-1-git-send-email-mgorman@suse.de>
-References: <1340375468-22509-1-git-send-email-mgorman@suse.de>
+	id S965172Ab2FAQB1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Jun 2012 12:01:27 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/4] NFS: Properly sort TEST_STATEID results
+Date: Fri, 1 Jun 2012 16:01:25 +0000
+Message-ID: <1338566483.2774.22.camel@lade.trondhjem.org>
+References: <20120601153231.5626.89559.stgit@degas.1015granger.net>
+	 <20120601153814.5626.16055.stgit@degas.1015granger.net>
+In-Reply-To: <20120601153814.5626.16055.stgit@degas.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It could happen that all !SOCK_MEMALLOC sockets have buffered so
-much data that we're over the global rmem limit. This will prevent
-SOCK_MEMALLOC buffers from receiving data, which will prevent userspace
-from running, which is needed to reduce the buffered data.
-
-Fix this by exempting the SOCK_MEMALLOC sockets from the rmem limit.
-Once this change it applied, it is important that sockets that set
-SOCK_MEMALLOC do not clear the flag until the socket is being torn down.
-If this happens, a warning is generated and the tokens reclaimed to
-avoid accounting errors until the bug is fixed.
-
-[davem@davemloft.net: Warning about clearing SOCK_MEMALLOC]
-Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
-Acked-by: David S. Miller <davem@davemloft.net>
-Acked-by: Rik van Riel<riel@redhat.com>
----
- include/net/sock.h     |    8 +++++---
- net/caif/caif_socket.c |    2 +-
- net/core/sock.c        |   14 +++++++++++++-
- net/ipv4/tcp_input.c   |   21 +++++++++++----------
- net/sctp/ulpevent.c    |    3 ++-
- 5 files changed, 32 insertions(+), 16 deletions(-)
-
-diff --git a/include/net/sock.h b/include/net/sock.h
-index 1beeee1..d893973 100644
---- a/include/net/sock.h
-+++ b/include/net/sock.h
-@@ -1316,12 +1316,14 @@ static inline bool sk_wmem_schedule(struct sock *sk, int size)
- 		__sk_mem_schedule(sk, size, SK_MEM_SEND);
- }
- 
--static inline bool sk_rmem_schedule(struct sock *sk, int size)
-+static inline bool
-+sk_rmem_schedule(struct sock *sk, struct sk_buff *skb, unsigned int size)
- {
- 	if (!sk_has_account(sk))
- 		return true;
--	return size <= sk->sk_forward_alloc ||
--		__sk_mem_schedule(sk, size, SK_MEM_RECV);
-+	return size<= sk->sk_forward_alloc ||
-+		__sk_mem_schedule(sk, size, SK_MEM_RECV) ||
-+		skb_pfmemalloc(skb);
- }
- 
- static inline void sk_mem_reclaim(struct sock *sk)
-diff --git a/net/caif/caif_socket.c b/net/caif/caif_socket.c
-index fb89443..49ac641 100644
---- a/net/caif/caif_socket.c
-+++ b/net/caif/caif_socket.c
-@@ -141,7 +141,7 @@ static int caif_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
- 	err = sk_filter(sk, skb);
- 	if (err)
- 		return err;
--	if (!sk_rmem_schedule(sk, skb->truesize) && rx_flow_is_on(cf_sk)) {
-+	if (!sk_rmem_schedule(sk, skb, skb->truesize) && rx_flow_is_on(cf_sk)) {
- 		set_rx_flow_off(cf_sk);
- 		net_dbg_ratelimited("sending flow OFF due to rmem_schedule\n");
- 		caif_flow_ctrl(sk, CAIF_MODEMCMD_FLOW_OFF_REQ);
-diff --git a/net/core/sock.c b/net/core/sock.c
-index c551563..5cbca0e 100644
---- a/net/core/sock.c
-+++ b/net/core/sock.c
-@@ -295,6 +295,18 @@ void sk_clear_memalloc(struct sock *sk)
- 	sock_reset_flag(sk, SOCK_MEMALLOC);
- 	sk->sk_allocation &= ~__GFP_MEMALLOC;
- 	static_key_slow_dec(&memalloc_socks);
-+
-+	/*
-+	 * SOCK_MEMALLOC is allowed to ignore rmem limits to ensure forward
-+	 * progress of swapping. However, if SOCK_MEMALLOC is cleared while
-+	 * it has rmem allocations there is a risk that the user of the
-+	 * socket cannot make forward progress due to exceeding the rmem
-+	 * limits. By rights, sk_clear_memalloc() should only be called
-+	 * on sockets being torn down but warn and reset the accounting if
-+	 * that assumption breaks.
-+	 */
-+	if (WARN_ON(sk->sk_forward_alloc))
-+		sk_mem_reclaim(sk);
- }
- EXPORT_SYMBOL_GPL(sk_clear_memalloc);
- 
-@@ -396,7 +408,7 @@ int sock_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
- 	if (err)
- 		return err;
- 
--	if (!sk_rmem_schedule(sk, skb->truesize)) {
-+	if (!sk_rmem_schedule(sk, skb, skb->truesize)) {
- 		atomic_inc(&sk->sk_drops);
- 		return -ENOBUFS;
- 	}
-diff --git a/net/ipv4/tcp_input.c b/net/ipv4/tcp_input.c
-index 8416f8a..7d6ff91 100644
---- a/net/ipv4/tcp_input.c
-+++ b/net/ipv4/tcp_input.c
-@@ -4512,19 +4512,20 @@ static void tcp_ofo_queue(struct sock *sk)
- static bool tcp_prune_ofo_queue(struct sock *sk);
- static int tcp_prune_queue(struct sock *sk);
- 
--static int tcp_try_rmem_schedule(struct sock *sk, unsigned int size)
-+static int tcp_try_rmem_schedule(struct sock *sk, struct sk_buff *skb,
-+				 unsigned int size)
- {
- 	if (atomic_read(&sk->sk_rmem_alloc) > sk->sk_rcvbuf ||
--	    !sk_rmem_schedule(sk, size)) {
-+	    !sk_rmem_schedule(sk, skb, size)) {
- 
- 		if (tcp_prune_queue(sk) < 0)
- 			return -1;
- 
--		if (!sk_rmem_schedule(sk, size)) {
-+		if (!sk_rmem_schedule(sk, skb, size)) {
- 			if (!tcp_prune_ofo_queue(sk))
- 				return -1;
- 
--			if (!sk_rmem_schedule(sk, size))
-+			if (!sk_rmem_schedule(sk, skb, size))
- 				return -1;
- 		}
- 	}
-@@ -4579,7 +4580,7 @@ static void tcp_data_queue_ofo(struct sock *sk, struct sk_buff *skb)
- 
- 	TCP_ECN_check_ce(tp, skb);
- 
--	if (tcp_try_rmem_schedule(sk, skb->truesize)) {
-+	if (tcp_try_rmem_schedule(sk, skb, skb->truesize)) {
- 		/* TODO: should increment a counter */
- 		__kfree_skb(skb);
- 		return;
-@@ -4710,17 +4711,17 @@ static int __must_check tcp_queue_rcv(struct sock *sk, struct sk_buff *skb, int
- 
- int tcp_send_rcvq(struct sock *sk, struct msghdr *msg, size_t size)
- {
--	struct sk_buff *skb;
-+	struct sk_buff *skb = NULL;
- 	struct tcphdr *th;
- 	bool fragstolen;
- 
--	if (tcp_try_rmem_schedule(sk, size + sizeof(*th)))
--		goto err;
--
- 	skb = alloc_skb(size + sizeof(*th), sk->sk_allocation);
- 	if (!skb)
- 		goto err;
- 
-+	if (tcp_try_rmem_schedule(sk, skb, size + sizeof(*th)))
-+		goto err_free;
-+
- 	th = (struct tcphdr *)skb_put(skb, sizeof(*th));
- 	skb_reset_transport_header(skb);
- 	memset(th, 0, sizeof(*th));
-@@ -4791,7 +4792,7 @@ static void tcp_data_queue(struct sock *sk, struct sk_buff *skb)
- 		if (eaten <= 0) {
- queue_and_out:
- 			if (eaten < 0 &&
--			    tcp_try_rmem_schedule(sk, skb->truesize))
-+			    tcp_try_rmem_schedule(sk, skb, skb->truesize))
- 				goto drop;
- 
- 			eaten = tcp_queue_rcv(sk, skb, 0, &fragstolen);
-diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
-index 8a84017..1f89add 100644
---- a/net/sctp/ulpevent.c
-+++ b/net/sctp/ulpevent.c
-@@ -702,7 +702,8 @@ struct sctp_ulpevent *sctp_ulpevent_make_rcvmsg(struct sctp_association *asoc,
- 	if (rx_count >= asoc->base.sk->sk_rcvbuf) {
- 
- 		if ((asoc->base.sk->sk_userlocks & SOCK_RCVBUF_LOCK) ||
--		    (!sk_rmem_schedule(asoc->base.sk, chunk->skb->truesize)))
-+		    (!sk_rmem_schedule(asoc->base.sk, chunk->skb,
-+				       chunk->skb->truesize)))
- 			goto fail;
- 	}
- 
--- 
-1.7.9.2
-
+T24gRnJpLCAyMDEyLTA2LTAxIGF0IDExOjM4IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+VGhlIHJlc3VsdCBvZiBhIFRFU1RfU1RBVEVJRCBvcGVyYXRpb24gY2FuIGluZGljYXRlIGEgZmV3
+IGRpZmZlcmVudA0KPiB0aGluZ3MuICBJZiBORlNfT0sgaXMgcmV0dXJuZWQsIHRoZW4gdGhlIGNs
+aWVudCBjYW4gY29udGludWUgdXNpbmcgdGhlDQo+IHN0YXRlIElEIHVuZGVyIHRlc3QsIGFuZCBz
+a2lwIHJlY292ZXJ5LiAgUkZDIDU2NjEgc2F5cyB0aGF0IGlmIGFuZA0KPiBvbmx5IGlmIHRoZSBz
+dGF0ZSBJRCB3YXMgcmV2b2tlZCwgdGhlbiB0aGUgY2xpZW50IG11c3QgcGVyZm9ybSBhbg0KPiBl
+eHBsaWNpdCBGUkVFX1NUQVRFSUQgYmVmb3JlIHRyeWluZyB0byByZS1vcGVuLg0KPiANCj4gSG93
+ZXZlciwgaWYgdGhlIHNlcnZlciBkb2Vzbid0IHJlY29nbml6ZSB0aGUgc3RhdGUgSUQgYXQgYWxs
+LCB0aGVuIHRoZQ0KPiBjbGllbnQgc2hvdWxkIGltbWVkaWF0ZWx5IGNvbnRpbnVlIHdpdGggb3Bl
+biByZWNvdmVyeS4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IENodWNrIExldmVyIDxjaHVjay5sZXZl
+ckBvcmFjbGUuY29tPg0KPiAtLS0NCj4gDQo+ICBmcy9uZnMvbmZzNHByb2MuYyB8ICAgMzggKysr
+KysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrLS0NCj4gIDEgZmlsZXMgY2hhbmdlZCwg
+MzYgaW5zZXJ0aW9ucygrKSwgMiBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9u
+ZnMvbmZzNHByb2MuYyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+IGluZGV4IDRmMWU4MjQuLjM5ZDY0
+MWEgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9uZnM0cHJvYy5jDQo+ICsrKyBiL2ZzL25mcy9uZnM0
+cHJvYy5jDQo+IEBAIC0xNzMzLDYgKzE3MzMsMTQgQEAgc3RhdGljIGludCBuZnM0X29wZW5fZXhw
+aXJlZChzdHJ1Y3QgbmZzNF9zdGF0ZV9vd25lciAqc3AsIHN0cnVjdCBuZnM0X3N0YXRlICpzdGEN
+Cj4gIH0NCj4gIA0KPiAgI2lmIGRlZmluZWQoQ09ORklHX05GU19WNF8xKQ0KPiArLyoqDQo+ICsg
+KiBuZnM0MV9jaGVja19leHBpcmVkX3N0YXRlaWQgLSBkb2VzIGEgc3RhdGUgSUQgbmVlZCByZWNv
+dmVyeT8NCj4gKyAqDQo+ICsgKiBAc3RhdGU6IE5GU3Y0IG9wZW4gc3RhdGUgZm9yIGEgZmlsZQ0K
+PiArICoNCj4gKyAqIFJldHVybnMgTkZTX09LIGlmIHJlY292ZXJ5IGZvciB0aGlzIHN0YXRlIElE
+IGlzIG5vdyBmaW5pc2hlZC4NCj4gKyAqIE90aGVyd2lzZSBhIG5lZ2F0aXZlIE5GUzRFUlIgdmFs
+dWUgaXMgcmV0dXJuZWQuDQo+ICsgKi8NCj4gIHN0YXRpYyBpbnQgbmZzNDFfY2hlY2tfZXhwaXJl
+ZF9zdGF0ZWlkKHN0cnVjdCBuZnM0X3N0YXRlICpzdGF0ZSwgbmZzNF9zdGF0ZWlkICpzdGF0ZWlk
+LCB1bnNpZ25lZCBpbnQgZmxhZ3MpDQo+ICB7DQo+ICAJaW50IHN0YXR1cyA9IE5GU19PSzsNCj4g
+QEAgLTE3NDAsOSArMTc0OCwxOSBAQCBzdGF0aWMgaW50IG5mczQxX2NoZWNrX2V4cGlyZWRfc3Rh
+dGVpZChzdHJ1Y3QgbmZzNF9zdGF0ZSAqc3RhdGUsIG5mczRfc3RhdGVpZCAqcw0KPiAgDQo+ICAJ
+aWYgKHN0YXRlLT5mbGFncyAmIGZsYWdzKSB7DQo+ICAJCXN0YXR1cyA9IG5mczQxX3Rlc3Rfc3Rh
+dGVpZChzZXJ2ZXIsIHN0YXRlaWQpOw0KPiAtCQlpZiAoc3RhdHVzICE9IE5GU19PSykgew0KPiAr
+CQlzd2l0Y2ggKHN0YXR1cykgew0KPiArCQljYXNlIE5GU19PSzoNCj4gKwkJCS8qIHNlcnZlciBy
+ZWNvZ25pemVzIHRoaXMgb25lLCBkb24ndCByZS1vcGVuICovDQo+ICsJCQlicmVhazsNCj4gKwkJ
+Y2FzZSAtTkZTNEVSUl9BRE1JTl9SRVZPS0VEOg0KPiArCQljYXNlIC1ORlM0RVJSX0RFTEVHX1JF
+Vk9LRUQ6DQo+ICsJCQkvKiBzdGF0ZSB3YXMgcmV2b2tlZCwgZnJlZSB0aGVuIHJlLW9wZW4gKi8N
+Cj4gIAkJCW5mczQxX2ZyZWVfc3RhdGVpZChzZXJ2ZXIsIHN0YXRlaWQpOw0KPiAgCQkJc3RhdGUt
+PmZsYWdzICY9IH5mbGFnczsNCj4gKwkJCWJyZWFrOw0KPiArCQlkZWZhdWx0Og0KDQpQbGVhc2Ug
+ZG9uJ3QgYWRkIGVtcHR5ICJkZWZhdWx0OiIgY2FzZXMuIA0KDQo+ICsJCQkvKiBhbnl0aGluZyBl
+bHNlOiBnbyBhaGVhZCBhbmQgcmUtb3BlbiBpdCAqLw0KPiArCQkJYnJlYWs7DQoNClRoYXQgbGFz
+dCAiYnJlYWsiIGlzIHVubmVjZXNzYXJ5IHRvbyBpbiBzdGFuZGFyZCBDOTkuDQoNCj4gIAkJfQ0K
+PiAgCX0NCj4gIAlyZXR1cm4gc3RhdHVzOw0KPiBAQCAtNDY0Miw2ICs0NjYwLDE0IEBAIG91dDoN
+Cj4gIH0NCj4gIA0KPiAgI2lmIGRlZmluZWQoQ09ORklHX05GU19WNF8xKQ0KPiArLyoqDQo+ICsg
+KiBuZnM0MV9jaGVja19leHBpcmVkX2xvY2tzIC0gY2xlYXIgbG9jayBzdGF0ZSBJRHMNCj4gKyAq
+DQo+ICsgKiBAc3RhdGU6IE5GU3Y0IG9wZW4gc3RhdGUgZm9yIGEgZmlsZQ0KPiArICoNCj4gKyAq
+IFJldHVybnMgTkZTX09LIGlmIHJlY292ZXJ5IGZvciB0aGlzIHN0YXRlIElEIGlzIG5vdyBmaW5p
+c2hlZC4NCj4gKyAqIE90aGVyd2lzZSBhIG5lZ2F0aXZlIE5GUzRFUlIgdmFsdWUgaXMgcmV0dXJu
+ZWQuDQo+ICsgKi8NCj4gIHN0YXRpYyBpbnQgbmZzNDFfY2hlY2tfZXhwaXJlZF9sb2NrcyhzdHJ1
+Y3QgbmZzNF9zdGF0ZSAqc3RhdGUpDQo+ICB7DQo+ICAJaW50IHN0YXR1cywgcmV0ID0gTkZTX09L
+Ow0KPiBAQCAtNDY1MSw5ICs0Njc3LDE3IEBAIHN0YXRpYyBpbnQgbmZzNDFfY2hlY2tfZXhwaXJl
+ZF9sb2NrcyhzdHJ1Y3QgbmZzNF9zdGF0ZSAqc3RhdGUpDQo+ICAJbGlzdF9mb3JfZWFjaF9lbnRy
+eShsc3AsICZzdGF0ZS0+bG9ja19zdGF0ZXMsIGxzX2xvY2tzKSB7DQo+ICAJCWlmIChsc3AtPmxz
+X2ZsYWdzICYgTkZTX0xPQ0tfSU5JVElBTElaRUQpIHsNCj4gIAkJCXN0YXR1cyA9IG5mczQxX3Rl
+c3Rfc3RhdGVpZChzZXJ2ZXIsICZsc3AtPmxzX3N0YXRlaWQpOw0KPiAtCQkJaWYgKHN0YXR1cyAh
+PSBORlNfT0spIHsNCj4gKwkJCXN3aXRjaCAoc3RhdHVzKSB7DQo+ICsJCQljYXNlIE5GU19PSzoN
+Cj4gKwkJCQkvKiBzZXJ2ZXIgcmVjb2duaXplcyB0aGlzIG9uZSwgZG9uJ3QgcmUtbG9jayAqLw0K
+PiArCQkJCWJyZWFrOw0KPiArCQkJY2FzZSAtTkZTNEVSUl9BRE1JTl9SRVZPS0VEOg0KPiArCQkJ
+Y2FzZSAtTkZTNEVSUl9ERUxFR19SRVZPS0VEOg0KPiArCQkJCS8qIGxvY2sgd2FzIHJldm9rZWQs
+IGZyZWUgdGhlbiByZS1sb2NrICovDQo+ICAJCQkJbmZzNDFfZnJlZV9zdGF0ZWlkKHNlcnZlciwg
+JmxzcC0+bHNfc3RhdGVpZCk7DQo+ICAJCQkJbHNwLT5sc19mbGFncyAmPSB+TkZTX0xPQ0tfSU5J
+VElBTElaRUQ7DQo+ICsJCQkJLypGQUxMVEhST1VHSCovDQoNCldoeSBkbyB3ZSBuZWVkIHRoaXMg
+Y29tbWVudD8gSXQgc2hvdWxkIGJlIG9idmlvdXMuDQoNCj4gKwkJCWRlZmF1bHQ6DQo+ICAJCQkJ
+cmV0ID0gc3RhdHVzOw0KPiAgCQkJfQ0KPiAgCQl9DQo+IA0KPiAtLQ0KPiBUbyB1bnN1YnNjcmli
+ZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBp
+bg0KPiB0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0K
+PiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9t
+by1pbmZvLmh0bWwNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFp
+bnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBw
+LmNvbQ0KDQo=
