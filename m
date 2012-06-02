@@ -1,125 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:46410 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750792Ab2FRQL6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Jun 2012 12:11:58 -0400
-Message-ID: <4FDF533A.2090901@netapp.com>
-Date: Mon, 18 Jun 2012 12:11:38 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+Received: from natasha.panasas.com ([67.152.220.90]:53490 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756051Ab2FBXA4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Jun 2012 19:00:56 -0400
+Message-ID: <4FCA9B0E.5070304@panasas.com>
+Date: Sun, 3 Jun 2012 02:00:30 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-To: Andre Tomt <andre@tomt.net>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        Fengguang Wu <fengguang.wu@intel.com>,
-        David Howells <dhowells@redhat.com>,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: BUG in __key_instantiate_and_link(): unable to handle kernel
- paging request at 0000632e6472616f
-References: <20120601034114.GA9248@localhost> <4FDBF056.7040404@tomt.net>   <4FDCD3C7.5080503@tomt.net> <1339876739.8267.96.camel@lade.trondhjem.org>  <4FDEEF38.8030101@tomt.net> <1340026127.2451.7.camel@lade.trondhjem.org>
-In-Reply-To: <1340026127.2451.7.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+To: <andros@netapp.com>
+CC: <trond.myklebust@netapp.com>, <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/3] NFSv4.1 do not call LAYOUTRETURN when there are no
+ legs
+References: <1338571178-2096-1-git-send-email-andros@netapp.com>
+In-Reply-To: <1338571178-2096-1-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/18/2012 09:28 AM, Myklebust, Trond wrote:
-> On Mon, 2012-06-18 at 11:04 +0200, Andre Tomt wrote:
->> On 16. juni 2012 21:59, Myklebust, Trond wrote:
->>> It looks to me as if the legacy upcall code is assuming that there can
->>> be no more than 1 upcall at a time: there is only a single
->>> idmap->idmap_key_cons, which gets assigned in nfs_idmap_legacy_upcall
->>> and then read in idmap_pipe_downcall.
->>>
->>> Bryan, can you look into this? I suspect that we need a mutex or
->>> something like that (for the legacy upcall case only) to ensure that
->>> nobody overwrites the idmap->idmap_key_cons while an upcall is in
->>> progress.
->>>
->>> Andre, if you want idmapper scalability, then you should rather use the
->>> new idmapper upcall. You need a recent version of the nfs-utils package,
->>> the keyutils package, and they you should add an 'id_resolver' line
->>> to /etc/request-keys.conf as per the nfsidmap manpage.
->>
->> Indeed, using keyutils did avoid the crashes here, 40 hours and counting.
->>
->> Are there any downsides of having keyutils w/ id_resolver on by default 
->> in a distribution? Would it break older kernels or nfs-utils (just not 
->> getting used is fine, obviously)?
-> 
-> Older kernels aren't able to use the keyutils mechanism, so they will
-> still require you to run the idmapd daemon, but there should be no
-> problems with just enabling it in /etc/request-key.conf.
-> Fedora 17 is supposed to install the id_resolver by default.
+On 06/01/2012 08:19 PM, andros@netapp.com wrote:
+
+> From: Andy Adamson <andros@netapp.com>
 > 
 
-Hi Andre,
 
-Can you please check if this patch fixes the old idmapper?
+I wish you would send your patches preceded with a [PATCHSET 0/x]
+That gives us a short summery and a little background on its motivation.
 
-- Bryan
+For example here, what are the problems you encounter, how did you test
+it and so on...
 
->From 3bef58765c7308965d06d9e9d7707c7ca55648ee Mon Sep 17 00:00:00 2001
-From: Bryan Schumaker <bjschuma@netapp.com>
-Date: Mon, 18 Jun 2012 12:01:25 -0400
-Subject: [PATCH] NFS: Force the legacy idmapper to be single threaded
+Do these actually depend and/or fix your previous "send layout_return ..."
+In files layout?
 
-It was initially coded under the assumption that there would only be one
-request at a time, so use a lock to enforce this requirement..
+(You can still send all patches by git send-email command line just the same
+ just add a [PATCHSET 0/x]-xxx-yyy.txt and it will get sent first, right?)
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/idmap.c |   13 ++++++++-----
- 1 file changed, 8 insertions(+), 5 deletions(-)
+Thanks
+Boaz
 
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index b5b86a0..864c51e 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -57,6 +57,11 @@ unsigned int nfs_idmap_cache_timeout = 600;
- static const struct cred *id_resolver_cache;
- static struct key_type key_type_id_resolver_legacy;
- 
-+struct idmap {
-+	struct rpc_pipe		*idmap_pipe;
-+	struct key_construction	*idmap_key_cons;
-+	struct mutex		idmap_mutex;
-+};
- 
- /**
-  * nfs_fattr_init_names - initialise the nfs_fattr owner_name/group_name fields
-@@ -310,9 +315,11 @@ static ssize_t nfs_idmap_get_key(const char *name, size_t namelen,
- 					    name, namelen, type, data,
- 					    data_size, NULL);
- 	if (ret < 0) {
-+		mutex_lock(&idmap->idmap_mutex);
- 		ret = nfs_idmap_request_key(&key_type_id_resolver_legacy,
- 					    name, namelen, type, data,
- 					    data_size, idmap);
-+		mutex_unlock(&idmap->idmap_mutex);
- 	}
- 	return ret;
- }
-@@ -354,11 +361,6 @@ static int nfs_idmap_lookup_id(const char *name, size_t namelen, const char *typ
- /* idmap classic begins here */
- module_param(nfs_idmap_cache_timeout, int, 0644);
- 
--struct idmap {
--	struct rpc_pipe		*idmap_pipe;
--	struct key_construction	*idmap_key_cons;
--};
--
- enum {
- 	Opt_find_uid, Opt_find_gid, Opt_find_user, Opt_find_group, Opt_find_err
- };
-@@ -469,6 +471,7 @@ nfs_idmap_new(struct nfs_client *clp)
- 		return error;
- 	}
- 	idmap->idmap_pipe = pipe;
-+	mutex_init(&idmap->idmap_mutex);
- 
- 	clp->cl_idmap = idmap;
- 	return 0;
--- 
-1.7.10.4
+> mark_matching_lsegs_invalid() does not indicate if the plh_segs list is
+> empty on entrance - and it can be empty on exit.
+> 
+> When the plh_segs list is emtpy, mark_matching_lsegs_invalid removes
+> the pnfs_layout_hdr creation reference.
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfs/pnfs.c |   17 +++++++++++++++--
+>  1 files changed, 15 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index b8323aa..854df5e 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -646,7 +646,14 @@ out_err_free:
+>  	return NULL;
+>  }
+>  
+> -/* Initiates a LAYOUTRETURN(FILE) */
+> +/*
+> + * Initiates a LAYOUTRETURN(FILE), and removes the pnfs_layout_hdr
+> + * when the layout segment list is empty.
+> + *
+> + * Note that a pnfs_layout_hdr can exist with an empty layout segment
+> + * list when LAYOUTGET has failed, or when LAYOUTGET succeeded, but the
+> + * deviceid is marked invalid.
+> + */
+>  int
+>  _pnfs_return_layout(struct inode *ino)
+>  {
+> @@ -655,7 +662,7 @@ _pnfs_return_layout(struct inode *ino)
+>  	LIST_HEAD(tmp_list);
+>  	struct nfs4_layoutreturn *lrp;
+>  	nfs4_stateid stateid;
+> -	int status = 0;
+> +	int status = 0, empty = 0;
+>  
+>  	dprintk("--> %s\n", __func__);
+>  
+> @@ -669,11 +676,17 @@ _pnfs_return_layout(struct inode *ino)
+>  	stateid = nfsi->layout->plh_stateid;
+>  	/* Reference matched in nfs4_layoutreturn_release */
+>  	get_layout_hdr(lo);
+> +	empty = list_empty(&lo->plh_segs);
+>  	mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
+>  	lo->plh_block_lgets++;
+>  	spin_unlock(&ino->i_lock);
+>  	pnfs_free_lseg_list(&tmp_list);
+>  
+> +	if (empty) {
+> +		put_layout_hdr(lo);
+> +		dprintk("%s: no layout segments to return\n", __func__);
+> +		return status;
+> +	}
+>  	WARN_ON(test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags));
+>  
+>  	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
 
 
