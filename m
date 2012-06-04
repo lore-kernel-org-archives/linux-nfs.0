@@ -1,262 +1,169 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:44257 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932970Ab2F2Up1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Jun 2012 16:45:27 -0400
-Message-ID: <4FEE1381.1000209@RedHat.com>
-Date: Fri, 29 Jun 2012 16:43:45 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:61525 "EHLO
+	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751677Ab2FDKbT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Jun 2012 06:31:19 -0400
+Received: by lbbgm6 with SMTP id gm6so2950747lbb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 04 Jun 2012 03:31:18 -0700 (PDT)
+Message-ID: <4FCC8E6D.9020106@openvz.org>
+Date: Mon, 04 Jun 2012 14:31:09 +0400
+From: Konstantin Khlebnikov <khlebnikov@openvz.org>
 MIME-Version: 1.0
-To: Andy Adamson <androsadamson@gmail.com>
-CC: Jeff Layton <jlayton@redhat.com>,
-        "Adamson, Andy" <William.Adamson@netapp.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/1] SUNRPC handle EKEYEXPIRED in call_refreshresult
-References: <1340827535-3062-1-git-send-email-andros@netapp.com> <20120628114353.4f75aabc@tlielax.poochiereds.net> <19150370-D1BD-4CC1-90BD-383805DE9557@netapp.com> <20120628140351.527c5060@tlielax.poochiereds.net> <CAHVgHyWs+_Ep_wP6QASSJ18tM8OhYkQ+o=h5NKnOqdC6HWchKQ@mail.gmail.com>
-In-Reply-To: <CAHVgHyWs+_Ep_wP6QASSJ18tM8OhYkQ+o=h5NKnOqdC6HWchKQ@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+To: Hans de Bruin <jmdebruin@xmsnet.nl>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: nfsroot client will not start firefox or thunderbird from 3.4.0
+ nfsserver
+References: <4FC3F9F6.7010107@xmsnet.nl> <4FC913FC.2020401@xmsnet.nl> <4FCB7C11.7070300@xmsnet.nl>
+In-Reply-To: <4FCB7C11.7070300@xmsnet.nl>
+Content-Type: multipart/mixed;
+ boundary="------------090302080802030505020007"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This is a multi-part message in MIME format.
+--------------090302080802030505020007
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
+Hans de Bruin wrote:
+> On 06/01/2012 09:11 PM, Hans de Bruin wrote:
+>> On 05/29/2012 12:19 AM, Hans de Bruin wrote:
+>>> I just upgraded my home server from kernel 3.3.5 to 3.4.0 and ran into
+>>> some trouble. My laptop, a nfsroot client, will not run firefox and
+>>> thunderbird anymore. When I start these programs from an xterm, the
+>>> cursor goes to the next line and waits indefinitely.
+>>>
+>>> I do not know if there is any order is lsof's output. A lsof | grep
+>>> firefox or thunderbird shows ......./.parentlock as the last line.
+>>>
+>>> It does not matter whether the client is running a 3.4.0 or a 3.3.0
+>>> kernel, or if the server is running on top of xen or not.
+>>>
+>>> There is some noise in the servers dmesg:
+>>>
+>>> [ 241.256684] INFO: task kworker/u:2:801 blocked for more than 120
+>>> seconds.
+>>> [ 241.256691] "echo 0>  /proc/sys/kernel/hung_task_timeout_secs"
+>>
+>> ...
+>>
+>> On a almost identical testsystem firefox en thunderbird segfault after
+>> upgrading to 3.4.0. I would have been nice if it would behave exaclty
+>> like my home server. I bisected the segfault to:
+>>
+>> commit 0fc9d1040313047edf6a39fd4d7c7defdca97c62
+>> Author: Konstantin Khlebnikov<khlebnikov@openvz.org>
+>> Date: Wed Mar 28 14:42:54 2012 -0700
+>>
+>> radix-tree: use iterators in find_get_pages* functions
+>>
+>>
+>> When I revert that on top of 3.4.0 the segfaults are gone but both
+>> firefox en thunderbird go in the lets wait indefinitely mode like the
+>> homeserver.
+>>
+>> I am going to make a bit-wise copy from from my homeserver to my
+>> testserver and try again.
+>>
+>
+> The bit-wise copy also segfaults firefox and thunderbird at the same
+> commit.
+>
 
-On 06/28/2012 07:33 PM, Andy Adamson wrote:
-> On Thu, Jun 28, 2012 at 2:03 PM, Jeff Layton <jlayton@redhat.com> wrote:
->> On Thu, 28 Jun 2012 16:31:41 +0000
->> "Adamson, Andy" <William.Adamson@netapp.com> wrote:
->>
->>>
->>> On Jun 28, 2012, at 11:43 AM, Jeff Layton wrote:
->>>
->>>> On Wed, 27 Jun 2012 16:05:34 -0400
->>>> andros@netapp.com wrote:
->>>>
->>>>> From: Andy Adamson <andros@netapp.com>
->>>>>
->>>>> Without this patch attempting to access a Kerberos mount with expired or no
->>>>> credentials resulted in the NFS client hanging while retrying to refresh creds
->>>>> for ever.
->>>>>
->>>>> I tested NFSv3/v4/v4.1 sec=krb5 mounts. With expired or non-existent user
->>>>> Kerberos credentials, trying to ls the mountpoint, or cd into the mountpoint
->>>>> resulted in three failed upcalls to gssd (due to tk_cred_retry being set to 2)
->>>>> then the 'Operation not permitted' message is returned to the user.
->>>>>
->>>>> I think this patch should go into the stable kernel.
->>>>>
->>>>> Andy Adamson (1):
->>>>>  SUNRPC handle EKEYEXPIRED in call_refreshresult
->>>>>
->>>>> fs/nfs/nfs4proc.c |    2 --
->>>>> net/sunrpc/clnt.c |    4 ++++
->>>>> 2 files changed, 4 insertions(+), 2 deletions(-)
->>>>>
->>>>
->>>> Wait...is this really the behavior you want here?
->>>
->>> Yes. Just having the client hang with no indication to the user is wrong.
-+1 I completely agree with this... 
->>>
->>
->> I presume you mean to say that that behavior isn't ideal. I tend to
->> agree, but there's no good way to report that to the user who can do
->> anything about it. I'll also point out that this scheme doesn't really
->> help that either. The user will end up with a failing job, at which
->> point it's too late to do anything about it...
-There are mechanisms (krenew,sssd) the user can use to stop the 
-jobs from failing... 
+I think bug somewhere in NFS, that patch only highlighted it.
+Please, try to run it with debug patch from attachment.
 
->>
->>>>
->>>> We had many complaints from users of krb5 mounts where long-running
->>>> jobs would routinely fail when the ticket expired.
-We also have complaints about things hanging too... ;-) 
+--------------090302080802030505020007
+Content-Type: text/plain;
+ name="mm-debug-fing_get_pages-speculative-restart"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="mm-debug-fing_get_pages-speculative-restart"
 
->>>
->>> That is a Kerberos ticket management issue, not an NFS kernel client issue.
->>> You have long-running jobs, then kinit -l,  run krenew, or use a keytab with a cron job,
->>> or use some other credential management software package.
-Right... Some early on preparations to ensure the tickets remain renewable is
-the solution..,
+mm: debug fing_get_pages speculative restart
 
->>>
->>
->> Easy to say, far more difficult to do.
-> 
-> Here is how simple it is.
-> 
-> $ kinit
-> $ krenew  -K 30&
-If this simple process cannot renew a ticket then its a bug
-in the client... We have to let processes like this to renew
-renewable tickets! 
+From: Konstantin Khlebnikov <khlebnikov@openvz.org>
 
-I've never been a fan of this hang from the beginning but 
-if its getting in the way of things renewing tickets then its
-got to go... IMHO...
+Signed-off-by: Konstantin Khlebnikov <khlebnikov@openvz.org>
+---
+ mm/filemap.c |    9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-Lets push the error up to the app and then educate people
-on how to avoid the error... 
+diff --git a/mm/filemap.c b/mm/filemap.c
+index a4a5260..a8cffef 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -815,6 +815,7 @@ unsigned find_get_pages(struct address_space *mapping, pgoff_t start,
+ 	struct radix_tree_iter iter;
+ 	void **slot;
+ 	unsigned ret = 0;
++	int nr_found = 0;
+ 
+ 	if (unlikely(!nr_pages))
+ 		return 0;
+@@ -846,6 +847,7 @@ repeat:
+ 			continue;
+ 		}
+ 
++		nr_found++;
+ 		if (!page_cache_get_speculative(page))
+ 			goto repeat;
+ 
+@@ -861,6 +863,7 @@ repeat:
+ 	}
+ 
+ 	rcu_read_unlock();
++	WARN_ON(!ret && nr_found);
+ 	return ret;
+ }
+ 
+@@ -882,6 +885,7 @@ unsigned find_get_pages_contig(struct address_space *mapping, pgoff_t index,
+ 	struct radix_tree_iter iter;
+ 	void **slot;
+ 	unsigned int ret = 0;
++	int nr_found = 0;
+ 
+ 	if (unlikely(!nr_pages))
+ 		return 0;
+@@ -913,6 +917,7 @@ repeat:
+ 			break;
+ 		}
+ 
++		nr_found++;
+ 		if (!page_cache_get_speculative(page))
+ 			goto repeat;
+ 
+@@ -937,6 +942,7 @@ repeat:
+ 			break;
+ 	}
+ 	rcu_read_unlock();
++	WARN_ON(!ret && nr_found);
+ 	return ret;
+ }
+ EXPORT_SYMBOL(find_get_pages_contig);
+@@ -958,6 +964,7 @@ unsigned find_get_pages_tag(struct address_space *mapping, pgoff_t *index,
+ 	struct radix_tree_iter iter;
+ 	void **slot;
+ 	unsigned ret = 0;
++	int nr_found = 0;
+ 
+ 	if (unlikely(!nr_pages))
+ 		return 0;
+@@ -988,6 +995,7 @@ repeat:
+ 			BUG();
+ 		}
+ 
++		nr_found++;
+ 		if (!page_cache_get_speculative(page))
+ 			goto repeat;
+ 
+@@ -1007,6 +1015,7 @@ repeat:
+ 	if (ret)
+ 		*index = pages[ret - 1]->index + 1;
+ 
++	WARN_ON(!ret && nr_found);
+ 	return ret;
+ }
+ EXPORT_SYMBOL(find_get_pages_tag);
 
-steved.
-
-> 
-> This simple krenew command says to renew the current users TGT every
-> 30 minutes for
-> as long as the TGT is renewable. For my setup, the TGT lasts 10 days -
-> long enough for most long-running jobs. The kinit is to get a fresh
-> TGT prior to running renew so that you start with as much time as
-> possible.
-> 
-> I just tested it. My TGS expires in 30 minutes, my TGT in 1 hour. 3
-> hours later, I'm still able to access the kerberos mount.
-> 
-> I'm sure most users with long running jobs could handle this. If you
-> need longer running jobs, then you simply talk to the Kerberos admin
-> and either get an extended TGT lifetime, or get a keytab and run a
-> cron job (or use krenew to run a script).
-> 
-> 
->> Most of the people who
->> complained about the non-robustness of this were people who were
->> running jobs that took days or weeks. They were understandably upset
->> when that job failed just because the ticket expired.
-> 
-> Well, they get what they setup. If they didn't ensure a long enough
-> ticket lifetime, then
-> they shouldn't be surprised when the access to the file system fails.
-> 
->>>
->>>> The compromise behavior that we worked out at that time was to treat an
->>>> expired credcache differently from a "no credcache" situation. gssd would
->>>> return EKEYEXPIRED if the credcache existed but was expired, and
->>>> EACCES otherwise. The kernel would then treat those errors
->>>> differently:
->>>
->>> In both cases, EPERM is the correct response from the Linux NFS client, as
->>> the user has no permissions to do anything in the file system.
->>>
->>
->> But, in the case of an expired ticket, it's quite likely that he had
->> permissions at some point in time. The rationale at the time was that
->> if that user could reacquire creds he could keep his job going.
-> 
-> Exactly! It's just not the NFS clients job to arrange this! It's a
-> Kerberos Ticket Lifetime Issue. Use the Kerberos Ticket Lifetime Issue
-> Tools!
-> 
->>
->>>>
->>>>    http://permalink.gmane.org/gmane.linux.nfsv4/11019
->>>>
->>>> With EKEYEXPIRED, we'd want RPCs to hang indefinitely until the tickets
->>>> were renewed.
->>>
->>> Sounds like a good DOS attack.  Consider V4.1 and a multi-user machine. If a
->>> users credentials expire during a heavy I/O run - that user could be using all of the
->>> session slots, and no other user could make progress while the RPCs call rpc_delay
->>> and retry  indefinitely...
->>>
->>
->> Well, no. That was the main reason we handled this in the NFS layer and
->> not in sunrpc. The rpc_task would exit with EKEYEXPIRED and the NFS
->> code would treat that like an NFS4ERR_DELAY. Back off and try again
->> later.
->> Once the task has exited, any resources held in the rpc layer
->> including the slot should be available.
-> 
-> Ah - nfs4_async_handle_error on EKEYEXPIRED calls rpc_delay then
-> returs with an EAGAIN error code - so it  doesn't call rpc_exit, but
-> the EKEYEXPIRED is handled  the rpc_call_done routine which frees the
-> slot allowing it to be reused.
-> 
-> Fair enough.
-> 
-> After the delay timer expires, the task goes into the rpc_prepare_task
-> state to get a new slot, e.g. put on the session slot_tbl_waitq in
-> heavy I/O situations where all slots are being used.
-> 
-> So in my example above with an expired user GSS context on a
-> multi-user client, I/O gets stacked up in the session slot_tbl_waitq -
-> which I've seen to grow to hundreds of RPC requests depending on the
-> number of session slots and the amount of I/O.  Each I/O will keep on
-> returning to the session slot_tbl_waitq after an up call to GSSD which
-> fails with -EKEYEXPIRED.  Gssd gets pounded. The session
-> slot_tbl_waitq is not drained of this users I/O.
-> 
-> Other users will feel pain. Especially if there is more than one user
-> on the client irresponsible enough to start a long-running job without
-> handling their Kerberos credentials.
-> 
->>
->>>
->>>> With EACCES, the call would return an error. The idea
->>>> there is that the user would kdestroy if he needed to unwedge his krb5
->>>> mount.
->>>
->>> Exactly how is the user supposed to know to kdestroy? All they see is a hung mount.
->>>
->>
->> We do throw a warning when the state manager's ticket expires. Perhaps
->> we could do something similar from gssd for user tickets. The point is
->> though that the user has the ability to unwedge the mount without
->> reacquiring the ticket if he so chooses.
-> 
-> And my point is - this is wrong!  It is a key management issue!  What
-> if the user doesn't choose to 'unwed'  the mount? Does it hang
-> forever?
-> 
-> If the user is going to have to make a choice, let them make it on the
-> front end, and setup their Kerberos tickets according to their need.
-> 
->>
->>>>
->>>> This patch makes it sound like you're wanting to revert that behavior.
->>>> Is that the case?
->>>
->>> Yes.
->>>
->>>> If so, what about people trying to run long-running
->>>> tasks on a kerberized mount? Are they just SOL if their ticket isn't
->>>> renewed in time?
->>>
->>> Yes - as with _any_ resource, you need to plan ahead.  As I said above, the administrator in such a situation
->>> needs to setup krenew or the equivalent.
->>>
->>
->> That's not helpful. Everyone makes mistakes and you don't necessarily
->> want your job to fail simply due to that fact.
-> 
-> Yes, WRT security, you actually do.  There is a reason Kerberos
-> tickets have a lifetime.
-> The user needs to be aware of it, and extend or cut-off credentials
-> according to what their use case is.
-> 
->> But regardless, Trond
->> NAK'ed a similar idea not that long ago:
->>
->>    http://marc.info/?l=linux-nfs&m=132161606503398&w=2
->>
->> ...you may want to read over that thread as I'm fairly certain what
->> you're proposing will have the same issues...
-> 
-> Your'e referring to data corruption due to buffered writes or commits
-> with expired GSS credentials?
-> I'm preparing patches for this issue as well. I'll resend this patch
-> with the others that
-> handle the expired GSS creds.
-> 
-> -->Andy
-> 
->>
->> --
->> Jeff Layton <jlayton@redhat.com>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--------------090302080802030505020007--
