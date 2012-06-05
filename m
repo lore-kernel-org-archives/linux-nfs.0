@@ -1,61 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:9287 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:5912 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755417Ab2FZMyi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Jun 2012 08:54:38 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Johannes Schild <JSchild@gmx.de>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: LAYOUTCOMMIT/LAYOUTRETURN
-Date: Tue, 26 Jun 2012 12:54:36 +0000
-Message-ID: <1340715270.2576.3.camel@lade.trondhjem.org>
-References: <20120625074306.48500@gmx.net>
-	 <1340632000.9620.7.camel@lade.trondhjem.org> <20120626124348.48490@gmx.net>
-In-Reply-To: <20120626124348.48490@gmx.net>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S934338Ab2FEOE6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Jun 2012 10:04:58 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Andy Adamson <andros@netapp.com>
+Subject: [PATCH 2/2] NFSv4: Fix up decode_attr_mdsthreshold
+Date: Tue,  5 Jun 2012 10:04:43 -0400
+Message-Id: <1338905083-19559-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1338905083-19559-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1338905083-19559-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA2LTI2IGF0IDE0OjQzICswMjAwLCBKb2hhbm5lcyBTY2hpbGQgd3JvdGU6
-DQo+IEhpLA0KPiANCj4gdGhhbmtzIGZvciB5b3VyIGFuc3dlcnMuDQo+IA0KPiBCdXQgaG93IGRv
-IGkgZmluZCBvdXQsIHdoZXRoZXIgdGhlIHNlcnZlciBpcyB1c2luZyBGSUxFX1NZTkM/DQoNCllv
-dSBzYWlkIHlvdSB3ZXJlIHVzaW5nIGEgTmV0QXBwIGZpbGVyLiBUaGV5IGhhdmUgYW4gTlZSQU0g
-Y2FjaGUgd2hpY2gNCm1lYW5zIHRoZXkgd2lsbCBhbHdheXMgdXNlIEZJTEVfU1lOQyBtb2RlIGZv
-ciB3cml0ZXMuDQoNCj4gSXMgdGhlcmUgYW55IG90aGVyIG1vZGUgbGlrZSAiRklMRV9BU1lOQyI/
-DQoNClBsZWFzZSBzZWUgdGhlIE5GUyBzcGVjLiBUaGVyZSBhcmUgMyB3cml0ZSBtb2RlczogRklM
-RV9TWU5DID09IChkYXRhDQorbWV0YWRhdGEgY29tbWl0dGVkIHRvIGRpc2spLCBEQVRBX1NZTkMg
-PT0gKGRhdGEgKyBmaWxlIHNpemUgY29tbWl0dGVkDQp0byBkaXNrKSwgVU5TVEFCTEUgPT0gKGRh
-dGErbWV0YWRhdGEgaXMgY2FjaGVkIG9uIHRoZSBzZXJ2ZXIpLg0KDQo+IEFuZCBpZiB0aGUgc2Vy
-dmVyIGlzIHVzaW5nIEZJTEVfU1lOQywgaG93IGRvZXMgaXQgZ2V0IExBWU9VVENPTU1JVD8NCg0K
-SXQgZG9lc24ndCBuZWVkIGl0LiBBbGwgbWV0YWRhdGEgaXMgYWxyZWFkeSBvbiBkaXNrLg0KDQo+
-IFRoYW5rcyBpbiBhZHZhbmNlDQo+IA0KPiANCj4gSm9oYW5uZXMNCj4gDQo+IA0KPiAtLS0tLS0t
-LSBPcmlnaW5hbC1OYWNocmljaHQgLS0tLS0tLS0NCj4gPiBEYXR1bTogTW9uLCAyNSBKdW4gMjAx
-MiAwOTo0Njo0MCAtMDQwMA0KPiA+IFZvbjogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1
-c3RAZnlzLnVpby5ubz4NCj4gPiBBbjogSm9oYW5uZXMgU2NoaWxkIDxKU2NoaWxkQGdteC5kZT4N
-Cj4gPiBDQzogbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiA+IEJldHJlZmY6IFJlOiBMQVlP
-VVRDT01NSVQvTEFZT1VUUkVUVVJODQo+IA0KPiA+IE9uIE1vbiwgMjAxMi0wNi0yNSBhdCAwOTo0
-MyArMDIwMCwgSm9oYW5uZXMgU2NoaWxkIHdyb3RlOg0KPiA+ID4gSGkgR3V5cywNCj4gPiA+IA0K
-PiA+ID4gaSBoYXZlIGFub3RoZXIgcXVlc3Rpb24gb24gcE5GUy4gSSBsb29rZWQgYXQgbXkgV2ly
-ZXNoYXJrIHByb3RvY29scywNCj4gPiB3aGlsZSBpIHVzZWQgdGhlIEZJTEUtTGF5b3V0LCBhbmQg
-aSB3b25kZXJlZCB3aHkgaSBoYXZlIG5vDQo+ID4gTEFZT1VUQ09NTUlUL0xBWU9VVFJFVFVSTiBz
-dGF0ZW1lbnRzIGluIG15IHByb3RvY29scy4NCj4gPiA+IEkgdHJhbnNmZXJlZCBvbmUgZmlsZSB0
-byBteSBzdG9yYWdlIHNlcnZlciAoTkVUQVBQIFNpbXVsYXRvciA4LjEgQy1Nb2RlKQ0KPiA+IGFu
-ZCBpIG9ubHkgZ290IGEgTEFZT1VUR0VULg0KPiA+ID4gDQo+ID4gPiBjYXQgL3Byb2Mvc2VsZi9t
-b3VudHN0YXRzIHwgZ3JlcCBMQVlPVVQgc2F5czoNCj4gPiA+IG5mc3Y0Og0KPiA+IGJtMD0weGZh
-ZmU4ZmZmLGJtbD0weDYwZmRmZmZlLGFjbD0weDMsc2Vzc2lvbnMscG5mcz1MQVlPVVRfTkZTVjRf
-MV9GSUxFUw0KPiA+ID4gICAgIExBWU9VVEdFVDogMSAxIDAgMjE2IDIzNiAwIDEgMQ0KPiA+ID4g
-IExBWU9VVENPTU1JVDogMCAwIDAgMCAwIDAgMCAwDQo+ID4gPiAgTEFZT1VUUkVUVVJOOiAwIDAg
-MCAwIDAgMCAwIDAgDQo+ID4gDQo+ID4gQSBwTkZTIGNsaWVudCBzaG91bGQgbmV2ZXIgc2VuZCBM
-QVlPVVRDT01NSVQgdG8gYSBzZXJ2ZXIgdGhhdCBkb2VzDQo+ID4gRklMRV9TWU5DIHdyaXRlcy4N
-Cj4gPiANCj4gPiBUaGUgTGludXggcE5GUyBjbGllbnQgdXNlcyB0aGUgJ2ZvcmdldGZ1bCBjbGll
-bnQnIG1vZGVsLCBzbyBpdCB3aWxsDQo+ID4gbmV2ZXIgc2VuZCBMQVlPVVRSRVRVUk4gb24gbGF5
-b3V0IHJlY2FsbHMgZWl0aGVyLiBUaGUgb25seSBjYXNlIHdoZXJlIHdlDQo+ID4gc2VuZCBMQVlP
-VVRSRVRVUk4gaXMgd2hlbiB0aGUgZmlsZSBmYWxscyBvdXQgb2YgdGhlIGlub2RlIGNhY2hlLg0K
-PiA+IA0KPiA+IA0KPiA+ID4gSXMgdGhlcmUgYW55IG90aGVyIHdheSB0byB2ZXJpZnkgdGhhdCBw
-bmZzIGlzIHVzZWQgb24gY2xpZW50IHNpdGU/DQo+ID4gDQo+ID4gVGhlIG1vc3QgZGlyZWN0IHdh
-eSBpcyB0byBsb29rIGZvciBhIFRDUCBjb25uZWN0aW9uIHRvIHRoZSBkYXRhIHNlcnZlcg0KPiA+
-IHVzaW5nICduZXRzdGF0IC10Jy4NCj4gPiANCj4gPiBDaGVlcnMNCj4gPiAgIFRyb25kDQo+ID4g
-DQo+IA0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVy
-DQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoN
-Cg==
+Fix an incorrect use of 'likely()'. The FATTR4_WORD2_MDSTHRESHOLD
+bit is only expected in NFSv4.1 OPEN calls, and so is actually
+rather _unlikely_.
+
+decode_attr_mdsthreshold needs to clear FATTR4_WORD2_MDSTHRESHOLD
+from the attribute bitmap after it has decoded the data.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4xdr.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 9ca1428..18fae29 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -4360,7 +4360,7 @@ static int decode_attr_mdsthreshold(struct xdr_stream *xdr,
+ 
+ 	if (unlikely(bitmap[2] & (FATTR4_WORD2_MDSTHRESHOLD - 1U)))
+ 		return -EIO;
+-	if (likely(bitmap[2] & FATTR4_WORD2_MDSTHRESHOLD)) {
++	if (bitmap[2] & FATTR4_WORD2_MDSTHRESHOLD) {
+ 		/* Did the server return an unrequested attribute? */
+ 		if (unlikely(res == NULL))
+ 			return -EREMOTEIO;
+@@ -4376,6 +4376,7 @@ static int decode_attr_mdsthreshold(struct xdr_stream *xdr,
+ 				__func__);
+ 
+ 		status = decode_first_threshold_item4(xdr, res);
++		bitmap[2] &= ~FATTR4_WORD2_MDSTHRESHOLD;
+ 	}
+ 	return status;
+ out_overflow:
+-- 
+1.7.10.2
+
