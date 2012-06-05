@@ -1,293 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:59257 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:64859 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756143Ab2FTJiN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jun 2012 05:38:13 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 08/12] nfs: teach the NFS client how to treat PG_swapcache pages
-Date: Wed, 20 Jun 2012 10:37:57 +0100
-Message-Id: <1340185081-22525-9-git-send-email-mgorman@suse.de>
-In-Reply-To: <1340185081-22525-1-git-send-email-mgorman@suse.de>
-References: <1340185081-22525-1-git-send-email-mgorman@suse.de>
+	id S934115Ab2FENgm convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jun 2012 09:36:42 -0400
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/3] NFSv4.1 do not call LAYOUTRETURN when there are no
+ legs
+Date: Tue, 5 Jun 2012 13:36:25 +0000
+Message-ID: <AAE6059A-E7A5-4377-A68A-AC6CB90C1666@netapp.com>
+References: <1338571178-2096-1-git-send-email-andros@netapp.com>
+ <4FCA9B0E.5070304@panasas.com>
+In-Reply-To: <4FCA9B0E.5070304@panasas.com>
+Content-Type: text/plain; charset="Windows-1252"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace all relevant occurences of page->index and page->mapping in
-the NFS client with the new page_file_index() and page_file_mapping()
-functions.
 
-Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
----
- fs/nfs/file.c     |    6 +++---
- fs/nfs/internal.h |    7 ++++---
- fs/nfs/pagelist.c |    2 +-
- fs/nfs/read.c     |    6 +++---
- fs/nfs/write.c    |   38 +++++++++++++++++++-------------------
- 5 files changed, 30 insertions(+), 29 deletions(-)
+On Jun 2, 2012, at 7:00 PM, Boaz Harrosh wrote:
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index a6708e6b..406caac 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -442,7 +442,7 @@ static void nfs_invalidate_page(struct page *page, unsigned long offset)
- 	if (offset != 0)
- 		return;
- 	/* Cancel any unstarted writes on this page */
--	nfs_wb_page_cancel(page->mapping->host, page);
-+	nfs_wb_page_cancel(page_file_mapping(page)->host, page);
- 
- 	nfs_fscache_invalidate_page(page, page->mapping->host);
- }
-@@ -484,7 +484,7 @@ static int nfs_release_page(struct page *page, gfp_t gfp)
-  */
- static int nfs_launder_page(struct page *page)
- {
--	struct inode *inode = page->mapping->host;
-+	struct inode *inode = page_file_mapping(page)->host;
- 	struct nfs_inode *nfsi = NFS_I(inode);
- 
- 	dfprintk(PAGECACHE, "NFS: launder_page(%ld, %llu)\n",
-@@ -533,7 +533,7 @@ static int nfs_vm_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
- 	nfs_fscache_wait_on_page_write(NFS_I(dentry->d_inode), page);
- 
- 	lock_page(page);
--	mapping = page->mapping;
-+	mapping = page_file_mapping(page);
- 	if (mapping != dentry->d_inode->i_mapping)
- 		goto out_unlock;
- 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 18f99ef..43ea79a 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -463,13 +463,14 @@ void nfs_super_set_maxbytes(struct super_block *sb, __u64 maxfilesize)
- static inline
- unsigned int nfs_page_length(struct page *page)
- {
--	loff_t i_size = i_size_read(page->mapping->host);
-+	loff_t i_size = i_size_read(page_file_mapping(page)->host);
- 
- 	if (i_size > 0) {
-+		pgoff_t page_index = page_file_index(page);
- 		pgoff_t end_index = (i_size - 1) >> PAGE_CACHE_SHIFT;
--		if (page->index < end_index)
-+		if (page_index < end_index)
- 			return PAGE_CACHE_SIZE;
--		if (page->index == end_index)
-+		if (page_index == end_index)
- 			return ((i_size - 1) & ~PAGE_CACHE_MASK) + 1;
- 	}
- 	return 0;
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index aed913c..9ef8b3c 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -117,7 +117,7 @@ nfs_create_request(struct nfs_open_context *ctx, struct inode *inode,
- 	 * long write-back delay. This will be adjusted in
- 	 * update_nfs_request below if the region is not locked. */
- 	req->wb_page    = page;
--	req->wb_index	= page->index;
-+	req->wb_index	= page_file_index(page);
- 	page_cache_get(page);
- 	req->wb_offset  = offset;
- 	req->wb_pgbase	= offset;
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 86ced78..c5b83ce 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -532,11 +532,11 @@ static const struct rpc_call_ops nfs_read_common_ops = {
- int nfs_readpage(struct file *file, struct page *page)
- {
- 	struct nfs_open_context *ctx;
--	struct inode *inode = page->mapping->host;
-+	struct inode *inode = page_file_mapping(page)->host;
- 	int		error;
- 
- 	dprintk("NFS: nfs_readpage (%p %ld@%lu)\n",
--		page, PAGE_CACHE_SIZE, page->index);
-+		page, PAGE_CACHE_SIZE, page_file_index(page));
- 	nfs_inc_stats(inode, NFSIOS_VFSREADPAGE);
- 	nfs_add_stats(inode, NFSIOS_READPAGES, 1);
- 
-@@ -590,7 +590,7 @@ static int
- readpage_async_filler(void *data, struct page *page)
- {
- 	struct nfs_readdesc *desc = (struct nfs_readdesc *)data;
--	struct inode *inode = page->mapping->host;
-+	struct inode *inode = page_file_mapping(page)->host;
- 	struct nfs_page *new;
- 	unsigned int len;
- 	int error;
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 4d6861c..5fa5516 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -153,7 +153,7 @@ static struct nfs_page *nfs_page_find_request_locked(struct page *page)
- 
- static struct nfs_page *nfs_page_find_request(struct page *page)
- {
--	struct inode *inode = page->mapping->host;
-+	struct inode *inode = page_file_mapping(page)->host;
- 	struct nfs_page *req = NULL;
- 
- 	spin_lock(&inode->i_lock);
-@@ -165,16 +165,16 @@ static struct nfs_page *nfs_page_find_request(struct page *page)
- /* Adjust the file length if we're writing beyond the end */
- static void nfs_grow_file(struct page *page, unsigned int offset, unsigned int count)
- {
--	struct inode *inode = page->mapping->host;
-+	struct inode *inode = page_file_mapping(page)->host;
- 	loff_t end, i_size;
- 	pgoff_t end_index;
- 
- 	spin_lock(&inode->i_lock);
- 	i_size = i_size_read(inode);
- 	end_index = (i_size - 1) >> PAGE_CACHE_SHIFT;
--	if (i_size > 0 && page->index < end_index)
-+	if (i_size > 0 && page_file_index(page) < end_index)
- 		goto out;
--	end = ((loff_t)page->index << PAGE_CACHE_SHIFT) + ((loff_t)offset+count);
-+	end = page_file_offset(page) + ((loff_t)offset+count);
- 	if (i_size >= end)
- 		goto out;
- 	i_size_write(inode, end);
-@@ -187,7 +187,7 @@ out:
- static void nfs_set_pageerror(struct page *page)
- {
- 	SetPageError(page);
--	nfs_zap_mapping(page->mapping->host, page->mapping);
-+	nfs_zap_mapping(page_file_mapping(page)->host, page_file_mapping(page));
- }
- 
- /* We can set the PG_uptodate flag if we see that a write request
-@@ -228,7 +228,7 @@ static int nfs_set_page_writeback(struct page *page)
- 	int ret = test_set_page_writeback(page);
- 
- 	if (!ret) {
--		struct inode *inode = page->mapping->host;
-+		struct inode *inode = page_file_mapping(page)->host;
- 		struct nfs_server *nfss = NFS_SERVER(inode);
- 
- 		if (atomic_long_inc_return(&nfss->writeback) >
-@@ -242,7 +242,7 @@ static int nfs_set_page_writeback(struct page *page)
- 
- static void nfs_end_page_writeback(struct page *page)
- {
--	struct inode *inode = page->mapping->host;
-+	struct inode *inode = page_file_mapping(page)->host;
- 	struct nfs_server *nfss = NFS_SERVER(inode);
- 
- 	end_page_writeback(page);
-@@ -252,7 +252,7 @@ static void nfs_end_page_writeback(struct page *page)
- 
- static struct nfs_page *nfs_find_and_lock_request(struct page *page, bool nonblock)
- {
--	struct inode *inode = page->mapping->host;
-+	struct inode *inode = page_file_mapping(page)->host;
- 	struct nfs_page *req;
- 	int ret;
- 
-@@ -313,13 +313,13 @@ out:
- 
- static int nfs_do_writepage(struct page *page, struct writeback_control *wbc, struct nfs_pageio_descriptor *pgio)
- {
--	struct inode *inode = page->mapping->host;
-+	struct inode *inode = page_file_mapping(page)->host;
- 	int ret;
- 
- 	nfs_inc_stats(inode, NFSIOS_VFSWRITEPAGE);
- 	nfs_add_stats(inode, NFSIOS_WRITEPAGES, 1);
- 
--	nfs_pageio_cond_complete(pgio, page->index);
-+	nfs_pageio_cond_complete(pgio, page_file_index(page));
- 	ret = nfs_page_async_flush(pgio, page, wbc->sync_mode == WB_SYNC_NONE);
- 	if (ret == -EAGAIN) {
- 		redirty_page_for_writepage(wbc, page);
-@@ -336,8 +336,8 @@ static int nfs_writepage_locked(struct page *page, struct writeback_control *wbc
- 	struct nfs_pageio_descriptor pgio;
- 	int err;
- 
--	nfs_pageio_init_write(&pgio, page->mapping->host, wb_priority(wbc),
--			      &nfs_async_write_completion_ops);
-+	nfs_pageio_init_write(&pgio, page_file_mapping(page)->host,
-+			      wb_priority(wbc), &nfs_async_write_completion_ops);
- 	err = nfs_do_writepage(page, wbc, &pgio);
- 	nfs_pageio_complete(&pgio);
- 	if (err < 0)
-@@ -470,7 +470,7 @@ nfs_request_add_commit_list(struct nfs_page *req, struct list_head *dst,
- 	spin_unlock(cinfo->lock);
- 	if (!cinfo->dreq) {
- 		inc_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
--		inc_bdi_stat(req->wb_page->mapping->backing_dev_info,
-+		inc_bdi_stat(page_file_mapping(req->wb_page)->backing_dev_info,
- 			     BDI_RECLAIMABLE);
- 		__mark_inode_dirty(req->wb_context->dentry->d_inode,
- 				   I_DIRTY_DATASYNC);
-@@ -537,7 +537,7 @@ static void
- nfs_clear_page_commit(struct page *page)
- {
- 	dec_zone_page_state(page, NR_UNSTABLE_NFS);
--	dec_bdi_stat(page->mapping->backing_dev_info, BDI_RECLAIMABLE);
-+	dec_bdi_stat(page_file_mapping(page)->backing_dev_info, BDI_RECLAIMABLE);
- }
- 
- static void
-@@ -788,7 +788,7 @@ out_err:
- static struct nfs_page * nfs_setup_write_request(struct nfs_open_context* ctx,
- 		struct page *page, unsigned int offset, unsigned int bytes)
- {
--	struct inode *inode = page->mapping->host;
-+	struct inode *inode = page_file_mapping(page)->host;
- 	struct nfs_page	*req;
- 
- 	req = nfs_try_to_update_request(inode, page, offset, bytes);
-@@ -841,7 +841,7 @@ int nfs_flush_incompatible(struct file *file, struct page *page)
- 		nfs_release_request(req);
- 		if (!do_flush)
- 			return 0;
--		status = nfs_wb_page(page->mapping->host, page);
-+		status = nfs_wb_page(page_file_mapping(page)->host, page);
- 	} while (status == 0);
- 	return status;
- }
-@@ -871,7 +871,7 @@ int nfs_updatepage(struct file *file, struct page *page,
- 		unsigned int offset, unsigned int count)
- {
- 	struct nfs_open_context *ctx = nfs_file_open_context(file);
--	struct inode	*inode = page->mapping->host;
-+	struct inode	*inode = page_file_mapping(page)->host;
- 	int		status = 0;
- 
- 	nfs_inc_stats(inode, NFSIOS_VFSUPDATEPAGE);
-@@ -879,7 +879,7 @@ int nfs_updatepage(struct file *file, struct page *page,
- 	dprintk("NFS:       nfs_updatepage(%s/%s %d@%lld)\n",
- 		file->f_path.dentry->d_parent->d_name.name,
- 		file->f_path.dentry->d_name.name, count,
--		(long long)(page_offset(page) + offset));
-+		(long long)(page_file_offset(page) + offset));
- 
- 	/* If we're not using byte range locks, and we know the page
- 	 * is up to date, it may be more efficient to extend the write
-@@ -1475,7 +1475,7 @@ void nfs_retry_commit(struct list_head *page_list,
- 		nfs_mark_request_commit(req, lseg, cinfo);
- 		if (!cinfo->dreq) {
- 			dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
--			dec_bdi_stat(req->wb_page->mapping->backing_dev_info,
-+			dec_bdi_stat(page_file_mapping(req->wb_page)->backing_dev_info,
- 				     BDI_RECLAIMABLE);
- 		}
- 		nfs_unlock_and_release_request(req);
--- 
-1.7.9.2
+> On 06/01/2012 08:19 PM, andros@netapp.com wrote:
+> 
+>> From: Andy Adamson <andros@netapp.com>
+>> 
+> 
+> 
+> I wish you would send your patches preceded with a [PATCHSET 0/x]
+> That gives us a short summery and a little background on its motivation.
+
+I often do. These patches actually stand alone so I didn't this time. 
+
+This patch is totally explained by the patch title, patch comments, and in-line comments. With out this patch, we can end up
+sending a LAYOUTRETURN with no layout segments that need to be returned! Why? because as noted in the patch comments, mark_matching_lsegs_invalid does not  indicate when the plh_segs list is empty…etc. When? well, as noted in the in-line code comments, when the pnfs_layout_hdr has an empty plh_segs which an occur when a LAYOUTGET fails, or when LAYOUTGET succeeded, but the deviceid is marked invalid
+
+What else is there to say?!
+
+I guess I can add the --cover-letter to the git format-patch and cut/paste to it.
+
+-->Andy
+
+> 
+> For example here, what are the problems you encounter, how did you test
+> it and so on...
+> 
+> Do these actually depend and/or fix your previous "send layout_return ..."
+> In files layout?
+> 
+> (You can still send all patches by git send-email command line just the same
+> just add a [PATCHSET 0/x]-xxx-yyy.txt and it will get sent first, right?)
+> 
+> Thanks
+> Boaz
+> 
+>> mark_matching_lsegs_invalid() does not indicate if the plh_segs list is
+>> empty on entrance - and it can be empty on exit.
+>> 
+>> When the plh_segs list is emtpy, mark_matching_lsegs_invalid removes
+>> the pnfs_layout_hdr creation reference.
+>> 
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>> fs/nfs/pnfs.c |   17 +++++++++++++++--
+>> 1 files changed, 15 insertions(+), 2 deletions(-)
+>> 
+>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>> index b8323aa..854df5e 100644
+>> --- a/fs/nfs/pnfs.c
+>> +++ b/fs/nfs/pnfs.c
+>> @@ -646,7 +646,14 @@ out_err_free:
+>> 	return NULL;
+>> }
+>> 
+>> -/* Initiates a LAYOUTRETURN(FILE) */
+>> +/*
+>> + * Initiates a LAYOUTRETURN(FILE), and removes the pnfs_layout_hdr
+>> + * when the layout segment list is empty.
+>> + *
+>> + * Note that a pnfs_layout_hdr can exist with an empty layout segment
+>> + * list when LAYOUTGET has failed, or when LAYOUTGET succeeded, but the
+>> + * deviceid is marked invalid.
+>> + */
+>> int
+>> _pnfs_return_layout(struct inode *ino)
+>> {
+>> @@ -655,7 +662,7 @@ _pnfs_return_layout(struct inode *ino)
+>> 	LIST_HEAD(tmp_list);
+>> 	struct nfs4_layoutreturn *lrp;
+>> 	nfs4_stateid stateid;
+>> -	int status = 0;
+>> +	int status = 0, empty = 0;
+>> 
+>> 	dprintk("--> %s\n", __func__);
+>> 
+>> @@ -669,11 +676,17 @@ _pnfs_return_layout(struct inode *ino)
+>> 	stateid = nfsi->layout->plh_stateid;
+>> 	/* Reference matched in nfs4_layoutreturn_release */
+>> 	get_layout_hdr(lo);
+>> +	empty = list_empty(&lo->plh_segs);
+>> 	mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
+>> 	lo->plh_block_lgets++;
+>> 	spin_unlock(&ino->i_lock);
+>> 	pnfs_free_lseg_list(&tmp_list);
+>> 
+>> +	if (empty) {
+>> +		put_layout_hdr(lo);
+>> +		dprintk("%s: no layout segments to return\n", __func__);
+>> +		return status;
+>> +	}
+>> 	WARN_ON(test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags));
+>> 
+>> 	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
+> 
+> 
 
