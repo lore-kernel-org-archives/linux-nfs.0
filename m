@@ -1,35 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:33136 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753022Ab2FTQej (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Jun 2012 12:34:39 -0400
-Received: by dady13 with SMTP id y13so10047385dad.19
-        for <linux-nfs@vger.kernel.org>; Wed, 20 Jun 2012 09:34:38 -0700 (PDT)
-Date: Wed, 20 Jun 2012 09:34:27 -0700
-From: Greg KH <gregkh@linuxfoundation.org>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: stable@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>
-Subject: Re: [PATCH 1/3] SUNRPC: new svc_bind() routine introduced
-Message-ID: <20120620163427.GA6695@kroah.com>
-References: <1340050049-12880-1-git-send-email-bfields@redhat.com>
- <1340050049-12880-2-git-send-email-bfields@redhat.com>
+Received: from mailout-de.gmx.net ([213.165.64.22]:46544 "HELO
+	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1754577Ab2FEJwN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jun 2012 05:52:13 -0400
+Cc: rees@umich.edu, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Date: Tue, 05 Jun 2012 11:52:10 +0200
+From: "Johannes Schild" <JSchild@gmx.de>
+In-Reply-To: <4FCDD45C.2080400@panasas.com>
+Message-ID: <20120605095210.318650@gmx.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1340050049-12880-2-git-send-email-bfields@redhat.com>
+References: <20120605090323.251620@gmx.net> <4FCDD45C.2080400@panasas.com>
+Subject: Re: Block-Layout
+To: Boaz Harrosh <bharrosh@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 18, 2012 at 04:07:27PM -0400, J. Bruce Fields wrote:
-> From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Yes i mean the server, sorry i forgot to mention it... ;/
+
+
+Best Regards
+
+Johannes
+
+-------- Original-Nachricht --------
+> Datum: Tue, 5 Jun 2012 12:41:48 +0300
+> Von: Boaz Harrosh <bharrosh@panasas.com>
+> An: Johannes Schild <JSchild@gmx.de>
+> CC: linux-nfs@vger.kernel.org, Jim Rees <rees@umich.edu>
+> Betreff: Re: Block-Layout
+
+> On 06/05/2012 12:03 PM, Johannes Schild wrote:
 > 
-> commit cd96891d48a945ca2011fbeceda73813d6286195 upstream.
+> > Hi Guys,
+> > 
+> > after i got the Object-Layout to work (Thanks to Boaz :D)
+> > My next goal to achieve is the Block-Layout.
+> > I know its deprecated, Boaz told me too, but i need it for my paper.
+> > Could someone tell me which was the last working kernel and sources
+> which works?
+> > 
+> 
+> 
+> You mean the Server right? The client is very much alive.
+> 
+> I'm not sure what was the last spnfsd-blocks that worked? Jim?
+> 
+> > I would be very grateful if someone has further tips/tricks or
+> documentation ;)
+> > 
+> > Thanks in advance
+> > 
+> > Best Regards
+> > Johannes
+> > 
+> 
+> 
+> Boaz
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Um, no, that's not what this commit id is at all.
-
-Where did you get that from?  I kind of don't trust this series now,
-care to fix these up with the correct git commit ids and resend them?
-
-thanks,
-
-greg k-h
+-- 
+Empfehlen Sie GMX DSL Ihren Freunden und Bekannten und wir
+belohnen Sie mit bis zu 50,- Euro! https://freundschaftswerbung.gmx.de
