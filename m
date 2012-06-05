@@ -1,59 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:45325 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932763Ab2F2S60 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jun 2012 14:58:26 -0400
-Received: by mail-gg0-f174.google.com with SMTP id u4so3043977ggl.19
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Jun 2012 11:58:26 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v3 13/17] vfs: make do_unlinkat retry on ESTALE errors
-Date: Fri, 29 Jun 2012 14:57:56 -0400
-Message-Id: <1340996280-27123-14-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
-References: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
+Received: from mail.parknet.co.jp ([210.171.160.6]:58271 "EHLO
+	mail.parknet.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754087Ab2FEQSz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jun 2012 12:18:55 -0400
+From: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+To: Konstantin Khlebnikov <khlebnikov@openvz.org>
+Cc: Ondrej Zary <linux@rainbow-software.org>, Hugh Dickins <hughd@google.com>,
+        Kernel development list <linux-kernel@vger.kernel.org>,
+        Dave Jones <davej@redhat.com>, Hans de Bruin <jmdebruin@xmsnet.nl>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Toralf =?iso-8859-1?Q?F=F6rster?= <toralf.foerster@gmx.de>,
+        richard -rw- weinberger <richard.weinberger@gmail.com>
+Subject: Re: [bisected commit 0fc9d10] NFS-server corruption with 3.4
+References: <201206051116.17711.linux@rainbow-software.org>
+	<4FCE0A83.4050502@openvz.org>
+	<201206051620.47925.linux@rainbow-software.org>
+	<4FCE1D17.1080904@openvz.org> <87zk8h23wn.fsf@devron.myhome.or.jp>
+	<4FCE2256.7010804@openvz.org> <4FCE2CCE.9000900@openvz.org>
+Date: Wed, 06 Jun 2012 01:18:50 +0900
+In-Reply-To: <4FCE2CCE.9000900@openvz.org> (Konstantin Khlebnikov's message of
+	"Tue, 05 Jun 2012 19:59:10 +0400")
+Message-ID: <87pq9d20lx.fsf@devron.myhome.or.jp>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c |   12 +++++++++++-
- 1 files changed, 11 insertions(+), 1 deletions(-)
+Konstantin Khlebnikov <khlebnikov@openvz.org> writes:
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 7fccc1c..7fadc99 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2955,8 +2955,14 @@ static long do_unlinkat(int dfd, const char __user *pathname)
- 	struct dentry *dentry;
- 	struct nameidata nd;
- 	struct inode *inode = NULL;
-+	unsigned int try = 0;
-+	unsigned int lookup_flags = LOOKUP_PARENT;
- 
--	error = user_path_parent(dfd, pathname, &nd, &name);
-+	name = getname(pathname);
-+	if (IS_ERR(name))
-+		return PTR_ERR(name);
-+retry:
-+	error = do_path_lookup(dfd, name, lookup_flags, &nd);
- 	if (error)
- 		return error;
- 
-@@ -2994,6 +3000,10 @@ exit3:
- 		iput(inode);	/* truncate the inode here */
- exit1:
- 	path_put(&nd.path);
-+	if (retry_estale(error, try++)) {
-+		lookup_flags |= LOOKUP_REVAL;
-+		goto retry;
-+	}
- 	putname(name);
- 	return error;
- 
+> Proper fix in attachment.
+
+Maybe, you are going to add the stable tag for next stable?
+
+Thanks.
+
+> radix-tree: fix contiguous iterator
+>
+> From: Konstantin Khlebnikov <khlebnikov@openvz.org>
+>
+> This patch fixes bug in macro radix_tree_for_each_contig().
+> If radix_tree_next_slot() sees NULL in next slot it returns NULL, but following
+> radix_tree_next_chunk() switches iterating into next chunk. As result iterating
+> becomes non-contiguous and breaks vfs "splice" and all its users.
+
 -- 
-1.7.7.6
-
+OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
