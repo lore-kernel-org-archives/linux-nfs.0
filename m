@@ -1,63 +1,172 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36899 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754595Ab2FNUCD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Jun 2012 16:02:03 -0400
-Date: Thu, 14 Jun 2012 16:02:01 -0400
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: nfsd bugfixes for 3.5
-Message-ID: <20120614200201.GA13186@fieldses.org>
+Received: from mail-wi0-f178.google.com ([209.85.212.178]:55419 "EHLO
+	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757752Ab2FENrv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jun 2012 09:47:51 -0400
+Received: by wibhn6 with SMTP id hn6so3957264wib.1
+        for <linux-nfs@vger.kernel.org>; Tue, 05 Jun 2012 06:47:50 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <1C92D18B-1977-4A12-A4DA-84DAC4B3E81E@netapp.com>
+References: <1338571178-2096-1-git-send-email-andros@netapp.com>
+	<1338571178-2096-2-git-send-email-andros@netapp.com>
+	<4FCA98E7.2030006@panasas.com>
+	<1C92D18B-1977-4A12-A4DA-84DAC4B3E81E@netapp.com>
+Date: Tue, 5 Jun 2012 09:47:50 -0400
+Message-ID: <CAHVgHyXKAB4CNQ5O6ezL9cw8Z0_f5rP4NtT-eSuNsuW0RtTXaw@mail.gmail.com>
+Subject: Re: [PATCH 2/3] NFSv4.1 mark layout when already returned
+From: Andy Adamson <androsadamson@gmail.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull two nfsd bugfixes from:
+On Tue, Jun 5, 2012 at 9:36 AM, Adamson, Andy
+<William.Adamson@netapp.com> wrote:
+>
+> On Jun 2, 2012, at 6:51 PM, Boaz Harrosh wrote:
+>
+>> On 06/01/2012 08:19 PM, andros@netapp.com wrote:
+>>
+>>> From: Andy Adamson <andros@netapp.com>
+>>>
+>>> When fencing, pnfs_return_layout can be called mulitple times with in-flight
+>>> i/o referencing lsegs on it's plh_segs list.
+>>>
+>>> Remember that LAYOUTRETURN has been called, and do not call it again.
+>>>
+>>
+>>
+>> NACK
+>>
+>> In objects-layout we must report all errors on layout_return. We
+>> accumulate them and report of all errors at once. So we need
+>> the return after all in flights are back. (And no new IOs are
+>> sent) Otherwise we might miss some.
+>
+> _pnfs_retrun_layout removes all layouts, and should therefore only be called once.
 
-  git://linux-nfs.org/~bfields/linux.git for-3.5
+To clarify: There is more work to be done here - the flag should be
+cleared once the plh_segs list is empty....
 
---b.
+I'll resend, and also fix the "wait for all in-flight" normal behavior.
 
-----------------------------------------------------------------
-J. Bruce Fields (1):
-      nfsd4: BUG_ON(!is_spin_locked()) no good on UP kernels
+Thanks for the comments
 
-Stanislav Kinsbursky (1):
-      NFS: hard-code init_net for NFS callback transports
+-->Andy
 
- fs/nfs/callback.c   |   11 +++++------
- fs/nfsd/nfs4state.c |    4 ++--
- 2 files changed, 7 insertions(+), 8 deletions(-)
-
-commit bc2df47a408f2d64cf81bcfd0f6e3e14c84cb0ab
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Tue Jun 12 08:28:48 2012 -0400
-
-    nfsd4: BUG_ON(!is_spin_locked()) no good on UP kernels
-    
-    Most frequent symptom was a BUG triggering in expire_client, with the
-    server locking up shortly thereafter.
-    
-    Introduced by 508dc6e110c6dbdc0bbe84298ccfe22de7538486 "nfsd41:
-    free_session/free_client must be called under the client_lock".
-    
-    Cc: stable@kernel.org
-    Cc: Benny Halevy <bhalevy@tonian.com>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-commit 12918b10d59e975fd5241eef03ef9e6d5ea3dcfe
-Author: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Date:   Fri Jun 1 13:55:47 2012 +0400
-
-    NFS: hard-code init_net for NFS callback transports
-    
-    In case of destroying mount namespace on child reaper exit, nsproxy is zeroed
-    to the point already. So, dereferencing of it is invalid.
-    This patch hard-code "init_net" for all network namespace references for NFS
-    callback services. This will be fixed with proper NFS callback
-    containerization.
-    
-    Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> I'll can add the 'wait for all in-flight' functionality, and we can switch behaviors (wait or not > wait).
+>
+>> Also the RFC mandates that we do not use any layout or have
+>> IOs in flight, once we return the layout.
+>
+>
+> You are referring to this piece of the spec?
+> Section 18.44.3
+>
+>  After this call,
+>   the client MUST NOT use the returned layout(s) and the associated
+>   storage protocol to access the file data.
+>
+>
+> The above says that  the client MUST NOT send any _new_ i/o using the layout.  I don't see any reference to in-flight i/o, nor should there be in the error case. I get a connection error. Did the i/o's I sent get to the data server?  The reason to send a LAYOUTRETURN without waiting for all the in-flights to return with a connection error is precisely to fence any in-flight i/o because I'm resending through the MDS.
+>
+>
+>>
+>> I was under the impression that only when the last reference
+>> on a layout is dropped only then we send the lo_return.
+>
+>> If it is not so, this is the proper fix.
+>
+>>
+>> 1. Mark LO invalid so all new IO waits or goes to MDS
+>> 3. When LO ref drops to Zero send the lo_return.
+>
+> Yes for the normal case (evict inode for the file layout), but not if I'm in an error situation and I want to fence the DS from in-flight i/o.
+>
+>> 4. After LAYOUTRETURN_DONE is back, re-enable layouts.
+>> I'm so sorry it is not so today. I should have tested for
+>> this. I admit that all my error injection tests are
+>> single-file single thread so I did not test for this.
+>>
+>> Sigh, work never ends. Tell me if I can help with this
+>
+> I'll add the wait/no-wait…
+>
+> -->Andy
+>
+>> Boaz
+>>
+>>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>>> ---
+>>> fs/nfs/pnfs.c |    6 ++++--
+>>> fs/nfs/pnfs.h |   13 +++++++++++++
+>>> 2 files changed, 17 insertions(+), 2 deletions(-)
+>>>
+>>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>>> index 854df5e..9ffd5f8 100644
+>>> --- a/fs/nfs/pnfs.c
+>>> +++ b/fs/nfs/pnfs.c
+>>> @@ -664,11 +664,11 @@ _pnfs_return_layout(struct inode *ino)
+>>>      nfs4_stateid stateid;
+>>>      int status = 0, empty = 0;
+>>>
+>>> -    dprintk("--> %s\n", __func__);
+>>> +    dprintk("--> %s for inode %lu\n", __func__, ino->i_ino);
+>>>
+>>>      spin_lock(&ino->i_lock);
+>>>      lo = nfsi->layout;
+>>> -    if (!lo) {
+>>> +    if (!lo || pnfs_test_layout_returned(lo)) {
+>>>              spin_unlock(&ino->i_lock);
+>>>              dprintk("%s: no layout to return\n", __func__);
+>>>              return status;
+>>> @@ -705,6 +705,8 @@ _pnfs_return_layout(struct inode *ino)
+>>>      lrp->clp = NFS_SERVER(ino)->nfs_client;
+>>>
+>>>      status = nfs4_proc_layoutreturn(lrp);
+>>> +    if (status == 0)
+>>> +            pnfs_mark_layout_returned(lo);
+>>> out:
+>>>      dprintk("<-- %s status: %d\n", __func__, status);
+>>>      return status;
+>>> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+>>> index 29fd23c..8be6de2 100644
+>>> --- a/fs/nfs/pnfs.h
+>>> +++ b/fs/nfs/pnfs.h
+>>> @@ -64,6 +64,7 @@ enum {
+>>>      NFS_LAYOUT_ROC,                 /* some lseg had roc bit set */
+>>>      NFS_LAYOUT_DESTROYED,           /* no new use of layout allowed */
+>>>      NFS_LAYOUT_INVALID,             /* layout is being destroyed */
+>>> +    NFS_LAYOUT_RETURNED,            /* layout has already been returned */
+>>> };
+>>>
+>>> enum layoutdriver_policy_flags {
+>>> @@ -255,6 +256,18 @@ struct nfs4_deviceid_node *nfs4_insert_deviceid_node(struct nfs4_deviceid_node *
+>>> bool nfs4_put_deviceid_node(struct nfs4_deviceid_node *);
+>>> void nfs4_deviceid_purge_client(const struct nfs_client *);
+>>>
+>>> +static inline void
+>>> +pnfs_mark_layout_returned(struct pnfs_layout_hdr *lo)
+>>> +{
+>>> +    set_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
+>>> +}
+>>> +
+>>> +static inline bool
+>>> +pnfs_test_layout_returned(struct pnfs_layout_hdr *lo)
+>>> +{
+>>> +    return test_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
+>>> +}
+>>> +
+>>> static inline int lo_fail_bit(u32 iomode)
+>>> {
+>>>      return iomode == IOMODE_RW ?
+>>
+>>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
