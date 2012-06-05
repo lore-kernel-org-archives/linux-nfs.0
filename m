@@ -1,164 +1,174 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from hop-nat-141.emc.com ([168.159.213.141]:42783 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750838Ab2FKTXd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jun 2012 15:23:33 -0400
-From: <david.noveck@emc.com>
-To: <bharrosh@panasas.com>, <androsadamson@gmail.com>
-CC: <andros@netapp.com>, <linux-nfs@vger.kernel.org>,
-        <Trond.Myklebust@netapp.com>, <nfsv4@ietf.org>
-Date: Mon, 11 Jun 2012 15:02:57 -0400
-Subject: RE: [nfsv4] RFC 5661 LAYOUTRETURN clarification.
-Message-ID: <5DEA8DB993B81040A21CF3CB332489F601BF59C653@MX31A.corp.emc.com>
-References: <CAHVgHyUpM0rQWqO5-id+FohPKm1Lk=kkekf7HqzpfKcfvxx23A@mail.gmail.com>
- <4FD63BAF.8040107@panasas.com>
-In-Reply-To: <4FD63BAF.8040107@panasas.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mx2.netapp.com ([216.240.18.37]:11329 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752224Ab2FEUrF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Jun 2012 16:47:05 -0400
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfsd: add fault injection for CB_PATH_DOWN
+Date: Tue, 5 Jun 2012 20:47:03 +0000
+Message-ID: <E2A350B8-2A19-460B-AA2F-67A75EECC4A9@netapp.com>
+References: <1337888537-21754-1-git-send-email-dros@netapp.com>
+ <20120605201909.GA27061@fieldses.org>
+In-Reply-To: <20120605201909.GA27061@fieldses.org>
+Content-Type: multipart/signed;
+	boundary="Apple-Mail=_6D262429-06D0-47B4-BD6C-A779F130856B";
+	protocol="application/pkcs7-signature"; micalg=sha1
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> And again, please explain why do you want it. What is wrong with the
-> case we all agree with? ie: "Client can not call LAYOUTRETURN until
-> all in-flight RPCs return, with or without an error"
-
-It's a recipe for data corruption.  If, as Andy explained, he starts doing
-IO's (let's suppose WRITEs) to the MDS any lingering WRITEs to the DS
-since they reflect an earlier state of affairs can cause data corruption.
-
-There are three ways to prevent those lingering DS writes from corrupting 
-data:
-
-1) Doing a LAYOUTRETURN
-2) waiting until the IO's return.
-3) "magically plugging the network interface".
+--Apple-Mail=_6D262429-06D0-47B4-BD6C-A779F130856B
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
 
-Since there is no way to do 3), saying that you only can do 1) until after
-2) is done is essentially going to mean:
+On Jun 5, 2012, at 4:19 PM, J. Bruce Fields wrote:
 
-a) that it may take a very long time:
-b) that you will only do it, when it is no longer useful.
+> On Thu, May 24, 2012 at 03:42:16PM -0400, Weston Andros Adamson wrote:
+>> This fault injection hook causes all SEQUENCE operation replies to =
+have the
+>> SEQ4_STATUS_CB_PATH_DOWN flag set until the client calls =
+BIND_CONN_TO_SESSION
+>> or creates a new session.
+>=20
+> I'm not necessarily opposed, but why do you need this?  In what
+> "real-life" situation could a client see the CB_PATH_DOWN flag
+> unexpectedly set?
 
-If you do 1) asap, then the lingering DS write problem is gone sooner,
-and that's a good thing. 
+We need this to test the client's handling of the =
+SEQ4_STATUS_CB_PATH_DOWN flag :)
 
------Original Message-----
-From: nfsv4-bounces@ietf.org [mailto:nfsv4-bounces@ietf.org] On Behalf Of Boaz Harrosh
-Sent: Monday, June 11, 2012 2:41 PM
-To: Andy Adamson
-Cc: Andy Adamson; NFS list; Trond Myklebust; NFSv4
-Subject: Re: [nfsv4] RFC 5661 LAYOUTRETURN clarification.
+Real world scenarios are hard to come by at this point since the linux =
+client always uses one TCP connection (for both fore and back channel), =
+but handling this error condition should be useful for future work =
+(session trunking, if the client ever uses a different connection for =
+back channel).
+Also, if nfsd's probe callback fails for whatever reason the =
+CB_PATH_DOWN flag will be set.
 
-On 06/11/2012 07:01 PM, Andy Adamson wrote:
+Really, we want the client to be able to handle this error condition and =
+this was the easiest way to test it.
 
-> I'm coding file layout data server recovery for the Linux NFS client,
-> and came across an issue with LAYOUTRETURN that
-> could use some comment from the list.
-> 
-> The error case I'm handling is an RPC layer dis-connection error
-> during heavy WRITE i/o to a file layout data server. Our response is
-> to internally mark the deviceid as invalid which prevents all pNFS
-> calls using the deviceid - e.g. no new I/O using any layout that uses
-> the invalid deviceid, and to redirect all I/O to the MDS (any queued
-> RPC request that has not been sent is redirected to the MDS).
-> 
-> Plus - and here is where the clarification is needed - we immediately
-> send a LAYOUTRETURN for any layout with in-flight requests to the
-> dis-connected data server.  By in-flight I mean transmitted WRT the
-> RPC layer.  The purpose of this LAYOUTRETURN is to notify the file
-> layout MDS to fence the DS for the specified LAYOUTs, as the WRITEs
-> will also be sent to the MDS.
-> 
+-dros
 
-
-I do not disagree with this completely. The point here is very fine
-grained and should be specified explicitly. I would like to see text
-as of something like.
-
-There are 3 types of in-flght RPC/IO
-1. Client has sent RPC header + all of associated data and is waiting
-   for DS WRITE/READ_DONE reply.
-
-   (For me this case can be, client may return LAYOUTRETURN as your
-    suggestion)
-
-2. Client has sent the RPC header but has got stuck sending the rest
-   of the RPC message. Then received a network disconnect. This is the
-   most common part. Putting aside the RPC that got the error for a second.
-   The most important is what to do with parallel RPC/IO which are in this
-   state. Are parallel RPCs allowed to continue sending network packets
-   after the LAYOUTRETURN was sent?
-
-   The specific RPC that got stuck is not interesting because it's kind of
-   1.5, We are not going to send any bytes on that channel. The interesting
-   is these other DSs which are still streaming
-
-3. Client has some internal RPC queue which do to some client parallelism
-   will start sending RPC header + data after the LAYOUTRETURN was sent
-   
-What my point was that with the code you submitted we are clearly violating
-2. and even 3. Because I do not see anything avoiding this.
-
-And if the STD allows you 2 and 3. Then that's a big change to the concept.
-Not like you let it seem.
-
-> I contend that sending the LAYOUTRETURN in this error case does not
-> violate the two sections of RFC 5661 below, as the client has stopped
-> sending any I/O requests using the returned layout.
-> 
-
-
-I would not mind if this was true. That is if the LAYOUTRETURN was
-a very clear barrier where our client would "magically" completely
-plug the network interface and will not continue to send a single
-byte on the wire to *any* DS involved with the layout. That's fine.
-
-That is only allow sate 1 and 1.5 RPCs above. Some/all bytes where
-presented on the wire, until the LAYOUTRETURN, from which point all
-RPCs are hard aborted and not a single byte is sent.
-
-
-> Others contend that since the in-flight RPCs reference the returned
-> layout, the client is still 'using' the layout with these in-flight
-> requests, and can not call LAYOUTRETURN until all in-flight RPCs
-> return, with or without an error.
-> 
-
-
-With our client code I don't see how the guaranty of 2 and 3 above
-will happen without actually implementing this here.
-
-So in principal I agree with your principle, I only do not agree
-with your practice. In your new code you are violating 2 and 3
-which are not to be allowed.
-
-And again, please explain why do you want it. What is wrong with the
-case we all agree with? ie: "Client can not call LAYOUTRETURN until
-all in-flight RPCs return, with or without an error"
-
-Thanks
-Boaz
-
-> 
-> Section 18.44.3 - the description section of the LAYOUTRETURN operation:
-> 
->    After this call,
->    the client MUST NOT use the returned layout(s) and the associated
->    storage protocol to access the file data.
-> 
-> Section 13.6 Operations Sent to NFSv4.1 Data Servers
-> 
->   As described in Section 12.5.1, a client
->   MUST NOT send an I/O to a data server for which it does not hold a
->   valid layout; the data server MUST reject such an I/O.
-> 
-> 
-> -->Andy
+>=20
+> --b.
+>=20
+>>=20
+>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>> ---
+>> fs/nfsd/fault_inject.c |    4 ++++
+>> fs/nfsd/fault_inject.h |    2 ++
+>> fs/nfsd/nfs4state.c    |   20 ++++++++++++++++++++
+>> 3 files changed, 26 insertions(+), 0 deletions(-)
+>>=20
+>> diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+>> index e6c3815..ab81144 100644
+>> --- a/fs/nfsd/fault_inject.c
+>> +++ b/fs/nfsd/fault_inject.c
+>> @@ -38,6 +38,10 @@ static struct nfsd_fault_inject_op inject_ops[] =3D =
+{
+>> 		.file   =3D "recall_delegations",
+>> 		.func   =3D nfsd_recall_delegations,
+>> 	},
+>> +	{
+>> +		.file   =3D "kill_backchannel",
+>> +		.func   =3D nfsd_kill_backchannel,
+>> +	},
+>> };
+>>=20
+>> static long int NUM_INJECT_OPS =3D sizeof(inject_ops) / sizeof(struct =
+nfsd_fault_inject_op);
+>> diff --git a/fs/nfsd/fault_inject.h b/fs/nfsd/fault_inject.h
+>> index 90bd057..b058e03 100644
+>> --- a/fs/nfsd/fault_inject.h
+>> +++ b/fs/nfsd/fault_inject.h
+>> @@ -15,6 +15,7 @@ void nfsd_forget_locks(u64);
+>> void nfsd_forget_openowners(u64);
+>> void nfsd_forget_delegations(u64);
+>> void nfsd_recall_delegations(u64);
+>> +void nfsd_kill_backchannel(u64);
+>> #else /* CONFIG_NFSD_FAULT_INJECTION */
+>> static inline int nfsd_fault_inject_init(void) { return 0; }
+>> static inline void nfsd_fault_inject_cleanup(void) {}
+>> @@ -23,6 +24,7 @@ static inline void nfsd_forget_locks(u64 num) {}
+>> static inline void nfsd_forget_openowners(u64 num) {}
+>> static inline void nfsd_forget_delegations(u64 num) {}
+>> static inline void nfsd_recall_delegations(u64 num) {}
+>> +static inline void nfsd_kill_backchannel(u64 num) {}
+>> #endif /* CONFIG_NFSD_FAULT_INJECTION */
+>>=20
+>> #endif /* LINUX_NFSD_FAULT_INJECT_H */
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 21266c7..9afc902 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -4737,6 +4737,26 @@ void nfsd_recall_delegations(u64 num)
+>> 	printk(KERN_INFO "NFSD: Recalled %d delegations", count);
+>> }
+>>=20
+>> +/*
+>> + * Force SEQUENCE operations to have SEQ4_STATUS_CB_PATH_DOWN flag =
+set
+>> + * until backchannel is reestablished by BIND_CONN_TO_SESSION or
+>> + * DESTROY_SESSION/CREATE_SESSION with SP4_NONE.
+>> + *
+>> + * The argument 'num' is ignored, any value will trigger the fault =
+on
+>> + * all clients.
+>> + */
+>> +void nfsd_kill_backchannel(u64 num)
+>> +{
+>> +	struct nfs4_client *clp, *next;
+>> +
+>> +	nfs4_lock_state();
+>> +	list_for_each_entry_safe(clp, next, &client_lru, cl_lru) {
+>> +		clp->cl_cb_state =3D NFSD4_CB_DOWN;
+>> +	}
+>> +	nfs4_unlock_state();
+>> +
+>> +	printk(KERN_INFO "NFSD: killed backchannel");
+>> +}
+>> #endif /* CONFIG_NFSD_FAULT_INJECTION */
+>>=20
+>> /* initialization to perform at module load time: */
+>> --=20
+>> 1.7.4.4
+>>=20
 
 
-_______________________________________________
-nfsv4 mailing list
-nfsv4@ietf.org
-https://www.ietf.org/mailman/listinfo/nfsv4
+--Apple-Mail=_6D262429-06D0-47B4-BD6C-A779F130856B
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Type: application/pkcs7-signature; name="smime.p7s"
+Content-Transfer-Encoding: base64
 
+MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIDTzCCA0sw
+ggIzoAMCAQICAQEwCwYJKoZIhvcNAQEFMEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYD
+VQQGEwJVUzEeMBwGCSqGSIb3DQEJARYPZHJvc0BuZXRhcHAuY29tMB4XDTExMDYwODIyMDc0NloX
+DTEyMDYwNzIyMDc0NlowRjEXMBUGA1UEAwwOV2VzdG9uIEFkYW1zb24xCzAJBgNVBAYTAlVTMR4w
+HAYJKoZIhvcNAQkBFg9kcm9zQG5ldGFwcC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
+AoIBAQC8/tJxtovJEXYRfSsrFOWKHxIZGY7/2mBee1DpWuoGDbVNapefCC7WXe+Nqxz609w2J/Mk
+/k3trZ3Ge2NXK0tGnP9NzjkzpGA7rSpM3wUFsvbLMUEGfQpvV24/nYvcLHTvOOEUaDPpHduN94bD
+dwvyowzDIRIpF2MeRnOzBNeHkrGHlZdzPmGjm8tkhrDRRkDYHhlxaiG4z30KCfAazxomuINiy1kj
+vbndXooYMDoh9H63hgW4NkOedtLdflLa322DXQ3nFU7YbyOIjHVl1tgWJLDWf7WT3lsAB8KvuJZ5
+zhsUB+fqxCKPJVRPDO1gjChvvtGiG1tGUUZz0H9Wx00zAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIH
+gDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDBDAaBgNVHREEEzARgQ9kcm9zQG5ldGFwcC5jb20wDQYJ
+KoZIhvcNAQEFBQADggEBACv0niZSmW+psB1sJXULh3mecDbN2mj0bFpN1YNdjcV7BiOLJ1Rs1ibV
+f13h73z8C7SBsPXTM5si8gmJtOnXM5jsgtlql44h/RrjUr8+mtK5DPCZls9J7iz3cGthzwOPvxUj
+nMSv3BpRX5oJom5ESgCM9Nn4u/ECTlLMhEIOYnBFiN0eDxcxz+r1cpbHg3r0otIKyxLpeaCjP6AH
+F93EHp4T8Rb63y3CcDgxrQGHlTdVi3QvxaMUexUXD81fiA+UqsB/MKmRxB1Hs4Vf3Q/+ejcm78K1
+ROF8TNPmNWRlKg3Y7cSFjZGzLuzXsvSsCbw4HLn0oZe/OfgSbarTAxttL5IxggHRMIIBzQIBATBL
+MEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYDVQQGEwJVUzEeMBwGCSqGSIb3DQEJARYP
+ZHJvc0BuZXRhcHAuY29tAgEBMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
+MBwGCSqGSIb3DQEJBTEPFw0xMjA2MDUyMDQ3MDZaMCMGCSqGSIb3DQEJBDEWBBQY2T+TeBzN8x69
+OEgbfbweTtSWYzANBgkqhkiG9w0BAQEFAASCAQBGYsQ8Kh0h1zRNOQJqhaigGxRr4kFR/fvv+Yvw
+X0wdgyebrKx63LKiQgGYgWGMTA8whMkRnpWCk7LQ7LPhXg9YAYtjv+7z0dmt65dEYUvUZEyHddP6
+g/HVPsaTAtYhy3NvyRXwN1Xqiwz6qPWUnhN8n7xg+Nc0Y04023p74FYCELNmxC1MJSpA0QIe1iLl
+BFtWW1yYTV9Z92rTJ406GFwiUUPtZD4tBIJbMORwFbsh2akh3YynXMJ4QJmNicfR0oEBYafw1T7m
+hqrz2sfvVkh7MHfvEDnZjlPz62SyJ+x7QFRPJk+n4zsQicmaQqNETzP/E4RdJa4OgDLHTUgyyh+j
+AAAAAAAA
+
+--Apple-Mail=_6D262429-06D0-47B4-BD6C-A779F130856B--
