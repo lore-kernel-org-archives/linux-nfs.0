@@ -1,62 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 8bytes.org ([85.214.48.195]:57633 "EHLO
-	h2027444.stratoserver.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761031Ab2FHQAe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jun 2012 12:00:34 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by h2027444.stratoserver.net (Postfix) with SMTP id 13D6712B08E
-	for <linux-nfs@vger.kernel.org>; Fri,  8 Jun 2012 18:00:32 +0200 (CEST)
-Date: Fri, 8 Jun 2012 18:00:31 +0200
-From: Joerg Roedel <joro@8bytes.org>
-To: bjschuma@netapp.com
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFS: Use the NFS_DEFAULT_VERSION for v2 and v3 mounts
-Message-ID: <20120608160031.GY12795@8bytes.org>
-References: <1339169576-27307-1-git-send-email-bjschuma@netapp.com>
+Received: from aa.linuxbox.com ([134.215.213.37]:4827 "EHLO aa.linuxbox.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752678Ab2FEVCm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Jun 2012 17:02:42 -0400
+Date: Tue, 5 Jun 2012 16:56:23 -0400 (EDT)
+From: "Matt W. Benjamin" <matt@linuxbox.com>
+To: Dros Adamson <Weston.Adamson@netapp.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Message-ID: <924570278.247.1338929783288.JavaMail.root@thunderbeast.private.linuxbox.com>
+In-Reply-To: <547166089.245.1338929508008.JavaMail.root@thunderbeast.private.linuxbox.com>
+Subject: Re: [PATCH 1/2] nfsd: add fault injection for CB_PATH_DOWN
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1339169576-27307-1-git-send-email-bjschuma@netapp.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 08, 2012 at 11:32:56AM -0400, bjschuma@netapp.com wrote:
-> From: Bryan Schumaker <bjschuma@netapp.com>
+That rings a bell...
+
+----- "Dros Adamson" <Weston.Adamson@netapp.com> wrote:
 > 
-> Older versions of nfs utils don't always pass a "vers=" mount option for
-> NFS.  This chould lead to attempts at using NFS v0 due to a zeroed out
-> nfs_parsed_mount_data struct.  I solve this by setting the default NFS
-> version to NFS_DEFAULT_VERSION in the v2 and v3 cases (v4 has already been
-> taken care of by a similar patch).
-> 
-> Reported-by: Joerg Roedel <joro@&bytes.org>
-
-8bytes.org
-
-> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-> ---
->  fs/nfs/super.c |    1 +
->  1 file changed, 1 insertion(+)
-> 
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index ff656c0..97a3b30 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -1867,6 +1867,7 @@ static int nfs23_validate_mount_data(void *options,
->  	if (data == NULL)
->  		goto out_no_data;
->  
-> +	args->version = NFS_DEFAULT_VERSION;
->  	switch (data->version) {
->  	case 1:
->  		data->namlen = 0;
-
-Hmm, I still think that the revert-patch is a better solution. The
-data-structure is allocated and initialized in
-nfs_alloc_parsed_mount_data() so this function is the logical place to
-also initialize the version-field with a meaningful value.
-
-Regards,
-
-	Joerg
+>  but handling this error condition should be useful for
+> future work (session trunking, if the client ever uses a different
+> connection for back channel).
 
 
+
+-- 
+Matt Benjamin
+The Linux Box
+206 South Fifth Ave. Suite 150
+Ann Arbor, MI  48104
+
+http://linuxbox.com
+
+tel. 734-761-4689
+fax. 734-769-8938
+cel. 734-216-5309
