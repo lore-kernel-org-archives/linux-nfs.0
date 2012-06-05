@@ -1,96 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36688 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754452Ab2FKPPT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Jun 2012 11:15:19 -0400
-Date: Mon, 11 Jun 2012 11:15:11 -0400
-From: bfields <bfields@fieldses.org>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Jeff Layton <jlayton@redhat.com>, Steve Dickson <steved@redhat.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Joerg Platte <jplatte@naasa.net>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Hans de Bruin <jmdebruin@xmsnet.nl>
-Subject: Re: Kernel 3.4.X NFS server regression
-Message-ID: <20120611151511.GH7654@fieldses.org>
-References: <4FD47D4E.9070307@naasa.net>
- <1339340441.4751.1.camel@lade.trondhjem.org>
- <20120611121634.GB7654@fieldses.org>
- <20120611083932.24e27e39@corrin.poochiereds.net>
- <4FD5F35A.3000903@panasas.com>
- <4FD5F629.1070508@panasas.com>
- <20120611102947.229cf077@corrin.poochiereds.net>
- <4FD60839.3000508@panasas.com>
+Received: from natasha.panasas.com ([67.152.220.90]:46083 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751037Ab2FEPBm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jun 2012 11:01:42 -0400
+Message-ID: <4FCE1F47.7090303@panasas.com>
+Date: Tue, 5 Jun 2012 18:01:27 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FD60839.3000508@panasas.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/3] NFSv4.1 do not call LAYOUTRETURN when there are no
+ legs
+References: <1338571178-2096-1-git-send-email-andros@netapp.com> <4FCA9B0E.5070304@panasas.com> <AAE6059A-E7A5-4377-A68A-AC6CB90C1666@netapp.com>
+In-Reply-To: <AAE6059A-E7A5-4377-A68A-AC6CB90C1666@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 11, 2012 at 06:01:13PM +0300, Boaz Harrosh wrote:
-> On 06/11/2012 05:29 PM, Jeff Layton wrote:
-> 
-> > On Mon, 11 Jun 2012 16:44:09 +0300
-> > Boaz Harrosh <bharrosh@panasas.com> wrote:
-> > 
-> >> On 06/11/2012 04:32 PM, Boaz Harrosh wrote:
-> >>
-> >>> On 06/11/2012 03:39 PM, Jeff Layton wrote:
-> >>>
-> >>>>>
-> >>>>> But I'm guessing we were wrong to assume that existing setups that
-> >>>>> people perceived as working would have that path, because the failures
-> >>>>> in the absence of that path were probably less obvious.
-> >>>>>
-> >>
-> >>
-> >> One more thing, the most important one. We have already fixed that in the
-> >> past and I was hoping the lesson was learned. Apparently it was not, and
-> >> we are doomed to do this mistake for ever!!
-> >>
-> >> What ever crap fails times out and crashes, in the recovery code, we don't
-> >> give a dam. It should never affect any Server-client communication.
-> >>
-> >> When the grace periods ends the clients gates opens period. *Any* error
-> >> return from state recovery code must be carefully ignored and normal
-> >> operations resumed. At most on error, we move into a mode where any
-> >> recovery request from client is accepted, since we don't have any better
-> >> data to verify it.
-> >>
-> >> Please comb recovery code to make sure any catastrophe is safely ignored.
-> >> We already did that before and it used to work.
-> >>
-> > 
-> > That's not the case, and hasn't ever been AFAICT. The code has changed
-> > a bit recently, but the existing behavior in this regard was preserved.
-> > From nfs4_check_open_reclaim:
-> > 
-> >         return nfsd4_client_record_check(clp) ? nfserr_reclaim_bad : nfs_ok;
-> > 
-> > ...if there is no client record, then the reclaim request fails. Doesn't
-> > the RFC mandate that?
-> > 
-> 
-> 
-> Regardless of what RFC mandates and what is returned to client, (Which sounds
-> very unrobust to me) I'm sure the client handles nfserr_reclaim_bad just
-> fine.
-> 
-> It's the server that's getting stuck in its own feet and stops responding.
-> That's what I meant. We should always resume normal operations after
-> the grace period ends.
-> 
-> I did not see any reports of client getting into trouble because of
-> unexpected nfserr_reclaim_bad, did you?
+On 06/05/2012 04:36 PM, Adamson, Andy wrote:
 
-We did have a few bugs in that area, and as far as I know they're fixed
-(and have stayed fixed!).
+> 
+> On Jun 2, 2012, at 7:00 PM, Boaz Harrosh wrote:
+> 
+>> On 06/01/2012 08:19 PM, andros@netapp.com wrote:
+>>
+>>> From: Andy Adamson <andros@netapp.com>
+>>>
+>>
+>>
+>> I wish you would send your patches preceded with a [PATCHSET 0/x]
+>> That gives us a short summery and a little background on its motivation.
+> 
 
-The one other thing we've seen at testing events is clients not sending
-reclaim_complete: not only is it mandatory (with state to reclaim or
-not), it's actually mandatory for servers to fail further operations
-until it's sent.  However the problems were all seen with unreleased
-client code that the implementors said they'd fix.
+> I often do. These patches actually stand alone so I didn't this
+> time.
+> 
+> This patch is totally explained by the patch title, patch comments,
+> and in-line comments. With out this patch, we can end up sending a
+> LAYOUTRETURN with no layout segments that need to be returned! Why?
+> because as noted in the patch comments, mark_matching_lsegs_invalid
+> does not indicate when the plh_segs list is empty…etc. When? well, as
+> noted in the in-line code comments, when the pnfs_layout_hdr has an
+> empty plh_segs which an occur when a LAYOUTGET fails, or when
+> LAYOUTGET succeeded, but the deviceid is marked invalid
+> 
 
---b.
+
+Yes I noticed that the comment was very good. The in-code comment does
+not replace the commit title/message. I would prefer it repeated also
+in the patch text and/or in the cover-letter. Just to ease on the threshold
+to entry.
+
+> What else is there to say?!
+> 
+> I guess I can add the --cover-letter to the git format-patch and
+> cut/paste to it.
+> 
+
+
+I'm not sure what you meant. But yes exactly ;-)
+
+> -->Andy
+> 
+>>
+
+
+Thanks
+Boaz
