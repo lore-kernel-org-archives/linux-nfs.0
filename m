@@ -1,312 +1,120 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:45693 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:36891 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932291Ab2F2Nde (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Jun 2012 09:33:34 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>,
-        Sebastian Andrzej Siewior <sebastian@breakpoint.cc>,
-        Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 05/12] mm: swap: Implement generic handler for swap_activate
-Date: Fri, 29 Jun 2012 14:33:18 +0100
-Message-Id: <1340976805-5799-6-git-send-email-mgorman@suse.de>
-In-Reply-To: <1340976805-5799-1-git-send-email-mgorman@suse.de>
-References: <1340976805-5799-1-git-send-email-mgorman@suse.de>
+	id S1751239Ab2FEUla (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Jun 2012 16:41:30 -0400
+Date: Tue, 5 Jun 2012 16:41:28 -0400
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFSD: TEST_STATEID should not return
+ NFS4ERR_STALE_STATEID
+Message-ID: <20120605204128.GC27061@fieldses.org>
+References: <20120529175556.4472.63375.stgit@lebasque.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120529175556.4472.63375.stgit@lebasque.1015granger.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The version of swap_activate introduced is sufficient for swap-over-NFS
-but would not provide enough information to implement a generic handler.
-This patch shuffles things slightly to ensure the same information is
-available for aops->swap_activate() as is available to the core.
+Thanks, applying for 3.6.
 
-No functionality change.
+--b.
 
-Signed-off-by: Mel Gorman <mgorman@suse.de>
-Acked-by: Rik van Riel <riel@redhat.com>
----
- include/linux/fs.h   |    6 ++--
- include/linux/swap.h |    5 +++
- mm/page_io.c         |   92 ++++++++++++++++++++++++++++++++++++++++++++++++++
- mm/swapfile.c        |   91 +++----------------------------------------------
- 4 files changed, 106 insertions(+), 88 deletions(-)
-
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 2a6396b..006aa85 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -427,6 +427,7 @@ struct kstatfs;
- struct vm_area_struct;
- struct vfsmount;
- struct cred;
-+struct swap_info_struct;
- 
- extern void __init inode_init(void);
- extern void __init inode_init_early(void);
-@@ -640,8 +641,9 @@ struct address_space_operations {
- 	int (*error_remove_page)(struct address_space *, struct page *);
- 
- 	/* swapfile support */
--	int (*swap_activate)(struct file *file);
--	int (*swap_deactivate)(struct file *file);
-+	int (*swap_activate)(struct swap_info_struct *sis, struct file *file,
-+				sector_t *span);
-+	void (*swap_deactivate)(struct file *file);
- };
- 
- extern const struct address_space_operations empty_aops;
-diff --git a/include/linux/swap.h b/include/linux/swap.h
-index b236bc4..57f4858 100644
---- a/include/linux/swap.h
-+++ b/include/linux/swap.h
-@@ -324,6 +324,11 @@ extern int swap_writepage(struct page *page, struct writeback_control *wbc);
- extern int swap_set_page_dirty(struct page *page);
- extern void end_swap_bio_read(struct bio *bio, int err);
- 
-+int add_swap_extent(struct swap_info_struct *sis, unsigned long start_page,
-+		unsigned long nr_pages, sector_t start_block);
-+int generic_swapfile_activate(struct swap_info_struct *, struct file *,
-+		sector_t *);
-+
- /* linux/mm/swap_state.c */
- extern struct address_space swapper_space;
- #define total_swapcache_pages  swapper_space.nrpages
-diff --git a/mm/page_io.c b/mm/page_io.c
-index 307a3e7..4a37962 100644
---- a/mm/page_io.c
-+++ b/mm/page_io.c
-@@ -87,6 +87,98 @@ void end_swap_bio_read(struct bio *bio, int err)
- 	bio_put(bio);
- }
- 
-+int generic_swapfile_activate(struct swap_info_struct *sis,
-+				struct file *swap_file,
-+				sector_t *span)
-+{
-+	struct address_space *mapping = swap_file->f_mapping;
-+	struct inode *inode = mapping->host;
-+	unsigned blocks_per_page;
-+	unsigned long page_no;
-+	unsigned blkbits;
-+	sector_t probe_block;
-+	sector_t last_block;
-+	sector_t lowest_block = -1;
-+	sector_t highest_block = 0;
-+	int nr_extents = 0;
-+	int ret;
-+
-+	blkbits = inode->i_blkbits;
-+	blocks_per_page = PAGE_SIZE >> blkbits;
-+
-+	/*
-+	 * Map all the blocks into the extent list.  This code doesn't try
-+	 * to be very smart.
-+	 */
-+	probe_block = 0;
-+	page_no = 0;
-+	last_block = i_size_read(inode) >> blkbits;
-+	while ((probe_block + blocks_per_page) <= last_block &&
-+			page_no < sis->max) {
-+		unsigned block_in_page;
-+		sector_t first_block;
-+
-+		first_block = bmap(inode, probe_block);
-+		if (first_block == 0)
-+			goto bad_bmap;
-+
-+		/*
-+		 * It must be PAGE_SIZE aligned on-disk
-+		 */
-+		if (first_block & (blocks_per_page - 1)) {
-+			probe_block++;
-+			goto reprobe;
-+		}
-+
-+		for (block_in_page = 1; block_in_page < blocks_per_page;
-+					block_in_page++) {
-+			sector_t block;
-+
-+			block = bmap(inode, probe_block + block_in_page);
-+			if (block == 0)
-+				goto bad_bmap;
-+			if (block != first_block + block_in_page) {
-+				/* Discontiguity */
-+				probe_block++;
-+				goto reprobe;
-+			}
-+		}
-+
-+		first_block >>= (PAGE_SHIFT - blkbits);
-+		if (page_no) {	/* exclude the header page */
-+			if (first_block < lowest_block)
-+				lowest_block = first_block;
-+			if (first_block > highest_block)
-+				highest_block = first_block;
-+		}
-+
-+		/*
-+		 * We found a PAGE_SIZE-length, PAGE_SIZE-aligned run of blocks
-+		 */
-+		ret = add_swap_extent(sis, page_no, 1, first_block);
-+		if (ret < 0)
-+			goto out;
-+		nr_extents += ret;
-+		page_no++;
-+		probe_block += blocks_per_page;
-+reprobe:
-+		continue;
-+	}
-+	ret = nr_extents;
-+	*span = 1 + highest_block - lowest_block;
-+	if (page_no == 0)
-+		page_no = 1;	/* force Empty message */
-+	sis->max = page_no;
-+	sis->pages = page_no - 1;
-+	sis->highest_bit = page_no - 1;
-+out:
-+	return ret;
-+bad_bmap:
-+	printk(KERN_ERR "swapon: swapfile has holes\n");
-+	ret = -EINVAL;
-+	goto out;
-+}
-+
- /*
-  * We may have stale swap cache pages in memory: notice
-  * them here and get rid of the unnecessary final write.
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index b8b5861..1d77b13 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -1358,7 +1358,7 @@ static void destroy_swap_extents(struct swap_info_struct *sis)
-  *
-  * This function rather assumes that it is called in ascending page order.
-  */
--static int
-+int
- add_swap_extent(struct swap_info_struct *sis, unsigned long start_page,
- 		unsigned long nr_pages, sector_t start_block)
- {
-@@ -1434,106 +1434,25 @@ static int setup_swap_extents(struct swap_info_struct *sis, sector_t *span)
- 	struct file *swap_file = sis->swap_file;
- 	struct address_space *mapping = swap_file->f_mapping;
- 	struct inode *inode = mapping->host;
--	unsigned blocks_per_page;
--	unsigned long page_no;
--	unsigned blkbits;
--	sector_t probe_block;
--	sector_t last_block;
--	sector_t lowest_block = -1;
--	sector_t highest_block = 0;
--	int nr_extents = 0;
- 	int ret;
- 
- 	if (S_ISBLK(inode->i_mode)) {
- 		ret = add_swap_extent(sis, 0, sis->max, 0);
- 		*span = sis->pages;
--		goto out;
-+		return ret;
- 	}
- 
- 	if (mapping->a_ops->swap_activate) {
--		ret = mapping->a_ops->swap_activate(swap_file);
-+		ret = mapping->a_ops->swap_activate(sis, swap_file, span);
- 		if (!ret) {
- 			sis->flags |= SWP_FILE;
- 			ret = add_swap_extent(sis, 0, sis->max, 0);
- 			*span = sis->pages;
- 		}
--		goto out;
-+		return ret;
- 	}
- 
--	blkbits = inode->i_blkbits;
--	blocks_per_page = PAGE_SIZE >> blkbits;
--
--	/*
--	 * Map all the blocks into the extent list.  This code doesn't try
--	 * to be very smart.
--	 */
--	probe_block = 0;
--	page_no = 0;
--	last_block = i_size_read(inode) >> blkbits;
--	while ((probe_block + blocks_per_page) <= last_block &&
--			page_no < sis->max) {
--		unsigned block_in_page;
--		sector_t first_block;
--
--		first_block = bmap(inode, probe_block);
--		if (first_block == 0)
--			goto bad_bmap;
--
--		/*
--		 * It must be PAGE_SIZE aligned on-disk
--		 */
--		if (first_block & (blocks_per_page - 1)) {
--			probe_block++;
--			goto reprobe;
--		}
--
--		for (block_in_page = 1; block_in_page < blocks_per_page;
--					block_in_page++) {
--			sector_t block;
--
--			block = bmap(inode, probe_block + block_in_page);
--			if (block == 0)
--				goto bad_bmap;
--			if (block != first_block + block_in_page) {
--				/* Discontiguity */
--				probe_block++;
--				goto reprobe;
--			}
--		}
--
--		first_block >>= (PAGE_SHIFT - blkbits);
--		if (page_no) {	/* exclude the header page */
--			if (first_block < lowest_block)
--				lowest_block = first_block;
--			if (first_block > highest_block)
--				highest_block = first_block;
--		}
--
--		/*
--		 * We found a PAGE_SIZE-length, PAGE_SIZE-aligned run of blocks
--		 */
--		ret = add_swap_extent(sis, page_no, 1, first_block);
--		if (ret < 0)
--			goto out;
--		nr_extents += ret;
--		page_no++;
--		probe_block += blocks_per_page;
--reprobe:
--		continue;
--	}
--	ret = nr_extents;
--	*span = 1 + highest_block - lowest_block;
--	if (page_no == 0)
--		page_no = 1;	/* force Empty message */
--	sis->max = page_no;
--	sis->pages = page_no - 1;
--	sis->highest_bit = page_no - 1;
--out:
--	return ret;
--bad_bmap:
--	printk(KERN_ERR "swapon: swapfile has holes\n");
--	ret = -EINVAL;
--	goto out;
-+	return generic_swapfile_activate(sis, swap_file, span);
- }
- 
- static void enable_swap_info(struct swap_info_struct *p, int prio,
--- 
-1.7.9.2
-
+On Tue, May 29, 2012 at 01:56:37PM -0400, Chuck Lever wrote:
+> According to RFC 5661, the TEST_STATEID operation is not allowed to
+> return NFS4ERR_STALE_STATEID.  In addition, RFC 5661 says:
+> 
+> 15.1.16.5.  NFS4ERR_STALE_STATEID (Error Code 10023)
+> 
+>    A stateid generated by an earlier server instance was used.  This
+>    error is moot in NFSv4.1 because all operations that take a stateid
+>    MUST be preceded by the SEQUENCE operation, and the earlier server
+>    instance is detected by the session infrastructure that supports
+>    SEQUENCE.
+> 
+> I triggered NFS4ERR_STALE_STATEID while testing the Linux client's
+> NOGRACE recovery.  Bruce suggested an additional test that could be
+> useful to client developers.
+> 
+> Lastly, RFC 5661, section 18.48.3 has this:
+> 
+>  o  Special stateids are always considered invalid (they result in the
+>     error code NFS4ERR_BAD_STATEID).
+> 
+> An explicit check is made for those state IDs to avoid printk noise.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  fs/nfsd/nfs4state.c |   22 ++++++++++++++++------
+>  fs/nfsd/state.h     |    1 -
+>  2 files changed, 16 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 9235cfa..c6d44b4 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -38,6 +38,7 @@
+>  #include <linux/namei.h>
+>  #include <linux/swap.h>
+>  #include <linux/pagemap.h>
+> +#include <linux/ratelimit.h>
+>  #include <linux/sunrpc/svcauth_gss.h>
+>  #include <linux/sunrpc/clnt.h>
+>  #include "xdr4.h"
+> @@ -3359,18 +3360,26 @@ static __be32 check_stateid_generation(stateid_t *in, stateid_t *ref,
+>  	return nfserr_old_stateid;
+>  }
+>  
+> -__be32 nfs4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+> +static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+>  {
+>  	struct nfs4_stid *s;
+>  	struct nfs4_ol_stateid *ols;
+>  	__be32 status;
+>  
+> -	if (STALE_STATEID(stateid))
+> -		return nfserr_stale_stateid;
+> -
+> +	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
+> +		return nfserr_bad_stateid;
+> +	/* Client debugging aid. */
+> +	if (!same_clid(&stateid->si_opaque.so_clid, &cl->cl_clientid)) {
+> +		char addr_str[INET6_ADDRSTRLEN];
+> +		rpc_ntop((struct sockaddr *)&cl->cl_addr, addr_str,
+> +				 sizeof(addr_str));
+> +		pr_warn_ratelimited("NFSD: client %s testing state ID "
+> +					"with incorrect client ID\n", addr_str);
+> +		return nfserr_bad_stateid;
+> +	}
+>  	s = find_stateid(cl, stateid);
+>  	if (!s)
+> -		 return nfserr_stale_stateid;
+> +		return nfserr_bad_stateid;
+>  	status = check_stateid_generation(stateid, &s->sc_stateid, 1);
+>  	if (status)
+>  		return status;
+> @@ -3489,7 +3498,8 @@ nfsd4_test_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  
+>  	nfs4_lock_state();
+>  	list_for_each_entry(stateid, &test_stateid->ts_stateid_list, ts_id_list)
+> -		stateid->ts_id_status = nfs4_validate_stateid(cl, &stateid->ts_id_stateid);
+> +		stateid->ts_id_status =
+> +			nfsd4_validate_stateid(cl, &stateid->ts_id_stateid);
+>  	nfs4_unlock_state();
+>  
+>  	return nfs_ok;
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index 89ab137..b6bd031 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -476,7 +476,6 @@ extern __be32 nfs4_make_rec_clidname(char *clidname, struct xdr_netobj *clname);
+>  extern int nfs4_client_to_reclaim(const char *name);
+>  extern int nfs4_has_reclaimed_state(const char *name, bool use_exchange_id);
+>  extern void release_session_client(struct nfsd4_session *);
+> -extern __be32 nfs4_validate_stateid(struct nfs4_client *, stateid_t *);
+>  extern void nfsd4_purge_closed_stateid(struct nfs4_stateowner *);
+>  
+>  /* nfs4recover operations */
+> 
