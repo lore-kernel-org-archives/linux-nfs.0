@@ -1,154 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21931 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751602Ab2F0PzM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Jun 2012 11:55:12 -0400
-Date: Wed, 27 Jun 2012 11:54:47 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Harshula <harshula@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: rpciod process is blocked in nfs_release_page waiting for
- nfs_commit_inode to complete
-Message-ID: <20120627115447.0fdf8c6e@corrin.poochiereds.net>
-In-Reply-To: <1339795503.16363.9.camel@lade.trondhjem.org>
-References: <1339764850.30233.11.camel@serendib>
-	<20120615092103.15cc2b11@corrin.poochiereds.net>
-	<1339795503.16363.9.camel@lade.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail.parknet.co.jp ([210.171.160.6]:58258 "EHLO
+	mail.parknet.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752812Ab2FEPl2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jun 2012 11:41:28 -0400
+From: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+To: Konstantin Khlebnikov <khlebnikov@openvz.org>
+Cc: Ondrej Zary <linux@rainbow-software.org>, Hugh Dickins <hughd@google.com>,
+        Kernel development list <linux-kernel@vger.kernel.org>,
+        Dave Jones <davej@redhat.com>, Hans de Bruin <jmdebruin@xmsnet.nl>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Toralf =?iso-8859-1?Q?F=F6rster?= <toralf.foerster@gmx.de>,
+        richard -rw- weinberger <richard.weinberger@gmail.com>
+Subject: Re: [bisected commit 0fc9d10] NFS-server corruption with 3.4
+References: <201206051116.17711.linux@rainbow-software.org>
+	<4FCE0A83.4050502@openvz.org>
+	<201206051620.47925.linux@rainbow-software.org>
+	<4FCE1D17.1080904@openvz.org>
+Date: Wed, 06 Jun 2012 00:07:36 +0900
+In-Reply-To: <4FCE1D17.1080904@openvz.org> (Konstantin Khlebnikov's message of
+	"Tue, 05 Jun 2012 18:52:07 +0400")
+Message-ID: <87zk8h23wn.fsf@devron.myhome.or.jp>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 15 Jun 2012 21:25:10 +0000
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+Konstantin Khlebnikov <khlebnikov@openvz.org> writes:
 
-> On Fri, 2012-06-15 at 09:21 -0400, Jeff Layton wrote:
-> > On Fri, 15 Jun 2012 22:54:10 +1000
-> > Harshula <harshula@redhat.com> wrote:
-> > 
-> > > Hi All,
-> > > 
-> > > Can I please get your feedback on the following?
-> > > 
-> > > rpciod is blocked:
-> > > ------------------------------------------------------------
-> > > crash> bt  2507 
-> > > PID: 2507   TASK: ffff88103691ab40  CPU: 14  COMMAND: "rpciod/14"
-> > >  #0 [ffff8810343bf2f0] schedule at ffffffff814dabd9
-> > >  #1 [ffff8810343bf3b8] nfs_wait_bit_killable at ffffffffa038fc04 [nfs]
-> > >  #2 [ffff8810343bf3c8] __wait_on_bit at ffffffff814dbc2f
-> > >  #3 [ffff8810343bf418] out_of_line_wait_on_bit at ffffffff814dbcd8
-> > >  #4 [ffff8810343bf488] nfs_commit_inode at ffffffffa039e0c1 [nfs]
-> > >  #5 [ffff8810343bf4f8] nfs_release_page at ffffffffa038bef6 [nfs]
-> > >  #6 [ffff8810343bf528] try_to_release_page at ffffffff8110c670
-> > >  #7 [ffff8810343bf538] shrink_page_list.clone.0 at ffffffff81126271
-> > >  #8 [ffff8810343bf668] shrink_inactive_list at ffffffff81126638
-> > >  #9 [ffff8810343bf818] shrink_zone at ffffffff8112788f
-> > > #10 [ffff8810343bf8c8] do_try_to_free_pages at ffffffff81127b1e
-> > > #11 [ffff8810343bf958] try_to_free_pages at ffffffff8112812f
-> > > #12 [ffff8810343bfa08] __alloc_pages_nodemask at ffffffff8111fdad
-> > > #13 [ffff8810343bfb28] kmem_getpages at ffffffff81159942
-> > > #14 [ffff8810343bfb58] fallback_alloc at ffffffff8115a55a
-> > > #15 [ffff8810343bfbd8] ____cache_alloc_node at ffffffff8115a2d9
-> > > #16 [ffff8810343bfc38] kmem_cache_alloc at ffffffff8115b09b
-> > > #17 [ffff8810343bfc78] sk_prot_alloc at ffffffff81411808
-> > > #18 [ffff8810343bfcb8] sk_alloc at ffffffff8141197c
-> > > #19 [ffff8810343bfce8] inet_create at ffffffff81483ba6
-> > > #20 [ffff8810343bfd38] __sock_create at ffffffff8140b4a7
-> > > #21 [ffff8810343bfd98] xs_create_sock at ffffffffa01f649b [sunrpc]
-> > > #22 [ffff8810343bfdd8] xs_tcp_setup_socket at ffffffffa01f6965 [sunrpc]
-> > > #23 [ffff8810343bfe38] worker_thread at ffffffff810887d0
-> > > #24 [ffff8810343bfee8] kthread at ffffffff8108dd96
-> > > #25 [ffff8810343bff48] kernel_thread at ffffffff8100c1ca
-> > > ------------------------------------------------------------
-> > > 
-> > > nfs_release_page() gives kswapd process an exemption from being blocked.
-> > > Should we do the same for rpciod. Otherwise rpciod could end up in a
-> > > deadlock where it can not continue without freeing memory that will only
-> > > become available when rpciod does its work:
-> > > ------------------------------------------------------------
-> > > 479 /*
-> > > 480  * Attempt to release the private state associated with a page
-> > > 481  * - Called if either PG_private or PG_fscache is set on the page
-> > > 482  * - Caller holds page lock
-> > > 483  * - Return true (may release page) or false (may not)
-> > > 484  */
-> > > 485 static int nfs_release_page(struct page *page, gfp_t gfp)
-> > > 486 {   
-> > > 487         struct address_space *mapping = page->mapping;
-> > > 488     
-> > > 489         dfprintk(PAGECACHE, "NFS: release_page(%p)\n", page);
-> > > 490     
-> > > 491         /* Only do I/O if gfp is a superset of GFP_KERNEL */
-> > > 492         if (mapping && (gfp & GFP_KERNEL) == GFP_KERNEL) {
-> > > 493                 int how = FLUSH_SYNC;
-> > > 494             
-> > > 495                 /* Don't let kswapd deadlock waiting for OOM RPC calls */
-> > > 496                 if (current_is_kswapd())
-> > > 497                         how = 0;
-> > > 498                 nfs_commit_inode(mapping->host, how);
-> > > 499         }
-> > > 500         /* If PagePrivate() is set, then the page is not freeable */
-> > > 501         if (PagePrivate(page))
-> > > 502                 return 0;
-> > > 503         return nfs_fscache_release_page(page, gfp);
-> > > 504 }
-> > > ------------------------------------------------------------
-> > > 
-> > > Another option is to change the priority of the memory allocation:
-> > > net/ipv4/af_inet.c
-> > > ------------------------------------------------------------
-> > >  265 static int inet_create(struct net *net, struct socket *sock, int
-> > > protocol,
-> > >  266                        int kern)
-> > >  267 {
-> > > ...
-> > >  345         sk = sk_alloc(net, PF_INET, GFP_KERNEL, answer_prot);
-> > > ------------------------------------------------------------
-> > > Considering this is generic net code, I assume the GFP_KERNEL will not
-> > > be replaced with GFP_ATOMIC.
-> > > 
-> > > NOTE, this is on RHEL 6.1 kernel 2.6.32-131.6.1 and apparently uses
-> > > 'legacy' workqueue code.
-> > > 
-> > > cya,
-> > > #
-> > > 
-> > 
-> > I suspect this is also a problem in mainline, but maybe some of the
-> > recent writeback changes prevent it...
-> > 
-> > I think the right solution here is to make nfs_release_page treat rpciod
-> > similarly to kswapd. Easier said than done though -- you'll need to
-> > come up with a way to determine if you're running in rpciod context...
-> 
-> No. The _right_ solution is to ensure that rpciod doesn't do allocations
-> that result in a page reclaim... try_to_release_page() is just the tip
-> of the iceberg of crazy deadlocks that this socket allocation can get us
-> into.
-> 
-> Unfortunately, selinux & co. prevent us from allocating the sockets in
-> user contexts, and anyway, having to wait for another thread to do the
-> same allocation isn't doing to help prevent the deadlock...
-> 
-> I know that Mel Gorman's NFS swap patches had some protections against
-> this sort of deadlock. Perhaps we can look at how he was doing this?
-> 
+> Hmm, very interesting!
+> Please try this patch, it must fix the problem and print some numbers to debug.
+>
 
-Actually...now that I've looked at this, I think the right solution
-here is to stop calling sock_release() on these sockets until we're in
-xs_destroy. IOW, don't free the socket altogether unless we're truly
-tearing down the connection for good. That means though that we need to
-convert the places that currently call rpc_xprt_ops->close to call
-something like a (new) ops->shutdown routine instead, with the
-assumption of course that we can somehow reset and reuse the socket
-afterward.
+I think the bug is in radix_tree_for_each_contig().
 
-The question is how best to emulate the effect of ->close without
-actually freeing the socket. Is it sufficient to call something like
-kernel_sock_shutdown() on it, and twiddle all of the bits to ensure
-that the connect_worker will get called afterward?
+radix_tree_next_slot() returns NULL if the slot was NULL (i.e. there is
+hole). But, slot == NULL is not meaning to stop iterate here. Actually,
+if slot is NULL, it gets next chunk.
 
+Bang.
 -- 
-Jeff Layton <jlayton@redhat.com>
+OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
