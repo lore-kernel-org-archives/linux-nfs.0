@@ -1,50 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 8bytes.org ([85.214.48.195]:56260 "EHLO
-	h2027444.stratoserver.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761420Ab2FGTdm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jun 2012 15:33:42 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by h2027444.stratoserver.net (Postfix) with SMTP id 0242912AFE9
-	for <linux-nfs@vger.kernel.org>; Thu,  7 Jun 2012 21:33:40 +0200 (CEST)
-Date: Thu, 7 Jun 2012 21:33:40 +0200
-From: Joerg Roedel <joro@8bytes.org>
-To: Bryan Schumaker <bjschuma@netapp.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: NFS regression in v3.5-rc1: mount.nfs yells about incorrect
- mount option
-Message-ID: <20120607193339.GT12795@8bytes.org>
-References: <20120607150456.GO12795@8bytes.org>
- <4FD0C4C2.8020605@netapp.com>
- <20120607155006.GR12795@8bytes.org>
- <4FD0CEB0.9040804@netapp.com>
- <20120607160109.GS12795@8bytes.org>
- <4FD0E382.8050800@netapp.com>
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:34934 "EHLO
+	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753482Ab2FEP7T (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jun 2012 11:59:19 -0400
+Message-ID: <4FCE2CCE.9000900@openvz.org>
+Date: Tue, 05 Jun 2012 19:59:10 +0400
+From: Konstantin Khlebnikov <khlebnikov@openvz.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FD0E382.8050800@netapp.com>
+To: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+CC: Ondrej Zary <linux@rainbow-software.org>, Hugh Dickins <hughd@google.com>,
+        Kernel development list <linux-kernel@vger.kernel.org>,
+        Dave Jones <davej@redhat.com>, Hans de Bruin <jmdebruin@xmsnet.nl>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        =?ISO-8859-1?Q?Toralf_F=F6r?= =?ISO-8859-1?Q?ster?=
+	<toralf.foerster@gmx.de>,
+        richard -rw- weinberger <richard.weinberger@gmail.com>
+Subject: Re: [bisected commit 0fc9d10] NFS-server corruption with 3.4
+References: <201206051116.17711.linux@rainbow-software.org> <4FCE0A83.4050502@openvz.org> <201206051620.47925.linux@rainbow-software.org> <4FCE1D17.1080904@openvz.org> <87zk8h23wn.fsf@devron.myhome.or.jp> <4FCE2256.7010804@openvz.org>
+In-Reply-To: <4FCE2256.7010804@openvz.org>
+Content-Type: multipart/mixed;
+ boundary="------------080706050900010906060105"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 07, 2012 at 01:23:14PM -0400, Bryan Schumaker wrote:
-> On 06/07/2012 12:01 PM, Joerg Roedel wrote:
+This is a multi-part message in MIME format.
+--------------080706050900010906060105
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-> What does /etc/exports look like on the server?  You may have to mount
-> it as "lemmy:/" when using NFS v4.
+Proper fix in attachment.
 
-It does not use NFSv4. The exact same command line works fine on v3.4 :)
-The /etc/exports line is:
+Konstantin Khlebnikov wrote:
+> OGAWA Hirofumi wrote:
+>> Konstantin Khlebnikov<khlebnikov@openvz.org>   writes:
+>>
+>>> Hmm, very interesting!
+>>> Please try this patch, it must fix the problem and print some numbers to debug.
+>>>
+>>
+>> I think the bug is in radix_tree_for_each_contig().
+>>
+>> radix_tree_next_slot() returns NULL if the slot was NULL (i.e. there is
+>> hole). But, slot == NULL is not meaning to stop iterate here. Actually,
+>> if slot is NULL, it gets next chunk.
+>>
+>> Bang.
+>
+> Yeah, you are right, I already found this too.
+> Currently I think how to fix this more accurately...
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
 
-/data/repos	*(ro,no_subtree_check)
 
-> 
-> What distro are you using?  I haven't been able to get the incorrect mount option error you're seeing.
+--------------080706050900010906060105
+Content-Type: text/plain;
+ name="radix-tree-fix-contiguous-iterator"
+Content-Transfer-Encoding: 8bit
+Content-Disposition: attachment;
+ filename="radix-tree-fix-contiguous-iterator"
 
-The client is running Ubuntu 10.04 amd64 desktop with development kernel
-and the "server" is my workstation, running Ubuntu 12.04 amd64 desktop
-with distro kernel (3.2 based).
+radix-tree: fix contiguous iterator
 
-Regards,
+From: Konstantin Khlebnikov <khlebnikov@openvz.org>
 
-	Joerg
+This patch fixes bug in macro radix_tree_for_each_contig().
+If radix_tree_next_slot() sees NULL in next slot it returns NULL, but following
+radix_tree_next_chunk() switches iterating into next chunk. As result iterating
+becomes non-contiguous and breaks vfs "splice" and all its users.
 
+Signed-off-by: Konstantin Khlebnikov <khlebnikov@openvz.org>
+Reported-and-bisected-by: Hans de Bruin <jmdebruin@xmsnet.nl>
+Reported-and-bisected-by: Ondrej Zary <linux@rainbow-software.org>
+Reported-and-bisected-by: Toralf Förster <toralf.foerster@gmx.de>
+---
+ include/linux/radix-tree.h |    5 ++++-
+ lib/radix-tree.c           |    3 +++
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/include/linux/radix-tree.h b/include/linux/radix-tree.h
+index 0d04cd6..ffc444c 100644
+--- a/include/linux/radix-tree.h
++++ b/include/linux/radix-tree.h
+@@ -368,8 +368,11 @@ radix_tree_next_slot(void **slot, struct radix_tree_iter *iter, unsigned flags)
+ 			iter->index++;
+ 			if (likely(*slot))
+ 				return slot;
+-			if (flags & RADIX_TREE_ITER_CONTIG)
++			if (flags & RADIX_TREE_ITER_CONTIG) {
++				/* forbid switching to the next chunk */
++				iter->next_index = 0;
+ 				break;
++			}
+ 		}
+ 	}
+ 	return NULL;
+diff --git a/lib/radix-tree.c b/lib/radix-tree.c
+index 86516f5..3ac50dc 100644
+--- a/lib/radix-tree.c
++++ b/lib/radix-tree.c
+@@ -673,6 +673,9 @@ void **radix_tree_next_chunk(struct radix_tree_root *root,
+ 	 * during iterating; it can be zero only at the beginning.
+ 	 * And we cannot overflow iter->next_index in a single step,
+ 	 * because RADIX_TREE_MAP_SHIFT < BITS_PER_LONG.
++	 *
++	 * This condition also used by radix_tree_next_slot() to stop
++	 * contiguous iterating, and forbid swithing to the next chunk.
+ 	 */
+ 	index = iter->next_index;
+ 	if (!index && iter->index)
+
+--------------080706050900010906060105--
