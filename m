@@ -1,143 +1,178 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:34745 "EHLO
+Received: from natasha.panasas.com ([67.152.220.90]:45839 "EHLO
 	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751842Ab2FKNcl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jun 2012 09:32:41 -0400
-Message-ID: <4FD5F35A.3000903@panasas.com>
-Date: Mon, 11 Jun 2012 16:32:10 +0300
+	with ESMTP id S1750810Ab2FEOzT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jun 2012 10:55:19 -0400
+Message-ID: <4FCE1DC1.6050100@panasas.com>
+Date: Tue, 5 Jun 2012 17:54:57 +0300
 From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>, bfields <bfields@fieldses.org>,
-        Steve Dickson <steved@redhat.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
 CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Joerg Platte <jplatte@naasa.net>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Hans de Bruin <jmdebruin@xmsnet.nl>
-Subject: Re: Kernel 3.4.X NFS server regression
-References: <4FD47D4E.9070307@naasa.net> <1339340441.4751.1.camel@lade.trondhjem.org> <20120611121634.GB7654@fieldses.org> <20120611083932.24e27e39@corrin.poochiereds.net>
-In-Reply-To: <20120611083932.24e27e39@corrin.poochiereds.net>
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/3] NFSv4.1 mark layout when already returned
+References: <1338571178-2096-1-git-send-email-andros@netapp.com> <1338571178-2096-2-git-send-email-andros@netapp.com> <4FCA98E7.2030006@panasas.com> <1C92D18B-1977-4A12-A4DA-84DAC4B3E81E@netapp.com>
+In-Reply-To: <1C92D18B-1977-4A12-A4DA-84DAC4B3E81E@netapp.com>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/11/2012 03:39 PM, Jeff Layton wrote:
+On 06/05/2012 04:36 PM, Adamson, Andy wrote:
 
-> On Mon, 11 Jun 2012 08:16:34 -0400
-> bfields <bfields@fieldses.org> wrote:
-> 
->> On Sun, Jun 10, 2012 at 03:00:42PM +0000, Myklebust, Trond wrote:
->>> Cc: linux-nfs@vger.kernel.org + bfields and changing title to label it
->>> as a server regression since that is what the trace appears to imply.
->>>
->>> On Sun, 2012-06-10 at 12:56 +0200, Joerg Platte wrote:
->>>> All 3.4 kernels I tried so far (3.4, 3.4.1 and 3.4.2) suffer from the 
->>>> same NFS related problem:
->>>>
->>>> Jun 10 09:23:36 coco kernel: INFO: task kworker/u:1:8 blocked for more 
->>>> than 120 seconds.
->>>> Jun 10 09:23:36 coco kernel: "echo 0 > 
->>>> /proc/sys/kernel/hung_task_timeout_secs" disables this message.
->>>> Jun 10 09:23:36 coco kernel: kworker/u:1     D 002ba28c     0     8 
->>>>   2 0x00000000
->>>> Jun 10 09:23:36 coco kernel:  df465ec0 00000046 00000005 002ba28c 
->>>> 00000000 0000000a 00000282 df465e70
->>>> Jun 10 09:23:36 coco kernel:  df465ec0 df44d2b0 ffff6b60 df465e84 
->>>> df44d2b0 e33fa6b3 00000282 de764ae0
->>>> Jun 10 09:23:36 coco kernel:  ffffffff d78bcfb8 df465e8c c012e0f6 
->>>> df465ea4 c013610c 00000000 d78bcf80
->>>> Jun 10 09:23:36 coco kernel: Call Trace:
->>>> Jun 10 09:23:36 coco kernel:  [<c012e0f6>] ? add_timer+0x11/0x17
->>>> Jun 10 09:23:36 coco kernel:  [<c013610c>] ? queue_delayed_work_on+0x74/0xf0
->>>> Jun 10 09:23:36 coco kernel:  [<c0136ba4>] ? queue_delayed_work+0x1b/0x28
->>>> Jun 10 09:23:36 coco kernel:  [<c0350f5b>] schedule+0x1d/0x4c
->>>> Jun 10 09:23:36 coco kernel:  [<e0cda5f1>] cld_pipe_upcall+0x4e/0x75 [nfsd]
->>>> Jun 10 09:23:36 coco kernel:  [<e0cda678>] 
->>>> nfsd4_cld_grace_done+0x60/0x99 [nfsd]
->>>> Jun 10 09:23:36 coco kernel:  [<e0cd9cb5>] 
->>>> nfsd4_record_grace_done+0x10/0x12 [nfsd]
->>>> Jun 10 09:23:36 coco kernel:  [<e0cd6696>] laundromat_main+0x291/0x2d8 
->>>> [nfsd]
->>>> Jun 10 09:23:36 coco kernel:  [<c0136d2f>] process_one_work+0xff/0x325
->>>> Jun 10 09:23:36 coco kernel:  [<c0134bec>] ? start_worker+0x20/0x23
->>>> Jun 10 09:23:36 coco kernel:  [<e0cd6405>] ? 
->>>> nfsd4_process_open1+0x32b/0x32b [nfsd]
->>>> Jun 10 09:23:36 coco kernel:  [<c013727a>] worker_thread+0xf4/0x39a
->>>> Jun 10 09:23:36 coco kernel:  [<c0137186>] ? rescuer_thread+0x231/0x231
->>>> Jun 10 09:23:36 coco kernel:  [<c013a556>] kthread+0x6c/0x6e
->>>> Jun 10 09:23:36 coco kernel:  [<c013a4ea>] ? kthreadd+0xe8/0xe8
->>>> Jun 10 09:23:36 coco kernel:  [<c035263e>] kernel_thread_helper+0x6/0xd
->>>>
->>>> A kworker task is stuck in D state and nfs mounts from other clients do 
->>>> not work at all. This happens only on one machine, another one with the 
->>>> same kernel (same self compiled Debian package) works. All previous 3.3 
->>>> kernels work as well.
->>>>
->>>> Since this machine is remote it is not that easy to bisect to find the 
->>>> bad commit. Are there any other things I can try?
+> On Jun 2, 2012, at 6:51 PM, Boaz Harrosh wrote:
 >>
->> If you create a directory named /var/lib/nfs/v4recovery/, does the
->> problem go away?
+>> In objects-layout we must report all errors on layout_return. We
+>> accumulate them and report of all errors at once. So we need
+>> the return after all in flights are back. (And no new IOs are
+>> sent) Otherwise we might miss some.
+> 
+
+> _pnfs_retrun_layout removes all layouts, and should therefore only be
+> called once. 
+
+
+I agree current behavior is a bug, hence my apology.
+
+> I'll can add the 'wait for all in-flight' functionality,
+> and we can switch behaviors (wait or not wait).
+> 
+
+
+I disagree you must "delay" the send see below.
+
+>> Also the RFC mandates that we do not use any layout or have
+>> IOs in flight, once we return the layout.
+> 
+> 
+> You are referring to this piece of the spec?
+> Section 18.44.3   
+> 
+>   After this call,
+>    the client MUST NOT use the returned layout(s) and the associated
+>    storage protocol to access the file data.
+> 
+> 
+
+> The above says that the client MUST NOT send any _new_ i/o using the
+> layout. I don't see any reference to in-flight i/o, 
+
+
+I don't see reference to in-flight i/o either, so what does that mean?
+Yes or No? It does not it's vague. For me in-flight means "USING"
+
+Because in-flight means half was written/read and half was not, if the
+lo_return was received in the middle then the half that came after was
+using the layout information after the Server received an lo_return,
+which clearly violates the above.
+
+In any way, at this point in the code you do not have the information of
+If the RPCs are in the middle of the transfer, hence defined as in-flight.
+Or they are just inside your internal client queues and will be sent clearly
+after the lo_return which surly violates the above. (Without the need of
+explicit definition of in flight.)
+
+> nor should there
+> be in the error case. I get a connection error. Did the i/o's I sent
+> get to the data server? 
+
+
+We should always assume that statistically half was sent and half was not
+In any way we will send the all "uncertain range" again.
+
+> The reason to send a LAYOUTRETURN without
+> waiting for all the in-flights to return with a connection error is
+> precisely to fence any in-flight i/o because I'm resending through
+> the MDS.
+> 
+
+
+This is clearly in contradiction of the RFC. And is imposing a Server
+behavior that was not specified in RFC.
+
+All started IO to the specified DS will return with "connection error"
+pretty fast, right? because the first disconnect probably took a timeout, but
+once the socket identified a disconnect it will stay in that state
+until a reconnect, right.
+
+So what are you attempting to do, Make your internal client Q drain very fast
+since you are going through MDS? But you are doing that by assuming the
+Server will fence ALL IO, and not by simply aborting your own Q. Highly unorthodox 
+and certainly in violation of above.
+
+> 
 >>
->> My guess would be that it's trying to upcall to the new reboot-recovery
->> state daemon, and you don't have that running.
+>> I was under the impression that only when the last reference
+>> on a layout is dropped only then we send the lo_return.
+> 
+>> If it is not so, this is the proper fix.
+> 
 >>
->> Before the addition of that upcall state was kept in
->> /var/lib/nfs/v4recovery.  So we decide whether to use the old method or
->> the new one by checking for the existance of that path.
+>> 1. Mark LO invalid so all new IO waits or goes to MDS
+>> 3. When LO ref drops to Zero send the lo_return.
+> 
+> Yes for the normal case (evict inode for the file layout),
+
+> but not if I'm in an error situation and I want to fence the DS from in-flight i/o.
+
+A client has no way stated in the protocol to cause a "fence". This is just your
+wishful thinking. lo_return is something else, lo_return means I'm no longer using
+the file, not "please protect me from myself, because I will send more IO after that,
+but please ignore it"
+
+All you can do is abort your own client Q, all these RPCs that did not get sent
+or errored-out will be resent through MDS, there might be half an RPC of overlap.
+
+Think of 4.2 when you will need to report these errors to MDS - on lo_return -
+Your code will not work.
+
+Lets backtrack a second. Let me see if I understand what is your trick:
+1. Say we have a file with a files-layout of which device_id specifies 3 DSs.
+2. And say I have a large IO generated by an app to that file.
+3. In the middle of the IO, one of the DSs, say DS-B, returns with a "connection error"
+4 The RPCs stripe_units generated to DS-B will all quickly return with "connection error"
+  after the first error.
+5. But the RPCs to DS-A and DS-C will continue to IO. Until done.
+
+But since you will send the entire range of IO through MDS you want that DS-A, DS-C to
+reject any farther IO, and any RPCs in client Qs for DS-A and DS-C will return quickly
+with "io rejected".
+
+Is that your idea?
+
+> 
+>> 4. After LAYOUTRETURN_DONE is back, re-enable layouts.
+>> I'm so sorry it is not so today. I should have tested for
+>> this. I admit that all my error injection tests are
+>> single-file single thread so I did not test for this.
 >>
->> But I'm guessing we were wrong to assume that existing setups that
->> people perceived as working would have that path, because the failures
->> in the absence of that path were probably less obvious.
->>
->> --b.
+>> Sigh, work never ends. Tell me if I can help with this
 > 
-> This sounds like the same problem that Hans reported as well. I've not
-> been able to reproduce that so far. Here's what I get when I start nfsd
-> with no v4recoverdir and nfsdcld isn't running:
-> 
-> [  109.715080] NFSD: starting 90-second grace period
-> [  229.984220] NFSD: Unable to end grace period: -110
-> 
-> What I don't quite understand is why the queue_timeout job isn't
-> getting run here. What should happen is that 30s after upcall,
-> rpc_timeout_upcall_queue should run. The message will be found to be
-> still sitting on the , so it should set its status to -ETIMEDOUT
-> and wake up the caller.
-> 
-> I can only assume that the queue_timeout job isn't getting run for some
-> reason, but I'm unclear on why that would be.
+> I'll add the wait/no-wait…
 > 
 
 
-Regression fixing aside. I would consider changing the all mechanism to
-a call_usermodehelper mechanism. Not only it cuts the in-kernel code
-to 1/3, it also cuts user-mode code to 1/3. And specially it relives you
-of any special daemon setup dependency. All you do is run an app/script
-that does what it does when it does it, directly without anyone waiting
-and/or any kind of handshake.
+I would not want a sync wait at all. Please don't code any sync wait for me. It will not
+work for objects, and will produce dead-locks.
 
-It is easy to pass any kind of parameters from Kernel to user-mode. Passing
-info from user-mode to Kernel is also easy by setting up a sysfs connection
-point.
+What I need is that a flag is raised on the lo_seg, and when last ref on the
+lo_seg drops an lo_return is sent. So either the call to layout_return causes
+the lo_return, or the last io_done of the inflights will cause the send.
+(You see io_done is the one that calls layout_return in the first place)
 
-And most important there are no timeouts in the new-kernel vs old user-mode.
-If the script/app does not exists the call_usermodehelper returns immediately
-and the old behavior can be used.
+!! BUT Please do not do any waits at all for my sake, because this is a sure dead-lock !!
 
-And lastly if persistent performance is an issue in the steady state. (since
-calling call_usermodehelper in the hot path can be slow at times) Then I
-would consider that the init script ran at startup via call_usermodehelper
-then sets up a faster communication channel like a udev even and/or some
-other event mechanism. In any way the old dual local-RPC channel has proved
-to be a pain in the ass.
+And if you ask me It's the way you want it too, Because that's the RFC, and that's
+what you'll need for 4.2.
 
-(BTW: if you attempt it you will see that so many lines of code where eliminated
- you might consider it for a Regression fixing to @stable)
+And perhaps it should not be that hard to implement a Q abort, and not need that
+unorthodox fencing which is not specified in the RFC. And it might be also possible to only
+send IO of DS-B through MDS but keep the inflight IO to DS-A and DS-C valid and not resend.
 
-Thank to Steve Dickson who suggested this wonderful idea when I had the same
-exact problem. I'm just repeating his suggestion, and in light of the experience
-of implementing both methods.
+> -->Andy
+> 
+>> Boaz
 
-Just my $0.017
+
+Thanks
 Boaz
+
