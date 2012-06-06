@@ -1,131 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:33370 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965882Ab2FAWb5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Jun 2012 18:31:57 -0400
-From: Jan Kara <jack@suse.cz>
-To: linux-fsdevel@vger.kernel.org
-Cc: Al Viro <viro@ZenIV.linux.org.uk>, dchinner@redhat.com,
-        Jan Kara <jack@suse.cz>, Alex Elder <elder@kernel.org>,
-        Anton Altaparmakov <anton@tuxera.com>, Ben Myers <bpm@sgi.com>,
-        Chris Mason <chris.mason@oracle.com>, cluster-devel@redhat.com,
-        "David S. Miller" <davem@davemloft.net>,
-        fuse-devel@lists.sourceforge.net,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Joel Becker <jlbec@evilplan.org>,
-        KONISHI Ryusuke <konishi.ryusuke@lab.ntt.co.jp>,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net, Mark Fasheh <mfasheh@suse.com>,
-        Miklos Szeredi <miklos@szeredi.hu>, ocfs2-devel@oss.oracle.com,
-        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-        Steven Whitehouse <swhiteho@redhat.com>,
-        "Theodore Ts'o" <tytso@mit.edu>, xfs@oss.sgi.com
-Subject: [PATCH 00/27 v6] Fix filesystem freezing deadlocks
-Date: Sat,  2 Jun 2012 00:30:14 +0200
-Message-Id: <1338589841-9568-1-git-send-email-jack@suse.cz>
+Received: from mail-lpp01m010-f46.google.com ([209.85.215.46]:43949 "EHLO
+	mail-lpp01m010-f46.google.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756013Ab2FFKyf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jun 2012 06:54:35 -0400
+Message-ID: <4FCF36E6.9060701@openvz.org>
+Date: Wed, 06 Jun 2012 14:54:30 +0400
+From: Konstantin Khlebnikov <khlebnikov@openvz.org>
+MIME-Version: 1.0
+To: Hans de Bruin <jmdebruin@xmsnet.nl>
+CC: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        Ondrej Zary <linux@rainbow-software.org>,
+        Hugh Dickins <hughd@google.com>,
+        Kernel development list <linux-kernel@vger.kernel.org>,
+        Dave Jones <davej@redhat.com>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        =?ISO-8859-1?Q?Toralf_F=F6r?= =?ISO-8859-1?Q?ster?=
+	<toralf.foerster@gmx.de>,
+        richard -rw- weinberger <richard.weinberger@gmail.com>
+Subject: Re: [bisected commit 0fc9d10] NFS-server corruption with 3.4
+References: <201206051116.17711.linux@rainbow-software.org> <4FCE0A83.4050502@openvz.org> <201206051620.47925.linux@rainbow-software.org> <4FCE1D17.1080904@openvz.org> <87zk8h23wn.fsf@devron.myhome.or.jp> <4FCE2256.7010804@openvz.org> <4FCE2CCE.9000900@openvz.org> <87pq9d20lx.fsf@devron.myhome.or.jp> <4FCE3631.9020407@openvz.org> <4FCE888F.8050605@xmsnet.nl>
+In-Reply-To: <4FCE888F.8050605@xmsnet.nl>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-  Hello,
+Hans de Bruin wrote:
+> On 06/05/2012 06:39 PM, Konstantin Khlebnikov wrote:
+>> OGAWA Hirofumi wrote:
+>>> Konstantin Khlebnikov<khlebnikov@openvz.org>  writes:
+>>>
+>>>> Proper fix in attachment.
+>>>
+>>> Maybe, you are going to add the stable tag for next stable?
+>>>
+>>> Thanks.
+>>
+>> Yes, this definitely must be in next stable 3.4.x , but first I'll wait
+>> for confirmation.
+>>
+>> Guys, who can reproduce this, please check patch "radix-tree: fix
+>> contiguous iterator"
+>> from my previous mail in this thread.
+>>
+>>>
+>>>> radix-tree: fix contiguous iterator
+>>>>
+>>>> From: Konstantin Khlebnikov<khlebnikov@openvz.org>
+>>>>
+>>>> This patch fixes bug in macro radix_tree_for_each_contig().
+>>>> If radix_tree_next_slot() sees NULL in next slot it returns NULL, but
+>>>> following
+>>>> radix_tree_next_chunk() switches iterating into next chunk. As result
+>>>> iterating
+>>>> becomes non-contiguous and breaks vfs "splice" and all its users.
+>>>
+>>
+>
+> I patched on to off v3.4 and Firefox an Thunderbird do not segfault
+> anymore. The do not start either. This was de feature on my 'production'
+> server I could not reproduce on my test server. Maybe it has something
+> to with the different type of nic's.
+>
+> For the second attempt I branched of at 0fc9d1040313047edf6a39fd and
+> applied your patch on top of it. Firefox an Thunderbird where back
+> again. So your patch works.
+>
+> Now I need some git-instructions. Apparently something else is broken. I
+> branched of with:
+>
+> git branch debug 0fc9d1040313047edf6a3
+> git checkout debug
+> applied the patch.
+> git commit -a (got commit 5c09c685ba2d36c3b905220d43ad1b47354e456eed back)
+>
+> Now I want all commits in my master branch up until ref v3.4 added to my
+> debug branch so I can bisect between 5c09 and v3.4
+>
 
-  here is the sixth iteration of my patches to improve filesystem freezing.
-The change since last iteration is that filesystem can be frozen with open but
-unlinked files. After some thinking, I've decided that the best way to handle
-this is to block removal inside ->evict_inode() of each filesystem and use
-fs-internal level of freeze protection for that (usually I've instrumented
-filesystem's transaction system to use freeze protection). Handling
-inside VFS would be less work but the only level of freeze protection that
-has a chance of not causing deadlocks is the one used for page faults and even
-there it's not clear lock ordering would be correct wrt some fs-specific locks.
-I've converted ext2, ext4, btrfs, xfs, nilfs2, ocfs2, gfs2 and also checked
-that ext3, reiserfs, jfs should work as well (they have their internal freeze
-protection mechanisms, possibly they could be replaced by a generic one but
-given these are mostly aging filesystems, it's not a real priority IHMO).
-So finally I'm not aware of any pending issue with this patch set so if you
-have some concern, please speak up!
+No, it does not work in this way. you should apply patch before each test.
+You can fix radix-tree bug in find_get_pages_contig() to avoid changing
+radix-tree.h and rebuild kernel faster.
 
-Introductory text to first time readers:
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -927,7 +927,7 @@ repeat:
+                  * otherwise we can get both false positives and false
+                  * negatives, which is just confusing to the caller.
+                  */
+-               if (page->mapping == NULL || page->index != iter.index) {
++               if (page->mapping == NULL || page->index != index + ret) {
+                         page_cache_release(page);
+                         break;
+                 }
 
-Filesystem freezing is currently racy and thus we can end up with dirty data on
-frozen filesystem (see changelog patch 13 for detailed race description). This
-patch series aims at fixing this.
-
-To be able to block all places where inodes get dirtied, I've moved filesystem
-file_update_time() call to ->page_mkwrite callback (patches 01-07) and put
-freeze handling in mnt_want_write() / mnt_drop_write(). That however required
-some code shuffling and changes to kern_path_create() (see patches 09-12). I
-think the result is OK but opinions may differ ;). The advantage of this change
-also is that all filesystems get freeze protection almost for free - even ext2
-can handle freezing well now.
-
-Another potential contention point might be patch 19. In that patch we make
-freeze_super() refuse to freeze the filesystem when there are open but unlinked
-files which may be impractical in some cases. The main reason for this is the
-problem with handling of file deletion from fput() called with mmap_sem held
-(e.g. from munmap(2)), and then there's the fact that we cannot really force
-such filesystem into a consistent state... But if people think that freezing
-with open but unlinked files should happen, then I have some possible
-solutions in mind (maybe as a separate patchset since this is large enough).
-
-I'm not able to hit any deadlocks, lockdep warnings, or dirty data on frozen
-filesystem despite beating it with fsstress and bash-shared-mapping while
-freezing and unfreezing for several hours (using ext4 and xfs) so I'm
-reasonably confident this could finally be the right solution.
-
-Changes since v5:
-  * handle unlinked & open files on frozen filesystem
-  * lockdep keys for freeze protection are now per filesystem type
-  * taught lockdep that freeze protection at lower level does not create
-    dependency when we already hold freeze protection at higher level 
-  * rebased on 3.5-rc1-ish
-
-Changes since v4:
-  * added a couple of Acked-by's
-  * added some comments & doc update
-  * added patches from series "Push file_update_time() into .page_mkwrite"
-    since it doesn't make much sense to keep them separate anymore
-  * rebased on top of 3.4-rc2
-
-Changes since v3:
-  * added third level of freezing for fs internal purposes - hooked some
-    filesystems to use it (XFS, nilfs2)
-  * removed racy i_size check from filemap_mkwrite()
-
-Changes since v2:
-  * completely rewritten
-  * freezing is now blocked at VFS entry points
-  * two stage freezing to handle both mmapped writes and other IO
-
-The biggest changes since v1:
-  * have two counters to provide safe state transitions for SB_FREEZE_WRITE
-    and SB_FREEZE_TRANS states
-  * use percpu counters instead of own percpu structure
-  * added documentation fixes from the old fs freezing series
-  * converted XFS to use SB_FREEZE_TRANS counter instead of its private
-    m_active_trans counter
-
-								Honza
-
-CC: Alex Elder <elder@kernel.org>
-CC: Anton Altaparmakov <anton@tuxera.com>
-CC: Ben Myers <bpm@sgi.com>
-CC: Chris Mason <chris.mason@oracle.com>
-CC: cluster-devel@redhat.com
-CC: "David S. Miller" <davem@davemloft.net>
-CC: fuse-devel@lists.sourceforge.net
-CC: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Joel Becker <jlbec@evilplan.org>
-CC: KONISHI Ryusuke <konishi.ryusuke@lab.ntt.co.jp>
-CC: linux-btrfs@vger.kernel.org
-CC: linux-ext4@vger.kernel.org
-CC: linux-nfs@vger.kernel.org
-CC: linux-nilfs@vger.kernel.org
-CC: linux-ntfs-dev@lists.sourceforge.net
-CC: Mark Fasheh <mfasheh@suse.com>
-CC: Miklos Szeredi <miklos@szeredi.hu>
-CC: ocfs2-devel@oss.oracle.com
-CC: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
-CC: Steven Whitehouse <swhiteho@redhat.com>
-CC: "Theodore Ts'o" <tytso@mit.edu>
-CC: xfs@oss.sgi.com
