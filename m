@@ -1,83 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:23357 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:2295 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753768Ab2F0USJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Jun 2012 16:18:09 -0400
-Date: Wed, 27 Jun 2012 16:18:07 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Harshula <harshula@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: rpciod process is blocked in nfs_release_page waiting for
- nfs_commit_inode to complete
-Message-ID: <20120627161807.7b6ec141@tlielax.poochiereds.net>
-In-Reply-To: <1340825822.2398.10.camel@lade.trondhjem.org>
-References: <1339764850.30233.11.camel@serendib>
-	<20120615092103.15cc2b11@corrin.poochiereds.net>
-	<1339795503.16363.9.camel@lade.trondhjem.org>
-	<20120627115447.0fdf8c6e@corrin.poochiereds.net>
-	<1340822635.2398.7.camel@lade.trondhjem.org>
-	<20120627152814.4774048b@tlielax.poochiereds.net>
-	<1340825822.2398.10.camel@lade.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1755212Ab2FFS1u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 Jun 2012 14:27:50 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] NFS: Map minor mismatch error to protocol not support error.
+Date: Wed,  6 Jun 2012 14:12:07 -0400
+Message-Id: <1339006327-27815-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 27 Jun 2012 19:37:03 +0000
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+Sservers that only have NFSv4.1 support the
+NFS4ERR_MINOR_VERS_MISMATCH error is return on
+v4.0 mounts. Mapping that error to EPROTONOSUPPORT
+will cause the mount to back off to v3 instead of
+failing.
 
-> On Wed, 2012-06-27 at 15:28 -0400, Jeff Layton wrote:
-> > On Wed, 27 Jun 2012 18:43:56 +0000
-> > "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-> > > The reason why we close these sockets is that if the attempt at aborting
-> > > the connection fails, then they typically end up in a TIME_WAIT state.
-> > > 
-> > 
-> > I'm still trying to wade through the xprtsock.c socket handling code,
-> > but it looks like we currently tear down the connection in 3 different
-> > ways:
-> > 
-> > xs_close: which basically calls sock_release and gets rid of our
-> > reference to an existing socket. Most of the places where we disconnect
-> > the socket use this. After this, we end up with srcport == 0 which
-> > makes it pick a new port.
-> > 
-> > xs_tcp_shutdown: which calls ->shutdown on it, but doesn't free
-> > anything. This also preserves the existing srcport.
-> > 
-> > xs_abort_connection: calls kernel_connect to reconnect the socket to
-> > AF_UNSPEC address (effectively disconnecting it?). This also preserves
-> > the srcport. I guess we use this just before reconnecting when the
-> > remote end drops the connection, since we don't need to be graceful
-> > about tearing anything down at that point.
-> > 
-> > The last one actually does reuse the same socket, so my thinking was
-> > that we could extend that scheme to the other cases. If we called
-> > ->shutdown on it and then reconnected it to AF_UNSPEC, would that
-> > "reset" it back to a usable state?
-> 
-> Not that I'm aware of. The problem is that most of this stuff is
-> undocumented. For instance, the AF_UNSPEC reconnect is documented only
-> for UDP connections. While Linux implements it for TCP too, there is no
-> spec (that I'm aware of) that explains how that should work.
-> 
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ fs/nfs/nfs4proc.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
-...and fwiw, it looks like reconnecting a TCP socket to an AF_UNSPEC
-address doesn't work from userland -- you get back EINVAL. I have to
-wonder if xs_abort_connection actually works as expected...
-
-> > If there really is no alternative to freeing the socket, then the only
-> > real fix I can see is to set PF_MEMALLOC when we go to create it and
-> > then reset it afterward. That's a pretty ugly fix though...
-> 
-> Agreed...
-> 
-
-That looks basically like what Mel is doing to work around the problem,
-though he only does it for xprt's that are tagged as being swapped
-over. We could just make that unconditional, but the "congested" flag
-scheme sounds better.
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index d48dbef..eda028b 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -105,6 +105,8 @@ static int nfs4_map_errors(int err)
+ 		return -EINVAL;
+ 	case -NFS4ERR_SHARE_DENIED:
+ 		return -EACCES;
++	case -NFS4ERR_MINOR_VERS_MISMATCH:
++		return -EPROTONOSUPPORT;
+ 	default:
+ 		dprintk("%s could not handle NFSv4 error %d\n",
+ 				__func__, -err);
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.1
+
