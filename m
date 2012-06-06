@@ -1,154 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:33647 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762339Ab2FVObR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Jun 2012 10:31:17 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 06/12] mm: Add get_kernel_page[s] for pinning of kernel addresses for I/O
-Date: Fri, 22 Jun 2012 15:31:02 +0100
-Message-Id: <1340375468-22509-7-git-send-email-mgorman@suse.de>
-In-Reply-To: <1340375468-22509-1-git-send-email-mgorman@suse.de>
-References: <1340375468-22509-1-git-send-email-mgorman@suse.de>
+Received: from p02c12o149.mxlogic.net ([208.65.145.82]:59787 "EHLO
+	p02c12o149.mxlogic.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756059Ab2FFRil convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jun 2012 13:38:41 -0400
+From: Peter Staubach <pstaubach@exagrid.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: Jian Li <jiali@redhat.com>
+Date: Wed, 6 Jun 2012 13:36:59 -0400
+Subject: RE: servers may allow owners to override permissions on readdir
+Message-ID: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC070388CE57@IT-1874.Isys.com>
+References: <20120606165133.GB32394@fieldses.org>
+In-Reply-To: <20120606165133.GB32394@fieldses.org>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch adds two new APIs get_kernel_pages() and get_kernel_page()
-that may be used to pin a vector of kernel addresses for IO. The initial
-user is expected to be NFS for allowing pages to be written to swap
-using aops->direct_IO(). Strictly speaking, swap-over-NFS only needs
-to pin one page for IO but it makes sense to express the API in terms
-of a vector and add a helper for pinning single pages.
+Sorry, I don't understand.  Why would it be desirable for the server to be able override directory permissions for readdir unless the directory is already open?
 
-Signed-off-by: Mel Gorman <mgorman@suse.de>
-Reviewed-by: Rik van Riel <riel@redhat.com>
----
- include/linux/blk_types.h |    2 ++
- include/linux/fs.h        |    2 ++
- include/linux/mm.h        |    4 ++++
- mm/memory.c               |   53 +++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 61 insertions(+)
+It is desirable to override permissions for regular files because executing a file requires that file's contents to be read or when writing to a file, requires reading the contents in order to perform read/modify/write cycles.  The protocol doesn't contain sufficient support to be able to distinguish the various models on a per-operation basis, so the server leaves it up the client to "do the right thing".
 
-diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
-index 0edb65d..7b7ac9c 100644
---- a/include/linux/blk_types.h
-+++ b/include/linux/blk_types.h
-@@ -160,6 +160,7 @@ enum rq_flag_bits {
- 	__REQ_FLUSH_SEQ,	/* request for flush sequence */
- 	__REQ_IO_STAT,		/* account I/O stat */
- 	__REQ_MIXED_MERGE,	/* merge of different types, fail separately */
-+	__REQ_KERNEL, 		/* direct IO to kernel pages */
- 	__REQ_NR_BITS,		/* stops here */
- };
- 
-@@ -201,5 +202,6 @@ enum rq_flag_bits {
- #define REQ_IO_STAT		(1 << __REQ_IO_STAT)
- #define REQ_MIXED_MERGE		(1 << __REQ_MIXED_MERGE)
- #define REQ_SECURE		(1 << __REQ_SECURE)
-+#define REQ_KERNEL		(1 << __REQ_KERNEL)
- 
- #endif /* __LINUX_BLK_TYPES_H */
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index f5e5bbb..adf1b7d 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -165,6 +165,8 @@ struct inodes_stat_t {
- #define READ			0
- #define WRITE			RW_MASK
- #define READA			RWA_MASK
-+#define KERNEL_READ		(READ|REQ_KERNEL)
-+#define KERNEL_WRITE		(WRITE|REQ_KERNEL)
- 
- #define READ_SYNC		(READ | REQ_SYNC)
- #define WRITE_SYNC		(WRITE | REQ_SYNC | REQ_NOIDLE)
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index b3d4cd9..bbb3167 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -1019,6 +1019,10 @@ int get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
- 			struct page **pages, struct vm_area_struct **vmas);
- int get_user_pages_fast(unsigned long start, int nr_pages, int write,
- 			struct page **pages);
-+struct kvec;
-+int get_kernel_pages(const struct kvec *iov, int nr_pages, int write,
-+			struct page **pages);
-+int get_kernel_page(unsigned long start, int write, struct page **pages);
- struct page *get_dump_page(unsigned long addr);
- 
- extern int try_to_release_page(struct page * page, gfp_t gfp_mask);
-diff --git a/mm/memory.c b/mm/memory.c
-index 6322d36..c8153f5 100644
---- a/mm/memory.c
-+++ b/mm/memory.c
-@@ -1843,6 +1843,59 @@ next_page:
- EXPORT_SYMBOL(__get_user_pages);
- 
- /*
-+ * get_kernel_pages() - pin kernel pages in memory
-+ * @kiov:	An array of struct kvec structures
-+ * @nr_segs:	number of segments to pin
-+ * @write:	pinning for read/write, currently ignored
-+ * @pages:	array that receives pointers to the pages pinned.
-+ *		Should be at least nr_segs long.
-+ *
-+ * Returns number of pages pinned. This may be fewer than the number
-+ * requested. If nr_pages is 0 or negative, returns 0. If no pages
-+ * were pinned, returns -errno. Each page returned must be released
-+ * with a put_page() call when it is finished with.
-+ */
-+int get_kernel_pages(const struct kvec *kiov, int nr_segs, int write,
-+		struct page **pages)
-+{
-+	int seg;
-+
-+	for (seg = 0; seg < nr_segs; seg++) {
-+		if (WARN_ON(kiov[seg].iov_len != PAGE_SIZE))
-+			return seg;
-+
-+		/* virt_to_page sanity checks the PFN */
-+		pages[seg] = virt_to_page(kiov[seg].iov_base);
-+		page_cache_get(pages[seg]);
-+	}
-+
-+	return seg;
-+}
-+EXPORT_SYMBOL_GPL(get_kernel_pages);
-+
-+/*
-+ * get_kernel_page() - pin a kernel page in memory
-+ * @start:	starting kernel address
-+ * @write:	pinning for read/write, currently ignored
-+ * @pages:	array that receives pointer to the page pinned.
-+ *		Must be at least nr_segs long.
-+ *
-+ * Returns 1 if page is pinned. If the page was not pinned, returns
-+ * -errno. The page returned must be released with a put_page() call
-+ * when it is finished with.
-+ */
-+int get_kernel_page(unsigned long start, int write, struct page **pages)
-+{
-+	const struct kvec kiov = {
-+		.iov_base = (void *)start,
-+		.iov_len = PAGE_SIZE
-+	};
-+
-+	return get_kernel_pages(&kiov, 1, write, pages);
-+}
-+EXPORT_SYMBOL_GPL(get_kernel_page);
-+
-+/*
-  * fixup_user_fault() - manually resolve a user page fault
-  * @tsk:	the task_struct to use for page fault accounting, or
-  *		NULL if faults are not to be recorded.
--- 
-1.7.9.2
+Perhaps a better solution would be to track open directories?  Or is this part of the future directory delegations work?  :-)
 
+	Thanx...
+
+		ps
+
+
+-----Original Message-----
+From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of J. Bruce Fields
+Sent: Wednesday, June 06, 2012 12:52 PM
+To: linux-nfs@vger.kernel.org
+Cc: Jian Li
+Subject: servers may allow owners to override permissions on readdir
+
+Anyone see any reason why I server wouldn't want to allow owners to override directory permissions on readdir?
+
+(It turns out that the actual behavior of linux nfsd is more
+complicated: it attempts to allow overrides on readdir, but then does a lookup_one_len in the filldir method called on each entry, which results on an ACCESS error.  But readdirs of empty directories, or nfsv4 readdirs with the rdattr_error, may succeed.  I'm not quite sure what to do about that.)
+
+--b.
+
+commit a86c3e5f716a9b8a83dddc445a4593305c7e76d6
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Wed Jun 6 12:38:58 2012 -0400
+
+    4.0 server tests: server may allow owner to override permissions on readdir
+    
+    As with regular files, permissions to access a directory are checked on
+    open not on individual reads.  Therefore it is the client's
+    responsibility to do an access check, and the server should be permitted
+    to allow the owner of a directory to overrider permissions.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/nfs4.0/servertests/st_readdir.py b/nfs4.0/servertests/st_readdir.py
+index d3570dd..66efae2 100644
+--- a/nfs4.0/servertests/st_readdir.py
++++ b/nfs4.0/servertests/st_readdir.py
+@@ -216,41 +216,6 @@ def testReservedCookies(t, env):
+         check(res, NFS4ERR_BAD_COOKIE,
+               "READDIR with reserved cookie=%i" % cookie)
+ 
+-def testUnaccessibleDir(t, env):
+-    """READDIR with (cfh) in unaccessible directory 
+-
+-    FLAGS: readdir all
+-    DEPEND: MKDIR MODE
+-    CODE: RDDR11
+-    """
+-    c = env.c1
+-    path = c.homedir + [t.code]
+-    c.maketree([t.code, ['hidden']])
+-    ops = c.use_obj(path) + [c.setattr({FATTR4_MODE:0})]
+-    res = c.compound(ops)
+-    check(res, msg="Setting mode=0 on directory %s" % t.code)
+-    ops = c.use_obj(path) + [c.readdir()]
+-    res = c.compound(ops)
+-    check(res, NFS4ERR_ACCESS, "READDIR of directory with mode=0")
+-   
+-def testUnaccessibleDirAttrs(t, env):
+-    """READDIR with (cfh) in unaccessible directory requesting attrs
+-
+-    FLAGS: readdir all
+-    DEPEND: MKDIR MODE
+-    CODE: RDDR12
+-    """
+-    c = env.c1
+-    path = c.homedir + [t.code]
+-    c.maketree([t.code, ['hidden']])
+-    ops = c.use_obj(path) + [c.setattr({FATTR4_MODE:0})]
+-    res = c.compound(ops)
+-    check(res, msg="Setting mode=0 on directory %s" % t.code)
+-    ops = c.use_obj(path) + \
+-          [c.readdir(attr_request=[FATTR4_RDATTR_ERROR, FATTR4_TYPE])]
+-    res = c.compound(ops)
+-    check(res, NFS4ERR_ACCESS, "READDIR of directory with mode=0")
+-   
+ ###########################################
+ 
+ 
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
