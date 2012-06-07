@@ -1,46 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:23881 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759425Ab2FAVPK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Jun 2012 17:15:10 -0400
-From: andros@netapp.com
-To: iisaman@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [[PATCH resend] 0/6] PYNFS various patches
-Date: Tue, 29 May 2012 18:11:23 -0400
-Message-Id: <1338329489-29178-1-git-send-email-andros@netapp.com>
+Received: from natasha.panasas.com ([67.152.220.90]:34499 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932995Ab2FGV7g (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jun 2012 17:59:36 -0400
+Message-ID: <4FD1242E.1010909@panasas.com>
+Date: Fri, 8 Jun 2012 00:59:10 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Namjae Jeon <linkinjeon@gmail.com>,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        Amit Sahrawat <a.sahrawat@samsung.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Namjae Jeon <namjae.jeon@samsung.com>
+Subject: Re: [Problem]NFS Server =?UTF-8?B?4oCTIFVtb3VudCByZXN1bHRzIGluIEQ=?=
+ =?UTF-8?B?ZXZpY2UgQnVzeS4=?=
+References: <CAKYAXd-HCfcejT=kG-kSXWCmfmxTjrT2o+b3Zan+BCrS1Y2ovw@mail.gmail.com> <4FD06290.7050004@panasas.com> <20120607113358.GB8684@fieldses.org>
+In-Reply-To: <20120607113358.GB8684@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On 06/07/2012 02:33 PM, J. Bruce Fields wrote:
 
-Sorry for the resend - didn't set my user info on new git tree.
+> On Thu, Jun 07, 2012 at 11:13:04AM +0300, Boaz Harrosh wrote:
 
-Here is what I've been using to test DS recovery and MDSThreshold
 
--->Andy
+> 
+> I'm not sure how adding an "unmount" rpc to the protocol would really
+> help here, if that's what you're asking for.
+> 
 
-Andy Adamson (3):
-  PYNFS use requested iomode on layoutget
-  PYNFS: add mdsthreshold to file layout server
-  PYNFS implement FREE_STATEID and TEST_STATEID operations
 
-Fred Isaman (1):
-  PYNFS rpc drop fix
+Please elaborate a bit. I'm not familiar with the details of this
+discussion.
 
-Weston Andros Adamson (2):
-  PYNFS fix rpcgen
-  PYNFS use loopback addresses for MDS<->DS communication
+> If you're just looking for a command you could run on the server after
+> all the clients have unmounted--"exportfs -f" or "service stop nfsd" (or
+> equivalent) should do the job.
+> 
 
- nfs4.1/dataserver.py |   28 ++++++++++++++++++++++------
- nfs4.1/fs.py         |   12 ++++++++++--
- nfs4.1/nfs4lib.py    |    2 +-
- nfs4.1/nfs4server.py |   33 +++++++++++++++++++++++++++++++++
- nfs4.1/nfs4state.py  |   11 ++++++-----
- rpc/rpc.py           |    2 +-
- xdr/xdrgen.py        |    2 ++
- 7 files changed, 75 insertions(+), 15 deletions(-)
+man exportfs
+       -f     In 'new' mode, flush everything out of the kernels export table.
+              Any clients that are active will get new entries added by mountd
+              when they make their next request.
 
--- 
-1.7.7.6
+What if: (Just fantasizing here, if I understand the above text correctly)
+* NFS4: A bit like expire client, as long as client has state on the server
+        he needs to refresh his leases so not to expire with some kind of
+        activity or renewals.
+	If a client has no state and 2*expiry timeout passed then it is
+	individually "exportfs -f". This is safe because on renewed activity
+	it will get it's mountd entries renewed safely (did I understand
+	this correctly?
 
+* NFS3: Same as above But with say X*expiry timeout after last activity
+	Same safeness as above.
+
+Any "unmount rpc" will expedite the above without waiting for timeout
+
+<>
+
+> 
+> Note nfsd doesn't really know when that is.  Even with NFSv4, processes
+> can be using the filesystem without holding state on the server: they
+> might just have a current working directory in the filesystem, or have a
+> device special file open.
+> 
+
+
+How does the magic of above statement works? quote:
+    "will get new entries added by mountd when they make their next request"
+
+<>
+
+> 
+> My first concern would be to fix any ordering bugs in the systemd
+> configuration, or any reference count leaks.
+> 
+
+
+I'm currently shooting in the dark, I have not investigated this at all,
+do to lack of time. It should be the same with an ext4 over iscsi device
+re-exported by NFS. You must mount the ext4 as "-o _netdev" otherwise
+ext4 mount itself will have a problem.
+
+> --b.
+
+
+Thanks Bruce, we'll keep this on a back burner until we can come back to
+it. A TODO.
+
+But Jeon, please do send in your proposal code, I'd like to see it.
+
+Thanks
+Boaz
