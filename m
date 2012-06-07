@@ -1,43 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.14.81]:35381 "EHLO
-	hackers.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755013Ab2FXMrU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jun 2012 08:47:20 -0400
-Date: Sun, 24 Jun 2012 08:46:25 -0400
-From: Jim Rees <rees@umich.edu>
-To: Namjae Jeon <linkinjeon@gmail.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-        "bharrosh@panasas.com" <bharrosh@panasas.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Namjae Jeon <namjae.jeon@samsung.com>,
-        VivekTrivedi <t.vivek@samsung.com>,
-        Amit Sahrawat <a.sahrawat@samsung.com>
-Subject: Re: [RFC PATCH] nfs: Support posix_fadvise(POSIX_FADV_RANDOM) on nfs
- server.
-Message-ID: <20120624124625.GA15586@umich.edu>
-References: <1340448446-10198-1-git-send-email-linkinjeon@gmail.com>
- <20120623115106.GA2742@umich.edu>
- <5AC2C9F0-EEFE-423E-BBB9-27102D1CA163@oracle.com>
- <CAKYAXd_QKsiTV86H4eykjOzfJc8Who1T8in5TmnJyxigw=+7AQ@mail.gmail.com>
+Received: from natasha.panasas.com ([67.152.220.90]:57605 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752904Ab2FGVJP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jun 2012 17:09:15 -0400
+Message-ID: <4FD1186D.9060503@panasas.com>
+Date: Fri, 8 Jun 2012 00:09:01 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAKYAXd_QKsiTV86H4eykjOzfJc8Who1T8in5TmnJyxigw=+7AQ@mail.gmail.com>
+To: Idan Kedar <idank@tonian.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] pnfs-obj: disable unloading the module when mounted
+References: <1339095991-26753-1-git-send-email-idank@tonian.com> <1339095991-26753-2-git-send-email-idank@tonian.com>
+In-Reply-To: <1339095991-26753-2-git-send-email-idank@tonian.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Namjae Jeon wrote:
+On 06/07/2012 10:06 PM, Idan Kedar wrote:
 
-  > Yes, posix_fadvise support is part of NFSv4.2.
-  Where can I check it ?
-  Thanks.
+> or the kernel will oops.
+> 
 
-NFS is standardized throught the IETF.  4.2 is not out yet, so you'll find
-it in the drafts rather than the RFCs.  You can search them here:
-http://www.rfc-editor.org/idsearch.html
 
-Here is the current draft:
-ftp://ftp.rfc-editor.org/in-notes/internet-drafts/draft-ietf-nfsv4-minorversion2-12.txt
+Perfect Thanks
+
+> Signed-off-by: Idan Kedar <idank@tonian.com>
+> ---
+>  fs/nfs/objlayout/objio_osd.c |    1 +
+>  1 files changed, 1 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+> index 55d0128..b161f97 100644
+> --- a/fs/nfs/objlayout/objio_osd.c
+> +++ b/fs/nfs/objlayout/objio_osd.c
+> @@ -551,6 +551,7 @@ static const struct nfs_pageio_ops objio_pg_write_ops = {
+>  static struct pnfs_layoutdriver_type objlayout_type = {
+>  	.id = LAYOUT_OSD2_OBJECTS,
+>  	.name = "LAYOUT_OSD2_OBJECTS",
+> +	.owner = THIS_MODULE,
+>  	.flags                   = PNFS_LAYOUTRET_ON_SETATTR |
+>  				   PNFS_LAYOUTRET_ON_ERROR,
+>  
+
+
