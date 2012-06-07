@@ -1,32 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:17576 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755516Ab2FYUsa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Jun 2012 16:48:30 -0400
-Message-ID: <4FE8CE8C.7020007@netapp.com>
-Date: Mon, 25 Jun 2012 16:48:12 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: rpcauth_create() returns ERR_PTR
-References: <17B0469E-0417-4F74-A035-625D41E5609B@oracle.com>
-In-Reply-To: <17B0469E-0417-4F74-A035-625D41E5609B@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from rcsinet15.oracle.com ([148.87.113.117]:26925 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754317Ab2FGPmw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jun 2012 11:42:52 -0400
+Subject: Re: [PATCH] NFS: Fix a commit bug
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <ABEA57CF-6358-4FFE-9CB6-35F9CD2616B8@oracle.com>
+Date: Thu, 7 Jun 2012 11:42:48 -0400
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>,
+        "Isaman, Fred" <Fred.Isaman@netapp.com>
+Message-Id: <16A50E40-0250-4975-8001-8B1B2AF4696A@oracle.com>
+References: <1338936204-20168-1-git-send-email-Trond.Myklebust@netapp.com> <73EB71C8-FD1B-4508-8474-D87C9B7312EC@netapp.com> <ABEA57CF-6358-4FFE-9CB6-35F9CD2616B8@oracle.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/25/2012 04:43 PM, Chuck Lever wrote:
-> Hi-
-> 
-> nfs4_create_sec_client() and nfs4_lookup_root_sec() both invoke rpcauth_create().  They check to see that it returned something that wasn't NULL.
-> 
-> As far as I can tell, rpcauth_create() reports an error by returning something that IS_ERR.  It doesn't return NULL.  nfs_init_server_rpcclient() appears to be correct.
-> 
-> The fix looks simple, but since I don't have any unit tests for this area of code, I was hoping you could take it from here.
-> 
 
-Sure, I'll take a look at it.  You're right, checking for an error code instead of NULL sounds like an easy fix.
+On Jun 7, 2012, at 11:05 AM, Chuck Lever wrote:
 
-- Bryan
+> This does not appear to fix the problem I'm seeing.
+> 
+> With this patch applied, the client is silly renaming the file, deleting it, then writing it again and failing with NFS4ERR_STALE.
+> 
+> I had to apply the change by hand, so I could have missed something.  I'll go back and check.
+
+The patch was missing a hunk, now fixed.  I still see misbehavior.  But, the re-writes are occurring because the client gets an error while writing to the DS, and fails over to the MDS and retries the writes.  So I'm seeing a different bug.
+
+---
+Chuck Lever
+chuck [dot] lever [at] oracle [dot] com
+
+
+
 
