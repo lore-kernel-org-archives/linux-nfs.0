@@ -1,56 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:43851 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753691Ab2GABxS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jun 2012 21:53:18 -0400
-Received: by pbbrp8 with SMTP id rp8so6097538pbb.19
-        for <linux-nfs@vger.kernel.org>; Sat, 30 Jun 2012 18:53:18 -0700 (PDT)
+Received: from 8bytes.org ([85.214.48.195]:55990 "EHLO
+	h2027444.stratoserver.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750847Ab2FGPYZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jun 2012 11:24:25 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by h2027444.stratoserver.net (Postfix) with SMTP id 8712B12AFE9
+	for <linux-nfs@vger.kernel.org>; Thu,  7 Jun 2012 17:04:57 +0200 (CEST)
+Date: Thu, 7 Jun 2012 17:04:56 +0200
+From: Joerg Roedel <joro@8bytes.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: NFS regression in v3.5-rc1: mount.nfs yells about incorrect mount
+ option
+Message-ID: <20120607150456.GO12795@8bytes.org>
 MIME-Version: 1.0
-Date: Sun, 1 Jul 2012 02:53:18 +0100
-Message-ID: <CAPD_G3L0wwzCWyoPJp_sKpuQ0J7+avn-ejEn-WnXf81zr=-LqA@mail.gmail.com>
-Subject: Linux NFSv4 client uses returned delegation in subsequent READ
- resulting in hang (BAD_STATEID)
-From: "Charles 'Boyo" <charlesboyo@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello.
+Hi,
 
-I have repeatedly had Linux NFS clients hang while trying to access
-files on a NFSv4 mount (Solaris).
-Investigations revealed that this client is using a delegation that it
-has already returned, resulting in the BAD_STATEID error.
-Unfortunately, it then proceeds to hammer the server with these
-"doomed" requests, resulting in the client-side unresponsiveness and
-constant network traffic.
+since Linux v3.5-rc1 I experience problems using NFS between my
+machines. One of my test-machines gives me:
 
-A sample trace can be found at http://pastebin.centos.org/39046
-As shown, the READ in frame 10 (line 112) follows the DELEGRETURN in
-frame 9 which results in the error. This READ was then repeated
-infinitely until either the server or client was restarted.
-Disabling delegations on the server-side caused the problem to cease.
-So what is wrong with delegations on the client-side?
+root@chrom:~# mount lemmy:/data/repos /data/lemmy
+mount.nfs: an incorrect mount option was specified
 
-I am using the latest nfs-utils packages and my mount options are as
-shown below:
+The same works fine on v3.4. I tried to bisect but got different errors
+in between. In the end, using every non-working case as bad, bisection
+pointed to:
 
-# cat /etc/redhat-release
-CentOS release 6.2 (Final)
+	db83335 NFS: Let mount data parsing set the NFS version
 
-# uname -r
-2.6.32-220.4.1.el6.x86_64
-
-# rpm -qa '*nfs*'
-nfs-utils-lib-1.1.5-4.el6.x86_64
-nfs-utils-1.2.3-15.el6_2.1.x86_64
-
-# grep nfs4 /proc/mounts
-10.51.1.6:/SharedFolder/ /var/LocalMountPoint nfs4
-rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=10.51.1.34,minorversion=0,local_lock=none,addr=10.51.1.6
-0 0
+but that at that commit the kernel panics when trying to mount the NFS
+tree. Please let me know if you need any additional information.
 
 Regards,
 
-Charles
+	Joerg
+
+
