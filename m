@@ -1,40 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:10339 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756898Ab2FTQMz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jun 2012 12:12:55 -0400
-Message-ID: <4FE1F640.10803@redhat.com>
-Date: Wed, 20 Jun 2012 12:11:44 -0400
-From: Rik van Riel <riel@redhat.com>
+Received: from 8bytes.org ([85.214.48.195]:56260 "EHLO
+	h2027444.stratoserver.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761420Ab2FGTdm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jun 2012 15:33:42 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by h2027444.stratoserver.net (Postfix) with SMTP id 0242912AFE9
+	for <linux-nfs@vger.kernel.org>; Thu,  7 Jun 2012 21:33:40 +0200 (CEST)
+Date: Thu, 7 Jun 2012 21:33:40 +0200
+From: Joerg Roedel <joro@8bytes.org>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: NFS regression in v3.5-rc1: mount.nfs yells about incorrect
+ mount option
+Message-ID: <20120607193339.GT12795@8bytes.org>
+References: <20120607150456.GO12795@8bytes.org>
+ <4FD0C4C2.8020605@netapp.com>
+ <20120607155006.GR12795@8bytes.org>
+ <4FD0CEB0.9040804@netapp.com>
+ <20120607160109.GS12795@8bytes.org>
+ <4FD0E382.8050800@netapp.com>
 MIME-Version: 1.0
-To: Mel Gorman <mgorman@suse.de>
-CC: Andrew Morton <akpm@linux-foundation.org>, Linux-MM <linux-mm@kvack.org>,
-        Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>
-Subject: Re: [PATCH 06/12] mm: Add get_kernel_page[s] for pinning of kernel
- addresses for I/O
-References: <1340185081-22525-1-git-send-email-mgorman@suse.de> <1340185081-22525-7-git-send-email-mgorman@suse.de>
-In-Reply-To: <1340185081-22525-7-git-send-email-mgorman@suse.de>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FD0E382.8050800@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/20/2012 05:37 AM, Mel Gorman wrote:
-> This patch adds two new APIs get_kernel_pages() and get_kernel_page()
-> that may be used to pin a vector of kernel addresses for IO. The initial
-> user is expected to be NFS for allowing pages to be written to swap
-> using aops->direct_IO(). Strictly speaking, swap-over-NFS only needs
-> to pin one page for IO but it makes sense to express the API in terms
-> of a vector and add a helper for pinning single pages.
->
-> Signed-off-by: Mel Gorman<mgorman@suse.de>
+On Thu, Jun 07, 2012 at 01:23:14PM -0400, Bryan Schumaker wrote:
+> On 06/07/2012 12:01 PM, Joerg Roedel wrote:
 
-Reviewed-by: Rik van Riel<riel@redhat.com>
+> What does /etc/exports look like on the server?  You may have to mount
+> it as "lemmy:/" when using NFS v4.
+
+It does not use NFSv4. The exact same command line works fine on v3.4 :)
+The /etc/exports line is:
+
+/data/repos	*(ro,no_subtree_check)
+
+> 
+> What distro are you using?  I haven't been able to get the incorrect mount option error you're seeing.
+
+The client is running Ubuntu 10.04 amd64 desktop with development kernel
+and the "server" is my workstation, running Ubuntu 12.04 amd64 desktop
+with distro kernel (3.2 based).
+
+Regards,
+
+	Joerg
 
