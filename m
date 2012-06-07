@@ -1,38 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:27660 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754435Ab2FTRQQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jun 2012 13:16:16 -0400
-Message-ID: <4FE20501.3080004@redhat.com>
-Date: Wed, 20 Jun 2012 13:14:41 -0400
-From: Rik van Riel <riel@redhat.com>
-MIME-Version: 1.0
-To: Mel Gorman <mgorman@suse.de>
-CC: Andrew Morton <akpm@linux-foundation.org>, Linux-MM <linux-mm@kvack.org>,
-        Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>
-Subject: Re: [PATCH 08/12] nfs: teach the NFS client how to treat PG_swapcache
- pages
-References: <1340185081-22525-1-git-send-email-mgorman@suse.de> <1340185081-22525-9-git-send-email-mgorman@suse.de>
-In-Reply-To: <1340185081-22525-9-git-send-email-mgorman@suse.de>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:35946 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755522Ab2FGTGn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jun 2012 15:06:43 -0400
+Received: by bkcji2 with SMTP id ji2so899257bkc.19
+        for <linux-nfs@vger.kernel.org>; Thu, 07 Jun 2012 12:06:42 -0700 (PDT)
+From: Idan Kedar <idank@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/2] pNFS: disable unloading a layout driver when mounted
+Date: Thu,  7 Jun 2012 22:06:29 +0300
+Message-Id: <1339095991-26753-1-git-send-email-idank@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/20/2012 05:37 AM, Mel Gorman wrote:
-> Replace all relevant occurences of page->index and page->mapping in
-> the NFS client with the new page_file_index() and page_file_mapping()
-> functions.
->
-> Signed-off-by: Peter Zijlstra<a.p.zijlstra@chello.nl>
-> Signed-off-by: Mel Gorman<mgorman@suse.de>
+Layout drivers' refcount is incremented when a filesystem is mounted with
+the layout type exported by the driver. Object layout and Block layout
+drivers did not provide an owner, which means no refcount is incremented
+and that the module can be unloaded while the file system is mounted
+which, in turn, crashes in the layout driver when the NFS client attempts
+to do something with the layout driver (typically coalescing).
 
-Acked-by: Rik van Riel<riel@redhat.com>
+Idan Kedar (2):
+  pnfs-obj: disable unloading the module when mounted
+  pnfsblock: disable unloading the module when mounted
+
+ fs/nfs/blocklayout/blocklayout.c |    1 +
+ fs/nfs/objlayout/objio_osd.c     |    1 +
+ 2 files changed, 2 insertions(+), 0 deletions(-)
+
+-- 
+1.7.6.5
 
