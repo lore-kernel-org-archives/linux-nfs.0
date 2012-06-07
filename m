@@ -1,204 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51823 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756351Ab2FYUkO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Jun 2012 16:40:14 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: stable@vger.kernel.org
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/4] SUNRPC: new svc_bind() routine introduced
-Date: Mon, 25 Jun 2012 16:40:08 -0400
-Message-Id: <1340656810-13752-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1340656810-13752-1-git-send-email-bfields@redhat.com>
-References: <1340656810-13752-1-git-send-email-bfields@redhat.com>
+Received: from mail-we0-f174.google.com ([74.125.82.174]:49981 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755725Ab2FGKgv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jun 2012 06:36:51 -0400
+Received: by weyu7 with SMTP id u7so256799wey.19
+        for <linux-nfs@vger.kernel.org>; Thu, 07 Jun 2012 03:36:50 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <4FD07F7D.6070509@panasas.com>
+References: <CAKYAXd-HCfcejT=kG-kSXWCmfmxTjrT2o+b3Zan+BCrS1Y2ovw@mail.gmail.com>
+	<4FD06290.7050004@panasas.com>
+	<CAKYAXd8rwY-mHiO+5691qq5w=O-Gs1FXQ4CjEbPDLVnPSkkBTQ@mail.gmail.com>
+	<4FD07F7D.6070509@panasas.com>
+Date: Thu, 7 Jun 2012 19:36:50 +0900
+Message-ID: <CAKYAXd8YCoX3jYK5=gNE3jKyvqTQpawpMkhMKWToCpsTLkcJew@mail.gmail.com>
+Subject: =?UTF-8?Q?Re=3A_=5BProblem=5DNFS_Server_=E2=80=93_Umount_results_in_Device?=
+	=?UTF-8?Q?_Busy=2E?=
+From: Namjae Jeon <linkinjeon@gmail.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        Amit Sahrawat <a.sahrawat@samsung.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Namjae Jeon <namjae.jeon@samsung.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
-upstream commit 9793f7c88937e7ac07305ab1af1a519225836823.
-
-This new routine is responsible for service registration in a specified
-network context.
-
-The idea is to separate service creation from per-net operations.
-
-Note also: since registering service with svc_bind() can fail, the
-service will be destroyed and during destruction it will try to
-unregister itself from rpcbind. In this case unregistration has to be
-skipped.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/lockd/svc.c             |    6 ++++++
- fs/nfs/callback.c          |    8 ++++++++
- fs/nfsd/nfssvc.c           |    9 +++++++++
- include/linux/sunrpc/svc.h |    1 +
- net/sunrpc/rpcb_clnt.c     |   12 +++++++-----
- net/sunrpc/svc.c           |   19 ++++++++++---------
- 6 files changed, 41 insertions(+), 14 deletions(-)
-
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 1ead075..b7e92ed 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -324,6 +324,12 @@ int lockd_up(struct net *net)
- 		goto out;
- 	}
- 
-+	error = svc_bind(serv, net);
-+	if (error < 0) {
-+		printk(KERN_WARNING "lockd_up: bind service failed\n");
-+		goto destroy_and_out;
-+	}
-+
- 	error = make_socks(serv, net);
- 	if (error < 0)
- 		goto destroy_and_out;
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index eb95f50..26b38fb 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -17,6 +17,7 @@
- #include <linux/kthread.h>
- #include <linux/sunrpc/svcauth_gss.h>
- #include <linux/sunrpc/bc_xprt.h>
-+#include <linux/nsproxy.h>
- 
- #include <net/inet_sock.h>
- 
-@@ -253,6 +254,7 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
- 	char svc_name[12];
- 	int ret = 0;
- 	int minorversion_setup;
-+	struct net *net = current->nsproxy->net_ns;
- 
- 	mutex_lock(&nfs_callback_mutex);
- 	if (cb_info->users++ || cb_info->task != NULL) {
-@@ -265,6 +267,12 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
- 		goto out_err;
- 	}
- 
-+	ret = svc_bind(serv, net);
-+	if (ret < 0) {
-+		printk(KERN_WARNING "NFS: bind callback service failed\n");
-+		goto out_err;
-+	}
-+
- 	minorversion_setup =  nfs_minorversion_callback_svc_setup(minorversion,
- 					serv, xprt, &rqstp, &callback_svc);
- 	if (!minorversion_setup) {
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 78e5213..118c172 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -11,6 +11,7 @@
- #include <linux/module.h>
- #include <linux/fs_struct.h>
- #include <linux/swap.h>
-+#include <linux/nsproxy.h>
- 
- #include <linux/sunrpc/stats.h>
- #include <linux/sunrpc/svcsock.h>
-@@ -330,6 +331,8 @@ static int nfsd_get_default_max_blksize(void)
- 
- int nfsd_create_serv(void)
- {
-+	int error;
-+
- 	WARN_ON(!mutex_is_locked(&nfsd_mutex));
- 	if (nfsd_serv) {
- 		svc_get(nfsd_serv);
-@@ -343,6 +346,12 @@ int nfsd_create_serv(void)
- 	if (nfsd_serv == NULL)
- 		return -ENOMEM;
- 
-+	error = svc_bind(nfsd_serv, current->nsproxy->net_ns);
-+	if (error < 0) {
-+		svc_destroy(nfsd_serv);
-+		return error;
-+	}
-+
- 	set_max_drc();
- 	do_gettimeofday(&nfssvc_boot);		/* record boot time */
- 	return 0;
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 51b29ac..2b43e02 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -416,6 +416,7 @@ struct svc_procedure {
-  */
- int svc_rpcb_setup(struct svc_serv *serv, struct net *net);
- void svc_rpcb_cleanup(struct svc_serv *serv, struct net *net);
-+int svc_bind(struct svc_serv *serv, struct net *net);
- struct svc_serv *svc_create(struct svc_program *, unsigned int,
- 			    void (*shutdown)(struct svc_serv *, struct net *net));
- struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 78ac39f..4c38b33 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -180,14 +180,16 @@ void rpcb_put_local(struct net *net)
- 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
- 	struct rpc_clnt *clnt = sn->rpcb_local_clnt;
- 	struct rpc_clnt *clnt4 = sn->rpcb_local_clnt4;
--	int shutdown;
-+	int shutdown = 0;
- 
- 	spin_lock(&sn->rpcb_clnt_lock);
--	if (--sn->rpcb_users == 0) {
--		sn->rpcb_local_clnt = NULL;
--		sn->rpcb_local_clnt4 = NULL;
-+	if (sn->rpcb_users) {
-+		if (--sn->rpcb_users == 0) {
-+			sn->rpcb_local_clnt = NULL;
-+			sn->rpcb_local_clnt4 = NULL;
-+		}
-+		shutdown = !sn->rpcb_users;
- 	}
--	shutdown = !sn->rpcb_users;
- 	spin_unlock(&sn->rpcb_clnt_lock);
- 
- 	if (shutdown) {
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 4153846..e6d542c 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -407,6 +407,14 @@ static int svc_uses_rpcbind(struct svc_serv *serv)
- 	return 0;
- }
- 
-+int svc_bind(struct svc_serv *serv, struct net *net)
-+{
-+	if (!svc_uses_rpcbind(serv))
-+		return 0;
-+	return svc_rpcb_setup(serv, net);
-+}
-+EXPORT_SYMBOL_GPL(svc_bind);
-+
- /*
-  * Create an RPC service
-  */
-@@ -471,15 +479,8 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
- 		spin_lock_init(&pool->sp_lock);
- 	}
- 
--	if (svc_uses_rpcbind(serv)) {
--		if (svc_rpcb_setup(serv, current->nsproxy->net_ns) < 0) {
--			kfree(serv->sv_pools);
--			kfree(serv);
--			return NULL;
--		}
--		if (!serv->sv_shutdown)
--			serv->sv_shutdown = svc_rpcb_cleanup;
--	}
-+	if (svc_uses_rpcbind(serv) && (!serv->sv_shutdown))
-+		serv->sv_shutdown = svc_rpcb_cleanup;
- 
- 	return serv;
- }
--- 
-1.7.9.5
-
+2012/6/7, Boaz Harrosh <bharrosh@panasas.com>:
+> On 06/07/2012 12:43 PM, Namjae Jeon wrote:
+>
+>> 2012/6/7, Boaz Harrosh <bharrosh@panasas.com>:
+>>> On 06/07/2012 10:47 AM, Namjae Jeon wrote:
+>>>
+>>>> Hi Bruce, Trond.
+>>>>
+>>>> As you know, Currently umount results in busy on NFS server although
+>>>> user tried to succeed to umount on NFS client.
+>>>> I suggest to add umount procedure to avoid umount busy issue.
+>>>> When calling umount on NFS client, The resources(exportfs entries
+>>>> cache) of mount point will be flushed on NFS server. and umount will
+>>>> be succeed without busy issue.
+>>>>
+>>>> how do you think about this suggestion ?
+>>>>
+>>>
+>>>
+>>> I second this request, what is needed so when all clients unmounted,
+>>> the system comes back to the sate it was before any clients have
+>>> mounted. i.e filesystems is not referenced and may unmount cleanly.
+>>> (This also happens with >= 4.0 clients only, so no excuses)
+>>>
+>>> This is a real problem for me, on Fedora machines. Because I export
+>>> iscsi devices which are network devices, and in the shutdown procedure
+>>> for some reason the "service nfs stop" of the server is much much to
+>>> late. the original umount of exofs (-o _netdev) fails because it's
+>>> held by NFSD, the iscsi devices go away regardless, and when nfsd
+>>> finally releases exofs, it gets deadlocked on some error handling.
+>>> OK I know I must fix the stuck-ness, but the problem will remain.
+>>> The FS will not unmount cleanly because it will only attempt
+>>> an unmount after its devices are gone. This will be solved if
+>>> nfsd would release its hold on the FS when all clients are gone.
+>>>
+>>> It was on my TODO to fix this for a long time, but I seem to be
+>>> too busy with more urgent matters. (What's the point of fixing the
+>>> shutdown if the steady state doesn't work yet)
+>>>
+>>> If someone has investigated the matter and knows what to do I would
+>>> appreciate any insights, and/or patches would be wonderful ;-)
+>> Hi Boaz.
+>> Oh.. You also are facing same problem.
+>> Actually I almost finish to imprement the patch about umount busy
+>> issue on NFS server. But I want to know Maintainer's opinion before
+>> posting.
+>> Thanks.
+>
+>
+> Please post it (maybe as RFC) I want to see it
+Okay, I will soon.
+>
+> Thanks
+> Boaz
+>
+>>>
+>>>> Thanks.
+>>>>
+>>>
+>>> <>
+>>>
+>>> Thanks
+>>> Boaz
+>>>
+>>>
+>
+>
+>
