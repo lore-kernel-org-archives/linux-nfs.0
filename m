@@ -1,29 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from violet.fr.zoreil.com ([92.243.8.30]:53344 "EHLO
-	violet.fr.zoreil.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753289Ab2FWGpE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 23 Jun 2012 02:45:04 -0400
-Date: Sat, 23 Jun 2012 08:13:53 +0200
-From: Francois Romieu <romieu@fr.zoreil.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Bernard Pidoux <bernard.pidoux@upmc.fr>,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: rpc_pipefs kernel panic kernel 3.4.3
-Message-ID: <20120623061353.GA18625@electric-eye.fr.zoreil.com>
-References: <F77FADB4-0415-4945-AC03-CEE36F2FEB08@upmc.fr> <4FE4DB31.4000601@free.fr> <4FE4F7FA.4000604@free.fr>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FE4F7FA.4000604@free.fr>
+Received: from mail-we0-f174.google.com ([74.125.82.174]:44681 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751557Ab2FGJnI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jun 2012 05:43:08 -0400
+Received: by weyu7 with SMTP id u7so228898wey.19
+        for <linux-nfs@vger.kernel.org>; Thu, 07 Jun 2012 02:43:07 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <4FD06290.7050004@panasas.com>
+References: <CAKYAXd-HCfcejT=kG-kSXWCmfmxTjrT2o+b3Zan+BCrS1Y2ovw@mail.gmail.com>
+	<4FD06290.7050004@panasas.com>
+Date: Thu, 7 Jun 2012 18:43:07 +0900
+Message-ID: <CAKYAXd8rwY-mHiO+5691qq5w=O-Gs1FXQ4CjEbPDLVnPSkkBTQ@mail.gmail.com>
+Subject: =?UTF-8?Q?Re=3A_=5BProblem=5DNFS_Server_=E2=80=93_Umount_results_in_Device?=
+	=?UTF-8?Q?_Busy=2E?=
+From: Namjae Jeon <linkinjeon@gmail.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        Amit Sahrawat <a.sahrawat@samsung.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Namjae Jeon <namjae.jeon@samsung.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-(redirected from l-k, see http://marc.info/?l=linux-kernel&m=134040598419594&w=2)
-
-Bernard Pidoux <bernard.pidoux@free.fr> :
-[rpc_pipefs_event panic with 3.4.4 at boot mount, 3.3.8 is fine]
-
-Should Bernard try a git bisect ?
-
--- 
-Ueimor
+2012/6/7, Boaz Harrosh <bharrosh@panasas.com>:
+> On 06/07/2012 10:47 AM, Namjae Jeon wrote:
+>
+>> Hi Bruce, Trond.
+>>
+>> As you know, Currently umount results in busy on NFS server although
+>> user tried to succeed to umount on NFS client.
+>> I suggest to add umount procedure to avoid umount busy issue.
+>> When calling umount on NFS client, The resources(exportfs entries
+>> cache) of mount point will be flushed on NFS server. and umount will
+>> be succeed without busy issue.
+>>
+>> how do you think about this suggestion ?
+>>
+>
+>
+> I second this request, what is needed so when all clients unmounted,
+> the system comes back to the sate it was before any clients have
+> mounted. i.e filesystems is not referenced and may unmount cleanly.
+> (This also happens with >= 4.0 clients only, so no excuses)
+>
+> This is a real problem for me, on Fedora machines. Because I export
+> iscsi devices which are network devices, and in the shutdown procedure
+> for some reason the "service nfs stop" of the server is much much to
+> late. the original umount of exofs (-o _netdev) fails because it's
+> held by NFSD, the iscsi devices go away regardless, and when nfsd
+> finally releases exofs, it gets deadlocked on some error handling.
+> OK I know I must fix the stuck-ness, but the problem will remain.
+> The FS will not unmount cleanly because it will only attempt
+> an unmount after its devices are gone. This will be solved if
+> nfsd would release its hold on the FS when all clients are gone.
+>
+> It was on my TODO to fix this for a long time, but I seem to be
+> too busy with more urgent matters. (What's the point of fixing the
+> shutdown if the steady state doesn't work yet)
+>
+> If someone has investigated the matter and knows what to do I would
+> appreciate any insights, and/or patches would be wonderful ;-)
+Hi Boaz.
+Oh.. You also are facing same problem.
+Actually I almost finish to imprement the patch about umount busy
+issue on NFS server. But I want to know Maintainer's opinion before
+posting.
+Thanks.
+>
+>> Thanks.
+>>
+>
+> <>
+>
+> Thanks
+> Boaz
+>
+>
