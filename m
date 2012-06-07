@@ -1,50 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:24866 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754032Ab2FMOFS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jun 2012 10:05:18 -0400
-Subject: Re: Gave up waiting for root device
-Mime-Version: 1.0 (Apple Message framework v1278)
-Content-Type: text/plain; charset=windows-1252
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1339563514.39008.YahooMailNeo@web111722.mail.gq1.yahoo.com>
-Date: Wed, 13 Jun 2012 10:05:14 -0400
-Cc: nfs <linux-nfs@vger.kernel.org>
-Message-Id: <A5B3B26F-9FD9-4F92-AE1D-157AF7B75A9F@oracle.com>
-References: <1339563514.39008.YahooMailNeo@web111722.mail.gq1.yahoo.com>
-To: Mahmood Naderan <nt_mahmood@yahoo.com>
+Received: from 8bytes.org ([85.214.48.195]:56040 "EHLO
+	h2027444.stratoserver.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755261Ab2FGPuI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jun 2012 11:50:08 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by h2027444.stratoserver.net (Postfix) with SMTP id 2A4A912AFE9
+	for <linux-nfs@vger.kernel.org>; Thu,  7 Jun 2012 17:50:07 +0200 (CEST)
+Date: Thu, 7 Jun 2012 17:50:06 +0200
+From: Joerg Roedel <joro@8bytes.org>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: NFS regression in v3.5-rc1: mount.nfs yells about incorrect
+ mount option
+Message-ID: <20120607155006.GR12795@8bytes.org>
+References: <20120607150456.GO12795@8bytes.org>
+ <4FD0C4C2.8020605@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FD0C4C2.8020605@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Jun 07, 2012 at 11:12:02AM -0400, Bryan Schumaker wrote:
 
-On Jun 13, 2012, at 12:58 AM, Mahmood Naderan wrote:
+> Can you use `mount -v` to get more output?
 
-> Dear all
-> While setting up  a diskless cluster from this guide 
-> 
-> (https://help.ubuntu.com/community/DisklessUbuntuHowto), 
-> clients end up with this message:
-> 
-> Gave up waiting for root device. Common problems:
-> - Boot args (cat /proc/cmdline)
-> – Check rootdelay= (did the system wait long enough?)
-> – Check root =(did the system wait for right device?)
-> - Missing modules (cat /proc/modules; ls /dev)
-> ALERT! /dev/nfs does not exist. Dropping to a shell!!
-> 
-> In that guide /dev/nfs is used twice: 1) in /nfsroot/etc/fstab and 2) 
-> 
-> in /var/lib/tftpboot/pxelinux.cfg/default 
-> 
-> 
-> I don't know why it complain... Can somebody help?
+Btw, it also works when I manually set the nfs-version at mount:
 
-To start, search the archives of this mailing list.  There have been a spate of bugs in this area over the past year or so that hit only during certain edge conditions.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+mount -o nfsvers=3 ...
 
 
+	Joerg
 
 
