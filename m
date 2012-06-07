@@ -1,58 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:23169 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753091Ab2F3LBI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 30 Jun 2012 07:01:08 -0400
-Date: Sat, 30 Jun 2012 07:00:36 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Andy Adamson <androsadamson@gmail.com>,
-        "Adamson, Andy" <William.Adamson@netapp.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/1] SUNRPC handle EKEYEXPIRED in call_refreshresult
-Message-ID: <20120630070036.232946cb@tlielax.poochiereds.net>
-In-Reply-To: <4FEE1381.1000209@RedHat.com>
-References: <1340827535-3062-1-git-send-email-andros@netapp.com>
-	<20120628114353.4f75aabc@tlielax.poochiereds.net>
-	<19150370-D1BD-4CC1-90BD-383805DE9557@netapp.com>
-	<20120628140351.527c5060@tlielax.poochiereds.net>
-	<CAHVgHyWs+_Ep_wP6QASSJ18tM8OhYkQ+o=h5NKnOqdC6HWchKQ@mail.gmail.com>
-	<4FEE1381.1000209@RedHat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from 8bytes.org ([85.214.48.195]:56005 "EHLO
+	h2027444.stratoserver.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752624Ab2FGPbY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jun 2012 11:31:24 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by h2027444.stratoserver.net (Postfix) with SMTP id 64E2912AFE9
+	for <linux-nfs@vger.kernel.org>; Thu,  7 Jun 2012 17:31:23 +0200 (CEST)
+Date: Thu, 7 Jun 2012 17:31:22 +0200
+From: Joerg Roedel <joro@8bytes.org>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: NFS regression in v3.5-rc1: mount.nfs yells about incorrect
+ mount option
+Message-ID: <20120607153122.GP12795@8bytes.org>
+References: <20120607150456.GO12795@8bytes.org>
+ <4FD0C4C2.8020605@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FD0C4C2.8020605@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 29 Jun 2012 16:43:45 -0400
-Steve Dickson <SteveD@redhat.com> wrote:
-
-> >>>
-> >>
-> >> Easy to say, far more difficult to do.
-> > 
-> > Here is how simple it is.
-> > 
-> > $ kinit
-> > $ krenew  -K 30&
-> If this simple process cannot renew a ticket then its a bug
-> in the client... We have to let processes like this to renew
-> renewable tickets! 
+On Thu, Jun 07, 2012 at 11:12:02AM -0400, Bryan Schumaker wrote:
+> On 06/07/2012 11:04 AM, Joerg Roedel wrote:
 > 
-> I've never been a fan of this hang from the beginning but 
-> if its getting in the way of things renewing tickets then its
-> got to go... IMHO...
-> 
-> Lets push the error up to the app and then educate people
-> on how to avoid the error... 
-> 
+> Can you use `mount -v` to get more output?
 
-Fair enough. I'd prefer to see this handled better too. If Andy has a
-solution for the writeback issues then I'm fine with reverting this
-behavior.
+Hmm, that is weird. When I use mount -v it actually does mount the
+remote NFS tree. Here is the output:
 
-If we have kerberized NFS howtos anywhere (do we?) then we probably
-need to add some notes about krenewd or how to make sssd handle this.
+root@chrom:~# mount -v lemmy:/data/repos /data/lemmy/
+mount: no type was given - I'll assume nfs because of the colon
+mount.nfs: timeout set for Thu Jun  7 17:21:54 2012
+mount.nfs: text-based options: 'addr=165.204.15.93'
+mount.nfs: mount(2): Protocol not supported
+mount.nfs: trying 165.204.15.93 prog 100003 vers 3 prot UDP port 2049
+mount.nfs: trying 165.204.15.93 prog 100005 vers 3 prot UDP port 39332
+mount.nfs: text-based options (retry): 'addr=165.204.15.93,vers=3,proto=udp,mountvers=3,mountproto=udp,mountport=39332'
+lemmy:/data/repos on /data/lemmy type nfs (rw)
 
--- 
-Jeff Layton <jlayton@redhat.com>
+When I unmount and try to mount it again without -v I still get the
+error message and the mount fails.
+
+With 3.4 the mount -v output is:
+
+mount: no type was given - I'll assume nfs because of the colon
+mount.nfs: timeout set for Thu Jun  7 17:19:44 2012
+mount.nfs: text-based options: 'addr=165.204.15.93'
+lemmy:/data/repos/ on /data/lemmy type nfs (rw)
+
+So for some reason the text-based options are different. Maybe that has
+something to do with the problem.
+
+Regards,
+
+	Joerg
+
+
