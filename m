@@ -1,85 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61939 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:65300 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965172Ab2FAQB1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Jun 2012 12:01:27 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/4] NFS: Properly sort TEST_STATEID results
-Date: Fri, 1 Jun 2012 16:01:25 +0000
-Message-ID: <1338566483.2774.22.camel@lade.trondhjem.org>
-References: <20120601153231.5626.89559.stgit@degas.1015granger.net>
-	 <20120601153814.5626.16055.stgit@degas.1015granger.net>
-In-Reply-To: <20120601153814.5626.16055.stgit@degas.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+	id S932439Ab2FGRXd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Jun 2012 13:23:33 -0400
+Message-ID: <4FD0E382.8050800@netapp.com>
+Date: Thu, 07 Jun 2012 13:23:14 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
+To: Joerg Roedel <joro@8bytes.org>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: NFS regression in v3.5-rc1: mount.nfs yells about incorrect mount
+ option
+References: <20120607150456.GO12795@8bytes.org> <4FD0C4C2.8020605@netapp.com> <20120607155006.GR12795@8bytes.org> <4FD0CEB0.9040804@netapp.com> <20120607160109.GS12795@8bytes.org>
+In-Reply-To: <20120607160109.GS12795@8bytes.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTA2LTAxIGF0IDExOjM4IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-VGhlIHJlc3VsdCBvZiBhIFRFU1RfU1RBVEVJRCBvcGVyYXRpb24gY2FuIGluZGljYXRlIGEgZmV3
-IGRpZmZlcmVudA0KPiB0aGluZ3MuICBJZiBORlNfT0sgaXMgcmV0dXJuZWQsIHRoZW4gdGhlIGNs
-aWVudCBjYW4gY29udGludWUgdXNpbmcgdGhlDQo+IHN0YXRlIElEIHVuZGVyIHRlc3QsIGFuZCBz
-a2lwIHJlY292ZXJ5LiAgUkZDIDU2NjEgc2F5cyB0aGF0IGlmIGFuZA0KPiBvbmx5IGlmIHRoZSBz
-dGF0ZSBJRCB3YXMgcmV2b2tlZCwgdGhlbiB0aGUgY2xpZW50IG11c3QgcGVyZm9ybSBhbg0KPiBl
-eHBsaWNpdCBGUkVFX1NUQVRFSUQgYmVmb3JlIHRyeWluZyB0byByZS1vcGVuLg0KPiANCj4gSG93
-ZXZlciwgaWYgdGhlIHNlcnZlciBkb2Vzbid0IHJlY29nbml6ZSB0aGUgc3RhdGUgSUQgYXQgYWxs
-LCB0aGVuIHRoZQ0KPiBjbGllbnQgc2hvdWxkIGltbWVkaWF0ZWx5IGNvbnRpbnVlIHdpdGggb3Bl
-biByZWNvdmVyeS4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IENodWNrIExldmVyIDxjaHVjay5sZXZl
-ckBvcmFjbGUuY29tPg0KPiAtLS0NCj4gDQo+ICBmcy9uZnMvbmZzNHByb2MuYyB8ICAgMzggKysr
-KysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrLS0NCj4gIDEgZmlsZXMgY2hhbmdlZCwg
-MzYgaW5zZXJ0aW9ucygrKSwgMiBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9u
-ZnMvbmZzNHByb2MuYyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+IGluZGV4IDRmMWU4MjQuLjM5ZDY0
-MWEgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9uZnM0cHJvYy5jDQo+ICsrKyBiL2ZzL25mcy9uZnM0
-cHJvYy5jDQo+IEBAIC0xNzMzLDYgKzE3MzMsMTQgQEAgc3RhdGljIGludCBuZnM0X29wZW5fZXhw
-aXJlZChzdHJ1Y3QgbmZzNF9zdGF0ZV9vd25lciAqc3AsIHN0cnVjdCBuZnM0X3N0YXRlICpzdGEN
-Cj4gIH0NCj4gIA0KPiAgI2lmIGRlZmluZWQoQ09ORklHX05GU19WNF8xKQ0KPiArLyoqDQo+ICsg
-KiBuZnM0MV9jaGVja19leHBpcmVkX3N0YXRlaWQgLSBkb2VzIGEgc3RhdGUgSUQgbmVlZCByZWNv
-dmVyeT8NCj4gKyAqDQo+ICsgKiBAc3RhdGU6IE5GU3Y0IG9wZW4gc3RhdGUgZm9yIGEgZmlsZQ0K
-PiArICoNCj4gKyAqIFJldHVybnMgTkZTX09LIGlmIHJlY292ZXJ5IGZvciB0aGlzIHN0YXRlIElE
-IGlzIG5vdyBmaW5pc2hlZC4NCj4gKyAqIE90aGVyd2lzZSBhIG5lZ2F0aXZlIE5GUzRFUlIgdmFs
-dWUgaXMgcmV0dXJuZWQuDQo+ICsgKi8NCj4gIHN0YXRpYyBpbnQgbmZzNDFfY2hlY2tfZXhwaXJl
-ZF9zdGF0ZWlkKHN0cnVjdCBuZnM0X3N0YXRlICpzdGF0ZSwgbmZzNF9zdGF0ZWlkICpzdGF0ZWlk
-LCB1bnNpZ25lZCBpbnQgZmxhZ3MpDQo+ICB7DQo+ICAJaW50IHN0YXR1cyA9IE5GU19PSzsNCj4g
-QEAgLTE3NDAsOSArMTc0OCwxOSBAQCBzdGF0aWMgaW50IG5mczQxX2NoZWNrX2V4cGlyZWRfc3Rh
-dGVpZChzdHJ1Y3QgbmZzNF9zdGF0ZSAqc3RhdGUsIG5mczRfc3RhdGVpZCAqcw0KPiAgDQo+ICAJ
-aWYgKHN0YXRlLT5mbGFncyAmIGZsYWdzKSB7DQo+ICAJCXN0YXR1cyA9IG5mczQxX3Rlc3Rfc3Rh
-dGVpZChzZXJ2ZXIsIHN0YXRlaWQpOw0KPiAtCQlpZiAoc3RhdHVzICE9IE5GU19PSykgew0KPiAr
-CQlzd2l0Y2ggKHN0YXR1cykgew0KPiArCQljYXNlIE5GU19PSzoNCj4gKwkJCS8qIHNlcnZlciBy
-ZWNvZ25pemVzIHRoaXMgb25lLCBkb24ndCByZS1vcGVuICovDQo+ICsJCQlicmVhazsNCj4gKwkJ
-Y2FzZSAtTkZTNEVSUl9BRE1JTl9SRVZPS0VEOg0KPiArCQljYXNlIC1ORlM0RVJSX0RFTEVHX1JF
-Vk9LRUQ6DQo+ICsJCQkvKiBzdGF0ZSB3YXMgcmV2b2tlZCwgZnJlZSB0aGVuIHJlLW9wZW4gKi8N
-Cj4gIAkJCW5mczQxX2ZyZWVfc3RhdGVpZChzZXJ2ZXIsIHN0YXRlaWQpOw0KPiAgCQkJc3RhdGUt
-PmZsYWdzICY9IH5mbGFnczsNCj4gKwkJCWJyZWFrOw0KPiArCQlkZWZhdWx0Og0KDQpQbGVhc2Ug
-ZG9uJ3QgYWRkIGVtcHR5ICJkZWZhdWx0OiIgY2FzZXMuIA0KDQo+ICsJCQkvKiBhbnl0aGluZyBl
-bHNlOiBnbyBhaGVhZCBhbmQgcmUtb3BlbiBpdCAqLw0KPiArCQkJYnJlYWs7DQoNClRoYXQgbGFz
-dCAiYnJlYWsiIGlzIHVubmVjZXNzYXJ5IHRvbyBpbiBzdGFuZGFyZCBDOTkuDQoNCj4gIAkJfQ0K
-PiAgCX0NCj4gIAlyZXR1cm4gc3RhdHVzOw0KPiBAQCAtNDY0Miw2ICs0NjYwLDE0IEBAIG91dDoN
-Cj4gIH0NCj4gIA0KPiAgI2lmIGRlZmluZWQoQ09ORklHX05GU19WNF8xKQ0KPiArLyoqDQo+ICsg
-KiBuZnM0MV9jaGVja19leHBpcmVkX2xvY2tzIC0gY2xlYXIgbG9jayBzdGF0ZSBJRHMNCj4gKyAq
-DQo+ICsgKiBAc3RhdGU6IE5GU3Y0IG9wZW4gc3RhdGUgZm9yIGEgZmlsZQ0KPiArICoNCj4gKyAq
-IFJldHVybnMgTkZTX09LIGlmIHJlY292ZXJ5IGZvciB0aGlzIHN0YXRlIElEIGlzIG5vdyBmaW5p
-c2hlZC4NCj4gKyAqIE90aGVyd2lzZSBhIG5lZ2F0aXZlIE5GUzRFUlIgdmFsdWUgaXMgcmV0dXJu
-ZWQuDQo+ICsgKi8NCj4gIHN0YXRpYyBpbnQgbmZzNDFfY2hlY2tfZXhwaXJlZF9sb2NrcyhzdHJ1
-Y3QgbmZzNF9zdGF0ZSAqc3RhdGUpDQo+ICB7DQo+ICAJaW50IHN0YXR1cywgcmV0ID0gTkZTX09L
-Ow0KPiBAQCAtNDY1MSw5ICs0Njc3LDE3IEBAIHN0YXRpYyBpbnQgbmZzNDFfY2hlY2tfZXhwaXJl
-ZF9sb2NrcyhzdHJ1Y3QgbmZzNF9zdGF0ZSAqc3RhdGUpDQo+ICAJbGlzdF9mb3JfZWFjaF9lbnRy
-eShsc3AsICZzdGF0ZS0+bG9ja19zdGF0ZXMsIGxzX2xvY2tzKSB7DQo+ICAJCWlmIChsc3AtPmxz
-X2ZsYWdzICYgTkZTX0xPQ0tfSU5JVElBTElaRUQpIHsNCj4gIAkJCXN0YXR1cyA9IG5mczQxX3Rl
-c3Rfc3RhdGVpZChzZXJ2ZXIsICZsc3AtPmxzX3N0YXRlaWQpOw0KPiAtCQkJaWYgKHN0YXR1cyAh
-PSBORlNfT0spIHsNCj4gKwkJCXN3aXRjaCAoc3RhdHVzKSB7DQo+ICsJCQljYXNlIE5GU19PSzoN
-Cj4gKwkJCQkvKiBzZXJ2ZXIgcmVjb2duaXplcyB0aGlzIG9uZSwgZG9uJ3QgcmUtbG9jayAqLw0K
-PiArCQkJCWJyZWFrOw0KPiArCQkJY2FzZSAtTkZTNEVSUl9BRE1JTl9SRVZPS0VEOg0KPiArCQkJ
-Y2FzZSAtTkZTNEVSUl9ERUxFR19SRVZPS0VEOg0KPiArCQkJCS8qIGxvY2sgd2FzIHJldm9rZWQs
-IGZyZWUgdGhlbiByZS1sb2NrICovDQo+ICAJCQkJbmZzNDFfZnJlZV9zdGF0ZWlkKHNlcnZlciwg
-JmxzcC0+bHNfc3RhdGVpZCk7DQo+ICAJCQkJbHNwLT5sc19mbGFncyAmPSB+TkZTX0xPQ0tfSU5J
-VElBTElaRUQ7DQo+ICsJCQkJLypGQUxMVEhST1VHSCovDQoNCldoeSBkbyB3ZSBuZWVkIHRoaXMg
-Y29tbWVudD8gSXQgc2hvdWxkIGJlIG9idmlvdXMuDQoNCj4gKwkJCWRlZmF1bHQ6DQo+ICAJCQkJ
-cmV0ID0gc3RhdHVzOw0KPiAgCQkJfQ0KPiAgCQl9DQo+IA0KPiAtLQ0KPiBUbyB1bnN1YnNjcmli
-ZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBp
-bg0KPiB0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0K
-PiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9t
-by1pbmZvLmh0bWwNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFp
-bnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBw
-LmNvbQ0KDQo=
+On 06/07/2012 12:01 PM, Joerg Roedel wrote:
+> On Thu, Jun 07, 2012 at 11:54:24AM -0400, Bryan Schumaker wrote:
+>> On 06/07/2012 11:50 AM, Joerg Roedel wrote:
+>>> On Thu, Jun 07, 2012 at 11:12:02AM -0400, Bryan Schumaker wrote:
+>>>
+>>>> Can you use `mount -v` to get more output?
+>>>
+>>> Btw, it also works when I manually set the nfs-version at mount:
+>>>
+>>> mount -o nfsvers=3 ...
+>>
+>> What about `mount -o vers=4 ...`?  I'm compiling a kernel right now to
+>> see if I can reproduce this, what NFS .config options do you have set?
+>> (`cat .config | grep CONFIG_NFS_` should be good enough).
+> 
+> mount -o vers=2 and -o vers=3 works
+> mount -o vers=4 fails with:
+> 
+> root@chrom:~# mount -o vers=4 lemmy:/data/repos/ /data/lemmy/
+> mount.nfs: mounting lemmy:/data/repos/ failed, reason given by server:
+>   No such file or directory
+
+What does /etc/exports look like on the server?  You may have to mount it as "lemmy:/" when using NFS v4.
+
+What distro are you using?  I haven't been able to get the incorrect mount option error you're seeing.
+> 
+> # grep CONFIG_NFS_ .config
+> CONFIG_NFS_FS=y
+> CONFIG_NFS_V2=y
+> CONFIG_NFS_V3=y
+> CONFIG_NFS_V3_ACL=y
+> CONFIG_NFS_V4=y
+> # CONFIG_NFS_V4_1 is not set
+> CONFIG_NFS_FSCACHE=y
+> # CONFIG_NFS_USE_LEGACY_DNS is not set
+> CONFIG_NFS_USE_KERNEL_DNS=y
+> CONFIG_NFS_ACL_SUPPORT=y
+> CONFIG_NFS_COMMON=y
+> 
+> 
+> 	Joerg
+> 
+> 
+
+
