@@ -1,71 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:40578 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754155Ab2FKOMo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jun 2012 10:12:44 -0400
-Received: by bkcji2 with SMTP id ji2so3566107bkc.19
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Jun 2012 07:12:43 -0700 (PDT)
-Message-ID: <4FD5FCD7.90704@tonian.com>
-Date: Mon, 11 Jun 2012 17:12:39 +0300
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from natasha.panasas.com ([67.152.220.90]:57502 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750877Ab2FGKQ4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jun 2012 06:16:56 -0400
+Message-ID: <4FD07F7D.6070509@panasas.com>
+Date: Thu, 7 Jun 2012 13:16:29 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-To: Johannes Schild <JSchild@gmx.de>
-CC: Jim Rees <rees@umich.edu>, bharrosh@panasas.com, linux-nfs@vger.kernel.org
-Subject: Re: Block-Layout
-References: <20120605090323.251620@gmx.net> <4FCDD45C.2080400@panasas.com> <20120605110437.GA28423@umich.edu> <20120606074912.298170@gmx.net>
-In-Reply-To: <20120606074912.298170@gmx.net>
-Content-Type: text/plain; charset=ISO-8859-1
+To: Namjae Jeon <linkinjeon@gmail.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        Amit Sahrawat <a.sahrawat@samsung.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Namjae Jeon <namjae.jeon@samsung.com>
+Subject: Re: [Problem]NFS Server =?UTF-8?B?4oCTIFVtb3VudCByZXN1bHRzIGluIEQ=?=
+ =?UTF-8?B?ZXZpY2UgQnVzeS4=?=
+References: <CAKYAXd-HCfcejT=kG-kSXWCmfmxTjrT2o+b3Zan+BCrS1Y2ovw@mail.gmail.com> <4FD06290.7050004@panasas.com> <CAKYAXd8rwY-mHiO+5691qq5w=O-Gs1FXQ4CjEbPDLVnPSkkBTQ@mail.gmail.com>
+In-Reply-To: <CAKYAXd8rwY-mHiO+5691qq5w=O-Gs1FXQ4CjEbPDLVnPSkkBTQ@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sorry for the late response.
-Unfortunately, I don't think the reference server implementation could ever work
-reliably for writes. The gist of it is that it uses fallocate() to allocate new blocks
-and these are marked unintialized.  Since LAYOUTCOMMIT is not handled by the file system
-they are never marked as initialized and therefore they are read as containing zero
-by the MDS.  So, for read-only, you can try pnfs-all-3.3.
+On 06/07/2012 12:43 PM, Namjae Jeon wrote:
 
-Benny
+> 2012/6/7, Boaz Harrosh <bharrosh@panasas.com>:
+>> On 06/07/2012 10:47 AM, Namjae Jeon wrote:
+>>
+>>> Hi Bruce, Trond.
+>>>
+>>> As you know, Currently umount results in busy on NFS server although
+>>> user tried to succeed to umount on NFS client.
+>>> I suggest to add umount procedure to avoid umount busy issue.
+>>> When calling umount on NFS client, The resources(exportfs entries
+>>> cache) of mount point will be flushed on NFS server. and umount will
+>>> be succeed without busy issue.
+>>>
+>>> how do you think about this suggestion ?
+>>>
+>>
+>>
+>> I second this request, what is needed so when all clients unmounted,
+>> the system comes back to the sate it was before any clients have
+>> mounted. i.e filesystems is not referenced and may unmount cleanly.
+>> (This also happens with >= 4.0 clients only, so no excuses)
+>>
+>> This is a real problem for me, on Fedora machines. Because I export
+>> iscsi devices which are network devices, and in the shutdown procedure
+>> for some reason the "service nfs stop" of the server is much much to
+>> late. the original umount of exofs (-o _netdev) fails because it's
+>> held by NFSD, the iscsi devices go away regardless, and when nfsd
+>> finally releases exofs, it gets deadlocked on some error handling.
+>> OK I know I must fix the stuck-ness, but the problem will remain.
+>> The FS will not unmount cleanly because it will only attempt
+>> an unmount after its devices are gone. This will be solved if
+>> nfsd would release its hold on the FS when all clients are gone.
+>>
+>> It was on my TODO to fix this for a long time, but I seem to be
+>> too busy with more urgent matters. (What's the point of fixing the
+>> shutdown if the steady state doesn't work yet)
+>>
+>> If someone has investigated the matter and knows what to do I would
+>> appreciate any insights, and/or patches would be wonderful ;-)
+> Hi Boaz.
+> Oh.. You also are facing same problem.
+> Actually I almost finish to imprement the patch about umount busy
+> issue on NFS server. But I want to know Maintainer's opinion before
+> posting.
+> Thanks.
 
-On 2012-06-06 10:49, Johannes Schild wrote:
-> So lets ask Benny ;)
-> 
-> Can you give me a hint about the most usable block-layout code?
-> 
-> 
-> Best Regards
-> 
-> Johannes
-> 
-> 
-> -------- Original-Nachricht --------
->> Datum: Tue, 5 Jun 2012 07:04:37 -0400
->> Von: Jim Rees <rees@umich.edu>
->> An: Boaz Harrosh <bharrosh@panasas.com>
->> CC: Johannes Schild <JSchild@gmx.de>, linux-nfs@vger.kernel.org
->> Betreff: Re: Block-Layout
-> 
->> Boaz Harrosh wrote:
+
+Please post it (maybe as RFC) I want to see it
+
+Thanks
+Boaz
+
 >>
->>   On 06/05/2012 12:03 PM, Johannes Schild wrote:
->>   
->>   > Hi Guys,
->>   > 
->>   > after i got the Object-Layout to work (Thanks to Boaz :D)
->>   > My next goal to achieve is the Block-Layout.
->>   > I know its deprecated, Boaz told me too, but i need it for my paper.
->>   > Could someone tell me which was the last working kernel and sources
->> which works?
->>   > 
->>   
->>   
->>   You mean the Server right? The client is very much alive.
->>   
->>   I'm not sure what was the last spnfsd-blocks that worked? Jim?
+>>> Thanks.
+>>>
 >>
->> I don't know.  I would ask Benny.
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+>> <>
+>>
+>> Thanks
+>> Boaz
+>>
+>>
+
+
