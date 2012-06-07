@@ -1,116 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:52992 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757789Ab2FTTDu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jun 2012 15:03:50 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 2 3/4] NFSv4.1 mark layout when already returned
-Date: Wed, 20 Jun 2012 15:03:33 -0400
-Message-Id: <1340219014-5749-4-git-send-email-andros@netapp.com>
-In-Reply-To: <1340219014-5749-1-git-send-email-andros@netapp.com>
-References: <1340219014-5749-1-git-send-email-andros@netapp.com>
+Received: from 8bytes.org ([85.214.48.195]:56061 "EHLO
+	h2027444.stratoserver.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754332Ab2FGQBM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jun 2012 12:01:12 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by h2027444.stratoserver.net (Postfix) with SMTP id 3ECB112AFE9
+	for <linux-nfs@vger.kernel.org>; Thu,  7 Jun 2012 18:01:10 +0200 (CEST)
+Date: Thu, 7 Jun 2012 18:01:09 +0200
+From: Joerg Roedel <joro@8bytes.org>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: NFS regression in v3.5-rc1: mount.nfs yells about incorrect
+ mount option
+Message-ID: <20120607160109.GS12795@8bytes.org>
+References: <20120607150456.GO12795@8bytes.org>
+ <4FD0C4C2.8020605@netapp.com>
+ <20120607155006.GR12795@8bytes.org>
+ <4FD0CEB0.9040804@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FD0CEB0.9040804@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Thu, Jun 07, 2012 at 11:54:24AM -0400, Bryan Schumaker wrote:
+> On 06/07/2012 11:50 AM, Joerg Roedel wrote:
+> > On Thu, Jun 07, 2012 at 11:12:02AM -0400, Bryan Schumaker wrote:
+> > 
+> >> Can you use `mount -v` to get more output?
+> > 
+> > Btw, it also works when I manually set the nfs-version at mount:
+> > 
+> > mount -o nfsvers=3 ...
+> 
+> What about `mount -o vers=4 ...`?  I'm compiling a kernel right now to
+> see if I can reproduce this, what NFS .config options do you have set?
+> (`cat .config | grep CONFIG_NFS_` should be good enough).
 
-When the file layout driver is fencing a DS, _pnfs_return_layout can be
-called mulitple times per inode due to in-flight i/o referencing lsegs on it's
-plh_segs list.
+mount -o vers=2 and -o vers=3 works
+mount -o vers=4 fails with:
 
-Remember that LAYOUTRETURN has been called, and do not call it again.
-Allow LAYOUTRETURNs after a subsequent LAYOUTGET.
+root@chrom:~# mount -o vers=4 lemmy:/data/repos/ /data/lemmy/
+mount.nfs: mounting lemmy:/data/repos/ failed, reason given by server:
+  No such file or directory
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/pnfs.c |   10 ++++++++--
- fs/nfs/pnfs.h |   19 +++++++++++++++++++
- 2 files changed, 27 insertions(+), 2 deletions(-)
+# grep CONFIG_NFS_ .config
+CONFIG_NFS_FS=y
+CONFIG_NFS_V2=y
+CONFIG_NFS_V3=y
+CONFIG_NFS_V3_ACL=y
+CONFIG_NFS_V4=y
+# CONFIG_NFS_V4_1 is not set
+CONFIG_NFS_FSCACHE=y
+# CONFIG_NFS_USE_LEGACY_DNS is not set
+CONFIG_NFS_USE_KERNEL_DNS=y
+CONFIG_NFS_ACL_SUPPORT=y
+CONFIG_NFS_COMMON=y
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index bbc49ca..3dfd0a6 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -662,11 +662,11 @@ _pnfs_return_layout(struct inode *ino)
- 	nfs4_stateid stateid;
- 	int status = 0;
- 
--	dprintk("--> %s\n", __func__);
-+	dprintk("NFS: %s for inode %lu\n", __func__, ino->i_ino);
- 
- 	spin_lock(&ino->i_lock);
- 	lo = nfsi->layout;
--	if (!lo) {
-+	if (!lo || pnfs_test_layout_returned(lo)) {
- 		spin_unlock(&ino->i_lock);
- 		dprintk("%s: no layout to return\n", __func__);
- 		return status;
-@@ -676,6 +676,7 @@ _pnfs_return_layout(struct inode *ino)
- 	get_layout_hdr(lo);
- 	mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
- 	lo->plh_block_lgets++;
-+	pnfs_mark_layout_returned(lo);
- 	spin_unlock(&ino->i_lock);
- 	pnfs_free_lseg_list(&tmp_list);
- 
-@@ -686,6 +687,7 @@ _pnfs_return_layout(struct inode *ino)
- 		status = -ENOMEM;
- 		set_bit(NFS_LAYOUT_RW_FAILED, &lo->plh_flags);
- 		set_bit(NFS_LAYOUT_RO_FAILED, &lo->plh_flags);
-+		pnfs_clear_layout_returned(lo);
- 		put_layout_hdr(lo);
- 		goto out;
- 	}
-@@ -1075,6 +1077,10 @@ pnfs_update_layout(struct inode *ino,
- 	get_layout_hdr(lo);
- 	if (list_empty(&lo->plh_segs))
- 		first = true;
-+
-+	/* Enable LAYOUTRETURNs */
-+	pnfs_clear_layout_returned(lo);
-+
- 	spin_unlock(&ino->i_lock);
- 	if (first) {
- 		/* The lo must be on the clp list if there is any
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 64f90d8..f9bc98c 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -64,6 +64,7 @@ enum {
- 	NFS_LAYOUT_ROC,			/* some lseg had roc bit set */
- 	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
- 	NFS_LAYOUT_INVALID,		/* layout is being destroyed */
-+	NFS_LAYOUT_RETURNED,		/* layout has already been returned */
- };
- 
- enum layoutdriver_policy_flags {
-@@ -255,6 +256,24 @@ struct nfs4_deviceid_node *nfs4_insert_deviceid_node(struct nfs4_deviceid_node *
- bool nfs4_put_deviceid_node(struct nfs4_deviceid_node *);
- void nfs4_deviceid_purge_client(const struct nfs_client *);
- 
-+static inline void
-+pnfs_mark_layout_returned(struct pnfs_layout_hdr *lo)
-+{
-+	set_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
-+}
-+
-+static inline void
-+pnfs_clear_layout_returned(struct pnfs_layout_hdr *lo)
-+{
-+	clear_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
-+}
-+
-+static inline bool
-+pnfs_test_layout_returned(struct pnfs_layout_hdr *lo)
-+{
-+	return test_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
-+}
-+
- static inline int lo_fail_bit(u32 iomode)
- {
- 	return iomode == IOMODE_RW ?
--- 
-1.7.6.4
+
+	Joerg
+
 
