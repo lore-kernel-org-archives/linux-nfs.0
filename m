@@ -1,84 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:44748 "EHLO mx2.netapp.com"
+Received: from gmmr7.centrum.cz ([46.255.225.249]:52561 "EHLO gmmr7.centrum.cz"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755027Ab2FKOVu convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jun 2012 10:21:50 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: Benny Halevy <bhalevy@tonian.com>
-CC: Boaz Harrosh <bharrosh@panasas.com>, "Welch, Brent" <welch@panasas.com>,
-        "Bhamare, Sachin" <sbhamare@panasas.com>,
-        "Adamson, Andy" <William.Adamson@netapp.com>,
-        Andy Adamson <androsadamson@gmail.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>,
-        "Huang, James" <jhuang@panasas.com>
-Subject: Re: [PATCH 2/3] NFSv4.1 mark layout when already returned
-Date: Mon, 11 Jun 2012 14:21:33 +0000
-Message-ID: <47AB2031-76C2-4E10-9C55-D328E2994780@netapp.com>
-References: <1338571178-2096-1-git-send-email-andros@netapp.com>
- <1338571178-2096-2-git-send-email-andros@netapp.com>
- <4FCA98E7.2030006@panasas.com>
- <1C92D18B-1977-4A12-A4DA-84DAC4B3E81E@netapp.com>
- <4FCE1DC1.6050100@panasas.com>
- <CAHVgHyXVCUdVFMO1WcRofOCvgDs7Reqsrs39qrZR7UnXWzG8RQ@mail.gmail.com>
- <4FD5C0EA.806@tonian.com> <4FD5CBF6.6030800@panasas.com>
- <4FD5FAEF.5040004@tonian.com>
-In-Reply-To: <4FD5FAEF.5040004@tonian.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1753568Ab2FHOk4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Jun 2012 10:40:56 -0400
+Subject: BUSINESS CO-OPERATION!
+Date: Fri, 08 Jun 2012 16:34:12 +0200
+From: "Mr Kirsten Nematandani" <businessinvestment4@gmail.com>
+References: <20120524122731.B39AA28E@centrum.cz>, <20120525144011.BD4C6E4F@centrum.cz>, <20120528155954.20A7CC30@centrum.cz>, <20120528160017.CF35C952@centrum.cz>, <20120528160043.DCC18377@centrum.cz>, <20120528160127.FD8B0523@centrum.cz>, <20120529171642.CEC84AB8@centrum.cz>, <20120529171704.9D280886@centrum.cz>, <20120529171728.3EA4ED17@centrum.cz>, <20120529171753.908362AA@centrum.cz>, <20120530180222.43339214@centrum.cz>, <20120530180241.699EBDE4@centrum.cz>, <20120530180302.8F703EAB@centrum.cz>, <20120530180322.B4EB095C@centrum.cz>, <20120531180854.BA84BDE4@centrum.cz>, <20120531180914.05888429@centrum.cz>, <20120531180935.D3A94CD3@centrum.cz>, <20120531180957.4FBAC552@centrum.cz>, <20120602125326.2AD09D33@centrum.cz>, <20120602125349.FBA0064A@centrum.cz>, <20120602125412.2E3CA619@centrum.cz>, <20120602125436.F43C5B37@centrum.cz>, <20120604113707.0BE1756B@centrum.cz>, <20120604113727.EE6C8FCC@centrum.cz>, <20120604113752.FFE374D7@centrum.cz>, <20120604113812.7E38D524@cen
+ trum.cz>, <20120605120153.AB8A4605@centrum.cz>, <20120605120214.38C736D3@centrum.cz>, <20120605120238.CA276D2C@centrum.cz>, <20120605120302.156ECD36@centrum.cz>, <20120606152413.BE702661@centrum.cz>, <20120606152434.5A514263@centrum.cz>, <20120606152453.B3AFE9E4@centrum.cz>, <20120606152515.28121B9A@centrum.cz>, <20120607163036.FE0775B0@centrum.cz>, <20120607163053.BA772B43@centrum.cz>, <20120607163119.993CC891@centrum.cz> <20120607163138.CF42D3F2@centrum.cz>
+In-Reply-To: <20120607163138.CF42D3F2@centrum.cz>
 MIME-Version: 1.0
+Message-Id: <20120608163412.7E288E9C@centrum.cz>
+Content-Type: text/plain; charset=UTF-8
+To: unlisted-recipients:; (no To-header on input)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Jun 11, 2012, at 10:04 AM, Benny Halevy wrote:
+ 
+Hello!
 
-> On 2012-06-11 13:44, Boaz Harrosh wrote:
->> On 06/11/2012 12:56 PM, Benny Halevy wrote:
->> 
->>> 
->>> It will for recovering files striped with RAID as the LAYOUTRETURN
->>> provides the server with a reliable "commit point" where it knows
->>> exactly what was written successfully to each stripe and can make
->>> the most efficient decision about recovering it (if needed).
->>> 
->>> Allowing I/O to the stripe post LAYOUTRETURN may result in data
->>> corruption due to parity inconsistency.
->>> 
->> 
->> 
->> The fact of the matter is that we - object guys - Which care about
->> LAYOUTRETURN the most, have neglected to notice and fix the current
->> situation which is even worse than After Andy's patch. Which will
->> send multiple LAYOUTRETURNs on the same layout, and might still
->> continue IO on returned layouts.
->> 
->> Thanks Andy for testing and highlighting the current problem,
->> I will prioritized this development internally at Panasas and
->> will work on a solution ASAP. I hope one that will satisfy
->> all.
->> 
->> Basically my plan is to postpone the LAYOUTRETURN send to
->> when the segment is last referenced, if a flag was set to
->> do so, and make sure reference counting is done proper, so
->> after flag set the last IO_done will send the LAYOUTRETURN.
->> 
->> If that is OK with all I hope?
-> 
-> Sounds OK to me.  Thanks!
-
-Sounds fine to me as well, for LAYOUTRETURN during normal behavior.
-
--->Andy
-
-> 
-> Benny
-> 
->> 
->>> Benny
->>> 
->> 
->> 
->> Thanks
->> Boaz
->> 
-
+My name is Mr Kirsten Nematandani, I'm the President of South African Football Association and we hosted 2010 world cup here in South Africa as you may be aware.
+ 
+I’m consulting you for my personal investment plan which I would like to discuss with you and know the possibility of how we can co-operate and  work together to carry it out without jeopardizing my position, which I  believe will be beneficial to both parties if handled with honesty.
+ 
+There is some fund I realized as a result of my position from the award  of contracts to prospective contractors building stadiums and other  projects which I would like to transfer abroad for investment purposes in your country. The total sum is USD $11 Million Dollars and it is securely deposited  abroad.
+ 
+If you can assist me to receive the fund and further invest it for me in  any kind of profitable business in your country, kindly contact me (businessinvestment@contractor.net), in other for us to discuss on how to achieve this effectively.
+ 
+As soon as  your reply, I will then call you and discuss with  you on further steps to be taken to achieve this. I'm willing to offer  you 20% of the total fund for your kind assistance.
+ 
+Kindly include your full names, mobile/Office telephone numbers while replying to enable me give you a call as soon as I've received your e-mail.
+ 
+Thanks as I await for your urgent and swift response.
+ 
+Regards,
+Mr Kirsten Nematandani.
