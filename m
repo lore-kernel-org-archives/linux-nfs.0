@@ -1,547 +1,205 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:33700 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762368Ab2FVObX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Jun 2012 10:31:23 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 10/12] nfs: enable swap on NFS
-Date: Fri, 22 Jun 2012 15:31:06 +0100
-Message-Id: <1340375468-22509-11-git-send-email-mgorman@suse.de>
-In-Reply-To: <1340375468-22509-1-git-send-email-mgorman@suse.de>
-References: <1340375468-22509-1-git-send-email-mgorman@suse.de>
+Received: from natasha.panasas.com ([67.152.220.90]:51528 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754331Ab2FHMGU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jun 2012 08:06:20 -0400
+Message-ID: <4FD1EAAD.5010505@panasas.com>
+Date: Fri, 8 Jun 2012 15:06:05 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+CC: Benny Halevy <bhalevy@tonian.com>, Peng Tao <bergwolf@gmail.com>
+Subject: [PATCH 1/6] ore: Fix NFS crash by supporting any unaligned RAID IO
+References: <4FD1CEA8.3090105@panasas.com>
+In-Reply-To: <4FD1CEA8.3090105@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Implement the new swapfile a_ops for NFS and hook up ->direct_IO. This
-will set the NFS socket to SOCK_MEMALLOC and run socket reconnect
-under PF_MEMALLOC as well as reset SOCK_MEMALLOC before engaging the
-protocol ->connect() method.
 
-PF_MEMALLOC should allow the allocation of struct socket and related
-objects and the early (re)setting of SOCK_MEMALLOC should allow us
-to receive the packets required for the TCP connection buildup.
+In RAID1/4/5/6/ We used to not permit an IO that it's end
+byte is not stripe_size aligned and spans more than one stripe.
+.i.e the caller must check if after submission the actual
+transferred bytes was shorter, he would need to resubmit
+an IO with the remainder.
 
-[dfeng@redhat.com: Fix handling of multiple swap files]
-[a.p.zijlstra@chello.nl: Original patch]
-Signed-off-by: Mel Gorman <mgorman@suse.de>
-Acked-by: Rik van Riel <riel@redhat.com>
+Exofs supports this, and NFS was supposed to support this
+as well with it's short write mechanism. But late testing has
+exposed a CRASH when this is used with none-RPC layout-drivers.
+
+The change at NFS is deep and risky, in it's place the fix
+at ORE to lift the limitation is actually clean and simple.
+So here it is below.
+
+The principal here is that in the case of unaligned IO on
+both ends, beginning and end, we will send two read requests
+one like old code, before the calculation of the first stripe,
+and also a new site, before the calculation of the last stripe.
+If any "boundary" is aligned or the complete IO is within a single
+stripe we do a single read like before.
+
+The code is clean and simple by splitting the old _read_4_write
+into 3 even parts:
+1. _read_4_write_first_stripe
+2. _read_4_write_last_stripe
+3. _read_4_write_execute
+
+And calling 1+3 at the same place as before. 2+3 before last
+stripe, and in the case of all in a single stripe then 1+2+3
+is preformed additively.
+
+Why did I not think of it before. Well I had a strike of
+genius because I have stared at this code for 2 years, and did
+not find this simple solution, til today. Not that I did not try.
+
+This solution is much better for NFS than the previous supposedly
+solution because the short write was dealt  with out-of-band after
+IO_done, which would cause for a seeky IO pattern where as in here
+we execute in order. At both solutions we do 2 separate reads, only
+here we do it within a single IO request. (And actually combine two
+writes into a single submission)
+
+NFS/exofs code need not change since the ORE API communicates the new
+shorter length on return, what will happen is that this case would not
+occur anymore.
+
+hurray!!
+
+[Stable this is an NFS bug since 3.2 Kernel should apply cleanly]
+CC: Stable Tree <stable@kernel.org>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
- fs/nfs/Kconfig              |    8 +++++
- fs/nfs/direct.c             |   82 ++++++++++++++++++++++++++++---------------
- fs/nfs/file.c               |   22 ++++++++++--
- include/linux/nfs_fs.h      |    4 +--
- include/linux/sunrpc/xprt.h |    3 ++
- net/sunrpc/Kconfig          |    5 +++
- net/sunrpc/clnt.c           |    2 ++
- net/sunrpc/sched.c          |    7 ++--
- net/sunrpc/xprtsock.c       |   53 ++++++++++++++++++++++++++++
- 9 files changed, 152 insertions(+), 34 deletions(-)
+ fs/exofs/ore_raid.c | 61 ++++++++++++++++++++++++++---------------------------
+ 1 file changed, 30 insertions(+), 31 deletions(-)
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index b47452f..07f35c6 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -85,6 +85,14 @@ config NFS_V4
- 
- 	  If unsure, say Y.
- 
-+config NFS_SWAP
-+	bool "Provide swap over NFS support"
-+	default n
-+	depends on NFS_FS
-+	select SUNRPC_SWAP
-+	help
-+	  This option enables swapon to work on files located on NFS mounts.
-+
- config NFS_V4_1
- 	bool "NFS client support for NFSv4.1 (EXPERIMENTAL)"
- 	depends on NFS_V4 && EXPERIMENTAL
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 9a4cbfc..0f9f264 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -115,17 +115,28 @@ static inline int put_dreq(struct nfs_direct_req *dreq)
-  * @nr_segs: size of iovec array
-  *
-  * The presence of this routine in the address space ops vector means
-- * the NFS client supports direct I/O.  However, we shunt off direct
-- * read and write requests before the VFS gets them, so this method
-- * should never be called.
-+ * the NFS client supports direct I/O. However, for most direct IO, we
-+ * shunt off direct read and write requests before the VFS gets them,
-+ * so this method is only ever called for swap.
+diff --git a/fs/exofs/ore_raid.c b/fs/exofs/ore_raid.c
+index d222c77..80ae08e 100644
+--- a/fs/exofs/ore_raid.c
++++ b/fs/exofs/ore_raid.c
+@@ -461,16 +461,12 @@ static void _mark_read4write_pages_uptodate(struct ore_io_state *ios, int ret)
+  * ios->sp2d[p][*], xor is calculated the same way. These pages are
+  * allocated/freed and don't go through cache
   */
- ssize_t nfs_direct_IO(int rw, struct kiocb *iocb, const struct iovec *iov, loff_t pos, unsigned long nr_segs)
+-static int _read_4_write(struct ore_io_state *ios)
++static int _read_4_write_first_stripe(struct ore_io_state *ios)
  {
-+#ifndef CONFIG_NFS_SWAP
- 	dprintk("NFS: nfs_direct_IO (%s) off/no(%Ld/%lu) EINVAL\n",
- 			iocb->ki_filp->f_path.dentry->d_name.name,
- 			(long long) pos, nr_segs);
+-	struct ore_io_state *ios_read;
+ 	struct ore_striping_info read_si;
+ 	struct __stripe_pages_2d *sp2d = ios->sp2d;
+ 	u64 offset = ios->si.first_stripe_start;
+-	u64 last_stripe_end;
+-	unsigned bytes_in_stripe = ios->si.bytes_in_stripe;
+-	unsigned i, c, p, min_p = sp2d->pages_in_unit, max_p = -1;
+-	int ret;
++	unsigned c, p, min_p = sp2d->pages_in_unit, max_p = -1;
  
- 	return -EINVAL;
-+#else
-+	VM_BUG_ON(iocb->ki_left != PAGE_SIZE);
-+	VM_BUG_ON(iocb->ki_nbytes != PAGE_SIZE);
-+
-+	if (rw == READ || rw == KERNEL_READ)
-+		return nfs_file_direct_read(iocb, iov, nr_segs, pos,
-+				rw == READ ? true : false);
-+	return nfs_file_direct_write(iocb, iov, nr_segs, pos,
-+				rw == WRITE ? true : false);
-+#endif /* CONFIG_NFS_SWAP */
- }
- 
- static void nfs_direct_release_pages(struct page **pages, unsigned int npages)
-@@ -303,7 +314,7 @@ static const struct nfs_pgio_completion_ops nfs_direct_read_completion_ops = {
-  */
- static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *desc,
- 						const struct iovec *iov,
--						loff_t pos)
-+						loff_t pos, bool uio)
- {
- 	struct nfs_direct_req *dreq = desc->pg_dreq;
- 	struct nfs_open_context *ctx = dreq->ctx;
-@@ -331,12 +342,20 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *de
- 					  GFP_KERNEL);
- 		if (!pagevec)
- 			break;
--		down_read(&current->mm->mmap_sem);
--		result = get_user_pages(current, current->mm, user_addr,
-+		if (uio) {
-+			down_read(&current->mm->mmap_sem);
-+			result = get_user_pages(current, current->mm, user_addr,
- 					npages, 1, 0, pagevec, NULL);
--		up_read(&current->mm->mmap_sem);
--		if (result < 0)
--			break;
-+			up_read(&current->mm->mmap_sem);
-+			if (result < 0)
-+				break;
-+		} else {
-+			WARN_ON(npages != 1);
-+			result = get_kernel_page(user_addr, 1, pagevec);
-+			if (WARN_ON(result != 1))
-+				break;
-+		}
-+
- 		if ((unsigned)result < npages) {
- 			bytes = result * PAGE_SIZE;
- 			if (bytes <= pgbase) {
-@@ -386,7 +405,7 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *de
- static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
- 					      const struct iovec *iov,
- 					      unsigned long nr_segs,
--					      loff_t pos)
-+					      loff_t pos, bool uio)
- {
- 	struct nfs_pageio_descriptor desc;
- 	ssize_t result = -EINVAL;
-@@ -400,7 +419,7 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
- 
- 	for (seg = 0; seg < nr_segs; seg++) {
- 		const struct iovec *vec = &iov[seg];
--		result = nfs_direct_read_schedule_segment(&desc, vec, pos);
-+		result = nfs_direct_read_schedule_segment(&desc, vec, pos, uio);
- 		if (result < 0)
- 			break;
- 		requested_bytes += result;
-@@ -426,7 +445,7 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
- }
- 
- static ssize_t nfs_direct_read(struct kiocb *iocb, const struct iovec *iov,
--			       unsigned long nr_segs, loff_t pos)
-+			       unsigned long nr_segs, loff_t pos, bool uio)
- {
- 	ssize_t result = -ENOMEM;
- 	struct inode *inode = iocb->ki_filp->f_mapping->host;
-@@ -444,7 +463,7 @@ static ssize_t nfs_direct_read(struct kiocb *iocb, const struct iovec *iov,
- 	if (!is_sync_kiocb(iocb))
- 		dreq->iocb = iocb;
- 
--	result = nfs_direct_read_schedule_iovec(dreq, iov, nr_segs, pos);
-+	result = nfs_direct_read_schedule_iovec(dreq, iov, nr_segs, pos, uio);
- 	if (!result)
- 		result = nfs_direct_wait(dreq);
- 	NFS_I(inode)->read_io += result;
-@@ -606,7 +625,7 @@ static void nfs_direct_write_complete(struct nfs_direct_req *dreq, struct inode
-  */
- static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *desc,
- 						 const struct iovec *iov,
--						 loff_t pos)
-+						 loff_t pos, bool uio)
- {
- 	struct nfs_direct_req *dreq = desc->pg_dreq;
- 	struct nfs_open_context *ctx = dreq->ctx;
-@@ -634,12 +653,19 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *d
- 		if (!pagevec)
- 			break;
- 
--		down_read(&current->mm->mmap_sem);
--		result = get_user_pages(current, current->mm, user_addr,
--					npages, 0, 0, pagevec, NULL);
--		up_read(&current->mm->mmap_sem);
--		if (result < 0)
--			break;
-+		if (uio) {
-+			down_read(&current->mm->mmap_sem);
-+			result = get_user_pages(current, current->mm, user_addr,
-+						npages, 0, 0, pagevec, NULL);
-+			up_read(&current->mm->mmap_sem);
-+			if (result < 0)
-+				break;
-+		} else {
-+			WARN_ON(npages != 1);
-+			result = get_kernel_page(user_addr, 0, pagevec);
-+			if (WARN_ON(result != 1))
-+				break;
-+		}
- 
- 		if ((unsigned)result < npages) {
- 			bytes = result * PAGE_SIZE;
-@@ -770,7 +796,7 @@ static const struct nfs_pgio_completion_ops nfs_direct_write_completion_ops = {
- static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
- 					       const struct iovec *iov,
- 					       unsigned long nr_segs,
--					       loff_t pos)
-+					       loff_t pos, bool uio)
- {
- 	struct nfs_pageio_descriptor desc;
- 	struct inode *inode = dreq->inode;
-@@ -786,7 +812,7 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
- 
- 	for (seg = 0; seg < nr_segs; seg++) {
- 		const struct iovec *vec = &iov[seg];
--		result = nfs_direct_write_schedule_segment(&desc, vec, pos);
-+		result = nfs_direct_write_schedule_segment(&desc, vec, pos, uio);
- 		if (result < 0)
- 			break;
- 		requested_bytes += result;
-@@ -814,7 +840,7 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
- 
- static ssize_t nfs_direct_write(struct kiocb *iocb, const struct iovec *iov,
- 				unsigned long nr_segs, loff_t pos,
--				size_t count)
-+				size_t count, bool uio)
- {
- 	ssize_t result = -ENOMEM;
- 	struct inode *inode = iocb->ki_filp->f_mapping->host;
-@@ -832,7 +858,7 @@ static ssize_t nfs_direct_write(struct kiocb *iocb, const struct iovec *iov,
- 	if (!is_sync_kiocb(iocb))
- 		dreq->iocb = iocb;
- 
--	result = nfs_direct_write_schedule_iovec(dreq, iov, nr_segs, pos);
-+	result = nfs_direct_write_schedule_iovec(dreq, iov, nr_segs, pos, uio);
- 	if (!result)
- 		result = nfs_direct_wait(dreq);
- out_release:
-@@ -863,7 +889,7 @@ out:
-  * cache.
-  */
- ssize_t nfs_file_direct_read(struct kiocb *iocb, const struct iovec *iov,
--				unsigned long nr_segs, loff_t pos)
-+				unsigned long nr_segs, loff_t pos, bool uio)
- {
- 	ssize_t retval = -EINVAL;
- 	struct file *file = iocb->ki_filp;
-@@ -888,7 +914,7 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, const struct iovec *iov,
- 
- 	task_io_account_read(count);
- 
--	retval = nfs_direct_read(iocb, iov, nr_segs, pos);
-+	retval = nfs_direct_read(iocb, iov, nr_segs, pos, uio);
- 	if (retval > 0)
- 		iocb->ki_pos = pos + retval;
- 
-@@ -919,7 +945,7 @@ out:
-  * is no atomic O_APPEND write facility in the NFS protocol.
-  */
- ssize_t nfs_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
--				unsigned long nr_segs, loff_t pos)
-+				unsigned long nr_segs, loff_t pos, bool uio)
- {
- 	ssize_t retval = -EINVAL;
- 	struct file *file = iocb->ki_filp;
-@@ -951,7 +977,7 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
- 
- 	task_io_account_write(count);
- 
--	retval = nfs_direct_write(iocb, iov, nr_segs, pos, count);
-+	retval = nfs_direct_write(iocb, iov, nr_segs, pos, count, uio);
- 	if (retval > 0) {
- 		struct inode *inode = mapping->host;
- 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 406caac..d010335 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -194,7 +194,7 @@ nfs_file_read(struct kiocb *iocb, const struct iovec *iov,
- 	ssize_t result;
- 
- 	if (iocb->ki_filp->f_flags & O_DIRECT)
--		return nfs_file_direct_read(iocb, iov, nr_segs, pos);
-+		return nfs_file_direct_read(iocb, iov, nr_segs, pos, true);
- 
- 	dprintk("NFS: read(%s/%s, %lu@%lu)\n",
- 		dentry->d_parent->d_name.name, dentry->d_name.name,
-@@ -494,6 +494,20 @@ static int nfs_launder_page(struct page *page)
- 	return nfs_wb_page(inode, page);
- }
- 
-+#ifdef CONFIG_NFS_SWAP
-+static int nfs_swap_activate(struct swap_info_struct *sis, struct file *file,
-+						sector_t *span)
-+{
-+	*span = sis->pages;
-+	return xs_swapper(NFS_CLIENT(file->f_mapping->host)->cl_xprt, 1);
-+}
-+
-+static void nfs_swap_deactivate(struct file *file)
-+{
-+	xs_swapper(NFS_CLIENT(file->f_mapping->host)->cl_xprt, 0);
-+}
-+#endif
-+
- const struct address_space_operations nfs_file_aops = {
- 	.readpage = nfs_readpage,
- 	.readpages = nfs_readpages,
-@@ -508,6 +522,10 @@ const struct address_space_operations nfs_file_aops = {
- 	.migratepage = nfs_migrate_page,
- 	.launder_page = nfs_launder_page,
- 	.error_remove_page = generic_error_remove_page,
-+#ifdef CONFIG_NFS_SWAP
-+	.swap_activate = nfs_swap_activate,
-+	.swap_deactivate = nfs_swap_deactivate,
-+#endif
- };
- 
- /*
-@@ -582,7 +600,7 @@ static ssize_t nfs_file_write(struct kiocb *iocb, const struct iovec *iov,
- 	size_t count = iov_length(iov, nr_segs);
- 
- 	if (iocb->ki_filp->f_flags & O_DIRECT)
--		return nfs_file_direct_write(iocb, iov, nr_segs, pos);
-+		return nfs_file_direct_write(iocb, iov, nr_segs, pos, true);
- 
- 	dprintk("NFS: write(%s/%s, %lu@%Ld)\n",
- 		dentry->d_parent->d_name.name, dentry->d_name.name,
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index b23cfc1..fae495a 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -477,10 +477,10 @@ extern ssize_t nfs_direct_IO(int, struct kiocb *, const struct iovec *, loff_t,
- 			unsigned long);
- extern ssize_t nfs_file_direct_read(struct kiocb *iocb,
- 			const struct iovec *iov, unsigned long nr_segs,
--			loff_t pos);
-+			loff_t pos, bool uio);
- extern ssize_t nfs_file_direct_write(struct kiocb *iocb,
- 			const struct iovec *iov, unsigned long nr_segs,
--			loff_t pos);
-+			loff_t pos, bool uio);
- 
- /*
-  * linux/fs/nfs/dir.c
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 77d278d..cff40aa 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -174,6 +174,8 @@ struct rpc_xprt {
- 	unsigned long		state;		/* transport state */
- 	unsigned char		shutdown   : 1,	/* being shut down */
- 				resvport   : 1; /* use a reserved port */
-+	unsigned int		swapper;	/* we're swapping over this
-+						   transport */
- 	unsigned int		bind_index;	/* bind function index */
- 
- 	/*
-@@ -316,6 +318,7 @@ void			xprt_release_rqst_cong(struct rpc_task *task);
- void			xprt_disconnect_done(struct rpc_xprt *xprt);
- void			xprt_force_disconnect(struct rpc_xprt *xprt);
- void			xprt_conditional_disconnect(struct rpc_xprt *xprt, unsigned int cookie);
-+int			xs_swapper(struct rpc_xprt *xprt, int enable);
- 
- /*
-  * Reserved bit positions in xprt->state
-diff --git a/net/sunrpc/Kconfig b/net/sunrpc/Kconfig
-index 9fe8857..03d03e3 100644
---- a/net/sunrpc/Kconfig
-+++ b/net/sunrpc/Kconfig
-@@ -21,6 +21,11 @@ config SUNRPC_XPRT_RDMA
- 
- 	  If unsure, say N.
- 
-+config SUNRPC_SWAP
-+	bool
-+	depends on SUNRPC
-+	select NETVM
-+
- config RPCSEC_GSS_KRB5
- 	tristate "Secure RPC: Kerberos V mechanism"
- 	depends on SUNRPC && CRYPTO
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index f56f045..09e71d1 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -717,6 +717,8 @@ void rpc_task_set_client(struct rpc_task *task, struct rpc_clnt *clnt)
- 		atomic_inc(&clnt->cl_count);
- 		if (clnt->cl_softrtry)
- 			task->tk_flags |= RPC_TASK_SOFT;
-+		if (task->tk_client->cl_xprt->swapper)
-+			task->tk_flags |= RPC_TASK_SWAPPER;
- 		/* Add to the client's list of all tasks */
- 		spin_lock(&clnt->cl_lock);
- 		list_add_tail(&task->tk_task, &clnt->cl_tasks);
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 994cfea..83a4c43 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -812,7 +812,10 @@ static void rpc_async_schedule(struct work_struct *work)
- void *rpc_malloc(struct rpc_task *task, size_t size)
- {
- 	struct rpc_buffer *buf;
--	gfp_t gfp = RPC_IS_SWAPPER(task) ? GFP_ATOMIC : GFP_NOWAIT;
-+	gfp_t gfp = GFP_NOWAIT;
-+
-+	if (RPC_IS_SWAPPER(task))
-+		gfp |= __GFP_MEMALLOC;
- 
- 	size += sizeof(struct rpc_buffer);
- 	if (size <= RPC_BUFFER_MAXSIZE)
-@@ -886,7 +889,7 @@ static void rpc_init_task(struct rpc_task *task, const struct rpc_task_setup *ta
- static struct rpc_task *
- rpc_alloc_task(void)
- {
--	return (struct rpc_task *)mempool_alloc(rpc_task_mempool, GFP_NOFS);
-+	return (struct rpc_task *)mempool_alloc(rpc_task_mempool, GFP_NOIO);
- }
- 
- /*
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 890b03f..b84df34 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1930,6 +1930,45 @@ out:
- 	xprt_wake_pending_tasks(xprt, status);
- }
- 
-+#ifdef CONFIG_SUNRPC_SWAP
-+static void xs_set_memalloc(struct rpc_xprt *xprt)
-+{
-+	struct sock_xprt *transport = container_of(xprt, struct sock_xprt,
-+			xprt);
-+
-+	if (xprt->swapper)
-+		sk_set_memalloc(transport->inet);
-+}
-+
-+/**
-+ * xs_swapper - Tag this transport as being used for swap.
-+ * @xprt: transport to tag
-+ * @enable: enable/disable
-+ *
-+ */
-+int xs_swapper(struct rpc_xprt *xprt, int enable)
-+{
-+	struct sock_xprt *transport = container_of(xprt, struct sock_xprt,
-+			xprt);
-+	int err = 0;
-+
-+	if (enable) {
-+		xprt->swapper++;
-+		xs_set_memalloc(xprt);
-+	} else if (xprt->swapper) {
-+		xprt->swapper--;
-+		sk_clear_memalloc(transport->inet);
-+	}
-+
-+	return err;
-+}
-+EXPORT_SYMBOL_GPL(xs_swapper);
-+#else
-+static void xs_set_memalloc(struct rpc_xprt *xprt)
-+{
-+}
-+#endif
-+
- static void xs_udp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
- {
- 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
-@@ -1954,6 +1993,8 @@ static void xs_udp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
- 		transport->sock = sock;
- 		transport->inet = sk;
- 
-+		xs_set_memalloc(xprt);
-+
- 		write_unlock_bh(&sk->sk_callback_lock);
+ 	if (offset == ios->offset) /* Go to start collect $200 */
+ 		goto read_last_stripe;
+@@ -512,6 +508,18 @@ static int _read_4_write(struct ore_io_state *ios)
  	}
- 	xs_udp_do_set_buffer_size(xprt);
-@@ -1965,11 +2006,15 @@ static void xs_udp_setup_socket(struct work_struct *work)
- 		container_of(work, struct sock_xprt, connect_worker.work);
- 	struct rpc_xprt *xprt = &transport->xprt;
- 	struct socket *sock = transport->sock;
-+	unsigned long pflags = current->flags;
- 	int status = -EIO;
  
- 	if (xprt->shutdown)
- 		goto out;
- 
-+	if (xprt->swapper)
-+		current->flags |= PF_MEMALLOC;
+ read_last_stripe:
++	return 0;
++}
 +
- 	/* Start by resetting any existing state */
- 	xs_reset_transport(transport);
- 	sock = xs_create_sock(xprt, transport,
-@@ -1988,6 +2033,7 @@ static void xs_udp_setup_socket(struct work_struct *work)
- out:
- 	xprt_clear_connecting(xprt);
- 	xprt_wake_pending_tasks(xprt, status);
-+	tsk_restore_flags(current, pflags, PF_MEMALLOC);
++static int _read_4_write_last_stripe(struct ore_io_state *ios)
++{
++	struct ore_striping_info read_si;
++	struct __stripe_pages_2d *sp2d = ios->sp2d;
++	u64 offset;
++	u64 last_stripe_end;
++	unsigned bytes_in_stripe = ios->si.bytes_in_stripe;
++	unsigned c, p, min_p = sp2d->pages_in_unit, max_p = -1;
++
+ 	offset = ios->offset + ios->length;
+ 	if (offset % PAGE_SIZE)
+ 		_add_to_r4w_last_page(ios, &offset);
+@@ -527,9 +535,6 @@ static int _read_4_write(struct ore_io_state *ios)
+ 	c = _dev_order(ios->layout->group_width * ios->layout->mirrors_p1,
+ 		       ios->layout->mirrors_p1, read_si.par_dev, read_si.dev);
+ 
+-	BUG_ON(ios->si.first_stripe_start + bytes_in_stripe != last_stripe_end);
+-	/* unaligned IO must be within a single stripe */
+-
+ 	if (min_p == sp2d->pages_in_unit) {
+ 		/* Didn't do it yet */
+ 		min_p = _sp2d_min_pg(sp2d);
+@@ -568,6 +573,15 @@ static int _read_4_write(struct ore_io_state *ios)
+ 	}
+ 
+ read_it:
++	return 0;
++}
++
++static int _read_4_write_execute(struct ore_io_state *ios)
++{
++	struct ore_io_state *ios_read;
++	unsigned i;
++	int ret;
++
+ 	ios_read = ios->ios_read_4_write;
+ 	if (!ios_read)
+ 		return 0;
+@@ -591,6 +605,8 @@ static int _read_4_write(struct ore_io_state *ios)
+ 	}
+ 
+ 	_mark_read4write_pages_uptodate(ios_read, ret);
++	ore_put_io_state(ios_read);
++	ios->ios_read_4_write = NULL; /* Might need a reuse at last stripe */
+ 	return 0;
  }
  
- /*
-@@ -2078,6 +2124,8 @@ static int xs_tcp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
- 	if (!xprt_bound(xprt))
- 		goto out;
+@@ -626,8 +642,11 @@ int _ore_add_parity_unit(struct ore_io_state *ios,
+ 			/* If first stripe, Read in all read4write pages
+ 			 * (if needed) before we calculate the first parity.
+ 			 */
+-			_read_4_write(ios);
++			_read_4_write_first_stripe(ios);
+ 		}
++		if (!cur_len) /* If last stripe r4w pages of last stripe */
++			_read_4_write_last_stripe(ios);
++		_read_4_write_execute(ios);
  
-+	xs_set_memalloc(xprt);
-+
- 	/* Tell the socket layer to start connecting... */
- 	xprt->stat.connect_count++;
- 	xprt->stat.connect_start = jiffies;
-@@ -2108,11 +2156,15 @@ static void xs_tcp_setup_socket(struct work_struct *work)
- 		container_of(work, struct sock_xprt, connect_worker.work);
- 	struct socket *sock = transport->sock;
- 	struct rpc_xprt *xprt = &transport->xprt;
-+	unsigned long pflags = current->flags;
- 	int status = -EIO;
+ 		for (i = 0; i < num_pages; i++) {
+ 			pages[i] = _raid_page_alloc();
+@@ -654,34 +673,14 @@ int _ore_add_parity_unit(struct ore_io_state *ios,
  
- 	if (xprt->shutdown)
- 		goto out;
+ int _ore_post_alloc_raid_stuff(struct ore_io_state *ios)
+ {
+-	struct ore_layout *layout = ios->layout;
+-
+ 	if (ios->parity_pages) {
++		struct ore_layout *layout = ios->layout;
+ 		unsigned pages_in_unit = layout->stripe_unit / PAGE_SIZE;
+-		unsigned stripe_size = ios->si.bytes_in_stripe;
+-		u64 last_stripe, first_stripe;
  
-+	if (xprt->swapper)
-+		current->flags |= PF_MEMALLOC;
-+
- 	if (!sock) {
- 		clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
- 		sock = xs_create_sock(xprt, transport,
-@@ -2174,6 +2226,7 @@ out_eagain:
- out:
- 	xprt_clear_connecting(xprt);
- 	xprt_wake_pending_tasks(xprt, status);
-+	tsk_restore_flags(current, pflags, PF_MEMALLOC);
+ 		if (_sp2d_alloc(pages_in_unit, layout->group_width,
+ 				layout->parity, &ios->sp2d)) {
+ 			return -ENOMEM;
+ 		}
+-
+-		/* Round io down to last full strip */
+-		first_stripe = div_u64(ios->offset, stripe_size);
+-		last_stripe = div_u64(ios->offset + ios->length, stripe_size);
+-
+-		/* If an IO spans more then a single stripe it must end at
+-		 * a stripe boundary. The reminder at the end is pushed into the
+-		 * next IO.
+-		 */
+-		if (last_stripe != first_stripe) {
+-			ios->length = last_stripe * stripe_size - ios->offset;
+-
+-			BUG_ON(!ios->length);
+-			ios->nr_pages = (ios->length + PAGE_SIZE - 1) /
+-					PAGE_SIZE;
+-			ios->si.length = ios->length; /*make it consistent */
+-		}
+ 	}
+ 	return 0;
  }
- 
- /**
 -- 
-1.7.9.2
+1.7.10.2.677.gb6bc67f
+
 
