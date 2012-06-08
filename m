@@ -1,44 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:30104 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751965Ab2FTRRd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jun 2012 13:17:33 -0400
-Message-ID: <4FE2056B.3070407@redhat.com>
-Date: Wed, 20 Jun 2012 13:16:27 -0400
-From: Rik van Riel <riel@redhat.com>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:59351 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751107Ab2FHHX2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jun 2012 03:23:28 -0400
+Received: by eeit10 with SMTP id t10so830470eei.19
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Jun 2012 00:23:27 -0700 (PDT)
 MIME-Version: 1.0
-To: Mel Gorman <mgorman@suse.de>
-CC: Andrew Morton <akpm@linux-foundation.org>, Linux-MM <linux-mm@kvack.org>,
-        Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>
-Subject: Re: [PATCH 09/12] nfs: disable data cache revalidation for swapfiles
-References: <1340185081-22525-1-git-send-email-mgorman@suse.de> <1340185081-22525-10-git-send-email-mgorman@suse.de>
-In-Reply-To: <1340185081-22525-10-git-send-email-mgorman@suse.de>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+In-Reply-To: <4FD1242E.1010909@panasas.com>
+References: <CAKYAXd-HCfcejT=kG-kSXWCmfmxTjrT2o+b3Zan+BCrS1Y2ovw@mail.gmail.com>
+	<4FD06290.7050004@panasas.com>
+	<20120607113358.GB8684@fieldses.org>
+	<4FD1242E.1010909@panasas.com>
+Date: Fri, 8 Jun 2012 16:23:27 +0900
+Message-ID: <CAKYAXd_=+eB9WmLTvhurXCHj0oEMir24R=Tw0V2Jb07DzE2t2Q@mail.gmail.com>
+Subject: =?UTF-8?Q?Re=3A_=5BProblem=5DNFS_Server_=E2=80=93_Umount_results_in_Device?=
+	=?UTF-8?Q?_Busy=2E?=
+From: Namjae Jeon <linkinjeon@gmail.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        Amit Sahrawat <a.sahrawat@samsung.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Namjae Jeon <namjae.jeon@samsung.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/20/2012 05:37 AM, Mel Gorman wrote:
-> The VM does not like PG_private set on PG_swapcache pages. As suggested
-> by Trond in http://lkml.org/lkml/2006/8/25/348, this patch disables
-> NFS data cache revalidation on swap files.  as it does not make
-> sense to have other clients change the file while it is being used as
-> swap. This avoids setting PG_private on swap pages, since there ought
-> to be no further races with invalidate_inode_pages2() to deal with.
 >
-> Since we cannot set PG_private we cannot use page->private which
-> is already used by PG_swapcache pages to store the nfs_page. Thus
-> augment the new nfs_page_find_request logic.
+> But Jeon, please do send in your proposal code, I'd like to see it.
+Hi. Boaz.
+Okay, I will try to post the patch after testing a little more.
+Thanks.
 >
-> Signed-off-by: Peter Zijlstra<a.p.zijlstra@chello.nl>
-> Signed-off-by: Mel Gorman<mgorman@suse.de>
-
-Acked-by: Rik van Riel<riel@redhat.com>
-
+> Thanks
+> Boaz
+>
