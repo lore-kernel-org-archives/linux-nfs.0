@@ -1,44 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:44253 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751791Ab2FYV5i convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Jun 2012 17:57:38 -0400
-Subject: Re: rpcauth_create() returns ERR_PTR
-Mime-Version: 1.0 (Apple Message framework v1278)
-Content-Type: text/plain; charset=US-ASCII
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4FE8CE8C.7020007@netapp.com>
-Date: Mon, 25 Jun 2012 17:56:32 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <2692BB15-F696-49CB-977B-0A1BCCF4CF56@oracle.com>
-References: <17B0469E-0417-4F74-A035-625D41E5609B@oracle.com> <4FE8CE8C.7020007@netapp.com>
-To: Bryan Schumaker <bjschuma@netapp.com>
+Received: from natasha.panasas.com ([67.152.220.90]:51664 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755051Ab2FHMOm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jun 2012 08:14:42 -0400
+Message-ID: <4FD1ECA3.8000609@panasas.com>
+Date: Fri, 8 Jun 2012 15:14:27 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+CC: Benny Halevy <bhalevy@tonian.com>, Peng Tao <bergwolf@gmail.com>
+Subject: [PATCH 4/6] pnfs-obj: don't leak objio_state if ore_write/read fails
+References: <4FD1CEA8.3090105@panasas.com>
+In-Reply-To: <4FD1CEA8.3090105@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Jun 25, 2012, at 4:48 PM, Bryan Schumaker wrote:
+[Bug since 3.2 Kernel]
+CC: Stable Tree <stable@kernel.org>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfs/objlayout/objio_osd.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
-> On 06/25/2012 04:43 PM, Chuck Lever wrote:
->> Hi-
->> 
->> nfs4_create_sec_client() and nfs4_lookup_root_sec() both invoke rpcauth_create().  They check to see that it returned something that wasn't NULL.
->> 
->> As far as I can tell, rpcauth_create() reports an error by returning something that IS_ERR.  It doesn't return NULL.  nfs_init_server_rpcclient() appears to be correct.
->> 
->> The fix looks simple, but since I don't have any unit tests for this area of code, I was hoping you could take it from here.
->> 
-> 
-> Sure, I'll take a look at it.  You're right, checking for an error code instead of NULL sounds like an easy fix.
-
-I'm trying to call rpcauth_create() in a loop, as your code does, and the call is failing with -EEXIST on the GSS flavors.  If you just check rpcauth_create's return code for NULL, you will miss this and think the call succeeded.
-
-gss_pipes_dentries_create_net() doesn't seem to like being called twice.
-
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 0e7c833..422bdef 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -454,7 +454,10 @@ int objio_read_pagelist(struct nfs_read_data *rdata)
+ 	objios->ios->done = _read_done;
+ 	dprintk("%s: offset=0x%llx length=0x%x\n", __func__,
+ 		rdata->args.offset, rdata->args.count);
+-	return ore_read(objios->ios);
++	ret = ore_read(objios->ios);
++	if (unlikely(ret))
++		objio_free_result(&objios->oir);
++	return ret;
+ }
+ 
+ /*
+@@ -555,8 +558,10 @@ int objio_write_pagelist(struct nfs_write_data *wdata, int how)
+ 	dprintk("%s: offset=0x%llx length=0x%x\n", __func__,
+ 		wdata->args.offset, wdata->args.count);
+ 	ret = ore_write(objios->ios);
+-	if (unlikely(ret))
++	if (unlikely(ret)) {
++		objio_free_result(&objios->oir);
+ 		return ret;
++	}
+ 
+ 	if (objios->sync)
+ 		_write_done(objios->ios, objios);
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+1.7.10.2.677.gb6bc67f
 
 
