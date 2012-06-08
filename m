@@ -1,70 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:42470 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752286Ab2FKOEg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jun 2012 10:04:36 -0400
-Received: by bkcji2 with SMTP id ji2so3556949bkc.19
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Jun 2012 07:04:35 -0700 (PDT)
-Message-ID: <4FD5FAEF.5040004@tonian.com>
-Date: Mon, 11 Jun 2012 17:04:31 +0300
-From: Benny Halevy <bhalevy@tonian.com>
-MIME-Version: 1.0
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: "Welch, Brent" <welch@panasas.com>,
-        "Bhamare, Sachin" <sbhamare@panasas.com>,
-        "Adamson, Andy" <William.Adamson@netapp.com>,
-        Andy Adamson <androsadamson@gmail.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>,
-        "Huang, James" <jhuang@panasas.com>
-Subject: Re: [PATCH 2/3] NFSv4.1 mark layout when already returned
-References: <1338571178-2096-1-git-send-email-andros@netapp.com> <1338571178-2096-2-git-send-email-andros@netapp.com> <4FCA98E7.2030006@panasas.com> <1C92D18B-1977-4A12-A4DA-84DAC4B3E81E@netapp.com> <4FCE1DC1.6050100@panasas.com> <CAHVgHyXVCUdVFMO1WcRofOCvgDs7Reqsrs39qrZR7UnXWzG8RQ@mail.gmail.com> <4FD5C0EA.806@tonian.com> <4FD5CBF6.6030800@panasas.com>
-In-Reply-To: <4FD5CBF6.6030800@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail.linuxfoundation.org ([140.211.169.12]:35114 "EHLO
+	mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757819Ab2FHWZw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jun 2012 18:25:52 -0400
+Date: Fri, 8 Jun 2012 15:25:50 -0700
+From: Andrew Morton <akpm@linux-foundation.org>
+To: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Boaz Harrosh <bharrosh@panasas.com>, Tao Ma <boyu.mt@taobao.com>,
+        Nick Piggin <npiggin@kernel.dk>, "Dmitry V. Levin" <ldv@altlinux.org>,
+        v9fs-developer@lists.sourceforge.net, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
+        linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        codalist@TELEMANN.coda.cs.cmu.edu, ecryptfs@vger.kernel.org,
+        osd-dev@open-osd.org, linux-ext4@vger.kernel.org,
+        fuse-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
+        jfs-discussion@lists.sourceforge.net, logfs@logfs.org,
+        linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
+        reiserfs-devel@vger.kernel.org
+Subject: Re: [RFC, PATCH, RESEND] fs: push rcu_barrier() from
+ deactivate_locked_super() to filesystems
+Message-Id: <20120608152550.258d6a30.akpm@linux-foundation.org>
+In-Reply-To: <20120608221446.GA18250@otc-wbsnb-06>
+References: <1339191663-17693-1-git-send-email-kirill.shutemov@linux.intel.com>
+	<20120608150253.e42464a6.akpm@linux-foundation.org>
+	<20120608221446.GA18250@otc-wbsnb-06>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2012-06-11 13:44, Boaz Harrosh wrote:
-> On 06/11/2012 12:56 PM, Benny Halevy wrote:
-> 
->>
->> It will for recovering files striped with RAID as the LAYOUTRETURN
->> provides the server with a reliable "commit point" where it knows
->> exactly what was written successfully to each stripe and can make
->> the most efficient decision about recovering it (if needed).
->>
->> Allowing I/O to the stripe post LAYOUTRETURN may result in data
->> corruption due to parity inconsistency.
->>
-> 
-> 
-> The fact of the matter is that we - object guys - Which care about
-> LAYOUTRETURN the most, have neglected to notice and fix the current
-> situation which is even worse than After Andy's patch. Which will
-> send multiple LAYOUTRETURNs on the same layout, and might still
-> continue IO on returned layouts.
-> 
-> Thanks Andy for testing and highlighting the current problem,
-> I will prioritized this development internally at Panasas and
-> will work on a solution ASAP. I hope one that will satisfy
-> all.
-> 
-> Basically my plan is to postpone the LAYOUTRETURN send to
-> when the segment is last referenced, if a flag was set to
-> do so, and make sure reference counting is done proper, so
-> after flag set the last IO_done will send the LAYOUTRETURN.
-> 
-> If that is OK with all I hope?
+On Sat, 9 Jun 2012 01:14:46 +0300
+"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com> wrote:
 
-Sounds OK to me.  Thanks!
+> On Fri, Jun 08, 2012 at 03:02:53PM -0700, Andrew Morton wrote:
+> > On Sat,  9 Jun 2012 00:41:03 +0300
+> > "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com> wrote:
+> > 
+> > > There's no reason to call rcu_barrier() on every deactivate_locked_super().
+> > > We only need to make sure that all delayed rcu free inodes are flushed
+> > > before we destroy related cache.
+> > > 
+> > > Removing rcu_barrier() from deactivate_locked_super() affects some
+> > > fas paths. E.g. on my machine exit_group() of a last process in IPC
+> > > namespace takes 0.07538s. rcu_barrier() takes 0.05188s of that time.
+> > 
+> > What an unpleasant patch.  Is final-process-exiting-ipc-namespace a
+> > sufficiently high-frequency operation to justify the change?
 
-Benny
+This, please.
 
+> > I don't really understand what's going on here.  Are you saying that
+> > there is some filesystem against which we run deactivate_locked_super()
+> > during exit_group(), and that this filesystem doesn't use rcu-freeing
+> > of inodes?  The description needs this level of detail, please.
+
+You still haven't explained where this deactivate_locked_super() call
+is coming from.  Oh well.
+
+> I think the rcu_barrier() is in wrong place. We need it to safely destroy
+> inode cache. deactivate_locked_super() is part of umount() path, but all
+> filesystems I've checked have inode cache for whole filesystem, not
+> per-mount.
+
+Well from a design perspective, putting the rcu_barrier() in the vfs is
+the *correct* place.  Individual filesystems shouldn't be hard-coding
+knowledge about vfs internal machinery.
+
+A neater implementation might be to add a kmem_cache* argument to
+unregister_filesystem().  If that is non-NULL, unregister_filesystem()
+does the rcu_barrier() and destroys the cache.  That way we get to
+delete (rather than add) a bunch of code from all filesystems and new
+and out-of-tree filesystems cannot forget to perform the rcu_barrier().
+
+> > The implementation would be less unpleasant if we could do the
+> > rcu_barrier() in kmem_cache_destroy().  I can't see a way of doing that
+> > without adding a dedicated slab flag, which would require editing all
+> > the filesystems anyway.
 > 
->> Benny
->>
-> 
-> 
-> Thanks
-> Boaz
-> 
+> I think rcu_barrier() for all kmem_cache_destroy() would be too expensive.
+
+That is not what I proposed.
