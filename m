@@ -1,91 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:64464 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753015Ab2FGPRu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Jun 2012 11:17:50 -0400
-Message-ID: <4FD0C613.7020400@netapp.com>
-Date: Thu, 07 Jun 2012 11:17:39 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-MIME-Version: 1.0
-To: Joerg Roedel <joro@8bytes.org>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+Received: from 8bytes.org ([85.214.48.195]:57391 "EHLO
+	h2027444.stratoserver.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756738Ab2FHNtJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jun 2012 09:49:09 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by h2027444.stratoserver.net (Postfix) with SMTP id AB33B12B094
+	for <linux-nfs@vger.kernel.org>; Fri,  8 Jun 2012 15:49:06 +0200 (CEST)
+Date: Fri, 8 Jun 2012 15:49:05 +0200
+From: Joerg Roedel <joro@8bytes.org>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
         linux-kernel@vger.kernel.org
-Subject: Re: NFS regression in v3.5-rc1: mount.nfs yells about incorrect mount
- option
-References: <20120607150456.GO12795@8bytes.org> <4FD0C4C2.8020605@netapp.com>
-In-Reply-To: <4FD0C4C2.8020605@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Subject: Re: NFS regression in v3.5-rc1: mount.nfs yells about incorrect
+ mount option
+Message-ID: <20120608134905.GX12795@8bytes.org>
+References: <20120607150456.GO12795@8bytes.org>
+ <4FD0C4C2.8020605@netapp.com>
+ <20120607155006.GR12795@8bytes.org>
+ <4FD0CEB0.9040804@netapp.com>
+ <20120608130352.GU12795@8bytes.org>
+ <4FD1FC02.2000608@netapp.com>
+ <20120608133317.GW12795@8bytes.org>
+ <4FD1FFFD.3020301@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FD1FFFD.3020301@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/07/2012 11:12 AM, Bryan Schumaker wrote:
-> On 06/07/2012 11:04 AM, Joerg Roedel wrote:
->> Hi,
->>
->> since Linux v3.5-rc1 I experience problems using NFS between my
->> machines. One of my test-machines gives me:
->>
->> root@chrom:~# mount lemmy:/data/repos /data/lemmy
->> mount.nfs: an incorrect mount option was specified
+On Fri, Jun 08, 2012 at 09:37:01AM -0400, Bryan Schumaker wrote:
+> On 06/08/2012 09:33 AM, Joerg Roedel wrote:
+
+> > Your other patch only touched the nfs4 path, but in my setup nfs3 was in
+> > use. Therefore the patch didn't help. I just figured out that
+> > nfs_fs_mount is shared between nfs23 and nfs4, so the first patch
+> > probably breaks nfs4. I send another one which takes this into account.
 > 
-> Hi,
+> Would something like this work? (I haven't tried it yet).  Setting it
+> in nfs_alloc_parsed_mount_data() might work too...
 > 
-> Can you use `mount -v` to get more output?
-
-Ah, I'm getting my patch titles confused.  I think I found this bug earlier in the week, does this patch fix it for you?
-
-commit cdf66442fab82916fe38f928b4f91815195a294c
-Author: Bryan Schumaker <bjschuma@netapp.com>
-Date:   Tue Jun 5 14:59:54 2012 -0400
-
-    NFS4: Set parsed mount data version to 4
-    
-    This patch only affects mounting through "-t nfs4" since it doesn't set
-    up an nfs version to use in the mount data.  The nfs client was trying
-    to mount using NFS v0, causing either a BUG() or a protocol not
-    supported message.
-    
-    Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index ff656c0..bdd6731 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2637,6 +2637,8 @@ static int nfs4_validate_mount_data(void *options,
- 	if (data == NULL)
- 		goto out_no_data;
- 
-+	args->version = 4;
-+
- 	switch (data->version) {
- 	case 1:
- 		if (data->host_addrlen > sizeof(args->nfs_server.address))
-
-
-> 
-> - Bryan
->>
->> The same works fine on v3.4. I tried to bisect but got different errors
->> in between. In the end, using every non-working case as bad, bisection
->> pointed to:
->>
->> 	db83335 NFS: Let mount data parsing set the NFS version
->>
->> but that at that commit the kernel panics when trying to mount the NFS
->> tree. Please let me know if you need any additional information.
->>
->> Regards,
->>
->> 	Joerg
->>
->>
-> 
-> 
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index bdd6731..906f09c 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -1867,6 +1867,7 @@ static int nfs23_validate_mount_data(void *options,
+>         if (data == NULL)
+>                 goto out_no_data;
+>  
+> +       args->version = NFS_DEFAULT_VERSION;
+>         switch (data->version) {
+>         case 1:
+>                 data->namlen = 0;
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+
+Yes, this works too (tested). Doing it in nfs_alloc_parsed_mount_data()
+need to take into account that the function is also called for nfs4.
+This is basically what my second revert-patch does.
+
+
+	Joerg
 
 
