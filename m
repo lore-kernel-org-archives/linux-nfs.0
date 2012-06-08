@@ -1,113 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:26285 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932791Ab2FUVvi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Jun 2012 17:51:38 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 8/8] SUNRPC: Clean up xdr_read_pages and xdr_enter_page
-Date: Thu, 21 Jun 2012 17:51:27 -0400
-Message-Id: <1340315487-18309-8-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1340315487-18309-7-git-send-email-Trond.Myklebust@netapp.com>
-References: <1340315487-18309-1-git-send-email-Trond.Myklebust@netapp.com>
- <1340315487-18309-2-git-send-email-Trond.Myklebust@netapp.com>
- <1340315487-18309-3-git-send-email-Trond.Myklebust@netapp.com>
- <1340315487-18309-4-git-send-email-Trond.Myklebust@netapp.com>
- <1340315487-18309-5-git-send-email-Trond.Myklebust@netapp.com>
- <1340315487-18309-6-git-send-email-Trond.Myklebust@netapp.com>
- <1340315487-18309-7-git-send-email-Trond.Myklebust@netapp.com>
+Received: from 8bytes.org ([85.214.48.195]:57310 "EHLO
+	h2027444.stratoserver.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751729Ab2FHNDz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jun 2012 09:03:55 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by h2027444.stratoserver.net (Postfix) with SMTP id 42B6512B094
+	for <linux-nfs@vger.kernel.org>; Fri,  8 Jun 2012 15:03:53 +0200 (CEST)
+Date: Fri, 8 Jun 2012 15:03:52 +0200
+From: Joerg Roedel <joro@8bytes.org>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: NFS regression in v3.5-rc1: mount.nfs yells about incorrect
+ mount option
+Message-ID: <20120608130352.GU12795@8bytes.org>
+References: <20120607150456.GO12795@8bytes.org>
+ <4FD0C4C2.8020605@netapp.com>
+ <20120607155006.GR12795@8bytes.org>
+ <4FD0CEB0.9040804@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FD0CEB0.9040804@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Move the page alignment code into a separate helper.
+On Thu, Jun 07, 2012 at 11:54:24AM -0400, Bryan Schumaker wrote:
+> On 06/07/2012 11:50 AM, Joerg Roedel wrote:
+> > mount -o nfsvers=3 ...
+> 
+> What about `mount -o vers=4 ...`?  I'm compiling a kernel right now to
+> see if I can reproduce this, what NFS .config options do you have set?
+> (`cat .config | grep CONFIG_NFS_` should be good enough).
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Okay, I tracked it down somewhat. The problem is that the nfs-version
+is not set in my case so that data->version in nfs_init_server is 0. The
+function returns -EPROTONOSUPPORT in this case which causes the mount
+to fail. The evil commit is db8333519 and reverting it fixes the issue
+for me. Patch attached.
+
+Regards,
+
+	Joerg
+
+From: Joerg Roedel <joerg.roedel@amd.com>
+Date: Fri, 8 Jun 2012 14:51:01 +0200
+Subject: [PATCH] Revert "NFS: Let mount data parsing set the NFS version"
+
+This reverts commit db8333519187d5974cf2ff33910c893bf8727d9f.
+
+The original commit message says, that the version field is
+"unconditionally set while parsing mount data".
+Unfortunatly this is not the case and the version field may
+stay 0 so that nfs_init_server returns -EPROTONOSUPPORT
+causing the mount to fail.  Reverting this commit fixes the
+issue.
+
+Conflicts:
+
+	fs/nfs/super.c
+
+Signed-off-by: Joerg Roedel <joerg.roedel@amd.com>
 ---
- net/sunrpc/xdr.c |   48 ++++++++++++++++++++++++++++++------------------
- 1 file changed, 30 insertions(+), 18 deletions(-)
+ fs/nfs/super.c |    5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 9e21927..5440fc4 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -745,6 +745,30 @@ __be32 * xdr_inline_decode(struct xdr_stream *xdr, size_t nbytes)
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index ff656c0..2fd4ce5 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -948,7 +948,7 @@ static void nfs_umount_begin(struct super_block *sb)
+ 		rpc_killall_tasks(rpc);
  }
- EXPORT_SYMBOL_GPL(xdr_inline_decode);
  
-+static unsigned int xdr_align_pages(struct xdr_stream *xdr, unsigned int len)
-+{
-+	struct xdr_buf *buf = xdr->buf;
-+	struct kvec *iov;
-+	unsigned int nwords = XDR_QUADLEN(len);
-+	unsigned int cur = xdr_stream_pos(xdr);
-+
-+	if (xdr->nwords == 0)
-+		return 0;
-+	if (nwords > xdr->nwords) {
-+		nwords = xdr->nwords;
-+		len = nwords << 2;
-+	}
-+	/* Realign pages to current pointer position */
-+	iov  = buf->head;
-+	if (cur < iov->iov_len)
-+		xdr_shrink_bufhead(buf, iov->iov_len - cur);
-+
-+	/* Truncate page data and move it into the tail */
-+	if (buf->page_len > len)
-+		xdr_shrink_pagelen(buf, buf->page_len - len);
-+	return len;
-+}
-+
- /**
-  * xdr_read_pages - Ensure page-based XDR data to decode is aligned at current pointer position
-  * @xdr: pointer to xdr_stream struct
-@@ -761,26 +785,14 @@ unsigned int xdr_read_pages(struct xdr_stream *xdr, unsigned int len)
- 	struct xdr_buf *buf = xdr->buf;
- 	struct kvec *iov;
- 	ssize_t shift;
--	unsigned int nwords = XDR_QUADLEN(len);
- 	unsigned int end;
- 	int padding;
- 
--	if (xdr->nwords == 0)
-+	len = xdr_align_pages(xdr, len);
-+	if (len == 0)
- 		return 0;
--	if (nwords > xdr->nwords) {
--		nwords = xdr->nwords;
--		len = nwords << 2;
--	}
--	/* Realign pages to current pointer position */
--	iov  = buf->head;
--	shift = iov->iov_len + (char *)iov->iov_base - (char *)xdr->p;
--	if (shift > 0)
--		xdr_shrink_bufhead(buf, shift);
- 
--	/* Truncate page data and move it into the tail */
--	if (buf->page_len > len)
--		xdr_shrink_pagelen(buf, buf->page_len - len);
--	padding = (nwords << 2) - len;
-+	padding = (XDR_QUADLEN(len) << 2) - len;
- 	xdr->iov = iov = buf->tail;
- 	/* Compute remaining message length.  */
- 	end = iov->iov_len;
-@@ -812,13 +824,13 @@ EXPORT_SYMBOL_GPL(xdr_read_pages);
-  */
- void xdr_enter_page(struct xdr_stream *xdr, unsigned int len)
+-static struct nfs_parsed_mount_data *nfs_alloc_parsed_mount_data(void)
++static struct nfs_parsed_mount_data *nfs_alloc_parsed_mount_data(unsigned int version)
  {
--	len = xdr_read_pages(xdr, len);
-+	len = xdr_align_pages(xdr, len);
- 	/*
- 	 * Position current pointer at beginning of tail, and
- 	 * set remaining message length.
- 	 */
--	xdr_set_page_base(xdr, 0, len);
--	xdr->nwords += XDR_QUADLEN(xdr->buf->page_len);
-+	if (len != 0)
-+		xdr_set_page_base(xdr, 0, len);
- }
- EXPORT_SYMBOL_GPL(xdr_enter_page);
+ 	struct nfs_parsed_mount_data *data;
  
+@@ -963,6 +963,7 @@ static struct nfs_parsed_mount_data *nfs_alloc_parsed_mount_data(void)
+ 		data->nfs_server.protocol = XPRT_TRANSPORT_TCP;
+ 		data->auth_flavors[0]	= RPC_AUTH_UNIX;
+ 		data->auth_flavor_len	= 1;
++		data->version		= version;
+ 		data->minorversion	= 0;
+ 		data->need_mount	= true;
+ 		data->net		= current->nsproxy->net_ns;
+@@ -2479,7 +2480,7 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
+ 	struct dentry *mntroot = ERR_PTR(-ENOMEM);
+ 	int error;
+ 
+-	mount_info.parsed = nfs_alloc_parsed_mount_data();
++	mount_info.parsed = nfs_alloc_parsed_mount_data(NFS_DEFAULT_VERSION);
+ 	mount_info.mntfh = nfs_alloc_fhandle();
+ 	if (mount_info.parsed == NULL || mount_info.mntfh == NULL)
+ 		goto out;
 -- 
-1.7.10.2
+1.7.9.5
+
 
