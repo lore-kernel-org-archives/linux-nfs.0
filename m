@@ -1,42 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:59754 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:3516 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752123Ab2FSNkD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Jun 2012 09:40:03 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Christoph Bartoschek <bartoschek@gmx.de>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Spurious permission denied
-Date: Tue, 19 Jun 2012 13:39:46 +0000
-Message-ID: <1340113184.3754.5.camel@lade.trondhjem.org>
-References: <43v5b9-ifa.ln1@barney.bruehl.pontohonk.de>
-In-Reply-To: <43v5b9-ifa.ln1@barney.bruehl.pontohonk.de>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1757779Ab2FHPdA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Jun 2012 11:33:00 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, joro@8bytes.org,
+        Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH] NFS: Use the NFS_DEFAULT_VERSION for v2 and v3 mounts
+Date: Fri,  8 Jun 2012 11:32:56 -0400
+Message-Id: <1339169576-27307-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA2LTE5IGF0IDExOjU4ICswMjAwLCBDaHJpc3RvcGggQmFydG9zY2hlayB3
-cm90ZToNCj4gSGksDQo+IA0KPiB3ZSBzdGlsbCBoYXZlIHRoZSBwcm9ibGVtIHRoYXQgc29tZSB1
-c2VycyBnZXQgcGVybWlzc2lvbiBkZW5pZWQgZm9yIA0KPiBkaXJlY3RvcmllcyB0aGV5IG5vcm1h
-bGx5IGNhbiBhY2Nlc3MuIFRoZSBwcm9ibGVtIG9ubHkgYWZmZWN0cyBhIHNpbmdsZSB1c2VyIA0K
-PiBhdCBhIHRpbWUgYW5kIGF1dG9tYXRpY2FsbHkgZ29lcyBhd2F5IGFmdGVyIGFib3V0IDMwIG1p
-bnV0ZXMuDQo+IA0KPiBJdCBzZWVtcyB0byBiZSBhIHNlcnZlciBwcm9ibGVtIGJlY2F1c2UgdGhp
-cyBoYXBwZW5zIG9uIGFsbCBjbGllbnQgbWFjaGluZXMgDQo+IGF0IHRoZSBzYW1lIHRpbWUuDQo+
-IA0KPiBIZXJlIGlzIGhvdyBpdCBsb29rcyBsaWtlOg0KPiANCj4gW2JhcnRvc2NoQHIxMTA2aTEy
-IH5dJCBscyAvYWZzL2VkYS9wcm9kDQo+IGxzOiBjYW5ub3Qgb3BlbiBkaXJlY3RvcnkgL2Fmcy9l
-ZGEvcHJvZDogUGVybWlzc2lvbiBkZW5pZWQNCj4gW2JhcnRvc2NoQHIxMTA2aTEyIH5dJCBpZA0K
-PiB1aWQ9MzQ4KGJhcnRvc2NoKSBnaWQ9MjAwKHZscykgDQo+IGdyb3Vwcz0yMDAodmxzaSksMTAw
-KHVzZXJzKSwyMDEoemFiKSw5MDAoaWJtKSw5MDEoaWJhKSw5MDIoYW1hKSwxMDAxKGVkYSksMjAz
-MChhc2kpLDIwNTcoZWNsKSw0MTk5OSh0cmEpDQo+IFtiYXJ0b3NjaEByMTEwNmkxMiB+XSQgDQo+
-IA0KPiBJIGhhdmUgYXR0YWNoZWQgdGhlIG5ldHdvcmsgdHJhZmZpYyB0aGF0IHdhcyBleGNoYW5n
-ZWQgYmV0d2VlbiB0aGUgTkZTIA0KPiBzZXJ2ZXIgYW5kIHRoZSBjbGllbnQgZm9yIHRoZSBscyBj
-b21tYW5kIGNhcHR1cmVkIGJ5IHdpcmVzaGFyay4NCj4gDQo+IEFjY2Vzc2luZyB0aGUgZGlyZWN0
-b3J5IC9hZnMvZWRhIHdvcmtzIGFzIGV4cGVjdGVkLg0KPiANCj4gSGFzIGFueW9uZSBhbiBpZGVh
-IHdoYXQgY291bGQgYmUgd3Jvbmc/DQoNCk5GU3YzIGRvZXNuJ3QgdXNlIHRoZSBtb2RlIGJpdHMg
-dG8gZGV0ZXJtaW5lIGFjY2VzcyByaWdodHMsIHNvIGxvb2tpbmcNCmF0IGEgR0VUQVRUUiBjYWxs
-IGlzbid0IHJlYWxseSB0aGF0IGhlbHBmdWwuIFlvdSBuZWVkIHRvIGNhdGNoIHRoZQ0Kb3JpZ2lu
-YWwgQUNDRVNTIGNhbGwgYW5kIHJlcGx5IGluIG9yZGVyIHRvIGZpZ3VyZSBvdXQgd2hhdCBjYXVz
-ZWQgdGhlDQpwZXJtaXNzaW9uIGRlbmllZCBpc3N1ZS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QN
-CkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBu
-ZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+From: Bryan Schumaker <bjschuma@netapp.com>
+
+Older versions of nfs utils don't always pass a "vers=" mount option for
+NFS.  This chould lead to attempts at using NFS v0 due to a zeroed out
+nfs_parsed_mount_data struct.  I solve this by setting the default NFS
+version to NFS_DEFAULT_VERSION in the v2 and v3 cases (v4 has already been
+taken care of by a similar patch).
+
+Reported-by: Joerg Roedel <joro@&bytes.org>
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/super.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index ff656c0..97a3b30 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1867,6 +1867,7 @@ static int nfs23_validate_mount_data(void *options,
+ 	if (data == NULL)
+ 		goto out_no_data;
+ 
++	args->version = NFS_DEFAULT_VERSION;
+ 	switch (data->version) {
+ 	case 1:
+ 		data->namlen = 0;
+-- 
+1.7.10.3
+
