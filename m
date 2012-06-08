@@ -1,96 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f174.google.com ([74.125.82.174]:49981 "EHLO
-	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755725Ab2FGKgv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jun 2012 06:36:51 -0400
-Received: by weyu7 with SMTP id u7so256799wey.19
-        for <linux-nfs@vger.kernel.org>; Thu, 07 Jun 2012 03:36:50 -0700 (PDT)
+Received: from zeniv.linux.org.uk ([195.92.253.2]:49191 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752252Ab2FHWX6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jun 2012 18:23:58 -0400
+Date: Fri, 8 Jun 2012 23:23:37 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Boaz Harrosh <bharrosh@panasas.com>, Tao Ma <boyu.mt@taobao.com>,
+        Nick Piggin <npiggin@kernel.dk>, "Dmitry V. Levin" <ldv@altlinux.org>,
+        v9fs-developer@lists.sourceforge.net, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
+        linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        codalist@TELEMANN.coda.cs.cmu.edu, ecryptfs@vger.kernel.org,
+        osd-dev@open-osd.org, linux-ext4@vger.kernel.org,
+        fuse-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
+        jfs-discussion@lists.sourceforge.net, logfs@logfs.org,
+        linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
+        reiserfs-devel@vger.kernel.org
+Subject: Re: [RFC, PATCH, RESEND] fs: push rcu_barrier() from
+ deactivate_locked_super() to filesystems
+Message-ID: <20120608222337.GR30000@ZenIV.linux.org.uk>
+References: <1339191663-17693-1-git-send-email-kirill.shutemov@linux.intel.com>
+ <20120608150253.e42464a6.akpm@linux-foundation.org>
+ <20120608221446.GA18250@otc-wbsnb-06>
 MIME-Version: 1.0
-In-Reply-To: <4FD07F7D.6070509@panasas.com>
-References: <CAKYAXd-HCfcejT=kG-kSXWCmfmxTjrT2o+b3Zan+BCrS1Y2ovw@mail.gmail.com>
-	<4FD06290.7050004@panasas.com>
-	<CAKYAXd8rwY-mHiO+5691qq5w=O-Gs1FXQ4CjEbPDLVnPSkkBTQ@mail.gmail.com>
-	<4FD07F7D.6070509@panasas.com>
-Date: Thu, 7 Jun 2012 19:36:50 +0900
-Message-ID: <CAKYAXd8YCoX3jYK5=gNE3jKyvqTQpawpMkhMKWToCpsTLkcJew@mail.gmail.com>
-Subject: =?UTF-8?Q?Re=3A_=5BProblem=5DNFS_Server_=E2=80=93_Umount_results_in_Device?=
-	=?UTF-8?Q?_Busy=2E?=
-From: Namjae Jeon <linkinjeon@gmail.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        Amit Sahrawat <a.sahrawat@samsung.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Namjae Jeon <namjae.jeon@samsung.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120608221446.GA18250@otc-wbsnb-06>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2012/6/7, Boaz Harrosh <bharrosh@panasas.com>:
-> On 06/07/2012 12:43 PM, Namjae Jeon wrote:
->
->> 2012/6/7, Boaz Harrosh <bharrosh@panasas.com>:
->>> On 06/07/2012 10:47 AM, Namjae Jeon wrote:
->>>
->>>> Hi Bruce, Trond.
->>>>
->>>> As you know, Currently umount results in busy on NFS server although
->>>> user tried to succeed to umount on NFS client.
->>>> I suggest to add umount procedure to avoid umount busy issue.
->>>> When calling umount on NFS client, The resources(exportfs entries
->>>> cache) of mount point will be flushed on NFS server. and umount will
->>>> be succeed without busy issue.
->>>>
->>>> how do you think about this suggestion ?
->>>>
->>>
->>>
->>> I second this request, what is needed so when all clients unmounted,
->>> the system comes back to the sate it was before any clients have
->>> mounted. i.e filesystems is not referenced and may unmount cleanly.
->>> (This also happens with >= 4.0 clients only, so no excuses)
->>>
->>> This is a real problem for me, on Fedora machines. Because I export
->>> iscsi devices which are network devices, and in the shutdown procedure
->>> for some reason the "service nfs stop" of the server is much much to
->>> late. the original umount of exofs (-o _netdev) fails because it's
->>> held by NFSD, the iscsi devices go away regardless, and when nfsd
->>> finally releases exofs, it gets deadlocked on some error handling.
->>> OK I know I must fix the stuck-ness, but the problem will remain.
->>> The FS will not unmount cleanly because it will only attempt
->>> an unmount after its devices are gone. This will be solved if
->>> nfsd would release its hold on the FS when all clients are gone.
->>>
->>> It was on my TODO to fix this for a long time, but I seem to be
->>> too busy with more urgent matters. (What's the point of fixing the
->>> shutdown if the steady state doesn't work yet)
->>>
->>> If someone has investigated the matter and knows what to do I would
->>> appreciate any insights, and/or patches would be wonderful ;-)
->> Hi Boaz.
->> Oh.. You also are facing same problem.
->> Actually I almost finish to imprement the patch about umount busy
->> issue on NFS server. But I want to know Maintainer's opinion before
->> posting.
->> Thanks.
->
->
-> Please post it (maybe as RFC) I want to see it
-Okay, I will soon.
->
-> Thanks
-> Boaz
->
->>>
->>>> Thanks.
->>>>
->>>
->>> <>
->>>
->>> Thanks
->>> Boaz
->>>
->>>
->
->
->
+On Sat, Jun 09, 2012 at 01:14:46AM +0300, Kirill A. Shutemov wrote:
+> > The implementation would be less unpleasant if we could do the
+> > rcu_barrier() in kmem_cache_destroy().  I can't see a way of doing that
+> > without adding a dedicated slab flag, which would require editing all
+> > the filesystems anyway.
+> 
+> I think rcu_barrier() for all kmem_cache_destroy() would be too expensive.
+
+You've got to be kidding.  Please, show us the codepath that would be hot
+enough to make that too expensive and would contain kmem_cache_destroy().
+Note that module unload is *not* a hot path - not on any even remotely sane
+use.
