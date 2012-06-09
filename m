@@ -1,80 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f174.google.com ([74.125.82.174]:44681 "EHLO
-	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751557Ab2FGJnI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jun 2012 05:43:08 -0400
-Received: by weyu7 with SMTP id u7so228898wey.19
-        for <linux-nfs@vger.kernel.org>; Thu, 07 Jun 2012 02:43:07 -0700 (PDT)
+Received: from mail-wi0-f172.google.com ([209.85.212.172]:33140 "EHLO
+	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750866Ab2FIHNI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 9 Jun 2012 03:13:08 -0400
+Message-ID: <4FD2F5F4.1000106@gmail.com>
+Date: Sat, 09 Jun 2012 09:06:28 +0200
+From: Marco Stornelli <marco.stornelli@gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <4FD06290.7050004@panasas.com>
-References: <CAKYAXd-HCfcejT=kG-kSXWCmfmxTjrT2o+b3Zan+BCrS1Y2ovw@mail.gmail.com>
-	<4FD06290.7050004@panasas.com>
-Date: Thu, 7 Jun 2012 18:43:07 +0900
-Message-ID: <CAKYAXd8rwY-mHiO+5691qq5w=O-Gs1FXQ4CjEbPDLVnPSkkBTQ@mail.gmail.com>
-Subject: =?UTF-8?Q?Re=3A_=5BProblem=5DNFS_Server_=E2=80=93_Umount_results_in_Device?=
-	=?UTF-8?Q?_Busy=2E?=
-From: Namjae Jeon <linkinjeon@gmail.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        Amit Sahrawat <a.sahrawat@samsung.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Namjae Jeon <namjae.jeon@samsung.com>
-Content-Type: text/plain; charset=UTF-8
+To: Andrew Morton <akpm@linux-foundation.org>
+CC: Linus Torvalds <torvalds@linux-foundation.org>,
+        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
+        Al Viro <viro@zeniv.linux.org.uk>, Boaz Harrosh <bharrosh@panasas.com>,
+        Tao Ma <boyu.mt@taobao.com>, Nick Piggin <npiggin@kernel.dk>,
+        "Dmitry V. Levin" <ldv@altlinux.org>,
+        v9fs-developer@lists.sourceforge.net, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
+        linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        codalist@telemann.coda.cs.cmu.edu, ecryptfs@vger.kernel.org,
+        osd-dev@open-osd.org, linux-ext4@vger.kernel.org,
+        fuse-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
+        jfs-discussion@lists.sourceforge.net, logfs@logfs.org,
+        linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
+        reiserfs-devel@vger.kernel.org
+Subject: Re: [RFC, PATCH, RESEND] fs: push rcu_barrier() from deactivate_locked_super()
+ to filesystems
+References: <1339191663-17693-1-git-send-email-kirill.shutemov@linux.intel.com> <20120608150253.e42464a6.akpm@linux-foundation.org> <20120608221446.GA18250@otc-wbsnb-06> <20120608152550.258d6a30.akpm@linux-foundation.org> <20120608222734.GT30000@ZenIV.linux.org.uk> <20120608153120.b722d7c3.akpm@linux-foundation.org> <20120608233127.GB18981@otc-wbsnb-06> <20120608163751.7a8ec2bc.akpm@linux-foundation.org> <CA+55aFw5k3daxeoZb9H1HGcOCWjPF+d7inSbf0QHmG-atp4reQ@mail.gmail.com> <20120608172842.9826b5cd.akpm@linux-foundation.org>
+In-Reply-To: <20120608172842.9826b5cd.akpm@linux-foundation.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2012/6/7, Boaz Harrosh <bharrosh@panasas.com>:
-> On 06/07/2012 10:47 AM, Namjae Jeon wrote:
+Il 09/06/2012 02:28, Andrew Morton ha scritto:
+> On Fri, 8 Jun 2012 16:46:47 -0700 Linus Torvalds<torvalds@linux-foundation.org>  wrote:
 >
->> Hi Bruce, Trond.
+>> Of course, if you just mean having a VFS wrapper that does
 >>
->> As you know, Currently umount results in busy on NFS server although
->> user tried to succeed to umount on NFS client.
->> I suggest to add umount procedure to avoid umount busy issue.
->> When calling umount on NFS client, The resources(exportfs entries
->> cache) of mount point will be flushed on NFS server. and umount will
->> be succeed without busy issue.
+>>      static void vfs_inode_kmem_cache_destroy(struct kmem_cache *cachep)
+>>      {
+>>          rcu_barrier();
+>>          kmem_cache_destroy(cachep);
+>>      }
 >>
->> how do you think about this suggestion ?
->>
+>> then we could do that. Not much better than what Kirill's patch did,
+>> but at least we could have that comment in just one single place.
 >
+> That's conceptually what I meant.  But it has the problem that new and
+> out-of-tree filesystems might forget to do it.  Which is why I suggest
+> adding a kmem_cache* argument to unregister_filesystem() for this.
 >
-> I second this request, what is needed so when all clients unmounted,
-> the system comes back to the sate it was before any clients have
-> mounted. i.e filesystems is not referenced and may unmount cleanly.
-> (This also happens with >= 4.0 clients only, so no excuses)
->
-> This is a real problem for me, on Fedora machines. Because I export
-> iscsi devices which are network devices, and in the shutdown procedure
-> for some reason the "service nfs stop" of the server is much much to
-> late. the original umount of exofs (-o _netdev) fails because it's
-> held by NFSD, the iscsi devices go away regardless, and when nfsd
-> finally releases exofs, it gets deadlocked on some error handling.
-> OK I know I must fix the stuck-ness, but the problem will remain.
-> The FS will not unmount cleanly because it will only attempt
-> an unmount after its devices are gone. This will be solved if
-> nfsd would release its hold on the FS when all clients are gone.
->
-> It was on my TODO to fix this for a long time, but I seem to be
-> too busy with more urgent matters. (What's the point of fixing the
-> shutdown if the steady state doesn't work yet)
->
-> If someone has investigated the matter and knows what to do I would
-> appreciate any insights, and/or patches would be wonderful ;-)
-Hi Boaz.
-Oh.. You also are facing same problem.
-Actually I almost finish to imprement the patch about umount busy
-issue on NFS server. But I want to know Maintainer's opinion before
-posting.
-Thanks.
->
->> Thanks.
->>
->
-> <>
->
-> Thanks
-> Boaz
->
->
+> It's a bit awkward, and the fs can pass in NULL if it knows what it's
+> doing.  But it's reliable.
+> --
+
+The call of rcu_barrier should be mandatory for the "unload fs module" 
+problem, right? If the fs is compiled statically maybe we could avoid 
+it, but (eventually) this kind of decision is per-fs, so this could be a 
+clue that the call of rcu_barrier maybe is inside each fs not in VFS.
+
+Marco
