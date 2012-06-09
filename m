@@ -1,110 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:29382 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755089Ab2F1PDK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Jun 2012 11:03:10 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: "harshula@redhat.com" <harshula@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "mgorman@suse.de" <mgorman@suse.de>
-Subject: Re: [RFC PATCH] nfs: do non-blocking commit in releasepage if we're
- attempting to reconnect the socket
-Date: Thu, 28 Jun 2012 15:02:53 +0000
-Message-ID: <1340895773.5293.18.camel@lade.trondhjem.org>
-References: <1340890837.5293.11.camel@lade.trondhjem.org>
-	 <1340895066-17626-1-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1340895066-17626-1-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail.linuxfoundation.org ([140.211.169.12]:37263 "EHLO
+	mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751250Ab2FIHZO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 9 Jun 2012 03:25:14 -0400
+Date: Sat, 9 Jun 2012 00:25:57 -0700
+From: Andrew Morton <akpm@linux-foundation.org>
+To: Marco Stornelli <marco.stornelli@gmail.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
+        Al Viro <viro@zeniv.linux.org.uk>, Boaz Harrosh <bharrosh@panasas.com>,
+        Tao Ma <boyu.mt@taobao.com>, Nick Piggin <npiggin@kernel.dk>,
+        "Dmitry V. Levin" <ldv@altlinux.org>,
+        v9fs-developer@lists.sourceforge.net, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
+        linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        codalist@telemann.coda.cs.cmu.edu, ecryptfs@vger.kernel.org,
+        osd-dev@open-osd.org, linux-ext4@vger.kernel.org,
+        fuse-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
+        jfs-discussion@lists.sourceforge.net, logfs@logfs.org,
+        linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
+        reiserfs-devel@vger.kernel.org
+Subject: Re: [RFC, PATCH, RESEND] fs: push rcu_barrier() from
+ deactivate_locked_super() to filesystems
+Message-Id: <20120609002557.b8aba759.akpm@linux-foundation.org>
+In-Reply-To: <4FD2F5F4.1000106@gmail.com>
+References: <1339191663-17693-1-git-send-email-kirill.shutemov@linux.intel.com>
+	<20120608150253.e42464a6.akpm@linux-foundation.org>
+	<20120608221446.GA18250@otc-wbsnb-06>
+	<20120608152550.258d6a30.akpm@linux-foundation.org>
+	<20120608222734.GT30000@ZenIV.linux.org.uk>
+	<20120608153120.b722d7c3.akpm@linux-foundation.org>
+	<20120608233127.GB18981@otc-wbsnb-06>
+	<20120608163751.7a8ec2bc.akpm@linux-foundation.org>
+	<CA+55aFw5k3daxeoZb9H1HGcOCWjPF+d7inSbf0QHmG-atp4reQ@mail.gmail.com>
+	<20120608172842.9826b5cd.akpm@linux-foundation.org>
+	<4FD2F5F4.1000106@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA2LTI4IGF0IDEwOjUxIC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-V2UndmUgaGFkIHNvbWUgcmVwb3J0cyBvZiBhIGRlYWRsb2NrIHdoZXJlIHJwY2lvZCBlbmRzIHVw
-IHdpdGggYSBzdGFjaw0KPiB0cmFjZSBsaWtlIHRoaXM6DQo+IA0KPiAgICAgUElEOiAyNTA3ICAg
-VEFTSzogZmZmZjg4MTAzNjkxYWI0MCAgQ1BVOiAxNCAgQ09NTUFORDogInJwY2lvZC8xNCINCj4g
-ICAgICAjMCBbZmZmZjg4MTAzNDNiZjJmMF0gc2NoZWR1bGUgYXQgZmZmZmZmZmY4MTRkYWJkOQ0K
-PiAgICAgICMxIFtmZmZmODgxMDM0M2JmM2I4XSBuZnNfd2FpdF9iaXRfa2lsbGFibGUgYXQgZmZm
-ZmZmZmZhMDM4ZmMwNCBbbmZzXQ0KPiAgICAgICMyIFtmZmZmODgxMDM0M2JmM2M4XSBfX3dhaXRf
-b25fYml0IGF0IGZmZmZmZmZmODE0ZGJjMmYNCj4gICAgICAjMyBbZmZmZjg4MTAzNDNiZjQxOF0g
-b3V0X29mX2xpbmVfd2FpdF9vbl9iaXQgYXQgZmZmZmZmZmY4MTRkYmNkOA0KPiAgICAgICM0IFtm
-ZmZmODgxMDM0M2JmNDg4XSBuZnNfY29tbWl0X2lub2RlIGF0IGZmZmZmZmZmYTAzOWUwYzEgW25m
-c10NCj4gICAgICAjNSBbZmZmZjg4MTAzNDNiZjRmOF0gbmZzX3JlbGVhc2VfcGFnZSBhdCBmZmZm
-ZmZmZmEwMzhiZWY2IFtuZnNdDQo+ICAgICAgIzYgW2ZmZmY4ODEwMzQzYmY1MjhdIHRyeV90b19y
-ZWxlYXNlX3BhZ2UgYXQgZmZmZmZmZmY4MTEwYzY3MA0KPiAgICAgICM3IFtmZmZmODgxMDM0M2Jm
-NTM4XSBzaHJpbmtfcGFnZV9saXN0LmNsb25lLjAgYXQgZmZmZmZmZmY4MTEyNjI3MQ0KPiAgICAg
-ICM4IFtmZmZmODgxMDM0M2JmNjY4XSBzaHJpbmtfaW5hY3RpdmVfbGlzdCBhdCBmZmZmZmZmZjgx
-MTI2NjM4DQo+ICAgICAgIzkgW2ZmZmY4ODEwMzQzYmY4MThdIHNocmlua196b25lIGF0IGZmZmZm
-ZmZmODExMjc4OGYNCj4gICAgICMxMCBbZmZmZjg4MTAzNDNiZjhjOF0gZG9fdHJ5X3RvX2ZyZWVf
-cGFnZXMgYXQgZmZmZmZmZmY4MTEyN2IxZQ0KPiAgICAgIzExIFtmZmZmODgxMDM0M2JmOTU4XSB0
-cnlfdG9fZnJlZV9wYWdlcyBhdCBmZmZmZmZmZjgxMTI4MTJmDQo+ICAgICAjMTIgW2ZmZmY4ODEw
-MzQzYmZhMDhdIF9fYWxsb2NfcGFnZXNfbm9kZW1hc2sgYXQgZmZmZmZmZmY4MTExZmRhZA0KPiAg
-ICAgIzEzIFtmZmZmODgxMDM0M2JmYjI4XSBrbWVtX2dldHBhZ2VzIGF0IGZmZmZmZmZmODExNTk5
-NDINCj4gICAgICMxNCBbZmZmZjg4MTAzNDNiZmI1OF0gZmFsbGJhY2tfYWxsb2MgYXQgZmZmZmZm
-ZmY4MTE1YTU1YQ0KPiAgICAgIzE1IFtmZmZmODgxMDM0M2JmYmQ4XSBfX19fY2FjaGVfYWxsb2Nf
-bm9kZSBhdCBmZmZmZmZmZjgxMTVhMmQ5DQo+ICAgICAjMTYgW2ZmZmY4ODEwMzQzYmZjMzhdIGtt
-ZW1fY2FjaGVfYWxsb2MgYXQgZmZmZmZmZmY4MTE1YjA5Yg0KPiAgICAgIzE3IFtmZmZmODgxMDM0
-M2JmYzc4XSBza19wcm90X2FsbG9jIGF0IGZmZmZmZmZmODE0MTE4MDgNCj4gICAgICMxOCBbZmZm
-Zjg4MTAzNDNiZmNiOF0gc2tfYWxsb2MgYXQgZmZmZmZmZmY4MTQxMTk3Yw0KPiAgICAgIzE5IFtm
-ZmZmODgxMDM0M2JmY2U4XSBpbmV0X2NyZWF0ZSBhdCBmZmZmZmZmZjgxNDgzYmE2DQo+ICAgICAj
-MjAgW2ZmZmY4ODEwMzQzYmZkMzhdIF9fc29ja19jcmVhdGUgYXQgZmZmZmZmZmY4MTQwYjRhNw0K
-PiAgICAgIzIxIFtmZmZmODgxMDM0M2JmZDk4XSB4c19jcmVhdGVfc29jayBhdCBmZmZmZmZmZmEw
-MWY2NDliIFtzdW5ycGNdDQo+ICAgICAjMjIgW2ZmZmY4ODEwMzQzYmZkZDhdIHhzX3RjcF9zZXR1
-cF9zb2NrZXQgYXQgZmZmZmZmZmZhMDFmNjk2NSBbc3VucnBjXQ0KPiAgICAgIzIzIFtmZmZmODgx
-MDM0M2JmZTM4XSB3b3JrZXJfdGhyZWFkIGF0IGZmZmZmZmZmODEwODg3ZDANCj4gICAgICMyNCBb
-ZmZmZjg4MTAzNDNiZmVlOF0ga3RocmVhZCBhdCBmZmZmZmZmZjgxMDhkZDk2DQo+ICAgICAjMjUg
-W2ZmZmY4ODEwMzQzYmZmNDhdIGtlcm5lbF90aHJlYWQgYXQgZmZmZmZmZmY4MTAwYzFjYQ0KPiAN
-Cj4gVGhlIHByb2JsZW0gaXMgcHJldHR5IGNsZWFyLiBycGNpb2QgaXMgdHJ5aW5nIHRvIGFsbG9j
-YXRlIG1lbW9yeSBmb3IgYSBuZXcNCj4gc29ja2V0IHRvIHRhbGsgdG8gdGhlIHNlcnZlci4gVGhl
-IFZNIGVuZHMgdXAgY2FsbGluZyAtPnJlbGVhc2VwYWdlIHRvIGdldA0KPiBtb3JlIG1lbW9yeSwg
-YW5kIGl0IHRyaWVzIHRvIGRvIGEgYmxvY2tpbmcgY29tbWl0LiBUaGF0IGNvbW1pdCBjYW4ndA0K
-PiBzdWNjZWVkIGhvd2V2ZXIgd2l0aG91dCBhIGNvbm5lY3RlZCBzb2NrZXQsIHNvIHdlIGRlYWRs
-b2NrLg0KPiANCj4gRml4IHRoaXMgYnkgc2V0dGluZyBQRl9GU1RSQU5TIG9uIHRoZSB3b3JrcXVl
-dWUgdGFzayBwcmlvciB0byBkb2luZyB0aGUNCj4gc29ja2V0IGFsbG9jYXRpb24sIGFuZCBoYXZp
-bmcgbmZzX3JlbGVhc2VfcGFnZSBjaGVjayBmb3IgdGhhdCBmbGFnIHdoZW4NCj4gZGVjaWRpbmcg
-d2hldGhlciB0byBkbyBhIGJsb2NraW5nIGNvbW1pdCBjYWxsLiBBbHNvLCBzZXQgUEZfRlNUUkFO
-Uw0KPiB1bmNvbmRpdGlvbmFsbHkgaW4gcnBjX2FzeW5jX3NjaGVkdWxlIHNpbmNlIHRoYXQgZnVu
-Y3Rpb24gY2FuIGFsc28gZG8NCj4gYWxsb2NhdGlvbnMgc29tZXRpbWVzLg0KPiANCj4gQWxzbywg
-Y2MnaW5nIE1lbCBzaW5jZSBJIGJvcnJvd2VkIGhpcyB0c2tfcmVzdG9yZV9mbGFncyBoZWxwZXIg
-aGVyZSwgYW5kDQo+IHRoaXMgcGF0Y2ggbWF5IGNhdXNlIG1lcmdlIGNvbmZsaWN0cyB3aXRoIHNv
-bWUgb2YgaGlzIFN3YXAtb3Zlci1ORlMNCj4gcGF0Y2hlcy4NCj4gDQo+IENjOiBNZWwgR29ybWFu
-IDxtZ29ybWFuQHN1c2UuZGU+DQo+IFNpZ25lZC1vZmYtYnk6IEplZmYgTGF5dG9uIDxqbGF5dG9u
-QHJlZGhhdC5jb20+DQo+IC0tLQ0KPiAgZnMvbmZzL2ZpbGUuYyAgICAgICAgICAgICAgICAgICB8
-ICAgIDggKysrKysrLS0NCj4gIGluY2x1ZGUvbGludXgvc2NoZWQuaCAgICAgICAgICAgfCAgICA3
-ICsrKysrKysNCj4gIG5ldC9zdW5ycGMvc2NoZWQuYyAgICAgICAgICAgICAgfCAgICA0ICsrKysN
-Cj4gIG5ldC9zdW5ycGMveHBydHJkbWEvdHJhbnNwb3J0LmMgfCAgICA0ICsrKy0NCj4gIG5ldC9z
-dW5ycGMveHBydHNvY2suYyAgICAgICAgICAgfCAgIDEzICsrKysrKysrKysrKysNCj4gIDUgZmls
-ZXMgY2hhbmdlZCwgMzMgaW5zZXJ0aW9ucygrKSwgMyBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYg
-LS1naXQgYS9mcy9uZnMvZmlsZS5jIGIvZnMvbmZzL2ZpbGUuYw0KPiBpbmRleCBhNjcwOGU2Yi4u
-ODBjYzYyMSAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL2ZpbGUuYw0KPiArKysgYi9mcy9uZnMvZmls
-ZS5jDQo+IEBAIC00NjMsOCArNDYzLDEyIEBAIHN0YXRpYyBpbnQgbmZzX3JlbGVhc2VfcGFnZShz
-dHJ1Y3QgcGFnZSAqcGFnZSwgZ2ZwX3QgZ2ZwKQ0KPiAgCWlmIChtYXBwaW5nICYmIChnZnAgJiBH
-RlBfS0VSTkVMKSA9PSBHRlBfS0VSTkVMKSB7DQo+ICAJCWludCBob3cgPSBGTFVTSF9TWU5DOw0K
-PiAgDQo+IC0JCS8qIERvbid0IGxldCBrc3dhcGQgZGVhZGxvY2sgd2FpdGluZyBmb3IgT09NIFJQ
-QyBjYWxscyAqLw0KPiAtCQlpZiAoY3VycmVudF9pc19rc3dhcGQoKSkNCj4gKwkJLyoNCj4gKwkJ
-ICogRG9uJ3QgbGV0IGtzd2FwZCBkZWFkbG9jayB3YWl0aW5nIGZvciBPT00gUlBDIGNhbGxzLCBh
-bmQNCj4gKwkJICogZG9uJ3QgcmVjdXJzZSBiYWNrIGludG8gdGhlIGZzIGlmIHdlIGtub3cgdGhh
-dCB3ZSdyZSB0cnlpbmcNCj4gKwkJICogdG8gcmVjbGFpbSBtZW1vcnkgZm9yIGFuIGZzLXJlbGF0
-ZWQgYWxsb2NhdGlvbi4NCj4gKwkJICovDQo+ICsJCWlmIChjdXJyZW50X2lzX2tzd2FwZCgpIHx8
-IGN1cnJlbnQtPmZsYWdzICYgUEZfRlNUUkFOUykNCj4gIAkJCWhvdyA9IDA7DQo+ICAJCW5mc19j
-b21taXRfaW5vZGUobWFwcGluZy0+aG9zdCwgaG93KTsNCg0KVGhpcyB3aWxsIHN0aWxsIHRyeSB0
-byBkbyBhIGRpcmVjdCByZWNsYWltLiBFdmVuIGlmIHdlIG1ha2UgdGhhdCByZWNsYWltDQpub24t
-YmxvY2tpbmcsIEknbSB0aGlua2luZyB0aGF0IHdlIHNob3VsZCBwZXJoYXBzIGp1c3Qgc2tpcCB0
-aGUNCm5mc19jb21taXRfaW5vZGUoKSBpbiB0aGUgY2FzZSB3aGVyZSBQRl9GU1RSQU5TIGlzIHNl
-dDogaWYgd2UncmUgbG93IG9uDQptZW1vcnksIHRoZW4gaXQgaXMgYmV0dGVyIHRvIHNraXAgdGhl
-IG5mc19jb21taXRfaW5vZGUgcmF0aGVyIHRoYW4gdGllDQp1cCBtb3JlIHJlc291cmNlcyBpbiBh
-biBhdHRlbXB0IHRvIGZyZWUgdXAgbWVtb3J5IHRoYXQgd2UgX2tub3dfIGlzDQpnb2luZyB0byBi
-ZSBpbiB2YWluLg0KDQo+ICAJfQ0KPiBkaWZmIC0tZ2l0IGEvaW5jbHVkZS9saW51eC9zY2hlZC5o
-IGIvaW5jbHVkZS9saW51eC9zY2hlZC5oDQo+IGluZGV4IDQwNTljMGYuLmQ3MWI1MjMgMTAwNjQ0
-DQo+IC0tLSBhL2luY2x1ZGUvbGludXgvc2NoZWQuaA0KPiArKysgYi9pbmNsdWRlL2xpbnV4L3Nj
-aGVkLmgNCj4gQEAgLTE4ODksNiArMTg4OSwxMyBAQCBzdGF0aWMgaW5saW5lIHZvaWQgcmN1X3N3
-aXRjaF9mcm9tKHN0cnVjdCB0YXNrX3N0cnVjdCAqcHJldikNCj4gIA0KPiAgI2VuZGlmDQo+ICAN
-Cj4gK3N0YXRpYyBpbmxpbmUgdm9pZCB0c2tfcmVzdG9yZV9mbGFncyhzdHJ1Y3QgdGFza19zdHJ1
-Y3QgKnAsDQo+ICsJCQl1bnNpZ25lZCBsb25nIHBmbGFncywgdW5zaWduZWQgbG9uZyBtYXNrKQ0K
-PiArew0KPiArCXAtPmZsYWdzICY9IH5tYXNrOw0KPiArCXAtPmZsYWdzIHw9IHBmbGFncyAmIG1h
-c2s7DQo+ICt9DQoNCkRvIHdlIG5lZWQgdGhpcz8gcnBjaW9kIGlzIGEgd29ya3F1ZXVlIHRocmVh
-ZCwgc28gaW4gcHJpbmNpcGxlIHdlDQphbHJlYWR5IF9rbm93XyB0aGF0IFBGX0ZTVFJBTlMgaXMg
-bm90IGdvaW5nIHRvIGJlIHNldC4NCg0KDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBO
-RlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
-bQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+On Sat, 09 Jun 2012 09:06:28 +0200 Marco Stornelli <marco.stornelli@gmail.com> wrote:
+
+> Il 09/06/2012 02:28, Andrew Morton ha scritto:
+> > On Fri, 8 Jun 2012 16:46:47 -0700 Linus Torvalds<torvalds@linux-foundation.org>  wrote:
+> >
+> >> Of course, if you just mean having a VFS wrapper that does
+> >>
+> >>      static void vfs_inode_kmem_cache_destroy(struct kmem_cache *cachep)
+> >>      {
+> >>          rcu_barrier();
+> >>          kmem_cache_destroy(cachep);
+> >>      }
+> >>
+> >> then we could do that. Not much better than what Kirill's patch did,
+> >> but at least we could have that comment in just one single place.
+> >
+> > That's conceptually what I meant.  But it has the problem that new and
+> > out-of-tree filesystems might forget to do it.  Which is why I suggest
+> > adding a kmem_cache* argument to unregister_filesystem() for this.
+> >
+> > It's a bit awkward, and the fs can pass in NULL if it knows what it's
+> > doing.  But it's reliable.
+> > --
+> 
+> The call of rcu_barrier should be mandatory for the "unload fs module" 
+> problem, right? If the fs is compiled statically maybe we could avoid 
+> it, but (eventually) this kind of decision is per-fs, so this could be a 
+> clue that the call of rcu_barrier maybe is inside each fs not in VFS.
+> 
+
+No, this is unrelated to module unloading and the problem affects
+statically linked filesystems also.  The requirement is that all inodes
+which are pending rcu freeing be flushed (and freed) before their cache
+is destroyed in kmem_cache_destroy().
+
+And...  it seems that I misread what's going on.  The individual
+filesystems are doing the rcu freeing of their inodes, so it is
+appropriate that they also call rcu_barrier() prior to running
+kmem_cache_free().  Which is what Kirill's patch does.  oops.
+
