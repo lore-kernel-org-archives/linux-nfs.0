@@ -1,108 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:65521 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757943Ab2FTTyH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jun 2012 15:54:07 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 03/10] NFS: Create a v4-specific fsync function
-Date: Wed, 20 Jun 2012 15:53:42 -0400
-Message-Id: <1340222029-18027-4-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1340222029-18027-1-git-send-email-bjschuma@netapp.com>
-References: <1340222029-18027-1-git-send-email-bjschuma@netapp.com>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:37479 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751470Ab2FIGaO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 9 Jun 2012 02:30:14 -0400
+Date: Sat, 9 Jun 2012 07:29:52 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Jan Kara <jack@suse.cz>
+Cc: linux-fsdevel@vger.kernel.org, dchinner@redhat.com,
+        Alex Elder <elder@kernel.org>, Anton Altaparmakov <anton@tuxera.com>,
+        Ben Myers <bpm@sgi.com>, Chris Mason <chris.mason@oracle.com>,
+        cluster-devel@redhat.com, "David S. Miller" <davem@davemloft.net>,
+        fuse-devel@lists.sourceforge.net,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Joel Becker <jlbec@evilplan.org>,
+        KONISHI Ryusuke <konishi.ryusuke@lab.ntt.co.jp>,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net, Mark Fasheh <mfasheh@suse.com>,
+        Miklos Szeredi <miklos@szeredi.hu>, ocfs2-devel@oss.oracle.com,
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        Steven Whitehouse <swhiteho@redhat.com>,
+        "Theodore Ts'o" <tytso@mit.edu>, xfs@oss.sgi.com
+Subject: Re: [PATCH 00/27 v6] Fix filesystem freezing deadlocks
+Message-ID: <20120609062952.GY30000@ZenIV.linux.org.uk>
+References: <1338589841-9568-1-git-send-email-jack@suse.cz>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1338589841-9568-1-git-send-email-jack@suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Sat, Jun 02, 2012 at 12:30:14AM +0200, Jan Kara wrote:
+>   Hello,
+> 
+>   here is the sixth iteration of my patches to improve filesystem freezing.
+> The change since last iteration is that filesystem can be frozen with open but
+> unlinked files. After some thinking, I've decided that the best way to handle
+> this is to block removal inside ->evict_inode() of each filesystem and use
+> fs-internal level of freeze protection for that (usually I've instrumented
+> filesystem's transaction system to use freeze protection). Handling
+> inside VFS would be less work but the only level of freeze protection that
+> has a chance of not causing deadlocks is the one used for page faults and even
+> there it's not clear lock ordering would be correct wrt some fs-specific locks.
+> I've converted ext2, ext4, btrfs, xfs, nilfs2, ocfs2, gfs2 and also checked
+> that ext3, reiserfs, jfs should work as well (they have their internal freeze
+> protection mechanisms, possibly they could be replaced by a generic one but
+> given these are mostly aging filesystems, it's not a real priority IHMO).
+> So finally I'm not aware of any pending issue with this patch set so if you
+> have some concern, please speak up!
 
-v2 and v3 don't need to worry about doing a pnfs layoutcommit.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/file.c | 40 ++++++++++++++++++++++++++++++++--------
- 1 file changed, 32 insertions(+), 8 deletions(-)
-
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index a6708e6b..8941ac4 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -265,7 +265,7 @@ nfs_file_mmap(struct file * file, struct vm_area_struct * vma)
-  * fall back to doing a synchronous write.
-  */
- static int
--nfs_file_fsync(struct file *file, loff_t start, loff_t end, int datasync)
-+nfs_file_fsync_commit(struct file *file, loff_t start, loff_t end, int datasync)
- {
- 	struct dentry *dentry = file->f_path.dentry;
- 	struct nfs_open_context *ctx = nfs_file_open_context(file);
-@@ -277,9 +277,6 @@ nfs_file_fsync(struct file *file, loff_t start, loff_t end, int datasync)
- 			dentry->d_parent->d_name.name, dentry->d_name.name,
- 			datasync);
- 
--	ret = filemap_write_and_wait_range(inode->i_mapping, start, end);
--	mutex_lock(&inode->i_mutex);
--
- 	nfs_inc_stats(inode, NFSIOS_VFSFSYNC);
- 	have_error = test_and_clear_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
- 	status = nfs_commit_inode(inode, FLUSH_SYNC);
-@@ -290,10 +287,20 @@ nfs_file_fsync(struct file *file, loff_t start, loff_t end, int datasync)
- 		ret = xchg(&ctx->error, 0);
- 	if (!ret && status < 0)
- 		ret = status;
--	if (!ret && !datasync)
--		/* application has asked for meta-data sync */
--		ret = pnfs_layoutcommit_inode(inode, true);
-+	return ret;
-+}
-+
-+static int
-+nfs_file_fsync(struct file *file, loff_t start, loff_t end, int datasync)
-+{
-+	int ret;
-+	struct inode *inode = file->f_path.dentry->d_inode;
-+
-+	ret = filemap_write_and_wait_range(inode->i_mapping, start, end);
-+	mutex_lock(&inode->i_mutex);
-+	ret = nfs_file_fsync_commit(file, start, end, datasync);
- 	mutex_unlock(&inode->i_mutex);
-+
- 	return ret;
- }
- 
-@@ -956,6 +963,23 @@ out_drop:
- 	goto out_put_ctx;
- }
- 
-+static int
-+nfs4_file_fsync(struct file *file, loff_t start, loff_t end, int datasync)
-+{
-+	int ret;
-+	struct inode *inode = file->f_path.dentry->d_inode;
-+
-+	ret = filemap_write_and_wait_range(inode->i_mapping, start, end);
-+	mutex_lock(&inode->i_mutex);
-+	ret = nfs_file_fsync_commit(file, start, end, datasync);
-+	if (!ret && !datasync)
-+		/* application has asked for meta-data sync */
-+		ret = pnfs_layoutcommit_inode(inode, true);
-+	mutex_unlock(&inode->i_mutex);
-+
-+	return ret;
-+}
-+
- const struct file_operations nfs4_file_operations = {
- 	.llseek		= nfs_file_llseek,
- 	.read		= do_sync_read,
-@@ -966,7 +990,7 @@ const struct file_operations nfs4_file_operations = {
- 	.open		= nfs4_file_open,
- 	.flush		= nfs_file_flush,
- 	.release	= nfs_file_release,
--	.fsync		= nfs_file_fsync,
-+	.fsync		= nfs4_file_fsync,
- 	.lock		= nfs_lock,
- 	.flock		= nfs_flock,
- 	.splice_read	= nfs_file_splice_read,
--- 
-1.7.11
-
+Could you rebase on top of e.g. -rc2 and repost?
