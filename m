@@ -1,58 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f178.google.com ([209.85.212.178]:34963 "EHLO
-	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750776Ab2FXEWf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jun 2012 00:22:35 -0400
+Received: from mx2.netapp.com ([216.240.18.37]:11721 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751392Ab2FJPBA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 10 Jun 2012 11:01:00 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Joerg Platte <jplatte@naasa.net>, bfields <bfields@fieldses.org>
+CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Kernel 3.4.X NFS server regression
+Date: Sun, 10 Jun 2012 15:00:42 +0000
+Message-ID: <1339340441.4751.1.camel@lade.trondhjem.org>
+References: <4FD47D4E.9070307@naasa.net>
+In-Reply-To: <4FD47D4E.9070307@naasa.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <5AC2C9F0-EEFE-423E-BBB9-27102D1CA163@oracle.com>
-References: <1340448446-10198-1-git-send-email-linkinjeon@gmail.com>
-	<20120623115106.GA2742@umich.edu>
-	<5AC2C9F0-EEFE-423E-BBB9-27102D1CA163@oracle.com>
-Date: Sun, 24 Jun 2012 13:22:33 +0900
-Message-ID: <CAKYAXd_QKsiTV86H4eykjOzfJc8Who1T8in5TmnJyxigw=+7AQ@mail.gmail.com>
-Subject: Re: [RFC PATCH] nfs: Support posix_fadvise(POSIX_FADV_RANDOM) on nfs server.
-From: Namjae Jeon <linkinjeon@gmail.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Jim Rees <rees@umich.edu>, "bfields@fieldses.org" <bfields@fieldses.org>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-        "bharrosh@panasas.com" <bharrosh@panasas.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Namjae Jeon <namjae.jeon@samsung.com>,
-        VivekTrivedi <t.vivek@samsung.com>,
-        Amit Sahrawat <a.sahrawat@samsung.com>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2012/6/23, Chuck Lever <chuck.lever@oracle.com>:
->
->
-> Sent from my iPad
->
-> On Jun 23, 2012, at 7:51 AM, Jim Rees <rees@umich.edu> wrote:
->
->> Namjae Jeon wrote:
->>
->>  From: Namjae Jeon <namjae.jeon@samsung.com>
->>
->>  This patch disable readahead for a file on NFS Server when
->>  posix_fadvise(fd..., POSIX_FADV_RANDOM) is called on NFS
->>  Client.
->>
->> It looks like you're adding an argument to the read op.  Wouldn't that be
->> an
->> incompatible change?  In which case wouldn't it be better to propose this
->> for inclusion in NFS 4.2?  In fact didn't Dean propose this?  What ever
->> happened with that?
->
-> Yes, posix_fadvise support is part of NFSv4.2.
-Where can I check it ?
-Thanks.
->
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+Q2M6IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcgKyBiZmllbGRzIGFuZCBjaGFuZ2luZyB0aXRs
+ZSB0byBsYWJlbCBpdA0KYXMgYSBzZXJ2ZXIgcmVncmVzc2lvbiBzaW5jZSB0aGF0IGlzIHdoYXQg
+dGhlIHRyYWNlIGFwcGVhcnMgdG8gaW1wbHkuDQoNCk9uIFN1biwgMjAxMi0wNi0xMCBhdCAxMjo1
+NiArMDIwMCwgSm9lcmcgUGxhdHRlIHdyb3RlOg0KPiBBbGwgMy40IGtlcm5lbHMgSSB0cmllZCBz
+byBmYXIgKDMuNCwgMy40LjEgYW5kIDMuNC4yKSBzdWZmZXIgZnJvbSB0aGUgDQo+IHNhbWUgTkZT
+IHJlbGF0ZWQgcHJvYmxlbToNCj4gDQo+IEp1biAxMCAwOToyMzozNiBjb2NvIGtlcm5lbDogSU5G
+TzogdGFzayBrd29ya2VyL3U6MTo4IGJsb2NrZWQgZm9yIG1vcmUgDQo+IHRoYW4gMTIwIHNlY29u
+ZHMuDQo+IEp1biAxMCAwOToyMzozNiBjb2NvIGtlcm5lbDogImVjaG8gMCA+IA0KPiAvcHJvYy9z
+eXMva2VybmVsL2h1bmdfdGFza190aW1lb3V0X3NlY3MiIGRpc2FibGVzIHRoaXMgbWVzc2FnZS4N
+Cj4gSnVuIDEwIDA5OjIzOjM2IGNvY28ga2VybmVsOiBrd29ya2VyL3U6MSAgICAgRCAwMDJiYTI4
+YyAgICAgMCAgICAgOCANCj4gICAyIDB4MDAwMDAwMDANCj4gSnVuIDEwIDA5OjIzOjM2IGNvY28g
+a2VybmVsOiAgZGY0NjVlYzAgMDAwMDAwNDYgMDAwMDAwMDUgMDAyYmEyOGMgDQo+IDAwMDAwMDAw
+IDAwMDAwMDBhIDAwMDAwMjgyIGRmNDY1ZTcwDQo+IEp1biAxMCAwOToyMzozNiBjb2NvIGtlcm5l
+bDogIGRmNDY1ZWMwIGRmNDRkMmIwIGZmZmY2YjYwIGRmNDY1ZTg0IA0KPiBkZjQ0ZDJiMCBlMzNm
+YTZiMyAwMDAwMDI4MiBkZTc2NGFlMA0KPiBKdW4gMTAgMDk6MjM6MzYgY29jbyBrZXJuZWw6ICBm
+ZmZmZmZmZiBkNzhiY2ZiOCBkZjQ2NWU4YyBjMDEyZTBmNiANCj4gZGY0NjVlYTQgYzAxMzYxMGMg
+MDAwMDAwMDAgZDc4YmNmODANCj4gSnVuIDEwIDA5OjIzOjM2IGNvY28ga2VybmVsOiBDYWxsIFRy
+YWNlOg0KPiBKdW4gMTAgMDk6MjM6MzYgY29jbyBrZXJuZWw6ICBbPGMwMTJlMGY2Pl0gPyBhZGRf
+dGltZXIrMHgxMS8weDE3DQo+IEp1biAxMCAwOToyMzozNiBjb2NvIGtlcm5lbDogIFs8YzAxMzYx
+MGM+XSA/IHF1ZXVlX2RlbGF5ZWRfd29ya19vbisweDc0LzB4ZjANCj4gSnVuIDEwIDA5OjIzOjM2
+IGNvY28ga2VybmVsOiAgWzxjMDEzNmJhND5dID8gcXVldWVfZGVsYXllZF93b3JrKzB4MWIvMHgy
+OA0KPiBKdW4gMTAgMDk6MjM6MzYgY29jbyBrZXJuZWw6ICBbPGMwMzUwZjViPl0gc2NoZWR1bGUr
+MHgxZC8weDRjDQo+IEp1biAxMCAwOToyMzozNiBjb2NvIGtlcm5lbDogIFs8ZTBjZGE1ZjE+XSBj
+bGRfcGlwZV91cGNhbGwrMHg0ZS8weDc1IFtuZnNkXQ0KPiBKdW4gMTAgMDk6MjM6MzYgY29jbyBr
+ZXJuZWw6ICBbPGUwY2RhNjc4Pl0gDQo+IG5mc2Q0X2NsZF9ncmFjZV9kb25lKzB4NjAvMHg5OSBb
+bmZzZF0NCj4gSnVuIDEwIDA5OjIzOjM2IGNvY28ga2VybmVsOiAgWzxlMGNkOWNiNT5dIA0KPiBu
+ZnNkNF9yZWNvcmRfZ3JhY2VfZG9uZSsweDEwLzB4MTIgW25mc2RdDQo+IEp1biAxMCAwOToyMzoz
+NiBjb2NvIGtlcm5lbDogIFs8ZTBjZDY2OTY+XSBsYXVuZHJvbWF0X21haW4rMHgyOTEvMHgyZDgg
+DQo+IFtuZnNkXQ0KPiBKdW4gMTAgMDk6MjM6MzYgY29jbyBrZXJuZWw6ICBbPGMwMTM2ZDJmPl0g
+cHJvY2Vzc19vbmVfd29yaysweGZmLzB4MzI1DQo+IEp1biAxMCAwOToyMzozNiBjb2NvIGtlcm5l
+bDogIFs8YzAxMzRiZWM+XSA/IHN0YXJ0X3dvcmtlcisweDIwLzB4MjMNCj4gSnVuIDEwIDA5OjIz
+OjM2IGNvY28ga2VybmVsOiAgWzxlMGNkNjQwNT5dID8gDQo+IG5mc2Q0X3Byb2Nlc3Nfb3BlbjEr
+MHgzMmIvMHgzMmIgW25mc2RdDQo+IEp1biAxMCAwOToyMzozNiBjb2NvIGtlcm5lbDogIFs8YzAx
+MzcyN2E+XSB3b3JrZXJfdGhyZWFkKzB4ZjQvMHgzOWENCj4gSnVuIDEwIDA5OjIzOjM2IGNvY28g
+a2VybmVsOiAgWzxjMDEzNzE4Nj5dID8gcmVzY3Vlcl90aHJlYWQrMHgyMzEvMHgyMzENCj4gSnVu
+IDEwIDA5OjIzOjM2IGNvY28ga2VybmVsOiAgWzxjMDEzYTU1Nj5dIGt0aHJlYWQrMHg2Yy8weDZl
+DQo+IEp1biAxMCAwOToyMzozNiBjb2NvIGtlcm5lbDogIFs8YzAxM2E0ZWE+XSA/IGt0aHJlYWRk
+KzB4ZTgvMHhlOA0KPiBKdW4gMTAgMDk6MjM6MzYgY29jbyBrZXJuZWw6ICBbPGMwMzUyNjNlPl0g
+a2VybmVsX3RocmVhZF9oZWxwZXIrMHg2LzB4ZA0KPiANCj4gQSBrd29ya2VyIHRhc2sgaXMgc3R1
+Y2sgaW4gRCBzdGF0ZSBhbmQgbmZzIG1vdW50cyBmcm9tIG90aGVyIGNsaWVudHMgZG8gDQo+IG5v
+dCB3b3JrIGF0IGFsbC4gVGhpcyBoYXBwZW5zIG9ubHkgb24gb25lIG1hY2hpbmUsIGFub3RoZXIg
+b25lIHdpdGggdGhlIA0KPiBzYW1lIGtlcm5lbCAoc2FtZSBzZWxmIGNvbXBpbGVkIERlYmlhbiBw
+YWNrYWdlKSB3b3Jrcy4gQWxsIHByZXZpb3VzIDMuMyANCj4ga2VybmVscyB3b3JrIGFzIHdlbGwu
+DQo+IA0KPiBTaW5jZSB0aGlzIG1hY2hpbmUgaXMgcmVtb3RlIGl0IGlzIG5vdCB0aGF0IGVhc3kg
+dG8gYmlzZWN0IHRvIGZpbmQgdGhlIA0KPiBiYWQgY29tbWl0LiBBcmUgdGhlcmUgYW55IG90aGVy
+IHRoaW5ncyBJIGNhbiB0cnk/DQo+IA0KPiByZWdhcmRzLA0KPiBKb2VyZw0KPiAtLQ0KPiBUbyB1
+bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGlu
+dXgta2VybmVsIiBpbg0KPiB0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIu
+a2VybmVsLm9yZw0KPiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwu
+b3JnL21ham9yZG9tby1pbmZvLmh0bWwNCj4gUGxlYXNlIHJlYWQgdGhlIEZBUSBhdCAgaHR0cDov
+L3d3dy50dXgub3JnL2xrbWwvDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xp
+ZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3
+Lm5ldGFwcC5jb20NCg0K
