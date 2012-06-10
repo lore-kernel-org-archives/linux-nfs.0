@@ -1,45 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from zeniv.linux.org.uk ([195.92.253.2]:51279 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752121Ab2FHW1k (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jun 2012 18:27:40 -0400
-Date: Fri, 8 Jun 2012 23:27:34 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Boaz Harrosh <bharrosh@panasas.com>, Tao Ma <boyu.mt@taobao.com>,
-        Nick Piggin <npiggin@kernel.dk>, "Dmitry V. Levin" <ldv@altlinux.org>,
-        v9fs-developer@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
-        linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        codalist@TELEMANN.coda.cs.cmu.edu, ecryptfs@vger.kernel.org,
-        osd-dev@open-osd.org, linux-ext4@vger.kernel.org,
-        fuse-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
-        jfs-discussion@lists.sourceforge.net, logfs@logfs.org,
-        linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
-        reiserfs-devel@vger.kernel.org
-Subject: Re: [RFC, PATCH, RESEND] fs: push rcu_barrier() from
- deactivate_locked_super() to filesystems
-Message-ID: <20120608222734.GT30000@ZenIV.linux.org.uk>
-References: <1339191663-17693-1-git-send-email-kirill.shutemov@linux.intel.com>
- <20120608150253.e42464a6.akpm@linux-foundation.org>
- <20120608221446.GA18250@otc-wbsnb-06>
- <20120608152550.258d6a30.akpm@linux-foundation.org>
+Received: from smtp10.mail.sp.isp-net.nl ([217.149.192.65]:43339 "EHLO
+	smtp10.mail.sp.isp-net.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752273Ab2FJN4S (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Jun 2012 09:56:18 -0400
+Message-ID: <4FD4A77B.2030506@xmsnet.nl>
+Date: Sun, 10 Jun 2012 15:56:11 +0200
+From: Hans de Bruin <jmdebruin@xmsnet.nl>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120608152550.258d6a30.akpm@linux-foundation.org>
+To: Jeff Layton <jlayton@redhat.com>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: nfsroot client will not start firefox or thunderbird from 3.4.0
+ nfsserver
+References: <4FC3F9F6.7010107@xmsnet.nl> <20120610055208.05ea7ea7@tlielax.poochiereds.net>
+In-Reply-To: <20120610055208.05ea7ea7@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 08, 2012 at 03:25:50PM -0700, Andrew Morton wrote:
+On 06/10/2012 11:52 AM, Jeff Layton wrote:
+> On Tue, 29 May 2012 00:19:34 +0200
+> Hans de Bruin<jmdebruin@xmsnet.nl>  wrote:
+>
+>> I just upgraded my home server from kernel 3.3.5 to 3.4.0 and ran into
+>> some trouble. My laptop, a nfsroot client, will not run firefox and
+>> thunderbird anymore. When I start these programs from an xterm, the
+>> cursor goes to the next line and waits indefinitely.
+>>
+>> I do not know if there is any order is lsof's output. A lsof | grep
+>> firefox or thunderbird shows ......./.parentlock as the last line.
+>>
+>> It does not matter whether the client is running a 3.4.0 or a 3.3.0
+>> kernel, or if the server is running on top of xen or not.
+>>
+>> There is some noise in the servers dmesg:
+>>
+>> [  241.256684] INFO: task kworker/u:2:801 blocked for more than 120 seconds.
+>> [  241.256691] "echo 0>  /proc/sys/kernel/hung_task_timeout_secs"
+>> disables this message.
+>> [  241.256698] kworker/u:2     D 000000000000000c     0   801      2
+>> 0x00000000
+>> [  241.256710]  ffff8801390e5cf0 0000000000000046 0000000000012d00
+>> 0000000000012d00
+>> [  241.256721]  0000000000012d00 ffff880139f8bd50 0000000000012d00
+>> ffff8801390e5fd8
+>> [  241.256732]  ffff8801390e5fd8 0000000000012d00 ffff880139ce4420
+>> ffff880139f8bd50
+>> [  241.256743] Call Trace:
+>> [  241.256759]  [<ffffffff8158733e>] schedule+0x64/0x66
+>> [  241.256769]  [<ffffffff8120184e>] cld_pipe_upcall+0x95/0xd1
+>> [  241.256780]  [<ffffffff811fbd8d>] ? nfsd4_exchange_id+0x23e/0x23e
+>> [  241.256789]  [<ffffffff81201d06>] nfsd4_cld_grace_done+0x50/0x8a
+>> [  241.256798]  [<ffffffff81202233>] nfsd4_record_grace_done+0x18/0x1a
+>> [  241.256807]  [<ffffffff811fbdd7>] laundromat_main+0x4a/0x213
+>> [  241.256818]  [<ffffffff8106a06b>] ? need_resched+0x1e/0x28
+>> [  241.256826]  [<ffffffff8158725d>] ? __schedule+0x49d/0x4b5
+>> [  241.256835]  [<ffffffff811fbd8d>] ? nfsd4_exchange_id+0x23e/0x23e
+>> [  241.256844]  [<ffffffff8105be2d>] process_one_work+0x190/0x28d
+>> [  241.256854]  [<ffffffff8105ca67>] worker_thread+0x105/0x189
+>> [  241.256862]  [<ffffffff81587b8d>] ? _raw_spin_unlock_irqrestore+0x1a/0x1d
+>> [  241.256872]  [<ffffffff8105c962>] ? manage_workers.clone.17+0x173/0x173
+>> [  241.256881]  [<ffffffff810604b0>] kthread+0x8a/0x92
+>> [  241.256891]  [<ffffffff815899a4>] kernel_thread_helper+0x4/0x10
+>> [  241.256900]  [<ffffffff81060426>] ?
+>> kthread_freezable_should_stop+0x47/0x47
+>> [  241.256909]  [<ffffffff815899a0>] ? gs_change+0x13/0x13
+>>
+>> or xenified:
+>>
+>>
+>> [  240.563448] "echo 0>  /proc/sys/kernel/hung_task_timeout_secs"
+>> disables this message.
+>> [  240.563458] kworker/u:2     D ffff88007fc12d00     0   808      2
+>> 0x00000000
+>> [  240.563479]  ffff88007532fcf0 0000000000000246 0000000000012d00
+>> 0000000000012d00
+>> [  240.563504]  0000000000012d00 ffff880075f7caf0 0000000000012d00
+>> ffff88007532ffd8
+>> [  240.563530]  ffff88007532ffd8 0000000000012d00 ffffffff81813020
+>> ffff880075f7caf0
+>> [  240.563555] Call Trace:
+>> [  240.563578]  [<ffffffff8158733e>] schedule+0x64/0x66
+>> [  240.563594]  [<ffffffff8120184e>] cld_pipe_upcall+0x95/0xd1
+>> [  240.563611]  [<ffffffff811fbd8d>] ? nfsd4_exchange_id+0x23e/0x23e
+>> [  240.563625]  [<ffffffff81201d06>] nfsd4_cld_grace_done+0x50/0x8a
+>> [  240.563640]  [<ffffffff81202233>] nfsd4_record_grace_done+0x18/0x1a
+>> [  240.563654]  [<ffffffff811fbdd7>] laundromat_main+0x4a/0x213
+>> [  240.563670]  [<ffffffff8100d085>] ? xen_spin_unlock+0x12/0x30
+>> [  240.563685]  [<ffffffff811fbd8d>] ? nfsd4_exchange_id+0x23e/0x23e
+>> [  240.563700]  [<ffffffff8105be2d>] process_one_work+0x190/0x28d
+>> [  240.563714]  [<ffffffff8100d337>] ? xen_spin_lock+0xb/0xd
+>> [  240.563729]  [<ffffffff8105ca67>] worker_thread+0x105/0x189
+>> [  240.563743]  [<ffffffff81587b8d>] ? _raw_spin_unlock_irqrestore+0x1a/0x1d
+>> [  240.563758]  [<ffffffff8105c962>] ? manage_workers.clone.17+0x173/0x173
+>> [  240.563772]  [<ffffffff810604b0>] kthread+0x8a/0x92
+>> [  240.563787]  [<ffffffff815899a4>] kernel_thread_helper+0x4/0x10
+>> [  240.563802]  [<ffffffff81587f38>] ? retint_restore_args+0x5/0x6
+>> [  240.563816]  [<ffffffff815899a0>] ? gs_change+0x13/0x13
+>>
+>>
+>
+> It sounds like you're not running the new nfsdcld daemon on the server,
+> and /var/lib/nfs/v4recovery does not exist. Is that correct?
+>
 
-> A neater implementation might be to add a kmem_cache* argument to
-> unregister_filesystem().  If that is non-NULL, unregister_filesystem()
-> does the rcu_barrier() and destroys the cache.  That way we get to
-> delete (rather than add) a bunch of code from all filesystems and new
-> and out-of-tree filesystems cannot forget to perform the rcu_barrier().
+Yes that correct. When I create the /var/lib/nfs/v4recovery directory my 
+problems are gone.
 
-There's often enough more than one cache, so that one is no-go.
+On the server and the client v3 and v4 are compiled into the kernel. Al 
+mounts are v3. Should I either remove v4 from the kernels or upgrade 
+nfs-utils-1.2.3 to something newer?
+
+(a search on the linux-nfs wiki for nfsdcld does not return any hits)
+
+-- 
+Hans
