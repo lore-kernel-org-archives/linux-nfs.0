@@ -1,141 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:50710 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:4198 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750798Ab2FRMoL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Jun 2012 08:44:11 -0400
-Message-ID: <4FDF2298.8020605@netapp.com>
-Date: Mon, 18 Jun 2012 08:44:08 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Andre Tomt <andre@tomt.net>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        Fengguang Wu <fengguang.wu@intel.com>,
-        David Howells <dhowells@redhat.com>,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: BUG in __key_instantiate_and_link(): unable to handle kernel
- paging request at 0000632e6472616f
-References: <20120601034114.GA9248@localhost> <4FDBF056.7040404@tomt.net>  <4FDCD3C7.5080503@tomt.net> <1339876739.8267.96.camel@lade.trondhjem.org>
-In-Reply-To: <1339876739.8267.96.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+	id S1751205Ab2FJJwN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 10 Jun 2012 05:52:13 -0400
+Date: Sun, 10 Jun 2012 05:52:08 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Hans de Bruin <jmdebruin@xmsnet.nl>
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: nfsroot client will not start firefox or thunderbird from 3.4.0
+ nfsserver
+Message-ID: <20120610055208.05ea7ea7@tlielax.poochiereds.net>
+In-Reply-To: <4FC3F9F6.7010107@xmsnet.nl>
+References: <4FC3F9F6.7010107@xmsnet.nl>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/16/2012 03:59 PM, Myklebust, Trond wrote:
-> On Sat, 2012-06-16 at 20:43 +0200, Andre Tomt wrote:
->> On 16. juni 2012 04:32, Andre Tomt wrote:
->>> FWIW; I am (still) seeing this exact same crash several times an hour on
->>> 3.4.3-rc1 on Ubuntu 12.04 client. Only that the same second it happens,
->>> all my three displays corrupts badly, becoming completely unreadable.
->>> Switching to console and back usually gets my desktop back on two of
->>> three displays, and sometimes it will need a full xserver restart.
->>> Obviously some memory corruption going on.
->>>
->>> One of the crashes also triggered a NX error:
->>> [20292.196332] kernel tried to execute NX-protected page - exploit
->>> attempt? (uid: 0)
->>>
->>> And after a while, things start locking up.
->>>
->>> It didn't really start happening until a few days ago though, I've been
->>> running 3.4 for since some -rc through all the stable releases. Perhaps
->>> server suddenly got a working idmapper or something? Its a debian
->>> unstable updated a couple times a month.
->>>
->>> Booting latest git master now, to see if any of the recent NFS fixes
->>> just pulled by Linus fixes anything (-rc2 had other showstopper nfs
->>> issues).
->>
->> Just had it happen with 3.5-git as of a couple hours ago (last commit 
->> a2c2df8672f55195f101d9251117aa59e358d296):
->> Jun 16 19:01:49 slurv kernel: [50823.271618] general protection fault: 
->> 0000 [#1] SMP
->> Jun 16 19:01:49 slurv kernel: [50823.271640] CPU 10
->> Jun 16 19:01:49 slurv kernel: [50823.271690]
->> Jun 16 19:01:49 slurv kernel: [50823.271698] Pid: 1678, comm: rpc.idmapd 
->> Not tainted 3.5.0-1-desktop #1 System manufacturer System Product 
->> Name/P6T DELUXE V2
->> Jun 16 19:01:49 slurv kernel: [50823.271738] RIP: 
->> 0010:[<ffffffff81129872>]  [<ffffffff81129872>] 
->> __key_instantiate_and_link+0x52/0xcb
->> Jun 16 19:01:49 slurv kernel: [50823.271767] RSP: 0018:ffff88061941bd38 
->>   EFLAGS: 00010246
->> Jun 16 19:01:49 slurv kernel: [50823.271785] RAX: 6337346330366233 RBX: 
->> ffff880606fb97f0 RCX: 0000000000000000
->> Jun 16 19:01:49 slurv kernel: [50823.271807] RDX: 0000000000000006 RSI: 
->> ffff88061941be85 RDI: ffff880606fb97f0
->> Jun 16 19:01:49 slurv kernel: [50823.271829] RBP: ffff88061941bd88 R08: 
->> ffff8802bc9ed380 R09: ffff88061941bdb0
->> Jun 16 19:01:49 slurv kernel: [50823.271850] R10: 0000000000000000 R11: 
->> 0000000000000000 R12: ffff88061aad63c0
->> Jun 16 19:01:49 slurv kernel: [50823.271872] R13: ffff8802bc9ed380 R14: 
->> 0000000000000000 R15: ffff88061941bdb0
->> Jun 16 19:01:49 slurv kernel: [50823.271894] FS:  00007fd449a7d700(0000) 
->> GS:ffff88063fd40000(0000) knlGS:0000000000000000
->> Jun 16 19:01:49 slurv kernel: [50823.271919] CS:  0010 DS: 0000 ES: 0000 
->> CR0: 0000000080050033
->> Jun 16 19:01:49 slurv kernel: [50823.271937] CR2: 00007f8844002028 CR3: 
->> 000000061be95000 CR4: 00000000000007e0
->> Jun 16 19:01:49 slurv kernel: [50823.271959] DR0: 0000000000000000 DR1: 
->> 0000000000000000 DR2: 0000000000000000
->> Jun 16 19:01:49 slurv kernel: [50823.271980] DR3: 0000000000000000 DR6: 
->> 00000000ffff0ff0 DR7: 0000000000000400
->> Jun 16 19:01:49 slurv kernel: [50823.272003] Process rpc.idmapd (pid: 
->> 1678, threadinfo ffff88061941a000, task ffff88061b870000)
->> Jun 16 19:01:49 slurv kernel: [50823.272028] Stack:
->> Jun 16 19:01:49 slurv kernel: [50823.272036]  ffff88061941bd78 
->> 0000000000000006 ffff88061941be85 fffffff01aad63e8
->> Jun 16 19:01:49 slurv kernel: [50823.272060]  ffff880606fb9840 
->> ffff880606fb97f0 ffff88061aad63c0 0000000000000006
->> Jun 16 19:01:49 slurv kernel: [50823.272083]  ffff88061941be85 
->> 00007fffe09c4500 ffff88061941bdd8 ffffffff81129943
->> Jun 16 19:01:49 slurv kernel: [50823.272106] Call Trace:
->> Jun 16 19:01:49 slurv kernel: [50823.272116]  [<ffffffff81129943>] 
->> key_instantiate_and_link+0x58/0x80
->> Jun 16 19:01:49 slurv kernel: [50823.272145]  [<ffffffffa058a906>] 
->> idmap_pipe_downcall+0x154/0x1ad [nfs]
->> Jun 16 19:01:49 slurv kernel: [50823.272173]  [<ffffffffa04aeae2>] 
->> rpc_pipe_write+0x56/0x6f [sunrpc]
->> Jun 16 19:01:49 slurv kernel: [50823.272195]  [<ffffffff810c86ce>] 
->> vfs_write+0xad/0x13d
->> Jun 16 19:01:49 slurv kernel: [50823.272212]  [<ffffffff810c8949>] 
->> sys_write+0x45/0x6c
->> Jun 16 19:01:49 slurv kernel: [50823.272229]  [<ffffffff8130a462>] 
->> system_call_fastpath+0x16/0x1b
->> Jun 16 19:01:49 slurv kernel: [50823.272258] Code: 48 89 55 b8 48 89 75 
->> c0 e8 16 e4 1d 00 48 8b 43 78 c7 45 cc f0 ff ff ff 48 8b 55 b8 48 8b 75 
->> c0 a8 01 75 4f 48 8b 43 20 48 89 df <ff> 50 18 85 c0 89 45 cc 75 3e 48 
->> 8b 43 48 f0 ff 40 44 f0 80 4b
->> Jun 16 19:01:49 slurv kernel: [50823.272317] RIP  [<ffffffff81129872>] 
->> __key_instantiate_and_link+0x52/0xcb
->> Jun 16 19:01:49 slurv kernel: [50823.272339]  RSP <ffff88061941bd38>
->> Jun 16 19:01:49 slurv kernel: [50823.279199] ---[ end trace 
->> 25122b5e9d0b0c76 ]---
->>
->> It did take a while this time.
-> 
-> It looks to me as if the legacy upcall code is assuming that there can
-> be no more than 1 upcall at a time: there is only a single
-> idmap->idmap_key_cons, which gets assigned in nfs_idmap_legacy_upcall
-> and then read in idmap_pipe_downcall.
-> 
-> Bryan, can you look into this? I suspect that we need a mutex or
-> something like that (for the legacy upcall case only) to ensure that
-> nobody overwrites the idmap->idmap_key_cons while an upcall is in
-> progress.
+On Tue, 29 May 2012 00:19:34 +0200
+Hans de Bruin <jmdebruin@xmsnet.nl> wrote:
 
-Sure, I'll look at this now.  Adding in a mutex sounds like a simple enough fix.
-
-- Bryan
+> I just upgraded my home server from kernel 3.3.5 to 3.4.0 and ran into 
+> some trouble. My laptop, a nfsroot client, will not run firefox and 
+> thunderbird anymore. When I start these programs from an xterm, the 
+> cursor goes to the next line and waits indefinitely.
 > 
-> Andre, if you want idmapper scalability, then you should rather use the
-> new idmapper upcall. You need a recent version of the nfs-utils package,
-> the keyutils package, and they you should add an 'id_resolver' line
-> to /etc/request-keys.conf as per the nfsidmap manpage.
+> I do not know if there is any order is lsof's output. A lsof | grep 
+> firefox or thunderbird shows ......./.parentlock as the last line.
 > 
-> Cheers
->   Trond
+> It does not matter whether the client is running a 3.4.0 or a 3.3.0 
+> kernel, or if the server is running on top of xen or not.
+> 
+> There is some noise in the servers dmesg:
+> 
+> [  241.256684] INFO: task kworker/u:2:801 blocked for more than 120 seconds.
+> [  241.256691] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" 
+> disables this message.
+> [  241.256698] kworker/u:2     D 000000000000000c     0   801      2 
+> 0x00000000
+> [  241.256710]  ffff8801390e5cf0 0000000000000046 0000000000012d00 
+> 0000000000012d00
+> [  241.256721]  0000000000012d00 ffff880139f8bd50 0000000000012d00 
+> ffff8801390e5fd8
+> [  241.256732]  ffff8801390e5fd8 0000000000012d00 ffff880139ce4420 
+> ffff880139f8bd50
+> [  241.256743] Call Trace:
+> [  241.256759]  [<ffffffff8158733e>] schedule+0x64/0x66
+> [  241.256769]  [<ffffffff8120184e>] cld_pipe_upcall+0x95/0xd1
+> [  241.256780]  [<ffffffff811fbd8d>] ? nfsd4_exchange_id+0x23e/0x23e
+> [  241.256789]  [<ffffffff81201d06>] nfsd4_cld_grace_done+0x50/0x8a
+> [  241.256798]  [<ffffffff81202233>] nfsd4_record_grace_done+0x18/0x1a
+> [  241.256807]  [<ffffffff811fbdd7>] laundromat_main+0x4a/0x213
+> [  241.256818]  [<ffffffff8106a06b>] ? need_resched+0x1e/0x28
+> [  241.256826]  [<ffffffff8158725d>] ? __schedule+0x49d/0x4b5
+> [  241.256835]  [<ffffffff811fbd8d>] ? nfsd4_exchange_id+0x23e/0x23e
+> [  241.256844]  [<ffffffff8105be2d>] process_one_work+0x190/0x28d
+> [  241.256854]  [<ffffffff8105ca67>] worker_thread+0x105/0x189
+> [  241.256862]  [<ffffffff81587b8d>] ? _raw_spin_unlock_irqrestore+0x1a/0x1d
+> [  241.256872]  [<ffffffff8105c962>] ? manage_workers.clone.17+0x173/0x173
+> [  241.256881]  [<ffffffff810604b0>] kthread+0x8a/0x92
+> [  241.256891]  [<ffffffff815899a4>] kernel_thread_helper+0x4/0x10
+> [  241.256900]  [<ffffffff81060426>] ? 
+> kthread_freezable_should_stop+0x47/0x47
+> [  241.256909]  [<ffffffff815899a0>] ? gs_change+0x13/0x13
+> 
+> or xenified:
+> 
+> 
+> [  240.563448] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" 
+> disables this message.
+> [  240.563458] kworker/u:2     D ffff88007fc12d00     0   808      2 
+> 0x00000000
+> [  240.563479]  ffff88007532fcf0 0000000000000246 0000000000012d00 
+> 0000000000012d00
+> [  240.563504]  0000000000012d00 ffff880075f7caf0 0000000000012d00 
+> ffff88007532ffd8
+> [  240.563530]  ffff88007532ffd8 0000000000012d00 ffffffff81813020 
+> ffff880075f7caf0
+> [  240.563555] Call Trace:
+> [  240.563578]  [<ffffffff8158733e>] schedule+0x64/0x66
+> [  240.563594]  [<ffffffff8120184e>] cld_pipe_upcall+0x95/0xd1
+> [  240.563611]  [<ffffffff811fbd8d>] ? nfsd4_exchange_id+0x23e/0x23e
+> [  240.563625]  [<ffffffff81201d06>] nfsd4_cld_grace_done+0x50/0x8a
+> [  240.563640]  [<ffffffff81202233>] nfsd4_record_grace_done+0x18/0x1a
+> [  240.563654]  [<ffffffff811fbdd7>] laundromat_main+0x4a/0x213
+> [  240.563670]  [<ffffffff8100d085>] ? xen_spin_unlock+0x12/0x30
+> [  240.563685]  [<ffffffff811fbd8d>] ? nfsd4_exchange_id+0x23e/0x23e
+> [  240.563700]  [<ffffffff8105be2d>] process_one_work+0x190/0x28d
+> [  240.563714]  [<ffffffff8100d337>] ? xen_spin_lock+0xb/0xd
+> [  240.563729]  [<ffffffff8105ca67>] worker_thread+0x105/0x189
+> [  240.563743]  [<ffffffff81587b8d>] ? _raw_spin_unlock_irqrestore+0x1a/0x1d
+> [  240.563758]  [<ffffffff8105c962>] ? manage_workers.clone.17+0x173/0x173
+> [  240.563772]  [<ffffffff810604b0>] kthread+0x8a/0x92
+> [  240.563787]  [<ffffffff815899a4>] kernel_thread_helper+0x4/0x10
+> [  240.563802]  [<ffffffff81587f38>] ? retint_restore_args+0x5/0x6
+> [  240.563816]  [<ffffffff815899a0>] ? gs_change+0x13/0x13
+> 
 > 
 
+It sounds like you're not running the new nfsdcld daemon on the server,
+and /var/lib/nfs/v4recovery does not exist. Is that correct?
 
+-- 
+Jeff Layton <jlayton@redhat.com>
