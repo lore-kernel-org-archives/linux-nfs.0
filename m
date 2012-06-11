@@ -1,151 +1,138 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:45617 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:29624 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932160Ab2F2Nd2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Jun 2012 09:33:28 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>,
-        Sebastian Andrzej Siewior <sebastian@breakpoint.cc>,
-        Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 00/12] Swap-over-NFS without deadlocking V8
-Date: Fri, 29 Jun 2012 14:33:13 +0100
-Message-Id: <1340976805-5799-1-git-send-email-mgorman@suse.de>
+	id S1752472Ab2FKNNu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Jun 2012 09:13:50 -0400
+Date: Mon, 11 Jun 2012 09:13:38 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: bfields <bfields@fieldses.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Joerg Platte <jplatte@naasa.net>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Hans de Bruin <jmdebruin@xmsnet.nl>
+Subject: Re: Kernel 3.4.X NFS server regression
+Message-ID: <20120611091338.1c88e6d0@corrin.poochiereds.net>
+In-Reply-To: <20120611083932.24e27e39@corrin.poochiereds.net>
+References: <4FD47D4E.9070307@naasa.net>
+	<1339340441.4751.1.camel@lade.trondhjem.org>
+	<20120611121634.GB7654@fieldses.org>
+	<20120611083932.24e27e39@corrin.poochiereds.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Changelog since V7
-  o Rebase to linux-next 20120629
-  o bi->page_dma instead of bi->page in intel driver
-  o Build fix for !CONFIG_NET					(sebastian)
-  o Restore PF_MEMALLOC flags correctly in all cases		(jlayton)
+On Mon, 11 Jun 2012 08:39:32 -0400
+Jeff Layton <jlayton@redhat.com> wrote:
 
-Changelog since V6
-  o Rebase to linux-next 20120622
+> On Mon, 11 Jun 2012 08:16:34 -0400
+> bfields <bfields@fieldses.org> wrote:
+> 
+> > On Sun, Jun 10, 2012 at 03:00:42PM +0000, Myklebust, Trond wrote:
+> > > Cc: linux-nfs@vger.kernel.org + bfields and changing title to label it
+> > > as a server regression since that is what the trace appears to imply.
+> > > 
+> > > On Sun, 2012-06-10 at 12:56 +0200, Joerg Platte wrote:
+> > > > All 3.4 kernels I tried so far (3.4, 3.4.1 and 3.4.2) suffer from the 
+> > > > same NFS related problem:
+> > > > 
+> > > > Jun 10 09:23:36 coco kernel: INFO: task kworker/u:1:8 blocked for more 
+> > > > than 120 seconds.
+> > > > Jun 10 09:23:36 coco kernel: "echo 0 > 
+> > > > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+> > > > Jun 10 09:23:36 coco kernel: kworker/u:1     D 002ba28c     0     8 
+> > > >   2 0x00000000
+> > > > Jun 10 09:23:36 coco kernel:  df465ec0 00000046 00000005 002ba28c 
+> > > > 00000000 0000000a 00000282 df465e70
+> > > > Jun 10 09:23:36 coco kernel:  df465ec0 df44d2b0 ffff6b60 df465e84 
+> > > > df44d2b0 e33fa6b3 00000282 de764ae0
+> > > > Jun 10 09:23:36 coco kernel:  ffffffff d78bcfb8 df465e8c c012e0f6 
+> > > > df465ea4 c013610c 00000000 d78bcf80
+> > > > Jun 10 09:23:36 coco kernel: Call Trace:
+> > > > Jun 10 09:23:36 coco kernel:  [<c012e0f6>] ? add_timer+0x11/0x17
+> > > > Jun 10 09:23:36 coco kernel:  [<c013610c>] ? queue_delayed_work_on+0x74/0xf0
+> > > > Jun 10 09:23:36 coco kernel:  [<c0136ba4>] ? queue_delayed_work+0x1b/0x28
+> > > > Jun 10 09:23:36 coco kernel:  [<c0350f5b>] schedule+0x1d/0x4c
+> > > > Jun 10 09:23:36 coco kernel:  [<e0cda5f1>] cld_pipe_upcall+0x4e/0x75 [nfsd]
+> > > > Jun 10 09:23:36 coco kernel:  [<e0cda678>] 
+> > > > nfsd4_cld_grace_done+0x60/0x99 [nfsd]
+> > > > Jun 10 09:23:36 coco kernel:  [<e0cd9cb5>] 
+> > > > nfsd4_record_grace_done+0x10/0x12 [nfsd]
+> > > > Jun 10 09:23:36 coco kernel:  [<e0cd6696>] laundromat_main+0x291/0x2d8 
+> > > > [nfsd]
+> > > > Jun 10 09:23:36 coco kernel:  [<c0136d2f>] process_one_work+0xff/0x325
+> > > > Jun 10 09:23:36 coco kernel:  [<c0134bec>] ? start_worker+0x20/0x23
+> > > > Jun 10 09:23:36 coco kernel:  [<e0cd6405>] ? 
+> > > > nfsd4_process_open1+0x32b/0x32b [nfsd]
+> > > > Jun 10 09:23:36 coco kernel:  [<c013727a>] worker_thread+0xf4/0x39a
+> > > > Jun 10 09:23:36 coco kernel:  [<c0137186>] ? rescuer_thread+0x231/0x231
+> > > > Jun 10 09:23:36 coco kernel:  [<c013a556>] kthread+0x6c/0x6e
+> > > > Jun 10 09:23:36 coco kernel:  [<c013a4ea>] ? kthreadd+0xe8/0xe8
+> > > > Jun 10 09:23:36 coco kernel:  [<c035263e>] kernel_thread_helper+0x6/0xd
+> > > > 
+> > > > A kworker task is stuck in D state and nfs mounts from other clients do 
+> > > > not work at all. This happens only on one machine, another one with the 
+> > > > same kernel (same self compiled Debian package) works. All previous 3.3 
+> > > > kernels work as well.
+> > > > 
+> > > > Since this machine is remote it is not that easy to bisect to find the 
+> > > > bad commit. Are there any other things I can try?
+> > 
+> > If you create a directory named /var/lib/nfs/v4recovery/, does the
+> > problem go away?
+> > 
+> > My guess would be that it's trying to upcall to the new reboot-recovery
+> > state daemon, and you don't have that running.
+> > 
+> > Before the addition of that upcall state was kept in
+> > /var/lib/nfs/v4recovery.  So we decide whether to use the old method or
+> > the new one by checking for the existance of that path.
+> > 
+> > But I'm guessing we were wrong to assume that existing setups that
+> > people perceived as working would have that path, because the failures
+> > in the absence of that path were probably less obvious.
+> > 
+> > --b.
+> 
+> This sounds like the same problem that Hans reported as well. I've not
+> been able to reproduce that so far. Here's what I get when I start nfsd
+> with no v4recoverdir and nfsdcld isn't running:
+> 
+> [  109.715080] NFSD: starting 90-second grace period
+> [  229.984220] NFSD: Unable to end grace period: -110
+> 
+> What I don't quite understand is why the queue_timeout job isn't
+> getting run here. What should happen is that 30s after upcall,
+> rpc_timeout_upcall_queue should run. The message will be found to be
+> still sitting on the , so it should set its status to -ETIMEDOUT
+> and wake up the caller.
+> 
+> I can only assume that the queue_timeout job isn't getting run for some
+> reason, but I'm unclear on why that would be.
+> 
 
-Changelog since V5
-  o Rebase to v3.5-rc3
+Ahh, I think I see the bug. From rpc_timeout_upcall_queue:
 
-Changelog since V4
-  o Catch if SOCK_MEMALLOC flag is cleared with rmem tokens	(davem)
+-----------------------[snip]--------------------------
+        dentry = dget(pipe->dentry);
+        spin_unlock(&pipe->lock);
+        if (dentry) {
+                rpc_purge_list(&RPC_I(dentry->d_inode)->waitq,
+                               &free_list, destroy_msg, -ETIMEDOUT);
+                dput(dentry);
+        }
+-----------------------[snip]--------------------------
 
-Changelog since V3
-  o Rebase to 3.4-rc5
-  o kmap pages for writing to swap				(akpm)
-  o Move forward declaration to reduce chance of duplication	(akpm)
+...when there is no dentry (as there wouldn't be when rpc_pipefs isn't
+mounted), then the rpc_purge_list won't run. FWIW, you'd probably see
+similar problems if you attempted a sec=krb5 mount without having
+rpc_pipefs mounted.
 
-Changelog since V2
-  o Nothing significant, just rebases. A radix tree lookup is replaced with
-    a linear search would be the biggest rebase artifact
-
-This patch series is based on top of "Swap-over-NBD without deadlocking v14"
-as it depends on the same reservation of PF_MEMALLOC reserves logic.
-
-When a user or administrator requires swap for their application, they
-create a swap partition and file, format it with mkswap and activate it with
-swapon. In diskless systems this is not an option so if swap if required
-then swapping over the network is considered.  The two likely scenarios
-are when blade servers are used as part of a cluster where the form factor
-or maintenance costs do not allow the use of disks and thin clients.
-
-The Linux Terminal Server Project recommends the use of the Network
-Block Device (NBD) for swap but this is not always an option.  There is
-no guarantee that the network attached storage (NAS) device is running
-Linux or supports NBD. However, it is likely that it supports NFS so there
-are users that want support for swapping over NFS despite any performance
-concern. Some distributions currently carry patches that support swapping
-over NFS but it would be preferable to support it in the mainline kernel.
-
-Patch 1 avoids a stream-specific deadlock that potentially affects TCP.
-
-Patch 2 is a small modification to SELinux to avoid using PFMEMALLOC
-	reserves.
-
-Patch 3 adds three helpers for filesystems to handle swap cache pages.
-	For example, page_file_mapping() returns page->mapping for
-	file-backed pages and the address_space of the underlying
-	swap file for swap cache pages.
-
-Patch 4 adds two address_space_operations to allow a filesystem
-	to pin all metadata relevant to a swapfile in memory. Upon
-	successful activation, the swapfile is marked SWP_FILE and
-	the address space operation ->direct_IO is used for writing
-	and ->readpage for reading in swap pages.
-
-Patch 5 notes that patch 3 is bolting
-	filesystem-specific-swapfile-support onto the side and that
-	the default handlers have different information to what
-	is available to the filesystem. This patch refactors the
-	code so that there are generic handlers for each of the new
-	address_space operations.
-
-Patch 6 adds an API to allow a vector of kernel addresses to be
-	translated to struct pages and pinned for IO.
-
-Patch 7 adds support for using highmem pages for swap by kmapping
-	the pages before calling the direct_IO handler.
-
-Patch 8 updates NFS to use the helpers from patch 3 where necessary.
-
-Patch 9 avoids setting PF_private on PG_swapcache pages within NFS.
-
-Patch 10 implements the new swapfile-related address_space operations
-	for NFS and teaches the direct IO handler how to manage
-	kernel addresses.
-
-Patch 11 prevents page allocator recursions in NFS by using GFP_NOIO
-	where appropriate.
-
-Patch 12 fixes a NULL pointer dereference that occurs when using
-	swap-over-NFS.
-
-With the patches applied, it is possible to mount a swapfile that is on an
-NFS filesystem. Swap performance is not great with a swap stress test taking
-roughly twice as long to complete than if the swap device was backed by NBD.
-
- Documentation/filesystems/Locking |   13 ++++
- Documentation/filesystems/vfs.txt |   12 +++
- fs/nfs/Kconfig                    |    8 ++
- fs/nfs/direct.c                   |   82 ++++++++++++++-------
- fs/nfs/file.c                     |   28 +++++--
- fs/nfs/inode.c                    |    4 +
- fs/nfs/internal.h                 |    7 +-
- fs/nfs/pagelist.c                 |    4 +-
- fs/nfs/read.c                     |    6 +-
- fs/nfs/write.c                    |   91 ++++++++++++++---------
- include/linux/blk_types.h         |    2 +
- include/linux/fs.h                |    8 ++
- include/linux/highmem.h           |    7 ++
- include/linux/mm.h                |   29 ++++++++
- include/linux/nfs_fs.h            |    4 +-
- include/linux/pagemap.h           |    5 ++
- include/linux/sunrpc/xprt.h       |    3 +
- include/linux/swap.h              |    8 ++
- include/net/sock.h                |    8 +-
- mm/highmem.c                      |   12 +++
- mm/memory.c                       |   52 +++++++++++++
- mm/page_io.c                      |  145 +++++++++++++++++++++++++++++++++++++
- mm/swap_state.c                   |    2 +-
- mm/swapfile.c                     |  141 ++++++++++++++----------------------
- net/caif/caif_socket.c            |    2 +-
- net/core/sock.c                   |   14 +++-
- net/ipv4/tcp_input.c              |   21 +++---
- net/sctp/ulpevent.c               |    3 +-
- net/sunrpc/Kconfig                |    5 ++
- net/sunrpc/clnt.c                 |    2 +
- net/sunrpc/sched.c                |    7 +-
- net/sunrpc/xprtsock.c             |   54 ++++++++++++++
- security/selinux/avc.c            |    2 +-
- 33 files changed, 605 insertions(+), 186 deletions(-)
+I'm still looking at the code to see what the right fix is. For now,
+making sure you have a /var/lib/nfs/v4recoverydir is probably the
+easiest workaround.
 
 -- 
-1.7.9.2
-
+Jeff Layton <jlayton@redhat.com>
