@@ -1,77 +1,135 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f42.google.com ([209.85.213.42]:59981 "EHLO
-	mail-yw0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932072Ab2F2S6H (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jun 2012 14:58:07 -0400
-Received: by yhfq11 with SMTP id q11so4407138yhf.1
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Jun 2012 11:58:06 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:14622 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754155Ab2FKNvs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Jun 2012 09:51:48 -0400
+Date: Mon, 11 Jun 2012 09:51:32 -0400
 From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v3 00/17] vfs: add the ability to retry on ESTALE to several syscalls
-Date: Fri, 29 Jun 2012 14:57:43 -0400
-Message-Id: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: bfields <bfields@fieldses.org>, Steve Dickson <steved@redhat.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Joerg Platte <jplatte@naasa.net>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Hans de Bruin <jmdebruin@xmsnet.nl>
+Subject: Re: Kernel 3.4.X NFS server regression
+Message-ID: <20120611095132.045a8d09@corrin.poochiereds.net>
+In-Reply-To: <4FD5F35A.3000903@panasas.com>
+References: <4FD47D4E.9070307@naasa.net>
+	<1339340441.4751.1.camel@lade.trondhjem.org>
+	<20120611121634.GB7654@fieldses.org>
+	<20120611083932.24e27e39@corrin.poochiereds.net>
+	<4FD5F35A.3000903@panasas.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patchset is the third version of the patchset to add ESTALE
-handling to several syscalls. The basic idea is to allow the client to
-gracefully retry the lookup and call when a NFS server returns ESTALE.
+On Mon, 11 Jun 2012 16:32:10 +0300
+Boaz Harrosh <bharrosh@panasas.com> wrote:
 
-The previous version of this patchset is here:
+> On 06/11/2012 03:39 PM, Jeff Layton wrote:
+> 
+> > On Mon, 11 Jun 2012 08:16:34 -0400
+> > bfields <bfields@fieldses.org> wrote:
+> > 
+> >> On Sun, Jun 10, 2012 at 03:00:42PM +0000, Myklebust, Trond wrote:
+> >>> Cc: linux-nfs@vger.kernel.org + bfields and changing title to label it
+> >>> as a server regression since that is what the trace appears to imply.
+> >>>
+> >>> On Sun, 2012-06-10 at 12:56 +0200, Joerg Platte wrote:
+> >>>> All 3.4 kernels I tried so far (3.4, 3.4.1 and 3.4.2) suffer from the 
+> >>>> same NFS related problem:
+> >>>>
+> >>>> Jun 10 09:23:36 coco kernel: INFO: task kworker/u:1:8 blocked for more 
+> >>>> than 120 seconds.
+> >>>> Jun 10 09:23:36 coco kernel: "echo 0 > 
+> >>>> /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+> >>>> Jun 10 09:23:36 coco kernel: kworker/u:1     D 002ba28c     0     8 
+> >>>>   2 0x00000000
+> >>>> Jun 10 09:23:36 coco kernel:  df465ec0 00000046 00000005 002ba28c 
+> >>>> 00000000 0000000a 00000282 df465e70
+> >>>> Jun 10 09:23:36 coco kernel:  df465ec0 df44d2b0 ffff6b60 df465e84 
+> >>>> df44d2b0 e33fa6b3 00000282 de764ae0
+> >>>> Jun 10 09:23:36 coco kernel:  ffffffff d78bcfb8 df465e8c c012e0f6 
+> >>>> df465ea4 c013610c 00000000 d78bcf80
+> >>>> Jun 10 09:23:36 coco kernel: Call Trace:
+> >>>> Jun 10 09:23:36 coco kernel:  [<c012e0f6>] ? add_timer+0x11/0x17
+> >>>> Jun 10 09:23:36 coco kernel:  [<c013610c>] ? queue_delayed_work_on+0x74/0xf0
+> >>>> Jun 10 09:23:36 coco kernel:  [<c0136ba4>] ? queue_delayed_work+0x1b/0x28
+> >>>> Jun 10 09:23:36 coco kernel:  [<c0350f5b>] schedule+0x1d/0x4c
+> >>>> Jun 10 09:23:36 coco kernel:  [<e0cda5f1>] cld_pipe_upcall+0x4e/0x75 [nfsd]
+> >>>> Jun 10 09:23:36 coco kernel:  [<e0cda678>] 
+> >>>> nfsd4_cld_grace_done+0x60/0x99 [nfsd]
+> >>>> Jun 10 09:23:36 coco kernel:  [<e0cd9cb5>] 
+> >>>> nfsd4_record_grace_done+0x10/0x12 [nfsd]
+> >>>> Jun 10 09:23:36 coco kernel:  [<e0cd6696>] laundromat_main+0x291/0x2d8 
+> >>>> [nfsd]
+> >>>> Jun 10 09:23:36 coco kernel:  [<c0136d2f>] process_one_work+0xff/0x325
+> >>>> Jun 10 09:23:36 coco kernel:  [<c0134bec>] ? start_worker+0x20/0x23
+> >>>> Jun 10 09:23:36 coco kernel:  [<e0cd6405>] ? 
+> >>>> nfsd4_process_open1+0x32b/0x32b [nfsd]
+> >>>> Jun 10 09:23:36 coco kernel:  [<c013727a>] worker_thread+0xf4/0x39a
+> >>>> Jun 10 09:23:36 coco kernel:  [<c0137186>] ? rescuer_thread+0x231/0x231
+> >>>> Jun 10 09:23:36 coco kernel:  [<c013a556>] kthread+0x6c/0x6e
+> >>>> Jun 10 09:23:36 coco kernel:  [<c013a4ea>] ? kthreadd+0xe8/0xe8
+> >>>> Jun 10 09:23:36 coco kernel:  [<c035263e>] kernel_thread_helper+0x6/0xd
+> >>>>
+> >>>> A kworker task is stuck in D state and nfs mounts from other clients do 
+> >>>> not work at all. This happens only on one machine, another one with the 
+> >>>> same kernel (same self compiled Debian package) works. All previous 3.3 
+> >>>> kernels work as well.
+> >>>>
+> >>>> Since this machine is remote it is not that easy to bisect to find the 
+> >>>> bad commit. Are there any other things I can try?
+> >>
+> >> If you create a directory named /var/lib/nfs/v4recovery/, does the
+> >> problem go away?
+> >>
+> >> My guess would be that it's trying to upcall to the new reboot-recovery
+> >> state daemon, and you don't have that running.
+> >>
+> >> Before the addition of that upcall state was kept in
+> >> /var/lib/nfs/v4recovery.  So we decide whether to use the old method or
+> >> the new one by checking for the existance of that path.
+> >>
+> >> But I'm guessing we were wrong to assume that existing setups that
+> >> people perceived as working would have that path, because the failures
+> >> in the absence of that path were probably less obvious.
+> >>
+> >> --b.
+> > 
+> > This sounds like the same problem that Hans reported as well. I've not
+> > been able to reproduce that so far. Here's what I get when I start nfsd
+> > with no v4recoverdir and nfsdcld isn't running:
+> > 
+> > [  109.715080] NFSD: starting 90-second grace period
+> > [  229.984220] NFSD: Unable to end grace period: -110
+> > 
+> > What I don't quite understand is why the queue_timeout job isn't
+> > getting run here. What should happen is that 30s after upcall,
+> > rpc_timeout_upcall_queue should run. The message will be found to be
+> > still sitting on the , so it should set its status to -ETIMEDOUT
+> > and wake up the caller.
+> > 
+> > I can only assume that the queue_timeout job isn't getting run for some
+> > reason, but I'm unclear on why that would be.
+> > 
+> 
+> 
+> Regression fixing aside. I would consider changing the all mechanism to
+> a call_usermodehelper mechanism. Not only it cuts the in-kernel code
+> to 1/3, it also cuts user-mode code to 1/3. And specially it relives you
+> of any special daemon setup dependency. All you do is run an app/script
+> that does what it does when it does it, directly without anyone waiting
+> and/or any kind of handshake.
+> 
 
-    http://lwn.net/Articles/496103/
-
-When discussing my v2 patchset, Al pointed out that the problems with
-audit go beyond just doing multiple getname() calls per syscall attempt.
-While that is a problem, the most insidious issue is some very brittle
-logic in audit_inode_child(). I believe I now have a solution to that
-problem in the patchset that I posted earlier this week:
-
-	https://lkml.org/lkml/2012/6/26/306
-
-The above patchset should make it safe to do retries of path-based
-syscalls. The main caveat when doing that is that it's important to only
-call getname() once per __user string. That ensures that you don't end
-up with duplicate audit_names entries per syscall. As a side benefit, it
-turns out that that's more efficient on a retry, but it does mean that
-we can't use the nice user_path_* helpers in many cases.
-
-I've tried to keep this patchset pretty granular. Some of these patches
-could be combined if that's desirable. I'd like to see this go into 3.6,
-but it obviously needs to go in after the above-referenced set of audit
-related patches is merged.
-
-Jeff Layton (17):
-  vfs: add a retry_estale helper function to handle retries on ESTALE
-  vfs: add a kern_path_at function
-  vfs: make fstatat retry on ESTALE errors from getattr call
-  vfs: fix readlinkat to retry on ESTALE
-  vfs: remove user_path_at_empty
-  vfs: turn "empty" arg in getname_flags into a bool
-  vfs: add new "reval" argument to kern_path_create
-  vfs: fix mknodat to retry on ESTALE errors
-  vfs: fix mkdir to retry on ESTALE errors
-  vfs: fix symlinkat to retry on ESTALE errors
-  vfs: fix linkat to retry on ESTALE errors
-  vfs: make rmdir retry on ESTALE errors
-  vfs: make do_unlinkat retry on ESTALE errors
-  vfs: fix renameat to retry on ESTALE errors
-  vfs: remove user_path_parent
-  vfs: have do_sys_truncate retry once on an ESTALE error
-  vfs: have faccessat retry once on an ESTALE error
-
- drivers/base/devtmpfs.c |    7 +-
- fs/namei.c              |  407 ++++++++++++++++++++++++++++-------------------
- fs/open.c               |  162 +++++++++++--------
- fs/stat.c               |   44 ++++--
- include/linux/fs.h      |   24 +++-
- include/linux/namei.h   |    4 +-
- net/unix/af_unix.c      |    3 +-
- 7 files changed, 401 insertions(+), 250 deletions(-)
+That was considered here, but the problem with the usermode helper is
+that you can't pass anything back to the kernel but a simple status
+code (and that's assuming that you wait for it to exit). In the near
+future, we'll need to pass back more info to the kernel for this, so
+the usermode helper callout wasn't suitable.
 
 -- 
-1.7.7.6
-
+Jeff Layton <jlayton@redhat.com>
