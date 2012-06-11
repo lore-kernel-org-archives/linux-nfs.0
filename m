@@ -1,172 +1,150 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f178.google.com ([209.85.212.178]:55419 "EHLO
-	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757752Ab2FENrv convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jun 2012 09:47:51 -0400
-Received: by wibhn6 with SMTP id hn6so3957264wib.1
-        for <linux-nfs@vger.kernel.org>; Tue, 05 Jun 2012 06:47:50 -0700 (PDT)
+Received: from mx2.netapp.com ([216.240.18.37]:48839 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751439Ab2FKTnh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Jun 2012 15:43:37 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "david.noveck@emc.com" <david.noveck@emc.com>
+CC: "bharrosh@panasas.com" <bharrosh@panasas.com>,
+        "androsadamson@gmail.com" <androsadamson@gmail.com>,
+        "Adamson, Andy" <William.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "nfsv4@ietf.org" <nfsv4@ietf.org>
+Subject: Re: [nfsv4] RFC 5661 LAYOUTRETURN clarification.
+Date: Mon, 11 Jun 2012 19:43:21 +0000
+Message-ID: <1339443799.19775.54.camel@lade.trondhjem.org>
+References: <CAHVgHyUpM0rQWqO5-id+FohPKm1Lk=kkekf7HqzpfKcfvxx23A@mail.gmail.com>
+	 <4FD63BAF.8040107@panasas.com>
+	 <5DEA8DB993B81040A21CF3CB332489F601BF59C653@MX31A.corp.emc.com>
+In-Reply-To: <5DEA8DB993B81040A21CF3CB332489F601BF59C653@MX31A.corp.emc.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <1C92D18B-1977-4A12-A4DA-84DAC4B3E81E@netapp.com>
-References: <1338571178-2096-1-git-send-email-andros@netapp.com>
-	<1338571178-2096-2-git-send-email-andros@netapp.com>
-	<4FCA98E7.2030006@panasas.com>
-	<1C92D18B-1977-4A12-A4DA-84DAC4B3E81E@netapp.com>
-Date: Tue, 5 Jun 2012 09:47:50 -0400
-Message-ID: <CAHVgHyXKAB4CNQ5O6ezL9cw8Z0_f5rP4NtT-eSuNsuW0RtTXaw@mail.gmail.com>
-Subject: Re: [PATCH 2/3] NFSv4.1 mark layout when already returned
-From: Andy Adamson <androsadamson@gmail.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 5, 2012 at 9:36 AM, Adamson, Andy
-<William.Adamson@netapp.com> wrote:
->
-> On Jun 2, 2012, at 6:51 PM, Boaz Harrosh wrote:
->
->> On 06/01/2012 08:19 PM, andros@netapp.com wrote:
->>
->>> From: Andy Adamson <andros@netapp.com>
->>>
->>> When fencing, pnfs_return_layout can be called mulitple times with in-flight
->>> i/o referencing lsegs on it's plh_segs list.
->>>
->>> Remember that LAYOUTRETURN has been called, and do not call it again.
->>>
->>
->>
->> NACK
->>
->> In objects-layout we must report all errors on layout_return. We
->> accumulate them and report of all errors at once. So we need
->> the return after all in flights are back. (And no new IOs are
->> sent) Otherwise we might miss some.
->
-> _pnfs_retrun_layout removes all layouts, and should therefore only be called once.
-
-To clarify: There is more work to be done here - the flag should be
-cleared once the plh_segs list is empty....
-
-I'll resend, and also fix the "wait for all in-flight" normal behavior.
-
-Thanks for the comments
-
--->Andy
-
-> I'll can add the 'wait for all in-flight' functionality, and we can switch behaviors (wait or not > wait).
->
->> Also the RFC mandates that we do not use any layout or have
->> IOs in flight, once we return the layout.
->
->
-> You are referring to this piece of the spec?
-> Section 18.44.3
->
->  After this call,
->   the client MUST NOT use the returned layout(s) and the associated
->   storage protocol to access the file data.
->
->
-> The above says that  the client MUST NOT send any _new_ i/o using the layout.  I don't see any reference to in-flight i/o, nor should there be in the error case. I get a connection error. Did the i/o's I sent get to the data server?  The reason to send a LAYOUTRETURN without waiting for all the in-flights to return with a connection error is precisely to fence any in-flight i/o because I'm resending through the MDS.
->
->
->>
->> I was under the impression that only when the last reference
->> on a layout is dropped only then we send the lo_return.
->
->> If it is not so, this is the proper fix.
->
->>
->> 1. Mark LO invalid so all new IO waits or goes to MDS
->> 3. When LO ref drops to Zero send the lo_return.
->
-> Yes for the normal case (evict inode for the file layout), but not if I'm in an error situation and I want to fence the DS from in-flight i/o.
->
->> 4. After LAYOUTRETURN_DONE is back, re-enable layouts.
->> I'm so sorry it is not so today. I should have tested for
->> this. I admit that all my error injection tests are
->> single-file single thread so I did not test for this.
->>
->> Sigh, work never ends. Tell me if I can help with this
->
-> I'll add the wait/no-wait…
->
-> -->Andy
->
->> Boaz
->>
->>> Signed-off-by: Andy Adamson <andros@netapp.com>
->>> ---
->>> fs/nfs/pnfs.c |    6 ++++--
->>> fs/nfs/pnfs.h |   13 +++++++++++++
->>> 2 files changed, 17 insertions(+), 2 deletions(-)
->>>
->>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->>> index 854df5e..9ffd5f8 100644
->>> --- a/fs/nfs/pnfs.c
->>> +++ b/fs/nfs/pnfs.c
->>> @@ -664,11 +664,11 @@ _pnfs_return_layout(struct inode *ino)
->>>      nfs4_stateid stateid;
->>>      int status = 0, empty = 0;
->>>
->>> -    dprintk("--> %s\n", __func__);
->>> +    dprintk("--> %s for inode %lu\n", __func__, ino->i_ino);
->>>
->>>      spin_lock(&ino->i_lock);
->>>      lo = nfsi->layout;
->>> -    if (!lo) {
->>> +    if (!lo || pnfs_test_layout_returned(lo)) {
->>>              spin_unlock(&ino->i_lock);
->>>              dprintk("%s: no layout to return\n", __func__);
->>>              return status;
->>> @@ -705,6 +705,8 @@ _pnfs_return_layout(struct inode *ino)
->>>      lrp->clp = NFS_SERVER(ino)->nfs_client;
->>>
->>>      status = nfs4_proc_layoutreturn(lrp);
->>> +    if (status == 0)
->>> +            pnfs_mark_layout_returned(lo);
->>> out:
->>>      dprintk("<-- %s status: %d\n", __func__, status);
->>>      return status;
->>> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
->>> index 29fd23c..8be6de2 100644
->>> --- a/fs/nfs/pnfs.h
->>> +++ b/fs/nfs/pnfs.h
->>> @@ -64,6 +64,7 @@ enum {
->>>      NFS_LAYOUT_ROC,                 /* some lseg had roc bit set */
->>>      NFS_LAYOUT_DESTROYED,           /* no new use of layout allowed */
->>>      NFS_LAYOUT_INVALID,             /* layout is being destroyed */
->>> +    NFS_LAYOUT_RETURNED,            /* layout has already been returned */
->>> };
->>>
->>> enum layoutdriver_policy_flags {
->>> @@ -255,6 +256,18 @@ struct nfs4_deviceid_node *nfs4_insert_deviceid_node(struct nfs4_deviceid_node *
->>> bool nfs4_put_deviceid_node(struct nfs4_deviceid_node *);
->>> void nfs4_deviceid_purge_client(const struct nfs_client *);
->>>
->>> +static inline void
->>> +pnfs_mark_layout_returned(struct pnfs_layout_hdr *lo)
->>> +{
->>> +    set_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
->>> +}
->>> +
->>> +static inline bool
->>> +pnfs_test_layout_returned(struct pnfs_layout_hdr *lo)
->>> +{
->>> +    return test_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
->>> +}
->>> +
->>> static inline int lo_fail_bit(u32 iomode)
->>> {
->>>      return iomode == IOMODE_RW ?
->>
->>
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+DQpUaGUgX29ubHlfIHJlYXNvbiB3aHkgYSBwTkZTIGZpbGVzIGNsaWVudCB3b3VsZCBldmVyIHdh
+bnQgdG8gc2VuZCBhDQpMQVlPVVRSRVRVUk4gaXMgaW4gb3JkZXIgdG8gaGF2ZSB0aGUgTURTIHRh
+a2UgYWN0aW9uIHRvIGZlbmNlIG9mZiBhbnkNCm91dHN0YW5kaW5nIHdyaXRlcyB0byB0aGUgRFMu
+DQoNClRoZSBfb25seV8gY2FzZSB3aGVyZSB0aGF0IGlzIGFjdHVhbGx5IGFuIGltcG9ydGFudCBp
+c3N1ZSBpcyB3aGVuDQpzb21ldGhpbmcgaGFwcGVucyB0byB0aGUgRFMgd2hpY2ggZm9yY2VzIHRo
+ZSBjbGllbnQgdG8gZmFsbCBiYWNrIHRvDQp3cml0aW5nIHRocm91Z2ggdGhlIE1EUy4NCg0KX0FM
+TF8gb3RoZXIgY2FzZXMgYXJlIHRyaXZpYWxseSBjb3ZlcmVkIGJ5IHRoZSBleGlzdGluZyBORlN2
+NCBzdGF0ZQ0KbW9kZWwgaW4gdGhhdCB3aGVuIHRoZSBjbGllbnQgdW5sb2NrcyBhbmQvb3IgY2xv
+c2VzIHRoZSBmaWxlLCB0aGVuIHRoZQ0KbG9jay9vcGVuIHN0YXRlaWRzIHRoYXQgYXJlIHVzZWQg
+aW4gdGhlIFJFQUQgYW5kIFdSSVRFIG9wZXJhdGlvbnMgd2lsbA0KYmUgdXBkYXRlZCwgYW5kIHdp
+bGwgY2F1c2UgdGhvc2Ugb3BlcmF0aW9ucyB0byBiZSByZWplY3RlZCB3aXRoIGENCkJBRF9TVEFU
+RUlEIGVycm9yLiBUaGlzIGZlbmNpbmcgbW9kZWwgaXMgaXJyZXNwZWN0aXZlIG9mIHdoZXRoZXIg
+b3Igbm90DQphIGxheW91dCBpcyBoZWxkLCBhbmQgaXMgaXJyZXNwZWN0aXZlIG9mIHdoZXRoZXIg
+dGhlIFJFQUQvV1JJVEUgd2FzIHNlbnQNCnRvIHRoZSBNRFMgb3IgdGhlIERTLg0KDQoNCklPVzog
+aWYgcE5GUyBmaWxlcyBzZXJ2ZXJzIGRvbid0IHdhbnQgdG8gZG8gdGhpcyBraW5kIG9mIGZlbmNp
+bmcsIHRoZW4gSQ0Kc3VnZ2VzdCB3ZSBmaWxlIGFuIGVycmF0YSB0aGF0IGxhYmVscyB0aGUgTEFZ
+T1VUUkVUVVJOIG9wZXJhdGlvbiBhcw0KbWFuZGF0b3J5IHRvIG5vdCBpbXBsZW1lbnQgZm9yIHRo
+b3NlIHNlcnZlcnMuDQoNCk9uIE1vbiwgMjAxMi0wNi0xMSBhdCAxNTowMiAtMDQwMCwgZGF2aWQu
+bm92ZWNrQGVtYy5jb20gd3JvdGU6DQo+ID4gQW5kIGFnYWluLCBwbGVhc2UgZXhwbGFpbiB3aHkg
+ZG8geW91IHdhbnQgaXQuIFdoYXQgaXMgd3Jvbmcgd2l0aCB0aGUNCj4gPiBjYXNlIHdlIGFsbCBh
+Z3JlZSB3aXRoPyBpZTogIkNsaWVudCBjYW4gbm90IGNhbGwgTEFZT1VUUkVUVVJOIHVudGlsDQo+
+ID4gYWxsIGluLWZsaWdodCBSUENzIHJldHVybiwgd2l0aCBvciB3aXRob3V0IGFuIGVycm9yIg0K
+PiANCj4gSXQncyBhIHJlY2lwZSBmb3IgZGF0YSBjb3JydXB0aW9uLiAgSWYsIGFzIEFuZHkgZXhw
+bGFpbmVkLCBoZSBzdGFydHMgZG9pbmcNCj4gSU8ncyAobGV0J3Mgc3VwcG9zZSBXUklURXMpIHRv
+IHRoZSBNRFMgYW55IGxpbmdlcmluZyBXUklURXMgdG8gdGhlIERTDQo+IHNpbmNlIHRoZXkgcmVm
+bGVjdCBhbiBlYXJsaWVyIHN0YXRlIG9mIGFmZmFpcnMgY2FuIGNhdXNlIGRhdGEgY29ycnVwdGlv
+bi4NCj4gDQo+IFRoZXJlIGFyZSB0aHJlZSB3YXlzIHRvIHByZXZlbnQgdGhvc2UgbGluZ2VyaW5n
+IERTIHdyaXRlcyBmcm9tIGNvcnJ1cHRpbmcgDQo+IGRhdGE6DQo+IA0KPiAxKSBEb2luZyBhIExB
+WU9VVFJFVFVSTg0KPiAyKSB3YWl0aW5nIHVudGlsIHRoZSBJTydzIHJldHVybi4NCj4gMykgIm1h
+Z2ljYWxseSBwbHVnZ2luZyB0aGUgbmV0d29yayBpbnRlcmZhY2UiLg0KPiANCj4gDQo+IFNpbmNl
+IHRoZXJlIGlzIG5vIHdheSB0byBkbyAzKSwgc2F5aW5nIHRoYXQgeW91IG9ubHkgY2FuIGRvIDEp
+IHVudGlsIGFmdGVyDQo+IDIpIGlzIGRvbmUgaXMgZXNzZW50aWFsbHkgZ29pbmcgdG8gbWVhbjoN
+Cj4gDQo+IGEpIHRoYXQgaXQgbWF5IHRha2UgYSB2ZXJ5IGxvbmcgdGltZToNCj4gYikgdGhhdCB5
+b3Ugd2lsbCBvbmx5IGRvIGl0LCB3aGVuIGl0IGlzIG5vIGxvbmdlciB1c2VmdWwuDQo+IA0KPiBJ
+ZiB5b3UgZG8gMSkgYXNhcCwgdGhlbiB0aGUgbGluZ2VyaW5nIERTIHdyaXRlIHByb2JsZW0gaXMg
+Z29uZSBzb29uZXIsDQo+IGFuZCB0aGF0J3MgYSBnb29kIHRoaW5nLiANCj4gDQo+IC0tLS0tT3Jp
+Z2luYWwgTWVzc2FnZS0tLS0tDQo+IEZyb206IG5mc3Y0LWJvdW5jZXNAaWV0Zi5vcmcgW21haWx0
+bzpuZnN2NC1ib3VuY2VzQGlldGYub3JnXSBPbiBCZWhhbGYgT2YgQm9heiBIYXJyb3NoDQo+IFNl
+bnQ6IE1vbmRheSwgSnVuZSAxMSwgMjAxMiAyOjQxIFBNDQo+IFRvOiBBbmR5IEFkYW1zb24NCj4g
+Q2M6IEFuZHkgQWRhbXNvbjsgTkZTIGxpc3Q7IFRyb25kIE15a2xlYnVzdDsgTkZTdjQNCj4gU3Vi
+amVjdDogUmU6IFtuZnN2NF0gUkZDIDU2NjEgTEFZT1VUUkVUVVJOIGNsYXJpZmljYXRpb24uDQo+
+IA0KPiBPbiAwNi8xMS8yMDEyIDA3OjAxIFBNLCBBbmR5IEFkYW1zb24gd3JvdGU6DQo+IA0KPiA+
+IEknbSBjb2RpbmcgZmlsZSBsYXlvdXQgZGF0YSBzZXJ2ZXIgcmVjb3ZlcnkgZm9yIHRoZSBMaW51
+eCBORlMgY2xpZW50LA0KPiA+IGFuZCBjYW1lIGFjcm9zcyBhbiBpc3N1ZSB3aXRoIExBWU9VVFJF
+VFVSTiB0aGF0DQo+ID4gY291bGQgdXNlIHNvbWUgY29tbWVudCBmcm9tIHRoZSBsaXN0Lg0KPiA+
+IA0KPiA+IFRoZSBlcnJvciBjYXNlIEknbSBoYW5kbGluZyBpcyBhbiBSUEMgbGF5ZXIgZGlzLWNv
+bm5lY3Rpb24gZXJyb3INCj4gPiBkdXJpbmcgaGVhdnkgV1JJVEUgaS9vIHRvIGEgZmlsZSBsYXlv
+dXQgZGF0YSBzZXJ2ZXIuIE91ciByZXNwb25zZSBpcw0KPiA+IHRvIGludGVybmFsbHkgbWFyayB0
+aGUgZGV2aWNlaWQgYXMgaW52YWxpZCB3aGljaCBwcmV2ZW50cyBhbGwgcE5GUw0KPiA+IGNhbGxz
+IHVzaW5nIHRoZSBkZXZpY2VpZCAtIGUuZy4gbm8gbmV3IEkvTyB1c2luZyBhbnkgbGF5b3V0IHRo
+YXQgdXNlcw0KPiA+IHRoZSBpbnZhbGlkIGRldmljZWlkLCBhbmQgdG8gcmVkaXJlY3QgYWxsIEkv
+TyB0byB0aGUgTURTIChhbnkgcXVldWVkDQo+ID4gUlBDIHJlcXVlc3QgdGhhdCBoYXMgbm90IGJl
+ZW4gc2VudCBpcyByZWRpcmVjdGVkIHRvIHRoZSBNRFMpLg0KPiA+IA0KPiA+IFBsdXMgLSBhbmQg
+aGVyZSBpcyB3aGVyZSB0aGUgY2xhcmlmaWNhdGlvbiBpcyBuZWVkZWQgLSB3ZSBpbW1lZGlhdGVs
+eQ0KPiA+IHNlbmQgYSBMQVlPVVRSRVRVUk4gZm9yIGFueSBsYXlvdXQgd2l0aCBpbi1mbGlnaHQg
+cmVxdWVzdHMgdG8gdGhlDQo+ID4gZGlzLWNvbm5lY3RlZCBkYXRhIHNlcnZlci4gIEJ5IGluLWZs
+aWdodCBJIG1lYW4gdHJhbnNtaXR0ZWQgV1JUIHRoZQ0KPiA+IFJQQyBsYXllci4gIFRoZSBwdXJw
+b3NlIG9mIHRoaXMgTEFZT1VUUkVUVVJOIGlzIHRvIG5vdGlmeSB0aGUgZmlsZQ0KPiA+IGxheW91
+dCBNRFMgdG8gZmVuY2UgdGhlIERTIGZvciB0aGUgc3BlY2lmaWVkIExBWU9VVHMsIGFzIHRoZSBX
+UklURXMNCj4gPiB3aWxsIGFsc28gYmUgc2VudCB0byB0aGUgTURTLg0KPiA+IA0KPiANCj4gDQo+
+IEkgZG8gbm90IGRpc2FncmVlIHdpdGggdGhpcyBjb21wbGV0ZWx5LiBUaGUgcG9pbnQgaGVyZSBp
+cyB2ZXJ5IGZpbmUNCj4gZ3JhaW5lZCBhbmQgc2hvdWxkIGJlIHNwZWNpZmllZCBleHBsaWNpdGx5
+LiBJIHdvdWxkIGxpa2UgdG8gc2VlIHRleHQNCj4gYXMgb2Ygc29tZXRoaW5nIGxpa2UuDQo+IA0K
+PiBUaGVyZSBhcmUgMyB0eXBlcyBvZiBpbi1mbGdodCBSUEMvSU8NCj4gMS4gQ2xpZW50IGhhcyBz
+ZW50IFJQQyBoZWFkZXIgKyBhbGwgb2YgYXNzb2NpYXRlZCBkYXRhIGFuZCBpcyB3YWl0aW5nDQo+
+ICAgIGZvciBEUyBXUklURS9SRUFEX0RPTkUgcmVwbHkuDQo+IA0KPiAgICAoRm9yIG1lIHRoaXMg
+Y2FzZSBjYW4gYmUsIGNsaWVudCBtYXkgcmV0dXJuIExBWU9VVFJFVFVSTiBhcyB5b3VyDQo+ICAg
+ICBzdWdnZXN0aW9uKQ0KPiANCj4gMi4gQ2xpZW50IGhhcyBzZW50IHRoZSBSUEMgaGVhZGVyIGJ1
+dCBoYXMgZ290IHN0dWNrIHNlbmRpbmcgdGhlIHJlc3QNCj4gICAgb2YgdGhlIFJQQyBtZXNzYWdl
+LiBUaGVuIHJlY2VpdmVkIGEgbmV0d29yayBkaXNjb25uZWN0LiBUaGlzIGlzIHRoZQ0KPiAgICBt
+b3N0IGNvbW1vbiBwYXJ0LiBQdXR0aW5nIGFzaWRlIHRoZSBSUEMgdGhhdCBnb3QgdGhlIGVycm9y
+IGZvciBhIHNlY29uZC4NCj4gICAgVGhlIG1vc3QgaW1wb3J0YW50IGlzIHdoYXQgdG8gZG8gd2l0
+aCBwYXJhbGxlbCBSUEMvSU8gd2hpY2ggYXJlIGluIHRoaXMNCj4gICAgc3RhdGUuIEFyZSBwYXJh
+bGxlbCBSUENzIGFsbG93ZWQgdG8gY29udGludWUgc2VuZGluZyBuZXR3b3JrIHBhY2tldHMNCj4g
+ICAgYWZ0ZXIgdGhlIExBWU9VVFJFVFVSTiB3YXMgc2VudD8NCj4gDQo+ICAgIFRoZSBzcGVjaWZp
+YyBSUEMgdGhhdCBnb3Qgc3R1Y2sgaXMgbm90IGludGVyZXN0aW5nIGJlY2F1c2UgaXQncyBraW5k
+IG9mDQo+ICAgIDEuNSwgV2UgYXJlIG5vdCBnb2luZyB0byBzZW5kIGFueSBieXRlcyBvbiB0aGF0
+IGNoYW5uZWwuIFRoZSBpbnRlcmVzdGluZw0KPiAgICBpcyB0aGVzZSBvdGhlciBEU3Mgd2hpY2gg
+YXJlIHN0aWxsIHN0cmVhbWluZw0KPiANCj4gMy4gQ2xpZW50IGhhcyBzb21lIGludGVybmFsIFJQ
+QyBxdWV1ZSB3aGljaCBkbyB0byBzb21lIGNsaWVudCBwYXJhbGxlbGlzbQ0KPiAgICB3aWxsIHN0
+YXJ0IHNlbmRpbmcgUlBDIGhlYWRlciArIGRhdGEgYWZ0ZXIgdGhlIExBWU9VVFJFVFVSTiB3YXMg
+c2VudA0KPiAgICANCj4gV2hhdCBteSBwb2ludCB3YXMgdGhhdCB3aXRoIHRoZSBjb2RlIHlvdSBz
+dWJtaXR0ZWQgd2UgYXJlIGNsZWFybHkgdmlvbGF0aW5nDQo+IDIuIGFuZCBldmVuIDMuIEJlY2F1
+c2UgSSBkbyBub3Qgc2VlIGFueXRoaW5nIGF2b2lkaW5nIHRoaXMuDQo+IA0KPiBBbmQgaWYgdGhl
+IFNURCBhbGxvd3MgeW91IDIgYW5kIDMuIFRoZW4gdGhhdCdzIGEgYmlnIGNoYW5nZSB0byB0aGUg
+Y29uY2VwdC4NCj4gTm90IGxpa2UgeW91IGxldCBpdCBzZWVtLg0KPiANCj4gPiBJIGNvbnRlbmQg
+dGhhdCBzZW5kaW5nIHRoZSBMQVlPVVRSRVRVUk4gaW4gdGhpcyBlcnJvciBjYXNlIGRvZXMgbm90
+DQo+ID4gdmlvbGF0ZSB0aGUgdHdvIHNlY3Rpb25zIG9mIFJGQyA1NjYxIGJlbG93LCBhcyB0aGUg
+Y2xpZW50IGhhcyBzdG9wcGVkDQo+ID4gc2VuZGluZyBhbnkgSS9PIHJlcXVlc3RzIHVzaW5nIHRo
+ZSByZXR1cm5lZCBsYXlvdXQuDQo+ID4gDQo+IA0KPiANCj4gSSB3b3VsZCBub3QgbWluZCBpZiB0
+aGlzIHdhcyB0cnVlLiBUaGF0IGlzIGlmIHRoZSBMQVlPVVRSRVRVUk4gd2FzDQo+IGEgdmVyeSBj
+bGVhciBiYXJyaWVyIHdoZXJlIG91ciBjbGllbnQgd291bGQgIm1hZ2ljYWxseSIgY29tcGxldGVs
+eQ0KPiBwbHVnIHRoZSBuZXR3b3JrIGludGVyZmFjZSBhbmQgd2lsbCBub3QgY29udGludWUgdG8g
+c2VuZCBhIHNpbmdsZQ0KPiBieXRlIG9uIHRoZSB3aXJlIHRvICphbnkqIERTIGludm9sdmVkIHdp
+dGggdGhlIGxheW91dC4gVGhhdCdzIGZpbmUuDQo+IA0KPiBUaGF0IGlzIG9ubHkgYWxsb3cgc2F0
+ZSAxIGFuZCAxLjUgUlBDcyBhYm92ZS4gU29tZS9hbGwgYnl0ZXMgd2hlcmUNCj4gcHJlc2VudGVk
+IG9uIHRoZSB3aXJlLCB1bnRpbCB0aGUgTEFZT1VUUkVUVVJOLCBmcm9tIHdoaWNoIHBvaW50IGFs
+bA0KPiBSUENzIGFyZSBoYXJkIGFib3J0ZWQgYW5kIG5vdCBhIHNpbmdsZSBieXRlIGlzIHNlbnQu
+DQo+IA0KPiANCj4gPiBPdGhlcnMgY29udGVuZCB0aGF0IHNpbmNlIHRoZSBpbi1mbGlnaHQgUlBD
+cyByZWZlcmVuY2UgdGhlIHJldHVybmVkDQo+ID4gbGF5b3V0LCB0aGUgY2xpZW50IGlzIHN0aWxs
+ICd1c2luZycgdGhlIGxheW91dCB3aXRoIHRoZXNlIGluLWZsaWdodA0KPiA+IHJlcXVlc3RzLCBh
+bmQgY2FuIG5vdCBjYWxsIExBWU9VVFJFVFVSTiB1bnRpbCBhbGwgaW4tZmxpZ2h0IFJQQ3MNCj4g
+PiByZXR1cm4sIHdpdGggb3Igd2l0aG91dCBhbiBlcnJvci4NCj4gPiANCj4gDQo+IA0KPiBXaXRo
+IG91ciBjbGllbnQgY29kZSBJIGRvbid0IHNlZSBob3cgdGhlIGd1YXJhbnR5IG9mIDIgYW5kIDMg
+YWJvdmUNCj4gd2lsbCBoYXBwZW4gd2l0aG91dCBhY3R1YWxseSBpbXBsZW1lbnRpbmcgdGhpcyBo
+ZXJlLg0KPiANCj4gU28gaW4gcHJpbmNpcGFsIEkgYWdyZWUgd2l0aCB5b3VyIHByaW5jaXBsZSwg
+SSBvbmx5IGRvIG5vdCBhZ3JlZQ0KPiB3aXRoIHlvdXIgcHJhY3RpY2UuIEluIHlvdXIgbmV3IGNv
+ZGUgeW91IGFyZSB2aW9sYXRpbmcgMiBhbmQgMw0KPiB3aGljaCBhcmUgbm90IHRvIGJlIGFsbG93
+ZWQuDQo+IA0KPiBBbmQgYWdhaW4sIHBsZWFzZSBleHBsYWluIHdoeSBkbyB5b3Ugd2FudCBpdC4g
+V2hhdCBpcyB3cm9uZyB3aXRoIHRoZQ0KPiBjYXNlIHdlIGFsbCBhZ3JlZSB3aXRoPyBpZTogIkNs
+aWVudCBjYW4gbm90IGNhbGwgTEFZT1VUUkVUVVJOIHVudGlsDQo+IGFsbCBpbi1mbGlnaHQgUlBD
+cyByZXR1cm4sIHdpdGggb3Igd2l0aG91dCBhbiBlcnJvciINCj4gDQo+IFRoYW5rcw0KPiBCb2F6
+DQo+IA0KPiA+IA0KPiA+IFNlY3Rpb24gMTguNDQuMyAtIHRoZSBkZXNjcmlwdGlvbiBzZWN0aW9u
+IG9mIHRoZSBMQVlPVVRSRVRVUk4gb3BlcmF0aW9uOg0KPiA+IA0KPiA+ICAgIEFmdGVyIHRoaXMg
+Y2FsbCwNCj4gPiAgICB0aGUgY2xpZW50IE1VU1QgTk9UIHVzZSB0aGUgcmV0dXJuZWQgbGF5b3V0
+KHMpIGFuZCB0aGUgYXNzb2NpYXRlZA0KPiA+ICAgIHN0b3JhZ2UgcHJvdG9jb2wgdG8gYWNjZXNz
+IHRoZSBmaWxlIGRhdGEuDQo+ID4gDQo+ID4gU2VjdGlvbiAxMy42IE9wZXJhdGlvbnMgU2VudCB0
+byBORlN2NC4xIERhdGEgU2VydmVycw0KPiA+IA0KPiA+ICAgQXMgZGVzY3JpYmVkIGluIFNlY3Rp
+b24gMTIuNS4xLCBhIGNsaWVudA0KPiA+ICAgTVVTVCBOT1Qgc2VuZCBhbiBJL08gdG8gYSBkYXRh
+IHNlcnZlciBmb3Igd2hpY2ggaXQgZG9lcyBub3QgaG9sZCBhDQo+ID4gICB2YWxpZCBsYXlvdXQ7
+IHRoZSBkYXRhIHNlcnZlciBNVVNUIHJlamVjdCBzdWNoIGFuIEkvTy4NCj4gPiANCj4gPiANCj4g
+PiAtLT5BbmR5DQo+IA0KPiANCj4gX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX18NCj4gbmZzdjQgbWFpbGluZyBsaXN0DQo+IG5mc3Y0QGlldGYub3JnDQo+IGh0
+dHBzOi8vd3d3LmlldGYub3JnL21haWxtYW4vbGlzdGluZm8vbmZzdjQNCj4gDQoNCi0tIA0KVHJv
+bmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9u
+ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
