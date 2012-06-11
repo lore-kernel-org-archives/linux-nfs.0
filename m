@@ -1,175 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:59125 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:37474 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755716Ab2FTJiE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jun 2012 05:38:04 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 01/12] netvm: Prevent a stream-specific deadlock
-Date: Wed, 20 Jun 2012 10:37:50 +0100
-Message-Id: <1340185081-22525-2-git-send-email-mgorman@suse.de>
-In-Reply-To: <1340185081-22525-1-git-send-email-mgorman@suse.de>
-References: <1340185081-22525-1-git-send-email-mgorman@suse.de>
+	id S1754118Ab2FKMQi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Jun 2012 08:16:38 -0400
+Date: Mon, 11 Jun 2012 08:16:34 -0400
+From: bfields <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Joerg Platte <jplatte@naasa.net>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        jlayton@redhat.com
+Subject: Re: Kernel 3.4.X NFS server regression
+Message-ID: <20120611121634.GB7654@fieldses.org>
+References: <4FD47D4E.9070307@naasa.net>
+ <1339340441.4751.1.camel@lade.trondhjem.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1339340441.4751.1.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It could happen that all !SOCK_MEMALLOC sockets have buffered so
-much data that we're over the global rmem limit. This will prevent
-SOCK_MEMALLOC buffers from receiving data, which will prevent userspace
-from running, which is needed to reduce the buffered data.
+On Sun, Jun 10, 2012 at 03:00:42PM +0000, Myklebust, Trond wrote:
+> Cc: linux-nfs@vger.kernel.org + bfields and changing title to label it
+> as a server regression since that is what the trace appears to imply.
+> 
+> On Sun, 2012-06-10 at 12:56 +0200, Joerg Platte wrote:
+> > All 3.4 kernels I tried so far (3.4, 3.4.1 and 3.4.2) suffer from the 
+> > same NFS related problem:
+> > 
+> > Jun 10 09:23:36 coco kernel: INFO: task kworker/u:1:8 blocked for more 
+> > than 120 seconds.
+> > Jun 10 09:23:36 coco kernel: "echo 0 > 
+> > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+> > Jun 10 09:23:36 coco kernel: kworker/u:1     D 002ba28c     0     8 
+> >   2 0x00000000
+> > Jun 10 09:23:36 coco kernel:  df465ec0 00000046 00000005 002ba28c 
+> > 00000000 0000000a 00000282 df465e70
+> > Jun 10 09:23:36 coco kernel:  df465ec0 df44d2b0 ffff6b60 df465e84 
+> > df44d2b0 e33fa6b3 00000282 de764ae0
+> > Jun 10 09:23:36 coco kernel:  ffffffff d78bcfb8 df465e8c c012e0f6 
+> > df465ea4 c013610c 00000000 d78bcf80
+> > Jun 10 09:23:36 coco kernel: Call Trace:
+> > Jun 10 09:23:36 coco kernel:  [<c012e0f6>] ? add_timer+0x11/0x17
+> > Jun 10 09:23:36 coco kernel:  [<c013610c>] ? queue_delayed_work_on+0x74/0xf0
+> > Jun 10 09:23:36 coco kernel:  [<c0136ba4>] ? queue_delayed_work+0x1b/0x28
+> > Jun 10 09:23:36 coco kernel:  [<c0350f5b>] schedule+0x1d/0x4c
+> > Jun 10 09:23:36 coco kernel:  [<e0cda5f1>] cld_pipe_upcall+0x4e/0x75 [nfsd]
+> > Jun 10 09:23:36 coco kernel:  [<e0cda678>] 
+> > nfsd4_cld_grace_done+0x60/0x99 [nfsd]
+> > Jun 10 09:23:36 coco kernel:  [<e0cd9cb5>] 
+> > nfsd4_record_grace_done+0x10/0x12 [nfsd]
+> > Jun 10 09:23:36 coco kernel:  [<e0cd6696>] laundromat_main+0x291/0x2d8 
+> > [nfsd]
+> > Jun 10 09:23:36 coco kernel:  [<c0136d2f>] process_one_work+0xff/0x325
+> > Jun 10 09:23:36 coco kernel:  [<c0134bec>] ? start_worker+0x20/0x23
+> > Jun 10 09:23:36 coco kernel:  [<e0cd6405>] ? 
+> > nfsd4_process_open1+0x32b/0x32b [nfsd]
+> > Jun 10 09:23:36 coco kernel:  [<c013727a>] worker_thread+0xf4/0x39a
+> > Jun 10 09:23:36 coco kernel:  [<c0137186>] ? rescuer_thread+0x231/0x231
+> > Jun 10 09:23:36 coco kernel:  [<c013a556>] kthread+0x6c/0x6e
+> > Jun 10 09:23:36 coco kernel:  [<c013a4ea>] ? kthreadd+0xe8/0xe8
+> > Jun 10 09:23:36 coco kernel:  [<c035263e>] kernel_thread_helper+0x6/0xd
+> > 
+> > A kworker task is stuck in D state and nfs mounts from other clients do 
+> > not work at all. This happens only on one machine, another one with the 
+> > same kernel (same self compiled Debian package) works. All previous 3.3 
+> > kernels work as well.
+> > 
+> > Since this machine is remote it is not that easy to bisect to find the 
+> > bad commit. Are there any other things I can try?
 
-Fix this by exempting the SOCK_MEMALLOC sockets from the rmem limit.
-Once this change it applied, it is important that sockets that set
-SOCK_MEMALLOC do not clear the flag until the socket is being torn down.
-If this happens, a warning is generated and the tokens reclaimed to
-avoid accounting errors until the bug is fixed.
+If you create a directory named /var/lib/nfs/v4recovery/, does the
+problem go away?
 
-[davem@davemloft.net: Warning about clearing SOCK_MEMALLOC]
-Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
-Acked-by: David S. Miller <davem@davemloft.net>
----
- include/net/sock.h     |    7 ++++---
- net/caif/caif_socket.c |    2 +-
- net/core/sock.c        |   14 +++++++++++++-
- net/ipv4/tcp_input.c   |   12 ++++++------
- net/sctp/ulpevent.c    |    2 +-
- 5 files changed, 25 insertions(+), 12 deletions(-)
+My guess would be that it's trying to upcall to the new reboot-recovery
+state daemon, and you don't have that running.
 
-diff --git a/include/net/sock.h b/include/net/sock.h
-index 772577f..9ab9934 100644
---- a/include/net/sock.h
-+++ b/include/net/sock.h
-@@ -1315,12 +1315,13 @@ static inline bool sk_wmem_schedule(struct sock *sk, int size)
- 		__sk_mem_schedule(sk, size, SK_MEM_SEND);
- }
- 
--static inline bool sk_rmem_schedule(struct sock *sk, int size)
-+static inline bool sk_rmem_schedule(struct sock *sk, struct sk_buff *skb)
- {
- 	if (!sk_has_account(sk))
- 		return true;
--	return size <= sk->sk_forward_alloc ||
--		__sk_mem_schedule(sk, size, SK_MEM_RECV);
-+	return skb->truesize <= sk->sk_forward_alloc ||
-+		__sk_mem_schedule(sk, skb->truesize, SK_MEM_RECV) ||
-+		skb_pfmemalloc(skb);
- }
- 
- static inline void sk_mem_reclaim(struct sock *sk)
-diff --git a/net/caif/caif_socket.c b/net/caif/caif_socket.c
-index fb89443..5855b3a 100644
---- a/net/caif/caif_socket.c
-+++ b/net/caif/caif_socket.c
-@@ -141,7 +141,7 @@ static int caif_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
- 	err = sk_filter(sk, skb);
- 	if (err)
- 		return err;
--	if (!sk_rmem_schedule(sk, skb->truesize) && rx_flow_is_on(cf_sk)) {
-+	if (!sk_rmem_schedule(sk, skb) && rx_flow_is_on(cf_sk)) {
- 		set_rx_flow_off(cf_sk);
- 		net_dbg_ratelimited("sending flow OFF due to rmem_schedule\n");
- 		caif_flow_ctrl(sk, CAIF_MODEMCMD_FLOW_OFF_REQ);
-diff --git a/net/core/sock.c b/net/core/sock.c
-index 17f0813..14d290f 100644
---- a/net/core/sock.c
-+++ b/net/core/sock.c
-@@ -295,6 +295,18 @@ void sk_clear_memalloc(struct sock *sk)
- 	sock_reset_flag(sk, SOCK_MEMALLOC);
- 	sk->sk_allocation &= ~__GFP_MEMALLOC;
- 	static_key_slow_dec(&memalloc_socks);
-+
-+	/*
-+	 * SOCK_MEMALLOC is allowed to ignore rmem limits to ensure forward
-+	 * progress of swapping. However, if SOCK_MEMALLOC is cleared while
-+	 * it has rmem allocations there is a risk that the user of the
-+	 * socket cannot make forward progress due to exceeding the rmem
-+	 * limits. By rights, sk_clear_memalloc() should only be called
-+	 * on sockets being torn down but warn and reset the accounting if
-+	 * that assumption breaks.
-+	 */
-+	if (WARN_ON(sk->sk_forward_alloc))
-+		sk_mem_reclaim(sk);
- }
- EXPORT_SYMBOL_GPL(sk_clear_memalloc);
- 
-@@ -396,7 +408,7 @@ int sock_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
- 	if (err)
- 		return err;
- 
--	if (!sk_rmem_schedule(sk, skb->truesize)) {
-+	if (!sk_rmem_schedule(sk, skb)) {
- 		atomic_inc(&sk->sk_drops);
- 		return -ENOBUFS;
- 	}
-diff --git a/net/ipv4/tcp_input.c b/net/ipv4/tcp_input.c
-index 448f130..dbd87ea 100644
---- a/net/ipv4/tcp_input.c
-+++ b/net/ipv4/tcp_input.c
-@@ -4512,19 +4512,19 @@ static void tcp_ofo_queue(struct sock *sk)
- static bool tcp_prune_ofo_queue(struct sock *sk);
- static int tcp_prune_queue(struct sock *sk);
- 
--static int tcp_try_rmem_schedule(struct sock *sk, unsigned int size)
-+static int tcp_try_rmem_schedule(struct sock *sk, struct sk_buff *skb)
- {
- 	if (atomic_read(&sk->sk_rmem_alloc) > sk->sk_rcvbuf ||
--	    !sk_rmem_schedule(sk, size)) {
-+	    !sk_rmem_schedule(sk, skb)) {
- 
- 		if (tcp_prune_queue(sk) < 0)
- 			return -1;
- 
--		if (!sk_rmem_schedule(sk, size)) {
-+		if (!sk_rmem_schedule(sk, skb)) {
- 			if (!tcp_prune_ofo_queue(sk))
- 				return -1;
- 
--			if (!sk_rmem_schedule(sk, size))
-+			if (!sk_rmem_schedule(sk, skb))
- 				return -1;
- 		}
- 	}
-@@ -4587,7 +4587,7 @@ static void tcp_data_queue_ofo(struct sock *sk, struct sk_buff *skb)
- 
- 	TCP_ECN_check_ce(tp, skb);
- 
--	if (tcp_try_rmem_schedule(sk, skb->truesize)) {
-+	if (tcp_try_rmem_schedule(sk, skb)) {
- 		/* TODO: should increment a counter */
- 		__kfree_skb(skb);
- 		return;
-@@ -4799,7 +4799,7 @@ static void tcp_data_queue(struct sock *sk, struct sk_buff *skb)
- 		if (eaten <= 0) {
- queue_and_out:
- 			if (eaten < 0 &&
--			    tcp_try_rmem_schedule(sk, skb->truesize))
-+			    tcp_try_rmem_schedule(sk, skb))
- 				goto drop;
- 
- 			eaten = tcp_queue_rcv(sk, skb, 0, &fragstolen);
-diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
-index 8a84017..6c6ed2d 100644
---- a/net/sctp/ulpevent.c
-+++ b/net/sctp/ulpevent.c
-@@ -702,7 +702,7 @@ struct sctp_ulpevent *sctp_ulpevent_make_rcvmsg(struct sctp_association *asoc,
- 	if (rx_count >= asoc->base.sk->sk_rcvbuf) {
- 
- 		if ((asoc->base.sk->sk_userlocks & SOCK_RCVBUF_LOCK) ||
--		    (!sk_rmem_schedule(asoc->base.sk, chunk->skb->truesize)))
-+		    (!sk_rmem_schedule(asoc->base.sk, chunk->skb)))
- 			goto fail;
- 	}
- 
--- 
-1.7.9.2
+Before the addition of that upcall state was kept in
+/var/lib/nfs/v4recovery.  So we decide whether to use the old method or
+the new one by checking for the existance of that path.
 
+But I'm guessing we were wrong to assume that existing setups that
+people perceived as working would have that path, because the failures
+in the absence of that path were probably less obvious.
+
+--b.
