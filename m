@@ -1,100 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:23881 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932641Ab2FAVPO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Jun 2012 17:15:14 -0400
-From: andros@netapp.com
-To: iisaman@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [[PATCH resend] 6/6] PYNFS implement FREE_STATEID and TEST_STATEID operations
-Date: Tue, 29 May 2012 18:11:29 -0400
-Message-Id: <1338329489-29178-7-git-send-email-andros@netapp.com>
-In-Reply-To: <1338329489-29178-1-git-send-email-andros@netapp.com>
-References: <1338329489-29178-1-git-send-email-andros@netapp.com>
+Received: from natasha.panasas.com ([67.152.220.90]:52799 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751320Ab2FKSlL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jun 2012 14:41:11 -0400
+Message-ID: <4FD63BAF.8040107@panasas.com>
+Date: Mon, 11 Jun 2012 21:40:47 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Andy Adamson <androsadamson@gmail.com>
+CC: NFSv4 <nfsv4@ietf.org>, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Andy Adamson <andros@netapp.com>, NFS list <linux-nfs@vger.kernel.org>,
+        Benny Halevy <bhalevy@tonian.com>
+Subject: Re: RFC 5661 LAYOUTRETURN clarification.
+References: <CAHVgHyUpM0rQWqO5-id+FohPKm1Lk=kkekf7HqzpfKcfvxx23A@mail.gmail.com>
+In-Reply-To: <CAHVgHyUpM0rQWqO5-id+FohPKm1Lk=kkekf7HqzpfKcfvxx23A@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On 06/11/2012 07:01 PM, Andy Adamson wrote:
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- nfs4.1/nfs4server.py |   33 +++++++++++++++++++++++++++++++++
- nfs4.1/nfs4state.py  |   11 ++++++-----
- 2 files changed, 39 insertions(+), 5 deletions(-)
+> I'm coding file layout data server recovery for the Linux NFS client,
+> and came across an issue with LAYOUTRETURN that
+> could use some comment from the list.
+> 
+> The error case I'm handling is an RPC layer dis-connection error
+> during heavy WRITE i/o to a file layout data server. Our response is
+> to internally mark the deviceid as invalid which prevents all pNFS
+> calls using the deviceid - e.g. no new I/O using any layout that uses
+> the invalid deviceid, and to redirect all I/O to the MDS (any queued
+> RPC request that has not been sent is redirected to the MDS).
+> 
+> Plus - and here is where the clarification is needed - we immediately
+> send a LAYOUTRETURN for any layout with in-flight requests to the
+> dis-connected data server.  By in-flight I mean transmitted WRT the
+> RPC layer.  The purpose of this LAYOUTRETURN is to notify the file
+> layout MDS to fence the DS for the specified LAYOUTs, as the WRITEs
+> will also be sent to the MDS.
+> 
 
-diff --git a/nfs4.1/nfs4server.py b/nfs4.1/nfs4server.py
-index b279292..8d0f112 100755
---- a/nfs4.1/nfs4server.py
-+++ b/nfs4.1/nfs4server.py
-@@ -1296,6 +1296,39 @@ class NFS4Server(rpc.Server):
-         res = READ4resok(eof, data)
-         return encode_status(NFS4_OK, res)
- 
-+    def op_free_stateid(self, arg, env):
-+        check_session(env)
-+        status = NFS4_OK
-+        with find_state(env, arg.fsa_stateid, no_fh=True) as state:
-+            try:
-+                log_41.info("free_stateid found state DELETING state")
-+                state.delete()
-+            except NFS4Error, e:
-+                log_41.info("free_stateid %s error: %d") % (arg.fsa_stateid, e.status)
-+                status = e.status
-+
-+	res = FREE_STATEID4res(fsr_status = status)
-+        return encode_status(NFS4_OK)
-+
-+    def op_test_stateid(self, arg, env):
-+        check_session(env)
-+	out = []
-+        for stateid in arg.ts_stateids:
-+            status = NFS4_OK
-+            with find_state(env, stateid, no_fh=True) as state:
-+                try:
-+                    log_41.info("test_stateid found state")
-+                    self.check_opsconfig(env, "test_stateid")
-+                except NFS4Error, e:
-+                    if (e.status == NFS4ERR_BAD_STATEID or e.status == NFS4ERR_ADMIN_REVOKED or e.status == NFS4ERR_OPENMODE):
-+                        state.delete()
-+                    status = e.status
-+                finally:
-+                    out.append(status)
-+
-+	res = TEST_STATEID4resok(tsr_status_codes = out)
-+        return encode_status(NFS4_OK, res)
-+
-     def op_open(self, arg, env):
-         self.check_opsconfig(env, "open")
-         check_session(env)
-diff --git a/nfs4.1/nfs4state.py b/nfs4.1/nfs4state.py
-index e8445e3..a6b21f4 100644
---- a/nfs4.1/nfs4state.py
-+++ b/nfs4.1/nfs4state.py
-@@ -23,7 +23,7 @@ NORMAL, CB_INIT, CB_SENT, CB_RECEIVED, INVALID = range(5) # delegation/layout st
- DS_MAGIC = "\xa5" # STUB part of HACK code to ignore DS stateid
- 
- @contextmanager
--def find_state(env, stateid, allow_0=True, allow_bypass=False):
-+def find_state(env, stateid, allow_0=True, allow_bypass=False, no_fh=False):
-     """Find the matching StateTableEntry, and manage its lock."""
-     anon = False
-     if env.is_ds:
-@@ -57,10 +57,11 @@ def find_state(env, stateid, allow_0=True, allow_bypass=False):
-         state = env.session.client.state.get(stateid.other, None)
-         if state is None:
-             raise NFS4Error(NFS4ERR_BAD_STATEID, tag="stateid not known")
--        if state.file != env.cfh:
--            raise NFS4Error(NFS4ERR_BAD_STATEID,
--                            tag="cfh %r does not match stateid %r" % 
--                            (state.file.fh, env.cfh.fh))
-+        if no_fh == False:
-+            if state.file != env.cfh:
-+                raise NFS4Error(NFS4ERR_BAD_STATEID,
-+                                tag="cfh %r does not match stateid %r" % 
-+                                (state.file.fh, env.cfh.fh))
-     state.lock.acquire()
-     # It is possible that while waiting to get the lock, the state has been
-     # removed.  In that case, the removal sets the invalid flag.
--- 
-1.7.7.6
+
+I do not disagree with this completely. The point here is very fine
+grained and should be specified explicitly. I would like to see text
+as of something like.
+
+There are 3 types of in-flght RPC/IO
+1. Client has sent RPC header + all of associated data and is waiting
+   for DS WRITE/READ_DONE reply.
+
+   (For me this case can be, client may return LAYOUTRETURN as your
+    suggestion)
+
+2. Client has sent the RPC header but has got stuck sending the rest
+   of the RPC message. Then received a network disconnect. This is the
+   most common part. Putting aside the RPC that got the error for a second.
+   The most important is what to do with parallel RPC/IO which are in this
+   state. Are parallel RPCs allowed to continue sending network packets
+   after the LAYOUTRETURN was sent?
+
+   The specific RPC that got stuck is not interesting because it's kind of
+   1.5, We are not going to send any bytes on that channel. The interesting
+   is these other DSs which are still streaming
+
+3. Client has some internal RPC queue which do to some client parallelism
+   will start sending RPC header + data after the LAYOUTRETURN was sent
+   
+What my point was that with the code you submitted we are clearly violating
+2. and even 3. Because I do not see anything avoiding this.
+
+And if the STD allows you 2 and 3. Then that's a big change to the concept.
+Not like you let it seem.
+
+> I contend that sending the LAYOUTRETURN in this error case does not
+> violate the two sections of RFC 5661 below, as the client has stopped
+> sending any I/O requests using the returned layout.
+> 
+
+
+I would not mind if this was true. That is if the LAYOUTRETURN was
+a very clear barrier where our client would "magically" completely
+plug the network interface and will not continue to send a single
+byte on the wire to *any* DS involved with the layout. That's fine.
+
+That is only allow sate 1 and 1.5 RPCs above. Some/all bytes where
+presented on the wire, until the LAYOUTRETURN, from which point all
+RPCs are hard aborted and not a single byte is sent.
+
+
+> Others contend that since the in-flight RPCs reference the returned
+> layout, the client is still 'using' the layout with these in-flight
+> requests, and can not call LAYOUTRETURN until all in-flight RPCs
+> return, with or without an error.
+> 
+
+
+With our client code I don't see how the guaranty of 2 and 3 above
+will happen without actually implementing this here.
+
+So in principal I agree with your principle, I only do not agree
+with your practice. In your new code you are violating 2 and 3
+which are not to be allowed.
+
+And again, please explain why do you want it. What is wrong with the
+case we all agree with? ie: "Client can not call LAYOUTRETURN until
+all in-flight RPCs return, with or without an error"
+
+Thanks
+Boaz
+
+> 
+> Section 18.44.3 - the description section of the LAYOUTRETURN operation:
+> 
+>    After this call,
+>    the client MUST NOT use the returned layout(s) and the associated
+>    storage protocol to access the file data.
+> 
+> Section 13.6 Operations Sent to NFSv4.1 Data Servers
+> 
+>   As described in Section 12.5.1, a client
+>   MUST NOT send an I/O to a data server for which it does not hold a
+>   valid layout; the data server MUST reject such an I/O.
+> 
+> 
+> -->Andy
+
 
