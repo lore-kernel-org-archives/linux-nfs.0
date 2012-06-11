@@ -1,109 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:35487 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S964838Ab2FAPjQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Jun 2012 11:39:16 -0400
-Received: by yenm10 with SMTP id m10so1857987yen.19
-        for <linux-nfs@vger.kernel.org>; Fri, 01 Jun 2012 08:39:16 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/4] NFS: Properly sort TEST_STATEID results
-To: linux-nfs@vger.kernel.org
-Date: Fri, 01 Jun 2012 11:38:14 -0400
-Message-ID: <20120601153814.5626.16055.stgit@degas.1015granger.net>
-In-Reply-To: <20120601153231.5626.89559.stgit@degas.1015granger.net>
-References: <20120601153231.5626.89559.stgit@degas.1015granger.net>
+Received: from mx1.redhat.com ([209.132.183.28]:28304 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751371Ab2FKQO2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Jun 2012 12:14:28 -0400
+Date: Mon, 11 Jun 2012 12:14:26 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: NFSv4 regression, kernel BUG at fs/nfsd/nfs4state.c:1044!
+Message-ID: <20120611161425.GF31109@pad.fieldses.org>
+References: <20120610090342.GA5076@cucamonga.audible.transient.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120610090342.GA5076@cucamonga.audible.transient.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The result of a TEST_STATEID operation can indicate a few different
-things.  If NFS_OK is returned, then the client can continue using the
-state ID under test, and skip recovery.  RFC 5661 says that if and
-only if the state ID was revoked, then the client must perform an
-explicit FREE_STATEID before trying to re-open.
+On Sun, Jun 10, 2012 at 09:03:42AM +0000, Jamie Heilman wrote:
+> Upgrading my NFSv4 server from 3.3.8 to 3.4.2 I've managed to
+> reproduce this reliably:
+> 
+> ------------[ cut here ]------------
+> kernel BUG at fs/nfsd/nfs4state.c:1044!
 
-However, if the server doesn't recognize the state ID at all, then the
-client should immediately continue with open recovery.
+That's 
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+	free_client(struct nfs4_client *clp)
+	{
+--->        	BUG_ON(!spin_is_locked(&client_lock));
 
- fs/nfs/nfs4proc.c |   38 ++++++++++++++++++++++++++++++++++++--
- 1 files changed, 36 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 4f1e824..39d641a 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1733,6 +1733,14 @@ static int nfs4_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *sta
- }
- 
- #if defined(CONFIG_NFS_V4_1)
-+/**
-+ * nfs41_check_expired_stateid - does a state ID need recovery?
-+ *
-+ * @state: NFSv4 open state for a file
-+ *
-+ * Returns NFS_OK if recovery for this state ID is now finished.
-+ * Otherwise a negative NFS4ERR value is returned.
-+ */
- static int nfs41_check_expired_stateid(struct nfs4_state *state, nfs4_stateid *stateid, unsigned int flags)
- {
- 	int status = NFS_OK;
-@@ -1740,9 +1748,19 @@ static int nfs41_check_expired_stateid(struct nfs4_state *state, nfs4_stateid *s
- 
- 	if (state->flags & flags) {
- 		status = nfs41_test_stateid(server, stateid);
--		if (status != NFS_OK) {
-+		switch (status) {
-+		case NFS_OK:
-+			/* server recognizes this one, don't re-open */
-+			break;
-+		case -NFS4ERR_ADMIN_REVOKED:
-+		case -NFS4ERR_DELEG_REVOKED:
-+			/* state was revoked, free then re-open */
- 			nfs41_free_stateid(server, stateid);
- 			state->flags &= ~flags;
-+			break;
-+		default:
-+			/* anything else: go ahead and re-open it */
-+			break;
- 		}
- 	}
- 	return status;
-@@ -4642,6 +4660,14 @@ out:
- }
- 
- #if defined(CONFIG_NFS_V4_1)
-+/**
-+ * nfs41_check_expired_locks - clear lock state IDs
-+ *
-+ * @state: NFSv4 open state for a file
-+ *
-+ * Returns NFS_OK if recovery for this state ID is now finished.
-+ * Otherwise a negative NFS4ERR value is returned.
-+ */
- static int nfs41_check_expired_locks(struct nfs4_state *state)
- {
- 	int status, ret = NFS_OK;
-@@ -4651,9 +4677,17 @@ static int nfs41_check_expired_locks(struct nfs4_state *state)
- 	list_for_each_entry(lsp, &state->lock_states, ls_locks) {
- 		if (lsp->ls_flags & NFS_LOCK_INITIALIZED) {
- 			status = nfs41_test_stateid(server, &lsp->ls_stateid);
--			if (status != NFS_OK) {
-+			switch (status) {
-+			case NFS_OK:
-+				/* server recognizes this one, don't re-lock */
-+				break;
-+			case -NFS4ERR_ADMIN_REVOKED:
-+			case -NFS4ERR_DELEG_REVOKED:
-+				/* lock was revoked, free then re-lock */
- 				nfs41_free_stateid(server, &lsp->ls_stateid);
- 				lsp->ls_flags &= ~NFS_LOCK_INITIALIZED;
-+				/*FALLTHROUGH*/
-+			default:
- 				ret = status;
- 			}
- 		}
+> invalid opcode: 0000 [#1] 
+> Modules linked in: md5 cpufreq_conservative cpufreq_stats cpufreq_powersave cpufreq_ondemand autofs4 quota_v2 quota_tree nfsd nfs_acl exportfs nfs lockd fscache auth_rpcgss sunrpc xt_mark xt_dscp cls_fw sch_htb iptable_nat nf_nat ipt_REJECT xt_multiport xt_mac xt_tcpudp iptable_mangle nf_conntrack_ipv4 nf_defrag_ipv4 xt_state nf_conntrack xt_LOG xt_limit iptable_filter ip_tables x_tables dm_crypt dm_mod snd_hda_codec_via tpm_tis tpm via_rhine snd_hda_intel snd_hda_codec tpm_bios mii via_velocity snd_hwdep snd_pcm snd_timer snd soundcore snd_page_alloc evdev crc_ccitt via_agp agpgart button
+> 
+> Pid: 1804, comm: nfsd Not tainted 3.4.2 #3 To Be Filled By O.E.M. To Be Filled By O.E.M./To be filled by O.E.M.
+> EIP: 0060:[<f86ac683>] EFLAGS: 00010246 CPU: 0
+> EIP is at free_client.isra.47+0x3/0x5 [nfsd]
+> EAX: 00000000 EBX: e9d48800 ECX: e9d48030 EDX: f86b20f8
+> ESI: e9d48810 EDI: e9cf9ec0 EBP: e9cf9eb4 ESP: e9cf9eb4
+>  DS: 007b ES: 007b FS: 0000 GS: 00e0 SS: 0068
+> CR0: 8005003b CR2: b760bee0 CR3: 34d04000 CR4: 000006b0
+> DR0: 00000000 DR1: 00000000 DR2: 00000000 DR3: 00000000
+> DR6: ffff0ff0 DR7: 00000400
+> Process nfsd (pid: 1804, ti=e9cf8000 task=e9cf4000 task.ti=e9cf8000)
+> Stack:
+>  e9cf9ed4 f86a6c00 e9d48828 e9cf9ec0 e9cf9ec0 e9d48800 e9d48000 00000000
+>  e9cf9f00 f86a6d36 00000000 000555c0 f53c0001 4fd43f69 00000001 7ad0b2a0
+>  f4c45000 f4c44060 00000360 e9cf9f3c f869f63c f86aff20 e9cb9000 00000000
+> Call Trace:
+>  [<f86a6c00>] expire_client+0xb1/0xb9 [nfsd]
 
+And the only free_client call there is:
+
+	spin_lock(&client_lock);
+	unhash_client_locked(clp);
+	if (atomic_read(&clp->cl_refcount) == 0)
+--->		free_client(clp);
+	spin_unlock(&client_lock);
+
+So, that's strange.
+
+--b.
+
+
+>  [<f86a6d36>] nfsd4_setclientid_confirm+0x12e/0x1c7 [nfsd]
+>  [<f869f63c>] nfsd4_proc_compound+0x1fd/0x354 [nfsd]
+>  [<f86946e3>] nfsd_dispatch+0x89/0x134 [nfsd]
+>  [<f86c6d64>] svc_process+0x327/0x4e3 [sunrpc]
+>  [<f86940d2>] nfsd+0xd2/0x10b [nfsd]
+>  [<f8694000>] ? 0xf8693fff
+>  [<c102d53a>] kthread+0x66/0x6b
+>  [<c102d4d4>] ? flush_kthread_worker+0x74/0x74
+>  [<c123193e>] kernel_thread_helper+0x6/0xd
+> Code: 01 80 3e 00 74 04 89 f2 eb a2 8b 4d e8 8b 55 ec 8b 45 f0 0f c8 89 19 89 02 31 c0 83 c4 18 5b 5e 5f 5d c3 55 89 e5 0f 0b 55 89 e5 <0f> 0b 55 89 e5 57 56 89 d6 53 89 c3 8b 78 34 89 d0 e8 b4 8f ff 
+> EIP: [<f86ac683>] free_client.isra.47+0x3/0x5 [nfsd] SS:ESP 0068:e9cf9eb4
+> ---[ end trace bf1613e00e6f3bbe ]---
+> 
+> System is a 32-bit Via C7; to reproduce I need only establish a NFSv4
+> mount from a client, then reboot the client.  The BUG happens when the
+> client attempts to reconnect.  At this point nfs service on the server
+> becomes something of a lost cause.  Userspace is Debian stable
+> (nfs-utils 1.2.2 based).  I haven't had a chance to bisect the issue
+> yet, I'll give that shot in the coming week if nobody knows of any
+> obvious fixes.  Let me know if there's any other info I can provide
+> that's useful.
+> 
+> -- 
+> Jamie Heilman                     http://audible.transient.net/~jamie/
