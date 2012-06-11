@@ -1,71 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:59312 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:49965 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756192Ab2FTJiT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jun 2012 05:38:19 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 12/12] Avoid dereferencing bd_disk during swap_entry_free for network storage
-Date: Wed, 20 Jun 2012 10:38:01 +0100
-Message-Id: <1340185081-22525-13-git-send-email-mgorman@suse.de>
-In-Reply-To: <1340185081-22525-1-git-send-email-mgorman@suse.de>
-References: <1340185081-22525-1-git-send-email-mgorman@suse.de>
+	id S1754186Ab2FKMhV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Jun 2012 08:37:21 -0400
+Date: Mon, 11 Jun 2012 08:37:18 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Subject: Re: [PATCH] NFS: hard-code init_net for NFS callback transports
+Message-ID: <20120611123718.GF7654@fieldses.org>
+References: <20120601095424.24427.74720.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120601095424.24427.74720.stgit@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit [b3a27d: swap: Add swap slot free callback to
-block_device_operations] dereferences p->bdev->bd_disk but this is a
-NULL dereference if using swap-over-NFS. This patch checks SWP_BLKDEV
-on the swap_info_struct before dereferencing.
+On Fri, Jun 01, 2012 at 01:55:47PM +0400, Stanislav Kinsbursky wrote:
+> This patch set is a bug fix for Bruce's 3.5 branch.
+> I'll rebase this for 3.4 and resend.
 
-With reference to this callback, Christoph Hellwig stated "Please
-just remove the callback entirely.  It has no user outside the staging
-tree and was added clearly against the rules for that staging tree".
-This would also be my preference but there was not an obvious way of
-keeping zram in staging/ happy.
+Apologies for neglecting this, I'm done with the bakeathon and should be
+back to this soon.
 
-Signed-off-by: Xiaotian Feng <dfeng@redhat.com>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
----
- mm/swapfile.c |    9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
+But, I'm a bit confused: you say you'll rebase this, but I've only seen
+two rebased patches for 3.4, and neither looks like a simple rebase of
+this one.
 
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index 7307fc9..e6c4b13 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -549,7 +549,6 @@ static unsigned char swap_entry_free(struct swap_info_struct *p,
- 
- 	/* free if no reference */
- 	if (!usage) {
--		struct gendisk *disk = p->bdev->bd_disk;
- 		if (offset < p->lowest_bit)
- 			p->lowest_bit = offset;
- 		if (offset > p->highest_bit)
-@@ -560,9 +559,11 @@ static unsigned char swap_entry_free(struct swap_info_struct *p,
- 		nr_swap_pages++;
- 		p->inuse_pages--;
- 		frontswap_invalidate_page(p->type, offset);
--		if ((p->flags & SWP_BLKDEV) &&
--				disk->fops->swap_slot_free_notify)
--			disk->fops->swap_slot_free_notify(p->bdev, offset);
-+		if (p->flags & SWP_BLKDEV) {
-+			struct gendisk *disk = p->bdev->bd_disk;
-+			if (disk->fops->swap_slot_free_notify)
-+				disk->fops->swap_slot_free_notify(p->bdev, offset);
-+		}
- 	}
- 
- 	return usage;
--- 
-1.7.9.2
+OK, I'll look more closely and probably I'll figure out.  But in
+general, a little more detail in changelogs would help me process
+patches more quickly:
 
+	- Please make sure it's clear whether a given patch is a bug
+	  fix, a new feature, or code reshuffling that isn't intended to
+	  change behavior.  If it's a bug fix, tell me whether we've had
+	  the bug forever or whether it's a recent regression.  And
+	  (relevant here) if it's a recent regression, reference the ID
+	  of the commit that introduced it.
+	- If something is a backport, please reference in the changelog
+	  the commit ID of the backported patch, especially if it's not
+	  obviously the same.
+
+--b.
+	
+
+> 
+> In case of destroying mount namespace on child reaper exit, nsproxy is zeroed
+> to the point already. So, dereferencing of it is invalid.
+> This patch hard-code "init_net" for all network namespace references for NFS
+> callback services. This will be fixed with proper NFS callback
+> containerization.
+> 
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> ---
+>  fs/nfs/callback.c |   11 +++++------
+>  1 files changed, 5 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+> index 970659d..23ff18f 100644
+> --- a/fs/nfs/callback.c
+> +++ b/fs/nfs/callback.c
+> @@ -17,7 +17,6 @@
+>  #include <linux/kthread.h>
+>  #include <linux/sunrpc/svcauth_gss.h>
+>  #include <linux/sunrpc/bc_xprt.h>
+> -#include <linux/nsproxy.h>
+>  
+>  #include <net/inet_sock.h>
+>  
+> @@ -107,7 +106,7 @@ nfs4_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+>  {
+>  	int ret;
+>  
+> -	ret = svc_create_xprt(serv, "tcp", xprt->xprt_net, PF_INET,
+> +	ret = svc_create_xprt(serv, "tcp", &init_net, PF_INET,
+>  				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
+>  	if (ret <= 0)
+>  		goto out_err;
+> @@ -115,7 +114,7 @@ nfs4_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+>  	dprintk("NFS: Callback listener port = %u (af %u)\n",
+>  			nfs_callback_tcpport, PF_INET);
+>  
+> -	ret = svc_create_xprt(serv, "tcp", xprt->xprt_net, PF_INET6,
+> +	ret = svc_create_xprt(serv, "tcp", &init_net, PF_INET6,
+>  				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
+>  	if (ret > 0) {
+>  		nfs_callback_tcpport6 = ret;
+> @@ -184,7 +183,7 @@ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+>  	 * fore channel connection.
+>  	 * Returns the input port (0) and sets the svc_serv bc_xprt on success
+>  	 */
+> -	ret = svc_create_xprt(serv, "tcp-bc", xprt->xprt_net, PF_INET, 0,
+> +	ret = svc_create_xprt(serv, "tcp-bc", &init_net, PF_INET, 0,
+>  			      SVC_SOCK_ANONYMOUS);
+>  	if (ret < 0) {
+>  		rqstp = ERR_PTR(ret);
+> @@ -254,7 +253,7 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+>  	char svc_name[12];
+>  	int ret = 0;
+>  	int minorversion_setup;
+> -	struct net *net = current->nsproxy->net_ns;
+> +	struct net *net = &init_net;
+>  
+>  	mutex_lock(&nfs_callback_mutex);
+>  	if (cb_info->users++ || cb_info->task != NULL) {
+> @@ -330,7 +329,7 @@ void nfs_callback_down(int minorversion)
+>  	cb_info->users--;
+>  	if (cb_info->users == 0 && cb_info->task != NULL) {
+>  		kthread_stop(cb_info->task);
+> -		svc_shutdown_net(cb_info->serv, current->nsproxy->net_ns);
+> +		svc_shutdown_net(cb_info->serv, &init_net);
+>  		svc_exit_thread(cb_info->rqst);
+>  		cb_info->serv = NULL;
+>  		cb_info->rqst = NULL;
+> 
