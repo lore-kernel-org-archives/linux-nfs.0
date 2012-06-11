@@ -1,59 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:51664 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755051Ab2FHMOm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jun 2012 08:14:42 -0400
-Message-ID: <4FD1ECA3.8000609@panasas.com>
-Date: Fri, 8 Jun 2012 15:14:27 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:42470 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752286Ab2FKOEg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jun 2012 10:04:36 -0400
+Received: by bkcji2 with SMTP id ji2so3556949bkc.19
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Jun 2012 07:04:35 -0700 (PDT)
+Message-ID: <4FD5FAEF.5040004@tonian.com>
+Date: Mon, 11 Jun 2012 17:04:31 +0300
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-CC: Benny Halevy <bhalevy@tonian.com>, Peng Tao <bergwolf@gmail.com>
-Subject: [PATCH 4/6] pnfs-obj: don't leak objio_state if ore_write/read fails
-References: <4FD1CEA8.3090105@panasas.com>
-In-Reply-To: <4FD1CEA8.3090105@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: "Welch, Brent" <welch@panasas.com>,
+        "Bhamare, Sachin" <sbhamare@panasas.com>,
+        "Adamson, Andy" <William.Adamson@netapp.com>,
+        Andy Adamson <androsadamson@gmail.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>,
+        "Huang, James" <jhuang@panasas.com>
+Subject: Re: [PATCH 2/3] NFSv4.1 mark layout when already returned
+References: <1338571178-2096-1-git-send-email-andros@netapp.com> <1338571178-2096-2-git-send-email-andros@netapp.com> <4FCA98E7.2030006@panasas.com> <1C92D18B-1977-4A12-A4DA-84DAC4B3E81E@netapp.com> <4FCE1DC1.6050100@panasas.com> <CAHVgHyXVCUdVFMO1WcRofOCvgDs7Reqsrs39qrZR7UnXWzG8RQ@mail.gmail.com> <4FD5C0EA.806@tonian.com> <4FD5CBF6.6030800@panasas.com>
+In-Reply-To: <4FD5CBF6.6030800@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 2012-06-11 13:44, Boaz Harrosh wrote:
+> On 06/11/2012 12:56 PM, Benny Halevy wrote:
+> 
+>>
+>> It will for recovering files striped with RAID as the LAYOUTRETURN
+>> provides the server with a reliable "commit point" where it knows
+>> exactly what was written successfully to each stripe and can make
+>> the most efficient decision about recovering it (if needed).
+>>
+>> Allowing I/O to the stripe post LAYOUTRETURN may result in data
+>> corruption due to parity inconsistency.
+>>
+> 
+> 
+> The fact of the matter is that we - object guys - Which care about
+> LAYOUTRETURN the most, have neglected to notice and fix the current
+> situation which is even worse than After Andy's patch. Which will
+> send multiple LAYOUTRETURNs on the same layout, and might still
+> continue IO on returned layouts.
+> 
+> Thanks Andy for testing and highlighting the current problem,
+> I will prioritized this development internally at Panasas and
+> will work on a solution ASAP. I hope one that will satisfy
+> all.
+> 
+> Basically my plan is to postpone the LAYOUTRETURN send to
+> when the segment is last referenced, if a flag was set to
+> do so, and make sure reference counting is done proper, so
+> after flag set the last IO_done will send the LAYOUTRETURN.
+> 
+> If that is OK with all I hope?
 
-[Bug since 3.2 Kernel]
-CC: Stable Tree <stable@kernel.org>
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/nfs/objlayout/objio_osd.c | 9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
+Sounds OK to me.  Thanks!
 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 0e7c833..422bdef 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -454,7 +454,10 @@ int objio_read_pagelist(struct nfs_read_data *rdata)
- 	objios->ios->done = _read_done;
- 	dprintk("%s: offset=0x%llx length=0x%x\n", __func__,
- 		rdata->args.offset, rdata->args.count);
--	return ore_read(objios->ios);
-+	ret = ore_read(objios->ios);
-+	if (unlikely(ret))
-+		objio_free_result(&objios->oir);
-+	return ret;
- }
- 
- /*
-@@ -555,8 +558,10 @@ int objio_write_pagelist(struct nfs_write_data *wdata, int how)
- 	dprintk("%s: offset=0x%llx length=0x%x\n", __func__,
- 		wdata->args.offset, wdata->args.count);
- 	ret = ore_write(objios->ios);
--	if (unlikely(ret))
-+	if (unlikely(ret)) {
-+		objio_free_result(&objios->oir);
- 		return ret;
-+	}
- 
- 	if (objios->sync)
- 		_write_done(objios->ios, objios);
--- 
-1.7.10.2.677.gb6bc67f
+Benny
 
-
+> 
+>> Benny
+>>
+> 
+> 
+> Thanks
+> Boaz
+> 
