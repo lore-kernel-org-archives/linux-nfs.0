@@ -1,236 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:65521 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757970Ab2FTTyI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jun 2012 15:54:08 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 05/10] NFS: Create a return_delegation rpc op
-Date: Wed, 20 Jun 2012 15:53:44 -0400
-Message-Id: <1340222029-18027-6-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1340222029-18027-1-git-send-email-bjschuma@netapp.com>
-References: <1340222029-18027-1-git-send-email-bjschuma@netapp.com>
+Received: from natasha.panasas.com ([67.152.220.90]:37187 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755431Ab2FKOpr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jun 2012 10:45:47 -0400
+Message-ID: <4FD60472.7020207@panasas.com>
+Date: Mon, 11 Jun 2012 17:45:06 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Jeff Layton <jlayton@redhat.com>
+CC: bfields <bfields@fieldses.org>, Steve Dickson <steved@redhat.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Joerg Platte <jplatte@naasa.net>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Hans de Bruin <jmdebruin@xmsnet.nl>
+Subject: Re: Kernel 3.4.X NFS server regression
+References: <4FD47D4E.9070307@naasa.net> <1339340441.4751.1.camel@lade.trondhjem.org> <20120611121634.GB7654@fieldses.org> <20120611083932.24e27e39@corrin.poochiereds.net> <4FD5F35A.3000903@panasas.com> <20120611095132.045a8d09@corrin.poochiereds.net> <4FD5FB28.4050003@panasas.com> <20120611101141.143fff3c@corrin.poochiereds.net>
+In-Reply-To: <20120611101141.143fff3c@corrin.poochiereds.net>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On 06/11/2012 05:11 PM, Jeff Layton wrote:
 
-Delegations are a v4 feature, so push return_delegation out of the
-generic client by creating a new rpc_op and renaming the old function to
-be in the nfs v4 "namespace"
+> On Mon, 11 Jun 2012 17:05:28 +0300
+> Boaz Harrosh <bharrosh@panasas.com> wrote:
+> 
+>> On 06/11/2012 04:51 PM, Jeff Layton wrote:
+>>
+>>>
+>>> That was considered here, but the problem with the usermode helper is
+>>> that you can't pass anything back to the kernel but a simple status
+>>> code (and that's assuming that you wait for it to exit). In the near
+>>> future, we'll need to pass back more info to the kernel for this, so
+>>> the usermode helper callout wasn't suitable.
+>>>
+>>
+>>
+>> I have answered that in my mail. Repeated here again. Well you made 
+>> a simple mistake. Because it is *easy* to pass back any number and
+>> size of information from user-mode.
+>>
+>> You just setup a sysfs entry points where the answers are written
+>> back to. It's an easy trick to setup a thread safe, way with a
+>> cookie but 90% of the time you don't have to. Say you set up
+>> a structure of per-client (identified uniquely) then user mode
+>> answers back per client, concurrency will not do any harm, since
+>> you answer to the same question the same answer. ans so on. Each
+>> problem it's own.
+>>
+>> If you want we can talk about this, it would be easy for me to setup
+>> a toll free conference number we can all use.
+> 
+> That helpful advice would have been welcome about 3-4 months ago when I
+> first proposed this in detail. At that point you're working with
+> multiple upcall/downcall mechanisms, which was something I was keen to
+> avoid.
+> 
+> I'm not opposed to moving in that direction, but it basically means
+> you're going to rip out everything I've got here so far and replace it.
+> 
+> If you're willing to do that work, I'll be happy to work with you on
+> it, but I don't have the time or inclination to do that on my own right
+> now.
+> 
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/delegation.c     | 2 +-
- fs/nfs/delegation.h     | 8 +-------
- fs/nfs/dir.c            | 8 ++++----
- fs/nfs/inode.c          | 2 +-
- fs/nfs/nfs3proc.c       | 7 +++++++
- fs/nfs/nfs4proc.c       | 7 ++++---
- fs/nfs/proc.c           | 7 +++++++
- fs/nfs/unlink.c         | 2 +-
- include/linux/nfs_xdr.h | 1 +
- 9 files changed, 27 insertions(+), 17 deletions(-)
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 36c7c64..81c5eec 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -388,7 +388,7 @@ void nfs_inode_return_delegation_noreclaim(struct inode *inode)
-  *
-  * Returns zero on success, or a negative errno value.
-  */
--int nfs_inode_return_delegation(struct inode *inode)
-+int nfs4_inode_return_delegation(struct inode *inode)
- {
- 	struct nfs_server *server = NFS_SERVER(inode);
- 	struct nfs_inode *nfsi = NFS_I(inode);
-diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
-index d134fc5..1f3ccd9 100644
---- a/fs/nfs/delegation.h
-+++ b/fs/nfs/delegation.h
-@@ -33,7 +33,7 @@ enum {
- 
- int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct nfs_openres *res);
- void nfs_inode_reclaim_delegation(struct inode *inode, struct rpc_cred *cred, struct nfs_openres *res);
--int nfs_inode_return_delegation(struct inode *inode);
-+int nfs4_inode_return_delegation(struct inode *inode);
- int nfs_async_inode_return_delegation(struct inode *inode, const nfs4_stateid *stateid);
- void nfs_inode_return_delegation_noreclaim(struct inode *inode);
- 
-@@ -58,12 +58,6 @@ bool nfs4_copy_delegation_stateid(nfs4_stateid *dst, struct inode *inode, fmode_
- void nfs_mark_delegation_referenced(struct nfs_delegation *delegation);
- int nfs4_have_delegation(struct inode *inode, fmode_t flags);
- 
--#else
--static inline int nfs_inode_return_delegation(struct inode *inode)
--{
--	nfs_wb_all(inode);
--	return 0;
--}
- #endif
- 
- static inline int nfs_have_delegated_attributes(struct inode *inode)
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 4a3e23a..68e451f 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1778,7 +1778,7 @@ static int nfs_safe_remove(struct dentry *dentry)
- 	}
- 
- 	if (inode != NULL) {
--		nfs_inode_return_delegation(inode);
-+		NFS_PROTO(inode)->return_delegation(inode);
- 		error = NFS_PROTO(dir)->remove(dir, &dentry->d_name);
- 		/* The VFS may want to delete this inode */
- 		if (error == 0)
-@@ -1906,7 +1906,7 @@ nfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *dentry)
- 		old_dentry->d_parent->d_name.name, old_dentry->d_name.name,
- 		dentry->d_parent->d_name.name, dentry->d_name.name);
- 
--	nfs_inode_return_delegation(inode);
-+	NFS_PROTO(inode)->return_delegation(inode);
- 
- 	d_drop(dentry);
- 	error = NFS_PROTO(dir)->link(inode, dir, &dentry->d_name);
-@@ -1990,9 +1990,9 @@ static int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		}
- 	}
- 
--	nfs_inode_return_delegation(old_inode);
-+	NFS_PROTO(old_inode)->return_delegation(old_inode);
- 	if (new_inode != NULL)
--		nfs_inode_return_delegation(new_inode);
-+		NFS_PROTO(new_inode)->return_delegation(new_inode);
- 
- 	error = NFS_PROTO(old_dir)->rename(old_dir, &old_dentry->d_name,
- 					   new_dir, &new_dentry->d_name);
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 0f0b928..28c9ebb 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -430,7 +430,7 @@ nfs_setattr(struct dentry *dentry, struct iattr *attr)
- 	 * Return any delegations if we're going to change ACLs
- 	 */
- 	if ((attr->ia_valid & (ATTR_MODE|ATTR_UID|ATTR_GID)) != 0)
--		nfs_inode_return_delegation(inode);
-+		NFS_PROTO(inode)->return_delegation(inode);
- 	error = NFS_PROTO(inode)->setattr(dentry, fattr, attr);
- 	if (error == 0)
- 		nfs_refresh_inode(inode, fattr);
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index 08f8326..4749a32 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -882,6 +882,12 @@ static int nfs3_have_delegation(struct inode *inode, fmode_t flags)
- 	return 0;
- }
- 
-+static int nfs3_return_delegation(struct inode *inode)
-+{
-+	nfs_wb_all(inode);
-+	return 0;
-+}
-+
- const struct nfs_rpc_ops nfs_v3_clientops = {
- 	.version	= 3,			/* protocol version */
- 	.dentry_ops	= &nfs_dentry_operations,
-@@ -927,5 +933,6 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
- 	.clear_acl_cache = nfs3_forget_cached_acls,
- 	.close_context	= nfs_close_context,
- 	.have_delegation = nfs3_have_delegation,
-+	.return_delegation = nfs3_return_delegation,
- 	.init_client	= nfs_init_client,
- };
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 993d6ec..b2cd0f1 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -295,7 +295,7 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
- 			return 0;
- 		case -NFS4ERR_OPENMODE:
- 			if (inode && nfs4_have_delegation(inode, FMODE_READ)) {
--				nfs_inode_return_delegation(inode);
-+				nfs4_inode_return_delegation(inode);
- 				exception->retry = 1;
- 				return 0;
- 			}
-@@ -1065,7 +1065,7 @@ static void nfs4_return_incompatible_delegation(struct inode *inode, fmode_t fmo
- 		return;
- 	}
- 	rcu_read_unlock();
--	nfs_inode_return_delegation(inode);
-+	nfs4_inode_return_delegation(inode);
- }
- 
- static struct nfs4_state *nfs4_try_open_cached(struct nfs4_opendata *opendata)
-@@ -3868,7 +3868,7 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
- 	i = buf_to_pages_noslab(buf, buflen, arg.acl_pages, &arg.acl_pgbase);
- 	if (i < 0)
- 		return i;
--	nfs_inode_return_delegation(inode);
-+	nfs4_inode_return_delegation(inode);
- 	ret = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 
- 	/*
-@@ -6803,6 +6803,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
- 	.close_context  = nfs4_close_context,
- 	.open_context	= nfs4_atomic_open,
- 	.have_delegation = nfs4_have_delegation,
-+	.return_delegation = nfs4_inode_return_delegation,
- 	.init_client	= nfs4_init_client,
- };
- 
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index 4aed3dd..1663293 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -739,6 +739,12 @@ static int nfs_have_delegation(struct inode *inode, fmode_t flags)
- 	return 0;
- }
- 
-+static int nfs_return_delegation(struct inode *inode)
-+{
-+	nfs_wb_all(inode);
-+	return 0;
-+}
-+
- const struct nfs_rpc_ops nfs_v2_clientops = {
- 	.version	= 2,		       /* protocol version */
- 	.dentry_ops	= &nfs_dentry_operations,
-@@ -783,5 +789,6 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
- 	.lock_check_bounds = nfs_lock_check_bounds,
- 	.close_context	= nfs_close_context,
- 	.have_delegation = nfs_have_delegation,
-+	.return_delegation = nfs_return_delegation,
- 	.init_client	= nfs_init_client,
- };
-diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
-index 3210a03..13cea63 100644
---- a/fs/nfs/unlink.c
-+++ b/fs/nfs/unlink.c
-@@ -501,7 +501,7 @@ nfs_sillyrename(struct inode *dir, struct dentry *dentry)
- 		(unsigned long long)NFS_FILEID(dentry->d_inode));
- 
- 	/* Return delegation in anticipation of the rename */
--	nfs_inode_return_delegation(dentry->d_inode);
-+	NFS_PROTO(dentry->d_inode)->return_delegation(dentry->d_inode);
- 
- 	sdentry = NULL;
- 	do {
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 8787f77..62235be 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1423,6 +1423,7 @@ struct nfs_rpc_ops {
- 				int open_flags,
- 				struct iattr *iattr);
- 	int (*have_delegation)(struct inode *, fmode_t);
-+	int (*return_delegation)(struct inode *);
- 	struct nfs_client *
- 		(*init_client) (struct nfs_client *, const struct rpc_timeout *,
- 				const char *, rpc_authflavor_t);
--- 
-1.7.11
+No such luck. sorry. I wish I could, but coming from a competing server
+company, you can imagine the priority of that ever happening.
+(Even though I use the Linux-Server everyday for my development and
+ am putting lots of efforts into still, mainly in pnfs)
 
+Hopefully re-examining the code, it could all be salvaged just the
+same, only lots of code thrown a way.
+
+But mean-while please address my concern below:
+Boaz Harrosh wrote: 
+
+> One more thing, the most important one. We have already fixed that in the
+> past and I was hoping the lesson was learned. Apparently it was not, and
+> we are doomed to do this mistake for ever!!
+> 
+> What ever crap fails times out and crashes, in the recovery code, we don't
+> give a dam. It should never affect any Server-client communication.
+> 
+> When the grace periods ends the clients gates opens period. *Any* error
+> return from state recovery code must be carefully ignored and normal
+> operations resumed. At most on error, we move into a mode where any
+> recovery request from client is accepted, since we don't have any better
+> data to verify it.
+> 
+> Please comb recovery code to make sure any catastrophe is safely ignored.
+> We already did that before and it used to work.
+
+
+We should make sure that any state recovery code does not interfere with
+regular operations. and fails gracefully / shuts up. 
+
+We used to have that, apparently it re-broke. Clients should always be granted
+access, after grace period. And Server should be made sure not to fail in any
+situation.
+
+I would look into it but I'm not uptodate anymore, I wish you or Bruce could.
+
+Thanks for your work so far, sorry to be bearer of bad news
+Boaz
