@@ -1,75 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f172.google.com ([209.85.212.172]:63630 "EHLO
-	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754685Ab2F0Ajf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jun 2012 20:39:35 -0400
-MIME-Version: 1.0
-In-Reply-To: <4FEA4DE7.3030606@gmail.com>
-References: <1340448446-10198-1-git-send-email-linkinjeon@gmail.com>
-	<20120623115106.GA2742@umich.edu>
-	<5AC2C9F0-EEFE-423E-BBB9-27102D1CA163@oracle.com>
-	<CAKYAXd_QKsiTV86H4eykjOzfJc8Who1T8in5TmnJyxigw=+7AQ@mail.gmail.com>
-	<20120624124625.GA15586@umich.edu>
-	<CAKYAXd-OT9nV--vYOseGYHp35g3qo86rzYJPDiP454ipoGJ2Xw@mail.gmail.com>
-	<4FEA4DE7.3030606@gmail.com>
-Date: Wed, 27 Jun 2012 09:39:33 +0900
-Message-ID: <CAKYAXd9V7GyLNcsn5pkR34ckzsJGSxykXoPFo=91NO5tPeCU+g@mail.gmail.com>
-Subject: Re: [RFC PATCH] nfs: Support posix_fadvise(POSIX_FADV_RANDOM) on nfs server.
-From: Namjae Jeon <linkinjeon@gmail.com>
-To: Dean <seattleplus@gmail.com>
-Cc: "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+Received: from fieldses.org ([174.143.236.118]:36688 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754452Ab2FKPPT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Jun 2012 11:15:19 -0400
+Date: Mon, 11 Jun 2012 11:15:11 -0400
+From: bfields <bfields@fieldses.org>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Jeff Layton <jlayton@redhat.com>, Steve Dickson <steved@redhat.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Joerg Platte <jplatte@naasa.net>,
         "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Namjae Jeon <namjae.jeon@samsung.com>,
-        VivekTrivedi <t.vivek@samsung.com>,
-        Amit Sahrawat <a.sahrawat@samsung.com>
-Content-Type: text/plain; charset=UTF-8
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Hans de Bruin <jmdebruin@xmsnet.nl>
+Subject: Re: Kernel 3.4.X NFS server regression
+Message-ID: <20120611151511.GH7654@fieldses.org>
+References: <4FD47D4E.9070307@naasa.net>
+ <1339340441.4751.1.camel@lade.trondhjem.org>
+ <20120611121634.GB7654@fieldses.org>
+ <20120611083932.24e27e39@corrin.poochiereds.net>
+ <4FD5F35A.3000903@panasas.com>
+ <4FD5F629.1070508@panasas.com>
+ <20120611102947.229cf077@corrin.poochiereds.net>
+ <4FD60839.3000508@panasas.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FD60839.3000508@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi. Dean.
+On Mon, Jun 11, 2012 at 06:01:13PM +0300, Boaz Harrosh wrote:
+> On 06/11/2012 05:29 PM, Jeff Layton wrote:
+> 
+> > On Mon, 11 Jun 2012 16:44:09 +0300
+> > Boaz Harrosh <bharrosh@panasas.com> wrote:
+> > 
+> >> On 06/11/2012 04:32 PM, Boaz Harrosh wrote:
+> >>
+> >>> On 06/11/2012 03:39 PM, Jeff Layton wrote:
+> >>>
+> >>>>>
+> >>>>> But I'm guessing we were wrong to assume that existing setups that
+> >>>>> people perceived as working would have that path, because the failures
+> >>>>> in the absence of that path were probably less obvious.
+> >>>>>
+> >>
+> >>
+> >> One more thing, the most important one. We have already fixed that in the
+> >> past and I was hoping the lesson was learned. Apparently it was not, and
+> >> we are doomed to do this mistake for ever!!
+> >>
+> >> What ever crap fails times out and crashes, in the recovery code, we don't
+> >> give a dam. It should never affect any Server-client communication.
+> >>
+> >> When the grace periods ends the clients gates opens period. *Any* error
+> >> return from state recovery code must be carefully ignored and normal
+> >> operations resumed. At most on error, we move into a mode where any
+> >> recovery request from client is accepted, since we don't have any better
+> >> data to verify it.
+> >>
+> >> Please comb recovery code to make sure any catastrophe is safely ignored.
+> >> We already did that before and it used to work.
+> >>
+> > 
+> > That's not the case, and hasn't ever been AFAICT. The code has changed
+> > a bit recently, but the existing behavior in this regard was preserved.
+> > From nfs4_check_open_reclaim:
+> > 
+> >         return nfsd4_client_record_check(clp) ? nfserr_reclaim_bad : nfs_ok;
+> > 
+> > ...if there is no client record, then the reclaim request fails. Doesn't
+> > the RFC mandate that?
+> > 
+> 
+> 
+> Regardless of what RFC mandates and what is returned to client, (Which sounds
+> very unrobust to me) I'm sure the client handles nfserr_reclaim_bad just
+> fine.
+> 
+> It's the server that's getting stuck in its own feet and stops responding.
+> That's what I meant. We should always resume normal operations after
+> the grace period ends.
+> 
+> I did not see any reports of client getting into trouble because of
+> unexpected nfserr_reclaim_bad, did you?
 
-I have currenlty been having the deep interest about NFS. If I have a
-chance to help you for NFSv2, It is a great honor for me.
-Acutally I don't know how to contribute something for NFSv2 spec. If
-you give me some guide or advice, I will join postively.
+We did have a few bugs in that area, and as far as I know they're fixed
+(and have stayed fixed!).
 
-Thanks.
+The one other thing we've seen at testing events is clients not sending
+reclaim_complete: not only is it mandatory (with state to reclaim or
+not), it's actually mandatory for servers to fail further operations
+until it's sent.  However the problems were all seen with unreleased
+client code that the implementors said they'd fix.
 
-2012/6/27, Dean <seattleplus@gmail.com>:
-> Hi Namjae,
->
-> I'm glad you also see the usefulness of sending such hints to the NFS
-> server.
->
-> Beyond reviewing the  NFSv4.2 spec, it would also be very useful to
-> implement a version of IO_ADVISE and show performance results with your
-> traverse test (among others).  If you have time for this, that would
-> really be helpful in ensuring the usefulness of IO_ADVISE.
->
-> Dean Hildebrand
->
-> On 6/24/12 6:54 PM, Namjae Jeon wrote:
->> 2012/6/24, Jim Rees <rees@umich.edu>:
->>> Namjae Jeon wrote:
->>>
->>>    > Yes, posix_fadvise support is part of NFSv4.2.
->>>    Where can I check it ?
->>>    Thanks.
->>>
->>> NFS is standardized throught the IETF.  4.2 is not out yet, so you'll
->>> find
->>> it in the drafts rather than the RFCs.  You can search them here:
->>> http://www.rfc-editor.org/idsearch.html
->>>
->>> Here is the current draft:
->>> ftp://ftp.rfc-editor.org/in-notes/internet-drafts/draft-ietf-nfsv4-minorversion2-12.txt
->>>
->> Okay, I will check, Thanks a lot Jim~. We hope to contribute NFSv4.2.
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
->
+--b.
