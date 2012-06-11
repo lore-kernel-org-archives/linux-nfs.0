@@ -1,54 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from earth.cora.nwra.com ([4.28.99.180]:46431 "EHLO
-	mail.cora.nwra.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S965519Ab2FAQxF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Jun 2012 12:53:05 -0400
-Message-ID: <4FC8F36D.5040504@cora.nwra.com>
-Date: Fri, 01 Jun 2012 10:53:01 -0600
-From: Orion Poplawski <orion@cora.nwra.com>
+Received: from natasha.panasas.com ([67.152.220.90]:35013 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753887Ab2FKNoh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jun 2012 09:44:37 -0400
+Message-ID: <4FD5F629.1070508@panasas.com>
+Date: Mon, 11 Jun 2012 16:44:09 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Spurious rpc.idmapd nss_getpwnam: name 'nobody' does not map
- into domain messages
-References: <loom.20120601T174414-583@post.gmane.org>  <1338566283.2774.19.camel@lade.trondhjem.org>  <4FC8ED22.40508@cora.nwra.com> <1338568876.2774.25.camel@lade.trondhjem.org>
-In-Reply-To: <1338568876.2774.25.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+To: Jeff Layton <jlayton@redhat.com>, bfields <bfields@fieldses.org>,
+        Steve Dickson <steved@redhat.com>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Joerg Platte <jplatte@naasa.net>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Hans de Bruin <jmdebruin@xmsnet.nl>
+Subject: Re: Kernel 3.4.X NFS server regression
+References: <4FD47D4E.9070307@naasa.net> <1339340441.4751.1.camel@lade.trondhjem.org> <20120611121634.GB7654@fieldses.org> <20120611083932.24e27e39@corrin.poochiereds.net> <4FD5F35A.3000903@panasas.com>
+In-Reply-To: <4FD5F35A.3000903@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/01/2012 10:41 AM, Myklebust, Trond wrote:
-> On Fri, 2012-06-01 at 10:26 -0600, Orion Poplawski wrote:
->> So absence of @ indicates no need to translate locally, so don't complain
->> about it.  So how about this:
->>
->> --- ./libnfsidmap-0.25/nss.c.nobody     2011-12-05 13:28:10.000000000 -0700
->> +++ ./libnfsidmap-0.25/nss.c    2012-06-01 10:23:53.408603517 -0600
->> @@ -177,9 +177,10 @@
->>           IDMAP_LOG(4, ("nss_getpwnam: name '%s' domain '%s': "
->>                     "resulting localname '%s'\n", name, domain, localname));
->>           if (localname == NULL) {
->> -               IDMAP_LOG(0, ("nss_getpwnam: name '%s' does not map "
->> -                       "into domain '%s'\n", name,
->> -                       domain ? domain : "<not-provided>"));
->> +               if (strchr(name, '@' != NULL)
->> +                       IDMAP_LOG(0, ("nss_getpwnam: name '%s' does not map "
->> +                               "into domain '%s'\n", name,
->> +                               domain ? domain : "<not-provided>"));
->>                   goto err_free_buf;
->>           }
->
-> ACK. That looks about right...
->
+On 06/11/2012 04:32 PM, Boaz Harrosh wrote:
 
-Another possibility is that we shouldn't even be calling nss_getpwnam() in the 
-first place in this case, but I don't know the code well enough to pursue that 
-or if it's worth it.
+> On 06/11/2012 03:39 PM, Jeff Layton wrote:
+> 
+>>>
+>>> But I'm guessing we were wrong to assume that existing setups that
+>>> people perceived as working would have that path, because the failures
+>>> in the absence of that path were probably less obvious.
+>>>
 
 
--- 
-Orion Poplawski
-Technical Manager                     303-415-9701 x222
-NWRA, Boulder Office                  FAX: 303-415-9702
-3380 Mitchell Lane                       orion@nwra.com
-Boulder, CO 80301                   http://www.nwra.com
+One more thing, the most important one. We have already fixed that in the
+past and I was hoping the lesson was learned. Apparently it was not, and
+we are doomed to do this mistake for ever!!
+
+What ever crap fails times out and crashes, in the recovery code, we don't
+give a dam. It should never affect any Server-client communication.
+
+When the grace periods ends the clients gates opens period. *Any* error
+return from state recovery code must be carefully ignored and normal
+operations resumed. At most on error, we move into a mode where any
+recovery request from client is accepted, since we don't have any better
+data to verify it.
+
+Please comb recovery code to make sure any catastrophe is safely ignored.
+We already did that before and it used to work.
+
+>>> --b.
+
+
+Thanks
+Boaz
+
