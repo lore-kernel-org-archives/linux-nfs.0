@@ -1,41 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:61177 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753545Ab2FTRJ0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jun 2012 13:09:26 -0400
-Message-ID: <4FE20378.70105@redhat.com>
-Date: Wed, 20 Jun 2012 13:08:08 -0400
-From: Rik van Riel <riel@redhat.com>
+Received: from natasha.panasas.com ([67.152.220.90]:60472 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751451Ab2FKKoW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jun 2012 06:44:22 -0400
+Message-ID: <4FD5CBF6.6030800@panasas.com>
+Date: Mon, 11 Jun 2012 13:44:06 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-To: Mel Gorman <mgorman@suse.de>
-CC: Andrew Morton <akpm@linux-foundation.org>, Linux-MM <linux-mm@kvack.org>,
-        Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>
-Subject: Re: [PATCH 07/12] mm: Add support for direct_IO to highmem pages
-References: <1340185081-22525-1-git-send-email-mgorman@suse.de> <1340185081-22525-8-git-send-email-mgorman@suse.de>
-In-Reply-To: <1340185081-22525-8-git-send-email-mgorman@suse.de>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: Benny Halevy <bhalevy@tonian.com>, "Welch, Brent" <welch@panasas.com>,
+        "Bhamare, Sachin" <sbhamare@panasas.com>
+CC: "Adamson, Andy" <William.Adamson@netapp.com>,
+        Andy Adamson <androsadamson@gmail.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>,
+        "Huang, James" <jhuang@panasas.com>
+Subject: Re: [PATCH 2/3] NFSv4.1 mark layout when already returned
+References: <1338571178-2096-1-git-send-email-andros@netapp.com> <1338571178-2096-2-git-send-email-andros@netapp.com> <4FCA98E7.2030006@panasas.com> <1C92D18B-1977-4A12-A4DA-84DAC4B3E81E@netapp.com> <4FCE1DC1.6050100@panasas.com> <CAHVgHyXVCUdVFMO1WcRofOCvgDs7Reqsrs39qrZR7UnXWzG8RQ@mail.gmail.com> <4FD5C0EA.806@tonian.com>
+In-Reply-To: <4FD5C0EA.806@tonian.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/20/2012 05:37 AM, Mel Gorman wrote:
-> The patch "mm: Add support for a filesystem to activate swap files and
-> use direct_IO for writing swap pages" added support for using direct_IO
-> to write swap pages but it is insufficient for highmem pages.
->
-> To support highmem pages, this patch kmaps() the page before calling the
-> direct_IO() handler. As direct_IO deals with virtual addresses an
-> additional helper is necessary for get_kernel_pages() to lookup the
-> struct page for a kmap virtual address.
->
-> Signed-off-by: Mel Gorman<mgorman@suse.de>
+On 06/11/2012 12:56 PM, Benny Halevy wrote:
 
-Acked-by: Rik van Riel<riel@redhat.com>
+> 
+> It will for recovering files striped with RAID as the LAYOUTRETURN
+> provides the server with a reliable "commit point" where it knows
+> exactly what was written successfully to each stripe and can make
+> the most efficient decision about recovering it (if needed).
+> 
+> Allowing I/O to the stripe post LAYOUTRETURN may result in data
+> corruption due to parity inconsistency.
+> 
+
+
+The fact of the matter is that we - object guys - Which care about
+LAYOUTRETURN the most, have neglected to notice and fix the current
+situation which is even worse than After Andy's patch. Which will
+send multiple LAYOUTRETURNs on the same layout, and might still
+continue IO on returned layouts.
+
+Thanks Andy for testing and highlighting the current problem,
+I will prioritized this development internally at Panasas and
+will work on a solution ASAP. I hope one that will satisfy
+all.
+
+Basically my plan is to postpone the LAYOUTRETURN send to
+when the segment is last referenced, if a flag was set to
+do so, and make sure reference counting is done proper, so
+after flag set the last IO_done will send the LAYOUTRETURN.
+
+If that is OK with all I hope?
+
+> Benny
+> 
+
+
+Thanks
+Boaz
 
