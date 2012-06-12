@@ -1,88 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:57502 "EHLO
+Received: from natasha.panasas.com ([67.152.220.90]:58293 "EHLO
 	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750877Ab2FGKQ4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jun 2012 06:16:56 -0400
-Message-ID: <4FD07F7D.6070509@panasas.com>
-Date: Thu, 7 Jun 2012 13:16:29 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+	with ESMTP id S1751758Ab2FLQeM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Jun 2012 12:34:12 -0400
+From: "Welch, Brent" <welch@panasas.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "Harrosh, Boaz" <bharrosh@panasas.com>
+CC: NFS list <linux-nfs@vger.kernel.org>,
+        "Adamson, Andy" <William.Adamson@netapp.com>,
+        Andy Adamson <androsadamson@gmail.com>, NFSv4 <nfsv4@ietf.org>
+Subject: RE: RFC 5661 LAYOUTRETURN clarification.
+Date: Tue, 12 Jun 2012 16:34:06 +0000
+Message-ID: <DA636AC7BF798243A4007D3AA0B3D3A75AB40E9D@seabiscuit.int.panasas.com>
+References: <CAHVgHyUpM0rQWqO5-id+FohPKm1Lk=kkekf7HqzpfKcfvxx23A@mail.gmail.com>
+	<4FD63BAF.8040107@panasas.com> <1339441159.19775.25.camel@lade.trondhjem.org>
+In-Reply-To: <1339441159.19775.25.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-To: Namjae Jeon <linkinjeon@gmail.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        Amit Sahrawat <a.sahrawat@samsung.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Namjae Jeon <namjae.jeon@samsung.com>
-Subject: Re: [Problem]NFS Server =?UTF-8?B?4oCTIFVtb3VudCByZXN1bHRzIGluIEQ=?=
- =?UTF-8?B?ZXZpY2UgQnVzeS4=?=
-References: <CAKYAXd-HCfcejT=kG-kSXWCmfmxTjrT2o+b3Zan+BCrS1Y2ovw@mail.gmail.com> <4FD06290.7050004@panasas.com> <CAKYAXd8rwY-mHiO+5691qq5w=O-Gs1FXQ4CjEbPDLVnPSkkBTQ@mail.gmail.com>
-In-Reply-To: <CAKYAXd8rwY-mHiO+5691qq5w=O-Gs1FXQ4CjEbPDLVnPSkkBTQ@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/07/2012 12:43 PM, Namjae Jeon wrote:
+This is why the objects layout communicates errors upon layout return.
 
-> 2012/6/7, Boaz Harrosh <bharrosh@panasas.com>:
->> On 06/07/2012 10:47 AM, Namjae Jeon wrote:
->>
->>> Hi Bruce, Trond.
->>>
->>> As you know, Currently umount results in busy on NFS server although
->>> user tried to succeed to umount on NFS client.
->>> I suggest to add umount procedure to avoid umount busy issue.
->>> When calling umount on NFS client, The resources(exportfs entries
->>> cache) of mount point will be flushed on NFS server. and umount will
->>> be succeed without busy issue.
->>>
->>> how do you think about this suggestion ?
->>>
->>
->>
->> I second this request, what is needed so when all clients unmounted,
->> the system comes back to the sate it was before any clients have
->> mounted. i.e filesystems is not referenced and may unmount cleanly.
->> (This also happens with >= 4.0 clients only, so no excuses)
->>
->> This is a real problem for me, on Fedora machines. Because I export
->> iscsi devices which are network devices, and in the shutdown procedure
->> for some reason the "service nfs stop" of the server is much much to
->> late. the original umount of exofs (-o _netdev) fails because it's
->> held by NFSD, the iscsi devices go away regardless, and when nfsd
->> finally releases exofs, it gets deadlocked on some error handling.
->> OK I know I must fix the stuck-ness, but the problem will remain.
->> The FS will not unmount cleanly because it will only attempt
->> an unmount after its devices are gone. This will be solved if
->> nfsd would release its hold on the FS when all clients are gone.
->>
->> It was on my TODO to fix this for a long time, but I seem to be
->> too busy with more urgent matters. (What's the point of fixing the
->> shutdown if the steady state doesn't work yet)
->>
->> If someone has investigated the matter and knows what to do I would
->> appreciate any insights, and/or patches would be wonderful ;-)
-> Hi Boaz.
-> Oh.. You also are facing same problem.
-> Actually I almost finish to imprement the patch about umount busy
-> issue on NFS server. But I want to know Maintainer's opinion before
-> posting.
-> Thanks.
+When you suffer write timeouts (or any errors) with a DS, then the client promptly returns the layout with an indication of what went wrong.  This should be the intent of whatever words are in the RFC.
+
+--
+Brent
 
 
-Please post it (maybe as RFC) I want to see it
+-----Original Message-----
+From: nfsv4-bounces@ietf.org [mailto:nfsv4-bounces@ietf.org] On Behalf Of Myklebust, Trond
+Sent: Monday, June 11, 2012 11:59 AM
+To: Harrosh, Boaz
+Cc: NFS list; Adamson, Andy; Andy Adamson; NFSv4
+Subject: Re: [nfsv4] RFC 5661 LAYOUTRETURN clarification.
 
-Thanks
-Boaz
+On Mon, 2012-06-11 at 21:40 +0300, Boaz Harrosh wrote:
 
->>
->>> Thanks.
->>>
->>
->> <>
->>
->> Thanks
->> Boaz
->>
->>
+> And again, please explain why do you want it. What is wrong with the
+> case we all agree with? ie: "Client can not call LAYOUTRETURN until
+> all in-flight RPCs return, with or without an error"
 
+Who "agreed" to this? This would mean that if the DS goes down, we can't
+ever send LAYOUTRETURN which is patently wrong.
 
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
+_______________________________________________
+nfsv4 mailing list
+nfsv4@ietf.org
+https://www.ietf.org/mailman/listinfo/nfsv4
