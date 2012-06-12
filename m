@@ -1,43 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:51087 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:12110 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754165Ab2FTRjj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jun 2012 13:39:39 -0400
-Message-ID: <4FE20A8C.6000207@redhat.com>
-Date: Wed, 20 Jun 2012 13:38:20 -0400
-From: Rik van Riel <riel@redhat.com>
-MIME-Version: 1.0
-To: Mel Gorman <mgorman@suse.de>
-CC: Andrew Morton <akpm@linux-foundation.org>, Linux-MM <linux-mm@kvack.org>,
-        Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>
-Subject: Re: [PATCH 10/12] nfs: enable swap on NFS
-References: <1340185081-22525-1-git-send-email-mgorman@suse.de> <1340185081-22525-11-git-send-email-mgorman@suse.de>
-In-Reply-To: <1340185081-22525-11-git-send-email-mgorman@suse.de>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+	id S1752191Ab2FLLvX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Jun 2012 07:51:23 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q5CBpMNg012647
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 12 Jun 2012 07:51:23 -0400
+From: harald@redhat.com
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, jlayton@redhat.com,
+        Harald Hoyer <harald@redhat.com>
+Subject: [PATCH] Before clearing the capability bounding set, check if we have the cap
+Date: Tue, 12 Jun 2012 13:51:06 +0200
+Message-Id: <1339501866-18967-1-git-send-email-harald@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/20/2012 05:37 AM, Mel Gorman wrote:
-> Implement the new swapfile a_ops for NFS and hook up ->direct_IO. This
-> will set the NFS socket to SOCK_MEMALLOC and run socket reconnect
-> under PF_MEMALLOC as well as reset SOCK_MEMALLOC before engaging the
-> protocol ->connect() method.
->
-> PF_MEMALLOC should allow the allocation of struct socket and related
-> objects and the early (re)setting of SOCK_MEMALLOC should allow us
-> to receive the packets required for the TCP connection buildup.
->
-> [dfeng@redhat.com: Fix handling of multiple swap files]
-> [a.p.zijlstra@chello.nl: Original patch]
-> Signed-off-by: Mel Gorman<mgorman@suse.de>
+From: Harald Hoyer <harald@redhat.com>
 
-Acked-by: Rik van Riel<riel@redhat.com>
+PR_CAPBSET_DROP can return EINVAL, if an older kernel does support
+some capabilities, which are defined by CAP_LAST_CAP, which results in
+a failure of the service.
+
+For example kernel 3.4 errors on CAP_EPOLLWAKEUP, which was newly
+introduced in 3.5.
+
+So, for future capabilities, we clear until we get an EINVAL for
+PR_CAPBSET_READ.
+---
+ support/nsm/file.c      |    2 +-
+ utils/nfsdcld/nfsdcld.c |    4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/support/nsm/file.c b/support/nsm/file.c
+index 5476446..4711c2c 100644
+--- a/support/nsm/file.c
++++ b/support/nsm/file.c
+@@ -386,7 +386,7 @@ prune_bounding_set(void)
+ 	}
+ 
+ 	/* prune the bounding set to nothing */
+-	for (i = 0; i <= CAP_LAST_CAP; ++i) {
++	for (i = 0; prctl(PR_CAPBSET_READ, i, 0, 0, 0) >=0 ; ++i) {
+ 		ret = prctl(PR_CAPBSET_DROP, i, 0, 0, 0);
+ 		if (ret) {
+ 			xlog(L_ERROR, "Unable to prune capability %lu from "
+diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
+index e7af4e3..473d069 100644
+--- a/utils/nfsdcld/nfsdcld.c
++++ b/utils/nfsdcld/nfsdcld.c
+@@ -102,8 +102,8 @@ cld_set_caps(void)
+ 	}
+ 
+ 	/* prune the bounding set to nothing */
+-	for (i = 0; i <= CAP_LAST_CAP; ++i) {
+-		ret = prctl(PR_CAPBSET_DROP, i);
++	for (i = 0; prctl(PR_CAPBSET_READ, i, 0, 0, 0) >= 0 ; ++i) {
++		ret = prctl(PR_CAPBSET_DROP, i, 0, 0, 0);
+ 		if (ret) {
+ 			xlog(L_ERROR, "Unable to prune capability %lu from "
+ 				      "bounding set: %m", i);
+-- 
+1.7.10.2
 
