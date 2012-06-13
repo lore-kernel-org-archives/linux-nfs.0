@@ -1,97 +1,138 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:34499 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932995Ab2FGV7g (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jun 2012 17:59:36 -0400
-Message-ID: <4FD1242E.1010909@panasas.com>
-Date: Fri, 8 Jun 2012 00:59:10 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:35089 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752254Ab2FMSUY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jun 2012 14:20:24 -0400
+Received: by mail-yx0-f174.google.com with SMTP id l2so237820yen.19
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Jun 2012 11:20:24 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/4] NFS: Clean up TEST_STATEID and FREE_STATEID proc error
+ reporting
+To: linux-nfs@vger.kernel.org
+Date: Wed, 13 Jun 2012 14:20:22 -0400
+Message-ID: <20120613182022.5910.28274.stgit@degas.1015granger.net>
+In-Reply-To: <20120613181831.5910.74030.stgit@degas.1015granger.net>
+References: <20120613181831.5910.74030.stgit@degas.1015granger.net>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Namjae Jeon <linkinjeon@gmail.com>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        Amit Sahrawat <a.sahrawat@samsung.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Namjae Jeon <namjae.jeon@samsung.com>
-Subject: Re: [Problem]NFS Server =?UTF-8?B?4oCTIFVtb3VudCByZXN1bHRzIGluIEQ=?=
- =?UTF-8?B?ZXZpY2UgQnVzeS4=?=
-References: <CAKYAXd-HCfcejT=kG-kSXWCmfmxTjrT2o+b3Zan+BCrS1Y2ovw@mail.gmail.com> <4FD06290.7050004@panasas.com> <20120607113358.GB8684@fieldses.org>
-In-Reply-To: <20120607113358.GB8684@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/07/2012 02:33 PM, J. Bruce Fields wrote:
+The TEST_STATEID and FREE_STATEID operations can return
+NFS4ERR_BAD_STATEID, NFS4ERR_OLD_STATEID, or NFS4ERR_DEADSESSION.
+These error values should not be passed to nfs4_handle_exception(),
+since that will recursively kick off state recovery, resulting in a
+deadlock.  The reason to continue using nfs4_handle_exception() is
+to deal with NFS4ERR_DELAY.
 
-> On Thu, Jun 07, 2012 at 11:13:04AM +0300, Boaz Harrosh wrote:
+Moreover, specifically when the TEST_STATEID operation returns
+NFS4_OK, res.status can contain one of these errors.
+_nfs41_test_stateid() replaces NFS4_OK with the value in res.status,
+which is then returned to callers.
 
+But res.status is not passed through nfs4_stat_to_errno(), and thus is
+a positive NFS4ERR value.  Currently callers are only interested in
+!NFS4_OK, and nfs4_handle_exception() ignores positive values, so this
+oversight hasn't bitten us so far.
 
-> 
-> I'm not sure how adding an "unmount" rpc to the protocol would really
-> help here, if that's what you're asking for.
-> 
+Bryan agrees the original intent was to return res.status as a
+negative NFS4ERR value to callers of nfs41_test_stateid(), as long as
+no state ID recovery is attempted.
 
+As a finishing touch, add appropriate documenting comments and some
+debugging printk's.
 
-Please elaborate a bit. I'm not familiar with the details of this
-discussion.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-> If you're just looking for a command you could run on the server after
-> all the clients have unmounted--"exportfs -f" or "service stop nfsd" (or
-> equivalent) should do the job.
-> 
+ fs/nfs/nfs4proc.c |   51 ++++++++++++++++++++++++++++++++++++++++-----------
+ 1 files changed, 40 insertions(+), 11 deletions(-)
 
-man exportfs
-       -f     In 'new' mode, flush everything out of the kernels export table.
-              Any clients that are active will get new entries added by mountd
-              when they make their next request.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index d48dbef..ef69cc5 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6561,22 +6561,36 @@ static int _nfs41_test_stateid(struct nfs_server *server, nfs4_stateid *stateid)
+ 		.rpc_resp = &res,
+ 	};
+ 
++	dprintk("NFS call  test_stateid %p\n", stateid);
+ 	nfs41_init_sequence(&args.seq_args, &res.seq_res, 0);
+ 	status = nfs4_call_sync_sequence(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
+-
+-	if (status == NFS_OK)
+-		return res.status;
+-	return status;
++	if (status != NFS_OK) {
++		dprintk("NFS reply test_stateid: failed, %d\n", status);
++		return status;
++	}
++	dprintk("NFS reply test_stateid: succeeded, %d\n", -res.status);
++	return -res.status;
+ }
+ 
++/**
++ * nfs41_test_stateid - perform a TEST_STATEID operation
++ *
++ * @server: NFS server that may know about "stateid"
++ * @stateid: state ID to test
++ *
++ * Returns NFS_OK if the server recognizes the state ID as valid.
++ * Otherwise a negative NFS4ERR value is returned if the operation
++ * failed or the state ID is not currently valid.
++ */
+ static int nfs41_test_stateid(struct nfs_server *server, nfs4_stateid *stateid)
+ {
+ 	struct nfs4_exception exception = { };
+ 	int err;
+ 	do {
+-		err = nfs4_handle_exception(server,
+-				_nfs41_test_stateid(server, stateid),
+-				&exception);
++		err = _nfs41_test_stateid(server, stateid);
++		if (err != -NFS4ERR_DELAY)
++			break;
++		nfs4_handle_exception(server, err, &exception);
+ 	} while (exception.retry);
+ 	return err;
+ }
+@@ -6592,19 +6606,34 @@ static int _nfs4_free_stateid(struct nfs_server *server, nfs4_stateid *stateid)
+ 		.rpc_argp = &args,
+ 		.rpc_resp = &res,
+ 	};
++	int status;
+ 
++	dprintk("NFS call  free_stateid %p\n", stateid);
+ 	nfs41_init_sequence(&args.seq_args, &res.seq_res, 0);
+-	return nfs4_call_sync_sequence(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
++	status = nfs4_call_sync_sequence(server->client, server, &msg,
++					 &args.seq_args, &res.seq_res, 1);
++	dprintk("NFS reply free_stateid: %d\n", status);
++	return status;
+ }
+ 
++/**
++ * nfs41_free_stateid - perform a FREE_STATEID operation
++ *
++ * @server: NFS server that may know about "stateid"
++ * @stateid: state ID to release
++ *
++ * Returns NFS_OK if the server freed the state ID.  Otherwise a
++ * negative NFS4ERR value is returned if the operation failed.
++ */
+ static int nfs41_free_stateid(struct nfs_server *server, nfs4_stateid *stateid)
+ {
+ 	struct nfs4_exception exception = { };
+ 	int err;
+ 	do {
+-		err = nfs4_handle_exception(server,
+-				_nfs4_free_stateid(server, stateid),
+-				&exception);
++		err = _nfs4_free_stateid(server, stateid);
++		if (err != -NFS4ERR_DELAY)
++			break;
++		nfs4_handle_exception(server, err, &exception);
+ 	} while (exception.retry);
+ 	return err;
+ }
 
-What if: (Just fantasizing here, if I understand the above text correctly)
-* NFS4: A bit like expire client, as long as client has state on the server
-        he needs to refresh his leases so not to expire with some kind of
-        activity or renewals.
-	If a client has no state and 2*expiry timeout passed then it is
-	individually "exportfs -f". This is safe because on renewed activity
-	it will get it's mountd entries renewed safely (did I understand
-	this correctly?
-
-* NFS3: Same as above But with say X*expiry timeout after last activity
-	Same safeness as above.
-
-Any "unmount rpc" will expedite the above without waiting for timeout
-
-<>
-
-> 
-> Note nfsd doesn't really know when that is.  Even with NFSv4, processes
-> can be using the filesystem without holding state on the server: they
-> might just have a current working directory in the filesystem, or have a
-> device special file open.
-> 
-
-
-How does the magic of above statement works? quote:
-    "will get new entries added by mountd when they make their next request"
-
-<>
-
-> 
-> My first concern would be to fix any ordering bugs in the systemd
-> configuration, or any reference count leaks.
-> 
-
-
-I'm currently shooting in the dark, I have not investigated this at all,
-do to lack of time. It should be the same with an ext4 over iscsi device
-re-exported by NFS. You must mount the ext4 as "-o _netdev" otherwise
-ext4 mount itself will have a problem.
-
-> --b.
-
-
-Thanks Bruce, we'll keep this on a back burner until we can come back to
-it. A TODO.
-
-But Jeon, please do send in your proposal code, I'd like to see it.
-
-Thanks
-Boaz
