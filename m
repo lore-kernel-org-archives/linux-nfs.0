@@ -1,89 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:36630 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758834Ab2FAJ6l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Jun 2012 05:58:41 -0400
-Subject: [PATCH] NFS: hard-code init_net for NFS callback transports
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Fri, 01 Jun 2012 13:55:47 +0400
-Message-ID: <20120601095424.24427.74720.stgit@localhost.localdomain>
+Received: from mail-wg0-f44.google.com ([74.125.82.44]:54137 "EHLO
+	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753152Ab2FMPIr convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jun 2012 11:08:47 -0400
+Received: by wgbdr13 with SMTP id dr13so776109wgb.1
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Jun 2012 08:08:46 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <4FBBBD26.2090203@oracle.com>
+References: <4FBBBD26.2090203@oracle.com>
+Date: Wed, 13 Jun 2012 11:08:45 -0400
+Message-ID: <CAHVgHyX3rXzWEgJwL2cHLQ4aZn9G0Vbz_kHU8ax-EHObEtYf1g@mail.gmail.com>
+Subject: Re: Help with NFS over 10GbE performance - possible NFS client to TCP bottleneck
+From: Andy Adamson <androsadamson@gmail.com>
+To: Jeff Wright <jeff.wright@oracle.com>
+Cc: linux-nfs@vger.kernel.org, Craig Flaskerud <Craig.flaskerud@oracle.com>,
+        Donna Harland <donna.harland@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch set is a bug fix for Bruce's 3.5 branch.
-I'll rebase this for 3.4 and resend.
+Chuck recently brought this to my attention:
 
-In case of destroying mount namespace on child reaper exit, nsproxy is zeroed
-to the point already. So, dereferencing of it is invalid.
-This patch hard-code "init_net" for all network namespace references for NFS
-callback services. This will be fixed with proper NFS callback
-containerization.
+Have you tried looking at the RPC statistics average backlog queue
+length in mountstats? The backlog queue gets filled with NFS requests
+that do not get an RPC slot.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfs/callback.c |   11 +++++------
- 1 files changed, 5 insertions(+), 6 deletions(-)
+I assume that jumbo frames are turned on throughout the connection.
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 970659d..23ff18f 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -17,7 +17,6 @@
- #include <linux/kthread.h>
- #include <linux/sunrpc/svcauth_gss.h>
- #include <linux/sunrpc/bc_xprt.h>
--#include <linux/nsproxy.h>
- 
- #include <net/inet_sock.h>
- 
-@@ -107,7 +106,7 @@ nfs4_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
- {
- 	int ret;
- 
--	ret = svc_create_xprt(serv, "tcp", xprt->xprt_net, PF_INET,
-+	ret = svc_create_xprt(serv, "tcp", &init_net, PF_INET,
- 				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
- 	if (ret <= 0)
- 		goto out_err;
-@@ -115,7 +114,7 @@ nfs4_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
- 	dprintk("NFS: Callback listener port = %u (af %u)\n",
- 			nfs_callback_tcpport, PF_INET);
- 
--	ret = svc_create_xprt(serv, "tcp", xprt->xprt_net, PF_INET6,
-+	ret = svc_create_xprt(serv, "tcp", &init_net, PF_INET6,
- 				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
- 	if (ret > 0) {
- 		nfs_callback_tcpport6 = ret;
-@@ -184,7 +183,7 @@ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
- 	 * fore channel connection.
- 	 * Returns the input port (0) and sets the svc_serv bc_xprt on success
- 	 */
--	ret = svc_create_xprt(serv, "tcp-bc", xprt->xprt_net, PF_INET, 0,
-+	ret = svc_create_xprt(serv, "tcp-bc", &init_net, PF_INET, 0,
- 			      SVC_SOCK_ANONYMOUS);
- 	if (ret < 0) {
- 		rqstp = ERR_PTR(ret);
-@@ -254,7 +253,7 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
- 	char svc_name[12];
- 	int ret = 0;
- 	int minorversion_setup;
--	struct net *net = current->nsproxy->net_ns;
-+	struct net *net = &init_net;
- 
- 	mutex_lock(&nfs_callback_mutex);
- 	if (cb_info->users++ || cb_info->task != NULL) {
-@@ -330,7 +329,7 @@ void nfs_callback_down(int minorversion)
- 	cb_info->users--;
- 	if (cb_info->users == 0 && cb_info->task != NULL) {
- 		kthread_stop(cb_info->task);
--		svc_shutdown_net(cb_info->serv, current->nsproxy->net_ns);
-+		svc_shutdown_net(cb_info->serv, &init_net);
- 		svc_exit_thread(cb_info->rqst);
- 		cb_info->serv = NULL;
- 		cb_info->rqst = NULL;
+I would try some iperf runs.  This will check the throughput of the
+memory <-> network <-> memory path and provide an upper bound on what
+to expect from NFS as well as displaying the MTU to check for jumbo
+frame compliance.
 
+I would then try some iozone tests, including the O_DIRECT tests. This
+will give some more data on the issue by separating throughput from
+the application specifics.
+
+-->Andy
+
+On Tue, May 22, 2012 at 12:21 PM, Jeff Wright <jeff.wright@oracle.com> wrote:
+> Team,
+>
+> I am working on a team implementing a configuration with an OEL kernel
+> (2.6.32-300.3.1.el6uek.x86_64) and kernel NFS accessing an NFS server over
+> 10GbE a Solaris 10.  We are trying to resolve what appears to be a
+> bottleneck between the Linux kernel NFS client and the TCP stack.
+>  Specifically, the TCP send queue on the Linux client is empty (save a
+> couple of bursts) when we are running write I/O from the file system, the
+> TCP receive queue on the Solaris 10 NFS server is empty, and the RPC pending
+> request queue on the Solaris 10 NFS server is zero.   If we dial the network
+> to 1GbE we get a nice deep TCP send queue on the client, which is the
+> bottleneck I was hoping to get to with 10GbE.  At this point, we am pretty
+> sure the S10 NFS server can run to at least 1000 MBPS.
+>
+> So far, we have implemented the following Linux kernel tunes:
+>
+> sunrpc.tcp_slot_table_entries = 128
+> net.core.rmem_default = 4194304
+> net.core.wmem_default = 4194304
+> net.core.rmem_max = 4194304
+> net.core.wmem_max = 4194304
+> net.ipv4.tcp_rmem = 4096 1048576 4194304
+> net.ipv4.tcp_wmem = 4096 1048576 4194304
+> net.ipv4.tcp_timestamps = 0
+> net.ipv4.tcp_syncookies = 1
+> net.core.netdev_max_backlog = 300000
+>
+> In addition, we am running jumbo frames on the 10GbE NIC and we have
+> cpuspeed and irqbalance disabled (no noticeable changes when we did this).
+>  The mount options on the client side are as follows:
+>
+> 192.168.44.51:/export/share on /export/share type nfs
+> (rw,nointr,bg,hard,rsize=1048576,wsize=1048576,proto=tcp,vers=3,addr=192.168.44.51)
+>
+> In this configuration we get about 330 MBPS of write throughput with 16
+> pending stable (open with O_DIRECT) synchronous (no kernel aio in the I/O
+> application) writes.  If we scale beyond 16 pending I/O response time
+> increases but throughput remains fixed.  It feels like there is a problem
+> with getting more than 16 pending I/O out to TCP, but we can't tell for sure
+> based on our observations so far.  We did notice that tuning the wsize down
+> to 32kB increased throughput to 400 MBPS, but we could not identify the root
+> cause of this change.
+>
+> Please let us know if you have any suggestions for either diagnosing the
+> bottleneck more accurately or relieving the bottleneck.  Thank you in
+> advance.
+>
+> Sincerely,
+>
+> Jeff
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
