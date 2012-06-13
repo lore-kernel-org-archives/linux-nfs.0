@@ -1,77 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from plane.gmane.org ([80.91.229.3]:35272 "EHLO plane.gmane.org"
+Received: from fieldses.org ([174.143.236.118]:41401 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751300Ab2FSJ7H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Jun 2012 05:59:07 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1SgvDC-0006G3-OU
-	for linux-nfs@vger.kernel.org; Tue, 19 Jun 2012 11:59:02 +0200
-Received: from bg-1.or.uni-bonn.de ([131.220.141.100])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Jun 2012 11:59:02 +0200
-Received: from bartoschek by bg-1.or.uni-bonn.de with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Jun 2012 11:59:02 +0200
-To: linux-nfs@vger.kernel.org
-From: Christoph Bartoschek <bartoschek@gmx.de>
-Subject: Spurious permission denied
-Date: Tue, 19 Jun 2012 11:58:27 +0200
-Message-ID: <43v5b9-ifa.ln1@barney.bruehl.pontohonk.de>
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="nextPart2182644.tDU5xdFZgO"
+	id S1753152Ab2FMLPi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Jun 2012 07:15:38 -0400
+Date: Wed, 13 Jun 2012 07:15:35 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH] NFS: hard-code init_net for NFS callback transports
+Message-ID: <20120613111535.GA32085@fieldses.org>
+References: <20120601095424.24427.74720.stgit@localhost.localdomain>
+ <20120611123718.GF7654@fieldses.org>
+ <20120612155358.GB22028@fieldses.org>
+ <4FD84C47.8080505@parallels.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <4FD84C47.8080505@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, Jun 13, 2012 at 12:16:07PM +0400, Stanislav Kinsbursky wrote:
+> 12.06.2012 19:53, J. Bruce Fields написал:
+> >On Mon, Jun 11, 2012 at 08:37:18AM -0400, J. Bruce Fields wrote:
+> >>On Fri, Jun 01, 2012 at 01:55:47PM +0400, Stanislav Kinsbursky wrote:
+> >>>This patch set is a bug fix for Bruce's 3.5 branch.
+> >>>I'll rebase this for 3.4 and resend.
+> >>
+> >>Apologies for neglecting this, I'm done with the bakeathon and should be
+> >>back to this soon.
+> >>
+> >>But, I'm a bit confused: you say you'll rebase this, but I've only seen
+> >>two rebased patches for 3.4, and neither looks like a simple rebase of
+> >>this one.
+> >
+> >Oh, I see; the backport of "SUNRPC: new svc_bind() routine introduced"
+> >is a combination of the patch by the same name upstream with this one.
+> >
+> >In future for backports I'd rather keep a one-to-one correspondance
+> >between the original patches and the backported patches.  (Even if that
+> >means 4.2 might not be as "bisectable".)
+> >
+> >Also, get this patch into stable by just adding a "cc:
+> >stable@vger.kernel.org" with the signed-off at the end of this patch.
+> >
+> >I've gone ahead and fixed that up; results in the "for-3.4" and
+> >"for-3.5" branches of
+> >
+> >	git://linux-nfs.org/~bfields/linux-topics.git
+> >
+> >Let me know if anything looks wrong.
+> >
+> 
+> 
+> Hi, Bruce. Thanks for you time and guidance with this patch set.
+> But I'm a bit confused - what I have to do now? Take the patches
+> from your 3.4 branch and send them to "stable"?
 
---nextPart2182644.tDU5xdFZgO
-Content-Type: text/plain; charset="ISO-8859-1"
-Content-Transfer-Encoding: 7Bit
+No, I'll take care of them.--b.
 
-Hi,
-
-we still have the problem that some users get permission denied for 
-directories they normally can access. The problem only affects a single user 
-at a time and automatically goes away after about 30 minutes.
-
-It seems to be a server problem because this happens on all client machines 
-at the same time.
-
-Here is how it looks like:
-
-[bartosch@r1106i12 ~]$ ls /afs/eda/prod
-ls: cannot open directory /afs/eda/prod: Permission denied
-[bartosch@r1106i12 ~]$ id
-uid=348(bartosch) gid=200(vls) 
-groups=200(vlsi),100(users),201(zab),900(ibm),901(iba),902(ama),1001(eda),2030(asi),2057(ecl),41999(tra)
-[bartosch@r1106i12 ~]$ 
-
-I have attached the network traffic that was exchanged between the NFS 
-server and the client for the ls command captured by wireshark.
-
-Accessing the directory /afs/eda works as expected.
-
-Has anyone an idea what could be wrong?
-
-Thanks,
-Christoph Bartoschek
---nextPart2182644.tDU5xdFZgO
-Content-Type: application/vnd.tcpdump.pcap; name="network_traffic.dump"
-Content-Disposition: attachment; filename="network_traffic.dump"
-Content-Transfer-Encoding: base64
-
-1MOyoQIABAAAAAAAAAAAAP//AAABAAAAvUngT9jRDgDGAAAAxgAAAAAwSNQccAAlkCyl8AgARQAA
-uCa7QABABnMbwKiPNMCoj+QCvQgBEVj0a6Z+mPyAGF/7oRQAAAEBCArYUJf2G9FT94AAAICJbqJY
-AAAAAAAAAAIAAYajAAAAAwAAAAEAAAABAAAARAB46Z8AAAAIcjExMDZpMTIAAAFcAAAAyAAAAAoA
-AABkAAAAyAAAAMkAAAOEAAADhQAAA4YAAAPpAAAH7gAACAkAAKQPAAAAAAAAAAAAAAAQAQABAQEA
-AAACANgPRVkyJr1J4E9p0g4AtgAAALYAAAAAJZAspfAAMEjUHHAIAEUAAKg8PUAAQAZdqcCoj+TA
-qI80CAECvaZ+mPwRWPTvgBgB9TP4AAABAQgKG9FcxthQl/aAAABwiW6iWAAAAAEAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAIAAEXoAAAARwAAA+wAAAPpAAAAAAAAEAAAAAAAAAAQAAAAAAAAAAAAAAAA
-AAAAAAEAAAAAD9gAAk/fBq04owRBT3MMIAAAAABPeZD9FZdXXr1J4E940g4AQgAAAEIAAAAAMEjU
-HHAAJZAspfAIAEUAADQmvEAAQAZznsCojzTAqI/kAr0IARFY9O+mfplwgBBf+6CQAAABAQgK2FCX
-9hvRXMY=
-
---nextPart2182644.tDU5xdFZgO--
-
-
+--b.
