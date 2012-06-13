@@ -1,131 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:46821 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932675Ab2F2S6Y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jun 2012 14:58:24 -0400
-Received: by mail-yx0-f174.google.com with SMTP id l2so3038060yen.19
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Jun 2012 11:58:24 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v3 12/17] vfs: make rmdir retry on ESTALE errors
-Date: Fri, 29 Jun 2012 14:57:55 -0400
-Message-Id: <1340996280-27123-13-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
-References: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:42825 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752254Ab2FMSUd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jun 2012 14:20:33 -0400
+Received: by ghrr11 with SMTP id r11so679254ghr.19
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Jun 2012 11:20:33 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 2/4] NFS: Properly sort TEST_STATEID results
+To: linux-nfs@vger.kernel.org
+Date: Wed, 13 Jun 2012 14:20:31 -0400
+Message-ID: <20120613182031.5910.11331.stgit@degas.1015granger.net>
+In-Reply-To: <20120613181831.5910.74030.stgit@degas.1015granger.net>
+References: <20120613181831.5910.74030.stgit@degas.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c |   82 +++++++++++++++++++++++++++++++++--------------------------
- 1 files changed, 46 insertions(+), 36 deletions(-)
+The result of a TEST_STATEID operation can indicate a few different
+things:
 
-diff --git a/fs/namei.c b/fs/namei.c
-index e902770..7fccc1c 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2845,52 +2845,62 @@ out:
- static long do_rmdir(int dfd, const char __user *pathname)
- {
- 	int error = 0;
--	char * name;
-+	char *name;
- 	struct dentry *dentry;
- 	struct nameidata nd;
-+	unsigned int try = 0;
-+	unsigned int lookup_flags = LOOKUP_PARENT;
- 
--	error = user_path_parent(dfd, pathname, &nd, &name);
--	if (error)
--		return error;
-+	name = getname(pathname);
-+	if (IS_ERR(name))
-+		return PTR_ERR(name);
- 
--	switch(nd.last_type) {
--	case LAST_DOTDOT:
--		error = -ENOTEMPTY;
--		goto exit1;
--	case LAST_DOT:
--		error = -EINVAL;
--		goto exit1;
--	case LAST_ROOT:
--		error = -EBUSY;
--		goto exit1;
--	}
-+	do {
-+		error = do_path_lookup(dfd, name, lookup_flags, &nd);
-+		if (error)
-+			break;
- 
--	nd.flags &= ~LOOKUP_PARENT;
-+		switch (nd.last_type) {
-+		case LAST_DOTDOT:
-+			error = -ENOTEMPTY;
-+			goto exit1;
-+		case LAST_DOT:
-+			error = -EINVAL;
-+			goto exit1;
-+		case LAST_ROOT:
-+			error = -EBUSY;
-+			goto exit1;
-+		}
- 
--	mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex, I_MUTEX_PARENT);
--	dentry = lookup_hash(&nd);
--	error = PTR_ERR(dentry);
--	if (IS_ERR(dentry))
--		goto exit2;
--	if (!dentry->d_inode) {
--		error = -ENOENT;
--		goto exit3;
--	}
--	error = mnt_want_write(nd.path.mnt);
--	if (error)
--		goto exit3;
--	error = security_path_rmdir(&nd.path, dentry);
--	if (error)
--		goto exit4;
--	error = vfs_rmdir(nd.path.dentry->d_inode, dentry);
-+		nd.flags &= ~LOOKUP_PARENT;
-+
-+		mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex,
-+							I_MUTEX_PARENT);
-+		dentry = lookup_hash(&nd);
-+		error = PTR_ERR(dentry);
-+		if (IS_ERR(dentry))
-+			goto exit2;
-+		if (!dentry->d_inode) {
-+			error = -ENOENT;
-+			goto exit3;
-+		}
-+		error = mnt_want_write(nd.path.mnt);
-+		if (error)
-+			goto exit3;
-+		error = security_path_rmdir(&nd.path, dentry);
-+		if (error)
-+			goto exit4;
-+		error = vfs_rmdir(nd.path.dentry->d_inode, dentry);
- exit4:
--	mnt_drop_write(nd.path.mnt);
-+		mnt_drop_write(nd.path.mnt);
- exit3:
--	dput(dentry);
-+		dput(dentry);
- exit2:
--	mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
-+		mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
- exit1:
--	path_put(&nd.path);
-+		path_put(&nd.path);
-+		lookup_flags |= LOOKUP_REVAL;
-+	} while (retry_estale(error, try++));
- 	putname(name);
- 	return error;
+  o If NFS_OK is returned, then the client can continue using the
+    state ID under test, and skip recovery.
+
+  o RFC 5661 says that if and only if the state ID was revoked, then
+    the client must perform an explicit FREE_STATEID before trying to
+    re-open.
+
+  o If the server doesn't recognize the state ID at all, then no
+    FREE_STATEID is needed, and the client can immediately continue
+    with open recovery.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ fs/nfs/nfs4proc.c |   36 ++++++++++++++++++++++++++++++++++--
+ 1 files changed, 34 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ef69cc5..65bee35 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1735,6 +1735,14 @@ static int nfs4_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *sta
  }
--- 
-1.7.7.6
+ 
+ #if defined(CONFIG_NFS_V4_1)
++/**
++ * nfs41_check_expired_stateid - does a state ID need recovery?
++ *
++ * @state: NFSv4 open state for an inode
++ *
++ * Returns NFS_OK if recovery for this state ID is now finished.
++ * Otherwise a negative NFS4ERR value is returned.
++ */
+ static int nfs41_check_expired_stateid(struct nfs4_state *state, nfs4_stateid *stateid, unsigned int flags)
+ {
+ 	int status = NFS_OK;
+@@ -1742,8 +1750,16 @@ static int nfs41_check_expired_stateid(struct nfs4_state *state, nfs4_stateid *s
+ 
+ 	if (state->flags & flags) {
+ 		status = nfs41_test_stateid(server, stateid);
+-		if (status != NFS_OK) {
++		switch (status) {
++		case NFS_OK:
++			/* server recognizes this one, don't recover */
++			break;
++		case -NFS4ERR_ADMIN_REVOKED:
++		case -NFS4ERR_DELEG_REVOKED:
++			/* state was revoked, free then re-open */
+ 			nfs41_free_stateid(server, stateid);
++		default:
++			/* anything else: just re-open it */
+ 			state->flags &= ~flags;
+ 		}
+ 	}
+@@ -4671,6 +4687,14 @@ out:
+ }
+ 
+ #if defined(CONFIG_NFS_V4_1)
++/**
++ * nfs41_check_expired_locks - clear lock state IDs
++ *
++ * @state: NFSv4 open state for a file
++ *
++ * Returns NFS_OK if recovery for this state ID is now finished.
++ * Otherwise a negative NFS4ERR value is returned.
++ */
+ static int nfs41_check_expired_locks(struct nfs4_state *state)
+ {
+ 	int status, ret = NFS_OK;
+@@ -4680,8 +4704,16 @@ static int nfs41_check_expired_locks(struct nfs4_state *state)
+ 	list_for_each_entry(lsp, &state->lock_states, ls_locks) {
+ 		if (lsp->ls_flags & NFS_LOCK_INITIALIZED) {
+ 			status = nfs41_test_stateid(server, &lsp->ls_stateid);
+-			if (status != NFS_OK) {
++			switch (status) {
++			case NFS_OK:
++				/* server recognizes this one, don't re-lock */
++				break;
++			case -NFS4ERR_ADMIN_REVOKED:
++			case -NFS4ERR_DELEG_REVOKED:
++				/* lock was revoked, free then re-lock */
+ 				nfs41_free_stateid(server, &lsp->ls_stateid);
++			default:
++				/* anything else: just re-lock it */
+ 				lsp->ls_flags &= ~NFS_LOCK_INITIALIZED;
+ 				ret = status;
+ 			}
 
