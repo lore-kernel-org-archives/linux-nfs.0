@@ -1,72 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:11721 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751392Ab2FJPBA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 10 Jun 2012 11:01:00 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Joerg Platte <jplatte@naasa.net>, bfields <bfields@fieldses.org>
-CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Kernel 3.4.X NFS server regression
-Date: Sun, 10 Jun 2012 15:00:42 +0000
-Message-ID: <1339340441.4751.1.camel@lade.trondhjem.org>
-References: <4FD47D4E.9070307@naasa.net>
-In-Reply-To: <4FD47D4E.9070307@naasa.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:47423 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752154Ab2FMN6K convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jun 2012 09:58:10 -0400
+Received: by pbbrp8 with SMTP id rp8so2325527pbb.19
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Jun 2012 06:58:10 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <4FD1CEA8.3090105@panasas.com>
+References: <4FD1CEA8.3090105@panasas.com>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Wed, 13 Jun 2012 21:57:49 +0800
+Message-ID: <CA+a=Yy7cOTYjCSk2uN1WwXJc=1V-EOoiVxy2JYQaKQAftg7f_w@mail.gmail.com>
+Subject: Re: [RFC 0/5] CRASHFIX: pnfs-obj: NONE-RPC LD must not call rpc_restart_call_prepare()
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>,
+        Benny Halevy <bhalevy@tonian.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Q2M6IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcgKyBiZmllbGRzIGFuZCBjaGFuZ2luZyB0aXRs
-ZSB0byBsYWJlbCBpdA0KYXMgYSBzZXJ2ZXIgcmVncmVzc2lvbiBzaW5jZSB0aGF0IGlzIHdoYXQg
-dGhlIHRyYWNlIGFwcGVhcnMgdG8gaW1wbHkuDQoNCk9uIFN1biwgMjAxMi0wNi0xMCBhdCAxMjo1
-NiArMDIwMCwgSm9lcmcgUGxhdHRlIHdyb3RlOg0KPiBBbGwgMy40IGtlcm5lbHMgSSB0cmllZCBz
-byBmYXIgKDMuNCwgMy40LjEgYW5kIDMuNC4yKSBzdWZmZXIgZnJvbSB0aGUgDQo+IHNhbWUgTkZT
-IHJlbGF0ZWQgcHJvYmxlbToNCj4gDQo+IEp1biAxMCAwOToyMzozNiBjb2NvIGtlcm5lbDogSU5G
-TzogdGFzayBrd29ya2VyL3U6MTo4IGJsb2NrZWQgZm9yIG1vcmUgDQo+IHRoYW4gMTIwIHNlY29u
-ZHMuDQo+IEp1biAxMCAwOToyMzozNiBjb2NvIGtlcm5lbDogImVjaG8gMCA+IA0KPiAvcHJvYy9z
-eXMva2VybmVsL2h1bmdfdGFza190aW1lb3V0X3NlY3MiIGRpc2FibGVzIHRoaXMgbWVzc2FnZS4N
-Cj4gSnVuIDEwIDA5OjIzOjM2IGNvY28ga2VybmVsOiBrd29ya2VyL3U6MSAgICAgRCAwMDJiYTI4
-YyAgICAgMCAgICAgOCANCj4gICAyIDB4MDAwMDAwMDANCj4gSnVuIDEwIDA5OjIzOjM2IGNvY28g
-a2VybmVsOiAgZGY0NjVlYzAgMDAwMDAwNDYgMDAwMDAwMDUgMDAyYmEyOGMgDQo+IDAwMDAwMDAw
-IDAwMDAwMDBhIDAwMDAwMjgyIGRmNDY1ZTcwDQo+IEp1biAxMCAwOToyMzozNiBjb2NvIGtlcm5l
-bDogIGRmNDY1ZWMwIGRmNDRkMmIwIGZmZmY2YjYwIGRmNDY1ZTg0IA0KPiBkZjQ0ZDJiMCBlMzNm
-YTZiMyAwMDAwMDI4MiBkZTc2NGFlMA0KPiBKdW4gMTAgMDk6MjM6MzYgY29jbyBrZXJuZWw6ICBm
-ZmZmZmZmZiBkNzhiY2ZiOCBkZjQ2NWU4YyBjMDEyZTBmNiANCj4gZGY0NjVlYTQgYzAxMzYxMGMg
-MDAwMDAwMDAgZDc4YmNmODANCj4gSnVuIDEwIDA5OjIzOjM2IGNvY28ga2VybmVsOiBDYWxsIFRy
-YWNlOg0KPiBKdW4gMTAgMDk6MjM6MzYgY29jbyBrZXJuZWw6ICBbPGMwMTJlMGY2Pl0gPyBhZGRf
-dGltZXIrMHgxMS8weDE3DQo+IEp1biAxMCAwOToyMzozNiBjb2NvIGtlcm5lbDogIFs8YzAxMzYx
-MGM+XSA/IHF1ZXVlX2RlbGF5ZWRfd29ya19vbisweDc0LzB4ZjANCj4gSnVuIDEwIDA5OjIzOjM2
-IGNvY28ga2VybmVsOiAgWzxjMDEzNmJhND5dID8gcXVldWVfZGVsYXllZF93b3JrKzB4MWIvMHgy
-OA0KPiBKdW4gMTAgMDk6MjM6MzYgY29jbyBrZXJuZWw6ICBbPGMwMzUwZjViPl0gc2NoZWR1bGUr
-MHgxZC8weDRjDQo+IEp1biAxMCAwOToyMzozNiBjb2NvIGtlcm5lbDogIFs8ZTBjZGE1ZjE+XSBj
-bGRfcGlwZV91cGNhbGwrMHg0ZS8weDc1IFtuZnNkXQ0KPiBKdW4gMTAgMDk6MjM6MzYgY29jbyBr
-ZXJuZWw6ICBbPGUwY2RhNjc4Pl0gDQo+IG5mc2Q0X2NsZF9ncmFjZV9kb25lKzB4NjAvMHg5OSBb
-bmZzZF0NCj4gSnVuIDEwIDA5OjIzOjM2IGNvY28ga2VybmVsOiAgWzxlMGNkOWNiNT5dIA0KPiBu
-ZnNkNF9yZWNvcmRfZ3JhY2VfZG9uZSsweDEwLzB4MTIgW25mc2RdDQo+IEp1biAxMCAwOToyMzoz
-NiBjb2NvIGtlcm5lbDogIFs8ZTBjZDY2OTY+XSBsYXVuZHJvbWF0X21haW4rMHgyOTEvMHgyZDgg
-DQo+IFtuZnNkXQ0KPiBKdW4gMTAgMDk6MjM6MzYgY29jbyBrZXJuZWw6ICBbPGMwMTM2ZDJmPl0g
-cHJvY2Vzc19vbmVfd29yaysweGZmLzB4MzI1DQo+IEp1biAxMCAwOToyMzozNiBjb2NvIGtlcm5l
-bDogIFs8YzAxMzRiZWM+XSA/IHN0YXJ0X3dvcmtlcisweDIwLzB4MjMNCj4gSnVuIDEwIDA5OjIz
-OjM2IGNvY28ga2VybmVsOiAgWzxlMGNkNjQwNT5dID8gDQo+IG5mc2Q0X3Byb2Nlc3Nfb3BlbjEr
-MHgzMmIvMHgzMmIgW25mc2RdDQo+IEp1biAxMCAwOToyMzozNiBjb2NvIGtlcm5lbDogIFs8YzAx
-MzcyN2E+XSB3b3JrZXJfdGhyZWFkKzB4ZjQvMHgzOWENCj4gSnVuIDEwIDA5OjIzOjM2IGNvY28g
-a2VybmVsOiAgWzxjMDEzNzE4Nj5dID8gcmVzY3Vlcl90aHJlYWQrMHgyMzEvMHgyMzENCj4gSnVu
-IDEwIDA5OjIzOjM2IGNvY28ga2VybmVsOiAgWzxjMDEzYTU1Nj5dIGt0aHJlYWQrMHg2Yy8weDZl
-DQo+IEp1biAxMCAwOToyMzozNiBjb2NvIGtlcm5lbDogIFs8YzAxM2E0ZWE+XSA/IGt0aHJlYWRk
-KzB4ZTgvMHhlOA0KPiBKdW4gMTAgMDk6MjM6MzYgY29jbyBrZXJuZWw6ICBbPGMwMzUyNjNlPl0g
-a2VybmVsX3RocmVhZF9oZWxwZXIrMHg2LzB4ZA0KPiANCj4gQSBrd29ya2VyIHRhc2sgaXMgc3R1
-Y2sgaW4gRCBzdGF0ZSBhbmQgbmZzIG1vdW50cyBmcm9tIG90aGVyIGNsaWVudHMgZG8gDQo+IG5v
-dCB3b3JrIGF0IGFsbC4gVGhpcyBoYXBwZW5zIG9ubHkgb24gb25lIG1hY2hpbmUsIGFub3RoZXIg
-b25lIHdpdGggdGhlIA0KPiBzYW1lIGtlcm5lbCAoc2FtZSBzZWxmIGNvbXBpbGVkIERlYmlhbiBw
-YWNrYWdlKSB3b3Jrcy4gQWxsIHByZXZpb3VzIDMuMyANCj4ga2VybmVscyB3b3JrIGFzIHdlbGwu
-DQo+IA0KPiBTaW5jZSB0aGlzIG1hY2hpbmUgaXMgcmVtb3RlIGl0IGlzIG5vdCB0aGF0IGVhc3kg
-dG8gYmlzZWN0IHRvIGZpbmQgdGhlIA0KPiBiYWQgY29tbWl0LiBBcmUgdGhlcmUgYW55IG90aGVy
-IHRoaW5ncyBJIGNhbiB0cnk/DQo+IA0KPiByZWdhcmRzLA0KPiBKb2VyZw0KPiAtLQ0KPiBUbyB1
-bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGlu
-dXgta2VybmVsIiBpbg0KPiB0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIu
-a2VybmVsLm9yZw0KPiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwu
-b3JnL21ham9yZG9tby1pbmZvLmh0bWwNCj4gUGxlYXNlIHJlYWQgdGhlIEZBUSBhdCAgaHR0cDov
-L3d3dy50dXgub3JnL2xrbWwvDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xp
-ZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3
-Lm5ldGFwcC5jb20NCg0K
+On Fri, Jun 8, 2012 at 6:06 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+>
+> NONE-RPC layout-Drivers call nfs_writeback_done() as part
+> of their completion of IO. (through pnfs_ld_write_done())
+>
+> Inside nfs_writeback_done() there is code that does:
+>
+>        else if (resp->count < argp->count) {
+>                ...
+>
+>                /* This a short write! */
+>                nfs_inc_stats(inode, NFSIOS_SHORTWRITE);
+>
+>                ... /* Prepare the remainder */
+>
+>                rpc_restart_call_prepare(task);
+>        }
+>
+> But for none-rpc LDs (objects, blocks) there is no task->tk_ops
+> and this code will crash.
+>
+> The same code exists in read.c::nfs_readpage_result_common() with
+> same crash.
+>
+> Therefor: NONE-RPC LDs *must not* call pnfs_ld_read/write_done with
+> partial/short IO. Either complete everything or fail everything and
+> IO will be resubmitted through MDS.
+>
+> Below are a set of patches that fix this problem for objects
+> layout, blocks maintainer should check that code does not allow a short
+> IO as well.
+>
+> The Fix is much easier at the LD level then at NFS-Core. Though it
+> could be fixed there, I do not think it is worth it. I will submit a
+> comment that warns for this. Certainly NFS-Core changes could not
+> be so simple as below to be candidates for @Stable
+>
+Thanks for reporting this. I didn't realize it in the first place either.
+
+However, blocks read/write is implemented to fail any short IO and set
+pnfs_error to resend it through mds, except for the case of reading
+beyond eof. So I don't think blocks will crash the same case. I will
+double check with more tests though.
+
+Cheers,
+Tao
+
+> These where lightly tested and are submitted for review. I will conduct
+> heavy testing and will put them in linux-next only next week.
+>
+> Here are the list of patches:
+>
+> [PATCH 1/6] ore: Fix NFS crash by supporting any unaligned RAID IO
+> [PATCH 2/6] ore: Remove support of partial IO request (NFS crash)
+> [PATCH 3/6] pnfs-obj: Fix __r4w_get_page in the case of offset beyond i_size
+>
+>        These 3 completely plug the crash above, and are destined
+>        for Stable@
+>
+>        Trond please ACK the 3rd patch since I want to push this
+>        through my tree, as these are for ore mostly.
+>        (Please also review all of them, watch my back)
+>
+> [PATCH 4/6] pnfs-obj: don't leak objio_state if ore_write/read fails.
+>
+>        A memory leak found on the way, in the error case.
+>        Should it be for Stable@ ?
+>
+> [PATCH 4/5] NFS41: add pg_layout_private to nfs_pageio_descriptor
+>
+>        This is the patch by Peng Tao <bergwolf@gmail.com> which is
+>        needed for below fix. Minus the has_moreio flag.
+>
+> [PATCH 5/5] pnfs-obj: Better IO pattern in case of unaligned offset
+>
+>        Though this patch is an optimization it fixes a very bad
+>        IO pattern. Please consider for the 3.5-rcX Kernel and
+>        don't postpone to 3.6 Merge window. If possible
+>
+> Thanks for any review
+> Boaz
+
+
+
+-- 
+Thanks,
+Tao
