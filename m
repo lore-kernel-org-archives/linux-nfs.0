@@ -1,73 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:19193 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756672Ab2FYWYY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Jun 2012 18:24:24 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: Handle authentication errors correctly during
- lease reclaim
-Date: Mon, 25 Jun 2012 22:24:02 +0000
-Message-ID: <1340663037.9620.77.camel@lade.trondhjem.org>
-References: <20120625204637.1637.14358.stgit@degas.1015granger.net>
-	 <1340659210.9620.64.camel@lade.trondhjem.org>
-	 <80FBF1AB-7347-4683-9F4E-8FD489641EE0@oracle.com>
-In-Reply-To: <80FBF1AB-7347-4683-9F4E-8FD489641EE0@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from acsinet15.oracle.com ([141.146.126.227]:41609 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932281Ab2FNQzT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jun 2012 12:55:19 -0400
+Message-ID: <4FDA1772.3040805@oracle.com>
+Date: Thu, 14 Jun 2012 10:55:14 -0600
+From: Jeff Wright <jeff.wright@oracle.com>
 MIME-Version: 1.0
+To: Andy Adamson <androsadamson@gmail.com>
+CC: linux-nfs@vger.kernel.org, Craig Flaskerud <Craig.flaskerud@oracle.com>,
+        Donna Harland <donna.harland@oracle.com>
+Subject: Re: Help with NFS over 10GbE performance - possible NFS client to
+ TCP bottleneck
+References: <4FBBBD26.2090203@oracle.com> <CAHVgHyX3rXzWEgJwL2cHLQ4aZn9G0Vbz_kHU8ax-EHObEtYf1g@mail.gmail.com> <4FD8AF15.5010909@oracle.com> <CAHVgHyU-HntWo6e_nByeV1q0L2e2vkV0dwR=rn+7NeU9Lix8=Q@mail.gmail.com>
+In-Reply-To: <CAHVgHyU-HntWo6e_nByeV1q0L2e2vkV0dwR=rn+7NeU9Lix8=Q@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA2LTI1IGF0IDE3OjMyIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gSnVuIDI1LCAyMDEyLCBhdCA1OjIwIFBNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiAN
-Cj4gPiBPbiBNb24sIDIwMTItMDYtMjUgYXQgMTY6NDcgLTA0MDAsIENodWNrIExldmVyIHdyb3Rl
-Og0KPiA+PiBDb21taXQgMmE2ZWU2YWEgIk5GU3Y0OiBDbGVhbiB1cCB0aGUgZXJyb3IgaGFuZGxp
-bmcgZm9yDQo+ID4+IG5mczRfcmVjbGFpbV9sZWFzZSIgTWF5IDI1LCAyMDEyIGFwcGVhcnMgdG8g
-aGF2ZSBjaGFuZ2VkIHRoZSBlcnJvcg0KPiA+PiB2YWx1ZSByZXR1cm5lZCBieSBuZnM0X3JlY2xh
-aW1fbGVhc2UoKSBpZiBycGMuZ3NzZCBmYWlscyB0byBjcmVhdGUNCj4gPj4gYSBtYWNoaW5lIGNy
-ZWRlbnRpYWwgKGVpdGhlciBkdWUgdG8gYSBsb2NhbCBlcnJvciBvciBhIHByb2JsZW0gb24NCj4g
-Pj4gdGhlIHNlcnZlcikuDQo+ID4gDQo+ID4gSXQgaXMgX25vdF8gYW4gZXJyb3IgdG8gYmUgbW91
-bnRpbmcgd2l0aG91dCBtYWNoaW5lIGNyZWRlbnRpYWxzLg0KPiANCj4gQ29ycmVjdCwgYW5kIHRo
-ZSBjbGllbnQgc2hvdWxkbid0IG9vcHMgaW4gdGhpcyBjYXNlIGVpdGhlci4NCj4NCj4gPj4gSW4g
-dGhpcyBjYXNlLCBuZnM0X3Byb2Nfc2V0Y2xpZW50aWQoKSByZXR1cm5zIC1FQUNDRVMuICBCZWZv
-cmUNCj4gPj4gMmE2ZWU2YWEsIG5mczRfcmVjbGFpbV9sZWFzZSgpIGNvbnZlcnRlZCB0aGlzIHRv
-IC1FQUdBSU4uICBOb3cgaXQNCj4gPj4gcmV0dXJucyB6ZXJvLiAgVGhlIHN0YXRlIG1hbmFnZXIg
-YXNzdW1lcyBhbGwgaXMgd2VsbCwgbmZzX2NsaWVudA0KPiA+PiBpbml0aWFsaXphdGlvbiB0aGVu
-IHByb2NlZWRzIGluIHByb2Nlc3MgY29udGV4dCB1bnRpbCBpdCBvb3BzZXMgd2hpbGUNCj4gPj4g
-dHJ5aW5nIHRvIHNldCB1cCB0aGUgbW91bnQncyBuZnNfc2VydmVyLg0KPiA+IA0KPiA+IFRoZSBQ
-VVJHRV9TVEFURSBhbmQvb3IgTEVBU0VfRVhQSVJFRCBmbGFncyBzaG91bGQgc3RpbGwgYmUgc2V0
-IGlmIHdlDQo+ID4gZXhpdCB2aWEgbmZzNF9oYW5kbGVfcmVjbGFpbV9sZWFzZV9lcnJvci4gVGhl
-IHplcm8gZXJyb3IgcmV0dXJuIGlzIHRoZXJlDQo+ID4gaW4gb3JkZXIgdG8gZW5zdXJlIHRoYXQg
-dGhlIHN0YXRlIG1hbmFnZXIgdGhyZWFkIGxvb3BzIGFuZCByZXRyaWVzDQo+ID4gaW5zdGVhZCBv
-ZiBqdXN0IGFib3J0aW5nLg0KPiANCj4gTXkgdGVzdCBjYXNlIGlzIGF0dGVtcHRpbmcgdG8gbW91
-bnQgYSBzZXJ2ZXIgd2l0aCAic2VjPWtyYjUiIGV4cGxpY2l0bHkgc2V0LiAgVGhlIHNlcnZlciB3
-YXMgbm90IGNvbmZpZ3VyZWQgY29ycmVjdGx5LiAgV2h5IHNob3VsZCB0aGUgY2xpZW50IHJldHJ5
-IGluIHRoaXMgY2FzZT8gIFRoZXJlJ3Mgbm90aGluZyBpdCBjYW4gZG8gdG8gY29ycmVjdCB0aGlz
-IHNpdHVhdGlvbi4NCj4gDQo+IChOb3QgdG8gbWVudGlvbiB0aGUgZmFjdCB0aGF0IHRoZSBnc3Nk
-IGVycm9yIG1lc3NhZ2VzIG9uIHRoZSBjbGllbnQgYXJlIGluY3JlZGlibHkgb2J0dXNlIGFuZCB1
-bmhlbHBmdWwpLg0KPiANCj4gPiBUaGlzIHBhdGNoIG1ha2VzIGl0IGltcG9zc2libGUgdG8gcnVu
-IHdpdGhvdXQgbWFjaGluZSBjcmVkcyBiZWNhdXNlIHlvdQ0KPiA+IGNpcmN1bXZlbnQgdGhlIG5m
-czRfY2xlYXJfbWFjaGluZV9jcmVkKCkrcmV0cnkgY2FzZS4NCj4gDQo+IFBlcmhhcHMgdGhhdCdz
-IGluY29ycmVjdCwgYnV0IGl0J3Mgd2hhdCB0aGUgY29kZSB1c2VkIHRvIGRvIGJlZm9yZSAyYTZl
-ZTZhYSwgYXMgbmVhciBhcyBJIGNhbiB0ZWxsLg0KDQpSZXZlcnRpbmcgdG8gYSBicm9rZW4gcHJl
-dmlvdXMgc3RhdGUgaXNuJ3QgcmVhbGx5IGFsbCB0aGF0IHVzZWZ1bC4gQ2FuDQp5b3UgcGxlYXNl
-IHNlbmQgbWUgYSBjb3B5IG9mIHRoZSBPb3BzIHRoYXQgeW91IGFyZSBzZWVpbmc/DQoNCj4gPiBX
-aHkgZG9lcyBzZXR0aW5nIHVwIHRoZSBuZnNfc2VydmVyIGRlcGVuZCBvbiBhIHN1Y2Nlc3NmdWwg
-c2V0Y2xpZW50aWQNCj4gPiBjYWxsIGFueXdheSBpbiB0aGUgY2FzZSBvZiBtaW5vciB2ZXJzaW9u
-IDA/DQo+IA0KPiBTaG91bGQgdGhpcyBhbHNvIGJlIHRoZSBjYXNlIGR1cmluZyB0cnVua2luZyBk
-aXNjb3Zlcnk/DQoNCkkgZG9uJ3Qgc2VlIGhvdyB0cnVua2luZyBkaXNjb3ZlcnkgZW50ZXJzIGlu
-dG8gaXQuIFRoZSBuZnNfc2VydmVyIHNldHVwDQpzaG91bGQgbm90IE9vcHMgaW4gY2FzZSBvZiBh
-IHN0YXRlIGluaXRpYWxpc2F0aW9uIGZhaWx1cmUuDQoNCkhvd2V2ZXIgaWYgdGhlIHVzZXIgc2V0
-cyB0aGUgJy1vbWlncmF0aW9uJyBmbGFnLCB0aGVuIHdlIHNob3VsZCBoYXZlDQptaW5vciB2ZXJz
-aW9uIDAgbW91bnQgd2FpdCBmb3IgdHJ1bmtpbmcgZGlzY292ZXJ5IHRvIGNvbXBsZXRlLCBqdXN0
-IGxpa2UNCm1pbm9yIHZlcnNpb24gMS4uLg0KDQo+ICAgVGhlIHNlcnZlciB3aWxsIHJldHVybiBD
-TElEX0lOVVNFLCBwb3NzaWJseS4gIEVpdGhlciB3ZSBmYWlsIHRoZSBtb3VudCwgb3Igd2UgYWxs
-b3cgaXQgYW5kIHNwbGl0IHRoZSBsZWFzZS4NCg0KQ0xJRF9JTlVTRSBuZWVkcyB0byBiZSBoYW5k
-bGVkIGNhcmVmdWxseS4gSW4gbW9zdCBjYXNlcyB3ZSdsbCB3YW50IHRvDQpyZXRyeSBhIGNvdXBs
-ZSBvZiB0aW1lcywgYW5kIHRoZW4gZXJyb3Igb3V0LiBIb3dldmVyLCBpZiB0aGUgdXNlciBoYXMN
-Cm5vdCBzcGVjaWZpZWQgYSAnc2VjPScgbW91bnQgb3B0aW9uLCB0aGVuIHdlIHNob3VsZCB0cnkg
-dG8gbmVnb3RpYXRlIHRoZQ0KcmlnaHQgc2VjdXJpdHkgbWVjaGFuaXNtIGFzIHBhcnQgb2YgdGhl
-IHJldHJpZXMuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50
-YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5j
-b20NCg0K
+On 06/14/12 08:53, Andy Adamson wrote:
+> On Wed, Jun 13, 2012 at 11:17 AM, Jeff Wright<jeff.wright@oracle.com>  wrote:
+>> Andy,
+>>
+>> We did not check the RPC statistics on the client, but on the target the
+>> queue is nearly empty.  What is the command to check to see the RPC backlog
+>> on the Linux client?
+> Hi Jeff
+>
+> The command is
+>
+> # mountstats<mountpoint>
+Thanks - we'll try this.
+>
+> The RPC statistics 'average backlog queue length'
+>
+> Have you tried iperf?
+Not yet - we'll put this in the next round of testing.
+>
+> -->Andy
+>
+>> Thanks,
+>>
+>> Jeff
+>>
+>>
+>> On 06/13/12 09:08, Andy Adamson wrote:
+>>> Chuck recently brought this to my attention:
+>>>
+>>> Have you tried looking at the RPC statistics average backlog queue
+>>> length in mountstats? The backlog queue gets filled with NFS requests
+>>> that do not get an RPC slot.
+>>>
+>>> I assume that jumbo frames are turned on throughout the connection.
+>>>
+>>> I would try some iperf runs.  This will check the throughput of the
+>>> memory<->    network<->    memory path and provide an upper bound on what
+>>> to expect from NFS as well as displaying the MTU to check for jumbo
+>>> frame compliance.
+>>>
+>>> I would then try some iozone tests, including the O_DIRECT tests. This
+>>> will give some more data on the issue by separating throughput from
+>>> the application specifics.
+>>>
+>>> -->Andy
+>>>
+>>> On Tue, May 22, 2012 at 12:21 PM, Jeff Wright<jeff.wright@oracle.com>
+>>>   wrote:
+>>>> Team,
+>>>>
+>>>> I am working on a team implementing a configuration with an OEL kernel
+>>>> (2.6.32-300.3.1.el6uek.x86_64) and kernel NFS accessing an NFS server
+>>>> over
+>>>> 10GbE a Solaris 10.  We are trying to resolve what appears to be a
+>>>> bottleneck between the Linux kernel NFS client and the TCP stack.
+>>>>   Specifically, the TCP send queue on the Linux client is empty (save a
+>>>> couple of bursts) when we are running write I/O from the file system, the
+>>>> TCP receive queue on the Solaris 10 NFS server is empty, and the RPC
+>>>> pending
+>>>> request queue on the Solaris 10 NFS server is zero.   If we dial the
+>>>> network
+>>>> to 1GbE we get a nice deep TCP send queue on the client, which is the
+>>>> bottleneck I was hoping to get to with 10GbE.  At this point, we am
+>>>> pretty
+>>>> sure the S10 NFS server can run to at least 1000 MBPS.
+>>>>
+>>>> So far, we have implemented the following Linux kernel tunes:
+>>>>
+>>>> sunrpc.tcp_slot_table_entries = 128
+>>>> net.core.rmem_default = 4194304
+>>>> net.core.wmem_default = 4194304
+>>>> net.core.rmem_max = 4194304
+>>>> net.core.wmem_max = 4194304
+>>>> net.ipv4.tcp_rmem = 4096 1048576 4194304
+>>>> net.ipv4.tcp_wmem = 4096 1048576 4194304
+>>>> net.ipv4.tcp_timestamps = 0
+>>>> net.ipv4.tcp_syncookies = 1
+>>>> net.core.netdev_max_backlog = 300000
+>>>>
+>>>> In addition, we am running jumbo frames on the 10GbE NIC and we have
+>>>> cpuspeed and irqbalance disabled (no noticeable changes when we did
+>>>> this).
+>>>>   The mount options on the client side are as follows:
+>>>>
+>>>> 192.168.44.51:/export/share on /export/share type nfs
+>>>>
+>>>> (rw,nointr,bg,hard,rsize=1048576,wsize=1048576,proto=tcp,vers=3,addr=192.168.44.51)
+>>>>
+>>>> In this configuration we get about 330 MBPS of write throughput with 16
+>>>> pending stable (open with O_DIRECT) synchronous (no kernel aio in the I/O
+>>>> application) writes.  If we scale beyond 16 pending I/O response time
+>>>> increases but throughput remains fixed.  It feels like there is a problem
+>>>> with getting more than 16 pending I/O out to TCP, but we can't tell for
+>>>> sure
+>>>> based on our observations so far.  We did notice that tuning the wsize
+>>>> down
+>>>> to 32kB increased throughput to 400 MBPS, but we could not identify the
+>>>> root
+>>>> cause of this change.
+>>>>
+>>>> Please let us know if you have any suggestions for either diagnosing the
+>>>> bottleneck more accurately or relieving the bottleneck.  Thank you in
+>>>> advance.
+>>>>
+>>>> Sincerely,
+>>>>
+>>>> Jeff
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+
