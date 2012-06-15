@@ -1,135 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:22336 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:43433 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755054Ab2FKOzb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Jun 2012 10:55:31 -0400
-Date: Mon, 11 Jun 2012 10:55:15 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: bfields <bfields@fieldses.org>, Steve Dickson <steved@redhat.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Joerg Platte <jplatte@naasa.net>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Hans de Bruin <jmdebruin@xmsnet.nl>
-Subject: Re: Kernel 3.4.X NFS server regression
-Message-ID: <20120611105515.3b99942c@tlielax.poochiereds.net>
-In-Reply-To: <4FD60472.7020207@panasas.com>
-References: <4FD47D4E.9070307@naasa.net>
-	<1339340441.4751.1.camel@lade.trondhjem.org>
-	<20120611121634.GB7654@fieldses.org>
-	<20120611083932.24e27e39@corrin.poochiereds.net>
-	<4FD5F35A.3000903@panasas.com>
-	<20120611095132.045a8d09@corrin.poochiereds.net>
-	<4FD5FB28.4050003@panasas.com>
-	<20120611101141.143fff3c@corrin.poochiereds.net>
-	<4FD60472.7020207@panasas.com>
+	id S1756790Ab2FOMyP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 15 Jun 2012 08:54:15 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q5FCsCmU028779
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 15 Jun 2012 08:54:12 -0400
+Message-ID: <1339764850.30233.11.camel@serendib>
+Subject: rpciod process is blocked in nfs_release_page waiting for
+ nfs_commit_inode to complete
+From: Harshula <harshula@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: jlayton@redhat.com
+Date: Fri, 15 Jun 2012 22:54:10 +1000
+Content-Type: text/plain; charset="UTF-8"
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 11 Jun 2012 17:45:06 +0300
-Boaz Harrosh <bharrosh@panasas.com> wrote:
+Hi All,
 
-> On 06/11/2012 05:11 PM, Jeff Layton wrote:
-> 
-> > On Mon, 11 Jun 2012 17:05:28 +0300
-> > Boaz Harrosh <bharrosh@panasas.com> wrote:
-> > 
-> >> On 06/11/2012 04:51 PM, Jeff Layton wrote:
-> >>
-> >>>
-> >>> That was considered here, but the problem with the usermode helper is
-> >>> that you can't pass anything back to the kernel but a simple status
-> >>> code (and that's assuming that you wait for it to exit). In the near
-> >>> future, we'll need to pass back more info to the kernel for this, so
-> >>> the usermode helper callout wasn't suitable.
-> >>>
-> >>
-> >>
-> >> I have answered that in my mail. Repeated here again. Well you made 
-> >> a simple mistake. Because it is *easy* to pass back any number and
-> >> size of information from user-mode.
-> >>
-> >> You just setup a sysfs entry points where the answers are written
-> >> back to. It's an easy trick to setup a thread safe, way with a
-> >> cookie but 90% of the time you don't have to. Say you set up
-> >> a structure of per-client (identified uniquely) then user mode
-> >> answers back per client, concurrency will not do any harm, since
-> >> you answer to the same question the same answer. ans so on. Each
-> >> problem it's own.
-> >>
-> >> If you want we can talk about this, it would be easy for me to setup
-> >> a toll free conference number we can all use.
-> > 
-> > That helpful advice would have been welcome about 3-4 months ago when I
-> > first proposed this in detail. At that point you're working with
-> > multiple upcall/downcall mechanisms, which was something I was keen to
-> > avoid.
-> > 
-> > I'm not opposed to moving in that direction, but it basically means
-> > you're going to rip out everything I've got here so far and replace it.
-> > 
-> > If you're willing to do that work, I'll be happy to work with you on
-> > it, but I don't have the time or inclination to do that on my own right
-> > now.
-> > 
-> 
-> 
-> No such luck. sorry. I wish I could, but coming from a competing server
-> company, you can imagine the priority of that ever happening.
-> (Even though I use the Linux-Server everyday for my development and
->  am putting lots of efforts into still, mainly in pnfs)
-> 
-> Hopefully re-examining the code, it could all be salvaged just the
-> same, only lots of code thrown a way.
-> 
-> But mean-while please address my concern below:
-> Boaz Harrosh wrote: 
-> 
-> > One more thing, the most important one. We have already fixed that in the
-> > past and I was hoping the lesson was learned. Apparently it was not, and
-> > we are doomed to do this mistake for ever!!
-> > 
-> > What ever crap fails times out and crashes, in the recovery code, we don't
-> > give a dam. It should never affect any Server-client communication.
-> > 
-> > When the grace periods ends the clients gates opens period. *Any* error
-> > return from state recovery code must be carefully ignored and normal
-> > operations resumed. At most on error, we move into a mode where any
-> > recovery request from client is accepted, since we don't have any better
-> > data to verify it.
-> > 
-> > Please comb recovery code to make sure any catastrophe is safely ignored.
-> > We already did that before and it used to work.
-> 
-> 
-> We should make sure that any state recovery code does not interfere with
-> regular operations. and fails gracefully / shuts up. 
-> 
-> We used to have that, apparently it re-broke. Clients should always be granted
-> access, after grace period. And Server should be made sure not to fail in any
-> situation.
-> 
-> I would look into it but I'm not uptodate anymore, I wish you or Bruce could.
-> 
-> Thanks for your work so far, sorry to be bearer of bad news
-> Boaz
+Can I please get your feedback on the following?
 
-This problem turned out to be a fairly straightforward bug in the
-rpc_pipefs queue timeout mechanism that was causing the laundromat job
-to hang and hence to keep the state lock locked. I just sent a patch
-that should fix it.
+rpciod is blocked:
+------------------------------------------------------------
+crash> bt  2507 
+PID: 2507   TASK: ffff88103691ab40  CPU: 14  COMMAND: "rpciod/14"
+ #0 [ffff8810343bf2f0] schedule at ffffffff814dabd9
+ #1 [ffff8810343bf3b8] nfs_wait_bit_killable at ffffffffa038fc04 [nfs]
+ #2 [ffff8810343bf3c8] __wait_on_bit at ffffffff814dbc2f
+ #3 [ffff8810343bf418] out_of_line_wait_on_bit at ffffffff814dbcd8
+ #4 [ffff8810343bf488] nfs_commit_inode at ffffffffa039e0c1 [nfs]
+ #5 [ffff8810343bf4f8] nfs_release_page at ffffffffa038bef6 [nfs]
+ #6 [ffff8810343bf528] try_to_release_page at ffffffff8110c670
+ #7 [ffff8810343bf538] shrink_page_list.clone.0 at ffffffff81126271
+ #8 [ffff8810343bf668] shrink_inactive_list at ffffffff81126638
+ #9 [ffff8810343bf818] shrink_zone at ffffffff8112788f
+#10 [ffff8810343bf8c8] do_try_to_free_pages at ffffffff81127b1e
+#11 [ffff8810343bf958] try_to_free_pages at ffffffff8112812f
+#12 [ffff8810343bfa08] __alloc_pages_nodemask at ffffffff8111fdad
+#13 [ffff8810343bfb28] kmem_getpages at ffffffff81159942
+#14 [ffff8810343bfb58] fallback_alloc at ffffffff8115a55a
+#15 [ffff8810343bfbd8] ____cache_alloc_node at ffffffff8115a2d9
+#16 [ffff8810343bfc38] kmem_cache_alloc at ffffffff8115b09b
+#17 [ffff8810343bfc78] sk_prot_alloc at ffffffff81411808
+#18 [ffff8810343bfcb8] sk_alloc at ffffffff8141197c
+#19 [ffff8810343bfce8] inet_create at ffffffff81483ba6
+#20 [ffff8810343bfd38] __sock_create at ffffffff8140b4a7
+#21 [ffff8810343bfd98] xs_create_sock at ffffffffa01f649b [sunrpc]
+#22 [ffff8810343bfdd8] xs_tcp_setup_socket at ffffffffa01f6965 [sunrpc]
+#23 [ffff8810343bfe38] worker_thread at ffffffff810887d0
+#24 [ffff8810343bfee8] kthread at ffffffff8108dd96
+#25 [ffff8810343bff48] kernel_thread at ffffffff8100c1ca
+------------------------------------------------------------
 
-I guess I'm not clear on what you're saying is broken. Modulo the
-original bug here, clients are allowed access after the grace period
-whether the upcalls are working or not.
+nfs_release_page() gives kswapd process an exemption from being blocked.
+Should we do the same for rpciod. Otherwise rpciod could end up in a
+deadlock where it can not continue without freeing memory that will only
+become available when rpciod does its work:
+------------------------------------------------------------
+479 /*
+480  * Attempt to release the private state associated with a page
+481  * - Called if either PG_private or PG_fscache is set on the page
+482  * - Caller holds page lock
+483  * - Return true (may release page) or false (may not)
+484  */
+485 static int nfs_release_page(struct page *page, gfp_t gfp)
+486 {   
+487         struct address_space *mapping = page->mapping;
+488     
+489         dfprintk(PAGECACHE, "NFS: release_page(%p)\n", page);
+490     
+491         /* Only do I/O if gfp is a superset of GFP_KERNEL */
+492         if (mapping && (gfp & GFP_KERNEL) == GFP_KERNEL) {
+493                 int how = FLUSH_SYNC;
+494             
+495                 /* Don't let kswapd deadlock waiting for OOM RPC calls */
+496                 if (current_is_kswapd())
+497                         how = 0;
+498                 nfs_commit_inode(mapping->host, how);
+499         }
+500         /* If PagePrivate() is set, then the page is not freeable */
+501         if (PagePrivate(page))
+502                 return 0;
+503         return nfs_fscache_release_page(page, gfp);
+504 }
+------------------------------------------------------------
 
-What we cannot allow is reclaim requests outside of the grace period,
-since we can't verify whether there was conflicting state in the
-interim period. That's true whether the server has a functioning client
-tracking mechanism or not.
+Another option is to change the priority of the memory allocation:
+net/ipv4/af_inet.c
+------------------------------------------------------------
+ 265 static int inet_create(struct net *net, struct socket *sock, int
+protocol,
+ 266                        int kern)
+ 267 {
+...
+ 345         sk = sk_alloc(net, PF_INET, GFP_KERNEL, answer_prot);
+------------------------------------------------------------
+Considering this is generic net code, I assume the GFP_KERNEL will not
+be replaced with GFP_ATOMIC.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+NOTE, this is on RHEL 6.1 kernel 2.6.32-131.6.1 and apparently uses
+'legacy' workqueue code.
+
+cya,
+#
+
