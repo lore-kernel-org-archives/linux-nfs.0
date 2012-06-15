@@ -1,93 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51825 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:11008 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756364Ab2FYUkO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Jun 2012 16:40:14 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: stable@vger.kernel.org
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 4/4] NFS: hard-code init_net for NFS callback transports
-Date: Mon, 25 Jun 2012 16:40:10 -0400
-Message-Id: <1340656810-13752-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1340656810-13752-1-git-send-email-bfields@redhat.com>
-References: <1340656810-13752-1-git-send-email-bfields@redhat.com>
+	id S1753847Ab2FOVff (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 15 Jun 2012 17:35:35 -0400
+Received: from vmwexceht04-prd.hq.netapp.com (vmwexceht04-prd.hq.netapp.com [10.106.77.34])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q5FLZ1Au006644
+	for <linux-nfs@vger.kernel.org>; Fri, 15 Jun 2012 14:35:35 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 2 1/1] NFSv4.1 Fix umount when filelayout DS is
+ also the MDS
+Date: Fri, 15 Jun 2012 21:35:09 +0000
+Message-ID: <1339796103.16363.12.camel@lade.trondhjem.org>
+References: <1339690375-2294-1-git-send-email-andros@netapp.com>
+	 <1339690375-2294-2-git-send-email-andros@netapp.com>
+	 <1339694462.2886.35.camel@lade.trondhjem.org>
+	 <3CC581F2-5BD8-4BC0-8839-40795BD4BED5@netapp.com>
+In-Reply-To: <3CC581F2-5BD8-4BC0-8839-40795BD4BED5@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
-upstream commit 12918b10d59e975fd5241eef03ef9e6d5ea3dcfe.
-
-In case of destroying mount namespace on child reaper exit, nsproxy is zeroed
-to the point already. So, dereferencing of it is invalid.
-This patch hard-code "init_net" for all network namespace references for NFS
-callback services. This will be fixed with proper NFS callback
-containerization.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfs/callback.c |   11 +++++------
- 1 file changed, 5 insertions(+), 6 deletions(-)
-
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index cff3940..38a44c6 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -17,7 +17,6 @@
- #include <linux/kthread.h>
- #include <linux/sunrpc/svcauth_gss.h>
- #include <linux/sunrpc/bc_xprt.h>
--#include <linux/nsproxy.h>
- 
- #include <net/inet_sock.h>
- 
-@@ -107,7 +106,7 @@ nfs4_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
- {
- 	int ret;
- 
--	ret = svc_create_xprt(serv, "tcp", xprt->xprt_net, PF_INET,
-+	ret = svc_create_xprt(serv, "tcp", &init_net, PF_INET,
- 				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
- 	if (ret <= 0)
- 		goto out_err;
-@@ -115,7 +114,7 @@ nfs4_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
- 	dprintk("NFS: Callback listener port = %u (af %u)\n",
- 			nfs_callback_tcpport, PF_INET);
- 
--	ret = svc_create_xprt(serv, "tcp", xprt->xprt_net, PF_INET6,
-+	ret = svc_create_xprt(serv, "tcp", &init_net, PF_INET6,
- 				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
- 	if (ret > 0) {
- 		nfs_callback_tcpport6 = ret;
-@@ -184,7 +183,7 @@ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
- 	 * fore channel connection.
- 	 * Returns the input port (0) and sets the svc_serv bc_xprt on success
- 	 */
--	ret = svc_create_xprt(serv, "tcp-bc", xprt->xprt_net, PF_INET, 0,
-+	ret = svc_create_xprt(serv, "tcp-bc", &init_net, PF_INET, 0,
- 			      SVC_SOCK_ANONYMOUS);
- 	if (ret < 0) {
- 		rqstp = ERR_PTR(ret);
-@@ -254,7 +253,7 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
- 	char svc_name[12];
- 	int ret = 0;
- 	int minorversion_setup;
--	struct net *net = current->nsproxy->net_ns;
-+	struct net *net = &init_net;
- 
- 	mutex_lock(&nfs_callback_mutex);
- 	if (cb_info->users++ || cb_info->task != NULL) {
-@@ -330,7 +329,7 @@ void nfs_callback_down(int minorversion)
- 	cb_info->users--;
- 	if (cb_info->users == 0 && cb_info->task != NULL) {
- 		kthread_stop(cb_info->task);
--		svc_shutdown_net(cb_info->serv, current->nsproxy->net_ns);
-+		svc_shutdown_net(cb_info->serv, &init_net);
- 		svc_exit_thread(cb_info->rqst);
- 		cb_info->serv = NULL;
- 		cb_info->rqst = NULL;
--- 
-1.7.9.5
-
+T24gVGh1LCAyMDEyLTA2LTE0IGF0IDIxOjUyICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0K
+PiBPbiBKdW4gMTQsIDIwMTIsIGF0IDE6MjEgUE0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+
+IA0KPiA+IE9uIFRodSwgMjAxMi0wNi0xNCBhdCAxMjoxMiAtMDQwMCwgYW5kcm9zQG5ldGFwcC5j
+b20gd3JvdGU6DQo+ID4gDQo+ID4+IC0tLQ0KPiA+PiBmcy9uZnMvY2xpZW50LmMgICAgICAgICAg
+ICB8ICAgODggKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrLQ0KPiA+
+PiBmcy9uZnMvaW50ZXJuYWwuaCAgICAgICAgICB8ICAgIDEgKw0KPiA+PiBmcy9uZnMvbmZzNGZp
+bGVsYXlvdXRkZXYuYyB8ICAgMjkgKysrKysrKysrKysrLS0NCj4gPj4gaW5jbHVkZS9saW51eC9u
+ZnNfZnNfc2IuaCAgfCAgICAxICsNCj4gPj4gNCBmaWxlcyBjaGFuZ2VkLCAxMTIgaW5zZXJ0aW9u
+cygrKSwgNyBkZWxldGlvbnMoLSkNCj4gPiANCj4gPiBIaSBBbmR5LA0KPiA+IA0KPiA+IElzIHRo
+ZXJlIGFueSByZWFzb24gd2h5IHRoZSBmb2xsb3dpbmcgd291bGRuJ3Qgd29yayBpbnN0ZWFkPyBJ
+dCBpcw0KPiA+IGVzc2VudGlhbGx5IHRoZSBzYW1lIGlkZWEuDQo+IA0KPiBIaSBUcm9uZA0KPiAN
+Cj4gV29ya3MgZ3JlYXQgLSBsZXNzIGZpbGxpbmcgLSBjb29sIQ0KPiANCj4gQUNLDQo+IA0KPiAt
+LT5BbmR5DQoNCk1laC4uLiBJIGZvdW5kIGEgbW9yZSBjb21wYWN0IG9uZSB3aGljaCBoYXMgdGhl
+IGFkZGVkIGFkdmFudGFnZSBvZiB6ZXJvDQppbXBhY3Qgb24gbm9uLXBORlMgc3lzdGVtcy4gOi0p
+DQoNCkNoZWVycw0KICBUcm9uZA0KODwtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpGcm9tIDEwYmJjZGRjNWE1ZWJhMTc3MDQ5MzY3ODc1Mzg0
+ZjQ2MGY1Y2FhODUgTW9uIFNlcCAxNyAwMDowMDowMCAyMDAxDQpGcm9tOiBUcm9uZCBNeWtsZWJ1
+c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KRGF0ZTogVGh1LCAxNCBKdW4gMjAxMiAx
+MzowODozOCAtMDQwMA0KU3ViamVjdDogW1BBVENIXSBORlN2NC4xOiBGaXggdW1vdW50IHdoZW4g
+ZmlsZWxheW91dCBEUyBpcyBhbHNvIHRoZSBNRFMNCg0KQ3VycmVudGx5IHRoZXJlIGlzIGEgJ2No
+aWNrZW4gYW5kIGVnZycgaXNzdWUgd2hlbiB0aGUgRFMgaXMgYWxzbyB0aGUgbW91bnRlZA0KTURT
+LiBUaGUgbmZzX21hdGNoX2NsaWVudCgpIHJlZmVyZW5jZSBmcm9tIG5mczRfc2V0X2RzX2NsaWVu
+dCBidW1wcyB0aGUNCmNsX2NvdW50LCB0aGUgbmZzX2NsaWVudCBpcyBub3QgZnJlZWQgYXQgdW1v
+dW50LCBhbmQgbmZzNF9kZXZpY2VpZF9wdXJnZV9jbGllbnQNCmlzIG5vdCBjYWxsZWQgdG8gZGVy
+ZWZlcmVuY2UgdGhlIE1EUyB1c2FnZSBvZiBhIGRldmljZWlkIHdoaWNoIGhvbGRzIGENCnJlZmVy
+ZW5jZSB0byB0aGUgRFMgbmZzX2NsaWVudC4gIFRoZSByZXN1bHQgaXMgdGhlIHVtb3VudCBwcm9n
+cmFtIHJldHVybnMsDQpidXQgdGhlIG5mc19jbGllbnQgaXMgbm90IGZyZWVkLCBhbmQgdGhlIGNs
+X3Nlc3Npb24gaGVhcmJlYXQgY29udGludWVzLg0KDQpUaGUgTURTIChhbmQgYWxsIG90aGVyIG5m
+cyBtb3VudHMpIGxvc2UgdGhlaXIgbGFzdCBuZnNfY2xpZW50IHJlZmVyZW5jZSBpbg0KbmZzX2Zy
+ZWVfc2VydmVyIHdoZW4gdGhlIGxhc3QgbmZzX3NlcnZlciAoZnNpZCkgaXMgdW1vdW50ZWQuDQpU
+aGUgZmlsZSBsYXlvdXQgRFMgbG9zZSB0aGVpciBsYXN0IG5mc19jbGllbnQgcmVmZXJlbmNlIGlu
+IGRlc3Ryb3lfZHMNCndoZW4gdGhlIGxhc3QgZGV2aWNlaWQgcmVmZXJlbmNpbmcgdGhlIGRhdGEg
+c2VydmVyIGlzIHB1dCBhbmQgZGVzdHJveV9kcyBpcw0KY2FsbGVkLiBUaGlzIGlzIHRyaWdnZXJl
+ZCBieSBhIGNhbGwgdG8gbmZzNF9kZXZpY2VpZF9wdXJnZV9jbGllbnQgd2hpY2gNCnJlbW92ZXMg
+cmVmZXJlbmNlcyB0byBhIHBORlMgZGV2aWNlaWQgdXNlZCBieSBhbiBNRFMgbW91bnQuDQoNClRo
+ZSBmaXggaXMgdG8gdHJhY2sgaG93IG1hbnkgcG5mcyBlbmFibGVkIGZpbGVzeXN0ZW1zIGFyZSBt
+b3VudGVkIGZyb20NCnRoaXMgc2VydmVyLCBhbmQgdGhlbiB0byBwdXJnZSB0aGUgZGV2aWNlIGlk
+IGNhY2hlIG9uY2UgdGhhdCBjb3VudCByZWFjaGVzDQp6ZXJvLg0KDQpSZXBvcnRlZC1ieTogSm9y
+Z2UgTW9yYSA8Sm9yZ2UuTW9yYUBuZXRhcHAuY29tPg0KUmVwb3J0ZWQtYnk6IEFuZHkgQWRhbXNv
+biA8YW5kcm9zQG5ldGFwcC5jb20+DQpTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRy
+b25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KLS0tDQogZnMvbmZzL2NsaWVudC5jICAgICAgICAg
+ICB8ICAgIDEgLQ0KIGZzL25mcy9wbmZzLmMgICAgICAgICAgICAgfCAgICA1ICsrKysrDQogaW5j
+bHVkZS9saW51eC9uZnNfZnNfc2IuaCB8ICAgIDEgKw0KIDMgZmlsZXMgY2hhbmdlZCwgNiBpbnNl
+cnRpb25zKCspLCAxIGRlbGV0aW9uKC0pDQoNCmRpZmYgLS1naXQgYS9mcy9uZnMvY2xpZW50LmMg
+Yi9mcy9uZnMvY2xpZW50LmMNCmluZGV4IDE3YmE2YjkuLmYwMDViNWIgMTAwNjQ0DQotLS0gYS9m
+cy9uZnMvY2xpZW50LmMNCisrKyBiL2ZzL25mcy9jbGllbnQuYw0KQEAgLTIwNyw3ICsyMDcsNiBA
+QCBlcnJvcl8wOg0KIHN0YXRpYyB2b2lkIG5mczRfc2h1dGRvd25fc2Vzc2lvbihzdHJ1Y3QgbmZz
+X2NsaWVudCAqY2xwKQ0KIHsNCiAJaWYgKG5mczRfaGFzX3Nlc3Npb24oY2xwKSkgew0KLQkJbmZz
+NF9kZXZpY2VpZF9wdXJnZV9jbGllbnQoY2xwKTsNCiAJCW5mczRfZGVzdHJveV9zZXNzaW9uKGNs
+cC0+Y2xfc2Vzc2lvbik7DQogCQluZnM0X2Rlc3Ryb3lfY2xpZW50aWQoY2xwKTsNCiAJfQ0KZGlm
+ZiAtLWdpdCBhL2ZzL25mcy9wbmZzLmMgYi9mcy9uZnMvcG5mcy5jDQppbmRleCBiODMyM2FhLi5i
+ZGY3ZTUyIDEwMDY0NA0KLS0tIGEvZnMvbmZzL3BuZnMuYw0KKysrIGIvZnMvbmZzL3BuZnMuYw0K
+QEAgLTgwLDYgKzgwLDkgQEAgdW5zZXRfcG5mc19sYXlvdXRkcml2ZXIoc3RydWN0IG5mc19zZXJ2
+ZXIgKm5mc3MpDQogCWlmIChuZnNzLT5wbmZzX2N1cnJfbGQpIHsNCiAJCWlmIChuZnNzLT5wbmZz
+X2N1cnJfbGQtPmNsZWFyX2xheW91dGRyaXZlcikNCiAJCQluZnNzLT5wbmZzX2N1cnJfbGQtPmNs
+ZWFyX2xheW91dGRyaXZlcihuZnNzKTsNCisJCS8qIERlY3JlbWVudCB0aGUgTURTIGNvdW50LiBQ
+dXJnZSB0aGUgZGV2aWNlaWQgY2FjaGUgaWYgemVybyAqLw0KKwkJaWYgKGF0b21pY19kZWNfYW5k
+X3Rlc3QoJm5mc3MtPm5mc19jbGllbnQtPmNsX21kc19jb3VudCkpDQorCQkJbmZzNF9kZXZpY2Vp
+ZF9wdXJnZV9jbGllbnQobmZzcy0+bmZzX2NsaWVudCk7DQogCQltb2R1bGVfcHV0KG5mc3MtPnBu
+ZnNfY3Vycl9sZC0+b3duZXIpOw0KIAl9DQogCW5mc3MtPnBuZnNfY3Vycl9sZCA9IE5VTEw7DQpA
+QCAtMTI3LDYgKzEzMCw4IEBAIHNldF9wbmZzX2xheW91dGRyaXZlcihzdHJ1Y3QgbmZzX3NlcnZl
+ciAqc2VydmVyLCBjb25zdCBzdHJ1Y3QgbmZzX2ZoICptbnRmaCwNCiAJCW1vZHVsZV9wdXQobGRf
+dHlwZS0+b3duZXIpOw0KIAkJZ290byBvdXRfbm9fZHJpdmVyOw0KIAl9DQorCS8qIEJ1bXAgdGhl
+IE1EUyBjb3VudCAqLw0KKwlhdG9taWNfaW5jKCZzZXJ2ZXItPm5mc19jbGllbnQtPmNsX21kc19j
+b3VudCk7DQogDQogCWRwcmludGsoIiVzOiBwTkZTIG1vZHVsZSBmb3IgJXUgc2V0XG4iLCBfX2Z1
+bmNfXywgaWQpOw0KIAlyZXR1cm47DQpkaWZmIC0tZ2l0IGEvaW5jbHVkZS9saW51eC9uZnNfZnNf
+c2IuaCBiL2luY2x1ZGUvbGludXgvbmZzX2ZzX3NiLmgNCmluZGV4IGZiYjc4ZmIuLmY1ODMyNWEg
+MTAwNjQ0DQotLS0gYS9pbmNsdWRlL2xpbnV4L25mc19mc19zYi5oDQorKysgYi9pbmNsdWRlL2xp
+bnV4L25mc19mc19zYi5oDQpAQCAtMjUsNiArMjUsNyBAQCBzdHJ1Y3QgbmZzNDFfaW1wbF9pZDsN
+CiAgKi8NCiBzdHJ1Y3QgbmZzX2NsaWVudCB7DQogCWF0b21pY190CQljbF9jb3VudDsNCisJYXRv
+bWljX3QJCWNsX21kc19jb3VudDsNCiAJaW50CQkJY2xfY29uc19zdGF0ZTsJLyogY3VycmVudCBj
+b25zdHJ1Y3Rpb24gc3RhdGUgKC12ZTogaW5pdCBlcnJvcikgKi8NCiAjZGVmaW5lIE5GU19DU19S
+RUFEWQkJMAkJLyogcmVhZHkgdG8gYmUgdXNlZCAqLw0KICNkZWZpbmUgTkZTX0NTX0lOSVRJTkcJ
+CTEJCS8qIGJ1c3kgaW5pdGlhbGlzaW5nICovDQotLSANCjEuNy4xMC4yDQoNCg0KLS0gDQpUcm9u
+ZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25k
+Lk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
