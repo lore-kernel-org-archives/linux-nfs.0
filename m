@@ -1,101 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:11008 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753847Ab2FOVff (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Jun 2012 17:35:35 -0400
-Received: from vmwexceht04-prd.hq.netapp.com (vmwexceht04-prd.hq.netapp.com [10.106.77.34])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q5FLZ1Au006644
-	for <linux-nfs@vger.kernel.org>; Fri, 15 Jun 2012 14:35:35 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 2 1/1] NFSv4.1 Fix umount when filelayout DS is
- also the MDS
-Date: Fri, 15 Jun 2012 21:35:09 +0000
-Message-ID: <1339796103.16363.12.camel@lade.trondhjem.org>
-References: <1339690375-2294-1-git-send-email-andros@netapp.com>
-	 <1339690375-2294-2-git-send-email-andros@netapp.com>
-	 <1339694462.2886.35.camel@lade.trondhjem.org>
-	 <3CC581F2-5BD8-4BC0-8839-40795BD4BED5@netapp.com>
-In-Reply-To: <3CC581F2-5BD8-4BC0-8839-40795BD4BED5@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from catastrophix.ugh.no ([178.79.162.34]:51368 "EHLO
+	catastrophix.ugh.no" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756632Ab2FPCmq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jun 2012 22:42:46 -0400
+Message-ID: <4FDBF056.7040404@tomt.net>
+Date: Sat, 16 Jun 2012 04:32:54 +0200
+From: Andre Tomt <andre@tomt.net>
 MIME-Version: 1.0
+To: Linux-NFS <linux-nfs@vger.kernel.org>
+CC: Fengguang Wu <fengguang.wu@intel.com>, David Howells <dhowells@redhat.com>,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: BUG in __key_instantiate_and_link(): unable to handle kernel
+ paging request at 0000632e6472616f
+References: <20120601034114.GA9248@localhost>
+In-Reply-To: <20120601034114.GA9248@localhost>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA2LTE0IGF0IDIxOjUyICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0K
-PiBPbiBKdW4gMTQsIDIwMTIsIGF0IDE6MjEgUE0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+
-IA0KPiA+IE9uIFRodSwgMjAxMi0wNi0xNCBhdCAxMjoxMiAtMDQwMCwgYW5kcm9zQG5ldGFwcC5j
-b20gd3JvdGU6DQo+ID4gDQo+ID4+IC0tLQ0KPiA+PiBmcy9uZnMvY2xpZW50LmMgICAgICAgICAg
-ICB8ICAgODggKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrLQ0KPiA+
-PiBmcy9uZnMvaW50ZXJuYWwuaCAgICAgICAgICB8ICAgIDEgKw0KPiA+PiBmcy9uZnMvbmZzNGZp
-bGVsYXlvdXRkZXYuYyB8ICAgMjkgKysrKysrKysrKysrLS0NCj4gPj4gaW5jbHVkZS9saW51eC9u
-ZnNfZnNfc2IuaCAgfCAgICAxICsNCj4gPj4gNCBmaWxlcyBjaGFuZ2VkLCAxMTIgaW5zZXJ0aW9u
-cygrKSwgNyBkZWxldGlvbnMoLSkNCj4gPiANCj4gPiBIaSBBbmR5LA0KPiA+IA0KPiA+IElzIHRo
-ZXJlIGFueSByZWFzb24gd2h5IHRoZSBmb2xsb3dpbmcgd291bGRuJ3Qgd29yayBpbnN0ZWFkPyBJ
-dCBpcw0KPiA+IGVzc2VudGlhbGx5IHRoZSBzYW1lIGlkZWEuDQo+IA0KPiBIaSBUcm9uZA0KPiAN
-Cj4gV29ya3MgZ3JlYXQgLSBsZXNzIGZpbGxpbmcgLSBjb29sIQ0KPiANCj4gQUNLDQo+IA0KPiAt
-LT5BbmR5DQoNCk1laC4uLiBJIGZvdW5kIGEgbW9yZSBjb21wYWN0IG9uZSB3aGljaCBoYXMgdGhl
-IGFkZGVkIGFkdmFudGFnZSBvZiB6ZXJvDQppbXBhY3Qgb24gbm9uLXBORlMgc3lzdGVtcy4gOi0p
-DQoNCkNoZWVycw0KICBUcm9uZA0KODwtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpGcm9tIDEwYmJjZGRjNWE1ZWJhMTc3MDQ5MzY3ODc1Mzg0
-ZjQ2MGY1Y2FhODUgTW9uIFNlcCAxNyAwMDowMDowMCAyMDAxDQpGcm9tOiBUcm9uZCBNeWtsZWJ1
-c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KRGF0ZTogVGh1LCAxNCBKdW4gMjAxMiAx
-MzowODozOCAtMDQwMA0KU3ViamVjdDogW1BBVENIXSBORlN2NC4xOiBGaXggdW1vdW50IHdoZW4g
-ZmlsZWxheW91dCBEUyBpcyBhbHNvIHRoZSBNRFMNCg0KQ3VycmVudGx5IHRoZXJlIGlzIGEgJ2No
-aWNrZW4gYW5kIGVnZycgaXNzdWUgd2hlbiB0aGUgRFMgaXMgYWxzbyB0aGUgbW91bnRlZA0KTURT
-LiBUaGUgbmZzX21hdGNoX2NsaWVudCgpIHJlZmVyZW5jZSBmcm9tIG5mczRfc2V0X2RzX2NsaWVu
-dCBidW1wcyB0aGUNCmNsX2NvdW50LCB0aGUgbmZzX2NsaWVudCBpcyBub3QgZnJlZWQgYXQgdW1v
-dW50LCBhbmQgbmZzNF9kZXZpY2VpZF9wdXJnZV9jbGllbnQNCmlzIG5vdCBjYWxsZWQgdG8gZGVy
-ZWZlcmVuY2UgdGhlIE1EUyB1c2FnZSBvZiBhIGRldmljZWlkIHdoaWNoIGhvbGRzIGENCnJlZmVy
-ZW5jZSB0byB0aGUgRFMgbmZzX2NsaWVudC4gIFRoZSByZXN1bHQgaXMgdGhlIHVtb3VudCBwcm9n
-cmFtIHJldHVybnMsDQpidXQgdGhlIG5mc19jbGllbnQgaXMgbm90IGZyZWVkLCBhbmQgdGhlIGNs
-X3Nlc3Npb24gaGVhcmJlYXQgY29udGludWVzLg0KDQpUaGUgTURTIChhbmQgYWxsIG90aGVyIG5m
-cyBtb3VudHMpIGxvc2UgdGhlaXIgbGFzdCBuZnNfY2xpZW50IHJlZmVyZW5jZSBpbg0KbmZzX2Zy
-ZWVfc2VydmVyIHdoZW4gdGhlIGxhc3QgbmZzX3NlcnZlciAoZnNpZCkgaXMgdW1vdW50ZWQuDQpU
-aGUgZmlsZSBsYXlvdXQgRFMgbG9zZSB0aGVpciBsYXN0IG5mc19jbGllbnQgcmVmZXJlbmNlIGlu
-IGRlc3Ryb3lfZHMNCndoZW4gdGhlIGxhc3QgZGV2aWNlaWQgcmVmZXJlbmNpbmcgdGhlIGRhdGEg
-c2VydmVyIGlzIHB1dCBhbmQgZGVzdHJveV9kcyBpcw0KY2FsbGVkLiBUaGlzIGlzIHRyaWdnZXJl
-ZCBieSBhIGNhbGwgdG8gbmZzNF9kZXZpY2VpZF9wdXJnZV9jbGllbnQgd2hpY2gNCnJlbW92ZXMg
-cmVmZXJlbmNlcyB0byBhIHBORlMgZGV2aWNlaWQgdXNlZCBieSBhbiBNRFMgbW91bnQuDQoNClRo
-ZSBmaXggaXMgdG8gdHJhY2sgaG93IG1hbnkgcG5mcyBlbmFibGVkIGZpbGVzeXN0ZW1zIGFyZSBt
-b3VudGVkIGZyb20NCnRoaXMgc2VydmVyLCBhbmQgdGhlbiB0byBwdXJnZSB0aGUgZGV2aWNlIGlk
-IGNhY2hlIG9uY2UgdGhhdCBjb3VudCByZWFjaGVzDQp6ZXJvLg0KDQpSZXBvcnRlZC1ieTogSm9y
-Z2UgTW9yYSA8Sm9yZ2UuTW9yYUBuZXRhcHAuY29tPg0KUmVwb3J0ZWQtYnk6IEFuZHkgQWRhbXNv
-biA8YW5kcm9zQG5ldGFwcC5jb20+DQpTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRy
-b25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KLS0tDQogZnMvbmZzL2NsaWVudC5jICAgICAgICAg
-ICB8ICAgIDEgLQ0KIGZzL25mcy9wbmZzLmMgICAgICAgICAgICAgfCAgICA1ICsrKysrDQogaW5j
-bHVkZS9saW51eC9uZnNfZnNfc2IuaCB8ICAgIDEgKw0KIDMgZmlsZXMgY2hhbmdlZCwgNiBpbnNl
-cnRpb25zKCspLCAxIGRlbGV0aW9uKC0pDQoNCmRpZmYgLS1naXQgYS9mcy9uZnMvY2xpZW50LmMg
-Yi9mcy9uZnMvY2xpZW50LmMNCmluZGV4IDE3YmE2YjkuLmYwMDViNWIgMTAwNjQ0DQotLS0gYS9m
-cy9uZnMvY2xpZW50LmMNCisrKyBiL2ZzL25mcy9jbGllbnQuYw0KQEAgLTIwNyw3ICsyMDcsNiBA
-QCBlcnJvcl8wOg0KIHN0YXRpYyB2b2lkIG5mczRfc2h1dGRvd25fc2Vzc2lvbihzdHJ1Y3QgbmZz
-X2NsaWVudCAqY2xwKQ0KIHsNCiAJaWYgKG5mczRfaGFzX3Nlc3Npb24oY2xwKSkgew0KLQkJbmZz
-NF9kZXZpY2VpZF9wdXJnZV9jbGllbnQoY2xwKTsNCiAJCW5mczRfZGVzdHJveV9zZXNzaW9uKGNs
-cC0+Y2xfc2Vzc2lvbik7DQogCQluZnM0X2Rlc3Ryb3lfY2xpZW50aWQoY2xwKTsNCiAJfQ0KZGlm
-ZiAtLWdpdCBhL2ZzL25mcy9wbmZzLmMgYi9mcy9uZnMvcG5mcy5jDQppbmRleCBiODMyM2FhLi5i
-ZGY3ZTUyIDEwMDY0NA0KLS0tIGEvZnMvbmZzL3BuZnMuYw0KKysrIGIvZnMvbmZzL3BuZnMuYw0K
-QEAgLTgwLDYgKzgwLDkgQEAgdW5zZXRfcG5mc19sYXlvdXRkcml2ZXIoc3RydWN0IG5mc19zZXJ2
-ZXIgKm5mc3MpDQogCWlmIChuZnNzLT5wbmZzX2N1cnJfbGQpIHsNCiAJCWlmIChuZnNzLT5wbmZz
-X2N1cnJfbGQtPmNsZWFyX2xheW91dGRyaXZlcikNCiAJCQluZnNzLT5wbmZzX2N1cnJfbGQtPmNs
-ZWFyX2xheW91dGRyaXZlcihuZnNzKTsNCisJCS8qIERlY3JlbWVudCB0aGUgTURTIGNvdW50LiBQ
-dXJnZSB0aGUgZGV2aWNlaWQgY2FjaGUgaWYgemVybyAqLw0KKwkJaWYgKGF0b21pY19kZWNfYW5k
-X3Rlc3QoJm5mc3MtPm5mc19jbGllbnQtPmNsX21kc19jb3VudCkpDQorCQkJbmZzNF9kZXZpY2Vp
-ZF9wdXJnZV9jbGllbnQobmZzcy0+bmZzX2NsaWVudCk7DQogCQltb2R1bGVfcHV0KG5mc3MtPnBu
-ZnNfY3Vycl9sZC0+b3duZXIpOw0KIAl9DQogCW5mc3MtPnBuZnNfY3Vycl9sZCA9IE5VTEw7DQpA
-QCAtMTI3LDYgKzEzMCw4IEBAIHNldF9wbmZzX2xheW91dGRyaXZlcihzdHJ1Y3QgbmZzX3NlcnZl
-ciAqc2VydmVyLCBjb25zdCBzdHJ1Y3QgbmZzX2ZoICptbnRmaCwNCiAJCW1vZHVsZV9wdXQobGRf
-dHlwZS0+b3duZXIpOw0KIAkJZ290byBvdXRfbm9fZHJpdmVyOw0KIAl9DQorCS8qIEJ1bXAgdGhl
-IE1EUyBjb3VudCAqLw0KKwlhdG9taWNfaW5jKCZzZXJ2ZXItPm5mc19jbGllbnQtPmNsX21kc19j
-b3VudCk7DQogDQogCWRwcmludGsoIiVzOiBwTkZTIG1vZHVsZSBmb3IgJXUgc2V0XG4iLCBfX2Z1
-bmNfXywgaWQpOw0KIAlyZXR1cm47DQpkaWZmIC0tZ2l0IGEvaW5jbHVkZS9saW51eC9uZnNfZnNf
-c2IuaCBiL2luY2x1ZGUvbGludXgvbmZzX2ZzX3NiLmgNCmluZGV4IGZiYjc4ZmIuLmY1ODMyNWEg
-MTAwNjQ0DQotLS0gYS9pbmNsdWRlL2xpbnV4L25mc19mc19zYi5oDQorKysgYi9pbmNsdWRlL2xp
-bnV4L25mc19mc19zYi5oDQpAQCAtMjUsNiArMjUsNyBAQCBzdHJ1Y3QgbmZzNDFfaW1wbF9pZDsN
-CiAgKi8NCiBzdHJ1Y3QgbmZzX2NsaWVudCB7DQogCWF0b21pY190CQljbF9jb3VudDsNCisJYXRv
-bWljX3QJCWNsX21kc19jb3VudDsNCiAJaW50CQkJY2xfY29uc19zdGF0ZTsJLyogY3VycmVudCBj
-b25zdHJ1Y3Rpb24gc3RhdGUgKC12ZTogaW5pdCBlcnJvcikgKi8NCiAjZGVmaW5lIE5GU19DU19S
-RUFEWQkJMAkJLyogcmVhZHkgdG8gYmUgdXNlZCAqLw0KICNkZWZpbmUgTkZTX0NTX0lOSVRJTkcJ
-CTEJCS8qIGJ1c3kgaW5pdGlhbGlzaW5nICovDQotLSANCjEuNy4xMC4yDQoNCg0KLS0gDQpUcm9u
-ZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25k
-Lk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+On 01. juni 2012 05:41, Fengguang Wu wrote:
+> Hi David,
+>
+> It's the second time the machine oops in __key_instantiate_and_link() on
+> 3.4 kernel.  This bug only happens after several days of run. Do you
+> have any advices or debug patches? For now I can try older (or newer)
+> kernels and see if it's any better.
+
+FWIW; I am (still) seeing this exact same crash several times an hour on 
+3.4.3-rc1 on Ubuntu 12.04 client. Only that the same second it happens, 
+all my three displays corrupts badly, becoming completely unreadable. 
+Switching to console and back usually gets my desktop back on two of 
+three displays, and sometimes it will need a full xserver restart. 
+Obviously some memory corruption going on.
+
+One of the crashes also triggered a NX error:
+[20292.196332] kernel tried to execute NX-protected page - exploit 
+attempt? (uid: 0)
+
+And after a while, things start locking up.
+
+It didn't really start happening until a few days ago though, I've been 
+running 3.4 for since some -rc through all the stable releases. Perhaps 
+server suddenly got a working idmapper or something? Its a debian 
+unstable updated a couple times a month.
+
+Booting latest git master now, to see if any of the recent NFS fixes 
+just pulled by Linus fixes anything (-rc2 had other showstopper nfs issues).
+
+>
+> [53056.100019] BUG: unable to handle kernel paging request at 0000632e6472616f
+> [53056.108072] IP: [<0000632e6472616f>] 0x632e6472616e
+> [53056.113702] PGD 0
+> [53056.116119] Oops: 0010 [#1] SMP
+> [53056.119982] CPU 0
+> [53056.122111] Modules linked in:
+> [53056.125969]
+> [53056.127713] Pid: 3502, comm: rpc.idmapd Not tainted 3.4.0 #130 Intel Corporation S2600CP/S2600CP
+> [53056.137880] RIP: 0010:[<0000632e6472616f>]  [<0000632e6472616f>] 0x632e6472616e
+> [53056.146228] RSP: 0018:ffff880421d2fd30  EFLAGS: 00010246
+> [53056.152249] RAX: ffff8803bef69100 RBX: ffff8803bef690d0 RCX: ffffffff81f0f440
+> [53056.160309] RDX: 0000000000000005 RSI: ffff880421d2fe8d RDI: ffff8803bef690d0
+> [53056.168371] RBP: ffff880421d2fd88 R08: ffff880421d2fcd8 R09: 0000000000000000
+> [53056.176435] R10: ffffffff81f0f468 R11: ffffffff813bbdbf R12: ffff880421d2fe8d
+> [53056.184504] R13: ffff8805c9957b00 R14: ffff8804287b9c00 R15: 0000000000000000
+> [53056.192564] FS:  00007f87fbce5700(0000) GS:ffff88042fa00000(0000) knlGS:0000000000000000
+> [53056.202451] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> [53056.209343] CR2: 0000632e6472616f CR3: 000000042951a000 CR4: 00000000000407f0
+> [53056.217784] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> [53056.226226] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> [53056.234675] Process rpc.idmapd (pid: 3502, threadinfo ffff880421d2e000, task ffff880427865e20)
+> [53056.245144] Stack:
+> [53056.247841]  ffffffff813bbde2 ffff880416c54820 0000000000000005 ffff880421d2fdb0
+> [53056.257281]  fffffff0287b9c28 ffff8803bef690b0 ffff8803bef690d0 ffff8804287b9c00
+> [53056.266725]  0000000000000005 ffff880421d2fe8d 00007f87fbaea800 ffff880421d2fdd8
+> [53056.276172] Call Trace:
+> [53056.279363]  [<ffffffff813bbde2>] ? __key_instantiate_and_link+0x5e/0xe4
+> [53056.287316]  [<ffffffff813bbec5>] key_instantiate_and_link+0x5d/0x85
+> [53056.294888]  [<ffffffff81262c29>] idmap_pipe_downcall+0x14a/0x18f
+> [53056.302176]  [<ffffffff81958071>] rpc_pipe_write+0x5d/0x77
+> [53056.308782]  [<ffffffff8114bfbd>] vfs_write+0xb2/0x142
+> [53056.315000]  [<ffffffff8114c247>] sys_write+0x4a/0x71
+> [53056.321108]  [<ffffffff819bc329>] system_call_fastpath+0x16/0x1b
+> [53056.328278] Code:  Bad RIP value.
+> [53056.332599] RIP  [<0000632e6472616f>] 0x632e6472616e
+> [53056.338687]  RSP<ffff880421d2fd30>
+> [53056.343035] CR2: 0000632e6472616f
+> [53056.347640] ---[ end trace ee5d4100fdd3e1d2 ]---
