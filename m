@@ -1,53 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:18078 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753553Ab2FWNbO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 23 Jun 2012 09:31:14 -0400
-References: <1340448446-10198-1-git-send-email-linkinjeon@gmail.com> <20120623115106.GA2742@umich.edu>
-In-Reply-To: <20120623115106.GA2742@umich.edu>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Message-Id: <5AC2C9F0-EEFE-423E-BBB9-27102D1CA163@oracle.com>
-Cc: Namjae Jeon <linkinjeon@gmail.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-        "bharrosh@panasas.com" <bharrosh@panasas.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Namjae Jeon <namjae.jeon@samsung.com>,
-        VivekTrivedi <t.vivek@samsung.com>,
-        Amit Sahrawat <a.sahrawat@samsung.com>
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [RFC PATCH] nfs: Support posix_fadvise(POSIX_FADV_RANDOM) on nfs server.
-Date: Sat, 23 Jun 2012 09:30:36 -0400
-To: Jim Rees <rees@umich.edu>
+Received: from mx2.netapp.com ([216.240.18.37]:23279 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755995Ab2FPT7I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 16 Jun 2012 15:59:08 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Andre Tomt <andre@tomt.net>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+CC: Linux-NFS <linux-nfs@vger.kernel.org>,
+        Fengguang Wu <fengguang.wu@intel.com>,
+        David Howells <dhowells@redhat.com>,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: BUG in __key_instantiate_and_link(): unable to handle kernel
+ paging request at 0000632e6472616f
+Date: Sat, 16 Jun 2012 19:59:05 +0000
+Message-ID: <1339876739.8267.96.camel@lade.trondhjem.org>
+References: <20120601034114.GA9248@localhost> <4FDBF056.7040404@tomt.net>
+	 <4FDCD3C7.5080503@tomt.net>
+In-Reply-To: <4FDCD3C7.5080503@tomt.net>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-Sent from my iPad
-
-On Jun 23, 2012, at 7:51 AM, Jim Rees <rees@umich.edu> wrote:
-
-> Namjae Jeon wrote:
-> 
->  From: Namjae Jeon <namjae.jeon@samsung.com>
-> 
->  This patch disable readahead for a file on NFS Server when
->  posix_fadvise(fd..., POSIX_FADV_RANDOM) is called on NFS
->  Client.
-> 
-> It looks like you're adding an argument to the read op.  Wouldn't that be an
-> incompatible change?  In which case wouldn't it be better to propose this
-> for inclusion in NFS 4.2?  In fact didn't Dean propose this?  What ever
-> happened with that?
-
-Yes, posix_fadvise support is part of NFSv4.2.
-
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+T24gU2F0LCAyMDEyLTA2LTE2IGF0IDIwOjQzICswMjAwLCBBbmRyZSBUb210IHdyb3RlOg0KPiBP
+biAxNi4ganVuaSAyMDEyIDA0OjMyLCBBbmRyZSBUb210IHdyb3RlOg0KPiA+IEZXSVc7IEkgYW0g
+KHN0aWxsKSBzZWVpbmcgdGhpcyBleGFjdCBzYW1lIGNyYXNoIHNldmVyYWwgdGltZXMgYW4gaG91
+ciBvbg0KPiA+IDMuNC4zLXJjMSBvbiBVYnVudHUgMTIuMDQgY2xpZW50LiBPbmx5IHRoYXQgdGhl
+IHNhbWUgc2Vjb25kIGl0IGhhcHBlbnMsDQo+ID4gYWxsIG15IHRocmVlIGRpc3BsYXlzIGNvcnJ1
+cHRzIGJhZGx5LCBiZWNvbWluZyBjb21wbGV0ZWx5IHVucmVhZGFibGUuDQo+ID4gU3dpdGNoaW5n
+IHRvIGNvbnNvbGUgYW5kIGJhY2sgdXN1YWxseSBnZXRzIG15IGRlc2t0b3AgYmFjayBvbiB0d28g
+b2YNCj4gPiB0aHJlZSBkaXNwbGF5cywgYW5kIHNvbWV0aW1lcyBpdCB3aWxsIG5lZWQgYSBmdWxs
+IHhzZXJ2ZXIgcmVzdGFydC4NCj4gPiBPYnZpb3VzbHkgc29tZSBtZW1vcnkgY29ycnVwdGlvbiBn
+b2luZyBvbi4NCj4gPg0KPiA+IE9uZSBvZiB0aGUgY3Jhc2hlcyBhbHNvIHRyaWdnZXJlZCBhIE5Y
+IGVycm9yOg0KPiA+IFsyMDI5Mi4xOTYzMzJdIGtlcm5lbCB0cmllZCB0byBleGVjdXRlIE5YLXBy
+b3RlY3RlZCBwYWdlIC0gZXhwbG9pdA0KPiA+IGF0dGVtcHQ/ICh1aWQ6IDApDQo+ID4NCj4gPiBB
+bmQgYWZ0ZXIgYSB3aGlsZSwgdGhpbmdzIHN0YXJ0IGxvY2tpbmcgdXAuDQo+ID4NCj4gPiBJdCBk
+aWRuJ3QgcmVhbGx5IHN0YXJ0IGhhcHBlbmluZyB1bnRpbCBhIGZldyBkYXlzIGFnbyB0aG91Z2gs
+IEkndmUgYmVlbg0KPiA+IHJ1bm5pbmcgMy40IGZvciBzaW5jZSBzb21lIC1yYyB0aHJvdWdoIGFs
+bCB0aGUgc3RhYmxlIHJlbGVhc2VzLiBQZXJoYXBzDQo+ID4gc2VydmVyIHN1ZGRlbmx5IGdvdCBh
+IHdvcmtpbmcgaWRtYXBwZXIgb3Igc29tZXRoaW5nPyBJdHMgYSBkZWJpYW4NCj4gPiB1bnN0YWJs
+ZSB1cGRhdGVkIGEgY291cGxlIHRpbWVzIGEgbW9udGguDQo+ID4NCj4gPiBCb290aW5nIGxhdGVz
+dCBnaXQgbWFzdGVyIG5vdywgdG8gc2VlIGlmIGFueSBvZiB0aGUgcmVjZW50IE5GUyBmaXhlcw0K
+PiA+IGp1c3QgcHVsbGVkIGJ5IExpbnVzIGZpeGVzIGFueXRoaW5nICgtcmMyIGhhZCBvdGhlciBz
+aG93c3RvcHBlciBuZnMNCj4gPiBpc3N1ZXMpLg0KPiANCj4gSnVzdCBoYWQgaXQgaGFwcGVuIHdp
+dGggMy41LWdpdCBhcyBvZiBhIGNvdXBsZSBob3VycyBhZ28gKGxhc3QgY29tbWl0IA0KPiBhMmMy
+ZGY4NjcyZjU1MTk1ZjEwMWQ5MjUxMTE3YWE1OWUzNThkMjk2KToNCj4gSnVuIDE2IDE5OjAxOjQ5
+IHNsdXJ2IGtlcm5lbDogWzUwODIzLjI3MTYxOF0gZ2VuZXJhbCBwcm90ZWN0aW9uIGZhdWx0OiAN
+Cj4gMDAwMCBbIzFdIFNNUA0KPiBKdW4gMTYgMTk6MDE6NDkgc2x1cnYga2VybmVsOiBbNTA4MjMu
+MjcxNjQwXSBDUFUgMTANCj4gSnVuIDE2IDE5OjAxOjQ5IHNsdXJ2IGtlcm5lbDogWzUwODIzLjI3
+MTY5MF0NCj4gSnVuIDE2IDE5OjAxOjQ5IHNsdXJ2IGtlcm5lbDogWzUwODIzLjI3MTY5OF0gUGlk
+OiAxNjc4LCBjb21tOiBycGMuaWRtYXBkIA0KPiBOb3QgdGFpbnRlZCAzLjUuMC0xLWRlc2t0b3Ag
+IzEgU3lzdGVtIG1hbnVmYWN0dXJlciBTeXN0ZW0gUHJvZHVjdCANCj4gTmFtZS9QNlQgREVMVVhF
+IFYyDQo+IEp1biAxNiAxOTowMTo0OSBzbHVydiBrZXJuZWw6IFs1MDgyMy4yNzE3MzhdIFJJUDog
+DQo+IDAwMTA6WzxmZmZmZmZmZjgxMTI5ODcyPl0gIFs8ZmZmZmZmZmY4MTEyOTg3Mj5dIA0KPiBf
+X2tleV9pbnN0YW50aWF0ZV9hbmRfbGluaysweDUyLzB4Y2INCj4gSnVuIDE2IDE5OjAxOjQ5IHNs
+dXJ2IGtlcm5lbDogWzUwODIzLjI3MTc2N10gUlNQOiAwMDE4OmZmZmY4ODA2MTk0MWJkMzggDQo+
+ICAgRUZMQUdTOiAwMDAxMDI0Ng0KPiBKdW4gMTYgMTk6MDE6NDkgc2x1cnYga2VybmVsOiBbNTA4
+MjMuMjcxNzg1XSBSQVg6IDYzMzczNDYzMzAzNjYyMzMgUkJYOiANCj4gZmZmZjg4MDYwNmZiOTdm
+MCBSQ1g6IDAwMDAwMDAwMDAwMDAwMDANCj4gSnVuIDE2IDE5OjAxOjQ5IHNsdXJ2IGtlcm5lbDog
+WzUwODIzLjI3MTgwN10gUkRYOiAwMDAwMDAwMDAwMDAwMDA2IFJTSTogDQo+IGZmZmY4ODA2MTk0
+MWJlODUgUkRJOiBmZmZmODgwNjA2ZmI5N2YwDQo+IEp1biAxNiAxOTowMTo0OSBzbHVydiBrZXJu
+ZWw6IFs1MDgyMy4yNzE4MjldIFJCUDogZmZmZjg4MDYxOTQxYmQ4OCBSMDg6IA0KPiBmZmZmODgw
+MmJjOWVkMzgwIFIwOTogZmZmZjg4MDYxOTQxYmRiMA0KPiBKdW4gMTYgMTk6MDE6NDkgc2x1cnYg
+a2VybmVsOiBbNTA4MjMuMjcxODUwXSBSMTA6IDAwMDAwMDAwMDAwMDAwMDAgUjExOiANCj4gMDAw
+MDAwMDAwMDAwMDAwMCBSMTI6IGZmZmY4ODA2MWFhZDYzYzANCj4gSnVuIDE2IDE5OjAxOjQ5IHNs
+dXJ2IGtlcm5lbDogWzUwODIzLjI3MTg3Ml0gUjEzOiBmZmZmODgwMmJjOWVkMzgwIFIxNDogDQo+
+IDAwMDAwMDAwMDAwMDAwMDAgUjE1OiBmZmZmODgwNjE5NDFiZGIwDQo+IEp1biAxNiAxOTowMTo0
+OSBzbHVydiBrZXJuZWw6IFs1MDgyMy4yNzE4OTRdIEZTOiAgMDAwMDdmZDQ0OWE3ZDcwMCgwMDAw
+KSANCj4gR1M6ZmZmZjg4MDYzZmQ0MDAwMCgwMDAwKSBrbmxHUzowMDAwMDAwMDAwMDAwMDAwDQo+
+IEp1biAxNiAxOTowMTo0OSBzbHVydiBrZXJuZWw6IFs1MDgyMy4yNzE5MTldIENTOiAgMDAxMCBE
+UzogMDAwMCBFUzogMDAwMCANCj4gQ1IwOiAwMDAwMDAwMDgwMDUwMDMzDQo+IEp1biAxNiAxOTow
+MTo0OSBzbHVydiBrZXJuZWw6IFs1MDgyMy4yNzE5MzddIENSMjogMDAwMDdmODg0NDAwMjAyOCBD
+UjM6IA0KPiAwMDAwMDAwNjFiZTk1MDAwIENSNDogMDAwMDAwMDAwMDAwMDdlMA0KPiBKdW4gMTYg
+MTk6MDE6NDkgc2x1cnYga2VybmVsOiBbNTA4MjMuMjcxOTU5XSBEUjA6IDAwMDAwMDAwMDAwMDAw
+MDAgRFIxOiANCj4gMDAwMDAwMDAwMDAwMDAwMCBEUjI6IDAwMDAwMDAwMDAwMDAwMDANCj4gSnVu
+IDE2IDE5OjAxOjQ5IHNsdXJ2IGtlcm5lbDogWzUwODIzLjI3MTk4MF0gRFIzOiAwMDAwMDAwMDAw
+MDAwMDAwIERSNjogDQo+IDAwMDAwMDAwZmZmZjBmZjAgRFI3OiAwMDAwMDAwMDAwMDAwNDAwDQo+
+IEp1biAxNiAxOTowMTo0OSBzbHVydiBrZXJuZWw6IFs1MDgyMy4yNzIwMDNdIFByb2Nlc3MgcnBj
+LmlkbWFwZCAocGlkOiANCj4gMTY3OCwgdGhyZWFkaW5mbyBmZmZmODgwNjE5NDFhMDAwLCB0YXNr
+IGZmZmY4ODA2MWI4NzAwMDApDQo+IEp1biAxNiAxOTowMTo0OSBzbHVydiBrZXJuZWw6IFs1MDgy
+My4yNzIwMjhdIFN0YWNrOg0KPiBKdW4gMTYgMTk6MDE6NDkgc2x1cnYga2VybmVsOiBbNTA4MjMu
+MjcyMDM2XSAgZmZmZjg4MDYxOTQxYmQ3OCANCj4gMDAwMDAwMDAwMDAwMDAwNiBmZmZmODgwNjE5
+NDFiZTg1IGZmZmZmZmYwMWFhZDYzZTgNCj4gSnVuIDE2IDE5OjAxOjQ5IHNsdXJ2IGtlcm5lbDog
+WzUwODIzLjI3MjA2MF0gIGZmZmY4ODA2MDZmYjk4NDAgDQo+IGZmZmY4ODA2MDZmYjk3ZjAgZmZm
+Zjg4MDYxYWFkNjNjMCAwMDAwMDAwMDAwMDAwMDA2DQo+IEp1biAxNiAxOTowMTo0OSBzbHVydiBr
+ZXJuZWw6IFs1MDgyMy4yNzIwODNdICBmZmZmODgwNjE5NDFiZTg1IA0KPiAwMDAwN2ZmZmUwOWM0
+NTAwIGZmZmY4ODA2MTk0MWJkZDggZmZmZmZmZmY4MTEyOTk0Mw0KPiBKdW4gMTYgMTk6MDE6NDkg
+c2x1cnYga2VybmVsOiBbNTA4MjMuMjcyMTA2XSBDYWxsIFRyYWNlOg0KPiBKdW4gMTYgMTk6MDE6
+NDkgc2x1cnYga2VybmVsOiBbNTA4MjMuMjcyMTE2XSAgWzxmZmZmZmZmZjgxMTI5OTQzPl0gDQo+
+IGtleV9pbnN0YW50aWF0ZV9hbmRfbGluaysweDU4LzB4ODANCj4gSnVuIDE2IDE5OjAxOjQ5IHNs
+dXJ2IGtlcm5lbDogWzUwODIzLjI3MjE0NV0gIFs8ZmZmZmZmZmZhMDU4YTkwNj5dIA0KPiBpZG1h
+cF9waXBlX2Rvd25jYWxsKzB4MTU0LzB4MWFkIFtuZnNdDQo+IEp1biAxNiAxOTowMTo0OSBzbHVy
+diBrZXJuZWw6IFs1MDgyMy4yNzIxNzNdICBbPGZmZmZmZmZmYTA0YWVhZTI+XSANCj4gcnBjX3Bp
+cGVfd3JpdGUrMHg1Ni8weDZmIFtzdW5ycGNdDQo+IEp1biAxNiAxOTowMTo0OSBzbHVydiBrZXJu
+ZWw6IFs1MDgyMy4yNzIxOTVdICBbPGZmZmZmZmZmODEwYzg2Y2U+XSANCj4gdmZzX3dyaXRlKzB4
+YWQvMHgxM2QNCj4gSnVuIDE2IDE5OjAxOjQ5IHNsdXJ2IGtlcm5lbDogWzUwODIzLjI3MjIxMl0g
+IFs8ZmZmZmZmZmY4MTBjODk0OT5dIA0KPiBzeXNfd3JpdGUrMHg0NS8weDZjDQo+IEp1biAxNiAx
+OTowMTo0OSBzbHVydiBrZXJuZWw6IFs1MDgyMy4yNzIyMjldICBbPGZmZmZmZmZmODEzMGE0NjI+
+XSANCj4gc3lzdGVtX2NhbGxfZmFzdHBhdGgrMHgxNi8weDFiDQo+IEp1biAxNiAxOTowMTo0OSBz
+bHVydiBrZXJuZWw6IFs1MDgyMy4yNzIyNThdIENvZGU6IDQ4IDg5IDU1IGI4IDQ4IDg5IDc1IA0K
+PiBjMCBlOCAxNiBlNCAxZCAwMCA0OCA4YiA0MyA3OCBjNyA0NSBjYyBmMCBmZiBmZiBmZiA0OCA4
+YiA1NSBiOCA0OCA4YiA3NSANCj4gYzAgYTggMDEgNzUgNGYgNDggOGIgNDMgMjAgNDggODkgZGYg
+PGZmPiA1MCAxOCA4NSBjMCA4OSA0NSBjYyA3NSAzZSA0OCANCj4gOGIgNDMgNDggZjAgZmYgNDAg
+NDQgZjAgODAgNGINCj4gSnVuIDE2IDE5OjAxOjQ5IHNsdXJ2IGtlcm5lbDogWzUwODIzLjI3MjMx
+N10gUklQICBbPGZmZmZmZmZmODExMjk4NzI+XSANCj4gX19rZXlfaW5zdGFudGlhdGVfYW5kX2xp
+bmsrMHg1Mi8weGNiDQo+IEp1biAxNiAxOTowMTo0OSBzbHVydiBrZXJuZWw6IFs1MDgyMy4yNzIz
+MzldICBSU1AgPGZmZmY4ODA2MTk0MWJkMzg+DQo+IEp1biAxNiAxOTowMTo0OSBzbHVydiBrZXJu
+ZWw6IFs1MDgyMy4yNzkxOTldIC0tLVsgZW5kIHRyYWNlIA0KPiAyNTEyMmI1ZTlkMGIwYzc2IF0t
+LS0NCj4gDQo+IEl0IGRpZCB0YWtlIGEgd2hpbGUgdGhpcyB0aW1lLg0KDQpJdCBsb29rcyB0byBt
+ZSBhcyBpZiB0aGUgbGVnYWN5IHVwY2FsbCBjb2RlIGlzIGFzc3VtaW5nIHRoYXQgdGhlcmUgY2Fu
+DQpiZSBubyBtb3JlIHRoYW4gMSB1cGNhbGwgYXQgYSB0aW1lOiB0aGVyZSBpcyBvbmx5IGEgc2lu
+Z2xlDQppZG1hcC0+aWRtYXBfa2V5X2NvbnMsIHdoaWNoIGdldHMgYXNzaWduZWQgaW4gbmZzX2lk
+bWFwX2xlZ2FjeV91cGNhbGwNCmFuZCB0aGVuIHJlYWQgaW4gaWRtYXBfcGlwZV9kb3duY2FsbC4N
+Cg0KQnJ5YW4sIGNhbiB5b3UgbG9vayBpbnRvIHRoaXM/IEkgc3VzcGVjdCB0aGF0IHdlIG5lZWQg
+YSBtdXRleCBvcg0Kc29tZXRoaW5nIGxpa2UgdGhhdCAoZm9yIHRoZSBsZWdhY3kgdXBjYWxsIGNh
+c2Ugb25seSkgdG8gZW5zdXJlIHRoYXQNCm5vYm9keSBvdmVyd3JpdGVzIHRoZSBpZG1hcC0+aWRt
+YXBfa2V5X2NvbnMgd2hpbGUgYW4gdXBjYWxsIGlzIGluDQpwcm9ncmVzcy4NCg0KQW5kcmUsIGlm
+IHlvdSB3YW50IGlkbWFwcGVyIHNjYWxhYmlsaXR5LCB0aGVuIHlvdSBzaG91bGQgcmF0aGVyIHVz
+ZSB0aGUNCm5ldyBpZG1hcHBlciB1cGNhbGwuIFlvdSBuZWVkIGEgcmVjZW50IHZlcnNpb24gb2Yg
+dGhlIG5mcy11dGlscyBwYWNrYWdlLA0KdGhlIGtleXV0aWxzIHBhY2thZ2UsIGFuZCB0aGV5IHlv
+dSBzaG91bGQgYWRkIGFuICdpZF9yZXNvbHZlcicgbGluZQ0KdG8gL2V0Yy9yZXF1ZXN0LWtleXMu
+Y29uZiBhcyBwZXIgdGhlIG5mc2lkbWFwIG1hbnBhZ2UuDQoNCkNoZWVycw0KICBUcm9uZA0KDQot
+LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFw
+cA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
