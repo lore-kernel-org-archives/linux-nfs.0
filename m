@@ -1,39 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:29607 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:50006 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759155Ab2FAP6Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Jun 2012 11:58:24 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Orion Poplawski <orion@cora.nwra.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Spurious rpc.idmapd nss_getpwnam: name 'nobody' does not map
- into domain messages
-Date: Fri, 1 Jun 2012 15:58:06 +0000
-Message-ID: <1338566283.2774.19.camel@lade.trondhjem.org>
-References: <loom.20120601T174414-583@post.gmane.org>
-In-Reply-To: <loom.20120601T174414-583@post.gmane.org>
-Content-Type: text/plain; charset="utf-8"
+	id S1751421Ab2FRWOj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Jun 2012 18:14:39 -0400
+Date: Mon, 18 Jun 2012 18:14:37 -0400
+To: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFSv4 and Kerberos problem in svcgssd
+Message-ID: <20120618221437.GA13534@fieldses.org>
+References: <20120615223028.GS20917@ics.muni.cz>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20120615223028.GS20917@ics.muni.cz>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTA2LTAxIGF0IDE1OjUzICswMDAwLCBPcmlvbiBQb3BsYXdza2kgd3JvdGU6
-DQo+IEknbSBzZWVpbmcgYSBmYWlyIG51bWJlciBvZiB0aGVzZSBtZXNzYWdlcyBvbiBvdXIgZmls
-ZSBzZXJ2ZXI6DQo+IA0KPiBKdW4gIDEgMDk6Mzc6NTggYWxleGFuZHJpYSBycGMuaWRtYXBkWzI4
-ODkwXTogbnNzX2dldHB3bmFtOiBuYW1lICdub2JvZHknIGRvZXMNCj4gbm90IG1hcCBpbnRvIGRv
-bWFpbiAnY29yYS5ud3JhLmNvbScNCj4gDQo+IEkgdGhpbmsgdGhleSBhcmUgY29taW5nIGZyb20g
-YWNjZXNzaW5nIGZpbGVzIG9uIGFub3RoZXIgZmlsZSBzZXJ2ZXIgdGhhdCBhcmUNCj4gb3duZWQg
-YnkgYW4gdW5rbm93biB1aWQgKHVzZXIgbGVmdCBhbmQgd2FzIHJlbW92ZWQgZnJvbSB0aGUgdXNl
-ciBkYXRhYmFzZSkuIA0KPiBUaGVzZSBmaWxlcyBlbmQgdXAgb3duZWQgYnkgIm5vYm9keSIgKGFz
-IGV4cGVjdGVkKSBvbiB0aGUgcmVtb3RlIHN5c3RlbToNCj4gDQo+IGRyd3hyLXhyLXguICA3IG5v
-Ym9keSBud3JhIDQwOTYgTWFyIDE1ICAyMDEwIGFuYWx5c2lzX2RhdGENCj4gDQo+IE5vdywgdGhp
-cyBzZWVtcyBsaWtlIGEgcGVyZmVjdGx5IG5vcm1hbCBvcGVyYXRpb24gYW5kIHNvIHNob3VsZG4n
-dCBnZW5lcmF0ZSBhDQo+IHN5c3RlbSBsb2cgbWVzc2FnZS4gIEZpcnN0IHR3byBwb3NzaWJsZSBm
-aXhlcyBJIGNhbiB0aGluayBvZjoNCj4gDQo+IC0gU2hvdWxkIHRoZSByZW1vdGUgc3lzdGVtIHNl
-bmQgdGhlIHVzZXJuYW1lIGFzICJub2JvZHlAY29yYS5ud3JhLmNvbSIgaW5zdGVhZA0KPiBvZiBq
-dXN0ICJub2JvZHkiPw0KDQpOby4gQWNjb3JkaW5nIHRvIHNlY3Rpb24gNS44IG9mIFJGQzM1MzAs
-IGl0IHNob3VsZCB1c2UgdGhlIG5hbWUgIm5vYm9keSINCndpdGhvdXQgYSBkb21haW4sIGFuZCB0
-aGUgaWRtYXBwZXIgc2hvdWxkIGJlIG1hcHBpbmcgdGhhdCBzdHJpbmcgdG8gdGhlDQphbm9ueW1v
-dXMgdXNlciAoaS5lLiB1aWQgLTIpLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZT
-IGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20N
-Cnd3dy5uZXRhcHAuY29tDQoNCg==
+On Sat, Jun 16, 2012 at 12:30:28AM +0200, Lukas Hejtmanek wrote:
+> Hello,
+> 
+> it seems that -n option for rpc.svcgssd produces file descriptor leaks. It
+> looks like this:
+> 
+> ls -l /proc/25920/fd/
+> total 0
+> lrwx------ 1 root root 64 Jun 16 00:13 0 -> /dev/pts/0
+> lrwx------ 1 root root 64 Jun 16 00:13 1 -> /dev/pts/0
+> lrwx------ 1 root root 64 Jun 16 00:13 10 -> /var/tmp/nfs_0
+> lrwx------ 1 root root 64 Jun 16 00:13 11 -> /var/tmp/nfs_0
+> lrwx------ 1 root root 64 Jun 16 00:13 12 -> /var/tmp/nfs_0
+> lrwx------ 1 root root 64 Jun 16 00:13 13 -> /var/tmp/nfs_0
+> lrwx------ 1 root root 64 Jun 16 00:13 14 -> /var/tmp/nfs_0
+> lrwx------ 1 root root 64 Jun 16 00:13 15 -> /var/tmp/nfs_0
+> lrwx------ 1 root root 64 Jun 16 00:13 16 -> /var/tmp/nfs_0
+> lrwx------ 1 root root 64 Jun 16 00:13 17 -> /var/tmp/nfs_0
+> lrwx------ 1 root root 64 Jun 16 00:13 18 -> /var/tmp/nfs_0
+> lrwx------ 1 root root 64 Jun 16 00:13 19 -> /var/tmp/nfs_0
+> lrwx------ 1 root root 64 Jun 16 00:13 2 -> /dev/pts/0
+> lrwx------ 1 root root 64 Jun 16 00:13 20 -> /var/tmp/nfs_0
+> lrwx------ 1 root root 64 Jun 16 00:13 21 -> /var/tmp/nfs_0
+> lrwx------ 1 root root 64 Jun 16 00:13 22 -> /var/tmp/nfs_0
+> lrwx------ 1 root root 64 Jun 16 00:13 23 -> /var/tmp/nfs_0
+> lrwx------ 1 root root 64 Jun 16 00:13 24 -> /var/tmp/nfs_0
+> lrwx------ 1 root root 64 Jun 16 00:13 25 -> /var/tmp/nfs_0
+> lrwx------ 1 root root 64 Jun 16 00:13 26 -> /var/tmp/nfs_0
+> lrwx------ 1 root root 64 Jun 16 00:13 27 -> /var/tmp/nfs_0
+> lrwx------ 1 root root 64 Jun 16 00:13 28 -> /var/tmp/nfs_0
+> lrwx------ 1 root root 64 Jun 16 00:13 29 -> /var/tmp/nfs_0
+> lr-x------ 1 root root 64 Jun 16 00:13 3 -> pipe:[24457591]
+> lrwx------ 1 root root 64 Jun 16 00:13 30 -> /var/tmp/nfs_0
+> l-wx------ 1 root root 64 Jun 16 00:13 4 -> pipe:[24457591]
+> lr-x------ 1 root root 64 Jun 16 00:13 5 -> pipe:[24457592]
+> l-wx------ 1 root root 64 Jun 16 00:13 6 -> pipe:[24457592]
+> lr-x------ 1 root root 64 Jun 16 00:13 7 -> /etc/gssapi_mech.conf
+> lr-x------ 1 root root 64 Jun 16 00:13 8 ->
+> /proc/25920/net/rpc/auth.rpcsec.init/channel
+> lrwx------ 1 root root 64 Jun 16 00:13 9 -> /var/tmp/nfs_0
+> 
+> Is there any known fix for this? It runs quickly from max open files..
+
+It doesn't look familiar to me.--b.
+
+> 
+> There is some gabage collecting that results in this:
+> s -l
+> total 0
+> lrwx------ 1 root root 64 Jun 15 23:45 0 -> /dev/pts/0
+> lrwx------ 1 root root 64 Jun 15 23:45 1 -> /dev/pts/0
+> lrwx------ 1 root root 64 Jun 15 23:46 10 -> /var/tmp/nfs_0 (deleted)
+> lrwx------ 1 root root 64 Jun 15 23:47 11 -> /var/tmp/nfs_0 (deleted)
+> lrwx------ 1 root root 64 Jun 15 23:47 12 -> /var/tmp/nfs_0
+> lrwx------ 1 root root 64 Jun 15 23:45 2 -> /dev/pts/0
+> lr-x------ 1 root root 64 Jun 15 23:45 3 -> pipe:[24450369]
+> l-wx------ 1 root root 64 Jun 15 23:45 4 -> pipe:[24450369]
+> lr-x------ 1 root root 64 Jun 15 23:45 5 -> pipe:[24450370]
+> l-wx------ 1 root root 64 Jun 15 23:45 6 -> pipe:[24450370]
+> lr-x------ 1 root root 64 Jun 15 23:45 7 -> /etc/gssapi_mech.conf
+> lr-x------ 1 root root 64 Jun 15 23:45 8 ->
+> /proc/24184/net/rpc/auth.rpcsec.init/channel
+> lrwx------ 1 root root 64 Jun 15 23:45 9 -> /var/tmp/nfs_0 (deleted)
+> 
+> 
+> -- 
+> Lukáš Hejtmánek
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
