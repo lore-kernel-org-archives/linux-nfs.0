@@ -1,53 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:31695 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:46410 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759790Ab2FGNVb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Jun 2012 09:21:31 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 1/1] NFS: prevent hang if EXCHANGEID returns NFS4ERR_DELAY
-Date: Thu,  7 Jun 2012 09:21:30 -0400
-Message-Id: <1339075290-1180-1-git-send-email-iisaman@netapp.com>
+	id S1750792Ab2FRQL6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Jun 2012 12:11:58 -0400
+Message-ID: <4FDF533A.2090901@netapp.com>
+Date: Mon, 18 Jun 2012 12:11:38 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+MIME-Version: 1.0
+To: Andre Tomt <andre@tomt.net>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        Fengguang Wu <fengguang.wu@intel.com>,
+        David Howells <dhowells@redhat.com>,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: BUG in __key_instantiate_and_link(): unable to handle kernel
+ paging request at 0000632e6472616f
+References: <20120601034114.GA9248@localhost> <4FDBF056.7040404@tomt.net>   <4FDCD3C7.5080503@tomt.net> <1339876739.8267.96.camel@lade.trondhjem.org>  <4FDEEF38.8030101@tomt.net> <1340026127.2451.7.camel@lade.trondhjem.org>
+In-Reply-To: <1340026127.2451.7.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If EXCHANGEID returns NFS4ERR_DELAY, the mount will hang as the
-statemanager goes into an infinite loop.  Hiting ctrl-c and trying
-to remount will then hit the BUG_ON(clp->cl_cons_state != NFS_CS_READY)
-in nfs_found_client().
+On 06/18/2012 09:28 AM, Myklebust, Trond wrote:
+> On Mon, 2012-06-18 at 11:04 +0200, Andre Tomt wrote:
+>> On 16. juni 2012 21:59, Myklebust, Trond wrote:
+>>> It looks to me as if the legacy upcall code is assuming that there can
+>>> be no more than 1 upcall at a time: there is only a single
+>>> idmap->idmap_key_cons, which gets assigned in nfs_idmap_legacy_upcall
+>>> and then read in idmap_pipe_downcall.
+>>>
+>>> Bryan, can you look into this? I suspect that we need a mutex or
+>>> something like that (for the legacy upcall case only) to ensure that
+>>> nobody overwrites the idmap->idmap_key_cons while an upcall is in
+>>> progress.
+>>>
+>>> Andre, if you want idmapper scalability, then you should rather use the
+>>> new idmapper upcall. You need a recent version of the nfs-utils package,
+>>> the keyutils package, and they you should add an 'id_resolver' line
+>>> to /etc/request-keys.conf as per the nfsidmap manpage.
+>>
+>> Indeed, using keyutils did avoid the crashes here, 40 hours and counting.
+>>
+>> Are there any downsides of having keyutils w/ id_resolver on by default 
+>> in a distribution? Would it break older kernels or nfs-utils (just not 
+>> getting used is fine, obviously)?
+> 
+> Older kernels aren't able to use the keyutils mechanism, so they will
+> still require you to run the idmapd daemon, but there should be no
+> problems with just enabling it in /etc/request-key.conf.
+> Fedora 17 is supposed to install the id_resolver by default.
+> 
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Hi Andre,
+
+Can you please check if this patch fixes the old idmapper?
+
+- Bryan
+
+>From 3bef58765c7308965d06d9e9d7707c7ca55648ee Mon Sep 17 00:00:00 2001
+From: Bryan Schumaker <bjschuma@netapp.com>
+Date: Mon, 18 Jun 2012 12:01:25 -0400
+Subject: [PATCH] NFS: Force the legacy idmapper to be single threaded
+
+It was initially coded under the assumption that there would only be one
+request at a time, so use a lock to enforce this requirement..
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfs/nfs4state.c |    7 +++++--
- 1 files changed, 5 insertions(+), 2 deletions(-)
+ fs/nfs/idmap.c |   13 ++++++++-----
+ 1 file changed, 8 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index de13309..0cdfccd 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1639,7 +1639,7 @@ static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
- 	set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
- 	dprintk("%s: handled error %d for server %s\n", __func__, status,
- 			clp->cl_hostname);
--	return 0;
-+	return -EAGAIN;
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index b5b86a0..864c51e 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -57,6 +57,11 @@ unsigned int nfs_idmap_cache_timeout = 600;
+ static const struct cred *id_resolver_cache;
+ static struct key_type key_type_id_resolver_legacy;
+ 
++struct idmap {
++	struct rpc_pipe		*idmap_pipe;
++	struct key_construction	*idmap_key_cons;
++	struct mutex		idmap_mutex;
++};
+ 
+ /**
+  * nfs_fattr_init_names - initialise the nfs_fattr owner_name/group_name fields
+@@ -310,9 +315,11 @@ static ssize_t nfs_idmap_get_key(const char *name, size_t namelen,
+ 					    name, namelen, type, data,
+ 					    data_size, NULL);
+ 	if (ret < 0) {
++		mutex_lock(&idmap->idmap_mutex);
+ 		ret = nfs_idmap_request_key(&key_type_id_resolver_legacy,
+ 					    name, namelen, type, data,
+ 					    data_size, idmap);
++		mutex_unlock(&idmap->idmap_mutex);
+ 	}
+ 	return ret;
  }
+@@ -354,11 +361,6 @@ static int nfs_idmap_lookup_id(const char *name, size_t namelen, const char *typ
+ /* idmap classic begins here */
+ module_param(nfs_idmap_cache_timeout, int, 0644);
  
- static int nfs4_establish_lease(struct nfs_client *clp)
-@@ -1665,8 +1665,11 @@ static int nfs4_reclaim_lease(struct nfs_client *clp)
- 	int status;
+-struct idmap {
+-	struct rpc_pipe		*idmap_pipe;
+-	struct key_construction	*idmap_key_cons;
+-};
+-
+ enum {
+ 	Opt_find_uid, Opt_find_gid, Opt_find_user, Opt_find_group, Opt_find_err
+ };
+@@ -469,6 +471,7 @@ nfs_idmap_new(struct nfs_client *clp)
+ 		return error;
+ 	}
+ 	idmap->idmap_pipe = pipe;
++	mutex_init(&idmap->idmap_mutex);
  
- 	status = nfs4_establish_lease(clp);
--	if (status < 0)
-+	if (status < 0) {
-+		if (status == -EAGAIN)
-+			status = 0;
- 		return status;
-+	}
- 	if (test_and_clear_bit(NFS4CLNT_SERVER_SCOPE_MISMATCH, &clp->cl_state))
- 		nfs4_state_start_reclaim_nograce(clp);
- 	if (!test_bit(NFS4CLNT_RECLAIM_NOGRACE, &clp->cl_state))
+ 	clp->cl_idmap = idmap;
+ 	return 0;
 -- 
-1.7.2.1
+1.7.10.4
+
 
