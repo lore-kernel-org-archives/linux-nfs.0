@@ -1,89 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp10.mail.sp.isp-net.nl ([217.149.192.65]:57762 "EHLO
-	smtp10.mail.sp.isp-net.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751163Ab2FEWa6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jun 2012 18:30:58 -0400
-Message-ID: <4FCE888F.8050605@xmsnet.nl>
-Date: Wed, 06 Jun 2012 00:30:39 +0200
-From: Hans de Bruin <jmdebruin@xmsnet.nl>
+Received: from mx2.netapp.com ([216.240.18.37]:52214 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752005Ab2FRN3F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Jun 2012 09:29:05 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Andre Tomt <andre@tomt.net>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        Fengguang Wu <fengguang.wu@intel.com>,
+        "David Howells" <dhowells@redhat.com>,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: BUG in __key_instantiate_and_link(): unable to handle kernel
+ paging request at 0000632e6472616f
+Date: Mon, 18 Jun 2012 13:28:49 +0000
+Message-ID: <1340026127.2451.7.camel@lade.trondhjem.org>
+References: <20120601034114.GA9248@localhost> <4FDBF056.7040404@tomt.net>
+	  <4FDCD3C7.5080503@tomt.net> <1339876739.8267.96.camel@lade.trondhjem.org>
+	 <4FDEEF38.8030101@tomt.net>
+In-Reply-To: <4FDEEF38.8030101@tomt.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Konstantin Khlebnikov <khlebnikov@openvz.org>
-CC: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-        Ondrej Zary <linux@rainbow-software.org>,
-        Hugh Dickins <hughd@google.com>,
-        Kernel development list <linux-kernel@vger.kernel.org>,
-        Dave Jones <davej@redhat.com>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        =?ISO-8859-1?Q?Toralf_F=F6r?= =?ISO-8859-1?Q?ster?=
-	<toralf.foerster@gmx.de>,
-        richard -rw- weinberger <richard.weinberger@gmail.com>
-Subject: Re: [bisected commit 0fc9d10] NFS-server corruption with 3.4
-References: <201206051116.17711.linux@rainbow-software.org> <4FCE0A83.4050502@openvz.org> <201206051620.47925.linux@rainbow-software.org> <4FCE1D17.1080904@openvz.org> <87zk8h23wn.fsf@devron.myhome.or.jp> <4FCE2256.7010804@openvz.org> <4FCE2CCE.9000900@openvz.org> <87pq9d20lx.fsf@devron.myhome.or.jp> <4FCE3631.9020407@openvz.org>
-In-Reply-To: <4FCE3631.9020407@openvz.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/05/2012 06:39 PM, Konstantin Khlebnikov wrote:
-> OGAWA Hirofumi wrote:
->> Konstantin Khlebnikov<khlebnikov@openvz.org> writes:
->>
->>> Proper fix in attachment.
->>
->> Maybe, you are going to add the stable tag for next stable?
->>
->> Thanks.
->
-> Yes, this definitely must be in next stable 3.4.x , but first I'll wait
-> for confirmation.
->
-> Guys, who can reproduce this, please check patch "radix-tree: fix
-> contiguous iterator"
-> from my previous mail in this thread.
->
->>
->>> radix-tree: fix contiguous iterator
->>>
->>> From: Konstantin Khlebnikov<khlebnikov@openvz.org>
->>>
->>> This patch fixes bug in macro radix_tree_for_each_contig().
->>> If radix_tree_next_slot() sees NULL in next slot it returns NULL, but
->>> following
->>> radix_tree_next_chunk() switches iterating into next chunk. As result
->>> iterating
->>> becomes non-contiguous and breaks vfs "splice" and all its users.
->>
->
-
-I patched on to off v3.4 and Firefox an Thunderbird do not segfault 
-anymore. The do not start either. This was de feature on my 'production' 
-server I could not reproduce on my test server. Maybe it has something 
-to with the different type of nic's.
-
-For the second attempt I branched of at 0fc9d1040313047edf6a39fd and 
-applied your patch on top of it. Firefox an Thunderbird where back 
-again. So your patch works.
-
-Now I need some git-instructions. Apparently something else is broken. I 
-branched of with:
-
-git branch debug 0fc9d1040313047edf6a3
-git checkout debug
-applied the patch.
-git commit -a (got commit 5c09c685ba2d36c3b905220d43ad1b47354e456eed back)
-
-Now I want all commits in my master branch up until ref v3.4 added to my 
-debug branch so I can bisect between 5c09 and v3.4
-
--- 
-Hans
-
-
-
-
-
-
-
-
-
+T24gTW9uLCAyMDEyLTA2LTE4IGF0IDExOjA0ICswMjAwLCBBbmRyZSBUb210IHdyb3RlOg0KPiBP
+biAxNi4ganVuaSAyMDEyIDIxOjU5LCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+IEl0IGxv
+b2tzIHRvIG1lIGFzIGlmIHRoZSBsZWdhY3kgdXBjYWxsIGNvZGUgaXMgYXNzdW1pbmcgdGhhdCB0
+aGVyZSBjYW4NCj4gPiBiZSBubyBtb3JlIHRoYW4gMSB1cGNhbGwgYXQgYSB0aW1lOiB0aGVyZSBp
+cyBvbmx5IGEgc2luZ2xlDQo+ID4gaWRtYXAtPmlkbWFwX2tleV9jb25zLCB3aGljaCBnZXRzIGFz
+c2lnbmVkIGluIG5mc19pZG1hcF9sZWdhY3lfdXBjYWxsDQo+ID4gYW5kIHRoZW4gcmVhZCBpbiBp
+ZG1hcF9waXBlX2Rvd25jYWxsLg0KPiA+DQo+ID4gQnJ5YW4sIGNhbiB5b3UgbG9vayBpbnRvIHRo
+aXM/IEkgc3VzcGVjdCB0aGF0IHdlIG5lZWQgYSBtdXRleCBvcg0KPiA+IHNvbWV0aGluZyBsaWtl
+IHRoYXQgKGZvciB0aGUgbGVnYWN5IHVwY2FsbCBjYXNlIG9ubHkpIHRvIGVuc3VyZSB0aGF0DQo+
+ID4gbm9ib2R5IG92ZXJ3cml0ZXMgdGhlIGlkbWFwLT5pZG1hcF9rZXlfY29ucyB3aGlsZSBhbiB1
+cGNhbGwgaXMgaW4NCj4gPiBwcm9ncmVzcy4NCj4gPg0KPiA+IEFuZHJlLCBpZiB5b3Ugd2FudCBp
+ZG1hcHBlciBzY2FsYWJpbGl0eSwgdGhlbiB5b3Ugc2hvdWxkIHJhdGhlciB1c2UgdGhlDQo+ID4g
+bmV3IGlkbWFwcGVyIHVwY2FsbC4gWW91IG5lZWQgYSByZWNlbnQgdmVyc2lvbiBvZiB0aGUgbmZz
+LXV0aWxzIHBhY2thZ2UsDQo+ID4gdGhlIGtleXV0aWxzIHBhY2thZ2UsIGFuZCB0aGV5IHlvdSBz
+aG91bGQgYWRkIGFuICdpZF9yZXNvbHZlcicgbGluZQ0KPiA+IHRvIC9ldGMvcmVxdWVzdC1rZXlz
+LmNvbmYgYXMgcGVyIHRoZSBuZnNpZG1hcCBtYW5wYWdlLg0KPiANCj4gSW5kZWVkLCB1c2luZyBr
+ZXl1dGlscyBkaWQgYXZvaWQgdGhlIGNyYXNoZXMgaGVyZSwgNDAgaG91cnMgYW5kIGNvdW50aW5n
+Lg0KPiANCj4gQXJlIHRoZXJlIGFueSBkb3duc2lkZXMgb2YgaGF2aW5nIGtleXV0aWxzIHcvIGlk
+X3Jlc29sdmVyIG9uIGJ5IGRlZmF1bHQgDQo+IGluIGEgZGlzdHJpYnV0aW9uPyBXb3VsZCBpdCBi
+cmVhayBvbGRlciBrZXJuZWxzIG9yIG5mcy11dGlscyAoanVzdCBub3QgDQo+IGdldHRpbmcgdXNl
+ZCBpcyBmaW5lLCBvYnZpb3VzbHkpPw0KDQpPbGRlciBrZXJuZWxzIGFyZW4ndCBhYmxlIHRvIHVz
+ZSB0aGUga2V5dXRpbHMgbWVjaGFuaXNtLCBzbyB0aGV5IHdpbGwNCnN0aWxsIHJlcXVpcmUgeW91
+IHRvIHJ1biB0aGUgaWRtYXBkIGRhZW1vbiwgYnV0IHRoZXJlIHNob3VsZCBiZSBubw0KcHJvYmxl
+bXMgd2l0aCBqdXN0IGVuYWJsaW5nIGl0IGluIC9ldGMvcmVxdWVzdC1rZXkuY29uZi4NCkZlZG9y
+YSAxNyBpcyBzdXBwb3NlZCB0byBpbnN0YWxsIHRoZSBpZF9yZXNvbHZlciBieSBkZWZhdWx0Lg0K
+DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5l
+dEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
