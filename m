@@ -1,110 +1,205 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:58976 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:46005 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751001Ab2FZTAy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Jun 2012 15:00:54 -0400
-Message-ID: <4FEA06E3.9060109@netapp.com>
-Date: Tue, 26 Jun 2012 15:00:51 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: Check if rpcauth_create() returns an error code
-References: <1340734373-5596-1-git-send-email-bjschuma@netapp.com> <9ED25AEF-945E-4908-8D78-4CC040D9A26A@oracle.com>
-In-Reply-To: <9ED25AEF-945E-4908-8D78-4CC040D9A26A@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1752556Ab2FRUHc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Jun 2012 16:07:32 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: stable@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 1/3] SUNRPC: new svc_bind() routine introduced
+Date: Mon, 18 Jun 2012 16:07:27 -0400
+Message-Id: <1340050049-12880-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1340050049-12880-1-git-send-email-bfields@redhat.com>
+References: <1340050049-12880-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/26/2012 02:23 PM, Chuck Lever wrote:
-> 
-> On Jun 26, 2012, at 2:12 PM, bjschuma@netapp.com wrote:
-> 
->> From: Bryan Schumaker <bjschuma@netapp.com>
->>
->> I was treating a NULL return value as an error, but this function will
->> instead return an ERR_PTR().  Now that I'm checking if the function
->> returns an error, I should also pass the error up the call stack.
-> 
-> 
->> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
->> ---
->> fs/nfs/nfs4namespace.c |  4 ++--
->> fs/nfs/nfs4proc.c      | 15 ++++-----------
->> 2 files changed, 6 insertions(+), 13 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
->> index 017b4b0..a8aafc6 100644
->> --- a/fs/nfs/nfs4namespace.c
->> +++ b/fs/nfs/nfs4namespace.c
->> @@ -205,9 +205,9 @@ struct rpc_clnt *nfs4_create_sec_client(struct rpc_clnt *clnt, struct inode *ino
->> 		return clone;
->>
->> 	auth = rpcauth_create(flavor, clone);
->> -	if (!auth) {
->> +	if (IS_ERR(auth)) {
->> 		rpc_shutdown_client(clone);
->> -		clone = ERR_PTR(-EIO);
->> +		clone = ERR_CAST(auth);
->> 	}
-> 
-> This echoes nfs_init_server_rpcclient(), so it should be adequate.
-> 
->>
->> 	return clone;
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index 5a7b372..f817587 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -2356,17 +2356,10 @@ out:
->> static int nfs4_lookup_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
->> 				struct nfs_fsinfo *info, rpc_authflavor_t flavor)
->> {
->> -	struct rpc_auth *auth;
->> -	int ret;
->> -
->> -	auth = rpcauth_create(flavor, server->client);
->> -	if (!auth) {
->> -		ret = -EIO;
->> -		goto out;
->> -	}
->> -	ret = nfs4_lookup_root(server, fhandle, info);
->> -out:
->> -	return ret;
->> +	struct rpc_auth *auth = rpcauth_create(flavor, server->client);
->> +	if (IS_ERR(auth))
->> +		return PTR_ERR(auth);
->> +	return nfs4_lookup_root(server, fhandle, info);
->> }
->>
->> static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
-> 
-> This logic calls rpcauth_create() in a loop, correct?  The expectation is that rpcauth_create() should simply replace the nfs_client's rpc_auth with the next flavor each time it is called?
-> 
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Yeah, that's what I'm expecting to happen.
+commit cd96891d48a945ca2011fbeceda73813d6286195 upstream.
 
-> With the current code in nfs4_find_root_sec(), rpcauth_create() with a GSS flavor fails the second time you call it because (I suspect) there's a pipe dentry left over from the previous call.  So there's no way to walk an entire list returned from gss_mech_list_flavors(), it will fail on the second GSS flavor every time.
+This new routine is responsible for service registration in a specified
+network context.
 
-rpcauth_create() has this bit of code in it:
+The idea is to separate service creation from per-net operations.
 
-	if (clnt->cl_auth)
-		rpcauth_release(clnt->cl_auth);
-	clnt->cl_auth = auth;
+Note also: since registering service with svc_bind() can fail, the
+service will be destroyed and during destruction it will try to
+unregister itself from rpcbind. In this case unregistration has to be
+skipped.
 
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/lockd/svc.c             |    6 ++++++
+ fs/nfs/callback.c          |    8 ++++++++
+ fs/nfsd/nfssvc.c           |    9 +++++++++
+ include/linux/sunrpc/svc.h |    1 +
+ net/sunrpc/rpcb_clnt.c     |   12 +++++++-----
+ net/sunrpc/svc.c           |   19 ++++++++++---------
+ 6 files changed, 41 insertions(+), 14 deletions(-)
 
-I guess I figured rpcauth_release() was already doing the necessary cleanup.
-
-- Bryan
-> 
-> We could:
-> 
->   a)  have gss_pipes_dentries_create_net() ignore -EEXIST and return zero instead, or
-> 
->   b)  make sure rpcauth_create() releases the old rpc_auth before calling op->create()
-> 
->   c)  ??
-> 
-
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index f49b9af..b1d0708 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -325,6 +325,12 @@ int lockd_up(void)
+ 		goto out;
+ 	}
+ 
++	error = svc_bind(serv, net);
++	if (error < 0) {
++		printk(KERN_WARNING "lockd_up: bind service failed\n");
++		goto destroy_and_out;
++	}
++
+ 	error = make_socks(serv, net);
+ 	if (error < 0)
+ 		goto destroy_and_out;
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index eb95f50..26b38fb 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -17,6 +17,7 @@
+ #include <linux/kthread.h>
+ #include <linux/sunrpc/svcauth_gss.h>
+ #include <linux/sunrpc/bc_xprt.h>
++#include <linux/nsproxy.h>
+ 
+ #include <net/inet_sock.h>
+ 
+@@ -253,6 +254,7 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ 	char svc_name[12];
+ 	int ret = 0;
+ 	int minorversion_setup;
++	struct net *net = current->nsproxy->net_ns;
+ 
+ 	mutex_lock(&nfs_callback_mutex);
+ 	if (cb_info->users++ || cb_info->task != NULL) {
+@@ -265,6 +267,12 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ 		goto out_err;
+ 	}
+ 
++	ret = svc_bind(serv, net);
++	if (ret < 0) {
++		printk(KERN_WARNING "NFS: bind callback service failed\n");
++		goto out_err;
++	}
++
+ 	minorversion_setup =  nfs_minorversion_callback_svc_setup(minorversion,
+ 					serv, xprt, &rqstp, &callback_svc);
+ 	if (!minorversion_setup) {
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 28dfad3..a6461f3 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -11,6 +11,7 @@
+ #include <linux/module.h>
+ #include <linux/fs_struct.h>
+ #include <linux/swap.h>
++#include <linux/nsproxy.h>
+ 
+ #include <linux/sunrpc/stats.h>
+ #include <linux/sunrpc/svcsock.h>
+@@ -330,6 +331,8 @@ static int nfsd_get_default_max_blksize(void)
+ 
+ int nfsd_create_serv(void)
+ {
++	int error;
++
+ 	WARN_ON(!mutex_is_locked(&nfsd_mutex));
+ 	if (nfsd_serv) {
+ 		svc_get(nfsd_serv);
+@@ -343,6 +346,12 @@ int nfsd_create_serv(void)
+ 	if (nfsd_serv == NULL)
+ 		return -ENOMEM;
+ 
++	error = svc_bind(nfsd_serv, current->nsproxy->net_ns);
++	if (error < 0) {
++		svc_destroy(nfsd_serv);
++		return error;
++	}
++
+ 	set_max_drc();
+ 	do_gettimeofday(&nfssvc_boot);		/* record boot time */
+ 	return 0;
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 51b29ac..2b43e02 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -416,6 +416,7 @@ struct svc_procedure {
+  */
+ int svc_rpcb_setup(struct svc_serv *serv, struct net *net);
+ void svc_rpcb_cleanup(struct svc_serv *serv, struct net *net);
++int svc_bind(struct svc_serv *serv, struct net *net);
+ struct svc_serv *svc_create(struct svc_program *, unsigned int,
+ 			    void (*shutdown)(struct svc_serv *, struct net *net));
+ struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 78ac39f..4c38b33 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -180,14 +180,16 @@ void rpcb_put_local(struct net *net)
+ 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 	struct rpc_clnt *clnt = sn->rpcb_local_clnt;
+ 	struct rpc_clnt *clnt4 = sn->rpcb_local_clnt4;
+-	int shutdown;
++	int shutdown = 0;
+ 
+ 	spin_lock(&sn->rpcb_clnt_lock);
+-	if (--sn->rpcb_users == 0) {
+-		sn->rpcb_local_clnt = NULL;
+-		sn->rpcb_local_clnt4 = NULL;
++	if (sn->rpcb_users) {
++		if (--sn->rpcb_users == 0) {
++			sn->rpcb_local_clnt = NULL;
++			sn->rpcb_local_clnt4 = NULL;
++		}
++		shutdown = !sn->rpcb_users;
+ 	}
+-	shutdown = !sn->rpcb_users;
+ 	spin_unlock(&sn->rpcb_clnt_lock);
+ 
+ 	if (shutdown) {
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 4153846..e6d542c 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -407,6 +407,14 @@ static int svc_uses_rpcbind(struct svc_serv *serv)
+ 	return 0;
+ }
+ 
++int svc_bind(struct svc_serv *serv, struct net *net)
++{
++	if (!svc_uses_rpcbind(serv))
++		return 0;
++	return svc_rpcb_setup(serv, net);
++}
++EXPORT_SYMBOL_GPL(svc_bind);
++
+ /*
+  * Create an RPC service
+  */
+@@ -471,15 +479,8 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+ 		spin_lock_init(&pool->sp_lock);
+ 	}
+ 
+-	if (svc_uses_rpcbind(serv)) {
+-		if (svc_rpcb_setup(serv, current->nsproxy->net_ns) < 0) {
+-			kfree(serv->sv_pools);
+-			kfree(serv);
+-			return NULL;
+-		}
+-		if (!serv->sv_shutdown)
+-			serv->sv_shutdown = svc_rpcb_cleanup;
+-	}
++	if (svc_uses_rpcbind(serv) && (!serv->sv_shutdown))
++		serv->sv_shutdown = svc_rpcb_cleanup;
+ 
+ 	return serv;
+ }
+-- 
+1.7.9.5
 
