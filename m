@@ -1,53 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:5912 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:18597 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934338Ab2FEOE6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Jun 2012 10:04:58 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Andy Adamson <andros@netapp.com>
-Subject: [PATCH 2/2] NFSv4: Fix up decode_attr_mdsthreshold
-Date: Tue,  5 Jun 2012 10:04:43 -0400
-Message-Id: <1338905083-19559-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1338905083-19559-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1338905083-19559-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1751684Ab2FSO7R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Jun 2012 10:59:17 -0400
+Message-ID: <4FE0937E.3010705@RedHat.com>
+Date: Tue, 19 Jun 2012 10:58:06 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Jeff Layton <jlayton@redhat.com>
+CC: linux-nfs@vger.kernel.org, chuck.lever@oracle.com
+Subject: Re: [PATCH] mount.nfs: try the next address after mount fails with
+ ETIMEDOUT
+References: <1338469436-5411-1-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1338469436-5411-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fix an incorrect use of 'likely()'. The FATTR4_WORD2_MDSTHRESHOLD
-bit is only expected in NFSv4.1 OPEN calls, and so is actually
-rather _unlikely_.
 
-decode_attr_mdsthreshold needs to clear FATTR4_WORD2_MDSTHRESHOLD
-from the attribute bitmap after it has decoded the data.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4xdr.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+On 05/31/2012 09:03 AM, Jeff Layton wrote:
+> If a NFS mount attempt fails with an ETIMEDOUT error, the mount.nfs code
+> doesn't currently attempt the next address in the list. For a NFSv4 mount
+> the initial mount() call almost always ends up going over
+> NFS_DEF_FG_TIMEOUT_MINUTES and the mount is never retried.
+> 
+> For a v3 mount, it ends up continually retrying against the same IPv6
+> address, and never tries the IPv4 address. Eventually it gives up once
+> it hits the NFS_DEF_FG_TIMEOUT_MINUTES timeout.
+> 
+> It's possible that a server is just unreachable via IPv6 (due to a
+> routing misconfiguration for instance), or is dropping IPv6 frames on
+> the floor. In that situation, it might still be reachable via IPv4 and
+> trying the next address could have allowed the mount to succeed.
+> 
+> Fix this by treating ETIMEDOUT in a similar fashion to ECONNREFUSED.
+> Have the client try the next address in the list before giving up and
+> returning an error.
+> 
+> Our QA folks noticed this after a routing problem in one of our test
+> labs. I was able to reproduce it by having the server drop incoming
+> IPv6 frames from the client's address.
+> 
+> With this patch, the mount eventually succeeds over IPv4 instead of
+> returning an error.
+> 
+> Cc: Chuck Lever <chuck.lever@oracle.com>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Committed...
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 9ca1428..18fae29 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4360,7 +4360,7 @@ static int decode_attr_mdsthreshold(struct xdr_stream *xdr,
- 
- 	if (unlikely(bitmap[2] & (FATTR4_WORD2_MDSTHRESHOLD - 1U)))
- 		return -EIO;
--	if (likely(bitmap[2] & FATTR4_WORD2_MDSTHRESHOLD)) {
-+	if (bitmap[2] & FATTR4_WORD2_MDSTHRESHOLD) {
- 		/* Did the server return an unrequested attribute? */
- 		if (unlikely(res == NULL))
- 			return -EREMOTEIO;
-@@ -4376,6 +4376,7 @@ static int decode_attr_mdsthreshold(struct xdr_stream *xdr,
- 				__func__);
- 
- 		status = decode_first_threshold_item4(xdr, res);
-+		bitmap[2] &= ~FATTR4_WORD2_MDSTHRESHOLD;
- 	}
- 	return status;
- out_overflow:
--- 
-1.7.10.2
+steved.
 
+> ---
+>  utils/mount/stropts.c |    2 ++
+>  1 files changed, 2 insertions(+), 0 deletions(-)
+> 
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index e09aa7c..0aa9a75 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -665,6 +665,7 @@ static int nfs_try_mount_v3v2(struct nfsmount_info *mi)
+>  		case ECONNREFUSED:
+>  		case EOPNOTSUPP:
+>  		case EHOSTUNREACH:
+> +		case ETIMEDOUT:
+>  			continue;
+>  		default:
+>  			goto out;
+> @@ -752,6 +753,7 @@ static int nfs_try_mount_v4(struct nfsmount_info *mi)
+>  		switch (errno) {
+>  		case ECONNREFUSED:
+>  		case EHOSTUNREACH:
+> +		case ETIMEDOUT:
+>  			continue;
+>  		default:
+>  			goto out;
