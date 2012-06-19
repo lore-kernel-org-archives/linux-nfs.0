@@ -1,56 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:35013 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753887Ab2FKNoh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jun 2012 09:44:37 -0400
-Message-ID: <4FD5F629.1070508@panasas.com>
-Date: Mon, 11 Jun 2012 16:44:09 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mx1.redhat.com ([209.132.183.28]:5289 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751516Ab2FSOym (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Jun 2012 10:54:42 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q5JEsfp6029219
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 19 Jun 2012 10:54:41 -0400
+Message-ID: <4FE0926C.2050201@RedHat.com>
+Date: Tue, 19 Jun 2012 10:53:32 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>, bfields <bfields@fieldses.org>,
-        Steve Dickson <steved@redhat.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Joerg Platte <jplatte@naasa.net>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Hans de Bruin <jmdebruin@xmsnet.nl>
-Subject: Re: Kernel 3.4.X NFS server regression
-References: <4FD47D4E.9070307@naasa.net> <1339340441.4751.1.camel@lade.trondhjem.org> <20120611121634.GB7654@fieldses.org> <20120611083932.24e27e39@corrin.poochiereds.net> <4FD5F35A.3000903@panasas.com>
-In-Reply-To: <4FD5F35A.3000903@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+To: harald@redhat.com
+CC: linux-nfs@vger.kernel.org, jlayton@redhat.com
+Subject: Re: [PATCH] Before clearing the capability bounding set, check if
+ we have the cap
+References: <1339501866-18967-1-git-send-email-harald@redhat.com>
+In-Reply-To: <1339501866-18967-1-git-send-email-harald@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/11/2012 04:32 PM, Boaz Harrosh wrote:
 
-> On 06/11/2012 03:39 PM, Jeff Layton wrote:
+
+On 06/12/2012 07:51 AM, harald@redhat.com wrote:
+> From: Harald Hoyer <harald@redhat.com>
 > 
->>>
->>> But I'm guessing we were wrong to assume that existing setups that
->>> people perceived as working would have that path, because the failures
->>> in the absence of that path were probably less obvious.
->>>
+> PR_CAPBSET_DROP can return EINVAL, if an older kernel does support
+> some capabilities, which are defined by CAP_LAST_CAP, which results in
+> a failure of the service.
+> 
+> For example kernel 3.4 errors on CAP_EPOLLWAKEUP, which was newly
+> introduced in 3.5.
+> 
+> So, for future capabilities, we clear until we get an EINVAL for
+> PR_CAPBSET_READ.
+Committed...
 
+steved.
 
-One more thing, the most important one. We have already fixed that in the
-past and I was hoping the lesson was learned. Apparently it was not, and
-we are doomed to do this mistake for ever!!
-
-What ever crap fails times out and crashes, in the recovery code, we don't
-give a dam. It should never affect any Server-client communication.
-
-When the grace periods ends the clients gates opens period. *Any* error
-return from state recovery code must be carefully ignored and normal
-operations resumed. At most on error, we move into a mode where any
-recovery request from client is accepted, since we don't have any better
-data to verify it.
-
-Please comb recovery code to make sure any catastrophe is safely ignored.
-We already did that before and it used to work.
-
->>> --b.
-
-
-Thanks
-Boaz
-
+> ---
+>  support/nsm/file.c      |    2 +-
+>  utils/nfsdcld/nfsdcld.c |    4 ++--
+>  2 files changed, 3 insertions(+), 3 deletions(-)
+> 
+> diff --git a/support/nsm/file.c b/support/nsm/file.c
+> index 5476446..4711c2c 100644
+> --- a/support/nsm/file.c
+> +++ b/support/nsm/file.c
+> @@ -386,7 +386,7 @@ prune_bounding_set(void)
+>  	}
+>  
+>  	/* prune the bounding set to nothing */
+> -	for (i = 0; i <= CAP_LAST_CAP; ++i) {
+> +	for (i = 0; prctl(PR_CAPBSET_READ, i, 0, 0, 0) >=0 ; ++i) {
+>  		ret = prctl(PR_CAPBSET_DROP, i, 0, 0, 0);
+>  		if (ret) {
+>  			xlog(L_ERROR, "Unable to prune capability %lu from "
+> diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
+> index e7af4e3..473d069 100644
+> --- a/utils/nfsdcld/nfsdcld.c
+> +++ b/utils/nfsdcld/nfsdcld.c
+> @@ -102,8 +102,8 @@ cld_set_caps(void)
+>  	}
+>  
+>  	/* prune the bounding set to nothing */
+> -	for (i = 0; i <= CAP_LAST_CAP; ++i) {
+> -		ret = prctl(PR_CAPBSET_DROP, i);
+> +	for (i = 0; prctl(PR_CAPBSET_READ, i, 0, 0, 0) >= 0 ; ++i) {
+> +		ret = prctl(PR_CAPBSET_DROP, i, 0, 0, 0);
+>  		if (ret) {
+>  			xlog(L_ERROR, "Unable to prune capability %lu from "
+>  				      "bounding set: %m", i);
