@@ -1,84 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:23881 "EHLO mx2.netapp.com"
+Received: from plane.gmane.org ([80.91.229.3]:35272 "EHLO plane.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932282Ab2FAVPM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Jun 2012 17:15:12 -0400
-From: andros@netapp.com
-To: iisaman@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [[PATCH resend] 3/6] PYNFS use loopback addresses for MDS<->DS communication
-Date: Tue, 29 May 2012 18:11:26 -0400
-Message-Id: <1338329489-29178-4-git-send-email-andros@netapp.com>
-In-Reply-To: <1338329489-29178-1-git-send-email-andros@netapp.com>
-References: <1338329489-29178-1-git-send-email-andros@netapp.com>
+	id S1751300Ab2FSJ7H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Jun 2012 05:59:07 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1SgvDC-0006G3-OU
+	for linux-nfs@vger.kernel.org; Tue, 19 Jun 2012 11:59:02 +0200
+Received: from bg-1.or.uni-bonn.de ([131.220.141.100])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Tue, 19 Jun 2012 11:59:02 +0200
+Received: from bartoschek by bg-1.or.uni-bonn.de with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Tue, 19 Jun 2012 11:59:02 +0200
+To: linux-nfs@vger.kernel.org
+From: Christoph Bartoschek <bartoschek@gmx.de>
+Subject: Spurious permission denied
+Date: Tue, 19 Jun 2012 11:58:27 +0200
+Message-ID: <43v5b9-ifa.ln1@barney.bruehl.pontohonk.de>
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="nextPart2182644.tDU5xdFZgO"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Weston Andros Adamson <dros@netapp.com>
 
-if a loopback addresses is specified for a DS, use that address for MDS to DS
-communication and remove it from the advertised addresses in getdeviceinfo
-(it obviously would never work).
+--nextPart2182644.tDU5xdFZgO
+Content-Type: text/plain; charset="ISO-8859-1"
+Content-Transfer-Encoding: 7Bit
 
-this is useful for testing network partitions - you can bring down / firewall
-off an interface without breaking MDS<->DS communications.
+Hi,
 
-an example dataservers.conf:
+we still have the problem that some users get permission denied for 
+directories they normally can access. The problem only affects a single user 
+at a time and automatically goes away after about 30 minutes.
 
-192.168.55.1:12345,127.0.0.1:12345/pynfs_mds
-192.168.55.1:12346,127.0.0.1:12346/pynfs_mds
+It seems to be a server problem because this happens on all client machines 
+at the same time.
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- nfs4.1/dataserver.py |   28 ++++++++++++++++++++++------
- 1 files changed, 22 insertions(+), 6 deletions(-)
+Here is how it looks like:
 
-diff --git a/nfs4.1/dataserver.py b/nfs4.1/dataserver.py
-index 65e4f55..dd2a535 100644
---- a/nfs4.1/dataserver.py
-+++ b/nfs4.1/dataserver.py
-@@ -187,9 +187,27 @@ class DSDevice(object):
-                     log.critical("Could not parse line: %r" % line)
-                     sys.exit(1)
- 
--                # for now, just use the last path for local connections
--                server, port = server_list[-1]
--                server_list = server_list[:-1]
-+                # if there is a (IPv4) loopback address in the multipath list,
-+                # use that as the connection to the DS, but dont advertise it
-+                loopback_idx = -1
-+                for i, serverport in enumerate(server_list):
-+                    if serverport[0] == '127.0.0.1':
-+                        loopback_idx = i
-+                        break
-+
-+                if loopback_idx >= 0:
-+                    print "Using loopback address for MDS->DS communication only"
-+                    server_list = list(server_list)
-+                    server, port = server_list.pop(loopback_idx)
-+                else:
-+                    # just use the last path for local connections
-+                    server, port = server_list[-1]
-+
-+                if not server_list:
-+                    log.critical("At least one non-loopback address must " +
-+                                 "be specified for each DS")
-+                    sys.exit(1)
-+
-                 print server, port, path
-                 try:
-                     log.info("Adding dataserver ip:%s port:%s path:%s" %
-@@ -210,9 +228,7 @@ class DSDevice(object):
-         index = 0
-         for d in self.list:
-             if d.active:
--                multipath = []
--                multipath.extend(d.get_multipath_netaddr4s())
--                multipath.append(d.get_netaddr4())
-+                multipath = d.get_multipath_netaddr4s()
-                 netaddrs.append(multipath)
-                 stripe_indices.append(index)
-                 index = index + 1
--- 
-1.7.7.6
+[bartosch@r1106i12 ~]$ ls /afs/eda/prod
+ls: cannot open directory /afs/eda/prod: Permission denied
+[bartosch@r1106i12 ~]$ id
+uid=348(bartosch) gid=200(vls) 
+groups=200(vlsi),100(users),201(zab),900(ibm),901(iba),902(ama),1001(eda),2030(asi),2057(ecl),41999(tra)
+[bartosch@r1106i12 ~]$ 
+
+I have attached the network traffic that was exchanged between the NFS 
+server and the client for the ls command captured by wireshark.
+
+Accessing the directory /afs/eda works as expected.
+
+Has anyone an idea what could be wrong?
+
+Thanks,
+Christoph Bartoschek
+--nextPart2182644.tDU5xdFZgO
+Content-Type: application/vnd.tcpdump.pcap; name="network_traffic.dump"
+Content-Disposition: attachment; filename="network_traffic.dump"
+Content-Transfer-Encoding: base64
+
+1MOyoQIABAAAAAAAAAAAAP//AAABAAAAvUngT9jRDgDGAAAAxgAAAAAwSNQccAAlkCyl8AgARQAA
+uCa7QABABnMbwKiPNMCoj+QCvQgBEVj0a6Z+mPyAGF/7oRQAAAEBCArYUJf2G9FT94AAAICJbqJY
+AAAAAAAAAAIAAYajAAAAAwAAAAEAAAABAAAARAB46Z8AAAAIcjExMDZpMTIAAAFcAAAAyAAAAAoA
+AABkAAAAyAAAAMkAAAOEAAADhQAAA4YAAAPpAAAH7gAACAkAAKQPAAAAAAAAAAAAAAAQAQABAQEA
+AAACANgPRVkyJr1J4E9p0g4AtgAAALYAAAAAJZAspfAAMEjUHHAIAEUAAKg8PUAAQAZdqcCoj+TA
+qI80CAECvaZ+mPwRWPTvgBgB9TP4AAABAQgKG9FcxthQl/aAAABwiW6iWAAAAAEAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAIAAEXoAAAARwAAA+wAAAPpAAAAAAAAEAAAAAAAAAAQAAAAAAAAAAAAAAAA
+AAAAAAEAAAAAD9gAAk/fBq04owRBT3MMIAAAAABPeZD9FZdXXr1J4E940g4AQgAAAEIAAAAAMEjU
+HHAAJZAspfAIAEUAADQmvEAAQAZznsCojzTAqI/kAr0IARFY9O+mfplwgBBf+6CQAAABAQgK2FCX
+9hvRXMY=
+
+--nextPart2182644.tDU5xdFZgO--
+
 
