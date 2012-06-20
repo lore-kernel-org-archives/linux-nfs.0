@@ -1,12 +1,14 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:43468 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:13164 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753515Ab2F1M2R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Jun 2012 08:28:17 -0400
-Date: Thu, 28 Jun 2012 08:27:25 -0400
-From: Jeff Layton <jlayton@redhat.com>
+	id S1752714Ab2FTRoE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jun 2012 13:44:04 -0400
+Message-ID: <4FE20B9C.7010209@redhat.com>
+Date: Wed, 20 Jun 2012 13:42:52 -0400
+From: Rik van Riel <riel@redhat.com>
+MIME-Version: 1.0
 To: Mel Gorman <mgorman@suse.de>
-Cc: Andrew Morton <akpm@linux-foundation.org>, Linux-MM <linux-mm@kvack.org>,
+CC: Andrew Morton <akpm@linux-foundation.org>, Linux-MM <linux-mm@kvack.org>,
         Linux-Netdev <netdev@vger.kernel.org>,
         Linux-NFS <linux-nfs@vger.kernel.org>,
         LKML <linux-kernel@vger.kernel.org>,
@@ -16,77 +18,24 @@ Cc: Andrew Morton <akpm@linux-foundation.org>, Linux-MM <linux-mm@kvack.org>,
         Peter Zijlstra <a.p.zijlstra@chello.nl>,
         Mike Christie <michaelc@cs.wisc.edu>,
         Eric B Munson <emunson@mgebm.net>
-Subject: Re: [PATCH 10/12] nfs: enable swap on NFS
-Message-ID: <20120628082725.33b71097@corrin.poochiereds.net>
-In-Reply-To: <1340375468-22509-11-git-send-email-mgorman@suse.de>
-References: <1340375468-22509-1-git-send-email-mgorman@suse.de>
-	<1340375468-22509-11-git-send-email-mgorman@suse.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Subject: Re: [PATCH 11/12] nfs: Prevent page allocator recursions with swap
+ over NFS.
+References: <1340185081-22525-1-git-send-email-mgorman@suse.de> <1340185081-22525-12-git-send-email-mgorman@suse.de>
+In-Reply-To: <1340185081-22525-12-git-send-email-mgorman@suse.de>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 22 Jun 2012 15:31:06 +0100
-Mel Gorman <mgorman@suse.de> wrote:
+On 06/20/2012 05:38 AM, Mel Gorman wrote:
+> GFP_NOFS is _more_ permissive than GFP_NOIO in that it will initiate
+> IO, just not of any filesystem data.
+>
+> The problem is that previously NOFS was correct because that avoids
+> recursion into the NFS code. With swap-over-NFS, it is no longer
+> correct as swap IO can lead to this recursion.
+>
+> Signed-off-by: Peter Zijlstra<a.p.zijlstra@chello.nl>
+> Signed-off-by: Mel Gorman<mgorman@suse.de>
 
-> Implement the new swapfile a_ops for NFS and hook up ->direct_IO. This
-> will set the NFS socket to SOCK_MEMALLOC and run socket reconnect
-> under PF_MEMALLOC as well as reset SOCK_MEMALLOC before engaging the
-> protocol ->connect() method.
-> 
-> PF_MEMALLOC should allow the allocation of struct socket and related
-> objects and the early (re)setting of SOCK_MEMALLOC should allow us
-> to receive the packets required for the TCP connection buildup.
-> 
-> [dfeng@redhat.com: Fix handling of multiple swap files]
-> [a.p.zijlstra@chello.nl: Original patch]
-> Signed-off-by: Mel Gorman <mgorman@suse.de>
-> Acked-by: Rik van Riel <riel@redhat.com>
-> ---
->  fs/nfs/Kconfig              |    8 +++++
->  fs/nfs/direct.c             |   82 ++++++++++++++++++++++++++++---------------
->  fs/nfs/file.c               |   22 ++++++++++--
->  include/linux/nfs_fs.h      |    4 +--
->  include/linux/sunrpc/xprt.h |    3 ++
->  net/sunrpc/Kconfig          |    5 +++
->  net/sunrpc/clnt.c           |    2 ++
->  net/sunrpc/sched.c          |    7 ++--
->  net/sunrpc/xprtsock.c       |   53 ++++++++++++++++++++++++++++
->  9 files changed, 152 insertions(+), 34 deletions(-)
-> 
+Acked-by: Rik van Riel<riel@redhat.com>
 
-[...snip...]
-
-> @@ -2108,11 +2156,15 @@ static void xs_tcp_setup_socket(struct work_struct *work)
->  		container_of(work, struct sock_xprt, connect_worker.work);
->  	struct socket *sock = transport->sock;
->  	struct rpc_xprt *xprt = &transport->xprt;
-> +	unsigned long pflags = current->flags;
->  	int status = -EIO;
->  
->  	if (xprt->shutdown)
->  		goto out;
->  
-> +	if (xprt->swapper)
-> +		current->flags |= PF_MEMALLOC;
-> +
->  	if (!sock) {
->  		clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
->  		sock = xs_create_sock(xprt, transport,
-> @@ -2174,6 +2226,7 @@ out_eagain:
->  out:
->  	xprt_clear_connecting(xprt);
->  	xprt_wake_pending_tasks(xprt, status);
-> +	tsk_restore_flags(current, pflags, PF_MEMALLOC);
->  }
->  
->  /**
-
-Apologies if this is fixed in another patch and I didn't see it...
-
-There's a place in the above function that returns without going
-through "out:". I think you also want to tsk_restore_flags() in that
-spot too.
-
--- 
-Jeff Layton <jlayton@redhat.com>
