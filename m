@@ -1,40 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:2074 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:3519 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759480Ab2FALUJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Jun 2012 07:20:09 -0400
-Subject: [PATCH 0/2] NFS: callback shutdown panic fix 
-To: bfields@fieldses.org, Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Fri, 01 Jun 2012 15:17:34 +0400
-Message-ID: <20120601111619.7846.95457.stgit@localhost.localdomain>
+	id S1751631Ab2FTQKs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jun 2012 12:10:48 -0400
+Message-ID: <4FE1F5C1.20006@redhat.com>
+Date: Wed, 20 Jun 2012 12:09:37 -0400
+From: Rik van Riel <riel@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Mel Gorman <mgorman@suse.de>
+CC: Andrew Morton <akpm@linux-foundation.org>, Linux-MM <linux-mm@kvack.org>,
+        Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>
+Subject: Re: [PATCH 05/12] mm: swap: Implement generic handler for swap_activate
+References: <1340185081-22525-1-git-send-email-mgorman@suse.de> <1340185081-22525-6-git-send-email-mgorman@suse.de>
+In-Reply-To: <1340185081-22525-6-git-send-email-mgorman@suse.de>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch set is the back-port of "SUNRPC: separate per-net data creation
-from service" patch set and "NFS: hard-code init_net for NFS callback
-transports" patch for 3.5 kernel.
+On 06/20/2012 05:37 AM, Mel Gorman wrote:
+> The version of swap_activate introduced is sufficient for swap-over-NFS
+> but would not provide enough information to implement a generic handler.
+> This patch shuffles things slightly to ensure the same information is
+> available for aops->swap_activate() as is available to the core.
+>
+> No functionality change.
+>
+> Signed-off-by: Mel Gorman<mgorman@suse.de>
 
-It fixes NULL pointer dereference in svc_destroy(), reported by Dave Jones in
-"3.4. sunrpc oops during shutdown" e-mail.
-
-The following series implements...
-
----
-
-Stanislav Kinsbursky (2):
-      SUNRPC: new svc_bind() routine introduced
-      SUNRPC: move per-net operations from svc_destroy()
-
-
- fs/lockd/svc.c             |   33 +++++++++++++++++++++------------
- fs/nfs/callback.c          |   16 +++++++++++++---
- fs/nfsd/nfsctl.c           |   12 +++++++++---
- fs/nfsd/nfssvc.c           |   23 +++++++++++++++++++++++
- include/linux/sunrpc/svc.h |    1 +
- net/sunrpc/rpcb_clnt.c     |   12 +++++++-----
- net/sunrpc/svc.c           |   23 ++++++++++-------------
- 7 files changed, 84 insertions(+), 36 deletions(-)
+Acked-by: Rik van Riel<riel@redhat.com>
