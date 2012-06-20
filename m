@@ -1,74 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:47464 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932657Ab2F2S6P (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jun 2012 14:58:15 -0400
-Received: by ghrr11 with SMTP id r11so3053427ghr.19
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Jun 2012 11:58:15 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v3 05/17] vfs: remove user_path_at_empty
-Date: Fri, 29 Jun 2012 14:57:48 -0400
-Message-Id: <1340996280-27123-6-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
-References: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:65521 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757976Ab2FTTyJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jun 2012 15:54:09 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 10/10] NFS: Create custom NFS v4 write_inode() function
+Date: Wed, 20 Jun 2012 15:53:49 -0400
+Message-Id: <1340222029-18027-11-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1340222029-18027-1-git-send-email-bjschuma@netapp.com>
+References: <1340222029-18027-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...there are no more callers.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+This gives pnfs a chance to do a layout commit inside the v4 code.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/namei.c            |   12 +++---------
- include/linux/namei.h |    1 -
- 2 files changed, 3 insertions(+), 10 deletions(-)
+ fs/nfs/nfs4_fs.h |  3 +++
+ fs/nfs/super.c   |  2 +-
+ fs/nfs/write.c   | 10 ++++++++--
+ 3 files changed, 12 insertions(+), 3 deletions(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 44c7ccd..7945b19 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -1926,10 +1926,10 @@ int kern_path_at(int dfd, const char *name, unsigned flags, struct path *path)
- 	return err;
- }
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index a0be2d1a..3696ca7 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -202,6 +202,9 @@ struct nfs4_state_maintenance_ops {
+ extern const struct dentry_operations nfs4_dentry_operations;
+ extern const struct inode_operations nfs4_dir_inode_operations;
  
--int user_path_at_empty(int dfd, const char __user *name, unsigned flags,
--		 struct path *path, int *empty)
-+int user_path_at(int dfd, const char __user *name, unsigned flags,
-+		 struct path *path)
++/* write.c */
++int nfs4_write_inode(struct inode *, struct writeback_control *);
++
+ /* nfs4namespace.c */
+ rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *);
+ struct rpc_clnt *nfs4_create_sec_client(struct rpc_clnt *, struct inode *, struct qstr *);
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 5a1c860..9d33fb2 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -391,7 +391,7 @@ struct file_system_type nfs4_referral_fs_type = {
+ static const struct super_operations nfs4_sops = {
+ 	.alloc_inode	= nfs_alloc_inode,
+ 	.destroy_inode	= nfs_destroy_inode,
+-	.write_inode	= nfs_write_inode,
++	.write_inode	= nfs4_write_inode,
+ 	.put_super	= nfs_put_super,
+ 	.statfs		= nfs_statfs,
+ 	.evict_inode	= nfs4_evict_inode,
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index c11fb00..f312860 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1671,9 +1671,14 @@ static int nfs_commit_unstable_pages(struct inode *inode, struct writeback_contr
+ 
+ int nfs_write_inode(struct inode *inode, struct writeback_control *wbc)
  {
--	char *tmp = getname_flags(name, flags, empty);
-+	char *tmp = getname_flags(name, flags, NULL);
- 	int err;
+-	int ret;
++	return nfs_commit_unstable_pages(inode, wbc);
++}
++
++#ifdef CONFIG_NFS_V4
++int nfs4_write_inode(struct inode *inode, struct writeback_control *wbc)
++{
++	int ret = nfs_write_inode(inode, wbc);
  
- 	if (IS_ERR(tmp)) {
-@@ -1941,12 +1941,6 @@ int user_path_at_empty(int dfd, const char __user *name, unsigned flags,
- 	return err;
+-	ret = nfs_commit_unstable_pages(inode, wbc);
+ 	if (ret >= 0 && test_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags)) {
+ 		int status;
+ 		bool sync = true;
+@@ -1687,6 +1692,7 @@ int nfs_write_inode(struct inode *inode, struct writeback_control *wbc)
+ 	}
+ 	return ret;
  }
++#endif
  
--int user_path_at(int dfd, const char __user *name, unsigned flags,
--		 struct path *path)
--{
--	return user_path_at_empty(dfd, name, flags, path, NULL);
--}
--
- static int user_path_parent(int dfd, const char __user *path,
- 			struct nameidata *nd, char **name)
- {
-diff --git a/include/linux/namei.h b/include/linux/namei.h
-index cd95fcb..1ea93d5 100644
---- a/include/linux/namei.h
-+++ b/include/linux/namei.h
-@@ -68,7 +68,6 @@ enum {LAST_NORM, LAST_ROOT, LAST_DOT, LAST_DOTDOT, LAST_BIND};
- 
- extern int kern_path_at(int, const char *, unsigned, struct path *);
- extern int user_path_at(int, const char __user *, unsigned, struct path *);
--extern int user_path_at_empty(int, const char __user *, unsigned, struct path *, int *empty);
- 
- #define user_path(name, path) user_path_at(AT_FDCWD, name, LOOKUP_FOLLOW, path)
- #define user_lpath(name, path) user_path_at(AT_FDCWD, name, 0, path)
+ /*
+  * flush the inode to disk.
 -- 
-1.7.7.6
+1.7.11
 
