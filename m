@@ -1,9 +1,8 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:54204 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:59312 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756525Ab2FTOVb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jun 2012 10:21:31 -0400
-Date: Wed, 20 Jun 2012 15:21:27 +0100
+	id S1756192Ab2FTJiT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jun 2012 05:38:19 -0400
 From: Mel Gorman <mgorman@suse.de>
 To: Andrew Morton <akpm@linux-foundation.org>
 Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
@@ -14,37 +13,59 @@ Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
         Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
         Peter Zijlstra <a.p.zijlstra@chello.nl>,
         Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>
-Subject: Re: [PATCH 01/12] netvm: Prevent a stream-specific deadlock
-Message-ID: <20120620142127.GK4011@suse.de>
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 12/12] Avoid dereferencing bd_disk during swap_entry_free for network storage
+Date: Wed, 20 Jun 2012 10:38:01 +0100
+Message-Id: <1340185081-22525-13-git-send-email-mgorman@suse.de>
+In-Reply-To: <1340185081-22525-1-git-send-email-mgorman@suse.de>
 References: <1340185081-22525-1-git-send-email-mgorman@suse.de>
- <1340185081-22525-2-git-send-email-mgorman@suse.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-In-Reply-To: <1340185081-22525-2-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 20, 2012 at 10:37:50AM +0100, Mel Gorman wrote:
-> It could happen that all !SOCK_MEMALLOC sockets have buffered so
-> much data that we're over the global rmem limit. This will prevent
-> SOCK_MEMALLOC buffers from receiving data, which will prevent userspace
-> from running, which is needed to reduce the buffered data.
-> 
-> Fix this by exempting the SOCK_MEMALLOC sockets from the rmem limit.
-> Once this change it applied, it is important that sockets that set
-> SOCK_MEMALLOC do not clear the flag until the socket is being torn down.
-> If this happens, a warning is generated and the tokens reclaimed to
-> avoid accounting errors until the bug is fixed.
-> 
-> [davem@davemloft.net: Warning about clearing SOCK_MEMALLOC]
-> Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-> Signed-off-by: Mel Gorman <mgorman@suse.de>
-> Acked-by: David S. Miller <davem@davemloft.net>
+Commit [b3a27d: swap: Add swap slot free callback to
+block_device_operations] dereferences p->bdev->bd_disk but this is a
+NULL dereference if using swap-over-NFS. This patch checks SWP_BLKDEV
+on the swap_info_struct before dereferencing.
 
-This patch introduced a new warning that I had previously missed. I'll
-fix it up when rebasing this series on top of linux-next.
+With reference to this callback, Christoph Hellwig stated "Please
+just remove the callback entirely.  It has no user outside the staging
+tree and was added clearly against the rules for that staging tree".
+This would also be my preference but there was not an obvious way of
+keeping zram in staging/ happy.
 
+Signed-off-by: Xiaotian Feng <dfeng@redhat.com>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ mm/swapfile.c |    9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index 7307fc9..e6c4b13 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -549,7 +549,6 @@ static unsigned char swap_entry_free(struct swap_info_struct *p,
+ 
+ 	/* free if no reference */
+ 	if (!usage) {
+-		struct gendisk *disk = p->bdev->bd_disk;
+ 		if (offset < p->lowest_bit)
+ 			p->lowest_bit = offset;
+ 		if (offset > p->highest_bit)
+@@ -560,9 +559,11 @@ static unsigned char swap_entry_free(struct swap_info_struct *p,
+ 		nr_swap_pages++;
+ 		p->inuse_pages--;
+ 		frontswap_invalidate_page(p->type, offset);
+-		if ((p->flags & SWP_BLKDEV) &&
+-				disk->fops->swap_slot_free_notify)
+-			disk->fops->swap_slot_free_notify(p->bdev, offset);
++		if (p->flags & SWP_BLKDEV) {
++			struct gendisk *disk = p->bdev->bd_disk;
++			if (disk->fops->swap_slot_free_notify)
++				disk->fops->swap_slot_free_notify(p->bdev, offset);
++		}
+ 	}
+ 
+ 	return usage;
 -- 
-Mel Gorman
-SUSE Labs
+1.7.9.2
+
