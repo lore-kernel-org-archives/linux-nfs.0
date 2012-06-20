@@ -1,85 +1,142 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:37560 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751164Ab2F3GXL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jun 2012 02:23:11 -0400
-From: Namjae Jeon <linkinjeon@gmail.com>
-To: bfields@fieldses.org, Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Namjae Jeon <linkinjeon@gmail.com>,
-        Amit Sahrawat <amit.sahrawat83@gmail.com>
-Subject: [PATCH] nfs-util: Update exportfs flush option list in usage message.
-Date: Sat, 30 Jun 2012 02:23:01 -0400
-Message-Id: <1341037381-24218-1-git-send-email-linkinjeon@gmail.com>
+Received: from cantor2.suse.de ([195.135.220.15]:59107 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755655Ab2FTJiE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jun 2012 05:38:04 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 00/12] Swap-over-NFS without deadlocking V6
+Date: Wed, 20 Jun 2012 10:37:49 +0100
+Message-Id: <1340185081-22525-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Update exportfs flush option list in usage message.
-And I sort these cases in alphabetical order.
+Sorry for the partial resend, fat-fingered the first effort.
 
-Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
-Signed-off-by: Amit Sahrawat <amit.sahrawat83@gmail.com>
----
- utils/exportfs/exportfs.c |   21 ++++++++++++---------
- 1 file changed, 12 insertions(+), 9 deletions(-)
+Changelog since V5
+  o Rebase to v3.5-rc3
 
-diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-index a3323d7..9f79541 100644
---- a/utils/exportfs/exportfs.c
-+++ b/utils/exportfs/exportfs.c
-@@ -40,7 +40,7 @@ static void	unexportfs(char *arg, int verbose);
- static void	exports_update(int verbose);
- static void	dump(int verbose);
- static void	error(nfs_export *exp, int err);
--static void	usage(const char *progname);
-+static void	usage(const char *progname, int n);
- static void	validate_export(nfs_export *exp);
- static int	matchhostname(const char *hostname1, const char *hostname2);
- static void	export_d_read(const char *dname);
-@@ -105,11 +105,17 @@ main(int argc, char **argv)
- 
- 	export_errno = 0;
- 
--	while ((c = getopt(argc, argv, "aio:ruvf")) != EOF) {
-+	while ((c = getopt(argc, argv, "afhio:ruv")) != EOF) {
- 		switch(c) {
- 		case 'a':
- 			f_all = 1;
- 			break;
-+		case 'f':
-+			force_flush = 1;
-+			break;
-+		case 'h':
-+			usage(progname, 0);
-+			break;
- 		case 'i':
- 			f_ignore = 1;
- 			break;
-@@ -126,11 +132,8 @@ main(int argc, char **argv)
- 		case 'v':
- 			f_verbose = 1;
- 			break;
--		case 'f':
--			force_flush = 1;
--			break;
- 		default:
--			usage(progname);
-+			usage(progname, 1);
- 			break;
- 		}
- 	}
-@@ -723,8 +726,8 @@ error(nfs_export *exp, int err)
- }
- 
- static void
--usage(const char *progname)
-+usage(const char *progname, int n)
- {
--	fprintf(stderr, "usage: %s [-aruv] [host:/path]\n", progname);
--	exit(1);
-+	fprintf(stderr, "usage: %s [-afhioruv] [host:/path]\n", progname);
-+	exit(n);
- }
+Changelog since V4
+  o Catch if SOCK_MEMALLOC flag is cleared with rmem tokens	(davem)
+
+Changelog since V3
+  o Rebase to 3.4-rc5
+  o kmap pages for writing to swap				(akpm)
+  o Move forward declaration to reduce chance of duplication	(akpm)
+
+Changelog since V2
+  o Nothing significant, just rebases. A radix tree lookup is replaced with
+    a linear search would be the biggest rebase artifact
+
+This patch series is based on top of "Swap-over-NBD without deadlocking v12"
+as it depends on the same reservation of PF_MEMALLOC reserves logic.
+
+When a user or administrator requires swap for their application, they
+create a swap partition and file, format it with mkswap and activate it with
+swapon. In diskless systems this is not an option so if swap if required
+then swapping over the network is considered.  The two likely scenarios
+are when blade servers are used as part of a cluster where the form factor
+or maintenance costs do not allow the use of disks and thin clients.
+
+The Linux Terminal Server Project recommends the use of the Network
+Block Device (NBD) for swap but this is not always an option.  There is
+no guarantee that the network attached storage (NAS) device is running
+Linux or supports NBD. However, it is likely that it supports NFS so there
+are users that want support for swapping over NFS despite any performance
+concern. Some distributions currently carry patches that support swapping
+over NFS but it would be preferable to support it in the mainline kernel.
+
+Patch 1 avoids a stream-specific deadlock that potentially affects TCP.
+
+Patch 2 is a small modification to SELinux to avoid using PFMEMALLOC
+	reserves.
+
+Patch 3 adds three helpers for filesystems to handle swap cache pages.
+	For example, page_file_mapping() returns page->mapping for
+	file-backed pages and the address_space of the underlying
+	swap file for swap cache pages.
+
+Patch 4 adds two address_space_operations to allow a filesystem
+	to pin all metadata relevant to a swapfile in memory. Upon
+	successful activation, the swapfile is marked SWP_FILE and
+	the address space operation ->direct_IO is used for writing
+	and ->readpage for reading in swap pages.
+
+Patch 5 notes that patch 3 is bolting
+	filesystem-specific-swapfile-support onto the side and that
+	the default handlers have different information to what
+	is available to the filesystem. This patch refactors the
+	code so that there are generic handlers for each of the new
+	address_space operations.
+
+Patch 6 adds an API to allow a vector of kernel addresses to be
+	translated to struct pages and pinned for IO.
+
+Patch 7 adds support for using highmem pages for swap by kmapping
+	the pages before calling the direct_IO handler.
+
+Patch 8 updates NFS to use the helpers from patch 3 where necessary.
+
+Patch 9 avoids setting PF_private on PG_swapcache pages within NFS.
+
+Patch 10 implements the new swapfile-related address_space operations
+	for NFS and teaches the direct IO handler how to manage
+	kernel addresses.
+
+Patch 11 prevents page allocator recursions in NFS by using GFP_NOIO
+	where appropriate.
+
+Patch 12 fixes a NULL pointer dereference that occurs when using
+	swap-over-NFS.
+
+With the patches applied, it is possible to mount a swapfile that is on an
+NFS filesystem. Swap performance is not great with a swap stress test taking
+roughly twice as long to complete than if the swap device was backed by NBD.
+
+ Documentation/filesystems/Locking |   13 ++++
+ Documentation/filesystems/vfs.txt |   12 +++
+ fs/nfs/Kconfig                    |    8 ++
+ fs/nfs/direct.c                   |   82 ++++++++++++++-------
+ fs/nfs/file.c                     |   28 +++++--
+ fs/nfs/inode.c                    |    4 +
+ fs/nfs/internal.h                 |    7 +-
+ fs/nfs/pagelist.c                 |    4 +-
+ fs/nfs/read.c                     |    6 +-
+ fs/nfs/write.c                    |   91 ++++++++++++++---------
+ include/linux/blk_types.h         |    2 +
+ include/linux/fs.h                |    8 ++
+ include/linux/highmem.h           |    7 ++
+ include/linux/mm.h                |   29 ++++++++
+ include/linux/nfs_fs.h            |    4 +-
+ include/linux/pagemap.h           |    5 ++
+ include/linux/sunrpc/xprt.h       |    3 +
+ include/linux/swap.h              |    8 ++
+ include/net/sock.h                |    7 +-
+ mm/highmem.c                      |   12 +++
+ mm/memory.c                       |   52 +++++++++++++
+ mm/page_io.c                      |  145 +++++++++++++++++++++++++++++++++++++
+ mm/swap_state.c                   |    2 +-
+ mm/swapfile.c                     |  141 ++++++++++++++----------------------
+ net/caif/caif_socket.c            |    2 +-
+ net/core/sock.c                   |   14 +++-
+ net/ipv4/tcp_input.c              |   12 +--
+ net/sctp/ulpevent.c               |    2 +-
+ net/sunrpc/Kconfig                |    5 ++
+ net/sunrpc/clnt.c                 |    2 +
+ net/sunrpc/sched.c                |    7 +-
+ net/sunrpc/xprtsock.c             |   53 ++++++++++++++
+ security/selinux/avc.c            |    2 +-
+ 33 files changed, 597 insertions(+), 182 deletions(-)
+
 -- 
-1.7.9.5
+1.7.9.2
 
