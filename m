@@ -1,72 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:50231 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932625Ab2F2S6O (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jun 2012 14:58:14 -0400
-Received: by yenl2 with SMTP id l2so3038206yen.19
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Jun 2012 11:58:13 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v3 04/17] vfs: fix readlinkat to retry on ESTALE
-Date: Fri, 29 Jun 2012 14:57:47 -0400
-Message-Id: <1340996280-27123-5-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
-References: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:44202 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753360Ab2FTOyL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Jun 2012 10:54:11 -0400
+Received: by dady13 with SMTP id y13so9932376dad.19
+        for <linux-nfs@vger.kernel.org>; Wed, 20 Jun 2012 07:54:11 -0700 (PDT)
+Date: Wed, 20 Jun 2012 07:54:07 -0700
+From: Greg KH <gregkh@linuxfoundation.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, stable@vger.kernel.org,
+        linux-nfs@vger.kernel.org,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>
+Subject: Re: [PATCH 4/3] lockd: hard-code init_net in lockd case as well
+Message-ID: <20120620145407.GA13594@kroah.com>
+References: <1340050049-12880-1-git-send-email-bfields@redhat.com>
+ <1340050049-12880-4-git-send-email-bfields@redhat.com>
+ <20120620132738.GA30742@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120620132738.GA30742@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/stat.c |   21 +++++++++++++++++----
- 1 files changed, 17 insertions(+), 4 deletions(-)
+On Wed, Jun 20, 2012 at 09:27:38AM -0400, J. Bruce Fields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> The previous patch missed lockd_down, which has the same problem.
+> Symptoms were crashes on unmount or reboot.
+> 
+> Note this was fixed in a different way upstream.
+> 
+> Acked-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/lockd/svc.c |    4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/stat.c b/fs/stat.c
-index 5afeb37..c9d88f7 100644
---- a/fs/stat.c
-+++ b/fs/stat.c
-@@ -307,14 +307,25 @@ SYSCALL_DEFINE4(readlinkat, int, dfd, const char __user *, pathname,
- 	struct path path;
- 	int error;
- 	int empty = 0;
-+	char *name;
-+	unsigned int try = 0;
-+	unsigned int lookup_flags = LOOKUP_EMPTY;
- 
- 	if (bufsiz <= 0)
- 		return -EINVAL;
- 
--	error = user_path_at_empty(dfd, pathname, LOOKUP_EMPTY, &path, &empty);
--	if (!error) {
--		struct inode *inode = path.dentry->d_inode;
-+	name = getname_flags(pathname, lookup_flags, &empty);
-+	if (IS_ERR(name))
-+		return PTR_ERR(name);
-+
-+	do {
-+		struct inode *inode;
-+
-+		error = kern_path_at(dfd, name, lookup_flags, &path);
-+		if (error)
-+			break;
- 
-+		inode = path.dentry->d_inode;
- 		error = empty ? -ENOENT : -EINVAL;
- 		if (inode->i_op->readlink) {
- 			error = security_inode_readlink(path.dentry);
-@@ -325,7 +336,9 @@ SYSCALL_DEFINE4(readlinkat, int, dfd, const char __user *, pathname,
- 			}
- 		}
- 		path_put(&path);
--	}
-+		lookup_flags |= LOOKUP_REVAL;
-+	} while (retry_estale(error, try++));
-+	putname(name);
- 	return error;
- }
- 
--- 
-1.7.7.6
+<formletter>
 
+This is not the correct way to submit patches for inclusion in the
+stable kernel tree.  Please read Documentation/stable_kernel_rules.txt
+for how to do this properly.
+
+</formletter>
