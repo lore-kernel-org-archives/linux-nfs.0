@@ -1,84 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:36371 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758345Ab2FAVBi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Jun 2012 17:01:38 -0400
-From: andros@netapp.com
-To: iisaman@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 3/6] PYNFS use loopback addresses for MDS<->DS communication
-Date: Tue, 29 May 2012 17:57:56 -0400
-Message-Id: <1338328679-28837-4-git-send-email-andros@netapp.com>
-In-Reply-To: <1338328679-28837-1-git-send-email-andros@netapp.com>
-References: <1338328679-28837-1-git-send-email-andros@netapp.com>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:34393 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755164Ab2FTSSj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Jun 2012 14:18:39 -0400
+Received: by pbbrp8 with SMTP id rp8so940659pbb.19
+        for <linux-nfs@vger.kernel.org>; Wed, 20 Jun 2012 11:18:39 -0700 (PDT)
+Date: Wed, 20 Jun 2012 11:18:35 -0700
+From: Greg KH <gregkh@linuxfoundation.org>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: stable@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>
+Subject: Re: [PATCH 1/3] SUNRPC: new svc_bind() routine introduced
+Message-ID: <20120620181835.GA8356@kroah.com>
+References: <1340050049-12880-1-git-send-email-bfields@redhat.com>
+ <1340050049-12880-2-git-send-email-bfields@redhat.com>
+ <20120620163427.GA6695@kroah.com>
+ <20120620180928.GB24777@pad.fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120620180928.GB24777@pad.fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Weston Andros Adamson <dros@netapp.com>
+On Wed, Jun 20, 2012 at 02:09:29PM -0400, J. Bruce Fields wrote:
+> On Wed, Jun 20, 2012 at 09:34:27AM -0700, Greg KH wrote:
+> > On Mon, Jun 18, 2012 at 04:07:27PM -0400, J. Bruce Fields wrote:
+> > > From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> > > 
+> > > commit cd96891d48a945ca2011fbeceda73813d6286195 upstream.
+> > 
+> > Um, no, that's not what this commit id is at all.
+> 
+> Whoops, sorry!  Should have been 9793f7c88.  Upstream commits on #2 and
+> #3 are correct.
+> 
+> > Where did you get that from?  I kind of don't trust this series now,
+> > care to fix these up with the correct git commit ids and resend them?
+> 
+> Sure, I'll resend once I get the "4/3" patch sorted out.
+> 
+> (That got a form rejection--I assume it was the missing upstream commit
+> ID?  That's because there isn't one--3.4 requires a different fix.  But
+> I can point to where the bug got fixed upstream even if it isn't the
+> same.)
 
-if a loopback addresses is specified for a DS, use that address for MDS to DS
-communication and remove it from the advertised addresses in getdeviceinfo
-(it obviously would never work).
+You need to be really specific when sending a patch that is not
+upstream, detailing why it isn't, and what different fix went in
+upstream, if possible.
 
-this is useful for testing network partitions - you can bring down / firewall
-off an interface without breaking MDS<->DS communications.
+thanks,
 
-an example dataservers.conf:
-
-192.168.55.1:12345,127.0.0.1:12345/pynfs_mds
-192.168.55.1:12346,127.0.0.1:12346/pynfs_mds
-
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- nfs4.1/dataserver.py |   28 ++++++++++++++++++++++------
- 1 files changed, 22 insertions(+), 6 deletions(-)
-
-diff --git a/nfs4.1/dataserver.py b/nfs4.1/dataserver.py
-index 65e4f55..dd2a535 100644
---- a/nfs4.1/dataserver.py
-+++ b/nfs4.1/dataserver.py
-@@ -187,9 +187,27 @@ class DSDevice(object):
-                     log.critical("Could not parse line: %r" % line)
-                     sys.exit(1)
- 
--                # for now, just use the last path for local connections
--                server, port = server_list[-1]
--                server_list = server_list[:-1]
-+                # if there is a (IPv4) loopback address in the multipath list,
-+                # use that as the connection to the DS, but dont advertise it
-+                loopback_idx = -1
-+                for i, serverport in enumerate(server_list):
-+                    if serverport[0] == '127.0.0.1':
-+                        loopback_idx = i
-+                        break
-+
-+                if loopback_idx >= 0:
-+                    print "Using loopback address for MDS->DS communication only"
-+                    server_list = list(server_list)
-+                    server, port = server_list.pop(loopback_idx)
-+                else:
-+                    # just use the last path for local connections
-+                    server, port = server_list[-1]
-+
-+                if not server_list:
-+                    log.critical("At least one non-loopback address must " +
-+                                 "be specified for each DS")
-+                    sys.exit(1)
-+
-                 print server, port, path
-                 try:
-                     log.info("Adding dataserver ip:%s port:%s path:%s" %
-@@ -210,9 +228,7 @@ class DSDevice(object):
-         index = 0
-         for d in self.list:
-             if d.active:
--                multipath = []
--                multipath.extend(d.get_multipath_netaddr4s())
--                multipath.append(d.get_netaddr4())
-+                multipath = d.get_multipath_netaddr4s()
-                 netaddrs.append(multipath)
-                 stripe_indices.append(index)
-                 index = index + 1
--- 
-1.7.7.6
-
+greg k-h
