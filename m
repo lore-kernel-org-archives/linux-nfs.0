@@ -1,346 +1,224 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:60992 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753352Ab2FKPi2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jun 2012 11:38:28 -0400
-Received: by bkcji2 with SMTP id ji2so3656088bkc.19
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Jun 2012 08:38:27 -0700 (PDT)
-Message-ID: <4FD610EF.2090702@tonian.com>
-Date: Mon, 11 Jun 2012 18:38:23 +0300
-From: Benny Halevy <bhalevy@tonian.com>
-MIME-Version: 1.0
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: Andy Adamson <androsadamson@gmail.com>,
-        Boaz Harrosh <bharrosh@panasas.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/3] NFSv4.1 mark layout when already returned
-References: <1338571178-2096-1-git-send-email-andros@netapp.com> <1338571178-2096-2-git-send-email-andros@netapp.com> <4FCA98E7.2030006@panasas.com> <1C92D18B-1977-4A12-A4DA-84DAC4B3E81E@netapp.com> <4FCE1DC1.6050100@panasas.com> <CAHVgHyXVCUdVFMO1WcRofOCvgDs7Reqsrs39qrZR7UnXWzG8RQ@mail.gmail.com> <4FD5C0EA.806@tonian.com> <02293178-08CA-4CD6-A472-252860CC1FA7@netapp.com>
-In-Reply-To: <02293178-08CA-4CD6-A472-252860CC1FA7@netapp.com>
-Content-Type: text/plain; charset=windows-1252
+Received: from mx2.netapp.com ([216.240.18.37]:18016 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757972Ab2FTTyJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jun 2012 15:54:09 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 08/10] NFS: Create an read_pageio_init() function
+Date: Wed, 20 Jun 2012 15:53:47 -0400
+Message-Id: <1340222029-18027-9-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1340222029-18027-1-git-send-email-bjschuma@netapp.com>
+References: <1340222029-18027-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2012-06-11 18:08, Adamson, Andy wrote:
-> 
-> On Jun 11, 2012, at 5:56 AM, Benny Halevy wrote:
-> 
->> On 2012-06-05 22:22, Andy Adamson wrote:
->>> On Tue, Jun 5, 2012 at 10:54 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->>>> On 06/05/2012 04:36 PM, Adamson, Andy wrote:
->>>>
->>>>> On Jun 2, 2012, at 6:51 PM, Boaz Harrosh wrote:
->>>>>>
->>>>>> In objects-layout we must report all errors on layout_return. We
->>>>>> accumulate them and report of all errors at once. So we need
->>>>>> the return after all in flights are back. (And no new IOs are
->>>>>> sent) Otherwise we might miss some.
->>>>>
->>>>
->>>>> _pnfs_retrun_layout removes all layouts, and should therefore only be
->>>>> called once.
->>>>
->>>>
->>>> I agree current behavior is a bug, hence my apology.
->>>>
->>>>> I'll can add the 'wait for all in-flight' functionality,
->>>>> and we can switch behaviors (wait or not wait).
->>>>>
->>>>
->>>>
->>>> I disagree you must "delay" the send see below.
->>>>
->>>>>> Also the RFC mandates that we do not use any layout or have
->>>>>> IOs in flight, once we return the layout.
->>>>>
->>>>>
->>>>> You are referring to this piece of the spec?
->>>>> Section 18.44.3
->>>>>
->>>>>  After this call,
->>>>>   the client MUST NOT use the returned layout(s) and the associated
->>>>>   storage protocol to access the file data.
->>>>>
->>>>>
->>>>
->>>>> The above says that the client MUST NOT send any _new_ i/o using the
->>>>> layout. I don't see any reference to in-flight i/o,
->>
->> Our assumption when designing the objects layout, in particular with regards to
->> client-based RAID was that LAYOUTRETURN quiesces in flight I/Os so that other
->> clients or the MDS see a consistent parity-stripe state.
-> 
-> I'm not suggesting any LAYOUTRETURN behavior for objects.
-> 
-> I'm coding a LAYOUTRETURN to allow the MDS to fence a file layout data server. 
-> 
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Yeah, right now pnfs_return_layout always returns the whole layout
-so this patch works.  Boaz's point (I think) was that marking the whole layout
-as returned in the generic layer will prevent returning of layout segments
-by the objects layout.
+pNFS needs to select a read function based on the layout driver
+currently in use, so I let each NFS version decide how to best handle
+initializing reads.
 
-Benny
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/internal.h       |  2 +-
+ fs/nfs/nfs3proc.c       |  1 +
+ fs/nfs/nfs4proc.c       |  1 +
+ fs/nfs/pnfs.c           | 11 +++++------
+ fs/nfs/pnfs.h           |  6 +++---
+ fs/nfs/proc.c           |  1 +
+ fs/nfs/read.c           | 16 +++-------------
+ include/linux/nfs_xdr.h |  3 +++
+ 8 files changed, 18 insertions(+), 23 deletions(-)
 
->>
->>>>
->>>>
->>>> I don't see reference to in-flight i/o either, so what does that mean?
->>>> Yes or No? It does not it's vague. For me in-flight means "USING"
->>>
->>> I shot an arrow in the air - where it lands I know not where. Am I
->>> still using the arrow after I shoot?  If so, exaclty when do I know
->>> that it is not in use by me?
->>
->> You need to wait for in-flight I/Os to either succeed, fail (e.g. time out),
->> or be aborted.  The non-successful cases are going to be reported by the
->> objects layout driver so the MDS can recover from these errors.
-> 
-> The object layout driver may have this requirement, but the file layout driver does not.
-> 
->>
->>>
->>> If my RPC's time out,
->>> is the DS using the layout? Suppose it's not a network partition, or a
->>> DS reboot, but just a DS under really heavy load (or for some other
->>> reason) and does not reply within the timeout? Is the client still
->>> using the layout?
->>>
->>> So I wait for the "answer", get timeouts, and I have no more
->>> information than if I didn't wait for the answer.  Regardless, once
->>> the decision is made on the client to not send any more i/o using that
->>> data server, I should let the MDS know.
->>>
->>>
->>
->> Unfortunately that is too weak for client-based RAID.
->>
->>>>
->>>> Because in-flight means half was written/read and half was not, if the
->>>> lo_return was received in the middle then the half that came after was
->>>> using the layout information after the Server received an lo_return,
->>>> which clearly violates the above.
->>>
->>> No it doesn't. That just means the DS is using the layout. The client
->>> is done using the layout until it sends new i/o using the layout.
->>>
->>>>
->>>> In any way, at this point in the code you do not have the information of
->>>> If the RPCs are in the middle of the transfer, hence defined as in-flight.
->>>> Or they are just inside your internal client queues and will be sent clearly
->>>> after the lo_return which surly violates the above. (Without the need of
->>>> explicit definition of in flight.)
->>>
->>> We are past the transmit state in the RPC FSM for the errors that
->>> trigger the LAYOUTRETURN.
->>>
->>>>
->>>>> nor should there
->>>>> be in the error case. I get a connection error. Did the i/o's I sent
->>>>> get to the data server?
->>>
->>> If they get to the data server, does the data server use them?! We can
->>> never know. That is exactly why the client is no longer "using" the
->>> layout.
->>>
->>
->> That's fine from the objects MDS point of view.  What it needs to know
->> is whether the DS (OSD) committed the respective I/Os.
->>
->>>>
->>>>
->>>> We should always assume that statistically half was sent and half was not
->>>> In any way we will send the all "uncertain range" again.
->>>
->>> Sure. We should also let the MDS know that we are resending the
->>> "uncertain range"  ASAP. Thus the LAYOUTRETURN.
->>>
->>>>
->>>>> The reason to send a LAYOUTRETURN without
->>>>> waiting for all the in-flights to return with a connection error is
->>>>> precisely to fence any in-flight i/o because I'm resending through
->>>>> the MDS.
->>>>>
->>>>
->>>>
->>>> This is clearly in contradiction of the RFC.
->>>
->>> I disagree.
->>>
->>>> And is imposing a Server
->>>> behavior that was not specified in RFC.
->>>
->>> No server behavior is imposed. Just an opportunity for the server to
->>> do the MUST stated below.
->>>
->>> Section 13.6
->>>
->>>   As described in Section 12.5.1, a client
->>>   MUST NOT send an I/O to a data server for which it does not hold a
->>>   valid layout; the data server MUST reject such an I/O.
->>>
->>>
->>
->> The DS fencing requirement is for file layout only.
-> 
-> Which is what I am coding - a file layout fence using LAYOUTRETURN.
-> 
->>
->>>>
->>>> All started IO to the specified DS will return with "connection error"
->>>> pretty fast, right?
->>>
->>> Depends on the timeout.
->>>
->>>> because the first disconnect probably took a timeout, but
->>>> once the socket identified a disconnect it will stay in that state
->>>> until a reconnect, right.
->>>>
->>>> So what are you attempting to do, Make your internal client Q drain very fast
->>>> since you are going through MDS?
->>>
->>> If by the internal client Q you mean the DS session slot_tbl_waitq,
->>> that is a separate issue. Those RPC's are redirected internally upon
->>> waking from the Q, they never get sent to the DS.
->>>
->>> We do indeed wait for each in-flight RPC to error out before
->>> re-sending the data of the failed RPC to the MDS.
->>>
->>> Your theory that the LAYOUTRETURN we call will somehow speed up our
->>> recovery is wrong.
->>>
->>>
->>
->> It will for recovering files striped with RAID as the LAYOUTRETURN
->> provides the server with a reliable "commit point" where it knows
->> exactly what was written successfully to each stripe and can make
->> the most efficient decision about recovering it (if needed).
->>
->> Allowing I/O to the stripe post LAYOUTRETURN may result in data
->> corruption due to parity inconsistency.
-> 
-> For objects.
-> 
-> -->Andy
-> 
->>
->> Benny
->>
->>>> But you are doing that by assuming the
->>>> Server will fence ALL IO,
->>>
->>> What? No!
->>>
->>>> and not by simply aborting your own Q.
->>>
->>> See above. Of course we abort/redirect our Q.
->>>
->>> We choose not to lose data. We do abort any RPC/NFS/Session queues and
->>> re-direct. Only the in-flight RPC's which we have no idea of their
->>> success are resent _after_ getting the error.  The LAYOUTRETURN is an
->>> indication to the MDS that all is not well.
->>>
->>>> Highly unorthodox
->>>
->>> I'm open to suggestions. :) As I pointed out above, the only reason to
->>> send the LAYOUTRETURN is to let the MDS know that some I/O might be
->>> resent. Once the server gets the returned layout, it MUST reject any
->>> I/O using that layout. (section 13.6).
->>>
->>>> and certainly in violation of above.
->>>
->>> I disagree.
->>>
->>> -->Andy
->>>
->>>>
->>>>>
->>>>>>
->>>>>> I was under the impression that only when the last reference
->>>>>> on a layout is dropped only then we send the lo_return.
->>>>>
->>>>>> If it is not so, this is the proper fix.
->>>>>
->>>>>>
->>>>>> 1. Mark LO invalid so all new IO waits or goes to MDS
->>>>>> 3. When LO ref drops to Zero send the lo_return.
->>>>>
->>>>> Yes for the normal case (evict inode for the file layout),
->>>>
->>>>> but not if I'm in an error situation and I want to fence the DS from in-flight i/o.
->>>>
->>>> A client has no way stated in the protocol to cause a "fence". This is just your
->>>> wishful thinking. lo_return is something else, lo_return means I'm no longer using
->>>> the file, not "please protect me from myself, because I will send more IO after that,
->>>> but please ignore it"
->>>>
->>>> All you can do is abort your own client Q, all these RPCs that did not get sent
->>>> or errored-out will be resent through MDS, there might be half an RPC of overlap.
->>>>
->>>> Think of 4.2 when you will need to report these errors to MDS - on lo_return -
->>>> Your code will not work.
->>>>
->>>> Lets backtrack a second. Let me see if I understand what is your trick:
->>>> 1. Say we have a file with a files-layout of which device_id specifies 3 DSs.
->>>> 2. And say I have a large IO generated by an app to that file.
->>>> 3. In the middle of the IO, one of the DSs, say DS-B, returns with a "connection error"
->>>> 4 The RPCs stripe_units generated to DS-B will all quickly return with "connection error"
->>>> after the first error.
->>>> 5. But the RPCs to DS-A and DS-C will continue to IO. Until done.
->>>>
->>>> But since you will send the entire range of IO through MDS you want that DS-A, DS-C to
->>>> reject any farther IO, and any RPCs in client Qs for DS-A and DS-C will return quickly
->>>> with "io rejected".
->>>>
->>>> Is that your idea?
->>>>
->>>>>
->>>>>> 4. After LAYOUTRETURN_DONE is back, re-enable layouts.
->>>>>> I'm so sorry it is not so today. I should have tested for
->>>>>> this. I admit that all my error injection tests are
->>>>>> single-file single thread so I did not test for this.
->>>>>>
->>>>>> Sigh, work never ends. Tell me if I can help with this
->>>>>
->>>>> I'll add the wait/no-wait…
->>>>>
->>>>
->>>>
->>>> I would not want a sync wait at all. Please don't code any sync wait for me. It will not
->>>> work for objects, and will produce dead-locks.
->>>>
->>>> What I need is that a flag is raised on the lo_seg, and when last ref on the
->>>> lo_seg drops an lo_return is sent. So either the call to layout_return causes
->>>> the lo_return, or the last io_done of the inflights will cause the send.
->>>> (You see io_done is the one that calls layout_return in the first place)
->>>>
->>>> !! BUT Please do not do any waits at all for my sake, because this is a sure dead-lock !!
->>>>
->>>> And if you ask me It's the way you want it too, Because that's the RFC, and that's
->>>> what you'll need for 4.2.
->>>>
->>>> And perhaps it should not be that hard to implement a Q abort, and not need that
->>>> unorthodox fencing which is not specified in the RFC. And it might be also possible to only
->>>> send IO of DS-B through MDS but keep the inflight IO to DS-A and DS-C valid and not resend.
->>>>
->>>>> -->Andy
->>>>>
->>>>>> Boaz
->>>>
->>>>
->>>> Thanks
->>>> Boaz
->>>>
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 633af81..b312112 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -306,7 +306,7 @@ extern int nfs_initiate_read(struct rpc_clnt *clnt,
+ extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
+ extern int nfs_generic_pagein(struct nfs_pageio_descriptor *desc,
+ 			      struct nfs_pgio_header *hdr);
+-extern void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
++extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+ 			struct inode *inode,
+ 			const struct nfs_pgio_completion_ops *compl_ops);
+ extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index 77c7aac..9864d05 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -921,6 +921,7 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
+ 	.pathconf	= nfs3_proc_pathconf,
+ 	.decode_dirent	= nfs3_decode_dirent,
+ 	.read_setup	= nfs3_proc_read_setup,
++	.read_pageio_init = nfs_pageio_init_read,
+ 	.read_rpc_prepare = nfs3_proc_read_rpc_prepare,
+ 	.read_done	= nfs3_read_done,
+ 	.write_setup	= nfs3_proc_write_setup,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 9ed2cc3..31d9c80 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6790,6 +6790,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
+ 	.set_capabilities = nfs4_server_capabilities,
+ 	.decode_dirent	= nfs4_decode_dirent,
+ 	.read_setup	= nfs4_proc_read_setup,
++	.read_pageio_init = pnfs_pageio_init_read,
+ 	.read_rpc_prepare = nfs4_proc_read_rpc_prepare,
+ 	.read_done	= nfs4_read_done,
+ 	.write_setup	= nfs4_proc_write_setup,
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index bbc49ca..9c83060 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1209,7 +1209,7 @@ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_write);
+ 
+-bool
++void
+ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode,
+ 		      const struct nfs_pgio_completion_ops *compl_ops)
+ {
+@@ -1217,10 +1217,9 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode,
+ 	struct pnfs_layoutdriver_type *ld = server->pnfs_curr_ld;
+ 
+ 	if (ld == NULL)
+-		return false;
+-	nfs_pageio_init(pgio, inode, ld->pg_read_ops, compl_ops,
+-			server->rsize, 0);
+-	return true;
++		nfs_pageio_init_read(pgio, inode, compl_ops);
++	else
++		nfs_pageio_init(pgio, inode, ld->pg_read_ops, compl_ops, server->rsize, 0);
+ }
+ 
+ bool
+@@ -1427,7 +1426,7 @@ int pnfs_read_done_resend_to_mds(struct inode *inode,
+ 	LIST_HEAD(failed);
+ 
+ 	/* Resend all requests through the MDS */
+-	nfs_pageio_init_read_mds(&pgio, inode, compl_ops);
++	nfs_pageio_init_read(&pgio, inode, compl_ops);
+ 	while (!list_empty(head)) {
+ 		struct nfs_page *req = nfs_list_entry(head->next);
+ 
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 64f90d8..80ee891 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -178,7 +178,7 @@ extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
+ void get_layout_hdr(struct pnfs_layout_hdr *lo);
+ void put_lseg(struct pnfs_layout_segment *lseg);
+ 
+-bool pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
++void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
+ 			   const struct nfs_pgio_completion_ops *);
+ bool pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *,
+ 			    int, const struct nfs_pgio_completion_ops *);
+@@ -438,10 +438,10 @@ static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
+ {
+ }
+ 
+-static inline bool pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode,
++static inline void pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode,
+ 					 const struct nfs_pgio_completion_ops *compl_ops)
+ {
+-	return false;
++	nfs_pageio_init_read(pgio, inode, compl_ops);
+ }
+ 
+ static inline bool pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode, int ioflags,
+diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+index 99a0025..6fea6e1 100644
+--- a/fs/nfs/proc.c
++++ b/fs/nfs/proc.c
+@@ -778,6 +778,7 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
+ 	.pathconf	= nfs_proc_pathconf,
+ 	.decode_dirent	= nfs2_decode_dirent,
+ 	.read_setup	= nfs_proc_read_setup,
++	.read_pageio_init = nfs_pageio_init_read,
+ 	.read_rpc_prepare = nfs_proc_read_rpc_prepare,
+ 	.read_done	= nfs_read_done,
+ 	.write_setup	= nfs_proc_write_setup,
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 86ced78..6267b87 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -20,8 +20,6 @@
+ #include <linux/nfs_page.h>
+ #include <linux/module.h>
+ 
+-#include "pnfs.h"
+-
+ #include "nfs4_fs.h"
+ #include "internal.h"
+ #include "iostat.h"
+@@ -108,7 +106,7 @@ int nfs_return_empty_page(struct page *page)
+ 	return 0;
+ }
+ 
+-void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
++void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+ 			      struct inode *inode,
+ 			      const struct nfs_pgio_completion_ops *compl_ops)
+ {
+@@ -123,14 +121,6 @@ void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio)
+ }
+ EXPORT_SYMBOL_GPL(nfs_pageio_reset_read_mds);
+ 
+-void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+-			  struct inode *inode,
+-			  const struct nfs_pgio_completion_ops *compl_ops)
+-{
+-	if (!pnfs_pageio_init_read(pgio, inode, compl_ops))
+-		nfs_pageio_init_read_mds(pgio, inode, compl_ops);
+-}
+-
+ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
+ 		       struct page *page)
+ {
+@@ -149,7 +139,7 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
+ 	if (len < PAGE_CACHE_SIZE)
+ 		zero_user_segment(page, len, PAGE_CACHE_SIZE);
+ 
+-	nfs_pageio_init_read(&pgio, inode, &nfs_async_read_completion_ops);
++	NFS_PROTO(inode)->read_pageio_init(&pgio, inode, &nfs_async_read_completion_ops);
+ 	nfs_pageio_add_request(&pgio, new);
+ 	nfs_pageio_complete(&pgio);
+ 	NFS_I(inode)->read_io += pgio.pg_bytes_written;
+@@ -652,7 +642,7 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
+ 	if (ret == 0)
+ 		goto read_complete; /* all pages were read */
+ 
+-	nfs_pageio_init_read(&pgio, inode, &nfs_async_read_completion_ops);
++	NFS_PROTO(inode)->read_pageio_init(&pgio, inode, &nfs_async_read_completion_ops);
+ 
+ 	ret = read_cache_pages(mapping, pages, readpage_async_filler, &desc);
+ 
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 4d62b77..e00b8b3 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1354,6 +1354,7 @@ struct nfs_access_entry;
+ struct nfs_client;
+ struct rpc_timeout;
+ struct nfs_client_initdata;
++struct nfs_pageio_descriptor;
+ 
+ /*
+  * RPC procedure vector for NFSv2/NFSv3 demuxing
+@@ -1407,6 +1408,8 @@ struct nfs_rpc_ops {
+ 	int	(*set_capabilities)(struct nfs_server *, struct nfs_fh *);
+ 	int	(*decode_dirent)(struct xdr_stream *, struct nfs_entry *, int);
+ 	void	(*read_setup)   (struct nfs_read_data *, struct rpc_message *);
++	void	(*read_pageio_init)(struct nfs_pageio_descriptor *, struct inode *,
++				    const struct nfs_pgio_completion_ops *);
+ 	void	(*read_rpc_prepare)(struct rpc_task *, struct nfs_read_data *);
+ 	int	(*read_done)  (struct rpc_task *, struct nfs_read_data *);
+ 	void	(*write_setup)  (struct nfs_write_data *, struct rpc_message *);
+-- 
+1.7.11
+
