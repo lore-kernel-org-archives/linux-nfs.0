@@ -1,98 +1,167 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:47776 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752879Ab2FGXl0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jun 2012 19:41:26 -0400
-Received: by eeit10 with SMTP id t10so607926eei.19
-        for <linux-nfs@vger.kernel.org>; Thu, 07 Jun 2012 16:41:25 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20120607113358.GB8684@fieldses.org>
-References: <CAKYAXd-HCfcejT=kG-kSXWCmfmxTjrT2o+b3Zan+BCrS1Y2ovw@mail.gmail.com>
-	<4FD06290.7050004@panasas.com>
-	<20120607113358.GB8684@fieldses.org>
-Date: Fri, 8 Jun 2012 08:41:25 +0900
-Message-ID: <CAKYAXd8C7f6jBiU5HF8oyL0w0rfdg6WfqRpu_aSEgN1XOfpS_g@mail.gmail.com>
-Subject: =?UTF-8?Q?Re=3A_=5BProblem=5DNFS_Server_=E2=80=93_Umount_results_in_Device?=
-	=?UTF-8?Q?_Busy=2E?=
-From: Namjae Jeon <linkinjeon@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Boaz Harrosh <bharrosh@panasas.com>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        Amit Sahrawat <a.sahrawat@samsung.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Namjae Jeon <namjae.jeon@samsung.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from cantor2.suse.de ([195.135.220.15]:59269 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755655Ab2FTJiO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jun 2012 05:38:14 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 09/12] nfs: disable data cache revalidation for swapfiles
+Date: Wed, 20 Jun 2012 10:37:58 +0100
+Message-Id: <1340185081-22525-10-git-send-email-mgorman@suse.de>
+In-Reply-To: <1340185081-22525-1-git-send-email-mgorman@suse.de>
+References: <1340185081-22525-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2012/6/7, J. Bruce Fields <bfields@fieldses.org>:
-> On Thu, Jun 07, 2012 at 11:13:04AM +0300, Boaz Harrosh wrote:
->> On 06/07/2012 10:47 AM, Namjae Jeon wrote:
->> > As you know, Currently umount results in busy on NFS server although
->> > user tried to succeed to umount on NFS client.
->> > I suggest to add umount procedure to avoid umount busy issue.
->> > When calling umount on NFS client, The resources(exportfs entries
->> > cache) of mount point will be flushed on NFS server. and umount will
->> > be succeed without busy issue.
->> >
->> > how do you think about this suggestion ?
->
-> I'm not sure how adding an "unmount" rpc to the protocol would really
-> help here, if that's what you're asking for.
+The VM does not like PG_private set on PG_swapcache pages. As suggested
+by Trond in http://lkml.org/lkml/2006/8/25/348, this patch disables
+NFS data cache revalidation on swap files.  as it does not make
+sense to have other clients change the file while it is being used as
+swap. This avoids setting PG_private on swap pages, since there ought
+to be no further races with invalidate_inode_pages2() to deal with.
 
-Since, at the NFS server it is just a normal device which is mounted.
-So, After NFS client operation is over and it has successfully
-unmounted. Then at the Server side the umount should be transparent.
-As suppose if the user does
-umount /mnt -> he might not have knowlege that is NFS mounted and
-could think this to be issue.
-  So - if we should have a transparent mechanism for umount at NFS server also
-  NFS Server
-mount /dev/sda1 /mnt
-NFs Client :
-mount -t nfs <IP>: /mnt /mnt
-umount /mnt
-After this if a user wants to disconnect USB device - there should be no problem
+Since we cannot set PG_private we cannot use page->private which
+is already used by PG_swapcache pages to store the nfs_page. Thus
+augment the new nfs_page_find_request logic.
 
->
-> If you're just looking for a command you could run on the server after
-> all the clients have unmounted--"exportfs -f" or "service stop nfsd" (or
-> equivalent) should do the job.
->
->> I second this request, what is needed so when all clients unmounted,
->> the system comes back to the sate it was before any clients have
->> mounted. i.e filesystems is not referenced and may unmount cleanly.
->> (This also happens with >= 4.0 clients only, so no excuses)
->>
->> This is a real problem for me, on Fedora machines. Because I export
->> iscsi devices which are network devices, and in the shutdown procedure
->> for some reason the "service nfs stop" of the server is much much to
->> late.
->
-> Sounds like a bug in the Fedora systemd configuration?
->
->> the original umount of exofs (-o _netdev) fails because it's
->> held by NFSD, the iscsi devices go away regardless, and when nfsd
->> finally releases exofs, it gets deadlocked on some error handling.
->> OK I know I must fix the stuck-ness, but the problem will remain.
->> The FS will not unmount cleanly because it will only attempt
->> an unmount after its devices are gone. This will be solved if
->> nfsd would release its hold on the FS when all clients are gone.
->
-> Note nfsd doesn't really know when that is.  Even with NFSv4, processes
-> can be using the filesystem without holding state on the server: they
-> might just have a current working directory in the filesystem, or have a
-> device special file open.
->
->> It was on my TODO to fix this for a long time, but I seem to be
->> too busy with more urgent matters. (What's the point of fixing the
->> shutdown if the steady state doesn't work yet)
->>
->> If someone has investigated the matter and knows what to do I would
->> appreciate any insights, and/or patches would be wonderful ;-)
->
-> My first concern would be to fix any ordering bugs in the systemd
-> configuration, or any reference count leaks.
->
-> --b.
->
+Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ fs/nfs/inode.c |    4 ++++
+ fs/nfs/write.c |   49 +++++++++++++++++++++++++++++++++++--------------
+ 2 files changed, 39 insertions(+), 14 deletions(-)
+
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index e605d69..30cc0b1 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -883,6 +883,10 @@ int nfs_revalidate_mapping(struct inode *inode, struct address_space *mapping)
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+ 	int ret = 0;
+ 
++	/* swapfiles are not supposed to be shared. */
++	if (IS_SWAPFILE(inode))
++		goto out;
++
+ 	if (nfs_mapping_need_revalidate_inode(inode)) {
+ 		ret = __nfs_revalidate_inode(NFS_SERVER(inode), inode);
+ 		if (ret < 0)
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 5fa5516..f45b9ca 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -139,15 +139,28 @@ static void nfs_context_set_write_error(struct nfs_open_context *ctx, int error)
+ 	set_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
+ }
+ 
+-static struct nfs_page *nfs_page_find_request_locked(struct page *page)
++static struct nfs_page *
++nfs_page_find_request_locked(struct nfs_inode *nfsi, struct page *page)
+ {
+ 	struct nfs_page *req = NULL;
+ 
+-	if (PagePrivate(page)) {
++	if (PagePrivate(page))
+ 		req = (struct nfs_page *)page_private(page);
+-		if (req != NULL)
+-			kref_get(&req->wb_kref);
++	else if (unlikely(PageSwapCache(page))) {
++		struct nfs_page *freq, *t;
++
++		/* Linearly search the commit list for the correct req */
++		list_for_each_entry_safe(freq, t, &nfsi->commit_info.list, wb_list) {
++			if (freq->wb_page == page) {
++				req = freq;
++				break;
++			}
++		}
+ 	}
++
++	if (req)
++		kref_get(&req->wb_kref);
++
+ 	return req;
+ }
+ 
+@@ -157,7 +170,7 @@ static struct nfs_page *nfs_page_find_request(struct page *page)
+ 	struct nfs_page *req = NULL;
+ 
+ 	spin_lock(&inode->i_lock);
+-	req = nfs_page_find_request_locked(page);
++	req = nfs_page_find_request_locked(NFS_I(inode), page);
+ 	spin_unlock(&inode->i_lock);
+ 	return req;
+ }
+@@ -258,7 +271,7 @@ static struct nfs_page *nfs_find_and_lock_request(struct page *page, bool nonblo
+ 
+ 	spin_lock(&inode->i_lock);
+ 	for (;;) {
+-		req = nfs_page_find_request_locked(page);
++		req = nfs_page_find_request_locked(NFS_I(inode), page);
+ 		if (req == NULL)
+ 			break;
+ 		if (nfs_lock_request(req))
+@@ -412,9 +425,15 @@ static void nfs_inode_add_request(struct inode *inode, struct nfs_page *req)
+ 	spin_lock(&inode->i_lock);
+ 	if (!nfsi->npages && nfs_have_delegation(inode, FMODE_WRITE))
+ 		inode->i_version++;
+-	set_bit(PG_MAPPED, &req->wb_flags);
+-	SetPagePrivate(req->wb_page);
+-	set_page_private(req->wb_page, (unsigned long)req);
++	/*
++	 * Swap-space should not get truncated. Hence no need to plug the race
++	 * with invalidate/truncate.
++	 */
++	if (likely(!PageSwapCache(req->wb_page))) {
++		set_bit(PG_MAPPED, &req->wb_flags);
++		SetPagePrivate(req->wb_page);
++		set_page_private(req->wb_page, (unsigned long)req);
++	}
+ 	nfsi->npages++;
+ 	kref_get(&req->wb_kref);
+ 	spin_unlock(&inode->i_lock);
+@@ -431,9 +450,11 @@ static void nfs_inode_remove_request(struct nfs_page *req)
+ 	BUG_ON (!NFS_WBACK_BUSY(req));
+ 
+ 	spin_lock(&inode->i_lock);
+-	set_page_private(req->wb_page, 0);
+-	ClearPagePrivate(req->wb_page);
+-	clear_bit(PG_MAPPED, &req->wb_flags);
++	if (likely(!PageSwapCache(req->wb_page))) {
++		set_page_private(req->wb_page, 0);
++		ClearPagePrivate(req->wb_page);
++		clear_bit(PG_MAPPED, &req->wb_flags);
++	}
+ 	nfsi->npages--;
+ 	spin_unlock(&inode->i_lock);
+ 	nfs_release_request(req);
+@@ -729,7 +750,7 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
+ 	spin_lock(&inode->i_lock);
+ 
+ 	for (;;) {
+-		req = nfs_page_find_request_locked(page);
++		req = nfs_page_find_request_locked(NFS_I(inode), page);
+ 		if (req == NULL)
+ 			goto out_unlock;
+ 
+@@ -1744,7 +1765,7 @@ int nfs_wb_page_cancel(struct inode *inode, struct page *page)
+  */
+ int nfs_wb_page(struct inode *inode, struct page *page)
+ {
+-	loff_t range_start = page_offset(page);
++	loff_t range_start = page_file_offset(page);
+ 	loff_t range_end = range_start + (loff_t)(PAGE_CACHE_SIZE - 1);
+ 	struct writeback_control wbc = {
+ 		.sync_mode = WB_SYNC_ALL,
+-- 
+1.7.9.2
+
