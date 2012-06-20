@@ -1,148 +1,148 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:40163 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:58893 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751080Ab2F0Sn5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Jun 2012 14:43:57 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: Harshula <harshula@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: rpciod process is blocked in nfs_release_page waiting for
- nfs_commit_inode to complete
-Date: Wed, 27 Jun 2012 18:43:56 +0000
-Message-ID: <1340822635.2398.7.camel@lade.trondhjem.org>
-References: <1339764850.30233.11.camel@serendib>
-	 <20120615092103.15cc2b11@corrin.poochiereds.net>
-	 <1339795503.16363.9.camel@lade.trondhjem.org>
-	 <20120627115447.0fdf8c6e@corrin.poochiereds.net>
-In-Reply-To: <20120627115447.0fdf8c6e@corrin.poochiereds.net>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1755976Ab2FTJgW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jun 2012 05:36:22 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 02/12] mm: Methods for teaching filesystems about PG_swapcache pages
+Date: Wed, 20 Jun 2012 10:36:07 +0100
+Message-Id: <1340184977-22356-3-git-send-email-mgorman@suse.de>
+In-Reply-To: <1340184977-22356-1-git-send-email-mgorman@suse.de>
+References: <1340184977-22356-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTA2LTI3IGF0IDExOjU0IC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-T24gRnJpLCAxNSBKdW4gMjAxMiAyMToyNToxMCArMDAwMA0KPiAiTXlrbGVidXN0LCBUcm9uZCIg
-PFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4gT24gRnJpLCAyMDEy
-LTA2LTE1IGF0IDA5OjIxIC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4gPiA+IE9uIEZyaSwg
-MTUgSnVuIDIwMTIgMjI6NTQ6MTAgKzEwMDANCj4gPiA+IEhhcnNodWxhIDxoYXJzaHVsYUByZWRo
-YXQuY29tPiB3cm90ZToNCj4gPiA+IA0KPiA+ID4gPiBIaSBBbGwsDQo+ID4gPiA+IA0KPiA+ID4g
-PiBDYW4gSSBwbGVhc2UgZ2V0IHlvdXIgZmVlZGJhY2sgb24gdGhlIGZvbGxvd2luZz8NCj4gPiA+
-ID4gDQo+ID4gPiA+IHJwY2lvZCBpcyBibG9ja2VkOg0KPiA+ID4gPiAtLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCj4gPiA+ID4gY3Jh
-c2g+IGJ0ICAyNTA3IA0KPiA+ID4gPiBQSUQ6IDI1MDcgICBUQVNLOiBmZmZmODgxMDM2OTFhYjQw
-ICBDUFU6IDE0ICBDT01NQU5EOiAicnBjaW9kLzE0Ig0KPiA+ID4gPiAgIzAgW2ZmZmY4ODEwMzQz
-YmYyZjBdIHNjaGVkdWxlIGF0IGZmZmZmZmZmODE0ZGFiZDkNCj4gPiA+ID4gICMxIFtmZmZmODgx
-MDM0M2JmM2I4XSBuZnNfd2FpdF9iaXRfa2lsbGFibGUgYXQgZmZmZmZmZmZhMDM4ZmMwNCBbbmZz
-XQ0KPiA+ID4gPiAgIzIgW2ZmZmY4ODEwMzQzYmYzYzhdIF9fd2FpdF9vbl9iaXQgYXQgZmZmZmZm
-ZmY4MTRkYmMyZg0KPiA+ID4gPiAgIzMgW2ZmZmY4ODEwMzQzYmY0MThdIG91dF9vZl9saW5lX3dh
-aXRfb25fYml0IGF0IGZmZmZmZmZmODE0ZGJjZDgNCj4gPiA+ID4gICM0IFtmZmZmODgxMDM0M2Jm
-NDg4XSBuZnNfY29tbWl0X2lub2RlIGF0IGZmZmZmZmZmYTAzOWUwYzEgW25mc10NCj4gPiA+ID4g
-ICM1IFtmZmZmODgxMDM0M2JmNGY4XSBuZnNfcmVsZWFzZV9wYWdlIGF0IGZmZmZmZmZmYTAzOGJl
-ZjYgW25mc10NCj4gPiA+ID4gICM2IFtmZmZmODgxMDM0M2JmNTI4XSB0cnlfdG9fcmVsZWFzZV9w
-YWdlIGF0IGZmZmZmZmZmODExMGM2NzANCj4gPiA+ID4gICM3IFtmZmZmODgxMDM0M2JmNTM4XSBz
-aHJpbmtfcGFnZV9saXN0LmNsb25lLjAgYXQgZmZmZmZmZmY4MTEyNjI3MQ0KPiA+ID4gPiAgIzgg
-W2ZmZmY4ODEwMzQzYmY2NjhdIHNocmlua19pbmFjdGl2ZV9saXN0IGF0IGZmZmZmZmZmODExMjY2
-MzgNCj4gPiA+ID4gICM5IFtmZmZmODgxMDM0M2JmODE4XSBzaHJpbmtfem9uZSBhdCBmZmZmZmZm
-ZjgxMTI3ODhmDQo+ID4gPiA+ICMxMCBbZmZmZjg4MTAzNDNiZjhjOF0gZG9fdHJ5X3RvX2ZyZWVf
-cGFnZXMgYXQgZmZmZmZmZmY4MTEyN2IxZQ0KPiA+ID4gPiAjMTEgW2ZmZmY4ODEwMzQzYmY5NThd
-IHRyeV90b19mcmVlX3BhZ2VzIGF0IGZmZmZmZmZmODExMjgxMmYNCj4gPiA+ID4gIzEyIFtmZmZm
-ODgxMDM0M2JmYTA4XSBfX2FsbG9jX3BhZ2VzX25vZGVtYXNrIGF0IGZmZmZmZmZmODExMWZkYWQN
-Cj4gPiA+ID4gIzEzIFtmZmZmODgxMDM0M2JmYjI4XSBrbWVtX2dldHBhZ2VzIGF0IGZmZmZmZmZm
-ODExNTk5NDINCj4gPiA+ID4gIzE0IFtmZmZmODgxMDM0M2JmYjU4XSBmYWxsYmFja19hbGxvYyBh
-dCBmZmZmZmZmZjgxMTVhNTVhDQo+ID4gPiA+ICMxNSBbZmZmZjg4MTAzNDNiZmJkOF0gX19fX2Nh
-Y2hlX2FsbG9jX25vZGUgYXQgZmZmZmZmZmY4MTE1YTJkOQ0KPiA+ID4gPiAjMTYgW2ZmZmY4ODEw
-MzQzYmZjMzhdIGttZW1fY2FjaGVfYWxsb2MgYXQgZmZmZmZmZmY4MTE1YjA5Yg0KPiA+ID4gPiAj
-MTcgW2ZmZmY4ODEwMzQzYmZjNzhdIHNrX3Byb3RfYWxsb2MgYXQgZmZmZmZmZmY4MTQxMTgwOA0K
-PiA+ID4gPiAjMTggW2ZmZmY4ODEwMzQzYmZjYjhdIHNrX2FsbG9jIGF0IGZmZmZmZmZmODE0MTE5
-N2MNCj4gPiA+ID4gIzE5IFtmZmZmODgxMDM0M2JmY2U4XSBpbmV0X2NyZWF0ZSBhdCBmZmZmZmZm
-ZjgxNDgzYmE2DQo+ID4gPiA+ICMyMCBbZmZmZjg4MTAzNDNiZmQzOF0gX19zb2NrX2NyZWF0ZSBh
-dCBmZmZmZmZmZjgxNDBiNGE3DQo+ID4gPiA+ICMyMSBbZmZmZjg4MTAzNDNiZmQ5OF0geHNfY3Jl
-YXRlX3NvY2sgYXQgZmZmZmZmZmZhMDFmNjQ5YiBbc3VucnBjXQ0KPiA+ID4gPiAjMjIgW2ZmZmY4
-ODEwMzQzYmZkZDhdIHhzX3RjcF9zZXR1cF9zb2NrZXQgYXQgZmZmZmZmZmZhMDFmNjk2NSBbc3Vu
-cnBjXQ0KPiA+ID4gPiAjMjMgW2ZmZmY4ODEwMzQzYmZlMzhdIHdvcmtlcl90aHJlYWQgYXQgZmZm
-ZmZmZmY4MTA4ODdkMA0KPiA+ID4gPiAjMjQgW2ZmZmY4ODEwMzQzYmZlZThdIGt0aHJlYWQgYXQg
-ZmZmZmZmZmY4MTA4ZGQ5Ng0KPiA+ID4gPiAjMjUgW2ZmZmY4ODEwMzQzYmZmNDhdIGtlcm5lbF90
-aHJlYWQgYXQgZmZmZmZmZmY4MTAwYzFjYQ0KPiA+ID4gPiAtLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCj4gPiA+ID4gDQo+ID4gPiA+
-IG5mc19yZWxlYXNlX3BhZ2UoKSBnaXZlcyBrc3dhcGQgcHJvY2VzcyBhbiBleGVtcHRpb24gZnJv
-bSBiZWluZyBibG9ja2VkLg0KPiA+ID4gPiBTaG91bGQgd2UgZG8gdGhlIHNhbWUgZm9yIHJwY2lv
-ZC4gT3RoZXJ3aXNlIHJwY2lvZCBjb3VsZCBlbmQgdXAgaW4gYQ0KPiA+ID4gPiBkZWFkbG9jayB3
-aGVyZSBpdCBjYW4gbm90IGNvbnRpbnVlIHdpdGhvdXQgZnJlZWluZyBtZW1vcnkgdGhhdCB3aWxs
-IG9ubHkNCj4gPiA+ID4gYmVjb21lIGF2YWlsYWJsZSB3aGVuIHJwY2lvZCBkb2VzIGl0cyB3b3Jr
-Og0KPiA+ID4gPiAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0NCj4gPiA+ID4gNDc5IC8qDQo+ID4gPiA+IDQ4MCAgKiBBdHRlbXB0IHRv
-IHJlbGVhc2UgdGhlIHByaXZhdGUgc3RhdGUgYXNzb2NpYXRlZCB3aXRoIGEgcGFnZQ0KPiA+ID4g
-PiA0ODEgICogLSBDYWxsZWQgaWYgZWl0aGVyIFBHX3ByaXZhdGUgb3IgUEdfZnNjYWNoZSBpcyBz
-ZXQgb24gdGhlIHBhZ2UNCj4gPiA+ID4gNDgyICAqIC0gQ2FsbGVyIGhvbGRzIHBhZ2UgbG9jaw0K
-PiA+ID4gPiA0ODMgICogLSBSZXR1cm4gdHJ1ZSAobWF5IHJlbGVhc2UgcGFnZSkgb3IgZmFsc2Ug
-KG1heSBub3QpDQo+ID4gPiA+IDQ4NCAgKi8NCj4gPiA+ID4gNDg1IHN0YXRpYyBpbnQgbmZzX3Jl
-bGVhc2VfcGFnZShzdHJ1Y3QgcGFnZSAqcGFnZSwgZ2ZwX3QgZ2ZwKQ0KPiA+ID4gPiA0ODYgeyAg
-IA0KPiA+ID4gPiA0ODcgICAgICAgICBzdHJ1Y3QgYWRkcmVzc19zcGFjZSAqbWFwcGluZyA9IHBh
-Z2UtPm1hcHBpbmc7DQo+ID4gPiA+IDQ4OCAgICAgDQo+ID4gPiA+IDQ4OSAgICAgICAgIGRmcHJp
-bnRrKFBBR0VDQUNIRSwgIk5GUzogcmVsZWFzZV9wYWdlKCVwKVxuIiwgcGFnZSk7DQo+ID4gPiA+
-IDQ5MCAgICAgDQo+ID4gPiA+IDQ5MSAgICAgICAgIC8qIE9ubHkgZG8gSS9PIGlmIGdmcCBpcyBh
-IHN1cGVyc2V0IG9mIEdGUF9LRVJORUwgKi8NCj4gPiA+ID4gNDkyICAgICAgICAgaWYgKG1hcHBp
-bmcgJiYgKGdmcCAmIEdGUF9LRVJORUwpID09IEdGUF9LRVJORUwpIHsNCj4gPiA+ID4gNDkzICAg
-ICAgICAgICAgICAgICBpbnQgaG93ID0gRkxVU0hfU1lOQzsNCj4gPiA+ID4gNDk0ICAgICAgICAg
-ICAgIA0KPiA+ID4gPiA0OTUgICAgICAgICAgICAgICAgIC8qIERvbid0IGxldCBrc3dhcGQgZGVh
-ZGxvY2sgd2FpdGluZyBmb3IgT09NIFJQQyBjYWxscyAqLw0KPiA+ID4gPiA0OTYgICAgICAgICAg
-ICAgICAgIGlmIChjdXJyZW50X2lzX2tzd2FwZCgpKQ0KPiA+ID4gPiA0OTcgICAgICAgICAgICAg
-ICAgICAgICAgICAgaG93ID0gMDsNCj4gPiA+ID4gNDk4ICAgICAgICAgICAgICAgICBuZnNfY29t
-bWl0X2lub2RlKG1hcHBpbmctPmhvc3QsIGhvdyk7DQo+ID4gPiA+IDQ5OSAgICAgICAgIH0NCj4g
-PiA+ID4gNTAwICAgICAgICAgLyogSWYgUGFnZVByaXZhdGUoKSBpcyBzZXQsIHRoZW4gdGhlIHBh
-Z2UgaXMgbm90IGZyZWVhYmxlICovDQo+ID4gPiA+IDUwMSAgICAgICAgIGlmIChQYWdlUHJpdmF0
-ZShwYWdlKSkNCj4gPiA+ID4gNTAyICAgICAgICAgICAgICAgICByZXR1cm4gMDsNCj4gPiA+ID4g
-NTAzICAgICAgICAgcmV0dXJuIG5mc19mc2NhY2hlX3JlbGVhc2VfcGFnZShwYWdlLCBnZnApOw0K
-PiA+ID4gPiA1MDQgfQ0KPiA+ID4gPiAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCj4gPiA+ID4gDQo+ID4gPiA+IEFub3RoZXIgb3B0
-aW9uIGlzIHRvIGNoYW5nZSB0aGUgcHJpb3JpdHkgb2YgdGhlIG1lbW9yeSBhbGxvY2F0aW9uOg0K
-PiA+ID4gPiBuZXQvaXB2NC9hZl9pbmV0LmMNCj4gPiA+ID4gLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+ID4gPiA+ICAyNjUgc3Rh
-dGljIGludCBpbmV0X2NyZWF0ZShzdHJ1Y3QgbmV0ICpuZXQsIHN0cnVjdCBzb2NrZXQgKnNvY2ss
-IGludA0KPiA+ID4gPiBwcm90b2NvbCwNCj4gPiA+ID4gIDI2NiAgICAgICAgICAgICAgICAgICAg
-ICAgIGludCBrZXJuKQ0KPiA+ID4gPiAgMjY3IHsNCj4gPiA+ID4gLi4uDQo+ID4gPiA+ICAzNDUg
-ICAgICAgICBzayA9IHNrX2FsbG9jKG5ldCwgUEZfSU5FVCwgR0ZQX0tFUk5FTCwgYW5zd2VyX3By
-b3QpOw0KPiA+ID4gPiAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0NCj4gPiA+ID4gQ29uc2lkZXJpbmcgdGhpcyBpcyBnZW5lcmljIG5l
-dCBjb2RlLCBJIGFzc3VtZSB0aGUgR0ZQX0tFUk5FTCB3aWxsIG5vdA0KPiA+ID4gPiBiZSByZXBs
-YWNlZCB3aXRoIEdGUF9BVE9NSUMuDQo+ID4gPiA+IA0KPiA+ID4gPiBOT1RFLCB0aGlzIGlzIG9u
-IFJIRUwgNi4xIGtlcm5lbCAyLjYuMzItMTMxLjYuMSBhbmQgYXBwYXJlbnRseSB1c2VzDQo+ID4g
-PiA+ICdsZWdhY3knIHdvcmtxdWV1ZSBjb2RlLg0KPiA+ID4gPiANCj4gPiA+ID4gY3lhLA0KPiA+
-ID4gPiAjDQo+ID4gPiA+IA0KPiA+ID4gDQo+ID4gPiBJIHN1c3BlY3QgdGhpcyBpcyBhbHNvIGEg
-cHJvYmxlbSBpbiBtYWlubGluZSwgYnV0IG1heWJlIHNvbWUgb2YgdGhlDQo+ID4gPiByZWNlbnQg
-d3JpdGViYWNrIGNoYW5nZXMgcHJldmVudCBpdC4uLg0KPiA+ID4gDQo+ID4gPiBJIHRoaW5rIHRo
-ZSByaWdodCBzb2x1dGlvbiBoZXJlIGlzIHRvIG1ha2UgbmZzX3JlbGVhc2VfcGFnZSB0cmVhdCBy
-cGNpb2QNCj4gPiA+IHNpbWlsYXJseSB0byBrc3dhcGQuIEVhc2llciBzYWlkIHRoYW4gZG9uZSB0
-aG91Z2ggLS0geW91J2xsIG5lZWQgdG8NCj4gPiA+IGNvbWUgdXAgd2l0aCBhIHdheSB0byBkZXRl
-cm1pbmUgaWYgeW91J3JlIHJ1bm5pbmcgaW4gcnBjaW9kIGNvbnRleHQuLi4NCj4gPiANCj4gPiBO
-by4gVGhlIF9yaWdodF8gc29sdXRpb24gaXMgdG8gZW5zdXJlIHRoYXQgcnBjaW9kIGRvZXNuJ3Qg
-ZG8gYWxsb2NhdGlvbnMNCj4gPiB0aGF0IHJlc3VsdCBpbiBhIHBhZ2UgcmVjbGFpbS4uLiB0cnlf
-dG9fcmVsZWFzZV9wYWdlKCkgaXMganVzdCB0aGUgdGlwDQo+ID4gb2YgdGhlIGljZWJlcmcgb2Yg
-Y3JhenkgZGVhZGxvY2tzIHRoYXQgdGhpcyBzb2NrZXQgYWxsb2NhdGlvbiBjYW4gZ2V0IHVzDQo+
-ID4gaW50by4NCj4gPiANCj4gPiBVbmZvcnR1bmF0ZWx5LCBzZWxpbnV4ICYgY28uIHByZXZlbnQg
-dXMgZnJvbSBhbGxvY2F0aW5nIHRoZSBzb2NrZXRzIGluDQo+ID4gdXNlciBjb250ZXh0cywgYW5k
-IGFueXdheSwgaGF2aW5nIHRvIHdhaXQgZm9yIGFub3RoZXIgdGhyZWFkIHRvIGRvIHRoZQ0KPiA+
-IHNhbWUgYWxsb2NhdGlvbiBpc24ndCBkb2luZyB0byBoZWxwIHByZXZlbnQgdGhlIGRlYWRsb2Nr
-Li4uDQo+ID4gDQo+ID4gSSBrbm93IHRoYXQgTWVsIEdvcm1hbidzIE5GUyBzd2FwIHBhdGNoZXMg
-aGFkIHNvbWUgcHJvdGVjdGlvbnMgYWdhaW5zdA0KPiA+IHRoaXMgc29ydCBvZiBkZWFkbG9jay4g
-UGVyaGFwcyB3ZSBjYW4gbG9vayBhdCBob3cgaGUgd2FzIGRvaW5nIHRoaXM/DQo+ID4gDQo+IA0K
-PiBBY3R1YWxseS4uLm5vdyB0aGF0IEkndmUgbG9va2VkIGF0IHRoaXMsIEkgdGhpbmsgdGhlIHJp
-Z2h0IHNvbHV0aW9uDQo+IGhlcmUgaXMgdG8gc3RvcCBjYWxsaW5nIHNvY2tfcmVsZWFzZSgpIG9u
-IHRoZXNlIHNvY2tldHMgdW50aWwgd2UncmUgaW4NCj4geHNfZGVzdHJveS4gSU9XLCBkb24ndCBm
-cmVlIHRoZSBzb2NrZXQgYWx0b2dldGhlciB1bmxlc3Mgd2UncmUgdHJ1bHkNCj4gdGVhcmluZyBk
-b3duIHRoZSBjb25uZWN0aW9uIGZvciBnb29kLiBUaGF0IG1lYW5zIHRob3VnaCB0aGF0IHdlIG5l
-ZWQgdG8NCj4gY29udmVydCB0aGUgcGxhY2VzIHRoYXQgY3VycmVudGx5IGNhbGwgcnBjX3hwcnRf
-b3BzLT5jbG9zZSB0byBjYWxsDQo+IHNvbWV0aGluZyBsaWtlIGEgKG5ldykgb3BzLT5zaHV0ZG93
-biByb3V0aW5lIGluc3RlYWQsIHdpdGggdGhlDQo+IGFzc3VtcHRpb24gb2YgY291cnNlIHRoYXQg
-d2UgY2FuIHNvbWVob3cgcmVzZXQgYW5kIHJldXNlIHRoZSBzb2NrZXQNCj4gYWZ0ZXJ3YXJkLg0K
-PiANCj4gVGhlIHF1ZXN0aW9uIGlzIGhvdyBiZXN0IHRvIGVtdWxhdGUgdGhlIGVmZmVjdCBvZiAt
-PmNsb3NlIHdpdGhvdXQNCj4gYWN0dWFsbHkgZnJlZWluZyB0aGUgc29ja2V0LiBJcyBpdCBzdWZm
-aWNpZW50IHRvIGNhbGwgc29tZXRoaW5nIGxpa2UNCj4ga2VybmVsX3NvY2tfc2h1dGRvd24oKSBv
-biBpdCwgYW5kIHR3aWRkbGUgYWxsIG9mIHRoZSBiaXRzIHRvIGVuc3VyZQ0KPiB0aGF0IHRoZSBj
-b25uZWN0X3dvcmtlciB3aWxsIGdldCBjYWxsZWQgYWZ0ZXJ3YXJkPw0KDQpUaGUgcmVhc29uIHdo
-eSB3ZSBjbG9zZSB0aGVzZSBzb2NrZXRzIGlzIHRoYXQgaWYgdGhlIGF0dGVtcHQgYXQgYWJvcnRp
-bmcNCnRoZSBjb25uZWN0aW9uIGZhaWxzLCB0aGVuIHRoZXkgdHlwaWNhbGx5IGVuZCB1cCBpbiBh
-IFRJTUVfV0FJVCBzdGF0ZS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGll
-bnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cu
-bmV0YXBwLmNvbQ0KDQo=
+In order to teach filesystems to handle swap cache pages, three new
+page functions are introduced:
+
+  pgoff_t page_file_index(struct page *);
+  loff_t page_file_offset(struct page *);
+  struct address_space *page_file_mapping(struct page *);
+
+page_file_index() - gives the offset of this page in the file in
+PAGE_CACHE_SIZE blocks. Like page->index is for mapped pages, this
+function also gives the correct index for PG_swapcache pages.
+
+page_file_offset() - uses page_file_index(), so that it will give
+the expected result, even for PG_swapcache pages.
+
+page_file_mapping() - gives the mapping backing the actual page;
+that is for swap cache pages it will give swap_file->f_mapping.
+
+Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ include/linux/mm.h      |   25 +++++++++++++++++++++++++
+ include/linux/pagemap.h |    5 +++++
+ mm/swapfile.c           |   19 +++++++++++++++++++
+ 3 files changed, 49 insertions(+)
+
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index b36d08c..0c0301c 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -805,6 +805,17 @@ static inline void *page_rmapping(struct page *page)
+ 	return (void *)((unsigned long)page->mapping & ~PAGE_MAPPING_FLAGS);
+ }
+ 
++extern struct address_space *__page_file_mapping(struct page *);
++
++static inline
++struct address_space *page_file_mapping(struct page *page)
++{
++	if (unlikely(PageSwapCache(page)))
++		return __page_file_mapping(page);
++
++	return page->mapping;
++}
++
+ static inline int PageAnon(struct page *page)
+ {
+ 	return ((unsigned long)page->mapping & PAGE_MAPPING_ANON) != 0;
+@@ -821,6 +832,20 @@ static inline pgoff_t page_index(struct page *page)
+ 	return page->index;
+ }
+ 
++extern pgoff_t __page_file_index(struct page *page);
++
++/*
++ * Return the file index of the page. Regular pagecache pages use ->index
++ * whereas swapcache pages use swp_offset(->private)
++ */
++static inline pgoff_t page_file_index(struct page *page)
++{
++	if (unlikely(PageSwapCache(page)))
++		return __page_file_index(page);
++
++	return page->index;
++}
++
+ /*
+  * Return true if this page is mapped into pagetables.
+  */
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index 7cfad3b..e42c762 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -286,6 +286,11 @@ static inline loff_t page_offset(struct page *page)
+ 	return ((loff_t)page->index) << PAGE_CACHE_SHIFT;
+ }
+ 
++static inline loff_t page_file_offset(struct page *page)
++{
++	return ((loff_t)page_file_index(page)) << PAGE_CACHE_SHIFT;
++}
++
+ extern pgoff_t linear_hugepage_index(struct vm_area_struct *vma,
+ 				     unsigned long address);
+ 
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index de5bc51..f03a560 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -33,6 +33,7 @@
+ #include <linux/oom.h>
+ #include <linux/frontswap.h>
+ #include <linux/swapfile.h>
++#include <linux/export.h>
+ 
+ #include <asm/pgtable.h>
+ #include <asm/tlbflush.h>
+@@ -2290,6 +2291,24 @@ int swapcache_prepare(swp_entry_t entry)
+ }
+ 
+ /*
++ * out-of-line __page_file_ methods to avoid include hell.
++ */
++struct address_space *__page_file_mapping(struct page *page)
++{
++	VM_BUG_ON(!PageSwapCache(page));
++	return page_swap_info(page)->swap_file->f_mapping;
++}
++EXPORT_SYMBOL_GPL(__page_file_mapping);
++
++pgoff_t __page_file_index(struct page *page)
++{
++	swp_entry_t swap = { .val = page_private(page) };
++	VM_BUG_ON(!PageSwapCache(page));
++	return swp_offset(swap);
++}
++EXPORT_SYMBOL_GPL(__page_file_index);
++
++/*
+  * add_swap_count_continuation - called when a swap count is duplicated
+  * beyond SWAP_MAP_MAX, it allocates a new page and links that to the entry's
+  * page of the original vmalloc'ed swap_map, to hold the continuation count
+-- 
+1.7.9.2
+
