@@ -1,78 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailout-de.gmx.net ([213.165.64.22]:39919 "HELO
-	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1755659Ab2FZMnv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jun 2012 08:43:51 -0400
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="utf-8"
-Date: Tue, 26 Jun 2012 14:43:48 +0200
-From: "Johannes Schild" <JSchild@gmx.de>
-In-Reply-To: <1340632000.9620.7.camel@lade.trondhjem.org>
-Message-ID: <20120626124348.48490@gmx.net>
+Received: from cantor2.suse.de ([195.135.220.15]:54204 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756525Ab2FTOVb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jun 2012 10:21:31 -0400
+Date: Wed, 20 Jun 2012 15:21:27 +0100
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>
+Subject: Re: [PATCH 01/12] netvm: Prevent a stream-specific deadlock
+Message-ID: <20120620142127.GK4011@suse.de>
+References: <1340185081-22525-1-git-send-email-mgorman@suse.de>
+ <1340185081-22525-2-git-send-email-mgorman@suse.de>
 MIME-Version: 1.0
-References: <20120625074306.48500@gmx.net>
- <1340632000.9620.7.camel@lade.trondhjem.org>
-Subject: Re: LAYOUTCOMMIT/LAYOUTRETURN
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=iso-8859-15
+In-Reply-To: <1340185081-22525-2-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
-
-thanks for your answers.
-
-But how do i find out, whether the server is using FILE_SYNC?
-Is there any other mode like "FILE_ASYNC"?
-
-And if the server is using FILE_SYNC, how does it get LAYOUTCOMMIT?
-
-
-Thanks in advance
-
-
-Johannes
-
-
--------- Original-Nachricht --------
-> Datum: Mon, 25 Jun 2012 09:46:40 -0400
-> Von: Trond Myklebust <trond.myklebust@fys.uio.no>
-> An: Johannes Schild <JSchild@gmx.de>
-> CC: linux-nfs@vger.kernel.org
-> Betreff: Re: LAYOUTCOMMIT/LAYOUTRETURN
-
-> On Mon, 2012-06-25 at 09:43 +0200, Johannes Schild wrote:
-> > Hi Guys,
-> > 
-> > i have another question on pNFS. I looked at my Wireshark protocols,
-> while i used the FILE-Layout, and i wondered why i have no
-> LAYOUTCOMMIT/LAYOUTRETURN statements in my protocols.
-> > I transfered one file to my storage server (NETAPP Simulator 8.1 C-Mode)
-> and i only got a LAYOUTGET.
-> > 
-> > cat /proc/self/mountstats | grep LAYOUT says:
-> > nfsv4:
-> bm0=0xfafe8fff,bml=0x60fdfffe,acl=0x3,sessions,pnfs=LAYOUT_NFSV4_1_FILES
-> >     LAYOUTGET: 1 1 0 216 236 0 1 1
-> >  LAYOUTCOMMIT: 0 0 0 0 0 0 0 0
-> >  LAYOUTRETURN: 0 0 0 0 0 0 0 0 
+On Wed, Jun 20, 2012 at 10:37:50AM +0100, Mel Gorman wrote:
+> It could happen that all !SOCK_MEMALLOC sockets have buffered so
+> much data that we're over the global rmem limit. This will prevent
+> SOCK_MEMALLOC buffers from receiving data, which will prevent userspace
+> from running, which is needed to reduce the buffered data.
 > 
-> A pNFS client should never send LAYOUTCOMMIT to a server that does
-> FILE_SYNC writes.
+> Fix this by exempting the SOCK_MEMALLOC sockets from the rmem limit.
+> Once this change it applied, it is important that sockets that set
+> SOCK_MEMALLOC do not clear the flag until the socket is being torn down.
+> If this happens, a warning is generated and the tokens reclaimed to
+> avoid accounting errors until the bug is fixed.
 > 
-> The Linux pNFS client uses the 'forgetful client' model, so it will
-> never send LAYOUTRETURN on layout recalls either. The only case where we
-> send LAYOUTRETURN is when the file falls out of the inode cache.
-> 
-> 
-> > Is there any other way to verify that pnfs is used on client site?
-> 
-> The most direct way is to look for a TCP connection to the data server
-> using 'netstat -t'.
-> 
-> Cheers
->   Trond
-> 
+> [davem@davemloft.net: Warning about clearing SOCK_MEMALLOC]
+> Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+> Signed-off-by: Mel Gorman <mgorman@suse.de>
+> Acked-by: David S. Miller <davem@davemloft.net>
+
+This patch introduced a new warning that I had previously missed. I'll
+fix it up when rebasing this series on top of linux-next.
 
 -- 
-NEU: FreePhone 3-fach-Flat mit kostenlosem Smartphone!                                  
-Jetzt informieren: http://mobile.1und1.de/?ac=OM.PW.PW003K20328T7073a
+Mel Gorman
+SUSE Labs
