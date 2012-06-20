@@ -1,8 +1,8 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:59107 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:59238 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755655Ab2FTJiE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jun 2012 05:38:04 -0400
+	id S1755755Ab2FTJiM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jun 2012 05:38:12 -0400
 From: Mel Gorman <mgorman@suse.de>
 To: Andrew Morton <akpm@linux-foundation.org>
 Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
@@ -14,129 +14,111 @@ Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
         Peter Zijlstra <a.p.zijlstra@chello.nl>,
         Mike Christie <michaelc@cs.wisc.edu>,
         Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 00/12] Swap-over-NFS without deadlocking V6
-Date: Wed, 20 Jun 2012 10:37:49 +0100
-Message-Id: <1340185081-22525-1-git-send-email-mgorman@suse.de>
+Subject: [PATCH 07/12] mm: Add support for direct_IO to highmem pages
+Date: Wed, 20 Jun 2012 10:37:56 +0100
+Message-Id: <1340185081-22525-8-git-send-email-mgorman@suse.de>
+In-Reply-To: <1340185081-22525-1-git-send-email-mgorman@suse.de>
+References: <1340185081-22525-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sorry for the partial resend, fat-fingered the first effort.
+The patch "mm: Add support for a filesystem to activate swap files and
+use direct_IO for writing swap pages" added support for using direct_IO
+to write swap pages but it is insufficient for highmem pages.
 
-Changelog since V5
-  o Rebase to v3.5-rc3
+To support highmem pages, this patch kmaps() the page before calling the
+direct_IO() handler. As direct_IO deals with virtual addresses an
+additional helper is necessary for get_kernel_pages() to lookup the
+struct page for a kmap virtual address.
 
-Changelog since V4
-  o Catch if SOCK_MEMALLOC flag is cleared with rmem tokens	(davem)
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ include/linux/highmem.h |    7 +++++++
+ mm/highmem.c            |   12 ++++++++++++
+ mm/memory.c             |    3 +--
+ mm/page_io.c            |    3 ++-
+ 4 files changed, 22 insertions(+), 3 deletions(-)
 
-Changelog since V3
-  o Rebase to 3.4-rc5
-  o kmap pages for writing to swap				(akpm)
-  o Move forward declaration to reduce chance of duplication	(akpm)
-
-Changelog since V2
-  o Nothing significant, just rebases. A radix tree lookup is replaced with
-    a linear search would be the biggest rebase artifact
-
-This patch series is based on top of "Swap-over-NBD without deadlocking v12"
-as it depends on the same reservation of PF_MEMALLOC reserves logic.
-
-When a user or administrator requires swap for their application, they
-create a swap partition and file, format it with mkswap and activate it with
-swapon. In diskless systems this is not an option so if swap if required
-then swapping over the network is considered.  The two likely scenarios
-are when blade servers are used as part of a cluster where the form factor
-or maintenance costs do not allow the use of disks and thin clients.
-
-The Linux Terminal Server Project recommends the use of the Network
-Block Device (NBD) for swap but this is not always an option.  There is
-no guarantee that the network attached storage (NAS) device is running
-Linux or supports NBD. However, it is likely that it supports NFS so there
-are users that want support for swapping over NFS despite any performance
-concern. Some distributions currently carry patches that support swapping
-over NFS but it would be preferable to support it in the mainline kernel.
-
-Patch 1 avoids a stream-specific deadlock that potentially affects TCP.
-
-Patch 2 is a small modification to SELinux to avoid using PFMEMALLOC
-	reserves.
-
-Patch 3 adds three helpers for filesystems to handle swap cache pages.
-	For example, page_file_mapping() returns page->mapping for
-	file-backed pages and the address_space of the underlying
-	swap file for swap cache pages.
-
-Patch 4 adds two address_space_operations to allow a filesystem
-	to pin all metadata relevant to a swapfile in memory. Upon
-	successful activation, the swapfile is marked SWP_FILE and
-	the address space operation ->direct_IO is used for writing
-	and ->readpage for reading in swap pages.
-
-Patch 5 notes that patch 3 is bolting
-	filesystem-specific-swapfile-support onto the side and that
-	the default handlers have different information to what
-	is available to the filesystem. This patch refactors the
-	code so that there are generic handlers for each of the new
-	address_space operations.
-
-Patch 6 adds an API to allow a vector of kernel addresses to be
-	translated to struct pages and pinned for IO.
-
-Patch 7 adds support for using highmem pages for swap by kmapping
-	the pages before calling the direct_IO handler.
-
-Patch 8 updates NFS to use the helpers from patch 3 where necessary.
-
-Patch 9 avoids setting PF_private on PG_swapcache pages within NFS.
-
-Patch 10 implements the new swapfile-related address_space operations
-	for NFS and teaches the direct IO handler how to manage
-	kernel addresses.
-
-Patch 11 prevents page allocator recursions in NFS by using GFP_NOIO
-	where appropriate.
-
-Patch 12 fixes a NULL pointer dereference that occurs when using
-	swap-over-NFS.
-
-With the patches applied, it is possible to mount a swapfile that is on an
-NFS filesystem. Swap performance is not great with a swap stress test taking
-roughly twice as long to complete than if the swap device was backed by NBD.
-
- Documentation/filesystems/Locking |   13 ++++
- Documentation/filesystems/vfs.txt |   12 +++
- fs/nfs/Kconfig                    |    8 ++
- fs/nfs/direct.c                   |   82 ++++++++++++++-------
- fs/nfs/file.c                     |   28 +++++--
- fs/nfs/inode.c                    |    4 +
- fs/nfs/internal.h                 |    7 +-
- fs/nfs/pagelist.c                 |    4 +-
- fs/nfs/read.c                     |    6 +-
- fs/nfs/write.c                    |   91 ++++++++++++++---------
- include/linux/blk_types.h         |    2 +
- include/linux/fs.h                |    8 ++
- include/linux/highmem.h           |    7 ++
- include/linux/mm.h                |   29 ++++++++
- include/linux/nfs_fs.h            |    4 +-
- include/linux/pagemap.h           |    5 ++
- include/linux/sunrpc/xprt.h       |    3 +
- include/linux/swap.h              |    8 ++
- include/net/sock.h                |    7 +-
- mm/highmem.c                      |   12 +++
- mm/memory.c                       |   52 +++++++++++++
- mm/page_io.c                      |  145 +++++++++++++++++++++++++++++++++++++
- mm/swap_state.c                   |    2 +-
- mm/swapfile.c                     |  141 ++++++++++++++----------------------
- net/caif/caif_socket.c            |    2 +-
- net/core/sock.c                   |   14 +++-
- net/ipv4/tcp_input.c              |   12 +--
- net/sctp/ulpevent.c               |    2 +-
- net/sunrpc/Kconfig                |    5 ++
- net/sunrpc/clnt.c                 |    2 +
- net/sunrpc/sched.c                |    7 +-
- net/sunrpc/xprtsock.c             |   53 ++++++++++++++
- security/selinux/avc.c            |    2 +-
- 33 files changed, 597 insertions(+), 182 deletions(-)
-
+diff --git a/include/linux/highmem.h b/include/linux/highmem.h
+index d3999b4..e186e3c 100644
+--- a/include/linux/highmem.h
++++ b/include/linux/highmem.h
+@@ -39,10 +39,17 @@ extern unsigned long totalhigh_pages;
+ 
+ void kmap_flush_unused(void);
+ 
++struct page *kmap_to_page(void *addr);
++
+ #else /* CONFIG_HIGHMEM */
+ 
+ static inline unsigned int nr_free_highpages(void) { return 0; }
+ 
++static inline struct page *kmap_to_page(void *addr)
++{
++	return virt_to_page(addr);
++}
++
+ #define totalhigh_pages 0UL
+ 
+ #ifndef ARCH_HAS_KMAP
+diff --git a/mm/highmem.c b/mm/highmem.c
+index 57d82c6..d517cd1 100644
+--- a/mm/highmem.c
++++ b/mm/highmem.c
+@@ -94,6 +94,18 @@ static DECLARE_WAIT_QUEUE_HEAD(pkmap_map_wait);
+ 		do { spin_unlock(&kmap_lock); (void)(flags); } while (0)
+ #endif
+ 
++struct page *kmap_to_page(void *vaddr)
++{
++	unsigned long addr = (unsigned long)vaddr;
++
++	if (addr >= PKMAP_ADDR(0) && addr <= PKMAP_ADDR(LAST_PKMAP)) {
++		int i = (addr - PKMAP_ADDR(0)) >> PAGE_SHIFT;
++		return pte_page(pkmap_page_table[i]);
++	}
++
++	return virt_to_page(addr);
++}
++
+ static void flush_all_zero_pkmaps(void)
+ {
+ 	int i;
+diff --git a/mm/memory.c b/mm/memory.c
+index 2d55992..5948b8f 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -1855,8 +1855,7 @@ int get_kernel_pages(const struct kvec *kiov, int nr_segs, int write,
+ 		if (WARN_ON(kiov[seg].iov_len != PAGE_SIZE))
+ 			return seg;
+ 
+-		/* virt_to_page sanity checks the PFN */
+-		pages[seg] = virt_to_page(kiov[seg].iov_base);
++		pages[seg] = kmap_to_page(kiov[seg].iov_base);
+ 		page_cache_get(pages[seg]);
+ 	}
+ 
+diff --git a/mm/page_io.c b/mm/page_io.c
+index 4a37962..78eee32 100644
+--- a/mm/page_io.c
++++ b/mm/page_io.c
+@@ -205,7 +205,7 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
+ 		struct file *swap_file = sis->swap_file;
+ 		struct address_space *mapping = swap_file->f_mapping;
+ 		struct iovec iov = {
+-			.iov_base = page_address(page),
++			.iov_base = kmap(page),
+ 			.iov_len  = PAGE_SIZE,
+ 		};
+ 
+@@ -218,6 +218,7 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
+ 		ret = mapping->a_ops->direct_IO(KERNEL_WRITE,
+ 						&kiocb, &iov,
+ 						kiocb.ki_pos, 1);
++		kunmap(page);
+ 		if (ret == PAGE_SIZE) {
+ 			count_vm_event(PSWPOUT);
+ 			ret = 0;
 -- 
 1.7.9.2
 
