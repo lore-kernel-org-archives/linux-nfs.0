@@ -1,45 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:13935 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:52992 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754486Ab2FYXOc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Jun 2012 19:14:32 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Mark Salter <msalter@redhat.com>
-CC: linux-next <linux-next@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfs root problem in linux-next
-Date: Mon, 25 Jun 2012 23:14:14 +0000
-Message-ID: <1340666049.4362.9.camel@lade.trondhjem.org>
-References: <1340656006.20557.30.camel@deneb.redhat.com>
-In-Reply-To: <1340656006.20557.30.camel@deneb.redhat.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1757789Ab2FTTDu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jun 2012 15:03:50 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 2 3/4] NFSv4.1 mark layout when already returned
+Date: Wed, 20 Jun 2012 15:03:33 -0400
+Message-Id: <1340219014-5749-4-git-send-email-andros@netapp.com>
+In-Reply-To: <1340219014-5749-1-git-send-email-andros@netapp.com>
+References: <1340219014-5749-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA2LTI1IGF0IDE2OjI2IC0wNDAwLCBNYXJrIFNhbHRlciB3cm90ZToNCj4g
-QXMgb2YgRnJpZGF5J3MgbGludXgtbmV4dCBJJ3ZlIGJlZW4gdW5hYmxlIHRvIHN1Y2Nlc3NmdWxs
-eSBib290IHVzaW5nIGFuDQo+IG5mcyByb290IHdpdGggYSBjNnggYm9hcmQuIEkgYmlzZWN0ZWQg
-aXQgdG8gdGhpcyBwYXRjaDoNCj4gDQo+ICAgY29tbWl0IGNjM2IyOTZmZDlhMDFjOWU2NTRiY2I5
-MzczYWY3MGRkNmUzMmZiMjQNCj4gICBBdXRob3I6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlr
-bGVidXN0QG5ldGFwcC5jb20+DQo+ICAgRGF0ZTogICBUaHUgSnVuIDIxIDE0OjUzOjEwIDIwMTIg
-LTA0MDANCj4gDQo+ICAgICAgIFNVTlJQQzogQ2xlYW4gdXAgeGRyX3JlYWRfcGFnZXMgYW5kIHhk
-cl9lbnRlcl9wYWdlDQo+IA0KPiBJIHBsYWNlZCAiZ29vZC1ib290IiBhbmQgImJhZC1ib290IiBw
-YWNrZXQgY2FwdHVyZSBmaWxlcyBhdDoNCj4gDQo+ICAgaHR0cDovL3Blb3BsZS5yZWRoYXQuY29t
-L35tc2FsdGVyL2xpbnV4LW5leHQvDQo+IA0KPiBUaGUgb25seSBkaWZmZXJlbmNlIGluIHRoZSBr
-ZXJuZWxzIHVzZWQgaXMgdGhlIGFib3ZlIHBhdGNoLiBUaGUNCj4gYmFkLWJvb3QgbW91bnRlZCB0
-aGUgbmZzIHJvb3QgYnV0IHdhcyB1bmFibGUgdG8gZmluZCB0aGUgaW5pdA0KPiBmaWxlIHdoaWNo
-IGNhdXNlZCBhIHBhbmljLiBUaGUgbmZzcm9vdD0gcGFyYW1ldGVyIHVzZXMgdjMsdGNwDQo+IGZs
-YWdzIGFuZCB0aGUgc2VydmVyIHNpZGUgaXMgcnVubmluZyByaGVsNi4NCj4gDQo+IEknbSBub3Qg
-YXQgYWxsIGZhbWlsaWFyIHdpdGggdGhlIG5mcyBjb2RlLCBidXQgY2FuIGhlbHAgd2l0aA0KPiB0
-ZXN0aW5nIG9yIHByb3ZpZGluZyBhbnkgYWRkdGlvbmFsIGluZm8gbmVlZGVkLg0KDQpIaSBNYXJr
-LA0KDQpTbyB5b3UgYXJlIHNheWluZyB0aGF0IHJldmVydGluZyB0aGF0IHBhdGNoIGFsb25lIHN1
-ZmZpY2VzIHRvIGZpeCB0aGUNCnByb2JsZW0gdGhhdCB5b3UgYXJlIHNlZWluZz8NCg0KRmlyc3Rs
-eSwgYSBiaWcgIlRoYW5rIFlvdSEhISIgZm9yIHRlc3RpbmcgdGhlIGxpbnV4LW5leHQgYnJhbmNo
-LiBJIHZlcnkNCm11Y2ggYXBwcmVjaWF0ZSB0aGF0IHlvdSByZXBvcnQgdGhlIGJ1Z3MgYmVmb3Jl
-IHRoZXkgZ2V0IG1lcmdlZA0KdXBzdHJlYW0uDQoNCkknbGwgaGF2ZSBhIGxvb2sgdG8gc2VlIGlm
-IEkgY2FuIGZpbmQgb3V0IHdoYXQgaXMgdGhlIHByb2JsZW0uIFRoZSBvbmx5DQpzaWduaWZpY2Fu
-dCBjaGFuZ2UgdGhhdCBwYXRjaCBzaG91bGQgYmUgaW50cm9kdWNpbmcgd291bGQgYmUgdGhlIHVz
-ZSBvZg0KeGRyX3N0cmVhbV9wb3MoKS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5G
-UyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29t
-DQp3d3cubmV0YXBwLmNvbQ0KDQo=
+From: Andy Adamson <andros@netapp.com>
+
+When the file layout driver is fencing a DS, _pnfs_return_layout can be
+called mulitple times per inode due to in-flight i/o referencing lsegs on it's
+plh_segs list.
+
+Remember that LAYOUTRETURN has been called, and do not call it again.
+Allow LAYOUTRETURNs after a subsequent LAYOUTGET.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/pnfs.c |   10 ++++++++--
+ fs/nfs/pnfs.h |   19 +++++++++++++++++++
+ 2 files changed, 27 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index bbc49ca..3dfd0a6 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -662,11 +662,11 @@ _pnfs_return_layout(struct inode *ino)
+ 	nfs4_stateid stateid;
+ 	int status = 0;
+ 
+-	dprintk("--> %s\n", __func__);
++	dprintk("NFS: %s for inode %lu\n", __func__, ino->i_ino);
+ 
+ 	spin_lock(&ino->i_lock);
+ 	lo = nfsi->layout;
+-	if (!lo) {
++	if (!lo || pnfs_test_layout_returned(lo)) {
+ 		spin_unlock(&ino->i_lock);
+ 		dprintk("%s: no layout to return\n", __func__);
+ 		return status;
+@@ -676,6 +676,7 @@ _pnfs_return_layout(struct inode *ino)
+ 	get_layout_hdr(lo);
+ 	mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
+ 	lo->plh_block_lgets++;
++	pnfs_mark_layout_returned(lo);
+ 	spin_unlock(&ino->i_lock);
+ 	pnfs_free_lseg_list(&tmp_list);
+ 
+@@ -686,6 +687,7 @@ _pnfs_return_layout(struct inode *ino)
+ 		status = -ENOMEM;
+ 		set_bit(NFS_LAYOUT_RW_FAILED, &lo->plh_flags);
+ 		set_bit(NFS_LAYOUT_RO_FAILED, &lo->plh_flags);
++		pnfs_clear_layout_returned(lo);
+ 		put_layout_hdr(lo);
+ 		goto out;
+ 	}
+@@ -1075,6 +1077,10 @@ pnfs_update_layout(struct inode *ino,
+ 	get_layout_hdr(lo);
+ 	if (list_empty(&lo->plh_segs))
+ 		first = true;
++
++	/* Enable LAYOUTRETURNs */
++	pnfs_clear_layout_returned(lo);
++
+ 	spin_unlock(&ino->i_lock);
+ 	if (first) {
+ 		/* The lo must be on the clp list if there is any
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 64f90d8..f9bc98c 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -64,6 +64,7 @@ enum {
+ 	NFS_LAYOUT_ROC,			/* some lseg had roc bit set */
+ 	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
+ 	NFS_LAYOUT_INVALID,		/* layout is being destroyed */
++	NFS_LAYOUT_RETURNED,		/* layout has already been returned */
+ };
+ 
+ enum layoutdriver_policy_flags {
+@@ -255,6 +256,24 @@ struct nfs4_deviceid_node *nfs4_insert_deviceid_node(struct nfs4_deviceid_node *
+ bool nfs4_put_deviceid_node(struct nfs4_deviceid_node *);
+ void nfs4_deviceid_purge_client(const struct nfs_client *);
+ 
++static inline void
++pnfs_mark_layout_returned(struct pnfs_layout_hdr *lo)
++{
++	set_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
++}
++
++static inline void
++pnfs_clear_layout_returned(struct pnfs_layout_hdr *lo)
++{
++	clear_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
++}
++
++static inline bool
++pnfs_test_layout_returned(struct pnfs_layout_hdr *lo)
++{
++	return test_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
++}
++
+ static inline int lo_fail_bit(u32 iomode)
+ {
+ 	return iomode == IOMODE_RW ?
+-- 
+1.7.6.4
+
