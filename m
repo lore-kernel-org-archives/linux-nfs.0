@@ -1,39 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:30310 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:59296 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750952Ab2FGPy0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Jun 2012 11:54:26 -0400
-Message-ID: <4FD0CEB0.9040804@netapp.com>
-Date: Thu, 07 Jun 2012 11:54:24 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-MIME-Version: 1.0
-To: Joerg Roedel <joro@8bytes.org>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: NFS regression in v3.5-rc1: mount.nfs yells about incorrect mount
- option
-References: <20120607150456.GO12795@8bytes.org> <4FD0C4C2.8020605@netapp.com> <20120607155006.GR12795@8bytes.org>
-In-Reply-To: <20120607155006.GR12795@8bytes.org>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1756080Ab2FTJiS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jun 2012 05:38:18 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 11/12] nfs: Prevent page allocator recursions with swap over NFS.
+Date: Wed, 20 Jun 2012 10:38:00 +0100
+Message-Id: <1340185081-22525-12-git-send-email-mgorman@suse.de>
+In-Reply-To: <1340185081-22525-1-git-send-email-mgorman@suse.de>
+References: <1340185081-22525-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/07/2012 11:50 AM, Joerg Roedel wrote:
-> On Thu, Jun 07, 2012 at 11:12:02AM -0400, Bryan Schumaker wrote:
-> 
->> Can you use `mount -v` to get more output?
-> 
-> Btw, it also works when I manually set the nfs-version at mount:
-> 
-> mount -o nfsvers=3 ...
+GFP_NOFS is _more_ permissive than GFP_NOIO in that it will initiate
+IO, just not of any filesystem data.
 
-What about `mount -o vers=4 ...`?  I'm compiling a kernel right now to see if I can reproduce this, what NFS .config options do you have set? (`cat .config | grep CONFIG_NFS_` should be good enough).
+The problem is that previously NOFS was correct because that avoids
+recursion into the NFS code. With swap-over-NFS, it is no longer
+correct as swap IO can lead to this recursion.
 
-- Bryan
-> 
-> 
-> 	Joerg
-> 
-> 
+Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ fs/nfs/pagelist.c |    2 +-
+ fs/nfs/write.c    |    4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 9ef8b3c..7de1646 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -70,7 +70,7 @@ void nfs_set_pgio_error(struct nfs_pgio_header *hdr, int error, loff_t pos)
+ static inline struct nfs_page *
+ nfs_page_alloc(void)
+ {
+-	struct nfs_page	*p = kmem_cache_zalloc(nfs_page_cachep, GFP_KERNEL);
++	struct nfs_page	*p = kmem_cache_zalloc(nfs_page_cachep, GFP_NOIO);
+ 	if (p)
+ 		INIT_LIST_HEAD(&p->wb_list);
+ 	return p;
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index f45b9ca..6f90681 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -52,7 +52,7 @@ static mempool_t *nfs_commit_mempool;
+ 
+ struct nfs_commit_data *nfs_commitdata_alloc(void)
+ {
+-	struct nfs_commit_data *p = mempool_alloc(nfs_commit_mempool, GFP_NOFS);
++	struct nfs_commit_data *p = mempool_alloc(nfs_commit_mempool, GFP_NOIO);
+ 
+ 	if (p) {
+ 		memset(p, 0, sizeof(*p));
+@@ -70,7 +70,7 @@ EXPORT_SYMBOL_GPL(nfs_commit_free);
+ 
+ struct nfs_write_header *nfs_writehdr_alloc(void)
+ {
+-	struct nfs_write_header *p = mempool_alloc(nfs_wdata_mempool, GFP_NOFS);
++	struct nfs_write_header *p = mempool_alloc(nfs_wdata_mempool, GFP_NOIO);
+ 
+ 	if (p) {
+ 		struct nfs_pgio_header *hdr = &p->header;
+-- 
+1.7.9.2
 
