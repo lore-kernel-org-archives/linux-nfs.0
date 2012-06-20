@@ -1,70 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:57080 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:19974 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755097Ab2FKOaL convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jun 2012 10:30:11 -0400
-Date: Mon, 11 Jun 2012 10:29:47 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: bfields <bfields@fieldses.org>, Steve Dickson <steved@redhat.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Joerg Platte <jplatte@naasa.net>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Hans de Bruin <jmdebruin@xmsnet.nl>
-Subject: Re: Kernel 3.4.X NFS server regression
-Message-ID: <20120611102947.229cf077@corrin.poochiereds.net>
-In-Reply-To: <4FD5F629.1070508@panasas.com>
-References: <4FD47D4E.9070307@naasa.net>
-	<1339340441.4751.1.camel@lade.trondhjem.org>
-	<20120611121634.GB7654@fieldses.org>
-	<20120611083932.24e27e39@corrin.poochiereds.net>
-	<4FD5F35A.3000903@panasas.com>
-	<4FD5F629.1070508@panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1752654Ab2FTPXz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jun 2012 11:23:55 -0400
+Message-ID: <4FE1EABB.5060105@redhat.com>
+Date: Wed, 20 Jun 2012 11:22:35 -0400
+From: Rik van Riel <riel@redhat.com>
+MIME-Version: 1.0
+To: Mel Gorman <mgorman@suse.de>
+CC: Andrew Morton <akpm@linux-foundation.org>, Linux-MM <linux-mm@kvack.org>,
+        Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>
+Subject: Re: [PATCH 01/12] netvm: Prevent a stream-specific deadlock
+References: <1340185081-22525-1-git-send-email-mgorman@suse.de> <1340185081-22525-2-git-send-email-mgorman@suse.de>
+In-Reply-To: <1340185081-22525-2-git-send-email-mgorman@suse.de>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 11 Jun 2012 16:44:09 +0300
-Boaz Harrosh <bharrosh@panasas.com> wrote:
+On 06/20/2012 05:37 AM, Mel Gorman wrote:
+> It could happen that all !SOCK_MEMALLOC sockets have buffered so
+> much data that we're over the global rmem limit. This will prevent
+> SOCK_MEMALLOC buffers from receiving data, which will prevent userspace
+> from running, which is needed to reduce the buffered data.
+>
+> Fix this by exempting the SOCK_MEMALLOC sockets from the rmem limit.
+> Once this change it applied, it is important that sockets that set
+> SOCK_MEMALLOC do not clear the flag until the socket is being torn down.
+> If this happens, a warning is generated and the tokens reclaimed to
+> avoid accounting errors until the bug is fixed.
+>
+> [davem@davemloft.net: Warning about clearing SOCK_MEMALLOC]
+> Signed-off-by: Peter Zijlstra<a.p.zijlstra@chello.nl>
+> Signed-off-by: Mel Gorman<mgorman@suse.de>
+> Acked-by: David S. Miller<davem@davemloft.net>
 
-> On 06/11/2012 04:32 PM, Boaz Harrosh wrote:
-> 
-> > On 06/11/2012 03:39 PM, Jeff Layton wrote:
-> > 
-> >>>
-> >>> But I'm guessing we were wrong to assume that existing setups that
-> >>> people perceived as working would have that path, because the failures
-> >>> in the absence of that path were probably less obvious.
-> >>>
-> 
-> 
-> One more thing, the most important one. We have already fixed that in the
-> past and I was hoping the lesson was learned. Apparently it was not, and
-> we are doomed to do this mistake for ever!!
-> 
-> What ever crap fails times out and crashes, in the recovery code, we don't
-> give a dam. It should never affect any Server-client communication.
-> 
-> When the grace periods ends the clients gates opens period. *Any* error
-> return from state recovery code must be carefully ignored and normal
-> operations resumed. At most on error, we move into a mode where any
-> recovery request from client is accepted, since we don't have any better
-> data to verify it.
-> 
-> Please comb recovery code to make sure any catastrophe is safely ignored.
-> We already did that before and it used to work.
-> 
+Acked-by: Rik van Riel<riel@redhat.com>
 
-That's not the case, and hasn't ever been AFAICT. The code has changed
-a bit recently, but the existing behavior in this regard was preserved.
->From nfs4_check_open_reclaim:
-
-        return nfsd4_client_record_check(clp) ? nfserr_reclaim_bad : nfs_ok;
-
-...if there is no client record, then the reclaim request fails. Doesn't
-the RFC mandate that?
-
--- 
-Jeff Layton <jlayton@redhat.com>
