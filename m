@@ -1,95 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f44.google.com ([74.125.82.44]:54137 "EHLO
-	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753152Ab2FMPIr convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jun 2012 11:08:47 -0400
-Received: by wgbdr13 with SMTP id dr13so776109wgb.1
-        for <linux-nfs@vger.kernel.org>; Wed, 13 Jun 2012 08:08:46 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:56213 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753790Ab2FTN1j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jun 2012 09:27:39 -0400
+Date: Wed, 20 Jun 2012 09:27:38 -0400
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: stable@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>
+Subject: [PATCH 4/3] lockd: hard-code init_net in lockd case as well
+Message-ID: <20120620132738.GA30742@fieldses.org>
+References: <1340050049-12880-1-git-send-email-bfields@redhat.com>
+ <1340050049-12880-4-git-send-email-bfields@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <4FBBBD26.2090203@oracle.com>
-References: <4FBBBD26.2090203@oracle.com>
-Date: Wed, 13 Jun 2012 11:08:45 -0400
-Message-ID: <CAHVgHyX3rXzWEgJwL2cHLQ4aZn9G0Vbz_kHU8ax-EHObEtYf1g@mail.gmail.com>
-Subject: Re: Help with NFS over 10GbE performance - possible NFS client to TCP bottleneck
-From: Andy Adamson <androsadamson@gmail.com>
-To: Jeff Wright <jeff.wright@oracle.com>
-Cc: linux-nfs@vger.kernel.org, Craig Flaskerud <Craig.flaskerud@oracle.com>,
-        Donna Harland <donna.harland@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1340050049-12880-4-git-send-email-bfields@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck recently brought this to my attention:
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Have you tried looking at the RPC statistics average backlog queue
-length in mountstats? The backlog queue gets filled with NFS requests
-that do not get an RPC slot.
+The previous patch missed lockd_down, which has the same problem.
+Symptoms were crashes on unmount or reboot.
 
-I assume that jumbo frames are turned on throughout the connection.
+Note this was fixed in a different way upstream.
 
-I would try some iperf runs.  This will check the throughput of the
-memory <-> network <-> memory path and provide an upper bound on what
-to expect from NFS as well as displaying the MTU to check for jumbo
-frame compliance.
+Acked-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/lockd/svc.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-I would then try some iozone tests, including the O_DIRECT tests. This
-will give some more data on the issue by separating throughput from
-the application specifics.
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index f1b3cce..c933df4 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -300,7 +300,7 @@ int lockd_up(void)
+ {
+ 	struct svc_serv *serv;
+ 	int		error = 0;
+-	struct net *net = current->nsproxy->net_ns;
++	struct net *net = &init_net;
+ 	struct lockd_net *ln = net_generic(net, lockd_net_id);
+ 
+ 	mutex_lock(&nlmsvc_mutex);
+@@ -391,7 +391,7 @@ void
+ lockd_down(void)
+ {
+ 	mutex_lock(&nlmsvc_mutex);
+-	lockd_down_net(current->nsproxy->net_ns);
++	lockd_down_net(&init_net);
+ 	if (nlmsvc_users) {
+ 		if (--nlmsvc_users)
+ 			goto out;
+-- 
+1.7.9.5
 
--->Andy
-
-On Tue, May 22, 2012 at 12:21 PM, Jeff Wright <jeff.wright@oracle.com> wrote:
-> Team,
->
-> I am working on a team implementing a configuration with an OEL kernel
-> (2.6.32-300.3.1.el6uek.x86_64) and kernel NFS accessing an NFS server over
-> 10GbE a Solaris 10.  We are trying to resolve what appears to be a
-> bottleneck between the Linux kernel NFS client and the TCP stack.
->  Specifically, the TCP send queue on the Linux client is empty (save a
-> couple of bursts) when we are running write I/O from the file system, the
-> TCP receive queue on the Solaris 10 NFS server is empty, and the RPC pending
-> request queue on the Solaris 10 NFS server is zero.   If we dial the network
-> to 1GbE we get a nice deep TCP send queue on the client, which is the
-> bottleneck I was hoping to get to with 10GbE.  At this point, we am pretty
-> sure the S10 NFS server can run to at least 1000 MBPS.
->
-> So far, we have implemented the following Linux kernel tunes:
->
-> sunrpc.tcp_slot_table_entries = 128
-> net.core.rmem_default = 4194304
-> net.core.wmem_default = 4194304
-> net.core.rmem_max = 4194304
-> net.core.wmem_max = 4194304
-> net.ipv4.tcp_rmem = 4096 1048576 4194304
-> net.ipv4.tcp_wmem = 4096 1048576 4194304
-> net.ipv4.tcp_timestamps = 0
-> net.ipv4.tcp_syncookies = 1
-> net.core.netdev_max_backlog = 300000
->
-> In addition, we am running jumbo frames on the 10GbE NIC and we have
-> cpuspeed and irqbalance disabled (no noticeable changes when we did this).
->  The mount options on the client side are as follows:
->
-> 192.168.44.51:/export/share on /export/share type nfs
-> (rw,nointr,bg,hard,rsize=1048576,wsize=1048576,proto=tcp,vers=3,addr=192.168.44.51)
->
-> In this configuration we get about 330 MBPS of write throughput with 16
-> pending stable (open with O_DIRECT) synchronous (no kernel aio in the I/O
-> application) writes.  If we scale beyond 16 pending I/O response time
-> increases but throughput remains fixed.  It feels like there is a problem
-> with getting more than 16 pending I/O out to TCP, but we can't tell for sure
-> based on our observations so far.  We did notice that tuning the wsize down
-> to 32kB increased throughput to 400 MBPS, but we could not identify the root
-> cause of this change.
->
-> Please let us know if you have any suggestions for either diagnosing the
-> bottleneck more accurately or relieving the bottleneck.  Thank you in
-> advance.
->
-> Sincerely,
->
-> Jeff
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
