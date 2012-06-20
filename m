@@ -1,108 +1,153 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55621 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:59223 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754103Ab2FZLKb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Jun 2012 07:10:31 -0400
-Date: Tue, 26 Jun 2012 07:10:24 -0400
-From: Fields James <bfields@fieldses.org>
-To: Namjae Jeon <linkinjeon@gmail.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Morton Andrew <akpm@linux-foundation.org>,
-        Harrosh Boaz <bharrosh@panasas.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        Namjae Jeon <namjae.jeon@samsung.com>,
-        Vivek Trivedi <t.vivek@samsung.com>,
-        Amit Sahrawat <a.sahrawat@samsung.com>
-Subject: Re: [RFC PATCH] nfs: Add NFS3PROC_UMOUNT procedure.
-Message-ID: <20120626111024.GB14279@fieldses.org>
-References: <1340448406-10161-1-git-send-email-linkinjeon@gmail.com>
- <02B16139-AFD6-4F06-99C0-C406B1A7E1DC@netapp.com>
- <FE90D2E0-C4C9-44BC-829F-ABE94801AB4C@netapp.com>
- <20120623155710.GA10787@fieldses.org>
- <20120623160923.GB10787@fieldses.org>
- <CAKYAXd80v10car7awm3Y5bzk_nXLj8NLi7C8PxUW15L9-S7pEw@mail.gmail.com>
- <20120625113025.GB16920@fieldses.org>
- <CAKYAXd-h5FPZUDwvJdbXXeQtXjUqQE5s9e1CvuOdpQWgqzG8kw@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAKYAXd-h5FPZUDwvJdbXXeQtXjUqQE5s9e1CvuOdpQWgqzG8kw@mail.gmail.com>
+	id S1756094Ab2FTJiL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jun 2012 05:38:11 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 06/12] mm: Add get_kernel_page[s] for pinning of kernel addresses for I/O
+Date: Wed, 20 Jun 2012 10:37:55 +0100
+Message-Id: <1340185081-22525-7-git-send-email-mgorman@suse.de>
+In-Reply-To: <1340185081-22525-1-git-send-email-mgorman@suse.de>
+References: <1340185081-22525-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 26, 2012 at 02:51:52PM +0900, Namjae Jeon wrote:
-> 2012/6/25, Fields James <bfields@fieldses.org>:
-> > On Sun, Jun 24, 2012 at 02:12:49PM +0900, Namjae Jeon wrote:
-> >> 2012/6/24, Fields James <bfields@fieldses.org>:
-> >> > On Sat, Jun 23, 2012 at 11:57:10AM -0400, Fields James wrote:
-> >> >> On Sat, Jun 23, 2012 at 03:52:20PM +0000, Myklebust, Trond wrote:
-> >> >> > The other objection is that NFSv3 already has a way to do this via
-> >> >> > the
-> >> >> > MOUNT protocol. We already call MOUNTPROC3_UMNT/MOUNTPROC_UMNT on
-> >> >> > unmount of a filesystem.
-> >> >> >
-> >> >> > The problem with this approach is that if the NFS client crashes
-> >> >> > before
-> >> >> > it can call this function, then the server never gets notified. That
-> >> >> > is
-> >> >> > a problem that your patch has too...
-> >> >>
-> >> >> Yes.  Could you instead work on describing *exactly* what the original
-> >> >> problem was that prompted this?
-> >> >
-> >> > ("You" here meaning Namjae Jeon, of course).
-> >> >
-> >> > And note here we've all read the changelog, that's not what I'm asking
-> >> > for.
-> >> >
-> >> > I want to know the details of *your* specific case.  "I have X clients
-> >> > that I use for Y, periodically I want to unmount the exported
-> >> > filesystem
-> >> > to do Z, I tried doing W but it didn't work...".
-> >> As you remember, We discussed this
-> >> issue(http://www.spinics.net/lists/linux-nfs/msg29997.html) with you
-> >> before. you guided me to use exportfs -f call on nfs server.
-> >> It is hard to use this method on our system
-> >
-> > Why is it hard?
-> Two target are connected by only nfs.. we can't manually hand exportfs -f..
+This patch adds two new APIs get_kernel_pages() and get_kernel_page()
+that may be used to pin a vector of kernel addresses for IO. The initial
+user is expected to be NFS for allowing pages to be written to swap
+using aops->direct_IO(). Strictly speaking, swap-over-NFS only needs
+to pin one page for IO but it makes sense to express the API in terms
+of a vector and add a helper for pinning single pages.
 
-So how can you call umount?
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ include/linux/blk_types.h |    2 ++
+ include/linux/fs.h        |    2 ++
+ include/linux/mm.h        |    4 ++++
+ mm/memory.c               |   53 +++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 61 insertions(+)
 
---b.
+diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
+index 0edb65d..7b7ac9c 100644
+--- a/include/linux/blk_types.h
++++ b/include/linux/blk_types.h
+@@ -160,6 +160,7 @@ enum rq_flag_bits {
+ 	__REQ_FLUSH_SEQ,	/* request for flush sequence */
+ 	__REQ_IO_STAT,		/* account I/O stat */
+ 	__REQ_MIXED_MERGE,	/* merge of different types, fail separately */
++	__REQ_KERNEL, 		/* direct IO to kernel pages */
+ 	__REQ_NR_BITS,		/* stops here */
+ };
+ 
+@@ -201,5 +202,6 @@ enum rq_flag_bits {
+ #define REQ_IO_STAT		(1 << __REQ_IO_STAT)
+ #define REQ_MIXED_MERGE		(1 << __REQ_MIXED_MERGE)
+ #define REQ_SECURE		(1 << __REQ_SECURE)
++#define REQ_KERNEL		(1 << __REQ_KERNEL)
+ 
+ #endif /* __LINUX_BLK_TYPES_H */
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 0186d67..f21da77 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -165,6 +165,8 @@ struct inodes_stat_t {
+ #define READ			0
+ #define WRITE			RW_MASK
+ #define READA			RWA_MASK
++#define KERNEL_READ		(READ|REQ_KERNEL)
++#define KERNEL_WRITE		(WRITE|REQ_KERNEL)
+ 
+ #define READ_SYNC		(READ | REQ_SYNC)
+ #define WRITE_SYNC		(WRITE | REQ_SYNC | REQ_NOIDLE)
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index 0c0301c..b4924f0 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -1019,6 +1019,10 @@ int get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
+ 			struct page **pages, struct vm_area_struct **vmas);
+ int get_user_pages_fast(unsigned long start, int nr_pages, int write,
+ 			struct page **pages);
++struct kvec;
++int get_kernel_pages(const struct kvec *iov, int nr_pages, int write,
++			struct page **pages);
++int get_kernel_page(unsigned long start, int write, struct page **pages);
+ struct page *get_dump_page(unsigned long addr);
+ 
+ extern int try_to_release_page(struct page * page, gfp_t gfp_mask);
+diff --git a/mm/memory.c b/mm/memory.c
+index 1b7dc66..2d55992 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -1834,6 +1834,59 @@ next_page:
+ EXPORT_SYMBOL(__get_user_pages);
+ 
+ /*
++ * get_kernel_pages() - pin kernel pages in memory
++ * @kiov:	An array of struct kvec structures
++ * @nr_segs:	number of segments to pin
++ * @write:	pinning for read/write, currently ignored
++ * @pages:	array that receives pointers to the pages pinned.
++ *		Should be at least nr_segs long.
++ *
++ * Returns number of pages pinned. This may be fewer than the number
++ * requested. If nr_pages is 0 or negative, returns 0. If no pages
++ * were pinned, returns -errno. Each page returned must be released
++ * with a put_page() call when it is finished with.
++ */
++int get_kernel_pages(const struct kvec *kiov, int nr_segs, int write,
++		struct page **pages)
++{
++	int seg;
++
++	for (seg = 0; seg < nr_segs; seg++) {
++		if (WARN_ON(kiov[seg].iov_len != PAGE_SIZE))
++			return seg;
++
++		/* virt_to_page sanity checks the PFN */
++		pages[seg] = virt_to_page(kiov[seg].iov_base);
++		page_cache_get(pages[seg]);
++	}
++
++	return seg;
++}
++EXPORT_SYMBOL_GPL(get_kernel_pages);
++
++/*
++ * get_kernel_page() - pin a kernel page in memory
++ * @start:	starting kernel address
++ * @write:	pinning for read/write, currently ignored
++ * @pages:	array that receives pointer to the page pinned.
++ *		Must be at least nr_segs long.
++ *
++ * Returns 1 if page is pinned. If the page was not pinned, returns
++ * -errno. The page returned must be released with a put_page() call
++ * when it is finished with.
++ */
++int get_kernel_page(unsigned long start, int write, struct page **pages)
++{
++	const struct kvec kiov = {
++		.iov_base = (void *)start,
++		.iov_len = PAGE_SIZE
++	};
++
++	return get_kernel_pages(&kiov, 1, write, pages);
++}
++EXPORT_SYMBOL_GPL(get_kernel_page);
++
++/*
+  * fixup_user_fault() - manually resolve a user page fault
+  * @tsk:	the task_struct to use for page fault accounting, or
+  *		NULL if faults are not to be recorded.
+-- 
+1.7.9.2
 
-> And I should make each new App on client / server to call exportfs -f.
-> >
-> > Could you hack umount to do the equivalent of "exportfs -f" before
-> > calling the umount?
-> Good Idea! I will check your suggestion.
-> 
-> >
-> >> and nomally the user is
-> >> thinking it is problem device busy happen after umounting.
-> >>
-> >> The details of specific case.
-> >> 1. There are two target or two PC. and Client want to access files of
-> >> usb device on server.
-> >> 2. the client try to mount usb mount point using nfs on sever after
-> >> plugging usb device.
-> >> 3. we try to umount mount point directory on client.
-> >> 4. and when we try to umount usb device mount directory server, device
-> >> busy message occured like this (umount: can't umount /mnt: Device or
-> >> resource busy)
-> >
-> > Right, so I don't think you want protocol modifications.  They take a
-> > few years to get hammered out and then make it into implementations, and
-> > they won't help a great deal with your problem anyway.  (Because of
-> > problems like the possibility of lost "unmount" calls that Trond
-> > mentions.)
-> >
-> > Either modify umount itself to flush the export cache before attempting
-> > the unmount, or if that doesn't work perhaps you could patch the kernel
-> > to notify nfsd on unmount and let it attemt to clear its caches before
-> > deciding whether the filesystem is busy.
-> After checking your suggestion I will share with you.
-> Thanks a lot. James.
-> >
-> > --b.
-> >
