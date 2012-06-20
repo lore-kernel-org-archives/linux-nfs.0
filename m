@@ -1,39 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:49358 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751032Ab2FLHhV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Jun 2012 03:37:21 -0400
-Date: Tue, 12 Jun 2012 10:37:08 +0300
-From: Dan Carpenter <dan.carpenter@oracle.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Benny Halevy <bhalevy@panasas.com>, kernel-janitors@vger.kernel.org
-Subject: [patch 1/2] NFSv4.1: integer overflow in decode_cb_sequence_args()
-Message-ID: <20120612073707.GA15060@elgon.mountain>
+Received: from mx1.redhat.com ([209.132.183.28]:30104 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751965Ab2FTRRd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jun 2012 13:17:33 -0400
+Message-ID: <4FE2056B.3070407@redhat.com>
+Date: Wed, 20 Jun 2012 13:16:27 -0400
+From: Rik van Riel <riel@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+To: Mel Gorman <mgorman@suse.de>
+CC: Andrew Morton <akpm@linux-foundation.org>, Linux-MM <linux-mm@kvack.org>,
+        Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>
+Subject: Re: [PATCH 09/12] nfs: disable data cache revalidation for swapfiles
+References: <1340185081-22525-1-git-send-email-mgorman@suse.de> <1340185081-22525-10-git-send-email-mgorman@suse.de>
+In-Reply-To: <1340185081-22525-10-git-send-email-mgorman@suse.de>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This seems like it could overflow on 32 bits.  Use kmalloc_array() which
-has overflow protection built in.
+On 06/20/2012 05:37 AM, Mel Gorman wrote:
+> The VM does not like PG_private set on PG_swapcache pages. As suggested
+> by Trond in http://lkml.org/lkml/2006/8/25/348, this patch disables
+> NFS data cache revalidation on swap files.  as it does not make
+> sense to have other clients change the file while it is being used as
+> swap. This avoids setting PG_private on swap pages, since there ought
+> to be no further races with invalidate_inode_pages2() to deal with.
+>
+> Since we cannot set PG_private we cannot use page->private which
+> is already used by PG_swapcache pages to store the nfs_page. Thus
+> augment the new nfs_page_find_request logic.
+>
+> Signed-off-by: Peter Zijlstra<a.p.zijlstra@chello.nl>
+> Signed-off-by: Mel Gorman<mgorman@suse.de>
 
-Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+Acked-by: Rik van Riel<riel@redhat.com>
 
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 95bfc24..27c2969 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -455,9 +455,9 @@ static __be32 decode_cb_sequence_args(struct svc_rqst *rqstp,
- 	args->csa_nrclists = ntohl(*p++);
- 	args->csa_rclists = NULL;
- 	if (args->csa_nrclists) {
--		args->csa_rclists = kmalloc(args->csa_nrclists *
--					    sizeof(*args->csa_rclists),
--					    GFP_KERNEL);
-+		args->csa_rclists = kmalloc_array(args->csa_nrclists,
-+						  sizeof(*args->csa_rclists),
-+						  GFP_KERNEL);
- 		if (unlikely(args->csa_rclists == NULL))
- 			goto out;
- 
