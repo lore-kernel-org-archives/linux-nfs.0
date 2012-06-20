@@ -1,77 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:33714 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:52992 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762379Ab2FVObX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Jun 2012 10:31:23 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 11/12] nfs: Prevent page allocator recursions with swap over NFS.
-Date: Fri, 22 Jun 2012 15:31:07 +0100
-Message-Id: <1340375468-22509-12-git-send-email-mgorman@suse.de>
-In-Reply-To: <1340375468-22509-1-git-send-email-mgorman@suse.de>
-References: <1340375468-22509-1-git-send-email-mgorman@suse.de>
+	id S1757628Ab2FTTDt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jun 2012 15:03:49 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 2 0/4] NFSv4.1 enable fencing of file layout data servers
+Date: Wed, 20 Jun 2012 15:03:30 -0400
+Message-Id: <1340219014-5749-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-GFP_NOFS is _more_ permissive than GFP_NOIO in that it will initiate
-IO, just not of any filesystem data.
+From: Andy Adamson <andros@netapp.com>
 
-The problem is that previously NOFS was correct because that avoids
-recursion into the NFS code. With swap-over-NFS, it is no longer
-correct as swap IO can lead to this recursion.
+When I/O sent to a file layout data server has a connection error,the I/O
+is resent to the MDS. As with all mulipath I/O, we want to fence one path,
+the DS I/O path, ASAP to prevent data corruption.  PNFS provides the
+LAYOUTREURN call to fence file layout data servers.
 
-Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
-Acked-by: Rik van Riel <riel@redhat.com>
----
- fs/nfs/pagelist.c |    2 +-
- fs/nfs/write.c    |    4 ++--
- 2 files changed, 3 insertions(+), 3 deletions(-)
+The current implementation of _pnfs_return_layout does not take a layout range
+but returns all layouts. It also does not wait for all layout segments to
+be marked invalid prior to sending a LAYOUTRETURN. This works well for the
+file layout driver. Other drives can address these issues if needed.
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 9ef8b3c..7de1646 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -70,7 +70,7 @@ void nfs_set_pgio_error(struct nfs_pgio_header *hdr, int error, loff_t pos)
- static inline struct nfs_page *
- nfs_page_alloc(void)
- {
--	struct nfs_page	*p = kmem_cache_zalloc(nfs_page_cachep, GFP_KERNEL);
-+	struct nfs_page	*p = kmem_cache_zalloc(nfs_page_cachep, GFP_NOIO);
- 	if (p)
- 		INIT_LIST_HEAD(&p->wb_list);
- 	return p;
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 947e1e6..0f7fdb7 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -52,7 +52,7 @@ static mempool_t *nfs_commit_mempool;
- 
- struct nfs_commit_data *nfs_commitdata_alloc(void)
- {
--	struct nfs_commit_data *p = mempool_alloc(nfs_commit_mempool, GFP_NOFS);
-+	struct nfs_commit_data *p = mempool_alloc(nfs_commit_mempool, GFP_NOIO);
- 
- 	if (p) {
- 		memset(p, 0, sizeof(*p));
-@@ -70,7 +70,7 @@ EXPORT_SYMBOL_GPL(nfs_commit_free);
- 
- struct nfs_write_header *nfs_writehdr_alloc(void)
- {
--	struct nfs_write_header *p = mempool_alloc(nfs_wdata_mempool, GFP_NOFS);
-+	struct nfs_write_header *p = mempool_alloc(nfs_wdata_mempool, GFP_NOIO);
- 
- 	if (p) {
- 		struct nfs_pgio_header *hdr = &p->header;
+The first patch calls LAYOUTRETURN for each failed data server I/O.
+The second patch blocks sending a LAYOUTCOMMIT on the returned layouts.
+
+Because LAYOUTRETURN is called on each failed data server request, it can be
+called multiple times. The third patch addresses this by setting a flag. The
+flag is cleared on subsequent LAYOUTGETs.
+
+The DS connection error also causes the deviceid using the DS to be marked
+invalid. This prevents any new layouts from subsequent LAYOUTGETs that use the
+invalid deviceid from being cached - but the layout hdr is not reaped,
+resulting in a pnfs_layout_hdr with an empty plh_segs list.
+New LAYOUTGETs are allowed because they can use a new valid deviceid, and in
+fact, this is currently the only way an MDS can use pNFS again for files with
+layouts referring to an invalid deviceid.
+
+pnfs_layout_hdrs with empty plh_segs lists are prevented from sending a
+LAYOUTRETURN (on evict inode) by the last patch.
+
+Testing: Against the pynfs file layout server and network partioning the
+client from the DS.
+
+
+Andy Adamson (4):
+  NFSv4.1 return the LAYOUT for each file with failed DS connection I/O
+  NFSv4.1 don't send LAYOUTCOMMIT if data resent through MDS
+  NFSv4.1 mark layout when already returned
+  NFSv4.1 do not send LAYOUTRETURN on emtpy plh_segs list
+
+ fs/nfs/nfs4filelayout.c |    4 ++--
+ fs/nfs/pnfs.c           |   33 +++++++++++++++++++++++++++------
+ fs/nfs/pnfs.h           |   19 +++++++++++++++++++
+ 3 files changed, 48 insertions(+), 8 deletions(-)
+
 -- 
-1.7.9.2
+1.7.6.4
 
