@@ -1,47 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from minas.ics.muni.cz ([147.251.4.40]:52256 "EHLO minas.ics.muni.cz"
+Received: from cantor2.suse.de ([195.135.220.15]:59144 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752251Ab2FSJE0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Jun 2012 05:04:26 -0400
-Date: Tue, 19 Jun 2012 11:04:13 +0200
-From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 and Kerberos problem in svcgssd
-Message-ID: <20120619090413.GO30157@ics.muni.cz>
-References: <20120615223028.GS20917@ics.muni.cz>
- <20120618221437.GA13534@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-2
-In-Reply-To: <20120618221437.GA13534@fieldses.org>
+	id S1755768Ab2FTJiF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jun 2012 05:38:05 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 02/12] selinux: tag avc cache alloc as non-critical
+Date: Wed, 20 Jun 2012 10:37:51 +0100
+Message-Id: <1340185081-22525-3-git-send-email-mgorman@suse.de>
+In-Reply-To: <1340185081-22525-1-git-send-email-mgorman@suse.de>
+References: <1340185081-22525-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 18, 2012 at 06:14:37PM -0400, J. Bruce Fields wrote:
-> > it seems that -n option for rpc.svcgssd produces file descriptor leaks. It
-> > looks like this:
-> > 
-> > ls -l /proc/25920/fd/
-> > total 0
-> > lrwx------ 1 root root 64 Jun 16 00:13 29 -> /var/tmp/nfs_0
-> > lr-x------ 1 root root 64 Jun 16 00:13 3 -> pipe:[24457591]
-> > lrwx------ 1 root root 64 Jun 16 00:13 30 -> /var/tmp/nfs_0
-> > l-wx------ 1 root root 64 Jun 16 00:13 4 -> pipe:[24457591]
-> > lr-x------ 1 root root 64 Jun 16 00:13 5 -> pipe:[24457592]
-> > l-wx------ 1 root root 64 Jun 16 00:13 6 -> pipe:[24457592]
-> > lr-x------ 1 root root 64 Jun 16 00:13 7 -> /etc/gssapi_mech.conf
-> > lr-x------ 1 root root 64 Jun 16 00:13 8 ->
-> > /proc/25920/net/rpc/auth.rpcsec.init/channel
-> > lrwx------ 1 root root 64 Jun 16 00:13 9 -> /var/tmp/nfs_0
-> > 
-> > Is there any known fix for this? It runs quickly from max open files..
-> 
-> It doesn't look familiar to me.--b.
+Failing to allocate a cache entry will only harm performance not
+correctness.  Do not consume valuable reserve pages for something
+like that.
 
-seems to be KRB problem, however, I thought that it may be a problem in
-svcgssd as well.
+Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+Acked-by: Eric Paris <eparis@redhat.com>
+---
+ security/selinux/avc.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-https://bugzilla.redhat.com/show_bug.cgi?id=761006
-
+diff --git a/security/selinux/avc.c b/security/selinux/avc.c
+index 68d82da..4d3fab4 100644
+--- a/security/selinux/avc.c
++++ b/security/selinux/avc.c
+@@ -274,7 +274,7 @@ static struct avc_node *avc_alloc_node(void)
+ {
+ 	struct avc_node *node;
+ 
+-	node = kmem_cache_zalloc(avc_node_cachep, GFP_ATOMIC);
++	node = kmem_cache_zalloc(avc_node_cachep, GFP_ATOMIC|__GFP_NOMEMALLOC);
+ 	if (!node)
+ 		goto out;
+ 
 -- 
-Luká¹ Hejtmánek
+1.7.9.2
+
