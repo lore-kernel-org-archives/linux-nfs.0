@@ -1,51 +1,25 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.candelatech.com ([208.74.158.172]:38432 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753418Ab2F0SCx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jun 2012 14:02:53 -0400
-Received: from [192.168.100.111] (firewall.candelatech.com [70.89.124.249])
-	(authenticated bits=0)
-	by ns3.lanforge.com (8.14.2/8.14.2) with ESMTP id q5RI2rHm016152
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Wed, 27 Jun 2012 11:02:53 -0700
-Message-ID: <4FEB4ACD.8030307@candelatech.com>
-Date: Wed, 27 Jun 2012 11:02:53 -0700
-From: Ben Greear <greearb@candelatech.com>
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:61161 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757101Ab2FTQfQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Jun 2012 12:35:16 -0400
+Received: by dady13 with SMTP id y13so10048052dad.19
+        for <linux-nfs@vger.kernel.org>; Wed, 20 Jun 2012 09:35:15 -0700 (PDT)
+Date: Wed, 20 Jun 2012 09:35:10 -0700
+From: Greg KH <gregkh@linuxfoundation.org>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: stable@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: 3.4.z nfsd backports
+Message-ID: <20120620163510.GB6695@kroah.com>
+References: <1340050049-12880-1-git-send-email-bfields@redhat.com>
 MIME-Version: 1.0
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfsutils compile failure (NSM_DEFAULT_STATEDIR)
-References: <4FEB4702.3070700@candelatech.com>
-In-Reply-To: <4FEB4702.3070700@candelatech.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1340050049-12880-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/27/2012 10:46 AM, Ben Greear wrote:
-> I just rebased against upstream nfs-utils:
->
-> git://git.linux-nfs.org/projects/steved/nfs-utils.git
->
-> and it fails to build on Fedora 13 (and maybe others, haven't tried yet).
->
-> gcc -DHAVE_CONFIG_H -I. -I../../support/include  -I/usr/include/tirpc -D_GNU_SOURCE -Wall -Wextra -Wstrict-prototypes  -pipe -g -O2 -MT file.o -MD -MP -MF
-> .deps/file.Tpo -c -o file.o file.c
-> file.c:97: error: ‘NSM_DEFAULT_STATEDIR’ undeclared here (not in a function)
->
-> Any idea on the proper way to go about fixing this?
+On Mon, Jun 18, 2012 at 04:07:26PM -0400, J. Bruce Fields wrote:
+> These three patches are all upstream, but required some conflict
+> resolution to backport, so I'm sending backported versions.
 
-Maybe the issue is that 'make distclean' didn't remove the configure file.
-
-When I tried to re-generate the configure file, it blew up because
-my libgssglue is too old.  So, I'm just going to back all of this out
-and go back to the old code since I need to compile back to Fedora 8
-currently.
-
-Thanks,
-Ben
-
--- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
-
-
-
+Please resend all of these, with the correct git commit ids.
