@@ -1,71 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:49803 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:26285 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757508Ab2FZSNH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Jun 2012 14:13:07 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com
-Subject: [PATCH] NFS: Check if rpcauth_create() returns an error code
-Date: Tue, 26 Jun 2012 14:12:53 -0400
-Message-Id: <1340734373-5596-1-git-send-email-bjschuma@netapp.com>
+	id S932791Ab2FUVvi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Jun 2012 17:51:38 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 8/8] SUNRPC: Clean up xdr_read_pages and xdr_enter_page
+Date: Thu, 21 Jun 2012 17:51:27 -0400
+Message-Id: <1340315487-18309-8-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1340315487-18309-7-git-send-email-Trond.Myklebust@netapp.com>
+References: <1340315487-18309-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1340315487-18309-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1340315487-18309-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1340315487-18309-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1340315487-18309-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1340315487-18309-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1340315487-18309-7-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Move the page alignment code into a separate helper.
 
-I was treating a NULL return value as an error, but this function will
-instead return an ERR_PTR().  Now that I'm checking if the function
-returns an error, I should also pass the error up the call stack.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/nfs4namespace.c |  4 ++--
- fs/nfs/nfs4proc.c      | 15 ++++-----------
- 2 files changed, 6 insertions(+), 13 deletions(-)
+ net/sunrpc/xdr.c |   48 ++++++++++++++++++++++++++++++------------------
+ 1 file changed, 30 insertions(+), 18 deletions(-)
 
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index 017b4b0..a8aafc6 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -205,9 +205,9 @@ struct rpc_clnt *nfs4_create_sec_client(struct rpc_clnt *clnt, struct inode *ino
- 		return clone;
- 
- 	auth = rpcauth_create(flavor, clone);
--	if (!auth) {
-+	if (IS_ERR(auth)) {
- 		rpc_shutdown_client(clone);
--		clone = ERR_PTR(-EIO);
-+		clone = ERR_CAST(auth);
- 	}
- 
- 	return clone;
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5a7b372..f817587 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2356,17 +2356,10 @@ out:
- static int nfs4_lookup_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
- 				struct nfs_fsinfo *info, rpc_authflavor_t flavor)
- {
--	struct rpc_auth *auth;
--	int ret;
--
--	auth = rpcauth_create(flavor, server->client);
--	if (!auth) {
--		ret = -EIO;
--		goto out;
--	}
--	ret = nfs4_lookup_root(server, fhandle, info);
--out:
--	return ret;
-+	struct rpc_auth *auth = rpcauth_create(flavor, server->client);
-+	if (IS_ERR(auth))
-+		return PTR_ERR(auth);
-+	return nfs4_lookup_root(server, fhandle, info);
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index 9e21927..5440fc4 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -745,6 +745,30 @@ __be32 * xdr_inline_decode(struct xdr_stream *xdr, size_t nbytes)
  }
+ EXPORT_SYMBOL_GPL(xdr_inline_decode);
  
- static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
++static unsigned int xdr_align_pages(struct xdr_stream *xdr, unsigned int len)
++{
++	struct xdr_buf *buf = xdr->buf;
++	struct kvec *iov;
++	unsigned int nwords = XDR_QUADLEN(len);
++	unsigned int cur = xdr_stream_pos(xdr);
++
++	if (xdr->nwords == 0)
++		return 0;
++	if (nwords > xdr->nwords) {
++		nwords = xdr->nwords;
++		len = nwords << 2;
++	}
++	/* Realign pages to current pointer position */
++	iov  = buf->head;
++	if (cur < iov->iov_len)
++		xdr_shrink_bufhead(buf, iov->iov_len - cur);
++
++	/* Truncate page data and move it into the tail */
++	if (buf->page_len > len)
++		xdr_shrink_pagelen(buf, buf->page_len - len);
++	return len;
++}
++
+ /**
+  * xdr_read_pages - Ensure page-based XDR data to decode is aligned at current pointer position
+  * @xdr: pointer to xdr_stream struct
+@@ -761,26 +785,14 @@ unsigned int xdr_read_pages(struct xdr_stream *xdr, unsigned int len)
+ 	struct xdr_buf *buf = xdr->buf;
+ 	struct kvec *iov;
+ 	ssize_t shift;
+-	unsigned int nwords = XDR_QUADLEN(len);
+ 	unsigned int end;
+ 	int padding;
+ 
+-	if (xdr->nwords == 0)
++	len = xdr_align_pages(xdr, len);
++	if (len == 0)
+ 		return 0;
+-	if (nwords > xdr->nwords) {
+-		nwords = xdr->nwords;
+-		len = nwords << 2;
+-	}
+-	/* Realign pages to current pointer position */
+-	iov  = buf->head;
+-	shift = iov->iov_len + (char *)iov->iov_base - (char *)xdr->p;
+-	if (shift > 0)
+-		xdr_shrink_bufhead(buf, shift);
+ 
+-	/* Truncate page data and move it into the tail */
+-	if (buf->page_len > len)
+-		xdr_shrink_pagelen(buf, buf->page_len - len);
+-	padding = (nwords << 2) - len;
++	padding = (XDR_QUADLEN(len) << 2) - len;
+ 	xdr->iov = iov = buf->tail;
+ 	/* Compute remaining message length.  */
+ 	end = iov->iov_len;
+@@ -812,13 +824,13 @@ EXPORT_SYMBOL_GPL(xdr_read_pages);
+  */
+ void xdr_enter_page(struct xdr_stream *xdr, unsigned int len)
+ {
+-	len = xdr_read_pages(xdr, len);
++	len = xdr_align_pages(xdr, len);
+ 	/*
+ 	 * Position current pointer at beginning of tail, and
+ 	 * set remaining message length.
+ 	 */
+-	xdr_set_page_base(xdr, 0, len);
+-	xdr->nwords += XDR_QUADLEN(xdr->buf->page_len);
++	if (len != 0)
++		xdr_set_page_base(xdr, 0, len);
+ }
+ EXPORT_SYMBOL_GPL(xdr_enter_page);
+ 
 -- 
-1.7.11.1
+1.7.10.2
 
