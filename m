@@ -1,48 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:19443 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760310Ab2FUVRV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jun 2012 17:17:21 -0400
-Subject: Re: Diagnosing and resolving bottleneck with NFS I/O
-Mime-Version: 1.0 (Apple Message framework v1278)
-Content-Type: text/plain; charset=US-ASCII
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4FE3789A.4090305@oracle.com>
-Date: Thu, 21 Jun 2012 17:17:16 -0400
-Cc: linux-nfs@vger.kernel.org, Craig Flaskerud <Craig.flaskerud@oracle.com>,
-        Andy Adamson <androsadamson@gmail.com>
-Message-Id: <AF35F0DD-427A-4CC5-8E96-DEE760757762@oracle.com>
-References: <4FE3789A.4090305@oracle.com>
-To: Jeff Wright <Jeff.Wright@oracle.com>
+Received: from cantor2.suse.de ([195.135.220.15]:33597 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1762273Ab2FVObM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Jun 2012 10:31:12 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 02/12] selinux: tag avc cache alloc as non-critical
+Date: Fri, 22 Jun 2012 15:30:58 +0100
+Message-Id: <1340375468-22509-3-git-send-email-mgorman@suse.de>
+In-Reply-To: <1340375468-22509-1-git-send-email-mgorman@suse.de>
+References: <1340375468-22509-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi-
+Failing to allocate a cache entry will only harm performance not
+correctness.  Do not consume valuable reserve pages for something
+like that.
 
-On Jun 21, 2012, at 3:40 PM, Jeff Wright wrote:
+Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+Acked-by: Eric Paris <eparis@redhat.com>
+Acked-by: Rik van Riel <riel@redhat.com>
+---
+ security/selinux/avc.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-> To simplify analysis we ran an application that would time the execution of stable pwrite64() (O_DIRECT) for a single I/O.  We observed a large increase in response time at the application (time to run pwrite64()) compared to the reported response time from nfsiostat.  We also measured that the response time measured by nfsiostat on the client closely matched the back-end media response time in the server, and that the RPC backlog was 0.  netstat showed that we had some data in the TCP send queue on the client, but not overloaded, and that we had very little data in the TCP receive queue on the server.  The values of the I/O rate and response time in this test were as follows:
-> * Application I/O rate: 102 IOPS
-> * Application I/O response time: 9.9 ms
-> * nfsstat I/O rate: 102 IOPS
-> * nfsstat I/O response time (RTT): 3.8 ms
-> * NFS server I/O rate: 104
-> * NFS server I/O response time: 1.5 ms
-> * Media I/O rate: 105 IOPS
-> * Media I/O response  time: 3.2 ms
-> 
-> In this use case I think we have unstable writes from the NFS client followed by commits, and this would lead to the short NFS server write response time because the commit is not included.  The nfsstat response time matching the media response time would be correct if the nfsstat response time included the commit time for the I/O.  Could anyone verify if the RTT reported includes the the total time to commit the writes, or if it only includes the write and not the subsequent commit?
-
-It depends on whether the server performs a FILE_SYNC or UNSTABLE write.  nfsiostat doesn't distinguish between them, and the server is free to promote an UNSTABLE write request to a FILE_SYNC write.
-
-If a write is UNSTABLE, then no, the "commit" time is not included in the WRITE RTT statistic.  If a write is FILE_SYNC, then the "commit" time is built into the WRITE request, and the WRITE RTT statistic includes it.
-
-Servers generally don't promote UNSTABLE writes, but NetApp always does.  Clients seldom request FILE_SYNC writes, though they will in some circumstances.
-
+diff --git a/security/selinux/avc.c b/security/selinux/avc.c
+index 68d82da..4d3fab4 100644
+--- a/security/selinux/avc.c
++++ b/security/selinux/avc.c
+@@ -274,7 +274,7 @@ static struct avc_node *avc_alloc_node(void)
+ {
+ 	struct avc_node *node;
+ 
+-	node = kmem_cache_zalloc(avc_node_cachep, GFP_ATOMIC);
++	node = kmem_cache_zalloc(avc_node_cachep, GFP_ATOMIC|__GFP_NOMEMALLOC);
+ 	if (!node)
+ 		goto out;
+ 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.9.2
 
