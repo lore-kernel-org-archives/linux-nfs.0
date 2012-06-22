@@ -1,102 +1,154 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:36371 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:33647 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758345Ab2FAVBk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Jun 2012 17:01:40 -0400
-From: andros@netapp.com
-To: iisaman@netapp.com
-Cc: linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@fedora-64-2.gateway.2wire.net>,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH 6/6] PYNFS implement FREE_STATEID and TEST_STATEID operations
-Date: Tue, 29 May 2012 17:57:59 -0400
-Message-Id: <1338328679-28837-7-git-send-email-andros@netapp.com>
-In-Reply-To: <1338328679-28837-1-git-send-email-andros@netapp.com>
-References: <1338328679-28837-1-git-send-email-andros@netapp.com>
+	id S1762339Ab2FVObR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Jun 2012 10:31:17 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 06/12] mm: Add get_kernel_page[s] for pinning of kernel addresses for I/O
+Date: Fri, 22 Jun 2012 15:31:02 +0100
+Message-Id: <1340375468-22509-7-git-send-email-mgorman@suse.de>
+In-Reply-To: <1340375468-22509-1-git-send-email-mgorman@suse.de>
+References: <1340375468-22509-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@fedora-64-2.gateway.2wire.net>
+This patch adds two new APIs get_kernel_pages() and get_kernel_page()
+that may be used to pin a vector of kernel addresses for IO. The initial
+user is expected to be NFS for allowing pages to be written to swap
+using aops->direct_IO(). Strictly speaking, swap-over-NFS only needs
+to pin one page for IO but it makes sense to express the API in terms
+of a vector and add a helper for pinning single pages.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+Reviewed-by: Rik van Riel <riel@redhat.com>
 ---
- nfs4.1/nfs4server.py |   33 +++++++++++++++++++++++++++++++++
- nfs4.1/nfs4state.py  |   11 ++++++-----
- 2 files changed, 39 insertions(+), 5 deletions(-)
+ include/linux/blk_types.h |    2 ++
+ include/linux/fs.h        |    2 ++
+ include/linux/mm.h        |    4 ++++
+ mm/memory.c               |   53 +++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 61 insertions(+)
 
-diff --git a/nfs4.1/nfs4server.py b/nfs4.1/nfs4server.py
-index b279292..8d0f112 100755
---- a/nfs4.1/nfs4server.py
-+++ b/nfs4.1/nfs4server.py
-@@ -1296,6 +1296,39 @@ class NFS4Server(rpc.Server):
-         res = READ4resok(eof, data)
-         return encode_status(NFS4_OK, res)
+diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
+index 0edb65d..7b7ac9c 100644
+--- a/include/linux/blk_types.h
++++ b/include/linux/blk_types.h
+@@ -160,6 +160,7 @@ enum rq_flag_bits {
+ 	__REQ_FLUSH_SEQ,	/* request for flush sequence */
+ 	__REQ_IO_STAT,		/* account I/O stat */
+ 	__REQ_MIXED_MERGE,	/* merge of different types, fail separately */
++	__REQ_KERNEL, 		/* direct IO to kernel pages */
+ 	__REQ_NR_BITS,		/* stops here */
+ };
  
-+    def op_free_stateid(self, arg, env):
-+        check_session(env)
-+        status = NFS4_OK
-+        with find_state(env, arg.fsa_stateid, no_fh=True) as state:
-+            try:
-+                log_41.info("free_stateid found state DELETING state")
-+                state.delete()
-+            except NFS4Error, e:
-+                log_41.info("free_stateid %s error: %d") % (arg.fsa_stateid, e.status)
-+                status = e.status
-+
-+	res = FREE_STATEID4res(fsr_status = status)
-+        return encode_status(NFS4_OK)
-+
-+    def op_test_stateid(self, arg, env):
-+        check_session(env)
-+	out = []
-+        for stateid in arg.ts_stateids:
-+            status = NFS4_OK
-+            with find_state(env, stateid, no_fh=True) as state:
-+                try:
-+                    log_41.info("test_stateid found state")
-+                    self.check_opsconfig(env, "test_stateid")
-+                except NFS4Error, e:
-+                    if (e.status == NFS4ERR_BAD_STATEID or e.status == NFS4ERR_ADMIN_REVOKED or e.status == NFS4ERR_OPENMODE):
-+                        state.delete()
-+                    status = e.status
-+                finally:
-+                    out.append(status)
-+
-+	res = TEST_STATEID4resok(tsr_status_codes = out)
-+        return encode_status(NFS4_OK, res)
-+
-     def op_open(self, arg, env):
-         self.check_opsconfig(env, "open")
-         check_session(env)
-diff --git a/nfs4.1/nfs4state.py b/nfs4.1/nfs4state.py
-index e8445e3..a6b21f4 100644
---- a/nfs4.1/nfs4state.py
-+++ b/nfs4.1/nfs4state.py
-@@ -23,7 +23,7 @@ NORMAL, CB_INIT, CB_SENT, CB_RECEIVED, INVALID = range(5) # delegation/layout st
- DS_MAGIC = "\xa5" # STUB part of HACK code to ignore DS stateid
+@@ -201,5 +202,6 @@ enum rq_flag_bits {
+ #define REQ_IO_STAT		(1 << __REQ_IO_STAT)
+ #define REQ_MIXED_MERGE		(1 << __REQ_MIXED_MERGE)
+ #define REQ_SECURE		(1 << __REQ_SECURE)
++#define REQ_KERNEL		(1 << __REQ_KERNEL)
  
- @contextmanager
--def find_state(env, stateid, allow_0=True, allow_bypass=False):
-+def find_state(env, stateid, allow_0=True, allow_bypass=False, no_fh=False):
-     """Find the matching StateTableEntry, and manage its lock."""
-     anon = False
-     if env.is_ds:
-@@ -57,10 +57,11 @@ def find_state(env, stateid, allow_0=True, allow_bypass=False):
-         state = env.session.client.state.get(stateid.other, None)
-         if state is None:
-             raise NFS4Error(NFS4ERR_BAD_STATEID, tag="stateid not known")
--        if state.file != env.cfh:
--            raise NFS4Error(NFS4ERR_BAD_STATEID,
--                            tag="cfh %r does not match stateid %r" % 
--                            (state.file.fh, env.cfh.fh))
-+        if no_fh == False:
-+            if state.file != env.cfh:
-+                raise NFS4Error(NFS4ERR_BAD_STATEID,
-+                                tag="cfh %r does not match stateid %r" % 
-+                                (state.file.fh, env.cfh.fh))
-     state.lock.acquire()
-     # It is possible that while waiting to get the lock, the state has been
-     # removed.  In that case, the removal sets the invalid flag.
+ #endif /* __LINUX_BLK_TYPES_H */
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index f5e5bbb..adf1b7d 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -165,6 +165,8 @@ struct inodes_stat_t {
+ #define READ			0
+ #define WRITE			RW_MASK
+ #define READA			RWA_MASK
++#define KERNEL_READ		(READ|REQ_KERNEL)
++#define KERNEL_WRITE		(WRITE|REQ_KERNEL)
+ 
+ #define READ_SYNC		(READ | REQ_SYNC)
+ #define WRITE_SYNC		(WRITE | REQ_SYNC | REQ_NOIDLE)
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index b3d4cd9..bbb3167 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -1019,6 +1019,10 @@ int get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
+ 			struct page **pages, struct vm_area_struct **vmas);
+ int get_user_pages_fast(unsigned long start, int nr_pages, int write,
+ 			struct page **pages);
++struct kvec;
++int get_kernel_pages(const struct kvec *iov, int nr_pages, int write,
++			struct page **pages);
++int get_kernel_page(unsigned long start, int write, struct page **pages);
+ struct page *get_dump_page(unsigned long addr);
+ 
+ extern int try_to_release_page(struct page * page, gfp_t gfp_mask);
+diff --git a/mm/memory.c b/mm/memory.c
+index 6322d36..c8153f5 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -1843,6 +1843,59 @@ next_page:
+ EXPORT_SYMBOL(__get_user_pages);
+ 
+ /*
++ * get_kernel_pages() - pin kernel pages in memory
++ * @kiov:	An array of struct kvec structures
++ * @nr_segs:	number of segments to pin
++ * @write:	pinning for read/write, currently ignored
++ * @pages:	array that receives pointers to the pages pinned.
++ *		Should be at least nr_segs long.
++ *
++ * Returns number of pages pinned. This may be fewer than the number
++ * requested. If nr_pages is 0 or negative, returns 0. If no pages
++ * were pinned, returns -errno. Each page returned must be released
++ * with a put_page() call when it is finished with.
++ */
++int get_kernel_pages(const struct kvec *kiov, int nr_segs, int write,
++		struct page **pages)
++{
++	int seg;
++
++	for (seg = 0; seg < nr_segs; seg++) {
++		if (WARN_ON(kiov[seg].iov_len != PAGE_SIZE))
++			return seg;
++
++		/* virt_to_page sanity checks the PFN */
++		pages[seg] = virt_to_page(kiov[seg].iov_base);
++		page_cache_get(pages[seg]);
++	}
++
++	return seg;
++}
++EXPORT_SYMBOL_GPL(get_kernel_pages);
++
++/*
++ * get_kernel_page() - pin a kernel page in memory
++ * @start:	starting kernel address
++ * @write:	pinning for read/write, currently ignored
++ * @pages:	array that receives pointer to the page pinned.
++ *		Must be at least nr_segs long.
++ *
++ * Returns 1 if page is pinned. If the page was not pinned, returns
++ * -errno. The page returned must be released with a put_page() call
++ * when it is finished with.
++ */
++int get_kernel_page(unsigned long start, int write, struct page **pages)
++{
++	const struct kvec kiov = {
++		.iov_base = (void *)start,
++		.iov_len = PAGE_SIZE
++	};
++
++	return get_kernel_pages(&kiov, 1, write, pages);
++}
++EXPORT_SYMBOL_GPL(get_kernel_page);
++
++/*
+  * fixup_user_fault() - manually resolve a user page fault
+  * @tsk:	the task_struct to use for page fault accounting, or
+  *		NULL if faults are not to be recorded.
 -- 
-1.7.7.6
+1.7.9.2
 
