@@ -1,58 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56213 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:33729 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753790Ab2FTN1j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jun 2012 09:27:39 -0400
-Date: Wed, 20 Jun 2012 09:27:38 -0400
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: stable@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>
-Subject: [PATCH 4/3] lockd: hard-code init_net in lockd case as well
-Message-ID: <20120620132738.GA30742@fieldses.org>
-References: <1340050049-12880-1-git-send-email-bfields@redhat.com>
- <1340050049-12880-4-git-send-email-bfields@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1340050049-12880-4-git-send-email-bfields@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S932210Ab2FVObZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Jun 2012 10:31:25 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 12/12] Avoid dereferencing bd_disk during swap_entry_free for network storage
+Date: Fri, 22 Jun 2012 15:31:08 +0100
+Message-Id: <1340375468-22509-13-git-send-email-mgorman@suse.de>
+In-Reply-To: <1340375468-22509-1-git-send-email-mgorman@suse.de>
+References: <1340375468-22509-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Commit [b3a27d: swap: Add swap slot free callback to
+block_device_operations] dereferences p->bdev->bd_disk but this is a
+NULL dereference if using swap-over-NFS. This patch checks SWP_BLKDEV
+on the swap_info_struct before dereferencing.
 
-The previous patch missed lockd_down, which has the same problem.
-Symptoms were crashes on unmount or reboot.
+With reference to this callback, Christoph Hellwig stated "Please
+just remove the callback entirely.  It has no user outside the staging
+tree and was added clearly against the rules for that staging tree".
+This would also be my preference but there was not an obvious way of
+keeping zram in staging/ happy.
 
-Note this was fixed in a different way upstream.
-
-Acked-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Xiaotian Feng <dfeng@redhat.com>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+Acked-by: Rik van Riel <riel@redhat.com>
 ---
- fs/lockd/svc.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ mm/swapfile.c |    9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index f1b3cce..c933df4 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -300,7 +300,7 @@ int lockd_up(void)
- {
- 	struct svc_serv *serv;
- 	int		error = 0;
--	struct net *net = current->nsproxy->net_ns;
-+	struct net *net = &init_net;
- 	struct lockd_net *ln = net_generic(net, lockd_net_id);
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index 1d77b13..f4c802d 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -549,7 +549,6 @@ static unsigned char swap_entry_free(struct swap_info_struct *p,
  
- 	mutex_lock(&nlmsvc_mutex);
-@@ -391,7 +391,7 @@ void
- lockd_down(void)
- {
- 	mutex_lock(&nlmsvc_mutex);
--	lockd_down_net(current->nsproxy->net_ns);
-+	lockd_down_net(&init_net);
- 	if (nlmsvc_users) {
- 		if (--nlmsvc_users)
- 			goto out;
+ 	/* free if no reference */
+ 	if (!usage) {
+-		struct gendisk *disk = p->bdev->bd_disk;
+ 		if (offset < p->lowest_bit)
+ 			p->lowest_bit = offset;
+ 		if (offset > p->highest_bit)
+@@ -560,9 +559,11 @@ static unsigned char swap_entry_free(struct swap_info_struct *p,
+ 		nr_swap_pages++;
+ 		p->inuse_pages--;
+ 		frontswap_invalidate_page(p->type, offset);
+-		if ((p->flags & SWP_BLKDEV) &&
+-				disk->fops->swap_slot_free_notify)
+-			disk->fops->swap_slot_free_notify(p->bdev, offset);
++		if (p->flags & SWP_BLKDEV) {
++			struct gendisk *disk = p->bdev->bd_disk;
++			if (disk->fops->swap_slot_free_notify)
++				disk->fops->swap_slot_free_notify(p->bdev, offset);
++		}
+ 	}
+ 
+ 	return usage;
 -- 
-1.7.9.5
+1.7.9.2
 
