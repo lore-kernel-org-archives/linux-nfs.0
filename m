@@ -1,124 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:45936 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932794Ab2F2S6b (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jun 2012 14:58:31 -0400
-Received: by mail-gg0-f174.google.com with SMTP id u4so3043915ggl.19
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Jun 2012 11:58:31 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v3 17/17] vfs: have faccessat retry once on an ESTALE error
-Date: Fri, 29 Jun 2012 14:58:00 -0400
-Message-Id: <1340996280-27123-18-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
-References: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
+Received: from cantor2.suse.de ([195.135.220.15]:33655 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1762323Ab2FVObT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Jun 2012 10:31:19 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 07/12] mm: Add support for direct_IO to highmem pages
+Date: Fri, 22 Jun 2012 15:31:03 +0100
+Message-Id: <1340375468-22509-8-git-send-email-mgorman@suse.de>
+In-Reply-To: <1340375468-22509-1-git-send-email-mgorman@suse.de>
+References: <1340375468-22509-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/open.c |   70 ++++++++++++++++++++++++++++++++++--------------------------
- 1 files changed, 40 insertions(+), 30 deletions(-)
+The patch "mm: Add support for a filesystem to activate swap files and
+use direct_IO for writing swap pages" added support for using direct_IO
+to write swap pages but it is insufficient for highmem pages.
 
-diff --git a/fs/open.c b/fs/open.c
-index e813d90..2bdc531 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -313,6 +313,9 @@ SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
- 	struct path path;
- 	struct inode *inode;
- 	int res;
-+	unsigned int lookup_flags = LOOKUP_FOLLOW;
-+	unsigned int try = 0;
-+	char *name;
+To support highmem pages, this patch kmaps() the page before calling the
+direct_IO() handler. As direct_IO deals with virtual addresses an
+additional helper is necessary for get_kernel_pages() to lookup the
+struct page for a kmap virtual address.
+
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+Acked-by: Rik van Riel <riel@redhat.com>
+---
+ include/linux/highmem.h |    7 +++++++
+ mm/highmem.c            |   12 ++++++++++++
+ mm/memory.c             |    3 +--
+ mm/page_io.c            |    3 ++-
+ 4 files changed, 22 insertions(+), 3 deletions(-)
+
+diff --git a/include/linux/highmem.h b/include/linux/highmem.h
+index d3999b4..e186e3c 100644
+--- a/include/linux/highmem.h
++++ b/include/linux/highmem.h
+@@ -39,10 +39,17 @@ extern unsigned long totalhigh_pages;
  
- 	if (mode & ~S_IRWXO)	/* where's F_OK, X_OK, W_OK, R_OK? */
- 		return -EINVAL;
-@@ -334,44 +337,51 @@ SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
- 				override_cred->cap_permitted;
+ void kmap_flush_unused(void);
+ 
++struct page *kmap_to_page(void *addr);
++
+ #else /* CONFIG_HIGHMEM */
+ 
+ static inline unsigned int nr_free_highpages(void) { return 0; }
+ 
++static inline struct page *kmap_to_page(void *addr)
++{
++	return virt_to_page(addr);
++}
++
+ #define totalhigh_pages 0UL
+ 
+ #ifndef ARCH_HAS_KMAP
+diff --git a/mm/highmem.c b/mm/highmem.c
+index 57d82c6..d517cd1 100644
+--- a/mm/highmem.c
++++ b/mm/highmem.c
+@@ -94,6 +94,18 @@ static DECLARE_WAIT_QUEUE_HEAD(pkmap_map_wait);
+ 		do { spin_unlock(&kmap_lock); (void)(flags); } while (0)
+ #endif
+ 
++struct page *kmap_to_page(void *vaddr)
++{
++	unsigned long addr = (unsigned long)vaddr;
++
++	if (addr >= PKMAP_ADDR(0) && addr <= PKMAP_ADDR(LAST_PKMAP)) {
++		int i = (addr - PKMAP_ADDR(0)) >> PAGE_SHIFT;
++		return pte_page(pkmap_page_table[i]);
++	}
++
++	return virt_to_page(addr);
++}
++
+ static void flush_all_zero_pkmaps(void)
+ {
+ 	int i;
+diff --git a/mm/memory.c b/mm/memory.c
+index c8153f5..94f916e 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -1864,8 +1864,7 @@ int get_kernel_pages(const struct kvec *kiov, int nr_segs, int write,
+ 		if (WARN_ON(kiov[seg].iov_len != PAGE_SIZE))
+ 			return seg;
+ 
+-		/* virt_to_page sanity checks the PFN */
+-		pages[seg] = virt_to_page(kiov[seg].iov_base);
++		pages[seg] = kmap_to_page(kiov[seg].iov_base);
+ 		page_cache_get(pages[seg]);
  	}
  
-+	name = getname_flags(filename, lookup_flags, NULL);
-+	if (IS_ERR(name))
-+		return PTR_ERR(name);
-+
- 	old_cred = override_creds(override_cred);
+diff --git a/mm/page_io.c b/mm/page_io.c
+index 4a37962..78eee32 100644
+--- a/mm/page_io.c
++++ b/mm/page_io.c
+@@ -205,7 +205,7 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
+ 		struct file *swap_file = sis->swap_file;
+ 		struct address_space *mapping = swap_file->f_mapping;
+ 		struct iovec iov = {
+-			.iov_base = page_address(page),
++			.iov_base = kmap(page),
+ 			.iov_len  = PAGE_SIZE,
+ 		};
  
--	res = user_path_at(dfd, filename, LOOKUP_FOLLOW, &path);
--	if (res)
--		goto out;
-+	do {
-+		res = kern_path_at(dfd, name, lookup_flags, &path);
-+		if (res)
-+			break;
- 
--	inode = path.dentry->d_inode;
-+		inode = path.dentry->d_inode;
- 
--	if ((mode & MAY_EXEC) && S_ISREG(inode->i_mode)) {
-+		if ((mode & MAY_EXEC) && S_ISREG(inode->i_mode)) {
-+			/*
-+			 * MAY_EXEC on regular files is denied if the fs is
-+			 * mounted with the "noexec" flag.
-+			 */
-+			res = -EACCES;
-+			if (path.mnt->mnt_flags & MNT_NOEXEC)
-+				goto out_path_release;
-+		}
-+
-+		res = inode_permission(inode, mode | MAY_ACCESS);
-+		/* SuS v2 requires we report a read only fs too */
-+		if (res || !(mode & S_IWOTH) || special_file(inode->i_mode))
-+			goto out_path_release;
- 		/*
--		 * MAY_EXEC on regular files is denied if the fs is mounted
--		 * with the "noexec" flag.
-+		 * This is a rare case where using __mnt_is_readonly()
-+		 * is OK without a mnt_want/drop_write() pair.  Since
-+		 * no actual write to the fs is performed here, we do
-+		 * not need to telegraph to that to anyone.
-+		 *
-+		 * By doing this, we accept that this access is
-+		 * inherently racy and know that the fs may change
-+		 * state before we even see this result.
- 		 */
--		res = -EACCES;
--		if (path.mnt->mnt_flags & MNT_NOEXEC)
--			goto out_path_release;
--	}
--
--	res = inode_permission(inode, mode | MAY_ACCESS);
--	/* SuS v2 requires we report a read only fs too */
--	if (res || !(mode & S_IWOTH) || special_file(inode->i_mode))
--		goto out_path_release;
--	/*
--	 * This is a rare case where using __mnt_is_readonly()
--	 * is OK without a mnt_want/drop_write() pair.  Since
--	 * no actual write to the fs is performed here, we do
--	 * not need to telegraph to that to anyone.
--	 *
--	 * By doing this, we accept that this access is
--	 * inherently racy and know that the fs may change
--	 * state before we even see this result.
--	 */
--	if (__mnt_is_readonly(path.mnt))
--		res = -EROFS;
-+		if (__mnt_is_readonly(path.mnt))
-+			res = -EROFS;
- 
- out_path_release:
--	path_put(&path);
--out:
-+		path_put(&path);
-+		lookup_flags |= LOOKUP_REVAL;
-+	} while (retry_estale(res, try++));
-+	putname(name);
- 	revert_creds(old_cred);
- 	put_cred(override_cred);
- 	return res;
+@@ -218,6 +218,7 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
+ 		ret = mapping->a_ops->direct_IO(KERNEL_WRITE,
+ 						&kiocb, &iov,
+ 						kiocb.ki_pos, 1);
++		kunmap(page);
+ 		if (ret == PAGE_SIZE) {
+ 			count_vm_event(PSWPOUT);
+ 			ret = 0;
 -- 
-1.7.7.6
+1.7.9.2
 
