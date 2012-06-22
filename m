@@ -1,59 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 8bytes.org ([85.214.48.195]:57365 "EHLO
-	h2027444.stratoserver.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754882Ab2FHNdT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jun 2012 09:33:19 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by h2027444.stratoserver.net (Postfix) with SMTP id 2365A12B094
-	for <linux-nfs@vger.kernel.org>; Fri,  8 Jun 2012 15:33:18 +0200 (CEST)
-Date: Fri, 8 Jun 2012 15:33:17 +0200
-From: Joerg Roedel <joro@8bytes.org>
-To: Bryan Schumaker <bjschuma@netapp.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: NFS regression in v3.5-rc1: mount.nfs yells about incorrect
- mount option
-Message-ID: <20120608133317.GW12795@8bytes.org>
-References: <20120607150456.GO12795@8bytes.org>
- <4FD0C4C2.8020605@netapp.com>
- <20120607155006.GR12795@8bytes.org>
- <4FD0CEB0.9040804@netapp.com>
- <20120608130352.GU12795@8bytes.org>
- <4FD1FC02.2000608@netapp.com>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:20603 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933147Ab2FVOms (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jun 2012 10:42:48 -0400
+Message-ID: <4FE48464.5020706@oracle.com>
+Date: Fri, 22 Jun 2012 08:42:44 -0600
+From: Jeff Wright <jeff.wright@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FD1FC02.2000608@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-nfs@vger.kernel.org, Craig Flaskerud <Craig.flaskerud@oracle.com>,
+        Andy Adamson <androsadamson@gmail.com>
+Subject: Re: Diagnosing and resolving bottleneck with NFS I/O
+References: <4FE3789A.4090305@oracle.com> <AF35F0DD-427A-4CC5-8E96-DEE760757762@oracle.com>
+In-Reply-To: <AF35F0DD-427A-4CC5-8E96-DEE760757762@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 08, 2012 at 09:20:02AM -0400, Bryan Schumaker wrote:
-> On 06/08/2012 09:03 AM, Joerg Roedel wrote:
-> > On Thu, Jun 07, 2012 at 11:54:24AM -0400, Bryan Schumaker wrote:
-> >> On 06/07/2012 11:50 AM, Joerg Roedel wrote:
-> >>> mount -o nfsvers=3 ...
-> >>
-> >> What about `mount -o vers=4 ...`?  I'm compiling a kernel right now to
-> >> see if I can reproduce this, what NFS .config options do you have set?
-> >> (`cat .config | grep CONFIG_NFS_` should be good enough).
-> > 
-> > Okay, I tracked it down somewhat. The problem is that the nfs-version
-> > is not set in my case so that data->version in nfs_init_server is 0. The
-> > function returns -EPROTONOSUPPORT in this case which causes the mount
-> > to fail. The evil commit is db8333519 and reverting it fixes the issue
-> > for me. Patch attached.
-> 
-> Thanks!  I wasn't able to reproduce this on Ubuntu 12.04, so now I'm
-> setting up 10.04 to see if that makes a difference.  I'd like to
-> understand what's going on (and why my other patch didn't fix this
-> problem) before reverting.
-
-Your other patch only touched the nfs4 path, but in my setup nfs3 was in
-use. Therefore the patch didn't help. I just figured out that
-nfs_fs_mount is shared between nfs23 and nfs4, so the first patch
-probably breaks nfs4. I send another one which takes this into account.
-
-Regards,
-
-	Joerg
-
+On 06/21/12 15:17, Chuck Lever wrote:
+> Hi-
+>
+> On Jun 21, 2012, at 3:40 PM, Jeff Wright wrote:
+>
+>> To simplify analysis we ran an application that would time the execution of stable pwrite64() (O_DIRECT) for a single I/O.  We observed a large increase in response time at the application (time to run pwrite64()) compared to the reported response time from nfsiostat.  We also measured that the response time measured by nfsiostat on the client closely matched the back-end media response time in the server, and that the RPC backlog was 0.  netstat showed that we had some data in the TCP send queue on the client, but not overloaded, and that we had very little data in the TCP receive queue on the server.  The values of the I/O rate and response time in this test were as follows:
+>> * Application I/O rate: 102 IOPS
+>> * Application I/O response time: 9.9 ms
+>> * nfsstat I/O rate: 102 IOPS
+>> * nfsstat I/O response time (RTT): 3.8 ms
+>> * NFS server I/O rate: 104
+>> * NFS server I/O response time: 1.5 ms
+>> * Media I/O rate: 105 IOPS
+>> * Media I/O response  time: 3.2 ms
+>>
+>> In this use case I think we have unstable writes from the NFS client followed by commits, and this would lead to the short NFS server write response time because the commit is not included.  The nfsstat response time matching the media response time would be correct if the nfsstat response time included the commit time for the I/O.  Could anyone verify if the RTT reported includes the the total time to commit the writes, or if it only includes the write and not the subsequent commit?
+> It depends on whether the server performs a FILE_SYNC or UNSTABLE write.  nfsiostat doesn't distinguish between them, and the server is free to promote an UNSTABLE write request to a FILE_SYNC write.
+>
+> If a write is UNSTABLE, then no, the "commit" time is not included in the WRITE RTT statistic.  If a write is FILE_SYNC, then the "commit" time is built into the WRITE request, and the WRITE RTT statistic includes it.
+>
+> Servers generally don't promote UNSTABLE writes, but NetApp always does.  Clients seldom request FILE_SYNC writes, though they will in some circumstances.
+We will check what the S11 nfsd implementation is doing - thanks for the 
+clarification.
+>
 
