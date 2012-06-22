@@ -1,8 +1,8 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:45734 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:33668 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932345Ab2F2Ndi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Jun 2012 09:33:38 -0400
+	id S1762351Ab2FVObU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Jun 2012 10:31:20 -0400
 From: Mel Gorman <mgorman@suse.de>
 To: Andrew Morton <akpm@linux-foundation.org>
 Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
@@ -13,14 +13,12 @@ Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
         Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
         Peter Zijlstra <a.p.zijlstra@chello.nl>,
         Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>,
-        Sebastian Andrzej Siewior <sebastian@breakpoint.cc>,
-        Mel Gorman <mgorman@suse.de>
+        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
 Subject: [PATCH 08/12] nfs: teach the NFS client how to treat PG_swapcache pages
-Date: Fri, 29 Jun 2012 14:33:21 +0100
-Message-Id: <1340976805-5799-9-git-send-email-mgorman@suse.de>
-In-Reply-To: <1340976805-5799-1-git-send-email-mgorman@suse.de>
-References: <1340976805-5799-1-git-send-email-mgorman@suse.de>
+Date: Fri, 22 Jun 2012 15:31:04 +0100
+Message-Id: <1340375468-22509-9-git-send-email-mgorman@suse.de>
+In-Reply-To: <1340375468-22509-1-git-send-email-mgorman@suse.de>
+References: <1340375468-22509-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
