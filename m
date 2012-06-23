@@ -1,52 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f44.google.com ([74.125.82.44]:51716 "EHLO
-	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S964922Ab2FHWGo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jun 2012 18:06:44 -0400
+Received: from fieldses.org ([174.143.236.118]:35953 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754117Ab2FWQJ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 23 Jun 2012 12:09:29 -0400
+Date: Sat, 23 Jun 2012 12:09:23 -0400
+From: Fields James <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Namjae Jeon <linkinjeon@gmail.com>,
+        Morton Andrew <akpm@linux-foundation.org>,
+        Harrosh Boaz <bharrosh@panasas.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        Namjae Jeon <namjae.jeon@samsung.com>,
+        Vivek Trivedi <t.vivek@samsung.com>,
+        Amit Sahrawat <a.sahrawat@samsung.com>
+Subject: Re: [RFC PATCH] nfs: Add NFS3PROC_UMOUNT procedure.
+Message-ID: <20120623160923.GB10787@fieldses.org>
+References: <1340448406-10161-1-git-send-email-linkinjeon@gmail.com>
+ <02B16139-AFD6-4F06-99C0-C406B1A7E1DC@netapp.com>
+ <FE90D2E0-C4C9-44BC-829F-ABE94801AB4C@netapp.com>
+ <20120623155710.GA10787@fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <20120608220049.GA18024@otc-wbsnb-06>
-References: <1339191663-17693-1-git-send-email-kirill.shutemov@linux.intel.com>
- <20120608220049.GA18024@otc-wbsnb-06>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Fri, 8 Jun 2012 15:06:20 -0700
-Message-ID: <CA+55aFxbEk0k0jYtkn-H-sT0m4Fy5pH_OQZiPwCtwMvh22-3-w@mail.gmail.com>
-Subject: Re: [RFC, PATCH] fs: push rcu_barrier() from deactivate_locked_super()
- to filesystems
-To: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>, Tao Ma <boyu.mt@taobao.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Nick Piggin <npiggin@kernel.dk>, "Dmitry V. Levin" <ldv@altlinux.org>,
-        v9fs-developer@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
-        linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        codalist@TELEMANN.coda.cs.cmu.edu, ecryptfs@vger.kernel.org,
-        osd-dev@open-osd.org, linux-ext4@vger.kernel.org,
-        fuse-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
-        jfs-discussion@lists.sourceforge.net, logfs@logfs.org,
-        linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
-        reiserfs-devel@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120623155710.GA10787@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 8, 2012 at 3:00 PM, Kirill A. Shutemov
-<kirill.shutemov@linux.intel.com> wrote:
->
-> IIUC, moving rcu_barrier() up should help, but I can't say that I fully
-> understand SLAB_DESTROY_BY_RCU semantics.
+On Sat, Jun 23, 2012 at 11:57:10AM -0400, Fields James wrote:
+> On Sat, Jun 23, 2012 at 03:52:20PM +0000, Myklebust, Trond wrote:
+> > The other objection is that NFSv3 already has a way to do this via the MOUNT protocol. We already call MOUNTPROC3_UMNT/MOUNTPROC_UMNT on unmount of a filesystem.
+> > 
+> > The problem with this approach is that if the NFS client crashes before it can call this function, then the server never gets notified. That is a problem that your patch has too...
+> 
+> Yes.  Could you instead work on describing *exactly* what the original
+> problem was that prompted this?
 
-.. hmm. I think you may be right. Even if we do move it up, we
-probably shouldn't use it.
+("You" here meaning Namjae Jeon, of course).
 
-We don't even want SLAB_DESTROY_BY_RCU, since we do the delayed RCU
-free for other reasons anyway, so it would duplicate the RCU delaying
-and cause problems. I forgot about that little complication.
+And note here we've all read the changelog, that's not what I'm asking
+for.
 
-We could have a separate "RCU_BARRIER_ON_DESTROY" thing, but that's
-just silly too.
+I want to know the details of *your* specific case.  "I have X clients
+that I use for Y, periodically I want to unmount the exported filesystem
+to do Z, I tried doing W but it didn't work...".
 
-Maybe your patch is the right thing.
-
-            Linus
+--b.
