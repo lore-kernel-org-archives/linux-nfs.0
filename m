@@ -1,37 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:59351 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751107Ab2FHHX2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jun 2012 03:23:28 -0400
-Received: by eeit10 with SMTP id t10so830470eei.19
-        for <linux-nfs@vger.kernel.org>; Fri, 08 Jun 2012 00:23:27 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <4FD1242E.1010909@panasas.com>
-References: <CAKYAXd-HCfcejT=kG-kSXWCmfmxTjrT2o+b3Zan+BCrS1Y2ovw@mail.gmail.com>
-	<4FD06290.7050004@panasas.com>
-	<20120607113358.GB8684@fieldses.org>
-	<4FD1242E.1010909@panasas.com>
-Date: Fri, 8 Jun 2012 16:23:27 +0900
-Message-ID: <CAKYAXd_=+eB9WmLTvhurXCHj0oEMir24R=Tw0V2Jb07DzE2t2Q@mail.gmail.com>
-Subject: =?UTF-8?Q?Re=3A_=5BProblem=5DNFS_Server_=E2=80=93_Umount_results_in_Device?=
-	=?UTF-8?Q?_Busy=2E?=
-From: Namjae Jeon <linkinjeon@gmail.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+Received: from acsinet15.oracle.com ([141.146.126.227]:18078 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753553Ab2FWNbO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 23 Jun 2012 09:31:14 -0400
+References: <1340448446-10198-1-git-send-email-linkinjeon@gmail.com> <20120623115106.GA2742@umich.edu>
+In-Reply-To: <20120623115106.GA2742@umich.edu>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain;
+	charset=us-ascii
+Message-Id: <5AC2C9F0-EEFE-423E-BBB9-27102D1CA163@oracle.com>
+Cc: Namjae Jeon <linkinjeon@gmail.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
         "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        Amit Sahrawat <a.sahrawat@samsung.com>,
+        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+        "bharrosh@panasas.com" <bharrosh@panasas.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Namjae Jeon <namjae.jeon@samsung.com>
-Content-Type: text/plain; charset=UTF-8
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        Namjae Jeon <namjae.jeon@samsung.com>,
+        VivekTrivedi <t.vivek@samsung.com>,
+        Amit Sahrawat <a.sahrawat@samsung.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [RFC PATCH] nfs: Support posix_fadvise(POSIX_FADV_RANDOM) on nfs server.
+Date: Sat, 23 Jun 2012 09:30:36 -0400
+To: Jim Rees <rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->
-> But Jeon, please do send in your proposal code, I'd like to see it.
-Hi. Boaz.
-Okay, I will try to post the patch after testing a little more.
-Thanks.
->
-> Thanks
-> Boaz
->
+
+
+Sent from my iPad
+
+On Jun 23, 2012, at 7:51 AM, Jim Rees <rees@umich.edu> wrote:
+
+> Namjae Jeon wrote:
+> 
+>  From: Namjae Jeon <namjae.jeon@samsung.com>
+> 
+>  This patch disable readahead for a file on NFS Server when
+>  posix_fadvise(fd..., POSIX_FADV_RANDOM) is called on NFS
+>  Client.
+> 
+> It looks like you're adding an argument to the read op.  Wouldn't that be an
+> incompatible change?  In which case wouldn't it be better to propose this
+> for inclusion in NFS 4.2?  In fact didn't Dean propose this?  What ever
+> happened with that?
+
+Yes, posix_fadvise support is part of NFSv4.2.
+
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
