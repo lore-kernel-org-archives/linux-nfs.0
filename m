@@ -1,58 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:58293 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751758Ab2FLQeM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Jun 2012 12:34:12 -0400
-From: "Welch, Brent" <welch@panasas.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "Harrosh, Boaz" <bharrosh@panasas.com>
-CC: NFS list <linux-nfs@vger.kernel.org>,
-        "Adamson, Andy" <William.Adamson@netapp.com>,
-        Andy Adamson <androsadamson@gmail.com>, NFSv4 <nfsv4@ietf.org>
-Subject: RE: RFC 5661 LAYOUTRETURN clarification.
-Date: Tue, 12 Jun 2012 16:34:06 +0000
-Message-ID: <DA636AC7BF798243A4007D3AA0B3D3A75AB40E9D@seabiscuit.int.panasas.com>
-References: <CAHVgHyUpM0rQWqO5-id+FohPKm1Lk=kkekf7HqzpfKcfvxx23A@mail.gmail.com>
-	<4FD63BAF.8040107@panasas.com> <1339441159.19775.25.camel@lade.trondhjem.org>
-In-Reply-To: <1339441159.19775.25.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="us-ascii"
+Received: from shiva144.upmc.fr ([134.157.0.144]:55655 "EHLO shiva.upmc.fr"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751284Ab2FWRi0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 23 Jun 2012 13:38:26 -0400
+Message-ID: <4FE5FF08.1070802@upmc.fr>
+Date: Sat, 23 Jun 2012 19:38:16 +0200
+From: Bernard Pidoux <bernard.pidoux@upmc.fr>
 MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Francois Romieu <romieu@fr.zoreil.com>,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: rpc_pipefs kernel panic kernel 3.4.3
+References: <F77FADB4-0415-4945-AC03-CEE36F2FEB08@upmc.fr>  <4FE4DB31.4000601@free.fr> <4FE4F7FA.4000604@free.fr>  <20120623061353.GA18625@electric-eye.fr.zoreil.com> <1340469281.3282.1.camel@lade.trondhjem.org>
+In-Reply-To: <1340469281.3282.1.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is why the objects layout communicates errors upon layout return.
+Congratulation Trond !
+Your patch did cure the kernel panic issue.
+Many thanks.
 
-When you suffer write timeouts (or any errors) with a DS, then the client promptly returns the layout with an indication of what went wrong.  This should be the intent of whatever words are in the RFC.
+Bernard
 
---
-Brent
+On 23/06/2012 18:34, Myklebust, Trond wrote:
+> On Sat, 2012-06-23 at 08:13 +0200, Francois Romieu wrote:
+>> (redirected from l-k, see http://marc.info/?l=linux-kernel&m=134040598419594&w=2)
+>>
+>> Bernard Pidoux <bernard.pidoux@free.fr> :
+>> [rpc_pipefs_event panic with 3.4.4 at boot mount, 3.3.8 is fine]
+>>
+>> Should Bernard try a git bisect ?
+>>
+>
+> Can you please see if commit 4697bd5e9419348ef9fa9b55cefe4355ad9d3d01
+> (NFSv4: Fix a race in the net namespace mount notification) fixes the
+> issue for you?
+>
+> Cheers
+>    Trond
+>
 
-
------Original Message-----
-From: nfsv4-bounces@ietf.org [mailto:nfsv4-bounces@ietf.org] On Behalf Of Myklebust, Trond
-Sent: Monday, June 11, 2012 11:59 AM
-To: Harrosh, Boaz
-Cc: NFS list; Adamson, Andy; Andy Adamson; NFSv4
-Subject: Re: [nfsv4] RFC 5661 LAYOUTRETURN clarification.
-
-On Mon, 2012-06-11 at 21:40 +0300, Boaz Harrosh wrote:
-
-> And again, please explain why do you want it. What is wrong with the
-> case we all agree with? ie: "Client can not call LAYOUTRETURN until
-> all in-flight RPCs return, with or without an error"
-
-Who "agreed" to this? This would mean that if the DS goes down, we can't
-ever send LAYOUTRETURN which is patently wrong.
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
-_______________________________________________
-nfsv4 mailing list
-nfsv4@ietf.org
-https://www.ietf.org/mailman/listinfo/nfsv4
