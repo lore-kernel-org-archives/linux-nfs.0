@@ -1,62 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:51072 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932065Ab2F0UTP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Jun 2012 16:19:15 -0400
-Date: Wed, 27 Jun 2012 16:19:13 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Harshula <harshula@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: rpciod process is blocked in nfs_release_page waiting for
- nfs_commit_inode to complete
-Message-ID: <20120627161913.05229538@tlielax.poochiereds.net>
-In-Reply-To: <1340826996.2398.15.camel@lade.trondhjem.org>
-References: <1339764850.30233.11.camel@serendib>
-	<20120615092103.15cc2b11@corrin.poochiereds.net>
-	<1339795503.16363.9.camel@lade.trondhjem.org>
-	<20120627115447.0fdf8c6e@corrin.poochiereds.net>
-	<1340822635.2398.7.camel@lade.trondhjem.org>
-	<20120627152814.4774048b@tlielax.poochiereds.net>
-	<1340826996.2398.15.camel@lade.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from smtp.mail.umich.edu ([141.211.14.81]:35381 "EHLO
+	hackers.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755013Ab2FXMrU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jun 2012 08:47:20 -0400
+Date: Sun, 24 Jun 2012 08:46:25 -0400
+From: Jim Rees <rees@umich.edu>
+To: Namjae Jeon <linkinjeon@gmail.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+        "bharrosh@panasas.com" <bharrosh@panasas.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        Namjae Jeon <namjae.jeon@samsung.com>,
+        VivekTrivedi <t.vivek@samsung.com>,
+        Amit Sahrawat <a.sahrawat@samsung.com>
+Subject: Re: [RFC PATCH] nfs: Support posix_fadvise(POSIX_FADV_RANDOM) on nfs
+ server.
+Message-ID: <20120624124625.GA15586@umich.edu>
+References: <1340448446-10198-1-git-send-email-linkinjeon@gmail.com>
+ <20120623115106.GA2742@umich.edu>
+ <5AC2C9F0-EEFE-423E-BBB9-27102D1CA163@oracle.com>
+ <CAKYAXd_QKsiTV86H4eykjOzfJc8Who1T8in5TmnJyxigw=+7AQ@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAKYAXd_QKsiTV86H4eykjOzfJc8Who1T8in5TmnJyxigw=+7AQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 27 Jun 2012 19:56:38 +0000
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+Namjae Jeon wrote:
 
-> On Wed, 2012-06-27 at 15:28 -0400, Jeff Layton wrote:
-> > On Wed, 27 Jun 2012 18:43:56 +0000
-> > "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-> > If there really is no alternative to freeing the socket, then the only
-> > real fix I can see is to set PF_MEMALLOC when we go to create it and
-> > then reset it afterward. That's a pretty ugly fix though...
-> 
-> I can think of 2 possible alternatives:
-> 
->      1. Use the PF_FSTRANS flag to tell nfs_release_page that this is a
->         direct reclaim from rpciod.
+  > Yes, posix_fadvise support is part of NFSv4.2.
+  Where can I check it ?
+  Thanks.
 
-Hmm...that's a bit indiscriminate, isn't it? Looks like only XFS uses
-that flag now...
+NFS is standardized throught the IETF.  4.2 is not out yet, so you'll find
+it in the drafts rather than the RFCs.  You can search them here:
+http://www.rfc-editor.org/idsearch.html
 
-Suppose we're in some XFS allocation and then want to commit a NFS
-page to satisfy it. There's no real reason we couldn't but that would
-prevent it...
-
->      2. Add a 'congested' flag to the rpc client that could tell reclaim
->         type operations to give up if a socket allocation is in
->         progress.
-> 
-
-That's not a bad idea. That has the benefit of only skipping reclaim
-when it's directly associated with the socket being reconnected. Seems
-like that would have to hang off of the rpc_xprt, but we could do
-something along those lines. Presumably Mel's swap-over-nfs patches
-could be converted to do something similar instead of using PF_MEMALLOC
-there too.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+Here is the current draft:
+ftp://ftp.rfc-editor.org/in-notes/internet-drafts/draft-ietf-nfsv4-minorversion2-12.txt
