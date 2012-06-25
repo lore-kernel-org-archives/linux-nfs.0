@@ -1,309 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:59206 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:19193 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755655Ab2FTJiJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jun 2012 05:38:09 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 05/12] mm: swap: Implement generic handler for swap_activate
-Date: Wed, 20 Jun 2012 10:37:54 +0100
-Message-Id: <1340185081-22525-6-git-send-email-mgorman@suse.de>
-In-Reply-To: <1340185081-22525-1-git-send-email-mgorman@suse.de>
-References: <1340185081-22525-1-git-send-email-mgorman@suse.de>
+	id S1756672Ab2FYWYY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Jun 2012 18:24:24 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: Handle authentication errors correctly during
+ lease reclaim
+Date: Mon, 25 Jun 2012 22:24:02 +0000
+Message-ID: <1340663037.9620.77.camel@lade.trondhjem.org>
+References: <20120625204637.1637.14358.stgit@degas.1015granger.net>
+	 <1340659210.9620.64.camel@lade.trondhjem.org>
+	 <80FBF1AB-7347-4683-9F4E-8FD489641EE0@oracle.com>
+In-Reply-To: <80FBF1AB-7347-4683-9F4E-8FD489641EE0@oracle.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The version of swap_activate introduced is sufficient for swap-over-NFS
-but would not provide enough information to implement a generic handler.
-This patch shuffles things slightly to ensure the same information is
-available for aops->swap_activate() as is available to the core.
-
-No functionality change.
-
-Signed-off-by: Mel Gorman <mgorman@suse.de>
----
- include/linux/fs.h   |    6 ++--
- include/linux/swap.h |    5 +++
- mm/page_io.c         |   92 ++++++++++++++++++++++++++++++++++++++++++++++++++
- mm/swapfile.c        |   91 +++----------------------------------------------
- 4 files changed, 106 insertions(+), 88 deletions(-)
-
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 9fe9e46..0186d67 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -427,6 +427,7 @@ struct kstatfs;
- struct vm_area_struct;
- struct vfsmount;
- struct cred;
-+struct swap_info_struct;
- 
- extern void __init inode_init(void);
- extern void __init inode_init_early(void);
-@@ -638,8 +639,9 @@ struct address_space_operations {
- 	int (*error_remove_page)(struct address_space *, struct page *);
- 
- 	/* swapfile support */
--	int (*swap_activate)(struct file *file);
--	int (*swap_deactivate)(struct file *file);
-+	int (*swap_activate)(struct swap_info_struct *sis, struct file *file,
-+				sector_t *span);
-+	void (*swap_deactivate)(struct file *file);
- };
- 
- extern const struct address_space_operations empty_aops;
-diff --git a/include/linux/swap.h b/include/linux/swap.h
-index 7b4f601..13ad4ee 100644
---- a/include/linux/swap.h
-+++ b/include/linux/swap.h
-@@ -324,6 +324,11 @@ extern int swap_writepage(struct page *page, struct writeback_control *wbc);
- extern int swap_set_page_dirty(struct page *page);
- extern void end_swap_bio_read(struct bio *bio, int err);
- 
-+int add_swap_extent(struct swap_info_struct *sis, unsigned long start_page,
-+		unsigned long nr_pages, sector_t start_block);
-+int generic_swapfile_activate(struct swap_info_struct *, struct file *,
-+		sector_t *);
-+
- /* linux/mm/swap_state.c */
- extern struct address_space swapper_space;
- #define total_swapcache_pages  swapper_space.nrpages
-diff --git a/mm/page_io.c b/mm/page_io.c
-index 307a3e7..4a37962 100644
---- a/mm/page_io.c
-+++ b/mm/page_io.c
-@@ -87,6 +87,98 @@ void end_swap_bio_read(struct bio *bio, int err)
- 	bio_put(bio);
- }
- 
-+int generic_swapfile_activate(struct swap_info_struct *sis,
-+				struct file *swap_file,
-+				sector_t *span)
-+{
-+	struct address_space *mapping = swap_file->f_mapping;
-+	struct inode *inode = mapping->host;
-+	unsigned blocks_per_page;
-+	unsigned long page_no;
-+	unsigned blkbits;
-+	sector_t probe_block;
-+	sector_t last_block;
-+	sector_t lowest_block = -1;
-+	sector_t highest_block = 0;
-+	int nr_extents = 0;
-+	int ret;
-+
-+	blkbits = inode->i_blkbits;
-+	blocks_per_page = PAGE_SIZE >> blkbits;
-+
-+	/*
-+	 * Map all the blocks into the extent list.  This code doesn't try
-+	 * to be very smart.
-+	 */
-+	probe_block = 0;
-+	page_no = 0;
-+	last_block = i_size_read(inode) >> blkbits;
-+	while ((probe_block + blocks_per_page) <= last_block &&
-+			page_no < sis->max) {
-+		unsigned block_in_page;
-+		sector_t first_block;
-+
-+		first_block = bmap(inode, probe_block);
-+		if (first_block == 0)
-+			goto bad_bmap;
-+
-+		/*
-+		 * It must be PAGE_SIZE aligned on-disk
-+		 */
-+		if (first_block & (blocks_per_page - 1)) {
-+			probe_block++;
-+			goto reprobe;
-+		}
-+
-+		for (block_in_page = 1; block_in_page < blocks_per_page;
-+					block_in_page++) {
-+			sector_t block;
-+
-+			block = bmap(inode, probe_block + block_in_page);
-+			if (block == 0)
-+				goto bad_bmap;
-+			if (block != first_block + block_in_page) {
-+				/* Discontiguity */
-+				probe_block++;
-+				goto reprobe;
-+			}
-+		}
-+
-+		first_block >>= (PAGE_SHIFT - blkbits);
-+		if (page_no) {	/* exclude the header page */
-+			if (first_block < lowest_block)
-+				lowest_block = first_block;
-+			if (first_block > highest_block)
-+				highest_block = first_block;
-+		}
-+
-+		/*
-+		 * We found a PAGE_SIZE-length, PAGE_SIZE-aligned run of blocks
-+		 */
-+		ret = add_swap_extent(sis, page_no, 1, first_block);
-+		if (ret < 0)
-+			goto out;
-+		nr_extents += ret;
-+		page_no++;
-+		probe_block += blocks_per_page;
-+reprobe:
-+		continue;
-+	}
-+	ret = nr_extents;
-+	*span = 1 + highest_block - lowest_block;
-+	if (page_no == 0)
-+		page_no = 1;	/* force Empty message */
-+	sis->max = page_no;
-+	sis->pages = page_no - 1;
-+	sis->highest_bit = page_no - 1;
-+out:
-+	return ret;
-+bad_bmap:
-+	printk(KERN_ERR "swapon: swapfile has holes\n");
-+	ret = -EINVAL;
-+	goto out;
-+}
-+
- /*
-  * We may have stale swap cache pages in memory: notice
-  * them here and get rid of the unnecessary final write.
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index 6ffc876..7307fc9 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -1345,7 +1345,7 @@ static void destroy_swap_extents(struct swap_info_struct *sis)
-  *
-  * This function rather assumes that it is called in ascending page order.
-  */
--static int
-+int
- add_swap_extent(struct swap_info_struct *sis, unsigned long start_page,
- 		unsigned long nr_pages, sector_t start_block)
- {
-@@ -1421,106 +1421,25 @@ static int setup_swap_extents(struct swap_info_struct *sis, sector_t *span)
- 	struct file *swap_file = sis->swap_file;
- 	struct address_space *mapping = swap_file->f_mapping;
- 	struct inode *inode = mapping->host;
--	unsigned blocks_per_page;
--	unsigned long page_no;
--	unsigned blkbits;
--	sector_t probe_block;
--	sector_t last_block;
--	sector_t lowest_block = -1;
--	sector_t highest_block = 0;
--	int nr_extents = 0;
- 	int ret;
- 
- 	if (S_ISBLK(inode->i_mode)) {
- 		ret = add_swap_extent(sis, 0, sis->max, 0);
- 		*span = sis->pages;
--		goto out;
-+		return ret;
- 	}
- 
- 	if (mapping->a_ops->swap_activate) {
--		ret = mapping->a_ops->swap_activate(swap_file);
-+		ret = mapping->a_ops->swap_activate(sis, swap_file, span);
- 		if (!ret) {
- 			sis->flags |= SWP_FILE;
- 			ret = add_swap_extent(sis, 0, sis->max, 0);
- 			*span = sis->pages;
- 		}
--		goto out;
-+		return ret;
- 	}
- 
--	blkbits = inode->i_blkbits;
--	blocks_per_page = PAGE_SIZE >> blkbits;
--
--	/*
--	 * Map all the blocks into the extent list.  This code doesn't try
--	 * to be very smart.
--	 */
--	probe_block = 0;
--	page_no = 0;
--	last_block = i_size_read(inode) >> blkbits;
--	while ((probe_block + blocks_per_page) <= last_block &&
--			page_no < sis->max) {
--		unsigned block_in_page;
--		sector_t first_block;
--
--		first_block = bmap(inode, probe_block);
--		if (first_block == 0)
--			goto bad_bmap;
--
--		/*
--		 * It must be PAGE_SIZE aligned on-disk
--		 */
--		if (first_block & (blocks_per_page - 1)) {
--			probe_block++;
--			goto reprobe;
--		}
--
--		for (block_in_page = 1; block_in_page < blocks_per_page;
--					block_in_page++) {
--			sector_t block;
--
--			block = bmap(inode, probe_block + block_in_page);
--			if (block == 0)
--				goto bad_bmap;
--			if (block != first_block + block_in_page) {
--				/* Discontiguity */
--				probe_block++;
--				goto reprobe;
--			}
--		}
--
--		first_block >>= (PAGE_SHIFT - blkbits);
--		if (page_no) {	/* exclude the header page */
--			if (first_block < lowest_block)
--				lowest_block = first_block;
--			if (first_block > highest_block)
--				highest_block = first_block;
--		}
--
--		/*
--		 * We found a PAGE_SIZE-length, PAGE_SIZE-aligned run of blocks
--		 */
--		ret = add_swap_extent(sis, page_no, 1, first_block);
--		if (ret < 0)
--			goto out;
--		nr_extents += ret;
--		page_no++;
--		probe_block += blocks_per_page;
--reprobe:
--		continue;
--	}
--	ret = nr_extents;
--	*span = 1 + highest_block - lowest_block;
--	if (page_no == 0)
--		page_no = 1;	/* force Empty message */
--	sis->max = page_no;
--	sis->pages = page_no - 1;
--	sis->highest_bit = page_no - 1;
--out:
--	return ret;
--bad_bmap:
--	printk(KERN_ERR "swapon: swapfile has holes\n");
--	ret = -EINVAL;
--	goto out;
-+	return generic_swapfile_activate(sis, swap_file, span);
- }
- 
- static void enable_swap_info(struct swap_info_struct *p, int prio,
--- 
-1.7.9.2
-
+T24gTW9uLCAyMDEyLTA2LTI1IGF0IDE3OjMyIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+T24gSnVuIDI1LCAyMDEyLCBhdCA1OjIwIFBNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiAN
+Cj4gPiBPbiBNb24sIDIwMTItMDYtMjUgYXQgMTY6NDcgLTA0MDAsIENodWNrIExldmVyIHdyb3Rl
+Og0KPiA+PiBDb21taXQgMmE2ZWU2YWEgIk5GU3Y0OiBDbGVhbiB1cCB0aGUgZXJyb3IgaGFuZGxp
+bmcgZm9yDQo+ID4+IG5mczRfcmVjbGFpbV9sZWFzZSIgTWF5IDI1LCAyMDEyIGFwcGVhcnMgdG8g
+aGF2ZSBjaGFuZ2VkIHRoZSBlcnJvcg0KPiA+PiB2YWx1ZSByZXR1cm5lZCBieSBuZnM0X3JlY2xh
+aW1fbGVhc2UoKSBpZiBycGMuZ3NzZCBmYWlscyB0byBjcmVhdGUNCj4gPj4gYSBtYWNoaW5lIGNy
+ZWRlbnRpYWwgKGVpdGhlciBkdWUgdG8gYSBsb2NhbCBlcnJvciBvciBhIHByb2JsZW0gb24NCj4g
+Pj4gdGhlIHNlcnZlcikuDQo+ID4gDQo+ID4gSXQgaXMgX25vdF8gYW4gZXJyb3IgdG8gYmUgbW91
+bnRpbmcgd2l0aG91dCBtYWNoaW5lIGNyZWRlbnRpYWxzLg0KPiANCj4gQ29ycmVjdCwgYW5kIHRo
+ZSBjbGllbnQgc2hvdWxkbid0IG9vcHMgaW4gdGhpcyBjYXNlIGVpdGhlci4NCj4NCj4gPj4gSW4g
+dGhpcyBjYXNlLCBuZnM0X3Byb2Nfc2V0Y2xpZW50aWQoKSByZXR1cm5zIC1FQUNDRVMuICBCZWZv
+cmUNCj4gPj4gMmE2ZWU2YWEsIG5mczRfcmVjbGFpbV9sZWFzZSgpIGNvbnZlcnRlZCB0aGlzIHRv
+IC1FQUdBSU4uICBOb3cgaXQNCj4gPj4gcmV0dXJucyB6ZXJvLiAgVGhlIHN0YXRlIG1hbmFnZXIg
+YXNzdW1lcyBhbGwgaXMgd2VsbCwgbmZzX2NsaWVudA0KPiA+PiBpbml0aWFsaXphdGlvbiB0aGVu
+IHByb2NlZWRzIGluIHByb2Nlc3MgY29udGV4dCB1bnRpbCBpdCBvb3BzZXMgd2hpbGUNCj4gPj4g
+dHJ5aW5nIHRvIHNldCB1cCB0aGUgbW91bnQncyBuZnNfc2VydmVyLg0KPiA+IA0KPiA+IFRoZSBQ
+VVJHRV9TVEFURSBhbmQvb3IgTEVBU0VfRVhQSVJFRCBmbGFncyBzaG91bGQgc3RpbGwgYmUgc2V0
+IGlmIHdlDQo+ID4gZXhpdCB2aWEgbmZzNF9oYW5kbGVfcmVjbGFpbV9sZWFzZV9lcnJvci4gVGhl
+IHplcm8gZXJyb3IgcmV0dXJuIGlzIHRoZXJlDQo+ID4gaW4gb3JkZXIgdG8gZW5zdXJlIHRoYXQg
+dGhlIHN0YXRlIG1hbmFnZXIgdGhyZWFkIGxvb3BzIGFuZCByZXRyaWVzDQo+ID4gaW5zdGVhZCBv
+ZiBqdXN0IGFib3J0aW5nLg0KPiANCj4gTXkgdGVzdCBjYXNlIGlzIGF0dGVtcHRpbmcgdG8gbW91
+bnQgYSBzZXJ2ZXIgd2l0aCAic2VjPWtyYjUiIGV4cGxpY2l0bHkgc2V0LiAgVGhlIHNlcnZlciB3
+YXMgbm90IGNvbmZpZ3VyZWQgY29ycmVjdGx5LiAgV2h5IHNob3VsZCB0aGUgY2xpZW50IHJldHJ5
+IGluIHRoaXMgY2FzZT8gIFRoZXJlJ3Mgbm90aGluZyBpdCBjYW4gZG8gdG8gY29ycmVjdCB0aGlz
+IHNpdHVhdGlvbi4NCj4gDQo+IChOb3QgdG8gbWVudGlvbiB0aGUgZmFjdCB0aGF0IHRoZSBnc3Nk
+IGVycm9yIG1lc3NhZ2VzIG9uIHRoZSBjbGllbnQgYXJlIGluY3JlZGlibHkgb2J0dXNlIGFuZCB1
+bmhlbHBmdWwpLg0KPiANCj4gPiBUaGlzIHBhdGNoIG1ha2VzIGl0IGltcG9zc2libGUgdG8gcnVu
+IHdpdGhvdXQgbWFjaGluZSBjcmVkcyBiZWNhdXNlIHlvdQ0KPiA+IGNpcmN1bXZlbnQgdGhlIG5m
+czRfY2xlYXJfbWFjaGluZV9jcmVkKCkrcmV0cnkgY2FzZS4NCj4gDQo+IFBlcmhhcHMgdGhhdCdz
+IGluY29ycmVjdCwgYnV0IGl0J3Mgd2hhdCB0aGUgY29kZSB1c2VkIHRvIGRvIGJlZm9yZSAyYTZl
+ZTZhYSwgYXMgbmVhciBhcyBJIGNhbiB0ZWxsLg0KDQpSZXZlcnRpbmcgdG8gYSBicm9rZW4gcHJl
+dmlvdXMgc3RhdGUgaXNuJ3QgcmVhbGx5IGFsbCB0aGF0IHVzZWZ1bC4gQ2FuDQp5b3UgcGxlYXNl
+IHNlbmQgbWUgYSBjb3B5IG9mIHRoZSBPb3BzIHRoYXQgeW91IGFyZSBzZWVpbmc/DQoNCj4gPiBX
+aHkgZG9lcyBzZXR0aW5nIHVwIHRoZSBuZnNfc2VydmVyIGRlcGVuZCBvbiBhIHN1Y2Nlc3NmdWwg
+c2V0Y2xpZW50aWQNCj4gPiBjYWxsIGFueXdheSBpbiB0aGUgY2FzZSBvZiBtaW5vciB2ZXJzaW9u
+IDA/DQo+IA0KPiBTaG91bGQgdGhpcyBhbHNvIGJlIHRoZSBjYXNlIGR1cmluZyB0cnVua2luZyBk
+aXNjb3Zlcnk/DQoNCkkgZG9uJ3Qgc2VlIGhvdyB0cnVua2luZyBkaXNjb3ZlcnkgZW50ZXJzIGlu
+dG8gaXQuIFRoZSBuZnNfc2VydmVyIHNldHVwDQpzaG91bGQgbm90IE9vcHMgaW4gY2FzZSBvZiBh
+IHN0YXRlIGluaXRpYWxpc2F0aW9uIGZhaWx1cmUuDQoNCkhvd2V2ZXIgaWYgdGhlIHVzZXIgc2V0
+cyB0aGUgJy1vbWlncmF0aW9uJyBmbGFnLCB0aGVuIHdlIHNob3VsZCBoYXZlDQptaW5vciB2ZXJz
+aW9uIDAgbW91bnQgd2FpdCBmb3IgdHJ1bmtpbmcgZGlzY292ZXJ5IHRvIGNvbXBsZXRlLCBqdXN0
+IGxpa2UNCm1pbm9yIHZlcnNpb24gMS4uLg0KDQo+ICAgVGhlIHNlcnZlciB3aWxsIHJldHVybiBD
+TElEX0lOVVNFLCBwb3NzaWJseS4gIEVpdGhlciB3ZSBmYWlsIHRoZSBtb3VudCwgb3Igd2UgYWxs
+b3cgaXQgYW5kIHNwbGl0IHRoZSBsZWFzZS4NCg0KQ0xJRF9JTlVTRSBuZWVkcyB0byBiZSBoYW5k
+bGVkIGNhcmVmdWxseS4gSW4gbW9zdCBjYXNlcyB3ZSdsbCB3YW50IHRvDQpyZXRyeSBhIGNvdXBs
+ZSBvZiB0aW1lcywgYW5kIHRoZW4gZXJyb3Igb3V0LiBIb3dldmVyLCBpZiB0aGUgdXNlciBoYXMN
+Cm5vdCBzcGVjaWZpZWQgYSAnc2VjPScgbW91bnQgb3B0aW9uLCB0aGVuIHdlIHNob3VsZCB0cnkg
+dG8gbmVnb3RpYXRlIHRoZQ0KcmlnaHQgc2VjdXJpdHkgbWVjaGFuaXNtIGFzIHBhcnQgb2YgdGhl
+IHJldHJpZXMuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50
+YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5j
+b20NCg0K
