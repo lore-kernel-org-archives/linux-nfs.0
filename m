@@ -1,51 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:59144 "EHLO mx2.suse.de"
+Received: from mga01.intel.com ([192.55.52.88]:6355 "EHLO mga01.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755768Ab2FTJiF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jun 2012 05:38:05 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 02/12] selinux: tag avc cache alloc as non-critical
-Date: Wed, 20 Jun 2012 10:37:51 +0100
-Message-Id: <1340185081-22525-3-git-send-email-mgorman@suse.de>
-In-Reply-To: <1340185081-22525-1-git-send-email-mgorman@suse.de>
-References: <1340185081-22525-1-git-send-email-mgorman@suse.de>
+	id S1753254Ab2FYCpw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 24 Jun 2012 22:45:52 -0400
+Date: Sun, 24 Jun 2012 19:45:52 -0700
+From: Andi Kleen <ak@linux.intel.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Fengguang Wu <fengguang.wu@intel.com>,
+        Linux-NFS <linux-nfs@vger.kernel.org>
+Subject: Re: rpcauth_lookup_credcache() lock contentions
+Message-ID: <20120625024552.GJ4152@tassilo.jf.intel.com>
+References: <20120623122604.GA10887@localhost>
+ <20120624213417.GI4152@tassilo.jf.intel.com>
+ <1340587274.8758.11.camel@lade.trondhjem.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1340587274.8758.11.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Failing to allocate a cache entry will only harm performance not
-correctness.  Do not consume valuable reserve pages for something
-like that.
+> I believe that the spinlock is there in order to ensure that the
+> test_bit() and get_rpccred() are atomic w.r.t. garbage collection.
 
-Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
-Acked-by: Eric Paris <eparis@redhat.com>
----
- security/selinux/avc.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Normally RCU should ensure that already with minor care.
+Only drop after a quiescent period and when the reference is still 0.
+And drop always when the refcount goes to 0.
 
-diff --git a/security/selinux/avc.c b/security/selinux/avc.c
-index 68d82da..4d3fab4 100644
---- a/security/selinux/avc.c
-+++ b/security/selinux/avc.c
-@@ -274,7 +274,7 @@ static struct avc_node *avc_alloc_node(void)
- {
- 	struct avc_node *node;
- 
--	node = kmem_cache_zalloc(avc_node_cachep, GFP_ATOMIC);
-+	node = kmem_cache_zalloc(avc_node_cachep, GFP_ATOMIC|__GFP_NOMEMALLOC);
- 	if (!node)
- 		goto out;
- 
+-Andi
+
+
 -- 
-1.7.9.2
-
+ak@linux.intel.com -- Speaking for myself only
