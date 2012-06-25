@@ -1,149 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:33604 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:57384 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762323Ab2FVObO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Jun 2012 10:31:14 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 03/12] mm: Methods for teaching filesystems about PG_swapcache pages
-Date: Fri, 22 Jun 2012 15:30:59 +0100
-Message-Id: <1340375468-22509-4-git-send-email-mgorman@suse.de>
-In-Reply-To: <1340375468-22509-1-git-send-email-mgorman@suse.de>
-References: <1340375468-22509-1-git-send-email-mgorman@suse.de>
+	id S1756237Ab2FYUdf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Jun 2012 16:33:35 -0400
+Date: Mon, 25 Jun 2012 16:33:32 -0400
+To: Greg KH <gregkh@linuxfoundation.org>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, stable@vger.kernel.org,
+        linux-nfs@vger.kernel.org,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>
+Subject: Re: [PATCH 1/3] SUNRPC: new svc_bind() routine introduced
+Message-ID: <20120625203332.GA12807@fieldses.org>
+References: <1340050049-12880-1-git-send-email-bfields@redhat.com>
+ <1340050049-12880-2-git-send-email-bfields@redhat.com>
+ <20120620163427.GA6695@kroah.com>
+ <20120620180928.GB24777@pad.fieldses.org>
+ <20120620181835.GA8356@kroah.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120620181835.GA8356@kroah.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In order to teach filesystems to handle swap cache pages, three new
-page functions are introduced:
+On Wed, Jun 20, 2012 at 11:18:35AM -0700, Greg KH wrote:
+> On Wed, Jun 20, 2012 at 02:09:29PM -0400, J. Bruce Fields wrote:
+> > On Wed, Jun 20, 2012 at 09:34:27AM -0700, Greg KH wrote:
+> > > On Mon, Jun 18, 2012 at 04:07:27PM -0400, J. Bruce Fields wrote:
+> > > > From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> > > > 
+> > > > commit cd96891d48a945ca2011fbeceda73813d6286195 upstream.
+> > > 
+> > > Um, no, that's not what this commit id is at all.
+> > 
+> > Whoops, sorry!  Should have been 9793f7c88.  Upstream commits on #2 and
+> > #3 are correct.
+> > 
+> > > Where did you get that from?  I kind of don't trust this series now,
+> > > care to fix these up with the correct git commit ids and resend them?
+> > 
+> > Sure, I'll resend once I get the "4/3" patch sorted out.
+> > 
+> > (That got a form rejection--I assume it was the missing upstream commit
+> > ID?  That's because there isn't one--3.4 requires a different fix.  But
+> > I can point to where the bug got fixed upstream even if it isn't the
+> > same.)
+> 
+> You need to be really specific when sending a patch that is not
+> upstream, detailing why it isn't, and what different fix went in
+> upstream, if possible.
 
-  pgoff_t page_file_index(struct page *);
-  loff_t page_file_offset(struct page *);
-  struct address_space *page_file_mapping(struct page *);
+OK, looking at it closer I notice we can actually just take a different
+fix directly from upstream, and then there's no problem.  But it took me
+a few days to get around to setting up a test-case to make sure that
+still did the job....
 
-page_file_index() - gives the offset of this page in the file in
-PAGE_CACHE_SIZE blocks. Like page->index is for mapped pages, this
-function also gives the correct index for PG_swapcache pages.
-
-page_file_offset() - uses page_file_index(), so that it will give
-the expected result, even for PG_swapcache pages.
-
-page_file_mapping() - gives the mapping backing the actual page;
-that is for swap cache pages it will give swap_file->f_mapping.
-
-Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
-Reviewed-by: Rik van Riel <riel@redhat.com>
----
- include/linux/mm.h      |   25 +++++++++++++++++++++++++
- include/linux/pagemap.h |    5 +++++
- mm/swapfile.c           |   19 +++++++++++++++++++
- 3 files changed, 49 insertions(+)
-
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index a4549c6..b3d4cd9 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -805,6 +805,17 @@ static inline void *page_rmapping(struct page *page)
- 	return (void *)((unsigned long)page->mapping & ~PAGE_MAPPING_FLAGS);
- }
- 
-+extern struct address_space *__page_file_mapping(struct page *);
-+
-+static inline
-+struct address_space *page_file_mapping(struct page *page)
-+{
-+	if (unlikely(PageSwapCache(page)))
-+		return __page_file_mapping(page);
-+
-+	return page->mapping;
-+}
-+
- static inline int PageAnon(struct page *page)
- {
- 	return ((unsigned long)page->mapping & PAGE_MAPPING_ANON) != 0;
-@@ -821,6 +832,20 @@ static inline pgoff_t page_index(struct page *page)
- 	return page->index;
- }
- 
-+extern pgoff_t __page_file_index(struct page *page);
-+
-+/*
-+ * Return the file index of the page. Regular pagecache pages use ->index
-+ * whereas swapcache pages use swp_offset(->private)
-+ */
-+static inline pgoff_t page_file_index(struct page *page)
-+{
-+	if (unlikely(PageSwapCache(page)))
-+		return __page_file_index(page);
-+
-+	return page->index;
-+}
-+
- /*
-  * Return true if this page is mapped into pagetables.
-  */
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index 7cfad3b..e42c762 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -286,6 +286,11 @@ static inline loff_t page_offset(struct page *page)
- 	return ((loff_t)page->index) << PAGE_CACHE_SHIFT;
- }
- 
-+static inline loff_t page_file_offset(struct page *page)
-+{
-+	return ((loff_t)page_file_index(page)) << PAGE_CACHE_SHIFT;
-+}
-+
- extern pgoff_t linear_hugepage_index(struct vm_area_struct *vma,
- 				     unsigned long address);
- 
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index 64408be..f4e02bd 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -33,6 +33,7 @@
- #include <linux/oom.h>
- #include <linux/frontswap.h>
- #include <linux/swapfile.h>
-+#include <linux/export.h>
- 
- #include <asm/pgtable.h>
- #include <asm/tlbflush.h>
-@@ -2299,6 +2300,24 @@ int swapcache_prepare(swp_entry_t entry)
- }
- 
- /*
-+ * out-of-line __page_file_ methods to avoid include hell.
-+ */
-+struct address_space *__page_file_mapping(struct page *page)
-+{
-+	VM_BUG_ON(!PageSwapCache(page));
-+	return page_swap_info(page)->swap_file->f_mapping;
-+}
-+EXPORT_SYMBOL_GPL(__page_file_mapping);
-+
-+pgoff_t __page_file_index(struct page *page)
-+{
-+	swp_entry_t swap = { .val = page_private(page) };
-+	VM_BUG_ON(!PageSwapCache(page));
-+	return swp_offset(swap);
-+}
-+EXPORT_SYMBOL_GPL(__page_file_index);
-+
-+/*
-  * add_swap_count_continuation - called when a swap count is duplicated
-  * beyond SWAP_MAP_MAX, it allocates a new page and links that to the entry's
-  * page of the original vmalloc'ed swap_map, to hold the continuation count
--- 
-1.7.9.2
-
+I'll pass along the revised series in a moment.--b.
