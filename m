@@ -1,54 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:37371 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751369Ab2FKOv3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jun 2012 10:51:29 -0400
-Message-ID: <4FD605DA.2070203@panasas.com>
-Date: Mon, 11 Jun 2012 17:51:06 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: Benny Halevy <bhalevy@tonian.com>, "Welch, Brent" <welch@panasas.com>,
-        "Bhamare, Sachin" <sbhamare@panasas.com>,
-        Andy Adamson <androsadamson@gmail.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+Received: from fieldses.org ([174.143.236.118]:47666 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751275Ab2FYLa3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Jun 2012 07:30:29 -0400
+Date: Mon, 25 Jun 2012 07:30:25 -0400
+From: Fields James <bfields@fieldses.org>
+To: Namjae Jeon <linkinjeon@gmail.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Morton Andrew <akpm@linux-foundation.org>,
+        Harrosh Boaz <bharrosh@panasas.com>,
         "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>,
-        "Huang, James" <jhuang@panasas.com>
-Subject: Re: [PATCH 2/3] NFSv4.1 mark layout when already returned
-References: <1338571178-2096-1-git-send-email-andros@netapp.com> <1338571178-2096-2-git-send-email-andros@netapp.com> <4FCA98E7.2030006@panasas.com> <1C92D18B-1977-4A12-A4DA-84DAC4B3E81E@netapp.com> <4FCE1DC1.6050100@panasas.com> <CAHVgHyXVCUdVFMO1WcRofOCvgDs7Reqsrs39qrZR7UnXWzG8RQ@mail.gmail.com> <4FD5C0EA.806@tonian.com> <4FD5CBF6.6030800@panasas.com> <4FD5FAEF.5040004@tonian.com> <47AB2031-76C2-4E10-9C55-D328E2994780@netapp.com>
-In-Reply-To: <47AB2031-76C2-4E10-9C55-D328E2994780@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        Namjae Jeon <namjae.jeon@samsung.com>,
+        Vivek Trivedi <t.vivek@samsung.com>,
+        Amit Sahrawat <a.sahrawat@samsung.com>
+Subject: Re: [RFC PATCH] nfs: Add NFS3PROC_UMOUNT procedure.
+Message-ID: <20120625113025.GB16920@fieldses.org>
+References: <1340448406-10161-1-git-send-email-linkinjeon@gmail.com>
+ <02B16139-AFD6-4F06-99C0-C406B1A7E1DC@netapp.com>
+ <FE90D2E0-C4C9-44BC-829F-ABE94801AB4C@netapp.com>
+ <20120623155710.GA10787@fieldses.org>
+ <20120623160923.GB10787@fieldses.org>
+ <CAKYAXd80v10car7awm3Y5bzk_nXLj8NLi7C8PxUW15L9-S7pEw@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAKYAXd80v10car7awm3Y5bzk_nXLj8NLi7C8PxUW15L9-S7pEw@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/11/2012 05:21 PM, Adamson, Andy wrote:
+On Sun, Jun 24, 2012 at 02:12:49PM +0900, Namjae Jeon wrote:
+> 2012/6/24, Fields James <bfields@fieldses.org>:
+> > On Sat, Jun 23, 2012 at 11:57:10AM -0400, Fields James wrote:
+> >> On Sat, Jun 23, 2012 at 03:52:20PM +0000, Myklebust, Trond wrote:
+> >> > The other objection is that NFSv3 already has a way to do this via the
+> >> > MOUNT protocol. We already call MOUNTPROC3_UMNT/MOUNTPROC_UMNT on
+> >> > unmount of a filesystem.
+> >> >
+> >> > The problem with this approach is that if the NFS client crashes before
+> >> > it can call this function, then the server never gets notified. That is
+> >> > a problem that your patch has too...
+> >>
+> >> Yes.  Could you instead work on describing *exactly* what the original
+> >> problem was that prompted this?
+> >
+> > ("You" here meaning Namjae Jeon, of course).
+> >
+> > And note here we've all read the changelog, that's not what I'm asking
+> > for.
+> >
+> > I want to know the details of *your* specific case.  "I have X clients
+> > that I use for Y, periodically I want to unmount the exported filesystem
+> > to do Z, I tried doing W but it didn't work...".
+> As you remember, We discussed this
+> issue(http://www.spinics.net/lists/linux-nfs/msg29997.html) with you
+> before. you guided me to use exportfs -f call on nfs server.
+> It is hard to use this method on our system
 
+Why is it hard?
+
+Could you hack umount to do the equivalent of "exportfs -f" before
+calling the umount?
+
+> and nomally the user is
+> thinking it is problem device busy happen after umounting.
 > 
-> On Jun 11, 2012, at 10:04 AM, Benny Halevy wrote:
-> 
->> On 2012-06-11 13:44, Boaz Harrosh wrote:
->>> Basically my plan is to postpone the LAYOUTRETURN send to
->>> when the segment is last referenced, if a flag was set to
->>> do so, and make sure reference counting is done proper, so
->>> after flag set the last IO_done will send the LAYOUTRETURN.
->>>
->>> If that is OK with all I hope?
->>
->> Sounds OK to me.  Thanks!
-> 
-> Sounds fine to me as well, for LAYOUTRETURN during normal behavior.
-> 
-> -->Andy
+> The details of specific case.
+> 1. There are two target or two PC. and Client want to access files of
+> usb device on server.
+> 2. the client try to mount usb mount point using nfs on sever after
+> plugging usb device.
+> 3. we try to umount mount point directory on client.
+> 4. and when we try to umount usb device mount directory server, device
+> busy message occured like this (umount: can't umount /mnt: Device or
+> resource busy)
 
+Right, so I don't think you want protocol modifications.  They take a
+few years to get hammered out and then make it into implementations, and
+they won't help a great deal with your problem anyway.  (Because of
+problems like the possibility of lost "unmount" calls that Trond
+mentions.)
 
-I'm not sure I understood what you meant.
+Either modify umount itself to flush the export cache before attempting
+the unmount, or if that doesn't work perhaps you could patch the kernel
+to notify nfsd on unmount and let it attemt to clear its caches before
+deciding whether the filesystem is busy.
 
-In the "normal behavior" we don't send a LAYOUTRETURN at all
-in the forgetful model. Which proved beneficiary in the light
-of concurrent GETs vs RETURNs.
-
-I thought we are only taking about the error case. Do you
-mean there is a 3rd case? please explain.
-
-Thanks
-Boaz
+--b.
