@@ -1,90 +1,172 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f51.google.com ([209.85.213.51]:52879 "EHLO
-	mail-yw0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756331Ab2FYUrZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Jun 2012 16:47:25 -0400
-Received: by yhnn12 with SMTP id n12so3812388yhn.10
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Jun 2012 13:47:25 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] NFS: Handle authentication errors correctly during lease
- reclaim
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 25 Jun 2012 16:47:21 -0400
-Message-ID: <20120625204637.1637.14358.stgit@degas.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:51819 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756160Ab2FYUkN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Jun 2012 16:40:13 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: stable@vger.kernel.org
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 1/4] Lockd: pass network namespace to creation and destruction routines
+Date: Mon, 25 Jun 2012 16:40:07 -0400
+Message-Id: <1340656810-13752-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 2a6ee6aa "NFSv4: Clean up the error handling for
-nfs4_reclaim_lease" May 25, 2012 appears to have changed the error
-value returned by nfs4_reclaim_lease() if rpc.gssd fails to create
-a machine credential (either due to a local error or a problem on
-the server).
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-In this case, nfs4_proc_setclientid() returns -EACCES.  Before
-2a6ee6aa, nfs4_reclaim_lease() converted this to -EAGAIN.  Now it
-returns zero.  The state manager assumes all is well, nfs_client
-initialization then proceeds in process context until it oopses while
-trying to set up the mount's nfs_server.
+upstream commit e3f70eadb7dddfb5a2bb9afff7abfc6ee17a29d0.
 
-Revert nfs4_handle_reclaim_lease_error() to return a non-zero value
-in this case.  -EAGAIN was the error returned before 2a6ee6aa.
+v2: dereference of most probably already released nlm_host removed in
+nlmclnt_done() and reclaimer().
 
-That prevents the oops, but mount(2) now reports "Resource
-unavailable."  Revert the test of cl_machine_cred against NULL so we
-report the correct error code.
+These routines are called from locks reclaimer() kernel thread. This thread
+works in "init_net" network context and currently relays on persence on lockd
+thread and it's per-net resources. Thus lockd_up() and lockd_down() can't relay
+on current network context. So let's pass corrent one into them.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
+ fs/lockd/clntlock.c        |   13 ++++++++-----
+ fs/lockd/svc.c             |    7 +++----
+ fs/nfsd/nfssvc.c           |    6 +++---
+ include/linux/lockd/bind.h |    4 ++--
+ 4 files changed, 16 insertions(+), 14 deletions(-)
 
- fs/nfs/nfs4state.c |   10 ++++++----
- 1 files changed, 6 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 706d9ea..1813cee 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1598,7 +1598,8 @@ out:
- /* Set NFS4CLNT_LEASE_EXPIRED for all v4.0 errors and for recoverable errors
-  * on EXCHANGE_ID for v4.1
+diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+index ba1dc2e..ca0a080 100644
+--- a/fs/lockd/clntlock.c
++++ b/fs/lockd/clntlock.c
+@@ -56,7 +56,7 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
+ 	u32 nlm_version = (nlm_init->nfs_version == 2) ? 1 : 4;
+ 	int status;
+ 
+-	status = lockd_up();
++	status = lockd_up(nlm_init->net);
+ 	if (status < 0)
+ 		return ERR_PTR(status);
+ 
+@@ -65,7 +65,7 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
+ 				   nlm_init->hostname, nlm_init->noresvport,
+ 				   nlm_init->net);
+ 	if (host == NULL) {
+-		lockd_down();
++		lockd_down(nlm_init->net);
+ 		return ERR_PTR(-ENOLCK);
+ 	}
+ 
+@@ -80,8 +80,10 @@ EXPORT_SYMBOL_GPL(nlmclnt_init);
   */
--static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
-+static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status,
-+					   struct rpc_cred *cred)
+ void nlmclnt_done(struct nlm_host *host)
  {
- 	switch (status) {
- 	case -NFS4ERR_SEQ_MISORDERED:
-@@ -1611,10 +1612,11 @@ static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
- 		clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
- 		break;
- 	case -EACCES:
--		if (clp->cl_machine_cred == NULL)
-+		if (clp->cl_machine_cred == cred)
- 			return -EACCES;
- 		/* Handle case where the user hasn't set up machine creds */
- 		nfs4_clear_machine_cred(clp);
-+		return -EAGAIN;
- 	case -NFS4ERR_DELAY:
- 	case -ETIMEDOUT:
- 	case -EAGAIN:
-@@ -1655,7 +1657,7 @@ static int nfs4_reclaim_lease(struct nfs_client *clp)
- 	status = ops->establish_clid(clp, cred);
- 	put_rpccred(cred);
- 	if (status != 0)
--		return nfs4_handle_reclaim_lease_error(clp, status);
-+		return nfs4_handle_reclaim_lease_error(clp, status, cred);
++	struct net *net = host->net;
++
+ 	nlmclnt_release_host(host);
+-	lockd_down();
++	lockd_down(net);
+ }
+ EXPORT_SYMBOL_GPL(nlmclnt_done);
+ 
+@@ -220,11 +222,12 @@ reclaimer(void *ptr)
+ 	struct nlm_wait	  *block;
+ 	struct file_lock *fl, *next;
+ 	u32 nsmstate;
++	struct net *net = host->net;
+ 
+ 	allow_signal(SIGKILL);
+ 
+ 	down_write(&host->h_rwsem);
+-	lockd_up();	/* note: this cannot fail as lockd is already running */
++	lockd_up(net);	/* note: this cannot fail as lockd is already running */
+ 
+ 	dprintk("lockd: reclaiming locks for host %s\n", host->h_name);
+ 
+@@ -275,6 +278,6 @@ restart:
+ 
+ 	/* Release host handle after use */
+ 	nlmclnt_release_host(host);
+-	lockd_down();
++	lockd_down(net);
  	return 0;
  }
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index f49b9af..1ead075 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -295,11 +295,10 @@ static void lockd_down_net(struct net *net)
+ /*
+  * Bring up the lockd process if it's not already up.
+  */
+-int lockd_up(void)
++int lockd_up(struct net *net)
+ {
+ 	struct svc_serv *serv;
+ 	int		error = 0;
+-	struct net *net = current->nsproxy->net_ns;
  
-@@ -1778,7 +1780,7 @@ static int nfs4_reset_session(struct nfs_client *clp)
- 	if (status) {
- 		dprintk("%s: session reset failed with status %d for server %s!\n",
- 			__func__, status, clp->cl_hostname);
--		status = nfs4_handle_reclaim_lease_error(clp, status);
-+		status = nfs4_handle_reclaim_lease_error(clp, status, cred);
- 		goto out;
- 	}
- 	nfs41_finish_session_reset(clp);
+ 	mutex_lock(&nlmsvc_mutex);
+ 	/*
+@@ -378,12 +377,12 @@ EXPORT_SYMBOL_GPL(lockd_up);
+  * Decrement the user count and bring down lockd if we're the last.
+  */
+ void
+-lockd_down(void)
++lockd_down(struct net *net)
+ {
+ 	mutex_lock(&nlmsvc_mutex);
+ 	if (nlmsvc_users) {
+ 		if (--nlmsvc_users) {
+-			lockd_down_net(current->nsproxy->net_ns);
++			lockd_down_net(net);
+ 			goto out;
+ 		}
+ 	} else {
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 28dfad3..78e5213 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -220,7 +220,7 @@ static int nfsd_startup(unsigned short port, int nrservs)
+ 	ret = nfsd_init_socks(port);
+ 	if (ret)
+ 		goto out_racache;
+-	ret = lockd_up();
++	ret = lockd_up(&init_net);
+ 	if (ret)
+ 		goto out_racache;
+ 	ret = nfs4_state_start();
+@@ -229,7 +229,7 @@ static int nfsd_startup(unsigned short port, int nrservs)
+ 	nfsd_up = true;
+ 	return 0;
+ out_lockd:
+-	lockd_down();
++	lockd_down(&init_net);
+ out_racache:
+ 	nfsd_racache_shutdown();
+ 	return ret;
+@@ -246,7 +246,7 @@ static void nfsd_shutdown(void)
+ 	if (!nfsd_up)
+ 		return;
+ 	nfs4_state_shutdown();
+-	lockd_down();
++	lockd_down(&init_net);
+ 	nfsd_racache_shutdown();
+ 	nfsd_up = false;
+ }
+diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
+index 11a966e..4d24d64 100644
+--- a/include/linux/lockd/bind.h
++++ b/include/linux/lockd/bind.h
+@@ -54,7 +54,7 @@ extern void	nlmclnt_done(struct nlm_host *host);
+ 
+ extern int	nlmclnt_proc(struct nlm_host *host, int cmd,
+ 					struct file_lock *fl);
+-extern int	lockd_up(void);
+-extern void	lockd_down(void);
++extern int	lockd_up(struct net *net);
++extern void	lockd_down(struct net *net);
+ 
+ #endif /* LINUX_LOCKD_BIND_H */
+-- 
+1.7.9.5
 
