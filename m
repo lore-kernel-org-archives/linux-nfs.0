@@ -1,54 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:45643 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754579Ab2F2Nda (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Jun 2012 09:33:30 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>,
-        Sebastian Andrzej Siewior <sebastian@breakpoint.cc>,
-        Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 02/12] selinux: tag avc cache alloc as non-critical
-Date: Fri, 29 Jun 2012 14:33:15 +0100
-Message-Id: <1340976805-5799-3-git-send-email-mgorman@suse.de>
-In-Reply-To: <1340976805-5799-1-git-send-email-mgorman@suse.de>
-References: <1340976805-5799-1-git-send-email-mgorman@suse.de>
+Received: from acsinet15.oracle.com ([141.146.126.227]:44253 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751791Ab2FYV5i convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Jun 2012 17:57:38 -0400
+Subject: Re: rpcauth_create() returns ERR_PTR
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=US-ASCII
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4FE8CE8C.7020007@netapp.com>
+Date: Mon, 25 Jun 2012 17:56:32 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <2692BB15-F696-49CB-977B-0A1BCCF4CF56@oracle.com>
+References: <17B0469E-0417-4F74-A035-625D41E5609B@oracle.com> <4FE8CE8C.7020007@netapp.com>
+To: Bryan Schumaker <bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Failing to allocate a cache entry will only harm performance not
-correctness.  Do not consume valuable reserve pages for something
-like that.
 
-Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
-Acked-by: Eric Paris <eparis@redhat.com>
-Acked-by: Rik van Riel <riel@redhat.com>
----
- security/selinux/avc.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+On Jun 25, 2012, at 4:48 PM, Bryan Schumaker wrote:
 
-diff --git a/security/selinux/avc.c b/security/selinux/avc.c
-index 68d82da..4d3fab4 100644
---- a/security/selinux/avc.c
-+++ b/security/selinux/avc.c
-@@ -274,7 +274,7 @@ static struct avc_node *avc_alloc_node(void)
- {
- 	struct avc_node *node;
- 
--	node = kmem_cache_zalloc(avc_node_cachep, GFP_ATOMIC);
-+	node = kmem_cache_zalloc(avc_node_cachep, GFP_ATOMIC|__GFP_NOMEMALLOC);
- 	if (!node)
- 		goto out;
- 
+> On 06/25/2012 04:43 PM, Chuck Lever wrote:
+>> Hi-
+>> 
+>> nfs4_create_sec_client() and nfs4_lookup_root_sec() both invoke rpcauth_create().  They check to see that it returned something that wasn't NULL.
+>> 
+>> As far as I can tell, rpcauth_create() reports an error by returning something that IS_ERR.  It doesn't return NULL.  nfs_init_server_rpcclient() appears to be correct.
+>> 
+>> The fix looks simple, but since I don't have any unit tests for this area of code, I was hoping you could take it from here.
+>> 
+> 
+> Sure, I'll take a look at it.  You're right, checking for an error code instead of NULL sounds like an easy fix.
+
+I'm trying to call rpcauth_create() in a loop, as your code does, and the call is failing with -EEXIST on the GSS flavors.  If you just check rpcauth_create's return code for NULL, you will miss this and think the call succeeded.
+
+gss_pipes_dentries_create_net() doesn't seem to like being called twice.
+
 -- 
-1.7.9.2
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
