@@ -1,138 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:35089 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752254Ab2FMSUY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jun 2012 14:20:24 -0400
-Received: by mail-yx0-f174.google.com with SMTP id l2so237820yen.19
-        for <linux-nfs@vger.kernel.org>; Wed, 13 Jun 2012 11:20:24 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/4] NFS: Clean up TEST_STATEID and FREE_STATEID proc error
- reporting
-To: linux-nfs@vger.kernel.org
-Date: Wed, 13 Jun 2012 14:20:22 -0400
-Message-ID: <20120613182022.5910.28274.stgit@degas.1015granger.net>
-In-Reply-To: <20120613181831.5910.74030.stgit@degas.1015granger.net>
-References: <20120613181831.5910.74030.stgit@degas.1015granger.net>
+Received: from mail-we0-f174.google.com ([74.125.82.174]:50052 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753143Ab2FYWww (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Jun 2012 18:52:52 -0400
+Received: by weyu7 with SMTP id u7so3161074wey.19
+        for <linux-nfs@vger.kernel.org>; Mon, 25 Jun 2012 15:52:51 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+From: Thomas Spear <speeddymon@gmail.com>
+Date: Mon, 25 Jun 2012 17:52:19 -0500
+Message-ID: <CAEAsNvQ_eTdsvBfUjuXLxv_thitpnHcgz4UXxG7BR=7n7=bO3A@mail.gmail.com>
+Subject: lockd/PF_INET6 question
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The TEST_STATEID and FREE_STATEID operations can return
-NFS4ERR_BAD_STATEID, NFS4ERR_OLD_STATEID, or NFS4ERR_DEADSESSION.
-These error values should not be passed to nfs4_handle_exception(),
-since that will recursively kick off state recovery, resulting in a
-deadlock.  The reason to continue using nfs4_handle_exception() is
-to deal with NFS4ERR_DELAY.
+Hi all,
 
-Moreover, specifically when the TEST_STATEID operation returns
-NFS4_OK, res.status can contain one of these errors.
-_nfs41_test_stateid() replaces NFS4_OK with the value in res.status,
-which is then returned to callers.
+I've just subscribed, so please forgive me if I am in the wrong place.
 
-But res.status is not passed through nfs4_stat_to_errno(), and thus is
-a positive NFS4ERR value.  Currently callers are only interested in
-!NFS4_OK, and nfs4_handle_exception() ignores positive values, so this
-oversight hasn't bitten us so far.
+I run a file server at home which is really just a mid-range desktop
+motherboard/proc/memory stuck inside a server chassis, with a couple
+of raid cards. It runs CentOS 6.2.
 
-Bryan agrees the original intent was to return res.status as a
-negative NFS4ERR value to callers of nfs41_test_stateid(), as long as
-no state ID recovery is attempted.
+I wanted to disable IPv6, and so I followed instructions on the
+internet which were to use sysctl to do so. After restarting nfs,
+nfslock, and rpcbind, I found that some NFS services were still using
+IPv6, so a bit of further googling revealed that I needed to comment a
+couple of lines in /etc/netconfig which I've done.
 
-As a finishing touch, add appropriate documenting comments and some
-debugging printk's.
+Now restarted nfs, nfslock, and rpcbind again, and still one thing uses IPv6.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+[root@fileserver ~]# netstat -plnt |grep ::
+tcp        0      0 :::1101                     :::*
+     LISTEN      -
+[root@fileserver ~]# grep 1101 /etc/sysconfig/nfs
+LOCKD_TCPPORT=1101
+LOCKD_UDPPORT=1101
+[root@fileserver ~]# ps waufx |grep '\[[l]ockd'
+root      7806  0.0  0.0      0     0 ?        S    16:04   0:00  \_ [lockd]
 
- fs/nfs/nfs4proc.c |   51 ++++++++++++++++++++++++++++++++++++++++-----------
- 1 files changed, 40 insertions(+), 11 deletions(-)
+I did see other pages that said to force the IPv6 module to not load,
+but then I saw a redhat bugzilla saying that that was not the
+recommended way.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index d48dbef..ef69cc5 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6561,22 +6561,36 @@ static int _nfs41_test_stateid(struct nfs_server *server, nfs4_stateid *stateid)
- 		.rpc_resp = &res,
- 	};
- 
-+	dprintk("NFS call  test_stateid %p\n", stateid);
- 	nfs41_init_sequence(&args.seq_args, &res.seq_res, 0);
- 	status = nfs4_call_sync_sequence(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
--
--	if (status == NFS_OK)
--		return res.status;
--	return status;
-+	if (status != NFS_OK) {
-+		dprintk("NFS reply test_stateid: failed, %d\n", status);
-+		return status;
-+	}
-+	dprintk("NFS reply test_stateid: succeeded, %d\n", -res.status);
-+	return -res.status;
- }
- 
-+/**
-+ * nfs41_test_stateid - perform a TEST_STATEID operation
-+ *
-+ * @server: NFS server that may know about "stateid"
-+ * @stateid: state ID to test
-+ *
-+ * Returns NFS_OK if the server recognizes the state ID as valid.
-+ * Otherwise a negative NFS4ERR value is returned if the operation
-+ * failed or the state ID is not currently valid.
-+ */
- static int nfs41_test_stateid(struct nfs_server *server, nfs4_stateid *stateid)
- {
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
--		err = nfs4_handle_exception(server,
--				_nfs41_test_stateid(server, stateid),
--				&exception);
-+		err = _nfs41_test_stateid(server, stateid);
-+		if (err != -NFS4ERR_DELAY)
-+			break;
-+		nfs4_handle_exception(server, err, &exception);
- 	} while (exception.retry);
- 	return err;
- }
-@@ -6592,19 +6606,34 @@ static int _nfs4_free_stateid(struct nfs_server *server, nfs4_stateid *stateid)
- 		.rpc_argp = &args,
- 		.rpc_resp = &res,
- 	};
-+	int status;
- 
-+	dprintk("NFS call  free_stateid %p\n", stateid);
- 	nfs41_init_sequence(&args.seq_args, &res.seq_res, 0);
--	return nfs4_call_sync_sequence(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
-+	status = nfs4_call_sync_sequence(server->client, server, &msg,
-+					 &args.seq_args, &res.seq_res, 1);
-+	dprintk("NFS reply free_stateid: %d\n", status);
-+	return status;
- }
- 
-+/**
-+ * nfs41_free_stateid - perform a FREE_STATEID operation
-+ *
-+ * @server: NFS server that may know about "stateid"
-+ * @stateid: state ID to release
-+ *
-+ * Returns NFS_OK if the server freed the state ID.  Otherwise a
-+ * negative NFS4ERR value is returned if the operation failed.
-+ */
- static int nfs41_free_stateid(struct nfs_server *server, nfs4_stateid *stateid)
- {
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
--		err = nfs4_handle_exception(server,
--				_nfs4_free_stateid(server, stateid),
--				&exception);
-+		err = _nfs4_free_stateid(server, stateid);
-+		if (err != -NFS4ERR_DELAY)
-+			break;
-+		nfs4_handle_exception(server, err, &exception);
- 	} while (exception.retry);
- 	return err;
- }
+So again after some more googling, I found the following commit:
 
+http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=eb16e907781a9da7f272a3e8284c26bc4e4aeb9d
+
+I believe this does exactly what I want, but it appears to only do so
+if the ipv6 module isn't loaded, which seems improper to me, if the
+recommended and preferred way to disable IPv6 is with sysctl.
+
+Would it be possible to have lockd remove its tcp support also when
+the sysctl values indicate that IPv6 is not in use:
+
+[root@fileserver ~]# grep ipv6 /etc/sysctl.conf
+# Disable ipv6
+net.ipv6.conf.all.disable_ipv6 = 1
+
+
+
+Thank you,
+
+Thomas
