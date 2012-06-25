@@ -1,64 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp10.mail.sp.isp-net.nl ([217.149.192.65]:48534 "EHLO
-	smtp10.mail.sp.isp-net.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751494Ab2FCPAm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Jun 2012 11:00:42 -0400
-Message-ID: <4FCB7C11.7070300@xmsnet.nl>
-Date: Sun, 03 Jun 2012 17:00:33 +0200
-From: Hans de Bruin <jmdebruin@xmsnet.nl>
+Received: from mx2.netapp.com ([216.240.18.37]:23648 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750908Ab2FYBVr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 24 Jun 2012 21:21:47 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Andi Kleen <ak@linux.intel.com>
+CC: Fengguang Wu <fengguang.wu@intel.com>,
+        Linux-NFS <linux-nfs@vger.kernel.org>
+Subject: Re: rpcauth_lookup_credcache() lock contentions
+Date: Mon, 25 Jun 2012 01:21:28 +0000
+Message-ID: <1340587274.8758.11.camel@lade.trondhjem.org>
+References: <20120623122604.GA10887@localhost>
+	 <20120624213417.GI4152@tassilo.jf.intel.com>
+In-Reply-To: <20120624213417.GI4152@tassilo.jf.intel.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Konstantin Khlebnikov <khlebnikov@openvz.org>
-Subject: Re: nfsroot client will not start firefox or thunderbird from 3.4.0
- nfsserver
-References: <4FC3F9F6.7010107@xmsnet.nl> <4FC913FC.2020401@xmsnet.nl>
-In-Reply-To: <4FC913FC.2020401@xmsnet.nl>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/01/2012 09:11 PM, Hans de Bruin wrote:
-> On 05/29/2012 12:19 AM, Hans de Bruin wrote:
->> I just upgraded my home server from kernel 3.3.5 to 3.4.0 and ran into
->> some trouble. My laptop, a nfsroot client, will not run firefox and
->> thunderbird anymore. When I start these programs from an xterm, the
->> cursor goes to the next line and waits indefinitely.
->>
->> I do not know if there is any order is lsof's output. A lsof | grep
->> firefox or thunderbird shows ......./.parentlock as the last line.
->>
->> It does not matter whether the client is running a 3.4.0 or a 3.3.0
->> kernel, or if the server is running on top of xen or not.
->>
->> There is some noise in the servers dmesg:
->>
->> [ 241.256684] INFO: task kworker/u:2:801 blocked for more than 120
->> seconds.
->> [ 241.256691] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs"
->
-> ...
->
-> On a almost identical testsystem firefox en thunderbird segfault after
-> upgrading to 3.4.0. I would have been nice if it would behave exaclty
-> like my home server. I bisected the segfault to:
->
-> commit 0fc9d1040313047edf6a39fd4d7c7defdca97c62
-> Author: Konstantin Khlebnikov <khlebnikov@openvz.org>
-> Date: Wed Mar 28 14:42:54 2012 -0700
->
-> radix-tree: use iterators in find_get_pages* functions
->
->
-> When I revert that on top of 3.4.0 the segfaults are gone but both
-> firefox en thunderbird go in the lets wait indefinitely mode like the
-> homeserver.
->
-> I am going to make a bit-wise copy from from my homeserver to my
-> testserver and try again.
->
-
-The bit-wise copy also segfaults firefox and thunderbird at the same 
-commit.
-
--- 
-Hans
+T24gU3VuLCAyMDEyLTA2LTI0IGF0IDE0OjM0IC0wNzAwLCBBbmRpIEtsZWVuIHdyb3RlOg0KPiBP
+biBTYXQsIEp1biAyMywgMjAxMiBhdCAwODoyNjowNFBNICswODAwLCBGZW5nZ3VhbmcgV3Ugd3Jv
+dGU6DQo+ID4gSGksDQo+ID4gDQo+ID4gV2hlbiBkb2luZyBwYXJhbGxlbCBrZXJuZWwgYnVpbGRz
+IG9uIGFuIE5GU1JPT1Qgc3lzdGVtIHdpdGggMzIgbG9naWNhbA0KPiA+IENQVXMsIEkgc2VlIGhh
+bGYgQ1BVIHRpbWUgc3BlbnQgaW4ga2VybmVsOg0KPiA+IA0KPiA+IHRvcCAtIDIwOjA4OjI4IHVw
+ICA1OjAxLCAgOCB1c2VycywgIGxvYWQgYXZlcmFnZTogNjIuOTcsIDU1LjgyLCA1NC41Ng0KPiA+
+IFRhc2tzOiA3NTEgdG90YWwsICA4MCBydW5uaW5nLCA2NzEgc2xlZXBpbmcsICAgMCBzdG9wcGVk
+LCAgIDAgem9tYmllDQo+ID4gQ3B1KHMpOiAgMC4xJXVzLCA1My41JXN5LCA0Ni40JW5pLCAgMC4w
+JWlkLCAgMC4wJXdhLCAgMC4wJWhpLCAgMC4xJXNpLCAgMC4wJXN0DQo+ID4gTWVtOiAgNjU0MDEx
+MzJrIHRvdGFsLCAzNjQ1NTYwNGsgdXNlZCwgMjg5NDU1MjhrIGZyZWUsICAgICAgICAwayBidWZm
+ZXJzDQo+ID4gU3dhcDogICAgICAgIDBrIHRvdGFsLCAgICAgICAgMGsgdXNlZCwgICAgICAgIDBr
+IGZyZWUsIDMxODU4MjQ0ayBjYWNoZWQNCj4gPiANCj4gPiBUaGUgYXR0YWNoZWQgbG9ja19zdGF0
+IHNob3dzIHRoYXQgcnBjYXV0aF9sb29rdXBfY3JlZGNhY2hlKCkgaGFzIHRoZQ0KPiA+IG91dHN0
+YW5kaW5nIGNvbnRlbnRpb25zLg0KPiANCj4gSG1tLCB0aGUgY2FjaGUgaXMgYWxyZWFkeSB1c2lu
+ZyBSQ1UgZm9yIHRoZSByZWFkIGNhc2UsIGp1c3QgdGFrZXMNCj4gYSBsb2NrIGZvciB3cml0aW5n
+LiBPciB3aGVuIGNoZWNraW5nIGFuIGVudHJ5Lg0KPiANCj4gU28geW91IGVpdGhlciBoYXZlIGEg
+bG90IG9mIGxvb2t1cHMgb24gdGhlIHNhbWUgZW50cnksIG9yIHlvdSB0aHJhc2gNCj4gdGhlIGNh
+Y2hlLg0KPiANCj4gV2hlbiB5b3UgbG9vayB1cCB0aGUgbG9vayBhZGRyZXNzLCBpcyBpdCB0aGUg
+b25lIGluIHRoZSBmaXJzdCBsb29wPw0KPiBJZiB5ZXMgdGhlbiBpdCdzIHRoZSBmaXJzdC4NCj4g
+DQo+IEknbSBub3QgZnVsbHkgc3VyZSB3aHkgaXQgdGFrZXMgdGhlIGxvY2sgaW4gdGhlIHJlYWQg
+Y2FzZSBhbnl3YXlzLiBOZWl0aGVyDQo+IHRlc3RfYml0IG5vciBhdG9taWNfaW5jIHVuZGVyIFJD
+VSBzaG91bGQgbmVlZCBhIGxvY2ssIHNvIEkgc3VwcG9zZQ0KPiBpdCBjYW4gYmUganVzdCByZW1v
+dmVkLg0KPiANCj4gMzY3ICAgICAgICAgICAgICAgICBzcGluX2xvY2soJmNhY2hlLT5sb2NrKTsN
+Cj4gMzY4ICAgICAgICAgICAgICAgICBpZiAodGVzdF9iaXQoUlBDQVVUSF9DUkVEX0hBU0hFRCwg
+JmVudHJ5LT5jcl9mbGFncykgPT0gMCkgew0KPiAzNjkgICAgICAgICAgICAgICAgICAgICAgICAg
+c3Bpbl91bmxvY2soJmNhY2hlLT5sb2NrKTsNCj4gMzcwICAgICAgICAgICAgICAgICAgICAgICAg
+IGNvbnRpbnVlOw0KPiAzNzEgICAgICAgICAgICAgICAgIH0NCj4gMzcyICAgICAgICAgICAgICAg
+ICBjcmVkID0gZ2V0X3JwY2NyZWQoZW50cnkpOw0KPiAzNzMgICAgICAgICAgICAgICAgIHNwaW5f
+dW5sb2NrKCZjYWNoZS0+bG9jayk7DQoNCkhpIEFuZGksDQoNCkkgYmVsaWV2ZSB0aGF0IHRoZSBz
+cGlubG9jayBpcyB0aGVyZSBpbiBvcmRlciB0byBlbnN1cmUgdGhhdCB0aGUNCnRlc3RfYml0KCkg
+YW5kIGdldF9ycGNjcmVkKCkgYXJlIGF0b21pYyB3LnIudC4gZ2FyYmFnZSBjb2xsZWN0aW9uLg0K
+DQpXaGF0IHdlIGNvdWxkIHBlcmhhcHMgZG8gaXMgY3JlYXRlIGEgbG9jay1sZXNzIGZhc3QgcGF0
+aC4gRm9yIGluc3RhbmNlDQp1c2UgYXRvbWljX2luY191bmxlc3NfemVybyB0byBncmFiIGEgcmVm
+ZXJlbmNlIGluIGNhc2VzIHdoZXJlIHdlIGtub3cNCnRoYXQgdGhlIGdhcmJhZ2UgY29sbGVjdG9y
+IGNhbid0IGFjdCBvbiB0aGlzIGNyZWQuIFdlJ2Qgc3RpbGwgbmVlZCB0bw0KdGVzdCBmb3IgUlBD
+QVVUSF9DUkVEX0hBU0hFRCwgYnV0IHNpbmNlIHdlJ2QgYmUgaG9sZGluZyBhIHJlZmVyZW5jZSB3
+ZQ0KY291bGQgZG8gdGhhdCBvdXRzaWRlIHRoZSBsb2NrLi4uDQoNCkNoZWVycw0KICBUcm9uZA0K
+LS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRB
+cHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
