@@ -1,70 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:64416 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:22097 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751301Ab2FSOMv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Jun 2012 10:12:51 -0400
-Message-ID: <4FE08895.20705@RedHat.com>
-Date: Tue, 19 Jun 2012 10:11:33 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1756095Ab2FYVUR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Jun 2012 17:20:17 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: Handle authentication errors correctly during
+ lease reclaim
+Date: Mon, 25 Jun 2012 21:20:15 +0000
+Message-ID: <1340659210.9620.64.camel@lade.trondhjem.org>
+References: <20120625204637.1637.14358.stgit@degas.1015granger.net>
+In-Reply-To: <20120625204637.1637.14358.stgit@degas.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: =?UTF-8?B?VmlsbGUgU2t5dHTDpA==?= <ville.skytta@iki.fi>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] idmapd.conf.5: Syntax fixes.
-References: <1337546003-5218-1-git-send-email-ville.skytta@iki.fi>
-In-Reply-To: <1337546003-5218-1-git-send-email-ville.skytta@iki.fi>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 05/20/2012 04:33 PM, Ville Skyttä wrote:
-> Signed-off-by: Ville Skyttä <ville.skytta@iki.fi>
-> ---
->  idmapd.conf.5 |   15 +++++++--------
->  1 file changed, 7 insertions(+), 8 deletions(-)
-Committed... sorry it took so long...
-
-steved.
-> 
-> diff --git a/idmapd.conf.5 b/idmapd.conf.5
-> index 9c7f1ae..7b9e762 100644
-> --- a/idmapd.conf.5
-> +++ b/idmapd.conf.5
-> @@ -234,7 +234,6 @@ Number of seconds before timing out an LDAP request
->  .\" -------------------------------------------------------------------
->  .\"
->  .SH EXAMPLES
-> -."
->  An example
->  .I /etc/idmapd.conf
->  file:
-> @@ -266,7 +265,7 @@ johndoe@OTHER.DOMAIN.ORG = johnny
->  LDAP_server = ldap.domain.org
->  LDAP_base = dc=org,dc=domain
->  
-> -.fo
-> +.fi
->  .\"
->  .\" -------------------------------------------------------------------
->  .\" Additional sections
-> @@ -275,11 +274,11 @@ LDAP_base = dc=org,dc=domain
->  .SH SEE ALSO
->  .BR idmapd (8)
->  .BR svcgssd (8)
-> -.".SH COMPATIBILITY
-> -.".SH STANDARDS
-> -.".SH ACKNOWLEDGEMENTS
-> -.".SH AUTHORS
-> -.".SH HISTORY
-> +.\".SH COMPATIBILITY
-> +.\".SH STANDARDS
-> +.\".SH ACKNOWLEDGEMENTS
-> +.\".SH AUTHORS
-> +.\".SH HISTORY
->  .SH BUGS
->  Report bugs to <nfsv4@linux-nfs.org>
-> -.".SH CAVEATS
-> +.\".SH CAVEATS
-> -- 1.7.10.1 -- To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org More majordomo info at http://vger.kernel.org/majordomo-info.html
-> 
+T24gTW9uLCAyMDEyLTA2LTI1IGF0IDE2OjQ3IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+Q29tbWl0IDJhNmVlNmFhICJORlN2NDogQ2xlYW4gdXAgdGhlIGVycm9yIGhhbmRsaW5nIGZvcg0K
+PiBuZnM0X3JlY2xhaW1fbGVhc2UiIE1heSAyNSwgMjAxMiBhcHBlYXJzIHRvIGhhdmUgY2hhbmdl
+ZCB0aGUgZXJyb3INCj4gdmFsdWUgcmV0dXJuZWQgYnkgbmZzNF9yZWNsYWltX2xlYXNlKCkgaWYg
+cnBjLmdzc2QgZmFpbHMgdG8gY3JlYXRlDQo+IGEgbWFjaGluZSBjcmVkZW50aWFsIChlaXRoZXIg
+ZHVlIHRvIGEgbG9jYWwgZXJyb3Igb3IgYSBwcm9ibGVtIG9uDQo+IHRoZSBzZXJ2ZXIpLg0KDQpJ
+dCBpcyBfbm90XyBhbiBlcnJvciB0byBiZSBtb3VudGluZyB3aXRob3V0IG1hY2hpbmUgY3JlZGVu
+dGlhbHMuDQoNCj4gSW4gdGhpcyBjYXNlLCBuZnM0X3Byb2Nfc2V0Y2xpZW50aWQoKSByZXR1cm5z
+IC1FQUNDRVMuICBCZWZvcmUNCj4gMmE2ZWU2YWEsIG5mczRfcmVjbGFpbV9sZWFzZSgpIGNvbnZl
+cnRlZCB0aGlzIHRvIC1FQUdBSU4uICBOb3cgaXQNCj4gcmV0dXJucyB6ZXJvLiAgVGhlIHN0YXRl
+IG1hbmFnZXIgYXNzdW1lcyBhbGwgaXMgd2VsbCwgbmZzX2NsaWVudA0KPiBpbml0aWFsaXphdGlv
+biB0aGVuIHByb2NlZWRzIGluIHByb2Nlc3MgY29udGV4dCB1bnRpbCBpdCBvb3BzZXMgd2hpbGUN
+Cj4gdHJ5aW5nIHRvIHNldCB1cCB0aGUgbW91bnQncyBuZnNfc2VydmVyLg0KDQpUaGUgUFVSR0Vf
+U1RBVEUgYW5kL29yIExFQVNFX0VYUElSRUQgZmxhZ3Mgc2hvdWxkIHN0aWxsIGJlIHNldCBpZiB3
+ZQ0KZXhpdCB2aWEgbmZzNF9oYW5kbGVfcmVjbGFpbV9sZWFzZV9lcnJvci4gVGhlIHplcm8gZXJy
+b3IgcmV0dXJuIGlzIHRoZXJlDQppbiBvcmRlciB0byBlbnN1cmUgdGhhdCB0aGUgc3RhdGUgbWFu
+YWdlciB0aHJlYWQgbG9vcHMgYW5kIHJldHJpZXMNCmluc3RlYWQgb2YganVzdCBhYm9ydGluZy4N
+Cg0KVGhpcyBwYXRjaCBtYWtlcyBpdCBpbXBvc3NpYmxlIHRvIHJ1biB3aXRob3V0IG1hY2hpbmUg
+Y3JlZHMgYmVjYXVzZSB5b3UNCmNpcmN1bXZlbnQgdGhlIG5mczRfY2xlYXJfbWFjaGluZV9jcmVk
+KCkrcmV0cnkgY2FzZS4NCg0KV2h5IGRvZXMgc2V0dGluZyB1cCB0aGUgbmZzX3NlcnZlciBkZXBl
+bmQgb24gYSBzdWNjZXNzZnVsIHNldGNsaWVudGlkDQpjYWxsIGFueXdheSBpbiB0aGUgY2FzZSBv
+ZiBtaW5vciB2ZXJzaW9uIDA/DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xp
+ZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3
+Lm5ldGFwcC5jb20NCg0K
