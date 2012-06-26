@@ -1,133 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:51858 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760838Ab2FHMV1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jun 2012 08:21:27 -0400
-Message-ID: <4FD1EE38.5080300@panasas.com>
-Date: Fri, 8 Jun 2012 15:21:12 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-CC: Benny Halevy <bhalevy@tonian.com>, Peng Tao <bergwolf@gmail.com>
-Subject: [PATCH 6/6] pnfs-obj: Better IO pattern in case of unaligned offset
-References: <4FD1CEA8.3090105@panasas.com>
-In-Reply-To: <4FD1CEA8.3090105@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mx1.redhat.com ([209.132.183.28]:58202 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755420Ab2FZDRq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Jun 2012 23:17:46 -0400
+Subject: Re: nfs root problem in linux-next
+From: Mark Salter <msalter@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: linux-next <linux-next@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Mon, 25 Jun 2012 23:17:43 -0400
+In-Reply-To: <1340666049.4362.9.camel@lade.trondhjem.org>
+References: <1340656006.20557.30.camel@deneb.redhat.com>
+	 <1340666049.4362.9.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="us-ascii"
+Message-ID: <1340680664.20557.38.camel@deneb.redhat.com>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, 2012-06-25 at 23:14 +0000, Myklebust, Trond wrote:
+> On Mon, 2012-06-25 at 16:26 -0400, Mark Salter wrote:
+> > As of Friday's linux-next I've been unable to successfully boot using an
+> > nfs root with a c6x board. I bisected it to this patch:
+> > 
+> >   commit cc3b296fd9a01c9e654bcb9373af70dd6e32fb24
+> >   Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+> >   Date:   Thu Jun 21 14:53:10 2012 -0400
+> > 
+> >       SUNRPC: Clean up xdr_read_pages and xdr_enter_page
+> > 
+> > I placed "good-boot" and "bad-boot" packet capture files at:
+> > 
+> >   http://people.redhat.com/~msalter/linux-next/
+> > 
+> > The only difference in the kernels used is the above patch. The
+> > bad-boot mounted the nfs root but was unable to find the init
+> > file which caused a panic. The nfsroot= parameter uses v3,tcp
+> > flags and the server side is running rhel6.
+> > 
+> > I'm not at all familiar with the nfs code, but can help with
+> > testing or providing any addtional info needed.
+> 
+> Hi Mark,
+> 
+> So you are saying that reverting that patch alone suffices to fix the
+> problem that you are seeing?
 
-Depending on layout and ARCH, ORE has some limits on max IO sizes
-which is communicated on (what else) ore_layout->max_io_length,
-which is always stripe aligned.
-This was considered as the pg_test boundary for splitting and starting
-a new IO.
+Yes. If I check out a tree at commit cc3b296fd9a, the resulting kernel
+does not boot (it panics that it cannot find init). If I check out a
+tree at  cc3b296fd9a~1, it boots the nfs root successfully.
 
-But in the case of a long IO where the start offset is not aligned
-what would happen is that both end of IO[N] and start of IO[N+1]
-would be unaligned, causing each IO boundary parity unit to be
-calculated and written twice.
+...
+> I'll have a look to see if I can find out what is the problem. The only
+> significant change that patch should be introducing would be the use of
+> xdr_stream_pos().
 
-So what we do in this patch is split the very start of an unaligned
-IO, up to a stripe boundary, and then next IO's can continue fully
-aligned til the end.
+Okay. I am happy to help with any testing if needed to help characterize
+the problem better.
 
-We might be sacrificing the case where the full unaligned IO would
-fit within a single max_io_length, but the sacrifice is well worth
-the elimination of double calculation and parity units IO.
-Actually the sacrificing is marginal and is almost unmeasurable.
+--Mark
 
-TODO:
-	If we know the total expected linear segment that will
-	be received, at pg_init, we could use that information
-	in many places:
-	1. blocks-layout get_layout write segment size
-	2. Better mds-threshold
-	3. In above situation for a better clean split
 
-	I will do this in future submission.
-
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/nfs/objlayout/objio_osd.c | 55 +++++++++++++++++++++++++++++++++++++++++---
- 1 file changed, 52 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 422bdef..5f8c4f3 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -576,17 +576,66 @@ static bool objio_pg_test(struct nfs_pageio_descriptor *pgio,
- 		return false;
- 
- 	return pgio->pg_count + req->wb_bytes <=
--			OBJIO_LSEG(pgio->pg_lseg)->layout.max_io_length;
-+			(unsigned long)pgio->pg_layout_private;
-+}
-+
-+void objio_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
-+{
-+	pnfs_generic_pg_init_read(pgio, req);
-+	if (unlikely(pgio->pg_lseg == NULL))
-+		return; /* Not pNFS */
-+
-+	pgio->pg_layout_private = (void *)
-+				OBJIO_LSEG(pgio->pg_lseg)->layout.max_io_length;
-+}
-+
-+static bool aligned_on_raid_stripe(u64 offset, struct ore_layout *layout,
-+				   unsigned long *stripe_end)
-+{
-+	u32 stripe_off;
-+	unsigned stripe_size;
-+
-+	if (layout->raid_algorithm == PNFS_OSD_RAID_0)
-+		return true;
-+
-+	stripe_size = layout->stripe_unit *
-+				(layout->group_width - layout->parity);
-+
-+	div_u64_rem(offset, stripe_size, &stripe_off);
-+	if (!stripe_off)
-+		return true;
-+
-+	*stripe_end = stripe_size - stripe_off;
-+	return false;
-+}
-+
-+void objio_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
-+{
-+	unsigned long stripe_end = 0;
-+
-+	pnfs_generic_pg_init_write(pgio, req);
-+	if (unlikely(pgio->pg_lseg == NULL))
-+		return; /* Not pNFS */
-+
-+	if (req->wb_offset ||
-+	    !aligned_on_raid_stripe(req->wb_index * PAGE_SIZE,
-+			       &OBJIO_LSEG(pgio->pg_lseg)->layout,
-+			       &stripe_end)) {
-+		pgio->pg_layout_private = (void *)stripe_end;
-+	} else {
-+		pgio->pg_layout_private = (void *)
-+				OBJIO_LSEG(pgio->pg_lseg)->layout.max_io_length;
-+	}
- }
- 
- static const struct nfs_pageio_ops objio_pg_read_ops = {
--	.pg_init = pnfs_generic_pg_init_read,
-+	.pg_init = objio_init_read,
- 	.pg_test = objio_pg_test,
- 	.pg_doio = pnfs_generic_pg_readpages,
- };
- 
- static const struct nfs_pageio_ops objio_pg_write_ops = {
--	.pg_init = pnfs_generic_pg_init_write,
-+	.pg_init = objio_init_write,
- 	.pg_test = objio_pg_test,
- 	.pg_doio = pnfs_generic_pg_writepages,
- };
--- 
-1.7.10.2.677.gb6bc67f
 
 
