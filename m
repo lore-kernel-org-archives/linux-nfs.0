@@ -1,104 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:51649 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755154Ab2FHMNW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jun 2012 08:13:22 -0400
-Message-ID: <4FD1EC54.9070909@panasas.com>
-Date: Fri, 8 Jun 2012 15:13:08 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:58976 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751001Ab2FZTAy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Jun 2012 15:00:54 -0400
+Message-ID: <4FEA06E3.9060109@netapp.com>
+Date: Tue, 26 Jun 2012 15:00:51 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-CC: Benny Halevy <bhalevy@tonian.com>, Peng Tao <bergwolf@gmail.com>
-Subject: [PATCH 3/6] pnfs-obj: Fix __r4w_get_page when offset is beyond i_size
-References: <4FD1CEA8.3090105@panasas.com>
-In-Reply-To: <4FD1CEA8.3090105@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: Check if rpcauth_create() returns an error code
+References: <1340734373-5596-1-git-send-email-bjschuma@netapp.com> <9ED25AEF-945E-4908-8D78-4CC040D9A26A@oracle.com>
+In-Reply-To: <9ED25AEF-945E-4908-8D78-4CC040D9A26A@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 06/26/2012 02:23 PM, Chuck Lever wrote:
+> 
+> On Jun 26, 2012, at 2:12 PM, bjschuma@netapp.com wrote:
+> 
+>> From: Bryan Schumaker <bjschuma@netapp.com>
+>>
+>> I was treating a NULL return value as an error, but this function will
+>> instead return an ERR_PTR().  Now that I'm checking if the function
+>> returns an error, I should also pass the error up the call stack.
+> 
+> 
+>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+>> ---
+>> fs/nfs/nfs4namespace.c |  4 ++--
+>> fs/nfs/nfs4proc.c      | 15 ++++-----------
+>> 2 files changed, 6 insertions(+), 13 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+>> index 017b4b0..a8aafc6 100644
+>> --- a/fs/nfs/nfs4namespace.c
+>> +++ b/fs/nfs/nfs4namespace.c
+>> @@ -205,9 +205,9 @@ struct rpc_clnt *nfs4_create_sec_client(struct rpc_clnt *clnt, struct inode *ino
+>> 		return clone;
+>>
+>> 	auth = rpcauth_create(flavor, clone);
+>> -	if (!auth) {
+>> +	if (IS_ERR(auth)) {
+>> 		rpc_shutdown_client(clone);
+>> -		clone = ERR_PTR(-EIO);
+>> +		clone = ERR_CAST(auth);
+>> 	}
+> 
+> This echoes nfs_init_server_rpcclient(), so it should be adequate.
+> 
+>>
+>> 	return clone;
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index 5a7b372..f817587 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -2356,17 +2356,10 @@ out:
+>> static int nfs4_lookup_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
+>> 				struct nfs_fsinfo *info, rpc_authflavor_t flavor)
+>> {
+>> -	struct rpc_auth *auth;
+>> -	int ret;
+>> -
+>> -	auth = rpcauth_create(flavor, server->client);
+>> -	if (!auth) {
+>> -		ret = -EIO;
+>> -		goto out;
+>> -	}
+>> -	ret = nfs4_lookup_root(server, fhandle, info);
+>> -out:
+>> -	return ret;
+>> +	struct rpc_auth *auth = rpcauth_create(flavor, server->client);
+>> +	if (IS_ERR(auth))
+>> +		return PTR_ERR(auth);
+>> +	return nfs4_lookup_root(server, fhandle, info);
+>> }
+>>
+>> static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
+> 
+> This logic calls rpcauth_create() in a loop, correct?  The expectation is that rpcauth_create() should simply replace the nfs_client's rpc_auth with the next flavor each time it is called?
+> 
 
-It is very common for the end of the file to be unaligned on
-stripe size. But since we know it's beyond file's end then
-the XOR should be preformed with all zeros.
+Yeah, that's what I'm expecting to happen.
 
-Old code used to just read zeros out of the OSD devices, which is a great
-waist. But what scares me more about this situation is that, we now have
-pages attached to the file's mapping that are beyond i_size. I don't
-like the kind of bugs this calls for.
+> With the current code in nfs4_find_root_sec(), rpcauth_create() with a GSS flavor fails the second time you call it because (I suspect) there's a pipe dentry left over from the previous call.  So there's no way to walk an entire list returned from gss_mech_list_flavors(), it will fail on the second GSS flavor every time.
 
-Fix both birds, by returning a global zero_page, if offset is beyond
-i_size.
+rpcauth_create() has this bit of code in it:
 
-TODO:
-	Change the API to ->__r4w_get_page() so a NULL can be
-	returned without being considered as error, since XOR API
-	treats NULL entries as zero_pages.
+	if (clnt->cl_auth)
+		rpcauth_release(clnt->cl_auth);
+	clnt->cl_auth = auth;
 
-[Bug since 3.2. Should apply the same way to all Kernels since]
-CC: Stable Tree <stable@kernel.org>
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/nfs/objlayout/objio_osd.c | 24 +++++++++++++++++++++---
- 1 file changed, 21 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index b47277b..0e7c833 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -480,14 +480,28 @@ static void _write_done(struct ore_io_state *ios, void *private)
- 	objlayout_write_done(&objios->oir, status, objios->sync);
- }
- 
-+static struct page *g_zero_page;
-+
- static struct page *__r4w_get_page(void *priv, u64 offset, bool *uptodate)
- {
- 	struct objio_state *objios = priv;
- 	struct nfs_write_data *wdata = objios->oir.rpcdata;
- 	struct address_space *mapping = wdata->header->inode->i_mapping;
- 	pgoff_t index = offset / PAGE_SIZE;
--	struct page *page = find_get_page(mapping, index);
-+	struct page *page;
-+	loff_t i_size = i_size_read(wdata->header->inode);
-+
-+	if (offset >= i_size) {
-+		if (!g_zero_page) {
-+			g_zero_page = alloc_page(GFP_NOFS);
-+			clear_highpage(g_zero_page);
-+		}
-+		*uptodate = true;
-+		dprintk("%s: g_zero_page index=0x%lx\n", __func__, index);
-+		return g_zero_page;
-+	}
- 
-+	page = find_get_page(mapping, index);
- 	if (!page) {
- 		page = find_or_create_page(mapping, index, GFP_NOFS);
- 		if (unlikely(!page)) {
-@@ -507,8 +521,10 @@ static struct page *__r4w_get_page(void *priv, u64 offset, bool *uptodate)
- 
- static void __r4w_put_page(void *priv, struct page *page)
- {
--	dprintk("%s: index=0x%lx\n", __func__, page->index);
--	page_cache_release(page);
-+	dprintk("%s: index=0x%lx\n", __func__,
-+		(page == g_zero_page) ? -1UL : page->index);
-+	if (g_zero_page != page)
-+		page_cache_release(page);
- 	return;
- }
- 
-@@ -615,6 +631,8 @@ static bool objio_pg_test(struct nfs_pageio_descriptor *pgio,
- static void __exit
- objlayout_exit(void)
- {
-+	if (g_zero_page)
-+		__free_page(g_zero_page);
- 	pnfs_unregister_layoutdriver(&objlayout_type);
- 	printk(KERN_INFO "NFS: %s: Unregistered OSD pNFS Layout Driver\n",
- 	       __func__);
--- 
-1.7.10.2.677.gb6bc67f
+I guess I figured rpcauth_release() was already doing the necessary cleanup.
+
+- Bryan
+> 
+> We could:
+> 
+>   a)  have gss_pipes_dentries_create_net() ignore -EEXIST and return zero instead, or
+> 
+>   b)  make sure rpcauth_create() releases the old rpc_auth before calling op->create()
+> 
+>   c)  ??
+> 
 
 
