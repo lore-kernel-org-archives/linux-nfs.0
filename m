@@ -1,106 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39320 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:17169 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751784Ab2FEUTL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Jun 2012 16:19:11 -0400
-Date: Tue, 5 Jun 2012 16:19:09 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Weston Andros Adamson <dros@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] nfsd: add fault injection for CB_PATH_DOWN
-Message-ID: <20120605201909.GA27061@fieldses.org>
-References: <1337888537-21754-1-git-send-email-dros@netapp.com>
+	id S1756792Ab2FZMnA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Jun 2012 08:43:00 -0400
+Message-ID: <4FE9AE52.10800@netapp.com>
+Date: Tue, 26 Jun 2012 08:42:58 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1337888537-21754-1-git-send-email-dros@netapp.com>
+To: Andre Tomt <andre@tomt.net>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        Fengguang Wu <fengguang.wu@intel.com>,
+        David Howells <dhowells@redhat.com>,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: BUG in __key_instantiate_and_link(): unable to handle kernel
+ paging request at 0000632e6472616f
+References: <20120601034114.GA9248@localhost> <4FDBF056.7040404@tomt.net>   <4FDCD3C7.5080503@tomt.net> <1339876739.8267.96.camel@lade.trondhjem.org>  <4FDEEF38.8030101@tomt.net> <1340026127.2451.7.camel@lade.trondhjem.org> <4FDF533A.2090901@netapp.com> <4FE215FE.6010406@netapp.com> <4FE96399.8040608@tomt.net>
+In-Reply-To: <4FE96399.8040608@tomt.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 24, 2012 at 03:42:16PM -0400, Weston Andros Adamson wrote:
-> This fault injection hook causes all SEQUENCE operation replies to have the
-> SEQ4_STATUS_CB_PATH_DOWN flag set until the client calls BIND_CONN_TO_SESSION
-> or creates a new session.
-
-I'm not necessarily opposed, but why do you need this?  In what
-"real-life" situation could a client see the CB_PATH_DOWN flag
-unexpectedly set?
-
---b.
-
+On 06/26/2012 03:24 AM, Andre Tomt wrote:
+> On 20. juni 2012 20:27, Bryan Schumaker wrote:
+>> Hi Andre,
+>>
+>> Have you had a chance to test my patch (below) yet?
 > 
-> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
-> ---
->  fs/nfsd/fault_inject.c |    4 ++++
->  fs/nfsd/fault_inject.h |    2 ++
->  fs/nfsd/nfs4state.c    |   20 ++++++++++++++++++++
->  3 files changed, 26 insertions(+), 0 deletions(-)
+> I reverted from using keyutils yesterday, verified the problem had returned, then patched the same kernel with just this patch - so far its been running fine for 15 hours. Without the patch it would fall over within 1-2 hours.
 > 
-> diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-> index e6c3815..ab81144 100644
-> --- a/fs/nfsd/fault_inject.c
-> +++ b/fs/nfsd/fault_inject.c
-> @@ -38,6 +38,10 @@ static struct nfsd_fault_inject_op inject_ops[] = {
->  		.file   = "recall_delegations",
->  		.func   = nfsd_recall_delegations,
->  	},
-> +	{
-> +		.file   = "kill_backchannel",
-> +		.func   = nfsd_kill_backchannel,
-> +	},
->  };
->  
->  static long int NUM_INJECT_OPS = sizeof(inject_ops) / sizeof(struct nfsd_fault_inject_op);
-> diff --git a/fs/nfsd/fault_inject.h b/fs/nfsd/fault_inject.h
-> index 90bd057..b058e03 100644
-> --- a/fs/nfsd/fault_inject.h
-> +++ b/fs/nfsd/fault_inject.h
-> @@ -15,6 +15,7 @@ void nfsd_forget_locks(u64);
->  void nfsd_forget_openowners(u64);
->  void nfsd_forget_delegations(u64);
->  void nfsd_recall_delegations(u64);
-> +void nfsd_kill_backchannel(u64);
->  #else /* CONFIG_NFSD_FAULT_INJECTION */
->  static inline int nfsd_fault_inject_init(void) { return 0; }
->  static inline void nfsd_fault_inject_cleanup(void) {}
-> @@ -23,6 +24,7 @@ static inline void nfsd_forget_locks(u64 num) {}
->  static inline void nfsd_forget_openowners(u64 num) {}
->  static inline void nfsd_forget_delegations(u64 num) {}
->  static inline void nfsd_recall_delegations(u64 num) {}
-> +static inline void nfsd_kill_backchannel(u64 num) {}
->  #endif /* CONFIG_NFSD_FAULT_INJECTION */
->  
->  #endif /* LINUX_NFSD_FAULT_INJECT_H */
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 21266c7..9afc902 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -4737,6 +4737,26 @@ void nfsd_recall_delegations(u64 num)
->  	printk(KERN_INFO "NFSD: Recalled %d delegations", count);
->  }
->  
-> +/*
-> + * Force SEQUENCE operations to have SEQ4_STATUS_CB_PATH_DOWN flag set
-> + * until backchannel is reestablished by BIND_CONN_TO_SESSION or
-> + * DESTROY_SESSION/CREATE_SESSION with SP4_NONE.
-> + *
-> + * The argument 'num' is ignored, any value will trigger the fault on
-> + * all clients.
-> + */
-> +void nfsd_kill_backchannel(u64 num)
-> +{
-> +	struct nfs4_client *clp, *next;
-> +
-> +	nfs4_lock_state();
-> +	list_for_each_entry_safe(clp, next, &client_lru, cl_lru) {
-> +		clp->cl_cb_state = NFSD4_CB_DOWN;
-> +	}
-> +	nfs4_unlock_state();
-> +
-> +	printk(KERN_INFO "NFSD: killed backchannel");
-> +}
->  #endif /* CONFIG_NFSD_FAULT_INJECTION */
->  
->  /* initialization to perform at module load time: */
-> -- 
-> 1.7.4.4
+> So thumbs up from me
 > 
+> Sorry about the delay, once I got it working with keyutils I suddenly got very, very lazy ;-)
+
+Cool, thanks for checking this!  You can go back to whichever method you like better now :).
+
+- Bryan
+
