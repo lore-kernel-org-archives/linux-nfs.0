@@ -1,125 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:23279 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:55621 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755995Ab2FPT7I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 16 Jun 2012 15:59:08 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Andre Tomt <andre@tomt.net>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: Linux-NFS <linux-nfs@vger.kernel.org>,
-        Fengguang Wu <fengguang.wu@intel.com>,
-        David Howells <dhowells@redhat.com>,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: BUG in __key_instantiate_and_link(): unable to handle kernel
- paging request at 0000632e6472616f
-Date: Sat, 16 Jun 2012 19:59:05 +0000
-Message-ID: <1339876739.8267.96.camel@lade.trondhjem.org>
-References: <20120601034114.GA9248@localhost> <4FDBF056.7040404@tomt.net>
-	 <4FDCD3C7.5080503@tomt.net>
-In-Reply-To: <4FDCD3C7.5080503@tomt.net>
-Content-Type: text/plain; charset="utf-8"
+	id S1754103Ab2FZLKb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Jun 2012 07:10:31 -0400
+Date: Tue, 26 Jun 2012 07:10:24 -0400
+From: Fields James <bfields@fieldses.org>
+To: Namjae Jeon <linkinjeon@gmail.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Morton Andrew <akpm@linux-foundation.org>,
+        Harrosh Boaz <bharrosh@panasas.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        Namjae Jeon <namjae.jeon@samsung.com>,
+        Vivek Trivedi <t.vivek@samsung.com>,
+        Amit Sahrawat <a.sahrawat@samsung.com>
+Subject: Re: [RFC PATCH] nfs: Add NFS3PROC_UMOUNT procedure.
+Message-ID: <20120626111024.GB14279@fieldses.org>
+References: <1340448406-10161-1-git-send-email-linkinjeon@gmail.com>
+ <02B16139-AFD6-4F06-99C0-C406B1A7E1DC@netapp.com>
+ <FE90D2E0-C4C9-44BC-829F-ABE94801AB4C@netapp.com>
+ <20120623155710.GA10787@fieldses.org>
+ <20120623160923.GB10787@fieldses.org>
+ <CAKYAXd80v10car7awm3Y5bzk_nXLj8NLi7C8PxUW15L9-S7pEw@mail.gmail.com>
+ <20120625113025.GB16920@fieldses.org>
+ <CAKYAXd-h5FPZUDwvJdbXXeQtXjUqQE5s9e1CvuOdpQWgqzG8kw@mail.gmail.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAKYAXd-h5FPZUDwvJdbXXeQtXjUqQE5s9e1CvuOdpQWgqzG8kw@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU2F0LCAyMDEyLTA2LTE2IGF0IDIwOjQzICswMjAwLCBBbmRyZSBUb210IHdyb3RlOg0KPiBP
-biAxNi4ganVuaSAyMDEyIDA0OjMyLCBBbmRyZSBUb210IHdyb3RlOg0KPiA+IEZXSVc7IEkgYW0g
-KHN0aWxsKSBzZWVpbmcgdGhpcyBleGFjdCBzYW1lIGNyYXNoIHNldmVyYWwgdGltZXMgYW4gaG91
-ciBvbg0KPiA+IDMuNC4zLXJjMSBvbiBVYnVudHUgMTIuMDQgY2xpZW50LiBPbmx5IHRoYXQgdGhl
-IHNhbWUgc2Vjb25kIGl0IGhhcHBlbnMsDQo+ID4gYWxsIG15IHRocmVlIGRpc3BsYXlzIGNvcnJ1
-cHRzIGJhZGx5LCBiZWNvbWluZyBjb21wbGV0ZWx5IHVucmVhZGFibGUuDQo+ID4gU3dpdGNoaW5n
-IHRvIGNvbnNvbGUgYW5kIGJhY2sgdXN1YWxseSBnZXRzIG15IGRlc2t0b3AgYmFjayBvbiB0d28g
-b2YNCj4gPiB0aHJlZSBkaXNwbGF5cywgYW5kIHNvbWV0aW1lcyBpdCB3aWxsIG5lZWQgYSBmdWxs
-IHhzZXJ2ZXIgcmVzdGFydC4NCj4gPiBPYnZpb3VzbHkgc29tZSBtZW1vcnkgY29ycnVwdGlvbiBn
-b2luZyBvbi4NCj4gPg0KPiA+IE9uZSBvZiB0aGUgY3Jhc2hlcyBhbHNvIHRyaWdnZXJlZCBhIE5Y
-IGVycm9yOg0KPiA+IFsyMDI5Mi4xOTYzMzJdIGtlcm5lbCB0cmllZCB0byBleGVjdXRlIE5YLXBy
-b3RlY3RlZCBwYWdlIC0gZXhwbG9pdA0KPiA+IGF0dGVtcHQ/ICh1aWQ6IDApDQo+ID4NCj4gPiBB
-bmQgYWZ0ZXIgYSB3aGlsZSwgdGhpbmdzIHN0YXJ0IGxvY2tpbmcgdXAuDQo+ID4NCj4gPiBJdCBk
-aWRuJ3QgcmVhbGx5IHN0YXJ0IGhhcHBlbmluZyB1bnRpbCBhIGZldyBkYXlzIGFnbyB0aG91Z2gs
-IEkndmUgYmVlbg0KPiA+IHJ1bm5pbmcgMy40IGZvciBzaW5jZSBzb21lIC1yYyB0aHJvdWdoIGFs
-bCB0aGUgc3RhYmxlIHJlbGVhc2VzLiBQZXJoYXBzDQo+ID4gc2VydmVyIHN1ZGRlbmx5IGdvdCBh
-IHdvcmtpbmcgaWRtYXBwZXIgb3Igc29tZXRoaW5nPyBJdHMgYSBkZWJpYW4NCj4gPiB1bnN0YWJs
-ZSB1cGRhdGVkIGEgY291cGxlIHRpbWVzIGEgbW9udGguDQo+ID4NCj4gPiBCb290aW5nIGxhdGVz
-dCBnaXQgbWFzdGVyIG5vdywgdG8gc2VlIGlmIGFueSBvZiB0aGUgcmVjZW50IE5GUyBmaXhlcw0K
-PiA+IGp1c3QgcHVsbGVkIGJ5IExpbnVzIGZpeGVzIGFueXRoaW5nICgtcmMyIGhhZCBvdGhlciBz
-aG93c3RvcHBlciBuZnMNCj4gPiBpc3N1ZXMpLg0KPiANCj4gSnVzdCBoYWQgaXQgaGFwcGVuIHdp
-dGggMy41LWdpdCBhcyBvZiBhIGNvdXBsZSBob3VycyBhZ28gKGxhc3QgY29tbWl0IA0KPiBhMmMy
-ZGY4NjcyZjU1MTk1ZjEwMWQ5MjUxMTE3YWE1OWUzNThkMjk2KToNCj4gSnVuIDE2IDE5OjAxOjQ5
-IHNsdXJ2IGtlcm5lbDogWzUwODIzLjI3MTYxOF0gZ2VuZXJhbCBwcm90ZWN0aW9uIGZhdWx0OiAN
-Cj4gMDAwMCBbIzFdIFNNUA0KPiBKdW4gMTYgMTk6MDE6NDkgc2x1cnYga2VybmVsOiBbNTA4MjMu
-MjcxNjQwXSBDUFUgMTANCj4gSnVuIDE2IDE5OjAxOjQ5IHNsdXJ2IGtlcm5lbDogWzUwODIzLjI3
-MTY5MF0NCj4gSnVuIDE2IDE5OjAxOjQ5IHNsdXJ2IGtlcm5lbDogWzUwODIzLjI3MTY5OF0gUGlk
-OiAxNjc4LCBjb21tOiBycGMuaWRtYXBkIA0KPiBOb3QgdGFpbnRlZCAzLjUuMC0xLWRlc2t0b3Ag
-IzEgU3lzdGVtIG1hbnVmYWN0dXJlciBTeXN0ZW0gUHJvZHVjdCANCj4gTmFtZS9QNlQgREVMVVhF
-IFYyDQo+IEp1biAxNiAxOTowMTo0OSBzbHVydiBrZXJuZWw6IFs1MDgyMy4yNzE3MzhdIFJJUDog
-DQo+IDAwMTA6WzxmZmZmZmZmZjgxMTI5ODcyPl0gIFs8ZmZmZmZmZmY4MTEyOTg3Mj5dIA0KPiBf
-X2tleV9pbnN0YW50aWF0ZV9hbmRfbGluaysweDUyLzB4Y2INCj4gSnVuIDE2IDE5OjAxOjQ5IHNs
-dXJ2IGtlcm5lbDogWzUwODIzLjI3MTc2N10gUlNQOiAwMDE4OmZmZmY4ODA2MTk0MWJkMzggDQo+
-ICAgRUZMQUdTOiAwMDAxMDI0Ng0KPiBKdW4gMTYgMTk6MDE6NDkgc2x1cnYga2VybmVsOiBbNTA4
-MjMuMjcxNzg1XSBSQVg6IDYzMzczNDYzMzAzNjYyMzMgUkJYOiANCj4gZmZmZjg4MDYwNmZiOTdm
-MCBSQ1g6IDAwMDAwMDAwMDAwMDAwMDANCj4gSnVuIDE2IDE5OjAxOjQ5IHNsdXJ2IGtlcm5lbDog
-WzUwODIzLjI3MTgwN10gUkRYOiAwMDAwMDAwMDAwMDAwMDA2IFJTSTogDQo+IGZmZmY4ODA2MTk0
-MWJlODUgUkRJOiBmZmZmODgwNjA2ZmI5N2YwDQo+IEp1biAxNiAxOTowMTo0OSBzbHVydiBrZXJu
-ZWw6IFs1MDgyMy4yNzE4MjldIFJCUDogZmZmZjg4MDYxOTQxYmQ4OCBSMDg6IA0KPiBmZmZmODgw
-MmJjOWVkMzgwIFIwOTogZmZmZjg4MDYxOTQxYmRiMA0KPiBKdW4gMTYgMTk6MDE6NDkgc2x1cnYg
-a2VybmVsOiBbNTA4MjMuMjcxODUwXSBSMTA6IDAwMDAwMDAwMDAwMDAwMDAgUjExOiANCj4gMDAw
-MDAwMDAwMDAwMDAwMCBSMTI6IGZmZmY4ODA2MWFhZDYzYzANCj4gSnVuIDE2IDE5OjAxOjQ5IHNs
-dXJ2IGtlcm5lbDogWzUwODIzLjI3MTg3Ml0gUjEzOiBmZmZmODgwMmJjOWVkMzgwIFIxNDogDQo+
-IDAwMDAwMDAwMDAwMDAwMDAgUjE1OiBmZmZmODgwNjE5NDFiZGIwDQo+IEp1biAxNiAxOTowMTo0
-OSBzbHVydiBrZXJuZWw6IFs1MDgyMy4yNzE4OTRdIEZTOiAgMDAwMDdmZDQ0OWE3ZDcwMCgwMDAw
-KSANCj4gR1M6ZmZmZjg4MDYzZmQ0MDAwMCgwMDAwKSBrbmxHUzowMDAwMDAwMDAwMDAwMDAwDQo+
-IEp1biAxNiAxOTowMTo0OSBzbHVydiBrZXJuZWw6IFs1MDgyMy4yNzE5MTldIENTOiAgMDAxMCBE
-UzogMDAwMCBFUzogMDAwMCANCj4gQ1IwOiAwMDAwMDAwMDgwMDUwMDMzDQo+IEp1biAxNiAxOTow
-MTo0OSBzbHVydiBrZXJuZWw6IFs1MDgyMy4yNzE5MzddIENSMjogMDAwMDdmODg0NDAwMjAyOCBD
-UjM6IA0KPiAwMDAwMDAwNjFiZTk1MDAwIENSNDogMDAwMDAwMDAwMDAwMDdlMA0KPiBKdW4gMTYg
-MTk6MDE6NDkgc2x1cnYga2VybmVsOiBbNTA4MjMuMjcxOTU5XSBEUjA6IDAwMDAwMDAwMDAwMDAw
-MDAgRFIxOiANCj4gMDAwMDAwMDAwMDAwMDAwMCBEUjI6IDAwMDAwMDAwMDAwMDAwMDANCj4gSnVu
-IDE2IDE5OjAxOjQ5IHNsdXJ2IGtlcm5lbDogWzUwODIzLjI3MTk4MF0gRFIzOiAwMDAwMDAwMDAw
-MDAwMDAwIERSNjogDQo+IDAwMDAwMDAwZmZmZjBmZjAgRFI3OiAwMDAwMDAwMDAwMDAwNDAwDQo+
-IEp1biAxNiAxOTowMTo0OSBzbHVydiBrZXJuZWw6IFs1MDgyMy4yNzIwMDNdIFByb2Nlc3MgcnBj
-LmlkbWFwZCAocGlkOiANCj4gMTY3OCwgdGhyZWFkaW5mbyBmZmZmODgwNjE5NDFhMDAwLCB0YXNr
-IGZmZmY4ODA2MWI4NzAwMDApDQo+IEp1biAxNiAxOTowMTo0OSBzbHVydiBrZXJuZWw6IFs1MDgy
-My4yNzIwMjhdIFN0YWNrOg0KPiBKdW4gMTYgMTk6MDE6NDkgc2x1cnYga2VybmVsOiBbNTA4MjMu
-MjcyMDM2XSAgZmZmZjg4MDYxOTQxYmQ3OCANCj4gMDAwMDAwMDAwMDAwMDAwNiBmZmZmODgwNjE5
-NDFiZTg1IGZmZmZmZmYwMWFhZDYzZTgNCj4gSnVuIDE2IDE5OjAxOjQ5IHNsdXJ2IGtlcm5lbDog
-WzUwODIzLjI3MjA2MF0gIGZmZmY4ODA2MDZmYjk4NDAgDQo+IGZmZmY4ODA2MDZmYjk3ZjAgZmZm
-Zjg4MDYxYWFkNjNjMCAwMDAwMDAwMDAwMDAwMDA2DQo+IEp1biAxNiAxOTowMTo0OSBzbHVydiBr
-ZXJuZWw6IFs1MDgyMy4yNzIwODNdICBmZmZmODgwNjE5NDFiZTg1IA0KPiAwMDAwN2ZmZmUwOWM0
-NTAwIGZmZmY4ODA2MTk0MWJkZDggZmZmZmZmZmY4MTEyOTk0Mw0KPiBKdW4gMTYgMTk6MDE6NDkg
-c2x1cnYga2VybmVsOiBbNTA4MjMuMjcyMTA2XSBDYWxsIFRyYWNlOg0KPiBKdW4gMTYgMTk6MDE6
-NDkgc2x1cnYga2VybmVsOiBbNTA4MjMuMjcyMTE2XSAgWzxmZmZmZmZmZjgxMTI5OTQzPl0gDQo+
-IGtleV9pbnN0YW50aWF0ZV9hbmRfbGluaysweDU4LzB4ODANCj4gSnVuIDE2IDE5OjAxOjQ5IHNs
-dXJ2IGtlcm5lbDogWzUwODIzLjI3MjE0NV0gIFs8ZmZmZmZmZmZhMDU4YTkwNj5dIA0KPiBpZG1h
-cF9waXBlX2Rvd25jYWxsKzB4MTU0LzB4MWFkIFtuZnNdDQo+IEp1biAxNiAxOTowMTo0OSBzbHVy
-diBrZXJuZWw6IFs1MDgyMy4yNzIxNzNdICBbPGZmZmZmZmZmYTA0YWVhZTI+XSANCj4gcnBjX3Bp
-cGVfd3JpdGUrMHg1Ni8weDZmIFtzdW5ycGNdDQo+IEp1biAxNiAxOTowMTo0OSBzbHVydiBrZXJu
-ZWw6IFs1MDgyMy4yNzIxOTVdICBbPGZmZmZmZmZmODEwYzg2Y2U+XSANCj4gdmZzX3dyaXRlKzB4
-YWQvMHgxM2QNCj4gSnVuIDE2IDE5OjAxOjQ5IHNsdXJ2IGtlcm5lbDogWzUwODIzLjI3MjIxMl0g
-IFs8ZmZmZmZmZmY4MTBjODk0OT5dIA0KPiBzeXNfd3JpdGUrMHg0NS8weDZjDQo+IEp1biAxNiAx
-OTowMTo0OSBzbHVydiBrZXJuZWw6IFs1MDgyMy4yNzIyMjldICBbPGZmZmZmZmZmODEzMGE0NjI+
-XSANCj4gc3lzdGVtX2NhbGxfZmFzdHBhdGgrMHgxNi8weDFiDQo+IEp1biAxNiAxOTowMTo0OSBz
-bHVydiBrZXJuZWw6IFs1MDgyMy4yNzIyNThdIENvZGU6IDQ4IDg5IDU1IGI4IDQ4IDg5IDc1IA0K
-PiBjMCBlOCAxNiBlNCAxZCAwMCA0OCA4YiA0MyA3OCBjNyA0NSBjYyBmMCBmZiBmZiBmZiA0OCA4
-YiA1NSBiOCA0OCA4YiA3NSANCj4gYzAgYTggMDEgNzUgNGYgNDggOGIgNDMgMjAgNDggODkgZGYg
-PGZmPiA1MCAxOCA4NSBjMCA4OSA0NSBjYyA3NSAzZSA0OCANCj4gOGIgNDMgNDggZjAgZmYgNDAg
-NDQgZjAgODAgNGINCj4gSnVuIDE2IDE5OjAxOjQ5IHNsdXJ2IGtlcm5lbDogWzUwODIzLjI3MjMx
-N10gUklQICBbPGZmZmZmZmZmODExMjk4NzI+XSANCj4gX19rZXlfaW5zdGFudGlhdGVfYW5kX2xp
-bmsrMHg1Mi8weGNiDQo+IEp1biAxNiAxOTowMTo0OSBzbHVydiBrZXJuZWw6IFs1MDgyMy4yNzIz
-MzldICBSU1AgPGZmZmY4ODA2MTk0MWJkMzg+DQo+IEp1biAxNiAxOTowMTo0OSBzbHVydiBrZXJu
-ZWw6IFs1MDgyMy4yNzkxOTldIC0tLVsgZW5kIHRyYWNlIA0KPiAyNTEyMmI1ZTlkMGIwYzc2IF0t
-LS0NCj4gDQo+IEl0IGRpZCB0YWtlIGEgd2hpbGUgdGhpcyB0aW1lLg0KDQpJdCBsb29rcyB0byBt
-ZSBhcyBpZiB0aGUgbGVnYWN5IHVwY2FsbCBjb2RlIGlzIGFzc3VtaW5nIHRoYXQgdGhlcmUgY2Fu
-DQpiZSBubyBtb3JlIHRoYW4gMSB1cGNhbGwgYXQgYSB0aW1lOiB0aGVyZSBpcyBvbmx5IGEgc2lu
-Z2xlDQppZG1hcC0+aWRtYXBfa2V5X2NvbnMsIHdoaWNoIGdldHMgYXNzaWduZWQgaW4gbmZzX2lk
-bWFwX2xlZ2FjeV91cGNhbGwNCmFuZCB0aGVuIHJlYWQgaW4gaWRtYXBfcGlwZV9kb3duY2FsbC4N
-Cg0KQnJ5YW4sIGNhbiB5b3UgbG9vayBpbnRvIHRoaXM/IEkgc3VzcGVjdCB0aGF0IHdlIG5lZWQg
-YSBtdXRleCBvcg0Kc29tZXRoaW5nIGxpa2UgdGhhdCAoZm9yIHRoZSBsZWdhY3kgdXBjYWxsIGNh
-c2Ugb25seSkgdG8gZW5zdXJlIHRoYXQNCm5vYm9keSBvdmVyd3JpdGVzIHRoZSBpZG1hcC0+aWRt
-YXBfa2V5X2NvbnMgd2hpbGUgYW4gdXBjYWxsIGlzIGluDQpwcm9ncmVzcy4NCg0KQW5kcmUsIGlm
-IHlvdSB3YW50IGlkbWFwcGVyIHNjYWxhYmlsaXR5LCB0aGVuIHlvdSBzaG91bGQgcmF0aGVyIHVz
-ZSB0aGUNCm5ldyBpZG1hcHBlciB1cGNhbGwuIFlvdSBuZWVkIGEgcmVjZW50IHZlcnNpb24gb2Yg
-dGhlIG5mcy11dGlscyBwYWNrYWdlLA0KdGhlIGtleXV0aWxzIHBhY2thZ2UsIGFuZCB0aGV5IHlv
-dSBzaG91bGQgYWRkIGFuICdpZF9yZXNvbHZlcicgbGluZQ0KdG8gL2V0Yy9yZXF1ZXN0LWtleXMu
-Y29uZiBhcyBwZXIgdGhlIG5mc2lkbWFwIG1hbnBhZ2UuDQoNCkNoZWVycw0KICBUcm9uZA0KDQot
-LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFw
-cA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+On Tue, Jun 26, 2012 at 02:51:52PM +0900, Namjae Jeon wrote:
+> 2012/6/25, Fields James <bfields@fieldses.org>:
+> > On Sun, Jun 24, 2012 at 02:12:49PM +0900, Namjae Jeon wrote:
+> >> 2012/6/24, Fields James <bfields@fieldses.org>:
+> >> > On Sat, Jun 23, 2012 at 11:57:10AM -0400, Fields James wrote:
+> >> >> On Sat, Jun 23, 2012 at 03:52:20PM +0000, Myklebust, Trond wrote:
+> >> >> > The other objection is that NFSv3 already has a way to do this via
+> >> >> > the
+> >> >> > MOUNT protocol. We already call MOUNTPROC3_UMNT/MOUNTPROC_UMNT on
+> >> >> > unmount of a filesystem.
+> >> >> >
+> >> >> > The problem with this approach is that if the NFS client crashes
+> >> >> > before
+> >> >> > it can call this function, then the server never gets notified. That
+> >> >> > is
+> >> >> > a problem that your patch has too...
+> >> >>
+> >> >> Yes.  Could you instead work on describing *exactly* what the original
+> >> >> problem was that prompted this?
+> >> >
+> >> > ("You" here meaning Namjae Jeon, of course).
+> >> >
+> >> > And note here we've all read the changelog, that's not what I'm asking
+> >> > for.
+> >> >
+> >> > I want to know the details of *your* specific case.  "I have X clients
+> >> > that I use for Y, periodically I want to unmount the exported
+> >> > filesystem
+> >> > to do Z, I tried doing W but it didn't work...".
+> >> As you remember, We discussed this
+> >> issue(http://www.spinics.net/lists/linux-nfs/msg29997.html) with you
+> >> before. you guided me to use exportfs -f call on nfs server.
+> >> It is hard to use this method on our system
+> >
+> > Why is it hard?
+> Two target are connected by only nfs.. we can't manually hand exportfs -f..
+
+So how can you call umount?
+
+--b.
+
+> And I should make each new App on client / server to call exportfs -f.
+> >
+> > Could you hack umount to do the equivalent of "exportfs -f" before
+> > calling the umount?
+> Good Idea! I will check your suggestion.
+> 
+> >
+> >> and nomally the user is
+> >> thinking it is problem device busy happen after umounting.
+> >>
+> >> The details of specific case.
+> >> 1. There are two target or two PC. and Client want to access files of
+> >> usb device on server.
+> >> 2. the client try to mount usb mount point using nfs on sever after
+> >> plugging usb device.
+> >> 3. we try to umount mount point directory on client.
+> >> 4. and when we try to umount usb device mount directory server, device
+> >> busy message occured like this (umount: can't umount /mnt: Device or
+> >> resource busy)
+> >
+> > Right, so I don't think you want protocol modifications.  They take a
+> > few years to get hammered out and then make it into implementations, and
+> > they won't help a great deal with your problem anyway.  (Because of
+> > problems like the possibility of lost "unmount" calls that Trond
+> > mentions.)
+> >
+> > Either modify umount itself to flush the export cache before attempting
+> > the unmount, or if that doesn't work perhaps you could patch the kernel
+> > to notify nfsd on unmount and let it attemt to clear its caches before
+> > deciding whether the filesystem is busy.
+> After checking your suggestion I will share with you.
+> Thanks a lot. James.
+> >
+> > --b.
+> >
