@@ -1,54 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:26987 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756074Ab2FNQMu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Jun 2012 12:12:50 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 2 0/1] NFSv4.1 Fix umount when filelayout DS is also the MDS
-Date: Thu, 14 Jun 2012 12:12:54 -0400
-Message-Id: <1339690375-2294-1-git-send-email-andros@netapp.com>
+Received: from mailout-de.gmx.net ([213.165.64.22]:39919 "HELO
+	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1755659Ab2FZMnv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jun 2012 08:43:51 -0400
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Date: Tue, 26 Jun 2012 14:43:48 +0200
+From: "Johannes Schild" <JSchild@gmx.de>
+In-Reply-To: <1340632000.9620.7.camel@lade.trondhjem.org>
+Message-ID: <20120626124348.48490@gmx.net>
+MIME-Version: 1.0
+References: <20120625074306.48500@gmx.net>
+ <1340632000.9620.7.camel@lade.trondhjem.org>
+Subject: Re: LAYOUTCOMMIT/LAYOUTRETURN
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+Hi,
 
-Version 2: Corrected CONFIG_NFS issues.
+thanks for your answers.
 
-At the Bakeathon, Jorge noted that when the MDS and DS use the same struct
-nfs_client, umount would fail to free the nfs_client struct and the
-keep-alive SEQUENCE compound would continue ad infinitum.
+But how do i find out, whether the server is using FILE_SYNC?
+Is there any other mode like "FILE_ASYNC"?
 
-This was due to the fact that the DS reference to the MDS nfs_client would
-prevent the umount from dropping the cl_count to zero. Moreover, the
-DS refererence is only dropped by the deviceid dereference only called
-by nfs4_deviceid_purge_client from nfs_free_client when the nfs_client
-cl_count was zero.
-
-See the patch comments for the solution description.
-
-I've tested this solution against a 2-node C-mode filer where one node is an
-MDS/DS and the other node a standalone MDS but uses the first node as a DS.
-
-I tested all combinations, including mounting the MDS/DS node, and using pNFS
-for I/O. Then mounting the solo MDS node, and using pNFS for I/O (which uses
-the MDS/DS node as a DS), then umounting one of the mount points, doing pNFS
-I/O and then umount the other.
-
-In all cases, umount destroyed the appropriate nfs_client, and associated
-session.
+And if the server is using FILE_SYNC, how does it get LAYOUTCOMMIT?
 
 
-Andy Adamson (1):
-  NFSv4.1 Fix umount when filelayout DS is also the MDS
+Thanks in advance
 
- fs/nfs/client.c            |   88 ++++++++++++++++++++++++++++++++++++++++++-
- fs/nfs/internal.h          |    1 +
- fs/nfs/nfs4filelayoutdev.c |   29 ++++++++++++--
- include/linux/nfs_fs_sb.h  |    1 +
- 4 files changed, 112 insertions(+), 7 deletions(-)
+
+Johannes
+
+
+-------- Original-Nachricht --------
+> Datum: Mon, 25 Jun 2012 09:46:40 -0400
+> Von: Trond Myklebust <trond.myklebust@fys.uio.no>
+> An: Johannes Schild <JSchild@gmx.de>
+> CC: linux-nfs@vger.kernel.org
+> Betreff: Re: LAYOUTCOMMIT/LAYOUTRETURN
+
+> On Mon, 2012-06-25 at 09:43 +0200, Johannes Schild wrote:
+> > Hi Guys,
+> > 
+> > i have another question on pNFS. I looked at my Wireshark protocols,
+> while i used the FILE-Layout, and i wondered why i have no
+> LAYOUTCOMMIT/LAYOUTRETURN statements in my protocols.
+> > I transfered one file to my storage server (NETAPP Simulator 8.1 C-Mode)
+> and i only got a LAYOUTGET.
+> > 
+> > cat /proc/self/mountstats | grep LAYOUT says:
+> > nfsv4:
+> bm0=0xfafe8fff,bml=0x60fdfffe,acl=0x3,sessions,pnfs=LAYOUT_NFSV4_1_FILES
+> >     LAYOUTGET: 1 1 0 216 236 0 1 1
+> >  LAYOUTCOMMIT: 0 0 0 0 0 0 0 0
+> >  LAYOUTRETURN: 0 0 0 0 0 0 0 0 
+> 
+> A pNFS client should never send LAYOUTCOMMIT to a server that does
+> FILE_SYNC writes.
+> 
+> The Linux pNFS client uses the 'forgetful client' model, so it will
+> never send LAYOUTRETURN on layout recalls either. The only case where we
+> send LAYOUTRETURN is when the file falls out of the inode cache.
+> 
+> 
+> > Is there any other way to verify that pnfs is used on client site?
+> 
+> The most direct way is to look for a TCP connection to the data server
+> using 'netstat -t'.
+> 
+> Cheers
+>   Trond
+> 
 
 -- 
-1.7.6.4
-
+NEU: FreePhone 3-fach-Flat mit kostenlosem Smartphone!                                  
+Jetzt informieren: http://mobile.1und1.de/?ac=OM.PW.PW003K20328T7073a
