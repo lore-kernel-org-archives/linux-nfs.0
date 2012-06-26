@@ -1,77 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:18810 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965469Ab2FAQlU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Jun 2012 12:41:20 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Orion Poplawski <orion@cora.nwra.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Spurious rpc.idmapd nss_getpwnam: name 'nobody' does not map
- into domain messages
-Date: Fri, 1 Jun 2012 16:41:18 +0000
-Message-ID: <1338568876.2774.25.camel@lade.trondhjem.org>
-References: <loom.20120601T174414-583@post.gmane.org>
-	 <1338566283.2774.19.camel@lade.trondhjem.org>
-	 <4FC8ED22.40508@cora.nwra.com>
-In-Reply-To: <4FC8ED22.40508@cora.nwra.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-we0-f174.google.com ([74.125.82.174]:60362 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754432Ab2FZL5c (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jun 2012 07:57:32 -0400
 MIME-Version: 1.0
+In-Reply-To: <20120626111024.GB14279@fieldses.org>
+References: <1340448406-10161-1-git-send-email-linkinjeon@gmail.com>
+	<02B16139-AFD6-4F06-99C0-C406B1A7E1DC@netapp.com>
+	<FE90D2E0-C4C9-44BC-829F-ABE94801AB4C@netapp.com>
+	<20120623155710.GA10787@fieldses.org>
+	<20120623160923.GB10787@fieldses.org>
+	<CAKYAXd80v10car7awm3Y5bzk_nXLj8NLi7C8PxUW15L9-S7pEw@mail.gmail.com>
+	<20120625113025.GB16920@fieldses.org>
+	<CAKYAXd-h5FPZUDwvJdbXXeQtXjUqQE5s9e1CvuOdpQWgqzG8kw@mail.gmail.com>
+	<20120626111024.GB14279@fieldses.org>
+Date: Tue, 26 Jun 2012 20:57:30 +0900
+Message-ID: <CAKYAXd9-ubxP8iQqTWTG-34Vb_yrDU=9f9hsiRk4go_=QDfxmg@mail.gmail.com>
+Subject: Re: [RFC PATCH] nfs: Add NFS3PROC_UMOUNT procedure.
+From: Namjae Jeon <linkinjeon@gmail.com>
+To: Fields James <bfields@fieldses.org>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Morton Andrew <akpm@linux-foundation.org>,
+        Harrosh Boaz <bharrosh@panasas.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        Namjae Jeon <namjae.jeon@samsung.com>,
+        Vivek Trivedi <t.vivek@samsung.com>,
+        Amit Sahrawat <a.sahrawat@samsung.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTA2LTAxIGF0IDEwOjI2IC0wNjAwLCBPcmlvbiBQb3BsYXdza2kgd3JvdGU6
-DQo+IE9uIDA2LzAxLzIwMTIgMDk6NTggQU0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4g
-T24gRnJpLCAyMDEyLTA2LTAxIGF0IDE1OjUzICswMDAwLCBPcmlvbiBQb3BsYXdza2kgd3JvdGU6
-DQo+ID4+IEknbSBzZWVpbmcgYSBmYWlyIG51bWJlciBvZiB0aGVzZSBtZXNzYWdlcyBvbiBvdXIg
-ZmlsZSBzZXJ2ZXI6DQo+ID4+DQo+ID4+IEp1biAgMSAwOTozNzo1OCBhbGV4YW5kcmlhIHJwYy5p
-ZG1hcGRbMjg4OTBdOiBuc3NfZ2V0cHduYW06IG5hbWUgJ25vYm9keScgZG9lcw0KPiA+PiBub3Qg
-bWFwIGludG8gZG9tYWluICdjb3JhLm53cmEuY29tJw0KPiA+Pg0KPiA+PiBJIHRoaW5rIHRoZXkg
-YXJlIGNvbWluZyBmcm9tIGFjY2Vzc2luZyBmaWxlcyBvbiBhbm90aGVyIGZpbGUgc2VydmVyIHRo
-YXQgYXJlDQo+ID4+IG93bmVkIGJ5IGFuIHVua25vd24gdWlkICh1c2VyIGxlZnQgYW5kIHdhcyBy
-ZW1vdmVkIGZyb20gdGhlIHVzZXIgZGF0YWJhc2UpLg0KPiA+PiBUaGVzZSBmaWxlcyBlbmQgdXAg
-b3duZWQgYnkgIm5vYm9keSIgKGFzIGV4cGVjdGVkKSBvbiB0aGUgcmVtb3RlIHN5c3RlbToNCj4g
-Pj4NCj4gPj4gZHJ3eHIteHIteC4gIDcgbm9ib2R5IG53cmEgNDA5NiBNYXIgMTUgIDIwMTAgYW5h
-bHlzaXNfZGF0YQ0KPiA+Pg0KPiA+PiBOb3csIHRoaXMgc2VlbXMgbGlrZSBhIHBlcmZlY3RseSBu
-b3JtYWwgb3BlcmF0aW9uIGFuZCBzbyBzaG91bGRuJ3QgZ2VuZXJhdGUgYQ0KPiA+PiBzeXN0ZW0g
-bG9nIG1lc3NhZ2UuICBGaXJzdCB0d28gcG9zc2libGUgZml4ZXMgSSBjYW4gdGhpbmsgb2Y6DQo+
-ID4+DQo+ID4+IC0gU2hvdWxkIHRoZSByZW1vdGUgc3lzdGVtIHNlbmQgdGhlIHVzZXJuYW1lIGFz
-ICJub2JvZHlAY29yYS5ud3JhLmNvbSIgaW5zdGVhZA0KPiA+PiBvZiBqdXN0ICJub2JvZHkiPw0K
-PiA+DQo+ID4gTm8uIEFjY29yZGluZyB0byBzZWN0aW9uIDUuOCBvZiBSRkMzNTMwLCBpdCBzaG91
-bGQgdXNlIHRoZSBuYW1lICJub2JvZHkiDQo+ID4gd2l0aG91dCBhIGRvbWFpbiwgYW5kIHRoZSBp
-ZG1hcHBlciBzaG91bGQgYmUgbWFwcGluZyB0aGF0IHN0cmluZyB0byB0aGUNCj4gPiBhbm9ueW1v
-dXMgdXNlciAoaS5lLiB1aWQgLTIpLg0KPiA+DQo+IA0KPiBXZWxsLCBpdCdzIG1hcHBpbmcgaXQg
-dG8gIm5vYm9keSIgaWQgOTk6DQoNClllcywgdGhhdCdzIHRoZSBjb3JyZWN0IHRoaW5nIHRvIGRv
-IGlmIGEgdXNlciAibm9ib2R5IiBleGlzdHMuDQoNCj4gZHJ3eHIteHIteC4gIDcgOTkgMTAwMSA0
-MDk2IE1hciAxNSAgMjAxMCBhbmFseXNpc19kYXRhDQo+IA0KPiBPa2F5LCBzbyBubyBkb21haW4u
-ICBBbHNvIGFjY29yZGluZyB0byA1Ljg6DQo+IA0KPiAgICAgSW4gdGhlIGNhc2Ugd2hlcmUgdGhl
-cmUgaXMgbm8gdHJhbnNsYXRpb24gYXZhaWxhYmxlIHRvIHRoZSBjbGllbnQgb3INCj4gICAgIHNl
-cnZlciwgdGhlIGF0dHJpYnV0ZSB2YWx1ZSBtdXN0IGJlIGNvbnN0cnVjdGVkIHdpdGhvdXQgdGhl
-ICJAIi4NCj4gICAgIFRoZXJlZm9yZSwgdGhlIGFic2VuY2Ugb2YgdGhlIEAgZnJvbSB0aGUgb3du
-ZXIgb3Igb3duZXJfZ3JvdXANCj4gICAgIGF0dHJpYnV0ZSBzaWduaWZpZXMgdGhhdCBubyB0cmFu
-c2xhdGlvbiB3YXMgYXZhaWxhYmxlIGF0IHRoZSBzZW5kZXINCj4gICAgIGFuZCB0aGF0IHRoZSBy
-ZWNlaXZlciBvZiB0aGUgYXR0cmlidXRlIHNob3VsZCBub3QgdXNlIHRoYXQgc3RyaW5nIGFzDQo+
-ICAgICBhIGJhc2lzIGZvciB0cmFuc2xhdGlvbiBpbnRvIGl0cyBvd24gaW50ZXJuYWwgZm9ybWF0
-LiAgRXZlbiB0aG91Z2gNCj4gICAgIHRoZSBhdHRyaWJ1dGUgdmFsdWUgY2FuIG5vdCBiZSB0cmFu
-c2xhdGVkLCBpdCBtYXkgc3RpbGwgYmUgdXNlZnVsLg0KPiAgICAgSW4gdGhlIGNhc2Ugb2YgYSBj
-bGllbnQsIHRoZSBhdHRyaWJ1dGUgc3RyaW5nIG1heSBiZSB1c2VkIGZvciBsb2NhbA0KPiAgICAg
-ZGlzcGxheSBvZiBvd25lcnNoaXAuDQo+IA0KPiBTbyBhYnNlbmNlIG9mIEAgaW5kaWNhdGVzIG5v
-IG5lZWQgdG8gdHJhbnNsYXRlIGxvY2FsbHksIHNvIGRvbid0IGNvbXBsYWluIA0KPiBhYm91dCBp
-dC4gIFNvIGhvdyBhYm91dCB0aGlzOg0KPiANCj4gLS0tIC4vbGlibmZzaWRtYXAtMC4yNS9uc3Mu
-Yy5ub2JvZHkgICAgIDIwMTEtMTItMDUgMTM6Mjg6MTAuMDAwMDAwMDAwIC0wNzAwDQo+ICsrKyAu
-L2xpYm5mc2lkbWFwLTAuMjUvbnNzLmMgICAgMjAxMi0wNi0wMSAxMDoyMzo1My40MDg2MDM1MTcg
-LTA2MDANCj4gQEAgLTE3Nyw5ICsxNzcsMTAgQEANCj4gICAgICAgICAgSURNQVBfTE9HKDQsICgi
-bnNzX2dldHB3bmFtOiBuYW1lICclcycgZG9tYWluICclcyc6ICINCj4gICAgICAgICAgICAgICAg
-ICAgICJyZXN1bHRpbmcgbG9jYWxuYW1lICclcydcbiIsIG5hbWUsIGRvbWFpbiwgbG9jYWxuYW1l
-KSk7DQo+ICAgICAgICAgIGlmIChsb2NhbG5hbWUgPT0gTlVMTCkgew0KPiAtICAgICAgICAgICAg
-ICAgSURNQVBfTE9HKDAsICgibnNzX2dldHB3bmFtOiBuYW1lICclcycgZG9lcyBub3QgbWFwICIN
-Cj4gLSAgICAgICAgICAgICAgICAgICAgICAgImludG8gZG9tYWluICclcydcbiIsIG5hbWUsDQo+
-IC0gICAgICAgICAgICAgICAgICAgICAgIGRvbWFpbiA/IGRvbWFpbiA6ICI8bm90LXByb3ZpZGVk
-PiIpKTsNCj4gKyAgICAgICAgICAgICAgIGlmIChzdHJjaHIobmFtZSwgJ0AnICE9IE5VTEwpDQo+
-ICsgICAgICAgICAgICAgICAgICAgICAgIElETUFQX0xPRygwLCAoIm5zc19nZXRwd25hbTogbmFt
-ZSAnJXMnIGRvZXMgbm90IG1hcCAiDQo+ICsgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ImludG8gZG9tYWluICclcydcbiIsIG5hbWUsDQo+ICsgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgZG9tYWluID8gZG9tYWluIDogIjxub3QtcHJvdmlkZWQ+IikpOw0KPiAgICAgICAgICAg
-ICAgICAgIGdvdG8gZXJyX2ZyZWVfYnVmOw0KPiAgICAgICAgICB9DQoNCkFDSy4gVGhhdCBsb29r
-cyBhYm91dCByaWdodC4uLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVu
-dCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5u
-ZXRhcHAuY29tDQoNCg==
+2012/6/26, Fields James <bfields@fieldses.org>:
+> On Tue, Jun 26, 2012 at 02:51:52PM +0900, Namjae Jeon wrote:
+>> 2012/6/25, Fields James <bfields@fieldses.org>:
+>> > On Sun, Jun 24, 2012 at 02:12:49PM +0900, Namjae Jeon wrote:
+>> >> 2012/6/24, Fields James <bfields@fieldses.org>:
+>> >> > On Sat, Jun 23, 2012 at 11:57:10AM -0400, Fields James wrote:
+>> >> >> On Sat, Jun 23, 2012 at 03:52:20PM +0000, Myklebust, Trond wrote:
+>> >> >> > The other objection is that NFSv3 already has a way to do this
+>> >> >> > via
+>> >> >> > the
+>> >> >> > MOUNT protocol. We already call MOUNTPROC3_UMNT/MOUNTPROC_UMNT on
+>> >> >> > unmount of a filesystem.
+>> >> >> >
+>> >> >> > The problem with this approach is that if the NFS client crashes
+>> >> >> > before
+>> >> >> > it can call this function, then the server never gets notified.
+>> >> >> > That
+>> >> >> > is
+>> >> >> > a problem that your patch has too...
+>> >> >>
+>> >> >> Yes.  Could you instead work on describing *exactly* what the
+>> >> >> original
+>> >> >> problem was that prompted this?
+>> >> >
+>> >> > ("You" here meaning Namjae Jeon, of course).
+>> >> >
+>> >> > And note here we've all read the changelog, that's not what I'm
+>> >> > asking
+>> >> > for.
+>> >> >
+>> >> > I want to know the details of *your* specific case.  "I have X
+>> >> > clients
+>> >> > that I use for Y, periodically I want to unmount the exported
+>> >> > filesystem
+>> >> > to do Z, I tried doing W but it didn't work...".
+>> >> As you remember, We discussed this
+>> >> issue(http://www.spinics.net/lists/linux-nfs/msg29997.html) with you
+>> >> before. you guided me to use exportfs -f call on nfs server.
+>> >> It is hard to use this method on our system
+>> >
+>> > Why is it hard?
+>> Two target are connected by only nfs.. we can't manually hand exportfs
+>> -f..
+>
+> So how can you call umount?
+I am currently checking two approaches.
+1. Add flush cache code in current MOUNTPROC3_UMNT/MOUNTPROC_UMNT.
+ -> I heard from Trond that there already are
+MOUNTPROC3_UMNT/MOUNTPROC_UMNT. So I will try to fix this issue on
+current protocols without many changes. It is not specification
+violation.
+2. Check your suggestion.
+-> I think that your suggestion is very good. it will cover device
+unplug case(automount will try to umount about unplugged device) and
+current busy umount issue.
+If I have one concern, It need to change VFS code. I need your review
+and Ack to commit if I post this patch.
+
+Thanks.
+>
+> --b.
+>
