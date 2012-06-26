@@ -1,108 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f44.google.com ([74.125.82.44]:48090 "EHLO
-	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752206Ab2FGHrB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jun 2012 03:47:01 -0400
+Received: from mx2.netapp.com ([216.240.18.37]:9287 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755417Ab2FZMyi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Jun 2012 08:54:38 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Johannes Schild <JSchild@gmx.de>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: LAYOUTCOMMIT/LAYOUTRETURN
+Date: Tue, 26 Jun 2012 12:54:36 +0000
+Message-ID: <1340715270.2576.3.camel@lade.trondhjem.org>
+References: <20120625074306.48500@gmx.net>
+	 <1340632000.9620.7.camel@lade.trondhjem.org> <20120626124348.48490@gmx.net>
+In-Reply-To: <20120626124348.48490@gmx.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Date: Thu, 7 Jun 2012 16:47:00 +0900
-Message-ID: <CAKYAXd-HCfcejT=kG-kSXWCmfmxTjrT2o+b3Zan+BCrS1Y2ovw@mail.gmail.com>
-Subject: =?UTF-8?Q?Re=3A_Re=3A_Re=3A_=5BProblem=5DNFS_Server_=E2=80=93_Umount_results_i?=
-	=?UTF-8?Q?n_Device_Busy=2E?=
-From: Namjae Jeon <linkinjeon@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
-Cc: Amit Sahrawat <a.sahrawat@samsung.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Namjae Jeon <namjae.jeon@samsung.com>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce, Trond.
-
-As you know, Currently umount results in busy on NFS server although
-user tried to succeed to umount on NFS client.
-I suggest to add umount procedure to avoid umount busy issue.
-When calling umount on NFS client, The resources(exportfs entries
-cache) of mount point will be flushed on NFS server. and umount will
-be succeed without busy issue.
-
-how do you think about this suggestion ?
-
-Thanks.
-
-2012/5/11, AMIT SAHRAWAT <a.sahrawat@samsung.com>:
-> Hi Bruce,
-> Sorry it was the mail composer - I did not check mark the plain text
-> option.
->
-> We need an opinion.
-> We will be using around 15 NFS client mounted - with one NFS Server. We are
-> try to make out how many NFSD should we start at the NFS Server.
-> It all depends upon the load - these 15 NFS clients are going to generate.
-> But is there any default number - we should use to start with? like 1 per
-> NFS client mount?
-> Please share your advise on this.
->
-> Thanks & Regards,
-> Amit Sahrawat
->
-> ------- Original Message -------
-> Sender : J. Bruce Fields<bfields@fieldses.org>
-> Date : May 10, 2012 17:46 (GMT+05:30)
-> Title : Re: Re: [Problem]NFS Server – Um?ount results in Device Busy.
->
-> On Thu, May 10, 2012 at 11:54:43AM +0000, AMIT SAHRAWAT wrote:
->>
->>
-> Hi Bruce,
->
->>
->
->
->>
-> Thanks for instant reply.
->
->
-> Could you turn off html formatting on your mail?
->
->>
-> The option you mentioned is working. 'exportfs -f'
->
->>
-> Actually it is not mentioned anywhere - even when checked for options:
->
->>
-> #> exportfs -h
-> exportfs: invalid option -- 'h'
-> usage: exportfs [-aruv] [host:/path]
->
->
->
-> Sorry, it looks like the help test could be improved!  Patches
-> welcomed....
->
-> It is documented in the exportfs man page.
->
->>
-> But - when tried to give - '-f' option it is working.
->
->>
-> Then on checking the code for exportfs - got to know the working of '-f'
-> option.
->
->>
-> I think it should work. I will check with a number of scenario  - to check
-> there is no blockage for other mount points - at the time 'exportfs -f' is
-> being run. Please reply if it wont :)
->
->
-> If no clients are using the export, it should work.
->
-> --b.
->
->
->
-> Thanks & Regards,
-> Amit Sahrawat
+T24gVHVlLCAyMDEyLTA2LTI2IGF0IDE0OjQzICswMjAwLCBKb2hhbm5lcyBTY2hpbGQgd3JvdGU6
+DQo+IEhpLA0KPiANCj4gdGhhbmtzIGZvciB5b3VyIGFuc3dlcnMuDQo+IA0KPiBCdXQgaG93IGRv
+IGkgZmluZCBvdXQsIHdoZXRoZXIgdGhlIHNlcnZlciBpcyB1c2luZyBGSUxFX1NZTkM/DQoNCllv
+dSBzYWlkIHlvdSB3ZXJlIHVzaW5nIGEgTmV0QXBwIGZpbGVyLiBUaGV5IGhhdmUgYW4gTlZSQU0g
+Y2FjaGUgd2hpY2gNCm1lYW5zIHRoZXkgd2lsbCBhbHdheXMgdXNlIEZJTEVfU1lOQyBtb2RlIGZv
+ciB3cml0ZXMuDQoNCj4gSXMgdGhlcmUgYW55IG90aGVyIG1vZGUgbGlrZSAiRklMRV9BU1lOQyI/
+DQoNClBsZWFzZSBzZWUgdGhlIE5GUyBzcGVjLiBUaGVyZSBhcmUgMyB3cml0ZSBtb2RlczogRklM
+RV9TWU5DID09IChkYXRhDQorbWV0YWRhdGEgY29tbWl0dGVkIHRvIGRpc2spLCBEQVRBX1NZTkMg
+PT0gKGRhdGEgKyBmaWxlIHNpemUgY29tbWl0dGVkDQp0byBkaXNrKSwgVU5TVEFCTEUgPT0gKGRh
+dGErbWV0YWRhdGEgaXMgY2FjaGVkIG9uIHRoZSBzZXJ2ZXIpLg0KDQo+IEFuZCBpZiB0aGUgc2Vy
+dmVyIGlzIHVzaW5nIEZJTEVfU1lOQywgaG93IGRvZXMgaXQgZ2V0IExBWU9VVENPTU1JVD8NCg0K
+SXQgZG9lc24ndCBuZWVkIGl0LiBBbGwgbWV0YWRhdGEgaXMgYWxyZWFkeSBvbiBkaXNrLg0KDQo+
+IFRoYW5rcyBpbiBhZHZhbmNlDQo+IA0KPiANCj4gSm9oYW5uZXMNCj4gDQo+IA0KPiAtLS0tLS0t
+LSBPcmlnaW5hbC1OYWNocmljaHQgLS0tLS0tLS0NCj4gPiBEYXR1bTogTW9uLCAyNSBKdW4gMjAx
+MiAwOTo0Njo0MCAtMDQwMA0KPiA+IFZvbjogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1
+c3RAZnlzLnVpby5ubz4NCj4gPiBBbjogSm9oYW5uZXMgU2NoaWxkIDxKU2NoaWxkQGdteC5kZT4N
+Cj4gPiBDQzogbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiA+IEJldHJlZmY6IFJlOiBMQVlP
+VVRDT01NSVQvTEFZT1VUUkVUVVJODQo+IA0KPiA+IE9uIE1vbiwgMjAxMi0wNi0yNSBhdCAwOTo0
+MyArMDIwMCwgSm9oYW5uZXMgU2NoaWxkIHdyb3RlOg0KPiA+ID4gSGkgR3V5cywNCj4gPiA+IA0K
+PiA+ID4gaSBoYXZlIGFub3RoZXIgcXVlc3Rpb24gb24gcE5GUy4gSSBsb29rZWQgYXQgbXkgV2ly
+ZXNoYXJrIHByb3RvY29scywNCj4gPiB3aGlsZSBpIHVzZWQgdGhlIEZJTEUtTGF5b3V0LCBhbmQg
+aSB3b25kZXJlZCB3aHkgaSBoYXZlIG5vDQo+ID4gTEFZT1VUQ09NTUlUL0xBWU9VVFJFVFVSTiBz
+dGF0ZW1lbnRzIGluIG15IHByb3RvY29scy4NCj4gPiA+IEkgdHJhbnNmZXJlZCBvbmUgZmlsZSB0
+byBteSBzdG9yYWdlIHNlcnZlciAoTkVUQVBQIFNpbXVsYXRvciA4LjEgQy1Nb2RlKQ0KPiA+IGFu
+ZCBpIG9ubHkgZ290IGEgTEFZT1VUR0VULg0KPiA+ID4gDQo+ID4gPiBjYXQgL3Byb2Mvc2VsZi9t
+b3VudHN0YXRzIHwgZ3JlcCBMQVlPVVQgc2F5czoNCj4gPiA+IG5mc3Y0Og0KPiA+IGJtMD0weGZh
+ZmU4ZmZmLGJtbD0weDYwZmRmZmZlLGFjbD0weDMsc2Vzc2lvbnMscG5mcz1MQVlPVVRfTkZTVjRf
+MV9GSUxFUw0KPiA+ID4gICAgIExBWU9VVEdFVDogMSAxIDAgMjE2IDIzNiAwIDEgMQ0KPiA+ID4g
+IExBWU9VVENPTU1JVDogMCAwIDAgMCAwIDAgMCAwDQo+ID4gPiAgTEFZT1VUUkVUVVJOOiAwIDAg
+MCAwIDAgMCAwIDAgDQo+ID4gDQo+ID4gQSBwTkZTIGNsaWVudCBzaG91bGQgbmV2ZXIgc2VuZCBM
+QVlPVVRDT01NSVQgdG8gYSBzZXJ2ZXIgdGhhdCBkb2VzDQo+ID4gRklMRV9TWU5DIHdyaXRlcy4N
+Cj4gPiANCj4gPiBUaGUgTGludXggcE5GUyBjbGllbnQgdXNlcyB0aGUgJ2ZvcmdldGZ1bCBjbGll
+bnQnIG1vZGVsLCBzbyBpdCB3aWxsDQo+ID4gbmV2ZXIgc2VuZCBMQVlPVVRSRVRVUk4gb24gbGF5
+b3V0IHJlY2FsbHMgZWl0aGVyLiBUaGUgb25seSBjYXNlIHdoZXJlIHdlDQo+ID4gc2VuZCBMQVlP
+VVRSRVRVUk4gaXMgd2hlbiB0aGUgZmlsZSBmYWxscyBvdXQgb2YgdGhlIGlub2RlIGNhY2hlLg0K
+PiA+IA0KPiA+IA0KPiA+ID4gSXMgdGhlcmUgYW55IG90aGVyIHdheSB0byB2ZXJpZnkgdGhhdCBw
+bmZzIGlzIHVzZWQgb24gY2xpZW50IHNpdGU/DQo+ID4gDQo+ID4gVGhlIG1vc3QgZGlyZWN0IHdh
+eSBpcyB0byBsb29rIGZvciBhIFRDUCBjb25uZWN0aW9uIHRvIHRoZSBkYXRhIHNlcnZlcg0KPiA+
+IHVzaW5nICduZXRzdGF0IC10Jy4NCj4gPiANCj4gPiBDaGVlcnMNCj4gPiAgIFRyb25kDQo+ID4g
+DQo+IA0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVy
+DQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoN
+Cg==
