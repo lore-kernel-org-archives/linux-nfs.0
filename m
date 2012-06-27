@@ -1,64 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga01.intel.com ([192.55.52.88]:38726 "EHLO mga01.intel.com"
+Received: from mx1.redhat.com ([209.132.183.28]:23357 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754571Ab2FWPHT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 23 Jun 2012 11:07:19 -0400
-Date: Sat, 23 Jun 2012 23:07:14 +0800
-From: Fengguang Wu <fengguang.wu@intel.com>
-To: Linux-NFS <linux-nfs@vger.kernel.org>
-Cc: Andi Kleen <ak@linux.intel.com>
-Subject: Re: rpcauth_lookup_credcache() lock contentions
-Message-ID: <20120623150714.GA12845@localhost>
-References: <20120623122604.GA10887@localhost>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120623122604.GA10887@localhost>
+	id S1753768Ab2F0USJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Jun 2012 16:18:09 -0400
+Date: Wed, 27 Jun 2012 16:18:07 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Harshula <harshula@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: rpciod process is blocked in nfs_release_page waiting for
+ nfs_commit_inode to complete
+Message-ID: <20120627161807.7b6ec141@tlielax.poochiereds.net>
+In-Reply-To: <1340825822.2398.10.camel@lade.trondhjem.org>
+References: <1339764850.30233.11.camel@serendib>
+	<20120615092103.15cc2b11@corrin.poochiereds.net>
+	<1339795503.16363.9.camel@lade.trondhjem.org>
+	<20120627115447.0fdf8c6e@corrin.poochiereds.net>
+	<1340822635.2398.7.camel@lade.trondhjem.org>
+	<20120627152814.4774048b@tlielax.poochiereds.net>
+	<1340825822.2398.10.camel@lade.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Jun 23, 2012 at 08:26:04PM +0800, Fengguang Wu wrote:
-> Hi,
+On Wed, 27 Jun 2012 19:37:03 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+
+> On Wed, 2012-06-27 at 15:28 -0400, Jeff Layton wrote:
+> > On Wed, 27 Jun 2012 18:43:56 +0000
+> > "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+> > > The reason why we close these sockets is that if the attempt at aborting
+> > > the connection fails, then they typically end up in a TIME_WAIT state.
+> > > 
+> > 
+> > I'm still trying to wade through the xprtsock.c socket handling code,
+> > but it looks like we currently tear down the connection in 3 different
+> > ways:
+> > 
+> > xs_close: which basically calls sock_release and gets rid of our
+> > reference to an existing socket. Most of the places where we disconnect
+> > the socket use this. After this, we end up with srcport == 0 which
+> > makes it pick a new port.
+> > 
+> > xs_tcp_shutdown: which calls ->shutdown on it, but doesn't free
+> > anything. This also preserves the existing srcport.
+> > 
+> > xs_abort_connection: calls kernel_connect to reconnect the socket to
+> > AF_UNSPEC address (effectively disconnecting it?). This also preserves
+> > the srcport. I guess we use this just before reconnecting when the
+> > remote end drops the connection, since we don't need to be graceful
+> > about tearing anything down at that point.
+> > 
+> > The last one actually does reuse the same socket, so my thinking was
+> > that we could extend that scheme to the other cases. If we called
+> > ->shutdown on it and then reconnected it to AF_UNSPEC, would that
+> > "reset" it back to a usable state?
 > 
-> When doing parallel kernel builds on an NFSROOT system with 32 logical
-> CPUs, I see half CPU time spent in kernel:
+> Not that I'm aware of. The problem is that most of this stuff is
+> undocumented. For instance, the AF_UNSPEC reconnect is documented only
+> for UDP connections. While Linux implements it for TCP too, there is no
+> spec (that I'm aware of) that explains how that should work.
 > 
-> top - 20:08:28 up  5:01,  8 users,  load average: 62.97, 55.82, 54.56
-> Tasks: 751 total,  80 running, 671 sleeping,   0 stopped,   0 zombie
-> Cpu(s):  0.1%us, 53.5%sy, 46.4%ni,  0.0%id,  0.0%wa,  0.0%hi,  0.1%si,  0.0%st
-> Mem:  65401132k total, 36455604k used, 28945528k free,        0k buffers
-> Swap:        0k total,        0k used,        0k free, 31858244k cached
+
+...and fwiw, it looks like reconnecting a TCP socket to an AF_UNSPEC
+address doesn't work from userland -- you get back EINVAL. I have to
+wonder if xs_abort_connection actually works as expected...
+
+> > If there really is no alternative to freeing the socket, then the only
+> > real fix I can see is to set PF_MEMALLOC when we go to create it and
+> > then reset it afterward. That's a pretty ugly fix though...
 > 
-> The attached lock_stat shows that rpcauth_lookup_credcache() has the
-> outstanding contentions.
+> Agreed...
+> 
 
-Aha, I got some progress: 20% kernel time can be saved when increasing
-the hash bits from 4 to 10 with sunrpc.auth_hashtable_size=10:
+That looks basically like what Mel is doing to work around the problem,
+though he only does it for xprt's that are tagged as being swapped
+over. We could just make that unconditional, but the "congested" flag
+scheme sounds better.
 
-Cpu(s):  0.0%us, 38.3%sy, 61.6%ni,  0.0%id,  0.0%wa,  0.0%hi,  0.1%si,  0.0%st
-
------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-                              class name    con-bounces    contentions   waittime-min   waittime-max waittime-total    acq-bounces   acquisitions   holdtime-min   holdtime-max holdtime-total
------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-               &(&dentry->d_lock)->rlock:     268601736      276206929           0.07       26627.70   496747630.48     2001328443     5557869248           0.06       37208.89  1755583747.41
-               -------------------------
-               &(&dentry->d_lock)->rlock       24861581          [<ffffffff8116de34>] unlazy_walk+0x8a/0x1bb
-               &(&dentry->d_lock)->rlock      148863110          [<ffffffff81177f50>] dput+0x46/0x17c
-               &(&dentry->d_lock)->rlock       13725203          [<ffffffff81178c3c>] __d_lookup+0xa2/0x19d
-               &(&dentry->d_lock)->rlock       46173902          [<ffffffff811770a9>] dget_parent+0x63/0xd5
-               -------------------------
-               &(&dentry->d_lock)->rlock       86386730          [<ffffffff811770a9>] dget_parent+0x63/0xd5
-               &(&dentry->d_lock)->rlock       20746860          [<ffffffff8116dd9a>] path_get+0x2c/0x3c
-               &(&dentry->d_lock)->rlock       12672320          [<ffffffff81178c3c>] __d_lookup+0xa2/0x19d
-               &(&dentry->d_lock)->rlock       32752994          [<ffffffff8116de34>] unlazy_walk+0x8a/0x1bb
-
-...............................................................................................................................................................................................
-
-                    &(&new->lock)->rlock:     230350869      230621514           0.08        6929.01   361504869.99      965086516     1052051247           0.07        5783.47   369851400.65
-                    --------------------
-                    &(&new->lock)->rlock      230621514          [<ffffffff81d026c0>] rpcauth_lookup_credcache+0xa7/0x244
-                    --------------------
-                    &(&new->lock)->rlock      230621514          [<ffffffff81d026c0>] rpcauth_lookup_credcache+0xa7/0x244
-
-Thanks,
-Fengguang
+-- 
+Jeff Layton <jlayton@redhat.com>
