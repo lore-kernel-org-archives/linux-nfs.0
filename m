@@ -1,47 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35953 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:7694 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754117Ab2FWQJ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 23 Jun 2012 12:09:29 -0400
-Date: Sat, 23 Jun 2012 12:09:23 -0400
-From: Fields James <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Namjae Jeon <linkinjeon@gmail.com>,
-        Morton Andrew <akpm@linux-foundation.org>,
-        Harrosh Boaz <bharrosh@panasas.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        Namjae Jeon <namjae.jeon@samsung.com>,
-        Vivek Trivedi <t.vivek@samsung.com>,
-        Amit Sahrawat <a.sahrawat@samsung.com>
-Subject: Re: [RFC PATCH] nfs: Add NFS3PROC_UMOUNT procedure.
-Message-ID: <20120623160923.GB10787@fieldses.org>
-References: <1340448406-10161-1-git-send-email-linkinjeon@gmail.com>
- <02B16139-AFD6-4F06-99C0-C406B1A7E1DC@netapp.com>
- <FE90D2E0-C4C9-44BC-829F-ABE94801AB4C@netapp.com>
- <20120623155710.GA10787@fieldses.org>
+	id S1753418Ab2F0UrK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Jun 2012 16:47:10 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: Harshula <harshula@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: rpciod process is blocked in nfs_release_page waiting for
+ nfs_commit_inode to complete
+Date: Wed, 27 Jun 2012 20:46:49 +0000
+Message-ID: <1340830004.2398.26.camel@lade.trondhjem.org>
+References: <1339764850.30233.11.camel@serendib>
+	 <20120615092103.15cc2b11@corrin.poochiereds.net>
+	 <1339795503.16363.9.camel@lade.trondhjem.org>
+	 <20120627115447.0fdf8c6e@corrin.poochiereds.net>
+	 <1340822635.2398.7.camel@lade.trondhjem.org>
+	 <20120627152814.4774048b@tlielax.poochiereds.net>
+	 <1340826996.2398.15.camel@lade.trondhjem.org>
+	 <20120627161913.05229538@tlielax.poochiereds.net>
+In-Reply-To: <20120627161913.05229538@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120623155710.GA10787@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Jun 23, 2012 at 11:57:10AM -0400, Fields James wrote:
-> On Sat, Jun 23, 2012 at 03:52:20PM +0000, Myklebust, Trond wrote:
-> > The other objection is that NFSv3 already has a way to do this via the MOUNT protocol. We already call MOUNTPROC3_UMNT/MOUNTPROC_UMNT on unmount of a filesystem.
-> > 
-> > The problem with this approach is that if the NFS client crashes before it can call this function, then the server never gets notified. That is a problem that your patch has too...
-> 
-> Yes.  Could you instead work on describing *exactly* what the original
-> problem was that prompted this?
-
-("You" here meaning Namjae Jeon, of course).
-
-And note here we've all read the changelog, that's not what I'm asking
-for.
-
-I want to know the details of *your* specific case.  "I have X clients
-that I use for Y, periodically I want to unmount the exported filesystem
-to do Z, I tried doing W but it didn't work...".
-
---b.
+T24gV2VkLCAyMDEyLTA2LTI3IGF0IDE2OjE5IC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
+T24gV2VkLCAyNyBKdW4gMjAxMiAxOTo1NjozOCArMDAwMA0KPiAiTXlrbGVidXN0LCBUcm9uZCIg
+PFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4gT24gV2VkLCAyMDEy
+LTA2LTI3IGF0IDE1OjI4IC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4gPiA+IE9uIFdlZCwg
+MjcgSnVuIDIwMTIgMTg6NDM6NTYgKzAwMDANCj4gPiA+ICJNeWtsZWJ1c3QsIFRyb25kIiA8VHJv
+bmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+ID4gSWYgdGhlcmUgcmVhbGx5IGlz
+IG5vIGFsdGVybmF0aXZlIHRvIGZyZWVpbmcgdGhlIHNvY2tldCwgdGhlbiB0aGUgb25seQ0KPiA+
+ID4gcmVhbCBmaXggSSBjYW4gc2VlIGlzIHRvIHNldCBQRl9NRU1BTExPQyB3aGVuIHdlIGdvIHRv
+IGNyZWF0ZSBpdCBhbmQNCj4gPiA+IHRoZW4gcmVzZXQgaXQgYWZ0ZXJ3YXJkLiBUaGF0J3MgYSBw
+cmV0dHkgdWdseSBmaXggdGhvdWdoLi4uDQo+ID4gDQo+ID4gSSBjYW4gdGhpbmsgb2YgMiBwb3Nz
+aWJsZSBhbHRlcm5hdGl2ZXM6DQo+ID4gDQo+ID4gICAgICAxLiBVc2UgdGhlIFBGX0ZTVFJBTlMg
+ZmxhZyB0byB0ZWxsIG5mc19yZWxlYXNlX3BhZ2UgdGhhdCB0aGlzIGlzIGENCj4gPiAgICAgICAg
+IGRpcmVjdCByZWNsYWltIGZyb20gcnBjaW9kLg0KPiANCj4gSG1tLi4udGhhdCdzIGEgYml0IGlu
+ZGlzY3JpbWluYXRlLCBpc24ndCBpdD8gTG9va3MgbGlrZSBvbmx5IFhGUyB1c2VzDQo+IHRoYXQg
+ZmxhZyBub3cuLi4NCj4gDQo+IFN1cHBvc2Ugd2UncmUgaW4gc29tZSBYRlMgYWxsb2NhdGlvbiBh
+bmQgdGhlbiB3YW50IHRvIGNvbW1pdCBhIE5GUw0KPiBwYWdlIHRvIHNhdGlzZnkgaXQuIFRoZXJl
+J3Mgbm8gcmVhbCByZWFzb24gd2UgY291bGRuJ3QgYnV0IHRoYXQgd291bGQNCj4gcHJldmVudCBp
+dC4uLg0KDQpTbyBkbyBhbGwgdGhlIEdGUF9OT0ZTIGFsbG9jYXRpb25zLiBIb3cgaXMgdGhpcyBh
+bnkgZGlmZmVyZW50Pw0KDQo+ID4gICAgICAyLiBBZGQgYSAnY29uZ2VzdGVkJyBmbGFnIHRvIHRo
+ZSBycGMgY2xpZW50IHRoYXQgY291bGQgdGVsbCByZWNsYWltDQo+ID4gICAgICAgICB0eXBlIG9w
+ZXJhdGlvbnMgdG8gZ2l2ZSB1cCBpZiBhIHNvY2tldCBhbGxvY2F0aW9uIGlzIGluDQo+ID4gICAg
+ICAgICBwcm9ncmVzcy4NCj4gPiANCj4gDQo+IFRoYXQncyBub3QgYSBiYWQgaWRlYS4gVGhhdCBo
+YXMgdGhlIGJlbmVmaXQgb2Ygb25seSBza2lwcGluZyByZWNsYWltDQo+IHdoZW4gaXQncyBkaXJl
+Y3RseSBhc3NvY2lhdGVkIHdpdGggdGhlIHNvY2tldCBiZWluZyByZWNvbm5lY3RlZC4gU2VlbXMN
+Cj4gbGlrZSB0aGF0IHdvdWxkIGhhdmUgdG8gaGFuZyBvZmYgb2YgdGhlIHJwY194cHJ0LCBidXQg
+d2UgY291bGQgZG8NCj4gc29tZXRoaW5nIGFsb25nIHRob3NlIGxpbmVzLiBQcmVzdW1hYmx5IE1l
+bCdzIHN3YXAtb3Zlci1uZnMgcGF0Y2hlcw0KPiBjb3VsZCBiZSBjb252ZXJ0ZWQgdG8gZG8gc29t
+ZXRoaW5nIHNpbWlsYXIgaW5zdGVhZCBvZiB1c2luZyBQRl9NRU1BTExPQw0KPiB0aGVyZSB0b28u
+DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0K
+TmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
