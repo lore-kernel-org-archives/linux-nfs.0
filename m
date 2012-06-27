@@ -1,74 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:5289 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:29130 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751516Ab2FSOym (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Jun 2012 10:54:42 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q5JEsfp6029219
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 19 Jun 2012 10:54:41 -0400
-Message-ID: <4FE0926C.2050201@RedHat.com>
-Date: Tue, 19 Jun 2012 10:53:32 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: harald@redhat.com
-CC: linux-nfs@vger.kernel.org, jlayton@redhat.com
-Subject: Re: [PATCH] Before clearing the capability bounding set, check if
- we have the cap
-References: <1339501866-18967-1-git-send-email-harald@redhat.com>
-In-Reply-To: <1339501866-18967-1-git-send-email-harald@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1752709Ab2F0UFo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Jun 2012 16:05:44 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 0/1] SUNRPC handle EKEYEXPIRED in call_refreshresult
+Date: Wed, 27 Jun 2012 16:05:34 -0400
+Message-Id: <1340827535-3062-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Andy Adamson <andros@netapp.com>
 
+Without this patch attempting to access a Kerberos mount with expired or no
+credentials resulted in the NFS client hanging while retrying to refresh creds
+for ever.
 
-On 06/12/2012 07:51 AM, harald@redhat.com wrote:
-> From: Harald Hoyer <harald@redhat.com>
-> 
-> PR_CAPBSET_DROP can return EINVAL, if an older kernel does support
-> some capabilities, which are defined by CAP_LAST_CAP, which results in
-> a failure of the service.
-> 
-> For example kernel 3.4 errors on CAP_EPOLLWAKEUP, which was newly
-> introduced in 3.5.
-> 
-> So, for future capabilities, we clear until we get an EINVAL for
-> PR_CAPBSET_READ.
-Committed...
+I tested NFSv3/v4/v4.1 sec=krb5 mounts. With expired or non-existent user
+Kerberos credentials, trying to ls the mountpoint, or cd into the mountpoint
+resulted in three failed upcalls to gssd (due to tk_cred_retry being set to 2)
+then the 'Operation not permitted' message is returned to the user.
 
-steved.
+I think this patch should go into the stable kernel.
 
-> ---
->  support/nsm/file.c      |    2 +-
->  utils/nfsdcld/nfsdcld.c |    4 ++--
->  2 files changed, 3 insertions(+), 3 deletions(-)
-> 
-> diff --git a/support/nsm/file.c b/support/nsm/file.c
-> index 5476446..4711c2c 100644
-> --- a/support/nsm/file.c
-> +++ b/support/nsm/file.c
-> @@ -386,7 +386,7 @@ prune_bounding_set(void)
->  	}
->  
->  	/* prune the bounding set to nothing */
-> -	for (i = 0; i <= CAP_LAST_CAP; ++i) {
-> +	for (i = 0; prctl(PR_CAPBSET_READ, i, 0, 0, 0) >=0 ; ++i) {
->  		ret = prctl(PR_CAPBSET_DROP, i, 0, 0, 0);
->  		if (ret) {
->  			xlog(L_ERROR, "Unable to prune capability %lu from "
-> diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
-> index e7af4e3..473d069 100644
-> --- a/utils/nfsdcld/nfsdcld.c
-> +++ b/utils/nfsdcld/nfsdcld.c
-> @@ -102,8 +102,8 @@ cld_set_caps(void)
->  	}
->  
->  	/* prune the bounding set to nothing */
-> -	for (i = 0; i <= CAP_LAST_CAP; ++i) {
-> -		ret = prctl(PR_CAPBSET_DROP, i);
-> +	for (i = 0; prctl(PR_CAPBSET_READ, i, 0, 0, 0) >= 0 ; ++i) {
-> +		ret = prctl(PR_CAPBSET_DROP, i, 0, 0, 0);
->  		if (ret) {
->  			xlog(L_ERROR, "Unable to prune capability %lu from "
->  				      "bounding set: %m", i);
+Andy Adamson (1):
+  SUNRPC handle EKEYEXPIRED in call_refreshresult
+
+ fs/nfs/nfs4proc.c |    2 --
+ net/sunrpc/clnt.c |    4 ++++
+ 2 files changed, 4 insertions(+), 2 deletions(-)
+
+-- 
+1.7.7.6
+
