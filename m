@@ -1,38 +1,27 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:52992 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757788Ab2FTTDu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jun 2012 15:03:50 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 2 2/4] NFSv4.1 don't send LAYOUTCOMMIT if data resent through MDS
-Date: Wed, 20 Jun 2012 15:03:32 -0400
-Message-Id: <1340219014-5749-3-git-send-email-andros@netapp.com>
-In-Reply-To: <1340219014-5749-1-git-send-email-andros@netapp.com>
-References: <1340219014-5749-1-git-send-email-andros@netapp.com>
+Received: from webmail.unionpersonal.com.ar ([200.45.226.22]:37914 "EHLO
+	webmail.unionpersonal.com.ar" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754182Ab2F0V2D (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jun 2012 17:28:03 -0400
+Message-ID: <d910ca8cddaacdd9b384b82222def23c.squirrel@webmail.unionpersonal.com.ar>
+Date: Wed, 27 Jun 2012 17:55:24 -0300
+Subject: 
+From: "Western Union Dpt" <Info@yahoo.com>
+Reply-To: western.unionmoney.stranfer@dgoh.org
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+To: undisclosed-recipients:;
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+Dear beneficiary,
+This is to re-notify you of the 300,000.00(DOLLARS)that was
+deposited here in the western union office in your name is
+available for pickup.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4filelayout.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+Contact us via email for your M.T.C.N Numbers.
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 26b96de..53f94d9 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -206,6 +206,7 @@ static int filelayout_async_handle_error(struct rpc_task *task,
- 		dprintk("%s DS connection error %d\n", __func__,
- 			task->tk_status);
- 		filelayout_mark_devid_invalid(devid);
-+		clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags);
- 		_pnfs_return_layout(inode);
- 		rpc_wake_up(&tbl->slot_tbl_waitq);
- 		nfs4_ds_disconnect(clp);
--- 
-1.7.6.4
+Contact Person:Mr. Allen Williams
+Email: western.unionmoney.stranfer@dgoh.org
+
 
