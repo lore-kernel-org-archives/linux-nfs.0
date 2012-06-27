@@ -1,47 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from plane.gmane.org ([80.91.229.3]:60292 "EHLO plane.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753677Ab2FSTRz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Jun 2012 15:17:55 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1Sh3vw-0002NS-En
-	for linux-nfs@vger.kernel.org; Tue, 19 Jun 2012 21:17:48 +0200
-Received: from p5dc13a15.dip.t-dialin.net ([93.193.58.21])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Jun 2012 21:17:48 +0200
-Received: from ponto by p5dc13a15.dip.t-dialin.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Jun 2012 21:17:48 +0200
-To: linux-nfs@vger.kernel.org
-From: Christoph Bartoschek <ponto@pontohonk.de>
-Subject: Re: Spurious permission denied
-Date: Tue, 19 Jun 2012 20:23:37 +0200
-Message-ID: <9ms6b9-idk.ln1@homer.bruehl.pontohonk.de>
-References: <43v5b9-ifa.ln1@barney.bruehl.pontohonk.de> <1340113184.3754.5.camel@lade.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"
+Received: from mail.candelatech.com ([208.74.158.172]:38432 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753418Ab2F0SCx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jun 2012 14:02:53 -0400
+Received: from [192.168.100.111] (firewall.candelatech.com [70.89.124.249])
+	(authenticated bits=0)
+	by ns3.lanforge.com (8.14.2/8.14.2) with ESMTP id q5RI2rHm016152
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Wed, 27 Jun 2012 11:02:53 -0700
+Message-ID: <4FEB4ACD.8030307@candelatech.com>
+Date: Wed, 27 Jun 2012 11:02:53 -0700
+From: Ben Greear <greearb@candelatech.com>
+MIME-Version: 1.0
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nfsutils compile failure (NSM_DEFAULT_STATEDIR)
+References: <4FEB4702.3070700@candelatech.com>
+In-Reply-To: <4FEB4702.3070700@candelatech.com>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Myklebust, Trond wrote:
+On 06/27/2012 10:46 AM, Ben Greear wrote:
+> I just rebased against upstream nfs-utils:
+>
+> git://git.linux-nfs.org/projects/steved/nfs-utils.git
+>
+> and it fails to build on Fedora 13 (and maybe others, haven't tried yet).
+>
+> gcc -DHAVE_CONFIG_H -I. -I../../support/include  -I/usr/include/tirpc -D_GNU_SOURCE -Wall -Wextra -Wstrict-prototypes  -pipe -g -O2 -MT file.o -MD -MP -MF
+> .deps/file.Tpo -c -o file.o file.c
+> file.c:97: error: ‘NSM_DEFAULT_STATEDIR’ undeclared here (not in a function)
+>
+> Any idea on the proper way to go about fixing this?
 
-> 
-> NFSv3 doesn't use the mode bits to determine access rights, so looking
-> at a GETATTR call isn't really that helpful. You need to catch the
-> original ACCESS call and reply in order to figure out what caused the
-> permission denied issue.
+Maybe the issue is that 'make distclean' didn't remove the configure file.
 
-Hmm.
+When I tried to re-generate the configure file, it blew up because
+my libgssglue is too old.  So, I'm just going to back all of this out
+and go back to the old code since I need to compile back to Fedora 8
+currently.
 
-I started capturing the packets before I tried the ls and stopped some 
-seconds after ls.
+Thanks,
+Ben
 
-These were the only three packets wireshark captured. 
+-- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
-I wait till the problem occurs again and try to get more meaningful packets.
 
-Thanks
-Christoph
 
