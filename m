@@ -1,62 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from plane.gmane.org ([80.91.229.3]:40006 "EHLO plane.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964937Ab2FAPxO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Jun 2012 11:53:14 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1SaUA3-00047b-46
-	for linux-nfs@vger.kernel.org; Fri, 01 Jun 2012 17:53:11 +0200
-Received: from NORTHWEST-R.edge3.Denver1.Level3.net ([4.28.99.98])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Fri, 01 Jun 2012 17:53:11 +0200
-Received: from orion by NORTHWEST-R.edge3.Denver1.Level3.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Fri, 01 Jun 2012 17:53:11 +0200
-To: linux-nfs@vger.kernel.org
-From: Orion Poplawski <orion@cora.nwra.com>
-Subject: Spurious rpc.idmapd =?utf-8?b?bnNzX2dldHB3bmFtOg==?= name 'nobody' does not map into domain messages
-Date: Fri, 1 Jun 2012 15:53:02 +0000 (UTC)
-Message-ID: <loom.20120601T174414-583@post.gmane.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-wi0-f172.google.com ([209.85.212.172]:63630 "EHLO
+	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754685Ab2F0Ajf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jun 2012 20:39:35 -0400
+MIME-Version: 1.0
+In-Reply-To: <4FEA4DE7.3030606@gmail.com>
+References: <1340448446-10198-1-git-send-email-linkinjeon@gmail.com>
+	<20120623115106.GA2742@umich.edu>
+	<5AC2C9F0-EEFE-423E-BBB9-27102D1CA163@oracle.com>
+	<CAKYAXd_QKsiTV86H4eykjOzfJc8Who1T8in5TmnJyxigw=+7AQ@mail.gmail.com>
+	<20120624124625.GA15586@umich.edu>
+	<CAKYAXd-OT9nV--vYOseGYHp35g3qo86rzYJPDiP454ipoGJ2Xw@mail.gmail.com>
+	<4FEA4DE7.3030606@gmail.com>
+Date: Wed, 27 Jun 2012 09:39:33 +0900
+Message-ID: <CAKYAXd9V7GyLNcsn5pkR34ckzsJGSxykXoPFo=91NO5tPeCU+g@mail.gmail.com>
+Subject: Re: [RFC PATCH] nfs: Support posix_fadvise(POSIX_FADV_RANDOM) on nfs server.
+From: Namjae Jeon <linkinjeon@gmail.com>
+To: Dean <seattleplus@gmail.com>
+Cc: "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        Namjae Jeon <namjae.jeon@samsung.com>,
+        VivekTrivedi <t.vivek@samsung.com>,
+        Amit Sahrawat <a.sahrawat@samsung.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm seeing a fair number of these messages on our file server:
+Hi. Dean.
 
-Jun  1 09:37:58 alexandria rpc.idmapd[28890]: nss_getpwnam: name 'nobody' does
-not map into domain 'cora.nwra.com'
+I have currenlty been having the deep interest about NFS. If I have a
+chance to help you for NFSv2, It is a great honor for me.
+Acutally I don't know how to contribute something for NFSv2 spec. If
+you give me some guide or advice, I will join postively.
 
-I think they are coming from accessing files on another file server that are
-owned by an unknown uid (user left and was removed from the user database). 
-These files end up owned by "nobody" (as expected) on the remote system:
+Thanks.
 
-drwxr-xr-x.  7 nobody nwra 4096 Mar 15  2010 analysis_data
-
-Now, this seems like a perfectly normal operation and so shouldn't generate a
-system log message.  First two possible fixes I can think of:
-
-- Should the remote system send the username as "nobody@cora.nwra.com" instead
-of just "nobody"?
-
-                            recc_attr: FATTR4_OWNER (36)
-                                fattr4_owner: nobody
-                                    length: 6
-                                    contents: nobody
-                                    fill bytes: opaque data
-                            recc_attr: FATTR4_OWNER_GROUP (37)
-                                fattr4_owner_group: nwra@cora.nwra.com
-                                    length: 18
-                                    contents: nwra@cora.nwra.com
-                                    fill bytes: opaque data
-
-- Don't log if the username is "nobody"?  Although since this is independently
-configurable on the different machines this seems like a bad idea.  Maybe don't
-log if there is no domain part at all?
-
-This is on EL6 with nfs-utils-1.2.3-15.el6_2.1
-
-Orion Poplawski
-
+2012/6/27, Dean <seattleplus@gmail.com>:
+> Hi Namjae,
+>
+> I'm glad you also see the usefulness of sending such hints to the NFS
+> server.
+>
+> Beyond reviewing the  NFSv4.2 spec, it would also be very useful to
+> implement a version of IO_ADVISE and show performance results with your
+> traverse test (among others).  If you have time for this, that would
+> really be helpful in ensuring the usefulness of IO_ADVISE.
+>
+> Dean Hildebrand
+>
+> On 6/24/12 6:54 PM, Namjae Jeon wrote:
+>> 2012/6/24, Jim Rees <rees@umich.edu>:
+>>> Namjae Jeon wrote:
+>>>
+>>>    > Yes, posix_fadvise support is part of NFSv4.2.
+>>>    Where can I check it ?
+>>>    Thanks.
+>>>
+>>> NFS is standardized throught the IETF.  4.2 is not out yet, so you'll
+>>> find
+>>> it in the drafts rather than the RFCs.  You can search them here:
+>>> http://www.rfc-editor.org/idsearch.html
+>>>
+>>> Here is the current draft:
+>>> ftp://ftp.rfc-editor.org/in-notes/internet-drafts/draft-ietf-nfsv4-minorversion2-12.txt
+>>>
+>> Okay, I will check, Thanks a lot Jim~. We hope to contribute NFSv4.2.
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
+>
