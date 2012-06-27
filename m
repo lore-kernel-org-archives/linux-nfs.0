@@ -1,106 +1,148 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:24733 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753875Ab2FMPRp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jun 2012 11:17:45 -0400
-Message-ID: <4FD8AF15.5010909@oracle.com>
-Date: Wed, 13 Jun 2012 09:17:41 -0600
-From: Jeff Wright <jeff.wright@oracle.com>
+Received: from mx2.netapp.com ([216.240.18.37]:40163 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751080Ab2F0Sn5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Jun 2012 14:43:57 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: Harshula <harshula@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: rpciod process is blocked in nfs_release_page waiting for
+ nfs_commit_inode to complete
+Date: Wed, 27 Jun 2012 18:43:56 +0000
+Message-ID: <1340822635.2398.7.camel@lade.trondhjem.org>
+References: <1339764850.30233.11.camel@serendib>
+	 <20120615092103.15cc2b11@corrin.poochiereds.net>
+	 <1339795503.16363.9.camel@lade.trondhjem.org>
+	 <20120627115447.0fdf8c6e@corrin.poochiereds.net>
+In-Reply-To: <20120627115447.0fdf8c6e@corrin.poochiereds.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Andy Adamson <androsadamson@gmail.com>
-CC: linux-nfs@vger.kernel.org, Craig Flaskerud <Craig.flaskerud@oracle.com>,
-        Donna Harland <donna.harland@oracle.com>
-Subject: Re: Help with NFS over 10GbE performance - possible NFS client to
- TCP bottleneck
-References: <4FBBBD26.2090203@oracle.com> <CAHVgHyX3rXzWEgJwL2cHLQ4aZn9G0Vbz_kHU8ax-EHObEtYf1g@mail.gmail.com>
-In-Reply-To: <CAHVgHyX3rXzWEgJwL2cHLQ4aZn9G0Vbz_kHU8ax-EHObEtYf1g@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Andy,
-
-We did not check the RPC statistics on the client, but on the target the 
-queue is nearly empty.  What is the command to check to see the RPC 
-backlog on the Linux client?
-
-Thanks,
-
-Jeff
-
-On 06/13/12 09:08, Andy Adamson wrote:
-> Chuck recently brought this to my attention:
->
-> Have you tried looking at the RPC statistics average backlog queue
-> length in mountstats? The backlog queue gets filled with NFS requests
-> that do not get an RPC slot.
->
-> I assume that jumbo frames are turned on throughout the connection.
->
-> I would try some iperf runs.  This will check the throughput of the
-> memory<->  network<->  memory path and provide an upper bound on what
-> to expect from NFS as well as displaying the MTU to check for jumbo
-> frame compliance.
->
-> I would then try some iozone tests, including the O_DIRECT tests. This
-> will give some more data on the issue by separating throughput from
-> the application specifics.
->
-> -->Andy
->
-> On Tue, May 22, 2012 at 12:21 PM, Jeff Wright<jeff.wright@oracle.com>  wrote:
->> Team,
->>
->> I am working on a team implementing a configuration with an OEL kernel
->> (2.6.32-300.3.1.el6uek.x86_64) and kernel NFS accessing an NFS server over
->> 10GbE a Solaris 10.  We are trying to resolve what appears to be a
->> bottleneck between the Linux kernel NFS client and the TCP stack.
->>   Specifically, the TCP send queue on the Linux client is empty (save a
->> couple of bursts) when we are running write I/O from the file system, the
->> TCP receive queue on the Solaris 10 NFS server is empty, and the RPC pending
->> request queue on the Solaris 10 NFS server is zero.   If we dial the network
->> to 1GbE we get a nice deep TCP send queue on the client, which is the
->> bottleneck I was hoping to get to with 10GbE.  At this point, we am pretty
->> sure the S10 NFS server can run to at least 1000 MBPS.
->>
->> So far, we have implemented the following Linux kernel tunes:
->>
->> sunrpc.tcp_slot_table_entries = 128
->> net.core.rmem_default = 4194304
->> net.core.wmem_default = 4194304
->> net.core.rmem_max = 4194304
->> net.core.wmem_max = 4194304
->> net.ipv4.tcp_rmem = 4096 1048576 4194304
->> net.ipv4.tcp_wmem = 4096 1048576 4194304
->> net.ipv4.tcp_timestamps = 0
->> net.ipv4.tcp_syncookies = 1
->> net.core.netdev_max_backlog = 300000
->>
->> In addition, we am running jumbo frames on the 10GbE NIC and we have
->> cpuspeed and irqbalance disabled (no noticeable changes when we did this).
->>   The mount options on the client side are as follows:
->>
->> 192.168.44.51:/export/share on /export/share type nfs
->> (rw,nointr,bg,hard,rsize=1048576,wsize=1048576,proto=tcp,vers=3,addr=192.168.44.51)
->>
->> In this configuration we get about 330 MBPS of write throughput with 16
->> pending stable (open with O_DIRECT) synchronous (no kernel aio in the I/O
->> application) writes.  If we scale beyond 16 pending I/O response time
->> increases but throughput remains fixed.  It feels like there is a problem
->> with getting more than 16 pending I/O out to TCP, but we can't tell for sure
->> based on our observations so far.  We did notice that tuning the wsize down
->> to 32kB increased throughput to 400 MBPS, but we could not identify the root
->> cause of this change.
->>
->> Please let us know if you have any suggestions for either diagnosing the
->> bottleneck more accurately or relieving the bottleneck.  Thank you in
->> advance.
->>
->> Sincerely,
->>
->> Jeff
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+T24gV2VkLCAyMDEyLTA2LTI3IGF0IDExOjU0IC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
+T24gRnJpLCAxNSBKdW4gMjAxMiAyMToyNToxMCArMDAwMA0KPiAiTXlrbGVidXN0LCBUcm9uZCIg
+PFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4gT24gRnJpLCAyMDEy
+LTA2LTE1IGF0IDA5OjIxIC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4gPiA+IE9uIEZyaSwg
+MTUgSnVuIDIwMTIgMjI6NTQ6MTAgKzEwMDANCj4gPiA+IEhhcnNodWxhIDxoYXJzaHVsYUByZWRo
+YXQuY29tPiB3cm90ZToNCj4gPiA+IA0KPiA+ID4gPiBIaSBBbGwsDQo+ID4gPiA+IA0KPiA+ID4g
+PiBDYW4gSSBwbGVhc2UgZ2V0IHlvdXIgZmVlZGJhY2sgb24gdGhlIGZvbGxvd2luZz8NCj4gPiA+
+ID4gDQo+ID4gPiA+IHJwY2lvZCBpcyBibG9ja2VkOg0KPiA+ID4gPiAtLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCj4gPiA+ID4gY3Jh
+c2g+IGJ0ICAyNTA3IA0KPiA+ID4gPiBQSUQ6IDI1MDcgICBUQVNLOiBmZmZmODgxMDM2OTFhYjQw
+ICBDUFU6IDE0ICBDT01NQU5EOiAicnBjaW9kLzE0Ig0KPiA+ID4gPiAgIzAgW2ZmZmY4ODEwMzQz
+YmYyZjBdIHNjaGVkdWxlIGF0IGZmZmZmZmZmODE0ZGFiZDkNCj4gPiA+ID4gICMxIFtmZmZmODgx
+MDM0M2JmM2I4XSBuZnNfd2FpdF9iaXRfa2lsbGFibGUgYXQgZmZmZmZmZmZhMDM4ZmMwNCBbbmZz
+XQ0KPiA+ID4gPiAgIzIgW2ZmZmY4ODEwMzQzYmYzYzhdIF9fd2FpdF9vbl9iaXQgYXQgZmZmZmZm
+ZmY4MTRkYmMyZg0KPiA+ID4gPiAgIzMgW2ZmZmY4ODEwMzQzYmY0MThdIG91dF9vZl9saW5lX3dh
+aXRfb25fYml0IGF0IGZmZmZmZmZmODE0ZGJjZDgNCj4gPiA+ID4gICM0IFtmZmZmODgxMDM0M2Jm
+NDg4XSBuZnNfY29tbWl0X2lub2RlIGF0IGZmZmZmZmZmYTAzOWUwYzEgW25mc10NCj4gPiA+ID4g
+ICM1IFtmZmZmODgxMDM0M2JmNGY4XSBuZnNfcmVsZWFzZV9wYWdlIGF0IGZmZmZmZmZmYTAzOGJl
+ZjYgW25mc10NCj4gPiA+ID4gICM2IFtmZmZmODgxMDM0M2JmNTI4XSB0cnlfdG9fcmVsZWFzZV9w
+YWdlIGF0IGZmZmZmZmZmODExMGM2NzANCj4gPiA+ID4gICM3IFtmZmZmODgxMDM0M2JmNTM4XSBz
+aHJpbmtfcGFnZV9saXN0LmNsb25lLjAgYXQgZmZmZmZmZmY4MTEyNjI3MQ0KPiA+ID4gPiAgIzgg
+W2ZmZmY4ODEwMzQzYmY2NjhdIHNocmlua19pbmFjdGl2ZV9saXN0IGF0IGZmZmZmZmZmODExMjY2
+MzgNCj4gPiA+ID4gICM5IFtmZmZmODgxMDM0M2JmODE4XSBzaHJpbmtfem9uZSBhdCBmZmZmZmZm
+ZjgxMTI3ODhmDQo+ID4gPiA+ICMxMCBbZmZmZjg4MTAzNDNiZjhjOF0gZG9fdHJ5X3RvX2ZyZWVf
+cGFnZXMgYXQgZmZmZmZmZmY4MTEyN2IxZQ0KPiA+ID4gPiAjMTEgW2ZmZmY4ODEwMzQzYmY5NThd
+IHRyeV90b19mcmVlX3BhZ2VzIGF0IGZmZmZmZmZmODExMjgxMmYNCj4gPiA+ID4gIzEyIFtmZmZm
+ODgxMDM0M2JmYTA4XSBfX2FsbG9jX3BhZ2VzX25vZGVtYXNrIGF0IGZmZmZmZmZmODExMWZkYWQN
+Cj4gPiA+ID4gIzEzIFtmZmZmODgxMDM0M2JmYjI4XSBrbWVtX2dldHBhZ2VzIGF0IGZmZmZmZmZm
+ODExNTk5NDINCj4gPiA+ID4gIzE0IFtmZmZmODgxMDM0M2JmYjU4XSBmYWxsYmFja19hbGxvYyBh
+dCBmZmZmZmZmZjgxMTVhNTVhDQo+ID4gPiA+ICMxNSBbZmZmZjg4MTAzNDNiZmJkOF0gX19fX2Nh
+Y2hlX2FsbG9jX25vZGUgYXQgZmZmZmZmZmY4MTE1YTJkOQ0KPiA+ID4gPiAjMTYgW2ZmZmY4ODEw
+MzQzYmZjMzhdIGttZW1fY2FjaGVfYWxsb2MgYXQgZmZmZmZmZmY4MTE1YjA5Yg0KPiA+ID4gPiAj
+MTcgW2ZmZmY4ODEwMzQzYmZjNzhdIHNrX3Byb3RfYWxsb2MgYXQgZmZmZmZmZmY4MTQxMTgwOA0K
+PiA+ID4gPiAjMTggW2ZmZmY4ODEwMzQzYmZjYjhdIHNrX2FsbG9jIGF0IGZmZmZmZmZmODE0MTE5
+N2MNCj4gPiA+ID4gIzE5IFtmZmZmODgxMDM0M2JmY2U4XSBpbmV0X2NyZWF0ZSBhdCBmZmZmZmZm
+ZjgxNDgzYmE2DQo+ID4gPiA+ICMyMCBbZmZmZjg4MTAzNDNiZmQzOF0gX19zb2NrX2NyZWF0ZSBh
+dCBmZmZmZmZmZjgxNDBiNGE3DQo+ID4gPiA+ICMyMSBbZmZmZjg4MTAzNDNiZmQ5OF0geHNfY3Jl
+YXRlX3NvY2sgYXQgZmZmZmZmZmZhMDFmNjQ5YiBbc3VucnBjXQ0KPiA+ID4gPiAjMjIgW2ZmZmY4
+ODEwMzQzYmZkZDhdIHhzX3RjcF9zZXR1cF9zb2NrZXQgYXQgZmZmZmZmZmZhMDFmNjk2NSBbc3Vu
+cnBjXQ0KPiA+ID4gPiAjMjMgW2ZmZmY4ODEwMzQzYmZlMzhdIHdvcmtlcl90aHJlYWQgYXQgZmZm
+ZmZmZmY4MTA4ODdkMA0KPiA+ID4gPiAjMjQgW2ZmZmY4ODEwMzQzYmZlZThdIGt0aHJlYWQgYXQg
+ZmZmZmZmZmY4MTA4ZGQ5Ng0KPiA+ID4gPiAjMjUgW2ZmZmY4ODEwMzQzYmZmNDhdIGtlcm5lbF90
+aHJlYWQgYXQgZmZmZmZmZmY4MTAwYzFjYQ0KPiA+ID4gPiAtLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCj4gPiA+ID4gDQo+ID4gPiA+
+IG5mc19yZWxlYXNlX3BhZ2UoKSBnaXZlcyBrc3dhcGQgcHJvY2VzcyBhbiBleGVtcHRpb24gZnJv
+bSBiZWluZyBibG9ja2VkLg0KPiA+ID4gPiBTaG91bGQgd2UgZG8gdGhlIHNhbWUgZm9yIHJwY2lv
+ZC4gT3RoZXJ3aXNlIHJwY2lvZCBjb3VsZCBlbmQgdXAgaW4gYQ0KPiA+ID4gPiBkZWFkbG9jayB3
+aGVyZSBpdCBjYW4gbm90IGNvbnRpbnVlIHdpdGhvdXQgZnJlZWluZyBtZW1vcnkgdGhhdCB3aWxs
+IG9ubHkNCj4gPiA+ID4gYmVjb21lIGF2YWlsYWJsZSB3aGVuIHJwY2lvZCBkb2VzIGl0cyB3b3Jr
+Og0KPiA+ID4gPiAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0NCj4gPiA+ID4gNDc5IC8qDQo+ID4gPiA+IDQ4MCAgKiBBdHRlbXB0IHRv
+IHJlbGVhc2UgdGhlIHByaXZhdGUgc3RhdGUgYXNzb2NpYXRlZCB3aXRoIGEgcGFnZQ0KPiA+ID4g
+PiA0ODEgICogLSBDYWxsZWQgaWYgZWl0aGVyIFBHX3ByaXZhdGUgb3IgUEdfZnNjYWNoZSBpcyBz
+ZXQgb24gdGhlIHBhZ2UNCj4gPiA+ID4gNDgyICAqIC0gQ2FsbGVyIGhvbGRzIHBhZ2UgbG9jaw0K
+PiA+ID4gPiA0ODMgICogLSBSZXR1cm4gdHJ1ZSAobWF5IHJlbGVhc2UgcGFnZSkgb3IgZmFsc2Ug
+KG1heSBub3QpDQo+ID4gPiA+IDQ4NCAgKi8NCj4gPiA+ID4gNDg1IHN0YXRpYyBpbnQgbmZzX3Jl
+bGVhc2VfcGFnZShzdHJ1Y3QgcGFnZSAqcGFnZSwgZ2ZwX3QgZ2ZwKQ0KPiA+ID4gPiA0ODYgeyAg
+IA0KPiA+ID4gPiA0ODcgICAgICAgICBzdHJ1Y3QgYWRkcmVzc19zcGFjZSAqbWFwcGluZyA9IHBh
+Z2UtPm1hcHBpbmc7DQo+ID4gPiA+IDQ4OCAgICAgDQo+ID4gPiA+IDQ4OSAgICAgICAgIGRmcHJp
+bnRrKFBBR0VDQUNIRSwgIk5GUzogcmVsZWFzZV9wYWdlKCVwKVxuIiwgcGFnZSk7DQo+ID4gPiA+
+IDQ5MCAgICAgDQo+ID4gPiA+IDQ5MSAgICAgICAgIC8qIE9ubHkgZG8gSS9PIGlmIGdmcCBpcyBh
+IHN1cGVyc2V0IG9mIEdGUF9LRVJORUwgKi8NCj4gPiA+ID4gNDkyICAgICAgICAgaWYgKG1hcHBp
+bmcgJiYgKGdmcCAmIEdGUF9LRVJORUwpID09IEdGUF9LRVJORUwpIHsNCj4gPiA+ID4gNDkzICAg
+ICAgICAgICAgICAgICBpbnQgaG93ID0gRkxVU0hfU1lOQzsNCj4gPiA+ID4gNDk0ICAgICAgICAg
+ICAgIA0KPiA+ID4gPiA0OTUgICAgICAgICAgICAgICAgIC8qIERvbid0IGxldCBrc3dhcGQgZGVh
+ZGxvY2sgd2FpdGluZyBmb3IgT09NIFJQQyBjYWxscyAqLw0KPiA+ID4gPiA0OTYgICAgICAgICAg
+ICAgICAgIGlmIChjdXJyZW50X2lzX2tzd2FwZCgpKQ0KPiA+ID4gPiA0OTcgICAgICAgICAgICAg
+ICAgICAgICAgICAgaG93ID0gMDsNCj4gPiA+ID4gNDk4ICAgICAgICAgICAgICAgICBuZnNfY29t
+bWl0X2lub2RlKG1hcHBpbmctPmhvc3QsIGhvdyk7DQo+ID4gPiA+IDQ5OSAgICAgICAgIH0NCj4g
+PiA+ID4gNTAwICAgICAgICAgLyogSWYgUGFnZVByaXZhdGUoKSBpcyBzZXQsIHRoZW4gdGhlIHBh
+Z2UgaXMgbm90IGZyZWVhYmxlICovDQo+ID4gPiA+IDUwMSAgICAgICAgIGlmIChQYWdlUHJpdmF0
+ZShwYWdlKSkNCj4gPiA+ID4gNTAyICAgICAgICAgICAgICAgICByZXR1cm4gMDsNCj4gPiA+ID4g
+NTAzICAgICAgICAgcmV0dXJuIG5mc19mc2NhY2hlX3JlbGVhc2VfcGFnZShwYWdlLCBnZnApOw0K
+PiA+ID4gPiA1MDQgfQ0KPiA+ID4gPiAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCj4gPiA+ID4gDQo+ID4gPiA+IEFub3RoZXIgb3B0
+aW9uIGlzIHRvIGNoYW5nZSB0aGUgcHJpb3JpdHkgb2YgdGhlIG1lbW9yeSBhbGxvY2F0aW9uOg0K
+PiA+ID4gPiBuZXQvaXB2NC9hZl9pbmV0LmMNCj4gPiA+ID4gLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+ID4gPiA+ICAyNjUgc3Rh
+dGljIGludCBpbmV0X2NyZWF0ZShzdHJ1Y3QgbmV0ICpuZXQsIHN0cnVjdCBzb2NrZXQgKnNvY2ss
+IGludA0KPiA+ID4gPiBwcm90b2NvbCwNCj4gPiA+ID4gIDI2NiAgICAgICAgICAgICAgICAgICAg
+ICAgIGludCBrZXJuKQ0KPiA+ID4gPiAgMjY3IHsNCj4gPiA+ID4gLi4uDQo+ID4gPiA+ICAzNDUg
+ICAgICAgICBzayA9IHNrX2FsbG9jKG5ldCwgUEZfSU5FVCwgR0ZQX0tFUk5FTCwgYW5zd2VyX3By
+b3QpOw0KPiA+ID4gPiAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0NCj4gPiA+ID4gQ29uc2lkZXJpbmcgdGhpcyBpcyBnZW5lcmljIG5l
+dCBjb2RlLCBJIGFzc3VtZSB0aGUgR0ZQX0tFUk5FTCB3aWxsIG5vdA0KPiA+ID4gPiBiZSByZXBs
+YWNlZCB3aXRoIEdGUF9BVE9NSUMuDQo+ID4gPiA+IA0KPiA+ID4gPiBOT1RFLCB0aGlzIGlzIG9u
+IFJIRUwgNi4xIGtlcm5lbCAyLjYuMzItMTMxLjYuMSBhbmQgYXBwYXJlbnRseSB1c2VzDQo+ID4g
+PiA+ICdsZWdhY3knIHdvcmtxdWV1ZSBjb2RlLg0KPiA+ID4gPiANCj4gPiA+ID4gY3lhLA0KPiA+
+ID4gPiAjDQo+ID4gPiA+IA0KPiA+ID4gDQo+ID4gPiBJIHN1c3BlY3QgdGhpcyBpcyBhbHNvIGEg
+cHJvYmxlbSBpbiBtYWlubGluZSwgYnV0IG1heWJlIHNvbWUgb2YgdGhlDQo+ID4gPiByZWNlbnQg
+d3JpdGViYWNrIGNoYW5nZXMgcHJldmVudCBpdC4uLg0KPiA+ID4gDQo+ID4gPiBJIHRoaW5rIHRo
+ZSByaWdodCBzb2x1dGlvbiBoZXJlIGlzIHRvIG1ha2UgbmZzX3JlbGVhc2VfcGFnZSB0cmVhdCBy
+cGNpb2QNCj4gPiA+IHNpbWlsYXJseSB0byBrc3dhcGQuIEVhc2llciBzYWlkIHRoYW4gZG9uZSB0
+aG91Z2ggLS0geW91J2xsIG5lZWQgdG8NCj4gPiA+IGNvbWUgdXAgd2l0aCBhIHdheSB0byBkZXRl
+cm1pbmUgaWYgeW91J3JlIHJ1bm5pbmcgaW4gcnBjaW9kIGNvbnRleHQuLi4NCj4gPiANCj4gPiBO
+by4gVGhlIF9yaWdodF8gc29sdXRpb24gaXMgdG8gZW5zdXJlIHRoYXQgcnBjaW9kIGRvZXNuJ3Qg
+ZG8gYWxsb2NhdGlvbnMNCj4gPiB0aGF0IHJlc3VsdCBpbiBhIHBhZ2UgcmVjbGFpbS4uLiB0cnlf
+dG9fcmVsZWFzZV9wYWdlKCkgaXMganVzdCB0aGUgdGlwDQo+ID4gb2YgdGhlIGljZWJlcmcgb2Yg
+Y3JhenkgZGVhZGxvY2tzIHRoYXQgdGhpcyBzb2NrZXQgYWxsb2NhdGlvbiBjYW4gZ2V0IHVzDQo+
+ID4gaW50by4NCj4gPiANCj4gPiBVbmZvcnR1bmF0ZWx5LCBzZWxpbnV4ICYgY28uIHByZXZlbnQg
+dXMgZnJvbSBhbGxvY2F0aW5nIHRoZSBzb2NrZXRzIGluDQo+ID4gdXNlciBjb250ZXh0cywgYW5k
+IGFueXdheSwgaGF2aW5nIHRvIHdhaXQgZm9yIGFub3RoZXIgdGhyZWFkIHRvIGRvIHRoZQ0KPiA+
+IHNhbWUgYWxsb2NhdGlvbiBpc24ndCBkb2luZyB0byBoZWxwIHByZXZlbnQgdGhlIGRlYWRsb2Nr
+Li4uDQo+ID4gDQo+ID4gSSBrbm93IHRoYXQgTWVsIEdvcm1hbidzIE5GUyBzd2FwIHBhdGNoZXMg
+aGFkIHNvbWUgcHJvdGVjdGlvbnMgYWdhaW5zdA0KPiA+IHRoaXMgc29ydCBvZiBkZWFkbG9jay4g
+UGVyaGFwcyB3ZSBjYW4gbG9vayBhdCBob3cgaGUgd2FzIGRvaW5nIHRoaXM/DQo+ID4gDQo+IA0K
+PiBBY3R1YWxseS4uLm5vdyB0aGF0IEkndmUgbG9va2VkIGF0IHRoaXMsIEkgdGhpbmsgdGhlIHJp
+Z2h0IHNvbHV0aW9uDQo+IGhlcmUgaXMgdG8gc3RvcCBjYWxsaW5nIHNvY2tfcmVsZWFzZSgpIG9u
+IHRoZXNlIHNvY2tldHMgdW50aWwgd2UncmUgaW4NCj4geHNfZGVzdHJveS4gSU9XLCBkb24ndCBm
+cmVlIHRoZSBzb2NrZXQgYWx0b2dldGhlciB1bmxlc3Mgd2UncmUgdHJ1bHkNCj4gdGVhcmluZyBk
+b3duIHRoZSBjb25uZWN0aW9uIGZvciBnb29kLiBUaGF0IG1lYW5zIHRob3VnaCB0aGF0IHdlIG5l
+ZWQgdG8NCj4gY29udmVydCB0aGUgcGxhY2VzIHRoYXQgY3VycmVudGx5IGNhbGwgcnBjX3hwcnRf
+b3BzLT5jbG9zZSB0byBjYWxsDQo+IHNvbWV0aGluZyBsaWtlIGEgKG5ldykgb3BzLT5zaHV0ZG93
+biByb3V0aW5lIGluc3RlYWQsIHdpdGggdGhlDQo+IGFzc3VtcHRpb24gb2YgY291cnNlIHRoYXQg
+d2UgY2FuIHNvbWVob3cgcmVzZXQgYW5kIHJldXNlIHRoZSBzb2NrZXQNCj4gYWZ0ZXJ3YXJkLg0K
+PiANCj4gVGhlIHF1ZXN0aW9uIGlzIGhvdyBiZXN0IHRvIGVtdWxhdGUgdGhlIGVmZmVjdCBvZiAt
+PmNsb3NlIHdpdGhvdXQNCj4gYWN0dWFsbHkgZnJlZWluZyB0aGUgc29ja2V0LiBJcyBpdCBzdWZm
+aWNpZW50IHRvIGNhbGwgc29tZXRoaW5nIGxpa2UNCj4ga2VybmVsX3NvY2tfc2h1dGRvd24oKSBv
+biBpdCwgYW5kIHR3aWRkbGUgYWxsIG9mIHRoZSBiaXRzIHRvIGVuc3VyZQ0KPiB0aGF0IHRoZSBj
+b25uZWN0X3dvcmtlciB3aWxsIGdldCBjYWxsZWQgYWZ0ZXJ3YXJkPw0KDQpUaGUgcmVhc29uIHdo
+eSB3ZSBjbG9zZSB0aGVzZSBzb2NrZXRzIGlzIHRoYXQgaWYgdGhlIGF0dGVtcHQgYXQgYWJvcnRp
+bmcNCnRoZSBjb25uZWN0aW9uIGZhaWxzLCB0aGVuIHRoZXkgdHlwaWNhbGx5IGVuZCB1cCBpbiBh
+IFRJTUVfV0FJVCBzdGF0ZS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGll
+bnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cu
+bmV0YXBwLmNvbQ0KDQo=
