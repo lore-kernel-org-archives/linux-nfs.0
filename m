@@ -1,89 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from riis.snl.salk.edu ([198.202.70.55]:39920 "EHLO
-	riis.snl.salk.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754688Ab2FSTvw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Jun 2012 15:51:52 -0400
-From: Chris Hiestand <chiestand@salk.edu>
-Content-Type: text/plain; charset=us-ascii
-Subject: NFS: kernel forces trailing slash for export in /proc/self/mounts
-Date: Tue, 19 Jun 2012 12:43:59 -0700
-Message-Id: <8F8193BD-84C6-4905-8789-DE7EB2579A4E@salk.edu>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        669314@bugs.debian.org
-To: viro@zeniv.linux.org.uk
-Mime-Version: 1.0 (Apple Message framework v1278)
+Received: from mx2.netapp.com ([216.240.18.37]:29382 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755089Ab2F1PDK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Jun 2012 11:03:10 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: "harshula@redhat.com" <harshula@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "mgorman@suse.de" <mgorman@suse.de>
+Subject: Re: [RFC PATCH] nfs: do non-blocking commit in releasepage if we're
+ attempting to reconnect the socket
+Date: Thu, 28 Jun 2012 15:02:53 +0000
+Message-ID: <1340895773.5293.18.camel@lade.trondhjem.org>
+References: <1340890837.5293.11.camel@lade.trondhjem.org>
+	 <1340895066-17626-1-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1340895066-17626-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Alexander Viro et al,
-
-This is an escalation of Debian Bug #669314 http://bugs.debian.org/669314, which I will
-re-elaborate in this email for your convenience.
-
-You committed a change to the way the linux kernel reports NFS mounts - now with a
-trailing slash for the remote export (among other changes). The change happened here:
-> commit c7f404b40a3665d9f4e9a927cc5c1ee0479ed8f9
-> Author: Al Viro <viro@zeniv.linux.org.uk>
-> Date:   Wed Mar 16 06:59:40 2011 -0400
-> 
->     vfs: new superblock methods to override /proc/*/mount{s,info}
->     
->     a) ->show_devname(m, mnt) - what to put into devname columns in mounts,
->     mountinfo and mountstats
->     b) ->show_path(m, mnt) - what to put into relative path column in mountinfo
->     
->     Leaving those NULL gives old behaviour.  NFS switched to using those.
->     
->     Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
-> 
-
-The "problematic" behavior is that NFS exports now have a trailing slash in
-/proc/self/mounts.
-
-This still seems to be the case in newer kernels, for example in Debian's
-3.3.2-1~experimental.1.
-
-and HEAD in Linus Torvalds' master branch, presently commit:
-02edf6abe01610a5fb379df442de3c837ad99467
-
-
-I believe it is/was convention to leave a trailing slash off of the nfs export
-in /etc/fstab, e.g.:
-nfsserver:/srv/ubuntu-32 /mnt/ubuntu-32  nfs ro,nfsvers=3,soft,intr,tcp,nodev,noatime,nosuid,rsize=32768,wsize=32768
-
-and I'd also expect the same in /proc/self/mounts
-
-
-Expected Result:
-I expect /proc/self/mounts to show (notice no trailing slash on the export):
-nfsserver:/srv/ubuntu-32 /mnt/ubuntu-32 nfs ro,nosuid,nodev,noatime,vers=3,rsize=32768,wsize=32768,namlen=255,soft,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=198.202.1.1,mountvers=3,mountport=41576,mountproto=tcp,local_lock=none,addr=198.202.1.1 0 0
-
-
-Actual Result:
-But instead in /proc/self/mounts I get (notice the trailing slash):
-nfsserver:/srv/ubuntu-32/ /mnt/ubuntu-32 nfs ro,nosuid,nodev,noatime,vers=3,rsize=32768,wsize=32768,namlen=255,soft,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=198.202.1.1,mountvers=3,mountport=41576,mountproto=tcp,local_lock=none,addr=198.202.1.1 0 0
-
-
-Rammifications:
-This simple change has a lot of implications because lots of things parse
-/etc/fstab and /proc/self/mounts, for example system configuration tools
-and mount.nfs and umount.nfs.
-
-If you use the former convention and try to umount an export on a newer
-kernel it will fail:
-
-user@hostname:/proc/self$ sudo umount.nfs nfsserver:/srv/ubuntu-32
-umount.nfs: nfsserver:/srv/ubuntu-32: not found
-
-And if you run "sudo mount -va", mount will not recognize that the fstab mounts
-have already been mounted; mounting all mounts twice on the same mount point.
-This quickly gets messy.
-
-If there is a new convention to display the trailing slash, we need to update
-our tools to handle this change. If there is not a new convention, I'd argue
-this is a bug.
-
-So is this a new convention or not? What is the appropriate way for Debian to move forward?
-
-Thanks,
-Chris Hiestand
+T24gVGh1LCAyMDEyLTA2LTI4IGF0IDEwOjUxIC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
+V2UndmUgaGFkIHNvbWUgcmVwb3J0cyBvZiBhIGRlYWRsb2NrIHdoZXJlIHJwY2lvZCBlbmRzIHVw
+IHdpdGggYSBzdGFjaw0KPiB0cmFjZSBsaWtlIHRoaXM6DQo+IA0KPiAgICAgUElEOiAyNTA3ICAg
+VEFTSzogZmZmZjg4MTAzNjkxYWI0MCAgQ1BVOiAxNCAgQ09NTUFORDogInJwY2lvZC8xNCINCj4g
+ICAgICAjMCBbZmZmZjg4MTAzNDNiZjJmMF0gc2NoZWR1bGUgYXQgZmZmZmZmZmY4MTRkYWJkOQ0K
+PiAgICAgICMxIFtmZmZmODgxMDM0M2JmM2I4XSBuZnNfd2FpdF9iaXRfa2lsbGFibGUgYXQgZmZm
+ZmZmZmZhMDM4ZmMwNCBbbmZzXQ0KPiAgICAgICMyIFtmZmZmODgxMDM0M2JmM2M4XSBfX3dhaXRf
+b25fYml0IGF0IGZmZmZmZmZmODE0ZGJjMmYNCj4gICAgICAjMyBbZmZmZjg4MTAzNDNiZjQxOF0g
+b3V0X29mX2xpbmVfd2FpdF9vbl9iaXQgYXQgZmZmZmZmZmY4MTRkYmNkOA0KPiAgICAgICM0IFtm
+ZmZmODgxMDM0M2JmNDg4XSBuZnNfY29tbWl0X2lub2RlIGF0IGZmZmZmZmZmYTAzOWUwYzEgW25m
+c10NCj4gICAgICAjNSBbZmZmZjg4MTAzNDNiZjRmOF0gbmZzX3JlbGVhc2VfcGFnZSBhdCBmZmZm
+ZmZmZmEwMzhiZWY2IFtuZnNdDQo+ICAgICAgIzYgW2ZmZmY4ODEwMzQzYmY1MjhdIHRyeV90b19y
+ZWxlYXNlX3BhZ2UgYXQgZmZmZmZmZmY4MTEwYzY3MA0KPiAgICAgICM3IFtmZmZmODgxMDM0M2Jm
+NTM4XSBzaHJpbmtfcGFnZV9saXN0LmNsb25lLjAgYXQgZmZmZmZmZmY4MTEyNjI3MQ0KPiAgICAg
+ICM4IFtmZmZmODgxMDM0M2JmNjY4XSBzaHJpbmtfaW5hY3RpdmVfbGlzdCBhdCBmZmZmZmZmZjgx
+MTI2NjM4DQo+ICAgICAgIzkgW2ZmZmY4ODEwMzQzYmY4MThdIHNocmlua196b25lIGF0IGZmZmZm
+ZmZmODExMjc4OGYNCj4gICAgICMxMCBbZmZmZjg4MTAzNDNiZjhjOF0gZG9fdHJ5X3RvX2ZyZWVf
+cGFnZXMgYXQgZmZmZmZmZmY4MTEyN2IxZQ0KPiAgICAgIzExIFtmZmZmODgxMDM0M2JmOTU4XSB0
+cnlfdG9fZnJlZV9wYWdlcyBhdCBmZmZmZmZmZjgxMTI4MTJmDQo+ICAgICAjMTIgW2ZmZmY4ODEw
+MzQzYmZhMDhdIF9fYWxsb2NfcGFnZXNfbm9kZW1hc2sgYXQgZmZmZmZmZmY4MTExZmRhZA0KPiAg
+ICAgIzEzIFtmZmZmODgxMDM0M2JmYjI4XSBrbWVtX2dldHBhZ2VzIGF0IGZmZmZmZmZmODExNTk5
+NDINCj4gICAgICMxNCBbZmZmZjg4MTAzNDNiZmI1OF0gZmFsbGJhY2tfYWxsb2MgYXQgZmZmZmZm
+ZmY4MTE1YTU1YQ0KPiAgICAgIzE1IFtmZmZmODgxMDM0M2JmYmQ4XSBfX19fY2FjaGVfYWxsb2Nf
+bm9kZSBhdCBmZmZmZmZmZjgxMTVhMmQ5DQo+ICAgICAjMTYgW2ZmZmY4ODEwMzQzYmZjMzhdIGtt
+ZW1fY2FjaGVfYWxsb2MgYXQgZmZmZmZmZmY4MTE1YjA5Yg0KPiAgICAgIzE3IFtmZmZmODgxMDM0
+M2JmYzc4XSBza19wcm90X2FsbG9jIGF0IGZmZmZmZmZmODE0MTE4MDgNCj4gICAgICMxOCBbZmZm
+Zjg4MTAzNDNiZmNiOF0gc2tfYWxsb2MgYXQgZmZmZmZmZmY4MTQxMTk3Yw0KPiAgICAgIzE5IFtm
+ZmZmODgxMDM0M2JmY2U4XSBpbmV0X2NyZWF0ZSBhdCBmZmZmZmZmZjgxNDgzYmE2DQo+ICAgICAj
+MjAgW2ZmZmY4ODEwMzQzYmZkMzhdIF9fc29ja19jcmVhdGUgYXQgZmZmZmZmZmY4MTQwYjRhNw0K
+PiAgICAgIzIxIFtmZmZmODgxMDM0M2JmZDk4XSB4c19jcmVhdGVfc29jayBhdCBmZmZmZmZmZmEw
+MWY2NDliIFtzdW5ycGNdDQo+ICAgICAjMjIgW2ZmZmY4ODEwMzQzYmZkZDhdIHhzX3RjcF9zZXR1
+cF9zb2NrZXQgYXQgZmZmZmZmZmZhMDFmNjk2NSBbc3VucnBjXQ0KPiAgICAgIzIzIFtmZmZmODgx
+MDM0M2JmZTM4XSB3b3JrZXJfdGhyZWFkIGF0IGZmZmZmZmZmODEwODg3ZDANCj4gICAgICMyNCBb
+ZmZmZjg4MTAzNDNiZmVlOF0ga3RocmVhZCBhdCBmZmZmZmZmZjgxMDhkZDk2DQo+ICAgICAjMjUg
+W2ZmZmY4ODEwMzQzYmZmNDhdIGtlcm5lbF90aHJlYWQgYXQgZmZmZmZmZmY4MTAwYzFjYQ0KPiAN
+Cj4gVGhlIHByb2JsZW0gaXMgcHJldHR5IGNsZWFyLiBycGNpb2QgaXMgdHJ5aW5nIHRvIGFsbG9j
+YXRlIG1lbW9yeSBmb3IgYSBuZXcNCj4gc29ja2V0IHRvIHRhbGsgdG8gdGhlIHNlcnZlci4gVGhl
+IFZNIGVuZHMgdXAgY2FsbGluZyAtPnJlbGVhc2VwYWdlIHRvIGdldA0KPiBtb3JlIG1lbW9yeSwg
+YW5kIGl0IHRyaWVzIHRvIGRvIGEgYmxvY2tpbmcgY29tbWl0LiBUaGF0IGNvbW1pdCBjYW4ndA0K
+PiBzdWNjZWVkIGhvd2V2ZXIgd2l0aG91dCBhIGNvbm5lY3RlZCBzb2NrZXQsIHNvIHdlIGRlYWRs
+b2NrLg0KPiANCj4gRml4IHRoaXMgYnkgc2V0dGluZyBQRl9GU1RSQU5TIG9uIHRoZSB3b3JrcXVl
+dWUgdGFzayBwcmlvciB0byBkb2luZyB0aGUNCj4gc29ja2V0IGFsbG9jYXRpb24sIGFuZCBoYXZp
+bmcgbmZzX3JlbGVhc2VfcGFnZSBjaGVjayBmb3IgdGhhdCBmbGFnIHdoZW4NCj4gZGVjaWRpbmcg
+d2hldGhlciB0byBkbyBhIGJsb2NraW5nIGNvbW1pdCBjYWxsLiBBbHNvLCBzZXQgUEZfRlNUUkFO
+Uw0KPiB1bmNvbmRpdGlvbmFsbHkgaW4gcnBjX2FzeW5jX3NjaGVkdWxlIHNpbmNlIHRoYXQgZnVu
+Y3Rpb24gY2FuIGFsc28gZG8NCj4gYWxsb2NhdGlvbnMgc29tZXRpbWVzLg0KPiANCj4gQWxzbywg
+Y2MnaW5nIE1lbCBzaW5jZSBJIGJvcnJvd2VkIGhpcyB0c2tfcmVzdG9yZV9mbGFncyBoZWxwZXIg
+aGVyZSwgYW5kDQo+IHRoaXMgcGF0Y2ggbWF5IGNhdXNlIG1lcmdlIGNvbmZsaWN0cyB3aXRoIHNv
+bWUgb2YgaGlzIFN3YXAtb3Zlci1ORlMNCj4gcGF0Y2hlcy4NCj4gDQo+IENjOiBNZWwgR29ybWFu
+IDxtZ29ybWFuQHN1c2UuZGU+DQo+IFNpZ25lZC1vZmYtYnk6IEplZmYgTGF5dG9uIDxqbGF5dG9u
+QHJlZGhhdC5jb20+DQo+IC0tLQ0KPiAgZnMvbmZzL2ZpbGUuYyAgICAgICAgICAgICAgICAgICB8
+ICAgIDggKysrKysrLS0NCj4gIGluY2x1ZGUvbGludXgvc2NoZWQuaCAgICAgICAgICAgfCAgICA3
+ICsrKysrKysNCj4gIG5ldC9zdW5ycGMvc2NoZWQuYyAgICAgICAgICAgICAgfCAgICA0ICsrKysN
+Cj4gIG5ldC9zdW5ycGMveHBydHJkbWEvdHJhbnNwb3J0LmMgfCAgICA0ICsrKy0NCj4gIG5ldC9z
+dW5ycGMveHBydHNvY2suYyAgICAgICAgICAgfCAgIDEzICsrKysrKysrKysrKysNCj4gIDUgZmls
+ZXMgY2hhbmdlZCwgMzMgaW5zZXJ0aW9ucygrKSwgMyBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYg
+LS1naXQgYS9mcy9uZnMvZmlsZS5jIGIvZnMvbmZzL2ZpbGUuYw0KPiBpbmRleCBhNjcwOGU2Yi4u
+ODBjYzYyMSAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL2ZpbGUuYw0KPiArKysgYi9mcy9uZnMvZmls
+ZS5jDQo+IEBAIC00NjMsOCArNDYzLDEyIEBAIHN0YXRpYyBpbnQgbmZzX3JlbGVhc2VfcGFnZShz
+dHJ1Y3QgcGFnZSAqcGFnZSwgZ2ZwX3QgZ2ZwKQ0KPiAgCWlmIChtYXBwaW5nICYmIChnZnAgJiBH
+RlBfS0VSTkVMKSA9PSBHRlBfS0VSTkVMKSB7DQo+ICAJCWludCBob3cgPSBGTFVTSF9TWU5DOw0K
+PiAgDQo+IC0JCS8qIERvbid0IGxldCBrc3dhcGQgZGVhZGxvY2sgd2FpdGluZyBmb3IgT09NIFJQ
+QyBjYWxscyAqLw0KPiAtCQlpZiAoY3VycmVudF9pc19rc3dhcGQoKSkNCj4gKwkJLyoNCj4gKwkJ
+ICogRG9uJ3QgbGV0IGtzd2FwZCBkZWFkbG9jayB3YWl0aW5nIGZvciBPT00gUlBDIGNhbGxzLCBh
+bmQNCj4gKwkJICogZG9uJ3QgcmVjdXJzZSBiYWNrIGludG8gdGhlIGZzIGlmIHdlIGtub3cgdGhh
+dCB3ZSdyZSB0cnlpbmcNCj4gKwkJICogdG8gcmVjbGFpbSBtZW1vcnkgZm9yIGFuIGZzLXJlbGF0
+ZWQgYWxsb2NhdGlvbi4NCj4gKwkJICovDQo+ICsJCWlmIChjdXJyZW50X2lzX2tzd2FwZCgpIHx8
+IGN1cnJlbnQtPmZsYWdzICYgUEZfRlNUUkFOUykNCj4gIAkJCWhvdyA9IDA7DQo+ICAJCW5mc19j
+b21taXRfaW5vZGUobWFwcGluZy0+aG9zdCwgaG93KTsNCg0KVGhpcyB3aWxsIHN0aWxsIHRyeSB0
+byBkbyBhIGRpcmVjdCByZWNsYWltLiBFdmVuIGlmIHdlIG1ha2UgdGhhdCByZWNsYWltDQpub24t
+YmxvY2tpbmcsIEknbSB0aGlua2luZyB0aGF0IHdlIHNob3VsZCBwZXJoYXBzIGp1c3Qgc2tpcCB0
+aGUNCm5mc19jb21taXRfaW5vZGUoKSBpbiB0aGUgY2FzZSB3aGVyZSBQRl9GU1RSQU5TIGlzIHNl
+dDogaWYgd2UncmUgbG93IG9uDQptZW1vcnksIHRoZW4gaXQgaXMgYmV0dGVyIHRvIHNraXAgdGhl
+IG5mc19jb21taXRfaW5vZGUgcmF0aGVyIHRoYW4gdGllDQp1cCBtb3JlIHJlc291cmNlcyBpbiBh
+biBhdHRlbXB0IHRvIGZyZWUgdXAgbWVtb3J5IHRoYXQgd2UgX2tub3dfIGlzDQpnb2luZyB0byBi
+ZSBpbiB2YWluLg0KDQo+ICAJfQ0KPiBkaWZmIC0tZ2l0IGEvaW5jbHVkZS9saW51eC9zY2hlZC5o
+IGIvaW5jbHVkZS9saW51eC9zY2hlZC5oDQo+IGluZGV4IDQwNTljMGYuLmQ3MWI1MjMgMTAwNjQ0
+DQo+IC0tLSBhL2luY2x1ZGUvbGludXgvc2NoZWQuaA0KPiArKysgYi9pbmNsdWRlL2xpbnV4L3Nj
+aGVkLmgNCj4gQEAgLTE4ODksNiArMTg4OSwxMyBAQCBzdGF0aWMgaW5saW5lIHZvaWQgcmN1X3N3
+aXRjaF9mcm9tKHN0cnVjdCB0YXNrX3N0cnVjdCAqcHJldikNCj4gIA0KPiAgI2VuZGlmDQo+ICAN
+Cj4gK3N0YXRpYyBpbmxpbmUgdm9pZCB0c2tfcmVzdG9yZV9mbGFncyhzdHJ1Y3QgdGFza19zdHJ1
+Y3QgKnAsDQo+ICsJCQl1bnNpZ25lZCBsb25nIHBmbGFncywgdW5zaWduZWQgbG9uZyBtYXNrKQ0K
+PiArew0KPiArCXAtPmZsYWdzICY9IH5tYXNrOw0KPiArCXAtPmZsYWdzIHw9IHBmbGFncyAmIG1h
+c2s7DQo+ICt9DQoNCkRvIHdlIG5lZWQgdGhpcz8gcnBjaW9kIGlzIGEgd29ya3F1ZXVlIHRocmVh
+ZCwgc28gaW4gcHJpbmNpcGxlIHdlDQphbHJlYWR5IF9rbm93XyB0aGF0IFBGX0ZTVFJBTlMgaXMg
+bm90IGdvaW5nIHRvIGJlIHNldC4NCg0KDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBO
+RlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
+bQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
