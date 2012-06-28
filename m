@@ -1,87 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:49031 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934241Ab2FHKGw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jun 2012 06:06:52 -0400
-Message-ID: <4FD1CEA8.3090105@panasas.com>
-Date: Fri, 8 Jun 2012 13:06:32 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from fieldses.org ([174.143.236.118]:53885 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751221Ab2F1N7d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Jun 2012 09:59:33 -0400
+Date: Thu, 28 Jun 2012 09:59:27 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: Al Viro <viro@ZenIV.linux.org.uk>, Nick Piggin <npiggin@gmail.com>,
+        Nick Piggin <npiggin@kernel.dk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH] fs/dcache: allow __d_obtain_alias() to return unhashed
+ dentries
+Message-ID: <20120628135927.GA6406@fieldses.org>
+References: <20101218020118.GA3179@amd>
+ <20101218161609.GA22150@fieldses.org>
+ <AANLkTingRv_gtRSctGzMfYrKg02M_sKj97HSQPRm_mA_@mail.gmail.com>
+ <20101227234641.GA22248@fieldses.org>
+ <20110118204509.GA10903@fieldses.org>
+ <AANLkTikL2CDSWQJ1QH_Y4G-j70Vd=VesNMMnYTmMGHC9@mail.gmail.com>
+ <20110118220817.GF10903@fieldses.org>
+ <20110308181320.GA15566@fieldses.org>
+ <20110310105821.GE22723@ZenIV.linux.org.uk>
+ <20110311150749.2fa2be66@notabene.brown>
 MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-CC: Benny Halevy <bhalevy@tonian.com>, Peng Tao <bergwolf@gmail.com>
-Subject: [RFC 0/5] CRASHFIX: pnfs-obj: NONE-RPC LD must not call rpc_restart_call_prepare()
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110311150749.2fa2be66@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Coming back to this now, just trying to review the
+filehandle-lookup/dcache interactions:
 
-NONE-RPC layout-Drivers call nfs_writeback_done() as part
-of their completion of IO. (through pnfs_ld_write_done())
+On Fri, Mar 11, 2011 at 03:07:49PM +1100, NeilBrown wrote:
+> 1/ Originally DCACHE_DISCONNECTED didn't really mean much - it's presence
+>    was only a hint, its absence was a strong statement.
+>    If the flag is set, the dentry might not be linked to the root.
+>    If it is clear, it definitely is link through to the root.
+>    However I think it was used with stronger intent than that.
+> 
+>    Now it seems to mean a little bit more:  If it is set and the dentry
+>    is hashed, then it must be on the sb->s_anon list.
 
-Inside nfs_writeback_done() there is code that does:
+The code that makes that assumption is __d_shrink (which does the work
+of d_drop)--it uses DCACHE_DISCONECTED to decide which hash chain to
+lock.
 
-	else if (resp->count < argp->count) {
-		...
+I can't find any basis for that assumption.  The only code that clears
+DCACHE_DISCONNECTED is in expfs.c, and it isn't done at the same time as
+hashing.  Am I missing something?
 
-		/* This a short write! */
-		nfs_inc_stats(inode, NFSIOS_SHORTWRITE);
+>    This is a significant
+>    which I never noticed (I haven't been watching).  Originally a
+>    disconnected dentry would be attached (and hashed) to its parent.  Then
+>    that parent would get its own parent and so on until it was attached all
+>    the way to the root.  Only then would be start clearing
+>    DCACHE_DISCONNECTED.  It seems we must clear it sooner now... I wonder if
+>    that is correct.
 
-		... /* Prepare the remainder */
+It looks wrong to me:
 
-		rpc_restart_call_prepare(task);
-	}
+If we clear DCACHE_DISCONNECTED too early, then we risk a filehandle
+lookup thinking the dentry is OK to use.  That could mean for example
+trying to rename across directories that don't have any ancestor
+relationship to each other in the dcache yet.
 
-But for none-rpc LDs (objects, blocks) there is no task->tk_ops
-and this code will crash.
+So we need to wait to clear DCACHE_DISCONNECTED until we *know* the
+dentry's parents go all the way back to the root.  As you say, that's
+what the current code does.
 
-The same code exists in read.c::nfs_readpage_result_common() with
-same crash.
+But that means DCACHE_DISCONNECTED dentries can be hashed to their
+parents, and __d_shrink can be handed such dentries and then get the
+locking wrong.
 
-Therefor: NONE-RPC LDs *must not* call pnfs_ld_read/write_done with
-partial/short IO. Either complete everything or fail everything and
-IO will be resubmitted through MDS.
+It looks like this bug might originate with Nick Piggin's ceb5bdc2d246
+"fs: dcache per-bucket dcache hash locking"?  There's no discussion in
+the changelog, so probably it was just based on an unexamined assumption
+about DCACHE_DISCONNECTED.
 
-Below are a set of patches that fix this problem for objects
-layout, blocks maintainer should check that code does not allow a short
-IO as well.
+I wonder if an IS_ROOT() test could replace the DCACHE_DISCONNECTED test
+in __d_shrink(), or if we need another flag, or ?
 
-The Fix is much easier at the LD level then at NFS-Core. Though it
-could be fixed there, I do not think it is worth it. I will submit a
-comment that warns for this. Certainly NFS-Core changes could not
-be so simple as below to be candidates for @Stable
-
-These where lightly tested and are submitted for review. I will conduct
-heavy testing and will put them in linux-next only next week.
-
-Here are the list of patches:
-
-[PATCH 1/6] ore: Fix NFS crash by supporting any unaligned RAID IO
-[PATCH 2/6] ore: Remove support of partial IO request (NFS crash)
-[PATCH 3/6] pnfs-obj: Fix __r4w_get_page in the case of offset beyond i_size
-
-	These 3 completely plug the crash above, and are destined
-	for Stable@
-
-	Trond please ACK the 3rd patch since I want to push this
-	through my tree, as these are for ore mostly.
-	(Please also review all of them, watch my back)
-
-[PATCH 4/6] pnfs-obj: don't leak objio_state if ore_write/read fails.
-
-	A memory leak found on the way, in the error case.
-	Should it be for Stable@ ?
-
-[PATCH 4/5] NFS41: add pg_layout_private to nfs_pageio_descriptor
-
-	This is the patch by Peng Tao <bergwolf@gmail.com> which is
-	needed for below fix. Minus the has_moreio flag.
-
-[PATCH 5/5] pnfs-obj: Better IO pattern in case of unaligned offset
-
-	Though this patch is an optimization it fixes a very bad
-	IO pattern. Please consider for the 3.5-rcX Kernel and
-	don't postpone to 3.6 Merge window. If possible
-
-Thanks for any review
-Boaz
+--b.
