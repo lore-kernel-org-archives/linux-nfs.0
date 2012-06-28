@@ -1,114 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:60981 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753743Ab2FMNyU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jun 2012 09:54:20 -0400
-Received: by pbbrp8 with SMTP id rp8so2321039pbb.19
-        for <linux-nfs@vger.kernel.org>; Wed, 13 Jun 2012 06:54:19 -0700 (PDT)
+Received: from cantor2.suse.de ([195.135.220.15]:36032 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752046Ab2F1Mhj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Jun 2012 08:37:39 -0400
+Date: Thu, 28 Jun 2012 13:37:34 +0100
+From: Mel Gorman <mgorman@suse.de>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>, Linux-MM <linux-mm@kvack.org>,
+        Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>
+Subject: Re: [PATCH 10/12] nfs: enable swap on NFS
+Message-ID: <20120628123734.GH8271@suse.de>
+References: <1340375468-22509-1-git-send-email-mgorman@suse.de>
+ <1340375468-22509-11-git-send-email-mgorman@suse.de>
+ <20120628082725.33b71097@corrin.poochiereds.net>
 MIME-Version: 1.0
-In-Reply-To: <4FD1EC54.9070909@panasas.com>
-References: <4FD1CEA8.3090105@panasas.com> <4FD1EC54.9070909@panasas.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Wed, 13 Jun 2012 21:53:59 +0800
-Message-ID: <CA+a=Yy4aiJEAQV9_ZcBCOQE7aJ6Jc0i8jsVB=yvViKX_qF8KDg@mail.gmail.com>
-Subject: Re: [PATCH 3/6] pnfs-obj: Fix __r4w_get_page when offset is beyond i_size
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>,
-        Benny Halevy <bhalevy@tonian.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=iso-8859-15
+In-Reply-To: <20120628082725.33b71097@corrin.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 8, 2012 at 8:13 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->
-> It is very common for the end of the file to be unaligned on
-> stripe size. But since we know it's beyond file's end then
-> the XOR should be preformed with all zeros.
->
-> Old code used to just read zeros out of the OSD devices, which is a great
-> waist. But what scares me more about this situation is that, we now have
-> pages attached to the file's mapping that are beyond i_size. I don't
-> like the kind of bugs this calls for.
->
-> Fix both birds, by returning a global zero_page, if offset is beyond
-> i_size.
->
-> TODO:
->        Change the API to ->__r4w_get_page() so a NULL can be
->        returned without being considered as error, since XOR API
->        treats NULL entries as zero_pages.
->
-> [Bug since 3.2. Should apply the same way to all Kernels since]
-> CC: Stable Tree <stable@kernel.org>
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-> ---
->  fs/nfs/objlayout/objio_osd.c | 24 +++++++++++++++++++++---
->  1 file changed, 21 insertions(+), 3 deletions(-)
->
-> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-> index b47277b..0e7c833 100644
-> --- a/fs/nfs/objlayout/objio_osd.c
-> +++ b/fs/nfs/objlayout/objio_osd.c
-> @@ -480,14 +480,28 @@ static void _write_done(struct ore_io_state *ios, void *private)
->        objlayout_write_done(&objios->oir, status, objios->sync);
->  }
->
-> +static struct page *g_zero_page;
-> +
-Since you don't attach g_zero_page to any file's address space, I
-think that you can replace it with ZERO_PAGE(0), no?
+On Thu, Jun 28, 2012 at 08:27:25AM -0400, Jeff Layton wrote:
+> > <SNIP>
+> > @@ -2108,11 +2156,15 @@ static void xs_tcp_setup_socket(struct work_struct *work)
+> >  		container_of(work, struct sock_xprt, connect_worker.work);
+> >  	struct socket *sock = transport->sock;
+> >  	struct rpc_xprt *xprt = &transport->xprt;
+> > +	unsigned long pflags = current->flags;
+> >  	int status = -EIO;
+> >  
+> >  	if (xprt->shutdown)
+> >  		goto out;
+> >  
+> > +	if (xprt->swapper)
+> > +		current->flags |= PF_MEMALLOC;
+> > +
+> >  	if (!sock) {
+> >  		clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
+> >  		sock = xs_create_sock(xprt, transport,
+> > @@ -2174,6 +2226,7 @@ out_eagain:
+> >  out:
+> >  	xprt_clear_connecting(xprt);
+> >  	xprt_wake_pending_tasks(xprt, status);
+> > +	tsk_restore_flags(current, pflags, PF_MEMALLOC);
+> >  }
+> >  
+> >  /**
+> 
+> Apologies if this is fixed in another patch and I didn't see it...
+> 
 
-Cheers,
-Tao
+No apologies necessary. Even if it was fixed in another patch, it would
+still be wrong for bisection reasons and for being rude to reviewers.
 
->  static struct page *__r4w_get_page(void *priv, u64 offset, bool *uptodate)
->  {
->        struct objio_state *objios = priv;
->        struct nfs_write_data *wdata = objios->oir.rpcdata;
->        struct address_space *mapping = wdata->header->inode->i_mapping;
->        pgoff_t index = offset / PAGE_SIZE;
-> -       struct page *page = find_get_page(mapping, index);
-> +       struct page *page;
-> +       loff_t i_size = i_size_read(wdata->header->inode);
-> +
-> +       if (offset >= i_size) {
-> +               if (!g_zero_page) {
-> +                       g_zero_page = alloc_page(GFP_NOFS);
-> +                       clear_highpage(g_zero_page);
-> +               }
-> +               *uptodate = true;
-> +               dprintk("%s: g_zero_page index=0x%lx\n", __func__, index);
-> +               return g_zero_page;
-> +       }
->
-> +       page = find_get_page(mapping, index);
->        if (!page) {
->                page = find_or_create_page(mapping, index, GFP_NOFS);
->                if (unlikely(!page)) {
-> @@ -507,8 +521,10 @@ static struct page *__r4w_get_page(void *priv, u64 offset, bool *uptodate)
->
->  static void __r4w_put_page(void *priv, struct page *page)
->  {
-> -       dprintk("%s: index=0x%lx\n", __func__, page->index);
-> -       page_cache_release(page);
-> +       dprintk("%s: index=0x%lx\n", __func__,
-> +               (page == g_zero_page) ? -1UL : page->index);
-> +       if (g_zero_page != page)
-> +               page_cache_release(page);
->        return;
->  }
->
-> @@ -615,6 +631,8 @@ static bool objio_pg_test(struct nfs_pageio_descriptor *pgio,
->  static void __exit
->  objlayout_exit(void)
->  {
-> +       if (g_zero_page)
-> +               __free_page(g_zero_page);
->        pnfs_unregister_layoutdriver(&objlayout_type);
->        printk(KERN_INFO "NFS: %s: Unregistered OSD pNFS Layout Driver\n",
->               __func__);
-> --
-> 1.7.10.2.677.gb6bc67f
->
->
+> There's a place in the above function that returns without going
+> through "out:". I think you also want to tsk_restore_flags() in that
+> spot too.
+> 
+
+You're right. The case that it would trigger would be some corner case
+but very nicely spotted.
+
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index b84df34..3d58b92 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2214,6 +2214,7 @@ static void xs_tcp_setup_socket(struct work_struct *work)
+ 	case -EINPROGRESS:
+ 	case -EALREADY:
+ 		xprt_clear_connecting(xprt);
++		tsk_restore_flags(current, pflags, PF_MEMALLOC);
+ 		return;
+ 	case -EINVAL:
+ 		/* Happens, for instance, if the user specified a link
