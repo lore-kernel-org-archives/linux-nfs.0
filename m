@@ -1,136 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:58878 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:32332 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755897Ab2FTJgW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jun 2012 05:36:22 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 00/12] Swap-over-NFS without deadlocking V6
-Date: Wed, 20 Jun 2012 10:36:05 +0100
-Message-Id: <1340184977-22356-1-git-send-email-mgorman@suse.de>
+	id S1752289Ab2F1Pn4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Jun 2012 11:43:56 -0400
+Date: Thu, 28 Jun 2012 11:43:53 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: andros@netapp.com
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/1] SUNRPC handle EKEYEXPIRED in call_refreshresult
+Message-ID: <20120628114353.4f75aabc@tlielax.poochiereds.net>
+In-Reply-To: <1340827535-3062-1-git-send-email-andros@netapp.com>
+References: <1340827535-3062-1-git-send-email-andros@netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Changelog since V5
-  o Rebase to v3.5-rc3
+On Wed, 27 Jun 2012 16:05:34 -0400
+andros@netapp.com wrote:
 
-Changelog since V4
-  o Catch if SOCK_MEMALLOC flag is cleared with rmem tokens	(davem)
+> From: Andy Adamson <andros@netapp.com>
+> 
+> Without this patch attempting to access a Kerberos mount with expired or no
+> credentials resulted in the NFS client hanging while retrying to refresh creds
+> for ever.
+> 
+> I tested NFSv3/v4/v4.1 sec=krb5 mounts. With expired or non-existent user
+> Kerberos credentials, trying to ls the mountpoint, or cd into the mountpoint
+> resulted in three failed upcalls to gssd (due to tk_cred_retry being set to 2)
+> then the 'Operation not permitted' message is returned to the user.
+> 
+> I think this patch should go into the stable kernel.
+> 
+> Andy Adamson (1):
+>   SUNRPC handle EKEYEXPIRED in call_refreshresult
+> 
+>  fs/nfs/nfs4proc.c |    2 --
+>  net/sunrpc/clnt.c |    4 ++++
+>  2 files changed, 4 insertions(+), 2 deletions(-)
+> 
 
-Changelog since V3
-  o Rebase to 3.4-rc5
-  o kmap pages for writing to swap				(akpm)
-  o Move forward declaration to reduce chance of duplication	(akpm)
+Wait...is this really the behavior you want here?
 
-Changelog since V2
-  o Nothing significant, just rebases. A radix tree lookup is replaced with
-    a linear search would be the biggest rebase artifact
+We had many complaints from users of krb5 mounts where long-running
+jobs would routinely fail when the ticket expired.
 
-This patch series is based on top of "Swap-over-NBD without deadlocking v12"
-as it depends on the same reservation of PF_MEMALLOC reserves logic.
+The compromise behavior that we worked out at that time was to treat an
+expired credcache differently from a "no credcache" situation. gssd would
+return EKEYEXPIRED if the credcache existed but was expired, and
+EACCES otherwise. The kernel would then treat those errors
+differently:
 
-When a user or administrator requires swap for their application, they
-create a swap partition and file, format it with mkswap and activate it with
-swapon. In diskless systems this is not an option so if swap if required
-then swapping over the network is considered.  The two likely scenarios
-are when blade servers are used as part of a cluster where the form factor
-or maintenance costs do not allow the use of disks and thin clients.
+    http://permalink.gmane.org/gmane.linux.nfsv4/11019
 
-The Linux Terminal Server Project recommends the use of the Network
-Block Device (NBD) for swap but this is not always an option.  There is
-no guarantee that the network attached storage (NAS) device is running
-Linux or supports NBD. However, it is likely that it supports NFS so there
-are users that want support for swapping over NFS despite any performance
-concern. Some distributions currently carry patches that support swapping
-over NFS but it would be preferable to support it in the mainline kernel.
+With EKEYEXPIRED, we'd want RPCs to hang indefinitely until the tickets
+were renewed. With EACCES, the call would return an error. The idea
+there is that the user would kdestroy if he needed to unwedge his krb5
+mount.
 
-Patch 1 avoids a stream-specific deadlock that potentially affects TCP.
-
-Patch 2 is a small modification to SELinux to avoid using PFMEMALLOC
-	reserves.
-
-Patch 3 adds three helpers for filesystems to handle swap cache pages.
-	For example, page_file_mapping() returns page->mapping for
-	file-backed pages and the address_space of the underlying
-	swap file for swap cache pages.
-
-Patch 4 adds two address_space_operations to allow a filesystem
-	to pin all metadata relevant to a swapfile in memory. Upon
-	successful activation, the swapfile is marked SWP_FILE and
-	the address space operation ->direct_IO is used for writing
-	and ->readpage for reading in swap pages.
-
-Patch 5 notes that patch 3 is bolting
-	filesystem-specific-swapfile-support onto the side and that
-	the default handlers have different information to what
-	is available to the filesystem. This patch refactors the
-	code so that there are generic handlers for each of the new
-	address_space operations.
-
-Patch 6 adds an API to allow a vector of kernel addresses to be
-	translated to struct pages and pinned for IO.
-
-Patch 7 adds support for using highmem pages for swap by kmapping
-	the pages before calling the direct_IO handler.
-
-Patch 8 updates NFS to use the helpers from patch 3 where necessary.
-
-Patch 9 avoids setting PF_private on PG_swapcache pages within NFS.
-
-Patch 10 implements the new swapfile-related address_space operations
-	for NFS and teaches the direct IO handler how to manage
-	kernel addresses.
-
-Patch 11 prevents page allocator recursions in NFS by using GFP_NOIO
-	where appropriate.
-
-Patch 12 fixes a NULL pointer dereference that occurs when using
-	swap-over-NFS.
-
-With the patches applied, it is possible to mount a swapfile that is on an
-NFS filesystem. Swap performance is not great with a swap stress test taking
-roughly twice as long to complete than if the swap device was backed by NBD.
-
- Documentation/filesystems/Locking |   13 ++++
- Documentation/filesystems/vfs.txt |   12 +++
- fs/nfs/Kconfig                    |    8 ++
- fs/nfs/direct.c                   |   82 ++++++++++++++-------
- fs/nfs/file.c                     |   28 +++++--
- fs/nfs/inode.c                    |    4 +
- fs/nfs/internal.h                 |    7 +-
- fs/nfs/pagelist.c                 |    4 +-
- fs/nfs/read.c                     |    6 +-
- fs/nfs/write.c                    |   91 ++++++++++++++---------
- include/linux/blk_types.h         |    2 +
- include/linux/fs.h                |    8 ++
- include/linux/highmem.h           |    7 ++
- include/linux/mm.h                |   29 ++++++++
- include/linux/nfs_fs.h            |    4 +-
- include/linux/pagemap.h           |    5 ++
- include/linux/sunrpc/xprt.h       |    3 +
- include/linux/swap.h              |    8 ++
- mm/highmem.c                      |   12 +++
- mm/memory.c                       |   52 +++++++++++++
- mm/page_io.c                      |  145 +++++++++++++++++++++++++++++++++++++
- mm/swap_state.c                   |    2 +-
- mm/swapfile.c                     |  141 ++++++++++++++----------------------
- net/core/sock.c                   |    1 +
- net/sunrpc/Kconfig                |    5 ++
- net/sunrpc/clnt.c                 |    2 +
- net/sunrpc/sched.c                |    7 +-
- net/sunrpc/xprtsock.c             |   53 ++++++++++++++
- security/selinux/avc.c            |    2 +-
- 29 files changed, 573 insertions(+), 170 deletions(-)
+This patch makes it sound like you're wanting to revert that behavior.
+Is that the case? If so, what about people trying to run long-running
+tasks on a kerberized mount? Are they just SOL if their ticket isn't
+renewed in time?
 
 -- 
-1.7.9.2
-
+Jeff Layton <jlayton@redhat.com>
