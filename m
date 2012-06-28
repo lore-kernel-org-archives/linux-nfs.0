@@ -1,156 +1,237 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:45707 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932257Ab2F2Ndf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Jun 2012 09:33:35 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>,
-        Sebastian Andrzej Siewior <sebastian@breakpoint.cc>,
-        Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 06/12] mm: Add get_kernel_page[s] for pinning of kernel addresses for I/O
-Date: Fri, 29 Jun 2012 14:33:19 +0100
-Message-Id: <1340976805-5799-7-git-send-email-mgorman@suse.de>
-In-Reply-To: <1340976805-5799-1-git-send-email-mgorman@suse.de>
-References: <1340976805-5799-1-git-send-email-mgorman@suse.de>
+Received: from mail-wg0-f42.google.com ([74.125.82.42]:40669 "EHLO
+	mail-wg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752282Ab2F1Xde convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jun 2012 19:33:34 -0400
+Received: by wgbds11 with SMTP id ds11so577484wgb.1
+        for <linux-nfs@vger.kernel.org>; Thu, 28 Jun 2012 16:33:32 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20120628140351.527c5060@tlielax.poochiereds.net>
+References: <1340827535-3062-1-git-send-email-andros@netapp.com>
+	<20120628114353.4f75aabc@tlielax.poochiereds.net>
+	<19150370-D1BD-4CC1-90BD-383805DE9557@netapp.com>
+	<20120628140351.527c5060@tlielax.poochiereds.net>
+Date: Thu, 28 Jun 2012 19:33:32 -0400
+Message-ID: <CAHVgHyWs+_Ep_wP6QASSJ18tM8OhYkQ+o=h5NKnOqdC6HWchKQ@mail.gmail.com>
+Subject: Re: [PATCH 0/1] SUNRPC handle EKEYEXPIRED in call_refreshresult
+From: Andy Adamson <androsadamson@gmail.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch adds two new APIs get_kernel_pages() and get_kernel_page()
-that may be used to pin a vector of kernel addresses for IO. The initial
-user is expected to be NFS for allowing pages to be written to swap
-using aops->direct_IO(). Strictly speaking, swap-over-NFS only needs
-to pin one page for IO but it makes sense to express the API in terms
-of a vector and add a helper for pinning single pages.
+On Thu, Jun 28, 2012 at 2:03 PM, Jeff Layton <jlayton@redhat.com> wrote:
+> On Thu, 28 Jun 2012 16:31:41 +0000
+> "Adamson, Andy" <William.Adamson@netapp.com> wrote:
+>
+>>
+>> On Jun 28, 2012, at 11:43 AM, Jeff Layton wrote:
+>>
+>> > On Wed, 27 Jun 2012 16:05:34 -0400
+>> > andros@netapp.com wrote:
+>> >
+>> >> From: Andy Adamson <andros@netapp.com>
+>> >>
+>> >> Without this patch attempting to access a Kerberos mount with expired or no
+>> >> credentials resulted in the NFS client hanging while retrying to refresh creds
+>> >> for ever.
+>> >>
+>> >> I tested NFSv3/v4/v4.1 sec=krb5 mounts. With expired or non-existent user
+>> >> Kerberos credentials, trying to ls the mountpoint, or cd into the mountpoint
+>> >> resulted in three failed upcalls to gssd (due to tk_cred_retry being set to 2)
+>> >> then the 'Operation not permitted' message is returned to the user.
+>> >>
+>> >> I think this patch should go into the stable kernel.
+>> >>
+>> >> Andy Adamson (1):
+>> >>  SUNRPC handle EKEYEXPIRED in call_refreshresult
+>> >>
+>> >> fs/nfs/nfs4proc.c |    2 --
+>> >> net/sunrpc/clnt.c |    4 ++++
+>> >> 2 files changed, 4 insertions(+), 2 deletions(-)
+>> >>
+>> >
+>> > Wait...is this really the behavior you want here?
+>>
+>> Yes. Just having the client hang with no indication to the user is wrong.
+>>
+>
+> I presume you mean to say that that behavior isn't ideal. I tend to
+> agree, but there's no good way to report that to the user who can do
+> anything about it. I'll also point out that this scheme doesn't really
+> help that either. The user will end up with a failing job, at which
+> point it's too late to do anything about it...
+>
+>> >
+>> > We had many complaints from users of krb5 mounts where long-running
+>> > jobs would routinely fail when the ticket expired.
+>>
+>> That is a Kerberos ticket management issue, not an NFS kernel client issue.
+>> You have long-running jobs, then kinit -l,  run krenew, or use a keytab with a cron job,
+>> or use some other credential management software package.
+>>
+>
+> Easy to say, far more difficult to do.
 
-Signed-off-by: Mel Gorman <mgorman@suse.de>
-Reviewed-by: Rik van Riel <riel@redhat.com>
----
- include/linux/blk_types.h |    2 ++
- include/linux/fs.h        |    2 ++
- include/linux/mm.h        |    4 ++++
- mm/memory.c               |   53 +++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 61 insertions(+)
+Here is how simple it is.
 
-diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
-index 0edb65d..7b7ac9c 100644
---- a/include/linux/blk_types.h
-+++ b/include/linux/blk_types.h
-@@ -160,6 +160,7 @@ enum rq_flag_bits {
- 	__REQ_FLUSH_SEQ,	/* request for flush sequence */
- 	__REQ_IO_STAT,		/* account I/O stat */
- 	__REQ_MIXED_MERGE,	/* merge of different types, fail separately */
-+	__REQ_KERNEL, 		/* direct IO to kernel pages */
- 	__REQ_NR_BITS,		/* stops here */
- };
- 
-@@ -201,5 +202,6 @@ enum rq_flag_bits {
- #define REQ_IO_STAT		(1 << __REQ_IO_STAT)
- #define REQ_MIXED_MERGE		(1 << __REQ_MIXED_MERGE)
- #define REQ_SECURE		(1 << __REQ_SECURE)
-+#define REQ_KERNEL		(1 << __REQ_KERNEL)
- 
- #endif /* __LINUX_BLK_TYPES_H */
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 006aa85..c2a4554 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -165,6 +165,8 @@ struct inodes_stat_t {
- #define READ			0
- #define WRITE			RW_MASK
- #define READA			RWA_MASK
-+#define KERNEL_READ		(READ|REQ_KERNEL)
-+#define KERNEL_WRITE		(WRITE|REQ_KERNEL)
- 
- #define READ_SYNC		(READ | REQ_SYNC)
- #define WRITE_SYNC		(WRITE | REQ_SYNC | REQ_NOIDLE)
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index b3d4cd9..bbb3167 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -1019,6 +1019,10 @@ int get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
- 			struct page **pages, struct vm_area_struct **vmas);
- int get_user_pages_fast(unsigned long start, int nr_pages, int write,
- 			struct page **pages);
-+struct kvec;
-+int get_kernel_pages(const struct kvec *iov, int nr_pages, int write,
-+			struct page **pages);
-+int get_kernel_page(unsigned long start, int write, struct page **pages);
- struct page *get_dump_page(unsigned long addr);
- 
- extern int try_to_release_page(struct page * page, gfp_t gfp_mask);
-diff --git a/mm/memory.c b/mm/memory.c
-index 6322d36..c8153f5 100644
---- a/mm/memory.c
-+++ b/mm/memory.c
-@@ -1843,6 +1843,59 @@ next_page:
- EXPORT_SYMBOL(__get_user_pages);
- 
- /*
-+ * get_kernel_pages() - pin kernel pages in memory
-+ * @kiov:	An array of struct kvec structures
-+ * @nr_segs:	number of segments to pin
-+ * @write:	pinning for read/write, currently ignored
-+ * @pages:	array that receives pointers to the pages pinned.
-+ *		Should be at least nr_segs long.
-+ *
-+ * Returns number of pages pinned. This may be fewer than the number
-+ * requested. If nr_pages is 0 or negative, returns 0. If no pages
-+ * were pinned, returns -errno. Each page returned must be released
-+ * with a put_page() call when it is finished with.
-+ */
-+int get_kernel_pages(const struct kvec *kiov, int nr_segs, int write,
-+		struct page **pages)
-+{
-+	int seg;
-+
-+	for (seg = 0; seg < nr_segs; seg++) {
-+		if (WARN_ON(kiov[seg].iov_len != PAGE_SIZE))
-+			return seg;
-+
-+		/* virt_to_page sanity checks the PFN */
-+		pages[seg] = virt_to_page(kiov[seg].iov_base);
-+		page_cache_get(pages[seg]);
-+	}
-+
-+	return seg;
-+}
-+EXPORT_SYMBOL_GPL(get_kernel_pages);
-+
-+/*
-+ * get_kernel_page() - pin a kernel page in memory
-+ * @start:	starting kernel address
-+ * @write:	pinning for read/write, currently ignored
-+ * @pages:	array that receives pointer to the page pinned.
-+ *		Must be at least nr_segs long.
-+ *
-+ * Returns 1 if page is pinned. If the page was not pinned, returns
-+ * -errno. The page returned must be released with a put_page() call
-+ * when it is finished with.
-+ */
-+int get_kernel_page(unsigned long start, int write, struct page **pages)
-+{
-+	const struct kvec kiov = {
-+		.iov_base = (void *)start,
-+		.iov_len = PAGE_SIZE
-+	};
-+
-+	return get_kernel_pages(&kiov, 1, write, pages);
-+}
-+EXPORT_SYMBOL_GPL(get_kernel_page);
-+
-+/*
-  * fixup_user_fault() - manually resolve a user page fault
-  * @tsk:	the task_struct to use for page fault accounting, or
-  *		NULL if faults are not to be recorded.
--- 
-1.7.9.2
+$ kinit
+$ krenew  -K 30&
 
+This simple krenew command says to renew the current users TGT every
+30 minutes for
+as long as the TGT is renewable. For my setup, the TGT lasts 10 days -
+long enough for most long-running jobs. The kinit is to get a fresh
+TGT prior to running renew so that you start with as much time as
+possible.
+
+I just tested it. My TGS expires in 30 minutes, my TGT in 1 hour. 3
+hours later, I'm still able to access the kerberos mount.
+
+I'm sure most users with long running jobs could handle this. If you
+need longer running jobs, then you simply talk to the Kerberos admin
+and either get an extended TGT lifetime, or get a keytab and run a
+cron job (or use krenew to run a script).
+
+
+>Most of the people who
+> complained about the non-robustness of this were people who were
+> running jobs that took days or weeks. They were understandably upset
+> when that job failed just because the ticket expired.
+
+Well, they get what they setup. If they didn't ensure a long enough
+ticket lifetime, then
+they shouldn't be surprised when the access to the file system fails.
+
+>>
+>> > The compromise behavior that we worked out at that time was to treat an
+>> > expired credcache differently from a "no credcache" situation. gssd would
+>> > return EKEYEXPIRED if the credcache existed but was expired, and
+>> > EACCES otherwise. The kernel would then treat those errors
+>> > differently:
+>>
+>> In both cases, EPERM is the correct response from the Linux NFS client, as
+>> the user has no permissions to do anything in the file system.
+>>
+>
+> But, in the case of an expired ticket, it's quite likely that he had
+> permissions at some point in time. The rationale at the time was that
+> if that user could reacquire creds he could keep his job going.
+
+Exactly! It's just not the NFS clients job to arrange this! It's a
+Kerberos Ticket Lifetime Issue. Use the Kerberos Ticket Lifetime Issue
+Tools!
+
+>
+>> >
+>> >    http://permalink.gmane.org/gmane.linux.nfsv4/11019
+>> >
+>> > With EKEYEXPIRED, we'd want RPCs to hang indefinitely until the tickets
+>> > were renewed.
+>>
+>> Sounds like a good DOS attack.  Consider V4.1 and a multi-user machine. If a
+>> users credentials expire during a heavy I/O run - that user could be using all of the
+>> session slots, and no other user could make progress while the RPCs call rpc_delay
+>> and retry  indefinitely...
+>>
+>
+> Well, no. That was the main reason we handled this in the NFS layer and
+> not in sunrpc. The rpc_task would exit with EKEYEXPIRED and the NFS
+> code would treat that like an NFS4ERR_DELAY. Back off and try again
+> later.
+> Once the task has exited, any resources held in the rpc layer
+> including the slot should be available.
+
+Ah - nfs4_async_handle_error on EKEYEXPIRED calls rpc_delay then
+returs with an EAGAIN error code - so it  doesn't call rpc_exit, but
+the EKEYEXPIRED is handled  the rpc_call_done routine which frees the
+slot allowing it to be reused.
+
+Fair enough.
+
+After the delay timer expires, the task goes into the rpc_prepare_task
+state to get a new slot, e.g. put on the session slot_tbl_waitq in
+heavy I/O situations where all slots are being used.
+
+So in my example above with an expired user GSS context on a
+multi-user client, I/O gets stacked up in the session slot_tbl_waitq -
+which I've seen to grow to hundreds of RPC requests depending on the
+number of session slots and the amount of I/O.  Each I/O will keep on
+returning to the session slot_tbl_waitq after an up call to GSSD which
+fails with -EKEYEXPIRED.  Gssd gets pounded. The session
+slot_tbl_waitq is not drained of this users I/O.
+
+Other users will feel pain. Especially if there is more than one user
+on the client irresponsible enough to start a long-running job without
+handling their Kerberos credentials.
+
+>
+>>
+>> > With EACCES, the call would return an error. The idea
+>> > there is that the user would kdestroy if he needed to unwedge his krb5
+>> > mount.
+>>
+>> Exactly how is the user supposed to know to kdestroy? All they see is a hung mount.
+>>
+>
+> We do throw a warning when the state manager's ticket expires. Perhaps
+> we could do something similar from gssd for user tickets. The point is
+> though that the user has the ability to unwedge the mount without
+> reacquiring the ticket if he so chooses.
+
+And my point is - this is wrong!  It is a key management issue!  What
+if the user doesn't choose to 'unwed'  the mount? Does it hang
+forever?
+
+If the user is going to have to make a choice, let them make it on the
+front end, and setup their Kerberos tickets according to their need.
+
+>
+>> >
+>> > This patch makes it sound like you're wanting to revert that behavior.
+>> > Is that the case?
+>>
+>> Yes.
+>>
+>> > If so, what about people trying to run long-running
+>> > tasks on a kerberized mount? Are they just SOL if their ticket isn't
+>> > renewed in time?
+>>
+>> Yes - as with _any_ resource, you need to plan ahead.  As I said above, the administrator in such a situation
+>> needs to setup krenew or the equivalent.
+>>
+>
+> That's not helpful. Everyone makes mistakes and you don't necessarily
+> want your job to fail simply due to that fact.
+
+Yes, WRT security, you actually do.  There is a reason Kerberos
+tickets have a lifetime.
+The user needs to be aware of it, and extend or cut-off credentials
+according to what their use case is.
+
+> But regardless, Trond
+> NAK'ed a similar idea not that long ago:
+>
+>    http://marc.info/?l=linux-nfs&m=132161606503398&w=2
+>
+> ...you may want to read over that thread as I'm fairly certain what
+> you're proposing will have the same issues...
+
+Your'e referring to data corruption due to buffered writes or commits
+with expired GSS credentials?
+I'm preparing patches for this issue as well. I'll resend this patch
+with the others that
+handle the expired GSS creds.
+
+-->Andy
+
+>
+> --
+> Jeff Layton <jlayton@redhat.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
