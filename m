@@ -1,155 +1,147 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:33920 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761004Ab2FGPLO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jun 2012 11:11:14 -0400
-Message-ID: <4FD0C48E.6090204@oracle.com>
-Date: Thu, 07 Jun 2012 11:11:10 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-MIME-Version: 1.0
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>,
-        "Isaman, Fred" <Fred.Isaman@netapp.com>
-Subject: Re: [PATCH] NFS: Fix a commit bug
-References: <1338936204-20168-1-git-send-email-Trond.Myklebust@netapp.com> <73EB71C8-FD1B-4508-8474-D87C9B7312EC@netapp.com> <ABEA57CF-6358-4FFE-9CB6-35F9CD2616B8@oracle.com> <83708AA1-F4C9-4D44-B153-50B2EC2CB4B9@netapp.com>
-In-Reply-To: <83708AA1-F4C9-4D44-B153-50B2EC2CB4B9@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx1.redhat.com ([209.132.183.28]:19625 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752289Ab2F1SEf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Jun 2012 14:04:35 -0400
+Date: Thu, 28 Jun 2012 14:03:51 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/1] SUNRPC handle EKEYEXPIRED in call_refreshresult
+Message-ID: <20120628140351.527c5060@tlielax.poochiereds.net>
+In-Reply-To: <19150370-D1BD-4CC1-90BD-383805DE9557@netapp.com>
+References: <1340827535-3062-1-git-send-email-andros@netapp.com>
+	<20120628114353.4f75aabc@tlielax.poochiereds.net>
+	<19150370-D1BD-4CC1-90BD-383805DE9557@netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/07/2012 11:08 AM, Adamson, Dros wrote:
-> On Jun 7, 2012, at 11:05 AM, Chuck Lever wrote:
->
->> This does not appear to fix the problem I'm seeing.
->>
->> With this patch applied, the client is silly renaming the file, deleting it, then writing it again and failing with NFS4ERR_STALE.
-> What command(s) are you running?
+On Thu, 28 Jun 2012 16:31:41 +0000
+"Adamson, Andy" <William.Adamson@netapp.com> wrote:
 
-Connectathon basic test 5.
+> 
+> On Jun 28, 2012, at 11:43 AM, Jeff Layton wrote:
+> 
+> > On Wed, 27 Jun 2012 16:05:34 -0400
+> > andros@netapp.com wrote:
+> > 
+> >> From: Andy Adamson <andros@netapp.com>
+> >> 
+> >> Without this patch attempting to access a Kerberos mount with expired or no
+> >> credentials resulted in the NFS client hanging while retrying to refresh creds
+> >> for ever.
+> >> 
+> >> I tested NFSv3/v4/v4.1 sec=krb5 mounts. With expired or non-existent user
+> >> Kerberos credentials, trying to ls the mountpoint, or cd into the mountpoint
+> >> resulted in three failed upcalls to gssd (due to tk_cred_retry being set to 2)
+> >> then the 'Operation not permitted' message is returned to the user.
+> >> 
+> >> I think this patch should go into the stable kernel.
+> >> 
+> >> Andy Adamson (1):
+> >>  SUNRPC handle EKEYEXPIRED in call_refreshresult
+> >> 
+> >> fs/nfs/nfs4proc.c |    2 --
+> >> net/sunrpc/clnt.c |    4 ++++
+> >> 2 files changed, 4 insertions(+), 2 deletions(-)
+> >> 
+> > 
+> > Wait...is this really the behavior you want here?
+> 
+> Yes. Just having the client hang with no indication to the user is wrong.
+> 
 
+I presume you mean to say that that behavior isn't ideal. I tend to
+agree, but there's no good way to report that to the user who can do
+anything about it. I'll also point out that this scheme doesn't really
+help that either. The user will end up with a failing job, at which
+point it's too late to do anything about it...
 
->
-> -dros
->
->> I had to apply the change by hand, so I could have missed something.  I'll go back and check.
->>
->> On Jun 6, 2012, at 9:59 AM, Adamson, Dros wrote:
->>
->>> ACK - This fixes the problem I was seeing!
->>>
->>> For the list, we were seeing duplicate writes sent to unstable servers even though the COMMIT succeeds (with matching verf):
->>>
->>> - mount a server that returns writes with committed = UNSTABLE4
->>> - run "dd if=/dev/zero of=/mnt/foo bs=1024 count=10240"
->>> - umount
->>> - in wireshark, you'll see the COMMIT succeed, but after a short pause there will be a flurry of FILE_SYNC4 writes that are duplicates (same ranges, data) of the writes associated with the COMMIT.
->>>
->>> -dros
->>>
->>> On Jun 5, 2012, at 6:43 PM, Trond Myklebust wrote:
->>>
->>>> The new commit code fails to copy the verifier into the wb_verf field
->>>> of _all_ the nfs_page structures; it only copies it into the first entry.
->>>> The consequence is that most requests end up failing to match in
->>>> nfs_commit_release.
->>>>
->>>> Fix is to copy the verifier into the req->wb_verf field in
->>>> nfs_write_completion.
->>>>
->>>> Signed-off-by: Trond Myklebust<Trond.Myklebust@netapp.com>
->>>> Cc: Fred Isaman<iisaman@netapp.com>
->>>> ---
->>>> fs/nfs/direct.c         |    4 ++--
->>>> fs/nfs/write.c          |    7 ++++---
->>>> include/linux/nfs_xdr.h |    2 ++
->>>> 3 files changed, 8 insertions(+), 5 deletions(-)
->>>>
->>>> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
->>>> index 23d170b..b5385a7 100644
->>>> --- a/fs/nfs/direct.c
->>>> +++ b/fs/nfs/direct.c
->>>> @@ -710,12 +710,12 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
->>>> 			if (dreq->flags == NFS_ODIRECT_RESCHED_WRITES)
->>>> 				bit = NFS_IOHDR_NEED_RESCHED;
->>>> 			else if (dreq->flags == 0) {
->>>> -				memcpy(&dreq->verf,&req->wb_verf,
->>>> +				memcpy(&dreq->verf, hdr->verf,
->>>> 				       sizeof(dreq->verf));
->>>> 				bit = NFS_IOHDR_NEED_COMMIT;
->>>> 				dreq->flags = NFS_ODIRECT_DO_COMMIT;
->>>> 			} else if (dreq->flags == NFS_ODIRECT_DO_COMMIT) {
->>>> -				if (memcmp(&dreq->verf,&req->wb_verf, sizeof(dreq->verf))) {
->>>> +				if (memcmp(&dreq->verf, hdr->verf, sizeof(dreq->verf))) {
->>>> 					dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
->>>> 					bit = NFS_IOHDR_NEED_RESCHED;
->>>> 				} else
->>>> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
->>>> index e6fe3d6..4d6861c 100644
->>>> --- a/fs/nfs/write.c
->>>> +++ b/fs/nfs/write.c
->>>> @@ -80,6 +80,7 @@ struct nfs_write_header *nfs_writehdr_alloc(void)
->>>> 		INIT_LIST_HEAD(&hdr->rpc_list);
->>>> 		spin_lock_init(&hdr->lock);
->>>> 		atomic_set(&hdr->refcnt, 0);
->>>> +		hdr->verf =&p->verf;
->>>> 	}
->>>> 	return p;
->>>> }
->>>> @@ -619,6 +620,7 @@ static void nfs_write_completion(struct nfs_pgio_header *hdr)
->>>> 			goto next;
->>>> 		}
->>>> 		if (test_bit(NFS_IOHDR_NEED_COMMIT,&hdr->flags)) {
->>>> +			memcpy(&req->wb_verf, hdr->verf, sizeof(req->wb_verf));
->>>> 			nfs_mark_request_commit(req, hdr->lseg,&cinfo);
->>>> 			goto next;
->>>> 		}
->>>> @@ -1255,15 +1257,14 @@ static void nfs_writeback_release_common(void *calldata)
->>>> 	struct nfs_write_data	*data = calldata;
->>>> 	struct nfs_pgio_header *hdr = data->header;
->>>> 	int status = data->task.tk_status;
->>>> -	struct nfs_page *req = hdr->req;
->>>>
->>>> 	if ((status>= 0)&&  nfs_write_need_commit(data)) {
->>>> 		spin_lock(&hdr->lock);
->>>> 		if (test_bit(NFS_IOHDR_NEED_RESCHED,&hdr->flags))
->>>> 			; /* Do nothing */
->>>> 		else if (!test_and_set_bit(NFS_IOHDR_NEED_COMMIT,&hdr->flags))
->>>> -			memcpy(&req->wb_verf,&data->verf, sizeof(req->wb_verf));
->>>> -		else if (memcmp(&req->wb_verf,&data->verf, sizeof(req->wb_verf)))
->>>> +			memcpy(hdr->verf,&data->verf, sizeof(*hdr->verf));
->>>> +		else if (memcmp(hdr->verf,&data->verf, sizeof(*hdr->verf)))
->>>> 			set_bit(NFS_IOHDR_NEED_RESCHED,&hdr->flags);
->>>> 		spin_unlock(&hdr->lock);
->>>> 	}
->>>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
->>>> index 7519bae..8aadd90 100644
->>>> --- a/include/linux/nfs_xdr.h
->>>> +++ b/include/linux/nfs_xdr.h
->>>> @@ -1237,6 +1237,7 @@ struct nfs_pgio_header {
->>>> 	struct list_head	rpc_list;
->>>> 	atomic_t		refcnt;
->>>> 	struct nfs_page		*req;
->>>> +	struct nfs_writeverf	*verf;
->>>> 	struct pnfs_layout_segment *lseg;
->>>> 	loff_t			io_start;
->>>> 	const struct rpc_call_ops *mds_ops;
->>>> @@ -1274,6 +1275,7 @@ struct nfs_write_data {
->>>> struct nfs_write_header {
->>>> 	struct nfs_pgio_header	header;
->>>> 	struct nfs_write_data	rpc_data;
->>>> +	struct nfs_writeverf	verf;
->>>> };
->>>>
->>>> struct nfs_mds_commit_info {
->>>> -- 
->>>> 1.7.10.2
->>>>
->> ---
->> Chuck Lever
->> chuck [dot] lever [at] oracle [dot] com
->>
->>
->>
->>
+> > 
+> > We had many complaints from users of krb5 mounts where long-running
+> > jobs would routinely fail when the ticket expired.
+> 
+> That is a Kerberos ticket management issue, not an NFS kernel client issue.
+> You have long-running jobs, then kinit -l,  run krenew, or use a keytab with a cron job, 
+> or use some other credential management software package.
+> 
 
+Easy to say, far more difficult to do. Most of the people who
+complained about the non-robustness of this were people who were
+running jobs that took days or weeks. They were understandably upset
+when that job failed just because the ticket expired.
+
+> 
+> > The compromise behavior that we worked out at that time was to treat an
+> > expired credcache differently from a "no credcache" situation. gssd would
+> > return EKEYEXPIRED if the credcache existed but was expired, and
+> > EACCES otherwise. The kernel would then treat those errors
+> > differently:
+> 
+> In both cases, EPERM is the correct response from the Linux NFS client, as 
+> the user has no permissions to do anything in the file system.
+> 
+
+But, in the case of an expired ticket, it's quite likely that he had
+permissions at some point in time. The rationale at the time was that
+if that user could reacquire creds he could keep his job going.
+
+> > 
+> >    http://permalink.gmane.org/gmane.linux.nfsv4/11019
+> > 
+> > With EKEYEXPIRED, we'd want RPCs to hang indefinitely until the tickets
+> > were renewed.
+> 
+> Sounds like a good DOS attack.  Consider V4.1 and a multi-user machine. If a
+> users credentials expire during a heavy I/O run - that user could be using all of the
+> session slots, and no other user could make progress while the RPCs call rpc_delay 
+> and retry  indefinitely...
+> 
+
+Well, no. That was the main reason we handled this in the NFS layer and
+not in sunrpc. The rpc_task would exit with EKEYEXPIRED and the NFS
+code would treat that like an NFS4ERR_DELAY. Back off and try again
+later. Once the task has exited, any resources held in the rpc layer
+including the slot should be available.
+
+> 
+> > With EACCES, the call would return an error. The idea
+> > there is that the user would kdestroy if he needed to unwedge his krb5
+> > mount.
+> 
+> Exactly how is the user supposed to know to kdestroy? All they see is a hung mount.
+>  
+
+We do throw a warning when the state manager's ticket expires. Perhaps
+we could do something similar from gssd for user tickets. The point is
+though that the user has the ability to unwedge the mount without
+reacquiring the ticket if he so chooses.
+
+> > 
+> > This patch makes it sound like you're wanting to revert that behavior.
+> > Is that the case?
+> 
+> Yes.
+> 
+> > If so, what about people trying to run long-running
+> > tasks on a kerberized mount? Are they just SOL if their ticket isn't
+> > renewed in time?
+> 
+> Yes - as with _any_ resource, you need to plan ahead.  As I said above, the administrator in such a situation
+> needs to setup krenew or the equivalent.
+> 
+
+That's not helpful. Everyone makes mistakes and you don't necessarily
+want your job to fail simply due to that fact. But regardless, Trond
+NAK'ed a similar idea not that long ago:
+
+    http://marc.info/?l=linux-nfs&m=132161606503398&w=2
+
+...you may want to read over that thread as I'm fairly certain what
+you're proposing will have the same issues...
+
+-- 
+Jeff Layton <jlayton@redhat.com>
