@@ -1,100 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:22206 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753136Ab2FZSY3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jun 2012 14:24:29 -0400
-Subject: Re: [PATCH] NFS: Check if rpcauth_create() returns an error code
-Mime-Version: 1.0 (Apple Message framework v1278)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1340734373-5596-1-git-send-email-bjschuma@netapp.com>
-Date: Tue, 26 Jun 2012 14:23:24 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <9ED25AEF-945E-4908-8D78-4CC040D9A26A@oracle.com>
-References: <1340734373-5596-1-git-send-email-bjschuma@netapp.com>
-To: Bryan Schumaker <bjschuma@netapp.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from mail-yw0-f42.google.com ([209.85.213.42]:59981 "EHLO
+	mail-yw0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932072Ab2F2S6H (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jun 2012 14:58:07 -0400
+Received: by yhfq11 with SMTP id q11so4407138yhf.1
+        for <linux-nfs@vger.kernel.org>; Fri, 29 Jun 2012 11:58:06 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v3 00/17] vfs: add the ability to retry on ESTALE to several syscalls
+Date: Fri, 29 Jun 2012 14:57:43 -0400
+Message-Id: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This patchset is the third version of the patchset to add ESTALE
+handling to several syscalls. The basic idea is to allow the client to
+gracefully retry the lookup and call when a NFS server returns ESTALE.
 
-On Jun 26, 2012, at 2:12 PM, bjschuma@netapp.com wrote:
+The previous version of this patchset is here:
 
-> From: Bryan Schumaker <bjschuma@netapp.com>
-> 
-> I was treating a NULL return value as an error, but this function will
-> instead return an ERR_PTR().  Now that I'm checking if the function
-> returns an error, I should also pass the error up the call stack.
+    http://lwn.net/Articles/496103/
 
+When discussing my v2 patchset, Al pointed out that the problems with
+audit go beyond just doing multiple getname() calls per syscall attempt.
+While that is a problem, the most insidious issue is some very brittle
+logic in audit_inode_child(). I believe I now have a solution to that
+problem in the patchset that I posted earlier this week:
 
-> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-> ---
-> fs/nfs/nfs4namespace.c |  4 ++--
-> fs/nfs/nfs4proc.c      | 15 ++++-----------
-> 2 files changed, 6 insertions(+), 13 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-> index 017b4b0..a8aafc6 100644
-> --- a/fs/nfs/nfs4namespace.c
-> +++ b/fs/nfs/nfs4namespace.c
-> @@ -205,9 +205,9 @@ struct rpc_clnt *nfs4_create_sec_client(struct rpc_clnt *clnt, struct inode *ino
-> 		return clone;
-> 
-> 	auth = rpcauth_create(flavor, clone);
-> -	if (!auth) {
-> +	if (IS_ERR(auth)) {
-> 		rpc_shutdown_client(clone);
-> -		clone = ERR_PTR(-EIO);
-> +		clone = ERR_CAST(auth);
-> 	}
+	https://lkml.org/lkml/2012/6/26/306
 
-This echoes nfs_init_server_rpcclient(), so it should be adequate.
+The above patchset should make it safe to do retries of path-based
+syscalls. The main caveat when doing that is that it's important to only
+call getname() once per __user string. That ensures that you don't end
+up with duplicate audit_names entries per syscall. As a side benefit, it
+turns out that that's more efficient on a retry, but it does mean that
+we can't use the nice user_path_* helpers in many cases.
 
-> 
-> 	return clone;
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 5a7b372..f817587 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -2356,17 +2356,10 @@ out:
-> static int nfs4_lookup_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
-> 				struct nfs_fsinfo *info, rpc_authflavor_t flavor)
-> {
-> -	struct rpc_auth *auth;
-> -	int ret;
-> -
-> -	auth = rpcauth_create(flavor, server->client);
-> -	if (!auth) {
-> -		ret = -EIO;
-> -		goto out;
-> -	}
-> -	ret = nfs4_lookup_root(server, fhandle, info);
-> -out:
-> -	return ret;
-> +	struct rpc_auth *auth = rpcauth_create(flavor, server->client);
-> +	if (IS_ERR(auth))
-> +		return PTR_ERR(auth);
-> +	return nfs4_lookup_root(server, fhandle, info);
-> }
-> 
-> static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
+I've tried to keep this patchset pretty granular. Some of these patches
+could be combined if that's desirable. I'd like to see this go into 3.6,
+but it obviously needs to go in after the above-referenced set of audit
+related patches is merged.
 
-This logic calls rpcauth_create() in a loop, correct?  The expectation is that rpcauth_create() should simply replace the nfs_client's rpc_auth with the next flavor each time it is called?
+Jeff Layton (17):
+  vfs: add a retry_estale helper function to handle retries on ESTALE
+  vfs: add a kern_path_at function
+  vfs: make fstatat retry on ESTALE errors from getattr call
+  vfs: fix readlinkat to retry on ESTALE
+  vfs: remove user_path_at_empty
+  vfs: turn "empty" arg in getname_flags into a bool
+  vfs: add new "reval" argument to kern_path_create
+  vfs: fix mknodat to retry on ESTALE errors
+  vfs: fix mkdir to retry on ESTALE errors
+  vfs: fix symlinkat to retry on ESTALE errors
+  vfs: fix linkat to retry on ESTALE errors
+  vfs: make rmdir retry on ESTALE errors
+  vfs: make do_unlinkat retry on ESTALE errors
+  vfs: fix renameat to retry on ESTALE errors
+  vfs: remove user_path_parent
+  vfs: have do_sys_truncate retry once on an ESTALE error
+  vfs: have faccessat retry once on an ESTALE error
 
-With the current code in nfs4_find_root_sec(), rpcauth_create() with a GSS flavor fails the second time you call it because (I suspect) there's a pipe dentry left over from the previous call.  So there's no way to walk an entire list returned from gss_mech_list_flavors(), it will fail on the second GSS flavor every time.
-
-We could:
-
-  a)  have gss_pipes_dentries_create_net() ignore -EEXIST and return zero instead, or
-
-  b)  make sure rpcauth_create() releases the old rpc_auth before calling op->create()
-
-  c)  ??
+ drivers/base/devtmpfs.c |    7 +-
+ fs/namei.c              |  407 ++++++++++++++++++++++++++++-------------------
+ fs/open.c               |  162 +++++++++++--------
+ fs/stat.c               |   44 ++++--
+ include/linux/fs.h      |   24 +++-
+ include/linux/namei.h   |    4 +-
+ net/unix/af_unix.c      |    3 +-
+ 7 files changed, 401 insertions(+), 250 deletions(-)
 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.7.6
 
