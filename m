@@ -1,61 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:22777 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756046Ab2F0ThH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Jun 2012 15:37:07 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: Harshula <harshula@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: rpciod process is blocked in nfs_release_page waiting for
- nfs_commit_inode to complete
-Date: Wed, 27 Jun 2012 19:37:03 +0000
-Message-ID: <1340825822.2398.10.camel@lade.trondhjem.org>
-References: <1339764850.30233.11.camel@serendib>
-	 <20120615092103.15cc2b11@corrin.poochiereds.net>
-	 <1339795503.16363.9.camel@lade.trondhjem.org>
-	 <20120627115447.0fdf8c6e@corrin.poochiereds.net>
-	 <1340822635.2398.7.camel@lade.trondhjem.org>
-	 <20120627152814.4774048b@tlielax.poochiereds.net>
-In-Reply-To: <20120627152814.4774048b@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:45325 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932763Ab2F2S60 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jun 2012 14:58:26 -0400
+Received: by mail-gg0-f174.google.com with SMTP id u4so3043977ggl.19
+        for <linux-nfs@vger.kernel.org>; Fri, 29 Jun 2012 11:58:26 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v3 13/17] vfs: make do_unlinkat retry on ESTALE errors
+Date: Fri, 29 Jun 2012 14:57:56 -0400
+Message-Id: <1340996280-27123-14-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
+References: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTA2LTI3IGF0IDE1OjI4IC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-T24gV2VkLCAyNyBKdW4gMjAxMiAxODo0Mzo1NiArMDAwMA0KPiAiTXlrbGVidXN0LCBUcm9uZCIg
-PFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPiBUaGUgcmVhc29uIHdoeSB3
-ZSBjbG9zZSB0aGVzZSBzb2NrZXRzIGlzIHRoYXQgaWYgdGhlIGF0dGVtcHQgYXQgYWJvcnRpbmcN
-Cj4gPiB0aGUgY29ubmVjdGlvbiBmYWlscywgdGhlbiB0aGV5IHR5cGljYWxseSBlbmQgdXAgaW4g
-YSBUSU1FX1dBSVQgc3RhdGUuDQo+ID4gDQo+IA0KPiBJJ20gc3RpbGwgdHJ5aW5nIHRvIHdhZGUg
-dGhyb3VnaCB0aGUgeHBydHNvY2suYyBzb2NrZXQgaGFuZGxpbmcgY29kZSwNCj4gYnV0IGl0IGxv
-b2tzIGxpa2Ugd2UgY3VycmVudGx5IHRlYXIgZG93biB0aGUgY29ubmVjdGlvbiBpbiAzIGRpZmZl
-cmVudA0KPiB3YXlzOg0KPiANCj4geHNfY2xvc2U6IHdoaWNoIGJhc2ljYWxseSBjYWxscyBzb2Nr
-X3JlbGVhc2UgYW5kIGdldHMgcmlkIG9mIG91cg0KPiByZWZlcmVuY2UgdG8gYW4gZXhpc3Rpbmcg
-c29ja2V0LiBNb3N0IG9mIHRoZSBwbGFjZXMgd2hlcmUgd2UgZGlzY29ubmVjdA0KPiB0aGUgc29j
-a2V0IHVzZSB0aGlzLiBBZnRlciB0aGlzLCB3ZSBlbmQgdXAgd2l0aCBzcmNwb3J0ID09IDAgd2hp
-Y2gNCj4gbWFrZXMgaXQgcGljayBhIG5ldyBwb3J0Lg0KPiANCj4geHNfdGNwX3NodXRkb3duOiB3
-aGljaCBjYWxscyAtPnNodXRkb3duIG9uIGl0LCBidXQgZG9lc24ndCBmcmVlDQo+IGFueXRoaW5n
-LiBUaGlzIGFsc28gcHJlc2VydmVzIHRoZSBleGlzdGluZyBzcmNwb3J0Lg0KPiANCj4geHNfYWJv
-cnRfY29ubmVjdGlvbjogY2FsbHMga2VybmVsX2Nvbm5lY3QgdG8gcmVjb25uZWN0IHRoZSBzb2Nr
-ZXQgdG8NCj4gQUZfVU5TUEVDIGFkZHJlc3MgKGVmZmVjdGl2ZWx5IGRpc2Nvbm5lY3RpbmcgaXQ/
-KS4gVGhpcyBhbHNvIHByZXNlcnZlcw0KPiB0aGUgc3JjcG9ydC4gSSBndWVzcyB3ZSB1c2UgdGhp
-cyBqdXN0IGJlZm9yZSByZWNvbm5lY3Rpbmcgd2hlbiB0aGUNCj4gcmVtb3RlIGVuZCBkcm9wcyB0
-aGUgY29ubmVjdGlvbiwgc2luY2Ugd2UgZG9uJ3QgbmVlZCB0byBiZSBncmFjZWZ1bA0KPiBhYm91
-dCB0ZWFyaW5nIGFueXRoaW5nIGRvd24gYXQgdGhhdCBwb2ludC4NCj4gDQo+IFRoZSBsYXN0IG9u
-ZSBhY3R1YWxseSBkb2VzIHJldXNlIHRoZSBzYW1lIHNvY2tldCwgc28gbXkgdGhpbmtpbmcgd2Fz
-DQo+IHRoYXQgd2UgY291bGQgZXh0ZW5kIHRoYXQgc2NoZW1lIHRvIHRoZSBvdGhlciBjYXNlcy4g
-SWYgd2UgY2FsbGVkDQo+IC0+c2h1dGRvd24gb24gaXQgYW5kIHRoZW4gcmVjb25uZWN0ZWQgaXQg
-dG8gQUZfVU5TUEVDLCB3b3VsZCB0aGF0DQo+ICJyZXNldCIgaXQgYmFjayB0byBhIHVzYWJsZSBz
-dGF0ZT8NCg0KTm90IHRoYXQgSSdtIGF3YXJlIG9mLiBUaGUgcHJvYmxlbSBpcyB0aGF0IG1vc3Qg
-b2YgdGhpcyBzdHVmZiBpcw0KdW5kb2N1bWVudGVkLiBGb3IgaW5zdGFuY2UsIHRoZSBBRl9VTlNQ
-RUMgcmVjb25uZWN0IGlzIGRvY3VtZW50ZWQgb25seQ0KZm9yIFVEUCBjb25uZWN0aW9ucy4gV2hp
-bGUgTGludXggaW1wbGVtZW50cyBpdCBmb3IgVENQIHRvbywgdGhlcmUgaXMgbm8NCnNwZWMgKHRo
-YXQgSSdtIGF3YXJlIG9mKSB0aGF0IGV4cGxhaW5zIGhvdyB0aGF0IHNob3VsZCB3b3JrLg0KDQo+
-IElmIHRoZXJlIHJlYWxseSBpcyBubyBhbHRlcm5hdGl2ZSB0byBmcmVlaW5nIHRoZSBzb2NrZXQs
-IHRoZW4gdGhlIG9ubHkNCj4gcmVhbCBmaXggSSBjYW4gc2VlIGlzIHRvIHNldCBQRl9NRU1BTExP
-QyB3aGVuIHdlIGdvIHRvIGNyZWF0ZSBpdCBhbmQNCj4gdGhlbiByZXNldCBpdCBhZnRlcndhcmQu
-IFRoYXQncyBhIHByZXR0eSB1Z2x5IGZpeCB0aG91Z2guLi4NCg0KQWdyZWVkLi4uDQoNCi0tIA0K
-VHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpU
-cm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c |   12 +++++++++++-
+ 1 files changed, 11 insertions(+), 1 deletions(-)
+
+diff --git a/fs/namei.c b/fs/namei.c
+index 7fccc1c..7fadc99 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2955,8 +2955,14 @@ static long do_unlinkat(int dfd, const char __user *pathname)
+ 	struct dentry *dentry;
+ 	struct nameidata nd;
+ 	struct inode *inode = NULL;
++	unsigned int try = 0;
++	unsigned int lookup_flags = LOOKUP_PARENT;
+ 
+-	error = user_path_parent(dfd, pathname, &nd, &name);
++	name = getname(pathname);
++	if (IS_ERR(name))
++		return PTR_ERR(name);
++retry:
++	error = do_path_lookup(dfd, name, lookup_flags, &nd);
+ 	if (error)
+ 		return error;
+ 
+@@ -2994,6 +3000,10 @@ exit3:
+ 		iput(inode);	/* truncate the inode here */
+ exit1:
+ 	path_put(&nd.path);
++	if (retry_estale(error, try++)) {
++		lookup_flags |= LOOKUP_REVAL;
++		goto retry;
++	}
+ 	putname(name);
+ 	return error;
+ 
+-- 
+1.7.7.6
+
