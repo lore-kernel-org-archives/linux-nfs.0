@@ -1,93 +1,156 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga01.intel.com ([192.55.52.88]:4335 "EHLO mga01.intel.com"
+Received: from cantor2.suse.de ([195.135.220.15]:45707 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760334Ab2FHXaO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Jun 2012 19:30:14 -0400
-Date: Sat, 9 Jun 2012 02:31:27 +0300
-From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+	id S932257Ab2F2Ndf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Jun 2012 09:33:35 -0400
+From: Mel Gorman <mgorman@suse.de>
 To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Al Viro <viro@ZenIV.linux.org.uk>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Boaz Harrosh <bharrosh@panasas.com>, Tao Ma <boyu.mt@taobao.com>,
-        Nick Piggin <npiggin@kernel.dk>, "Dmitry V. Levin" <ldv@altlinux.org>,
-        v9fs-developer@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
-        linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        codalist@TELEMANN.coda.cs.cmu.edu, ecryptfs@vger.kernel.org,
-        osd-dev@open-osd.org, linux-ext4@vger.kernel.org,
-        fuse-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
-        jfs-discussion@lists.sourceforge.net, logfs@logfs.org,
-        linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
-        reiserfs-devel@vger.kernel.org
-Subject: Re: [RFC, PATCH, RESEND] fs: push rcu_barrier() from
- deactivate_locked_super() to filesystems
-Message-ID: <20120608233127.GB18981@otc-wbsnb-06>
-References: <1339191663-17693-1-git-send-email-kirill.shutemov@linux.intel.com>
- <20120608150253.e42464a6.akpm@linux-foundation.org>
- <20120608221446.GA18250@otc-wbsnb-06>
- <20120608152550.258d6a30.akpm@linux-foundation.org>
- <20120608222734.GT30000@ZenIV.linux.org.uk>
- <20120608153120.b722d7c3.akpm@linux-foundation.org>
-MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="3uo+9/B/ebqu+fSQ"
-In-Reply-To: <20120608153120.b722d7c3.akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>,
+        Sebastian Andrzej Siewior <sebastian@breakpoint.cc>,
+        Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 06/12] mm: Add get_kernel_page[s] for pinning of kernel addresses for I/O
+Date: Fri, 29 Jun 2012 14:33:19 +0100
+Message-Id: <1340976805-5799-7-git-send-email-mgorman@suse.de>
+In-Reply-To: <1340976805-5799-1-git-send-email-mgorman@suse.de>
+References: <1340976805-5799-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This patch adds two new APIs get_kernel_pages() and get_kernel_page()
+that may be used to pin a vector of kernel addresses for IO. The initial
+user is expected to be NFS for allowing pages to be written to swap
+using aops->direct_IO(). Strictly speaking, swap-over-NFS only needs
+to pin one page for IO but it makes sense to express the API in terms
+of a vector and add a helper for pinning single pages.
 
---3uo+9/B/ebqu+fSQ
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+Reviewed-by: Rik van Riel <riel@redhat.com>
+---
+ include/linux/blk_types.h |    2 ++
+ include/linux/fs.h        |    2 ++
+ include/linux/mm.h        |    4 ++++
+ mm/memory.c               |   53 +++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 61 insertions(+)
 
-On Fri, Jun 08, 2012 at 03:31:20PM -0700, Andrew Morton wrote:
-> On Fri, 8 Jun 2012 23:27:34 +0100
-> Al Viro <viro@ZenIV.linux.org.uk> wrote:
->=20
-> > On Fri, Jun 08, 2012 at 03:25:50PM -0700, Andrew Morton wrote:
-> >=20
-> > > A neater implementation might be to add a kmem_cache* argument to
-> > > unregister_filesystem().  If that is non-NULL, unregister_filesystem()
-> > > does the rcu_barrier() and destroys the cache.  That way we get to
-> > > delete (rather than add) a bunch of code from all filesystems and new
-> > > and out-of-tree filesystems cannot forget to perform the rcu_barrier(=
-).
-> >=20
-> > There's often enough more than one cache, so that one is no-go.
->=20
-> kmem_cache** ;)
->=20
-> Which filesystems have multiple inode caches?
+diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
+index 0edb65d..7b7ac9c 100644
+--- a/include/linux/blk_types.h
++++ b/include/linux/blk_types.h
+@@ -160,6 +160,7 @@ enum rq_flag_bits {
+ 	__REQ_FLUSH_SEQ,	/* request for flush sequence */
+ 	__REQ_IO_STAT,		/* account I/O stat */
+ 	__REQ_MIXED_MERGE,	/* merge of different types, fail separately */
++	__REQ_KERNEL, 		/* direct IO to kernel pages */
+ 	__REQ_NR_BITS,		/* stops here */
+ };
+ 
+@@ -201,5 +202,6 @@ enum rq_flag_bits {
+ #define REQ_IO_STAT		(1 << __REQ_IO_STAT)
+ #define REQ_MIXED_MERGE		(1 << __REQ_MIXED_MERGE)
+ #define REQ_SECURE		(1 << __REQ_SECURE)
++#define REQ_KERNEL		(1 << __REQ_KERNEL)
+ 
+ #endif /* __LINUX_BLK_TYPES_H */
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 006aa85..c2a4554 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -165,6 +165,8 @@ struct inodes_stat_t {
+ #define READ			0
+ #define WRITE			RW_MASK
+ #define READA			RWA_MASK
++#define KERNEL_READ		(READ|REQ_KERNEL)
++#define KERNEL_WRITE		(WRITE|REQ_KERNEL)
+ 
+ #define READ_SYNC		(READ | REQ_SYNC)
+ #define WRITE_SYNC		(WRITE | REQ_SYNC | REQ_NOIDLE)
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index b3d4cd9..bbb3167 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -1019,6 +1019,10 @@ int get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
+ 			struct page **pages, struct vm_area_struct **vmas);
+ int get_user_pages_fast(unsigned long start, int nr_pages, int write,
+ 			struct page **pages);
++struct kvec;
++int get_kernel_pages(const struct kvec *iov, int nr_pages, int write,
++			struct page **pages);
++int get_kernel_page(unsigned long start, int write, struct page **pages);
+ struct page *get_dump_page(unsigned long addr);
+ 
+ extern int try_to_release_page(struct page * page, gfp_t gfp_mask);
+diff --git a/mm/memory.c b/mm/memory.c
+index 6322d36..c8153f5 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -1843,6 +1843,59 @@ next_page:
+ EXPORT_SYMBOL(__get_user_pages);
+ 
+ /*
++ * get_kernel_pages() - pin kernel pages in memory
++ * @kiov:	An array of struct kvec structures
++ * @nr_segs:	number of segments to pin
++ * @write:	pinning for read/write, currently ignored
++ * @pages:	array that receives pointers to the pages pinned.
++ *		Should be at least nr_segs long.
++ *
++ * Returns number of pages pinned. This may be fewer than the number
++ * requested. If nr_pages is 0 or negative, returns 0. If no pages
++ * were pinned, returns -errno. Each page returned must be released
++ * with a put_page() call when it is finished with.
++ */
++int get_kernel_pages(const struct kvec *kiov, int nr_segs, int write,
++		struct page **pages)
++{
++	int seg;
++
++	for (seg = 0; seg < nr_segs; seg++) {
++		if (WARN_ON(kiov[seg].iov_len != PAGE_SIZE))
++			return seg;
++
++		/* virt_to_page sanity checks the PFN */
++		pages[seg] = virt_to_page(kiov[seg].iov_base);
++		page_cache_get(pages[seg]);
++	}
++
++	return seg;
++}
++EXPORT_SYMBOL_GPL(get_kernel_pages);
++
++/*
++ * get_kernel_page() - pin a kernel page in memory
++ * @start:	starting kernel address
++ * @write:	pinning for read/write, currently ignored
++ * @pages:	array that receives pointer to the page pinned.
++ *		Must be at least nr_segs long.
++ *
++ * Returns 1 if page is pinned. If the page was not pinned, returns
++ * -errno. The page returned must be released with a put_page() call
++ * when it is finished with.
++ */
++int get_kernel_page(unsigned long start, int write, struct page **pages)
++{
++	const struct kvec kiov = {
++		.iov_base = (void *)start,
++		.iov_len = PAGE_SIZE
++	};
++
++	return get_kernel_pages(&kiov, 1, write, pages);
++}
++EXPORT_SYMBOL_GPL(get_kernel_page);
++
++/*
+  * fixup_user_fault() - manually resolve a user page fault
+  * @tsk:	the task_struct to use for page fault accounting, or
+  *		NULL if faults are not to be recorded.
+-- 
+1.7.9.2
 
-Multiple inode caches? No.
-Multiple caches with call_rcu() free? See btrfs or gfs2.
-
---=20
- Kirill A. Shutemov
-
---3uo+9/B/ebqu+fSQ
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iQIcBAEBAgAGBQJP0otPAAoJEAd+omnVudOM8pEP/j4da9wjUyer1zimYCUs0oA1
-EQKJF+RlKs67b4j9eDRZKS/yDOC11CBemw333suupZugHnUmMrRIfbYw2c4vOsQs
-C8E3glDJ3i6plLquzD2tBNmrs2rFFSEoLXQEuzpDuN5BVKB4ifXqnuwxVX8/lxTN
-x3l81bt7sQvgO3OHL/DfuyVFsRG/N1qfaKJVjLhSFF971vPiz+xfn9uwiB8Be/Sa
-28SBw4eVneaEZotHoNmDJmGH+LpRo0F5sy6gJNmh1VzK7eYN4pCr73f9tIL6x7XM
-GBF84tK8uN8iNPqVoMXh4HtLCbS+q6TvVpHCWqab9u/ajvLPP0vY+Osm6Ryw2Exn
-dnHjxqH9yyOsZmeHFP2osHNHbJMinKGX7iYoSAVuie5fTc27FkdyQkTS66KLpKGJ
-UHCZ/PeDfRtxVo+3gV8g0PQJCWJ2LHz7b4g3q4zK44pNZDeyslgS+gMMG881tCBp
-1Qy9Xq6Hb8MlkrlDY43hz4suQRCibG1nBZK37Ni02fEcj6S2lD6gsu5J91gNEEkc
-49Ry0vBmCMRT+Zsl4YP9PPKSfsPG+2oTpf06xV8V+rApqwZ6nKBpWqyuJuVVpxIT
-e/wamM+Ff6Ni6DVkXyXTO99wkSLHjdM+HL2MwhzQ38KMLrBAfzzZ8nGn67PahR/5
-9q5U5UjNlz2F387CCYaK
-=It/C
------END PGP SIGNATURE-----
-
---3uo+9/B/ebqu+fSQ--
