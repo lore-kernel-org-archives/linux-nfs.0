@@ -1,82 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp10.mail.sp.isp-net.nl ([217.149.192.65]:42403 "EHLO
-	smtp10.mail.sp.isp-net.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S964826Ab2FHUv7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jun 2012 16:51:59 -0400
-Message-ID: <4FD265E9.3030309@xmsnet.nl>
-Date: Fri, 08 Jun 2012 22:51:53 +0200
-From: Hans de Bruin <jmdebruin@xmsnet.nl>
-MIME-Version: 1.0
-To: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Jeff Layton <jlayton@redhat.com>
-Subject: Re: nfsroot client will not start firefox or thunderbird from 3.4.0
- nfsserver
-References: <4FC3F9F6.7010107@xmsnet.nl>
-In-Reply-To: <4FC3F9F6.7010107@xmsnet.nl>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:46821 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932763Ab2F2S6a (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jun 2012 14:58:30 -0400
+Received: by mail-yx0-f174.google.com with SMTP id l2so3038060yen.19
+        for <linux-nfs@vger.kernel.org>; Fri, 29 Jun 2012 11:58:30 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v3 16/17] vfs: have do_sys_truncate retry once on an ESTALE error
+Date: Fri, 29 Jun 2012 14:57:59 -0400
+Message-Id: <1340996280-27123-17-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
+References: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/29/2012 12:19 AM, Hans de Bruin wrote:
-> I just upgraded my home server from kernel 3.3.5 to 3.4.0 and ran into
-> some trouble. My laptop, a nfsroot client, will not run firefox and
-> thunderbird anymore. When I start these programs from an xterm, the
-> cursor goes to the next line and waits indefinitely.
->
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/open.c |   92 +++++++++++++++++++++++++++++++++---------------------------
+ 1 files changed, 51 insertions(+), 41 deletions(-)
 
-I have bisected this to
-
-
-commit f3f8014862d813cca81a597c83bd1dbf0fb2b8f6
-Author: Jeff Layton <jlayton@redhat.com>
-Date:   Wed Mar 21 09:52:07 2012 -0400
-
-     nfsd: add the infrastructure to handle the cld upcall
-
-     ...and add a mechanism for switching between the "legacy" tracker and
-     the new one. The decision is made by looking to see whether the
-     v4recoverydir exists. If it does, then the legacy client tracker is
-     used.
-
-There are two buts. First git will not revert this, so I can not confirm 
-this as the bad commit. Seceond, the previous step in the bisect 
-resulted in the client not being able to start X at all:
-
-The bisect step before that:
-
-commit 813fd320c16691eac508fe350b4ee7362c6c4a56
-Author: Jeff Layton <jlayton@redhat.com>
-Date:   Wed Mar 21 09:52:08 2012 -0400
-
-     nfsd: add notifier to handle mount/unmount of rpc_pipefs sb
-
-     In the event that rpc_pipefs isn't mounted when nfsd starts, we
-     must register a notifier to handle creating the dentry once it
-     is mounted, and to remove the dentry on unmount.
-
-
-
-The tail of my bisect log
-
-# bad: [cc27e0d407021a278d08c1952f5af4ab38c49eda]
-nfsd: don't allow legacy client tracker init for anything but init_net
-git bisect bad cc27e0d407021a278d08c1952f5af4ab38c49eda
-# good: [ab4684d1560f8d77f6ce82bd3f1f82937070d397]
-NFSD: Fix nfs4_verifier memory alignment
-git bisect good ab4684d1560f8d77f6ce82bd3f1f82937070d397
-# good: [b3537c35c21f0e6750aa8bd786949b55509c6d0d]
-sunrpc: create nfsd dir in rpc_pipefs
-git bisect good b3537c35c21f0e6750aa8bd786949b55509c6d0d
-# good: [0ab628d856a63d63b47307b09851d1e955c706ac]
-nfsd: add a header describing upcall to nfsdcld
-git bisect good 0ab628d856a63d63b47307b09851d1e955c706ac
-# bad: [813fd320c16691eac508fe350b4ee7362c6c4a56]
-nfsd: add notifier to handle mount/unmount of rpc_pipefs sb
-git bisect bad 813fd320c16691eac508fe350b4ee7362c6c4a56
-# bad: [f3f8014862d813cca81a597c83bd1dbf0fb2b8f6]
-nfsd: add the infrastructure to handle the cld upcall
-git bisect bad f3f8014862d813cca81a597c83bd1dbf0fb2b8f6
-
-
+diff --git a/fs/open.c b/fs/open.c
+index 5af0872..e813d90 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -66,62 +66,72 @@ static long do_sys_truncate(const char __user *pathname, loff_t length)
+ 	struct path path;
+ 	struct inode *inode;
+ 	int error;
++	unsigned int lookup_flags = LOOKUP_FOLLOW;
++	unsigned int try = 0;
++	char *name;
+ 
+-	error = -EINVAL;
+ 	if (length < 0)	/* sorry, but loff_t says... */
+-		goto out;
++		return -EINVAL;
+ 
+-	error = user_path(pathname, &path);
+-	if (error)
+-		goto out;
+-	inode = path.dentry->d_inode;
++	name = getname_flags(pathname, lookup_flags, NULL);
++	if (IS_ERR(name))
++		return PTR_ERR(name);
+ 
+-	/* For directories it's -EISDIR, for other non-regulars - -EINVAL */
+-	error = -EISDIR;
+-	if (S_ISDIR(inode->i_mode))
+-		goto dput_and_out;
++	do {
++		error = kern_path_at(AT_FDCWD, name, lookup_flags, &path);
++		if (error)
++			break;
++		inode = path.dentry->d_inode;
+ 
+-	error = -EINVAL;
+-	if (!S_ISREG(inode->i_mode))
+-		goto dput_and_out;
++		/* For dirs, -EISDIR. For other non-regulars, -EINVAL */
++		error = -EISDIR;
++		if (S_ISDIR(inode->i_mode))
++			goto dput_and_out;
+ 
+-	error = mnt_want_write(path.mnt);
+-	if (error)
+-		goto dput_and_out;
++		error = -EINVAL;
++		if (!S_ISREG(inode->i_mode))
++			goto dput_and_out;
+ 
+-	error = inode_permission(inode, MAY_WRITE);
+-	if (error)
+-		goto mnt_drop_write_and_out;
++		error = mnt_want_write(path.mnt);
++		if (error)
++			goto dput_and_out;
+ 
+-	error = -EPERM;
+-	if (IS_APPEND(inode))
+-		goto mnt_drop_write_and_out;
++		error = inode_permission(inode, MAY_WRITE);
++		if (error)
++			goto mnt_drop_write_and_out;
+ 
+-	error = get_write_access(inode);
+-	if (error)
+-		goto mnt_drop_write_and_out;
++		error = -EPERM;
++		if (IS_APPEND(inode))
++			goto mnt_drop_write_and_out;
+ 
+-	/*
+-	 * Make sure that there are no leases.  get_write_access() protects
+-	 * against the truncate racing with a lease-granting setlease().
+-	 */
+-	error = break_lease(inode, O_WRONLY);
+-	if (error)
+-		goto put_write_and_out;
++		error = get_write_access(inode);
++		if (error)
++			goto mnt_drop_write_and_out;
+ 
+-	error = locks_verify_truncate(inode, NULL, length);
+-	if (!error)
+-		error = security_path_truncate(&path);
+-	if (!error)
+-		error = do_truncate(path.dentry, length, 0, NULL);
++		/*
++		 * Make sure that there are no leases. get_write_access()
++		 * protects against the truncate racing with a lease-granting
++		 * setlease().
++		 */
++		error = break_lease(inode, O_WRONLY);
++		if (error)
++			goto put_write_and_out;
++
++		error = locks_verify_truncate(inode, NULL, length);
++		if (!error)
++			error = security_path_truncate(&path);
++		if (!error)
++			error = do_truncate(path.dentry, length, 0, NULL);
+ 
+ put_write_and_out:
+-	put_write_access(inode);
++		put_write_access(inode);
+ mnt_drop_write_and_out:
+-	mnt_drop_write(path.mnt);
++		mnt_drop_write(path.mnt);
+ dput_and_out:
+-	path_put(&path);
+-out:
++		path_put(&path);
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
++	putname(name);
+ 	return error;
+ }
+ 
 -- 
-Hans
+1.7.7.6
+
