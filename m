@@ -1,114 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:57284 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752296Ab2FLOVF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Jun 2012 10:21:05 -0400
-From: Jan Kara <jack@suse.cz>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: LKML <linux-kernel@vger.kernel.org>, linux-fsdevel@suse.cz,
-        Jan Kara <jack@suse.cz>, Alex Elder <elder@kernel.org>,
-        Anton Altaparmakov <anton@tuxera.com>, Ben Myers <bpm@sgi.com>,
-        Chris Mason <chris.mason@oracle.com>, cluster-devel@redhat.com,
-        "David S. Miller" <davem@davemloft.net>,
-        fuse-devel@lists.sourceforge.net,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Joel Becker <jlbec@evilplan.org>,
-        KONISHI Ryusuke <konishi.ryusuke@lab.ntt.co.jp>,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net, Mark Fasheh <mfasheh@suse.com>,
-        Miklos Szeredi <miklos@szeredi.hu>, ocfs2-devel@oss.oracle.com,
-        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-        Steven Whitehouse <swhiteho@redhat.com>,
-        "Theodore Ts'o" <tytso@mit.edu>, xfs@oss.sgi.com
-Subject: [PATCH 00/27 v7] Fix filesystem freezing deadlocks
-Date: Tue, 12 Jun 2012 16:20:21 +0200
-Message-Id: <1339510848-16992-1-git-send-email-jack@suse.cz>
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:45936 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932794Ab2F2S6b (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jun 2012 14:58:31 -0400
+Received: by mail-gg0-f174.google.com with SMTP id u4so3043915ggl.19
+        for <linux-nfs@vger.kernel.org>; Fri, 29 Jun 2012 11:58:31 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v3 17/17] vfs: have faccessat retry once on an ESTALE error
+Date: Fri, 29 Jun 2012 14:58:00 -0400
+Message-Id: <1340996280-27123-18-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
+References: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-  Hello,
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/open.c |   70 ++++++++++++++++++++++++++++++++++--------------------------
+ 1 files changed, 40 insertions(+), 30 deletions(-)
 
-  here is the seventh iteration of my patches to improve filesystem freezing.
-I've rebased patches on top of 3.5-rc2 as Al requested. Otherwise I've just
-fixed some outdated text in the introduction below and added one ack.
+diff --git a/fs/open.c b/fs/open.c
+index e813d90..2bdc531 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -313,6 +313,9 @@ SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
+ 	struct path path;
+ 	struct inode *inode;
+ 	int res;
++	unsigned int lookup_flags = LOOKUP_FOLLOW;
++	unsigned int try = 0;
++	char *name;
+ 
+ 	if (mode & ~S_IRWXO)	/* where's F_OK, X_OK, W_OK, R_OK? */
+ 		return -EINVAL;
+@@ -334,44 +337,51 @@ SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
+ 				override_cred->cap_permitted;
+ 	}
+ 
++	name = getname_flags(filename, lookup_flags, NULL);
++	if (IS_ERR(name))
++		return PTR_ERR(name);
++
+ 	old_cred = override_creds(override_cred);
+ 
+-	res = user_path_at(dfd, filename, LOOKUP_FOLLOW, &path);
+-	if (res)
+-		goto out;
++	do {
++		res = kern_path_at(dfd, name, lookup_flags, &path);
++		if (res)
++			break;
+ 
+-	inode = path.dentry->d_inode;
++		inode = path.dentry->d_inode;
+ 
+-	if ((mode & MAY_EXEC) && S_ISREG(inode->i_mode)) {
++		if ((mode & MAY_EXEC) && S_ISREG(inode->i_mode)) {
++			/*
++			 * MAY_EXEC on regular files is denied if the fs is
++			 * mounted with the "noexec" flag.
++			 */
++			res = -EACCES;
++			if (path.mnt->mnt_flags & MNT_NOEXEC)
++				goto out_path_release;
++		}
++
++		res = inode_permission(inode, mode | MAY_ACCESS);
++		/* SuS v2 requires we report a read only fs too */
++		if (res || !(mode & S_IWOTH) || special_file(inode->i_mode))
++			goto out_path_release;
+ 		/*
+-		 * MAY_EXEC on regular files is denied if the fs is mounted
+-		 * with the "noexec" flag.
++		 * This is a rare case where using __mnt_is_readonly()
++		 * is OK without a mnt_want/drop_write() pair.  Since
++		 * no actual write to the fs is performed here, we do
++		 * not need to telegraph to that to anyone.
++		 *
++		 * By doing this, we accept that this access is
++		 * inherently racy and know that the fs may change
++		 * state before we even see this result.
+ 		 */
+-		res = -EACCES;
+-		if (path.mnt->mnt_flags & MNT_NOEXEC)
+-			goto out_path_release;
+-	}
+-
+-	res = inode_permission(inode, mode | MAY_ACCESS);
+-	/* SuS v2 requires we report a read only fs too */
+-	if (res || !(mode & S_IWOTH) || special_file(inode->i_mode))
+-		goto out_path_release;
+-	/*
+-	 * This is a rare case where using __mnt_is_readonly()
+-	 * is OK without a mnt_want/drop_write() pair.  Since
+-	 * no actual write to the fs is performed here, we do
+-	 * not need to telegraph to that to anyone.
+-	 *
+-	 * By doing this, we accept that this access is
+-	 * inherently racy and know that the fs may change
+-	 * state before we even see this result.
+-	 */
+-	if (__mnt_is_readonly(path.mnt))
+-		res = -EROFS;
++		if (__mnt_is_readonly(path.mnt))
++			res = -EROFS;
+ 
+ out_path_release:
+-	path_put(&path);
+-out:
++		path_put(&path);
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(res, try++));
++	putname(name);
+ 	revert_creds(old_cred);
+ 	put_cred(override_cred);
+ 	return res;
+-- 
+1.7.7.6
 
-Introductory text to first time readers:
-
-Filesystem freezing is currently racy and thus we can end up with dirty data on
-frozen filesystem (see changelog patch 13 for detailed race description). This
-patch series aims at fixing this.
-
-To be able to block all places where inodes get dirtied, I've moved filesystem
-file_update_time() call to ->page_mkwrite callback (patches 01-07) and put
-freeze handling in mnt_want_write() / mnt_drop_write(). That however required
-some code shuffling and changes to kern_path_create() (see patches 09-12). I
-think the result is OK but opinions may differ ;). The advantage of this change
-also is that all filesystems get freeze protection almost for free - even ext2
-can handle freezing well now.
-
-I'm not able to hit any deadlocks, lockdep warnings, or dirty data on frozen
-filesystem despite beating it with fsstress, bash-shared-mapping, and
-aio-stress while freezing and unfreezing for several hours (using ext4 and xfs)
-so I'm reasonably confident this could finally be the right solution.
-
-Changes since v6:
-  * rebased on 3.5-rc2
-  * added ack
-
-Changes since v5:
-  * handle unlinked & open files on frozen filesystem
-  * lockdep keys for freeze protection are now per filesystem type
-  * taught lockdep that freeze protection at lower level does not create
-    dependency when we already hold freeze protection at higher level 
-  * rebased on 3.5-rc1-ish
-
-Changes since v4:
-  * added a couple of Acked-by's
-  * added some comments & doc update
-  * added patches from series "Push file_update_time() into .page_mkwrite"
-    since it doesn't make much sense to keep them separate anymore
-  * rebased on top of 3.4-rc2
-
-Changes since v3:
-  * added third level of freezing for fs internal purposes - hooked some
-    filesystems to use it (XFS, nilfs2)
-  * removed racy i_size check from filemap_mkwrite()
-
-Changes since v2:
-  * completely rewritten
-  * freezing is now blocked at VFS entry points
-  * two stage freezing to handle both mmapped writes and other IO
-
-The biggest changes since v1:
-  * have two counters to provide safe state transitions for SB_FREEZE_WRITE
-    and SB_FREEZE_TRANS states
-  * use percpu counters instead of own percpu structure
-  * added documentation fixes from the old fs freezing series
-  * converted XFS to use SB_FREEZE_TRANS counter instead of its private
-    m_active_trans counter
-
-								Honza
-
-CC: Alex Elder <elder@kernel.org>
-CC: Anton Altaparmakov <anton@tuxera.com>
-CC: Ben Myers <bpm@sgi.com>
-CC: Chris Mason <chris.mason@oracle.com>
-CC: cluster-devel@redhat.com
-CC: "David S. Miller" <davem@davemloft.net>
-CC: fuse-devel@lists.sourceforge.net
-CC: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Joel Becker <jlbec@evilplan.org>
-CC: KONISHI Ryusuke <konishi.ryusuke@lab.ntt.co.jp>
-CC: linux-btrfs@vger.kernel.org
-CC: linux-ext4@vger.kernel.org
-CC: linux-nfs@vger.kernel.org
-CC: linux-nilfs@vger.kernel.org
-CC: linux-ntfs-dev@lists.sourceforge.net
-CC: Mark Fasheh <mfasheh@suse.com>
-CC: Miklos Szeredi <miklos@szeredi.hu>
-CC: ocfs2-devel@oss.oracle.com
-CC: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
-CC: Steven Whitehouse <swhiteho@redhat.com>
-CC: "Theodore Ts'o" <tytso@mit.edu>
-CC: xfs@oss.sgi.com
