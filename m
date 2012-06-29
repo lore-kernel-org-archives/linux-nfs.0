@@ -1,168 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:33687 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762354Ab2FVObV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Jun 2012 10:31:21 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 09/12] nfs: disable data cache revalidation for swapfiles
-Date: Fri, 22 Jun 2012 15:31:05 +0100
-Message-Id: <1340375468-22509-10-git-send-email-mgorman@suse.de>
-In-Reply-To: <1340375468-22509-1-git-send-email-mgorman@suse.de>
-References: <1340375468-22509-1-git-send-email-mgorman@suse.de>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:50231 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932625Ab2F2S6O (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jun 2012 14:58:14 -0400
+Received: by yenl2 with SMTP id l2so3038206yen.19
+        for <linux-nfs@vger.kernel.org>; Fri, 29 Jun 2012 11:58:13 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v3 04/17] vfs: fix readlinkat to retry on ESTALE
+Date: Fri, 29 Jun 2012 14:57:47 -0400
+Message-Id: <1340996280-27123-5-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
+References: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The VM does not like PG_private set on PG_swapcache pages. As suggested
-by Trond in http://lkml.org/lkml/2006/8/25/348, this patch disables
-NFS data cache revalidation on swap files.  as it does not make
-sense to have other clients change the file while it is being used as
-swap. This avoids setting PG_private on swap pages, since there ought
-to be no further races with invalidate_inode_pages2() to deal with.
-
-Since we cannot set PG_private we cannot use page->private which
-is already used by PG_swapcache pages to store the nfs_page. Thus
-augment the new nfs_page_find_request logic.
-
-Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
-Acked-by: Rik van Riel <riel@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/inode.c |    4 ++++
- fs/nfs/write.c |   49 +++++++++++++++++++++++++++++++++++--------------
- 2 files changed, 39 insertions(+), 14 deletions(-)
+ fs/stat.c |   21 +++++++++++++++++----
+ 1 files changed, 17 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index edecd05..90810a4 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -883,6 +883,10 @@ int nfs_revalidate_mapping(struct inode *inode, struct address_space *mapping)
- 	struct nfs_inode *nfsi = NFS_I(inode);
- 	int ret = 0;
+diff --git a/fs/stat.c b/fs/stat.c
+index 5afeb37..c9d88f7 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -307,14 +307,25 @@ SYSCALL_DEFINE4(readlinkat, int, dfd, const char __user *, pathname,
+ 	struct path path;
+ 	int error;
+ 	int empty = 0;
++	char *name;
++	unsigned int try = 0;
++	unsigned int lookup_flags = LOOKUP_EMPTY;
  
-+	/* swapfiles are not supposed to be shared. */
-+	if (IS_SWAPFILE(inode))
-+		goto out;
+ 	if (bufsiz <= 0)
+ 		return -EINVAL;
+ 
+-	error = user_path_at_empty(dfd, pathname, LOOKUP_EMPTY, &path, &empty);
+-	if (!error) {
+-		struct inode *inode = path.dentry->d_inode;
++	name = getname_flags(pathname, lookup_flags, &empty);
++	if (IS_ERR(name))
++		return PTR_ERR(name);
 +
- 	if (nfs_mapping_need_revalidate_inode(inode)) {
- 		ret = __nfs_revalidate_inode(NFS_SERVER(inode), inode);
- 		if (ret < 0)
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index f6a8ebc..947e1e6 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -139,15 +139,28 @@ static void nfs_context_set_write_error(struct nfs_open_context *ctx, int error)
- 	set_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
++	do {
++		struct inode *inode;
++
++		error = kern_path_at(dfd, name, lookup_flags, &path);
++		if (error)
++			break;
+ 
++		inode = path.dentry->d_inode;
+ 		error = empty ? -ENOENT : -EINVAL;
+ 		if (inode->i_op->readlink) {
+ 			error = security_inode_readlink(path.dentry);
+@@ -325,7 +336,9 @@ SYSCALL_DEFINE4(readlinkat, int, dfd, const char __user *, pathname,
+ 			}
+ 		}
+ 		path_put(&path);
+-	}
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
++	putname(name);
+ 	return error;
  }
  
--static struct nfs_page *nfs_page_find_request_locked(struct page *page)
-+static struct nfs_page *
-+nfs_page_find_request_locked(struct nfs_inode *nfsi, struct page *page)
- {
- 	struct nfs_page *req = NULL;
- 
--	if (PagePrivate(page)) {
-+	if (PagePrivate(page))
- 		req = (struct nfs_page *)page_private(page);
--		if (req != NULL)
--			kref_get(&req->wb_kref);
-+	else if (unlikely(PageSwapCache(page))) {
-+		struct nfs_page *freq, *t;
-+
-+		/* Linearly search the commit list for the correct req */
-+		list_for_each_entry_safe(freq, t, &nfsi->commit_info.list, wb_list) {
-+			if (freq->wb_page == page) {
-+				req = freq;
-+				break;
-+			}
-+		}
- 	}
-+
-+	if (req)
-+		kref_get(&req->wb_kref);
-+
- 	return req;
- }
- 
-@@ -157,7 +170,7 @@ static struct nfs_page *nfs_page_find_request(struct page *page)
- 	struct nfs_page *req = NULL;
- 
- 	spin_lock(&inode->i_lock);
--	req = nfs_page_find_request_locked(page);
-+	req = nfs_page_find_request_locked(NFS_I(inode), page);
- 	spin_unlock(&inode->i_lock);
- 	return req;
- }
-@@ -258,7 +271,7 @@ static struct nfs_page *nfs_find_and_lock_request(struct page *page, bool nonblo
- 
- 	spin_lock(&inode->i_lock);
- 	for (;;) {
--		req = nfs_page_find_request_locked(page);
-+		req = nfs_page_find_request_locked(NFS_I(inode), page);
- 		if (req == NULL)
- 			break;
- 		if (nfs_lock_request(req))
-@@ -412,9 +425,15 @@ static void nfs_inode_add_request(struct inode *inode, struct nfs_page *req)
- 	spin_lock(&inode->i_lock);
- 	if (!nfsi->npages && nfs_have_delegation(inode, FMODE_WRITE))
- 		inode->i_version++;
--	set_bit(PG_MAPPED, &req->wb_flags);
--	SetPagePrivate(req->wb_page);
--	set_page_private(req->wb_page, (unsigned long)req);
-+	/*
-+	 * Swap-space should not get truncated. Hence no need to plug the race
-+	 * with invalidate/truncate.
-+	 */
-+	if (likely(!PageSwapCache(req->wb_page))) {
-+		set_bit(PG_MAPPED, &req->wb_flags);
-+		SetPagePrivate(req->wb_page);
-+		set_page_private(req->wb_page, (unsigned long)req);
-+	}
- 	nfsi->npages++;
- 	kref_get(&req->wb_kref);
- 	spin_unlock(&inode->i_lock);
-@@ -431,9 +450,11 @@ static void nfs_inode_remove_request(struct nfs_page *req)
- 	BUG_ON (!NFS_WBACK_BUSY(req));
- 
- 	spin_lock(&inode->i_lock);
--	set_page_private(req->wb_page, 0);
--	ClearPagePrivate(req->wb_page);
--	clear_bit(PG_MAPPED, &req->wb_flags);
-+	if (likely(!PageSwapCache(req->wb_page))) {
-+		set_page_private(req->wb_page, 0);
-+		ClearPagePrivate(req->wb_page);
-+		clear_bit(PG_MAPPED, &req->wb_flags);
-+	}
- 	nfsi->npages--;
- 	spin_unlock(&inode->i_lock);
- 	nfs_release_request(req);
-@@ -729,7 +750,7 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
- 	spin_lock(&inode->i_lock);
- 
- 	for (;;) {
--		req = nfs_page_find_request_locked(page);
-+		req = nfs_page_find_request_locked(NFS_I(inode), page);
- 		if (req == NULL)
- 			goto out_unlock;
- 
-@@ -1744,7 +1765,7 @@ int nfs_wb_page_cancel(struct inode *inode, struct page *page)
-  */
- int nfs_wb_page(struct inode *inode, struct page *page)
- {
--	loff_t range_start = page_offset(page);
-+	loff_t range_start = page_file_offset(page);
- 	loff_t range_end = range_start + (loff_t)(PAGE_CACHE_SIZE - 1);
- 	struct writeback_control wbc = {
- 		.sync_mode = WB_SYNC_ALL,
 -- 
-1.7.9.2
+1.7.7.6
 
