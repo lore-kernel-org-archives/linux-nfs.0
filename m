@@ -1,116 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:46821 "EHLO
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:41418 "EHLO
 	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932689Ab2F2S6T (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jun 2012 14:58:19 -0400
-Received: by mail-yx0-f174.google.com with SMTP id l2so3038060yen.19
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Jun 2012 11:58:19 -0700 (PDT)
+	with ESMTP id S932556Ab2F2S6J (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jun 2012 14:58:09 -0400
+Received: by mail-yx0-f174.google.com with SMTP id l2so3038059yen.19
+        for <linux-nfs@vger.kernel.org>; Fri, 29 Jun 2012 11:58:09 -0700 (PDT)
 From: Jeff Layton <jlayton@redhat.com>
 To: viro@ZenIV.linux.org.uk
 Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
         hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v3 08/17] vfs: fix mknodat to retry on ESTALE errors
-Date: Fri, 29 Jun 2012 14:57:51 -0400
-Message-Id: <1340996280-27123-9-git-send-email-jlayton@redhat.com>
+Subject: [PATCH v3 02/17] vfs: add a kern_path_at function
+Date: Fri, 29 Jun 2012 14:57:45 -0400
+Message-Id: <1340996280-27123-3-git-send-email-jlayton@redhat.com>
 In-Reply-To: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
 References: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This will function like user_path_at, but does not do the getname and
+putname, leaving that to the caller.
+
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/namei.c |   68 +++++++++++++++++++++++++++++++++++------------------------
- 1 files changed, 40 insertions(+), 28 deletions(-)
+ fs/namei.c            |   27 +++++++++++++++++++--------
+ include/linux/namei.h |    1 +
+ 2 files changed, 20 insertions(+), 8 deletions(-)
 
 diff --git a/fs/namei.c b/fs/namei.c
-index 86aa8ee..ef3ccee 100644
+index 196f039..3f46b2f 100644
 --- a/fs/namei.c
 +++ b/fs/namei.c
-@@ -2656,44 +2656,56 @@ SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, umode_t, mode,
- 	struct dentry *dentry;
- 	struct path path;
- 	int error;
-+	char *name;
-+	unsigned int try = 0;
- 
- 	if (S_ISDIR(mode))
- 		return -EPERM;
- 
--	dentry = user_path_create(dfd, filename, &path, 0);
--	if (IS_ERR(dentry))
--		return PTR_ERR(dentry);
-+	name = getname(filename);
-+	if (IS_ERR(name))
-+		return PTR_ERR(name);
- 
--	if (!IS_POSIXACL(path.dentry->d_inode))
--		mode &= ~current_umask();
--	error = may_mknod(mode);
--	if (error)
--		goto out_dput;
--	error = mnt_want_write(path.mnt);
--	if (error)
--		goto out_dput;
--	error = security_path_mknod(&path, dentry, mode, dev);
--	if (error)
--		goto out_drop_write;
--	switch (mode & S_IFMT) {
--		case 0: case S_IFREG:
--			error = vfs_create(path.dentry->d_inode,dentry,mode,NULL);
-+	do {
-+		dentry = kern_path_create(dfd, name, &path, false, try);
-+		if (IS_ERR(dentry))
-+			return PTR_ERR(dentry);
-+
-+		if (!IS_POSIXACL(path.dentry->d_inode))
-+			mode &= ~current_umask();
-+		error = may_mknod(mode);
-+		if (error)
-+			goto out_dput;
-+		error = mnt_want_write(path.mnt);
-+		if (error)
-+			goto out_dput;
-+		error = security_path_mknod(&path, dentry, mode, dev);
-+		if (error)
-+			goto out_drop_write;
-+		switch (mode & S_IFMT) {
-+		case 0:
-+		case S_IFREG:
-+			error = vfs_create(path.dentry->d_inode, dentry,
-+					mode, NULL);
- 			break;
--		case S_IFCHR: case S_IFBLK:
--			error = vfs_mknod(path.dentry->d_inode,dentry,mode,
-+		case S_IFCHR:
-+		case S_IFBLK:
-+			error = vfs_mknod(path.dentry->d_inode, dentry, mode,
- 					new_decode_dev(dev));
- 			break;
--		case S_IFIFO: case S_IFSOCK:
--			error = vfs_mknod(path.dentry->d_inode,dentry,mode,0);
--			break;
--	}
-+		case S_IFIFO:
-+		case S_IFSOCK:
-+			error = vfs_mknod(path.dentry->d_inode, dentry,
-+					mode, 0);
-+		}
- out_drop_write:
--	mnt_drop_write(path.mnt);
-+		mnt_drop_write(path.mnt);
- out_dput:
--	dput(dentry);
--	mutex_unlock(&path.dentry->d_inode->i_mutex);
--	path_put(&path);
--
-+		dput(dentry);
-+		mutex_unlock(&path.dentry->d_inode->i_mutex);
-+		path_put(&path);
-+	} while (retry_estale(error, try++));
-+	putname(name);
- 	return error;
+@@ -1912,20 +1912,31 @@ struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
+ 	return __lookup_hash(&this, base, NULL);
  }
+ 
++int kern_path_at(int dfd, const char *name, unsigned flags, struct path *path)
++{
++	struct nameidata nd;
++	int err;
++
++	BUG_ON(flags & LOOKUP_PARENT);
++
++	err = do_path_lookup(dfd, name, flags, &nd);
++	if (!err)
++		*path = nd.path;
++
++	return err;
++}
++
+ int user_path_at_empty(int dfd, const char __user *name, unsigned flags,
+ 		 struct path *path, int *empty)
+ {
+-	struct nameidata nd;
+ 	char *tmp = getname_flags(name, flags, empty);
+-	int err = PTR_ERR(tmp);
+-	if (!IS_ERR(tmp)) {
+-
+-		BUG_ON(flags & LOOKUP_PARENT);
++	int err;
+ 
+-		err = do_path_lookup(dfd, tmp, flags, &nd);
++	if (IS_ERR(tmp)) {
++		err = PTR_ERR(tmp);
++	} else {
++		err = kern_path_at(dfd, tmp, flags, path);
+ 		putname(tmp);
+-		if (!err)
+-			*path = nd.path;
+ 	}
+ 	return err;
+ }
+diff --git a/include/linux/namei.h b/include/linux/namei.h
+index ffc0213..cd95fcb 100644
+--- a/include/linux/namei.h
++++ b/include/linux/namei.h
+@@ -66,6 +66,7 @@ enum {LAST_NORM, LAST_ROOT, LAST_DOT, LAST_DOTDOT, LAST_BIND};
+ #define LOOKUP_ROOT		0x2000
+ #define LOOKUP_EMPTY		0x4000
+ 
++extern int kern_path_at(int, const char *, unsigned, struct path *);
+ extern int user_path_at(int, const char __user *, unsigned, struct path *);
+ extern int user_path_at_empty(int, const char __user *, unsigned, struct path *, int *empty);
  
 -- 
 1.7.7.6
