@@ -1,205 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:51528 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754331Ab2FHMGU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jun 2012 08:06:20 -0400
-Message-ID: <4FD1EAAD.5010505@panasas.com>
-Date: Fri, 8 Jun 2012 15:06:05 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-CC: Benny Halevy <bhalevy@tonian.com>, Peng Tao <bergwolf@gmail.com>
-Subject: [PATCH 1/6] ore: Fix NFS crash by supporting any unaligned RAID IO
-References: <4FD1CEA8.3090105@panasas.com>
-In-Reply-To: <4FD1CEA8.3090105@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mail-yw0-f42.google.com ([209.85.213.42]:40749 "EHLO
+	mail-yw0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932777Ab2F2S63 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jun 2012 14:58:29 -0400
+Received: by mail-yw0-f42.google.com with SMTP id q11so4407178yhf.1
+        for <linux-nfs@vger.kernel.org>; Fri, 29 Jun 2012 11:58:28 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v3 15/17] vfs: remove user_path_parent
+Date: Fri, 29 Jun 2012 14:57:58 -0400
+Message-Id: <1340996280-27123-16-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
+References: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+...there are no more callers.
 
-In RAID1/4/5/6/ We used to not permit an IO that it's end
-byte is not stripe_size aligned and spans more than one stripe.
-.i.e the caller must check if after submission the actual
-transferred bytes was shorter, he would need to resubmit
-an IO with the remainder.
-
-Exofs supports this, and NFS was supposed to support this
-as well with it's short write mechanism. But late testing has
-exposed a CRASH when this is used with none-RPC layout-drivers.
-
-The change at NFS is deep and risky, in it's place the fix
-at ORE to lift the limitation is actually clean and simple.
-So here it is below.
-
-The principal here is that in the case of unaligned IO on
-both ends, beginning and end, we will send two read requests
-one like old code, before the calculation of the first stripe,
-and also a new site, before the calculation of the last stripe.
-If any "boundary" is aligned or the complete IO is within a single
-stripe we do a single read like before.
-
-The code is clean and simple by splitting the old _read_4_write
-into 3 even parts:
-1. _read_4_write_first_stripe
-2. _read_4_write_last_stripe
-3. _read_4_write_execute
-
-And calling 1+3 at the same place as before. 2+3 before last
-stripe, and in the case of all in a single stripe then 1+2+3
-is preformed additively.
-
-Why did I not think of it before. Well I had a strike of
-genius because I have stared at this code for 2 years, and did
-not find this simple solution, til today. Not that I did not try.
-
-This solution is much better for NFS than the previous supposedly
-solution because the short write was dealt  with out-of-band after
-IO_done, which would cause for a seeky IO pattern where as in here
-we execute in order. At both solutions we do 2 separate reads, only
-here we do it within a single IO request. (And actually combine two
-writes into a single submission)
-
-NFS/exofs code need not change since the ORE API communicates the new
-shorter length on return, what will happen is that this case would not
-occur anymore.
-
-hurray!!
-
-[Stable this is an NFS bug since 3.2 Kernel should apply cleanly]
-CC: Stable Tree <stable@kernel.org>
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/exofs/ore_raid.c | 61 ++++++++++++++++++++++++++---------------------------
- 1 file changed, 30 insertions(+), 31 deletions(-)
+ fs/namei.c |   18 ------------------
+ 1 files changed, 0 insertions(+), 18 deletions(-)
 
-diff --git a/fs/exofs/ore_raid.c b/fs/exofs/ore_raid.c
-index d222c77..80ae08e 100644
---- a/fs/exofs/ore_raid.c
-+++ b/fs/exofs/ore_raid.c
-@@ -461,16 +461,12 @@ static void _mark_read4write_pages_uptodate(struct ore_io_state *ios, int ret)
-  * ios->sp2d[p][*], xor is calculated the same way. These pages are
-  * allocated/freed and don't go through cache
-  */
--static int _read_4_write(struct ore_io_state *ios)
-+static int _read_4_write_first_stripe(struct ore_io_state *ios)
- {
--	struct ore_io_state *ios_read;
- 	struct ore_striping_info read_si;
- 	struct __stripe_pages_2d *sp2d = ios->sp2d;
- 	u64 offset = ios->si.first_stripe_start;
--	u64 last_stripe_end;
--	unsigned bytes_in_stripe = ios->si.bytes_in_stripe;
--	unsigned i, c, p, min_p = sp2d->pages_in_unit, max_p = -1;
--	int ret;
-+	unsigned c, p, min_p = sp2d->pages_in_unit, max_p = -1;
- 
- 	if (offset == ios->offset) /* Go to start collect $200 */
- 		goto read_last_stripe;
-@@ -512,6 +508,18 @@ static int _read_4_write(struct ore_io_state *ios)
- 	}
- 
- read_last_stripe:
-+	return 0;
-+}
-+
-+static int _read_4_write_last_stripe(struct ore_io_state *ios)
-+{
-+	struct ore_striping_info read_si;
-+	struct __stripe_pages_2d *sp2d = ios->sp2d;
-+	u64 offset;
-+	u64 last_stripe_end;
-+	unsigned bytes_in_stripe = ios->si.bytes_in_stripe;
-+	unsigned c, p, min_p = sp2d->pages_in_unit, max_p = -1;
-+
- 	offset = ios->offset + ios->length;
- 	if (offset % PAGE_SIZE)
- 		_add_to_r4w_last_page(ios, &offset);
-@@ -527,9 +535,6 @@ static int _read_4_write(struct ore_io_state *ios)
- 	c = _dev_order(ios->layout->group_width * ios->layout->mirrors_p1,
- 		       ios->layout->mirrors_p1, read_si.par_dev, read_si.dev);
- 
--	BUG_ON(ios->si.first_stripe_start + bytes_in_stripe != last_stripe_end);
--	/* unaligned IO must be within a single stripe */
--
- 	if (min_p == sp2d->pages_in_unit) {
- 		/* Didn't do it yet */
- 		min_p = _sp2d_min_pg(sp2d);
-@@ -568,6 +573,15 @@ static int _read_4_write(struct ore_io_state *ios)
- 	}
- 
- read_it:
-+	return 0;
-+}
-+
-+static int _read_4_write_execute(struct ore_io_state *ios)
-+{
-+	struct ore_io_state *ios_read;
-+	unsigned i;
-+	int ret;
-+
- 	ios_read = ios->ios_read_4_write;
- 	if (!ios_read)
- 		return 0;
-@@ -591,6 +605,8 @@ static int _read_4_write(struct ore_io_state *ios)
- 	}
- 
- 	_mark_read4write_pages_uptodate(ios_read, ret);
-+	ore_put_io_state(ios_read);
-+	ios->ios_read_4_write = NULL; /* Might need a reuse at last stripe */
- 	return 0;
+diff --git a/fs/namei.c b/fs/namei.c
+index b38d734..7c03af9 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -1941,24 +1941,6 @@ int user_path_at(int dfd, const char __user *name, unsigned flags,
+ 	return err;
  }
  
-@@ -626,8 +642,11 @@ int _ore_add_parity_unit(struct ore_io_state *ios,
- 			/* If first stripe, Read in all read4write pages
- 			 * (if needed) before we calculate the first parity.
- 			 */
--			_read_4_write(ios);
-+			_read_4_write_first_stripe(ios);
- 		}
-+		if (!cur_len) /* If last stripe r4w pages of last stripe */
-+			_read_4_write_last_stripe(ios);
-+		_read_4_write_execute(ios);
- 
- 		for (i = 0; i < num_pages; i++) {
- 			pages[i] = _raid_page_alloc();
-@@ -654,34 +673,14 @@ int _ore_add_parity_unit(struct ore_io_state *ios,
- 
- int _ore_post_alloc_raid_stuff(struct ore_io_state *ios)
- {
--	struct ore_layout *layout = ios->layout;
+-static int user_path_parent(int dfd, const char __user *path,
+-			struct nameidata *nd, char **name)
+-{
+-	char *s = getname(path);
+-	int error;
 -
- 	if (ios->parity_pages) {
-+		struct ore_layout *layout = ios->layout;
- 		unsigned pages_in_unit = layout->stripe_unit / PAGE_SIZE;
--		unsigned stripe_size = ios->si.bytes_in_stripe;
--		u64 last_stripe, first_stripe;
- 
- 		if (_sp2d_alloc(pages_in_unit, layout->group_width,
- 				layout->parity, &ios->sp2d)) {
- 			return -ENOMEM;
- 		}
+-	if (IS_ERR(s))
+-		return PTR_ERR(s);
 -
--		/* Round io down to last full strip */
--		first_stripe = div_u64(ios->offset, stripe_size);
--		last_stripe = div_u64(ios->offset + ios->length, stripe_size);
+-	error = do_path_lookup(dfd, s, LOOKUP_PARENT, nd);
+-	if (error)
+-		putname(s);
+-	else
+-		*name = s;
 -
--		/* If an IO spans more then a single stripe it must end at
--		 * a stripe boundary. The reminder at the end is pushed into the
--		 * next IO.
--		 */
--		if (last_stripe != first_stripe) {
--			ios->length = last_stripe * stripe_size - ios->offset;
+-	return error;
+-}
 -
--			BUG_ON(!ios->length);
--			ios->nr_pages = (ios->length + PAGE_SIZE - 1) /
--					PAGE_SIZE;
--			ios->si.length = ios->length; /*make it consistent */
--		}
- 	}
- 	return 0;
- }
+ /*
+  * It's inline, so penalty for filesystems that don't use sticky bit is
+  * minimal.
 -- 
-1.7.10.2.677.gb6bc67f
-
+1.7.7.6
 
