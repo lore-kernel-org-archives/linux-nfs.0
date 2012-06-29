@@ -1,71 +1,151 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:9519 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:45670 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753785Ab2F0Sgn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Jun 2012 14:36:43 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Andi Kleen <ak@linux.intel.com>
-CC: Fengguang Wu <fengguang.wu@intel.com>,
-        Linux-NFS <linux-nfs@vger.kernel.org>
-Subject: Re: rpcauth_lookup_credcache() lock contentions
-Date: Wed, 27 Jun 2012 18:36:13 +0000
-Message-ID: <1340822172.2398.5.camel@lade.trondhjem.org>
-References: <20120623122604.GA10887@localhost>
-	 <20120624213417.GI4152@tassilo.jf.intel.com>
-	 <20120625024211.GA11057@localhost>
-	 <20120627180353.GO4152@tassilo.jf.intel.com>
-In-Reply-To: <20120627180353.GO4152@tassilo.jf.intel.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S932279Ab2F2Ndb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Jun 2012 09:33:31 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>,
+        Sebastian Andrzej Siewior <sebastian@breakpoint.cc>,
+        Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 03/12] mm: Methods for teaching filesystems about PG_swapcache pages
+Date: Fri, 29 Jun 2012 14:33:16 +0100
+Message-Id: <1340976805-5799-4-git-send-email-mgorman@suse.de>
+In-Reply-To: <1340976805-5799-1-git-send-email-mgorman@suse.de>
+References: <1340976805-5799-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTA2LTI3IGF0IDExOjAzIC0wNzAwLCBBbmRpIEtsZWVuIHdyb3RlOg0KPiA+
-ID4gQ2FuIHlvdSB0cnkgdGhpcyBwYXRjaD8NCj4gPiANCj4gPiBUaGFuayB5b3UhIFRoaXMgcGF0
-Y2ggYnJpbmdzICVzeXMgZG93biB0byAyNCUsIGEgcHJldHR5IGxhcmdlIGltcHJvdmVtZW50IQ0K
-PiANCj4gSSByZWRpZCB0aGUgcGF0Y2ggbm93IGFuZCBmaXhlZCB0aGUgcmFjZSBUcm9uZCBwb2lu
-dGVkIG91dC4NCj4gDQo+IEZlbmdndWFuZywgY2FuIHlvdSByZXRlc3QgcGxlYXNlPyBUcm9uZCwg
-ZG9lcyBpdCBsb29rIGdvb2Qgbm93Pw0KDQpIaSBBbmRpLA0KDQpUaGVyZSBpcyBzdGlsbCBhIHJh
-Y2UgdGhlcmU6IGlmIHlvdXIgdGhyZWFkIGRvZXMgYXRvbWljX2FkZF9yZXR1cm4oKSA9PQ0KMSwg
-dGhlbiBhIHNlY29uZCB0aHJlYWQgY2FuIHNjYW4sIGRvIHRoZSBhdG9taWNfYWRkX3JldHVybigp
-IGFuZCBnZXQgYQ0KdmFsdWUgb2YgMiwgaW4gd2hpY2ggY2FzZSBpdCB3b24ndCBjaGVjayBmb3Ig
-SEFTSEVELi4uDQoNCkNoZWVycw0KICBUcm9uZA0KDQo+IC0tLQ0KPiANCj4gRnJvbTogQW5kaSBL
-bGVlbiA8YWtAbGludXguaW50ZWwuY29tPg0KPiBEYXRlOiBTdW4sIDI0IEp1biAyMDEyIDE0OjMx
-OjA2IC0wNzAwDQo+IFN1YmplY3Q6IFtQQVRDSF0gc3VucnBjOiBJbXByb3ZlIHNwaW5sb2NrcyBp
-biBjcmVkZW50aWFsIGxvb2t1cCBwYXRoIHYyDQo+IA0KPiBGZW5nZ3Vhbmcgbm90aWNlZCB0aGF0
-IHJwY2F1dGhfbG9va3VwX2NyZWRjYWNoZSBoYXMgaGlnaCBsb2NrIGNvbnRlbnRpb24NCj4gb24g
-dGhlIG5mcyBzZXJ2ZXIgd2hlbiBkb2luZyBrZXJuZWwgYnVpbGRzIG9uIG5mc3Jvb3QuDQo+IA0K
-PiBUaGUgb25seSByZWFzb24gdGhlIHNwaW5sb2NrIGlzIG5lZWRlZCBpbiB0aGUgbG9ja3VwIHBh
-dGggaXMgdG8NCj4gc3luY2hyb25pemUgd2l0aCB0aGUgZ2FyYmFnZSBjb2xsZWN0b3IuIEZpcnN0
-IHRoZSBvYmplY3QgaXRzZWxmDQo+IGlzIHN0YWJsZSBiZWNhdXNlIGl0J3MgUkNVJ2VkLg0KPiAN
-Cj4gU28gbm93IHdlIHVzZSBhbiBhdG9taWNfYWRkX3JldHVybiBhbmQgY2hlY2sgZm9yIHRoZSAw
-IHJlZmVyZW5jZQ0KPiBjb3VudCBjYXNlLiAgV2hlbiB0aGUgY291bnQgd2FzIDAgYXNzdW1lIHRo
-ZSBnYXJiYWdlIGNvbGxlY3Rvcg0KPiBpcyBhY3RpdmUgb24gdGhpcyBlbnRyeSBhbmQgdGFrZSB0
-aGUgbG9jayBhbmQgcmVjaGVjay4NCj4gDQo+IE90aGVyd2lzZSB0aGUgcGF0aCBpcyBsb2NrbGVz
-cy4NCj4gDQo+IHYyOiBBZGQgR0MgcmFjZSBjaGVjayBiYXNlZCBvbiBUcm9uZCdzIGZlZWRiYWNr
-DQo+IENjOiBUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0KPiBSZXBvcnRlZC1ieTogRmVuZ2d1
-YW5nIFd1DQo+IFNpZ25lZC1vZmYtYnk6IEFuZGkgS2xlZW4gPGFrQGxpbnV4LmludGVsLmNvbT4N
-Cj4gLS0tDQo+ICBuZXQvc3VucnBjL2F1dGguYyB8ICAgMTkgKysrKysrKysrKysrKysrLS0tLQ0K
-PiAgMSBmaWxlcyBjaGFuZ2VkLCAxNSBpbnNlcnRpb25zKCspLCA0IGRlbGV0aW9ucygtKQ0KPiAN
-Cj4gZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMvYXV0aC5jIGIvbmV0L3N1bnJwYy9hdXRoLmMNCj4g
-aW5kZXggNzI3ZTUwNi4uNjQ1NzY5ZSAxMDA2NDQNCj4gLS0tIGEvbmV0L3N1bnJwYy9hdXRoLmMN
-Cj4gKysrIGIvbmV0L3N1bnJwYy9hdXRoLmMNCj4gQEAgLTM2NCwxMyArMzY0LDI0IEBAIHJwY2F1
-dGhfbG9va3VwX2NyZWRjYWNoZShzdHJ1Y3QgcnBjX2F1dGggKmF1dGgsIHN0cnVjdCBhdXRoX2Ny
-ZWQgKiBhY3JlZCwNCj4gIAlobGlzdF9mb3JfZWFjaF9lbnRyeV9yY3UoZW50cnksIHBvcywgJmNh
-Y2hlLT5oYXNodGFibGVbbnJdLCBjcl9oYXNoKSB7DQo+ICAJCWlmICghZW50cnktPmNyX29wcy0+
-Y3JtYXRjaChhY3JlZCwgZW50cnksIGZsYWdzKSkNCj4gIAkJCWNvbnRpbnVlOw0KPiAtCQlzcGlu
-X2xvY2soJmNhY2hlLT5sb2NrKTsNCj4gIAkJaWYgKHRlc3RfYml0KFJQQ0FVVEhfQ1JFRF9IQVNI
-RUQsICZlbnRyeS0+Y3JfZmxhZ3MpID09IDApIHsNCj4gLQkJCXNwaW5fdW5sb2NrKCZjYWNoZS0+
-bG9jayk7DQo+ICAJCQljb250aW51ZTsNCj4gIAkJfQ0KPiAtCQljcmVkID0gZ2V0X3JwY2NyZWQo
-ZW50cnkpOw0KPiAtCQlzcGluX3VubG9jaygmY2FjaGUtPmxvY2spOw0KPiArCQljcmVkID0gZW50
-cnk7DQo+ICsJCWlmIChhdG9taWNfYWRkX3JldHVybigxLCAmY3JlZC0+Y3JfY291bnQpID09IDEp
-IHsNCj4gKwkJCS8qDQo+ICsJCQkgKiBXaGVuIHRoZSBjb3VudCB3YXMgMCB3ZSBjb3VsZCByYWNl
-IHdpdGggdGhlIEdDLg0KPiArCQkJICogVGFrZSB0aGUgbG9jayBhbmQgcmVjaGVjay4NCj4gKwkJ
-CSAqLw0KPiArCQkJc3Bpbl9sb2NrKCZjYWNoZS0+bG9jayk7DQo+ICsJCQlpZiAoIXRlc3RfYml0
-KFJQQ0FVVEhfQ1JFRF9IQVNIRUQsICZlbnRyeS0+Y3JfZmxhZ3MpKSB7DQo+ICsJCQkJLyogTG9z
-dCB0aGUgcmFjZS4gKi8NCj4gKwkJCQlhdG9taWNfZGVjKCZjcmVkLT5jcl9jb3VudCk7DQo+ICsJ
-CQkJc3Bpbl91bmxvY2soJmNhY2hlLT5sb2NrKTsNCj4gKwkJCQljb250aW51ZTsNCj4gKwkJCX0N
-Cj4gKwkJCXNwaW5fdW5sb2NrKCZjYWNoZS0+bG9jayk7DQo+ICsJCX0NCj4gIAkJYnJlYWs7DQo+
-ICAJfQ0KPiAgCXJjdV9yZWFkX3VubG9jaygpOw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGlu
-dXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFw
-cC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+In order to teach filesystems to handle swap cache pages, three new
+page functions are introduced:
+
+  pgoff_t page_file_index(struct page *);
+  loff_t page_file_offset(struct page *);
+  struct address_space *page_file_mapping(struct page *);
+
+page_file_index() - gives the offset of this page in the file in
+PAGE_CACHE_SIZE blocks. Like page->index is for mapped pages, this
+function also gives the correct index for PG_swapcache pages.
+
+page_file_offset() - uses page_file_index(), so that it will give
+the expected result, even for PG_swapcache pages.
+
+page_file_mapping() - gives the mapping backing the actual page;
+that is for swap cache pages it will give swap_file->f_mapping.
+
+Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+Reviewed-by: Rik van Riel <riel@redhat.com>
+---
+ include/linux/mm.h      |   25 +++++++++++++++++++++++++
+ include/linux/pagemap.h |    5 +++++
+ mm/swapfile.c           |   19 +++++++++++++++++++
+ 3 files changed, 49 insertions(+)
+
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index a4549c6..b3d4cd9 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -805,6 +805,17 @@ static inline void *page_rmapping(struct page *page)
+ 	return (void *)((unsigned long)page->mapping & ~PAGE_MAPPING_FLAGS);
+ }
+ 
++extern struct address_space *__page_file_mapping(struct page *);
++
++static inline
++struct address_space *page_file_mapping(struct page *page)
++{
++	if (unlikely(PageSwapCache(page)))
++		return __page_file_mapping(page);
++
++	return page->mapping;
++}
++
+ static inline int PageAnon(struct page *page)
+ {
+ 	return ((unsigned long)page->mapping & PAGE_MAPPING_ANON) != 0;
+@@ -821,6 +832,20 @@ static inline pgoff_t page_index(struct page *page)
+ 	return page->index;
+ }
+ 
++extern pgoff_t __page_file_index(struct page *page);
++
++/*
++ * Return the file index of the page. Regular pagecache pages use ->index
++ * whereas swapcache pages use swp_offset(->private)
++ */
++static inline pgoff_t page_file_index(struct page *page)
++{
++	if (unlikely(PageSwapCache(page)))
++		return __page_file_index(page);
++
++	return page->index;
++}
++
+ /*
+  * Return true if this page is mapped into pagetables.
+  */
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index 7cfad3b..e42c762 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -286,6 +286,11 @@ static inline loff_t page_offset(struct page *page)
+ 	return ((loff_t)page->index) << PAGE_CACHE_SHIFT;
+ }
+ 
++static inline loff_t page_file_offset(struct page *page)
++{
++	return ((loff_t)page_file_index(page)) << PAGE_CACHE_SHIFT;
++}
++
+ extern pgoff_t linear_hugepage_index(struct vm_area_struct *vma,
+ 				     unsigned long address);
+ 
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index 64408be..f4e02bd 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -33,6 +33,7 @@
+ #include <linux/oom.h>
+ #include <linux/frontswap.h>
+ #include <linux/swapfile.h>
++#include <linux/export.h>
+ 
+ #include <asm/pgtable.h>
+ #include <asm/tlbflush.h>
+@@ -2299,6 +2300,24 @@ int swapcache_prepare(swp_entry_t entry)
+ }
+ 
+ /*
++ * out-of-line __page_file_ methods to avoid include hell.
++ */
++struct address_space *__page_file_mapping(struct page *page)
++{
++	VM_BUG_ON(!PageSwapCache(page));
++	return page_swap_info(page)->swap_file->f_mapping;
++}
++EXPORT_SYMBOL_GPL(__page_file_mapping);
++
++pgoff_t __page_file_index(struct page *page)
++{
++	swp_entry_t swap = { .val = page_private(page) };
++	VM_BUG_ON(!PageSwapCache(page));
++	return swp_offset(swap);
++}
++EXPORT_SYMBOL_GPL(__page_file_index);
++
++/*
+  * add_swap_count_continuation - called when a swap count is duplicated
+  * beyond SWAP_MAP_MAX, it allocates a new page and links that to the entry's
+  * page of the original vmalloc'ed swap_map, to hold the continuation count
+-- 
+1.7.9.2
+
