@@ -1,32 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ferdi.naasa.net ([87.106.227.76]:51604 "EHLO ferdi.naasa.net"
+Received: from mx1.redhat.com ([209.132.183.28]:23169 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754389Ab2FORTY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Jun 2012 13:19:24 -0400
-Message-ID: <4FDB6E98.2090904@jako.ping.de>
-Date: Fri, 15 Jun 2012 19:19:20 +0200
-From: Joerg Platte <jplatte@jako.ping.de>
-MIME-Version: 1.0
-To: bfields <bfields@fieldses.org>
-CC: Joerg Platte <jplatte@naasa.net>,
+	id S1753091Ab2F3LBI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 30 Jun 2012 07:01:08 -0400
+Date: Sat, 30 Jun 2012 07:00:36 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Andy Adamson <androsadamson@gmail.com>,
+        "Adamson, Andy" <William.Adamson@netapp.com>,
         "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Kernel 3.4.X NFS server regression
-References: <4FD47D4E.9070307@naasa.net> <1339340441.4751.1.camel@lade.trondhjem.org> <4FDB539A.8060409@naasa.net> <20120615162808.GC18953@fieldses.org>
-In-Reply-To: <20120615162808.GC18953@fieldses.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/1] SUNRPC handle EKEYEXPIRED in call_refreshresult
+Message-ID: <20120630070036.232946cb@tlielax.poochiereds.net>
+In-Reply-To: <4FEE1381.1000209@RedHat.com>
+References: <1340827535-3062-1-git-send-email-andros@netapp.com>
+	<20120628114353.4f75aabc@tlielax.poochiereds.net>
+	<19150370-D1BD-4CC1-90BD-383805DE9557@netapp.com>
+	<20120628140351.527c5060@tlielax.poochiereds.net>
+	<CAHVgHyWs+_Ep_wP6QASSJ18tM8OhYkQ+o=h5NKnOqdC6HWchKQ@mail.gmail.com>
+	<4FEE1381.1000209@RedHat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 15.06.2012 18:28, bfields wrote:
-> This is fixed by a patch submitted for 3.5.
->
-> If things go normally I assume Linus will pull this when he bets back
-> from vacation in the next few days and then it should go to stable not
-> too long after.
+On Fri, 29 Jun 2012 16:43:45 -0400
+Steve Dickson <SteveD@redhat.com> wrote:
 
-OK, thank you for the information!
+> >>>
+> >>
+> >> Easy to say, far more difficult to do.
+> > 
+> > Here is how simple it is.
+> > 
+> > $ kinit
+> > $ krenew  -K 30&
+> If this simple process cannot renew a ticket then its a bug
+> in the client... We have to let processes like this to renew
+> renewable tickets! 
+> 
+> I've never been a fan of this hang from the beginning but 
+> if its getting in the way of things renewing tickets then its
+> got to go... IMHO...
+> 
+> Lets push the error up to the app and then educate people
+> on how to avoid the error... 
+> 
 
-regards,
-Joerg
+Fair enough. I'd prefer to see this handled better too. If Andy has a
+solution for the writeback issues then I'm fine with reverting this
+behavior.
+
+If we have kerberized NFS howtos anywhere (do we?) then we probably
+need to add some notes about krenewd or how to make sssd handle this.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
