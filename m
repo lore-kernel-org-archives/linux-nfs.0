@@ -1,33 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:32453 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762407Ab2FVQbK convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jun 2012 12:31:10 -0400
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: linux-nfs list <linux-nfs@vger.kernel.org>, nfsv4 WG <nfsv4@ietf.org>
-CC: c-dl-linux-team <dl-linux-team@netapp.com>,
-        "McDonald, Alex" <Alex.Mcdonald@netapp.com>
-Subject: NFSometer released under GPLv2
-Date: Fri, 22 Jun 2012 16:31:08 +0000
-Message-ID: <4BFACDA8-CBF4-4330-BB04-6E98FE7E05D7@netapp.com>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:37560 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751164Ab2F3GXL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jun 2012 02:23:11 -0400
+From: Namjae Jeon <linkinjeon@gmail.com>
+To: bfields@fieldses.org, Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Namjae Jeon <linkinjeon@gmail.com>,
+        Amit Sahrawat <amit.sahrawat83@gmail.com>
+Subject: [PATCH] nfs-util: Update exportfs flush option list in usage message.
+Date: Sat, 30 Jun 2012 02:23:01 -0400
+Message-Id: <1341037381-24218-1-git-send-email-linkinjeon@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NetApp is happy to announce the GPLv2 release of NFSometer - a performance measurement framework for running workloads and reporting results across NFS protocol versions, NFS options and Linux NFS client implementations.
+Update exportfs flush option list in usage message.
+And I sort these cases in alphabetical order.
 
-It is our hope that the Linux NFS community will benefit from a better understanding of NFS performance characteristics and contribute improvements back to NFSometer.
+Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
+Signed-off-by: Amit Sahrawat <amit.sahrawat83@gmail.com>
+---
+ utils/exportfs/exportfs.c |   21 ++++++++++++---------
+ 1 file changed, 12 insertions(+), 9 deletions(-)
 
-NFSometer's public git repository:
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index a3323d7..9f79541 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -40,7 +40,7 @@ static void	unexportfs(char *arg, int verbose);
+ static void	exports_update(int verbose);
+ static void	dump(int verbose);
+ static void	error(nfs_export *exp, int err);
+-static void	usage(const char *progname);
++static void	usage(const char *progname, int n);
+ static void	validate_export(nfs_export *exp);
+ static int	matchhostname(const char *hostname1, const char *hostname2);
+ static void	export_d_read(const char *dname);
+@@ -105,11 +105,17 @@ main(int argc, char **argv)
+ 
+ 	export_errno = 0;
+ 
+-	while ((c = getopt(argc, argv, "aio:ruvf")) != EOF) {
++	while ((c = getopt(argc, argv, "afhio:ruv")) != EOF) {
+ 		switch(c) {
+ 		case 'a':
+ 			f_all = 1;
+ 			break;
++		case 'f':
++			force_flush = 1;
++			break;
++		case 'h':
++			usage(progname, 0);
++			break;
+ 		case 'i':
+ 			f_ignore = 1;
+ 			break;
+@@ -126,11 +132,8 @@ main(int argc, char **argv)
+ 		case 'v':
+ 			f_verbose = 1;
+ 			break;
+-		case 'f':
+-			force_flush = 1;
+-			break;
+ 		default:
+-			usage(progname);
++			usage(progname, 1);
+ 			break;
+ 		}
+ 	}
+@@ -723,8 +726,8 @@ error(nfs_export *exp, int err)
+ }
+ 
+ static void
+-usage(const char *progname)
++usage(const char *progname, int n)
+ {
+-	fprintf(stderr, "usage: %s [-aruv] [host:/path]\n", progname);
+-	exit(1);
++	fprintf(stderr, "usage: %s [-afhioruv] [host:/path]\n", progname);
++	exit(n);
+ }
+-- 
+1.7.9.5
 
-  git://git.linux-nfs.org/projects/dros/nfsometer.git
-  http://git.linux-nfs.org/?p=dros/nfsometer.git;a=summary
-
-NFSometer's homepage:
-
-  http://wiki.linux-nfs.org/wiki/index.php/NFSometer
-
-Please send any questions/comments/bug reports to: Weston Andros Adamson <dros@netapp.com>.
-
--dros
