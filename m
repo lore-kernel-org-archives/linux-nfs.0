@@ -1,148 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:58893 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755976Ab2FTJgW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jun 2012 05:36:22 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 02/12] mm: Methods for teaching filesystems about PG_swapcache pages
-Date: Wed, 20 Jun 2012 10:36:07 +0100
-Message-Id: <1340184977-22356-3-git-send-email-mgorman@suse.de>
-In-Reply-To: <1340184977-22356-1-git-send-email-mgorman@suse.de>
-References: <1340184977-22356-1-git-send-email-mgorman@suse.de>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:43851 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753691Ab2GABxS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Jun 2012 21:53:18 -0400
+Received: by pbbrp8 with SMTP id rp8so6097538pbb.19
+        for <linux-nfs@vger.kernel.org>; Sat, 30 Jun 2012 18:53:18 -0700 (PDT)
+MIME-Version: 1.0
+Date: Sun, 1 Jul 2012 02:53:18 +0100
+Message-ID: <CAPD_G3L0wwzCWyoPJp_sKpuQ0J7+avn-ejEn-WnXf81zr=-LqA@mail.gmail.com>
+Subject: Linux NFSv4 client uses returned delegation in subsequent READ
+ resulting in hang (BAD_STATEID)
+From: "Charles 'Boyo" <charlesboyo@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In order to teach filesystems to handle swap cache pages, three new
-page functions are introduced:
+Hello.
 
-  pgoff_t page_file_index(struct page *);
-  loff_t page_file_offset(struct page *);
-  struct address_space *page_file_mapping(struct page *);
+I have repeatedly had Linux NFS clients hang while trying to access
+files on a NFSv4 mount (Solaris).
+Investigations revealed that this client is using a delegation that it
+has already returned, resulting in the BAD_STATEID error.
+Unfortunately, it then proceeds to hammer the server with these
+"doomed" requests, resulting in the client-side unresponsiveness and
+constant network traffic.
 
-page_file_index() - gives the offset of this page in the file in
-PAGE_CACHE_SIZE blocks. Like page->index is for mapped pages, this
-function also gives the correct index for PG_swapcache pages.
+A sample trace can be found at http://pastebin.centos.org/39046
+As shown, the READ in frame 10 (line 112) follows the DELEGRETURN in
+frame 9 which results in the error. This READ was then repeated
+infinitely until either the server or client was restarted.
+Disabling delegations on the server-side caused the problem to cease.
+So what is wrong with delegations on the client-side?
 
-page_file_offset() - uses page_file_index(), so that it will give
-the expected result, even for PG_swapcache pages.
+I am using the latest nfs-utils packages and my mount options are as
+shown below:
 
-page_file_mapping() - gives the mapping backing the actual page;
-that is for swap cache pages it will give swap_file->f_mapping.
+# cat /etc/redhat-release
+CentOS release 6.2 (Final)
 
-Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
----
- include/linux/mm.h      |   25 +++++++++++++++++++++++++
- include/linux/pagemap.h |    5 +++++
- mm/swapfile.c           |   19 +++++++++++++++++++
- 3 files changed, 49 insertions(+)
+# uname -r
+2.6.32-220.4.1.el6.x86_64
 
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index b36d08c..0c0301c 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -805,6 +805,17 @@ static inline void *page_rmapping(struct page *page)
- 	return (void *)((unsigned long)page->mapping & ~PAGE_MAPPING_FLAGS);
- }
- 
-+extern struct address_space *__page_file_mapping(struct page *);
-+
-+static inline
-+struct address_space *page_file_mapping(struct page *page)
-+{
-+	if (unlikely(PageSwapCache(page)))
-+		return __page_file_mapping(page);
-+
-+	return page->mapping;
-+}
-+
- static inline int PageAnon(struct page *page)
- {
- 	return ((unsigned long)page->mapping & PAGE_MAPPING_ANON) != 0;
-@@ -821,6 +832,20 @@ static inline pgoff_t page_index(struct page *page)
- 	return page->index;
- }
- 
-+extern pgoff_t __page_file_index(struct page *page);
-+
-+/*
-+ * Return the file index of the page. Regular pagecache pages use ->index
-+ * whereas swapcache pages use swp_offset(->private)
-+ */
-+static inline pgoff_t page_file_index(struct page *page)
-+{
-+	if (unlikely(PageSwapCache(page)))
-+		return __page_file_index(page);
-+
-+	return page->index;
-+}
-+
- /*
-  * Return true if this page is mapped into pagetables.
-  */
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index 7cfad3b..e42c762 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -286,6 +286,11 @@ static inline loff_t page_offset(struct page *page)
- 	return ((loff_t)page->index) << PAGE_CACHE_SHIFT;
- }
- 
-+static inline loff_t page_file_offset(struct page *page)
-+{
-+	return ((loff_t)page_file_index(page)) << PAGE_CACHE_SHIFT;
-+}
-+
- extern pgoff_t linear_hugepage_index(struct vm_area_struct *vma,
- 				     unsigned long address);
- 
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index de5bc51..f03a560 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -33,6 +33,7 @@
- #include <linux/oom.h>
- #include <linux/frontswap.h>
- #include <linux/swapfile.h>
-+#include <linux/export.h>
- 
- #include <asm/pgtable.h>
- #include <asm/tlbflush.h>
-@@ -2290,6 +2291,24 @@ int swapcache_prepare(swp_entry_t entry)
- }
- 
- /*
-+ * out-of-line __page_file_ methods to avoid include hell.
-+ */
-+struct address_space *__page_file_mapping(struct page *page)
-+{
-+	VM_BUG_ON(!PageSwapCache(page));
-+	return page_swap_info(page)->swap_file->f_mapping;
-+}
-+EXPORT_SYMBOL_GPL(__page_file_mapping);
-+
-+pgoff_t __page_file_index(struct page *page)
-+{
-+	swp_entry_t swap = { .val = page_private(page) };
-+	VM_BUG_ON(!PageSwapCache(page));
-+	return swp_offset(swap);
-+}
-+EXPORT_SYMBOL_GPL(__page_file_index);
-+
-+/*
-  * add_swap_count_continuation - called when a swap count is duplicated
-  * beyond SWAP_MAP_MAX, it allocates a new page and links that to the entry's
-  * page of the original vmalloc'ed swap_map, to hold the continuation count
--- 
-1.7.9.2
+# rpm -qa '*nfs*'
+nfs-utils-lib-1.1.5-4.el6.x86_64
+nfs-utils-1.2.3-15.el6_2.1.x86_64
 
+# grep nfs4 /proc/mounts
+10.51.1.6:/SharedFolder/ /var/LocalMountPoint nfs4
+rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=10.51.1.34,minorversion=0,local_lock=none,addr=10.51.1.6
+0 0
+
+Regards,
+
+Charles
