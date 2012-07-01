@@ -1,68 +1,227 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:2215 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:56303 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932103Ab2GMPzr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jul 2012 11:55:47 -0400
-Subject: Re: [PATCH 0/4] Add support for new RPCSEC_GSS upcall mechanism
- for nfsd
-From: Simo Sorce <simo@redhat.com>
+	id S1755681Ab2GAXPW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 1 Jul 2012 19:15:22 -0400
+Date: Mon, 2 Jul 2012 09:15:11 +1000
+From: NeilBrown <neilb@suse.de>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-In-Reply-To: <20120713154500.GB32660@fieldses.org>
-References: <1337983796-26476-1-git-send-email-simo@redhat.com>
-	 <20120713154500.GB32660@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 13 Jul 2012 11:55:45 -0400
-Message-ID: <1342194945.2718.66.camel@willson.li.ssimo.org>
+Cc: Al Viro <viro@ZenIV.linux.org.uk>, Nick Piggin <npiggin@gmail.com>,
+        Nick Piggin <npiggin@kernel.dk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH] fs/dcache: allow __d_obtain_alias() to return unhashed
+ dentries
+Message-ID: <20120702091511.314fc8e8@notabene.brown>
+In-Reply-To: <20120629202903.GB17103@fieldses.org>
+References: <AANLkTingRv_gtRSctGzMfYrKg02M_sKj97HSQPRm_mA_@mail.gmail.com>
+	<20101227234641.GA22248@fieldses.org>
+	<20110118204509.GA10903@fieldses.org>
+	<AANLkTikL2CDSWQJ1QH_Y4G-j70Vd=VesNMMnYTmMGHC9@mail.gmail.com>
+	<20110118220817.GF10903@fieldses.org>
+	<20110308181320.GA15566@fieldses.org>
+	<20110310105821.GE22723@ZenIV.linux.org.uk>
+	<20110311150749.2fa2be66@notabene.brown>
+	<20120628135927.GA6406@fieldses.org>
+	<20120629201034.GA17103@fieldses.org>
+	<20120629202903.GB17103@fieldses.org>
 Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/yEA1rDGz0sU9dFYOzqXzsif"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2012-07-13 at 11:45 -0400, J. Bruce Fields wrote:
-> On Fri, May 25, 2012 at 06:09:52PM -0400, Simo Sorce wrote:
-> > This patchset implements a new upcall mechanism that uses the sunrpc
-> > client to talk to gssproxy[1], a new userspace daemon that handles gssapi
-> > operations on behalf of other processes on the system.
-> > 
-> > The main driver for this new mechanism is to overcome limitations with
-> > the current daemon and upcall. The current code cannot handle tickets
-> > larger than approximatively 2k and cannot handle sending back large user
-> > credential sets to the kernel.
-> > 
-> > These patches have been tested against the development version of gssproxy
-> > tagged as kernel_v0.1 in the master repo[2].
-> > 
-> > I have tested walking into mountpoints using tickets artificially pumped
-> > up to 64k and the user is properly authorized, after the accept_se_context
-> > call is performed through the new upcall mechanism and gssproxy.
-> > 
-> > The gssproxy has the potential of handling also init_sec_context calls,
-> > but at the moment the only targeted system is nfsd.
-> 
-> Something I forgot to ask about.  (Or I did ask and forgot to take notes
-> on the answer!): how is gssproxy doing the principal->(uid, gid's)
-> mapping?
-> 
-> (svcgssd uses libnfsidmap--which I don't particularly like, but if
-> gssproxy is doing something different then we need to figure out how the
-> transition will work).
+--Sig_/yEA1rDGz0sU9dFYOzqXzsif
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-At the moment gss-proxy uses the standard gss_localname() function to
-find out what user a principal maps to. Then a normal getpwnam() to get
-the user's ids followed by a getgrouplist() for the groups.
+On Fri, 29 Jun 2012 16:29:03 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+wrote:
 
-I thought of using libnfsidmap but to be honest it makes little sense,
-it is its own island of configuration that is different from the rest of
-the system and I could not figure out why nfs should behave differently
-from the rest of the system.
+> On Fri, Jun 29, 2012 at 04:10:34PM -0400, J. Bruce Fields wrote:
+> > On Thu, Jun 28, 2012 at 09:59:27AM -0400, J. Bruce Fields wrote:
+> > > Coming back to this now, just trying to review the
+> > > filehandle-lookup/dcache interactions:
+> > >=20
+> > > On Fri, Mar 11, 2011 at 03:07:49PM +1100, NeilBrown wrote:
+> > > > 1/ Originally DCACHE_DISCONNECTED didn't really mean much - it's pr=
+esence
+> > > >    was only a hint, its absence was a strong statement.
+> > > >    If the flag is set, the dentry might not be linked to the root.
+> > > >    If it is clear, it definitely is link through to the root.
+> > > >    However I think it was used with stronger intent than that.
+> > > >=20
+> > > >    Now it seems to mean a little bit more:  If it is set and the de=
+ntry
+> > > >    is hashed, then it must be on the sb->s_anon list.
+> > >=20
+> > > The code that makes that assumption is __d_shrink (which does the work
+> > > of d_drop)--it uses DCACHE_DISCONECTED to decide which hash chain to
+> > > lock.
+> > >=20
+> > > I can't find any basis for that assumption.  The only code that clears
+> > > DCACHE_DISCONNECTED is in expfs.c, and it isn't done at the same time=
+ as
+> > > hashing.  Am I missing something?
+> > >=20
+> > > >    This is a significant
+> > > >    which I never noticed (I haven't been watching).  Originally a
+> > > >    disconnected dentry would be attached (and hashed) to its parent=
+.  Then
+> > > >    that parent would get its own parent and so on until it was atta=
+ched all
+> > > >    the way to the root.  Only then would be start clearing
+> > > >    DCACHE_DISCONNECTED.  It seems we must clear it sooner now... I =
+wonder if
+> > > >    that is correct.
+> > >=20
+> > > It looks wrong to me:
+> > >=20
+> > > If we clear DCACHE_DISCONNECTED too early, then we risk a filehandle
+> > > lookup thinking the dentry is OK to use.  That could mean for example
+> > > trying to rename across directories that don't have any ancestor
+> > > relationship to each other in the dcache yet.
+> > >=20
+> > > So we need to wait to clear DCACHE_DISCONNECTED until we *know* the
+> > > dentry's parents go all the way back to the root.  As you say, that's
+> > > what the current code does.
+> > >=20
+> > > But that means DCACHE_DISCONNECTED dentries can be hashed to their
+> > > parents, and __d_shrink can be handed such dentries and then get the
+> > > locking wrong.
+> > >=20
+> > > It looks like this bug might originate with Nick Piggin's ceb5bdc2d246
+> > > "fs: dcache per-bucket dcache hash locking"?  There's no discussion in
+> > > the changelog, so probably it was just based on an unexamined assumpt=
+ion
+> > > about DCACHE_DISCONNECTED.
+> > >=20
+> > > I wonder if an IS_ROOT() test could replace the DCACHE_DISCONNECTED t=
+est
+> > > in __d_shrink(), or if we need another flag, or ?
+> >=20
+> > Bah, sorry, and I only just noticed that you already said as much later
+> > and did the IS_ROOT() thing in your patch.
+> >=20
+> > Anyway, here's just that one change with a slightly more painstaking
+> > changelog.
+> >=20
+> > --b.
+> >=20
+> > commit b1fa644355122627424fe2240a9fc60cbef4c349
+> > Author: J. Bruce Fields <bfields@redhat.com>
+> > Date:   Thu Jun 28 12:10:55 2012 -0400
+> >=20
+> >     dcache: use IS_ROOT to decide where dentry is hashed
+> >    =20
+> >     Every hashed dentry is either hashed in the dentry_hashtable, or a
+> >     superblock's s_anon list.
+> >    =20
+> >     __d_shrink assumes it can determine which is the case by checking
+> >     DCACHE_DISCONNECTED; this is not true.
+> >    =20
+> >     It is true that when DCACHE_DISCONNECTED is cleared, the dentry is =
+not
+> >     only hashed on dentry_hashtable, but is fully connected to its pare=
+nts
+> >     back to the root.
+> >    =20
+> >     But the converse is *not* true: fs/exportfs/expfs.c:reconnect_path()
+> >     attempts to connect a directory (found by filehandle lookup) back to
+> >     root by ascending to parents and performing lookups one at a time. =
+ It
+> >     does not clear DCACHE_DISCONNECTED until its done, and that is not =
+at
+> >     all an atomic process.
+> >    =20
+> >     In particular, it is possible for DCACHE_DISCONNECTED to be set on a
+> >     dentry which is hashed on the dentry_hashtable.
+> >    =20
+> >     Instead, use IS_ROOT() to check which hash chain a dentry is on.  T=
+his
+> >     *does* work:
+> >    =20
+> >     Dentries are hashed only by:
+> >    =20
+> >     	- d_obtain_alias, which adds an IS_ROOT() dentry to sb_anon.
+> >    =20
+> >     	- __d_rehash, called by _d_rehash: hashes to the dentry's
+> >     	  parent, and all callers of _d_rehash appear to have d_parent
+> >     	  set to a "real" parent.
+> >     	- __d_rehash, called by __d_move: rehashes the moved dentry to
+> >     	  hash chain determined by target, and assigns target's d_parent
+> >     	  to its d_parent, before dropping the dentry's d_lock.
+> >    =20
+> >     Therefore I believe it's safe for a holder of a dentry's d_lock to
+> >     assume that it is hashed on sb_anon if and only if IS_ROOT(dentry) =
+is
+> >     true.
+> >    =20
+> >     I believe the incorrect assumption about DCACHE_DISCONNECTED was
+> >     originally introduced by ceb5bdc2d246 "fs: dcache per-bucket dcache=
+ hash
+> >     locking".
+> >    =20
+> >     Cc: Neil Brown <neilb@suse.de>
+> >     Cc: Nick Piggin <npiggin@kernel.dk>
+> >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> >=20
+> > diff --git a/fs/dcache.c b/fs/dcache.c
+> > index 87c2da7..b2b382c 100644
+> > --- a/fs/dcache.c
+> > +++ b/fs/dcache.c
+> > @@ -410,7 +410,7 @@ static void __d_shrink(struct dentry *dentry)
+> >  {
+> >  	if (!d_unhashed(dentry)) {
+> >  		struct hlist_bl_head *b;
+> > -		if (unlikely(dentry->d_flags & DCACHE_DISCONNECTED))
+> > +		if (unlikely(IS_ROOT(dentry->d_flags)))
+>=20
+> Um, right--I'll send an actual tested version along with some other
+> stuff later.
 
-If there is a good reason I can link against the library in gss-proxy,
-although I'd rather take the ball for unifying mapping so that it
-behaves uniformly across the system rather than keeping custom mappings
-that may different between apps and filesystem.
+:-)
 
-Simo.
+If that tested version looks like:
+                if (unlikely(IS_ROOT(dentry)))
+you can add a=20
+   Reviewed-by: NeilBrown <neilb@suse.de>
 
--- 
-Simo Sorce * Red Hat, Inc * New York
+Thanks,
+NeilBrown
 
+
+>=20
+> --b.
+>=20
+> >  			b =3D &dentry->d_sb->s_anon;
+> >  		else
+> >  			b =3D d_hash(dentry->d_parent, dentry->d_name.hash);
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+--Sig_/yEA1rDGz0sU9dFYOzqXzsif
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
+
+iQIVAwUBT/DZ/znsnt1WYoG5AQIRpRAAmEb1U341oxsGEoAQx9ZujePdJP82YjlD
+liTdj1b4ca5+0i2SeGzW7aU4rNQmKOU8iGVQFqSs3q4C0QO+d58PBT7LveSgYZvk
++ZMjvGCjsW7VKsx9f8dV6ZXIXq8bbAtB/Ksw2Qg+foebFxuOpXHz276HeZ4iu2wq
+VQiZqUTBK9Za7TuEkFxMPb0FLd4oOdkBtBuiMTN40WuIM0nK4fe8jpWgY6ph846T
+tkoLUKVY2aCXYBJ6mmp8MF5Tdu57NO1y1ehAxFbcOdslE0dNWnONzuAQ01RU2WwA
+8EIgT3joRIVTVh4Ut/cZzEZRcGk3Tv3aKEy6+ZjYVnZsUI4w9/7IaYkwmquGaFxL
+ceqSs/3FeEij5qXIrli0jyCUqUECRN7EoP4AV5itzQTlk6hrjhsGeBWcJrFZfRWg
+jawJVWySohDJ6R8leEa5F4RoRtX0MVxcznguLKjQ8HLC2UJSd7DeMqaNv0YenzGP
+CYlDiHtAoQvmPO2yYlgkrjyu3SteZH3xDG/9gTbNs3FmGzGilhq8hF1p25uR1Qvm
+7YMybYNs/pSotpxKT0Q5wtjx26HBsD9Ui+N0V9gpySOUW4O2tiHFqihliqT6pl/K
+ATfZo8QgCGZVApG+/JTYiY/BmNlQFm4y82ENOcei18a16MSBd2KioL3mWbxRL7B2
+UAIyPztOUdQ=
+=HLQD
+-----END PGP SIGNATURE-----
+
+--Sig_/yEA1rDGz0sU9dFYOzqXzsif--
