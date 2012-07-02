@@ -1,80 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:41017 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751568Ab2GITer (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Jul 2012 15:34:47 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 02/14] NFS: Properly sort TEST_STATEID results
-Date: Mon, 9 Jul 2012 19:34:31 +0000
-Message-ID: <1341862469.15267.1.camel@lade.trondhjem.org>
-References: <20120709153355.1604.14102.stgit@degas.1015granger.net>
-	 <20120709154400.1604.10590.stgit@degas.1015granger.net>
-In-Reply-To: <20120709154400.1604.10590.stgit@degas.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from rcsinet15.oracle.com ([148.87.113.117]:29586 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751155Ab2GBOm7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jul 2012 10:42:59 -0400
+Subject: Re: RPC rpcinfo command PATCH
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=US-ASCII
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CAC+fKpJCN2GJvA71RW4j9GUW5rw+hAS1SgPUZzBwvNShd098Ag@mail.gmail.com>
+Date: Mon, 2 Jul 2012 10:43:01 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <34DE974E-597D-460F-B2F0-5A6DBE51593F@oracle.com>
+References: <CAC+fKpJCN2GJvA71RW4j9GUW5rw+hAS1SgPUZzBwvNShd098Ag@mail.gmail.com>
+To: Leandro Meiners <lmeiners@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA3LTA5IGF0IDExOjQ0IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-VGhlIHJlc3VsdCBvZiBhIFRFU1RfU1RBVEVJRCBvcGVyYXRpb24gY2FuIGluZGljYXRlIGEgZmV3
-IGRpZmZlcmVudA0KPiB0aGluZ3M6DQo+IA0KPiAgIG8gSWYgTkZTX09LIGlzIHJldHVybmVkLCB0
-aGVuIHRoZSBjbGllbnQgY2FuIGNvbnRpbnVlIHVzaW5nIHRoZQ0KPiAgICAgc3RhdGUgSUQgdW5k
-ZXIgdGVzdCwgYW5kIHNraXAgcmVjb3ZlcnkuDQo+IA0KPiAgIG8gUkZDIDU2NjEgc2F5cyB0aGF0
-IGlmIGFuZCBvbmx5IGlmIHRoZSBzdGF0ZSBJRCB3YXMgcmV2b2tlZCwgdGhlbg0KPiAgICAgdGhl
-IGNsaWVudCBtdXN0IHBlcmZvcm0gYW4gZXhwbGljaXQgRlJFRV9TVEFURUlEIGJlZm9yZSB0cnlp
-bmcgdG8NCj4gICAgIHJlLW9wZW4uDQo+IA0KPiAgIG8gSWYgdGhlIHNlcnZlciBkb2Vzbid0IHJl
-Y29nbml6ZSB0aGUgc3RhdGUgSUQgYXQgYWxsLCB0aGVuIG5vDQo+ICAgICBGUkVFX1NUQVRFSUQg
-aXMgbmVlZGVkLCBhbmQgdGhlIGNsaWVudCBjYW4gaW1tZWRpYXRlbHkgY29udGludWUNCj4gICAg
-IHdpdGggb3BlbiByZWNvdmVyeS4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IENodWNrIExldmVyIDxj
-aHVjay5sZXZlckBvcmFjbGUuY29tPg0KPiAtLS0NCj4gDQo+ICBmcy9uZnMvbmZzNHByb2MuYyB8
-ICAgMzYgKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKy0tDQo+ICAxIGZpbGVzIGNo
-YW5nZWQsIDM0IGluc2VydGlvbnMoKyksIDIgZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0
-IGEvZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMvbmZzNHByb2MuYw0KPiBpbmRleCA5NzFlYzhj
-Li42MGEzMjBjIDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvbmZzNHByb2MuYw0KPiArKysgYi9mcy9u
-ZnMvbmZzNHByb2MuYw0KPiBAQCAtMTc1Niw2ICsxNzU2LDE0IEBAIHN0YXRpYyBpbnQgbmZzNF9v
-cGVuX2V4cGlyZWQoc3RydWN0IG5mczRfc3RhdGVfb3duZXIgKnNwLCBzdHJ1Y3QgbmZzNF9zdGF0
-ZSAqc3RhDQo+ICB9DQo+ICANCj4gICNpZiBkZWZpbmVkKENPTkZJR19ORlNfVjRfMSkNCj4gKy8q
-Kg0KPiArICogbmZzNDFfY2hlY2tfZXhwaXJlZF9zdGF0ZWlkIC0gZG9lcyBhIHN0YXRlIElEIG5l
-ZWQgcmVjb3Zlcnk/DQo+ICsgKg0KPiArICogQHN0YXRlOiBORlN2NCBvcGVuIHN0YXRlIGZvciBh
-biBpbm9kZQ0KPiArICoNCj4gKyAqIFJldHVybnMgTkZTX09LIGlmIHJlY292ZXJ5IGZvciB0aGlz
-IHN0YXRlIElEIGlzIG5vdyBmaW5pc2hlZC4NCj4gKyAqIE90aGVyd2lzZSBhIG5lZ2F0aXZlIE5G
-UzRFUlIgdmFsdWUgaXMgcmV0dXJuZWQuDQo+ICsgKi8NCj4gIHN0YXRpYyBpbnQgbmZzNDFfY2hl
-Y2tfZXhwaXJlZF9zdGF0ZWlkKHN0cnVjdCBuZnM0X3N0YXRlICpzdGF0ZSwgbmZzNF9zdGF0ZWlk
-ICpzdGF0ZWlkLCB1bnNpZ25lZCBpbnQgZmxhZ3MpDQo+ICB7DQo+ICAJaW50IHN0YXR1cyA9IE5G
-U19PSzsNCj4gQEAgLTE3NjMsOCArMTc3MSwxNiBAQCBzdGF0aWMgaW50IG5mczQxX2NoZWNrX2V4
-cGlyZWRfc3RhdGVpZChzdHJ1Y3QgbmZzNF9zdGF0ZSAqc3RhdGUsIG5mczRfc3RhdGVpZCAqcw0K
-PiAgDQo+ICAJaWYgKHN0YXRlLT5mbGFncyAmIGZsYWdzKSB7DQo+ICAJCXN0YXR1cyA9IG5mczQx
-X3Rlc3Rfc3RhdGVpZChzZXJ2ZXIsIHN0YXRlaWQpOw0KPiAtCQlpZiAoc3RhdHVzICE9IE5GU19P
-Sykgew0KPiArCQlzd2l0Y2ggKHN0YXR1cykgew0KPiArCQljYXNlIE5GU19PSzoNCj4gKwkJCS8q
-IHNlcnZlciByZWNvZ25pemVzIHRoaXMgb25lLCBkb24ndCByZWNvdmVyICovDQo+ICsJCQlicmVh
-azsNCj4gKwkJY2FzZSAtTkZTNEVSUl9BRE1JTl9SRVZPS0VEOg0KPiArCQljYXNlIC1ORlM0RVJS
-X0RFTEVHX1JFVk9LRUQ6DQoNCldoYXQgYWJvdXQgLU5GUzRFUlJfQkFEX1NUQVRFSUQgYW5kL29y
-IC1ORlM0RVJSX0VYUElSRUQ/DQoNCj4gKwkJCS8qIHN0YXRlIHdhcyByZXZva2VkLCBmcmVlIHRo
-ZW4gcmUtb3BlbiAqLw0KPiAgCQkJbmZzNDFfZnJlZV9zdGF0ZWlkKHNlcnZlciwgc3RhdGVpZCk7
-DQo+ICsJCWRlZmF1bHQ6DQo+ICsJCQkvKiBhbnl0aGluZyBlbHNlOiBqdXN0IHJlLW9wZW4gaXQg
-Ki8NCj4gIAkJCXN0YXRlLT5mbGFncyAmPSB+ZmxhZ3M7DQo+ICAJCX0NCj4gIAl9DQo+IEBAIC00
-Njk4LDYgKzQ3MTQsMTQgQEAgb3V0Og0KPiAgfQ0KPiAgDQo+ICAjaWYgZGVmaW5lZChDT05GSUdf
-TkZTX1Y0XzEpDQo+ICsvKioNCj4gKyAqIG5mczQxX2NoZWNrX2V4cGlyZWRfbG9ja3MgLSBjbGVh
-ciBsb2NrIHN0YXRlIElEcw0KPiArICoNCj4gKyAqIEBzdGF0ZTogTkZTdjQgb3BlbiBzdGF0ZSBm
-b3IgYSBmaWxlDQo+ICsgKg0KPiArICogUmV0dXJucyBORlNfT0sgaWYgcmVjb3ZlcnkgZm9yIHRo
-aXMgc3RhdGUgSUQgaXMgbm93IGZpbmlzaGVkLg0KPiArICogT3RoZXJ3aXNlIGEgbmVnYXRpdmUg
-TkZTNEVSUiB2YWx1ZSBpcyByZXR1cm5lZC4NCj4gKyAqLw0KPiAgc3RhdGljIGludCBuZnM0MV9j
-aGVja19leHBpcmVkX2xvY2tzKHN0cnVjdCBuZnM0X3N0YXRlICpzdGF0ZSkNCj4gIHsNCj4gIAlp
-bnQgc3RhdHVzLCByZXQgPSBORlNfT0s7DQo+IEBAIC00NzA3LDggKzQ3MzEsMTYgQEAgc3RhdGlj
-IGludCBuZnM0MV9jaGVja19leHBpcmVkX2xvY2tzKHN0cnVjdCBuZnM0X3N0YXRlICpzdGF0ZSkN
-Cj4gIAlsaXN0X2Zvcl9lYWNoX2VudHJ5KGxzcCwgJnN0YXRlLT5sb2NrX3N0YXRlcywgbHNfbG9j
-a3MpIHsNCj4gIAkJaWYgKGxzcC0+bHNfZmxhZ3MgJiBORlNfTE9DS19JTklUSUFMSVpFRCkgew0K
-PiAgCQkJc3RhdHVzID0gbmZzNDFfdGVzdF9zdGF0ZWlkKHNlcnZlciwgJmxzcC0+bHNfc3RhdGVp
-ZCk7DQo+IC0JCQlpZiAoc3RhdHVzICE9IE5GU19PSykgew0KPiArCQkJc3dpdGNoIChzdGF0dXMp
-IHsNCj4gKwkJCWNhc2UgTkZTX09LOg0KPiArCQkJCS8qIHNlcnZlciByZWNvZ25pemVzIHRoaXMg
-b25lLCBkb24ndCByZS1sb2NrICovDQo+ICsJCQkJYnJlYWs7DQo+ICsJCQljYXNlIC1ORlM0RVJS
-X0FETUlOX1JFVk9LRUQ6DQo+ICsJCQljYXNlIC1ORlM0RVJSX0RFTEVHX1JFVk9LRUQ6DQoNCkRp
-dHRvDQoNCj4gKwkJCQkvKiBsb2NrIHdhcyByZXZva2VkLCBmcmVlIHRoZW4gcmUtbG9jayAqLw0K
-PiAgCQkJCW5mczQxX2ZyZWVfc3RhdGVpZChzZXJ2ZXIsICZsc3AtPmxzX3N0YXRlaWQpOw0KPiAr
-CQkJZGVmYXVsdDoNCj4gKwkJCQkvKiBhbnl0aGluZyBlbHNlOiBqdXN0IHJlLWxvY2sgaXQgKi8N
-Cj4gIAkJCQlsc3AtPmxzX2ZsYWdzICY9IH5ORlNfTE9DS19JTklUSUFMSVpFRDsNCj4gIAkJCQly
-ZXQgPSBzdGF0dXM7DQo+ICAJCQl9DQo+IA0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
-TkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
-b20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+
+On Jul 2, 2012, at 10:32 AM, Leandro Meiners wrote:
+
+> Hi,
+> 
+> I have written a patch for the rpcinfo command that allows querying
+> the port-mapper via UDP instead of TCP. I added a new parameter
+> (upper-case P) for this functionality. It was helpful for me during a
+> penetration test and I thought it might be worth adding to the
+> project.
+> Signed-off-by: Leandro Meiners <lmeiners@gmail.com>
+
+Instead of passing a string ("tcp") to pmapdump(), why not use IPPROTO_TCP and IPPROTO_UDP ?
+
+Can you say a little bit more about how UDP helped you?
