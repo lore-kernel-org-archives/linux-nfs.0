@@ -1,54 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59225 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754304Ab2GaOgE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jul 2012 10:36:04 -0400
-Date: Tue, 31 Jul 2012 10:36:00 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk, matthew@wil.cx
-Subject: Re: nfsd changes for 3.6
-Message-ID: <20120731143600.GD27834@fieldses.org>
-References: <20120731142948.GC27834@fieldses.org>
+Received: from mailout-de.gmx.net ([213.165.64.22]:57609 "HELO
+	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1754482Ab2GBJnv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jul 2012 05:43:51 -0400
+Message-ID: <4FF16D54.6090200@gmx.com>
+Date: Mon, 02 Jul 2012 11:43:48 +0200
+From: Andreas Heinlein <aheinlein@gmx.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120731142948.GC27834@fieldses.org>
+To: linux-nfs@vger.kernel.org
+Subject: Kernel NFSd CPU hog?
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 31, 2012 at 10:29:48AM -0400, bfields wrote:
-> Please pull nfsd (and some lockd and a couple locks/lease) changes from:
+Hello,
 
-By the way, for a few years now I've been semi-regularly picking up
-locks.c changes for my tree.  I wonder if I should be.
+we have a strange NFS problem with a newly setup Linux server, and I 
+hope someone here can help.
 
-At the least we should probably remove this entry from MAINTAINERS?  And
-by default I suppose that stuff reverts to Al, who rumor has it will
-have a fair number of locks.c patches next time around.
+The symptom is that, slowly over time (speaking of several days up to 2 
+weeks), the kernel nfsd processes/threads consume more and more CPU 
+until the system finally becomes unresponsive. We recorded system 
+activity with sar, which shows that CPU (system) usage slowly rises 
+after reboot from about 1% to nearly 100% over the course of several 
+days. Load averages stay around 0.1-0.3 until 100% are reached, up to 
+this point the problem is almost not noticable from the clients. Then 
+load averages climb up to 30.0; at this point the system becomes more or 
+less unusable and has to be restarted. 'top' output shows the CPU usage 
+evenly distributed across all nfsd threads.
 
-Or I'm happy to claim to be maintainer of that file if somebody prefers,
-it doesn't matter much to me.
+The system is a fairly recent, though entry level server with a Core i3 
+and 4G RAM, hosting the home directories for about 15-20 clients. CPU 
+activity does not drop at night, when no clients are connected. It is 
+running Debian 6.0 with linux 3.2.0 (from the backports repository), 
+with nfs-utils 1.2.5 (also from the backports repository). I suspect 
+that these backports might be the culprit, but since we need this kernel 
+for other purposes, and I cannot reboot that machine during office 
+hours, I'd rather not try going back to the official Debian kernel 
+without good reasons. If there are known problems, I'd give it a try.
 
---b.
+Can anyone help me?
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 3e30a3a..305ac2c 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -2767,15 +2767,6 @@ F:	include/scsi/fc/
- F:	include/scsi/libfc.h
- F:	include/scsi/libfcoe.h
- 
--FILE LOCKING (flock() and fcntl()/lockf())
--M:	Matthew Wilcox <matthew@wil.cx>
--L:	linux-fsdevel@vger.kernel.org
--S:	Maintained
--F:	include/linux/fcntl.h
--F:	include/linux/fs.h
--F:	fs/fcntl.c
--F:	fs/locks.c
--
- FILESYSTEMS (VFS and infrastructure)
- M:	Alexander Viro <viro@zeniv.linux.org.uk>
- L:	linux-fsdevel@vger.kernel.org
+Thanks,
+Andreas
