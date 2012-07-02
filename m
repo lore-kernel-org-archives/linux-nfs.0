@@ -1,75 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:56466 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753159Ab2GIUeR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Jul 2012 16:34:17 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 06/14] NFS: Treat NFS4ERR_CLID_INUSE as a fatal error
-Date: Mon, 9 Jul 2012 20:34:14 +0000
-Message-ID: <1341866052.15267.28.camel@lade.trondhjem.org>
-References: <20120709153355.1604.14102.stgit@degas.1015granger.net>
-	 <20120709154435.1604.50788.stgit@degas.1015granger.net>
-	 <1341864627.15267.19.camel@lade.trondhjem.org>
-	 <C8C49406-3B7A-4CB5-9C26-D2A568352E1F@oracle.com>
-In-Reply-To: <C8C49406-3B7A-4CB5-9C26-D2A568352E1F@oracle.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from rcsinet15.oracle.com ([148.87.113.117]:38139 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932871Ab2GBVvh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jul 2012 17:51:37 -0400
+Subject: Re: Linux NFSv4 client uses returned delegation in subsequent READ resulting in hang (BAD_STATEID)
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1341265720.8197.56.camel@lade.trondhjem.org>
+Date: Mon, 2 Jul 2012 17:50:31 -0400
+Cc: "Linux;NFS Mailing List" <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Message-Id: <E77A07D9-EFA1-4C52-B0A9-3E81401341E5@oracle.com>
+References: <CAPD_G3L0wwzCWyoPJp_sKpuQ0J7+avn-ejEn-WnXf81zr=-LqA@mail.gmail.com> <2E097766-1FA2-42E1-B790-B3BBC254B705@oracle.com> <CAPD_G3Lc6F9yUOXLUcPgn1c5n=Hcs2JSXdGPhZ-CjtBLVoibbg@mail.gmail.com> <2F725B49-A089-41E9-BBC9-11B889A62C9D@oracle.com> <1341263584.8197.53.camel@lade.trondhjem.org> <6C5408EB-668A-43C9-B3FE-9D66427B5BE0@oracle.com> <1341265720.8197.56.camel@lade.trondhjem.org>
+To: "Charles 'Boyo" <charlesboyo@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA3LTA5IGF0IDE2OjEyIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gSnVsIDksIDIwMTIsIGF0IDQ6MTAgUE0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+IA0K
-PiA+IE9uIE1vbiwgMjAxMi0wNy0wOSBhdCAxMTo0NCAtMDQwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6
-DQo+ID4+IEZvciBORlN2NCBtaW5vciB2ZXJzaW9uIDAsIGN1cnJlbnRseSB0aGUgY2xfaWRfdW5p
-cXVpZmllciBhbGxvd3MgdGhlDQo+ID4+IExpbnV4IGNsaWVudCB0byBnZW5lcmF0ZSBhIHVuaXF1
-ZSBuZnNfY2xpZW50X2lkNCBzdHJpbmcgd2hlbmV2ZXIgYQ0KPiA+PiBzZXJ2ZXIgcmVwbGllcyB3
-aXRoIE5GUzRFUlJfQ0xJRF9JTlVTRS4NCj4gPj4gDQo+ID4+IFRoaXMgaW1wbGVtZW50YXRpb24g
-c2VlbXMgdG8gYmUgYmFzZWQgb24gYSBmbGF3ZWQgcmVhZGluZyBvZiBSRkMNCj4gPj4gMzUzMC4g
-IE5GUzRFUlJfQ0xJRF9JTlVTRSBhY3R1YWxseSBtZWFucyB0aGF0IHRoZSBjbGllbnQgaGFzIHBy
-ZXNlbnRlZA0KPiA+PiB0aGlzIG5mc19jbGllbnRfaWQ0IHN0cmluZyB3aXRoIGEgZGlmZmVyZW50
-IHByaW5jaXBhbCBhdCBzb21lIHRpbWUgaW4NCj4gPj4gdGhlIHBhc3QsIGFuZCB0aGF0IGxlYXNl
-IGlzIHN0aWxsIGluIHVzZSBvbiB0aGUgc2VydmVyLg0KPiA+PiANCj4gPj4gRm9yIGEgTGludXgg
-Y2xpZW50IHRoaXMgbWlnaHQgYmUgcmF0aGVyIGRpZmZpY3VsdCB0byBhY2hpZXZlOiB0aGUNCj4g
-Pj4gYXV0aGVudGljYXRpb24gZmxhdm9yIGlzIG5hbWVkIHJpZ2h0IGluIHRoZSBuZnNfY2xpZW50
-X2lkNC5pZA0KPiA+PiBzdHJpbmcuICBJZiB3ZSBjaGFuZ2UgZmxhdm9ycywgd2UgY2hhbmdlIHN0
-cmluZ3MgYXV0b21hdGljYWxseS4NCj4gPj4gDQo+ID4+IFNvLCBwcmFjdGljYWxseSBzcGVha2lu
-ZywgTkZTNEVSUl9DTElEX0lOVVNFIG1lYW5zIHRoZXJlIGlzIHNvbWUgb3RoZXINCj4gPj4gY2xp
-ZW50IHVzaW5nIG91ciBzdHJpbmcuICBUaGVyZSBpcyBub3QgbXVjaCB0aGF0IGNhbiBiZSBkb25l
-IHRvDQo+ID4+IHJlY292ZXIgYXV0b21hdGljYWxseS4gIExldCdzIG1ha2UgaXQgYSBwZXJtYW5l
-bnQgZXJyb3IuDQo+ID4+IA0KPiA+PiBSZW1vdmUgdGhlIHJlY292ZXJ5IGxvZ2ljIGluIG5mczRf
-cHJvY19zZXRjbGllbnRpZCgpLCBhbmQgcmVtb3ZlIHRoZQ0KPiA+PiBjbF9pZF91bmlxdWlmaWVy
-IGZpZWxkIGZyb20gdGhlIG5mc19jbGllbnQgZGF0YSBzdHJ1Y3R1cmUuICBBbmQsDQo+ID4+IHJl
-bW92ZSB0aGUgYXV0aGVudGljYXRpb24gZmxhdm9yIGZyb20gdGhlIG5mc19jbGllbnRfaWQ0IHN0
-cmluZy4NCj4gPj4gDQo+ID4+IEtlZXBpbmcgdGhlIGF1dGhlbnRpY2F0aW9uIGZsYXZvciBpbiB0
-aGUgbmZzX2NsaWVudF9pZDQuaWQgc3RyaW5nDQo+ID4+IG1lYW5zIHRoYXQgd2UgY291bGQgaGF2
-ZSBhIHNlcGFyYXRlIGxlYXNlIGZvciBlYWNoIGF1dGhlbnRpY2F0aW9uDQo+ID4+IGZsYXZvciB1
-c2VkIGJ5IG1vdW50cyBvbiB0aGUgY2xpZW50LiAgQnV0IHdlIHdhbnQganVzdCBvbmUgbGVhc2Ug
-Zm9yDQo+ID4+IGFsbCB0aGUgbW91bnRzIG9uIHRoaXMgY2xpZW50Lg0KPiA+PiANCj4gPj4gU2ln
-bmVkLW9mZi1ieTogQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+DQo+ID4+IC0t
-LQ0KPiA+PiANCj4gPj4gZnMvbmZzL25mczRwcm9jLmMgICAgICAgICB8ICAgNTQgKysrKysrKysr
-KysrKysrKysrLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+ID4+IGZzL25mcy9uZnM0c3Rh
-dGUuYyAgICAgICAgfCAgICA3ICsrKysrLQ0KPiA+PiBpbmNsdWRlL2xpbnV4L25mc19mc19zYi5o
-IHwgICAgMyArLS0NCj4gPj4gMyBmaWxlcyBjaGFuZ2VkLCAyOSBpbnNlcnRpb25zKCspLCAzNSBk
-ZWxldGlvbnMoLSkNCj4gPj4gDQo+ID4+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHByb2MuYyBi
-L2ZzL25mcy9uZnM0cHJvYy5jDQo+ID4+IGluZGV4IDdhZGI3MDUuLjYzYTNjZjAgMTAwNjQ0DQo+
-ID4+IC0tLSBhL2ZzL25mcy9uZnM0cHJvYy5jDQo+ID4+ICsrKyBiL2ZzL25mcy9uZnM0cHJvYy5j
-DQo+ID4+IEBAIC0yNTksNyArMjU5LDEyIEBAIHN0YXRpYyBpbnQgbmZzNF93YWl0X2NsbnRfcmVj
-b3ZlcihzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwKQ0KPiA+PiANCj4gPj4gCXJlcyA9IHdhaXRfb25f
-Yml0KCZjbHAtPmNsX3N0YXRlLCBORlM0Q0xOVF9NQU5BR0VSX1JVTk5JTkcsDQo+ID4+IAkJCW5m
-c193YWl0X2JpdF9raWxsYWJsZSwgVEFTS19LSUxMQUJMRSk7DQo+ID4+IC0JcmV0dXJuIHJlczsN
-Cj4gPj4gKwlpZiAocmVzKQ0KPiA+PiArCQlyZXR1cm4gcmVzOw0KPiA+PiArDQo+ID4+ICsJaWYg
-KGNscC0+Y2xfY29uc19zdGF0ZSA8IDApDQo+ID4+ICsJCXJldHVybiBjbHAtPmNsX2NvbnNfc3Rh
-dGU7DQo+ID4+ICsJcmV0dXJuIDA7DQo+ID4+IH0NCj4gPiANCj4gPiBBKSBUaGlzIHNob3VsZCBi
-ZSBhIHNlcGFyYXRlIHBhdGNoLg0KPiANCj4gT0suDQo+IA0KPiA+IA0KPiA+IEIpIFdoeSBpcyBp
-dCBuZWVkZWQgaW4gdGhlIGZpcnN0IHBsYWNlPyBBbGwgcGxhY2VzIHRoYXQgY2FsbA0KPiA+IG5m
-czRfd2FpdF9jbG50X3JlY292ZXIgbGllIG91dHNpZGUgdGhlIG1vdW50IGNvZGUgcGF0aC4NCj4g
-DQo+IFRoZSBwcm9ibGVtIGlzIHRoYXQgaXMgbm8gbG9uZ2VyIHRoZSBjYXNlIG9uY2Ugd2UgaGF2
-ZSB0cnVua2luZyBkaXNjb3ZlcnkgaW4gdGhlIG1vdW50IHBhdGguDQo+IA0KPiBXZSBkaXNjdXNz
-ZWQgdGhpcy4gIFRoaXMgaXMgd2hhdCB5b3UgdG9sZCBtZSB0byBkby4NCg0KVGhlIG9ubHkgbmV3
-IGVycm9yIGNvbmRpdGlvbiB5b3VyIHRydW5raW5nIGRldGVjdGlvbiBpcyBwb3RlbnRpYWxseQ0K
-aW50cm9kdWNpbmcgaGVyZSBpcyBDTElEX0lOVVNFLiBXaHkgZG9lcyB0aGF0IHdhcnJhbnQgdGhp
-cyBjaGFuZ2U/DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50
-YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5j
-b20NCg0K
+
+On Jul 2, 2012, at 5:48 PM, Myklebust, Trond wrote:
+
+> On Mon, 2012-07-02 at 17:19 -0400, Chuck Lever wrote:
+>> On Jul 2, 2012, at 5:13 PM, Myklebust, Trond wrote:
+>> 
+>>> On Mon, 2012-07-02 at 16:35 -0400, Chuck Lever wrote:
+>>>> On Jul 2, 2012, at 4:22 PM, Charles 'Boyo wrote:
+>>>> 
+>>>>> On Mon, Jul 2, 2012 at 3:09 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>>> 
+>>>>>> Usually we see this behavior because of a race between an OPEN with delegation and a delegation recall.  In this case, however, the client is actively returning a READ
+>>>>>> delegation, then proceeding to use it anyway.  I don't see the server's recall callback, though, and there are other indications that this trace is not complete. So it's hard
+>>>>>> to be 100% confident.
+>>>>>> 
+>>>>> The trace is not complete, it includes just enough information to
+>>>>> explain the problem.
+>>>>> However I can confirm the service did not send a recall callback, the
+>>>>> client returned the delegation of its own "free will".
+>>>> 
+>>>> The callback would come on a separate TCP connection.  I can't think of a reason that a client would return a delegation by itself and then subsequently start to use it.
+>>> 
+>>> I can: there are a number of servers out there that violate the spec by
+>>> returning a delegation as part of an OPEN(CLAIM_DELEGATE_CUR). Usually
+>>> those broken servers will send the exact same stateid as the delegation
+>>> that is being returned.
+>> 
+>> The OPEN in frame 7 is a CLAIM_NULL OPEN, isn't it?
+> 
+> Yes. Is there a preamble to that, or did the client really try to
+> delegreturn immediately upon receiving a delegation?
+
+Charles, we would like to see an un-redacted trace, if you have one.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
