@@ -1,72 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34344 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:54068 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754826Ab2G3XXT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Jul 2012 19:23:19 -0400
-Date: Mon, 30 Jul 2012 19:23:16 -0400
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH] SUNRPC: return negative value in case rpcbind client
- creation error
-Message-ID: <20120730232316.GC21730@fieldses.org>
-References: <20120720114849.23572.91010.stgit@localhost.localdomain>
- <1343689924.8362.4.camel@lade.trondhjem.org>
+	id S1755553Ab2GBV7x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Jul 2012 17:59:53 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Charles 'Boyo" <charlesboyo@gmail.com>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Linux NFSv4 client uses returned delegation in subsequent READ
+ resulting in hang (BAD_STATEID)
+Date: Mon, 2 Jul 2012 21:59:51 +0000
+Message-ID: <1341266386.8197.61.camel@lade.trondhjem.org>
+References: <CAPD_G3L0wwzCWyoPJp_sKpuQ0J7+avn-ejEn-WnXf81zr=-LqA@mail.gmail.com>
+	 <2E097766-1FA2-42E1-B790-B3BBC254B705@oracle.com>
+	 <CAPD_G3Lc6F9yUOXLUcPgn1c5n=Hcs2JSXdGPhZ-CjtBLVoibbg@mail.gmail.com>
+	 <2F725B49-A089-41E9-BBC9-11B889A62C9D@oracle.com>
+	 <1341263584.8197.53.camel@lade.trondhjem.org>
+	 <6C5408EB-668A-43C9-B3FE-9D66427B5BE0@oracle.com>
+	 <CAPD_G3KojVhnjtfjN0poJvpV0i+6JZeK54rm5Swm3MDKEXQ=Zw@mail.gmail.com>
+In-Reply-To: <CAPD_G3KojVhnjtfjN0poJvpV0i+6JZeK54rm5Swm3MDKEXQ=Zw@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1343689924.8362.4.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 30, 2012 at 11:12:05PM +0000, Myklebust, Trond wrote:
-> On Fri, 2012-07-20 at 15:57 +0400, Stanislav Kinsbursky wrote:
-> > Without this patch kernel will panic on LockD start, because lockd_up() checks
-> > lockd_up_net() result for negative value.
-> > >From my pow it's better to return negative value from rpcbind routines instead
-> > of replacing all such checks like in lockd_up().
-> > 
-> > Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> > ---
-> >  net/sunrpc/rpcb_clnt.c |    4 ++--
-> >  1 files changed, 2 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-> > index 92509ff..a70acae 100644
-> > --- a/net/sunrpc/rpcb_clnt.c
-> > +++ b/net/sunrpc/rpcb_clnt.c
-> > @@ -251,7 +251,7 @@ static int rpcb_create_local_unix(struct net *net)
-> >  	if (IS_ERR(clnt)) {
-> >  		dprintk("RPC:       failed to create AF_LOCAL rpcbind "
-> >  				"client (errno %ld).\n", PTR_ERR(clnt));
-> > -		result = -PTR_ERR(clnt);
-> > +		result = PTR_ERR(clnt);
-> >  		goto out;
-> >  	}
-> >  
-> > @@ -298,7 +298,7 @@ static int rpcb_create_local_net(struct net *net)
-> >  	if (IS_ERR(clnt)) {
-> >  		dprintk("RPC:       failed to create local rpcbind "
-> >  				"client (errno %ld).\n", PTR_ERR(clnt));
-> > -		result = -PTR_ERR(clnt);
-> > +		result = PTR_ERR(clnt);
-> >  		goto out;
-> >  	}
-> 
-> Who is supposed to carry this patch? Is it Bruce or is it me?
-
-Works either way.  Either way--it looks like the bug was introduced with
-
-c526611dd631b2802b6b0221ffb306c5fa25c86c "SUNRPC: Use a cached RPC
-client and transport for rpcbind upcalls" and
-7402ab19cdd5943c7dd4f3399afe3abda8077ef5 "SUNRPC: Use AF_LOCAL for
-rpcbind upcalls"
-
-and should go to stable as well.
-
-(Looks like I said that before but accidentally dropped everyone off the
-cc.)
-
---b.
+T24gTW9uLCAyMDEyLTA3LTAyIGF0IDIyOjUwICswMTAwLCBDaGFybGVzICdCb3lvIHdyb3RlOg0K
+PiBPbiBNb24sIEp1bCAyLCAyMDEyIGF0IDEwOjE5IFBNLCBDaHVjayBMZXZlciA8Y2h1Y2subGV2
+ZXJAb3JhY2xlLmNvbT4gd3JvdGU6DQo+ID4NCj4gPiBPbiBKdWwgMiwgMjAxMiwgYXQgNToxMyBQ
+TSwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4gPg0KPiA+PiBPbiBNb24sIDIwMTItMDctMDIg
+YXQgMTY6MzUgLTA0MDAsIENodWNrIExldmVyIHdyb3RlOg0KPiA+Pj4gT24gSnVsIDIsIDIwMTIs
+IGF0IDQ6MjIgUE0sIENoYXJsZXMgJ0JveW8gd3JvdGU6DQo+ID4+Pg0KPiA+Pj4+IE9uIE1vbiwg
+SnVsIDIsIDIwMTIgYXQgMzowOSBQTSwgQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5j
+b20+IHdyb3RlOg0KPiA+Pj4+Pg0KPiA+Pj4+PiBVc3VhbGx5IHdlIHNlZSB0aGlzIGJlaGF2aW9y
+IGJlY2F1c2Ugb2YgYSByYWNlIGJldHdlZW4gYW4gT1BFTiB3aXRoIGRlbGVnYXRpb24gYW5kIGEg
+ZGVsZWdhdGlvbiByZWNhbGwuICBJbiB0aGlzIGNhc2UsIGhvd2V2ZXIsIHRoZSBjbGllbnQgaXMg
+YWN0aXZlbHkgcmV0dXJuaW5nIGEgUkVBRA0KPiA+Pj4+PiBkZWxlZ2F0aW9uLCB0aGVuIHByb2Nl
+ZWRpbmcgdG8gdXNlIGl0IGFueXdheS4gIEkgZG9uJ3Qgc2VlIHRoZSBzZXJ2ZXIncyByZWNhbGwg
+Y2FsbGJhY2ssIHRob3VnaCwgYW5kIHRoZXJlIGFyZSBvdGhlciBpbmRpY2F0aW9ucyB0aGF0IHRo
+aXMgdHJhY2UgaXMgbm90IGNvbXBsZXRlLiBTbyBpdCdzIGhhcmQNCj4gPj4+Pj4gdG8gYmUgMTAw
+JSBjb25maWRlbnQuDQo+ID4+Pj4+DQo+ID4+Pj4gVGhlIHRyYWNlIGlzIG5vdCBjb21wbGV0ZSwg
+aXQgaW5jbHVkZXMganVzdCBlbm91Z2ggaW5mb3JtYXRpb24gdG8NCj4gPj4+PiBleHBsYWluIHRo
+ZSBwcm9ibGVtLg0KPiA+Pj4+IEhvd2V2ZXIgSSBjYW4gY29uZmlybSB0aGUgc2VydmljZSBkaWQg
+bm90IHNlbmQgYSByZWNhbGwgY2FsbGJhY2ssIHRoZQ0KPiA+Pj4+IGNsaWVudCByZXR1cm5lZCB0
+aGUgZGVsZWdhdGlvbiBvZiBpdHMgb3duICJmcmVlIHdpbGwiLg0KPiA+Pj4NCj4gPj4+IFRoZSBj
+YWxsYmFjayB3b3VsZCBjb21lIG9uIGEgc2VwYXJhdGUgVENQIGNvbm5lY3Rpb24uICBJIGNhbid0
+IHRoaW5rIG9mIGEgcmVhc29uIHRoYXQgYSBjbGllbnQgd291bGQgcmV0dXJuIGEgZGVsZWdhdGlv
+biBieSBpdHNlbGYgYW5kIHRoZW4gc3Vic2VxdWVudGx5IHN0YXJ0IHRvIHVzZSBpdC4NCj4gPj4N
+Cj4gPj4gSSBjYW46IHRoZXJlIGFyZSBhIG51bWJlciBvZiBzZXJ2ZXJzIG91dCB0aGVyZSB0aGF0
+IHZpb2xhdGUgdGhlIHNwZWMgYnkNCj4gPj4gcmV0dXJuaW5nIGEgZGVsZWdhdGlvbiBhcyBwYXJ0
+IG9mIGFuIE9QRU4oQ0xBSU1fREVMRUdBVEVfQ1VSKS4gVXN1YWxseQ0KPiA+PiB0aG9zZSBicm9r
+ZW4gc2VydmVycyB3aWxsIHNlbmQgdGhlIGV4YWN0IHNhbWUgc3RhdGVpZCBhcyB0aGUgZGVsZWdh
+dGlvbg0KPiA+PiB0aGF0IGlzIGJlaW5nIHJldHVybmVkLg0KPiA+DQo+ID4gVGhlIE9QRU4gaW4g
+ZnJhbWUgNyBpcyBhIENMQUlNX05VTEwgT1BFTiwgaXNuJ3QgaXQ/DQo+ID4NCj4gVGhlIE9QRU4g
+aW4gdGhpcyBjYXNlIGlzIGEgQ0xBSU1fTlVMTCBhbmQgSSBoYXZlIHJlLWV4YW1pbmVkIG15DQo+
+IG5ldHdvcmsgZHVtcCwgdGhlcmUgd2FzIG5vIGNhbGwgYmFjayBmcm9tIHRoZSBzZXJ2ZXIuDQo+
+IFNvIHdoeSB3b3VsZCB0aGUgY2xpZW50IHJldHVybnMgYSBkZWxlZ2F0aW9uIHZvbHVudGFyaWx5
+IGFuZCB0aGVuIHJlLXVzZSBpdD8NCj4gDQo+ID4+Pj4gSXMgaXQgcG9zc2libGUgaXMgYSBzY2hl
+ZHVsaW5nIGlzc3VlIG9mIHNvbWUgc29ydCwgd2hlcmUgdGhlIFJFQUQNCj4gPj4+PiBzaG91bGQg
+aGF2ZSBiZWVuIHNlbnQgYWhlYWQgb2YgdGhlIERFTEVHUkVUVVJOIGJ1dCBzb21laG93IGdvdCBt
+aXhlZA0KPiA+Pj4+IHVwPw0KPiANCj4gPj4+IE9yIHBvc3NpYmx5IHRoYXQgdGhlIERFTEVHUkVU
+VVJOIGRvZXNuJ3QgYWN0dWFsbHkgcmVtb3ZlIHRoZSBkZWxlZ2F0aW9uIHN0YXRlIElEIHVudGls
+IHRoZSBzZXJ2ZXIgaGFzIHJlcGxpZWQsIGFuZCB0aGUgUkVBRCByZXF1ZXN0IHdhcyBzZW50IGJl
+Zm9yZSB0aGUgREVMRUdSRVRVUk4NCj4gPj4+IHJlcGx5IGFycml2ZWQgYXQgdGhlIGNsaWVudC4N
+Cj4gDQo+IEluZGVlZCwgdGhlIFJFQUQgd2FzIGlzc3VlZCBhZnRlciB0aGUgREVMRUdSRVRVUk4g
+YnV0IGJlZm9yZSB0aGUNCj4gcmVzcG9uc2UgdG8gaXQuIElzIGl0IHBvc3NpYmxlIHRvIGNoZWNr
+IGlmIHRoaXMgaXMgZXhwZWN0ZWQgYmVoYXZpb3I/DQoNClRoYXQgaXMgZXhwZWN0ZWQgYmVoYXZp
+b3VyLiBXZSBkb24ndCBzZXJpYWxpc2UgUkVBRCBhbmQgREVMRUdSRVRVUk4uDQoNCldoYXQgaXNu
+J3QgZXhwZWN0ZWQgYmVoYXZpb3VyIGlzIGZvciB0aGUgY2xpZW50IHRvIERFTEVHUkVUVVJODQpp
+bW1lZGlhdGVseSB1cG9uIHJlY2VpdmluZyB0aGUgZGVsZWdhdGlvbi4gTm9yIGlzIGl0IGV4cGVj
+dGVkIHRoYXQgdGhlDQpSRUFEIHdvdWxkIGZhaWwgdG8gcmVjb3ZlciBpbiBhbiBvcmRpbmFyeSBE
+RUxFR1JFVFVSTiBzaXR1YXRpb24uDQoNClRoaXMgaXMgd2h5IEknbSBpbnRlcmVzdGVkIGluIHNl
+ZWluZyB3aGF0IGhhcHBlbmVkIGJlZm9yZSB0aGUgT1BFTi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1
+c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVz
+dEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
