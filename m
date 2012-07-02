@@ -1,63 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from perches-mx.perches.com ([206.117.179.246]:52822 "EHLO
-	labridge.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754236Ab2GDXXs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Jul 2012 19:23:48 -0400
-Message-ID: <1341444227.2058.5.camel@joe2Laptop>
-Subject: Re: [PATCH 2/2] sunrpc/cache.h: replace simple_strtoul
-From: Joe Perches <joe@perches.com>
-To: Eldad Zack <eldad@fogrefinery.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Wed, 04 Jul 2012 16:23:47 -0700
-In-Reply-To: <1341442827-21339-2-git-send-email-eldad@fogrefinery.com>
-References: <1341442827-21339-1-git-send-email-eldad@fogrefinery.com>
-	 <1341442827-21339-2-git-send-email-eldad@fogrefinery.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:44110 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932420Ab2GBGMA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jul 2012 02:12:00 -0400
+Received: by bkwj10 with SMTP id j10so363477bkw.19
+        for <linux-nfs@vger.kernel.org>; Sun, 01 Jul 2012 23:11:59 -0700 (PDT)
+MIME-Version: 1.0
+From: Song Gao <song.gao.beta@gmail.com>
+Date: Mon, 2 Jul 2012 01:11:39 -0500
+Message-ID: <CAKeNtnQK5QEgRZKXHnmMQK6R+L1nXQNX0M4y1ZWuKo7GbEingA@mail.gmail.com>
+Subject: Possible bug in NFSv4 server regarding to looking for right path for
+ clients to mount
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2012-07-05 at 01:00 +0200, Eldad Zack wrote:
-> This patch replaces the usage of simple_strtoul with kstrtoint in
-> get_int().
+Hello,
 
-Just some trivia:
+There's possibly a bug related NFSv4 server's behavior on looking for
+path on /export .
 
-> diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-[]
-> @@ -217,7 +217,7 @@ extern int qword_get(char **bpp, char *dest, int bufsize);
->  static inline int get_int(char **bpp, int *anint)
->  {
->  	char buf[50];
-> -	char *ep;
-> +	ssize_t ret;
->  	int rv;
->  	int len = qword_get(bpp, buf, 50);
+I have a 32 nodes KVM cluster. NFS, host filesystem, KVM storage pool,
+are all placed on SSD. KVM guests are connected to host through virtio
+drived GB ethernet.
 
-This would be nicer as
-	int len = qword_get(bpp, buf, sizeof(buf));
+I followed this guide to configure NFS:
+https://help.ubuntu.com/community/SettingUpNFSHowTo
 
-> @@ -226,8 +226,8 @@ static inline int get_int(char **bpp, int *anint)
->  	if (len == 0)
->  		return -ENOENT;
->  
-> -	rv = simple_strtol(buf, &ep, 0);
-> -	if (*ep)
-> +	ret = kstrtoint(buf, 0, &rv);
-> +	if (ret)
->  		return -EINVAL;
->  
->  	*anint = rv;
+The problem was that, when I execute a program simultaneously (through
+cssh) on 32 nodes, there were always a number of nodes that
+encountered "input/output error". The /var/log/messages on client
+shows "state manager failed on NFSv4 server with error 10022".
 
-ret and rv aren't useful anymore.
+I tried different options in client /etc/fstab as well as export
+settings in server but nothing helps. Interestingly, by changing the
+item in /etc/fstab from:
+    some-host:/tigers  nfs    rw,bg,hard,intr    0    0
+into:
+    some-host:/export/tigers    /nfs    nfs    rw,bg,hard,intr    0    0
+fixed the problem.
 
-Perhaps:
+I'm not familiar with it but I guess that it's probably caused by some
+problem in NFS server when it tries to find the right path when all 32
+clients are trying to mount NFS at the same time.
 
-	if (kstrtoint(buf, 0, anint))
-		return -EINVAL;
+Here's some more information:
+client: debian "squeeze", 2.6.32-5-amd64
+server: Ubuntu Server 12.04, 3.2.0-23-generic
+nfs version: NFSv4
+no security option
+results of `exports -v`:
+    /export 192.168.100.0/24(rw,wdelay,insecure,root_squash,no_subtree_check,fsid=0)
+    /export/tigers
+192.168.100.0/24(rw,wdelay,nohide,insecure,root_squash,no_subtree_check)
 
-	return 0;
+Please let me know if there's any other information I need to provide.
+
+Thanks!
 
 
+Kind regards,
+-- 
+Song Gao
+https://profiles.google.com/song.gao.beta/about
