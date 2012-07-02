@@ -1,129 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:2020 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752126Ab2GPUj0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Jul 2012 16:39:26 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:46434 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932715Ab2GBUWC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jul 2012 16:22:02 -0400
+Received: by ghrr11 with SMTP id r11so4541387ghr.19
+        for <linux-nfs@vger.kernel.org>; Mon, 02 Jul 2012 13:22:01 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <2E097766-1FA2-42E1-B790-B3BBC254B705@oracle.com>
+References: <CAPD_G3L0wwzCWyoPJp_sKpuQ0J7+avn-ejEn-WnXf81zr=-LqA@mail.gmail.com>
+	<2E097766-1FA2-42E1-B790-B3BBC254B705@oracle.com>
+Date: Mon, 2 Jul 2012 21:22:01 +0100
+Message-ID: <CAPD_G3Lc6F9yUOXLUcPgn1c5n=Hcs2JSXdGPhZ-CjtBLVoibbg@mail.gmail.com>
+Subject: Re: Linux NFSv4 client uses returned delegation in subsequent READ
+ resulting in hang (BAD_STATEID)
+From: "Charles 'Boyo" <charlesboyo@gmail.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 03/12] NFS: Split out NFS v4 inode operations
-Date: Mon, 16 Jul 2012 16:39:12 -0400
-Message-Id: <1342471161-22452-4-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1342471161-22452-1-git-send-email-bjschuma@netapp.com>
-References: <1342471161-22452-1-git-send-email-bjschuma@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Mon, Jul 2, 2012 at 3:09 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+> Usually we see this behavior because of a race between an OPEN with delegation and a delegation recall.  In this case, however, the client is actively returning a READ
+> delegation, then proceeding to use it anyway.  I don't see the server's recall callback, though, and there are other indications that this trace is not complete. So it's hard
+>  to be 100% confident.
+>
+The trace is not complete, it includes just enough information to
+explain the problem.
+However I can confirm the service did not send a recall callback, the
+client returned the delegation of its own "free will".
+>
+> As far as I know, the EL6.2 client does not have support for recovering a single bad STATEID, which is why it is looping.  That support is available in mainline kernels 3.0
+> and later.
+>
+> However, it seems to me that it is a bug for the client to continue using a delegation that it has returned.
+>
+Is it possible is a scheduling issue of some sort, where the READ
+should have been sent ahead of the DELEGRETURN but somehow got mixed
+up?
+>
+> You have already found one work-around: disable delegations on the NFS server.  Or you could mount with NFSv3.  Or, if feasible, your application could be modified to
+> use fcntl() locking.
+>
+In my case, disabling delegation is the only feasible work-around.
+NFSv3 creates new issues with identity mapping and the application is
+closed-source.
+With delegation disabled, what else do I stand to lose apart from some
+client-side efficiencies? I have noticed that the client has resorted
+to closing and re-opening commonly used files every few seconds -
+probably an attempt to flush all data out to the server as soon as
+possible. This hasn't caused me any grief, but I don't know what I'm
+missing.
 
-The NFS v4 file inode operations are already already in nfs4proc.c, so
-this patch just needs to move the directory operations to the same file.
+Regards,
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/dir.c      | 33 +++------------------------------
- fs/nfs/nfs4_fs.h  |  5 ++++-
- fs/nfs/nfs4proc.c | 20 ++++++++++++++++++++
- 3 files changed, 27 insertions(+), 31 deletions(-)
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index e75f2aa..d49f1b9 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -63,33 +63,6 @@ const struct address_space_operations nfs_dir_aops = {
- 	.freepage = nfs_readdir_clear_array,
- };
- 
--#ifdef CONFIG_NFS_V4
--
--static int nfs_atomic_open(struct inode *, struct dentry *,
--			   struct file *, unsigned, umode_t,
--			   int *);
--const struct inode_operations nfs4_dir_inode_operations = {
--	.create		= nfs_create,
--	.lookup		= nfs_lookup,
--	.atomic_open	= nfs_atomic_open,
--	.link		= nfs_link,
--	.unlink		= nfs_unlink,
--	.symlink	= nfs_symlink,
--	.mkdir		= nfs_mkdir,
--	.rmdir		= nfs_rmdir,
--	.mknod		= nfs_mknod,
--	.rename		= nfs_rename,
--	.permission	= nfs_permission,
--	.getattr	= nfs_getattr,
--	.setattr	= nfs_setattr,
--	.getxattr	= generic_getxattr,
--	.setxattr	= generic_setxattr,
--	.listxattr	= generic_listxattr,
--	.removexattr	= generic_removexattr,
--};
--
--#endif /* CONFIG_NFS_V4 */
--
- static struct nfs_open_dir_context *alloc_nfs_open_dir_context(struct inode *dir, struct rpc_cred *cred)
- {
- 	struct nfs_open_dir_context *ctx;
-@@ -1352,9 +1325,9 @@ out:
- 	return err;
- }
- 
--static int nfs_atomic_open(struct inode *dir, struct dentry *dentry,
--			    struct file *file, unsigned open_flags,
--			    umode_t mode, int *opened)
-+int nfs_atomic_open(struct inode *dir, struct dentry *dentry,
-+		    struct file *file, unsigned open_flags,
-+		    umode_t mode, int *opened)
- {
- 	struct nfs_open_context *ctx;
- 	struct dentry *res;
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 3696ca7..e2c4c72 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -200,7 +200,10 @@ struct nfs4_state_maintenance_ops {
- };
- 
- extern const struct dentry_operations nfs4_dentry_operations;
--extern const struct inode_operations nfs4_dir_inode_operations;
-+
-+/* dir.c */
-+int nfs_atomic_open(struct inode *, struct dentry *, struct file *,
-+		    unsigned, umode_t, int *);
- 
- /* write.c */
- int nfs4_write_inode(struct inode *, struct writeback_control *);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 80bb505..689cb43 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6813,6 +6813,26 @@ const struct nfs4_minor_version_ops *nfs_v4_minor_ops[] = {
- #endif
- };
- 
-+const struct inode_operations nfs4_dir_inode_operations = {
-+	.create		= nfs_create,
-+	.lookup		= nfs_lookup,
-+	.atomic_open	= nfs_atomic_open,
-+	.link		= nfs_link,
-+	.unlink		= nfs_unlink,
-+	.symlink	= nfs_symlink,
-+	.mkdir		= nfs_mkdir,
-+	.rmdir		= nfs_rmdir,
-+	.mknod		= nfs_mknod,
-+	.rename		= nfs_rename,
-+	.permission	= nfs_permission,
-+	.getattr	= nfs_getattr,
-+	.setattr	= nfs_setattr,
-+	.getxattr	= generic_getxattr,
-+	.setxattr	= generic_setxattr,
-+	.listxattr	= generic_listxattr,
-+	.removexattr	= generic_removexattr,
-+};
-+
- static const struct inode_operations nfs4_file_inode_operations = {
- 	.permission	= nfs_permission,
- 	.getattr	= nfs_getattr,
--- 
-1.7.11.2
-
+Charles
