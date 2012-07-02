@@ -1,74 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:40150 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758795Ab2GLGl1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Jul 2012 02:41:27 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>,
-        Sebastian Andrzej Siewior <sebastian@breakpoint.cc>,
-        Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 12/12] Avoid dereferencing bd_disk during swap_entry_free for network storage
-Date: Thu, 12 Jul 2012 07:41:06 +0100
-Message-Id: <1342075266-29593-13-git-send-email-mgorman@suse.de>
-In-Reply-To: <1342075266-29593-1-git-send-email-mgorman@suse.de>
-References: <1342075266-29593-1-git-send-email-mgorman@suse.de>
+Received: from acsinet15.oracle.com ([141.146.126.227]:45665 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753405Ab2GBOJs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jul 2012 10:09:48 -0400
+Subject: Re: Linux NFSv4 client uses returned delegation in subsequent READ resulting in hang (BAD_STATEID)
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=US-ASCII
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CAPD_G3L0wwzCWyoPJp_sKpuQ0J7+avn-ejEn-WnXf81zr=-LqA@mail.gmail.com>
+Date: Mon, 2 Jul 2012 10:09:50 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <2E097766-1FA2-42E1-B790-B3BBC254B705@oracle.com>
+References: <CAPD_G3L0wwzCWyoPJp_sKpuQ0J7+avn-ejEn-WnXf81zr=-LqA@mail.gmail.com>
+To: "Charles 'Boyo" <charlesboyo@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit [b3a27d: swap: Add swap slot free callback to
-block_device_operations] dereferences p->bdev->bd_disk but this is a
-NULL dereference if using swap-over-NFS. This patch checks SWP_BLKDEV
-on the swap_info_struct before dereferencing.
 
-With reference to this callback, Christoph Hellwig stated "Please
-just remove the callback entirely.  It has no user outside the staging
-tree and was added clearly against the rules for that staging tree".
-This would also be my preference but there was not an obvious way of
-keeping zram in staging/ happy.
+On Jun 30, 2012, at 9:53 PM, Charles 'Boyo wrote:
 
-Signed-off-by: Xiaotian Feng <dfeng@redhat.com>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
-Acked-by: Rik van Riel <riel@redhat.com>
----
- mm/swapfile.c |    9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
+> Hello.
+> 
+> I have repeatedly had Linux NFS clients hang while trying to access
+> files on a NFSv4 mount (Solaris).
+> Investigations revealed that this client is using a delegation that it
+> has already returned, resulting in the BAD_STATEID error.
+> Unfortunately, it then proceeds to hammer the server with these
+> "doomed" requests, resulting in the client-side unresponsiveness and
+> constant network traffic.
+> 
+> A sample trace can be found at http://pastebin.centos.org/39046
+> As shown, the READ in frame 10 (line 112) follows the DELEGRETURN in
+> frame 9 which results in the error. This READ was then repeated
+> infinitely until either the server or client was restarted.
+> Disabling delegations on the server-side caused the problem to cease.
+> So what is wrong with delegations on the client-side?
 
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index 1d77b13..f4c802d 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -549,7 +549,6 @@ static unsigned char swap_entry_free(struct swap_info_struct *p,
- 
- 	/* free if no reference */
- 	if (!usage) {
--		struct gendisk *disk = p->bdev->bd_disk;
- 		if (offset < p->lowest_bit)
- 			p->lowest_bit = offset;
- 		if (offset > p->highest_bit)
-@@ -560,9 +559,11 @@ static unsigned char swap_entry_free(struct swap_info_struct *p,
- 		nr_swap_pages++;
- 		p->inuse_pages--;
- 		frontswap_invalidate_page(p->type, offset);
--		if ((p->flags & SWP_BLKDEV) &&
--				disk->fops->swap_slot_free_notify)
--			disk->fops->swap_slot_free_notify(p->bdev, offset);
-+		if (p->flags & SWP_BLKDEV) {
-+			struct gendisk *disk = p->bdev->bd_disk;
-+			if (disk->fops->swap_slot_free_notify)
-+				disk->fops->swap_slot_free_notify(p->bdev, offset);
-+		}
- 	}
- 
- 	return usage;
--- 
-1.7.9.2
+Usually we see this behavior because of a race between an OPEN with delegation and a delegation recall.  In this case, however, the client is actively returning a READ delegation, then proceeding to use it anyway.  I don't see the server's recall callback, though, and there are other indications that this trace is not complete.  So it's hard to be 100% confident.
+
+As far as I know, the EL6.2 client does not have support for recovering a single bad STATEID, which is why it is looping.  That support is available in mainline kernels 3.0 and later.
+
+However, it seems to me that it is a bug for the client to continue using a delegation that it has returned.
+
+You have already found one work-around: disable delegations on the NFS server.  Or you could mount with NFSv3.  Or, if feasible, your application could be modified to use fcntl() locking.
+
+
+> I am using the latest nfs-utils packages and my mount options are as
+> shown below:
+> 
+> # cat /etc/redhat-release
+> CentOS release 6.2 (Final)
+> 
+> # uname -r
+> 2.6.32-220.4.1.el6.x86_64
+> 
+> # rpm -qa '*nfs*'
+> nfs-utils-lib-1.1.5-4.el6.x86_64
+> nfs-utils-1.2.3-15.el6_2.1.x86_64
+> 
+> # grep nfs4 /proc/mounts
+> 10.51.1.6:/SharedFolder/ /var/LocalMountPoint nfs4
+> rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=10.51.1.34,minorversion=0,local_lock=none,addr=10.51.1.6
+> 0 0
+> 
+> Regards,
+> 
+> Charles
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
