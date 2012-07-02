@@ -1,71 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55511 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754122Ab2GaRLX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jul 2012 13:11:23 -0400
-Date: Tue, 31 Jul 2012 13:11:21 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: David Howells <dhowells@redhat.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "sct@redhat.com" <sct@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "steved@redhat.com" <steved@redhat.com>,
-        "jlayton@redhat.com" <jlayton@redhat.com>
-Subject: Re: [PATCH 1/2] NFS: Fix a number of bugs in the idmapper
-Message-ID: <20120731171121.GF27834@fieldses.org>
-References: <1343746117.5528.3.camel@lade.trondhjem.org>
- <20120731144234.6664.85664.stgit@warthog.procyon.org.uk>
- <6978.1343746575@warthog.procyon.org.uk>
- <1343747261.5528.10.camel@lade.trondhjem.org>
- <20120731163708.GE27834@fieldses.org>
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:54981 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932314Ab2GBVuk convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jul 2012 17:50:40 -0400
+Received: by gglu4 with SMTP id u4so4617211ggl.19
+        for <linux-nfs@vger.kernel.org>; Mon, 02 Jul 2012 14:50:39 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120731163708.GE27834@fieldses.org>
+In-Reply-To: <6C5408EB-668A-43C9-B3FE-9D66427B5BE0@oracle.com>
+References: <CAPD_G3L0wwzCWyoPJp_sKpuQ0J7+avn-ejEn-WnXf81zr=-LqA@mail.gmail.com>
+	<2E097766-1FA2-42E1-B790-B3BBC254B705@oracle.com>
+	<CAPD_G3Lc6F9yUOXLUcPgn1c5n=Hcs2JSXdGPhZ-CjtBLVoibbg@mail.gmail.com>
+	<2F725B49-A089-41E9-BBC9-11B889A62C9D@oracle.com>
+	<1341263584.8197.53.camel@lade.trondhjem.org>
+	<6C5408EB-668A-43C9-B3FE-9D66427B5BE0@oracle.com>
+Date: Mon, 2 Jul 2012 22:50:38 +0100
+Message-ID: <CAPD_G3KojVhnjtfjN0poJvpV0i+6JZeK54rm5Swm3MDKEXQ=Zw@mail.gmail.com>
+Subject: Re: Linux NFSv4 client uses returned delegation in subsequent READ
+ resulting in hang (BAD_STATEID)
+From: "Charles 'Boyo" <charlesboyo@gmail.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 31, 2012 at 12:37:08PM -0400, bfields wrote:
-> On Tue, Jul 31, 2012 at 03:07:42PM +0000, Myklebust, Trond wrote:
-> > We don't expect people to be running both types of idmapper at the same
-> > time. Normally, the distribution will set up one or the other. However
-> > if both idmappers do happen to be configured, then we want to always
-> > choose the non-legacy type...
-> 
-> On a quick check....  It looks like F17 has /usr/sbin/nfsidmap, and also
-> runs rpc.idmapd for the server.  While rpc.idmap does have a "-S"
-> option, it's not using that.
-> 
-> But that should be easy to fix--I'll go look....
+On Mon, Jul 2, 2012 at 10:19 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+> On Jul 2, 2012, at 5:13 PM, Myklebust, Trond wrote:
+>
+>> On Mon, 2012-07-02 at 16:35 -0400, Chuck Lever wrote:
+>>> On Jul 2, 2012, at 4:22 PM, Charles 'Boyo wrote:
+>>>
+>>>> On Mon, Jul 2, 2012 at 3:09 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>>
+>>>>> Usually we see this behavior because of a race between an OPEN with delegation and a delegation recall.  In this case, however, the client is actively returning a READ
+>>>>> delegation, then proceeding to use it anyway.  I don't see the server's recall callback, though, and there are other indications that this trace is not complete. So it's hard
+>>>>> to be 100% confident.
+>>>>>
+>>>> The trace is not complete, it includes just enough information to
+>>>> explain the problem.
+>>>> However I can confirm the service did not send a recall callback, the
+>>>> client returned the delegation of its own "free will".
+>>>
+>>> The callback would come on a separate TCP connection.  I can't think of a reason that a client would return a delegation by itself and then subsequently start to use it.
+>>
+>> I can: there are a number of servers out there that violate the spec by
+>> returning a delegation as part of an OPEN(CLAIM_DELEGATE_CUR). Usually
+>> those broken servers will send the exact same stateid as the delegation
+>> that is being returned.
+>
+> The OPEN in frame 7 is a CLAIM_NULL OPEN, isn't it?
+>
+The OPEN in this case is a CLAIM_NULL and I have re-examined my
+network dump, there was no call back from the server.
+So why would the client returns a delegation voluntarily and then re-use it?
 
-Steve, this, or do we want to modify the default value of RPCIDMAPDARGS
-in nfs.sysconfig?
+>>>> Is it possible is a scheduling issue of some sort, where the READ
+>>>> should have been sent ahead of the DELEGRETURN but somehow got mixed
+>>>> up?
 
---b.
+>>> Or possibly that the DELEGRETURN doesn't actually remove the delegation state ID until the server has replied, and the READ request was sent before the DELEGRETURN
+>>> reply arrived at the client.
 
-diff --git a/nfs-idmap.service b/nfs-idmap.service
-index 872ae09..93c1b3a 100644
---- a/nfs-idmap.service
-+++ b/nfs-idmap.service
-@@ -7,7 +7,7 @@ After=nfs-server.service
- Type=forking
- StandardError=syslog+console
- EnvironmentFile=-/etc/sysconfig/nfs
--ExecStart=/usr/sbin/rpc.idmapd $RPCIDMAPDARGS
-+ExecStart=/usr/sbin/rpc.idmapd -S $RPCIDMAPDARGS
- 
- [Install]
- WantedBy=nfs.target
-diff --git a/nfs.sysconfig b/nfs.sysconfig
-index 2d33cf3..4baa0c3 100644
---- a/nfs.sysconfig
-+++ b/nfs.sysconfig
-@@ -24,7 +24,7 @@ RPCMOUNTDOPTS=""
- STATDARG=""
- #
- # Optional arguments passed to rpc.idmapd. See rpc.idmapd(8)
--RPCIDMAPDARGS=""
-+RPCIDMAPDARGS="-S"
- #
- # Optional arguments passed to rpc.gssd. See rpc.gssd(8)
- RPCGSSDARGS=""
+Indeed, the READ was issued after the DELEGRETURN but before the
+response to it. Is it possible to check if this is expected behavior?
