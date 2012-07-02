@@ -1,65 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:60434 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:9923 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753098Ab2GKLPy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Jul 2012 07:15:54 -0400
-Subject: Re: [PATCH 0/4] Add support for new RPCSEC_GSS upcall mechanism
- for nfsd
-From: Simo Sorce <simo@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        "bfields@redhat.com" <bfields@redhat.com>,
+	id S1755553Ab2GBVtV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Jul 2012 17:49:21 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "Charles 'Boyo" <charlesboyo@gmail.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-In-Reply-To: <1341957169.17428.4.camel@lade.trondhjem.org>
-References: <1337983796-26476-1-git-send-email-simo@redhat.com>
-	 <20120710204913.GA6038@fieldses.org>
-	 <1341957169.17428.4.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 11 Jul 2012 07:15:45 -0400
-Message-ID: <1342005345.2599.53.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+Subject: Re: Linux NFSv4 client uses returned delegation in subsequent READ
+ resulting in hang (BAD_STATEID)
+Date: Mon, 2 Jul 2012 21:48:45 +0000
+Message-ID: <1341265720.8197.56.camel@lade.trondhjem.org>
+References: <CAPD_G3L0wwzCWyoPJp_sKpuQ0J7+avn-ejEn-WnXf81zr=-LqA@mail.gmail.com>
+	 <2E097766-1FA2-42E1-B790-B3BBC254B705@oracle.com>
+	 <CAPD_G3Lc6F9yUOXLUcPgn1c5n=Hcs2JSXdGPhZ-CjtBLVoibbg@mail.gmail.com>
+	 <2F725B49-A089-41E9-BBC9-11B889A62C9D@oracle.com>
+	 <1341263584.8197.53.camel@lade.trondhjem.org>
+	 <6C5408EB-668A-43C9-B3FE-9D66427B5BE0@oracle.com>
+In-Reply-To: <6C5408EB-668A-43C9-B3FE-9D66427B5BE0@oracle.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2012-07-10 at 21:52 +0000, Myklebust, Trond wrote:
-> On Tue, 2012-07-10 at 16:49 -0400, J. Bruce Fields wrote:
-> > On Fri, May 25, 2012 at 06:09:52PM -0400, Simo Sorce wrote:
-> > > This patchset implements a new upcall mechanism that uses the sunrpc
-> > > client to talk to gssproxy[1], a new userspace daemon that handles gssapi
-> > > operations on behalf of other processes on the system.
-> > > 
-> > > The main driver for this new mechanism is to overcome limitations with
-> > > the current daemon and upcall. The current code cannot handle tickets
-> > > larger than approximatively 2k and cannot handle sending back large user
-> > > credential sets to the kernel.
-> > > 
-> > > These patches have been tested against the development version of gssproxy
-> > > tagged as kernel_v0.1 in the master repo[2].
-> > > 
-> > > I have tested walking into mountpoints using tickets artificially pumped
-> > > up to 64k and the user is properly authorized, after the accept_se_context
-> > > call is performed through the new upcall mechanism and gssproxy.
-> > > 
-> > > The gssproxy has the potential of handling also init_sec_context calls,
-> > > but at the moment the only targeted system is nfsd.
-> > 
-> > OK, absent objections from anyone else I'm commiting these for 3.6 and
-> > pushing them out soon pending some regression testing.  Thanks!
-> 
-> Please test that the NFSv4 backchannel continues to work unchanged with
-> the existing rpc.svcgssd before you commit.
-> 
-> I don't care what happens to the NFS server, but I do expect all
-> existing NFSv4 client setups to work without any need for changes.
-
-This change is optional and need to be explicitly activate by loading
-the rpc_gsssec module with a parameter that enables the new method.
-
-If you do not do that it keeps using the legacy method which uses
-rpc.svcgssd
-
-Simo.
-
--- 
-Simo Sorce * Red Hat, Inc * New York
-
+T24gTW9uLCAyMDEyLTA3LTAyIGF0IDE3OjE5IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+T24gSnVsIDIsIDIwMTIsIGF0IDU6MTMgUE0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+IA0K
+PiA+IE9uIE1vbiwgMjAxMi0wNy0wMiBhdCAxNjozNSAtMDQwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6
+DQo+ID4+IE9uIEp1bCAyLCAyMDEyLCBhdCA0OjIyIFBNLCBDaGFybGVzICdCb3lvIHdyb3RlOg0K
+PiA+PiANCj4gPj4+IE9uIE1vbiwgSnVsIDIsIDIwMTIgYXQgMzowOSBQTSwgQ2h1Y2sgTGV2ZXIg
+PGNodWNrLmxldmVyQG9yYWNsZS5jb20+IHdyb3RlOg0KPiA+Pj4+IA0KPiA+Pj4+IFVzdWFsbHkg
+d2Ugc2VlIHRoaXMgYmVoYXZpb3IgYmVjYXVzZSBvZiBhIHJhY2UgYmV0d2VlbiBhbiBPUEVOIHdp
+dGggZGVsZWdhdGlvbiBhbmQgYSBkZWxlZ2F0aW9uIHJlY2FsbC4gIEluIHRoaXMgY2FzZSwgaG93
+ZXZlciwgdGhlIGNsaWVudCBpcyBhY3RpdmVseSByZXR1cm5pbmcgYSBSRUFEDQo+ID4+Pj4gZGVs
+ZWdhdGlvbiwgdGhlbiBwcm9jZWVkaW5nIHRvIHVzZSBpdCBhbnl3YXkuICBJIGRvbid0IHNlZSB0
+aGUgc2VydmVyJ3MgcmVjYWxsIGNhbGxiYWNrLCB0aG91Z2gsIGFuZCB0aGVyZSBhcmUgb3RoZXIg
+aW5kaWNhdGlvbnMgdGhhdCB0aGlzIHRyYWNlIGlzIG5vdCBjb21wbGV0ZS4gU28gaXQncyBoYXJk
+DQo+ID4+Pj4gdG8gYmUgMTAwJSBjb25maWRlbnQuDQo+ID4+Pj4gDQo+ID4+PiBUaGUgdHJhY2Ug
+aXMgbm90IGNvbXBsZXRlLCBpdCBpbmNsdWRlcyBqdXN0IGVub3VnaCBpbmZvcm1hdGlvbiB0bw0K
+PiA+Pj4gZXhwbGFpbiB0aGUgcHJvYmxlbS4NCj4gPj4+IEhvd2V2ZXIgSSBjYW4gY29uZmlybSB0
+aGUgc2VydmljZSBkaWQgbm90IHNlbmQgYSByZWNhbGwgY2FsbGJhY2ssIHRoZQ0KPiA+Pj4gY2xp
+ZW50IHJldHVybmVkIHRoZSBkZWxlZ2F0aW9uIG9mIGl0cyBvd24gImZyZWUgd2lsbCIuDQo+ID4+
+IA0KPiA+PiBUaGUgY2FsbGJhY2sgd291bGQgY29tZSBvbiBhIHNlcGFyYXRlIFRDUCBjb25uZWN0
+aW9uLiAgSSBjYW4ndCB0aGluayBvZiBhIHJlYXNvbiB0aGF0IGEgY2xpZW50IHdvdWxkIHJldHVy
+biBhIGRlbGVnYXRpb24gYnkgaXRzZWxmIGFuZCB0aGVuIHN1YnNlcXVlbnRseSBzdGFydCB0byB1
+c2UgaXQuDQo+ID4gDQo+ID4gSSBjYW46IHRoZXJlIGFyZSBhIG51bWJlciBvZiBzZXJ2ZXJzIG91
+dCB0aGVyZSB0aGF0IHZpb2xhdGUgdGhlIHNwZWMgYnkNCj4gPiByZXR1cm5pbmcgYSBkZWxlZ2F0
+aW9uIGFzIHBhcnQgb2YgYW4gT1BFTihDTEFJTV9ERUxFR0FURV9DVVIpLiBVc3VhbGx5DQo+ID4g
+dGhvc2UgYnJva2VuIHNlcnZlcnMgd2lsbCBzZW5kIHRoZSBleGFjdCBzYW1lIHN0YXRlaWQgYXMg
+dGhlIGRlbGVnYXRpb24NCj4gPiB0aGF0IGlzIGJlaW5nIHJldHVybmVkLg0KPiANCj4gVGhlIE9Q
+RU4gaW4gZnJhbWUgNyBpcyBhIENMQUlNX05VTEwgT1BFTiwgaXNuJ3QgaXQ/DQoNClllcy4gSXMg
+dGhlcmUgYSBwcmVhbWJsZSB0byB0aGF0LCBvciBkaWQgdGhlIGNsaWVudCByZWFsbHkgdHJ5IHRv
+DQpkZWxlZ3JldHVybiBpbW1lZGlhdGVseSB1cG9uIHJlY2VpdmluZyBhIGRlbGVnYXRpb24/DQoN
+Ci0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0
+QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
