@@ -1,68 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44216 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752561Ab2G0ULd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Jul 2012 16:11:33 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Nick Piggin <npiggin@kernel.dk>
-Subject: [PATCH 2/2] nfsd4: Don't set DISCONNECTED on "pseudo filesystem" dentries
-Date: Fri, 27 Jul 2012 16:11:29 -0400
-Message-Id: <1343419889-6320-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1343419889-6320-1-git-send-email-bfields@redhat.com>
-References: <1343419889-6320-1-git-send-email-bfields@redhat.com>
+Received: from acsinet15.oracle.com ([141.146.126.227]:31908 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932735Ab2GBVT4 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jul 2012 17:19:56 -0400
+Subject: Re: Linux NFSv4 client uses returned delegation in subsequent READ resulting in hang (BAD_STATEID)
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1341263584.8197.53.camel@lade.trondhjem.org>
+Date: Mon, 2 Jul 2012 17:19:30 -0400
+Cc: "Charles 'Boyo" <charlesboyo@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <6C5408EB-668A-43C9-B3FE-9D66427B5BE0@oracle.com>
+References: <CAPD_G3L0wwzCWyoPJp_sKpuQ0J7+avn-ejEn-WnXf81zr=-LqA@mail.gmail.com> <2E097766-1FA2-42E1-B790-B3BBC254B705@oracle.com> <CAPD_G3Lc6F9yUOXLUcPgn1c5n=Hcs2JSXdGPhZ-CjtBLVoibbg@mail.gmail.com> <2F725B49-A089-41E9-BBC9-11B889A62C9D@oracle.com> <1341263584.8197.53.camel@lade.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
 
-I can't for the life of me see any reason why anyone would care whether
-a dentry that is never hooked into the dentry cache would need
-DCACHE_DISCONNECTED set.
+On Jul 2, 2012, at 5:13 PM, Myklebust, Trond wrote:
 
-This originates from 4b936885ab04dc6e0bb0ef35e0e23c1a7364d9e5 "fs:
-improve scalability of pseudo filesystems", which probably just made the
-false assumption the DCACHE_DISCONNECTED was meant to be set on anything
-not connected to a parent somehow.
+> On Mon, 2012-07-02 at 16:35 -0400, Chuck Lever wrote:
+>> On Jul 2, 2012, at 4:22 PM, Charles 'Boyo wrote:
+>> 
+>>> On Mon, Jul 2, 2012 at 3:09 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>> 
+>>>> Usually we see this behavior because of a race between an OPEN with delegation and a delegation recall.  In this case, however, the client is actively returning a READ
+>>>> delegation, then proceeding to use it anyway.  I don't see the server's recall callback, though, and there are other indications that this trace is not complete. So it's hard
+>>>> to be 100% confident.
+>>>> 
+>>> The trace is not complete, it includes just enough information to
+>>> explain the problem.
+>>> However I can confirm the service did not send a recall callback, the
+>>> client returned the delegation of its own "free will".
+>> 
+>> The callback would come on a separate TCP connection.  I can't think of a reason that a client would return a delegation by itself and then subsequently start to use it.
+> 
+> I can: there are a number of servers out there that violate the spec by
+> returning a delegation as part of an OPEN(CLAIM_DELEGATE_CUR). Usually
+> those broken servers will send the exact same stateid as the delegation
+> that is being returned.
 
-So this is just confusing.  Ideally the only use DCACHE_DISCONNECTED
-would be in the filehandle-lookup code, which needs it to ensure
-dentries are connected into the dentry tree before use.
+The OPEN in frame 7 is a CLAIM_NULL OPEN, isn't it?
 
-I left d_alloc_pseudo there even though it's now equivalent to
-__d_alloc(), just on the theory the name is better documentation of its
-intended use outside dcache.c.
-
-Cc: Nick Piggin <npiggin@kernel.dk>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/dcache.c | 9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
-
-diff --git a/fs/dcache.c b/fs/dcache.c
-index 740b4f5..1b1e925 100644
---- a/fs/dcache.c
-+++ b/fs/dcache.c
-@@ -1350,12 +1350,13 @@ struct dentry *d_alloc(struct dentry * parent, const struct qstr *name)
- }
- EXPORT_SYMBOL(d_alloc);
- 
-+/*
-+ * For filesystems that do not actually use the dentry cache at all, and
-+ * only ever deal in IS_ROOT() dentries:
-+ */
- struct dentry *d_alloc_pseudo(struct super_block *sb, const struct qstr *name)
- {
--	struct dentry *dentry = __d_alloc(sb, name);
--	if (dentry)
--		dentry->d_flags |= DCACHE_DISCONNECTED;
--	return dentry;
-+	return __d_alloc(sb, name);
- }
- EXPORT_SYMBOL(d_alloc_pseudo);
- 
 -- 
-1.7.11.2
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
