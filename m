@@ -1,72 +1,135 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:57152 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:44904 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754397Ab2GCLVU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Jul 2012 07:21:20 -0400
-Date: Tue, 3 Jul 2012 07:20:51 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "harshula@redhat.com" <harshula@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "mgorman@suse.de" <mgorman@suse.de>,
-        "jan.kratochvil@redhat.com" <jan.kratochvil@redhat.com>
-Subject: Re: [RFC PATCH v2] nfs: skip commit in releasepage if we're freeing
- memory for fs-related reasons
-Message-ID: <20120703072051.4e7a9d34@corrin.poochiereds.net>
-In-Reply-To: <1341258017.8197.46.camel@lade.trondhjem.org>
-References: <1340895773.5293.18.camel@lade.trondhjem.org>
-	<1340897113-18449-1-git-send-email-jlayton@redhat.com>
-	<20120702111751.3ac78d2c@tlielax.poochiereds.net>
-	<1341258017.8197.46.camel@lade.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1753967Ab2GBOgD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Jul 2012 10:36:03 -0400
+Date: Mon, 2 Jul 2012 15:35:56 +0100
+From: Mel Gorman <mgorman@suse.de>
+To: Eric B Munson <emunson@mgebm.net>
+Cc: Andrew Morton <akpm@linux-foundation.org>, Linux-MM <linux-mm@kvack.org>,
+        Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Sebastian Andrzej Siewior <sebastian@breakpoint.cc>
+Subject: Re: [PATCH 00/12] Swap-over-NFS without deadlocking V8
+Message-ID: <20120702143556.GT14154@suse.de>
+References: <1340976805-5799-1-git-send-email-mgorman@suse.de>
+ <20120701172254.GB2470@mgebm.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-15
+In-Reply-To: <20120701172254.GB2470@mgebm.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2 Jul 2012 19:40:22 +0000
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-
-> On Mon, 2012-07-02 at 11:17 -0400, Jeff Layton wrote:
-> > nfs: broaden the cases where we use a non-blocking commit in releasepage
-> > 
-> > Currently, we just do a non-blocking commit when called from kswapd, but
-> > that still gives us some cases where we end up blocking after recursing
-> > back into the filesystem. Instead, turn that check into a check for
-> > PF_MEMALLOC so that we never block when trying to free memory in order to
-> > satisfy an allocation.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  fs/nfs/file.c |    4 ++--
-> >  1 files changed, 2 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> > index 9075769..61d3670 100644
-> > --- a/fs/nfs/file.c
-> > +++ b/fs/nfs/file.c
-> > @@ -466,8 +466,8 @@ static int nfs_release_page(struct page *page, gfp_t gfp)
-> >  	    !(current->flags & PF_FSTRANS)) {
-> >  		int how = FLUSH_SYNC;
-> >  
-> > -		/* Don't let kswapd deadlock waiting for OOM RPC calls */
-> > -		if (current_is_kswapd())
-> > +		/* Don't block if we're freeing for a memory allocation */
-> > +		if (current->flags & PF_MEMALLOC)
-> >  			how = 0;
-> >  		nfs_commit_inode(mapping->host, how);
-> >  	}
+On Sun, Jul 01, 2012 at 01:22:54PM -0400, Eric B Munson wrote:
+> On Fri, 29 Jun 2012, Mel Gorman wrote:
 > 
-> Umm... So which process will actually call nfs_release_page() with
-> GFP_KERNEL, but without the PF_MEMALLOC flag being set?
+> > Changelog since V7
+> >   o Rebase to linux-next 20120629
+> >   o bi->page_dma instead of bi->page in intel driver
+> >   o Build fix for !CONFIG_NET					(sebastian)
+> >   o Restore PF_MEMALLOC flags correctly in all cases		(jlayton)
+> > 
+> > Changelog since V6
+> >   o Rebase to linux-next 20120622
+> > 
+> > Changelog since V5
+> >   o Rebase to v3.5-rc3
+> > 
+> > Changelog since V4
+> >   o Catch if SOCK_MEMALLOC flag is cleared with rmem tokens	(davem)
+> > 
+> > Changelog since V3
+> >   o Rebase to 3.4-rc5
+> >   o kmap pages for writing to swap				(akpm)
+> >   o Move forward declaration to reduce chance of duplication	(akpm)
+> > 
+> > Changelog since V2
+> >   o Nothing significant, just rebases. A radix tree lookup is replaced with
+> >     a linear search would be the biggest rebase artifact
+> > 
+> > This patch series is based on top of "Swap-over-NBD without deadlocking v14"
+> > as it depends on the same reservation of PF_MEMALLOC reserves logic.
+> > 
+> > When a user or administrator requires swap for their application, they
+> > create a swap partition and file, format it with mkswap and activate it with
+> > swapon. In diskless systems this is not an option so if swap if required
+> > then swapping over the network is considered.  The two likely scenarios
+> > are when blade servers are used as part of a cluster where the form factor
+> > or maintenance costs do not allow the use of disks and thin clients.
+> > 
+> > The Linux Terminal Server Project recommends the use of the Network
+> > Block Device (NBD) for swap but this is not always an option.  There is
+> > no guarantee that the network attached storage (NAS) device is running
+> > Linux or supports NBD. However, it is likely that it supports NFS so there
+> > are users that want support for swapping over NFS despite any performance
+> > concern. Some distributions currently carry patches that support swapping
+> > over NFS but it would be preferable to support it in the mainline kernel.
+> > 
+> > Patch 1 avoids a stream-specific deadlock that potentially affects TCP.
+> > 
+> > Patch 2 is a small modification to SELinux to avoid using PFMEMALLOC
+> > 	reserves.
+> > 
+> > Patch 3 adds three helpers for filesystems to handle swap cache pages.
+> > 	For example, page_file_mapping() returns page->mapping for
+> > 	file-backed pages and the address_space of the underlying
+> > 	swap file for swap cache pages.
+> > 
+> > Patch 4 adds two address_space_operations to allow a filesystem
+> > 	to pin all metadata relevant to a swapfile in memory. Upon
+> > 	successful activation, the swapfile is marked SWP_FILE and
+> > 	the address space operation ->direct_IO is used for writing
+> > 	and ->readpage for reading in swap pages.
+> > 
+> > Patch 5 notes that patch 3 is bolting
+> > 	filesystem-specific-swapfile-support onto the side and that
+> > 	the default handlers have different information to what
+> > 	is available to the filesystem. This patch refactors the
+> > 	code so that there are generic handlers for each of the new
+> > 	address_space operations.
+> > 
+> > Patch 6 adds an API to allow a vector of kernel addresses to be
+> > 	translated to struct pages and pinned for IO.
+> > 
+> > Patch 7 adds support for using highmem pages for swap by kmapping
+> > 	the pages before calling the direct_IO handler.
+> > 
+> > Patch 8 updates NFS to use the helpers from patch 3 where necessary.
+> > 
+> > Patch 9 avoids setting PF_private on PG_swapcache pages within NFS.
+> > 
+> > Patch 10 implements the new swapfile-related address_space operations
+> > 	for NFS and teaches the direct IO handler how to manage
+> > 	kernel addresses.
+> > 
+> > Patch 11 prevents page allocator recursions in NFS by using GFP_NOIO
+> > 	where appropriate.
+> > 
+> > Patch 12 fixes a NULL pointer dereference that occurs when using
+> > 	swap-over-NFS.
+> > 
+> > With the patches applied, it is possible to mount a swapfile that is on an
+> > NFS filesystem. Swap performance is not great with a swap stress test taking
+> > roughly twice as long to complete than if the swap device was backed by NBD.
+> 
+> To test this set I am using memory cgroups to force swap usage.  I am seeing
+> the cgroup controller killing my processes instead of using the nfs swapfile.
 > 
 
-Well...there are a number of callers of try_to_release_page with
-GFP_KERNEL that are not involved with reclaim:
+How sure are you that this is not a cgroup bug? For dirty file data on some
+kernels, cgroups can prematurely kill processes if pages are not being
+cleaned fast enough. I would not expect the same problem for anonymous
+pages but it's worth considering. Please also test with a normal swapfile.
 
-The migrate_page codepaths and the splice code, for instance. Also
-invalidate_complete_page2, which we call when invalidating an inode and
-maybe also when truncating? Those are almost certainly less traveled
-than the reclaim codepaths though.
+If OOM is disabled and the process hangs, try capturing a sysrq+t and
+see where the process is stuck.
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Mel Gorman
+SUSE Labs
