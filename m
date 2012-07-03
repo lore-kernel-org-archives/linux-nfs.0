@@ -1,49 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:13628 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:19223 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752368Ab2GaSho (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jul 2012 14:37:44 -0400
-Date: Tue, 31 Jul 2012 20:37:39 +0200
-From: Karel Zak <kzak@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: NeilBrown <neilb@suse.de>, NFS <linux-nfs@vger.kernel.org>
-Subject: Re: nfs-utils: Something is wrong in is_vers4()
-Message-ID: <20120731183739.GA16347@x2.net.home>
-References: <20120731165842.08017d60@notabene.brown>
- <5018103A.9070607@RedHat.com>
+	id S932123Ab2GCQYA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Jul 2012 12:24:00 -0400
+Subject: [PATCH v3 11/11] NFS: get net after idr allocation
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Tue, 03 Jul 2012 20:20:44 +0400
+Message-ID: <20120703162044.11911.6064.stgit@localhost.localdomain>
+In-Reply-To: <20120703161844.11911.92996.stgit@localhost.localdomain>
+References: <20120703161844.11911.92996.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5018103A.9070607@RedHat.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 31, 2012 at 01:04:58PM -0400, Steve Dickson wrote:
-> > BTW Steve, Karel's "[PATCH] umount.nfs: ignore non-nfs filesystems"
-> > which appears in email:
-> > 
-> > From: Karel Zak <kzak@redhat.com>
-> > To: NeilBrown <neilb@suse.de>
-> > Cc: Steve Dickson <SteveD@redhat.com>, NFS <linux-nfs@vger.kernel.org>
-> > Subject: Re: [PATCH] umount.nfs: restore correct error status when umount fails.
-> > Date: Thu, 12 Jul 2012 18:44:20 +0200
-> > 
-> > hasn't been applied, but probably should be.
-> I beg to differ....
-> 
-> commit 76908c3f14a12e865054ea5d6e4cad201c28839a
-> Author: NeilBrown <neilb@suse.de>
-> Date:   Mon Jul 16 08:43:28 2012 -0400
-> 
->     mount.nfs: restore correct error status when umount fails
-> 
-> Or am I missing something?
+Allocation can fail. So instead of put net in case of failure, get net after
+allocation.
 
- Yes, Neil found two problems:
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfs/client.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-    http://www.spinics.net/lists/linux-nfs/msg31466.html
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index d8c918b..d17aa10 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -175,7 +175,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+ 	clp->cl_rpcclient = ERR_PTR(-EINVAL);
+ 
+ 	clp->cl_proto = cl_init->proto;
+-	clp->cl_net = get_net(cl_init->net);
++	clp->cl_net = cl_init->net;
+ 
+ #ifdef CONFIG_NFS_V4
+ 	err = nfs_get_cb_ident_idr(clp, cl_init->minorversion);
+@@ -189,6 +189,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+ 	clp->cl_minorversion = cl_init->minorversion;
+ 	clp->cl_mvops = nfs_v4_minor_ops[cl_init->minorversion];
+ #endif
++	get_net(clp->cl_net);
+ 	cred = rpc_lookup_machine_cred("*");
+ 	if (!IS_ERR(cred))
+ 		clp->cl_machine_cred = cred;
 
-    Karel
-
--- 
- Karel Zak  <kzak@redhat.com>
- http://karelzak.blogspot.com
