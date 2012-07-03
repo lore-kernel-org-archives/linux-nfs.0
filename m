@@ -1,82 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:42030 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752538Ab2GKU3j (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jul 2012 16:29:39 -0400
-Received: by ghrr11 with SMTP id r11so1691041ghr.19
-        for <linux-nfs@vger.kernel.org>; Wed, 11 Jul 2012 13:29:38 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 00/15] Candidates for 3.6 [v2]
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 11 Jul 2012 16:29:36 -0400
-Message-ID: <20120711201718.3767.66867.stgit@degas.1015granger.net>
+Received: from mailhub.sw.ru ([195.214.232.25]:34407 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756113Ab2GCNFC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Jul 2012 09:05:02 -0400
+Subject: [PATCH v3] NFSd: fix locking in nfsd_forget_delegations()
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Tue, 03 Jul 2012 17:01:48 +0400
+Message-ID: <20120703130108.4011.20822.stgit@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi-
+v3: rebased on 3.5-rc3 kernel
 
-Here is a second crack at the TEST_STATEID fixes and patches to
-implement UCS.  I've attempted to address the following review
-comments:
+v2: dl_recall_lru list is used for delegations collect because it's modified
+both in unhash_delegation() and nfsd_break_one_deleg().
 
-  o  The changes have been reorganized to allow the meaty parts of
-     the TEST_STATEID fixes to be applied to -stable.
+This patch adds recall_lock hold to nfsd_forget_delegations() to protect
+nfsd_process_n_delegations() call.
+Also, looks like it would be better to collect delegations to some local
+on-stack list, and then unhash collected list. This split allows to
+simplify locking, because delegation traversing is protected by recall_lock,
+when delegation unhash is protected by client_mutex.
 
-  o  Additional in-code comments have been introduced.
-
-  o  FREE_STATEID is now performed in all cases after TEST_STATEID
-     except when the TEST_STATEID operation result is
-     NFS4ERR_BAD_STATEID.
-
-  o  The change to check clp->cl_cons_state in
-     nfs4_wait_clnt_recover() is now a separate patch with its own
-     justification.
-
-As before, there is one last bug to fix: rpcauth_create() returns
--EEXIST when replacing an RPC client's rpc_auth, if both the
-existing and new rpc_auth are RPC_AUTH_GSS.  I should be able to
-post a solution for review next week.
-
-The final patch in this series is a hack, posted for discussion.
-
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 ---
+ fs/nfsd/nfs4state.c |   21 +++++++++++++++++----
+ 1 files changed, 17 insertions(+), 4 deletions(-)
 
-Chuck Lever (15):
-      NFS: Slow down state manager after an unhandled error
-      NFS: Add nfs4_unique_id boot parameter
-      NFS: Discover NFSv4 server trunking when mounting
-      NFS: Use the same nfs_client_id4 for every server
-      NFS: Introduce "migration" mount option
-      SUNRPC: Add rpcauth_list_flavors()
-      NFS: Clean up nfs4_proc_setclientid() and friends
-      NFS: Treat NFS4ERR_CLID_INUSE as a fatal error
-      NFS: When state recovery fails, waiting tasks should exit
-      NFS: nfs_getaclargs.acl_len is a size_t
-      NFS: Clean up TEST_STATEID and FREE_STATEID error reporting
-      NFS: Clean up nfs41_check_expired_stateid()
-      NFS: State reclaim clears OPEN and LOCK state
-      NFS: Don't free a state ID the server does not recognize
-      NFS: Fix up TEST_STATEID and FREE_STATEID return code handling
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 59b9efc..33eccee 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4579,7 +4579,7 @@ void nfsd_forget_openowners(u64 num)
+ 	printk(KERN_INFO "NFSD: Forgot %d open owners", count);
+ }
+ 
+-int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegation *))
++int nfsd_process_n_delegations(u64 num, struct list_head *list)
+ {
+ 	int i, count = 0;
+ 	struct nfs4_file *fp, *fnext;
+@@ -4588,7 +4588,7 @@ int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegatio
+ 	for (i = 0; i < FILE_HASH_SIZE; i++) {
+ 		list_for_each_entry_safe(fp, fnext, &file_hashtbl[i], fi_hash) {
+ 			list_for_each_entry_safe(dp, dnext, &fp->fi_delegations, dl_perfile) {
+-				deleg_func(dp);
++				list_move(&dp->dl_recall_lru, list);
+ 				if (++count == num)
+ 					return count;
+ 			}
+@@ -4601,9 +4601,16 @@ int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegatio
+ void nfsd_forget_delegations(u64 num)
+ {
+ 	unsigned int count;
++	LIST_HEAD(victims);
++	struct nfs4_delegation *dp, *dnext;
++
++	spin_lock(&recall_lock);
++	count = nfsd_process_n_delegations(num, &victims);
++	spin_unlock(&recall_lock);
+ 
+ 	nfs4_lock_state();
+-	count = nfsd_process_n_delegations(num, unhash_delegation);
++	list_for_each_entry_safe(dp, dnext, &victims, dl_recall_lru)
++		unhash_delegation(dp);
+ 	nfs4_unlock_state();
+ 
+ 	printk(KERN_INFO "NFSD: Forgot %d delegations", count);
+@@ -4612,10 +4619,16 @@ void nfsd_forget_delegations(u64 num)
+ void nfsd_recall_delegations(u64 num)
+ {
+ 	unsigned int count;
++	LIST_HEAD(victims);
++	struct nfs4_delegation *dp, *dnext;
+ 
+ 	nfs4_lock_state();
+ 	spin_lock(&recall_lock);
+-	count = nfsd_process_n_delegations(num, nfsd_break_one_deleg);
++	count = nfsd_process_n_delegations(num, &victims);
++	list_for_each_entry_safe(dp, dnext, &victims, dl_recall_lru) {
++		list_del(&dp->dl_recall_lru);
++		nfsd_break_one_deleg(dp);
++	}
+ 	spin_unlock(&recall_lock);
+ 	nfs4_unlock_state();
+ 
 
-
- Documentation/filesystems/nfs/nfs.txt |   44 +++++
- Documentation/kernel-parameters.txt   |    5 +
- fs/nfs/client.c                       |  239 +++++++++++++++++++++++++++
- fs/nfs/internal.h                     |    6 +
- fs/nfs/nfs4_fs.h                      |    8 +
- fs/nfs/nfs4proc.c                     |  293 ++++++++++++++++++++++++---------
- fs/nfs/nfs4state.c                    |  198 ++++++++++++++++++++++
- fs/nfs/super.c                        |   20 ++
- include/linux/nfs_fs_sb.h             |    5 -
- include/linux/sunrpc/auth.h           |    2 
- include/linux/sunrpc/gss_api.h        |    3 
- net/sunrpc/auth.c                     |   54 ++++++
- net/sunrpc/auth_gss/auth_gss.c        |    1 
- net/sunrpc/auth_gss/gss_mech_switch.c |   18 ++
- 14 files changed, 803 insertions(+), 93 deletions(-)
-
--- 
-Chuck Lever
