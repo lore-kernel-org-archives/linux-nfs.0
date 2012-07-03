@@ -1,200 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:33550 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:19033 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754049Ab2GWPMQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Jul 2012 11:12:16 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 6/9] NFS: Split out remaining NFS v4 inode functions
-Date: Mon, 23 Jul 2012 11:12:06 -0400
-Message-Id: <1343056329-24808-7-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1343056329-24808-1-git-send-email-bjschuma@netapp.com>
-References: <1343056329-24808-1-git-send-email-bjschuma@netapp.com>
+	id S1752181Ab2GCQXN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Jul 2012 12:23:13 -0400
+Subject: [PATCH v3 05/11] NFS: callback service start function introduced
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Tue, 03 Jul 2012 20:20:01 +0400
+Message-ID: <20120703162001.11911.6979.stgit@localhost.localdomain>
+In-Reply-To: <20120703161844.11911.92996.stgit@localhost.localdomain>
+References: <20120703161844.11911.92996.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+This is just a code move, which from my POW makes code looks better.
+I.e. now on start we have 3 different stages:
+1) Service creation.
+2) Service per-net data allocation.
+3) Service start.
 
-Somehow I missed this in my previous patch series, but these functions
-are only needed by the v4 code and should be moved to a v4-only file.  I
-wasn't exactly sure where I should put these functions, so I moved them
-into nfs4super.c where I could make them static.
+Patch also renames goto label "out_err:" into "err_start:" to reflect new
+changes.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 ---
- fs/nfs/inode.c     | 23 +----------------------
- fs/nfs/internal.h  |  4 +---
- fs/nfs/nfs4_fs.h   |  3 ---
- fs/nfs/nfs4super.c | 39 +++++++++++++++++++++++++++++++++++++++
- fs/nfs/write.c     | 20 --------------------
- 5 files changed, 41 insertions(+), 48 deletions(-)
+ fs/nfs/callback.c |   77 +++++++++++++++++++++++++++++++----------------------
+ 1 files changed, 45 insertions(+), 32 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index e8877c8..a6ffa4b 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -106,7 +106,7 @@ u64 nfs_compat_user_ino64(u64 fileid)
- 	return ino;
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 41150ef..550d2a2 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -241,6 +241,46 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
  }
+ #endif /* CONFIG_NFS_V4_1 */
  
--static void nfs_clear_inode(struct inode *inode)
-+void nfs_clear_inode(struct inode *inode)
- {
- 	/*
- 	 * The following should never happen...
-@@ -1472,27 +1472,6 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 	return -ESTALE;
- }
- 
--
--#ifdef CONFIG_NFS_V4
--
--/*
-- * Clean out any remaining NFSv4 state that might be left over due
-- * to open() calls that passed nfs_atomic_lookup, but failed to call
-- * nfs_open().
-- */
--void nfs4_evict_inode(struct inode *inode)
--{
--	truncate_inode_pages(&inode->i_data, 0);
--	clear_inode(inode);
--	pnfs_return_layout(inode);
--	pnfs_destroy_layout(NFS_I(inode));
--	/* If we are holding a delegation, return it! */
--	nfs_inode_return_delegation_noreclaim(inode);
--	/* First call standard NFS clear_inode() code */
--	nfs_clear_inode(inode);
--}
--#endif
--
- struct inode *nfs_alloc_inode(struct super_block *sb)
- {
- 	struct nfs_inode *nfsi;
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 17d1470..4174faf 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -319,10 +319,8 @@ extern struct workqueue_struct *nfsiod_workqueue;
- extern struct inode *nfs_alloc_inode(struct super_block *sb);
- extern void nfs_destroy_inode(struct inode *);
- extern int nfs_write_inode(struct inode *, struct writeback_control *);
-+extern void nfs_clear_inode(struct inode *);
- extern void nfs_evict_inode(struct inode *);
--#ifdef CONFIG_NFS_V4
--extern void nfs4_evict_inode(struct inode *);
--#endif
- void nfs_zap_acl_cache(struct inode *inode);
- extern int nfs_wait_bit_killable(void *word);
- 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 290762f..af8712d 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -205,9 +205,6 @@ extern const struct dentry_operations nfs4_dentry_operations;
- int nfs_atomic_open(struct inode *, struct dentry *, struct file *,
- 		    unsigned, umode_t, int *);
- 
--/* write.c */
--int nfs4_write_inode(struct inode *, struct writeback_control *);
--
- /* nfs4namespace.c */
- rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *);
- struct rpc_clnt *nfs4_create_sec_client(struct rpc_clnt *, struct inode *, struct qstr *);
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-index c70e173..1c825f3 100644
---- a/fs/nfs/nfs4super.c
-+++ b/fs/nfs/nfs4super.c
-@@ -6,12 +6,16 @@
- #include <linux/nfs_idmap.h>
- #include <linux/nfs4_mount.h>
- #include <linux/nfs_fs.h>
-+#include "delegation.h"
- #include "internal.h"
- #include "nfs4_fs.h"
-+#include "pnfs.h"
- #include "nfs.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_VFS
- 
-+static int nfs4_write_inode(struct inode *inode, struct writeback_control *wbc);
-+static void nfs4_evict_inode(struct inode *inode);
- static struct dentry *nfs4_remote_mount(struct file_system_type *fs_type,
- 	int flags, const char *dev_name, void *raw_data);
- static struct dentry *nfs4_referral_mount(struct file_system_type *fs_type,
-@@ -75,6 +79,41 @@ struct nfs_subversion nfs_v4 = {
- 	.xattr    = nfs4_xattr_handlers,
- };
- 
-+static int nfs4_write_inode(struct inode *inode, struct writeback_control *wbc)
++static int nfs_callback_start_svc(int minorversion, struct rpc_xprt *xprt,
++				  struct svc_serv *serv)
 +{
-+	int ret = nfs_write_inode(inode, wbc);
++	struct svc_rqst *rqstp;
++	int (*callback_svc)(void *vrqstp);
++	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
++	char svc_name[12];
++	int ret;
++	int minorversion_setup;
 +
-+	if (ret >= 0 && test_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags)) {
-+		int status;
-+		bool sync = true;
++	nfs_callback_bc_serv(minorversion, xprt, serv);
 +
-+		if (wbc->sync_mode == WB_SYNC_NONE)
-+			sync = false;
-+
-+		status = pnfs_layoutcommit_inode(inode, sync);
-+		if (status < 0)
-+			return status;
++	minorversion_setup =  nfs_minorversion_callback_svc_setup(minorversion,
++					serv, &rqstp, &callback_svc);
++	if (!minorversion_setup) {
++		/* v4.0 callback setup */
++		rqstp = nfs4_callback_up(serv);
++		callback_svc = nfs4_callback_svc;
 +	}
-+	return ret;
++
++	if (IS_ERR(rqstp))
++		return PTR_ERR(rqstp);
++
++	svc_sock_update_bufs(serv);
++
++	sprintf(svc_name, "nfsv4.%u-svc", minorversion);
++	cb_info->serv = serv;
++	cb_info->rqst = rqstp;
++	cb_info->task = kthread_run(callback_svc, cb_info->rqst, svc_name);
++	if (IS_ERR(cb_info->task)) {
++		ret = PTR_ERR(cb_info->task);
++		svc_exit_thread(cb_info->rqst);
++		cb_info->rqst = NULL;
++		cb_info->task = NULL;
++		return PTR_ERR(cb_info->task);
++	}
++	dprintk("nfs_callback_up: service started\n");
++	return 0;
 +}
 +
-+/*
-+ * Clean out any remaining NFSv4 state that might be left over due
-+ * to open() calls that passed nfs_atomic_lookup, but failed to call
-+ * nfs_open().
-+ */
-+static void nfs4_evict_inode(struct inode *inode)
-+{
-+	truncate_inode_pages(&inode->i_data, 0);
-+	clear_inode(inode);
-+	pnfs_return_layout(inode);
-+	pnfs_destroy_layout(NFS_I(inode));
-+	/* If we are holding a delegation, return it! */
-+	nfs_inode_return_delegation_noreclaim(inode);
-+	/* First call standard NFS clear_inode() code */
-+	nfs_clear_inode(inode);
-+}
-+
- /*
-  * Get the superblock for the NFS4 root partition
-  */
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index f312860..6ddac54 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1674,26 +1674,6 @@ int nfs_write_inode(struct inode *inode, struct writeback_control *wbc)
- 	return nfs_commit_unstable_pages(inode, wbc);
- }
+ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct net *net)
+ {
+ 	int ret;
+@@ -311,12 +351,8 @@ static struct svc_serv *nfs_callback_create_svc(int minorversion)
+ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ {
+ 	struct svc_serv *serv;
+-	struct svc_rqst *rqstp;
+-	int (*callback_svc)(void *vrqstp);
+ 	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
+-	char svc_name[12];
+ 	int ret = 0;
+-	int minorversion_setup;
+ 	struct net *net = xprt->xprt_net;
  
--#ifdef CONFIG_NFS_V4
--int nfs4_write_inode(struct inode *inode, struct writeback_control *wbc)
--{
--	int ret = nfs_write_inode(inode, wbc);
+ 	mutex_lock(&nfs_callback_mutex);
+@@ -336,34 +372,10 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ 	if (ret < 0)
+ 		goto err_net;
+ 
+-	nfs_callback_bc_serv(minorversion, xprt, serv);
 -
--	if (ret >= 0 && test_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags)) {
--		int status;
--		bool sync = true;
--
--		if (wbc->sync_mode == WB_SYNC_NONE)
--			sync = false;
--
--		status = pnfs_layoutcommit_inode(inode, sync);
--		if (status < 0)
--			return status;
+-	minorversion_setup =  nfs_minorversion_callback_svc_setup(minorversion,
+-					serv, &rqstp, &callback_svc);
+-	if (!minorversion_setup) {
+-		/* v4.0 callback setup */
+-		rqstp = nfs4_callback_up(serv);
+-		callback_svc = nfs4_callback_svc;
 -	}
--	return ret;
--}
--#endif
 -
- /*
-  * flush the inode to disk.
-  */
--- 
-1.7.11.2
+-	if (IS_ERR(rqstp)) {
+-		ret = PTR_ERR(rqstp);
+-		goto out_err;
+-	}
+-
+-	svc_sock_update_bufs(serv);
++	ret = nfs_callback_start_svc(minorversion, xprt, serv);
++	if (ret < 0)
++		goto err_start;
+ 
+-	sprintf(svc_name, "nfsv4.%u-svc", minorversion);
+-	cb_info->serv = serv;
+-	cb_info->rqst = rqstp;
+-	cb_info->task = kthread_run(callback_svc, cb_info->rqst, svc_name);
+-	if (IS_ERR(cb_info->task)) {
+-		ret = PTR_ERR(cb_info->task);
+-		svc_exit_thread(cb_info->rqst);
+-		cb_info->rqst = NULL;
+-		cb_info->task = NULL;
+-		goto out_err;
+-	}
+ out:
+ 	/*
+ 	 * svc_create creates the svc_serv with sv_nrthreads == 1, and then
+@@ -375,7 +387,8 @@ out:
+ err_create:
+ 	mutex_unlock(&nfs_callback_mutex);
+ 	return ret;
+-out_err:
++
++err_start:
+ 	svc_shutdown_net(serv, net);
+ err_net:
+ 	dprintk("NFS: Couldn't create callback socket or server thread; "
 
