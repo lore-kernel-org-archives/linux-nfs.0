@@ -1,92 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:48607 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753545Ab2GaIIM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Jul 2012 04:08:12 -0400
-Received: by pbbrp8 with SMTP id rp8so11277588pbb.19
-        for <linux-nfs@vger.kernel.org>; Tue, 31 Jul 2012 01:08:12 -0700 (PDT)
+Received: from mailout-de.gmx.net ([213.165.64.22]:49555 "HELO
+	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1752467Ab2GCMfb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Jul 2012 08:35:31 -0400
+Message-ID: <4FF2E710.5010804@gmx.com>
+Date: Tue, 03 Jul 2012 14:35:28 +0200
+From: Andreas Heinlein <aheinlein@gmx.com>
 MIME-Version: 1.0
-In-Reply-To: <1343687301.28035.11.camel@lade.trondhjem.org>
-References: <CAJ75kXZb2_MGOrxG6JRyGEKdHm+t_yUk755DpqTvpdyVZ4TFzg@mail.gmail.com>
- <1343687301.28035.11.camel@lade.trondhjem.org>
-From: William Dauchy <wdauchy@gmail.com>
-Date: Tue, 31 Jul 2012 10:07:51 +0200
-Message-ID: <CAJ75kXb=GpKFkOQRiMqqpoH6+wEOP4sh5spS4Y8y-k__mbE6kA@mail.gmail.com>
-Subject: Re: wait_for_key_construction oops
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        David Howells <dhowells@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+To: Jeff Layton <jlayton@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Kernel NFSd CPU hog?
+References: <4FF16D54.6090200@gmx.com> <20120702150758.66893d08@tlielax.poochiereds.net>
+In-Reply-To: <20120702150758.66893d08@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 31, 2012 at 12:28 AM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> I'm therefore Ccing Bryan in case he knows of anything.
+On 02.07.2012 21:07, Jeff Layton wrote:
+> On Mon, 02 Jul 2012 11:43:48 +0200
+> Andreas Heinlein <aheinlein@gmx.com> wrote:
+>
+>> Hello,
+>>
+>> we have a strange NFS problem with a newly setup Linux server, and I
+>> hope someone here can help.
+>>
+>> The symptom is that, slowly over time (speaking of several days up to 2
+>> weeks), the kernel nfsd processes/threads consume more and more CPU
+>> until the system finally becomes unresponsive. We recorded system
+>> activity with sar, which shows that CPU (system) usage slowly rises
+>> after reboot from about 1% to nearly 100% over the course of several
+>> days. Load averages stay around 0.1-0.3 until 100% are reached, up to
+>> this point the problem is almost not noticable from the clients. Then
+>> load averages climb up to 30.0; at this point the system becomes more or
+>> less unusable and has to be restarted. 'top' output shows the CPU usage
+>> evenly distributed across all nfsd threads.
+>>
+>> The system is a fairly recent, though entry level server with a Core i3
+>> and 4G RAM, hosting the home directories for about 15-20 clients. CPU
+>> activity does not drop at night, when no clients are connected. It is
+>> running Debian 6.0 with linux 3.2.0 (from the backports repository),
+>> with nfs-utils 1.2.5 (also from the backports repository). I suspect
+>> that these backports might be the culprit, but since we need this kernel
+>> for other purposes, and I cannot reboot that machine during office
+>> hours, I'd rather not try going back to the official Debian kernel
+>> without good reasons. If there are known problems, I'd give it a try.
+>>
+> Find the pid of one of the nfsd threads that's spinning, then get a
+> stack trace from it:
+>
+>      # cat /proc/<pidofnfsd>/stack
+>
+> ...that should give us some idea of what it's doing.
+>
+> --
+> Jeff Layton <jlayton@redhat.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Hello,
 
-I guess that the fixes from David Howells (a427b9e) are related to my
-oops I mentioned; particularly the point 4 in his commit.
+I've run into the problem again, and did a 'watch cat 
+/proc/<pidofnfsd>/stack'. It actually seems to be doing something, 
+because the stack trace changes every now and then, but mostly looks like
 
-BUG: unable to handle kernel NULL pointer dereference at 0000000000000070
-IP: [<ffffffff811a4a18>] wait_for_key_construction+0x28/0x70
-PGD 2bf8de000
-Oops: 0000 [#1] PREEMPT SMP
-CPU 23
-Pid: 25735, comm: kworker/23:2 Tainted: G        W    3.4.4 #1 Dell
-Inc.  C6100           /0D61XP
-RIP: 0010:[<ffffffff811a4a18>]  [<ffffffff811a4a18>]
-wait_for_key_construction+0x28/0x70
-RSP: 0018:ffff880b99a15a80  EFLAGS: 00010246
-RAX: ffffffff811a4a70 RBX: 0000000000000000 RCX: 0000000000000002
-RDX: ffffffff811a4a60 RSI: 0000000000000000 RDI: 0000000000000070
-RBP: ffff8803c915e420 R08: ffff88061c877bc1 R09: 0000000000000000
-R10: 0000000050159fb7 R11: 0000000000000000 R12: ffffffff816b5e49
-R13: ffff880ba944ca48 R14: 0000000000000013 R15: ffff8803c915e423
-FS:  0000000000000000(0000) GS:ffff880c3fd60000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: 0000000000000070 CR3: 00000000014aa000 CR4: 00000000000007f0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Process kworker/23:2 (pid: 25735, threadinfo ffff880b154a0ba0, task
-ffff880b154a0750)
-Stack:
-0000000000000000 ffffffff811a512f 0000000000000000 ffffffff810df09d
-0000000000000000 000000000000000e ffff880841b54cc0 ffffffff816c88f8
-ffff8803c915e420 ffffffff81184fbb 0000000000000013 ffffffff81935c40
-Call Trace:
-[<ffffffff811a512f>] ? request_key+0x5f/0xa0
-[<ffffffff810df09d>] ? __kmalloc+0x2d/0x120
-[<ffffffff81184fbb>] ? nfs_idmap_request_key+0x1ab/0x1c0
-[<ffffffff81185027>] ? nfs_idmap_get_key+0x57/0xd0
-[<ffffffff811852ae>] ? nfs_map_string_to_numeric+0x3e/0xc0
-[<ffffffff8118535f>] ? nfs_idmap_lookup_id+0x2f/0x80
-[<ffffffff81185479>] ? nfs_map_name_to_uid+0x39/0x90
-[<ffffffff8117dedb>] ? decode_getfattr_attrs+0x94b/0xa10
-[<ffffffff8117f776>] ? T.1607+0x96/0xe0
-[<ffffffff8117f852>] ? nfs4_xdr_dec_delegreturn+0x72/0x80
-[<ffffffff8117f7e0>] ? decode_getfattr+0x20/0x20
-[<ffffffff8144db39>] ? rpcauth_unwrap_resp+0x79/0x80
-[<ffffffff8117f7e0>] ? decode_getfattr+0x20/0x20
-[<ffffffff81445a33>] ? call_decode+0x2a3/0x400
-[<ffffffff8144cf26>] ? __rpc_execute+0x46/0x1b0
-[<ffffffff81050338>] ? process_one_work+0x108/0x3a0
-[<ffffffff8144d0c0>] ? rpc_execute+0x30/0x30
-[<ffffffff81050a21>] ? worker_thread+0x151/0x420
-[<ffffffff810508d0>] ? rescuer_thread+0x300/0x300
-[<ffffffff810508d0>] ? rescuer_thread+0x300/0x300
-[<ffffffff81054e3e>] ? kthread+0x9e/0xb0
-[<ffffffff81484774>] ? kernel_thread_helper+0x4/0x10
-[<ffffffff81482a38>] ? retint_restore_args+0x6/0x6
-[<ffffffff81054da0>] ? kthread_freezable_should_stop+0x60/0x60
-[<ffffffff81484770>] ? gs_change+0xb/0xb
-Code: 00 00 00 40 80 fe 01 53 19 c9 48 89 fb 48 c7 c0 70 4a 1a 81 f7
-d1 48 c7 c2 60 4a 1a 81 83 c1 02 48 8d 7f 70 40 84 f6 48 0f 45 d0 <48>
-8b 43 70 a8 10 75 20 48 8b 43 70 a8 20 74 08 8b 83 80 00 00
-RIP  [<ffffffff811a4a18>] wait_for_key_construction+0x28/0x70
-RSP <ffff880b99a15a80>
-CR2: 0000000000000070
----[ end trace 59a8d5be7e929e25 ]---
+[<c1038be2>] try_to_wake_up+0x144/0x14d
+[<c1045d26>] lock_timer_base+0x19/0x34
+[<c10462fd>] __mod_timer+0x10c/0x116
+[<c1045d41>] process_timeout+0x0/0x5
+[<f858a243>] svc_recv+0x2e2/0x698 [sunrpc]
+[<c1038beb>] default_wake_function+0x0/0x8
+[<f8640748>] nfsd+0x90/0x108 [nfsd]
+[<f86406b8>] nfsd+0x0/0x108 [nfsd]
+[<c105176b>] kthread+0x63/0x68
+[<c1051708>] kthread+0x0/0x68
+[<c12dadbe>] kernel_thread_helper+0x6/0x10
+[<ffffffff>] 0xffffffff
 
--- 
-William
+Meanwhile, I've found a quite recent thread on this list named "3.0+ NFS 
+issues", and within two links to Ubuntu bug reports 
+(https://bugs.launchpad.net/ubuntu/+source/nfs-utils/+bug/879334 and 
+https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1006446) and again 
+to a kernel bug (https://bugzilla.kernel.org/show_bug.cgi?id=40912), all 
+suggesting that this is indeed a kernel 3.0 problem.
+
+So I will try going back to 2.6.32 and hope this issue gets fixed soon.
+
+Thanks for your help!
+
