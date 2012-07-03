@@ -1,89 +1,136 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:55933 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752549Ab2GZLzr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 07:55:47 -0400
-Received: by mail-yw0-f46.google.com with SMTP id m54so1830418yhm.19
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jul 2012 04:55:47 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v4 14/17] vfs: fix renameat to retry on ESTALE errors
-Date: Thu, 26 Jul 2012 07:55:17 -0400
-Message-Id: <1343303720-11199-15-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
-References: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:22419 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932123Ab2GCQYJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Jul 2012 12:24:09 -0400
+Subject: [PATCH v3 04/11] NFS: callback up - transport backchannel cleanup
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Tue, 03 Jul 2012 20:19:54 +0400
+Message-ID: <20120703161954.11911.49152.stgit@localhost.localdomain>
+In-Reply-To: <20120703161844.11911.92996.stgit@localhost.localdomain>
+References: <20120703161844.11911.92996.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...as always, rename is the messiest of the bunch. We have to track
-whether to retry or not via a separate flag since the error handling
-is already quite complex.
+No need to assign transports backchannel server explicitly in
+nfs41_callback_up() -  there is nfs_callback_bc_serv() function for this.
+By using it, nfs4_callback_up() and nfs41_callback_up() can be called without
+transport argument.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Note: service have to be passed to nfs_callback_bc_serv() instead of callback,
+since callback link can be uninitialized.
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 ---
- fs/namei.c | 31 ++++++++++++++++++++++++++-----
- 1 file changed, 26 insertions(+), 5 deletions(-)
+ fs/nfs/callback.c |   34 +++++++++++++++++-----------------
+ 1 files changed, 17 insertions(+), 17 deletions(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 65e5177..7cf5e91 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3699,12 +3699,25 @@ SYSCALL_DEFINE4(renameat, int, olddfd, const char __user *, oldname,
- 	char *from;
- 	char *to;
- 	int error;
-+	unsigned int try = 0;
-+	bool should_retry = false;
-+	unsigned int lookup_flags = LOOKUP_PARENT;
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index b61ed61..41150ef 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -128,7 +128,7 @@ nfs4_callback_svc(void *vrqstp)
+  * Prepare to bring up the NFSv4 callback service
+  */
+ static struct svc_rqst *
+-nfs4_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
++nfs4_callback_up(struct svc_serv *serv)
+ {
+ 	return svc_prepare_thread(serv, &serv->sv_pools[0], NUMA_NO_NODE);
+ }
+@@ -184,16 +184,10 @@ nfs41_callback_svc(void *vrqstp)
+  * Bring up the NFSv4.1 callback service
+  */
+ static struct svc_rqst *
+-nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
++nfs41_callback_up(struct svc_serv *serv)
+ {
+ 	struct svc_rqst *rqstp;
  
--	error = user_path_parent(olddfd, oldname, &oldnd, &from);
--	if (error)
-+	from = getname(oldname);
-+	if (IS_ERR(from))
-+		return PTR_ERR(from);
-+
-+	to = getname(newname);
-+	if (IS_ERR(to)) {
-+		error = PTR_ERR(to);
- 		goto exit;
-+	}
-+retry:
-+	error = do_path_lookup(olddfd, from, lookup_flags, &oldnd);
-+	if (error)
-+		goto exit0;
- 
--	error = user_path_parent(newdfd, newname, &newnd, &to);
-+	error = do_path_lookup(newdfd, to, lookup_flags, &newnd);
- 	if (error)
- 		goto exit1;
- 
-@@ -3773,13 +3786,21 @@ exit4:
- 	dput(old_dentry);
- exit3:
- 	unlock_rename(new_dir, old_dir);
-+	if (retry_estale(error, try++))
-+		should_retry = true;
- exit2:
- 	path_put(&newnd.path);
--	putname(to);
- exit1:
- 	path_put(&oldnd.path);
--	putname(from);
-+	if (should_retry) {
-+		should_retry = false;
-+		lookup_flags |= LOOKUP_REVAL;
-+		goto retry;
-+	}
-+exit0:
-+	putname(to);
- exit:
-+	putname(from);
- 	return error;
+-	/*
+-	 * Save the svc_serv in the transport so that it can
+-	 * be referenced when the session backchannel is initialized
+-	 */
+-	xprt->bc_serv = serv;
+-
+ 	INIT_LIST_HEAD(&serv->sv_cb_list);
+ 	spin_lock_init(&serv->sv_cb_lock);
+ 	init_waitqueue_head(&serv->sv_cb_waitq);
+@@ -208,21 +202,25 @@ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
  }
  
--- 
-1.7.11.2
+ static inline int nfs_minorversion_callback_svc_setup(u32 minorversion,
+-		struct svc_serv *serv, struct rpc_xprt *xprt,
++		struct svc_serv *serv,
+ 		struct svc_rqst **rqstpp, int (**callback_svc)(void *vrqstp))
+ {
+ 	if (minorversion) {
+-		*rqstpp = nfs41_callback_up(serv, xprt);
++		*rqstpp = nfs41_callback_up(serv);
+ 		*callback_svc = nfs41_callback_svc;
+ 	}
+ 	return minorversion;
+ }
+ 
+ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
+-		struct nfs_callback_data *cb_info)
++		struct svc_serv *serv)
+ {
+ 	if (minorversion)
+-		xprt->bc_serv = cb_info->serv;
++		/*
++		 * Save the svc_serv in the transport so that it can
++		 * be referenced when the session backchannel is initialized
++		 */
++		xprt->bc_serv = serv;
+ }
+ #else
+ static int nfs41_callback_up_net(struct svc_serv *serv, struct net *net)
+@@ -231,14 +229,14 @@ static int nfs41_callback_up_net(struct svc_serv *serv, struct net *net)
+ }
+ 
+ static inline int nfs_minorversion_callback_svc_setup(u32 minorversion,
+-		struct svc_serv *serv, struct rpc_xprt *xprt,
++		struct svc_serv *serv,
+ 		struct svc_rqst **rqstpp, int (**callback_svc)(void *vrqstp))
+ {
+ 	return 0;
+ }
+ 
+ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
+-		struct nfs_callback_data *cb_info)
++		struct svc_serv *serv)
+ {
+ }
+ #endif /* CONFIG_NFS_V4_1 */
+@@ -330,7 +328,7 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ 	}
+ 
+ 	if (cb_info->users++ || cb_info->task != NULL) {
+-		nfs_callback_bc_serv(minorversion, xprt, cb_info);
++		nfs_callback_bc_serv(minorversion, xprt, serv);
+ 		goto out;
+ 	}
+ 
+@@ -338,11 +336,13 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ 	if (ret < 0)
+ 		goto err_net;
+ 
++	nfs_callback_bc_serv(minorversion, xprt, serv);
++
+ 	minorversion_setup =  nfs_minorversion_callback_svc_setup(minorversion,
+-					serv, xprt, &rqstp, &callback_svc);
++					serv, &rqstp, &callback_svc);
+ 	if (!minorversion_setup) {
+ 		/* v4.0 callback setup */
+-		rqstp = nfs4_callback_up(serv, xprt);
++		rqstp = nfs4_callback_up(serv);
+ 		callback_svc = nfs4_callback_svc;
+ 	}
+ 
 
