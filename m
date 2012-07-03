@@ -1,88 +1,150 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:31864 "EHLO relay.sw.ru"
+Received: from cantor2.suse.de ([195.135.220.15]:54434 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932247Ab2GCQXk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Jul 2012 12:23:40 -0400
-Subject: [PATCH v3 08/11] NFS: make nfs_callback_tcpport6 per network context
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Tue, 03 Jul 2012 20:20:22 +0400
-Message-ID: <20120703162022.11911.7120.stgit@localhost.localdomain>
-In-Reply-To: <20120703161844.11911.92996.stgit@localhost.localdomain>
-References: <20120703161844.11911.92996.stgit@localhost.localdomain>
+	id S1750759Ab2GCI6h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Jul 2012 04:58:37 -0400
+Date: Tue, 3 Jul 2012 09:58:31 +0100
+From: Mel Gorman <mgorman@suse.de>
+To: Eric B Munson <emunson@mgebm.net>
+Cc: Andrew Morton <akpm@linux-foundation.org>, Linux-MM <linux-mm@kvack.org>,
+        Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Sebastian Andrzej Siewior <sebastian@breakpoint.cc>
+Subject: Re: [PATCH 00/12] Swap-over-NFS without deadlocking V8
+Message-ID: <20120703085831.GY14154@suse.de>
+References: <1340976805-5799-1-git-send-email-mgorman@suse.de>
+ <20120701172254.GB2470@mgebm.net>
+ <20120702143556.GT14154@suse.de>
+ <20120703001051.GA5508@mgebm.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=iso-8859-15
+In-Reply-To: <20120703001051.GA5508@mgebm.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfs/callback.c  |    5 ++---
- fs/nfs/callback.h  |    1 -
- fs/nfs/netns.h     |    1 +
- fs/nfs/nfs4state.c |    2 +-
- 4 files changed, 4 insertions(+), 5 deletions(-)
+On Mon, Jul 02, 2012 at 08:10:51PM -0400, Eric B Munson wrote:
+> On Mon, 02 Jul 2012, Mel Gorman wrote:
+> 
+> > On Sun, Jul 01, 2012 at 01:22:54PM -0400, Eric B Munson wrote:
+> > > On Fri, 29 Jun 2012, Mel Gorman wrote:
+> > > 
+> > > > Changelog since V7
+> > > >   o Rebase to linux-next 20120629
+> > > >   o bi->page_dma instead of bi->page in intel driver
+> > > >   o Build fix for !CONFIG_NET					(sebastian)
+> > > >   o Restore PF_MEMALLOC flags correctly in all cases		(jlayton)
+> > > > 
+> > > > Changelog since V6
+> > > >   o Rebase to linux-next 20120622
+> > > > 
+> > > > Changelog since V5
+> > > >   o Rebase to v3.5-rc3
+> > > > 
+> > > > Changelog since V4
+> > > >   o Catch if SOCK_MEMALLOC flag is cleared with rmem tokens	(davem)
+> > > > 
+> > > > Changelog since V3
+> > > >   o Rebase to 3.4-rc5
+> > > >   o kmap pages for writing to swap				(akpm)
+> > > >   o Move forward declaration to reduce chance of duplication	(akpm)
+> > > > 
+> > > > Changelog since V2
+> > > >   o Nothing significant, just rebases. A radix tree lookup is replaced with
+> > > >     a linear search would be the biggest rebase artifact
+> > > > 
+> > > > This patch series is based on top of "Swap-over-NBD without deadlocking v14"
+> > > > as it depends on the same reservation of PF_MEMALLOC reserves logic.
+> > > > 
+> > > > When a user or administrator requires swap for their application, they
+> > > > create a swap partition and file, format it with mkswap and activate it with
+> > > > swapon. In diskless systems this is not an option so if swap if required
+> > > > then swapping over the network is considered.  The two likely scenarios
+> > > > are when blade servers are used as part of a cluster where the form factor
+> > > > or maintenance costs do not allow the use of disks and thin clients.
+> > > > 
+> > > > The Linux Terminal Server Project recommends the use of the Network
+> > > > Block Device (NBD) for swap but this is not always an option.  There is
+> > > > no guarantee that the network attached storage (NAS) device is running
+> > > > Linux or supports NBD. However, it is likely that it supports NFS so there
+> > > > are users that want support for swapping over NFS despite any performance
+> > > > concern. Some distributions currently carry patches that support swapping
+> > > > over NFS but it would be preferable to support it in the mainline kernel.
+> > > > 
+> > > > Patch 1 avoids a stream-specific deadlock that potentially affects TCP.
+> > > > 
+> > > > Patch 2 is a small modification to SELinux to avoid using PFMEMALLOC
+> > > > 	reserves.
+> > > > 
+> > > > Patch 3 adds three helpers for filesystems to handle swap cache pages.
+> > > > 	For example, page_file_mapping() returns page->mapping for
+> > > > 	file-backed pages and the address_space of the underlying
+> > > > 	swap file for swap cache pages.
+> > > > 
+> > > > Patch 4 adds two address_space_operations to allow a filesystem
+> > > > 	to pin all metadata relevant to a swapfile in memory. Upon
+> > > > 	successful activation, the swapfile is marked SWP_FILE and
+> > > > 	the address space operation ->direct_IO is used for writing
+> > > > 	and ->readpage for reading in swap pages.
+> > > > 
+> > > > Patch 5 notes that patch 3 is bolting
+> > > > 	filesystem-specific-swapfile-support onto the side and that
+> > > > 	the default handlers have different information to what
+> > > > 	is available to the filesystem. This patch refactors the
+> > > > 	code so that there are generic handlers for each of the new
+> > > > 	address_space operations.
+> > > > 
+> > > > Patch 6 adds an API to allow a vector of kernel addresses to be
+> > > > 	translated to struct pages and pinned for IO.
+> > > > 
+> > > > Patch 7 adds support for using highmem pages for swap by kmapping
+> > > > 	the pages before calling the direct_IO handler.
+> > > > 
+> > > > Patch 8 updates NFS to use the helpers from patch 3 where necessary.
+> > > > 
+> > > > Patch 9 avoids setting PF_private on PG_swapcache pages within NFS.
+> > > > 
+> > > > Patch 10 implements the new swapfile-related address_space operations
+> > > > 	for NFS and teaches the direct IO handler how to manage
+> > > > 	kernel addresses.
+> > > > 
+> > > > Patch 11 prevents page allocator recursions in NFS by using GFP_NOIO
+> > > > 	where appropriate.
+> > > > 
+> > > > Patch 12 fixes a NULL pointer dereference that occurs when using
+> > > > 	swap-over-NFS.
+> > > > 
+> > > > With the patches applied, it is possible to mount a swapfile that is on an
+> > > > NFS filesystem. Swap performance is not great with a swap stress test taking
+> > > > roughly twice as long to complete than if the swap device was backed by NBD.
+> > > 
+> > > To test this set I am using memory cgroups to force swap usage.  I am seeing
+> > > the cgroup controller killing my processes instead of using the nfs swapfile.
+> > > 
+> > 
+> > How sure are you that this is not a cgroup bug? For dirty file data on some
+> > kernels, cgroups can prematurely kill processes if pages are not being
+> > cleaned fast enough. I would not expect the same problem for anonymous
+> > pages but it's worth considering. Please also test with a normal swapfile.
+> > 
+> > If OOM is disabled and the process hangs, try capturing a sysrq+t and
+> > see where the process is stuck.
+> > 
+> 
+> It looks like the problem is with cgroups, when I run without cgroups and limit
+> memory on the boot command line everything works fine.  To test I limited the
+> machine to 1G of ram then ran several memory benchmarks with work set sizes of
+> 1.5G, all completed successfully with my swap file located on an NFS share.
+> 
+> Tested-by: Eric B Munson <emunson@mgebm.net>
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 80032fc..97bccb1 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -39,7 +39,6 @@ static DEFINE_MUTEX(nfs_callback_mutex);
- static struct svc_program nfs4_callback_program;
- 
- unsigned int nfs_callback_set_tcpport;
--unsigned short nfs_callback_tcpport6;
- #define NFS_CALLBACK_MAXPORTNR (65535U)
- 
- static int param_set_portnr(const char *val, const struct kernel_param *kp)
-@@ -79,9 +78,9 @@ static int nfs4_callback_up_net(struct svc_serv *serv, struct net *net)
- 	ret = svc_create_xprt(serv, "tcp", net, PF_INET6,
- 				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
- 	if (ret > 0) {
--		nfs_callback_tcpport6 = ret;
-+		nn->nfs_callback_tcpport6 = ret;
- 		dprintk("NFS: Callback listener port = %u (af %u, net %p)\n",
--				nfs_callback_tcpport6, PF_INET6, net);
-+				nn->nfs_callback_tcpport6, PF_INET6, net);
- 	} else if (ret != -EAFNOSUPPORT)
- 		goto out_err;
- 	return 0;
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index 8006959..86b5671 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -208,6 +208,5 @@ extern int nfs4_set_callback_sessionid(struct nfs_client *clp);
- #define NFS41_BC_MAX_CALLBACKS 1
- 
- extern unsigned int nfs_callback_set_tcpport;
--extern unsigned short nfs_callback_tcpport6;
- 
- #endif /* __LINUX_FS_NFS_CALLBACK_H */
-diff --git a/fs/nfs/netns.h b/fs/nfs/netns.h
-index 06a23fc..097dae1 100644
---- a/fs/nfs/netns.h
-+++ b/fs/nfs/netns.h
-@@ -23,6 +23,7 @@ struct nfs_net {
- #ifdef CONFIG_NFS_V4
- 	struct idr cb_ident_idr; /* Protected by nfs_client_lock */
- 	unsigned short nfs_callback_tcpport;
-+	unsigned short nfs_callback_tcpport6;
- #endif
- 	spinlock_t nfs_client_lock;
- 	struct timespec boot_time;
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index bc0ddf8..9313249 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -80,7 +80,7 @@ int nfs4_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
- 		goto do_confirm;
- 	port = nn->nfs_callback_tcpport;
- 	if (clp->cl_addr.ss_family == AF_INET6)
--		port = nfs_callback_tcpport6;
-+		port = nn->nfs_callback_tcpport6;
- 
- 	status = nfs4_proc_setclientid(clp, NFS4_CALLBACK, port, cred, &clid);
- 	if (status != 0)
+Thanks a lot for testing.
 
+-- 
+Mel Gorman
+SUSE Labs
