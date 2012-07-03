@@ -1,127 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:40077 "EHLO mx2.suse.de"
+Received: from mailhub.sw.ru ([195.214.232.25]:45939 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758771Ab2GLGlV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Jul 2012 02:41:21 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>,
-        Sebastian Andrzej Siewior <sebastian@breakpoint.cc>,
-        Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 07/12] mm: Add support for direct_IO to highmem pages
-Date: Thu, 12 Jul 2012 07:41:01 +0100
-Message-Id: <1342075266-29593-8-git-send-email-mgorman@suse.de>
-In-Reply-To: <1342075266-29593-1-git-send-email-mgorman@suse.de>
-References: <1342075266-29593-1-git-send-email-mgorman@suse.de>
+	id S932123Ab2GCQYt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Jul 2012 12:24:49 -0400
+Subject: [PATCH v3 10/11] NFS: add debug messages to callback down function
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Tue, 03 Jul 2012 20:20:36 +0400
+Message-ID: <20120703162036.11911.60789.stgit@localhost.localdomain>
+In-Reply-To: <20120703161844.11911.92996.stgit@localhost.localdomain>
+References: <20120703161844.11911.92996.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The patch "mm: Add support for a filesystem to activate swap files and
-use direct_IO for writing swap pages" added support for using direct_IO
-to write swap pages but it is insufficient for highmem pages.
-
-To support highmem pages, this patch kmaps() the page before calling the
-direct_IO() handler. As direct_IO deals with virtual addresses an
-additional helper is necessary for get_kernel_pages() to lookup the
-struct page for a kmap virtual address.
-
-Signed-off-by: Mel Gorman <mgorman@suse.de>
-Acked-by: Rik van Riel <riel@redhat.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 ---
- include/linux/highmem.h |    7 +++++++
- mm/highmem.c            |   12 ++++++++++++
- mm/memory.c             |    3 +--
- mm/page_io.c            |    3 ++-
- 4 files changed, 22 insertions(+), 3 deletions(-)
+ fs/nfs/callback.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
-diff --git a/include/linux/highmem.h b/include/linux/highmem.h
-index 774fa47..ef788b5 100644
---- a/include/linux/highmem.h
-+++ b/include/linux/highmem.h
-@@ -39,10 +39,17 @@ extern unsigned long totalhigh_pages;
- 
- void kmap_flush_unused(void);
- 
-+struct page *kmap_to_page(void *addr);
-+
- #else /* CONFIG_HIGHMEM */
- 
- static inline unsigned int nr_free_highpages(void) { return 0; }
- 
-+static inline struct page *kmap_to_page(void *addr)
-+{
-+	return virt_to_page(addr);
-+}
-+
- #define totalhigh_pages 0UL
- 
- #ifndef ARCH_HAS_KMAP
-diff --git a/mm/highmem.c b/mm/highmem.c
-index 57d82c6..d517cd1 100644
---- a/mm/highmem.c
-+++ b/mm/highmem.c
-@@ -94,6 +94,18 @@ static DECLARE_WAIT_QUEUE_HEAD(pkmap_map_wait);
- 		do { spin_unlock(&kmap_lock); (void)(flags); } while (0)
- #endif
- 
-+struct page *kmap_to_page(void *vaddr)
-+{
-+	unsigned long addr = (unsigned long)vaddr;
-+
-+	if (addr >= PKMAP_ADDR(0) && addr <= PKMAP_ADDR(LAST_PKMAP)) {
-+		int i = (addr - PKMAP_ADDR(0)) >> PAGE_SHIFT;
-+		return pte_page(pkmap_page_table[i]);
-+	}
-+
-+	return virt_to_page(addr);
-+}
-+
- static void flush_all_zero_pkmaps(void)
- {
- 	int i;
-diff --git a/mm/memory.c b/mm/memory.c
-index 85705cd..ed1981f 100644
---- a/mm/memory.c
-+++ b/mm/memory.c
-@@ -1864,8 +1864,7 @@ int get_kernel_pages(const struct kvec *kiov, int nr_segs, int write,
- 		if (WARN_ON(kiov[seg].iov_len != PAGE_SIZE))
- 			return seg;
- 
--		/* virt_to_page sanity checks the PFN */
--		pages[seg] = virt_to_page(kiov[seg].iov_base);
-+		pages[seg] = kmap_to_page(kiov[seg].iov_base);
- 		page_cache_get(pages[seg]);
- 	}
- 
-diff --git a/mm/page_io.c b/mm/page_io.c
-index 4a37962..78eee32 100644
---- a/mm/page_io.c
-+++ b/mm/page_io.c
-@@ -205,7 +205,7 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
- 		struct file *swap_file = sis->swap_file;
- 		struct address_space *mapping = swap_file->f_mapping;
- 		struct iovec iov = {
--			.iov_base = page_address(page),
-+			.iov_base = kmap(page),
- 			.iov_len  = PAGE_SIZE,
- 		};
- 
-@@ -218,6 +218,7 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
- 		ret = mapping->a_ops->direct_IO(KERNEL_WRITE,
- 						&kiocb, &iov,
- 						kiocb.ki_pos, 1);
-+		kunmap(page);
- 		if (ret == PAGE_SIZE) {
- 			count_vm_event(PSWPOUT);
- 			ret = 0;
--- 
-1.7.9.2
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 35ccd2a..b4e76e9 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -422,7 +422,9 @@ void nfs_callback_down(int minorversion, struct net *net)
+ 	cb_info->users--;
+ 	if (cb_info->users == 0 && cb_info->task != NULL) {
+ 		kthread_stop(cb_info->task);
++		dprintk("nfs_callback_down: service stopped\n");
+ 		svc_exit_thread(cb_info->rqst);
++		dprintk("nfs_callback_down: service destroyed\n");
+ 		cb_info->serv = NULL;
+ 		cb_info->rqst = NULL;
+ 		cb_info->task = NULL;
 
