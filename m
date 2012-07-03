@@ -1,60 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53160 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:19884 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1162000Ab2GLWmH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Jul 2012 18:42:07 -0400
-Date: Thu, 12 Jul 2012 18:42:07 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Simo Sorce <simo@redhat.com>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/4] Add support for new RPCSEC_GSS upcall mechanism
- for nfsd
-Message-ID: <20120712224207.GG24162@fieldses.org>
-References: <1337983796-26476-1-git-send-email-simo@redhat.com>
- <20120710204913.GA6038@fieldses.org>
- <20120710210511.GB6038@fieldses.org>
- <20120712123916.GB16822@fieldses.org>
- <1342130717.2718.32.camel@willson.li.ssimo.org>
+	id S932443Ab2GCNFh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Jul 2012 09:05:37 -0400
+Subject: [PATCH v2] NFSd: simplify locking in nfsd_recall_delegations()
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Tue, 03 Jul 2012 17:02:24 +0400
+Message-ID: <20120703130215.4035.8190.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1342130717.2718.32.camel@willson.li.ssimo.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 12, 2012 at 06:05:17PM -0400, Simo Sorce wrote:
-> On Thu, 2012-07-12 at 08:39 -0400, J. Bruce Fields wrote:
-> > And this is reproduceable after applying the first patch
-> > ("conditionally
-> > return endtime...") but not before.  The patch seems obviously
-> > innocent,
-> > but maybe my eyes are playing tricks on me.
-> > 
-> missing braces around the if statement where I inserted the if (endtime)
-> contion, causing instead to always kfree(ctx)
-> 
-> Sorry about that, it completely escaped my review of it multiple times
-> over.
+v2: rebased on 3.5-rc3 kernel
 
-I also looked straight at it without seeing it.  It's tough to make my
-eyes not trust the indentation!
+Holding of client_mutex looks redundant here - recall_lock looks enough.
 
---b.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfsd/nfs4state.c |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-index a32bb4f..3bc4a23 100644
---- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-@@ -695,11 +695,11 @@ gss_import_sec_context_kerberos(const void *p, size_t len,
- 	else
- 		ret = gss_import_v2_context(p, end, ctx, gfp_mask);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 33eccee..480ecc9 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4622,7 +4622,6 @@ void nfsd_recall_delegations(u64 num)
+ 	LIST_HEAD(victims);
+ 	struct nfs4_delegation *dp, *dnext;
  
--	if (ret == 0)
-+	if (ret == 0) {
- 		ctx_id->internal_ctx_id = ctx;
- 		if (endtime)
- 			*endtime = ctx->endtime;
--	else
-+	} else
- 		kfree(ctx);
+-	nfs4_lock_state();
+ 	spin_lock(&recall_lock);
+ 	count = nfsd_process_n_delegations(num, &victims);
+ 	list_for_each_entry_safe(dp, dnext, &victims, dl_recall_lru) {
+@@ -4630,7 +4629,6 @@ void nfsd_recall_delegations(u64 num)
+ 		nfsd_break_one_deleg(dp);
+ 	}
+ 	spin_unlock(&recall_lock);
+-	nfs4_unlock_state();
  
- 	dprintk("RPC:       %s: returning %d\n", __func__, ret);
+ 	printk(KERN_INFO "NFSD: Recalled %d delegations", count);
+ }
+
