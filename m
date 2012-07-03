@@ -1,51 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:38257 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:57152 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752560Ab2GTMEx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Jul 2012 08:04:53 -0400
-Subject: [PATCH] SUNRPC: return negative value in case rpcbind client creation
-	error
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Fri, 20 Jul 2012 15:57:48 +0400
-Message-ID: <20120720114849.23572.91010.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1754397Ab2GCLVU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Jul 2012 07:21:20 -0400
+Date: Tue, 3 Jul 2012 07:20:51 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "harshula@redhat.com" <harshula@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "mgorman@suse.de" <mgorman@suse.de>,
+        "jan.kratochvil@redhat.com" <jan.kratochvil@redhat.com>
+Subject: Re: [RFC PATCH v2] nfs: skip commit in releasepage if we're freeing
+ memory for fs-related reasons
+Message-ID: <20120703072051.4e7a9d34@corrin.poochiereds.net>
+In-Reply-To: <1341258017.8197.46.camel@lade.trondhjem.org>
+References: <1340895773.5293.18.camel@lade.trondhjem.org>
+	<1340897113-18449-1-git-send-email-jlayton@redhat.com>
+	<20120702111751.3ac78d2c@tlielax.poochiereds.net>
+	<1341258017.8197.46.camel@lade.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Without this patch kernel will panic on LockD start, because lockd_up() checks
-lockd_up_net() result for negative value.
->From my pow it's better to return negative value from rpcbind routines instead
-of replacing all such checks like in lockd_up().
+On Mon, 2 Jul 2012 19:40:22 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- net/sunrpc/rpcb_clnt.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+> On Mon, 2012-07-02 at 11:17 -0400, Jeff Layton wrote:
+> > nfs: broaden the cases where we use a non-blocking commit in releasepage
+> > 
+> > Currently, we just do a non-blocking commit when called from kswapd, but
+> > that still gives us some cases where we end up blocking after recursing
+> > back into the filesystem. Instead, turn that check into a check for
+> > PF_MEMALLOC so that we never block when trying to free memory in order to
+> > satisfy an allocation.
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  fs/nfs/file.c |    4 ++--
+> >  1 files changed, 2 insertions(+), 2 deletions(-)
+> > 
+> > diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+> > index 9075769..61d3670 100644
+> > --- a/fs/nfs/file.c
+> > +++ b/fs/nfs/file.c
+> > @@ -466,8 +466,8 @@ static int nfs_release_page(struct page *page, gfp_t gfp)
+> >  	    !(current->flags & PF_FSTRANS)) {
+> >  		int how = FLUSH_SYNC;
+> >  
+> > -		/* Don't let kswapd deadlock waiting for OOM RPC calls */
+> > -		if (current_is_kswapd())
+> > +		/* Don't block if we're freeing for a memory allocation */
+> > +		if (current->flags & PF_MEMALLOC)
+> >  			how = 0;
+> >  		nfs_commit_inode(mapping->host, how);
+> >  	}
+> 
+> Umm... So which process will actually call nfs_release_page() with
+> GFP_KERNEL, but without the PF_MEMALLOC flag being set?
+> 
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 92509ff..a70acae 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -251,7 +251,7 @@ static int rpcb_create_local_unix(struct net *net)
- 	if (IS_ERR(clnt)) {
- 		dprintk("RPC:       failed to create AF_LOCAL rpcbind "
- 				"client (errno %ld).\n", PTR_ERR(clnt));
--		result = -PTR_ERR(clnt);
-+		result = PTR_ERR(clnt);
- 		goto out;
- 	}
- 
-@@ -298,7 +298,7 @@ static int rpcb_create_local_net(struct net *net)
- 	if (IS_ERR(clnt)) {
- 		dprintk("RPC:       failed to create local rpcbind "
- 				"client (errno %ld).\n", PTR_ERR(clnt));
--		result = -PTR_ERR(clnt);
-+		result = PTR_ERR(clnt);
- 		goto out;
- 	}
- 
+Well...there are a number of callers of try_to_release_page with
+GFP_KERNEL that are not involved with reclaim:
 
+The migrate_page codepaths and the splice code, for instance. Also
+invalidate_complete_page2, which we call when invalidating an inode and
+maybe also when truncating? Those are almost certainly less traveled
+than the reclaim codepaths though.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
