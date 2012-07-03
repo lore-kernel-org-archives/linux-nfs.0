@@ -1,67 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:17116 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:20695 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755655Ab2GaSYz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jul 2012 14:24:55 -0400
-Message-ID: <50180CE2.3040300@RedHat.com>
-Date: Tue, 31 Jul 2012 12:50:42 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S932123Ab2GCQYU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Jul 2012 12:24:20 -0400
+Subject: [PATCH v3 06/11] NFS: callback up - users counting cleanup
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Tue, 03 Jul 2012 20:20:08 +0400
+Message-ID: <20120703162008.11911.84958.stgit@localhost.localdomain>
+In-Reply-To: <20120703161844.11911.92996.stgit@localhost.localdomain>
+References: <20120703161844.11911.92996.stgit@localhost.localdomain>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] rpc.gssd: don't call poll() twice a second
-References: <20120727210247.GC6388@fieldses.org> <20120727230853.GA2707@umich.edu> <20120729174839.GK6388@fieldses.org> <5015C2AA.9020608@RedHat.com> <20120730205949.GA21730@fieldses.org> <20120730221039.GB21730@fieldses.org>
-In-Reply-To: <20120730221039.GB21730@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Usage coutner now increased only is the service was started sccessfully.
+Even if service is running already, then goto is not required anymore, because
+service creation and start will be skipped.
+With this patch code looks clearer.
 
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfs/callback.c |   22 ++++++++++------------
+ 1 files changed, 10 insertions(+), 12 deletions(-)
 
-On 07/30/2012 06:10 PM, J. Bruce Fields wrote:
-> On Mon, Jul 30, 2012 at 04:59:49PM -0400, J. Bruce Fields wrote:
->> On Sun, Jul 29, 2012 at 07:09:30PM -0400, Steve Dickson wrote:
->>>
->>>
->>> On 07/29/2012 01:48 PM, J. Bruce Fields wrote:
->>>> On Fri, Jul 27, 2012 at 07:08:53PM -0400, Jim Rees wrote:
->>>>> J. Bruce Fields wrote:
->>>>>
->>>>>   +	if (1 != write(pipefd[1], "!", 1))
->>>>>   +		printerr(2, "weird; maybe an interrupt?");
->>>>>
->>>>> Use Yoda conditions must we?
->>>>
->>>> Yeah, yeah.  How about:
->>>>
->>>> 	 static void something_changed(void)
->>>> 	 {
->>>> 	-	if (1 != write(pipefd[1], "!", 1))
->>>> 	-		printerr(2, "weird; maybe an interrupt?");
->>>> 	+	if (write(pipefd[1], "!", 1) != 1)
->>>> 	+		printerr(0, "%s writing to pipe", strerror(errno));
->>>> 	 }
->>>>  
->>>> ?
->>> Better... IMHO..  but what's going to mean when we see that in some log?
->>
->> Beats me.
-> 
-> Looking at it a little more: actually, if gssd is slow to process these
-> events then in theory they could pile up, and we could eventually get
-> EAGAIN/WOUDBLOCK.
-> 
-> Which wouldn't be a problem, except that now we're modifying errno in a
-> signal handler.  So the signal handler should be saving and restoring
-> errno.
-> 
-> And also: I noticed one of the reasons gssd hasn't been completely
-> reliable for me is that we already have a printerr() in the signal
-> handler, and printerr() doesn't appear to be reentrant.
-> 
-> Eh, I'm leaning toward just using ppoll.  According to the man page that
-> requires kernel >= 2.6.16, glibc >= 2.4.  Is that OK?
-I would think so.... 
-
-steved.
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 550d2a2..f2a7605 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -253,6 +253,9 @@ static int nfs_callback_start_svc(int minorversion, struct rpc_xprt *xprt,
+ 
+ 	nfs_callback_bc_serv(minorversion, xprt, serv);
+ 
++	if (cb_info->task)
++		return 0;
++
+ 	minorversion_setup =  nfs_minorversion_callback_svc_setup(minorversion,
+ 					serv, &rqstp, &callback_svc);
+ 	if (!minorversion_setup) {
+@@ -308,6 +311,8 @@ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct n
+ err_socks:
+ 	svc_rpcb_cleanup(serv, net);
+ err_bind:
++	dprintk("NFS: Couldn't create callback socket: err = %d; "
++			"net = %p\n", ret, net);
+ 	return ret;
+ }
+ 
+@@ -352,7 +357,7 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ {
+ 	struct svc_serv *serv;
+ 	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
+-	int ret = 0;
++	int ret;
+ 	struct net *net = xprt->xprt_net;
+ 
+ 	mutex_lock(&nfs_callback_mutex);
+@@ -363,11 +368,6 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ 		goto err_create;
+ 	}
+ 
+-	if (cb_info->users++ || cb_info->task != NULL) {
+-		nfs_callback_bc_serv(minorversion, xprt, serv);
+-		goto out;
+-	}
+-
+ 	ret = nfs_callback_up_net(minorversion, serv, net);
+ 	if (ret < 0)
+ 		goto err_net;
+@@ -376,13 +376,14 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ 	if (ret < 0)
+ 		goto err_start;
+ 
+-out:
++	cb_info->users++;
+ 	/*
+ 	 * svc_create creates the svc_serv with sv_nrthreads == 1, and then
+ 	 * svc_prepare_thread increments that. So we need to call svc_destroy
+ 	 * on both success and failure so that the refcount is 1 when the
+ 	 * thread exits.
+ 	 */
++err_net:
+ 	svc_destroy(serv);
+ err_create:
+ 	mutex_unlock(&nfs_callback_mutex);
+@@ -390,11 +391,8 @@ err_create:
+ 
+ err_start:
+ 	svc_shutdown_net(serv, net);
+-err_net:
+-	dprintk("NFS: Couldn't create callback socket or server thread; "
+-		"err = %d\n", ret);
+-	cb_info->users--;
+-	goto out;
++	dprintk("NFS: Couldn't create server thread; err = %d\n", ret);
++	goto err_net;
+ }
+ 
+ /*
 
