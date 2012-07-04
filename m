@@ -1,61 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55946 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754952Ab2GXWgU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Jul 2012 18:36:20 -0400
-Date: Tue, 24 Jul 2012 18:36:17 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Subject: Re: [PATCH v3 00/11] Series short description
-Message-ID: <20120724223617.GP8570@fieldses.org>
-References: <20120703161844.11911.92996.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120703161844.11911.92996.stgit@localhost.localdomain>
+Received: from perches-mx.perches.com ([206.117.179.246]:52822 "EHLO
+	labridge.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1754236Ab2GDXXs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Jul 2012 19:23:48 -0400
+Message-ID: <1341444227.2058.5.camel@joe2Laptop>
+Subject: Re: [PATCH 2/2] sunrpc/cache.h: replace simple_strtoul
+From: Joe Perches <joe@perches.com>
+To: Eldad Zack <eldad@fogrefinery.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Date: Wed, 04 Jul 2012 16:23:47 -0700
+In-Reply-To: <1341442827-21339-2-git-send-email-eldad@fogrefinery.com>
+References: <1341442827-21339-1-git-send-email-eldad@fogrefinery.com>
+	 <1341442827-21339-2-git-send-email-eldad@fogrefinery.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 03, 2012 at 08:19:23PM +0400, Stanislav Kinsbursky wrote:
-> v3: Rebased on Bruce's tree, "for-3.6" branch
-> 
-> v2: Rebased on Bruce's tree, "for-3.5" branch
+On Thu, 2012-07-05 at 01:00 +0200, Eldad Zack wrote:
+> This patch replaces the usage of simple_strtoul with kstrtoint in
+> get_int().
 
-Aside from the one question, this looks OK to me.
+Just some trivia:
 
-I seem to recall this needed to go through my tree for some reason, but
-does Trond still want a chance to ACK/NACK it?
+> diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+[]
+> @@ -217,7 +217,7 @@ extern int qword_get(char **bpp, char *dest, int bufsize);
+>  static inline int get_int(char **bpp, int *anint)
+>  {
+>  	char buf[50];
+> -	char *ep;
+> +	ssize_t ret;
+>  	int rv;
+>  	int len = qword_get(bpp, buf, 50);
 
---b.
+This would be nicer as
+	int len = qword_get(bpp, buf, sizeof(buf));
 
-> 
-> This patch set depeneds on "SUNRPC: separate per-net data creation from
-> service
-> creation" patch set sent earlier.
-> 
-> The following series implements...
-> 
-> ---
-> 
-> Stanislav Kinsbursky (11):
->       NFS: pass net to nfs_callback_down()
->       NFS: callback service creation function introduced
->       NFS: move per-net callback thread initialization to nfs_callback_up_net()
->       NFS: callback up - transport backchannel cleanup
->       NFS: callback service start function introduced
->       NFS: callback up - users counting cleanup
->       NFS: make nfs_callback_tcpport per network context
->       NFS: make nfs_callback_tcpport6 per network context
->       NFS; callback per-net usage counting introduced
->       NFS: add debug messages to callback down function
->       NFS: get net after idr allocation
-> 
-> 
->  fs/nfs/callback.c  |  288 ++++++++++++++++++++++++++++++++++------------------
->  fs/nfs/callback.h  |    4 -
->  fs/nfs/client.c    |    5 +
->  fs/nfs/netns.h     |    3 +
->  fs/nfs/nfs4state.c |    6 +
->  5 files changed, 202 insertions(+), 104 deletions(-)
-> 
+> @@ -226,8 +226,8 @@ static inline int get_int(char **bpp, int *anint)
+>  	if (len == 0)
+>  		return -ENOENT;
+>  
+> -	rv = simple_strtol(buf, &ep, 0);
+> -	if (*ep)
+> +	ret = kstrtoint(buf, 0, &rv);
+> +	if (ret)
+>  		return -EINVAL;
+>  
+>  	*anint = rv;
+
+ret and rv aren't useful anymore.
+
+Perhaps:
+
+	if (kstrtoint(buf, 0, anint))
+		return -EINVAL;
+
+	return 0;
+
+
