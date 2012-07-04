@@ -1,160 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:55958 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751851Ab2GIPoq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jul 2012 11:44:46 -0400
-Received: by mail-yx0-f174.google.com with SMTP id l2so10189699yen.19
-        for <linux-nfs@vger.kernel.org>; Mon, 09 Jul 2012 08:44:45 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 07/14] NFS: Clean up nfs4_proc_setclientid() and friends
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 09 Jul 2012 11:44:44 -0400
-Message-ID: <20120709154443.1604.33218.stgit@degas.1015granger.net>
-In-Reply-To: <20120709153355.1604.14102.stgit@degas.1015granger.net>
-References: <20120709153355.1604.14102.stgit@degas.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:57420 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755910Ab2GDXAm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jul 2012 19:00:42 -0400
+Received: by eeit10 with SMTP id t10so3034925eei.19
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Jul 2012 16:00:41 -0700 (PDT)
+From: Eldad Zack <eldad@fogrefinery.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Eldad Zack <eldad@fogrefinery.com>
+Subject: [PATCH 1/2] sunrpc/cache.h: fix coding style
+Date: Thu,  5 Jul 2012 01:00:25 +0200
+Message-Id: <1341442827-21339-1-git-send-email-eldad@fogrefinery.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add documenting comments and appropriate debugging messages.
+Neaten code style in get_int()
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Eldad Zack <eldad@fogrefinery.com>
 ---
+ include/linux/sunrpc/cache.h |   12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
 
- fs/nfs/nfs4proc.c  |   45 +++++++++++++++++++++++++++++++++++++--------
- fs/nfs/nfs4state.c |    4 ++++
- 2 files changed, 41 insertions(+), 8 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 63a3cf0..1c27121 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4027,6 +4027,16 @@ static void nfs4_init_boot_verifier(const struct nfs_client *clp,
- 	memcpy(bootverf->data, verf, sizeof(bootverf->data));
- }
- 
-+/**
-+ * nfs4_proc_setclientid - Negotiate client ID
-+ * @clp: state data structure
-+ * @program: RPC program for NFSv4 callback service
-+ * @port: IP port number for NFS4 callback service
-+ * @cred: RPC credential to use for this call
-+ * @res: where to place the result
-+ *
-+ * Returns zero, a negative errno, or a negative NFS4ERR status code.
-+ */
- int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 		unsigned short port, struct rpc_cred *cred,
- 		struct nfs4_setclientid_res *res)
-@@ -4043,6 +4053,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 		.rpc_resp = res,
- 		.rpc_cred = cred,
- 	};
-+	int status;
- 
- 	/* nfs_client_id4 */
- 	nfs4_init_boot_verifier(clp, &sc_verifier);
-@@ -4064,9 +4075,22 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 				sizeof(setclientid.sc_uaddr), "%s.%u.%u",
- 				clp->cl_ipaddr, port >> 8, port & 255);
- 
--	return rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
-+	dprintk("NFS call  setclientid auth=%s, '%.*s'\n",
-+		clp->cl_rpcclient->cl_auth->au_ops->au_name,
-+		setclientid.sc_name_len, setclientid.sc_name);
-+	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
-+	dprintk("NFS reply setclientid: %d\n", status);
-+	return status;
- }
- 
-+/**
-+ * nfs4_proc_setclientid_confirm - Confirm client ID
-+ * @clp: state data structure
-+ * @res: result of a previous SETCLIENTID
-+ * @cred: RPC credential to use for this call
-+ *
-+ * Returns zero, a negative errno, or a negative NFS4ERR status code.
-+ */
- int nfs4_proc_setclientid_confirm(struct nfs_client *clp,
- 		struct nfs4_setclientid_res *arg,
- 		struct rpc_cred *cred)
-@@ -4081,6 +4105,9 @@ int nfs4_proc_setclientid_confirm(struct nfs_client *clp,
- 	unsigned long now;
- 	int status;
- 
-+	dprintk("NFS call  setclientid_confirm auth=%s, (client ID %llx)\n",
-+		clp->cl_rpcclient->cl_auth->au_ops->au_name,
-+		clp->cl_clientid);
- 	now = jiffies;
- 	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
- 	if (status == 0) {
-@@ -4089,6 +4116,7 @@ int nfs4_proc_setclientid_confirm(struct nfs_client *clp,
- 		clp->cl_last_renewal = now;
- 		spin_unlock(&clp->cl_lock);
- 	}
-+	dprintk("NFS reply setclientid_confirm: %d\n", status);
- 	return status;
- }
- 
-@@ -5236,6 +5264,8 @@ out:
- /*
-  * nfs4_proc_exchange_id()
-  *
-+ * Returns zero, a negative errno, or a negative NFS4ERR status code.
-+ *
-  * Since the clientid has expired, all compounds using sessions
-  * associated with the stale clientid will be returning
-  * NFS4ERR_BADSESSION in the sequence operation, and will therefore
-@@ -5260,15 +5290,14 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 		.rpc_cred = cred,
- 	};
- 
--	dprintk("--> %s\n", __func__);
--	BUG_ON(clp == NULL);
--
- 	nfs4_init_boot_verifier(clp, &verifier);
--
- 	args.id_len = scnprintf(args.id, sizeof(args.id),
- 				"%s/%s",
- 				clp->cl_ipaddr,
- 				clp->cl_rpcclient->cl_nodename);
-+	dprintk("NFS call  exchange_id auth=%s, '%.*s'\n",
-+		clp->cl_rpcclient->cl_auth->au_ops->au_name,
-+		args.id_len, args.id);
- 
- 	res.server_owner = kzalloc(sizeof(struct nfs41_server_owner),
- 					GFP_NOFS);
-@@ -5331,12 +5360,12 @@ out_server_scope:
- 	kfree(res.server_scope);
- out:
- 	if (clp->cl_implid != NULL)
--		dprintk("%s: Server Implementation ID: "
-+		dprintk("NFS reply exchange_id: Server Implementation ID: "
- 			"domain: %s, name: %s, date: %llu,%u\n",
--			__func__, clp->cl_implid->domain, clp->cl_implid->name,
-+			clp->cl_implid->domain, clp->cl_implid->name,
- 			clp->cl_implid->date.seconds,
- 			clp->cl_implid->date.nseconds);
--	dprintk("<-- %s status= %d\n", __func__, status);
-+	dprintk("NFS reply exchange_id: %d\n", status);
- 	return status;
- }
- 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index a2c1153..d6fe6f7 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1647,6 +1647,10 @@ static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
+diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+index f5fd616..0757887 100644
+--- a/include/linux/sunrpc/cache.h
++++ b/include/linux/sunrpc/cache.h
+@@ -220,10 +220,16 @@ static inline int get_int(char **bpp, int *anint)
+ 	char *ep;
+ 	int rv;
+ 	int len = qword_get(bpp, buf, 50);
+-	if (len < 0) return -EINVAL;
+-	if (len ==0) return -ENOENT;
++
++	if (len < 0)
++		return -EINVAL;
++	if (len == 0)
++		return -ENOENT;
++
+ 	rv = simple_strtol(buf, &ep, 0);
+-	if (*ep) return -EINVAL;
++	if (*ep)
++		return -EINVAL;
++
+ 	*anint = rv;
  	return 0;
  }
- 
-+/*
-+ * Returns zero or a negative errno.  NFS4ERR values are converted
-+ * to local errno values.
-+ */
- static int nfs4_reclaim_lease(struct nfs_client *clp)
- {
- 	struct rpc_cred *cred;
+-- 
+1.7.10
 
