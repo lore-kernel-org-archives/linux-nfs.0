@@ -1,53 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:19231 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752892Ab2GQAwX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Jul 2012 20:52:23 -0400
-Subject: Re: [nfs:nfs-for-bryan 100/100] net/sunrpc/auth_gss/gss_mech_switch.c:252:5: sparse: context imbalance in 'gss_mech_list_pseudoflavors' - wrong count at exit
-Mime-Version: 1.0 (Apple Message framework v1278)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20120717001410.GD16944@localhost>
-Date: Mon, 16 Jul 2012 20:52:18 -0400
-Cc: kernel-janitors@vger.kernel.org, Linux-NFS <linux-nfs@vger.kernel.org>
-Message-Id: <02CE41D1-F797-4363-8109-A5B2C8AD6E95@oracle.com>
-References: <20120717001410.GD16944@localhost>
-To: Fengguang Wu <fengguang.wu@intel.com>
+Received: from mx2.netapp.com ([216.240.18.37]:21699 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754810Ab2GDQSa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Jul 2012 12:18:30 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Leandro Meiners <lmeiners@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Fwd: RPC rpcinfo command PATCH
+Date: Wed, 4 Jul 2012 16:17:55 +0000
+Message-ID: <1341418670.2950.3.camel@lade.trondhjem.org>
+References: <CAC+fKpJCN2GJvA71RW4j9GUW5rw+hAS1SgPUZzBwvNShd098Ag@mail.gmail.com>
+	 <34DE974E-597D-460F-B2F0-5A6DBE51593F@oracle.com>
+	 <CAC+fKpJtKcYXGS7LNBTjZwN_fDJN6K+6EoNa+acPHHY4hNCMxQ@mail.gmail.com>
+	 <CAC+fKpKeQN9g-xMhMUANEq=F-JuveXrSfDxDzVDOBLQE0yQbXg@mail.gmail.com>
+In-Reply-To: <CAC+fKpKeQN9g-xMhMUANEq=F-JuveXrSfDxDzVDOBLQE0yQbXg@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jul 16, 2012, at 8:14 PM, Fengguang Wu wrote:
-
-> Hi Chuck,
-> 
-> There are new sparse warnings (likely a true locking bug) show up in
-> 
-> tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git nfs-for-bryan
-> head:   6a1a1e34dc55f17e7bd260809207442dbb7a0296
-> commit: 6a1a1e34dc55f17e7bd260809207442dbb7a0296 [100/100] SUNRPC: Add rpcauth_list_flavors()
-> 
-> All sparse warnings:
-> 
->  net/sunrpc/auth_gss/gss_mech_switch.c:143:21: sparse: symbol '_gss_mech_get_by_name' was not declared. Should it be static?
->  net/sunrpc/auth_gss/gss_mech_switch.c:208:21: sparse: symbol '_gss_mech_get_by_pseudoflavor' was not declared. Should it be static?
-> + net/sunrpc/auth_gss/gss_mech_switch.c:252:5: sparse: context imbalance in 'gss_mech_list_pseudoflavors' - wrong count at exit
-
-gss_mech_list_pseudoflavors() is missing a spin_unlock() before the "return -ENOMEM;".
-
-> vim +252 net/sunrpc/auth_gss/gss_mech_switch.c
->   249	 * The returned array is not sorted by any policy.  Callers should not
->   250	 * rely on the order of the items in the returned array.
->   251	 */
->> 252	int gss_mech_list_pseudoflavors(rpc_authflavor_t *array_ptr, int size)
->   253	{
->   254		struct gss_api_mech *pos = NULL;
->   255		int j, i = 0;
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+T24gV2VkLCAyMDEyLTA3LTA0IGF0IDA4OjExICswMTAwLCBMZWFuZHJvIE1laW5lcnMgd3JvdGU6
+DQo+IFNvcnJ5LCBJIGp1c3Qgbm90aWNlZCBJIHJlcGxpZWQgdG8gQ2h1Y2sgYnV0IGZvcmdvdCB0
+byBDQyB0aGUgbGlzdC4NCj4gDQo+IENoZWVycywNCj4gTGVhbmRybw0KPiANCj4gDQo+IC0tLS0t
+LS0tLS0gRm9yd2FyZGVkIG1lc3NhZ2UgLS0tLS0tLS0tLQ0KPiBGcm9tOiBMZWFuZHJvIE1laW5l
+cnMgPGxtZWluZXJzQGdtYWlsLmNvbT4NCj4gRGF0ZTogTW9uLCBKdWwgMiwgMjAxMiBhdCAzOjUy
+IFBNDQo+IFN1YmplY3Q6IFJlOiBSUEMgcnBjaW5mbyBjb21tYW5kIFBBVENIDQo+IFRvOiBDaHVj
+ayBMZXZlciA8Y2h1Y2subGV2ZXJAb3JhY2xlLmNvbT4NCj4gDQo+IA0KPiBIaSwNCj4gDQo+IEd1
+ZXNzIEkgZGlkIGl0IHRvIGZvbGxvdyB0aGUgc2FtZSBjb252ZW50aW9uIGFzIGNsbnRfY29tX2Ny
+ZWF0ZSgpLCBidXQNCj4gZm9yIG5vIG90aGVyIHBhcnRpY3VsYXIgcmVhc29uLiBCYXNpY2FsbHkg
+aXQgd2FzIHVzZWZ1bCBiZWNhdXNlIEkgdXNlZA0KPiBpdCB0byBkZXRlcm1pbmUgdGhhdCB0aGUg
+ZmlyZXdhbGwgd2FzIG5vdCBmaWx0ZXJpbmcgVURQIGNvbm5lY3Rpb25zIHRvDQo+IHRoZSBwb3J0
+bWFwcGVyICgxMTEvdWRwKSBidXQgd2FzIGZpbHRlcmluZyBjb25uZWN0aW9ucyB0byB0aGUgVENQ
+DQo+IHBvcnRtYXBwZXIgKDExMS90Y3ApLiBUaGlzIGFsbG93ZWQgbWUgdG8gZW51bWVyYXRlIHRo
+ZSBSUEMgc2VydmljZXMNCj4gcnVubmluZyBvbiB0aGUgaG9zdCBhbmQgZGV0ZXJtaW5lIHRoYXQg
+dGhlIGZpcmV3YWxsIHdhcyBub3QgYmxvY2tpbmcNCj4gZXZlcnl0aGluZyBpdCBzaG91bGQuDQoN
+CidycGNpbmZvIC1UIHVkcCBob3N0bmFtZSBzdW5ycGMnIHNob3VsZCBzdWZmaWNlIGFzIGEgZmly
+ZXdhbGwgcHJvYmUuDQonbm1hcCcgaGFzIHNpbWlsYXIgZnVuY3Rpb25hbGl0eS4NCg0KQ2hlZXJz
+DQogIFRyb25kDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFp
+bmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29t
+DQoNCg==
