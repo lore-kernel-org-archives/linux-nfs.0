@@ -1,84 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 1010ds2-suoe.0.fullrate.dk ([90.184.90.115]:27274 "EHLO
-	swampdragon.chaosbits.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752602Ab2GVVBq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Jul 2012 17:01:46 -0400
-Date: Sun, 22 Jul 2012 23:01:44 +0200 (CEST)
-From: Jesper Juhl <jj@chaosbits.net>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Kendrick Smith <kmsmith@umich.edu>, Andy Adamson <kandros@umich.edu>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] NFS4: Fix NULL deref in nfsd4_lock() by makeing
- unhash_lockowner() safe to call with NULL arg
-In-Reply-To: <20120130214351.GA1518@fieldses.org>
-Message-ID: <alpine.LNX.2.00.1207222300380.31033@swampdragon.chaosbits.net>
-References: <alpine.LNX.2.00.1201292226380.27749@swampdragon.chaosbits.net> <20120130214351.GA1518@fieldses.org>
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:60234 "EHLO
+	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932104Ab2GDHLj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jul 2012 03:11:39 -0400
+Received: by lbbgm6 with SMTP id gm6so10733700lbb.19
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Jul 2012 00:11:38 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+In-Reply-To: <CAC+fKpJtKcYXGS7LNBTjZwN_fDJN6K+6EoNa+acPHHY4hNCMxQ@mail.gmail.com>
+References: <CAC+fKpJCN2GJvA71RW4j9GUW5rw+hAS1SgPUZzBwvNShd098Ag@mail.gmail.com>
+	<34DE974E-597D-460F-B2F0-5A6DBE51593F@oracle.com>
+	<CAC+fKpJtKcYXGS7LNBTjZwN_fDJN6K+6EoNa+acPHHY4hNCMxQ@mail.gmail.com>
+Date: Wed, 4 Jul 2012 08:11:38 +0100
+Message-ID: <CAC+fKpKeQN9g-xMhMUANEq=F-JuveXrSfDxDzVDOBLQE0yQbXg@mail.gmail.com>
+Subject: Fwd: RPC rpcinfo command PATCH
+From: Leandro Meiners <lmeiners@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 30 Jan 2012, J. Bruce Fields wrote:
+Sorry, I just noticed I replied to Chuck but forgot to CC the list.
 
-> On Sun, Jan 29, 2012 at 10:29:24PM +0100, Jesper Juhl wrote:
-> > The Coverity checker noticed a path through nfsd4_lock() where we call
-> > release_lockowner(lock_sop); (at the 'out:' label) where 'lock_sop' is
-> > NULL.
-> > That goes bad since release_lockowner() calls unhash_lockowner() which
-> > dereferences its argument.
-> > release_lockowner() also calls nfs4_free_lockowner(), but that's not a
-> > problem since that function just calls kfree() and kmem_cache_free(),
-> > both of which are safe to call with NULL as argument.
-> > 
-> > There are several ways to fix the bug.
-> >  - rework nfsd4_lock() so the call to release_lockowner(NULL) will never happen.
-> >  - let release_lockowner() test for NULL and return if given one.
-> >  - let unhash_lockowner() test for NULL and return if given one (which makes both it and release_lockowner() safe).
-> > 
-> > I chose the last option for this patch.
-> > 
-> > For information, the path Coverity spotted (in defect report 201504) is this:
-> > 
-> ...
-> 
-> 
-> > [...]
-> > 4098out:
-> > At conditional (12): "status" taking the true branch.
-> > At conditional (13): "new_state" taking the true branch.
-> > 4099        if (status && new_state)
-> 
-> new_state is initialized false, and referenced otherwise only once,
-> when a reference ot is is passed here:
-> 
-> 
-> > 4010                status = lookup_or_create_lock_state(cstate, open_stp, lock,
-> > 4011                                                        &lock_stp, &new_state);
-> 
-> so if new_state is true, then lookup_or_create_lock_state() set it to
-> true.  But it sets that only in one spot, at the end:
-> 
-> 	*new = true;
-> 	return nfs_ok;
-> 
-> Note nfs_ok is zero.  Therefore:
-> 
-> > At conditional (11): "status" taking the true branch.
-> > 4012                if (status)
-> > 4013                        goto out;
-> 
-> this could not have happened.
-> 
-> So it looks like a Coverity bug.
-> 
-Sorry about the late reply, I managed to completely miss this mail until I 
-wen't to check up on some of my old patches.
+Cheers,
+Leandro
 
-Thank you for the feedback. I've dropped my local copy of this patch.
+
+---------- Forwarded message ----------
+From: Leandro Meiners <lmeiners@gmail.com>
+Date: Mon, Jul 2, 2012 at 3:52 PM
+Subject: Re: RPC rpcinfo command PATCH
+To: Chuck Lever <chuck.lever@oracle.com>
+
+
+Hi,
+
+Guess I did it to follow the same convention as clnt_com_create(), but
+for no other particular reason. Basically it was useful because I used
+it to determine that the firewall was not filtering UDP connections to
+the portmapper (111/udp) but was filtering connections to the TCP
+portmapper (111/tcp). This allowed me to enumerate the RPC services
+running on the host and determine that the firewall was not blocking
+everything it should.
+
+Cheers,
+
+Leandro.-
+
+On Mon, Jul 2, 2012 at 3:43 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+> On Jul 2, 2012, at 10:32 AM, Leandro Meiners wrote:
+>
+>> Hi,
+>>
+>> I have written a patch for the rpcinfo command that allows querying
+>> the port-mapper via UDP instead of TCP. I added a new parameter
+>> (upper-case P) for this functionality. It was helpful for me during a
+>> penetration test and I thought it might be worth adding to the
+>> project.
+>> Signed-off-by: Leandro Meiners <lmeiners@gmail.com>
+>
+> Instead of passing a string ("tcp") to pmapdump(), why not use IPPROTO_TCP and IPPROTO_UDP ?
+>
+> Can you say a little bit more about how UDP helped you?
+
+
+
+--
+Leandro Federico Meiners
+
 
 -- 
-Jesper Juhl <jj@chaosbits.net>       http://www.chaosbits.net/
-Don't top-post http://www.catb.org/jargon/html/T/top-post.html
-Plain text mails only, please.
-
+Leandro Federico Meiners
