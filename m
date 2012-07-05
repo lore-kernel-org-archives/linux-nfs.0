@@ -1,84 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:12654 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:10080 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753444Ab2GaS2g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jul 2012 14:28:36 -0400
-Message-ID: <5018103A.9070607@RedHat.com>
-Date: Tue, 31 Jul 2012 13:04:58 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1752228Ab2GETzd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Jul 2012 15:55:33 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Charles 'Boyo" <charlesboyo@gmail.com>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Linux NFSv4 client uses returned delegation in subsequent READ
+ resulting in hang (BAD_STATEID)
+Date: Thu, 5 Jul 2012 19:55:32 +0000
+Message-ID: <1341518126.11154.17.camel@lade.trondhjem.org>
+References: <CAPD_G3L0wwzCWyoPJp_sKpuQ0J7+avn-ejEn-WnXf81zr=-LqA@mail.gmail.com>
+	 <2E097766-1FA2-42E1-B790-B3BBC254B705@oracle.com>
+	 <CAPD_G3Lc6F9yUOXLUcPgn1c5n=Hcs2JSXdGPhZ-CjtBLVoibbg@mail.gmail.com>
+	 <2F725B49-A089-41E9-BBC9-11B889A62C9D@oracle.com>
+	 <1341263584.8197.53.camel@lade.trondhjem.org>
+	 <6C5408EB-668A-43C9-B3FE-9D66427B5BE0@oracle.com>
+	 <CAPD_G3KojVhnjtfjN0poJvpV0i+6JZeK54rm5Swm3MDKEXQ=Zw@mail.gmail.com>
+	 <1341266386.8197.61.camel@lade.trondhjem.org>
+	 <CAPD_G3KS6unxC4qJ1YY1GM-PCbG5sXLC6-aYk6L1dq4Jd0U7MQ@mail.gmail.com>
+	 <CAPD_G3LPfHr-2zbv19tL1Bv++ThKbsoqb3XYfZ75CjCrh2Mhxw@mail.gmail.com>
+In-Reply-To: <CAPD_G3LPfHr-2zbv19tL1Bv++ThKbsoqb3XYfZ75CjCrh2Mhxw@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>
-CC: Karel Zak <kzak@redhat.com>, NFS <linux-nfs@vger.kernel.org>
-Subject: Re: nfs-utils: Something is wrong in is_vers4()
-References: <20120731165842.08017d60@notabene.brown>
-In-Reply-To: <20120731165842.08017d60@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 07/31/2012 02:58 AM, NeilBrown wrote:
-> 
-> in nfs-utils, in utils/mount/mount_libmount.c there is a function
-> 
->  is_vers4()
-> 
-> which
->  /* returns: error = -1, success = 0 , unknown = 1 */
-> 
-> which seems odd to me... I would have chosen '1' for success (it is vers 4),
-> 0 for failure (not vers 4), and maybe -1 for error (something went wrong).
-> 
-> This is used as follows:
-> 			switch (is_vers4(cxt)) {
-> 			case 0:
-> 				/* We ignore the error from nfs_umount23.
-> 				 * If the actual umount succeeds (in del_mtab),
-> 				 * we don't want to signal an error, as that
-> 				 * could cause /sbin/mount to retry!
-> 				 */
-> 				nfs_umount23(mnt_context_get_source(cxt), opts);
-> 				break;
-> 			case 1:			/* unknown */
-> 				break;
-> 			default:		/* error */
-> 				goto err;
-> 			}
-> 
-> so in the '0' (success, it is vers4) case we do nfs_umount23.  Odd.
-> In the '1' (unknown, so presumably vers2 or 3) we don't.  Ever.  Very odd.
-> 
-> So we don't currently send MOUNT_UMNT requests for v2 or v3.
-> We don't for v4 either because nfs_umount_do_umnt contains:
-> 
-> 	/* Skip UMNT call for vers=4 mounts */
-> 	if (nfs_pmap.pm_vers == 4)
-> 		return EX_SUCCESS;
-> 
-> so maybe is_vers4 isn't needed?
-> 
-> Looks like something needs to be fixed here but I'm not entirely sure what.
-> Karel??
-> 
-> BTW Steve, Karel's "[PATCH] umount.nfs: ignore non-nfs filesystems"
-> which appears in email:
-> 
-> From: Karel Zak <kzak@redhat.com>
-> To: NeilBrown <neilb@suse.de>
-> Cc: Steve Dickson <SteveD@redhat.com>, NFS <linux-nfs@vger.kernel.org>
-> Subject: Re: [PATCH] umount.nfs: restore correct error status when umount fails.
-> Date: Thu, 12 Jul 2012 18:44:20 +0200
-> 
-> hasn't been applied, but probably should be.
-I beg to differ....
-
-commit 76908c3f14a12e865054ea5d6e4cad201c28839a
-Author: NeilBrown <neilb@suse.de>
-Date:   Mon Jul 16 08:43:28 2012 -0400
-
-    mount.nfs: restore correct error status when umount fails
-
-Or am I missing something?
-
-steved.
+T24gVGh1LCAyMDEyLTA3LTA1IGF0IDIwOjIzICswMTAwLCBDaGFybGVzICdCb3lvIHdyb3RlOg0K
+PiA+PiBXaGF0IGlzbid0IGV4cGVjdGVkIGJlaGF2aW91ciBpcyBmb3IgdGhlIGNsaWVudCB0byBE
+RUxFR1JFVFVSTg0KPiA+PiBpbW1lZGlhdGVseSB1cG9uIHJlY2VpdmluZyB0aGUgZGVsZWdhdGlv
+bi4gTm9yIGlzIGl0IGV4cGVjdGVkIHRoYXQgdGhlDQo+ID4+IFJFQUQgd291bGQgZmFpbCB0byBy
+ZWNvdmVyIGluIGFuIG9yZGluYXJ5IERFTEVHUkVUVVJOIHNpdHVhdGlvbi4NCj4gPj4NCj4gPj4g
+VGhpcyBpcyB3aHkgSSdtIGludGVyZXN0ZWQgaW4gc2VlaW5nIHdoYXQgaGFwcGVuZWQgYmVmb3Jl
+IHRoZSBPUEVOLg0KPiA+Pg0KPiA+DQo+ID4gQXR0YWNoZWQgaXMgYSBtaW5pbWFsbHkgcmVkYWN0
+ZWQgdHJhY2Ugd2hpY2ggY29udGFpbnMgYWxsIHRoZSBORlMNCj4gPiBjYWxscyBhbmQgcmVzcG9u
+c2VzIGJlZm9yZSBhbmQgdGhyb3VnaCB0aGlzIHBhcnRpY3VsYXIgREVMRUdSRVRVUk4NCj4gPiAo
+ZnJhbWUgNjA4NCkuDQo+ID4gSSBhbSB1bmFibGUgdG8gcHJvdmlkZSB0aGUgZnVsbCBwYWNrZXQg
+Y2FwdHVyZSBkdWUgdG8gdGhlIHNlbnNpdGl2aXR5DQo+ID4gb2YgdGhlIGRhdGEgY29udGFpbmVk
+IHRoZXJlaW4uDQo+IA0KPiBUcm9uZCwgZGlkIHRoZSBhdHRhY2hlZCB0cmFjZSBjb25maXJtIHRo
+ZSBpc3N1ZSBhcyBzdXNwZWN0ZWQ/DQo+IA0KPiBDaGFybGVzDQoNCk5vLiBXaGF0IGlzIGhhcHBl
+bmluZyBpcyB0aGF0IHRoZSBjbGllbnQgZG9lcyBhbiBPUEVOIG9mIGZpbGUNCiJhY2NvdW50Lmlu
+Zm8iLiBJdCB0aGVuIGNsb3NlcyB0aGUgZmlsZSBhbmQgZm9yIHNvbWUgcmVhc29uIHRoYXQgSSBk
+b24ndA0KeWV0IHVuZGVyc3RhbmQsIGl0IGRlY2lkZXMgdG8gcmV0dXJuIHRoZSBkZWxlZ2F0aW9u
+Lg0KDQpUaGVuIHRoZSBhcHBsaWNhdGlvbiBkb2VzIGFub3RoZXIgT1BFTiwgd2hpY2ggcmFjZXMg
+d2l0aCB0aGUgZGVsZWdhdGlvbg0KcmV0dXJuLiBCZWNhdXNlIG9mIHRoZSByYWNlLCB0aGUgc2Vy
+dmVyIHJldHVybnMgdGhlIHNhbWUgZGVsZWdhdGlvbiBhcw0KaXQgZGlkIGluIHRoZSBmaXJzdCBv
+cGVuIGNhbGwuIFRoZSBjbGllbnQgKHdoaWNoIGhhcyBub3cgZm9yZ290dGVuIGFib3V0DQp0aGUg
+b3JpZ2luYWwgb3Blbikgc2VlcyB3aGF0IGl0IHRoaW5rcyBpcyBhIG5ldyBkZWxlZ2F0aW9uLCBh
+bmQgc28gaXQNCmFkb3B0cyBpdC4NCg0KU28gdGhpcyBleHBsYWlucyB3aHkgdGhlIFJFQURzIGVu
+ZCB1cCB0cnlpbmcgdG8gdXNlIGEgcmV0dXJuZWQNCmRlbGVnYXRpb24uIFdoYXQgcmVtYWlucyB0
+byBiZSBleHBsYWluZWQgaXM6DQoNCmEpIFdoeSBkaWQgdGhlIGNsaWVudCByZXR1cm4gdGhlIGRl
+bGVnYXRpb24gaW4gdGhlIGZpcnN0IHBsYWNlPyBJcyBpdCBpbg0Kc29tZSBleHRyZW1lIG1lbW9y
+eSBwcmVzc3VyZSBzaXR1YXRpb24sIG9yIGRvZXMgaXQgcGVyaGFwcyBoYXZlIHNvbWUNCmZ1bmt5
+IHNldHRpbmcgZm9yIC9wcm9jL3N5cy92bS92ZnNfY2FjaGVfcHJlc3N1cmU/DQoNCmIpIFdoeSBk
+b2Vzbid0IHRoZSByZWNvdmVyeSBzY2VuYXJpbyBraWNrIGluIGFuZCBkbyB0aGUgcmlnaHQgdGhp
+bmc/DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIN
+Cg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
