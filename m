@@ -1,88 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:58363 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752203Ab2GZLza (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 07:55:30 -0400
-Received: by yenl2 with SMTP id l2so1826947yen.19
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jul 2012 04:55:30 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v4 02/17] vfs: add a kern_path_at function
-Date: Thu, 26 Jul 2012 07:55:05 -0400
-Message-Id: <1343303720-11199-3-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
-References: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
+Received: from acsinet15.oracle.com ([141.146.126.227]:35987 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753808Ab2GEVfR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jul 2012 17:35:17 -0400
+Subject: Re: Linux NFSv4 client uses returned delegation in subsequent READ resulting in hang (BAD_STATEID)
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1341518126.11154.17.camel@lade.trondhjem.org>
+Date: Thu, 5 Jul 2012 17:35:12 -0400
+Cc: "Charles 'Boyo" <charlesboyo@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <23682B65-4DA9-4966-BF83-C7EC338F9A97@oracle.com>
+References: <CAPD_G3L0wwzCWyoPJp_sKpuQ0J7+avn-ejEn-WnXf81zr=-LqA@mail.gmail.com> <2E097766-1FA2-42E1-B790-B3BBC254B705@oracle.com> <CAPD_G3Lc6F9yUOXLUcPgn1c5n=Hcs2JSXdGPhZ-CjtBLVoibbg@mail.gmail.com> <2F725B49-A089-41E9-BBC9-11B889A62C9D@oracle.com> <1341263584.8197.53.camel@lade.trondhjem.org> <6C5408EB-668A-43C9-B3FE-9D66427B5BE0@oracle.com> <CAPD_G3KojVhnjtfjN0poJvpV0i+6JZeK54rm5Swm3MDKEXQ=Zw@mail.gmail.com> <1341266386.8197.61.camel@lade.trondhjem.org> <CAPD_G3KS6unxC4qJ1YY1GM-PCbG5sXLC6-aYk6L1dq4Jd0U7MQ@mail.gmail.com> <CAPD_G3LPfHr-2zbv19tL1Bv++ThKbsoqb3XYfZ75CjCrh2Mhxw@mail.gmail.com> <1341518126.11154.17.camel@lade.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This will function like user_path_at, but does not do the getname and
-putname, leaving that to the caller.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c            | 27 +++++++++++++++++++--------
- include/linux/namei.h |  1 +
- 2 files changed, 20 insertions(+), 8 deletions(-)
+On Jul 5, 2012, at 3:55 PM, Myklebust, Trond wrote:
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 3580d47..b6fbe3d 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -1974,20 +1974,31 @@ struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
- 	return __lookup_hash(&this, base, 0);
- }
- 
-+int kern_path_at(int dfd, const char *name, unsigned flags, struct path *path)
-+{
-+	struct nameidata nd;
-+	int err;
-+
-+	BUG_ON(flags & LOOKUP_PARENT);
-+
-+	err = do_path_lookup(dfd, name, flags, &nd);
-+	if (!err)
-+		*path = nd.path;
-+
-+	return err;
-+}
-+
- int user_path_at_empty(int dfd, const char __user *name, unsigned flags,
- 		 struct path *path, int *empty)
- {
--	struct nameidata nd;
- 	char *tmp = getname_flags(name, flags, empty);
--	int err = PTR_ERR(tmp);
--	if (!IS_ERR(tmp)) {
--
--		BUG_ON(flags & LOOKUP_PARENT);
-+	int err;
- 
--		err = do_path_lookup(dfd, tmp, flags, &nd);
-+	if (IS_ERR(tmp)) {
-+		err = PTR_ERR(tmp);
-+	} else {
-+		err = kern_path_at(dfd, tmp, flags, path);
- 		putname(tmp);
--		if (!err)
--			*path = nd.path;
- 	}
- 	return err;
- }
-diff --git a/include/linux/namei.h b/include/linux/namei.h
-index d2ef8b3..002dc55 100644
---- a/include/linux/namei.h
-+++ b/include/linux/namei.h
-@@ -55,6 +55,7 @@ enum {LAST_NORM, LAST_ROOT, LAST_DOT, LAST_DOTDOT, LAST_BIND};
- #define LOOKUP_ROOT		0x2000
- #define LOOKUP_EMPTY		0x4000
- 
-+extern int kern_path_at(int, const char *, unsigned, struct path *);
- extern int user_path_at(int, const char __user *, unsigned, struct path *);
- extern int user_path_at_empty(int, const char __user *, unsigned, struct path *, int *empty);
- 
+> On Thu, 2012-07-05 at 20:23 +0100, Charles 'Boyo wrote:
+>>>> What isn't expected behaviour is for the client to DELEGRETURN
+>>>> immediately upon receiving the delegation. Nor is it expected that the
+>>>> READ would fail to recover in an ordinary DELEGRETURN situation.
+>>>> 
+>>>> This is why I'm interested in seeing what happened before the OPEN.
+>>>> 
+>>> 
+>>> Attached is a minimally redacted trace which contains all the NFS
+>>> calls and responses before and through this particular DELEGRETURN
+>>> (frame 6084).
+>>> I am unable to provide the full packet capture due to the sensitivity
+>>> of the data contained therein.
+>> 
+>> Trond, did the attached trace confirm the issue as suspected?
+>> 
+>> Charles
+> 
+> No. What is happening is that the client does an OPEN of file
+> "account.info". It then closes the file and for some reason that I don't
+> yet understand, it decides to return the delegation.
+> 
+> Then the application does another OPEN, which races with the delegation
+> return. Because of the race, the server returns the same delegation as
+> it did in the first open call. The client (which has now forgotten about
+> the original open) sees what it thinks is a new delegation, and so it
+> adopts it.
+> 
+> So this explains why the READs end up trying to use a returned
+> delegation. What remains to be explained is:
+> 
+> a) Why did the client return the delegation in the first place? Is it in
+> some extreme memory pressure situation, or does it perhaps have some
+> funky setting for /proc/sys/vm/vfs_cache_pressure?
+> 
+> b) Why doesn't the recovery scenario kick in and do the right thing?
+
+My guess is that EL6.2 kernels don't have the mainline patch that adds support for recovering a single bad state ID.
+
 -- 
-1.7.11.2
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
