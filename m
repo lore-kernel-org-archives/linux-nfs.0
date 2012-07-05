@@ -1,84 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:24542 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:45316 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752258Ab2GIVbH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Jul 2012 17:31:07 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 03/14] NFS: State reclaim clears OPEN and LOCK state
-Date: Mon, 9 Jul 2012 21:31:05 +0000
-Message-ID: <1341869463.15267.47.camel@lade.trondhjem.org>
-References: <20120709153355.1604.14102.stgit@degas.1015granger.net>
-	 <20120709154409.1604.59004.stgit@degas.1015granger.net>
-	 <1341864200.15267.15.camel@lade.trondhjem.org>
-	 <773D0923-FC7B-4CE9-8EDE-46BC18E9A49C@oracle.com>
-	 <79BB481E-52C5-4194-AA3C-FFA81D0FF456@oracle.com>
-	 <1341866138.15267.29.camel@lade.trondhjem.org>
-	 <AD28B46C-23C1-4BCB-ABB6-FDE859756B6F@oracle.com>
-In-Reply-To: <AD28B46C-23C1-4BCB-ABB6-FDE859756B6F@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1755772Ab2GETj4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Jul 2012 15:39:56 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q65JdtQ7027061
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 5 Jul 2012 15:39:56 -0400
+Message-ID: <4FF5ED44.2000702@RedHat.com>
+Date: Thu, 05 Jul 2012 15:38:44 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: Steve Dickson <steved@redhat.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsidmap: Default domain not being set.
+References: <1341493903-20835-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1341493903-20835-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA3LTA5IGF0IDE2OjM3IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gSnVsIDksIDIwMTIsIGF0IDQ6MzUgUE0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+IA0K
-PiA+IE9uIE1vbiwgMjAxMi0wNy0wOSBhdCAxNjoxOSAtMDQwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6
-DQo+ID4+IE9uIEp1bCA5LCAyMDEyLCBhdCA0OjE1IFBNLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-Pj4gDQo+ID4+PiANCj4gPj4+IE9uIEp1bCA5LCAyMDEyLCBhdCA0OjAzIFBNLCBNeWtsZWJ1c3Qs
-IFRyb25kIHdyb3RlOg0KPiA+Pj4gDQo+ID4+Pj4gT24gTW9uLCAyMDEyLTA3LTA5IGF0IDExOjQ0
-IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4gPj4+Pj4gQmVmb3JlIGJlZ2lubmluZyBzdGF0
-ZSByZWNvdmVyeSwgdGhlIHN0YXRlIG1hbmFnZXIgemFwcyBvcGVuIGFuZCBsb2NrDQo+ID4+Pj4+
-IHN0YXRlIGZvciBlYWNoIG9wZW4gZmlsZSwgdGh1cyB0aGUgInN0YXRlLT5mbGFncyAmIGZsYWdz
-IiB0ZXN0IGluDQo+ID4+Pj4+IG5mczQxX3tvcGVuLGxvY2t9X2V4cGlyZWQoKSBhbHdheXMgZmFp
-bHMgZHVyaW5nIHJlY2xhaW0uICBCdXQgb3Blbg0KPiA+Pj4+PiByZWNvdmVyeSBpcyBzdGlsbCBu
-ZWVkZWQgZm9yIHRoZXNlIGZpbGVzLg0KPiA+Pj4+PiANCj4gPj4+Pj4gVG8gZm9yY2UgYSBjYWxs
-IHRvIG5mczRfb3Blbl9leHBpcmVkKCksIGNoYW5nZSB0aGUgZGVmYXVsdCByZXR1cm4NCj4gPj4+
-Pj4gdmFsdWUgZm9yIG5mczQxX2NoZWNrX2V4cGlyZWRfc3RhdGVpZCgpIHRvIGZvcmNlIG9wZW4g
-cmVjb3ZlcnksIGFuZA0KPiA+Pj4+PiB0aGUgZGVmYXVsdCByZXR1cm4gdmFsdWUgZm9yIG5mczQx
-X2NoZWNrX2xvY2tzKCkgdG8gZm9yY2UgbG9jaw0KPiA+Pj4+PiByZWNvdmVyeSwgaWYgdGhlIHJl
-cXVlc3RlZCBmbGFncyBhcmUgY2xlYXIuICBGaXggc3VnZ2VzdGVkIGJ5IEJyeWFuDQo+ID4+Pj4+
-IFNjaHVtYWtlci4NCj4gPj4+PiANCj4gPj4+PiBUaGlzIG1ha2VzIGFic29sdXRlbHkgbm8gc2Vu
-c2UuLi4NCj4gPj4+PiANCj4gPj4+PiBUaGUgcG9pbnQgb2YgdGhlc2UgZnVuY3Rpb24gc2hvdWxk
-IGJlIHRvIHRlc3QgaWYgdGhlIHN0YXRlaWQgaXMgc3RpbGwNCj4gPj4+PiB2YWxpZC4gSWYgaXQg
-aXMsIHRoZW4gd2UgbmVlZCBubyByZWNvdmVyeS4NCj4gPj4+PiBJZiB0aGUgc3RhdGVpZCBpcyBf
-bm90XyB2YWxpZCwgdGhlbiB3ZSBmcmVlIGl0LCBhbmQgdGhlbiBkZWNpZGUgaWYNCj4gPj4+PiBy
-ZWNvdmVyeSBpcyBuZWVkZWQuIFRoZSBvbmx5IGV4Y2VwdGlvbiB0byB0aGF0IHJ1bGUgaXMgaWYg
-VEVTVF9TVEFURUlEDQo+ID4+Pj4gcmV0dXJucyBORlM0RVJSX0JBRF9TVEFURUlELCAoaW4gd2hp
-Y2ggY2FzZSB3ZSBkb24ndCBuZWVkIHRvIGZyZWUgdGhlDQo+ID4+Pj4gc3RhdGVpZCBidXQganVz
-dCByZWNvdmVyIGltbWVkaWF0ZWx5KS4NCj4gPj4+IA0KPiA+Pj4gU28geW91J2QgbGlrZSB0byBj
-aGFuZ2UgdGhlIHNlbnNlIG9mIHRoZSBzd2l0Y2ggc3RhdGVtZW50IGluIG15IGVhcmxpZXIgcGF0
-Y2g6DQo+ID4+PiANCj4gPj4+ICBORlM0X09LOg0KPiA+Pj4gICAgZG8gbm90aGluZw0KPiA+Pj4g
-IE5GUzRFUlJfQkFEX1NUQVRFSUQ6DQo+ID4+PiAgICBqdXN0IG9wZW4NCj4gPj4+ICBkZWZhdWx0
-Og0KPiA+Pj4gICAgZnJlZSB0aGUgc3RhdGUgSUQsIHRoZW4gb3Blbg0KPiA+Pj4gDQo+ID4+PiBJ
-IHN0aWxsIGRvbid0IHRoaW5rIHdlIG5lZWQgYSBGUkVFX1NUQVRFSUQgY2FsbCBmb3IgTkZTNEVS
-Ul9FWFBJUkVELCBmb3IgZXhhbXBsZS4gIEl0IHNlZW1zIHRvIG1lIHRoZSBvbmx5IGNhc2VzIHdo
-ZXJlIEZSRUVfU1RBVEVJRCBpcyBuZWVkZWQgaXMgdGhlIF9SRVZPS0VEIGNhc2VzLg0KDQpJJ20g
-bm90IHN1cmUgYWJvdXQgd2hhdCB0aGUgcnVsZXMgYXJlIGZvciBORlM0RVJSX0VYUElSRUQuIEFz
-IGZhciBhcyBJJ20NCmF3YXJlLCBORlM0RVJSX0VYUElSRUQgaXMgTkZTdjQuMC1zcGVhayBmb3Ig
-Kl9TVEFURV9SRVZPS0VEOyByZXR1cm5pbmcNCml0IGFzIHBhcnQgb2YgYSBURVNUX1NUQVRFSUQg
-bWFrZXMgbGl0dGxlIHNlbnNlIHRvIG1lLCBzbyBJJ20gdGFraW5nIHRoZQ0KY29uc2VydmF0aXZl
-IGFwcHJvYWNoIHRvIGl0Lg0KDQo+ID4+Pj4gSU9XOiBUaGUgc3RhdGUtPmZsYWdzIGFuZCBsc3At
-PmxzX2ZsYWdzIHRlc3RzIHNob3VsZCBqdXN0IGJlIHJlbW92ZWQuDQo+ID4+PiANCj4gPj4+IEJy
-eWFuIGhhZCBhIHJlYXNvbiB0byBsZWF2ZSB0aG9zZSB0ZXN0cyBpbiwgYnV0IEkgZG9uJ3QgcmVt
-ZW1iZXIgd2hhdCBpdCB3YXMuDQo+ID4+IA0KPiA+PiBBaC4NCj4gPj4gDQo+ID4+IEkgdGhpbmsg
-aXQgd2FzIHRoYXQgaWYgdGhvc2UgZmxhZ3MgYXJlIHNldCwgdGhlbiB0aGUgY2xpZW50IGFzc3Vt
-ZXMgdGhlIHNlcnZlciBzdGlsbCBoYXMgdGhhdCBzdGF0ZSwgdGh1cyBubyByZWNvdmVyeSBhY3Rp
-b25zIHNob3VsZCBiZSBkb25lLg0KPiA+IA0KPiA+ID8/PyBJZiB0aGUgc2VydmVyIGlzIHN0aWxs
-IGhvbGRpbmcgdGhlIHN0YXRlLCB0aGVuIHRoZSBURVNUX1NUQVRFSUQgd2lsbA0KPiA+IHJldHVy
-biAnMCcuIFdoeSBkbyB3ZSBuZWVkIGV4dHJhIHRlc3RzPw0KPiANCj4gVGhpcyBpcyBCcnlhbidz
-IGRlc2lnbi4gIEJ1dCBteSB1bmRlcnN0YW5kaW5nIGlzIHRoYXQgcmVjb3ZlcnkgYWx3YXlzIHZp
-c2l0cyBldmVyeSBzdGF0ZSBJRCwgYW5kIHRoZXNlIGZsYWdzIHByZXZlbnQgdGVzdHMgZnJvbSBn
-b2luZyB0byB0aGUgc2VydmVyIGZvciBhbGwgYnV0IHRoZSBzdGF0ZSBJRCB0byBiZSByZWNvdmVy
-ZWQuDQo+IA0KPiBJcyB0aGF0IGNvcnJlY3QsIEJyeWFuPw0KDQpPSy4gSSB0aGluayBJIHVuZGVy
-c3RhbmQgd2hhdCB0aGUgaXNzdWUgaXMuDQoNCklmIHdlIGNhbGwgbmZzNF9zdGF0ZV9zdGFydF9y
-ZWNsYWltX25vZ3JhY2UoKSAoZHVlIHRvIGEgbGVhc2UgcHVyZ2Ugb3IgYQ0KTkZTNEVSUl9FWFBJ
-UkVEIG9uIG5mczRfY2hlY2tfbGVhc2UoKSksIHRoZW4gdGhhdCByZXNldHMgdGhlIHNlcXVlbmNl
-DQppZHMgYW5kIGRvZXMgYSBmdWxsIHJlc2V0IG9mIGFsbCBzdGF0ZS4gSW4gdGhhdCBjYXNlLCB3
-ZSBkbyBpbmRlZWQgbm90DQp3YW50IHRvIGNhbGwgVEVTVF9TVEFURUlELCBzaW5jZSB0aGUgYmVz
-dCBpdCBjYW4gZG8gaXMgcmV0dXJuDQpORlM0RVJSX09MRF9TVEFURUlELg0KDQpPSy4gVGhpcyBu
-ZWVkcyBzb21lIGNvbW1lbnRzIGluIHRoZSBjb2RlLi4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0
-DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RA
-bmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+
+
+On 07/05/2012 09:11 AM, Steve Dickson wrote:
+> nfsidmap is not calling the nfs4_init_name_mapping()
+> function which initializes the default domain from
+> either the DNS domain or the Domain variable in /etc/idmap.conf
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed...
+
+steved.
+> ---
+>  utils/nfsidmap/nfsidmap.c |   20 +++++++-------------
+>  1 file changed, 7 insertions(+), 13 deletions(-)
+> 
+> diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+> index b767395..e14543c 100644
+> --- a/utils/nfsidmap/nfsidmap.c
+> +++ b/utils/nfsidmap/nfsidmap.c
+> @@ -37,17 +37,6 @@ static int keyring_clear(char *keyring);
+>  #define GIDKEYS 0x2
+>  
+>  /*
+> - * Check to the config file for the verbosity level
+> - */
+> -int
+> -get_config_verbose(char *path)
+> -{
+> -	conf_path = path;
+> -	conf_init();
+> -	return conf_get_num("General", "Verbosity", 0);
+> -}
+> -
+> -/*
+>   * Find either a user or group id based on the name@domain string
+>   */
+>  int id_lookup(char *name_at_domain, key_serial_t key, int type)
+> @@ -282,9 +271,14 @@ int main(int argc, char **argv)
+>  			break;
+>  		}
+>  	}
+> -	if (!verbose) {
+> -		verbose = get_config_verbose(PATH_IDMAPDCONF);
+> +
+> +	if (nfs4_init_name_mapping(PATH_IDMAPDCONF))  {
+> +		xlog_err("Unable to create name to user id mappings.");
+> +		return 1;
+>  	}
+> +	if (!verbose)
+> +		verbose = conf_get_num("General", "Verbosity", 0);
+> +
+>  	if (keystr) {
+>  		rc = key_revoke(keystr, keymask);
+>  		return rc;		
