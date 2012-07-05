@@ -1,111 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:55958 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751694Ab2GIPoE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jul 2012 11:44:04 -0400
-Received: by yenl2 with SMTP id l2so10189699yen.19
-        for <linux-nfs@vger.kernel.org>; Mon, 09 Jul 2012 08:44:02 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 02/14] NFS: Properly sort TEST_STATEID results
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 09 Jul 2012 11:44:00 -0400
-Message-ID: <20120709154400.1604.10590.stgit@degas.1015granger.net>
-In-Reply-To: <20120709153355.1604.14102.stgit@degas.1015granger.net>
-References: <20120709153355.1604.14102.stgit@degas.1015granger.net>
+Received: from mx1.redhat.com ([209.132.183.28]:37604 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755772Ab2GETji (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Jul 2012 15:39:38 -0400
+Message-ID: <4FF5ED2A.1070209@RedHat.com>
+Date: Thu, 05 Jul 2012 15:38:18 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Namjae Jeon <linkinjeon@gmail.com>
+CC: bfields@fieldses.org, Trond.Myklebust@netapp.com,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Amit Sahrawat <amit.sahrawat83@gmail.com>
+Subject: Re: [PATCH] nfs-util: Update exportfs flush option list in usage
+ message.
+References: <1341037381-24218-1-git-send-email-linkinjeon@gmail.com>
+In-Reply-To: <1341037381-24218-1-git-send-email-linkinjeon@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The result of a TEST_STATEID operation can indicate a few different
-things:
 
-  o If NFS_OK is returned, then the client can continue using the
-    state ID under test, and skip recovery.
 
-  o RFC 5661 says that if and only if the state ID was revoked, then
-    the client must perform an explicit FREE_STATEID before trying to
-    re-open.
+On 06/30/2012 02:23 AM, Namjae Jeon wrote:
+> Update exportfs flush option list in usage message.
+> And I sort these cases in alphabetical order.
+> 
+> Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
+> Signed-off-by: Amit Sahrawat <amit.sahrawat83@gmail.com>
+Committed...
 
-  o If the server doesn't recognize the state ID at all, then no
-    FREE_STATEID is needed, and the client can immediately continue
-    with open recovery.
+steved.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- fs/nfs/nfs4proc.c |   36 ++++++++++++++++++++++++++++++++++--
- 1 files changed, 34 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 971ec8c..60a320c 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1756,6 +1756,14 @@ static int nfs4_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *sta
- }
- 
- #if defined(CONFIG_NFS_V4_1)
-+/**
-+ * nfs41_check_expired_stateid - does a state ID need recovery?
-+ *
-+ * @state: NFSv4 open state for an inode
-+ *
-+ * Returns NFS_OK if recovery for this state ID is now finished.
-+ * Otherwise a negative NFS4ERR value is returned.
-+ */
- static int nfs41_check_expired_stateid(struct nfs4_state *state, nfs4_stateid *stateid, unsigned int flags)
- {
- 	int status = NFS_OK;
-@@ -1763,8 +1771,16 @@ static int nfs41_check_expired_stateid(struct nfs4_state *state, nfs4_stateid *s
- 
- 	if (state->flags & flags) {
- 		status = nfs41_test_stateid(server, stateid);
--		if (status != NFS_OK) {
-+		switch (status) {
-+		case NFS_OK:
-+			/* server recognizes this one, don't recover */
-+			break;
-+		case -NFS4ERR_ADMIN_REVOKED:
-+		case -NFS4ERR_DELEG_REVOKED:
-+			/* state was revoked, free then re-open */
- 			nfs41_free_stateid(server, stateid);
-+		default:
-+			/* anything else: just re-open it */
- 			state->flags &= ~flags;
- 		}
- 	}
-@@ -4698,6 +4714,14 @@ out:
- }
- 
- #if defined(CONFIG_NFS_V4_1)
-+/**
-+ * nfs41_check_expired_locks - clear lock state IDs
-+ *
-+ * @state: NFSv4 open state for a file
-+ *
-+ * Returns NFS_OK if recovery for this state ID is now finished.
-+ * Otherwise a negative NFS4ERR value is returned.
-+ */
- static int nfs41_check_expired_locks(struct nfs4_state *state)
- {
- 	int status, ret = NFS_OK;
-@@ -4707,8 +4731,16 @@ static int nfs41_check_expired_locks(struct nfs4_state *state)
- 	list_for_each_entry(lsp, &state->lock_states, ls_locks) {
- 		if (lsp->ls_flags & NFS_LOCK_INITIALIZED) {
- 			status = nfs41_test_stateid(server, &lsp->ls_stateid);
--			if (status != NFS_OK) {
-+			switch (status) {
-+			case NFS_OK:
-+				/* server recognizes this one, don't re-lock */
-+				break;
-+			case -NFS4ERR_ADMIN_REVOKED:
-+			case -NFS4ERR_DELEG_REVOKED:
-+				/* lock was revoked, free then re-lock */
- 				nfs41_free_stateid(server, &lsp->ls_stateid);
-+			default:
-+				/* anything else: just re-lock it */
- 				lsp->ls_flags &= ~NFS_LOCK_INITIALIZED;
- 				ret = status;
- 			}
-
+> ---
+>  utils/exportfs/exportfs.c |   21 ++++++++++++---------
+>  1 file changed, 12 insertions(+), 9 deletions(-)
+> 
+> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+> index a3323d7..9f79541 100644
+> --- a/utils/exportfs/exportfs.c
+> +++ b/utils/exportfs/exportfs.c
+> @@ -40,7 +40,7 @@ static void	unexportfs(char *arg, int verbose);
+>  static void	exports_update(int verbose);
+>  static void	dump(int verbose);
+>  static void	error(nfs_export *exp, int err);
+> -static void	usage(const char *progname);
+> +static void	usage(const char *progname, int n);
+>  static void	validate_export(nfs_export *exp);
+>  static int	matchhostname(const char *hostname1, const char *hostname2);
+>  static void	export_d_read(const char *dname);
+> @@ -105,11 +105,17 @@ main(int argc, char **argv)
+>  
+>  	export_errno = 0;
+>  
+> -	while ((c = getopt(argc, argv, "aio:ruvf")) != EOF) {
+> +	while ((c = getopt(argc, argv, "afhio:ruv")) != EOF) {
+>  		switch(c) {
+>  		case 'a':
+>  			f_all = 1;
+>  			break;
+> +		case 'f':
+> +			force_flush = 1;
+> +			break;
+> +		case 'h':
+> +			usage(progname, 0);
+> +			break;
+>  		case 'i':
+>  			f_ignore = 1;
+>  			break;
+> @@ -126,11 +132,8 @@ main(int argc, char **argv)
+>  		case 'v':
+>  			f_verbose = 1;
+>  			break;
+> -		case 'f':
+> -			force_flush = 1;
+> -			break;
+>  		default:
+> -			usage(progname);
+> +			usage(progname, 1);
+>  			break;
+>  		}
+>  	}
+> @@ -723,8 +726,8 @@ error(nfs_export *exp, int err)
+>  }
+>  
+>  static void
+> -usage(const char *progname)
+> +usage(const char *progname, int n)
+>  {
+> -	fprintf(stderr, "usage: %s [-aruv] [host:/path]\n", progname);
+> -	exit(1);
+> +	fprintf(stderr, "usage: %s [-afhioruv] [host:/path]\n", progname);
+> +	exit(n);
+>  }
