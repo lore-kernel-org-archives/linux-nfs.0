@@ -1,70 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:53138 "EHLO mx2.netapp.com"
+Received: from mga11.intel.com ([192.55.52.93]:26396 "EHLO mga11.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751742Ab2GHOeX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 8 Jul 2012 10:34:23 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Julia Lawall <julia.lawall@lip6.fr>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: question about fs/nfs/direct.c
-Date: Sun, 8 Jul 2012 14:34:03 +0000
-Message-ID: <1341758042.3575.6.camel@lade.trondhjem.org>
-References: <alpine.DEB.2.02.1207081113180.2436@localhost6.localdomain6>
-In-Reply-To: <alpine.DEB.2.02.1207081113180.2436@localhost6.localdomain6>
-Content-Type: text/plain; charset="utf-8"
+	id S1751497Ab2GEQ1V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Jul 2012 12:27:21 -0400
+Date: Thu, 5 Jul 2012 09:27:20 -0700
+From: Andi Kleen <ak@linux.intel.com>
+To: Fengguang Wu <fengguang.wu@intel.com>
+Cc: Linux-NFS <linux-nfs@vger.kernel.org>, Trond.Myklebust@netapp.com
+Subject: Re: rpcauth_lookup_credcache() lock contentions
+Message-ID: <20120705162720.GE32640@tassilo.jf.intel.com>
+References: <20120623122604.GA10887@localhost>
+ <20120624213417.GI4152@tassilo.jf.intel.com>
+ <20120625024211.GA11057@localhost>
+ <20120627180353.GO4152@tassilo.jf.intel.com>
+ <20120705131105.GA13775@localhost>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120705131105.GA13775@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU3VuLCAyMDEyLTA3LTA4IGF0IDExOjE1ICswMjAwLCBKdWxpYSBMYXdhbGwgd3JvdGU6DQo+
-IFRoZSBmb2xsb3dpbmcgY29kZSwgaW4gdGhlIGZ1bmN0aW9uIG5mc19kaXJlY3Rfd3JpdGVfcmVz
-Y2hlZHVsZSwgbG9va3MgDQo+IHN0cmFuZ2UgdG8gbWU6DQo+IA0KPiAgICAgICAgICBsaXN0X2Zv
-cl9lYWNoX2VudHJ5X3NhZmUocmVxLCB0bXAsICZyZXFzLCB3Yl9saXN0KSB7DQo+ICAgICAgICAg
-ICAgICAgICAgaWYgKCFuZnNfcGFnZWlvX2FkZF9yZXF1ZXN0KCZkZXNjLCByZXEpKSB7DQo+ICAg
-ICAgICAgICAgICAgICAgICAgICAgICBuZnNfbGlzdF9hZGRfcmVxdWVzdChyZXEsICZmYWlsZWQp
-Ow0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgc3Bpbl9sb2NrKGNpbmZvLmxvY2spOw0KPiAg
-ICAgICAgICAgICAgICAgICAgICAgICAgZHJlcS0+ZmxhZ3MgPSAwOw0KPiAgICAgICAgICAgICAg
-ICAgICAgICAgICAgZHJlcS0+ZXJyb3IgPSAtRUlPOw0KPiAgICAgICAgICAgICAgICAgICAgICAg
-ICAgc3Bpbl91bmxvY2soY2luZm8ubG9jayk7DQo+ICAgICAgICAgICAgICAgICAgfQ0KPiAgICAg
-ICAgICAgICAgICAgIG5mc19yZWxlYXNlX3JlcXVlc3QocmVxKTsNCj4gICAgICAgICAgfQ0KPiAg
-ICAgICAgICBuZnNfcGFnZWlvX2NvbXBsZXRlKCZkZXNjKTsNCj4gDQo+ICAgICAgICAgIHdoaWxl
-ICghbGlzdF9lbXB0eSgmZmFpbGVkKSkNCj4gICAgICAgICAgICAgICAgICBuZnNfdW5sb2NrX2Fu
-ZF9yZWxlYXNlX3JlcXVlc3QocmVxKTsNCj4gDQo+IEFmdGVyIHRoZSBsaXN0X2Zvcl9lYWNoX2Vu
-dHJ5X3NhZmUsIHJlcSBpcyBhbiBhZGRyZXNzIGF0IHNvbWUgb2Zmc2V0IGZyb20gDQo+IHRoZSBs
-aXN0IGhlYWQuICBTbyBpdCBkb2VzIG5vdCBzZWVtIGxpa2UgYW4gYXBwcm9wcmlhdGUgYXJndW1l
-bnQgdG8gDQo+IG5mc191bmxvY2tfYW5kX3JlbGVhc2VfcmVxdWVzdC4NCg0KRG9oIS4uLiBUaGF0
-J3MgYSBidWcgdGhhdCBjcmVwdCBpbiB2aWEgY29tbWl0DQoxNzYzZGExMjM0Y2JhNjYzYjg0OTQ3
-NmQ0NTFiZGNjYWM1MTQ3ODU5IChORlM6IHJld3JpdGUgZGlyZWN0aW8gd3JpdGUgdG8NCnVzZSBh
-c3luYyBjb2FsZXNjZSBjb2RlKSBhbmQgaGFzIGJlZW4gInBvbGlzaGVkIiB1bnRpbCBpdCBnbGVh
-bnMgc2V2ZXJhbA0KdGltZXMgd2l0aCBhc3NvcnRlZCBjbGVhbnVwcy4uLg0KDQpIb3cgYWJvdXQg
-c29tZXRoaW5nIGxpa2UgdGhlIGZvbGxvd2luZyBmaXg/DQo4PC0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KRnJvbSA0
-MDM1YzI0ODdmMTc5MzI3ZmFlODdhZjM0Nzc2NTk0MDJiNzk3NTg0IE1vbiBTZXAgMTcgMDA6MDA6
-MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
-bT4NCkRhdGU6IFN1biwgOCBKdWwgMjAxMiAxMDoyNDoxMCAtMDQwMA0KU3ViamVjdDogW1BBVENI
-XSBORlM6IEZpeCBsaXN0IG1hbmlwdWxhdGlvbiBzbmFmdXMgaW4gZnMvbmZzL2RpcmVjdC5jDQoN
-CkZpeCAyIGJ1Z3MgaW4gbmZzX2RpcmVjdF93cml0ZV9yZXNjaGVkdWxlOg0KDQogLSBUaGUgcmVx
-dWVzdCBuZWVkcyB0byBiZSByZW1vdmVkIGZyb20gdGhlICdyZXFzJyBsaXN0IGJlZm9yZSBpdCBj
-YW4NCiAgIGJlIGFkZGVkIHRvICdmYWlsZWQnLg0KIC0gRml4IGFuIGluZmluaXRlIGxvb3AgaWYg
-dGhlICdmYWlsZWQnIGxpc3QgaXMgbm9uLWVtcHR5Lg0KDQpSZXBvcnRlZC1ieTogSnVsaWEgTGF3
-YWxsIDxqdWxpYS5sYXdhbGxAbGlwNi5mcj4NClNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVz
-dCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQotLS0NCiBmcy9uZnMvZGlyZWN0LmMgfCAg
-ICA2ICsrKysrLQ0KIDEgZmlsZSBjaGFuZ2VkLCA1IGluc2VydGlvbnMoKyksIDEgZGVsZXRpb24o
-LSkNCg0KZGlmZiAtLWdpdCBhL2ZzL25mcy9kaXJlY3QuYyBiL2ZzL25mcy9kaXJlY3QuYw0KaW5k
-ZXggOWE0Y2JmYy4uNDgyNTMzNyAxMDA2NDQNCi0tLSBhL2ZzL25mcy9kaXJlY3QuYw0KKysrIGIv
-ZnMvbmZzL2RpcmVjdC5jDQpAQCAtNDg0LDYgKzQ4NCw3IEBAIHN0YXRpYyB2b2lkIG5mc19kaXJl
-Y3Rfd3JpdGVfcmVzY2hlZHVsZShzdHJ1Y3QgbmZzX2RpcmVjdF9yZXEgKmRyZXEpDQogDQogCWxp
-c3RfZm9yX2VhY2hfZW50cnlfc2FmZShyZXEsIHRtcCwgJnJlcXMsIHdiX2xpc3QpIHsNCiAJCWlm
-ICghbmZzX3BhZ2Vpb19hZGRfcmVxdWVzdCgmZGVzYywgcmVxKSkgew0KKwkJCW5mc19saXN0X3Jl
-bW92ZV9yZXF1ZXN0KHJlcSk7DQogCQkJbmZzX2xpc3RfYWRkX3JlcXVlc3QocmVxLCAmZmFpbGVk
-KTsNCiAJCQlzcGluX2xvY2soY2luZm8ubG9jayk7DQogCQkJZHJlcS0+ZmxhZ3MgPSAwOw0KQEAg
-LTQ5NCw4ICs0OTUsMTEgQEAgc3RhdGljIHZvaWQgbmZzX2RpcmVjdF93cml0ZV9yZXNjaGVkdWxl
-KHN0cnVjdCBuZnNfZGlyZWN0X3JlcSAqZHJlcSkNCiAJfQ0KIAluZnNfcGFnZWlvX2NvbXBsZXRl
-KCZkZXNjKTsNCiANCi0Jd2hpbGUgKCFsaXN0X2VtcHR5KCZmYWlsZWQpKQ0KKwl3aGlsZSAoIWxp
-c3RfZW1wdHkoJmZhaWxlZCkpIHsNCisJCXJlcSA9IG5mc19saXN0X2VudHJ5KGZhaWxlZC5uZXh0
-KTsNCisJCW5mc19saXN0X3JlbW92ZV9yZXF1ZXN0KHJlcSk7DQogCQluZnNfdW5sb2NrX2FuZF9y
-ZWxlYXNlX3JlcXVlc3QocmVxKTsNCisJfQ0KIA0KIAlpZiAocHV0X2RyZXEoZHJlcSkpDQogCQlu
-ZnNfZGlyZWN0X3dyaXRlX2NvbXBsZXRlKGRyZXEsIGRyZXEtPmlub2RlKTsNCi0tIA0KMS43LjEw
-LjQNCg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVy
-DQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoN
-Cg==
+On Thu, Jul 05, 2012 at 09:11:05PM +0800, Fengguang Wu wrote:
+> On Wed, Jun 27, 2012 at 11:03:53AM -0700, Andi Kleen wrote:
+> > > > Can you try this patch?
+> > > 
+> > > Thank you! This patch brings %sys down to 24%, a pretty large improvement!
+> > 
+> > I redid the patch now and fixed the race Trond pointed out.
+> > 
+> > Fengguang, can you retest please? Trond, does it look good now?
+> 
+> Andi, this patch performs equally well! And it runs stable for over a week.
+
+Thanks for testing. But it still has the race Trond pointed out.
+Probably need to rely on write ordering with the uncached flag.
+
+-Andi
+
