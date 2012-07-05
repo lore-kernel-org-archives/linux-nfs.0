@@ -1,143 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:56583 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932350Ab2GKUb1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jul 2012 16:31:27 -0400
-Received: by mail-gh0-f174.google.com with SMTP id r11so1692583ghr.19
-        for <linux-nfs@vger.kernel.org>; Wed, 11 Jul 2012 13:31:27 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 12/15] NFS: Use the same nfs_client_id4 for every server
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 11 Jul 2012 16:31:25 -0400
-Message-ID: <20120711203125.3767.93859.stgit@degas.1015granger.net>
-In-Reply-To: <20120711201718.3767.66867.stgit@degas.1015granger.net>
-References: <20120711201718.3767.66867.stgit@degas.1015granger.net>
+Received: from fieldses.org ([174.143.236.118]:58878 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932197Ab2GEWc1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Jul 2012 18:32:27 -0400
+Date: Thu, 5 Jul 2012 18:32:24 -0400
+To: Andreas Heinlein <aheinlein@gmx.com>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: Kernel NFSd CPU hog?
+Message-ID: <20120705223224.GE3051@fieldses.org>
+References: <4FF16D54.6090200@gmx.com>
+ <20120702150758.66893d08@tlielax.poochiereds.net>
+ <4FF2E710.5010804@gmx.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FF2E710.5010804@gmx.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, when identifying itself to NFS servers, the Linux NFS
-client uses a unique nfs_client_id4.id string for each server IP
-address it talks with.  For example, when client A talks to server X,
-the client identifies itself using a string like "AX".  The
-requirements for these strings are specified in detail by RFC 3530
-(and bis).
+On Tue, Jul 03, 2012 at 02:35:28PM +0200, Andreas Heinlein wrote:
+> On 02.07.2012 21:07, Jeff Layton wrote:
+> >On Mon, 02 Jul 2012 11:43:48 +0200
+> >Andreas Heinlein <aheinlein@gmx.com> wrote:
+> >
+> >>Hello,
+> >>
+> >>we have a strange NFS problem with a newly setup Linux server, and I
+> >>hope someone here can help.
+> >>
+> >>The symptom is that, slowly over time (speaking of several days up to 2
+> >>weeks), the kernel nfsd processes/threads consume more and more CPU
+> >>until the system finally becomes unresponsive. We recorded system
+> >>activity with sar, which shows that CPU (system) usage slowly rises
+> >>after reboot from about 1% to nearly 100% over the course of several
+> >>days. Load averages stay around 0.1-0.3 until 100% are reached, up to
+> >>this point the problem is almost not noticable from the clients. Then
+> >>load averages climb up to 30.0; at this point the system becomes more or
+> >>less unusable and has to be restarted. 'top' output shows the CPU usage
+> >>evenly distributed across all nfsd threads.
+> >>
+> >>The system is a fairly recent, though entry level server with a Core i3
+> >>and 4G RAM, hosting the home directories for about 15-20 clients. CPU
+> >>activity does not drop at night, when no clients are connected. It is
+> >>running Debian 6.0 with linux 3.2.0 (from the backports repository),
+> >>with nfs-utils 1.2.5 (also from the backports repository). I suspect
+> >>that these backports might be the culprit, but since we need this kernel
+> >>for other purposes, and I cannot reboot that machine during office
+> >>hours, I'd rather not try going back to the official Debian kernel
+> >>without good reasons. If there are known problems, I'd give it a try.
+> >>
+> >Find the pid of one of the nfsd threads that's spinning, then get a
+> >stack trace from it:
+> >
+> >     # cat /proc/<pidofnfsd>/stack
+> >
+> >...that should give us some idea of what it's doing.
+> >
+> >--
+> >Jeff Layton <jlayton@redhat.com>
+> >--
+> >To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >the body of a message to majordomo@vger.kernel.org
+> >More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Hello,
+> 
+> I've run into the problem again, and did a 'watch cat
+> /proc/<pidofnfsd>/stack'. It actually seems to be doing something,
+> because the stack trace changes every now and then, but mostly looks
+> like
+> 
+> [<c1038be2>] try_to_wake_up+0x144/0x14d
+> [<c1045d26>] lock_timer_base+0x19/0x34
+> [<c10462fd>] __mod_timer+0x10c/0x116
+> [<c1045d41>] process_timeout+0x0/0x5
+> [<f858a243>] svc_recv+0x2e2/0x698 [sunrpc]
+> [<c1038beb>] default_wake_function+0x0/0x8
+> [<f8640748>] nfsd+0x90/0x108 [nfsd]
+> [<f86406b8>] nfsd+0x0/0x108 [nfsd]
+> [<c105176b>] kthread+0x63/0x68
+> [<c1051708>] kthread+0x0/0x68
+> [<c12dadbe>] kernel_thread_helper+0x6/0x10
+> [<ffffffff>] 0xffffffff
+> 
+> Meanwhile, I've found a quite recent thread on this list named "3.0+
+> NFS issues", and within two links to Ubuntu bug reports
+> (https://bugs.launchpad.net/ubuntu/+source/nfs-utils/+bug/879334 and
+> https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1006446) and
 
-This form of client identification presents a problem for Transparent
-State Migration.  When client A's state on server X is migrated to
-server Y, it continues to be associated with string "AX."  But,
-according to the rules of client string construction above, client
-A will present string "AY" when communicating with server Y.
+There are a number of problems reported here, and it's not clear that
+they're the same.
 
-Server Y thus has no way to know that client A should be associated
-with the state migrated from server X.  "AX" is all but abandoned,
-interfering with establishing fresh state for client A on server Y.
+> again to a kernel bug
+> (https://bugzilla.kernel.org/show_bug.cgi?id=40912), all suggesting
 
-To support transparent state migration, then, NFSv4.0 clients must
-instead use the same nfs_client_id4.id string to identify themselves
-to every NFS server; something like "A".
+That one appears to be only reproduceable on dmcrypt with the nfsd
+threads reniced.
 
-Now a client identifies itself as "A" to server X.  When a file
-system on server X transitions to server Y, and client A identifies
-itself as "A" to server Y, Y will know immediately that the state
-associated with "A," whether it is native or migrated, is owned by
-the client, and can merge both into a single lease.
+> that this is indeed a kernel 3.0 problem.
+> 
+> So I will try going back to 2.6.32 and hope this issue gets fixed soon.
 
-As a pre-requisite to adding support for NFSv4 migration to the Linux
-NFS client, this patch changes the way Linux identifies itself to NFS
-servers via the SETCLIENTID (NFSv4 minor version 0) and EXCHANGE_ID
-(NFSv4 minor version 1) operations.
+I don't know enough to be confident of that yet.
 
-In addition to removing the server's IP address from nfs_client_id4,
-the Linux NFS client will also no longer use its own source IP address
-as part of the nfs_client_id4 string.  On multi-homed clients, the
-value of this address depends on the address family and network
-routing used to contact the server, thus it can be different for each
-server.
+> Thanks for your help!
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+If you have the chance to test any intermediate kernels that might also
+give us some useful data points.
 
- fs/nfs/nfs4proc.c |   51 +++++++++++++++++++++++++++++++++++++++------------
- 1 files changed, 39 insertions(+), 12 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 75bff3f..b09b849 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4024,6 +4024,32 @@ static void nfs4_init_boot_verifier(const struct nfs_client *clp,
- 	memcpy(bootverf->data, verf, sizeof(bootverf->data));
- }
- 
-+static unsigned int
-+nfs4_init_nonuniform_client_string(const struct nfs_client *clp,
-+				   char *buf, size_t len)
-+{
-+	unsigned int result;
-+
-+	rcu_read_lock();
-+	result = scnprintf(buf, len, "Linux NFSv4.0 %s/%s %s",
-+				clp->cl_ipaddr,
-+				rpc_peeraddr2str(clp->cl_rpcclient,
-+							RPC_DISPLAY_ADDR),
-+				rpc_peeraddr2str(clp->cl_rpcclient,
-+							RPC_DISPLAY_PROTO));
-+	rcu_read_unlock();
-+	return result;
-+}
-+
-+static unsigned int
-+nfs4_init_uniform_client_string(const struct nfs_client *clp,
-+				char *buf, size_t len)
-+{
-+	return scnprintf(buf, len, "Linux NFSv%u.%u %s",
-+				clp->rpc_ops->version, clp->cl_minorversion,
-+				clp->cl_rpcclient->cl_nodename);
-+}
-+
- /**
-  * nfs4_proc_setclientid - Negotiate client ID
-  * @clp: state data structure
-@@ -4054,15 +4080,18 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 
- 	/* nfs_client_id4 */
- 	nfs4_init_boot_verifier(clp, &sc_verifier);
--	rcu_read_lock();
--	setclientid.sc_name_len = scnprintf(setclientid.sc_name,
--			sizeof(setclientid.sc_name), "%s/%s %s",
--			clp->cl_ipaddr,
--			rpc_peeraddr2str(clp->cl_rpcclient,
--						RPC_DISPLAY_ADDR),
--			rpc_peeraddr2str(clp->cl_rpcclient,
--						RPC_DISPLAY_PROTO));
-+	if (test_bit(NFS_CS_MIGRATION, &clp->cl_flags))
-+		setclientid.sc_name_len =
-+				nfs4_init_uniform_client_string(clp,
-+						setclientid.sc_name,
-+						sizeof(setclientid.sc_name));
-+	else
-+		setclientid.sc_name_len =
-+				nfs4_init_nonuniform_client_string(clp,
-+						setclientid.sc_name,
-+						sizeof(setclientid.sc_name));
- 	/* cb_client4 */
-+	rcu_read_lock();
- 	setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
- 				sizeof(setclientid.sc_netid),
- 				rpc_peeraddr2str(clp->cl_rpcclient,
-@@ -5284,10 +5313,8 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 	};
- 
- 	nfs4_init_boot_verifier(clp, &verifier);
--	args.id_len = scnprintf(args.id, sizeof(args.id),
--				"%s/%s",
--				clp->cl_ipaddr,
--				clp->cl_rpcclient->cl_nodename);
-+	args.id_len = nfs4_init_uniform_client_string(clp, args.id,
-+							sizeof(args.id));
- 	dprintk("NFS call  exchange_id auth=%s, '%.*s'\n",
- 		clp->cl_rpcclient->cl_auth->au_ops->au_name,
- 		args.id_len, args.id);
-
+--b.
