@@ -1,103 +1,129 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:47984 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751434Ab2GIPoL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jul 2012 11:44:11 -0400
-Received: by mail-gg0-f174.google.com with SMTP id u4so10194450ggl.19
-        for <linux-nfs@vger.kernel.org>; Mon, 09 Jul 2012 08:44:11 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 03/14] NFS: State reclaim clears OPEN and LOCK state
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 09 Jul 2012 11:44:09 -0400
-Message-ID: <20120709154409.1604.59004.stgit@degas.1015granger.net>
-In-Reply-To: <20120709153355.1604.14102.stgit@degas.1015granger.net>
-References: <20120709153355.1604.14102.stgit@degas.1015granger.net>
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:62507 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755945Ab2GFBSt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jul 2012 21:18:49 -0400
+Received: by bkwj10 with SMTP id j10so3976703bkw.19
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Jul 2012 18:18:47 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <20120705215649.GD3051@fieldses.org>
+References: <CAKeNtnQK5QEgRZKXHnmMQK6R+L1nXQNX0M4y1ZWuKo7GbEingA@mail.gmail.com>
+ <20120705215649.GD3051@fieldses.org>
+From: Song Gao <song.gao.beta@gmail.com>
+Date: Thu, 5 Jul 2012 20:18:27 -0500
+Message-ID: <CAKeNtnRLEe-y+=G63ohK0RwB4ia6QFHn-Geki-JzmPTcdyc7wg@mail.gmail.com>
+Subject: Re: Possible bug in NFSv4 server regarding to looking for right path
+ for clients to mount
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Before beginning state recovery, the state manager zaps open and lock
-state for each open file, thus the "state->flags & flags" test in
-nfs41_{open,lock}_expired() always fails during reclaim.  But open
-recovery is still needed for these files.
+Thanks Bruce.
 
-To force a call to nfs4_open_expired(), change the default return
-value for nfs41_check_expired_stateid() to force open recovery, and
-the default return value for nfs41_check_locks() to force lock
-recovery, if the requested flags are clear.  Fix suggested by Bryan
-Schumaker.
+The error was raised when I was executing fish-shell simultaneously
+from 32 nodes. The fish-shell requires several configuration/function
+files which were placed on NFS.
 
-The presence of a delegation state ID must not prevent normal open
-recovery.  The delegation state ID must be cleared if it was revoked,
-but once cleared I don't think it's presence or absence has any
-bearing on whether open recovery is still needed.
+It seems that the problem might be caused by network instead of
+/export. Later I moved mounting from /etc/fstab to /etc/rc.local and
+since then I've never seen the problem again, no matter NFSv4 or
+NFSv2.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Out of curiosity, I moved mounting configuration back to /etc/fstab
+again, and the same problem occurred again. Among those clients that
+failed to load files, some failed to mount, which is probably because
+the NFS was up later than DHCP. However, there are some that succeeded
+to mount the NFS, but still failed to load some of the files. (They
+did succeed to load some files, but not all.) For these nodes, if I
+open a new window (in tmux), and execute the fish-shell again (without
+remounting NFS), everything just works.
 
- fs/nfs/nfs4proc.c |   23 ++++++++++++-----------
- 1 files changed, 12 insertions(+), 11 deletions(-)
+This is still quite strange and I could not think of an explaination.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 60a320c..4bc21a3 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1766,8 +1766,8 @@ static int nfs4_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *sta
-  */
- static int nfs41_check_expired_stateid(struct nfs4_state *state, nfs4_stateid *stateid, unsigned int flags)
- {
--	int status = NFS_OK;
- 	struct nfs_server *server = NFS_SERVER(state->inode);
-+	int status = -NFS4ERR_BAD_STATEID;
- 
- 	if (state->flags & flags) {
- 		status = nfs41_test_stateid(server, stateid);
-@@ -1789,16 +1789,17 @@ static int nfs41_check_expired_stateid(struct nfs4_state *state, nfs4_stateid *s
- 
- static int nfs41_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *state)
- {
--	int deleg_status, open_status;
- 	int deleg_flags = 1 << NFS_DELEGATED_STATE;
- 	int open_flags = (1 << NFS_O_RDONLY_STATE) | (1 << NFS_O_WRONLY_STATE) | (1 << NFS_O_RDWR_STATE);
-+	int status;
- 
--	deleg_status = nfs41_check_expired_stateid(state, &state->stateid, deleg_flags);
--	open_status = nfs41_check_expired_stateid(state,  &state->open_stateid, open_flags);
-+	nfs41_check_expired_stateid(state, &state->stateid, deleg_flags);
-+	status = nfs41_check_expired_stateid(state, &state->open_stateid,
-+							open_flags);
- 
--	if ((deleg_status == NFS_OK) && (open_status == NFS_OK))
--		return NFS_OK;
--	return nfs4_open_expired(sp, state);
-+	if (status != NFS_OK)
-+		status = nfs4_open_expired(sp, state);
-+	return status;
- }
- #endif
- 
-@@ -4724,7 +4725,7 @@ out:
-  */
- static int nfs41_check_expired_locks(struct nfs4_state *state)
- {
--	int status, ret = NFS_OK;
-+	int status, ret = -NFS4ERR_BAD_STATEID;
- 	struct nfs4_lock_state *lsp;
- 	struct nfs_server *server = NFS_SERVER(state->inode);
- 
-@@ -4756,9 +4757,9 @@ static int nfs41_lock_expired(struct nfs4_state *state, struct file_lock *reques
- 
- 	if (test_bit(LK_STATE_IN_USE, &state->flags))
- 		status = nfs41_check_expired_locks(state);
--	if (status == NFS_OK)
--		return status;
--	return nfs4_lock_expired(state, request);
-+	if (status != NFS_OK)
-+		status = nfs4_lock_expired(state, request);
-+	return status;
- }
- #endif
- 
 
+On Thu, Jul 5, 2012 at 4:56 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>
+> On Mon, Jul 02, 2012 at 01:11:39AM -0500, Song Gao wrote:
+> > Hello,
+> >
+> > There's possibly a bug related NFSv4 server's behavior on looking for
+> > path on /export .
+> >
+> > I have a 32 nodes KVM cluster. NFS, host filesystem, KVM storage pool,
+> > are all placed on SSD. KVM guests are connected to host through virtio
+> > drived GB ethernet.
+> >
+> > I followed this guide to configure NFS:
+> > https://help.ubuntu.com/community/SettingUpNFSHowTo
+> >
+> > The problem was that, when I execute a program simultaneously (through
+> > cssh) on 32 nodes, there were always a number of nodes that
+> > encountered "input/output error". The /var/log/messages on client
+> > shows "state manager failed on NFSv4 server with error 10022".
+>
+> That's NFS4ERR_STALE_CLIENTID.
+>
+> That's an odd thing to happen.  I'd be curious to know which operation
+> exactly the server was returning that error to.  Normally that should
+> only happen if the server rebooted.
+>
+> > I tried different options in client /etc/fstab as well as export
+> > settings in server but nothing helps. Interestingly, by changing the
+> > item in /etc/fstab from:
+> >     some-host:/tigers  nfs    rw,bg,hard,intr    0    0
+> > into:
+> >     some-host:/export/tigers    /nfs    nfs    rw,bg,hard,intr    0    0
+> > fixed the problem.
+>
+> The advice to use "fsid=0" in the ubuntu howto is out of date.  With a
+> recent server you should just export and mount /export/tigers as you
+> would with NFSv3.
+>
+> If you do as you've done above (and as is sugested in that howto), then
+> clients see different paths depending on whether they're using v3 or v4.
+>
+> When you changed the client to mount /export/tigers, it probably
+> couldn't find that path, so tried v3 instead.  That works around the v4
+> bug.
+It turned out to be NFSv2 on client. (I used nfsstat). I also noticed
+that, for NFSv4 it mshows as "Client fps stats" without indication v4.
+Is this normal?
+>
+> If you change the exports to remove fsid=0, then you'll probably want to
+> mount with nfsvers=3 to continue working around the v4 bug.
+>
+> > I'm not familiar with it but I guess that it's probably caused by some
+> > problem in NFS server when it tries to find the right path when all 32
+> > clients are trying to mount NFS at the same time.
+> >
+> > Here's some more information:
+> > client: debian "squeeze", 2.6.32-5-amd64
+> > server: Ubuntu Server 12.04, 3.2.0-23-generic
+>
+> Might be worth trying more recent versions.  The client especially has
+> seen a lot of v4 changes since 2.6.32.
+>
+> --b.
+>
+> > nfs version: NFSv4
+> > no security option
+> > results of `exports -v`:
+> >     /export 192.168.100.0/24(rw,wdelay,insecure,root_squash,no_subtree_check,fsid=0)
+> >     /export/tigers
+> > 192.168.100.0/24(rw,wdelay,nohide,insecure,root_squash,no_subtree_check)
+> >
+> > Please let me know if there's any other information I need to provide.
+> >
+> > Thanks!
+> >
+> >
+> > Kind regards,
+> > --
+> > Song Gao
+> > https://profiles.google.com/song.gao.beta/about
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
