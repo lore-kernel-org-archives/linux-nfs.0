@@ -1,30 +1,31 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:54519 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750766Ab2GZMQS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 08:16:18 -0400
-Message-ID: <50113504.3060607@panasas.com>
-Date: Thu, 26 Jul 2012 15:16:04 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from ns2hosting.indo.net.id ([202.53.253.80]:59774 "EHLO
+	smtp-1.indo.net.id" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751666Ab2GGP2c convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jul 2012 11:28:32 -0400
+Date: Sat, 7 Jul 2012 21:49:33 +0700 (WIT)
+From: John Herbert <eva@pif.co.id>
+Message-ID: <8742822.42.1341672573230.JavaMail.root@mail.pif.co.id>
+Subject: =?utf-8?Q?Kedves_Gy=C5=91ztes?=
 MIME-Version: 1.0
-To: Peng Tao <bergwolf@gmail.com>
-CC: linuxnfs <linux-nfs@vger.kernel.org>, Benny Halevy <bhalevy@tonian.com>
-Subject: Re: pnfs LD partial sector write
-References: <CA+a=Yy7B0uk-FWr3hOjWC+=Xq+UtHnEC4speD3OZzMFfXksyOw@mail.gmail.com> <500FCA3A.5020606@panasas.com> <CA+a=Yy58bjUMximWOMnmk0ugPKUY-LcacRhpdp4cvuz1HQG_gg@mail.gmail.com> <5010573F.4000901@panasas.com> <CA+a=Yy5oJObMeUuL-mspso2eXCr4+5qmiFsOfS5=fU5x9kHtkw@mail.gmail.com> <5010F1DF.3060905@panasas.com> <CA+a=Yy5YNKp2tkOreYwV9sfm7whw3_KeRj_YCCL3abG6+csK=g@mail.gmail.com>
-In-Reply-To: <CA+a=Yy5YNKp2tkOreYwV9sfm7whw3_KeRj_YCCL3abG6+csK=g@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=utf-8
+To: undisclosed-recipients:;
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/26/2012 11:25 AM, Peng Tao wrote:
+Kedves Győztes
 
-> For these two sectors, I need to allocate two pages... Just look at
-> struct bio_vec.
-> 
+E-mail címed szerencsésen választotta az ENSZ kártérítésre jogosult / kedvezményezett összege $ 1,000,000,00 és a bank Bankkártya már letétbe helyezett Ezex Courier Express szállít nekik, hogy az Ön számára. Ön javasoljuk, hogy forduljon a futár tiszt nekik szállítani a Bank Bankkártya Önnek az alábbi information.When kapcsolatba vele, kérjük, küldje el neki a partner címe és azonosítószáma, hogy tudja teljesíteni a Bank Bankkártya Önnek
+
+kapcsolatot a futár tiszt az alábbi információkat
+
+Kapcsolattartó személy: Harry Richard
+
+E-mail: harry.richard@diplomats.com
 
 
-NO! I know all about bio_vecs
+Kérjük kérek
 
-You need 1024 bytes, and 2 x one entry BIOs which is a few bytes, where
-did you get the "two pages" from?
 
+Üdvözlettel
+ Mr.John Herbert
