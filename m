@@ -1,44 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga11.intel.com ([192.55.52.93]:37881 "EHLO mga11.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751723Ab2GQAOQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Jul 2012 20:14:16 -0400
-Date: Tue, 17 Jul 2012 08:14:10 +0800
-From: Fengguang Wu <fengguang.wu@intel.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: kernel-janitors@vger.kernel.org, Linux-NFS <linux-nfs@vger.kernel.org>
-Subject: [nfs:nfs-for-bryan 100/100]
- net/sunrpc/auth_gss/gss_mech_switch.c:252:5: sparse: context imbalance in
- 'gss_mech_list_pseudoflavors' - wrong count at exit
-Message-ID: <20120717001410.GD16944@localhost>
+Received: from mail1-relais-roc.national.inria.fr ([192.134.164.82]:58562 "EHLO
+	mail1-relais-roc.national.inria.fr" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751742Ab2GHOmy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Jul 2012 10:42:54 -0400
+Date: Sun, 8 Jul 2012 16:42:52 +0200 (CEST)
+From: Julia Lawall <julia.lawall@lip6.fr>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: question about fs/nfs/direct.c
+In-Reply-To: <1341758042.3575.6.camel@lade.trondhjem.org>
+Message-ID: <alpine.DEB.2.02.1207081642350.1990@hadrien>
+References: <alpine.DEB.2.02.1207081113180.2436@localhost6.localdomain6> <1341758042.3575.6.camel@lade.trondhjem.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Chuck,
+On Sun, 8 Jul 2012, Myklebust, Trond wrote:
 
-There are new sparse warnings (likely a true locking bug) show up in
+> On Sun, 2012-07-08 at 11:15 +0200, Julia Lawall wrote:
+>> The following code, in the function nfs_direct_write_reschedule, looks
+>> strange to me:
+>>
+>>          list_for_each_entry_safe(req, tmp, &reqs, wb_list) {
+>>                  if (!nfs_pageio_add_request(&desc, req)) {
+>>                          nfs_list_add_request(req, &failed);
+>>                          spin_lock(cinfo.lock);
+>>                          dreq->flags = 0;
+>>                          dreq->error = -EIO;
+>>                          spin_unlock(cinfo.lock);
+>>                  }
+>>                  nfs_release_request(req);
+>>          }
+>>          nfs_pageio_complete(&desc);
+>>
+>>          while (!list_empty(&failed))
+>>                  nfs_unlock_and_release_request(req);
+>>
+>> After the list_for_each_entry_safe, req is an address at some offset from
+>> the list head.  So it does not seem like an appropriate argument to
+>> nfs_unlock_and_release_request.
+>
+> Doh!... That's a bug that crept in via commit
+> 1763da1234cba663b849476d451bdccac5147859 (NFS: rewrite directio write to
+> use async coalesce code) and has been "polished" until it gleans several
+> times with assorted cleanups...
+>
+> How about something like the following fix?
+> 8<---------------------------------------------------------------------
+> From 4035c2487f179327fae87af3477659402b797584 Mon Sep 17 00:00:00 2001
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Date: Sun, 8 Jul 2012 10:24:10 -0400
+> Subject: [PATCH] NFS: Fix list manipulation snafus in fs/nfs/direct.c
+>
+> Fix 2 bugs in nfs_direct_write_reschedule:
+>
+> - The request needs to be removed from the 'reqs' list before it can
+>   be added to 'failed'.
+> - Fix an infinite loop if the 'failed' list is non-empty.
+>
+> Reported-by: Julia Lawall <julia.lawall@lip6.fr>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+> fs/nfs/direct.c |    6 +++++-
+> 1 file changed, 5 insertions(+), 1 deletion(-)
+>
+> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+> index 9a4cbfc..4825337 100644
+> --- a/fs/nfs/direct.c
+> +++ b/fs/nfs/direct.c
+> @@ -484,6 +484,7 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+>
+> 	list_for_each_entry_safe(req, tmp, &reqs, wb_list) {
+> 		if (!nfs_pageio_add_request(&desc, req)) {
+> +			nfs_list_remove_request(req);
+> 			nfs_list_add_request(req, &failed);
+> 			spin_lock(cinfo.lock);
+> 			dreq->flags = 0;
+> @@ -494,8 +495,11 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+> 	}
+> 	nfs_pageio_complete(&desc);
+>
+> -	while (!list_empty(&failed))
+> +	while (!list_empty(&failed)) {
+> +		req = nfs_list_entry(failed.next);
+> +		nfs_list_remove_request(req);
+> 		nfs_unlock_and_release_request(req);
+> +	}
 
-tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git nfs-for-bryan
-head:   6a1a1e34dc55f17e7bd260809207442dbb7a0296
-commit: 6a1a1e34dc55f17e7bd260809207442dbb7a0296 [100/100] SUNRPC: Add rpcauth_list_flavors()
+It seems much more reasonable.
 
-All sparse warnings:
+julia
 
-  net/sunrpc/auth_gss/gss_mech_switch.c:143:21: sparse: symbol '_gss_mech_get_by_name' was not declared. Should it be static?
-  net/sunrpc/auth_gss/gss_mech_switch.c:208:21: sparse: symbol '_gss_mech_get_by_pseudoflavor' was not declared. Should it be static?
-+ net/sunrpc/auth_gss/gss_mech_switch.c:252:5: sparse: context imbalance in 'gss_mech_list_pseudoflavors' - wrong count at exit
 
-vim +252 net/sunrpc/auth_gss/gss_mech_switch.c
-   249	 * The returned array is not sorted by any policy.  Callers should not
-   250	 * rely on the order of the items in the returned array.
-   251	 */
- > 252	int gss_mech_list_pseudoflavors(rpc_authflavor_t *array_ptr, int size)
-   253	{
-   254		struct gss_api_mech *pos = NULL;
-   255		int j, i = 0;
-
----
-0-DAY kernel build testing backend         Open Source Technology Centre
-Fengguang Wu <wfg@linux.intel.com>                     Intel Corporation
+>
+> 	if (put_dreq(dreq))
+> 		nfs_direct_write_complete(dreq, dreq->inode);
+> -- 
+> 1.7.10.4
+>
+>
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+>
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+>
+>
