@@ -1,43 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e8.ny.us.ibm.com ([32.97.182.138]:46497 "EHLO e8.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754333Ab2GXQiY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Jul 2012 12:38:24 -0400
-Received: from /spool/local
-	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Tue, 24 Jul 2012 12:38:01 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 3A57738C911F
-	for <linux-nfs@vger.kernel.org>; Tue, 24 Jul 2012 11:53:18 -0400 (EDT)
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q6OFrHUN267234
-	for <linux-nfs@vger.kernel.org>; Tue, 24 Jul 2012 11:53:17 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q6OFr7iW014003
-	for <linux-nfs@vger.kernel.org>; Tue, 24 Jul 2012 11:53:08 -0400
-Received: from malahal (malahal.austin.ibm.com [9.41.105.170])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q6OFr5rw013860
-	for <linux-nfs@vger.kernel.org>; Tue, 24 Jul 2012 11:53:05 -0400
-Date: Tue, 24 Jul 2012 10:53:04 -0500
-From: Malahal Naineni <malahal@us.ibm.com>
-To: linux-nfs@vger.kernel.org
-Subject: Re: 2 NFS server for the same mount point ?
-Message-ID: <20120724155304.GA9721@us.ibm.com>
-References: <500EBB69.5000205@physics.umanitoba.ca>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <500EBB69.5000205@physics.umanitoba.ca>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:36361 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752061Ab2GHDRx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jul 2012 23:17:53 -0400
+From: Namjae Jeon <linkinjeon@gmail.com>
+To: SteveD@redhat.com, bfields@fieldses.org, Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Namjae Jeon <linkinjeon@gmail.com>,
+        Vivek Trivedi <vtrivedi018@gmail.com>
+Subject: [PATCH] nfs-util: Add cache_flush in mountd UMNT procedure.
+Date: Sat,  7 Jul 2012 23:17:39 -0400
+Message-Id: <1341717459-7297-1-git-send-email-linkinjeon@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Maiko Langelaar [maiko@physics.umanitoba.ca] wrote:
-> I want to move the original mount points over to Server B !
-> 
-> Question : Can I export the SAME mount points on 2 NFS servers
-> for the same subnet ? I figure yes, because any particular NFS
-> client will *target* a particular server. BUT the RPC nature of
-> the NFS protocol makes me a bit nervous about doing so.
+For removing storage device - user needs to safely un-mount the device
+and then eject. But if 'EBUSY' occurs in umount then it will create
+confusion for the user as it will mean some I/O is in progress - and
+won't allow user to safely ejecting device.
 
-Yes, you can.
+1. Without this patch:
+
+On NFS Client:
+$ mount.nfs <NFS_SERVER>:/mnt /mnt
+$ umount.nfs /mnt
+
+On NFS Server:
+$ umount /mnt
+umount: can't umount /mnt: Device or resource busy
+
+2. With this patch:
+
+On NFS Client:
+$ mount.nfs <NFS_SERVER>:/mnt /mnt
+$ umount.nfs /mnt
+
+On NFS Server:
+$ umount.nfs /mnt --> umount successful
+
+Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
+Signed-off-by: Vivek Trivedi <vtrivedi018@gmail.com>
+---
+ utils/mountd/mountd.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index bcf5080..2b190fb 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -275,6 +275,7 @@ mount_umnt_1_svc(struct svc_req *rqstp, dirpath *argp, void *UNUSED(resp))
+ 		return 1;
+ 
+ 	mountlist_del(host_ntop(sap, buf, sizeof(buf)), p);
++	cache_flush(1);
+ 	return 1;
+ }
+ 
+@@ -292,6 +293,7 @@ mount_umntall_1_svc(struct svc_req *rqstp, void *UNUSED(argp),
+ 	auth_reload();
+ 
+ 	mountlist_del_all(nfs_getrpccaller(rqstp->rq_xprt));
++	cache_flush(1);
+ 	return 1;
+ }
+ 
+-- 
+1.7.9.5
 
