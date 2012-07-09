@@ -1,143 +1,180 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:25579 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752435Ab2GaSyd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jul 2012 14:54:33 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Idan Kedar <idank@tonian.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Benny Halevy <bhalevy@tonian.com>
-Subject: Re: [PATCH 1/3] pnfs: defer release of pages in layoutget
-Date: Tue, 31 Jul 2012 18:54:07 +0000
-Message-ID: <1343760845.5528.23.camel@lade.trondhjem.org>
-References: <1343037907-26457-1-git-send-email-idank@tonian.com>
-	 <1343037907-26457-2-git-send-email-idank@tonian.com>
-In-Reply-To: <1343037907-26457-2-git-send-email-idank@tonian.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:47984 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751851Ab2GIPoh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jul 2012 11:44:37 -0400
+Received: by mail-gg0-f174.google.com with SMTP id u4so10194450ggl.19
+        for <linux-nfs@vger.kernel.org>; Mon, 09 Jul 2012 08:44:37 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 06/14] NFS: Treat NFS4ERR_CLID_INUSE as a fatal error
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 09 Jul 2012 11:44:35 -0400
+Message-ID: <20120709154435.1604.50788.stgit@degas.1015granger.net>
+In-Reply-To: <20120709153355.1604.14102.stgit@degas.1015granger.net>
+References: <20120709153355.1604.14102.stgit@degas.1015granger.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA3LTIzIGF0IDEzOjA1ICswMzAwLCBJZGFuIEtlZGFyIHdyb3RlOg0KPiB3
-ZSBoYXZlIGVuY291bnRlcmVkIGEgYnVnIHdoZXJlYnkgcmVhZGluZyBhIGxvdCBvZiBmaWxlcyAo
-Y29weWluZw0KPiBmZWRvcmEncyAvYmluKSBmcm9tIGEgcE5GUyBtb3VudCBhbmQgaGl0dGluZyBD
-dHJsK0MgaW4gdGhlIG1pZGRsZSBjYXVzZWQNCj4gYSBnZW5lcmFsIHByb3RlY3Rpb24gZmF1bHQg
-aW4geGRyX3Nocmlua19idWZoZWFkLiB0aGlzIGZ1bmN0aW9uIGlzDQo+IGNhbGxlZCB3aGVuIGRl
-Y29kaW5nIHRoZSByZXNwb25zZSBmcm9tIExBWU9VVEdFVC4gdGhlIGRlY29kaW5nIGlzIGRvbmUN
-Cj4gYnkgYSB3b3JrZXIgdGhyZWFkLCBhbmQgdGhlIGNhbGxlciBvZiBMQVlPVVRHRVQgd2FpdHMg
-Zm9yIHRoZSB3b3JrZXINCj4gdGhyZWFkIHRvIGNvbXBsZXRlLg0KPiANCj4gaGl0dGluZyBDdHJs
-K0MgY2F1c2VkIHRoZSBzeW5jaHJvbm91cyB3YWl0IHRvIGVuZCBhbmQgdGhlIG5leHQgdGhpbmcg
-dGhlDQo+IGNhbGxlciBkb2VzIGlzIHRvIGZyZWUgdGhlIHBhZ2VzLCBzbyB3aGVuIHRoZSB3b3Jr
-ZXIgdGhyZWFkIGNhbGxzDQo+IHhkcl9zaHJpbmtfYnVmaGVhZCwgdGhlIHBhZ2VzIGFyZSBnb25l
-LiB0aGVyZWZvcmUsIHRoZSBjbGVhbnVwIG9mIHRoZXNlDQo+IHBhZ2VzIGhhcyBiZWVuIG1vdmVk
-IHRvIG5mczRfbGF5b3V0Z2V0X3JlbGVhc2UuDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBJZGFuIEtl
-ZGFyIDxpZGFua0B0b25pYW4uY29tPg0KPiBTaWduZWQtb2ZmLWJ5OiBCZW5ueSBIYWxldnkgPGJo
-YWxldnlAdG9uaWFuLmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvbmZzNHByb2MuYyB8ICAgNTcgKysr
-KysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKy0NCj4gIGZz
-L25mcy9wbmZzLmMgICAgIHwgICAzOSArLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0NCj4gIGZzL25mcy9wbmZzLmggICAgIHwgICAgMiArLQ0KPiAgMyBmaWxlcyBjaGFuZ2VkLCA1
-OCBpbnNlcnRpb25zKCspLCA0MCBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9u
-ZnMvbmZzNHByb2MuYyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+IGluZGV4IDE1ZmM3ZTQuLjMxYTc4
-NTggMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9uZnM0cHJvYy5jDQo+ICsrKyBiL2ZzL25mcy9uZnM0
-cHJvYy5jDQo+IEBAIC02MTY0LDExICs2MTY0LDU4IEBAIHN0YXRpYyB2b2lkIG5mczRfbGF5b3V0
-Z2V0X2RvbmUoc3RydWN0IHJwY190YXNrICp0YXNrLCB2b2lkICpjYWxsZGF0YSkNCj4gIAlkcHJp
-bnRrKCI8LS0gJXNcbiIsIF9fZnVuY19fKTsNCj4gIH0NCj4gIA0KPiArc3RhdGljIHUzMiBtYXhf
-cmVzcG9uc2VfcGFnZXMoc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlcikNCj4gK3sNCj4gKwl1MzIg
-bWF4X3Jlc3Bfc3ogPSBzZXJ2ZXItPm5mc19jbGllbnQtPmNsX3Nlc3Npb24tPmZjX2F0dHJzLm1h
-eF9yZXNwX3N6Ow0KPiArCXJldHVybiBuZnNfcGFnZV9hcnJheV9sZW4oMCwgbWF4X3Jlc3Bfc3op
-Ow0KPiArfQ0KPiArDQo+ICtzdGF0aWMgdm9pZCBmcmVlX3BhZ2V2ZWMoc3RydWN0IHBhZ2UgKipw
-YWdlcywgdTMyIHNpemUpDQoNCldlIGFscmVhZHkgaGF2ZSBhICdzdHJ1Y3QgcGFnZXZlYycgKHNl
-ZSBpbmNsdWRlL2xpbnV4L3BhZ2V2ZWMuaCksIHNvIHRoZQ0KYWJvdmUgbmFtZSBpcyBjb25mdXNp
-bmcuIEluIGFkZGl0aW9uLCB5b3UgcmVhbGx5IHNob3VsZCB1c2UgYSAnbmZzNF8nDQpwcmVmaXgg
-aW4gb3JkZXIgdG8gYmUgY29uc2lzdGVudCB3aXRoIHRoZSBuYW1pbmcgc2NoZW1lIGZvciBmdW5j
-dGlvbnMgaW4NCmZzL25mcy9uZnM0cHJvYy5jDQoNCj4gK3sNCj4gKwlpbnQgaTsNCj4gKw0KPiAr
-CWlmICghcGFnZXMpDQo+ICsJCXJldHVybjsNCj4gKw0KPiArCWZvciAoaSA9IDA7IGkgPCBzaXpl
-OyBpKyspIHsNCj4gKwkJaWYgKCFwYWdlc1tpXSkNCj4gKwkJCWJyZWFrOw0KPiArCQlfX2ZyZWVf
-cGFnZShwYWdlc1tpXSk7DQo+ICsJfQ0KPiArCWtmcmVlKHBhZ2VzKTsNCj4gK30NCj4gKw0KPiAr
-c3RhdGljIHN0cnVjdCBwYWdlICoqYWxsb2NfcGFnZXZlYyh1MzIgc2l6ZSwgZ2ZwX3QgZ2ZwX2Zs
-YWdzKQ0KDQpEaXR0by4gU2VlIGFib3ZlLi4uDQoNCj4gK3sNCj4gKwlzdHJ1Y3QgcGFnZSAqKnBh
-Z2VzOw0KPiArCWludCBpOw0KPiArDQo+ICsJcGFnZXMgPSBremFsbG9jKHNpemUgKiBzaXplb2Yo
-c3RydWN0IHBhZ2UgKiksIGdmcF9mbGFncyk7DQoNClBsZWFzZSB1c2Uga2NhbGxvYyB3aGVuIGFs
-bG9jYXRpbmcgYSB6ZXJvLWluaXRpYWxpc2VkIGFycmF5Lg0KDQo+ICsJaWYgKCFwYWdlcykgew0K
-PiArCQlkcHJpbnRrKCIlczogY2FuJ3QgYWxsb2MgYXJyYXkgb2YgJXp1IHBhZ2VzXG4iLCBfX2Z1
-bmNfXywgc2l6ZSk7DQo+ICsJCXJldHVybiBOVUxMOw0KPiArCX0NCj4gKw0KPiArCWZvciAoaSA9
-IDA7IGkgPCBzaXplOyBpKyspIHsNCj4gKwkJcGFnZXNbaV0gPSBhbGxvY19wYWdlKGdmcF9mbGFn
-cyk7DQo+ICsJCWlmICghcGFnZXNbaV0pIHsNCj4gKwkJCWRwcmludGsoIiVzOiBmYWlsZWQgdG8g
-YWxsb2NhdGUgcGFnZVxuIiwgX19mdW5jX18pOw0KPiArCQkJZnJlZV9wYWdldmVjKHBhZ2VzLCBz
-aXplKTsNCj4gKwkJCXJldHVybiBOVUxMOw0KPiArCQl9DQo+ICsJfQ0KPiArDQo+ICsJcmV0dXJu
-IHBhZ2VzOw0KPiArfQ0KPiArDQo+ICBzdGF0aWMgdm9pZCBuZnM0X2xheW91dGdldF9yZWxlYXNl
-KHZvaWQgKmNhbGxkYXRhKQ0KPiAgew0KPiAgCXN0cnVjdCBuZnM0X2xheW91dGdldCAqbGdwID0g
-Y2FsbGRhdGE7DQo+ICsJc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlciA9IE5GU19TRVJWRVIobGdw
-LT5hcmdzLmlub2RlKTsNCj4gKwl1MzIgbWF4X3BhZ2VzID0gbWF4X3Jlc3BvbnNlX3BhZ2VzKHNl
-cnZlcik7DQo+ICANCj4gIAlkcHJpbnRrKCItLT4gJXNcbiIsIF9fZnVuY19fKTsNCj4gKwlmcmVl
-X3BhZ2V2ZWMobGdwLT5hcmdzLmxheW91dC5wYWdlcywgbWF4X3BhZ2VzKTsNCj4gIAlwdXRfbmZz
-X29wZW5fY29udGV4dChsZ3AtPmFyZ3MuY3R4KTsNCj4gIAlrZnJlZShjYWxsZGF0YSk7DQo+ICAJ
-ZHByaW50aygiPC0tICVzXG4iLCBfX2Z1bmNfXyk7DQo+IEBAIC02MTgwLDkgKzYyMjcsMTAgQEAg
-c3RhdGljIGNvbnN0IHN0cnVjdCBycGNfY2FsbF9vcHMgbmZzNF9sYXlvdXRnZXRfY2FsbF9vcHMg
-PSB7DQo+ICAJLnJwY19yZWxlYXNlID0gbmZzNF9sYXlvdXRnZXRfcmVsZWFzZSwNCj4gIH07DQo+
-ICANCj4gLWludCBuZnM0X3Byb2NfbGF5b3V0Z2V0KHN0cnVjdCBuZnM0X2xheW91dGdldCAqbGdw
-KQ0KPiAraW50IG5mczRfcHJvY19sYXlvdXRnZXQoc3RydWN0IG5mczRfbGF5b3V0Z2V0ICpsZ3As
-IGdmcF90IGdmcF9mbGFncykNCj4gIHsNCj4gIAlzdHJ1Y3QgbmZzX3NlcnZlciAqc2VydmVyID0g
-TkZTX1NFUlZFUihsZ3AtPmFyZ3MuaW5vZGUpOw0KPiArCXUzMiBtYXhfcGFnZXMgPSBtYXhfcmVz
-cG9uc2VfcGFnZXMoc2VydmVyKTsNCj4gIAlzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2s7DQo+ICAJc3Ry
-dWN0IHJwY19tZXNzYWdlIG1zZyA9IHsNCj4gIAkJLnJwY19wcm9jID0gJm5mczRfcHJvY2VkdXJl
-c1tORlNQUk9DNF9DTE5UX0xBWU9VVEdFVF0sDQo+IEBAIC02MjAwLDYgKzYyNDgsMTMgQEAgaW50
-IG5mczRfcHJvY19sYXlvdXRnZXQoc3RydWN0IG5mczRfbGF5b3V0Z2V0ICpsZ3ApDQo+ICANCj4g
-IAlkcHJpbnRrKCItLT4gJXNcbiIsIF9fZnVuY19fKTsNCj4gIA0KPiArCWxncC0+YXJncy5sYXlv
-dXQucGFnZXMgPSBhbGxvY19wYWdldmVjKG1heF9wYWdlcywgZ2ZwX2ZsYWdzKTsNCj4gKwlpZiAo
-IWxncC0+YXJncy5sYXlvdXQucGFnZXMpIHsNCj4gKwkJbmZzNF9sYXlvdXRnZXRfcmVsZWFzZShs
-Z3ApOw0KPiArCQlyZXR1cm4gLUVOT01FTTsNCj4gKwl9DQo+ICsJbGdwLT5hcmdzLmxheW91dC5w
-Z2xlbiA9IG1heF9wYWdlcyAqIFBBR0VfU0laRTsNCj4gKw0KPiAgCWxncC0+cmVzLmxheW91dHAg
-PSAmbGdwLT5hcmdzLmxheW91dDsNCj4gIAlsZ3AtPnJlcy5zZXFfcmVzLnNyX3Nsb3QgPSBOVUxM
-Ow0KPiAgCW5mczQxX2luaXRfc2VxdWVuY2UoJmxncC0+YXJncy5zZXFfYXJncywgJmxncC0+cmVz
-LnNlcV9yZXMsIDApOw0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL3BuZnMuYyBiL2ZzL25mcy9wbmZz
-LmMNCj4gaW5kZXggYmJjNDljYS4uODIyOWEwZSAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL3BuZnMu
-Yw0KPiArKysgYi9mcy9uZnMvcG5mcy5jDQo+IEBAIC01ODMsOSArNTgzLDYgQEAgc2VuZF9sYXlv
-dXRnZXQoc3RydWN0IHBuZnNfbGF5b3V0X2hkciAqbG8sDQo+ICAJc3RydWN0IG5mc19zZXJ2ZXIg
-KnNlcnZlciA9IE5GU19TRVJWRVIoaW5vKTsNCj4gIAlzdHJ1Y3QgbmZzNF9sYXlvdXRnZXQgKmxn
-cDsNCj4gIAlzdHJ1Y3QgcG5mc19sYXlvdXRfc2VnbWVudCAqbHNlZyA9IE5VTEw7DQo+IC0Jc3Ry
-dWN0IHBhZ2UgKipwYWdlcyA9IE5VTEw7DQo+IC0JaW50IGk7DQo+IC0JdTMyIG1heF9yZXNwX3N6
-LCBtYXhfcGFnZXM7DQo+ICANCj4gIAlkcHJpbnRrKCItLT4gJXNcbiIsIF9fZnVuY19fKTsNCj4g
-IA0KPiBAQCAtNTk0LDIwICs1OTEsNiBAQCBzZW5kX2xheW91dGdldChzdHJ1Y3QgcG5mc19sYXlv
-dXRfaGRyICpsbywNCj4gIAlpZiAobGdwID09IE5VTEwpDQo+ICAJCXJldHVybiBOVUxMOw0KPiAg
-DQo+IC0JLyogYWxsb2NhdGUgcGFnZXMgZm9yIHhkciBwb3N0IHByb2Nlc3NpbmcgKi8NCj4gLQlt
-YXhfcmVzcF9zeiA9IHNlcnZlci0+bmZzX2NsaWVudC0+Y2xfc2Vzc2lvbi0+ZmNfYXR0cnMubWF4
-X3Jlc3Bfc3o7DQo+IC0JbWF4X3BhZ2VzID0gbmZzX3BhZ2VfYXJyYXlfbGVuKDAsIG1heF9yZXNw
-X3N6KTsNCj4gLQ0KPiAtCXBhZ2VzID0ga2NhbGxvYyhtYXhfcGFnZXMsIHNpemVvZihzdHJ1Y3Qg
-cGFnZSAqKSwgZ2ZwX2ZsYWdzKTsNCj4gLQlpZiAoIXBhZ2VzKQ0KPiAtCQlnb3RvIG91dF9lcnJf
-ZnJlZTsNCj4gLQ0KPiAtCWZvciAoaSA9IDA7IGkgPCBtYXhfcGFnZXM7IGkrKykgew0KPiAtCQlw
-YWdlc1tpXSA9IGFsbG9jX3BhZ2UoZ2ZwX2ZsYWdzKTsNCj4gLQkJaWYgKCFwYWdlc1tpXSkNCj4g
-LQkJCWdvdG8gb3V0X2Vycl9mcmVlOw0KPiAtCX0NCj4gLQ0KPiAgCWxncC0+YXJncy5taW5sZW5n
-dGggPSBQQUdFX0NBQ0hFX1NJWkU7DQo+ICAJaWYgKGxncC0+YXJncy5taW5sZW5ndGggPiByYW5n
-ZS0+bGVuZ3RoKQ0KPiAgCQlsZ3AtPmFyZ3MubWlubGVuZ3RoID0gcmFuZ2UtPmxlbmd0aDsNCj4g
-QEAgLTYxNiwzOSArNTk5LDE5IEBAIHNlbmRfbGF5b3V0Z2V0KHN0cnVjdCBwbmZzX2xheW91dF9o
-ZHIgKmxvLA0KPiAgCWxncC0+YXJncy50eXBlID0gc2VydmVyLT5wbmZzX2N1cnJfbGQtPmlkOw0K
-PiAgCWxncC0+YXJncy5pbm9kZSA9IGlubzsNCj4gIAlsZ3AtPmFyZ3MuY3R4ID0gZ2V0X25mc19v
-cGVuX2NvbnRleHQoY3R4KTsNCj4gLQlsZ3AtPmFyZ3MubGF5b3V0LnBhZ2VzID0gcGFnZXM7DQo+
-IC0JbGdwLT5hcmdzLmxheW91dC5wZ2xlbiA9IG1heF9wYWdlcyAqIFBBR0VfU0laRTsNCj4gIAls
-Z3AtPmxzZWdwcCA9ICZsc2VnOw0KPiAgCWxncC0+Z2ZwX2ZsYWdzID0gZ2ZwX2ZsYWdzOw0KPiAg
-DQo+ICAJLyogU3luY2hyb25vdXNseSByZXRyaWV2ZSBsYXlvdXQgaW5mb3JtYXRpb24gZnJvbSBz
-ZXJ2ZXIgYW5kDQo+ICAJICogc3RvcmUgaW4gbHNlZy4NCj4gIAkgKi8NCj4gLQluZnM0X3Byb2Nf
-bGF5b3V0Z2V0KGxncCk7DQo+ICsJbmZzNF9wcm9jX2xheW91dGdldChsZ3AsIGdmcF9mbGFncyk7
-DQo+ICAJaWYgKCFsc2VnKSB7DQo+ICAJCS8qIHJlbWVtYmVyIHRoYXQgTEFZT1VUR0VUIGZhaWxl
-ZCBhbmQgc3VzcGVuZCB0cnlpbmcgKi8NCj4gIAkJc2V0X2JpdChsb19mYWlsX2JpdChyYW5nZS0+
-aW9tb2RlKSwgJmxvLT5wbGhfZmxhZ3MpOw0KPiAgCX0NCj4gIA0KPiAtCS8qIGZyZWUgeGRyIHBh
-Z2VzICovDQo+IC0JZm9yIChpID0gMDsgaSA8IG1heF9wYWdlczsgaSsrKQ0KPiAtCQlfX2ZyZWVf
-cGFnZShwYWdlc1tpXSk7DQo+IC0Ja2ZyZWUocGFnZXMpOw0KPiAtDQo+ICAJcmV0dXJuIGxzZWc7
-DQo+IC0NCj4gLW91dF9lcnJfZnJlZToNCj4gLQkvKiBmcmVlIGFueSBhbGxvY2F0ZWQgeGRyIHBh
-Z2VzLCBsZ3AgYXMgaXQncyBub3QgdXNlZCAqLw0KPiAtCWlmIChwYWdlcykgew0KPiAtCQlmb3Ig
-KGkgPSAwOyBpIDwgbWF4X3BhZ2VzOyBpKyspIHsNCj4gLQkJCWlmICghcGFnZXNbaV0pDQo+IC0J
-CQkJYnJlYWs7DQo+IC0JCQlfX2ZyZWVfcGFnZShwYWdlc1tpXSk7DQo+IC0JCX0NCj4gLQkJa2Zy
-ZWUocGFnZXMpOw0KPiAtCX0NCj4gLQlrZnJlZShsZ3ApOw0KPiAtCXJldHVybiBOVUxMOw0KPiAg
-fQ0KPiAgDQo+ICAvKiBJbml0aWF0ZXMgYSBMQVlPVVRSRVRVUk4oRklMRSkgKi8NCj4gZGlmZiAt
-LWdpdCBhL2ZzL25mcy9wbmZzLmggYi9mcy9uZnMvcG5mcy5oDQo+IGluZGV4IDY0ZjkwZDguLjlh
-MzFmZjMgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9wbmZzLmgNCj4gKysrIGIvZnMvbmZzL3BuZnMu
-aA0KPiBAQCAtMTcxLDcgKzE3MSw3IEBAIGV4dGVybiBpbnQgbmZzNF9wcm9jX2dldGRldmljZWxp
-c3Qoc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlciwNCj4gIAkJCQkgICBzdHJ1Y3QgcG5mc19kZXZp
-Y2VsaXN0ICpkZXZsaXN0KTsNCj4gIGV4dGVybiBpbnQgbmZzNF9wcm9jX2dldGRldmljZWluZm8o
-c3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlciwNCj4gIAkJCQkgICBzdHJ1Y3QgcG5mc19kZXZpY2Ug
-KmRldik7DQo+IC1leHRlcm4gaW50IG5mczRfcHJvY19sYXlvdXRnZXQoc3RydWN0IG5mczRfbGF5
-b3V0Z2V0ICpsZ3ApOw0KPiArZXh0ZXJuIGludCBuZnM0X3Byb2NfbGF5b3V0Z2V0KHN0cnVjdCBu
-ZnM0X2xheW91dGdldCAqbGdwLCBnZnBfdCBnZnBfZmxhZ3MpOw0KPiAgZXh0ZXJuIGludCBuZnM0
-X3Byb2NfbGF5b3V0cmV0dXJuKHN0cnVjdCBuZnM0X2xheW91dHJldHVybiAqbHJwKTsNCj4gIA0K
-PiAgLyogcG5mcy5jICovDQoNCg==
+For NFSv4 minor version 0, currently the cl_id_uniquifier allows the
+Linux client to generate a unique nfs_client_id4 string whenever a
+server replies with NFS4ERR_CLID_INUSE.
+
+This implementation seems to be based on a flawed reading of RFC
+3530.  NFS4ERR_CLID_INUSE actually means that the client has presented
+this nfs_client_id4 string with a different principal at some time in
+the past, and that lease is still in use on the server.
+
+For a Linux client this might be rather difficult to achieve: the
+authentication flavor is named right in the nfs_client_id4.id
+string.  If we change flavors, we change strings automatically.
+
+So, practically speaking, NFS4ERR_CLID_INUSE means there is some other
+client using our string.  There is not much that can be done to
+recover automatically.  Let's make it a permanent error.
+
+Remove the recovery logic in nfs4_proc_setclientid(), and remove the
+cl_id_uniquifier field from the nfs_client data structure.  And,
+remove the authentication flavor from the nfs_client_id4 string.
+
+Keeping the authentication flavor in the nfs_client_id4.id string
+means that we could have a separate lease for each authentication
+flavor used by mounts on the client.  But we want just one lease for
+all the mounts on this client.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ fs/nfs/nfs4proc.c         |   54 ++++++++++++++++++---------------------------
+ fs/nfs/nfs4state.c        |    7 +++++-
+ include/linux/nfs_fs_sb.h |    3 +--
+ 3 files changed, 29 insertions(+), 35 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 7adb705..63a3cf0 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -259,7 +259,12 @@ static int nfs4_wait_clnt_recover(struct nfs_client *clp)
+ 
+ 	res = wait_on_bit(&clp->cl_state, NFS4CLNT_MANAGER_RUNNING,
+ 			nfs_wait_bit_killable, TASK_KILLABLE);
+-	return res;
++	if (res)
++		return res;
++
++	if (clp->cl_cons_state < 0)
++		return clp->cl_cons_state;
++	return 0;
+ }
+ 
+ static int nfs4_delay(struct rpc_clnt *clnt, long *timeout)
+@@ -4038,42 +4043,28 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 		.rpc_resp = res,
+ 		.rpc_cred = cred,
+ 	};
+-	int loop = 0;
+-	int status;
+ 
++	/* nfs_client_id4 */
+ 	nfs4_init_boot_verifier(clp, &sc_verifier);
+-
+-	for(;;) {
+-		rcu_read_lock();
+-		setclientid.sc_name_len = scnprintf(setclientid.sc_name,
+-				sizeof(setclientid.sc_name), "%s/%s %s %s %u",
+-				clp->cl_ipaddr,
+-				rpc_peeraddr2str(clp->cl_rpcclient,
+-							RPC_DISPLAY_ADDR),
+-				rpc_peeraddr2str(clp->cl_rpcclient,
+-							RPC_DISPLAY_PROTO),
+-				clp->cl_rpcclient->cl_auth->au_ops->au_name,
+-				clp->cl_id_uniquifier);
+-		setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
++	rcu_read_lock();
++	setclientid.sc_name_len = scnprintf(setclientid.sc_name,
++			sizeof(setclientid.sc_name), "%s/%s %s",
++			clp->cl_ipaddr,
++			rpc_peeraddr2str(clp->cl_rpcclient,
++						RPC_DISPLAY_ADDR),
++			rpc_peeraddr2str(clp->cl_rpcclient,
++						RPC_DISPLAY_PROTO));
++	/* cb_client4 */
++	setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
+ 				sizeof(setclientid.sc_netid),
+ 				rpc_peeraddr2str(clp->cl_rpcclient,
+ 							RPC_DISPLAY_NETID));
+-		setclientid.sc_uaddr_len = scnprintf(setclientid.sc_uaddr,
++	rcu_read_unlock();
++	setclientid.sc_uaddr_len = scnprintf(setclientid.sc_uaddr,
+ 				sizeof(setclientid.sc_uaddr), "%s.%u.%u",
+ 				clp->cl_ipaddr, port >> 8, port & 255);
+-		rcu_read_unlock();
+ 
+-		status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
+-		if (status != -NFS4ERR_CLID_INUSE)
+-			break;
+-		if (loop != 0) {
+-			++clp->cl_id_uniquifier;
+-			break;
+-		}
+-		++loop;
+-		ssleep(clp->cl_lease_time / HZ + 1);
+-	}
+-	return status;
++	return rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
+ }
+ 
+ int nfs4_proc_setclientid_confirm(struct nfs_client *clp,
+@@ -5275,10 +5266,9 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ 	nfs4_init_boot_verifier(clp, &verifier);
+ 
+ 	args.id_len = scnprintf(args.id, sizeof(args.id),
+-				"%s/%s/%u",
++				"%s/%s",
+ 				clp->cl_ipaddr,
+-				clp->cl_rpcclient->cl_nodename,
+-				clp->cl_rpcclient->cl_auth->au_flavor);
++				clp->cl_rpcclient->cl_nodename);
+ 
+ 	res.server_owner = kzalloc(sizeof(struct nfs41_server_owner),
+ 					GFP_NOFS);
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index f38300e..a2c1153 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1606,10 +1606,15 @@ static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
+ 			return -ESERVERFAULT;
+ 		/* Lease confirmation error: retry after purging the lease */
+ 		ssleep(1);
+-	case -NFS4ERR_CLID_INUSE:
+ 	case -NFS4ERR_STALE_CLIENTID:
+ 		clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
+ 		break;
++	case -NFS4ERR_CLID_INUSE:
++		printk(KERN_ERR "NFS: Server %s: client ID already in use\n",
++			clp->cl_hostname);
++		nfs_mark_client_ready(clp, -EPERM);
++		clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
++		return -EPERM;
+ 	case -EACCES:
+ 		if (clp->cl_machine_cred == NULL)
+ 			return -EACCES;
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index f58325a..6532765 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -69,10 +69,9 @@ struct nfs_client {
+ 	struct idmap *		cl_idmap;
+ 
+ 	/* Our own IP address, as a null-terminated string.
+-	 * This is used to generate the clientid, and the callback address.
++	 * This is used to generate the mv0 callback address.
+ 	 */
+ 	char			cl_ipaddr[48];
+-	unsigned char		cl_id_uniquifier;
+ 	u32			cl_cb_ident;	/* v4.0 callback identifier */
+ 	const struct nfs4_minor_version_ops *cl_mvops;
+ 
+
