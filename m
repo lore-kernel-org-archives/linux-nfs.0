@@ -1,250 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:47422 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:6014 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752269Ab2GYSPf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Jul 2012 14:15:35 -0400
-Message-ID: <501037B6.9080800@netapp.com>
-Date: Wed, 25 Jul 2012 14:15:18 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+	id S1752814Ab2GIUDW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Jul 2012 16:03:22 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 03/14] NFS: State reclaim clears OPEN and LOCK state
+Date: Mon, 9 Jul 2012 20:03:21 +0000
+Message-ID: <1341864200.15267.15.camel@lade.trondhjem.org>
+References: <20120709153355.1604.14102.stgit@degas.1015granger.net>
+	 <20120709154409.1604.59004.stgit@degas.1015granger.net>
+In-Reply-To: <20120709154409.1604.59004.stgit@degas.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: David Howells <dhowells@redhat.com>
-CC: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, steved@redhat.com,
-        jlayton@redhat.com
-Subject: Re: [PATCH 2/2] NFS: Combine the idmapper key types
-References: <20120725155336.24392.25186.stgit@warthog.procyon.org.uk> <20120725155347.24392.44505.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20120725155347.24392.44505.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi David,
-
-On 07/25/2012 11:53 AM, David Howells wrote:
-> The NFS idmapper has two key types (normal and legacy) but should only use one
-> if it can - otherwise it risks having twice as many keys as it would otherwise
-> need.
-> 
-> Get rid of the legacy key type and have the normal key type have a
-> .request_key() op.  The choice of which instantiation method is then made by
-> the upcaller, in order:
-> 
->  (1) If there's no auxdata, the normal method is called, invoking
->      /sbin/request-key.
-> 
->  (2) If there's something attached to the idmapper pipe (rpc.idmapd) then use
->      that.
-> 
->  (3) Fall back to (1).
-> 
-> Note that this does change the prioritisation of normal vs legacy if both are
-> available.
-> 
-> Signed-off-by: David Howells <dhowells@redhat.com>
-> ---
-> 
->  fs/nfs/idmap.c              |   61 ++++++++++++++++++-------------------------
->  include/linux/key-type.h    |    3 ++
->  security/keys/request_key.c |    6 ++--
->  3 files changed, 31 insertions(+), 39 deletions(-)
-> 
-> diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-> index 1b5058b..a021d93 100644
-> --- a/fs/nfs/idmap.c
-> +++ b/fs/nfs/idmap.c
-> @@ -55,7 +55,6 @@
->  /* Default cache timeout is 10 minutes */
->  unsigned int nfs_idmap_cache_timeout = 600;
->  static const struct cred *id_resolver_cache;
-> -static struct key_type key_type_id_resolver_legacy;
->  
->  struct idmap {
->  	struct rpc_pipe		*idmap_pipe;
-> @@ -63,6 +62,8 @@ struct idmap {
->  	struct mutex		idmap_mutex;
->  };
->  
-> +static int nfs_idmap_upcall(struct key_construction *, const char *, void *);
-> +
->  /**
->   * nfs_fattr_init_names - initialise the nfs_fattr owner_name/group_name fields
->   * @fattr: fully initialised struct nfs_fattr
-> @@ -173,6 +174,7 @@ static struct key_type key_type_id_resolver = {
->  	.destroy	= user_destroy,
->  	.describe	= user_describe,
->  	.read		= user_read,
-> +	.request_key	= nfs_idmap_upcall,
->  };
->  
->  static int nfs_idmap_init_keyring(void)
-> @@ -205,18 +207,12 @@ static int nfs_idmap_init_keyring(void)
->  	if (ret < 0)
->  		goto failed_put_key;
->  
-> -	ret = register_key_type(&key_type_id_resolver_legacy);
-> -	if (ret < 0)
-> -		goto failed_reg_legacy;
-> -
->  	set_bit(KEY_FLAG_ROOT_CAN_CLEAR, &keyring->flags);
->  	cred->thread_keyring = keyring;
->  	cred->jit_keyring = KEY_REQKEY_DEFL_THREAD_KEYRING;
->  	id_resolver_cache = cred;
->  	return 0;
->  
-> -failed_reg_legacy:
-> -	unregister_key_type(&key_type_id_resolver);
->  failed_put_key:
->  	key_put(keyring);
->  failed_put_cred:
-> @@ -228,7 +224,6 @@ static void nfs_idmap_quit_keyring(void)
->  {
->  	key_revoke(id_resolver_cache->thread_keyring);
->  	unregister_key_type(&key_type_id_resolver);
-> -	unregister_key_type(&key_type_id_resolver_legacy);
->  	put_cred(id_resolver_cache);
->  }
->  
-> @@ -318,16 +313,12 @@ static ssize_t nfs_idmap_get_key(const char *name, size_t namelen,
->  				 const char *type, void *data,
->  				 size_t data_size, struct idmap *idmap)
->  {
-> -	ssize_t ret = nfs_idmap_request_key(&key_type_id_resolver,
-> -					    name, namelen, type, data,
-> -					    data_size, NULL);
-> -	if (ret < 0) {
-> -		mutex_lock(&idmap->idmap_mutex);
-> -		ret = nfs_idmap_request_key(&key_type_id_resolver_legacy,
-> -					    name, namelen, type, data,
-> -					    data_size, idmap);
-> -		mutex_unlock(&idmap->idmap_mutex);
-> -	}
-> +	ssize_t ret;
-> +	mutex_lock(&idmap->idmap_mutex);
-> +	ret = nfs_idmap_request_key(&key_type_id_resolver,
-> +				    name, namelen, type, data,
-> +				    data_size, idmap);
-> +	mutex_unlock(&idmap->idmap_mutex);
->  	return ret;
->  }
->  
-> @@ -380,7 +371,6 @@ static const match_table_t nfs_idmap_tokens = {
->  	{ Opt_find_err, NULL }
->  };
->  
-> -static int nfs_idmap_legacy_upcall(struct key_construction *, const char *, void *);
->  static ssize_t idmap_pipe_downcall(struct file *, const char __user *,
->  				   size_t);
->  static void idmap_pipe_destroy_msg(struct rpc_pipe_msg *);
-> @@ -391,17 +381,6 @@ static const struct rpc_pipe_ops idmap_upcall_ops = {
->  	.destroy_msg	= idmap_pipe_destroy_msg,
->  };
->  
-> -static struct key_type key_type_id_resolver_legacy = {
-> -	.name		= "id_legacy",
-> -	.instantiate	= user_instantiate,
-> -	.match		= user_match,
-> -	.revoke		= user_revoke,
-> -	.destroy	= user_destroy,
-> -	.describe	= user_describe,
-> -	.read		= user_read,
-> -	.request_key	= nfs_idmap_legacy_upcall,
-> -};
-> -
->  static void __nfs_idmap_unregister(struct rpc_pipe *pipe)
->  {
->  	if (pipe->dentry)
-> @@ -658,9 +637,8 @@ out:
->  	return ret;
->  }
->  
-> -static int nfs_idmap_legacy_upcall(struct key_construction *cons,
-> -				   const char *op,
-> -				   void *aux)
-> +static int nfs_idmap_upcall(struct key_construction *cons,
-> +			    const char *op, void *aux)
->  {
->  	struct rpc_pipe_msg *msg;
->  	struct idmap_msg *im;
-> @@ -668,6 +646,10 @@ static int nfs_idmap_legacy_upcall(struct key_construction *cons,
->  	struct key *key = cons->key;
->  	int ret = -ENOMEM;
->  
-> +	/* Use the non-legacy route unless given auxiliary data */
-> +	if (!aux)
-> +		return call_sbin_request_key(cons, op, aux);
-
-struct idmap-s are created when the server is mounted, so I don't think "aux" will ever be null here.
-
-- Bryan
-
-> +
->  	/* msg and im are freed in idmap_pipe_destroy_msg */
->  	msg = kmalloc(sizeof(*msg), GFP_KERNEL);
->  	if (!msg)
-> @@ -685,9 +667,16 @@ static int nfs_idmap_legacy_upcall(struct key_construction *cons,
->  	idmap->idmap_key_cons = cons;
->  
->  	ret = rpc_queue_upcall(idmap->idmap_pipe, msg);
-> -	if (ret < 0)
-> +	if (ret < 0) {
-> +		idmap->idmap_key_cons = NULL;
-> +		if (ret == -EPIPE) {
-> +			/* rpc.idmapd is not listening */
-> +			kfree(im);
-> +			kfree(msg);
-> +			return call_sbin_request_key(cons, op, NULL);
-> +		}
->  		goto out2;
-> -
-> +	}
->  	return ret;
->  
->  out2:
-> @@ -778,7 +767,7 @@ out_incomplete:
->  static void
->  idmap_pipe_destroy_msg(struct rpc_pipe_msg *msg)
->  {
-> -	/* Free memory allocated in nfs_idmap_legacy_upcall() */
-> +	/* Free memory allocated in the legacy side of nfs_idmap_upcall() */
->  	kfree(msg->data);
->  	kfree(msg);
->  }
-> diff --git a/include/linux/key-type.h b/include/linux/key-type.h
-> index 39e3c08..2d85202 100644
-> --- a/include/linux/key-type.h
-> +++ b/include/linux/key-type.h
-> @@ -28,6 +28,9 @@ struct key_construction {
->  typedef int (*request_key_actor_t)(struct key_construction *key,
->  				   const char *op, void *aux);
->  
-> +extern int call_sbin_request_key(struct key_construction *cons,
-> +				 const char *op, void *aux);
-> +
->  /*
->   * kernel managed key type definition
->   */
-> diff --git a/security/keys/request_key.c b/security/keys/request_key.c
-> index 275c4f9..bac83d1 100644
-> --- a/security/keys/request_key.c
-> +++ b/security/keys/request_key.c
-> @@ -102,9 +102,8 @@ static int call_usermodehelper_keys(char *path, char **argv, char **envp,
->   * Request userspace finish the construction of a key
->   * - execute "/sbin/request-key <op> <key> <uid> <gid> <keyring> <keyring> <keyring>"
->   */
-> -static int call_sbin_request_key(struct key_construction *cons,
-> -				 const char *op,
-> -				 void *aux)
-> +int call_sbin_request_key(struct key_construction *cons,
-> +			  const char *op, void *aux)
->  {
->  	const struct cred *cred = current_cred();
->  	key_serial_t prkey, sskey;
-> @@ -204,6 +203,7 @@ error_alloc:
->  	kleave(" = %d", ret);
->  	return ret;
->  }
-> +EXPORT_SYMBOL_GPL(call_sbin_request_key);
->  
->  /*
->   * Call out to userspace for key construction.
-> 
-
+T24gTW9uLCAyMDEyLTA3LTA5IGF0IDExOjQ0IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+QmVmb3JlIGJlZ2lubmluZyBzdGF0ZSByZWNvdmVyeSwgdGhlIHN0YXRlIG1hbmFnZXIgemFwcyBv
+cGVuIGFuZCBsb2NrDQo+IHN0YXRlIGZvciBlYWNoIG9wZW4gZmlsZSwgdGh1cyB0aGUgInN0YXRl
+LT5mbGFncyAmIGZsYWdzIiB0ZXN0IGluDQo+IG5mczQxX3tvcGVuLGxvY2t9X2V4cGlyZWQoKSBh
+bHdheXMgZmFpbHMgZHVyaW5nIHJlY2xhaW0uICBCdXQgb3Blbg0KPiByZWNvdmVyeSBpcyBzdGls
+bCBuZWVkZWQgZm9yIHRoZXNlIGZpbGVzLg0KPiANCj4gVG8gZm9yY2UgYSBjYWxsIHRvIG5mczRf
+b3Blbl9leHBpcmVkKCksIGNoYW5nZSB0aGUgZGVmYXVsdCByZXR1cm4NCj4gdmFsdWUgZm9yIG5m
+czQxX2NoZWNrX2V4cGlyZWRfc3RhdGVpZCgpIHRvIGZvcmNlIG9wZW4gcmVjb3ZlcnksIGFuZA0K
+PiB0aGUgZGVmYXVsdCByZXR1cm4gdmFsdWUgZm9yIG5mczQxX2NoZWNrX2xvY2tzKCkgdG8gZm9y
+Y2UgbG9jaw0KPiByZWNvdmVyeSwgaWYgdGhlIHJlcXVlc3RlZCBmbGFncyBhcmUgY2xlYXIuICBG
+aXggc3VnZ2VzdGVkIGJ5IEJyeWFuDQo+IFNjaHVtYWtlci4NCg0KVGhpcyBtYWtlcyBhYnNvbHV0
+ZWx5IG5vIHNlbnNlLi4uDQoNClRoZSBwb2ludCBvZiB0aGVzZSBmdW5jdGlvbiBzaG91bGQgYmUg
+dG8gdGVzdCBpZiB0aGUgc3RhdGVpZCBpcyBzdGlsbA0KdmFsaWQuIElmIGl0IGlzLCB0aGVuIHdl
+IG5lZWQgbm8gcmVjb3ZlcnkuDQpJZiB0aGUgc3RhdGVpZCBpcyBfbm90XyB2YWxpZCwgdGhlbiB3
+ZSBmcmVlIGl0LCBhbmQgdGhlbiBkZWNpZGUgaWYNCnJlY292ZXJ5IGlzIG5lZWRlZC4gVGhlIG9u
+bHkgZXhjZXB0aW9uIHRvIHRoYXQgcnVsZSBpcyBpZiBURVNUX1NUQVRFSUQNCnJldHVybnMgTkZT
+NEVSUl9CQURfU1RBVEVJRCwgKGluIHdoaWNoIGNhc2Ugd2UgZG9uJ3QgbmVlZCB0byBmcmVlIHRo
+ZQ0Kc3RhdGVpZCBidXQganVzdCByZWNvdmVyIGltbWVkaWF0ZWx5KS4NCg0KSU9XOiBUaGUgc3Rh
+dGUtPmZsYWdzIGFuZCBsc3AtPmxzX2ZsYWdzIHRlc3RzIHNob3VsZCBqdXN0IGJlIHJlbW92ZWQu
+DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0K
+TmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
