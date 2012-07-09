@@ -1,38 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail4-relais-sop.national.inria.fr ([192.134.164.105]:45215
-	"EHLO mail4-relais-sop.national.inria.fr" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750922Ab2GHJP5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Jul 2012 05:15:57 -0400
-Date: Sun, 8 Jul 2012 11:15:54 +0200 (CEST)
-From: Julia Lawall <julia.lawall@lip6.fr>
-To: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: question about fs/nfs/direct.c
-Message-ID: <alpine.DEB.2.02.1207081113180.2436@localhost6.localdomain6>
+Received: from mx2.netapp.com ([216.240.18.37]:56466 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753159Ab2GIUeR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Jul 2012 16:34:17 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 06/14] NFS: Treat NFS4ERR_CLID_INUSE as a fatal error
+Date: Mon, 9 Jul 2012 20:34:14 +0000
+Message-ID: <1341866052.15267.28.camel@lade.trondhjem.org>
+References: <20120709153355.1604.14102.stgit@degas.1015granger.net>
+	 <20120709154435.1604.50788.stgit@degas.1015granger.net>
+	 <1341864627.15267.19.camel@lade.trondhjem.org>
+	 <C8C49406-3B7A-4CB5-9C26-D2A568352E1F@oracle.com>
+In-Reply-To: <C8C49406-3B7A-4CB5-9C26-D2A568352E1F@oracle.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The following code, in the function nfs_direct_write_reschedule, looks 
-strange to me:
-
-         list_for_each_entry_safe(req, tmp, &reqs, wb_list) {
-                 if (!nfs_pageio_add_request(&desc, req)) {
-                         nfs_list_add_request(req, &failed);
-                         spin_lock(cinfo.lock);
-                         dreq->flags = 0;
-                         dreq->error = -EIO;
-                         spin_unlock(cinfo.lock);
-                 }
-                 nfs_release_request(req);
-         }
-         nfs_pageio_complete(&desc);
-
-         while (!list_empty(&failed))
-                 nfs_unlock_and_release_request(req);
-
-After the list_for_each_entry_safe, req is an address at some offset from 
-the list head.  So it does not seem like an appropriate argument to 
-nfs_unlock_and_release_request.
-
-julia
+T24gTW9uLCAyMDEyLTA3LTA5IGF0IDE2OjEyIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+T24gSnVsIDksIDIwMTIsIGF0IDQ6MTAgUE0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+IA0K
+PiA+IE9uIE1vbiwgMjAxMi0wNy0wOSBhdCAxMTo0NCAtMDQwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6
+DQo+ID4+IEZvciBORlN2NCBtaW5vciB2ZXJzaW9uIDAsIGN1cnJlbnRseSB0aGUgY2xfaWRfdW5p
+cXVpZmllciBhbGxvd3MgdGhlDQo+ID4+IExpbnV4IGNsaWVudCB0byBnZW5lcmF0ZSBhIHVuaXF1
+ZSBuZnNfY2xpZW50X2lkNCBzdHJpbmcgd2hlbmV2ZXIgYQ0KPiA+PiBzZXJ2ZXIgcmVwbGllcyB3
+aXRoIE5GUzRFUlJfQ0xJRF9JTlVTRS4NCj4gPj4gDQo+ID4+IFRoaXMgaW1wbGVtZW50YXRpb24g
+c2VlbXMgdG8gYmUgYmFzZWQgb24gYSBmbGF3ZWQgcmVhZGluZyBvZiBSRkMNCj4gPj4gMzUzMC4g
+IE5GUzRFUlJfQ0xJRF9JTlVTRSBhY3R1YWxseSBtZWFucyB0aGF0IHRoZSBjbGllbnQgaGFzIHBy
+ZXNlbnRlZA0KPiA+PiB0aGlzIG5mc19jbGllbnRfaWQ0IHN0cmluZyB3aXRoIGEgZGlmZmVyZW50
+IHByaW5jaXBhbCBhdCBzb21lIHRpbWUgaW4NCj4gPj4gdGhlIHBhc3QsIGFuZCB0aGF0IGxlYXNl
+IGlzIHN0aWxsIGluIHVzZSBvbiB0aGUgc2VydmVyLg0KPiA+PiANCj4gPj4gRm9yIGEgTGludXgg
+Y2xpZW50IHRoaXMgbWlnaHQgYmUgcmF0aGVyIGRpZmZpY3VsdCB0byBhY2hpZXZlOiB0aGUNCj4g
+Pj4gYXV0aGVudGljYXRpb24gZmxhdm9yIGlzIG5hbWVkIHJpZ2h0IGluIHRoZSBuZnNfY2xpZW50
+X2lkNC5pZA0KPiA+PiBzdHJpbmcuICBJZiB3ZSBjaGFuZ2UgZmxhdm9ycywgd2UgY2hhbmdlIHN0
+cmluZ3MgYXV0b21hdGljYWxseS4NCj4gPj4gDQo+ID4+IFNvLCBwcmFjdGljYWxseSBzcGVha2lu
+ZywgTkZTNEVSUl9DTElEX0lOVVNFIG1lYW5zIHRoZXJlIGlzIHNvbWUgb3RoZXINCj4gPj4gY2xp
+ZW50IHVzaW5nIG91ciBzdHJpbmcuICBUaGVyZSBpcyBub3QgbXVjaCB0aGF0IGNhbiBiZSBkb25l
+IHRvDQo+ID4+IHJlY292ZXIgYXV0b21hdGljYWxseS4gIExldCdzIG1ha2UgaXQgYSBwZXJtYW5l
+bnQgZXJyb3IuDQo+ID4+IA0KPiA+PiBSZW1vdmUgdGhlIHJlY292ZXJ5IGxvZ2ljIGluIG5mczRf
+cHJvY19zZXRjbGllbnRpZCgpLCBhbmQgcmVtb3ZlIHRoZQ0KPiA+PiBjbF9pZF91bmlxdWlmaWVy
+IGZpZWxkIGZyb20gdGhlIG5mc19jbGllbnQgZGF0YSBzdHJ1Y3R1cmUuICBBbmQsDQo+ID4+IHJl
+bW92ZSB0aGUgYXV0aGVudGljYXRpb24gZmxhdm9yIGZyb20gdGhlIG5mc19jbGllbnRfaWQ0IHN0
+cmluZy4NCj4gPj4gDQo+ID4+IEtlZXBpbmcgdGhlIGF1dGhlbnRpY2F0aW9uIGZsYXZvciBpbiB0
+aGUgbmZzX2NsaWVudF9pZDQuaWQgc3RyaW5nDQo+ID4+IG1lYW5zIHRoYXQgd2UgY291bGQgaGF2
+ZSBhIHNlcGFyYXRlIGxlYXNlIGZvciBlYWNoIGF1dGhlbnRpY2F0aW9uDQo+ID4+IGZsYXZvciB1
+c2VkIGJ5IG1vdW50cyBvbiB0aGUgY2xpZW50LiAgQnV0IHdlIHdhbnQganVzdCBvbmUgbGVhc2Ug
+Zm9yDQo+ID4+IGFsbCB0aGUgbW91bnRzIG9uIHRoaXMgY2xpZW50Lg0KPiA+PiANCj4gPj4gU2ln
+bmVkLW9mZi1ieTogQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+DQo+ID4+IC0t
+LQ0KPiA+PiANCj4gPj4gZnMvbmZzL25mczRwcm9jLmMgICAgICAgICB8ICAgNTQgKysrKysrKysr
+KysrKysrKysrLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+ID4+IGZzL25mcy9uZnM0c3Rh
+dGUuYyAgICAgICAgfCAgICA3ICsrKysrLQ0KPiA+PiBpbmNsdWRlL2xpbnV4L25mc19mc19zYi5o
+IHwgICAgMyArLS0NCj4gPj4gMyBmaWxlcyBjaGFuZ2VkLCAyOSBpbnNlcnRpb25zKCspLCAzNSBk
+ZWxldGlvbnMoLSkNCj4gPj4gDQo+ID4+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHByb2MuYyBi
+L2ZzL25mcy9uZnM0cHJvYy5jDQo+ID4+IGluZGV4IDdhZGI3MDUuLjYzYTNjZjAgMTAwNjQ0DQo+
+ID4+IC0tLSBhL2ZzL25mcy9uZnM0cHJvYy5jDQo+ID4+ICsrKyBiL2ZzL25mcy9uZnM0cHJvYy5j
+DQo+ID4+IEBAIC0yNTksNyArMjU5LDEyIEBAIHN0YXRpYyBpbnQgbmZzNF93YWl0X2NsbnRfcmVj
+b3ZlcihzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwKQ0KPiA+PiANCj4gPj4gCXJlcyA9IHdhaXRfb25f
+Yml0KCZjbHAtPmNsX3N0YXRlLCBORlM0Q0xOVF9NQU5BR0VSX1JVTk5JTkcsDQo+ID4+IAkJCW5m
+c193YWl0X2JpdF9raWxsYWJsZSwgVEFTS19LSUxMQUJMRSk7DQo+ID4+IC0JcmV0dXJuIHJlczsN
+Cj4gPj4gKwlpZiAocmVzKQ0KPiA+PiArCQlyZXR1cm4gcmVzOw0KPiA+PiArDQo+ID4+ICsJaWYg
+KGNscC0+Y2xfY29uc19zdGF0ZSA8IDApDQo+ID4+ICsJCXJldHVybiBjbHAtPmNsX2NvbnNfc3Rh
+dGU7DQo+ID4+ICsJcmV0dXJuIDA7DQo+ID4+IH0NCj4gPiANCj4gPiBBKSBUaGlzIHNob3VsZCBi
+ZSBhIHNlcGFyYXRlIHBhdGNoLg0KPiANCj4gT0suDQo+IA0KPiA+IA0KPiA+IEIpIFdoeSBpcyBp
+dCBuZWVkZWQgaW4gdGhlIGZpcnN0IHBsYWNlPyBBbGwgcGxhY2VzIHRoYXQgY2FsbA0KPiA+IG5m
+czRfd2FpdF9jbG50X3JlY292ZXIgbGllIG91dHNpZGUgdGhlIG1vdW50IGNvZGUgcGF0aC4NCj4g
+DQo+IFRoZSBwcm9ibGVtIGlzIHRoYXQgaXMgbm8gbG9uZ2VyIHRoZSBjYXNlIG9uY2Ugd2UgaGF2
+ZSB0cnVua2luZyBkaXNjb3ZlcnkgaW4gdGhlIG1vdW50IHBhdGguDQo+IA0KPiBXZSBkaXNjdXNz
+ZWQgdGhpcy4gIFRoaXMgaXMgd2hhdCB5b3UgdG9sZCBtZSB0byBkby4NCg0KVGhlIG9ubHkgbmV3
+IGVycm9yIGNvbmRpdGlvbiB5b3VyIHRydW5raW5nIGRldGVjdGlvbiBpcyBwb3RlbnRpYWxseQ0K
+aW50cm9kdWNpbmcgaGVyZSBpcyBDTElEX0lOVVNFLiBXaHkgZG9lcyB0aGF0IHdhcnJhbnQgdGhp
+cyBjaGFuZ2U/DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50
+YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5j
+b20NCg0K
