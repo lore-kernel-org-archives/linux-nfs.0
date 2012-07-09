@@ -1,111 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43492 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751133Ab2GaO3t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jul 2012 10:29:49 -0400
-Date: Tue, 31 Jul 2012 10:29:48 -0400
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: nfsd changes for 3.6
-Message-ID: <20120731142948.GC27834@fieldses.org>
-MIME-Version: 1.0
+Received: from rcsinet15.oracle.com ([148.87.113.117]:37282 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752074Ab2GIVqc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jul 2012 17:46:32 -0400
+Subject: Re: [PATCH 03/14] NFS: State reclaim clears OPEN and LOCK state
+Mime-Version: 1.0 (Apple Message framework v1278)
 Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1341869463.15267.47.camel@lade.trondhjem.org>
+Date: Mon, 9 Jul 2012 17:45:28 -0400
+Cc: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <D8571F96-7A6A-47B7-A63F-EF5E5F330193@oracle.com>
+References: <20120709153355.1604.14102.stgit@degas.1015granger.net> <20120709154409.1604.59004.stgit@degas.1015granger.net> <1341864200.15267.15.camel@lade.trondhjem.org> <773D0923-FC7B-4CE9-8EDE-46BC18E9A49C@oracle.com> <79BB481E-52C5-4194-AA3C-FFA81D0FF456@oracle.com> <1341866138.15267.29.camel@lade.trondhjem.org> <AD28B46C-23C1-4BCB-ABB6-FDE859756B6F@oracle.com> <1341869463.15267.47.camel@lade.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull nfsd (and some lockd and a couple locks/lease) changes from:
 
-	git://linux-nfs.org/~bfields/linux.git nfsd-next
+On Jul 9, 2012, at 5:31 PM, Myklebust, Trond wrote:
 
-This has been an unusually quiet cycle--mostly bugfixes and cleanup.
-The one large piece is Stanislav's work to containerize the server's
-grace period--but that in itself is just one more step in a
-not-yet-complete project to allow fully containerized nfs service.
+> On Mon, 2012-07-09 at 16:37 -0400, Chuck Lever wrote:
+>> On Jul 9, 2012, at 4:35 PM, Myklebust, Trond wrote:
+>> 
+>>> On Mon, 2012-07-09 at 16:19 -0400, Chuck Lever wrote:
+>>>> On Jul 9, 2012, at 4:15 PM, Chuck Lever wrote:
+>>>> 
+>>>>> 
+>>>>> On Jul 9, 2012, at 4:03 PM, Myklebust, Trond wrote:
+>>>>> 
+>>>>>> On Mon, 2012-07-09 at 11:44 -0400, Chuck Lever wrote:
+>>>>>>> Before beginning state recovery, the state manager zaps open and lock
+>>>>>>> state for each open file, thus the "state->flags & flags" test in
+>>>>>>> nfs41_{open,lock}_expired() always fails during reclaim.  But open
+>>>>>>> recovery is still needed for these files.
+>>>>>>> 
+>>>>>>> To force a call to nfs4_open_expired(), change the default return
+>>>>>>> value for nfs41_check_expired_stateid() to force open recovery, and
+>>>>>>> the default return value for nfs41_check_locks() to force lock
+>>>>>>> recovery, if the requested flags are clear.  Fix suggested by Bryan
+>>>>>>> Schumaker.
+>>>>>> 
+>>>>>> This makes absolutely no sense...
+>>>>>> 
+>>>>>> The point of these function should be to test if the stateid is still
+>>>>>> valid. If it is, then we need no recovery.
+>>>>>> If the stateid is _not_ valid, then we free it, and then decide if
+>>>>>> recovery is needed. The only exception to that rule is if TEST_STATEID
+>>>>>> returns NFS4ERR_BAD_STATEID, (in which case we don't need to free the
+>>>>>> stateid but just recover immediately).
+>>>>> 
+>>>>> So you'd like to change the sense of the switch statement in my earlier patch:
+>>>>> 
+>>>>> NFS4_OK:
+>>>>>   do nothing
+>>>>> NFS4ERR_BAD_STATEID:
+>>>>>   just open
+>>>>> default:
+>>>>>   free the state ID, then open
+>>>>> 
+>>>>> I still don't think we need a FREE_STATEID call for NFS4ERR_EXPIRED, for example.  It seems to me the only cases where FREE_STATEID is needed is the _REVOKED cases.
+> 
+> I'm not sure about what the rules are for NFS4ERR_EXPIRED. As far as I'm
+> aware, NFS4ERR_EXPIRED is NFSv4.0-speak for *_STATE_REVOKED; returning
+> it as part of a TEST_STATEID makes little sense to me, so I'm taking the
+> conservative approach to it.
 
-There are a number of outstanding delegation, container, v4 state, and
-gss patches that aren't quite ready yet; 3.7 may be wilder.
+Based on your review comments, we have an opportunity to make this error handling more clear, which I'd like to clarify before redriving the patch.
 
---b.
+I'm not quite sure what "conservative approach" means.  Do you want to include NFS4ERR_EXPIRED with the _REVOKED arms, treat it as evidence of a broken server, or ignore it entirely?
 
-----------------------------------------------------------------
-Chuck Lever (1):
-      NFSD: TEST_STATEID should not return NFS4ERR_STALE_STATEID
+Do you want to leave the default: arm as it is, or do you have a preference for adding additional explicit error codes in the switch statement?  Are there cases which report that something has gone awry versus cases which simply report the state ID is rotten?  My feeling when I wrote this was to get the switch statement in there, and then we can introduce more error codes as needed.
 
-Eldad Zack (2):
-      sunrpc/cache.h: fix coding style
-      sunrpc/cache.h: replace simple_strtoul
 
-Filipe Brandenburger (1):
-      locks: prevent side-effects of locks_release_private before file_lock is initialized
+> 
+>>>>>> IOW: The state->flags and lsp->ls_flags tests should just be removed.
+>>>>> 
+>>>>> Bryan had a reason to leave those tests in, but I don't remember what it was.
+>>>> 
+>>>> Ah.
+>>>> 
+>>>> I think it was that if those flags are set, then the client assumes the server still has that state, thus no recovery actions should be done.
+>>> 
+>>> ??? If the server is still holding the state, then the TEST_STATEID will
+>>> return '0'. Why do we need extra tests?
+>> 
+>> This is Bryan's design.  But my understanding is that recovery always visits every state ID, and these flags prevent tests from going to the server for all but the state ID to be recovered.
+>> 
+>> Is that correct, Bryan?
+> 
+> OK. I think I understand what the issue is.
+> 
+> If we call nfs4_state_start_reclaim_nograce() (due to a lease purge or a
+> NFS4ERR_EXPIRED on nfs4_check_lease()), then that resets the sequence
+> ids and does a full reset of all state. In that case, we do indeed not
+> want to call TEST_STATEID, since the best it can do is return
+> NFS4ERR_OLD_STATEID.
+> 
+> OK. This needs some comments in the code...
 
-J. Bruce Fields (10):
-      nfsd4: remove unnecessary comment
-      nfsd4: nfsd4_lock() cleanup
-      nfsd4: process_open2 cleanup
-      nfsd4: our filesystems are normally case sensitive
-      nfsd4: release openowners on free in >=4.1 case
-      nfsd: allow owner_override only for regular files
-      nfsd: share some function prototypes
-      nfsd: add get_uint for u32's
-      locks: move lease-specific code out of locks_delete_lock
-      nfsd4: fix missing fault_inject.h include
+I can add comments in both the patch description and in the code itself.
 
-NeilBrown (1):
-      SUNRPC/cache: fix reporting of expired cache entries in 'content' file.
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Stanislav Kinsbursky (18):
-      NFSd: fix locking in nfsd_forget_delegations()
-      NFSd: introduce nfsd_destroy() helper
-      NFSd: set nfsd_serv to NULL after service destruction
-      LockD: mark host per network namespace on garbage collect
-      LockD: make garbage collector network namespace aware.
-      LockD: manage garbage collection timeout per networks namespace
-      LockD: manage used host count per networks namespace
-      Lockd: host complaining function introduced
-      Lockd: add more debug to host shutdown functions
-      LockD: manage grace period per network namespace
-      LockD: make lockd manager allocated per network namespace
-      NFSd: make nfsd4_manager allocated per network namespace context.
-      SUNRPC: service request network namespace helper introduced
-      LockD: manage grace list per network namespace
-      LockD: pass actual network namespace to grace period management functions
-      Lockd: move grace period management from lockd() to per-net functions
-      NFSd: make grace end flag per network namespace
-      NFSd: make boot_time variable per network namespace
 
-Vivek Trivedi (1):
-      nfsd4: fix cr_principal comparison check in same_creds
 
-Weston Andros Adamson (1):
-      nfsd: probe the back channel on new connections
 
- fs/lockd/grace.c             |   16 ++--
- fs/lockd/host.c              |   92 ++++++++++++-------
- fs/lockd/netns.h             |    7 ++
- fs/lockd/svc.c               |   43 +++++----
- fs/lockd/svc4proc.c          |   13 +--
- fs/lockd/svclock.c           |   16 ++--
- fs/lockd/svcproc.c           |   15 ++--
- fs/lockd/svcsubs.c           |   19 ++--
- fs/locks.c                   |   28 +++---
- fs/nfs/callback_xdr.c        |    4 +-
- fs/nfsd/export.c             |   10 +--
- fs/nfsd/netns.h              |    4 +
- fs/nfsd/nfs4callback.c       |    1 -
- fs/nfsd/nfs4idmap.c          |    4 +-
- fs/nfsd/nfs4proc.c           |   18 ++--
- fs/nfsd/nfs4state.c          |  201 +++++++++++++++++++++++++-----------------
- fs/nfsd/nfs4xdr.c            |    2 +-
- fs/nfsd/nfsctl.c             |    8 +-
- fs/nfsd/nfsd.h               |   13 +++
- fs/nfsd/nfssvc.c             |   24 ++---
- fs/nfsd/state.h              |    5 +-
- fs/nfsd/vfs.c                |   10 ++-
- include/linux/fs.h           |    5 +-
- include/linux/lockd/lockd.h  |    6 +-
- include/linux/sunrpc/cache.h |   34 +++++--
- include/linux/sunrpc/svc.h   |    2 +
- net/sunrpc/cache.c           |    5 +-
- 27 files changed, 368 insertions(+), 237 deletions(-)
