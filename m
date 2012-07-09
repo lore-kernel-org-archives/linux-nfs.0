@@ -1,88 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga11.intel.com ([192.55.52.93]:18398 "EHLO mga11.intel.com"
+Received: from mx2.netapp.com ([216.240.18.37]:15981 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751032Ab2GBDjS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 1 Jul 2012 23:39:18 -0400
-Date: Mon, 2 Jul 2012 11:39:14 +0800
-From: Fengguang Wu <fengguang.wu@intel.com>
-To: Christoph Lameter <cl@linux.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        LKML <linux-kernel@vger.kernel.org>, netdev <netdev@vger.kernel.org>,
-        Pekka Enberg <penberg@kernel.org>,
-        Linux Memory Management List <linux-mm@kvack.org>,
-        Stephen Rothwell <sfr@canb.auug.org.au>
-Subject: Re: linux-next BUG: held lock freed!
-Message-ID: <20120702033914.GA7433@localhost>
-References: <20120626145432.GA15289@localhost>
- <20120626172918.GA16446@localhost>
- <20120627122306.GA19252@localhost>
- <20120702025625.GA6531@localhost>
+	id S1753291Ab2GIUfk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Jul 2012 16:35:40 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 03/14] NFS: State reclaim clears OPEN and LOCK state
+Date: Mon, 9 Jul 2012 20:35:39 +0000
+Message-ID: <1341866138.15267.29.camel@lade.trondhjem.org>
+References: <20120709153355.1604.14102.stgit@degas.1015granger.net>
+	 <20120709154409.1604.59004.stgit@degas.1015granger.net>
+	 <1341864200.15267.15.camel@lade.trondhjem.org>
+	 <773D0923-FC7B-4CE9-8EDE-46BC18E9A49C@oracle.com>
+	 <79BB481E-52C5-4194-AA3C-FFA81D0FF456@oracle.com>
+In-Reply-To: <79BB481E-52C5-4194-AA3C-FFA81D0FF456@oracle.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120702025625.GA6531@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 02, 2012 at 10:56:25AM +0800, Fengguang Wu wrote:
-> Hi all,
-> 
-> More observations on this bug:
-> 
-> The slab tree itself actually boots fine. So Christoph's commit may be
-> merely disclosing some bug hidden in another for-next tree which
-> happens to be merged before the slab tree..
-
-Sorry: the bug does appear in the standalone slab tree, where the
-dmesg is
-
-[  307.648802] blkid (2963) used greatest stack depth: 2832 bytes left
-[  307.892070] vhci_hcd: changed 0
-[  308.766647] 
-[  308.766648] =========================
-[  308.766649] [ BUG: held lock freed! ]
-[  308.766651] 3.5.0-rc1+ #44 Not tainted
-[  308.766651] -------------------------
-[  308.766653] mtd_probe/3040 is freeing memory ffff880006defdd0-ffff880006df0dcf, with a lock still held there!
-[  308.766662]  (&type->s_umount_key#31/1){+.+.+.}, at: [<ffffffff81187166>] sget+0x299/0x463
-[  308.766663] 3 locks held by mtd_probe/3040:
-[  308.766667]  #0:  (&type->s_umount_key#31/1){+.+.+.}, at: [<ffffffff81187166>] sget+0x299/0x463
-[  308.766671]  #1:  (sb_lock){+.+.-.}, at: [<ffffffff81186f00>] sget+0x33/0x463
-[  308.766675]  #2:  (unnamed_dev_lock){+.+...}, at: [<ffffffff81186711>] get_anon_bdev+0x38/0xe8
-[  308.766675] 
-[  308.766675] stack backtrace:
-[  308.766677] Pid: 3040, comm: mtd_probe Not tainted 3.5.0-rc1+ #44
-[  308.766678] Call Trace:
-[  308.766683]  [<ffffffff810ddc6e>] debug_check_no_locks_freed+0x109/0x14b
-[  308.766703]  [<ffffffff81173f7c>] kmem_cache_free+0x2e/0xa7
-[  308.766708]  [<ffffffff816a5d9d>] ida_get_new_above+0x173/0x184
-[  308.766711]  [<ffffffff810db9a4>] ? lock_acquired+0x1e4/0x219
-[  308.766713]  [<ffffffff81186727>] get_anon_bdev+0x4e/0xe8
-[  308.766715]  [<ffffffff811867d8>] set_anon_super+0x17/0x2a
-[  308.766717]  [<ffffffff81187270>] sget+0x3a3/0x463
-[  308.766719]  [<ffffffff811867c1>] ? get_anon_bdev+0xe8/0xe8
-[  308.766722]  [<ffffffff811a1fbe>] mount_pseudo+0x31/0x152
-[  308.766727]  [<ffffffff81cb1f54>] mtd_inodefs_mount+0x24/0x26
-[  308.766729]  [<ffffffff81187e34>] mount_fs+0x69/0x155
-[  308.766733]  [<ffffffff811531b2>] ? __alloc_percpu+0x10/0x12
-[  308.766736]  [<ffffffff8119ca4c>] vfs_kern_mount+0x62/0xd9
-[  308.766739]  [<ffffffff811a1b43>] simple_pin_fs+0x4c/0x9b
-[  308.766741]  [<ffffffff81cb338a>] mtdchar_open+0x42/0x188
-[  308.766744]  [<ffffffff811886ef>] chrdev_open+0x11f/0x14a
-[  308.766747]  [<ffffffff810c0880>] ? local_clock+0x19/0x52
-[  308.766750]  [<ffffffff811885d0>] ? cdev_put+0x26/0x26
-[  308.766752]  [<ffffffff811836cc>] do_dentry_open+0x1e4/0x2b2
-[  308.766754]  [<ffffffff8118434a>] nameidata_to_filp+0x5e/0xa3
-[  308.766756]  [<ffffffff8119118f>] do_last+0x68f/0x6d3
-[  308.766759]  [<ffffffff811912d8>] path_openat+0xd2/0x32a
-[  308.766762]  [<ffffffff8111eed8>] ? time_hardirqs_off+0x26/0x2a
-[  308.766765]  [<ffffffff810d9e88>] ? trace_hardirqs_off+0xd/0xf
-[  308.766767]  [<ffffffff81191630>] do_filp_open+0x38/0x86
-[  308.766771]  [<ffffffff82e95e22>] ? _raw_spin_unlock+0x28/0x3b
-[  308.766773]  [<ffffffff8119baa7>] ? alloc_fd+0xe5/0xf7
-[  308.766776]  [<ffffffff811843fd>] do_sys_open+0x6e/0xfb
-[  308.766777]  [<ffffffff811844ab>] sys_open+0x21/0x23
-[  308.766780]  [<ffffffff82e9cb69>] system_call_fastpath+0x16/0x1b
-
-Thanks,
-Fengguang
+T24gTW9uLCAyMDEyLTA3LTA5IGF0IDE2OjE5IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+T24gSnVsIDksIDIwMTIsIGF0IDQ6MTUgUE0sIENodWNrIExldmVyIHdyb3RlOg0KPiANCj4gPiAN
+Cj4gPiBPbiBKdWwgOSwgMjAxMiwgYXQgNDowMyBQTSwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToN
+Cj4gPiANCj4gPj4gT24gTW9uLCAyMDEyLTA3LTA5IGF0IDExOjQ0IC0wNDAwLCBDaHVjayBMZXZl
+ciB3cm90ZToNCj4gPj4+IEJlZm9yZSBiZWdpbm5pbmcgc3RhdGUgcmVjb3ZlcnksIHRoZSBzdGF0
+ZSBtYW5hZ2VyIHphcHMgb3BlbiBhbmQgbG9jaw0KPiA+Pj4gc3RhdGUgZm9yIGVhY2ggb3BlbiBm
+aWxlLCB0aHVzIHRoZSAic3RhdGUtPmZsYWdzICYgZmxhZ3MiIHRlc3QgaW4NCj4gPj4+IG5mczQx
+X3tvcGVuLGxvY2t9X2V4cGlyZWQoKSBhbHdheXMgZmFpbHMgZHVyaW5nIHJlY2xhaW0uICBCdXQg
+b3Blbg0KPiA+Pj4gcmVjb3ZlcnkgaXMgc3RpbGwgbmVlZGVkIGZvciB0aGVzZSBmaWxlcy4NCj4g
+Pj4+IA0KPiA+Pj4gVG8gZm9yY2UgYSBjYWxsIHRvIG5mczRfb3Blbl9leHBpcmVkKCksIGNoYW5n
+ZSB0aGUgZGVmYXVsdCByZXR1cm4NCj4gPj4+IHZhbHVlIGZvciBuZnM0MV9jaGVja19leHBpcmVk
+X3N0YXRlaWQoKSB0byBmb3JjZSBvcGVuIHJlY292ZXJ5LCBhbmQNCj4gPj4+IHRoZSBkZWZhdWx0
+IHJldHVybiB2YWx1ZSBmb3IgbmZzNDFfY2hlY2tfbG9ja3MoKSB0byBmb3JjZSBsb2NrDQo+ID4+
+PiByZWNvdmVyeSwgaWYgdGhlIHJlcXVlc3RlZCBmbGFncyBhcmUgY2xlYXIuICBGaXggc3VnZ2Vz
+dGVkIGJ5IEJyeWFuDQo+ID4+PiBTY2h1bWFrZXIuDQo+ID4+IA0KPiA+PiBUaGlzIG1ha2VzIGFi
+c29sdXRlbHkgbm8gc2Vuc2UuLi4NCj4gPj4gDQo+ID4+IFRoZSBwb2ludCBvZiB0aGVzZSBmdW5j
+dGlvbiBzaG91bGQgYmUgdG8gdGVzdCBpZiB0aGUgc3RhdGVpZCBpcyBzdGlsbA0KPiA+PiB2YWxp
+ZC4gSWYgaXQgaXMsIHRoZW4gd2UgbmVlZCBubyByZWNvdmVyeS4NCj4gPj4gSWYgdGhlIHN0YXRl
+aWQgaXMgX25vdF8gdmFsaWQsIHRoZW4gd2UgZnJlZSBpdCwgYW5kIHRoZW4gZGVjaWRlIGlmDQo+
+ID4+IHJlY292ZXJ5IGlzIG5lZWRlZC4gVGhlIG9ubHkgZXhjZXB0aW9uIHRvIHRoYXQgcnVsZSBp
+cyBpZiBURVNUX1NUQVRFSUQNCj4gPj4gcmV0dXJucyBORlM0RVJSX0JBRF9TVEFURUlELCAoaW4g
+d2hpY2ggY2FzZSB3ZSBkb24ndCBuZWVkIHRvIGZyZWUgdGhlDQo+ID4+IHN0YXRlaWQgYnV0IGp1
+c3QgcmVjb3ZlciBpbW1lZGlhdGVseSkuDQo+ID4gDQo+ID4gU28geW91J2QgbGlrZSB0byBjaGFu
+Z2UgdGhlIHNlbnNlIG9mIHRoZSBzd2l0Y2ggc3RhdGVtZW50IGluIG15IGVhcmxpZXIgcGF0Y2g6
+DQo+ID4gDQo+ID4gICBORlM0X09LOg0KPiA+ICAgICBkbyBub3RoaW5nDQo+ID4gICBORlM0RVJS
+X0JBRF9TVEFURUlEOg0KPiA+ICAgICBqdXN0IG9wZW4NCj4gPiAgIGRlZmF1bHQ6DQo+ID4gICAg
+IGZyZWUgdGhlIHN0YXRlIElELCB0aGVuIG9wZW4NCj4gPiANCj4gPiBJIHN0aWxsIGRvbid0IHRo
+aW5rIHdlIG5lZWQgYSBGUkVFX1NUQVRFSUQgY2FsbCBmb3IgTkZTNEVSUl9FWFBJUkVELCBmb3Ig
+ZXhhbXBsZS4gIEl0IHNlZW1zIHRvIG1lIHRoZSBvbmx5IGNhc2VzIHdoZXJlIEZSRUVfU1RBVEVJ
+RCBpcyBuZWVkZWQgaXMgdGhlIF9SRVZPS0VEIGNhc2VzLg0KPiA+IA0KPiA+PiBJT1c6IFRoZSBz
+dGF0ZS0+ZmxhZ3MgYW5kIGxzcC0+bHNfZmxhZ3MgdGVzdHMgc2hvdWxkIGp1c3QgYmUgcmVtb3Zl
+ZC4NCj4gPiANCj4gPiBCcnlhbiBoYWQgYSByZWFzb24gdG8gbGVhdmUgdGhvc2UgdGVzdHMgaW4s
+IGJ1dCBJIGRvbid0IHJlbWVtYmVyIHdoYXQgaXQgd2FzLg0KPiANCj4gQWguDQo+IA0KPiBJIHRo
+aW5rIGl0IHdhcyB0aGF0IGlmIHRob3NlIGZsYWdzIGFyZSBzZXQsIHRoZW4gdGhlIGNsaWVudCBh
+c3N1bWVzIHRoZSBzZXJ2ZXIgc3RpbGwgaGFzIHRoYXQgc3RhdGUsIHRodXMgbm8gcmVjb3Zlcnkg
+YWN0aW9ucyBzaG91bGQgYmUgZG9uZS4NCg0KPz8/IElmIHRoZSBzZXJ2ZXIgaXMgc3RpbGwgaG9s
+ZGluZyB0aGUgc3RhdGUsIHRoZW4gdGhlIFRFU1RfU1RBVEVJRCB3aWxsDQpyZXR1cm4gJzAnLiBX
+aHkgZG8gd2UgbmVlZCBleHRyYSB0ZXN0cz8NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4
+IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAu
+Y29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
