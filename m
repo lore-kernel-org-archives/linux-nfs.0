@@ -1,101 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:46249 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753436Ab2GaWUx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jul 2012 18:20:53 -0400
-Date: Tue, 31 Jul 2012 17:27:45 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Steve Dickson <SteveD@redhat.com>, Jim Rees <rees@umich.edu>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 4/4] rpc.gssd: don't call poll() twice a second.
-Message-ID: <20120731212744.GC1826@pad.fieldses.org>
-References: <20120731205931.GA32161@fieldses.org>
- <1343768449-32205-4-git-send-email-bfields@redhat.com>
- <9C74193E-FB49-48C3-A828-50EDE37C95AD@oracle.com>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:35295 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751851Ab2GIPpO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jul 2012 11:45:14 -0400
+Received: by mail-yw0-f46.google.com with SMTP id m54so10996794yhm.19
+        for <linux-nfs@vger.kernel.org>; Mon, 09 Jul 2012 08:45:13 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 10/14] NFS: Use the same nfs_client_id4 for every server
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 09 Jul 2012 11:45:11 -0400
+Message-ID: <20120709154510.1604.49158.stgit@degas.1015granger.net>
+In-Reply-To: <20120709153355.1604.14102.stgit@degas.1015granger.net>
+References: <20120709153355.1604.14102.stgit@degas.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <9C74193E-FB49-48C3-A828-50EDE37C95AD@oracle.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 31, 2012 at 02:23:36PM -0700, Chuck Lever wrote:
-> 
-> On Jul 31, 2012, at 2:00 PM, J. Bruce Fields wrote:
-> 
-> > From: "J. Bruce Fields" <bfields@redhat.com>
-> > 
-> > Use ppoll instead.
-> > 
-> > (This breaks compatibility with kernels before 2.6.16 and glibc before
-> > 2.4).
-> 
-> I think I prefer seeing this wrapped with some autoconf machinery to allow nfs-utils to continue to build on earlier systems.
+Currently, when identifying itself to NFS servers, the Linux NFS
+client uses a unique nfs_client_id4.id string for each server IP
+address it talks with.  For example, when client A talks to server X,
+the client identifies itself using a string like "AX".
 
-I was assuming we could drop support for older systems.
+These strings are opaque to servers.  Each client is free to choose
+any content, as long as it is unique from other client instances.  A
+server must not parse the contents of the string, it can only test
+these strings for equality.  These requirements are specified in
+detail by RFC 3530 (and bis).
 
-If not, then'd I'd much prefer to go back to the self-pipe trick than to
-deal with autoconf and  ifdef'ing out all this stuff.
+This form of client identification presents a problem for Transparent
+State Migration.  When client A's state on server X is migrated to
+server Y, it continues to be associated with string "AX."  But,
+according to the rules of client string construction above, client
+A will present string "AY" when communicating with server Y.
 
---b.
+Server Y thus has no way to know that client A should be associated
+with the state migrated from server X.  "AX" is all but abandoned,
+interferring with establishing fresh state for A on server Y.
 
-> 
-> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > ---
-> > utils/gssd/gssd_main_loop.c |   12 +++++-------
-> > 1 file changed, 5 insertions(+), 7 deletions(-)
-> > 
-> > diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
-> > index 142c8c5..2d20fa2 100644
-> > --- a/utils/gssd/gssd_main_loop.c
-> > +++ b/utils/gssd/gssd_main_loop.c
-> > @@ -186,13 +186,14 @@ gssd_run()
-> > 	struct sigaction	dn_act = {
-> > 		.sa_handler = dir_notify_handler
-> > 	};
-> > -	sigset_t		set;
-> > +	sigset_t		set, emptyset;
-> > 
-> > 	sigemptyset(&dn_act.sa_mask);
-> > 	sigaction(DNOTIFY_SIGNAL, &dn_act, NULL);
-> > 
-> > -	/* just in case the signal is blocked... */
-> > +	sigemptyset(&emptyset);
-> > 	sigemptyset(&set);
-> > +	/* just in case the signal is blocked... */
-> > 	sigaddset(&set, DNOTIFY_SIGNAL);
-> > 	sigprocmask(SIG_UNBLOCK, &set, NULL);
-> > 
-> > @@ -210,16 +211,13 @@ gssd_run()
-> > 				exit(1);
-> > 			}
-> > 		}
-> > -		/* race condition here: dir_changed could be set before we
-> > -		 * enter the poll, and we'd never notice if it weren't for the
-> > -		 * timeout. */
-> > -		ret = poll(pollarray, pollsize, POLL_MILLISECS);
-> > +		ret = ppoll(pollarray, pollsize, NULL, &emptyset);
-> > 		if (ret < 0) {
-> > 			if (errno != EINTR)
-> > 				printerr(0,
-> > 					 "WARNING: error return from poll\n");
-> > 		} else if (ret == 0) {
-> > -			/* timeout */
-> > +			printerr(0, "WARNING: unexpected timeout\n");
-> > 		} else { /* ret > 0 */
-> > 			scan_poll_results(ret);
-> > 		}
-> > -- 
-> > 1.7.9.5
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
+To support transparent state migration, then, NFSv4.0 clients must
+instead use the same nfs_client_id4.id string to identify themselves
+to every NFS server; something like "A".
+
+As part of a migration event, when state associated with string "A"
+shows up at server Y, client A identifies itself as "A" and server Y
+will know immediately that the state associated with "A," whether it
+is native or migrated, is owned by client A.
+
+As a pre-requisite to adding support for NFSv4 migration to the Linux
+NFS client, this patch changes the way Linux identifies itself to NFS
+servers via the SETCLIENTID (NFSv4 minor version 0) and EXCHANGE_ID
+(NFSv4 minor version 1) operations.
+
+In addition to removing the server's IP address from nfs_client_id4,
+the Linux NFS client will also no longer use its own source IP address
+as part of the nfs_client_id4 string.  On multi-homed clients, the
+value of this address depends on the address family and network
+routing used to contact the server, thus it can be different for each
+server.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ fs/nfs/nfs4proc.c |   51 +++++++++++++++++++++++++++++++++++++++------------
+ 1 files changed, 39 insertions(+), 12 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 1d3b28d..214e1e0 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4030,6 +4030,32 @@ static void nfs4_init_boot_verifier(const struct nfs_client *clp,
+ 	memcpy(bootverf->data, verf, sizeof(bootverf->data));
+ }
+ 
++static unsigned int
++nfs4_init_nonuniform_client_string(const struct nfs_client *clp,
++				   char *buf, size_t len)
++{
++	unsigned int result;
++
++	rcu_read_lock();
++	result = scnprintf(buf, len, "Linux NFSv4.0 %s/%s %s",
++				clp->cl_ipaddr,
++				rpc_peeraddr2str(clp->cl_rpcclient,
++							RPC_DISPLAY_ADDR),
++				rpc_peeraddr2str(clp->cl_rpcclient,
++							RPC_DISPLAY_PROTO));
++	rcu_read_unlock();
++	return result;
++}
++
++static unsigned int
++nfs4_init_uniform_client_string(const struct nfs_client *clp,
++				char *buf, size_t len)
++{
++	return scnprintf(buf, len, "Linux NFSv%u.%u %s",
++				clp->rpc_ops->version, clp->cl_minorversion,
++				clp->cl_rpcclient->cl_nodename);
++}
++
+ /**
+  * nfs4_proc_setclientid - Negotiate client ID
+  * @clp: state data structure
+@@ -4060,15 +4086,18 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 
+ 	/* nfs_client_id4 */
+ 	nfs4_init_boot_verifier(clp, &sc_verifier);
+-	rcu_read_lock();
+-	setclientid.sc_name_len = scnprintf(setclientid.sc_name,
+-			sizeof(setclientid.sc_name), "%s/%s %s",
+-			clp->cl_ipaddr,
+-			rpc_peeraddr2str(clp->cl_rpcclient,
+-						RPC_DISPLAY_ADDR),
+-			rpc_peeraddr2str(clp->cl_rpcclient,
+-						RPC_DISPLAY_PROTO));
++	if (test_bit(NFS_CS_MIGRATION, &clp->cl_flags))
++		setclientid.sc_name_len =
++				nfs4_init_uniform_client_string(clp,
++						setclientid.sc_name,
++						sizeof(setclientid.sc_name));
++	else
++		setclientid.sc_name_len =
++				nfs4_init_nonuniform_client_string(clp,
++						setclientid.sc_name,
++						sizeof(setclientid.sc_name));
+ 	/* cb_client4 */
++	rcu_read_lock();
+ 	setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
+ 				sizeof(setclientid.sc_netid),
+ 				rpc_peeraddr2str(clp->cl_rpcclient,
+@@ -5294,10 +5323,8 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ 	};
+ 
+ 	nfs4_init_boot_verifier(clp, &verifier);
+-	args.id_len = scnprintf(args.id, sizeof(args.id),
+-				"%s/%s",
+-				clp->cl_ipaddr,
+-				clp->cl_rpcclient->cl_nodename);
++	args.id_len = nfs4_init_uniform_client_string(clp, args.id,
++							sizeof(args.id));
+ 	dprintk("NFS call  exchange_id auth=%s, '%.*s'\n",
+ 		clp->cl_rpcclient->cl_auth->au_ops->au_name,
+ 		args.id_len, args.id);
+
