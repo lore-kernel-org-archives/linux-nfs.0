@@ -1,164 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from office2.cesnet.cz ([195.113.144.244]:56767 "EHLO
-	office2.cesnet.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752001Ab2GVUku (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Jul 2012 16:40:50 -0400
-Message-ID: <500C63AF.2080102@gmail.com>
-Date: Sun, 22 Jul 2012 22:33:51 +0200
-From: Jiri Horky <jiri.horky@gmail.com>
-MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-CC: Steve Dickson <SteveD@redhat.com>, "du@cesnet.cz" <du@cesnet.cz>
-Subject: [PATCH] libnfsidmap: implementation of client side Static translation
- method
-Content-Type: multipart/mixed;
- boundary="------------050801070508010708030008"
+Received: from acsinet15.oracle.com ([141.146.126.227]:38257 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752460Ab2GITrP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jul 2012 15:47:15 -0400
+Subject: Re: [PATCH 02/14] NFS: Properly sort TEST_STATEID results
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1341862469.15267.1.camel@lade.trondhjem.org>
+Date: Mon, 9 Jul 2012 15:47:10 -0400
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <B803FBBF-8ACA-4C7A-9563-2083A7DE64C2@oracle.com>
+References: <20120709153355.1604.14102.stgit@degas.1015granger.net> <20120709154400.1604.10590.stgit@degas.1015granger.net> <1341862469.15267.1.camel@lade.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------050801070508010708030008
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
 
-Implementation of client side Static translation method in libnfsidmap. 
-Since the [Static] section in idmapd.conf does not distinguish between 
-user and group mappings we try both cases for each defined mapping. The 
-code caches id->name mappings in the init function.
+On Jul 9, 2012, at 3:34 PM, Myklebust, Trond wrote:
 
---------------050801070508010708030008
-Content-Type: text/plain;
- name="libnfsidmap.static.client.patch"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
- filename="libnfsidmap.static.client.patch"
+> On Mon, 2012-07-09 at 11:44 -0400, Chuck Lever wrote:
+>> The result of a TEST_STATEID operation can indicate a few different
+>> things:
+>> 
+>>  o If NFS_OK is returned, then the client can continue using the
+>>    state ID under test, and skip recovery.
+>> 
+>>  o RFC 5661 says that if and only if the state ID was revoked, then
+>>    the client must perform an explicit FREE_STATEID before trying to
+>>    re-open.
+>> 
+>>  o If the server doesn't recognize the state ID at all, then no
+>>    FREE_STATEID is needed, and the client can immediately continue
+>>    with open recovery.
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> 
+>> fs/nfs/nfs4proc.c |   36 ++++++++++++++++++++++++++++++++++--
+>> 1 files changed, 34 insertions(+), 2 deletions(-)
+>> 
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index 971ec8c..60a320c 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -1756,6 +1756,14 @@ static int nfs4_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *sta
+>> }
+>> 
+>> #if defined(CONFIG_NFS_V4_1)
+>> +/**
+>> + * nfs41_check_expired_stateid - does a state ID need recovery?
+>> + *
+>> + * @state: NFSv4 open state for an inode
+>> + *
+>> + * Returns NFS_OK if recovery for this state ID is now finished.
+>> + * Otherwise a negative NFS4ERR value is returned.
+>> + */
+>> static int nfs41_check_expired_stateid(struct nfs4_state *state, nfs4_stateid *stateid, unsigned int flags)
+>> {
+>> 	int status = NFS_OK;
+>> @@ -1763,8 +1771,16 @@ static int nfs41_check_expired_stateid(struct nfs4_state *state, nfs4_stateid *s
+>> 
+>> 	if (state->flags & flags) {
+>> 		status = nfs41_test_stateid(server, stateid);
+>> -		if (status != NFS_OK) {
+>> +		switch (status) {
+>> +		case NFS_OK:
+>> +			/* server recognizes this one, don't recover */
+>> +			break;
+>> +		case -NFS4ERR_ADMIN_REVOKED:
+>> +		case -NFS4ERR_DELEG_REVOKED:
+> 
+> What about -NFS4ERR_BAD_STATEID and/or -NFS4ERR_EXPIRED?
 
-ZGlmZiAtLWdpdCBhL3N0YXRpYy5jIGIvc3RhdGljLmMKaW5kZXggZmZmZDQ1OC4uOGJlODdl
-OCAxMDA2NDQKLS0tIGEvc3RhdGljLmMKKysrIGIvc3RhdGljLmMKQEAgLTQwLDYgKzQwLDcg
-QEAKICNpbmNsdWRlIDxncnAuaD4KICNpbmNsdWRlIDxlcnJuby5oPgogCisjaW5jbHVkZSAi
-cXVldWUuaCIKICNpbmNsdWRlICJjZmcuaCIKICNpbmNsdWRlICJuZnNpZG1hcC5oIgogI2lu
-Y2x1ZGUgIm5mc2lkbWFwX2ludGVybmFsLmgiCkBAIC01Nyw2ICs1OCw0MCBAQCBzdHJ1Y3Qg
-cHdidWYgewogCWNoYXIgYnVmWzFdOwogfTsKIAorc3RydWN0IGdyYnVmIHsKKwlzdHJ1Y3Qg
-Z3JvdXAgZ3JidWY7CisJY2hhciBidWZbMV07Cit9OworCitzdHJ1Y3QgdWlkX21hcHBpbmcg
-eworCUxJU1RfRU5UUlkgKHVpZF9tYXBwaW5nKSBsaW5rOworCXVpZF90IHVpZDsKKwljaGFy
-ICogcHJpbmNpcGFsOworCWNoYXIgKiBsb2NhbG5hbWU7Cit9OworCitzdHJ1Y3QgZ2lkX21h
-cHBpbmcgeworCUxJU1RfRU5UUlkgKGdpZF9tYXBwaW5nKSBsaW5rOworCWdpZF90IGdpZDsK
-KwljaGFyICogcHJpbmNpcGFsOworCWNoYXIgKiBsb2NhbGdyb3VwOworfTsKKworc3RhdGlj
-IF9faW5saW5lX18gdV9pbnQ4X3QgdWlkX2hhc2ggKHVpZF90IHVpZCkKK3sKKwlyZXR1cm4g
-dWlkICUgMjU2OworfQorCitzdGF0aWMgX19pbmxpbmVfXyB1X2ludDhfdCBnaWRfaGFzaCAo
-Z2lkX3QgZ2lkKQoreworCXJldHVybiBnaWQgJSAyNTY7Cit9CisKKy8vSGFzaCB0YWJsZXMg
-b2YgdWlkIGFuZCBndWlkcyB0byBwcmluY2lwYWxzIG1hcHBpbmdzLgorLy9XZSByZXVzZSBz
-b21lIHF1ZXVlL2hhc2ggZnVuY3Rpb25zIGZyb20gY2ZnLmMuCitMSVNUX0hFQUQgKHVpZF9t
-YXBwaW5ncywgdWlkX21hcHBpbmcpIHVpZF9tYXBwaW5nc1syNTZdOworTElTVF9IRUFEIChn
-aWRfbWFwcGluZ3MsIGdpZF9tYXBwaW5nKSBnaWRfbWFwcGluZ3NbMjU2XTsKKwogc3RhdGlj
-IHN0cnVjdCBwYXNzd2QgKnN0YXRpY19nZXRwd25hbShjb25zdCBjaGFyICpuYW1lLCBjb25z
-dCBjaGFyICpkb21haW4sCiAJCQkJICAgICAgaW50ICplcnJfcCkKIHsKQEAgLTc1LDEyICsx
-MTAsOSBAQCBzdGF0aWMgc3RydWN0IHBhc3N3ZCAqc3RhdGljX2dldHB3bmFtKGNvbnN0IGNo
-YXIgKm5hbWUsIGNvbnN0IGNoYXIgKmRvbWFpbiwKIAlsb2NhbG5hbWUgPSBjb25mX2dldF9z
-dHIoIlN0YXRpYyIsIChjaGFyICopbmFtZSk7CiAJaWYgKCFsb2NhbG5hbWUpIHsKIAkJZXJy
-ID0gRU5PRU5UOwotCQlnb3RvIGVycjsKKwkJZ290byBlcnJfZnJlZV9idWY7CiAJfQogCi0J
-SURNQVBfTE9HKDQsICgic3RhdGljX2dldHB3bmFtOiBuYW1lICclcycgbWFwcGVkIHRvICcl
-cydcbiIsCi0JCSAgbmFtZSwgbG9jYWxuYW1lKSk7Ci0KIGFnYWluOgogCWVyciA9IGdldHB3
-bmFtX3IobG9jYWxuYW1lLCAmYnVmLT5wd2J1ZiwgYnVmLT5idWYsIGJ1ZmxlbiwgJnB3KTsK
-IApAQCAtOTEsMTIgKzEyMywxNSBAQCBhZ2FpbjoKIAkJaWYgKGVyciA9PSAwKQogCQkJZXJy
-ID0gRU5PRU5UOwogCi0JCUlETUFQX0xPRygwLCAoInN0YXRpY19nZXRwd25hbTogbmFtZSAn
-JXMnIG5vdCBmb3VuZFxuIiwKLQkJCSAgbG9jYWxuYW1lKSk7CisJCUlETUFQX0xPRygwLCAo
-InN0YXRpY19nZXRwd25hbTogbG9jYWxuYW1lICclcycgZm9yICclcycgbm90IGZvdW5kXG4i
-LAorCQkgIGxvY2FsbmFtZSwgbmFtZSkpOwogCiAJCWdvdG8gZXJyX2ZyZWVfYnVmOwogCX0K
-IAorCUlETUFQX0xPRyg0LCAoInN0YXRpY19nZXRwd25hbTogbmFtZSAnJXMnIG1hcHBlZCB0
-byAnJXMnXG4iLAorCQkgIG5hbWUsIGxvY2FsbmFtZSkpOworCiAJKmVycl9wID0gMDsKIAly
-ZXR1cm4gcHc7CiAKQEAgLTEwNyw2ICsxNDIsNTYgQEAgZXJyOgogCXJldHVybiBOVUxMOwog
-fQogCitzdGF0aWMgc3RydWN0IGdyb3VwICpzdGF0aWNfZ2V0Z3JuYW0oY29uc3QgY2hhciAq
-bmFtZSwgY29uc3QgY2hhciAqZG9tYWluLAorCQkJCSAgICAgIGludCAqZXJyX3ApCit7CisJ
-c3RydWN0IGdyb3VwICpncjsKKwlzdHJ1Y3QgZ3JidWYgKmJ1ZjsKKwlzaXplX3QgYnVmbGVu
-ID0gc3lzY29uZihfU0NfR0VUR1JfUl9TSVpFX01BWCk7CisJY2hhciAqbG9jYWxncm91cDsK
-KwlpbnQgZXJyOworCisJYnVmID0gbWFsbG9jKHNpemVvZigqYnVmKSArIGJ1Zmxlbik7CisJ
-aWYgKCFidWYpIHsKKwkJZXJyID0gRU5PTUVNOworCQlnb3RvIGVycjsKKwl9CisKKwlsb2Nh
-bGdyb3VwID0gY29uZl9nZXRfc3RyKCJTdGF0aWMiLCAoY2hhciAqKW5hbWUpOworCWlmICgh
-bG9jYWxncm91cCkgeworCQllcnIgPSBFTk9FTlQ7CisJCWdvdG8gZXJyX2ZyZWVfYnVmOwor
-CX0KKworYWdhaW46CisJZXJyID0gZ2V0Z3JuYW1fcihsb2NhbGdyb3VwLCAmYnVmLT5ncmJ1
-ZiwgYnVmLT5idWYsIGJ1ZmxlbiwgJmdyKTsKKworCWlmIChlcnIgPT0gRUlOVFIpCisJCWdv
-dG8gYWdhaW47CisKKwlpZiAoIWdyKSB7CisJCWlmIChlcnIgPT0gMCkKKwkJCWVyciA9IEVO
-T0VOVDsKKworCQlJRE1BUF9MT0coMCwgKCJzdGF0aWNfZ2V0Z3JuYW06IGxvY2FsIGdyb3Vw
-ICclcycgZm9yICclcycgbm90IGZvdW5kXG4iLAorCQkJICBsb2NhbGdyb3VwLCBuYW1lKSk7
-CisKKwkJZ290byBlcnJfZnJlZV9idWY7CisJfQorCisJSURNQVBfTE9HKDQsICgic3RhdGlj
-X2dldGdybmFtOiBncm91cCAnJXMnIG1hcHBlZCB0byAnJXMnXG4iLAorCQkgIG5hbWUsIGxv
-Y2FsZ3JvdXApKTsKKworCSplcnJfcCA9IDA7CisJcmV0dXJuIGdyOworCitlcnJfZnJlZV9i
-dWY6CisJZnJlZShidWYpOworZXJyOgorCSplcnJfcCA9IGVycjsKKwlyZXR1cm4gTlVMTDsK
-K30KKwogc3RhdGljIGludCBzdGF0aWNfZ3NzX3ByaW5jX3RvX2lkcyhjaGFyICpzZWNuYW1l
-LCBjaGFyICpwcmluYywKIAkJCQkgICB1aWRfdCAqdWlkLCB1aWRfdCAqZ2lkLAogCQkJCSAg
-IGV4dHJhX21hcHBpbmdfcGFyYW1zICoqZXgpCkBAIC0xNTEsMTQgKzIzNiwxNzMgQEAgc3Rh
-dGljIGludCBzdGF0aWNfZ3NzX3ByaW5jX3RvX2dyb3VwbGlzdChjaGFyICpzZWNuYW1lLCBj
-aGFyICpwcmluYywKIAlyZXR1cm4gLWVycjsKIH0KIAorc3RhdGljIGludCBzdGF0aWNfbmFt
-ZV90b191aWQoY2hhciAqbmFtZSwgdWlkX3QgKnVpZCkKK3sKKwlzdHJ1Y3QgcGFzc3dkICpw
-dzsKKwlpbnQgZXJyOworCisJcHcgPSBzdGF0aWNfZ2V0cHduYW0obmFtZSwgTlVMTCwgJmVy
-cik7CisKKwlpZiAocHcpIHsKKwkJKnVpZCA9IHB3LT5wd191aWQ7CisJCWZyZWUocHcpOwor
-CX0KKworCXJldHVybiAtZXJyOworfQorCitzdGF0aWMgaW50IHN0YXRpY19uYW1lX3RvX2dp
-ZChjaGFyICpuYW1lLCBnaWRfdCAqZ2lkKQoreworCXN0cnVjdCBncm91cCAqZ3I7CisJaW50
-IGVycjsKKworCWdyID0gc3RhdGljX2dldGdybmFtKG5hbWUsIE5VTEwsICZlcnIpOworCisJ
-aWYgKGdyKSB7CisJCSpnaWQgPSBnci0+Z3JfZ2lkOworCQlmcmVlKGdyKTsKKwl9CisKKwly
-ZXR1cm4gLWVycjsKK30KKworc3RhdGljIGludCBzdGF0aWNfdWlkX3RvX25hbWUodWlkX3Qg
-dWlkLCBjaGFyICpkb21haW4sIGNoYXIgKm5hbWUsIHNpemVfdCBsZW4pCit7CisJc3RydWN0
-IHBhc3N3ZCAqcHc7CisJc3RydWN0IHVpZF9tYXBwaW5nICogdW07CisKKwlmb3IgKHVtID0g
-TElTVF9GSVJTVCAoJnVpZF9tYXBwaW5nc1t1aWRfaGFzaCAodWlkKV0pOyB1bTsKKwkJdW0g
-PSBMSVNUX05FWFQgKHVtLCBsaW5rKSkgeworCQlpZiAodW0tPnVpZCA9PSB1aWQpIHsKKwkJ
-CXN0cmNweShuYW1lLCB1bS0+cHJpbmNpcGFsKTsKKwkJCXJldHVybiAwOworCQl9CisJfQor
-CisJcmV0dXJuIC1FTk9FTlQ7Cit9CisKK3N0YXRpYyBpbnQgc3RhdGljX2dpZF90b19uYW1l
-KGdpZF90IGdpZCwgY2hhciAqZG9tYWluLCBjaGFyICpuYW1lLCBzaXplX3QgbGVuKQorewor
-CXN0cnVjdCBncm91cCAqZ3I7CisJc3RydWN0IGdpZF9tYXBwaW5nICogZ207CisKKwlmb3Ig
-KGdtID0gTElTVF9GSVJTVCAoJmdpZF9tYXBwaW5nc1tnaWRfaGFzaCAoZ2lkKV0pOyBnbTsK
-KwkJZ20gPSBMSVNUX05FWFQgKGdtLCBsaW5rKSkgeworCQlpZiAoZ20tPmdpZCA9PSBnaWQp
-IHsKKwkJCXN0cmNweShuYW1lLCBnbS0+cHJpbmNpcGFsKTsKKwkJCXJldHVybiAwOworCQl9
-CisJfQorCisJcmV0dXJuIC1FTk9FTlQ7Cit9CisKKy8qCisgKiBXZSBidWZmZXIgYWxsIFVJ
-RCdzIGZvciB3aGljaCBzdGF0aWMgbWFwcGluZ3MgaXMgZGVmaW5lZCBpbiBhZHZhbmNlLCBz
-byB0aGUKKyAqIHVpZF90b19uYW1lIGZ1bmN0aW9ucyB3aWxsIGJlIGZhc3QgZW5vdWdoLgor
-ICovCisKK3N0YXRpYyBpbnQgc3RhdGljX2luaXQoKSB7CQorCWludCBlcnI7CisJdWlkX3Qg
-dWlkOworCXN0cnVjdCBjb25mX2xpc3QgKiBwcmluY19saXN0ID0gTlVMTDsKKwlzdHJ1Y3Qg
-Y29uZl9saXN0X25vZGUgKiBjbG4sICpuZXh0OworCXN0cnVjdCB1aWRfbWFwcGluZyAqIHVu
-b2RlOworCXN0cnVjdCBnaWRfbWFwcGluZyAqIGdub2RlOworCXN0cnVjdCBwYXNzd2QgKiBw
-dyA9IE5VTEw7CisJc3RydWN0IGdyb3VwICogZ3IgPSBOVUxMOworCXVuc2lnbmVkIGludCBp
-OworCisJLy9pbml0IGhhc2hfdGFibGUgZmlyc3QKKwlmb3IgKGkgPSAwOyBpIDwgc2l6ZW9m
-IHVpZF9tYXBwaW5ncyAvIHNpemVvZiB1aWRfbWFwcGluZ3NbMF07IGkrKykKKwkJTElTVF9J
-TklUICgmdWlkX21hcHBpbmdzW2ldKTsKKworCS8vZ2V0IGFsbCBwcmluY2lwYWxzIGZvciB3
-aGljaCB3ZSBoYXZlIG1hcHBpbmdzCisJcHJpbmNfbGlzdCA9IGNvbmZfZ2V0X3RhZ19saXN0
-KCJTdGF0aWMiKTsKKworCWlmICghcHJpbmNfbGlzdCkgeworCQlyZXR1cm4gLUVOT0VOVDsK
-Kwl9CisKKwkvKiBBcyB3ZSBjYW4gbm90IGRpc3Rpbmd1aXNoIGJldHdlZW4gbWFwcGluZ3Mg
-Zm9yIHVzZXJzIGFuZCBncm91cHMsIHdlIHRyeSB0bworCSAqIHJlc29sdmUgYWxsIG1hcHBp
-bmdzIGZvciBib3RoIGNhc2VzLgorCSAqLworCisJLy9yZXNvbHZlIHVpZCBvZiBsb2NhbG5h
-bWUgYWNjb3VudCBmb3IgYWxsIHN1Y2ggcHJpbmNpcGFscyBhbmQgY2FjaGUgaXQKKwlmb3Ig
-KGNsbiA9IFRBSUxRX0ZJUlNUICgmcHJpbmNfbGlzdC0+ZmllbGRzKTsgY2xuOyBjbG4gPSBu
-ZXh0KSAKKwl7IAorCQluZXh0ID0gVEFJTFFfTkVYVCAoY2xuLCBsaW5rKTsgCisKKwkJcHcg
-PSBzdGF0aWNfZ2V0cHduYW0oY2xuLT5maWVsZCwgTlVMTCwgJmVycik7CisJCWlmICghcHcp
-IHsKKwkJCWNvbnRpbnVlOworCQl9CisJCQorCQl1bm9kZSA9IGNhbGxvYyAoMSwgc2l6ZW9m
-ICp1bm9kZSk7CisJCWlmICghdW5vZGUpCisJCXsKKwkJCXdhcm54KCJzdGF0aWNfaW5pdDog
-Y2FsbG9jICgxLCAlbHUpIGZhaWxlZCIsCisJCQkJKHVuc2lnbmVkIGxvbmcpc2l6ZW9mICp1
-bm9kZSk7CisJCQlmcmVlKHB3KTsKKwkJCXJldHVybiAtRU5PTUVNOworCQl9CisJCXVub2Rl
-LT51aWQgPSBwdy0+cHdfdWlkOworCQl1bm9kZS0+cHJpbmNpcGFsID0gc3RyZHVwKGNsbi0+
-ZmllbGQpOworCisJCXVub2RlLT5sb2NhbG5hbWUgPSBjb25mX2dldF9zdHIoIlN0YXRpYyIs
-IGNsbi0+ZmllbGQpOworCQlpZiAoIXVub2RlLT5sb2NhbG5hbWUpIHsKKwkJCWZyZWUocHcp
-OworCQkJcmV0dXJuIC1FTk9FTlQ7CisJCX0KKworCQlmcmVlKHB3KTsKKworCQlMSVNUX0lO
-U0VSVF9IRUFEICgmdWlkX21hcHBpbmdzW3VpZF9oYXNoKHVub2RlLT51aWQpXSwgdW5vZGUs
-IGxpbmspOworCX0KKworCS8vcmVzb2x2ZSBnaWQgb2YgbG9jYWxncm91cCBhY2NvdW50cyBh
-bmQgY2FjaGUgaXQKKwlmb3IgKGNsbiA9IFRBSUxRX0ZJUlNUICgmcHJpbmNfbGlzdC0+Zmll
-bGRzKTsgY2xuOyBjbG4gPSBuZXh0KSAKKwl7IAorCQluZXh0ID0gVEFJTFFfTkVYVCAoY2xu
-LCBsaW5rKTsgCisKKwkJZ3IgPSBzdGF0aWNfZ2V0Z3JuYW0oY2xuLT5maWVsZCwgTlVMTCwg
-JmVycik7CisJCWlmICghcHcpIHsKKwkJCWNvbnRpbnVlOworCQl9CisJCQorCQlnbm9kZSA9
-IGNhbGxvYyAoMSwgc2l6ZW9mICpnbm9kZSk7CisJCWlmICghZ25vZGUpCisJCXsKKwkJCXdh
-cm54KCJzdGF0aWNfaW5pdDogY2FsbG9jICgxLCAlbHUpIGZhaWxlZCIsCisJCQkJKHVuc2ln
-bmVkIGxvbmcpc2l6ZW9mICpnbm9kZSk7CisJCQlmcmVlKHB3KTsKKwkJCXJldHVybiAtRU5P
-TUVNOworCQl9CisJCWdub2RlLT5naWQgPSBwdy0+cHdfdWlkOworCQlnbm9kZS0+cHJpbmNp
-cGFsID0gc3RyZHVwKGNsbi0+ZmllbGQpOworCisJCWdub2RlLT5sb2NhbGdyb3VwID0gY29u
-Zl9nZXRfc3RyKCJTdGF0aWMiLCBjbG4tPmZpZWxkKTsKKwkJaWYgKCFnbm9kZS0+bG9jYWxn
-cm91cCkgeworCQkJZnJlZShwdyk7CisJCQlyZXR1cm4gLUVOT0VOVDsKKwkJfQorCisJCWZy
-ZWUocHcpOworCisJCUxJU1RfSU5TRVJUX0hFQUQgKCZnaWRfbWFwcGluZ3NbZ2lkX2hhc2go
-Z25vZGUtPmdpZCldLCBnbm9kZSwgbGluayk7CisJfQorCXJldHVybiAwOworfQorCiAKIHN0
-cnVjdCB0cmFuc19mdW5jIHN0YXRpY190cmFucyA9IHsKIAkubmFtZQkJCT0gInN0YXRpYyIs
-Ci0JLmluaXQJCQk9IE5VTEwsCi0JLm5hbWVfdG9fdWlkCQk9IE5VTEwsCi0JLm5hbWVfdG9f
-Z2lkCQk9IE5VTEwsCi0JLnVpZF90b19uYW1lCQk9IE5VTEwsCi0JLmdpZF90b19uYW1lCQk9
-IE5VTEwsCisJLmluaXQJCQk9IHN0YXRpY19pbml0LAorCS5uYW1lX3RvX3VpZAkJPSBzdGF0
-aWNfbmFtZV90b191aWQsCisJLm5hbWVfdG9fZ2lkCQk9IHN0YXRpY19uYW1lX3RvX2dpZCwK
-KwkudWlkX3RvX25hbWUJCT0gc3RhdGljX3VpZF90b19uYW1lLAorCS5naWRfdG9fbmFtZQkJ
-PSBzdGF0aWNfZ2lkX3RvX25hbWUsCiAJLnByaW5jX3RvX2lkcwkJPSBzdGF0aWNfZ3NzX3By
-aW5jX3RvX2lkcywKIAkuZ3NzX3ByaW5jX3RvX2dyb3VwbGlzdAk9IHN0YXRpY19nc3NfcHJp
-bmNfdG9fZ3JvdXBsaXN0LAogfTsK
---------------050801070508010708030008--
+My impression from RFC 5661 was that no FREE_STATEID was needed in those cases.  Those errors would be handled by the default arm.
+
+I don't pretend to be an expert on this, though.  What is your thought?
+
+> 
+>> +			/* state was revoked, free then re-open */
+>> 			nfs41_free_stateid(server, stateid);
+>> +		default:
+>> +			/* anything else: just re-open it */
+>> 			state->flags &= ~flags;
+>> 		}
+>> 	}
+>> @@ -4698,6 +4714,14 @@ out:
+>> }
+>> 
+>> #if defined(CONFIG_NFS_V4_1)
+>> +/**
+>> + * nfs41_check_expired_locks - clear lock state IDs
+>> + *
+>> + * @state: NFSv4 open state for a file
+>> + *
+>> + * Returns NFS_OK if recovery for this state ID is now finished.
+>> + * Otherwise a negative NFS4ERR value is returned.
+>> + */
+>> static int nfs41_check_expired_locks(struct nfs4_state *state)
+>> {
+>> 	int status, ret = NFS_OK;
+>> @@ -4707,8 +4731,16 @@ static int nfs41_check_expired_locks(struct nfs4_state *state)
+>> 	list_for_each_entry(lsp, &state->lock_states, ls_locks) {
+>> 		if (lsp->ls_flags & NFS_LOCK_INITIALIZED) {
+>> 			status = nfs41_test_stateid(server, &lsp->ls_stateid);
+>> -			if (status != NFS_OK) {
+>> +			switch (status) {
+>> +			case NFS_OK:
+>> +				/* server recognizes this one, don't re-lock */
+>> +				break;
+>> +			case -NFS4ERR_ADMIN_REVOKED:
+>> +			case -NFS4ERR_DELEG_REVOKED:
+> 
+> Ditto
+> 
+>> +				/* lock was revoked, free then re-lock */
+>> 				nfs41_free_stateid(server, &lsp->ls_stateid);
+>> +			default:
+>> +				/* anything else: just re-lock it */
+>> 				lsp->ls_flags &= ~NFS_LOCK_INITIALIZED;
+>> 				ret = status;
+>> 			}
+>> 
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
