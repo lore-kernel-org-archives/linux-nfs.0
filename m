@@ -1,176 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:31759 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:52814 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756114Ab2GCNCK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Jul 2012 09:02:10 -0400
-Subject: [PATCH v3] SUNRPC: protect service sockets lists during per-net
-	shutdown
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Tue, 03 Jul 2012 16:58:57 +0400
-Message-ID: <20120703125851.3850.86782.stgit@localhost.localdomain>
-MIME-Version: 1.0
+	id S1751568Ab2GITgE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Jul 2012 15:36:04 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 01/14] NFS: Clean up TEST_STATEID and FREE_STATEID proc
+ error reporting
+Date: Mon, 9 Jul 2012 19:36:02 +0000
+Message-ID: <1341862560.15267.3.camel@lade.trondhjem.org>
+References: <20120709153355.1604.14102.stgit@degas.1015granger.net>
+	 <20120709154349.1604.58109.stgit@degas.1015granger.net>
+In-Reply-To: <20120709154349.1604.58109.stgit@degas.1015granger.net>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v3:
-1) rebased on 3.5-rc3 kernel.
-
-v2: destruction of currently processing transport added:
-1) Added marking of currently processing transports with XPT_CLOSE on per-net
-shutdown. These transports will be destroyed in svc_xprt_enqueue() (instead of
-enqueueing).
-2) newly created temporary transport in svc_recv() will be destroyed, if it's
-"parent" was marked with XPT_CLOSE.
-3) spin_lock(&serv->sv_lock) was replaced by spin_lock_bh() in
-svc_close_net(&serv->sv_lock).
-
-Service sv_tempsocks and sv_permsocks lists are accessible by tasks with
-different network namespaces, and thus per-net service destruction must be
-protected.
-These lists are protected by service sv_lock. So lets wrap list munipulations
-with this lock and move tranports destruction outside wrapped area to prevent
-deadlocks.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- net/sunrpc/svc_xprt.c |   56 ++++++++++++++++++++++++++++++++++++++++++++++---
- 1 files changed, 52 insertions(+), 4 deletions(-)
-
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 88f2bf6..4af2114 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -320,6 +320,7 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
- 	struct svc_pool *pool;
- 	struct svc_rqst	*rqstp;
- 	int cpu;
-+	int destroy = 0;
- 
- 	if (!svc_xprt_has_something_to_do(xprt))
- 		return;
-@@ -338,6 +339,17 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
- 
- 	pool->sp_stats.packets++;
- 
-+	/*
-+	 * Check transport close flag. It could be marked as closed on per-net
-+	 * service shutdown.
-+	 */
-+	if (test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
-+		/* Don't enqueue transport if it has to be destroyed. */
-+		dprintk("svc: transport %p have to be closed\n", xprt);
-+		destroy++;
-+		goto out_unlock;
-+	}
-+
- 	/* Mark transport as busy. It will remain in this state until
- 	 * the provider calls svc_xprt_received. We update XPT_BUSY
- 	 * atomically because it also guards against trying to enqueue
-@@ -374,6 +386,8 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
- 
- out_unlock:
- 	spin_unlock_bh(&pool->sp_lock);
-+	if (destroy)
-+		svc_delete_xprt(xprt);
- }
- EXPORT_SYMBOL_GPL(svc_xprt_enqueue);
- 
-@@ -714,6 +728,13 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
- 			__module_get(newxpt->xpt_class->xcl_owner);
- 			svc_check_conn_limits(xprt->xpt_server);
- 			spin_lock_bh(&serv->sv_lock);
-+			if (test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
-+				dprintk("svc_recv: found XPT_CLOSE on listener\n");
-+				set_bit(XPT_DETACHED, &newxpt->xpt_flags);
-+				spin_unlock_bh(&pool->sp_lock);
-+				svc_delete_xprt(newxpt);
-+				goto out_closed;
-+			}
- 			set_bit(XPT_TEMP, &newxpt->xpt_flags);
- 			list_add(&newxpt->xpt_list, &serv->sv_tempsocks);
- 			serv->sv_tmpcnt++;
-@@ -739,6 +760,7 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
- 			len = xprt->xpt_ops->xpo_recvfrom(rqstp);
- 		dprintk("svc: got len=%d\n", len);
- 	}
-+out_closed:
- 	svc_xprt_received(xprt);
- 
- 	/* No data, incomplete (TCP) read, or accept() */
-@@ -936,6 +958,7 @@ static void svc_clear_pools(struct svc_serv *serv, struct net *net)
- 	struct svc_pool *pool;
- 	struct svc_xprt *xprt;
- 	struct svc_xprt *tmp;
-+	struct svc_rqst *rqstp;
- 	int i;
- 
- 	for (i = 0; i < serv->sv_nrpools; i++) {
-@@ -947,11 +970,16 @@ static void svc_clear_pools(struct svc_serv *serv, struct net *net)
- 				continue;
- 			list_del_init(&xprt->xpt_ready);
- 		}
-+		list_for_each_entry(rqstp, &pool->sp_all_threads, rq_all) {
-+			if (rqstp->rq_xprt && rqstp->rq_xprt->xpt_net == net)
-+				set_bit(XPT_CLOSE, &rqstp->rq_xprt->xpt_flags);
-+		}
- 		spin_unlock_bh(&pool->sp_lock);
- 	}
- }
- 
--static void svc_clear_list(struct list_head *xprt_list, struct net *net)
-+static void svc_clear_list(struct list_head *xprt_list, struct net *net,
-+			   struct list_head *kill_list)
- {
- 	struct svc_xprt *xprt;
- 	struct svc_xprt *tmp;
-@@ -959,7 +987,8 @@ static void svc_clear_list(struct list_head *xprt_list, struct net *net)
- 	list_for_each_entry_safe(xprt, tmp, xprt_list, xpt_list) {
- 		if (xprt->xpt_net != net)
- 			continue;
--		svc_delete_xprt(xprt);
-+		list_move(&xprt->xpt_list, kill_list);
-+		set_bit(XPT_DETACHED, &xprt->xpt_flags);
- 	}
- 	list_for_each_entry(xprt, xprt_list, xpt_list)
- 		BUG_ON(xprt->xpt_net == net);
-@@ -967,6 +996,15 @@ static void svc_clear_list(struct list_head *xprt_list, struct net *net)
- 
- void svc_close_net(struct svc_serv *serv, struct net *net)
- {
-+	struct svc_xprt *xprt, *tmp;
-+	LIST_HEAD(kill_list);
-+
-+	/*
-+	 * Protect the lists, since they can be by tasks with different network
-+	 * namespace contexts.
-+	 */
-+	spin_lock_bh(&serv->sv_lock);
-+
- 	svc_close_list(&serv->sv_tempsocks, net);
- 	svc_close_list(&serv->sv_permsocks, net);
- 
-@@ -976,8 +1014,18 @@ void svc_close_net(struct svc_serv *serv, struct net *net)
- 	 * svc_xprt_enqueue will not add new entries without taking the
- 	 * sp_lock and checking XPT_BUSY.
- 	 */
--	svc_clear_list(&serv->sv_tempsocks, net);
--	svc_clear_list(&serv->sv_permsocks, net);
-+	svc_clear_list(&serv->sv_tempsocks, net, &kill_list);
-+	svc_clear_list(&serv->sv_permsocks, net, &kill_list);
-+
-+	spin_unlock_bh(&serv->sv_lock);
-+
-+	/*
-+	 * Destroy collected transports.
-+	 * Note: tranports has been marked as XPT_DETACHED on svc_clear_list(),
-+	 * so no need to protect againt list_del() in svc_delete_xprt().
-+	 */
-+	list_for_each_entry_safe(xprt, tmp, &kill_list, xpt_list)
-+		svc_delete_xprt(xprt);
- }
- 
- /*
-
+T24gTW9uLCAyMDEyLTA3LTA5IGF0IDExOjQzIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+VGhlIFRFU1RfU1RBVEVJRCBhbmQgRlJFRV9TVEFURUlEIG9wZXJhdGlvbnMgY2FuIHJldHVybg0K
+PiBORlM0RVJSX0JBRF9TVEFURUlELCBORlM0RVJSX09MRF9TVEFURUlELCBvciBORlM0RVJSX0RF
+QURTRVNTSU9OLg0KPiBUaGVzZSBlcnJvciB2YWx1ZXMgc2hvdWxkIG5vdCBiZSBwYXNzZWQgdG8g
+bmZzNF9oYW5kbGVfZXhjZXB0aW9uKCksDQo+IHNpbmNlIHRoYXQgd2lsbCByZWN1cnNpdmVseSBr
+aWNrIG9mZiBzdGF0ZSByZWNvdmVyeSwgcmVzdWx0aW5nIGluIGENCj4gZGVhZGxvY2suICBUaGUg
+cmVhc29uIHRvIGNvbnRpbnVlIHVzaW5nIG5mczRfaGFuZGxlX2V4Y2VwdGlvbigpIGlzDQo+IHRv
+IGRlYWwgd2l0aCBORlM0RVJSX0RFTEFZLg0KPiANCj4gTW9yZW92ZXIsIHNwZWNpZmljYWxseSB3
+aGVuIHRoZSBURVNUX1NUQVRFSUQgb3BlcmF0aW9uIHJldHVybnMNCj4gTkZTNF9PSywgcmVzLnN0
+YXR1cyBjYW4gY29udGFpbiBvbmUgb2YgdGhlc2UgZXJyb3JzLg0KPiBfbmZzNDFfdGVzdF9zdGF0
+ZWlkKCkgcmVwbGFjZXMgTkZTNF9PSyB3aXRoIHRoZSB2YWx1ZSBpbiByZXMuc3RhdHVzLA0KPiB3
+aGljaCBpcyB0aGVuIHJldHVybmVkIHRvIGNhbGxlcnMuDQo+IA0KPiBCdXQgcmVzLnN0YXR1cyBp
+cyBub3QgcGFzc2VkIHRocm91Z2ggbmZzNF9zdGF0X3RvX2Vycm5vKCksIGFuZCB0aHVzIGlzDQo+
+IGEgcG9zaXRpdmUgTkZTNEVSUiB2YWx1ZS4gIEN1cnJlbnRseSBjYWxsZXJzIGFyZSBvbmx5IGlu
+dGVyZXN0ZWQgaW4NCj4gIU5GUzRfT0ssIGFuZCBuZnM0X2hhbmRsZV9leGNlcHRpb24oKSBpZ25v
+cmVzIHBvc2l0aXZlIHZhbHVlcywgc28gdGhpcw0KPiBvdmVyc2lnaHQgaGFzbid0IGJpdHRlbiB1
+cyBzbyBmYXIuDQo+IA0KPiBCcnlhbiBhZ3JlZXMgdGhlIG9yaWdpbmFsIGludGVudCB3YXMgdG8g
+cmV0dXJuIHJlcy5zdGF0dXMgYXMgYQ0KPiBuZWdhdGl2ZSBORlM0RVJSIHZhbHVlIHRvIGNhbGxl
+cnMgb2YgbmZzNDFfdGVzdF9zdGF0ZWlkKCksIGFzIGxvbmcgYXMNCj4gbm8gc3RhdGUgSUQgcmVj
+b3ZlcnkgaXMgYXR0ZW1wdGVkLg0KDQpOb25lIG9mIHRoaXMgZGVzY3JpYmVzIGEgY2xlYW51cC4u
+LiBBRkFJQ1MgaXQgaXMgYWxsIGEgYnVnZml4DQoNCj4gQXMgYSBmaW5pc2hpbmcgdG91Y2gsIGFk
+ZCBhcHByb3ByaWF0ZSBkb2N1bWVudGluZyBjb21tZW50cyBhbmQgc29tZQ0KPiBkZWJ1Z2dpbmcg
+cHJpbnRrJ3MuDQoNClRoaXMgc2hvdWxkIGJlIGEgc2VwYXJhdGUgcGF0Y2ggc28gdGhhdCB3ZSBj
+YW4gc2VuZCB0aGUgYnVnZml4IHBhcnQgdG8NCnN0YWJsZUB2Z2VyIGlmIG5lZWRlZC4uLg0KDQo+
+IFNpZ25lZC1vZmYtYnk6IENodWNrIExldmVyIDxjaHVjay5sZXZlckBvcmFjbGUuY29tPg0KPiAt
+LS0NCg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVy
+DQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoN
+Cg==
