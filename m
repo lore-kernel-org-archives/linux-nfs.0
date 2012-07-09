@@ -1,47 +1,160 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:6589 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756001Ab2GJX56 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jul 2012 19:57:58 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Tomasz Chmielewski <mangoo@wpkg.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: cachefilesd - using multiple cache directories (disks)?
-Date: Tue, 10 Jul 2012 23:57:56 +0000
-Message-ID: <1341964674.17428.38.camel@lade.trondhjem.org>
-References: <4FFC733D.7050306@wpkg.org>
-	 <1341947709.12698.15.camel@lade.trondhjem.org> <4FFCBD72.1020001@wpkg.org>
-In-Reply-To: <4FFCBD72.1020001@wpkg.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:55958 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751851Ab2GIPoq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jul 2012 11:44:46 -0400
+Received: by mail-yx0-f174.google.com with SMTP id l2so10189699yen.19
+        for <linux-nfs@vger.kernel.org>; Mon, 09 Jul 2012 08:44:45 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 07/14] NFS: Clean up nfs4_proc_setclientid() and friends
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 09 Jul 2012 11:44:44 -0400
+Message-ID: <20120709154443.1604.33218.stgit@degas.1015granger.net>
+In-Reply-To: <20120709153355.1604.14102.stgit@degas.1015granger.net>
+References: <20120709153355.1604.14102.stgit@degas.1015granger.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTA3LTExIGF0IDA3OjQwICswODAwLCBUb21hc3ogQ2htaWVsZXdza2kgd3Jv
-dGU6DQo+IE9uIDA3LzExLzIwMTIgMDM6MTUgQU0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+
-IA0KPiAoLi4uKQ0KPiANCj4gPj4gMikgaXQncyBub3QgcG9zc2libGUgdG8gdXNlIG11bHRpcGxl
-IGRpcmVjdG9yaWVzIHdpdGggb25lDQo+ID4+IGNhY2hlZmlsZXNkIHByb2Nlc3MsIGJ1dCBpdCdz
-IHBlcmZlY3RseSBPSyB0byBydW4gbXVsdGlwbGUNCj4gPj4gaW5zdGFuY2VzIG9mIGNhY2hlZmls
-ZXNkIG9uIG9uZSBzZXJ2ZXINCj4gPj4NCj4gPj4NCj4gPj4gV2hpY2ggb25lIGlzIHRydWU/DQo+
-ID4NCj4gPiBTZWUgRG9jdW1lbnRhdGlvbi9maWxlc3lzdGVtcy9jYWNoaW5nL2NhY2hlZmlsZXMu
-dHh0OiA9PT09PT09PQ0KPiA+IE9WRVJWSUVXID09PT09PT09IC4uLiBDYWNoZUZpbGVzIGlzIGN1
-cnJlbnRseSBsaW1pdGVkIHRvIGEgc2luZ2xlDQo+ID4gY2FjaGUuDQo+IA0KPiBBbmQgd2hhdCBh
-Ym91dCB0aGlzIGFuc3dlciBieSBEYXZpZCBIb3dlbGxzPw0KPiANCj4gaHR0cDovL3d3dy5yZWRo
-YXQuY29tL2FyY2hpdmVzL2xpbnV4LWNhY2hlZnMvMjAxMS1KdWx5L21zZzAwMDAzLmh0bWwNCj4g
-DQo+IAk+IFdvdWxkIEkgaGF2ZSB0byBydW4gdHdvIGluc3RhbmNlcyBvZiB0aGUgY2FjaGVmaWxl
-cyBkYWVtb24gaW4NCj4gCT4gb3JkZXIgdG8gdXNlIGJvdGggY2FjaGUgZGlyZWN0b3JpZXM/DQo+
-IA0KPiAJWW91IHdvdWxkIGhhdmUgdG8gaGF2ZSB0d28gY29uZmlnIGZpbGVzIGFuZCB0d28gZGFl
-bW9ucyAob25lDQo+IAlwZXIgY2FjaGUpLiAgRWFjaCBjYWNoZSBuZWVkcyB0byBiZSBtYW5hZ2Vk
-IHNlcGFyYXRlbHkuDQoNCkRhdmlkIGFsc28gd3JvdGUgdGhlIERvY3VtZW50YXRpb24gZmlsZSB0
-aGF0IEkgcXVvdGVkIGFib3ZlLCB3aGljaCAoaW4NCnRoZSBwYXJhZ3JhcGggYmVmb3JlIHRoZSBv
-bmUgSSBxdW90ZWQpIHZlcnkgZXhwbGljaXRseSBzdGF0ZXM6DQoNCkNhY2hlRmlsZXMgY3JlYXRl
-cyBhIG1pc2MgY2hhcmFjdGVyIGRldmljZSAtICIvZGV2L2NhY2hlZmlsZXMiIC0gdGhhdCBpcyB1
-c2VkDQp0byBjb21tdW5pY2F0aW9uIHdpdGggdGhlIGRhZW1vbi4gIE9ubHkgb25lIHRoaW5nIG1h
-eSBoYXZlIHRoaXMgb3BlbiBhdCBvbmNlLA0KYW5kIHdoaWxzdCBpdCBpcyBvcGVuLCBhIGNhY2hl
-IGlzIGF0IGxlYXN0IHBhcnRpYWxseSBpbiBleGlzdGVuY2UuICBUaGUgZGFlbW9uDQpvcGVucyB0
-aGlzIGFuZCBzZW5kcyBjb21tYW5kcyBkb3duIGl0IHRvIGNvbnRyb2wgdGhlIGNhY2hlLg0KDQoN
-ClNvIGVpdGhlciB0aGUgZG9jdW1lbnRhdGlvbiBpcyBvdXQgb2YgZGF0ZSAoaW4gd2hpY2ggY2Fz
-ZSBEYXZpZCBzaG91bGQNCnVwZGF0ZSBpdCkgb3IgeW91IGFyZSBtaXN1bmRlcnN0YW5kaW5nIGhp
-cyB1c2Ugb2YgdGhlIGNvbmRpdGlvbmFsIHRlbnNlLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0K
-TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5l
-dGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+Add documenting comments and appropriate debugging messages.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ fs/nfs/nfs4proc.c  |   45 +++++++++++++++++++++++++++++++++++++--------
+ fs/nfs/nfs4state.c |    4 ++++
+ 2 files changed, 41 insertions(+), 8 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 63a3cf0..1c27121 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4027,6 +4027,16 @@ static void nfs4_init_boot_verifier(const struct nfs_client *clp,
+ 	memcpy(bootverf->data, verf, sizeof(bootverf->data));
+ }
+ 
++/**
++ * nfs4_proc_setclientid - Negotiate client ID
++ * @clp: state data structure
++ * @program: RPC program for NFSv4 callback service
++ * @port: IP port number for NFS4 callback service
++ * @cred: RPC credential to use for this call
++ * @res: where to place the result
++ *
++ * Returns zero, a negative errno, or a negative NFS4ERR status code.
++ */
+ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 		unsigned short port, struct rpc_cred *cred,
+ 		struct nfs4_setclientid_res *res)
+@@ -4043,6 +4053,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 		.rpc_resp = res,
+ 		.rpc_cred = cred,
+ 	};
++	int status;
+ 
+ 	/* nfs_client_id4 */
+ 	nfs4_init_boot_verifier(clp, &sc_verifier);
+@@ -4064,9 +4075,22 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 				sizeof(setclientid.sc_uaddr), "%s.%u.%u",
+ 				clp->cl_ipaddr, port >> 8, port & 255);
+ 
+-	return rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
++	dprintk("NFS call  setclientid auth=%s, '%.*s'\n",
++		clp->cl_rpcclient->cl_auth->au_ops->au_name,
++		setclientid.sc_name_len, setclientid.sc_name);
++	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
++	dprintk("NFS reply setclientid: %d\n", status);
++	return status;
+ }
+ 
++/**
++ * nfs4_proc_setclientid_confirm - Confirm client ID
++ * @clp: state data structure
++ * @res: result of a previous SETCLIENTID
++ * @cred: RPC credential to use for this call
++ *
++ * Returns zero, a negative errno, or a negative NFS4ERR status code.
++ */
+ int nfs4_proc_setclientid_confirm(struct nfs_client *clp,
+ 		struct nfs4_setclientid_res *arg,
+ 		struct rpc_cred *cred)
+@@ -4081,6 +4105,9 @@ int nfs4_proc_setclientid_confirm(struct nfs_client *clp,
+ 	unsigned long now;
+ 	int status;
+ 
++	dprintk("NFS call  setclientid_confirm auth=%s, (client ID %llx)\n",
++		clp->cl_rpcclient->cl_auth->au_ops->au_name,
++		clp->cl_clientid);
+ 	now = jiffies;
+ 	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
+ 	if (status == 0) {
+@@ -4089,6 +4116,7 @@ int nfs4_proc_setclientid_confirm(struct nfs_client *clp,
+ 		clp->cl_last_renewal = now;
+ 		spin_unlock(&clp->cl_lock);
+ 	}
++	dprintk("NFS reply setclientid_confirm: %d\n", status);
+ 	return status;
+ }
+ 
+@@ -5236,6 +5264,8 @@ out:
+ /*
+  * nfs4_proc_exchange_id()
+  *
++ * Returns zero, a negative errno, or a negative NFS4ERR status code.
++ *
+  * Since the clientid has expired, all compounds using sessions
+  * associated with the stale clientid will be returning
+  * NFS4ERR_BADSESSION in the sequence operation, and will therefore
+@@ -5260,15 +5290,14 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ 		.rpc_cred = cred,
+ 	};
+ 
+-	dprintk("--> %s\n", __func__);
+-	BUG_ON(clp == NULL);
+-
+ 	nfs4_init_boot_verifier(clp, &verifier);
+-
+ 	args.id_len = scnprintf(args.id, sizeof(args.id),
+ 				"%s/%s",
+ 				clp->cl_ipaddr,
+ 				clp->cl_rpcclient->cl_nodename);
++	dprintk("NFS call  exchange_id auth=%s, '%.*s'\n",
++		clp->cl_rpcclient->cl_auth->au_ops->au_name,
++		args.id_len, args.id);
+ 
+ 	res.server_owner = kzalloc(sizeof(struct nfs41_server_owner),
+ 					GFP_NOFS);
+@@ -5331,12 +5360,12 @@ out_server_scope:
+ 	kfree(res.server_scope);
+ out:
+ 	if (clp->cl_implid != NULL)
+-		dprintk("%s: Server Implementation ID: "
++		dprintk("NFS reply exchange_id: Server Implementation ID: "
+ 			"domain: %s, name: %s, date: %llu,%u\n",
+-			__func__, clp->cl_implid->domain, clp->cl_implid->name,
++			clp->cl_implid->domain, clp->cl_implid->name,
+ 			clp->cl_implid->date.seconds,
+ 			clp->cl_implid->date.nseconds);
+-	dprintk("<-- %s status= %d\n", __func__, status);
++	dprintk("NFS reply exchange_id: %d\n", status);
+ 	return status;
+ }
+ 
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index a2c1153..d6fe6f7 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1647,6 +1647,10 @@ static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
+ 	return 0;
+ }
+ 
++/*
++ * Returns zero or a negative errno.  NFS4ERR values are converted
++ * to local errno values.
++ */
+ static int nfs4_reclaim_lease(struct nfs_client *clp)
+ {
+ 	struct rpc_cred *cred;
+
