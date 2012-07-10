@@ -1,257 +1,363 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35051 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:20521 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753983Ab2GXVrd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Jul 2012 17:47:33 -0400
-Date: Tue, 24 Jul 2012 17:47:31 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Subject: Re: [PATCH v3 03/11] NFS: move per-net callback thread
- initialization to nfs_callback_up_net()
-Message-ID: <20120724214731.GO8570@fieldses.org>
-References: <20120703161844.11911.92996.stgit@localhost.localdomain>
- <20120703161946.11911.85659.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120703161946.11911.85659.stgit@localhost.localdomain>
+	id S1756081Ab2GJQQZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jul 2012 12:16:25 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 08/12] NFS: Initialize the NFS v4 client from init_nfs_v4()
+Date: Tue, 10 Jul 2012 12:16:13 -0400
+Message-Id: <1341936977-21186-9-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1341936977-21186-1-git-send-email-bjschuma@netapp.com>
+References: <1341936977-21186-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 03, 2012 at 08:19:46PM +0400, Stanislav Kinsbursky wrote:
-> This new function in now called before nfs_minorversion_callback_svc_setup()).
-> 
-> Also few small changes:
-> 1) current network namespace in nfs_callback_up() was replaced by transport net.
-> 2) svc_shutdown_net() was moved prior to callback usage counter decrement
-> (because in case of per-net data allocation faulure svc_shutdown_net() have to
-> be skipped).
-> 
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> ---
->  fs/nfs/callback.c |  125 +++++++++++++++++++++++++++++++++--------------------
->  fs/nfs/client.c   |    2 -
->  2 files changed, 79 insertions(+), 48 deletions(-)
-> 
-> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> index f8d0c21..b61ed61 100644
-> --- a/fs/nfs/callback.c
-> +++ b/fs/nfs/callback.c
-> @@ -63,6 +63,32 @@ static struct kernel_param_ops param_ops_portnr = {
->  
->  module_param_named(callback_tcpport, nfs_callback_set_tcpport, portnr, 0644);
->  
-> +static int nfs4_callback_up_net(struct svc_serv *serv, struct net *net)
-> +{
-> +	int ret;
-> +
-> +	ret = svc_create_xprt(serv, "tcp", net, PF_INET,
-> +				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
-> +	if (ret <= 0)
-> +		goto out_err;
-> +	nfs_callback_tcpport = ret;
-> +	dprintk("NFS: Callback listener port = %u (af %u, net %p)\n",
-> +			nfs_callback_tcpport, PF_INET, net);
-> +
-> +	ret = svc_create_xprt(serv, "tcp", net, PF_INET6,
-> +				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
-> +	if (ret > 0) {
-> +		nfs_callback_tcpport6 = ret;
-> +		dprintk("NFS: Callback listener port = %u (af %u, net %p)\n",
-> +				nfs_callback_tcpport6, PF_INET6, net);
-> +	} else if (ret != -EAFNOSUPPORT)
-> +		goto out_err;
-> +	return 0;
-> +
-> +out_err:
-> +	return (ret) ? ret : -ENOMEM;
-> +}
-> +
->  /*
->   * This is the NFSv4 callback kernel thread.
->   */
-> @@ -104,36 +130,21 @@ nfs4_callback_svc(void *vrqstp)
->  static struct svc_rqst *
->  nfs4_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
->  {
-> -	int ret;
-> -
-> -	ret = svc_create_xprt(serv, "tcp", &init_net, PF_INET,
-> -				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
-> -	if (ret <= 0)
-> -		goto out_err;
-> -	nfs_callback_tcpport = ret;
-> -	dprintk("NFS: Callback listener port = %u (af %u)\n",
-> -			nfs_callback_tcpport, PF_INET);
-> -
-> -	ret = svc_create_xprt(serv, "tcp", &init_net, PF_INET6,
-> -				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
-> -	if (ret > 0) {
-> -		nfs_callback_tcpport6 = ret;
-> -		dprintk("NFS: Callback listener port = %u (af %u)\n",
-> -				nfs_callback_tcpport6, PF_INET6);
-> -	} else if (ret == -EAFNOSUPPORT)
-> -		ret = 0;
-> -	else
-> -		goto out_err;
-> -
->  	return svc_prepare_thread(serv, &serv->sv_pools[0], NUMA_NO_NODE);
-> -
-> -out_err:
-> -	if (ret == 0)
-> -		ret = -ENOMEM;
-> -	return ERR_PTR(ret);
->  }
->  
->  #if defined(CONFIG_NFS_V4_1)
-> +static int nfs41_callback_up_net(struct svc_serv *serv, struct net *net)
-> +{
-> +	/*
-> +	 * Create an svc_sock for the back channel service that shares the
-> +	 * fore channel connection.
-> +	 * Returns the input port (0) and sets the svc_serv bc_xprt on success
-> +	 */
-> +	return svc_create_xprt(serv, "tcp-bc", net, PF_INET, 0,
-> +			      SVC_SOCK_ANONYMOUS);
-> +}
-> +
->  /*
->   * The callback service for NFSv4.1 callbacks
->   */
-> @@ -176,19 +187,6 @@ static struct svc_rqst *
->  nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
->  {
->  	struct svc_rqst *rqstp;
-> -	int ret;
-> -
-> -	/*
-> -	 * Create an svc_sock for the back channel service that shares the
-> -	 * fore channel connection.
-> -	 * Returns the input port (0) and sets the svc_serv bc_xprt on success
-> -	 */
-> -	ret = svc_create_xprt(serv, "tcp-bc", &init_net, PF_INET, 0,
-> -			      SVC_SOCK_ANONYMOUS);
-> -	if (ret < 0) {
-> -		rqstp = ERR_PTR(ret);
-> -		goto out;
-> -	}
->  
->  	/*
->  	 * Save the svc_serv in the transport so that it can
-> @@ -204,7 +202,6 @@ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
->  		svc_xprt_put(serv->sv_bc_xprt);
->  		serv->sv_bc_xprt = NULL;
->  	}
-> -out:
->  	dprintk("--> %s return %ld\n", __func__,
->  		IS_ERR(rqstp) ? PTR_ERR(rqstp) : 0);
->  	return rqstp;
-> @@ -228,6 +225,11 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
->  		xprt->bc_serv = cb_info->serv;
->  }
->  #else
-> +static int nfs41_callback_up_net(struct svc_serv *serv, struct net *net)
-> +{
-> +	return 0;
-> +}
-> +
->  static inline int nfs_minorversion_callback_svc_setup(u32 minorversion,
->  		struct svc_serv *serv, struct rpc_xprt *xprt,
->  		struct svc_rqst **rqstpp, int (**callback_svc)(void *vrqstp))
-> @@ -241,6 +243,36 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
->  }
->  #endif /* CONFIG_NFS_V4_1 */
->  
-> +static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct net *net)
-> +{
-> +	int ret;
-> +
-> +	dprintk("NFS: create per-net callback data; net=%p\n", net);
-> +
-> +	ret = svc_bind(serv, net);
-> +	if (ret < 0) {
-> +		printk(KERN_WARNING "NFS: bind callback service failed\n");
-> +		goto err_bind;
-> +	}
-> +
-> +	if (minorversion) {
-> +		ret = nfs41_callback_up_net(serv, net);
-> +		if (ret < 0)
-> +			goto err_socks;
-> +	}
-> +
-> +	if (ret == 0)
-> +		ret = nfs4_callback_up_net(serv, net);
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-So in the minorversion 1 case, and in the absence of errors, you set up
-both the 4.1 and 4.0 callback xprts?
+And split these functions out of the generic client into a v4 specific
+file.
 
-That doesn't look right.  You should need only one or the other.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/Makefile     |   2 +-
+ fs/nfs/client.c     | 137 ++-----------------------------------------------
+ fs/nfs/internal.h   |   1 +
+ fs/nfs/nfs4client.c | 144 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 149 insertions(+), 135 deletions(-)
+ create mode 100644 fs/nfs/nfs4client.c
 
---b.
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index ec13afe..0b96c20 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -15,7 +15,7 @@ nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
+ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+ 			   nfs4super.o nfs4file.o delegation.o idmap.o \
+ 			   callback.o callback_xdr.o callback_proc.o \
+-			   nfs4namespace.o nfs4getroot.o
++			   nfs4namespace.o nfs4getroot.o nfs4client.o
+ nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
+ 
+ ifeq ($(CONFIG_SYSCTL), y)
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 254719c..5664c7b 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -662,9 +662,9 @@ static void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
+ /*
+  * Create an RPC client handle
+  */
+-static int nfs_create_rpc_client(struct nfs_client *clp,
+-				 const struct rpc_timeout *timeparms,
+-				 rpc_authflavor_t flavor)
++int nfs_create_rpc_client(struct nfs_client *clp,
++			  const struct rpc_timeout *timeparms,
++			  rpc_authflavor_t flavor)
+ {
+ 	struct rpc_clnt		*clnt = NULL;
+ 	struct rpc_create_args args = {
+@@ -1305,137 +1305,6 @@ nfs4_find_client_sessionid(struct net *net, const struct sockaddr *addr,
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ /*
+- * Initialize the NFS4 callback service
+- */
+-static int nfs4_init_callback(struct nfs_client *clp)
+-{
+-	int error;
+-
+-	if (clp->rpc_ops->version == 4) {
+-		struct rpc_xprt *xprt;
+-
+-		xprt = rcu_dereference_raw(clp->cl_rpcclient->cl_xprt);
+-
+-		if (nfs4_has_session(clp)) {
+-			error = xprt_setup_backchannel(xprt,
+-						NFS41_BC_MIN_CALLBACKS);
+-			if (error < 0)
+-				return error;
+-		}
+-
+-		error = nfs_callback_up(clp->cl_mvops->minor_version, xprt);
+-		if (error < 0) {
+-			dprintk("%s: failed to start callback. Error = %d\n",
+-				__func__, error);
+-			return error;
+-		}
+-		__set_bit(NFS_CS_CALLBACK, &clp->cl_res_state);
+-	}
+-	return 0;
+-}
+-
+-/*
+- * Initialize the minor version specific parts of an NFS4 client record
+- */
+-static int nfs4_init_client_minor_version(struct nfs_client *clp)
+-{
+-#if defined(CONFIG_NFS_V4_1)
+-	if (clp->cl_mvops->minor_version) {
+-		struct nfs4_session *session = NULL;
+-		/*
+-		 * Create the session and mark it expired.
+-		 * When a SEQUENCE operation encounters the expired session
+-		 * it will do session recovery to initialize it.
+-		 */
+-		session = nfs4_alloc_session(clp);
+-		if (!session)
+-			return -ENOMEM;
+-
+-		clp->cl_session = session;
+-		/*
+-		 * The create session reply races with the server back
+-		 * channel probe. Mark the client NFS_CS_SESSION_INITING
+-		 * so that the client back channel can find the
+-		 * nfs_client struct
+-		 */
+-		nfs_mark_client_ready(clp, NFS_CS_SESSION_INITING);
+-	}
+-#endif /* CONFIG_NFS_V4_1 */
+-
+-	return nfs4_init_callback(clp);
+-}
+-
+-/**
+- * nfs4_init_client - Initialise an NFS4 client record
+- *
+- * @clp: nfs_client to initialise
+- * @timeparms: timeout parameters for underlying RPC transport
+- * @ip_addr: callback IP address in presentation format
+- * @authflavor: authentication flavor for underlying RPC transport
+- *
+- * Returns pointer to an NFS client, or an ERR_PTR value.
+- */
+-struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+-				    const struct rpc_timeout *timeparms,
+-				    const char *ip_addr,
+-				    rpc_authflavor_t authflavour)
+-{
+-	char buf[INET6_ADDRSTRLEN + 1];
+-	int error;
+-
+-	if (clp->cl_cons_state == NFS_CS_READY) {
+-		/* the client is initialised already */
+-		dprintk("<-- nfs4_init_client() = 0 [already %p]\n", clp);
+-		return clp;
+-	}
+-
+-	/* Check NFS protocol revision and initialize RPC op vector */
+-	clp->rpc_ops = &nfs_v4_clientops;
+-
+-	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
+-	error = nfs_create_rpc_client(clp, timeparms, authflavour);
+-	if (error < 0)
+-		goto error;
+-
+-	/* If no clientaddr= option was specified, find a usable cb address */
+-	if (ip_addr == NULL) {
+-		struct sockaddr_storage cb_addr;
+-		struct sockaddr *sap = (struct sockaddr *)&cb_addr;
+-
+-		error = rpc_localaddr(clp->cl_rpcclient, sap, sizeof(cb_addr));
+-		if (error < 0)
+-			goto error;
+-		error = rpc_ntop(sap, buf, sizeof(buf));
+-		if (error < 0)
+-			goto error;
+-		ip_addr = (const char *)buf;
+-	}
+-	strlcpy(clp->cl_ipaddr, ip_addr, sizeof(clp->cl_ipaddr));
+-
+-	error = nfs_idmap_new(clp);
+-	if (error < 0) {
+-		dprintk("%s: failed to create idmapper. Error = %d\n",
+-			__func__, error);
+-		goto error;
+-	}
+-	__set_bit(NFS_CS_IDMAP, &clp->cl_res_state);
+-
+-	error = nfs4_init_client_minor_version(clp);
+-	if (error < 0)
+-		goto error;
+-
+-	if (!nfs4_has_session(clp))
+-		nfs_mark_client_ready(clp, NFS_CS_READY);
+-	return clp;
+-
+-error:
+-	nfs_mark_client_ready(clp, error);
+-	nfs_put_client(clp);
+-	dprintk("<-- nfs4_init_client() = xerror %d\n", error);
+-	return ERR_PTR(error);
+-}
+-
+-/*
+  * Set up an NFS4 client
+  */
+ static int nfs4_set_client(struct nfs_server *server,
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 82c5aef..a5b0bb8 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -149,6 +149,7 @@ extern void nfs_umount(const struct nfs_mount_request *info);
+ extern const struct rpc_program nfs_program;
+ extern void nfs_clients_init(struct net *net);
+ extern struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *);
++int nfs_create_rpc_client(struct nfs_client *, const struct rpc_timeout *, rpc_authflavor_t);
+ 
+ extern void nfs_cleanup_cb_ident_idr(struct net *);
+ extern void nfs_put_client(struct nfs_client *);
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+new file mode 100644
+index 0000000..c5234b5
+--- /dev/null
++++ b/fs/nfs/nfs4client.c
+@@ -0,0 +1,144 @@
++/*
++ * Copyright (C) 2006 Red Hat, Inc. All Rights Reserved.
++ * Written by David Howells (dhowells@redhat.com)
++ */
++#include <linux/nfs_fs.h>
++#include <linux/nfs_idmap.h>
++#include <linux/sunrpc/auth.h>
++#include <linux/sunrpc/xprt.h>
++#include <linux/sunrpc/bc_xprt.h>
++#include "internal.h"
++#include "callback.h"
++
++#define NFSDBG_FACILITY		NFSDBG_CLIENT
++
++/*
++ * Initialize the NFS4 callback service
++ */
++static int nfs4_init_callback(struct nfs_client *clp)
++{
++	int error;
++
++	if (clp->rpc_ops->version == 4) {
++		struct rpc_xprt *xprt;
++
++		xprt = rcu_dereference_raw(clp->cl_rpcclient->cl_xprt);
++
++		if (nfs4_has_session(clp)) {
++			error = xprt_setup_backchannel(xprt,
++						NFS41_BC_MIN_CALLBACKS);
++			if (error < 0)
++				return error;
++		}
++
++		error = nfs_callback_up(clp->cl_mvops->minor_version, xprt);
++		if (error < 0) {
++			dprintk("%s: failed to start callback. Error = %d\n",
++				__func__, error);
++			return error;
++		}
++		__set_bit(NFS_CS_CALLBACK, &clp->cl_res_state);
++	}
++	return 0;
++}
++
++/*
++ * Initialize the minor version specific parts of an NFS4 client record
++ */
++static int nfs4_init_client_minor_version(struct nfs_client *clp)
++{
++#if defined(CONFIG_NFS_V4_1)
++	if (clp->cl_mvops->minor_version) {
++		struct nfs4_session *session = NULL;
++		/*
++		 * Create the session and mark it expired.
++		 * When a SEQUENCE operation encounters the expired session
++		 * it will do session recovery to initialize it.
++		 */
++		session = nfs4_alloc_session(clp);
++		if (!session)
++			return -ENOMEM;
++
++		clp->cl_session = session;
++		/*
++		 * The create session reply races with the server back
++		 * channel probe. Mark the client NFS_CS_SESSION_INITING
++		 * so that the client back channel can find the
++		 * nfs_client struct
++		 */
++		nfs_mark_client_ready(clp, NFS_CS_SESSION_INITING);
++	}
++#endif /* CONFIG_NFS_V4_1 */
++
++	return nfs4_init_callback(clp);
++}
++
++/**
++ * nfs4_init_client - Initialise an NFS4 client record
++ *
++ * @clp: nfs_client to initialise
++ * @timeparms: timeout parameters for underlying RPC transport
++ * @ip_addr: callback IP address in presentation format
++ * @authflavor: authentication flavor for underlying RPC transport
++ *
++ * Returns pointer to an NFS client, or an ERR_PTR value.
++ */
++struct nfs_client *nfs4_init_client(struct nfs_client *clp,
++				    const struct rpc_timeout *timeparms,
++				    const char *ip_addr,
++				    rpc_authflavor_t authflavour)
++{
++	char buf[INET6_ADDRSTRLEN + 1];
++	int error;
++
++	if (clp->cl_cons_state == NFS_CS_READY) {
++		/* the client is initialised already */
++		dprintk("<-- nfs4_init_client() = 0 [already %p]\n", clp);
++		return clp;
++	}
++
++	/* Check NFS protocol revision and initialize RPC op vector */
++	clp->rpc_ops = &nfs_v4_clientops;
++
++	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
++	error = nfs_create_rpc_client(clp, timeparms, authflavour);
++	if (error < 0)
++		goto error;
++
++	/* If no clientaddr= option was specified, find a usable cb address */
++	if (ip_addr == NULL) {
++		struct sockaddr_storage cb_addr;
++		struct sockaddr *sap = (struct sockaddr *)&cb_addr;
++
++		error = rpc_localaddr(clp->cl_rpcclient, sap, sizeof(cb_addr));
++		if (error < 0)
++			goto error;
++		error = rpc_ntop(sap, buf, sizeof(buf));
++		if (error < 0)
++			goto error;
++		ip_addr = (const char *)buf;
++	}
++	strlcpy(clp->cl_ipaddr, ip_addr, sizeof(clp->cl_ipaddr));
++
++	error = nfs_idmap_new(clp);
++	if (error < 0) {
++		dprintk("%s: failed to create idmapper. Error = %d\n",
++			__func__, error);
++		goto error;
++	}
++	__set_bit(NFS_CS_IDMAP, &clp->cl_res_state);
++
++	error = nfs4_init_client_minor_version(clp);
++	if (error < 0)
++		goto error;
++
++	if (!nfs4_has_session(clp))
++		nfs_mark_client_ready(clp, NFS_CS_READY);
++	return clp;
++
++error:
++	nfs_mark_client_ready(clp, error);
++	nfs_put_client(clp);
++	dprintk("<-- nfs4_init_client() = xerror %d\n", error);
++	return ERR_PTR(error);
++}
+-- 
+1.7.11.1
 
-> +	if (ret < 0)
-> +		goto err_socks;
-> +	return 0;
-> +
-> +err_socks:
-> +	svc_rpcb_cleanup(serv, net);
-> +err_bind:
-> +	return ret;
-> +}
-> +
->  static struct svc_serv *nfs_callback_create_svc(int minorversion)
->  {
->  	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
-> @@ -287,7 +319,7 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
->  	char svc_name[12];
->  	int ret = 0;
->  	int minorversion_setup;
-> -	struct net *net = &init_net;
-> +	struct net *net = xprt->xprt_net;
->  
->  	mutex_lock(&nfs_callback_mutex);
->  
-> @@ -302,11 +334,9 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
->  		goto out;
->  	}
->  
-> -	ret = svc_bind(serv, net);
-> -	if (ret < 0) {
-> -		printk(KERN_WARNING "NFS: bind callback service failed\n");
-> -		goto out_err;
-> -	}
-> +	ret = nfs_callback_up_net(minorversion, serv, net);
-> +	if (ret < 0)
-> +		goto err_net;
->  
->  	minorversion_setup =  nfs_minorversion_callback_svc_setup(minorversion,
->  					serv, xprt, &rqstp, &callback_svc);
-> @@ -346,10 +376,11 @@ err_create:
->  	mutex_unlock(&nfs_callback_mutex);
->  	return ret;
->  out_err:
-> +	svc_shutdown_net(serv, net);
-> +err_net:
->  	dprintk("NFS: Couldn't create callback socket or server thread; "
->  		"err = %d\n", ret);
->  	cb_info->users--;
-> -	svc_shutdown_net(serv, net);
->  	goto out;
->  }
->  
-> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index 28bc770..d8c918b 100644
-> --- a/fs/nfs/client.c
-> +++ b/fs/nfs/client.c
-> @@ -225,7 +225,7 @@ static void nfs4_shutdown_session(struct nfs_client *clp)
->  static void nfs4_destroy_callback(struct nfs_client *clp)
->  {
->  	if (__test_and_clear_bit(NFS_CS_CALLBACK, &clp->cl_res_state))
-> -		nfs_callback_down(clp->cl_mvops->minor_version, &init_net);
-> +		nfs_callback_down(clp->cl_mvops->minor_version, clp->cl_net);
->  }
->  
->  static void nfs4_shutdown_client(struct nfs_client *clp)
-> 
