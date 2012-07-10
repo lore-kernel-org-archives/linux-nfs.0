@@ -1,98 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:40413 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752224Ab2GZLzc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 07:55:32 -0400
-Received: by mail-gg0-f174.google.com with SMTP id u4so1821110ggl.19
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jul 2012 04:55:31 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v4 03/17] vfs: make fstatat retry on ESTALE errors from getattr call
-Date: Thu, 26 Jul 2012 07:55:06 -0400
-Message-Id: <1343303720-11199-4-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
-References: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:41290 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751830Ab2GJTPN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jul 2012 15:15:13 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Tomasz Chmielewski <mangoo@wpkg.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: cachefilesd - using multiple cache directories (disks)?
+Date: Tue, 10 Jul 2012 19:15:11 +0000
+Message-ID: <1341947709.12698.15.camel@lade.trondhjem.org>
+References: <4FFC733D.7050306@wpkg.org>
+In-Reply-To: <4FFC733D.7050306@wpkg.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c         |  2 +-
- fs/stat.c          | 21 ++++++++++++++++-----
- include/linux/fs.h |  1 +
- 3 files changed, 18 insertions(+), 6 deletions(-)
-
-diff --git a/fs/namei.c b/fs/namei.c
-index b6fbe3d..1ab4400 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -117,7 +117,7 @@
-  * POSIX.1 2.4: an empty pathname is invalid (ENOENT).
-  * PATH_MAX includes the nul terminator --RR.
-  */
--static char *getname_flags(const char __user *filename, int flags, int *empty)
-+char *getname_flags(const char __user *filename, int flags, int *empty)
- {
- 	char *result = __getname(), *err;
- 	int len;
-diff --git a/fs/stat.c b/fs/stat.c
-index b6ff118..5afeb37 100644
---- a/fs/stat.c
-+++ b/fs/stat.c
-@@ -72,9 +72,11 @@ EXPORT_SYMBOL(vfs_fstat);
- int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
- 		int flag)
- {
-+	char *name;
- 	struct path path;
- 	int error = -EINVAL;
--	int lookup_flags = 0;
-+	unsigned int try = 0;
-+	unsigned int lookup_flags = 0;
- 
- 	if ((flag & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
- 		      AT_EMPTY_PATH)) != 0)
-@@ -85,12 +87,21 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
- 	if (flag & AT_EMPTY_PATH)
- 		lookup_flags |= LOOKUP_EMPTY;
- 
--	error = user_path_at(dfd, filename, lookup_flags, &path);
--	if (error)
-+	name = getname_flags(filename, lookup_flags, NULL);
-+	if (IS_ERR(name)) {
-+		error = PTR_ERR(name);
- 		goto out;
-+	}
-+	do {
-+		error = kern_path_at(dfd, name, lookup_flags, &path);
-+		if (error)
-+			break;
- 
--	error = vfs_getattr(path.mnt, path.dentry, stat);
--	path_put(&path);
-+		error = vfs_getattr(path.mnt, path.dentry, stat);
-+		path_put(&path);
-+		lookup_flags |= LOOKUP_REVAL;
-+	} while (retry_estale(error, try++));
-+	putname(name);
- out:
- 	return error;
- }
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 138d93a..00db714 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2062,6 +2062,7 @@ extern struct file *file_open_root(struct dentry *, struct vfsmount *,
- 				   const char *, int);
- extern struct file * dentry_open(const struct path *, int, const struct cred *);
- extern int filp_close(struct file *, fl_owner_t id);
-+extern char *getname_flags(const char __user *, int, int *);
- extern char * getname(const char __user *);
- enum {
- 	FILE_CREATED = 1,
--- 
-1.7.11.2
-
+T24gV2VkLCAyMDEyLTA3LTExIGF0IDAyOjIzICswODAwLCBUb21hc3ogQ2htaWVsZXdza2kgd3Jv
+dGU6DQo+IEhpLA0KPiANCj4gaXMgaXQgcG9zc2libGUgdG8gdXNlIGNhY2hlZmlsZXNkIHdpdGgg
+bXVsdGlwbGUgZGlyZWN0b3JpZXMgKGRpc2tzKT8NCj4gDQo+IA0KPiBUaGUgZmluZSBtYW51YWwg
+aXMgbm90IHZlcnkgY2xlYXIgYWJvdXQgdGhpczoNCj4gDQo+ICAgICAgICAgZGlyIDxwYXRoPg0K
+PiAgICAgICAgICAgICAgICBUaGlzIGNvbW1hbmQgc3BlY2lmaWVzIHRoZSBkaXJlY3RvcnkgY29u
+dGFpbmluZyB0aGUgcm9vdA0KPiAgICAgICAgICAgICAgICBvZiB0aGUgY2FjaGUuICBJdCBtYXkg
+b25seSBzcGVjaWZpZWQgb25jZSBwZXINCj4gICAgICAgICAgICAgICAgY29uZmlndXJhdGlvbiBm
+aWxlLg0KPiANCj4gDQo+IFRoaXMgbWF5IGJlIGludGVycHJldGVkIGFzIGVpdGhlcjoNCj4gDQo+
+IDEpIG5vLCBpdCdzIG5vdCBwb3NzaWJsZSB0byB1c2UgbXVsdGlwbGUgZGlyZWN0b3JpZXMgd2l0
+aCBjYWNoZWZpbGVzZA0KPiANCj4gMikgaXQncyBub3QgcG9zc2libGUgdG8gdXNlIG11bHRpcGxl
+IGRpcmVjdG9yaWVzIHdpdGggb25lIGNhY2hlZmlsZXNkIA0KPiBwcm9jZXNzLCBidXQgaXQncyBw
+ZXJmZWN0bHkgT0sgdG8gcnVuIG11bHRpcGxlIGluc3RhbmNlcyBvZiBjYWNoZWZpbGVzZCANCj4g
+b24gb25lIHNlcnZlcg0KPiANCj4gDQo+IFdoaWNoIG9uZSBpcyB0cnVlPw0KDQpTZWUgRG9jdW1l
+bnRhdGlvbi9maWxlc3lzdGVtcy9jYWNoaW5nL2NhY2hlZmlsZXMudHh0Og0KPT09PT09PT0NCk9W
+RVJWSUVXDQo9PT09PT09PQ0KLi4uDQpDYWNoZUZpbGVzIGlzIGN1cnJlbnRseSBsaW1pdGVkIHRv
+IGEgc2luZ2xlIGNhY2hlLg0KDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xp
+ZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3
+Lm5ldGFwcC5jb20NCg0K
