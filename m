@@ -1,76 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f44.google.com ([74.125.82.44]:40576 "EHLO
-	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754544Ab2GKWnw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jul 2012 18:43:52 -0400
+Received: from mail.virtall.com ([178.63.195.102]:35600 "EHLO mail.virtall.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751043Ab2GJScP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jul 2012 14:32:15 -0400
+Received: from mail.virtall.com (localhost [127.0.0.1])
+	by mail.virtall.com (Postfix) with ESMTP id 9659636466F
+	for <linux-nfs@vger.kernel.org>; Tue, 10 Jul 2012 20:24:02 +0200 (CEST)
+Received: from [192.168.1.6] (unknown [60.53.17.228])
+	by mail.virtall.com (Postfix) with ESMTPSA id 924F8364595
+	for <linux-nfs@vger.kernel.org>; Tue, 10 Jul 2012 20:24:01 +0200 (CEST)
+Message-ID: <4FFC733D.7050306@wpkg.org>
+Date: Wed, 11 Jul 2012 02:23:57 +0800
+From: Tomasz Chmielewski <mangoo@wpkg.org>
 MIME-Version: 1.0
-In-Reply-To: <CAKYAXd__BLFPOw=+tt=cqZgyM45y5mSOTamVaFTU26BNSNa=2A@mail.gmail.com>
-References: <1341717459-7297-1-git-send-email-linkinjeon@gmail.com>
-	<20120710145937.GA1947@fieldses.org>
-	<CAKYAXd97ir=tvxWTC4eVmrrXBEpK=XCX3-e8XUjCPy16eHoibQ@mail.gmail.com>
-	<20120711140944.GB11432@fieldses.org>
-	<CAKYAXd__BLFPOw=+tt=cqZgyM45y5mSOTamVaFTU26BNSNa=2A@mail.gmail.com>
-Date: Thu, 12 Jul 2012 07:43:49 +0900
-Message-ID: <CAKYAXd9KLxDqXSqgk7Y1rNv9cw-r+PHPSenQCnkRh9_0_6HmAQ@mail.gmail.com>
-Subject: Re: [PATCH] nfs-util: Add cache_flush in mountd UMNT procedure.
-From: Namjae Jeon <linkinjeon@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: SteveD@redhat.com, Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Vivek Trivedi <vtrivedi018@gmail.com>
-Content-Type: text/plain; charset=UTF-8
+To: linux-nfs@vger.kernel.org
+Subject: cachefilesd - using multiple cache directories (disks)?
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2012/7/12, Namjae Jeon <linkinjeon@gmail.com>:
-> 2012/7/11, J. Bruce Fields <bfields@fieldses.org>:
->> On Wed, Jul 11, 2012 at 01:10:53PM +0900, Namjae Jeon wrote:
->>> 2012/7/10, J. Bruce Fields <bfields@fieldses.org>:
->>> > On Sat, Jul 07, 2012 at 11:17:39PM -0400, Namjae Jeon wrote:
->>> >> For removing storage device - user needs to safely un-mount the
->>> >> device
->>> >> and then eject. But if 'EBUSY' occurs in umount then it will create
->>> >> confusion for the user as it will mean some I/O is in progress - and
->>> >> won't allow user to safely ejecting device.
->>> >
->>> Hi James.
->>> > The one drawback is that recovering from the cache flushes might be a
->>> > little expensive if you have a lot of exports in use.
->>> Good point. I will look for more there is the method flush only mount
->>> entry.
->>
->> I don't think there's a good way to flush only one entry.
->>
->> Also, this isn't going to help for NFSv4 since a v4 client won't do an
->> unmount call.
-> Okay.
->>
->>> > I'm curious, since you said this was for a usb disk: are users
->>> > expected
->>> > to just unplug it (in which case--is it read only?) or do they have
->>> > some
->>> > way of unmounting before they pull the plug?
->>> Users expected to unplug it on both read only and read/write.
->>> And there is no way that system be prepared to know about the
->>> intelligence when the user is going to unplug.
->>> if the user really want to detach the device safely. There is an
->>> option like the desktop PC - where, we can say - umount/eject the
->>> device. There is a proper user interface for safe removal.
->>> but they can not unplug safely if usb device is mounted with nfs
->>> because of this issue.
->>
->> Ideal might be to get some way to notify nfsd when the device
->> diseappears or the filesystem wants to unmount.  I don't know how to do
->> that.
-> Okay. I will look for good solution for this issue.
-> Thanks.
-Hi James.
-I have a question.
-If we found the method to notify nfs when unplugging device, Can nfsd
-flush only entry of usb mount ?
+Hi,
 
-Thanks.
+is it possible to use cachefilesd with multiple directories (disks)?
 
->>
->> --b.
->>
->
+
+The fine manual is not very clear about this:
+
+        dir <path>
+               This command specifies the directory containing the root
+               of the cache.  It may only specified once per
+               configuration file.
+
+
+This may be interpreted as either:
+
+1) no, it's not possible to use multiple directories with cachefilesd
+
+2) it's not possible to use multiple directories with one cachefilesd 
+process, but it's perfectly OK to run multiple instances of cachefilesd 
+on one server
+
+
+Which one is true?
+
+
+-- 
+Tomasz Chmielewski
+http://www.ptraveler.com
