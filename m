@@ -1,169 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:50661 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:20498 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754284Ab2G3UFb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Jul 2012 16:05:31 -0400
+	id S1751869Ab2GJQQV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jul 2012 12:16:21 -0400
 From: bjschuma@netapp.com
 To: Trond.Myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 02/10] NFS: Remove the NFS v4 xdev mount function
-Date: Mon, 30 Jul 2012 16:05:17 -0400
-Message-Id: <1343678725-8659-3-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1343678725-8659-1-git-send-email-bjschuma@netapp.com>
-References: <1343678725-8659-1-git-send-email-bjschuma@netapp.com>
+Subject: [PATCH 03/12] NFS: Split out NFS v4 inode operations
+Date: Tue, 10 Jul 2012 12:16:08 -0400
+Message-Id: <1341936977-21186-4-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1341936977-21186-1-git-send-email-bjschuma@netapp.com>
+References: <1341936977-21186-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Bryan Schumaker <bjschuma@netapp.com>
 
-I can now share this code with the v2 and v3 code by using the NFS
-subversion structure.
+The NFS v4 file inode operations are already already in nfs4proc.c, so
+this patch just needs to move the directory operations to the same file.
 
 Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfs/namespace.c | 13 -------------
- fs/nfs/nfs4super.c | 25 -------------------------
- fs/nfs/super.c     | 30 ++++++++++--------------------
- 3 files changed, 10 insertions(+), 58 deletions(-)
+ fs/nfs/dir.c      | 29 ++---------------------------
+ fs/nfs/nfs4_fs.h  |  5 ++++-
+ fs/nfs/nfs4proc.c | 19 +++++++++++++++++++
+ 3 files changed, 25 insertions(+), 28 deletions(-)
 
-diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-index 08b9c93..0f699fe 100644
---- a/fs/nfs/namespace.c
-+++ b/fs/nfs/namespace.c
-@@ -195,20 +195,7 @@ static struct vfsmount *nfs_do_clone_mount(struct nfs_server *server,
- 					   const char *devname,
- 					   struct nfs_clone_mount *mountdata)
- {
--#ifdef CONFIG_NFS_V4
--	struct vfsmount *mnt = ERR_PTR(-EINVAL);
--	switch (server->nfs_client->rpc_ops->version) {
--		case 2:
--		case 3:
--			mnt = vfs_kern_mount(&nfs_xdev_fs_type, 0, devname, mountdata);
--			break;
--		case 4:
--			mnt = vfs_kern_mount(&nfs4_xdev_fs_type, 0, devname, mountdata);
--	}
--	return mnt;
--#else
- 	return vfs_kern_mount(&nfs_xdev_fs_type, 0, devname, mountdata);
--#endif
- }
- 
- /**
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-index 1f34019..8a50557 100644
---- a/fs/nfs/nfs4super.c
-+++ b/fs/nfs/nfs4super.c
-@@ -14,8 +14,6 @@
- 
- static struct dentry *nfs4_remote_mount(struct file_system_type *fs_type,
- 	int flags, const char *dev_name, void *raw_data);
--static struct dentry *nfs4_xdev_mount(struct file_system_type *fs_type,
--	int flags, const char *dev_name, void *raw_data);
- static struct dentry *nfs4_referral_mount(struct file_system_type *fs_type,
- 	int flags, const char *dev_name, void *raw_data);
- static struct dentry *nfs4_remote_referral_mount(struct file_system_type *fs_type,
-@@ -37,14 +35,6 @@ static struct file_system_type nfs4_remote_fs_type = {
- 	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index df78921..207cb18 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -63,31 +63,6 @@ const struct address_space_operations nfs_dir_aops = {
+ 	.freepage = nfs_readdir_clear_array,
  };
  
--struct file_system_type nfs4_xdev_fs_type = {
--	.owner		= THIS_MODULE,
--	.name		= "nfs4",
--	.mount		= nfs4_xdev_mount,
--	.kill_sb	= nfs_kill_super,
--	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
+-#ifdef CONFIG_NFS_V4
+-
+-static struct dentry *nfs_atomic_lookup(struct inode *, struct dentry *, struct nameidata *);
+-static int nfs_open_create(struct inode *dir, struct dentry *dentry, umode_t mode, struct nameidata *nd);
+-const struct inode_operations nfs4_dir_inode_operations = {
+-	.create		= nfs_open_create,
+-	.lookup		= nfs_atomic_lookup,
+-	.link		= nfs_link,
+-	.unlink		= nfs_unlink,
+-	.symlink	= nfs_symlink,
+-	.mkdir		= nfs_mkdir,
+-	.rmdir		= nfs_rmdir,
+-	.mknod		= nfs_mknod,
+-	.rename		= nfs_rename,
+-	.permission	= nfs_permission,
+-	.getattr	= nfs_getattr,
+-	.setattr	= nfs_setattr,
+-	.getxattr	= generic_getxattr,
+-	.setxattr	= generic_setxattr,
+-	.listxattr	= generic_listxattr,
+-	.removexattr	= generic_removexattr,
 -};
 -
- static struct file_system_type nfs4_remote_referral_fs_type = {
- 	.owner		= THIS_MODULE,
- 	.name		= "nfs4",
-@@ -261,21 +251,6 @@ struct dentry *nfs4_try_mount(int flags, const char *dev_name,
- 	return res;
- }
- 
--/*
-- * Clone an NFS4 server record on xdev traversal (FSID-change)
-- */
--static struct dentry *
--nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
--		 const char *dev_name, void *raw_data)
--{
--	struct nfs_mount_info mount_info = {
--		.fill_super = nfs_clone_super,
--		.set_security = nfs_clone_sb_security,
--		.cloned = raw_data,
--	};
--	return nfs_xdev_mount_common(&nfs4_fs_type, flags, dev_name, &mount_info);
--}
+-#endif /* CONFIG_NFS_V4 */
 -
- static struct dentry *
- nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
- 			   const char *dev_name, void *raw_data)
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 61405a7..4faefa1 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2445,10 +2445,15 @@ void nfs_kill_super(struct super_block *s)
-  * Clone an NFS2/3/4 server record on xdev traversal (FSID-change)
-  */
- struct dentry *
--nfs_xdev_mount_common(struct file_system_type *fs_type, int flags,
--		const char *dev_name, struct nfs_mount_info *mount_info)
-+nfs_xdev_mount(struct file_system_type *fs_type, int flags,
-+		const char *dev_name, void *raw_data)
+ static struct nfs_open_dir_context *alloc_nfs_open_dir_context(struct inode *dir, struct rpc_cred *cred)
  {
--	struct nfs_clone_mount *data = mount_info->cloned;
-+	struct nfs_clone_mount *data = raw_data;
-+	struct nfs_mount_info mount_info = {
-+		.fill_super = nfs_clone_super,
-+		.set_security = nfs_clone_sb_security,
-+		.cloned = data,
-+	};
- 	struct nfs_server *server;
- 	struct dentry *mntroot = ERR_PTR(-ENOMEM);
- 	struct nfs_subversion *nfs_mod = NFS_SB(data->sb)->nfs_client->cl_nfs_mod;
-@@ -2456,7 +2461,7 @@ nfs_xdev_mount_common(struct file_system_type *fs_type, int flags,
- 
- 	dprintk("--> nfs_xdev_mount_common()\n");
- 
--	mount_info->mntfh = data->fh;
-+	mount_info.mntfh = mount_info.cloned->fh;
- 
- 	/* create a new volume representation */
- 	server = nfs_clone_server(NFS_SB(data->sb), data->fh, data->fattr, data->authflavor);
-@@ -2465,7 +2470,7 @@ nfs_xdev_mount_common(struct file_system_type *fs_type, int flags,
- 		goto out_err;
- 	}
- 
--	mntroot = nfs_fs_mount_common(server, flags, dev_name, mount_info, nfs_mod);
-+	mntroot = nfs_fs_mount_common(server, flags, dev_name, &mount_info, nfs_mod);
- 	dprintk("<-- nfs_xdev_mount_common() = 0\n");
- out:
- 	return mntroot;
-@@ -2475,21 +2480,6 @@ out_err:
- 	goto out;
+ 	struct nfs_open_dir_context *ctx;
+@@ -1380,7 +1355,7 @@ out:
+ 	return ret;
  }
  
--/*
-- * Clone an NFS2/3 server record on xdev traversal (FSID-change)
-- */
--static struct dentry *
--nfs_xdev_mount(struct file_system_type *fs_type, int flags,
--		const char *dev_name, void *raw_data)
--{
--	struct nfs_mount_info mount_info = {
--		.fill_super = nfs_clone_super,
--		.set_security = nfs_clone_sb_security,
--		.cloned   = raw_data,
--	};
--	return nfs_xdev_mount_common(&nfs_fs_type, flags, dev_name, &mount_info);
--}
--
- #ifdef CONFIG_NFS_V4
+-static struct dentry *nfs_atomic_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
++struct dentry *nfs_atomic_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
+ {
+ 	struct nfs_open_context *ctx;
+ 	struct iattr attr;
+@@ -1520,7 +1495,7 @@ no_open:
+ 	return nfs_lookup_revalidate(dentry, nd);
+ }
  
- static void nfs4_validate_mount_flags(struct nfs_parsed_mount_data *args)
+-static int nfs_open_create(struct inode *dir, struct dentry *dentry,
++int nfs_open_create(struct inode *dir, struct dentry *dentry,
+ 		umode_t mode, struct nameidata *nd)
+ {
+ 	struct nfs_open_context *ctx = NULL;
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 3696ca7..b610c7e 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -200,7 +200,10 @@ struct nfs4_state_maintenance_ops {
+ };
+ 
+ extern const struct dentry_operations nfs4_dentry_operations;
+-extern const struct inode_operations nfs4_dir_inode_operations;
++
++/* dir.c */
++struct dentry *nfs_atomic_lookup(struct inode *, struct dentry *, struct nameidata *);
++int nfs_open_create(struct inode *, struct dentry *, umode_t, struct nameidata *);
+ 
+ /* write.c */
+ int nfs4_write_inode(struct inode *, struct writeback_control *);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 7d387cb..f8ab633 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6748,6 +6748,25 @@ const struct nfs4_minor_version_ops *nfs_v4_minor_ops[] = {
+ #endif
+ };
+ 
++static const struct inode_operations nfs4_dir_inode_operations = {
++	.create		= nfs_open_create,
++	.lookup		= nfs_atomic_lookup,
++	.link		= nfs_link,
++	.unlink		= nfs_unlink,
++	.symlink	= nfs_symlink,
++	.mkdir		= nfs_mkdir,
++	.rmdir		= nfs_rmdir,
++	.mknod		= nfs_mknod,
++	.rename		= nfs_rename,
++	.permission	= nfs_permission,
++	.getattr	= nfs_getattr,
++	.setattr	= nfs_setattr,
++	.getxattr	= generic_getxattr,
++	.setxattr	= generic_setxattr,
++	.listxattr	= generic_listxattr,
++	.removexattr	= generic_removexattr,
++};
++
+ static const struct inode_operations nfs4_file_inode_operations = {
+ 	.permission	= nfs_permission,
+ 	.getattr	= nfs_getattr,
 -- 
-1.7.11.3
+1.7.11.1
 
