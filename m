@@ -1,94 +1,235 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:37604 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:20498 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755772Ab2GETji (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Jul 2012 15:39:38 -0400
-Message-ID: <4FF5ED2A.1070209@RedHat.com>
-Date: Thu, 05 Jul 2012 15:38:18 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Namjae Jeon <linkinjeon@gmail.com>
-CC: bfields@fieldses.org, Trond.Myklebust@netapp.com,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Amit Sahrawat <amit.sahrawat83@gmail.com>
-Subject: Re: [PATCH] nfs-util: Update exportfs flush option list in usage
- message.
-References: <1341037381-24218-1-git-send-email-linkinjeon@gmail.com>
-In-Reply-To: <1341037381-24218-1-git-send-email-linkinjeon@gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1751475Ab2GJQQV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jul 2012 12:16:21 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 04/12] NFS: Create an init_nfs_v4() function
+Date: Tue, 10 Jul 2012 12:16:09 -0400
+Message-Id: <1341936977-21186-5-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1341936977-21186-1-git-send-email-bjschuma@netapp.com>
+References: <1341936977-21186-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Bryan Schumaker <bjschuma@netapp.com>
 
+I want to initialize all of NFS v4 in a single function that will
+eventually be used as the v4 module init function.
 
-On 06/30/2012 02:23 AM, Namjae Jeon wrote:
-> Update exportfs flush option list in usage message.
-> And I sort these cases in alphabetical order.
-> 
-> Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
-> Signed-off-by: Amit Sahrawat <amit.sahrawat83@gmail.com>
-Committed...
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/Makefile    |  2 +-
+ fs/nfs/inode.c     | 67 ++++++++++++++++++++++++++++++------------------------
+ fs/nfs/nfs4_fs.h   |  4 ++++
+ fs/nfs/nfs4super.c | 23 +++++++++++++++++++
+ 4 files changed, 65 insertions(+), 31 deletions(-)
+ create mode 100644 fs/nfs/nfs4super.c
 
-steved.
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index 7ddd45d..162a699 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -13,7 +13,7 @@ nfs-$(CONFIG_NFS_V2)	+= proc.o nfs2xdr.o
+ nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
+ nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
+ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+-			   delegation.o idmap.o \
++			   nfs4super.o delegation.o idmap.o \
+ 			   callback.o callback_xdr.o callback_proc.o \
+ 			   nfs4namespace.o
+ nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 28c9ebb..35f7e4b 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -32,7 +32,6 @@
+ #include <linux/lockd/bind.h>
+ #include <linux/seq_file.h>
+ #include <linux/mount.h>
+-#include <linux/nfs_idmap.h>
+ #include <linux/vfs.h>
+ #include <linux/inet.h>
+ #include <linux/nfs_xdr.h>
+@@ -1628,87 +1627,96 @@ static int __init init_nfs_fs(void)
+ {
+ 	int err;
+ 
+-	err = nfs_idmap_init();
+-	if (err < 0)
+-		goto out10;
+-
+ 	err = nfs_dns_resolver_init();
+ 	if (err < 0)
+-		goto out9;
++		goto out11;
+ 
+ 	err = register_pernet_subsys(&nfs_net_ops);
+ 	if (err < 0)
+-		goto out8;
++		goto out10;
+ 
+ 	err = nfs_fscache_register();
+ 	if (err < 0)
+-		goto out7;
++		goto out9;
+ 
+ 	err = nfsiod_start();
+ 	if (err)
+-		goto out6;
++		goto out8;
+ 
+ 	err = nfs_fs_proc_init();
+ 	if (err)
+-		goto out5;
++		goto out7;
+ 
+ 	err = nfs_init_nfspagecache();
+ 	if (err)
+-		goto out4;
++		goto out6;
+ 
+ 	err = nfs_init_inodecache();
+ 	if (err)
+-		goto out3;
++		goto out5;
+ 
+ 	err = nfs_init_readpagecache();
+ 	if (err)
+-		goto out2;
++		goto out4;
+ 
+ 	err = nfs_init_writepagecache();
+ 	if (err)
+-		goto out1;
++		goto out3;
+ 
+ 	err = nfs_init_directcache();
+ 	if (err)
+-		goto out0;
++		goto out2;
+ 
+ #ifdef CONFIG_PROC_FS
+ 	rpc_proc_register(&init_net, &nfs_rpcstat);
+ #endif
++
++#ifdef CONFIG_NFS_V4
++	err = init_nfs_v4();
++	if (err)
++		goto out1;
++#endif
++
+ 	if ((err = register_nfs_fs()) != 0)
+-		goto out;
++		goto out0;
++
+ 	return 0;
+-out:
++out0:
++#ifdef CONFIG_NFS_V4
++	exit_nfs_v4();
++out1:
++#endif
+ #ifdef CONFIG_PROC_FS
+ 	rpc_proc_unregister(&init_net, "nfs");
+ #endif
+ 	nfs_destroy_directcache();
+-out0:
+-	nfs_destroy_writepagecache();
+-out1:
+-	nfs_destroy_readpagecache();
+ out2:
+-	nfs_destroy_inodecache();
++	nfs_destroy_writepagecache();
+ out3:
+-	nfs_destroy_nfspagecache();
++	nfs_destroy_readpagecache();
+ out4:
+-	nfs_fs_proc_exit();
++	nfs_destroy_inodecache();
+ out5:
+-	nfsiod_stop();
++	nfs_destroy_nfspagecache();
+ out6:
+-	nfs_fscache_unregister();
++	nfs_fs_proc_exit();
+ out7:
+-	unregister_pernet_subsys(&nfs_net_ops);
++	nfsiod_stop();
+ out8:
+-	nfs_dns_resolver_destroy();
++	nfs_fscache_unregister();
+ out9:
+-	nfs_idmap_quit();
++	unregister_pernet_subsys(&nfs_net_ops);
+ out10:
++	nfs_dns_resolver_destroy();
++out11:
+ 	return err;
+ }
+ 
+ static void __exit exit_nfs_fs(void)
+ {
++#ifdef CONFIG_NFS_V4
++	exit_nfs_v4();
++#endif
+ 	nfs_destroy_directcache();
+ 	nfs_destroy_writepagecache();
+ 	nfs_destroy_readpagecache();
+@@ -1717,7 +1725,6 @@ static void __exit exit_nfs_fs(void)
+ 	nfs_fscache_unregister();
+ 	unregister_pernet_subsys(&nfs_net_ops);
+ 	nfs_dns_resolver_destroy();
+-	nfs_idmap_quit();
+ #ifdef CONFIG_PROC_FS
+ 	rpc_proc_unregister(&init_net, "nfs");
+ #endif
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index b610c7e..a42278f 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -364,6 +364,10 @@ extern void nfs4_free_lock_state(struct nfs_server *server, struct nfs4_lock_sta
+ 
+ extern const nfs4_stateid zero_stateid;
+ 
++/* nfs4super.c */
++int init_nfs_v4(void);
++void exit_nfs_v4(void);
++
+ /* nfs4xdr.c */
+ extern struct rpc_procinfo nfs4_procedures[];
+ 
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+new file mode 100644
+index 0000000..366e414
+--- /dev/null
++++ b/fs/nfs/nfs4super.c
+@@ -0,0 +1,23 @@
++/*
++ * Copyright (c) 2012 Bryan Schumaker <bjschuma@netapp.com>
++ */
++#include <linux/init.h>
++#include <linux/nfs_idmap.h>
++
++int __init init_nfs_v4(void)
++{
++	int err;
++
++	err = nfs_idmap_init();
++	if (err)
++		goto out;
++
++	return 0;
++out:
++	return err;
++}
++
++void __exit exit_nfs_v4(void)
++{
++	nfs_idmap_quit();
++}
+-- 
+1.7.11.1
 
-> ---
->  utils/exportfs/exportfs.c |   21 ++++++++++++---------
->  1 file changed, 12 insertions(+), 9 deletions(-)
-> 
-> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> index a3323d7..9f79541 100644
-> --- a/utils/exportfs/exportfs.c
-> +++ b/utils/exportfs/exportfs.c
-> @@ -40,7 +40,7 @@ static void	unexportfs(char *arg, int verbose);
->  static void	exports_update(int verbose);
->  static void	dump(int verbose);
->  static void	error(nfs_export *exp, int err);
-> -static void	usage(const char *progname);
-> +static void	usage(const char *progname, int n);
->  static void	validate_export(nfs_export *exp);
->  static int	matchhostname(const char *hostname1, const char *hostname2);
->  static void	export_d_read(const char *dname);
-> @@ -105,11 +105,17 @@ main(int argc, char **argv)
->  
->  	export_errno = 0;
->  
-> -	while ((c = getopt(argc, argv, "aio:ruvf")) != EOF) {
-> +	while ((c = getopt(argc, argv, "afhio:ruv")) != EOF) {
->  		switch(c) {
->  		case 'a':
->  			f_all = 1;
->  			break;
-> +		case 'f':
-> +			force_flush = 1;
-> +			break;
-> +		case 'h':
-> +			usage(progname, 0);
-> +			break;
->  		case 'i':
->  			f_ignore = 1;
->  			break;
-> @@ -126,11 +132,8 @@ main(int argc, char **argv)
->  		case 'v':
->  			f_verbose = 1;
->  			break;
-> -		case 'f':
-> -			force_flush = 1;
-> -			break;
->  		default:
-> -			usage(progname);
-> +			usage(progname, 1);
->  			break;
->  		}
->  	}
-> @@ -723,8 +726,8 @@ error(nfs_export *exp, int err)
->  }
->  
->  static void
-> -usage(const char *progname)
-> +usage(const char *progname, int n)
->  {
-> -	fprintf(stderr, "usage: %s [-aruv] [host:/path]\n", progname);
-> -	exit(1);
-> +	fprintf(stderr, "usage: %s [-afhioruv] [host:/path]\n", progname);
-> +	exit(n);
->  }
