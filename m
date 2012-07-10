@@ -1,110 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56865 "EHLO fieldses.org"
+Received: from mail.virtall.com ([178.63.195.102]:49760 "EHLO mail.virtall.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752022Ab2G0Vyd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Jul 2012 17:54:33 -0400
-Date: Fri, 27 Jul 2012 17:54:31 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Subject: Re: [PATCH v2 00/15] Lockd: grace period containerization
-Message-ID: <20120727215431.GE6388@fieldses.org>
-References: <20120725125258.24376.82525.stgit@localhost.localdomain>
+	id S1755112Ab2GJXkl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jul 2012 19:40:41 -0400
+Message-ID: <4FFCBD72.1020001@wpkg.org>
+Date: Wed, 11 Jul 2012 07:40:34 +0800
+From: Tomasz Chmielewski <mangoo@wpkg.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120725125258.24376.82525.stgit@localhost.localdomain>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: cachefilesd - using multiple cache directories (disks)?
+References: <4FFC733D.7050306@wpkg.org> <1341947709.12698.15.camel@lade.trondhjem.org>
+In-Reply-To: <1341947709.12698.15.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 25, 2012 at 04:55:45PM +0400, Stanislav Kinsbursky wrote:
-> Bruce, I feel this patch set is ready for inclusion.
-> 
-> v2:
-> 1) Rebase on Bruce's "for-3.6" branch.
-> 
-> This patch set makes grace period and hosts reclaiming network namespace
-> aware.
+On 07/11/2012 03:15 AM, Myklebust, Trond wrote:
 
-On a quick skim--yes, that looks reasonable to me.
+(...)
 
-It doesn't help with active/active cluster exports, because in that case
-we need some additional coordination between nfsd's.
+>> 2) it's not possible to use multiple directories with one
+>> cachefilesd process, but it's perfectly OK to run multiple
+>> instances of cachefilesd on one server
+>>
+>>
+>> Which one is true?
+>
+> See Documentation/filesystems/caching/cachefiles.txt: ========
+> OVERVIEW ======== ... CacheFiles is currently limited to a single
+> cache.
 
-But it looks good enough to handle the case where each filesystem is
-exported from at most one server at a time, which is more than we
-currently handle.
+And what about this answer by David Howells?
 
-It's a little late for 3.6.  Also I get the impression Al Viro has some
-lockd rework in progress, which we may want to wait for.
+http://www.redhat.com/archives/linux-cachefs/2011-July/msg00003.html
 
-So I'll likely look again into queueing this up for 3.7 once 3.6-rc1 is
-out.
+	> Would I have to run two instances of the cachefiles daemon in
+	> order to use both cache directories?
 
---b.
+	You would have to have two config files and two daemons (one
+	per cache).  Each cache needs to be managed separately.
 
-> 
-> Main ideas:
-> 1)  moving of 
-> 
-> 	unsigned long next_gc;
-> 	unsigned long nrhosts;
-> 
-> 	struct delayed_work grace_period_end;
-> 	struct lock_manager lockd_manager;
-> 	struct list_head grace_list;
-> 
-> to per-net Lockd data.
-> 
-> 2) moving of 
-> 
-> 	struct lock_manager nfsd4_manager;
-> 
-> to per-net NFSd data.
-> 
-> 3) shutdown + gc of NLM hosts done now network namespace aware.
-> 
-> 4) restart_grace() now works only for init_net.
-> 
-> The following series implements...
-> 
-> ---
-> 
-> Stanislav Kinsbursky (15):
->       LockD: mark host per network namespace on garbage collect
->       LockD: make garbage collector network namespace aware.
->       LockD: manage garbage collection timeout per networks namespace
->       LockD: manage used host count per networks namespace
->       Lockd: host complaining function introduced
->       Lockd: add more debug to host shutdown functions
->       LockD: manage grace period per network namespace
->       LockD: make lockd manager allocated per network namespace
->       NFSd: make nfsd4_manager allocated per network namespace context.
->       SUNRPC: service request network namespace helper introduced
->       LockD: manage grace list per network namespace
->       LockD: pass actual network namespace to grace period management functions
->       Lockd: move grace period management from lockd() to per-net functions
->       NFSd: make grace end flag per network namespace
->       NFSd: make boot_time variable per network namespace
-> 
-> 
->  fs/lockd/grace.c            |   16 +++++--
->  fs/lockd/host.c             |   92 ++++++++++++++++++++++++++------------
->  fs/lockd/netns.h            |    7 +++
->  fs/lockd/svc.c              |   43 ++++++++++--------
->  fs/lockd/svc4proc.c         |   13 +++--
->  fs/lockd/svclock.c          |   16 +++----
->  fs/lockd/svcproc.c          |   15 ++++--
->  fs/lockd/svcsubs.c          |   19 +++++---
->  fs/nfs/callback_xdr.c       |    4 +-
->  fs/nfsd/export.c            |    4 +-
->  fs/nfsd/netns.h             |    4 ++
->  fs/nfsd/nfs4idmap.c         |    4 +-
->  fs/nfsd/nfs4proc.c          |   18 ++++---
->  fs/nfsd/nfs4state.c         |  104 ++++++++++++++++++++++++-------------------
->  fs/nfsd/state.h             |    4 +-
->  include/linux/fs.h          |    5 +-
->  include/linux/lockd/lockd.h |    6 +-
->  include/linux/sunrpc/svc.h  |    2 +
->  18 files changed, 231 insertions(+), 145 deletions(-)
-> 
+
+-- 
+Tomasz Chmielewski
+http://www.ptrraveler.com
+
