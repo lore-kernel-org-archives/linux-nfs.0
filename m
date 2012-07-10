@@ -1,85 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:40413 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752435Ab2GZLzk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 07:55:40 -0400
-Received: by mail-gg0-f174.google.com with SMTP id u4so1821110ggl.19
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jul 2012 04:55:40 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v4 09/17] vfs: fix mkdir to retry on ESTALE errors
-Date: Thu, 26 Jul 2012 07:55:12 -0400
-Message-Id: <1343303720-11199-10-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
-References: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:3926 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752103Ab2GJWMP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jul 2012 18:12:15 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Simo Sorce <simo@redhat.com>, "bfields@redhat.com" <bfields@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/4] Add support for new RPCSEC_GSS upcall mechanism for
+ nfsd
+Date: Tue, 10 Jul 2012 22:12:13 +0000
+Message-ID: <1341958332.17428.12.camel@lade.trondhjem.org>
+References: <1337983796-26476-1-git-send-email-simo@redhat.com>
+	 <20120710204913.GA6038@fieldses.org>
+	 <1341957169.17428.4.camel@lade.trondhjem.org>
+	 <20120710215618.GC6038@fieldses.org>
+In-Reply-To: <20120710215618.GC6038@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c | 43 ++++++++++++++++++++++++++-----------------
- 1 file changed, 26 insertions(+), 17 deletions(-)
-
-diff --git a/fs/namei.c b/fs/namei.c
-index 6705757..4bec3f4 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3051,26 +3051,35 @@ SYSCALL_DEFINE3(mkdirat, int, dfd, const char __user *, pathname, umode_t, mode)
- 	struct dentry *dentry;
- 	struct path path;
- 	int error;
-+	char *name;
-+	unsigned int try = 0;
- 
--	dentry = user_path_create(dfd, pathname, &path, 1);
--	if (IS_ERR(dentry))
--		return PTR_ERR(dentry);
--
--	if (!IS_POSIXACL(path.dentry->d_inode))
--		mode &= ~current_umask();
--	error = mnt_want_write(path.mnt);
--	if (error)
--		goto out_dput;
--	error = security_path_mkdir(&path, dentry, mode);
--	if (error)
--		goto out_drop_write;
--	error = vfs_mkdir(path.dentry->d_inode, dentry, mode);
-+	name = getname(pathname);
-+	if (IS_ERR(name))
-+		return PTR_ERR(name);
-+	do {
-+		dentry = kern_path_create(dfd, name, &path, true, try);
-+		if (IS_ERR(dentry)) {
-+			error = PTR_ERR(dentry);
-+			break;
-+		}
-+		if (!IS_POSIXACL(path.dentry->d_inode))
-+			mode &= ~current_umask();
-+		error = mnt_want_write(path.mnt);
-+		if (error)
-+			goto out_dput;
-+		error = security_path_mkdir(&path, dentry, mode);
-+		if (error)
-+			goto out_drop_write;
-+		error = vfs_mkdir(path.dentry->d_inode, dentry, mode);
- out_drop_write:
--	mnt_drop_write(path.mnt);
-+		mnt_drop_write(path.mnt);
- out_dput:
--	dput(dentry);
--	mutex_unlock(&path.dentry->d_inode->i_mutex);
--	path_put(&path);
-+		dput(dentry);
-+		mutex_unlock(&path.dentry->d_inode->i_mutex);
-+		path_put(&path);
-+	} while (retry_estale(error, try++));
-+	putname(name);
- 	return error;
- }
- 
--- 
-1.7.11.2
-
+T24gVHVlLCAyMDEyLTA3LTEwIGF0IDE3OjU2IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIFR1ZSwgSnVsIDEwLCAyMDEyIGF0IDA5OjUyOjUxUE0gKzAwMDAsIE15a2xlYnVzdCwg
+VHJvbmQgd3JvdGU6DQo+ID4gT24gVHVlLCAyMDEyLTA3LTEwIGF0IDE2OjQ5IC0wNDAwLCBKLiBC
+cnVjZSBGaWVsZHMgd3JvdGU6DQo+ID4gPiBPbiBGcmksIE1heSAyNSwgMjAxMiBhdCAwNjowOTo1
+MlBNIC0wNDAwLCBTaW1vIFNvcmNlIHdyb3RlOg0KPiA+ID4gPiBUaGlzIHBhdGNoc2V0IGltcGxl
+bWVudHMgYSBuZXcgdXBjYWxsIG1lY2hhbmlzbSB0aGF0IHVzZXMgdGhlIHN1bnJwYw0KPiA+ID4g
+PiBjbGllbnQgdG8gdGFsayB0byBnc3Nwcm94eVsxXSwgYSBuZXcgdXNlcnNwYWNlIGRhZW1vbiB0
+aGF0IGhhbmRsZXMgZ3NzYXBpDQo+ID4gPiA+IG9wZXJhdGlvbnMgb24gYmVoYWxmIG9mIG90aGVy
+IHByb2Nlc3NlcyBvbiB0aGUgc3lzdGVtLg0KPiA+ID4gPiANCj4gPiA+ID4gVGhlIG1haW4gZHJp
+dmVyIGZvciB0aGlzIG5ldyBtZWNoYW5pc20gaXMgdG8gb3ZlcmNvbWUgbGltaXRhdGlvbnMgd2l0
+aA0KPiA+ID4gPiB0aGUgY3VycmVudCBkYWVtb24gYW5kIHVwY2FsbC4gVGhlIGN1cnJlbnQgY29k
+ZSBjYW5ub3QgaGFuZGxlIHRpY2tldHMNCj4gPiA+ID4gbGFyZ2VyIHRoYW4gYXBwcm94aW1hdGl2
+ZWx5IDJrIGFuZCBjYW5ub3QgaGFuZGxlIHNlbmRpbmcgYmFjayBsYXJnZSB1c2VyDQo+ID4gPiA+
+IGNyZWRlbnRpYWwgc2V0cyB0byB0aGUga2VybmVsLg0KPiA+ID4gPiANCj4gPiA+ID4gVGhlc2Ug
+cGF0Y2hlcyBoYXZlIGJlZW4gdGVzdGVkIGFnYWluc3QgdGhlIGRldmVsb3BtZW50IHZlcnNpb24g
+b2YgZ3NzcHJveHkNCj4gPiA+ID4gdGFnZ2VkIGFzIGtlcm5lbF92MC4xIGluIHRoZSBtYXN0ZXIg
+cmVwb1syXS4NCj4gPiA+ID4gDQo+ID4gPiA+IEkgaGF2ZSB0ZXN0ZWQgd2Fsa2luZyBpbnRvIG1v
+dW50cG9pbnRzIHVzaW5nIHRpY2tldHMgYXJ0aWZpY2lhbGx5IHB1bXBlZA0KPiA+ID4gPiB1cCB0
+byA2NGsgYW5kIHRoZSB1c2VyIGlzIHByb3Blcmx5IGF1dGhvcml6ZWQsIGFmdGVyIHRoZSBhY2Nl
+cHRfc2VfY29udGV4dA0KPiA+ID4gPiBjYWxsIGlzIHBlcmZvcm1lZCB0aHJvdWdoIHRoZSBuZXcg
+dXBjYWxsIG1lY2hhbmlzbSBhbmQgZ3NzcHJveHkuDQo+ID4gPiA+IA0KPiA+ID4gPiBUaGUgZ3Nz
+cHJveHkgaGFzIHRoZSBwb3RlbnRpYWwgb2YgaGFuZGxpbmcgYWxzbyBpbml0X3NlY19jb250ZXh0
+IGNhbGxzLA0KPiA+ID4gPiBidXQgYXQgdGhlIG1vbWVudCB0aGUgb25seSB0YXJnZXRlZCBzeXN0
+ZW0gaXMgbmZzZC4NCj4gPiA+IA0KPiA+ID4gT0ssIGFic2VudCBvYmplY3Rpb25zIGZyb20gYW55
+b25lIGVsc2UgSSdtIGNvbW1pdGluZyB0aGVzZSBmb3IgMy42IGFuZA0KPiA+ID4gcHVzaGluZyB0
+aGVtIG91dCBzb29uIHBlbmRpbmcgc29tZSByZWdyZXNzaW9uIHRlc3RpbmcuICBUaGFua3MhDQo+
+ID4gDQo+ID4gUGxlYXNlIHRlc3QgdGhhdCB0aGUgTkZTdjQgYmFja2NoYW5uZWwgY29udGludWVz
+IHRvIHdvcmsgdW5jaGFuZ2VkIHdpdGgNCj4gPiB0aGUgZXhpc3RpbmcgcnBjLnN2Y2dzc2QgYmVm
+b3JlIHlvdSBjb21taXQuDQo+ID4gDQo+ID4gSSBkb24ndCBjYXJlIHdoYXQgaGFwcGVucyB0byB0
+aGUgTkZTIHNlcnZlciwgYnV0IEkgZG8gZXhwZWN0IGFsbA0KPiA+IGV4aXN0aW5nIE5GU3Y0IGNs
+aWVudCBzZXR1cHMgdG8gd29yayB3aXRob3V0IGFueSBuZWVkIGZvciBjaGFuZ2VzLg0KPiANCj4g
+VGhlIHJwYyBzZXJ2ZXIncyBhdXRoZW50aWNhdGlvbiBtZXRob2QgaXMgZ2xvYmFsIHRvIHRoZSBt
+YWNoaW5lLCBzbyBpZg0KPiB0aGUgTkZTIHNlcnZlciBpcyB1c2luZyBnc3MgcHJveHksIHRoZW4g
+SSBiZWxpZXZlIHRoZSBjYWxsYmFjayBzZXJ2ZXINCj4gd2lsbCBiZSBhcyB3ZWxsLg0KDQpUaGVu
+IHdoeSBpcyBpdCBiZWluZyBsYWJlbGxlZCBhcyBhIGtuZnNkLW9ubHkgY2hhbmdlPw0KSG93IHdp
+bGwgaXQgYmVoYXZlIGlmIEkgZG9uJ3QgcnVuIGdzcyBwcm94eT8NCg0KDQotLSANClRyb25kIE15
+a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlr
+bGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
