@@ -1,43 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:45055 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750946Ab2GZHsN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 03:48:13 -0400
-Message-ID: <5010F62D.4030101@panasas.com>
-Date: Thu, 26 Jul 2012 10:47:57 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Peng Tao <bergwolf@gmail.com>
-CC: linuxnfs <linux-nfs@vger.kernel.org>, Benny Halevy <bhalevy@tonian.com>
-Subject: Re: pnfs LD partial sector write
-References: <CA+a=Yy7B0uk-FWr3hOjWC+=Xq+UtHnEC4speD3OZzMFfXksyOw@mail.gmail.com> <500FCA3A.5020606@panasas.com> <CA+a=Yy58bjUMximWOMnmk0ugPKUY-LcacRhpdp4cvuz1HQG_gg@mail.gmail.com> <5010573F.4000901@panasas.com> <CA+a=Yy5oJObMeUuL-mspso2eXCr4+5qmiFsOfS5=fU5x9kHtkw@mail.gmail.com>
-In-Reply-To: <CA+a=Yy5oJObMeUuL-mspso2eXCr4+5qmiFsOfS5=fU5x9kHtkw@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from fieldses.org ([174.143.236.118]:54145 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756127Ab2GJQHu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jul 2012 12:07:50 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 3/7] nfsd4: process_open2 cleanup
+Date: Tue, 10 Jul 2012 12:07:42 -0400
+Message-Id: <1341936466-3821-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1341936466-3821-1-git-send-email-bfields@redhat.com>
+References: <1341936466-3821-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/26/2012 05:43 AM, Peng Tao wrote:
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-> Another thing is, this further complicates direct writes, where I
-> cannot use pagecache to ensure proper locking for concurrent writers
-> in the same BLOCK, and sector-aligned partial BLOCK DIO writes need to
-> be serialized internally. IOW, the same code cannot be reused by DIO
-> writes. sigh...
-> 
+Note we can simplify the error handling a little by doing the truncate
+earlier.
 
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |    8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
 
-One last thing. Applications who use direct IO know to allocate
-and issue sector aligned requests both at offset and length.
-That's a Kernel requirement. It is not for NFS, but even so.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index de8f7e4..9efa405 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3013,14 +3013,12 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 		status = nfs4_get_vfs_file(rqstp, fp, current_fh, open);
+ 		if (status)
+ 			goto out;
++		status = nfsd4_truncate(rqstp, current_fh, open);
++		if (status)
++			goto out;
+ 		stp = open->op_stp;
+ 		open->op_stp = NULL;
+ 		init_open_stateid(stp, fp, open);
+-		status = nfsd4_truncate(rqstp, current_fh, open);
+-		if (status) {
+-			release_open_stateid(stp);
+-			goto out;
+-		}
+ 	}
+ 	update_stateid(&stp->st_stid.sc_stateid);
+ 	memcpy(&open->op_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+-- 
+1.7.9.5
 
-Just refuse sector unaligned DIO and revert to MDS.
-
-With sector aligned IO you directly DIO to DIO pages,
-problem solved.
-
-If you need the COW of partial blocks, you still use
-page-cache pages, which is fine because they do not
-intersect any of the DIO.
-
-Cheers
-Boaz
