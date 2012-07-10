@@ -1,74 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:39350 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753590Ab2GPTR4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Jul 2012 15:17:56 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 13/15] NFS: Discover NFSv4 server trunking when mounting
-Date: Mon, 16 Jul 2012 19:17:54 +0000
-Message-ID: <1342466273.4648.27.camel@lade.trondhjem.org>
-References: <20120711201718.3767.66867.stgit@degas.1015granger.net>
-	 <20120711203134.3767.47961.stgit@degas.1015granger.net>
-	 <1342465540.4648.25.camel@lade.trondhjem.org>
-	 <FA164FA1-5E20-4958-887C-6B5C503B841F@oracle.com>
-In-Reply-To: <FA164FA1-5E20-4958-887C-6B5C503B841F@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from relay.parallels.com ([195.214.232.42]:47782 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752648Ab2GJQEf convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jul 2012 12:04:35 -0400
+Message-ID: <4FFC5284.4040605@parallels.com>
+Date: Tue, 10 Jul 2012 20:04:20 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH] [RFC] nfsd: fix possible dereference of static NULL nfsd_serv
+ pointer
+References: <20120706134548.7307.1133.stgit@localhost.localdomain> <20120706172630.GA11193@fieldses.org> <4FF7C8C2.8070203@parallels.com> <20120710155943.GB1947@fieldses.org>
+In-Reply-To: <20120710155943.GB1947@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA3LTE2IGF0IDE1OjA5IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gSnVsIDE2LCAyMDEyLCBhdCAzOjA1IFBNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiAN
-Cj4gPiBPbiBXZWQsIDIwMTItMDctMTEgYXQgMTY6MzEgLTA0MDAsIENodWNrIExldmVyIHdyb3Rl
-Og0KPiA+PiAiU2VydmVyIHRydW5raW5nIiBpcyBhIGZhbmN5IG5hbWVkIGZvciBhIG11bHRpLWhv
-bWVkIE5GUyBzZXJ2ZXIuDQo+ID4+IFRydW5raW5nIG1pZ2h0IG9jY3VyIGlmIGEgY2xpZW50IHNl
-bmRzIE5GUyByZXF1ZXN0cyBmb3IgYSBzaW5nbGUNCj4gPj4gd29ya2xvYWQgdG8gbXVsdGlwbGUg
-bmV0d29yayBpbnRlcmZhY2VzIG9uIHRoZSBzYW1lIHNlcnZlci4gIFRoZXJlDQo+ID4+IGFyZSBz
-b21lIGltcGxpY2F0aW9ucyBmb3IgTkZTdjQgc3RhdGUgbWFuYWdlbWVudCB0aGF0IG1ha2UgaXQg
-dXNlZnVsDQo+ID4+IGZvciBhIGNsaWVudCB0byBrbm93IGlmIGEgc2luZ2xlIE5GU3Y0IHNlcnZl
-ciBpbnN0YW5jZSBpcw0KPiA+PiBtdWx0aS1ob21lZC4gIChOb3RlIHRoaXMgaXMgb25seSBhIGNv
-bnNpZGVyYXRpb24gZm9yIE5GU3Y0LCBub3QgZm9yDQo+ID4+IGxlZ2FjeSB2ZXJzaW9ucyBvZiBO
-RlMsIHdoaWNoIGFyZSBzdGF0ZWxlc3MpLg0KPiA+PiANCj4gPj4gSWYgYSBjbGllbnQgY2FyZXMg
-YWJvdXQgc2VydmVyIHRydW5raW5nLCBubyBORlN2NCBvcGVyYXRpb25zIGNhbg0KPiA+PiBwcm9j
-ZWVkIHVudGlsIHRoYXQgY2xpZW50IGRldGVybWluZXMgd2hvIGl0IGlzIHRhbGtpbmcgdG8uICBU
-aHVzDQo+ID4+IHNlcnZlciBJUCB0cnVua2luZyBkaXNjb3ZlcnkgbXVzdCBiZSBkb25lIHdoZW4g
-dGhlIGNsaWVudCBmaXJzdA0KPiA+PiBlbmNvdW50ZXJzIGFuIHVuZmFtaWxpYXIgc2VydmVyIElQ
-IGFkZHJlc3MuDQo+ID4+IA0KPiA+PiBUaGUgbmZzX2dldF9jbGllbnQoKSBmdW5jdGlvbiB3YWxr
-cyB0aGUgbmZzX2NsaWVudF9saXN0IGFuZCBtYXRjaGVzDQo+ID4+IG9uIHNlcnZlciBJUCBhZGRy
-ZXNzLiAgVGhlIG91dGNvbWUgb2YgdGhhdCB3YWxrIHRlbGxzIHVzIGltbWVkaWF0ZWx5DQo+ID4+
-IGlmIHdlIGhhdmUgYW4gdW5mYW1pbGlhciBzZXJ2ZXIgSVAgYWRkcmVzcy4gIEl0IGludm9rZXMN
-Cj4gPj4gbmZzX2luaXRfY2xpZW50KCkgaW4gdGhpcyBjYXNlLiAgVGh1cywgbmZzNF9pbml0X2Ns
-aWVudCgpIGlzIGEgZ29vZA0KPiA+PiBzcG90IHRvIHBlcmZvcm0gdHJ1bmtpbmcgZGlzY292ZXJ5
-Lg0KPiA+PiANCj4gPj4gRGlzY292ZXJ5IHJlcXVpcmVzIGEgY2xpZW50IHRvIGVzdGFibGlzaCBh
-IGZyZXNoIGNsaWVudCBJRCwgc28gb3VyDQo+ID4+IGNsaWVudCB3aWxsIG5vdyBzZW5kIFNFVENM
-SUVOVElEIG9yIEVYQ0hBTkdFX0lEIGFzIHRoZSBmaXJzdCBORlMNCj4gPj4gb3BlcmF0aW9uIGFm
-dGVyIGEgc3VjY2Vzc2Z1bCBwaW5nLCByYXRoZXIgdGhhbiB3YWl0aW5nIGZvciBhbg0KPiA+PiBh
-cHBsaWNhdGlvbiB0byBwZXJmb3JtIGFuIG9wZXJhdGlvbiB0aGF0IHJlcXVpcmVzIE5GU3Y0IHN0
-YXRlLg0KPiA+PiANCj4gPj4gVGhlIGV4YWN0IHByb2Nlc3MgZm9yIGRldGVjdGluZyB0cnVua2lu
-ZyBpcyBkaWZmZXJlbnQgZm9yIE5GU3Y0LjAgYW5kDQo+ID4+IE5GU3Y0LjEsIHNvIGEgbWlub3J2
-ZXJzaW9uLXNwZWNpZmljIGluaXRfY2xpZW50IGNhbGxvdXQgbWV0aG9kIGlzDQo+ID4+IGludHJv
-ZHVjZWQuDQo+ID4+IA0KPiA+PiBDTElEX0lOVVNFIHJlY292ZXJ5IGlzIGltcG9ydGFudCBmb3Ig
-dGhlIHRydW5raW5nIGRpc2NvdmVyeSBwcm9jZXNzLg0KPiA+PiBDTElEX0lOVVNFIGlzIGEgc2ln
-biB0aGUgc2VydmVyIHJlY29nbml6ZXMgdGhlIGNsaWVudCdzIG5mc19jbGllbnRfaWQ0DQo+ID4+
-IGlkIHN0cmluZywgYnV0IHRoZSBjbGllbnQgaXMgdXNpbmcgdGhlIHdyb25nIHByaW5jaXBhbCB0
-aGlzIHRpbWUgZm9yDQo+ID4+IHRoZSBTRVRDTElFTlRJRCBvcGVyYXRpb24uICBUaGUgU0VUQ0xJ
-RU5USUQgbXVzdCBiZSByZXRyaWVkIHdpdGggYQ0KPiA+PiBzZXJpZXMgb2YgZGlmZmVyZW50IHBy
-aW5jaXBhbHMgdW50aWwgb25lIHdvcmtzLCBhbmQgdGhlIHJlc3Qgb2YNCj4gPj4gdHJ1bmtpbmcg
-ZGlzY292ZXJ5IGNhbiBwcm9jZWVkLg0KPiA+PiANCj4gPj4gU2lnbmVkLW9mZi1ieTogQ2h1Y2sg
-TGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+DQo+ID4+IC0tLQ0KPiA+PiANCj4gPj4gZnMv
-bmZzL2NsaWVudC5jICAgIHwgIDIzNyArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
-KysrKysrKysrKysrKysrKysrDQo+ID4+IGZzL25mcy9pbnRlcm5hbC5oICB8ICAgIDYgKw0KPiA+
-PiBmcy9uZnMvbmZzNF9mcy5oICAgfCAgICA4ICsrDQo+ID4+IGZzL25mcy9uZnM0cHJvYy5jICB8
-ICAgIDIgDQo+ID4+IGZzL25mcy9uZnM0c3RhdGUuYyB8ICAxODYgKysrKysrKysrKysrKysrKysr
-KysrKysrKysrKysrKysrKysrKysrKy0NCj4gPj4gNSBmaWxlcyBjaGFuZ2VkLCA0MzMgaW5zZXJ0
-aW9ucygrKSwgNiBkZWxldGlvbnMoLSkNCj4gPiANCj4gPiBBcHBseWluZzogTkZTOiBEaXNjb3Zl
-ciBORlN2NCBzZXJ2ZXIgdHJ1bmtpbmcgd2hlbiBtb3VudGluZw0KPiA+IGVycm9yOiBwYXRjaCBm
-YWlsZWQ6IGZzL25mcy9uZnM0c3RhdGUuYzoxNjU2DQo+ID4gZXJyb3I6IGZzL25mcy9uZnM0c3Rh
-dGUuYzogcGF0Y2ggZG9lcyBub3QgYXBwbHkNCj4gPiBQYXRjaCBmYWlsZWQgYXQgMDAwMSBORlM6
-IERpc2NvdmVyIE5GU3Y0IHNlcnZlciB0cnVua2luZyB3aGVuIG1vdW50aW5nDQo+IA0KPiBJIGNh
-biB0YWtlIGEgbG9vay4gIFdoYXQgYXJlIHlvdSBhcHBseWluZyBpdCB0bywgZXhhY3RseT8NCg0K
-SGF2ZSBhIGxvb2sgYXQgbXkgJ25mcy1mb3ItY2VsJyBicmFuY2guLi4NCg0KLS0gDQpUcm9uZCBN
-eWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15
-a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+10.07.2012 19:59, J. Bruce Fields пишет:
+> On Sat, Jul 07, 2012 at 09:27:30AM +0400, Stanislav Kinsbursky wrote:
+>> 06.07.2012 21:26, J. Bruce Fields пишет:
+>>> On Fri, Jul 06, 2012 at 05:45:56PM +0400, Stanislav Kinsbursky wrote:
+>>>> This is a bug fix for 3.5 kernel.
+>>>> In case on NFSd service start failure svc_shutdown_net() will call svc_destroy
+>>>> callback and zeroize global nfsd_serv pointer, this in turn will lead to Oops
+>>>> in svc_destroy().
+>>>>
+>>>> This patch is marked as RFC, because to many lines were changed. It can be
+>>>> easely simplified if requested.
+>>>> Moreover, NFSd service shutdown is going to be converted into csomething on
+>>>> per-net basis.
+>>> Doesn't this leave error paths in e.g. __write_ports_addfd() and
+>>> __write_ports_addxprt() unfixed?
+>>
+>> Yes, sure it does...
+>>
+>>> I'm inclined to just submit your original fix (split up as in the last
+>>> version I sent) for 3.5 if you don't object.
+>>
+>> Not at all.
+>> Thanks, Bruce.
+>
+> OK.  Actually, Linus is making noise about a release in the next week or
+> two, so given that this is about error paths, I'm going to queue it up
+> for the 3.6 and cc it to stable.  It'll end up in 3.5.x pretty quickly
+> that way anyway.
+>
+
+Ok, Bruce. Sounds good.
+
+-- 
+Best regards,
+Stanislav Kinsbursky
+
+
