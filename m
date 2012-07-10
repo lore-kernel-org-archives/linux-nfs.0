@@ -1,136 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga01.intel.com ([192.55.52.88]:43402 "EHLO mga01.intel.com"
+Received: from mx2.netapp.com ([216.240.18.37]:6589 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751219Ab2GBDmq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 1 Jul 2012 23:42:46 -0400
-Date: Mon, 2 Jul 2012 11:42:41 +0800
-From: Fengguang Wu <fengguang.wu@intel.com>
-To: Christoph Lameter <cl@linux.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        LKML <linux-kernel@vger.kernel.org>, netdev <netdev@vger.kernel.org>,
-        Pekka Enberg <penberg@kernel.org>,
-        Linux Memory Management List <linux-mm@kvack.org>,
-        Stephen Rothwell <sfr@canb.auug.org.au>
-Subject: Re: linux-next BUG: held lock freed!
-Message-ID: <20120702034241.GA7511@localhost>
-References: <20120626145432.GA15289@localhost>
- <20120626172918.GA16446@localhost>
- <20120627122306.GA19252@localhost>
- <20120702025625.GA6531@localhost>
- <20120702033914.GA7433@localhost>
+	id S1756001Ab2GJX56 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jul 2012 19:57:58 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Tomasz Chmielewski <mangoo@wpkg.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: cachefilesd - using multiple cache directories (disks)?
+Date: Tue, 10 Jul 2012 23:57:56 +0000
+Message-ID: <1341964674.17428.38.camel@lade.trondhjem.org>
+References: <4FFC733D.7050306@wpkg.org>
+	 <1341947709.12698.15.camel@lade.trondhjem.org> <4FFCBD72.1020001@wpkg.org>
+In-Reply-To: <4FFCBD72.1020001@wpkg.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120702033914.GA7433@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 02, 2012 at 11:39:14AM +0800, Fengguang Wu wrote:
-> On Mon, Jul 02, 2012 at 10:56:25AM +0800, Fengguang Wu wrote:
-> > Hi all,
-> > 
-> > More observations on this bug:
-> > 
-> > The slab tree itself actually boots fine. So Christoph's commit may be
-> > merely disclosing some bug hidden in another for-next tree which
-> > happens to be merged before the slab tree..
-> 
-> Sorry: the bug does appear in the standalone slab tree, where the
-> dmesg is
-> 
-> [  307.648802] blkid (2963) used greatest stack depth: 2832 bytes left
-> [  307.892070] vhci_hcd: changed 0
-> [  308.766647] 
-> [  308.766648] =========================
-> [  308.766649] [ BUG: held lock freed! ]
-> [  308.766651] 3.5.0-rc1+ #44 Not tainted
-> [  308.766651] -------------------------
-> [  308.766653] mtd_probe/3040 is freeing memory ffff880006defdd0-ffff880006df0dcf, with a lock still held there!
-> [  308.766662]  (&type->s_umount_key#31/1){+.+.+.}, at: [<ffffffff81187166>] sget+0x299/0x463
-> [  308.766663] 3 locks held by mtd_probe/3040:
-> [  308.766667]  #0:  (&type->s_umount_key#31/1){+.+.+.}, at: [<ffffffff81187166>] sget+0x299/0x463
-> [  308.766671]  #1:  (sb_lock){+.+.-.}, at: [<ffffffff81186f00>] sget+0x33/0x463
-> [  308.766675]  #2:  (unnamed_dev_lock){+.+...}, at: [<ffffffff81186711>] get_anon_bdev+0x38/0xe8
-> [  308.766675] 
-> [  308.766675] stack backtrace:
-> [  308.766677] Pid: 3040, comm: mtd_probe Not tainted 3.5.0-rc1+ #44
-> [  308.766678] Call Trace:
-> [  308.766683]  [<ffffffff810ddc6e>] debug_check_no_locks_freed+0x109/0x14b
-> [  308.766703]  [<ffffffff81173f7c>] kmem_cache_free+0x2e/0xa7
-> [  308.766708]  [<ffffffff816a5d9d>] ida_get_new_above+0x173/0x184
-> [  308.766711]  [<ffffffff810db9a4>] ? lock_acquired+0x1e4/0x219
-> [  308.766713]  [<ffffffff81186727>] get_anon_bdev+0x4e/0xe8
-> [  308.766715]  [<ffffffff811867d8>] set_anon_super+0x17/0x2a
-> [  308.766717]  [<ffffffff81187270>] sget+0x3a3/0x463
-> [  308.766719]  [<ffffffff811867c1>] ? get_anon_bdev+0xe8/0xe8
-> [  308.766722]  [<ffffffff811a1fbe>] mount_pseudo+0x31/0x152
-> [  308.766727]  [<ffffffff81cb1f54>] mtd_inodefs_mount+0x24/0x26
-> [  308.766729]  [<ffffffff81187e34>] mount_fs+0x69/0x155
-> [  308.766733]  [<ffffffff811531b2>] ? __alloc_percpu+0x10/0x12
-> [  308.766736]  [<ffffffff8119ca4c>] vfs_kern_mount+0x62/0xd9
-> [  308.766739]  [<ffffffff811a1b43>] simple_pin_fs+0x4c/0x9b
-> [  308.766741]  [<ffffffff81cb338a>] mtdchar_open+0x42/0x188
-> [  308.766744]  [<ffffffff811886ef>] chrdev_open+0x11f/0x14a
-> [  308.766747]  [<ffffffff810c0880>] ? local_clock+0x19/0x52
-> [  308.766750]  [<ffffffff811885d0>] ? cdev_put+0x26/0x26
-> [  308.766752]  [<ffffffff811836cc>] do_dentry_open+0x1e4/0x2b2
-> [  308.766754]  [<ffffffff8118434a>] nameidata_to_filp+0x5e/0xa3
-> [  308.766756]  [<ffffffff8119118f>] do_last+0x68f/0x6d3
-> [  308.766759]  [<ffffffff811912d8>] path_openat+0xd2/0x32a
-> [  308.766762]  [<ffffffff8111eed8>] ? time_hardirqs_off+0x26/0x2a
-> [  308.766765]  [<ffffffff810d9e88>] ? trace_hardirqs_off+0xd/0xf
-> [  308.766767]  [<ffffffff81191630>] do_filp_open+0x38/0x86
-> [  308.766771]  [<ffffffff82e95e22>] ? _raw_spin_unlock+0x28/0x3b
-> [  308.766773]  [<ffffffff8119baa7>] ? alloc_fd+0xe5/0xf7
-> [  308.766776]  [<ffffffff811843fd>] do_sys_open+0x6e/0xfb
-> [  308.766777]  [<ffffffff811844ab>] sys_open+0x21/0x23
-> [  308.766780]  [<ffffffff82e9cb69>] system_call_fastpath+0x16/0x1b
-
-Another dmesg on the slab tree:
-
-[   54.522438] Serial: 8250/16550 driver, 4 ports, IRQ sharing enabled
-[   54.567847] serial8250: ttyS0 at I/O 0x3f8 (irq = 4) is a 16550A
-[   54.591289] 
-[   54.591290] =========================
-[   54.591291] [ BUG: held lock freed! ]
-[   54.591293] 3.5.0-rc1+ #45 Not tainted
-[   54.591293] -------------------------
-[   54.591295] swapper/0/1 is freeing memory ffff88000f45fdd0-ffff88000f460dcf, with a lock still held there!
-[   54.591304]  (&port->mutex){+.+.+.}, at: [<ffffffff817df6d2>] uart_add_one_port+0x84/0x356
-[   54.591306] 3 locks held by swapper/0/1:
-[   54.591310]  #0:  (port_mutex){+.+.+.}, at: [<ffffffff817df6c0>] uart_add_one_port+0x72/0x356
-[   54.591314]  #1:  (&port->mutex){+.+.+.}, at: [<ffffffff817df6d2>] uart_add_one_port+0x84/0x356
-[   54.591319]  #2:  (sysfs_ino_lock){+.+...}, at: [<ffffffff811e273f>] sysfs_new_dirent+0x6b/0x10c
-[   54.591320] 
-[   54.591320] stack backtrace:
-[   54.591322] Pid: 1, comm: swapper/0 Not tainted 3.5.0-rc1+ #45
-[   54.591323] Call Trace:
-[   54.591338]  [<ffffffff810ddc6e>] debug_check_no_locks_freed+0x109/0x14b
-[   54.591342]  [<ffffffff81173fa0>] kmem_cache_free+0x2e/0xa7
-[   54.591346]  [<ffffffff816a5d9d>] ida_get_new_above+0x173/0x184
-[   54.591351]  [<ffffffff810db9a4>] ? lock_acquired+0x1e4/0x219
-[   54.591354]  [<ffffffff811e2754>] sysfs_new_dirent+0x80/0x10c
-[   54.591357]  [<ffffffff811e1cad>] sysfs_add_file_mode+0x4e/0xce
-[   54.591366]  [<ffffffff811e1d3f>] sysfs_add_file+0x12/0x14
-[   54.591368]  [<ffffffff811e4296>] sysfs_merge_group+0x45/0x97
-[   54.591372]  [<ffffffff819bff1b>] dpm_sysfs_add+0x54/0xab
-[   54.591374]  [<ffffffff819b9394>] device_add+0x3ba/0x5d7
-[   54.591377]  [<ffffffff819b95cc>] device_register+0x1b/0x1f
-[   54.591379]  [<ffffffff819b9661>] device_create_vargs+0x91/0xc8
-[   54.591381]  [<ffffffff819b96c9>] device_create+0x31/0x33
-[   54.591385]  [<ffffffff817c1792>] tty_register_device+0xde/0xfb
-[   54.591388]  [<ffffffff817df90f>] uart_add_one_port+0x2c1/0x356
-[   54.591406]  [<ffffffff84641c95>] serial8250_init+0x12b/0x189
-[   54.591409]  [<ffffffff84641095>] ? r3964_init+0x25/0x41
-[   54.591411]  [<ffffffff84641b6a>] ? serial8250_console_init+0x2c/0x2c
-[   54.591414]  [<ffffffff81002099>] do_one_initcall+0x7f/0x13a
-[   54.591419]  [<ffffffff84603d39>] kernel_init+0x170/0x1f8
-[   54.591422]  [<ffffffff84603590>] ? do_early_param+0x8c/0x8c
-[   54.591435]  [<ffffffff82e9dfb4>] kernel_thread_helper+0x4/0x10
-[   54.591438]  [<ffffffff82e961f0>] ? retint_restore_args+0x13/0x13
-[   54.591441]  [<ffffffff84603bc9>] ? start_kernel+0x3e7/0x3e7
-[   54.591443]  [<ffffffff82e9dfb0>] ? gs_change+0x13/0x13
-[   54.625113] 00:06: ttyS0 at I/O 0x3f8 (irq = 4) is a 16550A
-
-Thanks,
-Fengguang
+T24gV2VkLCAyMDEyLTA3LTExIGF0IDA3OjQwICswODAwLCBUb21hc3ogQ2htaWVsZXdza2kgd3Jv
+dGU6DQo+IE9uIDA3LzExLzIwMTIgMDM6MTUgQU0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+
+IA0KPiAoLi4uKQ0KPiANCj4gPj4gMikgaXQncyBub3QgcG9zc2libGUgdG8gdXNlIG11bHRpcGxl
+IGRpcmVjdG9yaWVzIHdpdGggb25lDQo+ID4+IGNhY2hlZmlsZXNkIHByb2Nlc3MsIGJ1dCBpdCdz
+IHBlcmZlY3RseSBPSyB0byBydW4gbXVsdGlwbGUNCj4gPj4gaW5zdGFuY2VzIG9mIGNhY2hlZmls
+ZXNkIG9uIG9uZSBzZXJ2ZXINCj4gPj4NCj4gPj4NCj4gPj4gV2hpY2ggb25lIGlzIHRydWU/DQo+
+ID4NCj4gPiBTZWUgRG9jdW1lbnRhdGlvbi9maWxlc3lzdGVtcy9jYWNoaW5nL2NhY2hlZmlsZXMu
+dHh0OiA9PT09PT09PQ0KPiA+IE9WRVJWSUVXID09PT09PT09IC4uLiBDYWNoZUZpbGVzIGlzIGN1
+cnJlbnRseSBsaW1pdGVkIHRvIGEgc2luZ2xlDQo+ID4gY2FjaGUuDQo+IA0KPiBBbmQgd2hhdCBh
+Ym91dCB0aGlzIGFuc3dlciBieSBEYXZpZCBIb3dlbGxzPw0KPiANCj4gaHR0cDovL3d3dy5yZWRo
+YXQuY29tL2FyY2hpdmVzL2xpbnV4LWNhY2hlZnMvMjAxMS1KdWx5L21zZzAwMDAzLmh0bWwNCj4g
+DQo+IAk+IFdvdWxkIEkgaGF2ZSB0byBydW4gdHdvIGluc3RhbmNlcyBvZiB0aGUgY2FjaGVmaWxl
+cyBkYWVtb24gaW4NCj4gCT4gb3JkZXIgdG8gdXNlIGJvdGggY2FjaGUgZGlyZWN0b3JpZXM/DQo+
+IA0KPiAJWW91IHdvdWxkIGhhdmUgdG8gaGF2ZSB0d28gY29uZmlnIGZpbGVzIGFuZCB0d28gZGFl
+bW9ucyAob25lDQo+IAlwZXIgY2FjaGUpLiAgRWFjaCBjYWNoZSBuZWVkcyB0byBiZSBtYW5hZ2Vk
+IHNlcGFyYXRlbHkuDQoNCkRhdmlkIGFsc28gd3JvdGUgdGhlIERvY3VtZW50YXRpb24gZmlsZSB0
+aGF0IEkgcXVvdGVkIGFib3ZlLCB3aGljaCAoaW4NCnRoZSBwYXJhZ3JhcGggYmVmb3JlIHRoZSBv
+bmUgSSBxdW90ZWQpIHZlcnkgZXhwbGljaXRseSBzdGF0ZXM6DQoNCkNhY2hlRmlsZXMgY3JlYXRl
+cyBhIG1pc2MgY2hhcmFjdGVyIGRldmljZSAtICIvZGV2L2NhY2hlZmlsZXMiIC0gdGhhdCBpcyB1
+c2VkDQp0byBjb21tdW5pY2F0aW9uIHdpdGggdGhlIGRhZW1vbi4gIE9ubHkgb25lIHRoaW5nIG1h
+eSBoYXZlIHRoaXMgb3BlbiBhdCBvbmNlLA0KYW5kIHdoaWxzdCBpdCBpcyBvcGVuLCBhIGNhY2hl
+IGlzIGF0IGxlYXN0IHBhcnRpYWxseSBpbiBleGlzdGVuY2UuICBUaGUgZGFlbW9uDQpvcGVucyB0
+aGlzIGFuZCBzZW5kcyBjb21tYW5kcyBkb3duIGl0IHRvIGNvbnRyb2wgdGhlIGNhY2hlLg0KDQoN
+ClNvIGVpdGhlciB0aGUgZG9jdW1lbnRhdGlvbiBpcyBvdXQgb2YgZGF0ZSAoaW4gd2hpY2ggY2Fz
+ZSBEYXZpZCBzaG91bGQNCnVwZGF0ZSBpdCkgb3IgeW91IGFyZSBtaXN1bmRlcnN0YW5kaW5nIGhp
+cyB1c2Ugb2YgdGhlIGNvbmRpdGlvbmFsIHRlbnNlLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0K
+TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5l
+dGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
