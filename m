@@ -1,146 +1,226 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:56583 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753643Ab2GKUbp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jul 2012 16:31:45 -0400
-Received: by mail-gh0-f174.google.com with SMTP id r11so1692583ghr.19
-        for <linux-nfs@vger.kernel.org>; Wed, 11 Jul 2012 13:31:45 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 14/15] NFS: Add nfs4_unique_id boot parameter
-To: trond.myklebust@netapp.com
+Received: from mx2.netapp.com ([216.240.18.37]:20498 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756039Ab2GJQQW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jul 2012 12:16:22 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Date: Wed, 11 Jul 2012 16:31:43 -0400
-Message-ID: <20120711203143.3767.10604.stgit@degas.1015granger.net>
-In-Reply-To: <20120711201718.3767.66867.stgit@degas.1015granger.net>
-References: <20120711201718.3767.66867.stgit@degas.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Subject: [PATCH 05/12] NFS: Initialize v4 sysctls from nfs_init_v4()
+Date: Tue, 10 Jul 2012 12:16:10 -0400
+Message-Id: <1341936977-21186-6-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1341936977-21186-1-git-send-email-bjschuma@netapp.com>
+References: <1341936977-21186-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-An optional boot parameter is introduced to allow client
-administrators to specify a string that the Linux NFS client can
-insert into its nfs_client_id4 id string, to make it both more
-globally unique, and to ensure that it doesn't change even if the
-client's nodename changes.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-If this boot parameter is not specified, the client's nodename is
-used, as before.
+And split them out of the generic client into their own file.
 
-Client installation procedures can create a unique string (typically,
-a UUID) which remains unchanged during the lifetime of that client
-instance.  This works just like creating a UUID for the label of the
-system's root and boot volumes.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
+ fs/nfs/Makefile     |  7 +++++-
+ fs/nfs/nfs4_fs.h    | 15 ++++++++++++
+ fs/nfs/nfs4super.c  |  9 +++++++
+ fs/nfs/nfs4sysctl.c | 68 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/sysctl.c     | 26 --------------------
+ 5 files changed, 98 insertions(+), 27 deletions(-)
+ create mode 100644 fs/nfs/nfs4sysctl.c
 
- Documentation/filesystems/nfs/nfs.txt |   44 +++++++++++++++++++++++++++++++--
- Documentation/kernel-parameters.txt   |    5 ++++
- fs/nfs/nfs4proc.c                     |   12 ++++++++-
- 3 files changed, 57 insertions(+), 4 deletions(-)
-
-diff --git a/Documentation/filesystems/nfs/nfs.txt b/Documentation/filesystems/nfs/nfs.txt
-index f50f26c..f2571c8 100644
---- a/Documentation/filesystems/nfs/nfs.txt
-+++ b/Documentation/filesystems/nfs/nfs.txt
-@@ -12,9 +12,47 @@ and work is in progress on adding support for minor version 1 of the NFSv4
- protocol.
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index 162a699..4a78e76 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -17,7 +17,12 @@ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+ 			   callback.o callback_xdr.o callback_proc.o \
+ 			   nfs4namespace.o
+ nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
+-nfs-$(CONFIG_SYSCTL) += sysctl.o
++
++ifeq ($(CONFIG_SYSCTL), y)
++nfs-y += sysctl.o
++nfs-$(CONFIG_NFS_V4) += nfs4sysctl.o
++endif
++
+ nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
  
- The purpose of this document is to provide information on some of the
--upcall interfaces that are used in order to provide the NFS client with
--some of the information that it requires in order to fully comply with
--the NFS spec.
-+special features of the NFS client that can be configured by system
-+administrators.
-+
-+
-+The nfs4_unique_id parameter
-+============================
-+
-+NFSv4 requires clients to identify themselves to servers with a unique
-+string.  File open and lock state shared between one client and one server
-+is associated with this identity.  To support robust NFSv4 state recovery
-+and transparent state migration, this identity string must not change
-+across client reboots.
-+
-+Without any other intervention, the Linux client uses a string that contains
-+the local system's node name.  System administrators, however, often do not
-+take care to ensure that node names are fully qualified and do not change
-+over the lifetime of a client system.  Node names can have other
-+administrative requirements that require particular behavior that does not
-+work well as part of an nfs_client_id4 string.
-+
-+The nfs.nfs4_unique_id boot parameter specifies a unique string that can be
-+used instead of a system's node name when an NFS client identifies itself to
-+a server.  Thus, if the system's node name is not unique, or it changes, its
-+nfs.nfs4_unique_id stays the same, preventing collision with other clients
-+or loss of state during NFS reboot recovery or transparent state migration.
-+
-+The nfs.nfs4_unique_id string is typically a UUID, though it can contain
-+anything that is believed to be unique across all NFS clients.  An
-+nfs4_unique_id string should be chosen when a client system is installed,
-+just as a system's root file system gets a fresh UUID in its label at
-+install time.
-+
-+The string should remain fixed for the lifetime of the client.  It can be
-+changed safely if care is taken that the client shuts down cleanly and all
-+outstanding NFSv4 state has expired, to prevent loss of NFSv4 state.
-+
-+This string can be stored in an NFS client's grub.conf, or it can be provided
-+via a net boot facility such as PXE.  It may also be specified as an nfs.ko
-+module parameter.  Specifying a uniquifier string is not support for NFS
-+clients running in containers.
-+
+ obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index a42278f..db6f96f 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -368,6 +368,21 @@ extern const nfs4_stateid zero_stateid;
+ int init_nfs_v4(void);
+ void exit_nfs_v4(void);
  
- The DNS resolver
- ================
-diff --git a/Documentation/kernel-parameters.txt b/Documentation/kernel-parameters.txt
-index a92c5eb..733b5ab 100644
---- a/Documentation/kernel-parameters.txt
-+++ b/Documentation/kernel-parameters.txt
-@@ -1720,6 +1720,11 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
- 			will be autodetected by the client, and it will fall
- 			back to using the idmapper.
- 			To turn off this behaviour, set the value to '0'.
-+	nfs.nfs4_unique_id=
-+			[NFS4] Specify an additional fixed unique ident-
-+			ification string that NFSv4 clients can insert into
-+			their nfs_client_id4 string.  This is typically a
-+			UUID that is generated at system install time.
- 
- 	nfs.send_implementation_id =
- 			[NFSv4.1] Send client implementation identification
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index bb46ed1..9cc2477 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -74,6 +74,12 @@
- 
- static unsigned short max_session_slots = NFS4_DEF_SLOT_TABLE_SIZE;
- 
-+#define NFS4_CLIENT_ID_UNIQ_LEN		(64)
-+static char nfs4_client_id_uniquifier[NFS4_CLIENT_ID_UNIQ_LEN] = "";
-+module_param_string(nfs4_unique_id, nfs4_client_id_uniquifier,
-+			NFS4_CLIENT_ID_UNIQ_LEN, 0600);
-+MODULE_PARM_DESC(nfs4_unique_id, "nfs_client_id4 uniquifier string");
++/* nfs4sysctl.c */
++#ifdef CONFIG_SYSCTL
++int nfs4_register_sysctl(void);
++void nfs4_unregister_sysctl(void);
++#else
++static inline int nfs4_register_sysctl(void)
++{
++	return 0;
++}
 +
- struct nfs4_opendata;
- static int _nfs4_proc_open(struct nfs4_opendata *data);
- static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
-@@ -4045,9 +4051,13 @@ static unsigned int
- nfs4_init_uniform_client_string(const struct nfs_client *clp,
- 				char *buf, size_t len)
++static inline int nfs4_unregister_sysctl(void)
++{
++}
++#endif
++
+ /* nfs4xdr.c */
+ extern struct rpc_procinfo nfs4_procedures[];
+ 
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+index 366e414..70c394e 100644
+--- a/fs/nfs/nfs4super.c
++++ b/fs/nfs/nfs4super.c
+@@ -3,6 +3,8 @@
+  */
+ #include <linux/init.h>
+ #include <linux/nfs_idmap.h>
++#include <linux/nfs_fs.h>
++#include "nfs4_fs.h"
+ 
+ int __init init_nfs_v4(void)
  {
-+	char *nodename = clp->cl_rpcclient->cl_nodename;
+@@ -12,12 +14,19 @@ int __init init_nfs_v4(void)
+ 	if (err)
+ 		goto out;
+ 
++	err = nfs4_register_sysctl();
++	if (err)
++		goto out1;
 +
-+	if (nfs4_client_id_uniquifier[0] != '\0')
-+		nodename = nfs4_client_id_uniquifier;
- 	return scnprintf(buf, len, "Linux NFSv%u.%u %s",
- 				clp->rpc_ops->version, clp->cl_minorversion,
--				clp->cl_rpcclient->cl_nodename);
-+				nodename);
+ 	return 0;
++out1:
++	nfs_idmap_quit();
+ out:
+ 	return err;
  }
  
- /**
+ void __exit exit_nfs_v4(void)
+ {
++	nfs4_unregister_sysctl();
+ 	nfs_idmap_quit();
+ }
+diff --git a/fs/nfs/nfs4sysctl.c b/fs/nfs/nfs4sysctl.c
+new file mode 100644
+index 0000000..5729bc8
+--- /dev/null
++++ b/fs/nfs/nfs4sysctl.c
+@@ -0,0 +1,68 @@
++/*
++ * linux/fs/nfs/nfs4sysctl.c
++ *
++ * Sysctl interface to NFS v4 parameters
++ *
++ * Copyright (c) 2006 Trond Myklebust <Trond.Myklebust@netapp.com>
++ */
++#include <linux/sysctl.h>
++#include <linux/nfs_idmap.h>
++#include <linux/nfs_fs.h>
++
++#include "callback.h"
++
++static const int nfs_set_port_min = 0;
++static const int nfs_set_port_max = 65535;
++static struct ctl_table_header *nfs4_callback_sysctl_table;
++
++static ctl_table nfs4_cb_sysctls[] = {
++	{
++		.procname = "nfs_callback_tcpport",
++		.data = &nfs_callback_set_tcpport,
++		.maxlen = sizeof(int),
++		.mode = 0644,
++		.proc_handler = proc_dointvec_minmax,
++		.extra1 = (int *)&nfs_set_port_min,
++		.extra2 = (int *)&nfs_set_port_max,
++	},
++	{
++		.procname = "idmap_cache_timeout",
++		.data = &nfs_idmap_cache_timeout,
++		.maxlen = sizeof(int),
++		.mode = 0644,
++		.proc_handler = proc_dointvec_jiffies,
++	},
++	{ }
++};
++
++static ctl_table nfs4_cb_sysctl_dir[] = {
++	{
++		.procname = "nfs",
++		.mode = 0555,
++		.child = nfs4_cb_sysctls,
++	},
++	{ }
++};
++
++static ctl_table nfs4_cb_sysctl_root[] = {
++	{
++		.procname = "fs",
++		.mode = 0555,
++		.child = nfs4_cb_sysctl_dir,
++	},
++	{ }
++};
++
++int nfs4_register_sysctl(void)
++{
++	nfs4_callback_sysctl_table = register_sysctl_table(nfs4_cb_sysctl_root);
++	if (nfs4_callback_sysctl_table == NULL)
++		return -ENOMEM;
++	return 0;
++}
++
++void nfs4_unregister_sysctl(void)
++{
++	unregister_sysctl_table(nfs4_callback_sysctl_table);
++	nfs4_callback_sysctl_table = NULL;
++}
+diff --git a/fs/nfs/sysctl.c b/fs/nfs/sysctl.c
+index ad4d2e7..6b3f253 100644
+--- a/fs/nfs/sysctl.c
++++ b/fs/nfs/sysctl.c
+@@ -9,37 +9,11 @@
+ #include <linux/fs.h>
+ #include <linux/sysctl.h>
+ #include <linux/module.h>
+-#include <linux/nfs4.h>
+-#include <linux/nfs_idmap.h>
+ #include <linux/nfs_fs.h>
+ 
+-#include "callback.h"
+-
+-#ifdef CONFIG_NFS_V4
+-static const int nfs_set_port_min = 0;
+-static const int nfs_set_port_max = 65535;
+-#endif
+ static struct ctl_table_header *nfs_callback_sysctl_table;
+ 
+ static ctl_table nfs_cb_sysctls[] = {
+-#ifdef CONFIG_NFS_V4
+-	{
+-		.procname = "nfs_callback_tcpport",
+-		.data = &nfs_callback_set_tcpport,
+-		.maxlen = sizeof(int),
+-		.mode = 0644,
+-		.proc_handler = proc_dointvec_minmax,
+-		.extra1 = (int *)&nfs_set_port_min,
+-		.extra2 = (int *)&nfs_set_port_max,
+-	},
+-	{
+-		.procname = "idmap_cache_timeout",
+-		.data = &nfs_idmap_cache_timeout,
+-		.maxlen = sizeof(int),
+-		.mode = 0644,
+-		.proc_handler = proc_dointvec_jiffies,
+-	},
+-#endif
+ 	{
+ 		.procname	= "nfs_mountpoint_timeout",
+ 		.data		= &nfs_mountpoint_expiry_timeout,
+-- 
+1.7.11.1
 
