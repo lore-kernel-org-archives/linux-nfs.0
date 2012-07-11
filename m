@@ -1,146 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:38257 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752460Ab2GITrP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jul 2012 15:47:15 -0400
-Subject: Re: [PATCH 02/14] NFS: Properly sort TEST_STATEID results
-Mime-Version: 1.0 (Apple Message framework v1278)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1341862469.15267.1.camel@lade.trondhjem.org>
-Date: Mon, 9 Jul 2012 15:47:10 -0400
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <B803FBBF-8ACA-4C7A-9563-2083A7DE64C2@oracle.com>
-References: <20120709153355.1604.14102.stgit@degas.1015granger.net> <20120709154400.1604.10590.stgit@degas.1015granger.net> <1341862469.15267.1.camel@lade.trondhjem.org>
+Received: from fieldses.org ([174.143.236.118]:56745 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933024Ab2GKRDf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Jul 2012 13:03:35 -0400
+Date: Wed, 11 Jul 2012 13:03:32 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
 To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Simo Sorce <simo@redhat.com>, "bfields@redhat.com" <bfields@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/4] Add support for new RPCSEC_GSS upcall mechanism
+ for nfsd
+Message-ID: <20120711170331.GE11432@fieldses.org>
+References: <1337983796-26476-1-git-send-email-simo@redhat.com>
+ <20120710204913.GA6038@fieldses.org>
+ <1341957169.17428.4.camel@lade.trondhjem.org>
+ <20120710215618.GC6038@fieldses.org>
+ <1341958332.17428.12.camel@lade.trondhjem.org>
+ <1341959112.17428.19.camel@lade.trondhjem.org>
+ <20120710223818.GA6720@fieldses.org>
+ <1341961118.17428.29.camel@lade.trondhjem.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1341961118.17428.29.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Jul 10, 2012 at 10:58:40PM +0000, Myklebust, Trond wrote:
+> All the documentation in the patches was appearing to imply that it
+> affected only nfsd with filenames such as
+> "Documentation/filesystems/nfs/knfsd-rpcgss.txt".and patch changelogs
+> with titles such as "SUNRPC: Use gssproxy upcall for nfsd's RPCGSS
+> authentication."
 
-On Jul 9, 2012, at 3:34 PM, Myklebust, Trond wrote:
+Fixed locally (and pushed out temporarily to for-3.6-incoming branch at
+git://linux-nfs.org/~bfields/linux-topics.git).  Thanks for catching
+that.
 
-> On Mon, 2012-07-09 at 11:44 -0400, Chuck Lever wrote:
->> The result of a TEST_STATEID operation can indicate a few different
->> things:
->> 
->>  o If NFS_OK is returned, then the client can continue using the
->>    state ID under test, and skip recovery.
->> 
->>  o RFC 5661 says that if and only if the state ID was revoked, then
->>    the client must perform an explicit FREE_STATEID before trying to
->>    re-open.
->> 
->>  o If the server doesn't recognize the state ID at all, then no
->>    FREE_STATEID is needed, and the client can immediately continue
->>    with open recovery.
->> 
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> 
->> fs/nfs/nfs4proc.c |   36 ++++++++++++++++++++++++++++++++++--
->> 1 files changed, 34 insertions(+), 2 deletions(-)
->> 
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index 971ec8c..60a320c 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -1756,6 +1756,14 @@ static int nfs4_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *sta
->> }
->> 
->> #if defined(CONFIG_NFS_V4_1)
->> +/**
->> + * nfs41_check_expired_stateid - does a state ID need recovery?
->> + *
->> + * @state: NFSv4 open state for an inode
->> + *
->> + * Returns NFS_OK if recovery for this state ID is now finished.
->> + * Otherwise a negative NFS4ERR value is returned.
->> + */
->> static int nfs41_check_expired_stateid(struct nfs4_state *state, nfs4_stateid *stateid, unsigned int flags)
->> {
->> 	int status = NFS_OK;
->> @@ -1763,8 +1771,16 @@ static int nfs41_check_expired_stateid(struct nfs4_state *state, nfs4_stateid *s
->> 
->> 	if (state->flags & flags) {
->> 		status = nfs41_test_stateid(server, stateid);
->> -		if (status != NFS_OK) {
->> +		switch (status) {
->> +		case NFS_OK:
->> +			/* server recognizes this one, don't recover */
->> +			break;
->> +		case -NFS4ERR_ADMIN_REVOKED:
->> +		case -NFS4ERR_DELEG_REVOKED:
+> > > > How will it behave if I don't run gss proxy?
+> > 
+> > It will work, but if the server's running on the same machine it will
+> > also use svcgssd, and hence won't (for example) be able to handle the
+> > larger init_sec_context packets.
 > 
-> What about -NFS4ERR_BAD_STATEID and/or -NFS4ERR_EXPIRED?
+> An NFS client callback server is only trying to check that it is talking
+> to a machine credential with a name of the form nfs@hostname. It doesn't
+> care about PAGs, and anyone who tries to set the machine cred up with
+> one is clearly insane anyway...
 
-My impression from RFC 5661 was that no FREE_STATEID was needed in those cases.  Those errors would be handled by the default arm.
+Yes.  I don't know enough to say that a larger init_sec_context call
+could never be required for some other reason--but it sounds unlikely.
 
-I don't pretend to be an expert on this, though.  What is your thought?
+Anyway: I was hoping that the old upcall mechanism could be declared a
+legacy thing--no new features, bugfixes only for regressions, etc.--and
+possibly be removed after a long transition period.
 
+If it's a requirement that the client never use the gssproxy mechanism,
+even on the 4.0 backchannel, then that requires committing to develop
+both.  I don't think that makes sense.
+
+Given that, the containerization issues seem irrelevant, but:
+
+> > > ...and how will it behave in a net namespace?
+> > 
+> > It will need the same fixes as we need for rpcbind.
 > 
->> +			/* state was revoked, free then re-open */
->> 			nfs41_free_stateid(server, stateid);
->> +		default:
->> +			/* anything else: just re-open it */
->> 			state->flags &= ~flags;
->> 		}
->> 	}
->> @@ -4698,6 +4714,14 @@ out:
->> }
->> 
->> #if defined(CONFIG_NFS_V4_1)
->> +/**
->> + * nfs41_check_expired_locks - clear lock state IDs
->> + *
->> + * @state: NFSv4 open state for a file
->> + *
->> + * Returns NFS_OK if recovery for this state ID is now finished.
->> + * Otherwise a negative NFS4ERR value is returned.
->> + */
->> static int nfs41_check_expired_locks(struct nfs4_state *state)
->> {
->> 	int status, ret = NFS_OK;
->> @@ -4707,8 +4731,16 @@ static int nfs41_check_expired_locks(struct nfs4_state *state)
->> 	list_for_each_entry(lsp, &state->lock_states, ls_locks) {
->> 		if (lsp->ls_flags & NFS_LOCK_INITIALIZED) {
->> 			status = nfs41_test_stateid(server, &lsp->ls_stateid);
->> -			if (status != NFS_OK) {
->> +			switch (status) {
->> +			case NFS_OK:
->> +				/* server recognizes this one, don't re-lock */
->> +				break;
->> +			case -NFS4ERR_ADMIN_REVOKED:
->> +			case -NFS4ERR_DELEG_REVOKED:
-> 
-> Ditto
-> 
->> +				/* lock was revoked, free then re-lock */
->> 				nfs41_free_stateid(server, &lsp->ls_stateid);
->> +			default:
->> +				/* anything else: just re-lock it */
->> 				lsp->ls_flags &= ~NFS_LOCK_INITIALIZED;
->> 				ret = status;
->> 			}
->> 
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+> So basically, it will have to store the path at client creation time?
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+I think that's right.
 
+> > I'm sure we could allow the callback server and the nfs server to use
+> > different authentication upcalls.  But that makes this not worth it.
+> 
+> The point is that in a containerised environment, the NFS client may not
+> know what protocol that an NFS server running in a completely different
+> container is using.
+> 
+> > We should be able to share the same use the same mechanism on all rpc
+> > servers, so if a mechanism based on gssproxy calls isn't acceptable for
+> > the nfs callback server then I'll drop it.
+> 
+> I don't see how you can enforce that premise when using containers.
 
+I don't believe there's a requirement that containers be able to use
+different upcall mechanisms.  Are we allowing people to choose between
+new and old client idmappers per container?
 
-
+--b.
