@@ -1,51 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54145 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:35135 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756127Ab2GJQHu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jul 2012 12:07:50 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 3/7] nfsd4: process_open2 cleanup
-Date: Tue, 10 Jul 2012 12:07:42 -0400
-Message-Id: <1341936466-3821-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1341936466-3821-1-git-send-email-bfields@redhat.com>
-References: <1341936466-3821-1-git-send-email-bfields@redhat.com>
+	id S1755552Ab2GKTB0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Jul 2012 15:01:26 -0400
+Date: Wed, 11 Jul 2012 15:00:39 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "Steven J. Magnani" <steve@digidescorp.com>
+Cc: viro@ZenIV.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        michael.brantley@deshaw.com, hch@infradead.org, miklos@szeredi.hu,
+        pstaubach@exagrid.com
+Subject: Re: [PATCH v3 00/17] vfs: add the ability to retry on ESTALE to
+ several syscalls
+Message-ID: <20120711150039.08845e85@tlielax.poochiereds.net>
+In-Reply-To: <1342032143.2190.22.camel@iscandar.digidescorp.com>
+References: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
+	<1342032143.2190.22.camel@iscandar.digidescorp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Wed, 11 Jul 2012 13:42:23 -0500
+"Steven J. Magnani" <steve@digidescorp.com> wrote:
 
-Note we can simplify the error handling a little by doing the truncate
-earlier.
+> Jeff -
+> 
+> On Fri, 2012-06-29 at 14:57 -0400, Jeff Layton wrote: 
+> > This patchset is the third version of the patchset to add ESTALE
+> > handling to several syscalls. The basic idea is to allow the client to
+> > gracefully retry the lookup and call when a NFS server returns ESTALE.
+> 
+> I exercised this using 3.5-rc5 against a memory-starved server that
+> exports a FAT-backed filesystem. Where normally I see lots of ESTALE
+> errors due to inode eviction, with this patchset I see none. And, the
+> performance is much better than the only other way I know to eliminate
+> the errors, which is to mount with 'lookupcache=none'.
+> 
+> It's not an exhaustive test by any means, just a data point for you. 
+> Thanks!
+> 
+> Lightly-tested-by: Steve Magnani <steve@digidescorp.com>
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |    8 +++-----
- 1 file changed, 3 insertions(+), 5 deletions(-)
+Awesome -- thanks for testing it.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index de8f7e4..9efa405 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3013,14 +3013,12 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 		status = nfs4_get_vfs_file(rqstp, fp, current_fh, open);
- 		if (status)
- 			goto out;
-+		status = nfsd4_truncate(rqstp, current_fh, open);
-+		if (status)
-+			goto out;
- 		stp = open->op_stp;
- 		open->op_stp = NULL;
- 		init_open_stateid(stp, fp, open);
--		status = nfsd4_truncate(rqstp, current_fh, open);
--		if (status) {
--			release_open_stateid(stp);
--			goto out;
--		}
- 	}
- 	update_stateid(&stp->st_stid.sc_stateid);
- 	memcpy(&open->op_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+Yeah "lookupcache=none" has been the standard answer for people
+suffering from ESTALE problems, but the perf hit can be quite nasty.
+Avoiding that is one of the main drivers for handling ESTALE this way.
+
+With luck, we'll see at least some of this set go in for 3.6.
+
 -- 
-1.7.9.5
-
+Jeff Layton <jlayton@redhat.com>
