@@ -1,52 +1,143 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga11.intel.com ([192.55.52.93]:46311 "EHLO mga11.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753933Ab2GaOKO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jul 2012 10:10:14 -0400
-Date: Tue, 31 Jul 2012 22:10:07 +0800
-From: Fengguang Wu <fengguang.wu@intel.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [nfs:devel 46/51] fs/nfs/write.c:1592:5: error: redefinition of
- 'nfs_commit_inode'
-Message-ID: <20120731141007.GA20369@localhost>
-References: <20120731024328.GA10480@localhost>
- <4FA345DA4F4AE44899BD2B03EEEC2FA934BE82@SACEXCMBX04-PRD.hq.netapp.com>
- <5017D3FC.9010905@netapp.com>
- <1343739299.519.1.camel@lade.trondhjem.org>
- <5017D824.209@netapp.com>
- <5017DDDB.6060500@netapp.com>
- <1343741622.519.2.camel@lade.trondhjem.org>
- <5017E13F.4030909@netapp.com>
- <1343743122.519.4.camel@lade.trondhjem.org>
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:56583 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932350Ab2GKUb1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jul 2012 16:31:27 -0400
+Received: by mail-gh0-f174.google.com with SMTP id r11so1692583ghr.19
+        for <linux-nfs@vger.kernel.org>; Wed, 11 Jul 2012 13:31:27 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 12/15] NFS: Use the same nfs_client_id4 for every server
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 11 Jul 2012 16:31:25 -0400
+Message-ID: <20120711203125.3767.93859.stgit@degas.1015granger.net>
+In-Reply-To: <20120711201718.3767.66867.stgit@degas.1015granger.net>
+References: <20120711201718.3767.66867.stgit@degas.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1343743122.519.4.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> > Easy enough, the patch that fixes it is the last one in the series that I sent in yesterday.
-> 
-> I don't understand. That is the patch series that Fengguang was testing
-> afaik. His tests were on 
-> 
-> tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git devel
-> head:   5c13c9e1c15ee2ca9ab2b953224001af53d9be09
-> 
-> which includes your patch series from yesterday, no?
+Currently, when identifying itself to NFS servers, the Linux NFS
+client uses a unique nfs_client_id4.id string for each server IP
+address it talks with.  For example, when client A talks to server X,
+the client identifies itself using a string like "AX".  The
+requirements for these strings are specified in detail by RFC 3530
+(and bis).
 
-Trond, I typically do commit-by-commit tests and will complain if
-*any* point of the tree is not bisect-able. A fix at the HEAD won't
-stop the email notification for a defect in the middle point..
+This form of client identification presents a problem for Transparent
+State Migration.  When client A's state on server X is migrated to
+server Y, it continues to be associated with string "AX."  But,
+according to the rules of client string construction above, client
+A will present string "AY" when communicating with server Y.
 
-On the other hand, I do maintain a list of non-rebaseable
-tree/branches, on which the HEAD commit will be tested first, and only
-if any problems are found, go back to find out the first bad commit.
+Server Y thus has no way to know that client A should be associated
+with the state migrated from server X.  "AX" is all but abandoned,
+interfering with establishing fresh state for client A on server Y.
 
-If you prefer the latter behavior, I can add your tree or any branch
-of it to the non-rebaseable list.
+To support transparent state migration, then, NFSv4.0 clients must
+instead use the same nfs_client_id4.id string to identify themselves
+to every NFS server; something like "A".
 
-Thanks,
-Fengguang
+Now a client identifies itself as "A" to server X.  When a file
+system on server X transitions to server Y, and client A identifies
+itself as "A" to server Y, Y will know immediately that the state
+associated with "A," whether it is native or migrated, is owned by
+the client, and can merge both into a single lease.
+
+As a pre-requisite to adding support for NFSv4 migration to the Linux
+NFS client, this patch changes the way Linux identifies itself to NFS
+servers via the SETCLIENTID (NFSv4 minor version 0) and EXCHANGE_ID
+(NFSv4 minor version 1) operations.
+
+In addition to removing the server's IP address from nfs_client_id4,
+the Linux NFS client will also no longer use its own source IP address
+as part of the nfs_client_id4 string.  On multi-homed clients, the
+value of this address depends on the address family and network
+routing used to contact the server, thus it can be different for each
+server.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ fs/nfs/nfs4proc.c |   51 +++++++++++++++++++++++++++++++++++++++------------
+ 1 files changed, 39 insertions(+), 12 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 75bff3f..b09b849 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4024,6 +4024,32 @@ static void nfs4_init_boot_verifier(const struct nfs_client *clp,
+ 	memcpy(bootverf->data, verf, sizeof(bootverf->data));
+ }
+ 
++static unsigned int
++nfs4_init_nonuniform_client_string(const struct nfs_client *clp,
++				   char *buf, size_t len)
++{
++	unsigned int result;
++
++	rcu_read_lock();
++	result = scnprintf(buf, len, "Linux NFSv4.0 %s/%s %s",
++				clp->cl_ipaddr,
++				rpc_peeraddr2str(clp->cl_rpcclient,
++							RPC_DISPLAY_ADDR),
++				rpc_peeraddr2str(clp->cl_rpcclient,
++							RPC_DISPLAY_PROTO));
++	rcu_read_unlock();
++	return result;
++}
++
++static unsigned int
++nfs4_init_uniform_client_string(const struct nfs_client *clp,
++				char *buf, size_t len)
++{
++	return scnprintf(buf, len, "Linux NFSv%u.%u %s",
++				clp->rpc_ops->version, clp->cl_minorversion,
++				clp->cl_rpcclient->cl_nodename);
++}
++
+ /**
+  * nfs4_proc_setclientid - Negotiate client ID
+  * @clp: state data structure
+@@ -4054,15 +4080,18 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 
+ 	/* nfs_client_id4 */
+ 	nfs4_init_boot_verifier(clp, &sc_verifier);
+-	rcu_read_lock();
+-	setclientid.sc_name_len = scnprintf(setclientid.sc_name,
+-			sizeof(setclientid.sc_name), "%s/%s %s",
+-			clp->cl_ipaddr,
+-			rpc_peeraddr2str(clp->cl_rpcclient,
+-						RPC_DISPLAY_ADDR),
+-			rpc_peeraddr2str(clp->cl_rpcclient,
+-						RPC_DISPLAY_PROTO));
++	if (test_bit(NFS_CS_MIGRATION, &clp->cl_flags))
++		setclientid.sc_name_len =
++				nfs4_init_uniform_client_string(clp,
++						setclientid.sc_name,
++						sizeof(setclientid.sc_name));
++	else
++		setclientid.sc_name_len =
++				nfs4_init_nonuniform_client_string(clp,
++						setclientid.sc_name,
++						sizeof(setclientid.sc_name));
+ 	/* cb_client4 */
++	rcu_read_lock();
+ 	setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
+ 				sizeof(setclientid.sc_netid),
+ 				rpc_peeraddr2str(clp->cl_rpcclient,
+@@ -5284,10 +5313,8 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ 	};
+ 
+ 	nfs4_init_boot_verifier(clp, &verifier);
+-	args.id_len = scnprintf(args.id, sizeof(args.id),
+-				"%s/%s",
+-				clp->cl_ipaddr,
+-				clp->cl_rpcclient->cl_nodename);
++	args.id_len = nfs4_init_uniform_client_string(clp, args.id,
++							sizeof(args.id));
+ 	dprintk("NFS call  exchange_id auth=%s, '%.*s'\n",
+ 		clp->cl_rpcclient->cl_auth->au_ops->au_name,
+ 		args.id_len, args.id);
+
