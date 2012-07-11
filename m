@@ -1,58 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:35935 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:36050 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751133Ab2GaOS5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jul 2012 10:18:57 -0400
-Message-ID: <5017E94E.2040508@netapp.com>
-Date: Tue, 31 Jul 2012 10:18:54 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-MIME-Version: 1.0
-To: Fengguang Wu <fengguang.wu@intel.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
+	id S1752133Ab2GKR1Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Jul 2012 13:27:16 -0400
+Date: Wed, 11 Jul 2012 13:27:14 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Simo Sorce <simo@redhat.com>, "bfields@redhat.com" <bfields@redhat.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [nfs:devel 46/51] fs/nfs/write.c:1592:5: error: redefinition
- of 'nfs_commit_inode'
-References: <20120731024328.GA10480@localhost> <4FA345DA4F4AE44899BD2B03EEEC2FA934BE82@SACEXCMBX04-PRD.hq.netapp.com> <5017D3FC.9010905@netapp.com> <1343739299.519.1.camel@lade.trondhjem.org> <5017D824.209@netapp.com> <5017DDDB.6060500@netapp.com> <1343741622.519.2.camel@lade.trondhjem.org> <5017E13F.4030909@netapp.com> <20120731135154.GA20221@localhost> <5017E3CA.8070502@netapp.com> <20120731141614.GA20628@localhost>
-In-Reply-To: <20120731141614.GA20628@localhost>
-Content-Type: text/plain; charset=ISO-8859-1
+Subject: Re: [PATCH 0/4] Add support for new RPCSEC_GSS upcall mechanism
+ for nfsd
+Message-ID: <20120711172714.GA13610@fieldses.org>
+References: <1337983796-26476-1-git-send-email-simo@redhat.com>
+ <20120710204913.GA6038@fieldses.org>
+ <1341957169.17428.4.camel@lade.trondhjem.org>
+ <20120710215618.GC6038@fieldses.org>
+ <1341958332.17428.12.camel@lade.trondhjem.org>
+ <1341959112.17428.19.camel@lade.trondhjem.org>
+ <20120710223818.GA6720@fieldses.org>
+ <1341961118.17428.29.camel@lade.trondhjem.org>
+ <20120711170331.GE11432@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120711170331.GE11432@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/31/2012 10:16 AM, Fengguang Wu wrote:
-> On Tue, Jul 31, 2012 at 09:55:22AM -0400, Bryan Schumaker wrote:
->> I've got one at:
->> git://git.linux-nfs.org/projects/bjschuma/linux-nfs.git.  I don't
->> always do a good job keeping it up-to-date, but I can try to get
->> into the habit of putting my patches there before submitting them.
+On Wed, Jul 11, 2012 at 01:03:32PM -0400, J. Bruce Fields wrote:
+> On Tue, Jul 10, 2012 at 10:58:40PM +0000, Myklebust, Trond wrote:
+> > All the documentation in the patches was appearing to imply that it
+> > affected only nfsd with filenames such as
+> > "Documentation/filesystems/nfs/knfsd-rpcgss.txt".and patch changelogs
+> > with titles such as "SUNRPC: Use gssproxy upcall for nfsd's RPCGSS
+> > authentication."
 > 
-> Tree added :)  By default I'll test every branch of the monitored
-> trees. You may ask me to permanently blacklist/whitelist some of your
-> branches. Or, if a topic branch is currently in heavy development and
-> will become testable eventually, you may temporarily carry a line
+> Fixed locally (and pushed out temporarily to for-3.6-incoming branch at
+> git://linux-nfs.org/~bfields/linux-topics.git).  Thanks for catching
+> that.
 > 
-> Dont-Auto-Build
+> > > > > How will it behave if I don't run gss proxy?
+> > > 
+> > > It will work, but if the server's running on the same machine it will
+> > > also use svcgssd, and hence won't (for example) be able to handle the
+> > > larger init_sec_context packets.
+> > 
+> > An NFS client callback server is only trying to check that it is talking
+> > to a machine credential with a name of the form nfs@hostname. It doesn't
+> > care about PAGs, and anyone who tries to set the machine cred up with
+> > one is clearly insane anyway...
 > 
-> in any of the branch's commits (in the changelog). Then the script
-> will skip that branch automatically.
+> Yes.  I don't know enough to say that a larger init_sec_context call
+> could never be required for some other reason--but it sounds unlikely.
+> 
+> Anyway: I was hoping that the old upcall mechanism could be declared a
+> legacy thing--no new features, bugfixes only for regressions, etc.--and
+> possibly be removed after a long transition period.
+> 
+> If it's a requirement that the client never use the gssproxy mechanism,
+> even on the 4.0 backchannel, then that requires committing to develop
+> both.  I don't think that makes sense.
 
-Sounds good.  I'll update it as I work on things!
+So, if the issue is: you want to be able to choose, in individual
+containers, which mechanism to use: whatever, we can probably make that
+work.
 
-- Bryan
+If you're instead saying: it's not acceptable to use the gssproxy
+mechanism to authenticate v4.0 callbacks, the client must only ever use
+the existing mechanism: then I'd rather drop this entirely.  I don't
+want to merge an rpc server authentication upcall that's not acceptable
+for one of the rpc servers.
 
-> 
-> Thanks,
-> Fengguang
-> 
->> On 07/31/2012 09:51 AM, Fengguang Wu wrote:
->>> Bryan,
->>>
->>> Do you have a git tree that I can run tests upon? That would help
->>> prevent problems from sneaking into Trond's tree, and hence mess up
->>> the maintainer's tree and waste everyone's time.
->>>
->>> Thanks,
->>> Fengguang
->>>
-
+--b.
