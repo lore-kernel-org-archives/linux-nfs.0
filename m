@@ -1,171 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:20498 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751475Ab2GJQQY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jul 2012 12:16:24 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
+Received: from mail-yw0-f52.google.com ([209.85.213.52]:34087 "EHLO
+	mail-yw0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932350Ab2GKUaZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jul 2012 16:30:25 -0400
+Received: by mail-yw0-f52.google.com with SMTP id p61so1948409yhp.11
+        for <linux-nfs@vger.kernel.org>; Wed, 11 Jul 2012 13:30:24 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 05/15] NFS: Clean up TEST_STATEID and FREE_STATEID error
+ reporting
+To: trond.myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 07/12] NFS: Move the v4 getroot code to nfs4getroot.c
-Date: Tue, 10 Jul 2012 12:16:12 -0400
-Message-Id: <1341936977-21186-8-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1341936977-21186-1-git-send-email-bjschuma@netapp.com>
-References: <1341936977-21186-1-git-send-email-bjschuma@netapp.com>
+Date: Wed, 11 Jul 2012 16:30:23 -0400
+Message-ID: <20120711203023.3767.32128.stgit@degas.1015granger.net>
+In-Reply-To: <20120711201718.3767.66867.stgit@degas.1015granger.net>
+References: <20120711201718.3767.66867.stgit@degas.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+As a finishing touch, add appropriate documenting comments and some
+debugging printk's.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/Makefile      |  2 +-
- fs/nfs/getroot.c     | 50 --------------------------------------------------
- fs/nfs/nfs4getroot.c | 49 +++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 50 insertions(+), 51 deletions(-)
- create mode 100644 fs/nfs/nfs4getroot.c
 
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index e882a38..ec13afe 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -15,7 +15,7 @@ nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
- nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
- 			   nfs4super.o nfs4file.o delegation.o idmap.o \
- 			   callback.o callback_xdr.o callback_proc.o \
--			   nfs4namespace.o
-+			   nfs4namespace.o nfs4getroot.o
- nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
+ fs/nfs/nfs4proc.c |   32 ++++++++++++++++++++++++++++++--
+ 1 files changed, 30 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index c4df35b..0d6da38 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6636,13 +6636,28 @@ static int _nfs41_test_stateid(struct nfs_server *server, nfs4_stateid *stateid)
+ 		.rpc_resp = &res,
+ 	};
  
- ifeq ($(CONFIG_SYSCTL), y)
-diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
-index 8abfb19..b393713 100644
---- a/fs/nfs/getroot.c
-+++ b/fs/nfs/getroot.c
-@@ -23,21 +23,15 @@
- #include <linux/sunrpc/stats.h>
- #include <linux/nfs_fs.h>
- #include <linux/nfs_mount.h>
--#include <linux/nfs4_mount.h>
- #include <linux/lockd/bind.h>
- #include <linux/seq_file.h>
- #include <linux/mount.h>
--#include <linux/nfs_idmap.h>
- #include <linux/vfs.h>
- #include <linux/namei.h>
- #include <linux/security.h>
- 
- #include <asm/uaccess.h>
- 
--#include "nfs4_fs.h"
--#include "delegation.h"
--#include "internal.h"
--
- #define NFSDBG_FACILITY		NFSDBG_CLIENT
- 
- /*
-@@ -135,47 +129,3 @@ out:
- 	nfs_free_fattr(fsinfo.fattr);
- 	return ret;
++	dprintk("NFS call  test_stateid %p\n", stateid);
+ 	nfs41_init_sequence(&args.seq_args, &res.seq_res, 0);
+ 	status = nfs4_call_sync_sequence(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
+-	if (status != NFS_OK)
++	if (status != NFS_OK) {
++		dprintk("NFS reply test_stateid: failed, %d\n", status);
+ 		return status;
++	}
++	dprintk("NFS reply test_stateid: succeeded, %d\n", -res.status);
++	return -res.status;
+ 	return -res.status;
  }
--
--#ifdef CONFIG_NFS_V4
--
--int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh)
--{
--	struct nfs_fsinfo fsinfo;
--	int ret = -ENOMEM;
--
--	dprintk("--> nfs4_get_rootfh()\n");
--
--	fsinfo.fattr = nfs_alloc_fattr();
--	if (fsinfo.fattr == NULL)
--		goto out;
--
--	/* Start by getting the root filehandle from the server */
--	ret = nfs4_proc_get_rootfh(server, mntfh, &fsinfo);
--	if (ret < 0) {
--		dprintk("nfs4_get_rootfh: getroot error = %d\n", -ret);
--		goto out;
--	}
--
--	if (!(fsinfo.fattr->valid & NFS_ATTR_FATTR_TYPE)
--			|| !S_ISDIR(fsinfo.fattr->mode)) {
--		printk(KERN_ERR "nfs4_get_rootfh:"
--		       " getroot encountered non-directory\n");
--		ret = -ENOTDIR;
--		goto out;
--	}
--
--	if (fsinfo.fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL) {
--		printk(KERN_ERR "nfs4_get_rootfh:"
--		       " getroot obtained referral\n");
--		ret = -EREMOTE;
--		goto out;
--	}
--
--	memcpy(&server->fsid, &fsinfo.fattr->fsid, sizeof(server->fsid));
--out:
--	nfs_free_fattr(fsinfo.fattr);
--	dprintk("<-- nfs4_get_rootfh() = %d\n", ret);
--	return ret;
--}
--
--#endif /* CONFIG_NFS_V4 */
-diff --git a/fs/nfs/nfs4getroot.c b/fs/nfs/nfs4getroot.c
-new file mode 100644
-index 0000000..6a83780
---- /dev/null
-+++ b/fs/nfs/nfs4getroot.c
-@@ -0,0 +1,49 @@
-+/*
-+* Copyright (C) 2006 Red Hat, Inc. All Rights Reserved.
-+* Written by David Howells (dhowells@redhat.com)
-+*/
-+
-+#include <linux/nfs_fs.h>
-+#include "nfs4_fs.h"
-+
-+#define NFSDBG_FACILITY		NFSDBG_CLIENT
-+
-+int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh)
-+{
-+	struct nfs_fsinfo fsinfo;
-+	int ret = -ENOMEM;
-+
-+	dprintk("--> nfs4_get_rootfh()\n");
-+
-+	fsinfo.fattr = nfs_alloc_fattr();
-+	if (fsinfo.fattr == NULL)
-+		goto out;
-+
-+	/* Start by getting the root filehandle from the server */
-+	ret = nfs4_proc_get_rootfh(server, mntfh, &fsinfo);
-+	if (ret < 0) {
-+		dprintk("nfs4_get_rootfh: getroot error = %d\n", -ret);
-+		goto out;
-+	}
-+
-+	if (!(fsinfo.fattr->valid & NFS_ATTR_FATTR_TYPE)
-+			|| !S_ISDIR(fsinfo.fattr->mode)) {
-+		printk(KERN_ERR "nfs4_get_rootfh:"
-+		       " getroot encountered non-directory\n");
-+		ret = -ENOTDIR;
-+		goto out;
-+	}
-+
-+	if (fsinfo.fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL) {
-+		printk(KERN_ERR "nfs4_get_rootfh:"
-+		       " getroot obtained referral\n");
-+		ret = -EREMOTE;
-+		goto out;
-+	}
-+
-+	memcpy(&server->fsid, &fsinfo.fattr->fsid, sizeof(server->fsid));
-+out:
-+	nfs_free_fattr(fsinfo.fattr);
-+	dprintk("<-- nfs4_get_rootfh() = %d\n", ret);
-+	return ret;
-+}
--- 
-1.7.11.1
+ 
++/**
++ * nfs41_test_stateid - perform a TEST_STATEID operation
++ *
++ * @server: server / transport on which to perform the operation
++ * @stateid: state ID to test
++ *
++ * Returns NFS_OK if the server recognizes that "stateid" is valid.
++ * Otherwise a negative NFS4ERR value is returned if the operation
++ * failed or the state ID is not currently valid.
++ */
+ static int nfs41_test_stateid(struct nfs_server *server, nfs4_stateid *stateid)
+ {
+ 	struct nfs4_exception exception = { };
+@@ -6667,12 +6682,25 @@ static int _nfs4_free_stateid(struct nfs_server *server, nfs4_stateid *stateid)
+ 		.rpc_argp = &args,
+ 		.rpc_resp = &res,
+ 	};
++	int status;
+ 
++	dprintk("NFS call  free_stateid %p\n", stateid);
+ 	nfs41_init_sequence(&args.seq_args, &res.seq_res, 0);
+-	return nfs4_call_sync_sequence(server->client, server, &msg,
++	status = nfs4_call_sync_sequence(server->client, server, &msg,
+ 					 &args.seq_args, &res.seq_res, 1);
++	dprintk("NFS reply free_stateid: %d\n", status);
++	return status;
+ }
+ 
++/**
++ * nfs41_free_stateid - perform a FREE_STATEID operation
++ *
++ * @server: server / transport on which to perform the operation
++ * @stateid: state ID to release
++ *
++ * Returns NFS_OK if the server freed "stateid".  Otherwise a
++ * negative NFS4ERR value is returned.
++ */
+ static int nfs41_free_stateid(struct nfs_server *server, nfs4_stateid *stateid)
+ {
+ 	struct nfs4_exception exception = { };
 
