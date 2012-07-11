@@ -1,64 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54151 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756131Ab2GJQHu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jul 2012 12:07:50 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 5/7] nfsd4: release openowners on free in >=4.1 case
-Date: Tue, 10 Jul 2012 12:07:44 -0400
-Message-Id: <1341936466-3821-6-git-send-email-bfields@redhat.com>
-In-Reply-To: <1341936466-3821-1-git-send-email-bfields@redhat.com>
-References: <1341936466-3821-1-git-send-email-bfields@redhat.com>
+Received: from mail-wg0-f44.google.com ([74.125.82.44]:40576 "EHLO
+	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754544Ab2GKWnw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jul 2012 18:43:52 -0400
+MIME-Version: 1.0
+In-Reply-To: <CAKYAXd__BLFPOw=+tt=cqZgyM45y5mSOTamVaFTU26BNSNa=2A@mail.gmail.com>
+References: <1341717459-7297-1-git-send-email-linkinjeon@gmail.com>
+	<20120710145937.GA1947@fieldses.org>
+	<CAKYAXd97ir=tvxWTC4eVmrrXBEpK=XCX3-e8XUjCPy16eHoibQ@mail.gmail.com>
+	<20120711140944.GB11432@fieldses.org>
+	<CAKYAXd__BLFPOw=+tt=cqZgyM45y5mSOTamVaFTU26BNSNa=2A@mail.gmail.com>
+Date: Thu, 12 Jul 2012 07:43:49 +0900
+Message-ID: <CAKYAXd9KLxDqXSqgk7Y1rNv9cw-r+PHPSenQCnkRh9_0_6HmAQ@mail.gmail.com>
+Subject: Re: [PATCH] nfs-util: Add cache_flush in mountd UMNT procedure.
+From: Namjae Jeon <linkinjeon@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: SteveD@redhat.com, Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Vivek Trivedi <vtrivedi018@gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+2012/7/12, Namjae Jeon <linkinjeon@gmail.com>:
+> 2012/7/11, J. Bruce Fields <bfields@fieldses.org>:
+>> On Wed, Jul 11, 2012 at 01:10:53PM +0900, Namjae Jeon wrote:
+>>> 2012/7/10, J. Bruce Fields <bfields@fieldses.org>:
+>>> > On Sat, Jul 07, 2012 at 11:17:39PM -0400, Namjae Jeon wrote:
+>>> >> For removing storage device - user needs to safely un-mount the
+>>> >> device
+>>> >> and then eject. But if 'EBUSY' occurs in umount then it will create
+>>> >> confusion for the user as it will mean some I/O is in progress - and
+>>> >> won't allow user to safely ejecting device.
+>>> >
+>>> Hi James.
+>>> > The one drawback is that recovering from the cache flushes might be a
+>>> > little expensive if you have a lot of exports in use.
+>>> Good point. I will look for more there is the method flush only mount
+>>> entry.
+>>
+>> I don't think there's a good way to flush only one entry.
+>>
+>> Also, this isn't going to help for NFSv4 since a v4 client won't do an
+>> unmount call.
+> Okay.
+>>
+>>> > I'm curious, since you said this was for a usb disk: are users
+>>> > expected
+>>> > to just unplug it (in which case--is it read only?) or do they have
+>>> > some
+>>> > way of unmounting before they pull the plug?
+>>> Users expected to unplug it on both read only and read/write.
+>>> And there is no way that system be prepared to know about the
+>>> intelligence when the user is going to unplug.
+>>> if the user really want to detach the device safely. There is an
+>>> option like the desktop PC - where, we can say - umount/eject the
+>>> device. There is a proper user interface for safe removal.
+>>> but they can not unplug safely if usb device is mounted with nfs
+>>> because of this issue.
+>>
+>> Ideal might be to get some way to notify nfsd when the device
+>> diseappears or the filesystem wants to unmount.  I don't know how to do
+>> that.
+> Okay. I will look for good solution for this issue.
+> Thanks.
+Hi James.
+I have a question.
+If we found the method to notify nfs when unplugging device, Can nfsd
+flush only entry of usb mount ?
 
-We don't need to keep openowners around in the >=4.1 case, because they
-aren't needed to handle CLOSE replays any more (that's a problem for
-sessions).  And doing so causes unexpected failures on a subsequent
-destroy_clientid to fail.
+Thanks.
 
-We probably also need something comparable for lock owners on last
-unlock.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |   19 +++++++++++++------
- 1 file changed, 13 insertions(+), 6 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9efa405..e404fca 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3763,12 +3763,19 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	nfsd4_close_open_stateid(stp);
- 	oo->oo_last_closed_stid = stp;
- 
--	/* place unused nfs4_stateowners on so_close_lru list to be
--	 * released by the laundromat service after the lease period
--	 * to enable us to handle CLOSE replay
--	 */
--	if (list_empty(&oo->oo_owner.so_stateids))
--		move_to_close_lru(oo);
-+	if (list_empty(&oo->oo_owner.so_stateids)) {
-+		if (cstate->minorversion) {
-+			release_openowner(oo);
-+			cstate->replay_owner = NULL;
-+		} else {
-+			/*
-+			 * In the 4.0 case we need to keep the owners around a
-+			 * little while to handle CLOSE replay.
-+			 */
-+			if (list_empty(&oo->oo_owner.so_stateids))
-+				move_to_close_lru(oo);
-+		}
-+	}
- out:
- 	if (!cstate->replay_owner)
- 		nfs4_unlock_state();
--- 
-1.7.9.5
-
+>>
+>> --b.
+>>
+>
