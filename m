@@ -1,132 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:46313 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751736Ab2GPSgf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Jul 2012 14:36:35 -0400
-Received: by ghrr11 with SMTP id r11so5328860ghr.19
-        for <linux-nfs@vger.kernel.org>; Mon, 16 Jul 2012 11:36:34 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] rpc.gssd: close upcall pipe on POLLHUP
-To: linux-nfs@vger.kernel.org
-Date: Mon, 16 Jul 2012 14:36:32 -0400
-Message-ID: <20120716183526.2399.37839.stgit@degas.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail.digidescorp.com ([50.73.98.161]:25587 "EHLO
+	mail.digidescorp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751692Ab2GKSoQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jul 2012 14:44:16 -0400
+Message-ID: <1342032143.2190.22.camel@iscandar.digidescorp.com>
+Subject: Re: [PATCH v3 00/17] vfs: add the ability to retry on ESTALE to
+ several syscalls
+From: "Steven J. Magnani" <steve@digidescorp.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: viro@ZenIV.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        michael.brantley@deshaw.com, hch@infradead.org, miklos@szeredi.hu,
+        pstaubach@exagrid.com
+Date: Wed, 11 Jul 2012 13:42:23 -0500
+In-Reply-To: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
+References: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When a POLLHUP event is received on a pipe file descriptor, that
-means the other side has closed its end of the pipe.  If the
-receiver does not close its end of the pipe, the pipe is left in an
-open-but-unlinked state.
+Jeff -
 
-For a "gssd" upcall pipe, the kernel may close its end, removing the
-directory entry for it, and then later create a fresh pipe named
-"gssd" in the same directory.  In this case, rpc.gssd continues to
-listen on the open-but-unlinked previous "gssd" pipe.  Thus upcalls
-on the new "gssd" pipe are left unanswered.
+On Fri, 2012-06-29 at 14:57 -0400, Jeff Layton wrote: 
+> This patchset is the third version of the patchset to add ESTALE
+> handling to several syscalls. The basic idea is to allow the client to
+> gracefully retry the lookup and call when a NFS server returns ESTALE.
 
-In addition, poll(2) continues to return POLLHUP on the old pipe.
-Since there is no logic to close the pipe in rpc.gssd, poll(2) always
-returns immediately, and rpc.gssd goes into a tight loop.
+I exercised this using 3.5-rc5 against a memory-starved server that
+exports a FAT-backed filesystem. Where normally I see lots of ESTALE
+errors due to inode eviction, with this patchset I see none. And, the
+performance is much better than the only other way I know to eliminate
+the errors, which is to mount with 'lookupcache=none'.
 
-Typically, the kernel closes upcall pipes and destroys their
-parent directory at the same time.  When an RPC client's directory
-vanishes, rpc.gssd sees the change via dnotify and eventually
-invokes destroy_client() which closes the user-space end of the
-pipes.
+It's not an exhaustive test by any means, just a data point for you. 
+Thanks!
 
-However, if the kernel wants to switch authentication flavors (say
-from AUTH_KRB5 to AUTH_UNIX) on an RPC client without destroying it,
-the upcall pipes go away, but the RPC client's directory remains.
-rpc.gssd invokes update_client_list(), but that logic never closes
-upcall pipes if the client directory is still in place.
+Lightly-tested-by: Steve Magnani <steve@digidescorp.com>
+------------------------------------------------------------------------
+Steven J. Magnani               "I claim this network for MARS!
+www.digidescorp.com              Earthling, return my space modulator!"
 
-After a POLLHUP on a pipe, close it when rpc.gssd reconstructs its
-list of upcall clients.
+#include <standard.disclaimer>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
-I know folks are probably on vacation this week, so this is only a
-request for comments.
-
- utils/gssd/gssd.h           |    2 ++
- utils/gssd/gssd_main_loop.c |    8 ++++++--
- utils/gssd/gssd_proc.c      |   19 +++++++++++++++++++
- 3 files changed, 27 insertions(+), 2 deletions(-)
-
-diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
-index e0a2b7b..ec81beb 100644
---- a/utils/gssd/gssd.h
-+++ b/utils/gssd/gssd.h
-@@ -82,8 +82,10 @@ struct clnt_info {
- 	char			*protocol;
- 	int			krb5_fd;
- 	int			krb5_poll_index;
-+	int			krb5_close_me;
- 	int                     gssd_fd;
- 	int                     gssd_poll_index;
-+	int			gssd_close_me;
- 	struct sockaddr_storage addr;
- };
- 
-diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
-index 187954c..6480390 100644
---- a/utils/gssd/gssd_main_loop.c
-+++ b/utils/gssd/gssd_main_loop.c
-@@ -78,8 +78,10 @@ scan_poll_results(int ret)
- 	{
- 		i = clp->gssd_poll_index;
- 		if (i >= 0 && pollarray[i].revents) {
--			if (pollarray[i].revents & POLLHUP)
-+			if (pollarray[i].revents & POLLHUP) {
-+				clp->gssd_close_me = 1;
- 				dir_changed = 1;
-+			}
- 			if (pollarray[i].revents & POLLIN)
- 				handle_gssd_upcall(clp);
- 			pollarray[clp->gssd_poll_index].revents = 0;
-@@ -89,8 +91,10 @@ scan_poll_results(int ret)
- 		}
- 		i = clp->krb5_poll_index;
- 		if (i >= 0 && pollarray[i].revents) {
--			if (pollarray[i].revents & POLLHUP)
-+			if (pollarray[i].revents & POLLHUP) {
-+				clp->krb5_close_me = 1;
- 				dir_changed = 1;
-+			}
- 			if (pollarray[i].revents & POLLIN)
- 				handle_krb5_upcall(clp);
- 			pollarray[clp->krb5_poll_index].revents = 0;
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index fed2886..5e33379 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -339,6 +339,25 @@ process_clnt_dir_files(struct clnt_info * clp)
- 	char	gname[PATH_MAX];
- 	char	info_file_name[PATH_MAX];
- 
-+	if (clp->gssd_close_me) {
-+		printerr(2, "Closing 'gssd' pipe for %s\n", clp->dirname);
-+		close(clp->gssd_fd);
-+		memset(&pollarray[clp->gssd_poll_index], 0,
-+			sizeof(struct pollfd));
-+		clp->gssd_fd = -1;
-+		clp->gssd_poll_index = -1;
-+		clp->gssd_close_me = 0;
-+	}
-+	if (clp->krb5_close_me) {
-+		printerr(2, "Closing 'krb5' pipe for %s\n", clp->dirname);
-+		close(clp->krb5_fd);
-+		memset(&pollarray[clp->krb5_poll_index], 0,
-+			sizeof(struct pollfd));
-+		clp->krb5_fd = -1;
-+		clp->krb5_poll_index = -1;
-+		clp->krb5_close_me = 0;
-+	}
-+
- 	if (clp->gssd_fd == -1) {
- 		snprintf(gname, sizeof(gname), "%s/gssd", clp->dirname);
- 		clp->gssd_fd = open(gname, O_RDWR);
 
