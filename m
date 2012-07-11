@@ -1,49 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:33467 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753153Ab2GBTkY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Jul 2012 15:40:24 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: "harshula@redhat.com" <harshula@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "mgorman@suse.de" <mgorman@suse.de>,
-        "jan.kratochvil@redhat.com" <jan.kratochvil@redhat.com>
-Subject: Re: [RFC PATCH v2] nfs: skip commit in releasepage if we're freeing
- memory for fs-related reasons
-Date: Mon, 2 Jul 2012 19:40:22 +0000
-Message-ID: <1341258017.8197.46.camel@lade.trondhjem.org>
-References: <1340895773.5293.18.camel@lade.trondhjem.org>
-	 <1340897113-18449-1-git-send-email-jlayton@redhat.com>
-	 <20120702111751.3ac78d2c@tlielax.poochiereds.net>
-In-Reply-To: <20120702111751.3ac78d2c@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:50255 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752538Ab2GKU36 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jul 2012 16:29:58 -0400
+Received: by gglu4 with SMTP id u4so1697031ggl.19
+        for <linux-nfs@vger.kernel.org>; Wed, 11 Jul 2012 13:29:58 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 02/15] NFS: Don't free a state ID the server does not recognize
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 11 Jul 2012 16:29:56 -0400
+Message-ID: <20120711202955.3767.78152.stgit@degas.1015granger.net>
+In-Reply-To: <20120711201718.3767.66867.stgit@degas.1015granger.net>
+References: <20120711201718.3767.66867.stgit@degas.1015granger.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA3LTAyIGF0IDExOjE3IC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-bmZzOiBicm9hZGVuIHRoZSBjYXNlcyB3aGVyZSB3ZSB1c2UgYSBub24tYmxvY2tpbmcgY29tbWl0
-IGluIHJlbGVhc2VwYWdlDQo+IA0KPiBDdXJyZW50bHksIHdlIGp1c3QgZG8gYSBub24tYmxvY2tp
-bmcgY29tbWl0IHdoZW4gY2FsbGVkIGZyb20ga3N3YXBkLCBidXQNCj4gdGhhdCBzdGlsbCBnaXZl
-cyB1cyBzb21lIGNhc2VzIHdoZXJlIHdlIGVuZCB1cCBibG9ja2luZyBhZnRlciByZWN1cnNpbmcN
-Cj4gYmFjayBpbnRvIHRoZSBmaWxlc3lzdGVtLiBJbnN0ZWFkLCB0dXJuIHRoYXQgY2hlY2sgaW50
-byBhIGNoZWNrIGZvcg0KPiBQRl9NRU1BTExPQyBzbyB0aGF0IHdlIG5ldmVyIGJsb2NrIHdoZW4g
-dHJ5aW5nIHRvIGZyZWUgbWVtb3J5IGluIG9yZGVyIHRvDQo+IHNhdGlzZnkgYW4gYWxsb2NhdGlv
-bi4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IEplZmYgTGF5dG9uIDxqbGF5dG9uQHJlZGhhdC5jb20+
-DQo+IC0tLQ0KPiAgZnMvbmZzL2ZpbGUuYyB8ICAgIDQgKystLQ0KPiAgMSBmaWxlcyBjaGFuZ2Vk
-LCAyIGluc2VydGlvbnMoKyksIDIgZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMv
-bmZzL2ZpbGUuYyBiL2ZzL25mcy9maWxlLmMNCj4gaW5kZXggOTA3NTc2OS4uNjFkMzY3MCAxMDA2
-NDQNCj4gLS0tIGEvZnMvbmZzL2ZpbGUuYw0KPiArKysgYi9mcy9uZnMvZmlsZS5jDQo+IEBAIC00
-NjYsOCArNDY2LDggQEAgc3RhdGljIGludCBuZnNfcmVsZWFzZV9wYWdlKHN0cnVjdCBwYWdlICpw
-YWdlLCBnZnBfdCBnZnApDQo+ICAJICAgICEoY3VycmVudC0+ZmxhZ3MgJiBQRl9GU1RSQU5TKSkg
-ew0KPiAgCQlpbnQgaG93ID0gRkxVU0hfU1lOQzsNCj4gIA0KPiAtCQkvKiBEb24ndCBsZXQga3N3
-YXBkIGRlYWRsb2NrIHdhaXRpbmcgZm9yIE9PTSBSUEMgY2FsbHMgKi8NCj4gLQkJaWYgKGN1cnJl
-bnRfaXNfa3N3YXBkKCkpDQo+ICsJCS8qIERvbid0IGJsb2NrIGlmIHdlJ3JlIGZyZWVpbmcgZm9y
-IGEgbWVtb3J5IGFsbG9jYXRpb24gKi8NCj4gKwkJaWYgKGN1cnJlbnQtPmZsYWdzICYgUEZfTUVN
-QUxMT0MpDQo+ICAJCQlob3cgPSAwOw0KPiAgCQluZnNfY29tbWl0X2lub2RlKG1hcHBpbmctPmhv
-c3QsIGhvdyk7DQo+ICAJfQ0KDQpVbW0uLi4gU28gd2hpY2ggcHJvY2VzcyB3aWxsIGFjdHVhbGx5
-IGNhbGwgbmZzX3JlbGVhc2VfcGFnZSgpIHdpdGgNCkdGUF9LRVJORUwsIGJ1dCB3aXRob3V0IHRo
-ZSBQRl9NRU1BTExPQyBmbGFnIGJlaW5nIHNldD8NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxp
-bnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRh
-cHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+The result of a TEST_STATEID operation can indicate a few different
+things:
+
+  o If NFS_OK is returned, then the client can continue using the
+    state ID under test, and skip recovery.
+
+  o RFC 5661 says that if the state ID was revoked, then the client
+    must perform an explicit FREE_STATEID before trying to re-open.
+
+  o If the server doesn't recognize the state ID at all, then no
+    FREE_STATEID is needed, and the client can immediately continue
+    with open recovery.
+
+Let's err on the side of caution: if the server clearly tells us the
+state ID is unknown, we skip the FREE_STATEID.  For any other error,
+we issue a FREE_STATEID.  Sometimes that FREE_STATEID will be
+unnecessary, but leaving unused state IDs on the server needlessly
+ties up resources.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ fs/nfs/nfs4proc.c |    7 +++++--
+ 1 files changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 9a0397c..2986e65 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1764,7 +1764,8 @@ static int nfs41_check_expired_stateid(struct nfs4_state *state, nfs4_stateid *s
+ 	if (state->flags & flags) {
+ 		status = nfs41_test_stateid(server, stateid);
+ 		if (status != NFS_OK) {
+-			nfs41_free_stateid(server, stateid);
++			if (status != -NFS4ERR_BAD_STATEID)
++				nfs41_free_stateid(server, stateid);
+ 			state->flags &= ~flags;
+ 		}
+ 	}
+@@ -4708,7 +4709,9 @@ static int nfs41_check_expired_locks(struct nfs4_state *state)
+ 		if (lsp->ls_flags & NFS_LOCK_INITIALIZED) {
+ 			status = nfs41_test_stateid(server, &lsp->ls_stateid);
+ 			if (status != NFS_OK) {
+-				nfs41_free_stateid(server, &lsp->ls_stateid);
++				if (status != -NFS4ERR_BAD_STATEID)
++					nfs41_free_stateid(server,
++							&lsp->ls_stateid);
+ 				lsp->ls_flags &= ~NFS_LOCK_INITIALIZED;
+ 				ret = status;
+ 			}
+
