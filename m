@@ -1,79 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:18565 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752864Ab2GIUPb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jul 2012 16:15:31 -0400
-Subject: Re: [PATCH 03/14] NFS: State reclaim clears OPEN and LOCK state
-Mime-Version: 1.0 (Apple Message framework v1278)
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-yw0-f52.google.com ([209.85.213.52]:34087 "EHLO
+	mail-yw0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754486Ab2GKUaH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jul 2012 16:30:07 -0400
+Received: by mail-yw0-f52.google.com with SMTP id p61so1948409yhp.11
+        for <linux-nfs@vger.kernel.org>; Wed, 11 Jul 2012 13:30:07 -0700 (PDT)
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1341864200.15267.15.camel@lade.trondhjem.org>
-Date: Mon, 9 Jul 2012 16:15:27 -0400
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <773D0923-FC7B-4CE9-8EDE-46BC18E9A49C@oracle.com>
-References: <20120709153355.1604.14102.stgit@degas.1015granger.net> <20120709154409.1604.59004.stgit@degas.1015granger.net> <1341864200.15267.15.camel@lade.trondhjem.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 03/15] NFS: State reclaim clears OPEN and LOCK state
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 11 Jul 2012 16:30:05 -0400
+Message-ID: <20120711203004.3767.40190.stgit@degas.1015granger.net>
+In-Reply-To: <20120711201718.3767.66867.stgit@degas.1015granger.net>
+References: <20120711201718.3767.66867.stgit@degas.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The "state->flags & flags" test in nfs41_check_expired_stateid()
+allows the state manager to squelch a TEST_STATEID operation when
+it is known for sure that a state ID is no longer valid.  If the
+lease was purged, for example, the client already knows that state
+ID is now defunct.
 
-On Jul 9, 2012, at 4:03 PM, Myklebust, Trond wrote:
+But open recovery is still needed for that inode.
 
-> On Mon, 2012-07-09 at 11:44 -0400, Chuck Lever wrote:
->> Before beginning state recovery, the state manager zaps open and lock
->> state for each open file, thus the "state->flags & flags" test in
->> nfs41_{open,lock}_expired() always fails during reclaim.  But open
->> recovery is still needed for these files.
->> 
->> To force a call to nfs4_open_expired(), change the default return
->> value for nfs41_check_expired_stateid() to force open recovery, and
->> the default return value for nfs41_check_locks() to force lock
->> recovery, if the requested flags are clear.  Fix suggested by Bryan
->> Schumaker.
-> 
-> This makes absolutely no sense...
-> 
-> The point of these function should be to test if the stateid is still
-> valid. If it is, then we need no recovery.
-> If the stateid is _not_ valid, then we free it, and then decide if
-> recovery is needed. The only exception to that rule is if TEST_STATEID
-> returns NFS4ERR_BAD_STATEID, (in which case we don't need to free the
-> stateid but just recover immediately).
+To force a call to nfs4_open_expired(), change the default return
+value for nfs41_check_expired_stateid() to force open recovery, and
+the default return value for nfs41_check_locks() to force lock
+recovery, if the requested flags are clear.  Fix suggested by Bryan
+Schumaker.
 
-So you'd like to change the sense of the switch statement in my earlier patch:
+Also, the presence of a delegation state ID must not prevent normal
+open recovery.  The delegation state ID must be cleared if it was
+revoked, but once cleared I don't think it's presence or absence has
+any bearing on whether open recovery is still needed.  So the logic
+is adjusted to ignore the TEST_STATEID result for the delegation
+state ID.
 
-   NFS4_OK:
-     do nothing
-   NFS4ERR_BAD_STATEID:
-     just open
-   default:
-     free the state ID, then open
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-I still don't think we need a FREE_STATEID call for NFS4ERR_EXPIRED, for example.  It seems to me the only cases where FREE_STATEID is needed is the _REVOKED cases.
+ fs/nfs/nfs4proc.c |   23 ++++++++++++-----------
+ 1 files changed, 12 insertions(+), 11 deletions(-)
 
-> IOW: The state->flags and lsp->ls_flags tests should just be removed.
-
-Bryan had a reason to leave those tests in, but I don't remember what it was.
-
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 2986e65..5d83f88 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1758,8 +1758,8 @@ static int nfs4_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *sta
+ #if defined(CONFIG_NFS_V4_1)
+ static int nfs41_check_expired_stateid(struct nfs4_state *state, nfs4_stateid *stateid, unsigned int flags)
+ {
+-	int status = NFS_OK;
+ 	struct nfs_server *server = NFS_SERVER(state->inode);
++	int status = -NFS4ERR_BAD_STATEID;
+ 
+ 	if (state->flags & flags) {
+ 		status = nfs41_test_stateid(server, stateid);
+@@ -1774,16 +1774,17 @@ static int nfs41_check_expired_stateid(struct nfs4_state *state, nfs4_stateid *s
+ 
+ static int nfs41_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *state)
+ {
+-	int deleg_status, open_status;
+ 	int deleg_flags = 1 << NFS_DELEGATED_STATE;
+ 	int open_flags = (1 << NFS_O_RDONLY_STATE) | (1 << NFS_O_WRONLY_STATE) | (1 << NFS_O_RDWR_STATE);
++	int status;
+ 
+-	deleg_status = nfs41_check_expired_stateid(state, &state->stateid, deleg_flags);
+-	open_status = nfs41_check_expired_stateid(state,  &state->open_stateid, open_flags);
++	nfs41_check_expired_stateid(state, &state->stateid, deleg_flags);
++	status = nfs41_check_expired_stateid(state, &state->open_stateid,
++							open_flags);
+ 
+-	if ((deleg_status == NFS_OK) && (open_status == NFS_OK))
+-		return NFS_OK;
+-	return nfs4_open_expired(sp, state);
++	if (status != NFS_OK)
++		status = nfs4_open_expired(sp, state);
++	return status;
+ }
+ #endif
+ 
+@@ -4701,7 +4702,7 @@ out:
+ #if defined(CONFIG_NFS_V4_1)
+ static int nfs41_check_expired_locks(struct nfs4_state *state)
+ {
+-	int status, ret = NFS_OK;
++	int status, ret = -NFS4ERR_BAD_STATEID;
+ 	struct nfs4_lock_state *lsp;
+ 	struct nfs_server *server = NFS_SERVER(state->inode);
+ 
+@@ -4727,9 +4728,9 @@ static int nfs41_lock_expired(struct nfs4_state *state, struct file_lock *reques
+ 
+ 	if (test_bit(LK_STATE_IN_USE, &state->flags))
+ 		status = nfs41_check_expired_locks(state);
+-	if (status == NFS_OK)
+-		return status;
+-	return nfs4_lock_expired(state, request);
++	if (status != NFS_OK)
++		status = nfs4_lock_expired(state, request);
++	return status;
+ }
+ #endif
+ 
 
