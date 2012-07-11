@@ -1,83 +1,166 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:36508 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752005Ab2GZPop (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 11:44:45 -0400
-Message-ID: <501165DC.3050801@panasas.com>
-Date: Thu, 26 Jul 2012 18:44:28 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:50181 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932350Ab2GKUaw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jul 2012 16:30:52 -0400
+Received: by gglu4 with SMTP id u4so1698077ggl.19
+        for <linux-nfs@vger.kernel.org>; Wed, 11 Jul 2012 13:30:52 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 08/15] NFS: Treat NFS4ERR_CLID_INUSE as a fatal error
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 11 Jul 2012 16:30:50 -0400
+Message-ID: <20120711203049.3767.51053.stgit@degas.1015granger.net>
+In-Reply-To: <20120711201718.3767.66867.stgit@degas.1015granger.net>
+References: <20120711201718.3767.66867.stgit@degas.1015granger.net>
 MIME-Version: 1.0
-To: Peng Tao <bergwolf@gmail.com>
-CC: linuxnfs <linux-nfs@vger.kernel.org>, Benny Halevy <bhalevy@tonian.com>
-Subject: Re: pnfs LD partial sector write
-References: <CA+a=Yy7B0uk-FWr3hOjWC+=Xq+UtHnEC4speD3OZzMFfXksyOw@mail.gmail.com> <500FCA3A.5020606@panasas.com> <CA+a=Yy58bjUMximWOMnmk0ugPKUY-LcacRhpdp4cvuz1HQG_gg@mail.gmail.com> <5010573F.4000901@panasas.com> <CA+a=Yy5oJObMeUuL-mspso2eXCr4+5qmiFsOfS5=fU5x9kHtkw@mail.gmail.com> <5010F1DF.3060905@panasas.com> <CA+a=Yy5YNKp2tkOreYwV9sfm7whw3_KeRj_YCCL3abG6+csK=g@mail.gmail.com> <50113504.3060607@panasas.com> <CA+a=Yy6+7G_-Mef+dEZKqftjwgubMxboCLB9YB4DdrDJoznXvQ@mail.gmail.com> <50115484.6040005@panasas.com> <CA+a=Yy6LyrV944cSpr0k_tgyDzSwF9BGkS-_aq+X_em1WuPpBg@mail.gmail.com>
-In-Reply-To: <CA+a=Yy6LyrV944cSpr0k_tgyDzSwF9BGkS-_aq+X_em1WuPpBg@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/26/2012 06:30 PM, Peng Tao wrote:
+For NFSv4 minor version 0, currently the cl_id_uniquifier allows the
+Linux client to generate a unique nfs_client_id4 string whenever a
+server replies with NFS4ERR_CLID_INUSE.
 
-> On Thu, Jul 26, 2012 at 10:30 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->> On 07/26/2012 04:57 PM, Peng Tao wrote:
->>
->>> On Thu, Jul 26, 2012 at 8:16 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->>>> On 07/26/2012 11:25 AM, Peng Tao wrote:
->>>>
->>>>> For these two sectors, I need to allocate two pages... Just look at
->>>>> struct bio_vec.
->>>>>
->>>>
->>>>
->>>> NO! I know all about bio_vecs
->>>>
->>>> You need 1024 bytes, and 2 x one entry BIOs which is a few bytes, where
->>>> did you get the "two pages" from?
->>>>
->>> What do you put int bio_vec->bv_page? Even if you just use 512 bytes
->>> of a page, it is still allocated page.
->>>
->>
->>
->> No!!
->>
->> You just use bio_map_kern or in one go blk_rq_map_kern() with any: kmalloc,
->> stack, or kernel pointer. And that's that. It will take what it will take.
->>
-> First I should admit I don't know bio_map_kern() alike. Thanks for
-> teaching me about them (see, here is your credit :)
-> 
-> Looking at them, I don't think it is proper to use them in block
-> layout code, mainly because It is a layer violation. Searching for
-> callers of io_map_kern/blk_rq_map_kern(), they are either block core
-> code or device drivers. Clearly these interfaces are block layer
-> internal APIs and file systems shouldn't touch them.
-> 
-> Therefore I still think I should stick with plain common
-> bio_alloc/bio_add_page/submit_bio interfaces. Thanks for the
-> suggestion.
-> 
+This implementation seems to be based on a flawed reading of RFC
+3530.  NFS4ERR_CLID_INUSE actually means that the client has presented
+this nfs_client_id4 string with a different principal at some time in
+the past, and that lease is still in use on the server.
 
+For a Linux client this might be rather difficult to achieve: the
+authentication flavor is named right in the nfs_client_id4.id
+string.  If we change flavors, we change strings automatically.
 
-Crap no!!!
+So, practically speaking, NFS4ERR_CLID_INUSE means there is some other
+client using our string.  There is not much that can be done to
+recover automatically.  Let's make it a permanent error.
 
-bio_kmalloc/bio_map_kern/submit_bio is just fine. Same exact layer.
-same exact BIO API level.
+Remove the recovery logic in nfs4_proc_setclientid(), and remove the
+cl_id_uniquifier field from the nfs_client data structure.  And,
+remove the authentication flavor from the nfs_client_id4 string.
 
-You can mix and match bio_map_kern chained with any bio_add_page
-and submit one chain or let the elevator chain them with plug unplug
-they are all the same. 
-	If you have pages - bio_add_page;
-	Have pointers - bio_map_kern.
-They are used all over libosd exofs ore scsi_lib and what not.
-Any user of block layer, which is what block layout is!
+Keeping the authentication flavor in the nfs_client_id4.id string
+means that we could have a separate lease for each authentication
+flavor used by mounts on the client.  But we want just one lease for
+all the mounts on this client.
 
-Again some Credit
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Boaz
+ fs/nfs/nfs4proc.c         |   47 +++++++++++++++------------------------------
+ fs/nfs/nfs4state.c        |    7 ++++++-
+ include/linux/nfs_fs_sb.h |    3 +--
+ 3 files changed, 23 insertions(+), 34 deletions(-)
 
-> 
-> Cheers,
-> Tao
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 997080d..f5f4e6e 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4037,42 +4037,28 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 		.rpc_resp = res,
+ 		.rpc_cred = cred,
+ 	};
+-	int loop = 0;
+-	int status;
+ 
++	/* nfs_client_id4 */
+ 	nfs4_init_boot_verifier(clp, &sc_verifier);
+-
+-	for(;;) {
+-		rcu_read_lock();
+-		setclientid.sc_name_len = scnprintf(setclientid.sc_name,
+-				sizeof(setclientid.sc_name), "%s/%s %s %s %u",
+-				clp->cl_ipaddr,
+-				rpc_peeraddr2str(clp->cl_rpcclient,
+-							RPC_DISPLAY_ADDR),
+-				rpc_peeraddr2str(clp->cl_rpcclient,
+-							RPC_DISPLAY_PROTO),
+-				clp->cl_rpcclient->cl_auth->au_ops->au_name,
+-				clp->cl_id_uniquifier);
+-		setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
++	rcu_read_lock();
++	setclientid.sc_name_len = scnprintf(setclientid.sc_name,
++			sizeof(setclientid.sc_name), "%s/%s %s",
++			clp->cl_ipaddr,
++			rpc_peeraddr2str(clp->cl_rpcclient,
++						RPC_DISPLAY_ADDR),
++			rpc_peeraddr2str(clp->cl_rpcclient,
++						RPC_DISPLAY_PROTO));
++	/* cb_client4 */
++	setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
+ 				sizeof(setclientid.sc_netid),
+ 				rpc_peeraddr2str(clp->cl_rpcclient,
+ 							RPC_DISPLAY_NETID));
+-		setclientid.sc_uaddr_len = scnprintf(setclientid.sc_uaddr,
++	rcu_read_unlock();
++	setclientid.sc_uaddr_len = scnprintf(setclientid.sc_uaddr,
+ 				sizeof(setclientid.sc_uaddr), "%s.%u.%u",
+ 				clp->cl_ipaddr, port >> 8, port & 255);
+-		rcu_read_unlock();
+ 
+-		status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
+-		if (status != -NFS4ERR_CLID_INUSE)
+-			break;
+-		if (loop != 0) {
+-			++clp->cl_id_uniquifier;
+-			break;
+-		}
+-		++loop;
+-		ssleep(clp->cl_lease_time / HZ + 1);
+-	}
+-	return status;
++	return rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
+ }
+ 
+ int nfs4_proc_setclientid_confirm(struct nfs_client *clp,
+@@ -5270,10 +5256,9 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ 	nfs4_init_boot_verifier(clp, &verifier);
+ 
+ 	args.id_len = scnprintf(args.id, sizeof(args.id),
+-				"%s/%s/%u",
++				"%s/%s",
+ 				clp->cl_ipaddr,
+-				clp->cl_rpcclient->cl_nodename,
+-				clp->cl_rpcclient->cl_auth->au_flavor);
++				clp->cl_rpcclient->cl_nodename);
+ 
+ 	res.server_owner = kzalloc(sizeof(struct nfs41_server_owner),
+ 					GFP_NOFS);
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index f38300e..b83c66b 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1606,10 +1606,15 @@ static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
+ 			return -ESERVERFAULT;
+ 		/* Lease confirmation error: retry after purging the lease */
+ 		ssleep(1);
+-	case -NFS4ERR_CLID_INUSE:
+ 	case -NFS4ERR_STALE_CLIENTID:
+ 		clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
+ 		break;
++	case -NFS4ERR_CLID_INUSE:
++		pr_err("NFS: Server %s reports our clientid is in use\n",
++			clp->cl_hostname);
++		nfs_mark_client_ready(clp, -EPERM);
++		clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
++		return -EPERM;
+ 	case -EACCES:
+ 		if (clp->cl_machine_cred == NULL)
+ 			return -EACCES;
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index f58325a..6532765 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -69,10 +69,9 @@ struct nfs_client {
+ 	struct idmap *		cl_idmap;
+ 
+ 	/* Our own IP address, as a null-terminated string.
+-	 * This is used to generate the clientid, and the callback address.
++	 * This is used to generate the mv0 callback address.
+ 	 */
+ 	char			cl_ipaddr[48];
+-	unsigned char		cl_id_uniquifier;
+ 	u32			cl_cb_ident;	/* v4.0 callback identifier */
+ 	const struct nfs4_minor_version_ops *cl_mvops;
+ 
 
