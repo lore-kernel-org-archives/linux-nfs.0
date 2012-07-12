@@ -1,114 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59838 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:40077 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751678Ab2GZLul (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Jul 2012 07:50:41 -0400
-Date: Thu, 26 Jul 2012 07:50:38 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Taylan Develioglu <tdevelioglu@ebuddy.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond@netapp.com>
-Subject: Re: rpc_exit_task warning.
-Message-ID: <20120726115038.GA22511@fieldses.org>
-References: <FF1DF58D04F11D4291D09795D1A4EF16180E4C4AD8@SRV-MAIL>
- <20120725165215.GC16617@fieldses.org>
- <FF1DF58D04F11D4291D09795D1A4EF16180E4C4B1B@SRV-MAIL>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <FF1DF58D04F11D4291D09795D1A4EF16180E4C4B1B@SRV-MAIL>
+	id S1758771Ab2GLGlV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Jul 2012 02:41:21 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>,
+        Sebastian Andrzej Siewior <sebastian@breakpoint.cc>,
+        Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 07/12] mm: Add support for direct_IO to highmem pages
+Date: Thu, 12 Jul 2012 07:41:01 +0100
+Message-Id: <1342075266-29593-8-git-send-email-mgorman@suse.de>
+In-Reply-To: <1342075266-29593-1-git-send-email-mgorman@suse.de>
+References: <1342075266-29593-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 26, 2012 at 12:43:46PM +0200, Taylan Develioglu wrote:
-> I was wrong.
-> 
-> Changed kernel version to 2.6.39 and it's still happening.
-> 
-> Only other difference I can think of is the fact we now use lvm instead of a regular partition.
+The patch "mm: Add support for a filesystem to activate swap files and
+use direct_IO for writing swap pages" added support for using direct_IO
+to write swap pages but it is insufficient for highmem pages.
 
-Did you change any of the clients at the same time you upgraded the
-server?  (E.g. is it possible any of them are using NFSv4 now and
-weren't before?)
+To support highmem pages, this patch kmaps() the page before calling the
+direct_IO() handler. As direct_IO deals with virtual addresses an
+additional helper is necessary for get_kernel_pages() to lookup the
+struct page for a kmap virtual address.
 
---b.
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+Acked-by: Rik van Riel <riel@redhat.com>
+---
+ include/linux/highmem.h |    7 +++++++
+ mm/highmem.c            |   12 ++++++++++++
+ mm/memory.c             |    3 +--
+ mm/page_io.c            |    3 ++-
+ 4 files changed, 22 insertions(+), 3 deletions(-)
 
-> From: Taylan Develioglu 
-> 
-> Yes, but the previous server was using kernel version 2.6.39, so it looks like this is a regression.
-...
-> From: J. Bruce Fields [mailto:bfields@fieldses.org] 
-> 
-> 
-> On Tue, Jul 24, 2012 at 08:58:43PM +0200, Taylan Develioglu wrote:
-> > We just deployed a new nfs server and have about a hundred clients connected but are getting repeated kernel warnings on the server:
-> 
-> Did this replace an old server that didn't see these warnings?
-> 
-> > 
-> > Clients and servers run 3.2.18 and 3.2.20 respectively. We do not use any security options.
-> > 
-> > I don't really have time to debug this, but I felt I should report it.
-> > 
-> > - Client
-> >   ii  libevent-1.4-2                      1.4.13-stable-1
-> >   ii  util-linux                          2.17.2-9
-> >   ii  linux-image-3.2.0-0.bpo.2-amd64     3.2.18-1~bpo60+1
-> >   ii  nfs-common                          1:1.2.2-4squeeze2
-> > 
-> > - Server
-> >   ii  libevent-1.4-2                      1.4.13-stable-1
-> >   ii  util-linux                          2.17.2-9
-> >   ii  linux-image-3.2.0-0.bpo.2-amd64     3.2.20-1~bpo60+1
-> >   ii  libnfsidmap2                        0.24-1~bpo60+1               
-> >   ii  nfs-common                          1:1.2.5-4~bpo60+1            
-> >   ii  nfs-kernel-server                   1:1.2.5-4~bpo60+1            
-> > 
-> > exportfs -v
-> > /var/www/pictures
-> >                 
-> > x.x.x.x/22(rw,async,wdelay,root_squash,all_squash,no_subtree_check,ano
-> > nuid=33,anongid=33)
-> > /var/www/pictures
-> >                 
-> > 10.40.0.0/23(rw,async,wdelay,root_squash,all_squash,no_subtree_check,a
-> > nonuid=33,anongid=33)
-> > 
-> > ----------------------------------------------------------------------
-> > ------------------ [ 1913.662849] WARNING: at 
-> > /build/buildd-linux_3.2.20-1~bpo60+1-amd64-tQMw4f/linux-3.2.20/net/sun
-> > rpc/sched.c:630 rpc_exit_task+0x40/0x7a [sunrpc]()
-> 
-> That's a warning from rpc_task that both tk_action and RPC_TASK_KILLED were set on exit from rpc_calL_done.
-> 
-> Couldn't that happen if there's a race between rpc_killall and rpc_call_done trying to restart the task?  rpc_restart_call{_prepare} check RPC_TASK_KILLED before setting the action, but does anything prevent the flag being set after that check?
-> 
-> --b.
-> 
-> > [ 1913.662851] Hardware name: X8STi
-> > [ 1913.662852] Modules linked in: nfsd nfs lockd fscache auth_rpcgss nfs_acl sunrpc hmac drbd lru_cache cn ipmi_si ipmi_devintf ipmi_msghandler loop tpm_tis tpm parport_pc i2c_i801 i7core_edac i2c_core snd_pcm snd_timer snd ioatdma soundcore tpm_bios snd_page_alloc parport edac_core dca pcspkr psmouse processor serio_raw thermal_sys evdev joydev button ext4 mbcache jbd2 crc16 dm_mod sg sr_mod cdrom ses enclosure sd_mod crc_t10dif usb_storage usbhid hid uas uhci_hcd mptsas mptscsih mptbase scsi_transport_sas ahci libahci ehci_hcd libata usbcore aacraid usb_common scsi_mod e1000e [last unloaded: scsi_wait_scan]
-> > [ 1913.662902] Pid: 11, comm: kworker/0:1 Tainted: G        W    3.2.0-0.bpo.2-amd64 #1
-> > [ 1913.662904] Call Trace:
-> > [ 1913.662909]  [<ffffffff810498ac>] ? warn_slowpath_common+0x78/0x8c 
-> > [ 1913.662916]  [<ffffffffa0327871>] ? rpc_exit_task+0x40/0x7a 
-> > [sunrpc] [ 1913.662922]  [<ffffffffa0327ddb>] ? 
-> > __rpc_execute+0x71/0x23f [sunrpc] [ 1913.662928]  [<ffffffffa0327fe1>] 
-> > ? rpc_execute+0x38/0x38 [sunrpc] [ 1913.662981]  [<ffffffff8105f96c>] 
-> > ? process_one_work+0x1cc/0x2ea [ 1913.662985]  [<ffffffff8105fbb7>] ? 
-> > worker_thread+0x12d/0x247 [ 1913.662987]  [<ffffffff8105fa8a>] ? 
-> > process_one_work+0x2ea/0x2ea [ 1913.662990]  [<ffffffff8105fa8a>] ? 
-> > process_one_work+0x2ea/0x2ea [ 1913.662993]  [<ffffffff810633c5>] ? 
-> > kthread+0x7a/0x82 [ 1913.662998]  [<ffffffff8136ca74>] ? 
-> > kernel_thread_helper+0x4/0x10 [ 1913.663000]  [<ffffffff8106334b>] ? 
-> > kthread_worker_fn+0x147/0x147 [ 1913.663003]  [<ffffffff8136ca70>] ? 
-> > gs_change+0x13/0x13 [ 1913.663005] ---[ end trace 7cee9f1fd80fe6ac 
-> > ]---
-> > ----------------------------------------------------------------------
-> > ------------------
-> > 
-> > Regards,
-> > 
-> > Taylan
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" 
-> > in the body of a message to majordomo@vger.kernel.org More majordomo 
-> > info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/include/linux/highmem.h b/include/linux/highmem.h
+index 774fa47..ef788b5 100644
+--- a/include/linux/highmem.h
++++ b/include/linux/highmem.h
+@@ -39,10 +39,17 @@ extern unsigned long totalhigh_pages;
+ 
+ void kmap_flush_unused(void);
+ 
++struct page *kmap_to_page(void *addr);
++
+ #else /* CONFIG_HIGHMEM */
+ 
+ static inline unsigned int nr_free_highpages(void) { return 0; }
+ 
++static inline struct page *kmap_to_page(void *addr)
++{
++	return virt_to_page(addr);
++}
++
+ #define totalhigh_pages 0UL
+ 
+ #ifndef ARCH_HAS_KMAP
+diff --git a/mm/highmem.c b/mm/highmem.c
+index 57d82c6..d517cd1 100644
+--- a/mm/highmem.c
++++ b/mm/highmem.c
+@@ -94,6 +94,18 @@ static DECLARE_WAIT_QUEUE_HEAD(pkmap_map_wait);
+ 		do { spin_unlock(&kmap_lock); (void)(flags); } while (0)
+ #endif
+ 
++struct page *kmap_to_page(void *vaddr)
++{
++	unsigned long addr = (unsigned long)vaddr;
++
++	if (addr >= PKMAP_ADDR(0) && addr <= PKMAP_ADDR(LAST_PKMAP)) {
++		int i = (addr - PKMAP_ADDR(0)) >> PAGE_SHIFT;
++		return pte_page(pkmap_page_table[i]);
++	}
++
++	return virt_to_page(addr);
++}
++
+ static void flush_all_zero_pkmaps(void)
+ {
+ 	int i;
+diff --git a/mm/memory.c b/mm/memory.c
+index 85705cd..ed1981f 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -1864,8 +1864,7 @@ int get_kernel_pages(const struct kvec *kiov, int nr_segs, int write,
+ 		if (WARN_ON(kiov[seg].iov_len != PAGE_SIZE))
+ 			return seg;
+ 
+-		/* virt_to_page sanity checks the PFN */
+-		pages[seg] = virt_to_page(kiov[seg].iov_base);
++		pages[seg] = kmap_to_page(kiov[seg].iov_base);
+ 		page_cache_get(pages[seg]);
+ 	}
+ 
+diff --git a/mm/page_io.c b/mm/page_io.c
+index 4a37962..78eee32 100644
+--- a/mm/page_io.c
++++ b/mm/page_io.c
+@@ -205,7 +205,7 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
+ 		struct file *swap_file = sis->swap_file;
+ 		struct address_space *mapping = swap_file->f_mapping;
+ 		struct iovec iov = {
+-			.iov_base = page_address(page),
++			.iov_base = kmap(page),
+ 			.iov_len  = PAGE_SIZE,
+ 		};
+ 
+@@ -218,6 +218,7 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
+ 		ret = mapping->a_ops->direct_IO(KERNEL_WRITE,
+ 						&kiocb, &iov,
+ 						kiocb.ki_pos, 1);
++		kunmap(page);
+ 		if (ret == PAGE_SIZE) {
+ 			count_vm_event(PSWPOUT);
+ 			ret = 0;
+-- 
+1.7.9.2
+
