@@ -1,8 +1,8 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:39990 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:40134 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758747Ab2GLGlN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Jul 2012 02:41:13 -0400
+	id S1758786Ab2GLGl0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Jul 2012 02:41:26 -0400
 From: Mel Gorman <mgorman@suse.de>
 To: Andrew Morton <akpm@linux-foundation.org>
 Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
@@ -16,39 +16,64 @@ Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
         Eric B Munson <emunson@mgebm.net>,
         Sebastian Andrzej Siewior <sebastian@breakpoint.cc>,
         Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 02/12] selinux: tag avc cache alloc as non-critical
-Date: Thu, 12 Jul 2012 07:40:56 +0100
-Message-Id: <1342075266-29593-3-git-send-email-mgorman@suse.de>
+Subject: [PATCH 11/12] nfs: Prevent page allocator recursions with swap over NFS.
+Date: Thu, 12 Jul 2012 07:41:05 +0100
+Message-Id: <1342075266-29593-12-git-send-email-mgorman@suse.de>
 In-Reply-To: <1342075266-29593-1-git-send-email-mgorman@suse.de>
 References: <1342075266-29593-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Failing to allocate a cache entry will only harm performance not
-correctness.  Do not consume valuable reserve pages for something
-like that.
+GFP_NOFS is _more_ permissive than GFP_NOIO in that it will initiate
+IO, just not of any filesystem data.
+
+The problem is that previously NOFS was correct because that avoids
+recursion into the NFS code. With swap-over-NFS, it is no longer
+correct as swap IO can lead to this recursion.
 
 Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
 Signed-off-by: Mel Gorman <mgorman@suse.de>
-Acked-by: Eric Paris <eparis@redhat.com>
 Acked-by: Rik van Riel <riel@redhat.com>
 ---
- security/selinux/avc.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfs/pagelist.c |    2 +-
+ fs/nfs/write.c    |    4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/security/selinux/avc.c b/security/selinux/avc.c
-index 68d82da..4d3fab4 100644
---- a/security/selinux/avc.c
-+++ b/security/selinux/avc.c
-@@ -274,7 +274,7 @@ static struct avc_node *avc_alloc_node(void)
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 9ef8b3c..7de1646 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -70,7 +70,7 @@ void nfs_set_pgio_error(struct nfs_pgio_header *hdr, int error, loff_t pos)
+ static inline struct nfs_page *
+ nfs_page_alloc(void)
  {
- 	struct avc_node *node;
+-	struct nfs_page	*p = kmem_cache_zalloc(nfs_page_cachep, GFP_KERNEL);
++	struct nfs_page	*p = kmem_cache_zalloc(nfs_page_cachep, GFP_NOIO);
+ 	if (p)
+ 		INIT_LIST_HEAD(&p->wb_list);
+ 	return p;
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 974e9c2..211ba65 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -52,7 +52,7 @@ static mempool_t *nfs_commit_mempool;
  
--	node = kmem_cache_zalloc(avc_node_cachep, GFP_ATOMIC);
-+	node = kmem_cache_zalloc(avc_node_cachep, GFP_ATOMIC|__GFP_NOMEMALLOC);
- 	if (!node)
- 		goto out;
+ struct nfs_commit_data *nfs_commitdata_alloc(void)
+ {
+-	struct nfs_commit_data *p = mempool_alloc(nfs_commit_mempool, GFP_NOFS);
++	struct nfs_commit_data *p = mempool_alloc(nfs_commit_mempool, GFP_NOIO);
  
+ 	if (p) {
+ 		memset(p, 0, sizeof(*p));
+@@ -70,7 +70,7 @@ EXPORT_SYMBOL_GPL(nfs_commit_free);
+ 
+ struct nfs_write_header *nfs_writehdr_alloc(void)
+ {
+-	struct nfs_write_header *p = mempool_alloc(nfs_wdata_mempool, GFP_NOFS);
++	struct nfs_write_header *p = mempool_alloc(nfs_wdata_mempool, GFP_NOIO);
+ 
+ 	if (p) {
+ 		struct nfs_pgio_header *hdr = &p->header;
 -- 
 1.7.9.2
 
