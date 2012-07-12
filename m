@@ -1,80 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:24050 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:34255 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753192Ab2GaNdp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jul 2012 09:33:45 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        Fengguang Wu <fengguang.wu@intel.com>,
-        "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [nfs:devel 46/51] fs/nfs/write.c:1592:5: error: redefinition of
- 'nfs_commit_inode'
-Date: Tue, 31 Jul 2012 13:33:44 +0000
-Message-ID: <1343741622.519.2.camel@lade.trondhjem.org>
-References: <20120731024328.GA10480@localhost>
-	  <4FA345DA4F4AE44899BD2B03EEEC2FA934BE82@SACEXCMBX04-PRD.hq.netapp.com>
-	  <5017D3FC.9010905@netapp.com> <1343739299.519.1.camel@lade.trondhjem.org>
-	 <5017D824.209@netapp.com> <5017DDDB.6060500@netapp.com>
-In-Reply-To: <5017DDDB.6060500@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1755573Ab2GLUQm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Jul 2012 16:16:42 -0400
+Date: Fri, 13 Jul 2012 06:16:37 +1000
+From: NeilBrown <neilb@suse.de>
+To: Karel Zak <kzak@redhat.com>
+Cc: Steve Dickson <SteveD@redhat.com>, NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] umount.nfs: restore correct error status when umount
+ fails.
+Message-ID: <20120713061637.4fe40294@notabene.brown>
+In-Reply-To: <20120712164420.GA15398@x2.net.home>
+References: <20120712132757.7f86b86b@notabene.brown>
+	<20120712164420.GA15398@x2.net.home>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/.OysdqKZ3Djf/UaoSO.n6XJ"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA3LTMxIGF0IDA5OjMwIC0wNDAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6
-DQo+IE9uIDA3LzMxLzIwMTIgMDk6MDUgQU0sIEJyeWFuIFNjaHVtYWtlciB3cm90ZToNCj4gPiBP
-biAwNy8zMS8yMDEyIDA4OjU1IEFNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+PiBPbiBU
-dWUsIDIwMTItMDctMzEgYXQgMDg6NDcgLTA0MDAsIEJyeWFuIFNjaHVtYWtlciB3cm90ZToNCj4g
-Pj4+IE9uIDA3LzMwLzIwMTIgMTE6MTQgUE0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4+
-Pj4gQnJ5YW4sDQo+ID4+Pj4NCj4gPj4+PiBXaHkgZGlkIHlvdSBzd2l0Y2ggdG8gdXNpbmcgSVNf
-RU5BQkxFRCBpbiB0aGUgZmlyc3QgcGxhY2UsIGFuZCB3aHkgd2Fzbid0IHRoYXQgcHV0IGluIGEg
-c2VwYXJhdGUgcGF0Y2g/DQo+ID4+Pg0KPiA+Pj4gSVNfRU5BQkxFRCgpIHdpbGwgY2hlY2sgZm9y
-IENPTkZJR19ORlNfVipfTU9EVUxFLCBsYXN0IEkgY2hlY2tlZCB0aGUgZGVmaW5lZCgpIG1hY3Jv
-IGRvZXNuJ3QuICBQdXR0aW5nIHRoaXMgaW50byBhIHNlcGFyYXRlIHBhdGNoIG1ha2VzIHRoZSBj
-aGFuZ2Ugbm9uLWJpc2VjdGFibGUgc2luY2UgZ2NjIHdpbGwgYmUgY2hlY2tpbmcgYWdhaW5zdCBD
-T05GSUdfTkZTX1YzIGJ1dCBDT05GSUdfTkZTX1YzX01PRFVMRSBpcyBzZXQuICBTaG91bGQgSSBo
-YXZlIGNoYW5nZWQgdGhlIENPTkZJR18gdmFyaWFibGVzIGluc3RlYWQgb2YgdXNpbmcgSVNfRU5B
-QkxFRCgpPw0KPiA+Pg0KPiA+PiBXaHkgaXMgaXQgZXZhbHVhdGluZyBkaWZmZXJlbnRseSBpbiB0
-aGUgaW5jbHVkZSBmaWxlIHZzLiB0aGUgLmMgZmlsZT8NCj4gPj4gQXJlIHdlIG1pc3NpbmcgYW4g
-aW5jbHVkZSBpbiBuZnNfZnMuaD8NCj4gPiANCj4gPiBHb29kIHF1ZXN0aW9uLiAgSSBkb24ndCBz
-ZWUgYW55IHJlYXNvbiB0aGF0IGl0IHdvdWxkIGV2YWx1YXRlIGRpZmZlcmVudGx5LCBidXQgSSdt
-IGNvbXBpbGluZyB0aGUgLmNvbmZpZyBhdHRhY2hlZCB0byB0aGUgaW5pdGlhbCBlbWFpbCB0byB0
-cnkgdG8gZmlndXJlIGl0IG91dC4NCj4gPiANCj4gDQo+IExvb2tzIGxpa2UgdGhlIElTX0VOQUJM
-RUQoKSBzd2l0Y2ggZ290IHB1c2hlZCB0byB0aGUgbmV4dCBwYXRjaCBmb3IgVjMgaW4gaW5jbHVk
-ZS9saW51eC9uZnNfZnMuaC4gIFdhbnQgbWUgdG8gcmVzZW5kIHRoZSBwYXRjaGVzPyAgSSB0b29r
-IGFub3RoZXIgbG9vayBhdCBob3cgSVNfRU5BQkxFRCgpIGlzIGRlZmluZWQsIGFuZCBpdCdsbCB3
-b3JrIGlmIEkgZG8gdGhlIHN3aXRjaCBpbiB0aGUgcGF0Y2ggYmVmb3JlIEkgdHVybiBldmVyeXRo
-aW5nIGludG8gc2VwYXJhdGUgbW9kdWxlcyBpZiB5b3Ugd2FudCBtZSB0byByZXNlbmQgZXZlcnl0
-aGluZy4NCg0KUGxlYXNlIGp1c3QgbWFrZSBpdCBpbmNyZW1lbnRhbCB0byB0aGUgcGF0Y2ggc2Vy
-aWVzIHRoYXQgaXMgYWxyZWFkeQ0KbWVyZ2VkIGluIHRvZGF5J3MgbmZzLWZvci0zLjYuDQoNCkNo
-ZWVycw0KICBUcm9uZA0KDQo+ID4gLSBCcnlhbg0KPiA+IA0KPiA+Pg0KPiA+Pj4+DQo+ID4+Pj4N
-Cj4gPj4+Pg0KPiA+Pj4+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiA+Pj4+PiBGcm9t
-OiBGZW5nZ3VhbmcgV3UgW21haWx0bzpmZW5nZ3Vhbmcud3VAaW50ZWwuY29tXQ0KPiA+Pj4+PiBT
-ZW50OiBNb25kYXksIEp1bHkgMzAsIDIwMTIgMTA6NDMgUE0NCj4gPj4+Pj4gVG86IFNjaHVtYWtl
-ciwgQnJ5YW4NCj4gPj4+Pj4gQ2M6IGtlcm5lbC1qYW5pdG9yc0B2Z2VyLmtlcm5lbC5vcmc7IE15
-a2xlYnVzdCwgVHJvbmQ7IGxpbnV4LQ0KPiA+Pj4+PiBuZnNAdmdlci5rZXJuZWwub3JnDQo+ID4+
-Pj4+IFN1YmplY3Q6IFtuZnM6ZGV2ZWwgNDYvNTFdIGZzL25mcy93cml0ZS5jOjE1OTI6NTogZXJy
-b3I6IHJlZGVmaW5pdGlvbiBvZg0KPiA+Pj4+PiAnbmZzX2NvbW1pdF9pbm9kZScNCj4gPj4+Pj4N
-Cj4gPj4+Pj4gSGkgQnJ5YW4sDQo+ID4+Pj4+DQo+ID4+Pj4+IEtlcm5lbCBidWlsZCBmYWlsZWQg
-b24NCj4gPj4+Pj4NCj4gPj4+Pj4gdHJlZTogICBnaXQ6Ly9naXQubGludXgtbmZzLm9yZy9wcm9q
-ZWN0cy90cm9uZG15L2xpbnV4LW5mcy5naXQgZGV2ZWwNCj4gPj4+Pj4gaGVhZDogICA1YzEzYzll
-MWMxNWVlMmNhOWFiMmI5NTMyMjQwMDFhZjUzZDliZTA5DQo+ID4+Pj4+IGNvbW1pdDogMWM2MDZm
-Yjc0Yzc1OGJlYWZkOThjYmFkOWE5MTMzZWFkZWVjMjM3MSBbNDYvNTFdIE5GUzogQ29udmVydA0K
-PiA+Pj4+PiB2MyBpbnRvIGEgbW9kdWxlDQo+ID4+Pj4+IGNvbmZpZzogYmxhY2tmaW4tQkY1MzMt
-RVpLSVRfZGVmY29uZmlnIChhdHRhY2hlZCBhcyAuY29uZmlnKQ0KPiA+Pj4+Pg0KPiA+Pj4+PiBB
-bGwgcmVsYXRlZCBlcnJvci93YXJuaW5nIG1lc3NhZ2VzOg0KPiA+Pj4+Pg0KPiA+Pj4+PiBmcy9u
-ZnMvd3JpdGUuYzoxNTkyOjU6IGVycm9yOiByZWRlZmluaXRpb24gb2YgJ25mc19jb21taXRfaW5v
-ZGUnDQo+ID4+Pj4+IEluIGZpbGUgaW5jbHVkZWQgZnJvbSBmcy9uZnMvd3JpdGUuYzoxOTowOg0K
-PiA+Pj4+PiBpbmNsdWRlL2xpbnV4L25mc19mcy5oOjU0NzoxOiBub3RlOiBwcmV2aW91cyBkZWZp
-bml0aW9uIG9mICduZnNfY29tbWl0X2lub2RlJw0KPiA+Pj4+PiB3YXMgaGVyZQ0KPiA+Pj4+Pg0K
-PiA+Pj4+PiB2aW0gKzE1OTIgZnMvbmZzL3dyaXRlLmMNCj4gPj4+Pj4gICAxNTg5CQlyZXR1cm4g
-c3RhdHVzOw0KPiA+Pj4+PiAgIDE1OTAJfQ0KPiA+Pj4+PiAgIDE1OTENCj4gPj4+Pj4+IDE1OTIJ
-aW50IG5mc19jb21taXRfaW5vZGUoc3RydWN0IGlub2RlICppbm9kZSwgaW50IGhvdykNCj4gPj4+
-Pj4gICAxNTkzCXsNCj4gPj4+Pj4gICAxNTk0CQlMSVNUX0hFQUQoaGVhZCk7DQo+ID4+Pj4+ICAg
-MTU5NQkJc3RydWN0IG5mc19jb21taXRfaW5mbyBjaW5mbzsNCj4gPj4+Pj4NCj4gPj4+Pj4gLS0t
-DQo+ID4+Pj4+IDAtREFZIGtlcm5lbCBidWlsZCB0ZXN0aW5nIGJhY2tlbmQgICAgICAgICBPcGVu
-IFNvdXJjZSBUZWNobm9sb2d5IENlbnRyZQ0KPiA+Pj4+PiBGZW5nZ3VhbmcgV3UgPHdmZ0BsaW51
-eC5pbnRlbC5jb20+ICAgICAgICAgICAgICAgICAgICAgSW50ZWwgQ29ycG9yYXRpb24NCj4gPj4+
-DQo+ID4+DQo+ID4gDQo+IA0KDQo=
+--Sig_/.OysdqKZ3Djf/UaoSO.n6XJ
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
+
+On Thu, 12 Jul 2012 18:44:20 +0200 Karel Zak <kzak@redhat.com> wrote:
+
+> > This patch restores the use of EX_FILEIO for errors from umount.
+>=20
+>  Looks good to me.
+>=20
+>  Reviewed-by: Karel Zak <kzak@redhat.com>
+>=20
+> > There is a case that I know it doesn't handle.  If you ask umount.nfs to
+> > unmount a filesystem that is not nfs or nfs4, then the old code will
+> > refuse
+> >   umount.nfs: /dev/sda7 on /mnt2 is not an NFS filesystem
+> >=20
+> > and exit with status '1'.
+> > The new libmount code will just think that it couldn't find anything in
+> > fstab and will try to do an nfs23 unmount.  This is clearly different b=
+ehaviour,
+> > I'm not sure that anyone would care though.
+>=20
+>  I care, it's stupid bug to use umount.nfs for non-NFS filesytems. The
+>  patch below fixes this issue.
+>=20
+Cool - thanks for that!
+
+NeilBrown
+
+--Sig_/.OysdqKZ3Djf/UaoSO.n6XJ
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
+
+iQIVAwUBT/8wpTnsnt1WYoG5AQK/7w/+N4ggzvgZvFtZbCYbdX54ItbFykmhUjv/
+JBj2g1FjqEzV/S1Wn9cgzFoeJeJNS7dkNaU/ZalK0fOoSxbg7rIf2VjWdv9RmyuC
+dVPYhWkltWWeWMcuh7Zu6oSrfWnshbLPRCjQrqSA4cRQmHqRW1K9cJDEwzXaggN0
+B9DEuqyQzBHI6I3SnHIFaQdNOXfpd2zMnYLTdiDMYG8NPkOeX7Ym8g9moY5AOl0m
+O3jeMjnPP97eMcBcBiMxIdZpE/MB4fna1b0up690aiuPaiLRKXWhruFvskdJcqrP
+BlRBWDEASGjDsV4mddqtwiVFIGqTfdcoU4er7G0oO7m5SEDc5vftSOr2Q0V4T1/W
+uGEepkPJ/h1UuhHZLWiy597+sVM7409bOyB0tw4bYqrECcDuYBrDRhLD8qiOBjs0
+/XGl6AKyItsnlYD6wOk7vAiXnWSDwdLip8HLH1DEMOGH7TVnROat0cn1f22w8MpU
+K+gN/hjewCCQi73T/kd9EM47TVsiBrJqM7v6Qs3mBoUUxCELqBR/KwehDnGT8lgw
+9QbjfWcbDRtUdCFbuN+i6xMpXGSoQzPkMzQV0u7FTXUuzB27F8us/RPgEMGaYRs5
+k/QYjUYOw1f2LeEVIoH60hdw5EeyHlbPbY9ykhkO0T6GTSZ/ed/MLQlBviI+dpul
+/eLiHtykyhg=
+=VM4A
+-----END PGP SIGNATURE-----
+
+--Sig_/.OysdqKZ3Djf/UaoSO.n6XJ--
