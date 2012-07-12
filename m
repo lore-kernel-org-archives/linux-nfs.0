@@ -1,80 +1,151 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:40861 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752349Ab2GZLzg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 07:55:36 -0400
-Received: by mail-yw0-f46.google.com with SMTP id m54so1830328yhm.19
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jul 2012 04:55:36 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v4 06/17] vfs: turn "empty" arg in getname_flags into a bool
-Date: Thu, 26 Jul 2012 07:55:09 -0400
-Message-Id: <1343303720-11199-7-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
-References: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
+Received: from office2.cesnet.cz ([195.113.144.244]:49183 "EHLO
+	office2.cesnet.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1161027Ab2GLOCt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jul 2012 10:02:49 -0400
+Received: from [195.113.134.197] (hotgeorge.cesnet.cz [195.113.134.197])
+	by office2.cesnet.cz (Postfix) with ESMTPSA id 4DB042CDE059
+	for <linux-nfs@vger.kernel.org>; Thu, 12 Jul 2012 15:55:23 +0200 (CEST)
+Message-ID: <4FFED6FA.4070407@cesnet.cz>
+Date: Thu, 12 Jul 2012 15:54:02 +0200
+From: Jiri Horky <jiri.horky@cesnet.cz>
+MIME-Version: 1.0
+To: linux-nfs@vger.kernel.org
+Subject: idmapd client-side static mapping
+Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha1; boundary="------------ms010407020309080508090203"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...it's just used as a flag.
+This is a cryptographically signed message in MIME format.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c         | 4 ++--
- fs/stat.c          | 2 +-
- include/linux/fs.h | 2 +-
- 3 files changed, 4 insertions(+), 4 deletions(-)
+--------------ms010407020309080508090203
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: quoted-printable
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 244ee8b..6563077 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -117,7 +117,7 @@
-  * POSIX.1 2.4: an empty pathname is invalid (ENOENT).
-  * PATH_MAX includes the nul terminator --RR.
-  */
--char *getname_flags(const char __user *filename, int flags, int *empty)
-+char *getname_flags(const char __user *filename, int flags, bool *empty)
- {
- 	char *result = __getname(), *err;
- 	int len;
-@@ -133,7 +133,7 @@ char *getname_flags(const char __user *filename, int flags, int *empty)
- 	/* The empty path is special. */
- 	if (unlikely(!len)) {
- 		if (empty)
--			*empty = 1;
-+			*empty = true;
- 		err = ERR_PTR(-ENOENT);
- 		if (!(flags & LOOKUP_EMPTY))
- 			goto error;
-diff --git a/fs/stat.c b/fs/stat.c
-index c9d88f7..4f8b6bc 100644
---- a/fs/stat.c
-+++ b/fs/stat.c
-@@ -306,7 +306,7 @@ SYSCALL_DEFINE4(readlinkat, int, dfd, const char __user *, pathname,
- {
- 	struct path path;
- 	int error;
--	int empty = 0;
-+	bool empty = false;
- 	char *name;
- 	unsigned int try = 0;
- 	unsigned int lookup_flags = LOOKUP_EMPTY;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 00db714..386d016 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2062,7 +2062,7 @@ extern struct file *file_open_root(struct dentry *, struct vfsmount *,
- 				   const char *, int);
- extern struct file * dentry_open(const struct path *, int, const struct cred *);
- extern int filp_close(struct file *, fl_owner_t id);
--extern char *getname_flags(const char __user *, int, int *);
-+extern char *getname_flags(const char __user *, int, bool *);
- extern char * getname(const char __user *);
- enum {
- 	FILE_CREATED = 1,
--- 
-1.7.11.2
+Hi,
 
+man pages for idmapd.conf states possibility to use Static mapping.=20
+Looking at the source code of libnfsidmap v0.24, it is clear that static =
+
+mappings are only valid for server side (svcgssd) which the man page=20
+forgets to mention. Is there any specific reason why not to implement=20
+the static resolution functions on the client side as well?
+
+I would send a patch if there is a change it will be accepted.
+
+Regards
+Jiri Horky
+
+
+--------------ms010407020309080508090203
+Content-Type: application/pkcs7-signature; name="smime.p7s"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Description: S/MIME Cryptographic Signature
+
+MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIISxTCC
+BGYwggNOoAMCAQICEFEmCpMc4n+cw6VfeeByroIwDQYJKoZIhvcNAQEFBQAwgZMxCzAJBgNV
+BAYTAlVTMQswCQYDVQQIEwJVVDEXMBUGA1UEBxMOU2FsdCBMYWtlIENpdHkxHjAcBgNVBAoT
+FVRoZSBVU0VSVFJVU1QgTmV0d29yazEhMB8GA1UECxMYaHR0cDovL3d3dy51c2VydHJ1c3Qu
+Y29tMRswGQYDVQQDExJVVE4gLSBEQVRBQ29ycCBTR0MwHhcNMDUwNjA3MDgwOTEwWhcNMTkw
+NjI0MTkwNjMwWjBvMQswCQYDVQQGEwJTRTEUMBIGA1UEChMLQWRkVHJ1c3QgQUIxJjAkBgNV
+BAsTHUFkZFRydXN0IEV4dGVybmFsIFRUUCBOZXR3b3JrMSIwIAYDVQQDExlBZGRUcnVzdCBF
+eHRlcm5hbCBDQSBSb290MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAt/caM+by
+AAQtOeBOW+0fvGwPzbX6I7bO3psRM5ekKUx9k5+9SryT7QMa44/P5W1QWtaXKZRagLBJetsu
+lf24yr83OC0ePpFBrXBWx/BPP+gynnTKyJBU6cZfD3idmkA8Dqxhql4Uj56HoWpQ3NeaTq8F
+s6ZxlJxxs1BgCscTnTgHhgKo6ahpJhiQq0ywTyOrOk+E2N/On+Fpb7vXQtdrROTHre5tQV9y
+WnEIN7N5ZaRZoJQ39wAvDcKSctrQOHLbFKhFxF0qfbe01sTurM0TRLfJK91DACX6Yblpalgj
+EbenM49WdVn1zSnXRrcKK2W200JvFbK4e/vv6V1T1TRaJwIDAQABo4HYMIHVMB8GA1UdIwQY
+MBaAFFMy0bPPf/rg8aBdhU6S0p5FHbRPMB0GA1UdDgQWBBStvZh6NLQm9/rEJlTvA73gJMtU
+GjAOBgNVHQ8BAf8EBAMCAQYwDwYDVR0TAQH/BAUwAwEB/zARBglghkgBhvhCAQEEBAMCAQIw
+IAYDVR0lBBkwFwYKKwYBBAGCNwoDAwYJYIZIAYb4QgQBMD0GA1UdHwQ2MDQwMqAwoC6GLGh0
+dHA6Ly9jcmwudXNlcnRydXN0LmNvbS9VVE4tREFUQUNvcnBTR0MuY3JsMA0GCSqGSIb3DQEB
+BQUAA4IBAQDG7lMXaBSyUSIekFgNlP298XDlhi3DNjGPVEhG5y0IN7xsCmDhDq1RNOASk+m+
+uKu4JrTplj0oj65kB/7gAezF45HrGKDxdX7bCuafkduvrnXfI5Fo3RcAWkv/ZGxw6wEa0JDZ
+x6bWbfYT5P+1ydIeKsuxJUMmeNkwm04NHr5p79/q/i2zzPmw3bUUypHUsrWl+wEZo0d5n52M
+lYc0+B84kto2phH6a+tr6dxFeBU5BtdNQeQhyNwvh9G3v0hgdaViyyTeO2GgKSCmvsVsnMTp
+Cmki75E6+iav0VtBpzri+DgHQqvBW/jObboPBD8yNKzcBCjXcDAUJgbE5JuY1c94MIIEijCC
+A3KgAwIBAgIQJ/TqEfR6hsRunbtuqRcHBzANBgkqhkiG9w0BAQUFADBvMQswCQYDVQQGEwJT
+RTEUMBIGA1UEChMLQWRkVHJ1c3QgQUIxJjAkBgNVBAsTHUFkZFRydXN0IEV4dGVybmFsIFRU
+UCBOZXR3b3JrMSIwIAYDVQQDExlBZGRUcnVzdCBFeHRlcm5hbCBDQSBSb290MB4XDTA1MDYw
+NzA4MDkxMFoXDTIwMDUzMDEwNDgzOFowga4xCzAJBgNVBAYTAlVTMQswCQYDVQQIEwJVVDEX
+MBUGA1UEBxMOU2FsdCBMYWtlIENpdHkxHjAcBgNVBAoTFVRoZSBVU0VSVFJVU1QgTmV0d29y
+azEhMB8GA1UECxMYaHR0cDovL3d3dy51c2VydHJ1c3QuY29tMTYwNAYDVQQDEy1VVE4tVVNF
+UkZpcnN0LUNsaWVudCBBdXRoZW50aWNhdGlvbiBhbmQgRW1haWwwggEiMA0GCSqGSIb3DQEB
+AQUAA4IBDwAwggEKAoIBAQCyOYWk8n2rQTtiRjeuzcFgdbw5ZflKGkeiucxIzGqY1U01Gbmk
+QuXOSeKKLx580jEHx060g2SdLinVomTEhb2FUTV5pE5okHsceqSSqBfymBXyk8zJpDKVuwxP
+ML2YoAuL5W4bokb6eLyib6tZXqUvz8rabaov66yhs2qqty5nNYt54R5piOLmRs2gpeq+C852
+OnoOm+r82idbPXMfIuZIYcZM82mxqC4bttQxICy8goqOpA6l14lD/BZarx1x1xFZ2rqHDa/6
+8+HC8KTFZ4zW1lQ63gqkugN3s2XI/R7TdGKqGMpokx6hhX71R2XL+E1XKHTSNP8wtu72YjAU
+jCzrAgMBAAGjgeEwgd4wHwYDVR0jBBgwFoAUrb2YejS0Jvf6xCZU7wO94CTLVBowHQYDVR0O
+BBYEFImCZ33EnSZwAEu0UEh83j2uBG59MA4GA1UdDwEB/wQEAwIBBjAPBgNVHRMBAf8EBTAD
+AQH/MHsGA1UdHwR0MHIwOKA2oDSGMmh0dHA6Ly9jcmwuY29tb2RvY2EuY29tL0FkZFRydXN0
+RXh0ZXJuYWxDQVJvb3QuY3JsMDagNKAyhjBodHRwOi8vY3JsLmNvbW9kby5uZXQvQWRkVHJ1
+c3RFeHRlcm5hbENBUm9vdC5jcmwwDQYJKoZIhvcNAQEFBQADggEBABnYiRFvKKymAKLnh8Gb
+kAPbfqES/R7z4vABqZRUQmuaCcSgbdeQkgQDZnlDcfz4b6/bdkXiNxo93eRZBHisHPSDRvN6
+z1uEci3lRsG6GBEp88tJeYc8um0FnaRtaE+tchQ2qLmx/b/Pf/CkapQ1UI/PgW1Vsd1ZMErf
+baCcZB9JfO82u/TjafT4OY9arUuFOrcO7dPPDUSi+wS/5C9wjiX7WlQGs9DEvG2N+3MyLOmb
+hCQt1n+RemgCUB8OP03pzPW7Z+jcHC47/E7N/gKO46gTCqUmRGXpEPJNUqeu3D7KazJcQWz+
+9V2g6v/R+puGWG09lkfl/i6VBMIAzI6h8rswggTaMIIDwqADAgECAhBd/1Dq/g9TRoifgEGP
+50LIMA0GCSqGSIb3DQEBBQUAMIGuMQswCQYDVQQGEwJVUzELMAkGA1UECBMCVVQxFzAVBgNV
+BAcTDlNhbHQgTGFrZSBDaXR5MR4wHAYDVQQKExVUaGUgVVNFUlRSVVNUIE5ldHdvcmsxITAf
+BgNVBAsTGGh0dHA6Ly93d3cudXNlcnRydXN0LmNvbTE2MDQGA1UEAxMtVVROLVVTRVJGaXJz
+dC1DbGllbnQgQXV0aGVudGljYXRpb24gYW5kIEVtYWlsMB4XDTA5MDUxODAwMDAwMFoXDTI4
+MTIzMTIzNTk1OVowRDELMAkGA1UEBhMCTkwxDzANBgNVBAoTBlRFUkVOQTEkMCIGA1UEAxMb
+VEVSRU5BIGVTY2llbmNlIFBlcnNvbmFsIENBMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
+CgKCAQEAxLwlfc3vWQSrdCcptmOK78Q1cKFGCK9uUJsbcXiXAoXANf+QGBFm+jM5FJ6kEvc9
+7gUsgef3LS42eEMOObZ/enTDy1U/L7PLwzdq4ZUDIxuzIpgTg1gwX6w8kUXTbQsuy9GRYbLK
+cfrCiQx7CdaSv6OBFxFVIN83gZ8eJgkd0hcZQ8uLmSV0QVvmMirQp1Pc0iGNzZHPe2z0yf7Q
+5dIGaxphQhuAkQfcFEknOwqKsuI7aQiEy4GZ17oUH9h+kmO99i0x+pVOzTYNme8Ruq1K+6jE
+eLl8Wj7I9QgywKkFx4waKI8wuhej8bniB6e4+1W/n2Ja1RQPCLQTmdISeVrw/QIDAQABo4IB
+WzCCAVcwHwYDVR0jBBgwFoAUiYJnfcSdJnAAS7RQSHzePa4Ebn0wHQYDVR0OBBYEFMiJc5mn
+XVEWU0VUfKPCOXzL16qBMA4GA1UdDwEB/wQEAwIBBjASBgNVHRMBAf8ECDAGAQH/AgEAMCYG
+A1UdIAQfMB0wDQYLKwYBBAGyMQECAh0wDAYKKoZIhvdMBQICBTBYBgNVHR8EUTBPME2gS6BJ
+hkdodHRwOi8vY3JsLnVzZXJ0cnVzdC5jb20vVVROLVVTRVJGaXJzdC1DbGllbnRBdXRoZW50
+aWNhdGlvbmFuZEVtYWlsLmNybDBvBggrBgEFBQcBAQRjMGEwOAYIKwYBBQUHMAKGLGh0dHA6
+Ly9jcnQudXNlcnRydXN0LmNvbS9VVE5BQUFDbGllbnRfQ0EuY3J0MCUGCCsGAQUFBzABhhlo
+dHRwOi8vb2NzcC51c2VydHJ1c3QuY29tMA0GCSqGSIb3DQEBBQUAA4IBAQAIF6Qc+RVrsBlh
+b6BI43ok70FVmqBQcNgj1VOGSmeO6NpWFhgsGxghibqYJO5WNOMXhia9IVrUGZNK6mF0TbbE
+hI1H7souZW02k5ix4pJmiOJOe3XHXkRpIdwSajD8YYD+D/Cd0tx+ruXCU00LcINhVkX7Pd9y
+9gJCdeuIiphXYPWfonJJsXo+QWc1w1UrDQc16MYr1bqHeYB055I2vUaBei4p4mq+4RcTNXwW
+pCUzL2HuzslS4EDb0745Ws/PTBTlf8VDV4tNuVqOwg8GTd7ISZ2Bc7rkP5ilkzxZTtubNd/+
+Tb9Voelkw0V8rI98R9E68U512ZBnQOixL54XL1w1MIIE6zCCA9OgAwIBAgIRAKX9/QrVCI8L
+jeY+R0ymN60wDQYJKoZIhvcNAQEFBQAwRDELMAkGA1UEBhMCTkwxDzANBgNVBAoTBlRFUkVO
+QTEkMCIGA1UEAxMbVEVSRU5BIGVTY2llbmNlIFBlcnNvbmFsIENBMB4XDTEyMDcwODAwMDAw
+MFoXDTEzMDgwNzIzNTk1OVowejETMBEGCgmSJomT8ixkARkWA29yZzEWMBQGCgmSJomT8ixk
+ARkWBnRlcmVuYTETMBEGCgmSJomT8ixkARkWA3RjczELMAkGA1UEBhMCQ1oxDzANBgNVBAoT
+BkNFU05FVDEYMBYGA1UEAxMPSmlyaSBIb3JreSAzNTcwMIIBIjANBgkqhkiG9w0BAQEFAAOC
+AQ8AMIIBCgKCAQEAoPMDJgITI9V5Z0wqHWPaF3TV+8peOoyQbAwxGEOhJ9lfbFvuY07u+jkE
+Ax6ojLYj00AsgF8c4I6cDmbxxi3Sdpqkwp6NCB2D89OrGk5FU+gRbp5HFrZPtNGMdY/lWFa7
+18nV2DikEVpD2KlMBzM4Lo8O8ruNI7FQzZDzBWAVK0Bm3bfLtyTEXuKIp4am0NaZK/YVpaW6
+8v8+6mh1P5HPXgF64v65193cbuymfSdLlwwr9B+W1sa+eVfJY20HdkIVYSu6r7fJUr7XjvYJ
+5FxfU0zbql0sXfO6hSXw0RwqExreGLnhUdFnKObCY67Au7IDtbqNeghBpu3orThULC0fWQID
+AQABo4IBoDCCAZwwHwYDVR0jBBgwFoAUyIlzmaddURZTRVR8o8I5fMvXqoEwHQYDVR0OBBYE
+FJG5q2Wtue1gDMENrJGUuhmRAQ7EMA4GA1UdDwEB/wQEAwIFoDAMBgNVHRMBAf8EAjAAMB0G
+A1UdJQQWMBQGCCsGAQUFBwMEBggrBgEFBQcDAjAmBgNVHSAEHzAdMA0GCysGAQQBsjEBAgId
+MAwGCiqGSIb3TAUCAgUwRwYDVR0fBEAwPjA8oDqgOIY2aHR0cDovL2NybC50Y3MudGVyZW5h
+Lm9yZy9URVJFTkFlU2NpZW5jZVBlcnNvbmFsQ0EuY3JsMHoGCCsGAQUFBwEBBG4wbDBCBggr
+BgEFBQcwAoY2aHR0cDovL2NydC50Y3MudGVyZW5hLm9yZy9URVJFTkFlU2NpZW5jZVBlcnNv
+bmFsQ0EuY3J0MCYGCCsGAQUFBzABhhpodHRwOi8vb2NzcC50Y3MudGVyZW5hLm9yZzAwBgNV
+HREEKTAngQ9ob3JreUBjZXNuZXQuY3qBFGppcmkuaG9ya3lAY2VzbmV0LmN6MA0GCSqGSIb3
+DQEBBQUAA4IBAQB7tG2dDS6czTK9u9/xQqCD3hhuttANZMJP2jPxQgIG+uPM90P70IALyZ0I
+d68oRO2GiMl0cFXFdDznhUkVnW0k7sVMsH3d5LnVcZ3z+QPASrSFTLBXeNOEQfJ9CJsI628n
+e3iRFAPhShSvjqYVQzwY4ObPuDFSvp0+XsLPFbzrMGvQwn3YcUZG8AQwIWVJHpA7sTUflVx0
+qOgA2DgoN/t5IOL8AnGFfd7flD35AFzeiIT2/0CRmoYpRUox2+Me3Xw1gELQZmwQkpQ6cnC6
+KloxTBDjCMMjrKIOzxNbB5cKJGW7c+nutF3aYYsGMaVMY+G4cAxqT/LA/ZIvURKGE4ZbMYID
+GDCCAxQCAQEwWTBEMQswCQYDVQQGEwJOTDEPMA0GA1UEChMGVEVSRU5BMSQwIgYDVQQDExtU
+RVJFTkEgZVNjaWVuY2UgUGVyc29uYWwgQ0ECEQCl/f0K1QiPC43mPkdMpjetMAkGBSsOAwIa
+BQCgggGUMBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTEyMDcx
+MjEzNTQwMlowIwYJKoZIhvcNAQkEMRYEFEb2sqH0IB+HflnpjjgQhJKphtEcMF8GCSqGSIb3
+DQEJDzFSMFAwCwYJYIZIAWUDBAECMAoGCCqGSIb3DQMHMA4GCCqGSIb3DQMCAgIAgDANBggq
+hkiG9w0DAgIBQDAHBgUrDgMCBzANBggqhkiG9w0DAgIBKDBoBgkrBgEEAYI3EAQxWzBZMEQx
+CzAJBgNVBAYTAk5MMQ8wDQYDVQQKEwZURVJFTkExJDAiBgNVBAMTG1RFUkVOQSBlU2NpZW5j
+ZSBQZXJzb25hbCBDQQIRAKX9/QrVCI8LjeY+R0ymN60wagYLKoZIhvcNAQkQAgsxW6BZMEQx
+CzAJBgNVBAYTAk5MMQ8wDQYDVQQKEwZURVJFTkExJDAiBgNVBAMTG1RFUkVOQSBlU2NpZW5j
+ZSBQZXJzb25hbCBDQQIRAKX9/QrVCI8LjeY+R0ymN60wDQYJKoZIhvcNAQEBBQAEggEAdul5
+4g70idSJjxVFgx4Yr+tcA2UGZX2nZx+P31V29QP3tpOFRptJ/hosA1oNmdYG6WP+HgkADiHW
+NfB4Xz6m/V2ftgvdXWQu7JBwqr93M68Kkj/m9MJDUMya4WNGKjIFH8xQfKjv0ht9EbgQp4KN
+n6iKMnorqBdamSmb4uu3StlqdydAtImEoas5yS1xPO6oqFuKa3uX8Isn3IjoAFz1TI+3Boy+
+Jj3WweDd75n1Kk1SF+uXZaxhrH6xmsHVaBleiS6yyLAHcI92bVe3b6AlT9nrz73lK7uzU4IK
+rfM893W7ZoaXr3XPZz9oMeOgPMenIeft9AqB8Cpwv/J9avewSQAAAAAAAA==
+--------------ms010407020309080508090203--
