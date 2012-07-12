@@ -1,350 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:41256 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753156Ab2GWHVJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jul 2012 03:21:09 -0400
-Received: by bkwj10 with SMTP id j10so4853196bkw.19
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Jul 2012 00:21:08 -0700 (PDT)
-From: Jiri Horky <jiri.horky@gmail.com>
-To: linux-nfs@vger.kernel.org
-Cc: du@cesnet.cz, Jiri Horky <jiri.horky@gmail.com>, SteveD@redhat.com
-Subject: [PATCH] libnfsidmap: implementation of client side Static translation method.
-Date: Mon, 23 Jul 2012 09:20:20 +0200
-Message-Id: <1343028020-10587-1-git-send-email-jiri.horky@gmail.com>
-To: linux-nfs@vger.kernel.org
+Received: from natasha.panasas.com ([67.152.220.90]:38306 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932536Ab2GLOLw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jul 2012 10:11:52 -0400
+Message-ID: <4FFEDB17.5050001@panasas.com>
+Date: Thu, 12 Jul 2012 17:11:35 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+CC: Benny Halevy <bhalevy@tonian.com>, Peng Tao <bergwolf@gmail.com>
+Subject: Re: [RFC 0/5] CRASHFIX: pnfs-obj: NONE-RPC LD must not call rpc_restart_call_prepare()
+References: <4FD1CEA8.3090105@panasas.com>
+In-Reply-To: <4FD1CEA8.3090105@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since the [Static] section in idmapd.conf does not distinguish between user
-and group mappings we try both cases for each defined mapping. The code caches
-id->name mappings in the init function
+On 06/08/2012 01:06 PM, Boaz Harrosh wrote:
 
-Signed-off-by: Jiri Horky <jiri.horky@gmail.com>
----
- static.c |  266 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
- 1 files changed, 255 insertions(+), 11 deletions(-)
+> 
+> NONE-RPC layout-Drivers call nfs_writeback_done() as part
+> of their completion of IO. (through pnfs_ld_write_done())
+> 
+> Inside nfs_writeback_done() there is code that does:
+> 
+> 	else if (resp->count < argp->count) {
+> 		...
+> 
+> 		/* This a short write! */
+> 		nfs_inc_stats(inode, NFSIOS_SHORTWRITE);
+> 
+> 		... /* Prepare the remainder */
+> 
+> 		rpc_restart_call_prepare(task);
+> 	}
+> 
+> But for none-rpc LDs (objects, blocks) there is no task->tk_ops
+> and this code will crash.
+> 
 
-diff --git a/static.c b/static.c
-index fffd458..8be87e8 100644
---- a/static.c
-+++ b/static.c
-@@ -40,6 +40,7 @@
- #include <grp.h>
- #include <errno.h>
- 
-+#include "queue.h"
- #include "cfg.h"
- #include "nfsidmap.h"
- #include "nfsidmap_internal.h"
-@@ -57,6 +58,40 @@ struct pwbuf {
- 	char buf[1];
- };
- 
-+struct grbuf {
-+	struct group grbuf;
-+	char buf[1];
-+};
-+
-+struct uid_mapping {
-+	LIST_ENTRY (uid_mapping) link;
-+	uid_t uid;
-+	char * principal;
-+	char * localname;
-+};
-+
-+struct gid_mapping {
-+	LIST_ENTRY (gid_mapping) link;
-+	gid_t gid;
-+	char * principal;
-+	char * localgroup;
-+};
-+
-+static __inline__ u_int8_t uid_hash (uid_t uid)
-+{
-+	return uid % 256;
-+}
-+
-+static __inline__ u_int8_t gid_hash (gid_t gid)
-+{
-+	return gid % 256;
-+}
-+
-+//Hash tables of uid and guids to principals mappings.
-+//We reuse some queue/hash functions from cfg.c.
-+LIST_HEAD (uid_mappings, uid_mapping) uid_mappings[256];
-+LIST_HEAD (gid_mappings, gid_mapping) gid_mappings[256];
-+
- static struct passwd *static_getpwnam(const char *name, const char *domain,
- 				      int *err_p)
- {
-@@ -75,12 +110,9 @@ static struct passwd *static_getpwnam(const char *name, const char *domain,
- 	localname = conf_get_str("Static", (char *)name);
- 	if (!localname) {
- 		err = ENOENT;
--		goto err;
-+		goto err_free_buf;
- 	}
- 
--	IDMAP_LOG(4, ("static_getpwnam: name '%s' mapped to '%s'\n",
--		  name, localname));
--
- again:
- 	err = getpwnam_r(localname, &buf->pwbuf, buf->buf, buflen, &pw);
- 
-@@ -91,12 +123,15 @@ again:
- 		if (err == 0)
- 			err = ENOENT;
- 
--		IDMAP_LOG(0, ("static_getpwnam: name '%s' not found\n",
--			  localname));
-+		IDMAP_LOG(0, ("static_getpwnam: localname '%s' for '%s' not found\n",
-+		  localname, name));
- 
- 		goto err_free_buf;
- 	}
- 
-+	IDMAP_LOG(4, ("static_getpwnam: name '%s' mapped to '%s'\n",
-+		  name, localname));
-+
- 	*err_p = 0;
- 	return pw;
- 
-@@ -107,6 +142,56 @@ err:
- 	return NULL;
- }
- 
-+static struct group *static_getgrnam(const char *name, const char *domain,
-+				      int *err_p)
-+{
-+	struct group *gr;
-+	struct grbuf *buf;
-+	size_t buflen = sysconf(_SC_GETGR_R_SIZE_MAX);
-+	char *localgroup;
-+	int err;
-+
-+	buf = malloc(sizeof(*buf) + buflen);
-+	if (!buf) {
-+		err = ENOMEM;
-+		goto err;
-+	}
-+
-+	localgroup = conf_get_str("Static", (char *)name);
-+	if (!localgroup) {
-+		err = ENOENT;
-+		goto err_free_buf;
-+	}
-+
-+again:
-+	err = getgrnam_r(localgroup, &buf->grbuf, buf->buf, buflen, &gr);
-+
-+	if (err == EINTR)
-+		goto again;
-+
-+	if (!gr) {
-+		if (err == 0)
-+			err = ENOENT;
-+
-+		IDMAP_LOG(0, ("static_getgrnam: local group '%s' for '%s' not found\n",
-+			  localgroup, name));
-+
-+		goto err_free_buf;
-+	}
-+
-+	IDMAP_LOG(4, ("static_getgrnam: group '%s' mapped to '%s'\n",
-+		  name, localgroup));
-+
-+	*err_p = 0;
-+	return gr;
-+
-+err_free_buf:
-+	free(buf);
-+err:
-+	*err_p = err;
-+	return NULL;
-+}
-+
- static int static_gss_princ_to_ids(char *secname, char *princ,
- 				   uid_t *uid, uid_t *gid,
- 				   extra_mapping_params **ex)
-@@ -151,14 +236,173 @@ static int static_gss_princ_to_grouplist(char *secname, char *princ,
- 	return -err;
- }
- 
-+static int static_name_to_uid(char *name, uid_t *uid)
-+{
-+	struct passwd *pw;
-+	int err;
-+
-+	pw = static_getpwnam(name, NULL, &err);
-+
-+	if (pw) {
-+		*uid = pw->pw_uid;
-+		free(pw);
-+	}
-+
-+	return -err;
-+}
-+
-+static int static_name_to_gid(char *name, gid_t *gid)
-+{
-+	struct group *gr;
-+	int err;
-+
-+	gr = static_getgrnam(name, NULL, &err);
-+
-+	if (gr) {
-+		*gid = gr->gr_gid;
-+		free(gr);
-+	}
-+
-+	return -err;
-+}
-+
-+static int static_uid_to_name(uid_t uid, char *domain, char *name, size_t len)
-+{
-+	struct passwd *pw;
-+	struct uid_mapping * um;
-+
-+	for (um = LIST_FIRST (&uid_mappings[uid_hash (uid)]); um;
-+		um = LIST_NEXT (um, link)) {
-+		if (um->uid == uid) {
-+			strcpy(name, um->principal);
-+			return 0;
-+		}
-+	}
-+
-+	return -ENOENT;
-+}
-+
-+static int static_gid_to_name(gid_t gid, char *domain, char *name, size_t len)
-+{
-+	struct group *gr;
-+	struct gid_mapping * gm;
-+
-+	for (gm = LIST_FIRST (&gid_mappings[gid_hash (gid)]); gm;
-+		gm = LIST_NEXT (gm, link)) {
-+		if (gm->gid == gid) {
-+			strcpy(name, gm->principal);
-+			return 0;
-+		}
-+	}
-+
-+	return -ENOENT;
-+}
-+
-+/*
-+ * We buffer all UID's for which static mappings is defined in advance, so the
-+ * uid_to_name functions will be fast enough.
-+ */
-+
-+static int static_init() {	
-+	int err;
-+	uid_t uid;
-+	struct conf_list * princ_list = NULL;
-+	struct conf_list_node * cln, *next;
-+	struct uid_mapping * unode;
-+	struct gid_mapping * gnode;
-+	struct passwd * pw = NULL;
-+	struct group * gr = NULL;
-+	unsigned int i;
-+
-+	//init hash_table first
-+	for (i = 0; i < sizeof uid_mappings / sizeof uid_mappings[0]; i++)
-+		LIST_INIT (&uid_mappings[i]);
-+
-+	//get all principals for which we have mappings
-+	princ_list = conf_get_tag_list("Static");
-+
-+	if (!princ_list) {
-+		return -ENOENT;
-+	}
-+
-+	/* As we can not distinguish between mappings for users and groups, we try to
-+	 * resolve all mappings for both cases.
-+	 */
-+
-+	//resolve uid of localname account for all such principals and cache it
-+	for (cln = TAILQ_FIRST (&princ_list->fields); cln; cln = next) 
-+	{ 
-+		next = TAILQ_NEXT (cln, link); 
-+
-+		pw = static_getpwnam(cln->field, NULL, &err);
-+		if (!pw) {
-+			continue;
-+		}
-+		
-+		unode = calloc (1, sizeof *unode);
-+		if (!unode)
-+		{
-+			warnx("static_init: calloc (1, %lu) failed",
-+				(unsigned long)sizeof *unode);
-+			free(pw);
-+			return -ENOMEM;
-+		}
-+		unode->uid = pw->pw_uid;
-+		unode->principal = strdup(cln->field);
-+
-+		unode->localname = conf_get_str("Static", cln->field);
-+		if (!unode->localname) {
-+			free(pw);
-+			return -ENOENT;
-+		}
-+
-+		free(pw);
-+
-+		LIST_INSERT_HEAD (&uid_mappings[uid_hash(unode->uid)], unode, link);
-+	}
-+
-+	//resolve gid of localgroup accounts and cache it
-+	for (cln = TAILQ_FIRST (&princ_list->fields); cln; cln = next) 
-+	{ 
-+		next = TAILQ_NEXT (cln, link); 
-+
-+		gr = static_getgrnam(cln->field, NULL, &err);
-+		if (!pw) {
-+			continue;
-+		}
-+		
-+		gnode = calloc (1, sizeof *gnode);
-+		if (!gnode)
-+		{
-+			warnx("static_init: calloc (1, %lu) failed",
-+				(unsigned long)sizeof *gnode);
-+			free(pw);
-+			return -ENOMEM;
-+		}
-+		gnode->gid = pw->pw_uid;
-+		gnode->principal = strdup(cln->field);
-+
-+		gnode->localgroup = conf_get_str("Static", cln->field);
-+		if (!gnode->localgroup) {
-+			free(pw);
-+			return -ENOENT;
-+		}
-+
-+		free(pw);
-+
-+		LIST_INSERT_HEAD (&gid_mappings[gid_hash(gnode->gid)], gnode, link);
-+	}
-+	return 0;
-+}
-+
- 
- struct trans_func static_trans = {
- 	.name			= "static",
--	.init			= NULL,
--	.name_to_uid		= NULL,
--	.name_to_gid		= NULL,
--	.uid_to_name		= NULL,
--	.gid_to_name		= NULL,
-+	.init			= static_init,
-+	.name_to_uid		= static_name_to_uid,
-+	.name_to_gid		= static_name_to_gid,
-+	.uid_to_name		= static_uid_to_name,
-+	.gid_to_name		= static_gid_to_name,
- 	.princ_to_ids		= static_gss_princ_to_ids,
- 	.gss_princ_to_grouplist	= static_gss_princ_to_grouplist,
- };
--- 
-1.7.3.4
+<snip>
 
+Trond hi
+
+Sorry for the late response I was sick (at Hospital and was away)
+
+I must push these fixes to Linus ASAP I want to push them tomorrow.
+They are for 3.5-rc7 and CC to stable@.
+
+I would love to also push the objlayout patches as one push as well.
+Please give me your blessing and ACK so I can do this.
+
+I have done a small rebase over 3.5-rc5 and a few cleanups mainly
+Peng's comment about ZERO_PAGE.
+
+You can see the pending push request here:
+http://git.open-osd.org/gitweb.cgi?p=linux-open-osd.git;a=shortlog;h=refs/heads/for-linus
+
+These are the list of patches:
+
+ore: Fix NFS crash by supporting any unaligned RAID IO
+ore: Remove support of partial IO request (NFS crash)
+ore: Unlock r4w pages in exact reverse order of locking
+
+	These above are ORE patches that actually fix the NFS CRASH
+
+pnfs-obj: don't leak objio_state if ore_write/read ...
+
+	This above is an important mem leak in the error case
+
+pnfs-obj: Fix __r4w_get_page when offset is beyond ...
+NFS41: add pg_layout_private to nfs_pageio_descriptor
+pnfs-obj: Better IO pattern in case of unaligned offset  for-linus
+
+	I would also love to push these 3 please advise
+
+Please look into this ASAP, as we are so late already because of my
+absence. If you'll inspect them carefully you will see that other then
+the fix they are low risk. And I have tested them extensively.
+
+(I pushed it to linux-next and will let it cook for 48 hours)
+
+Thanks for your help
+Boaz
