@@ -1,59 +1,27 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:10080 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:40861 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752228Ab2GETzd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Jul 2012 15:55:33 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Charles 'Boyo" <charlesboyo@gmail.com>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Linux NFSv4 client uses returned delegation in subsequent READ
- resulting in hang (BAD_STATEID)
-Date: Thu, 5 Jul 2012 19:55:32 +0000
-Message-ID: <1341518126.11154.17.camel@lade.trondhjem.org>
-References: <CAPD_G3L0wwzCWyoPJp_sKpuQ0J7+avn-ejEn-WnXf81zr=-LqA@mail.gmail.com>
-	 <2E097766-1FA2-42E1-B790-B3BBC254B705@oracle.com>
-	 <CAPD_G3Lc6F9yUOXLUcPgn1c5n=Hcs2JSXdGPhZ-CjtBLVoibbg@mail.gmail.com>
-	 <2F725B49-A089-41E9-BBC9-11B889A62C9D@oracle.com>
-	 <1341263584.8197.53.camel@lade.trondhjem.org>
-	 <6C5408EB-668A-43C9-B3FE-9D66427B5BE0@oracle.com>
-	 <CAPD_G3KojVhnjtfjN0poJvpV0i+6JZeK54rm5Swm3MDKEXQ=Zw@mail.gmail.com>
-	 <1341266386.8197.61.camel@lade.trondhjem.org>
-	 <CAPD_G3KS6unxC4qJ1YY1GM-PCbG5sXLC6-aYk6L1dq4Jd0U7MQ@mail.gmail.com>
-	 <CAPD_G3LPfHr-2zbv19tL1Bv++ThKbsoqb3XYfZ75CjCrh2Mhxw@mail.gmail.com>
-In-Reply-To: <CAPD_G3LPfHr-2zbv19tL1Bv++ThKbsoqb3XYfZ75CjCrh2Mhxw@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+	id S932714Ab2GLQiu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Jul 2012 12:38:50 -0400
+Date: Thu, 12 Jul 2012 12:38:49 -0400
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: Linux pNFS status meeting 07/12/12??
+Message-ID: <20120712163849.GD21577@fieldses.org>
+References: <4FFEF3B4.8030103@RedHat.com>
+ <4FFEFD3A.9070404@RedHat.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FFEFD3A.9070404@RedHat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA3LTA1IGF0IDIwOjIzICswMTAwLCBDaGFybGVzICdCb3lvIHdyb3RlOg0K
-PiA+PiBXaGF0IGlzbid0IGV4cGVjdGVkIGJlaGF2aW91ciBpcyBmb3IgdGhlIGNsaWVudCB0byBE
-RUxFR1JFVFVSTg0KPiA+PiBpbW1lZGlhdGVseSB1cG9uIHJlY2VpdmluZyB0aGUgZGVsZWdhdGlv
-bi4gTm9yIGlzIGl0IGV4cGVjdGVkIHRoYXQgdGhlDQo+ID4+IFJFQUQgd291bGQgZmFpbCB0byBy
-ZWNvdmVyIGluIGFuIG9yZGluYXJ5IERFTEVHUkVUVVJOIHNpdHVhdGlvbi4NCj4gPj4NCj4gPj4g
-VGhpcyBpcyB3aHkgSSdtIGludGVyZXN0ZWQgaW4gc2VlaW5nIHdoYXQgaGFwcGVuZWQgYmVmb3Jl
-IHRoZSBPUEVOLg0KPiA+Pg0KPiA+DQo+ID4gQXR0YWNoZWQgaXMgYSBtaW5pbWFsbHkgcmVkYWN0
-ZWQgdHJhY2Ugd2hpY2ggY29udGFpbnMgYWxsIHRoZSBORlMNCj4gPiBjYWxscyBhbmQgcmVzcG9u
-c2VzIGJlZm9yZSBhbmQgdGhyb3VnaCB0aGlzIHBhcnRpY3VsYXIgREVMRUdSRVRVUk4NCj4gPiAo
-ZnJhbWUgNjA4NCkuDQo+ID4gSSBhbSB1bmFibGUgdG8gcHJvdmlkZSB0aGUgZnVsbCBwYWNrZXQg
-Y2FwdHVyZSBkdWUgdG8gdGhlIHNlbnNpdGl2aXR5DQo+ID4gb2YgdGhlIGRhdGEgY29udGFpbmVk
-IHRoZXJlaW4uDQo+IA0KPiBUcm9uZCwgZGlkIHRoZSBhdHRhY2hlZCB0cmFjZSBjb25maXJtIHRo
-ZSBpc3N1ZSBhcyBzdXNwZWN0ZWQ/DQo+IA0KPiBDaGFybGVzDQoNCk5vLiBXaGF0IGlzIGhhcHBl
-bmluZyBpcyB0aGF0IHRoZSBjbGllbnQgZG9lcyBhbiBPUEVOIG9mIGZpbGUNCiJhY2NvdW50Lmlu
-Zm8iLiBJdCB0aGVuIGNsb3NlcyB0aGUgZmlsZSBhbmQgZm9yIHNvbWUgcmVhc29uIHRoYXQgSSBk
-b24ndA0KeWV0IHVuZGVyc3RhbmQsIGl0IGRlY2lkZXMgdG8gcmV0dXJuIHRoZSBkZWxlZ2F0aW9u
-Lg0KDQpUaGVuIHRoZSBhcHBsaWNhdGlvbiBkb2VzIGFub3RoZXIgT1BFTiwgd2hpY2ggcmFjZXMg
-d2l0aCB0aGUgZGVsZWdhdGlvbg0KcmV0dXJuLiBCZWNhdXNlIG9mIHRoZSByYWNlLCB0aGUgc2Vy
-dmVyIHJldHVybnMgdGhlIHNhbWUgZGVsZWdhdGlvbiBhcw0KaXQgZGlkIGluIHRoZSBmaXJzdCBv
-cGVuIGNhbGwuIFRoZSBjbGllbnQgKHdoaWNoIGhhcyBub3cgZm9yZ290dGVuIGFib3V0DQp0aGUg
-b3JpZ2luYWwgb3Blbikgc2VlcyB3aGF0IGl0IHRoaW5rcyBpcyBhIG5ldyBkZWxlZ2F0aW9uLCBh
-bmQgc28gaXQNCmFkb3B0cyBpdC4NCg0KU28gdGhpcyBleHBsYWlucyB3aHkgdGhlIFJFQURzIGVu
-ZCB1cCB0cnlpbmcgdG8gdXNlIGEgcmV0dXJuZWQNCmRlbGVnYXRpb24uIFdoYXQgcmVtYWlucyB0
-byBiZSBleHBsYWluZWQgaXM6DQoNCmEpIFdoeSBkaWQgdGhlIGNsaWVudCByZXR1cm4gdGhlIGRl
-bGVnYXRpb24gaW4gdGhlIGZpcnN0IHBsYWNlPyBJcyBpdCBpbg0Kc29tZSBleHRyZW1lIG1lbW9y
-eSBwcmVzc3VyZSBzaXR1YXRpb24sIG9yIGRvZXMgaXQgcGVyaGFwcyBoYXZlIHNvbWUNCmZ1bmt5
-IHNldHRpbmcgZm9yIC9wcm9jL3N5cy92bS92ZnNfY2FjaGVfcHJlc3N1cmU/DQoNCmIpIFdoeSBk
-b2Vzbid0IHRoZSByZWNvdmVyeSBzY2VuYXJpbyBraWNrIGluIGFuZCBkbyB0aGUgcmlnaHQgdGhp
-bmc/DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIN
-Cg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+On Thu, Jul 12, 2012 at 12:37:14PM -0400, Steve Dickson wrote:
+> See you all next week!!!
+
+By the way, I'll be on vacation next week.
+
+So I'll miss this, and also probably be ignoring email in general.
+
+--b.
