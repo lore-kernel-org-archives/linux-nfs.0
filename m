@@ -1,49 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:34236 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:39990 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932714Ab2GLQhQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Jul 2012 12:37:16 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q6CGbFA2010792
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 12 Jul 2012 12:37:15 -0400
-Message-ID: <4FFEFD3A.9070404@RedHat.com>
-Date: Thu, 12 Jul 2012 12:37:14 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Steve Dickson <SteveD@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: Linux pNFS status meeting 07/12/12??
-References: <4FFEF3B4.8030103@RedHat.com>
-In-Reply-To: <4FFEF3B4.8030103@RedHat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1758747Ab2GLGlN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Jul 2012 02:41:13 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>,
+        Sebastian Andrzej Siewior <sebastian@breakpoint.cc>,
+        Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 02/12] selinux: tag avc cache alloc as non-critical
+Date: Thu, 12 Jul 2012 07:40:56 +0100
+Message-Id: <1342075266-29593-3-git-send-email-mgorman@suse.de>
+In-Reply-To: <1342075266-29593-1-git-send-email-mgorman@suse.de>
+References: <1342075266-29593-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-See you all next week!!!
+Failing to allocate a cache entry will only harm performance not
+correctness.  Do not consume valuable reserve pages for something
+like that.
 
-steved.
+Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+Acked-by: Eric Paris <eparis@redhat.com>
+Acked-by: Rik van Riel <riel@redhat.com>
+---
+ security/selinux/avc.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-On 07/12/2012 11:56 AM, Steve Dickson wrote:
-> Its been a while since we had one of these due to the
-> 4th of July holiday here in the states and the actual
-> meeting is not scheduled until next week... 
-> 
-> But if there is some pressing business or interest
-> we could do a quick meeting in 30mins... 
->  
-> Any interest? 
-> 
-> Time: 9:30 AM PST (12:30 PM EST)
-> 
-> The call in numbers are:
-> U.S. and Canada: (800) 451-8679
-> International dial-in number: (212) 729-5016
-> Israel Toll-Free: 1-809-462-557
-> Conference code: 564.272.1552
-> 
-> steved.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/security/selinux/avc.c b/security/selinux/avc.c
+index 68d82da..4d3fab4 100644
+--- a/security/selinux/avc.c
++++ b/security/selinux/avc.c
+@@ -274,7 +274,7 @@ static struct avc_node *avc_alloc_node(void)
+ {
+ 	struct avc_node *node;
+ 
+-	node = kmem_cache_zalloc(avc_node_cachep, GFP_ATOMIC);
++	node = kmem_cache_zalloc(avc_node_cachep, GFP_ATOMIC|__GFP_NOMEMALLOC);
+ 	if (!node)
+ 		goto out;
+ 
+-- 
+1.7.9.2
+
