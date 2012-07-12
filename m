@@ -1,112 +1,170 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:56833 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:40103 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755191Ab2GLQCm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Jul 2012 12:02:42 -0400
-Message-ID: <4FFEF51E.2060809@netapp.com>
-Date: Thu, 12 Jul 2012 12:02:38 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        devel@openvz.org
-Subject: Re: [PATCH v2] NFSd: fix locking in nfsd_forget_delegations()
-References: <20120525143843.15863.27213.stgit@localhost.localdomain> <20120712154331.GC21577@fieldses.org>
-In-Reply-To: <20120712154331.GC21577@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1758755Ab2GLGlX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Jul 2012 02:41:23 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>,
+        Sebastian Andrzej Siewior <sebastian@breakpoint.cc>,
+        Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 09/12] nfs: disable data cache revalidation for swapfiles
+Date: Thu, 12 Jul 2012 07:41:03 +0100
+Message-Id: <1342075266-29593-10-git-send-email-mgorman@suse.de>
+In-Reply-To: <1342075266-29593-1-git-send-email-mgorman@suse.de>
+References: <1342075266-29593-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/12/2012 11:43 AM, J. Bruce Fields wrote:
-> On Fri, May 25, 2012 at 06:38:50PM +0400, Stanislav Kinsbursky wrote:
->> v2: dl_recall_lru list is used for delegations collect because it's modified
->> both in unhash_delegation() and nfsd_break_one_deleg().
->>
->> This patch adds recall_lock hold to nfsd_forget_delegations() to protect
->> nfsd_process_n_delegations() call.
->> Also, looks like it would be better to collect delegations to some local
->> on-stack list, and then unhash collected list. This split allows to
->> simplify locking, because delegation traversing is protected by recall_lock,
->> when delegation unhash is protected by client_mutex.
-> 
-> Thanks, applying for 3.6 (assuming Bryan doesn't have any objection).
+The VM does not like PG_private set on PG_swapcache pages. As suggested
+by Trond in http://lkml.org/lkml/2006/8/25/348, this patch disables
+NFS data cache revalidation on swap files.  as it does not make
+sense to have other clients change the file while it is being used as
+swap. This avoids setting PG_private on swap pages, since there ought
+to be no further races with invalidate_inode_pages2() to deal with.
 
-Nope, I don't have any objections.
+Since we cannot set PG_private we cannot use page->private which
+is already used by PG_swapcache pages to store the nfs_page. Thus
+augment the new nfs_page_find_request logic.
 
-- Bryan
+Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+Acked-by: Rik van Riel <riel@redhat.com>
+---
+ fs/nfs/inode.c |    4 ++++
+ fs/nfs/write.c |   49 +++++++++++++++++++++++++++++++++++--------------
+ 2 files changed, 39 insertions(+), 14 deletions(-)
 
-> 
-> --b.
-> 
->>
->> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
->> ---
->>  fs/nfsd/nfs4state.c |   21 +++++++++++++++++----
->>  1 files changed, 17 insertions(+), 4 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index 21266c7..3d6848b 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -4694,7 +4694,7 @@ void nfsd_forget_openowners(u64 num)
->>  	printk(KERN_INFO "NFSD: Forgot %d open owners", count);
->>  }
->>  
->> -int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegation *))
->> +int nfsd_process_n_delegations(u64 num, struct list_head *list)
->>  {
->>  	int i, count = 0;
->>  	struct nfs4_file *fp, *fnext;
->> @@ -4703,7 +4703,7 @@ int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegatio
->>  	for (i = 0; i < FILE_HASH_SIZE; i++) {
->>  		list_for_each_entry_safe(fp, fnext, &file_hashtbl[i], fi_hash) {
->>  			list_for_each_entry_safe(dp, dnext, &fp->fi_delegations, dl_perfile) {
->> -				deleg_func(dp);
->> +				list_move(&dp->dl_recall_lru, list);
->>  				if (++count == num)
->>  					return count;
->>  			}
->> @@ -4716,9 +4716,16 @@ int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegatio
->>  void nfsd_forget_delegations(u64 num)
->>  {
->>  	unsigned int count;
->> +	LIST_HEAD(victims);
->> +	struct nfs4_delegation *dp, *dnext;
->> +
->> +	spin_lock(&recall_lock);
->> +	count = nfsd_process_n_delegations(num, &victims);
->> +	spin_unlock(&recall_lock);
->>  
->>  	nfs4_lock_state();
->> -	count = nfsd_process_n_delegations(num, unhash_delegation);
->> +	list_for_each_entry_safe(dp, dnext, &victims, dl_recall_lru)
->> +		unhash_delegation(dp);
->>  	nfs4_unlock_state();
->>  
->>  	printk(KERN_INFO "NFSD: Forgot %d delegations", count);
->> @@ -4727,10 +4734,16 @@ void nfsd_forget_delegations(u64 num)
->>  void nfsd_recall_delegations(u64 num)
->>  {
->>  	unsigned int count;
->> +	LIST_HEAD(victims);
->> +	struct nfs4_delegation *dp, *dnext;
->>  
->>  	nfs4_lock_state();
->>  	spin_lock(&recall_lock);
->> -	count = nfsd_process_n_delegations(num, nfsd_break_one_deleg);
->> +	count = nfsd_process_n_delegations(num, &victims);
->> +	list_for_each_entry_safe(dp, dnext, &victims, dl_recall_lru) {
->> +		list_del(&dp->dl_recall_lru);
->> +		nfsd_break_one_deleg(dp);
->> +	}
->>  	spin_unlock(&recall_lock);
->>  	nfs4_unlock_state();
->>  
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 4d02a25..3db1ab7 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -883,6 +883,10 @@ int nfs_revalidate_mapping(struct inode *inode, struct address_space *mapping)
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+ 	int ret = 0;
+ 
++	/* swapfiles are not supposed to be shared. */
++	if (IS_SWAPFILE(inode))
++		goto out;
++
+ 	if (nfs_mapping_need_revalidate_inode(inode)) {
+ 		ret = __nfs_revalidate_inode(NFS_SERVER(inode), inode);
+ 		if (ret < 0)
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index d0feca3..974e9c2 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -139,15 +139,28 @@ static void nfs_context_set_write_error(struct nfs_open_context *ctx, int error)
+ 	set_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
+ }
+ 
+-static struct nfs_page *nfs_page_find_request_locked(struct page *page)
++static struct nfs_page *
++nfs_page_find_request_locked(struct nfs_inode *nfsi, struct page *page)
+ {
+ 	struct nfs_page *req = NULL;
+ 
+-	if (PagePrivate(page)) {
++	if (PagePrivate(page))
+ 		req = (struct nfs_page *)page_private(page);
+-		if (req != NULL)
+-			kref_get(&req->wb_kref);
++	else if (unlikely(PageSwapCache(page))) {
++		struct nfs_page *freq, *t;
++
++		/* Linearly search the commit list for the correct req */
++		list_for_each_entry_safe(freq, t, &nfsi->commit_info.list, wb_list) {
++			if (freq->wb_page == page) {
++				req = freq;
++				break;
++			}
++		}
+ 	}
++
++	if (req)
++		kref_get(&req->wb_kref);
++
+ 	return req;
+ }
+ 
+@@ -157,7 +170,7 @@ static struct nfs_page *nfs_page_find_request(struct page *page)
+ 	struct nfs_page *req = NULL;
+ 
+ 	spin_lock(&inode->i_lock);
+-	req = nfs_page_find_request_locked(page);
++	req = nfs_page_find_request_locked(NFS_I(inode), page);
+ 	spin_unlock(&inode->i_lock);
+ 	return req;
+ }
+@@ -258,7 +271,7 @@ static struct nfs_page *nfs_find_and_lock_request(struct page *page, bool nonblo
+ 
+ 	spin_lock(&inode->i_lock);
+ 	for (;;) {
+-		req = nfs_page_find_request_locked(page);
++		req = nfs_page_find_request_locked(NFS_I(inode), page);
+ 		if (req == NULL)
+ 			break;
+ 		if (nfs_lock_request(req))
+@@ -413,9 +426,15 @@ static void nfs_inode_add_request(struct inode *inode, struct nfs_page *req)
+ 	spin_lock(&inode->i_lock);
+ 	if (!nfsi->npages && NFS_PROTO(inode)->have_delegation(inode, FMODE_WRITE))
+ 		inode->i_version++;
+-	set_bit(PG_MAPPED, &req->wb_flags);
+-	SetPagePrivate(req->wb_page);
+-	set_page_private(req->wb_page, (unsigned long)req);
++	/*
++	 * Swap-space should not get truncated. Hence no need to plug the race
++	 * with invalidate/truncate.
++	 */
++	if (likely(!PageSwapCache(req->wb_page))) {
++		set_bit(PG_MAPPED, &req->wb_flags);
++		SetPagePrivate(req->wb_page);
++		set_page_private(req->wb_page, (unsigned long)req);
++	}
+ 	nfsi->npages++;
+ 	kref_get(&req->wb_kref);
+ 	spin_unlock(&inode->i_lock);
+@@ -432,9 +451,11 @@ static void nfs_inode_remove_request(struct nfs_page *req)
+ 	BUG_ON (!NFS_WBACK_BUSY(req));
+ 
+ 	spin_lock(&inode->i_lock);
+-	set_page_private(req->wb_page, 0);
+-	ClearPagePrivate(req->wb_page);
+-	clear_bit(PG_MAPPED, &req->wb_flags);
++	if (likely(!PageSwapCache(req->wb_page))) {
++		set_page_private(req->wb_page, 0);
++		ClearPagePrivate(req->wb_page);
++		clear_bit(PG_MAPPED, &req->wb_flags);
++	}
+ 	nfsi->npages--;
+ 	spin_unlock(&inode->i_lock);
+ 	nfs_release_request(req);
+@@ -730,7 +751,7 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
+ 	spin_lock(&inode->i_lock);
+ 
+ 	for (;;) {
+-		req = nfs_page_find_request_locked(page);
++		req = nfs_page_find_request_locked(NFS_I(inode), page);
+ 		if (req == NULL)
+ 			goto out_unlock;
+ 
+@@ -1744,7 +1765,7 @@ int nfs_wb_page_cancel(struct inode *inode, struct page *page)
+  */
+ int nfs_wb_page(struct inode *inode, struct page *page)
+ {
+-	loff_t range_start = page_offset(page);
++	loff_t range_start = page_file_offset(page);
+ 	loff_t range_end = range_start + (loff_t)(PAGE_CACHE_SIZE - 1);
+ 	struct writeback_control wbc = {
+ 		.sync_mode = WB_SYNC_ALL,
+-- 
+1.7.9.2
 
