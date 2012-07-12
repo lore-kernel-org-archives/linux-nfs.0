@@ -1,59 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:58363 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752558Ab2GZLzt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 07:55:49 -0400
-Received: by mail-yx0-f174.google.com with SMTP id l2so1826947yen.19
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jul 2012 04:55:49 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v4 15/17] vfs: remove user_path_parent
-Date: Thu, 26 Jul 2012 07:55:18 -0400
-Message-Id: <1343303720-11199-16-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
-References: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
+Received: from cantor2.suse.de ([195.135.220.15]:40150 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758795Ab2GLGl1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Jul 2012 02:41:27 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>,
+        Sebastian Andrzej Siewior <sebastian@breakpoint.cc>,
+        Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 12/12] Avoid dereferencing bd_disk during swap_entry_free for network storage
+Date: Thu, 12 Jul 2012 07:41:06 +0100
+Message-Id: <1342075266-29593-13-git-send-email-mgorman@suse.de>
+In-Reply-To: <1342075266-29593-1-git-send-email-mgorman@suse.de>
+References: <1342075266-29593-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...there are no more callers.
+Commit [b3a27d: swap: Add swap slot free callback to
+block_device_operations] dereferences p->bdev->bd_disk but this is a
+NULL dereference if using swap-over-NFS. This patch checks SWP_BLKDEV
+on the swap_info_struct before dereferencing.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+With reference to this callback, Christoph Hellwig stated "Please
+just remove the callback entirely.  It has no user outside the staging
+tree and was added clearly against the rules for that staging tree".
+This would also be my preference but there was not an obvious way of
+keeping zram in staging/ happy.
+
+Signed-off-by: Xiaotian Feng <dfeng@redhat.com>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+Acked-by: Rik van Riel <riel@redhat.com>
 ---
- fs/namei.c | 18 ------------------
- 1 file changed, 18 deletions(-)
+ mm/swapfile.c |    9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 7cf5e91..862ec6f 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2003,24 +2003,6 @@ int user_path_at(int dfd, const char __user *name, unsigned flags,
- 	return err;
- }
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index 1d77b13..f4c802d 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -549,7 +549,6 @@ static unsigned char swap_entry_free(struct swap_info_struct *p,
  
--static int user_path_parent(int dfd, const char __user *path,
--			struct nameidata *nd, char **name)
--{
--	char *s = getname(path);
--	int error;
--
--	if (IS_ERR(s))
--		return PTR_ERR(s);
--
--	error = do_path_lookup(dfd, s, LOOKUP_PARENT, nd);
--	if (error)
--		putname(s);
--	else
--		*name = s;
--
--	return error;
--}
--
- /*
-  * It's inline, so penalty for filesystems that don't use sticky bit is
-  * minimal.
+ 	/* free if no reference */
+ 	if (!usage) {
+-		struct gendisk *disk = p->bdev->bd_disk;
+ 		if (offset < p->lowest_bit)
+ 			p->lowest_bit = offset;
+ 		if (offset > p->highest_bit)
+@@ -560,9 +559,11 @@ static unsigned char swap_entry_free(struct swap_info_struct *p,
+ 		nr_swap_pages++;
+ 		p->inuse_pages--;
+ 		frontswap_invalidate_page(p->type, offset);
+-		if ((p->flags & SWP_BLKDEV) &&
+-				disk->fops->swap_slot_free_notify)
+-			disk->fops->swap_slot_free_notify(p->bdev, offset);
++		if (p->flags & SWP_BLKDEV) {
++			struct gendisk *disk = p->bdev->bd_disk;
++			if (disk->fops->swap_slot_free_notify)
++				disk->fops->swap_slot_free_notify(p->bdev, offset);
++		}
+ 	}
+ 
+ 	return usage;
 -- 
-1.7.11.2
+1.7.9.2
 
