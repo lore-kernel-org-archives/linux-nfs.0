@@ -1,99 +1,312 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:33480 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:40052 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752797Ab2GPUJd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Jul 2012 16:09:33 -0400
-Received: from vmwexceht03-prd.hq.netapp.com (vmwexceht03-prd.hq.netapp.com [10.106.76.241])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q6GK9H5m014611
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Jul 2012 13:09:17 -0700 (PDT)
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] SUNRPC handle EKEYEXPIRED in call_refreshresult
-Date: Mon, 16 Jul 2012 20:09:16 +0000
-Message-ID: <AAE0FE67-5E1F-49C8-BFFA-5BA88E25C226@netapp.com>
-References: <1340827535-3062-1-git-send-email-andros@netapp.com>
- <1340827535-3062-2-git-send-email-andros@netapp.com>
- <1342464245.4648.23.camel@lade.trondhjem.org>
-In-Reply-To: <1342464245.4648.23.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+	id S1758759Ab2GLGlS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Jul 2012 02:41:18 -0400
+From: Mel Gorman <mgorman@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Mike Christie <michaelc@cs.wisc.edu>,
+        Eric B Munson <emunson@mgebm.net>,
+        Sebastian Andrzej Siewior <sebastian@breakpoint.cc>,
+        Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 05/12] mm: swap: Implement generic handler for swap_activate
+Date: Thu, 12 Jul 2012 07:40:59 +0100
+Message-Id: <1342075266-29593-6-git-send-email-mgorman@suse.de>
+In-Reply-To: <1342075266-29593-1-git-send-email-mgorman@suse.de>
+References: <1342075266-29593-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The version of swap_activate introduced is sufficient for swap-over-NFS
+but would not provide enough information to implement a generic handler.
+This patch shuffles things slightly to ensure the same information is
+available for aops->swap_activate() as is available to the core.
 
-On Jul 16, 2012, at 2:44 PM, Myklebust, Trond wrote:
+No functionality change.
 
-> On Wed, 2012-06-27 at 16:05 -0400, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
->> 
->> When an RPCSEC_GSS context has expired or is non-existent, and the user
->> (Kerberos) credentials have also expired or are non-existent, the client
->> retries to refresh the context for ever and the application
->> hangs. The user is not prompted to refresh/establish their credentials.
->> 
->> Move the -EKEYEXPIRED handling into the RPC layer. Try tk_cred_retry number
->> of times to refresh the gss_context, and then pass -EPERM to application.
->> 
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->> fs/nfs/nfs4proc.c |    2 --
->> net/sunrpc/clnt.c |    4 ++++
->> 2 files changed, 4 insertions(+), 2 deletions(-)
->> 
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index 5a7b372..2f291b3 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -342,7 +342,6 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
->> 			}
->> 		case -NFS4ERR_GRACE:
->> 		case -NFS4ERR_DELAY:
->> -		case -EKEYEXPIRED:
->> 			ret = nfs4_delay(server->client, &exception->timeout);
->> 			if (ret != 0)
->> 				break;
->> @@ -3939,7 +3938,6 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
->> 		case -NFS4ERR_DELAY:
->> 			nfs_inc_server_stats(server, NFSIOS_DELAY);
->> 		case -NFS4ERR_GRACE:
->> -		case -EKEYEXPIRED:
->> 			rpc_delay(task, NFS4_POLL_RETRY_MAX);
->> 			task->tk_status = 0;
->> 			return -EAGAIN;
->> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
->> index f56f045..a94fc0c 100644
->> --- a/net/sunrpc/clnt.c
->> +++ b/net/sunrpc/clnt.c
->> @@ -1334,8 +1334,12 @@ call_refreshresult(struct rpc_task *task)
->> 		return;
->> 	case -ETIMEDOUT:
->> 		rpc_delay(task, 3*HZ);
->> +	case -EKEYEXPIRED:
->> +		status = -EPERM;
-> 
-> This needs to be EACCES…
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+Acked-by: Rik van Riel <riel@redhat.com>
+---
+ include/linux/fs.h   |    6 ++--
+ include/linux/swap.h |    5 +++
+ mm/page_io.c         |   92 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ mm/swapfile.c        |   91 +++----------------------------------------------
+ 4 files changed, 106 insertions(+), 88 deletions(-)
 
-Agreed. I'll also remove all -EKEYEXPIRED handling from NFS.
-
--->Andy
-
-> 
->> +		goto cred_retry;
->> 	case -EAGAIN:
->> 		status = -EACCES;
->> +cred_retry:
->> 		if (!task->tk_cred_retry)
->> 			break;
->> 		task->tk_cred_retry--;
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 5d53f03..6d269ba 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -427,6 +427,7 @@ struct kstatfs;
+ struct vm_area_struct;
+ struct vfsmount;
+ struct cred;
++struct swap_info_struct;
+ 
+ extern void __init inode_init(void);
+ extern void __init inode_init_early(void);
+@@ -640,8 +641,9 @@ struct address_space_operations {
+ 	int (*error_remove_page)(struct address_space *, struct page *);
+ 
+ 	/* swapfile support */
+-	int (*swap_activate)(struct file *file);
+-	int (*swap_deactivate)(struct file *file);
++	int (*swap_activate)(struct swap_info_struct *sis, struct file *file,
++				sector_t *span);
++	void (*swap_deactivate)(struct file *file);
+ };
+ 
+ extern const struct address_space_operations empty_aops;
+diff --git a/include/linux/swap.h b/include/linux/swap.h
+index 468fd4a..d0d720b 100644
+--- a/include/linux/swap.h
++++ b/include/linux/swap.h
+@@ -324,6 +324,11 @@ extern int swap_writepage(struct page *page, struct writeback_control *wbc);
+ extern int swap_set_page_dirty(struct page *page);
+ extern void end_swap_bio_read(struct bio *bio, int err);
+ 
++int add_swap_extent(struct swap_info_struct *sis, unsigned long start_page,
++		unsigned long nr_pages, sector_t start_block);
++int generic_swapfile_activate(struct swap_info_struct *, struct file *,
++		sector_t *);
++
+ /* linux/mm/swap_state.c */
+ extern struct address_space swapper_space;
+ #define total_swapcache_pages  swapper_space.nrpages
+diff --git a/mm/page_io.c b/mm/page_io.c
+index 307a3e7..4a37962 100644
+--- a/mm/page_io.c
++++ b/mm/page_io.c
+@@ -87,6 +87,98 @@ void end_swap_bio_read(struct bio *bio, int err)
+ 	bio_put(bio);
+ }
+ 
++int generic_swapfile_activate(struct swap_info_struct *sis,
++				struct file *swap_file,
++				sector_t *span)
++{
++	struct address_space *mapping = swap_file->f_mapping;
++	struct inode *inode = mapping->host;
++	unsigned blocks_per_page;
++	unsigned long page_no;
++	unsigned blkbits;
++	sector_t probe_block;
++	sector_t last_block;
++	sector_t lowest_block = -1;
++	sector_t highest_block = 0;
++	int nr_extents = 0;
++	int ret;
++
++	blkbits = inode->i_blkbits;
++	blocks_per_page = PAGE_SIZE >> blkbits;
++
++	/*
++	 * Map all the blocks into the extent list.  This code doesn't try
++	 * to be very smart.
++	 */
++	probe_block = 0;
++	page_no = 0;
++	last_block = i_size_read(inode) >> blkbits;
++	while ((probe_block + blocks_per_page) <= last_block &&
++			page_no < sis->max) {
++		unsigned block_in_page;
++		sector_t first_block;
++
++		first_block = bmap(inode, probe_block);
++		if (first_block == 0)
++			goto bad_bmap;
++
++		/*
++		 * It must be PAGE_SIZE aligned on-disk
++		 */
++		if (first_block & (blocks_per_page - 1)) {
++			probe_block++;
++			goto reprobe;
++		}
++
++		for (block_in_page = 1; block_in_page < blocks_per_page;
++					block_in_page++) {
++			sector_t block;
++
++			block = bmap(inode, probe_block + block_in_page);
++			if (block == 0)
++				goto bad_bmap;
++			if (block != first_block + block_in_page) {
++				/* Discontiguity */
++				probe_block++;
++				goto reprobe;
++			}
++		}
++
++		first_block >>= (PAGE_SHIFT - blkbits);
++		if (page_no) {	/* exclude the header page */
++			if (first_block < lowest_block)
++				lowest_block = first_block;
++			if (first_block > highest_block)
++				highest_block = first_block;
++		}
++
++		/*
++		 * We found a PAGE_SIZE-length, PAGE_SIZE-aligned run of blocks
++		 */
++		ret = add_swap_extent(sis, page_no, 1, first_block);
++		if (ret < 0)
++			goto out;
++		nr_extents += ret;
++		page_no++;
++		probe_block += blocks_per_page;
++reprobe:
++		continue;
++	}
++	ret = nr_extents;
++	*span = 1 + highest_block - lowest_block;
++	if (page_no == 0)
++		page_no = 1;	/* force Empty message */
++	sis->max = page_no;
++	sis->pages = page_no - 1;
++	sis->highest_bit = page_no - 1;
++out:
++	return ret;
++bad_bmap:
++	printk(KERN_ERR "swapon: swapfile has holes\n");
++	ret = -EINVAL;
++	goto out;
++}
++
+ /*
+  * We may have stale swap cache pages in memory: notice
+  * them here and get rid of the unnecessary final write.
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index b8b5861..1d77b13 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -1358,7 +1358,7 @@ static void destroy_swap_extents(struct swap_info_struct *sis)
+  *
+  * This function rather assumes that it is called in ascending page order.
+  */
+-static int
++int
+ add_swap_extent(struct swap_info_struct *sis, unsigned long start_page,
+ 		unsigned long nr_pages, sector_t start_block)
+ {
+@@ -1434,106 +1434,25 @@ static int setup_swap_extents(struct swap_info_struct *sis, sector_t *span)
+ 	struct file *swap_file = sis->swap_file;
+ 	struct address_space *mapping = swap_file->f_mapping;
+ 	struct inode *inode = mapping->host;
+-	unsigned blocks_per_page;
+-	unsigned long page_no;
+-	unsigned blkbits;
+-	sector_t probe_block;
+-	sector_t last_block;
+-	sector_t lowest_block = -1;
+-	sector_t highest_block = 0;
+-	int nr_extents = 0;
+ 	int ret;
+ 
+ 	if (S_ISBLK(inode->i_mode)) {
+ 		ret = add_swap_extent(sis, 0, sis->max, 0);
+ 		*span = sis->pages;
+-		goto out;
++		return ret;
+ 	}
+ 
+ 	if (mapping->a_ops->swap_activate) {
+-		ret = mapping->a_ops->swap_activate(swap_file);
++		ret = mapping->a_ops->swap_activate(sis, swap_file, span);
+ 		if (!ret) {
+ 			sis->flags |= SWP_FILE;
+ 			ret = add_swap_extent(sis, 0, sis->max, 0);
+ 			*span = sis->pages;
+ 		}
+-		goto out;
++		return ret;
+ 	}
+ 
+-	blkbits = inode->i_blkbits;
+-	blocks_per_page = PAGE_SIZE >> blkbits;
+-
+-	/*
+-	 * Map all the blocks into the extent list.  This code doesn't try
+-	 * to be very smart.
+-	 */
+-	probe_block = 0;
+-	page_no = 0;
+-	last_block = i_size_read(inode) >> blkbits;
+-	while ((probe_block + blocks_per_page) <= last_block &&
+-			page_no < sis->max) {
+-		unsigned block_in_page;
+-		sector_t first_block;
+-
+-		first_block = bmap(inode, probe_block);
+-		if (first_block == 0)
+-			goto bad_bmap;
+-
+-		/*
+-		 * It must be PAGE_SIZE aligned on-disk
+-		 */
+-		if (first_block & (blocks_per_page - 1)) {
+-			probe_block++;
+-			goto reprobe;
+-		}
+-
+-		for (block_in_page = 1; block_in_page < blocks_per_page;
+-					block_in_page++) {
+-			sector_t block;
+-
+-			block = bmap(inode, probe_block + block_in_page);
+-			if (block == 0)
+-				goto bad_bmap;
+-			if (block != first_block + block_in_page) {
+-				/* Discontiguity */
+-				probe_block++;
+-				goto reprobe;
+-			}
+-		}
+-
+-		first_block >>= (PAGE_SHIFT - blkbits);
+-		if (page_no) {	/* exclude the header page */
+-			if (first_block < lowest_block)
+-				lowest_block = first_block;
+-			if (first_block > highest_block)
+-				highest_block = first_block;
+-		}
+-
+-		/*
+-		 * We found a PAGE_SIZE-length, PAGE_SIZE-aligned run of blocks
+-		 */
+-		ret = add_swap_extent(sis, page_no, 1, first_block);
+-		if (ret < 0)
+-			goto out;
+-		nr_extents += ret;
+-		page_no++;
+-		probe_block += blocks_per_page;
+-reprobe:
+-		continue;
+-	}
+-	ret = nr_extents;
+-	*span = 1 + highest_block - lowest_block;
+-	if (page_no == 0)
+-		page_no = 1;	/* force Empty message */
+-	sis->max = page_no;
+-	sis->pages = page_no - 1;
+-	sis->highest_bit = page_no - 1;
+-out:
+-	return ret;
+-bad_bmap:
+-	printk(KERN_ERR "swapon: swapfile has holes\n");
+-	ret = -EINVAL;
+-	goto out;
++	return generic_swapfile_activate(sis, swap_file, span);
+ }
+ 
+ static void enable_swap_info(struct swap_info_struct *p, int prio,
+-- 
+1.7.9.2
 
