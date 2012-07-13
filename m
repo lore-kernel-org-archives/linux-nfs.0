@@ -1,188 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:42459 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753473Ab2GWR66 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jul 2012 13:58:58 -0400
-Received: by gglu4 with SMTP id u4so5754374ggl.19
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Jul 2012 10:58:57 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: skip commit in releasepage if we're freeing memory for fs-related reasons
-Date: Mon, 23 Jul 2012 13:58:51 -0400
-Message-Id: <1343066331-26509-1-git-send-email-jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:2215 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932103Ab2GMPzr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Jul 2012 11:55:47 -0400
+Subject: Re: [PATCH 0/4] Add support for new RPCSEC_GSS upcall mechanism
+ for nfsd
+From: Simo Sorce <simo@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+In-Reply-To: <20120713154500.GB32660@fieldses.org>
+References: <1337983796-26476-1-git-send-email-simo@redhat.com>
+	 <20120713154500.GB32660@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 13 Jul 2012 11:55:45 -0400
+Message-ID: <1342194945.2718.66.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We've had some reports of a deadlock where rpciod ends up with a stack
-trace like this:
+On Fri, 2012-07-13 at 11:45 -0400, J. Bruce Fields wrote:
+> On Fri, May 25, 2012 at 06:09:52PM -0400, Simo Sorce wrote:
+> > This patchset implements a new upcall mechanism that uses the sunrpc
+> > client to talk to gssproxy[1], a new userspace daemon that handles gssapi
+> > operations on behalf of other processes on the system.
+> > 
+> > The main driver for this new mechanism is to overcome limitations with
+> > the current daemon and upcall. The current code cannot handle tickets
+> > larger than approximatively 2k and cannot handle sending back large user
+> > credential sets to the kernel.
+> > 
+> > These patches have been tested against the development version of gssproxy
+> > tagged as kernel_v0.1 in the master repo[2].
+> > 
+> > I have tested walking into mountpoints using tickets artificially pumped
+> > up to 64k and the user is properly authorized, after the accept_se_context
+> > call is performed through the new upcall mechanism and gssproxy.
+> > 
+> > The gssproxy has the potential of handling also init_sec_context calls,
+> > but at the moment the only targeted system is nfsd.
+> 
+> Something I forgot to ask about.  (Or I did ask and forgot to take notes
+> on the answer!): how is gssproxy doing the principal->(uid, gid's)
+> mapping?
+> 
+> (svcgssd uses libnfsidmap--which I don't particularly like, but if
+> gssproxy is doing something different then we need to figure out how the
+> transition will work).
 
-    PID: 2507   TASK: ffff88103691ab40  CPU: 14  COMMAND: "rpciod/14"
-     #0 [ffff8810343bf2f0] schedule at ffffffff814dabd9
-     #1 [ffff8810343bf3b8] nfs_wait_bit_killable at ffffffffa038fc04 [nfs]
-     #2 [ffff8810343bf3c8] __wait_on_bit at ffffffff814dbc2f
-     #3 [ffff8810343bf418] out_of_line_wait_on_bit at ffffffff814dbcd8
-     #4 [ffff8810343bf488] nfs_commit_inode at ffffffffa039e0c1 [nfs]
-     #5 [ffff8810343bf4f8] nfs_release_page at ffffffffa038bef6 [nfs]
-     #6 [ffff8810343bf528] try_to_release_page at ffffffff8110c670
-     #7 [ffff8810343bf538] shrink_page_list.clone.0 at ffffffff81126271
-     #8 [ffff8810343bf668] shrink_inactive_list at ffffffff81126638
-     #9 [ffff8810343bf818] shrink_zone at ffffffff8112788f
-    #10 [ffff8810343bf8c8] do_try_to_free_pages at ffffffff81127b1e
-    #11 [ffff8810343bf958] try_to_free_pages at ffffffff8112812f
-    #12 [ffff8810343bfa08] __alloc_pages_nodemask at ffffffff8111fdad
-    #13 [ffff8810343bfb28] kmem_getpages at ffffffff81159942
-    #14 [ffff8810343bfb58] fallback_alloc at ffffffff8115a55a
-    #15 [ffff8810343bfbd8] ____cache_alloc_node at ffffffff8115a2d9
-    #16 [ffff8810343bfc38] kmem_cache_alloc at ffffffff8115b09b
-    #17 [ffff8810343bfc78] sk_prot_alloc at ffffffff81411808
-    #18 [ffff8810343bfcb8] sk_alloc at ffffffff8141197c
-    #19 [ffff8810343bfce8] inet_create at ffffffff81483ba6
-    #20 [ffff8810343bfd38] __sock_create at ffffffff8140b4a7
-    #21 [ffff8810343bfd98] xs_create_sock at ffffffffa01f649b [sunrpc]
-    #22 [ffff8810343bfdd8] xs_tcp_setup_socket at ffffffffa01f6965 [sunrpc]
-    #23 [ffff8810343bfe38] worker_thread at ffffffff810887d0
-    #24 [ffff8810343bfee8] kthread at ffffffff8108dd96
-    #25 [ffff8810343bff48] kernel_thread at ffffffff8100c1ca
+At the moment gss-proxy uses the standard gss_localname() function to
+find out what user a principal maps to. Then a normal getpwnam() to get
+the user's ids followed by a getgrouplist() for the groups.
 
-rpciod is trying to allocate memory for a new socket to talk to the
-server. The VM ends up calling ->releasepage to get more memory, and it
-tries to do a blocking commit. That commit can't succeed however without
-a connected socket, so we deadlock.
+I thought of using libnfsidmap but to be honest it makes little sense,
+it is its own island of configuration that is different from the rest of
+the system and I could not figure out why nfs should behave differently
+from the rest of the system.
 
-Fix this by setting PF_FSTRANS on the workqueue task prior to doing the
-socket allocation, and having nfs_release_page check for that flag when
-deciding whether to do a commit call. Also, set PF_FSTRANS
-unconditionally in rpc_async_schedule since that function can also do
-allocations sometimes.
+If there is a good reason I can link against the library in gss-proxy,
+although I'd rather take the ball for unifying mapping so that it
+behaves uniformly across the system rather than keeping custom mappings
+that may different between apps and filesystem.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/file.c                   |    7 +++++--
- net/sunrpc/sched.c              |    2 ++
- net/sunrpc/xprtrdma/transport.c |    3 ++-
- net/sunrpc/xprtsock.c           |   10 ++++++++++
- 4 files changed, 19 insertions(+), 3 deletions(-)
+Simo.
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index a6708e6b..9075769 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -459,8 +459,11 @@ static int nfs_release_page(struct page *page, gfp_t gfp)
- 
- 	dfprintk(PAGECACHE, "NFS: release_page(%p)\n", page);
- 
--	/* Only do I/O if gfp is a superset of GFP_KERNEL */
--	if (mapping && (gfp & GFP_KERNEL) == GFP_KERNEL) {
-+	/* Only do I/O if gfp is a superset of GFP_KERNEL, and we're not
-+	 * doing this memory reclaim for a fs-related allocation.
-+	 */
-+	if (mapping && (gfp & GFP_KERNEL) == GFP_KERNEL &&
-+	    !(current->flags & PF_FSTRANS)) {
- 		int how = FLUSH_SYNC;
- 
- 		/* Don't let kswapd deadlock waiting for OOM RPC calls */
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 994cfea..eda32ae 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -790,7 +790,9 @@ void rpc_execute(struct rpc_task *task)
- 
- static void rpc_async_schedule(struct work_struct *work)
- {
-+	current->flags |= PF_FSTRANS;
- 	__rpc_execute(container_of(work, struct rpc_task, u.tk_work));
-+	current->flags &= ~PF_FSTRANS;
- }
- 
- /**
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index b446e10..06cdbff 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -200,6 +200,7 @@ xprt_rdma_connect_worker(struct work_struct *work)
- 	int rc = 0;
- 
- 	if (!xprt->shutdown) {
-+		current->flags |= PF_FSTRANS;
- 		xprt_clear_connected(xprt);
- 
- 		dprintk("RPC:       %s: %sconnect\n", __func__,
-@@ -212,10 +213,10 @@ xprt_rdma_connect_worker(struct work_struct *work)
- 
- out:
- 	xprt_wake_pending_tasks(xprt, rc);
--
- out_clear:
- 	dprintk("RPC:       %s: exit\n", __func__);
- 	xprt_clear_connecting(xprt);
-+	current->flags &= ~PF_FSTRANS;
- }
- 
- /*
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 890b03f..b88c6bf 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1895,6 +1895,8 @@ static void xs_local_setup_socket(struct work_struct *work)
- 	if (xprt->shutdown)
- 		goto out;
- 
-+	current->flags |= PF_FSTRANS;
-+
- 	clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
- 	status = __sock_create(xprt->xprt_net, AF_LOCAL,
- 					SOCK_STREAM, 0, &sock, 1);
-@@ -1928,6 +1930,7 @@ static void xs_local_setup_socket(struct work_struct *work)
- out:
- 	xprt_clear_connecting(xprt);
- 	xprt_wake_pending_tasks(xprt, status);
-+	current->flags &= ~PF_FSTRANS;
- }
- 
- static void xs_udp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
-@@ -1970,6 +1973,8 @@ static void xs_udp_setup_socket(struct work_struct *work)
- 	if (xprt->shutdown)
- 		goto out;
- 
-+	current->flags |= PF_FSTRANS;
-+
- 	/* Start by resetting any existing state */
- 	xs_reset_transport(transport);
- 	sock = xs_create_sock(xprt, transport,
-@@ -1988,6 +1993,7 @@ static void xs_udp_setup_socket(struct work_struct *work)
- out:
- 	xprt_clear_connecting(xprt);
- 	xprt_wake_pending_tasks(xprt, status);
-+	current->flags &= ~PF_FSTRANS;
- }
- 
- /*
-@@ -2113,6 +2119,8 @@ static void xs_tcp_setup_socket(struct work_struct *work)
- 	if (xprt->shutdown)
- 		goto out;
- 
-+	current->flags |= PF_FSTRANS;
-+
- 	if (!sock) {
- 		clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
- 		sock = xs_create_sock(xprt, transport,
-@@ -2162,6 +2170,7 @@ static void xs_tcp_setup_socket(struct work_struct *work)
- 	case -EINPROGRESS:
- 	case -EALREADY:
- 		xprt_clear_connecting(xprt);
-+		current->flags &= ~PF_FSTRANS;
- 		return;
- 	case -EINVAL:
- 		/* Happens, for instance, if the user specified a link
-@@ -2174,6 +2183,7 @@ out_eagain:
- out:
- 	xprt_clear_connecting(xprt);
- 	xprt_wake_pending_tasks(xprt, status);
-+	current->flags &= ~PF_FSTRANS;
- }
- 
- /**
 -- 
-1.7.10.4
+Simo Sorce * Red Hat, Inc * New York
 
