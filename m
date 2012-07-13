@@ -1,61 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:9771 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:41448 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754703Ab2GJW7A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jul 2012 18:59:00 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Simo Sorce <simo@redhat.com>, "bfields@redhat.com" <bfields@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/4] Add support for new RPCSEC_GSS upcall mechanism for
- nfsd
-Date: Tue, 10 Jul 2012 22:58:40 +0000
-Message-ID: <1341961118.17428.29.camel@lade.trondhjem.org>
-References: <1337983796-26476-1-git-send-email-simo@redhat.com>
-	 <20120710204913.GA6038@fieldses.org>
-	 <1341957169.17428.4.camel@lade.trondhjem.org>
-	 <20120710215618.GC6038@fieldses.org>
-	 <1341958332.17428.12.camel@lade.trondhjem.org>
-	 <1341959112.17428.19.camel@lade.trondhjem.org>
-	 <20120710223818.GA6720@fieldses.org>
-In-Reply-To: <20120710223818.GA6720@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+	id S1755799Ab2GMLzY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Jul 2012 07:55:24 -0400
+Date: Fri, 13 Jul 2012 07:55:22 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <trond@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: DCACHE_DISCONNECTED use in try_to_ascend/d_kill
+Message-ID: <20120713115522.GH24162@fieldses.org>
+References: <20120712222849.GE24162@fieldses.org>
+ <20120712224008.GF24162@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120712224008.GF24162@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA3LTEwIGF0IDE4OjM4IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIFR1ZSwgSnVsIDEwLCAyMDEyIGF0IDEwOjI1OjEzUE0gKzAwMDAsIE15a2xlYnVzdCwg
-VHJvbmQgd3JvdGU6DQo+ID4gT24gVHVlLCAyMDEyLTA3LTEwIGF0IDE4OjEyIC0wNDAwLCBUcm9u
-ZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+ID4gPiBUaGVuIHdoeSBpcyBpdCBiZWluZyBsYWJlbGxlZCBh
-cyBhIGtuZnNkLW9ubHkgY2hhbmdlPw0KPiANCj4gSXQgc2hvdWxkIGJlIGxhYmVsZWQgYW4gcnBj
-IHNlcnZlciBjaGFuZ2UuDQoNCkFsbCB0aGUgZG9jdW1lbnRhdGlvbiBpbiB0aGUgcGF0Y2hlcyB3
-YXMgYXBwZWFyaW5nIHRvIGltcGx5IHRoYXQgaXQNCmFmZmVjdGVkIG9ubHkgbmZzZCB3aXRoIGZp
-bGVuYW1lcyBzdWNoIGFzDQoiRG9jdW1lbnRhdGlvbi9maWxlc3lzdGVtcy9uZnMva25mc2QtcnBj
-Z3NzLnR4dCIuYW5kIHBhdGNoIGNoYW5nZWxvZ3MNCndpdGggdGl0bGVzIHN1Y2ggYXMgIlNVTlJQ
-QzogVXNlIGdzc3Byb3h5IHVwY2FsbCBmb3IgbmZzZCdzIFJQQ0dTUw0KYXV0aGVudGljYXRpb24u
-Ig0KDQo+ID4gPiBIb3cgd2lsbCBpdCBiZWhhdmUgaWYgSSBkb24ndCBydW4gZ3NzIHByb3h5Pw0K
-PiANCj4gSXQgd2lsbCB3b3JrLCBidXQgaWYgdGhlIHNlcnZlcidzIHJ1bm5pbmcgb24gdGhlIHNh
-bWUgbWFjaGluZSBpdCB3aWxsDQo+IGFsc28gdXNlIHN2Y2dzc2QsIGFuZCBoZW5jZSB3b24ndCAo
-Zm9yIGV4YW1wbGUpIGJlIGFibGUgdG8gaGFuZGxlIHRoZQ0KPiBsYXJnZXIgaW5pdF9zZWNfY29u
-dGV4dCBwYWNrZXRzLg0KDQpBbiBORlMgY2xpZW50IGNhbGxiYWNrIHNlcnZlciBpcyBvbmx5IHRy
-eWluZyB0byBjaGVjayB0aGF0IGl0IGlzIHRhbGtpbmcNCnRvIGEgbWFjaGluZSBjcmVkZW50aWFs
-IHdpdGggYSBuYW1lIG9mIHRoZSBmb3JtIG5mc0Bob3N0bmFtZS4gSXQgZG9lc24ndA0KY2FyZSBh
-Ym91dCBQQUdzLCBhbmQgYW55b25lIHdobyB0cmllcyB0byBzZXQgdGhlIG1hY2hpbmUgY3JlZCB1
-cCB3aXRoDQpvbmUgaXMgY2xlYXJseSBpbnNhbmUgYW55d2F5Li4uDQoNCj4gPiAuLi5hbmQgaG93
-IHdpbGwgaXQgYmVoYXZlIGluIGEgbmV0IG5hbWVzcGFjZT8NCj4gDQo+IEl0IHdpbGwgbmVlZCB0
-aGUgc2FtZSBmaXhlcyBhcyB3ZSBuZWVkIGZvciBycGNiaW5kLg0KDQpTbyBiYXNpY2FsbHksIGl0
-IHdpbGwgaGF2ZSB0byBzdG9yZSB0aGUgcGF0aCBhdCBjbGllbnQgY3JlYXRpb24gdGltZT8NCg0K
-PiBJJ20gc3VyZSB3ZSBjb3VsZCBhbGxvdyB0aGUgY2FsbGJhY2sgc2VydmVyIGFuZCB0aGUgbmZz
-IHNlcnZlciB0byB1c2UNCj4gZGlmZmVyZW50IGF1dGhlbnRpY2F0aW9uIHVwY2FsbHMuICBCdXQg
-dGhhdCBtYWtlcyB0aGlzIG5vdCB3b3J0aCBpdC4NCg0KVGhlIHBvaW50IGlzIHRoYXQgaW4gYSBj
-b250YWluZXJpc2VkIGVudmlyb25tZW50LCB0aGUgTkZTIGNsaWVudCBtYXkgbm90DQprbm93IHdo
-YXQgcHJvdG9jb2wgdGhhdCBhbiBORlMgc2VydmVyIHJ1bm5pbmcgaW4gYSBjb21wbGV0ZWx5IGRp
-ZmZlcmVudA0KY29udGFpbmVyIGlzIHVzaW5nLg0KDQo+IFdlIHNob3VsZCBiZSBhYmxlIHRvIHNo
-YXJlIHRoZSBzYW1lIHVzZSB0aGUgc2FtZSBtZWNoYW5pc20gb24gYWxsIHJwYw0KPiBzZXJ2ZXJz
-LCBzbyBpZiBhIG1lY2hhbmlzbSBiYXNlZCBvbiBnc3Nwcm94eSBjYWxscyBpc24ndCBhY2NlcHRh
-YmxlIGZvcg0KPiB0aGUgbmZzIGNhbGxiYWNrIHNlcnZlciB0aGVuIEknbGwgZHJvcCBpdC4NCg0K
-SSBkb24ndCBzZWUgaG93IHlvdSBjYW4gZW5mb3JjZSB0aGF0IHByZW1pc2Ugd2hlbiB1c2luZyBj
-b250YWluZXJzLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWlu
-dGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAu
-Y29tDQoNCg==
+On Thu, Jul 12, 2012 at 06:40:08PM -0400, J. Bruce Fields wrote:
+> On Thu, Jul 12, 2012 at 06:28:49PM -0400, bfields wrote:
+> > I've been trying to figure out if we can pare down DCACHE_DISCONNECTED
+> > uses to only those required by exportfs, and ran across this one.
+> 
+> There's also one DCACHE_DISCONNECTED use in fs/nfs/dir.c that I was
+> hoping could be eliminated.  It was added by Al with
+> d9e80b7de91db05c1c4d2e5ebbfd70b3b3ba0e0f.  It looks totally theoretical
+> to me (nfs isn't exportable, hence shouldn't see DCACHE_DISCONNECTED
+> dentries), but maybe I'm missing something.
+
+Ignore me, I'm confused: there's a different use of DCACHE_DISCONECTED
+here (for v2/v3 root dentries that we expect may one day be hooked into
+a parent we find someplace else?).  It looks to me like it clashes with
+nfsd/exportfs's use.  I'm not sure what to do about that.
+
+--b.
+
+> 
+> At a minimum maybe we could pull a comment out of Al's commit?:
+> 
+> --b.
+> 
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index f430057..b96c687 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -1194,6 +1194,12 @@ out_zap_parent:
+>  		/* If we have submounts, don't unhash ! */
+>  		if (have_submounts(dentry))
+>  			goto out_valid;
+> +		/*
+> +		 * We can't d_drop the root of a disconnected tree:
+> +		 * its d_hash is on the s_anon list and d_drop() would hide
+> +		 * it from shrink_dcache_for_unmount(), leading to busy
+> +		 * inodes on unmount and further oopses.
+> +		 */
+>  		if (dentry->d_flags & DCACHE_DISCONNECTED)
+>  			goto out_valid;
+>  		shrink_dcache_parent(dentry);
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
