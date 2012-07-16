@@ -1,207 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:40378 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751381Ab2GFJZ2 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jul 2012 05:25:28 -0400
-Message-ID: <4FF6AB2D.7050705@parallels.com>
-Date: Fri, 6 Jul 2012 13:09:01 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from mx2.netapp.com ([216.240.18.37]:33480 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752797Ab2GPUJd convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Jul 2012 16:09:33 -0400
+Received: from vmwexceht03-prd.hq.netapp.com (vmwexceht03-prd.hq.netapp.com [10.106.76.241])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q6GK9H5m014611
+	for <linux-nfs@vger.kernel.org>; Mon, 16 Jul 2012 13:09:17 -0700 (PDT)
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] SUNRPC handle EKEYEXPIRED in call_refreshresult
+Date: Mon, 16 Jul 2012 20:09:16 +0000
+Message-ID: <AAE0FE67-5E1F-49C8-BFFA-5BA88E25C226@netapp.com>
+References: <1340827535-3062-1-git-send-email-andros@netapp.com>
+ <1340827535-3062-2-git-send-email-andros@netapp.com>
+ <1342464245.4648.23.camel@lade.trondhjem.org>
+In-Reply-To: <1342464245.4648.23.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH v3] NFSd: set nfsd_serv to NULL after service destruction
-References: <20120703124603.3766.26607.stgit@localhost.localdomain> <20120705212117.GB3051@fieldses.org>
-In-Reply-To: <20120705212117.GB3051@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-06.07.2012 01:21, J. Bruce Fields пишет:
-> On Tue, Jul 03, 2012 at 04:46:41PM +0400, Stanislav Kinsbursky wrote:
->> v3:
->> 1) Rebased for 3.6 kernel.
->>
->> v2:
->> 1) Set global nfsd_serv pointer to NULL only if no running threads left.
->>
->> Otherwise we will get NULL pointer dereference on last thread exit in
->> nfsd_last_thread().
->> This patch also introduces nfsd_destroy() helper for per-net NFSd shutdown.
->
-> That last step should really be done in a separate patch, then the
-> bugfix done after that.
->
-> But I'm confused: I'm not seeing the NULL dereference.
-> nfsd_last_thread doesn't use nfsd_serv as far as I can tell.
->
 
-Sorry for the bad comment, Bruce. It takes time even for me to reconstruct the 
-problem in my mind.
-The reason for this patch was an error path in nfs_svc().
+On Jul 16, 2012, at 2:44 PM, Myklebust, Trond wrote:
 
-int
-nfsd_svc(unsigned short port, int nrservs)
-{
-
-<--- snip --->
-
-out_destroy:
-         if (nfsd_serv->sv_nrthreads == 1)
-                 svc_shutdown_net(nfsd_serv, net); <=== nfsd_serv = NULL
-         svc_destroy(nfsd_serv);			  <=== NULL ptr
-out:
-         mutex_unlock(&nfsd_mutex);
-         return error;
-}
-
-I'll prepare patch series with proper comments. Thanks.
-
-> --b.
->
->>
->> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> On Wed, 2012-06-27 at 16:05 -0400, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>> 
+>> When an RPCSEC_GSS context has expired or is non-existent, and the user
+>> (Kerberos) credentials have also expired or are non-existent, the client
+>> retries to refresh the context for ever and the application
+>> hangs. The user is not prompted to refresh/establish their credentials.
+>> 
+>> Move the -EKEYEXPIRED handling into the RPC layer. Try tk_cred_retry number
+>> of times to refresh the gss_context, and then pass -EPERM to application.
+>> 
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
 >> ---
->>   fs/nfsd/nfsctl.c |    8 ++------
->>   fs/nfsd/nfsd.h   |   11 +++++++++++
->>   fs/nfsd/nfssvc.c |   24 ++++++++----------------
->>   3 files changed, 21 insertions(+), 22 deletions(-)
->>
->> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
->> index c55298e..fa49cff 100644
->> --- a/fs/nfsd/nfsctl.c
->> +++ b/fs/nfsd/nfsctl.c
->> @@ -673,9 +673,7 @@ static ssize_t __write_ports_addfd(char *buf)
->>
->>   	err = svc_addsock(nfsd_serv, fd, buf, SIMPLE_TRANSACTION_LIMIT);
->>   	if (err < 0) {
->> -		if (nfsd_serv->sv_nrthreads == 1)
->> -			svc_shutdown_net(nfsd_serv, net);
->> -		svc_destroy(nfsd_serv);
->> +		nfsd_destroy(net);
->>   		return err;
->>   	}
->>
->> @@ -744,9 +742,7 @@ out_close:
->>   		svc_xprt_put(xprt);
->>   	}
->>   out_err:
->> -	if (nfsd_serv->sv_nrthreads == 1)
->> -		svc_shutdown_net(nfsd_serv, net);
->> -	svc_destroy(nfsd_serv);
->> +	nfsd_destroy(net);
->>   	return err;
->>   }
->>
->> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
->> index 1671429..1336a65 100644
->> --- a/fs/nfsd/nfsd.h
->> +++ b/fs/nfsd/nfsd.h
->> @@ -73,6 +73,17 @@ int		nfsd_nrpools(void);
->>   int		nfsd_get_nrthreads(int n, int *);
->>   int		nfsd_set_nrthreads(int n, int *);
->>
->> +static inline void nfsd_destroy(struct net *net)
->> +{
->> +	int destroy = (nfsd_serv->sv_nrthreads == 1);
->> +
->> +	if (destroy)
->> +		svc_shutdown_net(nfsd_serv, net);
->> +	svc_destroy(nfsd_serv);
->> +	if (destroy)
->> +		nfsd_serv = NULL;
->> +}
->> +
->>   #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
->>   #ifdef CONFIG_NFSD_V2_ACL
->>   extern struct svc_version nfsd_acl_version2;
->> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
->> index ee709fc..240473c 100644
->> --- a/fs/nfsd/nfssvc.c
->> +++ b/fs/nfsd/nfssvc.c
->> @@ -254,8 +254,6 @@ static void nfsd_shutdown(void)
->>
->>   static void nfsd_last_thread(struct svc_serv *serv, struct net *net)
->>   {
->> -	/* When last nfsd thread exits we need to do some clean-up */
->> -	nfsd_serv = NULL;
->>   	nfsd_shutdown();
->>
->>   	svc_rpcb_cleanup(serv, net);
->> @@ -332,6 +330,7 @@ static int nfsd_get_default_max_blksize(void)
->>   int nfsd_create_serv(void)
->>   {
->>   	int error;
->> +	struct net *net = current->nsproxy->net_ns;
->>
->>   	WARN_ON(!mutex_is_locked(&nfsd_mutex));
->>   	if (nfsd_serv) {
->> @@ -346,7 +345,7 @@ int nfsd_create_serv(void)
->>   	if (nfsd_serv == NULL)
->>   		return -ENOMEM;
->>
->> -	error = svc_bind(nfsd_serv, current->nsproxy->net_ns);
->> +	error = svc_bind(nfsd_serv, net);
->>   	if (error < 0) {
->>   		svc_destroy(nfsd_serv);
->>   		return error;
->> @@ -427,11 +426,7 @@ int nfsd_set_nrthreads(int n, int *nthreads)
->>   		if (err)
->>   			break;
->>   	}
->> -
->> -	if (nfsd_serv->sv_nrthreads == 1)
->> -		svc_shutdown_net(nfsd_serv, net);
->> -	svc_destroy(nfsd_serv);
->> -
->> +	nfsd_destroy(net);
->>   	return err;
->>   }
->>
->> @@ -478,9 +473,7 @@ out_shutdown:
->>   	if (error < 0 && !nfsd_up_before)
->>   		nfsd_shutdown();
->>   out_destroy:
->> -	if (nfsd_serv->sv_nrthreads == 1)
->> -		svc_shutdown_net(nfsd_serv, net);
->> -	svc_destroy(nfsd_serv);		/* Release server */
->> +	nfsd_destroy(net);		/* Release server */
->>   out:
->>   	mutex_unlock(&nfsd_mutex);
->>   	return error;
->> @@ -563,12 +556,13 @@ nfsd(void *vrqstp)
->>   	nfsdstats.th_cnt --;
->>
->>   out:
->> -	if (rqstp->rq_server->sv_nrthreads == 1)
->> -		svc_shutdown_net(rqstp->rq_server, &init_net);
->> +	rqstp->rq_server = NULL;
->>
->>   	/* Release the thread */
->>   	svc_exit_thread(rqstp);
->>
->> +	nfsd_destroy(&init_net);
->> +
->>   	/* Release module */
->>   	mutex_unlock(&nfsd_mutex);
->>   	module_put_and_exit(0);
->> @@ -682,9 +676,7 @@ int nfsd_pool_stats_release(struct inode *inode, struct file *file)
->>
->>   	mutex_lock(&nfsd_mutex);
->>   	/* this function really, really should have been called svc_put() */
->> -	if (nfsd_serv->sv_nrthreads == 1)
->> -		svc_shutdown_net(nfsd_serv, net);
->> -	svc_destroy(nfsd_serv);
->> +	nfsd_destroy(net);
->>   	mutex_unlock(&nfsd_mutex);
->>   	return ret;
->>   }
->>
+>> fs/nfs/nfs4proc.c |    2 --
+>> net/sunrpc/clnt.c |    4 ++++
+>> 2 files changed, 4 insertions(+), 2 deletions(-)
+>> 
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index 5a7b372..2f291b3 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -342,7 +342,6 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
+>> 			}
+>> 		case -NFS4ERR_GRACE:
+>> 		case -NFS4ERR_DELAY:
+>> -		case -EKEYEXPIRED:
+>> 			ret = nfs4_delay(server->client, &exception->timeout);
+>> 			if (ret != 0)
+>> 				break;
+>> @@ -3939,7 +3938,6 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
+>> 		case -NFS4ERR_DELAY:
+>> 			nfs_inc_server_stats(server, NFSIOS_DELAY);
+>> 		case -NFS4ERR_GRACE:
+>> -		case -EKEYEXPIRED:
+>> 			rpc_delay(task, NFS4_POLL_RETRY_MAX);
+>> 			task->tk_status = 0;
+>> 			return -EAGAIN;
+>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+>> index f56f045..a94fc0c 100644
+>> --- a/net/sunrpc/clnt.c
+>> +++ b/net/sunrpc/clnt.c
+>> @@ -1334,8 +1334,12 @@ call_refreshresult(struct rpc_task *task)
+>> 		return;
+>> 	case -ETIMEDOUT:
+>> 		rpc_delay(task, 3*HZ);
+>> +	case -EKEYEXPIRED:
+>> +		status = -EPERM;
+> 
+> This needs to be EACCES�
 
+Agreed. I'll also remove all -EKEYEXPIRED handling from NFS.
 
--- 
-Best regards,
-Stanislav Kinsbursky
+-->Andy
 
+> 
+>> +		goto cred_retry;
+>> 	case -EAGAIN:
+>> 		status = -EACCES;
+>> +cred_retry:
+>> 		if (!task->tk_cred_retry)
+>> 			break;
+>> 		task->tk_cred_retry--;
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
 
