@@ -1,60 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:37408 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752313Ab2GZQAm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 12:00:42 -0400
-Message-ID: <5011699B.1090706@panasas.com>
-Date: Thu, 26 Jul 2012 19:00:27 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:39350 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753590Ab2GPTR4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Jul 2012 15:17:56 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 13/15] NFS: Discover NFSv4 server trunking when mounting
+Date: Mon, 16 Jul 2012 19:17:54 +0000
+Message-ID: <1342466273.4648.27.camel@lade.trondhjem.org>
+References: <20120711201718.3767.66867.stgit@degas.1015granger.net>
+	 <20120711203134.3767.47961.stgit@degas.1015granger.net>
+	 <1342465540.4648.25.camel@lade.trondhjem.org>
+	 <FA164FA1-5E20-4958-887C-6B5C503B841F@oracle.com>
+In-Reply-To: <FA164FA1-5E20-4958-887C-6B5C503B841F@oracle.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Peng Tao <bergwolf@gmail.com>
-CC: linuxnfs <linux-nfs@vger.kernel.org>, Benny Halevy <bhalevy@tonian.com>
-Subject: Re: pnfs LD partial sector write
-References: <CA+a=Yy7B0uk-FWr3hOjWC+=Xq+UtHnEC4speD3OZzMFfXksyOw@mail.gmail.com> <500FCA3A.5020606@panasas.com> <CA+a=Yy58bjUMximWOMnmk0ugPKUY-LcacRhpdp4cvuz1HQG_gg@mail.gmail.com> <5010573F.4000901@panasas.com> <CA+a=Yy5oJObMeUuL-mspso2eXCr4+5qmiFsOfS5=fU5x9kHtkw@mail.gmail.com> <5010F62D.4030101@panasas.com> <CA+a=Yy7b54qE3v8Yjq6-z3zjqrPH3Vt1madnVZk2aysYcOdbAA@mail.gmail.com> <5011505F.1020508@panasas.com> <CA+a=Yy5-GRoD17LqN0wi2ssO01XDknYyJg-pPe3tTXZQ3GCd9w@mail.gmail.com>
-In-Reply-To: <CA+a=Yy5-GRoD17LqN0wi2ssO01XDknYyJg-pPe3tTXZQ3GCd9w@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/26/2012 06:07 PM, Peng Tao wrote:
-
-> On Thu, Jul 26, 2012 at 10:12 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->> There is an easy locking solution for DIO which will not cost much
->> for DIO and will cost nothing for buffered IO. You use the page-cache
->> page lock.
->>
->> What you do is grab the zero-page of each block lock before/during writing to
->> any block. So for your example above they will all be serialized by page-zero
->> lock.
-> Yeah, I agree this can work. But I'd prefer not to mix DIO with buffer
-> IO, which is often error prone. If in any case I need to serialize
-> AIODIO, I'd prefer to do it in easier ways like locking invalid
-> extents etc, without messing with page cache.
-> 
-
-
-Ye, just keep it BLOCK aligned and that's it. Apps will learn fast enough.
-Simple is always better.
-
-Currently I support any alignment but I might do the same in objlayout in
-the raid5/6 case. and DIO
-
-<>
-
-> Or maybe somehow through statfs(2), since the blocksize attribute is
-> actually a file system's attribute instead of block device's.
-> 
-
-
-Good point!!
-	statfs->f_bsize
-
-man statfs:
-  long    f_bsize;    /* optimal transfer block size */
-
-What does NFS return in there now? maybe let LD override on that?
-
-I'll support a patch as such we could use it as well.
-
-Cheers
-Boaz
+T24gTW9uLCAyMDEyLTA3LTE2IGF0IDE1OjA5IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+T24gSnVsIDE2LCAyMDEyLCBhdCAzOjA1IFBNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiAN
+Cj4gPiBPbiBXZWQsIDIwMTItMDctMTEgYXQgMTY6MzEgLTA0MDAsIENodWNrIExldmVyIHdyb3Rl
+Og0KPiA+PiAiU2VydmVyIHRydW5raW5nIiBpcyBhIGZhbmN5IG5hbWVkIGZvciBhIG11bHRpLWhv
+bWVkIE5GUyBzZXJ2ZXIuDQo+ID4+IFRydW5raW5nIG1pZ2h0IG9jY3VyIGlmIGEgY2xpZW50IHNl
+bmRzIE5GUyByZXF1ZXN0cyBmb3IgYSBzaW5nbGUNCj4gPj4gd29ya2xvYWQgdG8gbXVsdGlwbGUg
+bmV0d29yayBpbnRlcmZhY2VzIG9uIHRoZSBzYW1lIHNlcnZlci4gIFRoZXJlDQo+ID4+IGFyZSBz
+b21lIGltcGxpY2F0aW9ucyBmb3IgTkZTdjQgc3RhdGUgbWFuYWdlbWVudCB0aGF0IG1ha2UgaXQg
+dXNlZnVsDQo+ID4+IGZvciBhIGNsaWVudCB0byBrbm93IGlmIGEgc2luZ2xlIE5GU3Y0IHNlcnZl
+ciBpbnN0YW5jZSBpcw0KPiA+PiBtdWx0aS1ob21lZC4gIChOb3RlIHRoaXMgaXMgb25seSBhIGNv
+bnNpZGVyYXRpb24gZm9yIE5GU3Y0LCBub3QgZm9yDQo+ID4+IGxlZ2FjeSB2ZXJzaW9ucyBvZiBO
+RlMsIHdoaWNoIGFyZSBzdGF0ZWxlc3MpLg0KPiA+PiANCj4gPj4gSWYgYSBjbGllbnQgY2FyZXMg
+YWJvdXQgc2VydmVyIHRydW5raW5nLCBubyBORlN2NCBvcGVyYXRpb25zIGNhbg0KPiA+PiBwcm9j
+ZWVkIHVudGlsIHRoYXQgY2xpZW50IGRldGVybWluZXMgd2hvIGl0IGlzIHRhbGtpbmcgdG8uICBU
+aHVzDQo+ID4+IHNlcnZlciBJUCB0cnVua2luZyBkaXNjb3ZlcnkgbXVzdCBiZSBkb25lIHdoZW4g
+dGhlIGNsaWVudCBmaXJzdA0KPiA+PiBlbmNvdW50ZXJzIGFuIHVuZmFtaWxpYXIgc2VydmVyIElQ
+IGFkZHJlc3MuDQo+ID4+IA0KPiA+PiBUaGUgbmZzX2dldF9jbGllbnQoKSBmdW5jdGlvbiB3YWxr
+cyB0aGUgbmZzX2NsaWVudF9saXN0IGFuZCBtYXRjaGVzDQo+ID4+IG9uIHNlcnZlciBJUCBhZGRy
+ZXNzLiAgVGhlIG91dGNvbWUgb2YgdGhhdCB3YWxrIHRlbGxzIHVzIGltbWVkaWF0ZWx5DQo+ID4+
+IGlmIHdlIGhhdmUgYW4gdW5mYW1pbGlhciBzZXJ2ZXIgSVAgYWRkcmVzcy4gIEl0IGludm9rZXMN
+Cj4gPj4gbmZzX2luaXRfY2xpZW50KCkgaW4gdGhpcyBjYXNlLiAgVGh1cywgbmZzNF9pbml0X2Ns
+aWVudCgpIGlzIGEgZ29vZA0KPiA+PiBzcG90IHRvIHBlcmZvcm0gdHJ1bmtpbmcgZGlzY292ZXJ5
+Lg0KPiA+PiANCj4gPj4gRGlzY292ZXJ5IHJlcXVpcmVzIGEgY2xpZW50IHRvIGVzdGFibGlzaCBh
+IGZyZXNoIGNsaWVudCBJRCwgc28gb3VyDQo+ID4+IGNsaWVudCB3aWxsIG5vdyBzZW5kIFNFVENM
+SUVOVElEIG9yIEVYQ0hBTkdFX0lEIGFzIHRoZSBmaXJzdCBORlMNCj4gPj4gb3BlcmF0aW9uIGFm
+dGVyIGEgc3VjY2Vzc2Z1bCBwaW5nLCByYXRoZXIgdGhhbiB3YWl0aW5nIGZvciBhbg0KPiA+PiBh
+cHBsaWNhdGlvbiB0byBwZXJmb3JtIGFuIG9wZXJhdGlvbiB0aGF0IHJlcXVpcmVzIE5GU3Y0IHN0
+YXRlLg0KPiA+PiANCj4gPj4gVGhlIGV4YWN0IHByb2Nlc3MgZm9yIGRldGVjdGluZyB0cnVua2lu
+ZyBpcyBkaWZmZXJlbnQgZm9yIE5GU3Y0LjAgYW5kDQo+ID4+IE5GU3Y0LjEsIHNvIGEgbWlub3J2
+ZXJzaW9uLXNwZWNpZmljIGluaXRfY2xpZW50IGNhbGxvdXQgbWV0aG9kIGlzDQo+ID4+IGludHJv
+ZHVjZWQuDQo+ID4+IA0KPiA+PiBDTElEX0lOVVNFIHJlY292ZXJ5IGlzIGltcG9ydGFudCBmb3Ig
+dGhlIHRydW5raW5nIGRpc2NvdmVyeSBwcm9jZXNzLg0KPiA+PiBDTElEX0lOVVNFIGlzIGEgc2ln
+biB0aGUgc2VydmVyIHJlY29nbml6ZXMgdGhlIGNsaWVudCdzIG5mc19jbGllbnRfaWQ0DQo+ID4+
+IGlkIHN0cmluZywgYnV0IHRoZSBjbGllbnQgaXMgdXNpbmcgdGhlIHdyb25nIHByaW5jaXBhbCB0
+aGlzIHRpbWUgZm9yDQo+ID4+IHRoZSBTRVRDTElFTlRJRCBvcGVyYXRpb24uICBUaGUgU0VUQ0xJ
+RU5USUQgbXVzdCBiZSByZXRyaWVkIHdpdGggYQ0KPiA+PiBzZXJpZXMgb2YgZGlmZmVyZW50IHBy
+aW5jaXBhbHMgdW50aWwgb25lIHdvcmtzLCBhbmQgdGhlIHJlc3Qgb2YNCj4gPj4gdHJ1bmtpbmcg
+ZGlzY292ZXJ5IGNhbiBwcm9jZWVkLg0KPiA+PiANCj4gPj4gU2lnbmVkLW9mZi1ieTogQ2h1Y2sg
+TGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+DQo+ID4+IC0tLQ0KPiA+PiANCj4gPj4gZnMv
+bmZzL2NsaWVudC5jICAgIHwgIDIzNyArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
+KysrKysrKysrKysrKysrKysrDQo+ID4+IGZzL25mcy9pbnRlcm5hbC5oICB8ICAgIDYgKw0KPiA+
+PiBmcy9uZnMvbmZzNF9mcy5oICAgfCAgICA4ICsrDQo+ID4+IGZzL25mcy9uZnM0cHJvYy5jICB8
+ICAgIDIgDQo+ID4+IGZzL25mcy9uZnM0c3RhdGUuYyB8ICAxODYgKysrKysrKysrKysrKysrKysr
+KysrKysrKysrKysrKysrKysrKysrKy0NCj4gPj4gNSBmaWxlcyBjaGFuZ2VkLCA0MzMgaW5zZXJ0
+aW9ucygrKSwgNiBkZWxldGlvbnMoLSkNCj4gPiANCj4gPiBBcHBseWluZzogTkZTOiBEaXNjb3Zl
+ciBORlN2NCBzZXJ2ZXIgdHJ1bmtpbmcgd2hlbiBtb3VudGluZw0KPiA+IGVycm9yOiBwYXRjaCBm
+YWlsZWQ6IGZzL25mcy9uZnM0c3RhdGUuYzoxNjU2DQo+ID4gZXJyb3I6IGZzL25mcy9uZnM0c3Rh
+dGUuYzogcGF0Y2ggZG9lcyBub3QgYXBwbHkNCj4gPiBQYXRjaCBmYWlsZWQgYXQgMDAwMSBORlM6
+IERpc2NvdmVyIE5GU3Y0IHNlcnZlciB0cnVua2luZyB3aGVuIG1vdW50aW5nDQo+IA0KPiBJIGNh
+biB0YWtlIGEgbG9vay4gIFdoYXQgYXJlIHlvdSBhcHBseWluZyBpdCB0bywgZXhhY3RseT8NCg0K
+SGF2ZSBhIGxvb2sgYXQgbXkgJ25mcy1mb3ItY2VsJyBicmFuY2guLi4NCg0KLS0gDQpUcm9uZCBN
+eWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15
+a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
