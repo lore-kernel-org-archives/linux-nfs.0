@@ -1,50 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:31713 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:2020 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756366Ab2GYM57 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Jul 2012 08:57:59 -0400
-Subject: [PATCH v2 06/15] Lockd: add more debug to host shutdown functions
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Wed, 25 Jul 2012 16:56:35 +0400
-Message-ID: <20120725125635.24376.51001.stgit@localhost.localdomain>
-In-Reply-To: <20120725125258.24376.82525.stgit@localhost.localdomain>
-References: <20120725125258.24376.82525.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1751888Ab2GPUjX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Jul 2012 16:39:23 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v200/12] NFS: Split out version-specific code
+Date: Mon, 16 Jul 2012 16:39:09 -0400
+Message-Id: <1342471161-22452-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/lockd/host.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 8cbf53d..0084ab8 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -608,11 +608,10 @@ nlm_shutdown_hosts_net(struct net *net)
- 	struct hlist_node *pos;
- 	struct nlm_host	*host;
- 
--	dprintk("lockd: shutting down host module\n");
- 	mutex_lock(&nlm_host_mutex);
- 
- 	/* First, make all hosts eligible for gc */
--	dprintk("lockd: nuking all hosts...\n");
-+	dprintk("lockd: nuking all hosts in net %p...\n", net);
- 	for_each_host(host, pos, chain, nlm_server_hosts) {
- 		if (net && host->net != net)
- 			continue;
-@@ -637,6 +636,7 @@ nlm_shutdown_hosts_net(struct net *net)
- void
- nlm_shutdown_hosts(void)
- {
-+	dprintk("lockd: shutting down host module\n");
- 	nlm_shutdown_hosts_net(NULL);
- }
- 
+These patches split out most NFS version-specific code into files based on the
+NFS version it belongs to.  The first two patches make all the NFS v2 and v3
+changes that are needed, the rest carefully split out NFS v4 code from the
+generic client.  I apologize for the amount of flux caused by these patches
+but after this the rest of my modularization changes are really, really easy.
+
+I would appreciate it if lots of people could take the time to look at these
+patches.  I think the changes are fairly straightforward, but the large amount
+of code changed means I could have easily missed something.  I expect there
+will be conflicts with Chuck's recent TEST_STATEID changes, I'm willing to
+update and resubmit these patches if Chuck's changes are merged into Trond's
+git tree first.
+
+When creating new files with moved code I tried to preserve the copyright of
+the original file.  Right now fs/nfs/sysctl.c doesn't have a copyright line so
+I used `git annotate` to guess that Trond wrote the code in 2006 when creating
+fs/nfs/nfs4sysctl.c.  If I got something wrong, please let me know!
+
+Changes in v2:
+- Rebase against Trond's nfs-for-bryan tree, which includes recent VFS changes
+  and other patches affecting code that I touch.
+
+Thanks,
+- Bryan
+
+Bryan Schumaker (12):
+  NFS: Split out NFS v2 inode operations
+  NFS: Split out NFS v3 inode operations
+  NFS: Split out NFS v4 inode operations
+  NFS: Create an init_nfs_v4() function
+  NFS: Initialize v4 sysctls from nfs_init_v4()
+  NFS: Split out NFS v4 file operations
+  NFS: Move the v4 getroot code to nfs4getroot.c
+  NFS: Initialize the NFS v4 client from init_nfs_v4()
+  NFS: Split out NFS v4 server creating code
+  NFS: Create a single nfs_clone_super() function
+  NFS: Split out the NFS v4 filesystem types
+  NFS: Split out NFS v4 client functions
+
+ fs/nfs/Makefile        |  11 +-
+ fs/nfs/client.c        | 687 +------------------------------------------------
+ fs/nfs/dir.c           |  97 +------
+ fs/nfs/file.c          | 169 ++----------
+ fs/nfs/getroot.c       |  50 ----
+ fs/nfs/inode.c         |  67 ++---
+ fs/nfs/internal.h      |  81 ++++++
+ fs/nfs/nfs3proc.c      |  29 +++
+ fs/nfs/nfs4_fs.h       |  26 +-
+ fs/nfs/nfs4client.c    | 663 +++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4file.c      | 126 +++++++++
+ fs/nfs/nfs4getroot.c   |  49 ++++
+ fs/nfs/nfs4proc.c      |  20 ++
+ fs/nfs/nfs4super.c     | 360 ++++++++++++++++++++++++++
+ fs/nfs/nfs4sysctl.c    |  68 +++++
+ fs/nfs/proc.c          |  21 ++
+ fs/nfs/super.c         | 425 ++----------------------------
+ fs/nfs/sysctl.c        |  26 --
+ include/linux/nfs_fs.h |   8 -
+ 19 files changed, 1554 insertions(+), 1429 deletions(-)
+ create mode 100644 fs/nfs/nfs4client.c
+ create mode 100644 fs/nfs/nfs4file.c
+ create mode 100644 fs/nfs/nfs4getroot.c
+ create mode 100644 fs/nfs/nfs4super.c
+ create mode 100644 fs/nfs/nfs4sysctl.c
+
+-- 
+1.7.11.2
 
