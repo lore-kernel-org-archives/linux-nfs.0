@@ -1,51 +1,243 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36402 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:4387 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755654Ab2GaQhL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jul 2012 12:37:11 -0400
-Date: Tue, 31 Jul 2012 12:37:08 -0400
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: David Howells <dhowells@redhat.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "sct@redhat.com" <sct@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "steved@redhat.com" <steved@redhat.com>,
-        "jlayton@redhat.com" <jlayton@redhat.com>
-Subject: Re: [PATCH 1/2] NFS: Fix a number of bugs in the idmapper
-Message-ID: <20120731163708.GE27834@fieldses.org>
-References: <1343746117.5528.3.camel@lade.trondhjem.org>
- <20120731144234.6664.85664.stgit@warthog.procyon.org.uk>
- <6978.1343746575@warthog.procyon.org.uk>
- <1343747261.5528.10.camel@lade.trondhjem.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1343747261.5528.10.camel@lade.trondhjem.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1753322Ab2GPUje (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Jul 2012 16:39:34 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 12/12] NFS: Split out NFS v4 client functions
+Date: Mon, 16 Jul 2012 16:39:21 -0400
+Message-Id: <1342471161-22452-13-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1342471161-22452-1-git-send-email-bjschuma@netapp.com>
+References: <1342471161-22452-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 31, 2012 at 03:07:42PM +0000, Myklebust, Trond wrote:
-> On Tue, 2012-07-31 at 15:56 +0100, David Howells wrote:
-> > Myklebust, Trond <Trond.Myklebust@netapp.com> wrote:
-> > 
-> > > This patch should already be present in nfs-for-next as of yesterday.
-> > > (I've been on a 2 week vacation).
-> > 
-> > How about the second patch?  I posted an updated version of it just now.
-> > 
-> > Note that the second patch or something like it is likely to be necessary to
-> > reduce the load on the keyring (you end up having duplicate keys of different
-> > key types that can't be shared).
-> 
-> We don't expect people to be running both types of idmapper at the same
-> time. Normally, the distribution will set up one or the other. However
-> if both idmappers do happen to be configured, then we want to always
-> choose the non-legacy type...
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-On a quick check....  It looks like F17 has /usr/sbin/nfsidmap, and also
-runs rpc.idmapd for the server.  While rpc.idmap does have a "-S"
-option, it's not using that.
+These functions are only needed by NFS v4, so they can be moved into a
+v4 specific file.
 
-But that should be easy to fix--I'll go look....
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/client.c     | 93 -----------------------------------------------------
+ fs/nfs/nfs4client.c | 91 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 91 insertions(+), 93 deletions(-)
 
---b.
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 0d50629..65afa38 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -56,30 +56,6 @@
+ #define NFSDBG_FACILITY		NFSDBG_CLIENT
+ 
+ static DECLARE_WAIT_QUEUE_HEAD(nfs_client_active_wq);
+-#ifdef CONFIG_NFS_V4
+-
+-/*
+- * Get a unique NFSv4.0 callback identifier which will be used
+- * by the V4.0 callback service to lookup the nfs_client struct
+- */
+-static int nfs_get_cb_ident_idr(struct nfs_client *clp, int minorversion)
+-{
+-	int ret = 0;
+-	struct nfs_net *nn = net_generic(clp->cl_net, nfs_net_id);
+-
+-	if (clp->rpc_ops->version != 4 || minorversion != 0)
+-		return ret;
+-retry:
+-	if (!idr_pre_get(&nn->cb_ident_idr, GFP_KERNEL))
+-		return -ENOMEM;
+-	spin_lock(&nn->nfs_client_lock);
+-	ret = idr_get_new(&nn->cb_ident_idr, clp, &clp->cl_cb_ident);
+-	spin_unlock(&nn->nfs_client_lock);
+-	if (ret == -EAGAIN)
+-		goto retry;
+-	return ret;
+-}
+-#endif /* CONFIG_NFS_V4 */
+ 
+ /*
+  * RPC cruft for NFS
+@@ -175,75 +151,6 @@ error_0:
+ }
+ 
+ #ifdef CONFIG_NFS_V4
+-#ifdef CONFIG_NFS_V4_1
+-static void nfs4_shutdown_session(struct nfs_client *clp)
+-{
+-	if (nfs4_has_session(clp)) {
+-		nfs4_destroy_session(clp->cl_session);
+-		nfs4_destroy_clientid(clp);
+-	}
+-
+-}
+-#else /* CONFIG_NFS_V4_1 */
+-static void nfs4_shutdown_session(struct nfs_client *clp)
+-{
+-}
+-#endif /* CONFIG_NFS_V4_1 */
+-
+-struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
+-{
+-	int err;
+-	struct nfs_client *clp = nfs_alloc_client(cl_init);
+-	if (IS_ERR(clp))
+-		return clp;
+-
+-	err = nfs_get_cb_ident_idr(clp, cl_init->minorversion);
+-	if (err)
+-		goto error;
+-
+-	spin_lock_init(&clp->cl_lock);
+-	INIT_DELAYED_WORK(&clp->cl_renewd, nfs4_renew_state);
+-	rpc_init_wait_queue(&clp->cl_rpcwaitq, "NFS client");
+-	clp->cl_state = 1 << NFS4CLNT_LEASE_EXPIRED;
+-	clp->cl_minorversion = cl_init->minorversion;
+-	clp->cl_mvops = nfs_v4_minor_ops[cl_init->minorversion];
+-	return clp;
+-
+-error:
+-	kfree(clp);
+-	return ERR_PTR(err);
+-}
+-
+-/*
+- * Destroy the NFS4 callback service
+- */
+-static void nfs4_destroy_callback(struct nfs_client *clp)
+-{
+-	if (__test_and_clear_bit(NFS_CS_CALLBACK, &clp->cl_res_state))
+-		nfs_callback_down(clp->cl_mvops->minor_version);
+-}
+-
+-static void nfs4_shutdown_client(struct nfs_client *clp)
+-{
+-	if (__test_and_clear_bit(NFS_CS_RENEWD, &clp->cl_res_state))
+-		nfs4_kill_renewd(clp);
+-	nfs4_shutdown_session(clp);
+-	nfs4_destroy_callback(clp);
+-	if (__test_and_clear_bit(NFS_CS_IDMAP, &clp->cl_res_state))
+-		nfs_idmap_delete(clp);
+-
+-	rpc_destroy_wait_queue(&clp->cl_rpcwaitq);
+-	kfree(clp->cl_serverowner);
+-	kfree(clp->cl_serverscope);
+-	kfree(clp->cl_implid);
+-}
+-
+-void nfs4_free_client(struct nfs_client *clp)
+-{
+-	nfs4_shutdown_client(clp);
+-	nfs_free_client(clp);
+-}
+-
+ /* idr_remove_all is not needed as all id's are removed by nfs_put_client */
+ void nfs_cleanup_cb_ident_idr(struct net *net)
+ {
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index a71d95e..1c3f13c 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -23,6 +23,97 @@
+ static bool nfs4_disable_idmapping = true;
+ 
+ /*
++ * Get a unique NFSv4.0 callback identifier which will be used
++ * by the V4.0 callback service to lookup the nfs_client struct
++ */
++static int nfs_get_cb_ident_idr(struct nfs_client *clp, int minorversion)
++{
++	int ret = 0;
++	struct nfs_net *nn = net_generic(clp->cl_net, nfs_net_id);
++
++	if (clp->rpc_ops->version != 4 || minorversion != 0)
++		return ret;
++retry:
++	if (!idr_pre_get(&nn->cb_ident_idr, GFP_KERNEL))
++		return -ENOMEM;
++	spin_lock(&nn->nfs_client_lock);
++	ret = idr_get_new(&nn->cb_ident_idr, clp, &clp->cl_cb_ident);
++	spin_unlock(&nn->nfs_client_lock);
++	if (ret == -EAGAIN)
++		goto retry;
++	return ret;
++}
++
++#ifdef CONFIG_NFS_V4_1
++static void nfs4_shutdown_session(struct nfs_client *clp)
++{
++	if (nfs4_has_session(clp)) {
++		nfs4_destroy_session(clp->cl_session);
++		nfs4_destroy_clientid(clp);
++	}
++
++}
++#else /* CONFIG_NFS_V4_1 */
++static void nfs4_shutdown_session(struct nfs_client *clp)
++{
++}
++#endif /* CONFIG_NFS_V4_1 */
++
++struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
++{
++	int err;
++	struct nfs_client *clp = nfs_alloc_client(cl_init);
++	if (IS_ERR(clp))
++		return clp;
++
++	err = nfs_get_cb_ident_idr(clp, cl_init->minorversion);
++	if (err)
++		goto error;
++
++	spin_lock_init(&clp->cl_lock);
++	INIT_DELAYED_WORK(&clp->cl_renewd, nfs4_renew_state);
++	rpc_init_wait_queue(&clp->cl_rpcwaitq, "NFS client");
++	clp->cl_state = 1 << NFS4CLNT_LEASE_EXPIRED;
++	clp->cl_minorversion = cl_init->minorversion;
++	clp->cl_mvops = nfs_v4_minor_ops[cl_init->minorversion];
++	return clp;
++
++error:
++	kfree(clp);
++	return ERR_PTR(err);
++}
++
++/*
++ * Destroy the NFS4 callback service
++ */
++static void nfs4_destroy_callback(struct nfs_client *clp)
++{
++	if (__test_and_clear_bit(NFS_CS_CALLBACK, &clp->cl_res_state))
++		nfs_callback_down(clp->cl_mvops->minor_version);
++}
++
++static void nfs4_shutdown_client(struct nfs_client *clp)
++{
++	if (__test_and_clear_bit(NFS_CS_RENEWD, &clp->cl_res_state))
++		nfs4_kill_renewd(clp);
++	nfs4_shutdown_session(clp);
++	nfs4_destroy_callback(clp);
++	if (__test_and_clear_bit(NFS_CS_IDMAP, &clp->cl_res_state))
++		nfs_idmap_delete(clp);
++
++	rpc_destroy_wait_queue(&clp->cl_rpcwaitq);
++	kfree(clp->cl_serverowner);
++	kfree(clp->cl_serverscope);
++	kfree(clp->cl_implid);
++}
++
++void nfs4_free_client(struct nfs_client *clp)
++{
++	nfs4_shutdown_client(clp);
++	nfs_free_client(clp);
++}
++
++/*
+  * Initialize the NFS4 callback service
+  */
+ static int nfs4_init_callback(struct nfs_client *clp)
+-- 
+1.7.11.2
+
