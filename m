@@ -1,46 +1,246 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:35002 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755743Ab2GaLCe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Jul 2012 07:02:34 -0400
-Message-ID: <5017BB46.6080203@parallels.com>
-Date: Tue, 31 Jul 2012 15:02:30 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: SUNRPC lients: Pipefs mount races
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:2020 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751919Ab2GPUjY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Jul 2012 16:39:24 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 01/12] NFS: Split out NFS v2 inode operations
+Date: Mon, 16 Jul 2012 16:39:10 -0400
+Message-Id: <1342471161-22452-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1342471161-22452-1-git-send-email-bjschuma@netapp.com>
+References: <1342471161-22452-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello, Trond.
-I found one more race in SUNRPC PipeFS mount notification and clients creation.
-Now the problem is in SUNRPC clients.
-Races are shown below:
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-CPU#0						CPU#1
-------------------------------------		--------------------------------
-nfs_create_rpc_client
-   rpc_create
-   rpc_new_client
-   rpc_setup_pipedir	(no sb)
-						rpc_mount
-						notifier_call(SUNRPC - clnt.c)
-   rpc_register_client
-nfs_idmap_new
-nfs_mark_client_ready(NFS_CS_READY)
-						notifier_call(NFS - idmap.c)
-						__rpc_pipefs_event
-						BUG_ON(cl_dentry == NULL)
+This patch moves the NFS v2 file and directory inode functions into
+files that are only compiled whet CONFIG_NFS_V2 is enabled.
 
-How would you prefer to fix this?
-Looks like we could either try to add SUNRPC client to the list before PipeFS 
-dentry creation or create the dentry for SUNRPC client from NFS code in 
-__rpc_pipefs_event() instead of BUG_ON.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/dir.c           | 43 +++++++++----------------------------------
+ fs/nfs/file.c          |  6 ------
+ fs/nfs/internal.h      |  9 +++++++++
+ fs/nfs/proc.c          | 21 +++++++++++++++++++++
+ include/linux/nfs_fs.h |  2 --
+ 5 files changed, 39 insertions(+), 42 deletions(-)
 
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index b713685..9ae329d 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -46,16 +46,6 @@
+ static int nfs_opendir(struct inode *, struct file *);
+ static int nfs_closedir(struct inode *, struct file *);
+ static int nfs_readdir(struct file *, void *, filldir_t);
+-static struct dentry *nfs_lookup(struct inode *, struct dentry *, unsigned int);
+-static int nfs_create(struct inode *, struct dentry *, umode_t, bool);
+-static int nfs_mkdir(struct inode *, struct dentry *, umode_t);
+-static int nfs_rmdir(struct inode *, struct dentry *);
+-static int nfs_unlink(struct inode *, struct dentry *);
+-static int nfs_symlink(struct inode *, struct dentry *, const char *);
+-static int nfs_link(struct dentry *, struct inode *, struct dentry *);
+-static int nfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
+-static int nfs_rename(struct inode *, struct dentry *,
+-		      struct inode *, struct dentry *);
+ static int nfs_fsync_dir(struct file *, loff_t, loff_t, int);
+ static loff_t nfs_llseek_dir(struct file *, loff_t, int);
+ static void nfs_readdir_clear_array(struct page*);
+@@ -69,21 +59,6 @@ const struct file_operations nfs_dir_operations = {
+ 	.fsync		= nfs_fsync_dir,
+ };
+ 
+-const struct inode_operations nfs_dir_inode_operations = {
+-	.create		= nfs_create,
+-	.lookup		= nfs_lookup,
+-	.link		= nfs_link,
+-	.unlink		= nfs_unlink,
+-	.symlink	= nfs_symlink,
+-	.mkdir		= nfs_mkdir,
+-	.rmdir		= nfs_rmdir,
+-	.mknod		= nfs_mknod,
+-	.rename		= nfs_rename,
+-	.permission	= nfs_permission,
+-	.getattr	= nfs_getattr,
+-	.setattr	= nfs_setattr,
+-};
+-
+ const struct address_space_operations nfs_dir_aops = {
+ 	.freepage = nfs_readdir_clear_array,
+ };
+@@ -1270,7 +1245,7 @@ const struct dentry_operations nfs_dentry_operations = {
+ 	.d_release	= nfs_d_release,
+ };
+ 
+-static struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned int flags)
++struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned int flags)
+ {
+ 	struct dentry *res;
+ 	struct dentry *parent;
+@@ -1588,7 +1563,7 @@ out_error:
+  * that the operation succeeded on the server, but an error in the
+  * reply path made it appear to have failed.
+  */
+-static int nfs_create(struct inode *dir, struct dentry *dentry,
++int nfs_create(struct inode *dir, struct dentry *dentry,
+ 		umode_t mode, bool excl)
+ {
+ 	struct iattr attr;
+@@ -1613,7 +1588,7 @@ out_err:
+ /*
+  * See comments for nfs_proc_create regarding failed operations.
+  */
+-static int
++int
+ nfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t rdev)
+ {
+ 	struct iattr attr;
+@@ -1640,7 +1615,7 @@ out_err:
+ /*
+  * See comments for nfs_proc_create regarding failed operations.
+  */
+-static int nfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
++int nfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
+ {
+ 	struct iattr attr;
+ 	int error;
+@@ -1666,7 +1641,7 @@ static void nfs_dentry_handle_enoent(struct dentry *dentry)
+ 		d_delete(dentry);
+ }
+ 
+-static int nfs_rmdir(struct inode *dir, struct dentry *dentry)
++int nfs_rmdir(struct inode *dir, struct dentry *dentry)
+ {
+ 	int error;
+ 
+@@ -1725,7 +1700,7 @@ out:
+  *
+  *  If sillyrename() returns 0, we do nothing, otherwise we unlink.
+  */
+-static int nfs_unlink(struct inode *dir, struct dentry *dentry)
++int nfs_unlink(struct inode *dir, struct dentry *dentry)
+ {
+ 	int error;
+ 	int need_rehash = 0;
+@@ -1769,7 +1744,7 @@ static int nfs_unlink(struct inode *dir, struct dentry *dentry)
+  * now have a new file handle and can instantiate an in-core NFS inode
+  * and move the raw page into its mapping.
+  */
+-static int nfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
++int nfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
+ {
+ 	struct pagevec lru_pvec;
+ 	struct page *page;
+@@ -1824,7 +1799,7 @@ static int nfs_symlink(struct inode *dir, struct dentry *dentry, const char *sym
+ 	return 0;
+ }
+ 
+-static int 
++int
+ nfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *dentry)
+ {
+ 	struct inode *inode = old_dentry->d_inode;
+@@ -1869,7 +1844,7 @@ nfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *dentry)
+  * If these conditions are met, we can drop the dentries before doing
+  * the rename.
+  */
+-static int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
++int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 		      struct inode *new_dir, struct dentry *new_dentry)
+ {
+ 	struct inode *old_inode = old_dentry->d_inode;
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 57a22a1..7da8745 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -41,12 +41,6 @@
+ 
+ static const struct vm_operations_struct nfs_file_vm_ops;
+ 
+-const struct inode_operations nfs_file_inode_operations = {
+-	.permission	= nfs_permission,
+-	.getattr	= nfs_getattr,
+-	.setattr	= nfs_setattr,
+-};
+-
+ #ifdef CONFIG_NFS_V3
+ const struct inode_operations nfs3_file_inode_operations = {
+ 	.permission	= nfs_permission,
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 7edc172..35a8ffe 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -247,6 +247,15 @@ extern struct nfs_client *nfs_init_client(struct nfs_client *clp,
+ /* dir.c */
+ extern int nfs_access_cache_shrinker(struct shrinker *shrink,
+ 					struct shrink_control *sc);
++struct dentry *nfs_lookup(struct inode *, struct dentry *, unsigned int);
++int nfs_create(struct inode *, struct dentry *, umode_t, bool);
++int nfs_mkdir(struct inode *, struct dentry *, umode_t);
++int nfs_rmdir(struct inode *, struct dentry *);
++int nfs_unlink(struct inode *, struct dentry *);
++int nfs_symlink(struct inode *, struct dentry *, const char *);
++int nfs_link(struct dentry *, struct inode *, struct dentry *);
++int nfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
++int nfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *);
+ 
+ /* inode.c */
+ extern struct workqueue_struct *nfsiod_workqueue;
+diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+index c5ed1c0..4d3356af 100644
+--- a/fs/nfs/proc.c
++++ b/fs/nfs/proc.c
+@@ -745,6 +745,27 @@ static int nfs_return_delegation(struct inode *inode)
+ 	return 0;
+ }
+ 
++static const struct inode_operations nfs_dir_inode_operations = {
++	.create		= nfs_create,
++	.lookup		= nfs_lookup,
++	.link		= nfs_link,
++	.unlink		= nfs_unlink,
++	.symlink	= nfs_symlink,
++	.mkdir		= nfs_mkdir,
++	.rmdir		= nfs_rmdir,
++	.mknod		= nfs_mknod,
++	.rename		= nfs_rename,
++	.permission	= nfs_permission,
++	.getattr	= nfs_getattr,
++	.setattr	= nfs_setattr,
++};
++
++static const struct inode_operations nfs_file_inode_operations = {
++	.permission	= nfs_permission,
++	.getattr	= nfs_getattr,
++	.setattr	= nfs_setattr,
++};
++
+ const struct nfs_rpc_ops nfs_v2_clientops = {
+ 	.version	= 2,		       /* protocol version */
+ 	.dentry_ops	= &nfs_dentry_operations,
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index b23cfc1..6c38bc9 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -427,7 +427,6 @@ extern __be32 root_nfs_parse_addr(char *name); /*__init*/
+ /*
+  * linux/fs/nfs/file.c
+  */
+-extern const struct inode_operations nfs_file_inode_operations;
+ #ifdef CONFIG_NFS_V3
+ extern const struct inode_operations nfs3_file_inode_operations;
+ #endif /* CONFIG_NFS_V3 */
+@@ -485,7 +484,6 @@ extern ssize_t nfs_file_direct_write(struct kiocb *iocb,
+ /*
+  * linux/fs/nfs/dir.c
+  */
+-extern const struct inode_operations nfs_dir_inode_operations;
+ #ifdef CONFIG_NFS_V3
+ extern const struct inode_operations nfs3_dir_inode_operations;
+ #endif /* CONFIG_NFS_V3 */
 -- 
-Best regards,
-Stanislav Kinsbursky
+1.7.11.2
+
