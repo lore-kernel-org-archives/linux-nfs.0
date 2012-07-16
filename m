@@ -1,157 +1,1091 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:35968 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:4387 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751075Ab2G3WYk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Jul 2012 18:24:40 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        "Linux Kernel mailing list" <linux-kernel@vger.kernel.org>
-Subject: [GIT PULL] Please pull NFS client updates for 3.6...
-Date: Mon, 30 Jul 2012 22:24:37 +0000
-Message-ID: <1343687075.28035.8.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1752928Ab2GPUjb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Jul 2012 16:39:31 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 09/12] NFS: Split out NFS v4 server creating code
+Date: Mon, 16 Jul 2012 16:39:18 -0400
+Message-Id: <1342471161-22452-10-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1342471161-22452-1-git-send-email-bjschuma@netapp.com>
+References: <1342471161-22452-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgOTI0OWUxN2Zl
-MDk0ZDg1M2QxZWY3NDc1ZGQ1NTlhMmNjN2UyM2Q0MjoNCg0KICBWRlM6IFBhc3MgbW91bnQgZmxh
-Z3MgdG8gc2dldCgpICgyMDEyLTA3LTE0IDE2OjM4OjM0ICswNDAwKQ0KDQphcmUgYXZhaWxhYmxl
-IGluIHRoZSBnaXQgcmVwb3NpdG9yeSBhdDoNCg0KICBnaXQ6Ly9naXQubGludXgtbmZzLm9yZy9w
-cm9qZWN0cy90cm9uZG15L2xpbnV4LW5mcy5naXQgdGFncy9uZnMtZm9yLTMuNi0xDQoNCmZvciB5
-b3UgdG8gZmV0Y2ggY2hhbmdlcyB1cCB0byBmNDQxMDZlMjE3M2YwOGNjYjFjOTE5NWQ4NWE2YzIy
-Mzg4YjQ2MWMxOg0KDQogIG5mczogZml4IGZsX3R5cGUgdGVzdHMgaW4gTkZTdjQgY29kZSAoMjAx
-Mi0wNy0zMCAxODowOToxMyAtMDQwMCkNCg0KUGxlYXNlIG5vdGUgdGhhdCBkdWUgdG8gbXkgb3du
-IGZhbWlseSB2YWNhdGlvbiwgSSd2ZSBiZWVuIGFza2luZyBCcnlhbg0KdG8gY29sbGVjdCBzb21l
-IG9mIHRoZSBwYXRjaGVzIHRoYXQgY2FtZSBpbiB0aGUgcGFzdCAyIHdlZWtzLiBJJ20NCnRoZXJl
-Zm9yZSBwbGFubmluZyBvbiBzZW5kaW5nIGEgc2Vjb25kIHB1bGwgcmVxdWVzdCBvbiBXZWRuZXNk
-YXkNCmNvbnRhaW5pbmcgdGhlIHN0dWZmIHRoYXQgaGUgaGFzIGJlZW4gYWNjdW11bGF0aW5nLg0K
-DQpUaGlzIGlzIGFsbCBzdHVmZiB0aGF0IEkgaGFkIHF1ZXVlZCB1cCBiZWZvcmUgSSBsZWZ0LCBw
-bHVzIGEgY291cGxlIG9mDQpyZWdyZXNzaW9uIGZpeGVzLg0KDQpDaGVlcnMNCiAgVHJvbmQNCg0K
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLQ0KTkZTIGNsaWVudCB1cGRhdGVzIGZvciBMaW51eCAzLjYNCg0KRmVhdHVyZXMgaW5j
-bHVkZToNCi0gTW9yZSBwcmVwYXJhdG9yeSBwYXRjaGVzIGZvciBtb2R1bGFyaXNpbmcgTkZTdjIv
-djMvdjQuDQogIFNwbGl0IG91dCB0aGUgdmFyaW91cyBORlN2Mi92My92NC1zcGVjaWZpYyBjb2Rl
-IGludG8gc2VwYXJhdGUNCiAgZmlsZXMNCi0gTW9yZSBwcmVwYXJhdGlvbiBmb3IgdGhlIE5GU3Y0
-IG1pZ3JhdGlvbiBjb2RlDQotIEVuc3VyZSB0aGF0IE9QRU4oT19DUkVBVEUpIG9ic2VydmVzIHRo
-ZSBwTkZTIG1kcyB0aHJlc2hvbGQgcGFyYW1ldGVycw0KLSBwTkZTIGZhc3QgZmFpbG92ZXIgd2hl
-biB0aGUgZGF0YSBzZXJ2ZXJzIGFyZSBkb3duDQotIFZhcmlvdXMgY2xlYW51cHMgYW5kIGRlYnVn
-Z2luZyBwYXRjaGVzDQoNCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCkFuZHkgQWRhbXNvbiAoNik6DQogICAgICBORlN2NC4x
-OiBVc2Ugc2Vzc2lvbiBtYXggcmVzcG9uc2Ugc2l6ZSBmb3IgR0VUREVWSUNFSU5GTyBnZGlhX21h
-eGNvdW50DQogICAgICBORlN2NC4xIGhhbmRsZSBPUEVOIE9fQ1JFQVRFIG1kc3RocmVzaG9sZA0K
-ICAgICAgTkZTdjQuMSByZXR1cm4gdGhlIExBWU9VVCBmb3IgZWFjaCBmaWxlIHdpdGggZmFpbGVk
-IERTIGNvbm5lY3Rpb24gSS9PDQogICAgICBORlN2NC4xIGRvbid0IHNlbmQgTEFZT1VUQ09NTUlU
-IGlmIGRhdGEgcmVzZW50IHRocm91Z2ggTURTDQogICAgICBORlN2NC4xIG1hcmsgbGF5b3V0IHdo
-ZW4gYWxyZWFkeSByZXR1cm5lZA0KICAgICAgTkZTdjQuMSBkbyBub3Qgc2VuZCBMQVlPVVRSRVRV
-Uk4gb24gZW10cHkgcGxoX3NlZ3MgbGlzdA0KDQpCcnlhbiBTY2h1bWFrZXIgKDIzKToNCiAgICAg
-IE5GUzogc2V0X3BuZnNfbGF5b3V0ZHJpdmVyKCkgZnJvbSBuZnM0X3Byb2NfZnNpbmZvKCkNCiAg
-ICAgIE5GUzogVXNlIG5mczRfZGVzdHJveV9zZXJ2ZXIoKSB0byBjbGVhbiB1cCBORlMgdjQNCiAg
-ICAgIE5GUzogQ3JlYXRlIGEgdjQtc3BlY2lmaWMgZnN5bmMgZnVuY3Rpb24NCiAgICAgIE5GUzog
-Q3JlYXRlIGEgaGF2ZV9kZWxlZ2F0aW9uIHJwY19vcA0KICAgICAgTkZTOiBDcmVhdGUgYSByZXR1
-cm5fZGVsZWdhdGlvbiBycGMgb3ANCiAgICAgIE5GUzogQ3JlYXRlIGEgZnJlZV9jbGllbnQgcnBj
-X29wDQogICAgICBORlM6IENyZWF0ZSBhbiBhbGxvY19jbGllbnQgcnBjX29wDQogICAgICBORlM6
-IENyZWF0ZSBhbiByZWFkX3BhZ2Vpb19pbml0KCkgZnVuY3Rpb24NCiAgICAgIE5GUzogQ3JlYXRl
-IGFuIHdyaXRlX3BhZ2Vpb19pbml0KCkgZnVuY3Rpb24NCiAgICAgIE5GUzogQ3JlYXRlIGN1c3Rv
-bSBORlMgdjQgd3JpdGVfaW5vZGUoKSBmdW5jdGlvbg0KICAgICAgTkZTOiBTcGxpdCBvdXQgTkZT
-IHYyIGlub2RlIG9wZXJhdGlvbnMNCiAgICAgIE5GUzogU3BsaXQgb3V0IE5GUyB2MyBpbm9kZSBv
-cGVyYXRpb25zDQogICAgICBORlM6IFNwbGl0IG91dCBORlMgdjQgaW5vZGUgb3BlcmF0aW9ucw0K
-ICAgICAgTkZTOiBDcmVhdGUgYW4gaW5pdF9uZnNfdjQoKSBmdW5jdGlvbg0KICAgICAgTkZTOiBJ
-bml0aWFsaXplIHY0IHN5c2N0bHMgZnJvbSBuZnNfaW5pdF92NCgpDQogICAgICBORlM6IFNwbGl0
-IG91dCBORlMgdjQgZmlsZSBvcGVyYXRpb25zDQogICAgICBORlM6IE1vdmUgdGhlIHY0IGdldHJv
-b3QgY29kZSB0byBuZnM0Z2V0cm9vdC5jDQogICAgICBORlM6IEluaXRpYWxpemUgdGhlIE5GUyB2
-NCBjbGllbnQgZnJvbSBpbml0X25mc192NCgpDQogICAgICBORlM6IFNwbGl0IG91dCBORlMgdjQg
-c2VydmVyIGNyZWF0aW5nIGNvZGUNCiAgICAgIE5GUzogQ3JlYXRlIGEgc2luZ2xlIG5mc19jbG9u
-ZV9zdXBlcigpIGZ1bmN0aW9uDQogICAgICBORlM6IFNwbGl0IG91dCB0aGUgTkZTIHY0IGZpbGVz
-eXN0ZW0gdHlwZXMNCiAgICAgIE5GUzogU3BsaXQgb3V0IE5GUyB2NCBjbGllbnQgZnVuY3Rpb25z
-DQogICAgICBORlM6IGV4aXRfbmZzX3Y0KCkgc2hvdWxkbid0IGJlIGFuIF9fZXhpdCBmdW5jdGlv
-bg0KDQpDaHVjayBMZXZlciAoMTApOg0KICAgICAgTkZTOiBGaXggdXAgVEVTVF9TVEFURUlEIGFu
-ZCBGUkVFX1NUQVRFSUQgcmV0dXJuIGNvZGUgaGFuZGxpbmcNCiAgICAgIE5GUzogRG9uJ3QgZnJl
-ZSBhIHN0YXRlIElEIHRoZSBzZXJ2ZXIgZG9lcyBub3QgcmVjb2duaXplDQogICAgICBORlM6IFN0
-YXRlIHJlY2xhaW0gY2xlYXJzIE9QRU4gYW5kIExPQ0sgc3RhdGUNCiAgICAgIE5GUzogQ2xlYW4g
-dXAgbmZzNDFfY2hlY2tfZXhwaXJlZF9zdGF0ZWlkKCkNCiAgICAgIE5GUzogQ2xlYW4gdXAgVEVT
-VF9TVEFURUlEIGFuZCBGUkVFX1NUQVRFSUQgZXJyb3IgcmVwb3J0aW5nDQogICAgICBORlM6IG5m
-c19nZXRhY2xhcmdzLmFjbF9sZW4gaXMgYSBzaXplX3QNCiAgICAgIFNVTlJQQzogQWRkIHJwY2F1
-dGhfbGlzdF9mbGF2b3JzKCkNCiAgICAgIE5GUzogV2hlbiBzdGF0ZSByZWNvdmVyeSBmYWlscywg
-d2FpdGluZyB0YXNrcyBzaG91bGQgZXhpdA0KICAgICAgTkZTOiBUcmVhdCBORlM0RVJSX0NMSURf
-SU5VU0UgYXMgYSBmYXRhbCBlcnJvcg0KICAgICAgTkZTOiBDbGVhbiB1cCBuZnM0X3Byb2Nfc2V0
-Y2xpZW50aWQoKSBhbmQgZnJpZW5kcw0KDQpGcmVkIElzYW1hbiAoMik6DQogICAgICBORlM6IGZp
-eCBwbmZzIHJlZ3Jlc3Npb24gd2l0aCBkaXJlY3RpbyByZWFkcw0KICAgICAgTkZTOiBmaXggcG5m
-cyByZWdyZXNzaW9uIHdpdGggZGlyZWN0aW8gd3JpdGVzDQoNCkplZmYgTGF5dG9uICgxKToNCiAg
-ICAgIG5mczogZml4IGZsX3R5cGUgdGVzdHMgaW4gTkZTdjQgY29kZQ0KDQpKb2UgUGVyY2hlcyAo
-MSk6DQogICAgICBzdW5ycGM6IGNsbnQ6IEFkZCBtaXNzaW5nIGJyYWNlcw0KDQpSYW5keSBEdW5s
-YXAgKDEpOg0KICAgICAgbmZzOiBmaXggc3R1YiByZXR1cm4gdHlwZSB3YXJuaW5ncw0KDQpUcm9u
-ZCBNeWtsZWJ1c3QgKDIzKToNCiAgICAgIE5GU3YyL3YzOiBSZW1vdmUgaW5jb3JyZWN0IGRwcmlu
-dGtzIGZyb20gdGhlIHJlYWRkaXIgcmVwbHkgY29kZQ0KICAgICAgU1VOUlBDOiB4ZHJfcmVhZF9w
-YWdlcyBuZWVkcyB0byBjbGVhciB4ZHItPnBhZ2VfcHRyLg0KICAgICAgU1VOUlBDOiBDbGVhbiB1
-cCB4ZHJfc2V0X2lvdigpDQogICAgICBTVU5SUEM6IERvbid0IGRlY29kZSBiZXlvbmQgdGhlIGVu
-ZCBvZiB0aGUgUlBDIHJlcGx5IG1lc3NhZ2UNCiAgICAgIFNVTlJQQzogeGRyX3JlYWRfcGFnZXMg
-c2hvdWxkIHJldHVybiB0aGUgYW1vdW50IG9mIFhEUiBlbmNvZGVkIHBhZ2UgZGF0YQ0KICAgICAg
-TkZTOiBMZXQgeGRyX3JlYWRfcGFnZXMoKSBjaGVjayBmb3IgYnVmZmVyIG92ZXJmbG93cw0KICAg
-ICAgU1VOUlBDOiBBZGQgdGhlIGhlbHBlciB4ZHJfc3RyZWFtX3Bvcw0KICAgICAgTkZTdjQ6IFNp
-bXBsaWZ5IHRoZSBHRVRBVFRSIGF0dHJpYnV0ZSBsZW5ndGggY2FsY3VsYXRpb24NCiAgICAgIE5G
-U3YzOiBEb24ndCBvcGVuIGNvZGUgc3RyZWFtIHBvc2l0aW9uIGNhbGN1bGF0aW9uIGluIGRlY29k
-ZV9nZXRhY2wzcmVzb2sNCiAgICAgIFNVTlJQQzogUmVtb3ZlIG9wZW4gY29kZWQgc3RyZWFtIHBv
-c2l0aW9uIGNhbGN1bGF0aW9uIGluIHhkcl9yZWFkX3BhZ2VzDQogICAgICBTVU5SUEM6IFNpbXBs
-aWZ5IHRoZSBlbmQtb2YtYnVmZmVyIGNhbGN1bGF0aW9uIGluIHhkcl9yZWFkX3BhZ2VzDQogICAg
-ICBTVU5SUEM6IENsZWFuIHVwIHhkcl9yZWFkX3BhZ2VzDQogICAgICBTVU5SUEM6IENsZWFuIHVw
-IHhkcl9lbnRlcl9wYWdlDQogICAgICBORlN2NC4xOiBIYW5kbGUgc2xvdCByZWNhbGxzIGJlZm9y
-ZSBkb2luZyBzdGF0ZSByZWNvdmVyeQ0KICAgICAgTkZTdjQuMTogQ2xlYW4gdXAgbmZzNF9yZWNh
-bGxfc2xvdCgpDQogICAgICBORlN2NC4xOiBDbGVhbnVwIC0gbW92ZSBuZnM0X2hhc19zZXNzaW9u
-IHRlc3RzIG91dCBvZiBzdGF0ZSBtYW5hZ2VyIGxvb3ANCiAgICAgIE5GU3Y0LjE6IENsZWFuIHVw
-IG5mczRfcmVjbGFpbV9sZWFzZQ0KICAgICAgU1VOUlBDOiBSZW1vdmUgdW51c2VkIGZ1bmN0aW9u
-IHhkcl9lbmNvZGVfcGFnZXMNCiAgICAgIE5GU3Y0OiBEZWNvZGUgZ2V0ZGV2aWNlbGlzdCBzaG91
-bGQgdXNlIG5mczRfdmVyaWZpZXINCiAgICAgIE5GUzogQ2xlYW51cCAtIG9ubHkgc3RvcmUgdGhl
-IHdyaXRlIHZlcmlmaWVyIGluIHN0cnVjdCBuZnNfcGFnZQ0KICAgICAgTkZTOiBTaW1wbGlmeSBO
-RlN2NC4xIEtjb25maWcNCiAgICAgIE1lcmdlIGNvbW1pdCAnOTI0OWUxN2ZlMDk0ZDg1M2QxZWY3
-NDc1ZGQ1NTlhMmNjN2UyM2Q0MicgaW50byBuZnMtZm9yLTMuNg0KICAgICAgU1VOUlBDOiBBZGQg
-YSBtaXNzaW5nIHNwaW5fdW5sb2NrIHRvIGdzc19tZWNoX2xpc3RfcHNldWRvZmxhdm9ycw0KDQpX
-ZXN0b24gQW5kcm9zIEFkYW1zb24gKDEpOg0KICAgICAgTkZTOiBhZGQgbW9yZSBjb250ZXh0IHRv
-IHN0YXRlIG1hbmFnZXIgZXJyb3IgbWVzZ3MNCg0KIGZzL25mcy9LY29uZmlnICAgICAgICAgICAg
-ICAgICAgICAgICAgfCAgIDkgKy0NCiBmcy9uZnMvTWFrZWZpbGUgICAgICAgICAgICAgICAgICAg
-ICAgIHwgIDExICstDQogZnMvbmZzL2NsaWVudC5jICAgICAgICAgICAgICAgICAgICAgICB8IDY4
-NSArLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQogZnMvbmZzL2RlbGVnYXRpb24u
-YyAgICAgICAgICAgICAgICAgICB8ICAgNyArLQ0KIGZzL25mcy9kZWxlZ2F0aW9uLmggICAgICAg
-ICAgICAgICAgICAgfCAgMTkgKy0NCiBmcy9uZnMvZGlyLmMgICAgICAgICAgICAgICAgICAgICAg
-ICAgIHwgMTA3ICstLS0tLQ0KIGZzL25mcy9kaXJlY3QuYyAgICAgICAgICAgICAgICAgICAgICAg
-fCAgIDYgKy0NCiBmcy9uZnMvZmlsZS5jICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTc5ICsr
-LS0tLS0tLQ0KIGZzL25mcy9nZXRyb290LmMgICAgICAgICAgICAgICAgICAgICAgfCAgNTAgLS0t
-DQogZnMvbmZzL2lub2RlLmMgICAgICAgICAgICAgICAgICAgICAgICB8ICA3MSArKy0tDQogZnMv
-bmZzL2ludGVybmFsLmggICAgICAgICAgICAgICAgICAgICB8ICA4NyArKysrLQ0KIGZzL25mcy9u
-ZnMyeGRyLmMgICAgICAgICAgICAgICAgICAgICAgfCAgMjggKy0NCiBmcy9uZnMvbmZzM3Byb2Mu
-YyAgICAgICAgICAgICAgICAgICAgIHwgIDQ2ICsrKw0KIGZzL25mcy9uZnMzeGRyLmMgICAgICAg
-ICAgICAgICAgICAgICAgfCAgNDMgKy0tDQogZnMvbmZzL25mczRfZnMuaCAgICAgICAgICAgICAg
-ICAgICAgICB8ICAzMyArLQ0KIGZzL25mcy9uZnM0Y2xpZW50LmMgICAgICAgICAgICAgICAgICAg
-fCA2NjMgKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysNCiBmcy9uZnMvbmZzNGZpbGUu
-YyAgICAgICAgICAgICAgICAgICAgIHwgMTI2ICsrKysrKysNCiBmcy9uZnMvbmZzNGZpbGVsYXlv
-dXQuYyAgICAgICAgICAgICAgIHwgIDEwICstDQogZnMvbmZzL25mczRmaWxlbGF5b3V0ZGV2LmMg
-ICAgICAgICAgICB8ICAgMiArLQ0KIGZzL25mcy9uZnM0Z2V0cm9vdC5jICAgICAgICAgICAgICAg
-ICAgfCAgNDkgKysrDQogZnMvbmZzL25mczRwcm9jLmMgICAgICAgICAgICAgICAgICAgICB8IDMw
-MyArKysrKysrKysrLS0tLS0NCiBmcy9uZnMvbmZzNHN0YXRlLmMgICAgICAgICAgICAgICAgICAg
-IHwgMTE0ICsrKystLQ0KIGZzL25mcy9uZnM0c3VwZXIuYyAgICAgICAgICAgICAgICAgICAgfCAz
-NjAgKysrKysrKysrKysrKysrKysrDQogZnMvbmZzL25mczRzeXNjdGwuYyAgICAgICAgICAgICAg
-ICAgICB8ICA2OCArKysrDQogZnMvbmZzL25mczR4ZHIuYyAgICAgICAgICAgICAgICAgICAgICB8
-ICA4NCArKy0tLQ0KIGZzL25mcy9wbmZzLmMgICAgICAgICAgICAgICAgICAgICAgICAgfCAgNTUg
-KystDQogZnMvbmZzL3BuZnMuaCAgICAgICAgICAgICAgICAgICAgICAgICB8ICAzMSArLQ0KIGZz
-L25mcy9wcm9jLmMgICAgICAgICAgICAgICAgICAgICAgICAgfCAgMzggKysNCiBmcy9uZnMvcmVh
-ZC5jICAgICAgICAgICAgICAgICAgICAgICAgIHwgIDE2ICstDQogZnMvbmZzL3N1cGVyLmMgICAg
-ICAgICAgICAgICAgICAgICAgICB8IDQzOCArKy0tLS0tLS0tLS0tLS0tLS0tLS0tDQogZnMvbmZz
-L3N5c2N0bC5jICAgICAgICAgICAgICAgICAgICAgICB8ICAyNiAtLQ0KIGZzL25mcy91bmxpbmsu
-YyAgICAgICAgICAgICAgICAgICAgICAgfCAgIDIgKy0NCiBmcy9uZnMvd3JpdGUuYyAgICAgICAg
-ICAgICAgICAgICAgICAgIHwgIDM0ICstDQogaW5jbHVkZS9saW51eC9uZnNfZnMuaCAgICAgICAg
-ICAgICAgICB8ICAgOCAtDQogaW5jbHVkZS9saW51eC9uZnNfZnNfc2IuaCAgICAgICAgICAgICB8
-ICAgMyArLQ0KIGluY2x1ZGUvbGludXgvbmZzX3BhZ2UuaCAgICAgICAgICAgICAgfCAgIDIgKy0N
-CiBpbmNsdWRlL2xpbnV4L25mc194ZHIuaCAgICAgICAgICAgICAgIHwgIDE2ICstDQogaW5jbHVk
-ZS9saW51eC9zdW5ycGMvYXV0aC5oICAgICAgICAgICB8ICAgMiArDQogaW5jbHVkZS9saW51eC9z
-dW5ycGMvZ3NzX2FwaS5oICAgICAgICB8ICAgMyArLQ0KIGluY2x1ZGUvbGludXgvc3VucnBjL3hk
-ci5oICAgICAgICAgICAgfCAgIDYgKy0NCiBuZXQvc3VucnBjL2F1dGguYyAgICAgICAgICAgICAg
-ICAgICAgIHwgIDU0ICsrKw0KIG5ldC9zdW5ycGMvYXV0aF9nc3MvYXV0aF9nc3MuYyAgICAgICAg
-fCAgIDEgKw0KIG5ldC9zdW5ycGMvYXV0aF9nc3MvZ3NzX21lY2hfc3dpdGNoLmMgfCAgMjAgKy0N
-CiBuZXQvc3VucnBjL2NsbnQuYyAgICAgICAgICAgICAgICAgICAgIHwgICAzICstDQogbmV0L3N1
-bnJwYy94ZHIuYyAgICAgICAgICAgICAgICAgICAgICB8IDEyNyArKysrLS0tDQogNDUgZmlsZXMg
-Y2hhbmdlZCwgMjIyMCBpbnNlcnRpb25zKCspLCAxODI1IGRlbGV0aW9ucygtKQ0KIGNyZWF0ZSBt
-b2RlIDEwMDY0NCBmcy9uZnMvbmZzNGNsaWVudC5jDQogY3JlYXRlIG1vZGUgMTAwNjQ0IGZzL25m
-cy9uZnM0ZmlsZS5jDQogY3JlYXRlIG1vZGUgMTAwNjQ0IGZzL25mcy9uZnM0Z2V0cm9vdC5jDQog
-Y3JlYXRlIG1vZGUgMTAwNjQ0IGZzL25mcy9uZnM0c3VwZXIuYw0KIGNyZWF0ZSBtb2RlIDEwMDY0
-NCBmcy9uZnMvbmZzNHN5c2N0bC5jDQoNCg==
+From: Bryan Schumaker <bjschuma@netapp.com>
+
+These functions are specific to NFS v4 and can be moved to nfs4client.c
+to keep them out of the generic client.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/client.c     | 457 ++--------------------------------------------------
+ fs/nfs/internal.h   |  25 +++
+ fs/nfs/nfs4client.c | 428 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 462 insertions(+), 448 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 5664c7b..0d50629 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -82,11 +82,6 @@ retry:
+ #endif /* CONFIG_NFS_V4 */
+ 
+ /*
+- * Turn off NFSv4 uid/gid mapping when using AUTH_SYS
+- */
+-static bool nfs4_disable_idmapping = true;
+-
+-/*
+  * RPC cruft for NFS
+  */
+ static const struct rpc_version *nfs_version[5] = {
+@@ -130,17 +125,6 @@ const struct rpc_program nfsacl_program = {
+ };
+ #endif  /* CONFIG_NFS_V3_ACL */
+ 
+-struct nfs_client_initdata {
+-	unsigned long init_flags;
+-	const char *hostname;
+-	const struct sockaddr *addr;
+-	size_t addrlen;
+-	const struct nfs_rpc_ops *rpc_ops;
+-	int proto;
+-	u32 minorversion;
+-	struct net *net;
+-};
+-
+ /*
+  * Allocate a shared client record
+  *
+@@ -282,13 +266,6 @@ static void pnfs_init_server(struct nfs_server *server)
+ 	rpc_init_wait_queue(&server->roc_rpcwaitq, "pNFS ROC");
+ }
+ 
+-static void nfs4_destroy_server(struct nfs_server *server)
+-{
+-	nfs_server_return_all_delegations(server);
+-	unset_pnfs_layoutdriver(server);
+-	nfs4_purge_state_owners(server);
+-}
+-
+ #else
+ void nfs_cleanup_cb_ident_idr(struct net *net)
+ {
+@@ -426,8 +403,8 @@ static int nfs_sockaddr_cmp_ip4(const struct sockaddr *sa1,
+  * Test if two socket addresses represent the same actual socket,
+  * by comparing (only) relevant fields, excluding the port number.
+  */
+-static int nfs_sockaddr_match_ipaddr(const struct sockaddr *sa1,
+-				     const struct sockaddr *sa2)
++int nfs_sockaddr_match_ipaddr(const struct sockaddr *sa1,
++			      const struct sockaddr *sa2)
+ {
+ 	if (sa1->sa_family != sa2->sa_family)
+ 		return 0;
+@@ -461,33 +438,6 @@ static int nfs_sockaddr_cmp(const struct sockaddr *sa1,
+ 	return 0;
+ }
+ 
+-#if defined(CONFIG_NFS_V4_1)
+-/* Common match routine for v4.0 and v4.1 callback services */
+-static bool nfs4_cb_match_client(const struct sockaddr *addr,
+-		struct nfs_client *clp, u32 minorversion)
+-{
+-	struct sockaddr *clap = (struct sockaddr *)&clp->cl_addr;
+-
+-	/* Don't match clients that failed to initialise */
+-	if (!(clp->cl_cons_state == NFS_CS_READY ||
+-	    clp->cl_cons_state == NFS_CS_SESSION_INITING))
+-		return false;
+-
+-	smp_rmb();
+-
+-	/* Match the version and minorversion */
+-	if (clp->rpc_ops->version != 4 ||
+-	    clp->cl_minorversion != minorversion)
+-		return false;
+-
+-	/* Match only the IP address, not the port number */
+-	if (!nfs_sockaddr_match_ipaddr(addr, clap))
+-		return false;
+-
+-	return true;
+-}
+-#endif /* CONFIG_NFS_V4_1 */
+-
+ /*
+  * Find an nfs_client on the list that matches the initialisation data
+  * that is supplied.
+@@ -566,7 +516,7 @@ nfs_found_client(const struct nfs_client_initdata *cl_init,
+  * Look up a client by IP address and protocol version
+  * - creates a new record if one doesn't yet exist
+  */
+-static struct nfs_client *
++struct nfs_client *
+ nfs_get_client(const struct nfs_client_initdata *cl_init,
+ 	       const struct rpc_timeout *timeparms,
+ 	       const char *ip_addr,
+@@ -621,7 +571,7 @@ void nfs_mark_client_ready(struct nfs_client *clp, int state)
+ /*
+  * Initialise the timeout values for a connection
+  */
+-static void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
++void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
+ 				    unsigned int timeo, unsigned int retrans)
+ {
+ 	to->to_initval = timeo * HZ / 10;
+@@ -781,7 +731,7 @@ static inline void nfs_init_server_aclclient(struct nfs_server *server)
+ /*
+  * Create a general RPC client
+  */
+-static int nfs_init_server_rpcclient(struct nfs_server *server,
++int nfs_init_server_rpcclient(struct nfs_server *server,
+ 		const struct rpc_timeout *timeo,
+ 		rpc_authflavor_t pseudoflavour)
+ {
+@@ -1014,7 +964,7 @@ static void nfs_server_set_fsinfo(struct nfs_server *server,
+ /*
+  * Probe filesystem information, including the FSID on v2/v3
+  */
+-static int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, struct nfs_fattr *fattr)
++int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, struct nfs_fattr *fattr)
+ {
+ 	struct nfs_fsinfo fsinfo;
+ 	struct nfs_client *clp = server->nfs_client;
+@@ -1058,7 +1008,7 @@ out_error:
+ /*
+  * Copy useful information when duplicating a server record
+  */
+-static void nfs_server_copy_userdata(struct nfs_server *target, struct nfs_server *source)
++void nfs_server_copy_userdata(struct nfs_server *target, struct nfs_server *source)
+ {
+ 	target->flags = source->flags;
+ 	target->rsize = source->rsize;
+@@ -1071,7 +1021,7 @@ static void nfs_server_copy_userdata(struct nfs_server *target, struct nfs_serve
+ 	target->options = source->options;
+ }
+ 
+-static void nfs_server_insert_lists(struct nfs_server *server)
++void nfs_server_insert_lists(struct nfs_server *server)
+ {
+ 	struct nfs_client *clp = server->nfs_client;
+ 	struct nfs_net *nn = net_generic(clp->cl_net, nfs_net_id);
+@@ -1105,7 +1055,7 @@ static void nfs_server_remove_lists(struct nfs_server *server)
+ /*
+  * Allocate and initialise a server record
+  */
+-static struct nfs_server *nfs_alloc_server(void)
++struct nfs_server *nfs_alloc_server(void)
+ {
+ 	struct nfs_server *server;
+ 
+@@ -1238,391 +1188,6 @@ error:
+ 	return ERR_PTR(error);
+ }
+ 
+-#ifdef CONFIG_NFS_V4
+-/*
+- * NFSv4.0 callback thread helper
+- *
+- * Find a client by callback identifier
+- */
+-struct nfs_client *
+-nfs4_find_client_ident(struct net *net, int cb_ident)
+-{
+-	struct nfs_client *clp;
+-	struct nfs_net *nn = net_generic(net, nfs_net_id);
+-
+-	spin_lock(&nn->nfs_client_lock);
+-	clp = idr_find(&nn->cb_ident_idr, cb_ident);
+-	if (clp)
+-		atomic_inc(&clp->cl_count);
+-	spin_unlock(&nn->nfs_client_lock);
+-	return clp;
+-}
+-
+-#if defined(CONFIG_NFS_V4_1)
+-/*
+- * NFSv4.1 callback thread helper
+- * For CB_COMPOUND calls, find a client by IP address, protocol version,
+- * minorversion, and sessionID
+- *
+- * Returns NULL if no such client
+- */
+-struct nfs_client *
+-nfs4_find_client_sessionid(struct net *net, const struct sockaddr *addr,
+-			   struct nfs4_sessionid *sid)
+-{
+-	struct nfs_client *clp;
+-	struct nfs_net *nn = net_generic(net, nfs_net_id);
+-
+-	spin_lock(&nn->nfs_client_lock);
+-	list_for_each_entry(clp, &nn->nfs_client_list, cl_share_link) {
+-		if (nfs4_cb_match_client(addr, clp, 1) == false)
+-			continue;
+-
+-		if (!nfs4_has_session(clp))
+-			continue;
+-
+-		/* Match sessionid*/
+-		if (memcmp(clp->cl_session->sess_id.data,
+-		    sid->data, NFS4_MAX_SESSIONID_LEN) != 0)
+-			continue;
+-
+-		atomic_inc(&clp->cl_count);
+-		spin_unlock(&nn->nfs_client_lock);
+-		return clp;
+-	}
+-	spin_unlock(&nn->nfs_client_lock);
+-	return NULL;
+-}
+-
+-#else /* CONFIG_NFS_V4_1 */
+-
+-struct nfs_client *
+-nfs4_find_client_sessionid(struct net *net, const struct sockaddr *addr,
+-			   struct nfs4_sessionid *sid)
+-{
+-	return NULL;
+-}
+-#endif /* CONFIG_NFS_V4_1 */
+-
+-/*
+- * Set up an NFS4 client
+- */
+-static int nfs4_set_client(struct nfs_server *server,
+-		const char *hostname,
+-		const struct sockaddr *addr,
+-		const size_t addrlen,
+-		const char *ip_addr,
+-		rpc_authflavor_t authflavour,
+-		int proto, const struct rpc_timeout *timeparms,
+-		u32 minorversion, struct net *net)
+-{
+-	struct nfs_client_initdata cl_init = {
+-		.hostname = hostname,
+-		.addr = addr,
+-		.addrlen = addrlen,
+-		.rpc_ops = &nfs_v4_clientops,
+-		.proto = proto,
+-		.minorversion = minorversion,
+-		.net = net,
+-	};
+-	struct nfs_client *clp;
+-	int error;
+-
+-	dprintk("--> nfs4_set_client()\n");
+-
+-	if (server->flags & NFS_MOUNT_NORESVPORT)
+-		set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
+-
+-	/* Allocate or find a client reference we can use */
+-	clp = nfs_get_client(&cl_init, timeparms, ip_addr, authflavour);
+-	if (IS_ERR(clp)) {
+-		error = PTR_ERR(clp);
+-		goto error;
+-	}
+-
+-	/*
+-	 * Query for the lease time on clientid setup or renewal
+-	 *
+-	 * Note that this will be set on nfs_clients that were created
+-	 * only for the DS role and did not set this bit, but now will
+-	 * serve a dual role.
+-	 */
+-	set_bit(NFS_CS_CHECK_LEASE_TIME, &clp->cl_res_state);
+-
+-	server->nfs_client = clp;
+-	dprintk("<-- nfs4_set_client() = 0 [new %p]\n", clp);
+-	return 0;
+-error:
+-	dprintk("<-- nfs4_set_client() = xerror %d\n", error);
+-	return error;
+-}
+-
+-/*
+- * Set up a pNFS Data Server client.
+- *
+- * Return any existing nfs_client that matches server address,port,version
+- * and minorversion.
+- *
+- * For a new nfs_client, use a soft mount (default), a low retrans and a
+- * low timeout interval so that if a connection is lost, we retry through
+- * the MDS.
+- */
+-struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
+-		const struct sockaddr *ds_addr, int ds_addrlen,
+-		int ds_proto, unsigned int ds_timeo, unsigned int ds_retrans)
+-{
+-	struct nfs_client_initdata cl_init = {
+-		.addr = ds_addr,
+-		.addrlen = ds_addrlen,
+-		.rpc_ops = &nfs_v4_clientops,
+-		.proto = ds_proto,
+-		.minorversion = mds_clp->cl_minorversion,
+-		.net = mds_clp->cl_net,
+-	};
+-	struct rpc_timeout ds_timeout;
+-	struct nfs_client *clp;
+-
+-	/*
+-	 * Set an authflavor equual to the MDS value. Use the MDS nfs_client
+-	 * cl_ipaddr so as to use the same EXCHANGE_ID co_ownerid as the MDS
+-	 * (section 13.1 RFC 5661).
+-	 */
+-	nfs_init_timeout_values(&ds_timeout, ds_proto, ds_timeo, ds_retrans);
+-	clp = nfs_get_client(&cl_init, &ds_timeout, mds_clp->cl_ipaddr,
+-			     mds_clp->cl_rpcclient->cl_auth->au_flavor);
+-
+-	dprintk("<-- %s %p\n", __func__, clp);
+-	return clp;
+-}
+-EXPORT_SYMBOL_GPL(nfs4_set_ds_client);
+-
+-/*
+- * Session has been established, and the client marked ready.
+- * Set the mount rsize and wsize with negotiated fore channel
+- * attributes which will be bound checked in nfs_server_set_fsinfo.
+- */
+-static void nfs4_session_set_rwsize(struct nfs_server *server)
+-{
+-#ifdef CONFIG_NFS_V4_1
+-	struct nfs4_session *sess;
+-	u32 server_resp_sz;
+-	u32 server_rqst_sz;
+-
+-	if (!nfs4_has_session(server->nfs_client))
+-		return;
+-	sess = server->nfs_client->cl_session;
+-	server_resp_sz = sess->fc_attrs.max_resp_sz - nfs41_maxread_overhead;
+-	server_rqst_sz = sess->fc_attrs.max_rqst_sz - nfs41_maxwrite_overhead;
+-
+-	if (server->rsize > server_resp_sz)
+-		server->rsize = server_resp_sz;
+-	if (server->wsize > server_rqst_sz)
+-		server->wsize = server_rqst_sz;
+-#endif /* CONFIG_NFS_V4_1 */
+-}
+-
+-static int nfs4_server_common_setup(struct nfs_server *server,
+-		struct nfs_fh *mntfh)
+-{
+-	struct nfs_fattr *fattr;
+-	int error;
+-
+-	BUG_ON(!server->nfs_client);
+-	BUG_ON(!server->nfs_client->rpc_ops);
+-	BUG_ON(!server->nfs_client->rpc_ops->file_inode_ops);
+-
+-	/* data servers support only a subset of NFSv4.1 */
+-	if (is_ds_only_client(server->nfs_client))
+-		return -EPROTONOSUPPORT;
+-
+-	fattr = nfs_alloc_fattr();
+-	if (fattr == NULL)
+-		return -ENOMEM;
+-
+-	/* We must ensure the session is initialised first */
+-	error = nfs4_init_session(server);
+-	if (error < 0)
+-		goto out;
+-
+-	/* Probe the root fh to retrieve its FSID and filehandle */
+-	error = nfs4_get_rootfh(server, mntfh);
+-	if (error < 0)
+-		goto out;
+-
+-	dprintk("Server FSID: %llx:%llx\n",
+-			(unsigned long long) server->fsid.major,
+-			(unsigned long long) server->fsid.minor);
+-	dprintk("Mount FH: %d\n", mntfh->size);
+-
+-	nfs4_session_set_rwsize(server);
+-
+-	error = nfs_probe_fsinfo(server, mntfh, fattr);
+-	if (error < 0)
+-		goto out;
+-
+-	if (server->namelen == 0 || server->namelen > NFS4_MAXNAMLEN)
+-		server->namelen = NFS4_MAXNAMLEN;
+-
+-	nfs_server_insert_lists(server);
+-	server->mount_time = jiffies;
+-	server->destroy = nfs4_destroy_server;
+-out:
+-	nfs_free_fattr(fattr);
+-	return error;
+-}
+-
+-/*
+- * Create a version 4 volume record
+- */
+-static int nfs4_init_server(struct nfs_server *server,
+-		const struct nfs_parsed_mount_data *data)
+-{
+-	struct rpc_timeout timeparms;
+-	int error;
+-
+-	dprintk("--> nfs4_init_server()\n");
+-
+-	nfs_init_timeout_values(&timeparms, data->nfs_server.protocol,
+-			data->timeo, data->retrans);
+-
+-	/* Initialise the client representation from the mount data */
+-	server->flags = data->flags;
+-	server->caps |= NFS_CAP_ATOMIC_OPEN|NFS_CAP_CHANGE_ATTR|NFS_CAP_POSIX_LOCK;
+-	if (!(data->flags & NFS_MOUNT_NORDIRPLUS))
+-			server->caps |= NFS_CAP_READDIRPLUS;
+-	server->options = data->options;
+-
+-	/* Get a client record */
+-	error = nfs4_set_client(server,
+-			data->nfs_server.hostname,
+-			(const struct sockaddr *)&data->nfs_server.address,
+-			data->nfs_server.addrlen,
+-			data->client_address,
+-			data->auth_flavors[0],
+-			data->nfs_server.protocol,
+-			&timeparms,
+-			data->minorversion,
+-			data->net);
+-	if (error < 0)
+-		goto error;
+-
+-	/*
+-	 * Don't use NFS uid/gid mapping if we're using AUTH_SYS or lower
+-	 * authentication.
+-	 */
+-	if (nfs4_disable_idmapping && data->auth_flavors[0] == RPC_AUTH_UNIX)
+-		server->caps |= NFS_CAP_UIDGID_NOMAP;
+-
+-	if (data->rsize)
+-		server->rsize = nfs_block_size(data->rsize, NULL);
+-	if (data->wsize)
+-		server->wsize = nfs_block_size(data->wsize, NULL);
+-
+-	server->acregmin = data->acregmin * HZ;
+-	server->acregmax = data->acregmax * HZ;
+-	server->acdirmin = data->acdirmin * HZ;
+-	server->acdirmax = data->acdirmax * HZ;
+-
+-	server->port = data->nfs_server.port;
+-
+-	error = nfs_init_server_rpcclient(server, &timeparms, data->auth_flavors[0]);
+-
+-error:
+-	/* Done */
+-	dprintk("<-- nfs4_init_server() = %d\n", error);
+-	return error;
+-}
+-
+-/*
+- * Create a version 4 volume record
+- * - keyed on server and FSID
+- */
+-struct nfs_server *nfs4_create_server(const struct nfs_parsed_mount_data *data,
+-				      struct nfs_fh *mntfh)
+-{
+-	struct nfs_server *server;
+-	int error;
+-
+-	dprintk("--> nfs4_create_server()\n");
+-
+-	server = nfs_alloc_server();
+-	if (!server)
+-		return ERR_PTR(-ENOMEM);
+-
+-	/* set up the general RPC client */
+-	error = nfs4_init_server(server, data);
+-	if (error < 0)
+-		goto error;
+-
+-	error = nfs4_server_common_setup(server, mntfh);
+-	if (error < 0)
+-		goto error;
+-
+-	dprintk("<-- nfs4_create_server() = %p\n", server);
+-	return server;
+-
+-error:
+-	nfs_free_server(server);
+-	dprintk("<-- nfs4_create_server() = error %d\n", error);
+-	return ERR_PTR(error);
+-}
+-
+-/*
+- * Create an NFS4 referral server record
+- */
+-struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
+-					       struct nfs_fh *mntfh)
+-{
+-	struct nfs_client *parent_client;
+-	struct nfs_server *server, *parent_server;
+-	int error;
+-
+-	dprintk("--> nfs4_create_referral_server()\n");
+-
+-	server = nfs_alloc_server();
+-	if (!server)
+-		return ERR_PTR(-ENOMEM);
+-
+-	parent_server = NFS_SB(data->sb);
+-	parent_client = parent_server->nfs_client;
+-
+-	/* Initialise the client representation from the parent server */
+-	nfs_server_copy_userdata(server, parent_server);
+-	server->caps |= NFS_CAP_ATOMIC_OPEN|NFS_CAP_CHANGE_ATTR;
+-
+-	/* Get a client representation.
+-	 * Note: NFSv4 always uses TCP, */
+-	error = nfs4_set_client(server, data->hostname,
+-				data->addr,
+-				data->addrlen,
+-				parent_client->cl_ipaddr,
+-				data->authflavor,
+-				rpc_protocol(parent_server->client),
+-				parent_server->client->cl_timeout,
+-				parent_client->cl_mvops->minor_version,
+-				parent_client->cl_net);
+-	if (error < 0)
+-		goto error;
+-
+-	error = nfs_init_server_rpcclient(server, parent_server->client->cl_timeout, data->authflavor);
+-	if (error < 0)
+-		goto error;
+-
+-	error = nfs4_server_common_setup(server, mntfh);
+-	if (error < 0)
+-		goto error;
+-
+-	dprintk("<-- nfs_create_referral_server() = %p\n", server);
+-	return server;
+-
+-error:
+-	nfs_free_server(server);
+-	dprintk("<-- nfs4_create_referral_server() = error %d\n", error);
+-	return ERR_PTR(error);
+-}
+-
+-#endif /* CONFIG_NFS_V4 */
+-
+ /*
+  * Clone an NFS2, NFS3 or NFS4 server record
+  */
+@@ -1972,7 +1537,3 @@ void nfs_fs_proc_exit(void)
+ }
+ 
+ #endif /* CONFIG_PROC_FS */
+-
+-module_param(nfs4_disable_idmapping, bool, 0644);
+-MODULE_PARM_DESC(nfs4_disable_idmapping,
+-		"Turn off NFSv4 idmapping when using 'sec=sys'");
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 10df28d..b4a3570 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -85,6 +85,17 @@ struct nfs_clone_mount {
+  */
+ #define NFS_MAX_READDIR_PAGES 8
+ 
++struct nfs_client_initdata {
++	unsigned long init_flags;
++	const char *hostname;
++	const struct sockaddr *addr;
++	size_t addrlen;
++	const struct nfs_rpc_ops *rpc_ops;
++	int proto;
++	u32 minorversion;
++	struct net *net;
++};
++
+ /*
+  * In-kernel mount arguments
+  */
+@@ -150,6 +161,16 @@ extern const struct rpc_program nfs_program;
+ extern void nfs_clients_init(struct net *net);
+ extern struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *);
+ int nfs_create_rpc_client(struct nfs_client *, const struct rpc_timeout *, rpc_authflavor_t);
++struct nfs_client *nfs_get_client(const struct nfs_client_initdata *,
++				  const struct rpc_timeout *, const char *,
++				  rpc_authflavor_t);
++int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *, struct nfs_fattr *);
++void nfs_server_insert_lists(struct nfs_server *);
++void nfs_init_timeout_values(struct rpc_timeout *, int, unsigned int, unsigned int);
++int nfs_init_server_rpcclient(struct nfs_server *, const struct rpc_timeout *t,
++		rpc_authflavor_t);
++struct nfs_server *nfs_alloc_server(void);
++void nfs_server_copy_userdata(struct nfs_server *, struct nfs_server *);
+ 
+ extern void nfs_cleanup_cb_ident_idr(struct net *);
+ extern void nfs_put_client(struct nfs_client *);
+@@ -191,6 +212,10 @@ static inline void nfs_fs_proc_exit(void)
+ }
+ #endif
+ 
++#ifdef CONFIG_NFS_V4_1
++int nfs_sockaddr_match_ipaddr(const struct sockaddr *, const struct sockaddr *);
++#endif
++
+ /* callback_xdr.c */
+ extern struct svc_version nfs4_callback_version1;
+ extern struct svc_version nfs4_callback_version4;
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index c5234b5..a71d95e 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -2,17 +2,27 @@
+  * Copyright (C) 2006 Red Hat, Inc. All Rights Reserved.
+  * Written by David Howells (dhowells@redhat.com)
+  */
++#include <linux/module.h>
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs_idmap.h>
++#include <linux/nfs_mount.h>
+ #include <linux/sunrpc/auth.h>
+ #include <linux/sunrpc/xprt.h>
+ #include <linux/sunrpc/bc_xprt.h>
+ #include "internal.h"
+ #include "callback.h"
++#include "delegation.h"
++#include "pnfs.h"
++#include "netns.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_CLIENT
+ 
+ /*
++ * Turn off NFSv4 uid/gid mapping when using AUTH_SYS
++ */
++static bool nfs4_disable_idmapping = true;
++
++/*
+  * Initialize the NFS4 callback service
+  */
+ static int nfs4_init_callback(struct nfs_client *clp)
+@@ -142,3 +152,421 @@ error:
+ 	dprintk("<-- nfs4_init_client() = xerror %d\n", error);
+ 	return ERR_PTR(error);
+ }
++
++static void nfs4_destroy_server(struct nfs_server *server)
++{
++	nfs_server_return_all_delegations(server);
++	unset_pnfs_layoutdriver(server);
++	nfs4_purge_state_owners(server);
++}
++
++/*
++ * NFSv4.0 callback thread helper
++ *
++ * Find a client by callback identifier
++ */
++struct nfs_client *
++nfs4_find_client_ident(struct net *net, int cb_ident)
++{
++	struct nfs_client *clp;
++	struct nfs_net *nn = net_generic(net, nfs_net_id);
++
++	spin_lock(&nn->nfs_client_lock);
++	clp = idr_find(&nn->cb_ident_idr, cb_ident);
++	if (clp)
++		atomic_inc(&clp->cl_count);
++	spin_unlock(&nn->nfs_client_lock);
++	return clp;
++}
++
++#if defined(CONFIG_NFS_V4_1)
++/* Common match routine for v4.0 and v4.1 callback services */
++static bool nfs4_cb_match_client(const struct sockaddr *addr,
++		struct nfs_client *clp, u32 minorversion)
++{
++	struct sockaddr *clap = (struct sockaddr *)&clp->cl_addr;
++
++	/* Don't match clients that failed to initialise */
++	if (!(clp->cl_cons_state == NFS_CS_READY ||
++	    clp->cl_cons_state == NFS_CS_SESSION_INITING))
++		return false;
++
++	smp_rmb();
++
++	/* Match the version and minorversion */
++	if (clp->rpc_ops->version != 4 ||
++	    clp->cl_minorversion != minorversion)
++		return false;
++
++	/* Match only the IP address, not the port number */
++	if (!nfs_sockaddr_match_ipaddr(addr, clap))
++		return false;
++
++	return true;
++}
++
++/*
++ * NFSv4.1 callback thread helper
++ * For CB_COMPOUND calls, find a client by IP address, protocol version,
++ * minorversion, and sessionID
++ *
++ * Returns NULL if no such client
++ */
++struct nfs_client *
++nfs4_find_client_sessionid(struct net *net, const struct sockaddr *addr,
++			   struct nfs4_sessionid *sid)
++{
++	struct nfs_client *clp;
++	struct nfs_net *nn = net_generic(net, nfs_net_id);
++
++	spin_lock(&nn->nfs_client_lock);
++	list_for_each_entry(clp, &nn->nfs_client_list, cl_share_link) {
++		if (nfs4_cb_match_client(addr, clp, 1) == false)
++			continue;
++
++		if (!nfs4_has_session(clp))
++			continue;
++
++		/* Match sessionid*/
++		if (memcmp(clp->cl_session->sess_id.data,
++		    sid->data, NFS4_MAX_SESSIONID_LEN) != 0)
++			continue;
++
++		atomic_inc(&clp->cl_count);
++		spin_unlock(&nn->nfs_client_lock);
++		return clp;
++	}
++	spin_unlock(&nn->nfs_client_lock);
++	return NULL;
++}
++
++#else /* CONFIG_NFS_V4_1 */
++
++struct nfs_client *
++nfs4_find_client_sessionid(struct net *net, const struct sockaddr *addr,
++			   struct nfs4_sessionid *sid)
++{
++	return NULL;
++}
++#endif /* CONFIG_NFS_V4_1 */
++
++/*
++ * Set up an NFS4 client
++ */
++static int nfs4_set_client(struct nfs_server *server,
++		const char *hostname,
++		const struct sockaddr *addr,
++		const size_t addrlen,
++		const char *ip_addr,
++		rpc_authflavor_t authflavour,
++		int proto, const struct rpc_timeout *timeparms,
++		u32 minorversion, struct net *net)
++{
++	struct nfs_client_initdata cl_init = {
++		.hostname = hostname,
++		.addr = addr,
++		.addrlen = addrlen,
++		.rpc_ops = &nfs_v4_clientops,
++		.proto = proto,
++		.minorversion = minorversion,
++		.net = net,
++	};
++	struct nfs_client *clp;
++	int error;
++
++	dprintk("--> nfs4_set_client()\n");
++
++	if (server->flags & NFS_MOUNT_NORESVPORT)
++		set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
++
++	/* Allocate or find a client reference we can use */
++	clp = nfs_get_client(&cl_init, timeparms, ip_addr, authflavour);
++	if (IS_ERR(clp)) {
++		error = PTR_ERR(clp);
++		goto error;
++	}
++
++	/*
++	 * Query for the lease time on clientid setup or renewal
++	 *
++	 * Note that this will be set on nfs_clients that were created
++	 * only for the DS role and did not set this bit, but now will
++	 * serve a dual role.
++	 */
++	set_bit(NFS_CS_CHECK_LEASE_TIME, &clp->cl_res_state);
++
++	server->nfs_client = clp;
++	dprintk("<-- nfs4_set_client() = 0 [new %p]\n", clp);
++	return 0;
++error:
++	dprintk("<-- nfs4_set_client() = xerror %d\n", error);
++	return error;
++}
++
++/*
++ * Set up a pNFS Data Server client.
++ *
++ * Return any existing nfs_client that matches server address,port,version
++ * and minorversion.
++ *
++ * For a new nfs_client, use a soft mount (default), a low retrans and a
++ * low timeout interval so that if a connection is lost, we retry through
++ * the MDS.
++ */
++struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
++		const struct sockaddr *ds_addr, int ds_addrlen,
++		int ds_proto, unsigned int ds_timeo, unsigned int ds_retrans)
++{
++	struct nfs_client_initdata cl_init = {
++		.addr = ds_addr,
++		.addrlen = ds_addrlen,
++		.rpc_ops = &nfs_v4_clientops,
++		.proto = ds_proto,
++		.minorversion = mds_clp->cl_minorversion,
++		.net = mds_clp->cl_net,
++	};
++	struct rpc_timeout ds_timeout;
++	struct nfs_client *clp;
++
++	/*
++	 * Set an authflavor equual to the MDS value. Use the MDS nfs_client
++	 * cl_ipaddr so as to use the same EXCHANGE_ID co_ownerid as the MDS
++	 * (section 13.1 RFC 5661).
++	 */
++	nfs_init_timeout_values(&ds_timeout, ds_proto, ds_timeo, ds_retrans);
++	clp = nfs_get_client(&cl_init, &ds_timeout, mds_clp->cl_ipaddr,
++			     mds_clp->cl_rpcclient->cl_auth->au_flavor);
++
++	dprintk("<-- %s %p\n", __func__, clp);
++	return clp;
++}
++EXPORT_SYMBOL_GPL(nfs4_set_ds_client);
++
++/*
++ * Session has been established, and the client marked ready.
++ * Set the mount rsize and wsize with negotiated fore channel
++ * attributes which will be bound checked in nfs_server_set_fsinfo.
++ */
++static void nfs4_session_set_rwsize(struct nfs_server *server)
++{
++#ifdef CONFIG_NFS_V4_1
++	struct nfs4_session *sess;
++	u32 server_resp_sz;
++	u32 server_rqst_sz;
++
++	if (!nfs4_has_session(server->nfs_client))
++		return;
++	sess = server->nfs_client->cl_session;
++	server_resp_sz = sess->fc_attrs.max_resp_sz - nfs41_maxread_overhead;
++	server_rqst_sz = sess->fc_attrs.max_rqst_sz - nfs41_maxwrite_overhead;
++
++	if (server->rsize > server_resp_sz)
++		server->rsize = server_resp_sz;
++	if (server->wsize > server_rqst_sz)
++		server->wsize = server_rqst_sz;
++#endif /* CONFIG_NFS_V4_1 */
++}
++
++static int nfs4_server_common_setup(struct nfs_server *server,
++		struct nfs_fh *mntfh)
++{
++	struct nfs_fattr *fattr;
++	int error;
++
++	BUG_ON(!server->nfs_client);
++	BUG_ON(!server->nfs_client->rpc_ops);
++	BUG_ON(!server->nfs_client->rpc_ops->file_inode_ops);
++
++	/* data servers support only a subset of NFSv4.1 */
++	if (is_ds_only_client(server->nfs_client))
++		return -EPROTONOSUPPORT;
++
++	fattr = nfs_alloc_fattr();
++	if (fattr == NULL)
++		return -ENOMEM;
++
++	/* We must ensure the session is initialised first */
++	error = nfs4_init_session(server);
++	if (error < 0)
++		goto out;
++
++	/* Probe the root fh to retrieve its FSID and filehandle */
++	error = nfs4_get_rootfh(server, mntfh);
++	if (error < 0)
++		goto out;
++
++	dprintk("Server FSID: %llx:%llx\n",
++			(unsigned long long) server->fsid.major,
++			(unsigned long long) server->fsid.minor);
++	dprintk("Mount FH: %d\n", mntfh->size);
++
++	nfs4_session_set_rwsize(server);
++
++	error = nfs_probe_fsinfo(server, mntfh, fattr);
++	if (error < 0)
++		goto out;
++
++	if (server->namelen == 0 || server->namelen > NFS4_MAXNAMLEN)
++		server->namelen = NFS4_MAXNAMLEN;
++
++	nfs_server_insert_lists(server);
++	server->mount_time = jiffies;
++	server->destroy = nfs4_destroy_server;
++out:
++	nfs_free_fattr(fattr);
++	return error;
++}
++
++/*
++ * Create a version 4 volume record
++ */
++static int nfs4_init_server(struct nfs_server *server,
++		const struct nfs_parsed_mount_data *data)
++{
++	struct rpc_timeout timeparms;
++	int error;
++
++	dprintk("--> nfs4_init_server()\n");
++
++	nfs_init_timeout_values(&timeparms, data->nfs_server.protocol,
++			data->timeo, data->retrans);
++
++	/* Initialise the client representation from the mount data */
++	server->flags = data->flags;
++	server->caps |= NFS_CAP_ATOMIC_OPEN|NFS_CAP_CHANGE_ATTR|NFS_CAP_POSIX_LOCK;
++	if (!(data->flags & NFS_MOUNT_NORDIRPLUS))
++			server->caps |= NFS_CAP_READDIRPLUS;
++	server->options = data->options;
++
++	/* Get a client record */
++	error = nfs4_set_client(server,
++			data->nfs_server.hostname,
++			(const struct sockaddr *)&data->nfs_server.address,
++			data->nfs_server.addrlen,
++			data->client_address,
++			data->auth_flavors[0],
++			data->nfs_server.protocol,
++			&timeparms,
++			data->minorversion,
++			data->net);
++	if (error < 0)
++		goto error;
++
++	/*
++	 * Don't use NFS uid/gid mapping if we're using AUTH_SYS or lower
++	 * authentication.
++	 */
++	if (nfs4_disable_idmapping && data->auth_flavors[0] == RPC_AUTH_UNIX)
++		server->caps |= NFS_CAP_UIDGID_NOMAP;
++
++	if (data->rsize)
++		server->rsize = nfs_block_size(data->rsize, NULL);
++	if (data->wsize)
++		server->wsize = nfs_block_size(data->wsize, NULL);
++
++	server->acregmin = data->acregmin * HZ;
++	server->acregmax = data->acregmax * HZ;
++	server->acdirmin = data->acdirmin * HZ;
++	server->acdirmax = data->acdirmax * HZ;
++
++	server->port = data->nfs_server.port;
++
++	error = nfs_init_server_rpcclient(server, &timeparms, data->auth_flavors[0]);
++
++error:
++	/* Done */
++	dprintk("<-- nfs4_init_server() = %d\n", error);
++	return error;
++}
++
++/*
++ * Create a version 4 volume record
++ * - keyed on server and FSID
++ */
++struct nfs_server *nfs4_create_server(const struct nfs_parsed_mount_data *data,
++				      struct nfs_fh *mntfh)
++{
++	struct nfs_server *server;
++	int error;
++
++	dprintk("--> nfs4_create_server()\n");
++
++	server = nfs_alloc_server();
++	if (!server)
++		return ERR_PTR(-ENOMEM);
++
++	/* set up the general RPC client */
++	error = nfs4_init_server(server, data);
++	if (error < 0)
++		goto error;
++
++	error = nfs4_server_common_setup(server, mntfh);
++	if (error < 0)
++		goto error;
++
++	dprintk("<-- nfs4_create_server() = %p\n", server);
++	return server;
++
++error:
++	nfs_free_server(server);
++	dprintk("<-- nfs4_create_server() = error %d\n", error);
++	return ERR_PTR(error);
++}
++
++/*
++ * Create an NFS4 referral server record
++ */
++struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
++					       struct nfs_fh *mntfh)
++{
++	struct nfs_client *parent_client;
++	struct nfs_server *server, *parent_server;
++	int error;
++
++	dprintk("--> nfs4_create_referral_server()\n");
++
++	server = nfs_alloc_server();
++	if (!server)
++		return ERR_PTR(-ENOMEM);
++
++	parent_server = NFS_SB(data->sb);
++	parent_client = parent_server->nfs_client;
++
++	/* Initialise the client representation from the parent server */
++	nfs_server_copy_userdata(server, parent_server);
++	server->caps |= NFS_CAP_ATOMIC_OPEN|NFS_CAP_CHANGE_ATTR;
++
++	/* Get a client representation.
++	 * Note: NFSv4 always uses TCP, */
++	error = nfs4_set_client(server, data->hostname,
++				data->addr,
++				data->addrlen,
++				parent_client->cl_ipaddr,
++				data->authflavor,
++				rpc_protocol(parent_server->client),
++				parent_server->client->cl_timeout,
++				parent_client->cl_mvops->minor_version,
++				parent_client->cl_net);
++	if (error < 0)
++		goto error;
++
++	error = nfs_init_server_rpcclient(server, parent_server->client->cl_timeout, data->authflavor);
++	if (error < 0)
++		goto error;
++
++	error = nfs4_server_common_setup(server, mntfh);
++	if (error < 0)
++		goto error;
++
++	dprintk("<-- nfs_create_referral_server() = %p\n", server);
++	return server;
++
++error:
++	nfs_free_server(server);
++	dprintk("<-- nfs4_create_referral_server() = error %d\n", error);
++	return ERR_PTR(error);
++}
++
++module_param(nfs4_disable_idmapping, bool, 0644);
++MODULE_PARM_DESC(nfs4_disable_idmapping,
++		"Turn off NFSv4 idmapping when using 'sec=sys'");
+-- 
+1.7.11.2
+
