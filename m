@@ -1,116 +1,150 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:40413 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752494Ab2GZLzn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 07:55:43 -0400
-Received: by mail-gg0-f174.google.com with SMTP id u4so1821110ggl.19
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jul 2012 04:55:43 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v4 11/17] vfs: fix linkat to retry on ESTALE errors
-Date: Thu, 26 Jul 2012 07:55:14 -0400
-Message-Id: <1343303720-11199-12-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
-References: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:2020 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751888Ab2GPUjZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Jul 2012 16:39:25 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 02/12] NFS: Split out NFS v3 inode operations
+Date: Mon, 16 Jul 2012 16:39:11 -0400
+Message-Id: <1342471161-22452-3-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1342471161-22452-1-git-send-email-bjschuma@netapp.com>
+References: <1342471161-22452-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c | 67 ++++++++++++++++++++++++++++++++++++++++----------------------
- 1 file changed, 43 insertions(+), 24 deletions(-)
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 5a81c48..defb210 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3445,6 +3445,8 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
- 	struct path old_path, new_path;
- 	int how = 0;
- 	int error;
-+	char *old, *new;
-+	unsigned int try = 0;
+This patch moves the NFS v3 file and directory inode functions into
+files that are only compiled whet CONFIG_NFS_V3 is enabled.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/dir.c           | 21 ---------------------
+ fs/nfs/file.c          | 12 ------------
+ fs/nfs/nfs3proc.c      | 29 +++++++++++++++++++++++++++++
+ include/linux/nfs_fs.h |  6 ------
+ 4 files changed, 29 insertions(+), 39 deletions(-)
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 9ae329d..e75f2aa 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -63,27 +63,6 @@ const struct address_space_operations nfs_dir_aops = {
+ 	.freepage = nfs_readdir_clear_array,
+ };
  
- 	if ((flags & ~(AT_SYMLINK_FOLLOW | AT_EMPTY_PATH)) != 0)
- 		return -EINVAL;
-@@ -3462,34 +3464,51 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
- 	if (flags & AT_SYMLINK_FOLLOW)
- 		how |= LOOKUP_FOLLOW;
- 
--	error = user_path_at(olddfd, oldname, how, &old_path);
--	if (error)
--		return error;
-+	old = getname_flags(oldname, how, NULL);
-+	if (IS_ERR(old))
-+		return PTR_ERR(old);
- 
--	new_dentry = user_path_create(newdfd, newname, &new_path, 0);
--	error = PTR_ERR(new_dentry);
--	if (IS_ERR(new_dentry))
--		goto out;
-+	new = getname(newname);
-+	if (IS_ERR(new)) {
-+		putname(old);
-+		return PTR_ERR(new);
-+	}
- 
--	error = -EXDEV;
--	if (old_path.mnt != new_path.mnt)
--		goto out_dput;
--	error = mnt_want_write(new_path.mnt);
--	if (error)
--		goto out_dput;
--	error = security_path_link(old_path.dentry, &new_path, new_dentry);
--	if (error)
--		goto out_drop_write;
--	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry);
-+	do {
-+		error = kern_path_at(olddfd, old, how, &old_path);
-+		if (error)
-+			break;
-+
-+		new_dentry = kern_path_create(newdfd, new, &new_path, 0, try);
-+		error = PTR_ERR(new_dentry);
-+		if (IS_ERR(new_dentry)) {
-+			path_put(&old_path);
-+			break;
-+		}
-+
-+		error = -EXDEV;
-+		if (old_path.mnt != new_path.mnt)
-+			goto out_dput;
-+		error = mnt_want_write(new_path.mnt);
-+		if (error)
-+			goto out_dput;
-+		error = security_path_link(old_path.dentry, &new_path,
-+					new_dentry);
-+		if (error)
-+			goto out_drop_write;
-+		error = vfs_link(old_path.dentry, new_path.dentry->d_inode,
-+				new_dentry);
- out_drop_write:
--	mnt_drop_write(new_path.mnt);
-+		mnt_drop_write(new_path.mnt);
- out_dput:
--	dput(new_dentry);
--	mutex_unlock(&new_path.dentry->d_inode->i_mutex);
--	path_put(&new_path);
--out:
--	path_put(&old_path);
+-#ifdef CONFIG_NFS_V3
+-const struct inode_operations nfs3_dir_inode_operations = {
+-	.create		= nfs_create,
+-	.lookup		= nfs_lookup,
+-	.link		= nfs_link,
+-	.unlink		= nfs_unlink,
+-	.symlink	= nfs_symlink,
+-	.mkdir		= nfs_mkdir,
+-	.rmdir		= nfs_rmdir,
+-	.mknod		= nfs_mknod,
+-	.rename		= nfs_rename,
+-	.permission	= nfs_permission,
+-	.getattr	= nfs_getattr,
+-	.setattr	= nfs_setattr,
+-	.listxattr	= nfs3_listxattr,
+-	.getxattr	= nfs3_getxattr,
+-	.setxattr	= nfs3_setxattr,
+-	.removexattr	= nfs3_removexattr,
+-};
+-#endif  /* CONFIG_NFS_V3 */
 -
-+		dput(new_dentry);
-+		mutex_unlock(&new_path.dentry->d_inode->i_mutex);
-+		path_put(&new_path);
-+		path_put(&old_path);
-+		how |= LOOKUP_REVAL;
-+	} while (retry_estale(error, try++));
-+	putname(new);
-+	putname(old);
- 	return error;
+ #ifdef CONFIG_NFS_V4
+ 
+ static int nfs_atomic_open(struct inode *, struct dentry *,
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 7da8745..7623917 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -41,18 +41,6 @@
+ 
+ static const struct vm_operations_struct nfs_file_vm_ops;
+ 
+-#ifdef CONFIG_NFS_V3
+-const struct inode_operations nfs3_file_inode_operations = {
+-	.permission	= nfs_permission,
+-	.getattr	= nfs_getattr,
+-	.setattr	= nfs_setattr,
+-	.listxattr	= nfs3_listxattr,
+-	.getxattr	= nfs3_getxattr,
+-	.setxattr	= nfs3_setxattr,
+-	.removexattr	= nfs3_removexattr,
+-};
+-#endif  /* CONFIG_NFS_v3 */
+-
+ /* Hack for future NFS swap support */
+ #ifndef IS_SWAPFILE
+ # define IS_SWAPFILE(inode)	(0)
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index f580358..65d23eb 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -888,6 +888,35 @@ static int nfs3_return_delegation(struct inode *inode)
+ 	return 0;
  }
+ 
++static const struct inode_operations nfs3_dir_inode_operations = {
++	.create		= nfs_create,
++	.lookup		= nfs_lookup,
++	.link		= nfs_link,
++	.unlink		= nfs_unlink,
++	.symlink	= nfs_symlink,
++	.mkdir		= nfs_mkdir,
++	.rmdir		= nfs_rmdir,
++	.mknod		= nfs_mknod,
++	.rename		= nfs_rename,
++	.permission	= nfs_permission,
++	.getattr	= nfs_getattr,
++	.setattr	= nfs_setattr,
++	.listxattr	= nfs3_listxattr,
++	.getxattr	= nfs3_getxattr,
++	.setxattr	= nfs3_setxattr,
++	.removexattr	= nfs3_removexattr,
++};
++
++static const struct inode_operations nfs3_file_inode_operations = {
++	.permission	= nfs_permission,
++	.getattr	= nfs_getattr,
++	.setattr	= nfs_setattr,
++	.listxattr	= nfs3_listxattr,
++	.getxattr	= nfs3_getxattr,
++	.setxattr	= nfs3_setxattr,
++	.removexattr	= nfs3_removexattr,
++};
++
+ const struct nfs_rpc_ops nfs_v3_clientops = {
+ 	.version	= 3,			/* protocol version */
+ 	.dentry_ops	= &nfs_dentry_operations,
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 6c38bc9..4b6043c 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -427,9 +427,6 @@ extern __be32 root_nfs_parse_addr(char *name); /*__init*/
+ /*
+  * linux/fs/nfs/file.c
+  */
+-#ifdef CONFIG_NFS_V3
+-extern const struct inode_operations nfs3_file_inode_operations;
+-#endif /* CONFIG_NFS_V3 */
+ extern const struct file_operations nfs_file_operations;
+ #ifdef CONFIG_NFS_V4
+ extern const struct file_operations nfs4_file_operations;
+@@ -484,9 +481,6 @@ extern ssize_t nfs_file_direct_write(struct kiocb *iocb,
+ /*
+  * linux/fs/nfs/dir.c
+  */
+-#ifdef CONFIG_NFS_V3
+-extern const struct inode_operations nfs3_dir_inode_operations;
+-#endif /* CONFIG_NFS_V3 */
+ extern const struct file_operations nfs_dir_operations;
+ extern const struct dentry_operations nfs_dentry_operations;
  
 -- 
 1.7.11.2
