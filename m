@@ -1,58 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:34804 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757567Ab2GFTcY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jul 2012 15:32:24 -0400
-Received: by bkwj10 with SMTP id j10so4699647bkw.19
-        for <linux-nfs@vger.kernel.org>; Fri, 06 Jul 2012 12:32:23 -0700 (PDT)
-From: Eldad Zack <eldad@fogrefinery.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Joe Perches <joe@perches.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Eldad Zack <eldad@fogrefinery.com>
-Subject: [PATCH 1/2, resend] sunrpc/cache.h: fix coding style
-Date: Fri,  6 Jul 2012 21:31:56 +0200
-Message-Id: <1341603117-13064-1-git-send-email-eldad@fogrefinery.com>
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:46313 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751736Ab2GPSgf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Jul 2012 14:36:35 -0400
+Received: by ghrr11 with SMTP id r11so5328860ghr.19
+        for <linux-nfs@vger.kernel.org>; Mon, 16 Jul 2012 11:36:34 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] rpc.gssd: close upcall pipe on POLLHUP
+To: linux-nfs@vger.kernel.org
+Date: Mon, 16 Jul 2012 14:36:32 -0400
+Message-ID: <20120716183526.2399.37839.stgit@degas.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Neaten code style in get_int().
-Also use sizeof() instead of hard coded number as suggested by
-Joe Perches <joe@perches.com>.
+When a POLLHUP event is received on a pipe file descriptor, that
+means the other side has closed its end of the pipe.  If the
+receiver does not close its end of the pipe, the pipe is left in an
+open-but-unlinked state.
 
-Cc: Joe Perches <joe@perches.com>
-Signed-off-by: Eldad Zack <eldad@fogrefinery.com>
+For a "gssd" upcall pipe, the kernel may close its end, removing the
+directory entry for it, and then later create a fresh pipe named
+"gssd" in the same directory.  In this case, rpc.gssd continues to
+listen on the open-but-unlinked previous "gssd" pipe.  Thus upcalls
+on the new "gssd" pipe are left unanswered.
+
+In addition, poll(2) continues to return POLLHUP on the old pipe.
+Since there is no logic to close the pipe in rpc.gssd, poll(2) always
+returns immediately, and rpc.gssd goes into a tight loop.
+
+Typically, the kernel closes upcall pipes and destroys their
+parent directory at the same time.  When an RPC client's directory
+vanishes, rpc.gssd sees the change via dnotify and eventually
+invokes destroy_client() which closes the user-space end of the
+pipes.
+
+However, if the kernel wants to switch authentication flavors (say
+from AUTH_KRB5 to AUTH_UNIX) on an RPC client without destroying it,
+the upcall pipes go away, but the RPC client's directory remains.
+rpc.gssd invokes update_client_list(), but that logic never closes
+upcall pipes if the client directory is still in place.
+
+After a POLLHUP on a pipe, close it when rpc.gssd reconstructs its
+list of upcall clients.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
-Resent to include improvements from Joe Perches.
- include/linux/sunrpc/cache.h |   14 ++++++++++----
- 1 file changed, 10 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index f5fd616..6def1f6 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -219,11 +219,17 @@ static inline int get_int(char **bpp, int *anint)
- 	char buf[50];
- 	char *ep;
- 	int rv;
--	int len = qword_get(bpp, buf, 50);
--	if (len < 0) return -EINVAL;
--	if (len ==0) return -ENOENT;
-+	int len = qword_get(bpp, buf, sizeof(buf));
+I know folks are probably on vacation this week, so this is only a
+request for comments.
+
+ utils/gssd/gssd.h           |    2 ++
+ utils/gssd/gssd_main_loop.c |    8 ++++++--
+ utils/gssd/gssd_proc.c      |   19 +++++++++++++++++++
+ 3 files changed, 27 insertions(+), 2 deletions(-)
+
+diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
+index e0a2b7b..ec81beb 100644
+--- a/utils/gssd/gssd.h
++++ b/utils/gssd/gssd.h
+@@ -82,8 +82,10 @@ struct clnt_info {
+ 	char			*protocol;
+ 	int			krb5_fd;
+ 	int			krb5_poll_index;
++	int			krb5_close_me;
+ 	int                     gssd_fd;
+ 	int                     gssd_poll_index;
++	int			gssd_close_me;
+ 	struct sockaddr_storage addr;
+ };
+ 
+diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
+index 187954c..6480390 100644
+--- a/utils/gssd/gssd_main_loop.c
++++ b/utils/gssd/gssd_main_loop.c
+@@ -78,8 +78,10 @@ scan_poll_results(int ret)
+ 	{
+ 		i = clp->gssd_poll_index;
+ 		if (i >= 0 && pollarray[i].revents) {
+-			if (pollarray[i].revents & POLLHUP)
++			if (pollarray[i].revents & POLLHUP) {
++				clp->gssd_close_me = 1;
+ 				dir_changed = 1;
++			}
+ 			if (pollarray[i].revents & POLLIN)
+ 				handle_gssd_upcall(clp);
+ 			pollarray[clp->gssd_poll_index].revents = 0;
+@@ -89,8 +91,10 @@ scan_poll_results(int ret)
+ 		}
+ 		i = clp->krb5_poll_index;
+ 		if (i >= 0 && pollarray[i].revents) {
+-			if (pollarray[i].revents & POLLHUP)
++			if (pollarray[i].revents & POLLHUP) {
++				clp->krb5_close_me = 1;
+ 				dir_changed = 1;
++			}
+ 			if (pollarray[i].revents & POLLIN)
+ 				handle_krb5_upcall(clp);
+ 			pollarray[clp->krb5_poll_index].revents = 0;
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index fed2886..5e33379 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -339,6 +339,25 @@ process_clnt_dir_files(struct clnt_info * clp)
+ 	char	gname[PATH_MAX];
+ 	char	info_file_name[PATH_MAX];
+ 
++	if (clp->gssd_close_me) {
++		printerr(2, "Closing 'gssd' pipe for %s\n", clp->dirname);
++		close(clp->gssd_fd);
++		memset(&pollarray[clp->gssd_poll_index], 0,
++			sizeof(struct pollfd));
++		clp->gssd_fd = -1;
++		clp->gssd_poll_index = -1;
++		clp->gssd_close_me = 0;
++	}
++	if (clp->krb5_close_me) {
++		printerr(2, "Closing 'krb5' pipe for %s\n", clp->dirname);
++		close(clp->krb5_fd);
++		memset(&pollarray[clp->krb5_poll_index], 0,
++			sizeof(struct pollfd));
++		clp->krb5_fd = -1;
++		clp->krb5_poll_index = -1;
++		clp->krb5_close_me = 0;
++	}
 +
-+	if (len < 0)
-+		return -EINVAL;
-+	if (len == 0)
-+		return -ENOENT;
-+
- 	rv = simple_strtol(buf, &ep, 0);
--	if (*ep) return -EINVAL;
-+	if (*ep)
-+		return -EINVAL;
-+
- 	*anint = rv;
- 	return 0;
- }
--- 
-1.7.10
+ 	if (clp->gssd_fd == -1) {
+ 		snprintf(gname, sizeof(gname), "%s/gssd", clp->dirname);
+ 		clp->gssd_fd = open(gname, O_RDWR);
 
