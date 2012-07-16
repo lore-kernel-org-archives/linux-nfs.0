@@ -1,462 +1,648 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:43531 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755485Ab2GQTLh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Jul 2012 15:11:37 -0400
-Message-ID: <5005B8D7.8090600@netapp.com>
-Date: Tue, 17 Jul 2012 15:11:19 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:40697 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753351Ab2GPVr5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Jul 2012 17:47:57 -0400
+Received: by gglu4 with SMTP id u4so5542641ggl.19
+        for <linux-nfs@vger.kernel.org>; Mon, 16 Jul 2012 14:47:56 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] NFS: Discover NFSv4 server trunking when mounting
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 16 Jul 2012 17:47:52 -0400
+Message-ID: <20120716214353.19864.42757.stgit@degas.1015granger.net>
 MIME-Version: 1.0
-To: Trond.Myklebust@netapp.com
-CC: linux-nfs@vger.kernel.org, Fengguang Wu <fengguang.wu@intel.com>
-Subject: [PATCH v3 04/12] NFS: Create an init_nfs_v4() function
-References: <1342471161-22452-1-git-send-email-bjschuma@netapp.com> <1342471161-22452-5-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1342471161-22452-5-git-send-email-bjschuma@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch should work better, thanks Fengguang!
+"Server trunking" is a fancy named for a multi-homed NFS server.
+Trunking might occur if a client sends NFS requests for a single
+workload to multiple network interfaces on the same server.  There
+are some implications for NFSv4 state management that make it useful
+for a client to know if a single NFSv4 server instance is
+multi-homed.  (Note this is only a consideration for NFSv4, not for
+legacy versions of NFS, which are stateless).
 
-- Bryan
+If a client cares about server trunking, no NFSv4 operations can
+proceed until that client determines who it is talking to.  Thus
+server IP trunking discovery must be done when the client first
+encounters an unfamiliar server IP address.
 
+The nfs_get_client() function walks the nfs_client_list and matches
+on server IP address.  The outcome of that walk tells us immediately
+if we have an unfamiliar server IP address.  It invokes
+nfs_init_client() in this case.  Thus, nfs4_init_client() is a good
+spot to perform trunking discovery.
 
+Discovery requires a client to establish a fresh client ID, so our
+client will now send SETCLIENTID or EXCHANGE_ID as the first NFS
+operation after a successful ping, rather than waiting for an
+application to perform an operation that requires NFSv4 state.
 
-I want to initialize all of NFS v4 in a single function that will
-eventually be used as the v4 module init function.
+The exact process for detecting trunking is different for NFSv4.0 and
+NFSv4.1, so a minorversion-specific init_client callout method is
+introduced.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+CLID_INUSE recovery is important for the trunking discovery process.
+CLID_INUSE is a sign the server recognizes the client's nfs_client_id4
+id string, but the client is using the wrong principal this time for
+the SETCLIENTID operation.  The SETCLIENTID must be retried with a
+series of different principals until one works, and the rest of
+trunking discovery can proceed.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
-v3:  Don't declare exit_nfs_v4() as an __exit  function
- fs/nfs/Makefile    |  2 +-
- fs/nfs/inode.c     | 67 ++++++++++++++++++++++++++++++------------------------
- fs/nfs/nfs4_fs.h   |  4 ++++
- fs/nfs/nfs4super.c | 23 +++++++++++++++++++
- 4 files changed, 65 insertions(+), 31 deletions(-)
- create mode 100644 fs/nfs/nfs4super.c
 
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index 7ddd45d..162a699 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -13,7 +13,7 @@ nfs-$(CONFIG_NFS_V2)	+= proc.o nfs2xdr.o
- nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
- nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
- nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
--			   delegation.o idmap.o \
-+			   nfs4super.o delegation.o idmap.o \
- 			   callback.o callback_xdr.o callback_proc.o \
- 			   nfs4namespace.o
- nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 28c9ebb..35f7e4b 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -32,7 +32,6 @@
- #include <linux/lockd/bind.h>
- #include <linux/seq_file.h>
- #include <linux/mount.h>
--#include <linux/nfs_idmap.h>
- #include <linux/vfs.h>
- #include <linux/inet.h>
- #include <linux/nfs_xdr.h>
-@@ -1628,87 +1627,96 @@ static int __init init_nfs_fs(void)
- {
- 	int err;
- 
--	err = nfs_idmap_init();
--	if (err < 0)
--		goto out10;
--
- 	err = nfs_dns_resolver_init();
- 	if (err < 0)
--		goto out9;
-+		goto out11;
- 
- 	err = register_pernet_subsys(&nfs_net_ops);
- 	if (err < 0)
--		goto out8;
-+		goto out10;
- 
- 	err = nfs_fscache_register();
- 	if (err < 0)
--		goto out7;
-+		goto out9;
- 
- 	err = nfsiod_start();
- 	if (err)
--		goto out6;
-+		goto out8;
- 
- 	err = nfs_fs_proc_init();
- 	if (err)
--		goto out5;
-+		goto out7;
- 
- 	err = nfs_init_nfspagecache();
- 	if (err)
--		goto out4;
-+		goto out6;
- 
- 	err = nfs_init_inodecache();
- 	if (err)
--		goto out3;
-+		goto out5;
- 
- 	err = nfs_init_readpagecache();
- 	if (err)
--		goto out2;
-+		goto out4;
- 
- 	err = nfs_init_writepagecache();
- 	if (err)
--		goto out1;
-+		goto out3;
--		goto out0;
-+		goto out2;
- 
- #ifdef CONFIG_PROC_FS
- 	rpc_proc_register(&init_net, &nfs_rpcstat);
- #endif
-+
-+#ifdef CONFIG_NFS_V4
-+	err = init_nfs_v4();
-+	if (err)
-+		goto out1;
-+#endif
-+
- 	if ((err = register_nfs_fs()) != 0)
--		goto out;
-+		goto out0;
-+
- 	return 0;
--out:
-+out0:
-+#ifdef CONFIG_NFS_V4
-+	exit_nfs_v4();
-+out1:
-+#endif
- #ifdef CONFIG_PROC_FS
- 	rpc_proc_unregister(&init_net, "nfs");
- #endif
- 	nfs_destroy_directcache();
--out0:
--	nfs_destroy_writepagecache();
--out1:
--	nfs_destroy_readpagecache();
- out2:
--	nfs_destroy_inodecache();
-+	nfs_destroy_writepagecache();
- out3:
--	nfs_destroy_nfspagecache();
-+	nfs_destroy_readpagecache();
- out4:
--	nfs_fs_proc_exit();
-+	nfs_destroy_inodecache();
- out5:
--	nfsiod_stop();
-+	nfs_destroy_nfspagecache();
- out6:
--	nfs_fscache_unregister();
-+	nfs_fs_proc_exit();
- out7:
--	unregister_pernet_subsys(&nfs_net_ops);
-+	nfsiod_stop();
- out8:
--	nfs_dns_resolver_destroy();
-+	nfs_fscache_unregister();
- out9:
--	nfs_idmap_quit();
-+	unregister_pernet_subsys(&nfs_net_ops);
- out10:
-+	nfs_dns_resolver_destroy();
-+out11:
- 	return err;
+Hi-
+
+This version applies to nfs-for-cel.  After adjusting it for recent
+changes in the functions used to establish a lease, I squashed a
+couple of fixes for problems I found late last week.  I've only
+build-tested this version of the patch.
+
+
+ fs/nfs/client.c    |  237 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/internal.h  |    6 +
+ fs/nfs/nfs4_fs.h   |    8 ++
+ fs/nfs/nfs4proc.c  |    2 
+ fs/nfs/nfs4state.c |  188 ++++++++++++++++++++++++++++++++++++++++-
+ 5 files changed, 436 insertions(+), 5 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 254719c..4b459d9 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -590,7 +590,8 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
+ 			return nfs_found_client(cl_init, clp);
+ 		}
+ 		if (new) {
+-			list_add(&new->cl_share_link, &nn->nfs_client_list);
++			list_add_tail(&new->cl_share_link,
++					&nn->nfs_client_list);
+ 			spin_unlock(&nn->nfs_client_lock);
+ 			new->cl_flags = cl_init->init_flags;
+ 			return cl_init->rpc_ops->init_client(new,
+@@ -608,6 +609,228 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
+ 	return new;
  }
  
- static void __exit exit_nfs_fs(void)
- {
 +#ifdef CONFIG_NFS_V4
-+	exit_nfs_v4();
-+#endif
- 	nfs_destroy_directcache();
- 	nfs_destroy_writepagecache();
- 	nfs_destroy_readpagecache();
-@@ -1717,7 +1725,6 @@ static void __exit exit_nfs_fs(void)
- 	nfs_fscache_unregister();
- 	unregister_pernet_subsys(&nfs_net_ops);
- 	nfs_dns_resolver_destroy();
--	nfs_idmap_quit();
- #ifdef CONFIG_PROC_FS
- 	rpc_proc_unregister(&init_net, "nfs");
- #endif
++/*
++ * Returns true if the client IDs match
++ */
++static bool nfs4_match_clientids(struct nfs_client *a, struct nfs_client *b)
++{
++	if (a->cl_clientid != b->cl_clientid) {
++		dprintk("NFS: --> %s client ID %llx does not match %llx\n",
++			__func__, a->cl_clientid, b->cl_clientid);
++		return false;
++	}
++	dprintk("NFS: --> %s client ID %llx matches %llx\n",
++		__func__, a->cl_clientid, b->cl_clientid);
++	return true;
++}
++
++/*
++ * SETCLIENTID just did a callback update with the callback ident in
++ * "drop," but server trunking discovery claims "drop" and "keep" are
++ * actually the same server.  Swap the callback IDs so that "keep"
++ * will continue to use the callback ident the server now knows about,
++ * and so that "keep"'s original callback ident is destroyed when
++ * "drop" is freed.
++ */
++static void nfs4_swap_callback_idents(struct nfs_client *keep,
++				      struct nfs_client *drop)
++{
++	struct nfs_net *nn = net_generic(keep->cl_net, nfs_net_id);
++	unsigned int save = keep->cl_cb_ident;
++
++	if (keep->cl_cb_ident == drop->cl_cb_ident)
++		return;
++
++	dprintk("%s: keeping callback ident %u and dropping ident %u\n",
++		__func__, keep->cl_cb_ident, drop->cl_cb_ident);
++
++	spin_lock(&nn->nfs_client_lock);
++
++	idr_replace(&nn->cb_ident_idr, keep, drop->cl_cb_ident);
++	keep->cl_cb_ident = drop->cl_cb_ident;
++
++	idr_replace(&nn->cb_ident_idr, drop, save);
++	drop->cl_cb_ident = save;
++
++	spin_unlock(&nn->nfs_client_lock);
++}
++
++/**
++ * nfs40_walk_client_list - Find server that recognizes a client ID
++ *
++ * @new: nfs_client with client ID to test
++ * @result: OUT: found nfs_client, or new
++ * @cred: credential to use for trunking test
++ *
++ * Returns zero, a negative errno, or a negative NFS4ERR status.
++ * If zero is returned, an nfs_client pointer is planted in "result."
++ *
++ * NB: nfs40_walk_client_list() relies on the new nfs_client being
++ *     the last nfs_client on the list.
++ */
++int nfs40_walk_client_list(struct nfs_client *new,
++			   struct nfs_client **result,
++			   struct rpc_cred *cred)
++{
++	struct nfs_net *nn = net_generic(new->cl_net, nfs_net_id);
++	struct nfs_client *pos, *prev = NULL;
++	struct nfs4_setclientid_res clid = {
++		.clientid	= new->cl_clientid,
++		.confirm	= new->cl_confirm,
++	};
++	int status;
++
++	spin_lock(&nn->nfs_client_lock);
++
++	list_for_each_entry(pos, &nn->nfs_client_list, cl_share_link) {
++		if (pos->cl_cons_state < 0)
++			continue;
++
++		if (pos->rpc_ops != new->rpc_ops)
++			continue;
++
++		if (pos->cl_proto != new->cl_proto)
++			continue;
++
++		if (pos->cl_minorversion != new->cl_minorversion)
++			continue;
++
++		if (pos->cl_clientid != new->cl_clientid)
++			continue;
++
++		atomic_inc(&pos->cl_count);
++		spin_unlock(&nn->nfs_client_lock);
++
++		if (prev)
++			nfs_put_client(prev);
++
++		status = nfs4_proc_setclientid_confirm(pos, &clid, cred);
++		if (status == 0) {
++			nfs4_swap_callback_idents(pos, new);
++
++			nfs_put_client(pos);
++			*result = pos;
++			dprintk("NFS: <-- %s using nfs_client = %p ({%d})\n",
++				__func__, pos, atomic_read(&pos->cl_count));
++			return 0;
++		}
++		if (status != -NFS4ERR_STALE_CLIENTID) {
++			nfs_put_client(pos);
++			dprintk("NFS: <-- %s status = %d, no result\n",
++				__func__, status);
++			return status;
++		}
++
++		spin_lock(&nn->nfs_client_lock);
++		prev = pos;
++	}
++
++	/*
++	 * No matching nfs_client found.  This should be impossible,
++	 * because the new nfs_client has already been added to
++	 * nfs_client_list by nfs_get_client().
++	 *
++	 * Don't BUG(), since the caller is holding a mutex.
++	 */
++	spin_unlock(&nn->nfs_client_lock);
++	pr_err("NFS: %s Error: no matching nfs_client found\n", __func__);
++	return -NFS4ERR_STALE_CLIENTID;
++}
++
++#ifdef CONFIG_NFS_V4_1
++/*
++ * Returns true if the server owners match
++ */
++static bool
++nfs4_match_serverowners(struct nfs_client *a, struct nfs_client *b)
++{
++	struct nfs41_server_owner *o1 = a->cl_serverowner;
++	struct nfs41_server_owner *o2 = b->cl_serverowner;
++
++	if (o1->minor_id != o2->minor_id) {
++		dprintk("NFS: --> %s server owner minor IDs do not match\n",
++			__func__);
++		return false;
++	}
++
++	if (o1->major_id_sz != o2->major_id_sz)
++		goto out_major_mismatch;
++	if (memcmp(o1->major_id, o2->major_id, o1->major_id_sz) != 0)
++		goto out_major_mismatch;
++
++	dprintk("NFS: --> %s server owners match\n", __func__);
++	return true;
++
++out_major_mismatch:
++	dprintk("NFS: --> %s server owner major IDs do not match\n",
++		__func__);
++	return false;
++}
++
++/**
++ * nfs41_walk_client_list - Find nfs_client that matches a client/server owner
++ *
++ * @new: nfs_client with client ID to test
++ * @result: OUT: found nfs_client, or new
++ * @cred: credential to use for trunking test
++ *
++ * Returns zero, a negative errno, or a negative NFS4ERR status.
++ * If zero is returned, an nfs_client pointer is planted in "result."
++ *
++ * NB: nfs41_walk_client_list() relies on the new nfs_client being
++ *     the last nfs_client on the list.
++ */
++int nfs41_walk_client_list(struct nfs_client *new,
++			   struct nfs_client **result,
++			   struct rpc_cred *cred)
++{
++	struct nfs_net *nn = net_generic(new->cl_net, nfs_net_id);
++	struct nfs_client *pos;
++
++	spin_lock(&nn->nfs_client_lock);
++
++	list_for_each_entry(pos, &nn->nfs_client_list, cl_share_link) {
++		if (pos->cl_cons_state < 0)
++			continue;
++
++		if (pos->rpc_ops != new->rpc_ops)
++			continue;
++
++		if (pos->cl_proto != new->cl_proto)
++			continue;
++
++		if (pos->cl_minorversion != new->cl_minorversion)
++			continue;
++
++		if (!nfs4_match_clientids(pos, new))
++			continue;
++
++		if (!nfs4_match_serverowners(pos, new))
++			continue;
++
++		spin_unlock(&nn->nfs_client_lock);
++		dprintk("NFS: <-- %s using nfs_client = %p ({%d})\n",
++			__func__, pos, atomic_read(&pos->cl_count));
++
++		*result = pos;
++		return 0;
++	}
++
++	/*
++	 * No matching nfs_client found.  This should be impossible,
++	 * because the new nfs_client has already been added to
++	 * nfs_client_list by nfs_get_client().
++	 *
++	 * Don't BUG(), since the caller is holding a mutex.
++	 */
++	spin_unlock(&nn->nfs_client_lock);
++	pr_err("NFS: %s Error: no matching nfs_client found\n", __func__);
++	return -NFS4ERR_STALE_CLIENTID;
++}
++#endif	/* CONFIG_NFS_V4_1 */
++#endif	/* CONFIG_NFS_V4 */
++
+ /*
+  * Mark a server as ready or failed
+  */
+@@ -1381,6 +1604,7 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+ 				    rpc_authflavor_t authflavour)
+ {
+ 	char buf[INET6_ADDRSTRLEN + 1];
++	struct nfs_client *old;
+ 	int error;
+ 
+ 	if (clp->cl_cons_state == NFS_CS_READY) {
+@@ -1426,6 +1650,17 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+ 
+ 	if (!nfs4_has_session(clp))
+ 		nfs_mark_client_ready(clp, NFS_CS_READY);
++
++	error = nfs4_discover_server_trunking(clp, &old);
++	if (error < 0)
++		goto error;
++	if (clp != old) {
++		nfs_mark_client_ready(clp, NFS_CS_READY);
++		nfs_put_client(clp);
++		clp = old;
++		atomic_inc(&clp->cl_count);
++	}
++
+ 	return clp;
+ 
+ error:
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 7edc172..8844535 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -157,6 +157,12 @@ extern struct nfs_client *nfs4_find_client_ident(struct net *, int);
+ extern struct nfs_client *
+ nfs4_find_client_sessionid(struct net *, const struct sockaddr *,
+ 				struct nfs4_sessionid *);
++extern int nfs40_walk_client_list(struct nfs_client *clp,
++				struct nfs_client **result,
++				struct rpc_cred *cred);
++extern int nfs41_walk_client_list(struct nfs_client *clp,
++				struct nfs_client **result,
++				struct rpc_cred *cred);
+ extern struct nfs_server *nfs_create_server(
+ 					const struct nfs_parsed_mount_data *,
+ 					struct nfs_fh *);
 diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index e2c4c72..1a6ed3f 100644
+index 3696ca7..2dcdab2 100644
 --- a/fs/nfs/nfs4_fs.h
 +++ b/fs/nfs/nfs4_fs.h
-@@ -364,6 +364,10 @@ extern void nfs4_free_lock_state(struct nfs_server *server, struct nfs4_lock_sta
+@@ -191,6 +191,8 @@ struct nfs4_state_recovery_ops {
+ 	int (*establish_clid)(struct nfs_client *, struct rpc_cred *);
+ 	struct rpc_cred * (*get_clid_cred)(struct nfs_client *);
+ 	int (*reclaim_complete)(struct nfs_client *);
++	int (*detect_trunking)(struct nfs_client *, struct nfs_client **,
++		struct rpc_cred *);
+ };
  
- extern const nfs4_stateid zero_stateid;
+ struct nfs4_state_maintenance_ops {
+@@ -317,9 +319,15 @@ extern void nfs4_renew_state(struct work_struct *);
+ /* nfs4state.c */
+ struct rpc_cred *nfs4_get_setclientid_cred(struct nfs_client *clp);
+ struct rpc_cred *nfs4_get_renew_cred_locked(struct nfs_client *clp);
++int nfs4_discover_server_trunking(struct nfs_client *clp,
++			struct nfs_client **);
++int nfs40_discover_server_trunking(struct nfs_client *clp,
++			struct nfs_client **, struct rpc_cred *);
+ #if defined(CONFIG_NFS_V4_1)
+ struct rpc_cred *nfs4_get_machine_cred_locked(struct nfs_client *clp);
+ struct rpc_cred *nfs4_get_exchange_id_cred(struct nfs_client *clp);
++int nfs41_discover_server_trunking(struct nfs_client *clp,
++			struct nfs_client **, struct rpc_cred *);
+ extern void nfs4_schedule_session_recovery(struct nfs4_session *, int);
+ #else
+ static inline void nfs4_schedule_session_recovery(struct nfs4_session *session, int err)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 05801be..6e544cc 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6755,6 +6755,7 @@ static const struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
+ 	.recover_lock	= nfs4_lock_reclaim,
+ 	.establish_clid = nfs4_init_clientid,
+ 	.get_clid_cred	= nfs4_get_setclientid_cred,
++	.detect_trunking = nfs40_discover_server_trunking,
+ };
  
-+/* nfs4super.c */
-+int init_nfs_v4(void);
-+void exit_nfs_v4(void);
+ #if defined(CONFIG_NFS_V4_1)
+@@ -6766,6 +6767,7 @@ static const struct nfs4_state_recovery_ops nfs41_reboot_recovery_ops = {
+ 	.establish_clid = nfs41_init_clientid,
+ 	.get_clid_cred	= nfs4_get_exchange_id_cred,
+ 	.reclaim_complete = nfs41_proc_reclaim_complete,
++	.detect_trunking = nfs41_discover_server_trunking,
+ };
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 55148de..99a31f6 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -51,6 +51,8 @@
+ #include <linux/bitops.h>
+ #include <linux/jiffies.h>
+ 
++#include <linux/sunrpc/clnt.h>
 +
- /* nfs4xdr.c */
- extern struct rpc_procinfo nfs4_procedures[];
+ #include "nfs4_fs.h"
+ #include "callback.h"
+ #include "delegation.h"
+@@ -62,7 +64,7 @@
+ #define OPENOWNER_POOL_SIZE	8
  
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-new file mode 100644
-index 0000000..baa14d5
---- /dev/null
-+++ b/fs/nfs/nfs4super.c
-@@ -0,0 +1,23 @@
-+/*
-+ * Copyright (c) 2012 Bryan Schumaker <bjschuma@netapp.com>
+ const nfs4_stateid zero_stateid;
+-
++static DEFINE_MUTEX(nfs_clid_init_mutex);
+ static LIST_HEAD(nfs4_clientid_list);
+ 
+ int nfs4_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
+@@ -96,6 +98,53 @@ out:
+ 	return status;
+ }
+ 
++/**
++ * nfs40_discover_server_trunking - Detect server IP address trunking (mv0)
++ *
++ * @clp: nfs_client under test
++ * @result: OUT: found nfs_client, or clp
++ * @cred: credential to use for trunking test
++ *
++ * Returns zero, a negative errno, or a negative NFS4ERR status.
++ * If zero is returned, an nfs_client pointer is planted in
++ * "result".
 + */
-+#include <linux/init.h>
-+#include <linux/nfs_idmap.h>
-+
-+int __init init_nfs_v4(void)
++int nfs40_discover_server_trunking(struct nfs_client *clp,
++				   struct nfs_client **result,
++				   struct rpc_cred *cred)
 +{
-+	int err;
++	struct nfs4_setclientid_res clid = {
++		.clientid = clp->cl_clientid,
++		.confirm = clp->cl_confirm,
++	};
++	unsigned short port;
++	int status;
 +
-+	err = nfs_idmap_init();
-+	if (err)
++	port = nfs_callback_tcpport;
++	if (clp->cl_addr.ss_family == AF_INET6)
++		port = nfs_callback_tcpport6;
++
++	status = nfs4_proc_setclientid(clp, NFS4_CALLBACK, port, cred, &clid);
++	if (status != 0)
++		goto out;
++	clp->cl_clientid = clid.clientid;
++	clp->cl_confirm = clid.confirm;
++
++	status = nfs40_walk_client_list(clp, result, cred);
++	switch (status) {
++	case -NFS4ERR_STALE_CLIENTID:
++		set_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
++	case 0:
++		/* Sustain the lease, even if it's empty.  If the clientid4
++		 * goes stale it's of no use for trunking discovery. */
++		nfs4_schedule_state_renewal(*result);
++		break;
++	}
++
++out:
++	return status;
++}
++
+ struct rpc_cred *nfs4_get_machine_cred_locked(struct nfs_client *clp)
+ {
+ 	struct rpc_cred *cred = NULL;
+@@ -275,6 +324,46 @@ out:
+ 	return status;
+ }
+ 
++/**
++ * nfs41_discover_server_trunking - Detect server IP address trunking (mv1)
++ *
++ * @clp: nfs_client under test
++ * @result: OUT: found nfs_client, or clp
++ * @cred: credential to use for trunking test
++ *
++ * Returns NFS4_OK, a negative errno, or a negative NFS4ERR status.
++ * If NFS4_OK is returned, an nfs_client pointer is planted in
++ * "result".
++ */
++int nfs41_discover_server_trunking(struct nfs_client *clp,
++				   struct nfs_client **result,
++				   struct rpc_cred *cred)
++{
++	struct nfs_client *trunked;
++	int status;
++
++	nfs4_begin_drain_session(clp);
++	status = nfs4_proc_exchange_id(clp, cred);
++	if (status != NFS4_OK)
 +		goto out;
 +
-+	return 0;
++	status = nfs41_walk_client_list(clp, &trunked, cred);
++	if (status != NFS4_OK)
++		goto out;
++
++	set_bit(NFS4CLNT_LEASE_CONFIRM, &trunked->cl_state);
++	status = nfs4_proc_create_session(trunked, cred);
++	if (status != NFS4_OK)
++		goto out;
++	clear_bit(NFS4CLNT_LEASE_CONFIRM, &trunked->cl_state);
++	nfs41_setup_state_renewal(trunked);
++	nfs_mark_client_ready(trunked, NFS_CS_READY);
++	*result = trunked;
 +out:
-+	return err;
++	nfs4_end_drain_session(clp);
++	return status;
 +}
 +
-+void exit_nfs_v4(void)
+ struct rpc_cred *nfs4_get_exchange_id_cred(struct nfs_client *clp)
+ {
+ 	struct rpc_cred *cred;
+@@ -1652,16 +1741,19 @@ static int nfs4_establish_lease(struct nfs_client *clp)
+ 	struct rpc_cred *cred;
+ 	const struct nfs4_state_recovery_ops *ops =
+ 		clp->cl_mvops->reboot_recovery_ops;
+-	int status;
++	int status = -ENOENT;
+ 
++	mutex_lock(&nfs_clid_init_mutex);
+ 	cred = ops->get_clid_cred(clp);
+ 	if (cred == NULL)
+-		return -ENOENT;
++		goto out;
+ 	status = ops->establish_clid(clp, cred);
+ 	put_rpccred(cred);
+ 	if (status != 0)
+-		return status;
++		goto out;
+ 	pnfs_destroy_all_layouts(clp);
++out:
++	mutex_unlock(&nfs_clid_init_mutex);
+ 	return 0;
+ }
+ 
+@@ -1698,6 +1790,94 @@ static int nfs4_purge_lease(struct nfs_client *clp)
+ 	return 0;
+ }
+ 
++/**
++ * nfs4_discover_server_trunking - Detect server IP address trunking
++ *
++ * @clp: nfs_client under test
++ * @result: OUT: found nfs_client, or clp
++ *
++ * Returns zero or a negative errno.  If zero is returned,
++ * an nfs_client pointer is planted in "result".
++ *
++ * Note: since we are invoked in process context, and
++ * not from inside the state manager, we cannot use
++ * nfs4_handle_reclaim_lease_error().
++ */
++int nfs4_discover_server_trunking(struct nfs_client *clp,
++				  struct nfs_client **result)
 +{
-+	nfs_idmap_quit();
++	const struct nfs4_state_recovery_ops *ops =
++				clp->cl_mvops->reboot_recovery_ops;
++	rpc_authflavor_t flav, flavors[NFS_MAX_SECFLAVORS];
++	rpc_authflavor_t save = clp->cl_rpcclient->cl_auth->au_flavor;
++	struct rpc_auth *auth;
++	struct rpc_cred *cred;
++	int i, len, status;
++
++	dprintk("NFS: %s: testing '%s'\n", __func__, clp->cl_hostname);
++	mutex_lock(&nfs_clid_init_mutex);
++
++	i = 0;
++	len = rpcauth_list_flavors(flavors, ARRAY_SIZE(flavors));
++
++	status  = -ENOENT;
++again:
++	cred = ops->get_clid_cred(clp);
++	if (cred == NULL)
++		goto out;
++
++	status = ops->detect_trunking(clp, result, cred);
++	put_rpccred(cred);
++	switch (status) {
++	case 0:
++		break;
++
++	case -EACCES:
++		if (clp->cl_machine_cred == NULL)
++			break;
++		/* Handle case where the user hasn't set up machine creds */
++		nfs4_clear_machine_cred(clp);
++	case -NFS4ERR_DELAY:
++	case -ETIMEDOUT:
++	case -EAGAIN:
++		ssleep(1);
++		dprintk("NFS: %s after status %d, retrying\n",
++			__func__, status);
++		goto again;
++
++	case -NFS4ERR_CLID_INUSE:
++	case -NFS4ERR_WRONGSEC:
++		status = -EPERM;
++		if (i >= len)
++			break;
++
++		flav = flavors[i++];
++		if (flav == save)
++			flav = flavors[i++];
++		auth = rpcauth_create(flav, clp->cl_rpcclient);
++		if (IS_ERR(auth)) {
++			status = PTR_ERR(auth);
++			break;
++		}
++		goto again;
++
++	case -NFS4ERR_MINOR_VERS_MISMATCH:
++		status = -EPROTONOSUPPORT;
++		break;
++
++	case -EKEYEXPIRED:
++		nfs4_warn_keyexpired(clp->cl_hostname);
++	case -NFS4ERR_NOT_SAME: /* FixMe: implement recovery
++				 * in nfs4_exchange_id */
++		status = -EKEYEXPIRED;
++	}
++
++out:
++	mutex_unlock(&nfs_clid_init_mutex);
++	dprintk("NFS: %s: status = %d\n", __func__, status);
++	return status;
 +}
--- 
-1.7.11.2
-
-
-
-On 07/16/2012 04:39 PM, bjschuma@netapp.com wrote:
-> From: Bryan Schumaker <bjschuma@netapp.com>
-> 
-> I want to initialize all of NFS v4 in a single function that will
-> eventually be used as the v4 module init function.
-> 
-> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-> ---
->  fs/nfs/Makefile    |  2 +-
->  fs/nfs/inode.c     | 67 ++++++++++++++++++++++++++++++------------------------
->  fs/nfs/nfs4_fs.h   |  4 ++++
->  fs/nfs/nfs4super.c | 23 +++++++++++++++++++
->  4 files changed, 65 insertions(+), 31 deletions(-)
->  create mode 100644 fs/nfs/nfs4super.c
-> 
-> diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-> index 7ddd45d..162a699 100644
-> --- a/fs/nfs/Makefile
-> +++ b/fs/nfs/Makefile
-> @@ -13,7 +13,7 @@ nfs-$(CONFIG_NFS_V2)	+= proc.o nfs2xdr.o
->  nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
->  nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
->  nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
-> -			   delegation.o idmap.o \
-> +			   nfs4super.o delegation.o idmap.o \
->  			   callback.o callback_xdr.o callback_proc.o \
->  			   nfs4namespace.o
->  nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index 28c9ebb..35f7e4b 100644
-> --- a/fs/nfs/inode.c
-> +++ b/fs/nfs/inode.c
-> @@ -32,7 +32,6 @@
->  #include <linux/lockd/bind.h>
->  #include <linux/seq_file.h>
->  #include <linux/mount.h>
-> -#include <linux/nfs_idmap.h>
->  #include <linux/vfs.h>
->  #include <linux/inet.h>
->  #include <linux/nfs_xdr.h>
-> @@ -1628,87 +1627,96 @@ static int __init init_nfs_fs(void)
->  {
->  	int err;
->  
-> -	err = nfs_idmap_init();
-> -	if (err < 0)
-> -		goto out10;
-> -
->  	err = nfs_dns_resolver_init();
->  	if (err < 0)
-> -		goto out9;
-> +		goto out11;
->  
->  	err = register_pernet_subsys(&nfs_net_ops);
->  	if (err < 0)
-> -		goto out8;
-> +		goto out10;
->  
->  	err = nfs_fscache_register();
->  	if (err < 0)
-> -		goto out7;
-> +		goto out9;
->  
->  	err = nfsiod_start();
->  	if (err)
-> -		goto out6;
-> +		goto out8;
->  
->  	err = nfs_fs_proc_init();
->  	if (err)
-> -		goto out5;
-> +		goto out7;
->  
->  	err = nfs_init_nfspagecache();
->  	if (err)
-> -		goto out4;
-> +		goto out6;
->  
->  	err = nfs_init_inodecache();
->  	if (err)
-> -		goto out3;
-> +		goto out5;
->  
->  	err = nfs_init_readpagecache();
->  	if (err)
-> -		goto out2;
-> +		goto out4;
->  
->  	err = nfs_init_writepagecache();
->  	if (err)
-> -		goto out1;
-> +		goto out3;
->  
->  	err = nfs_init_directcache();
->  	if (err)
-> -		goto out0;
-> +		goto out2;
->  
->  #ifdef CONFIG_PROC_FS
->  	rpc_proc_register(&init_net, &nfs_rpcstat);
->  #endif
-> +
-> +#ifdef CONFIG_NFS_V4
-> +	err = init_nfs_v4();
-> +	if (err)
-> +		goto out1;
-> +#endif
-> +
->  	if ((err = register_nfs_fs()) != 0)
-> -		goto out;
-> +		goto out0;
-> +
->  	return 0;
-> -out:
-> +out0:
-> +#ifdef CONFIG_NFS_V4
-> +	exit_nfs_v4();
-> +out1:
-> +#endif
->  #ifdef CONFIG_PROC_FS
->  	rpc_proc_unregister(&init_net, "nfs");
->  #endif
->  	nfs_destroy_directcache();
-> -out0:
-> -	nfs_destroy_writepagecache();
-> -out1:
-> -	nfs_destroy_readpagecache();
->  out2:
-> -	nfs_destroy_inodecache();
-> +	nfs_destroy_writepagecache();
->  out3:
-> -	nfs_destroy_nfspagecache();
-> +	nfs_destroy_readpagecache();
->  out4:
-> -	nfs_fs_proc_exit();
-> +	nfs_destroy_inodecache();
->  out5:
-> -	nfsiod_stop();
-> +	nfs_destroy_nfspagecache();
->  out6:
-> -	nfs_fscache_unregister();
-> +	nfs_fs_proc_exit();
->  out7:
-> -	unregister_pernet_subsys(&nfs_net_ops);
-> +	nfsiod_stop();
->  out8:
-> -	nfs_dns_resolver_destroy();
-> +	nfs_fscache_unregister();
->  out9:
-> -	nfs_idmap_quit();
-> +	unregister_pernet_subsys(&nfs_net_ops);
->  out10:
-> +	nfs_dns_resolver_destroy();
-> +out11:
->  	return err;
->  }
->  
->  static void __exit exit_nfs_fs(void)
->  {
-> +#ifdef CONFIG_NFS_V4
-> +	exit_nfs_v4();
-> +#endif
->  	nfs_destroy_directcache();
->  	nfs_destroy_writepagecache();
->  	nfs_destroy_readpagecache();
-> @@ -1717,7 +1725,6 @@ static void __exit exit_nfs_fs(void)
->  	nfs_fscache_unregister();
->  	unregister_pernet_subsys(&nfs_net_ops);
->  	nfs_dns_resolver_destroy();
-> -	nfs_idmap_quit();
->  #ifdef CONFIG_PROC_FS
->  	rpc_proc_unregister(&init_net, "nfs");
->  #endif
-> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-> index e2c4c72..1a6ed3f 100644
-> --- a/fs/nfs/nfs4_fs.h
-> +++ b/fs/nfs/nfs4_fs.h
-> @@ -364,6 +364,10 @@ extern void nfs4_free_lock_state(struct nfs_server *server, struct nfs4_lock_sta
->  
->  extern const nfs4_stateid zero_stateid;
->  
-> +/* nfs4super.c */
-> +int init_nfs_v4(void);
-> +void exit_nfs_v4(void);
-> +
->  /* nfs4xdr.c */
->  extern struct rpc_procinfo nfs4_procedures[];
->  
-> diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-> new file mode 100644
-> index 0000000..366e414
-> --- /dev/null
-> +++ b/fs/nfs/nfs4super.c
-> @@ -0,0 +1,23 @@
-> +/*
-> + * Copyright (c) 2012 Bryan Schumaker <bjschuma@netapp.com>
-> + */
-> +#include <linux/init.h>
-> +#include <linux/nfs_idmap.h>
-> +
-> +int __init init_nfs_v4(void)
-> +{
-> +	int err;
-> +
-> +	err = nfs_idmap_init();
-> +	if (err)
-> +		goto out;
-> +
-> +	return 0;
-> +out:
-> +	return err;
-> +}
-> +
-> +void __exit exit_nfs_v4(void)
-> +{
-> +	nfs_idmap_quit();
-> +}
-> 
-
++
+ #ifdef CONFIG_NFS_V4_1
+ void nfs4_schedule_session_recovery(struct nfs4_session *session, int err)
+ {
 
