@@ -1,46 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:60466 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755193Ab2GETXx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jul 2012 15:23:53 -0400
-Received: by ghrr11 with SMTP id r11so7807413ghr.19
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Jul 2012 12:23:53 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <CAPD_G3KS6unxC4qJ1YY1GM-PCbG5sXLC6-aYk6L1dq4Jd0U7MQ@mail.gmail.com>
-References: <CAPD_G3L0wwzCWyoPJp_sKpuQ0J7+avn-ejEn-WnXf81zr=-LqA@mail.gmail.com>
-	<2E097766-1FA2-42E1-B790-B3BBC254B705@oracle.com>
-	<CAPD_G3Lc6F9yUOXLUcPgn1c5n=Hcs2JSXdGPhZ-CjtBLVoibbg@mail.gmail.com>
-	<2F725B49-A089-41E9-BBC9-11B889A62C9D@oracle.com>
-	<1341263584.8197.53.camel@lade.trondhjem.org>
-	<6C5408EB-668A-43C9-B3FE-9D66427B5BE0@oracle.com>
-	<CAPD_G3KojVhnjtfjN0poJvpV0i+6JZeK54rm5Swm3MDKEXQ=Zw@mail.gmail.com>
-	<1341266386.8197.61.camel@lade.trondhjem.org>
-	<CAPD_G3KS6unxC4qJ1YY1GM-PCbG5sXLC6-aYk6L1dq4Jd0U7MQ@mail.gmail.com>
-Date: Thu, 5 Jul 2012 20:23:52 +0100
-Message-ID: <CAPD_G3LPfHr-2zbv19tL1Bv++ThKbsoqb3XYfZ75CjCrh2Mhxw@mail.gmail.com>
-Subject: Re: Linux NFSv4 client uses returned delegation in subsequent READ
- resulting in hang (BAD_STATEID)
-From: "Charles 'Boyo" <charlesboyo@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:4387 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752126Ab2GPUjc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Jul 2012 16:39:32 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 10/12] NFS: Create a single nfs_clone_super() function
+Date: Mon, 16 Jul 2012 16:39:19 -0400
+Message-Id: <1342471161-22452-11-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1342471161-22452-1-git-send-email-bjschuma@netapp.com>
+References: <1342471161-22452-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->> What isn't expected behaviour is for the client to DELEGRETURN
->> immediately upon receiving the delegation. Nor is it expected that the
->> READ would fail to recover in an ordinary DELEGRETURN situation.
->>
->> This is why I'm interested in seeing what happened before the OPEN.
->>
->
-> Attached is a minimally redacted trace which contains all the NFS
-> calls and responses before and through this particular DELEGRETURN
-> (frame 6084).
-> I am unable to provide the full packet capture due to the sensitivity
-> of the data contained therein.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Trond, did the attached trace confirm the issue as suspected?
+v2 and v3 shared a function for this, but v4 implemented something only
+slightly different.  Might as well share code whenever possible...
 
-Charles
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/super.c | 32 ++++++--------------------------
+ 1 file changed, 6 insertions(+), 26 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 9bad4e7..ca3c0e8 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2218,7 +2218,7 @@ static void nfs_fill_super(struct super_block *sb,
+ }
+ 
+ /*
+- * Finish setting up a cloned NFS2/3 superblock
++ * Finish setting up a cloned NFS2/3/4 superblock
+  */
+ static void nfs_clone_super(struct super_block *sb,
+ 			    struct nfs_mount_info *mount_info)
+@@ -2229,16 +2229,17 @@ static void nfs_clone_super(struct super_block *sb,
+ 	sb->s_blocksize_bits = old_sb->s_blocksize_bits;
+ 	sb->s_blocksize = old_sb->s_blocksize;
+ 	sb->s_maxbytes = old_sb->s_maxbytes;
++	sb->s_xattr = old_sb->s_xattr;
++	sb->s_op = old_sb->s_op;
++	sb->s_time_gran = 1;
+ 
+-	if (server->nfs_client->rpc_ops->version == 3) {
++	if (server->nfs_client->rpc_ops->version != 2) {
+ 		/* The VFS shouldn't apply the umask to mode bits. We will do
+ 		 * so ourselves when necessary.
+ 		 */
+ 		sb->s_flags |= MS_POSIXACL;
+-		sb->s_time_gran = 1;
+ 	}
+ 
+-	sb->s_op = old_sb->s_op;
+  	nfs_initialise_sb(sb);
+ }
+ 
+@@ -2580,27 +2581,6 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
+ #ifdef CONFIG_NFS_V4
+ 
+ /*
+- * Finish setting up a cloned NFS4 superblock
+- */
+-static void nfs4_clone_super(struct super_block *sb,
+-			     struct nfs_mount_info *mount_info)
+-{
+-	const struct super_block *old_sb = mount_info->cloned->sb;
+-	sb->s_blocksize_bits = old_sb->s_blocksize_bits;
+-	sb->s_blocksize = old_sb->s_blocksize;
+-	sb->s_maxbytes = old_sb->s_maxbytes;
+-	sb->s_time_gran = 1;
+-	sb->s_op = old_sb->s_op;
+-	/*
+-	 * The VFS shouldn't apply the umask to mode bits. We will do
+-	 * so ourselves when necessary.
+-	 */
+-	sb->s_flags  |= MS_POSIXACL;
+-	sb->s_xattr  = old_sb->s_xattr;
+-	nfs_initialise_sb(sb);
+-}
+-
+-/*
+  * Set up an NFS4 superblock
+  */
+ static void nfs4_fill_super(struct super_block *sb,
+@@ -2883,7 +2863,7 @@ nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
+ 		 const char *dev_name, void *raw_data)
+ {
+ 	struct nfs_mount_info mount_info = {
+-		.fill_super = nfs4_clone_super,
++		.fill_super = nfs_clone_super,
+ 		.set_security = nfs_clone_sb_security,
+ 		.cloned = raw_data,
+ 	};
+-- 
+1.7.11.2
+
