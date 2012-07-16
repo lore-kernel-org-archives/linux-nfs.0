@@ -1,67 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:59969 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752329Ab2GZPaV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 11:30:21 -0400
-Received: by ghrr11 with SMTP id r11so2097399ghr.19
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jul 2012 08:30:21 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <50115484.6040005@panasas.com>
-References: <CA+a=Yy7B0uk-FWr3hOjWC+=Xq+UtHnEC4speD3OZzMFfXksyOw@mail.gmail.com>
- <500FCA3A.5020606@panasas.com> <CA+a=Yy58bjUMximWOMnmk0ugPKUY-LcacRhpdp4cvuz1HQG_gg@mail.gmail.com>
- <5010573F.4000901@panasas.com> <CA+a=Yy5oJObMeUuL-mspso2eXCr4+5qmiFsOfS5=fU5x9kHtkw@mail.gmail.com>
- <5010F1DF.3060905@panasas.com> <CA+a=Yy5YNKp2tkOreYwV9sfm7whw3_KeRj_YCCL3abG6+csK=g@mail.gmail.com>
- <50113504.3060607@panasas.com> <CA+a=Yy6+7G_-Mef+dEZKqftjwgubMxboCLB9YB4DdrDJoznXvQ@mail.gmail.com>
- <50115484.6040005@panasas.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Thu, 26 Jul 2012 23:30:00 +0800
-Message-ID: <CA+a=Yy6LyrV944cSpr0k_tgyDzSwF9BGkS-_aq+X_em1WuPpBg@mail.gmail.com>
-Subject: Re: pnfs LD partial sector write
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: linuxnfs <linux-nfs@vger.kernel.org>, Benny Halevy <bhalevy@tonian.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-wi0-f178.google.com ([209.85.212.178]:48791 "EHLO
+	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753458Ab2GPWBC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Jul 2012 18:01:02 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: Trond.Myklebust@netapp.com, bfields@fieldses.org, davem@davemloft.net
+Cc: davej@redhat.com, linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH] SUNRPC: Prevent kernel stack corruption on long values of flush
+Date: Tue, 17 Jul 2012 00:01:26 +0200
+Message-Id: <1342476086-21638-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 26, 2012 at 10:30 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> On 07/26/2012 04:57 PM, Peng Tao wrote:
->
->> On Thu, Jul 26, 2012 at 8:16 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->>> On 07/26/2012 11:25 AM, Peng Tao wrote:
->>>
->>>> For these two sectors, I need to allocate two pages... Just look at
->>>> struct bio_vec.
->>>>
->>>
->>>
->>> NO! I know all about bio_vecs
->>>
->>> You need 1024 bytes, and 2 x one entry BIOs which is a few bytes, where
->>> did you get the "two pages" from?
->>>
->> What do you put int bio_vec->bv_page? Even if you just use 512 bytes
->> of a page, it is still allocated page.
->>
->
->
-> No!!
->
-> You just use bio_map_kern or in one go blk_rq_map_kern() with any: kmalloc,
-> stack, or kernel pointer. And that's that. It will take what it will take.
->
-First I should admit I don't know bio_map_kern() alike. Thanks for
-teaching me about them (see, here is your credit :)
+The buffer size in read_flush() is too small for the longest possible values
+for it. This can lead to a kernel stack corruption:
 
-Looking at them, I don't think it is proper to use them in block
-layout code, mainly because It is a layer violation. Searching for
-callers of io_map_kern/blk_rq_map_kern(), they are either block core
-code or device drivers. Clearly these interfaces are block layer
-internal APIs and file systems shouldn't touch them.
+[   43.047329] Kernel panic - not syncing: stack-protector: Kernel stack is corrupted in: ffffffff833e64b4
+[   43.047329]
+[   43.049030] Pid: 6015, comm: trinity-child18 Tainted: G        W    3.5.0-rc7-next-20120716-sasha #221
+[   43.050038] Call Trace:
+[   43.050435]  [<ffffffff836c60c2>] panic+0xcd/0x1f4
+[   43.050931]  [<ffffffff833e64b4>] ? read_flush.isra.7+0xe4/0x100
+[   43.051602]  [<ffffffff810e94e6>] __stack_chk_fail+0x16/0x20
+[   43.052206]  [<ffffffff833e64b4>] read_flush.isra.7+0xe4/0x100
+[   43.052951]  [<ffffffff833e6500>] ? read_flush_pipefs+0x30/0x30
+[   43.053594]  [<ffffffff833e652c>] read_flush_procfs+0x2c/0x30
+[   43.053596]  [<ffffffff812b9a8c>] proc_reg_read+0x9c/0xd0
+[   43.053596]  [<ffffffff812b99f0>] ? proc_reg_write+0xd0/0xd0
+[   43.053596]  [<ffffffff81250d5b>] do_loop_readv_writev+0x4b/0x90
+[   43.053596]  [<ffffffff81250fd6>] do_readv_writev+0xf6/0x1d0
+[   43.053596]  [<ffffffff812510ee>] vfs_readv+0x3e/0x60
+[   43.053596]  [<ffffffff812511b8>] sys_readv+0x48/0xb0
+[   43.053596]  [<ffffffff8378167d>] system_call_fastpath+0x1a/0x1f
 
-Therefore I still think I should stick with plain common
-bio_alloc/bio_add_page/submit_bio interfaces. Thanks for the
-suggestion.
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ net/sunrpc/cache.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 2afd2a8..f86d95e 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -1409,11 +1409,11 @@ static ssize_t read_flush(struct file *file, char __user *buf,
+ 			  size_t count, loff_t *ppos,
+ 			  struct cache_detail *cd)
+ {
+-	char tbuf[20];
++	char tbuf[22];
+ 	unsigned long p = *ppos;
+ 	size_t len;
+ 
+-	sprintf(tbuf, "%lu\n", convert_to_wallclock(cd->flush_time));
++	snprintf(tbuf, sizeof(tbuf), "%lu\n", convert_to_wallclock(cd->flush_time));
+ 	len = strlen(tbuf);
+ 	if (p >= len)
+ 		return 0;
+-- 
+1.7.8.6
 
-Cheers,
-Tao
