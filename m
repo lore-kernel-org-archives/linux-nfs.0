@@ -1,47 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:63631 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754410Ab2GWTqe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jul 2012 15:46:34 -0400
-Received: by gglu4 with SMTP id u4so5884605ggl.19
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Jul 2012 12:46:33 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@netapp.com
-Cc: viro@ZenIV.linux.org.uk, linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: explicitly reject LOCK_MAND flock() requests
-Date: Mon, 23 Jul 2012 15:46:23 -0400
-Message-Id: <1343072783-29737-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:53280 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751916Ab2GPSoX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Jul 2012 14:44:23 -0400
+Received: from vmwexceht05-prd.hq.netapp.com (vmwexceht05-prd.hq.netapp.com [10.106.77.35])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q6GIi7m2004450
+	for <linux-nfs@vger.kernel.org>; Mon, 16 Jul 2012 11:44:07 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] SUNRPC handle EKEYEXPIRED in call_refreshresult
+Date: Mon, 16 Jul 2012 18:44:06 +0000
+Message-ID: <1342464245.4648.23.camel@lade.trondhjem.org>
+References: <1340827535-3062-1-git-send-email-andros@netapp.com>
+	 <1340827535-3062-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1340827535-3062-2-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We have no mechanism to emulate LOCK_MAND locks on NFSv4, so explicitly
-return -EINVAL if someone requests it.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/file.c |    9 +++++++++
- 1 file changed, 9 insertions(+)
-
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 61d3670..15f4bbb 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -834,6 +834,15 @@ static int nfs_flock(struct file *filp, int cmd, struct file_lock *fl)
- 	if (!(fl->fl_flags & FL_FLOCK))
- 		return -ENOLCK;
- 
-+	/*
-+	 * The NFSv4 protocol doesn't support LOCK_MAND, which is not part of
-+	 * any standard. In principle we might be able to support LOCK_MAND
-+	 * on NFSv2/3 since NLMv3/4 support DOS share modes, but for now the
-+	 * NFS code is not set up for it.
-+	 */
-+	if (fl->fl_type & LOCK_MAND)
-+		return -EINVAL;
-+
- 	if (NFS_SERVER(inode)->flags & NFS_MOUNT_LOCAL_FLOCK)
- 		is_local = 1;
- 
--- 
-1.7.10.4
-
+T24gV2VkLCAyMDEyLTA2LTI3IGF0IDE2OjA1IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
+ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFdoZW4g
+YW4gUlBDU0VDX0dTUyBjb250ZXh0IGhhcyBleHBpcmVkIG9yIGlzIG5vbi1leGlzdGVudCwgYW5k
+IHRoZSB1c2VyDQo+IChLZXJiZXJvcykgY3JlZGVudGlhbHMgaGF2ZSBhbHNvIGV4cGlyZWQgb3Ig
+YXJlIG5vbi1leGlzdGVudCwgdGhlIGNsaWVudA0KPiByZXRyaWVzIHRvIHJlZnJlc2ggdGhlIGNv
+bnRleHQgZm9yIGV2ZXIgYW5kIHRoZSBhcHBsaWNhdGlvbg0KPiBoYW5ncy4gVGhlIHVzZXIgaXMg
+bm90IHByb21wdGVkIHRvIHJlZnJlc2gvZXN0YWJsaXNoIHRoZWlyIGNyZWRlbnRpYWxzLg0KPiAN
+Cj4gTW92ZSB0aGUgLUVLRVlFWFBJUkVEIGhhbmRsaW5nIGludG8gdGhlIFJQQyBsYXllci4gVHJ5
+IHRrX2NyZWRfcmV0cnkgbnVtYmVyDQo+IG9mIHRpbWVzIHRvIHJlZnJlc2ggdGhlIGdzc19jb250
+ZXh0LCBhbmQgdGhlbiBwYXNzIC1FUEVSTSB0byBhcHBsaWNhdGlvbi4NCj4gDQo+IFNpZ25lZC1v
+ZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQo+IC0tLQ0KPiAgZnMvbmZz
+L25mczRwcm9jLmMgfCAgICAyIC0tDQo+ICBuZXQvc3VucnBjL2NsbnQuYyB8ICAgIDQgKysrKw0K
+PiAgMiBmaWxlcyBjaGFuZ2VkLCA0IGluc2VydGlvbnMoKyksIDIgZGVsZXRpb25zKC0pDQo+IA0K
+PiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMvbmZzNHByb2MuYw0KPiBp
+bmRleCA1YTdiMzcyLi4yZjI5MWIzIDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvbmZzNHByb2MuYw0K
+PiArKysgYi9mcy9uZnMvbmZzNHByb2MuYw0KPiBAQCAtMzQyLDcgKzM0Miw2IEBAIHN0YXRpYyBp
+bnQgbmZzNF9oYW5kbGVfZXhjZXB0aW9uKHN0cnVjdCBuZnNfc2VydmVyICpzZXJ2ZXIsIGludCBl
+cnJvcmNvZGUsIHN0cnVjDQo+ICAJCQl9DQo+ICAJCWNhc2UgLU5GUzRFUlJfR1JBQ0U6DQo+ICAJ
+CWNhc2UgLU5GUzRFUlJfREVMQVk6DQo+IC0JCWNhc2UgLUVLRVlFWFBJUkVEOg0KPiAgCQkJcmV0
+ID0gbmZzNF9kZWxheShzZXJ2ZXItPmNsaWVudCwgJmV4Y2VwdGlvbi0+dGltZW91dCk7DQo+ICAJ
+CQlpZiAocmV0ICE9IDApDQo+ICAJCQkJYnJlYWs7DQo+IEBAIC0zOTM5LDcgKzM5MzgsNiBAQCBu
+ZnM0X2FzeW5jX2hhbmRsZV9lcnJvcihzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2ssIGNvbnN0IHN0cnVj
+dCBuZnNfc2VydmVyICpzZXJ2ZXIsDQo+ICAJCWNhc2UgLU5GUzRFUlJfREVMQVk6DQo+ICAJCQlu
+ZnNfaW5jX3NlcnZlcl9zdGF0cyhzZXJ2ZXIsIE5GU0lPU19ERUxBWSk7DQo+ICAJCWNhc2UgLU5G
+UzRFUlJfR1JBQ0U6DQo+IC0JCWNhc2UgLUVLRVlFWFBJUkVEOg0KPiAgCQkJcnBjX2RlbGF5KHRh
+c2ssIE5GUzRfUE9MTF9SRVRSWV9NQVgpOw0KPiAgCQkJdGFzay0+dGtfc3RhdHVzID0gMDsNCj4g
+IAkJCXJldHVybiAtRUFHQUlOOw0KPiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy9jbG50LmMgYi9u
+ZXQvc3VucnBjL2NsbnQuYw0KPiBpbmRleCBmNTZmMDQ1Li5hOTRmYzBjIDEwMDY0NA0KPiAtLS0g
+YS9uZXQvc3VucnBjL2NsbnQuYw0KPiArKysgYi9uZXQvc3VucnBjL2NsbnQuYw0KPiBAQCAtMTMz
+NCw4ICsxMzM0LDEyIEBAIGNhbGxfcmVmcmVzaHJlc3VsdChzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2sp
+DQo+ICAJCXJldHVybjsNCj4gIAljYXNlIC1FVElNRURPVVQ6DQo+ICAJCXJwY19kZWxheSh0YXNr
+LCAzKkhaKTsNCj4gKwljYXNlIC1FS0VZRVhQSVJFRDoNCj4gKwkJc3RhdHVzID0gLUVQRVJNOw0K
+DQpUaGlzIG5lZWRzIHRvIGJlIEVBQ0NFUy4uLg0KDQo+ICsJCWdvdG8gY3JlZF9yZXRyeTsNCj4g
+IAljYXNlIC1FQUdBSU46DQo+ICAJCXN0YXR1cyA9IC1FQUNDRVM7DQo+ICtjcmVkX3JldHJ5Og0K
+PiAgCQlpZiAoIXRhc2stPnRrX2NyZWRfcmV0cnkpDQo+ICAJCQlicmVhazsNCj4gIAkJdGFzay0+
+dGtfY3JlZF9yZXRyeS0tOw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVu
+dCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5u
+ZXRhcHAuY29tDQoNCg==
