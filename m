@@ -1,55 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:38139 "EHLO
+Received: from rcsinet15.oracle.com ([148.87.113.117]:39580 "EHLO
 	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932871Ab2GBVvh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jul 2012 17:51:37 -0400
-Subject: Re: Linux NFSv4 client uses returned delegation in subsequent READ resulting in hang (BAD_STATEID)
+	with ESMTP id S1754216Ab2GPTJI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Jul 2012 15:09:08 -0400
+Subject: Re: [PATCH 13/15] NFS: Discover NFSv4 server trunking when mounting
 Mime-Version: 1.0 (Apple Message framework v1278)
 Content-Type: text/plain; charset=us-ascii
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1341265720.8197.56.camel@lade.trondhjem.org>
-Date: Mon, 2 Jul 2012 17:50:31 -0400
-Cc: "Linux;NFS Mailing List" <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Message-Id: <E77A07D9-EFA1-4C52-B0A9-3E81401341E5@oracle.com>
-References: <CAPD_G3L0wwzCWyoPJp_sKpuQ0J7+avn-ejEn-WnXf81zr=-LqA@mail.gmail.com> <2E097766-1FA2-42E1-B790-B3BBC254B705@oracle.com> <CAPD_G3Lc6F9yUOXLUcPgn1c5n=Hcs2JSXdGPhZ-CjtBLVoibbg@mail.gmail.com> <2F725B49-A089-41E9-BBC9-11B889A62C9D@oracle.com> <1341263584.8197.53.camel@lade.trondhjem.org> <6C5408EB-668A-43C9-B3FE-9D66427B5BE0@oracle.com> <1341265720.8197.56.camel@lade.trondhjem.org>
-To: "Charles 'Boyo" <charlesboyo@gmail.com>
+In-Reply-To: <1342465540.4648.25.camel@lade.trondhjem.org>
+Date: Mon, 16 Jul 2012 15:09:03 -0400
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <FA164FA1-5E20-4958-887C-6B5C503B841F@oracle.com>
+References: <20120711201718.3767.66867.stgit@degas.1015granger.net> <20120711203134.3767.47961.stgit@degas.1015granger.net> <1342465540.4648.25.camel@lade.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Jul 2, 2012, at 5:48 PM, Myklebust, Trond wrote:
+On Jul 16, 2012, at 3:05 PM, Myklebust, Trond wrote:
 
-> On Mon, 2012-07-02 at 17:19 -0400, Chuck Lever wrote:
->> On Jul 2, 2012, at 5:13 PM, Myklebust, Trond wrote:
+> On Wed, 2012-07-11 at 16:31 -0400, Chuck Lever wrote:
+>> "Server trunking" is a fancy named for a multi-homed NFS server.
+>> Trunking might occur if a client sends NFS requests for a single
+>> workload to multiple network interfaces on the same server.  There
+>> are some implications for NFSv4 state management that make it useful
+>> for a client to know if a single NFSv4 server instance is
+>> multi-homed.  (Note this is only a consideration for NFSv4, not for
+>> legacy versions of NFS, which are stateless).
 >> 
->>> On Mon, 2012-07-02 at 16:35 -0400, Chuck Lever wrote:
->>>> On Jul 2, 2012, at 4:22 PM, Charles 'Boyo wrote:
->>>> 
->>>>> On Mon, Jul 2, 2012 at 3:09 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>> 
->>>>>> Usually we see this behavior because of a race between an OPEN with delegation and a delegation recall.  In this case, however, the client is actively returning a READ
->>>>>> delegation, then proceeding to use it anyway.  I don't see the server's recall callback, though, and there are other indications that this trace is not complete. So it's hard
->>>>>> to be 100% confident.
->>>>>> 
->>>>> The trace is not complete, it includes just enough information to
->>>>> explain the problem.
->>>>> However I can confirm the service did not send a recall callback, the
->>>>> client returned the delegation of its own "free will".
->>>> 
->>>> The callback would come on a separate TCP connection.  I can't think of a reason that a client would return a delegation by itself and then subsequently start to use it.
->>> 
->>> I can: there are a number of servers out there that violate the spec by
->>> returning a delegation as part of an OPEN(CLAIM_DELEGATE_CUR). Usually
->>> those broken servers will send the exact same stateid as the delegation
->>> that is being returned.
+>> If a client cares about server trunking, no NFSv4 operations can
+>> proceed until that client determines who it is talking to.  Thus
+>> server IP trunking discovery must be done when the client first
+>> encounters an unfamiliar server IP address.
 >> 
->> The OPEN in frame 7 is a CLAIM_NULL OPEN, isn't it?
+>> The nfs_get_client() function walks the nfs_client_list and matches
+>> on server IP address.  The outcome of that walk tells us immediately
+>> if we have an unfamiliar server IP address.  It invokes
+>> nfs_init_client() in this case.  Thus, nfs4_init_client() is a good
+>> spot to perform trunking discovery.
+>> 
+>> Discovery requires a client to establish a fresh client ID, so our
+>> client will now send SETCLIENTID or EXCHANGE_ID as the first NFS
+>> operation after a successful ping, rather than waiting for an
+>> application to perform an operation that requires NFSv4 state.
+>> 
+>> The exact process for detecting trunking is different for NFSv4.0 and
+>> NFSv4.1, so a minorversion-specific init_client callout method is
+>> introduced.
+>> 
+>> CLID_INUSE recovery is important for the trunking discovery process.
+>> CLID_INUSE is a sign the server recognizes the client's nfs_client_id4
+>> id string, but the client is using the wrong principal this time for
+>> the SETCLIENTID operation.  The SETCLIENTID must be retried with a
+>> series of different principals until one works, and the rest of
+>> trunking discovery can proceed.
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> 
+>> fs/nfs/client.c    |  237 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+>> fs/nfs/internal.h  |    6 +
+>> fs/nfs/nfs4_fs.h   |    8 ++
+>> fs/nfs/nfs4proc.c  |    2 
+>> fs/nfs/nfs4state.c |  186 ++++++++++++++++++++++++++++++++++++++++-
+>> 5 files changed, 433 insertions(+), 6 deletions(-)
 > 
-> Yes. Is there a preamble to that, or did the client really try to
-> delegreturn immediately upon receiving a delegation?
+> Applying: NFS: Discover NFSv4 server trunking when mounting
+> error: patch failed: fs/nfs/nfs4state.c:1656
+> error: fs/nfs/nfs4state.c: patch does not apply
+> Patch failed at 0001 NFS: Discover NFSv4 server trunking when mounting
 
-Charles, we would like to see an un-redacted trace, if you have one.
+I can take a look.  What are you applying it to, exactly?
 
 -- 
 Chuck Lever
