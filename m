@@ -1,88 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50720 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:8334 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755936Ab2GYQwS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Jul 2012 12:52:18 -0400
-Date: Wed, 25 Jul 2012 12:52:15 -0400
-To: Taylan Develioglu <tdevelioglu@ebuddy.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond@netapp.com>
-Subject: Re: rpc_exit_task warning.
-Message-ID: <20120725165215.GC16617@fieldses.org>
-References: <FF1DF58D04F11D4291D09795D1A4EF16180E4C4AD8@SRV-MAIL>
+	id S1753797Ab2GQSGY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Jul 2012 14:06:24 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 15/15] NFS: Slow down state manager after an unhandled
+ error
+Date: Tue, 17 Jul 2012 18:06:22 +0000
+Message-ID: <1342548381.2646.11.camel@lade.trondhjem.org>
+References: <20120711201718.3767.66867.stgit@degas.1015granger.net>
+	 <20120711203151.3767.79006.stgit@degas.1015granger.net>
+In-Reply-To: <20120711203151.3767.79006.stgit@degas.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <FF1DF58D04F11D4291D09795D1A4EF16180E4C4AD8@SRV-MAIL>
-From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 24, 2012 at 08:58:43PM +0200, Taylan Develioglu wrote:
-> We just deployed a new nfs server and have about a hundred clients connected but are getting repeated kernel warnings on the server:
-
-Did this replace an old server that didn't see these warnings?
-
-> 
-> Clients and servers run 3.2.18 and 3.2.20 respectively. We do not use any security options.
-> 
-> I don't really have time to debug this, but I felt I should report it.
-> 
-> - Client
->   ii  libevent-1.4-2                      1.4.13-stable-1
->   ii  util-linux                          2.17.2-9
->   ii  linux-image-3.2.0-0.bpo.2-amd64     3.2.18-1~bpo60+1
->   ii  nfs-common                          1:1.2.2-4squeeze2
-> 
-> - Server
->   ii  libevent-1.4-2                      1.4.13-stable-1
->   ii  util-linux                          2.17.2-9
->   ii  linux-image-3.2.0-0.bpo.2-amd64     3.2.20-1~bpo60+1
->   ii  libnfsidmap2                        0.24-1~bpo60+1               
->   ii  nfs-common                          1:1.2.5-4~bpo60+1            
->   ii  nfs-kernel-server                   1:1.2.5-4~bpo60+1            
-> 
-> exportfs -v
-> /var/www/pictures
->                 x.x.x.x/22(rw,async,wdelay,root_squash,all_squash,no_subtree_check,anonuid=33,anongid=33)
-> /var/www/pictures
->                 10.40.0.0/23(rw,async,wdelay,root_squash,all_squash,no_subtree_check,anonuid=33,anongid=33)
-> 
-> ----------------------------------------------------------------------------------------
-> [ 1913.662849] WARNING: at /build/buildd-linux_3.2.20-1~bpo60+1-amd64-tQMw4f/linux-3.2.20/net/sunrpc/sched.c:630 rpc_exit_task+0x40/0x7a [sunrpc]()
-
-That's a warning from rpc_task that both tk_action and RPC_TASK_KILLED
-were set on exit from rpc_calL_done.
-
-Couldn't that happen if there's a race between rpc_killall and
-rpc_call_done trying to restart the task?  rpc_restart_call{_prepare}
-check RPC_TASK_KILLED before setting the action, but does anything
-prevent the flag being set after that check?
-
---b.
-
-> [ 1913.662851] Hardware name: X8STi
-> [ 1913.662852] Modules linked in: nfsd nfs lockd fscache auth_rpcgss nfs_acl sunrpc hmac drbd lru_cache cn ipmi_si ipmi_devintf ipmi_msghandler loop tpm_tis tpm parport_pc i2c_i801 i7core_edac i2c_core snd_pcm snd_timer snd ioatdma soundcore tpm_bios snd_page_alloc parport edac_core dca pcspkr psmouse processor serio_raw thermal_sys evdev joydev button ext4 mbcache jbd2 crc16 dm_mod sg sr_mod cdrom ses enclosure sd_mod crc_t10dif usb_storage usbhid hid uas uhci_hcd mptsas mptscsih mptbase scsi_transport_sas ahci libahci ehci_hcd libata usbcore aacraid usb_common scsi_mod e1000e [last unloaded: scsi_wait_scan]
-> [ 1913.662902] Pid: 11, comm: kworker/0:1 Tainted: G        W    3.2.0-0.bpo.2-amd64 #1
-> [ 1913.662904] Call Trace:
-> [ 1913.662909]  [<ffffffff810498ac>] ? warn_slowpath_common+0x78/0x8c
-> [ 1913.662916]  [<ffffffffa0327871>] ? rpc_exit_task+0x40/0x7a [sunrpc]
-> [ 1913.662922]  [<ffffffffa0327ddb>] ? __rpc_execute+0x71/0x23f [sunrpc]
-> [ 1913.662928]  [<ffffffffa0327fe1>] ? rpc_execute+0x38/0x38 [sunrpc]
-> [ 1913.662981]  [<ffffffff8105f96c>] ? process_one_work+0x1cc/0x2ea
-> [ 1913.662985]  [<ffffffff8105fbb7>] ? worker_thread+0x12d/0x247
-> [ 1913.662987]  [<ffffffff8105fa8a>] ? process_one_work+0x2ea/0x2ea
-> [ 1913.662990]  [<ffffffff8105fa8a>] ? process_one_work+0x2ea/0x2ea
-> [ 1913.662993]  [<ffffffff810633c5>] ? kthread+0x7a/0x82
-> [ 1913.662998]  [<ffffffff8136ca74>] ? kernel_thread_helper+0x4/0x10
-> [ 1913.663000]  [<ffffffff8106334b>] ? kthread_worker_fn+0x147/0x147
-> [ 1913.663003]  [<ffffffff8136ca70>] ? gs_change+0x13/0x13
-> [ 1913.663005] ---[ end trace 7cee9f1fd80fe6ac ]---
-> ----------------------------------------------------------------------------------------
-> 
-> Regards,
-> 
-> Taylan
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+T24gV2VkLCAyMDEyLTA3LTExIGF0IDE2OjMxIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+SWYgdGhlIHN0YXRlIG1hbmFnZXIgdGhyZWFkIGlzIG5vdCBhY3R1YWxseSBhYmxlIHRvIGZ1bGx5
+IHJlY292ZXIgZnJvbQ0KPiBzb21lIHNpdHVhdGlvbiwgaXQgd2FrZXMgdXAgd2FpdGVycywgd2hv
+IGtpY2sgb2ZmIGEgbmV3IHN0YXRlIG1hbmFnZXINCj4gdGhyZWFkLiAgUXVpdGUgb2Z0ZW4gdGhl
+IGZyZXNoIGludm9jYXRpb24gb2YgdGhlIHN0YXRlIG1hbmFnZXIgaXMganVzdA0KPiBhcyBzdWNj
+ZXNzZnVsLg0KPiANCj4gVGhpcyByZXN1bHRzIGluIGEgbGl2ZWxvY2sgYXMgdGhlIGNsaWVudCBk
+dW1wcyB0aG91c2FuZHMgb2YgTkZTDQo+IHJlcXVlc3RzIGEgc2Vjb25kIG9uIHRoZSBuZXR3b3Jr
+IGluIGEgdmFpbiBhdHRlbXB0IHRvIHJlY292ZXIuICBOb3QNCj4gdmVyeSBmcmllbmRseS4NCj4g
+DQo+IFRvIG1pdGlnYXRlIHRoaXMgc2l0dWF0aW9uLCBhZGQgYSBkZWxheSBpbiB0aGUgc3RhdGUg
+bWFuYWdlciBhZnRlcg0KPiBhbiB1bmhhbmRsZWQgZXJyb3IsIHNvIHRoYXQgdGhlIGNsaWVudCBz
+ZW5kcyBqdXN0IGEgZmV3IHJlcXVlc3RzDQo+IGV2ZXJ5IHNlY29uZCBpbiB0aGlzIGNhc2UuDQoN
+Cg0KSSBhc3N1bWUgdGhhdCB0aGlzIHdhcyBpbnRlbmRlZCB0byBoYXZlIGEgcy1vLWIgbGluZT8N
+Cg0KPiAtLS0NCj4gDQo+ICBmcy9uZnMvbmZzNHN0YXRlLmMgfCAgICAxICsNCj4gIDEgZmlsZXMg
+Y2hhbmdlZCwgMSBpbnNlcnRpb25zKCspLCAwIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdp
+dCBhL2ZzL25mcy9uZnM0c3RhdGUuYyBiL2ZzL25mcy9uZnM0c3RhdGUuYw0KPiBpbmRleCA1ZTNi
+ZWJjLi4zODk1OWViIDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvbmZzNHN0YXRlLmMNCj4gKysrIGIv
+ZnMvbmZzL25mczRzdGF0ZS5jDQo+IEBAIC0yMTUxLDYgKzIxNTEsNyBAQCBzdGF0aWMgdm9pZCBu
+ZnM0X3N0YXRlX21hbmFnZXIoc3RydWN0IG5mc19jbGllbnQgKmNscCkNCj4gIG91dF9lcnJvcjoN
+Cj4gIAlwcl93YXJuX3JhdGVsaW1pdGVkKCJORlM6IHN0YXRlIG1hbmFnZXIgZmFpbGVkIG9uIE5G
+U3Y0IHNlcnZlciAlcyINCj4gIAkJCSIgd2l0aCBlcnJvciAlZFxuIiwgY2xwLT5jbF9ob3N0bmFt
+ZSwgLXN0YXR1cyk7DQo+ICsJc3NsZWVwKDEpOw0KPiAgCW5mczRfZW5kX2RyYWluX3Nlc3Npb24o
+Y2xwKTsNCj4gIAluZnM0X2NsZWFyX3N0YXRlX21hbmFnZXJfYml0KGNscCk7DQo+ICB9DQo+IA0K
+DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5l
+dEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
