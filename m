@@ -1,100 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:4387 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752126Ab2GPUjc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Jul 2012 16:39:32 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 10/12] NFS: Create a single nfs_clone_super() function
-Date: Mon, 16 Jul 2012 16:39:19 -0400
-Message-Id: <1342471161-22452-11-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1342471161-22452-1-git-send-email-bjschuma@netapp.com>
-References: <1342471161-22452-1-git-send-email-bjschuma@netapp.com>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:19231 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752892Ab2GQAwX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Jul 2012 20:52:23 -0400
+Subject: Re: [nfs:nfs-for-bryan 100/100] net/sunrpc/auth_gss/gss_mech_switch.c:252:5: sparse: context imbalance in 'gss_mech_list_pseudoflavors' - wrong count at exit
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20120717001410.GD16944@localhost>
+Date: Mon, 16 Jul 2012 20:52:18 -0400
+Cc: kernel-janitors@vger.kernel.org, Linux-NFS <linux-nfs@vger.kernel.org>
+Message-Id: <02CE41D1-F797-4363-8109-A5B2C8AD6E95@oracle.com>
+References: <20120717001410.GD16944@localhost>
+To: Fengguang Wu <fengguang.wu@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
 
-v2 and v3 shared a function for this, but v4 implemented something only
-slightly different.  Might as well share code whenever possible...
+On Jul 16, 2012, at 8:14 PM, Fengguang Wu wrote:
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/super.c | 32 ++++++--------------------------
- 1 file changed, 6 insertions(+), 26 deletions(-)
+> Hi Chuck,
+> 
+> There are new sparse warnings (likely a true locking bug) show up in
+> 
+> tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git nfs-for-bryan
+> head:   6a1a1e34dc55f17e7bd260809207442dbb7a0296
+> commit: 6a1a1e34dc55f17e7bd260809207442dbb7a0296 [100/100] SUNRPC: Add rpcauth_list_flavors()
+> 
+> All sparse warnings:
+> 
+>  net/sunrpc/auth_gss/gss_mech_switch.c:143:21: sparse: symbol '_gss_mech_get_by_name' was not declared. Should it be static?
+>  net/sunrpc/auth_gss/gss_mech_switch.c:208:21: sparse: symbol '_gss_mech_get_by_pseudoflavor' was not declared. Should it be static?
+> + net/sunrpc/auth_gss/gss_mech_switch.c:252:5: sparse: context imbalance in 'gss_mech_list_pseudoflavors' - wrong count at exit
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 9bad4e7..ca3c0e8 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2218,7 +2218,7 @@ static void nfs_fill_super(struct super_block *sb,
- }
- 
- /*
-- * Finish setting up a cloned NFS2/3 superblock
-+ * Finish setting up a cloned NFS2/3/4 superblock
-  */
- static void nfs_clone_super(struct super_block *sb,
- 			    struct nfs_mount_info *mount_info)
-@@ -2229,16 +2229,17 @@ static void nfs_clone_super(struct super_block *sb,
- 	sb->s_blocksize_bits = old_sb->s_blocksize_bits;
- 	sb->s_blocksize = old_sb->s_blocksize;
- 	sb->s_maxbytes = old_sb->s_maxbytes;
-+	sb->s_xattr = old_sb->s_xattr;
-+	sb->s_op = old_sb->s_op;
-+	sb->s_time_gran = 1;
- 
--	if (server->nfs_client->rpc_ops->version == 3) {
-+	if (server->nfs_client->rpc_ops->version != 2) {
- 		/* The VFS shouldn't apply the umask to mode bits. We will do
- 		 * so ourselves when necessary.
- 		 */
- 		sb->s_flags |= MS_POSIXACL;
--		sb->s_time_gran = 1;
- 	}
- 
--	sb->s_op = old_sb->s_op;
-  	nfs_initialise_sb(sb);
- }
- 
-@@ -2580,27 +2581,6 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
- #ifdef CONFIG_NFS_V4
- 
- /*
-- * Finish setting up a cloned NFS4 superblock
-- */
--static void nfs4_clone_super(struct super_block *sb,
--			     struct nfs_mount_info *mount_info)
--{
--	const struct super_block *old_sb = mount_info->cloned->sb;
--	sb->s_blocksize_bits = old_sb->s_blocksize_bits;
--	sb->s_blocksize = old_sb->s_blocksize;
--	sb->s_maxbytes = old_sb->s_maxbytes;
--	sb->s_time_gran = 1;
--	sb->s_op = old_sb->s_op;
--	/*
--	 * The VFS shouldn't apply the umask to mode bits. We will do
--	 * so ourselves when necessary.
--	 */
--	sb->s_flags  |= MS_POSIXACL;
--	sb->s_xattr  = old_sb->s_xattr;
--	nfs_initialise_sb(sb);
--}
--
--/*
-  * Set up an NFS4 superblock
-  */
- static void nfs4_fill_super(struct super_block *sb,
-@@ -2883,7 +2863,7 @@ nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
- 		 const char *dev_name, void *raw_data)
- {
- 	struct nfs_mount_info mount_info = {
--		.fill_super = nfs4_clone_super,
-+		.fill_super = nfs_clone_super,
- 		.set_security = nfs_clone_sb_security,
- 		.cloned = raw_data,
- 	};
+gss_mech_list_pseudoflavors() is missing a spin_unlock() before the "return -ENOMEM;".
+
+> vim +252 net/sunrpc/auth_gss/gss_mech_switch.c
+>   249	 * The returned array is not sorted by any policy.  Callers should not
+>   250	 * rely on the order of the items in the returned array.
+>   251	 */
+>> 252	int gss_mech_list_pseudoflavors(rpc_authflavor_t *array_ptr, int size)
+>   253	{
+>   254		struct gss_api_mech *pos = NULL;
+>   255		int j, i = 0;
+
 -- 
-1.7.11.2
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
