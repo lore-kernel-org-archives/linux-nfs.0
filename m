@@ -1,90 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:60750 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753840Ab2GYK2Y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jul 2012 06:28:24 -0400
-Message-ID: <500FCA3A.5020606@panasas.com>
-Date: Wed, 25 Jul 2012 13:28:10 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Peng Tao <bergwolf@gmail.com>
-CC: linuxnfs <linux-nfs@vger.kernel.org>, Benny Halevy <bhalevy@tonian.com>
-Subject: Re: pnfs LD partial sector write
-References: <CA+a=Yy7B0uk-FWr3hOjWC+=Xq+UtHnEC4speD3OZzMFfXksyOw@mail.gmail.com>
-In-Reply-To: <CA+a=Yy7B0uk-FWr3hOjWC+=Xq+UtHnEC4speD3OZzMFfXksyOw@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mx2.netapp.com ([216.240.18.37]:31269 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755282Ab2GRSUw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Jul 2012 14:20:52 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 2/2] NFS: fix pnfs reversion with directio writes
+Date: Wed, 18 Jul 2012 14:20:50 -0400
+Message-Id: <1342635650-32105-2-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1342635650-32105-1-git-send-email-iisaman@netapp.com>
+References: <1342635650-32105-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/25/2012 10:31 AM, Peng Tao wrote:
+Commit 57208fa7e51 "NFS: Create an write_pageio_init() function"
+did not modify the calls in direct.c, preventing direct io from
+using pnfs.  This reintroduces that capability.
 
-> Hi Boaz,
-> 
-> Sorry about the long delay. I had some internal interrupt. Now I'm
-> looking at the partial LD write problem again. Instead of trying to
-> bail out unaligned writes blindly, this time I want to fix the write
-> code to handle partial write as you suggested before. However, it
-> seems to be more problematic than I used to think.
-> 
-> The dirty range of a page passed to LD->write_pagelist may be
-> unaligned to sector size, in which case block layer cannot handle it
-> correctly. Even worse, I cannot do a read-modify-write cycle within
-> the same page because bio would read in the entire sector and thus
-> ruin user data within the same sector. Currently I'm thinking of
-> creating shadow pages for partial sector write and use them to read in
-> the sector and copy necessary data into user pages. But it is way too
-> tricky and I don't feel like it at all. So I want to ask how you solve
-> the partial sector write problem in object layout driver.
-> 
-> I looked at the ore code and found that you are using bio to deal with
-> partial page read/write as well. But in places like _add_to_r4w(), I
-> don't see how partial sectors are handled. Maybe I was misreading the
-> code. Would you please shed some light? More specifically, how does
-> object layout driver handle partial sector writers like in bellow
-> simple testcase? Thanks in advance.
-> 
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/direct.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 69f20c7..42dce909 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -478,7 +478,7 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+ 	dreq->count = 0;
+ 	get_dreq(dreq);
+ 
+-	nfs_pageio_init_write(&desc, dreq->inode, FLUSH_STABLE,
++	NFS_PROTO(dreq->inode)->write_pageio_init(&desc, dreq->inode, FLUSH_STABLE,
+ 			      &nfs_direct_write_completion_ops);
+ 	desc.pg_dreq = dreq;
+ 
+@@ -782,7 +782,7 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 	size_t requested_bytes = 0;
+ 	unsigned long seg;
+ 
+-	nfs_pageio_init_write(&desc, inode, FLUSH_COND_STABLE,
++	NFS_PROTO(inode)->write_pageio_init(&desc, inode, FLUSH_COND_STABLE,
+ 			      &nfs_direct_write_completion_ops);
+ 	desc.pg_dreq = dreq;
+ 	get_dreq(dreq);
+-- 
+1.7.2.1
 
-The objlayout does not have this problem. OSD-SCSI is a byte aligned
-protocol, unlike DISK-SCSI.
-
-The code you are looking for is at _add_to_r4w_first_page() &&
-_add_to_r4w_last_page. But as I said I just submit a read of:
-	0 => offset within the page
-What ever that might be.
-
-In your case: why? all you have to do is allocate 2 sectors (1k) at
-most one for partial sector at end and one for partial sector at
-beginning. And use chained BIOs then memcpy at most [1k -2] bytes.
-
-What you do is chain a single-sector BIO to an all aligned BIO
-
-You do the following:
-
-- You will need to preform two reads, right? One for the unaligned
-  BLOCK at the begging and one for the BLOCK at the end. Since in
-  blocklayout all IO is BLOCK aligned.
-
-Beginning end of IO
-- Jump over first unaligned SECTOR. Prepare BIO from first full
-  sector, to the end of the BLOCK.
-- Prepare a 1-biovec BIO from the above allocated sector, which
-  reads the full first sector.
-- perpend the 1-vec BIO to the big one.
-- preform the read
-- memcpy from above allocated sector the 0=>offset part into the
-  NFS original page.
-
-Do the same for end of IO but for the very last unaligned sector.
-Chain 1-vec BIO to the end this time. memcpy last_byte=>end-of-sector
-part.
-
-So you see no shadow pages and not so complicated. In the unaligned
-case at most you need allocate 1k and chain BIOs at beginning and/or
-at end.
-
-Tell me if you need help with BIO chaining. The 1-vec BIO just use
-bio_kmalloc().
-
-Cheers
-Boaz
