@@ -1,62 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:12020 "EHLO mx2.netapp.com"
+Received: from rhebok.le.ac.uk ([143.210.16.38]:41557 "EHLO rhebok.le.ac.uk"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755198Ab2GaMzD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jul 2012 08:55:03 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: Fengguang Wu <fengguang.wu@intel.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [nfs:devel 46/51] fs/nfs/write.c:1592:5: error: redefinition of
- 'nfs_commit_inode'
-Date: Tue, 31 Jul 2012 12:55:00 +0000
-Message-ID: <1343739299.519.1.camel@lade.trondhjem.org>
-References: <20120731024328.GA10480@localhost>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA934BE82@SACEXCMBX04-PRD.hq.netapp.com>
-	 <5017D3FC.9010905@netapp.com>
-In-Reply-To: <5017D3FC.9010905@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1752902Ab2GRIX1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Jul 2012 04:23:27 -0400
+Received: from host-13-77.it.le.ac.uk ([143.210.13.77]:62614)
+	by rhebok.le.ac.uk with esmtpsa (TLS1.0:DHE_RSA_AES_256_CBC_SHA1:32)
+	(Exim 4.72)
+	(envelope-from <liam.gretton@leicester.ac.uk>)
+	id 1SrPIG-0005Q3-7o
+	for linux-nfs@vger.kernel.org; Wed, 18 Jul 2012 09:07:36 +0100
+Message-ID: <50066EC5.6040804@leicester.ac.uk>
+Date: Wed, 18 Jul 2012 09:07:33 +0100
+From: Liam Gretton <liam.gretton@leicester.ac.uk>
 MIME-Version: 1.0
+To: Linux NFS <linux-nfs@vger.kernel.org>
+Subject: nfs4_setfacl and principals with spaces
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA3LTMxIGF0IDA4OjQ3IC0wNDAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6
-DQo+IE9uIDA3LzMwLzIwMTIgMTE6MTQgUE0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4g
-QnJ5YW4sDQo+ID4gDQo+ID4gV2h5IGRpZCB5b3Ugc3dpdGNoIHRvIHVzaW5nIElTX0VOQUJMRUQg
-aW4gdGhlIGZpcnN0IHBsYWNlLCBhbmQgd2h5IHdhc24ndCB0aGF0IHB1dCBpbiBhIHNlcGFyYXRl
-IHBhdGNoPw0KPiANCj4gSVNfRU5BQkxFRCgpIHdpbGwgY2hlY2sgZm9yIENPTkZJR19ORlNfVipf
-TU9EVUxFLCBsYXN0IEkgY2hlY2tlZCB0aGUgZGVmaW5lZCgpIG1hY3JvIGRvZXNuJ3QuICBQdXR0
-aW5nIHRoaXMgaW50byBhIHNlcGFyYXRlIHBhdGNoIG1ha2VzIHRoZSBjaGFuZ2Ugbm9uLWJpc2Vj
-dGFibGUgc2luY2UgZ2NjIHdpbGwgYmUgY2hlY2tpbmcgYWdhaW5zdCBDT05GSUdfTkZTX1YzIGJ1
-dCBDT05GSUdfTkZTX1YzX01PRFVMRSBpcyBzZXQuICBTaG91bGQgSSBoYXZlIGNoYW5nZWQgdGhl
-IENPTkZJR18gdmFyaWFibGVzIGluc3RlYWQgb2YgdXNpbmcgSVNfRU5BQkxFRCgpPw0KDQpXaHkg
-aXMgaXQgZXZhbHVhdGluZyBkaWZmZXJlbnRseSBpbiB0aGUgaW5jbHVkZSBmaWxlIHZzLiB0aGUg
-LmMgZmlsZT8NCkFyZSB3ZSBtaXNzaW5nIGFuIGluY2x1ZGUgaW4gbmZzX2ZzLmg/DQoNCj4gPiAN
-Cj4gPiANCj4gPiANCj4gPj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gPj4gRnJvbTog
-RmVuZ2d1YW5nIFd1IFttYWlsdG86ZmVuZ2d1YW5nLnd1QGludGVsLmNvbV0NCj4gPj4gU2VudDog
-TW9uZGF5LCBKdWx5IDMwLCAyMDEyIDEwOjQzIFBNDQo+ID4+IFRvOiBTY2h1bWFrZXIsIEJyeWFu
-DQo+ID4+IENjOiBrZXJuZWwtamFuaXRvcnNAdmdlci5rZXJuZWwub3JnOyBNeWtsZWJ1c3QsIFRy
-b25kOyBsaW51eC0NCj4gPj4gbmZzQHZnZXIua2VybmVsLm9yZw0KPiA+PiBTdWJqZWN0OiBbbmZz
-OmRldmVsIDQ2LzUxXSBmcy9uZnMvd3JpdGUuYzoxNTkyOjU6IGVycm9yOiByZWRlZmluaXRpb24g
-b2YNCj4gPj4gJ25mc19jb21taXRfaW5vZGUnDQo+ID4+DQo+ID4+IEhpIEJyeWFuLA0KPiA+Pg0K
-PiA+PiBLZXJuZWwgYnVpbGQgZmFpbGVkIG9uDQo+ID4+DQo+ID4+IHRyZWU6ICAgZ2l0Oi8vZ2l0
-LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9saW51eC1uZnMuZ2l0IGRldmVsDQo+ID4+
-IGhlYWQ6ICAgNWMxM2M5ZTFjMTVlZTJjYTlhYjJiOTUzMjI0MDAxYWY1M2Q5YmUwOQ0KPiA+PiBj
-b21taXQ6IDFjNjA2ZmI3NGM3NThiZWFmZDk4Y2JhZDlhOTEzM2VhZGVlYzIzNzEgWzQ2LzUxXSBO
-RlM6IENvbnZlcnQNCj4gPj4gdjMgaW50byBhIG1vZHVsZQ0KPiA+PiBjb25maWc6IGJsYWNrZmlu
-LUJGNTMzLUVaS0lUX2RlZmNvbmZpZyAoYXR0YWNoZWQgYXMgLmNvbmZpZykNCj4gPj4NCj4gPj4g
-QWxsIHJlbGF0ZWQgZXJyb3Ivd2FybmluZyBtZXNzYWdlczoNCj4gPj4NCj4gPj4gZnMvbmZzL3dy
-aXRlLmM6MTU5Mjo1OiBlcnJvcjogcmVkZWZpbml0aW9uIG9mICduZnNfY29tbWl0X2lub2RlJw0K
-PiA+PiBJbiBmaWxlIGluY2x1ZGVkIGZyb20gZnMvbmZzL3dyaXRlLmM6MTk6MDoNCj4gPj4gaW5j
-bHVkZS9saW51eC9uZnNfZnMuaDo1NDc6MTogbm90ZTogcHJldmlvdXMgZGVmaW5pdGlvbiBvZiAn
-bmZzX2NvbW1pdF9pbm9kZScNCj4gPj4gd2FzIGhlcmUNCj4gPj4NCj4gPj4gdmltICsxNTkyIGZz
-L25mcy93cml0ZS5jDQo+ID4+ICAgMTU4OQkJcmV0dXJuIHN0YXR1czsNCj4gPj4gICAxNTkwCX0N
-Cj4gPj4gICAxNTkxDQo+ID4+PiAxNTkyCWludCBuZnNfY29tbWl0X2lub2RlKHN0cnVjdCBpbm9k
-ZSAqaW5vZGUsIGludCBob3cpDQo+ID4+ICAgMTU5Mwl7DQo+ID4+ICAgMTU5NAkJTElTVF9IRUFE
-KGhlYWQpOw0KPiA+PiAgIDE1OTUJCXN0cnVjdCBuZnNfY29tbWl0X2luZm8gY2luZm87DQo+ID4+
-DQo+ID4+IC0tLQ0KPiA+PiAwLURBWSBrZXJuZWwgYnVpbGQgdGVzdGluZyBiYWNrZW5kICAgICAg
-ICAgT3BlbiBTb3VyY2UgVGVjaG5vbG9neSBDZW50cmUNCj4gPj4gRmVuZ2d1YW5nIFd1IDx3ZmdA
-bGludXguaW50ZWwuY29tPiAgICAgICAgICAgICAgICAgICAgIEludGVsIENvcnBvcmF0aW9uDQo+
-IA0KDQo=
+Hi,
+
+nfs4_setfacl doesn't seem to be able to cope with spaces in the 
+principal's name:
+
+nfs4_setfacl -a A:fdg:"Domain Admins@domain.com":rwaDdxtTnNcCoy file
+
+Scanning ACE string 'A:fdg:Domain' failed.
+Failed while inserting ACE(s) (at index 1).
+
+No variation of quoting or escaping seems to be able to work around this 
+problem. Is this a known problem or is there a magic way to work around 
+it that I haven't worked out?
+
+I'm using 0.3.3 of nfs4-acl-tools as shipped with SLES 11.
+
+If this hasn't been fixed in the whatever the latest version is I'd 
+happily do so myself and submit a patch, but I can't find the source 
+anywhere. I can only find a reference to a broken git link at 
+<http://linux-nfs.org/wiki/index.php/Client_ACL_tools>.
+
+-- 
+Liam Gretton                                    liam.gretton@le.ac.uk
+HPC Architect                                 http://www.le.ac.uk/its
+IT Services                                   Tel: +44 (0)116 2522254
+University of Leicester, University Road
+Leicestershire LE1 7RH, United Kingdom
+
