@@ -1,118 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:7090 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753244Ab2GXLgk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Jul 2012 07:36:40 -0400
-From: Sachin Prabhu <sprabhu@redhat.com>
-To: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Cc: Trond Myklebust <trond.myklebust@netapp.com>
-Subject: [PATCH] Fix array overflow in __nfs4_get_acl_uncached
-Date: Tue, 24 Jul 2012 12:36:25 +0100
-Message-Id: <1343129785-4538-1-git-send-email-sprabhu@redhat.com>
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:55691 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751123Ab2GRVmh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Jul 2012 17:42:37 -0400
+Message-ID: <50072DEE.2000205@gmail.com>
+Date: Wed, 18 Jul 2012 23:43:10 +0200
+From: Sasha Levin <levinsasha928@gmail.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Jim Rees <rees@umich.edu>, Trond.Myklebust@netapp.com, davem@davemloft.net,
+        davej@redhat.com, linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] SUNRPC: Prevent kernel stack corruption on long values
+ of flush
+References: <1342476086-21638-1-git-send-email-levinsasha928@gmail.com> <20120718173913.GA1298@fieldses.org> <20120718200049.GA17964@umich.edu> <20120718210825.GA3145@fieldses.org> <50072BA7.6070205@gmail.com>
+In-Reply-To: <50072BA7.6070205@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This fixes a bug introduced by commit
-5a00689930ab975fdd1b37b034475017e460cf2a
+On 07/18/2012 11:33 PM, Sasha Levin wrote:
+> On 07/18/2012 11:08 PM, J. Bruce Fields wrote:
+>> On Wed, Jul 18, 2012 at 04:00:49PM -0400, Jim Rees wrote:
+>>> J. Bruce Fields wrote:
+>>>
+>>>   On Tue, Jul 17, 2012 at 12:01:26AM +0200, Sasha Levin wrote:
+>>>   > The buffer size in read_flush() is too small for the longest possible values
+>>>   > for it. This can lead to a kernel stack corruption:
+>>>   
+>>>   Thanks!
+>>>   
+>>>   > 
+>>>   > diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+>>>   > index 2afd2a8..f86d95e 100644
+>>>   > --- a/net/sunrpc/cache.c
+>>>   > +++ b/net/sunrpc/cache.c
+>>>   > @@ -1409,11 +1409,11 @@ static ssize_t read_flush(struct file *file, char __user *buf,
+>>>   >  			  size_t count, loff_t *ppos,
+>>>   >  			  struct cache_detail *cd)
+>>>   >  {
+>>>   > -	char tbuf[20];
+>>>   > +	char tbuf[22];
+>>>   
+>>>   I wonder how common this sort of calculation is in the kernel?  It might
+>>>   provide some peace of mind to be able to write this something like
+>>>   
+>>>   	char tbuf[MAXLEN_BASE10_UL + 2]  /* + 2 for final "\n\0" */
+>>>
+>>> You could use something like:
+>>>
+>>>     char tbuf[sizeof (unsigned long) * 24 / 10 + 1 + 2]; /* + 2 for final "\n\0" */
+>>>
+>>> since there are roughly 10 bits for every 3 decimal digits.
+>>
+>> So we could do something like this.  OK, I'm not sure I care enough.
+>>
+>> --b.
+>>
+>> diff --git a/include/linux/string.h b/include/linux/string.h
+>> index e033564..ed34180 100644
+>> --- a/include/linux/string.h
+>> +++ b/include/linux/string.h
+>> @@ -126,6 +126,10 @@ extern void argv_free(char **argv);
+>>  extern bool sysfs_streq(const char *s1, const char *s2);
+>>  extern int strtobool(const char *s, bool *res);
+>>  
+>> +/* length of the decimal representation of an unsigned integer.  Just an
+>> + * approximation, but it's right for types of size 1 to 36 bytes: */
+>> +#define base10len(i) (sizeof(i) * 24 / 10 + 1)
+>> +
+>>  #ifdef CONFIG_BINARY_PRINTF
+>>  int vbin_printf(u32 *bin_buf, size_t size, const char *fmt, va_list args);
+>>  int bstr_printf(char *buf, size_t size, const char *fmt, const u32 *bin_buf);
+>> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+>> index 2afd2a8..1dcd2b3 100644
+>> --- a/net/sunrpc/cache.c
+>> +++ b/net/sunrpc/cache.c
+>> @@ -1409,7 +1409,7 @@ static ssize_t read_flush(struct file *file, char __user *buf,
+>>  			  size_t count, loff_t *ppos,
+>>  			  struct cache_detail *cd)
+>>  {
+>> -	char tbuf[20];
+>> +	char tbuf[base10len(unsigned long) + 2];
+>>  	unsigned long p = *ppos;
+>>  	size_t len;
+>>  
+>>
+> 
+> Learning from what happened in this specific case, there are actually 2 issues here:
+> 
+>  - Array size was constant and too small, which is solved by the patch above.
+>  - We were blindly trying to sprintf() into that array, this issue may pop back up if someone decides to change the format string forgetting to modify the array declaration.
+> 
+> What about adding the following itoa() type helper:
 
-Bruce Fields pointed out that the changes introduced by the patch will
-cause the array npages to overflow if a size requested is >=
-XATTR_SIZE_MAX.
+Fat fingers :(
 
-The patch also fixes the check for the length of the ACL returned. The
-flag ACL_LEN_REQUEST has been renamed to NFS4_ACL_LEN_ONLY and apart
-from indicating that the user is just interested in the ACL length when
-making a request, it is also used to indicate if the xdr pages buffer
-returned in response holds the complete ACL or just the length.
+Something like this (which obviously needs tons of work):
 
-Signed-off-by: Sachin Prabhu <sprabhu@redhat.com>
----
- fs/nfs/nfs4proc.c       |   18 +++++++++---------
- fs/nfs/nfs4xdr.c        |    4 +++-
- include/linux/nfs_xdr.h |    2 +-
- 3 files changed, 13 insertions(+), 11 deletions(-)
+#define base10len(i) (sizeof(i) * 24 / 10 + 1)
+#define itoa(x) \
+({ \
+        static char str[base10len(x)]; \
+        sprintf(str, "%lu", (x)); \
+        str; \
+})
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 15fc7e4..e19c322 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3726,16 +3726,16 @@ out:
- /*
-  * The getxattr API returns the required buffer length when called with a
-  * NULL buf. The NFSv4 acl tool then calls getxattr again after allocating
-- * the required buf.  On a NULL buf, we send a page of data to the server
-- * guessing that the ACL request can be serviced by a page. If so, we cache
-- * up to the page of ACL data, and the 2nd call to getxattr is serviced by
-- * the cache. If not so, we throw away the page, and cache the required
-- * length. The next getxattr call will then produce another round trip to
-- * the server, this time with the input buf of the required size.
-+ * the required buf.  On a NULL buf, we allocate 2 pages guessing that the
-+ * ACL request can be serviced by those pages. If so, we cache the ACL data,
-+ * and the 2nd call to getxattr is serviced by the cache. If not so, we throw
-+ * away the pages, and cache the required length. The next getxattr call will
-+ * then produce another round trip to the server, this time with the input buf
-+ * of the required size.
-  */
- static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t buflen)
- {
--	struct page *pages[NFS4ACL_MAXPAGES] = {NULL, };
-+	struct page *pages[NFS4ACL_MAXPAGES+1] = {NULL, };
- 	struct nfs_getaclargs args = {
- 		.fh = NFS_FH(inode),
- 		.acl_pages = pages,
-@@ -3777,7 +3777,7 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
- 	/* Let decode_getfacl know not to fail if the ACL data is larger than
- 	 * the page we send as a guess */
- 	if (buf == NULL)
--		res.acl_flags |= NFS4_ACL_LEN_REQUEST;
-+		res.acl_flags |= NFS4_ACL_LEN_ONLY;
- 
- 	dprintk("%s  buf %p buflen %zu npages %d args.acl_len %zu\n",
- 		__func__, buf, buflen, npages, args.acl_len);
-@@ -3787,7 +3787,7 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
- 		goto out_free;
- 
- 	acl_len = res.acl_len - res.acl_data_offset;
--	if (acl_len > args.acl_len)
-+	if (res.acl_flags & NFS4_ACL_LEN_ONLY)
- 		nfs4_write_cached_acl(inode, NULL, 0, acl_len);
- 	else
- 		nfs4_write_cached_acl(inode, pages, res.acl_data_offset,
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 18fae29..a88fcd0 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -5101,7 +5101,7 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
- 		hdrlen = (u8 *)xdr->p - (u8 *)iov->iov_base;
- 		attrlen += res->acl_data_offset;
- 		if (attrlen > page_len) {
--			if (res->acl_flags & NFS4_ACL_LEN_REQUEST) {
-+			if (res->acl_flags & NFS4_ACL_LEN_ONLY) {
- 				/* getxattr interface called with a NULL buf */
- 				res->acl_len = attrlen;
- 				goto out;
-@@ -5110,6 +5110,8 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
- 					attrlen, page_len);
- 			return -EINVAL;
- 		}
-+		/* At this stage we have the complete ACL */
-+		res->acl_flags &= ~NFS4_ACL_LEN_ONLY;
- 		xdr_read_pages(xdr, attrlen);
- 		res->acl_len = attrlen;
- 	} else
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 8aadd90..39c8483 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -648,7 +648,7 @@ struct nfs_getaclargs {
- };
- 
- /* getxattr ACL interface flags */
--#define NFS4_ACL_LEN_REQUEST	0x0001	/* zero length getxattr buffer */
-+#define NFS4_ACL_LEN_ONLY	0x0001	/* zero length getxattr buffer */
- struct nfs_getaclres {
- 	size_t				acl_len;
- 	size_t				acl_data_offset;
--- 
-1.7.10.4
 
