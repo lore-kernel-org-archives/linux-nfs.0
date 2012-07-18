@@ -1,49 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lb0-f174.google.com ([209.85.217.174]:48904 "EHLO
-	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751743Ab2GWKFS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jul 2012 06:05:18 -0400
-Received: by lbbgm6 with SMTP id gm6so7792703lbb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Jul 2012 03:05:16 -0700 (PDT)
-From: Idan Kedar <idank@tonian.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Cc: Benny Halevy <bhalevy@tonian.com>
-Subject: [PATCH 0/3] pnfs: fix a crash when hitting Ctrl+C during LAYOUTGET
-Date: Mon, 23 Jul 2012 13:05:04 +0300
-Message-Id: <1343037907-26457-1-git-send-email-idank@tonian.com>
+Received: from mx2.netapp.com ([216.240.18.37]:51236 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752057Ab2GRXHe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Jul 2012 19:07:34 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>,
+        Benny Halevy <bhalevy@tonian.com>, Peng Tao <bergwolf@gmail.com>
+Subject: Re: [RFC 0/5] CRASHFIX: pnfs-obj: NONE-RPC LD must not call
+ rpc_restart_call_prepare()
+Date: Wed, 18 Jul 2012 23:07:32 +0000
+Message-ID: <1342652848.7323.5.camel@lade.trondhjem.org>
+References: <4FD1CEA8.3090105@panasas.com> <4FFEDB17.5050001@panasas.com>
+In-Reply-To: <4FFEDB17.5050001@panasas.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-While working on object layout, we have encountered a general protection fault
-in xdr_shrink_bufhead when killing a process performing a lot of reads.
-
-we reproduced it on kernel v3.3 as follows:
-* mount an object-based pNFS file system. we used exofs as the MDS. assume the
-mount point is /mnt/pnfs
-* cp -r /bin /mnt/pnfs
-* run:
-cd /mnt/pnfs
-while while true; do
-	echo 3 > /proc/sys/vm/drop_caches; 
-	rm -rf bin
-	cp -r bin /tmp &
-	sleep 1
-	kill -s int $!
-done
-* on my setup it crashed after a couple of minutes, your mileage may vary.
-
-The first patch is the actual fix. the other two are cleanups.
-
-Idan Kedar (3):
-  pnfs: defer release of pages in layoutget
-  pnfs: nfs4_proc_layoutget returns void
-  pnfs: use size_t for LAYOUTGET response pages count
-
- fs/nfs/nfs4proc.c |   61 ++++++++++++++++++++++++++++++++++++++++++++++++++--
- fs/nfs/pnfs.c     |   39 +---------------------------------
- fs/nfs/pnfs.h     |    2 +-
- 3 files changed, 60 insertions(+), 42 deletions(-)
-
--- 
-1.7.6.5
-
+T24gVGh1LCAyMDEyLTA3LTEyIGF0IDE3OjExICswMzAwLCBCb2F6IEhhcnJvc2ggd3JvdGU6DQo+
+IE9uIDA2LzA4LzIwMTIgMDE6MDYgUE0sIEJvYXogSGFycm9zaCB3cm90ZToNCj4gDQo+ID4gDQo+
+ID4gTk9ORS1SUEMgbGF5b3V0LURyaXZlcnMgY2FsbCBuZnNfd3JpdGViYWNrX2RvbmUoKSBhcyBw
+YXJ0DQo+ID4gb2YgdGhlaXIgY29tcGxldGlvbiBvZiBJTy4gKHRocm91Z2ggcG5mc19sZF93cml0
+ZV9kb25lKCkpDQo+ID4gDQo+ID4gSW5zaWRlIG5mc193cml0ZWJhY2tfZG9uZSgpIHRoZXJlIGlz
+IGNvZGUgdGhhdCBkb2VzOg0KPiA+IA0KPiA+IAllbHNlIGlmIChyZXNwLT5jb3VudCA8IGFyZ3At
+PmNvdW50KSB7DQo+ID4gCQkuLi4NCj4gPiANCj4gPiAJCS8qIFRoaXMgYSBzaG9ydCB3cml0ZSEg
+Ki8NCj4gPiAJCW5mc19pbmNfc3RhdHMoaW5vZGUsIE5GU0lPU19TSE9SVFdSSVRFKTsNCj4gPiAN
+Cj4gPiAJCS4uLiAvKiBQcmVwYXJlIHRoZSByZW1haW5kZXIgKi8NCj4gPiANCj4gPiAJCXJwY19y
+ZXN0YXJ0X2NhbGxfcHJlcGFyZSh0YXNrKTsNCj4gPiAJfQ0KPiA+IA0KPiA+IEJ1dCBmb3Igbm9u
+ZS1ycGMgTERzIChvYmplY3RzLCBibG9ja3MpIHRoZXJlIGlzIG5vIHRhc2stPnRrX29wcw0KPiA+
+IGFuZCB0aGlzIGNvZGUgd2lsbCBjcmFzaC4NCj4gPiANCj4gDQo+IDxzbmlwPg0KPiANCj4gVHJv
+bmQgaGkNCj4gDQo+IFNvcnJ5IGZvciB0aGUgbGF0ZSByZXNwb25zZSBJIHdhcyBzaWNrIChhdCBI
+b3NwaXRhbCBhbmQgd2FzIGF3YXkpDQoNCkknbSB2ZXJ5IHNvcnJ5IHRvIGhlYXIgdGhhdC4gSSBy
+ZWFsbHkgaG9wZSB5b3UncmUgZmVlbGluZyBiZXR0ZXIgbm93Li4uDQoNCj4gSSBtdXN0IHB1c2gg
+dGhlc2UgZml4ZXMgdG8gTGludXMgQVNBUCBJIHdhbnQgdG8gcHVzaCB0aGVtIHRvbW9ycm93Lg0K
+PiBUaGV5IGFyZSBmb3IgMy41LXJjNyBhbmQgQ0MgdG8gc3RhYmxlQC4NCj4gDQo+IEkgd291bGQg
+bG92ZSB0byBhbHNvIHB1c2ggdGhlIG9iamxheW91dCBwYXRjaGVzIGFzIG9uZSBwdXNoIGFzIHdl
+bGwuDQo+IFBsZWFzZSBnaXZlIG1lIHlvdXIgYmxlc3NpbmcgYW5kIEFDSyBzbyBJIGNhbiBkbyB0
+aGlzLg0KPiANCj4gSSBoYXZlIGRvbmUgYSBzbWFsbCByZWJhc2Ugb3ZlciAzLjUtcmM1IGFuZCBh
+IGZldyBjbGVhbnVwcyBtYWlubHkNCj4gUGVuZydzIGNvbW1lbnQgYWJvdXQgWkVST19QQUdFLg0K
+PiANCj4gWW91IGNhbiBzZWUgdGhlIHBlbmRpbmcgcHVzaCByZXF1ZXN0IGhlcmU6DQo+IGh0dHA6
+Ly9naXQub3Blbi1vc2Qub3JnL2dpdHdlYi5jZ2k/cD1saW51eC1vcGVuLW9zZC5naXQ7YT1zaG9y
+dGxvZztoPXJlZnMvaGVhZHMvZm9yLWxpbnVzDQo+IA0KPiBUaGVzZSBhcmUgdGhlIGxpc3Qgb2Yg
+cGF0Y2hlczoNCj4gDQo+IG9yZTogRml4IE5GUyBjcmFzaCBieSBzdXBwb3J0aW5nIGFueSB1bmFs
+aWduZWQgUkFJRCBJTw0KPiBvcmU6IFJlbW92ZSBzdXBwb3J0IG9mIHBhcnRpYWwgSU8gcmVxdWVz
+dCAoTkZTIGNyYXNoKQ0KPiBvcmU6IFVubG9jayByNHcgcGFnZXMgaW4gZXhhY3QgcmV2ZXJzZSBv
+cmRlciBvZiBsb2NraW5nDQo+IA0KPiAJVGhlc2UgYWJvdmUgYXJlIE9SRSBwYXRjaGVzIHRoYXQg
+YWN0dWFsbHkgZml4IHRoZSBORlMgQ1JBU0gNCj4gDQo+IHBuZnMtb2JqOiBkb24ndCBsZWFrIG9i
+amlvX3N0YXRlIGlmIG9yZV93cml0ZS9yZWFkIC4uLg0KPiANCj4gCVRoaXMgYWJvdmUgaXMgYW4g
+aW1wb3J0YW50IG1lbSBsZWFrIGluIHRoZSBlcnJvciBjYXNlDQo+IA0KPiBwbmZzLW9iajogRml4
+IF9fcjR3X2dldF9wYWdlIHdoZW4gb2Zmc2V0IGlzIGJleW9uZCAuLi4NCj4gTkZTNDE6IGFkZCBw
+Z19sYXlvdXRfcHJpdmF0ZSB0byBuZnNfcGFnZWlvX2Rlc2NyaXB0b3INCg0KVGhpcyBvbmUgaXMg
+dGhlIG9ubHkgcGF0Y2ggdGhhdCByZWFsbHkgYWZmZWN0cyB0aGUgY29yZSBORlMgY29kZSwgYnV0
+DQpJJ20gaGF2aW5nIHRyb3VibGUgc2VlaW5nIHdoYXQgaXMgZGVmaW5pbmcgaGRyLT5sYXlvdXRf
+cHJpdmF0ZSBpbiB0aGlzDQpwYXRjaCBzZXJpZXMsIGFuZCB3aGVyZSBpdCBpcyBiZWluZyB1c2Vk
+Lg0KDQpBbSBJIG1pc3Npbmcgc29tZSBkZXBlbmRlbmNpZXMgaGVyZT8NCg0KPiBwbmZzLW9iajog
+QmV0dGVyIElPIHBhdHRlcm4gaW4gY2FzZSBvZiB1bmFsaWduZWQgb2Zmc2V0ICBmb3ItbGludXMN
+Cj4gDQo+IAlJIHdvdWxkIGFsc28gbG92ZSB0byBwdXNoIHRoZXNlIDMgcGxlYXNlIGFkdmlzZQ0K
+PiANCj4gUGxlYXNlIGxvb2sgaW50byB0aGlzIEFTQVAsIGFzIHdlIGFyZSBzbyBsYXRlIGFscmVh
+ZHkgYmVjYXVzZSBvZiBteQ0KPiBhYnNlbmNlLiBJZiB5b3UnbGwgaW5zcGVjdCB0aGVtIGNhcmVm
+dWxseSB5b3Ugd2lsbCBzZWUgdGhhdCBvdGhlciB0aGVuDQo+IHRoZSBmaXggdGhleSBhcmUgbG93
+IHJpc2suIEFuZCBJIGhhdmUgdGVzdGVkIHRoZW0gZXh0ZW5zaXZlbHkuDQo+IA0KPiAoSSBwdXNo
+ZWQgaXQgdG8gbGludXgtbmV4dCBhbmQgd2lsbCBsZXQgaXQgY29vayBmb3IgNDggaG91cnMpDQo+
+IA0KPiBUaGFua3MgZm9yIHlvdXIgaGVscA0KPiBCb2F6DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0
+DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RA
+bmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
