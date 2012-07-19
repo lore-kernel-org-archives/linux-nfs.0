@@ -1,58 +1,144 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:47782 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752648Ab2GJQEf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jul 2012 12:04:35 -0400
-Message-ID: <4FFC5284.4040605@parallels.com>
-Date: Tue, 10 Jul 2012 20:04:20 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from mx1.redhat.com ([209.132.183.28]:19141 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751253Ab2GSNpI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Jul 2012 09:45:08 -0400
+Message-ID: <50080F5F.5040600@RedHat.com>
+Date: Thu, 19 Jul 2012 09:45:03 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH] [RFC] nfsd: fix possible dereference of static NULL nfsd_serv
- pointer
-References: <20120706134548.7307.1133.stgit@localhost.localdomain> <20120706172630.GA11193@fieldses.org> <4FF7C8C2.8070203@parallels.com> <20120710155943.GB1947@fieldses.org>
-In-Reply-To: <20120710155943.GB1947@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] rpc.gssd: close upcall pipe on POLLHUP
+References: <20120716183526.2399.37839.stgit@degas.1015granger.net>
+In-Reply-To: <20120716183526.2399.37839.stgit@degas.1015granger.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-10.07.2012 19:59, J. Bruce Fields пишет:
-> On Sat, Jul 07, 2012 at 09:27:30AM +0400, Stanislav Kinsbursky wrote:
->> 06.07.2012 21:26, J. Bruce Fields пишет:
->>> On Fri, Jul 06, 2012 at 05:45:56PM +0400, Stanislav Kinsbursky wrote:
->>>> This is a bug fix for 3.5 kernel.
->>>> In case on NFSd service start failure svc_shutdown_net() will call svc_destroy
->>>> callback and zeroize global nfsd_serv pointer, this in turn will lead to Oops
->>>> in svc_destroy().
->>>>
->>>> This patch is marked as RFC, because to many lines were changed. It can be
->>>> easely simplified if requested.
->>>> Moreover, NFSd service shutdown is going to be converted into csomething on
->>>> per-net basis.
->>> Doesn't this leave error paths in e.g. __write_ports_addfd() and
->>> __write_ports_addxprt() unfixed?
->>
->> Yes, sure it does...
->>
->>> I'm inclined to just submit your original fix (split up as in the last
->>> version I sent) for 3.5 if you don't object.
->>
->> Not at all.
->> Thanks, Bruce.
->
-> OK.  Actually, Linus is making noise about a release in the next week or
-> two, so given that this is about error paths, I'm going to queue it up
-> for the 3.6 and cc it to stable.  It'll end up in 3.5.x pretty quickly
-> that way anyway.
->
-
-Ok, Bruce. Sounds good.
-
--- 
-Best regards,
-Stanislav Kinsbursky
 
 
+On 07/16/2012 02:36 PM, Chuck Lever wrote:
+> When a POLLHUP event is received on a pipe file descriptor, that
+> means the other side has closed its end of the pipe.  If the
+> receiver does not close its end of the pipe, the pipe is left in an
+> open-but-unlinked state.
+> 
+> For a "gssd" upcall pipe, the kernel may close its end, removing the
+> directory entry for it, and then later create a fresh pipe named
+> "gssd" in the same directory.  In this case, rpc.gssd continues to
+> listen on the open-but-unlinked previous "gssd" pipe.  Thus upcalls
+> on the new "gssd" pipe are left unanswered.
+> 
+> In addition, poll(2) continues to return POLLHUP on the old pipe.
+> Since there is no logic to close the pipe in rpc.gssd, poll(2) always
+> returns immediately, and rpc.gssd goes into a tight loop.
+> 
+> Typically, the kernel closes upcall pipes and destroys their
+> parent directory at the same time.  When an RPC client's directory
+> vanishes, rpc.gssd sees the change via dnotify and eventually
+> invokes destroy_client() which closes the user-space end of the
+> pipes.
+> 
+> However, if the kernel wants to switch authentication flavors (say
+> from AUTH_KRB5 to AUTH_UNIX) on an RPC client without destroying it,
+> the upcall pipes go away, but the RPC client's directory remains.
+> rpc.gssd invokes update_client_list(), but that logic never closes
+> upcall pipes if the client directory is still in place.
+> 
+> After a POLLHUP on a pipe, close it when rpc.gssd reconstructs its
+> list of upcall clients.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Committed....
+
+steved.
+> ---
+> 
+> I know folks are probably on vacation this week, so this is only a
+> request for comments.
+> 
+>  utils/gssd/gssd.h           |    2 ++
+>  utils/gssd/gssd_main_loop.c |    8 ++++++--
+>  utils/gssd/gssd_proc.c      |   19 +++++++++++++++++++
+>  3 files changed, 27 insertions(+), 2 deletions(-)
+> 
+> diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
+> index e0a2b7b..ec81beb 100644
+> --- a/utils/gssd/gssd.h
+> +++ b/utils/gssd/gssd.h
+> @@ -82,8 +82,10 @@ struct clnt_info {
+>  	char			*protocol;
+>  	int			krb5_fd;
+>  	int			krb5_poll_index;
+> +	int			krb5_close_me;
+>  	int                     gssd_fd;
+>  	int                     gssd_poll_index;
+> +	int			gssd_close_me;
+>  	struct sockaddr_storage addr;
+>  };
+>  
+> diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
+> index 187954c..6480390 100644
+> --- a/utils/gssd/gssd_main_loop.c
+> +++ b/utils/gssd/gssd_main_loop.c
+> @@ -78,8 +78,10 @@ scan_poll_results(int ret)
+>  	{
+>  		i = clp->gssd_poll_index;
+>  		if (i >= 0 && pollarray[i].revents) {
+> -			if (pollarray[i].revents & POLLHUP)
+> +			if (pollarray[i].revents & POLLHUP) {
+> +				clp->gssd_close_me = 1;
+>  				dir_changed = 1;
+> +			}
+>  			if (pollarray[i].revents & POLLIN)
+>  				handle_gssd_upcall(clp);
+>  			pollarray[clp->gssd_poll_index].revents = 0;
+> @@ -89,8 +91,10 @@ scan_poll_results(int ret)
+>  		}
+>  		i = clp->krb5_poll_index;
+>  		if (i >= 0 && pollarray[i].revents) {
+> -			if (pollarray[i].revents & POLLHUP)
+> +			if (pollarray[i].revents & POLLHUP) {
+> +				clp->krb5_close_me = 1;
+>  				dir_changed = 1;
+> +			}
+>  			if (pollarray[i].revents & POLLIN)
+>  				handle_krb5_upcall(clp);
+>  			pollarray[clp->krb5_poll_index].revents = 0;
+> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> index fed2886..5e33379 100644
+> --- a/utils/gssd/gssd_proc.c
+> +++ b/utils/gssd/gssd_proc.c
+> @@ -339,6 +339,25 @@ process_clnt_dir_files(struct clnt_info * clp)
+>  	char	gname[PATH_MAX];
+>  	char	info_file_name[PATH_MAX];
+>  
+> +	if (clp->gssd_close_me) {
+> +		printerr(2, "Closing 'gssd' pipe for %s\n", clp->dirname);
+> +		close(clp->gssd_fd);
+> +		memset(&pollarray[clp->gssd_poll_index], 0,
+> +			sizeof(struct pollfd));
+> +		clp->gssd_fd = -1;
+> +		clp->gssd_poll_index = -1;
+> +		clp->gssd_close_me = 0;
+> +	}
+> +	if (clp->krb5_close_me) {
+> +		printerr(2, "Closing 'krb5' pipe for %s\n", clp->dirname);
+> +		close(clp->krb5_fd);
+> +		memset(&pollarray[clp->krb5_poll_index], 0,
+> +			sizeof(struct pollfd));
+> +		clp->krb5_fd = -1;
+> +		clp->krb5_poll_index = -1;
+> +		clp->krb5_close_me = 0;
+> +	}
+> +
+>  	if (clp->gssd_fd == -1) {
+>  		snprintf(gname, sizeof(gname), "%s/gssd", clp->dirname);
+>  		clp->gssd_fd = open(gname, O_RDWR);
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
