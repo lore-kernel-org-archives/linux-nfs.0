@@ -1,67 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54140 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753314Ab2GJQHt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jul 2012 12:07:49 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/7] nfsd4: nfsd4_lock() cleanup
-Date: Tue, 10 Jul 2012 12:07:41 -0400
-Message-Id: <1341936466-3821-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1341936466-3821-1-git-send-email-bfields@redhat.com>
-References: <1341936466-3821-1-git-send-email-bfields@redhat.com>
+Received: from natasha.panasas.com ([67.152.220.90]:42389 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751868Ab2GSJtf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jul 2012 05:49:35 -0400
+Message-ID: <5007D809.2010502@panasas.com>
+Date: Thu, 19 Jul 2012 12:48:57 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>,
+        Benny Halevy <bhalevy@tonian.com>, Peng Tao <bergwolf@gmail.com>
+Subject: Re: [RFC 0/5] CRASHFIX: pnfs-obj: NONE-RPC LD must not call rpc_restart_call_prepare()
+References: <4FD1CEA8.3090105@panasas.com> <4FFEDB17.5050001@panasas.com> <1342652848.7323.5.camel@lade.trondhjem.org>
+In-Reply-To: <1342652848.7323.5.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On 07/19/2012 02:07 AM, Myklebust, Trond wrote:
 
-Share a little common logic.  And note the comments here are a little
-out of date (e.g. we don't always create new state in the "new" case any
-more.)
+>> NFS41: add pg_layout_private to nfs_pageio_descriptor
+> 
+> This one is the only patch that really affects the core NFS code, but
+> I'm having trouble seeing what is defining hdr->layout_private in this
+> patch series, and where it is being used.
+> 
+> Am I missing some dependencies here?
+> 
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |   15 +++------------
- 1 file changed, 3 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 59b9efc..de8f7e4 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4059,11 +4059,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	nfs4_lock_state();
- 
- 	if (lock->lk_is_new) {
--		/*
--		 * Client indicates that this is a new lockowner.
--		 * Use open owner and open stateid to create lock owner and
--		 * lock stateid.
--		 */
- 		struct nfs4_ol_stateid *open_stp = NULL;
- 
- 		if (nfsd4_has_session(cstate))
-@@ -4090,17 +4085,13 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 			goto out;
- 		status = lookup_or_create_lock_state(cstate, open_stp, lock,
- 							&lock_stp, &new_state);
--		if (status)
--			goto out;
--	} else {
--		/* lock (lock owner + lock stateid) already exists */
-+	} else
- 		status = nfs4_preprocess_seqid_op(cstate,
- 				       lock->lk_old_lock_seqid,
- 				       &lock->lk_old_lock_stateid,
- 				       NFS4_LOCK_STID, &lock_stp);
--		if (status)
--			goto out;
--	}
-+	if (status)
-+		goto out;
- 	lock_sop = lockowner(lock_stp->st_stateowner);
- 
- 	lkflg = setlkflg(lock->lk_type);
--- 
-1.7.9.5
+No! It's all here:
+	[patch 5/6] NFS41: add pg_layout_private to nfs_pageio_descriptor
 
+Just adds a single hdr->layout_private member
+and:
+	[PATCH 6/6] pnfs-obj: Better IO pattern in case of unaligned offset
+
+Uses above member.
+
+In any way I have new versions of these for the merge window I'll send
+them tonight.
+
+Thanks
+Boaz
