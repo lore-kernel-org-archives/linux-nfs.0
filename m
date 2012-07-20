@@ -1,82 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:22547 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753492Ab2GIUih convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jul 2012 16:38:37 -0400
-Subject: Re: [PATCH 03/14] NFS: State reclaim clears OPEN and LOCK state
-Mime-Version: 1.0 (Apple Message framework v1278)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1341866138.15267.29.camel@lade.trondhjem.org>
-Date: Mon, 9 Jul 2012 16:37:32 -0400
-Cc: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <AD28B46C-23C1-4BCB-ABB6-FDE859756B6F@oracle.com>
-References: <20120709153355.1604.14102.stgit@degas.1015granger.net> <20120709154409.1604.59004.stgit@degas.1015granger.net> <1341864200.15267.15.camel@lade.trondhjem.org> <773D0923-FC7B-4CE9-8EDE-46BC18E9A49C@oracle.com> <79BB481E-52C5-4194-AA3C-FFA81D0FF456@oracle.com> <1341866138.15267.29.camel@lade.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from perches-mx.perches.com ([206.117.179.246]:43087 "EHLO
+	labridge.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752498Ab2GTQvA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Jul 2012 12:51:00 -0400
+Message-ID: <1342803059.21447.45.camel@joe2Laptop>
+Subject: Re: [PATCH] sunrpc: clnt: Add missing braces
+From: Joe Perches <joe@perches.com>
+To: "David S. Miller" <davem@davemloft.net>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Fri, 20 Jul 2012 09:50:59 -0700
+In-Reply-To: <1342635431.9551.41.camel@joe2Laptop>
+References: <1342635431.9551.41.camel@joe2Laptop>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jul 9, 2012, at 4:35 PM, Myklebust, Trond wrote:
-
-> On Mon, 2012-07-09 at 16:19 -0400, Chuck Lever wrote:
->> On Jul 9, 2012, at 4:15 PM, Chuck Lever wrote:
->> 
->>> 
->>> On Jul 9, 2012, at 4:03 PM, Myklebust, Trond wrote:
->>> 
->>>> On Mon, 2012-07-09 at 11:44 -0400, Chuck Lever wrote:
->>>>> Before beginning state recovery, the state manager zaps open and lock
->>>>> state for each open file, thus the "state->flags & flags" test in
->>>>> nfs41_{open,lock}_expired() always fails during reclaim.  But open
->>>>> recovery is still needed for these files.
->>>>> 
->>>>> To force a call to nfs4_open_expired(), change the default return
->>>>> value for nfs41_check_expired_stateid() to force open recovery, and
->>>>> the default return value for nfs41_check_locks() to force lock
->>>>> recovery, if the requested flags are clear.  Fix suggested by Bryan
->>>>> Schumaker.
->>>> 
->>>> This makes absolutely no sense...
->>>> 
->>>> The point of these function should be to test if the stateid is still
->>>> valid. If it is, then we need no recovery.
->>>> If the stateid is _not_ valid, then we free it, and then decide if
->>>> recovery is needed. The only exception to that rule is if TEST_STATEID
->>>> returns NFS4ERR_BAD_STATEID, (in which case we don't need to free the
->>>> stateid but just recover immediately).
->>> 
->>> So you'd like to change the sense of the switch statement in my earlier patch:
->>> 
->>>  NFS4_OK:
->>>    do nothing
->>>  NFS4ERR_BAD_STATEID:
->>>    just open
->>>  default:
->>>    free the state ID, then open
->>> 
->>> I still don't think we need a FREE_STATEID call for NFS4ERR_EXPIRED, for example.  It seems to me the only cases where FREE_STATEID is needed is the _REVOKED cases.
->>> 
->>>> IOW: The state->flags and lsp->ls_flags tests should just be removed.
->>> 
->>> Bryan had a reason to leave those tests in, but I don't remember what it was.
->> 
->> Ah.
->> 
->> I think it was that if those flags are set, then the client assumes the server still has that state, thus no recovery actions should be done.
+On Wed, 2012-07-18 at 11:17 -0700, Joe Perches wrote:
+> Add a missing set of braces that commit 4e0038b6b24
+> ("SUNRPC: Move clnt->cl_server into struct rpc_xprt")
+> forgot.
 > 
-> ??? If the server is still holding the state, then the TEST_STATEID will
-> return '0'. Why do we need extra tests?
+> Signed-off-by: Joe Perches <joe@perches.com>
+> ---
+>  net/sunrpc/clnt.c |    3 ++-
+>  1 files changed, 2 insertions(+), 1 deletions(-)
+> 
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index f56f045..aaf70aa 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -1844,12 +1844,13 @@ call_timeout(struct rpc_task *task)
+>  		return;
+>  	}
+>  	if (RPC_IS_SOFT(task)) {
+> -		if (clnt->cl_chatty)
+> +		if (clnt->cl_chatty) {
+>  			rcu_read_lock();
+>  			printk(KERN_NOTICE "%s: server %s not responding, timed out\n",
+>  				clnt->cl_protname,
+>  				rcu_dereference(clnt->cl_xprt)->servername);
+>  			rcu_read_unlock();
+> +		}
+>  		if (task->tk_flags & RPC_TASK_TIMEOUT)
+>  			rpc_exit(task, -ETIMEDOUT);
+>  		else
 
-This is Bryan's design.  But my understanding is that recovery always visits every state ID, and these flags prevent tests from going to the server for all but the state ID to be recovered.
+Hi David.
 
-Is that correct, Bryan?
+I think it'd be good to get this into 3.6 as a bug fix.
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+This is marked in netdev patchwork as "not applicable".
 
+Do you need the sunrpc maintainers to apply or ack it
+and then push it to you?
 
-
+Trond?  Bruce?
 
