@@ -1,100 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:20538 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:31317 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756081Ab2GJQQ1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jul 2012 12:16:27 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 10/12] NFS: Create a single nfs_clone_super() function
-Date: Tue, 10 Jul 2012 12:16:15 -0400
-Message-Id: <1341936977-21186-11-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1341936977-21186-1-git-send-email-bjschuma@netapp.com>
-References: <1341936977-21186-1-git-send-email-bjschuma@netapp.com>
+	id S1752997Ab2GTRZg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Jul 2012 13:25:36 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Joe Perches <joe@perches.com>
+CC: "David S. Miller" <davem@davemloft.net>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "Chuck Lever" <chuck.lever@oracle.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>,
+        "<netdev@vger.kernel.org>" <netdev@vger.kernel.org>,
+        "<linux-kernel@vger.kernel.org>" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] sunrpc: clnt: Add missing braces
+Date: Fri, 20 Jul 2012 17:25:27 +0000
+Message-ID: <B303B8C0-4BB4-4900-84F4-457E9CF291D7@netapp.com>
+References: <1342635431.9551.41.camel@joe2Laptop>
+ <1342803059.21447.45.camel@joe2Laptop>
+In-Reply-To: <1342803059.21447.45.camel@joe2Laptop>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+No. It should go through the NFS client tree.
 
-v2 and v3 shared a function for this, but v4 implemented something only
-slightly different.  Might as well share code whenever possible...
+I can queue it up.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/super.c | 32 ++++++--------------------------
- 1 file changed, 6 insertions(+), 26 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 9d33fb2..2f3f921e 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2218,7 +2218,7 @@ static void nfs_fill_super(struct super_block *sb,
- }
- 
- /*
-- * Finish setting up a cloned NFS2/3 superblock
-+ * Finish setting up a cloned NFS2/3/4 superblock
-  */
- static void nfs_clone_super(struct super_block *sb,
- 			    struct nfs_mount_info *mount_info)
-@@ -2229,16 +2229,17 @@ static void nfs_clone_super(struct super_block *sb,
- 	sb->s_blocksize_bits = old_sb->s_blocksize_bits;
- 	sb->s_blocksize = old_sb->s_blocksize;
- 	sb->s_maxbytes = old_sb->s_maxbytes;
-+	sb->s_xattr = old_sb->s_xattr;
-+	sb->s_op = old_sb->s_op;
-+	sb->s_time_gran = 1;
- 
--	if (server->nfs_client->rpc_ops->version == 3) {
-+	if (server->nfs_client->rpc_ops->version != 2) {
- 		/* The VFS shouldn't apply the umask to mode bits. We will do
- 		 * so ourselves when necessary.
- 		 */
- 		sb->s_flags |= MS_POSIXACL;
--		sb->s_time_gran = 1;
- 	}
- 
--	sb->s_op = old_sb->s_op;
-  	nfs_initialise_sb(sb);
- }
- 
-@@ -2580,27 +2581,6 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
- #ifdef CONFIG_NFS_V4
- 
- /*
-- * Finish setting up a cloned NFS4 superblock
-- */
--static void nfs4_clone_super(struct super_block *sb,
--			     struct nfs_mount_info *mount_info)
--{
--	const struct super_block *old_sb = mount_info->cloned->sb;
--	sb->s_blocksize_bits = old_sb->s_blocksize_bits;
--	sb->s_blocksize = old_sb->s_blocksize;
--	sb->s_maxbytes = old_sb->s_maxbytes;
--	sb->s_time_gran = 1;
--	sb->s_op = old_sb->s_op;
--	/*
--	 * The VFS shouldn't apply the umask to mode bits. We will do
--	 * so ourselves when necessary.
--	 */
--	sb->s_flags  |= MS_POSIXACL;
--	sb->s_xattr  = old_sb->s_xattr;
--	nfs_initialise_sb(sb);
--}
--
--/*
-  * Set up an NFS4 superblock
-  */
- static void nfs4_fill_super(struct super_block *sb,
-@@ -2881,7 +2861,7 @@ nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
- 		 const char *dev_name, void *raw_data)
- {
- 	struct nfs_mount_info mount_info = {
--		.fill_super = nfs4_clone_super,
-+		.fill_super = nfs_clone_super,
- 		.set_security = nfs_clone_sb_security,
- 		.cloned = raw_data,
- 	};
--- 
-1.7.11.1
+--
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
+On Jul 20, 2012, at 6:50 PM, Joe Perches wrote:
+
+> On Wed, 2012-07-18 at 11:17 -0700, Joe Perches wrote:
+>> Add a missing set of braces that commit 4e0038b6b24
+>> ("SUNRPC: Move clnt->cl_server into struct rpc_xprt")
+>> forgot.
+>> 
+>> Signed-off-by: Joe Perches <joe@perches.com>
+>> ---
+>> net/sunrpc/clnt.c |    3 ++-
+>> 1 files changed, 2 insertions(+), 1 deletions(-)
+>> 
+>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+>> index f56f045..aaf70aa 100644
+>> --- a/net/sunrpc/clnt.c
+>> +++ b/net/sunrpc/clnt.c
+>> @@ -1844,12 +1844,13 @@ call_timeout(struct rpc_task *task)
+>> 		return;
+>> 	}
+>> 	if (RPC_IS_SOFT(task)) {
+>> -		if (clnt->cl_chatty)
+>> +		if (clnt->cl_chatty) {
+>> 			rcu_read_lock();
+>> 			printk(KERN_NOTICE "%s: server %s not responding, timed out\n",
+>> 				clnt->cl_protname,
+>> 				rcu_dereference(clnt->cl_xprt)->servername);
+>> 			rcu_read_unlock();
+>> +		}
+>> 		if (task->tk_flags & RPC_TASK_TIMEOUT)
+>> 			rpc_exit(task, -ETIMEDOUT);
+>> 		else
+> 
+> Hi David.
+> 
+> I think it'd be good to get this into 3.6 as a bug fix.
+> 
+> This is marked in netdev patchwork as "not applicable".
+> 
+> Do you need the sunrpc maintainers to apply or ack it
+> and then push it to you?
+> 
+> Trond?  Bruce?
+> 
 
