@@ -1,61 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50236 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751955Ab2GLWLB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Jul 2012 18:11:01 -0400
-Date: Thu, 12 Jul 2012 18:10:58 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Simo Sorce <simo@redhat.com>, "bfields@redhat.com" <bfields@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/4] Add support for new RPCSEC_GSS upcall mechanism
- for nfsd
-Message-ID: <20120712221058.GC24162@fieldses.org>
-References: <20120710204913.GA6038@fieldses.org>
- <1341957169.17428.4.camel@lade.trondhjem.org>
- <20120710215618.GC6038@fieldses.org>
- <1341958332.17428.12.camel@lade.trondhjem.org>
- <1341959112.17428.19.camel@lade.trondhjem.org>
- <20120710223818.GA6720@fieldses.org>
- <1341961118.17428.29.camel@lade.trondhjem.org>
- <20120711170331.GE11432@fieldses.org>
- <20120711172714.GA13610@fieldses.org>
- <1342028948.25375.45.camel@lade.trondhjem.org>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:54995 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751549Ab2GUQ5y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 Jul 2012 12:57:54 -0400
+Date: Sat, 21 Jul 2012 11:57:41 -0500
+From: Jonathan Nieder <jrnieder@gmail.com>
+To: David Howells <dhowells@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cachefs@redhat.com, linux-kernel@vger.kernel.org,
+        Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 17/17] NFS: nfs_migrate_page() does not wait for FS-Cache
+ to finish with a page
+Message-ID: <20120721165741.GA9308@burratino>
+References: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
+ <20120208211935.15607.16821.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1342028948.25375.45.camel@lade.trondhjem.org>
+In-Reply-To: <20120208211935.15607.16821.stgit@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 11, 2012 at 05:49:09PM +0000, Myklebust, Trond wrote:
-> On Wed, 2012-07-11 at 13:27 -0400, J. Bruce Fields wrote:
-> > So, if the issue is: you want to be able to choose, in individual
-> > containers, which mechanism to use: whatever, we can probably make that
-> > work.
-> 
-> Please do then.
-> 
-> > If you're instead saying: it's not acceptable to use the gssproxy
-> > mechanism to authenticate v4.0 callbacks, the client must only ever use
-> > the existing mechanism: then I'd rather drop this entirely.  I don't
-> > want to merge an rpc server authentication upcall that's not acceptable
-> > for one of the rpc servers.
-> 
-> If it goes in, I want it to be optional so that it doesn't break working
-> setups. I also want upgrades/downgrades to be as painless as possible. 
-> 
-> See for instance the idmapper changes in 3.5 which are totally
-> transparent to the user: if the admin sets up /etc/request-key.conf to
-> use the new id_resolver, then that works, otherwise we just fall back to
-> using the old rpc.idmapd method. There are no module parameters etc
-> involved.
+Hi,
 
-There's a module parameter here, but it's meant to be set by gssproxy to
-indicate it's listening for the new upcall.  In theory that should make
-the transition transparent.
+In February, David Howells wrote:
 
-However, if we need to make the choice per-namespace then we need to
-find some other mechanism (assuming there's no way to make module
-parameters per-namespace.)
+> nfs_migrate_page() does not wait for FS-Cache to finish with a page, probably
+> leading to the following bad-page-state:
+[...]
+> nfs_migrate_page() calls nfs_fscache_release_page() which doesn't actually wait
+> - even if __GFP_WAIT is set.  The reason that doesn't wait is that
+> fscache_maybe_release_page() might deadlock the allocator as the work threads
+> writing to the cache may all end up sleeping on memory allocation.
+[...]
+>  (1) Make nfs_migrate_page() wait.
+>
+>  (2) Make fscache_maybe_release_page() honour the __GFP_WAIT flag.
+>
+>  (3) Set a timeout around the wait.
+>
+>  (4) Make nfs_migrate_page() return an error if the page is still busy.
+>
+> For the moment, I'll select (2) and (4).
+[...]
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -1701,7 +1701,9 @@ int nfs_migrate_page(struct address_space *mapping, struct page *newpage,
+>  	if (PagePrivate(page))
+>  		return -EBUSY;
+>  
+> -	nfs_fscache_release_page(page, GFP_KERNEL);
+> +	ret = -EBUSY;
+> +	if (!nfs_fscache_release_page(page, GFP_KERNEL))
+> +		goto out;
+>  
+>  	return migrate_page(mapping, newpage, page, mode);
+>  }
 
---b.
+Small thing, but it looks like this was forward-ported incorrectly.
+Was this ever tested with CONFIG_MIGRATION enabled?
+
+Hope that helps,
+Jonathan
