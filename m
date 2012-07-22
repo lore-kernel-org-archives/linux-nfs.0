@@ -1,108 +1,164 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:33068 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755533Ab2GYKpz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jul 2012 06:45:55 -0400
-Message-ID: <500FCE56.8010902@panasas.com>
-Date: Wed, 25 Jul 2012 13:45:42 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from office2.cesnet.cz ([195.113.144.244]:56767 "EHLO
+	office2.cesnet.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752001Ab2GVUku (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Jul 2012 16:40:50 -0400
+Message-ID: <500C63AF.2080102@gmail.com>
+Date: Sun, 22 Jul 2012 22:33:51 +0200
+From: Jiri Horky <jiri.horky@gmail.com>
 MIME-Version: 1.0
-To: Peng Tao <bergwolf@gmail.com>
-CC: linuxnfs <linux-nfs@vger.kernel.org>, Benny Halevy <bhalevy@tonian.com>
-Subject: Re: pnfs LD partial sector write
-References: <CA+a=Yy7B0uk-FWr3hOjWC+=Xq+UtHnEC4speD3OZzMFfXksyOw@mail.gmail.com> <500FCA3A.5020606@panasas.com>
-In-Reply-To: <500FCA3A.5020606@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+To: linux-nfs@vger.kernel.org
+CC: Steve Dickson <SteveD@redhat.com>, "du@cesnet.cz" <du@cesnet.cz>
+Subject: [PATCH] libnfsidmap: implementation of client side Static translation
+ method
+Content-Type: multipart/mixed;
+ boundary="------------050801070508010708030008"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/25/2012 01:28 PM, Boaz Harrosh wrote:
+This is a multi-part message in MIME format.
+--------------050801070508010708030008
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-> On 07/25/2012 10:31 AM, Peng Tao wrote:
-> 
->> Hi Boaz,
->>
->> Sorry about the long delay. I had some internal interrupt. Now I'm
->> looking at the partial LD write problem again. Instead of trying to
->> bail out unaligned writes blindly, this time I want to fix the write
->> code to handle partial write as you suggested before. However, it
->> seems to be more problematic than I used to think.
->>
->> The dirty range of a page passed to LD->write_pagelist may be
->> unaligned to sector size, in which case block layer cannot handle it
->> correctly. Even worse, I cannot do a read-modify-write cycle within
->> the same page because bio would read in the entire sector and thus
->> ruin user data within the same sector. Currently I'm thinking of
->> creating shadow pages for partial sector write and use them to read in
->> the sector and copy necessary data into user pages. But it is way too
->> tricky and I don't feel like it at all. So I want to ask how you solve
->> the partial sector write problem in object layout driver.
->>
->> I looked at the ore code and found that you are using bio to deal with
->> partial page read/write as well. But in places like _add_to_r4w(), I
->> don't see how partial sectors are handled. Maybe I was misreading the
->> code. Would you please shed some light? More specifically, how does
->> object layout driver handle partial sector writers like in bellow
->> simple testcase? Thanks in advance.
->>
-> 
-> 
-> The objlayout does not have this problem. OSD-SCSI is a byte aligned
-> protocol, unlike DISK-SCSI.
-> 
-> The code you are looking for is at _add_to_r4w_first_page() &&
-> _add_to_r4w_last_page. But as I said I just submit a read of:
-> 	0 => offset within the page
-> What ever that might be.
-> 
-> In your case: why? all you have to do is allocate 2 sectors (1k) at
-> most one for partial sector at end and one for partial sector at
-> beginning. And use chained BIOs then memcpy at most [1k -2] bytes.
-> 
-> What you do is chain a single-sector BIO to an all aligned BIO
-> 
-> You do the following:
-> 
-> - You will need to preform two reads, right? One for the unaligned
->   BLOCK at the begging and one for the BLOCK at the end. Since in
->   blocklayout all IO is BLOCK aligned.
-> 
-> Beginning end of IO
-> - Jump over first unaligned SECTOR. Prepare BIO from first full
->   sector, to the end of the BLOCK.
-> - Prepare a 1-biovec BIO from the above allocated sector, which
->   reads the full first sector.
-> - perpend the 1-vec BIO to the big one.
-> - preform the read
-> - memcpy from above allocated sector the 0=>offset part into the
->   NFS original page.
-> 
-> Do the same for end of IO but for the very last unaligned sector.
-> Chain 1-vec BIO to the end this time. memcpy last_byte=>end-of-sector
-> part.
-> 
+Implementation of client side Static translation method in libnfsidmap. 
+Since the [Static] section in idmapd.conf does not distinguish between 
+user and group mappings we try both cases for each defined mapping. The 
+code caches id->name mappings in the init function.
 
+--------------050801070508010708030008
+Content-Type: text/plain;
+ name="libnfsidmap.static.client.patch"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename="libnfsidmap.static.client.patch"
 
-Rrr I got this all backwards. You need to read from beginning of
-first-BLOCK to offset. Then from last_byte to end-of-last-block. So all
-I said above is exactly opposite. Post-pend chained-bio for first-BLOCK
-read. And pre-pend chained-bio for last-BLOCK read.
-
-Cheers
-Boaz
-
-> So you see no shadow pages and not so complicated. In the unaligned
-> case at most you need allocate 1k and chain BIOs at beginning and/or
-> at end.
-> 
-> Tell me if you need help with BIO chaining. The 1-vec BIO just use
-> bio_kmalloc().
-> 
-> Cheers
-> Boaz
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
+ZGlmZiAtLWdpdCBhL3N0YXRpYy5jIGIvc3RhdGljLmMKaW5kZXggZmZmZDQ1OC4uOGJlODdl
+OCAxMDA2NDQKLS0tIGEvc3RhdGljLmMKKysrIGIvc3RhdGljLmMKQEAgLTQwLDYgKzQwLDcg
+QEAKICNpbmNsdWRlIDxncnAuaD4KICNpbmNsdWRlIDxlcnJuby5oPgogCisjaW5jbHVkZSAi
+cXVldWUuaCIKICNpbmNsdWRlICJjZmcuaCIKICNpbmNsdWRlICJuZnNpZG1hcC5oIgogI2lu
+Y2x1ZGUgIm5mc2lkbWFwX2ludGVybmFsLmgiCkBAIC01Nyw2ICs1OCw0MCBAQCBzdHJ1Y3Qg
+cHdidWYgewogCWNoYXIgYnVmWzFdOwogfTsKIAorc3RydWN0IGdyYnVmIHsKKwlzdHJ1Y3Qg
+Z3JvdXAgZ3JidWY7CisJY2hhciBidWZbMV07Cit9OworCitzdHJ1Y3QgdWlkX21hcHBpbmcg
+eworCUxJU1RfRU5UUlkgKHVpZF9tYXBwaW5nKSBsaW5rOworCXVpZF90IHVpZDsKKwljaGFy
+ICogcHJpbmNpcGFsOworCWNoYXIgKiBsb2NhbG5hbWU7Cit9OworCitzdHJ1Y3QgZ2lkX21h
+cHBpbmcgeworCUxJU1RfRU5UUlkgKGdpZF9tYXBwaW5nKSBsaW5rOworCWdpZF90IGdpZDsK
+KwljaGFyICogcHJpbmNpcGFsOworCWNoYXIgKiBsb2NhbGdyb3VwOworfTsKKworc3RhdGlj
+IF9faW5saW5lX18gdV9pbnQ4X3QgdWlkX2hhc2ggKHVpZF90IHVpZCkKK3sKKwlyZXR1cm4g
+dWlkICUgMjU2OworfQorCitzdGF0aWMgX19pbmxpbmVfXyB1X2ludDhfdCBnaWRfaGFzaCAo
+Z2lkX3QgZ2lkKQoreworCXJldHVybiBnaWQgJSAyNTY7Cit9CisKKy8vSGFzaCB0YWJsZXMg
+b2YgdWlkIGFuZCBndWlkcyB0byBwcmluY2lwYWxzIG1hcHBpbmdzLgorLy9XZSByZXVzZSBz
+b21lIHF1ZXVlL2hhc2ggZnVuY3Rpb25zIGZyb20gY2ZnLmMuCitMSVNUX0hFQUQgKHVpZF9t
+YXBwaW5ncywgdWlkX21hcHBpbmcpIHVpZF9tYXBwaW5nc1syNTZdOworTElTVF9IRUFEIChn
+aWRfbWFwcGluZ3MsIGdpZF9tYXBwaW5nKSBnaWRfbWFwcGluZ3NbMjU2XTsKKwogc3RhdGlj
+IHN0cnVjdCBwYXNzd2QgKnN0YXRpY19nZXRwd25hbShjb25zdCBjaGFyICpuYW1lLCBjb25z
+dCBjaGFyICpkb21haW4sCiAJCQkJICAgICAgaW50ICplcnJfcCkKIHsKQEAgLTc1LDEyICsx
+MTAsOSBAQCBzdGF0aWMgc3RydWN0IHBhc3N3ZCAqc3RhdGljX2dldHB3bmFtKGNvbnN0IGNo
+YXIgKm5hbWUsIGNvbnN0IGNoYXIgKmRvbWFpbiwKIAlsb2NhbG5hbWUgPSBjb25mX2dldF9z
+dHIoIlN0YXRpYyIsIChjaGFyICopbmFtZSk7CiAJaWYgKCFsb2NhbG5hbWUpIHsKIAkJZXJy
+ID0gRU5PRU5UOwotCQlnb3RvIGVycjsKKwkJZ290byBlcnJfZnJlZV9idWY7CiAJfQogCi0J
+SURNQVBfTE9HKDQsICgic3RhdGljX2dldHB3bmFtOiBuYW1lICclcycgbWFwcGVkIHRvICcl
+cydcbiIsCi0JCSAgbmFtZSwgbG9jYWxuYW1lKSk7Ci0KIGFnYWluOgogCWVyciA9IGdldHB3
+bmFtX3IobG9jYWxuYW1lLCAmYnVmLT5wd2J1ZiwgYnVmLT5idWYsIGJ1ZmxlbiwgJnB3KTsK
+IApAQCAtOTEsMTIgKzEyMywxNSBAQCBhZ2FpbjoKIAkJaWYgKGVyciA9PSAwKQogCQkJZXJy
+ID0gRU5PRU5UOwogCi0JCUlETUFQX0xPRygwLCAoInN0YXRpY19nZXRwd25hbTogbmFtZSAn
+JXMnIG5vdCBmb3VuZFxuIiwKLQkJCSAgbG9jYWxuYW1lKSk7CisJCUlETUFQX0xPRygwLCAo
+InN0YXRpY19nZXRwd25hbTogbG9jYWxuYW1lICclcycgZm9yICclcycgbm90IGZvdW5kXG4i
+LAorCQkgIGxvY2FsbmFtZSwgbmFtZSkpOwogCiAJCWdvdG8gZXJyX2ZyZWVfYnVmOwogCX0K
+IAorCUlETUFQX0xPRyg0LCAoInN0YXRpY19nZXRwd25hbTogbmFtZSAnJXMnIG1hcHBlZCB0
+byAnJXMnXG4iLAorCQkgIG5hbWUsIGxvY2FsbmFtZSkpOworCiAJKmVycl9wID0gMDsKIAly
+ZXR1cm4gcHc7CiAKQEAgLTEwNyw2ICsxNDIsNTYgQEAgZXJyOgogCXJldHVybiBOVUxMOwog
+fQogCitzdGF0aWMgc3RydWN0IGdyb3VwICpzdGF0aWNfZ2V0Z3JuYW0oY29uc3QgY2hhciAq
+bmFtZSwgY29uc3QgY2hhciAqZG9tYWluLAorCQkJCSAgICAgIGludCAqZXJyX3ApCit7CisJ
+c3RydWN0IGdyb3VwICpncjsKKwlzdHJ1Y3QgZ3JidWYgKmJ1ZjsKKwlzaXplX3QgYnVmbGVu
+ID0gc3lzY29uZihfU0NfR0VUR1JfUl9TSVpFX01BWCk7CisJY2hhciAqbG9jYWxncm91cDsK
+KwlpbnQgZXJyOworCisJYnVmID0gbWFsbG9jKHNpemVvZigqYnVmKSArIGJ1Zmxlbik7CisJ
+aWYgKCFidWYpIHsKKwkJZXJyID0gRU5PTUVNOworCQlnb3RvIGVycjsKKwl9CisKKwlsb2Nh
+bGdyb3VwID0gY29uZl9nZXRfc3RyKCJTdGF0aWMiLCAoY2hhciAqKW5hbWUpOworCWlmICgh
+bG9jYWxncm91cCkgeworCQllcnIgPSBFTk9FTlQ7CisJCWdvdG8gZXJyX2ZyZWVfYnVmOwor
+CX0KKworYWdhaW46CisJZXJyID0gZ2V0Z3JuYW1fcihsb2NhbGdyb3VwLCAmYnVmLT5ncmJ1
+ZiwgYnVmLT5idWYsIGJ1ZmxlbiwgJmdyKTsKKworCWlmIChlcnIgPT0gRUlOVFIpCisJCWdv
+dG8gYWdhaW47CisKKwlpZiAoIWdyKSB7CisJCWlmIChlcnIgPT0gMCkKKwkJCWVyciA9IEVO
+T0VOVDsKKworCQlJRE1BUF9MT0coMCwgKCJzdGF0aWNfZ2V0Z3JuYW06IGxvY2FsIGdyb3Vw
+ICclcycgZm9yICclcycgbm90IGZvdW5kXG4iLAorCQkJICBsb2NhbGdyb3VwLCBuYW1lKSk7
+CisKKwkJZ290byBlcnJfZnJlZV9idWY7CisJfQorCisJSURNQVBfTE9HKDQsICgic3RhdGlj
+X2dldGdybmFtOiBncm91cCAnJXMnIG1hcHBlZCB0byAnJXMnXG4iLAorCQkgIG5hbWUsIGxv
+Y2FsZ3JvdXApKTsKKworCSplcnJfcCA9IDA7CisJcmV0dXJuIGdyOworCitlcnJfZnJlZV9i
+dWY6CisJZnJlZShidWYpOworZXJyOgorCSplcnJfcCA9IGVycjsKKwlyZXR1cm4gTlVMTDsK
+K30KKwogc3RhdGljIGludCBzdGF0aWNfZ3NzX3ByaW5jX3RvX2lkcyhjaGFyICpzZWNuYW1l
+LCBjaGFyICpwcmluYywKIAkJCQkgICB1aWRfdCAqdWlkLCB1aWRfdCAqZ2lkLAogCQkJCSAg
+IGV4dHJhX21hcHBpbmdfcGFyYW1zICoqZXgpCkBAIC0xNTEsMTQgKzIzNiwxNzMgQEAgc3Rh
+dGljIGludCBzdGF0aWNfZ3NzX3ByaW5jX3RvX2dyb3VwbGlzdChjaGFyICpzZWNuYW1lLCBj
+aGFyICpwcmluYywKIAlyZXR1cm4gLWVycjsKIH0KIAorc3RhdGljIGludCBzdGF0aWNfbmFt
+ZV90b191aWQoY2hhciAqbmFtZSwgdWlkX3QgKnVpZCkKK3sKKwlzdHJ1Y3QgcGFzc3dkICpw
+dzsKKwlpbnQgZXJyOworCisJcHcgPSBzdGF0aWNfZ2V0cHduYW0obmFtZSwgTlVMTCwgJmVy
+cik7CisKKwlpZiAocHcpIHsKKwkJKnVpZCA9IHB3LT5wd191aWQ7CisJCWZyZWUocHcpOwor
+CX0KKworCXJldHVybiAtZXJyOworfQorCitzdGF0aWMgaW50IHN0YXRpY19uYW1lX3RvX2dp
+ZChjaGFyICpuYW1lLCBnaWRfdCAqZ2lkKQoreworCXN0cnVjdCBncm91cCAqZ3I7CisJaW50
+IGVycjsKKworCWdyID0gc3RhdGljX2dldGdybmFtKG5hbWUsIE5VTEwsICZlcnIpOworCisJ
+aWYgKGdyKSB7CisJCSpnaWQgPSBnci0+Z3JfZ2lkOworCQlmcmVlKGdyKTsKKwl9CisKKwly
+ZXR1cm4gLWVycjsKK30KKworc3RhdGljIGludCBzdGF0aWNfdWlkX3RvX25hbWUodWlkX3Qg
+dWlkLCBjaGFyICpkb21haW4sIGNoYXIgKm5hbWUsIHNpemVfdCBsZW4pCit7CisJc3RydWN0
+IHBhc3N3ZCAqcHc7CisJc3RydWN0IHVpZF9tYXBwaW5nICogdW07CisKKwlmb3IgKHVtID0g
+TElTVF9GSVJTVCAoJnVpZF9tYXBwaW5nc1t1aWRfaGFzaCAodWlkKV0pOyB1bTsKKwkJdW0g
+PSBMSVNUX05FWFQgKHVtLCBsaW5rKSkgeworCQlpZiAodW0tPnVpZCA9PSB1aWQpIHsKKwkJ
+CXN0cmNweShuYW1lLCB1bS0+cHJpbmNpcGFsKTsKKwkJCXJldHVybiAwOworCQl9CisJfQor
+CisJcmV0dXJuIC1FTk9FTlQ7Cit9CisKK3N0YXRpYyBpbnQgc3RhdGljX2dpZF90b19uYW1l
+KGdpZF90IGdpZCwgY2hhciAqZG9tYWluLCBjaGFyICpuYW1lLCBzaXplX3QgbGVuKQorewor
+CXN0cnVjdCBncm91cCAqZ3I7CisJc3RydWN0IGdpZF9tYXBwaW5nICogZ207CisKKwlmb3Ig
+KGdtID0gTElTVF9GSVJTVCAoJmdpZF9tYXBwaW5nc1tnaWRfaGFzaCAoZ2lkKV0pOyBnbTsK
+KwkJZ20gPSBMSVNUX05FWFQgKGdtLCBsaW5rKSkgeworCQlpZiAoZ20tPmdpZCA9PSBnaWQp
+IHsKKwkJCXN0cmNweShuYW1lLCBnbS0+cHJpbmNpcGFsKTsKKwkJCXJldHVybiAwOworCQl9
+CisJfQorCisJcmV0dXJuIC1FTk9FTlQ7Cit9CisKKy8qCisgKiBXZSBidWZmZXIgYWxsIFVJ
+RCdzIGZvciB3aGljaCBzdGF0aWMgbWFwcGluZ3MgaXMgZGVmaW5lZCBpbiBhZHZhbmNlLCBz
+byB0aGUKKyAqIHVpZF90b19uYW1lIGZ1bmN0aW9ucyB3aWxsIGJlIGZhc3QgZW5vdWdoLgor
+ICovCisKK3N0YXRpYyBpbnQgc3RhdGljX2luaXQoKSB7CQorCWludCBlcnI7CisJdWlkX3Qg
+dWlkOworCXN0cnVjdCBjb25mX2xpc3QgKiBwcmluY19saXN0ID0gTlVMTDsKKwlzdHJ1Y3Qg
+Y29uZl9saXN0X25vZGUgKiBjbG4sICpuZXh0OworCXN0cnVjdCB1aWRfbWFwcGluZyAqIHVu
+b2RlOworCXN0cnVjdCBnaWRfbWFwcGluZyAqIGdub2RlOworCXN0cnVjdCBwYXNzd2QgKiBw
+dyA9IE5VTEw7CisJc3RydWN0IGdyb3VwICogZ3IgPSBOVUxMOworCXVuc2lnbmVkIGludCBp
+OworCisJLy9pbml0IGhhc2hfdGFibGUgZmlyc3QKKwlmb3IgKGkgPSAwOyBpIDwgc2l6ZW9m
+IHVpZF9tYXBwaW5ncyAvIHNpemVvZiB1aWRfbWFwcGluZ3NbMF07IGkrKykKKwkJTElTVF9J
+TklUICgmdWlkX21hcHBpbmdzW2ldKTsKKworCS8vZ2V0IGFsbCBwcmluY2lwYWxzIGZvciB3
+aGljaCB3ZSBoYXZlIG1hcHBpbmdzCisJcHJpbmNfbGlzdCA9IGNvbmZfZ2V0X3RhZ19saXN0
+KCJTdGF0aWMiKTsKKworCWlmICghcHJpbmNfbGlzdCkgeworCQlyZXR1cm4gLUVOT0VOVDsK
+Kwl9CisKKwkvKiBBcyB3ZSBjYW4gbm90IGRpc3Rpbmd1aXNoIGJldHdlZW4gbWFwcGluZ3Mg
+Zm9yIHVzZXJzIGFuZCBncm91cHMsIHdlIHRyeSB0bworCSAqIHJlc29sdmUgYWxsIG1hcHBp
+bmdzIGZvciBib3RoIGNhc2VzLgorCSAqLworCisJLy9yZXNvbHZlIHVpZCBvZiBsb2NhbG5h
+bWUgYWNjb3VudCBmb3IgYWxsIHN1Y2ggcHJpbmNpcGFscyBhbmQgY2FjaGUgaXQKKwlmb3Ig
+KGNsbiA9IFRBSUxRX0ZJUlNUICgmcHJpbmNfbGlzdC0+ZmllbGRzKTsgY2xuOyBjbG4gPSBu
+ZXh0KSAKKwl7IAorCQluZXh0ID0gVEFJTFFfTkVYVCAoY2xuLCBsaW5rKTsgCisKKwkJcHcg
+PSBzdGF0aWNfZ2V0cHduYW0oY2xuLT5maWVsZCwgTlVMTCwgJmVycik7CisJCWlmICghcHcp
+IHsKKwkJCWNvbnRpbnVlOworCQl9CisJCQorCQl1bm9kZSA9IGNhbGxvYyAoMSwgc2l6ZW9m
+ICp1bm9kZSk7CisJCWlmICghdW5vZGUpCisJCXsKKwkJCXdhcm54KCJzdGF0aWNfaW5pdDog
+Y2FsbG9jICgxLCAlbHUpIGZhaWxlZCIsCisJCQkJKHVuc2lnbmVkIGxvbmcpc2l6ZW9mICp1
+bm9kZSk7CisJCQlmcmVlKHB3KTsKKwkJCXJldHVybiAtRU5PTUVNOworCQl9CisJCXVub2Rl
+LT51aWQgPSBwdy0+cHdfdWlkOworCQl1bm9kZS0+cHJpbmNpcGFsID0gc3RyZHVwKGNsbi0+
+ZmllbGQpOworCisJCXVub2RlLT5sb2NhbG5hbWUgPSBjb25mX2dldF9zdHIoIlN0YXRpYyIs
+IGNsbi0+ZmllbGQpOworCQlpZiAoIXVub2RlLT5sb2NhbG5hbWUpIHsKKwkJCWZyZWUocHcp
+OworCQkJcmV0dXJuIC1FTk9FTlQ7CisJCX0KKworCQlmcmVlKHB3KTsKKworCQlMSVNUX0lO
+U0VSVF9IRUFEICgmdWlkX21hcHBpbmdzW3VpZF9oYXNoKHVub2RlLT51aWQpXSwgdW5vZGUs
+IGxpbmspOworCX0KKworCS8vcmVzb2x2ZSBnaWQgb2YgbG9jYWxncm91cCBhY2NvdW50cyBh
+bmQgY2FjaGUgaXQKKwlmb3IgKGNsbiA9IFRBSUxRX0ZJUlNUICgmcHJpbmNfbGlzdC0+Zmll
+bGRzKTsgY2xuOyBjbG4gPSBuZXh0KSAKKwl7IAorCQluZXh0ID0gVEFJTFFfTkVYVCAoY2xu
+LCBsaW5rKTsgCisKKwkJZ3IgPSBzdGF0aWNfZ2V0Z3JuYW0oY2xuLT5maWVsZCwgTlVMTCwg
+JmVycik7CisJCWlmICghcHcpIHsKKwkJCWNvbnRpbnVlOworCQl9CisJCQorCQlnbm9kZSA9
+IGNhbGxvYyAoMSwgc2l6ZW9mICpnbm9kZSk7CisJCWlmICghZ25vZGUpCisJCXsKKwkJCXdh
+cm54KCJzdGF0aWNfaW5pdDogY2FsbG9jICgxLCAlbHUpIGZhaWxlZCIsCisJCQkJKHVuc2ln
+bmVkIGxvbmcpc2l6ZW9mICpnbm9kZSk7CisJCQlmcmVlKHB3KTsKKwkJCXJldHVybiAtRU5P
+TUVNOworCQl9CisJCWdub2RlLT5naWQgPSBwdy0+cHdfdWlkOworCQlnbm9kZS0+cHJpbmNp
+cGFsID0gc3RyZHVwKGNsbi0+ZmllbGQpOworCisJCWdub2RlLT5sb2NhbGdyb3VwID0gY29u
+Zl9nZXRfc3RyKCJTdGF0aWMiLCBjbG4tPmZpZWxkKTsKKwkJaWYgKCFnbm9kZS0+bG9jYWxn
+cm91cCkgeworCQkJZnJlZShwdyk7CisJCQlyZXR1cm4gLUVOT0VOVDsKKwkJfQorCisJCWZy
+ZWUocHcpOworCisJCUxJU1RfSU5TRVJUX0hFQUQgKCZnaWRfbWFwcGluZ3NbZ2lkX2hhc2go
+Z25vZGUtPmdpZCldLCBnbm9kZSwgbGluayk7CisJfQorCXJldHVybiAwOworfQorCiAKIHN0
+cnVjdCB0cmFuc19mdW5jIHN0YXRpY190cmFucyA9IHsKIAkubmFtZQkJCT0gInN0YXRpYyIs
+Ci0JLmluaXQJCQk9IE5VTEwsCi0JLm5hbWVfdG9fdWlkCQk9IE5VTEwsCi0JLm5hbWVfdG9f
+Z2lkCQk9IE5VTEwsCi0JLnVpZF90b19uYW1lCQk9IE5VTEwsCi0JLmdpZF90b19uYW1lCQk9
+IE5VTEwsCisJLmluaXQJCQk9IHN0YXRpY19pbml0LAorCS5uYW1lX3RvX3VpZAkJPSBzdGF0
+aWNfbmFtZV90b191aWQsCisJLm5hbWVfdG9fZ2lkCQk9IHN0YXRpY19uYW1lX3RvX2dpZCwK
+KwkudWlkX3RvX25hbWUJCT0gc3RhdGljX3VpZF90b19uYW1lLAorCS5naWRfdG9fbmFtZQkJ
+PSBzdGF0aWNfZ2lkX3RvX25hbWUsCiAJLnByaW5jX3RvX2lkcwkJPSBzdGF0aWNfZ3NzX3By
+aW5jX3RvX2lkcywKIAkuZ3NzX3ByaW5jX3RvX2dyb3VwbGlzdAk9IHN0YXRpY19nc3NfcHJp
+bmNfdG9fZ3JvdXBsaXN0LAogfTsK
+--------------050801070508010708030008--
