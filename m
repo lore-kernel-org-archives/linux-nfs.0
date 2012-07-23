@@ -1,51 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:44182 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754393Ab2GaO2d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jul 2012 10:28:33 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Fengguang Wu <fengguang.wu@intel.com>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [nfs:devel 46/51] fs/nfs/write.c:1592:5: error: redefinition of
- 'nfs_commit_inode'
-Date: Tue, 31 Jul 2012 14:28:21 +0000
-Message-ID: <1343744900.519.13.camel@lade.trondhjem.org>
-References: <20120731024328.GA10480@localhost>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA934BE82@SACEXCMBX04-PRD.hq.netapp.com>
-	 <5017D3FC.9010905@netapp.com> <1343739299.519.1.camel@lade.trondhjem.org>
-	 <5017D824.209@netapp.com> <5017DDDB.6060500@netapp.com>
-	 <1343741622.519.2.camel@lade.trondhjem.org> <5017E13F.4030909@netapp.com>
-	 <1343743122.519.4.camel@lade.trondhjem.org>
-	 <20120731141007.GA20369@localhost>
-In-Reply-To: <20120731141007.GA20369@localhost>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:63631 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754410Ab2GWTqe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jul 2012 15:46:34 -0400
+Received: by gglu4 with SMTP id u4so5884605ggl.19
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Jul 2012 12:46:33 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: viro@ZenIV.linux.org.uk, linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs: explicitly reject LOCK_MAND flock() requests
+Date: Mon, 23 Jul 2012 15:46:23 -0400
+Message-Id: <1343072783-29737-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA3LTMxIGF0IDIyOjEwICswODAwLCBGZW5nZ3VhbmcgV3Ugd3JvdGU6DQo+
-ID4gPiBFYXN5IGVub3VnaCwgdGhlIHBhdGNoIHRoYXQgZml4ZXMgaXQgaXMgdGhlIGxhc3Qgb25l
-IGluIHRoZSBzZXJpZXMgdGhhdCBJIHNlbnQgaW4geWVzdGVyZGF5Lg0KPiA+IA0KPiA+IEkgZG9u
-J3QgdW5kZXJzdGFuZC4gVGhhdCBpcyB0aGUgcGF0Y2ggc2VyaWVzIHRoYXQgRmVuZ2d1YW5nIHdh
-cyB0ZXN0aW5nDQo+ID4gYWZhaWsuIEhpcyB0ZXN0cyB3ZXJlIG9uIA0KPiA+IA0KPiA+IHRyZWU6
-ICAgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9saW51eC1uZnMuZ2l0
-IGRldmVsDQo+ID4gaGVhZDogICA1YzEzYzllMWMxNWVlMmNhOWFiMmI5NTMyMjQwMDFhZjUzZDli
-ZTA5DQo+ID4gDQo+ID4gd2hpY2ggaW5jbHVkZXMgeW91ciBwYXRjaCBzZXJpZXMgZnJvbSB5ZXN0
-ZXJkYXksIG5vPw0KPiANCj4gVHJvbmQsIEkgdHlwaWNhbGx5IGRvIGNvbW1pdC1ieS1jb21taXQg
-dGVzdHMgYW5kIHdpbGwgY29tcGxhaW4gaWYNCj4gKmFueSogcG9pbnQgb2YgdGhlIHRyZWUgaXMg
-bm90IGJpc2VjdC1hYmxlLiBBIGZpeCBhdCB0aGUgSEVBRCB3b24ndA0KPiBzdG9wIHRoZSBlbWFp
-bCBub3RpZmljYXRpb24gZm9yIGEgZGVmZWN0IGluIHRoZSBtaWRkbGUgcG9pbnQuLg0KPiANCj4g
-T24gdGhlIG90aGVyIGhhbmQsIEkgZG8gbWFpbnRhaW4gYSBsaXN0IG9mIG5vbi1yZWJhc2VhYmxl
-DQo+IHRyZWUvYnJhbmNoZXMsIG9uIHdoaWNoIHRoZSBIRUFEIGNvbW1pdCB3aWxsIGJlIHRlc3Rl
-ZCBmaXJzdCwgYW5kIG9ubHkNCj4gaWYgYW55IHByb2JsZW1zIGFyZSBmb3VuZCwgZ28gYmFjayB0
-byBmaW5kIG91dCB0aGUgZmlyc3QgYmFkIGNvbW1pdC4NCj4gDQo+IElmIHlvdSBwcmVmZXIgdGhl
-IGxhdHRlciBiZWhhdmlvciwgSSBjYW4gYWRkIHlvdXIgdHJlZSBvciBhbnkgYnJhbmNoDQo+IG9m
-IGl0IHRvIHRoZSBub24tcmViYXNlYWJsZSBsaXN0Lg0KDQpBaC4uLiBJIHNlZSBub3cuLi4gU28g
-eW91IGFyZSBzYXlpbmcgdGhhdCB0aGUgZW5kIHJlc3VsdCBpcyBpbmRlZWQNCmNvcnJlY3QsIGJ1
-dCB0aGUgYmlzZWN0aW9uIGZhaWxzLi4uDQoNClRoZSAnZGV2ZWwnIHRyZWUgaXMgdXN1YWxseSBh
-IG1peHR1cmUgb2YgcmViYXNlYWJsZSBhbmQgbm9uLXJlYmFzZWFibGU6DQphbnl0aGluZyB0aGF0
-IGlzIGFscmVhZHkgYmVlbiBjb21taXR0ZWQgdG8gdGhlIG5mcy1mb3ItbmV4dCBicmFuY2ggaXMN
-Cm5vbi1yZWJhc2VhYmxlLCB3aGlsZSB0aGUgcmVzdCB1c3VhbGx5IGlzLi4uDQoNCkNoZWVycw0K
-ICBUcm9uZA0K
+We have no mechanism to emulate LOCK_MAND locks on NFSv4, so explicitly
+return -EINVAL if someone requests it.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/file.c |    9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 61d3670..15f4bbb 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -834,6 +834,15 @@ static int nfs_flock(struct file *filp, int cmd, struct file_lock *fl)
+ 	if (!(fl->fl_flags & FL_FLOCK))
+ 		return -ENOLCK;
+ 
++	/*
++	 * The NFSv4 protocol doesn't support LOCK_MAND, which is not part of
++	 * any standard. In principle we might be able to support LOCK_MAND
++	 * on NFSv2/3 since NLMv3/4 support DOS share modes, but for now the
++	 * NFS code is not set up for it.
++	 */
++	if (fl->fl_type & LOCK_MAND)
++		return -EINVAL;
++
+ 	if (NFS_SERVER(inode)->flags & NFS_MOUNT_LOCAL_FLOCK)
+ 		is_local = 1;
+ 
+-- 
+1.7.10.4
+
