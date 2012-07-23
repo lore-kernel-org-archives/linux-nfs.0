@@ -1,46 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60043 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756300Ab2GYN3a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Jul 2012 09:29:30 -0400
-Date: Wed, 25 Jul 2012 09:29:27 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Nico Williams <nico@cryptonector.com>
-Cc: "Haynes, Tom" <thomas@netapp.com>, linux-nfs@vger.kernel.org,
-        nfsv4@ietf.org
-Subject: Re: [nfsv4] Constructing a NFSv4 ACL from POSIX mode bits
-Message-ID: <20120725132927.GB16617@fieldses.org>
-References: <20120724193348.GA4977@netapp.com>
- <CAK3OfOji009CP88tDNOp-nvdPBkvp0oKfJUqhO_TYuZktwhUCg@mail.gmail.com>
- <20120724200932.GM8570@fieldses.org>
- <CAK3OfOiKYJjmDEsOOFqg3wD8pwBir4B4CpOTF1Ab3jdHhJTKwA@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAK3OfOiKYJjmDEsOOFqg3wD8pwBir4B4CpOTF1Ab3jdHhJTKwA@mail.gmail.com>
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:48904 "EHLO
+	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751743Ab2GWKFS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jul 2012 06:05:18 -0400
+Received: by lbbgm6 with SMTP id gm6so7792703lbb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Jul 2012 03:05:16 -0700 (PDT)
+From: Idan Kedar <idank@tonian.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Cc: Benny Halevy <bhalevy@tonian.com>
+Subject: [PATCH 0/3] pnfs: fix a crash when hitting Ctrl+C during LAYOUTGET
+Date: Mon, 23 Jul 2012 13:05:04 +0300
+Message-Id: <1343037907-26457-1-git-send-email-idank@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 24, 2012 at 03:29:07PM -0500, Nico Williams wrote:
-> On Tue, Jul 24, 2012 at 3:09 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > But Tom was asking above only about ACE4_WRITE_ACL.  And possibly only
-> > in the legacy case.  (Does ZFS have a real ACE4_WRITE_ACL bit?)
-> 
-> Ah, oops.  That's trickier.  The examples don't say (or I'm not seeing
-> it).  IMO the most reasonable thing to do is to make chmod mask away
-> the ACE4_WRITE_ACL bits of non-OWNER@/non-owner-user ACEs, but
-> subsequent ACL writes can restore ACE4_WRITE_ACL without contributing
-> to the w group or world bits of mode.
-> 
-> That is: to make aclmode=mask most natural and usable a chmod must
-> have the expected POSIX behavior of taking away or granting access,
-> but never granting anything like ACE4_WRITE_ACL to non-owners, while
-> an ACL write should should be able to grant much more access than
-> chmod and it should compute a new mode that is as close as possible to
-> the new ACL.  This requires storing a mode, an ACL, and one bit to
-> indicate whether the ACL was set after the mode or the mode after the
-> ACL.
+While working on object layout, we have encountered a general protection fault
+in xdr_shrink_bufhead when killing a process performing a lot of reads.
 
-I was with you up to the "one bit to indicate...".  That doesn't sound
-necessary to implement the behavior you describe.
+we reproduced it on kernel v3.3 as follows:
+* mount an object-based pNFS file system. we used exofs as the MDS. assume the
+mount point is /mnt/pnfs
+* cp -r /bin /mnt/pnfs
+* run:
+cd /mnt/pnfs
+while while true; do
+	echo 3 > /proc/sys/vm/drop_caches; 
+	rm -rf bin
+	cp -r bin /tmp &
+	sleep 1
+	kill -s int $!
+done
+* on my setup it crashed after a couple of minutes, your mileage may vary.
 
---b.
+The first patch is the actual fix. the other two are cleanups.
+
+Idan Kedar (3):
+  pnfs: defer release of pages in layoutget
+  pnfs: nfs4_proc_layoutget returns void
+  pnfs: use size_t for LAYOUTGET response pages count
+
+ fs/nfs/nfs4proc.c |   61 ++++++++++++++++++++++++++++++++++++++++++++++++++--
+ fs/nfs/pnfs.c     |   39 +---------------------------------
+ fs/nfs/pnfs.h     |    2 +-
+ 3 files changed, 60 insertions(+), 42 deletions(-)
+
+-- 
+1.7.6.5
+
