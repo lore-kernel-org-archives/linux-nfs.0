@@ -1,52 +1,169 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55715 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:33546 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752241Ab2GRX12 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Jul 2012 19:27:28 -0400
-Date: Wed, 18 Jul 2012 19:27:27 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Subject: Re: [PATCH v2] NFSd: simplify locking in nfsd_recall_delegations()
-Message-ID: <20120718232727.GA5347@fieldses.org>
-References: <20120703130215.4035.8190.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120703130215.4035.8190.stgit@localhost.localdomain>
+	id S1753700Ab2GWPMN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Jul 2012 11:12:13 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/9] NFS: Remove the NFS v4 xdev mount function
+Date: Mon, 23 Jul 2012 11:12:02 -0400
+Message-Id: <1343056329-24808-3-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1343056329-24808-1-git-send-email-bjschuma@netapp.com>
+References: <1343056329-24808-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 03, 2012 at 05:02:24PM +0400, Stanislav Kinsbursky wrote:
-> v2: rebased on 3.5-rc3 kernel
-> 
-> Holding of client_mutex looks redundant here - recall_lock looks enough.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Yep, thanks.--b.
+I can now share this code with the v2 and v3 code by using the NFS
+subversion structure.
 
-> 
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> ---
->  fs/nfsd/nfs4state.c |    2 --
->  1 files changed, 0 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 33eccee..480ecc9 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -4622,7 +4622,6 @@ void nfsd_recall_delegations(u64 num)
->  	LIST_HEAD(victims);
->  	struct nfs4_delegation *dp, *dnext;
->  
-> -	nfs4_lock_state();
->  	spin_lock(&recall_lock);
->  	count = nfsd_process_n_delegations(num, &victims);
->  	list_for_each_entry_safe(dp, dnext, &victims, dl_recall_lru) {
-> @@ -4630,7 +4629,6 @@ void nfsd_recall_delegations(u64 num)
->  		nfsd_break_one_deleg(dp);
->  	}
->  	spin_unlock(&recall_lock);
-> -	nfs4_unlock_state();
->  
->  	printk(KERN_INFO "NFSD: Recalled %d delegations", count);
->  }
-> 
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/namespace.c | 13 -------------
+ fs/nfs/nfs4super.c | 25 -------------------------
+ fs/nfs/super.c     | 30 ++++++++++--------------------
+ 3 files changed, 10 insertions(+), 58 deletions(-)
+
+diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
+index 08b9c93..0f699fe 100644
+--- a/fs/nfs/namespace.c
++++ b/fs/nfs/namespace.c
+@@ -195,20 +195,7 @@ static struct vfsmount *nfs_do_clone_mount(struct nfs_server *server,
+ 					   const char *devname,
+ 					   struct nfs_clone_mount *mountdata)
+ {
+-#ifdef CONFIG_NFS_V4
+-	struct vfsmount *mnt = ERR_PTR(-EINVAL);
+-	switch (server->nfs_client->rpc_ops->version) {
+-		case 2:
+-		case 3:
+-			mnt = vfs_kern_mount(&nfs_xdev_fs_type, 0, devname, mountdata);
+-			break;
+-		case 4:
+-			mnt = vfs_kern_mount(&nfs4_xdev_fs_type, 0, devname, mountdata);
+-	}
+-	return mnt;
+-#else
+ 	return vfs_kern_mount(&nfs_xdev_fs_type, 0, devname, mountdata);
+-#endif
+ }
+ 
+ /**
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+index 1f34019..8a50557 100644
+--- a/fs/nfs/nfs4super.c
++++ b/fs/nfs/nfs4super.c
+@@ -14,8 +14,6 @@
+ 
+ static struct dentry *nfs4_remote_mount(struct file_system_type *fs_type,
+ 	int flags, const char *dev_name, void *raw_data);
+-static struct dentry *nfs4_xdev_mount(struct file_system_type *fs_type,
+-	int flags, const char *dev_name, void *raw_data);
+ static struct dentry *nfs4_referral_mount(struct file_system_type *fs_type,
+ 	int flags, const char *dev_name, void *raw_data);
+ static struct dentry *nfs4_remote_referral_mount(struct file_system_type *fs_type,
+@@ -37,14 +35,6 @@ static struct file_system_type nfs4_remote_fs_type = {
+ 	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
+ };
+ 
+-struct file_system_type nfs4_xdev_fs_type = {
+-	.owner		= THIS_MODULE,
+-	.name		= "nfs4",
+-	.mount		= nfs4_xdev_mount,
+-	.kill_sb	= nfs_kill_super,
+-	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
+-};
+-
+ static struct file_system_type nfs4_remote_referral_fs_type = {
+ 	.owner		= THIS_MODULE,
+ 	.name		= "nfs4",
+@@ -261,21 +251,6 @@ struct dentry *nfs4_try_mount(int flags, const char *dev_name,
+ 	return res;
+ }
+ 
+-/*
+- * Clone an NFS4 server record on xdev traversal (FSID-change)
+- */
+-static struct dentry *
+-nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
+-		 const char *dev_name, void *raw_data)
+-{
+-	struct nfs_mount_info mount_info = {
+-		.fill_super = nfs_clone_super,
+-		.set_security = nfs_clone_sb_security,
+-		.cloned = raw_data,
+-	};
+-	return nfs_xdev_mount_common(&nfs4_fs_type, flags, dev_name, &mount_info);
+-}
+-
+ static struct dentry *
+ nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
+ 			   const char *dev_name, void *raw_data)
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 61405a7..4faefa1 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2445,10 +2445,15 @@ void nfs_kill_super(struct super_block *s)
+  * Clone an NFS2/3/4 server record on xdev traversal (FSID-change)
+  */
+ struct dentry *
+-nfs_xdev_mount_common(struct file_system_type *fs_type, int flags,
+-		const char *dev_name, struct nfs_mount_info *mount_info)
++nfs_xdev_mount(struct file_system_type *fs_type, int flags,
++		const char *dev_name, void *raw_data)
+ {
+-	struct nfs_clone_mount *data = mount_info->cloned;
++	struct nfs_clone_mount *data = raw_data;
++	struct nfs_mount_info mount_info = {
++		.fill_super = nfs_clone_super,
++		.set_security = nfs_clone_sb_security,
++		.cloned = data,
++	};
+ 	struct nfs_server *server;
+ 	struct dentry *mntroot = ERR_PTR(-ENOMEM);
+ 	struct nfs_subversion *nfs_mod = NFS_SB(data->sb)->nfs_client->cl_nfs_mod;
+@@ -2456,7 +2461,7 @@ nfs_xdev_mount_common(struct file_system_type *fs_type, int flags,
+ 
+ 	dprintk("--> nfs_xdev_mount_common()\n");
+ 
+-	mount_info->mntfh = data->fh;
++	mount_info.mntfh = mount_info.cloned->fh;
+ 
+ 	/* create a new volume representation */
+ 	server = nfs_clone_server(NFS_SB(data->sb), data->fh, data->fattr, data->authflavor);
+@@ -2465,7 +2470,7 @@ nfs_xdev_mount_common(struct file_system_type *fs_type, int flags,
+ 		goto out_err;
+ 	}
+ 
+-	mntroot = nfs_fs_mount_common(server, flags, dev_name, mount_info, nfs_mod);
++	mntroot = nfs_fs_mount_common(server, flags, dev_name, &mount_info, nfs_mod);
+ 	dprintk("<-- nfs_xdev_mount_common() = 0\n");
+ out:
+ 	return mntroot;
+@@ -2475,21 +2480,6 @@ out_err:
+ 	goto out;
+ }
+ 
+-/*
+- * Clone an NFS2/3 server record on xdev traversal (FSID-change)
+- */
+-static struct dentry *
+-nfs_xdev_mount(struct file_system_type *fs_type, int flags,
+-		const char *dev_name, void *raw_data)
+-{
+-	struct nfs_mount_info mount_info = {
+-		.fill_super = nfs_clone_super,
+-		.set_security = nfs_clone_sb_security,
+-		.cloned   = raw_data,
+-	};
+-	return nfs_xdev_mount_common(&nfs_fs_type, flags, dev_name, &mount_info);
+-}
+-
+ #ifdef CONFIG_NFS_V4
+ 
+ static void nfs4_validate_mount_flags(struct nfs_parsed_mount_data *args)
+-- 
+1.7.11.2
+
