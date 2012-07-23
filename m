@@ -1,226 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:20498 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756039Ab2GJQQW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jul 2012 12:16:22 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 05/12] NFS: Initialize v4 sysctls from nfs_init_v4()
-Date: Tue, 10 Jul 2012 12:16:10 -0400
-Message-Id: <1341936977-21186-6-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1341936977-21186-1-git-send-email-bjschuma@netapp.com>
-References: <1341936977-21186-1-git-send-email-bjschuma@netapp.com>
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:48904 "EHLO
+	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751743Ab2GWKFX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jul 2012 06:05:23 -0400
+Received: by mail-lb0-f174.google.com with SMTP id gm6so7792703lbb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Jul 2012 03:05:22 -0700 (PDT)
+From: Idan Kedar <idank@tonian.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Cc: Benny Halevy <bhalevy@tonian.com>
+Subject: [PATCH 2/3] pnfs: nfs4_proc_layoutget returns void
+Date: Mon, 23 Jul 2012 13:05:06 +0300
+Message-Id: <1343037907-26457-3-git-send-email-idank@tonian.com>
+In-Reply-To: <1343037907-26457-1-git-send-email-idank@tonian.com>
+References: <1343037907-26457-1-git-send-email-idank@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+since the only user of nfs4_proc_layoutget is send_layoutget, which
+ignores its return value, there is no reason to return any value.
 
-And split them out of the generic client into their own file.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Idan Kedar <idank@tonian.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
 ---
- fs/nfs/Makefile     |  7 +++++-
- fs/nfs/nfs4_fs.h    | 15 ++++++++++++
- fs/nfs/nfs4super.c  |  9 +++++++
- fs/nfs/nfs4sysctl.c | 68 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/sysctl.c     | 26 --------------------
- 5 files changed, 98 insertions(+), 27 deletions(-)
- create mode 100644 fs/nfs/nfs4sysctl.c
+ fs/nfs/nfs4proc.c |    8 ++++----
+ fs/nfs/pnfs.h     |    2 +-
+ 2 files changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index 162a699..4a78e76 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -17,7 +17,12 @@ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
- 			   callback.o callback_xdr.o callback_proc.o \
- 			   nfs4namespace.o
- nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
--nfs-$(CONFIG_SYSCTL) += sysctl.o
-+
-+ifeq ($(CONFIG_SYSCTL), y)
-+nfs-y += sysctl.o
-+nfs-$(CONFIG_NFS_V4) += nfs4sysctl.o
-+endif
-+
- nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 31a7858..3db9ce7 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6227,7 +6227,7 @@ static const struct rpc_call_ops nfs4_layoutget_call_ops = {
+ 	.rpc_release = nfs4_layoutget_release,
+ };
  
- obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index a42278f..db6f96f 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -368,6 +368,21 @@ extern const nfs4_stateid zero_stateid;
- int init_nfs_v4(void);
- void exit_nfs_v4(void);
- 
-+/* nfs4sysctl.c */
-+#ifdef CONFIG_SYSCTL
-+int nfs4_register_sysctl(void);
-+void nfs4_unregister_sysctl(void);
-+#else
-+static inline int nfs4_register_sysctl(void)
-+{
-+	return 0;
-+}
-+
-+static inline int nfs4_unregister_sysctl(void)
-+{
-+}
-+#endif
-+
- /* nfs4xdr.c */
- extern struct rpc_procinfo nfs4_procedures[];
- 
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-index 366e414..70c394e 100644
---- a/fs/nfs/nfs4super.c
-+++ b/fs/nfs/nfs4super.c
-@@ -3,6 +3,8 @@
-  */
- #include <linux/init.h>
- #include <linux/nfs_idmap.h>
-+#include <linux/nfs_fs.h>
-+#include "nfs4_fs.h"
- 
- int __init init_nfs_v4(void)
+-int nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
++void nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
  {
-@@ -12,12 +14,19 @@ int __init init_nfs_v4(void)
- 	if (err)
- 		goto out;
+ 	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
+ 	u32 max_pages = max_response_pages(server);
+@@ -6251,7 +6251,7 @@ int nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
+ 	lgp->args.layout.pages = alloc_pagevec(max_pages, gfp_flags);
+ 	if (!lgp->args.layout.pages) {
+ 		nfs4_layoutget_release(lgp);
+-		return -ENOMEM;
++		return;
+ 	}
+ 	lgp->args.layout.pglen = max_pages * PAGE_SIZE;
  
-+	err = nfs4_register_sysctl();
-+	if (err)
-+		goto out1;
-+
- 	return 0;
-+out1:
-+	nfs_idmap_quit();
- out:
- 	return err;
+@@ -6260,7 +6260,7 @@ int nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
+ 	nfs41_init_sequence(&lgp->args.seq_args, &lgp->res.seq_res, 0);
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (IS_ERR(task))
+-		return PTR_ERR(task);
++		return;
+ 	status = nfs4_wait_for_completion_rpc_task(task);
+ 	if (status == 0)
+ 		status = task->tk_status;
+@@ -6268,7 +6268,7 @@ int nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
+ 		status = pnfs_layout_process(lgp);
+ 	rpc_put_task(task);
+ 	dprintk("<-- %s status=%d\n", __func__, status);
+-	return status;
++	return;
  }
  
- void __exit exit_nfs_v4(void)
- {
-+	nfs4_unregister_sysctl();
- 	nfs_idmap_quit();
- }
-diff --git a/fs/nfs/nfs4sysctl.c b/fs/nfs/nfs4sysctl.c
-new file mode 100644
-index 0000000..5729bc8
---- /dev/null
-+++ b/fs/nfs/nfs4sysctl.c
-@@ -0,0 +1,68 @@
-+/*
-+ * linux/fs/nfs/nfs4sysctl.c
-+ *
-+ * Sysctl interface to NFS v4 parameters
-+ *
-+ * Copyright (c) 2006 Trond Myklebust <Trond.Myklebust@netapp.com>
-+ */
-+#include <linux/sysctl.h>
-+#include <linux/nfs_idmap.h>
-+#include <linux/nfs_fs.h>
-+
-+#include "callback.h"
-+
-+static const int nfs_set_port_min = 0;
-+static const int nfs_set_port_max = 65535;
-+static struct ctl_table_header *nfs4_callback_sysctl_table;
-+
-+static ctl_table nfs4_cb_sysctls[] = {
-+	{
-+		.procname = "nfs_callback_tcpport",
-+		.data = &nfs_callback_set_tcpport,
-+		.maxlen = sizeof(int),
-+		.mode = 0644,
-+		.proc_handler = proc_dointvec_minmax,
-+		.extra1 = (int *)&nfs_set_port_min,
-+		.extra2 = (int *)&nfs_set_port_max,
-+	},
-+	{
-+		.procname = "idmap_cache_timeout",
-+		.data = &nfs_idmap_cache_timeout,
-+		.maxlen = sizeof(int),
-+		.mode = 0644,
-+		.proc_handler = proc_dointvec_jiffies,
-+	},
-+	{ }
-+};
-+
-+static ctl_table nfs4_cb_sysctl_dir[] = {
-+	{
-+		.procname = "nfs",
-+		.mode = 0555,
-+		.child = nfs4_cb_sysctls,
-+	},
-+	{ }
-+};
-+
-+static ctl_table nfs4_cb_sysctl_root[] = {
-+	{
-+		.procname = "fs",
-+		.mode = 0555,
-+		.child = nfs4_cb_sysctl_dir,
-+	},
-+	{ }
-+};
-+
-+int nfs4_register_sysctl(void)
-+{
-+	nfs4_callback_sysctl_table = register_sysctl_table(nfs4_cb_sysctl_root);
-+	if (nfs4_callback_sysctl_table == NULL)
-+		return -ENOMEM;
-+	return 0;
-+}
-+
-+void nfs4_unregister_sysctl(void)
-+{
-+	unregister_sysctl_table(nfs4_callback_sysctl_table);
-+	nfs4_callback_sysctl_table = NULL;
-+}
-diff --git a/fs/nfs/sysctl.c b/fs/nfs/sysctl.c
-index ad4d2e7..6b3f253 100644
---- a/fs/nfs/sysctl.c
-+++ b/fs/nfs/sysctl.c
-@@ -9,37 +9,11 @@
- #include <linux/fs.h>
- #include <linux/sysctl.h>
- #include <linux/module.h>
--#include <linux/nfs4.h>
--#include <linux/nfs_idmap.h>
- #include <linux/nfs_fs.h>
+ static void
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 9a31ff3..eda42b9 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -171,7 +171,7 @@ extern int nfs4_proc_getdevicelist(struct nfs_server *server,
+ 				   struct pnfs_devicelist *devlist);
+ extern int nfs4_proc_getdeviceinfo(struct nfs_server *server,
+ 				   struct pnfs_device *dev);
+-extern int nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags);
++extern void nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags);
+ extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
  
--#include "callback.h"
--
--#ifdef CONFIG_NFS_V4
--static const int nfs_set_port_min = 0;
--static const int nfs_set_port_max = 65535;
--#endif
- static struct ctl_table_header *nfs_callback_sysctl_table;
- 
- static ctl_table nfs_cb_sysctls[] = {
--#ifdef CONFIG_NFS_V4
--	{
--		.procname = "nfs_callback_tcpport",
--		.data = &nfs_callback_set_tcpport,
--		.maxlen = sizeof(int),
--		.mode = 0644,
--		.proc_handler = proc_dointvec_minmax,
--		.extra1 = (int *)&nfs_set_port_min,
--		.extra2 = (int *)&nfs_set_port_max,
--	},
--	{
--		.procname = "idmap_cache_timeout",
--		.data = &nfs_idmap_cache_timeout,
--		.maxlen = sizeof(int),
--		.mode = 0644,
--		.proc_handler = proc_dointvec_jiffies,
--	},
--#endif
- 	{
- 		.procname	= "nfs_mountpoint_timeout",
- 		.data		= &nfs_mountpoint_expiry_timeout,
+ /* pnfs.c */
 -- 
-1.7.11.1
+1.7.6.5
 
