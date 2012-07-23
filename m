@@ -1,39 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga11.intel.com ([192.55.52.93]:26396 "EHLO mga11.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751497Ab2GEQ1V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Jul 2012 12:27:21 -0400
-Date: Thu, 5 Jul 2012 09:27:20 -0700
-From: Andi Kleen <ak@linux.intel.com>
-To: Fengguang Wu <fengguang.wu@intel.com>
-Cc: Linux-NFS <linux-nfs@vger.kernel.org>, Trond.Myklebust@netapp.com
-Subject: Re: rpcauth_lookup_credcache() lock contentions
-Message-ID: <20120705162720.GE32640@tassilo.jf.intel.com>
-References: <20120623122604.GA10887@localhost>
- <20120624213417.GI4152@tassilo.jf.intel.com>
- <20120625024211.GA11057@localhost>
- <20120627180353.GO4152@tassilo.jf.intel.com>
- <20120705131105.GA13775@localhost>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120705131105.GA13775@localhost>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:57691 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754739Ab2GWTwB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jul 2012 15:52:01 -0400
+Received: by yhmm54 with SMTP id m54so5887521yhm.19
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Jul 2012 12:52:00 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] sunrpc: clarify comments on rpc_make_runnable
+Date: Mon, 23 Jul 2012 15:51:55 -0400
+Message-Id: <1343073115-29944-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 05, 2012 at 09:11:05PM +0800, Fengguang Wu wrote:
-> On Wed, Jun 27, 2012 at 11:03:53AM -0700, Andi Kleen wrote:
-> > > > Can you try this patch?
-> > > 
-> > > Thank you! This patch brings %sys down to 24%, a pretty large improvement!
-> > 
-> > I redid the patch now and fixed the race Trond pointed out.
-> > 
-> > Fengguang, can you retest please? Trond, does it look good now?
-> 
-> Andi, this patch performs equally well! And it runs stable for over a week.
+rpc_make_runnable is not generally called with the queue lock held, unless
+it's waking up a task that has been sitting on a waitqueue. This is safe
+when the task has not entered the FSM yet, but the comments don't really
+spell this out.
 
-Thanks for testing. But it still has the race Trond pointed out.
-Probably need to rely on write ordering with the uncached flag.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ net/sunrpc/sched.c |    5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
--Andi
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index eda32ae..1f19aa1 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -300,8 +300,9 @@ EXPORT_SYMBOL_GPL(__rpc_wait_for_completion_task);
+ /*
+  * Make an RPC task runnable.
+  *
+- * Note: If the task is ASYNC, this must be called with
+- * the spinlock held to protect the wait queue operation.
++ * Note: If the task is ASYNC, and is being made runnable after sitting on an
++ * rpc_wait_queue, this must be called with the queue spinlock held to protect
++ * the wait queue operation.
+  */
+ static void rpc_make_runnable(struct rpc_task *task)
+ {
+-- 
+1.7.10.4
 
