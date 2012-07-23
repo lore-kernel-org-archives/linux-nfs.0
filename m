@@ -1,156 +1,188 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from oz.csail.mit.edu ([128.30.30.239]:59479 "EHLO mail.mgebm.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750864Ab2GARms (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 1 Jul 2012 13:42:48 -0400
-Date: Sun, 1 Jul 2012 13:22:54 -0400
-From: Eric B Munson <emunson@mgebm.net>
-To: Mel Gorman <mgorman@suse.de>
-Cc: Andrew Morton <akpm@linux-foundation.org>, Linux-MM <linux-mm@kvack.org>,
-        Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Sebastian Andrzej Siewior <sebastian@breakpoint.cc>
-Subject: Re: [PATCH 00/12] Swap-over-NFS without deadlocking V8
-Message-ID: <20120701172254.GB2470@mgebm.net>
-References: <1340976805-5799-1-git-send-email-mgorman@suse.de>
-MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="61jdw2sOBCFtR2d/"
-In-Reply-To: <1340976805-5799-1-git-send-email-mgorman@suse.de>
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:42459 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753473Ab2GWR66 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jul 2012 13:58:58 -0400
+Received: by gglu4 with SMTP id u4so5754374ggl.19
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Jul 2012 10:58:57 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs: skip commit in releasepage if we're freeing memory for fs-related reasons
+Date: Mon, 23 Jul 2012 13:58:51 -0400
+Message-Id: <1343066331-26509-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+We've had some reports of a deadlock where rpciod ends up with a stack
+trace like this:
 
---61jdw2sOBCFtR2d/
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+    PID: 2507   TASK: ffff88103691ab40  CPU: 14  COMMAND: "rpciod/14"
+     #0 [ffff8810343bf2f0] schedule at ffffffff814dabd9
+     #1 [ffff8810343bf3b8] nfs_wait_bit_killable at ffffffffa038fc04 [nfs]
+     #2 [ffff8810343bf3c8] __wait_on_bit at ffffffff814dbc2f
+     #3 [ffff8810343bf418] out_of_line_wait_on_bit at ffffffff814dbcd8
+     #4 [ffff8810343bf488] nfs_commit_inode at ffffffffa039e0c1 [nfs]
+     #5 [ffff8810343bf4f8] nfs_release_page at ffffffffa038bef6 [nfs]
+     #6 [ffff8810343bf528] try_to_release_page at ffffffff8110c670
+     #7 [ffff8810343bf538] shrink_page_list.clone.0 at ffffffff81126271
+     #8 [ffff8810343bf668] shrink_inactive_list at ffffffff81126638
+     #9 [ffff8810343bf818] shrink_zone at ffffffff8112788f
+    #10 [ffff8810343bf8c8] do_try_to_free_pages at ffffffff81127b1e
+    #11 [ffff8810343bf958] try_to_free_pages at ffffffff8112812f
+    #12 [ffff8810343bfa08] __alloc_pages_nodemask at ffffffff8111fdad
+    #13 [ffff8810343bfb28] kmem_getpages at ffffffff81159942
+    #14 [ffff8810343bfb58] fallback_alloc at ffffffff8115a55a
+    #15 [ffff8810343bfbd8] ____cache_alloc_node at ffffffff8115a2d9
+    #16 [ffff8810343bfc38] kmem_cache_alloc at ffffffff8115b09b
+    #17 [ffff8810343bfc78] sk_prot_alloc at ffffffff81411808
+    #18 [ffff8810343bfcb8] sk_alloc at ffffffff8141197c
+    #19 [ffff8810343bfce8] inet_create at ffffffff81483ba6
+    #20 [ffff8810343bfd38] __sock_create at ffffffff8140b4a7
+    #21 [ffff8810343bfd98] xs_create_sock at ffffffffa01f649b [sunrpc]
+    #22 [ffff8810343bfdd8] xs_tcp_setup_socket at ffffffffa01f6965 [sunrpc]
+    #23 [ffff8810343bfe38] worker_thread at ffffffff810887d0
+    #24 [ffff8810343bfee8] kthread at ffffffff8108dd96
+    #25 [ffff8810343bff48] kernel_thread at ffffffff8100c1ca
 
-On Fri, 29 Jun 2012, Mel Gorman wrote:
+rpciod is trying to allocate memory for a new socket to talk to the
+server. The VM ends up calling ->releasepage to get more memory, and it
+tries to do a blocking commit. That commit can't succeed however without
+a connected socket, so we deadlock.
 
-> Changelog since V7
->   o Rebase to linux-next 20120629
->   o bi->page_dma instead of bi->page in intel driver
->   o Build fix for !CONFIG_NET					(sebastian)
->   o Restore PF_MEMALLOC flags correctly in all cases		(jlayton)
->=20
-> Changelog since V6
->   o Rebase to linux-next 20120622
->=20
-> Changelog since V5
->   o Rebase to v3.5-rc3
->=20
-> Changelog since V4
->   o Catch if SOCK_MEMALLOC flag is cleared with rmem tokens	(davem)
->=20
-> Changelog since V3
->   o Rebase to 3.4-rc5
->   o kmap pages for writing to swap				(akpm)
->   o Move forward declaration to reduce chance of duplication	(akpm)
->=20
-> Changelog since V2
->   o Nothing significant, just rebases. A radix tree lookup is replaced wi=
-th
->     a linear search would be the biggest rebase artifact
->=20
-> This patch series is based on top of "Swap-over-NBD without deadlocking v=
-14"
-> as it depends on the same reservation of PF_MEMALLOC reserves logic.
->=20
-> When a user or administrator requires swap for their application, they
-> create a swap partition and file, format it with mkswap and activate it w=
-ith
-> swapon. In diskless systems this is not an option so if swap if required
-> then swapping over the network is considered.  The two likely scenarios
-> are when blade servers are used as part of a cluster where the form factor
-> or maintenance costs do not allow the use of disks and thin clients.
->=20
-> The Linux Terminal Server Project recommends the use of the Network
-> Block Device (NBD) for swap but this is not always an option.  There is
-> no guarantee that the network attached storage (NAS) device is running
-> Linux or supports NBD. However, it is likely that it supports NFS so there
-> are users that want support for swapping over NFS despite any performance
-> concern. Some distributions currently carry patches that support swapping
-> over NFS but it would be preferable to support it in the mainline kernel.
->=20
-> Patch 1 avoids a stream-specific deadlock that potentially affects TCP.
->=20
-> Patch 2 is a small modification to SELinux to avoid using PFMEMALLOC
-> 	reserves.
->=20
-> Patch 3 adds three helpers for filesystems to handle swap cache pages.
-> 	For example, page_file_mapping() returns page->mapping for
-> 	file-backed pages and the address_space of the underlying
-> 	swap file for swap cache pages.
->=20
-> Patch 4 adds two address_space_operations to allow a filesystem
-> 	to pin all metadata relevant to a swapfile in memory. Upon
-> 	successful activation, the swapfile is marked SWP_FILE and
-> 	the address space operation ->direct_IO is used for writing
-> 	and ->readpage for reading in swap pages.
->=20
-> Patch 5 notes that patch 3 is bolting
-> 	filesystem-specific-swapfile-support onto the side and that
-> 	the default handlers have different information to what
-> 	is available to the filesystem. This patch refactors the
-> 	code so that there are generic handlers for each of the new
-> 	address_space operations.
->=20
-> Patch 6 adds an API to allow a vector of kernel addresses to be
-> 	translated to struct pages and pinned for IO.
->=20
-> Patch 7 adds support for using highmem pages for swap by kmapping
-> 	the pages before calling the direct_IO handler.
->=20
-> Patch 8 updates NFS to use the helpers from patch 3 where necessary.
->=20
-> Patch 9 avoids setting PF_private on PG_swapcache pages within NFS.
->=20
-> Patch 10 implements the new swapfile-related address_space operations
-> 	for NFS and teaches the direct IO handler how to manage
-> 	kernel addresses.
->=20
-> Patch 11 prevents page allocator recursions in NFS by using GFP_NOIO
-> 	where appropriate.
->=20
-> Patch 12 fixes a NULL pointer dereference that occurs when using
-> 	swap-over-NFS.
->=20
-> With the patches applied, it is possible to mount a swapfile that is on an
-> NFS filesystem. Swap performance is not great with a swap stress test tak=
-ing
-> roughly twice as long to complete than if the swap device was backed by N=
-BD.
+Fix this by setting PF_FSTRANS on the workqueue task prior to doing the
+socket allocation, and having nfs_release_page check for that flag when
+deciding whether to do a commit call. Also, set PF_FSTRANS
+unconditionally in rpc_async_schedule since that function can also do
+allocations sometimes.
 
-To test this set I am using memory cgroups to force swap usage.  I am seeing
-the cgroup controller killing my processes instead of using the nfs swapfil=
-e.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/file.c                   |    7 +++++--
+ net/sunrpc/sched.c              |    2 ++
+ net/sunrpc/xprtrdma/transport.c |    3 ++-
+ net/sunrpc/xprtsock.c           |   10 ++++++++++
+ 4 files changed, 19 insertions(+), 3 deletions(-)
 
-I am not yet sure if I am making a silly mistake or if something else is wr=
-ong.
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index a6708e6b..9075769 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -459,8 +459,11 @@ static int nfs_release_page(struct page *page, gfp_t gfp)
+ 
+ 	dfprintk(PAGECACHE, "NFS: release_page(%p)\n", page);
+ 
+-	/* Only do I/O if gfp is a superset of GFP_KERNEL */
+-	if (mapping && (gfp & GFP_KERNEL) == GFP_KERNEL) {
++	/* Only do I/O if gfp is a superset of GFP_KERNEL, and we're not
++	 * doing this memory reclaim for a fs-related allocation.
++	 */
++	if (mapping && (gfp & GFP_KERNEL) == GFP_KERNEL &&
++	    !(current->flags & PF_FSTRANS)) {
+ 		int how = FLUSH_SYNC;
+ 
+ 		/* Don't let kswapd deadlock waiting for OOM RPC calls */
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index 994cfea..eda32ae 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -790,7 +790,9 @@ void rpc_execute(struct rpc_task *task)
+ 
+ static void rpc_async_schedule(struct work_struct *work)
+ {
++	current->flags |= PF_FSTRANS;
+ 	__rpc_execute(container_of(work, struct rpc_task, u.tk_work));
++	current->flags &= ~PF_FSTRANS;
+ }
+ 
+ /**
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index b446e10..06cdbff 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -200,6 +200,7 @@ xprt_rdma_connect_worker(struct work_struct *work)
+ 	int rc = 0;
+ 
+ 	if (!xprt->shutdown) {
++		current->flags |= PF_FSTRANS;
+ 		xprt_clear_connected(xprt);
+ 
+ 		dprintk("RPC:       %s: %sconnect\n", __func__,
+@@ -212,10 +213,10 @@ xprt_rdma_connect_worker(struct work_struct *work)
+ 
+ out:
+ 	xprt_wake_pending_tasks(xprt, rc);
+-
+ out_clear:
+ 	dprintk("RPC:       %s: exit\n", __func__);
+ 	xprt_clear_connecting(xprt);
++	current->flags &= ~PF_FSTRANS;
+ }
+ 
+ /*
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 890b03f..b88c6bf 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1895,6 +1895,8 @@ static void xs_local_setup_socket(struct work_struct *work)
+ 	if (xprt->shutdown)
+ 		goto out;
+ 
++	current->flags |= PF_FSTRANS;
++
+ 	clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
+ 	status = __sock_create(xprt->xprt_net, AF_LOCAL,
+ 					SOCK_STREAM, 0, &sock, 1);
+@@ -1928,6 +1930,7 @@ static void xs_local_setup_socket(struct work_struct *work)
+ out:
+ 	xprt_clear_connecting(xprt);
+ 	xprt_wake_pending_tasks(xprt, status);
++	current->flags &= ~PF_FSTRANS;
+ }
+ 
+ static void xs_udp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
+@@ -1970,6 +1973,8 @@ static void xs_udp_setup_socket(struct work_struct *work)
+ 	if (xprt->shutdown)
+ 		goto out;
+ 
++	current->flags |= PF_FSTRANS;
++
+ 	/* Start by resetting any existing state */
+ 	xs_reset_transport(transport);
+ 	sock = xs_create_sock(xprt, transport,
+@@ -1988,6 +1993,7 @@ static void xs_udp_setup_socket(struct work_struct *work)
+ out:
+ 	xprt_clear_connecting(xprt);
+ 	xprt_wake_pending_tasks(xprt, status);
++	current->flags &= ~PF_FSTRANS;
+ }
+ 
+ /*
+@@ -2113,6 +2119,8 @@ static void xs_tcp_setup_socket(struct work_struct *work)
+ 	if (xprt->shutdown)
+ 		goto out;
+ 
++	current->flags |= PF_FSTRANS;
++
+ 	if (!sock) {
+ 		clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
+ 		sock = xs_create_sock(xprt, transport,
+@@ -2162,6 +2170,7 @@ static void xs_tcp_setup_socket(struct work_struct *work)
+ 	case -EINPROGRESS:
+ 	case -EALREADY:
+ 		xprt_clear_connecting(xprt);
++		current->flags &= ~PF_FSTRANS;
+ 		return;
+ 	case -EINVAL:
+ 		/* Happens, for instance, if the user specified a link
+@@ -2174,6 +2183,7 @@ out_eagain:
+ out:
+ 	xprt_clear_connecting(xprt);
+ 	xprt_wake_pending_tasks(xprt, status);
++	current->flags &= ~PF_FSTRANS;
+ }
+ 
+ /**
+-- 
+1.7.10.4
 
-Eric
-
---61jdw2sOBCFtR2d/
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.11 (GNU/Linux)
-
-iQEcBAEBAgAGBQJP8IduAAoJEH65iIruGRnNhNwIAJDCJHEJoEhnaXJSU2+g7w3j
-QOChl7plB/JNbqBzbrYG/6NtTcQVLZ+Osj+DJ5kSCzrAnZ7AEH2ubeof5MZEC1ns
-dwSnWs40tBZqG+SBd2syxytlJyyhLCVCOFPfju5o677UtgyxM7/GMs4D/sysU2pN
-yKq1CZIusNgiBn27qDkjiQSBQeisavjHh2T2tkJtGtgoeUedVMEFPPFxDmrDPw1e
-xug8LoeKHXkwfPT/H1xMSC9jN4IXWJGt6g3TvlS8gBnTRZvl6v2zCXcQlCnV6sZA
-IL0bISPhtKzJdddGbFVWGSGSDt4y2wr/xTxb3RMftx1rv07EAOdDaHRuILYMbLM=
-=9nJy
------END PGP SIGNATURE-----
-
---61jdw2sOBCFtR2d/--
