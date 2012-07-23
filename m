@@ -1,60 +1,169 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:53280 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:33540 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751916Ab2GPSoX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Jul 2012 14:44:23 -0400
-Received: from vmwexceht05-prd.hq.netapp.com (vmwexceht05-prd.hq.netapp.com [10.106.77.35])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q6GIi7m2004450
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Jul 2012 11:44:07 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] SUNRPC handle EKEYEXPIRED in call_refreshresult
-Date: Mon, 16 Jul 2012 18:44:06 +0000
-Message-ID: <1342464245.4648.23.camel@lade.trondhjem.org>
-References: <1340827535-3062-1-git-send-email-andros@netapp.com>
-	 <1340827535-3062-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1340827535-3062-2-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1753912Ab2GWPMO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Jul 2012 11:12:14 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 3/9] NFS: Create a try_mount rpc op
+Date: Mon, 23 Jul 2012 11:12:03 -0400
+Message-Id: <1343056329-24808-4-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1343056329-24808-1-git-send-email-bjschuma@netapp.com>
+References: <1343056329-24808-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTA2LTI3IGF0IDE2OjA1IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
-ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFdoZW4g
-YW4gUlBDU0VDX0dTUyBjb250ZXh0IGhhcyBleHBpcmVkIG9yIGlzIG5vbi1leGlzdGVudCwgYW5k
-IHRoZSB1c2VyDQo+IChLZXJiZXJvcykgY3JlZGVudGlhbHMgaGF2ZSBhbHNvIGV4cGlyZWQgb3Ig
-YXJlIG5vbi1leGlzdGVudCwgdGhlIGNsaWVudA0KPiByZXRyaWVzIHRvIHJlZnJlc2ggdGhlIGNv
-bnRleHQgZm9yIGV2ZXIgYW5kIHRoZSBhcHBsaWNhdGlvbg0KPiBoYW5ncy4gVGhlIHVzZXIgaXMg
-bm90IHByb21wdGVkIHRvIHJlZnJlc2gvZXN0YWJsaXNoIHRoZWlyIGNyZWRlbnRpYWxzLg0KPiAN
-Cj4gTW92ZSB0aGUgLUVLRVlFWFBJUkVEIGhhbmRsaW5nIGludG8gdGhlIFJQQyBsYXllci4gVHJ5
-IHRrX2NyZWRfcmV0cnkgbnVtYmVyDQo+IG9mIHRpbWVzIHRvIHJlZnJlc2ggdGhlIGdzc19jb250
-ZXh0LCBhbmQgdGhlbiBwYXNzIC1FUEVSTSB0byBhcHBsaWNhdGlvbi4NCj4gDQo+IFNpZ25lZC1v
-ZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQo+IC0tLQ0KPiAgZnMvbmZz
-L25mczRwcm9jLmMgfCAgICAyIC0tDQo+ICBuZXQvc3VucnBjL2NsbnQuYyB8ICAgIDQgKysrKw0K
-PiAgMiBmaWxlcyBjaGFuZ2VkLCA0IGluc2VydGlvbnMoKyksIDIgZGVsZXRpb25zKC0pDQo+IA0K
-PiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMvbmZzNHByb2MuYw0KPiBp
-bmRleCA1YTdiMzcyLi4yZjI5MWIzIDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvbmZzNHByb2MuYw0K
-PiArKysgYi9mcy9uZnMvbmZzNHByb2MuYw0KPiBAQCAtMzQyLDcgKzM0Miw2IEBAIHN0YXRpYyBp
-bnQgbmZzNF9oYW5kbGVfZXhjZXB0aW9uKHN0cnVjdCBuZnNfc2VydmVyICpzZXJ2ZXIsIGludCBl
-cnJvcmNvZGUsIHN0cnVjDQo+ICAJCQl9DQo+ICAJCWNhc2UgLU5GUzRFUlJfR1JBQ0U6DQo+ICAJ
-CWNhc2UgLU5GUzRFUlJfREVMQVk6DQo+IC0JCWNhc2UgLUVLRVlFWFBJUkVEOg0KPiAgCQkJcmV0
-ID0gbmZzNF9kZWxheShzZXJ2ZXItPmNsaWVudCwgJmV4Y2VwdGlvbi0+dGltZW91dCk7DQo+ICAJ
-CQlpZiAocmV0ICE9IDApDQo+ICAJCQkJYnJlYWs7DQo+IEBAIC0zOTM5LDcgKzM5MzgsNiBAQCBu
-ZnM0X2FzeW5jX2hhbmRsZV9lcnJvcihzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2ssIGNvbnN0IHN0cnVj
-dCBuZnNfc2VydmVyICpzZXJ2ZXIsDQo+ICAJCWNhc2UgLU5GUzRFUlJfREVMQVk6DQo+ICAJCQlu
-ZnNfaW5jX3NlcnZlcl9zdGF0cyhzZXJ2ZXIsIE5GU0lPU19ERUxBWSk7DQo+ICAJCWNhc2UgLU5G
-UzRFUlJfR1JBQ0U6DQo+IC0JCWNhc2UgLUVLRVlFWFBJUkVEOg0KPiAgCQkJcnBjX2RlbGF5KHRh
-c2ssIE5GUzRfUE9MTF9SRVRSWV9NQVgpOw0KPiAgCQkJdGFzay0+dGtfc3RhdHVzID0gMDsNCj4g
-IAkJCXJldHVybiAtRUFHQUlOOw0KPiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy9jbG50LmMgYi9u
-ZXQvc3VucnBjL2NsbnQuYw0KPiBpbmRleCBmNTZmMDQ1Li5hOTRmYzBjIDEwMDY0NA0KPiAtLS0g
-YS9uZXQvc3VucnBjL2NsbnQuYw0KPiArKysgYi9uZXQvc3VucnBjL2NsbnQuYw0KPiBAQCAtMTMz
-NCw4ICsxMzM0LDEyIEBAIGNhbGxfcmVmcmVzaHJlc3VsdChzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2sp
-DQo+ICAJCXJldHVybjsNCj4gIAljYXNlIC1FVElNRURPVVQ6DQo+ICAJCXJwY19kZWxheSh0YXNr
-LCAzKkhaKTsNCj4gKwljYXNlIC1FS0VZRVhQSVJFRDoNCj4gKwkJc3RhdHVzID0gLUVQRVJNOw0K
-DQpUaGlzIG5lZWRzIHRvIGJlIEVBQ0NFUy4uLg0KDQo+ICsJCWdvdG8gY3JlZF9yZXRyeTsNCj4g
-IAljYXNlIC1FQUdBSU46DQo+ICAJCXN0YXR1cyA9IC1FQUNDRVM7DQo+ICtjcmVkX3JldHJ5Og0K
-PiAgCQlpZiAoIXRhc2stPnRrX2NyZWRfcmV0cnkpDQo+ICAJCQlicmVhazsNCj4gIAkJdGFzay0+
-dGtfY3JlZF9yZXRyeS0tOw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVu
-dCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5u
-ZXRhcHAuY29tDQoNCg==
+From: Bryan Schumaker <bjschuma@netapp.com>
+
+I'm already looking up the nfs subversion in nfs_fs_mount(), so I have
+easy access to rpc_ops that used to be difficult to reach.  This allows
+me to set up a different mount path for NFS v2/3 and NFS v4.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/internal.h       |  2 ++
+ fs/nfs/nfs3proc.c       |  1 +
+ fs/nfs/nfs4_fs.h        |  2 +-
+ fs/nfs/nfs4proc.c       |  1 +
+ fs/nfs/nfs4super.c      |  3 ++-
+ fs/nfs/proc.c           |  1 +
+ fs/nfs/super.c          | 14 ++++----------
+ include/linux/nfs_xdr.h |  4 ++++
+ 8 files changed, 16 insertions(+), 12 deletions(-)
+
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index ac93647..3364ecc 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -328,6 +328,8 @@ extern struct file_system_type nfs_xdev_fs_type;
+ extern struct file_system_type nfs4_xdev_fs_type;
+ extern struct file_system_type nfs4_referral_fs_type;
+ #endif
++struct dentry *nfs_try_mount(int, const char *, struct nfs_mount_info *,
++			struct nfs_subversion *);
+ void nfs_initialise_sb(struct super_block *);
+ int nfs_set_sb_security(struct super_block *, struct dentry *, struct nfs_mount_info *);
+ int nfs_clone_sb_security(struct super_block *, struct dentry *, struct nfs_mount_info *);
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index 65d23eb..4f4cb8e 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -925,6 +925,7 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
+ 	.file_ops	= &nfs_file_operations,
+ 	.getroot	= nfs3_proc_get_root,
+ 	.submount	= nfs_submount,
++	.try_mount	= nfs_try_mount,
+ 	.getattr	= nfs3_proc_getattr,
+ 	.setattr	= nfs3_proc_setattr,
+ 	.lookup		= nfs3_proc_lookup,
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 005558a..290762f 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -367,7 +367,7 @@ extern const nfs4_stateid zero_stateid;
+ /* nfs4super.c */
+ struct nfs_mount_info;
+ extern struct nfs_subversion nfs_v4;
+-struct dentry *nfs4_try_mount(int, const char *, struct nfs_mount_info *);
++struct dentry *nfs4_try_mount(int, const char *, struct nfs_mount_info *, struct nfs_subversion *);
+ int init_nfs_v4(void);
+ void exit_nfs_v4(void);
+ 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 5e373c3..ac78df9 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6870,6 +6870,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
+ 	.file_ops	= &nfs4_file_operations,
+ 	.getroot	= nfs4_proc_get_root,
+ 	.submount	= nfs4_submount,
++	.try_mount	= nfs4_try_mount,
+ 	.getattr	= nfs4_proc_getattr,
+ 	.setattr	= nfs4_proc_setattr,
+ 	.lookup		= nfs4_proc_lookup,
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+index 8a50557..9384f66 100644
+--- a/fs/nfs/nfs4super.c
++++ b/fs/nfs/nfs4super.c
+@@ -226,7 +226,8 @@ static struct dentry *nfs_follow_remote_path(struct vfsmount *root_mnt,
+ }
+ 
+ struct dentry *nfs4_try_mount(int flags, const char *dev_name,
+-			 struct nfs_mount_info *mount_info)
++			      struct nfs_mount_info *mount_info,
++			      struct nfs_subversion *nfs_mod)
+ {
+ 	char *export_path;
+ 	struct vfsmount *root_mnt;
+diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+index 4d3356af..ebb3d9c 100644
+--- a/fs/nfs/proc.c
++++ b/fs/nfs/proc.c
+@@ -774,6 +774,7 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
+ 	.file_ops	= &nfs_file_operations,
+ 	.getroot	= nfs_proc_get_root,
+ 	.submount	= nfs_submount,
++	.try_mount	= nfs_try_mount,
+ 	.getattr	= nfs_proc_getattr,
+ 	.setattr	= nfs_proc_setattr,
+ 	.lookup		= nfs_proc_lookup,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 4faefa1..5fca59d7 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1650,9 +1650,9 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+ 	return nfs_walk_authlist(args, &request);
+ }
+ 
+-static struct dentry *nfs_try_mount(int flags, const char *dev_name,
+-				    struct nfs_mount_info *mount_info,
+-				    struct nfs_subversion *nfs_mod)
++struct dentry *nfs_try_mount(int flags, const char *dev_name,
++			     struct nfs_mount_info *mount_info,
++			     struct nfs_subversion *nfs_mod)
+ {
+ 	int status;
+ 	struct nfs_server *server;
+@@ -2403,15 +2403,9 @@ struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
+ 		goto out;
+ 	}
+ 
+-#ifdef CONFIG_NFS_V4
+-	if (mount_info.parsed->version == 4)
+-		mntroot = nfs4_try_mount(flags, dev_name, &mount_info);
+-	else
+-#endif	/* CONFIG_NFS_V4 */
+-		mntroot = nfs_try_mount(flags, dev_name, &mount_info, nfs_mod);
++	mntroot = nfs_mod->rpc_ops->try_mount(flags, dev_name, &mount_info, nfs_mod);
+ 
+ 	put_nfs_version(nfs_mod);
+-
+ out:
+ 	nfs_free_parsed_mount_data(mount_info.parsed);
+ 	nfs_free_fhandle(mount_info.mntfh);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 0e181c2..bc7415b 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1353,6 +1353,8 @@ struct nfs_renamedata {
+ struct nfs_access_entry;
+ struct nfs_client;
+ struct rpc_timeout;
++struct nfs_subversion;
++struct nfs_mount_info;
+ struct nfs_client_initdata;
+ struct nfs_pageio_descriptor;
+ 
+@@ -1370,6 +1372,8 @@ struct nfs_rpc_ops {
+ 			    struct nfs_fsinfo *);
+ 	struct vfsmount *(*submount) (struct nfs_server *, struct dentry *,
+ 				      struct nfs_fh *, struct nfs_fattr *);
++	struct dentry *(*try_mount) (int, const char *, struct nfs_mount_info *,
++				     struct nfs_subversion *);
+ 	int	(*getattr) (struct nfs_server *, struct nfs_fh *,
+ 			    struct nfs_fattr *);
+ 	int	(*setattr) (struct dentry *, struct nfs_fattr *,
+-- 
+1.7.11.2
+
