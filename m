@@ -1,135 +1,178 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:44904 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:33550 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753967Ab2GBOgD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Jul 2012 10:36:03 -0400
-Date: Mon, 2 Jul 2012 15:35:56 +0100
-From: Mel Gorman <mgorman@suse.de>
-To: Eric B Munson <emunson@mgebm.net>
-Cc: Andrew Morton <akpm@linux-foundation.org>, Linux-MM <linux-mm@kvack.org>,
-        Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Sebastian Andrzej Siewior <sebastian@breakpoint.cc>
-Subject: Re: [PATCH 00/12] Swap-over-NFS without deadlocking V8
-Message-ID: <20120702143556.GT14154@suse.de>
-References: <1340976805-5799-1-git-send-email-mgorman@suse.de>
- <20120701172254.GB2470@mgebm.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-In-Reply-To: <20120701172254.GB2470@mgebm.net>
+	id S1753912Ab2GWPMQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Jul 2012 11:12:16 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 5/9] NFS: Pass super operations and xattr handlers in the nfs_subversion
+Date: Mon, 23 Jul 2012 11:12:05 -0400
+Message-Id: <1343056329-24808-6-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1343056329-24808-1-git-send-email-bjschuma@netapp.com>
+References: <1343056329-24808-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Jul 01, 2012 at 01:22:54PM -0400, Eric B Munson wrote:
-> On Fri, 29 Jun 2012, Mel Gorman wrote:
-> 
-> > Changelog since V7
-> >   o Rebase to linux-next 20120629
-> >   o bi->page_dma instead of bi->page in intel driver
-> >   o Build fix for !CONFIG_NET					(sebastian)
-> >   o Restore PF_MEMALLOC flags correctly in all cases		(jlayton)
-> > 
-> > Changelog since V6
-> >   o Rebase to linux-next 20120622
-> > 
-> > Changelog since V5
-> >   o Rebase to v3.5-rc3
-> > 
-> > Changelog since V4
-> >   o Catch if SOCK_MEMALLOC flag is cleared with rmem tokens	(davem)
-> > 
-> > Changelog since V3
-> >   o Rebase to 3.4-rc5
-> >   o kmap pages for writing to swap				(akpm)
-> >   o Move forward declaration to reduce chance of duplication	(akpm)
-> > 
-> > Changelog since V2
-> >   o Nothing significant, just rebases. A radix tree lookup is replaced with
-> >     a linear search would be the biggest rebase artifact
-> > 
-> > This patch series is based on top of "Swap-over-NBD without deadlocking v14"
-> > as it depends on the same reservation of PF_MEMALLOC reserves logic.
-> > 
-> > When a user or administrator requires swap for their application, they
-> > create a swap partition and file, format it with mkswap and activate it with
-> > swapon. In diskless systems this is not an option so if swap if required
-> > then swapping over the network is considered.  The two likely scenarios
-> > are when blade servers are used as part of a cluster where the form factor
-> > or maintenance costs do not allow the use of disks and thin clients.
-> > 
-> > The Linux Terminal Server Project recommends the use of the Network
-> > Block Device (NBD) for swap but this is not always an option.  There is
-> > no guarantee that the network attached storage (NAS) device is running
-> > Linux or supports NBD. However, it is likely that it supports NFS so there
-> > are users that want support for swapping over NFS despite any performance
-> > concern. Some distributions currently carry patches that support swapping
-> > over NFS but it would be preferable to support it in the mainline kernel.
-> > 
-> > Patch 1 avoids a stream-specific deadlock that potentially affects TCP.
-> > 
-> > Patch 2 is a small modification to SELinux to avoid using PFMEMALLOC
-> > 	reserves.
-> > 
-> > Patch 3 adds three helpers for filesystems to handle swap cache pages.
-> > 	For example, page_file_mapping() returns page->mapping for
-> > 	file-backed pages and the address_space of the underlying
-> > 	swap file for swap cache pages.
-> > 
-> > Patch 4 adds two address_space_operations to allow a filesystem
-> > 	to pin all metadata relevant to a swapfile in memory. Upon
-> > 	successful activation, the swapfile is marked SWP_FILE and
-> > 	the address space operation ->direct_IO is used for writing
-> > 	and ->readpage for reading in swap pages.
-> > 
-> > Patch 5 notes that patch 3 is bolting
-> > 	filesystem-specific-swapfile-support onto the side and that
-> > 	the default handlers have different information to what
-> > 	is available to the filesystem. This patch refactors the
-> > 	code so that there are generic handlers for each of the new
-> > 	address_space operations.
-> > 
-> > Patch 6 adds an API to allow a vector of kernel addresses to be
-> > 	translated to struct pages and pinned for IO.
-> > 
-> > Patch 7 adds support for using highmem pages for swap by kmapping
-> > 	the pages before calling the direct_IO handler.
-> > 
-> > Patch 8 updates NFS to use the helpers from patch 3 where necessary.
-> > 
-> > Patch 9 avoids setting PF_private on PG_swapcache pages within NFS.
-> > 
-> > Patch 10 implements the new swapfile-related address_space operations
-> > 	for NFS and teaches the direct IO handler how to manage
-> > 	kernel addresses.
-> > 
-> > Patch 11 prevents page allocator recursions in NFS by using GFP_NOIO
-> > 	where appropriate.
-> > 
-> > Patch 12 fixes a NULL pointer dereference that occurs when using
-> > 	swap-over-NFS.
-> > 
-> > With the patches applied, it is possible to mount a swapfile that is on an
-> > NFS filesystem. Swap performance is not great with a swap stress test taking
-> > roughly twice as long to complete than if the swap device was backed by NBD.
-> 
-> To test this set I am using memory cgroups to force swap usage.  I am seeing
-> the cgroup controller killing my processes instead of using the nfs swapfile.
-> 
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-How sure are you that this is not a cgroup bug? For dirty file data on some
-kernels, cgroups can prematurely kill processes if pages are not being
-cleaned fast enough. I would not expect the same problem for anonymous
-pages but it's worth considering. Please also test with a normal swapfile.
+I can set all variables in the nfs_fill_super() function, allowing me to
+remove the nfs4_fill_super() function.
 
-If OOM is disabled and the process hangs, try capturing a sysrq+t and
-see where the process is stuck.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/internal.h  |  1 +
+ fs/nfs/nfs.h       |  2 ++
+ fs/nfs/nfs2super.c |  1 +
+ fs/nfs/nfs3super.c |  1 +
+ fs/nfs/nfs4super.c | 24 +++---------------------
+ fs/nfs/super.c     |  9 +++++----
+ 6 files changed, 13 insertions(+), 25 deletions(-)
 
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 2151baf..17d1470 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -327,6 +327,7 @@ void nfs_zap_acl_cache(struct inode *inode);
+ extern int nfs_wait_bit_killable(void *word);
+ 
+ /* super.c */
++extern const struct super_operations nfs_sops;
+ extern struct file_system_type nfs_fs_type;
+ extern struct file_system_type nfs_xdev_fs_type;
+ #ifdef CONFIG_NFS_V4
+diff --git a/fs/nfs/nfs.h b/fs/nfs/nfs.h
+index ac10b9e..9f502a0 100644
+--- a/fs/nfs/nfs.h
++++ b/fs/nfs/nfs.h
+@@ -16,6 +16,8 @@ struct nfs_subversion {
+ 	struct file_system_type *nfs_fs;	/* NFS filesystem type */
+ 	const struct rpc_version *rpc_vers;	/* NFS version information */
+ 	const struct nfs_rpc_ops *rpc_ops;	/* NFS operations */
++	const struct super_operations *sops;	/* NFS Super operations */
++	const struct xattr_handler **xattr;	/* NFS xattr handlers */
+ 	struct list_head list;		/* List of NFS versions */
+ };
+ 
+diff --git a/fs/nfs/nfs2super.c b/fs/nfs/nfs2super.c
+index cef06d4..a9fb69d 100644
+--- a/fs/nfs/nfs2super.c
++++ b/fs/nfs/nfs2super.c
+@@ -11,6 +11,7 @@ static struct nfs_subversion nfs_v2 = {
+ 	.nfs_fs   = &nfs_fs_type,
+ 	.rpc_vers = &nfs_version2,
+ 	.rpc_ops  = &nfs_v2_clientops,
++	.sops     = &nfs_sops,
+ };
+ 
+ int __init init_nfs_v2(void)
+diff --git a/fs/nfs/nfs3super.c b/fs/nfs/nfs3super.c
+index f815cf3..8378090 100644
+--- a/fs/nfs/nfs3super.c
++++ b/fs/nfs/nfs3super.c
+@@ -11,6 +11,7 @@ static struct nfs_subversion nfs_v3 = {
+ 	.nfs_fs   = &nfs_fs_type,
+ 	.rpc_vers = &nfs_version3,
+ 	.rpc_ops  = &nfs_v3_clientops,
++	.sops     = &nfs_sops,
+ };
+ 
+ int __init init_nfs_v3(void)
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+index a628362..c70e173 100644
+--- a/fs/nfs/nfs4super.c
++++ b/fs/nfs/nfs4super.c
+@@ -71,26 +71,11 @@ struct nfs_subversion nfs_v4 = {
+ 	.nfs_fs   = &nfs4_fs_type,
+ 	.rpc_vers = &nfs_version4,
+ 	.rpc_ops  = &nfs_v4_clientops,
++	.sops     = &nfs4_sops,
++	.xattr    = nfs4_xattr_handlers,
+ };
+ 
+ /*
+- * Set up an NFS4 superblock
+- */
+-static void nfs4_fill_super(struct super_block *sb,
+-			    struct nfs_mount_info *mount_info)
+-{
+-	sb->s_time_gran = 1;
+-	sb->s_op = &nfs4_sops;
+-	/*
+-	 * The VFS shouldn't apply the umask to mode bits. We will do
+-	 * so ourselves when necessary.
+-	 */
+-	sb->s_flags  |= MS_POSIXACL;
+-	sb->s_xattr = nfs4_xattr_handlers;
+-	nfs_initialise_sb(sb);
+-}
+-
+-/*
+  * Get the superblock for the NFS4 root partition
+  */
+ static struct dentry *
+@@ -101,7 +86,6 @@ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
+ 	struct nfs_server *server;
+ 	struct dentry *mntroot = ERR_PTR(-ENOMEM);
+ 
+-	mount_info->fill_super = nfs4_fill_super;
+ 	mount_info->set_security = nfs_set_sb_security;
+ 
+ 	/* Get a volume representation */
+@@ -236,8 +220,6 @@ struct dentry *nfs4_try_mount(int flags, const char *dev_name,
+ 
+ 	dfprintk(MOUNT, "--> nfs4_try_mount()\n");
+ 
+-	mount_info->fill_super = nfs4_fill_super;
+-
+ 	export_path = data->nfs_server.export_path;
+ 	data->nfs_server.export_path = "/";
+ 	root_mnt = nfs_do_root_mount(&nfs4_remote_fs_type, flags, mount_info,
+@@ -257,7 +239,7 @@ nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
+ 			   const char *dev_name, void *raw_data)
+ {
+ 	struct nfs_mount_info mount_info = {
+-		.fill_super = nfs4_fill_super,
++		.fill_super = nfs_fill_super,
+ 		.set_security = nfs_clone_sb_security,
+ 		.cloned = raw_data,
+ 	};
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index a5f9fb3..a275d19 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -298,7 +298,7 @@ struct file_system_type nfs_xdev_fs_type = {
+ 	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
+ };
+ 
+-static const struct super_operations nfs_sops = {
++const struct super_operations nfs_sops = {
+ 	.alloc_inode	= nfs_alloc_inode,
+ 	.destroy_inode	= nfs_destroy_inode,
+ 	.write_inode	= nfs_write_inode,
+@@ -2105,10 +2105,12 @@ void nfs_fill_super(struct super_block *sb, struct nfs_mount_info *mount_info)
+ 
+ 	sb->s_blocksize_bits = 0;
+ 	sb->s_blocksize = 0;
+-	if (data->bsize)
++	sb->s_xattr = server->nfs_client->cl_nfs_mod->xattr;
++	sb->s_op = server->nfs_client->cl_nfs_mod->sops;
++	if (data && data->bsize)
+ 		sb->s_blocksize = nfs_block_size(data->bsize, &sb->s_blocksize_bits);
+ 
+-	if (server->nfs_client->rpc_ops->version == 3) {
++	if (server->nfs_client->rpc_ops->version != 2) {
+ 		/* The VFS shouldn't apply the umask to mode bits. We will do
+ 		 * so ourselves when necessary.
+ 		 */
+@@ -2116,7 +2118,6 @@ void nfs_fill_super(struct super_block *sb, struct nfs_mount_info *mount_info)
+ 		sb->s_time_gran = 1;
+ 	}
+ 
+-	sb->s_op = &nfs_sops;
+  	nfs_initialise_sb(sb);
+ }
+ 
 -- 
-Mel Gorman
-SUSE Labs
+1.7.11.2
+
