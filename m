@@ -1,63 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41448 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755799Ab2GMLzY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jul 2012 07:55:24 -0400
-Date: Fri, 13 Jul 2012 07:55:22 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <trond@netapp.com>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: DCACHE_DISCONNECTED use in try_to_ascend/d_kill
-Message-ID: <20120713115522.GH24162@fieldses.org>
-References: <20120712222849.GE24162@fieldses.org>
- <20120712224008.GF24162@fieldses.org>
+Received: from hapkido.dreamhost.com ([66.33.216.122]:50708 "EHLO
+	hapkido.dreamhost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754135Ab2GXUCE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jul 2012 16:02:04 -0400
+Received: from homiemail-a86.g.dreamhost.com (caiajhbdccac.dreamhost.com [208.97.132.202])
+	by hapkido.dreamhost.com (Postfix) with ESMTP id 99B23167F
+	for <linux-nfs@vger.kernel.org>; Tue, 24 Jul 2012 13:02:03 -0700 (PDT)
+Received: from homiemail-a86.g.dreamhost.com (localhost [127.0.0.1])
+	by homiemail-a86.g.dreamhost.com (Postfix) with ESMTP id 7310E36006B
+	for <linux-nfs@vger.kernel.org>; Tue, 24 Jul 2012 13:00:58 -0700 (PDT)
+Received: from mail-gg0-f174.google.com (mail-gg0-f174.google.com [209.85.161.174])
+	(using TLSv1 with cipher RC4-SHA (128/128 bits))
+	(No client certificate requested)
+	(Authenticated sender: nico@cryptonector.com)
+	by homiemail-a86.g.dreamhost.com (Postfix) with ESMTPSA id 453EA36006A
+	for <linux-nfs@vger.kernel.org>; Tue, 24 Jul 2012 13:00:58 -0700 (PDT)
+Received: by gglu4 with SMTP id u4so7114012ggl.19
+        for <linux-nfs@vger.kernel.org>; Tue, 24 Jul 2012 13:00:57 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120712224008.GF24162@fieldses.org>
+In-Reply-To: <20120724193348.GA4977@netapp.com>
+References: <20120724193348.GA4977@netapp.com>
+Date: Tue, 24 Jul 2012 15:00:57 -0500
+Message-ID: <CAK3OfOji009CP88tDNOp-nvdPBkvp0oKfJUqhO_TYuZktwhUCg@mail.gmail.com>
+Subject: Re: [nfsv4] Constructing a NFSv4 ACL from POSIX mode bits
+From: Nico Williams <nico@cryptonector.com>
+To: "Haynes, Tom" <thomas@netapp.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, nfsv4@ietf.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 12, 2012 at 06:40:08PM -0400, J. Bruce Fields wrote:
-> On Thu, Jul 12, 2012 at 06:28:49PM -0400, bfields wrote:
-> > I've been trying to figure out if we can pare down DCACHE_DISCONNECTED
-> > uses to only those required by exportfs, and ran across this one.
-> 
-> There's also one DCACHE_DISCONNECTED use in fs/nfs/dir.c that I was
-> hoping could be eliminated.  It was added by Al with
-> d9e80b7de91db05c1c4d2e5ebbfd70b3b3ba0e0f.  It looks totally theoretical
-> to me (nfs isn't exportable, hence shouldn't see DCACHE_DISCONNECTED
-> dentries), but maybe I'm missing something.
+On Tue, Jul 24, 2012 at 2:33 PM, Haynes, Tom <thomas@netapp.com> wrote:
+> Bruce,
+>
+> In looking at http://tools.ietf.org/html/draft-ietf-nfsv4-acl-mapping-05, it
+> states that when mapping the write bit, only for the owner do we set
+> ACE4_WRITE_ACL.
+>
+> Back in version 00, it is open as to whether we can also set it for the
+> group and other if they have the write bit set.
+>
+> I looked back at the NFSv4 WG aliases and I see some discussion from Lisa
+> on how Solaris only ever sets it for the owner due to POSIX restrictions
+> via chmod(). So, now I know how another server does it.
 
-Ignore me, I'm confused: there's a different use of DCACHE_DISCONECTED
-here (for v2/v3 root dentries that we expect may one day be hooked into
-a parent we find someplace else?).  It looks to me like it clashes with
-nfsd/exportfs's use.  I'm not sure what to do about that.
+This has changed.  I wrote this up here:
 
---b.
+http://cryptonector.com/2011/11/zfs-aclchmod-interactions-in-solaris-11/
 
-> 
-> At a minimum maybe we could pull a comment out of Al's commit?:
-> 
-> --b.
-> 
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index f430057..b96c687 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -1194,6 +1194,12 @@ out_zap_parent:
->  		/* If we have submounts, don't unhash ! */
->  		if (have_submounts(dentry))
->  			goto out_valid;
-> +		/*
-> +		 * We can't d_drop the root of a disconnected tree:
-> +		 * its d_hash is on the s_anon list and d_drop() would hide
-> +		 * it from shrink_dcache_for_unmount(), leading to busy
-> +		 * inodes on unmount and further oopses.
-> +		 */
->  		if (dentry->d_flags & DCACHE_DISCONNECTED)
->  			goto out_valid;
->  		shrink_dcache_parent(dentry);
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+IIRC all ACEs for anything other than OWNER@ (or a user of the same
+name/ID) contribute to the group bits of the mode, the EVERYONE@ entry
+contributes to the world bits of the mode, and the OWNER@ and/or user
+ACEs for the owner name/ID contribute to the owner bits of the mode.
+
+The new scheme is really much simpler and more natural than everything
+else tried before.
+
+Nico
+--
