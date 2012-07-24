@@ -1,88 +1,197 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:58156 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:41333 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752101Ab2GaNaY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jul 2012 09:30:24 -0400
-Message-ID: <5017DDDB.6060500@netapp.com>
-Date: Tue, 31 Jul 2012 09:30:03 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+	id S1754116Ab2GXTki (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Jul 2012 15:40:38 -0400
+Date: Tue, 24 Jul 2012 15:40:37 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org,
+        neilb@suse.de
+Subject: Re: [PATCH v3] SUNRPC: protect service sockets lists during
+ per-net shutdown
+Message-ID: <20120724194036.GK8570@fieldses.org>
+References: <20120703125851.3850.86782.stgit@localhost.localdomain>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        Fengguang Wu <fengguang.wu@intel.com>,
-        "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [nfs:devel 46/51] fs/nfs/write.c:1592:5: error: redefinition
- of 'nfs_commit_inode'
-References: <20120731024328.GA10480@localhost>  <4FA345DA4F4AE44899BD2B03EEEC2FA934BE82@SACEXCMBX04-PRD.hq.netapp.com>  <5017D3FC.9010905@netapp.com> <1343739299.519.1.camel@lade.trondhjem.org> <5017D824.209@netapp.com>
-In-Reply-To: <5017D824.209@netapp.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120703125851.3850.86782.stgit@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/31/2012 09:05 AM, Bryan Schumaker wrote:
-> On 07/31/2012 08:55 AM, Myklebust, Trond wrote:
->> On Tue, 2012-07-31 at 08:47 -0400, Bryan Schumaker wrote:
->>> On 07/30/2012 11:14 PM, Myklebust, Trond wrote:
->>>> Bryan,
->>>>
->>>> Why did you switch to using IS_ENABLED in the first place, and why wasn't that put in a separate patch?
->>>
->>> IS_ENABLED() will check for CONFIG_NFS_V*_MODULE, last I checked the defined() macro doesn't.  Putting this into a separate patch makes the change non-bisectable since gcc will be checking against CONFIG_NFS_V3 but CONFIG_NFS_V3_MODULE is set.  Should I have changed the CONFIG_ variables instead of using IS_ENABLED()?
->>
->> Why is it evaluating differently in the include file vs. the .c file?
->> Are we missing an include in nfs_fs.h?
+On Tue, Jul 03, 2012 at 04:58:57PM +0400, Stanislav Kinsbursky wrote:
+> v3:
+> 1) rebased on 3.5-rc3 kernel.
 > 
-> Good question.  I don't see any reason that it would evaluate differently, but I'm compiling the .config attached to the initial email to try to figure it out.
-> 
+> v2: destruction of currently processing transport added:
+> 1) Added marking of currently processing transports with XPT_CLOSE on per-net
+> shutdown. These transports will be destroyed in svc_xprt_enqueue() (instead of
+> enqueueing).
 
-Looks like the IS_ENABLED() switch got pushed to the next patch for V3 in include/linux/nfs_fs.h.  Want me to resend the patches?  I took another look at how IS_ENABLED() is defined, and it'll work if I do the switch in the patch before I turn everything into separate modules if you want me to resend everything.
+That worries me:
 
-> - Bryan
-> 
->>
->>>>
->>>>
->>>>
->>>>> -----Original Message-----
->>>>> From: Fengguang Wu [mailto:fengguang.wu@intel.com]
->>>>> Sent: Monday, July 30, 2012 10:43 PM
->>>>> To: Schumaker, Bryan
->>>>> Cc: kernel-janitors@vger.kernel.org; Myklebust, Trond; linux-
->>>>> nfs@vger.kernel.org
->>>>> Subject: [nfs:devel 46/51] fs/nfs/write.c:1592:5: error: redefinition of
->>>>> 'nfs_commit_inode'
->>>>>
->>>>> Hi Bryan,
->>>>>
->>>>> Kernel build failed on
->>>>>
->>>>> tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git devel
->>>>> head:   5c13c9e1c15ee2ca9ab2b953224001af53d9be09
->>>>> commit: 1c606fb74c758beafd98cbad9a9133eadeec2371 [46/51] NFS: Convert
->>>>> v3 into a module
->>>>> config: blackfin-BF533-EZKIT_defconfig (attached as .config)
->>>>>
->>>>> All related error/warning messages:
->>>>>
->>>>> fs/nfs/write.c:1592:5: error: redefinition of 'nfs_commit_inode'
->>>>> In file included from fs/nfs/write.c:19:0:
->>>>> include/linux/nfs_fs.h:547:1: note: previous definition of 'nfs_commit_inode'
->>>>> was here
->>>>>
->>>>> vim +1592 fs/nfs/write.c
->>>>>   1589		return status;
->>>>>   1590	}
->>>>>   1591
->>>>>> 1592	int nfs_commit_inode(struct inode *inode, int how)
->>>>>   1593	{
->>>>>   1594		LIST_HEAD(head);
->>>>>   1595		struct nfs_commit_info cinfo;
->>>>>
->>>>> ---
->>>>> 0-DAY kernel build testing backend         Open Source Technology Centre
->>>>> Fengguang Wu <wfg@linux.intel.com>                     Intel Corporation
->>>
->>
-> 
+	- Why did we originally defer close until svc_recv?
+	- Are we sure there's no risk to performing it immediately in
+	  svc_enqueue?  Is it safe to call from the socket callbacks and
+	  wherever else we call svc_enqueue?
 
+And in the past I haven't been good at testing for problems
+here--instead they tend to show up when a use somewhere tries shutting
+down a server that's under load.
+
+I'll look more closely.  Meanwhile you could split out that change as a
+separate patch and convince me why it's right....
+
+--b.
+
+> 2) newly created temporary transport in svc_recv() will be destroyed, if it's
+> "parent" was marked with XPT_CLOSE.
+> 3) spin_lock(&serv->sv_lock) was replaced by spin_lock_bh() in
+> svc_close_net(&serv->sv_lock).
+> 
+> Service sv_tempsocks and sv_permsocks lists are accessible by tasks with
+> different network namespaces, and thus per-net service destruction must be
+> protected.
+> These lists are protected by service sv_lock. So lets wrap list munipulations
+> with this lock and move tranports destruction outside wrapped area to prevent
+> deadlocks.
+> 
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> ---
+>  net/sunrpc/svc_xprt.c |   56 ++++++++++++++++++++++++++++++++++++++++++++++---
+>  1 files changed, 52 insertions(+), 4 deletions(-)
+> 
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index 88f2bf6..4af2114 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -320,6 +320,7 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
+>  	struct svc_pool *pool;
+>  	struct svc_rqst	*rqstp;
+>  	int cpu;
+> +	int destroy = 0;
+>  
+>  	if (!svc_xprt_has_something_to_do(xprt))
+>  		return;
+> @@ -338,6 +339,17 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
+>  
+>  	pool->sp_stats.packets++;
+>  
+> +	/*
+> +	 * Check transport close flag. It could be marked as closed on per-net
+> +	 * service shutdown.
+> +	 */
+> +	if (test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
+> +		/* Don't enqueue transport if it has to be destroyed. */
+> +		dprintk("svc: transport %p have to be closed\n", xprt);
+> +		destroy++;
+> +		goto out_unlock;
+> +	}
+> +
+>  	/* Mark transport as busy. It will remain in this state until
+>  	 * the provider calls svc_xprt_received. We update XPT_BUSY
+>  	 * atomically because it also guards against trying to enqueue
+> @@ -374,6 +386,8 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
+>  
+>  out_unlock:
+>  	spin_unlock_bh(&pool->sp_lock);
+> +	if (destroy)
+> +		svc_delete_xprt(xprt);
+>  }
+>  EXPORT_SYMBOL_GPL(svc_xprt_enqueue);
+>  
+> @@ -714,6 +728,13 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+>  			__module_get(newxpt->xpt_class->xcl_owner);
+>  			svc_check_conn_limits(xprt->xpt_server);
+>  			spin_lock_bh(&serv->sv_lock);
+> +			if (test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
+> +				dprintk("svc_recv: found XPT_CLOSE on listener\n");
+> +				set_bit(XPT_DETACHED, &newxpt->xpt_flags);
+> +				spin_unlock_bh(&pool->sp_lock);
+> +				svc_delete_xprt(newxpt);
+> +				goto out_closed;
+> +			}
+>  			set_bit(XPT_TEMP, &newxpt->xpt_flags);
+>  			list_add(&newxpt->xpt_list, &serv->sv_tempsocks);
+>  			serv->sv_tmpcnt++;
+> @@ -739,6 +760,7 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+>  			len = xprt->xpt_ops->xpo_recvfrom(rqstp);
+>  		dprintk("svc: got len=%d\n", len);
+>  	}
+> +out_closed:
+>  	svc_xprt_received(xprt);
+>  
+>  	/* No data, incomplete (TCP) read, or accept() */
+> @@ -936,6 +958,7 @@ static void svc_clear_pools(struct svc_serv *serv, struct net *net)
+>  	struct svc_pool *pool;
+>  	struct svc_xprt *xprt;
+>  	struct svc_xprt *tmp;
+> +	struct svc_rqst *rqstp;
+>  	int i;
+>  
+>  	for (i = 0; i < serv->sv_nrpools; i++) {
+> @@ -947,11 +970,16 @@ static void svc_clear_pools(struct svc_serv *serv, struct net *net)
+>  				continue;
+>  			list_del_init(&xprt->xpt_ready);
+>  		}
+> +		list_for_each_entry(rqstp, &pool->sp_all_threads, rq_all) {
+> +			if (rqstp->rq_xprt && rqstp->rq_xprt->xpt_net == net)
+> +				set_bit(XPT_CLOSE, &rqstp->rq_xprt->xpt_flags);
+> +		}
+>  		spin_unlock_bh(&pool->sp_lock);
+>  	}
+>  }
+>  
+> -static void svc_clear_list(struct list_head *xprt_list, struct net *net)
+> +static void svc_clear_list(struct list_head *xprt_list, struct net *net,
+> +			   struct list_head *kill_list)
+>  {
+>  	struct svc_xprt *xprt;
+>  	struct svc_xprt *tmp;
+> @@ -959,7 +987,8 @@ static void svc_clear_list(struct list_head *xprt_list, struct net *net)
+>  	list_for_each_entry_safe(xprt, tmp, xprt_list, xpt_list) {
+>  		if (xprt->xpt_net != net)
+>  			continue;
+> -		svc_delete_xprt(xprt);
+> +		list_move(&xprt->xpt_list, kill_list);
+> +		set_bit(XPT_DETACHED, &xprt->xpt_flags);
+>  	}
+>  	list_for_each_entry(xprt, xprt_list, xpt_list)
+>  		BUG_ON(xprt->xpt_net == net);
+> @@ -967,6 +996,15 @@ static void svc_clear_list(struct list_head *xprt_list, struct net *net)
+>  
+>  void svc_close_net(struct svc_serv *serv, struct net *net)
+>  {
+> +	struct svc_xprt *xprt, *tmp;
+> +	LIST_HEAD(kill_list);
+> +
+> +	/*
+> +	 * Protect the lists, since they can be by tasks with different network
+> +	 * namespace contexts.
+> +	 */
+> +	spin_lock_bh(&serv->sv_lock);
+> +
+>  	svc_close_list(&serv->sv_tempsocks, net);
+>  	svc_close_list(&serv->sv_permsocks, net);
+>  
+> @@ -976,8 +1014,18 @@ void svc_close_net(struct svc_serv *serv, struct net *net)
+>  	 * svc_xprt_enqueue will not add new entries without taking the
+>  	 * sp_lock and checking XPT_BUSY.
+>  	 */
+> -	svc_clear_list(&serv->sv_tempsocks, net);
+> -	svc_clear_list(&serv->sv_permsocks, net);
+> +	svc_clear_list(&serv->sv_tempsocks, net, &kill_list);
+> +	svc_clear_list(&serv->sv_permsocks, net, &kill_list);
+> +
+> +	spin_unlock_bh(&serv->sv_lock);
+> +
+> +	/*
+> +	 * Destroy collected transports.
+> +	 * Note: tranports has been marked as XPT_DETACHED on svc_clear_list(),
+> +	 * so no need to protect againt list_del() in svc_delete_xprt().
+> +	 */
+> +	list_for_each_entry_safe(xprt, tmp, &kill_list, xpt_list)
+> +		svc_delete_xprt(xprt);
+>  }
+>  
+>  /*
+> 
