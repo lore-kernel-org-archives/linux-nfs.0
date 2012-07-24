@@ -1,41 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:49971 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:55946 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756391Ab2GQTSd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Jul 2012 15:18:33 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, fengguang.wu@intel.com
-Subject: [PATCH] NFS: exit_nfs_v4() shouldn't be an __exit function
-Date: Tue, 17 Jul 2012 15:18:30 -0400
-Message-Id: <1342552710-9752-1-git-send-email-bjschuma@netapp.com>
+	id S1754952Ab2GXWgU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Jul 2012 18:36:20 -0400
+Date: Tue, 24 Jul 2012 18:36:17 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Subject: Re: [PATCH v3 00/11] Series short description
+Message-ID: <20120724223617.GP8570@fieldses.org>
+References: <20120703161844.11911.92996.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120703161844.11911.92996.stgit@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Tue, Jul 03, 2012 at 08:19:23PM +0400, Stanislav Kinsbursky wrote:
+> v3: Rebased on Bruce's tree, "for-3.6" branch
+> 
+> v2: Rebased on Bruce's tree, "for-3.5" branch
 
-... yet.  Right now, init_nfs() is calling this function if an error is
-encountered when loading the nfs module.  An __exit function can't be
-called from one declared as __init.
+Aside from the one question, this looks OK to me.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/nfs4super.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+I seem to recall this needed to go through my tree for some reason, but
+does Trond still want a chance to ACK/NACK it?
 
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-index 2af2691..59264fb 100644
---- a/fs/nfs/nfs4super.c
-+++ b/fs/nfs/nfs4super.c
-@@ -352,7 +352,7 @@ out:
- 	return err;
- }
- 
--void __exit exit_nfs_v4(void)
-+void exit_nfs_v4(void)
- {
- 	unregister_filesystem(&nfs4_fs_type);
- 	nfs4_unregister_sysctl();
--- 
-1.7.11.2
+--b.
 
+> 
+> This patch set depeneds on "SUNRPC: separate per-net data creation from
+> service
+> creation" patch set sent earlier.
+> 
+> The following series implements...
+> 
+> ---
+> 
+> Stanislav Kinsbursky (11):
+>       NFS: pass net to nfs_callback_down()
+>       NFS: callback service creation function introduced
+>       NFS: move per-net callback thread initialization to nfs_callback_up_net()
+>       NFS: callback up - transport backchannel cleanup
+>       NFS: callback service start function introduced
+>       NFS: callback up - users counting cleanup
+>       NFS: make nfs_callback_tcpport per network context
+>       NFS: make nfs_callback_tcpport6 per network context
+>       NFS; callback per-net usage counting introduced
+>       NFS: add debug messages to callback down function
+>       NFS: get net after idr allocation
+> 
+> 
+>  fs/nfs/callback.c  |  288 ++++++++++++++++++++++++++++++++++------------------
+>  fs/nfs/callback.h  |    4 -
+>  fs/nfs/client.c    |    5 +
+>  fs/nfs/netns.h     |    3 +
+>  fs/nfs/nfs4state.c |    6 +
+>  5 files changed, 202 insertions(+), 104 deletions(-)
+> 
