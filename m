@@ -1,40 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:6014 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752814Ab2GIUDW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Jul 2012 16:03:22 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 03/14] NFS: State reclaim clears OPEN and LOCK state
-Date: Mon, 9 Jul 2012 20:03:21 +0000
-Message-ID: <1341864200.15267.15.camel@lade.trondhjem.org>
-References: <20120709153355.1604.14102.stgit@degas.1015granger.net>
-	 <20120709154409.1604.59004.stgit@degas.1015granger.net>
-In-Reply-To: <20120709154409.1604.59004.stgit@degas.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:38840 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755740Ab2GXPsr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jul 2012 11:48:47 -0400
+From: Vivek Trivedi <vtrivedi018@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Cc: Vivek Trivedi <vtrivedi018@gmail.com>, Namjae Jeon <linkinjeon@gmail.com>
+Subject: [PATCH] nfsd4: fix cr_principal comparison check in same_creds
+Date: Tue, 24 Jul 2012 21:18:20 +0530
+Message-Id: <1343144900-4522-1-git-send-email-vtrivedi018@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA3LTA5IGF0IDExOjQ0IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-QmVmb3JlIGJlZ2lubmluZyBzdGF0ZSByZWNvdmVyeSwgdGhlIHN0YXRlIG1hbmFnZXIgemFwcyBv
-cGVuIGFuZCBsb2NrDQo+IHN0YXRlIGZvciBlYWNoIG9wZW4gZmlsZSwgdGh1cyB0aGUgInN0YXRl
-LT5mbGFncyAmIGZsYWdzIiB0ZXN0IGluDQo+IG5mczQxX3tvcGVuLGxvY2t9X2V4cGlyZWQoKSBh
-bHdheXMgZmFpbHMgZHVyaW5nIHJlY2xhaW0uICBCdXQgb3Blbg0KPiByZWNvdmVyeSBpcyBzdGls
-bCBuZWVkZWQgZm9yIHRoZXNlIGZpbGVzLg0KPiANCj4gVG8gZm9yY2UgYSBjYWxsIHRvIG5mczRf
-b3Blbl9leHBpcmVkKCksIGNoYW5nZSB0aGUgZGVmYXVsdCByZXR1cm4NCj4gdmFsdWUgZm9yIG5m
-czQxX2NoZWNrX2V4cGlyZWRfc3RhdGVpZCgpIHRvIGZvcmNlIG9wZW4gcmVjb3ZlcnksIGFuZA0K
-PiB0aGUgZGVmYXVsdCByZXR1cm4gdmFsdWUgZm9yIG5mczQxX2NoZWNrX2xvY2tzKCkgdG8gZm9y
-Y2UgbG9jaw0KPiByZWNvdmVyeSwgaWYgdGhlIHJlcXVlc3RlZCBmbGFncyBhcmUgY2xlYXIuICBG
-aXggc3VnZ2VzdGVkIGJ5IEJyeWFuDQo+IFNjaHVtYWtlci4NCg0KVGhpcyBtYWtlcyBhYnNvbHV0
-ZWx5IG5vIHNlbnNlLi4uDQoNClRoZSBwb2ludCBvZiB0aGVzZSBmdW5jdGlvbiBzaG91bGQgYmUg
-dG8gdGVzdCBpZiB0aGUgc3RhdGVpZCBpcyBzdGlsbA0KdmFsaWQuIElmIGl0IGlzLCB0aGVuIHdl
-IG5lZWQgbm8gcmVjb3ZlcnkuDQpJZiB0aGUgc3RhdGVpZCBpcyBfbm90XyB2YWxpZCwgdGhlbiB3
-ZSBmcmVlIGl0LCBhbmQgdGhlbiBkZWNpZGUgaWYNCnJlY292ZXJ5IGlzIG5lZWRlZC4gVGhlIG9u
-bHkgZXhjZXB0aW9uIHRvIHRoYXQgcnVsZSBpcyBpZiBURVNUX1NUQVRFSUQNCnJldHVybnMgTkZT
-NEVSUl9CQURfU1RBVEVJRCwgKGluIHdoaWNoIGNhc2Ugd2UgZG9uJ3QgbmVlZCB0byBmcmVlIHRo
-ZQ0Kc3RhdGVpZCBidXQganVzdCByZWNvdmVyIGltbWVkaWF0ZWx5KS4NCg0KSU9XOiBUaGUgc3Rh
-dGUtPmZsYWdzIGFuZCBsc3AtPmxzX2ZsYWdzIHRlc3RzIHNob3VsZCBqdXN0IGJlIHJlbW92ZWQu
-DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0K
-TmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+This fixes a wrong check for same cr_principal in same_creds
+
+Signed-off-by: Vivek Trivedi <vtrivedi018@gmail.com>
+Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
+---
+ fs/nfsd/nfs4state.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 94effd5..e8ead04 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1215,7 +1215,7 @@ static bool groups_equal(struct group_info *g1, struct group_info *g2)
+ 	return true;
+ }
+ 
+-static int
++static bool
+ same_creds(struct svc_cred *cr1, struct svc_cred *cr2)
+ {
+ 	if ((cr1->cr_flavor != cr2->cr_flavor)
+@@ -1227,7 +1227,7 @@ same_creds(struct svc_cred *cr1, struct svc_cred *cr2)
+ 		return true;
+ 	if (!cr1->cr_principal || !cr2->cr_principal)
+ 		return false;
+-	return 0 == strcmp(cr1->cr_principal, cr1->cr_principal);
++	return 0 == strcmp(cr1->cr_principal, cr2->cr_principal);
+ }
+ 
+ static void gen_clid(struct nfs4_client *clp)
+-- 
+1.7.1
+
