@@ -1,171 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:2201 "EHLO mx2.netapp.com"
+Received: from mail-in.ebuddy.com ([194.151.176.130]:29198 "EHLO hq.ebuddy.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752126Ab2GPUj3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Jul 2012 16:39:29 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 07/12] NFS: Move the v4 getroot code to nfs4getroot.c
-Date: Mon, 16 Jul 2012 16:39:16 -0400
-Message-Id: <1342471161-22452-8-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1342471161-22452-1-git-send-email-bjschuma@netapp.com>
-References: <1342471161-22452-1-git-send-email-bjschuma@netapp.com>
+	id S932247Ab2GXTEL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jul 2012 15:04:11 -0400
+From: Taylan Develioglu <tdevelioglu@ebuddy.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Tue, 24 Jul 2012 20:58:43 +0200
+Subject: rpc_exit_task warning.
+Message-ID: <FF1DF58D04F11D4291D09795D1A4EF16180E4C4AD8@SRV-MAIL>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Hi,
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/Makefile      |  2 +-
- fs/nfs/getroot.c     | 50 --------------------------------------------------
- fs/nfs/nfs4getroot.c | 49 +++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 50 insertions(+), 51 deletions(-)
- create mode 100644 fs/nfs/nfs4getroot.c
+We just deployed a new nfs server and have about a hundred clients connected but are getting repeated kernel warnings on the server:
 
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index e882a38..ec13afe 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -15,7 +15,7 @@ nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
- nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
- 			   nfs4super.o nfs4file.o delegation.o idmap.o \
- 			   callback.o callback_xdr.o callback_proc.o \
--			   nfs4namespace.o
-+			   nfs4namespace.o nfs4getroot.o
- nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
- 
- ifeq ($(CONFIG_SYSCTL), y)
-diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
-index a67990f..4654ced 100644
---- a/fs/nfs/getroot.c
-+++ b/fs/nfs/getroot.c
-@@ -23,21 +23,15 @@
- #include <linux/sunrpc/stats.h>
- #include <linux/nfs_fs.h>
- #include <linux/nfs_mount.h>
--#include <linux/nfs4_mount.h>
- #include <linux/lockd/bind.h>
- #include <linux/seq_file.h>
- #include <linux/mount.h>
--#include <linux/nfs_idmap.h>
- #include <linux/vfs.h>
- #include <linux/namei.h>
- #include <linux/security.h>
- 
- #include <asm/uaccess.h>
- 
--#include "nfs4_fs.h"
--#include "delegation.h"
--#include "internal.h"
--
- #define NFSDBG_FACILITY		NFSDBG_CLIENT
- 
- /*
-@@ -135,47 +129,3 @@ out:
- 	nfs_free_fattr(fsinfo.fattr);
- 	return ret;
- }
--
--#ifdef CONFIG_NFS_V4
--
--int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh)
--{
--	struct nfs_fsinfo fsinfo;
--	int ret = -ENOMEM;
--
--	dprintk("--> nfs4_get_rootfh()\n");
--
--	fsinfo.fattr = nfs_alloc_fattr();
--	if (fsinfo.fattr == NULL)
--		goto out;
--
--	/* Start by getting the root filehandle from the server */
--	ret = nfs4_proc_get_rootfh(server, mntfh, &fsinfo);
--	if (ret < 0) {
--		dprintk("nfs4_get_rootfh: getroot error = %d\n", -ret);
--		goto out;
--	}
--
--	if (!(fsinfo.fattr->valid & NFS_ATTR_FATTR_TYPE)
--			|| !S_ISDIR(fsinfo.fattr->mode)) {
--		printk(KERN_ERR "nfs4_get_rootfh:"
--		       " getroot encountered non-directory\n");
--		ret = -ENOTDIR;
--		goto out;
--	}
--
--	if (fsinfo.fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL) {
--		printk(KERN_ERR "nfs4_get_rootfh:"
--		       " getroot obtained referral\n");
--		ret = -EREMOTE;
--		goto out;
--	}
--
--	memcpy(&server->fsid, &fsinfo.fattr->fsid, sizeof(server->fsid));
--out:
--	nfs_free_fattr(fsinfo.fattr);
--	dprintk("<-- nfs4_get_rootfh() = %d\n", ret);
--	return ret;
--}
--
--#endif /* CONFIG_NFS_V4 */
-diff --git a/fs/nfs/nfs4getroot.c b/fs/nfs/nfs4getroot.c
-new file mode 100644
-index 0000000..6a83780
---- /dev/null
-+++ b/fs/nfs/nfs4getroot.c
-@@ -0,0 +1,49 @@
-+/*
-+* Copyright (C) 2006 Red Hat, Inc. All Rights Reserved.
-+* Written by David Howells (dhowells@redhat.com)
-+*/
-+
-+#include <linux/nfs_fs.h>
-+#include "nfs4_fs.h"
-+
-+#define NFSDBG_FACILITY		NFSDBG_CLIENT
-+
-+int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh)
-+{
-+	struct nfs_fsinfo fsinfo;
-+	int ret = -ENOMEM;
-+
-+	dprintk("--> nfs4_get_rootfh()\n");
-+
-+	fsinfo.fattr = nfs_alloc_fattr();
-+	if (fsinfo.fattr == NULL)
-+		goto out;
-+
-+	/* Start by getting the root filehandle from the server */
-+	ret = nfs4_proc_get_rootfh(server, mntfh, &fsinfo);
-+	if (ret < 0) {
-+		dprintk("nfs4_get_rootfh: getroot error = %d\n", -ret);
-+		goto out;
-+	}
-+
-+	if (!(fsinfo.fattr->valid & NFS_ATTR_FATTR_TYPE)
-+			|| !S_ISDIR(fsinfo.fattr->mode)) {
-+		printk(KERN_ERR "nfs4_get_rootfh:"
-+		       " getroot encountered non-directory\n");
-+		ret = -ENOTDIR;
-+		goto out;
-+	}
-+
-+	if (fsinfo.fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL) {
-+		printk(KERN_ERR "nfs4_get_rootfh:"
-+		       " getroot obtained referral\n");
-+		ret = -EREMOTE;
-+		goto out;
-+	}
-+
-+	memcpy(&server->fsid, &fsinfo.fattr->fsid, sizeof(server->fsid));
-+out:
-+	nfs_free_fattr(fsinfo.fattr);
-+	dprintk("<-- nfs4_get_rootfh() = %d\n", ret);
-+	return ret;
-+}
--- 
-1.7.11.2
+Clients and servers run 3.2.18 and 3.2.20 respectively. We do not use any security options.
 
+I don't really have time to debug this, but I felt I should report it.
+
+- Client
+  ii  libevent-1.4-2                      1.4.13-stable-1
+  ii  util-linux                          2.17.2-9
+  ii  linux-image-3.2.0-0.bpo.2-amd64     3.2.18-1~bpo60+1
+  ii  nfs-common                          1:1.2.2-4squeeze2
+
+- Server
+  ii  libevent-1.4-2                      1.4.13-stable-1
+  ii  util-linux                          2.17.2-9
+  ii  linux-image-3.2.0-0.bpo.2-amd64     3.2.20-1~bpo60+1
+  ii  libnfsidmap2                        0.24-1~bpo60+1               
+  ii  nfs-common                          1:1.2.5-4~bpo60+1            
+  ii  nfs-kernel-server                   1:1.2.5-4~bpo60+1            
+
+exportfs -v
+/var/www/pictures
+                x.x.x.x/22(rw,async,wdelay,root_squash,all_squash,no_subtree_check,anonuid=33,anongid=33)
+/var/www/pictures
+                10.40.0.0/23(rw,async,wdelay,root_squash,all_squash,no_subtree_check,anonuid=33,anongid=33)
+
+----------------------------------------------------------------------------------------
+[ 1913.662849] WARNING: at /build/buildd-linux_3.2.20-1~bpo60+1-amd64-tQMw4f/linux-3.2.20/net/sunrpc/sched.c:630 rpc_exit_task+0x40/0x7a [sunrpc]()
+[ 1913.662851] Hardware name: X8STi
+[ 1913.662852] Modules linked in: nfsd nfs lockd fscache auth_rpcgss nfs_acl sunrpc hmac drbd lru_cache cn ipmi_si ipmi_devintf ipmi_msghandler loop tpm_tis tpm parport_pc i2c_i801 i7core_edac i2c_core snd_pcm snd_timer snd ioatdma soundcore tpm_bios snd_page_alloc parport edac_core dca pcspkr psmouse processor serio_raw thermal_sys evdev joydev button ext4 mbcache jbd2 crc16 dm_mod sg sr_mod cdrom ses enclosure sd_mod crc_t10dif usb_storage usbhid hid uas uhci_hcd mptsas mptscsih mptbase scsi_transport_sas ahci libahci ehci_hcd libata usbcore aacraid usb_common scsi_mod e1000e [last unloaded: scsi_wait_scan]
+[ 1913.662902] Pid: 11, comm: kworker/0:1 Tainted: G        W    3.2.0-0.bpo.2-amd64 #1
+[ 1913.662904] Call Trace:
+[ 1913.662909]  [<ffffffff810498ac>] ? warn_slowpath_common+0x78/0x8c
+[ 1913.662916]  [<ffffffffa0327871>] ? rpc_exit_task+0x40/0x7a [sunrpc]
+[ 1913.662922]  [<ffffffffa0327ddb>] ? __rpc_execute+0x71/0x23f [sunrpc]
+[ 1913.662928]  [<ffffffffa0327fe1>] ? rpc_execute+0x38/0x38 [sunrpc]
+[ 1913.662981]  [<ffffffff8105f96c>] ? process_one_work+0x1cc/0x2ea
+[ 1913.662985]  [<ffffffff8105fbb7>] ? worker_thread+0x12d/0x247
+[ 1913.662987]  [<ffffffff8105fa8a>] ? process_one_work+0x2ea/0x2ea
+[ 1913.662990]  [<ffffffff8105fa8a>] ? process_one_work+0x2ea/0x2ea
+[ 1913.662993]  [<ffffffff810633c5>] ? kthread+0x7a/0x82
+[ 1913.662998]  [<ffffffff8136ca74>] ? kernel_thread_helper+0x4/0x10
+[ 1913.663000]  [<ffffffff8106334b>] ? kthread_worker_fn+0x147/0x147
+[ 1913.663003]  [<ffffffff8136ca70>] ? gs_change+0x13/0x13
+[ 1913.663005] ---[ end trace 7cee9f1fd80fe6ac ]---
+----------------------------------------------------------------------------------------
+
+Regards,
+
+Taylan
