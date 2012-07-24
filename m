@@ -1,45 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:42389 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751868Ab2GSJtf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jul 2012 05:49:35 -0400
-Message-ID: <5007D809.2010502@panasas.com>
-Date: Thu, 19 Jul 2012 12:48:57 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from fieldses.org ([174.143.236.118]:43184 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755106Ab2GXQYY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Jul 2012 12:24:24 -0400
+Date: Tue, 24 Jul 2012 12:24:20 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Namjae Jeon <linkinjeon@gmail.com>
+Cc: SteveD@redhat.com, Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Vivek Trivedi <vtrivedi018@gmail.com>
+Subject: Re: [PATCH] nfs-util: Add cache_flush in mountd UMNT procedure.
+Message-ID: <20120724162420.GG8570@fieldses.org>
+References: <1341717459-7297-1-git-send-email-linkinjeon@gmail.com>
+ <20120710145937.GA1947@fieldses.org>
+ <CAKYAXd97ir=tvxWTC4eVmrrXBEpK=XCX3-e8XUjCPy16eHoibQ@mail.gmail.com>
+ <20120711140944.GB11432@fieldses.org>
+ <CAKYAXd__BLFPOw=+tt=cqZgyM45y5mSOTamVaFTU26BNSNa=2A@mail.gmail.com>
+ <CAKYAXd9KLxDqXSqgk7Y1rNv9cw-r+PHPSenQCnkRh9_0_6HmAQ@mail.gmail.com>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>,
-        Benny Halevy <bhalevy@tonian.com>, Peng Tao <bergwolf@gmail.com>
-Subject: Re: [RFC 0/5] CRASHFIX: pnfs-obj: NONE-RPC LD must not call rpc_restart_call_prepare()
-References: <4FD1CEA8.3090105@panasas.com> <4FFEDB17.5050001@panasas.com> <1342652848.7323.5.camel@lade.trondhjem.org>
-In-Reply-To: <1342652848.7323.5.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAKYAXd9KLxDqXSqgk7Y1rNv9cw-r+PHPSenQCnkRh9_0_6HmAQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/19/2012 02:07 AM, Myklebust, Trond wrote:
+On Thu, Jul 12, 2012 at 07:43:49AM +0900, Namjae Jeon wrote:
+> 2012/7/12, Namjae Jeon <linkinjeon@gmail.com>:
+> > 2012/7/11, J. Bruce Fields <bfields@fieldses.org>:
+> >> On Wed, Jul 11, 2012 at 01:10:53PM +0900, Namjae Jeon wrote:
+> >>> 2012/7/10, J. Bruce Fields <bfields@fieldses.org>:
+> >>> > On Sat, Jul 07, 2012 at 11:17:39PM -0400, Namjae Jeon wrote:
+> >>> >> For removing storage device - user needs to safely un-mount the
+> >>> >> device
+> >>> >> and then eject. But if 'EBUSY' occurs in umount then it will create
+> >>> >> confusion for the user as it will mean some I/O is in progress - and
+> >>> >> won't allow user to safely ejecting device.
+> >>> >
+> >>> Hi James.
+> >>> > The one drawback is that recovering from the cache flushes might be a
+> >>> > little expensive if you have a lot of exports in use.
+> >>> Good point. I will look for more there is the method flush only mount
+> >>> entry.
+> >>
+> >> I don't think there's a good way to flush only one entry.
+> >>
+> >> Also, this isn't going to help for NFSv4 since a v4 client won't do an
+> >> unmount call.
+> > Okay.
+> >>
+> >>> > I'm curious, since you said this was for a usb disk: are users
+> >>> > expected
+> >>> > to just unplug it (in which case--is it read only?) or do they have
+> >>> > some
+> >>> > way of unmounting before they pull the plug?
+> >>> Users expected to unplug it on both read only and read/write.
+> >>> And there is no way that system be prepared to know about the
+> >>> intelligence when the user is going to unplug.
+> >>> if the user really want to detach the device safely. There is an
+> >>> option like the desktop PC - where, we can say - umount/eject the
+> >>> device. There is a proper user interface for safe removal.
+> >>> but they can not unplug safely if usb device is mounted with nfs
+> >>> because of this issue.
+> >>
+> >> Ideal might be to get some way to notify nfsd when the device
+> >> diseappears or the filesystem wants to unmount.  I don't know how to do
+> >> that.
+> > Okay. I will look for good solution for this issue.
+> > Thanks.
+> Hi James.
+> I have a question.
+> If we found the method to notify nfs when unplugging device,
 
->> NFS41: add pg_layout_private to nfs_pageio_descriptor
-> 
-> This one is the only patch that really affects the core NFS code, but
-> I'm having trouble seeing what is defining hdr->layout_private in this
-> patch series, and where it is being used.
-> 
-> Am I missing some dependencies here?
-> 
+What's that?
 
+> Can nfsd
+> flush only entry of usb mount ?
 
-No! It's all here:
-	[patch 5/6] NFS41: add pg_layout_private to nfs_pageio_descriptor
+Hm, I don't think there's anything that does that now.  But I think if
+you look it up and set the cache item's expiry_time to the current unix
+time in seconds, that'd be at least a start.
 
-Just adds a single hdr->layout_private member
-and:
-	[PATCH 6/6] pnfs-obj: Better IO pattern in case of unaligned offset
+Come to think of it you should actually be able to do that from
+userspace if you want: just write a negative cache entry for that
+export.
 
-Uses above member.
+However you do this there may still be some brief delay while some
+thread finishes processing an rpc using the entry; I don't know what to
+do about that.  It's unlikely in your case (where clients have unmounted
+first).
 
-In any way I have new versions of these for the merge window I'll send
-them tonight.
-
-Thanks
-Boaz
+--b.
