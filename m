@@ -1,61 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:3926 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:31713 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752103Ab2GJWMP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jul 2012 18:12:15 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Simo Sorce <simo@redhat.com>, "bfields@redhat.com" <bfields@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/4] Add support for new RPCSEC_GSS upcall mechanism for
- nfsd
-Date: Tue, 10 Jul 2012 22:12:13 +0000
-Message-ID: <1341958332.17428.12.camel@lade.trondhjem.org>
-References: <1337983796-26476-1-git-send-email-simo@redhat.com>
-	 <20120710204913.GA6038@fieldses.org>
-	 <1341957169.17428.4.camel@lade.trondhjem.org>
-	 <20120710215618.GC6038@fieldses.org>
-In-Reply-To: <20120710215618.GC6038@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+	id S1756366Ab2GYM57 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jul 2012 08:57:59 -0400
+Subject: [PATCH v2 06/15] Lockd: add more debug to host shutdown functions
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Wed, 25 Jul 2012 16:56:35 +0400
+Message-ID: <20120725125635.24376.51001.stgit@localhost.localdomain>
+In-Reply-To: <20120725125258.24376.82525.stgit@localhost.localdomain>
+References: <20120725125258.24376.82525.stgit@localhost.localdomain>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA3LTEwIGF0IDE3OjU2IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIFR1ZSwgSnVsIDEwLCAyMDEyIGF0IDA5OjUyOjUxUE0gKzAwMDAsIE15a2xlYnVzdCwg
-VHJvbmQgd3JvdGU6DQo+ID4gT24gVHVlLCAyMDEyLTA3LTEwIGF0IDE2OjQ5IC0wNDAwLCBKLiBC
-cnVjZSBGaWVsZHMgd3JvdGU6DQo+ID4gPiBPbiBGcmksIE1heSAyNSwgMjAxMiBhdCAwNjowOTo1
-MlBNIC0wNDAwLCBTaW1vIFNvcmNlIHdyb3RlOg0KPiA+ID4gPiBUaGlzIHBhdGNoc2V0IGltcGxl
-bWVudHMgYSBuZXcgdXBjYWxsIG1lY2hhbmlzbSB0aGF0IHVzZXMgdGhlIHN1bnJwYw0KPiA+ID4g
-PiBjbGllbnQgdG8gdGFsayB0byBnc3Nwcm94eVsxXSwgYSBuZXcgdXNlcnNwYWNlIGRhZW1vbiB0
-aGF0IGhhbmRsZXMgZ3NzYXBpDQo+ID4gPiA+IG9wZXJhdGlvbnMgb24gYmVoYWxmIG9mIG90aGVy
-IHByb2Nlc3NlcyBvbiB0aGUgc3lzdGVtLg0KPiA+ID4gPiANCj4gPiA+ID4gVGhlIG1haW4gZHJp
-dmVyIGZvciB0aGlzIG5ldyBtZWNoYW5pc20gaXMgdG8gb3ZlcmNvbWUgbGltaXRhdGlvbnMgd2l0
-aA0KPiA+ID4gPiB0aGUgY3VycmVudCBkYWVtb24gYW5kIHVwY2FsbC4gVGhlIGN1cnJlbnQgY29k
-ZSBjYW5ub3QgaGFuZGxlIHRpY2tldHMNCj4gPiA+ID4gbGFyZ2VyIHRoYW4gYXBwcm94aW1hdGl2
-ZWx5IDJrIGFuZCBjYW5ub3QgaGFuZGxlIHNlbmRpbmcgYmFjayBsYXJnZSB1c2VyDQo+ID4gPiA+
-IGNyZWRlbnRpYWwgc2V0cyB0byB0aGUga2VybmVsLg0KPiA+ID4gPiANCj4gPiA+ID4gVGhlc2Ug
-cGF0Y2hlcyBoYXZlIGJlZW4gdGVzdGVkIGFnYWluc3QgdGhlIGRldmVsb3BtZW50IHZlcnNpb24g
-b2YgZ3NzcHJveHkNCj4gPiA+ID4gdGFnZ2VkIGFzIGtlcm5lbF92MC4xIGluIHRoZSBtYXN0ZXIg
-cmVwb1syXS4NCj4gPiA+ID4gDQo+ID4gPiA+IEkgaGF2ZSB0ZXN0ZWQgd2Fsa2luZyBpbnRvIG1v
-dW50cG9pbnRzIHVzaW5nIHRpY2tldHMgYXJ0aWZpY2lhbGx5IHB1bXBlZA0KPiA+ID4gPiB1cCB0
-byA2NGsgYW5kIHRoZSB1c2VyIGlzIHByb3Blcmx5IGF1dGhvcml6ZWQsIGFmdGVyIHRoZSBhY2Nl
-cHRfc2VfY29udGV4dA0KPiA+ID4gPiBjYWxsIGlzIHBlcmZvcm1lZCB0aHJvdWdoIHRoZSBuZXcg
-dXBjYWxsIG1lY2hhbmlzbSBhbmQgZ3NzcHJveHkuDQo+ID4gPiA+IA0KPiA+ID4gPiBUaGUgZ3Nz
-cHJveHkgaGFzIHRoZSBwb3RlbnRpYWwgb2YgaGFuZGxpbmcgYWxzbyBpbml0X3NlY19jb250ZXh0
-IGNhbGxzLA0KPiA+ID4gPiBidXQgYXQgdGhlIG1vbWVudCB0aGUgb25seSB0YXJnZXRlZCBzeXN0
-ZW0gaXMgbmZzZC4NCj4gPiA+IA0KPiA+ID4gT0ssIGFic2VudCBvYmplY3Rpb25zIGZyb20gYW55
-b25lIGVsc2UgSSdtIGNvbW1pdGluZyB0aGVzZSBmb3IgMy42IGFuZA0KPiA+ID4gcHVzaGluZyB0
-aGVtIG91dCBzb29uIHBlbmRpbmcgc29tZSByZWdyZXNzaW9uIHRlc3RpbmcuICBUaGFua3MhDQo+
-ID4gDQo+ID4gUGxlYXNlIHRlc3QgdGhhdCB0aGUgTkZTdjQgYmFja2NoYW5uZWwgY29udGludWVz
-IHRvIHdvcmsgdW5jaGFuZ2VkIHdpdGgNCj4gPiB0aGUgZXhpc3RpbmcgcnBjLnN2Y2dzc2QgYmVm
-b3JlIHlvdSBjb21taXQuDQo+ID4gDQo+ID4gSSBkb24ndCBjYXJlIHdoYXQgaGFwcGVucyB0byB0
-aGUgTkZTIHNlcnZlciwgYnV0IEkgZG8gZXhwZWN0IGFsbA0KPiA+IGV4aXN0aW5nIE5GU3Y0IGNs
-aWVudCBzZXR1cHMgdG8gd29yayB3aXRob3V0IGFueSBuZWVkIGZvciBjaGFuZ2VzLg0KPiANCj4g
-VGhlIHJwYyBzZXJ2ZXIncyBhdXRoZW50aWNhdGlvbiBtZXRob2QgaXMgZ2xvYmFsIHRvIHRoZSBt
-YWNoaW5lLCBzbyBpZg0KPiB0aGUgTkZTIHNlcnZlciBpcyB1c2luZyBnc3MgcHJveHksIHRoZW4g
-SSBiZWxpZXZlIHRoZSBjYWxsYmFjayBzZXJ2ZXINCj4gd2lsbCBiZSBhcyB3ZWxsLg0KDQpUaGVu
-IHdoeSBpcyBpdCBiZWluZyBsYWJlbGxlZCBhcyBhIGtuZnNkLW9ubHkgY2hhbmdlPw0KSG93IHdp
-bGwgaXQgYmVoYXZlIGlmIEkgZG9uJ3QgcnVuIGdzcyBwcm94eT8NCg0KDQotLSANClRyb25kIE15
-a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlr
-bGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/lockd/host.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index 8cbf53d..0084ab8 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -608,11 +608,10 @@ nlm_shutdown_hosts_net(struct net *net)
+ 	struct hlist_node *pos;
+ 	struct nlm_host	*host;
+ 
+-	dprintk("lockd: shutting down host module\n");
+ 	mutex_lock(&nlm_host_mutex);
+ 
+ 	/* First, make all hosts eligible for gc */
+-	dprintk("lockd: nuking all hosts...\n");
++	dprintk("lockd: nuking all hosts in net %p...\n", net);
+ 	for_each_host(host, pos, chain, nlm_server_hosts) {
+ 		if (net && host->net != net)
+ 			continue;
+@@ -637,6 +636,7 @@ nlm_shutdown_hosts_net(struct net *net)
+ void
+ nlm_shutdown_hosts(void)
+ {
++	dprintk("lockd: shutting down host module\n");
+ 	nlm_shutdown_hosts_net(NULL);
+ }
+ 
+
