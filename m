@@ -1,45 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailout-de.gmx.net ([213.165.64.22]:57609 "HELO
-	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1754482Ab2GBJnv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jul 2012 05:43:51 -0400
-Message-ID: <4FF16D54.6090200@gmx.com>
-Date: Mon, 02 Jul 2012 11:43:48 +0200
-From: Andreas Heinlein <aheinlein@gmx.com>
+Received: from fieldses.org ([174.143.236.118]:60043 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756300Ab2GYN3a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jul 2012 09:29:30 -0400
+Date: Wed, 25 Jul 2012 09:29:27 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Nico Williams <nico@cryptonector.com>
+Cc: "Haynes, Tom" <thomas@netapp.com>, linux-nfs@vger.kernel.org,
+        nfsv4@ietf.org
+Subject: Re: [nfsv4] Constructing a NFSv4 ACL from POSIX mode bits
+Message-ID: <20120725132927.GB16617@fieldses.org>
+References: <20120724193348.GA4977@netapp.com>
+ <CAK3OfOji009CP88tDNOp-nvdPBkvp0oKfJUqhO_TYuZktwhUCg@mail.gmail.com>
+ <20120724200932.GM8570@fieldses.org>
+ <CAK3OfOiKYJjmDEsOOFqg3wD8pwBir4B4CpOTF1Ab3jdHhJTKwA@mail.gmail.com>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: Kernel NFSd CPU hog?
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAK3OfOiKYJjmDEsOOFqg3wD8pwBir4B4CpOTF1Ab3jdHhJTKwA@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On Tue, Jul 24, 2012 at 03:29:07PM -0500, Nico Williams wrote:
+> On Tue, Jul 24, 2012 at 3:09 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > But Tom was asking above only about ACE4_WRITE_ACL.  And possibly only
+> > in the legacy case.  (Does ZFS have a real ACE4_WRITE_ACL bit?)
+> 
+> Ah, oops.  That's trickier.  The examples don't say (or I'm not seeing
+> it).  IMO the most reasonable thing to do is to make chmod mask away
+> the ACE4_WRITE_ACL bits of non-OWNER@/non-owner-user ACEs, but
+> subsequent ACL writes can restore ACE4_WRITE_ACL without contributing
+> to the w group or world bits of mode.
+> 
+> That is: to make aclmode=mask most natural and usable a chmod must
+> have the expected POSIX behavior of taking away or granting access,
+> but never granting anything like ACE4_WRITE_ACL to non-owners, while
+> an ACL write should should be able to grant much more access than
+> chmod and it should compute a new mode that is as close as possible to
+> the new ACL.  This requires storing a mode, an ACL, and one bit to
+> indicate whether the ACL was set after the mode or the mode after the
+> ACL.
 
-we have a strange NFS problem with a newly setup Linux server, and I 
-hope someone here can help.
+I was with you up to the "one bit to indicate...".  That doesn't sound
+necessary to implement the behavior you describe.
 
-The symptom is that, slowly over time (speaking of several days up to 2 
-weeks), the kernel nfsd processes/threads consume more and more CPU 
-until the system finally becomes unresponsive. We recorded system 
-activity with sar, which shows that CPU (system) usage slowly rises 
-after reboot from about 1% to nearly 100% over the course of several 
-days. Load averages stay around 0.1-0.3 until 100% are reached, up to 
-this point the problem is almost not noticable from the clients. Then 
-load averages climb up to 30.0; at this point the system becomes more or 
-less unusable and has to be restarted. 'top' output shows the CPU usage 
-evenly distributed across all nfsd threads.
-
-The system is a fairly recent, though entry level server with a Core i3 
-and 4G RAM, hosting the home directories for about 15-20 clients. CPU 
-activity does not drop at night, when no clients are connected. It is 
-running Debian 6.0 with linux 3.2.0 (from the backports repository), 
-with nfs-utils 1.2.5 (also from the backports repository). I suspect 
-that these backports might be the culprit, but since we need this kernel 
-for other purposes, and I cannot reboot that machine during office 
-hours, I'd rather not try going back to the official Debian kernel 
-without good reasons. If there are known problems, I'd give it a try.
-
-Can anyone help me?
-
-Thanks,
-Andreas
+--b.
