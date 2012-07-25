@@ -1,243 +1,191 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:4387 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:32452 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753322Ab2GPUje (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Jul 2012 16:39:34 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 12/12] NFS: Split out NFS v4 client functions
-Date: Mon, 16 Jul 2012 16:39:21 -0400
-Message-Id: <1342471161-22452-13-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1342471161-22452-1-git-send-email-bjschuma@netapp.com>
-References: <1342471161-22452-1-git-send-email-bjschuma@netapp.com>
+	id S1753501Ab2GYPxn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jul 2012 11:53:43 -0400
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 1/2] NFS: Fix a number of bugs in the idmapper
+To: Trond.Myklebust@netapp.com, bjschuma@netapp.com
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com, jlayton@redhat.com,
+        David Howells <dhowells@redhat.com>
+Date: Wed, 25 Jul 2012 16:53:36 +0100
+Message-ID: <20120725155336.24392.25186.stgit@warthog.procyon.org.uk>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Fix a number of bugs in the NFS idmapper code:
 
-These functions are only needed by NFS v4, so they can be moved into a
-v4 specific file.
+ (1) Only registered key types can be passed to the core keys code, so
+     register the legacy idmapper key type.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+     This is a requirement because the unregister function cleans up keys
+     belonging to that key type so that there aren't dangling pointers to the
+     module left behind - including the key->type pointer.
+
+ (2) Rename the legacy key type.  You can't have two key types with the same
+     name, and (1) would otherwise require that.
+
+ (3) complete_request_key() must be called in the error path of
+     nfs_idmap_legacy_upcall().
+
+ (4) There is one idmap struct for each nfs_client struct.  This means that
+     idmap->idmap_key_cons is shared without the use of a lock.  This is a
+     problem because key_instantiate_and_link() - as called indirectly by
+     idmap_pipe_downcall() - releases anyone waiting for the key to be
+     instantiated.
+
+     What happens is that idmap_pipe_downcall() running in the rpc.idmapd
+     thread, releases the NFS filesystem in whatever thread that is running in
+     to continue.  This may then make another idmapper call, overwriting
+     idmap_key_cons before idmap_pipe_downcall() gets the chance to call
+     complete_request_key().
+
+     I *think* that reading idmap_key_cons only once, before
+     key_instantiate_and_link() is called, and then caching the result in a
+     variable is sufficient.
+
+Bug (4) is the cause of:
+
+BUG: unable to handle kernel NULL pointer dereference at           (null)
+IP: [<          (null)>]           (null)
+PGD 0
+Oops: 0010 [#1] SMP
+CPU 1
+Modules linked in: ppdev parport_pc lp parport ip6table_filter ip6_tables ebtable_nat ebtables ipt_MASQUERADE iptable_nat nf_nat nf_conntrack_ipv4 nf_defrag_ipv4 xt_state nf_conntrack nfs fscache xt_CHECKSUM auth_rpcgss iptable_mangle nfs_acl bridge stp llc lockd be2iscsi iscsi_boot_sysfs bnx2i cnic uio cxgb4i cxgb4 cxgb3i libcxgbi cxgb3 mdio ib_iser rdma_cm ib_cm iw_cm ib_sa ib_mad ib_core ib_addr iscsi_tcp libiscsi_tcp libiscsi scsi_transport_iscsi snd_hda_codec_realtek snd_usb_audio snd_hda_intel snd_hda_codec snd_seq snd_pcm snd_hwdep snd_usbmidi_lib snd_rawmidi snd_timer uvcvideo videobuf2_core videodev media videobuf2_vmalloc snd_seq_device videobuf2_memops e1000e vhost_net iTCO_wdt joydev coretemp snd soundcore macvtap macvlan i2c_i801 snd_page_alloc tun iTCO_vendor_support microcode kvm_intel kvm sunrpc hid_logitech_dj usb_storage i915 drm_kms_helper drm i2c_algo_bit i2c_core video [last unloaded: scsi_wait_scan]
+Pid: 1229, comm: rpc.idmapd Not tainted 3.4.2-1.fc16.x86_64 #1 Gateway DX4710-UB801A/G33M05G1
+RIP: 0010:[<0000000000000000>]  [<          (null)>]           (null)
+RSP: 0018:ffff8801a3645d40  EFLAGS: 00010246
+RAX: ffff880077707e30 RBX: ffff880077707f50 RCX: ffff8801a18ccd80
+RDX: 0000000000000006 RSI: ffff8801a3645e75 RDI: ffff880077707f50
+RBP: ffff8801a3645d88 R08: ffff8801a430f9c0 R09: ffff8801a3645db0
+R10: 000000000000000a R11: 0000000000000246 R12: ffff8801a18ccd80
+R13: ffff8801a3645e75 R14: ffff8801a430f9c0 R15: 0000000000000006
+FS:  00007fb6fb51a700(0000) GS:ffff8801afc80000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 0000000000000000 CR3: 00000001a49b0000 CR4: 00000000000027e0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+Process rpc.idmapd (pid: 1229, threadinfo ffff8801a3644000, task ffff8801a3bf9710)
+Stack:
+ ffffffff81260878 ffff8801a3645db0 ffff8801a3645db0 ffff880077707a90
+ ffff880077707f50 ffff8801a18ccd80 0000000000000006 ffff8801a3645e75
+ ffff8801a430f9c0 ffff8801a3645dd8 ffffffff81260983 ffff8801a3645de8
+Call Trace:
+ [<ffffffff81260878>] ? __key_instantiate_and_link+0x58/0x100
+ [<ffffffff81260983>] key_instantiate_and_link+0x63/0xa0
+ [<ffffffffa057062b>] idmap_pipe_downcall+0x1cb/0x1e0 [nfs]
+ [<ffffffffa0107f57>] rpc_pipe_write+0x67/0x90 [sunrpc]
+ [<ffffffff8117f833>] vfs_write+0xb3/0x180
+ [<ffffffff8117fb5a>] sys_write+0x4a/0x90
+ [<ffffffff81600329>] system_call_fastpath+0x16/0x1b
+Code:  Bad RIP value.
+RIP  [<          (null)>]           (null)
+ RSP <ffff8801a3645d40>
+CR2: 0000000000000000
+
+Signed-off-by: David Howells <dhowells@redhat.com>
+Reviewed-by: Steve Dickson <steved@redhat.com>
 ---
- fs/nfs/client.c     | 93 -----------------------------------------------------
- fs/nfs/nfs4client.c | 91 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 91 insertions(+), 93 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 0d50629..65afa38 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -56,30 +56,6 @@
- #define NFSDBG_FACILITY		NFSDBG_CLIENT
+ fs/nfs/idmap.c |   26 ++++++++++++++++++++------
+ 1 file changed, 20 insertions(+), 6 deletions(-)
+
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index 864c51e..1b5058b 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -205,12 +205,18 @@ static int nfs_idmap_init_keyring(void)
+ 	if (ret < 0)
+ 		goto failed_put_key;
  
- static DECLARE_WAIT_QUEUE_HEAD(nfs_client_active_wq);
--#ifdef CONFIG_NFS_V4
--
--/*
-- * Get a unique NFSv4.0 callback identifier which will be used
-- * by the V4.0 callback service to lookup the nfs_client struct
-- */
--static int nfs_get_cb_ident_idr(struct nfs_client *clp, int minorversion)
--{
--	int ret = 0;
--	struct nfs_net *nn = net_generic(clp->cl_net, nfs_net_id);
--
--	if (clp->rpc_ops->version != 4 || minorversion != 0)
--		return ret;
--retry:
--	if (!idr_pre_get(&nn->cb_ident_idr, GFP_KERNEL))
--		return -ENOMEM;
--	spin_lock(&nn->nfs_client_lock);
--	ret = idr_get_new(&nn->cb_ident_idr, clp, &clp->cl_cb_ident);
--	spin_unlock(&nn->nfs_client_lock);
--	if (ret == -EAGAIN)
--		goto retry;
--	return ret;
--}
--#endif /* CONFIG_NFS_V4 */
++	ret = register_key_type(&key_type_id_resolver_legacy);
++	if (ret < 0)
++		goto failed_reg_legacy;
++
+ 	set_bit(KEY_FLAG_ROOT_CAN_CLEAR, &keyring->flags);
+ 	cred->thread_keyring = keyring;
+ 	cred->jit_keyring = KEY_REQKEY_DEFL_THREAD_KEYRING;
+ 	id_resolver_cache = cred;
+ 	return 0;
  
- /*
-  * RPC cruft for NFS
-@@ -175,75 +151,6 @@ error_0:
++failed_reg_legacy:
++	unregister_key_type(&key_type_id_resolver);
+ failed_put_key:
+ 	key_put(keyring);
+ failed_put_cred:
+@@ -222,6 +228,7 @@ static void nfs_idmap_quit_keyring(void)
+ {
+ 	key_revoke(id_resolver_cache->thread_keyring);
+ 	unregister_key_type(&key_type_id_resolver);
++	unregister_key_type(&key_type_id_resolver_legacy);
+ 	put_cred(id_resolver_cache);
  }
  
- #ifdef CONFIG_NFS_V4
--#ifdef CONFIG_NFS_V4_1
--static void nfs4_shutdown_session(struct nfs_client *clp)
--{
--	if (nfs4_has_session(clp)) {
--		nfs4_destroy_session(clp->cl_session);
--		nfs4_destroy_clientid(clp);
--	}
--
--}
--#else /* CONFIG_NFS_V4_1 */
--static void nfs4_shutdown_session(struct nfs_client *clp)
--{
--}
--#endif /* CONFIG_NFS_V4_1 */
--
--struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
--{
--	int err;
--	struct nfs_client *clp = nfs_alloc_client(cl_init);
--	if (IS_ERR(clp))
--		return clp;
--
--	err = nfs_get_cb_ident_idr(clp, cl_init->minorversion);
--	if (err)
--		goto error;
--
--	spin_lock_init(&clp->cl_lock);
--	INIT_DELAYED_WORK(&clp->cl_renewd, nfs4_renew_state);
--	rpc_init_wait_queue(&clp->cl_rpcwaitq, "NFS client");
--	clp->cl_state = 1 << NFS4CLNT_LEASE_EXPIRED;
--	clp->cl_minorversion = cl_init->minorversion;
--	clp->cl_mvops = nfs_v4_minor_ops[cl_init->minorversion];
--	return clp;
--
--error:
--	kfree(clp);
--	return ERR_PTR(err);
--}
--
--/*
-- * Destroy the NFS4 callback service
-- */
--static void nfs4_destroy_callback(struct nfs_client *clp)
--{
--	if (__test_and_clear_bit(NFS_CS_CALLBACK, &clp->cl_res_state))
--		nfs_callback_down(clp->cl_mvops->minor_version);
--}
--
--static void nfs4_shutdown_client(struct nfs_client *clp)
--{
--	if (__test_and_clear_bit(NFS_CS_RENEWD, &clp->cl_res_state))
--		nfs4_kill_renewd(clp);
--	nfs4_shutdown_session(clp);
--	nfs4_destroy_callback(clp);
--	if (__test_and_clear_bit(NFS_CS_IDMAP, &clp->cl_res_state))
--		nfs_idmap_delete(clp);
--
--	rpc_destroy_wait_queue(&clp->cl_rpcwaitq);
--	kfree(clp->cl_serverowner);
--	kfree(clp->cl_serverscope);
--	kfree(clp->cl_implid);
--}
--
--void nfs4_free_client(struct nfs_client *clp)
--{
--	nfs4_shutdown_client(clp);
--	nfs_free_client(clp);
--}
--
- /* idr_remove_all is not needed as all id's are removed by nfs_put_client */
- void nfs_cleanup_cb_ident_idr(struct net *net)
- {
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index a71d95e..1c3f13c 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -23,6 +23,97 @@
- static bool nfs4_disable_idmapping = true;
+@@ -385,7 +392,7 @@ static const struct rpc_pipe_ops idmap_upcall_ops = {
+ };
  
- /*
-+ * Get a unique NFSv4.0 callback identifier which will be used
-+ * by the V4.0 callback service to lookup the nfs_client struct
-+ */
-+static int nfs_get_cb_ident_idr(struct nfs_client *clp, int minorversion)
-+{
-+	int ret = 0;
-+	struct nfs_net *nn = net_generic(clp->cl_net, nfs_net_id);
+ static struct key_type key_type_id_resolver_legacy = {
+-	.name		= "id_resolver",
++	.name		= "id_legacy",
+ 	.instantiate	= user_instantiate,
+ 	.match		= user_match,
+ 	.revoke		= user_revoke,
+@@ -674,6 +681,7 @@ static int nfs_idmap_legacy_upcall(struct key_construction *cons,
+ 	if (ret < 0)
+ 		goto out2;
+ 
++	BUG_ON(idmap->idmap_key_cons != NULL);
+ 	idmap->idmap_key_cons = cons;
+ 
+ 	ret = rpc_queue_upcall(idmap->idmap_pipe, msg);
+@@ -687,8 +695,7 @@ out2:
+ out1:
+ 	kfree(msg);
+ out0:
+-	key_revoke(cons->key);
+-	key_revoke(cons->authkey);
++	complete_request_key(cons, ret);
+ 	return ret;
+ }
+ 
+@@ -722,11 +729,18 @@ idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+ {
+ 	struct rpc_inode *rpci = RPC_I(filp->f_path.dentry->d_inode);
+ 	struct idmap *idmap = (struct idmap *)rpci->private;
+-	struct key_construction *cons = idmap->idmap_key_cons;
++	struct key_construction *cons;
+ 	struct idmap_msg im;
+ 	size_t namelen_in;
+ 	int ret;
+ 
++	/* If instantiation is successful, anyone waiting for key construction
++	 * will have been woken up and someone else may now have used
++	 * idmap_key_cons - so after this point we may no longer touch it.
++	 */
++	cons = ACCESS_ONCE(idmap->idmap_key_cons);
++	idmap->idmap_key_cons = NULL;
 +
-+	if (clp->rpc_ops->version != 4 || minorversion != 0)
-+		return ret;
-+retry:
-+	if (!idr_pre_get(&nn->cb_ident_idr, GFP_KERNEL))
-+		return -ENOMEM;
-+	spin_lock(&nn->nfs_client_lock);
-+	ret = idr_get_new(&nn->cb_ident_idr, clp, &clp->cl_cb_ident);
-+	spin_unlock(&nn->nfs_client_lock);
-+	if (ret == -EAGAIN)
-+		goto retry;
-+	return ret;
-+}
-+
-+#ifdef CONFIG_NFS_V4_1
-+static void nfs4_shutdown_session(struct nfs_client *clp)
-+{
-+	if (nfs4_has_session(clp)) {
-+		nfs4_destroy_session(clp->cl_session);
-+		nfs4_destroy_clientid(clp);
-+	}
-+
-+}
-+#else /* CONFIG_NFS_V4_1 */
-+static void nfs4_shutdown_session(struct nfs_client *clp)
-+{
-+}
-+#endif /* CONFIG_NFS_V4_1 */
-+
-+struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
-+{
-+	int err;
-+	struct nfs_client *clp = nfs_alloc_client(cl_init);
-+	if (IS_ERR(clp))
-+		return clp;
-+
-+	err = nfs_get_cb_ident_idr(clp, cl_init->minorversion);
-+	if (err)
-+		goto error;
-+
-+	spin_lock_init(&clp->cl_lock);
-+	INIT_DELAYED_WORK(&clp->cl_renewd, nfs4_renew_state);
-+	rpc_init_wait_queue(&clp->cl_rpcwaitq, "NFS client");
-+	clp->cl_state = 1 << NFS4CLNT_LEASE_EXPIRED;
-+	clp->cl_minorversion = cl_init->minorversion;
-+	clp->cl_mvops = nfs_v4_minor_ops[cl_init->minorversion];
-+	return clp;
-+
-+error:
-+	kfree(clp);
-+	return ERR_PTR(err);
-+}
-+
-+/*
-+ * Destroy the NFS4 callback service
-+ */
-+static void nfs4_destroy_callback(struct nfs_client *clp)
-+{
-+	if (__test_and_clear_bit(NFS_CS_CALLBACK, &clp->cl_res_state))
-+		nfs_callback_down(clp->cl_mvops->minor_version);
-+}
-+
-+static void nfs4_shutdown_client(struct nfs_client *clp)
-+{
-+	if (__test_and_clear_bit(NFS_CS_RENEWD, &clp->cl_res_state))
-+		nfs4_kill_renewd(clp);
-+	nfs4_shutdown_session(clp);
-+	nfs4_destroy_callback(clp);
-+	if (__test_and_clear_bit(NFS_CS_IDMAP, &clp->cl_res_state))
-+		nfs_idmap_delete(clp);
-+
-+	rpc_destroy_wait_queue(&clp->cl_rpcwaitq);
-+	kfree(clp->cl_serverowner);
-+	kfree(clp->cl_serverscope);
-+	kfree(clp->cl_implid);
-+}
-+
-+void nfs4_free_client(struct nfs_client *clp)
-+{
-+	nfs4_shutdown_client(clp);
-+	nfs_free_client(clp);
-+}
-+
-+/*
-  * Initialize the NFS4 callback service
-  */
- static int nfs4_init_callback(struct nfs_client *clp)
--- 
-1.7.11.2
+ 	if (mlen != sizeof(im)) {
+ 		ret = -ENOSPC;
+ 		goto out;
+@@ -739,7 +753,7 @@ idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+ 
+ 	if (!(im.im_status & IDMAP_STATUS_SUCCESS)) {
+ 		ret = mlen;
+-		complete_request_key(idmap->idmap_key_cons, -ENOKEY);
++		complete_request_key(cons, -ENOKEY);
+ 		goto out_incomplete;
+ 	}
+ 
+@@ -756,7 +770,7 @@ idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+ 	}
+ 
+ out:
+-	complete_request_key(idmap->idmap_key_cons, ret);
++	complete_request_key(cons, ret);
+ out_incomplete:
+ 	return ret;
+ }
 
