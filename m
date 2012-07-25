@@ -1,100 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:56294 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751968Ab2GaEk2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jul 2012 00:40:28 -0400
-Date: Tue, 31 Jul 2012 14:40:12 +1000
-From: NeilBrown <neilb@suse.de>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4 callback: too many open  connections, consider increasing
- the number of threads.
-Message-ID: <20120731144012.6d49b114@notabene.brown>
-In-Reply-To: <1343690182.8362.6.camel@lade.trondhjem.org>
-References: <20120719164602.7d5aadaf@notabene.brown>
-	<1343690182.8362.6.camel@lade.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/hK.P=ZE6qRB670x12t5lfTR"; protocol="application/pgp-signature"
+Received: from relay.parallels.com ([195.214.232.42]:39948 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754480Ab2GYKeW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jul 2012 06:34:22 -0400
+Message-ID: <500FCBA7.7000909@parallels.com>
+Date: Wed, 25 Jul 2012 14:34:15 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v3 00/11] Series short description
+References: <20120703161844.11911.92996.stgit@localhost.localdomain> <20120724223617.GP8570@fieldses.org>
+In-Reply-To: <20120724223617.GP8570@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/hK.P=ZE6qRB670x12t5lfTR
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+25.07.2012 02:36, J. Bruce Fields пишет:
+> On Tue, Jul 03, 2012 at 08:19:23PM +0400, Stanislav Kinsbursky wrote:
+>> v3: Rebased on Bruce's tree, "for-3.6" branch
+>>
+>> v2: Rebased on Bruce's tree, "for-3.5" branch
+>
+> Aside from the one question, this looks OK to me.
+>
+> I seem to recall this needed to go through my tree for some reason, but
+> does Trond still want a chance to ACK/NACK it?
+>
 
-On Mon, 30 Jul 2012 23:16:23 +0000 "Myklebust, Trond"
-<Trond.Myklebust@netapp.com> wrote:
+Agreed.
+Trond, could you, please, review this patch set?
+And maybe it's better to push this code through your tree to simplify further 
+merging?
 
-> Hi Neil,
->=20
-> Could you please add the missing s-o-b?
->=20
-> Cheers
->   Trond
+> --b.
+>
+>>
+>> This patch set depeneds on "SUNRPC: separate per-net data creation from
+>> service
+>> creation" patch set sent earlier.
+>>
+>> The following series implements...
+>>
+>> ---
+>>
+>> Stanislav Kinsbursky (11):
+>>        NFS: pass net to nfs_callback_down()
+>>        NFS: callback service creation function introduced
+>>        NFS: move per-net callback thread initialization to nfs_callback_up_net()
+>>        NFS: callback up - transport backchannel cleanup
+>>        NFS: callback service start function introduced
+>>        NFS: callback up - users counting cleanup
+>>        NFS: make nfs_callback_tcpport per network context
+>>        NFS: make nfs_callback_tcpport6 per network context
+>>        NFS; callback per-net usage counting introduced
+>>        NFS: add debug messages to callback down function
+>>        NFS: get net after idr allocation
+>>
+>>
+>>   fs/nfs/callback.c  |  288 ++++++++++++++++++++++++++++++++++------------------
+>>   fs/nfs/callback.h  |    4 -
+>>   fs/nfs/client.c    |    5 +
+>>   fs/nfs/netns.h     |    3 +
+>>   fs/nfs/nfs4state.c |    6 +
+>>   5 files changed, 202 insertions(+), 104 deletions(-)
+>>
 
-Here 'tis.  Thanks.
 
-NeilBrown
+-- 
+Best regards,
+Stanislav Kinsbursky
 
-From: NeilBrown <neilb@suse.de>
-Date: Tue, 31 Jul 2012 14:33:39 +1000
-Subject: [PATCH] nfs: increase number of permitted callback connections.
 
-By default a sunrpc service is limited to (N+3)*20 connections
-where N is the number of threads.  This is 80 when N=3D=3D1.
-If this number is exceeded a warning is printed suggesting that
-the number of threads be increased.  However with services which
-run a single thread, this is impossible.
-
-For such services there is a ->sv_maxconn setting that can be
-used to forcibly increase the limit, and silence the message.
-This is used by lockd.
-
-The nfs client uses a sunrpc service to handle callbacks and
-it too is single-threaded, so to avoid the useless messages,
-and to allow a reasonable number of concurrent connections,
-we need to set ->sv_maxconn.  1024 seems like a good number.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
-
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 23ff18f..9cb1215 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -265,6 +265,10 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt =
-*xprt)
- 		ret =3D -ENOMEM;
- 		goto out_err;
- 	}
-+	/* As there is only one thread we need to over-ride the
-+	 * default maximum of 80 connections
-+	 */
-+	serv->sv_maxconn =3D 1024;
-=20
- 	ret =3D svc_bind(serv, net);
- 	if (ret < 0) {
-
---Sig_/hK.P=ZE6qRB670x12t5lfTR
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.18 (GNU/Linux)
-
-iQIVAwUBUBdhrDnsnt1WYoG5AQIB3xAApWvPXmrU/HzX3TT4kCYfKhbLEokeOTvT
-wC79qwkc9begsdDIp03OeHqNp/uydFZjAHJwfhIEipqMz+PCtVfuJvq3fsJJIDAz
-NvevQhQIzgECcZkQW6/jaHbfajCBH2ouZ5mHSAPfygRLsAtZC+8hsLBSa1Xo/SqC
-hVld06ZSTd/bsbzeobnGZWp/NQ3m821XmJfZ7I6yJQnVZxF1K2VQ6mh+Q2PL8Hly
-tB99jh22S2WS/rqzbLShunasbxSHerV4psgqe6SLOt0VWIdOW4W/uzZTXPwYH+rl
-mVcZfLkz9hL0CDBq5iJxAVvLM+xVQhkSeCHgs6zo7SsAfKdhECQt9dXlD5A7eDX7
-TLRioh/XS0j0ZTsz1/q7q06850gamxnGy4Shrx+yCMtRRwTQ8aAKaJaISPUf8hBP
-kz27koX/tXQYXytE/YNj2lo0npLOWMH2iHQtfQnEIkmo0xfPtT2hbzF1nU2g64QF
-w43XI9c1SNczPuJOaotVUkze9JjnQmEVscLLGHu2OW+/SmR2yLYQSQGq1VS0WFEJ
-XPl2NMI1Vno3GWf/SzAC95jbLZbE6r4a8CmBaakQPKBG+xzCIxgTW2qgwN84qcS5
-mGZfP8Ye1loIvK8aerovmVRkJ8a1SStLa94i42Piu4edZ5f1krf6V6LVwXJxrWQd
-14SCuNBxzPQ=
-=RmXV
------END PGP SIGNATURE-----
-
---Sig_/hK.P=ZE6qRB670x12t5lfTR--
