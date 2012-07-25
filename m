@@ -1,118 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:60931 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753738Ab2GLD2E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Jul 2012 23:28:04 -0400
-Date: Thu, 12 Jul 2012 13:27:57 +1000
-From: NeilBrown <neilb@suse.de>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH] umount.nfs: restore correct error status when umount fails.
-Message-ID: <20120712132757.7f86b86b@notabene.brown>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_//Tu+.8T4nJJqRvPoEHRUXpQ"; protocol="application/pgp-signature"
+Received: from natasha.panasas.com ([67.152.220.90]:33068 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755533Ab2GYKpz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jul 2012 06:45:55 -0400
+Message-ID: <500FCE56.8010902@panasas.com>
+Date: Wed, 25 Jul 2012 13:45:42 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Peng Tao <bergwolf@gmail.com>
+CC: linuxnfs <linux-nfs@vger.kernel.org>, Benny Halevy <bhalevy@tonian.com>
+Subject: Re: pnfs LD partial sector write
+References: <CA+a=Yy7B0uk-FWr3hOjWC+=Xq+UtHnEC4speD3OZzMFfXksyOw@mail.gmail.com> <500FCA3A.5020606@panasas.com>
+In-Reply-To: <500FCA3A.5020606@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_//Tu+.8T4nJJqRvPoEHRUXpQ
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On 07/25/2012 01:28 PM, Boaz Harrosh wrote:
+
+> On 07/25/2012 10:31 AM, Peng Tao wrote:
+> 
+>> Hi Boaz,
+>>
+>> Sorry about the long delay. I had some internal interrupt. Now I'm
+>> looking at the partial LD write problem again. Instead of trying to
+>> bail out unaligned writes blindly, this time I want to fix the write
+>> code to handle partial write as you suggested before. However, it
+>> seems to be more problematic than I used to think.
+>>
+>> The dirty range of a page passed to LD->write_pagelist may be
+>> unaligned to sector size, in which case block layer cannot handle it
+>> correctly. Even worse, I cannot do a read-modify-write cycle within
+>> the same page because bio would read in the entire sector and thus
+>> ruin user data within the same sector. Currently I'm thinking of
+>> creating shadow pages for partial sector write and use them to read in
+>> the sector and copy necessary data into user pages. But it is way too
+>> tricky and I don't feel like it at all. So I want to ask how you solve
+>> the partial sector write problem in object layout driver.
+>>
+>> I looked at the ore code and found that you are using bio to deal with
+>> partial page read/write as well. But in places like _add_to_r4w(), I
+>> don't see how partial sectors are handled. Maybe I was misreading the
+>> code. Would you please shed some light? More specifically, how does
+>> object layout driver handle partial sector writers like in bellow
+>> simple testcase? Thanks in advance.
+>>
+> 
+> 
+> The objlayout does not have this problem. OSD-SCSI is a byte aligned
+> protocol, unlike DISK-SCSI.
+> 
+> The code you are looking for is at _add_to_r4w_first_page() &&
+> _add_to_r4w_last_page. But as I said I just submit a read of:
+> 	0 => offset within the page
+> What ever that might be.
+> 
+> In your case: why? all you have to do is allocate 2 sectors (1k) at
+> most one for partial sector at end and one for partial sector at
+> beginning. And use chained BIOs then memcpy at most [1k -2] bytes.
+> 
+> What you do is chain a single-sector BIO to an all aligned BIO
+> 
+> You do the following:
+> 
+> - You will need to preform two reads, right? One for the unaligned
+>   BLOCK at the begging and one for the BLOCK at the end. Since in
+>   blocklayout all IO is BLOCK aligned.
+> 
+> Beginning end of IO
+> - Jump over first unaligned SECTOR. Prepare BIO from first full
+>   sector, to the end of the BLOCK.
+> - Prepare a 1-biovec BIO from the above allocated sector, which
+>   reads the full first sector.
+> - perpend the 1-vec BIO to the big one.
+> - preform the read
+> - memcpy from above allocated sector the 0=>offset part into the
+>   NFS original page.
+> 
+> Do the same for end of IO but for the very last unaligned sector.
+> Chain 1-vec BIO to the end this time. memcpy last_byte=>end-of-sector
+> part.
+> 
 
 
+Rrr I got this all backwards. You need to read from beginning of
+first-BLOCK to offset. Then from last_byte to end-of-last-block. So all
+I said above is exactly opposite. Post-pend chained-bio for first-BLOCK
+read. And pre-pend chained-bio for last-BLOCK read.
 
-If nfs-utils is built without --enable-libmount-mount, then
-an unmount that failed due to the filesystem being busy will
-exit with '16' - EX_FILEIO.
-Autofs apparently relies on this.
+Cheers
+Boaz
 
-When built with --enable-libmount-mount, the same case will
-exit with '32' - EX_FAIL.  Normally this is reserved for
-internal errors.
-
-This patch restores the use of EX_FILEIO for errors from umount.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
---
-
-I confess that I haven't done a complete case analysis to see that we are
-always using the correct error code, but this looks OK and handles the case
-I care about.
-
-There is a case that I know it doesn't handle.  If you ask umount.nfs to
-unmount a filesystem that is not nfs or nfs4, then the old code will
-refuse
-  umount.nfs: /dev/sda7 on /mnt2 is not an NFS filesystem
-
-and exit with status '1'.
-The new libmount code will just think that it couldn't find anything in
-fstab and will try to do an nfs23 unmount.  This is clearly different behav=
-iour,
-I'm not sure that anyone would care though.
-
-NeilBrown
+> So you see no shadow pages and not so complicated. In the unaligned
+> case at most you need allocate 1k and chain BIOs at beginning and/or
+> at end.
+> 
+> Tell me if you need help with BIO chaining. The 1-vec BIO just use
+> bio_kmalloc().
+> 
+> Cheers
+> Boaz
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 
-diff --git a/utils/mount/mount_libmount.c b/utils/mount/mount_libmount.c
-index e8f17a9..5c1116a 100644
---- a/utils/mount/mount_libmount.c
-+++ b/utils/mount/mount_libmount.c
-@@ -173,6 +173,7 @@ static int umount_main(struct libmnt_context *cxt, int =
-argc, char **argv)
- {
- 	int rc, c;
- 	char *spec =3D NULL, *opts =3D NULL;
-+	int ret =3D EX_FAIL;
-=20
- 	static const struct option longopts[] =3D {
- 		{ "force", 0, 0, 'f' },
-@@ -243,7 +244,7 @@ static int umount_main(struct libmnt_context *cxt, int =
-argc, char **argv)
- 			/* strange, no entry in mtab or /proc not mounted */
- 			nfs_umount23(spec, "tcp,v3");
- 	}
--
-+	ret =3D EX_FILEIO;
- 	rc =3D mnt_context_do_umount(cxt);	/* call umount(2) syscall */
- 	mnt_context_finalize_mount(cxt);	/* mtab update */
-=20
-@@ -252,12 +253,10 @@ static int umount_main(struct libmnt_context *cxt, in=
-t argc, char **argv)
- 		umount_error(rc, spec);
- 		goto err;
- 	}
--
--	free(opts);
--	return EX_SUCCESS;
-+	ret =3D EX_SUCCESS;
- err:
- 	free(opts);
--	return EX_FAIL;
-+	return ret;
- }
-=20
- static int mount_main(struct libmnt_context *cxt, int argc, char **argv)
-
---Sig_//Tu+.8T4nJJqRvPoEHRUXpQ
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.18 (GNU/Linux)
-
-iQIVAwUBT/5EPTnsnt1WYoG5AQJe1g//e4p92RLCCW03miKRRAIc+HAG6uKaP+ua
-Hww5f+ayn7cqO9bA4ybA0P2/EnE5SOUZMr2GIzkWdMQ0Z05zbRqRbsSEAVmBzW3G
-AMAz1QDfPfC+J03JzEL2UGNz2czgqPDowq1MrTvv4o+PDOJ/v7lGF1ZoZ4Mqv/tN
-Ygebi6eKG0Qn7LgFp8VNCtAPWdm3xE0sVSfxt5XB9wjbajj0l7pCBuQtOfm4dlWc
-kFcgBC8NE88hAD6T4KRpxjL5RKiqTEXEDPTS3yL9XmBR3UN19BGpJEncRC10W2+z
-h2EAfu9/wDhmA24Ezu04zXvBOVx7JE5cQalpIcZj0NW0ej2my+euxJ3mpWQgiB7r
-CgJbskqhzQn6mOcW3hKBsh71kU/TjG1YP1ZkyHHdhsoT2Bkb7n5a1KBvtqCaZiYr
-AJ5r1qpVwvaIxsWgLyCTk20oByWWu9I7Ao4d0mnGADXOqBRdtyrvMJCPKgmPkBD5
-KS1XQ+hPTxPY9B7KVXbtYS+GGB8busgMY5qDgA6w1Ecd98XSbOgF2CSQY3kNyASL
-K9FT86HGLg2kb5N139U1yTdUvv17nuoKJ8dM+EwDOxMozflVJRhycj5NiR0jLcUM
-p3oOZTICPvYh+bgxwv0MBNYO2torrjfZ4H+xDgRFozi0c8y2LWASMa0l1lQgOZ8q
-vzKzeGnDoKQ=
-=HFuf
------END PGP SIGNATURE-----
-
---Sig_//Tu+.8T4nJJqRvPoEHRUXpQ--
