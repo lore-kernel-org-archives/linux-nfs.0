@@ -1,53 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f44.google.com ([74.125.82.44]:38263 "EHLO
-	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753640Ab2GaVy0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Jul 2012 17:54:26 -0400
+Received: from mailhub.sw.ru ([195.214.232.25]:4547 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756715Ab2GYM6i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jul 2012 08:58:38 -0400
+Subject: [PATCH v2 11/15] LockD: manage grace list per network namespace
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Wed, 25 Jul 2012 16:57:13 +0400
+Message-ID: <20120725125713.24376.40630.stgit@localhost.localdomain>
+In-Reply-To: <20120725125258.24376.82525.stgit@localhost.localdomain>
+References: <20120725125258.24376.82525.stgit@localhost.localdomain>
 MIME-Version: 1.0
-In-Reply-To: <20120731143600.GD27834@fieldses.org>
-References: <20120731142948.GC27834@fieldses.org> <20120731143600.GD27834@fieldses.org>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Tue, 31 Jul 2012 14:54:05 -0700
-Message-ID: <CA+55aFzM8S0sEAAUXK9f1OhSL-OXmZ_jx_UHF81Eo0-Mi-+T_w@mail.gmail.com>
-Subject: Re: nfsd changes for 3.6
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk, matthew@wil.cx
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 31, 2012 at 7:36 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
->
-> By the way, for a few years now I've been semi-regularly picking up
-> locks.c changes for my tree.  I wonder if I should be.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/lockd/grace.c |   14 +++++++++++---
+ fs/lockd/netns.h |    1 +
+ fs/lockd/svc.c   |    1 +
+ 3 files changed, 13 insertions(+), 3 deletions(-)
 
-I really wish you didn't. Or at least not this way.
+diff --git a/fs/lockd/grace.c b/fs/lockd/grace.c
+index 183cc1f..8dbaff7 100644
+--- a/fs/lockd/grace.c
++++ b/fs/lockd/grace.c
+@@ -4,8 +4,10 @@
+ 
+ #include <linux/module.h>
+ #include <linux/lockd/bind.h>
++#include <net/net_namespace.h>
++
++#include "netns.h"
+ 
+-static LIST_HEAD(grace_list);
+ static DEFINE_SPINLOCK(grace_lock);
+ 
+ /**
+@@ -21,8 +23,11 @@ static DEFINE_SPINLOCK(grace_lock);
+  */
+ void locks_start_grace(struct lock_manager *lm)
+ {
++	struct net *net = &init_net;
++	struct lockd_net *ln = net_generic(net, lockd_net_id);
++
+ 	spin_lock(&grace_lock);
+-	list_add(&lm->list, &grace_list);
++	list_add(&lm->list, &ln->grace_list);
+ 	spin_unlock(&grace_lock);
+ }
+ EXPORT_SYMBOL_GPL(locks_start_grace);
+@@ -54,6 +59,9 @@ EXPORT_SYMBOL_GPL(locks_end_grace);
+  */
+ int locks_in_grace(void)
+ {
+-	return !list_empty(&grace_list);
++	struct net *net = &init_net;
++	struct lockd_net *ln = net_generic(net, lockd_net_id);
++
++	return !list_empty(&ln->grace_list);
+ }
+ EXPORT_SYMBOL_GPL(locks_in_grace);
+diff --git a/fs/lockd/netns.h b/fs/lockd/netns.h
+index e78650c..4eee248 100644
+--- a/fs/lockd/netns.h
++++ b/fs/lockd/netns.h
+@@ -11,6 +11,7 @@ struct lockd_net {
+ 
+ 	struct delayed_work grace_period_end;
+ 	struct lock_manager lockd_manager;
++	struct list_head grace_list;
+ };
+ 
+ extern int lockd_net_id;
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index a9c436b..834dfe2 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -596,6 +596,7 @@ static int lockd_init_net(struct net *net)
+ 	struct lockd_net *ln = net_generic(net, lockd_net_id);
+ 
+ 	INIT_DELAYED_WORK(&ln->grace_period_end, grace_ender);
++	INIT_LIST_HEAD(&ln->grace_list);
+ 	return 0;
+ }
+ 
 
-For example, now you removed that lm_release_private case, but you did
-that without apparently talking to any VFS maintainers.
-
-And the commit seems to be pure shit.
-
-Why is it pure shit? Look at what users are left. THERE ARE NO USERS
-THAT SET THAT FIELD ANY MORE!
-
-Maybe I missed some odd user that somehow avoids the grep, but I don't
-think so. So there is nothing that ever sets it, why the hell does the
-thing still remain at all?
-
-So if this is a real bugfix, then I think it damn well should
-
- (a) at a minimum have been discussed with VFS maintainers
-
- (b) have been thought through a bit more (ie remove all remains of
-that now useless lm_release_private field)
-
- (c) likely never have gone through the NFSD tree in any case.
-
-I've pulled the changes for now, but I absolutely *detest* seeing
-things like this. I care very little about the nfsd code, but I care
-deeply when I see insanity happening in the VFS layer. And right now,
-"lm_release_private" is insane as of this pull.
-
-                Linus
