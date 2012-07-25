@@ -1,71 +1,138 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:50255 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752538Ab2GKU36 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jul 2012 16:29:58 -0400
-Received: by gglu4 with SMTP id u4so1697031ggl.19
-        for <linux-nfs@vger.kernel.org>; Wed, 11 Jul 2012 13:29:58 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 02/15] NFS: Don't free a state ID the server does not recognize
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 11 Jul 2012 16:29:56 -0400
-Message-ID: <20120711202955.3767.78152.stgit@degas.1015granger.net>
-In-Reply-To: <20120711201718.3767.66867.stgit@degas.1015granger.net>
-References: <20120711201718.3767.66867.stgit@degas.1015granger.net>
+Received: from mailhub.sw.ru ([195.214.232.25]:25162 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932983Ab2GYM6s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jul 2012 08:58:48 -0400
+Subject: [PATCH v2 09/15] NFSd: make nfsd4_manager allocated per network
+	namespace context.
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Wed, 25 Jul 2012 16:56:58 +0400
+Message-ID: <20120725125658.24376.70114.stgit@localhost.localdomain>
+In-Reply-To: <20120725125258.24376.82525.stgit@localhost.localdomain>
+References: <20120725125258.24376.82525.stgit@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The result of a TEST_STATEID operation can indicate a few different
-things:
-
-  o If NFS_OK is returned, then the client can continue using the
-    state ID under test, and skip recovery.
-
-  o RFC 5661 says that if the state ID was revoked, then the client
-    must perform an explicit FREE_STATEID before trying to re-open.
-
-  o If the server doesn't recognize the state ID at all, then no
-    FREE_STATEID is needed, and the client can immediately continue
-    with open recovery.
-
-Let's err on the side of caution: if the server clearly tells us the
-state ID is unknown, we skip the FREE_STATEID.  For any other error,
-we issue a FREE_STATEID.  Sometimes that FREE_STATEID will be
-unnecessary, but leaving unused state IDs on the server needlessly
-ties up resources.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 ---
+ fs/nfsd/netns.h     |    2 ++
+ fs/nfsd/nfs4state.c |   32 +++++++++++++++++++-------------
+ 2 files changed, 21 insertions(+), 13 deletions(-)
 
- fs/nfs/nfs4proc.c |    7 +++++--
- 1 files changed, 5 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 9a0397c..2986e65 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1764,7 +1764,8 @@ static int nfs41_check_expired_stateid(struct nfs4_state *state, nfs4_stateid *s
- 	if (state->flags & flags) {
- 		status = nfs41_test_stateid(server, stateid);
- 		if (status != NFS_OK) {
--			nfs41_free_stateid(server, stateid);
-+			if (status != -NFS4ERR_BAD_STATEID)
-+				nfs41_free_stateid(server, stateid);
- 			state->flags &= ~flags;
- 		}
- 	}
-@@ -4708,7 +4709,9 @@ static int nfs41_check_expired_locks(struct nfs4_state *state)
- 		if (lsp->ls_flags & NFS_LOCK_INITIALIZED) {
- 			status = nfs41_test_stateid(server, &lsp->ls_stateid);
- 			if (status != NFS_OK) {
--				nfs41_free_stateid(server, &lsp->ls_stateid);
-+				if (status != -NFS4ERR_BAD_STATEID)
-+					nfs41_free_stateid(server,
-+							&lsp->ls_stateid);
- 				lsp->ls_flags &= ~NFS_LOCK_INITIALIZED;
- 				ret = status;
- 			}
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index 3936563..e99767d 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -34,6 +34,8 @@ struct nfsd_net {
+ 
+ 	struct cache_detail *idtoname_cache;
+ 	struct cache_detail *nametoid_cache;
++
++	struct lock_manager nfsd4_manager;
+ };
+ 
+ extern int nfsd_net_id;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index ab0a02a..fad2408 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -45,6 +45,8 @@
+ #include "vfs.h"
+ #include "current_stateid.h"
+ 
++#include "netns.h"
++
+ #define NFSDDBG_FACILITY                NFSDDBG_PROC
+ 
+ /* Globals */
+@@ -3115,22 +3117,21 @@ out:
+ 	return status;
+ }
+ 
+-static struct lock_manager nfsd4_manager = {
+-};
+-
+ static bool grace_ended;
+ 
+ static void
+-nfsd4_end_grace(void)
++nfsd4_end_grace(struct net *net)
+ {
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++
+ 	/* do nothing if grace period already ended */
+ 	if (grace_ended)
+ 		return;
+ 
+ 	dprintk("NFSD: end of grace period\n");
+ 	grace_ended = true;
+-	nfsd4_record_grace_done(&init_net, boot_time);
+-	locks_end_grace(&nfsd4_manager);
++	nfsd4_record_grace_done(net, boot_time);
++	locks_end_grace(&nn->nfsd4_manager);
+ 	/*
+ 	 * Now that every NFSv4 client has had the chance to recover and
+ 	 * to see the (possibly new, possibly shorter) lease time, we
+@@ -3153,7 +3154,7 @@ nfs4_laundromat(void)
+ 	nfs4_lock_state();
+ 
+ 	dprintk("NFSD: laundromat service - starting\n");
+-	nfsd4_end_grace();
++	nfsd4_end_grace(&init_net);
+ 	INIT_LIST_HEAD(&reaplist);
+ 	spin_lock(&client_lock);
+ 	list_for_each_safe(pos, next, &client_lru) {
+@@ -4687,6 +4688,8 @@ set_max_delegations(void)
+ int
+ nfs4_state_start(void)
+ {
++	struct net *net = &init_net;
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 	int ret;
+ 
+ 	/*
+@@ -4696,10 +4699,10 @@ nfs4_state_start(void)
+ 	 * to that instead and then do most of the rest of this on a per-net
+ 	 * basis.
+ 	 */
+-	get_net(&init_net);
+-	nfsd4_client_tracking_init(&init_net);
++	get_net(net);
++	nfsd4_client_tracking_init(net);
+ 	boot_time = get_seconds();
+-	locks_start_grace(&nfsd4_manager);
++	locks_start_grace(&nn->nfsd4_manager);
+ 	grace_ended = false;
+ 	printk(KERN_INFO "NFSD: starting %ld-second grace period\n",
+ 	       nfsd4_grace);
+@@ -4722,8 +4725,8 @@ nfs4_state_start(void)
+ out_free_laundry:
+ 	destroy_workqueue(laundry_wq);
+ out_recovery:
+-	nfsd4_client_tracking_exit(&init_net);
+-	put_net(&init_net);
++	nfsd4_client_tracking_exit(net);
++	put_net(net);
+ 	return ret;
+ }
+ 
+@@ -4764,9 +4767,12 @@ __nfs4_state_shutdown(void)
+ void
+ nfs4_state_shutdown(void)
+ {
++	struct net *net = &init_net;
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++
+ 	cancel_delayed_work_sync(&laundromat_work);
+ 	destroy_workqueue(laundry_wq);
+-	locks_end_grace(&nfsd4_manager);
++	locks_end_grace(&nn->nfsd4_manager);
+ 	nfs4_lock_state();
+ 	__nfs4_state_shutdown();
+ 	nfs4_unlock_state();
 
