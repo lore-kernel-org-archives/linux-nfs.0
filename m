@@ -1,110 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58878 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:1863 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932197Ab2GEWc1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Jul 2012 18:32:27 -0400
-Date: Thu, 5 Jul 2012 18:32:24 -0400
-To: Andreas Heinlein <aheinlein@gmx.com>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: Kernel NFSd CPU hog?
-Message-ID: <20120705223224.GE3051@fieldses.org>
-References: <4FF16D54.6090200@gmx.com>
- <20120702150758.66893d08@tlielax.poochiereds.net>
- <4FF2E710.5010804@gmx.com>
+	id S1756366Ab2GYM5g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jul 2012 08:57:36 -0400
+Subject: [PATCH v2 03/15] LockD: manage garbage collection timeout per
+	networks namespace
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Wed, 25 Jul 2012 16:56:11 +0400
+Message-ID: <20120725125611.24376.76843.stgit@localhost.localdomain>
+In-Reply-To: <20120725125258.24376.82525.stgit@localhost.localdomain>
+References: <20120725125258.24376.82525.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FF2E710.5010804@gmx.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 03, 2012 at 02:35:28PM +0200, Andreas Heinlein wrote:
-> On 02.07.2012 21:07, Jeff Layton wrote:
-> >On Mon, 02 Jul 2012 11:43:48 +0200
-> >Andreas Heinlein <aheinlein@gmx.com> wrote:
-> >
-> >>Hello,
-> >>
-> >>we have a strange NFS problem with a newly setup Linux server, and I
-> >>hope someone here can help.
-> >>
-> >>The symptom is that, slowly over time (speaking of several days up to 2
-> >>weeks), the kernel nfsd processes/threads consume more and more CPU
-> >>until the system finally becomes unresponsive. We recorded system
-> >>activity with sar, which shows that CPU (system) usage slowly rises
-> >>after reboot from about 1% to nearly 100% over the course of several
-> >>days. Load averages stay around 0.1-0.3 until 100% are reached, up to
-> >>this point the problem is almost not noticable from the clients. Then
-> >>load averages climb up to 30.0; at this point the system becomes more or
-> >>less unusable and has to be restarted. 'top' output shows the CPU usage
-> >>evenly distributed across all nfsd threads.
-> >>
-> >>The system is a fairly recent, though entry level server with a Core i3
-> >>and 4G RAM, hosting the home directories for about 15-20 clients. CPU
-> >>activity does not drop at night, when no clients are connected. It is
-> >>running Debian 6.0 with linux 3.2.0 (from the backports repository),
-> >>with nfs-utils 1.2.5 (also from the backports repository). I suspect
-> >>that these backports might be the culprit, but since we need this kernel
-> >>for other purposes, and I cannot reboot that machine during office
-> >>hours, I'd rather not try going back to the official Debian kernel
-> >>without good reasons. If there are known problems, I'd give it a try.
-> >>
-> >Find the pid of one of the nfsd threads that's spinning, then get a
-> >stack trace from it:
-> >
-> >     # cat /proc/<pidofnfsd>/stack
-> >
-> >...that should give us some idea of what it's doing.
-> >
-> >--
-> >Jeff Layton <jlayton@redhat.com>
-> >--
-> >To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >the body of a message to majordomo@vger.kernel.org
-> >More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Hello,
-> 
-> I've run into the problem again, and did a 'watch cat
-> /proc/<pidofnfsd>/stack'. It actually seems to be doing something,
-> because the stack trace changes every now and then, but mostly looks
-> like
-> 
-> [<c1038be2>] try_to_wake_up+0x144/0x14d
-> [<c1045d26>] lock_timer_base+0x19/0x34
-> [<c10462fd>] __mod_timer+0x10c/0x116
-> [<c1045d41>] process_timeout+0x0/0x5
-> [<f858a243>] svc_recv+0x2e2/0x698 [sunrpc]
-> [<c1038beb>] default_wake_function+0x0/0x8
-> [<f8640748>] nfsd+0x90/0x108 [nfsd]
-> [<f86406b8>] nfsd+0x0/0x108 [nfsd]
-> [<c105176b>] kthread+0x63/0x68
-> [<c1051708>] kthread+0x0/0x68
-> [<c12dadbe>] kernel_thread_helper+0x6/0x10
-> [<ffffffff>] 0xffffffff
-> 
-> Meanwhile, I've found a quite recent thread on this list named "3.0+
-> NFS issues", and within two links to Ubuntu bug reports
-> (https://bugs.launchpad.net/ubuntu/+source/nfs-utils/+bug/879334 and
-> https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1006446) and
+This patch moves next_gc to per-net data.
 
-There are a number of problems reported here, and it's not clear that
-they're the same.
+Note: passed network can be NULL (when Lockd kthread is exiting of Lockd
+module is removing).
 
-> again to a kernel bug
-> (https://bugzilla.kernel.org/show_bug.cgi?id=40912), all suggesting
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/lockd/host.c  |   12 +++++++++---
+ fs/lockd/netns.h |    1 +
+ 2 files changed, 10 insertions(+), 3 deletions(-)
 
-That one appears to be only reproduceable on dmcrypt with the nfsd
-threads reniced.
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index 991274a..3636734 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -21,6 +21,8 @@
+ 
+ #include <net/ipv6.h>
+ 
++#include "netns.h"
++
+ #define NLMDBG_FACILITY		NLMDBG_HOSTCACHE
+ #define NLM_HOST_NRHASH		32
+ #define NLM_HOST_REBIND		(60 * HZ)
+@@ -41,7 +43,6 @@ static struct hlist_head	nlm_client_hosts[NLM_HOST_NRHASH];
+ 		hlist_for_each_entry_safe((host), (pos), (next), \
+ 						(chain), h_hash)
+ 
+-static unsigned long		next_gc;
+ static unsigned long		nrhosts;
+ static DEFINE_MUTEX(nlm_host_mutex);
+ 
+@@ -337,6 +338,7 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
+ 		.hostname_len	= hostname_len,
+ 		.net		= net,
+ 	};
++	struct lockd_net *ln = net_generic(net, lockd_net_id);
+ 
+ 	dprintk("lockd: %s(host='%*s', vers=%u, proto=%s)\n", __func__,
+ 			(int)hostname_len, hostname, rqstp->rq_vers,
+@@ -344,7 +346,7 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
+ 
+ 	mutex_lock(&nlm_host_mutex);
+ 
+-	if (time_after_eq(jiffies, next_gc))
++	if (time_after_eq(jiffies, ln->next_gc))
+ 		nlm_gc_hosts(net);
+ 
+ 	chain = &nlm_server_hosts[nlm_hash_address(ni.sap)];
+@@ -653,5 +655,9 @@ nlm_gc_hosts(struct net *net)
+ 		nlm_destroy_host_locked(host);
+ 	}
+ 
+-	next_gc = jiffies + NLM_HOST_COLLECT;
++	if (net) {
++		struct lockd_net *ln = net_generic(net, lockd_net_id);
++
++		ln->next_gc = jiffies + NLM_HOST_COLLECT;
++	}
+ }
+diff --git a/fs/lockd/netns.h b/fs/lockd/netns.h
+index ce227e0..97c6c77 100644
+--- a/fs/lockd/netns.h
++++ b/fs/lockd/netns.h
+@@ -5,6 +5,7 @@
+ 
+ struct lockd_net {
+ 	unsigned int nlmsvc_users;
++	unsigned long next_gc;
+ };
+ 
+ extern int lockd_net_id;
 
-> that this is indeed a kernel 3.0 problem.
-> 
-> So I will try going back to 2.6.32 and hope this issue gets fixed soon.
-
-I don't know enough to be confident of that yet.
-
-> Thanks for your help!
-
-If you have the chance to test any intermediate kernels that might also
-give us some useful data points.
-
---b.
