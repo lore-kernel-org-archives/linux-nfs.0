@@ -1,132 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50390 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:50720 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753824Ab2GXRW2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Jul 2012 13:22:28 -0400
-Date: Tue, 24 Jul 2012 13:22:24 -0400
-To: Sachin Prabhu <sprabhu@redhat.com>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@netapp.com>
-Subject: Re: [PATCH] Fix array overflow in __nfs4_get_acl_uncached
-Message-ID: <20120724172224.GI8570@fieldses.org>
-References: <1343129785-4538-1-git-send-email-sprabhu@redhat.com>
+	id S1755936Ab2GYQwS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jul 2012 12:52:18 -0400
+Date: Wed, 25 Jul 2012 12:52:15 -0400
+To: Taylan Develioglu <tdevelioglu@ebuddy.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond@netapp.com>
+Subject: Re: rpc_exit_task warning.
+Message-ID: <20120725165215.GC16617@fieldses.org>
+References: <FF1DF58D04F11D4291D09795D1A4EF16180E4C4AD8@SRV-MAIL>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1343129785-4538-1-git-send-email-sprabhu@redhat.com>
+In-Reply-To: <FF1DF58D04F11D4291D09795D1A4EF16180E4C4AD8@SRV-MAIL>
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 24, 2012 at 12:36:25PM +0100, Sachin Prabhu wrote:
-> This fixes a bug introduced by commit
-> 5a00689930ab975fdd1b37b034475017e460cf2a
-> 
-> Bruce Fields pointed out that the changes introduced by the patch will
-> cause the array npages to overflow if a size requested is >=
-> XATTR_SIZE_MAX.
-> 
-> The patch also fixes the check for the length of the ACL returned. The
-> flag ACL_LEN_REQUEST has been renamed to NFS4_ACL_LEN_ONLY and apart
-> from indicating that the user is just interested in the ACL length when
-> making a request, it is also used to indicate if the xdr pages buffer
-> returned in response holds the complete ACL or just the length.
+On Tue, Jul 24, 2012 at 08:58:43PM +0200, Taylan Develioglu wrote:
+> We just deployed a new nfs server and have about a hundred clients connected but are getting repeated kernel warnings on the server:
 
-Looks right to me.
+Did this replace an old server that didn't see these warnings?
+
+> 
+> Clients and servers run 3.2.18 and 3.2.20 respectively. We do not use any security options.
+> 
+> I don't really have time to debug this, but I felt I should report it.
+> 
+> - Client
+>   ii  libevent-1.4-2                      1.4.13-stable-1
+>   ii  util-linux                          2.17.2-9
+>   ii  linux-image-3.2.0-0.bpo.2-amd64     3.2.18-1~bpo60+1
+>   ii  nfs-common                          1:1.2.2-4squeeze2
+> 
+> - Server
+>   ii  libevent-1.4-2                      1.4.13-stable-1
+>   ii  util-linux                          2.17.2-9
+>   ii  linux-image-3.2.0-0.bpo.2-amd64     3.2.20-1~bpo60+1
+>   ii  libnfsidmap2                        0.24-1~bpo60+1               
+>   ii  nfs-common                          1:1.2.5-4~bpo60+1            
+>   ii  nfs-kernel-server                   1:1.2.5-4~bpo60+1            
+> 
+> exportfs -v
+> /var/www/pictures
+>                 x.x.x.x/22(rw,async,wdelay,root_squash,all_squash,no_subtree_check,anonuid=33,anongid=33)
+> /var/www/pictures
+>                 10.40.0.0/23(rw,async,wdelay,root_squash,all_squash,no_subtree_check,anonuid=33,anongid=33)
+> 
+> ----------------------------------------------------------------------------------------
+> [ 1913.662849] WARNING: at /build/buildd-linux_3.2.20-1~bpo60+1-amd64-tQMw4f/linux-3.2.20/net/sunrpc/sched.c:630 rpc_exit_task+0x40/0x7a [sunrpc]()
+
+That's a warning from rpc_task that both tk_action and RPC_TASK_KILLED
+were set on exit from rpc_calL_done.
+
+Couldn't that happen if there's a race between rpc_killall and
+rpc_call_done trying to restart the task?  rpc_restart_call{_prepare}
+check RPC_TASK_KILLED before setting the action, but does anything
+prevent the flag being set after that check?
 
 --b.
 
+> [ 1913.662851] Hardware name: X8STi
+> [ 1913.662852] Modules linked in: nfsd nfs lockd fscache auth_rpcgss nfs_acl sunrpc hmac drbd lru_cache cn ipmi_si ipmi_devintf ipmi_msghandler loop tpm_tis tpm parport_pc i2c_i801 i7core_edac i2c_core snd_pcm snd_timer snd ioatdma soundcore tpm_bios snd_page_alloc parport edac_core dca pcspkr psmouse processor serio_raw thermal_sys evdev joydev button ext4 mbcache jbd2 crc16 dm_mod sg sr_mod cdrom ses enclosure sd_mod crc_t10dif usb_storage usbhid hid uas uhci_hcd mptsas mptscsih mptbase scsi_transport_sas ahci libahci ehci_hcd libata usbcore aacraid usb_common scsi_mod e1000e [last unloaded: scsi_wait_scan]
+> [ 1913.662902] Pid: 11, comm: kworker/0:1 Tainted: G        W    3.2.0-0.bpo.2-amd64 #1
+> [ 1913.662904] Call Trace:
+> [ 1913.662909]  [<ffffffff810498ac>] ? warn_slowpath_common+0x78/0x8c
+> [ 1913.662916]  [<ffffffffa0327871>] ? rpc_exit_task+0x40/0x7a [sunrpc]
+> [ 1913.662922]  [<ffffffffa0327ddb>] ? __rpc_execute+0x71/0x23f [sunrpc]
+> [ 1913.662928]  [<ffffffffa0327fe1>] ? rpc_execute+0x38/0x38 [sunrpc]
+> [ 1913.662981]  [<ffffffff8105f96c>] ? process_one_work+0x1cc/0x2ea
+> [ 1913.662985]  [<ffffffff8105fbb7>] ? worker_thread+0x12d/0x247
+> [ 1913.662987]  [<ffffffff8105fa8a>] ? process_one_work+0x2ea/0x2ea
+> [ 1913.662990]  [<ffffffff8105fa8a>] ? process_one_work+0x2ea/0x2ea
+> [ 1913.662993]  [<ffffffff810633c5>] ? kthread+0x7a/0x82
+> [ 1913.662998]  [<ffffffff8136ca74>] ? kernel_thread_helper+0x4/0x10
+> [ 1913.663000]  [<ffffffff8106334b>] ? kthread_worker_fn+0x147/0x147
+> [ 1913.663003]  [<ffffffff8136ca70>] ? gs_change+0x13/0x13
+> [ 1913.663005] ---[ end trace 7cee9f1fd80fe6ac ]---
+> ----------------------------------------------------------------------------------------
 > 
-> Signed-off-by: Sachin Prabhu <sprabhu@redhat.com>
-> ---
->  fs/nfs/nfs4proc.c       |   18 +++++++++---------
->  fs/nfs/nfs4xdr.c        |    4 +++-
->  include/linux/nfs_xdr.h |    2 +-
->  3 files changed, 13 insertions(+), 11 deletions(-)
+> Regards,
 > 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 15fc7e4..e19c322 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -3726,16 +3726,16 @@ out:
->  /*
->   * The getxattr API returns the required buffer length when called with a
->   * NULL buf. The NFSv4 acl tool then calls getxattr again after allocating
-> - * the required buf.  On a NULL buf, we send a page of data to the server
-> - * guessing that the ACL request can be serviced by a page. If so, we cache
-> - * up to the page of ACL data, and the 2nd call to getxattr is serviced by
-> - * the cache. If not so, we throw away the page, and cache the required
-> - * length. The next getxattr call will then produce another round trip to
-> - * the server, this time with the input buf of the required size.
-> + * the required buf.  On a NULL buf, we allocate 2 pages guessing that the
-> + * ACL request can be serviced by those pages. If so, we cache the ACL data,
-> + * and the 2nd call to getxattr is serviced by the cache. If not so, we throw
-> + * away the pages, and cache the required length. The next getxattr call will
-> + * then produce another round trip to the server, this time with the input buf
-> + * of the required size.
->   */
->  static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t buflen)
->  {
-> -	struct page *pages[NFS4ACL_MAXPAGES] = {NULL, };
-> +	struct page *pages[NFS4ACL_MAXPAGES+1] = {NULL, };
->  	struct nfs_getaclargs args = {
->  		.fh = NFS_FH(inode),
->  		.acl_pages = pages,
-> @@ -3777,7 +3777,7 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
->  	/* Let decode_getfacl know not to fail if the ACL data is larger than
->  	 * the page we send as a guess */
->  	if (buf == NULL)
-> -		res.acl_flags |= NFS4_ACL_LEN_REQUEST;
-> +		res.acl_flags |= NFS4_ACL_LEN_ONLY;
->  
->  	dprintk("%s  buf %p buflen %zu npages %d args.acl_len %zu\n",
->  		__func__, buf, buflen, npages, args.acl_len);
-> @@ -3787,7 +3787,7 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
->  		goto out_free;
->  
->  	acl_len = res.acl_len - res.acl_data_offset;
-> -	if (acl_len > args.acl_len)
-> +	if (res.acl_flags & NFS4_ACL_LEN_ONLY)
->  		nfs4_write_cached_acl(inode, NULL, 0, acl_len);
->  	else
->  		nfs4_write_cached_acl(inode, pages, res.acl_data_offset,
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index 18fae29..a88fcd0 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -5101,7 +5101,7 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
->  		hdrlen = (u8 *)xdr->p - (u8 *)iov->iov_base;
->  		attrlen += res->acl_data_offset;
->  		if (attrlen > page_len) {
-> -			if (res->acl_flags & NFS4_ACL_LEN_REQUEST) {
-> +			if (res->acl_flags & NFS4_ACL_LEN_ONLY) {
->  				/* getxattr interface called with a NULL buf */
->  				res->acl_len = attrlen;
->  				goto out;
-> @@ -5110,6 +5110,8 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
->  					attrlen, page_len);
->  			return -EINVAL;
->  		}
-> +		/* At this stage we have the complete ACL */
-> +		res->acl_flags &= ~NFS4_ACL_LEN_ONLY;
->  		xdr_read_pages(xdr, attrlen);
->  		res->acl_len = attrlen;
->  	} else
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index 8aadd90..39c8483 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -648,7 +648,7 @@ struct nfs_getaclargs {
->  };
->  
->  /* getxattr ACL interface flags */
-> -#define NFS4_ACL_LEN_REQUEST	0x0001	/* zero length getxattr buffer */
-> +#define NFS4_ACL_LEN_ONLY	0x0001	/* zero length getxattr buffer */
->  struct nfs_getaclres {
->  	size_t				acl_len;
->  	size_t				acl_data_offset;
-> -- 
-> 1.7.10.4
-> 
+> Taylan
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
