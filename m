@@ -1,170 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:40103 "EHLO mx2.suse.de"
+Received: from mailhub.sw.ru ([195.214.232.25]:4180 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758755Ab2GLGlX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Jul 2012 02:41:23 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>,
-        Sebastian Andrzej Siewior <sebastian@breakpoint.cc>,
-        Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 09/12] nfs: disable data cache revalidation for swapfiles
-Date: Thu, 12 Jul 2012 07:41:03 +0100
-Message-Id: <1342075266-29593-10-git-send-email-mgorman@suse.de>
-In-Reply-To: <1342075266-29593-1-git-send-email-mgorman@suse.de>
-References: <1342075266-29593-1-git-send-email-mgorman@suse.de>
+	id S1756366Ab2GYM6O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jul 2012 08:58:14 -0400
+Subject: [PATCH v2 08/15] LockD: make lockd manager allocated per network
+	namespace
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Wed, 25 Jul 2012 16:56:50 +0400
+Message-ID: <20120725125650.24376.31606.stgit@localhost.localdomain>
+In-Reply-To: <20120725125258.24376.82525.stgit@localhost.localdomain>
+References: <20120725125258.24376.82525.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The VM does not like PG_private set on PG_swapcache pages. As suggested
-by Trond in http://lkml.org/lkml/2006/8/25/348, this patch disables
-NFS data cache revalidation on swap files.  as it does not make
-sense to have other clients change the file while it is being used as
-swap. This avoids setting PG_private on swap pages, since there ought
-to be no further races with invalidate_inode_pages2() to deal with.
-
-Since we cannot set PG_private we cannot use page->private which
-is already used by PG_swapcache pages to store the nfs_page. Thus
-augment the new nfs_page_find_request logic.
-
-Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
-Acked-by: Rik van Riel <riel@redhat.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 ---
- fs/nfs/inode.c |    4 ++++
- fs/nfs/write.c |   49 +++++++++++++++++++++++++++++++++++--------------
- 2 files changed, 39 insertions(+), 14 deletions(-)
+ fs/lockd/netns.h |    2 ++
+ fs/lockd/svc.c   |   18 ++++++++++--------
+ 2 files changed, 12 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 4d02a25..3db1ab7 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -883,6 +883,10 @@ int nfs_revalidate_mapping(struct inode *inode, struct address_space *mapping)
- 	struct nfs_inode *nfsi = NFS_I(inode);
- 	int ret = 0;
+diff --git a/fs/lockd/netns.h b/fs/lockd/netns.h
+index 94653ae..e78650c 100644
+--- a/fs/lockd/netns.h
++++ b/fs/lockd/netns.h
+@@ -1,6 +1,7 @@
+ #ifndef __LOCKD_NETNS_H__
+ #define __LOCKD_NETNS_H__
  
-+	/* swapfiles are not supposed to be shared. */
-+	if (IS_SWAPFILE(inode))
-+		goto out;
-+
- 	if (nfs_mapping_need_revalidate_inode(inode)) {
- 		ret = __nfs_revalidate_inode(NFS_SERVER(inode), inode);
- 		if (ret < 0)
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index d0feca3..974e9c2 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -139,15 +139,28 @@ static void nfs_context_set_write_error(struct nfs_open_context *ctx, int error)
- 	set_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
++#include <linux/fs.h>
+ #include <net/netns/generic.h>
+ 
+ struct lockd_net {
+@@ -9,6 +10,7 @@ struct lockd_net {
+ 	unsigned long nrhosts;
+ 
+ 	struct delayed_work grace_period_end;
++	struct lock_manager lockd_manager;
+ };
+ 
+ extern int lockd_net_id;
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 70c4177..a9c436b 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -87,12 +87,14 @@ static unsigned long get_lockd_grace_period(void)
+ 		return nlm_timeout * 5 * HZ;
  }
  
--static struct nfs_page *nfs_page_find_request_locked(struct page *page)
-+static struct nfs_page *
-+nfs_page_find_request_locked(struct nfs_inode *nfsi, struct page *page)
+-static struct lock_manager lockd_manager = {
+-};
+-
+-static void grace_ender(struct work_struct *not_used)
++static void grace_ender(struct work_struct *grace)
  {
- 	struct nfs_page *req = NULL;
- 
--	if (PagePrivate(page)) {
-+	if (PagePrivate(page))
- 		req = (struct nfs_page *)page_private(page);
--		if (req != NULL)
--			kref_get(&req->wb_kref);
-+	else if (unlikely(PageSwapCache(page))) {
-+		struct nfs_page *freq, *t;
+-	locks_end_grace(&lockd_manager);
++	struct delayed_work *dwork = container_of(grace, struct delayed_work,
++						  work);
++	struct lockd_net *ln = container_of(dwork, struct lockd_net,
++					    grace_period_end);
 +
-+		/* Linearly search the commit list for the correct req */
-+		list_for_each_entry_safe(freq, t, &nfsi->commit_info.list, wb_list) {
-+			if (freq->wb_page == page) {
-+				req = freq;
-+				break;
-+			}
-+		}
++	locks_end_grace(&ln->lockd_manager);
+ }
+ 
+ static void set_grace_period(void)
+@@ -100,7 +102,7 @@ static void set_grace_period(void)
+ 	unsigned long grace_period = get_lockd_grace_period();
+ 	struct lockd_net *ln = net_generic(&init_net, lockd_net_id);
+ 
+-	locks_start_grace(&lockd_manager);
++	locks_start_grace(&ln->lockd_manager);
+ 	cancel_delayed_work_sync(&ln->grace_period_end);
+ 	schedule_delayed_work(&ln->grace_period_end, grace_period);
+ }
+@@ -111,7 +113,7 @@ static void restart_grace(void)
+ 		struct lockd_net *ln = net_generic(&init_net, lockd_net_id);
+ 
+ 		cancel_delayed_work_sync(&ln->grace_period_end);
+-		locks_end_grace(&lockd_manager);
++		locks_end_grace(&ln->lockd_manager);
+ 		nlmsvc_invalidate_all();
+ 		set_grace_period();
  	}
-+
-+	if (req)
-+		kref_get(&req->wb_kref);
-+
- 	return req;
- }
- 
-@@ -157,7 +170,7 @@ static struct nfs_page *nfs_page_find_request(struct page *page)
- 	struct nfs_page *req = NULL;
- 
- 	spin_lock(&inode->i_lock);
--	req = nfs_page_find_request_locked(page);
-+	req = nfs_page_find_request_locked(NFS_I(inode), page);
- 	spin_unlock(&inode->i_lock);
- 	return req;
- }
-@@ -258,7 +271,7 @@ static struct nfs_page *nfs_find_and_lock_request(struct page *page, bool nonblo
- 
- 	spin_lock(&inode->i_lock);
- 	for (;;) {
--		req = nfs_page_find_request_locked(page);
-+		req = nfs_page_find_request_locked(NFS_I(inode), page);
- 		if (req == NULL)
- 			break;
- 		if (nfs_lock_request(req))
-@@ -413,9 +426,15 @@ static void nfs_inode_add_request(struct inode *inode, struct nfs_page *req)
- 	spin_lock(&inode->i_lock);
- 	if (!nfsi->npages && NFS_PROTO(inode)->have_delegation(inode, FMODE_WRITE))
- 		inode->i_version++;
--	set_bit(PG_MAPPED, &req->wb_flags);
--	SetPagePrivate(req->wb_page);
--	set_page_private(req->wb_page, (unsigned long)req);
-+	/*
-+	 * Swap-space should not get truncated. Hence no need to plug the race
-+	 * with invalidate/truncate.
-+	 */
-+	if (likely(!PageSwapCache(req->wb_page))) {
-+		set_bit(PG_MAPPED, &req->wb_flags);
-+		SetPagePrivate(req->wb_page);
-+		set_page_private(req->wb_page, (unsigned long)req);
-+	}
- 	nfsi->npages++;
- 	kref_get(&req->wb_kref);
- 	spin_unlock(&inode->i_lock);
-@@ -432,9 +451,11 @@ static void nfs_inode_remove_request(struct nfs_page *req)
- 	BUG_ON (!NFS_WBACK_BUSY(req));
- 
- 	spin_lock(&inode->i_lock);
--	set_page_private(req->wb_page, 0);
--	ClearPagePrivate(req->wb_page);
--	clear_bit(PG_MAPPED, &req->wb_flags);
-+	if (likely(!PageSwapCache(req->wb_page))) {
-+		set_page_private(req->wb_page, 0);
-+		ClearPagePrivate(req->wb_page);
-+		clear_bit(PG_MAPPED, &req->wb_flags);
-+	}
- 	nfsi->npages--;
- 	spin_unlock(&inode->i_lock);
- 	nfs_release_request(req);
-@@ -730,7 +751,7 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
- 	spin_lock(&inode->i_lock);
- 
- 	for (;;) {
--		req = nfs_page_find_request_locked(page);
-+		req = nfs_page_find_request_locked(NFS_I(inode), page);
- 		if (req == NULL)
- 			goto out_unlock;
- 
-@@ -1744,7 +1765,7 @@ int nfs_wb_page_cancel(struct inode *inode, struct page *page)
-  */
- int nfs_wb_page(struct inode *inode, struct page *page)
- {
--	loff_t range_start = page_offset(page);
-+	loff_t range_start = page_file_offset(page);
- 	loff_t range_end = range_start + (loff_t)(PAGE_CACHE_SIZE - 1);
- 	struct writeback_control wbc = {
- 		.sync_mode = WB_SYNC_ALL,
--- 
-1.7.9.2
+@@ -187,7 +189,7 @@ lockd(void *vrqstp)
+ 	}
+ 	flush_signals(current);
+ 	cancel_delayed_work_sync(&ln->grace_period_end);
+-	locks_end_grace(&lockd_manager);
++	locks_end_grace(&ln->lockd_manager);
+ 	if (nlmsvc_ops)
+ 		nlmsvc_invalidate_all();
+ 	nlm_shutdown_hosts();
 
