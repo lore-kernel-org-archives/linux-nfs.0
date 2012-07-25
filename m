@@ -1,144 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:19141 "EHLO mx1.redhat.com"
+Received: from hq.ebuddy.com ([194.151.176.130]:20710 "EHLO hq.ebuddy.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751253Ab2GSNpI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Jul 2012 09:45:08 -0400
-Message-ID: <50080F5F.5040600@RedHat.com>
-Date: Thu, 19 Jul 2012 09:45:03 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S932764Ab2GYRBW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jul 2012 13:01:22 -0400
+From: Taylan Develioglu <tdevelioglu@ebuddy.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond@netapp.com>
+Date: Wed, 25 Jul 2012 19:01:14 +0200
+Subject: RE: rpc_exit_task warning.
+Message-ID: <FF1DF58D04F11D4291D09795D1A4EF16180E4C4B0C@SRV-MAIL>
+References: <FF1DF58D04F11D4291D09795D1A4EF16180E4C4AD8@SRV-MAIL>
+ <20120725165215.GC16617@fieldses.org>
+In-Reply-To: <20120725165215.GC16617@fieldses.org>
+Content-Type: text/plain; charset="iso-8859-1"
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] rpc.gssd: close upcall pipe on POLLHUP
-References: <20120716183526.2399.37839.stgit@degas.1015granger.net>
-In-Reply-To: <20120716183526.2399.37839.stgit@degas.1015granger.net>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Yes, but the previous server was using kernel version 2.6.39, so it looks like this is a regression.
+
+------------------------------------------------------------------------------------------------------------------
+
+ 
+TAYLAN DEVELIOGLU
+Operations Manager
+Email: tdevelioglu@ebuddy.com
+mobile: +31 (0) 62 122 3115
+
+eBuddy BV
+Keizersgracht 585
+1017 DR Amsterdam
+The Netherlands
+www.ebuddy.com
 
 
-On 07/16/2012 02:36 PM, Chuck Lever wrote:
-> When a POLLHUP event is received on a pipe file descriptor, that
-> means the other side has closed its end of the pipe.  If the
-> receiver does not close its end of the pipe, the pipe is left in an
-> open-but-unlinked state.
-> 
-> For a "gssd" upcall pipe, the kernel may close its end, removing the
-> directory entry for it, and then later create a fresh pipe named
-> "gssd" in the same directory.  In this case, rpc.gssd continues to
-> listen on the open-but-unlinked previous "gssd" pipe.  Thus upcalls
-> on the new "gssd" pipe are left unanswered.
-> 
-> In addition, poll(2) continues to return POLLHUP on the old pipe.
-> Since there is no logic to close the pipe in rpc.gssd, poll(2) always
-> returns immediately, and rpc.gssd goes into a tight loop.
-> 
-> Typically, the kernel closes upcall pipes and destroys their
-> parent directory at the same time.  When an RPC client's directory
-> vanishes, rpc.gssd sees the change via dnotify and eventually
-> invokes destroy_client() which closes the user-space end of the
-> pipes.
-> 
-> However, if the kernel wants to switch authentication flavors (say
-> from AUTH_KRB5 to AUTH_UNIX) on an RPC client without destroying it,
-> the upcall pipes go away, but the RPC client's directory remains.
-> rpc.gssd invokes update_client_list(), but that logic never closes
-> upcall pipes if the client directory is still in place.
-> 
-> After a POLLHUP on a pipe, close it when rpc.gssd reconstructs its
-> list of upcall clients.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Committed....
+------------------------------------------------------------------------------------------------------------------
 
-steved.
-> ---
+
+
+-----Original Message-----
+From: J. Bruce Fields [mailto:bfields@fieldses.org] 
+Sent: Wednesday, July 25, 2012 18:52
+To: Taylan Develioglu
+Cc: linux-nfs@vger.kernel.org; Trond Myklebust
+Subject: Re: rpc_exit_task warning.
+
+
+On Tue, Jul 24, 2012 at 08:58:43PM +0200, Taylan Develioglu wrote:
+> We just deployed a new nfs server and have about a hundred clients connected but are getting repeated kernel warnings on the server:
+
+Did this replace an old server that didn't see these warnings?
+
 > 
-> I know folks are probably on vacation this week, so this is only a
-> request for comments.
+> Clients and servers run 3.2.18 and 3.2.20 respectively. We do not use any security options.
 > 
->  utils/gssd/gssd.h           |    2 ++
->  utils/gssd/gssd_main_loop.c |    8 ++++++--
->  utils/gssd/gssd_proc.c      |   19 +++++++++++++++++++
->  3 files changed, 27 insertions(+), 2 deletions(-)
+> I don't really have time to debug this, but I felt I should report it.
 > 
-> diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
-> index e0a2b7b..ec81beb 100644
-> --- a/utils/gssd/gssd.h
-> +++ b/utils/gssd/gssd.h
-> @@ -82,8 +82,10 @@ struct clnt_info {
->  	char			*protocol;
->  	int			krb5_fd;
->  	int			krb5_poll_index;
-> +	int			krb5_close_me;
->  	int                     gssd_fd;
->  	int                     gssd_poll_index;
-> +	int			gssd_close_me;
->  	struct sockaddr_storage addr;
->  };
->  
-> diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
-> index 187954c..6480390 100644
-> --- a/utils/gssd/gssd_main_loop.c
-> +++ b/utils/gssd/gssd_main_loop.c
-> @@ -78,8 +78,10 @@ scan_poll_results(int ret)
->  	{
->  		i = clp->gssd_poll_index;
->  		if (i >= 0 && pollarray[i].revents) {
-> -			if (pollarray[i].revents & POLLHUP)
-> +			if (pollarray[i].revents & POLLHUP) {
-> +				clp->gssd_close_me = 1;
->  				dir_changed = 1;
-> +			}
->  			if (pollarray[i].revents & POLLIN)
->  				handle_gssd_upcall(clp);
->  			pollarray[clp->gssd_poll_index].revents = 0;
-> @@ -89,8 +91,10 @@ scan_poll_results(int ret)
->  		}
->  		i = clp->krb5_poll_index;
->  		if (i >= 0 && pollarray[i].revents) {
-> -			if (pollarray[i].revents & POLLHUP)
-> +			if (pollarray[i].revents & POLLHUP) {
-> +				clp->krb5_close_me = 1;
->  				dir_changed = 1;
-> +			}
->  			if (pollarray[i].revents & POLLIN)
->  				handle_krb5_upcall(clp);
->  			pollarray[clp->krb5_poll_index].revents = 0;
-> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> index fed2886..5e33379 100644
-> --- a/utils/gssd/gssd_proc.c
-> +++ b/utils/gssd/gssd_proc.c
-> @@ -339,6 +339,25 @@ process_clnt_dir_files(struct clnt_info * clp)
->  	char	gname[PATH_MAX];
->  	char	info_file_name[PATH_MAX];
->  
-> +	if (clp->gssd_close_me) {
-> +		printerr(2, "Closing 'gssd' pipe for %s\n", clp->dirname);
-> +		close(clp->gssd_fd);
-> +		memset(&pollarray[clp->gssd_poll_index], 0,
-> +			sizeof(struct pollfd));
-> +		clp->gssd_fd = -1;
-> +		clp->gssd_poll_index = -1;
-> +		clp->gssd_close_me = 0;
-> +	}
-> +	if (clp->krb5_close_me) {
-> +		printerr(2, "Closing 'krb5' pipe for %s\n", clp->dirname);
-> +		close(clp->krb5_fd);
-> +		memset(&pollarray[clp->krb5_poll_index], 0,
-> +			sizeof(struct pollfd));
-> +		clp->krb5_fd = -1;
-> +		clp->krb5_poll_index = -1;
-> +		clp->krb5_close_me = 0;
-> +	}
-> +
->  	if (clp->gssd_fd == -1) {
->  		snprintf(gname, sizeof(gname), "%s/gssd", clp->dirname);
->  		clp->gssd_fd = open(gname, O_RDWR);
+> - Client
+>   ii  libevent-1.4-2                      1.4.13-stable-1
+>   ii  util-linux                          2.17.2-9
+>   ii  linux-image-3.2.0-0.bpo.2-amd64     3.2.18-1~bpo60+1
+>   ii  nfs-common                          1:1.2.2-4squeeze2
 > 
+> - Server
+>   ii  libevent-1.4-2                      1.4.13-stable-1
+>   ii  util-linux                          2.17.2-9
+>   ii  linux-image-3.2.0-0.bpo.2-amd64     3.2.20-1~bpo60+1
+>   ii  libnfsidmap2                        0.24-1~bpo60+1               
+>   ii  nfs-common                          1:1.2.5-4~bpo60+1            
+>   ii  nfs-kernel-server                   1:1.2.5-4~bpo60+1            
+> 
+> exportfs -v
+> /var/www/pictures
+>                 
+> x.x.x.x/22(rw,async,wdelay,root_squash,all_squash,no_subtree_check,ano
+> nuid=33,anongid=33)
+> /var/www/pictures
+>                 
+> 10.40.0.0/23(rw,async,wdelay,root_squash,all_squash,no_subtree_check,a
+> nonuid=33,anongid=33)
+> 
+> ----------------------------------------------------------------------
+> ------------------ [ 1913.662849] WARNING: at 
+> /build/buildd-linux_3.2.20-1~bpo60+1-amd64-tQMw4f/linux-3.2.20/net/sun
+> rpc/sched.c:630 rpc_exit_task+0x40/0x7a [sunrpc]()
+
+That's a warning from rpc_task that both tk_action and RPC_TASK_KILLED were set on exit from rpc_calL_done.
+
+Couldn't that happen if there's a race between rpc_killall and rpc_call_done trying to restart the task?  rpc_restart_call{_prepare} check RPC_TASK_KILLED before setting the action, but does anything prevent the flag being set after that check?
+
+--b.
+
+> [ 1913.662851] Hardware name: X8STi
+> [ 1913.662852] Modules linked in: nfsd nfs lockd fscache auth_rpcgss nfs_acl sunrpc hmac drbd lru_cache cn ipmi_si ipmi_devintf ipmi_msghandler loop tpm_tis tpm parport_pc i2c_i801 i7core_edac i2c_core snd_pcm snd_timer snd ioatdma soundcore tpm_bios snd_page_alloc parport edac_core dca pcspkr psmouse processor serio_raw thermal_sys evdev joydev button ext4 mbcache jbd2 crc16 dm_mod sg sr_mod cdrom ses enclosure sd_mod crc_t10dif usb_storage usbhid hid uas uhci_hcd mptsas mptscsih mptbase scsi_transport_sas ahci libahci ehci_hcd libata usbcore aacraid usb_common scsi_mod e1000e [last unloaded: scsi_wait_scan]
+> [ 1913.662902] Pid: 11, comm: kworker/0:1 Tainted: G        W    3.2.0-0.bpo.2-amd64 #1
+> [ 1913.662904] Call Trace:
+> [ 1913.662909]  [<ffffffff810498ac>] ? warn_slowpath_common+0x78/0x8c 
+> [ 1913.662916]  [<ffffffffa0327871>] ? rpc_exit_task+0x40/0x7a 
+> [sunrpc] [ 1913.662922]  [<ffffffffa0327ddb>] ? 
+> __rpc_execute+0x71/0x23f [sunrpc] [ 1913.662928]  [<ffffffffa0327fe1>] 
+> ? rpc_execute+0x38/0x38 [sunrpc] [ 1913.662981]  [<ffffffff8105f96c>] 
+> ? process_one_work+0x1cc/0x2ea [ 1913.662985]  [<ffffffff8105fbb7>] ? 
+> worker_thread+0x12d/0x247 [ 1913.662987]  [<ffffffff8105fa8a>] ? 
+> process_one_work+0x2ea/0x2ea [ 1913.662990]  [<ffffffff8105fa8a>] ? 
+> process_one_work+0x2ea/0x2ea [ 1913.662993]  [<ffffffff810633c5>] ? 
+> kthread+0x7a/0x82 [ 1913.662998]  [<ffffffff8136ca74>] ? 
+> kernel_thread_helper+0x4/0x10 [ 1913.663000]  [<ffffffff8106334b>] ? 
+> kthread_worker_fn+0x147/0x147 [ 1913.663003]  [<ffffffff8136ca70>] ? 
+> gs_change+0x13/0x13 [ 1913.663005] ---[ end trace 7cee9f1fd80fe6ac 
+> ]---
+> ----------------------------------------------------------------------
+> ------------------
+> 
+> Regards,
+> 
+> Taylan
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" 
+> in the body of a message to majordomo@vger.kernel.org More majordomo 
+> info at  http://vger.kernel.org/majordomo-info.html
