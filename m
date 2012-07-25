@@ -1,154 +1,204 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from hq.ebuddy.com ([194.151.176.130]:19255 "EHLO hq.ebuddy.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752080Ab2GZKnz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 06:43:55 -0400
-From: Taylan Develioglu <tdevelioglu@ebuddy.com>
-To: Taylan Develioglu <tdevelioglu@ebuddy.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond@netapp.com>
-Date: Thu, 26 Jul 2012 12:43:46 +0200
-Subject: RE: rpc_exit_task warning.
-Message-ID: <FF1DF58D04F11D4291D09795D1A4EF16180E4C4B1B@SRV-MAIL>
-References: <FF1DF58D04F11D4291D09795D1A4EF16180E4C4AD8@SRV-MAIL>
- <20120725165215.GC16617@fieldses.org>
-Content-Type: text/plain; charset="iso-8859-1"
+Received: from relay.parallels.com ([195.214.232.42]:37249 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751974Ab2GYKTF convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jul 2012 06:19:05 -0400
+Message-ID: <500FC80F.2070403@parallels.com>
+Date: Wed, 25 Jul 2012 14:18:55 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v3 03/11] NFS: move per-net callback thread initialization
+ to nfs_callback_up_net()
+References: <20120703161844.11911.92996.stgit@localhost.localdomain> <20120703161946.11911.85659.stgit@localhost.localdomain> <20120724214731.GO8570@fieldses.org>
+In-Reply-To: <20120724214731.GO8570@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I was wrong.
+25.07.2012 01:47, J. Bruce Fields Ð¿Ð¸ÑˆÐµÑ‚:
+> On Tue, Jul 03, 2012 at 08:19:46PM +0400, Stanislav Kinsbursky wrote:
+>> This new function in now called before nfs_minorversion_callback_svc_setup()).
+>>
+>> Also few small changes:
+>> 1) current network namespace in nfs_callback_up() was replaced by transport net.
+>> 2) svc_shutdown_net() was moved prior to callback usage counter decrement
+>> (because in case of per-net data allocation faulure svc_shutdown_net() have to
+>> be skipped).
+>>
+>> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+>> ---
+>>   fs/nfs/callback.c |  125 +++++++++++++++++++++++++++++++++--------------------
+>>   fs/nfs/client.c   |    2 -
+>>   2 files changed, 79 insertions(+), 48 deletions(-)
+>>
+>> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+>> index f8d0c21..b61ed61 100644
+>> --- a/fs/nfs/callback.c
+>> +++ b/fs/nfs/callback.c
+>> @@ -63,6 +63,32 @@ static struct kernel_param_ops param_ops_portnr = {
+>>
+>>   module_param_named(callback_tcpport, nfs_callback_set_tcpport, portnr, 0644);
+>>
+>> +static int nfs4_callback_up_net(struct svc_serv *serv, struct net *net)
+>> +{
+>> +	int ret;
+>> +
+>> +	ret = svc_create_xprt(serv, "tcp", net, PF_INET,
+>> +				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
+>> +	if (ret <= 0)
+>> +		goto out_err;
+>> +	nfs_callback_tcpport = ret;
+>> +	dprintk("NFS: Callback listener port = %u (af %u, net %p)\n",
+>> +			nfs_callback_tcpport, PF_INET, net);
+>> +
+>> +	ret = svc_create_xprt(serv, "tcp", net, PF_INET6,
+>> +				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
+>> +	if (ret > 0) {
+>> +		nfs_callback_tcpport6 = ret;
+>> +		dprintk("NFS: Callback listener port = %u (af %u, net %p)\n",
+>> +				nfs_callback_tcpport6, PF_INET6, net);
+>> +	} else if (ret != -EAFNOSUPPORT)
+>> +		goto out_err;
+>> +	return 0;
+>> +
+>> +out_err:
+>> +	return (ret) ? ret : -ENOMEM;
+>> +}
+>> +
+>>   /*
+>>    * This is the NFSv4 callback kernel thread.
+>>    */
+>> @@ -104,36 +130,21 @@ nfs4_callback_svc(void *vrqstp)
+>>   static struct svc_rqst *
+>>   nfs4_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+>>   {
+>> -	int ret;
+>> -
+>> -	ret = svc_create_xprt(serv, "tcp", &init_net, PF_INET,
+>> -				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
+>> -	if (ret <= 0)
+>> -		goto out_err;
+>> -	nfs_callback_tcpport = ret;
+>> -	dprintk("NFS: Callback listener port = %u (af %u)\n",
+>> -			nfs_callback_tcpport, PF_INET);
+>> -
+>> -	ret = svc_create_xprt(serv, "tcp", &init_net, PF_INET6,
+>> -				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
+>> -	if (ret > 0) {
+>> -		nfs_callback_tcpport6 = ret;
+>> -		dprintk("NFS: Callback listener port = %u (af %u)\n",
+>> -				nfs_callback_tcpport6, PF_INET6);
+>> -	} else if (ret == -EAFNOSUPPORT)
+>> -		ret = 0;
+>> -	else
+>> -		goto out_err;
+>> -
+>>   	return svc_prepare_thread(serv, &serv->sv_pools[0], NUMA_NO_NODE);
+>> -
+>> -out_err:
+>> -	if (ret == 0)
+>> -		ret = -ENOMEM;
+>> -	return ERR_PTR(ret);
+>>   }
+>>
+>>   #if defined(CONFIG_NFS_V4_1)
+>> +static int nfs41_callback_up_net(struct svc_serv *serv, struct net *net)
+>> +{
+>> +	/*
+>> +	 * Create an svc_sock for the back channel service that shares the
+>> +	 * fore channel connection.
+>> +	 * Returns the input port (0) and sets the svc_serv bc_xprt on success
+>> +	 */
+>> +	return svc_create_xprt(serv, "tcp-bc", net, PF_INET, 0,
+>> +			      SVC_SOCK_ANONYMOUS);
+>> +}
+>> +
+>>   /*
+>>    * The callback service for NFSv4.1 callbacks
+>>    */
+>> @@ -176,19 +187,6 @@ static struct svc_rqst *
+>>   nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+>>   {
+>>   	struct svc_rqst *rqstp;
+>> -	int ret;
+>> -
+>> -	/*
+>> -	 * Create an svc_sock for the back channel service that shares the
+>> -	 * fore channel connection.
+>> -	 * Returns the input port (0) and sets the svc_serv bc_xprt on success
+>> -	 */
+>> -	ret = svc_create_xprt(serv, "tcp-bc", &init_net, PF_INET, 0,
+>> -			      SVC_SOCK_ANONYMOUS);
+>> -	if (ret < 0) {
+>> -		rqstp = ERR_PTR(ret);
+>> -		goto out;
+>> -	}
+>>
+>>   	/*
+>>   	 * Save the svc_serv in the transport so that it can
+>> @@ -204,7 +202,6 @@ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+>>   		svc_xprt_put(serv->sv_bc_xprt);
+>>   		serv->sv_bc_xprt = NULL;
+>>   	}
+>> -out:
+>>   	dprintk("--> %s return %ld\n", __func__,
+>>   		IS_ERR(rqstp) ? PTR_ERR(rqstp) : 0);
+>>   	return rqstp;
+>> @@ -228,6 +225,11 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
+>>   		xprt->bc_serv = cb_info->serv;
+>>   }
+>>   #else
+>> +static int nfs41_callback_up_net(struct svc_serv *serv, struct net *net)
+>> +{
+>> +	return 0;
+>> +}
+>> +
+>>   static inline int nfs_minorversion_callback_svc_setup(u32 minorversion,
+>>   		struct svc_serv *serv, struct rpc_xprt *xprt,
+>>   		struct svc_rqst **rqstpp, int (**callback_svc)(void *vrqstp))
+>> @@ -241,6 +243,36 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
+>>   }
+>>   #endif /* CONFIG_NFS_V4_1 */
+>>
+>> +static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct net *net)
+>> +{
+>> +	int ret;
+>> +
+>> +	dprintk("NFS: create per-net callback data; net=%p\n", net);
+>> +
+>> +	ret = svc_bind(serv, net);
+>> +	if (ret < 0) {
+>> +		printk(KERN_WARNING "NFS: bind callback service failed\n");
+>> +		goto err_bind;
+>> +	}
+>> +
+>> +	if (minorversion) {
+>> +		ret = nfs41_callback_up_net(serv, net);
+>> +		if (ret < 0)
+>> +			goto err_socks;
+>> +	}
+>> +
+>> +	if (ret == 0)
+>> +		ret = nfs4_callback_up_net(serv, net);
+>
+> So in the minorversion 1 case, and in the absence of errors, you set up
+> both the 4.1 and 4.0 callback xprts?
+>
+> That doesn't look right.  You should need only one or the other.
+>
 
-Changed kernel version to 2.6.39 and it's still happening.
+Thanks for the catch, Bruce.
+I'll fix it and resend.
+But currently I'm thinking, that for 3.6 kernel probably it's better to push 
+this code through Trond's tree.
 
-Only other difference I can think of is the fact we now use lvm instead of a regular partition.
-
-------------------------------------------------------------------------------------------------------------------
-
- 
-TAYLAN DEVELIOGLU
-Operations Manager
-Email: tdevelioglu@ebuddy.com
-mobile: +31 (0) 62 122 3115
-
-eBuddy BV
-Keizersgracht 585
-1017 DR Amsterdam
-The Netherlands
-www.ebuddy.com
+-- 
+Best regards,
+Stanislav Kinsbursky
 
 
-------------------------------------------------------------------------------------------------------------------
-
-
-
------Original Message-----
-From: Taylan Develioglu 
-Sent: Wednesday, July 25, 2012 19:01
-To: 'J. Bruce Fields'
-Cc: linux-nfs@vger.kernel.org; Trond Myklebust
-Subject: RE: rpc_exit_task warning.
-
-Yes, but the previous server was using kernel version 2.6.39, so it looks like this is a regression.
-
-------------------------------------------------------------------------------------------------------------------
-
- 
-TAYLAN DEVELIOGLU
-Operations Manager
-Email: tdevelioglu@ebuddy.com
-mobile: +31 (0) 62 122 3115
-
-eBuddy BV
-Keizersgracht 585
-1017 DR Amsterdam
-The Netherlands
-www.ebuddy.com
-
-
-------------------------------------------------------------------------------------------------------------------
-
-
-
------Original Message-----
-From: J. Bruce Fields [mailto:bfields@fieldses.org] 
-Sent: Wednesday, July 25, 2012 18:52
-To: Taylan Develioglu
-Cc: linux-nfs@vger.kernel.org; Trond Myklebust
-Subject: Re: rpc_exit_task warning.
-
-
-On Tue, Jul 24, 2012 at 08:58:43PM +0200, Taylan Develioglu wrote:
-> We just deployed a new nfs server and have about a hundred clients connected but are getting repeated kernel warnings on the server:
-
-Did this replace an old server that didn't see these warnings?
-
-> 
-> Clients and servers run 3.2.18 and 3.2.20 respectively. We do not use any security options.
-> 
-> I don't really have time to debug this, but I felt I should report it.
-> 
-> - Client
->   ii  libevent-1.4-2                      1.4.13-stable-1
->   ii  util-linux                          2.17.2-9
->   ii  linux-image-3.2.0-0.bpo.2-amd64     3.2.18-1~bpo60+1
->   ii  nfs-common                          1:1.2.2-4squeeze2
-> 
-> - Server
->   ii  libevent-1.4-2                      1.4.13-stable-1
->   ii  util-linux                          2.17.2-9
->   ii  linux-image-3.2.0-0.bpo.2-amd64     3.2.20-1~bpo60+1
->   ii  libnfsidmap2                        0.24-1~bpo60+1               
->   ii  nfs-common                          1:1.2.5-4~bpo60+1            
->   ii  nfs-kernel-server                   1:1.2.5-4~bpo60+1            
-> 
-> exportfs -v
-> /var/www/pictures
->                 
-> x.x.x.x/22(rw,async,wdelay,root_squash,all_squash,no_subtree_check,ano
-> nuid=33,anongid=33)
-> /var/www/pictures
->                 
-> 10.40.0.0/23(rw,async,wdelay,root_squash,all_squash,no_subtree_check,a
-> nonuid=33,anongid=33)
-> 
-> ----------------------------------------------------------------------
-> ------------------ [ 1913.662849] WARNING: at 
-> /build/buildd-linux_3.2.20-1~bpo60+1-amd64-tQMw4f/linux-3.2.20/net/sun
-> rpc/sched.c:630 rpc_exit_task+0x40/0x7a [sunrpc]()
-
-That's a warning from rpc_task that both tk_action and RPC_TASK_KILLED were set on exit from rpc_calL_done.
-
-Couldn't that happen if there's a race between rpc_killall and rpc_call_done trying to restart the task?  rpc_restart_call{_prepare} check RPC_TASK_KILLED before setting the action, but does anything prevent the flag being set after that check?
-
---b.
-
-> [ 1913.662851] Hardware name: X8STi
-> [ 1913.662852] Modules linked in: nfsd nfs lockd fscache auth_rpcgss nfs_acl sunrpc hmac drbd lru_cache cn ipmi_si ipmi_devintf ipmi_msghandler loop tpm_tis tpm parport_pc i2c_i801 i7core_edac i2c_core snd_pcm snd_timer snd ioatdma soundcore tpm_bios snd_page_alloc parport edac_core dca pcspkr psmouse processor serio_raw thermal_sys evdev joydev button ext4 mbcache jbd2 crc16 dm_mod sg sr_mod cdrom ses enclosure sd_mod crc_t10dif usb_storage usbhid hid uas uhci_hcd mptsas mptscsih mptbase scsi_transport_sas ahci libahci ehci_hcd libata usbcore aacraid usb_common scsi_mod e1000e [last unloaded: scsi_wait_scan]
-> [ 1913.662902] Pid: 11, comm: kworker/0:1 Tainted: G        W    3.2.0-0.bpo.2-amd64 #1
-> [ 1913.662904] Call Trace:
-> [ 1913.662909]  [<ffffffff810498ac>] ? warn_slowpath_common+0x78/0x8c 
-> [ 1913.662916]  [<ffffffffa0327871>] ? rpc_exit_task+0x40/0x7a 
-> [sunrpc] [ 1913.662922]  [<ffffffffa0327ddb>] ? 
-> __rpc_execute+0x71/0x23f [sunrpc] [ 1913.662928]  [<ffffffffa0327fe1>] 
-> ? rpc_execute+0x38/0x38 [sunrpc] [ 1913.662981]  [<ffffffff8105f96c>] 
-> ? process_one_work+0x1cc/0x2ea [ 1913.662985]  [<ffffffff8105fbb7>] ? 
-> worker_thread+0x12d/0x247 [ 1913.662987]  [<ffffffff8105fa8a>] ? 
-> process_one_work+0x2ea/0x2ea [ 1913.662990]  [<ffffffff8105fa8a>] ? 
-> process_one_work+0x2ea/0x2ea [ 1913.662993]  [<ffffffff810633c5>] ? 
-> kthread+0x7a/0x82 [ 1913.662998]  [<ffffffff8136ca74>] ? 
-> kernel_thread_helper+0x4/0x10 [ 1913.663000]  [<ffffffff8106334b>] ? 
-> kthread_worker_fn+0x147/0x147 [ 1913.663003]  [<ffffffff8136ca70>] ? 
-> gs_change+0x13/0x13 [ 1913.663005] ---[ end trace 7cee9f1fd80fe6ac 
-> ]---
-> ----------------------------------------------------------------------
-> ------------------
-> 
-> Regards,
-> 
-> Taylan
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" 
-> in the body of a message to majordomo@vger.kernel.org More majordomo 
-> info at  http://vger.kernel.org/majordomo-info.html
