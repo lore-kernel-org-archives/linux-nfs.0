@@ -1,131 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:20498 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751869Ab2GJQQV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jul 2012 12:16:21 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 03/12] NFS: Split out NFS v4 inode operations
-Date: Tue, 10 Jul 2012 12:16:08 -0400
-Message-Id: <1341936977-21186-4-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1341936977-21186-1-git-send-email-bjschuma@netapp.com>
-References: <1341936977-21186-1-git-send-email-bjschuma@netapp.com>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:55933 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752333Ab2GZLzf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 07:55:35 -0400
+Received: by yhmm54 with SMTP id m54so1830418yhm.19
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jul 2012 04:55:34 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v4 05/17] vfs: remove user_path_at_empty
+Date: Thu, 26 Jul 2012 07:55:08 -0400
+Message-Id: <1343303720-11199-6-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
+References: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+...there are no more callers.
 
-The NFS v4 file inode operations are already already in nfs4proc.c, so
-this patch just needs to move the directory operations to the same file.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/dir.c      | 29 ++---------------------------
- fs/nfs/nfs4_fs.h  |  5 ++++-
- fs/nfs/nfs4proc.c | 19 +++++++++++++++++++
- 3 files changed, 25 insertions(+), 28 deletions(-)
+ fs/namei.c            | 12 +++---------
+ include/linux/namei.h |  1 -
+ 2 files changed, 3 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index df78921..207cb18 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -63,31 +63,6 @@ const struct address_space_operations nfs_dir_aops = {
- 	.freepage = nfs_readdir_clear_array,
- };
- 
--#ifdef CONFIG_NFS_V4
--
--static struct dentry *nfs_atomic_lookup(struct inode *, struct dentry *, struct nameidata *);
--static int nfs_open_create(struct inode *dir, struct dentry *dentry, umode_t mode, struct nameidata *nd);
--const struct inode_operations nfs4_dir_inode_operations = {
--	.create		= nfs_open_create,
--	.lookup		= nfs_atomic_lookup,
--	.link		= nfs_link,
--	.unlink		= nfs_unlink,
--	.symlink	= nfs_symlink,
--	.mkdir		= nfs_mkdir,
--	.rmdir		= nfs_rmdir,
--	.mknod		= nfs_mknod,
--	.rename		= nfs_rename,
--	.permission	= nfs_permission,
--	.getattr	= nfs_getattr,
--	.setattr	= nfs_setattr,
--	.getxattr	= generic_getxattr,
--	.setxattr	= generic_setxattr,
--	.listxattr	= generic_listxattr,
--	.removexattr	= generic_removexattr,
--};
--
--#endif /* CONFIG_NFS_V4 */
--
- static struct nfs_open_dir_context *alloc_nfs_open_dir_context(struct inode *dir, struct rpc_cred *cred)
- {
- 	struct nfs_open_dir_context *ctx;
-@@ -1380,7 +1355,7 @@ out:
- 	return ret;
+diff --git a/fs/namei.c b/fs/namei.c
+index 1ab4400..244ee8b 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -1988,10 +1988,10 @@ int kern_path_at(int dfd, const char *name, unsigned flags, struct path *path)
+ 	return err;
  }
  
--static struct dentry *nfs_atomic_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
-+struct dentry *nfs_atomic_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
+-int user_path_at_empty(int dfd, const char __user *name, unsigned flags,
+-		 struct path *path, int *empty)
++int user_path_at(int dfd, const char __user *name, unsigned flags,
++		 struct path *path)
  {
- 	struct nfs_open_context *ctx;
- 	struct iattr attr;
-@@ -1520,7 +1495,7 @@ no_open:
- 	return nfs_lookup_revalidate(dentry, nd);
+-	char *tmp = getname_flags(name, flags, empty);
++	char *tmp = getname_flags(name, flags, NULL);
+ 	int err;
+ 
+ 	if (IS_ERR(tmp)) {
+@@ -2003,12 +2003,6 @@ int user_path_at_empty(int dfd, const char __user *name, unsigned flags,
+ 	return err;
  }
  
--static int nfs_open_create(struct inode *dir, struct dentry *dentry,
-+int nfs_open_create(struct inode *dir, struct dentry *dentry,
- 		umode_t mode, struct nameidata *nd)
+-int user_path_at(int dfd, const char __user *name, unsigned flags,
+-		 struct path *path)
+-{
+-	return user_path_at_empty(dfd, name, flags, path, NULL);
+-}
+-
+ static int user_path_parent(int dfd, const char __user *path,
+ 			struct nameidata *nd, char **name)
  {
- 	struct nfs_open_context *ctx = NULL;
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 3696ca7..b610c7e 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -200,7 +200,10 @@ struct nfs4_state_maintenance_ops {
- };
+diff --git a/include/linux/namei.h b/include/linux/namei.h
+index 002dc55..dc2a306 100644
+--- a/include/linux/namei.h
++++ b/include/linux/namei.h
+@@ -57,7 +57,6 @@ enum {LAST_NORM, LAST_ROOT, LAST_DOT, LAST_DOTDOT, LAST_BIND};
  
- extern const struct dentry_operations nfs4_dentry_operations;
--extern const struct inode_operations nfs4_dir_inode_operations;
-+
-+/* dir.c */
-+struct dentry *nfs_atomic_lookup(struct inode *, struct dentry *, struct nameidata *);
-+int nfs_open_create(struct inode *, struct dentry *, umode_t, struct nameidata *);
+ extern int kern_path_at(int, const char *, unsigned, struct path *);
+ extern int user_path_at(int, const char __user *, unsigned, struct path *);
+-extern int user_path_at_empty(int, const char __user *, unsigned, struct path *, int *empty);
  
- /* write.c */
- int nfs4_write_inode(struct inode *, struct writeback_control *);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 7d387cb..f8ab633 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6748,6 +6748,25 @@ const struct nfs4_minor_version_ops *nfs_v4_minor_ops[] = {
- #endif
- };
- 
-+static const struct inode_operations nfs4_dir_inode_operations = {
-+	.create		= nfs_open_create,
-+	.lookup		= nfs_atomic_lookup,
-+	.link		= nfs_link,
-+	.unlink		= nfs_unlink,
-+	.symlink	= nfs_symlink,
-+	.mkdir		= nfs_mkdir,
-+	.rmdir		= nfs_rmdir,
-+	.mknod		= nfs_mknod,
-+	.rename		= nfs_rename,
-+	.permission	= nfs_permission,
-+	.getattr	= nfs_getattr,
-+	.setattr	= nfs_setattr,
-+	.getxattr	= generic_getxattr,
-+	.setxattr	= generic_setxattr,
-+	.listxattr	= generic_listxattr,
-+	.removexattr	= generic_removexattr,
-+};
-+
- static const struct inode_operations nfs4_file_inode_operations = {
- 	.permission	= nfs_permission,
- 	.getattr	= nfs_getattr,
+ #define user_path(name, path) user_path_at(AT_FDCWD, name, LOOKUP_FOLLOW, path)
+ #define user_lpath(name, path) user_path_at(AT_FDCWD, name, 0, path)
 -- 
-1.7.11.1
+1.7.11.2
 
