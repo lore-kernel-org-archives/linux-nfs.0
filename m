@@ -1,227 +1,247 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:56303 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755681Ab2GAXPW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 1 Jul 2012 19:15:22 -0400
-Date: Mon, 2 Jul 2012 09:15:11 +1000
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Al Viro <viro@ZenIV.linux.org.uk>, Nick Piggin <npiggin@gmail.com>,
-        Nick Piggin <npiggin@kernel.dk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH] fs/dcache: allow __d_obtain_alias() to return unhashed
- dentries
-Message-ID: <20120702091511.314fc8e8@notabene.brown>
-In-Reply-To: <20120629202903.GB17103@fieldses.org>
-References: <AANLkTingRv_gtRSctGzMfYrKg02M_sKj97HSQPRm_mA_@mail.gmail.com>
-	<20101227234641.GA22248@fieldses.org>
-	<20110118204509.GA10903@fieldses.org>
-	<AANLkTikL2CDSWQJ1QH_Y4G-j70Vd=VesNMMnYTmMGHC9@mail.gmail.com>
-	<20110118220817.GF10903@fieldses.org>
-	<20110308181320.GA15566@fieldses.org>
-	<20110310105821.GE22723@ZenIV.linux.org.uk>
-	<20110311150749.2fa2be66@notabene.brown>
-	<20120628135927.GA6406@fieldses.org>
-	<20120629201034.GA17103@fieldses.org>
-	<20120629202903.GB17103@fieldses.org>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/yEA1rDGz0sU9dFYOzqXzsif"; protocol="application/pgp-signature"
+Received: from natasha.panasas.com ([67.152.220.90]:44387 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751245Ab2GZH3s (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 03:29:48 -0400
+Message-ID: <5010F1DF.3060905@panasas.com>
+Date: Thu, 26 Jul 2012 10:29:35 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Peng Tao <bergwolf@gmail.com>
+CC: linuxnfs <linux-nfs@vger.kernel.org>, Benny Halevy <bhalevy@tonian.com>
+Subject: Re: pnfs LD partial sector write
+References: <CA+a=Yy7B0uk-FWr3hOjWC+=Xq+UtHnEC4speD3OZzMFfXksyOw@mail.gmail.com> <500FCA3A.5020606@panasas.com> <CA+a=Yy58bjUMximWOMnmk0ugPKUY-LcacRhpdp4cvuz1HQG_gg@mail.gmail.com> <5010573F.4000901@panasas.com> <CA+a=Yy5oJObMeUuL-mspso2eXCr4+5qmiFsOfS5=fU5x9kHtkw@mail.gmail.com>
+In-Reply-To: <CA+a=Yy5oJObMeUuL-mspso2eXCr4+5qmiFsOfS5=fU5x9kHtkw@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/yEA1rDGz0sU9dFYOzqXzsif
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On 07/26/2012 05:43 AM, Peng Tao wrote:
 
-On Fri, 29 Jun 2012 16:29:03 -0400 "J. Bruce Fields" <bfields@fieldses.org>
-wrote:
+> On Thu, Jul 26, 2012 at 4:29 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+>> On 07/25/2012 05:43 PM, Peng Tao wrote:
+>>
+>>> On Wed, Jul 25, 2012 at 6:28 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+>>>> On 07/25/2012 10:31 AM, Peng Tao wrote:
+>>>>
+>>>>> Hi Boaz,
+>>>>>
+>>>>> Sorry about the long delay. I had some internal interrupt. Now I'm
+>>>>> looking at the partial LD write problem again. Instead of trying to
+>>>>> bail out unaligned writes blindly, this time I want to fix the write
+>>>>> code to handle partial write as you suggested before. However, it
+>>>>> seems to be more problematic than I used to think.
+>>>>>
+>>>>> The dirty range of a page passed to LD->write_pagelist may be
+>>>>> unaligned to sector size, in which case block layer cannot handle it
+>>>>> correctly. Even worse, I cannot do a read-modify-write cycle within
+>>>>> the same page because bio would read in the entire sector and thus
+>>>>> ruin user data within the same sector. Currently I'm thinking of
+>>>>> creating shadow pages for partial sector write and use them to read in
+>>>>> the sector and copy necessary data into user pages. But it is way too
+>>>>> tricky and I don't feel like it at all. So I want to ask how you solve
+>>>>> the partial sector write problem in object layout driver.
+>>>>>
+>>>>> I looked at the ore code and found that you are using bio to deal with
+>>>>> partial page read/write as well. But in places like _add_to_r4w(), I
+>>>>> don't see how partial sectors are handled. Maybe I was misreading the
+>>>>> code. Would you please shed some light? More specifically, how does
+>>>>> object layout driver handle partial sector writers like in bellow
+>>>>> simple testcase? Thanks in advance.
+>>>>>
+>>>>
+>>>>
+>>>> The objlayout does not have this problem. OSD-SCSI is a byte aligned
+>>>> protocol, unlike DISK-SCSI.
+>>>>
+>>> aha, I see. So this is blocklayout only problem.
+>>>
+>>>> The code you are looking for is at _add_to_r4w_first_page() &&
+>>>> _add_to_r4w_last_page. But as I said I just submit a read of:
+>>>>         0 => offset within the page
+>>>> What ever that might be.
+>>>>
+>>>> In your case: why? all you have to do is allocate 2 sectors (1k) at
+>>>> most one for partial sector at end and one for partial sector at
+>>>> beginning. And use chained BIOs then memcpy at most [1k -2] bytes.
+>>>>
+>>>> What you do is chain a single-sector BIO to an all aligned BIO
+>>>>
+>>> Yeah, it is exactly what I mean by "shadow pages" except for the
+>>> chained BIO part. I said "shadow pages" because I need to create one
+>>> or two pages to construct bio_vec to do the full sector sync read, and
+>>> the pages cannot be attached to inode address space (that's why
+>>> "shadow" :-).
+>>>
+>>> I asked because I don't like the solution and thought maybe there is
+>>> better method in object layout and I didn't find it in object code.
+>>> Now that it is a blocklayout only problem, I guess I'll have to do the
+>>> full sector sync reads tricks.
+>>>
+>>>> You do the following:
+>>>>
+>>>> - You will need to preform two reads, right? One for the unaligned
+>>>>   BLOCK at the begging and one for the BLOCK at the end. Since in
+>>>>   blocklayout all IO is BLOCK aligned.
+>>>>
+>>>> Beginning end of IO
+>>>> - Jump over first unaligned SECTOR. Prepare BIO from first full
+>>>>   sector, to the end of the BLOCK.
+>>>> - Prepare a 1-biovec BIO from the above allocated sector, which
+>>>>   reads the full first sector.
+>>>> - perpend the 1-vec BIO to the big one.
+>>>> - preform the read
+>>>> - memcpy from above allocated sector the 0=>offset part into the
+>>>>   NFS original page.
+>>>>
+>>>> Do the same for end of IO but for the very last unaligned sector.
+>>>> Chain 1-vec BIO to the end this time. memcpy last_byte=>end-of-sector
+>>>> part.
+>>>>
+>>>> So you see no shadow pages and not so complicated. In the unaligned
+>>>> case at most you need allocate 1k and chain BIOs at beginning and/or
+>>>> at end.
+>>>>
+>>>> Tell me if you need help with BIO chaining. The 1-vec BIO just use
+>>>> bio_kmalloc().
+>>>>
+>>> yeah, I do have a question on the BIO chaining thing. IMO, I need to
+>>> do one or two sync full sector reads, and memcpy the data in the pages
+>>> to fill original NFS page into sector aligned. And then I can issue
+>>> the sector aligned writes to write out all nfs pages. So I don't quite
+>>> get it when you say "perpend the 1-vec BIO to the big one", because
+>>> the sector aligned writes (the big one) must be submitted _after_ the
+>>> full sector sync reads and memcpy. Would you explain it a bit?
+>>>
+>>
+>>
+>> I'm not sure if that is what you meant but I thought you need to write
+>> as part of the original IO also the reminder of the last and fist BLOCKs
+>>
+>> BLOCK means the unit set by the MDS as the atomic IO operation of any
+>> IO. If not a full BLOCK is written then the read-layout needs to be used
+>> to copy the un written parts of the BLOCK into the write layout.
+>>
+> Not sure about objectlayout, but for block layout, we really don't
+> have to always read/write in BLOCK size. BLOCK is just a minimal
+> traceable extent and it is all about extent state that we care about.
+> If it is a read-write extent (which is the common case for rewrite),
+> blocklayout client can do whatever size of IO as long as the
+> underlying hardware supports (in DISK-SCSI case, SECTOR size).
+> 
+>> And that BLOCK can be bigger then a page (multiple of pages) and therefore
+>> also bigger then a sector (512 bytes).
+>>
+>> [In objects layout RFC the stripe_unit is not mandatory a multiple of
+>>  PAGE_SIZE, but if it is not so, we return error at alloc_lseg and use
+>>  MDS. I hope it is the same for blocklayout. BLOCK if bigger then
+>>  PAGE_SIZE should be multiple of. If not revert to MDS IO]
+>>
+>> So this is what I see. Say BLOCK is two pages.
+>>
+>> The complete IO will look like:
+>>
+>> .....|    block 0  ||    block 1  ||    block 2  ||    block 3  |......
+>> .....|page 0|page 1||page 2|page 3||page 4|page 5||page 6|page 7|......
+>>      ^          ^                                   ^           ^
+>>      |          |<--------------------------------->|           |
+>>      |     NFS-IO-start                      NFS-IO-end         |
+>>      |          |                                   |           |
+>>      |          |                                   |           |
+>>      |<-read I->|                                   |<-read II->|
+>>      |<-------------------------------------------------------->|
+>>   Written-IO-start                                     Written-IO-end
+>>
+>> Note that the best is if all these pages above, before the write
+>> operation, are at page-cache if not it is asking for trouble.
+>>
+>> lets zoom into the first block. (The same at last block but opposite)
+>>
+>> .....|                        block 0                        |......
+>> .....|          page 0           |           page 1          |......
+>> .....| sec0 | sec1 | sec2 | sec3 | sec4 | sec5 | sec6 | sec7 |......
+>>      ^                                             ^
+>>      |                                             |----------......
+>>      |                                        NFS-IO-start
+>>      |<----------------read I--------------------->|
+>>      |<----------------BIO_A------------------>|   |
+>>                                                |<->| <---- memcpy-part
+>>                                      BIO_B---> |<--->|
+>>
+>> (Sorry I put 4 sectors per page, it is 8, but the principle is the same)
+> Thanks a lot for the graph, it is very impressive and helps me a lot
+> in understanding your idea.
+> 
+>>
+>> You can not submit an IO read as one BIO into the original cache pages
+>> because sec6 above will be needed to be read complete and this will
+>> over-write the good part of sec6 which has valid data.
+>>
+>> So you make one BIO_A with sec0-5 which point to original page-cache pages.
+>> You make a second BIO_B which points to a side buffer of a the full sec6, and
+>> you chain them. ie:
+>>         BIO_A->bi_next = BIO_B (This is what I mean post-pend)
+>>
+> As I explained above, block layout client doesn't have to read sec0-5,
+> if extent is already read-write. Just when extent is invalid and if
+> there is a copy-on-write extent, client need to read in data from the
+> cow extent. And the BIO chaining thing is really unnecessary IMHO. In
+> cases client need to read in from cow extent, I can just use a single
+> BIO to read in sec0-6 and memcpy sec4-5 and part of sec6 into the
+> original nfs page.
+> 
+> It's not complicated. I have already cooked the patch. Will send it
+> out later today after more testing. It's just that I don't like the
+> solution, because I'll have to allocate more pages to construct
+> bio_vec to do read. It is an extra effort especially in memory reclaim
+> writeback case. Maybe I should make sure single page writeback don't
+> go through block layout LD.
+> 
+>> - Now submit the one read, two BIOs chained.
+>> - Do the same for the NFS-IO-end above, also one read 2 BIOs chained
+>>
+>> - Wait for both reads to return
+>>
+>> - Then you memcpy sec6 0 to offset%sector_size into original cache page.
+>> - Same for the end part, last_byte to sector_end
+>>
+>> - Now you can submit the full write.
+>>
+>> Both page 0 and page 1 can be marked as uptodate. But most important
+>> page 0 was not in cache before the preparation of the read, it must
+>> be marked as PageUptodate().
+>>
+> Another thing is, this further complicates direct writes, where I
+> cannot use pagecache to ensure proper locking for concurrent writers
+> in the same BLOCK, and sector-aligned partial BLOCK DIO writes need to
+> be serialized internally. IOW, the same code cannot be reused by DIO
+> writes. sigh...
+> 
 
-> On Fri, Jun 29, 2012 at 04:10:34PM -0400, J. Bruce Fields wrote:
-> > On Thu, Jun 28, 2012 at 09:59:27AM -0400, J. Bruce Fields wrote:
-> > > Coming back to this now, just trying to review the
-> > > filehandle-lookup/dcache interactions:
-> > >=20
-> > > On Fri, Mar 11, 2011 at 03:07:49PM +1100, NeilBrown wrote:
-> > > > 1/ Originally DCACHE_DISCONNECTED didn't really mean much - it's pr=
-esence
-> > > >    was only a hint, its absence was a strong statement.
-> > > >    If the flag is set, the dentry might not be linked to the root.
-> > > >    If it is clear, it definitely is link through to the root.
-> > > >    However I think it was used with stronger intent than that.
-> > > >=20
-> > > >    Now it seems to mean a little bit more:  If it is set and the de=
-ntry
-> > > >    is hashed, then it must be on the sb->s_anon list.
-> > >=20
-> > > The code that makes that assumption is __d_shrink (which does the work
-> > > of d_drop)--it uses DCACHE_DISCONECTED to decide which hash chain to
-> > > lock.
-> > >=20
-> > > I can't find any basis for that assumption.  The only code that clears
-> > > DCACHE_DISCONNECTED is in expfs.c, and it isn't done at the same time=
- as
-> > > hashing.  Am I missing something?
-> > >=20
-> > > >    This is a significant
-> > > >    which I never noticed (I haven't been watching).  Originally a
-> > > >    disconnected dentry would be attached (and hashed) to its parent=
-.  Then
-> > > >    that parent would get its own parent and so on until it was atta=
-ched all
-> > > >    the way to the root.  Only then would be start clearing
-> > > >    DCACHE_DISCONNECTED.  It seems we must clear it sooner now... I =
-wonder if
-> > > >    that is correct.
-> > >=20
-> > > It looks wrong to me:
-> > >=20
-> > > If we clear DCACHE_DISCONNECTED too early, then we risk a filehandle
-> > > lookup thinking the dentry is OK to use.  That could mean for example
-> > > trying to rename across directories that don't have any ancestor
-> > > relationship to each other in the dcache yet.
-> > >=20
-> > > So we need to wait to clear DCACHE_DISCONNECTED until we *know* the
-> > > dentry's parents go all the way back to the root.  As you say, that's
-> > > what the current code does.
-> > >=20
-> > > But that means DCACHE_DISCONNECTED dentries can be hashed to their
-> > > parents, and __d_shrink can be handed such dentries and then get the
-> > > locking wrong.
-> > >=20
-> > > It looks like this bug might originate with Nick Piggin's ceb5bdc2d246
-> > > "fs: dcache per-bucket dcache hash locking"?  There's no discussion in
-> > > the changelog, so probably it was just based on an unexamined assumpt=
-ion
-> > > about DCACHE_DISCONNECTED.
-> > >=20
-> > > I wonder if an IS_ROOT() test could replace the DCACHE_DISCONNECTED t=
-est
-> > > in __d_shrink(), or if we need another flag, or ?
-> >=20
-> > Bah, sorry, and I only just noticed that you already said as much later
-> > and did the IS_ROOT() thing in your patch.
-> >=20
-> > Anyway, here's just that one change with a slightly more painstaking
-> > changelog.
-> >=20
-> > --b.
-> >=20
-> > commit b1fa644355122627424fe2240a9fc60cbef4c349
-> > Author: J. Bruce Fields <bfields@redhat.com>
-> > Date:   Thu Jun 28 12:10:55 2012 -0400
-> >=20
-> >     dcache: use IS_ROOT to decide where dentry is hashed
-> >    =20
-> >     Every hashed dentry is either hashed in the dentry_hashtable, or a
-> >     superblock's s_anon list.
-> >    =20
-> >     __d_shrink assumes it can determine which is the case by checking
-> >     DCACHE_DISCONNECTED; this is not true.
-> >    =20
-> >     It is true that when DCACHE_DISCONNECTED is cleared, the dentry is =
-not
-> >     only hashed on dentry_hashtable, but is fully connected to its pare=
-nts
-> >     back to the root.
-> >    =20
-> >     But the converse is *not* true: fs/exportfs/expfs.c:reconnect_path()
-> >     attempts to connect a directory (found by filehandle lookup) back to
-> >     root by ascending to parents and performing lookups one at a time. =
- It
-> >     does not clear DCACHE_DISCONNECTED until its done, and that is not =
-at
-> >     all an atomic process.
-> >    =20
-> >     In particular, it is possible for DCACHE_DISCONNECTED to be set on a
-> >     dentry which is hashed on the dentry_hashtable.
-> >    =20
-> >     Instead, use IS_ROOT() to check which hash chain a dentry is on.  T=
-his
-> >     *does* work:
-> >    =20
-> >     Dentries are hashed only by:
-> >    =20
-> >     	- d_obtain_alias, which adds an IS_ROOT() dentry to sb_anon.
-> >    =20
-> >     	- __d_rehash, called by _d_rehash: hashes to the dentry's
-> >     	  parent, and all callers of _d_rehash appear to have d_parent
-> >     	  set to a "real" parent.
-> >     	- __d_rehash, called by __d_move: rehashes the moved dentry to
-> >     	  hash chain determined by target, and assigns target's d_parent
-> >     	  to its d_parent, before dropping the dentry's d_lock.
-> >    =20
-> >     Therefore I believe it's safe for a holder of a dentry's d_lock to
-> >     assume that it is hashed on sb_anon if and only if IS_ROOT(dentry) =
-is
-> >     true.
-> >    =20
-> >     I believe the incorrect assumption about DCACHE_DISCONNECTED was
-> >     originally introduced by ceb5bdc2d246 "fs: dcache per-bucket dcache=
- hash
-> >     locking".
-> >    =20
-> >     Cc: Neil Brown <neilb@suse.de>
-> >     Cc: Nick Piggin <npiggin@kernel.dk>
-> >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> >=20
-> > diff --git a/fs/dcache.c b/fs/dcache.c
-> > index 87c2da7..b2b382c 100644
-> > --- a/fs/dcache.c
-> > +++ b/fs/dcache.c
-> > @@ -410,7 +410,7 @@ static void __d_shrink(struct dentry *dentry)
-> >  {
-> >  	if (!d_unhashed(dentry)) {
-> >  		struct hlist_bl_head *b;
-> > -		if (unlikely(dentry->d_flags & DCACHE_DISCONNECTED))
-> > +		if (unlikely(IS_ROOT(dentry->d_flags)))
->=20
-> Um, right--I'll send an actual tested version along with some other
-> stuff later.
 
-:-)
+Crap, you did not understand my idea. Because in my plan all IO is
+done on page-cache pages, and or NFS pages, *ALL*. Even with the sec6 case
+above, page 1 is directly IOed and locked normally. only the single sector6
+is not.
 
-If that tested version looks like:
-                if (unlikely(IS_ROOT(dentry)))
-you can add a=20
-   Reviewed-by: NeilBrown <neilb@suse.de>
+You go head and say, "yes I have a solution just like you that allocates
+multiple pages and IOs and copies" , "But I don't like the allcations ...."
 
-Thanks,
-NeilBrown
+But this is exactly the opposite of my plan. In my plan you only allocate
+*at most* 2 sector. If you are concern about mem pressure just make a mempool
+of 512 byte units, and have 2 spare and you are done. (That's how scsi works)
 
+My demonstration above was for the worst case where "when extent is invalid and
+if there is a copy-on-write extent"
 
->=20
-> --b.
->=20
-> >  			b =3D &dentry->d_sb->s_anon;
-> >  		else
-> >  			b =3D d_hash(dentry->d_parent, dentry->d_name.hash);
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Of course when you don't need that then all you need is the single sector read
+of above BIO_B and the copy.
 
+All during the IO, all pages are locked as before specifically page 1 above
+which holds sec6.
 
---Sig_/yEA1rDGz0sU9dFYOzqXzsif
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
+I will not continue with these explanations, because clearly you are not listening
+to me, and you have your own code in mind, so what is the use?
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.18 (GNU/Linux)
-
-iQIVAwUBT/DZ/znsnt1WYoG5AQIRpRAAmEb1U341oxsGEoAQx9ZujePdJP82YjlD
-liTdj1b4ca5+0i2SeGzW7aU4rNQmKOU8iGVQFqSs3q4C0QO+d58PBT7LveSgYZvk
-+ZMjvGCjsW7VKsx9f8dV6ZXIXq8bbAtB/Ksw2Qg+foebFxuOpXHz276HeZ4iu2wq
-VQiZqUTBK9Za7TuEkFxMPb0FLd4oOdkBtBuiMTN40WuIM0nK4fe8jpWgY6ph846T
-tkoLUKVY2aCXYBJ6mmp8MF5Tdu57NO1y1ehAxFbcOdslE0dNWnONzuAQ01RU2WwA
-8EIgT3joRIVTVh4Ut/cZzEZRcGk3Tv3aKEy6+ZjYVnZsUI4w9/7IaYkwmquGaFxL
-ceqSs/3FeEij5qXIrli0jyCUqUECRN7EoP4AV5itzQTlk6hrjhsGeBWcJrFZfRWg
-jawJVWySohDJ6R8leEa5F4RoRtX0MVxcznguLKjQ8HLC2UJSd7DeMqaNv0YenzGP
-CYlDiHtAoQvmPO2yYlgkrjyu3SteZH3xDG/9gTbNs3FmGzGilhq8hF1p25uR1Qvm
-7YMybYNs/pSotpxKT0Q5wtjx26HBsD9Ui+N0V9gpySOUW4O2tiHFqihliqT6pl/K
-ATfZo8QgCGZVApG+/JTYiY/BmNlQFm4y82ENOcei18a16MSBd2KioL3mWbxRL7B2
-UAIyPztOUdQ=
-=HLQD
------END PGP SIGNATURE-----
-
---Sig_/yEA1rDGz0sU9dFYOzqXzsif--
+Good luck
+Boaz
