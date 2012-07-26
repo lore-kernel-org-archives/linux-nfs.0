@@ -1,76 +1,30 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:33540 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753700Ab2GWPMM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Jul 2012 11:12:12 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/9] Create NFS modules
-Date: Mon, 23 Jul 2012 11:12:00 -0400
-Message-Id: <1343056329-24808-1-git-send-email-bjschuma@netapp.com>
+Received: from natasha.panasas.com ([67.152.220.90]:54519 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750766Ab2GZMQS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 08:16:18 -0400
+Message-ID: <50113504.3060607@panasas.com>
+Date: Thu, 26 Jul 2012 15:16:04 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Peng Tao <bergwolf@gmail.com>
+CC: linuxnfs <linux-nfs@vger.kernel.org>, Benny Halevy <bhalevy@tonian.com>
+Subject: Re: pnfs LD partial sector write
+References: <CA+a=Yy7B0uk-FWr3hOjWC+=Xq+UtHnEC4speD3OZzMFfXksyOw@mail.gmail.com> <500FCA3A.5020606@panasas.com> <CA+a=Yy58bjUMximWOMnmk0ugPKUY-LcacRhpdp4cvuz1HQG_gg@mail.gmail.com> <5010573F.4000901@panasas.com> <CA+a=Yy5oJObMeUuL-mspso2eXCr4+5qmiFsOfS5=fU5x9kHtkw@mail.gmail.com> <5010F1DF.3060905@panasas.com> <CA+a=Yy5YNKp2tkOreYwV9sfm7whw3_KeRj_YCCL3abG6+csK=g@mail.gmail.com>
+In-Reply-To: <CA+a=Yy5YNKp2tkOreYwV9sfm7whw3_KeRj_YCCL3abG6+csK=g@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On 07/26/2012 11:25 AM, Peng Tao wrote:
 
-This is the final set of patches to turn NFS into modules.  The first patch
-creates an "nfs_subversion" structure that will represent a single NFS
-version.  The next 5 patches are cleanups that the nfs_subversion structure
-allows us to put in.  Finally, the last 3 patches convert v2, v3 and v4 into
-kernel modules.
+> For these two sectors, I need to allocate two pages... Just look at
+> struct bio_vec.
+> 
 
 
+NO! I know all about bio_vecs
 
-Bryan Schumaker (9):
-  NFS: Add version registering framework
-  NFS: Remove the NFS v4 xdev mount function
-  NFS: Create a try_mount rpc op
-  NFS: Only initialize the ACL client in the v3 case
-  NFS: Pass super operations and xattr handlers in the nfs_subversion
-  NFS: Split out remaining NFS v4 inode functions
-  NFS: Convert v2 into a module
-  NFS: Convert v3 into a module
-  NFS: Convert v4 into a module
-
- fs/nfs/Kconfig            |   6 +-
- fs/nfs/Makefile           |  27 +++----
- fs/nfs/callback.h         |   2 +-
- fs/nfs/client.c           | 191 +++++++++++++++++++++++++---------------------
- fs/nfs/delegation.h       |   2 +-
- fs/nfs/dir.c              |  20 ++++-
- fs/nfs/direct.c           |   2 +-
- fs/nfs/dns_resolve.c      |   4 +
- fs/nfs/file.c             |  15 ++++
- fs/nfs/inode.c            | 105 ++++++++++++-------------
- fs/nfs/internal.h         |  38 +++++----
- fs/nfs/namespace.c        |  17 +----
- fs/nfs/netns.h            |   2 +-
- fs/nfs/nfs.h              |  29 +++++++
- fs/nfs/nfs2super.c        |  31 ++++++++
- fs/nfs/nfs3client.c       |  65 ++++++++++++++++
- fs/nfs/nfs3proc.c         |   3 +
- fs/nfs/nfs3super.c        |  31 ++++++++
- fs/nfs/nfs4_fs.h          |  10 +--
- fs/nfs/nfs4client.c       |  14 ++--
- fs/nfs/nfs4proc.c         |   3 +
- fs/nfs/nfs4super.c        | 106 +++++++++++++------------
- fs/nfs/pagelist.c         |   4 +
- fs/nfs/pnfs.c             |   2 +
- fs/nfs/proc.c             |   3 +
- fs/nfs/read.c             |   5 ++
- fs/nfs/super.c            | 120 ++++++++++++++++-------------
- fs/nfs/write.c            |  35 +++------
- include/linux/nfs_fs.h    |   6 +-
- include/linux/nfs_fs_sb.h |   7 +-
- include/linux/nfs_idmap.h |   2 +-
- include/linux/nfs_xdr.h   |   9 ++-
- 32 files changed, 577 insertions(+), 339 deletions(-)
- create mode 100644 fs/nfs/nfs.h
- create mode 100644 fs/nfs/nfs2super.c
- create mode 100644 fs/nfs/nfs3client.c
- create mode 100644 fs/nfs/nfs3super.c
-
--- 
-1.7.11.2
+You need 1024 bytes, and 2 x one entry BIOs which is a few bytes, where
+did you get the "two pages" from?
 
