@@ -1,50 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:19653 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:15688 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752181Ab2GCQWn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Jul 2012 12:22:43 -0400
-Subject: [PATCH v3 00/11] Series short description
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Tue, 03 Jul 2012 20:19:23 +0400
-Message-ID: <20120703161844.11911.92996.stgit@localhost.localdomain>
+	id S1752094Ab2GZOyU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Jul 2012 10:54:20 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q6QEsJQu025177
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 26 Jul 2012 10:54:19 -0400
+Received: from badhat.bos.devel.redhat.com (badhat.boston.devel.redhat.com [10.16.60.49])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q6QEsJFm017819
+	for <linux-nfs@vger.kernel.org>; Thu, 26 Jul 2012 10:54:19 -0400
+Message-ID: <50115A16.4040406@RedHat.com>
+Date: Thu, 26 Jul 2012 10:54:14 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Linux pNFS status meeting 07/26/12
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v3: Rebased on Bruce's tree, "for-3.6" branch
+Sorry for the late Notice...
 
-v2: Rebased on Bruce's tree, "for-3.5" branch
+Time: 9:30 AM PST (12:30 PM EST)
 
-This patch set depeneds on "SUNRPC: separate per-net data creation from
-service
-creation" patch set sent earlier.
+The call in numbers are:
+U.S. and Canada: (800) 451-8679
+International dial-in number: (212) 729-5016
+Israel Toll-Free: 1-809-462-557
+Conference code: 564.272.1552
 
-The following series implements...
-
----
-
-Stanislav Kinsbursky (11):
-      NFS: pass net to nfs_callback_down()
-      NFS: callback service creation function introduced
-      NFS: move per-net callback thread initialization to nfs_callback_up_net()
-      NFS: callback up - transport backchannel cleanup
-      NFS: callback service start function introduced
-      NFS: callback up - users counting cleanup
-      NFS: make nfs_callback_tcpport per network context
-      NFS: make nfs_callback_tcpport6 per network context
-      NFS; callback per-net usage counting introduced
-      NFS: add debug messages to callback down function
-      NFS: get net after idr allocation
-
-
- fs/nfs/callback.c  |  288 ++++++++++++++++++++++++++++++++++------------------
- fs/nfs/callback.h  |    4 -
- fs/nfs/client.c    |    5 +
- fs/nfs/netns.h     |    3 +
- fs/nfs/nfs4state.c |    6 +
- 5 files changed, 202 insertions(+), 104 deletions(-)
-
+steved.
