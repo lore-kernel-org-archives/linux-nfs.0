@@ -1,178 +1,150 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:33550 "EHLO mx2.netapp.com"
+Received: from hq.ebuddy.com ([194.151.176.130]:28089 "EHLO hq.ebuddy.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753912Ab2GWPMQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Jul 2012 11:12:16 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 5/9] NFS: Pass super operations and xattr handlers in the nfs_subversion
-Date: Mon, 23 Jul 2012 11:12:05 -0400
-Message-Id: <1343056329-24808-6-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1343056329-24808-1-git-send-email-bjschuma@netapp.com>
-References: <1343056329-24808-1-git-send-email-bjschuma@netapp.com>
+	id S1752209Ab2GZMAa convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 08:00:30 -0400
+From: Taylan Develioglu <tdevelioglu@ebuddy.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond@netapp.com>
+Date: Thu, 26 Jul 2012 14:00:20 +0200
+Subject: RE: rpc_exit_task warning.
+Message-ID: <FF1DF58D04F11D4291D09795D1A4EF16180E4C4B21@SRV-MAIL>
+References: <FF1DF58D04F11D4291D09795D1A4EF16180E4C4AD8@SRV-MAIL>
+ <20120725165215.GC16617@fieldses.org>
+ <FF1DF58D04F11D4291D09795D1A4EF16180E4C4B1B@SRV-MAIL>
+ <20120726115038.GA22511@fieldses.org>
+In-Reply-To: <20120726115038.GA22511@fieldses.org>
+Content-Type: text/plain; charset="iso-8859-1"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+No, the clients were the same before and after.
 
-I can set all variables in the nfs_fill_super() function, allowing me to
-remove the nfs4_fill_super() function.
+It's difficult to ascertain what command is exactly triggering this, I could load up a patched kernel with some extra debug stuff in the function if that would help.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/internal.h  |  1 +
- fs/nfs/nfs.h       |  2 ++
- fs/nfs/nfs2super.c |  1 +
- fs/nfs/nfs3super.c |  1 +
- fs/nfs/nfs4super.c | 24 +++---------------------
- fs/nfs/super.c     |  9 +++++----
- 6 files changed, 13 insertions(+), 25 deletions(-)
+Ofcourse you would have to tell me what stuff to add :)
+------------------------------------------------------------------------------------------------------------------
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 2151baf..17d1470 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -327,6 +327,7 @@ void nfs_zap_acl_cache(struct inode *inode);
- extern int nfs_wait_bit_killable(void *word);
- 
- /* super.c */
-+extern const struct super_operations nfs_sops;
- extern struct file_system_type nfs_fs_type;
- extern struct file_system_type nfs_xdev_fs_type;
- #ifdef CONFIG_NFS_V4
-diff --git a/fs/nfs/nfs.h b/fs/nfs/nfs.h
-index ac10b9e..9f502a0 100644
---- a/fs/nfs/nfs.h
-+++ b/fs/nfs/nfs.h
-@@ -16,6 +16,8 @@ struct nfs_subversion {
- 	struct file_system_type *nfs_fs;	/* NFS filesystem type */
- 	const struct rpc_version *rpc_vers;	/* NFS version information */
- 	const struct nfs_rpc_ops *rpc_ops;	/* NFS operations */
-+	const struct super_operations *sops;	/* NFS Super operations */
-+	const struct xattr_handler **xattr;	/* NFS xattr handlers */
- 	struct list_head list;		/* List of NFS versions */
- };
- 
-diff --git a/fs/nfs/nfs2super.c b/fs/nfs/nfs2super.c
-index cef06d4..a9fb69d 100644
---- a/fs/nfs/nfs2super.c
-+++ b/fs/nfs/nfs2super.c
-@@ -11,6 +11,7 @@ static struct nfs_subversion nfs_v2 = {
- 	.nfs_fs   = &nfs_fs_type,
- 	.rpc_vers = &nfs_version2,
- 	.rpc_ops  = &nfs_v2_clientops,
-+	.sops     = &nfs_sops,
- };
- 
- int __init init_nfs_v2(void)
-diff --git a/fs/nfs/nfs3super.c b/fs/nfs/nfs3super.c
-index f815cf3..8378090 100644
---- a/fs/nfs/nfs3super.c
-+++ b/fs/nfs/nfs3super.c
-@@ -11,6 +11,7 @@ static struct nfs_subversion nfs_v3 = {
- 	.nfs_fs   = &nfs_fs_type,
- 	.rpc_vers = &nfs_version3,
- 	.rpc_ops  = &nfs_v3_clientops,
-+	.sops     = &nfs_sops,
- };
- 
- int __init init_nfs_v3(void)
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-index a628362..c70e173 100644
---- a/fs/nfs/nfs4super.c
-+++ b/fs/nfs/nfs4super.c
-@@ -71,26 +71,11 @@ struct nfs_subversion nfs_v4 = {
- 	.nfs_fs   = &nfs4_fs_type,
- 	.rpc_vers = &nfs_version4,
- 	.rpc_ops  = &nfs_v4_clientops,
-+	.sops     = &nfs4_sops,
-+	.xattr    = nfs4_xattr_handlers,
- };
- 
- /*
-- * Set up an NFS4 superblock
-- */
--static void nfs4_fill_super(struct super_block *sb,
--			    struct nfs_mount_info *mount_info)
--{
--	sb->s_time_gran = 1;
--	sb->s_op = &nfs4_sops;
--	/*
--	 * The VFS shouldn't apply the umask to mode bits. We will do
--	 * so ourselves when necessary.
--	 */
--	sb->s_flags  |= MS_POSIXACL;
--	sb->s_xattr = nfs4_xattr_handlers;
--	nfs_initialise_sb(sb);
--}
--
--/*
-  * Get the superblock for the NFS4 root partition
-  */
- static struct dentry *
-@@ -101,7 +86,6 @@ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
- 	struct nfs_server *server;
- 	struct dentry *mntroot = ERR_PTR(-ENOMEM);
- 
--	mount_info->fill_super = nfs4_fill_super;
- 	mount_info->set_security = nfs_set_sb_security;
- 
- 	/* Get a volume representation */
-@@ -236,8 +220,6 @@ struct dentry *nfs4_try_mount(int flags, const char *dev_name,
- 
- 	dfprintk(MOUNT, "--> nfs4_try_mount()\n");
- 
--	mount_info->fill_super = nfs4_fill_super;
--
- 	export_path = data->nfs_server.export_path;
- 	data->nfs_server.export_path = "/";
- 	root_mnt = nfs_do_root_mount(&nfs4_remote_fs_type, flags, mount_info,
-@@ -257,7 +239,7 @@ nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
- 			   const char *dev_name, void *raw_data)
- {
- 	struct nfs_mount_info mount_info = {
--		.fill_super = nfs4_fill_super,
-+		.fill_super = nfs_fill_super,
- 		.set_security = nfs_clone_sb_security,
- 		.cloned = raw_data,
- 	};
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index a5f9fb3..a275d19 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -298,7 +298,7 @@ struct file_system_type nfs_xdev_fs_type = {
- 	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
- };
- 
--static const struct super_operations nfs_sops = {
-+const struct super_operations nfs_sops = {
- 	.alloc_inode	= nfs_alloc_inode,
- 	.destroy_inode	= nfs_destroy_inode,
- 	.write_inode	= nfs_write_inode,
-@@ -2105,10 +2105,12 @@ void nfs_fill_super(struct super_block *sb, struct nfs_mount_info *mount_info)
- 
- 	sb->s_blocksize_bits = 0;
- 	sb->s_blocksize = 0;
--	if (data->bsize)
-+	sb->s_xattr = server->nfs_client->cl_nfs_mod->xattr;
-+	sb->s_op = server->nfs_client->cl_nfs_mod->sops;
-+	if (data && data->bsize)
- 		sb->s_blocksize = nfs_block_size(data->bsize, &sb->s_blocksize_bits);
- 
--	if (server->nfs_client->rpc_ops->version == 3) {
-+	if (server->nfs_client->rpc_ops->version != 2) {
- 		/* The VFS shouldn't apply the umask to mode bits. We will do
- 		 * so ourselves when necessary.
- 		 */
-@@ -2116,7 +2118,6 @@ void nfs_fill_super(struct super_block *sb, struct nfs_mount_info *mount_info)
- 		sb->s_time_gran = 1;
- 	}
- 
--	sb->s_op = &nfs_sops;
-  	nfs_initialise_sb(sb);
- }
- 
--- 
-1.7.11.2
+ 
+TAYLAN DEVELIOGLU
+Operations Manager
+Email: tdevelioglu@ebuddy.com
+mobile: +31 (0) 62 122 3115
 
+eBuddy BV
+Keizersgracht 585
+1017 DR Amsterdam
+The Netherlands
+www.ebuddy.com
+
+
+------------------------------------------------------------------------------------------------------------------
+
+
+
+-----Original Message-----
+From: J. Bruce Fields [mailto:bfields@fieldses.org] 
+Sent: Thursday, July 26, 2012 13:51
+To: Taylan Develioglu
+Cc: linux-nfs@vger.kernel.org; Trond Myklebust
+Subject: Re: rpc_exit_task warning.
+
+
+On Thu, Jul 26, 2012 at 12:43:46PM +0200, Taylan Develioglu wrote:
+> I was wrong.
+> 
+> Changed kernel version to 2.6.39 and it's still happening.
+> 
+> Only other difference I can think of is the fact we now use lvm instead of a regular partition.
+
+Did you change any of the clients at the same time you upgraded the server?  (E.g. is it possible any of them are using NFSv4 now and weren't before?)
+
+--b.
+
+> From: Taylan Develioglu
+> 
+> Yes, but the previous server was using kernel version 2.6.39, so it looks like this is a regression.
+...
+> From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> 
+> 
+> On Tue, Jul 24, 2012 at 08:58:43PM +0200, Taylan Develioglu wrote:
+> > We just deployed a new nfs server and have about a hundred clients connected but are getting repeated kernel warnings on the server:
+> 
+> Did this replace an old server that didn't see these warnings?
+> 
+> > 
+> > Clients and servers run 3.2.18 and 3.2.20 respectively. We do not use any security options.
+> > 
+> > I don't really have time to debug this, but I felt I should report it.
+> > 
+> > - Client
+> >   ii  libevent-1.4-2                      1.4.13-stable-1
+> >   ii  util-linux                          2.17.2-9
+> >   ii  linux-image-3.2.0-0.bpo.2-amd64     3.2.18-1~bpo60+1
+> >   ii  nfs-common                          1:1.2.2-4squeeze2
+> > 
+> > - Server
+> >   ii  libevent-1.4-2                      1.4.13-stable-1
+> >   ii  util-linux                          2.17.2-9
+> >   ii  linux-image-3.2.0-0.bpo.2-amd64     3.2.20-1~bpo60+1
+> >   ii  libnfsidmap2                        0.24-1~bpo60+1               
+> >   ii  nfs-common                          1:1.2.5-4~bpo60+1            
+> >   ii  nfs-kernel-server                   1:1.2.5-4~bpo60+1            
+> > 
+> > exportfs -v
+> > /var/www/pictures
+> >                 
+> > x.x.x.x/22(rw,async,wdelay,root_squash,all_squash,no_subtree_check,a
+> > no
+> > nuid=33,anongid=33)
+> > /var/www/pictures
+> >                 
+> > 10.40.0.0/23(rw,async,wdelay,root_squash,all_squash,no_subtree_check
+> > ,a
+> > nonuid=33,anongid=33)
+> > 
+> > --------------------------------------------------------------------
+> > --
+> > ------------------ [ 1913.662849] WARNING: at 
+> > /build/buildd-linux_3.2.20-1~bpo60+1-amd64-tQMw4f/linux-3.2.20/net/s
+> > un
+> > rpc/sched.c:630 rpc_exit_task+0x40/0x7a [sunrpc]()
+> 
+> That's a warning from rpc_task that both tk_action and RPC_TASK_KILLED were set on exit from rpc_calL_done.
+> 
+> Couldn't that happen if there's a race between rpc_killall and rpc_call_done trying to restart the task?  rpc_restart_call{_prepare} check RPC_TASK_KILLED before setting the action, but does anything prevent the flag being set after that check?
+> 
+> --b.
+> 
+> > [ 1913.662851] Hardware name: X8STi
+> > [ 1913.662852] Modules linked in: nfsd nfs lockd fscache auth_rpcgss nfs_acl sunrpc hmac drbd lru_cache cn ipmi_si ipmi_devintf ipmi_msghandler loop tpm_tis tpm parport_pc i2c_i801 i7core_edac i2c_core snd_pcm snd_timer snd ioatdma soundcore tpm_bios snd_page_alloc parport edac_core dca pcspkr psmouse processor serio_raw thermal_sys evdev joydev button ext4 mbcache jbd2 crc16 dm_mod sg sr_mod cdrom ses enclosure sd_mod crc_t10dif usb_storage usbhid hid uas uhci_hcd mptsas mptscsih mptbase scsi_transport_sas ahci libahci ehci_hcd libata usbcore aacraid usb_common scsi_mod e1000e [last unloaded: scsi_wait_scan]
+> > [ 1913.662902] Pid: 11, comm: kworker/0:1 Tainted: G        W    3.2.0-0.bpo.2-amd64 #1
+> > [ 1913.662904] Call Trace:
+> > [ 1913.662909]  [<ffffffff810498ac>] ? 
+> > warn_slowpath_common+0x78/0x8c [ 1913.662916]  [<ffffffffa0327871>] 
+> > ? rpc_exit_task+0x40/0x7a [sunrpc] [ 1913.662922]  [<ffffffffa0327ddb>] ?
+> > __rpc_execute+0x71/0x23f [sunrpc] [ 1913.662928]  
+> > [<ffffffffa0327fe1>] ? rpc_execute+0x38/0x38 [sunrpc] [ 1913.662981]  
+> > [<ffffffff8105f96c>] ? process_one_work+0x1cc/0x2ea [ 1913.662985]  [<ffffffff8105fbb7>] ?
+> > worker_thread+0x12d/0x247 [ 1913.662987]  [<ffffffff8105fa8a>] ? 
+> > process_one_work+0x2ea/0x2ea [ 1913.662990]  [<ffffffff8105fa8a>] ? 
+> > process_one_work+0x2ea/0x2ea [ 1913.662993]  [<ffffffff810633c5>] ? 
+> > kthread+0x7a/0x82 [ 1913.662998]  [<ffffffff8136ca74>] ? 
+> > kernel_thread_helper+0x4/0x10 [ 1913.663000]  [<ffffffff8106334b>] ? 
+> > kthread_worker_fn+0x147/0x147 [ 1913.663003]  [<ffffffff8136ca70>] ? 
+> > gs_change+0x13/0x13 [ 1913.663005] ---[ end trace 7cee9f1fd80fe6ac
+> > ]---
+> > --------------------------------------------------------------------
+> > --
+> > ------------------
+> > 
+> > Regards,
+> > 
+> > Taylan
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" 
+> > in the body of a message to majordomo@vger.kernel.org More majordomo 
+> > info at  http://vger.kernel.org/majordomo-info.html
