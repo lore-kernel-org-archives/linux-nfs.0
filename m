@@ -1,115 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:47650 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933279Ab2GYOoX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jul 2012 10:44:23 -0400
-Received: by yenl2 with SMTP id l2so769086yen.19
-        for <linux-nfs@vger.kernel.org>; Wed, 25 Jul 2012 07:44:22 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <500FCA3A.5020606@panasas.com>
-References: <CA+a=Yy7B0uk-FWr3hOjWC+=Xq+UtHnEC4speD3OZzMFfXksyOw@mail.gmail.com>
- <500FCA3A.5020606@panasas.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Wed, 25 Jul 2012 22:43:28 +0800
-Message-ID: <CA+a=Yy58bjUMximWOMnmk0ugPKUY-LcacRhpdp4cvuz1HQG_gg@mail.gmail.com>
-Subject: Re: pnfs LD partial sector write
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: linuxnfs <linux-nfs@vger.kernel.org>, Benny Halevy <bhalevy@tonian.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:40861 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752542Ab2GZLzu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 07:55:50 -0400
+Received: by mail-yw0-f46.google.com with SMTP id m54so1830328yhm.19
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jul 2012 04:55:50 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v4 16/17] vfs: have do_sys_truncate retry once on an ESTALE error
+Date: Thu, 26 Jul 2012 07:55:19 -0400
+Message-Id: <1343303720-11199-17-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
+References: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 25, 2012 at 6:28 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> On 07/25/2012 10:31 AM, Peng Tao wrote:
->
->> Hi Boaz,
->>
->> Sorry about the long delay. I had some internal interrupt. Now I'm
->> looking at the partial LD write problem again. Instead of trying to
->> bail out unaligned writes blindly, this time I want to fix the write
->> code to handle partial write as you suggested before. However, it
->> seems to be more problematic than I used to think.
->>
->> The dirty range of a page passed to LD->write_pagelist may be
->> unaligned to sector size, in which case block layer cannot handle it
->> correctly. Even worse, I cannot do a read-modify-write cycle within
->> the same page because bio would read in the entire sector and thus
->> ruin user data within the same sector. Currently I'm thinking of
->> creating shadow pages for partial sector write and use them to read in
->> the sector and copy necessary data into user pages. But it is way too
->> tricky and I don't feel like it at all. So I want to ask how you solve
->> the partial sector write problem in object layout driver.
->>
->> I looked at the ore code and found that you are using bio to deal with
->> partial page read/write as well. But in places like _add_to_r4w(), I
->> don't see how partial sectors are handled. Maybe I was misreading the
->> code. Would you please shed some light? More specifically, how does
->> object layout driver handle partial sector writers like in bellow
->> simple testcase? Thanks in advance.
->>
->
->
-> The objlayout does not have this problem. OSD-SCSI is a byte aligned
-> protocol, unlike DISK-SCSI.
->
-aha, I see. So this is blocklayout only problem.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/open.c | 92 +++++++++++++++++++++++++++++++++++----------------------------
+ 1 file changed, 51 insertions(+), 41 deletions(-)
 
-> The code you are looking for is at _add_to_r4w_first_page() &&
-> _add_to_r4w_last_page. But as I said I just submit a read of:
->         0 => offset within the page
-> What ever that might be.
->
-> In your case: why? all you have to do is allocate 2 sectors (1k) at
-> most one for partial sector at end and one for partial sector at
-> beginning. And use chained BIOs then memcpy at most [1k -2] bytes.
->
-> What you do is chain a single-sector BIO to an all aligned BIO
->
-Yeah, it is exactly what I mean by "shadow pages" except for the
-chained BIO part. I said "shadow pages" because I need to create one
-or two pages to construct bio_vec to do the full sector sync read, and
-the pages cannot be attached to inode address space (that's why
-"shadow" :-).
+diff --git a/fs/open.c b/fs/open.c
+index fea9b0e..a7b94ac 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -66,62 +66,72 @@ static long do_sys_truncate(const char __user *pathname, loff_t length)
+ 	struct path path;
+ 	struct inode *inode;
+ 	int error;
++	unsigned int lookup_flags = LOOKUP_FOLLOW;
++	unsigned int try = 0;
++	char *name;
+ 
+-	error = -EINVAL;
+ 	if (length < 0)	/* sorry, but loff_t says... */
+-		goto out;
++		return -EINVAL;
+ 
+-	error = user_path(pathname, &path);
+-	if (error)
+-		goto out;
+-	inode = path.dentry->d_inode;
++	name = getname_flags(pathname, lookup_flags, NULL);
++	if (IS_ERR(name))
++		return PTR_ERR(name);
+ 
+-	/* For directories it's -EISDIR, for other non-regulars - -EINVAL */
+-	error = -EISDIR;
+-	if (S_ISDIR(inode->i_mode))
+-		goto dput_and_out;
++	do {
++		error = kern_path_at(AT_FDCWD, name, lookup_flags, &path);
++		if (error)
++			break;
++		inode = path.dentry->d_inode;
+ 
+-	error = -EINVAL;
+-	if (!S_ISREG(inode->i_mode))
+-		goto dput_and_out;
++		/* For dirs, -EISDIR. For other non-regulars, -EINVAL */
++		error = -EISDIR;
++		if (S_ISDIR(inode->i_mode))
++			goto dput_and_out;
+ 
+-	error = mnt_want_write(path.mnt);
+-	if (error)
+-		goto dput_and_out;
++		error = -EINVAL;
++		if (!S_ISREG(inode->i_mode))
++			goto dput_and_out;
+ 
+-	error = inode_permission(inode, MAY_WRITE);
+-	if (error)
+-		goto mnt_drop_write_and_out;
++		error = mnt_want_write(path.mnt);
++		if (error)
++			goto dput_and_out;
+ 
+-	error = -EPERM;
+-	if (IS_APPEND(inode))
+-		goto mnt_drop_write_and_out;
++		error = inode_permission(inode, MAY_WRITE);
++		if (error)
++			goto mnt_drop_write_and_out;
+ 
+-	error = get_write_access(inode);
+-	if (error)
+-		goto mnt_drop_write_and_out;
++		error = -EPERM;
++		if (IS_APPEND(inode))
++			goto mnt_drop_write_and_out;
+ 
+-	/*
+-	 * Make sure that there are no leases.  get_write_access() protects
+-	 * against the truncate racing with a lease-granting setlease().
+-	 */
+-	error = break_lease(inode, O_WRONLY);
+-	if (error)
+-		goto put_write_and_out;
++		error = get_write_access(inode);
++		if (error)
++			goto mnt_drop_write_and_out;
+ 
+-	error = locks_verify_truncate(inode, NULL, length);
+-	if (!error)
+-		error = security_path_truncate(&path);
+-	if (!error)
+-		error = do_truncate(path.dentry, length, 0, NULL);
++		/*
++		 * Make sure that there are no leases. get_write_access()
++		 * protects against the truncate racing with a lease-granting
++		 * setlease().
++		 */
++		error = break_lease(inode, O_WRONLY);
++		if (error)
++			goto put_write_and_out;
++
++		error = locks_verify_truncate(inode, NULL, length);
++		if (!error)
++			error = security_path_truncate(&path);
++		if (!error)
++			error = do_truncate(path.dentry, length, 0, NULL);
+ 
+ put_write_and_out:
+-	put_write_access(inode);
++		put_write_access(inode);
+ mnt_drop_write_and_out:
+-	mnt_drop_write(path.mnt);
++		mnt_drop_write(path.mnt);
+ dput_and_out:
+-	path_put(&path);
+-out:
++		path_put(&path);
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
++	putname(name);
+ 	return error;
+ }
+ 
+-- 
+1.7.11.2
 
-I asked because I don't like the solution and thought maybe there is
-better method in object layout and I didn't find it in object code.
-Now that it is a blocklayout only problem, I guess I'll have to do the
-full sector sync reads tricks.
-
-> You do the following:
->
-> - You will need to preform two reads, right? One for the unaligned
->   BLOCK at the begging and one for the BLOCK at the end. Since in
->   blocklayout all IO is BLOCK aligned.
->
-> Beginning end of IO
-> - Jump over first unaligned SECTOR. Prepare BIO from first full
->   sector, to the end of the BLOCK.
-> - Prepare a 1-biovec BIO from the above allocated sector, which
->   reads the full first sector.
-> - perpend the 1-vec BIO to the big one.
-> - preform the read
-> - memcpy from above allocated sector the 0=>offset part into the
->   NFS original page.
->
-> Do the same for end of IO but for the very last unaligned sector.
-> Chain 1-vec BIO to the end this time. memcpy last_byte=>end-of-sector
-> part.
->
-> So you see no shadow pages and not so complicated. In the unaligned
-> case at most you need allocate 1k and chain BIOs at beginning and/or
-> at end.
->
-> Tell me if you need help with BIO chaining. The 1-vec BIO just use
-> bio_kmalloc().
->
-yeah, I do have a question on the BIO chaining thing. IMO, I need to
-do one or two sync full sector reads, and memcpy the data in the pages
-to fill original NFS page into sector aligned. And then I can issue
-the sector aligned writes to write out all nfs pages. So I don't quite
-get it when you say "perpend the 1-vec BIO to the big one", because
-the sector aligned writes (the big one) must be submitted _after_ the
-full sector sync reads and memcpy. Would you explain it a bit?
-
-Thanks,
-Tao
