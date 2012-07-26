@@ -1,46 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.digidescorp.com ([50.73.98.161]:25587 "EHLO
-	mail.digidescorp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751692Ab2GKSoQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jul 2012 14:44:16 -0400
-Message-ID: <1342032143.2190.22.camel@iscandar.digidescorp.com>
-Subject: Re: [PATCH v3 00/17] vfs: add the ability to retry on ESTALE to
- several syscalls
-From: "Steven J. Magnani" <steve@digidescorp.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: viro@ZenIV.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        michael.brantley@deshaw.com, hch@infradead.org, miklos@szeredi.hu,
-        pstaubach@exagrid.com
-Date: Wed, 11 Jul 2012 13:42:23 -0500
-In-Reply-To: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
-References: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:58363 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752558Ab2GZLzt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 07:55:49 -0400
+Received: by mail-yx0-f174.google.com with SMTP id l2so1826947yen.19
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jul 2012 04:55:49 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v4 15/17] vfs: remove user_path_parent
+Date: Thu, 26 Jul 2012 07:55:18 -0400
+Message-Id: <1343303720-11199-16-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
+References: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jeff -
+...there are no more callers.
 
-On Fri, 2012-06-29 at 14:57 -0400, Jeff Layton wrote: 
-> This patchset is the third version of the patchset to add ESTALE
-> handling to several syscalls. The basic idea is to allow the client to
-> gracefully retry the lookup and call when a NFS server returns ESTALE.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c | 18 ------------------
+ 1 file changed, 18 deletions(-)
 
-I exercised this using 3.5-rc5 against a memory-starved server that
-exports a FAT-backed filesystem. Where normally I see lots of ESTALE
-errors due to inode eviction, with this patchset I see none. And, the
-performance is much better than the only other way I know to eliminate
-the errors, which is to mount with 'lookupcache=none'.
-
-It's not an exhaustive test by any means, just a data point for you. 
-Thanks!
-
-Lightly-tested-by: Steve Magnani <steve@digidescorp.com>
-------------------------------------------------------------------------
-Steven J. Magnani               "I claim this network for MARS!
-www.digidescorp.com              Earthling, return my space modulator!"
-
-#include <standard.disclaimer>
-
+diff --git a/fs/namei.c b/fs/namei.c
+index 7cf5e91..862ec6f 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2003,24 +2003,6 @@ int user_path_at(int dfd, const char __user *name, unsigned flags,
+ 	return err;
+ }
+ 
+-static int user_path_parent(int dfd, const char __user *path,
+-			struct nameidata *nd, char **name)
+-{
+-	char *s = getname(path);
+-	int error;
+-
+-	if (IS_ERR(s))
+-		return PTR_ERR(s);
+-
+-	error = do_path_lookup(dfd, s, LOOKUP_PARENT, nd);
+-	if (error)
+-		putname(s);
+-	else
+-		*name = s;
+-
+-	return error;
+-}
+-
+ /*
+  * It's inline, so penalty for filesystems that don't use sticky bit is
+  * minimal.
+-- 
+1.7.11.2
 
