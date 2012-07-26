@@ -1,146 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:19033 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752181Ab2GCQXN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Jul 2012 12:23:13 -0400
-Subject: [PATCH v3 05/11] NFS: callback service start function introduced
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Tue, 03 Jul 2012 20:20:01 +0400
-Message-ID: <20120703162001.11911.6979.stgit@localhost.localdomain>
-In-Reply-To: <20120703161844.11911.92996.stgit@localhost.localdomain>
-References: <20120703161844.11911.92996.stgit@localhost.localdomain>
+Received: from natasha.panasas.com ([67.152.220.90]:36508 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752005Ab2GZPop (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 11:44:45 -0400
+Message-ID: <501165DC.3050801@panasas.com>
+Date: Thu, 26 Jul 2012 18:44:28 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Peng Tao <bergwolf@gmail.com>
+CC: linuxnfs <linux-nfs@vger.kernel.org>, Benny Halevy <bhalevy@tonian.com>
+Subject: Re: pnfs LD partial sector write
+References: <CA+a=Yy7B0uk-FWr3hOjWC+=Xq+UtHnEC4speD3OZzMFfXksyOw@mail.gmail.com> <500FCA3A.5020606@panasas.com> <CA+a=Yy58bjUMximWOMnmk0ugPKUY-LcacRhpdp4cvuz1HQG_gg@mail.gmail.com> <5010573F.4000901@panasas.com> <CA+a=Yy5oJObMeUuL-mspso2eXCr4+5qmiFsOfS5=fU5x9kHtkw@mail.gmail.com> <5010F1DF.3060905@panasas.com> <CA+a=Yy5YNKp2tkOreYwV9sfm7whw3_KeRj_YCCL3abG6+csK=g@mail.gmail.com> <50113504.3060607@panasas.com> <CA+a=Yy6+7G_-Mef+dEZKqftjwgubMxboCLB9YB4DdrDJoznXvQ@mail.gmail.com> <50115484.6040005@panasas.com> <CA+a=Yy6LyrV944cSpr0k_tgyDzSwF9BGkS-_aq+X_em1WuPpBg@mail.gmail.com>
+In-Reply-To: <CA+a=Yy6LyrV944cSpr0k_tgyDzSwF9BGkS-_aq+X_em1WuPpBg@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is just a code move, which from my POW makes code looks better.
-I.e. now on start we have 3 different stages:
-1) Service creation.
-2) Service per-net data allocation.
-3) Service start.
+On 07/26/2012 06:30 PM, Peng Tao wrote:
 
-Patch also renames goto label "out_err:" into "err_start:" to reflect new
-changes.
+> On Thu, Jul 26, 2012 at 10:30 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+>> On 07/26/2012 04:57 PM, Peng Tao wrote:
+>>
+>>> On Thu, Jul 26, 2012 at 8:16 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+>>>> On 07/26/2012 11:25 AM, Peng Tao wrote:
+>>>>
+>>>>> For these two sectors, I need to allocate two pages... Just look at
+>>>>> struct bio_vec.
+>>>>>
+>>>>
+>>>>
+>>>> NO! I know all about bio_vecs
+>>>>
+>>>> You need 1024 bytes, and 2 x one entry BIOs which is a few bytes, where
+>>>> did you get the "two pages" from?
+>>>>
+>>> What do you put int bio_vec->bv_page? Even if you just use 512 bytes
+>>> of a page, it is still allocated page.
+>>>
+>>
+>>
+>> No!!
+>>
+>> You just use bio_map_kern or in one go blk_rq_map_kern() with any: kmalloc,
+>> stack, or kernel pointer. And that's that. It will take what it will take.
+>>
+> First I should admit I don't know bio_map_kern() alike. Thanks for
+> teaching me about them (see, here is your credit :)
+> 
+> Looking at them, I don't think it is proper to use them in block
+> layout code, mainly because It is a layer violation. Searching for
+> callers of io_map_kern/blk_rq_map_kern(), they are either block core
+> code or device drivers. Clearly these interfaces are block layer
+> internal APIs and file systems shouldn't touch them.
+> 
+> Therefore I still think I should stick with plain common
+> bio_alloc/bio_add_page/submit_bio interfaces. Thanks for the
+> suggestion.
+> 
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfs/callback.c |   77 +++++++++++++++++++++++++++++++----------------------
- 1 files changed, 45 insertions(+), 32 deletions(-)
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 41150ef..550d2a2 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -241,6 +241,46 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
- }
- #endif /* CONFIG_NFS_V4_1 */
- 
-+static int nfs_callback_start_svc(int minorversion, struct rpc_xprt *xprt,
-+				  struct svc_serv *serv)
-+{
-+	struct svc_rqst *rqstp;
-+	int (*callback_svc)(void *vrqstp);
-+	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
-+	char svc_name[12];
-+	int ret;
-+	int minorversion_setup;
-+
-+	nfs_callback_bc_serv(minorversion, xprt, serv);
-+
-+	minorversion_setup =  nfs_minorversion_callback_svc_setup(minorversion,
-+					serv, &rqstp, &callback_svc);
-+	if (!minorversion_setup) {
-+		/* v4.0 callback setup */
-+		rqstp = nfs4_callback_up(serv);
-+		callback_svc = nfs4_callback_svc;
-+	}
-+
-+	if (IS_ERR(rqstp))
-+		return PTR_ERR(rqstp);
-+
-+	svc_sock_update_bufs(serv);
-+
-+	sprintf(svc_name, "nfsv4.%u-svc", minorversion);
-+	cb_info->serv = serv;
-+	cb_info->rqst = rqstp;
-+	cb_info->task = kthread_run(callback_svc, cb_info->rqst, svc_name);
-+	if (IS_ERR(cb_info->task)) {
-+		ret = PTR_ERR(cb_info->task);
-+		svc_exit_thread(cb_info->rqst);
-+		cb_info->rqst = NULL;
-+		cb_info->task = NULL;
-+		return PTR_ERR(cb_info->task);
-+	}
-+	dprintk("nfs_callback_up: service started\n");
-+	return 0;
-+}
-+
- static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct net *net)
- {
- 	int ret;
-@@ -311,12 +351,8 @@ static struct svc_serv *nfs_callback_create_svc(int minorversion)
- int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
- {
- 	struct svc_serv *serv;
--	struct svc_rqst *rqstp;
--	int (*callback_svc)(void *vrqstp);
- 	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
--	char svc_name[12];
- 	int ret = 0;
--	int minorversion_setup;
- 	struct net *net = xprt->xprt_net;
- 
- 	mutex_lock(&nfs_callback_mutex);
-@@ -336,34 +372,10 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
- 	if (ret < 0)
- 		goto err_net;
- 
--	nfs_callback_bc_serv(minorversion, xprt, serv);
--
--	minorversion_setup =  nfs_minorversion_callback_svc_setup(minorversion,
--					serv, &rqstp, &callback_svc);
--	if (!minorversion_setup) {
--		/* v4.0 callback setup */
--		rqstp = nfs4_callback_up(serv);
--		callback_svc = nfs4_callback_svc;
--	}
--
--	if (IS_ERR(rqstp)) {
--		ret = PTR_ERR(rqstp);
--		goto out_err;
--	}
--
--	svc_sock_update_bufs(serv);
-+	ret = nfs_callback_start_svc(minorversion, xprt, serv);
-+	if (ret < 0)
-+		goto err_start;
- 
--	sprintf(svc_name, "nfsv4.%u-svc", minorversion);
--	cb_info->serv = serv;
--	cb_info->rqst = rqstp;
--	cb_info->task = kthread_run(callback_svc, cb_info->rqst, svc_name);
--	if (IS_ERR(cb_info->task)) {
--		ret = PTR_ERR(cb_info->task);
--		svc_exit_thread(cb_info->rqst);
--		cb_info->rqst = NULL;
--		cb_info->task = NULL;
--		goto out_err;
--	}
- out:
- 	/*
- 	 * svc_create creates the svc_serv with sv_nrthreads == 1, and then
-@@ -375,7 +387,8 @@ out:
- err_create:
- 	mutex_unlock(&nfs_callback_mutex);
- 	return ret;
--out_err:
-+
-+err_start:
- 	svc_shutdown_net(serv, net);
- err_net:
- 	dprintk("NFS: Couldn't create callback socket or server thread; "
+Crap no!!!
+
+bio_kmalloc/bio_map_kern/submit_bio is just fine. Same exact layer.
+same exact BIO API level.
+
+You can mix and match bio_map_kern chained with any bio_add_page
+and submit one chain or let the elevator chain them with plug unplug
+they are all the same. 
+	If you have pages - bio_add_page;
+	Have pointers - bio_map_kern.
+They are used all over libosd exofs ore scsi_lib and what not.
+Any user of block layer, which is what block layout is!
+
+Again some Credit
+
+Boaz
+
+> 
+> Cheers,
+> Tao
+
 
