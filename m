@@ -1,110 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:25445 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756366Ab2GYM5v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Jul 2012 08:57:51 -0400
-Subject: [PATCH v2 05/15] Lockd: host complaining function introduced
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Wed, 25 Jul 2012 16:56:27 +0400
-Message-ID: <20120725125627.24376.62413.stgit@localhost.localdomain>
-In-Reply-To: <20120725125258.24376.82525.stgit@localhost.localdomain>
-References: <20120725125258.24376.82525.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:38873 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752481Ab2GZLzm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 07:55:42 -0400
+Received: by gglu4 with SMTP id u4so1821285ggl.19
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jul 2012 04:55:42 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v4 10/17] vfs: fix symlinkat to retry on ESTALE errors
+Date: Thu, 26 Jul 2012 07:55:13 -0400
+Message-Id: <1343303720-11199-11-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
+References: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Just a small cleanup.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/lockd/host.c |   57 +++++++++++++++++++++++++++++--------------------------
- 1 files changed, 30 insertions(+), 27 deletions(-)
+ fs/namei.c | 43 ++++++++++++++++++++++++++-----------------
+ 1 file changed, 26 insertions(+), 17 deletions(-)
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 6c56090..8cbf53d 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -572,6 +572,35 @@ void nlm_host_rebooted(const struct nlm_reboot *info)
- 	nsm_release(nsm);
- }
- 
-+static void nlm_complain_hosts(struct net *net)
-+{
-+	struct hlist_head *chain;
-+	struct hlist_node *pos;
-+	struct nlm_host	*host;
-+
-+	if (net) {
-+		struct lockd_net *ln = net_generic(net, lockd_net_id);
-+
-+		if (ln->nrhosts == 0)
-+			return;
-+		printk(KERN_WARNING "lockd: couldn't shutdown host module for net %p!\n", net);
-+		dprintk("lockd: %lu hosts left in net %p:\n", ln->nrhosts, net);
-+	} else {
-+		if (nrhosts == 0)
-+			return;
-+		printk(KERN_WARNING "lockd: couldn't shutdown host module!\n");
-+		dprintk("lockd: %lu hosts left:\n", nrhosts);
-+	}
-+
-+	for_each_host(host, pos, chain, nlm_server_hosts) {
-+		if (net && host->net != net)
-+			continue;
-+		dprintk("       %s (cnt %d use %d exp %ld net %p)\n",
-+			host->h_name, atomic_read(&host->h_count),
-+			host->h_inuse, host->h_expires, host->net);
-+	}
-+}
-+
- void
- nlm_shutdown_hosts_net(struct net *net)
+diff --git a/fs/namei.c b/fs/namei.c
+index 4bec3f4..5a81c48 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3340,33 +3340,42 @@ SYSCALL_DEFINE3(symlinkat, const char __user *, oldname,
+ 		int, newdfd, const char __user *, newname)
  {
-@@ -598,18 +627,7 @@ nlm_shutdown_hosts_net(struct net *net)
- 	nlm_gc_hosts(net);
- 	mutex_unlock(&nlm_host_mutex);
+ 	int error;
+-	char *from;
++	char *from, *to;
+ 	struct dentry *dentry;
+ 	struct path path;
++	unsigned int try = 0;
  
--	/* complain if any hosts are left */
--	if (net) {
--		struct lockd_net *ln = net_generic(net, lockd_net_id);
--
--		printk(KERN_WARNING "lockd: couldn't shutdown host module for net %p!\n", net);
--		dprintk("lockd: %lu hosts left in net %p:\n", ln->nrhosts, net);
--		for_each_host(host, pos, chain, nlm_server_hosts) {
--			dprintk("       %s (cnt %d use %d exp %ld net %p)\n",
--				host->h_name, atomic_read(&host->h_count),
--				host->h_inuse, host->h_expires, host->net);
--		}
--	}
-+	nlm_complain_hosts(net);
+ 	from = getname(oldname);
+ 	if (IS_ERR(from))
+ 		return PTR_ERR(from);
+ 
+-	dentry = user_path_create(newdfd, newname, &path, 0);
+-	error = PTR_ERR(dentry);
+-	if (IS_ERR(dentry))
+-		goto out_putname;
++	to = getname(newname);
++	if (IS_ERR(to)) {
++		putname(from);
++		return PTR_ERR(to);
++	}
+ 
+-	error = mnt_want_write(path.mnt);
+-	if (error)
+-		goto out_dput;
+-	error = security_path_symlink(&path, dentry, from);
+-	if (error)
+-		goto out_drop_write;
+-	error = vfs_symlink(path.dentry->d_inode, dentry, from);
++	do {
++		dentry = kern_path_create(newdfd, to, &path, 0, try);
++		error = PTR_ERR(dentry);
++		if (IS_ERR(dentry))
++			break;
++
++		error = mnt_want_write(path.mnt);
++		if (error)
++			goto out_dput;
++		error = security_path_symlink(&path, dentry, from);
++		if (error)
++			goto out_drop_write;
++		error = vfs_symlink(path.dentry->d_inode, dentry, from);
+ out_drop_write:
+-	mnt_drop_write(path.mnt);
++		mnt_drop_write(path.mnt);
+ out_dput:
+-	dput(dentry);
+-	mutex_unlock(&path.dentry->d_inode->i_mutex);
+-	path_put(&path);
+-out_putname:
++		dput(dentry);
++		mutex_unlock(&path.dentry->d_inode->i_mutex);
++		path_put(&path);
++	} while (retry_estale(error, try++));
++	putname(to);
+ 	putname(from);
+ 	return error;
  }
- 
- /*
-@@ -619,22 +637,7 @@ nlm_shutdown_hosts_net(struct net *net)
- void
- nlm_shutdown_hosts(void)
- {
--	struct hlist_head *chain;
--	struct hlist_node *pos;
--	struct nlm_host	*host;
--
- 	nlm_shutdown_hosts_net(NULL);
--
--	/* complain if any hosts are left */
--	if (nrhosts != 0) {
--		printk(KERN_WARNING "lockd: couldn't shutdown host module!\n");
--		dprintk("lockd: %lu hosts left:\n", nrhosts);
--		for_each_host(host, pos, chain, nlm_server_hosts) {
--			dprintk("       %s (cnt %d use %d exp %ld net %p)\n",
--				host->h_name, atomic_read(&host->h_count),
--				host->h_inuse, host->h_expires, host->net);
--		}
--	}
- }
- 
- /*
+-- 
+1.7.11.2
 
