@@ -1,62 +1,154 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from perches-mx.perches.com ([206.117.179.246]:43087 "EHLO
-	labridge.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752498Ab2GTQvA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Jul 2012 12:51:00 -0400
-Message-ID: <1342803059.21447.45.camel@joe2Laptop>
-Subject: Re: [PATCH] sunrpc: clnt: Add missing braces
-From: Joe Perches <joe@perches.com>
-To: "David S. Miller" <davem@davemloft.net>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Fri, 20 Jul 2012 09:50:59 -0700
-In-Reply-To: <1342635431.9551.41.camel@joe2Laptop>
-References: <1342635431.9551.41.camel@joe2Laptop>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from hq.ebuddy.com ([194.151.176.130]:19255 "EHLO hq.ebuddy.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752080Ab2GZKnz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 06:43:55 -0400
+From: Taylan Develioglu <tdevelioglu@ebuddy.com>
+To: Taylan Develioglu <tdevelioglu@ebuddy.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond@netapp.com>
+Date: Thu, 26 Jul 2012 12:43:46 +0200
+Subject: RE: rpc_exit_task warning.
+Message-ID: <FF1DF58D04F11D4291D09795D1A4EF16180E4C4B1B@SRV-MAIL>
+References: <FF1DF58D04F11D4291D09795D1A4EF16180E4C4AD8@SRV-MAIL>
+ <20120725165215.GC16617@fieldses.org>
+Content-Type: text/plain; charset="iso-8859-1"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2012-07-18 at 11:17 -0700, Joe Perches wrote:
-> Add a missing set of braces that commit 4e0038b6b24
-> ("SUNRPC: Move clnt->cl_server into struct rpc_xprt")
-> forgot.
+I was wrong.
+
+Changed kernel version to 2.6.39 and it's still happening.
+
+Only other difference I can think of is the fact we now use lvm instead of a regular partition.
+
+------------------------------------------------------------------------------------------------------------------
+
+ 
+TAYLAN DEVELIOGLU
+Operations Manager
+Email: tdevelioglu@ebuddy.com
+mobile: +31 (0) 62 122 3115
+
+eBuddy BV
+Keizersgracht 585
+1017 DR Amsterdam
+The Netherlands
+www.ebuddy.com
+
+
+------------------------------------------------------------------------------------------------------------------
+
+
+
+-----Original Message-----
+From: Taylan Develioglu 
+Sent: Wednesday, July 25, 2012 19:01
+To: 'J. Bruce Fields'
+Cc: linux-nfs@vger.kernel.org; Trond Myklebust
+Subject: RE: rpc_exit_task warning.
+
+Yes, but the previous server was using kernel version 2.6.39, so it looks like this is a regression.
+
+------------------------------------------------------------------------------------------------------------------
+
+ 
+TAYLAN DEVELIOGLU
+Operations Manager
+Email: tdevelioglu@ebuddy.com
+mobile: +31 (0) 62 122 3115
+
+eBuddy BV
+Keizersgracht 585
+1017 DR Amsterdam
+The Netherlands
+www.ebuddy.com
+
+
+------------------------------------------------------------------------------------------------------------------
+
+
+
+-----Original Message-----
+From: J. Bruce Fields [mailto:bfields@fieldses.org] 
+Sent: Wednesday, July 25, 2012 18:52
+To: Taylan Develioglu
+Cc: linux-nfs@vger.kernel.org; Trond Myklebust
+Subject: Re: rpc_exit_task warning.
+
+
+On Tue, Jul 24, 2012 at 08:58:43PM +0200, Taylan Develioglu wrote:
+> We just deployed a new nfs server and have about a hundred clients connected but are getting repeated kernel warnings on the server:
+
+Did this replace an old server that didn't see these warnings?
+
 > 
-> Signed-off-by: Joe Perches <joe@perches.com>
-> ---
->  net/sunrpc/clnt.c |    3 ++-
->  1 files changed, 2 insertions(+), 1 deletions(-)
+> Clients and servers run 3.2.18 and 3.2.20 respectively. We do not use any security options.
 > 
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index f56f045..aaf70aa 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -1844,12 +1844,13 @@ call_timeout(struct rpc_task *task)
->  		return;
->  	}
->  	if (RPC_IS_SOFT(task)) {
-> -		if (clnt->cl_chatty)
-> +		if (clnt->cl_chatty) {
->  			rcu_read_lock();
->  			printk(KERN_NOTICE "%s: server %s not responding, timed out\n",
->  				clnt->cl_protname,
->  				rcu_dereference(clnt->cl_xprt)->servername);
->  			rcu_read_unlock();
-> +		}
->  		if (task->tk_flags & RPC_TASK_TIMEOUT)
->  			rpc_exit(task, -ETIMEDOUT);
->  		else
+> I don't really have time to debug this, but I felt I should report it.
+> 
+> - Client
+>   ii  libevent-1.4-2                      1.4.13-stable-1
+>   ii  util-linux                          2.17.2-9
+>   ii  linux-image-3.2.0-0.bpo.2-amd64     3.2.18-1~bpo60+1
+>   ii  nfs-common                          1:1.2.2-4squeeze2
+> 
+> - Server
+>   ii  libevent-1.4-2                      1.4.13-stable-1
+>   ii  util-linux                          2.17.2-9
+>   ii  linux-image-3.2.0-0.bpo.2-amd64     3.2.20-1~bpo60+1
+>   ii  libnfsidmap2                        0.24-1~bpo60+1               
+>   ii  nfs-common                          1:1.2.5-4~bpo60+1            
+>   ii  nfs-kernel-server                   1:1.2.5-4~bpo60+1            
+> 
+> exportfs -v
+> /var/www/pictures
+>                 
+> x.x.x.x/22(rw,async,wdelay,root_squash,all_squash,no_subtree_check,ano
+> nuid=33,anongid=33)
+> /var/www/pictures
+>                 
+> 10.40.0.0/23(rw,async,wdelay,root_squash,all_squash,no_subtree_check,a
+> nonuid=33,anongid=33)
+> 
+> ----------------------------------------------------------------------
+> ------------------ [ 1913.662849] WARNING: at 
+> /build/buildd-linux_3.2.20-1~bpo60+1-amd64-tQMw4f/linux-3.2.20/net/sun
+> rpc/sched.c:630 rpc_exit_task+0x40/0x7a [sunrpc]()
 
-Hi David.
+That's a warning from rpc_task that both tk_action and RPC_TASK_KILLED were set on exit from rpc_calL_done.
 
-I think it'd be good to get this into 3.6 as a bug fix.
+Couldn't that happen if there's a race between rpc_killall and rpc_call_done trying to restart the task?  rpc_restart_call{_prepare} check RPC_TASK_KILLED before setting the action, but does anything prevent the flag being set after that check?
 
-This is marked in netdev patchwork as "not applicable".
+--b.
 
-Do you need the sunrpc maintainers to apply or ack it
-and then push it to you?
-
-Trond?  Bruce?
-
+> [ 1913.662851] Hardware name: X8STi
+> [ 1913.662852] Modules linked in: nfsd nfs lockd fscache auth_rpcgss nfs_acl sunrpc hmac drbd lru_cache cn ipmi_si ipmi_devintf ipmi_msghandler loop tpm_tis tpm parport_pc i2c_i801 i7core_edac i2c_core snd_pcm snd_timer snd ioatdma soundcore tpm_bios snd_page_alloc parport edac_core dca pcspkr psmouse processor serio_raw thermal_sys evdev joydev button ext4 mbcache jbd2 crc16 dm_mod sg sr_mod cdrom ses enclosure sd_mod crc_t10dif usb_storage usbhid hid uas uhci_hcd mptsas mptscsih mptbase scsi_transport_sas ahci libahci ehci_hcd libata usbcore aacraid usb_common scsi_mod e1000e [last unloaded: scsi_wait_scan]
+> [ 1913.662902] Pid: 11, comm: kworker/0:1 Tainted: G        W    3.2.0-0.bpo.2-amd64 #1
+> [ 1913.662904] Call Trace:
+> [ 1913.662909]  [<ffffffff810498ac>] ? warn_slowpath_common+0x78/0x8c 
+> [ 1913.662916]  [<ffffffffa0327871>] ? rpc_exit_task+0x40/0x7a 
+> [sunrpc] [ 1913.662922]  [<ffffffffa0327ddb>] ? 
+> __rpc_execute+0x71/0x23f [sunrpc] [ 1913.662928]  [<ffffffffa0327fe1>] 
+> ? rpc_execute+0x38/0x38 [sunrpc] [ 1913.662981]  [<ffffffff8105f96c>] 
+> ? process_one_work+0x1cc/0x2ea [ 1913.662985]  [<ffffffff8105fbb7>] ? 
+> worker_thread+0x12d/0x247 [ 1913.662987]  [<ffffffff8105fa8a>] ? 
+> process_one_work+0x2ea/0x2ea [ 1913.662990]  [<ffffffff8105fa8a>] ? 
+> process_one_work+0x2ea/0x2ea [ 1913.662993]  [<ffffffff810633c5>] ? 
+> kthread+0x7a/0x82 [ 1913.662998]  [<ffffffff8136ca74>] ? 
+> kernel_thread_helper+0x4/0x10 [ 1913.663000]  [<ffffffff8106334b>] ? 
+> kthread_worker_fn+0x147/0x147 [ 1913.663003]  [<ffffffff8136ca70>] ? 
+> gs_change+0x13/0x13 [ 1913.663005] ---[ end trace 7cee9f1fd80fe6ac 
+> ]---
+> ----------------------------------------------------------------------
+> ------------------
+> 
+> Regards,
+> 
+> Taylan
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" 
+> in the body of a message to majordomo@vger.kernel.org More majordomo 
+> info at  http://vger.kernel.org/majordomo-info.html
