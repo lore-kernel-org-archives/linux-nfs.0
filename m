@@ -1,61 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48741 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755958Ab2GDX7Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Jul 2012 19:59:24 -0400
-Date: Wed, 4 Jul 2012 19:59:21 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Eldad Zack <eldad@fogrefinery.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 2/2] sunrpc/cache.h: replace simple_strtoul
-Message-ID: <20120704235921.GA26797@fieldses.org>
-References: <1341442827-21339-1-git-send-email-eldad@fogrefinery.com>
- <1341442827-21339-2-git-send-email-eldad@fogrefinery.com>
+Received: from natasha.panasas.com ([67.152.220.90]:37408 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752313Ab2GZQAm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 12:00:42 -0400
+Message-ID: <5011699B.1090706@panasas.com>
+Date: Thu, 26 Jul 2012 19:00:27 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1341442827-21339-2-git-send-email-eldad@fogrefinery.com>
+To: Peng Tao <bergwolf@gmail.com>
+CC: linuxnfs <linux-nfs@vger.kernel.org>, Benny Halevy <bhalevy@tonian.com>
+Subject: Re: pnfs LD partial sector write
+References: <CA+a=Yy7B0uk-FWr3hOjWC+=Xq+UtHnEC4speD3OZzMFfXksyOw@mail.gmail.com> <500FCA3A.5020606@panasas.com> <CA+a=Yy58bjUMximWOMnmk0ugPKUY-LcacRhpdp4cvuz1HQG_gg@mail.gmail.com> <5010573F.4000901@panasas.com> <CA+a=Yy5oJObMeUuL-mspso2eXCr4+5qmiFsOfS5=fU5x9kHtkw@mail.gmail.com> <5010F62D.4030101@panasas.com> <CA+a=Yy7b54qE3v8Yjq6-z3zjqrPH3Vt1madnVZk2aysYcOdbAA@mail.gmail.com> <5011505F.1020508@panasas.com> <CA+a=Yy5-GRoD17LqN0wi2ssO01XDknYyJg-pPe3tTXZQ3GCd9w@mail.gmail.com>
+In-Reply-To: <CA+a=Yy5-GRoD17LqN0wi2ssO01XDknYyJg-pPe3tTXZQ3GCd9w@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 05, 2012 at 01:00:26AM +0200, Eldad Zack wrote:
-> This patch replaces the usage of simple_strtoul with kstrtoint in
-> get_int().
+On 07/26/2012 06:07 PM, Peng Tao wrote:
 
-Why?
+> On Thu, Jul 26, 2012 at 10:12 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+>> There is an easy locking solution for DIO which will not cost much
+>> for DIO and will cost nothing for buffered IO. You use the page-cache
+>> page lock.
+>>
+>> What you do is grab the zero-page of each block lock before/during writing to
+>> any block. So for your example above they will all be serialized by page-zero
+>> lock.
+> Yeah, I agree this can work. But I'd prefer not to mix DIO with buffer
+> IO, which is often error prone. If in any case I need to serialize
+> AIODIO, I'd prefer to do it in easier ways like locking invalid
+> extents etc, without messing with page cache.
+> 
 
---b.
 
+Ye, just keep it BLOCK aligned and that's it. Apps will learn fast enough.
+Simple is always better.
+
+Currently I support any alignment but I might do the same in objlayout in
+the raid5/6 case. and DIO
+
+<>
+
+> Or maybe somehow through statfs(2), since the blocksize attribute is
+> actually a file system's attribute instead of block device's.
 > 
-> Signed-off-by: Eldad Zack <eldad@fogrefinery.com>
-> ---
->  include/linux/sunrpc/cache.h |    6 +++---
->  1 file changed, 3 insertions(+), 3 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-> index 0757887..9a60bcc 100644
-> --- a/include/linux/sunrpc/cache.h
-> +++ b/include/linux/sunrpc/cache.h
-> @@ -217,7 +217,7 @@ extern int qword_get(char **bpp, char *dest, int bufsize);
->  static inline int get_int(char **bpp, int *anint)
->  {
->  	char buf[50];
-> -	char *ep;
-> +	ssize_t ret;
->  	int rv;
->  	int len = qword_get(bpp, buf, 50);
->  
-> @@ -226,8 +226,8 @@ static inline int get_int(char **bpp, int *anint)
->  	if (len == 0)
->  		return -ENOENT;
->  
-> -	rv = simple_strtol(buf, &ep, 0);
-> -	if (*ep)
-> +	ret = kstrtoint(buf, 0, &rv);
-> +	if (ret)
->  		return -EINVAL;
->  
->  	*anint = rv;
-> -- 
-> 1.7.10
-> 
+
+
+Good point!!
+	statfs->f_bsize
+
+man statfs:
+  long    f_bsize;    /* optimal transfer block size */
+
+What does NFS return in there now? maybe let LD override on that?
+
+I'll support a patch as such we could use it as well.
+
+Cheers
+Boaz
