@@ -1,150 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from hq.ebuddy.com ([194.151.176.130]:28089 "EHLO hq.ebuddy.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752209Ab2GZMAa convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 08:00:30 -0400
-From: Taylan Develioglu <tdevelioglu@ebuddy.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond@netapp.com>
-Date: Thu, 26 Jul 2012 14:00:20 +0200
-Subject: RE: rpc_exit_task warning.
-Message-ID: <FF1DF58D04F11D4291D09795D1A4EF16180E4C4B21@SRV-MAIL>
-References: <FF1DF58D04F11D4291D09795D1A4EF16180E4C4AD8@SRV-MAIL>
- <20120725165215.GC16617@fieldses.org>
- <FF1DF58D04F11D4291D09795D1A4EF16180E4C4B1B@SRV-MAIL>
- <20120726115038.GA22511@fieldses.org>
-In-Reply-To: <20120726115038.GA22511@fieldses.org>
-Content-Type: text/plain; charset="iso-8859-1"
-MIME-Version: 1.0
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:53878 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752056Ab2GZLz3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 07:55:29 -0400
+Received: by mail-gh0-f174.google.com with SMTP id r11so1845569ghr.19
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jul 2012 04:55:28 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v4 01/17] vfs: add a retry_estale helper function to handle retries on ESTALE
+Date: Thu, 26 Jul 2012 07:55:04 -0400
+Message-Id: <1343303720-11199-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
+References: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-No, the clients were the same before and after.
+This function is expected to be called from path-based syscalls to help
+them decide whether to try the lookup and call again in the event that
+they got an -ESTALE return back on an earier try.
 
-It's difficult to ascertain what command is exactly triggering this, I could load up a patched kernel with some extra debug stuff in the function if that would help.
+Currently, we only retry the call once on an ESTALE error, but in the
+event that we decide that that's not enough in the future, we should be
+able to change the logic in this helper without too much effort.
 
-Ofcourse you would have to tell me what stuff to add :)
-------------------------------------------------------------------------------------------------------------------
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ include/linux/fs.h | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
 
- 
-TAYLAN DEVELIOGLU
-Operations Manager
-Email: tdevelioglu@ebuddy.com
-mobile: +31 (0) 62 122 3115
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 8fabb03..138d93a 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2072,6 +2072,27 @@ extern int finish_open(struct file *file, struct dentry *dentry,
+ 			int *opened);
+ extern int finish_no_open(struct file *file, struct dentry *dentry);
+ 
++/**
++ * retry_estale - determine whether the caller should retry an operation
++ *
++ * @error: the error we'll be returning
++ * @try: number of retries already performed
++ *
++ * Check to see if the error code was -ESTALE, and then determine whether
++ * to retry the call based on the number of retries so far. Currently, we only
++ * retry the call once.
++ *
++ * Returns true if the caller should try again.
++ */
++static inline bool
++retry_estale(const long error, const unsigned int try)
++{
++	if (likely(error != -ESTALE))
++		return false;
++
++	return !try;
++}
++
+ /* fs/ioctl.c */
+ 
+ extern int ioctl_preallocate(struct file *filp, void __user *argp);
+-- 
+1.7.11.2
 
-eBuddy BV
-Keizersgracht 585
-1017 DR Amsterdam
-The Netherlands
-www.ebuddy.com
-
-
-------------------------------------------------------------------------------------------------------------------
-
-
-
------Original Message-----
-From: J. Bruce Fields [mailto:bfields@fieldses.org] 
-Sent: Thursday, July 26, 2012 13:51
-To: Taylan Develioglu
-Cc: linux-nfs@vger.kernel.org; Trond Myklebust
-Subject: Re: rpc_exit_task warning.
-
-
-On Thu, Jul 26, 2012 at 12:43:46PM +0200, Taylan Develioglu wrote:
-> I was wrong.
-> 
-> Changed kernel version to 2.6.39 and it's still happening.
-> 
-> Only other difference I can think of is the fact we now use lvm instead of a regular partition.
-
-Did you change any of the clients at the same time you upgraded the server?  (E.g. is it possible any of them are using NFSv4 now and weren't before?)
-
---b.
-
-> From: Taylan Develioglu
-> 
-> Yes, but the previous server was using kernel version 2.6.39, so it looks like this is a regression.
-...
-> From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> 
-> 
-> On Tue, Jul 24, 2012 at 08:58:43PM +0200, Taylan Develioglu wrote:
-> > We just deployed a new nfs server and have about a hundred clients connected but are getting repeated kernel warnings on the server:
-> 
-> Did this replace an old server that didn't see these warnings?
-> 
-> > 
-> > Clients and servers run 3.2.18 and 3.2.20 respectively. We do not use any security options.
-> > 
-> > I don't really have time to debug this, but I felt I should report it.
-> > 
-> > - Client
-> >   ii  libevent-1.4-2                      1.4.13-stable-1
-> >   ii  util-linux                          2.17.2-9
-> >   ii  linux-image-3.2.0-0.bpo.2-amd64     3.2.18-1~bpo60+1
-> >   ii  nfs-common                          1:1.2.2-4squeeze2
-> > 
-> > - Server
-> >   ii  libevent-1.4-2                      1.4.13-stable-1
-> >   ii  util-linux                          2.17.2-9
-> >   ii  linux-image-3.2.0-0.bpo.2-amd64     3.2.20-1~bpo60+1
-> >   ii  libnfsidmap2                        0.24-1~bpo60+1               
-> >   ii  nfs-common                          1:1.2.5-4~bpo60+1            
-> >   ii  nfs-kernel-server                   1:1.2.5-4~bpo60+1            
-> > 
-> > exportfs -v
-> > /var/www/pictures
-> >                 
-> > x.x.x.x/22(rw,async,wdelay,root_squash,all_squash,no_subtree_check,a
-> > no
-> > nuid=33,anongid=33)
-> > /var/www/pictures
-> >                 
-> > 10.40.0.0/23(rw,async,wdelay,root_squash,all_squash,no_subtree_check
-> > ,a
-> > nonuid=33,anongid=33)
-> > 
-> > --------------------------------------------------------------------
-> > --
-> > ------------------ [ 1913.662849] WARNING: at 
-> > /build/buildd-linux_3.2.20-1~bpo60+1-amd64-tQMw4f/linux-3.2.20/net/s
-> > un
-> > rpc/sched.c:630 rpc_exit_task+0x40/0x7a [sunrpc]()
-> 
-> That's a warning from rpc_task that both tk_action and RPC_TASK_KILLED were set on exit from rpc_calL_done.
-> 
-> Couldn't that happen if there's a race between rpc_killall and rpc_call_done trying to restart the task?  rpc_restart_call{_prepare} check RPC_TASK_KILLED before setting the action, but does anything prevent the flag being set after that check?
-> 
-> --b.
-> 
-> > [ 1913.662851] Hardware name: X8STi
-> > [ 1913.662852] Modules linked in: nfsd nfs lockd fscache auth_rpcgss nfs_acl sunrpc hmac drbd lru_cache cn ipmi_si ipmi_devintf ipmi_msghandler loop tpm_tis tpm parport_pc i2c_i801 i7core_edac i2c_core snd_pcm snd_timer snd ioatdma soundcore tpm_bios snd_page_alloc parport edac_core dca pcspkr psmouse processor serio_raw thermal_sys evdev joydev button ext4 mbcache jbd2 crc16 dm_mod sg sr_mod cdrom ses enclosure sd_mod crc_t10dif usb_storage usbhid hid uas uhci_hcd mptsas mptscsih mptbase scsi_transport_sas ahci libahci ehci_hcd libata usbcore aacraid usb_common scsi_mod e1000e [last unloaded: scsi_wait_scan]
-> > [ 1913.662902] Pid: 11, comm: kworker/0:1 Tainted: G        W    3.2.0-0.bpo.2-amd64 #1
-> > [ 1913.662904] Call Trace:
-> > [ 1913.662909]  [<ffffffff810498ac>] ? 
-> > warn_slowpath_common+0x78/0x8c [ 1913.662916]  [<ffffffffa0327871>] 
-> > ? rpc_exit_task+0x40/0x7a [sunrpc] [ 1913.662922]  [<ffffffffa0327ddb>] ?
-> > __rpc_execute+0x71/0x23f [sunrpc] [ 1913.662928]  
-> > [<ffffffffa0327fe1>] ? rpc_execute+0x38/0x38 [sunrpc] [ 1913.662981]  
-> > [<ffffffff8105f96c>] ? process_one_work+0x1cc/0x2ea [ 1913.662985]  [<ffffffff8105fbb7>] ?
-> > worker_thread+0x12d/0x247 [ 1913.662987]  [<ffffffff8105fa8a>] ? 
-> > process_one_work+0x2ea/0x2ea [ 1913.662990]  [<ffffffff8105fa8a>] ? 
-> > process_one_work+0x2ea/0x2ea [ 1913.662993]  [<ffffffff810633c5>] ? 
-> > kthread+0x7a/0x82 [ 1913.662998]  [<ffffffff8136ca74>] ? 
-> > kernel_thread_helper+0x4/0x10 [ 1913.663000]  [<ffffffff8106334b>] ? 
-> > kthread_worker_fn+0x147/0x147 [ 1913.663003]  [<ffffffff8136ca70>] ? 
-> > gs_change+0x13/0x13 [ 1913.663005] ---[ end trace 7cee9f1fd80fe6ac
-> > ]---
-> > --------------------------------------------------------------------
-> > --
-> > ------------------
-> > 
-> > Regards,
-> > 
-> > Taylan
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" 
-> > in the body of a message to majordomo@vger.kernel.org More majordomo 
-> > info at  http://vger.kernel.org/majordomo-info.html
