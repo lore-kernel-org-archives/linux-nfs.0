@@ -1,127 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lb0-f174.google.com ([209.85.217.174]:34174 "EHLO
-	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751183Ab2GBOcs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jul 2012 10:32:48 -0400
-Received: by lbbgm6 with SMTP id gm6so7730358lbb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Jul 2012 07:32:47 -0700 (PDT)
-MIME-Version: 1.0
-Date: Mon, 2 Jul 2012 15:32:47 +0100
-Message-ID: <CAC+fKpJCN2GJvA71RW4j9GUW5rw+hAS1SgPUZzBwvNShd098Ag@mail.gmail.com>
-Subject: RPC rpcinfo command PATCH
-From: Leandro Meiners <lmeiners@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: multipart/mixed; boundary=bcaec554d458f4ac1204c3d9ab5e
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:53878 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752539Ab2GZLzp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 07:55:45 -0400
+Received: by mail-gh0-f174.google.com with SMTP id r11so1845569ghr.19
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jul 2012 04:55:44 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v4 12/17] vfs: make rmdir retry on ESTALE errors
+Date: Thu, 26 Jul 2012 07:55:15 -0400
+Message-Id: <1343303720-11199-13-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
+References: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---bcaec554d458f4ac1204c3d9ab5e
-Content-Type: text/plain; charset=ISO-8859-1
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c | 82 +++++++++++++++++++++++++++++++++++---------------------------
+ 1 file changed, 46 insertions(+), 36 deletions(-)
 
-Hi,
-
-I have written a patch for the rpcinfo command that allows querying
-the port-mapper via UDP instead of TCP. I added a new parameter
-(upper-case P) for this functionality. It was helpful for me during a
-penetration test and I thought it might be worth adding to the
-project.
-Signed-off-by: Leandro Meiners <lmeiners@gmail.com>
-
-Thanks,
-
-Leandro Meiners.-
-
+diff --git a/fs/namei.c b/fs/namei.c
+index defb210..09427f2 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3152,52 +3152,62 @@ out:
+ static long do_rmdir(int dfd, const char __user *pathname)
+ {
+ 	int error = 0;
+-	char * name;
++	char *name;
+ 	struct dentry *dentry;
+ 	struct nameidata nd;
++	unsigned int try = 0;
++	unsigned int lookup_flags = LOOKUP_PARENT;
+ 
+-	error = user_path_parent(dfd, pathname, &nd, &name);
+-	if (error)
+-		return error;
++	name = getname(pathname);
++	if (IS_ERR(name))
++		return PTR_ERR(name);
+ 
+-	switch(nd.last_type) {
+-	case LAST_DOTDOT:
+-		error = -ENOTEMPTY;
+-		goto exit1;
+-	case LAST_DOT:
+-		error = -EINVAL;
+-		goto exit1;
+-	case LAST_ROOT:
+-		error = -EBUSY;
+-		goto exit1;
+-	}
++	do {
++		error = do_path_lookup(dfd, name, lookup_flags, &nd);
++		if (error)
++			break;
+ 
+-	nd.flags &= ~LOOKUP_PARENT;
++		switch (nd.last_type) {
++		case LAST_DOTDOT:
++			error = -ENOTEMPTY;
++			goto exit1;
++		case LAST_DOT:
++			error = -EINVAL;
++			goto exit1;
++		case LAST_ROOT:
++			error = -EBUSY;
++			goto exit1;
++		}
+ 
+-	mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex, I_MUTEX_PARENT);
+-	dentry = lookup_hash(&nd);
+-	error = PTR_ERR(dentry);
+-	if (IS_ERR(dentry))
+-		goto exit2;
+-	if (!dentry->d_inode) {
+-		error = -ENOENT;
+-		goto exit3;
+-	}
+-	error = mnt_want_write(nd.path.mnt);
+-	if (error)
+-		goto exit3;
+-	error = security_path_rmdir(&nd.path, dentry);
+-	if (error)
+-		goto exit4;
+-	error = vfs_rmdir(nd.path.dentry->d_inode, dentry);
++		nd.flags &= ~LOOKUP_PARENT;
++
++		mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex,
++							I_MUTEX_PARENT);
++		dentry = lookup_hash(&nd);
++		error = PTR_ERR(dentry);
++		if (IS_ERR(dentry))
++			goto exit2;
++		if (!dentry->d_inode) {
++			error = -ENOENT;
++			goto exit3;
++		}
++		error = mnt_want_write(nd.path.mnt);
++		if (error)
++			goto exit3;
++		error = security_path_rmdir(&nd.path, dentry);
++		if (error)
++			goto exit4;
++		error = vfs_rmdir(nd.path.dentry->d_inode, dentry);
+ exit4:
+-	mnt_drop_write(nd.path.mnt);
++		mnt_drop_write(nd.path.mnt);
+ exit3:
+-	dput(dentry);
++		dput(dentry);
+ exit2:
+-	mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
++		mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
+ exit1:
+-	path_put(&nd.path);
++		path_put(&nd.path);
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
+ 	putname(name);
+ 	return error;
+ }
 -- 
-Leandro Federico Meiners
+1.7.11.2
 
---bcaec554d458f4ac1204c3d9ab5e
-Content-Type: text/plain; charset=US-ASCII; name="rpcinfo-patch.txt"
-Content-Disposition: attachment; filename="rpcinfo-patch.txt"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_h45nc68z0
-
-ZGlmZiAtdXByTiBycGNiaW5kLTAuMi4wLW9yaWcvbWFuL3JwY2luZm8uOCBycGNiaW5kLTAuMi4w
-L21hbi9ycGNpbmZvLjgKLS0tIHJwY2JpbmQtMC4yLjAtb3JpZy9tYW4vcnBjaW5mby44CTIwMDkt
-MDUtMjkgMTQ6Mzg6MjIuMDAwMDAwMDAwICswMTAwCisrKyBycGNiaW5kLTAuMi4wL21hbi9ycGNp
-bmZvLjgJMjAxMi0wNy0wMiAxNToyNTozMS40MDYxMDQ5MzggKzAxMDAKQEAgLTE0LDYgKzE0LDgg
-QEAKIC5ObSAicnBjaW5mbyIKIC5GbCBwIE9wIEFyIGhvc3QKIC5ObSAicnBjaW5mbyIKKy5GbCBQ
-IE9wIEFyIGhvc3QKKy5ObSAicnBjaW5mbyIKIC5GbCBUIEFyIHRyYW5zcG9ydAogLkFyIGhvc3Qg
-QXIgcHJvZ251bQogLk9wIEFyIHZlcnNudW0KQEAgLTIzOSw3ICsyNDEsMjMgQEAgb24KIC5BciBo
-b3N0CiB1c2luZyB2ZXJzaW9uIDIgb2YgdGhlCiAuTm0gcnBjYmluZAotcHJvdG9jb2wsCitwcm90
-b2NvbCB3aXRoIFRDUCBhcyB0aGUgdHJhbnNwb3J0IHByb3RvY29sLAorYW5kIGRpc3BsYXkgYSBs
-aXN0IG9mIGFsbCByZWdpc3RlcmVkIFJQQyBwcm9ncmFtcy4KK0lmCisuQXIgaG9zdAoraXMgbm90
-IHNwZWNpZmllZCwgaXQgZGVmYXVsdHMgdG8gdGhlIGxvY2FsIGhvc3QuCitOb3RlOiBWZXJzaW9u
-IDIgb2YgdGhlCisuTm0gcnBjYmluZAorcHJvdG9jb2wgd2FzIHByZXZpb3VzbHkga25vd24gYXMg
-dGhlIHBvcnRtYXBwZXIgcHJvdG9jb2wuCisuUHAKKy5JdCBGbCBQCitQcm9iZQorLk5tIHJwY2Jp
-bmQKK29uCisuQXIgaG9zdAordXNpbmcgdmVyc2lvbiAyIG9mIHRoZQorLk5tIHJwY2JpbmQKK3By
-b3RvY29sIHdpdGggVURQIGFzIHRoZSB0cmFuc3BvcnQgcHJvdG9jb2wsCiBhbmQgZGlzcGxheSBh
-IGxpc3Qgb2YgYWxsIHJlZ2lzdGVyZWQgUlBDIHByb2dyYW1zLgogSWYKIC5BciBob3N0CmRpZmYg
-LXVwck4gcnBjYmluZC0wLjIuMC1vcmlnL3NyYy9ycGNpbmZvLmMgcnBjYmluZC0wLjIuMC9zcmMv
-cnBjaW5mby5jCi0tLSBycGNiaW5kLTAuMi4wLW9yaWcvc3JjL3JwY2luZm8uYwkyMDA5LTA1LTI5
-IDE0OjM4OjIyLjAwMDAwMDAwMCArMDEwMAorKysgcnBjYmluZC0wLjIuMC9zcmMvcnBjaW5mby5j
-CTIwMTItMDctMDIgMTU6MjU6MTQuNTg2MTg2NTQwICswMTAwCkBAIC03OSw3ICs3OSw3IEBACiAg
-KiBGdW5jdGlvbnMgdG8gYmUgcGVyZm9ybWVkLgogICovCiAjZGVmaW5lCU5PTkUJCTAJLyogbm8g
-ZnVuY3Rpb24gKi8KLSNkZWZpbmUJUE1BUERVTVAJMQkvKiBkdW1wIHBvcnRtYXBwZXIgcmVnaXN0
-cmF0aW9ucyAqLworI2RlZmluZQlQTUFQRFVNUF9UQ1AJMQkvKiBkdW1wIHBvcnRtYXBwZXIgcmVn
-aXN0cmF0aW9ucyB1c2luZyBUQ1AqLwogI2RlZmluZQlUQ1BQSU5HCQkyCS8qIHBpbmcgVENQIHNl
-cnZpY2UgKi8KICNkZWZpbmUJVURQUElORwkJMwkvKiBwaW5nIFVEUCBzZXJ2aWNlICovCiAjZGVm
-aW5lCUJST0FEQ0FTVAk0CS8qIHBpbmcgYnJvYWRjYXN0IHNlcnZpY2UgKi8KQEAgLTkwLDYgKzkw
-LDcgQEAKICNkZWZpbmUJUlBDQkRVTVBfU0hPUlQJOQkvKiBkdW1wIHJwY2JpbmQgcmVnaXN0cmF0
-aW9ucyAtIHNob3J0IHZlcnNpb24gKi8KICNkZWZpbmUJUlBDQkFERFJMSVNUCTEwCS8qIGR1bXAg
-YWRkciBsaXN0IGFib3V0IG9uZSBwcm9nICovCiAjZGVmaW5lCVJQQ0JHRVRTVEFUCTExCS8qIEdl
-dCBzdGF0aXN0aWNzICovCisjZGVmaW5lCVBNQVBEVU1QX1VEUAkxMwkvKiBkdW1wIHBvcnRtYXBw
-ZXIgcmVnaXN0cmF0aW9ucyB1c2luZyBVRFAqLwogCiBzdHJ1Y3QgbmV0aWRsaXN0CiB7CkBAIC0x
-MTcsNyArMTE4LDcgQEAgc3RydWN0IHJwY2JkdW1wX3Nob3J0CiBzdGF0aWMgdm9pZCBpcF9waW5n
-ICh1X3Nob3J0LCBjaGFyICosIGludCwgY2hhciAqKik7CiBzdGF0aWMgQ0xJRU5UICpjbG50X2Nv
-bV9jcmVhdGUgKHN0cnVjdCBzb2NrYWRkcl9pbiAqLCB1X2xvbmcsIHVfbG9uZywgaW50ICosCiAJ
-CQkJY2hhciAqKTsKLXN0YXRpYyB2b2lkIHBtYXBkdW1wIChpbnQsIGNoYXIgKiopOworc3RhdGlj
-IHZvaWQgcG1hcGR1bXAgKGludCwgY2hhciAqKiwgY2hhciAqKTsKIHN0YXRpYyB2b2lkIGdldF9p
-bmV0X2FkZHJlc3MgKHN0cnVjdCBzb2NrYWRkcl9pbiAqLCBjaGFyICopOwogI2VuZGlmCiAKQEAg
-LTE2MSw3ICsxNjIsNyBAQCBtYWluIChpbnQgYXJnYywgY2hhciAqKmFyZ3YpCiAgIGZ1bmN0aW9u
-ID0gTk9ORTsKICAgZXJyZmxnID0gMDsKICNpZmRlZiBQT1JUTUFQCi0gIHdoaWxlICgoYyA9IGdl
-dG9wdCAoYXJnYywgYXJndiwgImE6YmRsbW46cHN0VDp1IikpICE9IC0xKQorICB3aGlsZSAoKGMg
-PSBnZXRvcHQgKGFyZ2MsIGFyZ3YsICJhOmJkbG1uOnBQc3RUOnUiKSkgIT0gLTEpCiAjZWxzZQog
-ICB3aGlsZSAoKGMgPSBnZXRvcHQgKGFyZ2MsIGFyZ3YsICJhOmJkbG1uOnNUOiIpKSAhPSAtMSkK
-ICNlbmRpZgpAQCAtMTczLDcgKzE3NCwxNCBAQCBtYWluIChpbnQgYXJnYywgY2hhciAqKmFyZ3Yp
-CiAJICBpZiAoZnVuY3Rpb24gIT0gTk9ORSkKIAkgICAgZXJyZmxnID0gMTsKIAkgIGVsc2UKLQkg
-ICAgZnVuY3Rpb24gPSBQTUFQRFVNUDsKKwkgICAgZnVuY3Rpb24gPSBQTUFQRFVNUF9UQ1A7CisJ
-ICBicmVhazsKKworCWNhc2UgJ1AnOgorCSAgaWYgKGZ1bmN0aW9uICE9IE5PTkUpCisJICAgIGVy
-cmZsZyA9IDE7CisJICBlbHNlCisJICAgIGZ1bmN0aW9uID0gUE1BUERVTVBfVURQOwogCSAgYnJl
-YWs7CiAKIAljYXNlICd0JzoKQEAgLTI3MCwxMyArMjc4LDIyIEBAIG1haW4gKGludCBhcmdjLCBj
-aGFyICoqYXJndikKICAgc3dpdGNoIChmdW5jdGlvbikKICAgICB7CiAjaWZkZWYgUE9SVE1BUAot
-ICAgIGNhc2UgUE1BUERVTVA6CisgICAgY2FzZSBQTUFQRFVNUF9UQ1A6CiAgICAgICBpZiAocG9y
-dG51bSAhPSAwKQogCXsKIAkgIHVzYWdlICgpOwogCSAgcmV0dXJuIDE7CiAJfQotICAgICAgcG1h
-cGR1bXAgKGFyZ2MgLSBvcHRpbmQsIGFyZ3YgKyBvcHRpbmQpOworICAgICAgcG1hcGR1bXAgKGFy
-Z2MgLSBvcHRpbmQsIGFyZ3YgKyBvcHRpbmQsICJ0Y3AiKTsKKyAgICAgIGJyZWFrOworCisgICAg
-Y2FzZSBQTUFQRFVNUF9VRFA6CisgICAgICBpZiAocG9ydG51bSAhPSAwKQorCXsKKwkgIHVzYWdl
-ICgpOworCSAgcmV0dXJuIDE7CisJfQorICAgICAgcG1hcGR1bXAgKGFyZ2MgLSBvcHRpbmQsIGFy
-Z3YgKyBvcHRpbmQsICJ1ZHAiKTsKICAgICAgIGJyZWFrOwogCiAgICAgY2FzZSBVRFBQSU5HOgpA
-QCAtMzQ0LDcgKzM2MSw3IEBAIGxvY2FsX3JwY2IgKHJwY3Byb2dfdCBwcm9nLCBycGN2ZXJzX3Qg
-dmUKICAgc29jayA9IHNvY2tldCAoQUZfTE9DQUwsIFNPQ0tfU1RSRUFNLCAwKTsKICAgaWYgKHNv
-Y2sgPCAwKQogICAgIHJldHVybiBOVUxMOwotCisgCiAgIHN1bi5zdW5fZmFtaWx5ID0gQUZfTE9D
-QUw7CiAgIHN0cmNweSAoc3VuLnN1bl9wYXRoLCBfUEFUSF9SUENCSU5EU09DSyk7CiAgIG5idWYu
-bGVuID0gU1VOX0xFTiAoJnN1bik7CkBAIC01MTcsOSArNTM0LDEwIEBAIGlwX3BpbmcgKHBvcnRu
-dW0sIHRyYW5zLCBhcmdjLCBhcmd2KQogICogRHVtcCBhbGwgdGhlIHBvcnRtYXBwZXIgcmVnaXN0
-ZXJhdGlvbnMKICAqLwogc3RhdGljIHZvaWQKLXBtYXBkdW1wIChhcmdjLCBhcmd2KQorcG1hcGR1
-bXAgKGFyZ2MsIGFyZ3YsIHRyYW5zKQogICAgICBpbnQgYXJnYzsKICAgICAgY2hhciAqKmFyZ3Y7
-CisgICAgIGNoYXIgKnRyYW5zOwogewogICBzdHJ1Y3Qgc29ja2FkZHJfaW4gc2VydmVyX2FkZHI7
-CiAgIHN0cnVjdCBwbWFwbGlzdCAqaGVhZCA9IE5VTEw7CkBAIC01NDEsOCArNTU5LDIwIEBAIHBt
-YXBkdW1wIChhcmdjLCBhcmd2KQogICAgICAgaG9zdCA9IGFyZ3ZbMF07CiAgICAgICBnZXRfaW5l
-dF9hZGRyZXNzICgmc2VydmVyX2FkZHIsIGhvc3QpOwogICAgICAgc2VydmVyX2FkZHIuc2luX3Bv
-cnQgPSBodG9ucyAoUE1BUFBPUlQpOwotICAgICAgY2xpZW50ID0gY2xudHRjcF9jcmVhdGUgKCZz
-ZXJ2ZXJfYWRkciwgUE1BUFBST0csIFBNQVBWRVJTLAotCQkJICAgICAgICZzb2NrZXQsIDUwLCA1
-MDApOworICAgICAgaWYgKHN0cmNtcCAodHJhbnMsICJ0Y3AiKSA9PSAwKQorICAgICAgICB7Cisg
-ICAgICAgICAgY2xpZW50ID0gY2xudHRjcF9jcmVhdGUgKCZzZXJ2ZXJfYWRkciwgUE1BUFBST0cs
-IFBNQVBWRVJTLCAKKwkJCSAgJnNvY2tldCwgNTAsIDUwMCk7CisgICAgICAgIH0KKyAgICAgIGVs
-c2UKKyAgICAgICAgeworICAgICAgICAgIHN0cnVjdCB0aW1ldmFsIHRvOworCisgICAgICAgICAg
-dG8udHZfc2VjID0gNTsKKyAgICAgICAgICB0by50dl91c2VjID0gMDsKKyAgICAgICAgICBjbGll
-bnQgPSBjbG50dWRwX2NyZWF0ZSAoJnNlcnZlcl9hZGRyLCBQTUFQUFJPRywgUE1BUFZFUlMsIAor
-CQkJICB0bywgJnNvY2tldCk7CisJfQogICAgIH0KICAgZWxzZQogICAgIGNsaWVudCA9IGxvY2Fs
-X3JwY2IgKFBNQVBQUk9HLCBQTUFQVkVSUyk7CkBAIC0xNzE0LDYgKzE3NDQsNyBAQCB1c2FnZSAo
-KQogICBmcHJpbnRmIChzdGRlcnIsICJVc2FnZTogcnBjaW5mbyBbLW0gfCAtc10gW2hvc3RdXG4i
-KTsKICNpZmRlZiBQT1JUTUFQCiAgIGZwcmludGYgKHN0ZGVyciwgIiAgICAgICBycGNpbmZvIC1w
-IFtob3N0XVxuIik7CisgIGZwcmludGYgKHN0ZGVyciwgIiAgICAgICBycGNpbmZvIC1QIFtob3N0
-XVxuIik7CiAjZW5kaWYKICAgZnByaW50ZiAoc3RkZXJyLCAiICAgICAgIHJwY2luZm8gLVQgbmV0
-aWQgaG9zdCBwcm9nbnVtIFt2ZXJzbnVtXVxuIik7CiAgIGZwcmludGYgKHN0ZGVyciwgIiAgICAg
-ICBycGNpbmZvIC1sIGhvc3QgcHJvZ251bSB2ZXJzbnVtXG4iKTsK
---bcaec554d458f4ac1204c3d9ab5e--
