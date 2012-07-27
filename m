@@ -1,68 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:53878 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752056Ab2GZLz3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 07:55:29 -0400
-Received: by mail-gh0-f174.google.com with SMTP id r11so1845569ghr.19
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jul 2012 04:55:28 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v4 01/17] vfs: add a retry_estale helper function to handle retries on ESTALE
-Date: Thu, 26 Jul 2012 07:55:04 -0400
-Message-Id: <1343303720-11199-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
-References: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:44216 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752561Ab2G0ULd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Jul 2012 16:11:33 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Nick Piggin <npiggin@kernel.dk>
+Subject: [PATCH 2/2] nfsd4: Don't set DISCONNECTED on "pseudo filesystem" dentries
+Date: Fri, 27 Jul 2012 16:11:29 -0400
+Message-Id: <1343419889-6320-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1343419889-6320-1-git-send-email-bfields@redhat.com>
+References: <1343419889-6320-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This function is expected to be called from path-based syscalls to help
-them decide whether to try the lookup and call again in the event that
-they got an -ESTALE return back on an earier try.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Currently, we only retry the call once on an ESTALE error, but in the
-event that we decide that that's not enough in the future, we should be
-able to change the logic in this helper without too much effort.
+I can't for the life of me see any reason why anyone would care whether
+a dentry that is never hooked into the dentry cache would need
+DCACHE_DISCONNECTED set.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+This originates from 4b936885ab04dc6e0bb0ef35e0e23c1a7364d9e5 "fs:
+improve scalability of pseudo filesystems", which probably just made the
+false assumption the DCACHE_DISCONNECTED was meant to be set on anything
+not connected to a parent somehow.
+
+So this is just confusing.  Ideally the only use DCACHE_DISCONNECTED
+would be in the filehandle-lookup code, which needs it to ensure
+dentries are connected into the dentry tree before use.
+
+I left d_alloc_pseudo there even though it's now equivalent to
+__d_alloc(), just on the theory the name is better documentation of its
+intended use outside dcache.c.
+
+Cc: Nick Piggin <npiggin@kernel.dk>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- include/linux/fs.h | 21 +++++++++++++++++++++
- 1 file changed, 21 insertions(+)
+ fs/dcache.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 8fabb03..138d93a 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2072,6 +2072,27 @@ extern int finish_open(struct file *file, struct dentry *dentry,
- 			int *opened);
- extern int finish_no_open(struct file *file, struct dentry *dentry);
+diff --git a/fs/dcache.c b/fs/dcache.c
+index 740b4f5..1b1e925 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -1350,12 +1350,13 @@ struct dentry *d_alloc(struct dentry * parent, const struct qstr *name)
+ }
+ EXPORT_SYMBOL(d_alloc);
  
-+/**
-+ * retry_estale - determine whether the caller should retry an operation
-+ *
-+ * @error: the error we'll be returning
-+ * @try: number of retries already performed
-+ *
-+ * Check to see if the error code was -ESTALE, and then determine whether
-+ * to retry the call based on the number of retries so far. Currently, we only
-+ * retry the call once.
-+ *
-+ * Returns true if the caller should try again.
++/*
++ * For filesystems that do not actually use the dentry cache at all, and
++ * only ever deal in IS_ROOT() dentries:
 + */
-+static inline bool
-+retry_estale(const long error, const unsigned int try)
-+{
-+	if (likely(error != -ESTALE))
-+		return false;
-+
-+	return !try;
-+}
-+
- /* fs/ioctl.c */
+ struct dentry *d_alloc_pseudo(struct super_block *sb, const struct qstr *name)
+ {
+-	struct dentry *dentry = __d_alloc(sb, name);
+-	if (dentry)
+-		dentry->d_flags |= DCACHE_DISCONNECTED;
+-	return dentry;
++	return __d_alloc(sb, name);
+ }
+ EXPORT_SYMBOL(d_alloc_pseudo);
  
- extern int ioctl_preallocate(struct file *filp, void __user *argp);
 -- 
 1.7.11.2
 
