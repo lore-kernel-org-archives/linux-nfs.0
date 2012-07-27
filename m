@@ -1,211 +1,908 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:42472 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756482Ab2GYKqa convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jul 2012 06:46:30 -0400
-Message-ID: <500FCE74.8010005@parallels.com>
-Date: Wed, 25 Jul 2012 14:46:12 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH v3 03/11] NFS: move per-net callback thread initialization
- to nfs_callback_up_net()
-References: <20120703161844.11911.92996.stgit@localhost.localdomain> <20120703161946.11911.85659.stgit@localhost.localdomain> <20120724214731.GO8570@fieldses.org> <500FC80F.2070403@parallels.com>
-In-Reply-To: <500FC80F.2070403@parallels.com>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Received: from mx1.redhat.com ([209.132.183.28]:29330 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751259Ab2G0K4x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Jul 2012 06:56:53 -0400
+Date: Fri, 27 Jul 2012 06:56:30 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Namjae Jeon <linkinjeon@gmail.com>
+Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        michael.brantley@deshaw.com, hch@infradead.org, miklos@szeredi.hu,
+        pstaubach@exagrid.com
+Subject: Re: [PATCH v4 00/17] vfs: add the ability to retry on ESTALE to
+ several syscalls
+Message-ID: <20120727065630.0a3c5870@tlielax.poochiereds.net>
+In-Reply-To: <CAKYAXd99VMYSX=k9eadB6MZvjQjQrOngOjUicjo+c9LtHvpz9w@mail.gmail.com>
+References: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
+	<CAKYAXd99VMYSX=k9eadB6MZvjQjQrOngOjUicjo+c9LtHvpz9w@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="MP_/nTK.xUeJt./FswLnknRI64L"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-25.07.2012 14:18, Stanislav Kinsbursky пишет:
-> 25.07.2012 01:47, J. Bruce Fields пишет:
->> On Tue, Jul 03, 2012 at 08:19:46PM +0400, Stanislav Kinsbursky wrote:
->>> This new function in now called before nfs_minorversion_callback_svc_setup()).
->>>
->>> Also few small changes:
->>> 1) current network namespace in nfs_callback_up() was replaced by transport net.
->>> 2) svc_shutdown_net() was moved prior to callback usage counter decrement
->>> (because in case of per-net data allocation faulure svc_shutdown_net() have to
->>> be skipped).
->>>
->>> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
->>> ---
->>>    fs/nfs/callback.c |  125 +++++++++++++++++++++++++++++++++--------------------
->>>    fs/nfs/client.c   |    2 -
->>>    2 files changed, 79 insertions(+), 48 deletions(-)
->>>
->>> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
->>> index f8d0c21..b61ed61 100644
->>> --- a/fs/nfs/callback.c
->>> +++ b/fs/nfs/callback.c
->>> @@ -63,6 +63,32 @@ static struct kernel_param_ops param_ops_portnr = {
->>>
->>>    module_param_named(callback_tcpport, nfs_callback_set_tcpport, portnr, 0644);
->>>
->>> +static int nfs4_callback_up_net(struct svc_serv *serv, struct net *net)
->>> +{
->>> +	int ret;
->>> +
->>> +	ret = svc_create_xprt(serv, "tcp", net, PF_INET,
->>> +				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
->>> +	if (ret <= 0)
->>> +		goto out_err;
->>> +	nfs_callback_tcpport = ret;
->>> +	dprintk("NFS: Callback listener port = %u (af %u, net %p)\n",
->>> +			nfs_callback_tcpport, PF_INET, net);
->>> +
->>> +	ret = svc_create_xprt(serv, "tcp", net, PF_INET6,
->>> +				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
->>> +	if (ret > 0) {
->>> +		nfs_callback_tcpport6 = ret;
->>> +		dprintk("NFS: Callback listener port = %u (af %u, net %p)\n",
->>> +				nfs_callback_tcpport6, PF_INET6, net);
->>> +	} else if (ret != -EAFNOSUPPORT)
->>> +		goto out_err;
->>> +	return 0;
->>> +
->>> +out_err:
->>> +	return (ret) ? ret : -ENOMEM;
->>> +}
->>> +
->>>    /*
->>>     * This is the NFSv4 callback kernel thread.
->>>     */
->>> @@ -104,36 +130,21 @@ nfs4_callback_svc(void *vrqstp)
->>>    static struct svc_rqst *
->>>    nfs4_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
->>>    {
->>> -	int ret;
->>> -
->>> -	ret = svc_create_xprt(serv, "tcp", &init_net, PF_INET,
->>> -				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
->>> -	if (ret <= 0)
->>> -		goto out_err;
->>> -	nfs_callback_tcpport = ret;
->>> -	dprintk("NFS: Callback listener port = %u (af %u)\n",
->>> -			nfs_callback_tcpport, PF_INET);
->>> -
->>> -	ret = svc_create_xprt(serv, "tcp", &init_net, PF_INET6,
->>> -				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
->>> -	if (ret > 0) {
->>> -		nfs_callback_tcpport6 = ret;
->>> -		dprintk("NFS: Callback listener port = %u (af %u)\n",
->>> -				nfs_callback_tcpport6, PF_INET6);
->>> -	} else if (ret == -EAFNOSUPPORT)
->>> -		ret = 0;
->>> -	else
->>> -		goto out_err;
->>> -
->>>    	return svc_prepare_thread(serv, &serv->sv_pools[0], NUMA_NO_NODE);
->>> -
->>> -out_err:
->>> -	if (ret == 0)
->>> -		ret = -ENOMEM;
->>> -	return ERR_PTR(ret);
->>>    }
->>>
->>>    #if defined(CONFIG_NFS_V4_1)
->>> +static int nfs41_callback_up_net(struct svc_serv *serv, struct net *net)
->>> +{
->>> +	/*
->>> +	 * Create an svc_sock for the back channel service that shares the
->>> +	 * fore channel connection.
->>> +	 * Returns the input port (0) and sets the svc_serv bc_xprt on success
->>> +	 */
->>> +	return svc_create_xprt(serv, "tcp-bc", net, PF_INET, 0,
->>> +			      SVC_SOCK_ANONYMOUS);
->>> +}
->>> +
->>>    /*
->>>     * The callback service for NFSv4.1 callbacks
->>>     */
->>> @@ -176,19 +187,6 @@ static struct svc_rqst *
->>>    nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
->>>    {
->>>    	struct svc_rqst *rqstp;
->>> -	int ret;
->>> -
->>> -	/*
->>> -	 * Create an svc_sock for the back channel service that shares the
->>> -	 * fore channel connection.
->>> -	 * Returns the input port (0) and sets the svc_serv bc_xprt on success
->>> -	 */
->>> -	ret = svc_create_xprt(serv, "tcp-bc", &init_net, PF_INET, 0,
->>> -			      SVC_SOCK_ANONYMOUS);
->>> -	if (ret < 0) {
->>> -		rqstp = ERR_PTR(ret);
->>> -		goto out;
->>> -	}
->>>
->>>    	/*
->>>    	 * Save the svc_serv in the transport so that it can
->>> @@ -204,7 +202,6 @@ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
->>>    		svc_xprt_put(serv->sv_bc_xprt);
->>>    		serv->sv_bc_xprt = NULL;
->>>    	}
->>> -out:
->>>    	dprintk("--> %s return %ld\n", __func__,
->>>    		IS_ERR(rqstp) ? PTR_ERR(rqstp) : 0);
->>>    	return rqstp;
->>> @@ -228,6 +225,11 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
->>>    		xprt->bc_serv = cb_info->serv;
->>>    }
->>>    #else
->>> +static int nfs41_callback_up_net(struct svc_serv *serv, struct net *net)
->>> +{
->>> +	return 0;
->>> +}
->>> +
->>>    static inline int nfs_minorversion_callback_svc_setup(u32 minorversion,
->>>    		struct svc_serv *serv, struct rpc_xprt *xprt,
->>>    		struct svc_rqst **rqstpp, int (**callback_svc)(void *vrqstp))
->>> @@ -241,6 +243,36 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
->>>    }
->>>    #endif /* CONFIG_NFS_V4_1 */
->>>
->>> +static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct net *net)
->>> +{
->>> +	int ret;
->>> +
->>> +	dprintk("NFS: create per-net callback data; net=%p\n", net);
->>> +
->>> +	ret = svc_bind(serv, net);
->>> +	if (ret < 0) {
->>> +		printk(KERN_WARNING "NFS: bind callback service failed\n");
->>> +		goto err_bind;
->>> +	}
->>> +
->>> +	if (minorversion) {
->>> +		ret = nfs41_callback_up_net(serv, net);
->>> +		if (ret < 0)
->>> +			goto err_socks;
->>> +	}
->>> +
->>> +	if (ret == 0)
->>> +		ret = nfs4_callback_up_net(serv, net);
->>
->> So in the minorversion 1 case, and in the absence of errors, you set up
->> both the 4.1 and 4.0 callback xprts?
->>
->> That doesn't look right.  You should need only one or the other.
->>
->
-> Thanks for the catch, Bruce.
-> I'll fix it and resend.
-> But currently I'm thinking, that for 3.6 kernel probably it's better to push
-> this code through Trond's tree.
->
+--MP_/nTK.xUeJt./FswLnknRI64L
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-No, Bruce. It works fine. nfs41_callback_up_net() will return either negative 
-value of port number. I.e. nfs4_callback_up_net() won't be called.
-But this looks confusing.
-I'll rewrite this part.
+On Fri, 27 Jul 2012 11:15:23 +0900
+Namjae Jeon <linkinjeon@gmail.com> wrote:
+
+> Hi Jeff.
+> 
+> Which testcase(or test method) do I use to know improved point from
+> ESTALE error ?
+> I want to know before & after using testcase with this patch-set.
+> 
+
+It's a bit labor intensive, I'm afraid...
+
+Attached is a cleaned-up copy of the test program that Peter wrote to
+test his original patchset. The basic idea is to run this on both the
+client and server at the same time so they race against each other. He
+was able to run it overnight when testing with his patchset.
+
+With this patchset, that doesn't work since we're only retrying the
+lookup and call once. So, what I've been doing is modifying the program
+so that it just runs one test at a time, and sniffing traffic to see
+whether the lookups and calls are retried after an ESTALE return from
+the server.
 
 -- 
-Best regards,
-Stanislav Kinsbursky
+Jeff Layton <jlayton@redhat.com>
 
+--MP_/nTK.xUeJt./FswLnknRI64L
+Content-Type: text/x-csrc
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename=estale_test.c
 
+#define _XOPEN_SOURCE 500
+#define _LARGEFILE64_SOURCE
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/statfs.h>
+#include <sys/inotify.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <signal.h>
+#include <utime.h>
+#include <wait.h>
+#include <attr/xattr.h>
+#include <sys/time.h>
+
+void mkdir_test(void);
+void link_test(void);
+void open_test(void);
+void access_test(void);
+void chmod_test(void);
+void chown_test(void);
+void readlink_test(void);
+void utimes_test(void);
+void chdir_test(void);
+void chroot_test(void);
+void rename_test(void);
+void exec_test(void);
+void mknod_test(void);
+void statfs_test(void);
+void truncate_test(void);
+void xattr_test(void);
+void inotify_test(void);
+
+struct tests {
+	void (*test)(void);
+};
+
+struct tests tests[] = {
+	{ mkdir_test },
+	{ link_test },
+	{ open_test },
+	{ access_test },
+	{ chmod_test },
+	{ chown_test },
+	{ readlink_test },
+	{ utimes_test },
+	{ chdir_test },
+	{ chroot_test },
+	{ rename_test },
+	{ exec_test },
+	{ mknod_test },
+	{ statfs_test },
+	{ truncate_test },
+	{ xattr_test },
+	{ inotify_test }
+};
+
+pid_t test_pids[sizeof(tests) / sizeof(tests[0])];
+
+pid_t parent_pid;
+
+void kill_tests(int);
+
+int
+main(int argc, char *argv[])
+{
+	int i;
+
+	parent_pid = getpid();
+
+	sigset(SIGINT, kill_tests);
+
+	sighold(SIGINT);
+
+	for (i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+		test_pids[i] = fork();
+		if (test_pids[i] == 0) {
+			for (;;)
+				(*tests[i].test)();
+			/* NOTREACHED */
+		}
+	}
+
+	sigrelse(SIGINT);
+
+	pause();
+	return 0;
+}
+
+void
+kill_tests(int sig)
+{
+	int i;
+
+	for (i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+		if (test_pids[i] != -1) {
+			if (kill(test_pids[i], SIGTERM) < 0)
+				perror("kill");
+		}
+	}
+
+	exit(0);
+}
+
+void
+check_error(int error, char *operation)
+{
+
+	if (error < 0 && errno == ESTALE) {
+		perror(operation);
+		kill(parent_pid, SIGINT);
+		pause();
+	}
+}
+
+void
+check_error_child(int error, char *operation)
+{
+
+	if (error < 0 && errno == ESTALE) {
+		perror(operation);
+		kill(parent_pid, SIGINT);
+		exit(1);
+	}
+}
+
+void
+do_stats(char *file)
+{
+	int error;
+	struct stat stbuf;
+	struct stat64 stbuf64;
+
+	error = stat(file, &stbuf);
+	check_error(error, "stat");
+
+	error = stat64(file, &stbuf64);
+	check_error(error, "stat64");
+
+	error = lstat(file, &stbuf);
+	check_error(error, "lstat");
+
+	error = lstat64(file, &stbuf64);
+	check_error(error, "lstat64");
+}
+
+void
+do_stats_child(char *file)
+{
+	int error;
+	struct stat stbuf;
+	struct stat64 stbuf64;
+
+	error = stat(file, &stbuf);
+	check_error_child(error, "stat");
+
+	error = stat64(file, &stbuf64);
+	check_error_child(error, "stat64");
+
+	error = lstat(file, &stbuf);
+	check_error_child(error, "lstat");
+
+	error = lstat64(file, &stbuf64);
+	check_error_child(error, "lstat64");
+}
+
+char *mkdir_dirs[] = {
+	"mkdir/a",
+	"mkdir/a/b",
+	"mkdir/a/b/c",
+	"mkdir/a/b/c/d",
+	"mkdir/a/b/c/d/e",
+	"mkdir/a/b/c/d/e/f",
+	"mkdir/a/b/c/d/e/f/g",
+	"mkdir/a/b/c/d/e/f/g/h",
+	"mkdir/a/b/c/d/e/f/g/h/i",
+	"mkdir/a/b/c/d/e/f/g/h/i/j",
+	"mkdir/a/b/c/d/e/f/g/h/i/j/k",
+	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l",
+	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m",
+	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n",
+	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o",
+	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p",
+	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q",
+	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r",
+	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s",
+	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t",
+	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u",
+	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u/v",
+	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u/v/w",
+	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u/v/w/x",
+	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u/v/w/x/y",
+	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u/v/w/x/y/z",
+	NULL
+};
+
+void
+mkdir_test()
+{
+	int i;
+	int error;
+
+	error = mkdir("mkdir", 0755);
+	check_error(error, "mkdir");
+
+	for (i = 0; mkdir_dirs[i] != NULL; i++) {
+		error = mkdir(mkdir_dirs[i], 0755);
+		check_error(error, "mkdir");
+		do_stats(mkdir_dirs[i]);
+	}
+
+	while (--i >= 0) {
+		do_stats(mkdir_dirs[i]);
+		error = rmdir(mkdir_dirs[i]);
+		check_error(error, "rmdir");
+	}
+
+	error = rmdir("mkdir");
+	check_error(error, "rmdir");
+}
+
+char *link_file_a = "link/a";
+char *link_file_b = "link/b";
+
+void
+link_test()
+{
+	int error;
+	int fd;
+
+	error = mkdir("link", 0755);
+	check_error(error, "mkdir");
+
+	fd = open(link_file_a, O_CREAT, 0644);
+	check_error(fd, "open");
+
+	(void) close(fd);
+
+	do_stats(link_file_a);
+
+	error = link(link_file_a, link_file_b);
+	check_error(error, "link");
+	do_stats(link_file_a);
+	do_stats(link_file_b);
+
+	error = unlink(link_file_a);
+	check_error(error, "unlink");
+	do_stats(link_file_a);
+	do_stats(link_file_b);
+
+	error = link(link_file_b, link_file_a);
+	check_error(error, "link");
+	do_stats(link_file_a);
+	do_stats(link_file_b);
+
+	error = unlink(link_file_b);
+	check_error(error, "unlink");
+	do_stats(link_file_a);
+	do_stats(link_file_b);
+
+	error = unlink(link_file_a);
+	check_error(error, "unlink");
+	do_stats(link_file_a);
+	do_stats(link_file_b);
+
+	error = rmdir("link");
+	check_error(error, "rmdir");
+}
+
+char *open_file = "open/a";
+
+void
+open_test()
+{
+	int error;
+	int fd;
+
+	error = mkdir("open", 0755);
+	check_error(error, "mkdir");
+
+	fd = open(open_file, O_CREAT | O_RDWR, 0644);
+	check_error(fd, "open: O_CREAT");
+
+	(void) close(fd);
+
+	do_stats(open_file);
+
+	fd = open(open_file, O_RDWR);
+	check_error(fd, "open: O_RDWR");
+
+	(void) close(fd);
+
+	do_stats(open_file);
+
+	error = unlink(open_file);
+	check_error(error, "unlink");
+
+	error = rmdir("open");
+	check_error(error, "rmdir");
+}
+
+char *access_file = "access/a";
+
+void
+access_test()
+{
+	int error;
+	int fd;
+
+	error = mkdir("access", 0755);
+	check_error(error, "mkdir");
+
+	fd = open(access_file, O_CREAT | O_RDWR, 0644);
+	check_error(fd, "open: O_CREAT");
+
+	(void) close(fd);
+
+	do_stats(access_file);
+
+	error = access(access_file, F_OK);
+	check_error(error, "access");
+
+	do_stats(access_file);
+
+	error = unlink(access_file);
+	check_error(error, "unlink");
+
+	error = rmdir("access");
+	check_error(error, "rmdir");
+}
+
+char *chmod_file = "chmod/a";
+
+void
+chmod_test()
+{
+	int error;
+	int fd;
+
+	error = mkdir("chmod", 0755);
+	check_error(error, "mkdir");
+
+	fd = open(chmod_file, O_CREAT | O_RDWR, 0644);
+	check_error(fd, "open: O_CREAT");
+
+	(void) close(fd);
+
+	do_stats(chmod_file);
+
+	error = chmod(chmod_file, 0600);
+	check_error(error, "chmod");
+
+	do_stats(chmod_file);
+
+	error = unlink(chmod_file);
+	check_error(error, "unlink");
+
+	error = rmdir("chmod");
+	check_error(error, "rmdir");
+}
+
+char *chown_file = "chown/a";
+
+void
+chown_test()
+{
+	int error;
+	int fd;
+
+	error = mkdir("chown", 0755);
+	check_error(error, "mkdir");
+
+	fd = open(chown_file, O_CREAT | O_RDWR, 0644);
+	check_error(fd, "open: O_CREAT");
+
+	(void) close(fd);
+
+	do_stats(chown_file);
+
+	error = chown(chown_file, 4597, 4597);
+	check_error(error, "chown");
+
+	do_stats(chown_file);
+
+	error = lchown(chown_file, 4596, 4596);
+	check_error(error, "lchown");
+
+	do_stats(chown_file);
+
+	error = unlink(chown_file);
+	check_error(error, "unlink");
+
+	error = rmdir("chown");
+	check_error(error, "rmdir");
+}
+
+char *readlink_file = "readlink/a";
+
+void
+readlink_test()
+{
+	int error;
+	char buf[BUFSIZ];
+
+	error = mkdir("readlink", 0755);
+	check_error(error, "mkdir");
+
+	error = symlink("b", readlink_file);
+	check_error(error, "symlink");
+
+	do_stats(readlink_file);
+
+	error = readlink(readlink_file, buf, sizeof(buf));
+	check_error(error, "readlink");
+
+	do_stats(readlink_file);
+
+	error = unlink(readlink_file);
+	check_error(error, "unlink");
+
+	error = rmdir("readlink");
+	check_error(error, "rmdir");
+}
+
+char *utimes_file = "utimes/a";
+
+void
+utimes_test()
+{
+	int error;
+	int fd;
+
+	error = mkdir("utimes", 0755);
+	check_error(error, "mkdir");
+
+	fd = open(utimes_file, O_CREAT | O_RDWR, 0644);
+	check_error(fd, "open: O_CREAT");
+
+	(void) close(fd);
+
+	do_stats(utimes_file);
+
+	error = utime(utimes_file, NULL);
+	check_error(error, "utime");
+
+	do_stats(utimes_file);
+
+	error = utimes(utimes_file, NULL);
+	check_error(error, "utimes");
+
+	do_stats(utimes_file);
+
+	error = unlink(utimes_file);
+	check_error(error, "unlink");
+
+	error = rmdir("utimes");
+	check_error(error, "rmdir");
+}
+
+char *chdir_dir = "chdir/dir";
+
+void
+chdir_test()
+{
+	int error;
+	int pid;
+	int status;
+
+	error = mkdir("chdir", 0755);
+	check_error(error, "mkdir");
+
+	pid = fork();
+	if (pid == 0) {
+		error = mkdir(chdir_dir, 0755);
+		check_error_child(error, "mkdir");
+
+		do_stats_child(chdir_dir);
+
+		error = chdir(chdir_dir);
+		check_error_child(error, "chdir");
+
+		do_stats_child(chdir_dir);
+
+		exit(0);
+	}
+
+	(void) wait(&status);
+
+	do_stats(chdir_dir);
+
+	error = rmdir(chdir_dir);
+	check_error(error, "rmdir");
+
+	error = rmdir("chdir");
+	check_error(error, "rmdir");
+}
+
+char *chroot_dir = "chroot/dir";
+
+void
+chroot_test()
+{
+	int error;
+	int pid;
+	int status;
+
+	error = mkdir("chroot", 0755);
+	check_error(error, "mkdir");
+
+	pid = fork();
+	if (pid == 0) {
+		error = mkdir(chroot_dir, 0755);
+		check_error_child(error, "mkdir");
+
+		do_stats_child(chroot_dir);
+
+		error = chroot(chroot_dir);
+		check_error_child(error, "chroot");
+
+		do_stats_child(chroot_dir);
+
+		exit(0);
+	}
+
+	(void) wait(&status);
+
+	do_stats(chroot_dir);
+
+	error = rmdir(chroot_dir);
+	check_error(error, "rmdir");
+
+	error = rmdir("chroot");
+	check_error(error, "rmdir");
+}
+
+char *rename_file_a = "rename/a";
+char *rename_file_b = "rename/b";
+
+void
+rename_test()
+{
+	int error;
+	int fd;
+
+	error = mkdir("rename", 0755);
+	check_error(error, "mkdir");
+
+	fd = open(rename_file_a, O_CREAT, 0644);
+	check_error(fd, "open");
+
+	(void) close(fd);
+
+	do_stats(rename_file_a);
+
+	error = rename(rename_file_a, rename_file_b);
+	check_error(error, "rename");
+
+	do_stats(rename_file_a);
+	do_stats(rename_file_b);
+
+	error = rename(rename_file_b, rename_file_a);
+	check_error(error, "rename");
+
+	do_stats(rename_file_a);
+	do_stats(rename_file_b);
+
+	error = unlink(rename_file_a);
+	check_error(error, "unlink");
+
+	error = rmdir("rename");
+	check_error(error, "rmdir");
+}
+
+char *exec_file = "exec/a";
+char *exec_source_file = "exec_test";
+
+void
+exec_test()
+{
+	int error;
+	int pid;
+	int status;
+
+	error = mkdir("exec", 0755);
+	check_error(error, "mkdir");
+
+	error = link(exec_source_file, exec_file);
+	check_error(error, "link");
+	do_stats(exec_file);
+
+	pid = fork();
+	if (pid == 0) {
+		error = execl(exec_file, exec_file, NULL);
+		check_error_child(error, "execl");
+
+		exit(1);
+	}
+
+	wait(&status);
+
+	do_stats(exec_file);
+
+	error = unlink(exec_file);
+	check_error(error, "unlink");
+
+	error = rmdir("exec");
+	check_error(error, "rmdir");
+}
+
+char *mknod_file = "mknod/a";
+
+void
+mknod_test()
+{
+	int error;
+
+	error = mkdir("mknod", 0755);
+	check_error(error, "mkdir");
+
+	error = mknod(mknod_file, S_IFCHR | 0644, 0);
+	check_error(error, "mknod");
+
+	do_stats(mknod_file);
+
+	error = unlink(mknod_file);
+	check_error(error, "unlink");
+
+	error = rmdir("mknod");
+	check_error(error, "rmdir");
+}
+
+char *statfs_dir = "statfs/a";
+
+void
+statfs_test()
+{
+	int error;
+	struct statfs stbuf;
+	struct statfs64 stbuf64;
+
+	error = mkdir("statfs", 0755);
+	check_error(error, "mkdir");
+
+	do_stats("statfs");
+
+	error = mkdir(statfs_dir, 0755);
+	check_error(error, "mkdir");
+
+	do_stats(statfs_dir);
+
+	error = statfs(statfs_dir, &stbuf);
+	check_error(error, "statfs");
+
+	error = statfs64(statfs_dir, &stbuf64);
+	check_error(error, "statfs64");
+
+	error = rmdir(statfs_dir);
+	check_error(error, "rmdir");
+
+	error = rmdir("statfs");
+	check_error(error, "rmdir");
+}
+
+char *truncate_file = "truncate/a";
+
+void
+truncate_test()
+{
+	int error;
+	int fd;
+
+	error = mkdir("truncate", 0755);
+	check_error(error, "mkdir");
+
+	fd = open(truncate_file, O_CREAT | O_RDWR, 0644);
+	check_error(fd, "open: O_CREAT");
+
+	(void) close(fd);
+
+	do_stats(truncate_file);
+
+	error = truncate(truncate_file, 1024);
+	check_error(error, "truncate");
+
+	do_stats(truncate_file);
+
+	error = unlink(truncate_file);
+	check_error(error, "unlink");
+
+	error = rmdir("truncate");
+	check_error(error, "rmdir");
+}
+
+char *xattr_file = "xattr/a";
+
+#define ACL_USER_OBJ	(0x01)
+#define ACL_USER	(0x02)
+#define ACL_GROUP_OBJ	(0x04)
+#define ACL_MASK	(0x10)
+#define ACL_OTHER	(0x20)
+
+struct posix_acl_xattr_entry {
+	unsigned short e_tag;
+	unsigned short e_perm;
+	unsigned int e_id;
+};
+
+#define POSIX_ACL_XATTR_VERSION	0x0002
+
+struct posix_acl_xattr_header {
+	unsigned int a_version;
+	struct posix_acl_xattr_entry a_entries[5];
+};
+
+void
+xattr_test()
+{
+	int error;
+	int fd;
+	char buf[1024];
+	struct posix_acl_xattr_header ents;
+
+	error = mkdir("xattr", 0755);
+	check_error(error, "mkdir");
+
+	fd = open(xattr_file, O_CREAT | O_RDWR, 0444);
+	check_error(fd, "open: O_CREAT");
+
+	(void) close(fd);
+
+	do_stats(xattr_file);
+
+	error = getxattr(xattr_file, "system.posix_acl_access", buf,
+			sizeof (buf));
+	check_error(error, "getxattr");
+	error = lgetxattr(xattr_file, "system.posix_acl_access", buf,
+			sizeof (buf));
+	check_error(error, "lgetxattr");
+
+	ents.a_version = POSIX_ACL_XATTR_VERSION;
+	ents.a_entries[0].e_tag = ACL_USER_OBJ;
+	ents.a_entries[0].e_perm = 06;
+	ents.a_entries[0].e_id = -1;
+	ents.a_entries[1].e_tag = ACL_USER;
+	ents.a_entries[1].e_perm = 06;
+	ents.a_entries[1].e_id = 10;
+	ents.a_entries[2].e_tag = ACL_GROUP_OBJ;
+	ents.a_entries[2].e_perm = 06;
+	ents.a_entries[2].e_id = -1;
+	ents.a_entries[3].e_tag = ACL_MASK;
+	ents.a_entries[3].e_perm = 06;
+	ents.a_entries[3].e_id = -1;
+	ents.a_entries[4].e_tag = ACL_OTHER;
+	ents.a_entries[4].e_perm = 06;
+	ents.a_entries[4].e_id = -1;
+
+	error = setxattr(xattr_file, "system.posix_acl_access",
+			&ents, sizeof (ents), 0);
+	check_error(error, "setxattr");
+
+	do_stats(xattr_file);
+
+	error = lsetxattr(xattr_file, "system.posix_acl_access",
+			&ents, sizeof (ents), 0);
+	check_error(error, "lsetxattr");
+
+	do_stats(xattr_file);
+
+	error = getxattr(xattr_file, "system.posix_acl_access", buf,
+			sizeof (buf));
+	check_error(error, "getxattr");
+	error = lgetxattr(xattr_file, "system.posix_acl_access", buf,
+			sizeof (buf));
+	check_error(error, "lgetxattr");
+
+	error = listxattr(xattr_file, buf, sizeof (buf));
+	check_error(error, "listxattr");
+	error = llistxattr(xattr_file, buf, sizeof (buf));
+	check_error(error, "llistxattr");
+
+	error = removexattr(xattr_file, "system.posix_acl_access");
+	check_error(error, "removexattr");
+
+	do_stats(xattr_file);
+
+	error = setxattr(xattr_file, "system.posix_acl_access",
+			&ents, sizeof (ents), 0);
+	check_error(error, "setxattr");
+
+	do_stats(xattr_file);
+
+	error = lremovexattr(xattr_file, "system.posix_acl_access");
+	check_error(error, "lremovexattr");
+
+	do_stats(xattr_file);
+
+	error = unlink(xattr_file);
+	check_error(error, "unlink");
+
+	error = rmdir("xattr");
+	check_error(error, "rmdir");
+}
+
+char *inotify_file = "inotify/a";
+
+void
+inotify_test()
+{
+	int error;
+	int fd;
+	int wd;
+
+	error = mkdir("inotify", 0755);
+	check_error(error, "mkdir");
+
+	fd = open(inotify_file, O_CREAT | O_RDWR, 0644);
+	check_error(fd, "open: O_CREAT");
+
+	(void) close(fd);
+
+	do_stats(inotify_file);
+
+	fd = inotify_init();
+	check_error(error, "inotify_init");
+
+	do_stats(inotify_file);
+
+	wd = inotify_add_watch(fd, inotify_file, IN_ALL_EVENTS);
+	check_error(wd, "inotify_add_watch");
+
+	do_stats(inotify_file);
+
+	error = inotify_rm_watch(fd, wd);
+	check_error(error, "inotify_rm_watch");
+
+	(void) close(fd);
+
+	do_stats(inotify_file);
+
+	error = unlink(inotify_file);
+	check_error(error, "unlink");
+
+	error = rmdir("inotify");
+	check_error(error, "rmdir");
+}
+
+--MP_/nTK.xUeJt./FswLnknRI64L--
