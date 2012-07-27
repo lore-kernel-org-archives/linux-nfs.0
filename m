@@ -1,63 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:15981 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753291Ab2GIUfk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Jul 2012 16:35:40 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 03/14] NFS: State reclaim clears OPEN and LOCK state
-Date: Mon, 9 Jul 2012 20:35:39 +0000
-Message-ID: <1341866138.15267.29.camel@lade.trondhjem.org>
-References: <20120709153355.1604.14102.stgit@degas.1015granger.net>
-	 <20120709154409.1604.59004.stgit@degas.1015granger.net>
-	 <1341864200.15267.15.camel@lade.trondhjem.org>
-	 <773D0923-FC7B-4CE9-8EDE-46BC18E9A49C@oracle.com>
-	 <79BB481E-52C5-4194-AA3C-FFA81D0FF456@oracle.com>
-In-Reply-To: <79BB481E-52C5-4194-AA3C-FFA81D0FF456@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from oproxy10-pub.bluehost.com ([67.222.39.61]:34502 "HELO
+	oproxy10-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1752279Ab2G0Suc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Jul 2012 14:50:32 -0400
+Message-ID: <5012E2B6.5010009@xenotime.net>
+Date: Fri, 27 Jul 2012 11:49:26 -0700
+From: Randy Dunlap <rdunlap@xenotime.net>
 MIME-Version: 1.0
+To: Stephen Rothwell <sfr@canb.auug.org.au>
+CC: linux-next@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH -next] nfs: fix stub return type warnings
+References: <20120727142126.15a52335cda4c39d5c120c49@canb.auug.org.au>
+In-Reply-To: <20120727142126.15a52335cda4c39d5c120c49@canb.auug.org.au>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA3LTA5IGF0IDE2OjE5IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gSnVsIDksIDIwMTIsIGF0IDQ6MTUgUE0sIENodWNrIExldmVyIHdyb3RlOg0KPiANCj4gPiAN
-Cj4gPiBPbiBKdWwgOSwgMjAxMiwgYXQgNDowMyBQTSwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToN
-Cj4gPiANCj4gPj4gT24gTW9uLCAyMDEyLTA3LTA5IGF0IDExOjQ0IC0wNDAwLCBDaHVjayBMZXZl
-ciB3cm90ZToNCj4gPj4+IEJlZm9yZSBiZWdpbm5pbmcgc3RhdGUgcmVjb3ZlcnksIHRoZSBzdGF0
-ZSBtYW5hZ2VyIHphcHMgb3BlbiBhbmQgbG9jaw0KPiA+Pj4gc3RhdGUgZm9yIGVhY2ggb3BlbiBm
-aWxlLCB0aHVzIHRoZSAic3RhdGUtPmZsYWdzICYgZmxhZ3MiIHRlc3QgaW4NCj4gPj4+IG5mczQx
-X3tvcGVuLGxvY2t9X2V4cGlyZWQoKSBhbHdheXMgZmFpbHMgZHVyaW5nIHJlY2xhaW0uICBCdXQg
-b3Blbg0KPiA+Pj4gcmVjb3ZlcnkgaXMgc3RpbGwgbmVlZGVkIGZvciB0aGVzZSBmaWxlcy4NCj4g
-Pj4+IA0KPiA+Pj4gVG8gZm9yY2UgYSBjYWxsIHRvIG5mczRfb3Blbl9leHBpcmVkKCksIGNoYW5n
-ZSB0aGUgZGVmYXVsdCByZXR1cm4NCj4gPj4+IHZhbHVlIGZvciBuZnM0MV9jaGVja19leHBpcmVk
-X3N0YXRlaWQoKSB0byBmb3JjZSBvcGVuIHJlY292ZXJ5LCBhbmQNCj4gPj4+IHRoZSBkZWZhdWx0
-IHJldHVybiB2YWx1ZSBmb3IgbmZzNDFfY2hlY2tfbG9ja3MoKSB0byBmb3JjZSBsb2NrDQo+ID4+
-PiByZWNvdmVyeSwgaWYgdGhlIHJlcXVlc3RlZCBmbGFncyBhcmUgY2xlYXIuICBGaXggc3VnZ2Vz
-dGVkIGJ5IEJyeWFuDQo+ID4+PiBTY2h1bWFrZXIuDQo+ID4+IA0KPiA+PiBUaGlzIG1ha2VzIGFi
-c29sdXRlbHkgbm8gc2Vuc2UuLi4NCj4gPj4gDQo+ID4+IFRoZSBwb2ludCBvZiB0aGVzZSBmdW5j
-dGlvbiBzaG91bGQgYmUgdG8gdGVzdCBpZiB0aGUgc3RhdGVpZCBpcyBzdGlsbA0KPiA+PiB2YWxp
-ZC4gSWYgaXQgaXMsIHRoZW4gd2UgbmVlZCBubyByZWNvdmVyeS4NCj4gPj4gSWYgdGhlIHN0YXRl
-aWQgaXMgX25vdF8gdmFsaWQsIHRoZW4gd2UgZnJlZSBpdCwgYW5kIHRoZW4gZGVjaWRlIGlmDQo+
-ID4+IHJlY292ZXJ5IGlzIG5lZWRlZC4gVGhlIG9ubHkgZXhjZXB0aW9uIHRvIHRoYXQgcnVsZSBp
-cyBpZiBURVNUX1NUQVRFSUQNCj4gPj4gcmV0dXJucyBORlM0RVJSX0JBRF9TVEFURUlELCAoaW4g
-d2hpY2ggY2FzZSB3ZSBkb24ndCBuZWVkIHRvIGZyZWUgdGhlDQo+ID4+IHN0YXRlaWQgYnV0IGp1
-c3QgcmVjb3ZlciBpbW1lZGlhdGVseSkuDQo+ID4gDQo+ID4gU28geW91J2QgbGlrZSB0byBjaGFu
-Z2UgdGhlIHNlbnNlIG9mIHRoZSBzd2l0Y2ggc3RhdGVtZW50IGluIG15IGVhcmxpZXIgcGF0Y2g6
-DQo+ID4gDQo+ID4gICBORlM0X09LOg0KPiA+ICAgICBkbyBub3RoaW5nDQo+ID4gICBORlM0RVJS
-X0JBRF9TVEFURUlEOg0KPiA+ICAgICBqdXN0IG9wZW4NCj4gPiAgIGRlZmF1bHQ6DQo+ID4gICAg
-IGZyZWUgdGhlIHN0YXRlIElELCB0aGVuIG9wZW4NCj4gPiANCj4gPiBJIHN0aWxsIGRvbid0IHRo
-aW5rIHdlIG5lZWQgYSBGUkVFX1NUQVRFSUQgY2FsbCBmb3IgTkZTNEVSUl9FWFBJUkVELCBmb3Ig
-ZXhhbXBsZS4gIEl0IHNlZW1zIHRvIG1lIHRoZSBvbmx5IGNhc2VzIHdoZXJlIEZSRUVfU1RBVEVJ
-RCBpcyBuZWVkZWQgaXMgdGhlIF9SRVZPS0VEIGNhc2VzLg0KPiA+IA0KPiA+PiBJT1c6IFRoZSBz
-dGF0ZS0+ZmxhZ3MgYW5kIGxzcC0+bHNfZmxhZ3MgdGVzdHMgc2hvdWxkIGp1c3QgYmUgcmVtb3Zl
-ZC4NCj4gPiANCj4gPiBCcnlhbiBoYWQgYSByZWFzb24gdG8gbGVhdmUgdGhvc2UgdGVzdHMgaW4s
-IGJ1dCBJIGRvbid0IHJlbWVtYmVyIHdoYXQgaXQgd2FzLg0KPiANCj4gQWguDQo+IA0KPiBJIHRo
-aW5rIGl0IHdhcyB0aGF0IGlmIHRob3NlIGZsYWdzIGFyZSBzZXQsIHRoZW4gdGhlIGNsaWVudCBh
-c3N1bWVzIHRoZSBzZXJ2ZXIgc3RpbGwgaGFzIHRoYXQgc3RhdGUsIHRodXMgbm8gcmVjb3Zlcnkg
-YWN0aW9ucyBzaG91bGQgYmUgZG9uZS4NCg0KPz8/IElmIHRoZSBzZXJ2ZXIgaXMgc3RpbGwgaG9s
-ZGluZyB0aGUgc3RhdGUsIHRoZW4gdGhlIFRFU1RfU1RBVEVJRCB3aWxsDQpyZXR1cm4gJzAnLiBX
-aHkgZG8gd2UgbmVlZCBleHRyYSB0ZXN0cz8NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4
-IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAu
-Y29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+From: Randy Dunlap <rdunlap@xenotime.net>
+
+Fix numerous repeated warnings by making the stub function
+void instead of non-void:
+
+fs/nfs/nfs4_fs.h: In function 'nfs4_unregister_sysctl':
+fs/nfs/nfs4_fs.h:385:1: warning: no return statement in function returning non-void
+
+Signed-off-by: Randy Dunlap <rdunlap@xenotime.net>
+Cc:	Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4_fs.h |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- linux-next-20120727.orig/fs/nfs/nfs4_fs.h
++++ linux-next-20120727/fs/nfs/nfs4_fs.h
+@@ -380,7 +380,7 @@ static inline int nfs4_register_sysctl(v
+ 	return 0;
+ }
+ 
+-static inline int nfs4_unregister_sysctl(void)
++static inline void nfs4_unregister_sysctl(void)
+ {
+ }
+ #endif
