@@ -1,151 +1,169 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:40015 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:48854 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758755Ab2GLGlP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Jul 2012 02:41:15 -0400
-From: Mel Gorman <mgorman@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linux-MM <linux-mm@kvack.org>, Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Mike Christie <michaelc@cs.wisc.edu>,
-        Eric B Munson <emunson@mgebm.net>,
-        Sebastian Andrzej Siewior <sebastian@breakpoint.cc>,
-        Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 03/12] mm: Methods for teaching filesystems about PG_swapcache pages
-Date: Thu, 12 Jul 2012 07:40:57 +0100
-Message-Id: <1342075266-29593-4-git-send-email-mgorman@suse.de>
-In-Reply-To: <1342075266-29593-1-git-send-email-mgorman@suse.de>
-References: <1342075266-29593-1-git-send-email-mgorman@suse.de>
+	id S1754623Ab2G3UFb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Jul 2012 16:05:31 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 03/10] NFS: Create a try_mount rpc op
+Date: Mon, 30 Jul 2012 16:05:18 -0400
+Message-Id: <1343678725-8659-4-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1343678725-8659-1-git-send-email-bjschuma@netapp.com>
+References: <1343678725-8659-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In order to teach filesystems to handle swap cache pages, three new
-page functions are introduced:
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-  pgoff_t page_file_index(struct page *);
-  loff_t page_file_offset(struct page *);
-  struct address_space *page_file_mapping(struct page *);
+I'm already looking up the nfs subversion in nfs_fs_mount(), so I have
+easy access to rpc_ops that used to be difficult to reach.  This allows
+me to set up a different mount path for NFS v2/3 and NFS v4.
 
-page_file_index() - gives the offset of this page in the file in
-PAGE_CACHE_SIZE blocks. Like page->index is for mapped pages, this
-function also gives the correct index for PG_swapcache pages.
-
-page_file_offset() - uses page_file_index(), so that it will give
-the expected result, even for PG_swapcache pages.
-
-page_file_mapping() - gives the mapping backing the actual page;
-that is for swap cache pages it will give swap_file->f_mapping.
-
-Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
-Reviewed-by: Rik van Riel <riel@redhat.com>
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- include/linux/mm.h      |   25 +++++++++++++++++++++++++
- include/linux/pagemap.h |    5 +++++
- mm/swapfile.c           |   19 +++++++++++++++++++
- 3 files changed, 49 insertions(+)
+ fs/nfs/internal.h       |  2 ++
+ fs/nfs/nfs3proc.c       |  1 +
+ fs/nfs/nfs4_fs.h        |  2 +-
+ fs/nfs/nfs4proc.c       |  1 +
+ fs/nfs/nfs4super.c      |  3 ++-
+ fs/nfs/proc.c           |  1 +
+ fs/nfs/super.c          | 14 ++++----------
+ include/linux/nfs_xdr.h |  4 ++++
+ 8 files changed, 16 insertions(+), 12 deletions(-)
 
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index a4549c6..b3d4cd9 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -805,6 +805,17 @@ static inline void *page_rmapping(struct page *page)
- 	return (void *)((unsigned long)page->mapping & ~PAGE_MAPPING_FLAGS);
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index ac93647..3364ecc 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -328,6 +328,8 @@ extern struct file_system_type nfs_xdev_fs_type;
+ extern struct file_system_type nfs4_xdev_fs_type;
+ extern struct file_system_type nfs4_referral_fs_type;
+ #endif
++struct dentry *nfs_try_mount(int, const char *, struct nfs_mount_info *,
++			struct nfs_subversion *);
+ void nfs_initialise_sb(struct super_block *);
+ int nfs_set_sb_security(struct super_block *, struct dentry *, struct nfs_mount_info *);
+ int nfs_clone_sb_security(struct super_block *, struct dentry *, struct nfs_mount_info *);
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index 65d23eb..4f4cb8e 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -925,6 +925,7 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
+ 	.file_ops	= &nfs_file_operations,
+ 	.getroot	= nfs3_proc_get_root,
+ 	.submount	= nfs_submount,
++	.try_mount	= nfs_try_mount,
+ 	.getattr	= nfs3_proc_getattr,
+ 	.setattr	= nfs3_proc_setattr,
+ 	.lookup		= nfs3_proc_lookup,
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 005558a..290762f 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -367,7 +367,7 @@ extern const nfs4_stateid zero_stateid;
+ /* nfs4super.c */
+ struct nfs_mount_info;
+ extern struct nfs_subversion nfs_v4;
+-struct dentry *nfs4_try_mount(int, const char *, struct nfs_mount_info *);
++struct dentry *nfs4_try_mount(int, const char *, struct nfs_mount_info *, struct nfs_subversion *);
+ int init_nfs_v4(void);
+ void exit_nfs_v4(void);
+ 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 5e373c3..ac78df9 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6870,6 +6870,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
+ 	.file_ops	= &nfs4_file_operations,
+ 	.getroot	= nfs4_proc_get_root,
+ 	.submount	= nfs4_submount,
++	.try_mount	= nfs4_try_mount,
+ 	.getattr	= nfs4_proc_getattr,
+ 	.setattr	= nfs4_proc_setattr,
+ 	.lookup		= nfs4_proc_lookup,
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+index 8a50557..9384f66 100644
+--- a/fs/nfs/nfs4super.c
++++ b/fs/nfs/nfs4super.c
+@@ -226,7 +226,8 @@ static struct dentry *nfs_follow_remote_path(struct vfsmount *root_mnt,
  }
  
-+extern struct address_space *__page_file_mapping(struct page *);
-+
-+static inline
-+struct address_space *page_file_mapping(struct page *page)
-+{
-+	if (unlikely(PageSwapCache(page)))
-+		return __page_file_mapping(page);
-+
-+	return page->mapping;
-+}
-+
- static inline int PageAnon(struct page *page)
+ struct dentry *nfs4_try_mount(int flags, const char *dev_name,
+-			 struct nfs_mount_info *mount_info)
++			      struct nfs_mount_info *mount_info,
++			      struct nfs_subversion *nfs_mod)
  {
- 	return ((unsigned long)page->mapping & PAGE_MAPPING_ANON) != 0;
-@@ -821,6 +832,20 @@ static inline pgoff_t page_index(struct page *page)
- 	return page->index;
+ 	char *export_path;
+ 	struct vfsmount *root_mnt;
+diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+index 4d3356af..ebb3d9c 100644
+--- a/fs/nfs/proc.c
++++ b/fs/nfs/proc.c
+@@ -774,6 +774,7 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
+ 	.file_ops	= &nfs_file_operations,
+ 	.getroot	= nfs_proc_get_root,
+ 	.submount	= nfs_submount,
++	.try_mount	= nfs_try_mount,
+ 	.getattr	= nfs_proc_getattr,
+ 	.setattr	= nfs_proc_setattr,
+ 	.lookup		= nfs_proc_lookup,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 4faefa1..5fca59d7 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1650,9 +1650,9 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+ 	return nfs_walk_authlist(args, &request);
  }
  
-+extern pgoff_t __page_file_index(struct page *page);
-+
-+/*
-+ * Return the file index of the page. Regular pagecache pages use ->index
-+ * whereas swapcache pages use swp_offset(->private)
-+ */
-+static inline pgoff_t page_file_index(struct page *page)
-+{
-+	if (unlikely(PageSwapCache(page)))
-+		return __page_file_index(page);
-+
-+	return page->index;
-+}
-+
- /*
-  * Return true if this page is mapped into pagetables.
-  */
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index 7cfad3b..e42c762 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -286,6 +286,11 @@ static inline loff_t page_offset(struct page *page)
- 	return ((loff_t)page->index) << PAGE_CACHE_SHIFT;
- }
+-static struct dentry *nfs_try_mount(int flags, const char *dev_name,
+-				    struct nfs_mount_info *mount_info,
+-				    struct nfs_subversion *nfs_mod)
++struct dentry *nfs_try_mount(int flags, const char *dev_name,
++			     struct nfs_mount_info *mount_info,
++			     struct nfs_subversion *nfs_mod)
+ {
+ 	int status;
+ 	struct nfs_server *server;
+@@ -2403,15 +2403,9 @@ struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
+ 		goto out;
+ 	}
  
-+static inline loff_t page_file_offset(struct page *page)
-+{
-+	return ((loff_t)page_file_index(page)) << PAGE_CACHE_SHIFT;
-+}
-+
- extern pgoff_t linear_hugepage_index(struct vm_area_struct *vma,
- 				     unsigned long address);
+-#ifdef CONFIG_NFS_V4
+-	if (mount_info.parsed->version == 4)
+-		mntroot = nfs4_try_mount(flags, dev_name, &mount_info);
+-	else
+-#endif	/* CONFIG_NFS_V4 */
+-		mntroot = nfs_try_mount(flags, dev_name, &mount_info, nfs_mod);
++	mntroot = nfs_mod->rpc_ops->try_mount(flags, dev_name, &mount_info, nfs_mod);
  
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index 64408be..f4e02bd 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -33,6 +33,7 @@
- #include <linux/oom.h>
- #include <linux/frontswap.h>
- #include <linux/swapfile.h>
-+#include <linux/export.h>
+ 	put_nfs_version(nfs_mod);
+-
+ out:
+ 	nfs_free_parsed_mount_data(mount_info.parsed);
+ 	nfs_free_fhandle(mount_info.mntfh);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 0e181c2..bc7415b 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1353,6 +1353,8 @@ struct nfs_renamedata {
+ struct nfs_access_entry;
+ struct nfs_client;
+ struct rpc_timeout;
++struct nfs_subversion;
++struct nfs_mount_info;
+ struct nfs_client_initdata;
+ struct nfs_pageio_descriptor;
  
- #include <asm/pgtable.h>
- #include <asm/tlbflush.h>
-@@ -2299,6 +2300,24 @@ int swapcache_prepare(swp_entry_t entry)
- }
- 
- /*
-+ * out-of-line __page_file_ methods to avoid include hell.
-+ */
-+struct address_space *__page_file_mapping(struct page *page)
-+{
-+	VM_BUG_ON(!PageSwapCache(page));
-+	return page_swap_info(page)->swap_file->f_mapping;
-+}
-+EXPORT_SYMBOL_GPL(__page_file_mapping);
-+
-+pgoff_t __page_file_index(struct page *page)
-+{
-+	swp_entry_t swap = { .val = page_private(page) };
-+	VM_BUG_ON(!PageSwapCache(page));
-+	return swp_offset(swap);
-+}
-+EXPORT_SYMBOL_GPL(__page_file_index);
-+
-+/*
-  * add_swap_count_continuation - called when a swap count is duplicated
-  * beyond SWAP_MAP_MAX, it allocates a new page and links that to the entry's
-  * page of the original vmalloc'ed swap_map, to hold the continuation count
+@@ -1370,6 +1372,8 @@ struct nfs_rpc_ops {
+ 			    struct nfs_fsinfo *);
+ 	struct vfsmount *(*submount) (struct nfs_server *, struct dentry *,
+ 				      struct nfs_fh *, struct nfs_fattr *);
++	struct dentry *(*try_mount) (int, const char *, struct nfs_mount_info *,
++				     struct nfs_subversion *);
+ 	int	(*getattr) (struct nfs_server *, struct nfs_fh *,
+ 			    struct nfs_fattr *);
+ 	int	(*setattr) (struct dentry *, struct nfs_fattr *,
 -- 
-1.7.9.2
+1.7.11.3
 
