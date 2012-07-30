@@ -1,42 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:47281 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:54038 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756419Ab2GJR33 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jul 2012 13:29:29 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4: Fix an NFSv4 mount regression
-Date: Tue, 10 Jul 2012 13:29:23 -0400
-Message-Id: <1341941363-12589-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1754408Ab2G3U7w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Jul 2012 16:59:52 -0400
+Date: Mon, 30 Jul 2012 16:59:49 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] rpc.gssd: don't call poll() twice a second
+Message-ID: <20120730205949.GA21730@fieldses.org>
+References: <20120727210247.GC6388@fieldses.org>
+ <20120727230853.GA2707@umich.edu>
+ <20120729174839.GK6388@fieldses.org>
+ <5015C2AA.9020608@RedHat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5015C2AA.9020608@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The helper nfs_fs_mount() will always call nfs4_try_mount with the
-mount_info->fill_super argument pointing to nfs_fill_super, which is
-NFSv2/v3 only.
-Fix is to have nfs4_try_mount replace it with nfs4_fill_super.
+On Sun, Jul 29, 2012 at 07:09:30PM -0400, Steve Dickson wrote:
+> 
+> 
+> On 07/29/2012 01:48 PM, J. Bruce Fields wrote:
+> > On Fri, Jul 27, 2012 at 07:08:53PM -0400, Jim Rees wrote:
+> >> J. Bruce Fields wrote:
+> >>
+> >>   +	if (1 != write(pipefd[1], "!", 1))
+> >>   +		printerr(2, "weird; maybe an interrupt?");
+> >>
+> >> Use Yoda conditions must we?
+> > 
+> > Yeah, yeah.  How about:
+> > 
+> > 	 static void something_changed(void)
+> > 	 {
+> > 	-	if (1 != write(pipefd[1], "!", 1))
+> > 	-		printerr(2, "weird; maybe an interrupt?");
+> > 	+	if (write(pipefd[1], "!", 1) != 1)
+> > 	+		printerr(0, "%s writing to pipe", strerror(errno));
+> > 	 }
+> >  
+> > ?
+> Better... IMHO..  but what's going to mean when we see that in some log?
 
-The regression was introduced by commit c40f8d1d (NFS: Create a common
-fs_mount() function)
+Beats me.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/super.c |    2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 906f09c..0622819 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2860,6 +2860,8 @@ static struct dentry *nfs4_try_mount(int flags, const char *dev_name,
- 
- 	dfprintk(MOUNT, "--> nfs4_try_mount()\n");
- 
-+	mount_info->fill_super = nfs4_fill_super;
-+
- 	export_path = data->nfs_server.export_path;
- 	data->nfs_server.export_path = "/";
- 	root_mnt = nfs_do_root_mount(&nfs4_remote_fs_type, flags, mount_info,
--- 
-1.7.10.4
-
+--b.
