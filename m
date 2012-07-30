@@ -1,98 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48854 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:34344 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755576Ab2GEV4u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Jul 2012 17:56:50 -0400
-Date: Thu, 5 Jul 2012 17:56:49 -0400
-To: Song Gao <song.gao.beta@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Possible bug in NFSv4 server regarding to looking for right
- path for clients to mount
-Message-ID: <20120705215649.GD3051@fieldses.org>
-References: <CAKeNtnQK5QEgRZKXHnmMQK6R+L1nXQNX0M4y1ZWuKo7GbEingA@mail.gmail.com>
+	id S1754826Ab2G3XXT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Jul 2012 19:23:19 -0400
+Date: Mon, 30 Jul 2012 19:23:16 -0400
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH] SUNRPC: return negative value in case rpcbind client
+ creation error
+Message-ID: <20120730232316.GC21730@fieldses.org>
+References: <20120720114849.23572.91010.stgit@localhost.localdomain>
+ <1343689924.8362.4.camel@lade.trondhjem.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAKeNtnQK5QEgRZKXHnmMQK6R+L1nXQNX0M4y1ZWuKo7GbEingA@mail.gmail.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <1343689924.8362.4.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 02, 2012 at 01:11:39AM -0500, Song Gao wrote:
-> Hello,
+On Mon, Jul 30, 2012 at 11:12:05PM +0000, Myklebust, Trond wrote:
+> On Fri, 2012-07-20 at 15:57 +0400, Stanislav Kinsbursky wrote:
+> > Without this patch kernel will panic on LockD start, because lockd_up() checks
+> > lockd_up_net() result for negative value.
+> > >From my pow it's better to return negative value from rpcbind routines instead
+> > of replacing all such checks like in lockd_up().
+> > 
+> > Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> > ---
+> >  net/sunrpc/rpcb_clnt.c |    4 ++--
+> >  1 files changed, 2 insertions(+), 2 deletions(-)
+> > 
+> > diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+> > index 92509ff..a70acae 100644
+> > --- a/net/sunrpc/rpcb_clnt.c
+> > +++ b/net/sunrpc/rpcb_clnt.c
+> > @@ -251,7 +251,7 @@ static int rpcb_create_local_unix(struct net *net)
+> >  	if (IS_ERR(clnt)) {
+> >  		dprintk("RPC:       failed to create AF_LOCAL rpcbind "
+> >  				"client (errno %ld).\n", PTR_ERR(clnt));
+> > -		result = -PTR_ERR(clnt);
+> > +		result = PTR_ERR(clnt);
+> >  		goto out;
+> >  	}
+> >  
+> > @@ -298,7 +298,7 @@ static int rpcb_create_local_net(struct net *net)
+> >  	if (IS_ERR(clnt)) {
+> >  		dprintk("RPC:       failed to create local rpcbind "
+> >  				"client (errno %ld).\n", PTR_ERR(clnt));
+> > -		result = -PTR_ERR(clnt);
+> > +		result = PTR_ERR(clnt);
+> >  		goto out;
+> >  	}
 > 
-> There's possibly a bug related NFSv4 server's behavior on looking for
-> path on /export .
-> 
-> I have a 32 nodes KVM cluster. NFS, host filesystem, KVM storage pool,
-> are all placed on SSD. KVM guests are connected to host through virtio
-> drived GB ethernet.
-> 
-> I followed this guide to configure NFS:
-> https://help.ubuntu.com/community/SettingUpNFSHowTo
-> 
-> The problem was that, when I execute a program simultaneously (through
-> cssh) on 32 nodes, there were always a number of nodes that
-> encountered "input/output error". The /var/log/messages on client
-> shows "state manager failed on NFSv4 server with error 10022".
+> Who is supposed to carry this patch? Is it Bruce or is it me?
 
-That's NFS4ERR_STALE_CLIENTID.
+Works either way.  Either way--it looks like the bug was introduced with
 
-That's an odd thing to happen.  I'd be curious to know which operation
-exactly the server was returning that error to.  Normally that should
-only happen if the server rebooted.
+c526611dd631b2802b6b0221ffb306c5fa25c86c "SUNRPC: Use a cached RPC
+client and transport for rpcbind upcalls" and
+7402ab19cdd5943c7dd4f3399afe3abda8077ef5 "SUNRPC: Use AF_LOCAL for
+rpcbind upcalls"
 
-> I tried different options in client /etc/fstab as well as export
-> settings in server but nothing helps. Interestingly, by changing the
-> item in /etc/fstab from:
->     some-host:/tigers  nfs    rw,bg,hard,intr    0    0
-> into:
->     some-host:/export/tigers    /nfs    nfs    rw,bg,hard,intr    0    0
-> fixed the problem.
+and should go to stable as well.
 
-The advice to use "fsid=0" in the ubuntu howto is out of date.  With a
-recent server you should just export and mount /export/tigers as you
-would with NFSv3.
-
-If you do as you've done above (and as is sugested in that howto), then
-clients see different paths depending on whether they're using v3 or v4.
-
-When you changed the client to mount /export/tigers, it probably
-couldn't find that path, so tried v3 instead.  That works around the v4
-bug.
-
-If you change the exports to remove fsid=0, then you'll probably want to
-mount with nfsvers=3 to continue working around the v4 bug.
-
-> I'm not familiar with it but I guess that it's probably caused by some
-> problem in NFS server when it tries to find the right path when all 32
-> clients are trying to mount NFS at the same time.
-> 
-> Here's some more information:
-> client: debian "squeeze", 2.6.32-5-amd64
-> server: Ubuntu Server 12.04, 3.2.0-23-generic
-
-Might be worth trying more recent versions.  The client especially has
-seen a lot of v4 changes since 2.6.32.
+(Looks like I said that before but accidentally dropped everyone off the
+cc.)
 
 --b.
-
-> nfs version: NFSv4
-> no security option
-> results of `exports -v`:
->     /export 192.168.100.0/24(rw,wdelay,insecure,root_squash,no_subtree_check,fsid=0)
->     /export/tigers
-> 192.168.100.0/24(rw,wdelay,nohide,insecure,root_squash,no_subtree_check)
-> 
-> Please let me know if there's any other information I need to provide.
-> 
-> Thanks!
-> 
-> 
-> Kind regards,
-> -- 
-> Song Gao
-> https://profiles.google.com/song.gao.beta/about
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
