@@ -1,86 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34377 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:3773 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932558Ab2GLPUo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Jul 2012 11:20:44 -0400
-Date: Thu, 12 Jul 2012 11:20:43 -0400
-From: "J.Bruce Fields" <bfields@fieldses.org>
+	id S1754959Ab2G3XQZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Jul 2012 19:16:25 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 To: NeilBrown <neilb@suse.de>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] SUNRPC/cache: fix reporting of expired cache entries
- in 'content' file.
-Message-ID: <20120712152043.GB21577@fieldses.org>
-References: <20120712103734.6dbc0207@notabene.brown>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4 callback: too many open  connections, consider increasing
+ the number of threads.
+Date: Mon, 30 Jul 2012 23:16:23 +0000
+Message-ID: <1343690182.8362.6.camel@lade.trondhjem.org>
+References: <20120719164602.7d5aadaf@notabene.brown>
+In-Reply-To: <20120719164602.7d5aadaf@notabene.brown>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120712103734.6dbc0207@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks!  Applying for 3.6--b.
-
-On Thu, Jul 12, 2012 at 10:37:34AM +1000, NeilBrown wrote:
-> 
-> Entries that are in a sunrpc cache but are not valid should be reported
-> with a leading '#' so they look like a comment.
-> Commit  d202cce8963d9 (sunrpc: never return expired entries in sunrpc_cache_lookup)
-> broke this for expired entries.
-> 
-> This particularly applies to entries that have been replaced by newer entries.
-> sunrpc_cache_update sets the expiry of the replaced entry to '0', but it
-> remains in the cache until the next 'cache_clean'.
-> The result is that if you
-> 
->   echo 0 2000000000 1 0 > /proc/net/rpc/auth.unix.gid/channel
-> 
-> several times, then
-> 
->   cat /proc/net/rpc/auth.unix.gid/content
-> 
-> It will display multiple entries for the one uid, which is at least confusing:
-> 
->   #uid cnt: gids...
->   0 1: 0
->   0 1: 0
->   0 1: 0
-> 
-> With this patch, expired entries are marked as comments so you get
-> 
->   #uid cnt: gids...
->   0 1: 0
->   # 0 1: 0
->   # 0 1: 0
-> 
-> These expired entries will never be seen by cache_check() as they are always
-> *after* a non-expired entry with the same key - so the extra check is only
-> needed in c_show()
-> 
-> Signed-off-by:  NeilBrown <neilb@suse.de>
-> 
-> --
-> It's not a big problem, but it had me confused for a while, so it could
-> well confuse others.
-> Thanks,
-> NeilBrown
-> 
-> 
-> 
-> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-> index 47ad266..2afd2a8 100644
-> --- a/net/sunrpc/cache.c
-> +++ b/net/sunrpc/cache.c
-> @@ -1349,8 +1349,11 @@ static int c_show(struct seq_file *m, void *p)
->  	if (cache_check(cd, cp, NULL))
->  		/* cache_check does a cache_put on failure */
->  		seq_printf(m, "# ");
-> -	else
-> +	else {
-> +		if (cache_is_expired(cd, cp))
-> +			seq_printf(m, "# ");
->  		cache_put(cp, cd);
-> +	}
->  
->  	return cd->cache_show(m, cd, cp);
->  }
-
-
+T24gVGh1LCAyMDEyLTA3LTE5IGF0IDE2OjQ2ICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IFty
+ZXNlbmRpbmcgLSB3aXRoIG1vcmUgY3VycmVudCBhZGRyZXNzIGZvciB0cm9uZF0NCj4gDQo+IEhp
+IFRyb25kIGV0IGFsLg0KPiANCj4gIHdlIGhhdmUgYSBjdXN0b21lciB3aG8gcmVwb3J0cyBnZXR0
+aW5nIHRoZSBtZXNzYWdlOg0KPiAgICAgICAgIFsxMDg3OTUxMi4yNzUzMDVdIE5GU3Y0IGNhbGxi
+YWNrOiB0b28gbWFueSBvcGVuICBjb25uZWN0aW9ucywNCj4gIGNvbnNpZGVyIGluY3JlYXNpbmcg
+dGhlIG51bWJlciBvZiB0aHJlYWRzLiBbMTA4Nzk1MTIuMjc1MzE1XSBORlN2NCBjYWxsYmFjazoN
+Cj4gIHRvbyBtYW55IG9wZW4gIGNvbm5lY3Rpb25zLCBjb25zaWRlciBpbmNyZWFzaW5nIHRoZSBu
+dW1iZXIgb2YgdGhyZWFkcy4NCj4gIFsxMDg3OTUxNy4yNzYxMzNdIF9fcmF0ZWxpbWl0OiAxMzMw
+MTEgY2FsbGJhY2tzIHN1cHByZXNzZWQNCj4gDQo+IE9mIGNvdXJzZSB5b3UgY2Fubm90IGluY3Jl
+YXNlIHRoZSBudW1iZXIgb2YgdGhyZWFkcyBoYW5kbGluZyBjYWxsYmFja3MuDQo+IA0KPiBUaGUg
+cGF0Y2ggYmVsb3cgd2lsbCBnZXQgcmlkIG9mIHRoZSBtZXNzYWdlIC0gd2hpY2ggaXMgcHJlc3Vt
+YWJseSBtb3N0bHkganVzdA0KPiBub2lzZSAtIG9yIHBvc3NpYmx5IGNoYW5nZSBpdCB0bw0KPiAg
+ICBORlN2NCBjYWxsYmFjazogdG9vIG1hbnkgb3BlbiBjb25uZWN0aW9ucywgY29uc2lkZXIgaW5j
+cmVhc2luZyB0aGUgbWF4DQo+IG51bWJlciBvZiBjb25uZWN0aW9ucyBpZiB0aGUgbnVtYmVyIG9m
+IGNvbm5lY3Rpb25zIGdldHMgdG9vIGhpZ2guDQo+IA0KPiBUaGlzIGlzbid0IG11Y2ggZ29vZCBh
+cyB0aGlzIHBhdGNoIGRvZXNuJ3QgYWxsb3cgdGhlIG1heCBudW1iZXIgdG8gYmUNCj4gaW5jcmVh
+c2VkLg0KPiBEbyB3ZSB3YW50IHRvIG1ha2UgdGhlIG1heCBudW1iZXIgb2YgY2FsbGJhY2sgY29u
+bmVjdGlvbnMgY29uZmlndXJhYmxlLCBvcg0KPiBzaG91bGQgd2UgZmluZCBhIHdheSB0byBzaWxl
+bmNlIHRoYXQgbWVzc2FnZS4NCj4gKEZvciBsb2NrZCB0aGF0IG1lc3NhZ2UgaXMgdmFsaWQgYXMg
+dGhlcmUgaXMgYSBzeXNjdGwgdG8gY2hhbmdlIHRoZSBtYXgNCj4gbnVtYmVyIG9mIGNvbm5lY3Rp
+b25zIGZvciBsb2NrZCkuDQo+IA0KPiBUaGFua3MsDQo+IE5laWxCcm93bg0KPiANCj4gDQo+IGRp
+ZmYgLS1naXQgYS9mcy9uZnMvY2FsbGJhY2suYyBiL2ZzL25mcy9jYWxsYmFjay5jDQo+IGluZGV4
+IDIzZmYxOGYuLjExMjljNDIgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9jYWxsYmFjay5jDQo+ICsr
+KyBiL2ZzL25mcy9jYWxsYmFjay5jDQo+IEBAIC0yNjUsNiArMjY1LDEwIEBAIGludCBuZnNfY2Fs
+bGJhY2tfdXAodTMyIG1pbm9ydmVyc2lvbiwgc3RydWN0IHJwY194cHJ0DQo+ICp4cHJ0KSByZXQg
+PSAtRU5PTUVNOw0KPiAgCQlnb3RvIG91dF9lcnI7DQo+ICAJfQ0KPiArCS8qIEFzIHRoZXJlIGlz
+IG9ubHkgb25lIHRocmVhZCBzbyB3ZSBuZWVkIHRvIG92ZXItcmlkZSB0aGUNCj4gKwkgKiBkZWZh
+dWx0IG1heGltdW0gb2YgODAgY29ubmVjdGlvbnMNCj4gKwkgKi8NCj4gKwlzZXJ2LT5zdl9tYXhj
+b25uID0gMTAyNDsNCj4gIA0KPiAgCXJldCA9IHN2Y19iaW5kKHNlcnYsIG5ldCk7DQo+ICAJaWYg
+KHJldCA8IDApIHsNCg0KSGkgTmVpbCwNCg0KQ291bGQgeW91IHBsZWFzZSBhZGQgdGhlIG1pc3Np
+bmcgcy1vLWI/DQoNCkNoZWVycw0KICBUcm9uZA0K
