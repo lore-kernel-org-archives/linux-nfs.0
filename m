@@ -1,76 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:31508 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756201Ab2GQSJ6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Jul 2012 14:09:58 -0400
-Subject: Re: [PATCH 15/15] NFS: Slow down state manager after an unhandled error
-Mime-Version: 1.0 (Apple Message framework v1278)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1342548381.2646.11.camel@lade.trondhjem.org>
-Date: Tue, 17 Jul 2012 14:09:53 -0400
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <C7BB89A0-1DBA-4ED6-8D6A-ED3B74E08906@oracle.com>
-References: <20120711201718.3767.66867.stgit@degas.1015granger.net> <20120711203151.3767.79006.stgit@degas.1015granger.net> <1342548381.2646.11.camel@lade.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mx2.netapp.com ([216.240.18.37]:27088 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754696Ab2GaOy1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jul 2012 10:54:27 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: David Howells <dhowells@redhat.com>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "sct@redhat.com" <sct@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "steved@redhat.com" <steved@redhat.com>,
+        "jlayton@redhat.com" <jlayton@redhat.com>
+Subject: Re: [PATCH 2/2] NFS: Combine the idmapper key types
+Date: Tue, 31 Jul 2012 14:54:25 +0000
+Message-ID: <1343746464.5528.7.camel@lade.trondhjem.org>
+References: <20120731144234.6664.85664.stgit@warthog.procyon.org.uk>
+	 <20120731144245.6664.49160.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20120731144245.6664.49160.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jul 17, 2012, at 2:06 PM, Myklebust, Trond wrote:
-
-> On Wed, 2012-07-11 at 16:31 -0400, Chuck Lever wrote:
->> If the state manager thread is not actually able to fully recover from
->> some situation, it wakes up waiters, who kick off a new state manager
->> thread.  Quite often the fresh invocation of the state manager is just
->> as successful.
->> 
->> This results in a livelock as the client dumps thousands of NFS
->> requests a second on the network in a vain attempt to recover.  Not
->> very friendly.
->> 
->> To mitigate this situation, add a delay in the state manager after
->> an unhandled error, so that the client sends just a few requests
->> every second in this case.
-> 
-> 
-> I assume that this was intended to have a s-o-b line?
-
-Yes.  Actually it was submitted mainly for discussion, which is why the S-O-B was accidentally omitted.  But if you feel it is appropriate for mainline now, I'm happy to see it merged.
-
-> 
->> ---
->> 
->> fs/nfs/nfs4state.c |    1 +
->> 1 files changed, 1 insertions(+), 0 deletions(-)
->> 
->> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->> index 5e3bebc..38959eb 100644
->> --- a/fs/nfs/nfs4state.c
->> +++ b/fs/nfs/nfs4state.c
->> @@ -2151,6 +2151,7 @@ static void nfs4_state_manager(struct nfs_client *clp)
->> out_error:
->> 	pr_warn_ratelimited("NFS: state manager failed on NFSv4 server %s"
->> 			" with error %d\n", clp->cl_hostname, -status);
->> +	ssleep(1);
->> 	nfs4_end_drain_session(clp);
->> 	nfs4_clear_state_manager_bit(clp);
->> }
->> 
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+T24gVHVlLCAyMDEyLTA3LTMxIGF0IDE1OjQyICswMTAwLCBEYXZpZCBIb3dlbGxzIHdyb3RlOg0K
+PiBUaGUgTkZTIGlkbWFwcGVyIGhhcyB0d28ga2V5IHR5cGVzIChub3JtYWwgYW5kIGxlZ2FjeSkg
+YnV0IHNob3VsZCBvbmx5IHVzZSBvbmUNCj4gaWYgaXQgY2FuIC0gb3RoZXJ3aXNlIGl0IHJpc2tz
+IGhhdmluZyB0d2ljZSBhcyBtYW55IGtleXMgYXMgaXQgd291bGQgb3RoZXJ3aXNlDQo+IG5lZWQu
+DQoNCldoeSBpcyB0aGlzPyBEbyB3ZSBhZGQga2V5cyBpbiB0aGUgY2FzZSB3aGVyZSB0aGUgJ25v
+cm1hbCcgdXBjYWxsIGZhaWxzPw0KDQo+IEdldCByaWQgb2YgdGhlIGxlZ2FjeSBrZXkgdHlwZSBh
+bmQgaGF2ZSB0aGUgbm9ybWFsIGtleSB0eXBlIGhhdmUgYQ0KPiAucmVxdWVzdF9rZXkoKSBvcC4g
+IFRoZSBjaG9pY2Ugb2Ygd2hpY2ggaW5zdGFudGlhdGlvbiBtZXRob2QgaXMgdGhlbiBtYWRlIGJ5
+DQo+IHRoZSB1cGNhbGxlciwgaW4gb3JkZXI6DQo+IA0KPiAgKDEpIElmIHRoZXJlJ3Mgbm8gYXV4
+ZGF0YSwgdGhlIG5vcm1hbCBtZXRob2QgaXMgY2FsbGVkLCBpbnZva2luZw0KPiAgICAgIC9zYmlu
+L3JlcXVlc3Qta2V5Lg0KPiANCj4gICgyKSBJZiB0aGVyZSdzIHNvbWV0aGluZyBhdHRhY2hlZCB0
+byB0aGUgaWRtYXBwZXIgcGlwZSAocnBjLmlkbWFwZCkgdGhlbiB1c2UNCj4gICAgICB0aGF0Lg0K
+PiANCj4gICgzKSBGYWxsIGJhY2sgdG8gKDEpLg0KPiANCj4gTm90ZSB0aGF0IHRoaXMgZG9lcyBj
+aGFuZ2UgdGhlIHByaW9yaXRpc2F0aW9uIG9mIG5vcm1hbCB2cyBsZWdhY3kgaWYgYm90aCBhcmUN
+Cj4gYXZhaWxhYmxlLg0KDQpXZSBkb24ndCB3YW50IHRvIGRvIHRoaXMuIFRoZSBsZWdhY3kgY2Fs
+bCBpcyAxMDAlIHNlcmlhbGlzZWQsIHNvIHRoaXMNCm1lYW5zIHRoYXQgd2UgZW5kIHVwIGNob29z
+aW5nIHRoZSBub24tc2NhbGFibGUgYWx0ZXJuYXRpdmUuDQoNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1
+c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVz
+dEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
