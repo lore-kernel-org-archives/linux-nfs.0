@@ -1,123 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40680 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:48247 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751872Ab2GRXod (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Jul 2012 19:44:33 -0400
-Received: from bfields by fieldses.org with local (Exim 4.72)
-	(envelope-from <bfields@fieldses.org>)
-	id 1Srduz-0001TG-93
-	for linux-nfs@vger.kernel.org; Wed, 18 Jul 2012 19:44:33 -0400
-Date: Wed, 18 Jul 2012 19:41:52 -0400
-From: Bruce Fields <bfields@fieldses.org>
-To: Liam Gretton <liam.gretton@leicester.ac.uk>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs4-acl-tools (spaces in principal names)
-Message-ID: <20120718234152.GA5502@fieldses.org>
-References: <50072C9E.7080707@leicester.ac.uk>
- <50072D57.4060903@leicester.ac.uk>
+	id S1753761Ab2GaMpv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jul 2012 08:45:51 -0400
+Date: Tue, 31 Jul 2012 08:45:50 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: "ZUIDAM, Hans" <Hans.Zuidam@philips.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "DE WITTE, PETER" <PETER.DE.WITTE@philips.com>
+Subject: Re: Linux NFS and cached properties
+Message-ID: <20120731124550.GA27135@fieldses.org>
+References: <D307B3AC0BCD4C419E6B8FA6A2720A9C0C3B2F@011-DB3MPN1-001.MGDPHG.emi.philips.com>
+ <20120724143748.GC8570@fieldses.org>
+ <D307B3AC0BCD4C419E6B8FA6A2720A9C18ABBA@011-DB3MPN1-001.MGDPHG.emi.philips.com>
+ <20120726223607.GA28982@fieldses.org>
+ <20120731150801.0a4b557b@notabene.brown>
+ <20120731122546.GA26737@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <50072D57.4060903@leicester.ac.uk>
+In-Reply-To: <20120731122546.GA26737@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Applied and pushed out to the git tree, thanks.
+On Tue, Jul 31, 2012 at 08:25:46AM -0400, J. Bruce Fields wrote:
+> On Tue, Jul 31, 2012 at 03:08:01PM +1000, NeilBrown wrote:
+> > The idea of a new interface to synchronise with all threads has potential and
+> > doesn't need to be at the nfsd level - it could be in sunrpc.  Maybe it could
+> > be built into the current 'flush' interface.
+
+The flush operation will have to know which services to wait on when
+flushing a given cache (lockd and nfsd in the export cache cases).
+
+A little annoying that it may end up having to wait on a client-side
+operation in the case of lockd, but I don't think that's a show-stopper.
 
 --b.
 
-On Wed, Jul 18, 2012 at 10:40:39PM +0100, Liam Gretton wrote:
-> Attached is a patch which changes the behaviour of nfs4_setfacl
-> slightly to allow it to add, remove and modify ACLs which act on
-> principals containing space characters.
 > 
-> The rationale behind this is to allow us to use nfs4_setfacl on a file
-> system which is shared via CIFS to Windows clients and NFSv4. Though
-> very rare in a Unix environment, Windows commonly uses user names (and
-> hence principals derived from them) which contain spaces. A
-> particularly common one is 'Domain Admins', the handling of which
-> prompted me to look at modifying the nfs4_setfacl command.
+> We need to keep compatible behavior to prevent deadlocks.  (Don't want
+> nfsd waiting on mountd waiting on nfsd.)
 > 
-> As of 0.3.3 of nfs4-acl-tools, nfs4_setfacl fails to handle ACLs
-> containing a space character no matter what attempts to quote the
-> ACE or escape the space character:
+> Looks like write_flush currently returns -EINVAL to anything that's not
+> an integer.  So exportfs could write something new and ignore the error
+> return (or try some other workaround) in the case of an old kernel.
 > 
-> # nfs4_setfacl -a "A:fdg:Domain Admins@dom.org:R" file
-> Scanning ACE string 'A:fdg:Domain' failed.
-> Failed while inserting ACE(s) (at index 1).
+> > 1/ iterate through all no-sleeping threads setting a flag an increasing a
+> > counter.
+> > 2/ when a thread completes current request, if test_and_clear the flag, it
+> > atomic_dec_and_test the counter and then wakes up some wait_queue_head.
+> > 3/ 'flush'ing thread waits on the waut_queue_head for the counter to be 0.
+> > 
+> > If you don't hate it I could possibly even provide some code.
 > 
-> (exit status 1.)
+> That sounds reasonable to me.  So you'd just add a single such
+> thread-synchronization after modifying mountd's idea of the export
+> table, ok.
 > 
-> # nfs4_setfacl -a A:fdg:Domain\ Admins@dom.org:R file
-> Scanning ACE string 'A:fdg:Domain' failed.
-> Failed while inserting ACE(s) (at index 1).
+> It still wouldn't allow an unmount in the case a client held an NSM lock
+> or v4 open--but I think that's what we want.  If somebody wants a way to
+> unmount even in the presence of such state, then they really need to do
+> a complete shutdown.
 > 
-> (exit status 1.)
+> I wonder if there's also still a use for an operation that stops all
+> threads temporarily but doesn't toss any state or caches?  I'm not
+> coming up with one off the top of my head.
 > 
-> The attached patch modifies the parsing of the command line and
-> disallows space as an ACE delimiter. The patched version completes
-> successfully:
-> 
-> # nfs4_setfacl -a "A:fdg:Domain Admins@dom.org:R" file
-> # nfs4_getfacl file
-> A:fdg:Domain Admins@le.ac.uk:rtncy
-> 
-> ACEs can be chained with commas, but no longer with spaces. With the
-> -A, -X, -S or -e options which expect a file containing ACLs, ACEs
-> can be separated with tabs, newlines and/or carriage returns as
-> before.
-> 
-> As there's a slight change in behaviour, the patch also modifies one of
-> the examples given in the EXAMPLES section of nfs4_setfacl(1) and the
-> text of the 'ACL FORMAT' section of nfs4_acl.
-> 
-> The patches don't modify any version numbers or dates.
-> 
-> Regards,
-> 
-> Liam
-> 
-> -- 
-> Liam Gretton                                    liam.gretton@le.ac.uk
-> HPC Architect                                http://www.le.ac.uk/its/
-> IT Services                                   Tel: +44 (0)116 2522254
-> University Of Leicester, University Road
-> Leicestershire LE1 7RH, United Kingdom
-> 
-
-> diff -rup b_nfs4-acl-tools/libnfs4acl/nfs4_insert_string_aces.c a_nfs4-acl-tools/libnfs4acl/nfs4_insert_string_aces.c
-> --- b_nfs4-acl-tools/libnfs4acl/nfs4_insert_string_aces.c       2012-07-18 21:14:47.000000000 +0100
-> +++ a_nfs4-acl-tools/libnfs4acl/nfs4_insert_string_aces.c       2012-07-18 11:51:43.000000000 +0100
-> @@ -45,7 +45,7 @@ int nfs4_insert_string_aces(struct nfs4_
->         if ((s = sp = strdup(acl_spec)) == NULL)
->                 goto out_failed;
-> 
-> -       while ((ssp = strsep(&sp, " ,\t\n\r")) != NULL) {
-> +       while ((ssp = strsep(&sp, ",\t\n\r")) != NULL) {
->                 if (!strlen(ssp))
->                         continue;
-> 
-> diff -rup b_nfs4-acl-tools/man/man1/nfs4_setfacl.1 a_nfs4-acl-tools/man/man1/nfs4_setfacl.1
-> --- b_nfs4-acl-tools/man/man1/nfs4_setfacl.1    2012-07-18 21:14:47.000000000 +0100
-> +++ a_nfs4-acl-tools/man/man1/nfs4_setfacl.1    2012-07-18 21:13:02.000000000 +0100
-> @@ -204,7 +204,7 @@ delete the first ACE, but only print the
->  .IP - 2
->  delete the last two ACEs above:
->  .br
-> -       $ nfs4_setfacl -x "A::EVERYONE@rtncy, D::EVERYONE@:waxTC" foo
-> +       $ nfs4_setfacl -x A::EVERYONE@rtncy,D::EVERYONE@:waxTC foo
->  .IP - 2
->  modify (in-place) the second ACE above:
->  .br
-> diff -rup b_nfs4-acl-tools/man/man5/nfs4_acl.5 a_nfs4-acl-tools/man/man5/nfs4_acl.5
-> --- b_nfs4-acl-tools/man/man5/nfs4_acl.5        2012-07-18 21:14:47.000000000 +0100
-> +++ a_nfs4-acl-tools/man/man5/nfs4_acl.5        2012-07-18 21:11:11.000000000 +0100
-> @@ -56,7 +56,7 @@ more permissive than the ones you set.
->  .SH ACL FORMAT
->  An NFSv4 ACL is written as an
->  .IR acl_spec ,
-> -which is a comma- or whitespace-delimited string consisting of one or more
-> +which is a comma- or tab-delimited string consisting of one or more
->  .IR ace_specs .
->  A single NFSv4 ACE is written as an
->  .IR ace_spec ,
-
+> --b.
