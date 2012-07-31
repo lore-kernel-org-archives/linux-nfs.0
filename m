@@ -1,72 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:45827 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752960Ab2GIUUf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jul 2012 16:20:35 -0400
-Subject: Re: [PATCH 03/14] NFS: State reclaim clears OPEN and LOCK state
-Mime-Version: 1.0 (Apple Message framework v1278)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <773D0923-FC7B-4CE9-8EDE-46BC18E9A49C@oracle.com>
-Date: Mon, 9 Jul 2012 16:19:30 -0400
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <79BB481E-52C5-4194-AA3C-FFA81D0FF456@oracle.com>
-References: <20120709153355.1604.14102.stgit@degas.1015granger.net> <20120709154409.1604.59004.stgit@degas.1015granger.net> <1341864200.15267.15.camel@lade.trondhjem.org> <773D0923-FC7B-4CE9-8EDE-46BC18E9A49C@oracle.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Bryan Schumaker <bjschuma@netapp.com>
+Received: from mx2.netapp.com ([216.240.18.37]:18600 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754641Ab2GaPHn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jul 2012 11:07:43 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: David Howells <dhowells@redhat.com>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "sct@redhat.com" <sct@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "steved@redhat.com" <steved@redhat.com>,
+        "jlayton@redhat.com" <jlayton@redhat.com>
+Subject: Re: [PATCH 1/2] NFS: Fix a number of bugs in the idmapper
+Date: Tue, 31 Jul 2012 15:07:42 +0000
+Message-ID: <1343747261.5528.10.camel@lade.trondhjem.org>
+References: <1343746117.5528.3.camel@lade.trondhjem.org>
+	 <20120731144234.6664.85664.stgit@warthog.procyon.org.uk>
+	 <6978.1343746575@warthog.procyon.org.uk>
+In-Reply-To: <6978.1343746575@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jul 9, 2012, at 4:15 PM, Chuck Lever wrote:
-
-> 
-> On Jul 9, 2012, at 4:03 PM, Myklebust, Trond wrote:
-> 
->> On Mon, 2012-07-09 at 11:44 -0400, Chuck Lever wrote:
->>> Before beginning state recovery, the state manager zaps open and lock
->>> state for each open file, thus the "state->flags & flags" test in
->>> nfs41_{open,lock}_expired() always fails during reclaim.  But open
->>> recovery is still needed for these files.
->>> 
->>> To force a call to nfs4_open_expired(), change the default return
->>> value for nfs41_check_expired_stateid() to force open recovery, and
->>> the default return value for nfs41_check_locks() to force lock
->>> recovery, if the requested flags are clear.  Fix suggested by Bryan
->>> Schumaker.
->> 
->> This makes absolutely no sense...
->> 
->> The point of these function should be to test if the stateid is still
->> valid. If it is, then we need no recovery.
->> If the stateid is _not_ valid, then we free it, and then decide if
->> recovery is needed. The only exception to that rule is if TEST_STATEID
->> returns NFS4ERR_BAD_STATEID, (in which case we don't need to free the
->> stateid but just recover immediately).
-> 
-> So you'd like to change the sense of the switch statement in my earlier patch:
-> 
->   NFS4_OK:
->     do nothing
->   NFS4ERR_BAD_STATEID:
->     just open
->   default:
->     free the state ID, then open
-> 
-> I still don't think we need a FREE_STATEID call for NFS4ERR_EXPIRED, for example.  It seems to me the only cases where FREE_STATEID is needed is the _REVOKED cases.
-> 
->> IOW: The state->flags and lsp->ls_flags tests should just be removed.
-> 
-> Bryan had a reason to leave those tests in, but I don't remember what it was.
-
-Ah.
-
-I think it was that if those flags are set, then the client assumes the server still has that state, thus no recovery actions should be done.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+T24gVHVlLCAyMDEyLTA3LTMxIGF0IDE1OjU2ICswMTAwLCBEYXZpZCBIb3dlbGxzIHdyb3RlOg0K
+PiBNeWtsZWJ1c3QsIFRyb25kIDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+
+IA0KPiA+IFRoaXMgcGF0Y2ggc2hvdWxkIGFscmVhZHkgYmUgcHJlc2VudCBpbiBuZnMtZm9yLW5l
+eHQgYXMgb2YgeWVzdGVyZGF5Lg0KPiA+IChJJ3ZlIGJlZW4gb24gYSAyIHdlZWsgdmFjYXRpb24p
+Lg0KPiANCj4gSG93IGFib3V0IHRoZSBzZWNvbmQgcGF0Y2g/ICBJIHBvc3RlZCBhbiB1cGRhdGVk
+IHZlcnNpb24gb2YgaXQganVzdCBub3cuDQo+IA0KPiBOb3RlIHRoYXQgdGhlIHNlY29uZCBwYXRj
+aCBvciBzb21ldGhpbmcgbGlrZSBpdCBpcyBsaWtlbHkgdG8gYmUgbmVjZXNzYXJ5IHRvDQo+IHJl
+ZHVjZSB0aGUgbG9hZCBvbiB0aGUga2V5cmluZyAoeW91IGVuZCB1cCBoYXZpbmcgZHVwbGljYXRl
+IGtleXMgb2YgZGlmZmVyZW50DQo+IGtleSB0eXBlcyB0aGF0IGNhbid0IGJlIHNoYXJlZCkuDQoN
+CldlIGRvbid0IGV4cGVjdCBwZW9wbGUgdG8gYmUgcnVubmluZyBib3RoIHR5cGVzIG9mIGlkbWFw
+cGVyIGF0IHRoZSBzYW1lDQp0aW1lLiBOb3JtYWxseSwgdGhlIGRpc3RyaWJ1dGlvbiB3aWxsIHNl
+dCB1cCBvbmUgb3IgdGhlIG90aGVyLiBIb3dldmVyDQppZiBib3RoIGlkbWFwcGVycyBkbyBoYXBw
+ZW4gdG8gYmUgY29uZmlndXJlZCwgdGhlbiB3ZSB3YW50IHRvIGFsd2F5cw0KY2hvb3NlIHRoZSBu
+b24tbGVnYWN5IHR5cGUuLi4NCg0KQ2hlZXJzDQogIFRyb25kDQo=
