@@ -1,62 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:39389 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752722Ab2GITwE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jul 2012 15:52:04 -0400
-Subject: Re: [PATCH 01/14] NFS: Clean up TEST_STATEID and FREE_STATEID proc error reporting
-Mime-Version: 1.0 (Apple Message framework v1278)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1341862560.15267.3.camel@lade.trondhjem.org>
-Date: Mon, 9 Jul 2012 15:51:57 -0400
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <69150A39-D865-43CC-8068-B3A4161F5ABD@oracle.com>
-References: <20120709153355.1604.14102.stgit@degas.1015granger.net> <20120709154349.1604.58109.stgit@degas.1015granger.net> <1341862560.15267.3.camel@lade.trondhjem.org>
+Received: from mx2.netapp.com ([216.240.18.37]:58156 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752101Ab2GaNaY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jul 2012 09:30:24 -0400
+Message-ID: <5017DDDB.6060500@netapp.com>
+Date: Tue, 31 Jul 2012 09:30:03 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+MIME-Version: 1.0
 To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        Fengguang Wu <fengguang.wu@intel.com>,
+        "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [nfs:devel 46/51] fs/nfs/write.c:1592:5: error: redefinition
+ of 'nfs_commit_inode'
+References: <20120731024328.GA10480@localhost>  <4FA345DA4F4AE44899BD2B03EEEC2FA934BE82@SACEXCMBX04-PRD.hq.netapp.com>  <5017D3FC.9010905@netapp.com> <1343739299.519.1.camel@lade.trondhjem.org> <5017D824.209@netapp.com>
+In-Reply-To: <5017D824.209@netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jul 9, 2012, at 3:36 PM, Myklebust, Trond wrote:
-
-> On Mon, 2012-07-09 at 11:43 -0400, Chuck Lever wrote:
->> The TEST_STATEID and FREE_STATEID operations can return
->> NFS4ERR_BAD_STATEID, NFS4ERR_OLD_STATEID, or NFS4ERR_DEADSESSION.
->> These error values should not be passed to nfs4_handle_exception(),
->> since that will recursively kick off state recovery, resulting in a
->> deadlock.  The reason to continue using nfs4_handle_exception() is
->> to deal with NFS4ERR_DELAY.
->> 
->> Moreover, specifically when the TEST_STATEID operation returns
->> NFS4_OK, res.status can contain one of these errors.
->> _nfs41_test_stateid() replaces NFS4_OK with the value in res.status,
->> which is then returned to callers.
->> 
->> But res.status is not passed through nfs4_stat_to_errno(), and thus is
->> a positive NFS4ERR value.  Currently callers are only interested in
->> !NFS4_OK, and nfs4_handle_exception() ignores positive values, so this
->> oversight hasn't bitten us so far.
->> 
->> Bryan agrees the original intent was to return res.status as a
->> negative NFS4ERR value to callers of nfs41_test_stateid(), as long as
->> no state ID recovery is attempted.
+On 07/31/2012 09:05 AM, Bryan Schumaker wrote:
+> On 07/31/2012 08:55 AM, Myklebust, Trond wrote:
+>> On Tue, 2012-07-31 at 08:47 -0400, Bryan Schumaker wrote:
+>>> On 07/30/2012 11:14 PM, Myklebust, Trond wrote:
+>>>> Bryan,
+>>>>
+>>>> Why did you switch to using IS_ENABLED in the first place, and why wasn't that put in a separate patch?
+>>>
+>>> IS_ENABLED() will check for CONFIG_NFS_V*_MODULE, last I checked the defined() macro doesn't.  Putting this into a separate patch makes the change non-bisectable since gcc will be checking against CONFIG_NFS_V3 but CONFIG_NFS_V3_MODULE is set.  Should I have changed the CONFIG_ variables instead of using IS_ENABLED()?
+>>
+>> Why is it evaluating differently in the include file vs. the .c file?
+>> Are we missing an include in nfs_fs.h?
 > 
-> None of this describes a cleanup... AFAICS it is all a bugfix
-
-IIRC behavior isn't supposed to change, so I don't think this should go to -stable.  The subsequent patches rely on the error path being corrected, though.
-
->> As a finishing touch, add appropriate documenting comments and some
->> debugging printk's.
+> Good question.  I don't see any reason that it would evaluate differently, but I'm compiling the .config attached to the initial email to try to figure it out.
 > 
-> This should be a separate patch so that we can send the bugfix part to
-> stable@vger if needed...
 
-I can redrive as two patches, but we should be careful about back porting, IMO.
+Looks like the IS_ENABLED() switch got pushed to the next patch for V3 in include/linux/nfs_fs.h.  Want me to resend the patches?  I took another look at how IS_ENABLED() is defined, and it'll work if I do the switch in the patch before I turn everything into separate modules if you want me to resend everything.
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+> - Bryan
+> 
+>>
+>>>>
+>>>>
+>>>>
+>>>>> -----Original Message-----
+>>>>> From: Fengguang Wu [mailto:fengguang.wu@intel.com]
+>>>>> Sent: Monday, July 30, 2012 10:43 PM
+>>>>> To: Schumaker, Bryan
+>>>>> Cc: kernel-janitors@vger.kernel.org; Myklebust, Trond; linux-
+>>>>> nfs@vger.kernel.org
+>>>>> Subject: [nfs:devel 46/51] fs/nfs/write.c:1592:5: error: redefinition of
+>>>>> 'nfs_commit_inode'
+>>>>>
+>>>>> Hi Bryan,
+>>>>>
+>>>>> Kernel build failed on
+>>>>>
+>>>>> tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git devel
+>>>>> head:   5c13c9e1c15ee2ca9ab2b953224001af53d9be09
+>>>>> commit: 1c606fb74c758beafd98cbad9a9133eadeec2371 [46/51] NFS: Convert
+>>>>> v3 into a module
+>>>>> config: blackfin-BF533-EZKIT_defconfig (attached as .config)
+>>>>>
+>>>>> All related error/warning messages:
+>>>>>
+>>>>> fs/nfs/write.c:1592:5: error: redefinition of 'nfs_commit_inode'
+>>>>> In file included from fs/nfs/write.c:19:0:
+>>>>> include/linux/nfs_fs.h:547:1: note: previous definition of 'nfs_commit_inode'
+>>>>> was here
+>>>>>
+>>>>> vim +1592 fs/nfs/write.c
+>>>>>   1589		return status;
+>>>>>   1590	}
+>>>>>   1591
+>>>>>> 1592	int nfs_commit_inode(struct inode *inode, int how)
+>>>>>   1593	{
+>>>>>   1594		LIST_HEAD(head);
+>>>>>   1595		struct nfs_commit_info cinfo;
+>>>>>
+>>>>> ---
+>>>>> 0-DAY kernel build testing backend         Open Source Technology Centre
+>>>>> Fengguang Wu <wfg@linux.intel.com>                     Intel Corporation
+>>>
+>>
+> 
 
