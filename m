@@ -1,82 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from va3ehsobe010.messaging.microsoft.com ([216.32.180.30]:2488 "EHLO
-	va3outboundpool.messaging.microsoft.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754654Ab2GXR2G convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Jul 2012 13:28:06 -0400
-From: "ZUIDAM, Hans" <Hans.Zuidam@philips.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "neilb@suse.de" <neilb@suse.de>,
-        "DE WITTE, PETER" <PETER.DE.WITTE@philips.com>
-Subject: RE: Linux NFS and cached properties
-Date: Tue, 24 Jul 2012 17:28:02 +0000
-Message-ID: <D307B3AC0BCD4C419E6B8FA6A2720A9C18ABBA@011-DB3MPN1-001.MGDPHG.emi.philips.com>
-References: <D307B3AC0BCD4C419E6B8FA6A2720A9C0C3B2F@011-DB3MPN1-001.MGDPHG.emi.philips.com>
- <20120724143748.GC8570@fieldses.org>
-In-Reply-To: <20120724143748.GC8570@fieldses.org>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mx2.netapp.com ([216.240.18.37]:63657 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752029Ab2GaDPN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jul 2012 23:15:13 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Fengguang Wu <fengguang.wu@intel.com>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+CC: "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: [nfs:devel 46/51] fs/nfs/write.c:1592:5: error: redefinition of
+ 'nfs_commit_inode'
+Date: Tue, 31 Jul 2012 03:14:56 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA934BE82@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20120731024328.GA10480@localhost>
+In-Reply-To: <20120731024328.GA10480@localhost>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce,
+Bryan,
 
-Thanks for the clarification.
-
-(I'm repeating a lot of my original mail because of the Cc: list.)
-
-> J. Bruce Fields
-> I think that's right, though I'm curious how you're managing to hit
-> that case reliably every time.  Or is this an intermittent failure?
-It's an intermittent failure, but with the procedure shown below it is
-fairly easy to reproduce.    The actual problem we see in our product
-is because of the way external storage media are handled in user-land.
-
-        192.168.1.10# mount -t xfs /dev/sdcr/sda1 /mnt
-        192.168.1.10# exportfs 192.168.1.11:/mnt
-
-        192.168.1.11# mount 192.168.1.10:/mnt /mnt
-        192.168.1.11# umount /mnt
-
-        192.168.1.10# exportfs -u 192.168.1.11:/mnt
-        192.168.1.10# umount /mnt
-        umount: can't umount /media/recdisk: Device or resource busy
-
-What I actually do is the mount/unmount on the client via ssh.  That
-is a good way to trigger the problem.
-
-We see that during the un-export the NFS caches are not flushed
-properly which is why the final unmount fails.
-
-In net/sunrpc/cache.c the cache times (last_refresh, expiry_time,
-flush_time) are measured in seconds.  If I understand the code somewhat
-then during an NFS un-export the is done by setting the flush_time to
-the current time.  The cache_flush() is called.  If in that same second
-last_refresh is set to the current time then the cached item is not
-flushed.  This will subsequently cause un-mount to fail because there
-is still a reference to the mount point.
-
-> J. Bruce Fields
-> I ran across that recently while reviewing the code to fix a related
-> problem.  I'm not sure what the best fix would be.
->
-> Previously raised here:
->
->       http://marc.info/?l=linux-nfs&m=133514319408283&w=2
-
-The description in your mail does indeed looks the same as the problem
-that we see.
-
->From reading the code in net/sunrpc/cache.c I get the impression that it is
-not really possible to reliably flush the caches for an un-exportfs such
-that after flushing they will not accept entries for the un-exported IP/mount
-point combination.
-
-With kind regards,
-Hans Zuidam
+Why did you switch to using IS_ENABLED in the first place, and why wasn't that put in a separate patch?
 
 
-________________________________
-The information contained in this message may be confidential and legally protected under applicable law. The message is intended solely for the addressee(s). If you are not the intended recipient, you are hereby notified that any use, forwarding, dissemination, or reproduction of this message is strictly prohibited and may be unlawful. If you are not the intended recipient, please contact the sender by return e-mail and destroy all copies of the original message.
 
+> -----Original Message-----
+> From: Fengguang Wu [mailto:fengguang.wu@intel.com]
+> Sent: Monday, July 30, 2012 10:43 PM
+> To: Schumaker, Bryan
+> Cc: kernel-janitors@vger.kernel.org; Myklebust, Trond; linux-
+> nfs@vger.kernel.org
+> Subject: [nfs:devel 46/51] fs/nfs/write.c:1592:5: error: redefinition of
+> 'nfs_commit_inode'
+> 
+> Hi Bryan,
+> 
+> Kernel build failed on
+> 
+> tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git devel
+> head:   5c13c9e1c15ee2ca9ab2b953224001af53d9be09
+> commit: 1c606fb74c758beafd98cbad9a9133eadeec2371 [46/51] NFS: Convert
+> v3 into a module
+> config: blackfin-BF533-EZKIT_defconfig (attached as .config)
+> 
+> All related error/warning messages:
+> 
+> fs/nfs/write.c:1592:5: error: redefinition of 'nfs_commit_inode'
+> In file included from fs/nfs/write.c:19:0:
+> include/linux/nfs_fs.h:547:1: note: previous definition of 'nfs_commit_inode'
+> was here
+> 
+> vim +1592 fs/nfs/write.c
+>   1589		return status;
+>   1590	}
+>   1591
+> > 1592	int nfs_commit_inode(struct inode *inode, int how)
+>   1593	{
+>   1594		LIST_HEAD(head);
+>   1595		struct nfs_commit_info cinfo;
+> 
+> ---
+> 0-DAY kernel build testing backend         Open Source Technology Centre
+> Fengguang Wu <wfg@linux.intel.com>                     Intel Corporation
