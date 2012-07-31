@@ -1,265 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:57112 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:36262 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751710Ab2GaF3F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jul 2012 01:29:05 -0400
-Date: Tue, 31 Jul 2012 15:28:48 +1000
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        devel@openvz.org
-Subject: Re: [PATCH v3] SUNRPC: protect service sockets lists during per-net
- shutdown
-Message-ID: <20120731152848.7836f9e1@notabene.brown>
-In-Reply-To: <20120724194036.GK8570@fieldses.org>
-References: <20120703125851.3850.86782.stgit@localhost.localdomain>
-	<20120724194036.GK8570@fieldses.org>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/VF6ym0cZx3o0SAEoQfSb_Om"; protocol="application/pgp-signature"
+	id S1753511Ab2GaN6q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jul 2012 09:58:46 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        Fengguang Wu <fengguang.wu@intel.com>,
+        "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [nfs:devel 46/51] fs/nfs/write.c:1592:5: error: redefinition of
+ 'nfs_commit_inode'
+Date: Tue, 31 Jul 2012 13:58:44 +0000
+Message-ID: <1343743122.519.4.camel@lade.trondhjem.org>
+References: <20120731024328.GA10480@localhost>
+	   <4FA345DA4F4AE44899BD2B03EEEC2FA934BE82@SACEXCMBX04-PRD.hq.netapp.com>
+	   <5017D3FC.9010905@netapp.com> <1343739299.519.1.camel@lade.trondhjem.org>
+	  <5017D824.209@netapp.com> <5017DDDB.6060500@netapp.com>
+	 <1343741622.519.2.camel@lade.trondhjem.org> <5017E13F.4030909@netapp.com>
+In-Reply-To: <5017E13F.4030909@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/VF6ym0cZx3o0SAEoQfSb_Om
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
-
-On Tue, 24 Jul 2012 15:40:37 -0400 "J. Bruce Fields" <bfields@fieldses.org>
-wrote:
-
-> On Tue, Jul 03, 2012 at 04:58:57PM +0400, Stanislav Kinsbursky wrote:
-> > v3:
-> > 1) rebased on 3.5-rc3 kernel.
-> >=20
-> > v2: destruction of currently processing transport added:
-> > 1) Added marking of currently processing transports with XPT_CLOSE on p=
-er-net
-> > shutdown. These transports will be destroyed in svc_xprt_enqueue() (ins=
-tead of
-> > enqueueing).
->=20
-> That worries me:
->=20
-> 	- Why did we originally defer close until svc_recv?
-
-I don't think there was any obscure reason - it was just the natural place =
-do
-to it.  In svc_recv we are absolutely sure that the socket is idle.  There
-are a number of things we might want to do, so we find the highest-priority
-one and do it.  "state machine" pattern?
-
-
-> 	- Are we sure there's no risk to performing it immediately in
-> 	  svc_enqueue?  Is it safe to call from the socket callbacks and
-> 	  wherever else we call svc_enqueue?
-
-The latter point is the one I'd want to see verified.  If svc_xprt_enqueue
-gets called in 'bh' content, and calls svc_delete_xprt which then calls
-svc_deferred_dequeue and that takes ->xpt_lock - does that mean that all
-lock/unlock of ->xpt_lock needs to be changed to use the _bh variants?
-
-NeilBrown
-
-
->=20
-> And in the past I haven't been good at testing for problems
-> here--instead they tend to show up when a use somewhere tries shutting
-> down a server that's under load.
->=20
-> I'll look more closely.  Meanwhile you could split out that change as a
-> separate patch and convince me why it's right....
->=20
-> --b.
->=20
-> > 2) newly created temporary transport in svc_recv() will be destroyed, i=
-f it's
-> > "parent" was marked with XPT_CLOSE.
-> > 3) spin_lock(&serv->sv_lock) was replaced by spin_lock_bh() in
-> > svc_close_net(&serv->sv_lock).
-> >=20
-> > Service sv_tempsocks and sv_permsocks lists are accessible by tasks with
-> > different network namespaces, and thus per-net service destruction must=
- be
-> > protected.
-> > These lists are protected by service sv_lock. So lets wrap list munipul=
-ations
-> > with this lock and move tranports destruction outside wrapped area to p=
-revent
-> > deadlocks.
-> >=20
-> > Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> > ---
-> >  net/sunrpc/svc_xprt.c |   56 +++++++++++++++++++++++++++++++++++++++++=
-+++++---
-> >  1 files changed, 52 insertions(+), 4 deletions(-)
-> >=20
-> > diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> > index 88f2bf6..4af2114 100644
-> > --- a/net/sunrpc/svc_xprt.c
-> > +++ b/net/sunrpc/svc_xprt.c
-> > @@ -320,6 +320,7 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
-> >  	struct svc_pool *pool;
-> >  	struct svc_rqst	*rqstp;
-> >  	int cpu;
-> > +	int destroy =3D 0;
-> > =20
-> >  	if (!svc_xprt_has_something_to_do(xprt))
-> >  		return;
-> > @@ -338,6 +339,17 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
-> > =20
-> >  	pool->sp_stats.packets++;
-> > =20
-> > +	/*
-> > +	 * Check transport close flag. It could be marked as closed on per-net
-> > +	 * service shutdown.
-> > +	 */
-> > +	if (test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
-> > +		/* Don't enqueue transport if it has to be destroyed. */
-> > +		dprintk("svc: transport %p have to be closed\n", xprt);
-> > +		destroy++;
-> > +		goto out_unlock;
-> > +	}
-> > +
-> >  	/* Mark transport as busy. It will remain in this state until
-> >  	 * the provider calls svc_xprt_received. We update XPT_BUSY
-> >  	 * atomically because it also guards against trying to enqueue
-> > @@ -374,6 +386,8 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
-> > =20
-> >  out_unlock:
-> >  	spin_unlock_bh(&pool->sp_lock);
-> > +	if (destroy)
-> > +		svc_delete_xprt(xprt);
-> >  }
-> >  EXPORT_SYMBOL_GPL(svc_xprt_enqueue);
-> > =20
-> > @@ -714,6 +728,13 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
-> >  			__module_get(newxpt->xpt_class->xcl_owner);
-> >  			svc_check_conn_limits(xprt->xpt_server);
-> >  			spin_lock_bh(&serv->sv_lock);
-> > +			if (test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
-> > +				dprintk("svc_recv: found XPT_CLOSE on listener\n");
-> > +				set_bit(XPT_DETACHED, &newxpt->xpt_flags);
-> > +				spin_unlock_bh(&pool->sp_lock);
-> > +				svc_delete_xprt(newxpt);
-> > +				goto out_closed;
-> > +			}
-> >  			set_bit(XPT_TEMP, &newxpt->xpt_flags);
-> >  			list_add(&newxpt->xpt_list, &serv->sv_tempsocks);
-> >  			serv->sv_tmpcnt++;
-> > @@ -739,6 +760,7 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
-> >  			len =3D xprt->xpt_ops->xpo_recvfrom(rqstp);
-> >  		dprintk("svc: got len=3D%d\n", len);
-> >  	}
-> > +out_closed:
-> >  	svc_xprt_received(xprt);
-> > =20
-> >  	/* No data, incomplete (TCP) read, or accept() */
-> > @@ -936,6 +958,7 @@ static void svc_clear_pools(struct svc_serv *serv, =
-struct net *net)
-> >  	struct svc_pool *pool;
-> >  	struct svc_xprt *xprt;
-> >  	struct svc_xprt *tmp;
-> > +	struct svc_rqst *rqstp;
-> >  	int i;
-> > =20
-> >  	for (i =3D 0; i < serv->sv_nrpools; i++) {
-> > @@ -947,11 +970,16 @@ static void svc_clear_pools(struct svc_serv *serv=
-, struct net *net)
-> >  				continue;
-> >  			list_del_init(&xprt->xpt_ready);
-> >  		}
-> > +		list_for_each_entry(rqstp, &pool->sp_all_threads, rq_all) {
-> > +			if (rqstp->rq_xprt && rqstp->rq_xprt->xpt_net =3D=3D net)
-> > +				set_bit(XPT_CLOSE, &rqstp->rq_xprt->xpt_flags);
-> > +		}
-> >  		spin_unlock_bh(&pool->sp_lock);
-> >  	}
-> >  }
-> > =20
-> > -static void svc_clear_list(struct list_head *xprt_list, struct net *ne=
-t)
-> > +static void svc_clear_list(struct list_head *xprt_list, struct net *ne=
-t,
-> > +			   struct list_head *kill_list)
-> >  {
-> >  	struct svc_xprt *xprt;
-> >  	struct svc_xprt *tmp;
-> > @@ -959,7 +987,8 @@ static void svc_clear_list(struct list_head *xprt_l=
-ist, struct net *net)
-> >  	list_for_each_entry_safe(xprt, tmp, xprt_list, xpt_list) {
-> >  		if (xprt->xpt_net !=3D net)
-> >  			continue;
-> > -		svc_delete_xprt(xprt);
-> > +		list_move(&xprt->xpt_list, kill_list);
-> > +		set_bit(XPT_DETACHED, &xprt->xpt_flags);
-> >  	}
-> >  	list_for_each_entry(xprt, xprt_list, xpt_list)
-> >  		BUG_ON(xprt->xpt_net =3D=3D net);
-> > @@ -967,6 +996,15 @@ static void svc_clear_list(struct list_head *xprt_=
-list, struct net *net)
-> > =20
-> >  void svc_close_net(struct svc_serv *serv, struct net *net)
-> >  {
-> > +	struct svc_xprt *xprt, *tmp;
-> > +	LIST_HEAD(kill_list);
-> > +
-> > +	/*
-> > +	 * Protect the lists, since they can be by tasks with different netwo=
-rk
-> > +	 * namespace contexts.
-> > +	 */
-> > +	spin_lock_bh(&serv->sv_lock);
-> > +
-> >  	svc_close_list(&serv->sv_tempsocks, net);
-> >  	svc_close_list(&serv->sv_permsocks, net);
-> > =20
-> > @@ -976,8 +1014,18 @@ void svc_close_net(struct svc_serv *serv, struct =
-net *net)
-> >  	 * svc_xprt_enqueue will not add new entries without taking the
-> >  	 * sp_lock and checking XPT_BUSY.
-> >  	 */
-> > -	svc_clear_list(&serv->sv_tempsocks, net);
-> > -	svc_clear_list(&serv->sv_permsocks, net);
-> > +	svc_clear_list(&serv->sv_tempsocks, net, &kill_list);
-> > +	svc_clear_list(&serv->sv_permsocks, net, &kill_list);
-> > +
-> > +	spin_unlock_bh(&serv->sv_lock);
-> > +
-> > +	/*
-> > +	 * Destroy collected transports.
-> > +	 * Note: tranports has been marked as XPT_DETACHED on svc_clear_list(=
-),
-> > +	 * so no need to protect againt list_del() in svc_delete_xprt().
-> > +	 */
-> > +	list_for_each_entry_safe(xprt, tmp, &kill_list, xpt_list)
-> > +		svc_delete_xprt(xprt);
-> >  }
-> > =20
-> >  /*
-> >=20
-
-
---Sig_/VF6ym0cZx3o0SAEoQfSb_Om
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.18 (GNU/Linux)
-
-iQIVAwUBUBdtEDnsnt1WYoG5AQK6lxAAuy3KWciJkh3EjoJdwZFmfDK04zsI1+Fi
-CXo8vWnny9I0xzJ9tj2aLsKi1xOOpmIrTsq+pFzJilEPUPerFt+i5827aV+NHWs/
-t31qTycEQldb1E161aEu4xcL8q6/9466k2K2ATCexhx8te5nul2Gxql3YwpWJPIl
-WmB5Au5FMH+Xzk8kTi1ia2k4xYR1ss5B2GxulcclIge0nkxTR7mdkRLp2AeuqpYL
-cQhY5LId+VYs9HHfWBq5STG2ObRQQ7bkQcdhpsAhpZmuFiUjp/XAgEpTtHMLEM3m
-jMs+tvlMMmrhBY3Wd/KxJcTQdhwr27Z+mPbHS9kO0Q+MjKUEvqWrz4TRCQC0ZIg+
-4gVYT1S/N8Wbw1vPvQjrlz1nQkWCPGnzE93Y6fwElWKNnhR/UmU4CmtDN0U20zAh
-0Z42kdx1DVtZrYovzijevGjpSdRXXvzqARHATaHaRoY6y93kQpbZuwDBRpfdkyvJ
-Smsn3HFcylWRTQHVY+RauKRTDj3QfSVyvapmiMBszhK2AdxJCeXKaUVaF4KlwAd3
-LJKTLGes6dWDR59W4vNn3YqOuEWGkrCEUoiOjQ9nXS8Q2X1/OvfOUv1H8U/9Q5TN
-4CevnBPVxIN1gNKA4WZ+NLEmcTbqRrr2x9d+L8BpIVPEOt4k2pQMjymM0DaglDbL
-eqjOmS/hxHc=
-=dbCN
------END PGP SIGNATURE-----
-
---Sig_/VF6ym0cZx3o0SAEoQfSb_Om--
+T24gVHVlLCAyMDEyLTA3LTMxIGF0IDA5OjQ0IC0wNDAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6
+DQo+IE9uIDA3LzMxLzIwMTIgMDk6MzMgQU0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4g
+T24gVHVlLCAyMDEyLTA3LTMxIGF0IDA5OjMwIC0wNDAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6
+DQo+ID4+IE9uIDA3LzMxLzIwMTIgMDk6MDUgQU0sIEJyeWFuIFNjaHVtYWtlciB3cm90ZToNCj4g
+Pj4+IE9uIDA3LzMxLzIwMTIgMDg6NTUgQU0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4+
+Pj4gT24gVHVlLCAyMDEyLTA3LTMxIGF0IDA4OjQ3IC0wNDAwLCBCcnlhbiBTY2h1bWFrZXIgd3Jv
+dGU6DQo+ID4+Pj4+IE9uIDA3LzMwLzIwMTIgMTE6MTQgUE0sIE15a2xlYnVzdCwgVHJvbmQgd3Jv
+dGU6DQo+ID4+Pj4+PiBCcnlhbiwNCj4gPj4+Pj4+DQo+ID4+Pj4+PiBXaHkgZGlkIHlvdSBzd2l0
+Y2ggdG8gdXNpbmcgSVNfRU5BQkxFRCBpbiB0aGUgZmlyc3QgcGxhY2UsIGFuZCB3aHkgd2Fzbid0
+IHRoYXQgcHV0IGluIGEgc2VwYXJhdGUgcGF0Y2g/DQo+ID4+Pj4+DQo+ID4+Pj4+IElTX0VOQUJM
+RUQoKSB3aWxsIGNoZWNrIGZvciBDT05GSUdfTkZTX1YqX01PRFVMRSwgbGFzdCBJIGNoZWNrZWQg
+dGhlIGRlZmluZWQoKSBtYWNybyBkb2Vzbid0LiAgUHV0dGluZyB0aGlzIGludG8gYSBzZXBhcmF0
+ZSBwYXRjaCBtYWtlcyB0aGUgY2hhbmdlIG5vbi1iaXNlY3RhYmxlIHNpbmNlIGdjYyB3aWxsIGJl
+IGNoZWNraW5nIGFnYWluc3QgQ09ORklHX05GU19WMyBidXQgQ09ORklHX05GU19WM19NT0RVTEUg
+aXMgc2V0LiAgU2hvdWxkIEkgaGF2ZSBjaGFuZ2VkIHRoZSBDT05GSUdfIHZhcmlhYmxlcyBpbnN0
+ZWFkIG9mIHVzaW5nIElTX0VOQUJMRUQoKT8NCj4gPj4+Pg0KPiA+Pj4+IFdoeSBpcyBpdCBldmFs
+dWF0aW5nIGRpZmZlcmVudGx5IGluIHRoZSBpbmNsdWRlIGZpbGUgdnMuIHRoZSAuYyBmaWxlPw0K
+PiA+Pj4+IEFyZSB3ZSBtaXNzaW5nIGFuIGluY2x1ZGUgaW4gbmZzX2ZzLmg/DQo+ID4+Pg0KPiA+
+Pj4gR29vZCBxdWVzdGlvbi4gIEkgZG9uJ3Qgc2VlIGFueSByZWFzb24gdGhhdCBpdCB3b3VsZCBl
+dmFsdWF0ZSBkaWZmZXJlbnRseSwgYnV0IEknbSBjb21waWxpbmcgdGhlIC5jb25maWcgYXR0YWNo
+ZWQgdG8gdGhlIGluaXRpYWwgZW1haWwgdG8gdHJ5IHRvIGZpZ3VyZSBpdCBvdXQuDQo+ID4+Pg0K
+PiA+Pg0KPiA+PiBMb29rcyBsaWtlIHRoZSBJU19FTkFCTEVEKCkgc3dpdGNoIGdvdCBwdXNoZWQg
+dG8gdGhlIG5leHQgcGF0Y2ggZm9yIFYzIGluIGluY2x1ZGUvbGludXgvbmZzX2ZzLmguICBXYW50
+IG1lIHRvIHJlc2VuZCB0aGUgcGF0Y2hlcz8gIEkgdG9vayBhbm90aGVyIGxvb2sgYXQgaG93IElT
+X0VOQUJMRUQoKSBpcyBkZWZpbmVkLCBhbmQgaXQnbGwgd29yayBpZiBJIGRvIHRoZSBzd2l0Y2gg
+aW4gdGhlIHBhdGNoIGJlZm9yZSBJIHR1cm4gZXZlcnl0aGluZyBpbnRvIHNlcGFyYXRlIG1vZHVs
+ZXMgaWYgeW91IHdhbnQgbWUgdG8gcmVzZW5kIGV2ZXJ5dGhpbmcuDQo+ID4gDQo+ID4gUGxlYXNl
+IGp1c3QgbWFrZSBpdCBpbmNyZW1lbnRhbCB0byB0aGUgcGF0Y2ggc2VyaWVzIHRoYXQgaXMgYWxy
+ZWFkeQ0KPiA+IG1lcmdlZCBpbiB0b2RheSdzIG5mcy1mb3ItMy42Lg0KPiANCj4gRWFzeSBlbm91
+Z2gsIHRoZSBwYXRjaCB0aGF0IGZpeGVzIGl0IGlzIHRoZSBsYXN0IG9uZSBpbiB0aGUgc2VyaWVz
+IHRoYXQgSSBzZW50IGluIHllc3RlcmRheS4NCg0KSSBkb24ndCB1bmRlcnN0YW5kLiBUaGF0IGlz
+IHRoZSBwYXRjaCBzZXJpZXMgdGhhdCBGZW5nZ3Vhbmcgd2FzIHRlc3RpbmcNCmFmYWlrLiBIaXMg
+dGVzdHMgd2VyZSBvbiANCg0KdHJlZTogICBnaXQ6Ly9naXQubGludXgtbmZzLm9yZy9wcm9qZWN0
+cy90cm9uZG15L2xpbnV4LW5mcy5naXQgZGV2ZWwNCmhlYWQ6ICAgNWMxM2M5ZTFjMTVlZTJjYTlh
+YjJiOTUzMjI0MDAxYWY1M2Q5YmUwOQ0KDQp3aGljaCBpbmNsdWRlcyB5b3VyIHBhdGNoIHNlcmll
+cyBmcm9tIHllc3RlcmRheSwgbm8/DQoNCj4gPiANCj4gPiBDaGVlcnMNCj4gPiAgIFRyb25kDQo+
+ID4gDQo+ID4+PiAtIEJyeWFuDQo+ID4+Pg0KPiA+Pj4+DQo+ID4+Pj4+Pg0KPiA+Pj4+Pj4NCj4g
+Pj4+Pj4+DQo+ID4+Pj4+Pj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gPj4+Pj4+PiBG
+cm9tOiBGZW5nZ3VhbmcgV3UgW21haWx0bzpmZW5nZ3Vhbmcud3VAaW50ZWwuY29tXQ0KPiA+Pj4+
+Pj4+IFNlbnQ6IE1vbmRheSwgSnVseSAzMCwgMjAxMiAxMDo0MyBQTQ0KPiA+Pj4+Pj4+IFRvOiBT
+Y2h1bWFrZXIsIEJyeWFuDQo+ID4+Pj4+Pj4gQ2M6IGtlcm5lbC1qYW5pdG9yc0B2Z2VyLmtlcm5l
+bC5vcmc7IE15a2xlYnVzdCwgVHJvbmQ7IGxpbnV4LQ0KPiA+Pj4+Pj4+IG5mc0B2Z2VyLmtlcm5l
+bC5vcmcNCj4gPj4+Pj4+PiBTdWJqZWN0OiBbbmZzOmRldmVsIDQ2LzUxXSBmcy9uZnMvd3JpdGUu
+YzoxNTkyOjU6IGVycm9yOiByZWRlZmluaXRpb24gb2YNCj4gPj4+Pj4+PiAnbmZzX2NvbW1pdF9p
+bm9kZScNCj4gPj4+Pj4+Pg0KPiA+Pj4+Pj4+IEhpIEJyeWFuLA0KPiA+Pj4+Pj4+DQo+ID4+Pj4+
+Pj4gS2VybmVsIGJ1aWxkIGZhaWxlZCBvbg0KPiA+Pj4+Pj4+DQo+ID4+Pj4+Pj4gdHJlZTogICBn
+aXQ6Ly9naXQubGludXgtbmZzLm9yZy9wcm9qZWN0cy90cm9uZG15L2xpbnV4LW5mcy5naXQgZGV2
+ZWwNCj4gPj4+Pj4+PiBoZWFkOiAgIDVjMTNjOWUxYzE1ZWUyY2E5YWIyYjk1MzIyNDAwMWFmNTNk
+OWJlMDkNCj4gPj4+Pj4+PiBjb21taXQ6IDFjNjA2ZmI3NGM3NThiZWFmZDk4Y2JhZDlhOTEzM2Vh
+ZGVlYzIzNzEgWzQ2LzUxXSBORlM6IENvbnZlcnQNCj4gPj4+Pj4+PiB2MyBpbnRvIGEgbW9kdWxl
+DQo+ID4+Pj4+Pj4gY29uZmlnOiBibGFja2Zpbi1CRjUzMy1FWktJVF9kZWZjb25maWcgKGF0dGFj
+aGVkIGFzIC5jb25maWcpDQo+ID4+Pj4+Pj4NCj4gPj4+Pj4+PiBBbGwgcmVsYXRlZCBlcnJvci93
+YXJuaW5nIG1lc3NhZ2VzOg0KPiA+Pj4+Pj4+DQo+ID4+Pj4+Pj4gZnMvbmZzL3dyaXRlLmM6MTU5
+Mjo1OiBlcnJvcjogcmVkZWZpbml0aW9uIG9mICduZnNfY29tbWl0X2lub2RlJw0KPiA+Pj4+Pj4+
+IEluIGZpbGUgaW5jbHVkZWQgZnJvbSBmcy9uZnMvd3JpdGUuYzoxOTowOg0KPiA+Pj4+Pj4+IGlu
+Y2x1ZGUvbGludXgvbmZzX2ZzLmg6NTQ3OjE6IG5vdGU6IHByZXZpb3VzIGRlZmluaXRpb24gb2Yg
+J25mc19jb21taXRfaW5vZGUnDQo+ID4+Pj4+Pj4gd2FzIGhlcmUNCj4gPj4+Pj4+Pg0KPiA+Pj4+
+Pj4+IHZpbSArMTU5MiBmcy9uZnMvd3JpdGUuYw0KPiA+Pj4+Pj4+ICAgMTU4OQkJcmV0dXJuIHN0
+YXR1czsNCj4gPj4+Pj4+PiAgIDE1OTAJfQ0KPiA+Pj4+Pj4+ICAgMTU5MQ0KPiA+Pj4+Pj4+PiAx
+NTkyCWludCBuZnNfY29tbWl0X2lub2RlKHN0cnVjdCBpbm9kZSAqaW5vZGUsIGludCBob3cpDQo+
+ID4+Pj4+Pj4gICAxNTkzCXsNCj4gPj4+Pj4+PiAgIDE1OTQJCUxJU1RfSEVBRChoZWFkKTsNCj4g
+Pj4+Pj4+PiAgIDE1OTUJCXN0cnVjdCBuZnNfY29tbWl0X2luZm8gY2luZm87DQo+ID4+Pj4+Pj4N
+Cj4gPj4+Pj4+PiAtLS0NCj4gPj4+Pj4+PiAwLURBWSBrZXJuZWwgYnVpbGQgdGVzdGluZyBiYWNr
+ZW5kICAgICAgICAgT3BlbiBTb3VyY2UgVGVjaG5vbG9neSBDZW50cmUNCj4gPj4+Pj4+PiBGZW5n
+Z3VhbmcgV3UgPHdmZ0BsaW51eC5pbnRlbC5jb20+ICAgICAgICAgICAgICAgICAgICAgSW50ZWwg
+Q29ycG9yYXRpb24NCj4gPj4+Pj4NCj4gPj4+Pg0KPiA+Pj4NCj4gPj4NCj4gPiANCj4gDQoNCg==
