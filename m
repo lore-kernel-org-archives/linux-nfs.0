@@ -1,169 +1,163 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:48854 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:56740 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754623Ab2G3UFb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Jul 2012 16:05:31 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 03/10] NFS: Create a try_mount rpc op
-Date: Mon, 30 Jul 2012 16:05:18 -0400
-Message-Id: <1343678725-8659-4-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1343678725-8659-1-git-send-email-bjschuma@netapp.com>
-References: <1343678725-8659-1-git-send-email-bjschuma@netapp.com>
+	id S1755256Ab2GaFIQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jul 2012 01:08:16 -0400
+Date: Tue, 31 Jul 2012 15:08:01 +1000
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "ZUIDAM, Hans" <Hans.Zuidam@philips.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "DE WITTE, PETER" <PETER.DE.WITTE@philips.com>
+Subject: Re: Linux NFS and cached properties
+Message-ID: <20120731150801.0a4b557b@notabene.brown>
+In-Reply-To: <20120726223607.GA28982@fieldses.org>
+References: <D307B3AC0BCD4C419E6B8FA6A2720A9C0C3B2F@011-DB3MPN1-001.MGDPHG.emi.philips.com>
+	<20120724143748.GC8570@fieldses.org>
+	<D307B3AC0BCD4C419E6B8FA6A2720A9C18ABBA@011-DB3MPN1-001.MGDPHG.emi.philips.com>
+	<20120726223607.GA28982@fieldses.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/XwVPX.tsEzHv8MZHZZgfoo7"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+--Sig_/XwVPX.tsEzHv8MZHZZgfoo7
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-I'm already looking up the nfs subversion in nfs_fs_mount(), so I have
-easy access to rpc_ops that used to be difficult to reach.  This allows
-me to set up a different mount path for NFS v2/3 and NFS v4.
+On Thu, 26 Jul 2012 18:36:07 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+wrote:
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/internal.h       |  2 ++
- fs/nfs/nfs3proc.c       |  1 +
- fs/nfs/nfs4_fs.h        |  2 +-
- fs/nfs/nfs4proc.c       |  1 +
- fs/nfs/nfs4super.c      |  3 ++-
- fs/nfs/proc.c           |  1 +
- fs/nfs/super.c          | 14 ++++----------
- include/linux/nfs_xdr.h |  4 ++++
- 8 files changed, 16 insertions(+), 12 deletions(-)
+> On Tue, Jul 24, 2012 at 05:28:02PM +0000, ZUIDAM, Hans wrote:
+> > Hi Bruce,
+> >=20
+> > Thanks for the clarification.
+> >=20
+> > (I'm repeating a lot of my original mail because of the Cc: list.)
+> >=20
+> > > J. Bruce Fields
+> > > I think that's right, though I'm curious how you're managing to hit
+> > > that case reliably every time.  Or is this an intermittent failure?
+> > It's an intermittent failure, but with the procedure shown below it is
+> > fairly easy to reproduce.    The actual problem we see in our product
+> > is because of the way external storage media are handled in user-land.
+> >=20
+> >         192.168.1.10# mount -t xfs /dev/sdcr/sda1 /mnt
+> >         192.168.1.10# exportfs 192.168.1.11:/mnt
+> >=20
+> >         192.168.1.11# mount 192.168.1.10:/mnt /mnt
+> >         192.168.1.11# umount /mnt
+> >=20
+> >         192.168.1.10# exportfs -u 192.168.1.11:/mnt
+> >         192.168.1.10# umount /mnt
+> >         umount: can't umount /media/recdisk: Device or resource busy
+> >=20
+> > What I actually do is the mount/unmount on the client via ssh.  That
+> > is a good way to trigger the problem.
+> >=20
+> > We see that during the un-export the NFS caches are not flushed
+> > properly which is why the final unmount fails.
+> >=20
+> > In net/sunrpc/cache.c the cache times (last_refresh, expiry_time,
+> > flush_time) are measured in seconds.  If I understand the code somewhat
+> > then during an NFS un-export the is done by setting the flush_time to
+> > the current time.  The cache_flush() is called.  If in that same second
+> > last_refresh is set to the current time then the cached item is not
+> > flushed.  This will subsequently cause un-mount to fail because there
+> > is still a reference to the mount point.
+> >=20
+> > > J. Bruce Fields
+> > > I ran across that recently while reviewing the code to fix a related
+> > > problem.  I'm not sure what the best fix would be.
+> > >
+> > > Previously raised here:
+> > >
+> > >       http://marc.info/?l=3Dlinux-nfs&m=3D133514319408283&w=3D2
+> >=20
+> > The description in your mail does indeed looks the same as the problem
+> > that we see.
+> >=20
+> > >From reading the code in net/sunrpc/cache.c I get the impression that =
+it is
+> > not really possible to reliably flush the caches for an un-exportfs such
+> > that after flushing they will not accept entries for the un-exported IP=
+/mount
+> > point combination.
+>=20
+> Right.  So, possible ideas, from that previous message:
+>=20
+> 	- As Neil suggests, modify exportfs to wait a second between
+> 	  updating etab and flushing the cache.  At that point any
+> 	  entries still using the old information are at least a second
+> 	  old.  That may be adequate for your case, but if someone out
+> 	  there is sensitive to the time required to unexport then that
+> 	  will annoy them.  It also leaves the small possibility of
+> 	  races where an in-progress rpc may still be using an export at
+> 	  the time you try to flush.
+> 	- Implement some new interface that you can use to flush the
+> 	  cache and that doesn't return until in-progress rpc's
+> 	  complete.  Since it waits for rpc's it's not purely a "cache"
+> 	  layer interface any more.  So maybe something like
+> 	  /proc/fs/nfsd/flush_exports.
+> 	- As a workaround requiring no code changes: unexport, then shut
+> 	  down the server entirely and restart it.  Clients will see
+> 	  that as a reboot recovery event and recover automatically, but
+> 	  applications may see delays while that happens.  Kind of a big
+> 	  hammer, but if unexporting while other exports are in use is
+> 	  rare maybe it would be adequate for your case.
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index ac93647..3364ecc 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -328,6 +328,8 @@ extern struct file_system_type nfs_xdev_fs_type;
- extern struct file_system_type nfs4_xdev_fs_type;
- extern struct file_system_type nfs4_referral_fs_type;
- #endif
-+struct dentry *nfs_try_mount(int, const char *, struct nfs_mount_info *,
-+			struct nfs_subversion *);
- void nfs_initialise_sb(struct super_block *);
- int nfs_set_sb_security(struct super_block *, struct dentry *, struct nfs_mount_info *);
- int nfs_clone_sb_security(struct super_block *, struct dentry *, struct nfs_mount_info *);
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index 65d23eb..4f4cb8e 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -925,6 +925,7 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
- 	.file_ops	= &nfs_file_operations,
- 	.getroot	= nfs3_proc_get_root,
- 	.submount	= nfs_submount,
-+	.try_mount	= nfs_try_mount,
- 	.getattr	= nfs3_proc_getattr,
- 	.setattr	= nfs3_proc_setattr,
- 	.lookup		= nfs3_proc_lookup,
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 005558a..290762f 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -367,7 +367,7 @@ extern const nfs4_stateid zero_stateid;
- /* nfs4super.c */
- struct nfs_mount_info;
- extern struct nfs_subversion nfs_v4;
--struct dentry *nfs4_try_mount(int, const char *, struct nfs_mount_info *);
-+struct dentry *nfs4_try_mount(int, const char *, struct nfs_mount_info *, struct nfs_subversion *);
- int init_nfs_v4(void);
- void exit_nfs_v4(void);
- 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5e373c3..ac78df9 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6870,6 +6870,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
- 	.file_ops	= &nfs4_file_operations,
- 	.getroot	= nfs4_proc_get_root,
- 	.submount	= nfs4_submount,
-+	.try_mount	= nfs4_try_mount,
- 	.getattr	= nfs4_proc_getattr,
- 	.setattr	= nfs4_proc_setattr,
- 	.lookup		= nfs4_proc_lookup,
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-index 8a50557..9384f66 100644
---- a/fs/nfs/nfs4super.c
-+++ b/fs/nfs/nfs4super.c
-@@ -226,7 +226,8 @@ static struct dentry *nfs_follow_remote_path(struct vfsmount *root_mnt,
- }
- 
- struct dentry *nfs4_try_mount(int flags, const char *dev_name,
--			 struct nfs_mount_info *mount_info)
-+			      struct nfs_mount_info *mount_info,
-+			      struct nfs_subversion *nfs_mod)
- {
- 	char *export_path;
- 	struct vfsmount *root_mnt;
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index 4d3356af..ebb3d9c 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -774,6 +774,7 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
- 	.file_ops	= &nfs_file_operations,
- 	.getroot	= nfs_proc_get_root,
- 	.submount	= nfs_submount,
-+	.try_mount	= nfs_try_mount,
- 	.getattr	= nfs_proc_getattr,
- 	.setattr	= nfs_proc_setattr,
- 	.lookup		= nfs_proc_lookup,
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 4faefa1..5fca59d7 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1650,9 +1650,9 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
- 	return nfs_walk_authlist(args, &request);
- }
- 
--static struct dentry *nfs_try_mount(int flags, const char *dev_name,
--				    struct nfs_mount_info *mount_info,
--				    struct nfs_subversion *nfs_mod)
-+struct dentry *nfs_try_mount(int flags, const char *dev_name,
-+			     struct nfs_mount_info *mount_info,
-+			     struct nfs_subversion *nfs_mod)
- {
- 	int status;
- 	struct nfs_server *server;
-@@ -2403,15 +2403,9 @@ struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
- 		goto out;
- 	}
- 
--#ifdef CONFIG_NFS_V4
--	if (mount_info.parsed->version == 4)
--		mntroot = nfs4_try_mount(flags, dev_name, &mount_info);
--	else
--#endif	/* CONFIG_NFS_V4 */
--		mntroot = nfs_try_mount(flags, dev_name, &mount_info, nfs_mod);
-+	mntroot = nfs_mod->rpc_ops->try_mount(flags, dev_name, &mount_info, nfs_mod);
- 
- 	put_nfs_version(nfs_mod);
--
- out:
- 	nfs_free_parsed_mount_data(mount_info.parsed);
- 	nfs_free_fhandle(mount_info.mntfh);
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 0e181c2..bc7415b 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1353,6 +1353,8 @@ struct nfs_renamedata {
- struct nfs_access_entry;
- struct nfs_client;
- struct rpc_timeout;
-+struct nfs_subversion;
-+struct nfs_mount_info;
- struct nfs_client_initdata;
- struct nfs_pageio_descriptor;
- 
-@@ -1370,6 +1372,8 @@ struct nfs_rpc_ops {
- 			    struct nfs_fsinfo *);
- 	struct vfsmount *(*submount) (struct nfs_server *, struct dentry *,
- 				      struct nfs_fh *, struct nfs_fattr *);
-+	struct dentry *(*try_mount) (int, const char *, struct nfs_mount_info *,
-+				     struct nfs_subversion *);
- 	int	(*getattr) (struct nfs_server *, struct nfs_fh *,
- 			    struct nfs_fattr *);
- 	int	(*setattr) (struct dentry *, struct nfs_fattr *,
--- 
-1.7.11.3
+That's a shame...
+I had originally intended "rpc.nfsd 0" to simple stop all threads and nothi=
+ng
+else.  Then you would be able to:
+   rpc.nfsd 0
+   exportfs -f
+   unmount
+   rpc.nfsd 16
 
+and have a nice fast race-free unmount.
+But commit e096bbc6488d3e49d476bf986d33752709361277 'fixed' that :-(
+
+I wonder if it can be resurrected ... maybe not worth the effort.
+
+
+The idea of a new interface to synchronise with all threads has potential a=
+nd
+doesn't need to be at the nfsd level - it could be in sunrpc.  Maybe it cou=
+ld
+be built into the current 'flush' interface.
+1/ iterate through all no-sleeping threads setting a flag an increasing a
+counter.
+2/ when a thread completes current request, if test_and_clear the flag, it
+atomic_dec_and_test the counter and then wakes up some wait_queue_head.
+3/ 'flush'ing thread waits on the waut_queue_head for the counter to be 0.
+
+If you don't hate it I could possibly even provide some code.
+
+NeilBrown
+
+
+--Sig_/XwVPX.tsEzHv8MZHZZgfoo7
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
+
+iQIVAwUBUBdoMTnsnt1WYoG5AQJ24Q//aByfzlxQCbfmS8OaBefcV5ZiDx5ed4Kf
+hlhYdYXB31ivHjBMnAoSoqTmL2A/XOciwWL97XFQrpSf8r+aKqFyOyDP2GaXx9C9
+EeX6FO69IFG9GbDlWRkvihUxDcBbQX8CT7F7Posdvj1szg4FZxe81lH4plSrVOA9
++wCBFNCz+UtadDSB5Zkum5WG8bjHWLzPI0DI23q8zdt6tI7Y5QVBFRfnfLLrK8vQ
+SNup23bjWrSa4IpK9M8+CI11+dKCTZwTQ75hFkcRi7EmnilkCxMpf1SJ1I5FT0ze
+0CdmUvQqwehjB7nAPUzlxeqrF3eAZ1s4wHCSW682M4uCyFk36y3TdJv/DKitgrrZ
+3nqDZwul9U6k33ETND7rtnkwaseYkQBjoxppbHk/nz+s7ijHWT6QAa4k7F/KGvoN
+iXTb5Ba0OB341tgaEVbjJfw0yHOF9qELUqVZfTqFi9/l/hvkKFmTAy+r+Y6coUrt
+uGGkb28zMoNQmZuAzPQ5NF5+vPrRNTfvWYycGYyJjuTLKG9JnkLamYFUDS+YfbpT
+jnPtEQ0xUVnFinsRspttUaKWSSr7gYJKugbSEgtNKDOMS5srvzENmso9rYEdX0Wr
+0/SV2dZ2vq8ij+oFey4321w1W9uAA5ksorwybT9y+GTUE/zr088ZVujjkYbEQ+SB
+5v+kdK/8x4A=
+=shcP
+-----END PGP SIGNATURE-----
+
+--Sig_/XwVPX.tsEzHv8MZHZZgfoo7--
