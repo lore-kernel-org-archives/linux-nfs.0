@@ -1,55 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vb0-f46.google.com ([209.85.212.46]:63884 "EHLO
-	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753315Ab2HABw0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Jul 2012 21:52:26 -0400
+Received: from mx2.netapp.com ([216.240.18.37]:15096 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751481Ab2GaS4J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jul 2012 14:56:09 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Idan Kedar <idank@tonian.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Benny Halevy <bhalevy@tonian.com>
+Subject: Re: [PATCH 3/3] pnfs: use size_t for LAYOUTGET response pages count
+Date: Tue, 31 Jul 2012 18:55:30 +0000
+Message-ID: <1343760928.5528.25.camel@lade.trondhjem.org>
+References: <1343037907-26457-1-git-send-email-idank@tonian.com>
+	 <1343037907-26457-4-git-send-email-idank@tonian.com>
+In-Reply-To: <1343037907-26457-4-git-send-email-idank@tonian.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <20120727065630.0a3c5870@tlielax.poochiereds.net>
-References: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
-	<CAKYAXd99VMYSX=k9eadB6MZvjQjQrOngOjUicjo+c9LtHvpz9w@mail.gmail.com>
-	<20120727065630.0a3c5870@tlielax.poochiereds.net>
-Date: Wed, 1 Aug 2012 10:52:25 +0900
-Message-ID: <CAKYAXd8Kbnp0paFt-FmaFiEu6KWX8jCyE7NZ-SHfEj4Ad5-ANA@mail.gmail.com>
-Subject: Re: [PATCH v4 00/17] vfs: add the ability to retry on ESTALE to
- several syscalls
-From: Namjae Jeon <linkinjeon@gmail.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        michael.brantley@deshaw.com, hch@infradead.org, miklos@szeredi.hu,
-        pstaubach@exagrid.com
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2012/7/27, Jeff Layton <jlayton@redhat.com>:
-> On Fri, 27 Jul 2012 11:15:23 +0900
-> Namjae Jeon <linkinjeon@gmail.com> wrote:
->
->> Hi Jeff.
->>
->> Which testcase(or test method) do I use to know improved point from
->> ESTALE error ?
->> I want to know before & after using testcase with this patch-set.
->>
->
-> It's a bit labor intensive, I'm afraid...
->
-> Attached is a cleaned-up copy of the test program that Peter wrote to
-> test his original patchset. The basic idea is to run this on both the
-> client and server at the same time so they race against each other. He
-> was able to run it overnight when testing with his patchset.
->
-> With this patchset, that doesn't work since we're only retrying the
-> lookup and call once. So, what I've been doing is modifying the program
-> so that it just runs one test at a time, and sniffing traffic to see
-> whether the lookups and calls are retried after an ESTALE return from
-> the server.
-Sorry for late response.
-I will check this patch with testcase you shared.
-Thanks Jeff.
-
->
-> --
-> Jeff Layton <jlayton@redhat.com>
->
+T24gTW9uLCAyMDEyLTA3LTIzIGF0IDEzOjA1ICswMzAwLCBJZGFuIEtlZGFyIHdyb3RlOg0KPiBT
+aWduZWQtb2ZmLWJ5OiBJZGFuIEtlZGFyIDxpZGFua0B0b25pYW4uY29tPg0KPiBTaWduZWQtb2Zm
+LWJ5OiBCZW5ueSBIYWxldnkgPGJoYWxldnlAdG9uaWFuLmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMv
+bmZzNHByb2MuYyB8ICAgMTAgKysrKystLS0tLQ0KPiAgMSBmaWxlcyBjaGFuZ2VkLCA1IGluc2Vy
+dGlvbnMoKyksIDUgZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRw
+cm9jLmMgYi9mcy9uZnMvbmZzNHByb2MuYw0KPiBpbmRleCAzZGI5Y2U3Li4wNTZjM2YwIDEwMDY0
+NA0KPiAtLS0gYS9mcy9uZnMvbmZzNHByb2MuYw0KPiArKysgYi9mcy9uZnMvbmZzNHByb2MuYw0K
+PiBAQCAtNjE2NCwxMyArNjE2NCwxMyBAQCBzdGF0aWMgdm9pZCBuZnM0X2xheW91dGdldF9kb25l
+KHN0cnVjdCBycGNfdGFzayAqdGFzaywgdm9pZCAqY2FsbGRhdGEpDQo+ICAJZHByaW50aygiPC0t
+ICVzXG4iLCBfX2Z1bmNfXyk7DQo+ICB9DQo+ICANCj4gLXN0YXRpYyB1MzIgbWF4X3Jlc3BvbnNl
+X3BhZ2VzKHN0cnVjdCBuZnNfc2VydmVyICpzZXJ2ZXIpDQo+ICtzdGF0aWMgc2l6ZV90IG1heF9y
+ZXNwb25zZV9wYWdlcyhzdHJ1Y3QgbmZzX3NlcnZlciAqc2VydmVyKQ0KPiAgew0KPiAgCXUzMiBt
+YXhfcmVzcF9zeiA9IHNlcnZlci0+bmZzX2NsaWVudC0+Y2xfc2Vzc2lvbi0+ZmNfYXR0cnMubWF4
+X3Jlc3Bfc3o7DQo+ICAJcmV0dXJuIG5mc19wYWdlX2FycmF5X2xlbigwLCBtYXhfcmVzcF9zeik7
+DQo+ICB9DQo+ICANCj4gLXN0YXRpYyB2b2lkIGZyZWVfcGFnZXZlYyhzdHJ1Y3QgcGFnZSAqKnBh
+Z2VzLCB1MzIgc2l6ZSkNCj4gK3N0YXRpYyB2b2lkIGZyZWVfcGFnZXZlYyhzdHJ1Y3QgcGFnZSAq
+KnBhZ2VzLCBzaXplX3Qgc2l6ZSkNCj4gIHsNCj4gIAlpbnQgaTsNCj4gIA0KPiBAQCAtNjE4NSw3
+ICs2MTg1LDcgQEAgc3RhdGljIHZvaWQgZnJlZV9wYWdldmVjKHN0cnVjdCBwYWdlICoqcGFnZXMs
+IHUzMiBzaXplKQ0KPiAgCWtmcmVlKHBhZ2VzKTsNCj4gIH0NCj4gIA0KPiAtc3RhdGljIHN0cnVj
+dCBwYWdlICoqYWxsb2NfcGFnZXZlYyh1MzIgc2l6ZSwgZ2ZwX3QgZ2ZwX2ZsYWdzKQ0KPiArc3Rh
+dGljIHN0cnVjdCBwYWdlICoqYWxsb2NfcGFnZXZlYyhzaXplX3Qgc2l6ZSwgZ2ZwX3QgZ2ZwX2Zs
+YWdzKQ0KPiAgew0KPiAgCXN0cnVjdCBwYWdlICoqcGFnZXM7DQo+ICAJaW50IGk7DQo+IEBAIC02
+MjEyLDcgKzYyMTIsNyBAQCBzdGF0aWMgdm9pZCBuZnM0X2xheW91dGdldF9yZWxlYXNlKHZvaWQg
+KmNhbGxkYXRhKQ0KPiAgew0KPiAgCXN0cnVjdCBuZnM0X2xheW91dGdldCAqbGdwID0gY2FsbGRh
+dGE7DQo+ICAJc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlciA9IE5GU19TRVJWRVIobGdwLT5hcmdz
+Lmlub2RlKTsNCj4gLQl1MzIgbWF4X3BhZ2VzID0gbWF4X3Jlc3BvbnNlX3BhZ2VzKHNlcnZlcik7
+DQo+ICsJc2l6ZV90IG1heF9wYWdlcyA9IG1heF9yZXNwb25zZV9wYWdlcyhzZXJ2ZXIpOw0KPiAg
+DQo+ICAJZHByaW50aygiLS0+ICVzXG4iLCBfX2Z1bmNfXyk7DQo+ICAJZnJlZV9wYWdldmVjKGxn
+cC0+YXJncy5sYXlvdXQucGFnZXMsIG1heF9wYWdlcyk7DQo+IEBAIC02MjMwLDcgKzYyMzAsNyBA
+QCBzdGF0aWMgY29uc3Qgc3RydWN0IHJwY19jYWxsX29wcyBuZnM0X2xheW91dGdldF9jYWxsX29w
+cyA9IHsNCj4gIHZvaWQgbmZzNF9wcm9jX2xheW91dGdldChzdHJ1Y3QgbmZzNF9sYXlvdXRnZXQg
+KmxncCwgZ2ZwX3QgZ2ZwX2ZsYWdzKQ0KPiAgew0KPiAgCXN0cnVjdCBuZnNfc2VydmVyICpzZXJ2
+ZXIgPSBORlNfU0VSVkVSKGxncC0+YXJncy5pbm9kZSk7DQo+IC0JdTMyIG1heF9wYWdlcyA9IG1h
+eF9yZXNwb25zZV9wYWdlcyhzZXJ2ZXIpOw0KPiArCXNpemVfdCBtYXhfcGFnZXMgPSBtYXhfcmVz
+cG9uc2VfcGFnZXMoc2VydmVyKTsNCj4gIAlzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2s7DQo+ICAJc3Ry
+dWN0IHJwY19tZXNzYWdlIG1zZyA9IHsNCj4gIAkJLnJwY19wcm9jID0gJm5mczRfcHJvY2VkdXJl
+c1tORlNQUk9DNF9DTE5UX0xBWU9VVEdFVF0sDQoNClRoZXJlIGlzIG5vIHJlYXNvbiB3aHkgeW91
+IGNhbid0IGZvbGQgdGhpcyBwYXRjaCBpbnRvIDEvMy4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QN
+CkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBu
+ZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
