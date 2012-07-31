@@ -1,87 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60627 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:35935 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752183Ab2GRVIb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Jul 2012 17:08:31 -0400
-Date: Wed, 18 Jul 2012 17:08:25 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jim Rees <rees@umich.edu>
-Cc: Sasha Levin <levinsasha928@gmail.com>, Trond.Myklebust@netapp.com,
-        davem@davemloft.net, davej@redhat.com, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] SUNRPC: Prevent kernel stack corruption on long values
- of flush
-Message-ID: <20120718210825.GA3145@fieldses.org>
-References: <1342476086-21638-1-git-send-email-levinsasha928@gmail.com>
- <20120718173913.GA1298@fieldses.org>
- <20120718200049.GA17964@umich.edu>
+	id S1751133Ab2GaOS5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jul 2012 10:18:57 -0400
+Message-ID: <5017E94E.2040508@netapp.com>
+Date: Tue, 31 Jul 2012 10:18:54 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120718200049.GA17964@umich.edu>
+To: Fengguang Wu <fengguang.wu@intel.com>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [nfs:devel 46/51] fs/nfs/write.c:1592:5: error: redefinition
+ of 'nfs_commit_inode'
+References: <20120731024328.GA10480@localhost> <4FA345DA4F4AE44899BD2B03EEEC2FA934BE82@SACEXCMBX04-PRD.hq.netapp.com> <5017D3FC.9010905@netapp.com> <1343739299.519.1.camel@lade.trondhjem.org> <5017D824.209@netapp.com> <5017DDDB.6060500@netapp.com> <1343741622.519.2.camel@lade.trondhjem.org> <5017E13F.4030909@netapp.com> <20120731135154.GA20221@localhost> <5017E3CA.8070502@netapp.com> <20120731141614.GA20628@localhost>
+In-Reply-To: <20120731141614.GA20628@localhost>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 18, 2012 at 04:00:49PM -0400, Jim Rees wrote:
-> J. Bruce Fields wrote:
+On 07/31/2012 10:16 AM, Fengguang Wu wrote:
+> On Tue, Jul 31, 2012 at 09:55:22AM -0400, Bryan Schumaker wrote:
+>> I've got one at:
+>> git://git.linux-nfs.org/projects/bjschuma/linux-nfs.git.  I don't
+>> always do a good job keeping it up-to-date, but I can try to get
+>> into the habit of putting my patches there before submitting them.
 > 
->   On Tue, Jul 17, 2012 at 12:01:26AM +0200, Sasha Levin wrote:
->   > The buffer size in read_flush() is too small for the longest possible values
->   > for it. This can lead to a kernel stack corruption:
->   
->   Thanks!
->   
->   > 
->   > diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
->   > index 2afd2a8..f86d95e 100644
->   > --- a/net/sunrpc/cache.c
->   > +++ b/net/sunrpc/cache.c
->   > @@ -1409,11 +1409,11 @@ static ssize_t read_flush(struct file *file, char __user *buf,
->   >  			  size_t count, loff_t *ppos,
->   >  			  struct cache_detail *cd)
->   >  {
->   > -	char tbuf[20];
->   > +	char tbuf[22];
->   
->   I wonder how common this sort of calculation is in the kernel?  It might
->   provide some peace of mind to be able to write this something like
->   
->   	char tbuf[MAXLEN_BASE10_UL + 2]  /* + 2 for final "\n\0" */
+> Tree added :)  By default I'll test every branch of the monitored
+> trees. You may ask me to permanently blacklist/whitelist some of your
+> branches. Or, if a topic branch is currently in heavy development and
+> will become testable eventually, you may temporarily carry a line
 > 
-> You could use something like:
+> Dont-Auto-Build
 > 
->     char tbuf[sizeof (unsigned long) * 24 / 10 + 1 + 2]; /* + 2 for final "\n\0" */
-> 
-> since there are roughly 10 bits for every 3 decimal digits.
+> in any of the branch's commits (in the changelog). Then the script
+> will skip that branch automatically.
 
-So we could do something like this.  OK, I'm not sure I care enough.
+Sounds good.  I'll update it as I work on things!
 
---b.
+- Bryan
 
-diff --git a/include/linux/string.h b/include/linux/string.h
-index e033564..ed34180 100644
---- a/include/linux/string.h
-+++ b/include/linux/string.h
-@@ -126,6 +126,10 @@ extern void argv_free(char **argv);
- extern bool sysfs_streq(const char *s1, const char *s2);
- extern int strtobool(const char *s, bool *res);
- 
-+/* length of the decimal representation of an unsigned integer.  Just an
-+ * approximation, but it's right for types of size 1 to 36 bytes: */
-+#define base10len(i) (sizeof(i) * 24 / 10 + 1)
-+
- #ifdef CONFIG_BINARY_PRINTF
- int vbin_printf(u32 *bin_buf, size_t size, const char *fmt, va_list args);
- int bstr_printf(char *buf, size_t size, const char *fmt, const u32 *bin_buf);
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 2afd2a8..1dcd2b3 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -1409,7 +1409,7 @@ static ssize_t read_flush(struct file *file, char __user *buf,
- 			  size_t count, loff_t *ppos,
- 			  struct cache_detail *cd)
- {
--	char tbuf[20];
-+	char tbuf[base10len(unsigned long) + 2];
- 	unsigned long p = *ppos;
- 	size_t len;
- 
+> 
+> Thanks,
+> Fengguang
+> 
+>> On 07/31/2012 09:51 AM, Fengguang Wu wrote:
+>>> Bryan,
+>>>
+>>> Do you have a git tree that I can run tests upon? That would help
+>>> prevent problems from sneaking into Trond's tree, and hence mess up
+>>> the maintainer's tree and waste everyone's time.
+>>>
+>>> Thanks,
+>>> Fengguang
+>>>
+
