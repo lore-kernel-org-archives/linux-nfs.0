@@ -1,122 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from hq.ebuddy.com ([194.151.176.130]:20710 "EHLO hq.ebuddy.com"
+Received: from mx2.netapp.com ([216.240.18.37]:56835 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932764Ab2GYRBW convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jul 2012 13:01:22 -0400
-From: Taylan Develioglu <tdevelioglu@ebuddy.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond@netapp.com>
-Date: Wed, 25 Jul 2012 19:01:14 +0200
-Subject: RE: rpc_exit_task warning.
-Message-ID: <FF1DF58D04F11D4291D09795D1A4EF16180E4C4B0C@SRV-MAIL>
-References: <FF1DF58D04F11D4291D09795D1A4EF16180E4C4AD8@SRV-MAIL>
- <20120725165215.GC16617@fieldses.org>
-In-Reply-To: <20120725165215.GC16617@fieldses.org>
-Content-Type: text/plain; charset="iso-8859-1"
+	id S1754022Ab2GaOsy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jul 2012 10:48:54 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: David Howells <dhowells@redhat.com>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "sct@redhat.com" <sct@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "steved@redhat.com" <steved@redhat.com>,
+        "jlayton@redhat.com" <jlayton@redhat.com>
+Subject: Re: [PATCH 1/2] NFS: Fix a number of bugs in the idmapper
+Date: Tue, 31 Jul 2012 14:48:38 +0000
+Message-ID: <1343746117.5528.3.camel@lade.trondhjem.org>
+References: <20120731144234.6664.85664.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20120731144234.6664.85664.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Yes, but the previous server was using kernel version 2.6.39, so it looks like this is a regression.
-
-------------------------------------------------------------------------------------------------------------------
-
- 
-TAYLAN DEVELIOGLU
-Operations Manager
-Email: tdevelioglu@ebuddy.com
-mobile: +31 (0) 62 122 3115
-
-eBuddy BV
-Keizersgracht 585
-1017 DR Amsterdam
-The Netherlands
-www.ebuddy.com
-
-
-------------------------------------------------------------------------------------------------------------------
-
-
-
------Original Message-----
-From: J. Bruce Fields [mailto:bfields@fieldses.org] 
-Sent: Wednesday, July 25, 2012 18:52
-To: Taylan Develioglu
-Cc: linux-nfs@vger.kernel.org; Trond Myklebust
-Subject: Re: rpc_exit_task warning.
-
-
-On Tue, Jul 24, 2012 at 08:58:43PM +0200, Taylan Develioglu wrote:
-> We just deployed a new nfs server and have about a hundred clients connected but are getting repeated kernel warnings on the server:
-
-Did this replace an old server that didn't see these warnings?
-
-> 
-> Clients and servers run 3.2.18 and 3.2.20 respectively. We do not use any security options.
-> 
-> I don't really have time to debug this, but I felt I should report it.
-> 
-> - Client
->   ii  libevent-1.4-2                      1.4.13-stable-1
->   ii  util-linux                          2.17.2-9
->   ii  linux-image-3.2.0-0.bpo.2-amd64     3.2.18-1~bpo60+1
->   ii  nfs-common                          1:1.2.2-4squeeze2
-> 
-> - Server
->   ii  libevent-1.4-2                      1.4.13-stable-1
->   ii  util-linux                          2.17.2-9
->   ii  linux-image-3.2.0-0.bpo.2-amd64     3.2.20-1~bpo60+1
->   ii  libnfsidmap2                        0.24-1~bpo60+1               
->   ii  nfs-common                          1:1.2.5-4~bpo60+1            
->   ii  nfs-kernel-server                   1:1.2.5-4~bpo60+1            
-> 
-> exportfs -v
-> /var/www/pictures
->                 
-> x.x.x.x/22(rw,async,wdelay,root_squash,all_squash,no_subtree_check,ano
-> nuid=33,anongid=33)
-> /var/www/pictures
->                 
-> 10.40.0.0/23(rw,async,wdelay,root_squash,all_squash,no_subtree_check,a
-> nonuid=33,anongid=33)
-> 
-> ----------------------------------------------------------------------
-> ------------------ [ 1913.662849] WARNING: at 
-> /build/buildd-linux_3.2.20-1~bpo60+1-amd64-tQMw4f/linux-3.2.20/net/sun
-> rpc/sched.c:630 rpc_exit_task+0x40/0x7a [sunrpc]()
-
-That's a warning from rpc_task that both tk_action and RPC_TASK_KILLED were set on exit from rpc_calL_done.
-
-Couldn't that happen if there's a race between rpc_killall and rpc_call_done trying to restart the task?  rpc_restart_call{_prepare} check RPC_TASK_KILLED before setting the action, but does anything prevent the flag being set after that check?
-
---b.
-
-> [ 1913.662851] Hardware name: X8STi
-> [ 1913.662852] Modules linked in: nfsd nfs lockd fscache auth_rpcgss nfs_acl sunrpc hmac drbd lru_cache cn ipmi_si ipmi_devintf ipmi_msghandler loop tpm_tis tpm parport_pc i2c_i801 i7core_edac i2c_core snd_pcm snd_timer snd ioatdma soundcore tpm_bios snd_page_alloc parport edac_core dca pcspkr psmouse processor serio_raw thermal_sys evdev joydev button ext4 mbcache jbd2 crc16 dm_mod sg sr_mod cdrom ses enclosure sd_mod crc_t10dif usb_storage usbhid hid uas uhci_hcd mptsas mptscsih mptbase scsi_transport_sas ahci libahci ehci_hcd libata usbcore aacraid usb_common scsi_mod e1000e [last unloaded: scsi_wait_scan]
-> [ 1913.662902] Pid: 11, comm: kworker/0:1 Tainted: G        W    3.2.0-0.bpo.2-amd64 #1
-> [ 1913.662904] Call Trace:
-> [ 1913.662909]  [<ffffffff810498ac>] ? warn_slowpath_common+0x78/0x8c 
-> [ 1913.662916]  [<ffffffffa0327871>] ? rpc_exit_task+0x40/0x7a 
-> [sunrpc] [ 1913.662922]  [<ffffffffa0327ddb>] ? 
-> __rpc_execute+0x71/0x23f [sunrpc] [ 1913.662928]  [<ffffffffa0327fe1>] 
-> ? rpc_execute+0x38/0x38 [sunrpc] [ 1913.662981]  [<ffffffff8105f96c>] 
-> ? process_one_work+0x1cc/0x2ea [ 1913.662985]  [<ffffffff8105fbb7>] ? 
-> worker_thread+0x12d/0x247 [ 1913.662987]  [<ffffffff8105fa8a>] ? 
-> process_one_work+0x2ea/0x2ea [ 1913.662990]  [<ffffffff8105fa8a>] ? 
-> process_one_work+0x2ea/0x2ea [ 1913.662993]  [<ffffffff810633c5>] ? 
-> kthread+0x7a/0x82 [ 1913.662998]  [<ffffffff8136ca74>] ? 
-> kernel_thread_helper+0x4/0x10 [ 1913.663000]  [<ffffffff8106334b>] ? 
-> kthread_worker_fn+0x147/0x147 [ 1913.663003]  [<ffffffff8136ca70>] ? 
-> gs_change+0x13/0x13 [ 1913.663005] ---[ end trace 7cee9f1fd80fe6ac 
-> ]---
-> ----------------------------------------------------------------------
-> ------------------
-> 
-> Regards,
-> 
-> Taylan
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" 
-> in the body of a message to majordomo@vger.kernel.org More majordomo 
-> info at  http://vger.kernel.org/majordomo-info.html
+T24gVHVlLCAyMDEyLTA3LTMxIGF0IDE1OjQyICswMTAwLCBEYXZpZCBIb3dlbGxzIHdyb3RlOg0K
+PiBGaXggYSBudW1iZXIgb2YgYnVncyBpbiB0aGUgTkZTIGlkbWFwcGVyIGNvZGU6DQo+IA0KPiAg
+KDEpIE9ubHkgcmVnaXN0ZXJlZCBrZXkgdHlwZXMgY2FuIGJlIHBhc3NlZCB0byB0aGUgY29yZSBr
+ZXlzIGNvZGUsIHNvDQo+ICAgICAgcmVnaXN0ZXIgdGhlIGxlZ2FjeSBpZG1hcHBlciBrZXkgdHlw
+ZS4NCj4gDQo+ICAgICAgVGhpcyBpcyBhIHJlcXVpcmVtZW50IGJlY2F1c2UgdGhlIHVucmVnaXN0
+ZXIgZnVuY3Rpb24gY2xlYW5zIHVwIGtleXMNCj4gICAgICBiZWxvbmdpbmcgdG8gdGhhdCBrZXkg
+dHlwZSBzbyB0aGF0IHRoZXJlIGFyZW4ndCBkYW5nbGluZyBwb2ludGVycyB0byB0aGUNCj4gICAg
+ICBtb2R1bGUgbGVmdCBiZWhpbmQgLSBpbmNsdWRpbmcgdGhlIGtleS0+dHlwZSBwb2ludGVyLg0K
+PiANCj4gICgyKSBSZW5hbWUgdGhlIGxlZ2FjeSBrZXkgdHlwZS4gIFlvdSBjYW4ndCBoYXZlIHR3
+byBrZXkgdHlwZXMgd2l0aCB0aGUgc2FtZQ0KPiAgICAgIG5hbWUsIGFuZCAoMSkgd291bGQgb3Ro
+ZXJ3aXNlIHJlcXVpcmUgdGhhdC4NCj4gDQo+ICAoMykgY29tcGxldGVfcmVxdWVzdF9rZXkoKSBt
+dXN0IGJlIGNhbGxlZCBpbiB0aGUgZXJyb3IgcGF0aCBvZg0KPiAgICAgIG5mc19pZG1hcF9sZWdh
+Y3lfdXBjYWxsKCkuDQo+IA0KPiAgKDQpIFRoZXJlIGlzIG9uZSBpZG1hcCBzdHJ1Y3QgZm9yIGVh
+Y2ggbmZzX2NsaWVudCBzdHJ1Y3QuICBUaGlzIG1lYW5zIHRoYXQNCj4gICAgICBpZG1hcC0+aWRt
+YXBfa2V5X2NvbnMgaXMgc2hhcmVkIHdpdGhvdXQgdGhlIHVzZSBvZiBhIGxvY2suICBUaGlzIGlz
+IGENCj4gICAgICBwcm9ibGVtIGJlY2F1c2Uga2V5X2luc3RhbnRpYXRlX2FuZF9saW5rKCkgLSBh
+cyBjYWxsZWQgaW5kaXJlY3RseSBieQ0KPiAgICAgIGlkbWFwX3BpcGVfZG93bmNhbGwoKSAtIHJl
+bGVhc2VzIGFueW9uZSB3YWl0aW5nIGZvciB0aGUga2V5IHRvIGJlDQo+ICAgICAgaW5zdGFudGlh
+dGVkLg0KPiANCj4gICAgICBXaGF0IGhhcHBlbnMgaXMgdGhhdCBpZG1hcF9waXBlX2Rvd25jYWxs
+KCkgcnVubmluZyBpbiB0aGUgcnBjLmlkbWFwZA0KPiAgICAgIHRocmVhZCwgcmVsZWFzZXMgdGhl
+IE5GUyBmaWxlc3lzdGVtIGluIHdoYXRldmVyIHRocmVhZCB0aGF0IGlzIHJ1bm5pbmcgaW4NCj4g
+ICAgICB0byBjb250aW51ZS4gIFRoaXMgbWF5IHRoZW4gbWFrZSBhbm90aGVyIGlkbWFwcGVyIGNh
+bGwsIG92ZXJ3cml0aW5nDQo+ICAgICAgaWRtYXBfa2V5X2NvbnMgYmVmb3JlIGlkbWFwX3BpcGVf
+ZG93bmNhbGwoKSBnZXRzIHRoZSBjaGFuY2UgdG8gY2FsbA0KPiAgICAgIGNvbXBsZXRlX3JlcXVl
+c3Rfa2V5KCkuDQo+IA0KPiAgICAgIEkgKnRoaW5rKiB0aGF0IHJlYWRpbmcgaWRtYXBfa2V5X2Nv
+bnMgb25seSBvbmNlLCBiZWZvcmUNCj4gICAgICBrZXlfaW5zdGFudGlhdGVfYW5kX2xpbmsoKSBp
+cyBjYWxsZWQsIGFuZCB0aGVuIGNhY2hpbmcgdGhlIHJlc3VsdCBpbiBhDQo+ICAgICAgdmFyaWFi
+bGUgaXMgc3VmZmljaWVudC4NCj4gDQo+IEJ1ZyAoNCkgaXMgdGhlIGNhdXNlIG9mOg0KPiANCj4g
+QlVHOiB1bmFibGUgdG8gaGFuZGxlIGtlcm5lbCBOVUxMIHBvaW50ZXIgZGVyZWZlcmVuY2UgYXQg
+ICAgICAgICAgIChudWxsKQ0KPiBJUDogWzwgICAgICAgICAgKG51bGwpPl0gICAgICAgICAgIChu
+dWxsKQ0KPiBQR0QgMA0KPiBPb3BzOiAwMDEwIFsjMV0gU01QDQo+IENQVSAxDQo+IE1vZHVsZXMg
+bGlua2VkIGluOiBwcGRldiBwYXJwb3J0X3BjIGxwIHBhcnBvcnQgaXA2dGFibGVfZmlsdGVyIGlw
+Nl90YWJsZXMgZWJ0YWJsZV9uYXQgZWJ0YWJsZXMgaXB0X01BU1FVRVJBREUgaXB0YWJsZV9uYXQg
+bmZfbmF0IG5mX2Nvbm50cmFja19pcHY0IG5mX2RlZnJhZ19pcHY0IHh0X3N0YXRlIG5mX2Nvbm50
+cmFjayBuZnMgZnNjYWNoZSB4dF9DSEVDS1NVTSBhdXRoX3JwY2dzcyBpcHRhYmxlX21hbmdsZSBu
+ZnNfYWNsIGJyaWRnZSBzdHAgbGxjIGxvY2tkIGJlMmlzY3NpIGlzY3NpX2Jvb3Rfc3lzZnMgYm54
+MmkgY25pYyB1aW8gY3hnYjRpIGN4Z2I0IGN4Z2IzaSBsaWJjeGdiaSBjeGdiMyBtZGlvIGliX2lz
+ZXIgcmRtYV9jbSBpYl9jbSBpd19jbSBpYl9zYSBpYl9tYWQgaWJfY29yZSBpYl9hZGRyIGlzY3Np
+X3RjcCBsaWJpc2NzaV90Y3AgbGliaXNjc2kgc2NzaV90cmFuc3BvcnRfaXNjc2kgc25kX2hkYV9j
+b2RlY19yZWFsdGVrIHNuZF91c2JfYXVkaW8gc25kX2hkYV9pbnRlbCBzbmRfaGRhX2NvZGVjIHNu
+ZF9zZXEgc25kX3BjbSBzbmRfaHdkZXAgc25kX3VzYm1pZGlfbGliIHNuZF9yYXdtaWRpIHNuZF90
+aW1lciB1dmN2aWRlbyB2aWRlb2J1ZjJfY29yZSB2aWRlb2RldiBtZWRpYSB2aWRlb2J1ZjJfdm1h
+bGxvYyBzbmRfc2VxX2RldmljZSB2aWRlb2J1ZjJfbWVtb3BzIGUxMDAwZSB2aG9zdF9uZXQgaVRD
+T193ZHQgam95ZGV2IGNvcmV0ZW1wIHNuZCBzb3VuZGNvcmUgbWFjdnRhcCBtYWN2bGFuIGkyY19p
+ODAxIHNuZF9wYWdlX2FsbG9jIHR1biBpVENPX3ZlbmRvcl9zdXBwb3J0IG1pY3JvY29kZSBrdm1f
+aW50ZWwga3ZtIHN1bnJwYyBoaWRfbG9naXRlY2hfZGogdXNiX3N0b3JhZ2UgaTkxNSBkcm1fa21z
+X2hlbHBlciBkcm0gaTJjX2FsZ29fYml0IGkyY19jb3JlIHZpZGVvIFtsYXN0IHVubG9hZGVkOiBz
+Y3NpX3dhaXRfc2Nhbl0NCj4gUGlkOiAxMjI5LCBjb21tOiBycGMuaWRtYXBkIE5vdCB0YWludGVk
+IDMuNC4yLTEuZmMxNi54ODZfNjQgIzEgR2F0ZXdheSBEWDQ3MTAtVUI4MDFBL0czM00wNUcxDQo+
+IFJJUDogMDAxMDpbPDAwMDAwMDAwMDAwMDAwMDA+XSAgWzwgICAgICAgICAgKG51bGwpPl0gICAg
+ICAgICAgIChudWxsKQ0KPiBSU1A6IDAwMTg6ZmZmZjg4MDFhMzY0NWQ0MCAgRUZMQUdTOiAwMDAx
+MDI0Ng0KPiBSQVg6IGZmZmY4ODAwNzc3MDdlMzAgUkJYOiBmZmZmODgwMDc3NzA3ZjUwIFJDWDog
+ZmZmZjg4MDFhMThjY2Q4MA0KPiBSRFg6IDAwMDAwMDAwMDAwMDAwMDYgUlNJOiBmZmZmODgwMWEz
+NjQ1ZTc1IFJESTogZmZmZjg4MDA3NzcwN2Y1MA0KPiBSQlA6IGZmZmY4ODAxYTM2NDVkODggUjA4
+OiBmZmZmODgwMWE0MzBmOWMwIFIwOTogZmZmZjg4MDFhMzY0NWRiMA0KPiBSMTA6IDAwMDAwMDAw
+MDAwMDAwMGEgUjExOiAwMDAwMDAwMDAwMDAwMjQ2IFIxMjogZmZmZjg4MDFhMThjY2Q4MA0KPiBS
+MTM6IGZmZmY4ODAxYTM2NDVlNzUgUjE0OiBmZmZmODgwMWE0MzBmOWMwIFIxNTogMDAwMDAwMDAw
+MDAwMDAwNg0KPiBGUzogIDAwMDA3ZmI2ZmI1MWE3MDAoMDAwMCkgR1M6ZmZmZjg4MDFhZmM4MDAw
+MCgwMDAwKSBrbmxHUzowMDAwMDAwMDAwMDAwMDAwDQo+IENTOiAgMDAxMCBEUzogMDAwMCBFUzog
+MDAwMCBDUjA6IDAwMDAwMDAwODAwNTAwMzMNCj4gQ1IyOiAwMDAwMDAwMDAwMDAwMDAwIENSMzog
+MDAwMDAwMDFhNDliMDAwMCBDUjQ6IDAwMDAwMDAwMDAwMDI3ZTANCj4gRFIwOiAwMDAwMDAwMDAw
+MDAwMDAwIERSMTogMDAwMDAwMDAwMDAwMDAwMCBEUjI6IDAwMDAwMDAwMDAwMDAwMDANCj4gRFIz
+OiAwMDAwMDAwMDAwMDAwMDAwIERSNjogMDAwMDAwMDBmZmZmMGZmMCBEUjc6IDAwMDAwMDAwMDAw
+MDA0MDANCj4gUHJvY2VzcyBycGMuaWRtYXBkIChwaWQ6IDEyMjksIHRocmVhZGluZm8gZmZmZjg4
+MDFhMzY0NDAwMCwgdGFzayBmZmZmODgwMWEzYmY5NzEwKQ0KPiBTdGFjazoNCj4gIGZmZmZmZmZm
+ODEyNjA4NzggZmZmZjg4MDFhMzY0NWRiMCBmZmZmODgwMWEzNjQ1ZGIwIGZmZmY4ODAwNzc3MDdh
+OTANCj4gIGZmZmY4ODAwNzc3MDdmNTAgZmZmZjg4MDFhMThjY2Q4MCAwMDAwMDAwMDAwMDAwMDA2
+IGZmZmY4ODAxYTM2NDVlNzUNCj4gIGZmZmY4ODAxYTQzMGY5YzAgZmZmZjg4MDFhMzY0NWRkOCBm
+ZmZmZmZmZjgxMjYwOTgzIGZmZmY4ODAxYTM2NDVkZTgNCj4gQ2FsbCBUcmFjZToNCj4gIFs8ZmZm
+ZmZmZmY4MTI2MDg3OD5dID8gX19rZXlfaW5zdGFudGlhdGVfYW5kX2xpbmsrMHg1OC8weDEwMA0K
+PiAgWzxmZmZmZmZmZjgxMjYwOTgzPl0ga2V5X2luc3RhbnRpYXRlX2FuZF9saW5rKzB4NjMvMHhh
+MA0KPiAgWzxmZmZmZmZmZmEwNTcwNjJiPl0gaWRtYXBfcGlwZV9kb3duY2FsbCsweDFjYi8weDFl
+MCBbbmZzXQ0KPiAgWzxmZmZmZmZmZmEwMTA3ZjU3Pl0gcnBjX3BpcGVfd3JpdGUrMHg2Ny8weDkw
+IFtzdW5ycGNdDQo+ICBbPGZmZmZmZmZmODExN2Y4MzM+XSB2ZnNfd3JpdGUrMHhiMy8weDE4MA0K
+PiAgWzxmZmZmZmZmZjgxMTdmYjVhPl0gc3lzX3dyaXRlKzB4NGEvMHg5MA0KPiAgWzxmZmZmZmZm
+ZjgxNjAwMzI5Pl0gc3lzdGVtX2NhbGxfZmFzdHBhdGgrMHgxNi8weDFiDQo+IENvZGU6ICBCYWQg
+UklQIHZhbHVlLg0KPiBSSVAgIFs8ICAgICAgICAgIChudWxsKT5dICAgICAgICAgICAobnVsbCkN
+Cj4gIFJTUCA8ZmZmZjg4MDFhMzY0NWQ0MD4NCj4gQ1IyOiAwMDAwMDAwMDAwMDAwMDAwDQo+IA0K
+PiBTaWduZWQtb2ZmLWJ5OiBEYXZpZCBIb3dlbGxzIDxkaG93ZWxsc0ByZWRoYXQuY29tPg0KPiBS
+ZXZpZXdlZC1ieTogU3RldmUgRGlja3NvbiA8c3RldmVkQHJlZGhhdC5jb20+DQo+IC0tLQ0KDQpU
+aGlzIHBhdGNoIHNob3VsZCBhbHJlYWR5IGJlIHByZXNlbnQgaW4gbmZzLWZvci1uZXh0IGFzIG9m
+IHllc3RlcmRheS4NCihJJ3ZlIGJlZW4gb24gYSAyIHdlZWsgdmFjYXRpb24pLg0KDQotLSANClRy
+b25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJv
+bmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
