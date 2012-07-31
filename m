@@ -1,54 +1,162 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:35135 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:28969 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755552Ab2GKTB0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Jul 2012 15:01:26 -0400
-Date: Wed, 11 Jul 2012 15:00:39 -0400
+	id S1752368Ab2GaSfb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jul 2012 14:35:31 -0400
+Date: Tue, 31 Jul 2012 14:35:28 -0400
 From: Jeff Layton <jlayton@redhat.com>
-To: "Steven J. Magnani" <steve@digidescorp.com>
-Cc: viro@ZenIV.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        michael.brantley@deshaw.com, hch@infradead.org, miklos@szeredi.hu,
-        pstaubach@exagrid.com
-Subject: Re: [PATCH v3 00/17] vfs: add the ability to retry on ESTALE to
- several syscalls
-Message-ID: <20120711150039.08845e85@tlielax.poochiereds.net>
-In-Reply-To: <1342032143.2190.22.camel@iscandar.digidescorp.com>
-References: <1340996280-27123-1-git-send-email-jlayton@redhat.com>
-	<1342032143.2190.22.camel@iscandar.digidescorp.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, makc@redhat.com
+Subject: read/write performance regression due to better v4 lock state
+ tracking
+Message-ID: <20120731143528.29ffe69a@tlielax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: multipart/mixed; boundary="MP_/AECECls4/y4T_QiCat_dW__"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 11 Jul 2012 13:42:23 -0500
-"Steven J. Magnani" <steve@digidescorp.com> wrote:
+--MP_/AECECls4/y4T_QiCat_dW__
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-> Jeff -
-> 
-> On Fri, 2012-06-29 at 14:57 -0400, Jeff Layton wrote: 
-> > This patchset is the third version of the patchset to add ESTALE
-> > handling to several syscalls. The basic idea is to allow the client to
-> > gracefully retry the lookup and call when a NFS server returns ESTALE.
-> 
-> I exercised this using 3.5-rc5 against a memory-starved server that
-> exports a FAT-backed filesystem. Where normally I see lots of ESTALE
-> errors due to inode eviction, with this patchset I see none. And, the
-> performance is much better than the only other way I know to eliminate
-> the errors, which is to mount with 'lookupcache=none'.
-> 
-> It's not an exhaustive test by any means, just a data point for you. 
-> Thanks!
-> 
-> Lightly-tested-by: Steve Magnani <steve@digidescorp.com>
+We've gotten some recent bug reports about a performance regression in
+recent RHEL kernels that have gotten the backported RELEASE_LOCKOWNER
+changes (commit f11ac8db5 in particular). I've also been able to
+reproduce this in recent mainline kernels too.
 
-Awesome -- thanks for testing it.
+Most of the reports concern dump(8), which apparently forks and has
+multiple processes doing I/O to the same area of a file. There's no
+fcntl locking involved.
 
-Yeah "lookupcache=none" has been the standard answer for people
-suffering from ESTALE problems, but the perf hit can be quite nasty.
-Avoiding that is one of the main drivers for handling ESTALE this way.
+Max Matveev did some analysis of the problem and wrote a reproducer for
+it (attached). Simply run this on a current kernel and you'll see a
+bunch of FILE_SYNC page-sized writes go out onto the wire. Older
+kernels run this program much faster.
 
-With luck, we'll see at least some of this set go in for 3.6.
+He discovered that the problem is primarily due to the bottom two
+conditions in nfs_flush_incompatible that were added in commit
+f11ac8db5:
 
+ do_flush = req->wb_page != page || req->wb_context != ctx ||
+            req->wb_lock_context->lockowner != current->files ||
+            req->wb_lock_context->pid != current->tgid;
+
+Because it's doing I/O from different tasks to the same page, those
+pages all get flushed out with FILE_SYNC writes. Previously they were
+not considered incompatible and no flush was required. It's important
+to note that this is even the case on a v3 mount, which shouldn't have
+any issue with different lockowners.
+
+The following patch is a proof-of-concept that corrects the problem,
+but it's more of a hack than a real fix. Consider it a starting point
+for discussion. What would be preferable is a real fix that could allow
+v4 to perform better in this situation too, but I'm unclear on how best
+to do that.
+
+Perhaps we could look somehow at whether there were any fcntl locks
+active and skip those two checks if not?
+
+Thoughts?
+
+--------------------------[snip]--------------------------
+
+[PATCH] nfs: allow coalescing of requests from different lockowners for v2/3 mounts
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/pagelist.c | 12 ++++++++----
+ fs/nfs/write.c    |  4 ++--
+ 2 files changed, 10 insertions(+), 6 deletions(-)
+
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index aed913c..754968b 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -286,16 +286,20 @@ static bool nfs_can_coalesce_requests(struct nfs_page *prev,
+ {
+ 	if (req->wb_context->cred != prev->wb_context->cred)
+ 		return false;
+-	if (req->wb_lock_context->lockowner != prev->wb_lock_context->lockowner)
+-		return false;
+-	if (req->wb_context->state != prev->wb_context->state)
+-		return false;
+ 	if (req->wb_pgbase != 0)
+ 		return false;
+ 	if (prev->wb_pgbase + prev->wb_bytes != PAGE_CACHE_SIZE)
+ 		return false;
+ 	if (req_offset(req) != req_offset(prev) + prev->wb_bytes)
+ 		return false;
++	/* no need to do following checks if this is not stateful mount */
++	if (!req->wb_context->state)
++		goto out;
++	if (req->wb_context->state != prev->wb_context->state)
++		return false;
++	if (req->wb_lock_context->lockowner != prev->wb_lock_context->lockowner)
++		return false;
++out:
+ 	return pgio->pg_ops->pg_test(pgio, prev, req);
+ }
+ 
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 4d6861c..0b1d73f 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -836,8 +836,8 @@ int nfs_flush_incompatible(struct file *file, struct page *page)
+ 		if (req == NULL)
+ 			return 0;
+ 		do_flush = req->wb_page != page || req->wb_context != ctx ||
+-			req->wb_lock_context->lockowner != current->files ||
+-			req->wb_lock_context->pid != current->tgid;
++			(ctx->state && (req->wb_lock_context->lockowner != current->files ||
++			req->wb_lock_context->pid != current->tgid));
+ 		nfs_release_request(req);
+ 		if (!do_flush)
+ 			return 0;
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.11.2
+
+
+--MP_/AECECls4/y4T_QiCat_dW__
+Content-Type: text/x-csrc
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename=forkwrite.c
+
+#include <stdio.h>
+#include <fcntl.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
+int main(int ac, char *av[])
+{
+	int f = open(av[1], O_WRONLY|O_TRUNC|O_CREAT, 644);
+	char buf[10240];
+	int i;
+	int pid = 0;
+	int status;
+
+	if (f < 0) {
+		perror(av[1]);
+		return 1;
+	}
+
+	pid = fork();
+
+	for (i=0; i < 1000; i++) {
+		memset(buf, i, sizeof(buf));
+		if (write(f, buf, sizeof(buf)) != sizeof(buf)) {
+			perror("write failed");
+			return 1;
+		}
+	}
+	if (pid) 
+		waitpid(pid, &status, 0);
+
+	close(f);
+	return 0;
+}
+
+
+--MP_/AECECls4/y4T_QiCat_dW__--
