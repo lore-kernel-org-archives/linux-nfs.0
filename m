@@ -1,110 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:37282 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752074Ab2GIVqc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jul 2012 17:46:32 -0400
-Subject: Re: [PATCH 03/14] NFS: State reclaim clears OPEN and LOCK state
-Mime-Version: 1.0 (Apple Message framework v1278)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1341869463.15267.47.camel@lade.trondhjem.org>
-Date: Mon, 9 Jul 2012 17:45:28 -0400
-Cc: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <D8571F96-7A6A-47B7-A63F-EF5E5F330193@oracle.com>
-References: <20120709153355.1604.14102.stgit@degas.1015granger.net> <20120709154409.1604.59004.stgit@degas.1015granger.net> <1341864200.15267.15.camel@lade.trondhjem.org> <773D0923-FC7B-4CE9-8EDE-46BC18E9A49C@oracle.com> <79BB481E-52C5-4194-AA3C-FFA81D0FF456@oracle.com> <1341866138.15267.29.camel@lade.trondhjem.org> <AD28B46C-23C1-4BCB-ABB6-FDE859756B6F@oracle.com> <1341869463.15267.47.camel@lade.trondhjem.org>
+Received: from mx1.redhat.com ([209.132.183.28]:54272 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753497Ab2GaPF3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jul 2012 11:05:29 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <1343746464.5528.7.camel@lade.trondhjem.org>
+References: <1343746464.5528.7.camel@lade.trondhjem.org> <20120731144234.6664.85664.stgit@warthog.procyon.org.uk> <20120731144245.6664.49160.stgit@warthog.procyon.org.uk>
 To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: dhowells@redhat.com, "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "sct@redhat.com" <sct@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "steved@redhat.com" <steved@redhat.com>,
+        "jlayton@redhat.com" <jlayton@redhat.com>
+Subject: Re: [PATCH 2/2] NFS: Combine the idmapper key types
+Date: Tue, 31 Jul 2012 16:05:23 +0100
+Message-ID: <7142.1343747123@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Myklebust, Trond <Trond.Myklebust@netapp.com> wrote:
 
-On Jul 9, 2012, at 5:31 PM, Myklebust, Trond wrote:
-
-> On Mon, 2012-07-09 at 16:37 -0400, Chuck Lever wrote:
->> On Jul 9, 2012, at 4:35 PM, Myklebust, Trond wrote:
->> 
->>> On Mon, 2012-07-09 at 16:19 -0400, Chuck Lever wrote:
->>>> On Jul 9, 2012, at 4:15 PM, Chuck Lever wrote:
->>>> 
->>>>> 
->>>>> On Jul 9, 2012, at 4:03 PM, Myklebust, Trond wrote:
->>>>> 
->>>>>> On Mon, 2012-07-09 at 11:44 -0400, Chuck Lever wrote:
->>>>>>> Before beginning state recovery, the state manager zaps open and lock
->>>>>>> state for each open file, thus the "state->flags & flags" test in
->>>>>>> nfs41_{open,lock}_expired() always fails during reclaim.  But open
->>>>>>> recovery is still needed for these files.
->>>>>>> 
->>>>>>> To force a call to nfs4_open_expired(), change the default return
->>>>>>> value for nfs41_check_expired_stateid() to force open recovery, and
->>>>>>> the default return value for nfs41_check_locks() to force lock
->>>>>>> recovery, if the requested flags are clear.  Fix suggested by Bryan
->>>>>>> Schumaker.
->>>>>> 
->>>>>> This makes absolutely no sense...
->>>>>> 
->>>>>> The point of these function should be to test if the stateid is still
->>>>>> valid. If it is, then we need no recovery.
->>>>>> If the stateid is _not_ valid, then we free it, and then decide if
->>>>>> recovery is needed. The only exception to that rule is if TEST_STATEID
->>>>>> returns NFS4ERR_BAD_STATEID, (in which case we don't need to free the
->>>>>> stateid but just recover immediately).
->>>>> 
->>>>> So you'd like to change the sense of the switch statement in my earlier patch:
->>>>> 
->>>>> NFS4_OK:
->>>>>   do nothing
->>>>> NFS4ERR_BAD_STATEID:
->>>>>   just open
->>>>> default:
->>>>>   free the state ID, then open
->>>>> 
->>>>> I still don't think we need a FREE_STATEID call for NFS4ERR_EXPIRED, for example.  It seems to me the only cases where FREE_STATEID is needed is the _REVOKED cases.
+> > The NFS idmapper has two key types (normal and legacy) but should only use
+> > one if it can - otherwise it risks having twice as many keys as it would
+> > otherwise need.
 > 
-> I'm not sure about what the rules are for NFS4ERR_EXPIRED. As far as I'm
-> aware, NFS4ERR_EXPIRED is NFSv4.0-speak for *_STATE_REVOKED; returning
-> it as part of a TEST_STATEID makes little sense to me, so I'm taking the
-> conservative approach to it.
+> Why is this? Do we add keys in the case where the 'normal' upcall fails?
 
-Based on your review comments, we have an opportunity to make this error handling more clear, which I'd like to clarify before redriving the patch.
+Yes.  The idmapper code defines a second key type and uses the key_type
+struct's .request_key() op to do its own thing (ie. upcall to a running
+rpc.idmapd process).  The idmapper code, however, calls request_key*() to make
+use of this, and that will create a new key.
 
-I'm not quite sure what "conservative approach" means.  Do you want to include NFS4ERR_EXPIRED with the _REVOKED arms, treat it as evidence of a broken server, or ignore it entirely?
+If only the legacy idmapper is available, you will end up with two keys added
+to the keyring for each operation, one of the 'normal' type and one of the
+'legacy' type.
 
-Do you want to leave the default: arm as it is, or do you have a preference for adding additional explicit error codes in the switch statement?  Are there cases which report that something has gone awry versus cases which simply report the state ID is rotten?  My feeling when I wrote this was to get the switch statement in there, and then we can introduce more error codes as needed.
+The 'normal' key will be negative, it is true, but it still takes up a slot
+until the garbage collector eats it, and can displace an otherwise good key.
 
+Negative keys are added to the keyring for a time set by their timeout to
+limit the rate of key lookups.
 
-> 
->>>>>> IOW: The state->flags and lsp->ls_flags tests should just be removed.
->>>>> 
->>>>> Bryan had a reason to leave those tests in, but I don't remember what it was.
->>>> 
->>>> Ah.
->>>> 
->>>> I think it was that if those flags are set, then the client assumes the server still has that state, thus no recovery actions should be done.
->>> 
->>> ??? If the server is still holding the state, then the TEST_STATEID will
->>> return '0'. Why do we need extra tests?
->> 
->> This is Bryan's design.  But my understanding is that recovery always visits every state ID, and these flags prevent tests from going to the server for all but the state ID to be recovered.
->> 
->> Is that correct, Bryan?
-> 
-> OK. I think I understand what the issue is.
-> 
-> If we call nfs4_state_start_reclaim_nograce() (due to a lease purge or a
-> NFS4ERR_EXPIRED on nfs4_check_lease()), then that resets the sequence
-> ids and does a full reset of all state. In that case, we do indeed not
-> want to call TEST_STATEID, since the best it can do is return
-> NFS4ERR_OLD_STATEID.
-> 
-> OK. This needs some comments in the code...
-
-I can add comments in both the patch description and in the code itself.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+David
