@@ -1,95 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:42943 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:46249 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756724Ab2GYM53 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Jul 2012 08:57:29 -0400
-Subject: [PATCH v2 02/15] LockD: make garbage collector network namespace
-	aware.
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Wed, 25 Jul 2012 16:56:03 +0400
-Message-ID: <20120725125603.24376.90230.stgit@localhost.localdomain>
-In-Reply-To: <20120725125258.24376.82525.stgit@localhost.localdomain>
-References: <20120725125258.24376.82525.stgit@localhost.localdomain>
+	id S1753436Ab2GaWUx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jul 2012 18:20:53 -0400
+Date: Tue, 31 Jul 2012 17:27:45 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Steve Dickson <SteveD@redhat.com>, Jim Rees <rees@umich.edu>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/4] rpc.gssd: don't call poll() twice a second.
+Message-ID: <20120731212744.GC1826@pad.fieldses.org>
+References: <20120731205931.GA32161@fieldses.org>
+ <1343768449-32205-4-git-send-email-bfields@redhat.com>
+ <9C74193E-FB49-48C3-A828-50EDE37C95AD@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <9C74193E-FB49-48C3-A828-50EDE37C95AD@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Jul 31, 2012 at 02:23:36PM -0700, Chuck Lever wrote:
+> 
+> On Jul 31, 2012, at 2:00 PM, J. Bruce Fields wrote:
+> 
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> > 
+> > Use ppoll instead.
+> > 
+> > (This breaks compatibility with kernels before 2.6.16 and glibc before
+> > 2.4).
+> 
+> I think I prefer seeing this wrapped with some autoconf machinery to allow nfs-utils to continue to build on earlier systems.
 
----
- fs/lockd/host.c |   22 +++++++++++++---------
- 1 files changed, 13 insertions(+), 9 deletions(-)
+I was assuming we could drop support for older systems.
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 2c5f41b..991274a 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -45,7 +45,7 @@ static unsigned long		next_gc;
- static unsigned long		nrhosts;
- static DEFINE_MUTEX(nlm_host_mutex);
- 
--static void			nlm_gc_hosts(void);
-+static void			nlm_gc_hosts(struct net *net);
- 
- struct nlm_lookup_host_info {
- 	const int		server;		/* search for server|client */
-@@ -345,7 +345,7 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
- 	mutex_lock(&nlm_host_mutex);
- 
- 	if (time_after_eq(jiffies, next_gc))
--		nlm_gc_hosts();
-+		nlm_gc_hosts(net);
- 
- 	chain = &nlm_server_hosts[nlm_hash_address(ni.sap)];
- 	hlist_for_each_entry(host, pos, chain, h_hash) {
-@@ -588,7 +588,7 @@ nlm_shutdown_hosts_net(struct net *net)
- 	}
- 
- 	/* Then, perform a garbage collection pass */
--	nlm_gc_hosts();
-+	nlm_gc_hosts(net);
- 	mutex_unlock(&nlm_host_mutex);
- }
- 
-@@ -623,27 +623,31 @@ nlm_shutdown_hosts(void)
-  * mark & sweep for resources held by remote clients.
-  */
- static void
--nlm_gc_hosts(void)
-+nlm_gc_hosts(struct net *net)
- {
- 	struct hlist_head *chain;
- 	struct hlist_node *pos, *next;
- 	struct nlm_host	*host;
--	struct net *net = &init_net;
- 
--	dprintk("lockd: host garbage collection\n");
--	for_each_host(host, pos, chain, nlm_server_hosts)
-+	dprintk("lockd: host garbage collection for net %p\n", net);
-+	for_each_host(host, pos, chain, nlm_server_hosts) {
-+		if (net && host->net != net)
-+			continue;
- 		host->h_inuse = 0;
-+	}
- 
- 	/* Mark all hosts that hold locks, blocks or shares */
- 	nlmsvc_mark_resources(net);
- 
- 	for_each_host_safe(host, pos, next, chain, nlm_server_hosts) {
-+		if (net && host->net != net)
-+			continue;
- 		if (atomic_read(&host->h_count) || host->h_inuse
- 		 || time_before(jiffies, host->h_expires)) {
- 			dprintk("nlm_gc_hosts skipping %s "
--				"(cnt %d use %d exp %ld)\n",
-+				"(cnt %d use %d exp %ld net %p)\n",
- 				host->h_name, atomic_read(&host->h_count),
--				host->h_inuse, host->h_expires);
-+				host->h_inuse, host->h_expires, host->net);
- 			continue;
- 		}
- 		nlm_destroy_host_locked(host);
+If not, then'd I'd much prefer to go back to the self-pipe trick than to
+deal with autoconf and  ifdef'ing out all this stuff.
 
+--b.
+
+> 
+> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > ---
+> > utils/gssd/gssd_main_loop.c |   12 +++++-------
+> > 1 file changed, 5 insertions(+), 7 deletions(-)
+> > 
+> > diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
+> > index 142c8c5..2d20fa2 100644
+> > --- a/utils/gssd/gssd_main_loop.c
+> > +++ b/utils/gssd/gssd_main_loop.c
+> > @@ -186,13 +186,14 @@ gssd_run()
+> > 	struct sigaction	dn_act = {
+> > 		.sa_handler = dir_notify_handler
+> > 	};
+> > -	sigset_t		set;
+> > +	sigset_t		set, emptyset;
+> > 
+> > 	sigemptyset(&dn_act.sa_mask);
+> > 	sigaction(DNOTIFY_SIGNAL, &dn_act, NULL);
+> > 
+> > -	/* just in case the signal is blocked... */
+> > +	sigemptyset(&emptyset);
+> > 	sigemptyset(&set);
+> > +	/* just in case the signal is blocked... */
+> > 	sigaddset(&set, DNOTIFY_SIGNAL);
+> > 	sigprocmask(SIG_UNBLOCK, &set, NULL);
+> > 
+> > @@ -210,16 +211,13 @@ gssd_run()
+> > 				exit(1);
+> > 			}
+> > 		}
+> > -		/* race condition here: dir_changed could be set before we
+> > -		 * enter the poll, and we'd never notice if it weren't for the
+> > -		 * timeout. */
+> > -		ret = poll(pollarray, pollsize, POLL_MILLISECS);
+> > +		ret = ppoll(pollarray, pollsize, NULL, &emptyset);
+> > 		if (ret < 0) {
+> > 			if (errno != EINTR)
+> > 				printerr(0,
+> > 					 "WARNING: error return from poll\n");
+> > 		} else if (ret == 0) {
+> > -			/* timeout */
+> > +			printerr(0, "WARNING: unexpected timeout\n");
+> > 		} else { /* ret > 0 */
+> > 			scan_poll_results(ret);
+> > 		}
+> > -- 
+> > 1.7.9.5
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
