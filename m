@@ -1,24 +1,30 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.194]:55979 "EHLO mout.perfora.net"
+Received: from mx1.redhat.com ([209.132.183.28]:43819 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751832Ab2G0XJA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Jul 2012 19:09:00 -0400
-Date: Fri, 27 Jul 2012 19:08:53 -0400
-From: Jim Rees <rees@umich.edu>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] rpc.gssd: don't call poll() twice a second
-Message-ID: <20120727230853.GA2707@umich.edu>
-References: <20120727210247.GC6388@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120727210247.GC6388@fieldses.org>
+	id S1754175Ab2GaOpu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jul 2012 10:45:50 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <501037B6.9080800@netapp.com>
+References: <501037B6.9080800@netapp.com> <20120725155336.24392.25186.stgit@warthog.procyon.org.uk> <20120725155347.24392.44505.stgit@warthog.procyon.org.uk>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: dhowells@redhat.com, Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
+        steved@redhat.com, jlayton@redhat.com
+Subject: Re: [PATCH 2/2] NFS: Combine the idmapper key types
+Date: Tue, 31 Jul 2012 15:45:46 +0100
+Message-ID: <6767.1343745946@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
+Bryan Schumaker <bjschuma@netapp.com> wrote:
 
-  +	if (1 != write(pipefd[1], "!", 1))
-  +		printerr(2, "weird; maybe an interrupt?");
+> > +	/* Use the non-legacy route unless given auxiliary data */
+> > +	if (!aux)
+> > +		return call_sbin_request_key(cons, op, aux);
+> 
+> struct idmap-s are created when the server is mounted, so I don't think "aux" will ever be null here.
 
-Use Yoda conditions must we?
+I've posted a new version of the patches with this fixed and with
+nfs_idmap_upcall() restructured a bit so as not to do the allocations if we
+don't have to.
+
+David
