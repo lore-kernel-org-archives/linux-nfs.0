@@ -1,59 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:63391 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752440Ab2GZLzq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jul 2012 07:55:46 -0400
-Received: by gglu4 with SMTP id u4so1821343ggl.19
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jul 2012 04:55:46 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v4 13/17] vfs: make do_unlinkat retry on ESTALE errors
-Date: Thu, 26 Jul 2012 07:55:16 -0400
-Message-Id: <1343303720-11199-14-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
-References: <1343303720-11199-1-git-send-email-jlayton@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:36444 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753892Ab2GaOH4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jul 2012 10:07:56 -0400
+Date: Tue, 31 Jul 2012 10:07:54 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: "ZUIDAM, Hans" <Hans.Zuidam@philips.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "DE WITTE, PETER" <PETER.DE.WITTE@philips.com>
+Subject: Re: Linux NFS and cached properties
+Message-ID: <20120731140754.GA27834@fieldses.org>
+References: <D307B3AC0BCD4C419E6B8FA6A2720A9C0C3B2F@011-DB3MPN1-001.MGDPHG.emi.philips.com>
+ <20120724143748.GC8570@fieldses.org>
+ <D307B3AC0BCD4C419E6B8FA6A2720A9C18ABBA@011-DB3MPN1-001.MGDPHG.emi.philips.com>
+ <20120726223607.GA28982@fieldses.org>
+ <20120731150801.0a4b557b@notabene.brown>
+ <20120731122546.GA26737@fieldses.org>
+ <20120731124550.GA27135@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120731124550.GA27135@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c | 12 +++++++++++-
- 1 file changed, 11 insertions(+), 1 deletion(-)
+On Tue, Jul 31, 2012 at 08:45:50AM -0400, J. Bruce Fields wrote:
+> On Tue, Jul 31, 2012 at 08:25:46AM -0400, J. Bruce Fields wrote:
+> > On Tue, Jul 31, 2012 at 03:08:01PM +1000, NeilBrown wrote:
+> > > The idea of a new interface to synchronise with all threads has potential and
+> > > doesn't need to be at the nfsd level - it could be in sunrpc.  Maybe it could
+> > > be built into the current 'flush' interface.
+> 
+> The flush operation will have to know which services to wait on when
+> flushing a given cache (lockd and nfsd in the export cache cases).
+> 
+> A little annoying that it may end up having to wait on a client-side
+> operation in the case of lockd, but I don't think that's a show-stopper.
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 09427f2..65e5177 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3262,8 +3262,14 @@ static long do_unlinkat(int dfd, const char __user *pathname)
- 	struct dentry *dentry;
- 	struct nameidata nd;
- 	struct inode *inode = NULL;
-+	unsigned int try = 0;
-+	unsigned int lookup_flags = LOOKUP_PARENT;
- 
--	error = user_path_parent(dfd, pathname, &nd, &name);
-+	name = getname(pathname);
-+	if (IS_ERR(name))
-+		return PTR_ERR(name);
-+retry:
-+	error = do_path_lookup(dfd, name, lookup_flags, &nd);
- 	if (error)
- 		return error;
- 
-@@ -3301,6 +3307,10 @@ exit3:
- 		iput(inode);	/* truncate the inode here */
- exit1:
- 	path_put(&nd.path);
-+	if (retry_estale(error, try++)) {
-+		lookup_flags |= LOOKUP_REVAL;
-+		goto retry;
-+	}
- 	putname(name);
- 	return error;
- 
--- 
-1.7.11.2
+Ignore me, I wasn't thinking straight: a lockd thread won't of course be
+waiting on client rpc's to a server, it will just be handling callbacks,
+which should be very quick.
 
+--b.
