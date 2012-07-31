@@ -1,68 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:35987 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753808Ab2GEVfR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jul 2012 17:35:17 -0400
-Subject: Re: Linux NFSv4 client uses returned delegation in subsequent READ resulting in hang (BAD_STATEID)
-Mime-Version: 1.0 (Apple Message framework v1278)
+Received: from fieldses.org ([174.143.236.118]:43492 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751133Ab2GaO3t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jul 2012 10:29:49 -0400
+Date: Tue, 31 Jul 2012 10:29:48 -0400
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: nfsd changes for 3.6
+Message-ID: <20120731142948.GC27834@fieldses.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1341518126.11154.17.camel@lade.trondhjem.org>
-Date: Thu, 5 Jul 2012 17:35:12 -0400
-Cc: "Charles 'Boyo" <charlesboyo@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <23682B65-4DA9-4966-BF83-C7EC338F9A97@oracle.com>
-References: <CAPD_G3L0wwzCWyoPJp_sKpuQ0J7+avn-ejEn-WnXf81zr=-LqA@mail.gmail.com> <2E097766-1FA2-42E1-B790-B3BBC254B705@oracle.com> <CAPD_G3Lc6F9yUOXLUcPgn1c5n=Hcs2JSXdGPhZ-CjtBLVoibbg@mail.gmail.com> <2F725B49-A089-41E9-BBC9-11B889A62C9D@oracle.com> <1341263584.8197.53.camel@lade.trondhjem.org> <6C5408EB-668A-43C9-B3FE-9D66427B5BE0@oracle.com> <CAPD_G3KojVhnjtfjN0poJvpV0i+6JZeK54rm5Swm3MDKEXQ=Zw@mail.gmail.com> <1341266386.8197.61.camel@lade.trondhjem.org> <CAPD_G3KS6unxC4qJ1YY1GM-PCbG5sXLC6-aYk6L1dq4Jd0U7MQ@mail.gmail.com> <CAPD_G3LPfHr-2zbv19tL1Bv++ThKbsoqb3XYfZ75CjCrh2Mhxw@mail.gmail.com> <1341518126.11154.17.camel@lade.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Please pull nfsd (and some lockd and a couple locks/lease) changes from:
 
-On Jul 5, 2012, at 3:55 PM, Myklebust, Trond wrote:
+	git://linux-nfs.org/~bfields/linux.git nfsd-next
 
-> On Thu, 2012-07-05 at 20:23 +0100, Charles 'Boyo wrote:
->>>> What isn't expected behaviour is for the client to DELEGRETURN
->>>> immediately upon receiving the delegation. Nor is it expected that the
->>>> READ would fail to recover in an ordinary DELEGRETURN situation.
->>>> 
->>>> This is why I'm interested in seeing what happened before the OPEN.
->>>> 
->>> 
->>> Attached is a minimally redacted trace which contains all the NFS
->>> calls and responses before and through this particular DELEGRETURN
->>> (frame 6084).
->>> I am unable to provide the full packet capture due to the sensitivity
->>> of the data contained therein.
->> 
->> Trond, did the attached trace confirm the issue as suspected?
->> 
->> Charles
-> 
-> No. What is happening is that the client does an OPEN of file
-> "account.info". It then closes the file and for some reason that I don't
-> yet understand, it decides to return the delegation.
-> 
-> Then the application does another OPEN, which races with the delegation
-> return. Because of the race, the server returns the same delegation as
-> it did in the first open call. The client (which has now forgotten about
-> the original open) sees what it thinks is a new delegation, and so it
-> adopts it.
-> 
-> So this explains why the READs end up trying to use a returned
-> delegation. What remains to be explained is:
-> 
-> a) Why did the client return the delegation in the first place? Is it in
-> some extreme memory pressure situation, or does it perhaps have some
-> funky setting for /proc/sys/vm/vfs_cache_pressure?
-> 
-> b) Why doesn't the recovery scenario kick in and do the right thing?
+This has been an unusually quiet cycle--mostly bugfixes and cleanup.
+The one large piece is Stanislav's work to containerize the server's
+grace period--but that in itself is just one more step in a
+not-yet-complete project to allow fully containerized nfs service.
 
-My guess is that EL6.2 kernels don't have the mainline patch that adds support for recovering a single bad state ID.
+There are a number of outstanding delegation, container, v4 state, and
+gss patches that aren't quite ready yet; 3.7 may be wilder.
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+--b.
 
+----------------------------------------------------------------
+Chuck Lever (1):
+      NFSD: TEST_STATEID should not return NFS4ERR_STALE_STATEID
 
+Eldad Zack (2):
+      sunrpc/cache.h: fix coding style
+      sunrpc/cache.h: replace simple_strtoul
 
+Filipe Brandenburger (1):
+      locks: prevent side-effects of locks_release_private before file_lock is initialized
 
+J. Bruce Fields (10):
+      nfsd4: remove unnecessary comment
+      nfsd4: nfsd4_lock() cleanup
+      nfsd4: process_open2 cleanup
+      nfsd4: our filesystems are normally case sensitive
+      nfsd4: release openowners on free in >=4.1 case
+      nfsd: allow owner_override only for regular files
+      nfsd: share some function prototypes
+      nfsd: add get_uint for u32's
+      locks: move lease-specific code out of locks_delete_lock
+      nfsd4: fix missing fault_inject.h include
+
+NeilBrown (1):
+      SUNRPC/cache: fix reporting of expired cache entries in 'content' file.
+
+Stanislav Kinsbursky (18):
+      NFSd: fix locking in nfsd_forget_delegations()
+      NFSd: introduce nfsd_destroy() helper
+      NFSd: set nfsd_serv to NULL after service destruction
+      LockD: mark host per network namespace on garbage collect
+      LockD: make garbage collector network namespace aware.
+      LockD: manage garbage collection timeout per networks namespace
+      LockD: manage used host count per networks namespace
+      Lockd: host complaining function introduced
+      Lockd: add more debug to host shutdown functions
+      LockD: manage grace period per network namespace
+      LockD: make lockd manager allocated per network namespace
+      NFSd: make nfsd4_manager allocated per network namespace context.
+      SUNRPC: service request network namespace helper introduced
+      LockD: manage grace list per network namespace
+      LockD: pass actual network namespace to grace period management functions
+      Lockd: move grace period management from lockd() to per-net functions
+      NFSd: make grace end flag per network namespace
+      NFSd: make boot_time variable per network namespace
+
+Vivek Trivedi (1):
+      nfsd4: fix cr_principal comparison check in same_creds
+
+Weston Andros Adamson (1):
+      nfsd: probe the back channel on new connections
+
+ fs/lockd/grace.c             |   16 ++--
+ fs/lockd/host.c              |   92 ++++++++++++-------
+ fs/lockd/netns.h             |    7 ++
+ fs/lockd/svc.c               |   43 +++++----
+ fs/lockd/svc4proc.c          |   13 +--
+ fs/lockd/svclock.c           |   16 ++--
+ fs/lockd/svcproc.c           |   15 ++--
+ fs/lockd/svcsubs.c           |   19 ++--
+ fs/locks.c                   |   28 +++---
+ fs/nfs/callback_xdr.c        |    4 +-
+ fs/nfsd/export.c             |   10 +--
+ fs/nfsd/netns.h              |    4 +
+ fs/nfsd/nfs4callback.c       |    1 -
+ fs/nfsd/nfs4idmap.c          |    4 +-
+ fs/nfsd/nfs4proc.c           |   18 ++--
+ fs/nfsd/nfs4state.c          |  201 +++++++++++++++++++++++++-----------------
+ fs/nfsd/nfs4xdr.c            |    2 +-
+ fs/nfsd/nfsctl.c             |    8 +-
+ fs/nfsd/nfsd.h               |   13 +++
+ fs/nfsd/nfssvc.c             |   24 ++---
+ fs/nfsd/state.h              |    5 +-
+ fs/nfsd/vfs.c                |   10 ++-
+ include/linux/fs.h           |    5 +-
+ include/linux/lockd/lockd.h  |    6 +-
+ include/linux/sunrpc/cache.h |   34 +++++--
+ include/linux/sunrpc/svc.h   |    2 +
+ net/sunrpc/cache.c           |    5 +-
+ 27 files changed, 368 insertions(+), 237 deletions(-)
