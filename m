@@ -1,101 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:33060 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:47697 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753403Ab2GaNoe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jul 2012 09:44:34 -0400
-Message-ID: <5017E13F.4030909@netapp.com>
-Date: Tue, 31 Jul 2012 09:44:31 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+	id S1752146Ab2GaWvG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jul 2012 18:51:06 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        "Linux Kernel mailing list" <linux-kernel@vger.kernel.org>
+Subject: [GIT PULL] Please pull second wave of NFS client changes for 3.6
+Date: Tue, 31 Jul 2012 22:50:49 +0000
+Message-ID: <1343775047.5528.59.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        Fengguang Wu <fengguang.wu@intel.com>,
-        "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [nfs:devel 46/51] fs/nfs/write.c:1592:5: error: redefinition
- of 'nfs_commit_inode'
-References: <20120731024328.GA10480@localhost>   <4FA345DA4F4AE44899BD2B03EEEC2FA934BE82@SACEXCMBX04-PRD.hq.netapp.com>   <5017D3FC.9010905@netapp.com> <1343739299.519.1.camel@lade.trondhjem.org>  <5017D824.209@netapp.com> <5017DDDB.6060500@netapp.com> <1343741622.519.2.camel@lade.trondhjem.org>
-In-Reply-To: <1343741622.519.2.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/31/2012 09:33 AM, Myklebust, Trond wrote:
-> On Tue, 2012-07-31 at 09:30 -0400, Bryan Schumaker wrote:
->> On 07/31/2012 09:05 AM, Bryan Schumaker wrote:
->>> On 07/31/2012 08:55 AM, Myklebust, Trond wrote:
->>>> On Tue, 2012-07-31 at 08:47 -0400, Bryan Schumaker wrote:
->>>>> On 07/30/2012 11:14 PM, Myklebust, Trond wrote:
->>>>>> Bryan,
->>>>>>
->>>>>> Why did you switch to using IS_ENABLED in the first place, and why wasn't that put in a separate patch?
->>>>>
->>>>> IS_ENABLED() will check for CONFIG_NFS_V*_MODULE, last I checked the defined() macro doesn't.  Putting this into a separate patch makes the change non-bisectable since gcc will be checking against CONFIG_NFS_V3 but CONFIG_NFS_V3_MODULE is set.  Should I have changed the CONFIG_ variables instead of using IS_ENABLED()?
->>>>
->>>> Why is it evaluating differently in the include file vs. the .c file?
->>>> Are we missing an include in nfs_fs.h?
->>>
->>> Good question.  I don't see any reason that it would evaluate differently, but I'm compiling the .config attached to the initial email to try to figure it out.
->>>
->>
->> Looks like the IS_ENABLED() switch got pushed to the next patch for V3 in include/linux/nfs_fs.h.  Want me to resend the patches?  I took another look at how IS_ENABLED() is defined, and it'll work if I do the switch in the patch before I turn everything into separate modules if you want me to resend everything.
-> 
-> Please just make it incremental to the patch series that is already
-> merged in today's nfs-for-3.6.
-
-Easy enough, the patch that fixes it is the last one in the series that I sent in yesterday.
-
-> 
-> Cheers
->   Trond
-> 
->>> - Bryan
->>>
->>>>
->>>>>>
->>>>>>
->>>>>>
->>>>>>> -----Original Message-----
->>>>>>> From: Fengguang Wu [mailto:fengguang.wu@intel.com]
->>>>>>> Sent: Monday, July 30, 2012 10:43 PM
->>>>>>> To: Schumaker, Bryan
->>>>>>> Cc: kernel-janitors@vger.kernel.org; Myklebust, Trond; linux-
->>>>>>> nfs@vger.kernel.org
->>>>>>> Subject: [nfs:devel 46/51] fs/nfs/write.c:1592:5: error: redefinition of
->>>>>>> 'nfs_commit_inode'
->>>>>>>
->>>>>>> Hi Bryan,
->>>>>>>
->>>>>>> Kernel build failed on
->>>>>>>
->>>>>>> tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git devel
->>>>>>> head:   5c13c9e1c15ee2ca9ab2b953224001af53d9be09
->>>>>>> commit: 1c606fb74c758beafd98cbad9a9133eadeec2371 [46/51] NFS: Convert
->>>>>>> v3 into a module
->>>>>>> config: blackfin-BF533-EZKIT_defconfig (attached as .config)
->>>>>>>
->>>>>>> All related error/warning messages:
->>>>>>>
->>>>>>> fs/nfs/write.c:1592:5: error: redefinition of 'nfs_commit_inode'
->>>>>>> In file included from fs/nfs/write.c:19:0:
->>>>>>> include/linux/nfs_fs.h:547:1: note: previous definition of 'nfs_commit_inode'
->>>>>>> was here
->>>>>>>
->>>>>>> vim +1592 fs/nfs/write.c
->>>>>>>   1589		return status;
->>>>>>>   1590	}
->>>>>>>   1591
->>>>>>>> 1592	int nfs_commit_inode(struct inode *inode, int how)
->>>>>>>   1593	{
->>>>>>>   1594		LIST_HEAD(head);
->>>>>>>   1595		struct nfs_commit_info cinfo;
->>>>>>>
->>>>>>> ---
->>>>>>> 0-DAY kernel build testing backend         Open Source Technology Centre
->>>>>>> Fengguang Wu <wfg@linux.intel.com>                     Intel Corporation
->>>>>
->>>>
->>>
->>
-> 
-
+SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgZjQ0MTA2ZTIx
+NzNmMDhjY2IxYzkxOTVkODVhNmMyMjM4OGI0NjFjMToNCg0KICBuZnM6IGZpeCBmbF90eXBlIHRl
+c3RzIGluIE5GU3Y0IGNvZGUgKDIwMTItMDctMzAgMTg6MDk6MTMgLTA0MDApDQoNCmFyZSBhdmFp
+bGFibGUgaW4gdGhlIGdpdCByZXBvc2l0b3J5IGF0Og0KDQogIGdpdDovL2dpdC5saW51eC1uZnMu
+b3JnL3Byb2plY3RzL3Ryb25kbXkvbGludXgtbmZzLmdpdCB0YWdzL25mcy1mb3ItMy42LTINCg0K
+Zm9yIHlvdSB0byBmZXRjaCBjaGFuZ2VzIHVwIHRvIGFkMGZjZDRlYjY4MDU5ZGUwMmUxNzY2OTQ4
+MjYzYzcxYjhhNWIxZGM6DQoNCiAgbmZzOiBleHBsaWNpdGx5IHJlamVjdCBMT0NLX01BTkQgZmxv
+Y2soKSByZXF1ZXN0cyAoMjAxMi0wNy0zMSAxNDo0MjoyMCAtMDQwMCkNCg0KQ2hlZXJzLA0KICBU
+cm9uZA0KDQotLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tDQpORlMgY2xpZW50IHVwZGF0ZXMgZm9yIExpbnV4IDMuNg0KDQpGZWF0
+dXJlcyBpbmNsdWRlOg0KLSBQYXRjaGVzIGZyb20gQnJ5YW4gdG8gYWxsb3cgc3BsaXR0aW5nIG9m
+IHRoZSBORlN2Mi92My92NCBjb2RlIGludG8NCiAgc2VwYXJhdGUgbW9kdWxlcy4NCi0gRml4IE9v
+cHNlcyBpbiB0aGUgTkZTdjQgaWRtYXBwZXINCi0gRml4IGEgZGVhZGxvY2sgd2hlcmVieSBycGNp
+b2QgdHJpZXMgdG8gYWxsb2NhdGUgYSBuZXcgc29ja2V0IGFuZA0KICBlbmRzIHVwIHJlY3Vyc2lu
+ZyBpbnRvIHRoZSBORlMgY29kZSBkdWUgdG8gbWVtb3J5IHJlY2xhaW0uDQotIEluY3JlYXNlIHRo
+ZSBudW1iZXIgb2YgcGVybWl0dGVkIGNhbGxiYWNrIGNvbm5lY3Rpb25zLg0KDQotLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpC
+cnlhbiBTY2h1bWFrZXIgKDEwKToNCiAgICAgIE5GUzogQWRkIHZlcnNpb24gcmVnaXN0ZXJpbmcg
+ZnJhbWV3b3JrDQogICAgICBORlM6IFJlbW92ZSB0aGUgTkZTIHY0IHhkZXYgbW91bnQgZnVuY3Rp
+b24NCiAgICAgIE5GUzogQ3JlYXRlIGEgdHJ5X21vdW50IHJwYyBvcA0KICAgICAgTkZTOiBPbmx5
+IGluaXRpYWxpemUgdGhlIEFDTCBjbGllbnQgaW4gdGhlIHYzIGNhc2UNCiAgICAgIE5GUzogUGFz
+cyBzdXBlciBvcGVyYXRpb25zIGFuZCB4YXR0ciBoYW5kbGVycyBpbiB0aGUgbmZzX3N1YnZlcnNp
+b24NCiAgICAgIE5GUzogU3BsaXQgb3V0IHJlbWFpbmluZyBORlMgdjQgaW5vZGUgZnVuY3Rpb25z
+DQogICAgICBORlM6IEtlZXAgbW9kdWxlIHBhcmFtZXRlcnMgaW4gdGhlIGdlbmVyaWMgTkZTIGNs
+aWVudA0KICAgICAgTkZTOiBDb252ZXJ0IHYyIGludG8gYSBtb2R1bGUNCiAgICAgIE5GUzogQ29u
+dmVydCB2MyBpbnRvIGEgbW9kdWxlDQogICAgICBORlM6IENvbnZlcnQgdjQgaW50byBhIG1vZHVs
+ZQ0KDQpEYXZpZCBIb3dlbGxzICgxKToNCiAgICAgIE5GUzogRml4IGEgbnVtYmVyIG9mIGJ1Z3Mg
+aW4gdGhlIGlkbWFwcGVyDQoNCkplZmYgTGF5dG9uICgzKToNCiAgICAgIHN1bnJwYzogY2xhcmlm
+eSBjb21tZW50cyBvbiBycGNfbWFrZV9ydW5uYWJsZQ0KICAgICAgbmZzOiBza2lwIGNvbW1pdCBp
+biByZWxlYXNlcGFnZSBpZiB3ZSdyZSBmcmVlaW5nIG1lbW9yeSBmb3IgZnMtcmVsYXRlZCByZWFz
+b25zDQogICAgICBuZnM6IGV4cGxpY2l0bHkgcmVqZWN0IExPQ0tfTUFORCBmbG9jaygpIHJlcXVl
+c3RzDQoNCk5laWxCcm93biAoMSk6DQogICAgICBuZnM6IGluY3JlYXNlIG51bWJlciBvZiBwZXJt
+aXR0ZWQgY2FsbGJhY2sgY29ubmVjdGlvbnMuDQoNClBlbmcgVGFvICgxKToNCiAgICAgIHBuZnNi
+bG9jazogYmFpbCBvdXQgcGFydGlhbCBwYWdlIElPDQoNClN0YW5pc2xhdiBLaW5zYnVyc2t5ICgx
+KToNCiAgICAgIFNVTlJQQzogcmV0dXJuIG5lZ2F0aXZlIHZhbHVlIGluIGNhc2UgcnBjYmluZCBj
+bGllbnQgY3JlYXRpb24gZXJyb3INCg0KIGZzL25mcy9LY29uZmlnICAgICAgICAgICAgICAgICAg
+IHwgICA2ICstDQogZnMvbmZzL01ha2VmaWxlICAgICAgICAgICAgICAgICAgfCAgMjcgKysrLS0t
+DQogZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMgfCAgMzkgKysrKysrKy0NCiBmcy9u
+ZnMvY2FsbGJhY2suYyAgICAgICAgICAgICAgICB8ICAyOCArLS0tLS0NCiBmcy9uZnMvY2FsbGJh
+Y2suaCAgICAgICAgICAgICAgICB8ICAgMiArLQ0KIGZzL25mcy9jbGllbnQuYyAgICAgICAgICAg
+ICAgICAgIHwgMTkxICsrKysrKysrKysrKysrKysrKysrKy0tLS0tLS0tLS0tLS0tLS0tLQ0KIGZz
+L25mcy9kZWxlZ2F0aW9uLmggICAgICAgICAgICAgIHwgICAyICstDQogZnMvbmZzL2Rpci5jICAg
+ICAgICAgICAgICAgICAgICAgfCAgMjAgKysrLQ0KIGZzL25mcy9kaXJlY3QuYyAgICAgICAgICAg
+ICAgICAgIHwgICAyICstDQogZnMvbmZzL2Ruc19yZXNvbHZlLmMgICAgICAgICAgICAgfCAgIDQg
+Kw0KIGZzL25mcy9maWxlLmMgICAgICAgICAgICAgICAgICAgIHwgIDMxICsrKysrKy0NCiBmcy9u
+ZnMvaWRtYXAuYyAgICAgICAgICAgICAgICAgICB8ICAyOSArKysrLS0NCiBmcy9uZnMvaW5vZGUu
+YyAgICAgICAgICAgICAgICAgICB8IDEwNSArKysrKysrKysrLS0tLS0tLS0tLS0NCiBmcy9uZnMv
+aW50ZXJuYWwuaCAgICAgICAgICAgICAgICB8ICAzOCArKysrKy0tLQ0KIGZzL25mcy9uYW1lc3Bh
+Y2UuYyAgICAgICAgICAgICAgIHwgIDE3ICstLS0NCiBmcy9uZnMvbmV0bnMuaCAgICAgICAgICAg
+ICAgICAgICB8ICAgMiArLQ0KIGZzL25mcy9uZnMuaCAgICAgICAgICAgICAgICAgICAgIHwgIDI5
+ICsrKysrKw0KIGZzL25mcy9uZnMyc3VwZXIuYyAgICAgICAgICAgICAgIHwgIDMxICsrKysrKysN
+CiBmcy9uZnMvbmZzM2NsaWVudC5jICAgICAgICAgICAgICB8ICA2NSArKysrKysrKysrKysrDQog
+ZnMvbmZzL25mczNwcm9jLmMgICAgICAgICAgICAgICAgfCAgIDMgKw0KIGZzL25mcy9uZnMzc3Vw
+ZXIuYyAgICAgICAgICAgICAgIHwgIDMxICsrKysrKysNCiBmcy9uZnMvbmZzNF9mcy5oICAgICAg
+ICAgICAgICAgICB8ICAxMyArKy0NCiBmcy9uZnMvbmZzNGNsaWVudC5jICAgICAgICAgICAgICB8
+ICAyMyArKy0tLQ0KIGZzL25mcy9uZnM0cHJvYy5jICAgICAgICAgICAgICAgIHwgICA5ICstDQog
+ZnMvbmZzL25mczRzdXBlci5jICAgICAgICAgICAgICAgfCAxMDYgKysrKysrKysrKysrLS0tLS0t
+LS0tLQ0KIGZzL25mcy9uZnM0eGRyLmMgICAgICAgICAgICAgICAgIHwgICA2IC0tDQogZnMvbmZz
+L3BhZ2VsaXN0LmMgICAgICAgICAgICAgICAgfCAgIDQgKw0KIGZzL25mcy9wbmZzLmMgICAgICAg
+ICAgICAgICAgICAgIHwgICAyICsNCiBmcy9uZnMvcHJvYy5jICAgICAgICAgICAgICAgICAgICB8
+ICAgMyArDQogZnMvbmZzL3JlYWQuYyAgICAgICAgICAgICAgICAgICAgfCAgIDUgKw0KIGZzL25m
+cy9zdXBlci5jICAgICAgICAgICAgICAgICAgIHwgMTcyICsrKysrKysrKysrKysrKysrKysrKysr
+Ky0tLS0tLS0tLS0tDQogZnMvbmZzL3dyaXRlLmMgICAgICAgICAgICAgICAgICAgfCAgMzUgKysr
+LS0tLQ0KIGluY2x1ZGUvbGludXgvbmZzX2ZzLmggICAgICAgICAgIHwgICA2ICstDQogaW5jbHVk
+ZS9saW51eC9uZnNfZnNfc2IuaCAgICAgICAgfCAgIDcgKy0NCiBpbmNsdWRlL2xpbnV4L25mc19p
+ZG1hcC5oICAgICAgICB8ICAgMiArLQ0KIGluY2x1ZGUvbGludXgvbmZzX3hkci5oICAgICAgICAg
+IHwgICA5ICstDQogbmV0L3N1bnJwYy9ycGNiX2NsbnQuYyAgICAgICAgICAgfCAgIDQgKy0NCiBu
+ZXQvc3VucnBjL3NjaGVkLmMgICAgICAgICAgICAgICB8ICAgNyArLQ0KIG5ldC9zdW5ycGMveHBy
+dHJkbWEvdHJhbnNwb3J0LmMgIHwgICAzICstDQogbmV0L3N1bnJwYy94cHJ0c29jay5jICAgICAg
+ICAgICAgfCAgMTAgKysNCiA0MCBmaWxlcyBjaGFuZ2VkLCA3MjUgaW5zZXJ0aW9ucygrKSwgNDAz
+IGRlbGV0aW9ucygtKQ0KIGNyZWF0ZSBtb2RlIDEwMDY0NCBmcy9uZnMvbmZzLmgNCiBjcmVhdGUg
+bW9kZSAxMDA2NDQgZnMvbmZzL25mczJzdXBlci5jDQogY3JlYXRlIG1vZGUgMTAwNjQ0IGZzL25m
+cy9uZnMzY2xpZW50LmMNCiBjcmVhdGUgbW9kZSAxMDA2NDQgZnMvbmZzL25mczNzdXBlci5jDQoN
+Cg==
