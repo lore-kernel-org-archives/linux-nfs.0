@@ -1,86 +1,265 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:38306 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932536Ab2GLOLw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jul 2012 10:11:52 -0400
-Message-ID: <4FFEDB17.5050001@panasas.com>
-Date: Thu, 12 Jul 2012 17:11:35 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-CC: Benny Halevy <bhalevy@tonian.com>, Peng Tao <bergwolf@gmail.com>
-Subject: Re: [RFC 0/5] CRASHFIX: pnfs-obj: NONE-RPC LD must not call rpc_restart_call_prepare()
-References: <4FD1CEA8.3090105@panasas.com>
-In-Reply-To: <4FD1CEA8.3090105@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from cantor2.suse.de ([195.135.220.15]:57112 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751710Ab2GaF3F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jul 2012 01:29:05 -0400
+Date: Tue, 31 Jul 2012 15:28:48 +1000
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        devel@openvz.org
+Subject: Re: [PATCH v3] SUNRPC: protect service sockets lists during per-net
+ shutdown
+Message-ID: <20120731152848.7836f9e1@notabene.brown>
+In-Reply-To: <20120724194036.GK8570@fieldses.org>
+References: <20120703125851.3850.86782.stgit@localhost.localdomain>
+	<20120724194036.GK8570@fieldses.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/VF6ym0cZx3o0SAEoQfSb_Om"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/08/2012 01:06 PM, Boaz Harrosh wrote:
+--Sig_/VF6ym0cZx3o0SAEoQfSb_Om
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-> 
-> NONE-RPC layout-Drivers call nfs_writeback_done() as part
-> of their completion of IO. (through pnfs_ld_write_done())
-> 
-> Inside nfs_writeback_done() there is code that does:
-> 
-> 	else if (resp->count < argp->count) {
-> 		...
-> 
-> 		/* This a short write! */
-> 		nfs_inc_stats(inode, NFSIOS_SHORTWRITE);
-> 
-> 		... /* Prepare the remainder */
-> 
-> 		rpc_restart_call_prepare(task);
-> 	}
-> 
-> But for none-rpc LDs (objects, blocks) there is no task->tk_ops
-> and this code will crash.
-> 
+On Tue, 24 Jul 2012 15:40:37 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+wrote:
 
-<snip>
+> On Tue, Jul 03, 2012 at 04:58:57PM +0400, Stanislav Kinsbursky wrote:
+> > v3:
+> > 1) rebased on 3.5-rc3 kernel.
+> >=20
+> > v2: destruction of currently processing transport added:
+> > 1) Added marking of currently processing transports with XPT_CLOSE on p=
+er-net
+> > shutdown. These transports will be destroyed in svc_xprt_enqueue() (ins=
+tead of
+> > enqueueing).
+>=20
+> That worries me:
+>=20
+> 	- Why did we originally defer close until svc_recv?
 
-Trond hi
+I don't think there was any obscure reason - it was just the natural place =
+do
+to it.  In svc_recv we are absolutely sure that the socket is idle.  There
+are a number of things we might want to do, so we find the highest-priority
+one and do it.  "state machine" pattern?
 
-Sorry for the late response I was sick (at Hospital and was away)
 
-I must push these fixes to Linus ASAP I want to push them tomorrow.
-They are for 3.5-rc7 and CC to stable@.
+> 	- Are we sure there's no risk to performing it immediately in
+> 	  svc_enqueue?  Is it safe to call from the socket callbacks and
+> 	  wherever else we call svc_enqueue?
 
-I would love to also push the objlayout patches as one push as well.
-Please give me your blessing and ACK so I can do this.
+The latter point is the one I'd want to see verified.  If svc_xprt_enqueue
+gets called in 'bh' content, and calls svc_delete_xprt which then calls
+svc_deferred_dequeue and that takes ->xpt_lock - does that mean that all
+lock/unlock of ->xpt_lock needs to be changed to use the _bh variants?
 
-I have done a small rebase over 3.5-rc5 and a few cleanups mainly
-Peng's comment about ZERO_PAGE.
+NeilBrown
 
-You can see the pending push request here:
-http://git.open-osd.org/gitweb.cgi?p=linux-open-osd.git;a=shortlog;h=refs/heads/for-linus
 
-These are the list of patches:
+>=20
+> And in the past I haven't been good at testing for problems
+> here--instead they tend to show up when a use somewhere tries shutting
+> down a server that's under load.
+>=20
+> I'll look more closely.  Meanwhile you could split out that change as a
+> separate patch and convince me why it's right....
+>=20
+> --b.
+>=20
+> > 2) newly created temporary transport in svc_recv() will be destroyed, i=
+f it's
+> > "parent" was marked with XPT_CLOSE.
+> > 3) spin_lock(&serv->sv_lock) was replaced by spin_lock_bh() in
+> > svc_close_net(&serv->sv_lock).
+> >=20
+> > Service sv_tempsocks and sv_permsocks lists are accessible by tasks with
+> > different network namespaces, and thus per-net service destruction must=
+ be
+> > protected.
+> > These lists are protected by service sv_lock. So lets wrap list munipul=
+ations
+> > with this lock and move tranports destruction outside wrapped area to p=
+revent
+> > deadlocks.
+> >=20
+> > Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> > ---
+> >  net/sunrpc/svc_xprt.c |   56 +++++++++++++++++++++++++++++++++++++++++=
++++++---
+> >  1 files changed, 52 insertions(+), 4 deletions(-)
+> >=20
+> > diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> > index 88f2bf6..4af2114 100644
+> > --- a/net/sunrpc/svc_xprt.c
+> > +++ b/net/sunrpc/svc_xprt.c
+> > @@ -320,6 +320,7 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
+> >  	struct svc_pool *pool;
+> >  	struct svc_rqst	*rqstp;
+> >  	int cpu;
+> > +	int destroy =3D 0;
+> > =20
+> >  	if (!svc_xprt_has_something_to_do(xprt))
+> >  		return;
+> > @@ -338,6 +339,17 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
+> > =20
+> >  	pool->sp_stats.packets++;
+> > =20
+> > +	/*
+> > +	 * Check transport close flag. It could be marked as closed on per-net
+> > +	 * service shutdown.
+> > +	 */
+> > +	if (test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
+> > +		/* Don't enqueue transport if it has to be destroyed. */
+> > +		dprintk("svc: transport %p have to be closed\n", xprt);
+> > +		destroy++;
+> > +		goto out_unlock;
+> > +	}
+> > +
+> >  	/* Mark transport as busy. It will remain in this state until
+> >  	 * the provider calls svc_xprt_received. We update XPT_BUSY
+> >  	 * atomically because it also guards against trying to enqueue
+> > @@ -374,6 +386,8 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
+> > =20
+> >  out_unlock:
+> >  	spin_unlock_bh(&pool->sp_lock);
+> > +	if (destroy)
+> > +		svc_delete_xprt(xprt);
+> >  }
+> >  EXPORT_SYMBOL_GPL(svc_xprt_enqueue);
+> > =20
+> > @@ -714,6 +728,13 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+> >  			__module_get(newxpt->xpt_class->xcl_owner);
+> >  			svc_check_conn_limits(xprt->xpt_server);
+> >  			spin_lock_bh(&serv->sv_lock);
+> > +			if (test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
+> > +				dprintk("svc_recv: found XPT_CLOSE on listener\n");
+> > +				set_bit(XPT_DETACHED, &newxpt->xpt_flags);
+> > +				spin_unlock_bh(&pool->sp_lock);
+> > +				svc_delete_xprt(newxpt);
+> > +				goto out_closed;
+> > +			}
+> >  			set_bit(XPT_TEMP, &newxpt->xpt_flags);
+> >  			list_add(&newxpt->xpt_list, &serv->sv_tempsocks);
+> >  			serv->sv_tmpcnt++;
+> > @@ -739,6 +760,7 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+> >  			len =3D xprt->xpt_ops->xpo_recvfrom(rqstp);
+> >  		dprintk("svc: got len=3D%d\n", len);
+> >  	}
+> > +out_closed:
+> >  	svc_xprt_received(xprt);
+> > =20
+> >  	/* No data, incomplete (TCP) read, or accept() */
+> > @@ -936,6 +958,7 @@ static void svc_clear_pools(struct svc_serv *serv, =
+struct net *net)
+> >  	struct svc_pool *pool;
+> >  	struct svc_xprt *xprt;
+> >  	struct svc_xprt *tmp;
+> > +	struct svc_rqst *rqstp;
+> >  	int i;
+> > =20
+> >  	for (i =3D 0; i < serv->sv_nrpools; i++) {
+> > @@ -947,11 +970,16 @@ static void svc_clear_pools(struct svc_serv *serv=
+, struct net *net)
+> >  				continue;
+> >  			list_del_init(&xprt->xpt_ready);
+> >  		}
+> > +		list_for_each_entry(rqstp, &pool->sp_all_threads, rq_all) {
+> > +			if (rqstp->rq_xprt && rqstp->rq_xprt->xpt_net =3D=3D net)
+> > +				set_bit(XPT_CLOSE, &rqstp->rq_xprt->xpt_flags);
+> > +		}
+> >  		spin_unlock_bh(&pool->sp_lock);
+> >  	}
+> >  }
+> > =20
+> > -static void svc_clear_list(struct list_head *xprt_list, struct net *ne=
+t)
+> > +static void svc_clear_list(struct list_head *xprt_list, struct net *ne=
+t,
+> > +			   struct list_head *kill_list)
+> >  {
+> >  	struct svc_xprt *xprt;
+> >  	struct svc_xprt *tmp;
+> > @@ -959,7 +987,8 @@ static void svc_clear_list(struct list_head *xprt_l=
+ist, struct net *net)
+> >  	list_for_each_entry_safe(xprt, tmp, xprt_list, xpt_list) {
+> >  		if (xprt->xpt_net !=3D net)
+> >  			continue;
+> > -		svc_delete_xprt(xprt);
+> > +		list_move(&xprt->xpt_list, kill_list);
+> > +		set_bit(XPT_DETACHED, &xprt->xpt_flags);
+> >  	}
+> >  	list_for_each_entry(xprt, xprt_list, xpt_list)
+> >  		BUG_ON(xprt->xpt_net =3D=3D net);
+> > @@ -967,6 +996,15 @@ static void svc_clear_list(struct list_head *xprt_=
+list, struct net *net)
+> > =20
+> >  void svc_close_net(struct svc_serv *serv, struct net *net)
+> >  {
+> > +	struct svc_xprt *xprt, *tmp;
+> > +	LIST_HEAD(kill_list);
+> > +
+> > +	/*
+> > +	 * Protect the lists, since they can be by tasks with different netwo=
+rk
+> > +	 * namespace contexts.
+> > +	 */
+> > +	spin_lock_bh(&serv->sv_lock);
+> > +
+> >  	svc_close_list(&serv->sv_tempsocks, net);
+> >  	svc_close_list(&serv->sv_permsocks, net);
+> > =20
+> > @@ -976,8 +1014,18 @@ void svc_close_net(struct svc_serv *serv, struct =
+net *net)
+> >  	 * svc_xprt_enqueue will not add new entries without taking the
+> >  	 * sp_lock and checking XPT_BUSY.
+> >  	 */
+> > -	svc_clear_list(&serv->sv_tempsocks, net);
+> > -	svc_clear_list(&serv->sv_permsocks, net);
+> > +	svc_clear_list(&serv->sv_tempsocks, net, &kill_list);
+> > +	svc_clear_list(&serv->sv_permsocks, net, &kill_list);
+> > +
+> > +	spin_unlock_bh(&serv->sv_lock);
+> > +
+> > +	/*
+> > +	 * Destroy collected transports.
+> > +	 * Note: tranports has been marked as XPT_DETACHED on svc_clear_list(=
+),
+> > +	 * so no need to protect againt list_del() in svc_delete_xprt().
+> > +	 */
+> > +	list_for_each_entry_safe(xprt, tmp, &kill_list, xpt_list)
+> > +		svc_delete_xprt(xprt);
+> >  }
+> > =20
+> >  /*
+> >=20
 
-ore: Fix NFS crash by supporting any unaligned RAID IO
-ore: Remove support of partial IO request (NFS crash)
-ore: Unlock r4w pages in exact reverse order of locking
 
-	These above are ORE patches that actually fix the NFS CRASH
+--Sig_/VF6ym0cZx3o0SAEoQfSb_Om
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
 
-pnfs-obj: don't leak objio_state if ore_write/read ...
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
 
-	This above is an important mem leak in the error case
+iQIVAwUBUBdtEDnsnt1WYoG5AQK6lxAAuy3KWciJkh3EjoJdwZFmfDK04zsI1+Fi
+CXo8vWnny9I0xzJ9tj2aLsKi1xOOpmIrTsq+pFzJilEPUPerFt+i5827aV+NHWs/
+t31qTycEQldb1E161aEu4xcL8q6/9466k2K2ATCexhx8te5nul2Gxql3YwpWJPIl
+WmB5Au5FMH+Xzk8kTi1ia2k4xYR1ss5B2GxulcclIge0nkxTR7mdkRLp2AeuqpYL
+cQhY5LId+VYs9HHfWBq5STG2ObRQQ7bkQcdhpsAhpZmuFiUjp/XAgEpTtHMLEM3m
+jMs+tvlMMmrhBY3Wd/KxJcTQdhwr27Z+mPbHS9kO0Q+MjKUEvqWrz4TRCQC0ZIg+
+4gVYT1S/N8Wbw1vPvQjrlz1nQkWCPGnzE93Y6fwElWKNnhR/UmU4CmtDN0U20zAh
+0Z42kdx1DVtZrYovzijevGjpSdRXXvzqARHATaHaRoY6y93kQpbZuwDBRpfdkyvJ
+Smsn3HFcylWRTQHVY+RauKRTDj3QfSVyvapmiMBszhK2AdxJCeXKaUVaF4KlwAd3
+LJKTLGes6dWDR59W4vNn3YqOuEWGkrCEUoiOjQ9nXS8Q2X1/OvfOUv1H8U/9Q5TN
+4CevnBPVxIN1gNKA4WZ+NLEmcTbqRrr2x9d+L8BpIVPEOt4k2pQMjymM0DaglDbL
+eqjOmS/hxHc=
+=dbCN
+-----END PGP SIGNATURE-----
 
-pnfs-obj: Fix __r4w_get_page when offset is beyond ...
-NFS41: add pg_layout_private to nfs_pageio_descriptor
-pnfs-obj: Better IO pattern in case of unaligned offset  for-linus
-
-	I would also love to push these 3 please advise
-
-Please look into this ASAP, as we are so late already because of my
-absence. If you'll inspect them carefully you will see that other then
-the fix they are low risk. And I have tested them extensively.
-
-(I pushed it to linux-next and will let it cook for 48 hours)
-
-Thanks for your help
-Boaz
+--Sig_/VF6ym0cZx3o0SAEoQfSb_Om--
