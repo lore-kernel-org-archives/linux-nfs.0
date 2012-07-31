@@ -1,60 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from hapkido.dreamhost.com ([66.33.216.122]:50708 "EHLO
-	hapkido.dreamhost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754135Ab2GXUCE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jul 2012 16:02:04 -0400
-Received: from homiemail-a86.g.dreamhost.com (caiajhbdccac.dreamhost.com [208.97.132.202])
-	by hapkido.dreamhost.com (Postfix) with ESMTP id 99B23167F
-	for <linux-nfs@vger.kernel.org>; Tue, 24 Jul 2012 13:02:03 -0700 (PDT)
-Received: from homiemail-a86.g.dreamhost.com (localhost [127.0.0.1])
-	by homiemail-a86.g.dreamhost.com (Postfix) with ESMTP id 7310E36006B
-	for <linux-nfs@vger.kernel.org>; Tue, 24 Jul 2012 13:00:58 -0700 (PDT)
-Received: from mail-gg0-f174.google.com (mail-gg0-f174.google.com [209.85.161.174])
-	(using TLSv1 with cipher RC4-SHA (128/128 bits))
-	(No client certificate requested)
-	(Authenticated sender: nico@cryptonector.com)
-	by homiemail-a86.g.dreamhost.com (Postfix) with ESMTPSA id 453EA36006A
-	for <linux-nfs@vger.kernel.org>; Tue, 24 Jul 2012 13:00:58 -0700 (PDT)
-Received: by gglu4 with SMTP id u4so7114012ggl.19
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Jul 2012 13:00:57 -0700 (PDT)
+Received: from mx2.netapp.com ([216.240.18.37]:24741 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751789Ab2GaVrg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jul 2012 17:47:36 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Sachin Prabhu <sprabhu@redhat.com>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Fix array overflow in __nfs4_get_acl_uncached
+Date: Tue, 31 Jul 2012 21:47:34 +0000
+Message-ID: <1343771252.5528.56.camel@lade.trondhjem.org>
+References: <1343129785-4538-1-git-send-email-sprabhu@redhat.com>
+	 <1343685259.28035.2.camel@lade.trondhjem.org>
+	 <1343768659.4288.8.camel@localhost>
+In-Reply-To: <1343768659.4288.8.camel@localhost>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <20120724193348.GA4977@netapp.com>
-References: <20120724193348.GA4977@netapp.com>
-Date: Tue, 24 Jul 2012 15:00:57 -0500
-Message-ID: <CAK3OfOji009CP88tDNOp-nvdPBkvp0oKfJUqhO_TYuZktwhUCg@mail.gmail.com>
-Subject: Re: [nfsv4] Constructing a NFSv4 ACL from POSIX mode bits
-From: Nico Williams <nico@cryptonector.com>
-To: "Haynes, Tom" <thomas@netapp.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, nfsv4@ietf.org
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 24, 2012 at 2:33 PM, Haynes, Tom <thomas@netapp.com> wrote:
-> Bruce,
->
-> In looking at http://tools.ietf.org/html/draft-ietf-nfsv4-acl-mapping-05, it
-> states that when mapping the write bit, only for the owner do we set
-> ACE4_WRITE_ACL.
->
-> Back in version 00, it is open as to whether we can also set it for the
-> group and other if they have the write bit set.
->
-> I looked back at the NFSv4 WG aliases and I see some discussion from Lisa
-> on how Solaris only ever sets it for the owner due to POSIX restrictions
-> via chmod(). So, now I know how another server does it.
-
-This has changed.  I wrote this up here:
-
-http://cryptonector.com/2011/11/zfs-aclchmod-interactions-in-solaris-11/
-
-IIRC all ACEs for anything other than OWNER@ (or a user of the same
-name/ID) contribute to the group bits of the mode, the EVERYONE@ entry
-contributes to the world bits of the mode, and the OWNER@ and/or user
-ACEs for the owner name/ID contribute to the owner bits of the mode.
-
-The new scheme is really much simpler and more natural than everything
-else tried before.
-
-Nico
---
+T24gVHVlLCAyMDEyLTA3LTMxIGF0IDIyOjA0ICswMTAwLCBTYWNoaW4gUHJhYmh1IHdyb3RlOg0K
+PiBPbiBNb24sIDIwMTItMDctMzAgYXQgMjE6NTQgKzAwMDAsIE15a2xlYnVzdCwgVHJvbmQgd3Jv
+dGU6DQo+ID4gT24gVHVlLCAyMDEyLTA3LTI0IGF0IDEyOjM2ICswMTAwLCBTYWNoaW4gUHJhYmh1
+IHdyb3RlOg0KPiA+ID4gVGhpcyBmaXhlcyBhIGJ1ZyBpbnRyb2R1Y2VkIGJ5IGNvbW1pdA0KPiA+
+ID4gNWEwMDY4OTkzMGFiOTc1ZmRkMWIzN2IwMzQ0NzUwMTdlNDYwY2YyYQ0KPiA+ID4gDQo+ID4g
+PiBCcnVjZSBGaWVsZHMgcG9pbnRlZCBvdXQgdGhhdCB0aGUgY2hhbmdlcyBpbnRyb2R1Y2VkIGJ5
+IHRoZSBwYXRjaCB3aWxsDQo+ID4gPiBjYXVzZSB0aGUgYXJyYXkgbnBhZ2VzIHRvIG92ZXJmbG93
+IGlmIGEgc2l6ZSByZXF1ZXN0ZWQgaXMgPj0NCj4gPiA+IFhBVFRSX1NJWkVfTUFYLg0KPiA+ID4g
+DQo+ID4gPiBUaGUgcGF0Y2ggYWxzbyBmaXhlcyB0aGUgY2hlY2sgZm9yIHRoZSBsZW5ndGggb2Yg
+dGhlIEFDTCByZXR1cm5lZC4gVGhlDQo+ID4gPiBmbGFnIEFDTF9MRU5fUkVRVUVTVCBoYXMgYmVl
+biByZW5hbWVkIHRvIE5GUzRfQUNMX0xFTl9PTkxZIGFuZCBhcGFydA0KPiA+ID4gZnJvbSBpbmRp
+Y2F0aW5nIHRoYXQgdGhlIHVzZXIgaXMganVzdCBpbnRlcmVzdGVkIGluIHRoZSBBQ0wgbGVuZ3Ro
+IHdoZW4NCj4gPiA+IG1ha2luZyBhIHJlcXVlc3QsIGl0IGlzIGFsc28gdXNlZCB0byBpbmRpY2F0
+ZSBpZiB0aGUgeGRyIHBhZ2VzIGJ1ZmZlcg0KPiA+ID4gcmV0dXJuZWQgaW4gcmVzcG9uc2UgaG9s
+ZHMgdGhlIGNvbXBsZXRlIEFDTCBvciBqdXN0IHRoZSBsZW5ndGguDQo+ID4gPiANCj4gPiA+IFNp
+Z25lZC1vZmYtYnk6IFNhY2hpbiBQcmFiaHUgPHNwcmFiaHVAcmVkaGF0LmNvbT4NCj4gPiANCj4g
+PiBJZiB0aGlzIGZpeCBpcyBnb2luZyBpbnRvIHN0YWJsZSwgdGhlbiB0aGUgcGF0Y2ggbmVlZHMg
+dG8gYmUgc3BsaXQgdXAuDQo+ID4gVGhlIHJlbmFtZSBvZiBBQ0xfTEVOX1JFUVVFU1QgdG8gTkZT
+NF9BQ0xfTEVOX09OTFkgaXMgYSBjbGVhbnVwIGFuZA0KPiA+IHNob3VsZCBub3QgYmUgcHJvcGFn
+YXRlZCB0byBzdGFibGUuLi4NCj4gDQo+IFRyb25kIHRoZSBjaGFuZ2UgdGhlcmUgd2FzIHJlcXVp
+cmVkIHRvIGZpeCBhIG1pc3Rha2UgaW4gdGhlIGlmDQo+IGNvbmRpdGlvbi4NCj4gDQo+IHN0YXRp
+YyBzc2l6ZV90IF9fbmZzNF9nZXRfYWNsX3VuY2FjaGVkKHN0cnVjdCBpbm9kZSAqaW5vZGUsIHZv
+aWQgKmJ1ZiwNCj4gc2l6ZV90IGJ1ZmxlbikNCj4gew0KPiAuLg0KPiAgICAgICAgIGFjbF9sZW4g
+PSByZXMuYWNsX2xlbiAtIHJlcy5hY2xfZGF0YV9vZmZzZXQ7DQo+ICAgICAgICAgaWYgKGFjbF9s
+ZW4gPiBhcmdzLmFjbF9sZW4pDQo+IC4uDQo+IH0NCj4gDQo+IEF0IHRoaXMgcG9pbnQsIA0KPiBy
+ZXMuYWNsX2RhdGFfb2Zmc2V0ID0gc2l6ZSBvZiBiaXRtYXAgYXJyYXkgKyBzaXplIG9mIGxlbmd0
+aCBhdHRyaWJ1dGUNCj4gcmVzLmFjbF9sZW5ndGggPSByZXMuYWNsX2RhdGFfb2Zmc2V0ICsgQUNM
+IGxlbmd0aCANCj4gVGhlc2UgMiB2YXJpYWJsZXMgYXJlIHNldCBpbiBkZWNvZGVfZ2V0YWNsKCku
+IFRoZSByaWdodCBjaGVjayBoZXJlIHdvdWxkDQo+IGhhdmUgYmVlbiB0byBjb21wYXJlIHJlcy5h
+Y2xfbGVuIGFuZCBhcmdzLmFjbF9sZW4uIA0KPiANCj4gSW5zdGVhZCBvZiBzaW1wbHkgcmVwbGFj
+aW5nIHRoZSBpZiBjb25kaXRpb24sIEkgZGVjaWRlZCB0byBjbGVhbiB1cCB0aGUNCj4gY29kZSB0
+byB1c2UgTkZTNF9BQ0xfTEVOX09OTFkgb24gYWR2aWNlIG9mIEJydWNlIHRvIG1ha2UgdGhlIGNv
+ZGUgZWFzaWVyDQo+IHRvIHVuZGVyc3RhbmQuDQo+IA0KPiBTbyBib3RoIHBhcnRzIG9mIHRoaXMg
+cGF0Y2ggYXJlIGFjdHVhbGx5IGJ1ZyBmaXhlcy4gSWYgeW91IHN0aWxsIHRoaW5rDQo+IHRoYXQg
+dGhleSBzaG91bGQgYmUgc2VwYXJhdGVkLCBJIGFtIGhhcHB5IHRvIGRvIHRoYXQuDQoNCkkgYWNj
+ZXB0IHRoYXQgd2UgbmVlZCBib3RoIGZpeGVzLiBUaGUgcGFydCB0aGF0IEkgd2FudCB0byBzZXBh
+cmF0ZSBvdXQNCmlzIF9vbmx5XyB0aGUgcmVuYW1lIG9mIEFDTF9MRU5fUkVRVUVTVCwgc2luY2Ug
+dGhhdCBpcyBub3QgYSBmaXguDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xp
+ZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3
+Lm5ldGFwcC5jb20NCg0K
