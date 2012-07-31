@@ -1,50 +1,191 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:13497 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:42787 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752247Ab2GJVwy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jul 2012 17:52:54 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Simo Sorce <simo@redhat.com>, "bfields@redhat.com" <bfields@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/4] Add support for new RPCSEC_GSS upcall mechanism for
- nfsd
-Date: Tue, 10 Jul 2012 21:52:51 +0000
-Message-ID: <1341957169.17428.4.camel@lade.trondhjem.org>
-References: <1337983796-26476-1-git-send-email-simo@redhat.com>
-	 <20120710204913.GA6038@fieldses.org>
-In-Reply-To: <20120710204913.GA6038@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+	id S1754559Ab2GaOml (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jul 2012 10:42:41 -0400
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 1/2] NFS: Fix a number of bugs in the idmapper
+To: Trond.Myklebust@netapp.com, bjschuma@netapp.com, sct@redhat.com
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com, jlayton@redhat.com,
+        David Howells <dhowells@redhat.com>
+Date: Tue, 31 Jul 2012 15:42:34 +0100
+Message-ID: <20120731144234.6664.85664.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA3LTEwIGF0IDE2OjQ5IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIEZyaSwgTWF5IDI1LCAyMDEyIGF0IDA2OjA5OjUyUE0gLTA0MDAsIFNpbW8gU29yY2Ug
-d3JvdGU6DQo+ID4gVGhpcyBwYXRjaHNldCBpbXBsZW1lbnRzIGEgbmV3IHVwY2FsbCBtZWNoYW5p
-c20gdGhhdCB1c2VzIHRoZSBzdW5ycGMNCj4gPiBjbGllbnQgdG8gdGFsayB0byBnc3Nwcm94eVsx
-XSwgYSBuZXcgdXNlcnNwYWNlIGRhZW1vbiB0aGF0IGhhbmRsZXMgZ3NzYXBpDQo+ID4gb3BlcmF0
-aW9ucyBvbiBiZWhhbGYgb2Ygb3RoZXIgcHJvY2Vzc2VzIG9uIHRoZSBzeXN0ZW0uDQo+ID4gDQo+
-ID4gVGhlIG1haW4gZHJpdmVyIGZvciB0aGlzIG5ldyBtZWNoYW5pc20gaXMgdG8gb3ZlcmNvbWUg
-bGltaXRhdGlvbnMgd2l0aA0KPiA+IHRoZSBjdXJyZW50IGRhZW1vbiBhbmQgdXBjYWxsLiBUaGUg
-Y3VycmVudCBjb2RlIGNhbm5vdCBoYW5kbGUgdGlja2V0cw0KPiA+IGxhcmdlciB0aGFuIGFwcHJv
-eGltYXRpdmVseSAyayBhbmQgY2Fubm90IGhhbmRsZSBzZW5kaW5nIGJhY2sgbGFyZ2UgdXNlcg0K
-PiA+IGNyZWRlbnRpYWwgc2V0cyB0byB0aGUga2VybmVsLg0KPiA+IA0KPiA+IFRoZXNlIHBhdGNo
-ZXMgaGF2ZSBiZWVuIHRlc3RlZCBhZ2FpbnN0IHRoZSBkZXZlbG9wbWVudCB2ZXJzaW9uIG9mIGdz
-c3Byb3h5DQo+ID4gdGFnZ2VkIGFzIGtlcm5lbF92MC4xIGluIHRoZSBtYXN0ZXIgcmVwb1syXS4N
-Cj4gPiANCj4gPiBJIGhhdmUgdGVzdGVkIHdhbGtpbmcgaW50byBtb3VudHBvaW50cyB1c2luZyB0
-aWNrZXRzIGFydGlmaWNpYWxseSBwdW1wZWQNCj4gPiB1cCB0byA2NGsgYW5kIHRoZSB1c2VyIGlz
-IHByb3Blcmx5IGF1dGhvcml6ZWQsIGFmdGVyIHRoZSBhY2NlcHRfc2VfY29udGV4dA0KPiA+IGNh
-bGwgaXMgcGVyZm9ybWVkIHRocm91Z2ggdGhlIG5ldyB1cGNhbGwgbWVjaGFuaXNtIGFuZCBnc3Nw
-cm94eS4NCj4gPiANCj4gPiBUaGUgZ3NzcHJveHkgaGFzIHRoZSBwb3RlbnRpYWwgb2YgaGFuZGxp
-bmcgYWxzbyBpbml0X3NlY19jb250ZXh0IGNhbGxzLA0KPiA+IGJ1dCBhdCB0aGUgbW9tZW50IHRo
-ZSBvbmx5IHRhcmdldGVkIHN5c3RlbSBpcyBuZnNkLg0KPiANCj4gT0ssIGFic2VudCBvYmplY3Rp
-b25zIGZyb20gYW55b25lIGVsc2UgSSdtIGNvbW1pdGluZyB0aGVzZSBmb3IgMy42IGFuZA0KPiBw
-dXNoaW5nIHRoZW0gb3V0IHNvb24gcGVuZGluZyBzb21lIHJlZ3Jlc3Npb24gdGVzdGluZy4gIFRo
-YW5rcyENCg0KUGxlYXNlIHRlc3QgdGhhdCB0aGUgTkZTdjQgYmFja2NoYW5uZWwgY29udGludWVz
-IHRvIHdvcmsgdW5jaGFuZ2VkIHdpdGgNCnRoZSBleGlzdGluZyBycGMuc3ZjZ3NzZCBiZWZvcmUg
-eW91IGNvbW1pdC4NCg0KSSBkb24ndCBjYXJlIHdoYXQgaGFwcGVucyB0byB0aGUgTkZTIHNlcnZl
-ciwgYnV0IEkgZG8gZXhwZWN0IGFsbA0KZXhpc3RpbmcgTkZTdjQgY2xpZW50IHNldHVwcyB0byB3
-b3JrIHdpdGhvdXQgYW55IG5lZWQgZm9yIGNoYW5nZXMuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0
-DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RA
-bmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+Fix a number of bugs in the NFS idmapper code:
+
+ (1) Only registered key types can be passed to the core keys code, so
+     register the legacy idmapper key type.
+
+     This is a requirement because the unregister function cleans up keys
+     belonging to that key type so that there aren't dangling pointers to the
+     module left behind - including the key->type pointer.
+
+ (2) Rename the legacy key type.  You can't have two key types with the same
+     name, and (1) would otherwise require that.
+
+ (3) complete_request_key() must be called in the error path of
+     nfs_idmap_legacy_upcall().
+
+ (4) There is one idmap struct for each nfs_client struct.  This means that
+     idmap->idmap_key_cons is shared without the use of a lock.  This is a
+     problem because key_instantiate_and_link() - as called indirectly by
+     idmap_pipe_downcall() - releases anyone waiting for the key to be
+     instantiated.
+
+     What happens is that idmap_pipe_downcall() running in the rpc.idmapd
+     thread, releases the NFS filesystem in whatever thread that is running in
+     to continue.  This may then make another idmapper call, overwriting
+     idmap_key_cons before idmap_pipe_downcall() gets the chance to call
+     complete_request_key().
+
+     I *think* that reading idmap_key_cons only once, before
+     key_instantiate_and_link() is called, and then caching the result in a
+     variable is sufficient.
+
+Bug (4) is the cause of:
+
+BUG: unable to handle kernel NULL pointer dereference at           (null)
+IP: [<          (null)>]           (null)
+PGD 0
+Oops: 0010 [#1] SMP
+CPU 1
+Modules linked in: ppdev parport_pc lp parport ip6table_filter ip6_tables ebtable_nat ebtables ipt_MASQUERADE iptable_nat nf_nat nf_conntrack_ipv4 nf_defrag_ipv4 xt_state nf_conntrack nfs fscache xt_CHECKSUM auth_rpcgss iptable_mangle nfs_acl bridge stp llc lockd be2iscsi iscsi_boot_sysfs bnx2i cnic uio cxgb4i cxgb4 cxgb3i libcxgbi cxgb3 mdio ib_iser rdma_cm ib_cm iw_cm ib_sa ib_mad ib_core ib_addr iscsi_tcp libiscsi_tcp libiscsi scsi_transport_iscsi snd_hda_codec_realtek snd_usb_audio snd_hda_intel snd_hda_codec snd_seq snd_pcm snd_hwdep snd_usbmidi_lib snd_rawmidi snd_timer uvcvideo videobuf2_core videodev media videobuf2_vmalloc snd_seq_device videobuf2_memops e1000e vhost_net iTCO_wdt joydev coretemp snd soundcore macvtap macvlan i2c_i801 snd_page_alloc tun iTCO_vendor_support microcode kvm_intel kvm sunrpc hid_logitech_dj usb_storage i915 drm_kms_helper drm i2c_algo_bit i2c_core video [last unloaded: scsi_wait_scan]
+Pid: 1229, comm: rpc.idmapd Not tainted 3.4.2-1.fc16.x86_64 #1 Gateway DX4710-UB801A/G33M05G1
+RIP: 0010:[<0000000000000000>]  [<          (null)>]           (null)
+RSP: 0018:ffff8801a3645d40  EFLAGS: 00010246
+RAX: ffff880077707e30 RBX: ffff880077707f50 RCX: ffff8801a18ccd80
+RDX: 0000000000000006 RSI: ffff8801a3645e75 RDI: ffff880077707f50
+RBP: ffff8801a3645d88 R08: ffff8801a430f9c0 R09: ffff8801a3645db0
+R10: 000000000000000a R11: 0000000000000246 R12: ffff8801a18ccd80
+R13: ffff8801a3645e75 R14: ffff8801a430f9c0 R15: 0000000000000006
+FS:  00007fb6fb51a700(0000) GS:ffff8801afc80000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 0000000000000000 CR3: 00000001a49b0000 CR4: 00000000000027e0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+Process rpc.idmapd (pid: 1229, threadinfo ffff8801a3644000, task ffff8801a3bf9710)
+Stack:
+ ffffffff81260878 ffff8801a3645db0 ffff8801a3645db0 ffff880077707a90
+ ffff880077707f50 ffff8801a18ccd80 0000000000000006 ffff8801a3645e75
+ ffff8801a430f9c0 ffff8801a3645dd8 ffffffff81260983 ffff8801a3645de8
+Call Trace:
+ [<ffffffff81260878>] ? __key_instantiate_and_link+0x58/0x100
+ [<ffffffff81260983>] key_instantiate_and_link+0x63/0xa0
+ [<ffffffffa057062b>] idmap_pipe_downcall+0x1cb/0x1e0 [nfs]
+ [<ffffffffa0107f57>] rpc_pipe_write+0x67/0x90 [sunrpc]
+ [<ffffffff8117f833>] vfs_write+0xb3/0x180
+ [<ffffffff8117fb5a>] sys_write+0x4a/0x90
+ [<ffffffff81600329>] system_call_fastpath+0x16/0x1b
+Code:  Bad RIP value.
+RIP  [<          (null)>]           (null)
+ RSP <ffff8801a3645d40>
+CR2: 0000000000000000
+
+Signed-off-by: David Howells <dhowells@redhat.com>
+Reviewed-by: Steve Dickson <steved@redhat.com>
+---
+
+ fs/nfs/idmap.c |   26 ++++++++++++++++++++------
+ 1 file changed, 20 insertions(+), 6 deletions(-)
+
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index 864c51e..1b5058b 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -205,12 +205,18 @@ static int nfs_idmap_init_keyring(void)
+ 	if (ret < 0)
+ 		goto failed_put_key;
+ 
++	ret = register_key_type(&key_type_id_resolver_legacy);
++	if (ret < 0)
++		goto failed_reg_legacy;
++
+ 	set_bit(KEY_FLAG_ROOT_CAN_CLEAR, &keyring->flags);
+ 	cred->thread_keyring = keyring;
+ 	cred->jit_keyring = KEY_REQKEY_DEFL_THREAD_KEYRING;
+ 	id_resolver_cache = cred;
+ 	return 0;
+ 
++failed_reg_legacy:
++	unregister_key_type(&key_type_id_resolver);
+ failed_put_key:
+ 	key_put(keyring);
+ failed_put_cred:
+@@ -222,6 +228,7 @@ static void nfs_idmap_quit_keyring(void)
+ {
+ 	key_revoke(id_resolver_cache->thread_keyring);
+ 	unregister_key_type(&key_type_id_resolver);
++	unregister_key_type(&key_type_id_resolver_legacy);
+ 	put_cred(id_resolver_cache);
+ }
+ 
+@@ -385,7 +392,7 @@ static const struct rpc_pipe_ops idmap_upcall_ops = {
+ };
+ 
+ static struct key_type key_type_id_resolver_legacy = {
+-	.name		= "id_resolver",
++	.name		= "id_legacy",
+ 	.instantiate	= user_instantiate,
+ 	.match		= user_match,
+ 	.revoke		= user_revoke,
+@@ -674,6 +681,7 @@ static int nfs_idmap_legacy_upcall(struct key_construction *cons,
+ 	if (ret < 0)
+ 		goto out2;
+ 
++	BUG_ON(idmap->idmap_key_cons != NULL);
+ 	idmap->idmap_key_cons = cons;
+ 
+ 	ret = rpc_queue_upcall(idmap->idmap_pipe, msg);
+@@ -687,8 +695,7 @@ out2:
+ out1:
+ 	kfree(msg);
+ out0:
+-	key_revoke(cons->key);
+-	key_revoke(cons->authkey);
++	complete_request_key(cons, ret);
+ 	return ret;
+ }
+ 
+@@ -722,11 +729,18 @@ idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+ {
+ 	struct rpc_inode *rpci = RPC_I(filp->f_path.dentry->d_inode);
+ 	struct idmap *idmap = (struct idmap *)rpci->private;
+-	struct key_construction *cons = idmap->idmap_key_cons;
++	struct key_construction *cons;
+ 	struct idmap_msg im;
+ 	size_t namelen_in;
+ 	int ret;
+ 
++	/* If instantiation is successful, anyone waiting for key construction
++	 * will have been woken up and someone else may now have used
++	 * idmap_key_cons - so after this point we may no longer touch it.
++	 */
++	cons = ACCESS_ONCE(idmap->idmap_key_cons);
++	idmap->idmap_key_cons = NULL;
++
+ 	if (mlen != sizeof(im)) {
+ 		ret = -ENOSPC;
+ 		goto out;
+@@ -739,7 +753,7 @@ idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+ 
+ 	if (!(im.im_status & IDMAP_STATUS_SUCCESS)) {
+ 		ret = mlen;
+-		complete_request_key(idmap->idmap_key_cons, -ENOKEY);
++		complete_request_key(cons, -ENOKEY);
+ 		goto out_incomplete;
+ 	}
+ 
+@@ -756,7 +770,7 @@ idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+ 	}
+ 
+ out:
+-	complete_request_key(idmap->idmap_key_cons, ret);
++	complete_request_key(cons, ret);
+ out_incomplete:
+ 	return ret;
+ }
+
