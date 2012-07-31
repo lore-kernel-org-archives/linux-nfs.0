@@ -1,66 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:39867 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753249Ab2GBFgv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jul 2012 01:36:51 -0400
-Received: by bkwj10 with SMTP id j10so351468bkw.19
-        for <linux-nfs@vger.kernel.org>; Sun, 01 Jul 2012 22:36:50 -0700 (PDT)
+Received: from relay.parallels.com ([195.214.232.42]:44468 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755813Ab2GaHqg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Jul 2012 03:46:36 -0400
+Message-ID: <50178D59.7010103@parallels.com>
+Date: Tue, 31 Jul 2012 11:46:33 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-From: Song Gao <song.gao.beta@gmail.com>
-Date: Mon, 2 Jul 2012 00:36:29 -0500
-Message-ID: <CAKeNtnR5gM02B6uDhgkqvu7cgdKsKEkFWrf0rCP0uJYBsO-NFw@mail.gmail.com>
-Subject: Possible bug in NFSv4 server regarding to looking for right path for
- clients to mount
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH] SUNRPC: return negative value in case rpcbind client
+ creation error
+References: <20120720114849.23572.91010.stgit@localhost.localdomain> <1343689924.8362.4.camel@lade.trondhjem.org>
+In-Reply-To: <1343689924.8362.4.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello all,
+31.07.2012 03:12, Myklebust, Trond пишет:
+> On Fri, 2012-07-20 at 15:57 +0400, Stanislav Kinsbursky wrote:
+>> Without this patch kernel will panic on LockD start, because lockd_up() checks
+>> lockd_up_net() result for negative value.
+>> >From my pow it's better to return negative value from rpcbind routines instead
+>> of replacing all such checks like in lockd_up().
+>>
+>> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+>> ---
+>>   net/sunrpc/rpcb_clnt.c |    4 ++--
+>>   1 files changed, 2 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+>> index 92509ff..a70acae 100644
+>> --- a/net/sunrpc/rpcb_clnt.c
+>> +++ b/net/sunrpc/rpcb_clnt.c
+>> @@ -251,7 +251,7 @@ static int rpcb_create_local_unix(struct net *net)
+>>   	if (IS_ERR(clnt)) {
+>>   		dprintk("RPC:       failed to create AF_LOCAL rpcbind "
+>>   				"client (errno %ld).\n", PTR_ERR(clnt));
+>> -		result = -PTR_ERR(clnt);
+>> +		result = PTR_ERR(clnt);
+>>   		goto out;
+>>   	}
+>>
+>> @@ -298,7 +298,7 @@ static int rpcb_create_local_net(struct net *net)
+>>   	if (IS_ERR(clnt)) {
+>>   		dprintk("RPC:       failed to create local rpcbind "
+>>   				"client (errno %ld).\n", PTR_ERR(clnt));
+>> -		result = -PTR_ERR(clnt);
+>> +		result = PTR_ERR(clnt);
+>>   		goto out;
+>>   	}
+>
+> Who is supposed to carry this patch? Is it Bruce or is it me?
+>
 
-There's possibly a bug related NFSv4 server's behavior on looking for
-path on /export .
+I don't know, Trond. It's up to you and Bruce.
+This is a bug fix and the bug is very old. The only reason, why it was found 
+just now, is that all the callers of these functions were checking the result 
+for zero.
+And I agreed with Bruce, that is have to marked for stable branches (at least 
+for 3.4-3.5 kernels).
 
-I have a 32 nodes KVM cluster. NFS, host filesystem, KVM storage pool,
-are all placed on SSD. KVM guests are connected to host through virtio
-drived GB ethernet.
-
-I followed this guide to configure NFS:
-https://help.ubuntu.com/community/SettingUpNFSHowTo
-
-The problem was that, when I execute a program simultaneously (through
-cssh) on 32 nodes, there were always a number of nodes that
-encountered "input/output error". The /var/log/messages on client
-shows "state manager failed on NFSv4 server with error 10022".
-
-I tried different options in client /etc/fstab as well as export
-settings in server but nothing helps. Interestingly, by changing the
-item in /etc/fstab from:
-    some-host:/tigers  nfs    rw,bg,hard,intr    0    0
-into:
-    some-host:/export/tigers    /nfs    nfs    rw,bg,hard,intr    0    0
-fixed the problem.
-
-I'm not familiar with it but I guess that it's probably caused by some
-problem in NFS server when it tries to find the right path when all 32
-clients are trying to mount NFS at the same time.
-
-Here's some more information:
-client: debian "squeeze", 2.6.32-5-amd64
-server: Ubuntu Server 12.04, 3.2.0-23-generic
-nfs version: NFSv4
-no security option
-results of `exports -v`:
-    /export
-192.168.100.0/24(rw,wdelay,insecure,root_squash,no_subtree_check,fsid=0)
-    /export/tigers
-192.168.100.0/24(rw,wdelay,nohide,insecure,root_squash,no_subtree_check)
-
-Please let me know if there's any other information I need to provide.
-
-Thanks!
-
-Kind regards,
 -- 
-Song Gao
-https://profiles.google.com/song.gao.beta/about
+Best regards,
+Stanislav Kinsbursky
