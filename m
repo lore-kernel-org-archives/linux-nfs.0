@@ -1,65 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:63657 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752029Ab2GaDPN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jul 2012 23:15:13 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Fengguang Wu <fengguang.wu@intel.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: [nfs:devel 46/51] fs/nfs/write.c:1592:5: error: redefinition of
- 'nfs_commit_inode'
-Date: Tue, 31 Jul 2012 03:14:56 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA934BE82@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20120731024328.GA10480@localhost>
-In-Reply-To: <20120731024328.GA10480@localhost>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+Received: from rcsinet15.oracle.com ([148.87.113.117]:29457 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754491Ab2GaWaA convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Jul 2012 18:30:00 -0400
+Subject: Re: [PATCH 4/4] rpc.gssd: don't call poll() twice a second.
+Mime-Version: 1.0 (Apple Message framework v1280)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20120731212744.GC1826@pad.fieldses.org>
+Date: Tue, 31 Jul 2012 15:29:51 -0700
+Cc: Steve Dickson <SteveD@redhat.com>, Jim Rees <rees@umich.edu>,
+        linux-nfs@vger.kernel.org
+Message-Id: <844B5000-C257-4EB9-84D7-F6961A8A9F6C@oracle.com>
+References: <20120731205931.GA32161@fieldses.org> <1343768449-32205-4-git-send-email-bfields@redhat.com> <9C74193E-FB49-48C3-A828-50EDE37C95AD@oracle.com> <20120731212744.GC1826@pad.fieldses.org>
+To: "J. Bruce Fields" <bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bryan,
 
-Why did you switch to using IS_ENABLED in the first place, and why wasn't that put in a separate patch?
+On Jul 31, 2012, at 2:27 PM, J. Bruce Fields wrote:
+
+> On Tue, Jul 31, 2012 at 02:23:36PM -0700, Chuck Lever wrote:
+>> 
+>> On Jul 31, 2012, at 2:00 PM, J. Bruce Fields wrote:
+>> 
+>>> From: "J. Bruce Fields" <bfields@redhat.com>
+>>> 
+>>> Use ppoll instead.
+>>> 
+>>> (This breaks compatibility with kernels before 2.6.16 and glibc before
+>>> 2.4).
+>> 
+>> I think I prefer seeing this wrapped with some autoconf machinery to allow nfs-utils to continue to build on earlier systems.
+> 
+> I was assuming we could drop support for older systems.
+
+We went to a lot of trouble to get the IPv6 stuff to build correctly on older systems, and we still heard complaints.
+
+> If not, then'd I'd much prefer to go back to the self-pipe trick than to
+> deal with autoconf and  ifdef'ing out all this stuff.
+
+This patch is a tiny change.  I don't think autoconf in this case is onerous.  I'm happy to help you with it.
+
+> --b.
+> 
+>> 
+>>> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+>>> ---
+>>> utils/gssd/gssd_main_loop.c |   12 +++++-------
+>>> 1 file changed, 5 insertions(+), 7 deletions(-)
+>>> 
+>>> diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
+>>> index 142c8c5..2d20fa2 100644
+>>> --- a/utils/gssd/gssd_main_loop.c
+>>> +++ b/utils/gssd/gssd_main_loop.c
+>>> @@ -186,13 +186,14 @@ gssd_run()
+>>> 	struct sigaction	dn_act = {
+>>> 		.sa_handler = dir_notify_handler
+>>> 	};
+>>> -	sigset_t		set;
+>>> +	sigset_t		set, emptyset;
+>>> 
+>>> 	sigemptyset(&dn_act.sa_mask);
+>>> 	sigaction(DNOTIFY_SIGNAL, &dn_act, NULL);
+>>> 
+>>> -	/* just in case the signal is blocked... */
+>>> +	sigemptyset(&emptyset);
+>>> 	sigemptyset(&set);
+>>> +	/* just in case the signal is blocked... */
+>>> 	sigaddset(&set, DNOTIFY_SIGNAL);
+>>> 	sigprocmask(SIG_UNBLOCK, &set, NULL);
+>>> 
+>>> @@ -210,16 +211,13 @@ gssd_run()
+>>> 				exit(1);
+>>> 			}
+>>> 		}
+>>> -		/* race condition here: dir_changed could be set before we
+>>> -		 * enter the poll, and we'd never notice if it weren't for the
+>>> -		 * timeout. */
+>>> -		ret = poll(pollarray, pollsize, POLL_MILLISECS);
+>>> +		ret = ppoll(pollarray, pollsize, NULL, &emptyset);
+>>> 		if (ret < 0) {
+>>> 			if (errno != EINTR)
+>>> 				printerr(0,
+>>> 					 "WARNING: error return from poll\n");
+>>> 		} else if (ret == 0) {
+>>> -			/* timeout */
+>>> +			printerr(0, "WARNING: unexpected timeout\n");
+>>> 		} else { /* ret > 0 */
+>>> 			scan_poll_results(ret);
+>>> 		}
+>>> -- 
+>>> 1.7.9.5
+>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> --
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>> 
+>> 
+>> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
 
-> -----Original Message-----
-> From: Fengguang Wu [mailto:fengguang.wu@intel.com]
-> Sent: Monday, July 30, 2012 10:43 PM
-> To: Schumaker, Bryan
-> Cc: kernel-janitors@vger.kernel.org; Myklebust, Trond; linux-
-> nfs@vger.kernel.org
-> Subject: [nfs:devel 46/51] fs/nfs/write.c:1592:5: error: redefinition of
-> 'nfs_commit_inode'
-> 
-> Hi Bryan,
-> 
-> Kernel build failed on
-> 
-> tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git devel
-> head:   5c13c9e1c15ee2ca9ab2b953224001af53d9be09
-> commit: 1c606fb74c758beafd98cbad9a9133eadeec2371 [46/51] NFS: Convert
-> v3 into a module
-> config: blackfin-BF533-EZKIT_defconfig (attached as .config)
-> 
-> All related error/warning messages:
-> 
-> fs/nfs/write.c:1592:5: error: redefinition of 'nfs_commit_inode'
-> In file included from fs/nfs/write.c:19:0:
-> include/linux/nfs_fs.h:547:1: note: previous definition of 'nfs_commit_inode'
-> was here
-> 
-> vim +1592 fs/nfs/write.c
->   1589		return status;
->   1590	}
->   1591
-> > 1592	int nfs_commit_inode(struct inode *inode, int how)
->   1593	{
->   1594		LIST_HEAD(head);
->   1595		struct nfs_commit_info cinfo;
-> 
-> ---
-> 0-DAY kernel build testing backend         Open Source Technology Centre
-> Fengguang Wu <wfg@linux.intel.com>                     Intel Corporation
