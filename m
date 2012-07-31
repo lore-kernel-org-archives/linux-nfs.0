@@ -1,191 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:42787 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:24050 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754559Ab2GaOml (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jul 2012 10:42:41 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 1/2] NFS: Fix a number of bugs in the idmapper
-To: Trond.Myklebust@netapp.com, bjschuma@netapp.com, sct@redhat.com
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com, jlayton@redhat.com,
-        David Howells <dhowells@redhat.com>
-Date: Tue, 31 Jul 2012 15:42:34 +0100
-Message-ID: <20120731144234.6664.85664.stgit@warthog.procyon.org.uk>
-MIME-Version: 1.0
+	id S1753192Ab2GaNdp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jul 2012 09:33:45 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        Fengguang Wu <fengguang.wu@intel.com>,
+        "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [nfs:devel 46/51] fs/nfs/write.c:1592:5: error: redefinition of
+ 'nfs_commit_inode'
+Date: Tue, 31 Jul 2012 13:33:44 +0000
+Message-ID: <1343741622.519.2.camel@lade.trondhjem.org>
+References: <20120731024328.GA10480@localhost>
+	  <4FA345DA4F4AE44899BD2B03EEEC2FA934BE82@SACEXCMBX04-PRD.hq.netapp.com>
+	  <5017D3FC.9010905@netapp.com> <1343739299.519.1.camel@lade.trondhjem.org>
+	 <5017D824.209@netapp.com> <5017DDDB.6060500@netapp.com>
+In-Reply-To: <5017DDDB.6060500@netapp.com>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fix a number of bugs in the NFS idmapper code:
-
- (1) Only registered key types can be passed to the core keys code, so
-     register the legacy idmapper key type.
-
-     This is a requirement because the unregister function cleans up keys
-     belonging to that key type so that there aren't dangling pointers to the
-     module left behind - including the key->type pointer.
-
- (2) Rename the legacy key type.  You can't have two key types with the same
-     name, and (1) would otherwise require that.
-
- (3) complete_request_key() must be called in the error path of
-     nfs_idmap_legacy_upcall().
-
- (4) There is one idmap struct for each nfs_client struct.  This means that
-     idmap->idmap_key_cons is shared without the use of a lock.  This is a
-     problem because key_instantiate_and_link() - as called indirectly by
-     idmap_pipe_downcall() - releases anyone waiting for the key to be
-     instantiated.
-
-     What happens is that idmap_pipe_downcall() running in the rpc.idmapd
-     thread, releases the NFS filesystem in whatever thread that is running in
-     to continue.  This may then make another idmapper call, overwriting
-     idmap_key_cons before idmap_pipe_downcall() gets the chance to call
-     complete_request_key().
-
-     I *think* that reading idmap_key_cons only once, before
-     key_instantiate_and_link() is called, and then caching the result in a
-     variable is sufficient.
-
-Bug (4) is the cause of:
-
-BUG: unable to handle kernel NULL pointer dereference at           (null)
-IP: [<          (null)>]           (null)
-PGD 0
-Oops: 0010 [#1] SMP
-CPU 1
-Modules linked in: ppdev parport_pc lp parport ip6table_filter ip6_tables ebtable_nat ebtables ipt_MASQUERADE iptable_nat nf_nat nf_conntrack_ipv4 nf_defrag_ipv4 xt_state nf_conntrack nfs fscache xt_CHECKSUM auth_rpcgss iptable_mangle nfs_acl bridge stp llc lockd be2iscsi iscsi_boot_sysfs bnx2i cnic uio cxgb4i cxgb4 cxgb3i libcxgbi cxgb3 mdio ib_iser rdma_cm ib_cm iw_cm ib_sa ib_mad ib_core ib_addr iscsi_tcp libiscsi_tcp libiscsi scsi_transport_iscsi snd_hda_codec_realtek snd_usb_audio snd_hda_intel snd_hda_codec snd_seq snd_pcm snd_hwdep snd_usbmidi_lib snd_rawmidi snd_timer uvcvideo videobuf2_core videodev media videobuf2_vmalloc snd_seq_device videobuf2_memops e1000e vhost_net iTCO_wdt joydev coretemp snd soundcore macvtap macvlan i2c_i801 snd_page_alloc tun iTCO_vendor_support microcode kvm_intel kvm sunrpc hid_logitech_dj usb_storage i915 drm_kms_helper drm i2c_algo_bit i2c_core video [last unloaded: scsi_wait_scan]
-Pid: 1229, comm: rpc.idmapd Not tainted 3.4.2-1.fc16.x86_64 #1 Gateway DX4710-UB801A/G33M05G1
-RIP: 0010:[<0000000000000000>]  [<          (null)>]           (null)
-RSP: 0018:ffff8801a3645d40  EFLAGS: 00010246
-RAX: ffff880077707e30 RBX: ffff880077707f50 RCX: ffff8801a18ccd80
-RDX: 0000000000000006 RSI: ffff8801a3645e75 RDI: ffff880077707f50
-RBP: ffff8801a3645d88 R08: ffff8801a430f9c0 R09: ffff8801a3645db0
-R10: 000000000000000a R11: 0000000000000246 R12: ffff8801a18ccd80
-R13: ffff8801a3645e75 R14: ffff8801a430f9c0 R15: 0000000000000006
-FS:  00007fb6fb51a700(0000) GS:ffff8801afc80000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 0000000000000000 CR3: 00000001a49b0000 CR4: 00000000000027e0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Process rpc.idmapd (pid: 1229, threadinfo ffff8801a3644000, task ffff8801a3bf9710)
-Stack:
- ffffffff81260878 ffff8801a3645db0 ffff8801a3645db0 ffff880077707a90
- ffff880077707f50 ffff8801a18ccd80 0000000000000006 ffff8801a3645e75
- ffff8801a430f9c0 ffff8801a3645dd8 ffffffff81260983 ffff8801a3645de8
-Call Trace:
- [<ffffffff81260878>] ? __key_instantiate_and_link+0x58/0x100
- [<ffffffff81260983>] key_instantiate_and_link+0x63/0xa0
- [<ffffffffa057062b>] idmap_pipe_downcall+0x1cb/0x1e0 [nfs]
- [<ffffffffa0107f57>] rpc_pipe_write+0x67/0x90 [sunrpc]
- [<ffffffff8117f833>] vfs_write+0xb3/0x180
- [<ffffffff8117fb5a>] sys_write+0x4a/0x90
- [<ffffffff81600329>] system_call_fastpath+0x16/0x1b
-Code:  Bad RIP value.
-RIP  [<          (null)>]           (null)
- RSP <ffff8801a3645d40>
-CR2: 0000000000000000
-
-Signed-off-by: David Howells <dhowells@redhat.com>
-Reviewed-by: Steve Dickson <steved@redhat.com>
----
-
- fs/nfs/idmap.c |   26 ++++++++++++++++++++------
- 1 file changed, 20 insertions(+), 6 deletions(-)
-
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index 864c51e..1b5058b 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -205,12 +205,18 @@ static int nfs_idmap_init_keyring(void)
- 	if (ret < 0)
- 		goto failed_put_key;
- 
-+	ret = register_key_type(&key_type_id_resolver_legacy);
-+	if (ret < 0)
-+		goto failed_reg_legacy;
-+
- 	set_bit(KEY_FLAG_ROOT_CAN_CLEAR, &keyring->flags);
- 	cred->thread_keyring = keyring;
- 	cred->jit_keyring = KEY_REQKEY_DEFL_THREAD_KEYRING;
- 	id_resolver_cache = cred;
- 	return 0;
- 
-+failed_reg_legacy:
-+	unregister_key_type(&key_type_id_resolver);
- failed_put_key:
- 	key_put(keyring);
- failed_put_cred:
-@@ -222,6 +228,7 @@ static void nfs_idmap_quit_keyring(void)
- {
- 	key_revoke(id_resolver_cache->thread_keyring);
- 	unregister_key_type(&key_type_id_resolver);
-+	unregister_key_type(&key_type_id_resolver_legacy);
- 	put_cred(id_resolver_cache);
- }
- 
-@@ -385,7 +392,7 @@ static const struct rpc_pipe_ops idmap_upcall_ops = {
- };
- 
- static struct key_type key_type_id_resolver_legacy = {
--	.name		= "id_resolver",
-+	.name		= "id_legacy",
- 	.instantiate	= user_instantiate,
- 	.match		= user_match,
- 	.revoke		= user_revoke,
-@@ -674,6 +681,7 @@ static int nfs_idmap_legacy_upcall(struct key_construction *cons,
- 	if (ret < 0)
- 		goto out2;
- 
-+	BUG_ON(idmap->idmap_key_cons != NULL);
- 	idmap->idmap_key_cons = cons;
- 
- 	ret = rpc_queue_upcall(idmap->idmap_pipe, msg);
-@@ -687,8 +695,7 @@ out2:
- out1:
- 	kfree(msg);
- out0:
--	key_revoke(cons->key);
--	key_revoke(cons->authkey);
-+	complete_request_key(cons, ret);
- 	return ret;
- }
- 
-@@ -722,11 +729,18 @@ idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
- {
- 	struct rpc_inode *rpci = RPC_I(filp->f_path.dentry->d_inode);
- 	struct idmap *idmap = (struct idmap *)rpci->private;
--	struct key_construction *cons = idmap->idmap_key_cons;
-+	struct key_construction *cons;
- 	struct idmap_msg im;
- 	size_t namelen_in;
- 	int ret;
- 
-+	/* If instantiation is successful, anyone waiting for key construction
-+	 * will have been woken up and someone else may now have used
-+	 * idmap_key_cons - so after this point we may no longer touch it.
-+	 */
-+	cons = ACCESS_ONCE(idmap->idmap_key_cons);
-+	idmap->idmap_key_cons = NULL;
-+
- 	if (mlen != sizeof(im)) {
- 		ret = -ENOSPC;
- 		goto out;
-@@ -739,7 +753,7 @@ idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
- 
- 	if (!(im.im_status & IDMAP_STATUS_SUCCESS)) {
- 		ret = mlen;
--		complete_request_key(idmap->idmap_key_cons, -ENOKEY);
-+		complete_request_key(cons, -ENOKEY);
- 		goto out_incomplete;
- 	}
- 
-@@ -756,7 +770,7 @@ idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
- 	}
- 
- out:
--	complete_request_key(idmap->idmap_key_cons, ret);
-+	complete_request_key(cons, ret);
- out_incomplete:
- 	return ret;
- }
-
+T24gVHVlLCAyMDEyLTA3LTMxIGF0IDA5OjMwIC0wNDAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6
+DQo+IE9uIDA3LzMxLzIwMTIgMDk6MDUgQU0sIEJyeWFuIFNjaHVtYWtlciB3cm90ZToNCj4gPiBP
+biAwNy8zMS8yMDEyIDA4OjU1IEFNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+PiBPbiBU
+dWUsIDIwMTItMDctMzEgYXQgMDg6NDcgLTA0MDAsIEJyeWFuIFNjaHVtYWtlciB3cm90ZToNCj4g
+Pj4+IE9uIDA3LzMwLzIwMTIgMTE6MTQgUE0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4+
+Pj4gQnJ5YW4sDQo+ID4+Pj4NCj4gPj4+PiBXaHkgZGlkIHlvdSBzd2l0Y2ggdG8gdXNpbmcgSVNf
+RU5BQkxFRCBpbiB0aGUgZmlyc3QgcGxhY2UsIGFuZCB3aHkgd2Fzbid0IHRoYXQgcHV0IGluIGEg
+c2VwYXJhdGUgcGF0Y2g/DQo+ID4+Pg0KPiA+Pj4gSVNfRU5BQkxFRCgpIHdpbGwgY2hlY2sgZm9y
+IENPTkZJR19ORlNfVipfTU9EVUxFLCBsYXN0IEkgY2hlY2tlZCB0aGUgZGVmaW5lZCgpIG1hY3Jv
+IGRvZXNuJ3QuICBQdXR0aW5nIHRoaXMgaW50byBhIHNlcGFyYXRlIHBhdGNoIG1ha2VzIHRoZSBj
+aGFuZ2Ugbm9uLWJpc2VjdGFibGUgc2luY2UgZ2NjIHdpbGwgYmUgY2hlY2tpbmcgYWdhaW5zdCBD
+T05GSUdfTkZTX1YzIGJ1dCBDT05GSUdfTkZTX1YzX01PRFVMRSBpcyBzZXQuICBTaG91bGQgSSBo
+YXZlIGNoYW5nZWQgdGhlIENPTkZJR18gdmFyaWFibGVzIGluc3RlYWQgb2YgdXNpbmcgSVNfRU5B
+QkxFRCgpPw0KPiA+Pg0KPiA+PiBXaHkgaXMgaXQgZXZhbHVhdGluZyBkaWZmZXJlbnRseSBpbiB0
+aGUgaW5jbHVkZSBmaWxlIHZzLiB0aGUgLmMgZmlsZT8NCj4gPj4gQXJlIHdlIG1pc3NpbmcgYW4g
+aW5jbHVkZSBpbiBuZnNfZnMuaD8NCj4gPiANCj4gPiBHb29kIHF1ZXN0aW9uLiAgSSBkb24ndCBz
+ZWUgYW55IHJlYXNvbiB0aGF0IGl0IHdvdWxkIGV2YWx1YXRlIGRpZmZlcmVudGx5LCBidXQgSSdt
+IGNvbXBpbGluZyB0aGUgLmNvbmZpZyBhdHRhY2hlZCB0byB0aGUgaW5pdGlhbCBlbWFpbCB0byB0
+cnkgdG8gZmlndXJlIGl0IG91dC4NCj4gPiANCj4gDQo+IExvb2tzIGxpa2UgdGhlIElTX0VOQUJM
+RUQoKSBzd2l0Y2ggZ290IHB1c2hlZCB0byB0aGUgbmV4dCBwYXRjaCBmb3IgVjMgaW4gaW5jbHVk
+ZS9saW51eC9uZnNfZnMuaC4gIFdhbnQgbWUgdG8gcmVzZW5kIHRoZSBwYXRjaGVzPyAgSSB0b29r
+IGFub3RoZXIgbG9vayBhdCBob3cgSVNfRU5BQkxFRCgpIGlzIGRlZmluZWQsIGFuZCBpdCdsbCB3
+b3JrIGlmIEkgZG8gdGhlIHN3aXRjaCBpbiB0aGUgcGF0Y2ggYmVmb3JlIEkgdHVybiBldmVyeXRo
+aW5nIGludG8gc2VwYXJhdGUgbW9kdWxlcyBpZiB5b3Ugd2FudCBtZSB0byByZXNlbmQgZXZlcnl0
+aGluZy4NCg0KUGxlYXNlIGp1c3QgbWFrZSBpdCBpbmNyZW1lbnRhbCB0byB0aGUgcGF0Y2ggc2Vy
+aWVzIHRoYXQgaXMgYWxyZWFkeQ0KbWVyZ2VkIGluIHRvZGF5J3MgbmZzLWZvci0zLjYuDQoNCkNo
+ZWVycw0KICBUcm9uZA0KDQo+ID4gLSBCcnlhbg0KPiA+IA0KPiA+Pg0KPiA+Pj4+DQo+ID4+Pj4N
+Cj4gPj4+Pg0KPiA+Pj4+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiA+Pj4+PiBGcm9t
+OiBGZW5nZ3VhbmcgV3UgW21haWx0bzpmZW5nZ3Vhbmcud3VAaW50ZWwuY29tXQ0KPiA+Pj4+PiBT
+ZW50OiBNb25kYXksIEp1bHkgMzAsIDIwMTIgMTA6NDMgUE0NCj4gPj4+Pj4gVG86IFNjaHVtYWtl
+ciwgQnJ5YW4NCj4gPj4+Pj4gQ2M6IGtlcm5lbC1qYW5pdG9yc0B2Z2VyLmtlcm5lbC5vcmc7IE15
+a2xlYnVzdCwgVHJvbmQ7IGxpbnV4LQ0KPiA+Pj4+PiBuZnNAdmdlci5rZXJuZWwub3JnDQo+ID4+
+Pj4+IFN1YmplY3Q6IFtuZnM6ZGV2ZWwgNDYvNTFdIGZzL25mcy93cml0ZS5jOjE1OTI6NTogZXJy
+b3I6IHJlZGVmaW5pdGlvbiBvZg0KPiA+Pj4+PiAnbmZzX2NvbW1pdF9pbm9kZScNCj4gPj4+Pj4N
+Cj4gPj4+Pj4gSGkgQnJ5YW4sDQo+ID4+Pj4+DQo+ID4+Pj4+IEtlcm5lbCBidWlsZCBmYWlsZWQg
+b24NCj4gPj4+Pj4NCj4gPj4+Pj4gdHJlZTogICBnaXQ6Ly9naXQubGludXgtbmZzLm9yZy9wcm9q
+ZWN0cy90cm9uZG15L2xpbnV4LW5mcy5naXQgZGV2ZWwNCj4gPj4+Pj4gaGVhZDogICA1YzEzYzll
+MWMxNWVlMmNhOWFiMmI5NTMyMjQwMDFhZjUzZDliZTA5DQo+ID4+Pj4+IGNvbW1pdDogMWM2MDZm
+Yjc0Yzc1OGJlYWZkOThjYmFkOWE5MTMzZWFkZWVjMjM3MSBbNDYvNTFdIE5GUzogQ29udmVydA0K
+PiA+Pj4+PiB2MyBpbnRvIGEgbW9kdWxlDQo+ID4+Pj4+IGNvbmZpZzogYmxhY2tmaW4tQkY1MzMt
+RVpLSVRfZGVmY29uZmlnIChhdHRhY2hlZCBhcyAuY29uZmlnKQ0KPiA+Pj4+Pg0KPiA+Pj4+PiBB
+bGwgcmVsYXRlZCBlcnJvci93YXJuaW5nIG1lc3NhZ2VzOg0KPiA+Pj4+Pg0KPiA+Pj4+PiBmcy9u
+ZnMvd3JpdGUuYzoxNTkyOjU6IGVycm9yOiByZWRlZmluaXRpb24gb2YgJ25mc19jb21taXRfaW5v
+ZGUnDQo+ID4+Pj4+IEluIGZpbGUgaW5jbHVkZWQgZnJvbSBmcy9uZnMvd3JpdGUuYzoxOTowOg0K
+PiA+Pj4+PiBpbmNsdWRlL2xpbnV4L25mc19mcy5oOjU0NzoxOiBub3RlOiBwcmV2aW91cyBkZWZp
+bml0aW9uIG9mICduZnNfY29tbWl0X2lub2RlJw0KPiA+Pj4+PiB3YXMgaGVyZQ0KPiA+Pj4+Pg0K
+PiA+Pj4+PiB2aW0gKzE1OTIgZnMvbmZzL3dyaXRlLmMNCj4gPj4+Pj4gICAxNTg5CQlyZXR1cm4g
+c3RhdHVzOw0KPiA+Pj4+PiAgIDE1OTAJfQ0KPiA+Pj4+PiAgIDE1OTENCj4gPj4+Pj4+IDE1OTIJ
+aW50IG5mc19jb21taXRfaW5vZGUoc3RydWN0IGlub2RlICppbm9kZSwgaW50IGhvdykNCj4gPj4+
+Pj4gICAxNTkzCXsNCj4gPj4+Pj4gICAxNTk0CQlMSVNUX0hFQUQoaGVhZCk7DQo+ID4+Pj4+ICAg
+MTU5NQkJc3RydWN0IG5mc19jb21taXRfaW5mbyBjaW5mbzsNCj4gPj4+Pj4NCj4gPj4+Pj4gLS0t
+DQo+ID4+Pj4+IDAtREFZIGtlcm5lbCBidWlsZCB0ZXN0aW5nIGJhY2tlbmQgICAgICAgICBPcGVu
+IFNvdXJjZSBUZWNobm9sb2d5IENlbnRyZQ0KPiA+Pj4+PiBGZW5nZ3VhbmcgV3UgPHdmZ0BsaW51
+eC5pbnRlbC5jb20+ICAgICAgICAgICAgICAgICAgICAgSW50ZWwgQ29ycG9yYXRpb24NCj4gPj4+
+DQo+ID4+DQo+ID4gDQo+IA0KDQo=
