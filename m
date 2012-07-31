@@ -1,52 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57008 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755895Ab2GBVN1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Jul 2012 17:13:27 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "Charles 'Boyo" <charlesboyo@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Linux NFSv4 client uses returned delegation in subsequent READ
- resulting in hang (BAD_STATEID)
-Date: Mon, 2 Jul 2012 21:13:10 +0000
-Message-ID: <1341263584.8197.53.camel@lade.trondhjem.org>
-References: <CAPD_G3L0wwzCWyoPJp_sKpuQ0J7+avn-ejEn-WnXf81zr=-LqA@mail.gmail.com>
-	 <2E097766-1FA2-42E1-B790-B3BBC254B705@oracle.com>
-	 <CAPD_G3Lc6F9yUOXLUcPgn1c5n=Hcs2JSXdGPhZ-CjtBLVoibbg@mail.gmail.com>
-	 <2F725B49-A089-41E9-BBC9-11B889A62C9D@oracle.com>
-In-Reply-To: <2F725B49-A089-41E9-BBC9-11B889A62C9D@oracle.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from rcsinet15.oracle.com ([148.87.113.117]:49458 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751139Ab2GaVWV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Jul 2012 17:22:21 -0400
+Subject: Re: [PATCH 2/4] rpc.gssd: don't call printerr from signal handler
+Mime-Version: 1.0 (Apple Message framework v1280)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1343768449-32205-2-git-send-email-bfields@redhat.com>
+Date: Tue, 31 Jul 2012 14:22:11 -0700
+Cc: Steve Dickson <SteveD@redhat.com>, Jim Rees <rees@umich.edu>,
+        linux-nfs@vger.kernel.org
+Message-Id: <965D1E6C-BC45-4553-8345-FC45E5097755@oracle.com>
+References: <20120731205931.GA32161@fieldses.org> <1343768449-32205-2-git-send-email-bfields@redhat.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA3LTAyIGF0IDE2OjM1IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gSnVsIDIsIDIwMTIsIGF0IDQ6MjIgUE0sIENoYXJsZXMgJ0JveW8gd3JvdGU6DQo+IA0KPiA+
-IE9uIE1vbiwgSnVsIDIsIDIwMTIgYXQgMzowOSBQTSwgQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVy
-QG9yYWNsZS5jb20+IHdyb3RlOg0KPiA+PiANCj4gPj4gVXN1YWxseSB3ZSBzZWUgdGhpcyBiZWhh
-dmlvciBiZWNhdXNlIG9mIGEgcmFjZSBiZXR3ZWVuIGFuIE9QRU4gd2l0aCBkZWxlZ2F0aW9uIGFu
-ZCBhIGRlbGVnYXRpb24gcmVjYWxsLiAgSW4gdGhpcyBjYXNlLCBob3dldmVyLCB0aGUgY2xpZW50
-IGlzIGFjdGl2ZWx5IHJldHVybmluZyBhIFJFQUQNCj4gPj4gZGVsZWdhdGlvbiwgdGhlbiBwcm9j
-ZWVkaW5nIHRvIHVzZSBpdCBhbnl3YXkuICBJIGRvbid0IHNlZSB0aGUgc2VydmVyJ3MgcmVjYWxs
-IGNhbGxiYWNrLCB0aG91Z2gsIGFuZCB0aGVyZSBhcmUgb3RoZXIgaW5kaWNhdGlvbnMgdGhhdCB0
-aGlzIHRyYWNlIGlzIG5vdCBjb21wbGV0ZS4gU28gaXQncyBoYXJkDQo+ID4+IHRvIGJlIDEwMCUg
-Y29uZmlkZW50Lg0KPiA+PiANCj4gPiBUaGUgdHJhY2UgaXMgbm90IGNvbXBsZXRlLCBpdCBpbmNs
-dWRlcyBqdXN0IGVub3VnaCBpbmZvcm1hdGlvbiB0bw0KPiA+IGV4cGxhaW4gdGhlIHByb2JsZW0u
-DQo+ID4gSG93ZXZlciBJIGNhbiBjb25maXJtIHRoZSBzZXJ2aWNlIGRpZCBub3Qgc2VuZCBhIHJl
-Y2FsbCBjYWxsYmFjaywgdGhlDQo+ID4gY2xpZW50IHJldHVybmVkIHRoZSBkZWxlZ2F0aW9uIG9m
-IGl0cyBvd24gImZyZWUgd2lsbCIuDQo+IA0KPiBUaGUgY2FsbGJhY2sgd291bGQgY29tZSBvbiBh
-IHNlcGFyYXRlIFRDUCBjb25uZWN0aW9uLiAgSSBjYW4ndCB0aGluayBvZiBhIHJlYXNvbiB0aGF0
-IGEgY2xpZW50IHdvdWxkIHJldHVybiBhIGRlbGVnYXRpb24gYnkgaXRzZWxmIGFuZCB0aGVuIHN1
-YnNlcXVlbnRseSBzdGFydCB0byB1c2UgaXQuDQoNCkkgY2FuOiB0aGVyZSBhcmUgYSBudW1iZXIg
-b2Ygc2VydmVycyBvdXQgdGhlcmUgdGhhdCB2aW9sYXRlIHRoZSBzcGVjIGJ5DQpyZXR1cm5pbmcg
-YSBkZWxlZ2F0aW9uIGFzIHBhcnQgb2YgYW4gT1BFTihDTEFJTV9ERUxFR0FURV9DVVIpLiBVc3Vh
-bGx5DQp0aG9zZSBicm9rZW4gc2VydmVycyB3aWxsIHNlbmQgdGhlIGV4YWN0IHNhbWUgc3RhdGVp
-ZCBhcyB0aGUgZGVsZWdhdGlvbg0KdGhhdCBpcyBiZWluZyByZXR1cm5lZC4NCg0KVGhlIExpbnV4
-IGNsaWVudCBkb2VzIG5vdCBleHBlY3QgYSBkZWxlZ2F0aW9uIHdoZW4gaXQgc2VuZHMNCkNMQUlN
-X0RFTEVHQVRFX0NVUiByZXF1ZXN0cywgYW5kIGVuZHMgdXAgZ2V0dGluZyBjb25mdXNlZDsgaXQg
-cmVpbnN0YXRlcw0KdGhlIGRlbGVnYXRpb24uIFRoaXMgaXMgYW4gaXNzdWUgdGhhdCB3ZSB3aWxs
-IG5vdCBmaXggb24gdGhlIGNsaWVudCwNCnNpbmNlIGl0IGlzIGEgc2VydmVyIGJ1Zy4uLg0KDQpD
-aGVlcnMNCiAgVHJvbmQNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1h
-aW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFw
-cC5jb20NCg0K
+
+On Jul 31, 2012, at 2:00 PM, J. Bruce Fields wrote:
+
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> printerr() isn't actually safe to call from a signal handler.  It might
+> be possible to make it so, but I think this is the only case in
+> nfs-utils where we try to, and I'm not convince it's worth it.
+> 
+> This fixes a bug that would eventually cause mounts to hang when gssd
+> is run with -vv.
+
+Yes, I've seen this hang.  gssd gets stuck on a futex() with -vv or higher.
+
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+> utils/gssd/gssd_main_loop.c |    4 +---
+> 1 file changed, 1 insertion(+), 3 deletions(-)
+> 
+> diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
+> index 9954ffb..6914687 100644
+> --- a/utils/gssd/gssd_main_loop.c
+> +++ b/utils/gssd/gssd_main_loop.c
+> @@ -61,10 +61,8 @@ extern int pollsize;
+> 
+> static volatile int dir_changed = 1;
+> 
+> -static void dir_notify_handler(int sig)
+> +static void dir_notify_handler(__attribute__((unused))int sig)
+> {
+> -	printerr(2, "dir_notify_handler: sig %d\n", sig);
+> -
+> 	dir_changed = 1;
+> }
+> 
+> -- 
+> 1.7.9.5
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
