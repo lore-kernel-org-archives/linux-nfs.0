@@ -1,200 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:50661 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:20097 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754886Ab2G3UFd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Jul 2012 16:05:33 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 06/10] NFS: Split out remaining NFS v4 inode functions
-Date: Mon, 30 Jul 2012 16:05:21 -0400
-Message-Id: <1343678725-8659-7-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1343678725-8659-1-git-send-email-bjschuma@netapp.com>
-References: <1343678725-8659-1-git-send-email-bjschuma@netapp.com>
+	id S1754675Ab2GaNFn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jul 2012 09:05:43 -0400
+Message-ID: <5017D824.209@netapp.com>
+Date: Tue, 31 Jul 2012 09:05:40 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        Fengguang Wu <fengguang.wu@intel.com>,
+        "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [nfs:devel 46/51] fs/nfs/write.c:1592:5: error: redefinition
+ of 'nfs_commit_inode'
+References: <20120731024328.GA10480@localhost>  <4FA345DA4F4AE44899BD2B03EEEC2FA934BE82@SACEXCMBX04-PRD.hq.netapp.com>  <5017D3FC.9010905@netapp.com> <1343739299.519.1.camel@lade.trondhjem.org>
+In-Reply-To: <1343739299.519.1.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On 07/31/2012 08:55 AM, Myklebust, Trond wrote:
+> On Tue, 2012-07-31 at 08:47 -0400, Bryan Schumaker wrote:
+>> On 07/30/2012 11:14 PM, Myklebust, Trond wrote:
+>>> Bryan,
+>>>
+>>> Why did you switch to using IS_ENABLED in the first place, and why wasn't that put in a separate patch?
+>>
+>> IS_ENABLED() will check for CONFIG_NFS_V*_MODULE, last I checked the defined() macro doesn't.  Putting this into a separate patch makes the change non-bisectable since gcc will be checking against CONFIG_NFS_V3 but CONFIG_NFS_V3_MODULE is set.  Should I have changed the CONFIG_ variables instead of using IS_ENABLED()?
+> 
+> Why is it evaluating differently in the include file vs. the .c file?
+> Are we missing an include in nfs_fs.h?
 
-Somehow I missed this in my previous patch series, but these functions
-are only needed by the v4 code and should be moved to a v4-only file.  I
-wasn't exactly sure where I should put these functions, so I moved them
-into nfs4super.c where I could make them static.
+Good question.  I don't see any reason that it would evaluate differently, but I'm compiling the .config attached to the initial email to try to figure it out.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/inode.c     | 23 +----------------------
- fs/nfs/internal.h  |  4 +---
- fs/nfs/nfs4_fs.h   |  3 ---
- fs/nfs/nfs4super.c | 39 +++++++++++++++++++++++++++++++++++++++
- fs/nfs/write.c     | 20 --------------------
- 5 files changed, 41 insertions(+), 48 deletions(-)
+- Bryan
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index e8877c8..a6ffa4b 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -106,7 +106,7 @@ u64 nfs_compat_user_ino64(u64 fileid)
- 	return ino;
- }
- 
--static void nfs_clear_inode(struct inode *inode)
-+void nfs_clear_inode(struct inode *inode)
- {
- 	/*
- 	 * The following should never happen...
-@@ -1472,27 +1472,6 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 	return -ESTALE;
- }
- 
--
--#ifdef CONFIG_NFS_V4
--
--/*
-- * Clean out any remaining NFSv4 state that might be left over due
-- * to open() calls that passed nfs_atomic_lookup, but failed to call
-- * nfs_open().
-- */
--void nfs4_evict_inode(struct inode *inode)
--{
--	truncate_inode_pages(&inode->i_data, 0);
--	clear_inode(inode);
--	pnfs_return_layout(inode);
--	pnfs_destroy_layout(NFS_I(inode));
--	/* If we are holding a delegation, return it! */
--	nfs_inode_return_delegation_noreclaim(inode);
--	/* First call standard NFS clear_inode() code */
--	nfs_clear_inode(inode);
--}
--#endif
--
- struct inode *nfs_alloc_inode(struct super_block *sb)
- {
- 	struct nfs_inode *nfsi;
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 17d1470..4174faf 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -319,10 +319,8 @@ extern struct workqueue_struct *nfsiod_workqueue;
- extern struct inode *nfs_alloc_inode(struct super_block *sb);
- extern void nfs_destroy_inode(struct inode *);
- extern int nfs_write_inode(struct inode *, struct writeback_control *);
-+extern void nfs_clear_inode(struct inode *);
- extern void nfs_evict_inode(struct inode *);
--#ifdef CONFIG_NFS_V4
--extern void nfs4_evict_inode(struct inode *);
--#endif
- void nfs_zap_acl_cache(struct inode *inode);
- extern int nfs_wait_bit_killable(void *word);
- 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 290762f..af8712d 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -205,9 +205,6 @@ extern const struct dentry_operations nfs4_dentry_operations;
- int nfs_atomic_open(struct inode *, struct dentry *, struct file *,
- 		    unsigned, umode_t, int *);
- 
--/* write.c */
--int nfs4_write_inode(struct inode *, struct writeback_control *);
--
- /* nfs4namespace.c */
- rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *);
- struct rpc_clnt *nfs4_create_sec_client(struct rpc_clnt *, struct inode *, struct qstr *);
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-index c70e173..1c825f3 100644
---- a/fs/nfs/nfs4super.c
-+++ b/fs/nfs/nfs4super.c
-@@ -6,12 +6,16 @@
- #include <linux/nfs_idmap.h>
- #include <linux/nfs4_mount.h>
- #include <linux/nfs_fs.h>
-+#include "delegation.h"
- #include "internal.h"
- #include "nfs4_fs.h"
-+#include "pnfs.h"
- #include "nfs.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_VFS
- 
-+static int nfs4_write_inode(struct inode *inode, struct writeback_control *wbc);
-+static void nfs4_evict_inode(struct inode *inode);
- static struct dentry *nfs4_remote_mount(struct file_system_type *fs_type,
- 	int flags, const char *dev_name, void *raw_data);
- static struct dentry *nfs4_referral_mount(struct file_system_type *fs_type,
-@@ -75,6 +79,41 @@ struct nfs_subversion nfs_v4 = {
- 	.xattr    = nfs4_xattr_handlers,
- };
- 
-+static int nfs4_write_inode(struct inode *inode, struct writeback_control *wbc)
-+{
-+	int ret = nfs_write_inode(inode, wbc);
-+
-+	if (ret >= 0 && test_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags)) {
-+		int status;
-+		bool sync = true;
-+
-+		if (wbc->sync_mode == WB_SYNC_NONE)
-+			sync = false;
-+
-+		status = pnfs_layoutcommit_inode(inode, sync);
-+		if (status < 0)
-+			return status;
-+	}
-+	return ret;
-+}
-+
-+/*
-+ * Clean out any remaining NFSv4 state that might be left over due
-+ * to open() calls that passed nfs_atomic_lookup, but failed to call
-+ * nfs_open().
-+ */
-+static void nfs4_evict_inode(struct inode *inode)
-+{
-+	truncate_inode_pages(&inode->i_data, 0);
-+	clear_inode(inode);
-+	pnfs_return_layout(inode);
-+	pnfs_destroy_layout(NFS_I(inode));
-+	/* If we are holding a delegation, return it! */
-+	nfs_inode_return_delegation_noreclaim(inode);
-+	/* First call standard NFS clear_inode() code */
-+	nfs_clear_inode(inode);
-+}
-+
- /*
-  * Get the superblock for the NFS4 root partition
-  */
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index f312860..6ddac54 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1674,26 +1674,6 @@ int nfs_write_inode(struct inode *inode, struct writeback_control *wbc)
- 	return nfs_commit_unstable_pages(inode, wbc);
- }
- 
--#ifdef CONFIG_NFS_V4
--int nfs4_write_inode(struct inode *inode, struct writeback_control *wbc)
--{
--	int ret = nfs_write_inode(inode, wbc);
--
--	if (ret >= 0 && test_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags)) {
--		int status;
--		bool sync = true;
--
--		if (wbc->sync_mode == WB_SYNC_NONE)
--			sync = false;
--
--		status = pnfs_layoutcommit_inode(inode, sync);
--		if (status < 0)
--			return status;
--	}
--	return ret;
--}
--#endif
--
- /*
-  * flush the inode to disk.
-  */
--- 
-1.7.11.3
+> 
+>>>
+>>>
+>>>
+>>>> -----Original Message-----
+>>>> From: Fengguang Wu [mailto:fengguang.wu@intel.com]
+>>>> Sent: Monday, July 30, 2012 10:43 PM
+>>>> To: Schumaker, Bryan
+>>>> Cc: kernel-janitors@vger.kernel.org; Myklebust, Trond; linux-
+>>>> nfs@vger.kernel.org
+>>>> Subject: [nfs:devel 46/51] fs/nfs/write.c:1592:5: error: redefinition of
+>>>> 'nfs_commit_inode'
+>>>>
+>>>> Hi Bryan,
+>>>>
+>>>> Kernel build failed on
+>>>>
+>>>> tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git devel
+>>>> head:   5c13c9e1c15ee2ca9ab2b953224001af53d9be09
+>>>> commit: 1c606fb74c758beafd98cbad9a9133eadeec2371 [46/51] NFS: Convert
+>>>> v3 into a module
+>>>> config: blackfin-BF533-EZKIT_defconfig (attached as .config)
+>>>>
+>>>> All related error/warning messages:
+>>>>
+>>>> fs/nfs/write.c:1592:5: error: redefinition of 'nfs_commit_inode'
+>>>> In file included from fs/nfs/write.c:19:0:
+>>>> include/linux/nfs_fs.h:547:1: note: previous definition of 'nfs_commit_inode'
+>>>> was here
+>>>>
+>>>> vim +1592 fs/nfs/write.c
+>>>>   1589		return status;
+>>>>   1590	}
+>>>>   1591
+>>>>> 1592	int nfs_commit_inode(struct inode *inode, int how)
+>>>>   1593	{
+>>>>   1594		LIST_HEAD(head);
+>>>>   1595		struct nfs_commit_info cinfo;
+>>>>
+>>>> ---
+>>>> 0-DAY kernel build testing backend         Open Source Technology Centre
+>>>> Fengguang Wu <wfg@linux.intel.com>                     Intel Corporation
+>>
+> 
 
