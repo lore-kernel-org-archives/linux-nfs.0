@@ -1,66 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:44283 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:37000 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754185Ab2GPTFo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Jul 2012 15:05:44 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 13/15] NFS: Discover NFSv4 server trunking when mounting
-Date: Mon, 16 Jul 2012 19:05:42 +0000
-Message-ID: <1342465540.4648.25.camel@lade.trondhjem.org>
-References: <20120711201718.3767.66867.stgit@degas.1015granger.net>
-	 <20120711203134.3767.47961.stgit@degas.1015granger.net>
-In-Reply-To: <20120711203134.3767.47961.stgit@degas.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1752965Ab2GaVAx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jul 2012 17:00:53 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 3/4] rpc.gssd: handle error to open toplevel directory
+Date: Tue, 31 Jul 2012 17:00:48 -0400
+Message-Id: <1343768449-32205-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <20120731205931.GA32161@fieldses.org>
+References: <20120731205931.GA32161@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTA3LTExIGF0IDE2OjMxIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-IlNlcnZlciB0cnVua2luZyIgaXMgYSBmYW5jeSBuYW1lZCBmb3IgYSBtdWx0aS1ob21lZCBORlMg
-c2VydmVyLg0KPiBUcnVua2luZyBtaWdodCBvY2N1ciBpZiBhIGNsaWVudCBzZW5kcyBORlMgcmVx
-dWVzdHMgZm9yIGEgc2luZ2xlDQo+IHdvcmtsb2FkIHRvIG11bHRpcGxlIG5ldHdvcmsgaW50ZXJm
-YWNlcyBvbiB0aGUgc2FtZSBzZXJ2ZXIuICBUaGVyZQ0KPiBhcmUgc29tZSBpbXBsaWNhdGlvbnMg
-Zm9yIE5GU3Y0IHN0YXRlIG1hbmFnZW1lbnQgdGhhdCBtYWtlIGl0IHVzZWZ1bA0KPiBmb3IgYSBj
-bGllbnQgdG8ga25vdyBpZiBhIHNpbmdsZSBORlN2NCBzZXJ2ZXIgaW5zdGFuY2UgaXMNCj4gbXVs
-dGktaG9tZWQuICAoTm90ZSB0aGlzIGlzIG9ubHkgYSBjb25zaWRlcmF0aW9uIGZvciBORlN2NCwg
-bm90IGZvcg0KPiBsZWdhY3kgdmVyc2lvbnMgb2YgTkZTLCB3aGljaCBhcmUgc3RhdGVsZXNzKS4N
-Cj4gDQo+IElmIGEgY2xpZW50IGNhcmVzIGFib3V0IHNlcnZlciB0cnVua2luZywgbm8gTkZTdjQg
-b3BlcmF0aW9ucyBjYW4NCj4gcHJvY2VlZCB1bnRpbCB0aGF0IGNsaWVudCBkZXRlcm1pbmVzIHdo
-byBpdCBpcyB0YWxraW5nIHRvLiAgVGh1cw0KPiBzZXJ2ZXIgSVAgdHJ1bmtpbmcgZGlzY292ZXJ5
-IG11c3QgYmUgZG9uZSB3aGVuIHRoZSBjbGllbnQgZmlyc3QNCj4gZW5jb3VudGVycyBhbiB1bmZh
-bWlsaWFyIHNlcnZlciBJUCBhZGRyZXNzLg0KPiANCj4gVGhlIG5mc19nZXRfY2xpZW50KCkgZnVu
-Y3Rpb24gd2Fsa3MgdGhlIG5mc19jbGllbnRfbGlzdCBhbmQgbWF0Y2hlcw0KPiBvbiBzZXJ2ZXIg
-SVAgYWRkcmVzcy4gIFRoZSBvdXRjb21lIG9mIHRoYXQgd2FsayB0ZWxscyB1cyBpbW1lZGlhdGVs
-eQ0KPiBpZiB3ZSBoYXZlIGFuIHVuZmFtaWxpYXIgc2VydmVyIElQIGFkZHJlc3MuICBJdCBpbnZv
-a2VzDQo+IG5mc19pbml0X2NsaWVudCgpIGluIHRoaXMgY2FzZS4gIFRodXMsIG5mczRfaW5pdF9j
-bGllbnQoKSBpcyBhIGdvb2QNCj4gc3BvdCB0byBwZXJmb3JtIHRydW5raW5nIGRpc2NvdmVyeS4N
-Cj4gDQo+IERpc2NvdmVyeSByZXF1aXJlcyBhIGNsaWVudCB0byBlc3RhYmxpc2ggYSBmcmVzaCBj
-bGllbnQgSUQsIHNvIG91cg0KPiBjbGllbnQgd2lsbCBub3cgc2VuZCBTRVRDTElFTlRJRCBvciBF
-WENIQU5HRV9JRCBhcyB0aGUgZmlyc3QgTkZTDQo+IG9wZXJhdGlvbiBhZnRlciBhIHN1Y2Nlc3Nm
-dWwgcGluZywgcmF0aGVyIHRoYW4gd2FpdGluZyBmb3IgYW4NCj4gYXBwbGljYXRpb24gdG8gcGVy
-Zm9ybSBhbiBvcGVyYXRpb24gdGhhdCByZXF1aXJlcyBORlN2NCBzdGF0ZS4NCj4gDQo+IFRoZSBl
-eGFjdCBwcm9jZXNzIGZvciBkZXRlY3RpbmcgdHJ1bmtpbmcgaXMgZGlmZmVyZW50IGZvciBORlN2
-NC4wIGFuZA0KPiBORlN2NC4xLCBzbyBhIG1pbm9ydmVyc2lvbi1zcGVjaWZpYyBpbml0X2NsaWVu
-dCBjYWxsb3V0IG1ldGhvZCBpcw0KPiBpbnRyb2R1Y2VkLg0KPiANCj4gQ0xJRF9JTlVTRSByZWNv
-dmVyeSBpcyBpbXBvcnRhbnQgZm9yIHRoZSB0cnVua2luZyBkaXNjb3ZlcnkgcHJvY2Vzcy4NCj4g
-Q0xJRF9JTlVTRSBpcyBhIHNpZ24gdGhlIHNlcnZlciByZWNvZ25pemVzIHRoZSBjbGllbnQncyBu
-ZnNfY2xpZW50X2lkNA0KPiBpZCBzdHJpbmcsIGJ1dCB0aGUgY2xpZW50IGlzIHVzaW5nIHRoZSB3
-cm9uZyBwcmluY2lwYWwgdGhpcyB0aW1lIGZvcg0KPiB0aGUgU0VUQ0xJRU5USUQgb3BlcmF0aW9u
-LiAgVGhlIFNFVENMSUVOVElEIG11c3QgYmUgcmV0cmllZCB3aXRoIGENCj4gc2VyaWVzIG9mIGRp
-ZmZlcmVudCBwcmluY2lwYWxzIHVudGlsIG9uZSB3b3JrcywgYW5kIHRoZSByZXN0IG9mDQo+IHRy
-dW5raW5nIGRpc2NvdmVyeSBjYW4gcHJvY2VlZC4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IENodWNr
-IExldmVyIDxjaHVjay5sZXZlckBvcmFjbGUuY29tPg0KPiAtLS0NCj4gDQo+ICBmcy9uZnMvY2xp
-ZW50LmMgICAgfCAgMjM3ICsrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
-KysrKysrKysrKysNCj4gIGZzL25mcy9pbnRlcm5hbC5oICB8ICAgIDYgKw0KPiAgZnMvbmZzL25m
-czRfZnMuaCAgIHwgICAgOCArKw0KPiAgZnMvbmZzL25mczRwcm9jLmMgIHwgICAgMiANCj4gIGZz
-L25mcy9uZnM0c3RhdGUuYyB8ICAxODYgKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
-KysrKysrKy0NCj4gIDUgZmlsZXMgY2hhbmdlZCwgNDMzIGluc2VydGlvbnMoKyksIDYgZGVsZXRp
-b25zKC0pDQoNCkFwcGx5aW5nOiBORlM6IERpc2NvdmVyIE5GU3Y0IHNlcnZlciB0cnVua2luZyB3
-aGVuIG1vdW50aW5nDQplcnJvcjogcGF0Y2ggZmFpbGVkOiBmcy9uZnMvbmZzNHN0YXRlLmM6MTY1
-Ng0KZXJyb3I6IGZzL25mcy9uZnM0c3RhdGUuYzogcGF0Y2ggZG9lcyBub3QgYXBwbHkNClBhdGNo
-IGZhaWxlZCBhdCAwMDAxIE5GUzogRGlzY292ZXIgTkZTdjQgc2VydmVyIHRydW5raW5nIHdoZW4g
-bW91bnRpbmcNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
-aW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNv
-bQ0KDQo=
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+Reverse the sense of the test here, and also add debugging and cleanup
+in the error case.
+
+(Though the lack of cleanup isn't currently a problem in practice since
+we'll eventually exit in this case.)
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ utils/gssd/gssd_main_loop.c |   10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
+index 6914687..142c8c5 100644
+--- a/utils/gssd/gssd_main_loop.c
++++ b/utils/gssd/gssd_main_loop.c
+@@ -121,11 +121,13 @@ topdirs_add_entry(struct dirent *dent)
+ 	}
+ 	snprintf(tdi->dirname, PATH_MAX, "%s/%s", pipefs_dir, dent->d_name);
+ 	tdi->fd = open(tdi->dirname, O_RDONLY);
+-	if (tdi->fd != -1) {
+-		fcntl(tdi->fd, F_SETSIG, DNOTIFY_SIGNAL);
+-		fcntl(tdi->fd, F_NOTIFY,
+-		      DN_CREATE|DN_DELETE|DN_MODIFY|DN_MULTISHOT);
++	if (tdi->fd == -1) {
++		printerr(0, "ERROR: failed to open %s\n", tdi->dirname);
++		free(tdi);
++		return -1;
+ 	}
++	fcntl(tdi->fd, F_SETSIG, DNOTIFY_SIGNAL);
++	fcntl(tdi->fd, F_NOTIFY, DN_CREATE|DN_DELETE|DN_MODIFY|DN_MULTISHOT);
+ 
+ 	TAILQ_INSERT_HEAD(&topdirs_list, tdi, list);
+ 	return 0;
+-- 
+1.7.9.5
+
