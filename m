@@ -1,139 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:38374 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751694Ab2GIPny (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jul 2012 11:43:54 -0400
-Received: by ghrr11 with SMTP id r11so10207806ghr.19
-        for <linux-nfs@vger.kernel.org>; Mon, 09 Jul 2012 08:43:53 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 01/14] NFS: Clean up TEST_STATEID and FREE_STATEID proc error
- reporting
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 09 Jul 2012 11:43:49 -0400
-Message-ID: <20120709154349.1604.58109.stgit@degas.1015granger.net>
-In-Reply-To: <20120709153355.1604.14102.stgit@degas.1015granger.net>
-References: <20120709153355.1604.14102.stgit@degas.1015granger.net>
+Received: from mga11.intel.com ([192.55.52.93]:46311 "EHLO mga11.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753933Ab2GaOKO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jul 2012 10:10:14 -0400
+Date: Tue, 31 Jul 2012 22:10:07 +0800
+From: Fengguang Wu <fengguang.wu@intel.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [nfs:devel 46/51] fs/nfs/write.c:1592:5: error: redefinition of
+ 'nfs_commit_inode'
+Message-ID: <20120731141007.GA20369@localhost>
+References: <20120731024328.GA10480@localhost>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA934BE82@SACEXCMBX04-PRD.hq.netapp.com>
+ <5017D3FC.9010905@netapp.com>
+ <1343739299.519.1.camel@lade.trondhjem.org>
+ <5017D824.209@netapp.com>
+ <5017DDDB.6060500@netapp.com>
+ <1343741622.519.2.camel@lade.trondhjem.org>
+ <5017E13F.4030909@netapp.com>
+ <1343743122.519.4.camel@lade.trondhjem.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1343743122.519.4.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The TEST_STATEID and FREE_STATEID operations can return
-NFS4ERR_BAD_STATEID, NFS4ERR_OLD_STATEID, or NFS4ERR_DEADSESSION.
-These error values should not be passed to nfs4_handle_exception(),
-since that will recursively kick off state recovery, resulting in a
-deadlock.  The reason to continue using nfs4_handle_exception() is
-to deal with NFS4ERR_DELAY.
+> > Easy enough, the patch that fixes it is the last one in the series that I sent in yesterday.
+> 
+> I don't understand. That is the patch series that Fengguang was testing
+> afaik. His tests were on 
+> 
+> tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git devel
+> head:   5c13c9e1c15ee2ca9ab2b953224001af53d9be09
+> 
+> which includes your patch series from yesterday, no?
 
-Moreover, specifically when the TEST_STATEID operation returns
-NFS4_OK, res.status can contain one of these errors.
-_nfs41_test_stateid() replaces NFS4_OK with the value in res.status,
-which is then returned to callers.
+Trond, I typically do commit-by-commit tests and will complain if
+*any* point of the tree is not bisect-able. A fix at the HEAD won't
+stop the email notification for a defect in the middle point..
 
-But res.status is not passed through nfs4_stat_to_errno(), and thus is
-a positive NFS4ERR value.  Currently callers are only interested in
-!NFS4_OK, and nfs4_handle_exception() ignores positive values, so this
-oversight hasn't bitten us so far.
+On the other hand, I do maintain a list of non-rebaseable
+tree/branches, on which the HEAD commit will be tested first, and only
+if any problems are found, go back to find out the first bad commit.
 
-Bryan agrees the original intent was to return res.status as a
-negative NFS4ERR value to callers of nfs41_test_stateid(), as long as
-no state ID recovery is attempted.
+If you prefer the latter behavior, I can add your tree or any branch
+of it to the non-rebaseable list.
 
-As a finishing touch, add appropriate documenting comments and some
-debugging printk's.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- fs/nfs/nfs4proc.c |   51 ++++++++++++++++++++++++++++++++++++++++-----------
- 1 files changed, 40 insertions(+), 11 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 15fc7e4..971ec8c 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6587,22 +6587,36 @@ static int _nfs41_test_stateid(struct nfs_server *server, nfs4_stateid *stateid)
- 		.rpc_resp = &res,
- 	};
- 
-+	dprintk("NFS call  test_stateid %p\n", stateid);
- 	nfs41_init_sequence(&args.seq_args, &res.seq_res, 0);
- 	status = nfs4_call_sync_sequence(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
--
--	if (status == NFS_OK)
--		return res.status;
--	return status;
-+	if (status != NFS_OK) {
-+		dprintk("NFS reply test_stateid: failed, %d\n", status);
-+		return status;
-+	}
-+	dprintk("NFS reply test_stateid: succeeded, %d\n", -res.status);
-+	return -res.status;
- }
- 
-+/**
-+ * nfs41_test_stateid - perform a TEST_STATEID operation
-+ *
-+ * @server: NFS server that may know about "stateid"
-+ * @stateid: state ID to test
-+ *
-+ * Returns NFS_OK if the server recognizes the state ID as valid.
-+ * Otherwise a negative NFS4ERR value is returned if the operation
-+ * failed or the state ID is not currently valid.
-+ */
- static int nfs41_test_stateid(struct nfs_server *server, nfs4_stateid *stateid)
- {
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
--		err = nfs4_handle_exception(server,
--				_nfs41_test_stateid(server, stateid),
--				&exception);
-+		err = _nfs41_test_stateid(server, stateid);
-+		if (err != -NFS4ERR_DELAY)
-+			break;
-+		nfs4_handle_exception(server, err, &exception);
- 	} while (exception.retry);
- 	return err;
- }
-@@ -6618,19 +6632,34 @@ static int _nfs4_free_stateid(struct nfs_server *server, nfs4_stateid *stateid)
- 		.rpc_argp = &args,
- 		.rpc_resp = &res,
- 	};
-+	int status;
- 
-+	dprintk("NFS call  free_stateid %p\n", stateid);
- 	nfs41_init_sequence(&args.seq_args, &res.seq_res, 0);
--	return nfs4_call_sync_sequence(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
-+	status = nfs4_call_sync_sequence(server->client, server, &msg,
-+					 &args.seq_args, &res.seq_res, 1);
-+	dprintk("NFS reply free_stateid: %d\n", status);
-+	return status;
- }
- 
-+/**
-+ * nfs41_free_stateid - perform a FREE_STATEID operation
-+ *
-+ * @server: NFS server that may know about "stateid"
-+ * @stateid: state ID to release
-+ *
-+ * Returns NFS_OK if the server freed the state ID.  Otherwise a
-+ * negative NFS4ERR value is returned if the operation failed.
-+ */
- static int nfs41_free_stateid(struct nfs_server *server, nfs4_stateid *stateid)
- {
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
--		err = nfs4_handle_exception(server,
--				_nfs4_free_stateid(server, stateid),
--				&exception);
-+		err = _nfs4_free_stateid(server, stateid);
-+		if (err != -NFS4ERR_DELAY)
-+			break;
-+		nfs4_handle_exception(server, err, &exception);
- 	} while (exception.retry);
- 	return err;
- }
-
+Thanks,
+Fengguang
