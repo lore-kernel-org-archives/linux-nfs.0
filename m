@@ -1,82 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.openrapids.net ([64.15.138.104]:57872 "EHLO
-	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753007Ab2HPO2Z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Aug 2012 10:28:25 -0400
-Date: Thu, 16 Aug 2012 10:28:22 -0400
-From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-To: David Laight <David.Laight@ACULAB.COM>
-Cc: "Eric W. Biederman" <ebiederm@xmission.com>,
-        Sasha Levin <levinsasha928@gmail.com>, torvalds@linux-foundation.org,
-        tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH 02/16] user_ns: use new hashtable implementation
-Message-ID: <20120816142821.GC29703@Krystal>
-References: <502AFCD5.6070104@gmail.com> <87obmchmpu.fsf@xmission.com> <AE90C24D6B3A694183C094C60CF0A2F6026B6FB5@saturn3.aculab.com>
+Received: from fieldses.org ([174.143.236.118]:52809 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751910Ab2HAL4U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Aug 2012 07:56:20 -0400
+Date: Wed, 1 Aug 2012 07:56:16 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk, matthew@wil.cx
+Subject: [PATCH] locks: remove unused lm_release_private
+Message-ID: <20120801115616.GA3958@fieldses.org>
+References: <20120731142948.GC27834@fieldses.org>
+ <20120731143600.GD27834@fieldses.org>
+ <CA+55aFzM8S0sEAAUXK9f1OhSL-OXmZ_jx_UHF81Eo0-Mi-+T_w@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <AE90C24D6B3A694183C094C60CF0A2F6026B6FB5@saturn3.aculab.com>
+In-Reply-To: <CA+55aFzM8S0sEAAUXK9f1OhSL-OXmZ_jx_UHF81Eo0-Mi-+T_w@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* David Laight (David.Laight@ACULAB.COM) wrote:
-> > Yes hash_32 seems reasonable for the uid hash.   With those long hash
-> > chains I wouldn't like to be on a machine with 10,000 processes with
-> > each with a different uid, and a processes calling setuid in the fast
-> > path.
-> > 
-> > The uid hash that we are playing with is one that I sort of wish that
-> > the hash table could grow in size, so that we could scale up better.
-> 
-> Since uids are likely to be allocated in dense blocks, maybe an
-> unhashed multi-level lookup scheme might be appropriate.
-> 
-> Index an array with the low 8 (say) bits of the uid.
-> Each item can be either:  
->   1) NULL => free entry.
->   2) a pointer to a uid structure (check uid value).
->   3) a pointer to an array to index with the next 8 bits.
-> (2) and (3) can be differentiated by the low address bit.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-I'm currently experimenting with "Judy arrays", which would likely be a
-good fit for this kind of use-case.
+3b6e2723f32de42028617f2c99b244ccd72cd959 "locks: prevent side-effects of
+locks_release_private before file_lock is initialized" removed the last
+user of lm_release_private without removing the field itself.
 
-It's basically a 256-ary trie, with fixed depth that depends on the key
-size, that uses various encoding (compaction) schemes to compress
-internal nodes depending on their density. The original implementation
-made by HP has been criticised as somewhat too complex (20k lines of
-code), but I'm currently working (in my spare time) on a more elegant
-solution, that supports RCU lookups and distributed locking, and uses
-much simpler node compaction schemes, and focus on having good cache
-locality (and minimal number of cache line hits) for lookups.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ Documentation/filesystems/Locking |    2 --
+ fs/locks.c                        |    6 +-----
+ include/linux/fs.h                |    1 -
+ 3 files changed, 1 insertion(+), 8 deletions(-)
 
-I'll be presenting my ongoing work at Plumbers, if you are interested.
+On Tue, Jul 31, 2012 at 02:54:05PM -0700, Linus Torvalds wrote:
+> Maybe I missed some odd user that somehow avoids the grep, but I don't
+> think so. So there is nothing that ever sets it, why the hell does the
+> thing still remain at all?
 
-Best regards,
+Embarassingly: I had work in progress that could make use of
+lm_release_private soon, so I didn't bother removing it.
 
-Mathieu
+But "soon" was optimistic, and anyway why leave the code in a confusing
+state, so: agreed it should have gone, apologies.
 
-> I think that is updateable with cmpxchg.
-> 
-> Clearly this is a bad algorithm if uids are all multiples of 2^24
-> but that is true or any hash function.
-> 
-> 	David
-> 
-> 
-> 
+--b.
 
+diff --git a/Documentation/filesystems/Locking b/Documentation/filesystems/Locking
+index 8e2da1e..f11d51f 100644
+--- a/Documentation/filesystems/Locking
++++ b/Documentation/filesystems/Locking
+@@ -343,7 +343,6 @@ prototypes:
+ 	int (*lm_compare_owner)(struct file_lock *, struct file_lock *);
+ 	void (*lm_notify)(struct file_lock *);  /* unblock callback */
+ 	int (*lm_grant)(struct file_lock *, struct file_lock *, int);
+-	void (*lm_release_private)(struct file_lock *);
+ 	void (*lm_break)(struct file_lock *); /* break_lease callback */
+ 	int (*lm_change)(struct file_lock **, int);
+ 
+@@ -352,7 +351,6 @@ locking rules:
+ lm_compare_owner:	yes		no
+ lm_notify:		yes		no
+ lm_grant:		no		no
+-lm_release_private:	maybe		no
+ lm_break:		yes		no
+ lm_change		yes		no
+ 
+diff --git a/fs/locks.c b/fs/locks.c
+index 541075a..5cf874c 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -200,11 +200,7 @@ void locks_release_private(struct file_lock *fl)
+ 			fl->fl_ops->fl_release_private(fl);
+ 		fl->fl_ops = NULL;
+ 	}
+-	if (fl->fl_lmops) {
+-		if (fl->fl_lmops->lm_release_private)
+-			fl->fl_lmops->lm_release_private(fl);
+-		fl->fl_lmops = NULL;
+-	}
++	fl->fl_lmops = NULL;
+ 
+ }
+ EXPORT_SYMBOL_GPL(locks_release_private);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index a1e7727..9a6ac61 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1154,7 +1154,6 @@ struct lock_manager_operations {
+ 	int (*lm_compare_owner)(struct file_lock *, struct file_lock *);
+ 	void (*lm_notify)(struct file_lock *);	/* unblock callback */
+ 	int (*lm_grant)(struct file_lock *, struct file_lock *, int);
+-	void (*lm_release_private)(struct file_lock *);
+ 	void (*lm_break)(struct file_lock *);
+ 	int (*lm_change)(struct file_lock **, int);
+ };
 -- 
-Mathieu Desnoyers
-Operating System Efficiency R&D Consultant
-EfficiOS Inc.
-http://www.efficios.com
+1.7.9.5
+
