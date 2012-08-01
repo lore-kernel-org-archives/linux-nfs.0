@@ -1,54 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailservice.tudelft.nl ([130.161.131.5]:40709 "EHLO
-	mailservice.tudelft.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752211Ab2H0KvZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Aug 2012 06:51:25 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by amavis (Postfix) with ESMTP id 458062B8005
-	for <linux-nfs@vger.kernel.org>; Mon, 27 Aug 2012 12:20:21 +0200 (CEST)
-Received: from mailservice.tudelft.nl ([130.161.131.73])
-	by localhost (tudelft.nl [127.0.0.1]) (amavisd-new, port 10026)
-	with ESMTP id P8mKwKs90MeB for <linux-nfs@vger.kernel.org>;
-	Mon, 27 Aug 2012 12:20:20 +0200 (CEST)
-Received: from smtp-a.tudelft.nl (smtp-a.tudelft.nl [130.161.180.7])
-	by mx2.tudelft.nl (Postfix) with ESMTP id C73652B801D
-	for <linux-nfs@vger.kernel.org>; Mon, 27 Aug 2012 12:20:20 +0200 (CEST)
-Received: from [131.180.208.203] (x208203.tudelft.net [131.180.208.203])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by smtp-a.tudelft.nl (Postfix) with ESMTP id 6A4BCB3A62
-	for <linux-nfs@vger.kernel.org>; Mon, 27 Aug 2012 12:20:20 +0200 (CEST)
-Message-ID: <503B49E4.2050409@tudelft.nl>
-Date: Mon, 27 Aug 2012 12:20:20 +0200
-From: Robbert Eggermont <R.Eggermont@tudelft.nl>
+Received: from mx1.redhat.com ([209.132.183.28]:51220 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751361Ab2HAMjL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Aug 2012 08:39:11 -0400
+Message-ID: <50192365.7090402@RedHat.com>
+Date: Wed, 01 Aug 2012 08:39:01 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: Re: nfsv4 state id errors
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        David Howells <dhowells@redhat.com>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "sct@redhat.com" <sct@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "jlayton@redhat.com" <jlayton@redhat.com>
+Subject: Re: [PATCH 1/2] NFS: Fix a number of bugs in the idmapper
+References: <1343746117.5528.3.camel@lade.trondhjem.org> <20120731144234.6664.85664.stgit@warthog.procyon.org.uk> <6978.1343746575@warthog.procyon.org.uk> <1343747261.5528.10.camel@lade.trondhjem.org> <20120731163708.GE27834@fieldses.org> <20120731171121.GF27834@fieldses.org>
+In-Reply-To: <20120731171121.GF27834@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
 
-> A couple of weeks agoo we upgraded our Netapp filer to 8.1.1RC1. We have
-> always had trouble with NFS and state id's. Resulting in hanging clients.
 
-(Client: SLED11 SP2, 3.0.34-0.7-default x86_64)
+On 07/31/2012 01:11 PM, J. Bruce Fields wrote:
+> On Tue, Jul 31, 2012 at 12:37:08PM -0400, bfields wrote:
+>> On Tue, Jul 31, 2012 at 03:07:42PM +0000, Myklebust, Trond wrote:
+>>> We don't expect people to be running both types of idmapper at the same
+>>> time. Normally, the distribution will set up one or the other. However
+>>> if both idmappers do happen to be configured, then we want to always
+>>> choose the non-legacy type...
+>>
+>> On a quick check....  It looks like F17 has /usr/sbin/nfsidmap, and also
+>> runs rpc.idmapd for the server.  While rpc.idmap does have a "-S"
+>> option, it's not using that.
+>>
+>> But that should be easy to fix--I'll go look....
+> 
+> Steve, this, or do we want to modify the default value of RPCIDMAPDARGS
+> in nfs.sysconfig?
+Actually that looks like a good idea.. I'll make that happen... but
+it will be a Fedora only thing... 
 
-The "hanging" seems to be caused by the server returning an 
-NFS4ERR_BAD_STATEID(10025) status for PUTFH;LOCK and PUTFH;WRITE;GETATTR 
-calls. The client is making several hundreds of these identical (same 
-filehandle) calls each second.
-
-The problem seems to be triggered by (write) actions on an open file 
-when the Kerberos ticket has expired (especially for .xsession-errors 
-and files opened by Firefox or Thunderbird).
-
-When (after some time) a new valid ticket is obtained, the kernel 
-reports this error:
-nfs4_reclaim_open_state: unhandled error -10026. Zeroing state
-
-Is this a client or a server problem (and is there by any chance a fix)?
-
-Robbert
-
+steved.
+> 
+> --b.
+> 
+> diff --git a/nfs-idmap.service b/nfs-idmap.service
+> index 872ae09..93c1b3a 100644
+> --- a/nfs-idmap.service
+> +++ b/nfs-idmap.service
+> @@ -7,7 +7,7 @@ After=nfs-server.service
+>  Type=forking
+>  StandardError=syslog+console
+>  EnvironmentFile=-/etc/sysconfig/nfs
+> -ExecStart=/usr/sbin/rpc.idmapd $RPCIDMAPDARGS
+> +ExecStart=/usr/sbin/rpc.idmapd -S $RPCIDMAPDARGS
+>  
+>  [Install]
+>  WantedBy=nfs.target
+> diff --git a/nfs.sysconfig b/nfs.sysconfig
+> index 2d33cf3..4baa0c3 100644
+> --- a/nfs.sysconfig
+> +++ b/nfs.sysconfig
+> @@ -24,7 +24,7 @@ RPCMOUNTDOPTS=""
+>  STATDARG=""
+>  #
+>  # Optional arguments passed to rpc.idmapd. See rpc.idmapd(8)
+> -RPCIDMAPDARGS=""
+> +RPCIDMAPDARGS="-S"
+>  #
+>  # Optional arguments passed to rpc.gssd. See rpc.gssd(8)
+>  RPCGSSDARGS=""
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
