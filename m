@@ -1,38 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56861 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:52847 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754871Ab2HNSRX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Aug 2012 14:17:23 -0400
-Date: Tue, 14 Aug 2012 14:16:14 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
-        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH 00/16] generic hashtable implementation
-Message-ID: <20120814181614.GA15099@fieldses.org>
-References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
+	id S1752632Ab2HAN3f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Aug 2012 09:29:35 -0400
+From: Sachin Prabhu <sprabhu@redhat.com>
+To: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Cc: Trond Myklebust <trond.myklebust@netapp.com>
+Subject: [PATCH 0/2] Fix bugs and clean code in __nfs4_get_acl_uncached
+Date: Wed,  1 Aug 2012 14:29:29 +0100
+Message-Id: <1343827771-6258-1-git-send-email-sprabhu@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 14, 2012 at 06:24:34PM +0200, Sasha Levin wrote:
->   SUNRPC/cache: use new hashtable implementation
-..
->   lockd: use new hashtable implementation
+Split the bug fixes and code cleanup into separate patches asi
+requested in
+http://www.spinics.net/lists/linux-nfs/msg31677.html
 
-FWIW, these look fine (and I ran them through some nfs tests and didn't
-see any problems).
+Fix bugs in function __nfs4_get_acl_uncached and clean up code to make
+it easier to understand.
 
---b.
+Sachin Prabhu (2):
+  Fix array overflow in __nfs4_get_acl_uncached
+  Simplify check for size of ACL returned in __nfs4_get_acl_uncached
+
+ fs/nfs/nfs4proc.c       | 18 +++++++++---------
+ fs/nfs/nfs4xdr.c        |  4 +++-
+ include/linux/nfs_xdr.h |  2 +-
+ 3 files changed, 13 insertions(+), 11 deletions(-)
+
+-- 
+1.7.11.2
+
