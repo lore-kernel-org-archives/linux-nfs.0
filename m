@@ -1,106 +1,199 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtprelay06.ispgateway.de ([80.67.31.96]:49545 "EHLO
-	smtprelay06.ispgateway.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755550Ab2HNKGd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 06:06:33 -0400
-Received: from [62.43.225.238] (helo=localhost)
-	by smtprelay06.ispgateway.de with esmtpsa (TLSv1:AES256-SHA:256)
-	(Exim 4.68)
-	(envelope-from <richard.ems@cape-horn-eng.com>)
-	id 1T1Dus-0006Gt-8C
-	for linux-nfs@vger.kernel.org; Tue, 14 Aug 2012 12:00:02 +0200
-Message-ID: <502A21A1.7020206@cape-horn-eng.com>
-Date: Tue, 14 Aug 2012 12:00:01 +0200
-From: Richard Ems <richard.ems@cape-horn-eng.com>
+Received: from fieldses.org ([174.143.236.118]:54154 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752689Ab2HBCuY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Aug 2012 22:50:24 -0400
+Date: Wed, 1 Aug 2012 22:50:22 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: "ZUIDAM, Hans" <Hans.Zuidam@philips.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "DE WITTE, PETER" <PETER.DE.WITTE@philips.com>
+Subject: Re: Linux NFS and cached properties
+Message-ID: <20120802025022.GB9849@fieldses.org>
+References: <D307B3AC0BCD4C419E6B8FA6A2720A9C0C3B2F@011-DB3MPN1-001.MGDPHG.emi.philips.com>
+ <20120724143748.GC8570@fieldses.org>
+ <D307B3AC0BCD4C419E6B8FA6A2720A9C18ABBA@011-DB3MPN1-001.MGDPHG.emi.philips.com>
+ <20120726223607.GA28982@fieldses.org>
+ <20120731150801.0a4b557b@notabene.brown>
+ <20120731122546.GA26737@fieldses.org>
+ <20120802100405.4dfc3169@notabene.brown>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: nfs_lookup_revalidate BUG ?
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120802100405.4dfc3169@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi all !
+On Thu, Aug 02, 2012 at 10:04:05AM +1000, NeilBrown wrote:
+> On Tue, 31 Jul 2012 08:25:46 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+> wrote:
+> 
+> > On Tue, Jul 31, 2012 at 03:08:01PM +1000, NeilBrown wrote:
+> > > On Thu, 26 Jul 2012 18:36:07 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+> > > wrote:
+> > > 
+> > > > On Tue, Jul 24, 2012 at 05:28:02PM +0000, ZUIDAM, Hans wrote:
+> > > > > Hi Bruce,
+> > > > > 
+> > > > > Thanks for the clarification.
+> > > > > 
+> > > > > (I'm repeating a lot of my original mail because of the Cc: list.)
+> > > > > 
+> > > > > > J. Bruce Fields
+> > > > > > I think that's right, though I'm curious how you're managing to hit
+> > > > > > that case reliably every time.  Or is this an intermittent failure?
+> > > > > It's an intermittent failure, but with the procedure shown below it is
+> > > > > fairly easy to reproduce.    The actual problem we see in our product
+> > > > > is because of the way external storage media are handled in user-land.
+> > > > > 
+> > > > >         192.168.1.10# mount -t xfs /dev/sdcr/sda1 /mnt
+> > > > >         192.168.1.10# exportfs 192.168.1.11:/mnt
+> > > > > 
+> > > > >         192.168.1.11# mount 192.168.1.10:/mnt /mnt
+> > > > >         192.168.1.11# umount /mnt
+> > > > > 
+> > > > >         192.168.1.10# exportfs -u 192.168.1.11:/mnt
+> > > > >         192.168.1.10# umount /mnt
+> > > > >         umount: can't umount /media/recdisk: Device or resource busy
+> > > > > 
+> > > > > What I actually do is the mount/unmount on the client via ssh.  That
+> > > > > is a good way to trigger the problem.
+> > > > > 
+> > > > > We see that during the un-export the NFS caches are not flushed
+> > > > > properly which is why the final unmount fails.
+> > > > > 
+> > > > > In net/sunrpc/cache.c the cache times (last_refresh, expiry_time,
+> > > > > flush_time) are measured in seconds.  If I understand the code somewhat
+> > > > > then during an NFS un-export the is done by setting the flush_time to
+> > > > > the current time.  The cache_flush() is called.  If in that same second
+> > > > > last_refresh is set to the current time then the cached item is not
+> > > > > flushed.  This will subsequently cause un-mount to fail because there
+> > > > > is still a reference to the mount point.
+> > > > > 
+> > > > > > J. Bruce Fields
+> > > > > > I ran across that recently while reviewing the code to fix a related
+> > > > > > problem.  I'm not sure what the best fix would be.
+> > > > > >
+> > > > > > Previously raised here:
+> > > > > >
+> > > > > >       http://marc.info/?l=linux-nfs&m=133514319408283&w=2
+> > > > > 
+> > > > > The description in your mail does indeed looks the same as the problem
+> > > > > that we see.
+> > > > > 
+> > > > > >From reading the code in net/sunrpc/cache.c I get the impression that it is
+> > > > > not really possible to reliably flush the caches for an un-exportfs such
+> > > > > that after flushing they will not accept entries for the un-exported IP/mount
+> > > > > point combination.
+> > > > 
+> > > > Right.  So, possible ideas, from that previous message:
+> > > > 
+> > > > 	- As Neil suggests, modify exportfs to wait a second between
+> > > > 	  updating etab and flushing the cache.  At that point any
+> > > > 	  entries still using the old information are at least a second
+> > > > 	  old.  That may be adequate for your case, but if someone out
+> > > > 	  there is sensitive to the time required to unexport then that
+> > > > 	  will annoy them.  It also leaves the small possibility of
+> > > > 	  races where an in-progress rpc may still be using an export at
+> > > > 	  the time you try to flush.
+> > > > 	- Implement some new interface that you can use to flush the
+> > > > 	  cache and that doesn't return until in-progress rpc's
+> > > > 	  complete.  Since it waits for rpc's it's not purely a "cache"
+> > > > 	  layer interface any more.  So maybe something like
+> > > > 	  /proc/fs/nfsd/flush_exports.
+> > > > 	- As a workaround requiring no code changes: unexport, then shut
+> > > > 	  down the server entirely and restart it.  Clients will see
+> > > > 	  that as a reboot recovery event and recover automatically, but
+> > > > 	  applications may see delays while that happens.  Kind of a big
+> > > > 	  hammer, but if unexporting while other exports are in use is
+> > > > 	  rare maybe it would be adequate for your case.
+> > > 
+> > > That's a shame...
+> > > I had originally intended "rpc.nfsd 0" to simple stop all threads and nothing
+> > > else.  Then you would be able to:
+> > >    rpc.nfsd 0
+> > >    exportfs -f
+> > >    unmount
+> > >    rpc.nfsd 16
+> > > 
+> > > and have a nice fast race-free unmount.
+> > > But commit e096bbc6488d3e49d476bf986d33752709361277 'fixed' that :-(
+> > > 
+> > > I wonder if it can be resurrected ... maybe not worth the effort.
+> > 
+> > That also shut down v4 state.  Making the clients recover would
+> > typically be more expensive than ditching the export table.  (Did it
+> > also throw out NLM locks?  I can't tell on a quick check.)
+> 
+> No, it didn't do anything except stop all the threads.
+> I never liked that fact that stopping the last thread did something extra.
+> So when I added the ability to control the number of threads via sysfs I made
+> sure that it *only* controlled the number of threads.  However I kept the
+> legacy behaviour that sending SIGKILL to the nfsd threads would also unexport
+> things.  Obviously I should have documented this better.
+> 
+> The more I think out it, the more I'd really like to go back to that.  It
+> really is the *right* thing to do.
 
-We got the following BUG already 9 times in the last 6 days on 9 different nodes of our HPC cluster.
-I searched but couldn't find this same BUG anywhere, but a similar one related to ecryptfs which we are not using.
+Could be.
 
-The servers are running openSUSE 12.1 with kernel 3.3.6.
-The nodes were updated from openSUSE 11.3 and kernel 2.6.34.7-0.5-default to openSUSE 12.1 and kernel 3.5.0.
-Servers and nodes are running util-linux-2.20.1 and are all 64 bit systems.
+The nfsd startup/shutdown has a number of problems, and figuring out how
+to containerize it will uncover some more.  I'm open to any suggestions.
 
-The error appeared only after this update. Also after updating to kernel 3.5.1 we are getting the same error.
+> > > The idea of a new interface to synchronise with all threads has potential and
+> > > doesn't need to be at the nfsd level - it could be in sunrpc.  Maybe it could
+> > > be built into the current 'flush' interface.
+> > 
+> > We need to keep compatible behavior to prevent deadlocks.  (Don't want
+> > nfsd waiting on mountd waiting on nfsd.)
+> > 
+> > Looks like write_flush currently returns -EINVAL to anything that's not
+> > an integer.  So exportfs could write something new and ignore the error
+> > return (or try some other workaround) in the case of an old kernel.
+> > 
+> > > 1/ iterate through all no-sleeping threads setting a flag an increasing a
+> > > counter.
+> > > 2/ when a thread completes current request, if test_and_clear the flag, it
+> > > atomic_dec_and_test the counter and then wakes up some wait_queue_head.
+> > > 3/ 'flush'ing thread waits on the waut_queue_head for the counter to be 0.
+> > > 
+> > > If you don't hate it I could possibly even provide some code.
+> > 
+> > That sounds reasonable to me.  So you'd just add a single such
+> > thread-synchronization after modifying mountd's idea of the export
+> > table, ok.
+> > 
+> > It still wouldn't allow an unmount in the case a client held an NSM lock
+> > or v4 open--but I think that's what we want.  If somebody wants a way to
+> > unmount even in the presence of such state, then they really need to do
+> > a complete shutdown.
+> > 
+> > I wonder if there's also still a use for an operation that stops all
+> > threads temporarily but doesn't toss any state or caches?  I'm not
+> > coming up with one off the top of my head.
+> > 
+> > --b.
+> 
+> Actually, I think you were right the first time.  The cache isn't really well
+> positioned as it doesn't have a list of services to synchronise with.
+> We could give it one, but I don't that is such a good idea.
 
+OK.
 
-The BUG is triggered by a java application that runs as a batch job for hours on the nodes.
-We are using autofs-5.0.7 on the HPC nodes and mounting only using NFS_V3, not using NFS_V4 at all.
+> We already have a way to forcably drop all locks on a filesystem don't we?
+>    /proc/fs/nfsd/unlock_filesystem
+> 
+> Does that unlock the filesystem from the nfsv4 perspective too?  Should it?
 
-On one of these nodes the mount options are:
+It doesn't, but yes it probably should.
 
-c5n12:~ # mount | grep nfs
-nfsd on /proc/fs/nfsd type nfsd (rw,relatime)
-fs1:/data_4/ on /net/fs1/data_4 type nfs (rw,nosuid,nodev,relatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=10.0.3.203,mountvers=3,mountport=58521,mountproto=udp,local_lock=none,addr=10.0.3.203)
-fs1:/data_1/ on /net/fs1/data_1 type nfs (rw,nosuid,nodev,relatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=10.0.3.203,mountvers=3,mountport=58521,mountproto=udp,local_lock=none,addr=10.0.3.203)
-c3m:/opt/ on /net/c3m/opt type nfs (rw,nosuid,nodev,relatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=10.0.3.201,mountvers=3,mountport=35374,mountproto=udp,local_lock=none,addr=10.0.3.201)
+> I wonder if it might make sense to insert an 'sync with various threads' call
+> in there.
 
+Probably so.
 
-exportfs -v on the servers show all lines like:
-/data_1         *.c5.xxx.com(rw,wdelay,no_root_squash,no_subtree_check)
+But we still need a version that doesn't break locks: an admin should be
+able to say "unexport and unmount if you can, but not if it means
+throwing away client state".
 
-
-Aug 14 06:25:00 c5n12 kernel: [53043.599388] BUG: unable to handle kernel NULL pointer dereference at 0000000000000038
-Aug 14 06:25:00 c5n12 kernel: [53043.599523] IP: [<ffffffffa03789cd>] nfs_lookup_revalidate+0x2d/0x480 [nfs]
-Aug 14 06:25:00 c5n12 kernel: [53043.599604] PGD 337c63067 PUD 0 
-Aug 14 06:25:00 c5n12 kernel: [53043.599668] Oops: 0000 [#1] SMP 
-Aug 14 06:25:00 c5n12 kernel: [53043.599732] CPU 5 
-Aug 14 06:25:00 c5n12 kernel: [53043.599737] Modules linked in: nfs fscache nfsd lockd nfs_acl auth_rpcgss sunrpc af_packet binfmt_misc cpufreq_conservative cpufreq_userspace cpufreq_powersave dm_mod acpi_cpufreq mperf coretemp gpio_ich kvm_intel joydev kvm ioatdma hid_generic igb lpc_ich i7core_edac edac_core ptp serio_raw dca pcspkr i2c_i801 mfd_core sg pps_core usbhid crc32c_intel microcode button autofs4 uhci_hcd ttm drm_kms_helper drm i2c_algo_bit sysimgblt sysfillrect syscopyarea ehci_hcd usbcore usb_common scsi_dh_rdac scsi_dh_emc scsi_dh_hp_sw scsi_dh_alua scsi_dh edd fan ata_piix thermal processor thermal_sys
-Aug 14 06:25:00 c5n12 kernel: [53043.600411] 
-Aug 14 06:25:00 c5n12 kernel: [53043.600466] Pid: 30431, comm: java Not tainted 3.5.1-2-default #1 Supermicro X8DTT/X8DTT
-Aug 14 06:25:00 c5n12 kernel: [53043.600594] RIP: 0010:[<ffffffffa03789cd>]  [<ffffffffa03789cd>] nfs_lookup_revalidate+0x2d/0x480 [nfs]
-Aug 14 06:25:00 c5n12 kernel: [53043.600723] RSP: 0018:ffff8801b418bd38  EFLAGS: 00010292
-Aug 14 06:25:00 c5n12 kernel: [53043.600787] RAX: 00000000fffffff6 RBX: ffff88032016d800 RCX: 0000000000000020
-Aug 14 06:25:00 c5n12 kernel: [53043.600854] RDX: ffffffff00000000 RSI: 0000000000000000 RDI: ffff8801824a7b00
-Aug 14 06:25:00 c5n12 kernel: [53043.600921] RBP: ffff8801b418bdf8 R08: 7fffff0034323030 R09: fffffffff04c03ed
-Aug 14 06:25:00 c5n12 kernel: [53043.600989] R10: ffff8801824a7b00 R11: 0000000000000002 R12: ffff8801824a7b00
-Aug 14 06:25:00 c5n12 kernel: [53043.601055] R13: ffff8801824a7b00 R14: 0000000000000000 R15: ffff8803201725d0
-Aug 14 06:25:00 c5n12 kernel: [53043.601122] FS:  00002b53a46cb700(0000) GS:ffff88033fc20000(0000) knlGS:0000000000000000
-Aug 14 06:25:00 c5n12 kernel: [53043.601241] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-Aug 14 06:25:00 c5n12 kernel: [53043.601335] CR2: 0000000000000038 CR3: 000000020a426000 CR4: 00000000000007e0
-Aug 14 06:25:00 c5n12 kernel: [53043.601401] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-Aug 14 06:25:00 c5n12 kernel: [53043.601466] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Aug 14 06:25:00 c5n12 kernel: [53043.601532] Process java (pid: 30431, threadinfo ffff8801b418a000, task ffff8801b5d20600)
-Aug 14 06:25:00 c5n12 kernel: [53043.601650] Stack:
-Aug 14 06:25:00 c5n12 kernel: [53043.601706]  ffff8801b418be44 ffff88032016d800 ffff8801b418bdf8 0000000000000000
-Aug 14 06:25:00 c5n12 kernel: [53043.601829]  ffff8801824a7b00 ffff8801b418bdd7 ffff8803201725d0 ffffffff8116a9c0
-Aug 14 06:25:00 c5n12 kernel: [53043.601952]  ffff8801b5c38dc0 0000000000000007 ffff88032016d800 0000000000000000
-Aug 14 06:25:00 c5n12 kernel: [53043.602076] Call Trace:
-Aug 14 06:25:00 c5n12 kernel: [53043.602153]  [<ffffffff8116a9c0>] lookup_dcache+0x80/0xe0
-Aug 14 06:25:00 c5n12 kernel: [53043.602220]  [<ffffffff8116aa43>] __lookup_hash+0x23/0x90
-Aug 14 06:25:00 c5n12 kernel: [53043.602284]  [<ffffffff8116b4a5>] lookup_one_len+0xc5/0x100
-Aug 14 06:25:00 c5n12 kernel: [53043.602355]  [<ffffffffa03869a3>] nfs_sillyrename+0xe3/0x210 [nfs]
-Aug 14 06:25:00 c5n12 kernel: [53043.602439]  [<ffffffff8116cadf>] vfs_unlink.part.25+0x7f/0xe0
-Aug 14 06:25:00 c5n12 kernel: [53043.602504]  [<ffffffff8116f22c>] do_unlinkat+0x1ac/0x1d0
-Aug 14 06:25:00 c5n12 kernel: [53043.602570]  [<ffffffff815717b9>] system_call_fastpath+0x16/0x1b
-Aug 14 06:25:00 c5n12 kernel: [53043.602637]  [<00002b5348b5f527>] 0x2b5348b5f526
-Aug 14 06:25:00 c5n12 kernel: [53043.602699] Code: ec 38 b8 f6 ff ff ff 4c 89 64 24 18 4c 89 74 24 28 49 89 fc 48 89 5c 24 08 48 89 6c 24 10 49 89 f6 4c 89 6c 24 20 4c 89 7c 24 30 <f6> 46 38 40 0f 85 d1 00 00 00 e8 c4 c4 df e0 48 8b 58 30 49 89 
-Aug 14 06:25:00 c5n12 kernel: [53043.603008] RIP  [<ffffffffa03789cd>] nfs_lookup_revalidate+0x2d/0x480 [nfs]
-Aug 14 06:25:00 c5n12 kernel: [53043.603080]  RSP <ffff8801b418bd38>
-Aug 14 06:25:00 c5n12 kernel: [53043.603140] CR2: 0000000000000038
-Aug 14 06:25:00 c5n12 kernel: [53043.603517] ---[ end trace 845113ed191985dd ]---
-
-
-Is this a known BUG ?
-Which other information or test can I do to contribute searching/resolving this issue?
-
-Many thanks,
-Richard
-
-
-
--- 
-Richard Ems       mail: Richard.Ems@Cape-Horn-Eng.com
-
-Cape Horn Engineering S.L.
-C/ Dr. J.J. Dómine 1, 5º piso
-46011 Valencia
-Tel : +34 96 3242923 / Fax 924
-http://www.cape-horn-eng.com
+--b.
