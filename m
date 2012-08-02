@@ -1,67 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:46167 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752099Ab2HMVV0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Aug 2012 17:21:26 -0400
-Received: by yhmm54 with SMTP id m54so3747749yhm.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Aug 2012 14:21:25 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/5] (v2) rpcauth_create() returns -EEXIST
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 13 Aug 2012 17:21:21 -0400
-Message-ID: <20120813210739.1680.53741.stgit@degas.1015granger.net>
+Received: from natasha.panasas.com ([67.152.220.90]:44439 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753516Ab2HBMig (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Aug 2012 08:38:36 -0400
+Message-ID: <501A74BF.3040708@panasas.com>
+Date: Thu, 2 Aug 2012 15:38:23 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+CC: Peng Tao <tao.peng@emc.com>
+Subject: [PATCH 2/3] pnfs-obj: Better IO pattern in case of unaligned offset
+References: <501A7369.6090808@panasas.com>
+In-Reply-To: <501A7369.6090808@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A few weeks ago I reported a problem with calling rpcauth_create()
-in a loop to serially replace an RPC transport's with different
-flavors.  When the loop gets up to the GSS flavors, the second
-GSS flavor in the list can't be created.  rpcauth_create() fails
-with -EEXIST.  See:
 
- http://marc.info/?t=134073471800002&r=1&w=2
+Depending on layout and ARCH, ORE has some limits on max IO sizes
+which is communicated on (what else) ore_layout->max_io_length,
+which is always stripe aligned.
+This was considered as the pg_test boundary for splitting and starting
+a new IO.
 
-rpcauth_create() invokes the rpc_auth ->create operation first then
-releases the old rpc_auth.  But the old rpc_auth is holding onto
-upcall pipes, which prevents the new GSS rpc_auth from creating its
-own upcall pipes.
+But in the case of a long IO where the start offset is not aligned
+what would happen is that both end of IO[N] and start of IO[N+1]
+would be unaligned, causing each IO boundary parity unit to be
+calculated and written twice.
 
-This breaks our client's SECINFO implementation, and will also break
-UCS server trunking discovery when it appears.
+So what we do in this patch is split the very start of an unaligned
+IO, up to a stripe boundary, and then next IO's can continue fully
+aligned til the end.
 
-Trond proposed a solution in the same e-mail thread, but it was
-archived uuencoded.  Here is his suggestion in human-readable form:
+We might be sacrificing the case where the full unaligned IO would
+fit within a single max_io_length, but the sacrifice is well worth
+the elimination of double calculation and parity units IO.
+Actually the sacrificing is marginal and is almost unmeasurable.
 
-> The solution here would be to create a per-rpc_client, per-pipename
-> shared 'rpcsec_gss_pipe' object that holds the upcall pipe data.
+TODO:
+	If we know the total expected linear segment that will
+	be received, at pg_init, we could use that information
+	in many places:
+	1. blocks-layout get_layout write segment size
+	2. Better mds-threshold
+	3. In above situation for a better clean split
 
-This version of the patch series includes a couple of additional
-clean-up patches, and proper Acked-by: lines.  I've confirmed that
-the series addresses the issue, and thus should be ready to be
-considered for merging.  (I tested on top of UCS patches, have not
-tested with the SECINFO use case).
+	I will do this in future submission.
 
-We may also want to consider applying the last three patches to 3.6
-and 3.5-stable.
-
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
+ fs/nfs/objlayout/objio_osd.c | 55 +++++++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 52 insertions(+), 3 deletions(-)
 
-Chuck Lever (5):
-      SUNRPC: Share upcall pipes among an rpc_clnt's rpc_auth objects
-      SUNRPC: Insert a shim under gss_create()
-      SUNRPC: Prepare gss_pipes_dentries_create() for sharing pipe data
-      SUNRPC: Use __func__ in dprintk() in auth_gss.c
-      SUNRPC: Clean up dprintk messages in rpc_pipe.c
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index f50d3e8..ea6d111 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -570,17 +570,66 @@ static bool objio_pg_test(struct nfs_pageio_descriptor *pgio,
+ 		return false;
+ 
+ 	return pgio->pg_count + req->wb_bytes <=
+-			OBJIO_LSEG(pgio->pg_lseg)->layout.max_io_length;
++			(unsigned long)pgio->pg_layout_private;
++}
++
++void objio_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
++{
++	pnfs_generic_pg_init_read(pgio, req);
++	if (unlikely(pgio->pg_lseg == NULL))
++		return; /* Not pNFS */
++
++	pgio->pg_layout_private = (void *)
++				OBJIO_LSEG(pgio->pg_lseg)->layout.max_io_length;
++}
++
++static bool aligned_on_raid_stripe(u64 offset, struct ore_layout *layout,
++				   unsigned long *stripe_end)
++{
++	u32 stripe_off;
++	unsigned stripe_size;
++
++	if (layout->raid_algorithm == PNFS_OSD_RAID_0)
++		return true;
++
++	stripe_size = layout->stripe_unit *
++				(layout->group_width - layout->parity);
++
++	div_u64_rem(offset, stripe_size, &stripe_off);
++	if (!stripe_off)
++		return true;
++
++	*stripe_end = stripe_size - stripe_off;
++	return false;
++}
++
++void objio_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
++{
++	unsigned long stripe_end = 0;
++
++	pnfs_generic_pg_init_write(pgio, req);
++	if (unlikely(pgio->pg_lseg == NULL))
++		return; /* Not pNFS */
++
++	if (req->wb_offset ||
++	    !aligned_on_raid_stripe(req->wb_index * PAGE_SIZE,
++			       &OBJIO_LSEG(pgio->pg_lseg)->layout,
++			       &stripe_end)) {
++		pgio->pg_layout_private = (void *)stripe_end;
++	} else {
++		pgio->pg_layout_private = (void *)
++				OBJIO_LSEG(pgio->pg_lseg)->layout.max_io_length;
++	}
+ }
+ 
+ static const struct nfs_pageio_ops objio_pg_read_ops = {
+-	.pg_init = pnfs_generic_pg_init_read,
++	.pg_init = objio_init_read,
+ 	.pg_test = objio_pg_test,
+ 	.pg_doio = pnfs_generic_pg_readpages,
+ };
+ 
+ static const struct nfs_pageio_ops objio_pg_write_ops = {
+-	.pg_init = pnfs_generic_pg_init_write,
++	.pg_init = objio_init_write,
+ 	.pg_test = objio_pg_test,
+ 	.pg_doio = pnfs_generic_pg_writepages,
+ };
+-- 
+1.7.10.2.677.gb6bc67f
 
 
- include/linux/sunrpc/clnt.h    |    1 
- net/sunrpc/auth_gss/auth_gss.c |  290 ++++++++++++++++++++++++++++++----------
- net/sunrpc/clnt.c              |    1 
- net/sunrpc/rpc_pipe.c          |    8 +
- 4 files changed, 222 insertions(+), 78 deletions(-)
-
---
-Chuck Lever
