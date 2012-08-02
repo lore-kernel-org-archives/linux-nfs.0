@@ -1,99 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52809 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:5834 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751910Ab2HAL4U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Aug 2012 07:56:20 -0400
-Date: Wed, 1 Aug 2012 07:56:16 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk, matthew@wil.cx
-Subject: [PATCH] locks: remove unused lm_release_private
-Message-ID: <20120801115616.GA3958@fieldses.org>
-References: <20120731142948.GC27834@fieldses.org>
- <20120731143600.GD27834@fieldses.org>
- <CA+55aFzM8S0sEAAUXK9f1OhSL-OXmZ_jx_UHF81Eo0-Mi-+T_w@mail.gmail.com>
+	id S1754449Ab2HBNxJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 Aug 2012 09:53:09 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q72Dr83N005764
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 2 Aug 2012 09:53:08 -0400
+Received: from badhat.bos.devel.redhat.com (badhat.boston.devel.redhat.com [10.16.60.49])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q72Dr8uo013707
+	for <linux-nfs@vger.kernel.org>; Thu, 2 Aug 2012 09:53:08 -0400
+Message-ID: <501A863D.3080605@RedHat.com>
+Date: Thu, 02 Aug 2012 09:53:01 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CA+55aFzM8S0sEAAUXK9f1OhSL-OXmZ_jx_UHF81Eo0-Mi-+T_w@mail.gmail.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Linux pNFS status meeting 08/02/12
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+A quick reminder....  we are planing on meeting today as agreed
+in last week's meeting... 
 
-3b6e2723f32de42028617f2c99b244ccd72cd959 "locks: prevent side-effects of
-locks_release_private before file_lock is initialized" removed the last
-user of lm_release_private without removing the field itself.
+Time: 9:30 AM PST (12:30 PM EST)
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- Documentation/filesystems/Locking |    2 --
- fs/locks.c                        |    6 +-----
- include/linux/fs.h                |    1 -
- 3 files changed, 1 insertion(+), 8 deletions(-)
+The call in numbers are:
+U.S. and Canada: (800) 451-8679
+International dial-in number: (212) 729-5016
+Israel Toll-Free: 1-809-462-557
+Conference code: 564.272.1552
 
-On Tue, Jul 31, 2012 at 02:54:05PM -0700, Linus Torvalds wrote:
-> Maybe I missed some odd user that somehow avoids the grep, but I don't
-> think so. So there is nothing that ever sets it, why the hell does the
-> thing still remain at all?
-
-Embarassingly: I had work in progress that could make use of
-lm_release_private soon, so I didn't bother removing it.
-
-But "soon" was optimistic, and anyway why leave the code in a confusing
-state, so: agreed it should have gone, apologies.
-
---b.
-
-diff --git a/Documentation/filesystems/Locking b/Documentation/filesystems/Locking
-index 8e2da1e..f11d51f 100644
---- a/Documentation/filesystems/Locking
-+++ b/Documentation/filesystems/Locking
-@@ -343,7 +343,6 @@ prototypes:
- 	int (*lm_compare_owner)(struct file_lock *, struct file_lock *);
- 	void (*lm_notify)(struct file_lock *);  /* unblock callback */
- 	int (*lm_grant)(struct file_lock *, struct file_lock *, int);
--	void (*lm_release_private)(struct file_lock *);
- 	void (*lm_break)(struct file_lock *); /* break_lease callback */
- 	int (*lm_change)(struct file_lock **, int);
- 
-@@ -352,7 +351,6 @@ locking rules:
- lm_compare_owner:	yes		no
- lm_notify:		yes		no
- lm_grant:		no		no
--lm_release_private:	maybe		no
- lm_break:		yes		no
- lm_change		yes		no
- 
-diff --git a/fs/locks.c b/fs/locks.c
-index 541075a..5cf874c 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -200,11 +200,7 @@ void locks_release_private(struct file_lock *fl)
- 			fl->fl_ops->fl_release_private(fl);
- 		fl->fl_ops = NULL;
- 	}
--	if (fl->fl_lmops) {
--		if (fl->fl_lmops->lm_release_private)
--			fl->fl_lmops->lm_release_private(fl);
--		fl->fl_lmops = NULL;
--	}
-+	fl->fl_lmops = NULL;
- 
- }
- EXPORT_SYMBOL_GPL(locks_release_private);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index a1e7727..9a6ac61 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1154,7 +1154,6 @@ struct lock_manager_operations {
- 	int (*lm_compare_owner)(struct file_lock *, struct file_lock *);
- 	void (*lm_notify)(struct file_lock *);	/* unblock callback */
- 	int (*lm_grant)(struct file_lock *, struct file_lock *, int);
--	void (*lm_release_private)(struct file_lock *);
- 	void (*lm_break)(struct file_lock *);
- 	int (*lm_change)(struct file_lock **, int);
- };
--- 
-1.7.9.5
-
+steved.
