@@ -1,330 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:39086 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755319Ab2HNQY4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 12:24:56 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH 01/16] hashtable: introduce a small and naive hashtable
-Date: Tue, 14 Aug 2012 18:24:35 +0200
-Message-Id: <1344961490-4068-2-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
-References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:33432 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752755Ab2HBP1D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 Aug 2012 11:27:03 -0400
+Message-ID: <501A9C33.5010805@netapp.com>
+Date: Thu, 02 Aug 2012 11:26:43 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+MIME-Version: 1.0
+To: Jeff Layton <jlayton@redhat.com>
+CC: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 00/10] Create NFS modules
+References: <1343678725-8659-1-git-send-email-bjschuma@netapp.com> <20120802112059.57e7bb82@corrin.poochiereds.net>
+In-Reply-To: <20120802112059.57e7bb82@corrin.poochiereds.net>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This hashtable implementation is using hlist buckets to provide a simple
-hashtable to prevent it from getting reimplemented all over the kernel.
+On 08/02/2012 11:20 AM, Jeff Layton wrote:
+> On Mon, 30 Jul 2012 16:05:15 -0400
+> bjschuma@netapp.com wrote:
+> 
+>> From: Bryan Schumaker <bjschuma@netapp.com>
+>>
+>> This is the final set of patches to turn NFS into modules.  The first patch
+>> creates an "nfs_subversion" structure that will represent a single NFS
+>> version.  The next 6 patches are cleanups that the nfs_subversion structure
+>> allows us to put in.  Finally, the last 3 patches convert v2, v3 and v4 into
+>> kernel modules.
+>>
+>> Changes in version 2:
+>> - Add a patch to keep nfs4 module parameters in the generic client.  Without
+>>   this we break backwards compatibility with older kernels.
+>>
+>> - Bryan
+>>
+>> Bryan Schumaker (10):
+>>   NFS: Add version registering framework
+>>   NFS: Remove the NFS v4 xdev mount function
+>>   NFS: Create a try_mount rpc op
+>>   NFS: Only initialize the ACL client in the v3 case
+>>   NFS: Pass super operations and xattr handlers in the nfs_subversion
+>>   NFS: Split out remaining NFS v4 inode functions
+>>   NFS: Keep module parameters in the generic NFS client
+>>   NFS: Convert v2 into a module
+>>   NFS: Convert v3 into a module
+>>   NFS: Convert v4 into a module
+>>
+>>  fs/nfs/Kconfig            |   6 +-
+>>  fs/nfs/Makefile           |  27 +++----
+>>  fs/nfs/callback.c         |  24 ------
+>>  fs/nfs/callback.h         |   2 +-
+>>  fs/nfs/client.c           | 191 +++++++++++++++++++++++++---------------------
+>>  fs/nfs/delegation.h       |   2 +-
+>>  fs/nfs/dir.c              |  20 ++++-
+>>  fs/nfs/direct.c           |   2 +-
+>>  fs/nfs/dns_resolve.c      |   4 +
+>>  fs/nfs/file.c             |  15 ++++
+>>  fs/nfs/idmap.c            |   3 -
+>>  fs/nfs/inode.c            | 105 ++++++++++++-------------
+>>  fs/nfs/internal.h         |  38 +++++----
+>>  fs/nfs/namespace.c        |  17 +----
+>>  fs/nfs/netns.h            |   2 +-
+>>  fs/nfs/nfs.h              |  29 +++++++
+>>  fs/nfs/nfs2super.c        |  31 ++++++++
+>>  fs/nfs/nfs3client.c       |  65 ++++++++++++++++
+>>  fs/nfs/nfs3proc.c         |   3 +
+>>  fs/nfs/nfs3super.c        |  31 ++++++++
+>>  fs/nfs/nfs4_fs.h          |  13 ++--
+>>  fs/nfs/nfs4client.c       |  23 ++----
+>>  fs/nfs/nfs4proc.c         |   9 +--
+>>  fs/nfs/nfs4super.c        | 106 +++++++++++++------------
+>>  fs/nfs/nfs4xdr.c          |   6 --
+>>  fs/nfs/pagelist.c         |   4 +
+>>  fs/nfs/pnfs.c             |   2 +
+>>  fs/nfs/proc.c             |   3 +
+>>  fs/nfs/read.c             |   5 ++
+>>  fs/nfs/super.c            | 172 ++++++++++++++++++++++++++++-------------
+>>  fs/nfs/write.c            |  35 +++------
+>>  include/linux/nfs_fs.h    |   6 +-
+>>  include/linux/nfs_fs_sb.h |   7 +-
+>>  include/linux/nfs_idmap.h |   2 +-
+>>  include/linux/nfs_xdr.h   |   9 ++-
+>>  35 files changed, 632 insertions(+), 387 deletions(-)
+>>  create mode 100644 fs/nfs/nfs.h
+>>  create mode 100644 fs/nfs/nfs2super.c
+>>  create mode 100644 fs/nfs/nfs3client.c
+>>  create mode 100644 fs/nfs/nfs3super.c
+>>
+> 
+> I'm seeing a (minor?) regression that I think is probably due to these
+> patches. If I plug in nfs.ko, and then unplug it, I'm unable to plug it
+> back in again:
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
- include/linux/hashtable.h |  284 +++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 284 insertions(+), 0 deletions(-)
- create mode 100644 include/linux/hashtable.h
+Thanks for letting me know, I'll look into it today.
 
-diff --git a/include/linux/hashtable.h b/include/linux/hashtable.h
-new file mode 100644
-index 0000000..b18827a
---- /dev/null
-+++ b/include/linux/hashtable.h
-@@ -0,0 +1,284 @@
-+/*
-+ * Hash table implementation
-+ * (C) 2012  Sasha Levin <levinsasha928@gmail.com>
-+ */
-+
-+#ifndef _LINUX_HASHTABLE_H
-+#define _LINUX_HASHTABLE_H
-+
-+#include <linux/list.h>
-+#include <linux/types.h>
-+#include <linux/kernel.h>
-+#include <linux/hash.h>
-+#include <linux/rculist.h>
-+
-+#define DEFINE_HASHTABLE(name, bits)					\
-+	struct hlist_head name[HASH_SIZE(bits)];
-+
-+#define HASH_SIZE(bits) (1 << (bits))
-+#define HASH_BITS(name) (ilog2(ARRAY_SIZE(name)))
-+
-+/* Use hash_32 when possible to allow for fast 32bit hashing in 64bit kernels. */
-+#define hash_min(val, bits) ((sizeof(val)==4) ? hash_32((val), (bits)) : hash_long((val), (bits)))
-+
-+/**
-+ * hash_init_size - initialize a hash table
-+ * @hashtable: hashtable to be initialized
-+ * @bits: bit count of hashing function
-+ *
-+ * Initializes a hash table with 2**bits buckets.
-+ */
-+static inline void hash_init_size(struct hlist_head *hashtable, int bits)
-+{
-+	int i;
-+
-+	for (i = 0; i < HASH_SIZE(bits); i++)
-+		INIT_HLIST_HEAD(hashtable + i);
-+}
-+
-+/**
-+ * hash_init - initialize a hash table
-+ * @hashtable: hashtable to be initialized
-+ *
-+ * Calculates the size of the hashtable from the given parameter, otherwise
-+ * same as hash_init_size.
-+ */
-+#define hash_init(name) hash_init_size(name, HASH_BITS(name))
-+
-+/**
-+ * hash_add_size - add an object to a hashtable
-+ * @hashtable: hashtable to add to
-+ * @bits: bit count used for hashing
-+ * @node: the &struct hlist_node of the object to be added
-+ * @key: the key of the object to be added
-+ */
-+#define hash_add_size(hashtable, bits, node, key)				\
-+	hlist_add_head(node, &hashtable[hash_min(key, bits)]);
-+
-+/**
-+ * hash_add - add an object to a hashtable
-+ * @hashtable: hashtable to add to
-+ * @node: the &struct hlist_node of the object to be added
-+ * @key: the key of the object to be added
-+ */
-+#define hash_add(hashtable, node, key)						\
-+	hash_add_size(hashtable, HASH_BITS(hashtable), node, key)
-+
-+/**
-+ * hash_add_rcu_size - add an object to a rcu enabled hashtable
-+ * @hashtable: hashtable to add to
-+ * @bits: bit count used for hashing
-+ * @node: the &struct hlist_node of the object to be added
-+ * @key: the key of the object to be added
-+ */
-+#define hash_add_rcu_size(hashtable, bits, node, key)				\
-+	hlist_add_head_rcu(node, &hashtable[hash_min(key, bits)]);
-+
-+/**
-+ * hash_add_rcu - add an object to a rcu enabled hashtable
-+ * @hashtable: hashtable to add to
-+ * @node: the &struct hlist_node of the object to be added
-+ * @key: the key of the object to be added
-+ */
-+#define hash_add_rcu(hashtable, node, key)					\
-+	hash_add_rcu_size(hashtable, HASH_BITS(hashtable), node, key)
-+
-+/**
-+ * hash_hashed - check whether an object is in any hashtable
-+ * @node: the &struct hlist_node of the object to be checked
-+ */
-+#define hash_hashed(node) (!hlist_unhashed(node))
-+
-+/**
-+ * hash_empty_size - check whether a hashtable is empty
-+ * @hashtable: hashtable to check
-+ * @bits: bit count used for hashing
-+ */
-+static inline bool hash_empty_size(struct hlist_head *hashtable, int bits)
-+{
-+	int i;
-+
-+	for (i = 0; i < HASH_SIZE(bits); i++)
-+		if (!hlist_empty(&hashtable[i]))
-+			return false;
-+
-+	return true;
-+}
-+
-+/**
-+ * hash_empty - check whether a hashtable is empty
-+ * @hashtable: hashtable to check
-+ */
-+#define hash_empty(name) hash_empty_size(name, HASH_BITS(name))
-+
-+/**
-+ * hash_del - remove an object from a hashtable
-+ * @node: &struct hlist_node of the object to remove
-+ */
-+static inline void hash_del(struct hlist_node *node)
-+{
-+	hlist_del_init(node);
-+}
-+
-+/**
-+ * hash_del_rcu - remove an object from a rcu enabled hashtable
-+ * @node: &struct hlist_node of the object to remove
-+ */
-+static inline void hash_del_rcu(struct hlist_node *node)
-+{
-+	hlist_del_init_rcu(node);
-+}
-+
-+/**
-+ * hash_for_each_size - iterate over a hashtable
-+ * @name: hashtable to iterate
-+ * @bits: bit count of hashing function of the hashtable
-+ * @bkt: integer to use as bucket loop cursor
-+ * @node: the &struct list_head to use as a loop cursor for each bucket
-+ * @obj: the type * to use as a loop cursor for each bucket
-+ * @member: the name of the hlist_node within the struct
-+ */
-+#define hash_for_each_size(name, bits, bkt, node, obj, member)			\
-+	for (bkt = 0; bkt < HASH_SIZE(bits); bkt++)				\
-+		hlist_for_each_entry(obj, node, &name[bkt], member)
-+
-+/**
-+ * hash_for_each - iterate over a hashtable
-+ * @name: hashtable to iterate
-+ * @bkt: integer to use as bucket loop cursor
-+ * @node: the &struct list_head to use as a loop cursor for each bucket
-+ * @obj: the type * to use as a loop cursor for each bucket
-+ * @member: the name of the hlist_node within the struct
-+ */
-+#define hash_for_each(name, bkt, node, obj, member)				\
-+	hash_for_each_size(name, HASH_BITS(name), bkt, node, obj, member)
-+
-+/**
-+ * hash_for_each_rcu_size - iterate over a rcu enabled hashtable
-+ * @name: hashtable to iterate
-+ * @bits: bit count of hashing function of the hashtable
-+ * @bkt: integer to use as bucket loop cursor
-+ * @node: the &struct list_head to use as a loop cursor for each bucket
-+ * @obj: the type * to use as a loop cursor for each bucket
-+ * @member: the name of the hlist_node within the struct
-+ */
-+#define hash_for_each_rcu_size(name, bits, bkt, node, obj, member)		\
-+	for (bkt = 0; bkt < HASH_SIZE(bits); bkt++)				\
-+		hlist_for_each_entry_rcu(obj, node, &name[bkt], member)
-+
-+/**
-+ * hash_for_each_rcu - iterate over a rcu enabled hashtable
-+ * @name: hashtable to iterate
-+ * @bkt: integer to use as bucket loop cursor
-+ * @node: the &struct list_head to use as a loop cursor for each bucket
-+ * @obj: the type * to use as a loop cursor for each bucket
-+ * @member: the name of the hlist_node within the struct
-+ */
-+#define hash_for_each_rcu(name, bkt, node, obj, member)				\
-+	hash_for_each_rcu_size(name, HASH_BITS(name), bkt, node, obj, member)
-+
-+/**
-+ * hash_for_each_safe_size - iterate over a hashtable safe against removal of
-+ * hash entry
-+ * @name: hashtable to iterate
-+ * @bkt: integer to use as bucket loop cursor
-+ * @node: the &struct list_head to use as a loop cursor for each bucket
-+ * @tmp: another &struct hlist_node to use as temporary storage
-+ * @obj: the type * to use as a loop cursor for each bucket
-+ * @member: the name of the hlist_node within the struct
-+ */
-+#define hash_for_each_safe_size(name, bits, bkt, node, tmp, obj, member)	\
-+	for (bkt = 0; bkt < HASH_SIZE(bits); bkt++)                     	\
-+		hlist_for_each_entry_safe(obj, node, tmp, &name[bkt], member)
-+
-+/**
-+ * hash_for_each_safe_size - iterate over a hashtable safe against removal of
-+ * hash entry
-+ * @name: hashtable to iterate
-+ * @bkt: integer to use as bucket loop cursor
-+ * @node: the &struct list_head to use as a loop cursor for each bucket
-+ * @obj: the type * to use as a loop cursor for each bucket
-+ * @member: the name of the hlist_node within the struct
-+ */
-+#define hash_for_each_safe(name, bkt, node, tmp, obj, member)			\
-+	hash_for_each_safe_size(name, HASH_BITS(name), bkt, node,		\
-+				tmp, obj, member)
-+
-+/**
-+ * hash_for_each_possible - iterate over all possible objects for a given key
-+ * @name: hashtable to iterate
-+ * @obj: the type * to use as a loop cursor for each bucket
-+ * @bits: bit count of hashing function of the hashtable
-+ * @node: the &struct list_head to use as a loop cursor for each bucket
-+ * @member: the name of the hlist_node within the struct
-+ * @key: the key of the objects to iterate over
-+ */
-+#define hash_for_each_possible_size(name, obj, bits, node, member, key)		\
-+	hlist_for_each_entry(obj, node,	&name[hash_min(key, bits)], member)
-+
-+/**
-+ * hash_for_each_possible - iterate over all possible objects for a given key
-+ * @name: hashtable to iterate
-+ * @obj: the type * to use as a loop cursor for each bucket
-+ * @bits: bit count of hashing function of the hashtable
-+ * @node: the &struct list_head to use as a loop cursor for each bucket
-+ * @member: the name of the hlist_node within the struct
-+ * @key: the key of the objects to iterate over
-+ */
-+#define hash_for_each_possible(name, obj, node, member, key)			\
-+	hash_for_each_possible_size(name, obj, HASH_BITS(name), node, member, key)
-+
-+/**
-+ * hash_for_each_possible - iterate over all possible objects for a given key
-+ * in a rcu enabled hashtable
-+ * @name: hashtable to iterate
-+ * @obj: the type * to use as a loop cursor for each bucket
-+ * @bits: bit count of hashing function of the hashtable
-+ * @node: the &struct list_head to use as a loop cursor for each bucket
-+ * @member: the name of the hlist_node within the struct
-+ * @key: the key of the objects to iterate over
-+ */
-+#define hash_for_each_possible_rcu_size(name, obj, bits, node, member, key)	\
-+	hlist_for_each_entry_rcu(obj, node, &name[hash_min(key, bits)], member)
-+
-+/**
-+ * hash_for_each_possible - iterate over all possible objects for a given key
-+ * in a rcu enabled hashtable
-+ * @name: hashtable to iterate
-+ * @obj: the type * to use as a loop cursor for each bucket
-+ * @node: the &struct list_head to use as a loop cursor for each bucket
-+ * @member: the name of the hlist_node within the struct
-+ * @key: the key of the objects to iterate over
-+ */
-+#define hash_for_each_possible_rcu(name, obj, node, member, key)		\
-+	hash_for_each_possible_rcu_size(name, obj, HASH_BITS(name),		\
-+					node, member, key)
-+
-+/**
-+ * hash_for_each_possible - iterate over all possible objects for a given key
-+ * safe against removal of hash entry
-+ * @name: hashtable to iterate
-+ * @obj: the type * to use as a loop cursor for each bucket
-+ * @bits: bit count of hashing function of the hashtable
-+ * @node: the &struct list_head to use as a loop cursor for each bucket
-+ * @member: the name of the hlist_node within the struct
-+ * @key: the key of the objects to iterate over
-+ */
-+#define hash_for_each_possible_safe_size(name, obj, bits, node, tmp, member, key)\
-+	hlist_for_each_entry_safe(obj, node, tmp,				\
-+		&name[hash_min(key, bits)], member)
-+
-+/**
-+ * hash_for_each_possible - iterate over all possible objects for a given key
-+ * safe against removal of hash entry
-+ * @name: hashtable to iterate
-+ * @obj: the type * to use as a loop cursor for each bucket
-+ * @node: the &struct list_head to use as a loop cursor for each bucket
-+ * @member: the name of the hlist_node within the struct
-+ * @key: the key of the objects to iterate over
-+ */
-+#define hash_for_each_possible_safe(name, obj, node, tmp, member, key)		\
-+	hash_for_each_possible_safe_size(name, obj, HASH_BITS(name),		\
-+						node, tmp, member, key)
-+
-+#endif
--- 
-1.7.8.6
+- Bryan
+
+> 
+> # modprobe nfs
+> ERROR: could not insert 'nfs': Cannot allocate memory
+> 
+> The following shows up in dmesg:
+> 
+> [  344.024976] kmem_cache_create(nfs_commit_data): Cache name already exists.
+> [  344.033771] Pid: 1377, comm: modprobe Not tainted 3.6.0-0.rc0.git8.1.fc18.x86_64 #1
+> [  344.042741] Call Trace:
+> [  344.051119]  [<ffffffff811835f2>] kmem_cache_create+0x182/0x1e0
+> [  344.060250]  [<ffffffffa027509b>] ? nfs_fs_proc_init+0x9b/0x9b [nfs]
+> [  344.069477]  [<ffffffffa027509b>] ? nfs_fs_proc_init+0x9b/0x9b [nfs]
+> [  344.078508]  [<ffffffffa027537c>] nfs_init_writepagecache+0x77/0xcfb [nfs]
+> [  344.087653]  [<ffffffffa027515a>] init_nfs_fs+0xbf/0x190 [nfs]
+> [  344.096732]  [<ffffffff8100212a>] do_one_initcall+0x12a/0x180
+> [  344.105755]  [<ffffffff810e3636>] sys_init_module+0x156/0x2290
+> [  344.114936]  [<ffffffff81359320>] ? ddebug_proc_open+0xd0/0xd0
+> [  344.123905]  [<ffffffff811c5e40>] ? delayed_fput+0xb0/0xb0
+> [  344.132821]  [<ffffffff816d8369>] system_call_fastpath+0x16/0x1b
+> [  344.169419] FS-Cache: Netfs 'nfs' unregistered from caching
+> [  469.258735] FS-Cache: Netfs 'nfs' registered for caching
+> [  469.281508] kmem_cache_create(nfs_write_data): Cache name already exists.
+> [  469.290690] Pid: 1386, comm: modprobe Not tainted 3.6.0-0.rc0.git8.1.fc18.x86_64 #1
+> [  469.300182] Call Trace:
+> [  469.309102]  [<ffffffff811835f2>] kmem_cache_create+0x182/0x1e0
+> [  469.318609]  [<ffffffffa027509b>] ? nfs_fs_proc_init+0x9b/0x9b [nfs]
+> [  469.328103]  [<ffffffffa027509b>] ? nfs_fs_proc_init+0x9b/0x9b [nfs]
+> [  469.337475]  [<ffffffffa0275324>] nfs_init_writepagecache+0x1f/0xcfb [nfs]
+> [  469.347034]  [<ffffffffa027515a>] init_nfs_fs+0xbf/0x190 [nfs]
+> [  469.356541]  [<ffffffff8100212a>] do_one_initcall+0x12a/0x180
+> [  469.366093]  [<ffffffff810e3636>] sys_init_module+0x156/0x2290
+> [  469.375539]  [<ffffffff81359320>] ? ddebug_proc_open+0xd0/0xd0
+> [  469.385151]  [<ffffffff811c5e40>] ? delayed_fput+0xb0/0xb0
+> [  469.394555]  [<ffffffff816d8369>] system_call_fastpath+0x16/0x1b
+> 
+> 
+> I don't see where these are getting torn down now on module unload?
+> 
 
