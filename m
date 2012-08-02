@@ -1,84 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:47278 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756246Ab2HXPIO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Aug 2012 11:08:14 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Sachin Prabhu <sprabhu@redhat.com>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Avoid array overflow in __nfs4_get_acl_uncached
-Date: Fri, 24 Aug 2012 15:07:45 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F4AF1E@SACEXCMBX01-PRD.hq.netapp.com>
-References: <1345817768-23511-1-git-send-email-sprabhu@redhat.com>
-In-Reply-To: <1345817768-23511-1-git-send-email-sprabhu@redhat.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from natasha.panasas.com ([67.152.220.90]:44530 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753577Ab2HBMkY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Aug 2012 08:40:24 -0400
+Message-ID: <501A752B.9030702@panasas.com>
+Date: Thu, 2 Aug 2012 15:40:11 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+CC: Peng Tao <tao.peng@emc.com>
+Subject: [PATCH 3/3] pnfs: Don't BUG on info received from Server
+References: <501A7369.6090808@panasas.com>
+In-Reply-To: <501A7369.6090808@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTA4LTI0IGF0IDE1OjE2ICswMTAwLCBTYWNoaW4gUHJhYmh1IHdyb3RlOg0K
-PiBUaGlzIGZpeGVzIGEgYnVnIGludHJvZHVjZWQgYnkgY29tbWl0DQo+IDVhMDA2ODk5MzBhYjk3
-NWZkZDFiMzdiMDM0NDc1MDE3ZTQ2MGNmMmENCj4gVGhlIHBhdGNoIGFkZHMgYW4gZXh0cmEgcGFn
-ZSB0byBucGFnZXMgdG8gaG9sZCB0aGUgYml0bWFwIHJldHVybmVkIGJ5DQo+IHRoZSBzZXJ2ZXIu
-DQo+IA0KPiBCcnVjZSBGaWVsZHMgcG9pbnRlZCBvdXQgdGhhdCB0aGUgY2hhbmdlcyBpbnRyb2R1
-Y2VkIGJ5IHRoZSBwYXRjaCB3aWxsDQo+IGNhdXNlIHRoZSBhcnJheSBucGFnZXMgdG8gb3ZlcmZs
-b3cgaWYgYSBidWZmZXIgb2Ygc2l6ZSBncmVhdGVyIHRoYW4gb3INCj4gZXF1YWwgdG8gWEFUVFJf
-U0laRV9NQVggaXMgcGFzc2VkIHRvIF9fbmZzNF9nZXRfYWNsX3VuY2FjaGVkKCkNCg0KSSdkIHRo
-aW5rIHRoYXQgdGhlIHJpZ2h0IHRoaW5nIHRvIGRvIGhlcmUgaXMgcmF0aGVyIHRvIGFkZCBhcHBy
-b3ByaWF0ZQ0KYnVmZmVyIG92ZXJmbG93IGNoZWNrcy4gSG93IGFib3V0IHNvbWV0aGluZyBsaWtl
-IHRoZSBmb2xsb3dpbmc/DQoNCjg8LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCkZyb20gN2MzNWNlMjIwOTI0MTgyMjg0YWVhOWY4
-YWVjMzliMGQ5OTE2MDBkZiBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206IFRyb25kIE15
-a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQpEYXRlOiBGcmksIDI0IEF1ZyAy
-MDEyIDEwOjU5OjI1IC0wNDAwDQpTdWJqZWN0OiBbUEFUQ0hdIE5GU3Y0OiBGaXggcmFuZ2UgY2hl
-Y2tpbmcgaW4gX19uZnM0X2dldF9hY2xfdW5jYWNoZWQgYW5kDQogX19uZnM0X3Byb2Nfc2V0X2Fj
-bA0KDQpFbnN1cmUgdGhhdCB0aGUgdXNlciBzdXBwbGllZCBidWZmZXIgc2l6ZSBkb2Vzbid0IGNh
-dXNlIHVzIHRvIG92ZXJmbG93DQp0aGUgJ3BhZ2VzJyBhcnJheS4NCg0KQWxzbyBmaXggdXAgc29t
-ZSBjb25mdXNpb24gYmV0d2VlbiB0aGUgdXNlIG9mIFBBR0VfU0laRSBhbmQNClBBR0VfQ0FDSEVf
-U0laRSB3aGVuIGNhbGN1bGF0aW5nIGJ1ZmZlciBzaXplcy4gV2UncmUgbm90IHVzaW5nDQp0aGUg
-cGFnZSBjYWNoZSBmb3IgYW55dGhpbmcgaGVyZS4NCg0KU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlr
-bGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCi0tLQ0KIGZzL25mcy9uZnM0cHJv
-Yy5jIHwgMjAgKysrKysrKysrKystLS0tLS0tLS0NCiAxIGZpbGUgY2hhbmdlZCwgMTEgaW5zZXJ0
-aW9ucygrKSwgOSBkZWxldGlvbnMoLSkNCg0KZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0cHJvYy5j
-IGIvZnMvbmZzL25mczRwcm9jLmMNCmluZGV4IDYzNTI3NDEuLjY1NGRjMzggMTAwNjQ0DQotLS0g
-YS9mcy9uZnMvbmZzNHByb2MuYw0KKysrIGIvZnMvbmZzL25mczRwcm9jLmMNCkBAIC0zNjUzLDEx
-ICszNjUzLDExIEBAIHN0YXRpYyBpbmxpbmUgaW50IG5mczRfc2VydmVyX3N1cHBvcnRzX2FjbHMo
-c3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlcikNCiAJCSYmIChzZXJ2ZXItPmFjbF9iaXRtYXNrICYg
-QUNMNF9TVVBQT1JUX0RFTllfQUNMKTsNCiB9DQogDQotLyogQXNzdW1pbmcgdGhhdCBYQVRUUl9T
-SVpFX01BWCBpcyBhIG11bHRpcGxlIG9mIFBBR0VfQ0FDSEVfU0laRSwgYW5kIHRoYXQNCi0gKiBp
-dCdzIE9LIHRvIHB1dCBzaXplb2Yodm9pZCkgKiAoWEFUVFJfU0laRV9NQVgvUEFHRV9DQUNIRV9T
-SVpFKSBieXRlcyBvbg0KKy8qIEFzc3VtaW5nIHRoYXQgWEFUVFJfU0laRV9NQVggaXMgYSBtdWx0
-aXBsZSBvZiBQQUdFX1NJWkUsIGFuZCB0aGF0DQorICogaXQncyBPSyB0byBwdXQgc2l6ZW9mKHZv
-aWQpICogKFhBVFRSX1NJWkVfTUFYL1BBR0VfU0laRSkgYnl0ZXMgb24NCiAgKiB0aGUgc3RhY2su
-DQogICovDQotI2RlZmluZSBORlM0QUNMX01BWFBBR0VTIChYQVRUUl9TSVpFX01BWCA+PiBQQUdF
-X0NBQ0hFX1NISUZUKQ0KKyNkZWZpbmUgTkZTNEFDTF9NQVhQQUdFUyBESVZfUk9VTkRfVVAoWEFU
-VFJfU0laRV9NQVgsIFBBR0VfU0laRSkNCiANCiBzdGF0aWMgaW50IGJ1Zl90b19wYWdlc19ub3Ns
-YWIoY29uc3Qgdm9pZCAqYnVmLCBzaXplX3QgYnVmbGVuLA0KIAkJc3RydWN0IHBhZ2UgKipwYWdl
-cywgdW5zaWduZWQgaW50ICpwZ2Jhc2UpDQpAQCAtMzY2OCw3ICszNjY4LDcgQEAgc3RhdGljIGlu
-dCBidWZfdG9fcGFnZXNfbm9zbGFiKGNvbnN0IHZvaWQgKmJ1Ziwgc2l6ZV90IGJ1ZmxlbiwNCiAJ
-c3BhZ2VzID0gcGFnZXM7DQogDQogCWRvIHsNCi0JCWxlbiA9IG1pbl90KHNpemVfdCwgUEFHRV9D
-QUNIRV9TSVpFLCBidWZsZW4pOw0KKwkJbGVuID0gbWluX3Qoc2l6ZV90LCBQQUdFX1NJWkUsIGJ1
-Zmxlbik7DQogCQluZXdwYWdlID0gYWxsb2NfcGFnZShHRlBfS0VSTkVMKTsNCiANCiAJCWlmIChu
-ZXdwYWdlID09IE5VTEwpDQpAQCAtMzc4MiwxNyArMzc4MiwxNiBAQCBzdGF0aWMgc3NpemVfdCBf
-X25mczRfZ2V0X2FjbF91bmNhY2hlZChzdHJ1Y3QgaW5vZGUgKmlub2RlLCB2b2lkICpidWYsIHNp
-emVfdCBidQ0KIAkJLnJwY19hcmdwID0gJmFyZ3MsDQogCQkucnBjX3Jlc3AgPSAmcmVzLA0KIAl9
-Ow0KLQlpbnQgcmV0ID0gLUVOT01FTSwgbnBhZ2VzLCBpOw0KKwl1bnNpZ25lZCBpbnQgbnBhZ2Vz
-ID0gRElWX1JPVU5EX1VQKGJ1ZmxlbiwgUEFHRV9TSVpFKTsNCisJaW50IHJldCA9IC1FTk9NRU0s
-IGk7DQogCXNpemVfdCBhY2xfbGVuID0gMDsNCiANCi0JbnBhZ2VzID0gKGJ1ZmxlbiArIFBBR0Vf
-U0laRSAtIDEpID4+IFBBR0VfU0hJRlQ7DQogCS8qIEFzIGxvbmcgYXMgd2UncmUgZG9pbmcgYSBy
-b3VuZCB0cmlwIHRvIHRoZSBzZXJ2ZXIgYW55d2F5LA0KIAkgKiBsZXQncyBiZSBwcmVwYXJlZCBm
-b3IgYSBwYWdlIG9mIGFjbCBkYXRhLiAqLw0KIAlpZiAobnBhZ2VzID09IDApDQogCQlucGFnZXMg
-PSAxOw0KLQ0KLQkvKiBBZGQgYW4gZXh0cmEgcGFnZSB0byBoYW5kbGUgdGhlIGJpdG1hcCByZXR1
-cm5lZCAqLw0KLQlucGFnZXMrKzsNCisJaWYgKG5wYWdlcyA+IEFSUkFZX1NJWkUocGFnZXMpKQ0K
-KwkJcmV0dXJuIC1FUkFOR0U7DQogDQogCWZvciAoaSA9IDA7IGkgPCBucGFnZXM7IGkrKykgew0K
-IAkJcGFnZXNbaV0gPSBhbGxvY19wYWdlKEdGUF9LRVJORUwpOw0KQEAgLTM4OTEsMTAgKzM4OTAs
-MTMgQEAgc3RhdGljIGludCBfX25mczRfcHJvY19zZXRfYWNsKHN0cnVjdCBpbm9kZSAqaW5vZGUs
-IGNvbnN0IHZvaWQgKmJ1Ziwgc2l6ZV90IGJ1ZmwNCiAJCS5ycGNfYXJncAk9ICZhcmcsDQogCQku
-cnBjX3Jlc3AJPSAmcmVzLA0KIAl9Ow0KKwl1bnNpZ25lZCBpbnQgbnBhZ2VzID0gRElWX1JPVU5E
-X1VQKGJ1ZmxlbiwgUEFHRV9TSVpFKTsNCiAJaW50IHJldCwgaTsNCiANCiAJaWYgKCFuZnM0X3Nl
-cnZlcl9zdXBwb3J0c19hY2xzKHNlcnZlcikpDQogCQlyZXR1cm4gLUVPUE5PVFNVUFA7DQorCWlm
-IChucGFnZXMgPiBBUlJBWV9TSVpFKHBhZ2VzKSkNCisJCXJldHVybiAtRVJBTkdFOw0KIAlpID0g
-YnVmX3RvX3BhZ2VzX25vc2xhYihidWYsIGJ1ZmxlbiwgYXJnLmFjbF9wYWdlcywgJmFyZy5hY2xf
-cGdiYXNlKTsNCiAJaWYgKGkgPCAwKQ0KIAkJcmV0dXJuIGk7DQotLSANCjEuNy4xMS40DQoNCg0K
-LS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRB
-cHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+
+In nfs4_layoutreturn_done() there is a BUG_ON on a Server
+returned member, when received in what the client thinks is
+an impossible situation.
+
+[The server returned ! lrp->res.lrs_present, but client
+ still had more segments]
+
+This BUG really hit me with the Linux pnfs Server, but
+regardless of who is at fault here, Server or client, client
+must not crash, even on a buggy Server.
+
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfs/nfs4proc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 15fc7e4..e25b686 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6249,7 +6249,7 @@ static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
+ 		if (lrp->res.lrs_present) {
+ 			pnfs_set_layout_stateid(lo, &lrp->res.stateid, true);
+ 		} else
+-			BUG_ON(!list_empty(&lo->plh_segs));
++			WARN_ON(!list_empty(&lo->plh_segs));
+ 	}
+ 	lo->plh_block_lgets--;
+ 	spin_unlock(&lo->plh_inode->i_lock);
+-- 
+1.7.10.2.677.gb6bc67f
+
+
