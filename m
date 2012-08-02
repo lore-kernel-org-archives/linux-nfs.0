@@ -1,64 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:64415 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756442Ab2HFOWB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Aug 2012 10:22:01 -0400
-Message-ID: <501FD300.40003@RedHat.com>
-Date: Mon, 06 Aug 2012 10:21:52 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from natasha.panasas.com ([67.152.220.90]:44220 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753019Ab2HBMcz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Aug 2012 08:32:55 -0400
+Message-ID: <501A7369.6090808@panasas.com>
+Date: Thu, 2 Aug 2012 15:32:41 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>
-CC: Karel Zak <kzak@redhat.com>, NFS <linux-nfs@vger.kernel.org>
-Subject: Re: nfs-utils: Something is wrong in is_vers4()
-References: <20120731165842.08017d60@notabene.brown> <5018103A.9070607@RedHat.com> <20120731183739.GA16347@x2.net.home> <5019499C.2040805@RedHat.com> <20120802102142.10be27f4@notabene.brown>
-In-Reply-To: <20120802102142.10be27f4@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+CC: Peng Tao <tao.peng@emc.com>
+Subject: [PATCHSET 0/3] pnfs-obj: Fixes left-out from 3.5 for the 3.6 merge
+ window
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/01/2012 08:21 PM, NeilBrown wrote:
-> is_vers4 in mount_libmount.c is based on nfs_umount_is_vers4
-> in nfsumount.c, except the return values are reversed.
-> The result of this is:
->  - a MOUNT_UMNT call is not sent when an NFSv3 or NFSv2
->    filesystem is unmounted
->  - a MOUNT_UMNT call *is* sent when and 'nfs4' filesystem
->    is unmounted (but not when an 'nfs -o vers=4 filesystem
->    is unmounted, as that is checked elsewhere).
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-Committed...
+Hi Trond
 
-steved.
+These fixes where for the 3.5 Kernel, Sorry I forgot about them. In any
+way they should be pushed for 3.6 fixes.
+(Should we pursue Stable@ for them)
 
-> 
-> diff --git a/utils/mount/mount_libmount.c b/utils/mount/mount_libmount.c
-> index ddf61b2..701d41e 100644
-> --- a/utils/mount/mount_libmount.c
-> +++ b/utils/mount/mount_libmount.c
-> @@ -140,14 +140,14 @@ static int try_mount(struct libmnt_context *cxt, int bg)
->  	return ret;
->  }
->  
-> -/* returns: error = -1, success = 0 , unknown = 1 */
-> +/* returns: error = -1, success = 1 , not vers4 == 0 */
->  static int is_vers4(struct libmnt_context *cxt)
->  {
->  	struct libmnt_fs *fs = mnt_context_get_fs(cxt);
->  	struct libmnt_table *tb = NULL;
->  	const char *src = mnt_context_get_source(cxt),
->  		   *tgt = mnt_context_get_target(cxt);
-> -	int rc = 1;
-> +	int rc = 0;
->  
->  	if (!src || !tgt)
->  		return -1;
-> @@ -163,7 +163,7 @@ static int is_vers4(struct libmnt_context *cxt)
->  	if (fs) {
->  		const char *type = mnt_fs_get_fstype(fs);
->  		if (type && strcmp(type, "nfs4") == 0)
-> -			rc = 0;
-> +			rc = 1;
->  	}
->  	mnt_free_table(tb);
->  	return rc;
+This is a re-post, except the 3rd one which is a new BUG fix.
+
+list of patches:
+[PATCH 1/3] NFS41: add pg_layout_private to nfs_pageio_descriptor
+[PATCH 2/3] pnfs-obj: Better IO pattern in case of unaligned offset
+[PATCH 3/3] pnfs: Don't BUG on info received from Server
+
+Thanks
+Boaz
