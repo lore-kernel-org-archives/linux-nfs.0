@@ -1,113 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:45127 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752323Ab2HWQ2k (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Aug 2012 12:28:40 -0400
-Received: by mail-pb0-f46.google.com with SMTP id rr13so1767813pbb.19
-        for <linux-nfs@vger.kernel.org>; Thu, 23 Aug 2012 09:28:40 -0700 (PDT)
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH-resend 3/6] Revert "pnfsblock: bail out partial page IO"
-Date: Fri, 24 Aug 2012 00:27:50 +0800
-Message-Id: <1345739273-2241-4-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1345739273-2241-1-git-send-email-bergwolf@gmail.com>
-References: <1345739273-2241-1-git-send-email-bergwolf@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:30662 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752563Ab2HBTBS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 Aug 2012 15:01:18 -0400
+Date: Thu, 2 Aug 2012 15:01:15 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 00/10] Create NFS modules
+Message-ID: <20120802150115.3647bf9e@tlielax.poochiereds.net>
+In-Reply-To: <501AC947.6020001@netapp.com>
+References: <1343678725-8659-1-git-send-email-bjschuma@netapp.com>
+	<20120802112059.57e7bb82@corrin.poochiereds.net>
+	<501A9C33.5010805@netapp.com>
+	<20120802143333.0d28bab5@tlielax.poochiereds.net>
+	<501AC947.6020001@netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This reverts commit 159e0561e322dd8008fff59e36efff8d2bdd0b0e, in favor
-of a more complete fix to the alignment issue.
+On Thu, 02 Aug 2012 14:39:03 -0400
+Bryan Schumaker <bjschuma@netapp.com> wrote:
 
-Signed-off-by: Peng Tao <tao.peng@emc.com>
----
- fs/nfs/blocklayout/blocklayout.c |   39 ++-----------------------------------
- 1 files changed, 3 insertions(+), 36 deletions(-)
+> On 08/02/2012 02:33 PM, Jeff Layton wrote:
+> > On Thu, 02 Aug 2012 11:26:43 -0400
+> > Bryan Schumaker <bjschuma@netapp.com> wrote:
+> > 
+> >> On 08/02/2012 11:20 AM, Jeff Layton wrote:
+> >>> On Mon, 30 Jul 2012 16:05:15 -0400
+> >>> bjschuma@netapp.com wrote:
+> >>>
+> >>>> From: Bryan Schumaker <bjschuma@netapp.com>
+> >>>>
+> >>>> This is the final set of patches to turn NFS into modules.  The first patch
+> >>>> creates an "nfs_subversion" structure that will represent a single NFS
+> >>>> version.  The next 6 patches are cleanups that the nfs_subversion structure
+> >>>> allows us to put in.  Finally, the last 3 patches convert v2, v3 and v4 into
+> >>>> kernel modules.
+> >>>>
+> >>>> Changes in version 2:
+> >>>> - Add a patch to keep nfs4 module parameters in the generic client.  Without
+> >>>>   this we break backwards compatibility with older kernels.
+> >>>>
+> >>>> - Bryan
+> >>>>
+> >>>> Bryan Schumaker (10):
+> >>>>   NFS: Add version registering framework
+> >>>>   NFS: Remove the NFS v4 xdev mount function
+> >>>>   NFS: Create a try_mount rpc op
+> >>>>   NFS: Only initialize the ACL client in the v3 case
+> >>>>   NFS: Pass super operations and xattr handlers in the nfs_subversion
+> >>>>   NFS: Split out remaining NFS v4 inode functions
+> >>>>   NFS: Keep module parameters in the generic NFS client
+> >>>>   NFS: Convert v2 into a module
+> >>>>   NFS: Convert v3 into a module
+> >>>>   NFS: Convert v4 into a module
+> >>>>
+> >>>>  fs/nfs/Kconfig            |   6 +-
+> >>>>  fs/nfs/Makefile           |  27 +++----
+> >>>>  fs/nfs/callback.c         |  24 ------
+> >>>>  fs/nfs/callback.h         |   2 +-
+> >>>>  fs/nfs/client.c           | 191 +++++++++++++++++++++++++---------------------
+> >>>>  fs/nfs/delegation.h       |   2 +-
+> >>>>  fs/nfs/dir.c              |  20 ++++-
+> >>>>  fs/nfs/direct.c           |   2 +-
+> >>>>  fs/nfs/dns_resolve.c      |   4 +
+> >>>>  fs/nfs/file.c             |  15 ++++
+> >>>>  fs/nfs/idmap.c            |   3 -
+> >>>>  fs/nfs/inode.c            | 105 ++++++++++++-------------
+> >>>>  fs/nfs/internal.h         |  38 +++++----
+> >>>>  fs/nfs/namespace.c        |  17 +----
+> >>>>  fs/nfs/netns.h            |   2 +-
+> >>>>  fs/nfs/nfs.h              |  29 +++++++
+> >>>>  fs/nfs/nfs2super.c        |  31 ++++++++
+> >>>>  fs/nfs/nfs3client.c       |  65 ++++++++++++++++
+> >>>>  fs/nfs/nfs3proc.c         |   3 +
+> >>>>  fs/nfs/nfs3super.c        |  31 ++++++++
+> >>>>  fs/nfs/nfs4_fs.h          |  13 ++--
+> >>>>  fs/nfs/nfs4client.c       |  23 ++----
+> >>>>  fs/nfs/nfs4proc.c         |   9 +--
+> >>>>  fs/nfs/nfs4super.c        | 106 +++++++++++++------------
+> >>>>  fs/nfs/nfs4xdr.c          |   6 --
+> >>>>  fs/nfs/pagelist.c         |   4 +
+> >>>>  fs/nfs/pnfs.c             |   2 +
+> >>>>  fs/nfs/proc.c             |   3 +
+> >>>>  fs/nfs/read.c             |   5 ++
+> >>>>  fs/nfs/super.c            | 172 ++++++++++++++++++++++++++++-------------
+> >>>>  fs/nfs/write.c            |  35 +++------
+> >>>>  include/linux/nfs_fs.h    |   6 +-
+> >>>>  include/linux/nfs_fs_sb.h |   7 +-
+> >>>>  include/linux/nfs_idmap.h |   2 +-
+> >>>>  include/linux/nfs_xdr.h   |   9 ++-
+> >>>>  35 files changed, 632 insertions(+), 387 deletions(-)
+> >>>>  create mode 100644 fs/nfs/nfs.h
+> >>>>  create mode 100644 fs/nfs/nfs2super.c
+> >>>>  create mode 100644 fs/nfs/nfs3client.c
+> >>>>  create mode 100644 fs/nfs/nfs3super.c
+> >>>>
+> >>>
+> >>> I'm seeing a (minor?) regression that I think is probably due to these
+> >>> patches. If I plug in nfs.ko, and then unplug it, I'm unable to plug it
+> >>> back in again:
+> >>
+> >> Thanks for letting me know, I'll look into it today.
+> >>
+> >> - Bryan
+> >>
+> > 
+> > It was blocking some other testing so I went ahead and fixed it. It
+> > looks like this was not introduced by these patches, but was a
+> > long-standing bug. That patch should probably go to stable too, but I
+> > haven't vetted it to make sure it'll apply cleanly to earlier kernels
+> > yet.
+> 
+> Ah, thank you!
+> 
+> > 
+> > For the life of me though, I don't understand why it wasn't biting us
+> > before the above set went in however...
+> 
+> Maybe something else that was recently merged broke it?
+> 
+> - Bryan
+> 
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index dd392ed..7ae8a60 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -228,14 +228,6 @@ bl_end_par_io_read(void *data, int unused)
- 	schedule_work(&rdata->task.u.tk_work);
- }
- 
--static bool
--bl_check_alignment(u64 offset, u32 len, unsigned long blkmask)
--{
--	if ((offset & blkmask) || (len & blkmask))
--		return false;
--	return true;
--}
--
- static enum pnfs_try_status
- bl_read_pagelist(struct nfs_read_data *rdata)
- {
-@@ -252,9 +244,6 @@ bl_read_pagelist(struct nfs_read_data *rdata)
- 	dprintk("%s enter nr_pages %u offset %lld count %u\n", __func__,
- 	       rdata->pages.npages, f_offset, (unsigned int)rdata->args.count);
- 
--	if (!bl_check_alignment(f_offset, rdata->args.count, PAGE_CACHE_MASK))
--		goto use_mds;
--
- 	par = alloc_parallel(rdata);
- 	if (!par)
- 		goto use_mds;
-@@ -563,7 +552,7 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
- 	struct bio *bio = NULL;
- 	struct pnfs_block_extent *be = NULL, *cow_read = NULL;
- 	sector_t isect, last_isect = 0, extent_length = 0;
--	struct parallel_io *par = NULL;
-+	struct parallel_io *par;
- 	loff_t offset = wdata->args.offset;
- 	size_t count = wdata->args.count;
- 	struct page **pages = wdata->args.pages;
-@@ -574,10 +563,6 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
- 	    NFS_SERVER(header->inode)->pnfs_blksize >> PAGE_CACHE_SHIFT;
- 
- 	dprintk("%s enter, %Zu@%lld\n", __func__, count, offset);
--	/* Check for alignment first */
--	if (!bl_check_alignment(offset, count, PAGE_CACHE_MASK))
--		goto out_mds;
--
- 	/* At this point, wdata->pages is a (sequential) list of nfs_pages.
- 	 * We want to write each, and if there is an error set pnfs_error
- 	 * to have it redone using nfs.
-@@ -1011,32 +996,14 @@ bl_clear_layoutdriver(struct nfs_server *server)
- 	return 0;
- }
- 
--static void
--bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
--{
--	if (!bl_check_alignment(req->wb_offset, req->wb_bytes, PAGE_CACHE_MASK))
--		nfs_pageio_reset_read_mds(pgio);
--	else
--		pnfs_generic_pg_init_read(pgio, req);
--}
--
--static void
--bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
--{
--	if (!bl_check_alignment(req->wb_offset, req->wb_bytes, PAGE_CACHE_MASK))
--		nfs_pageio_reset_write_mds(pgio);
--	else
--		pnfs_generic_pg_init_write(pgio, req);
--}
--
- static const struct nfs_pageio_ops bl_pg_read_ops = {
--	.pg_init = bl_pg_init_read,
-+	.pg_init = pnfs_generic_pg_init_read,
- 	.pg_test = pnfs_generic_pg_test,
- 	.pg_doio = pnfs_generic_pg_readpages,
- };
- 
- static const struct nfs_pageio_ops bl_pg_write_ops = {
--	.pg_init = bl_pg_init_write,
-+	.pg_init = pnfs_generic_pg_init_write,
- 	.pg_test = pnfs_generic_pg_test,
- 	.pg_doio = pnfs_generic_pg_writepages,
- };
+That seems to be the case. Looks like the check for a duplicate cache
+name is new for SLUB as of commit 20cea968.
 -- 
-1.7.1.262.g5ef3d
-
+Jeff Layton <jlayton@redhat.com>
