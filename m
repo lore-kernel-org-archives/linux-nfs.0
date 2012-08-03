@@ -1,25 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from outrelay02.libero.it ([212.52.84.102]:52112 "EHLO
-	outrelay02.libero.it" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755406Ab2HRNdY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Aug 2012 09:33:24 -0400
-Message-ID: <11103526.7711651345296802125.JavaMail.defaultUser@defaultHost>
-Date: Sat, 18 Aug 2012 15:33:22 +0200 (CEST)
-From: sonia <sonialife2@yahoo.com>
-Reply-To: sonia <sonialife2@yahoo.com>
-To: sonialife2@yahoo.com
-Subject: hii
-MIME-Version: 1.0
-Content-Type: text/plain;charset="UTF-8"
+Received: from mx1.redhat.com ([209.132.183.28]:23060 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752746Ab2HCKwd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Aug 2012 06:52:33 -0400
+Date: Fri, 3 Aug 2012 06:52:31 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Andrei Warkentin <awarkentin@vmware.com>
+Cc: linux-nfs@vger.kernel.org, Ed Goggin <egoggin@vmware.com>
+Subject: Re: stale or not stale
+Message-ID: <20120803065231.2e64ec8d@corrin.poochiereds.net>
+In-Reply-To: <1592211005.4733808.1343960954717.JavaMail.root@vmware.com>
+References: <1781697815.4540720.1343959078882.JavaMail.root@vmware.com>
+	<1592211005.4733808.1343960954717.JavaMail.root@vmware.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello my dear
- How was your living life today i hope all is well, am Sonia by name i just
-went into your profile at this site  linux-archive.org  and saw how you have 
-pest
-your explanation over it i feel to know who your are so that we can shear one
-thing or the
-other from there i can send you my photo you can know who am ok . i am waiting
-for your reply yours Sonia
+On Thu, 2 Aug 2012 19:29:14 -0700 (PDT)
+Andrei Warkentin <awarkentin@vmware.com> wrote:
 
+> ----- Original Message -----
+> > From: "Ed Goggin" <egoggin@vmware.com>
+> > To: linux-nfs@vger.kernel.org
+> > Sent: Thursday, August 2, 2012 9:57:58 PM
+> > Subject: stale or not stale
+> > 
+> > 
+> > It seems that nfsd can return reply attributes with a link count of
+> > zero but without an NFS3ERR_STALE status.  We've seen this actually
+> > happen for a write request to a file with a single link that  is
+> > concurrently being removed without NLM lock protection.  What is the
+> > proper behavior here?
+> 
+> I think it would be worthwhile to add here that the the remove was not concurrent with the write, and at the time of the NFS write a new file with the same name existed, yet fh decoding picked up the old inode instead of reporting -ESTALE. FS was ext4.
+> 
+> In fact seen two things happen - n_link = 0 and n_link = 1, and in both cases we knew the file was unlink()ed and re-creat()ed.
+> 
+
+That's entirely valid behavior.
+
+ESTALE from the server is its way of saying: "I don't recognize that
+filehandle". It can't figure out how to match that filehandle to an
+inode.
+
+An i_nlink count of 0 means that there are no more hardlinks attached
+to the inode. It's deleted from the namespace, but the inode still
+exists until there are no more i_count references held on it.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
