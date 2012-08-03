@@ -1,39 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:59805 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759217Ab2HHUMW convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Aug 2012 16:12:22 -0400
-Message-ID: <5022C824.504@parallels.com>
-Date: Thu, 9 Aug 2012 00:12:20 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Simo Sorce <simo@redhat.com>,
-        "bfields@redhat.com" <bfields@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/4] Add support for new RPCSEC_GSS upcall mechanism for
- nfsd
-References: <1341958332.17428.12.camel@lade.trondhjem.org> <1341959112.17428.19.camel@lade.trondhjem.org> <20120710223818.GA6720@fieldses.org> <1341961118.17428.29.camel@lade.trondhjem.org> <20120711170331.GE11432@fieldses.org> <20120711172714.GA13610@fieldses.org> <1342028948.25375.45.camel@lade.trondhjem.org> <20120712221058.GC24162@fieldses.org> <20120713154302.GA32660@fieldses.org> <20120808193659.GA942@fieldses.org> <20120808194359.GB942@fieldses.org>
-In-Reply-To: <20120808194359.GB942@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:57620 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751334Ab2HCN3Q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Aug 2012 09:29:16 -0400
+Received: by yenl2 with SMTP id l2so818694yen.19
+        for <linux-nfs@vger.kernel.org>; Fri, 03 Aug 2012 06:29:16 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: makc@redhat.com
+Subject: [PATCH RFC] nfs: allow coalescing of read/write requests under more circumstances
+Date: Fri,  3 Aug 2012 09:29:10 -0400
+Message-Id: <1344000550-25356-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-08.08.2012 23:43, J. Bruce Fields пишет:
-> On Wed, Aug 08, 2012 at 03:36:59PM -0400, J. Bruce Fields wrote:
->> However, one hangup: figuring out how to switch on gssproxy
->> per-container isn't very interesting until gssproxy can actually work
->> per-container.  I'd *really* like to get the unix socket stuff worked
->> out first.
-> Stanislav, what's left to be done to get per-container unix sockets?
+This patch is an RFC for dealing with a regression in write performance
+when there are multiple processes doing I/O to the same pages on the
+same machine. Earlier this week, I outlined the problem here:
 
-Honestly, I haven't even started this task.
-But if it's up to me, I'll try to measureit's complexity tomorrow.
-The task itself doesn't look too complex at first sight.
-But anyway it's inclusion depends also on network developers comunity 
-resolution.
+    http://www.spinics.net/lists/linux-nfs/msg31728.html
 
->
-> --b.
+This patch seems to resolve the problem, but I still haven't quite
+convinced myself that this approach is race-free. Thoughts?
+
+-------------------[snip]------------------
+
+Currently, we don't allow adjacent read or write requests to be
+coalesced when I/O is being done on the file by different lockowners.
+When there is no locking involved however or on v2/3 mounts, I don't
+see any reason not to allow it.
+
+With v4 and no locks, the I/O will be done using the same stateid
+regardless of the lockowner. With v2/3 there is no stateid to worry
+about so the lockowner shouldn't make any difference.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/pagelist.c | 15 ++++++++++-----
+ fs/nfs/write.c    | 31 ++++++++++++++++++++++++++-----
+ 2 files changed, 36 insertions(+), 10 deletions(-)
+
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 1a6732e..cf2913d 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -286,11 +286,9 @@ static bool nfs_can_coalesce_requests(struct nfs_page *prev,
+ 				      struct nfs_page *req,
+ 				      struct nfs_pageio_descriptor *pgio)
+ {
+-	if (req->wb_context->cred != prev->wb_context->cred)
+-		return false;
+-	if (req->wb_lock_context->lockowner != prev->wb_lock_context->lockowner)
+-		return false;
+-	if (req->wb_context->state != prev->wb_context->state)
++	struct nfs_open_context *ctx = req->wb_context;
++
++	if (ctx->cred != prev->wb_context->cred)
+ 		return false;
+ 	if (req->wb_pgbase != 0)
+ 		return false;
+@@ -298,6 +296,13 @@ static bool nfs_can_coalesce_requests(struct nfs_page *prev,
+ 		return false;
+ 	if (req_offset(req) != req_offset(prev) + prev->wb_bytes)
+ 		return false;
++	if (ctx->state != prev->wb_context->state)
++		return false;
++	if (!ctx->state || list_empty(&ctx->state->lock_states))
++		goto out;
++	if (req->wb_lock_context->lockowner != prev->wb_lock_context->lockowner)
++		return false;
++out:
+ 	return pgio->pg_ops->pg_test(pgio, prev, req);
+ }
+ 
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index e3b5537..8175cfa 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -843,11 +843,34 @@ static int nfs_writepage_setup(struct nfs_open_context *ctx, struct page *page,
+ 	return 0;
+ }
+ 
+-int nfs_flush_incompatible(struct file *file, struct page *page)
++/*
++ * Decide whether a pending write to an existing dirty page is incompatible
++ * with what's already there.
++ */
++static bool
++should_flush(struct file *file, struct page *page, struct nfs_page *req)
+ {
+ 	struct nfs_open_context *ctx = nfs_file_open_context(file);
++
++	if (req->wb_page != page)
++		return true;
++	if (req->wb_context != ctx)
++		return true;
++	if (!ctx->state || list_empty(&ctx->state->lock_states))
++		return false;
++	if (req->wb_lock_context->lockowner != current->files)
++		return true;
++	if (req->wb_lock_context->pid != current->tgid)
++		return true;
++
++	return false;
++}
++
++int nfs_flush_incompatible(struct file *file, struct page *page)
++{
+ 	struct nfs_page	*req;
+-	int do_flush, status;
++	int status;
++	bool do_flush;
+ 	/*
+ 	 * Look for a request corresponding to this page. If there
+ 	 * is one, and it belongs to another file, we flush it out
+@@ -860,9 +883,7 @@ int nfs_flush_incompatible(struct file *file, struct page *page)
+ 		req = nfs_page_find_request(page);
+ 		if (req == NULL)
+ 			return 0;
+-		do_flush = req->wb_page != page || req->wb_context != ctx ||
+-			req->wb_lock_context->lockowner != current->files ||
+-			req->wb_lock_context->pid != current->tgid;
++		do_flush = should_flush(file, page, req);
+ 		nfs_release_request(req);
+ 		if (!do_flush)
+ 			return 0;
+-- 
+1.7.11.2
 
