@@ -1,118 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:39086 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756211Ab2HNQZx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 12:25:53 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH 09/16] SUNRPC/cache: use new hashtable implementation
-Date: Tue, 14 Aug 2012 18:24:43 +0200
-Message-Id: <1344961490-4068-10-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
-References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
+Received: from smtp-outbound-2.vmware.com ([208.91.2.13]:37163 "EHLO
+	smtp-outbound-2.vmware.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751588Ab2HCCik (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Aug 2012 22:38:40 -0400
+Received: from sc9-mailhost1.vmware.com (sc9-mailhost1.vmware.com [10.113.161.71])
+	by smtp-outbound-2.vmware.com (Postfix) with ESMTP id 045192823E
+	for <linux-nfs@vger.kernel.org>; Thu,  2 Aug 2012 19:29:15 -0700 (PDT)
+Received: from zimbra-prod-mta-2.vmware.com (zimbra-prod-mta-2.vmware.com [10.113.160.174])
+	by sc9-mailhost1.vmware.com (Postfix) with ESMTP id 00A3A181F1
+	for <linux-nfs@vger.kernel.org>; Thu,  2 Aug 2012 19:29:15 -0700 (PDT)
+Date: Thu, 2 Aug 2012 19:29:14 -0700 (PDT)
+From: Andrei Warkentin <awarkentin@vmware.com>
+To: linux-nfs@vger.kernel.org
+Cc: Ed Goggin <egoggin@vmware.com>
+Message-ID: <1592211005.4733808.1343960954717.JavaMail.root@vmware.com>
+In-Reply-To: <1781697815.4540720.1343959078882.JavaMail.root@vmware.com>
+Subject: Re: stale or not stale
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch cache to use the new hashtable implementation. This reduces the amount of
-generic unrelated code in the cache implementation.
+----- Original Message -----
+> From: "Ed Goggin" <egoggin@vmware.com>
+> To: linux-nfs@vger.kernel.org
+> Sent: Thursday, August 2, 2012 9:57:58 PM
+> Subject: stale or not stale
+> 
+> 
+> It seems that nfsd can return reply attributes with a link count of
+> zero but without an NFS3ERR_STALE status.  We've seen this actually
+> happen for a write request to a file with a single link that  is
+> concurrently being removed without NLM lock protection.  What is the
+> proper behavior here?
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
- net/sunrpc/cache.c |   20 +++++++++-----------
- 1 files changed, 9 insertions(+), 11 deletions(-)
+I think it would be worthwhile to add here that the the remove was not concurrent with the write, and at the time of the NFS write a new file with the same name existed, yet fh decoding picked up the old inode instead of reporting -ESTALE. FS was ext4.
 
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 2afd2a8..2d1f333 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -28,6 +28,7 @@
- #include <linux/workqueue.h>
- #include <linux/mutex.h>
- #include <linux/pagemap.h>
-+#include <linux/hashtable.h>
- #include <asm/ioctls.h>
- #include <linux/sunrpc/types.h>
- #include <linux/sunrpc/cache.h>
-@@ -524,19 +525,18 @@ EXPORT_SYMBOL_GPL(cache_purge);
-  * it to be revisited when cache info is available
-  */
- 
--#define	DFR_HASHSIZE	(PAGE_SIZE/sizeof(struct list_head))
--#define	DFR_HASH(item)	((((long)item)>>4 ^ (((long)item)>>13)) % DFR_HASHSIZE)
-+#define	DFR_HASH_BITS	9
- 
- #define	DFR_MAX	300	/* ??? */
- 
- static DEFINE_SPINLOCK(cache_defer_lock);
- static LIST_HEAD(cache_defer_list);
--static struct hlist_head cache_defer_hash[DFR_HASHSIZE];
-+static DEFINE_HASHTABLE(cache_defer_hash, DFR_HASH_BITS)
- static int cache_defer_cnt;
- 
- static void __unhash_deferred_req(struct cache_deferred_req *dreq)
- {
--	hlist_del_init(&dreq->hash);
-+	hash_del(&dreq->hash);
- 	if (!list_empty(&dreq->recent)) {
- 		list_del_init(&dreq->recent);
- 		cache_defer_cnt--;
-@@ -545,10 +545,7 @@ static void __unhash_deferred_req(struct cache_deferred_req *dreq)
- 
- static void __hash_deferred_req(struct cache_deferred_req *dreq, struct cache_head *item)
- {
--	int hash = DFR_HASH(item);
--
--	INIT_LIST_HEAD(&dreq->recent);
--	hlist_add_head(&dreq->hash, &cache_defer_hash[hash]);
-+	hash_add(cache_defer_hash, &dreq->hash, (unsigned long)item);
- }
- 
- static void setup_deferral(struct cache_deferred_req *dreq,
-@@ -600,7 +597,7 @@ static void cache_wait_req(struct cache_req *req, struct cache_head *item)
- 		 * to clean up
- 		 */
- 		spin_lock(&cache_defer_lock);
--		if (!hlist_unhashed(&sleeper.handle.hash)) {
-+		if (hash_hashed(&sleeper.handle.hash)) {
- 			__unhash_deferred_req(&sleeper.handle);
- 			spin_unlock(&cache_defer_lock);
- 		} else {
-@@ -671,12 +668,11 @@ static void cache_revisit_request(struct cache_head *item)
- 	struct cache_deferred_req *dreq;
- 	struct list_head pending;
- 	struct hlist_node *lp, *tmp;
--	int hash = DFR_HASH(item);
- 
- 	INIT_LIST_HEAD(&pending);
- 	spin_lock(&cache_defer_lock);
- 
--	hlist_for_each_entry_safe(dreq, lp, tmp, &cache_defer_hash[hash], hash)
-+	hash_for_each_possible_safe(cache_defer_hash, dreq, lp, tmp, hash, (unsigned long)item)
- 		if (dreq->item == item) {
- 			__unhash_deferred_req(dreq);
- 			list_add(&dreq->recent, &pending);
-@@ -1636,6 +1632,8 @@ static int create_cache_proc_entries(struct cache_detail *cd, struct net *net)
- void __init cache_initialize(void)
- {
- 	INIT_DELAYED_WORK_DEFERRABLE(&cache_cleaner, do_cache_clean);
-+
-+	hash_init(cache_defer_hash);
- }
- 
- int cache_register_net(struct cache_detail *cd, struct net *net)
--- 
-1.7.8.6
+In fact seen two things happen - n_link = 0 and n_link = 1, and in both cases we knew the file was unlink()ed and re-creat()ed.
 
+A
