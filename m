@@ -1,101 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:34705 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755970Ab2HIVb3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2012 17:31:29 -0400
-Received: by yenl2 with SMTP id l2so1002187yen.19
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Aug 2012 14:31:28 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/3] SUNRPC: Insert a shim under gss_create()
+Received: from smtp-outbound-2.vmware.com ([208.91.2.13]:57829 "EHLO
+	smtp-outbound-2.vmware.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750813Ab2HCB57 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Aug 2012 21:57:59 -0400
+Received: from sc9-mailhost2.vmware.com (sc9-mailhost2.vmware.com [10.113.161.72])
+	by smtp-outbound-2.vmware.com (Postfix) with ESMTP id 1332B285C8
+	for <linux-nfs@vger.kernel.org>; Thu,  2 Aug 2012 18:57:59 -0700 (PDT)
+Received: from zimbra-prod-mta-3.vmware.com (zimbra-prod-mta-3.vmware.com [10.113.160.227])
+	by sc9-mailhost2.vmware.com (Postfix) with ESMTP id 0FC13B02F3
+	for <linux-nfs@vger.kernel.org>; Thu,  2 Aug 2012 18:57:59 -0700 (PDT)
+Received: from localhost (localhost.localdomain [127.0.0.1])
+	by zimbra-prod-mta-3.vmware.com (Postfix) with ESMTP id 0C704E2A9F
+	for <linux-nfs@vger.kernel.org>; Thu,  2 Aug 2012 18:57:59 -0700 (PDT)
+Received: from zimbra-prod-mta-3.vmware.com ([127.0.0.1])
+	by localhost (zimbra-prod-mta-3.vmware.com [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id y4PJsxqcYuqj for <linux-nfs@vger.kernel.org>;
+	Thu,  2 Aug 2012 18:57:58 -0700 (PDT)
+Received: from zimbra-prod-mbox-9.vmware.com (zimbra-prod-mbox-9.vmware.com [10.113.161.191])
+	by zimbra-prod-mta-3.vmware.com (Postfix) with ESMTP id EE362E00C5
+	for <linux-nfs@vger.kernel.org>; Thu,  2 Aug 2012 18:57:58 -0700 (PDT)
+Date: Thu, 2 Aug 2012 18:57:58 -0700 (PDT)
+From: Ed Goggin <egoggin@vmware.com>
 To: linux-nfs@vger.kernel.org
-Cc: skinsbursky@parallels.com
-Date: Thu, 09 Aug 2012 17:31:26 -0400
-Message-ID: <20120809213126.12984.25414.stgit@degas.1015granger.net>
-In-Reply-To: <20120809205748.12984.88991.stgit@degas.1015granger.net>
-References: <20120809205748.12984.88991.stgit@degas.1015granger.net>
+Message-ID: <1781697815.4540720.1343959078882.JavaMail.root@vmware.com>
+Subject: stale or not stale
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We want to share rpc_pipe data between GSS-flavored rpc_auth objects.
-To do this, create a shim in gss_create() and gss_free() where the
-pipe data will be looked up, created, and destroyed.  The unused
-arguments anticipate a per-RPC client cache of pipes.
 
-This is a refactoring change which shouldn't have a functional
-effect.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
-
- net/sunrpc/auth_gss/auth_gss.c |   28 +++++++++++++++++++---------
- 1 files changed, 19 insertions(+), 9 deletions(-)
-
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index dfe7825..2264776 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -857,6 +857,18 @@ static int gss_pipes_dentries_create_net(struct rpc_clnt *clnt,
- 	return err;
- }
- 
-+static struct rpc_pipe *gss_mkpipe_data(struct rpc_clnt *clnt,
-+					const struct rpc_pipe_ops *ops,
-+					char *name)
-+{
-+	return rpc_mkpipe_data(ops, RPC_PIPE_WAIT_FOR_OPEN);
-+}
-+
-+static void gss_destroy_pipe_data(struct rpc_clnt *clnt, struct rpc_pipe *pipe)
-+{
-+	rpc_destroy_pipe_data(pipe);
-+}
-+
- /*
-  * NOTE: we have the opportunity to use different
-  * parameters based on the input flavor (which must be a pseudoflavor)
-@@ -899,15 +911,13 @@ gss_create(struct rpc_clnt *clnt, rpc_authflavor_t flavor)
- 	 * that we supported only the old pipe.  So we instead create
- 	 * the new pipe first.
- 	 */
--	gss_auth->pipe[1] = rpc_mkpipe_data(&gss_upcall_ops_v1,
--					    RPC_PIPE_WAIT_FOR_OPEN);
-+	gss_auth->pipe[1] = gss_mkpipe_data(clnt, &gss_upcall_ops_v1, "gssd");
- 	if (IS_ERR(gss_auth->pipe[1])) {
- 		err = PTR_ERR(gss_auth->pipe[1]);
- 		goto err_put_mech;
- 	}
--
--	gss_auth->pipe[0] = rpc_mkpipe_data(&gss_upcall_ops_v0,
--					    RPC_PIPE_WAIT_FOR_OPEN);
-+	gss_auth->pipe[0] = gss_mkpipe_data(clnt, &gss_upcall_ops_v0,
-+						gss_auth->mech->gm_name);
- 	if (IS_ERR(gss_auth->pipe[0])) {
- 		err = PTR_ERR(gss_auth->pipe[0]);
- 		goto err_destroy_pipe_1;
-@@ -923,9 +933,9 @@ gss_create(struct rpc_clnt *clnt, rpc_authflavor_t flavor)
- err_unlink_pipes:
- 	gss_pipes_dentries_destroy_net(clnt, auth);
- err_destroy_pipe_0:
--	rpc_destroy_pipe_data(gss_auth->pipe[0]);
-+	gss_destroy_pipe_data(clnt, gss_auth->pipe[0]);
- err_destroy_pipe_1:
--	rpc_destroy_pipe_data(gss_auth->pipe[1]);
-+	gss_destroy_pipe_data(clnt, gss_auth->pipe[1]);
- err_put_mech:
- 	gss_mech_put(gss_auth->mech);
- err_free:
-@@ -939,8 +949,8 @@ static void
- gss_free(struct gss_auth *gss_auth)
- {
- 	gss_pipes_dentries_destroy_net(gss_auth->client, &gss_auth->rpc_auth);
--	rpc_destroy_pipe_data(gss_auth->pipe[0]);
--	rpc_destroy_pipe_data(gss_auth->pipe[1]);
-+	gss_destroy_pipe_data(gss_auth->client, gss_auth->pipe[0]);
-+	gss_destroy_pipe_data(gss_auth->client, gss_auth->pipe[1]);
- 	gss_mech_put(gss_auth->mech);
- 
- 	kfree(gss_auth);
-
+It seems that nfsd can return reply attributes with a link count of zero but without an NFS3ERR_STALE status.  We've seen this actually happen for a write request to a file with a single link that  is concurrently being removed without NLM lock protection.  What is the proper behavior here?
