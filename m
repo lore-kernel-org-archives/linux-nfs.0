@@ -1,69 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:35495 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751403Ab2HMOkV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Aug 2012 10:40:21 -0400
-Received: by yenl14 with SMTP id l14so1982967yen.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Aug 2012 07:40:21 -0700 (PDT)
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, bharrosh@panasas.com,
-        Peng Tao <tao.peng@emc.com>
-Subject: [PATCH-v2 1/3] NFS: track direct IO left bytes
-Date: Mon, 13 Aug 2012 22:39:34 +0800
-Message-Id: <1344868776-1739-1-git-send-email-bergwolf@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:42397 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756474Ab2HFOXM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Aug 2012 10:23:12 -0400
+Message-ID: <501FD347.1000100@RedHat.com>
+Date: Mon, 06 Aug 2012 10:23:03 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/4] rpc.gssd: handle error to open toplevel directory
+References: <20120731205931.GA32161@fieldses.org> <1343768449-32205-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1343768449-32205-3-git-send-email-bfields@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Peng Tao <tao.peng@emc.com>
----
- fs/nfs/direct.c |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 34a6282..c39f775 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -78,6 +78,7 @@ struct nfs_direct_req {
- 	atomic_t		io_count;	/* i/os we're waiting for */
- 	spinlock_t		lock;		/* protect completion state */
- 	ssize_t			count,		/* bytes actually processed */
-+				bytes_left,	/* bytes left to be sent */
- 				error;		/* any reported error */
- 	struct completion	completion;	/* wait for i/o completion */
- 
-@@ -390,6 +391,7 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *de
- 			user_addr += req_len;
- 			pos += req_len;
- 			count -= req_len;
-+			dreq->bytes_left -= req_len;
- 		}
- 		/* The nfs_page now hold references to these pages */
- 		nfs_direct_release_pages(pagevec, npages);
-@@ -456,6 +458,7 @@ static ssize_t nfs_direct_read(struct kiocb *iocb, const struct iovec *iov,
- 		goto out;
- 
- 	dreq->inode = inode;
-+	dreq->bytes_left = iov_length(iov, nr_segs);
- 	dreq->ctx = get_nfs_open_context(nfs_file_open_context(iocb->ki_filp));
- 	dreq->l_ctx = nfs_get_lock_context(dreq->ctx);
- 	if (dreq->l_ctx == NULL)
-@@ -706,6 +709,7 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *d
- 			user_addr += req_len;
- 			pos += req_len;
- 			count -= req_len;
-+			dreq->bytes_left -= req_len;
- 		}
- 		/* The nfs_page now hold references to these pages */
- 		nfs_direct_release_pages(pagevec, npages);
-@@ -855,6 +859,7 @@ static ssize_t nfs_direct_write(struct kiocb *iocb, const struct iovec *iov,
- 		goto out;
- 
- 	dreq->inode = inode;
-+	dreq->bytes_left = count;
- 	dreq->ctx = get_nfs_open_context(nfs_file_open_context(iocb->ki_filp));
- 	dreq->l_ctx = nfs_get_lock_context(dreq->ctx);
- 	if (dreq->l_ctx == NULL)
--- 
-1.7.1.262.g5ef3d
 
+On 07/31/2012 05:00 PM, J. Bruce Fields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> Reverse the sense of the test here, and also add debugging and cleanup
+> in the error case.
+> 
+> (Though the lack of cleanup isn't currently a problem in practice since
+> we'll eventually exit in this case.)
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Committed...
+
+steved.
+
+> ---
+>  utils/gssd/gssd_main_loop.c |   10 ++++++----
+>  1 file changed, 6 insertions(+), 4 deletions(-)
+> 
+> diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
+> index 6914687..142c8c5 100644
+> --- a/utils/gssd/gssd_main_loop.c
+> +++ b/utils/gssd/gssd_main_loop.c
+> @@ -121,11 +121,13 @@ topdirs_add_entry(struct dirent *dent)
+>  	}
+>  	snprintf(tdi->dirname, PATH_MAX, "%s/%s", pipefs_dir, dent->d_name);
+>  	tdi->fd = open(tdi->dirname, O_RDONLY);
+> -	if (tdi->fd != -1) {
+> -		fcntl(tdi->fd, F_SETSIG, DNOTIFY_SIGNAL);
+> -		fcntl(tdi->fd, F_NOTIFY,
+> -		      DN_CREATE|DN_DELETE|DN_MODIFY|DN_MULTISHOT);
+> +	if (tdi->fd == -1) {
+> +		printerr(0, "ERROR: failed to open %s\n", tdi->dirname);
+> +		free(tdi);
+> +		return -1;
+>  	}
+> +	fcntl(tdi->fd, F_SETSIG, DNOTIFY_SIGNAL);
+> +	fcntl(tdi->fd, F_NOTIFY, DN_CREATE|DN_DELETE|DN_MODIFY|DN_MULTISHOT);
+>  
+>  	TAILQ_INSERT_HEAD(&topdirs_list, tdi, list);
+>  	return 0;
