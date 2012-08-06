@@ -1,167 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:43131 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754585Ab2HVC1k (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 22:27:40 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH v3 08/17] block,elevator: use new hashtable implementation
-Date: Wed, 22 Aug 2012 04:27:03 +0200
-Message-Id: <1345602432-27673-9-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
-References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
+Received: from minas.ics.muni.cz ([147.251.4.40]:54210 "EHLO minas.ics.muni.cz"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754867Ab2HFNzV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Aug 2012 09:55:21 -0400
+Received: from anubis.ics.muni.cz (anubis.ics.muni.cz [147.251.17.147])
+	(authenticated user=xhejtman@IS.MUNI.CZ bits=0)
+	by minas.ics.muni.cz (8.13.8/8.13.8/SuSE Linux 0.8) with ESMTP id q76DtHjb025451
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Mon, 6 Aug 2012 15:55:19 +0200
+Received: from xhejtman by anubis.ics.muni.cz with local (Exim 4.80)
+	(envelope-from <xhejtman@ics.muni.cz>)
+	id 1SyNm9-0007rk-Oo
+	for linux-nfs@vger.kernel.org; Mon, 06 Aug 2012 15:55:17 +0200
+Date: Mon, 6 Aug 2012 15:55:17 +0200
+From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+To: linux-nfs@vger.kernel.org
+Subject: NFSv4 backchannel authentication
+Message-ID: <20120806135517.GS25979@ics.muni.cz>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-2
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch elevator to use the new hashtable implementation. This reduces the amount of
-generic unrelated code in the elevator.
+Hello,
 
-This also removes the dymanic allocation of the hash table. The size of the table is
-constant so there's no point in paying the price of an extra dereference when accessing
-it.
+it seems that RHEL NFSv4 servers use GSS authentication for backchannels as
+well (if mount it with GSS). That would be OK, but it requires that server is
+running rpc.gssd and the client is running rpc.svcgssd, which is not usual.
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
- block/blk.h              |    2 +-
- block/elevator.c         |   23 ++++-------------------
- include/linux/elevator.h |    5 ++++-
- 3 files changed, 9 insertions(+), 21 deletions(-)
+Is there a way how to mount clients with sec=krb5/i/p and use backchannels just
+with UNIX auth?
 
-diff --git a/block/blk.h b/block/blk.h
-index 2a0ea32..5650d48 100644
---- a/block/blk.h
-+++ b/block/blk.h
-@@ -61,7 +61,7 @@ static inline void blk_clear_rq_complete(struct request *rq)
- /*
-  * Internal elevator interface
-  */
--#define ELV_ON_HASH(rq)		(!hlist_unhashed(&(rq)->hash))
-+#define ELV_ON_HASH(rq) hash_hashed(&(rq)->hash)
- 
- void blk_insert_flush(struct request *rq);
- void blk_abort_flushes(struct request_queue *q);
-diff --git a/block/elevator.c b/block/elevator.c
-index 6a55d41..f462a83 100644
---- a/block/elevator.c
-+++ b/block/elevator.c
-@@ -46,11 +46,6 @@ static LIST_HEAD(elv_list);
- /*
-  * Merge hash stuff.
-  */
--static const int elv_hash_shift = 6;
--#define ELV_HASH_BLOCK(sec)	((sec) >> 3)
--#define ELV_HASH_FN(sec)	\
--		(hash_long(ELV_HASH_BLOCK((sec)), elv_hash_shift))
--#define ELV_HASH_ENTRIES	(1 << elv_hash_shift)
- #define rq_hash_key(rq)		(blk_rq_pos(rq) + blk_rq_sectors(rq))
- 
- /*
-@@ -142,7 +137,6 @@ static struct elevator_queue *elevator_alloc(struct request_queue *q,
- 				  struct elevator_type *e)
- {
- 	struct elevator_queue *eq;
--	int i;
- 
- 	eq = kmalloc_node(sizeof(*eq), GFP_KERNEL | __GFP_ZERO, q->node);
- 	if (unlikely(!eq))
-@@ -151,14 +145,7 @@ static struct elevator_queue *elevator_alloc(struct request_queue *q,
- 	eq->type = e;
- 	kobject_init(&eq->kobj, &elv_ktype);
- 	mutex_init(&eq->sysfs_lock);
--
--	eq->hash = kmalloc_node(sizeof(struct hlist_head) * ELV_HASH_ENTRIES,
--					GFP_KERNEL, q->node);
--	if (!eq->hash)
--		goto err;
--
--	for (i = 0; i < ELV_HASH_ENTRIES; i++)
--		INIT_HLIST_HEAD(&eq->hash[i]);
-+	hash_init(eq->hash);
- 
- 	return eq;
- err:
-@@ -173,7 +160,6 @@ static void elevator_release(struct kobject *kobj)
- 
- 	e = container_of(kobj, struct elevator_queue, kobj);
- 	elevator_put(e->type);
--	kfree(e->hash);
- 	kfree(e);
- }
- 
-@@ -240,7 +226,7 @@ EXPORT_SYMBOL(elevator_exit);
- 
- static inline void __elv_rqhash_del(struct request *rq)
- {
--	hlist_del_init(&rq->hash);
-+	hash_del(&rq->hash);
- }
- 
- static void elv_rqhash_del(struct request_queue *q, struct request *rq)
-@@ -254,7 +240,7 @@ static void elv_rqhash_add(struct request_queue *q, struct request *rq)
- 	struct elevator_queue *e = q->elevator;
- 
- 	BUG_ON(ELV_ON_HASH(rq));
--	hlist_add_head(&rq->hash, &e->hash[ELV_HASH_FN(rq_hash_key(rq))]);
-+	hash_add(e->hash, &rq->hash, rq_hash_key(rq));
- }
- 
- static void elv_rqhash_reposition(struct request_queue *q, struct request *rq)
-@@ -266,11 +252,10 @@ static void elv_rqhash_reposition(struct request_queue *q, struct request *rq)
- static struct request *elv_rqhash_find(struct request_queue *q, sector_t offset)
- {
- 	struct elevator_queue *e = q->elevator;
--	struct hlist_head *hash_list = &e->hash[ELV_HASH_FN(offset)];
- 	struct hlist_node *entry, *next;
- 	struct request *rq;
- 
--	hlist_for_each_entry_safe(rq, entry, next, hash_list, hash) {
-+	hash_for_each_possible_safe(e->hash, rq, entry, next, hash, offset) {
- 		BUG_ON(!ELV_ON_HASH(rq));
- 
- 		if (unlikely(!rq_mergeable(rq))) {
-diff --git a/include/linux/elevator.h b/include/linux/elevator.h
-index c03af76..20b539c 100644
---- a/include/linux/elevator.h
-+++ b/include/linux/elevator.h
-@@ -2,6 +2,7 @@
- #define _LINUX_ELEVATOR_H
- 
- #include <linux/percpu.h>
-+#include <linux/hashtable.h>
- 
- #ifdef CONFIG_BLOCK
- 
-@@ -96,6 +97,8 @@ struct elevator_type
- 	struct list_head list;
- };
- 
-+#define ELV_HASH_BITS 6
-+
- /*
-  * each queue has an elevator_queue associated with it
-  */
-@@ -105,7 +108,7 @@ struct elevator_queue
- 	void *elevator_data;
- 	struct kobject kobj;
- 	struct mutex sysfs_lock;
--	struct hlist_head *hash;
-+	DEFINE_HASHTABLE(hash, ELV_HASH_BITS);
- 	unsigned int registered:1;
- };
- 
 -- 
-1.7.8.6
-
+Luká¹ Hejtmánek
