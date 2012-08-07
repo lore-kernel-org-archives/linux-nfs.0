@@ -1,81 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.openrapids.net ([64.15.138.104]:33625 "EHLO
-	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751972Ab2HVNWu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Aug 2012 09:22:50 -0400
-Date: Wed, 22 Aug 2012 09:22:43 -0400
-From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, torvalds@linux-foundation.org,
-        tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com, axboe@kernel.dk,
-        agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v3 13/17] lockd: use new hashtable implementation
-Message-ID: <20120822132243.GA2844@Krystal>
-References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com> <1345602432-27673-14-git-send-email-levinsasha928@gmail.com> <20120822114752.GC20158@fieldses.org> <5034CD02.2010103@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:63302 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750852Ab2HGPOY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Aug 2012 11:14:24 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+CC: Joerg Roedel <joro@8bytes.org>, Joerg Roedel <joerg.roedel@amd.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "wdauchy@gmail.com" <wdauchy@gmail.com>
+Subject: Re: kernel BUG at /data/lemmy/linux.trees.git/fs/nfs/idmap.c:681!
+Date: Tue, 7 Aug 2012 15:14:22 +0000
+Message-ID: <1344352458.5781.8.camel@lade.trondhjem.org>
+References: <20120807134156.GP1996@amd.com> <50211E42.6040808@netapp.com>
+	 <20120807141548.GG1917@8bytes.org> <5021237D.1010107@netapp.com>
+	 <20120807142707.GH1917@8bytes.org> <502127EF.3030209@netapp.com>
+In-Reply-To: <502127EF.3030209@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5034CD02.2010103@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* Sasha Levin (levinsasha928@gmail.com) wrote:
-> On 08/22/2012 01:47 PM, J. Bruce Fields wrote:
-> > On Wed, Aug 22, 2012 at 04:27:08AM +0200, Sasha Levin wrote:
-> >> +static int __init nlm_init(void)
-> >> +{
-> >> +	hash_init(nlm_files);
-> >> +	return 0;
-> >> +}
-> >> +
-> >> +module_init(nlm_init);
-> > 
-> > That's giving me:
-> > 
-> > fs/lockd/svcsubs.o: In function `nlm_init':
-> > /home/bfields/linux-2.6/fs/lockd/svcsubs.c:454: multiple definition of `init_module'
-> > fs/lockd/svc.o:/home/bfields/linux-2.6/fs/lockd/svc.c:606: first defined here
-> > make[2]: *** [fs/lockd/lockd.o] Error 1
-> > make[1]: *** [fs/lockd] Error 2
-> > make[1]: *** Waiting for unfinished jobs....
-> 
-> I tested this entire patch set both with linux-next and Linus' latest master,
-> and it worked fine in both places.
-> 
-> Is it possible that lockd has a -next tree which isn't pulled into linux-next?
-> (there's nothing listed in MAINTAINERS that I could see).
-
-fs/lockd/Makefile:
-
-obj-$(CONFIG_LOCKD) += lockd.o
-
-lockd-objs-y := clntlock.o clntproc.o clntxdr.o host.o svc.o svclock.o \
-                svcshare.o svcproc.o svcsubs.o mon.o xdr.o grace.o
-
-your patch adds a module_init to svcsubs.c.
-However, there is already one in svc.c, pulled into the same module.
-
-in your test build, is CONFIG_LOCKD defined as "m" or "y" ? You should
-always test both.
-
-One solution here is to create a "local" init function in svcsubs.c and
-expose it to svc.c, so the latter can call it from its module init
-function.
-
-Thanks,
-
-Mathieu
-
--- 
-Mathieu Desnoyers
-Operating System Efficiency R&D Consultant
-EfficiOS Inc.
-http://www.efficios.com
+T24gVHVlLCAyMDEyLTA4LTA3IGF0IDEwOjM2IC0wNDAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6
+DQo+IE9uIDA4LzA3LzIwMTIgMTA6MjcgQU0sIEpvZXJnIFJvZWRlbCB3cm90ZToNCj4gPiBPbiBU
+dWUsIEF1ZyAwNywgMjAxMiBhdCAxMDoxNzozM0FNIC0wNDAwLCBCcnlhbiBTY2h1bWFrZXIgd3Jv
+dGU6DQo+ID4+IE9uIDA4LzA3LzIwMTIgMTA6MTUgQU0sIEpvZXJnIFJvZWRlbCB3cm90ZToNCj4g
+Pj4+IFllcywgaXQgcmVwcm9kdWNlcyBwcmV0dHkgcmVsaWFibGUgaGVyZSB3aXRoIFVidW50dSAx
+MS4xMCBTZXJ2ZXIgb24gYW4NCj4gPj4+IEludGVsIGJveCB3aXRoIGFuIE5GU3YzIGRpcmVjdG9y
+eSBtb3VudGVkIGF0IGJvb3QuIFRoaXMgaXMgdGhlIG9ubHkgYm94DQo+ID4+PiBJIGhhdmUgc2Vl
+biB0aGlzIHNvIGZhciwgcHJvYmFibHkgaXQgZGVwZW5kcyBvbiB0aGUgY29uZmlnLiBJIGF0dGFj
+aCB0aGUNCj4gPj4+IGNvbmZpZyBvZiB0aGUgZmFpbGluZyBib3guDQo+ID4+DQo+ID4+IEludGVy
+ZXN0aW5nLiAgQXJlIHlvdSBtb3VudGluZyB2NCwgdG9vPyAgVGhpcyBjb2RlIHNob3VsZG4ndCBi
+ZQ0KPiA+PiBydW5uaW5nIGZvciB2My4uLiBtYXliZSB0aGF0J3Mgd2h5IEkgaGF2ZW4ndCBiZWVu
+IGFibGUgdG8gaGl0IGl0Lg0KPiA+IA0KPiA+IE5vLCBJIGFtIG5vdCB1c2luZyBORlN2NCBvbiB0
+aGUgYm94IHdoZXJlIHRoZSBCVUcgaGFwcGVucy4gSSBoYXZlDQo+ID4gYW5vdGhlciBib3ggbW91
+bnRpbmcgdGhlIHNhbWUgZGlyZWN0b3J5IHdoZXJlIHRoZSBCVUcgZG9lcyBub3QgdHJpZ2dlcg0K
+PiA+IHdpdGggdjMuNi1yYzEuIEEgZGlmZmVyZW5jZSBJIHNwb3R0ZWQgYmV0d2VlbiB0aGUga2Vy
+bmVscyBpcywgdGhhdCBvbg0KPiA+IHRoZSBmYWlsaW5nIGJveCBORlMgaXMgY29tcGlsZWQgYXMg
+YSBtb2R1bGUgd2hlcmVhcyBpdCBpcyBjb21waWxlZCBpbnRvDQo+ID4gdGhlIGtlcm5lbCBvbiB0
+aGUgYm94IHRoYXQgd29ya3MgZmluZS4gTm90IHN1cmUgaWYgdGhhdCBoYXMgYW55dGhpbmcgdG8N
+Cj4gPiBkbyB3aXRoIHRoZSBwcm9ibGVtLi4uDQo+ID4gDQo+IA0KPiBZb3VyIHN0YWNrIHRyYWNl
+IGlzIHNob3dpbmcgdjQgY2FsbHMgb24gdGhlIGZhaWxpbmcgYm94LCB0aG9zZSBkZWZpbml0ZWx5
+IHNob3VsZG4ndCBiZSBoYXBwZW5pbmcgaWYgeW91J3JlIHVzaW5nIHYzLiAgQ2FuIHlvdSBkb3Vi
+bGUgY2hlY2sgL2V0Yy9mc3RhYiBhbmQgL3Byb2MvbW91bnRzIG9uIGEgd29ya2luZyBrZXJuZWwg
+dG8gYmUgc3VyZT8NCj4gDQo+IE15IFZNIGhhcyBuZnMgYXMgYSBtb2R1bGUsIHNvIEkgZG9uJ3Qg
+dGhpbmsgdGhhdCdzIHRoZSBpc3N1ZS4uLiBJIGp1c3Qgc3RhcnRlZCBjb21waWxpbmcgeW91ciBj
+b25maWcgdG8gdGVzdCBvbiBteSBvd24uDQoNCkpvZXJnLA0KDQpUaGUgc3RhY2sgdHJhY2UgZGVm
+aW5pdGVseSBzaG93cyB0aGF0IHRoZSBORlMgY2xpZW50IGlzIGF0dGVtcHRpbmcgYW4NCk5GU3Y0
+IG1vdW50LiBBcmUgeW91IHN1cHBseWluZyBhICd2ZXJzPTMnIG1vdW50IG9wdGlvbj8gSWYgbm90
+LCB0aGVuDQpub3RlIHRoYXQgcmVjZW50IHZlcnNpb25zIG9mIG5mcy11dGlscyBjYW4gYmUgY29u
+ZmlndXJlZCB0byB0cnkgTkZTdjQgYXMNCnRoZSBkZWZhdWx0IG1vdW50IG9wdGlvbiwgc28gSSdk
+IGd1ZXNzIHRoaXMgaXMgd2h5IHlvdSBhcmUgaGl0dGluZyBhbg0KTkZTdjQgcGF0aC4NCg0KQnJ5
+YW4sDQoNClRoYXQgc2FpZCwgd2hlbiBsb29raW5nIGF0IHRoZSBsZWdhY3kgdXBjYWxsLCBpdCBz
+ZWVtcyB0aGF0IGlmDQpycGNfcXVldWVfdXBjYWxsIGZhaWxzLCB0aGVuIHdlIGRvbid0IGRvIGFu
+eXRoaW5nIHRvIGNsZWFyDQppZG1hcC0+aWRtYXBfa2V5X2NvbnMuIERpdHRvIGlmIHRoZSBjYWxs
+IHRpbWVzIG91dCwgb3IgaWYgdGhlIHBpcGUgaXMNCmNsb3NlZCBiZWZvcmUgdGhlIGRvd25jYWxs
+Lg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoN
+Ck5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
