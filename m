@@ -1,82 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:47404 "EHLO mx1.redhat.com"
+Received: from 8bytes.org ([85.214.48.195]:51777 "EHLO mail.8bytes.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758810Ab2HWRJp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Aug 2012 13:09:45 -0400
-Message-ID: <50366401.6040409@RedHat.com>
-Date: Thu, 23 Aug 2012 13:10:25 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1754977Ab2HGO1K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Aug 2012 10:27:10 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by mail.8bytes.org (Postfix) with SMTP id 0B06312B085
+	for <linux-nfs@vger.kernel.org>; Tue,  7 Aug 2012 16:27:09 +0200 (CEST)
+Date: Tue, 7 Aug 2012 16:27:07 +0200
+From: Joerg Roedel <joro@8bytes.org>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: Joerg Roedel <joerg.roedel@amd.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        wdauchy@gmail.com
+Subject: Re: kernel BUG at /data/lemmy/linux.trees.git/fs/nfs/idmap.c:681!
+Message-ID: <20120807142707.GH1917@8bytes.org>
+References: <20120807134156.GP1996@amd.com>
+ <50211E42.6040808@netapp.com>
+ <20120807141548.GG1917@8bytes.org>
+ <5021237D.1010107@netapp.com>
 MIME-Version: 1.0
-To: Peng Tao <bergwolf@gmail.com>
-CC: linux-nfs@vger.kernel.org, Peng Tao <tao.peng@emc.com>
-Subject: Re: [PATCH-Resend 2/2] blkmapd: proper signal handling
-References: <1345739792-2385-1-git-send-email-bergwolf@gmail.com> <1345739792-2385-2-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1345739792-2385-2-git-send-email-bergwolf@gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5021237D.1010107@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 08/23/2012 12:36 PM, Peng Tao wrote:
-> Signed-off-by: Peng Tao <tao.peng@emc.com>
-Committed...
-
-steved.
-> ---
->  utils/blkmapd/device-discovery.c |   18 +++++++++++++++++-
->  1 files changed, 17 insertions(+), 1 deletions(-)
+On Tue, Aug 07, 2012 at 10:17:33AM -0400, Bryan Schumaker wrote:
+> On 08/07/2012 10:15 AM, Joerg Roedel wrote:
+> > Yes, it reproduces pretty reliable here with Ubuntu 11.10 Server on an
+> > Intel box with an NFSv3 directory mounted at boot. This is the only box
+> > I have seen this so far, probably it depends on the config. I attach the
+> > config of the failing box.
 > 
-> diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
-> index 8eddf50..df4627e 100644
-> --- a/utils/blkmapd/device-discovery.c
-> +++ b/utils/blkmapd/device-discovery.c
-> @@ -36,6 +36,7 @@
->  #include <scsi/scsi.h>
->  #include <scsi/scsi_ioctl.h>
->  #include <scsi/sg.h>
-> +#include <signal.h>
->  
->  #include <stdlib.h>
->  #include <stdio.h>
-> @@ -61,6 +62,7 @@
->  
->  struct bl_disk *visible_disk_list;
->  int    bl_watch_fd, bl_pipe_fd, nfs_pipedir_wfd, rpc_pipedir_wfd;
-> +int    pidfd = -1;
->  
->  struct bl_disk_path *bl_get_path(const char *filepath,
->  				 struct bl_disk_path *paths)
-> @@ -431,10 +433,20 @@ static int bl_event_helper(void)
->  	return ret;
->  }
->  
-> +void sig_die(int signal)
-> +{
-> +	if (pidfd >= 0) {
-> +		close(pidfd);
-> +		unlink(PID_FILE);
-> +	}
-> +	BL_LOG_ERR("exit on signal(%d)\n", signal);
-> +	exit(1);
-> +}
-> +
->  /* Daemon */
->  int main(int argc, char **argv)
->  {
-> -	int pidfd = -1, opt, dflag = 0, fg = 0, ret = 1;
-> +	int opt, dflag = 0, fg = 0, ret = 1;
->  	struct stat statbuf;
->  	char pidbuf[64];
->  
-> @@ -479,6 +491,10 @@ int main(int argc, char **argv)
->  		write(pidfd, pidbuf, strlen(pidbuf));
->  	}
->  
-> +	signal(SIGINT, sig_die);
-> +	signal(SIGTERM, sig_die);
-> +	signal(SIGHUP, SIG_IGN);
-> +
->  	if (dflag) {
->  		bl_discover_devices();
->  		exit(0);
+> Interesting.  Are you mounting v4, too?  This code shouldn't be
+> running for v3... maybe that's why I haven't been able to hit it.
+
+No, I am not using NFSv4 on the box where the BUG happens. I have
+another box mounting the same directory where the BUG does not trigger
+with v3.6-rc1. A difference I spotted between the kernels is, that on
+the failing box NFS is compiled as a module whereas it is compiled into
+the kernel on the box that works fine. Not sure if that has anything to
+do with the problem...
+
+
+	Joerg
+
+
