@@ -1,60 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:50512 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:21406 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753811Ab2HGQAc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Aug 2012 12:00:32 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "joro@8bytes.org" <joro@8bytes.org>,
-        "mdauchy@gmail.com" <mdauchy@gmail.com>
-Subject: Re: [PATCH] NFS: Clear key construction data if the idmap upcall
- fails
-Date: Tue, 7 Aug 2012 16:00:18 +0000
-Message-ID: <1344355217.5781.32.camel@lade.trondhjem.org>
-References: <1344353431-28831-1-git-send-email-bjschuma@netapp.com>
-	 <1344354243.5781.20.camel@lade.trondhjem.org> <502139D6.7060704@netapp.com>
-In-Reply-To: <502139D6.7060704@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1751510Ab2HGRJh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Aug 2012 13:09:37 -0400
+Date: Tue, 7 Aug 2012 13:09:32 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: nfs4 mounts failing with 3.6.0-rc1
+Message-ID: <20120807130932.79625d7e@tlielax.poochiereds.net>
+In-Reply-To: <20120804190104.GA2135@fieldses.org>
+References: <20120804000819.GB25558@fieldses.org>
+	<20120803220039.743fe1f0@corrin.poochiereds.net>
+	<20120804190104.GA2135@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA4LTA3IGF0IDExOjUyIC0wNDAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6
-DQo+IE9uIDA4LzA3LzIwMTIgMTE6NDQgQU0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4g
-T24gVHVlLCAyMDEyLTA4LTA3IGF0IDExOjMwIC0wNDAwLCBianNjaHVtYUBuZXRhcHAuY29tIHdy
-b3RlOg0KPiA+PiBGcm9tOiBCcnlhbiBTY2h1bWFrZXIgPGJqc2NodW1hQG5ldGFwcC5jb20+DQo+
-ID4+DQo+ID4+IGlkbWFwX3BpcGVfZG93bmNhbGwgYWxyZWFkeSBjbGVhcnMgdGhpcyBmaWVsZCBp
-ZiB0aGUgdXBjYWxsIHN1Y2NlZWRzLA0KPiA+PiBidXQgaWYgaXQgZmFpbHMgKHJwYy5pZG1hcGQg
-aXNuJ3QgcnVubmluZykgdGhlIGZpZWxkIHdpbGwgc3RpbGwgYmUgc2V0DQo+ID4+IG9uIHRoZSBu
-ZXh0IGNhbGwgdHJpZ2dlcmluZyBhIEJVR19PTigpLg0KPiA+Pg0KPiA+PiBTaWduZWQtb2ZmLWJ5
-OiBCcnlhbiBTY2h1bWFrZXIgPGJqc2NodW1hQG5ldGFwcC5jb20+DQo+ID4+IC0tLQ0KPiA+PiAg
-ZnMvbmZzL2lkbWFwLmMgfCAxNiArKysrKysrKystLS0tLS0tDQo+ID4+ICAxIGZpbGUgY2hhbmdl
-ZCwgOSBpbnNlcnRpb25zKCspLCA3IGRlbGV0aW9ucygtKQ0KPiA+Pg0KPiA+PiBkaWZmIC0tZ2l0
-IGEvZnMvbmZzL2lkbWFwLmMgYi9mcy9uZnMvaWRtYXAuYw0KPiA+PiBpbmRleCBiNzAxMzU4Li42
-NDVjZmU3IDEwMDY0NA0KPiA+PiAtLS0gYS9mcy9uZnMvaWRtYXAuYw0KPiA+PiArKysgYi9mcy9u
-ZnMvaWRtYXAuYw0KPiA+PiBAQCAtNjgzLDEwICs2ODMsMTIgQEAgc3RhdGljIGludCBuZnNfaWRt
-YXBfbGVnYWN5X3VwY2FsbChzdHJ1Y3Qga2V5X2NvbnN0cnVjdGlvbiAqY29ucywNCj4gPj4gIA0K
-PiA+PiAgCXJldCA9IHJwY19xdWV1ZV91cGNhbGwoaWRtYXAtPmlkbWFwX3BpcGUsIG1zZyk7DQo+
-ID4+ICAJaWYgKHJldCA8IDApDQo+ID4+IC0JCWdvdG8gb3V0MjsNCj4gPj4gKwkJZ290byBvdXQz
-Ow0KPiA+PiAgDQo+ID4+ICAJcmV0dXJuIHJldDsNCj4gPj4gIA0KPiA+PiArb3V0MzoNCj4gPj4g
-KwlpZG1hcC0+aWRtYXBfa2V5X2NvbnMgPSBOVUxMOw0KPiA+PiAgb3V0MjoNCj4gPj4gIAlrZnJl
-ZShpbSk7DQo+ID4+ICBvdXQxOg0KPiA+IA0KPiA+IFRoYXQgZml4ZXMgcnBjX3F1ZXVlX3VwY2Fs
-bCBmYWlsdXJlIHBhdGgsIGJ1dCB3ZSBzdGlsbCBuZWVkIHRvIGRlYWwgd2l0aA0KPiA+IHRpbWVv
-dXRzIGFuZCBjbG9zZS4NCj4gPiANCj4gPiBIb3cgYWJvdXQgdGhlIGZvbGxvd2luZyBhbHRlcm5h
-dGl2ZToNCj4gPiANCj4gPiBTZXQgaWRtYXAtPmlkbWFwX2tleV9jb25zIGFmdGVyIGdyYWJiaW5n
-IHRoZSBtdXRleCBpbg0KPiA+IG5mc19pZG1hcF9nZXRfa2V5KCksIHRoZW4gY2xlYXIgaXQgYmVm
-b3JlIHlvdSByZWxlYXNlIHRoYXQgbXV0ZXguIFRoYXQNCj4gDQo+IFRoZSBrZXkgY29uc3RydWN0
-aW9uIGRhdGEgZG9lc24ndCBleGlzdCBkdXJpbmcgbmZzX2lkbWFwX2dldF9rZXkoKS4gIHJlcXVl
-c3Rfa2V5KCkgc2V0cyBpdCB1cCB0byBwYXNzIHRvIG91ciBmdW5jdGlvbnMgYXMgaXQgd29ya3Mg
-dGhyb3VnaCB0aGUga2V5cmluZ3MgY29kZS4NCg0KT0ssIGhvd2V2ZXIgeW91IGNhbiBzdGlsbCBj
-bGVhciBpZG1hcF9rZXlfY29ucyB0aGVyZS4uLg0KDQo+ID4gbGVhdmVzIG9uZSBwb3NzaWJsZSBy
-YWNlIGluIHdoaWNoIHRoZSBpZG1hcC0+aWRtYXBfa2V5X2NvbnMgaXMgY2xlYXJlZA0KPiA+IHdo
-aWxlIHdlJ3JlIGluIGlkbWFwX3BpcGVfZG93bmNhbGwuIE9uZSB3YXkgdG8gc29sdmUgdGhhdCBy
-YWNlIGlzIHRvIHVzZQ0KPiA+IGEgc2Vjb25kIG11dGV4IChzZWUgdGhlIG9yaWdpbmFsIGlkbWFw
-cGVyIGRlc2lnbiBmcm9tIGJlZm9yZSB5b3VyDQo+ID4gY2hhbmdlcykgdG8gZW5zdXJlIHRoYXQg
-bm90aGluZyBjbGVhcnMgaWRtYXBfa2V5X2NvbnMgd2hpbGUgd2UncmUgaW4NCj4gPiBpZG1hcF9w
-aXBlX2Rvd25jYWxsLg0KDQpUaGlzIHdvdWxkIHN0aWxsIGFwcGx5Lg0KDQotLSANClRyb25kIE15
-a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlr
-bGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+On Sat, 4 Aug 2012 15:01:04 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Fri, Aug 03, 2012 at 10:00:39PM -0400, Jeff Layton wrote:
+> > On Fri, 3 Aug 2012 20:08:19 -0400
+> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > 
+> > > I'm getting
+> > > 
+> > > 	# mount -tnfs -onfsvers=4 pip1:/exports /mnt/
+> > > 
+> > > (OK, admittedly that's with 3.6.0-rc1 + a few experimental patches, but
+> > > I doubt they're related.)
+> > > 
+> > > Also:
+> > > 
+> > > 	[root@pip2 ~]# modprobe nfs4
+> > > 	[root@pip2 ~]# lsmod|grep nfs4
+> > > 	[root@pip2 ~]# 
+> > > 
+> > > --b.
+> > 
+> > I hit the same problem...
+> > 
+> > Try removing /usr/lib/modprobe.d/nfs.conf (assuming you're running
+> > Fedora).
+> 
+> Oog, right.
+> 
+> But, without testing--won't that make v4 mounts fail on older kernels?
+
+Actually, now that I look, this does not seem to break on older kernels
+as long as you use a syntax like:
+
+    # mount -t nfs server:/export /mnt/point -o vers=4
+
+...if, however you use a syntax like:
+
+    # mount -t nfs4 server:/export /mnt/point
+
+...then it fails without the above file in place. I guess the question
+we have to answer is: Do we want to continue to support the "-t nfs4"
+mount syntax?
+
+-- 
+Jeff Layton <jlayton@redhat.com>
