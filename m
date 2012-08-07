@@ -1,66 +1,154 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:5894 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:34337 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752693Ab2HHSdl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Aug 2012 14:33:41 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Fred Isaman <faisaman4@gmail.com>
-CC: "Isaman, Fred" <Fred.Isaman@netapp.com>,
-        "tigran.mkrtchyan@desy.de" <tigran.mkrtchyan@desy.de>,
-        Boaz Harrosh <bharrosh@panasas.com>, Benny Halevy <bhalevy@tonian.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: client kernel panic on server restart
-Date: Wed, 8 Aug 2012 18:33:39 +0000
-Message-ID: <1344450818.8925.17.camel@lade.trondhjem.org>
-References: <CAGue13pvN_-wBqQVoNdkLO+pexF1hrs+d3exPCCSzOO8ZD4WRw@mail.gmail.com>
-	 <1344447279.8925.5.camel@lade.trondhjem.org>
-	 <CADnza47D=j2jh+AHR9vs36HqpCmcES02v4FkDNufepdS3c-CDQ@mail.gmail.com>
-	 <1344449028.8925.12.camel@lade.trondhjem.org>
-	 <CADnza471-DQ2C6U3pxw=Hj+WBBOFAJphC-gWGE7hQ=k3E3bn0Q@mail.gmail.com>
-In-Reply-To: <CADnza471-DQ2C6U3pxw=Hj+WBBOFAJphC-gWGE7hQ=k3E3bn0Q@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1755891Ab2HGUZZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Aug 2012 16:25:25 -0400
+Date: Tue, 7 Aug 2012 16:25:23 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: nfs4 mounts failing with 3.6.0-rc1
+Message-ID: <20120807202523.GD22532@fieldses.org>
+References: <20120804000819.GB25558@fieldses.org>
+ <20120803220039.743fe1f0@corrin.poochiereds.net>
+ <20120804190104.GA2135@fieldses.org>
+ <20120807130932.79625d7e@tlielax.poochiereds.net>
+ <20120807194250.GB22532@fieldses.org>
+ <50217035.5010304@netapp.com>
+ <20120807195703.GC22532@fieldses.org>
+ <50217649.6010402@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <50217649.6010402@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTA4LTA4IGF0IDE0OjE1IC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
-T24gV2VkLCBBdWcgOCwgMjAxMiBhdCAyOjAzIFBNLCBNeWtsZWJ1c3QsIFRyb25kDQo+IDxUcm9u
-ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+ID4gT24gV2VkLCAyMDEyLTA4LTA4IGF0
-IDEzOjUxIC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4gPj4gT24gV2VkLCBBdWcgOCwgMjAx
-MiBhdCAxOjM0IFBNLCBNeWtsZWJ1c3QsIFRyb25kDQo+ID4+IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
-YXBwLmNvbT4gd3JvdGU6DQo+ID4+ID4gT24gV2VkLCAyMDEyLTA4LTA4IGF0IDE4OjQ4ICswMjAw
-LCBUaWdyYW4gTWtydGNoeWFuIHdyb3RlOg0KPiA+PiA+PiBIaSwNCj4gPj4gPj4NCj4gPj4gPj4g
-SXQncyBxdWl0ZSBzb21lIHRpbWUgd2l0aG91dCBrZXJuZWwgcGFuaWMgcmVwb3J0cyBmcm9tIG1l
-IC4uLi4NCj4gPj4gPj4NCj4gPj4gPj4gT2JzZXJ2ZXIgb24gTURTIGFuZCBEUyBzaHV0ZG93biBk
-dXJpbmcgSU8uDQo+ID4+ID4+DQo+ID4+ID4+IFRoaXMgaXMgd2l0aCAgMy41LjAtMi5mYzE3Lng4
-Nl82NCBrZXJuZWwuIExpbmUgaW4gY29kZToNCj4gPj4gPj4NCj4gPj4gPj4gbmZzNHByb2MuYzo2
-MjUyIDogICBCVUdfT04oIWxpc3RfZW1wdHkoJmxvLT5wbGhfc2VncykpOw0KPiA+PiA+Pg0KPiA+
-PiA+DQo+ID4+ID4gSWYgdGhlIHNlcnZlciBkb2Vzbid0IHJldHVybiBhIHN0YXRlaWQsIHRoZW4g
-dGhhdCBpcyBzdXBwb3NlZCB0bw0KPiA+PiA+IGluZGljYXRlIHRoYXQgaXQgdGhpbmtzIHRoYXQg
-aXQgZG9lc24ndCBob2xkIGFueSBtb3JlIGxheW91dCBzZWdtZW50cw0KPiA+PiA+IGZvciB0aGlz
-IGZpbGUuDQo+ID4+ID4gVG8gbWUsIHRoYXQgaW5kaWNhdGVzIHRoYXQgd2Ugc2hvdWxkIGJlIGNh
-bGxpbmcNCj4gPj4gPiBtYXJrX21hdGNoaW5nX2xzZWdzX2ludmFsaWQoKSByYXRoZXIgdGhhbiBP
-b3BzaW5nLg0KPiA+PiA+DQo+ID4+ID4gQW55IGRpc3NlbnRpbmcgdm9pY2VzIGZyb20gdGhlIHBO
-RlMgY3Jvd2Q/DQo+ID4+ID4NCj4gPj4NCj4gPj4gQnV0IHRoaXMgaW1wbGllcyB0aGF0IHRoZSBj
-bGllbnQgdGhpbmtzIGl0IGhhcyBhIGxheW91dCB3aGljaCB0aGUNCj4gPj4gc2VydmVyIGRvZXMg
-bm90IGJlbGlldmUgaXQgaGFzLCB3aGljaCBzZWVtcyB0byBtZSB0byBpbXBseSBhbiBlYXJsaWVy
-DQo+ID4+IGJ1Zy4gIElmIHlvdSBjaGFuZ2UgdG8gbWFya19tYXRjaGluZ19sc2Vnc19pbnZhbGlk
-LCBJIHdvdWxkIHN1Z2dlc3QNCj4gPj4ga2VlcGluZyBhIFdBUk5fT04uDQo+ID4NCj4gPiBXZSBj
-b3VsZCBwb3NzaWJseSBhZGQgYSBwcmludGssIGJ1dCBJIGRvbid0IHNlZSB3aGF0IHZhbHVlIGEg
-V0FSTl9PTg0KPiA+IHdvdWxkIGhhdmUgaGVyZTogaG93IGlzIGEgc3RhY2sgZHVtcCBnb2luZyB0
-byBiZSB1c2VmdWwgaW4gZGVidWdnaW5nDQo+ID4gdGhpcyBpc3N1ZT8NCj4gPg0KPiA+IEFsc28s
-IGRvbid0IHdlIHNvbWV0aW1lcyBleHBlY3QgdGhpcyBzb3J0IG9mIHRoaW5nIHRvIGhhcHBlbiBv
-bg0KPiA+IG9jY2FzaW9uPyBXaGF0IGlmIG91ciBsYXlvdXRyZXR1cm4gZW5kcyB1cCByYWNpbmcg
-d2l0aCB0aGUgbGF5b3V0IHJlY2FsbA0KPiA+IGZvbGxvd2luZyBhIERTIHNodXRkb3duPw0KPiA+
-DQo+IA0KPiBBY3R1YWxseSwgSSBmb3Jnb3QgYWJvdXQgdGhlIHdob2xlIExBWVVUUkVUVVJOIGFz
-IGZlbmNpbmcgcG9zc2liaWxpdHkuDQo+ICBJbiB0aGF0IGNhc2UsIHlvdSBjYW4gcHJldHR5IGVh
-c2lseSBoaXQgdGhlIEJVR19PTi4gIFRob3VnaCBJIGNsYWltDQo+IHRoYXQsIHdoaWxlIGNhbGxp
-bmcgbWFya19tYXRjaGluZ19sc2Vnc19pbnZhbGlkIGRvZXNuJ3QgaHVydCwgaXQNCj4gc2hvdWxk
-IGJlIHVubmVjZXNzYXJ5Lg0KDQpSaWdodC4uLiBTbyBtYXliZSBqdXN0IGEgZHByaW50aygpIGZv
-ciBkZWJ1Z2dpbmcgcHVycG9zZXM/DQoNCkJUVzogV2h5IHNob3VsZG4ndCB3ZSBkbyB0aGUgbWFy
-a19tYXRjaGluZ19sc2Vnc19pbnZhbGlkPyBJZiBub3QsIHRoZW4NCndlIHdpbGwgbmVlZCBlaXRo
-ZXIgdG8gZG8gYW4gZXh0cmEgbGF5b3V0cmV0dXJuIG9yIGZhaWwgYSByZWFkL3dyaXRlDQphdHRl
-bXB0IHRvIHRoZSBEUyBpbiBvcmRlciB0byBmaWd1cmUgb3V0IHRoYXQgdGhlIHN0YXRlaWQgaXMg
-bm93DQppbnZhbGlkLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBt
-YWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRh
-cHAuY29tDQoNCg==
+On Tue, Aug 07, 2012 at 04:10:49PM -0400, Bryan Schumaker wrote:
+> On 08/07/2012 03:57 PM, J. Bruce Fields wrote:
+> > On Tue, Aug 07, 2012 at 03:44:53PM -0400, Bryan Schumaker wrote:
+> >> On 08/07/2012 03:42 PM, J. Bruce Fields wrote:
+> >>> On Tue, Aug 07, 2012 at 01:09:32PM -0400, Jeff Layton wrote:
+> >>>> On Sat, 4 Aug 2012 15:01:04 -0400
+> >>>> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> >>>>
+> >>>>> On Fri, Aug 03, 2012 at 10:00:39PM -0400, Jeff Layton wrote:
+> >>>>>> On Fri, 3 Aug 2012 20:08:19 -0400
+> >>>>>> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> >>>>>>
+> >>>>>>> I'm getting
+> >>>>>>>
+> >>>>>>> 	# mount -tnfs -onfsvers=4 pip1:/exports /mnt/
+> >>>>>>>
+> >>>>>>> (OK, admittedly that's with 3.6.0-rc1 + a few experimental patches, but
+> >>>>>>> I doubt they're related.)
+> >>>>>>>
+> >>>>>>> Also:
+> >>>>>>>
+> >>>>>>> 	[root@pip2 ~]# modprobe nfs4
+> >>>>>>> 	[root@pip2 ~]# lsmod|grep nfs4
+> >>>>>>> 	[root@pip2 ~]# 
+> >>>>>>>
+> >>>>>>> --b.
+> >>>>>>
+> >>>>>> I hit the same problem...
+> >>>>>>
+> >>>>>> Try removing /usr/lib/modprobe.d/nfs.conf (assuming you're running
+> >>>>>> Fedora).
+> >>>>>
+> >>>>> Oog, right.
+> >>>>>
+> >>>>> But, without testing--won't that make v4 mounts fail on older kernels?
+> >>>>
+> >>>> Actually, now that I look, this does not seem to break on older kernels
+> >>>> as long as you use a syntax like:
+> >>>>
+> >>>>     # mount -t nfs server:/export /mnt/point -o vers=4
+> >>>>
+> >>>> ...if, however you use a syntax like:
+> >>>>
+> >>>>     # mount -t nfs4 server:/export /mnt/point
+> >>>>
+> >>>> ...then it fails without the above file in place. I guess the question
+> >>>> we have to answer is: Do we want to continue to support the "-t nfs4"
+> >>>> mount syntax?
+> >>>
+> >>> I think you're right that we want to deprecate it.
+> >>>
+> >>> Though this is a bit of a harsh way to do it--would have been nice to
+> >>> have some transition period with a warning or something.
+> >>
+> >> I didn't expect this to be broken, both ways of mounting still work on my VMs so I expected them to work for everybody else too.
+> > 
+> > Huh.  Just checked on an old kernel without an "alias nfs4 nfs" in
+> > modprobe configuration, and sure enough I get "No such device".
+> > 
+> > Maybe you have some initscripts or something else that's loading the
+> > nfs module for you before the mount?
+> 
+> My nfs-common daemon script loads sunrpc, nfs
+
+Yep, that's why you're not seeing it.
+
+> and nfsd but not nfs2, nfs3 or nfs4.
+> 
+> Could we rename the module to avoid the alias name collision?  Something like this (untested) maybe?
+
+I don't think that will help.
+
+--b.
+
+> 
+> 
+> 
+> diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+> index 8bf3a3f..b7db608 100644
+> --- a/fs/nfs/Makefile
+> +++ b/fs/nfs/Makefile
+> @@ -12,19 +12,19 @@ nfs-$(CONFIG_ROOT_NFS)      += nfsroot.o
+>  nfs-$(CONFIG_SYSCTL)   += sysctl.o
+>  nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
+>  
+> -obj-$(CONFIG_NFS_V2) += nfs2.o
+> -nfs2-y := nfs2super.o proc.o nfs2xdr.o
+> +obj-$(CONFIG_NFS_V2) += nfsv2.o
+> +nfsv2-y := nfs2super.o proc.o nfs2xdr.o
+>  
+> -obj-$(CONFIG_NFS_V3) += nfs3.o
+> -nfs3-y := nfs3super.o nfs3client.o nfs3proc.o nfs3xdr.o
+> -nfs3-$(CONFIG_NFS_V3_ACL) += nfs3acl.o
+> +obj-$(CONFIG_NFS_V3) += nfsv3.o
+> +nfsv3-y := nfs3super.o nfs3client.o nfs3proc.o nfs3xdr.o
+> +nfsv3-$(CONFIG_NFS_V3_ACL) += nfs3acl.o
+>  
+> -obj-$(CONFIG_NFS_V4) += nfs4.o
+> -nfs4-y := nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o nfs4super.o nfs4file.o \
+> +obj-$(CONFIG_NFS_V4) += nfsv4.o
+> +nfsv4-y := nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o nfs4super.o nfs4file.o \
+>           delegation.o idmap.o callback.o callback_xdr.o callback_proc.o \
+>           nfs4namespace.o nfs4getroot.o nfs4client.o
+> -nfs4-$(CONFIG_SYSCTL)  += nfs4sysctl.o
+> -nfs4-$(CONFIG_NFS_V4_1)        += pnfs.o pnfs_dev.o
+> +nfsv4-$(CONFIG_SYSCTL) += nfs4sysctl.o
+> +nfsv4-$(CONFIG_NFS_V4_1)       += pnfs.o pnfs_dev.o
+>  
+>  obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
+>  nfs_layout_nfsv41_files-y := nfs4filelayout.o nfs4filelayoutdev.o
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index 9fc0d9d..9969444 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -105,7 +105,7 @@ struct nfs_subversion *get_nfs_version(unsigned int version)
+>  
+>         if (IS_ERR(nfs)) {
+>                 mutex_lock(&nfs_version_mutex);
+> -               request_module("nfs%d", version);
+> +               request_module("nfsv%d", version);
+>                 nfs = find_nfs_version(version);
+>                 mutex_unlock(&nfs_version_mutex);
+>         }
+> 
+> 
+> > 
+> > --b.
+> > 
+> 
