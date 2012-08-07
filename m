@@ -1,92 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:40990 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754668Ab2HNIqm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 04:46:42 -0400
-Message-ID: <502A106D.6010306@parallels.com>
-Date: Tue, 14 Aug 2012 12:46:37 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from mx2.netapp.com ([216.240.18.37]:29681 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754767Ab2HGOgu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Aug 2012 10:36:50 -0400
+Message-ID: <502127EF.3030209@netapp.com>
+Date: Tue, 07 Aug 2012 10:36:31 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Pavel Emelianov <xemul@parallels.com>, "H. Peter Anvin" <hpa@zytor.com>,
-        Alan Cox <alan@lxorguk.ukuu.org.uk>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "eric.dumazet@gmail.com" <eric.dumazet@gmail.com>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-        "tim.c.chen@linux.intel.com" <tim.c.chen@linux.intel.com>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [RFC PATCH 0/2] net: connect to UNIX sockets from specified root
-References: <20120810125701.7115.71612.stgit@localhost.localdomain> <50254FA6.3060806@zytor.com> <20120810192628.79a34d28@pyramind.ukuu.org.uk> <20120810191149.GA17985@fieldses.org> <20120810202818.06236f46@pyramind.ukuu.org.uk> <50259494.8060304@zytor.com> <5025FA5A.4090403@parallels.com> <50263ECC.4060501@parallels.com> <20120813164730.GB2497@fieldses.org> <50293BE9.3010408@parallels.com> <20120813182431.GA4234@fieldses.org>
-In-Reply-To: <20120813182431.GA4234@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+To: Joerg Roedel <joro@8bytes.org>
+CC: Joerg Roedel <joerg.roedel@amd.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        wdauchy@gmail.com
+Subject: Re: kernel BUG at /data/lemmy/linux.trees.git/fs/nfs/idmap.c:681!
+References: <20120807134156.GP1996@amd.com> <50211E42.6040808@netapp.com> <20120807141548.GG1917@8bytes.org> <5021237D.1010107@netapp.com> <20120807142707.GH1917@8bytes.org>
+In-Reply-To: <20120807142707.GH1917@8bytes.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-13.08.2012 22:24, J. Bruce Fields пишет:
-> On Mon, Aug 13, 2012 at 09:39:53PM +0400, Stanislav Kinsbursky wrote:
->> 13.08.2012 20:47, J. Bruce Fields пишет:
->>> On Sat, Aug 11, 2012 at 03:15:24PM +0400, Stanislav Kinsbursky wrote:
->>>> 11.08.2012 10:23, Pavel Emelyanov пишет:
->>>>> On 08/11/2012 03:09 AM, H. Peter Anvin wrote:
->>>>>> On 08/10/2012 12:28 PM, Alan Cox wrote:
->>>>>>> Explicitly for Linux yes - this is not generally true of the
->>>>>>> AF_UNIX socket domain and even the permissions aspect isn't
->>>>>>> guaranteed to be supported on some BSD environments !
->>>>>> Yes, but let's worry about what the Linux behavior should be.
->>>>>>
->>>>>>> The name is however just a proxy for the socket itself. You
->>>>>>> don't even get a device node in the usual sense or the same inode
->>>>>>> in the file system space.
->>>>>> No, but it is looked up the same way any other inode is (the
->>>>>> difference between FIFOs and sockets is that sockets have separate
->>>>>> connections, which is also why open() on sockets would be nice.)
->>>>>>
->>>>>> However, there is a fundamental difference between AF_UNIX sockets
->>>>>> and open(), and that is how the pathname is delivered.  It thus
->>>>>> would make more sense to provide the openat()-like information in
->>>>>> struct sockaddr_un, but that may be very hard to do in a sensible
->>>>>> way.  In that sense it perhaps would be cleaner to be able to do
->>>>>> an open[at]() on the socket node with O_PATH (perhaps there should
->>>>>> be an O_SOCKET option, even?) and pass the resulting file
->>>>>> descriptor to bind() or connect().
->>>>> I vote for this (openat + O_WHATEVER on a unix socket) as well. It
->>>>> will help us in checkpoint-restore, making handling of
->>>>> overmounted/unlinked sockets much cleaner.
->>>> I have to notice, that it's not enough and doesn't solve the issue.
->>>> There should be some way how to connect/bind already existent unix
->>>> socket (from kernel, at least), because socket can be created in user
->>>> space. And this way (sock operation or whatever) have to provide an
->>>> ability to lookup UNIX socket starting from specified root to support
->>>> containers.
->>> I don't understand--the rpcbind sockets are created by the kernel.  What
->>>  am I missing?
+On 08/07/2012 10:27 AM, Joerg Roedel wrote:
+> On Tue, Aug 07, 2012 at 10:17:33AM -0400, Bryan Schumaker wrote:
+>> On 08/07/2012 10:15 AM, Joerg Roedel wrote:
+>>> Yes, it reproduces pretty reliable here with Ubuntu 11.10 Server on an
+>>> Intel box with an NFSv3 directory mounted at boot. This is the only box
+>>> I have seen this so far, probably it depends on the config. I attach the
+>>> config of the failing box.
 >>
->> Kernel preform connect to rpcbind socket (i.e. user-space binds it),
->> doesn't it?
->
-> I'm confused, possibly because there are three "sockets" here: the
-> client-side socket that's connected, the server-side socket that's bound,
-> and the common object that exists in the filesystem namespace.
->
-> Userland creates the server-side socket and binds to it.  All of that is
-> done in the context of the rpcbind process, so is created in rpcbind's
-> namespace. That should be OK, right?
->
-> The client side socket is created and connected in xs_local_setup_socket().
->
-> Making sure they both end up with the same thing is a matter of making sure
-> they lookup the same path in the same namespace.  The difficult part of that
-> is the in-kernel client-side socket connect, where we don't have the right
-> process context any more.
->
+>> Interesting.  Are you mounting v4, too?  This code shouldn't be
+>> running for v3... maybe that's why I haven't been able to hit it.
+> 
+> No, I am not using NFSv4 on the box where the BUG happens. I have
+> another box mounting the same directory where the BUG does not trigger
+> with v3.6-rc1. A difference I spotted between the kernels is, that on
+> the failing box NFS is compiled as a module whereas it is compiled into
+> the kernel on the box that works fine. Not sure if that has anything to
+> do with the problem...
+> 
 
-Looks like I'm missing something important.
-Where are these UNIX in-kernel created and listening sockets (in code, I mean)?
+Your stack trace is showing v4 calls on the failing box, those definitely shouldn't be happening if you're using v3.  Can you double check /etc/fstab and /proc/mounts on a working kernel to be sure?
 
--- 
-Best regards,
-Stanislav Kinsbursky
+My VM has nfs as a module, so I don't think that's the issue... I just started compiling your config to test on my own.
+
+> 
+> 	Joerg
+> 
+> 
+
