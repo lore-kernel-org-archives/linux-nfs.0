@@ -1,36 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:34212 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933721Ab2HWKpc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Aug 2012 06:45:32 -0400
-Message-ID: <503609BF.60809@panasas.com>
-Date: Thu, 23 Aug 2012 13:45:19 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:3882 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757320Ab2HGWgP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Aug 2012 18:36:15 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "steved@redhat.com" <steved@redhat.com>
+Subject: Re: nfs4 mounts failing with 3.6.0-rc1
+Date: Tue, 7 Aug 2012 22:36:12 +0000
+Message-ID: <1344378971.8845.13.camel@lade.trondhjem.org>
+References: <20120804000819.GB25558@fieldses.org>
+	 <20120803220039.743fe1f0@corrin.poochiereds.net>
+	 <20120804190104.GA2135@fieldses.org>
+	 <20120807130932.79625d7e@tlielax.poochiereds.net>
+	 <20120807194250.GB22532@fieldses.org> <50217035.5010304@netapp.com>
+	 <20120807195703.GC22532@fieldses.org> <50217649.6010402@netapp.com>
+	 <20120807202523.GD22532@fieldses.org>
+	 <1344374613.8845.3.camel@lade.trondhjem.org>
+	 <20120807182651.32448074@tlielax.poochiereds.net>
+In-Reply-To: <20120807182651.32448074@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Dick Streefland <dick.streefland@altium.nl>
-CC: <rnews@altium.nl>, <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv3 client hang on many simultanious reads
-References: <4d25.5034e746.eefd1@altium.nl>
-In-Reply-To: <4d25.5034e746.eefd1@altium.nl>
-Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/22/2012 05:05 PM, Dick Streefland wrote:
-<>
-
-> 
-> The client kernel version is 3.4.7, but the problem also exists in 3.1
-> kernels. I cannot reproduce lockups with a 3.0 kernel. The server is
-> running Linux 3.1.4. The mount options from /proc/mounts are:
-> 
-
-
-It seems from above that the problem was introduced between 3.0
-and 3.1.
-
-Would it be at all possible for you to do a "git bisect" between
-3.0 and 3.1 to Identify the bad commit that introduced this problem?
-
-Thanks in advance
-Boaz
+T24gVHVlLCAyMDEyLTA4LTA3IGF0IDE4OjI2IC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
+T24gVHVlLCA3IEF1ZyAyMDEyIDIxOjIzOjM0ICswMDAwDQo+ICJNeWtsZWJ1c3QsIFRyb25kIiA8
+VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiANCj4gPiBPbiBUdWUsIDIwMTIt
+MDgtMDcgYXQgMTY6MjUgLTA0MDAsIEouIEJydWNlIEZpZWxkcyB3cm90ZToNCj4gPiA+IE9uIFR1
+ZSwgQXVnIDA3LCAyMDEyIGF0IDA0OjEwOjQ5UE0gLTA0MDAsIEJyeWFuIFNjaHVtYWtlciB3cm90
+ZToNCj4gPiA+ID4gT24gMDgvMDcvMjAxMiAwMzo1NyBQTSwgSi4gQnJ1Y2UgRmllbGRzIHdyb3Rl
+Og0KPiA+ID4gPiA+IE9uIFR1ZSwgQXVnIDA3LCAyMDEyIGF0IDAzOjQ0OjUzUE0gLTA0MDAsIEJy
+eWFuIFNjaHVtYWtlciB3cm90ZToNCj4gPiA+ID4gPj4gT24gMDgvMDcvMjAxMiAwMzo0MiBQTSwg
+Si4gQnJ1Y2UgRmllbGRzIHdyb3RlOg0KPiA+ID4gPiA+Pj4gT24gVHVlLCBBdWcgMDcsIDIwMTIg
+YXQgMDE6MDk6MzJQTSAtMDQwMCwgSmVmZiBMYXl0b24gd3JvdGU6DQo+ID4gPiA+ID4+Pj4gT24g
+U2F0LCA0IEF1ZyAyMDEyIDE1OjAxOjA0IC0wNDAwDQo+ID4gPiA+ID4+Pj4gIkouIEJydWNlIEZp
+ZWxkcyIgPGJmaWVsZHNAZmllbGRzZXMub3JnPiB3cm90ZToNCj4gPiA+ID4gPj4+Pg0KPiA+ID4g
+PiA+Pj4+PiBPbiBGcmksIEF1ZyAwMywgMjAxMiBhdCAxMDowMDozOVBNIC0wNDAwLCBKZWZmIExh
+eXRvbiB3cm90ZToNCj4gPiA+ID4gPj4+Pj4+IE9uIEZyaSwgMyBBdWcgMjAxMiAyMDowODoxOSAt
+MDQwMA0KPiA+ID4gPiA+Pj4+Pj4gIkouIEJydWNlIEZpZWxkcyIgPGJmaWVsZHNAZmllbGRzZXMu
+b3JnPiB3cm90ZToNCj4gPiA+ID4gPj4+Pj4+DQo+ID4gPiA+ID4+Pj4+Pj4gSSdtIGdldHRpbmcN
+Cj4gPiA+ID4gPj4+Pj4+Pg0KPiA+ID4gPiA+Pj4+Pj4+IAkjIG1vdW50IC10bmZzIC1vbmZzdmVy
+cz00IHBpcDE6L2V4cG9ydHMgL21udC8NCj4gPiA+ID4gPj4+Pj4+Pg0KPiA+ID4gPiA+Pj4+Pj4+
+IChPSywgYWRtaXR0ZWRseSB0aGF0J3Mgd2l0aCAzLjYuMC1yYzEgKyBhIGZldyBleHBlcmltZW50
+YWwgcGF0Y2hlcywgYnV0DQo+ID4gPiA+ID4+Pj4+Pj4gSSBkb3VidCB0aGV5J3JlIHJlbGF0ZWQu
+KQ0KPiA+ID4gPiA+Pj4+Pj4+DQo+ID4gPiA+ID4+Pj4+Pj4gQWxzbzoNCj4gPiA+ID4gPj4+Pj4+
+Pg0KPiA+ID4gPiA+Pj4+Pj4+IAlbcm9vdEBwaXAyIH5dIyBtb2Rwcm9iZSBuZnM0DQo+ID4gPiA+
+ID4+Pj4+Pj4gCVtyb290QHBpcDIgfl0jIGxzbW9kfGdyZXAgbmZzNA0KPiA+ID4gPiA+Pj4+Pj4+
+IAlbcm9vdEBwaXAyIH5dIyANCj4gPiA+ID4gPj4+Pj4+Pg0KPiA+ID4gPiA+Pj4+Pj4+IC0tYi4N
+Cj4gPiA+ID4gPj4+Pj4+DQo+ID4gPiA+ID4+Pj4+PiBJIGhpdCB0aGUgc2FtZSBwcm9ibGVtLi4u
+DQo+ID4gPiA+ID4+Pj4+Pg0KPiA+ID4gPiA+Pj4+Pj4gVHJ5IHJlbW92aW5nIC91c3IvbGliL21v
+ZHByb2JlLmQvbmZzLmNvbmYgKGFzc3VtaW5nIHlvdSdyZSBydW5uaW5nDQo+ID4gPiA+ID4+Pj4+
+PiBGZWRvcmEpLg0KPiA+ID4gPiA+Pj4+Pg0KPiA+ID4gPiA+Pj4+PiBPb2csIHJpZ2h0Lg0KPiA+
+ID4gPiA+Pj4+Pg0KPiA+ID4gPiA+Pj4+PiBCdXQsIHdpdGhvdXQgdGVzdGluZy0td29uJ3QgdGhh
+dCBtYWtlIHY0IG1vdW50cyBmYWlsIG9uIG9sZGVyIGtlcm5lbHM/DQo+ID4gPiA+ID4+Pj4NCj4g
+PiA+ID4gPj4+PiBBY3R1YWxseSwgbm93IHRoYXQgSSBsb29rLCB0aGlzIGRvZXMgbm90IHNlZW0g
+dG8gYnJlYWsgb24gb2xkZXIga2VybmVscw0KPiA+ID4gPiA+Pj4+IGFzIGxvbmcgYXMgeW91IHVz
+ZSBhIHN5bnRheCBsaWtlOg0KPiA+ID4gPiA+Pj4+DQo+ID4gPiA+ID4+Pj4gICAgICMgbW91bnQg
+LXQgbmZzIHNlcnZlcjovZXhwb3J0IC9tbnQvcG9pbnQgLW8gdmVycz00DQo+ID4gPiA+ID4+Pj4N
+Cj4gPiA+ID4gPj4+PiAuLi5pZiwgaG93ZXZlciB5b3UgdXNlIGEgc3ludGF4IGxpa2U6DQo+ID4g
+PiA+ID4+Pj4NCj4gPiA+ID4gPj4+PiAgICAgIyBtb3VudCAtdCBuZnM0IHNlcnZlcjovZXhwb3J0
+IC9tbnQvcG9pbnQNCj4gPiA+ID4gPj4+Pg0KPiA+ID4gPiA+Pj4+IC4uLnRoZW4gaXQgZmFpbHMg
+d2l0aG91dCB0aGUgYWJvdmUgZmlsZSBpbiBwbGFjZS4gSSBndWVzcyB0aGUgcXVlc3Rpb24NCj4g
+PiA+ID4gPj4+PiB3ZSBoYXZlIHRvIGFuc3dlciBpczogRG8gd2Ugd2FudCB0byBjb250aW51ZSB0
+byBzdXBwb3J0IHRoZSAiLXQgbmZzNCINCj4gPiA+ID4gPj4+PiBtb3VudCBzeW50YXg/DQo+ID4g
+PiA+ID4+Pg0KPiA+ID4gPiA+Pj4gSSB0aGluayB5b3UncmUgcmlnaHQgdGhhdCB3ZSB3YW50IHRv
+IGRlcHJlY2F0ZSBpdC4NCj4gPiA+ID4gPj4+DQo+ID4gPiA+ID4+PiBUaG91Z2ggdGhpcyBpcyBh
+IGJpdCBvZiBhIGhhcnNoIHdheSB0byBkbyBpdC0td291bGQgaGF2ZSBiZWVuIG5pY2UgdG8NCj4g
+PiA+ID4gPj4+IGhhdmUgc29tZSB0cmFuc2l0aW9uIHBlcmlvZCB3aXRoIGEgd2FybmluZyBvciBz
+b21ldGhpbmcuDQo+ID4gPiA+ID4+DQo+ID4gPiA+ID4+IEkgZGlkbid0IGV4cGVjdCB0aGlzIHRv
+IGJlIGJyb2tlbiwgYm90aCB3YXlzIG9mIG1vdW50aW5nIHN0aWxsIHdvcmsgb24gbXkgVk1zIHNv
+IEkgZXhwZWN0ZWQgdGhlbSB0byB3b3JrIGZvciBldmVyeWJvZHkgZWxzZSB0b28uDQo+ID4gPiA+
+ID4gDQo+ID4gPiA+ID4gSHVoLiAgSnVzdCBjaGVja2VkIG9uIGFuIG9sZCBrZXJuZWwgd2l0aG91
+dCBhbiAiYWxpYXMgbmZzNCBuZnMiIGluDQo+ID4gPiA+ID4gbW9kcHJvYmUgY29uZmlndXJhdGlv
+biwgYW5kIHN1cmUgZW5vdWdoIEkgZ2V0ICJObyBzdWNoIGRldmljZSIuDQo+ID4gPiA+ID4gDQo+
+ID4gPiA+ID4gTWF5YmUgeW91IGhhdmUgc29tZSBpbml0c2NyaXB0cyBvciBzb21ldGhpbmcgZWxz
+ZSB0aGF0J3MgbG9hZGluZyB0aGUNCj4gPiA+ID4gPiBuZnMgbW9kdWxlIGZvciB5b3UgYmVmb3Jl
+IHRoZSBtb3VudD8NCj4gPiA+ID4gDQo+ID4gPiA+IE15IG5mcy1jb21tb24gZGFlbW9uIHNjcmlw
+dCBsb2FkcyBzdW5ycGMsIG5mcw0KPiA+ID4gDQo+ID4gPiBZZXAsIHRoYXQncyB3aHkgeW91J3Jl
+IG5vdCBzZWVpbmcgaXQuDQo+ID4gPiANCj4gPiA+ID4gYW5kIG5mc2QgYnV0IG5vdCBuZnMyLCBu
+ZnMzIG9yIG5mczQuDQo+ID4gPiA+IA0KPiA+ID4gPiBDb3VsZCB3ZSByZW5hbWUgdGhlIG1vZHVs
+ZSB0byBhdm9pZCB0aGUgYWxpYXMgbmFtZSBjb2xsaXNpb24/ICBTb21ldGhpbmcgbGlrZSB0aGlz
+ICh1bnRlc3RlZCkgbWF5YmU/DQo+ID4gPiANCj4gPiA+IEkgZG9uJ3QgdGhpbmsgdGhhdCB3aWxs
+IGhlbHAuDQo+ID4gDQo+ID4gSXQgc2hvdWxkIGlmIHdlIGFsc28gYWRkIGJhY2sgaW4NCj4gPiAN
+Cj4gPiBzdHJ1Y3QgZmlsZV9zeXN0ZW1fdHlwZSBuZnM0X2ZzX3R5cGUgPSB7DQo+ID4gICAgICAg
+ICAub3duZXIgICAgICAgICAgPSBUSElTX01PRFVMRSwNCj4gPiAgICAgICAgIC5uYW1lICAgICAg
+ICAgICA9ICJuZnM0IiwNCj4gPiAgICAgICAgIC5tb3VudCAgICAgICAgICA9IG5mc19mc19tb3Vu
+dCwNCj4gPiAgICAgICAgIC5raWxsX3NiICAgICAgICA9IG5mc19raWxsX3N1cGVyLA0KPiA+ICAg
+ICAgICAgLmZzX2ZsYWdzICAgICAgID0gRlNfUkVOQU1FX0RPRVNfRF9NT1ZFfEZTX1JFVkFMX0RP
+VHxGU19CSU5BUllfTU9VTlREQVRBLA0KPiA+IH07DQo+ID4gDQo+ID4gYW5kIHRoZW4gYWRkIHRo
+YXQgdG8gcmVnaXN0ZXJfbmZzX2ZzKCkvdW5yZWdpc3Rlcl9uZnNfZnMoKS4gQXMgZmFyIGFzIEkN
+Cj4gPiBjYW4gc2VlLCB0aGF0IHdpbGwgdHJpZ2dlciBhbGwgdGhlIHJpZ2h0IGluY2FudGF0aW9u
+cyBpbg0KPiA+IG5mc192YWxpZGF0ZV9tb3VudF9kYXRhKCkgdG8gbW91bnQgYW4gTkZTdjQgZmls
+ZXN5c3RlbS4NCj4gPiANCj4gDQo+IFNvLCBtb3ZlIHRoZSBuZnM0IGZzdHlwZSBkZWZpbml0aW9u
+IGJhY2sgaW50byBuZnMua28/IFRoYXQgd291bGQNCj4gZW5zdXJlIHRoYXQgeW91IGNvdWxkIHN0
+aWxsIGRvIGEgIi10IG5mczQiIG1vdW50IHdpdGggdGhhdCBtb2Rwcm9iZQ0KPiBhbGlhcyBpbiBw
+bGFjZS4NCg0KTm8uIEkgbWVhbiB0byBhZGQgYSBzZXBhcmF0ZSBuZnM0X2ZzdHlwZSBkZWZpbml0
+aW9uIGluIG5mcy5rbywgYW5kDQpyZWdpc3RlciBpdCBzbyB0aGF0IHRoZSBWRlMgcmVjb2duaXNl
+cyB0aGUgJ25mczQnIGZpbGVzeXN0ZW0gbmFtZS4NCg0KPiBJIHRoaW5rIEJyeWFuIGlzIGNvcnJl
+Y3QgdGhvdWdoLiBXZSdsbCBhbHNvIG5lZWQgdG8gcmVuYW1lIG5mczQua28gb3INCj4geW91IHdv
+bid0IGV2ZXIgYmUgYWJsZSB0byBjYWxsIHJlcXVlc3RfbW9kdWxlIGZvciBpdCBpbiBvcmRlciB0
+byBwbHVnDQo+IGl0IGluIGlmIHlvdSBoYXZlIHRoYXQgbW9kdWxlIGFsaWFzIGluIHBsYWNlLg0K
+DQpZb3UgZGlkIG5vdGUgbXkgdXNlIG9mIHRoZSB3b3JkICJhbHNvIiBhYm92ZT8NCg0KPiBEb2Vz
+IHRoaXMgbWVhbiB0aGF0IHdlIHBsYW4gdG8gc3VwcG9ydCB0aGUgIi10IG5mczQiIG1vdW50IHN5
+bnRheCBpbg0KPiBwZXJwZXR1aXR5Pw0KDQpObywgYnV0IEkgYWxzbyBhZ3JlZSB3aXRoIEJydWNl
+J3MgcG9pbnQgdGhhdCB3ZSBzaG91bGRuJ3QgcHVsbCB0aGUgcGx1Zw0Kd2l0aG91dCBzb21lIHBy
+aW9yIG5vdGljZS4gV2Ugc2hvdWxkIGF0IGxlYXN0IGtlZXAgYW4gZW50cnkgaW4NCkRvY3VtZW50
+YXRpb24vZmVhdHVyZS1yZW1vdmFsLXNjaGVkdWxlLnR4dCBmb3IgYSBmZXcga2VybmVsIHJldmlz
+aW9ucy4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5l
+cg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+DQo=
