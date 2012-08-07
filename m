@@ -1,38 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fce.uncu.edu.ar ([190.220.130.146]:42142 "EHLO
-	mail.fce.uncu.edu.ar" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753064Ab2HXBb2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Aug 2012 21:31:28 -0400
-To: undisclosed-recipients:;
-Subject: Proposal.
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Date: Thu, 23 Aug 2012 23:55:22 +0100
-From: Tai Bei <info@gmx.co.uk>
-Reply-To: <tai02@9.cn>
-Message-ID: <077134233b42efbd44ed2f63961b7a2b@fce.uncu.edu.ar>
+Received: from mx2.netapp.com ([216.240.18.37]:7282 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752932Ab2HGPad (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Aug 2012 11:30:33 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, joro@8bytes.org, mdauchy@gmail.com
+Subject: [PATCH] NFS: Clear key construction data if the idmap upcall fails
+Date: Tue,  7 Aug 2012 11:30:31 -0400
+Message-Id: <1344353431-28831-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Good-day To You,
+From: Bryan Schumaker <bjschuma@netapp.com>
 
+idmap_pipe_downcall already clears this field if the upcall succeeds,
+but if it fails (rpc.idmapd isn't running) the field will still be set
+on the next call triggering a BUG_ON().
 
-It is understandable that you might be a little bit apprehensive 
-because you do not know me but I have a lucrative business proposal of 
-mutual interest to share with you. I got your reference in my search for 
-someone who suits my proposed business relationship. I am Mr. Tai Bei, 
-officer with the International bank of Taipei (Bank SinoPac). I will 
-need you to assist me in executing a business project from Taiwan to 
-your country. It involves the transfer of money, Everything concerning 
-this transaction shall be legally done without hitch.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/idmap.c | 16 +++++++++-------
+ 1 file changed, 9 insertions(+), 7 deletions(-)
 
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index b701358..645cfe7 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -683,10 +683,12 @@ static int nfs_idmap_legacy_upcall(struct key_construction *cons,
+ 
+ 	ret = rpc_queue_upcall(idmap->idmap_pipe, msg);
+ 	if (ret < 0)
+-		goto out2;
++		goto out3;
+ 
+ 	return ret;
+ 
++out3:
++	idmap->idmap_key_cons = NULL;
+ out2:
+ 	kfree(im);
+ out1:
+-- 
+1.7.11.4
 
-Once the funds have been successfully transferred into your account, we 
-shall share in the ratio to be agreed by both of us. I shall furnish you 
-with more information about this operation immediately I receive a 
-positive response from you.
-
-
-Kind Regards,
-Tai Bei
