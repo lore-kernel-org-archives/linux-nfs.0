@@ -1,147 +1,134 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:60811 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751865Ab2H3UyF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Aug 2012 16:54:05 -0400
-Received: by pbbrr13 with SMTP id rr13so3758610pbb.19
-        for <linux-nfs@vger.kernel.org>; Thu, 30 Aug 2012 13:54:05 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] NFS: Filter auth flavors returned by MNT3
-To: linux-nfs@vger.kernel.org
-Date: Thu, 30 Aug 2012 13:53:58 -0700
-Message-ID: <20120830204930.3101.99200.stgit@seurat.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:5107 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755746Ab2HGW1G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Aug 2012 18:27:06 -0400
+Date: Tue, 7 Aug 2012 18:26:51 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        steved@redhat.com
+Subject: Re: nfs4 mounts failing with 3.6.0-rc1
+Message-ID: <20120807182651.32448074@tlielax.poochiereds.net>
+In-Reply-To: <1344374613.8845.3.camel@lade.trondhjem.org>
+References: <20120804000819.GB25558@fieldses.org>
+	<20120803220039.743fe1f0@corrin.poochiereds.net>
+	<20120804190104.GA2135@fieldses.org>
+	<20120807130932.79625d7e@tlielax.poochiereds.net>
+	<20120807194250.GB22532@fieldses.org>
+	<50217035.5010304@netapp.com>
+	<20120807195703.GC22532@fieldses.org>
+	<50217649.6010402@netapp.com>
+	<20120807202523.GD22532@fieldses.org>
+	<1344374613.8845.3.camel@lade.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use the new rpcauth_list_flavors() API introduced in commit 6a1a1e34
-to prevent legacy NFS mounts from attempting to use security flavors
-that the local RPC client does not support.
+On Tue, 7 Aug 2012 21:23:34 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+> On Tue, 2012-08-07 at 16:25 -0400, J. Bruce Fields wrote:
+> > On Tue, Aug 07, 2012 at 04:10:49PM -0400, Bryan Schumaker wrote:
+> > > On 08/07/2012 03:57 PM, J. Bruce Fields wrote:
+> > > > On Tue, Aug 07, 2012 at 03:44:53PM -0400, Bryan Schumaker wrote:
+> > > >> On 08/07/2012 03:42 PM, J. Bruce Fields wrote:
+> > > >>> On Tue, Aug 07, 2012 at 01:09:32PM -0400, Jeff Layton wrote:
+> > > >>>> On Sat, 4 Aug 2012 15:01:04 -0400
+> > > >>>> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > >>>>
+> > > >>>>> On Fri, Aug 03, 2012 at 10:00:39PM -0400, Jeff Layton wrote:
+> > > >>>>>> On Fri, 3 Aug 2012 20:08:19 -0400
+> > > >>>>>> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > >>>>>>
+> > > >>>>>>> I'm getting
+> > > >>>>>>>
+> > > >>>>>>> 	# mount -tnfs -onfsvers=4 pip1:/exports /mnt/
+> > > >>>>>>>
+> > > >>>>>>> (OK, admittedly that's with 3.6.0-rc1 + a few experimental patches, but
+> > > >>>>>>> I doubt they're related.)
+> > > >>>>>>>
+> > > >>>>>>> Also:
+> > > >>>>>>>
+> > > >>>>>>> 	[root@pip2 ~]# modprobe nfs4
+> > > >>>>>>> 	[root@pip2 ~]# lsmod|grep nfs4
+> > > >>>>>>> 	[root@pip2 ~]# 
+> > > >>>>>>>
+> > > >>>>>>> --b.
+> > > >>>>>>
+> > > >>>>>> I hit the same problem...
+> > > >>>>>>
+> > > >>>>>> Try removing /usr/lib/modprobe.d/nfs.conf (assuming you're running
+> > > >>>>>> Fedora).
+> > > >>>>>
+> > > >>>>> Oog, right.
+> > > >>>>>
+> > > >>>>> But, without testing--won't that make v4 mounts fail on older kernels?
+> > > >>>>
+> > > >>>> Actually, now that I look, this does not seem to break on older kernels
+> > > >>>> as long as you use a syntax like:
+> > > >>>>
+> > > >>>>     # mount -t nfs server:/export /mnt/point -o vers=4
+> > > >>>>
+> > > >>>> ...if, however you use a syntax like:
+> > > >>>>
+> > > >>>>     # mount -t nfs4 server:/export /mnt/point
+> > > >>>>
+> > > >>>> ...then it fails without the above file in place. I guess the question
+> > > >>>> we have to answer is: Do we want to continue to support the "-t nfs4"
+> > > >>>> mount syntax?
+> > > >>>
+> > > >>> I think you're right that we want to deprecate it.
+> > > >>>
+> > > >>> Though this is a bit of a harsh way to do it--would have been nice to
+> > > >>> have some transition period with a warning or something.
+> > > >>
+> > > >> I didn't expect this to be broken, both ways of mounting still work on my VMs so I expected them to work for everybody else too.
+> > > > 
+> > > > Huh.  Just checked on an old kernel without an "alias nfs4 nfs" in
+> > > > modprobe configuration, and sure enough I get "No such device".
+> > > > 
+> > > > Maybe you have some initscripts or something else that's loading the
+> > > > nfs module for you before the mount?
+> > > 
+> > > My nfs-common daemon script loads sunrpc, nfs
+> > 
+> > Yep, that's why you're not seeing it.
+> > 
+> > > and nfsd but not nfs2, nfs3 or nfs4.
+> > > 
+> > > Could we rename the module to avoid the alias name collision?  Something like this (untested) maybe?
+> > 
+> > I don't think that will help.
+> 
+> It should if we also add back in
+> 
+> struct file_system_type nfs4_fs_type = {
+>         .owner          = THIS_MODULE,
+>         .name           = "nfs4",
+>         .mount          = nfs_fs_mount,
+>         .kill_sb        = nfs_kill_super,
+>         .fs_flags       = FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
+> };
+> 
+> and then add that to register_nfs_fs()/unregister_nfs_fs(). As far as I
+> can see, that will trigger all the right incantations in
+> nfs_validate_mount_data() to mount an NFSv4 filesystem.
+> 
 
-I don't remember exactly what we wanted to do here.  Trond, do you
-recall?
+So, move the nfs4 fstype definition back into nfs.ko? That would
+ensure that you could still do a "-t nfs4" mount with that modprobe
+alias in place.
 
- fs/nfs/mount_clnt.c |   91 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 91 insertions(+), 0 deletions(-)
+I think Bryan is correct though. We'll also need to rename nfs4.ko or
+you won't ever be able to call request_module for it in order to plug
+it in if you have that module alias in place.
 
-diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-index 8e65c7f..3e39678 100644
---- a/fs/nfs/mount_clnt.c
-+++ b/fs/nfs/mount_clnt.c
-@@ -135,6 +135,88 @@ struct mnt_fhstatus {
- 	struct nfs_fh *fh;
- };
- 
-+/*
-+ * Predicate: return true if info->auth_flavs[] contains "flavor"
-+ */
-+static bool flavor_found(struct nfs_mount_request *info,
-+			 rpc_authflavor_t flavor)
-+{
-+	unsigned int i, max = *info->auth_flav_len;
-+
-+	for (i = 0; i < max; i++) {
-+		if (info->auth_flavs[i] == flavor) {
-+			return true;
-+		}
-+	}
-+	return false;
-+}
-+
-+static int do_filter_flavors(rpc_authflavor_t *supported,
-+			     unsigned int sup_size,
-+			     struct nfs_mount_request *info)
-+{
-+	unsigned int i, j, max = *info->auth_flav_len;
-+	rpc_authflavor_t *good;
-+	int status;
-+
-+	good = kcalloc(max, sizeof(*good), GFP_KERNEL);
-+	if (good == NULL) {
-+		status = -ENOMEM;
-+		goto out;
-+	}
-+
-+	j = 0;
-+	for (i = 0; i < sup_size; i++) {
-+		if (flavor_found(info, supported[i])) {
-+			good[j++] = supported[i];
-+		}
-+	}
-+
-+	if (j == 0) {
-+		/* no supported flavors found */
-+		status = -EACCES;
-+		goto out;
-+	}
-+
-+	for (i = 0; i < j; i++) {
-+		info->auth_flavs[i] = good[i];
-+	}
-+	*info->auth_flav_len = j;
-+	status = 0;
-+
-+out:
-+	kfree(good);
-+	return status;
-+}
-+
-+/*
-+ * Flavors not supported locally are removed from the flavor list
-+ * returned from the server.  On success, update the server's
-+ * flavor list and return zero.  Otherwise a negative errno
-+ * is returned.
-+ */
-+static int nfs_filter_auth_flavors(struct nfs_mount_request *info)
-+{
-+	int status, sup_size = NFS_MAX_SECFLAVORS;
-+	rpc_authflavor_t *supported;
-+
-+	supported = kcalloc(sup_size, sizeof(*supported), GFP_KERNEL);
-+	if (supported == NULL) {
-+		status = -ENOMEM;
-+		goto out;
-+	}
-+
-+	status = rpcauth_list_flavors(supported, sup_size);
-+	if (status < 0)
-+		goto out;
-+
-+	status = do_filter_flavors(supported, status, info);
-+
-+out:
-+	kfree(supported);
-+	return status;
-+}
-+
- /**
-  * nfs_mount - Obtain an NFS file handle for the given host and path
-  * @info: pointer to mount request arguments
-@@ -189,6 +271,12 @@ int nfs_mount(struct nfs_mount_request *info)
- 	if (result.errno != 0)
- 		goto out_mnt_err;
- 
-+	if (info->version == NFS_MNT3_VERSION) {
-+		status = nfs_filter_auth_flavors(info);
-+		if (status < 0)
-+			goto out_filter_err;
-+	}
-+
- 	dprintk("NFS: MNT request succeeded\n");
- 	status = 0;
- 
-@@ -208,6 +296,9 @@ out_mnt_err:
- 	dprintk("NFS: MNT server returned result %d\n", result.errno);
- 	status = result.errno;
- 	goto out;
-+out_filter_err:
-+	dprintk("NFS: error %d filtering flavors\n", status);
-+	goto out;
- }
- 
- /**
+Does this mean that we plan to support the "-t nfs4" mount syntax in
+perpetuity?
 
+-- 
+Jeff Layton <jlayton@redhat.com>
