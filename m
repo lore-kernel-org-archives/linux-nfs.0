@@ -1,84 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49680 "EHLO fieldses.org"
+Received: from 8bytes.org ([85.214.48.195]:51829 "EHLO mail.8bytes.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758638Ab2HUVhT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Aug 2012 17:37:19 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Nick Piggin <npiggin@kernel.dk>
-Subject: [PATCH 1/2] dcache: use IS_ROOT to decide where dentry is hashed
-Date: Tue, 21 Aug 2012 17:37:11 -0400
-Message-Id: <1345585032-19119-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1345585032-19119-1-git-send-email-bfields@redhat.com>
-References: <1345585032-19119-1-git-send-email-bfields@redhat.com>
+	id S1754306Ab2HGOuW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Aug 2012 10:50:22 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by mail.8bytes.org (Postfix) with SMTP id 3EC9812B085
+	for <linux-nfs@vger.kernel.org>; Tue,  7 Aug 2012 16:50:21 +0200 (CEST)
+Date: Tue, 7 Aug 2012 16:50:19 +0200
+From: Joerg Roedel <joro@8bytes.org>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: Joerg Roedel <joerg.roedel@amd.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        wdauchy@gmail.com
+Subject: Re: kernel BUG at /data/lemmy/linux.trees.git/fs/nfs/idmap.c:681!
+Message-ID: <20120807145019.GI1917@8bytes.org>
+References: <20120807134156.GP1996@amd.com>
+ <50211E42.6040808@netapp.com>
+ <20120807141548.GG1917@8bytes.org>
+ <5021237D.1010107@netapp.com>
+ <20120807142707.GH1917@8bytes.org>
+ <502127EF.3030209@netapp.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="Izn7cH1Com+I3R9J"
+In-Reply-To: <502127EF.3030209@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
 
-Every hashed dentry is either hashed in the dentry_hashtable, or a
-superblock's s_anon list.
+--Izn7cH1Com+I3R9J
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-__d_shrink assumes it can determine which is the case by checking
-DCACHE_DISCONNECTED; this is not true.
+On Tue, Aug 07, 2012 at 10:36:31AM -0400, Bryan Schumaker wrote:
+> Your stack trace is showing v4 calls on the failing box, those
+> definitely shouldn't be happening if you're using v3.  Can you double
+> check /etc/fstab and /proc/mounts on a working kernel to be sure?
 
-It is true that when DCACHE_DISCONNECTED is cleared, the dentry is not
-only hashed on dentry_hashtable, but is fully connected to its parents
-back to the root.
+So the bug is probably (for whatever reason) that the nfs4 path is
+called for an nfs3 mount :)
+Anyway, I attach /proc/mounts and /etc/fstab from that box running a
+v3.5-rc5 kernel (where it works).
 
-But the converse is *not* true: fs/exportfs/expfs.c:reconnect_path()
-attempts to connect a directory (found by filehandle lookup) back to
-root by ascending to parents and performing lookups one at a time.  It
-does not clear DCACHE_DISCONNECTED until its done, and that is not at
-all an atomic process.
 
-In particular, it is possible for DCACHE_DISCONNECTED to be set on a
-dentry which is hashed on the dentry_hashtable.
+	Joerg
 
-Instead, use IS_ROOT() to check which hash chain a dentry is on.  This
-*does* work:
 
-Dentries are hashed only by:
+--Izn7cH1Com+I3R9J
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename="proc-mounts-3.5"
 
-	- d_obtain_alias, which adds an IS_ROOT() dentry to sb_anon.
+rootfs / rootfs rw 0 0
+sysfs /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0
+proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0
+udev /dev devtmpfs rw,relatime,size=8201004k,nr_inodes=2050251,mode=755 0 0
+devpts /dev/pts devpts rw,nosuid,noexec,relatime,gid=5,mode=620,ptmxmode=000 0 0
+tmpfs /run tmpfs rw,nosuid,relatime,size=3297852k,mode=755 0 0
+fusectl /sys/fs/fuse/connections fusectl rw,relatime 0 0
+/dev/sda5 / ext4 rw,noatime,errors=remount-ro,data=ordered 0 0
+none /sys/kernel/debug debugfs rw,relatime 0 0
+none /sys/kernel/security securityfs rw,relatime 0 0
+none /run/lock tmpfs rw,nosuid,nodev,noexec,relatime,size=5120k 0 0
+none /run/shm tmpfs rw,nosuid,nodev,relatime 0 0
+/dev/sda6 /data ext4 rw,noatime,data=ordered 0 0
+lemmy:/data/repos/ /data/lemmy nfs rw,relatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=165.204.15.93,mountvers=3,mountport=52788,mountproto=udp,local_lock=none,addr=165.204.15.93 0 0
 
-	- __d_rehash, called by _d_rehash: hashes to the dentry's
-	  parent, and all callers of _d_rehash appear to have d_parent
-	  set to a "real" parent.
-	- __d_rehash, called by __d_move: rehashes the moved dentry to
-	  hash chain determined by target, and assigns target's d_parent
-	  to its d_parent, before dropping the dentry's d_lock.
+--Izn7cH1Com+I3R9J
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename=etc-fstab
 
-Therefore I believe it's safe for a holder of a dentry's d_lock to
-assume that it is hashed on sb_anon if and only if IS_ROOT(dentry) is
-true.
+# /etc/fstab: static file system information.
+#
+# Use 'blkid' to print the universally unique identifier for a
+# device; this may be used with UUID= as a more robust way to name devices
+# that works even if disks are added and removed. See fstab(5).
+#
+# <file system> <mount point>   <type>  <options>       <dump>  <pass>
+proc            /proc           proc    nodev,noexec,nosuid 0       0
+# / was on /dev/sda5 during installation
+UUID=791ccf4e-dfe7-468d-9f54-40eff9b60dcf /               ext4    noatime,errors=remount-ro 0       1
+# /data was on /dev/sda6 during installation
+UUID=f32d10da-0587-413f-beac-bc5197c5aa84 /data           ext4    noatime         0       2
+# swap was on /dev/sda1 during installation
+UUID=a7cdb974-794f-4972-a386-b0bd687c52de none            swap    sw              0       0
+lemmy:/data/repos	/data/lemmy	nfs	defaults	0	0
 
-I believe the incorrect assumption about DCACHE_DISCONNECTED was
-originally introduced by ceb5bdc2d246 "fs: dcache per-bucket dcache hash
-locking".
+--Izn7cH1Com+I3R9J--
 
-Cc: Nick Piggin <npiggin@kernel.dk>
-Reviewed-by: NeilBrown <neilb@suse.de>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/dcache.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/dcache.c b/fs/dcache.c
-index 8086636..ea2fcfa 100644
---- a/fs/dcache.c
-+++ b/fs/dcache.c
-@@ -410,7 +410,7 @@ static void __d_shrink(struct dentry *dentry)
- {
- 	if (!d_unhashed(dentry)) {
- 		struct hlist_bl_head *b;
--		if (unlikely(dentry->d_flags & DCACHE_DISCONNECTED))
-+		if (unlikely(IS_ROOT(dentry)))
- 			b = &dentry->d_sb->s_anon;
- 		else
- 			b = d_hash(dentry->d_parent, dentry->d_name.hash);
--- 
-1.7.11.4
 
