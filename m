@@ -1,41 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.194]:53754 "EHLO mout.perfora.net"
+Received: from mx2.netapp.com ([216.240.18.37]:16267 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759154Ab2HHTk3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Aug 2012 15:40:29 -0400
-Date: Wed, 8 Aug 2012 15:40:21 -0400
-From: Jim Rees <rees@umich.edu>
-To: "bjschuma@gmail.com" <bjschuma@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] NFS: Fix a regression when loading the NFS v4 module
-Message-ID: <20120808194021.GA24950@umich.edu>
-References: <CAMFXNOztZkvP963ZWAa72aAj3ydJvhLgxU2m8_20bsZV3uqwLQ@mail.gmail.com>
- <CAMFXNOw0G4Yp0GZmetF6akD=YqKyXBL9aoFq=kF2wiEPwPhU0w@mail.gmail.com>
+	id S1753775Ab2HGP7L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Aug 2012 11:59:11 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Lukas Hejtmanek <xhejtman@ics.muni.cz>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4 backchannel authentication
+Date: Tue, 7 Aug 2012 15:59:09 +0000
+Message-ID: <1344355148.5781.31.camel@lade.trondhjem.org>
+References: <20120806135517.GS25979@ics.muni.cz>
+	 <20120807154114.GA21460@fieldses.org>
+In-Reply-To: <20120807154114.GA21460@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAMFXNOw0G4Yp0GZmetF6akD=YqKyXBL9aoFq=kF2wiEPwPhU0w@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-bjschuma@gmail.com wrote:
-
-  I forgot to CC the mailing list... oops.
-  
-  
-  ---------- Forwarded message ----------
-  From: bjschuma@gmail.com <bjschuma@gmail.com>
-  Date: Wed, Aug 8, 2012 at 1:57 PM
-  Subject: [PATCH 1/2] NFS: Fix a regression when loading the NFS v4 module
-  To: Trond Myklebust <Trond.Myklebust@netapp.com>
-  Cc: "J. Bruce Fields" <bfields@fieldses.org>, jlayton@redhat.com
-  
-  
-  Some systems have a modprobe.d/nfs.conf file that sets an nfs4 alias
-  pointing to nfs.ko, rather than nfs4.ko.  This can prevent the v4 module
-  from loading on mount, since the kernel sees that something named "nfs4"
-  has already been loaded.  To work around this, I've renamed the modules
-  to "nfsv2.ko" "nfsv3.ko" and "nfsv4.ko".
-
-Is there no better way to do this?  We tried for years to standardize on
-nfs4 rather than nfsv4.  In particular, this means the module name will no
-longer be part of the names of the files used to build the module.
+T24gVHVlLCAyMDEyLTA4LTA3IGF0IDExOjQxIC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIE1vbiwgQXVnIDA2LCAyMDEyIGF0IDAzOjU1OjE3UE0gKzAyMDAsIEx1a2FzIEhlanRt
+YW5layB3cm90ZToNCj4gPiBpdCBzZWVtcyB0aGF0IFJIRUwgTkZTdjQgc2VydmVycyB1c2UgR1NT
+IGF1dGhlbnRpY2F0aW9uIGZvciBiYWNrY2hhbm5lbHMgYXMNCj4gPiB3ZWxsIChpZiBtb3VudCBp
+dCB3aXRoIEdTUykuIFRoYXQgd291bGQgYmUgT0ssIGJ1dCBpdCByZXF1aXJlcyB0aGF0IHNlcnZl
+ciBpcw0KPiA+IHJ1bm5pbmcgcnBjLmdzc2QgYW5kIHRoZSBjbGllbnQgaXMgcnVubmluZyBycGMu
+c3ZjZ3NzZCwgd2hpY2ggaXMgbm90IHVzdWFsLg0KPiANCj4gVGhlIGluaXQgc2NyaXB0cyBwcm9i
+YWJseSBuZWVkIHRvIGJlIGZpeGVkIHRvIHN0YXJ0IGJvdGggaW4gYm90aCBjYXNlcy4NCj4gV29y
+dGggZmlsaW5nIGEgYnVnLCBJIHRoaW5rLg0KPiANCj4gPiBJcyB0aGVyZSBhIHdheSBob3cgdG8g
+bW91bnQgY2xpZW50cyB3aXRoIHNlYz1rcmI1L2kvcCBhbmQgdXNlIGJhY2tjaGFubmVscyBqdXN0
+DQo+ID4gd2l0aCBVTklYIGF1dGg/DQo+IA0KPiBOb3Qgd2l0aCBORlN2NDsgZnJvbSBodHRwOi8v
+d3d3LmlldGYub3JnL3JmYy9yZmMzNTMwLnR4dCBzZWN0aW9uIDMuNDoNCj4gDQo+IAkiRXhjZXB0
+IGFzIG5vdGVkIGVsc2V3aGVyZSBpbiB0aGlzIHNlY3Rpb24sIHRoZSBjYWxsYmFjayBSUEMNCj4g
+CShkZXNjcmliZWQgbGF0ZXIpIE1VU1QgbXV0dWFsbHkgYXV0aGVudGljYXRlIHRoZSBORlMgc2Vy
+dmVyIHRvDQo+IAl0aGUgcHJpbmNpcGFsIHRoYXQgYWNxdWlyZWQgdGhlIGNsaWVudGlkIChhbHNv
+IGRlc2NyaWJlZCBsYXRlciksDQo+IAl1c2luZyB0aGUgc2VjdXJpdHkgZmxhdm9yIHRoZSBvcmln
+aW5hbCBTRVRDTElFTlRJRCBvcGVyYXRpb24NCj4gCXVzZWQuIg0KPiANCj4gKEFjdHVhbGx5LCBw
+ZXJoYXBzIHRoZXJlJ3MgYSBsb29waG9sZSB0aGF0IHdvdWxkIGFsbG93IFNFVENMSUVOVElEIHRv
+IGJlDQo+IGRvbmUgd2l0aCBhdXRoX3N5cyB3aGlsZSBmaWxlIGFjY2VzcyBpcyBzdGlsbCBkb25l
+IHdpdGggZ3NzLiAgSSBkb24ndA0KPiB0aGluayBzbywgYnV0IEkgZm9yZ2V0IHRoZSBkZXRhaWxz
+LiAgSW4gcHJhY3RpY2UgdGhlIGNsaWVudHMgZG8gYWxsIHVzZQ0KPiBnc3MuKQ0KDQpZZXMsIHlv
+dSBjYW4gZG8gdGhpcywgaG93ZXZlciB0aGF0IHJlcXVpcmVzIHRoZSBzZXJ2ZXIgdG8gYmUgY29u
+ZmlndXJlZA0KdG8gYWNjZXB0IHJwY3NlY19nc3MgYW5kIGF1dGhfc3lzIGZyb20gdGhhdCBjbGll
+bnQuDQpJdCBhbHNvIGFsbG93cyBhbnlvbmUgdG8gc3Bvb2YgYSBjYWxsYmFjayB0byB5b3VyIGNs
+aWVudC4NCkZ1cnRoZXJtb3JlLCBpdCB3b3VsZCBhbGxvdyBhbnlib2R5IHRvIHNlbmQgU0VUQ0xJ
+RU5USUQgY2FsbHMgdXNpbmcgdGhlDQpzYW1lIGNsaWVudCBpZCB0byB0aGUgc2VydmVyIGFuZCBz
+byB0aGV5IGNhbiBkZWNsYXJlIHlvdXIgY2xpZW50IHRvIGhhdmUNCnJlYm9vdGVkIChzbyB0aGF0
+IGFsbCBzdGF0ZSBpcyBsb3N0KSwgdGhleSBjYW4gZGl2ZXJ0IGNhbGxiYWNrcyB0bw0KYW5vdGhl
+ciBtYWNoaW5lLCAuLi4uDQpJT1c6IGl0IGlzIG5vdCByZWFsbHkgc29tZXRoaW5nIHlvdSB3YW50
+IHRvIGFsbG93IG9uIGFuIHVudHJ1c3RlZA0KbmV0d29yay4NCg0KPiA0LjEgZG9lcyBhbGxvdyB0
+aGUgY2xpZW50IHRvIHJlcXVlc3QgYSBkaWZmZXJlbnQgc2VjdXJpdHkgZmxhdm9yIG9uIHRoZQ0K
+PiBiYWNrY2hhbm5lbCwgYW5kIHRoZSBsaW51eCBjbGllbnQgZG9lcyB1c2UgYXV0aF9zeXMgb24g
+dGhlIGJhY2tjaGFubmVsDQo+IGV2ZW4gd2hlbiB1c2luZyBnc3Mgb24gdGhlIGZvcmVjaGFubmVs
+Lg0KDQpZZXMsIGFuZCB0aGF0IGxlYXZlcyBhIGxlc3Mgcm9vbSBmb3Igc3Bvb2ZpbmcgYmVjYXVz
+ZSB0aGUgYmFjayBjaGFubmVsDQpjb25uZWN0aW9uIGlzIHNldCB1cCBieSB0aGUgY2xpZW50Lg0K
+DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5l
+dEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
