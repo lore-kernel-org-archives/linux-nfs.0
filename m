@@ -1,94 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:52253 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:28564 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755404Ab2HVUIj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Aug 2012 16:08:39 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: stable@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH] NFS: Fix Oopses in nfs_lookup_revalidate and nfs4_lookup_revalidate
-Date: Wed, 22 Aug 2012 16:08:17 -0400
-Message-Id: <1345666097-14815-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1751184Ab2HGPS0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Aug 2012 11:18:26 -0400
+Message-ID: <502131BF.1040704@netapp.com>
+Date: Tue, 07 Aug 2012 11:18:23 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        Joerg Roedel <joro@8bytes.org>, Joerg Roedel <joerg.roedel@amd.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "wdauchy@gmail.com" <wdauchy@gmail.com>
+Subject: Re: kernel BUG at /data/lemmy/linux.trees.git/fs/nfs/idmap.c:681!
+References: <20120807134156.GP1996@amd.com> <50211E42.6040808@netapp.com>  <20120807141548.GG1917@8bytes.org> <5021237D.1010107@netapp.com>  <20120807142707.GH1917@8bytes.org> <502127EF.3030209@netapp.com> <1344352458.5781.8.camel@lade.trondhjem.org>
+In-Reply-To: <1344352458.5781.8.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fix the following Oops in 3.5.1:
+On 08/07/2012 11:14 AM, Myklebust, Trond wrote:
+> On Tue, 2012-08-07 at 10:36 -0400, Bryan Schumaker wrote:
+>> On 08/07/2012 10:27 AM, Joerg Roedel wrote:
+>>> On Tue, Aug 07, 2012 at 10:17:33AM -0400, Bryan Schumaker wrote:
+>>>> On 08/07/2012 10:15 AM, Joerg Roedel wrote:
+>>>>> Yes, it reproduces pretty reliable here with Ubuntu 11.10 Server on an
+>>>>> Intel box with an NFSv3 directory mounted at boot. This is the only box
+>>>>> I have seen this so far, probably it depends on the config. I attach the
+>>>>> config of the failing box.
+>>>>
+>>>> Interesting.  Are you mounting v4, too?  This code shouldn't be
+>>>> running for v3... maybe that's why I haven't been able to hit it.
+>>>
+>>> No, I am not using NFSv4 on the box where the BUG happens. I have
+>>> another box mounting the same directory where the BUG does not trigger
+>>> with v3.6-rc1. A difference I spotted between the kernels is, that on
+>>> the failing box NFS is compiled as a module whereas it is compiled into
+>>> the kernel on the box that works fine. Not sure if that has anything to
+>>> do with the problem...
+>>>
+>>
+>> Your stack trace is showing v4 calls on the failing box, those definitely shouldn't be happening if you're using v3.  Can you double check /etc/fstab and /proc/mounts on a working kernel to be sure?
+>>
+>> My VM has nfs as a module, so I don't think that's the issue... I just started compiling your config to test on my own.
+> 
+> Joerg,
+> 
+> The stack trace definitely shows that the NFS client is attempting an
+> NFSv4 mount. Are you supplying a 'vers=3' mount option? If not, then
+> note that recent versions of nfs-utils can be configured to try NFSv4 as
+> the default mount option, so I'd guess this is why you are hitting an
+> NFSv4 path.
+> 
+> Bryan,
+> 
+> That said, when looking at the legacy upcall, it seems that if
+> rpc_queue_upcall fails, then we don't do anything to clear
+> idmap->idmap_key_cons. Ditto if the call times out, or if the pipe is
+> closed before the downcall.
+> 
 
- BUG: unable to handle kernel NULL pointer dereference at 0000000000000038
- IP: [<ffffffffa03789cd>] nfs_lookup_revalidate+0x2d/0x480 [nfs]
- PGD 337c63067 PUD 0
- Oops: 0000 [#1] SMP
- CPU 5
- Modules linked in: nfs fscache nfsd lockd nfs_acl auth_rpcgss sunrpc af_packet binfmt_misc cpufreq_conservative cpufreq_userspace cpufreq_powersave dm_mod acpi_cpufreq mperf coretemp gpio_ich kvm_intel joydev kvm ioatdma hid_generic igb lpc_ich i7core_edac edac_core ptp serio_raw dca pcspkr i2c_i801 mfd_core sg pps_core usbhid crc32c_intel microcode button autofs4 uhci_hcd ttm drm_kms_helper drm i2c_algo_bit sysimgblt sysfillrect syscopyarea ehci_hcd usbcore usb_common scsi_dh_rdac scsi_dh_emc scsi_dh_hp_sw scsi_dh_alua scsi_dh edd fan ata_piix thermal processor thermal_sys
+Ah!  I didn't think about the upcall failing, thanks Trond!  I'll work on a patch.
 
- Pid: 30431, comm: java Not tainted 3.5.1-2-default #1 Supermicro X8DTT/X8DTT
- RIP: 0010:[<ffffffffa03789cd>]  [<ffffffffa03789cd>] nfs_lookup_revalidate+0x2d/0x480 [nfs]
- RSP: 0018:ffff8801b418bd38  EFLAGS: 00010292
- RAX: 00000000fffffff6 RBX: ffff88032016d800 RCX: 0000000000000020
- RDX: ffffffff00000000 RSI: 0000000000000000 RDI: ffff8801824a7b00
- RBP: ffff8801b418bdf8 R08: 7fffff0034323030 R09: fffffffff04c03ed
- R10: ffff8801824a7b00 R11: 0000000000000002 R12: ffff8801824a7b00
- R13: ffff8801824a7b00 R14: 0000000000000000 R15: ffff8803201725d0
- FS:  00002b53a46cb700(0000) GS:ffff88033fc20000(0000) knlGS:0000000000000000
- CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
- CR2: 0000000000000038 CR3: 000000020a426000 CR4: 00000000000007e0
- DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
- DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
- Process java (pid: 30431, threadinfo ffff8801b418a000, task ffff8801b5d20600)
- Stack:
-  ffff8801b418be44 ffff88032016d800 ffff8801b418bdf8 0000000000000000
-  ffff8801824a7b00 ffff8801b418bdd7 ffff8803201725d0 ffffffff8116a9c0
-  ffff8801b5c38dc0 0000000000000007 ffff88032016d800 0000000000000000
- Call Trace:
-  [<ffffffff8116a9c0>] lookup_dcache+0x80/0xe0
-  [<ffffffff8116aa43>] __lookup_hash+0x23/0x90
-  [<ffffffff8116b4a5>] lookup_one_len+0xc5/0x100
-  [<ffffffffa03869a3>] nfs_sillyrename+0xe3/0x210 [nfs]
-  [<ffffffff8116cadf>] vfs_unlink.part.25+0x7f/0xe0
-  [<ffffffff8116f22c>] do_unlinkat+0x1ac/0x1d0
-  [<ffffffff815717b9>] system_call_fastpath+0x16/0x1b
-  [<00002b5348b5f527>] 0x2b5348b5f526
- Code: ec 38 b8 f6 ff ff ff 4c 89 64 24 18 4c 89 74 24 28 49 89 fc 48 89 5c 24 08 48 89 6c 24 10 49 89 f6 4c 89 6c 24 20 4c 89 7c 24 30 <f6> 46 38 40 0f 85 d1 00 00 00 e8 c4 c4 df e0 48 8b 58 30 49 89
- RIP  [<ffffffffa03789cd>] nfs_lookup_revalidate+0x2d/0x480 [nfs]
-  RSP <ffff8801b418bd38>
- CR2: 0000000000000038
- ---[ end trace 845113ed191985dd ]---
-
-This Oops affects 3.5 kernels and older, and is due to lookup_one_len()
-calling down to the dentry revalidation code with a NULL pointer
-to struct nameidata.
-
-It is fixed upstream by commit 0b728e1911c (stop passing nameidata *
-to ->d_revalidate())
-
-Reported-by: Richard Ems <richard.ems@cape-horn-eng.com>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/dir.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index f430057..b1f3675 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1123,7 +1123,7 @@ static int nfs_lookup_revalidate(struct dentry *dentry, struct nameidata *nd)
- 	struct nfs_fattr *fattr = NULL;
- 	int error;
- 
--	if (nd->flags & LOOKUP_RCU)
-+	if (nd && (nd->flags & LOOKUP_RCU))
- 		return -ECHILD;
- 
- 	parent = dget_parent(dentry);
-@@ -1526,7 +1526,7 @@ static int nfs4_lookup_revalidate(struct dentry *dentry, struct nameidata *nd)
- 	struct inode *dir;
- 	int openflags, ret = 0;
- 
--	if (nd->flags & LOOKUP_RCU)
-+	if (nd && (nd->flags & LOOKUP_RCU))
- 		return -ECHILD;
- 
- 	inode = dentry->d_inode;
--- 
-1.7.11.4
+- Bryan
 
