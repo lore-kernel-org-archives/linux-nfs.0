@@ -1,121 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:45760 "EHLO mx2.netapp.com"
+Received: from minas.ics.muni.cz ([147.251.4.40]:57923 "EHLO minas.ics.muni.cz"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751215Ab2HBSjU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Aug 2012 14:39:20 -0400
-Message-ID: <501AC947.6020001@netapp.com>
-Date: Thu, 02 Aug 2012 14:39:03 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+	id S1751370Ab2HGQMX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Aug 2012 12:12:23 -0400
+Date: Tue, 7 Aug 2012 18:12:11 +0200
+From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4 backchannel authentication
+Message-ID: <20120807161211.GL11089@ics.muni.cz>
+References: <20120806135517.GS25979@ics.muni.cz>
+ <20120807154114.GA21460@fieldses.org>
+ <1344355148.5781.31.camel@lade.trondhjem.org>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 00/10] Create NFS modules
-References: <1343678725-8659-1-git-send-email-bjschuma@netapp.com> <20120802112059.57e7bb82@corrin.poochiereds.net> <501A9C33.5010805@netapp.com> <20120802143333.0d28bab5@tlielax.poochiereds.net>
-In-Reply-To: <20120802143333.0d28bab5@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=iso-8859-2
+In-Reply-To: <1344355148.5781.31.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/02/2012 02:33 PM, Jeff Layton wrote:
-> On Thu, 02 Aug 2012 11:26:43 -0400
-> Bryan Schumaker <bjschuma@netapp.com> wrote:
-> 
->> On 08/02/2012 11:20 AM, Jeff Layton wrote:
->>> On Mon, 30 Jul 2012 16:05:15 -0400
->>> bjschuma@netapp.com wrote:
->>>
->>>> From: Bryan Schumaker <bjschuma@netapp.com>
->>>>
->>>> This is the final set of patches to turn NFS into modules.  The first patch
->>>> creates an "nfs_subversion" structure that will represent a single NFS
->>>> version.  The next 6 patches are cleanups that the nfs_subversion structure
->>>> allows us to put in.  Finally, the last 3 patches convert v2, v3 and v4 into
->>>> kernel modules.
->>>>
->>>> Changes in version 2:
->>>> - Add a patch to keep nfs4 module parameters in the generic client.  Without
->>>>   this we break backwards compatibility with older kernels.
->>>>
->>>> - Bryan
->>>>
->>>> Bryan Schumaker (10):
->>>>   NFS: Add version registering framework
->>>>   NFS: Remove the NFS v4 xdev mount function
->>>>   NFS: Create a try_mount rpc op
->>>>   NFS: Only initialize the ACL client in the v3 case
->>>>   NFS: Pass super operations and xattr handlers in the nfs_subversion
->>>>   NFS: Split out remaining NFS v4 inode functions
->>>>   NFS: Keep module parameters in the generic NFS client
->>>>   NFS: Convert v2 into a module
->>>>   NFS: Convert v3 into a module
->>>>   NFS: Convert v4 into a module
->>>>
->>>>  fs/nfs/Kconfig            |   6 +-
->>>>  fs/nfs/Makefile           |  27 +++----
->>>>  fs/nfs/callback.c         |  24 ------
->>>>  fs/nfs/callback.h         |   2 +-
->>>>  fs/nfs/client.c           | 191 +++++++++++++++++++++++++---------------------
->>>>  fs/nfs/delegation.h       |   2 +-
->>>>  fs/nfs/dir.c              |  20 ++++-
->>>>  fs/nfs/direct.c           |   2 +-
->>>>  fs/nfs/dns_resolve.c      |   4 +
->>>>  fs/nfs/file.c             |  15 ++++
->>>>  fs/nfs/idmap.c            |   3 -
->>>>  fs/nfs/inode.c            | 105 ++++++++++++-------------
->>>>  fs/nfs/internal.h         |  38 +++++----
->>>>  fs/nfs/namespace.c        |  17 +----
->>>>  fs/nfs/netns.h            |   2 +-
->>>>  fs/nfs/nfs.h              |  29 +++++++
->>>>  fs/nfs/nfs2super.c        |  31 ++++++++
->>>>  fs/nfs/nfs3client.c       |  65 ++++++++++++++++
->>>>  fs/nfs/nfs3proc.c         |   3 +
->>>>  fs/nfs/nfs3super.c        |  31 ++++++++
->>>>  fs/nfs/nfs4_fs.h          |  13 ++--
->>>>  fs/nfs/nfs4client.c       |  23 ++----
->>>>  fs/nfs/nfs4proc.c         |   9 +--
->>>>  fs/nfs/nfs4super.c        | 106 +++++++++++++------------
->>>>  fs/nfs/nfs4xdr.c          |   6 --
->>>>  fs/nfs/pagelist.c         |   4 +
->>>>  fs/nfs/pnfs.c             |   2 +
->>>>  fs/nfs/proc.c             |   3 +
->>>>  fs/nfs/read.c             |   5 ++
->>>>  fs/nfs/super.c            | 172 ++++++++++++++++++++++++++++-------------
->>>>  fs/nfs/write.c            |  35 +++------
->>>>  include/linux/nfs_fs.h    |   6 +-
->>>>  include/linux/nfs_fs_sb.h |   7 +-
->>>>  include/linux/nfs_idmap.h |   2 +-
->>>>  include/linux/nfs_xdr.h   |   9 ++-
->>>>  35 files changed, 632 insertions(+), 387 deletions(-)
->>>>  create mode 100644 fs/nfs/nfs.h
->>>>  create mode 100644 fs/nfs/nfs2super.c
->>>>  create mode 100644 fs/nfs/nfs3client.c
->>>>  create mode 100644 fs/nfs/nfs3super.c
->>>>
->>>
->>> I'm seeing a (minor?) regression that I think is probably due to these
->>> patches. If I plug in nfs.ko, and then unplug it, I'm unable to plug it
->>> back in again:
->>
->> Thanks for letting me know, I'll look into it today.
->>
->> - Bryan
->>
-> 
-> It was blocking some other testing so I went ahead and fixed it. It
-> looks like this was not introduced by these patches, but was a
-> long-standing bug. That patch should probably go to stable too, but I
-> haven't vetted it to make sure it'll apply cleanly to earlier kernels
-> yet.
+On Tue, Aug 07, 2012 at 03:59:09PM +0000, Myklebust, Trond wrote:
+> Yes, you can do this, however that requires the server to be configured
+> to accept rpcsec_gss and auth_sys from that client.
+> It also allows anyone to spoof a callback to your client.
+> Furthermore, it would allow anybody to send SETCLIENTID calls using the
+> same client id to the server and so they can declare your client to have
+> rebooted (so that all state is lost), they can divert callbacks to
+> another machine, ....
+> IOW: it is not really something you want to allow on an untrusted
+> network.
 
-Ah, thank you!
+well, ok, thanks for anwsers. However, it seems that while NFS server's name
+is server-home.domain.com (floating name), and true hostname is
+server1.domain.com, it does not matter that callback is authenticated with
+server1.domain.com instead of server-home.domain.com.
 
-> 
-> For the life of me though, I don't understand why it wasn't biting us
-> before the above set went in however...
+Is this expected? Or is it a bug?
 
-Maybe something else that was recently merged broke it?
+I would suppose that client rejects authentication of the backchannel from 
+server that sends nfs/server1.domain.com KRB principal instead of expected
+nfs/server-home.domain.com. 
 
-- Bryan
+The client mounts server-home.domain.com with sec=krb5i. Using debugs I can
+see that the server picks up nfs/server1.domain.com key from /etc/krb5.keytab
+and the client seems to be happy with that (context is established).
 
-> 
-
+-- 
+Luká¹ Hejtmánek
