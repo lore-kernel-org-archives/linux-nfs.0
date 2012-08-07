@@ -1,213 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:39086 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752301Ab2HNQZX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 12:25:23 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH 04/16] workqueue: use new hashtable implementation
-Date: Tue, 14 Aug 2012 18:24:38 +0200
-Message-Id: <1344961490-4068-5-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
-References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:61629 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753262Ab2HGPw4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Aug 2012 11:52:56 -0400
+Message-ID: <502139D6.7060704@netapp.com>
+Date: Tue, 07 Aug 2012 11:52:54 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "joro@8bytes.org" <joro@8bytes.org>,
+        "mdauchy@gmail.com" <mdauchy@gmail.com>
+Subject: Re: [PATCH] NFS: Clear key construction data if the idmap upcall
+ fails
+References: <1344353431-28831-1-git-send-email-bjschuma@netapp.com> <1344354243.5781.20.camel@lade.trondhjem.org>
+In-Reply-To: <1344354243.5781.20.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch workqueues to use the new hashtable implementation. This reduces the amount of
-generic unrelated code in the workqueues.
+On 08/07/2012 11:44 AM, Myklebust, Trond wrote:
+> On Tue, 2012-08-07 at 11:30 -0400, bjschuma@netapp.com wrote:
+>> From: Bryan Schumaker <bjschuma@netapp.com>
+>>
+>> idmap_pipe_downcall already clears this field if the upcall succeeds,
+>> but if it fails (rpc.idmapd isn't running) the field will still be set
+>> on the next call triggering a BUG_ON().
+>>
+>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+>> ---
+>>  fs/nfs/idmap.c | 16 +++++++++-------
+>>  1 file changed, 9 insertions(+), 7 deletions(-)
+>>
+>> diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+>> index b701358..645cfe7 100644
+>> --- a/fs/nfs/idmap.c
+>> +++ b/fs/nfs/idmap.c
+>> @@ -683,10 +683,12 @@ static int nfs_idmap_legacy_upcall(struct key_construction *cons,
+>>  
+>>  	ret = rpc_queue_upcall(idmap->idmap_pipe, msg);
+>>  	if (ret < 0)
+>> -		goto out2;
+>> +		goto out3;
+>>  
+>>  	return ret;
+>>  
+>> +out3:
+>> +	idmap->idmap_key_cons = NULL;
+>>  out2:
+>>  	kfree(im);
+>>  out1:
+> 
+> That fixes rpc_queue_upcall failure path, but we still need to deal with
+> timeouts and close.
+> 
+> How about the following alternative:
+> 
+> Set idmap->idmap_key_cons after grabbing the mutex in
+> nfs_idmap_get_key(), then clear it before you release that mutex. That
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
- kernel/workqueue.c |   86 +++++++++-------------------------------------------
- 1 files changed, 15 insertions(+), 71 deletions(-)
+The key construction data doesn't exist during nfs_idmap_get_key().  request_key() sets it up to pass to our functions as it works through the keyrings code.
 
-diff --git a/kernel/workqueue.c b/kernel/workqueue.c
-index 692d976..1db6328 100644
---- a/kernel/workqueue.c
-+++ b/kernel/workqueue.c
-@@ -41,6 +41,7 @@
- #include <linux/debug_locks.h>
- #include <linux/lockdep.h>
- #include <linux/idr.h>
-+#include <linux/hashtable.h>
- 
- #include "workqueue_sched.h"
- 
-@@ -82,8 +83,6 @@ enum {
- 	NR_WORKER_POOLS		= 2,		/* # worker pools per gcwq */
- 
- 	BUSY_WORKER_HASH_ORDER	= 6,		/* 64 pointers */
--	BUSY_WORKER_HASH_SIZE	= 1 << BUSY_WORKER_HASH_ORDER,
--	BUSY_WORKER_HASH_MASK	= BUSY_WORKER_HASH_SIZE - 1,
- 
- 	MAX_IDLE_WORKERS_RATIO	= 4,		/* 1/4 of busy can be idle */
- 	IDLE_WORKER_TIMEOUT	= 300 * HZ,	/* keep idle ones for 5 mins */
-@@ -180,7 +179,7 @@ struct global_cwq {
- 	unsigned int		flags;		/* L: GCWQ_* flags */
- 
- 	/* workers are chained either in busy_hash or pool idle_list */
--	struct hlist_head	busy_hash[BUSY_WORKER_HASH_SIZE];
-+	DEFINE_HASHTABLE(busy_hash, BUSY_WORKER_HASH_ORDER);
- 						/* L: hash of busy workers */
- 
- 	struct worker_pool	pools[2];	/* normal and highpri pools */
-@@ -288,8 +287,7 @@ EXPORT_SYMBOL_GPL(system_nrt_freezable_wq);
- 	     (pool) < &(gcwq)->pools[NR_WORKER_POOLS]; (pool)++)
- 
- #define for_each_busy_worker(worker, i, pos, gcwq)			\
--	for (i = 0; i < BUSY_WORKER_HASH_SIZE; i++)			\
--		hlist_for_each_entry(worker, pos, &gcwq->busy_hash[i], hentry)
-+	hash_for_each(gcwq->busy_hash, i, pos, worker, hentry)
- 
- static inline int __next_gcwq_cpu(int cpu, const struct cpumask *mask,
- 				  unsigned int sw)
-@@ -822,63 +820,6 @@ static inline void worker_clr_flags(struct worker *worker, unsigned int flags)
- }
- 
- /**
-- * busy_worker_head - return the busy hash head for a work
-- * @gcwq: gcwq of interest
-- * @work: work to be hashed
-- *
-- * Return hash head of @gcwq for @work.
-- *
-- * CONTEXT:
-- * spin_lock_irq(gcwq->lock).
-- *
-- * RETURNS:
-- * Pointer to the hash head.
-- */
--static struct hlist_head *busy_worker_head(struct global_cwq *gcwq,
--					   struct work_struct *work)
--{
--	const int base_shift = ilog2(sizeof(struct work_struct));
--	unsigned long v = (unsigned long)work;
--
--	/* simple shift and fold hash, do we need something better? */
--	v >>= base_shift;
--	v += v >> BUSY_WORKER_HASH_ORDER;
--	v &= BUSY_WORKER_HASH_MASK;
--
--	return &gcwq->busy_hash[v];
--}
--
--/**
-- * __find_worker_executing_work - find worker which is executing a work
-- * @gcwq: gcwq of interest
-- * @bwh: hash head as returned by busy_worker_head()
-- * @work: work to find worker for
-- *
-- * Find a worker which is executing @work on @gcwq.  @bwh should be
-- * the hash head obtained by calling busy_worker_head() with the same
-- * work.
-- *
-- * CONTEXT:
-- * spin_lock_irq(gcwq->lock).
-- *
-- * RETURNS:
-- * Pointer to worker which is executing @work if found, NULL
-- * otherwise.
-- */
--static struct worker *__find_worker_executing_work(struct global_cwq *gcwq,
--						   struct hlist_head *bwh,
--						   struct work_struct *work)
--{
--	struct worker *worker;
--	struct hlist_node *tmp;
--
--	hlist_for_each_entry(worker, tmp, bwh, hentry)
--		if (worker->current_work == work)
--			return worker;
--	return NULL;
--}
--
--/**
-  * find_worker_executing_work - find worker which is executing a work
-  * @gcwq: gcwq of interest
-  * @work: work to find worker for
-@@ -897,8 +838,14 @@ static struct worker *__find_worker_executing_work(struct global_cwq *gcwq,
- static struct worker *find_worker_executing_work(struct global_cwq *gcwq,
- 						 struct work_struct *work)
- {
--	return __find_worker_executing_work(gcwq, busy_worker_head(gcwq, work),
--					    work);
-+	struct worker *worker;
-+	struct hlist_node *tmp;
-+
-+	hash_for_each_possible(gcwq->busy_hash, worker, tmp, hentry, (unsigned long)work)
-+		if (worker->current_work == work)
-+			return worker;
-+
-+	return NULL;
- }
- 
- /**
-@@ -1932,7 +1879,6 @@ __acquires(&gcwq->lock)
- 	struct cpu_workqueue_struct *cwq = get_work_cwq(work);
- 	struct worker_pool *pool = worker->pool;
- 	struct global_cwq *gcwq = pool->gcwq;
--	struct hlist_head *bwh = busy_worker_head(gcwq, work);
- 	bool cpu_intensive = cwq->wq->flags & WQ_CPU_INTENSIVE;
- 	work_func_t f = work->func;
- 	int work_color;
-@@ -1964,7 +1910,7 @@ __acquires(&gcwq->lock)
- 	 * already processing the work.  If so, defer the work to the
- 	 * currently executing one.
- 	 */
--	collision = __find_worker_executing_work(gcwq, bwh, work);
-+	collision = find_worker_executing_work(gcwq, work);
- 	if (unlikely(collision)) {
- 		move_linked_works(work, &collision->scheduled, NULL);
- 		return;
-@@ -1972,7 +1918,7 @@ __acquires(&gcwq->lock)
- 
- 	/* claim and process */
- 	debug_work_deactivate(work);
--	hlist_add_head(&worker->hentry, bwh);
-+	hash_add(gcwq->busy_hash, &worker->hentry, (unsigned long)worker);
- 	worker->current_work = work;
- 	worker->current_cwq = cwq;
- 	work_color = get_work_color(work);
-@@ -2027,7 +1973,7 @@ __acquires(&gcwq->lock)
- 		worker_clr_flags(worker, WORKER_CPU_INTENSIVE);
- 
- 	/* we're done with it, release */
--	hlist_del_init(&worker->hentry);
-+	hash_del(&worker->hentry);
- 	worker->current_work = NULL;
- 	worker->current_cwq = NULL;
- 	cwq_dec_nr_in_flight(cwq, work_color, false);
-@@ -3690,7 +3636,6 @@ out_unlock:
- static int __init init_workqueues(void)
- {
- 	unsigned int cpu;
--	int i;
- 
- 	cpu_notifier(workqueue_cpu_up_callback, CPU_PRI_WORKQUEUE_UP);
- 	cpu_notifier(workqueue_cpu_down_callback, CPU_PRI_WORKQUEUE_DOWN);
-@@ -3704,8 +3649,7 @@ static int __init init_workqueues(void)
- 		gcwq->cpu = cpu;
- 		gcwq->flags |= GCWQ_DISASSOCIATED;
- 
--		for (i = 0; i < BUSY_WORKER_HASH_SIZE; i++)
--			INIT_HLIST_HEAD(&gcwq->busy_hash[i]);
-+		hash_init(gcwq->busy_hash);
- 
- 		for_each_worker_pool(pool, gcwq) {
- 			pool->gcwq = gcwq;
--- 
-1.7.8.6
+- Bryan
+
+> leaves one possible race in which the idmap->idmap_key_cons is cleared
+> while we're in idmap_pipe_downcall. One way to solve that race is to use
+> a second mutex (see the original idmapper design from before your
+> changes) to ensure that nothing clears idmap_key_cons while we're in
+> idmap_pipe_downcall.
+> 
 
