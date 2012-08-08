@@ -1,90 +1,161 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:57296 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755572Ab2HNObE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 10:31:04 -0400
-Received: by ghrr11 with SMTP id r11so495370ghr.19
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Aug 2012 07:31:03 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA93A372D@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1344457310-26442-1-git-send-email-Trond.Myklebust@netapp.com>
- <CA+a=Yy7SX+cPLFiNy552bU9ZMS_rSwvaSpV732_mDwpcPAH5Wg@mail.gmail.com>
- <1344522979.23523.2.camel@lade.trondhjem.org> <CA+a=Yy7tDi0kQGvjPeb=O_9XMnZDm-_31VTkNF7wEW7Pb0BZow@mail.gmail.com>
- <1344526780.25447.6.camel@lade.trondhjem.org> <502A02B2.2020700@tonian.com> <4FA345DA4F4AE44899BD2B03EEEC2FA93A372D@SACEXCMBX04-PRD.hq.netapp.com>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:65416 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754699Ab2HHCDd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Aug 2012 22:03:33 -0400
+Received: by mail-pb0-f46.google.com with SMTP id rr13so617318pbb.19
+        for <linux-nfs@vger.kernel.org>; Tue, 07 Aug 2012 19:03:33 -0700 (PDT)
 From: Peng Tao <bergwolf@gmail.com>
-Date: Tue, 14 Aug 2012 22:30:43 +0800
-Message-ID: <CA+a=Yy7SgNGeVzM1VNvn+nGAVTpJT6uOLn=AfNsvQJsu6Au1Wg@mail.gmail.com>
-Subject: Re: [PATCH] NFSv4.1: Remove a bogus BUG_ON() in nfs4_layoutreturn_done
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Benny Halevy <bhalevy@tonian.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        Boaz Harrosh <bharrosh@panasas.com>,
-        "Isaman, Fred" <Fred.Isaman@netapp.com>,
-        Idan Keidar <idank@tonian.com>, Lev Solomonov <solo@tonian.com>
-Content-Type: text/plain; charset=UTF-8
+To: bharrosh@panasas.com
+Cc: linux-nfs@vger.kernel.org, Peng Tao <tao.peng@emc.com>
+Subject: [PATCH RFC 2/3] NFS41: send real write size in layoutget
+Date: Wed,  8 Aug 2012 10:03:11 +0800
+Message-Id: <1344391392-1948-3-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1344391392-1948-1-git-send-email-bergwolf@gmail.com>
+References: <1344391392-1948-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 14, 2012 at 9:45 PM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Tue, 2012-08-14 at 10:48 +0300, Benny Halevy wrote:
->> On 2012-08-09 18:39, Myklebust, Trond wrote:
->> > On Thu, 2012-08-09 at 23:01 +0800, Peng Tao wrote:
->> >> On Thu, Aug 9, 2012 at 10:36 PM, Myklebust, Trond
->> >> <Trond.Myklebust@netapp.com> wrote:
->> >>> On Thu, 2012-08-09 at 22:30 +0800, Peng Tao wrote:
->> >>>> On Thu, Aug 9, 2012 at 4:21 AM, Trond Myklebust
->> >>>> <Trond.Myklebust@netapp.com> wrote:
->> >>>>> Ever since commit 0a57cdac3f (NFSv4.1 send layoutreturn to fence
->> >>>>> disconnected data server) we've been sending layoutreturn calls
->> >>>>> while there is potentially still outstanding I/O to the data
->> >>>>> servers. The reason we do this is to avoid races between replayed
->> >>>>> writes to the MDS and the original writes to the DS.
->> >>>>>
->> >>>>> When this happens, the BUG_ON() in nfs4_layoutreturn_done can
->> >>>>> be triggered because it assumes that we would never call
->> >>>>> layoutreturn without knowing that all I/O to the DS is
->> >>>>> finished. The fix is to remove the BUG_ON() now that the
->> >>>>> assumptions behind the test are obsolete.
->> >>>>>
->> >>>> Isn't MDS supposed to recall the layout if races are possible between
->> >>>> outstanding write-to-DS and write-through-MDS?
->> >>>
->> >>> Where do you read that in RFC5661?
->> >>>
->> >> That's my (maybe mis-)understanding of how server works... But looking
->> >> at rfc5661 section 18.44.3. layoutreturn implementation.
->> >> "
->> >> After this call,
->> >>    the client MUST NOT use the returned layout(s) and the associated
->> >>    storage protocol to access the file data.
->> >> "
->> >> And given commit 0a57cdac3f, client is using the layout even after
->> >> layoutreturn, which IMHO is a violation of rfc5661.
->> >
->> > No. It is using the layoutreturn to tell the MDS to fence off I/O to a
->> > data server that is not responding. It isn't attempting to use the
->> > layout after the layoutreturn: the whole point is that we are attempting
->> > write-through-MDS after the attempt to write through the DS timed out.
->> >
->>
->> I hear you, but this use case is valid after a time out / disconnect
->> (which will translate to PNFS_OSD_ERR_UNREACHABLE for the objects layout)
->> In other cases, I/Os to the DS might obviously be in flight and the BUG_ON
->> indicates that.
->>
->> IMO, the right way to implement that is to initially mark the lsegs invalid
->> and increment plh_block_lgets, as we do today in _pnfs_return_layout
->> but actually send the layout return only when the last segment is dereferenced.
->
-> This is what we do for object and block layout types, so your
-> objects-specific objection is unfounded.
->
-object layout is also doing layout return on IO error (commit
-fe0fe83585f8). And it doesn't take care of draining concurrent
-in-flight IO. I guess that's why Boaz saw the same BUG_ON.
+From: Peng Tao <tao.peng@emc.com>
 
+For bufferred write, scan dirty pages to find out longest continuous
+dirty pages. In this case, also allow layout driver to specify a
+maximum layoutget size which is useful to avoid busy scanning dirty pages
+for block layout client.
+
+For direct write, just use dreq->bytes_left.
+
+Signed-off-by: Peng Tao <tao.peng@emc.com>
+---
+ fs/nfs/direct.c   |    7 ++++++
+ fs/nfs/internal.h |    1 +
+ fs/nfs/pnfs.c     |   58 +++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 64 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index c39f775..c1899dd 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -46,6 +46,7 @@
+ #include <linux/kref.h>
+ #include <linux/slab.h>
+ #include <linux/task_io_accounting_ops.h>
++#include <linux/module.h>
+ 
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs_page.h>
+@@ -191,6 +192,12 @@ static void nfs_direct_req_release(struct nfs_direct_req *dreq)
+ 	kref_put(&dreq->kref, nfs_direct_req_free);
+ }
+ 
++ssize_t nfs_dreq_bytes_left(struct nfs_direct_req *dreq)
++{
++	return dreq->bytes_left;
++}
++EXPORT_SYMBOL_GPL(nfs_dreq_bytes_left);
++
+ /*
+  * Collects and returns the final error value/byte-count.
+  */
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 31fdb03..e68d329 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -464,6 +464,7 @@ static inline void nfs_inode_dio_wait(struct inode *inode)
+ {
+ 	inode_dio_wait(inode);
+ }
++extern ssize_t nfs_dreq_bytes_left(struct nfs_direct_req *dreq);
+ 
+ /* nfs4proc.c */
+ extern void __nfs4_read_done_cb(struct nfs_read_data *);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 2e00fea..e61a373 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -29,6 +29,7 @@
+ 
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs_page.h>
++#include <linux/pagevec.h>
+ #include <linux/module.h>
+ #include "internal.h"
+ #include "pnfs.h"
+@@ -1172,19 +1173,72 @@ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *r
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_read);
+ 
++/*
++ * Return the number of contiguous bytes in dirty pages for a given inode
++ * starting at page frame idx.
++ */
++static u64 pnfs_num_dirty_bytes(struct inode *inode, pgoff_t idx)
++{
++	struct address_space *mapping = inode->i_mapping;
++	pgoff_t	index;
++	struct pagevec pvec;
++	pgoff_t num = 1; /* self */
++	int i, done = 0;
++
++	pagevec_init(&pvec, 0);
++	idx++; /* self */
++	while (!done) {
++		index = idx;
++		pagevec_lookup_tag(&pvec, mapping, &index,
++				   PAGECACHE_TAG_DIRTY, (pgoff_t)PAGEVEC_SIZE);
++		if (pagevec_count(&pvec) == 0)
++			break;
++
++		for (i = 0; i < pagevec_count(&pvec); i++) {
++			struct page *page = pvec.pages[i];
++
++			lock_page(page);
++			if (unlikely(page->mapping != mapping) ||
++			    !PageDirty(page) ||
++			    PageWriteback(page) ||
++			    page->index != idx) {
++				done = 1;
++				unlock_page(page);
++				break;
++			}
++			unlock_page(page);
++			if (done)
++				break;
++			idx++;
++			num++;
++		}
++		pagevec_release(&pvec);
++	}
++	return num << PAGE_CACHE_SHIFT;
++}
++
+ void
+-pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
++pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
++			   struct nfs_page *req)
+ {
++	u64 wb_size;
++
+ 	BUG_ON(pgio->pg_lseg != NULL);
+ 
+ 	if (req->wb_offset != req->wb_pgbase) {
+ 		nfs_pageio_reset_write_mds(pgio);
+ 		return;
+ 	}
++
++	if (pgio->pg_dreq == NULL)
++		wb_size = pnfs_num_dirty_bytes(pgio->pg_inode, req->wb_index);
++	else
++		wb_size = nfs_dreq_bytes_left(pgio->pg_dreq);
++
+ 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 					   req->wb_context,
+ 					   req_offset(req),
+-					   req->wb_bytes,
++					   wb_size?:req->wb_bytes,
+ 					   IOMODE_RW,
+ 					   GFP_NOFS);
+ 	/* If no lseg, fall back to write through mds */
 -- 
-Thanks,
-Tao
+1.7.1.262.g5ef3d
+
