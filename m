@@ -1,73 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:35552 "EHLO mx2.netapp.com"
+Received: from minas.ics.muni.cz ([147.251.4.40]:38725 "EHLO minas.ics.muni.cz"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030774Ab2HIPko (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Aug 2012 11:40:44 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Peng Tao <bergwolf@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        Boaz Harrosh <bharrosh@panasas.com>, Benny Halevy <bhalevy@tonian.com>,
-        "Isaman, Fred" <Fred.Isaman@netapp.com>
-Subject: Re: [PATCH] NFSv4.1: Remove a bogus BUG_ON() in
- nfs4_layoutreturn_done
-Date: Thu, 9 Aug 2012 15:39:42 +0000
-Message-ID: <1344526780.25447.6.camel@lade.trondhjem.org>
-References: <1344457310-26442-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <CA+a=Yy7SX+cPLFiNy552bU9ZMS_rSwvaSpV732_mDwpcPAH5Wg@mail.gmail.com>
-	 <1344522979.23523.2.camel@lade.trondhjem.org>
-	 <CA+a=Yy7tDi0kQGvjPeb=O_9XMnZDm-_31VTkNF7wEW7Pb0BZow@mail.gmail.com>
-In-Reply-To: <CA+a=Yy7tDi0kQGvjPeb=O_9XMnZDm-_31VTkNF7wEW7Pb0BZow@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1757369Ab2HHH60 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Aug 2012 03:58:26 -0400
+Date: Wed, 8 Aug 2012 09:58:13 +0200
+From: Zdenek Salvet <salvet@ics.muni.cz>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Lukas Hejtmanek <xhejtman@ics.muni.cz>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4 backchannel authentication
+Message-ID: <20120808075813.GW604@horn.ics.muni.cz>
+Reply-To: salvet@ics.muni.cz
+References: <20120806135517.GS25979@ics.muni.cz>
+ <20120807154114.GA21460@fieldses.org>
+ <1344355148.5781.31.camel@lade.trondhjem.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1344355148.5781.31.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA4LTA5IGF0IDIzOjAxICswODAwLCBQZW5nIFRhbyB3cm90ZToNCj4gT24g
-VGh1LCBBdWcgOSwgMjAxMiBhdCAxMDozNiBQTSwgTXlrbGVidXN0LCBUcm9uZA0KPiA8VHJvbmQu
-TXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+IE9uIFRodSwgMjAxMi0wOC0wOSBhdCAy
-MjozMCArMDgwMCwgUGVuZyBUYW8gd3JvdGU6DQo+ID4+IE9uIFRodSwgQXVnIDksIDIwMTIgYXQg
-NDoyMSBBTSwgVHJvbmQgTXlrbGVidXN0DQo+ID4+IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
-bT4gd3JvdGU6DQo+ID4+ID4gRXZlciBzaW5jZSBjb21taXQgMGE1N2NkYWMzZiAoTkZTdjQuMSBz
-ZW5kIGxheW91dHJldHVybiB0byBmZW5jZQ0KPiA+PiA+IGRpc2Nvbm5lY3RlZCBkYXRhIHNlcnZl
-cikgd2UndmUgYmVlbiBzZW5kaW5nIGxheW91dHJldHVybiBjYWxscw0KPiA+PiA+IHdoaWxlIHRo
-ZXJlIGlzIHBvdGVudGlhbGx5IHN0aWxsIG91dHN0YW5kaW5nIEkvTyB0byB0aGUgZGF0YQ0KPiA+
-PiA+IHNlcnZlcnMuIFRoZSByZWFzb24gd2UgZG8gdGhpcyBpcyB0byBhdm9pZCByYWNlcyBiZXR3
-ZWVuIHJlcGxheWVkDQo+ID4+ID4gd3JpdGVzIHRvIHRoZSBNRFMgYW5kIHRoZSBvcmlnaW5hbCB3
-cml0ZXMgdG8gdGhlIERTLg0KPiA+PiA+DQo+ID4+ID4gV2hlbiB0aGlzIGhhcHBlbnMsIHRoZSBC
-VUdfT04oKSBpbiBuZnM0X2xheW91dHJldHVybl9kb25lIGNhbg0KPiA+PiA+IGJlIHRyaWdnZXJl
-ZCBiZWNhdXNlIGl0IGFzc3VtZXMgdGhhdCB3ZSB3b3VsZCBuZXZlciBjYWxsDQo+ID4+ID4gbGF5
-b3V0cmV0dXJuIHdpdGhvdXQga25vd2luZyB0aGF0IGFsbCBJL08gdG8gdGhlIERTIGlzDQo+ID4+
-ID4gZmluaXNoZWQuIFRoZSBmaXggaXMgdG8gcmVtb3ZlIHRoZSBCVUdfT04oKSBub3cgdGhhdCB0
-aGUNCj4gPj4gPiBhc3N1bXB0aW9ucyBiZWhpbmQgdGhlIHRlc3QgYXJlIG9ic29sZXRlLg0KPiA+
-PiA+DQo+ID4+IElzbid0IE1EUyBzdXBwb3NlZCB0byByZWNhbGwgdGhlIGxheW91dCBpZiByYWNl
-cyBhcmUgcG9zc2libGUgYmV0d2Vlbg0KPiA+PiBvdXRzdGFuZGluZyB3cml0ZS10by1EUyBhbmQg
-d3JpdGUtdGhyb3VnaC1NRFM/DQo+ID4NCj4gPiBXaGVyZSBkbyB5b3UgcmVhZCB0aGF0IGluIFJG
-QzU2NjE/DQo+ID4NCj4gVGhhdCdzIG15IChtYXliZSBtaXMtKXVuZGVyc3RhbmRpbmcgb2YgaG93
-IHNlcnZlciB3b3Jrcy4uLiBCdXQgbG9va2luZw0KPiBhdCByZmM1NjYxIHNlY3Rpb24gMTguNDQu
-My4gbGF5b3V0cmV0dXJuIGltcGxlbWVudGF0aW9uLg0KPiAiDQo+IEFmdGVyIHRoaXMgY2FsbCwN
-Cj4gICAgdGhlIGNsaWVudCBNVVNUIE5PVCB1c2UgdGhlIHJldHVybmVkIGxheW91dChzKSBhbmQg
-dGhlIGFzc29jaWF0ZWQNCj4gICAgc3RvcmFnZSBwcm90b2NvbCB0byBhY2Nlc3MgdGhlIGZpbGUg
-ZGF0YS4NCj4gIg0KPiBBbmQgZ2l2ZW4gY29tbWl0IDBhNTdjZGFjM2YsIGNsaWVudCBpcyB1c2lu
-ZyB0aGUgbGF5b3V0IGV2ZW4gYWZ0ZXINCj4gbGF5b3V0cmV0dXJuLCB3aGljaCBJTUhPIGlzIGEg
-dmlvbGF0aW9uIG9mIHJmYzU2NjEuDQoNCk5vLiBJdCBpcyB1c2luZyB0aGUgbGF5b3V0cmV0dXJu
-IHRvIHRlbGwgdGhlIE1EUyB0byBmZW5jZSBvZmYgSS9PIHRvIGENCmRhdGEgc2VydmVyIHRoYXQg
-aXMgbm90IHJlc3BvbmRpbmcuIEl0IGlzbid0IGF0dGVtcHRpbmcgdG8gdXNlIHRoZQ0KbGF5b3V0
-IGFmdGVyIHRoZSBsYXlvdXRyZXR1cm46IHRoZSB3aG9sZSBwb2ludCBpcyB0aGF0IHdlIGFyZSBh
-dHRlbXB0aW5nDQp3cml0ZS10aHJvdWdoLU1EUyBhZnRlciB0aGUgYXR0ZW1wdCB0byB3cml0ZSB0
-aHJvdWdoIHRoZSBEUyB0aW1lZCBvdXQuDQoNCj4gPj4gQW5kIGl0IGNhdXNlcyBkYXRhIGNvcnJ1
-cHRpb24gZm9yIGJsb2NrbGF5b3V0IGlmIGNsaWVudCByZXR1cm5zIGxheW91dA0KPiA+PiB3aGls
-ZSB0aGVyZSBpcyBpbi1mbGlnaHQgZGlzayBJTy4uLg0KPiA+DQo+ID4gVGhlbiBpdCBuZWVkcyB0
-byB0dXJuIG9mZiBmYXN0IGZhaWxvdmVyIHRvIHdyaXRlLXRocm91Z2gtTURTLg0KPiA+DQo+IElm
-IHlvdSBzdGlsbCBjb25zaWRlciBpdCBmb2xsb3dpbmcgcmZjNTY2MSwgSSdkIGNob29zZSB0byBk
-aXNhYmxlDQo+IGxheW91dHJldHVybiBpbiBiZWZvcmUgd3JpdGUtdGhyb3VnaC1NRFMgZm9yIGJs
-b2NrbGF5b3V0LCBieSBhZGRpbmcNCj4gc29tZSBmbGFnIGxpa2UgUE5GU19OT19MQVlPVVRSRVRf
-T05fRkFMTFRIUlUgc2ltaWxhciB0byBvYmplY3RzJw0KPiBQTkZTX0xBWU9VVFJFVF9PTl9TRVRB
-VFRSLg0KDQpJIGRvbid0IHNlZSBob3cgdGhhdCB3aWxsIHByZXZlbnQgY29ycnVwdGlvbi4NCg0K
-SW4gZmFjdCwgSUlSQywgaW4gTkZTdjQuMiBTb3JpbidzIHByb3Bvc2VkIGNoYW5nZXMgc3BlY2lm
-aWNhbGx5IHVzZSB0aGUNCmxheW91dHJldHVybiB0byBjb21tdW5pY2F0ZSB0byB0aGUgTURTIHRo
-YXQgdGhlIERTIGlzIHRpbWluZyBvdXQgdmlhIGFuDQplcnJvciBjb2RlIChsaWtlIHRoZSBvYmpl
-Y3QgbGF5b3V0IGhhcyBkb25lIGFsbCB0aGUgdGltZSkuIEhvdyBjYW4geW91DQpyZWNvbmNpbGUg
-dGhhdCBjaGFuZ2Ugd2l0aCBhIGZsYWcgc3VjaCBhcyB0aGUgb25lIHlvdSBwcm9wb3NlPw0KDQot
-LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFw
-cA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+On Tue, Aug 07, 2012 at 18:12:11 +0200, Lukas Hejtmanek wrote:
+> well, ok, thanks for anwsers. However, it seems that while NFS server's name
+> is server-home.domain.com (floating name), and true hostname is
+> server1.domain.com, it does not matter that callback is authenticated with
+> server1.domain.com instead of server-home.domain.com.
+> 
+> Is this expected? Or is it a bug?
+
+It does matter, callback client name must match the name NFS client uses
+for server. 
+
+We don't see any hard failures because NFS protocol does
+not depend on working callback RPCs, but no delegations are granted
+(we had nfs-kernel-server package installed on clients before which masked
+the bug).
+
+> I would suppose that client rejects authentication of the backchannel from 
+> server that sends nfs/server1.domain.com KRB principal instead of expected
+> nfs/server-home.domain.com. 
+> 
+> The client mounts server-home.domain.com with sec=krb5i. Using debugs I can
+> see that the server picks up nfs/server1.domain.com key from /etc/krb5.keytab
+> and the client seems to be happy with that (context is established).
+
+Server name is checked later, when the context is used for actual callback RPC.
+
+Best regards,
+
+Zdenek Salvet                                              salvet@ics.muni.cz 
+Institute of Computer Science of Masaryk University, Brno, Czech Republic
+and CESNET, z.s.p.o., Prague, Czech Republic
+Phone: ++420-549 49 6534                           Fax: ++420-541 212 747
+----------------------------------------------------------------------------
+      Teamwork is essential -- it allows you to blame someone else.
+
