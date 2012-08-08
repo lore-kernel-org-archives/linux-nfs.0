@@ -1,44 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:48947 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:59398 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753829Ab2HXOQN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Aug 2012 10:16:13 -0400
-From: Sachin Prabhu <sprabhu@redhat.com>
-To: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Cc: Trond Myklebust <trond.myklebust@netapp.com>
-Subject: [PATCH] Avoid array overflow in __nfs4_get_acl_uncached
-Date: Fri, 24 Aug 2012 15:16:08 +0100
-Message-Id: <1345817768-23511-1-git-send-email-sprabhu@redhat.com>
+	id S1753325Ab2HHToD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Aug 2012 15:44:03 -0400
+Date: Wed, 8 Aug 2012 15:43:59 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Simo Sorce <simo@redhat.com>,
+        "bfields@redhat.com" <bfields@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/4] Add support for new RPCSEC_GSS upcall mechanism
+ for nfsd
+Message-ID: <20120808194359.GB942@fieldses.org>
+References: <1341958332.17428.12.camel@lade.trondhjem.org>
+ <1341959112.17428.19.camel@lade.trondhjem.org>
+ <20120710223818.GA6720@fieldses.org>
+ <1341961118.17428.29.camel@lade.trondhjem.org>
+ <20120711170331.GE11432@fieldses.org>
+ <20120711172714.GA13610@fieldses.org>
+ <1342028948.25375.45.camel@lade.trondhjem.org>
+ <20120712221058.GC24162@fieldses.org>
+ <20120713154302.GA32660@fieldses.org>
+ <20120808193659.GA942@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120808193659.GA942@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This fixes a bug introduced by commit
-5a00689930ab975fdd1b37b034475017e460cf2a
-The patch adds an extra page to npages to hold the bitmap returned by
-the server.
+On Wed, Aug 08, 2012 at 03:36:59PM -0400, J. Bruce Fields wrote:
+> However, one hangup: figuring out how to switch on gssproxy
+> per-container isn't very interesting until gssproxy can actually work
+> per-container.  I'd *really* like to get the unix socket stuff worked
+> out first.
 
-Bruce Fields pointed out that the changes introduced by the patch will
-cause the array npages to overflow if a buffer of size greater than or
-equal to XATTR_SIZE_MAX is passed to __nfs4_get_acl_uncached()
+Stanislav, what's left to be done to get per-container unix sockets?
 
-Signed-off-by: Sachin Prabhu <sprabhu@redhat.com>
----
- fs/nfs/nfs4proc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6352741..86333b8 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3768,7 +3768,7 @@ out:
-  */
- static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t buflen)
- {
--	struct page *pages[NFS4ACL_MAXPAGES] = {NULL, };
-+	struct page *pages[NFS4ACL_MAXPAGES+1] = {NULL, };
- 	struct nfs_getaclargs args = {
- 		.fh = NFS_FH(inode),
- 		.acl_pages = pages,
--- 
-1.7.11.4
-
+--b.
