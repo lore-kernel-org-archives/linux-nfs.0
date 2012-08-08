@@ -1,134 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:41221 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753192Ab2HNAmg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Aug 2012 20:42:36 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Peng Tao <bergwolf@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "bharrosh@panasas.com" <bharrosh@panasas.com>,
-        Peng Tao <tao.peng@emc.com>
-Subject: Re: [PATCH-v2 2/3] NFS41: send real write size in layoutget
-Date: Tue, 14 Aug 2012 00:42:34 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA93A0828@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1344868776-1739-1-git-send-email-bergwolf@gmail.com>
-	 <1344868776-1739-2-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1344868776-1739-2-git-send-email-bergwolf@gmail.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-wi0-f172.google.com ([209.85.212.172]:44766 "EHLO
+	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1030692Ab2HHTpb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Aug 2012 15:45:31 -0400
+Received: by wibhm11 with SMTP id hm11so4207523wib.1
+        for <linux-nfs@vger.kernel.org>; Wed, 08 Aug 2012 12:45:30 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <1344450818.8925.17.camel@lade.trondhjem.org>
+References: <CAGue13pvN_-wBqQVoNdkLO+pexF1hrs+d3exPCCSzOO8ZD4WRw@mail.gmail.com>
+	<1344447279.8925.5.camel@lade.trondhjem.org>
+	<CADnza47D=j2jh+AHR9vs36HqpCmcES02v4FkDNufepdS3c-CDQ@mail.gmail.com>
+	<1344449028.8925.12.camel@lade.trondhjem.org>
+	<CADnza471-DQ2C6U3pxw=Hj+WBBOFAJphC-gWGE7hQ=k3E3bn0Q@mail.gmail.com>
+	<1344450818.8925.17.camel@lade.trondhjem.org>
+Date: Wed, 8 Aug 2012 15:45:30 -0400
+Message-ID: <CADnza45v28X0PohO66FXfxTJtUmRn+a7AkrrsSD5gPG3wUAi0Q@mail.gmail.com>
+Subject: Re: client kernel panic on server restart
+From: Fred Isaman <faisaman4@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "Isaman, Fred" <Fred.Isaman@netapp.com>,
+        "tigran.mkrtchyan@desy.de" <tigran.mkrtchyan@desy.de>,
+        Boaz Harrosh <bharrosh@panasas.com>, Benny Halevy <bhalevy@tonian.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA4LTEzIGF0IDIyOjM5ICswODAwLCBQZW5nIFRhbyB3cm90ZToNCj4gRm9y
-IGJ1ZmZlciB3cml0ZSwgdXNlIHBvbGljeSBiYXNlZCBtZWNoYW5pc20gdG8gZGV0ZXJtaW5lIGxh
-eW91dGdldCBzaXplLg0KPiBDdXJyZW50bHkgZmlsZXMgdXNlIHdob2xlIGZpbGUgbGF5b3V0LCBv
-YmplY3RzIHVzZSBvZmZzZXQtdG8taXNpemUsIGFuZA0KPiBibG9ja3Mgc2VhcmNoIG5leHQgaG9s
-ZSBpbiBpbm9kZSBtYXBwaW5nIGFuZCB1c2Ugb2Zmc2V0LXRvLWhvbGUuDQo+IA0KPiBGb3IgZGly
-ZWN0IHdyaXRlLCBqdXN0IHVzZSBkcmVxLT5ieXRlc19sZWZ0Lg0KPiANCj4gU2lnbmVkLW9mZi1i
-eTogUGVuZyBUYW8gPHRhby5wZW5nQGVtYy5jb20+DQo+IC0tLQ0KPiAgZnMvbmZzL2Jsb2NrbGF5
-b3V0L2Jsb2NrbGF5b3V0LmMgfCAgICAxICsNCj4gIGZzL25mcy9kaXJlY3QuYyAgICAgICAgICAg
-ICAgICAgIHwgICAgNyArKysrKw0KPiAgZnMvbmZzL2ludGVybmFsLmggICAgICAgICAgICAgICAg
-fCAgICAxICsNCj4gIGZzL25mcy9uZnM0ZmlsZWxheW91dC5jICAgICAgICAgIHwgICAgMSArDQo+
-ICBmcy9uZnMvb2JqbGF5b3V0L29iamlvX29zZC5jICAgICB8ICAgIDMgKy0NCj4gIGZzL25mcy9w
-bmZzLmMgICAgICAgICAgICAgICAgICAgIHwgICA1MSArKysrKysrKysrKysrKysrKysrKysrKysr
-KysrKysrKysrKysrLQ0KPiAgZnMvbmZzL3BuZnMuaCAgICAgICAgICAgICAgICAgICAgfCAgIDEz
-ICsrKysrKysrKw0KPiAgNyBmaWxlcyBjaGFuZ2VkLCA3NSBpbnNlcnRpb25zKCspLCAyIGRlbGV0
-aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91
-dC5jIGIvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMNCj4gaW5kZXggMTA5Mzk2OC4u
-YzQyMTVjZiAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMN
-Cj4gKysrIGIvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMNCj4gQEAgLTEyNDAsNiAr
-MTI0MCw3IEBAIHN0YXRpYyBjb25zdCBzdHJ1Y3QgbmZzX3BhZ2Vpb19vcHMgYmxfcGdfd3JpdGVf
-b3BzID0gew0KPiAgc3RhdGljIHN0cnVjdCBwbmZzX2xheW91dGRyaXZlcl90eXBlIGJsb2NrbGF5
-b3V0X3R5cGUgPSB7DQo+ICAJLmlkCQkJCT0gTEFZT1VUX0JMT0NLX1ZPTFVNRSwNCj4gIAkubmFt
-ZQkJCQk9ICJMQVlPVVRfQkxPQ0tfVk9MVU1FIiwNCj4gKwkuZmxhZ3MJCQkJPSBQTkZTX0xBWU9V
-VEdFVF9TRUFSQ0hfSE9MRSwNCj4gIAkucmVhZF9wYWdlbGlzdAkJCT0gYmxfcmVhZF9wYWdlbGlz
-dCwNCj4gIAkud3JpdGVfcGFnZWxpc3QJCQk9IGJsX3dyaXRlX3BhZ2VsaXN0LA0KPiAgCS5hbGxv
-Y19sYXlvdXRfaGRyCQk9IGJsX2FsbG9jX2xheW91dF9oZHIsDQo+IGRpZmYgLS1naXQgYS9mcy9u
-ZnMvZGlyZWN0LmMgYi9mcy9uZnMvZGlyZWN0LmMNCj4gaW5kZXggYzM5Zjc3NS4uYzE4OTlkZCAx
-MDA2NDQNCj4gLS0tIGEvZnMvbmZzL2RpcmVjdC5jDQo+ICsrKyBiL2ZzL25mcy9kaXJlY3QuYw0K
-PiBAQCAtNDYsNiArNDYsNyBAQA0KPiAgI2luY2x1ZGUgPGxpbnV4L2tyZWYuaD4NCj4gICNpbmNs
-dWRlIDxsaW51eC9zbGFiLmg+DQo+ICAjaW5jbHVkZSA8bGludXgvdGFza19pb19hY2NvdW50aW5n
-X29wcy5oPg0KPiArI2luY2x1ZGUgPGxpbnV4L21vZHVsZS5oPg0KPiAgDQo+ICAjaW5jbHVkZSA8
-bGludXgvbmZzX2ZzLmg+DQo+ICAjaW5jbHVkZSA8bGludXgvbmZzX3BhZ2UuaD4NCj4gQEAgLTE5
-MSw2ICsxOTIsMTIgQEAgc3RhdGljIHZvaWQgbmZzX2RpcmVjdF9yZXFfcmVsZWFzZShzdHJ1Y3Qg
-bmZzX2RpcmVjdF9yZXEgKmRyZXEpDQo+ICAJa3JlZl9wdXQoJmRyZXEtPmtyZWYsIG5mc19kaXJl
-Y3RfcmVxX2ZyZWUpOw0KPiAgfQ0KPiAgDQo+ICtzc2l6ZV90IG5mc19kcmVxX2J5dGVzX2xlZnQo
-c3RydWN0IG5mc19kaXJlY3RfcmVxICpkcmVxKQ0KPiArew0KPiArCXJldHVybiBkcmVxLT5ieXRl
-c19sZWZ0Ow0KPiArfQ0KPiArRVhQT1JUX1NZTUJPTF9HUEwobmZzX2RyZXFfYnl0ZXNfbGVmdCk7
-DQo+ICsNCj4gIC8qDQo+ICAgKiBDb2xsZWN0cyBhbmQgcmV0dXJucyB0aGUgZmluYWwgZXJyb3Ig
-dmFsdWUvYnl0ZS1jb3VudC4NCj4gICAqLw0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2ludGVybmFs
-LmggYi9mcy9uZnMvaW50ZXJuYWwuaA0KPiBpbmRleCAzMWZkYjAzLi5lNjhkMzI5IDEwMDY0NA0K
-PiAtLS0gYS9mcy9uZnMvaW50ZXJuYWwuaA0KPiArKysgYi9mcy9uZnMvaW50ZXJuYWwuaA0KPiBA
-QCAtNDY0LDYgKzQ2NCw3IEBAIHN0YXRpYyBpbmxpbmUgdm9pZCBuZnNfaW5vZGVfZGlvX3dhaXQo
-c3RydWN0IGlub2RlICppbm9kZSkNCj4gIHsNCj4gIAlpbm9kZV9kaW9fd2FpdChpbm9kZSk7DQo+
-ICB9DQo+ICtleHRlcm4gc3NpemVfdCBuZnNfZHJlcV9ieXRlc19sZWZ0KHN0cnVjdCBuZnNfZGly
-ZWN0X3JlcSAqZHJlcSk7DQo+ICANCj4gIC8qIG5mczRwcm9jLmMgKi8NCj4gIGV4dGVybiB2b2lk
-IF9fbmZzNF9yZWFkX2RvbmVfY2Ioc3RydWN0IG5mc19yZWFkX2RhdGEgKik7DQo+IGRpZmYgLS1n
-aXQgYS9mcy9uZnMvbmZzNGZpbGVsYXlvdXQuYyBiL2ZzL25mcy9uZnM0ZmlsZWxheW91dC5jDQo+
-IGluZGV4IDUzZjk0ZDkuLmY4MWVkZDcgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9uZnM0ZmlsZWxh
-eW91dC5jDQo+ICsrKyBiL2ZzL25mcy9uZnM0ZmlsZWxheW91dC5jDQo+IEBAIC0xMjg5LDYgKzEy
-ODksNyBAQCBmaWxlbGF5b3V0X2dldF9kc19pbmZvKHN0cnVjdCBpbm9kZSAqaW5vZGUpDQo+ICBz
-dGF0aWMgc3RydWN0IHBuZnNfbGF5b3V0ZHJpdmVyX3R5cGUgZmlsZWxheW91dF90eXBlID0gew0K
-PiAgCS5pZAkJCT0gTEFZT1VUX05GU1Y0XzFfRklMRVMsDQo+ICAJLm5hbWUJCQk9ICJMQVlPVVRf
-TkZTVjRfMV9GSUxFUyIsDQo+ICsJLmZsYWdzCQkJPSBQTkZTX0xBWU9VVEdFVF9BTExfRklMRSwN
-Cj4gIAkub3duZXIJCQk9IFRISVNfTU9EVUxFLA0KPiAgCS5hbGxvY19sYXlvdXRfaGRyCT0gZmls
-ZWxheW91dF9hbGxvY19sYXlvdXRfaGRyLA0KPiAgCS5mcmVlX2xheW91dF9oZHIJPSBmaWxlbGF5
-b3V0X2ZyZWVfbGF5b3V0X2hkciwNCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9vYmpsYXlvdXQvb2Jq
-aW9fb3NkLmMgYi9mcy9uZnMvb2JqbGF5b3V0L29iamlvX29zZC5jDQo+IGluZGV4IGVhNmQxMTEu
-LmU0ODdmYjggMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9vYmpsYXlvdXQvb2JqaW9fb3NkLmMNCj4g
-KysrIGIvZnMvbmZzL29iamxheW91dC9vYmppb19vc2QuYw0KPiBAQCAtNjM4LDcgKzYzOCw4IEBA
-IHN0YXRpYyBzdHJ1Y3QgcG5mc19sYXlvdXRkcml2ZXJfdHlwZSBvYmpsYXlvdXRfdHlwZSA9IHsN
-Cj4gIAkuaWQgPSBMQVlPVVRfT1NEMl9PQkpFQ1RTLA0KPiAgCS5uYW1lID0gIkxBWU9VVF9PU0Qy
-X09CSkVDVFMiLA0KPiAgCS5mbGFncyAgICAgICAgICAgICAgICAgICA9IFBORlNfTEFZT1VUUkVU
-X09OX1NFVEFUVFIgfA0KPiAtCQkJCSAgIFBORlNfTEFZT1VUUkVUX09OX0VSUk9SLA0KPiArCQkJ
-CSAgIFBORlNfTEFZT1VUUkVUX09OX0VSUk9SIHwNCj4gKwkJCQkgICBQTkZTX0xBWU9VVEdFVF9J
-U0laRSwNCj4gIA0KPiAgCS5hbGxvY19sYXlvdXRfaGRyICAgICAgICA9IG9iamxheW91dF9hbGxv
-Y19sYXlvdXRfaGRyLA0KPiAgCS5mcmVlX2xheW91dF9oZHIgICAgICAgICA9IG9iamxheW91dF9m
-cmVlX2xheW91dF9oZHIsDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvcG5mcy5jIGIvZnMvbmZzL3Bu
-ZnMuYw0KPiBpbmRleCAyZTAwZmVhLi5kMWRhMjNhIDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvcG5m
-cy5jDQo+ICsrKyBiL2ZzL25mcy9wbmZzLmMNCj4gQEAgLTI5LDYgKzI5LDcgQEANCj4gIA0KPiAg
-I2luY2x1ZGUgPGxpbnV4L25mc19mcy5oPg0KPiAgI2luY2x1ZGUgPGxpbnV4L25mc19wYWdlLmg+
-DQo+ICsjaW5jbHVkZSA8bGludXgvcGFnZXZlYy5oPg0KPiAgI2luY2x1ZGUgPGxpbnV4L21vZHVs
-ZS5oPg0KPiAgI2luY2x1ZGUgImludGVybmFsLmgiDQo+ICAjaW5jbHVkZSAicG5mcy5oIg0KPiBA
-QCAtMTE3MiwxOSArMTE3Myw2NyBAQCBwbmZzX2dlbmVyaWNfcGdfaW5pdF9yZWFkKHN0cnVjdCBu
-ZnNfcGFnZWlvX2Rlc2NyaXB0b3IgKnBnaW8sIHN0cnVjdCBuZnNfcGFnZSAqcg0KPiAgfQ0KPiAg
-RVhQT1JUX1NZTUJPTF9HUEwocG5mc19nZW5lcmljX3BnX2luaXRfcmVhZCk7DQo+ICANCj4gKy8q
-DQo+ICsgKiBSZXR1cm4gdGhlIG51bWJlciBvZiBjb250aWd1b3VzIGJ5dGVzIGZvciBhIGdpdmVu
-IGlub2RlDQo+ICsgKiBzdGFydGluZyBhdCBwYWdlIGZyYW1lIGlkeC4NCj4gKyAqLw0KPiArc3Rh
-dGljIHU2NCBwbmZzX251bV9jb250X2J5dGVzKHN0cnVjdCBpbm9kZSAqaW5vZGUsIHBnb2ZmX3Qg
-aWR4KQ0KPiArew0KPiArCXN0cnVjdCBhZGRyZXNzX3NwYWNlICptYXBwaW5nID0gaW5vZGUtPmlf
-bWFwcGluZzsNCj4gKwlwZ29mZl90IGVuZDsNCj4gKw0KPiArCS8qIE9wdGltaXplIGNvbW1vbiBj
-YXNlIHRoYXQgd3JpdGVzIGZyb20gMCB0byBlbmQgb2YgZmlsZSAqLw0KPiArCWVuZCA9IERJVl9S
-T1VORF9VUChpX3NpemVfcmVhZChpbm9kZSksIFBBR0VfQ0FDSEVfU0laRSk7DQo+ICsJaWYgKGVu
-ZCAhPSBORlNfSShpbm9kZSktPm5wYWdlcykgew0KPiArCQlyY3VfcmVhZF9sb2NrKCk7DQo+ICsJ
-CWVuZCA9IHJhZGl4X3RyZWVfbmV4dF9ob2xlKCZtYXBwaW5nLT5wYWdlX3RyZWUsIGlkeCArIDEs
-IFVMT05HX01BWCk7DQo+ICsJCXJjdV9yZWFkX3VubG9jaygpOw0KPiArCX0NCj4gKw0KPiArCWlm
-ICghZW5kKQ0KPiArCQlyZXR1cm4gaV9zaXplX3JlYWQoaW5vZGUpIC0gKGlkeCA8PCBQQUdFX0NB
-Q0hFX1NISUZUKTsNCj4gKwllbHNlDQo+ICsJCXJldHVybiAoZW5kIC0gaWR4KSA8PCBQQUdFX0NB
-Q0hFX1NISUZUOw0KPiArfQ0KPiArDQo+ICB2b2lkDQo+ICBwbmZzX2dlbmVyaWNfcGdfaW5pdF93
-cml0ZShzdHJ1Y3QgbmZzX3BhZ2Vpb19kZXNjcmlwdG9yICpwZ2lvLCBzdHJ1Y3QgbmZzX3BhZ2Ug
-KnJlcSkNCj4gIHsNCj4gKwl1NjQgd2Jfc2l6ZTsNCj4gKwl1bnNpZ25lZCBwb2xpY3kgPSBORlNf
-U0VSVkVSKHBnaW8tPnBnX2lub2RlKS0+cG5mc19jdXJyX2xkLT5mbGFncyAmDQo+ICsJCQkJCQlQ
-TkZTX0xBWU9VVEdFVF9QT0xJQ1lfTUFTSzsNCj4gKw0KPiAgCUJVR19PTihwZ2lvLT5wZ19sc2Vn
-ICE9IE5VTEwpOw0KPiAgDQo+ICAJaWYgKHJlcS0+d2Jfb2Zmc2V0ICE9IHJlcS0+d2JfcGdiYXNl
-KSB7DQo+ICAJCW5mc19wYWdlaW9fcmVzZXRfd3JpdGVfbWRzKHBnaW8pOw0KPiAgCQlyZXR1cm47
-DQo+ICAJfQ0KPiArDQo+ICsJaWYgKHBnaW8tPnBnX2RyZXEgPT0gTlVMTCkgew0KPiArCQlzd2l0
-Y2gocG9saWN5KSB7DQo+ICsJCWNhc2UgUE5GU19MQVlPVVRHRVRfSVNJWkU6DQo+ICsJCQl3Yl9z
-aXplID0gaV9zaXplX3JlYWQocGdpby0+cGdfaW5vZGUpIC0gcmVxX29mZnNldChyZXEpOw0KPiAr
-CQkJYnJlYWs7DQo+ICsJCWNhc2UgUE5GU19MQVlPVVRHRVRfU0VBUkNIX0hPTEU6DQo+ICsJCQl3
-Yl9zaXplID0gcG5mc19udW1fY29udF9ieXRlcyhwZ2lvLT5wZ19pbm9kZSwgcmVxLT53Yl9pbmRl
-eCk7DQo+ICsJCQlicmVhazsNCj4gKwkJY2FzZSBQTkZTX0xBWU9VVEdFVF9BTExfRklMRToNCj4g
-KwkJCXdiX3NpemUgPSBORlM0X01BWF9VSU5UNjQ7DQo+ICsJCQlicmVhazsNCj4gKwkJZGVmYXVs
-dDoNCj4gKwkJCVdBUk5fT05DRSgxLCAiaW52YWxpZCBsYXlvdXRnZXQgcG9saWN5ICV1IiwgcG9s
-aWN5KTsNCj4gKwkJCXdiX3NpemUgPSBQQUdFX0NBQ0hFX1NJWkU7DQo+ICsJCQlicmVhazsNCj4g
-KwkJfQ0KPiArCX0gZWxzZSB7DQo+ICsJCXdiX3NpemUgPSBuZnNfZHJlcV9ieXRlc19sZWZ0KHBn
-aW8tPnBnX2RyZXEpOw0KPiArCX0NCj4gKw0KDQpQbGVhc2UganVzdCBjYWxjdWxhdGUgdGhlIGNv
-cnJlY3QgdmFsdWUgZm9yIHdiX3NpemUgaW5zaWRlDQpibF9wZ19pbml0X3dyaXRlKCksIGFuZCBw
-YXNzIGl0IGFzIGFuIGV4dHJhIHBhcmFtZXRlciB0bw0KcG5mc19nZW5lcmljX3BnX2luaXRfd3Jp
-dGUoKS4NCg0KVGhlbiBhZGQgcG5mc19wZ19pbml0X29iamVjdF93cml0ZSBmb3Igb2JqZWN0cywg
-dGhhdCBjYWxscyB0aGUgbW9kaWZpZWQNCnBuZnNfZ2VuZXJpY19wZ19pbml0X3dyaXRlKCkgd2l0
-aCB0aGUgUE5GU19MQVlPVVRHRVRfSVNJWkUgdmFsdWUuDQoNCkZpbGVzIGRvbid0IGNhbGwgdGhp
-cyBmdW5jdGlvbiwgc28gYWRkaW5nIHRoZSBQTkZTX0xBWU9VVEdFVF9BTExfRklMRQ0KaXNuJ3Qg
-bmVlZGVkLg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5l
-cg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
-DQo=
+On Wed, Aug 8, 2012 at 2:33 PM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Wed, 2012-08-08 at 14:15 -0400, Fred Isaman wrote:
+>> On Wed, Aug 8, 2012 at 2:03 PM, Myklebust, Trond
+>> <Trond.Myklebust@netapp.com> wrote:
+>> > On Wed, 2012-08-08 at 13:51 -0400, Fred Isaman wrote:
+>> >> On Wed, Aug 8, 2012 at 1:34 PM, Myklebust, Trond
+>> >> <Trond.Myklebust@netapp.com> wrote:
+>> >> > On Wed, 2012-08-08 at 18:48 +0200, Tigran Mkrtchyan wrote:
+>> >> >> Hi,
+>> >> >>
+>> >> >> It's quite some time without kernel panic reports from me ....
+>> >> >>
+>> >> >> Observer on MDS and DS shutdown during IO.
+>> >> >>
+>> >> >> This is with  3.5.0-2.fc17.x86_64 kernel. Line in code:
+>> >> >>
+>> >> >> nfs4proc.c:6252 :   BUG_ON(!list_empty(&lo->plh_segs));
+>> >> >>
+>> >> >
+>> >> > If the server doesn't return a stateid, then that is supposed to
+>> >> > indicate that it thinks that it doesn't hold any more layout segments
+>> >> > for this file.
+>> >> > To me, that indicates that we should be calling
+>> >> > mark_matching_lsegs_invalid() rather than Oopsing.
+>> >> >
+>> >> > Any dissenting voices from the pNFS crowd?
+>> >> >
+>> >>
+>> >> But this implies that the client thinks it has a layout which the
+>> >> server does not believe it has, which seems to me to imply an earlier
+>> >> bug.  If you change to mark_matching_lsegs_invalid, I would suggest
+>> >> keeping a WARN_ON.
+>> >
+>> > We could possibly add a printk, but I don't see what value a WARN_ON
+>> > would have here: how is a stack dump going to be useful in debugging
+>> > this issue?
+>> >
+>> > Also, don't we sometimes expect this sort of thing to happen on
+>> > occasion? What if our layoutreturn ends up racing with the layout recall
+>> > following a DS shutdown?
+>> >
+>>
+>> Actually, I forgot about the whole LAYUTRETURN as fencing possibility.
+>>  In that case, you can pretty easily hit the BUG_ON.  Though I claim
+>> that, while calling mark_matching_lsegs_invalid doesn't hurt, it
+>> should be unnecessary.
+>
+> Right... So maybe just a dprintk() for debugging purposes?
+>
+> BTW: Why shouldn't we do the mark_matching_lsegs_invalid? If not, then
+> we will need either to do an extra layoutreturn or fail a read/write
+> attempt to the DS in order to figure out that the stateid is now
+> invalid.
+>
+
+
+They should have already been marked as invalid, and are just waiting
+on io to finish for release.
+
+Fred
