@@ -1,67 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:64571 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:45293 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751531Ab2HQAOC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Aug 2012 20:14:02 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Shai Lazmi <shai.lazmi@qlogic.com>
-CC: William Dauchy <wdauchy@gmail.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+	id S932885Ab2HHThE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Aug 2012 15:37:04 -0400
+Date: Wed, 8 Aug 2012 15:36:59 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Simo Sorce <simo@redhat.com>, "bfields@redhat.com" <bfields@redhat.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFS: Clear key construction data if the idmap
- upcall fails
-Date: Fri, 17 Aug 2012 00:13:59 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA93B5646@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1345148622-10845-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E640957F@AVEXMB2.qlogic.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B542B@SACEXCMBX04-PRD.hq.netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E6409585@AVEXMB2.qlogic.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B54EC@SACEXCMBX04-PRD.hq.netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E640958D@AVEXMB2.qlogic.org>
-In-Reply-To: <21641D3714F5AF449DC483E699E1124E86E640958D@AVEXMB2.qlogic.org>
-Content-Type: text/plain; charset="utf-8"
+Subject: Re: [PATCH 0/4] Add support for new RPCSEC_GSS upcall mechanism
+ for nfsd
+Message-ID: <20120808193659.GA942@fieldses.org>
+References: <20120710215618.GC6038@fieldses.org>
+ <1341958332.17428.12.camel@lade.trondhjem.org>
+ <1341959112.17428.19.camel@lade.trondhjem.org>
+ <20120710223818.GA6720@fieldses.org>
+ <1341961118.17428.29.camel@lade.trondhjem.org>
+ <20120711170331.GE11432@fieldses.org>
+ <20120711172714.GA13610@fieldses.org>
+ <1342028948.25375.45.camel@lade.trondhjem.org>
+ <20120712221058.GC24162@fieldses.org>
+ <20120713154302.GA32660@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120713154302.GA32660@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA4LTE2IGF0IDE3OjA3IC0wNzAwLCBTaGFpIExhem1pIHdyb3RlOg0KPiBT
-b3JyeSAtIGNvbXBhbnkncyBwb2xpY3kgLi4uDQo+IFdoYXQgaWRtYXAgdmVyc2lvbiB3YXMgdGhp
-cyBwYXRjaCB1c2VkIGFnYWluc3Q/IFRoZSBvbmUgSSBoYXZlIChiNzAxMzU4Yykgc2VlbXMgdG8g
-YmUgYSBiaXQgZGlmZmVyZW50IChJIHVzZWQgbGF0ZXN0IHB1bGwgY29tbWl0IGRkZjM0M2Y2MzVm
-ZTQ0NDBjYWQ1MjhlMTJmOTZmMjhiZDUwYWEwOTkpLCBoZW5jZSB0aGUgcGF0Y2ggZmFpbHMgYWdh
-aW4NCg0KSXQgd29ya3MgZmluZSBmb3IgbWUgYWdhaW5zdCBjb21taXQgZGRmMzQzZjYzNWZlNDQ0
-MGNhZDUyOGUxMmY5NmYyOGJkNTBhYTA5OToNCg0KW3Ryb25kbXlAbGFkZSBsaW51eC1uZnNdJCBn
-aXQgYnJhbmNoIHRlc3QtYXBwbHkgZGRmMzQzZjYzNWZlNDQ0MGNhZDUyOGUxMmY5NmYyOGJkNTBh
-YTA5OQ0KW3Ryb25kbXlAbGFkZSBsaW51eC1uZnNdJCBnaXQgY2hlY2tvdXQgdGVzdC1hcHBseSAN
-ClN3aXRjaGVkIHRvIGJyYW5jaCAndGVzdC1hcHBseScNClt0cm9uZG15QGxhZGUgbGludXgtbmZz
-XSQgZ2l0IGFtIH4vRGVza3RvcC9mb3Jfc2hhaS8wMDAxLU5GUy1DbGVhci1rZXktY29uc3RydWN0
-aW9uLWRhdGEtaWYtdGhlLWlkbWFwLXVwY2FsbC0ucGF0Y2gNCkFwcGx5aW5nOiBORlM6IENsZWFy
-IGtleSBjb25zdHJ1Y3Rpb24gZGF0YSBpZiB0aGUgaWRtYXAgdXBjYWxsIGZhaWxzDQpbdHJvbmRt
-eUBsYWRlIGxpbnV4LW5mc10kIGdpdCBhbSB+L0Rlc2t0b3AvZm9yX3NoYWkvMDAwMi1ORlMtcmV0
-dXJuLUVOT0tFWS13aGVuLXRoZS11cGNhbGwtZmFpbHMtdG8tbWFwLXRoZS1uLnBhdGNoDQpBcHBs
-eWluZzogTkZTOiByZXR1cm4gLUVOT0tFWSB3aGVuIHRoZSB1cGNhbGwgZmFpbHMgdG8gbWFwIHRo
-ZSBuYW1lDQoNCldoYXQgZXJyb3IgbWVzc2FnZXMgYXJlIHlvdSBzZWVpbmc/DQoNCkNoZWVycw0K
-ICBUcm9uZA0KDQo+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+IEZyb206IE15a2xlYnVz
-dCwgVHJvbmQgW21haWx0bzpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbV0NCj4gU2VudDogVGh1
-cnNkYXksIEF1Z3VzdCAxNiwgMjAxMiA0OjU3IFBNDQo+IFRvOiBTaGFpIExhem1pDQo+IENjOiBX
-aWxsaWFtIERhdWNoeTsgU2NodW1ha2VyLCBCcnlhbjsgbGludXgtbmZzQHZnZXIua2VybmVsLm9y
-Zw0KPiBTdWJqZWN0OiBSZTogW1BBVENIIDEvMl0gTkZTOiBDbGVhciBrZXkgY29uc3RydWN0aW9u
-IGRhdGEgaWYgdGhlIGlkbWFwIHVwY2FsbCBmYWlscw0KPiANCj4gT24gVGh1LCAyMDEyLTA4LTE2
-IGF0IDE2OjUwIC0wNzAwLCBTaGFpIExhem1pIHdyb3RlOg0KPiA+IE1TIG91dGxvb2sNCj4gDQo+
-IERvbid0IGV2ZXIgdXNlIExvb2tPdXQgZm9yIHBhdGNoZXMuIEl0cyAiSSBqdXN0IHJlZm9ybWF0
-dGVkIHlvdXIgZW1haWwiDQo+IHdvbmRlciBmZWF0dXJlIGJyZWFrcyBhbGwgdGhlIHdoaXRlc3Bh
-Y2UuDQo+IA0KPiA+IEJlc3QgdGhpbmcgaXMgdG8gYXR0YWNoZWQgdGhlIHBhdGNoDQo+IA0KPiBX
-ZSBkbyBub3Qgbm9ybWFsbHkgdXNlIGF0dGFjaG1lbnRzIG9uIHRoZSBtYWlsaW5nIGxpc3QgYmVj
-YXVzZSBpdCBtYWtlcyBpdCBpbXBvc3NpYmxlIHRvIGNvbW1lbnQgdGhlIHBhdGNoZXMgaW5saW5l
-LiBBaCB3ZWxsLCBoZXJlIGdvZXMuLi4NCj4gDQo+IC0tDQo+IFRyb25kIE15a2xlYnVzdA0KPiBM
-aW51eCBORlMgY2xpZW50IG1haW50YWluZXINCj4gDQo+IE5ldEFwcA0KPiBUcm9uZC5NeWtsZWJ1
-c3RAbmV0YXBwLmNvbQ0KPiB3d3cubmV0YXBwLmNvbQ0KPiANCj4gDQo+IFRoaXMgbWVzc2FnZSBh
-bmQgYW55IGF0dGFjaGVkIGRvY3VtZW50cyBjb250YWluIGluZm9ybWF0aW9uIGZyb20gUUxvZ2lj
-IENvcnBvcmF0aW9uIG9yIGl0cyB3aG9sbHktb3duZWQgc3Vic2lkaWFyaWVzIHRoYXQgbWF5IGJl
-IGNvbmZpZGVudGlhbC4gSWYgeW91IGFyZSBub3QgdGhlIGludGVuZGVkIHJlY2lwaWVudCwgeW91
-IG1heSBub3QgcmVhZCwgY29weSwgZGlzdHJpYnV0ZSwgb3IgdXNlIHRoaXMgaW5mb3JtYXRpb24u
-IElmIHlvdSBoYXZlIHJlY2VpdmVkIHRoaXMgdHJhbnNtaXNzaW9uIGluIGVycm9yLCBwbGVhc2Ug
-bm90aWZ5IHRoZSBzZW5kZXIgaW1tZWRpYXRlbHkgYnkgcmVwbHkgZS1tYWlsIGFuZCB0aGVuIGRl
-bGV0ZSB0aGlzIG1lc3NhZ2UuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xp
-ZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3
-Lm5ldGFwcC5jb20NCg0K
+On Fri, Jul 13, 2012 at 11:43:02AM -0400, J. Bruce Fields wrote:
+> On Thu, Jul 12, 2012 at 06:10:58PM -0400, J. Bruce Fields wrote:
+> > On Wed, Jul 11, 2012 at 05:49:09PM +0000, Myklebust, Trond wrote:
+> > > On Wed, 2012-07-11 at 13:27 -0400, J. Bruce Fields wrote:
+> > > > So, if the issue is: you want to be able to choose, in individual
+> > > > containers, which mechanism to use: whatever, we can probably make that
+> > > > work.
+> > > 
+> > > Please do then.
+> > > 
+> > > > If you're instead saying: it's not acceptable to use the gssproxy
+> > > > mechanism to authenticate v4.0 callbacks, the client must only ever use
+> > > > the existing mechanism: then I'd rather drop this entirely.  I don't
+> > > > want to merge an rpc server authentication upcall that's not acceptable
+> > > > for one of the rpc servers.
+> > > 
+> > > If it goes in, I want it to be optional so that it doesn't break working
+> > > setups. I also want upgrades/downgrades to be as painless as possible. 
+> > > 
+> > > See for instance the idmapper changes in 3.5 which are totally
+> > > transparent to the user: if the admin sets up /etc/request-key.conf to
+> > > use the new id_resolver, then that works, otherwise we just fall back to
+> > > using the old rpc.idmapd method. There are no module parameters etc
+> > > involved.
+> > 
+> > There's a module parameter here, but it's meant to be set by gssproxy to
+> > indicate it's listening for the new upcall.  In theory that should make
+> > the transition transparent.
+> > 
+> > However, if we need to make the choice per-namespace then we need to
+> > find some other mechanism (assuming there's no way to make module
+> > parameters per-namespace.)
+> 
+> So, perhaps something like: if the cache "channel" file for the
+> namespace associated with the current request isn't opened, then try the
+> new upcall.
+
+Looking at that a little longer: the channel file could be temporarily
+without any opens.  (For example, svcgssd could be restarted--not
+normal, but it's always been possible before.)  We probably could
+temporarily switch to the new upcall and then back without losing
+anything, but it all sounds complicated.
+
+The module parameter won't work any more, and obviously module init
+isn't the right time to set everything up.
+
+So my current thought is to give gssproxy some other way it can signal
+its presence using a write to a special file.  (Maybe a new file under
+nfsd/, or maybe a write of a special value to one of the existing cache
+files.)
+
+However, one hangup: figuring out how to switch on gssproxy
+per-container isn't very interesting until gssproxy can actually work
+per-container.  I'd *really* like to get the unix socket stuff worked
+out first.
+
+--b.
