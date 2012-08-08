@@ -1,84 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:35291 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1031293Ab2HIPts convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2012 11:49:48 -0400
-Received: by pbbrr13 with SMTP id rr13so1087695pbb.19
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Aug 2012 08:49:47 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9380987@SACEXCMBX04-PRD.hq.netapp.com>
-References: <CABpMAyL-B9Kqg8O4xxxtj0X8PF7fP4TM+NnLA_Ynhm-_3C6MUg@mail.gmail.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9380987@SACEXCMBX04-PRD.hq.netapp.com>
-From: Idan Kedar <idank@tonian.com>
-Date: Thu, 9 Aug 2012 18:49:07 +0300
-Message-ID: <CABpMAyKddCjhWe-LjFOJrikLnC+BJ7GsAMAvieh1rabDPiA=Ug@mail.gmail.com>
-Subject: Re: return layout on error, BUG/deadlock
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
-        Benny Halevy <bhalevy@tonian.com>, Peng Tao <bergwolf@gmail.com>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:61865 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758468Ab2HHNWD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Aug 2012 09:22:03 -0400
+Received: by yenl2 with SMTP id l2so730912yen.19
+        for <linux-nfs@vger.kernel.org>; Wed, 08 Aug 2012 06:22:03 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v5 11/19] vfs: fix linkat to retry on ESTALE errors
+Date: Wed,  8 Aug 2012 09:21:34 -0400
+Message-Id: <1344432102-22312-12-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
+References: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 9, 2012 at 5:05 PM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
->> -----Original Message-----
->> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
->> owner@vger.kernel.org] On Behalf Of Idan Kedar
->> Sent: Thursday, August 09, 2012 9:03 AM
->> To: Boaz Harrosh; NFS list
->> Cc: Benny Halevy
->> Subject: return layout on error, BUG/deadlock
->>
->> Hi,
->>
->> As a result of some experiments, I wanted to see what happens when I
->> inject an error (hard coded) to the object layout driver. the patch is at the
->> bottom of this mail. the reason I did this is because when I inject errors in my
->> modified version of the object layout driver, I get the same BUG Tigran
->> reported about yesterday:
->> nfs4proc.c:6252 :   BUG_ON(!list_empty(&lo->plh_segs));
->>
->> In my modified version (based on kernel 3.3), the bug seems to be that
->> pnfs_ld_write_done calls pnfs_return_layout in the error path, even if there
->> is in-flight I/O.
->
-> That is not a bug. It is an intentional change in order to allow the MDS to fence off the outstanding writes (if it can do so) before we retransmit them as write-through-MDS. Otherwise, you risk races between the outstanding writes-to-DS and the new writes-through-MDS.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c | 60 ++++++++++++++++++++++++++++++++++++++++--------------------
+ 1 file changed, 40 insertions(+), 20 deletions(-)
 
-to what change are you referring?
-
->
-> See the changelog in the patch that I sent to the list yesterday.
->
-
-I saw that, and if I'm not mistaken these races apply to object layout
-as well, and in any case they apply in my case. However, it is not
-easy to mess around with LAYOUTRETURN in object layout, and there have
-been several discussions on the issue. In one of these discussions
-Benny clarified that the object layout client must wait for all
-in-flight I/O to end.
-So for file layout it probably makes sense, but object layout (and if
-I understand correctly, block layout as well) something else needs to
-be done. I thought about sync wait when returning the layout on error,
-but according to Boaz it will cause deadlocks (Boaz - can you please
-elaborate?).
-And come to think of it, nfs4_proc_setattr also returns the layout
-when there may be I/O in-flight (correct me if i'm wrong). So I guess
-pnfs_return_layout should somehow solve this by itself by saying "if
-this is fencing (a flag which will be set for file layout only), go
-ahead, otherwise make the layout as 'needs to be returned' and when
-the lseg lists gets empty return the layout".
-Comments?
-
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
->
->
-
+diff --git a/fs/namei.c b/fs/namei.c
+index 9986117..d6e9754 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3565,6 +3565,8 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
+ 	struct path old_path, new_path;
+ 	int how = 0;
+ 	int error;
++	char *old, *new;
++	unsigned int try = 0;
+ 
+ 	if ((flags & ~(AT_SYMLINK_FOLLOW | AT_EMPTY_PATH)) != 0)
+ 		return -EINVAL;
+@@ -3582,30 +3584,48 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
+ 	if (flags & AT_SYMLINK_FOLLOW)
+ 		how |= LOOKUP_FOLLOW;
+ 
+-	error = user_path_at(olddfd, oldname, how, &old_path);
+-	if (error)
+-		return error;
++	old = getname_flags(oldname, how, NULL);
++	if (IS_ERR(old))
++		return PTR_ERR(old);
+ 
+-	new_dentry = user_path_create(newdfd, newname, &new_path, 0);
+-	error = PTR_ERR(new_dentry);
+-	if (IS_ERR(new_dentry))
+-		goto out;
++	new = getname(newname);
++	if (IS_ERR(new)) {
++		putname(old);
++		return PTR_ERR(new);
++	}
+ 
+-	error = -EXDEV;
+-	if (old_path.mnt != new_path.mnt)
+-		goto out_dput;
+-	error = may_linkat(&old_path);
+-	if (unlikely(error))
+-		goto out_dput;
+-	error = security_path_link(old_path.dentry, &new_path, new_dentry);
+-	if (error)
+-		goto out_dput;
+-	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry);
++	do {
++		error = kern_path_at(olddfd, old, how, &old_path);
++		if (error)
++			break;
++
++		new_dentry = kern_path_create(newdfd, new, &new_path, 0, try);
++		error = PTR_ERR(new_dentry);
++		if (IS_ERR(new_dentry)) {
++			path_put(&old_path);
++			break;
++		}
++
++		error = -EXDEV;
++		if (old_path.mnt != new_path.mnt)
++			goto out_dput;
++		error = may_linkat(&old_path);
++		if (unlikely(error))
++			goto out_dput;
++		error = security_path_link(old_path.dentry, &new_path,
++						new_dentry);
++		if (error)
++			goto out_dput;
++		error = vfs_link(old_path.dentry, new_path.dentry->d_inode,
++						new_dentry);
+ out_dput:
+-	done_path_create(&new_path, new_dentry);
++		done_path_create(&new_path, new_dentry);
+ out:
+-	path_put(&old_path);
+-
++		path_put(&old_path);
++		how |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
++	putname(new);
++	putname(old);
+ 	return error;
+ }
+ 
 -- 
-idank
+1.7.11.2
+
