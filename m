@@ -1,101 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:20483 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751863Ab2HNWrt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Aug 2012 18:47:49 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Dros Adamson <Weston.Adamson@netapp.com>
-Cc: Sachin Prabhu <sprabhu@redhat.com>,
-        Andy Adamson <William.Adamson@netapp.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH 1/3] NFSv4: Fix pointer arithmetic in decode_getacl
-Date: Tue, 14 Aug 2012 18:47:25 -0400
-Message-Id: <1344984447-17804-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:55556 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758445Ab2HHNV7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Aug 2012 09:21:59 -0400
+Received: by mail-gh0-f174.google.com with SMTP id r11so730334ghr.19
+        for <linux-nfs@vger.kernel.org>; Wed, 08 Aug 2012 06:21:59 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v5 08/19] vfs: fix mknodat to retry on ESTALE errors
+Date: Wed,  8 Aug 2012 09:21:31 -0400
+Message-Id: <1344432102-22312-9-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
+References: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Resetting the cursor xdr->p to a previous value is not a safe
-practice: if the xdr_stream has crossed out of the initial iovec,
-then a bunch of other fields would need to be reset too.
-
-Fix this issue by using xdr_enter_page() so that the buffer gets
-page aligned at the bitmap _before_ we decode it.
-
-Also fix the confusion of the ACL length with the page buffer length
-by not adding the base offset to the ACL length...
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: stable@vger.kernel.org
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/nfs4proc.c |  2 +-
- fs/nfs/nfs4xdr.c  | 21 +++++++--------------
- 2 files changed, 8 insertions(+), 15 deletions(-)
+ fs/namei.c | 51 +++++++++++++++++++++++++++++++++------------------
+ 1 file changed, 33 insertions(+), 18 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index c77d296..286ab70 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3819,7 +3819,7 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
- 	if (ret)
- 		goto out_free;
+diff --git a/fs/namei.c b/fs/namei.c
+index f04ba14..0a0397f 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3109,34 +3109,49 @@ SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, umode_t, mode,
+ 	struct dentry *dentry;
+ 	struct path path;
+ 	int error;
++	char *name;
++	unsigned int try = 0;
  
--	acl_len = res.acl_len - res.acl_data_offset;
-+	acl_len = res.acl_len;
- 	if (acl_len > args.acl_len)
- 		nfs4_write_cached_acl(inode, NULL, 0, acl_len);
- 	else
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index ca13483..54d3f5a 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -5049,18 +5049,14 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
- 	uint32_t attrlen,
- 		 bitmap[3] = {0};
- 	int status;
--	size_t page_len = xdr->buf->page_len;
+ 	error = may_mknod(mode);
+ 	if (error)
+ 		return error;
  
- 	res->acl_len = 0;
- 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
- 		goto out;
+-	dentry = user_path_create(dfd, filename, &path, 0);
+-	if (IS_ERR(dentry))
+-		return PTR_ERR(dentry);
++	name = getname(filename);
++	if (IS_ERR(name))
++		return PTR_ERR(name);
  
-+	xdr_enter_page(xdr, xdr->buf->page_len);
+-	if (!IS_POSIXACL(path.dentry->d_inode))
+-		mode &= ~current_umask();
+-	error = security_path_mknod(&path, dentry, mode, dev);
+-	if (error)
+-		goto out;
+-	switch (mode & S_IFMT) {
+-		case 0: case S_IFREG:
+-			error = vfs_create(path.dentry->d_inode,dentry,mode,true);
++	do {
++		dentry = kern_path_create(dfd, name, &path, false, try);
++		if (IS_ERR(dentry)) {
++			error = PTR_ERR(dentry);
+ 			break;
+-		case S_IFCHR: case S_IFBLK:
+-			error = vfs_mknod(path.dentry->d_inode,dentry,mode,
+-					new_decode_dev(dev));
++		}
 +
- 	bm_p = xdr->p;
--	res->acl_data_offset = be32_to_cpup(bm_p) + 2;
--	res->acl_data_offset <<= 2;
--	/* Check if the acl data starts beyond the allocated buffer */
--	if (res->acl_data_offset > page_len)
--		return -ERANGE;
- 
- 	if ((status = decode_attr_bitmap(xdr, bitmap)) != 0)
- 		goto out;
-@@ -5074,23 +5070,20 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
- 		/* The bitmap (xdr len + bitmaps) and the attr xdr len words
- 		 * are stored with the acl data to handle the problem of
- 		 * variable length bitmaps.*/
--		xdr->p = bm_p;
-+		res->acl_data_offset = (xdr->p - bm_p) << 2;
- 
- 		/* We ignore &savep and don't do consistency checks on
- 		 * the attr length.  Let userspace figure it out.... */
--		attrlen += res->acl_data_offset;
--		if (attrlen > page_len) {
-+		res->acl_len = attrlen;
-+		if (attrlen + res->acl_data_offset > xdr->buf->page_len) {
- 			if (res->acl_flags & NFS4_ACL_LEN_REQUEST) {
- 				/* getxattr interface called with a NULL buf */
--				res->acl_len = attrlen;
- 				goto out;
- 			}
--			dprintk("NFS: acl reply: attrlen %u > page_len %zu\n",
--					attrlen, page_len);
-+			dprintk("NFS: acl reply: attrlen %u > page_len %u\n",
-+					attrlen, xdr->buf->page_len);
- 			return -EINVAL;
- 		}
--		xdr_read_pages(xdr, attrlen);
--		res->acl_len = attrlen;
- 	} else
- 		status = -EOPNOTSUPP;
++		if (!IS_POSIXACL(path.dentry->d_inode))
++			mode &= ~current_umask();
++		error = security_path_mknod(&path, dentry, mode, dev);
++		if (error)
++			goto out;
++		switch (mode & S_IFMT) {
++		case 0:
++		case S_IFREG:
++			error = vfs_create(path.dentry->d_inode, dentry,
++					mode, true);
+ 			break;
+-		case S_IFIFO: case S_IFSOCK:
+-			error = vfs_mknod(path.dentry->d_inode,dentry,mode,0);
++		case S_IFCHR:
++		case S_IFBLK:
++			error = vfs_mknod(path.dentry->d_inode, dentry, mode,
++					new_decode_dev(dev));
+ 			break;
+-	}
++		case S_IFIFO:
++		case S_IFSOCK:
++			error = vfs_mknod(path.dentry->d_inode, dentry,
++					mode, 0);
++		}
+ out:
+-	done_path_create(&path, dentry);
++		done_path_create(&path, dentry);
++	} while (retry_estale(error, try++));
++	putname(name);
+ 	return error;
+ }
  
 -- 
 1.7.11.2
