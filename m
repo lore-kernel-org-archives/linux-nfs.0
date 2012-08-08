@@ -1,87 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:51113 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933042Ab2HXULa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Aug 2012 16:11:30 -0400
-Message-ID: <5037E00B.6090606@gmail.com>
-Date: Fri, 24 Aug 2012 22:11:55 +0200
-From: Sasha Levin <levinsasha928@gmail.com>
-MIME-Version: 1.0
-To: Tejun Heo <tj@kernel.org>
-CC: torvalds@linux-foundation.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
-        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive hashtable
-References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com> <1345602432-27673-2-git-send-email-levinsasha928@gmail.com> <20120822180138.GA19212@google.com> <50357840.5020201@gmail.com> <20120823200456.GD14962@google.com> <5037DA47.9010306@gmail.com> <20120824195941.GC21325@google.com>
-In-Reply-To: <20120824195941.GC21325@google.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:49060 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758506Ab2HHNWK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Aug 2012 09:22:10 -0400
+Received: by mail-yw0-f46.google.com with SMTP id m54so724917yhm.19
+        for <linux-nfs@vger.kernel.org>; Wed, 08 Aug 2012 06:22:09 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v5 16/19] vfs: have do_sys_truncate retry once on an ESTALE error
+Date: Wed,  8 Aug 2012 09:21:39 -0400
+Message-Id: <1344432102-22312-17-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
+References: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/24/2012 09:59 PM, Tejun Heo wrote:
-> Hello, Sasha.
-> 
-> On Fri, Aug 24, 2012 at 09:47:19PM +0200, Sasha Levin wrote:
->>> I think this is problematic.  It looks exactly like other existing
->>> DEFINE macros yet what its semantics is different.  I don't think
->>> that's a good idea.
->>
->> I can switch that to be DECLARE_HASHTABLE() if the issue is semantics.
-> 
-> If this implementation is about the common trivial case, why not just
-> have the usual DECLARE/DEFINE_HASHTABLE() combination?
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/open.c | 92 +++++++++++++++++++++++++++++++++++----------------------------
+ 1 file changed, 51 insertions(+), 41 deletions(-)
 
-When we add the dynamic non-resizable support, how would DEFINE_HASHTABLE() look?
-
->>> So, I think it would be best to keep this one as straight-forward and
->>> trivial as possible.  Helper macros to help its users are fine but
->>> let's please not go for full encapsulation.
->>
->> What if we cut off the dynamic allocated (but not resizable) hashtable out for
->> the moment, and focus on the most common statically allocated hashtable case?
->>
->> The benefits would be:
->>
->>  - Getting rid of all the _size() macros, which will make the amount of helpers
->> here reasonable.
->>  - Dynamically allocated hashtable can be easily added as a separate
->> implementation using the same API. We already have some of those in the kernel...
-> 
-> It seems we have enough of this static usage and solving the static
-> case first shouldn't hinder the dynamic (!resize) case later, so,
-> yeah, sounds good to me.
-> 
->>  - When that's ready, I feel it's a shame to lose full encapsulation just due to
->> hash_hashed().
-> 
-> I don't know.  If we stick to the static (or even !resize dymaic)
-> straight-forward hash - and we need something like that - I don't see
-> what the full encapsulation buys us other than a lot of trivial
-> wrappers.
-
-Which macros do you consider as trivial within the current API?
-
-Basically this entire thing could be reduced to DEFINE/DECLARE_HASHTABLE and
-get_bucket(), but it would make the life of anyone who wants a slightly
-different hashtable a hell.
-
-I think that right now the only real trivial wrapper is hash_hashed(), and I
-think it's a price worth paying to have a single hashtable API instead of
-fragmenting it when more implementations come along.
-
-Thanks,
-Sasha
-
-> 
-> Thanks.
-> 
+diff --git a/fs/open.c b/fs/open.c
+index 7babeed..0df0c5d 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -66,62 +66,72 @@ static long do_sys_truncate(const char __user *pathname, loff_t length)
+ 	struct path path;
+ 	struct inode *inode;
+ 	int error;
++	unsigned int lookup_flags = LOOKUP_FOLLOW;
++	unsigned int try = 0;
++	char *name;
+ 
+-	error = -EINVAL;
+ 	if (length < 0)	/* sorry, but loff_t says... */
+-		goto out;
++		return -EINVAL;
+ 
+-	error = user_path(pathname, &path);
+-	if (error)
+-		goto out;
+-	inode = path.dentry->d_inode;
++	name = getname_flags(pathname, lookup_flags, NULL);
++	if (IS_ERR(name))
++		return PTR_ERR(name);
+ 
+-	/* For directories it's -EISDIR, for other non-regulars - -EINVAL */
+-	error = -EISDIR;
+-	if (S_ISDIR(inode->i_mode))
+-		goto dput_and_out;
++	do {
++		error = kern_path_at(AT_FDCWD, name, lookup_flags, &path);
++		if (error)
++			break;
++		inode = path.dentry->d_inode;
+ 
+-	error = -EINVAL;
+-	if (!S_ISREG(inode->i_mode))
+-		goto dput_and_out;
++		/* For dirs, -EISDIR. For other non-regulars, -EINVAL */
++		error = -EISDIR;
++		if (S_ISDIR(inode->i_mode))
++			goto dput_and_out;
+ 
+-	error = mnt_want_write(path.mnt);
+-	if (error)
+-		goto dput_and_out;
++		error = -EINVAL;
++		if (!S_ISREG(inode->i_mode))
++			goto dput_and_out;
+ 
+-	error = inode_permission(inode, MAY_WRITE);
+-	if (error)
+-		goto mnt_drop_write_and_out;
++		error = mnt_want_write(path.mnt);
++		if (error)
++			goto dput_and_out;
+ 
+-	error = -EPERM;
+-	if (IS_APPEND(inode))
+-		goto mnt_drop_write_and_out;
++		error = inode_permission(inode, MAY_WRITE);
++		if (error)
++			goto mnt_drop_write_and_out;
+ 
+-	error = get_write_access(inode);
+-	if (error)
+-		goto mnt_drop_write_and_out;
++		error = -EPERM;
++		if (IS_APPEND(inode))
++			goto mnt_drop_write_and_out;
+ 
+-	/*
+-	 * Make sure that there are no leases.  get_write_access() protects
+-	 * against the truncate racing with a lease-granting setlease().
+-	 */
+-	error = break_lease(inode, O_WRONLY);
+-	if (error)
+-		goto put_write_and_out;
++		error = get_write_access(inode);
++		if (error)
++			goto mnt_drop_write_and_out;
+ 
+-	error = locks_verify_truncate(inode, NULL, length);
+-	if (!error)
+-		error = security_path_truncate(&path);
+-	if (!error)
+-		error = do_truncate(path.dentry, length, 0, NULL);
++		/*
++		 * Make sure that there are no leases. get_write_access()
++		 * protects against the truncate racing with a lease-granting
++		 * setlease().
++		 */
++		error = break_lease(inode, O_WRONLY);
++		if (error)
++			goto put_write_and_out;
++
++		error = locks_verify_truncate(inode, NULL, length);
++		if (!error)
++			error = security_path_truncate(&path);
++		if (!error)
++			error = do_truncate(path.dentry, length, 0, NULL);
+ 
+ put_write_and_out:
+-	put_write_access(inode);
++		put_write_access(inode);
+ mnt_drop_write_and_out:
+-	mnt_drop_write(path.mnt);
++		mnt_drop_write(path.mnt);
+ dput_and_out:
+-	path_put(&path);
+-out:
++		path_put(&path);
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
++	putname(name);
+ 	return error;
+ }
+ 
+-- 
+1.7.11.2
 
