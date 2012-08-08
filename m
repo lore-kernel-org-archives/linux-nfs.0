@@ -1,62 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:57888 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751758Ab2HMNy5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Aug 2012 09:54:57 -0400
-Received: by obbuo13 with SMTP id uo13so6889004obb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Aug 2012 06:54:56 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20120809181233.GB9914@fieldses.org>
-References: <CAOn_VZbzhGMtYmOZJe-kGqhFLRsWpw6B3+uv+d4UAx9t1-Ew=A@mail.gmail.com>
-	<20120809181233.GB9914@fieldses.org>
-Date: Mon, 13 Aug 2012 19:24:56 +0530
-Message-ID: <CAOn_VZaNU1_WT+XsvHabi=4fhMnyJg5eKp_p=e=1ruWfHC76DQ@mail.gmail.com>
-Subject: Re: reconnect_path fails with EACCES
-From: Rajesh Ghanekar <rajeshsg@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:54248 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1030385Ab2HIOnI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2012 10:43:08 -0400
+Received: by pbbrr13 with SMTP id rr13so1006120pbb.19
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Aug 2012 07:43:08 -0700 (PDT)
+From: Peng Tao <bergwolf@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>,
+        Peng Tao <tao.peng@emc.com>
+Subject: [PATCH-v2] NFSv41: fix DIO write_io calculation
+Date: Wed,  8 Aug 2012 23:41:25 +0800
+Message-Id: <1344440485-2046-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Its no_subtree_check exported.
+pnfs_within_mdsthreshold() is called inside pg_init. We need
+to set read_io/write_io before that. Otherwise we fail
+pnfs_within_mdsthreshold() and IO goes to MDS.
+A simple test case:
+dd if=foo of=/mnt/pnfs/bar bs=10M count=1 oflag=direct
 
-Underneath filesystem (->permission) doesn't support capabilities and
-hence EACCES is being returned. The filesystem is proprietary.
-I figured it out later that they don't support capabilities.
+Cc: Andy Adamson <andros@netapp.com>
+Signed-off-by: Peng Tao <tao.peng@emc.com>
+---
+ fs/nfs/direct.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-Thanks,
-Rajesh
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 1ba385b..34a6282 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -463,10 +463,10 @@ static ssize_t nfs_direct_read(struct kiocb *iocb, const struct iovec *iov,
+ 	if (!is_sync_kiocb(iocb))
+ 		dreq->iocb = iocb;
+ 
++	NFS_I(inode)->read_io += iov_length(iov, nr_segs);
+ 	result = nfs_direct_read_schedule_iovec(dreq, iov, nr_segs, pos, uio);
+ 	if (!result)
+ 		result = nfs_direct_wait(dreq);
+-	NFS_I(inode)->read_io += result;
+ out_release:
+ 	nfs_direct_req_release(dreq);
+ out:
+@@ -814,6 +814,7 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 	get_dreq(dreq);
+ 	atomic_inc(&inode->i_dio_count);
+ 
++	NFS_I(dreq->inode)->write_io += iov_length(iov, nr_segs);
+ 	for (seg = 0; seg < nr_segs; seg++) {
+ 		const struct iovec *vec = &iov[seg];
+ 		result = nfs_direct_write_schedule_segment(&desc, vec, pos, uio);
+@@ -825,7 +826,6 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 		pos += vec->iov_len;
+ 	}
+ 	nfs_pageio_complete(&desc);
+-	NFS_I(dreq->inode)->write_io += desc.pg_bytes_written;
+ 
+ 	/*
+ 	 * If no bytes were started, return the error, and let the
+-- 
+1.7.1.262.g5ef3d
 
-
-On Thu, Aug 9, 2012 at 11:42 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Thu, Aug 09, 2012 at 02:55:28AM +0530, Rajesh Ghanekar wrote:
->> Hi,
->> I am facing problem with reconnect_path failing with EACCES when doing
->> lookup_one_len. I have 2 users goind to same directory, one with uid=0
->> and another with uid=xxx. Sometime for uid=0 request, nfsd is still is using
->> uid=xxx (as it was used previously), as uid=xxx doesn't have any permissions
->> on the directory.
->>
->> Should this probably do nfsd_setuser_and_check_port before
->> the below code in nfsd_set_fh_dentry()? As it carries older
->> fsuid and fsgid, can it create issues. This always happens
->> with disconnected dentries.
->>
->>         if (exp->ex_flags & NFSEXP_NOSUBTREECHECK) {
->>                 /* Elevate privileges so that the lack of 'r' or 'x'
->>                  * permission on some parent directory will
->>                  * not stop exportfs_decode_fh from being able
->>                  * to reconnect a directory into the dentry cache.
->>                  * The same problem can affect "SUBTREECHECK" exports,
->>                  * but as nfsd_acceptable depends on correct
->>                  * access control settings being in effect, we cannot
->>                  * fix that case easily.
->
-> Are you exporting with subtree_check or no_subtree_check?  (What does
-> "exportfs -v" say?)
->
-> In the no_subtree_check case, the cap_raise_nfsd_set() is intended to
-> override file permissions, so the uid and gid shouldn't matter.
->
-> --b.
