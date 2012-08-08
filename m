@@ -1,60 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:42397 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756474Ab2HFOXM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Aug 2012 10:23:12 -0400
-Message-ID: <501FD347.1000100@RedHat.com>
-Date: Mon, 06 Aug 2012 10:23:03 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@redhat.com>
-CC: Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/4] rpc.gssd: handle error to open toplevel directory
-References: <20120731205931.GA32161@fieldses.org> <1343768449-32205-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1343768449-32205-3-git-send-email-bfields@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:58345 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758474Ab2HHNWG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Aug 2012 09:22:06 -0400
+Received: by mail-yx0-f174.google.com with SMTP id l2so730657yen.19
+        for <linux-nfs@vger.kernel.org>; Wed, 08 Aug 2012 06:22:06 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v5 13/19] vfs: make do_unlinkat retry on ESTALE errors
+Date: Wed,  8 Aug 2012 09:21:36 -0400
+Message-Id: <1344432102-22312-14-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
+References: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
 
+diff --git a/fs/namei.c b/fs/namei.c
+index 7eb59cc..0c112c3 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3392,8 +3392,14 @@ static long do_unlinkat(int dfd, const char __user *pathname)
+ 	struct dentry *dentry;
+ 	struct nameidata nd;
+ 	struct inode *inode = NULL;
++	unsigned int try = 0;
++	unsigned int lookup_flags = LOOKUP_PARENT;
+ 
+-	error = user_path_parent(dfd, pathname, &nd, &name);
++	name = getname(pathname);
++	if (IS_ERR(name))
++		return PTR_ERR(name);
++retry:
++	error = do_path_lookup(dfd, name, lookup_flags, &nd);
+ 	if (error)
+ 		return error;
+ 
+@@ -3430,6 +3436,10 @@ exit2:
+ 	mnt_drop_write(nd.path.mnt);
+ exit1:
+ 	path_put(&nd.path);
++	if (retry_estale(error, try++)) {
++		lookup_flags |= LOOKUP_REVAL;
++		goto retry;
++	}
+ 	putname(name);
+ 	return error;
+ 
+-- 
+1.7.11.2
 
-On 07/31/2012 05:00 PM, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> Reverse the sense of the test here, and also add debugging and cleanup
-> in the error case.
-> 
-> (Though the lack of cleanup isn't currently a problem in practice since
-> we'll eventually exit in this case.)
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-Committed...
-
-steved.
-
-> ---
->  utils/gssd/gssd_main_loop.c |   10 ++++++----
->  1 file changed, 6 insertions(+), 4 deletions(-)
-> 
-> diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
-> index 6914687..142c8c5 100644
-> --- a/utils/gssd/gssd_main_loop.c
-> +++ b/utils/gssd/gssd_main_loop.c
-> @@ -121,11 +121,13 @@ topdirs_add_entry(struct dirent *dent)
->  	}
->  	snprintf(tdi->dirname, PATH_MAX, "%s/%s", pipefs_dir, dent->d_name);
->  	tdi->fd = open(tdi->dirname, O_RDONLY);
-> -	if (tdi->fd != -1) {
-> -		fcntl(tdi->fd, F_SETSIG, DNOTIFY_SIGNAL);
-> -		fcntl(tdi->fd, F_NOTIFY,
-> -		      DN_CREATE|DN_DELETE|DN_MODIFY|DN_MULTISHOT);
-> +	if (tdi->fd == -1) {
-> +		printerr(0, "ERROR: failed to open %s\n", tdi->dirname);
-> +		free(tdi);
-> +		return -1;
->  	}
-> +	fcntl(tdi->fd, F_SETSIG, DNOTIFY_SIGNAL);
-> +	fcntl(tdi->fd, F_NOTIFY, DN_CREATE|DN_DELETE|DN_MODIFY|DN_MULTISHOT);
->  
->  	TAILQ_INSERT_HEAD(&topdirs_list, tdi, list);
->  	return 0;
