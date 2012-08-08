@@ -1,128 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:9397 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759135Ab2HITNc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Aug 2012 15:13:32 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Idan Kedar <idank@tonian.com>
-CC: Boaz Harrosh <bharrosh@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
-        Benny Halevy <bhalevy@tonian.com>, Peng Tao <bergwolf@gmail.com>
-Subject: Re: return layout on error, BUG/deadlock
-Date: Thu, 9 Aug 2012 19:12:28 +0000
-Message-ID: <1344539545.25447.63.camel@lade.trondhjem.org>
-References: <CABpMAyL-B9Kqg8O4xxxtj0X8PF7fP4TM+NnLA_Ynhm-_3C6MUg@mail.gmail.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9380987@SACEXCMBX04-PRD.hq.netapp.com>
-	 <CABpMAyKddCjhWe-LjFOJrikLnC+BJ7GsAMAvieh1rabDPiA=Ug@mail.gmail.com>
-	 <1344528377.25447.29.camel@lade.trondhjem.org>
-	 <CABpMAyL-AnLc1rbPEtaBNONKiwsFayYXsGt+dPnDyua0zfS81w@mail.gmail.com>
-In-Reply-To: <CABpMAyL-AnLc1rbPEtaBNONKiwsFayYXsGt+dPnDyua0zfS81w@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:53416 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758410Ab2HHNVw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Aug 2012 09:21:52 -0400
+Received: by mail-gh0-f174.google.com with SMTP id r11so730335ghr.19
+        for <linux-nfs@vger.kernel.org>; Wed, 08 Aug 2012 06:21:52 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v5 03/19] vfs: make fstatat retry on ESTALE errors from getattr call
+Date: Wed,  8 Aug 2012 09:21:26 -0400
+Message-Id: <1344432102-22312-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
+References: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA4LTA5IGF0IDE5OjU0ICswMzAwLCBJZGFuIEtlZGFyIHdyb3RlOg0KPiBP
-biBUaHUsIEF1ZyA5LCAyMDEyIGF0IDc6MDYgUE0sIE15a2xlYnVzdCwgVHJvbmQNCj4gPFRyb25k
-Lk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPiBPbiBUaHUsIDIwMTItMDgtMDkgYXQg
-MTg6NDkgKzAzMDAsIElkYW4gS2VkYXIgd3JvdGU6DQo+ID4+IE9uIFRodSwgQXVnIDksIDIwMTIg
-YXQgNTowNSBQTSwgTXlrbGVidXN0LCBUcm9uZA0KPiA+PiA8VHJvbmQuTXlrbGVidXN0QG5ldGFw
-cC5jb20+IHdyb3RlOg0KPiA+PiA+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiA+PiA+
-PiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZz
-LQ0KPiA+PiA+PiBvd25lckB2Z2VyLmtlcm5lbC5vcmddIE9uIEJlaGFsZiBPZiBJZGFuIEtlZGFy
-DQo+ID4+ID4+IFNlbnQ6IFRodXJzZGF5LCBBdWd1c3QgMDksIDIwMTIgOTowMyBBTQ0KPiA+PiA+
-PiBUbzogQm9heiBIYXJyb3NoOyBORlMgbGlzdA0KPiA+PiA+PiBDYzogQmVubnkgSGFsZXZ5DQo+
-ID4+ID4+IFN1YmplY3Q6IHJldHVybiBsYXlvdXQgb24gZXJyb3IsIEJVRy9kZWFkbG9jaw0KPiA+
-PiA+Pg0KPiA+PiA+PiBIaSwNCj4gPj4gPj4NCj4gPj4gPj4gQXMgYSByZXN1bHQgb2Ygc29tZSBl
-eHBlcmltZW50cywgSSB3YW50ZWQgdG8gc2VlIHdoYXQgaGFwcGVucyB3aGVuIEkNCj4gPj4gPj4g
-aW5qZWN0IGFuIGVycm9yIChoYXJkIGNvZGVkKSB0byB0aGUgb2JqZWN0IGxheW91dCBkcml2ZXIu
-IHRoZSBwYXRjaCBpcyBhdCB0aGUNCj4gPj4gPj4gYm90dG9tIG9mIHRoaXMgbWFpbC4gdGhlIHJl
-YXNvbiBJIGRpZCB0aGlzIGlzIGJlY2F1c2Ugd2hlbiBJIGluamVjdCBlcnJvcnMgaW4gbXkNCj4g
-Pj4gPj4gbW9kaWZpZWQgdmVyc2lvbiBvZiB0aGUgb2JqZWN0IGxheW91dCBkcml2ZXIsIEkgZ2V0
-IHRoZSBzYW1lIEJVRyBUaWdyYW4NCj4gPj4gPj4gcmVwb3J0ZWQgYWJvdXQgeWVzdGVyZGF5Og0K
-PiA+PiA+PiBuZnM0cHJvYy5jOjYyNTIgOiAgIEJVR19PTighbGlzdF9lbXB0eSgmbG8tPnBsaF9z
-ZWdzKSk7DQo+ID4+ID4+DQo+ID4+ID4+IEluIG15IG1vZGlmaWVkIHZlcnNpb24gKGJhc2VkIG9u
-IGtlcm5lbCAzLjMpLCB0aGUgYnVnIHNlZW1zIHRvIGJlIHRoYXQNCj4gPj4gPj4gcG5mc19sZF93
-cml0ZV9kb25lIGNhbGxzIHBuZnNfcmV0dXJuX2xheW91dCBpbiB0aGUgZXJyb3IgcGF0aCwgZXZl
-biBpZiB0aGVyZQ0KPiA+PiA+PiBpcyBpbi1mbGlnaHQgSS9PLg0KPiA+PiA+DQo+ID4+ID4gVGhh
-dCBpcyBub3QgYSBidWcuIEl0IGlzIGFuIGludGVudGlvbmFsIGNoYW5nZSBpbiBvcmRlciB0byBh
-bGxvdyB0aGUgTURTIHRvIGZlbmNlIG9mZiB0aGUgb3V0c3RhbmRpbmcgd3JpdGVzIChpZiBpdCBj
-YW4gZG8gc28pIGJlZm9yZSB3ZSByZXRyYW5zbWl0IHRoZW0gYXMgd3JpdGUtdGhyb3VnaC1NRFMu
-IE90aGVyd2lzZSwgeW91IHJpc2sgcmFjZXMgYmV0d2VlbiB0aGUgb3V0c3RhbmRpbmcgd3JpdGVz
-LXRvLURTIGFuZCB0aGUgbmV3IHdyaXRlcy10aHJvdWdoLU1EUy4NCj4gPj4NCj4gPj4gdG8gd2hh
-dCBjaGFuZ2UgYXJlIHlvdSByZWZlcnJpbmc/DQo+ID4NCj4gPiBBcyBJIHN0YXRlZCBpbiB0aGUg
-Y2hhbmdlbG9nIG9mIHRoZSBwYXRjaCB0aGF0IEkgc2VudCB0byB0aGUgbGlzdA0KPiA+IHllc3Rl
-cmRheSwgdGhlIGJlaGF2aW91ciBpcyBkdWUgdG8gY29tbWl0IDBhNTdjZGFjM2YuDQo+ID4NCj4g
-DQo+IEknbSBub3Qgc3VyZSBJJ20gZm9sbG93aW5nLiBJIHdhcyB0YWxraW5nIGFib3V0IHRoZSBz
-dGF0ZSBvZiB0aGUgY29kZQ0KPiB2My41LCBub3QgdG8gYW55IHNwZWNpZmljIHBhdGNoL2NoYW5n
-ZS4gc2luY2UgdGhlIGNsaWVudCB5ZWxsZWQNCj4gIkJVRyEhISIgYW5kIGNyYXNoZWQsIHRoZXJl
-IGlzIHNvbWUgYnVnIGludm9sdmVkLCBlaXRoZXIgYmVjYXVzZSB0aGUNCj4gQlVHKCkgaXMgY29y
-cmVjdCBvciBiZWNhdXNlIHRoZSBwcmVzZW5jZSBvZiB0aGUgQlVHKCkgaXMgdGhlIGJ1Zw0KPiBp
-dHNlbGYuDQo+IA0KPiA+PiA+DQo+ID4+ID4gU2VlIHRoZSBjaGFuZ2Vsb2cgaW4gdGhlIHBhdGNo
-IHRoYXQgSSBzZW50IHRvIHRoZSBsaXN0IHllc3RlcmRheS4NCj4gPj4gPg0KPiA+Pg0KPiA+PiBJ
-IHNhdyB0aGF0LCBhbmQgaWYgSSdtIG5vdCBtaXN0YWtlbiB0aGVzZSByYWNlcyBhcHBseSB0byBv
-YmplY3QgbGF5b3V0DQo+ID4+IGFzIHdlbGwsIGFuZCBpbiBhbnkgY2FzZSB0aGV5IGFwcGx5IGlu
-IG15IGNhc2UuIEhvd2V2ZXIsIGl0IGlzIG5vdA0KPiA+PiBlYXN5IHRvIG1lc3MgYXJvdW5kIHdp
-dGggTEFZT1VUUkVUVVJOIGluIG9iamVjdCBsYXlvdXQsIGFuZCB0aGVyZSBoYXZlDQo+ID4+IGJl
-ZW4gc2V2ZXJhbCBkaXNjdXNzaW9ucyBvbiB0aGUgaXNzdWUuIEluIG9uZSBvZiB0aGVzZSBkaXNj
-dXNzaW9ucw0KPiA+PiBCZW5ueSBjbGFyaWZpZWQgdGhhdCB0aGUgb2JqZWN0IGxheW91dCBjbGll
-bnQgbXVzdCB3YWl0IGZvciBhbGwNCj4gPj4gaW4tZmxpZ2h0IEkvTyB0byBlbmQuDQo+ID4NCj4g
-PiBJZiB0aGUgcHJvYmxlbSBpcyB0aGF0IHRoZSBEUyBpcyBmYWlsaW5nIHRvIHJlc3BvbmQsIGhv
-dyBkb2VzIHRoZSBjbGllbnQNCj4gPiBrbm93IHRoYXQgdGhlIGluLWZsaWdodCBJL08gaGFzIGVu
-ZGVkPw0KPiA+DQo+IA0KPiBhZnRlciB0aGUgbGFzdCBycGNfY2FsbF9kb25lIGlzIGNhbGxlZCB0
-aGVyZSBpcyBubyBJL08gZnJvbSB0aGUNCj4gY2xpZW50J3MgcGVyc3BlY3RpdmUgYW4gdGhlIGxh
-eW91dCBjYW4gYmUgc2FmZWx5IHJldHVybmVkLCBhZnRlciB3aGljaA0KPiBJL08gY2FuIGJlIGRv
-bmUgdGhyb3VnaCB0aGUgTURTLg0KDQpOby4gWW91IGFyZSBjb25mdXNlZC4NCg0KQmVpbmcgaW4g
-cnBjX2NhbGxfZG9uZSBqdXN0IHRlbGxzIHlvdSB0aGF0IHRoZSBjbGllbnQgdGhpbmtzIGl0IGlz
-IGRvbmUuDQpJdCB0ZWxscyB5b3Ugbm90aGluZyBhYm91dCB3aGF0IHRoZSBEUyBpcyBkb2luZy4g
-SXQgbWF5IGp1c3Qgc2xvb29vb3dseQ0KYmUgcHJvY2Vzc2luZyB0aGUgV1JJVEUgY2FsbHMgZm9y
-IGFsbCB5b3Uga25vdy4NCg0KVW5sZXNzIHlvdSBnZXQgYSByZXNwb25zZSBmcm9tIHRoZSBEUyBz
-YXlpbmcgIkknbSBkb25lIiwgb3IgeW91IGhhdmUNCnNvbWUgb3RoZXIgbWVjaGFuaXNtIHRvIGd1
-YXJhbnRlZSB0aGF0IHRoZSBEUyBpcyBkb25lIHdoZW4geW91IHRpbWUgb3V0LA0KdGhlbiB5b3Ug
-aGF2ZSBubyBndWFyYW50ZWUgdGhhdCBpdCBpcyBzYWZlIHRvIHNlbmQgdG8gTURTLg0KDQo+IElz
-IHRoZXJlIEkvTyBwZW5kaW5nIGZyb20gdGhlIERTIHBlcnNwZWN0aXZlPyBtYXliZSwgYnV0IGFs
-bCB5b3UgY2FuDQo+IGRvIGlzIHNlbmQgSS9PIHZpYSBNRFMgYW5kIGhvcGUgaXQgd2lsbCBub3Qg
-cmFjZS4gZmVuY2luZyBkb2Vzbid0DQo+IHJlYWxseSBzYXZlIHlvdSwgaXQganVzdCBpbXByb3Zl
-cyB5b3VyIG9kZHMgd2hlcmUgYXBwbGljYWJsZSwgaS5lLg0KPiBmaWxlIGxheW91dC4NCg0KQWN0
-dWFsbHksIHdoZW4gcmVhZGluZyB0aGUgaVNDU0kgc3BlYywgaXQgaW1wbGllcyB0aGF0IHRoZXJl
-IGlzIGEga25vd24NCnNlc3Npb24gdGltZW91dCB0aGF0IGlzIG5lZ290aWF0ZWQgYmV0d2VlbiB0
-aGUgaW5pdGlhdG9yIGFuZCB0YXJnZXQuDQpBZnRlciB0aGUgc2Vzc2lvbiBleHBpcmVzLCB5b3Ug
-YXJlIGd1YXJhbnRlZWQgdGhhdCBubyBmdXJ0aGVyIGNvbW1hbmRzDQphcmUgcnVubmluZyBvbiB0
-aGUgRFMuDQoNClRoZSBpRkNQIHByb3RvY29sIGF0dGFjaGVzIGEgdGltZW91dCB2YWx1ZSB0byBl
-YWNoIGZyYW1lLCBhbmQgaXMNCnN1cHBvc2VkIHRvIGVuZm9yY2UgdGhhdCB0aW1lb3V0Lg0KDQpT
-byBhdCBsZWFzdCB0aG9zZSBwcm90b2NvbHMgc2hvdWxkIGhhdmUgYSBkZXRlcm1pbmlzdGljIGJl
-aGF2aW91ciB0aGF0DQpjYW4gYmUgdXNlZCBieSB0aGUgY2xpZW50Lg0KDQo+ID4+IFNvIGZvciBm
-aWxlIGxheW91dCBpdCBwcm9iYWJseSBtYWtlcyBzZW5zZSwgYnV0IG9iamVjdCBsYXlvdXQgKGFu
-ZCBpZg0KPiA+PiBJIHVuZGVyc3RhbmQgY29ycmVjdGx5LCBibG9jayBsYXlvdXQgYXMgd2VsbCkg
-c29tZXRoaW5nIGVsc2UgbmVlZHMgdG8NCj4gPj4gYmUgZG9uZS4gSSB0aG91Z2h0IGFib3V0IHN5
-bmMgd2FpdCB3aGVuIHJldHVybmluZyB0aGUgbGF5b3V0IG9uIGVycm9yLA0KPiA+PiBidXQgYWNj
-b3JkaW5nIHRvIEJvYXogaXQgd2lsbCBjYXVzZSBkZWFkbG9ja3MgKEJvYXogLSBjYW4geW91IHBs
-ZWFzZQ0KPiA+PiBlbGFib3JhdGU/KS4NCj4gPg0KPiA+IFRoZSBvYmplY3QgbGF5b3V0cmV0dXJu
-IGhhcyB0aGUgYWJpbGl0eSB0byBwYXNzIGEgdGltZW91dCBlcnJvciB2YWx1ZSB0bw0KPiA+IHRo
-ZSBNRFMgcHJlY2lzZWx5IGluIG9yZGVyIHRvIGFsbG93IHRoZSBsYXR0ZXIgdG8gZGVhbCB3aXRo
-IHRoaXMga2luZCBvZg0KPiA+IGlzc3VlLiBTZWUgdGhlIGRlc2NyaXB0aW9uIG9mIHN0cnVjdCBw
-bmZzX29zZF9pb2VycjQgaW4gcmZjNTY2NC4NCj4gPg0KPiA+IFRoZSBibG9jayBsYXlvdXQgaXMg
-YWRkaW5nIHRoZSBzYW1lIGFiaWxpdHkgdG8gbGF5b3V0cmV0dXJuIGluIE5GU3Y0LjINCj4gPiAo
-c2VlIGRyYWZ0LWlldGYtbmZzdjQtbWlub3J2ZXJzaW9uMi0xMy50eHQpIHZpYSB0aGUgc3RydWN0
-DQo+ID4gbGF5b3V0cmV0dXJuX2RldmljZV9lcnJvcjQsIHNvIHByZXN1bWFibHkgdGhleSB0b28g
-aGF2ZSBhIHBsYW4gZm9yDQo+ID4gZGVhbGluZyB3aXRoIHRoaXMga2luZCBvZiBpc3N1ZS4NCj4g
-Pg0KPiANCj4gSSdsbCB3YWl0IGZvciBCb2F6IChvciBzb21lb25lIGVsc2UpIHRvIGV4cGxhaW4g
-d2hhdCBleGFjdGx5IGlzICJ0aGlzDQo+IGtpbmQgb2YgaXNzdWUiLiBJIHN0aWxsIGRvbid0IGtu
-b3cgd2h5IHN5bmMgd2FpdCB3b3VsZCBkZWFkbG9jay4NCj4gDQo+ID4+IEFuZCBjb21lIHRvIHRo
-aW5rIG9mIGl0LCBuZnM0X3Byb2Nfc2V0YXR0ciBhbHNvIHJldHVybnMgdGhlIGxheW91dA0KPiA+
-PiB3aGVuIHRoZXJlIG1heSBiZSBJL08gaW4tZmxpZ2h0IChjb3JyZWN0IG1lIGlmIGknbSB3cm9u
-ZykuIFNvIEkgZ3Vlc3MNCj4gPj4gcG5mc19yZXR1cm5fbGF5b3V0IHNob3VsZCBzb21laG93IHNv
-bHZlIHRoaXMgYnkgaXRzZWxmIGJ5IHNheWluZyAiaWYNCj4gPj4gdGhpcyBpcyBmZW5jaW5nIChh
-IGZsYWcgd2hpY2ggd2lsbCBiZSBzZXQgZm9yIGZpbGUgbGF5b3V0IG9ubHkpLCBnbw0KPiA+PiBh
-aGVhZCwgb3RoZXJ3aXNlIG1ha2UgdGhlIGxheW91dCBhcyAnbmVlZHMgdG8gYmUgcmV0dXJuZWQn
-IGFuZCB3aGVuDQo+ID4+IHRoZSBsc2VnIGxpc3RzIGdldHMgZW1wdHkgcmV0dXJuIHRoZSBsYXlv
-dXQiLg0KPiA+DQo+ID4gVGhlIG9ubHkgbGF5b3V0IHR5cGUgdGhhdCBzZXRzIHRoZSBQTkZTX0xB
-WU9VVFJFVF9PTl9TRVRBVFRSIGZsYWcgaXMNCj4gPiBvYmplY3RzLCBzbyB0aGF0IHF1ZXN0aW9u
-IG5lZWRzIHRvIGJlIGRpcmVjdGVkIHRvIEJvYXouDQo+ID4NCj4gDQo+IFllcywgdGhpcyBlbnRp
-cmUgdGhyZWFkIGlzIG1haW5seSBkaXJlY3RlZCB0byBCb2F6Li4uIEFuZCBJSVJDIGhlIGRpZA0K
-PiB3YW50IHRvIGltcGxlbWVudCBzb21ldGhpbmcgb2YgdGhhdCBzb3J0LCBhbmQgdGhpcyB0aHJl
-YWQgd2FzDQo+IGJhc2ljYWxseSBmb3IgYXNraW5nIGhpbSAiZGlkIHlvdT8iLg0KPiANCj4gPiAt
-LQ0KPiA+IFRyb25kIE15a2xlYnVzdA0KPiA+IExpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0K
-PiA+DQo+ID4gTmV0QXBwDQo+ID4gVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCj4gPiB3d3cu
-bmV0YXBwLmNvbQ0KPiA+DQo+IA0KPiANCj4gDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51
-eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBw
-LmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c         |  2 +-
+ fs/stat.c          | 21 ++++++++++++++++-----
+ include/linux/fs.h |  1 +
+ 3 files changed, 18 insertions(+), 6 deletions(-)
+
+diff --git a/fs/namei.c b/fs/namei.c
+index 83a6f46..e66161f 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -117,7 +117,7 @@
+  * POSIX.1 2.4: an empty pathname is invalid (ENOENT).
+  * PATH_MAX includes the nul terminator --RR.
+  */
+-static char *getname_flags(const char __user *filename, int flags, int *empty)
++char *getname_flags(const char __user *filename, int flags, int *empty)
+ {
+ 	char *result = __getname(), *err;
+ 	int len;
+diff --git a/fs/stat.c b/fs/stat.c
+index b6ff118..5afeb37 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -72,9 +72,11 @@ EXPORT_SYMBOL(vfs_fstat);
+ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
+ 		int flag)
+ {
++	char *name;
+ 	struct path path;
+ 	int error = -EINVAL;
+-	int lookup_flags = 0;
++	unsigned int try = 0;
++	unsigned int lookup_flags = 0;
+ 
+ 	if ((flag & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
+ 		      AT_EMPTY_PATH)) != 0)
+@@ -85,12 +87,21 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
+ 	if (flag & AT_EMPTY_PATH)
+ 		lookup_flags |= LOOKUP_EMPTY;
+ 
+-	error = user_path_at(dfd, filename, lookup_flags, &path);
+-	if (error)
++	name = getname_flags(filename, lookup_flags, NULL);
++	if (IS_ERR(name)) {
++		error = PTR_ERR(name);
+ 		goto out;
++	}
++	do {
++		error = kern_path_at(dfd, name, lookup_flags, &path);
++		if (error)
++			break;
+ 
+-	error = vfs_getattr(path.mnt, path.dentry, stat);
+-	path_put(&path);
++		error = vfs_getattr(path.mnt, path.dentry, stat);
++		path_put(&path);
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
++	putname(name);
+ out:
+ 	return error;
+ }
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index b776a97..f2e7371 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2201,6 +2201,7 @@ extern struct file *file_open_root(struct dentry *, struct vfsmount *,
+ 				   const char *, int);
+ extern struct file * dentry_open(const struct path *, int, const struct cred *);
+ extern int filp_close(struct file *, fl_owner_t id);
++extern char *getname_flags(const char __user *, int, int *);
+ extern char * getname(const char __user *);
+ enum {
+ 	FILE_CREATED = 1,
+-- 
+1.7.11.2
+
