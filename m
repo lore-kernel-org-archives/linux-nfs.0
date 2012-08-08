@@ -1,117 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:47558 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752341Ab2HUJ2G convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 05:28:06 -0400
-Message-ID: <503354A0.5010707@parallels.com>
-Date: Tue, 21 Aug 2012 13:28:00 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:61100 "EHLO
+	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757752Ab2HHVZ3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Aug 2012 17:25:29 -0400
+Received: by obbuo13 with SMTP id uo13so1681397obb.19
+        for <linux-nfs@vger.kernel.org>; Wed, 08 Aug 2012 14:25:28 -0700 (PDT)
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>, "neilb@suse.de" <neilb@suse.de>
-Subject: Re: [PATCH v3] SUNRPC: protect service sockets lists during per-net
- shutdown
-References: <20120703125851.3850.86782.stgit@localhost.localdomain> <20120724194036.GK8570@fieldses.org> <20120816192902.GB4385@fieldses.org> <50321A0D.1020904@parallels.com> <20120820145656.GB1411@fieldses.org> <50325384.9070506@parallels.com> <20120820165852.GF1411@fieldses.org>
-In-Reply-To: <20120820165852.GF1411@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Date: Thu, 9 Aug 2012 02:55:28 +0530
+Message-ID: <CAOn_VZbzhGMtYmOZJe-kGqhFLRsWpw6B3+uv+d4UAx9t1-Ew=A@mail.gmail.com>
+Subject: reconnect_path fails with EACCES
+From: Rajesh Ghanekar <rajeshsg@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-20.08.2012 20:58, J. Bruce Fields пишет:
-> On Mon, Aug 20, 2012 at 07:11:00PM +0400, Stanislav Kinsbursky wrote:
->> 20.08.2012 18:56, J. Bruce Fields пишет:
->>> On Mon, Aug 20, 2012 at 03:05:49PM +0400, Stanislav Kinsbursky wrote:
->>>> 16.08.2012 23:29, J. Bruce Fields пишет:
->>>>> Looking back at this:
->>>>>
->>>>> 	- adding the sv_lock looks like the right thing to do anyway
->>>>> 	  independent of containers, because svc_age_temp_xprts may
->>>>> 	  still be running.
->>>>>
->>>>> 	- I'm increasingly unhappy about sharing rpc servers between
->>>>> 	  network namespaces.  Everything would be easier to understand
->>>>> 	  if they were independent.  Can we figure out how to do that?
->>>>>
->>>>
->>>> Could you, please, elaborate on your your unhappiness?
->>>
->>> It seems like you're having to do a lot of work on each individual rpc
->>> server (callback server, lockd, etc.) to make per-net startup/shutdown
->>> work.  And then we still don't have it quite right (see the shutdown
->>> races).)
->>>
->>> In general whenever we have the opportunity to have entirely separate
->>> data structures, I'd expect that to simplify things: it should eliminate
->>> some locking and reference-counting issues.
->>>
->>
->> Agreed. But current solution still looks like the easies way to me
->> to implement desired functionality.
->>
->>>> I.e. I don't like it too. But the problem here, is that rpc server
->>>> is tied with kernel threads creation and destruction. And these
->>>> threads can be only a part of initial pid namespace (because we have
->>>> only one kthreadd). And we decided do not create new kernel thread
->>>> per container when were discussing the problem last time.
->>>
->>> There really should be some way to create a kernel thread in a specific
->>> namespace, shouldn't there?
->>>
->>
->>
->> Kthreads support in a container is rather a "political" problem,
->> than an implementation problem.
->
-> Is there a mail thread somewhere with a summary of the objections?
->
+Hi,
+I am facing problem with reconnect_path failing with EACCES when doing
+lookup_one_len. I have 2 users goind to same directory, one with uid=0
+and another with uid=xxx. Sometime for uid=0 request, nfsd is still is using
+uid=xxx (as it was used previously), as uid=xxx doesn't have any permissions
+on the directory.
 
-I can't specify right now. Need to search over lkml history.
-That's all what I've found for now:
-http://us.generation-nt.com/patch-cgroups-disallow-attaching-kthreadd-help-207003852.html
+Should this probably do nfsd_setuser_and_check_port before
+the below code in nfsd_set_fh_dentry()? As it carries older
+fsuid and fsgid, can it create issues. This always happens
+with disconnected dentries.
 
->> Currently, when you call kthread_create(), you add new job to
->> kthreadd queue. Kthreadd is unique, starts right after init and
->> lives in global initial environment. So, any kthread inherits
->> namespaces from it.
->> Of course, we can start one kthread per environment and change it's
->> root or even network namespace in kthread function. But pid
->> namespace of this kthread will remain global.
->
-> OK.  But the current implementation will leave all the server threads in
-> the initial pid namespace, too.
->
->> It looks like not a big problem, when we shutdown kthread by some
->> variable. But what about killable nfsd kthreads?
->
-> And we're stuck with that problem either way too, aren't we?
->
+        if (exp->ex_flags & NFSEXP_NOSUBTREECHECK) {
+                /* Elevate privileges so that the lack of 'r' or 'x'
+                 * permission on some parent directory will
+                 * not stop exportfs_decode_fh from being able
+                 * to reconnect a directory into the dentry cache.
+                 * The same problem can affect "SUBTREECHECK" exports,
+                 * but as nfsd_acceptable depends on correct
+                 * access control settings being in effect, we cannot
+                 * fix that case easily.
 
-Yes, we are. But at least we are avoiding patching of task subsystem.
-
->> 1) We can't kill them from nested pid namespace.
->> 2) How we will differ nfsd kthreads in initial pid namespace?
->
-> I have to admit for my purposes I don't care too much about pid
-> namespaces or about signalling server threads.  It'd be nice to get
-> those things right but it wouldn't bother me that much not to.
->
-> Another stupid idea: can we do our own implementation of something like
-> kthreadd just for the purpose of starting rpc server threads?  It
-> doesn't seem that complicated.
->
-
-Gm...
-This idea is not stupid. If I understand you right, you suggest to implement a 
-service per network namespace (i.e. not only data, but also threads)?
-
-> --b.
->
->> In OpenVZ we have kthreadd per pid hamespace and it allows us to
->> create kthreads (and thus services) per pid namespace.
-
-
--- 
-Best regards,
-Stanislav Kinsbursky
+Thanks,
+Rajesh
