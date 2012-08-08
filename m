@@ -1,70 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:49332 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757463Ab2HQKuo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Aug 2012 06:50:44 -0400
-Received: by obbuo13 with SMTP id uo13so5104841obb.19
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Aug 2012 03:50:43 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <502E1C38.2060104@compcenter.org>
-References: <502B55A3.3030007@compcenter.org>
-	<502E1C38.2060104@compcenter.org>
-Date: Fri, 17 Aug 2012 11:50:43 +0100
-Message-ID: <CAA4Z2ZQR4RVCEzct2AH4yBy=oGkw78M=Gc8pOWC5C0vGbSy-Xg@mail.gmail.com>
-Subject: Re: Randomly inaccessible files through NFS
-From: Adrien Kunysz <adk@acunu.com>
-To: "Denis V. Nagorny" <dvnagorny@compcenter.org>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:65416 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754699Ab2HHCDg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Aug 2012 22:03:36 -0400
+Received: by mail-pb0-f46.google.com with SMTP id rr13so617318pbb.19
+        for <linux-nfs@vger.kernel.org>; Tue, 07 Aug 2012 19:03:36 -0700 (PDT)
+From: Peng Tao <bergwolf@gmail.com>
+To: bharrosh@panasas.com
+Cc: linux-nfs@vger.kernel.org, Peng Tao <tao.peng@emc.com>
+Subject: [PATCH RFC 3/3] NFS41: send real read size in layoutget for DIO
+Date: Wed,  8 Aug 2012 10:03:12 +0800
+Message-Id: <1344391392-1948-4-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1344391392-1948-1-git-send-email-bergwolf@gmail.com>
+References: <1344391392-1948-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I would try to tcpdump all NFS traffic starting when the client is in
-the "stable" state (including the MOUNT call). Once it's in the
-"unstable" state, I would stop the capture then try to figure out
-exactly at what point it switched from "stable" to "unstable" (maybe
-figure out when exactly the NFS4ERR_EXPIRED start to happen) and track
-it down to a specific NFS pattern.
+From: Peng Tao <tao.peng@emc.com>
 
-I don't know much about NFS really so I cannot be more specific. Yes,
-this probably requires lot of storage to capture all the traffic and
-lot of time to analyse the captured data.
+We don't have the real IO size information in buffer read, but for direct
+read, we can get it from dreq->bytes_left. Let's make use of it.
 
-On Fri, Aug 17, 2012 at 11:26 AM, Denis V. Nagorny
-<dvnagorny@compcenter.org> wrote:
-> 15.08.2012 11:54, Denis V. Nagorny пишет:
->
->> Hello,
->>
->> Using Scientific Linux 6.1 (I think it's equal to RH EL 6.1) we met the
->> strange issue.  Several last months we have problem. After one or two days
->> of successful work, files on nfs server begins to be randomly unacessible.
->> I doesn't mean that files becames hidden or something like this. It means
->> that attempts to open some random files may be unsuccessful. Usually restart
->> of nfs server makes situation better but for several days only. There are no
->> any messages about errors in logs on server and clients machines. Can
->> anybody point me how can I try to understand what happens at least. Sorry
->> for my english.
->>
->> Denis.
->
->
-> Hello again,
->
-> I've made some additional experiments. It looks like nfs clients can be in
-> one of two states: "quite stable" and "quite unstable". Clients are usually
-> stable but after some heavy job with a lot of I/O with NFS server clients
-> become "quite unstable" and fails even with single file operations with NFS
-> server. In this state I can't unmount NFS shares and so on.  I've tried to
-> analyse with wireshark and found that in unstable state there are a lot of
-> NFS4ERR_EXPIRED answers from NFS server.  In one of experiments I've changed
-> NICs in both machines involved - result the same. So I'm still looking for
-> the ways to understand the problem.
-> Can anybody give me any advices?
->
-> Denis
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Peng Tao <tao.peng@emc.com>
+---
+ fs/nfs/pnfs.c |    8 +++++++-
+ 1 files changed, 7 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index e61a373..e4cfd1e 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1154,16 +1154,22 @@ out_forget_reply:
+ void
+ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+ {
++	u64 rd_size = req->wb_bytes;
++
+ 	BUG_ON(pgio->pg_lseg != NULL);
+ 
+ 	if (req->wb_offset != req->wb_pgbase) {
+ 		nfs_pageio_reset_read_mds(pgio);
+ 		return;
+ 	}
++
++	if (pgio->pg_dreq != NULL)
++		rd_size = nfs_dreq_bytes_left(pgio->pg_dreq);
++
+ 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 					   req->wb_context,
+ 					   req_offset(req),
+-					   req->wb_bytes,
++					   rd_size,
+ 					   IOMODE_READ,
+ 					   GFP_KERNEL);
+ 	/* If no lseg, fall back to read through mds */
+-- 
+1.7.1.262.g5ef3d
+
