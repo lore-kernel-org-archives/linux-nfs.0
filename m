@@ -1,57 +1,159 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:3257 "EHLO
-	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753307Ab2H2QZ3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Aug 2012 12:25:29 -0400
-Date: Wed, 29 Aug 2012 09:25:27 -0700
-From: Nick Pasich <Nick@NickAndBarb.net>
-To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: WARNING: at fs/inode.c:280 drop_nlink+0x31/0x33()
-Message-ID: <20120829162527.GA3635@NickAndBarb.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from mx1.redhat.com ([209.132.183.28]:34082 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754825Ab2HHLs2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Aug 2012 07:48:28 -0400
+Date: Wed, 8 Aug 2012 07:48:15 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "steved@redhat.com" <steved@redhat.com>
+Subject: Re: nfs4 mounts failing with 3.6.0-rc1
+Message-ID: <20120808074815.5e735293@tlielax.poochiereds.net>
+In-Reply-To: <1344378971.8845.13.camel@lade.trondhjem.org>
+References: <20120804000819.GB25558@fieldses.org>
+	<20120803220039.743fe1f0@corrin.poochiereds.net>
+	<20120804190104.GA2135@fieldses.org>
+	<20120807130932.79625d7e@tlielax.poochiereds.net>
+	<20120807194250.GB22532@fieldses.org>
+	<50217035.5010304@netapp.com>
+	<20120807195703.GC22532@fieldses.org>
+	<50217649.6010402@netapp.com>
+	<20120807202523.GD22532@fieldses.org>
+	<1344374613.8845.3.camel@lade.trondhjem.org>
+	<20120807182651.32448074@tlielax.poochiereds.net>
+	<1344378971.8845.13.camel@lade.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, 7 Aug 2012 22:36:12 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-I'm using kernel 3.5.3 ... 
+> On Tue, 2012-08-07 at 18:26 -0400, Jeff Layton wrote:
+> > On Tue, 7 Aug 2012 21:23:34 +0000
+> > "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+> > 
+> > > On Tue, 2012-08-07 at 16:25 -0400, J. Bruce Fields wrote:
+> > > > On Tue, Aug 07, 2012 at 04:10:49PM -0400, Bryan Schumaker wrote:
+> > > > > On 08/07/2012 03:57 PM, J. Bruce Fields wrote:
+> > > > > > On Tue, Aug 07, 2012 at 03:44:53PM -0400, Bryan Schumaker wrote:
+> > > > > >> On 08/07/2012 03:42 PM, J. Bruce Fields wrote:
+> > > > > >>> On Tue, Aug 07, 2012 at 01:09:32PM -0400, Jeff Layton wrote:
+> > > > > >>>> On Sat, 4 Aug 2012 15:01:04 -0400
+> > > > > >>>> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > > > >>>>
+> > > > > >>>>> On Fri, Aug 03, 2012 at 10:00:39PM -0400, Jeff Layton wrote:
+> > > > > >>>>>> On Fri, 3 Aug 2012 20:08:19 -0400
+> > > > > >>>>>> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > > > >>>>>>
+> > > > > >>>>>>> I'm getting
+> > > > > >>>>>>>
+> > > > > >>>>>>> 	# mount -tnfs -onfsvers=4 pip1:/exports /mnt/
+> > > > > >>>>>>>
+> > > > > >>>>>>> (OK, admittedly that's with 3.6.0-rc1 + a few experimental patches, but
+> > > > > >>>>>>> I doubt they're related.)
+> > > > > >>>>>>>
+> > > > > >>>>>>> Also:
+> > > > > >>>>>>>
+> > > > > >>>>>>> 	[root@pip2 ~]# modprobe nfs4
+> > > > > >>>>>>> 	[root@pip2 ~]# lsmod|grep nfs4
+> > > > > >>>>>>> 	[root@pip2 ~]# 
+> > > > > >>>>>>>
+> > > > > >>>>>>> --b.
+> > > > > >>>>>>
+> > > > > >>>>>> I hit the same problem...
+> > > > > >>>>>>
+> > > > > >>>>>> Try removing /usr/lib/modprobe.d/nfs.conf (assuming you're running
+> > > > > >>>>>> Fedora).
+> > > > > >>>>>
+> > > > > >>>>> Oog, right.
+> > > > > >>>>>
+> > > > > >>>>> But, without testing--won't that make v4 mounts fail on older kernels?
+> > > > > >>>>
+> > > > > >>>> Actually, now that I look, this does not seem to break on older kernels
+> > > > > >>>> as long as you use a syntax like:
+> > > > > >>>>
+> > > > > >>>>     # mount -t nfs server:/export /mnt/point -o vers=4
+> > > > > >>>>
+> > > > > >>>> ...if, however you use a syntax like:
+> > > > > >>>>
+> > > > > >>>>     # mount -t nfs4 server:/export /mnt/point
+> > > > > >>>>
+> > > > > >>>> ...then it fails without the above file in place. I guess the question
+> > > > > >>>> we have to answer is: Do we want to continue to support the "-t nfs4"
+> > > > > >>>> mount syntax?
+> > > > > >>>
+> > > > > >>> I think you're right that we want to deprecate it.
+> > > > > >>>
+> > > > > >>> Though this is a bit of a harsh way to do it--would have been nice to
+> > > > > >>> have some transition period with a warning or something.
+> > > > > >>
+> > > > > >> I didn't expect this to be broken, both ways of mounting still work on my VMs so I expected them to work for everybody else too.
+> > > > > > 
+> > > > > > Huh.  Just checked on an old kernel without an "alias nfs4 nfs" in
+> > > > > > modprobe configuration, and sure enough I get "No such device".
+> > > > > > 
+> > > > > > Maybe you have some initscripts or something else that's loading the
+> > > > > > nfs module for you before the mount?
+> > > > > 
+> > > > > My nfs-common daemon script loads sunrpc, nfs
+> > > > 
+> > > > Yep, that's why you're not seeing it.
+> > > > 
+> > > > > and nfsd but not nfs2, nfs3 or nfs4.
+> > > > > 
+> > > > > Could we rename the module to avoid the alias name collision?  Something like this (untested) maybe?
+> > > > 
+> > > > I don't think that will help.
+> > > 
+> > > It should if we also add back in
+> > > 
+> > > struct file_system_type nfs4_fs_type = {
+> > >         .owner          = THIS_MODULE,
+> > >         .name           = "nfs4",
+> > >         .mount          = nfs_fs_mount,
+> > >         .kill_sb        = nfs_kill_super,
+> > >         .fs_flags       = FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
+> > > };
+> > > 
+> > > and then add that to register_nfs_fs()/unregister_nfs_fs(). As far as I
+> > > can see, that will trigger all the right incantations in
+> > > nfs_validate_mount_data() to mount an NFSv4 filesystem.
+> > > 
+> > 
+> > So, move the nfs4 fstype definition back into nfs.ko? That would
+> > ensure that you could still do a "-t nfs4" mount with that modprobe
+> > alias in place.
+> 
+> No. I mean to add a separate nfs4_fstype definition in nfs.ko, and
+> register it so that the VFS recognises the 'nfs4' filesystem name.
+> 
+> > I think Bryan is correct though. We'll also need to rename nfs4.ko or
+> > you won't ever be able to call request_module for it in order to plug
+> > it in if you have that module alias in place.
+> 
+> You did note my use of the word "also" above?
+> 
+> > Does this mean that we plan to support the "-t nfs4" mount syntax in
+> > perpetuity?
+> 
+> No, but I also agree with Bruce's point that we shouldn't pull the plug
+> without some prior notice. We should at least keep an entry in
+> Documentation/feature-removal-schedule.txt for a few kernel revisions.
+> 
 
-It happens on 3.5.1 and 3.5.2 also.
+Ok, I follow you now...
 
-I know that Nick Bowler has already reported this...
+Fair warning is reasonable, perhaps we should shoot for removing
+support in 3.9 or 3.10?
 
-I'm experiencing the same thing.
+I think we'll also need to consider retiring the nfs4_fs_type
+altogether, or at least make them all show up as "nfs"
+in /proc/self/mounts. Otherwise remounts could be problematic...
 
-It happens when moving files from one directory to another
-on the same partition (NFS). 
-
-  --( Nick Pasich )--
-
-
-#############################################################################
-##
-## Happens when PSTs are moved from one directory to another on the ISCSI ...
-##
-#############################################################################
-
-Aug 29 08:06:16 localhost kernel: ------------[ cut here ]------------
-Aug 29 08:06:16 localhost kernel: WARNING: at fs/inode.c:280 drop_nlink+0x31/0x33()
-Aug 29 08:06:16 localhost kernel: Hardware name: To Be Filled By O.E.M.
-Aug 29 08:06:16 localhost kernel: Modules linked in: ecb md4 cifs w83627hf eeprom asb100 hwmon_vid hwmon nfsd exportfs ipv6 psmouse usb_storage io_edgeport usbserial sg r8169 mii evdev intel_agp uhci_hcd i2c_i801 i2c_core shpchp intel_gtt agpgart ehci_hcd microcode serio_raw
-Aug 29 08:06:16 localhost kernel: Pid: 31477, comm: rm Tainted: G        W    3.5.3 #1
-Aug 29 08:06:16 localhost kernel: Call Trace:
-Aug 29 08:06:16 localhost kernel:  [<c10a53e2>] ? drop_nlink+0x31/0x33
-Aug 29 08:06:16 localhost kernel:  [<c1025dd2>] ? warn_slowpath_common+0x7b/0x90
-Aug 29 08:06:16 localhost kernel:  [<c10a53e2>] ? drop_nlink+0x31/0x33
-Aug 29 08:06:16 localhost kernel:  [<c1025e02>] ? warn_slowpath_null+0x1b/0x1f
-Aug 29 08:06:16 localhost kernel:  [<c10a53e2>] ? drop_nlink+0x31/0x33
-Aug 29 08:06:16 localhost kernel:  [<f83dfa81>] ? cifs_unlink+0x134/0x63d [cifs]
-Aug 29 08:06:16 localhost kernel:  [<c10a37d4>] ? dput+0x11/0x117
-Aug 29 08:06:16 localhost kernel:  [<c10a87d4>] ? mntput_no_expire+0xf/0xf7
-Aug 29 08:06:16 localhost kernel:  [<c109ca9b>] ? vfs_unlink+0x4e/0xb6
-Aug 29 08:06:16 localhost kernel:  [<c109b333>] ? __lookup_hash+0x54/0xac
-Aug 29 08:06:16 localhost kernel:  [<c109e8c2>] ? do_unlinkat+0x10a/0x12d
-Aug 29 08:06:16 localhost kernel:  [<c10a0124>] ? sys_ioctl+0x34/0x57
-Aug 29 08:06:16 localhost kernel:  [<c140a8ed>] ? syscall_call+0x7/0xb
-Aug 29 08:06:16 localhost kernel: ---[ end trace 756b427e3bd671f9 ]---
-
+-- 
+Jeff Layton <jlayton@redhat.com>
