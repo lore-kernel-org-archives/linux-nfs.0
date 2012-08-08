@@ -1,46 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46803 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:2824 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758471Ab2HUU5f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Aug 2012 16:57:35 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
+	id S1753427Ab2HHUWK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Aug 2012 16:22:10 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 08/14] svcrpc: ignore unknown address type in udp receive
-Date: Tue, 21 Aug 2012 16:57:26 -0400
-Message-Id: <1345582652-18476-9-git-send-email-bfields@redhat.com>
-In-Reply-To: <1345582652-18476-1-git-send-email-bfields@redhat.com>
-References: <1345582652-18476-1-git-send-email-bfields@redhat.com>
+Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
+        Boaz Harrosh <bharrosh@panasas.com>, Benny Halevy <bhalevy@tonian.com>,
+        Fred Isaman <Fred.Isaman@netapp.com>
+Subject: [PATCH] NFSv4.1: Remove a bogus BUG_ON() in nfs4_layoutreturn_done
+Date: Wed,  8 Aug 2012 16:21:50 -0400
+Message-Id: <1344457310-26442-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Ever since commit 0a57cdac3f (NFSv4.1 send layoutreturn to fence
+disconnected data server) we've been sending layoutreturn calls
+while there is potentially still outstanding I/O to the data
+servers. The reason we do this is to avoid races between replayed
+writes to the MDS and the original writes to the DS.
 
-How would this happen?
+When this happens, the BUG_ON() in nfs4_layoutreturn_done can
+be triggered because it assumes that we would never call
+layoutreturn without knowing that all I/O to the DS is
+finished. The fix is to remove the BUG_ON() now that the
+assumptions behind the test are obsolete.
 
-In any case, it appears this would be returned all the way up to the
-caller of svc_recv(), and it's obvious that none of them are equipped to
-handle it, and not clear what they would want to do with it anyway.
-Let's just drop this and return -EAGAIN.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Reported-by: Boaz Harrosh <bharrosh@panasas.com>
+Reported-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: stable@vger.kernel.org [>=3.5]
 ---
- net/sunrpc/svcsock.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfs/nfs4proc.c | 8 ++------
+ 1 file changed, 2 insertions(+), 6 deletions(-)
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 06ae8a7..97ce23f 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -602,7 +602,7 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index f94f6b3..c77d296 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6359,12 +6359,8 @@ static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
+ 		return;
  	}
- 	len = svc_addr_len(svc_addr(rqstp));
- 	if (len == 0)
--		return -EAFNOSUPPORT;
-+		return -EAGAIN;
- 	rqstp->rq_addrlen = len;
- 	if (skb->tstamp.tv64 == 0) {
- 		skb->tstamp = ktime_get_real();
+ 	spin_lock(&lo->plh_inode->i_lock);
+-	if (task->tk_status == 0) {
+-		if (lrp->res.lrs_present) {
+-			pnfs_set_layout_stateid(lo, &lrp->res.stateid, true);
+-		} else
+-			BUG_ON(!list_empty(&lo->plh_segs));
+-	}
++	if (task->tk_status == 0 && lrp->res.lrs_present)
++		pnfs_set_layout_stateid(lo, &lrp->res.stateid, true);
+ 	lo->plh_block_lgets--;
+ 	spin_unlock(&lo->plh_inode->i_lock);
+ 	dprintk("<-- %s\n", __func__);
 -- 
-1.7.9.5
+1.7.11.2
 
