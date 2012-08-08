@@ -1,76 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:18650 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759139Ab2HHTtl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Aug 2012 15:49:41 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Fred Isaman <faisaman4@gmail.com>
-CC: "Isaman, Fred" <Fred.Isaman@netapp.com>,
-        "tigran.mkrtchyan@desy.de" <tigran.mkrtchyan@desy.de>,
-        Boaz Harrosh <bharrosh@panasas.com>, Benny Halevy <bhalevy@tonian.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: client kernel panic on server restart
-Date: Wed, 8 Aug 2012 19:49:24 +0000
-Message-ID: <1344455362.8925.33.camel@lade.trondhjem.org>
-References: <CAGue13pvN_-wBqQVoNdkLO+pexF1hrs+d3exPCCSzOO8ZD4WRw@mail.gmail.com>
-	 <1344447279.8925.5.camel@lade.trondhjem.org>
-	 <CADnza47D=j2jh+AHR9vs36HqpCmcES02v4FkDNufepdS3c-CDQ@mail.gmail.com>
-	 <1344449028.8925.12.camel@lade.trondhjem.org>
-	 <CADnza471-DQ2C6U3pxw=Hj+WBBOFAJphC-gWGE7hQ=k3E3bn0Q@mail.gmail.com>
-	 <1344450818.8925.17.camel@lade.trondhjem.org>
-	 <CADnza45v28X0PohO66FXfxTJtUmRn+a7AkrrsSD5gPG3wUAi0Q@mail.gmail.com>
-In-Reply-To: <CADnza45v28X0PohO66FXfxTJtUmRn+a7AkrrsSD5gPG3wUAi0Q@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:58345 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758454Ab2HHNWA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Aug 2012 09:22:00 -0400
+Received: by mail-yx0-f174.google.com with SMTP id l2so730657yen.19
+        for <linux-nfs@vger.kernel.org>; Wed, 08 Aug 2012 06:22:00 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v5 09/19] vfs: fix mkdir to retry on ESTALE errors
+Date: Wed,  8 Aug 2012 09:21:32 -0400
+Message-Id: <1344432102-22312-10-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
+References: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTA4LTA4IGF0IDE1OjQ1IC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
-T24gV2VkLCBBdWcgOCwgMjAxMiBhdCAyOjMzIFBNLCBNeWtsZWJ1c3QsIFRyb25kDQo+IDxUcm9u
-ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+ID4gT24gV2VkLCAyMDEyLTA4LTA4IGF0
-IDE0OjE1IC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4gPj4gT24gV2VkLCBBdWcgOCwgMjAx
-MiBhdCAyOjAzIFBNLCBNeWtsZWJ1c3QsIFRyb25kDQo+ID4+IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
-YXBwLmNvbT4gd3JvdGU6DQo+ID4+ID4gT24gV2VkLCAyMDEyLTA4LTA4IGF0IDEzOjUxIC0wNDAw
-LCBGcmVkIElzYW1hbiB3cm90ZToNCj4gPj4gPj4gT24gV2VkLCBBdWcgOCwgMjAxMiBhdCAxOjM0
-IFBNLCBNeWtsZWJ1c3QsIFRyb25kDQo+ID4+ID4+IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
-bT4gd3JvdGU6DQo+ID4+ID4+ID4gT24gV2VkLCAyMDEyLTA4LTA4IGF0IDE4OjQ4ICswMjAwLCBU
-aWdyYW4gTWtydGNoeWFuIHdyb3RlOg0KPiA+PiA+PiA+PiBIaSwNCj4gPj4gPj4gPj4NCj4gPj4g
-Pj4gPj4gSXQncyBxdWl0ZSBzb21lIHRpbWUgd2l0aG91dCBrZXJuZWwgcGFuaWMgcmVwb3J0cyBm
-cm9tIG1lIC4uLi4NCj4gPj4gPj4gPj4NCj4gPj4gPj4gPj4gT2JzZXJ2ZXIgb24gTURTIGFuZCBE
-UyBzaHV0ZG93biBkdXJpbmcgSU8uDQo+ID4+ID4+ID4+DQo+ID4+ID4+ID4+IFRoaXMgaXMgd2l0
-aCAgMy41LjAtMi5mYzE3Lng4Nl82NCBrZXJuZWwuIExpbmUgaW4gY29kZToNCj4gPj4gPj4gPj4N
-Cj4gPj4gPj4gPj4gbmZzNHByb2MuYzo2MjUyIDogICBCVUdfT04oIWxpc3RfZW1wdHkoJmxvLT5w
-bGhfc2VncykpOw0KPiA+PiA+PiA+Pg0KPiA+PiA+PiA+DQo+ID4+ID4+ID4gSWYgdGhlIHNlcnZl
-ciBkb2Vzbid0IHJldHVybiBhIHN0YXRlaWQsIHRoZW4gdGhhdCBpcyBzdXBwb3NlZCB0bw0KPiA+
-PiA+PiA+IGluZGljYXRlIHRoYXQgaXQgdGhpbmtzIHRoYXQgaXQgZG9lc24ndCBob2xkIGFueSBt
-b3JlIGxheW91dCBzZWdtZW50cw0KPiA+PiA+PiA+IGZvciB0aGlzIGZpbGUuDQo+ID4+ID4+ID4g
-VG8gbWUsIHRoYXQgaW5kaWNhdGVzIHRoYXQgd2Ugc2hvdWxkIGJlIGNhbGxpbmcNCj4gPj4gPj4g
-PiBtYXJrX21hdGNoaW5nX2xzZWdzX2ludmFsaWQoKSByYXRoZXIgdGhhbiBPb3BzaW5nLg0KPiA+
-PiA+PiA+DQo+ID4+ID4+ID4gQW55IGRpc3NlbnRpbmcgdm9pY2VzIGZyb20gdGhlIHBORlMgY3Jv
-d2Q/DQo+ID4+ID4+ID4NCj4gPj4gPj4NCj4gPj4gPj4gQnV0IHRoaXMgaW1wbGllcyB0aGF0IHRo
-ZSBjbGllbnQgdGhpbmtzIGl0IGhhcyBhIGxheW91dCB3aGljaCB0aGUNCj4gPj4gPj4gc2VydmVy
-IGRvZXMgbm90IGJlbGlldmUgaXQgaGFzLCB3aGljaCBzZWVtcyB0byBtZSB0byBpbXBseSBhbiBl
-YXJsaWVyDQo+ID4+ID4+IGJ1Zy4gIElmIHlvdSBjaGFuZ2UgdG8gbWFya19tYXRjaGluZ19sc2Vn
-c19pbnZhbGlkLCBJIHdvdWxkIHN1Z2dlc3QNCj4gPj4gPj4ga2VlcGluZyBhIFdBUk5fT04uDQo+
-ID4+ID4NCj4gPj4gPiBXZSBjb3VsZCBwb3NzaWJseSBhZGQgYSBwcmludGssIGJ1dCBJIGRvbid0
-IHNlZSB3aGF0IHZhbHVlIGEgV0FSTl9PTg0KPiA+PiA+IHdvdWxkIGhhdmUgaGVyZTogaG93IGlz
-IGEgc3RhY2sgZHVtcCBnb2luZyB0byBiZSB1c2VmdWwgaW4gZGVidWdnaW5nDQo+ID4+ID4gdGhp
-cyBpc3N1ZT8NCj4gPj4gPg0KPiA+PiA+IEFsc28sIGRvbid0IHdlIHNvbWV0aW1lcyBleHBlY3Qg
-dGhpcyBzb3J0IG9mIHRoaW5nIHRvIGhhcHBlbiBvbg0KPiA+PiA+IG9jY2FzaW9uPyBXaGF0IGlm
-IG91ciBsYXlvdXRyZXR1cm4gZW5kcyB1cCByYWNpbmcgd2l0aCB0aGUgbGF5b3V0IHJlY2FsbA0K
-PiA+PiA+IGZvbGxvd2luZyBhIERTIHNodXRkb3duPw0KPiA+PiA+DQo+ID4+DQo+ID4+IEFjdHVh
-bGx5LCBJIGZvcmdvdCBhYm91dCB0aGUgd2hvbGUgTEFZVVRSRVRVUk4gYXMgZmVuY2luZyBwb3Nz
-aWJpbGl0eS4NCj4gPj4gIEluIHRoYXQgY2FzZSwgeW91IGNhbiBwcmV0dHkgZWFzaWx5IGhpdCB0
-aGUgQlVHX09OLiAgVGhvdWdoIEkgY2xhaW0NCj4gPj4gdGhhdCwgd2hpbGUgY2FsbGluZyBtYXJr
-X21hdGNoaW5nX2xzZWdzX2ludmFsaWQgZG9lc24ndCBodXJ0LCBpdA0KPiA+PiBzaG91bGQgYmUg
-dW5uZWNlc3NhcnkuDQo+ID4NCj4gPiBSaWdodC4uLiBTbyBtYXliZSBqdXN0IGEgZHByaW50aygp
-IGZvciBkZWJ1Z2dpbmcgcHVycG9zZXM/DQo+ID4NCj4gPiBCVFc6IFdoeSBzaG91bGRuJ3Qgd2Ug
-ZG8gdGhlIG1hcmtfbWF0Y2hpbmdfbHNlZ3NfaW52YWxpZD8gSWYgbm90LCB0aGVuDQo+ID4gd2Ug
-d2lsbCBuZWVkIGVpdGhlciB0byBkbyBhbiBleHRyYSBsYXlvdXRyZXR1cm4gb3IgZmFpbCBhIHJl
-YWQvd3JpdGUNCj4gPiBhdHRlbXB0IHRvIHRoZSBEUyBpbiBvcmRlciB0byBmaWd1cmUgb3V0IHRo
-YXQgdGhlIHN0YXRlaWQgaXMgbm93DQo+ID4gaW52YWxpZC4NCj4gPg0KPiANCj4gDQo+IFRoZXkg
-c2hvdWxkIGhhdmUgYWxyZWFkeSBiZWVuIG1hcmtlZCBhcyBpbnZhbGlkLCBhbmQgYXJlIGp1c3Qg
-d2FpdGluZw0KPiBvbiBpbyB0byBmaW5pc2ggZm9yIHJlbGVhc2UuDQoNClNvIGZhbGxiYWNrIHRv
-IE1EUz8gV2h5IGFyZSB3ZSBpc3N1aW5nIGEgbGF5b3V0cmV0dXJuIGluIHRoYXQgY2FzZT8NCg0K
-LS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRB
-cHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c | 29 +++++++++++++++++++----------
+ 1 file changed, 19 insertions(+), 10 deletions(-)
+
+diff --git a/fs/namei.c b/fs/namei.c
+index 0a0397f..9fd5163 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3190,17 +3190,26 @@ SYSCALL_DEFINE3(mkdirat, int, dfd, const char __user *, pathname, umode_t, mode)
+ 	struct dentry *dentry;
+ 	struct path path;
+ 	int error;
++	char *name;
++	unsigned int try = 0;
+ 
+-	dentry = user_path_create(dfd, pathname, &path, 1);
+-	if (IS_ERR(dentry))
+-		return PTR_ERR(dentry);
+-
+-	if (!IS_POSIXACL(path.dentry->d_inode))
+-		mode &= ~current_umask();
+-	error = security_path_mkdir(&path, dentry, mode);
+-	if (!error)
+-		error = vfs_mkdir(path.dentry->d_inode, dentry, mode);
+-	done_path_create(&path, dentry);
++	name = getname(pathname);
++	if (IS_ERR(name))
++		return PTR_ERR(name);
++	do {
++		dentry = kern_path_create(dfd, name, &path, true, try);
++		if (IS_ERR(dentry)) {
++			error = PTR_ERR(dentry);
++			break;
++		}
++		if (!IS_POSIXACL(path.dentry->d_inode))
++			mode &= ~current_umask();
++		error = security_path_mkdir(&path, dentry, mode);
++		if (!error)
++			error = vfs_mkdir(path.dentry->d_inode, dentry, mode);
++		done_path_create(&path, dentry);
++	} while (retry_estale(error, try++));
++	putname(name);
+ 	return error;
+ }
+ 
+-- 
+1.7.11.2
+
