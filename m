@@ -1,49 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from minas.ics.muni.cz ([147.251.4.40]:57923 "EHLO minas.ics.muni.cz"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751370Ab2HGQMX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Aug 2012 12:12:23 -0400
-Date: Tue, 7 Aug 2012 18:12:11 +0200
-From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4 backchannel authentication
-Message-ID: <20120807161211.GL11089@ics.muni.cz>
-References: <20120806135517.GS25979@ics.muni.cz>
- <20120807154114.GA21460@fieldses.org>
- <1344355148.5781.31.camel@lade.trondhjem.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-2
-In-Reply-To: <1344355148.5781.31.camel@lade.trondhjem.org>
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:34627 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758470Ab2HHNWE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Aug 2012 09:22:04 -0400
+Received: by mail-gg0-f174.google.com with SMTP id k6so15248ggd.19
+        for <linux-nfs@vger.kernel.org>; Wed, 08 Aug 2012 06:22:04 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v5 12/19] vfs: make rmdir retry on ESTALE errors
+Date: Wed,  8 Aug 2012 09:21:35 -0400
+Message-Id: <1344432102-22312-13-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
+References: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 07, 2012 at 03:59:09PM +0000, Myklebust, Trond wrote:
-> Yes, you can do this, however that requires the server to be configured
-> to accept rpcsec_gss and auth_sys from that client.
-> It also allows anyone to spoof a callback to your client.
-> Furthermore, it would allow anybody to send SETCLIENTID calls using the
-> same client id to the server and so they can declare your client to have
-> rebooted (so that all state is lost), they can divert callbacks to
-> another machine, ....
-> IOW: it is not really something you want to allow on an untrusted
-> network.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c | 83 +++++++++++++++++++++++++++++++++++---------------------------
+ 1 file changed, 47 insertions(+), 36 deletions(-)
 
-well, ok, thanks for anwsers. However, it seems that while NFS server's name
-is server-home.domain.com (floating name), and true hostname is
-server1.domain.com, it does not matter that callback is authenticated with
-server1.domain.com instead of server-home.domain.com.
-
-Is this expected? Or is it a bug?
-
-I would suppose that client rejects authentication of the backchannel from 
-server that sends nfs/server1.domain.com KRB principal instead of expected
-nfs/server-home.domain.com. 
-
-The client mounts server-home.domain.com with sec=krb5i. Using debugs I can
-see that the server picks up nfs/server1.domain.com key from /etc/krb5.keytab
-and the client seems to be happy with that (context is established).
-
+diff --git a/fs/namei.c b/fs/namei.c
+index d6e9754..7eb59cc 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3282,51 +3282,62 @@ out:
+ static long do_rmdir(int dfd, const char __user *pathname)
+ {
+ 	int error = 0;
+-	char * name;
++	char *name;
+ 	struct dentry *dentry;
+ 	struct nameidata nd;
++	unsigned int try = 0;
++	unsigned int lookup_flags = LOOKUP_PARENT;
+ 
+-	error = user_path_parent(dfd, pathname, &nd, &name);
+-	if (error)
+-		return error;
++	name = getname(pathname);
++	if (IS_ERR(name))
++		return PTR_ERR(name);
+ 
+-	switch(nd.last_type) {
+-	case LAST_DOTDOT:
+-		error = -ENOTEMPTY;
+-		goto exit1;
+-	case LAST_DOT:
+-		error = -EINVAL;
+-		goto exit1;
+-	case LAST_ROOT:
+-		error = -EBUSY;
+-		goto exit1;
+-	}
++	do {
++		error = do_path_lookup(dfd, name, lookup_flags, &nd);
++		if (error)
++			break;
+ 
+-	nd.flags &= ~LOOKUP_PARENT;
+-	error = mnt_want_write(nd.path.mnt);
+-	if (error)
+-		goto exit1;
++		switch (nd.last_type) {
++		case LAST_DOTDOT:
++			error = -ENOTEMPTY;
++			goto exit1;
++		case LAST_DOT:
++			error = -EINVAL;
++			goto exit1;
++		case LAST_ROOT:
++			error = -EBUSY;
++			goto exit1;
++		}
+ 
+-	mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex, I_MUTEX_PARENT);
+-	dentry = lookup_hash(&nd);
+-	error = PTR_ERR(dentry);
+-	if (IS_ERR(dentry))
+-		goto exit2;
+-	if (!dentry->d_inode) {
+-		error = -ENOENT;
+-		goto exit3;
+-	}
+-	error = security_path_rmdir(&nd.path, dentry);
+-	if (error)
+-		goto exit3;
+-	error = vfs_rmdir(nd.path.dentry->d_inode, dentry);
++		nd.flags &= ~LOOKUP_PARENT;
++		error = mnt_want_write(nd.path.mnt);
++		if (error)
++			goto exit1;
++
++		mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex,
++					I_MUTEX_PARENT);
++		dentry = lookup_hash(&nd);
++		if (IS_ERR(dentry)) {
++			error = PTR_ERR(dentry);
++			goto exit2;
++		}
++		if (!dentry->d_inode) {
++			error = -ENOENT;
++			goto exit3;
++		}
++		error = security_path_rmdir(&nd.path, dentry);
++		if (error)
++			goto exit3;
++		error = vfs_rmdir(nd.path.dentry->d_inode, dentry);
+ exit3:
+-	dput(dentry);
++		dput(dentry);
+ exit2:
+-	mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
+-	mnt_drop_write(nd.path.mnt);
++		mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
++		mnt_drop_write(nd.path.mnt);
+ exit1:
+-	path_put(&nd.path);
++		path_put(&nd.path);
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
+ 	putname(name);
+ 	return error;
+ }
 -- 
-Luká¹ Hejtmánek
+1.7.11.2
+
