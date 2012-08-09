@@ -1,113 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailout-de.gmx.net ([213.165.64.22]:37795 "HELO
-	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752255Ab2HJMGi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Aug 2012 08:06:38 -0400
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="utf-8"
-Date: Fri, 10 Aug 2012 14:06:35 +0200
-From: "Johannes Schild" <JSchild@gmx.de>
-In-Reply-To: <CA+a=Yy58ZgG1zoUP4633u6uuZ22hnpuqjS1xa4j3S8R=9=zEUA@mail.gmail.com>
-Message-ID: <20120810120635.268340@gmx.net>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:41965 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757317Ab2HIQWa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2012 12:22:30 -0400
+Received: by pbbrr13 with SMTP id rr13so1127646pbb.19
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Aug 2012 09:22:29 -0700 (PDT)
 MIME-Version: 1.0
-References: <20120808155829.177400@gmx.net> <20120808163916.GA24539@umich.edu>
- <20120808182622.177380@gmx.net> <20120809084236.177380@gmx.net>
- <5DFC6BE3BA248842867E85C73BF94B050B17B698CF@MX41A.corp.emc.com>
- <20120809152744.149360@gmx.net>
- <CA+a=Yy7rH7kFKJvS3eOae+Mb0C1p+N01h+Zqz7jVzGE+HXHt9g@mail.gmail.com>
- <20120810074818.119500@gmx.net>
- <CA+a=Yy6C-d82MR6Lun4sRcJ0euBBpf0Ra3cHDnQ8eKENi5eU2Q@mail.gmail.com>
- <20120810092016.177360@gmx.net>
- <CA+a=Yy58ZgG1zoUP4633u6uuZ22hnpuqjS1xa4j3S8R=9=zEUA@mail.gmail.com>
-Subject: Re: RE: Blocklayout
-To: Peng Tao <tao.peng@emc.com>
+In-Reply-To: <1344526780.25447.6.camel@lade.trondhjem.org>
+References: <1344457310-26442-1-git-send-email-Trond.Myklebust@netapp.com>
+ <CA+a=Yy7SX+cPLFiNy552bU9ZMS_rSwvaSpV732_mDwpcPAH5Wg@mail.gmail.com>
+ <1344522979.23523.2.camel@lade.trondhjem.org> <CA+a=Yy7tDi0kQGvjPeb=O_9XMnZDm-_31VTkNF7wEW7Pb0BZow@mail.gmail.com>
+ <1344526780.25447.6.camel@lade.trondhjem.org>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Fri, 10 Aug 2012 00:22:08 +0800
+Message-ID: <CA+a=Yy5zrdt6xAHFhXk9KypjGRvy2CbWC2DcNnudPDQ4ni=urA@mail.gmail.com>
+Subject: Re: [PATCH] NFSv4.1: Remove a bogus BUG_ON() in nfs4_layoutreturn_done
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
+        Boaz Harrosh <bharrosh@panasas.com>, Benny Halevy <bhalevy@tonian.com>,
+        "Isaman, Fred" <Fred.Isaman@netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Tao,
+On Thu, Aug 9, 2012 at 11:39 PM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Thu, 2012-08-09 at 23:01 +0800, Peng Tao wrote:
+>> On Thu, Aug 9, 2012 at 10:36 PM, Myklebust, Trond
+>> <Trond.Myklebust@netapp.com> wrote:
+>> > On Thu, 2012-08-09 at 22:30 +0800, Peng Tao wrote:
+>> >> On Thu, Aug 9, 2012 at 4:21 AM, Trond Myklebust
+>> >> <Trond.Myklebust@netapp.com> wrote:
+>> >> > Ever since commit 0a57cdac3f (NFSv4.1 send layoutreturn to fence
+>> >> > disconnected data server) we've been sending layoutreturn calls
+>> >> > while there is potentially still outstanding I/O to the data
+>> >> > servers. The reason we do this is to avoid races between replayed
+>> >> > writes to the MDS and the original writes to the DS.
+>> >> >
+>> >> > When this happens, the BUG_ON() in nfs4_layoutreturn_done can
+>> >> > be triggered because it assumes that we would never call
+>> >> > layoutreturn without knowing that all I/O to the DS is
+>> >> > finished. The fix is to remove the BUG_ON() now that the
+>> >> > assumptions behind the test are obsolete.
+>> >> >
+>> >> Isn't MDS supposed to recall the layout if races are possible between
+>> >> outstanding write-to-DS and write-through-MDS?
+>> >
+>> > Where do you read that in RFC5661?
+>> >
+>> That's my (maybe mis-)understanding of how server works... But looking
+>> at rfc5661 section 18.44.3. layoutreturn implementation.
+>> "
+>> After this call,
+>>    the client MUST NOT use the returned layout(s) and the associated
+>>    storage protocol to access the file data.
+>> "
+>> And given commit 0a57cdac3f, client is using the layout even after
+>> layoutreturn, which IMHO is a violation of rfc5661.
+>
+> No. It is using the layoutreturn to tell the MDS to fence off I/O to a
+> data server that is not responding. It isn't attempting to use the
+> layout after the layoutreturn: the whole point is that we are attempting
+> write-through-MDS after the attempt to write through the DS timed out.
+>
+But it is RFC violation that there is in-flight DS IO when client
+sends layoutreturn, right? Not just in-flight, client is well possible
+to send IO to DS _after_ layoutreturn because some thread can hold
+lseg reference and not yet send IO.
 
-the output von the server (ctl) looks for *me* good...
+>> >> And it causes data corruption for blocklayout if client returns layout
+>> >> while there is in-flight disk IO...
+>> >
+>> > Then it needs to turn off fast failover to write-through-MDS.
+>> >
+>> If you still consider it following rfc5661, I'd choose to disable
+>> layoutreturn in before write-through-MDS for blocklayout, by adding
+>> some flag like PNFS_NO_LAYOUTRET_ON_FALLTHRU similar to objects'
+>> PNFS_LAYOUTRET_ON_SETATTR.
+>
+> I don't see how that will prevent corruption.
+>
+> In fact, IIRC, in NFSv4.2 Sorin's proposed changes specifically use the
+> layoutreturn to communicate to the MDS that the DS is timing out via an
+> error code (like the object layout has done all the time). How can you
+> reconcile that change with a flag such as the one you propose?
+I just intend to use the flag to disable layoutreturn in
+pnfs_ld_write_done. block extents are data access permissions per
+rfc5663. When we don't layoutreturn in pnfs_ld_write_done(), block
+layout works correctly because server can decide if there is data
+access race and if there is, MDS can recall the layout from client
+before applying the MDS writes.
 
-http://www.mozilla.org/en-US/firefox/update/
+Sorin's proposed error code is just a client indication to server that
+there is disk access error. It is not intended to solve the data race
+between write-through-MDS and write-through-DS.
 
-[root@fedorapnfs2 sbin]# /root/ctl/ctl -u
-[root@fedorapnfs2 sbin]# Processing: MSG_VERS    : Version: 8
-Processing: MSG_VERS    : Version: 8
-Processing: MSG_DMCHK   : DM Volume: True
-Processing: MSG_DMGET   : Vol info: 0 6291456 striped 2 128 8:17 2048 8:33 2048
-    major 8, minor 17
-    major 8, minor 33
-Processing: MSG_GETSIG  : get_sig: 8:17: get_sig: Got sig at: 1, within sector 56, len 16
-    e9 91 e5 1c d7 cb 20 41   ad d1 61 f9 a7 30 5e fb   
-Processing: MSG_GETSLICE: get_slice: 8:17: Dev: 8:17, Start: 34, Length: 4196285
-Processing: MSG_GETSIG  : get_sig: 8:33: get_sig: Got sig at: 1, within sector 56, len 16
-    9b 0d 30 b8 42 68 0a 4c   95 52 ed 5f d7 46 49 ed   
-Processing: MSG_GETSLICE: get_slice: 8:33: Dev: 8:33, Start: 34, Length: 4196285
-
-
-
-
--------- Original-Nachricht --------
-> Datum: Fri, 10 Aug 2012 17:51:17 +0800
-> Von: Peng Tao <tao.peng@emc.com>
-> An: Johannes Schild <JSchild@gmx.de>
-> CC: linux-nfs@vger.kernel.org
-> Betreff: Re: RE: Blocklayout
-
-> On Fri, Aug 10, 2012 at 5:20 PM, Johannes Schild <JSchild@gmx.de> wrote:
-> > Hi Tao,
-> >
-> >> > [59260.324598] encoding getdevicelist!
-> >> > [59260.324600] decode_getdevicelist: num_dev 1
-> >> > [59260.324601] nfs41_sequence_done: Error 0 free the slot
-> >> > [59260.324602] nfs4_free_slot: slotid 16 highest_used_slotid -1
-> >> > [59260.324605] <-- _nfs4_getdevicelist status=0
-> >> > [59260.324606] nfs4_proc_getdevicelist: err=0, num_devs=1
-> >> > [59260.324607] bl_set_layoutdriver GETDEVICELIST numdevs=1, eof=1
-> >> > [59260.324608] nfs4_blk_get_deviceinfo max_resp_sz 135168 max_pages
-> 33
-> >> > [59260.324629] nfs4_blk_get_deviceinfo: dev_id:
-> >> The deviceid field returned by server is empty. That's why device
-> >> discovery failed.
-> >
-> > Is the deviceid the field where the signature, created with parted,
-> should be stored?
-> For client, deviceid is just a symbol that client uses to ask server
-> about disk structure information. It is server's implementation
-> decision how to construct a deviceid.
-> 
-> >
-> >
-> >> > [59260.324630] --> _nfs4_proc_getdeviceinfo
-> >> > [59260.324632] --> nfs41_call_sync_prepare data->seq_server
-> >> ffff88003c8d7800
-> >> > [59260.324633] --> nfs4_setup_sequence clp ffff88003c733400 session
-> >> ffff88003c733c00 sr_slot -1
-> >> > [59260.324634] --> nfs41_setup_sequence
-> >> > [59260.324635] --> nfs4_find_slot used_slots=0000
-> >> highest_used=4294967295 max_slots=16
-> >> > [59260.324636] <-- nfs4_find_slot used_slots=0001 highest_used=0
-> >> slotid=0
-> >> > [59260.324637] <-- nfs41_setup_sequence slotid=0 seqid=9
-> >> > [59260.324638] <-- nfs4_setup_sequence status=0
-> >> > [59260.324642] encode_sequence: sessionid=1344524732:4:4:0 seqid=9
-> >> slotid=0 max_slotid=0 cache_this=0
-> >> > [59260.333545] nfs41_sequence_done: Error 0 free the slot
-> >> > [59260.333547] nfs4_free_slot: slotid 16 highest_used_slotid -1
-> >> > [59260.333553] <-- _nfs4_proc_getdeviceinfo status=0
-> >> > [59260.333555] nfs4_blk_get_deviceinfo getdevice info returns 0
-> >> > [59260.333572] nfs4_blk_decode_device CREATING PIPEFS MESSAGE
-> >> > [59260.333573] nfs4_blk_decode_device: deviceid: , mincount: 136
-> >> Here shows the same error.
-> >>
-> >> You may check server code to see if there is something wrong with
-> >> getdevicelist proc handling.
-> >>
-> >
-> > I am not experienced enough to check this i think. Is there other server
-> code than "ctl" (on the howto)?
-> I'm not sure about current pnfs block server status, nor if the wiki
-> howto is out of date...
-> 
-> Cheers,
-> Tao
+Thanks,
+Tao
