@@ -1,110 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from audible.transient.net ([216.254.12.79]:52599 "HELO
-	audible.transient.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751197Ab2HOGR6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Aug 2012 02:17:58 -0400
-Date: Wed, 15 Aug 2012 06:11:15 +0000
-From: Jamie Heilman <jamie@audible.transient.net>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: v3.5 nfsd4 regression; utime sometimes takes 40+ seconds to return
-Message-ID: <20120815061115.GC32347@cucamonga.audible.transient.net>
+Received: from mail.candelatech.com ([208.74.158.172]:41885 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754913Ab2HIQSA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2012 12:18:00 -0400
+Received: from [192.168.100.111] (firewall.candelatech.com [70.89.124.249])
+	(authenticated bits=0)
+	by ns3.lanforge.com (8.14.2/8.14.2) with ESMTP id q79GI0pb023291
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Thu, 9 Aug 2012 09:18:00 -0700
+Message-ID: <5023E2B8.4060307@candelatech.com>
+Date: Thu, 09 Aug 2012 09:18:00 -0700
+From: Ben Greear <greearb@candelatech.com>
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="sdtB3X0nJg68CQEu"
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Kernel 3.5.0 and user-space crash in closedir
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello!
 
---sdtB3X0nJg68CQEu
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+I've a strange issue...on the 3.5 kernel (patched with my own hacks, including
+some nfs stuff), I see user-space crashes in closedir().  Apparently due to
+memory corruption in glibc.
 
-I really wish I could have nailed this down better, but I've had a
-hard time reliably reproducing the problem during bisection, and I
-haven't seen anyone report a similar sounding problem.  Here's what
-I've seen: since 3.5 I've been having spurious delays on my nfs
-clients, noticable particularly when I open an mbox file in mutt over
-an nfs v4 mount from a v3.5 or later server.  The servers I've
-reproduced this on are all uni-proc 32-bit systems... but then I
-haven't tried SMP or 64-bit systems yet, it may or may not exist
-there.  When the delay occurs, it's quite noticable.  I've never seen
-one that takes less than 40 seconds to "unstick."  I wrote a quick and
-dirty reproduction tool, based on the syscalls mutt was doing that
-triggered the problem, attached to this message.  To use it, compile
-the file as utime-test on an exported volume, then execute with (cd
-/some/mount/point && strace -T ./utime-test) from a nfs4 client.
+I ran under valgrind and detect no errors.
 
-For whatever, reason I frequently find the second call to utime takes
-an irritatingly long time to return and I see something like:
-utime("utime-test.c", [2012/08/14-22:47:21, 2012/08/14-17:25:21]) = 0 <70.510913>
-in the strace output.
+I cannot reproduce the bug on 3.3.x kernels (with similar hacks applied).
 
-I've reproduced this on Debian Squeeze / nfs-utils 1.2.2 based servers
-(legacy idmapper, no user-space nfsidmap), as well as Debian Wheezy /
-nfs-utils 1.2.6 (uses keyutils upcalls) servers, so I doubt it's a
-user-space related issue...  Attempts to bisect have been muddled,
-I'll keep trying in the interim, but the best I've been able to pin
-things down is that issue was probably introduced in the
-419f4319495043a9507ac3e616be9ca60af09744 merge.  I can't repo on a
-kernel based on fb21affa49204acd409328415b49bfe90136653c.  (I say
-based on, because I have to apply the patch from
-http://marc.info/?l=linux-nfs&m=133950479803025 or face additional
-problems.)
 
-I'll try to get full rcpdebug traces on client and server as the delay
-is occuring in the hopes that helps pin things down, and post them
-separately.
+I am curious if anyone has seen anything similar.
+
+
+Program terminated with signal 11, Segmentation fault.
+#0  0x0000003c5ea7ea64 in _int_free (av=0x3c5edb1700, p=0x374e4b0, have_lock=0)
+     at malloc.c:4097
+4097		unlink(av, nextchunk, bck, fwd);
+(gdb) bt
+#0  0x0000003c5ea7ea64 in _int_free (av=0x3c5edb1700, p=0x374e4b0, have_lock=0)
+     at malloc.c:4097
+#1  0x0000003c5eab957d in __closedir (dirp=<optimized out>)
+     at ../sysdeps/unix/closedir.c:52
+
+
+Thanks,
+Ben
 
 -- 
-Jamie Heilman                     http://audible.transient.net/~jamie/
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
---sdtB3X0nJg68CQEu
-Content-Type: text/x-csrc; charset=us-ascii
-Content-Disposition: attachment; filename="utime-test.c"
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <time.h>
-#include <utime.h>
-#include <stdio.h>
-
-#define F_PATH "utime-test.c"
-
-int main()
-{
-	struct stat sb;
-	struct utimbuf ub;
-	int fd;
-
-	if (stat(F_PATH, &sb) == -1) {
-		perror(NULL);
-		return -1;
-	}
-	ub.modtime = sb.st_mtime;
-	ub.actime = time(NULL);
-	if (utime(F_PATH, &ub) == -1) {
-		perror(NULL);
-		return -2;
-	}
-	if ((fd = open(F_PATH, O_RDONLY)) == -1) {
-		perror(NULL);
-		return -3;
-	}
-	close(fd);
-	if (stat(F_PATH, &sb) == -1) {
-		perror(NULL);
-		return -1;
-	}
-	ub.modtime = sb.st_mtime;
-	ub.actime = time(NULL);
-	if (utime(F_PATH, &ub) == -1) {
-		perror(NULL);
-		return -2;
-	}
-
-	return 0;
-}
-
---sdtB3X0nJg68CQEu--
