@@ -1,50 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:20483 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:46126 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752698Ab2HNWru (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Aug 2012 18:47:50 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Dros Adamson <Weston.Adamson@netapp.com>
-Cc: Sachin Prabhu <sprabhu@redhat.com>,
-        Andy Adamson <William.Adamson@netapp.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH 2/3] NFSv4: Fix the acl cache size calculation
-Date: Tue, 14 Aug 2012 18:47:26 -0400
-Message-Id: <1344984447-17804-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1344984447-17804-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1344984447-17804-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1031239Ab2HIPxJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Aug 2012 11:53:09 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Zdenek Salvet <salvet@ics.muni.cz>, Lukas Hejtmanek <xhejtman@ics.muni.cz>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4 backchannel authentication
+Date: Thu, 9 Aug 2012 15:53:01 +0000
+Message-ID: <1344527573.25447.17.camel@lade.trondhjem.org>
+References: <20120806135517.GS25979@ics.muni.cz>
+	 <20120807154114.GA21460@fieldses.org>
+	 <1344355148.5781.31.camel@lade.trondhjem.org>
+	 <20120808075813.GW604@horn.ics.muni.cz>
+	 <1344431887.3423.4.camel@lade.trondhjem.org>
+	 <20120809080642.GE604@horn.ics.muni.cz>
+	 <20120809144530.GB6592@fieldses.org>
+In-Reply-To: <20120809144530.GB6592@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, we do not take into account the size of the 16 byte
-struct nfs4_cached_acl header, when deciding whether or not we should
-cache the acl data.  Consequently, we will end up allocating an
-8k buffer in order to fit a maximum size 4k acl.
-
-This patch adjusts the calculation so that we limit the cache size
-to 4k for the acl header+data.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 286ab70..6352741 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3737,9 +3737,10 @@ out:
- static void nfs4_write_cached_acl(struct inode *inode, struct page **pages, size_t pgbase, size_t acl_len)
- {
- 	struct nfs4_cached_acl *acl;
-+	size_t buflen = sizeof(*acl) + acl_len;
- 
--	if (pages && acl_len <= PAGE_SIZE) {
--		acl = kmalloc(sizeof(*acl) + acl_len, GFP_KERNEL);
-+	if (pages && buflen <= PAGE_SIZE) {
-+		acl = kmalloc(buflen, GFP_KERNEL);
- 		if (acl == NULL)
- 			goto out;
- 		acl->cached = 1;
--- 
-1.7.11.2
-
+T24gVGh1LCAyMDEyLTA4LTA5IGF0IDEwOjQ1IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIFRodSwgQXVnIDA5LCAyMDEyIGF0IDEwOjA2OjQyQU0gKzAyMDAsIFpkZW5layBTYWx2
+ZXQgd3JvdGU6DQo+ID4gT24gV2VkLCBBdWcgMDgsIDIwMTIgYXQgMDE6MTg6MDlQTSArMDAwMCwg
+TXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4gPiA+ID4gV2UgZG9uJ3Qgc2VlIGFueSBoYXJkIGZh
+aWx1cmVzIGJlY2F1c2UgTkZTIHByb3RvY29sIGRvZXMNCj4gPiA+ID4gbm90IGRlcGVuZCBvbiB3
+b3JraW5nIGNhbGxiYWNrIFJQQ3MsIGJ1dCBubyBkZWxlZ2F0aW9ucyBhcmUgZ3JhbnRlZA0KPiA+
+ID4gPiAod2UgaGFkIG5mcy1rZXJuZWwtc2VydmVyIHBhY2thZ2UgaW5zdGFsbGVkIG9uIGNsaWVu
+dHMgYmVmb3JlIHdoaWNoIG1hc2tlZA0KPiA+ID4gPiB0aGUgYnVnKS4NCj4gPiA+IA0KPiA+ID4g
+U28geW91ciBncmlwZSB0aGF0IHlvdSBvYmplY3QgdG8gdXMgcmVxdWlyaW5nIHlvdSB0byBydW4g
+cnBjLnN2Y2dzc2QgaW4NCj4gPiA+IG9yZGVyIHRvIG9idGFpbiBzZXJ2ZXIgZmVhdHVyZXMgc3Vj
+aCBhcyBORlN2NCBjYWxsYmFja3M/DQo+ID4gDQo+ID4gQWJzb2x1dGVseSBub3QhIEp1c3QgdGhp
+bmtpbmcgd2h5IHdlIGRpZCBub3Qgbm90aWNlIHRoZSBwcm9ibGVtIGVhcmxpZXIgLi4uDQo+IA0K
+PiBJIHdvbmRlciBpZiB0aGVyZSdzIGFueXRoaW5nIHdlIGNvdWxkIGRvIHRvIG1ha2UgdGhpcyBt
+b3JlIGF1dG9tYXRpYywNCj4gdGhvdWdoOiBlLmcuLCBwZXJoYXBzIHdoaWNoZXZlciBzY3JpcHRz
+IGFyZSBsYXVuY2hpbmcgb25lIG9mIHRoZSBnc3MNCj4gZGFlbW9ucyBzaG91bGQgYmUgcmVwbGFj
+ZWQgYnkgb25lIHRoYXQgbGF1bmNoZXMgYm90aCwgc2luY2UgdGhhdCdzDQo+IGdlbmVyYWxseSB3
+aGF0IHlvdSdsbCB3YW50IGZvciBORlN2NC4wLiAgKE5vdCBuZWNlc3NhcnkgZm9yIG90aGVyDQo+
+IHZlcnNpb25zLCBidXQgaXQgZG9lc24ndCBodXJ0IG11Y2guKQ0KPiANCj4gT3IgcGVyaGFwcyB0
+aGV5IGNvdWxkIGJlIHN0YXJ0ZWQgb24gZGVtYW5kIHNvbWVob3cuDQoNCkhvdyBpcyB0aGlzIGFu
+eSBkaWZmZXJlbnQgdG8gcmVxdWlyaW5nIHRoYXQgdGhlIHVzZXIgc3RhcnQgcnBjLnN0YXRkDQpi
+ZWZvcmUgbGF1bmNoaW5nIGFuIE5GU3YzIG1vdW50PyBKdXN0IGRvY3VtZW50IHRoZSByZXF1aXJl
+bWVudCBpZiBpdA0KaXNuJ3QgYWxyZWFkeSBjbGVhciBlbm91Z2gsIGFuZCB3ZSBjYW4gbW92ZSBv
+bi4NCg0KVGhlIG90aGVyIHNvdXJjZSBvZiBjb25mdXNpb24gaGVyZSwgd2FzIHRoYXQgdGhlIHJw
+Yy5zdmNnc3NkIHdhcw0KZGVsaXZlcmVkIHRocm91Z2ggYSBuZnMta2VybmVsLXNlcnZlciBwYWNr
+YWdlLCB3aGljaCBpbmRpY2F0ZXMgdGhhdCB3ZQ0KZmlyc3QgYW5kIGZvcmVtb3N0IG5lZWQgdG8g
+ZWR1Y2F0ZSB0aGUgZGlzdHJvIHBhY2thZ2Vycy4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxp
+bnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRh
+cHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
