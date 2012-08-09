@@ -1,55 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:22203 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:35948 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752008Ab2HaDnc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Aug 2012 23:43:32 -0400
-Message-ID: <5040330F.80100@RedHat.com>
-Date: Thu, 30 Aug 2012 23:44:15 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1754019Ab2HISBO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Aug 2012 14:01:14 -0400
+Date: Thu, 9 Aug 2012 14:01:03 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: steved@redhat.com
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Zdenek Salvet <salvet@ics.muni.cz>,
+        Lukas Hejtmanek <xhejtman@ics.muni.cz>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH] README: note gssd/svcgssd may be needed on both sides
+Message-ID: <20120809180103.GA9914@fieldses.org>
+References: <20120806135517.GS25979@ics.muni.cz>
+ <20120807154114.GA21460@fieldses.org>
+ <1344355148.5781.31.camel@lade.trondhjem.org>
+ <20120808075813.GW604@horn.ics.muni.cz>
+ <1344431887.3423.4.camel@lade.trondhjem.org>
+ <20120809080642.GE604@horn.ics.muni.cz>
+ <20120809144530.GB6592@fieldses.org>
+ <1344527573.25447.17.camel@lade.trondhjem.org>
+ <20120809165035.GB8230@fieldses.org>
 MIME-Version: 1.0
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: Linux pNFS status meeting 08/23/12
-References: <50350032.3010003@RedHat.com> <503F87EE.2000709@panasas.com>
-In-Reply-To: <503F87EE.2000709@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120809165035.GB8230@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-No... there was no meeting today since we had one last week.... 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-I'll schedule one for next week...
+Administrators and distributors have been confused about this.
 
-steved.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ README |   18 +++++++++++++-----
+ 1 file changed, 13 insertions(+), 5 deletions(-)
 
-On 08/30/2012 11:34 AM, Boaz Harrosh wrote:
-> Steve hi
-> 
-> I think you said no meeting today cause of plumbers but can't be sure.
-> (Advanced senility)
-> 
-> If there is a call today please reply here, else just ignore.
-> 
-> Thanks
-> Boaz
-> 
-> On 08/22/2012 06:52 PM, Steve Dickson wrote:
-> 
->> A quick reminder....  There will be a status meeting tomorrow (Thur Aug 23)
->>
->> Time: 9:30 AM PST (12:30 PM EST)
->>
->> The call in numbers are:
->> U.S. and Canada: (800) 451-8679
->> International dial-in number: (212) 729-5016
->> Israel Toll-Free: 1-809-462-557
->> Conference code: 564.272.1552
->>
->> steved.
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
+diff --git a/README b/README
+index e55b2dd..9bb69d7 100644
+--- a/README
++++ b/README
+@@ -71,18 +71,21 @@ scripts can be written to work correctly.
+ 
+ 
+    A/  mount -t nfsd /proc/fs/nfsd
+-      This filesystem needs to be mount before most daemons,
++      This filesystem needs to be mounted before most daemons,
+       particularly exportfs, mountd, svcgssd, idmapd.
+       It could be mounted once, or the script that starts each daemon
+       could test if it is mounted and mount it if not.
+ 
+-   B/ svcgssd ; idmapd
++   B/ svcgssd ; gssd; idmapd
+        These supply services to nfsd and so should be started before
+        rpc.nfsd.  Where they come between mounting the nfsd filesystem
+        and starting the nfsd server is not important.
+        idmapd is only needed for NFSv4 support.
+-       svcgssd is only needed if exportfs NFS filesystem with crypto-
+-       security (Kerberos).
++       svcgssd is needed to export filesystems with Kerberos.
++       gssd should also be started to support granting delegations to
++       NFSv4.0 clients using Kerberos.  However, if it is not started
++       this will only mean that delegations will not be granted.  This
++       will not prevent NFSv4.0 clients from functioning normally.
+ 
+    C/ exportfs -av ; rpc.mountd
+        It is important that exportfs be run before mountd so that
+@@ -148,10 +151,15 @@ scripts can be written to work correctly.
+       filesystems can be mounted with "-o nolock" before sm-notify.
+       This is appropriate for '/', '/usr', and '/var'.
+ 
+-   B/ gssd ; idmapd
++   B/ gssd ; svcgssd; idmapd
+       idmapd should be started before mounting any NFSv4 filesystems.
+       gssd should be started before mounting any NFS filesystems
+       securely (with Kerberos).
++      Before mounting any NFSv4.0 filesystems with Kerberos, svcgssd should
++      also be started to support the callbacks required for delegations.
++      However, a failure to start svcgssd will only mean that delegations
++      are turned off, and will not prevent such a mount from working
++      correctly.
+ 
+    C/ statd should be run before any NFSv2 or NFSv3 filesystem is
+       mounted with remote locking (i.e. without -o nolock).
+-- 
+1.7.9.5
+
