@@ -1,112 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:43131 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755158Ab2HVC2f (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 22:28:35 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH v3 16/17] tracing output: use new hashtable implementation
-Date: Wed, 22 Aug 2012 04:27:11 +0200
-Message-Id: <1345602432-27673-17-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
-References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:60907 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758673Ab2HIQiv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Aug 2012 12:38:51 -0400
+Date: Thu, 9 Aug 2012 12:38:46 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Lukas Hejtmanek <xhejtman@ics.muni.cz>, Zdenek Salvet <salvet@ics.muni.cz>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4 backchannel authentication
+Message-ID: <20120809163846.GA8230@fieldses.org>
+References: <20120806135517.GS25979@ics.muni.cz>
+ <20120807154114.GA21460@fieldses.org>
+ <1344355148.5781.31.camel@lade.trondhjem.org>
+ <20120808075813.GW604@horn.ics.muni.cz>
+ <1344431887.3423.4.camel@lade.trondhjem.org>
+ <20120809080642.GE604@horn.ics.muni.cz>
+ <20120809144530.GB6592@fieldses.org>
+ <1344527573.25447.17.camel@lade.trondhjem.org>
+ <20120809162801.GM11089@ics.muni.cz>
+ <1344529851.25447.33.camel@lade.trondhjem.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1344529851.25447.33.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch tracing to use the new hashtable implementation. This reduces the amount of
-generic unrelated code in the tracing module.
+On Thu, Aug 09, 2012 at 04:30:53PM +0000, Myklebust, Trond wrote:
+> On Thu, 2012-08-09 at 18:28 +0200, Lukas Hejtmanek wrote:
+> > On Thu, Aug 09, 2012 at 03:53:01PM +0000, Myklebust, Trond wrote:
+> > > How is this any different to requiring that the user start rpc.statd
+> > > before launching an NFSv3 mount? Just document the requirement if it
+> > > isn't already clear enough, and we can move on.
+> > > 
+> > > The other source of confusion here, was that the rpc.svcgssd was
+> > > delivered through a nfs-kernel-server package, which indicates that we
+> > > first and foremost need to educate the distro packagers.
+> > 
+> > hmm, if both rpc.gssd and rpc.svcgssd are needed on clients and servers, isn't
+> > it worth of merging them into a single process?
+> 
+> You don't need rpc.gssd to use rpcsec_gss with NFSv3, nor do you need it
+		 ^^^^^^^^
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
- kernel/trace/trace_output.c |   20 ++++++++------------
- 1 files changed, 8 insertions(+), 12 deletions(-)
+You meant rpc.svcgssd, unless you were thinking about the nfsd side.
 
-diff --git a/kernel/trace/trace_output.c b/kernel/trace/trace_output.c
-index 123b189..1324c1a 100644
---- a/kernel/trace/trace_output.c
-+++ b/kernel/trace/trace_output.c
-@@ -8,15 +8,15 @@
- #include <linux/module.h>
- #include <linux/mutex.h>
- #include <linux/ftrace.h>
-+#include <linux/hashtable.h>
- 
- #include "trace_output.h"
- 
--/* must be a power of 2 */
--#define EVENT_HASHSIZE	128
-+#define EVENT_HASH_BITS	7
- 
- DECLARE_RWSEM(trace_event_mutex);
- 
--static struct hlist_head event_hash[EVENT_HASHSIZE] __read_mostly;
-+static DEFINE_HASHTABLE(event_hash, EVENT_HASH_BITS);
- 
- static int next_event_type = __TRACE_LAST_TYPE + 1;
- 
-@@ -712,11 +712,8 @@ struct trace_event *ftrace_find_event(int type)
- {
- 	struct trace_event *event;
- 	struct hlist_node *n;
--	unsigned key;
- 
--	key = type & (EVENT_HASHSIZE - 1);
--
--	hlist_for_each_entry(event, n, &event_hash[key], node) {
-+	hash_for_each_possible(event_hash, event, n, node, type) {
- 		if (event->type == type)
- 			return event;
- 	}
-@@ -781,7 +778,6 @@ void trace_event_read_unlock(void)
-  */
- int register_ftrace_event(struct trace_event *event)
- {
--	unsigned key;
- 	int ret = 0;
- 
- 	down_write(&trace_event_mutex);
-@@ -833,9 +829,7 @@ int register_ftrace_event(struct trace_event *event)
- 	if (event->funcs->binary == NULL)
- 		event->funcs->binary = trace_nop_print;
- 
--	key = event->type & (EVENT_HASHSIZE - 1);
--
--	hlist_add_head(&event->node, &event_hash[key]);
-+	hash_add(event_hash, &event->node, event->type);
- 
- 	ret = event->type;
-  out:
-@@ -850,7 +844,7 @@ EXPORT_SYMBOL_GPL(register_ftrace_event);
-  */
- int __unregister_ftrace_event(struct trace_event *event)
- {
--	hlist_del(&event->node);
-+	hash_del(&event->node);
- 	list_del(&event->list);
- 	return 0;
- }
-@@ -1323,6 +1317,8 @@ __init static int init_events(void)
- 		}
- 	}
- 
-+	hash_init(event_hash);
-+
- 	return 0;
- }
- early_initcall(init_events);
--- 
-1.7.8.6
+> if you're not intending on using delegations with NFSv4.
 
+Though the default should be to support delegations.
+
+--b.
