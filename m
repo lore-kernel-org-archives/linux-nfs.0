@@ -1,63 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:40183 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932149Ab2HVXya (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Aug 2012 19:54:30 -0400
-Message-ID: <50357127.1000608@gmail.com>
-Date: Thu, 23 Aug 2012 09:54:15 +1000
-From: Ryan Mallon <rmallon@gmail.com>
+Received: from hop-nat-141.emc.com ([168.159.213.141]:27675 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753795Ab2HII4n (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2012 04:56:43 -0400
+From: "Peng, Tao" <tao.peng@emc.com>
+To: Johannes Schild <JSchild@gmx.de>, "rees@umich.edu" <rees@umich.edu>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Thu, 9 Aug 2012 04:56:07 -0400
+Subject: RE: Blocklayout
+Message-ID: <5DFC6BE3BA248842867E85C73BF94B050B17B698CF@MX41A.corp.emc.com>
+References: <20120808155829.177400@gmx.net>
+ <20120808163916.GA24539@umich.edu> <20120808182622.177380@gmx.net>
+ <20120809084236.177380@gmx.net>
+In-Reply-To: <20120809084236.177380@gmx.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Tejun Heo <tj@kernel.org>
-CC: Sasha Levin <levinsasha928@gmail.com>, torvalds@linux-foundation.org,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive hashtable
-References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com> <1345602432-27673-2-git-send-email-levinsasha928@gmail.com> <20120822180138.GA19212@google.com>
-In-Reply-To: <20120822180138.GA19212@google.com>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 23/08/12 04:01, Tejun Heo wrote:
-> Hello, Sasha.
-> 
-> On Wed, Aug 22, 2012 at 04:26:56AM +0200, Sasha Levin wrote:
->> +#define DEFINE_HASHTABLE(name, bits)					\
->> +	struct hlist_head name[HASH_SIZE(bits)];
-> 
-> Shouldn't this be something like the following?
-> 
-> #define DEFINE_HASHTABLE(name, bits)					\
-> 	struct hlist_head name[HASH_SIZE(bits)] =			\
-> 		{ [0 ... HASH_SIZE(bits) - 1] = HLIST_HEAD_INIT };
-> 
-> Also, given that the declaration isn't non-trivial, you'll probably
-> want a matching DECLARE_HASHTABLE() macro too.
-> 
->> +/* Use hash_32 when possible to allow for fast 32bit hashing in 64bit kernels. */
->> +#define hash_min(val, bits) ((sizeof(val)==4) ? hash_32((val), (bits)) : hash_long((val), (bits)))
-> 
-> Why is the branching condition sizeof(val) == 4 instead of <= 4?
-> Also, no biggie but why isn't this macro in caps?
-
-It should probably use gcc's statement expression extensions to prevent
-side-effect issues with the arguments:
-
-  #define hash_min ({		\
-	sizeof(val) <= 4 ?	\
-	hash_32(val, bits) :	\
-	hash_long(val, bits));	\
-  })
-
-~Ryan
-
+DQo+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+IEZyb206IGxpbnV4LW5mcy1vd25lckB2
+Z2VyLmtlcm5lbC5vcmcgW21haWx0bzpsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnXSBP
+biBCZWhhbGYgT2YgSm9oYW5uZXMNCj4gU2NoaWxkDQo+IFNlbnQ6IFRodXJzZGF5LCBBdWd1c3Qg
+MDksIDIwMTIgNDo0MyBQTQ0KPiBUbzogSm9oYW5uZXMgU2NoaWxkOyByZWVzQHVtaWNoLmVkdQ0K
+PiBDYzogbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiBTdWJqZWN0OiBSZTogQmxvY2tsYXlv
+dXQNCj4gDQo+IEhpIEd1eXMsDQo+IA0KPiBzb21lIGFkZGl0aW9uYWwgSW5mb3JtYXRpb24sDQo+
+IA0KPiBbIDE2NDQuODc0NTQ5XSBGUy1DYWNoZTogTG9hZGVkDQo+IFsgMTY0NC44OTUxMjJdIE5G
+UzogUmVnaXN0ZXJpbmcgdGhlIGlkX3Jlc29sdmVyIGtleSB0eXBlDQo+IFsgMTY0NC44OTUxNThd
+IEZTLUNhY2hlOiBOZXRmcyAnbmZzJyByZWdpc3RlcmVkIGZvciBjYWNoaW5nDQo+IFsgMTY0NC45
+MjAyMDRdIGJsa21hcGQ6IHNlbmRpbmcgaW9jdGwgMjI4NSB0byBhIHBhcnRpdGlvbiENCj4gWyAx
+NjQ0LjkyMDIwN10gYmxrbWFwZDogc2VuZGluZyBpb2N0bCAyMjg1IHRvIGEgcGFydGl0aW9uIQ0K
+PiBbIDE2NDQuOTIwMjA4XSBibGttYXBkOiBzZW5kaW5nIGlvY3RsIDIyODUgdG8gYSBwYXJ0aXRp
+b24hDQo+IFsgMTY0NC45MjAyNjNdIGJsa21hcGQ6IHNlbmRpbmcgaW9jdGwgMjI4NSB0byBhIHBh
+cnRpdGlvbiENCj4gWyAxNjQ0LjkyMDI2NF0gYmxrbWFwZDogc2VuZGluZyBpb2N0bCAyMjg1IHRv
+IGEgcGFydGl0aW9uIQ0KPiBbIDE2NDQuOTIwMjY1XSBibGttYXBkOiBzZW5kaW5nIGlvY3RsIDIy
+ODUgdG8gYSBwYXJ0aXRpb24hDQo+IFsgMTY1My4xMjk0NjBdIGJsa21hcGQ6IHNlbmRpbmcgaW9j
+dGwgMjI4NSB0byBhIHBhcnRpdGlvbiENCj4gWyAxNjUzLjEyOTQ2M10gYmxrbWFwZDogc2VuZGlu
+ZyBpb2N0bCAyMjg1IHRvIGEgcGFydGl0aW9uIQ0KPiBbIDE2NTMuMTI5NDY0XSBibGttYXBkOiBz
+ZW5kaW5nIGlvY3RsIDIyODUgdG8gYSBwYXJ0aXRpb24hDQo+IFsgMTY1My4xMjk1MjhdIGJsa21h
+cGQ6IHNlbmRpbmcgaW9jdGwgMjI4NSB0byBhIHBhcnRpdGlvbiENCj4gWyAxNjUzLjEyOTUzMF0g
+YmxrbWFwZDogc2VuZGluZyBpb2N0bCAyMjg1IHRvIGEgcGFydGl0aW9uIQ0KPiBbIDE2NTMuMTI5
+NTMxXSBibGttYXBkOiBzZW5kaW5nIGlvY3RsIDIyODUgdG8gYSBwYXJ0aXRpb24hDQo+IFsgMTY1
+My4xMzY2ODJdIE5GUzogc2V0X3BuZnNfbGF5b3V0ZHJpdmVyOiBFcnJvciBpbml0aWFsaXppbmcg
+cE5GUyBsYXlvdXQgZHJpdmVyIDMuDQo+IA0KPiBzb21lb25lIGFueSBpZGVhcyB3aGF0cyBnb2lu
+ZyB3cm9uZz8gVGhlIGFib3ZlIG91dHB1dCBpcyBmcm9tIGRtZXNnLg0KPiBJYW0gdXNpbmcgMy40
+LjctMS5mYzE2Lng4Nl82NCBLZXJuZWwgZnJvbSBGZWRvcmEuIFRoZSB1dGlscyBhcmUgZnJvbQ0K
+PiBodHRwOi8vc3RldmVkLmZlZG9yYXBlb3BsZS5vcmcvcmVwb3MvcG5mcy4NCj4gDQpUaGVyZSBp
+cyBhIHJlZ3Jlc3Npb24gYWJvdXQgc2F2aW5nIHByb3BlciBwbmZzX2Jsa3NpemUgYmVmb3JlIHNl
+dHRpbmcgYmxvY2sgbGF5b3V0IGRyaXZlciBieSBjb21taXQgZTM4ZWI2NTAgKE5GUzogc2V0X3Bu
+ZnNfbGF5b3V0ZHJpdmVyKCkgZnJvbSBuZnM0X3Byb2NfZnNpbmZvKCkpLg0KSWYgeW91ciBjbGll
+bnQgaW5jbHVkZXMgdGhlIHNwZWNpZmljIGNvbW1pdCAoYWx0aG91Z2ggSSBkb24ndCB0aGluayB0
+aGUgY29tbWl0IGlzIGluIDMuNCBrZXJuZWwpLCBwbGVhc2UgcmV0cnkgYWZ0ZXIgYXBwbHlpbmcg
+dGhlIGZpeCBhdCBodHRwOi8vd3d3LnNwaW5pY3MubmV0L2xpc3RzL2xpbnV4LW5mcy9tc2czMTg2
+OC5odG1sCQ0KDQpJZiB5b3Ugc3RpbGwgc2VlIHNhbWUgZXJyb3IsIHBsZWFzZSBlbmFibGUgY2xp
+ZW50IGRlYnVnIGJ5DQplY2hvIDY1NTM1ID4gL3Byb2Mvc3lzL3N1bnJwYy9uZnNfZGVidWcNCg0K
+QW5kIHJlZG8gbW91bnQgYW5kIHNlbmQgdGhlIGxvZy4NCg0KVGhhbmtzLA0KVGFvDQoNCg==
