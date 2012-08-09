@@ -1,73 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:3572 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:34253 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752323Ab2H1SGP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Aug 2012 14:06:15 -0400
-Message-ID: <503D0884.6080509@netapp.com>
-Date: Tue, 28 Aug 2012 14:05:56 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+	id S1759423Ab2HITbp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Aug 2012 15:31:45 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Peng Tao <bergwolf@gmail.com>
+CC: Idan Kedar <idank@tonian.com>, Boaz Harrosh <bharrosh@panasas.com>,
+        "NFS list" <linux-nfs@vger.kernel.org>,
+        Benny Halevy <bhalevy@tonian.com>
+Subject: Re: return layout on error, BUG/deadlock
+Date: Thu, 9 Aug 2012 19:31:43 +0000
+Message-ID: <1344540702.25447.67.camel@lade.trondhjem.org>
+References: <CABpMAyL-B9Kqg8O4xxxtj0X8PF7fP4TM+NnLA_Ynhm-_3C6MUg@mail.gmail.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9380987@SACEXCMBX04-PRD.hq.netapp.com>
+	 <CABpMAyKddCjhWe-LjFOJrikLnC+BJ7GsAMAvieh1rabDPiA=Ug@mail.gmail.com>
+	 <1344528377.25447.29.camel@lade.trondhjem.org>
+	 <CA+a=Yy5cE1v=nG_epkaKE2W--M=HAbtrySc9_+f6dvJVbusPJw@mail.gmail.com>
+	 <1344530243.25447.36.camel@lade.trondhjem.org>
+	 <CA+a=Yy5xZiegbQczkD1F2AaCKLO4cwHijQpNTTTRQzHj6JJ+WQ@mail.gmail.com>
+In-Reply-To: <CA+a=Yy5xZiegbQczkD1F2AaCKLO4cwHijQpNTTTRQzHj6JJ+WQ@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Frank Nicholas <frank@nicholasfamilycentral.com>
-CC: Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>
-Subject: Re: kernel BUG at fs/nfs/idmap.c:684!
-References: <DE540E0D-0D1E-45CE-9968-DA9950497B07@nicholasfamilycentral.com> <0DDD46E4-9D32-4BA4-8BD8-22F347FC9E9B@nicholasfamilycentral.com> <503CD925.7050000@netapp.com> <F5B43205-C11E-4ED7-A530-DCE49B911BE6@nicholasfamilycentral.com> <20120828174314.GA2202@umich.edu> <CDF28CCA-4DFC-4CF7-880A-49E795E3389E@nicholasfamilycentral.com> <C9C62063-74C8-4B58-98B1-E2ED28FC63D1@nicholasfamilycentral.com>
-In-Reply-To: <C9C62063-74C8-4B58-98B1-E2ED28FC63D1@nicholasfamilycentral.com>
-Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/28/2012 02:01 PM, Frank Nicholas wrote:
-> On Aug 28, 2012, at 1:46 PM, Frank Nicholas <frank@nicholasfamilycentral.com> wrote:
-> 
->>
->> On Aug 28, 2012, at 1:43 PM, Jim Rees <rees@umich.edu> wrote:
->>
->>> Frank Nicholas wrote:
->>>
->>> Thanks for the quick reply.
->>>
->>> The patches applied cleanly.  I've rebuilt my kernel.  The reboot will
->>> have to wait until I have physical access to the machine to do a hard
->>> power off…  Unless you know of some way to clean up the hung NFS items so
->>> I can do a reboot.  Currently if I try a 'shutdown -r now', the system
->>> hangs on trying to clean up the NFS items.
->>>
->>> Did you try "reboot -f"?
->>
->>
->> Yep - Remembering back to the old Solaris days, 'sync ; sync ; sync ; reboot -f'.
->>
->> That got it.  The 'emerge --sync' ran fine & the VM's that are using stores from NFS shares are working ok.  So far no NFS issues.  
->>
->> Thanks.
->>
-> 
-> After the reboot, doing an 'emerge --sync' & starting a VM, I have the following in my syslog:
-> 
-> Aug 28 13:52:09 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
-> Aug 28 13:52:19 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
-> Aug 28 13:52:19 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
-> Aug 28 13:52:19 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
-> Aug 28 13:52:19 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
-> Aug 28 13:52:19 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
-> Aug 28 13:52:19 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
-> Aug 28 13:52:19 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
-> Aug 28 13:54:05 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
-> Aug 28 13:54:05 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
-> Aug 28 13:54:05 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
-> Aug 28 13:54:05 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
-> Aug 28 13:54:05 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
-> Aug 28 13:54:05 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
-> 
-> I believe each group of these (by date/time) were when I did the 'emerge --sync' & when I started the VM who has a virtual drive on an NFS share.  I don't remember seeing anything like this before.  Is this due to the patch?  Should I be concerned?  I know this is a pipe, but I've confirmed there is plenty of free disk space everywhere.  The pipe does exist on the file system.  There is plenty of free memory.  Any suggestions?
-> 
-
-Do you have rpc.idmapd running?  Alternatively, if you have keyutils installed you could configure /etc/request-key.conf following the instructions in `man 8 nfsidmap`.
-
-- Bryan
-
-> Thanks.
-> 
-
+T24gRnJpLCAyMDEyLTA4LTEwIGF0IDAwOjQ4ICswODAwLCBQZW5nIFRhbyB3cm90ZToNCj4gT24g
+RnJpLCBBdWcgMTAsIDIwMTIgYXQgMTI6MzcgQU0sIE15a2xlYnVzdCwgVHJvbmQNCj4gPFRyb25k
+Lk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPiBPbiBGcmksIDIwMTItMDgtMTAgYXQg
+MDA6MzQgKzA4MDAsIFBlbmcgVGFvIHdyb3RlOg0KPiA+PiBPbiBGcmksIEF1ZyAxMCwgMjAxMiBh
+dCAxMjowNiBBTSwgTXlrbGVidXN0LCBUcm9uZA0KPiA+PiA8VHJvbmQuTXlrbGVidXN0QG5ldGFw
+cC5jb20+IHdyb3RlOg0KPiA+PiA+IE9uIFRodSwgMjAxMi0wOC0wOSBhdCAxODo0OSArMDMwMCwg
+SWRhbiBLZWRhciB3cm90ZToNCj4gPj4gPj4gT24gVGh1LCBBdWcgOSwgMjAxMiBhdCA1OjA1IFBN
+LCBNeWtsZWJ1c3QsIFRyb25kDQo+ID4+ID4+IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4g
+d3JvdGU6DQo+ID4+ID4+ID4+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+ID4+ID4+ID4+
+IEZyb206IGxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmcgW21haWx0bzpsaW51eC1uZnMt
+DQo+ID4+ID4+ID4+IG93bmVyQHZnZXIua2VybmVsLm9yZ10gT24gQmVoYWxmIE9mIElkYW4gS2Vk
+YXINCj4gPj4gPj4gPj4gU2VudDogVGh1cnNkYXksIEF1Z3VzdCAwOSwgMjAxMiA5OjAzIEFNDQo+
+ID4+ID4+ID4+IFRvOiBCb2F6IEhhcnJvc2g7IE5GUyBsaXN0DQo+ID4+ID4+ID4+IENjOiBCZW5u
+eSBIYWxldnkNCj4gPj4gPj4gPj4gU3ViamVjdDogcmV0dXJuIGxheW91dCBvbiBlcnJvciwgQlVH
+L2RlYWRsb2NrDQo+ID4+ID4+ID4+DQo+ID4+ID4+ID4+IEhpLA0KPiA+PiA+PiA+Pg0KPiA+PiA+
+PiA+PiBBcyBhIHJlc3VsdCBvZiBzb21lIGV4cGVyaW1lbnRzLCBJIHdhbnRlZCB0byBzZWUgd2hh
+dCBoYXBwZW5zIHdoZW4gSQ0KPiA+PiA+PiA+PiBpbmplY3QgYW4gZXJyb3IgKGhhcmQgY29kZWQp
+IHRvIHRoZSBvYmplY3QgbGF5b3V0IGRyaXZlci4gdGhlIHBhdGNoIGlzIGF0IHRoZQ0KPiA+PiA+
+PiA+PiBib3R0b20gb2YgdGhpcyBtYWlsLiB0aGUgcmVhc29uIEkgZGlkIHRoaXMgaXMgYmVjYXVz
+ZSB3aGVuIEkgaW5qZWN0IGVycm9ycyBpbiBteQ0KPiA+PiA+PiA+PiBtb2RpZmllZCB2ZXJzaW9u
+IG9mIHRoZSBvYmplY3QgbGF5b3V0IGRyaXZlciwgSSBnZXQgdGhlIHNhbWUgQlVHIFRpZ3Jhbg0K
+PiA+PiA+PiA+PiByZXBvcnRlZCBhYm91dCB5ZXN0ZXJkYXk6DQo+ID4+ID4+ID4+IG5mczRwcm9j
+LmM6NjI1MiA6ICAgQlVHX09OKCFsaXN0X2VtcHR5KCZsby0+cGxoX3NlZ3MpKTsNCj4gPj4gPj4g
+Pj4NCj4gPj4gPj4gPj4gSW4gbXkgbW9kaWZpZWQgdmVyc2lvbiAoYmFzZWQgb24ga2VybmVsIDMu
+MyksIHRoZSBidWcgc2VlbXMgdG8gYmUgdGhhdA0KPiA+PiA+PiA+PiBwbmZzX2xkX3dyaXRlX2Rv
+bmUgY2FsbHMgcG5mc19yZXR1cm5fbGF5b3V0IGluIHRoZSBlcnJvciBwYXRoLCBldmVuIGlmIHRo
+ZXJlDQo+ID4+ID4+ID4+IGlzIGluLWZsaWdodCBJL08uDQo+ID4+ID4+ID4NCj4gPj4gPj4gPiBU
+aGF0IGlzIG5vdCBhIGJ1Zy4gSXQgaXMgYW4gaW50ZW50aW9uYWwgY2hhbmdlIGluIG9yZGVyIHRv
+IGFsbG93IHRoZSBNRFMgdG8gZmVuY2Ugb2ZmIHRoZSBvdXRzdGFuZGluZyB3cml0ZXMgKGlmIGl0
+IGNhbiBkbyBzbykgYmVmb3JlIHdlIHJldHJhbnNtaXQgdGhlbSBhcyB3cml0ZS10aHJvdWdoLU1E
+Uy4gT3RoZXJ3aXNlLCB5b3UgcmlzayByYWNlcyBiZXR3ZWVuIHRoZSBvdXRzdGFuZGluZyB3cml0
+ZXMtdG8tRFMgYW5kIHRoZSBuZXcgd3JpdGVzLXRocm91Z2gtTURTLg0KPiA+PiA+Pg0KPiA+PiA+
+PiB0byB3aGF0IGNoYW5nZSBhcmUgeW91IHJlZmVycmluZz8NCj4gPj4gPg0KPiA+PiA+IEFzIEkg
+c3RhdGVkIGluIHRoZSBjaGFuZ2Vsb2cgb2YgdGhlIHBhdGNoIHRoYXQgSSBzZW50IHRvIHRoZSBs
+aXN0DQo+ID4+ID4geWVzdGVyZGF5LCB0aGUgYmVoYXZpb3VyIGlzIGR1ZSB0byBjb21taXQgMGE1
+N2NkYWMzZi4NCj4gPj4gPg0KPiA+PiA+PiA+DQo+ID4+ID4+ID4gU2VlIHRoZSBjaGFuZ2Vsb2cg
+aW4gdGhlIHBhdGNoIHRoYXQgSSBzZW50IHRvIHRoZSBsaXN0IHllc3RlcmRheS4NCj4gPj4gPj4g
+Pg0KPiA+PiA+Pg0KPiA+PiA+PiBJIHNhdyB0aGF0LCBhbmQgaWYgSSdtIG5vdCBtaXN0YWtlbiB0
+aGVzZSByYWNlcyBhcHBseSB0byBvYmplY3QgbGF5b3V0DQo+ID4+ID4+IGFzIHdlbGwsIGFuZCBp
+biBhbnkgY2FzZSB0aGV5IGFwcGx5IGluIG15IGNhc2UuIEhvd2V2ZXIsIGl0IGlzIG5vdA0KPiA+
+PiA+PiBlYXN5IHRvIG1lc3MgYXJvdW5kIHdpdGggTEFZT1VUUkVUVVJOIGluIG9iamVjdCBsYXlv
+dXQsIGFuZCB0aGVyZSBoYXZlDQo+ID4+ID4+IGJlZW4gc2V2ZXJhbCBkaXNjdXNzaW9ucyBvbiB0
+aGUgaXNzdWUuIEluIG9uZSBvZiB0aGVzZSBkaXNjdXNzaW9ucw0KPiA+PiA+PiBCZW5ueSBjbGFy
+aWZpZWQgdGhhdCB0aGUgb2JqZWN0IGxheW91dCBjbGllbnQgbXVzdCB3YWl0IGZvciBhbGwNCj4g
+Pj4gPj4gaW4tZmxpZ2h0IEkvTyB0byBlbmQuDQo+ID4+ID4NCj4gPj4gPiBJZiB0aGUgcHJvYmxl
+bSBpcyB0aGF0IHRoZSBEUyBpcyBmYWlsaW5nIHRvIHJlc3BvbmQsIGhvdyBkb2VzIHRoZSBjbGll
+bnQNCj4gPj4gPiBrbm93IHRoYXQgdGhlIGluLWZsaWdodCBJL08gaGFzIGVuZGVkPw0KPiA+PiA+
+DQo+ID4+ID4+IFNvIGZvciBmaWxlIGxheW91dCBpdCBwcm9iYWJseSBtYWtlcyBzZW5zZSwgYnV0
+IG9iamVjdCBsYXlvdXQgKGFuZCBpZg0KPiA+PiA+PiBJIHVuZGVyc3RhbmQgY29ycmVjdGx5LCBi
+bG9jayBsYXlvdXQgYXMgd2VsbCkgc29tZXRoaW5nIGVsc2UgbmVlZHMgdG8NCj4gPj4gPj4gYmUg
+ZG9uZS4gSSB0aG91Z2h0IGFib3V0IHN5bmMgd2FpdCB3aGVuIHJldHVybmluZyB0aGUgbGF5b3V0
+IG9uIGVycm9yLA0KPiA+PiA+PiBidXQgYWNjb3JkaW5nIHRvIEJvYXogaXQgd2lsbCBjYXVzZSBk
+ZWFkbG9ja3MgKEJvYXogLSBjYW4geW91IHBsZWFzZQ0KPiA+PiA+PiBlbGFib3JhdGU/KS4NCj4g
+Pj4gPg0KPiA+PiA+IFRoZSBvYmplY3QgbGF5b3V0cmV0dXJuIGhhcyB0aGUgYWJpbGl0eSB0byBw
+YXNzIGEgdGltZW91dCBlcnJvciB2YWx1ZSB0bw0KPiA+PiA+IHRoZSBNRFMgcHJlY2lzZWx5IGlu
+IG9yZGVyIHRvIGFsbG93IHRoZSBsYXR0ZXIgdG8gZGVhbCB3aXRoIHRoaXMga2luZCBvZg0KPiA+
+PiA+IGlzc3VlLiBTZWUgdGhlIGRlc2NyaXB0aW9uIG9mIHN0cnVjdCBwbmZzX29zZF9pb2VycjQg
+aW4gcmZjNTY2NC4NCj4gPj4gPg0KPiA+PiA+IFRoZSBibG9jayBsYXlvdXQgaXMgYWRkaW5nIHRo
+ZSBzYW1lIGFiaWxpdHkgdG8gbGF5b3V0cmV0dXJuIGluIE5GU3Y0LjINCj4gPj4gPiAoc2VlIGRy
+YWZ0LWlldGYtbmZzdjQtbWlub3J2ZXJzaW9uMi0xMy50eHQpIHZpYSB0aGUgc3RydWN0DQo+ID4+
+ID4gbGF5b3V0cmV0dXJuX2RldmljZV9lcnJvcjQsIHNvIHByZXN1bWFibHkgdGhleSB0b28gaGF2
+ZSBhIHBsYW4gZm9yDQo+ID4+ID4gZGVhbGluZyB3aXRoIHRoaXMga2luZCBvZiBpc3N1ZS4NCj4g
+Pj4gSXQgaXMgb25lIHRoaW5nIHRvIHRlbGwgTURTIHRoYXQgdGhlcmUgaXMgRFMgYWNjZXNzIGVy
+cm9yIGJ5IHNlbmRpbmcNCj4gPj4gbGF5b3V0cmV0dXJuLCBhbmQgaXQgaXMgYW5vdGhlciB0aGlu
+ZyB0byByZXR1cm4gYSBsYXlvdXQgZXZlbiBpZiB0aGVyZQ0KPiA+PiBpcyBvdmVybGFwcGluZyBp
+bi1mbGlnaHQgRFMgSU8uLi4NCj4gPj4NCj4gPj4gSSBjZXJ0YWlubHkgYWdyZWUgdGhhdCBjbGll
+bnQgaXMgZW50aXRsZWQgdG8gcmV0dXJuIGxheW91dCB0byBpbmZvcm0NCj4gPj4gTURTIGFib3V0
+IERTIGVycm9ycyBhbmQgYWxzbyBhdm9pZCBwb3NzaWJsZSBjYl9sYXlvdXRyZWNhbGwuIEJ1dCBp
+dCBpcw0KPiA+PiBqdXN0IGFuIG9wdGltaXphdGlvbiBhbmQgc2hvdWxkIG9ubHkgYmUgZG9uZSB3
+aGVuIHRoZXJlIGlzIG5vDQo+ID4+IGluLWZsaWdodCBJTyAoYXQgbGVhc3QgZm9yIGJsb2NrIGxh
+eW91dCkgSU1ITy4NCj4gPg0KPiA+IEhPVyBETyBZT1UgR1VBUkFOVEVFIE5PIElOLUZMSUdIVCBJ
+Tz8NCj4gPg0KPiBJIGRvbid0LiBUaGF0J3Mgd2h5IEkgZG9uJ3QgcmV0dXJuIGxheW91dCBpbiBw
+bmZzX2xkX3dyaXRlX2RvbmUoKS4gQW5kDQo+IGZvciBsYXlvdXRyZXR1cm4gdXBvbiBjYl9sYXlv
+dXRyZXR1cm4sIGJsb2NrIGxheW91dCBjbGllbnQgbmVlZHMgdG8gZG8NCj4gdGltZWQtbGVhc2Ug
+SU8gZmVuY2luZyBwZXIgcmZjNTY2MywgYnV0IGl0IGlzIG5vdCBpbXBsZW1lbnRlZCBpbiBMaW51
+eA0KPiBjbGllbnQuDQoNClRoZSB0aW1lZC1sZWFzZSBJTyBmZW5jaW5nIGRlc2NyaWJlZCBpbiBy
+ZmM1NjYzIGlzIGFib3V0IGluZm9ybWluZyB0aGUNCnNlcnZlciBhYm91dCBob3cgbG9uZyB0aGUg
+Y2xpZW50IGV4cGVjdHMgYSBjb21tYW5kIHRvIHN1Y2NlZWQgb3IgZmFpbC4NCkl0IGRvZXNuJ3Qg
+b2ZmZXIgYW55IGFkdmljZSBmb3IgaG93IHRoZSBjbGllbnQgaXMgdG8gZGVhbCB3aXRoIGFuDQp1
+bnJlc3BvbnNpdmUgRFMuDQoNCldoYXQgeW91IG5lZWQgaGVyZSBpcyBoZWxwIGZyb20gdGhlIHVu
+ZGVybHlpbmcgdHJhbnNwb3J0IHByb3RvY29sLiBBcyBJDQpzYWlkIGluIHRoZSBlbWFpbCB0byBJ
+ZGFuLCB3aGVuIHJlc2VhcmNoaW5nIGlTQ1NJIGFuZCBpRkNQLCBJIGZvdW5kIHdoYXQNCmFwcGVh
+cnMgdG8gYmUgbWVjaGFuaXNtcyBmb3IgcmVsaWFibHkgdGltaW5nIG91dC4NCg0KLS0gDQpUcm9u
+ZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25k
+Lk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
