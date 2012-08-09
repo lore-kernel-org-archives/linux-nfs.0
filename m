@@ -1,87 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:25064 "EHLO mx1.redhat.com"
+Received: from minas.ics.muni.cz ([147.251.4.40]:52011 "EHLO minas.ics.muni.cz"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751700Ab2HMMLF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Aug 2012 08:11:05 -0400
-Date: Mon, 13 Aug 2012 08:10:54 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        devel@openvz.org
-Subject: Re: [PATCH v2] SUNRPC: check current nsproxy before set of node
- name on client creation
-Message-ID: <20120813081054.0ee39037@corrin.poochiereds.net>
-In-Reply-To: <20120813113731.9629.31906.stgit@localhost.localdomain>
-References: <20120813113731.9629.31906.stgit@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1753320Ab2HIR7W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Aug 2012 13:59:22 -0400
+Date: Thu, 9 Aug 2012 19:58:28 +0200
+From: Zdenek Salvet <salvet@ics.muni.cz>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Lukas Hejtmanek <xhejtman@ics.muni.cz>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4 backchannel authentication
+Message-ID: <20120809175828.GO604@horn.ics.muni.cz>
+Reply-To: salvet@ics.muni.cz
+References: <20120806135517.GS25979@ics.muni.cz>
+ <20120807154114.GA21460@fieldses.org>
+ <1344355148.5781.31.camel@lade.trondhjem.org>
+ <20120808075813.GW604@horn.ics.muni.cz>
+ <1344431887.3423.4.camel@lade.trondhjem.org>
+ <20120809080642.GE604@horn.ics.muni.cz>
+ <20120809144530.GB6592@fieldses.org>
+ <1344527573.25447.17.camel@lade.trondhjem.org>
+ <20120809165035.GB8230@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120809165035.GB8230@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 13 Aug 2012 15:37:31 +0400
-Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+On Thu, Aug 09, 2012 at 12:50:35PM -0400, J. Bruce Fields wrote:
+> > The other source of confusion here, was that the rpc.svcgssd was
+> > delivered through a nfs-kernel-server package, which indicates that we
+> > first and foremost need to educate the distro packagers.
+> 
+> Yes, that's a mistake.  The nfs-utils README is where we've been
+> documenting daemon startup--I'll work on a patch.  (And see if the man
+> pages could use something too.)  And somebody should ping Debian
+> (nfs-kernel-server sounds like a Debian thing.)
 
-> v2:
-> 1) rpc_clnt_set_nodename() prototype updated.
-> 2) fixed errors in comment.
-> 
-> When child reaper exits, it can destroy mount namespace it belongs to, and if
-> there are NFS mounts inside, then it will try to umount them. But in this
-> point current->nsproxy is set to NULL and all namespaces will be destroyed one
-> by one. I.e. we can't dereference current->nsproxy to obtain uts namespace.
-> 
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> ---
->  net/sunrpc/clnt.c |   16 +++++++++++++---
->  1 files changed, 13 insertions(+), 3 deletions(-)
-> 
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index 9a9676e..8fbcbc8 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -277,8 +277,18 @@ void rpc_clients_notifier_unregister(void)
->  	return rpc_pipefs_notifier_unregister(&rpc_clients_block);
->  }
->  
-> -static void rpc_clnt_set_nodename(struct rpc_clnt *clnt, const char *nodename)
-> +static void rpc_clnt_set_nodename(struct rpc_clnt *clnt)
->  {
-> +	const char *nodename;
-> +
-> +	/*
-> +	 * We have to protect against dying child reaper, which has released
-> +	 * its nsproxy already and is trying to destroy mount namespace.
-> +	 */
-> +	if (current->nsproxy == NULL)
-> +		return;
-> +
-> +	nodename = utsname()->nodename;
->  	clnt->cl_nodelen = strlen(nodename);
->  	if (clnt->cl_nodelen > UNX_MAXNODENAME)
->  		clnt->cl_nodelen = UNX_MAXNODENAME;
-> @@ -365,7 +375,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
->  	}
->  
->  	/* save the nodename */
-> -	rpc_clnt_set_nodename(clnt, utsname()->nodename);
-> +	rpc_clnt_set_nodename(clnt);
->  	rpc_register_client(clnt);
->  	return clnt;
->  
-> @@ -524,7 +534,7 @@ rpc_clone_client(struct rpc_clnt *clnt)
->  	err = rpc_setup_pipedir(new, clnt->cl_program->pipe_dir_name);
->  	if (err != 0)
->  		goto out_no_path;
-> -	rpc_clnt_set_nodename(new, utsname()->nodename);
-> +	rpc_clnt_set_nodename(new);
->  	if (new->cl_auth)
->  		atomic_inc(&new->cl_auth->au_count);
->  	atomic_inc(&clnt->cl_count);
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I sent bug report to Debian Bug Tracking System. Other distributions
+may need a notice too, at least SLES<=11.1 and RHEL<=6.3 did not figure 
+it out themselves AFAICT ...
 
-Acked-by: Jeff Layton <jlayton@redhat.com>
+Best regards,
+
+Zdenek Salvet                                              salvet@ics.muni.cz 
+Institute of Computer Science of Masaryk University, Brno, Czech Republic
+and CESNET, z.s.p.o., Prague, Czech Republic
+Phone: ++420-549 49 6534                           Fax: ++420-541 212 747
+----------------------------------------------------------------------------
+      Teamwork is essential -- it allows you to blame someone else.
+
