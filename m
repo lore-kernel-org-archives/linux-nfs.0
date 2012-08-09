@@ -1,103 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:19659 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758465Ab2HUV33 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 17:29:29 -0400
-Subject: Re: [PATCH 08/14] svcrpc: ignore unknown address type in udp receive
-Mime-Version: 1.0 (Apple Message framework v1278)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20120821212431.GC18637@fieldses.org>
-Date: Tue, 21 Aug 2012 17:29:16 -0400
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Message-Id: <822DBA73-7B4C-43CC-B096-9D8B4A219390@oracle.com>
-References: <1345582652-18476-1-git-send-email-bfields@redhat.com> <1345582652-18476-9-git-send-email-bfields@redhat.com> <05C6926C-B688-4A71-AA1C-26F251BBD635@oracle.com> <20120821212431.GC18637@fieldses.org>
+Received: from mx2.netapp.com ([216.240.18.37]:17457 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750855Ab2HIQtT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Aug 2012 12:49:19 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Lukas Hejtmanek <xhejtman@ics.muni.cz>, Zdenek Salvet <salvet@ics.muni.cz>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4 backchannel authentication
+Date: Thu, 9 Aug 2012 16:49:17 +0000
+Message-ID: <1344530955.25447.38.camel@lade.trondhjem.org>
+References: <20120806135517.GS25979@ics.muni.cz>
+	 <20120807154114.GA21460@fieldses.org>
+	 <1344355148.5781.31.camel@lade.trondhjem.org>
+	 <20120808075813.GW604@horn.ics.muni.cz>
+	 <1344431887.3423.4.camel@lade.trondhjem.org>
+	 <20120809080642.GE604@horn.ics.muni.cz>
+	 <20120809144530.GB6592@fieldses.org>
+	 <1344527573.25447.17.camel@lade.trondhjem.org>
+	 <20120809162801.GM11089@ics.muni.cz>
+	 <1344529851.25447.33.camel@lade.trondhjem.org>
+	 <20120809163846.GA8230@fieldses.org>
+In-Reply-To: <20120809163846.GA8230@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Aug 21, 2012, at 5:24 PM, J. Bruce Fields wrote:
-
-> On Tue, Aug 21, 2012 at 05:02:14PM -0400, Chuck Lever wrote:
->> 
->> On Aug 21, 2012, at 4:57 PM, J. Bruce Fields wrote:
->> 
->>> From: "J. Bruce Fields" <bfields@redhat.com>
->>> 
->>> How would this happen?
->> 
->> If an unsupported address family is used in the rqstp.
-> 
-> Right, but that's impossible, isn't it?
-
-The point is to catch this case when someone adds support for new address families.  It won't happen in current code.
-
->>> In any case, it appears this would be returned all the way up to the
->>> caller of svc_recv(), and it's obvious that none of them are equipped to
->>> handle it, and not clear what they would want to do with it anyway.
->>> Let's just drop this and return -EAGAIN.
->> 
->> EAGAIN is incorrect; the correct error code is EAFNOSUPPORT.  If callers are not prepared for this error return, perhaps BUG_ON() would be more appropriate here.
-> 
-> Yeah.  Actually on a quick check this is the only caller that even
-> checks for this case.  So probably the check should go in svc_addr_len.
-> Maybe we should be nice and make it a warning.
-
-I normally find BUG pretty harsh, but in this case it's true a software error, and as you say, should be "impossible": thus it should be a BUG.  The code should stop before the zero length is used.
-
-I agree, though, we should raise the red flag near the code that should be fixed.
-
-> 
-> --b.
-> 
-> commit 4814e806a44f3dee8f7cae00a7d0240487d62583
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Tue Aug 21 17:22:11 2012 -0400
-> 
->    svcrpc: don't bother checking bad svc_addr_len result
-> 
->    None of the callers should see an unsupported address family (only one
->    of them even bothers to check for that case), so just check for the
->    buggy case in svc_addr_len and don't bother elsewhere.
-> 
->    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-> index b3f64b1..9324008 100644
-> --- a/include/linux/sunrpc/svc_xprt.h
-> +++ b/include/linux/sunrpc/svc_xprt.h
-> @@ -166,7 +166,7 @@ static inline size_t svc_addr_len(const struct sockaddr *sa)
-> 	case AF_INET6:
-> 		return sizeof(struct sockaddr_in6);
-> 	}
-> -
-> +	WARN_ONCE(true, "unknown address family %d\n", sa->sa_family);
-> 	return 0;
-> }
-> 
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index 998aa8c..13b005c 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -601,8 +601,6 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
-> 		return -EAGAIN;
-> 	}
-> 	len = svc_addr_len(svc_addr(rqstp));
-> -	if (len == 0)
-> -		return -EAFNOSUPPORT;
-> 	rqstp->rq_addrlen = len;
-> 	if (skb->tstamp.tv64 == 0) {
-> 		skb->tstamp = ktime_get_real();
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+T24gVGh1LCAyMDEyLTA4LTA5IGF0IDEyOjM4IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIFRodSwgQXVnIDA5LCAyMDEyIGF0IDA0OjMwOjUzUE0gKzAwMDAsIE15a2xlYnVzdCwg
+VHJvbmQgd3JvdGU6DQo+ID4gT24gVGh1LCAyMDEyLTA4LTA5IGF0IDE4OjI4ICswMjAwLCBMdWth
+cyBIZWp0bWFuZWsgd3JvdGU6DQo+ID4gPiBPbiBUaHUsIEF1ZyAwOSwgMjAxMiBhdCAwMzo1Mzow
+MVBNICswMDAwLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+ID4gPiBIb3cgaXMgdGhpcyBh
+bnkgZGlmZmVyZW50IHRvIHJlcXVpcmluZyB0aGF0IHRoZSB1c2VyIHN0YXJ0IHJwYy5zdGF0ZA0K
+PiA+ID4gPiBiZWZvcmUgbGF1bmNoaW5nIGFuIE5GU3YzIG1vdW50PyBKdXN0IGRvY3VtZW50IHRo
+ZSByZXF1aXJlbWVudCBpZiBpdA0KPiA+ID4gPiBpc24ndCBhbHJlYWR5IGNsZWFyIGVub3VnaCwg
+YW5kIHdlIGNhbiBtb3ZlIG9uLg0KPiA+ID4gPiANCj4gPiA+ID4gVGhlIG90aGVyIHNvdXJjZSBv
+ZiBjb25mdXNpb24gaGVyZSwgd2FzIHRoYXQgdGhlIHJwYy5zdmNnc3NkIHdhcw0KPiA+ID4gPiBk
+ZWxpdmVyZWQgdGhyb3VnaCBhIG5mcy1rZXJuZWwtc2VydmVyIHBhY2thZ2UsIHdoaWNoIGluZGlj
+YXRlcyB0aGF0IHdlDQo+ID4gPiA+IGZpcnN0IGFuZCBmb3JlbW9zdCBuZWVkIHRvIGVkdWNhdGUg
+dGhlIGRpc3RybyBwYWNrYWdlcnMuDQo+ID4gPiANCj4gPiA+IGhtbSwgaWYgYm90aCBycGMuZ3Nz
+ZCBhbmQgcnBjLnN2Y2dzc2QgYXJlIG5lZWRlZCBvbiBjbGllbnRzIGFuZCBzZXJ2ZXJzLCBpc24n
+dA0KPiA+ID4gaXQgd29ydGggb2YgbWVyZ2luZyB0aGVtIGludG8gYSBzaW5nbGUgcHJvY2Vzcz8N
+Cj4gPiANCj4gPiBZb3UgZG9uJ3QgbmVlZCBycGMuZ3NzZCB0byB1c2UgcnBjc2VjX2dzcyB3aXRo
+IE5GU3YzLCBub3IgZG8geW91IG5lZWQgaXQNCj4gCQkgXl5eXl5eXl4NCj4gDQo+IFlvdSBtZWFu
+dCBycGMuc3ZjZ3NzZCwgdW5sZXNzIHlvdSB3ZXJlIHRoaW5raW5nIGFib3V0IHRoZSBuZnNkIHNp
+ZGUuDQoNClllcy4NCg0KPiA+IGlmIHlvdSdyZSBub3QgaW50ZW5kaW5nIG9uIHVzaW5nIGRlbGVn
+YXRpb25zIHdpdGggTkZTdjQuDQo+IA0KPiBUaG91Z2ggdGhlIGRlZmF1bHQgc2hvdWxkIGJlIHRv
+IHN1cHBvcnQgZGVsZWdhdGlvbnMuDQoNClJpZ2h0LCBidXQgdGhhdCBpc24ndCBhIGp1c3RpZmlj
+YXRpb24gZm9yIG1ha2luZyBpdCBpbXBvc3NpYmxlIHRvIHJ1bg0Kd2l0aG91dCBycGMuc3ZjZ3Nz
+ZCBpZiB5b3UgZG9uJ3QgbmVlZCBpdC4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5G
+UyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29t
+DQp3d3cubmV0YXBwLmNvbQ0KDQo=
