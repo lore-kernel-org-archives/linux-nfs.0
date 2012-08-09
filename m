@@ -1,163 +1,182 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cpe-75-80-152-117.san.res.rr.com ([75.80.152.117]:60106 "EHLO
-	NickAndBarb2.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754007Ab2HaPiS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Aug 2012 11:38:18 -0400
-Date: Fri, 31 Aug 2012 08:32:06 -0700
-From: Nick Pasich <Nick@NickAndBarb.net>
-To: Pavel Shilovsky <piastryyy@gmail.com>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: WARNING: at fs/inode.c:280 drop_nlink+0x31/0x33()
-Message-ID: <20120831153206.GA28908@NICK2>
-References: <20120829162527.GA3635@NickAndBarb.net> <20120829151641.20cde4bc@corrin.poochiereds.net> <20120831043352.GA23663@NickAndBarb.net> <CAKywueSY+NOV3irDm9YxepeCyJJhh82o2mgmDLogr+hJPbaYig@mail.gmail.com>
+Received: from fieldses.org ([174.143.236.118]:53878 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758871Ab2HISf6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Aug 2012 14:35:58 -0400
+Date: Thu, 9 Aug 2012 14:35:57 -0400
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: NFS: Treat NFS4ERR_CLID_INUSE as a fatal error
+Message-ID: <20120809183557.GA10591@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAKywueSY+NOV3irDm9YxepeCyJJhh82o2mgmDLogr+hJPbaYig@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 31, 2012 at 12:00:26PM +0400, Pavel Shilovsky wrote:
-> 2012/8/31 Nick Pasich <Nick@nickandbarb.net>:
-> > Jeff,
-> >
-> > I applied this patch to Kernel 3.5.3 from Pavel and the
-> > the warning is gone with no problems.
-> >
-> > Thanks,
-> >
-> > --( Nick Pasich
-> >
-> > ##########################################################
-> >
-> > From df2d6b1fbf2401c5ee04f2ac143ea0954e3a87a6 Mon Sep 17 00:00:00 2001
-> > From: Pavel Shilovsky <pshilovsky@samba.org>
-> > Date: Fri, 13 Jul 2012 11:59:45 +0400
-> > Subject: [PATCH] CIFS: Protect i_nlink from being negative
-> >
-> > that can cause warning messages.
-> >
-> > Signed-off-by: Pavel Shilovsky <pshilovsky@samba.org>
-> > ---
-> >  fs/cifs/inode.c |   13 +++++++++++--
-> >  1 files changed, 11 insertions(+), 2 deletions(-)
-> >
-> > diff --git a/fs/cifs/inode.c b/fs/cifs/inode.c
-> > index 7354877..88afb1a 100644
-> > --- a/fs/cifs/inode.c
-> > +++ b/fs/cifs/inode.c
-> > @@ -1110,6 +1110,15 @@ undo_setattr:
-> >                 goto out_close;
-> >  }
-> >
-> > +/* copied from fs/nfs/dir.c with small changes */
-> > +static void
-> > +cifs_drop_nlink(struct inode *inode)
-> > +{
-> > +       spin_lock(&inode->i_lock);
-> > +       if (inode->i_nlink > 0)
-> > +               drop_nlink(inode);
-> > +       spin_unlock(&inode->i_lock);
-> > +}
-> >
-> >  /*
-> >   * If dentry->d_inode is null (usually meaning the cached dentry
-> > @@ -1166,13 +1175,13 @@ retry_std_delete:
-> >  psx_del_no_retry:
-> >                 if (!rc) {
-> >                                 if (inode)
-> > -                       drop_nlink(inode);
-> > +                       cifs_drop_nlink(inode);
-> >                 } else if (rc == -ENOENT) {
-> >                                 d_drop(dentry);
-> >                 } else if (rc == -ETXTBSY) {
-> >                                 rc = cifs_rename_pending_delete(full_path, dentry, xid);
-> >                                 if (rc == 0)
-> > -                       drop_nlink(inode);
-> > +                       cifs_drop_nlink(inode);
-> >                 } else if ((rc == -EACCES) && (dosattr == 0) && inode) {
-> >                                 attrs = kzalloc(sizeof(*attrs), GFP_KERNEL);
-> >                                 if (attrs == NULL) {
-> > --
-> > 1.7.3.3
-> >
-> > ##########################################################
-> >
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-cifs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> This one fixes only a part of the problem. Now we have another patch
-> for this problem:
-> 
-> https://git.samba.org/sfrench/?p=sfrench/cifs-2.6.git;a=commitdiff;h=b7ca69289680cf631fb20b7d436467c4ec1153cd;hp=6dab7ede9390d4d937cb89feca932e4fd575d2da
-> 
-> -- 
-> Best regards,
-> Pavel Shilovsky.
+Sorry not to notice this before--the below causes a regression against
+the Linux server; something like:
 
+	# mount -osec=krb5i pip1:/exports /mnt/
+	# echo "test" >/mnt/test
+	# umount /mnt/
+	# mount -osec=krb5 pip1:/exports /mnt/
+	# echo "test" >/mnt/test
+	bash: /mnt/test: Operation not permitted
 
+This fails after the below commit on the client, but not before, thanks
+to the server rejecting the second setclientid with CLID_INUSE due to a
+different security flavor.
 
-Since I'm using kernel 3.5.3 , I get an error on hunk 7 of the patch.
+I haven't really thought through who's at fault here.  The second
+setclientid does lack some level of security that the former had, so I
+think the server's within its rights to complain.
 
-I can do it by hand... But I want to check with you first.
+--b.
 
-Thanks,
+commit de734831224e74fcaf8917386e33644c4243db95
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Wed Jul 11 16:30:50 2012 -0400
 
---( Nick Pasich )--
+    NFS: Treat NFS4ERR_CLID_INUSE as a fatal error
+    
+    For NFSv4 minor version 0, currently the cl_id_uniquifier allows the
+    Linux client to generate a unique nfs_client_id4 string whenever a
+    server replies with NFS4ERR_CLID_INUSE.
+    
+    This implementation seems to be based on a flawed reading of RFC
+    3530.  NFS4ERR_CLID_INUSE actually means that the client has presented
+    this nfs_client_id4 string with a different principal at some time in
+    the past, and that lease is still in use on the server.
+    
+    For a Linux client this might be rather difficult to achieve: the
+    authentication flavor is named right in the nfs_client_id4.id
+    string.  If we change flavors, we change strings automatically.
+    
+    So, practically speaking, NFS4ERR_CLID_INUSE means there is some other
+    client using our string.  There is not much that can be done to
+    recover automatically.  Let's make it a permanent error.
+    
+    Remove the recovery logic in nfs4_proc_setclientid(), and remove the
+    cl_id_uniquifier field from the nfs_client data structure.  And,
+    remove the authentication flavor from the nfs_client_id4 string.
+    
+    Keeping the authentication flavor in the nfs_client_id4.id string
+    means that we could have a separate lease for each authentication
+    flavor used by mounts on the client.  But we want just one lease for
+    all the mounts on this client.
+    
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-
-####################################################################
-
-Hmm...  Looks like a unified diff to me...
-The text leading up to this was:
---------------------------
-|From b7ca69289680cf631fb20b7d436467c4ec1153cd Mon Sep 17 00:00:00 2001
-|From: Steve French <smfrench@gmail.com>
-|Date: Fri, 3 Aug 2012 08:43:01 -0500
-|Subject: [PATCH 1/1] CIFS: Protect i_nlink from being negative
-|
-|that can cause warning messages.  Pavel had initially
-|suggested a smaller patch around drop_nlink, after
-|a similar problem was discovered NFS.  Protecting
-|additional places where nlink is touched was
-|suggested by Jeff Layton and is included in this.
-|
-|Reviewed-by: Pavel Shilovsky <pshilovsky@samba.org>
-|Reviewed-by: Jeff Layton <jlayton@redhat.com>
-|Signed-off-by: Steve French <sfrench@us.ibm.com>
-|Signed-off-by: Steve French <smfrench@gmail.com>
-|---
-| fs/cifs/inode.c |   24 ++++++++++++++++--------
-| fs/cifs/link.c  |    2 ++
-| 2 files changed, 18 insertions(+), 8 deletions(-)
-|
-|diff --git a/fs/cifs/inode.c b/fs/cifs/inode.c
-|index 7354877..cb79c7e 100644
-|--- a/fs/cifs/inode.c
-|+++ b/fs/cifs/inode.c
---------------------------
-Patching file fs/cifs/inode.c using Plan A...
-Hunk #1 succeeded at 124.
-Hunk #2 succeeded at 148.
-Hunk #3 succeeded at 155.
-Hunk #4 succeeded at 905 (offset 50 lines).
-Hunk #5 succeeded at 1107 (offset -1 lines).
-Hunk #6 succeeded at 1224 (offset 51 lines).
-Hunk #7 FAILED at 1299.
-1 out of 7 hunks FAILED -- saving rejects to file fs/cifs/inode.c.rej
-Hmm...  The next patch looks like a unified diff to me...
-The text leading up to this was:
---------------------------
-|diff --git a/fs/cifs/link.c b/fs/cifs/link.c
-|index 09e4b3a..e6ce3b1 100644
-|--- a/fs/cifs/link.c
-|+++ b/fs/cifs/link.c
---------------------------
-Patching file fs/cifs/link.c using Plan A...
-Hunk #1 succeeded at 433.
-Hmm...  Ignoring the trailing garbage.
-done
-
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 74dcd85..1148081 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4029,42 +4029,28 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 		.rpc_resp = res,
+ 		.rpc_cred = cred,
+ 	};
+-	int loop = 0;
+-	int status;
+ 
++	/* nfs_client_id4 */
+ 	nfs4_init_boot_verifier(clp, &sc_verifier);
+-
+-	for(;;) {
+-		rcu_read_lock();
+-		setclientid.sc_name_len = scnprintf(setclientid.sc_name,
+-				sizeof(setclientid.sc_name), "%s/%s %s %s %u",
+-				clp->cl_ipaddr,
+-				rpc_peeraddr2str(clp->cl_rpcclient,
+-							RPC_DISPLAY_ADDR),
+-				rpc_peeraddr2str(clp->cl_rpcclient,
+-							RPC_DISPLAY_PROTO),
+-				clp->cl_rpcclient->cl_auth->au_ops->au_name,
+-				clp->cl_id_uniquifier);
+-		setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
++	rcu_read_lock();
++	setclientid.sc_name_len = scnprintf(setclientid.sc_name,
++			sizeof(setclientid.sc_name), "%s/%s %s",
++			clp->cl_ipaddr,
++			rpc_peeraddr2str(clp->cl_rpcclient,
++						RPC_DISPLAY_ADDR),
++			rpc_peeraddr2str(clp->cl_rpcclient,
++						RPC_DISPLAY_PROTO));
++	/* cb_client4 */
++	setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
+ 				sizeof(setclientid.sc_netid),
+ 				rpc_peeraddr2str(clp->cl_rpcclient,
+ 							RPC_DISPLAY_NETID));
+-		setclientid.sc_uaddr_len = scnprintf(setclientid.sc_uaddr,
++	rcu_read_unlock();
++	setclientid.sc_uaddr_len = scnprintf(setclientid.sc_uaddr,
+ 				sizeof(setclientid.sc_uaddr), "%s.%u.%u",
+ 				clp->cl_ipaddr, port >> 8, port & 255);
+-		rcu_read_unlock();
+ 
+-		status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
+-		if (status != -NFS4ERR_CLID_INUSE)
+-			break;
+-		if (loop != 0) {
+-			++clp->cl_id_uniquifier;
+-			break;
+-		}
+-		++loop;
+-		ssleep(clp->cl_lease_time / HZ + 1);
+-	}
+-	return status;
++	return rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
+ }
+ 
+ int nfs4_proc_setclientid_confirm(struct nfs_client *clp,
+@@ -5262,10 +5248,9 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ 	nfs4_init_boot_verifier(clp, &verifier);
+ 
+ 	args.id_len = scnprintf(args.id, sizeof(args.id),
+-				"%s/%s/%u",
++				"%s/%s",
+ 				clp->cl_ipaddr,
+-				clp->cl_rpcclient->cl_nodename,
+-				clp->cl_rpcclient->cl_auth->au_flavor);
++				clp->cl_rpcclient->cl_nodename);
+ 
+ 	res.server_owner = kzalloc(sizeof(struct nfs41_server_owner),
+ 					GFP_NOFS);
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 1cfc460..81eabcd 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1606,10 +1606,15 @@ static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
+ 			return -ESERVERFAULT;
+ 		/* Lease confirmation error: retry after purging the lease */
+ 		ssleep(1);
+-	case -NFS4ERR_CLID_INUSE:
+ 	case -NFS4ERR_STALE_CLIENTID:
+ 		clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
+ 		break;
++	case -NFS4ERR_CLID_INUSE:
++		pr_err("NFS: Server %s reports our clientid is in use\n",
++			clp->cl_hostname);
++		nfs_mark_client_ready(clp, -EPERM);
++		clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
++		return -EPERM;
+ 	case -EACCES:
+ 		if (clp->cl_machine_cred == NULL)
+ 			return -EACCES;
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index f58325a..6532765 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -69,10 +69,9 @@ struct nfs_client {
+ 	struct idmap *		cl_idmap;
+ 
+ 	/* Our own IP address, as a null-terminated string.
+-	 * This is used to generate the clientid, and the callback address.
++	 * This is used to generate the mv0 callback address.
+ 	 */
+ 	char			cl_ipaddr[48];
+-	unsigned char		cl_id_uniquifier;
+ 	u32			cl_cb_ident;	/* v4.0 callback identifier */
+ 	const struct nfs4_minor_version_ops *cl_mvops;
+ 
