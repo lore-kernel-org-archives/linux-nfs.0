@@ -1,80 +1,277 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:36202 "EHLO
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:44553 "EHLO
 	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758438Ab2HHNV4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Aug 2012 09:21:56 -0400
-Received: by mail-yw0-f46.google.com with SMTP id m54so724688yhm.19
-        for <linux-nfs@vger.kernel.org>; Wed, 08 Aug 2012 06:21:56 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v5 06/19] vfs: turn "empty" arg in getname_flags into a bool
-Date: Wed,  8 Aug 2012 09:21:29 -0400
-Message-Id: <1344432102-22312-7-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
-References: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
+	with ESMTP id S1755470Ab2HIVbh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2012 17:31:37 -0400
+Received: by mail-yw0-f46.google.com with SMTP id m54so1004938yhm.19
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Aug 2012 14:31:37 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 3/3] SUNRPC: Share upcall pipes among an rpc_clnt's rpc_auth
+ objects
+To: linux-nfs@vger.kernel.org
+Cc: skinsbursky@parallels.com
+Date: Thu, 09 Aug 2012 17:31:35 -0400
+Message-ID: <20120809213135.12984.30347.stgit@degas.1015granger.net>
+In-Reply-To: <20120809205748.12984.88991.stgit@degas.1015granger.net>
+References: <20120809205748.12984.88991.stgit@degas.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...it's just used as a flag.
+An ULP is supposed to be able to replace a GSS rpc_auth object with
+another GSS rpc_auth object using rpcauth_create().  However,
+rpcauth_create() in 3.5 reliably fails with -EEXIST in this case.
+This is because when gss_create() attempts to create the upcall pipes,
+sometimes they are already there.  For example if a pipe FS mount
+event occurs, or a previous GSS flavor was in use for this rpc_clnt.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+The ->pipes_destroy method works only on whatever rpc_auth is
+associated with the rpc_clnt when it is destroyed.  But there is no
+guarantee that this is the same rpc_auth that was created when
+the rpc_clnt was created.  Thus cached pipe data must be reference
+counted and destroyed when no more gss_auth's are using it.  And,
+->pipes_destroy must ensure that both the dentries and the pipe
+data are gone so the pipe data does not leak.
+
+The dentries appear to be created and deleted independently of the
+rpc_pipe data.  We must allow this to continue in order that mounting
+and unmounting the pipe FS can work.  However, pipe dentries must
+remain in place during gss_free(), since they could be shared.
+
+In the meantime, we need to provide a way for gss_create() to find
+an existing pipe of a particular name so it may be shared.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>
 ---
- fs/namei.c         | 4 ++--
- fs/stat.c          | 2 +-
- include/linux/fs.h | 2 +-
- 3 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index dc58de9..f0463bc 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -117,7 +117,7 @@
-  * POSIX.1 2.4: an empty pathname is invalid (ENOENT).
-  * PATH_MAX includes the nul terminator --RR.
-  */
--char *getname_flags(const char __user *filename, int flags, int *empty)
-+char *getname_flags(const char __user *filename, int flags, bool *empty)
+ include/linux/sunrpc/clnt.h    |    1 
+ net/sunrpc/auth_gss/auth_gss.c |  141 ++++++++++++++++++++++++++++++++++------
+ net/sunrpc/clnt.c              |    1 
+ 3 files changed, 123 insertions(+), 20 deletions(-)
+
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 523547e..31857e0 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -62,6 +62,7 @@ struct rpc_clnt {
+ 	struct rpc_timeout	cl_timeout_default;
+ 	const struct rpc_program *cl_program;
+ 	char			*cl_principal;	/* target to authenticate to */
++	struct list_head	cl_pipes;	/* clnt's upcall pipes */
+ };
+ 
+ /*
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 2264776..8ff5103 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -84,6 +84,14 @@ struct gss_auth {
+ 	struct rpc_pipe *pipe[2];
+ };
+ 
++struct gss_cached_pipe {
++	struct list_head	gp_list;
++	unsigned int		gp_ref;
++	char			*gp_name;
++	struct rpc_pipe		*gp_pipe;
++};
++DEFINE_MUTEX(gss_pipe_mutex);
++
+ /* pipe_version >= 0 if and only if someone has a pipe open. */
+ static int pipe_version = -1;
+ static atomic_t pipe_users = ATOMIC_INIT(0);
+@@ -765,6 +773,20 @@ static void gss_pipe_dentry_destroy(struct rpc_pipe *pipe)
+ 	}
+ }
+ 
++static void gss_pipe_dentry_destroy_net(struct rpc_clnt *clnt,
++					struct rpc_pipe *pipe)
++{
++	struct net *net = rpc_net_ns(clnt);
++	struct super_block *sb;
++
++	sb = rpc_get_sb_net(net);
++	if (sb) {
++		if (clnt->cl_dentry)
++			gss_pipe_dentry_destroy(pipe);
++		rpc_put_sb_net(net);
++	}
++}
++
+ /*
+  * Release existing pipe dentries, but leave the rpc_pipe data
+  * ready to receive fresh dentries if subsequently needed.
+@@ -827,20 +849,6 @@ out_err:
+ 	return err;
+ }
+ 
+-static void gss_pipes_dentries_destroy_net(struct rpc_clnt *clnt,
+-					   struct rpc_auth *auth)
+-{
+-	struct net *net = rpc_net_ns(clnt);
+-	struct super_block *sb;
+-
+-	sb = rpc_get_sb_net(net);
+-	if (sb) {
+-		if (clnt->cl_dentry)
+-			gss_pipes_dentries_destroy(auth);
+-		rpc_put_sb_net(net);
+-	}
+-}
+-
+ static int gss_pipes_dentries_create_net(struct rpc_clnt *clnt,
+ 					 struct rpc_auth *auth)
  {
- 	char *result = __getname(), *err;
- 	int len;
-@@ -133,7 +133,7 @@ char *getname_flags(const char __user *filename, int flags, int *empty)
- 	/* The empty path is special. */
- 	if (unlikely(!len)) {
- 		if (empty)
--			*empty = 1;
-+			*empty = true;
- 		err = ERR_PTR(-ENOENT);
- 		if (!(flags & LOOKUP_EMPTY))
- 			goto error;
-diff --git a/fs/stat.c b/fs/stat.c
-index c9d88f7..4f8b6bc 100644
---- a/fs/stat.c
-+++ b/fs/stat.c
-@@ -306,7 +306,7 @@ SYSCALL_DEFINE4(readlinkat, int, dfd, const char __user *, pathname,
+@@ -857,16 +865,111 @@ static int gss_pipes_dentries_create_net(struct rpc_clnt *clnt,
+ 	return err;
+ }
+ 
++static struct gss_cached_pipe *gss_alloc_cached_pipe(char *name)
++{
++	struct gss_cached_pipe *cp;
++
++	cp = kmalloc(sizeof(*cp), GFP_KERNEL);
++	if (cp == NULL)
++		return NULL;
++
++	cp->gp_name = kstrdup(name, GFP_KERNEL);
++	if (cp->gp_name == NULL) {
++		kfree(cp);
++		return NULL;
++	}
++
++	INIT_LIST_HEAD(&cp->gp_list);
++	cp->gp_ref = 1;
++	return cp;
++}
++
++static void gss_free_cached_pipe(struct gss_cached_pipe *cp)
++{
++	kfree(cp->gp_name);
++	kfree(cp);
++}
++
++/*
++ * Returns a fresh or cached pipe data object.  A cached pipe
++ * data object may already have a dentry attached to it.  If an
++ * object cannot be found or created, an ERR_PTR is returned.
++ */
+ static struct rpc_pipe *gss_mkpipe_data(struct rpc_clnt *clnt,
+ 					const struct rpc_pipe_ops *ops,
+ 					char *name)
  {
- 	struct path path;
- 	int error;
--	int empty = 0;
-+	bool empty = false;
- 	char *name;
- 	unsigned int try = 0;
- 	unsigned int lookup_flags = LOOKUP_EMPTY;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index f2e7371..55b3cc3 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2201,7 +2201,7 @@ extern struct file *file_open_root(struct dentry *, struct vfsmount *,
- 				   const char *, int);
- extern struct file * dentry_open(const struct path *, int, const struct cred *);
- extern int filp_close(struct file *, fl_owner_t id);
--extern char *getname_flags(const char __user *, int, int *);
-+extern char *getname_flags(const char __user *, int, bool *);
- extern char * getname(const char __user *);
- enum {
- 	FILE_CREATED = 1,
--- 
-1.7.11.2
+-	return rpc_mkpipe_data(ops, RPC_PIPE_WAIT_FOR_OPEN);
++	struct gss_cached_pipe *cp;
++	struct rpc_pipe *pipe;
++
++	mutex_lock(&gss_pipe_mutex);
++
++	list_for_each_entry(cp, &clnt->cl_pipes, gp_list) {
++		if (strcmp(cp->gp_name, name) == 0) {
++			dprintk("RPC:       %s found '%s' for clnt %p: %p\n",
++				__func__, name, clnt, cp->gp_pipe);
++			cp->gp_ref++;
++			pipe = cp->gp_pipe;
++			goto out;
++		}
++	}
++
++	pipe = ERR_PTR(-ENOMEM);
++	cp = gss_alloc_cached_pipe(name);
++	if (cp == NULL)
++		goto out;
++
++	pipe = rpc_mkpipe_data(ops, RPC_PIPE_WAIT_FOR_OPEN);
++	if (IS_ERR(pipe)) {
++		gss_free_cached_pipe(cp);
++		goto out;
++	}
++
++	dprintk("RPC:       %s created '%s' for clnt %p: %p\n",
++		__func__, name, clnt, pipe);
++	cp->gp_pipe = pipe;
++	list_add(&cp->gp_list, &clnt->cl_pipes);
++
++out:
++	mutex_unlock(&gss_pipe_mutex);
++	return pipe;
+ }
+ 
++/*
++ * Decrements a cached pipes reference count, and releases it if
++ * the count goes to zero.  Associated dentry is freed if present.
++ */
+ static void gss_destroy_pipe_data(struct rpc_clnt *clnt, struct rpc_pipe *pipe)
+ {
+-	rpc_destroy_pipe_data(pipe);
++	struct gss_cached_pipe *cp;
++
++	mutex_lock(&gss_pipe_mutex);
++
++	list_for_each_entry(cp, &clnt->cl_pipes, gp_list) {
++		if (cp->gp_pipe == pipe)
++			goto found;
++	}
++
++	dprintk("RPC:       %s missing cache for pipe %p for clnt %p\n",
++		__func__, pipe, clnt);
++	WARN_ON(true);
++
++	mutex_unlock(&gss_pipe_mutex);
++	return;
++
++found:
++	if (--cp->gp_ref == 0) {
++		dprintk("RPC:       %s destroying '%s' (%p) for clnt %p\n",
++			__func__, cp->gp_name, pipe, clnt);
++		gss_pipe_dentry_destroy_net(clnt, pipe);
++		rpc_destroy_pipe_data(pipe);
++		list_del(&cp->gp_list);
++		gss_free_cached_pipe(cp);
++	} else
++		dprintk("RPC:       %s leaving '%s' (%p) for clnt %p\n",
++			__func__, cp->gp_name, pipe, clnt);
++
++	mutex_unlock(&gss_pipe_mutex);
+ }
+ 
+ /*
+@@ -925,13 +1028,12 @@ gss_create(struct rpc_clnt *clnt, rpc_authflavor_t flavor)
+ 	err = gss_pipes_dentries_create_net(clnt, auth);
+ 	if (err)
+ 		goto err_destroy_pipe_0;
++
+ 	err = rpcauth_init_credcache(auth);
+ 	if (err)
+-		goto err_unlink_pipes;
++		goto err_destroy_pipe_0;
+ 
+ 	return auth;
+-err_unlink_pipes:
+-	gss_pipes_dentries_destroy_net(clnt, auth);
+ err_destroy_pipe_0:
+ 	gss_destroy_pipe_data(clnt, gss_auth->pipe[0]);
+ err_destroy_pipe_1:
+@@ -948,7 +1050,6 @@ out_dec:
+ static void
+ gss_free(struct gss_auth *gss_auth)
+ {
+-	gss_pipes_dentries_destroy_net(gss_auth->client, &gss_auth->rpc_auth);
+ 	gss_destroy_pipe_data(gss_auth->client, gss_auth->pipe[0]);
+ 	gss_destroy_pipe_data(gss_auth->client, gss_auth->pipe[1]);
+ 	gss_mech_put(gss_auth->mech);
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index f56f045..7bf6ed1 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -349,6 +349,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ 		if (!clnt->cl_principal)
+ 			goto out_no_principal;
+ 	}
++	INIT_LIST_HEAD(&clnt->cl_pipes);
+ 
+ 	atomic_set(&clnt->cl_count, 1);
+ 
 
