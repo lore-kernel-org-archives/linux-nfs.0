@@ -1,55 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46804 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:29830 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758500Ab2HUU5f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Aug 2012 16:57:35 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 07/14] svcrpc: minor udp code cleanup
-Date: Tue, 21 Aug 2012 16:57:25 -0400
-Message-Id: <1345582652-18476-8-git-send-email-bfields@redhat.com>
-In-Reply-To: <1345582652-18476-1-git-send-email-bfields@redhat.com>
-References: <1345582652-18476-1-git-send-email-bfields@redhat.com>
+	id S1754952Ab2HISGZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Aug 2012 14:06:25 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 3/3] NFS: Use kzalloc() instead of kmalloc() in the idmapper
+Date: Thu,  9 Aug 2012 14:05:51 -0400
+Message-Id: <1344535551-4412-3-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1344535551-4412-1-git-send-email-bjschuma@netapp.com>
+References: <1344535551-4412-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Order the code in a more boring way.
+This will allocate memory that has already been zeroed, allowing us to
+remove the memset later on.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Bryan Schumaker <bjchuma@netapp.com>
 ---
- net/sunrpc/svcsock.c |    9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
+ fs/nfs/idmap.c | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index c7a7b14..06ae8a7 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -620,10 +620,7 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
- 	if (!svc_udp_get_dest_address(rqstp, cmh)) {
- 		net_warn_ratelimited("svc: received unknown control message %d/%d; dropping RPC reply datagram\n",
- 				     cmh->cmsg_level, cmh->cmsg_type);
--out_free:
--		trace_kfree_skb(skb, svc_udp_recvfrom);
--		skb_free_datagram_locked(svsk->sk_sk, skb);
--		return 0;
-+		goto out_free;
- 	}
- 	rqstp->rq_daddrlen = svc_addr_len(svc_daddr(rqstp));
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index 9864b48..4af524e 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -626,9 +626,6 @@ static int nfs_idmap_prepare_message(char *desc, struct idmap *idmap,
+ 	substring_t substr;
+ 	int token, ret;
  
-@@ -662,6 +659,10 @@ out_free:
- 		serv->sv_stats->netudpcnt++;
+-	memset(im,  0, sizeof(*im));
+-	memset(msg, 0, sizeof(*msg));
+-
+ 	im->im_type = IDMAP_TYPE_GROUP;
+ 	im->im_private = idmap;
+ 	token = match_token(desc, nfs_idmap_tokens, &substr);
+@@ -671,11 +668,11 @@ static int nfs_idmap_legacy_upcall(struct key_construction *cons,
+ 	int ret = -ENOMEM;
  
- 	return len;
-+out_free:
-+	trace_kfree_skb(skb, svc_udp_recvfrom);
-+	skb_free_datagram_locked(svsk->sk_sk, skb);
-+	return 0;
- }
+ 	/* msg and im are freed in idmap_pipe_destroy_msg */
+-	msg = kmalloc(sizeof(*msg), GFP_KERNEL);
++	msg = kzalloc(sizeof(*msg), GFP_KERNEL);
+ 	if (!msg)
+ 		goto out0;
  
- static int
+-	im = kmalloc(sizeof(*im), GFP_KERNEL);
++	im = kzalloc(sizeof(*im), GFP_KERNEL);
+ 	if (!im)
+ 		goto out1;
+ 
 -- 
-1.7.9.5
+1.7.11.4
 
