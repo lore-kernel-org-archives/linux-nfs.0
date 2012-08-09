@@ -1,61 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:36405 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756447Ab2HFPAd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Aug 2012 11:00:33 -0400
-Received: by ggnl2 with SMTP id l2so2560262ggn.19
-        for <linux-nfs@vger.kernel.org>; Mon, 06 Aug 2012 08:00:33 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: trivial comment updates
-Date: Mon,  6 Aug 2012 11:00:27 -0400
-Message-Id: <1344265227-22280-1-git-send-email-jlayton@redhat.com>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:50443 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750964Ab2HICYj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Aug 2012 22:24:39 -0400
+Received: by pbbrr13 with SMTP id rr13so83450pbb.19
+        for <linux-nfs@vger.kernel.org>; Wed, 08 Aug 2012 19:24:39 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <1344451818.8925.27.camel@lade.trondhjem.org>
+References: <1344391392-1948-1-git-send-email-bergwolf@gmail.com>
+ <1344391392-1948-3-git-send-email-bergwolf@gmail.com> <1344451818.8925.27.camel@lade.trondhjem.org>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Thu, 9 Aug 2012 10:24:19 +0800
+Message-ID: <CA+a=Yy5FkO93xjA2VFa7eGP=CEb3QuM+6frL5cTLnwhQHdr5Ag@mail.gmail.com>
+Subject: Re: [PATCH RFC 2/3] NFS41: send real write size in layoutget
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "bharrosh@panasas.com" <bharrosh@panasas.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-locks.c doesn't use the BKL anymore and there is no fi_perfile field.
+On Thu, Aug 9, 2012 at 2:50 AM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Wed, 2012-08-08 at 10:03 +0800, Peng Tao wrote:
+>> From: Peng Tao <tao.peng@emc.com>
+>>
+>> For bufferred write, scan dirty pages to find out longest continuous
+>> dirty pages. In this case, also allow layout driver to specify a
+>> maximum layoutget size which is useful to avoid busy scanning dirty pages
+>> for block layout client.
+>
+> This is _really_ ugly, and is a source of potential deadlocks if
+> multiple threads are scanning+locking pages at the same time.
+Multiple threads won't be able to scan into the same region as borders
+are protected by page writeback bit.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/nfs4state.c | 6 +-----
- fs/nfsd/state.h     | 6 +-----
- 2 files changed, 2 insertions(+), 10 deletions(-)
+>
+> Why not simplify this by dropping the complicated tests for whether or
+> not the pages are dirty? That gets rid of the deadlock-prone lock_page()
+> calls, and would enable you to just use radix_tree_next_hole().
+>
+OK. I will cook a patch to drop the complicated page dirty/writeback
+checks and just use radix_tree_next_hole.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index cc894ed..d8a7ddf 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4151,11 +4151,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	file_lock.fl_end = last_byte_offset(lock->lk_offset, lock->lk_length);
- 	nfs4_transform_lock_offset(&file_lock);
- 
--	/*
--	* Try to lock the file in the VFS.
--	* Note: locks.c uses the BKL to protect the inode's lock list.
--	*/
--
-+	/* Try to lock the file in the VFS. */
- 	err = vfs_lock_file(filp, F_SETLK, &file_lock, &conflock);
- 	switch (-err) {
- 	case 0: /* success! */
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index e617314..cce91c8 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -374,11 +374,7 @@ static inline struct nfs4_lockowner * lockowner(struct nfs4_stateowner *so)
- 	return container_of(so, struct nfs4_lockowner, lo_owner);
- }
- 
--/*
--*  nfs4_file: a file opened by some number of (open) nfs4_stateowners.
--*    o fi_perfile list is used to search for conflicting 
--*      share_acces, share_deny on the file.
--*/
-+/* nfs4_file: a file opened by some number of (open) nfs4_stateowners. */
- struct nfs4_file {
- 	atomic_t		fi_ref;
- 	struct list_head        fi_hash;    /* hash by "struct inode *" */
 -- 
-1.7.11.2
-
+Thanks,
+Tao
