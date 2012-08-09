@@ -1,133 +1,205 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:49313 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750880Ab2HIQyx convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2012 12:54:53 -0400
-Received: by ghrr11 with SMTP id r11so668244ghr.19
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Aug 2012 09:54:52 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1344528377.25447.29.camel@lade.trondhjem.org>
-References: <CABpMAyL-B9Kqg8O4xxxtj0X8PF7fP4TM+NnLA_Ynhm-_3C6MUg@mail.gmail.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9380987@SACEXCMBX04-PRD.hq.netapp.com>
- <CABpMAyKddCjhWe-LjFOJrikLnC+BJ7GsAMAvieh1rabDPiA=Ug@mail.gmail.com> <1344528377.25447.29.camel@lade.trondhjem.org>
-From: Idan Kedar <idank@tonian.com>
-Date: Thu, 9 Aug 2012 19:54:11 +0300
-Message-ID: <CABpMAyL-AnLc1rbPEtaBNONKiwsFayYXsGt+dPnDyua0zfS81w@mail.gmail.com>
-Subject: Re: return layout on error, BUG/deadlock
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
-        Benny Halevy <bhalevy@tonian.com>, Peng Tao <bergwolf@gmail.com>
-Content-Type: text/plain; charset=US-ASCII
+Received: from acsinet15.oracle.com ([141.146.126.227]:37149 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759066Ab2HITGM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2012 15:06:12 -0400
+Subject: Re: NFS: Treat NFS4ERR_CLID_INUSE as a fatal error
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20120809183557.GA10591@fieldses.org>
+Date: Thu, 9 Aug 2012 15:06:00 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <53272628-CC34-4279-AA69-CD31B86672D5@oracle.com>
+References: <20120809183557.GA10591@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 9, 2012 at 7:06 PM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Thu, 2012-08-09 at 18:49 +0300, Idan Kedar wrote:
->> On Thu, Aug 9, 2012 at 5:05 PM, Myklebust, Trond
->> <Trond.Myklebust@netapp.com> wrote:
->> >> -----Original Message-----
->> >> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
->> >> owner@vger.kernel.org] On Behalf Of Idan Kedar
->> >> Sent: Thursday, August 09, 2012 9:03 AM
->> >> To: Boaz Harrosh; NFS list
->> >> Cc: Benny Halevy
->> >> Subject: return layout on error, BUG/deadlock
->> >>
->> >> Hi,
->> >>
->> >> As a result of some experiments, I wanted to see what happens when I
->> >> inject an error (hard coded) to the object layout driver. the patch is at the
->> >> bottom of this mail. the reason I did this is because when I inject errors in my
->> >> modified version of the object layout driver, I get the same BUG Tigran
->> >> reported about yesterday:
->> >> nfs4proc.c:6252 :   BUG_ON(!list_empty(&lo->plh_segs));
->> >>
->> >> In my modified version (based on kernel 3.3), the bug seems to be that
->> >> pnfs_ld_write_done calls pnfs_return_layout in the error path, even if there
->> >> is in-flight I/O.
->> >
->> > That is not a bug. It is an intentional change in order to allow the MDS to fence off the outstanding writes (if it can do so) before we retransmit them as write-through-MDS. Otherwise, you risk races between the outstanding writes-to-DS and the new writes-through-MDS.
->>
->> to what change are you referring?
->
-> As I stated in the changelog of the patch that I sent to the list
-> yesterday, the behaviour is due to commit 0a57cdac3f.
->
 
-I'm not sure I'm following. I was talking about the state of the code
-v3.5, not to any specific patch/change. since the client yelled
-"BUG!!!" and crashed, there is some bug involved, either because the
-BUG() is correct or because the presence of the BUG() is the bug
-itself.
+On Aug 9, 2012, at 2:35 PM, J. Bruce Fields wrote:
 
->> >
->> > See the changelog in the patch that I sent to the list yesterday.
->> >
->>
->> I saw that, and if I'm not mistaken these races apply to object layout
->> as well, and in any case they apply in my case. However, it is not
->> easy to mess around with LAYOUTRETURN in object layout, and there have
->> been several discussions on the issue. In one of these discussions
->> Benny clarified that the object layout client must wait for all
->> in-flight I/O to end.
->
-> If the problem is that the DS is failing to respond, how does the client
-> know that the in-flight I/O has ended?
->
+> Sorry not to notice this before--the below causes a regression against
+> the Linux server; something like:
+> 
+> 	# mount -osec=krb5i pip1:/exports /mnt/
+> 	# echo "test" >/mnt/test
+> 	# umount /mnt/
+> 	# mount -osec=krb5 pip1:/exports /mnt/
+> 	# echo "test" >/mnt/test
+> 	bash: /mnt/test: Operation not permitted
+> 
+> This fails after the below commit on the client, but not before, thanks
+> to the server rejecting the second setclientid with CLID_INUSE due to a
+> different security flavor.
 
-after the last rpc_call_done is called there is no I/O from the
-client's perspective an the layout can be safely returned, after which
-I/O can be done through the MDS.
-Is there I/O pending from the DS perspective? maybe, but all you can
-do is send I/O via MDS and hope it will not race. fencing doesn't
-really save you, it just improves your odds where applicable, i.e.
-file layout.
+This was part of a series where the last few patches got dropped for other problems.  Testing with this patch by itself was never done since it was part of a series of patches that implement a particular feature.
 
->> So for file layout it probably makes sense, but object layout (and if
->> I understand correctly, block layout as well) something else needs to
->> be done. I thought about sync wait when returning the layout on error,
->> but according to Boaz it will cause deadlocks (Boaz - can you please
->> elaborate?).
->
-> The object layoutreturn has the ability to pass a timeout error value to
-> the MDS precisely in order to allow the latter to deal with this kind of
-> issue. See the description of struct pnfs_osd_ioerr4 in rfc5664.
->
-> The block layout is adding the same ability to layoutreturn in NFSv4.2
-> (see draft-ietf-nfsv4-minorversion2-13.txt) via the struct
-> layoutreturn_device_error4, so presumably they too have a plan for
-> dealing with this kind of issue.
->
+One thought is to put the authentication flavor name back into nfs_client_id4.id string temporarily until we have worked through the issues with full UCS support.  That would prevent the regression, but we'd still have clients who use multiple authentication flavors maintaining multiple leases.
 
-I'll wait for Boaz (or someone else) to explain what exactly is "this
-kind of issue". I still don't know why sync wait would deadlock.
+> I haven't really thought through who's at fault here.  The second
+> setclientid does lack some level of security that the former had, so I
+> think the server's within its rights to complain.
 
->> And come to think of it, nfs4_proc_setattr also returns the layout
->> when there may be I/O in-flight (correct me if i'm wrong). So I guess
->> pnfs_return_layout should somehow solve this by itself by saying "if
->> this is fencing (a flag which will be set for file layout only), go
->> ahead, otherwise make the layout as 'needs to be returned' and when
->> the lseg lists gets empty return the layout".
->
-> The only layout type that sets the PNFS_LAYOUTRET_ON_SETATTR flag is
-> objects, so that question needs to be directed to Boaz.
->
+I don't think the second _lacks_ a level of security: I think the second is using a _different_ security flavor with the same nfs_client_id4.id string.  NFS4ERR_CLID_INUSE is the correct server response in this case.
 
-Yes, this entire thread is mainly directed to Boaz... And IIRC he did
-want to implement something of that sort, and this thread was
-basically for asking him "did you?".
-
+> --b.
+> 
+> commit de734831224e74fcaf8917386e33644c4243db95
+> Author: Chuck Lever <chuck.lever@oracle.com>
+> Date:   Wed Jul 11 16:30:50 2012 -0400
+> 
+>    NFS: Treat NFS4ERR_CLID_INUSE as a fatal error
+> 
+>    For NFSv4 minor version 0, currently the cl_id_uniquifier allows the
+>    Linux client to generate a unique nfs_client_id4 string whenever a
+>    server replies with NFS4ERR_CLID_INUSE.
+> 
+>    This implementation seems to be based on a flawed reading of RFC
+>    3530.  NFS4ERR_CLID_INUSE actually means that the client has presented
+>    this nfs_client_id4 string with a different principal at some time in
+>    the past, and that lease is still in use on the server.
+> 
+>    For a Linux client this might be rather difficult to achieve: the
+>    authentication flavor is named right in the nfs_client_id4.id
+>    string.  If we change flavors, we change strings automatically.
+> 
+>    So, practically speaking, NFS4ERR_CLID_INUSE means there is some other
+>    client using our string.  There is not much that can be done to
+>    recover automatically.  Let's make it a permanent error.
+> 
+>    Remove the recovery logic in nfs4_proc_setclientid(), and remove the
+>    cl_id_uniquifier field from the nfs_client data structure.  And,
+>    remove the authentication flavor from the nfs_client_id4 string.
+> 
+>    Keeping the authentication flavor in the nfs_client_id4.id string
+>    means that we could have a separate lease for each authentication
+>    flavor used by mounts on the client.  But we want just one lease for
+>    all the mounts on this client.
+> 
+>    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 74dcd85..1148081 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -4029,42 +4029,28 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+> 		.rpc_resp = res,
+> 		.rpc_cred = cred,
+> 	};
+> -	int loop = 0;
+> -	int status;
+> 
+> +	/* nfs_client_id4 */
+> 	nfs4_init_boot_verifier(clp, &sc_verifier);
+> -
+> -	for(;;) {
+> -		rcu_read_lock();
+> -		setclientid.sc_name_len = scnprintf(setclientid.sc_name,
+> -				sizeof(setclientid.sc_name), "%s/%s %s %s %u",
+> -				clp->cl_ipaddr,
+> -				rpc_peeraddr2str(clp->cl_rpcclient,
+> -							RPC_DISPLAY_ADDR),
+> -				rpc_peeraddr2str(clp->cl_rpcclient,
+> -							RPC_DISPLAY_PROTO),
+> -				clp->cl_rpcclient->cl_auth->au_ops->au_name,
+> -				clp->cl_id_uniquifier);
+> -		setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
+> +	rcu_read_lock();
+> +	setclientid.sc_name_len = scnprintf(setclientid.sc_name,
+> +			sizeof(setclientid.sc_name), "%s/%s %s",
+> +			clp->cl_ipaddr,
+> +			rpc_peeraddr2str(clp->cl_rpcclient,
+> +						RPC_DISPLAY_ADDR),
+> +			rpc_peeraddr2str(clp->cl_rpcclient,
+> +						RPC_DISPLAY_PROTO));
+> +	/* cb_client4 */
+> +	setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
+> 				sizeof(setclientid.sc_netid),
+> 				rpc_peeraddr2str(clp->cl_rpcclient,
+> 							RPC_DISPLAY_NETID));
+> -		setclientid.sc_uaddr_len = scnprintf(setclientid.sc_uaddr,
+> +	rcu_read_unlock();
+> +	setclientid.sc_uaddr_len = scnprintf(setclientid.sc_uaddr,
+> 				sizeof(setclientid.sc_uaddr), "%s.%u.%u",
+> 				clp->cl_ipaddr, port >> 8, port & 255);
+> -		rcu_read_unlock();
+> 
+> -		status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
+> -		if (status != -NFS4ERR_CLID_INUSE)
+> -			break;
+> -		if (loop != 0) {
+> -			++clp->cl_id_uniquifier;
+> -			break;
+> -		}
+> -		++loop;
+> -		ssleep(clp->cl_lease_time / HZ + 1);
+> -	}
+> -	return status;
+> +	return rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
+> }
+> 
+> int nfs4_proc_setclientid_confirm(struct nfs_client *clp,
+> @@ -5262,10 +5248,9 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+> 	nfs4_init_boot_verifier(clp, &verifier);
+> 
+> 	args.id_len = scnprintf(args.id, sizeof(args.id),
+> -				"%s/%s/%u",
+> +				"%s/%s",
+> 				clp->cl_ipaddr,
+> -				clp->cl_rpcclient->cl_nodename,
+> -				clp->cl_rpcclient->cl_auth->au_flavor);
+> +				clp->cl_rpcclient->cl_nodename);
+> 
+> 	res.server_owner = kzalloc(sizeof(struct nfs41_server_owner),
+> 					GFP_NOFS);
+> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+> index 1cfc460..81eabcd 100644
+> --- a/fs/nfs/nfs4state.c
+> +++ b/fs/nfs/nfs4state.c
+> @@ -1606,10 +1606,15 @@ static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
+> 			return -ESERVERFAULT;
+> 		/* Lease confirmation error: retry after purging the lease */
+> 		ssleep(1);
+> -	case -NFS4ERR_CLID_INUSE:
+> 	case -NFS4ERR_STALE_CLIENTID:
+> 		clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
+> 		break;
+> +	case -NFS4ERR_CLID_INUSE:
+> +		pr_err("NFS: Server %s reports our clientid is in use\n",
+> +			clp->cl_hostname);
+> +		nfs_mark_client_ready(clp, -EPERM);
+> +		clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
+> +		return -EPERM;
+> 	case -EACCES:
+> 		if (clp->cl_machine_cred == NULL)
+> 			return -EACCES;
+> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+> index f58325a..6532765 100644
+> --- a/include/linux/nfs_fs_sb.h
+> +++ b/include/linux/nfs_fs_sb.h
+> @@ -69,10 +69,9 @@ struct nfs_client {
+> 	struct idmap *		cl_idmap;
+> 
+> 	/* Our own IP address, as a null-terminated string.
+> -	 * This is used to generate the clientid, and the callback address.
+> +	 * This is used to generate the mv0 callback address.
+> 	 */
+> 	char			cl_ipaddr[48];
+> -	unsigned char		cl_id_uniquifier;
+> 	u32			cl_cb_ident;	/* v4.0 callback identifier */
+> 	const struct nfs4_minor_version_ops *cl_mvops;
+> 
 > --
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
->
-
-
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 -- 
-idank
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
