@@ -1,46 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from terminus.zytor.com ([198.137.202.10]:52815 "EHLO mail.zytor.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759187Ab2HJSQQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Aug 2012 14:16:16 -0400
-Message-ID: <50254FA6.3060806@zytor.com>
-Date: Fri, 10 Aug 2012 11:15:02 -0700
-From: "H. Peter Anvin" <hpa@zytor.com>
-MIME-Version: 1.0
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-CC: Trond.Myklebust@netapp.com, davem@davemloft.net, linux-nfs@vger.kernel.org,
-        eric.dumazet@gmail.com, xemul@parallels.com, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, bfields@fieldses.org,
-        viro@zeniv.linux.org.uk, tim.c.chen@linux.intel.com, devel@openvz.org
-Subject: Re: [RFC PATCH 0/2] net: connect to UNIX sockets from specified root
-References: <20120810125701.7115.71612.stgit@localhost.localdomain>
-In-Reply-To: <20120810125701.7115.71612.stgit@localhost.localdomain>
-Content-Type: text/plain; charset=UTF-8
+Received: from acsinet15.oracle.com ([141.146.126.227]:31351 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750962Ab2HIUwU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2012 16:52:20 -0400
+Subject: Re: NFS: Treat NFS4ERR_CLID_INUSE as a fatal error
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <24601061-1606-4A0A-940E-FDAFD1A2A2BB@oracle.com>
+Date: Thu, 9 Aug 2012 16:52:07 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <39FE3A39-4EB2-4F9F-908F-645C79B30E0F@oracle.com>
+References: <20120809183557.GA10591@fieldses.org> <53272628-CC34-4279-AA69-CD31B86672D5@oracle.com> <20120809193743.GD10591@fieldses.org> <20120809203838.GA11538@fieldses.org> <24601061-1606-4A0A-940E-FDAFD1A2A2BB@oracle.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/10/2012 05:57 AM, Stanislav Kinsbursky wrote:
-> Today, there is a problem in connecting of local SUNRPC thansports. These
-> transports uses UNIX sockets and connection itself is done by rpciod
-> workqueue.
-> But UNIX sockets lookup is done in context of process file system root. I.e.
-> all local thunsports are connecting in rpciod context.
-> This works nice until we will try to mount NFS from process with other root -
-> for example in container. This container can have it's own (nested) root and
-> rcpbind process, listening on it's own unix sockets. But NFS mount attempt in
-> this container will register new service (Lockd for example) in global rpcbind
-> - not containers's one.
+
+On Aug 9, 2012, at 4:46 PM, Chuck Lever wrote:
+
 > 
-> This patch set introduces kernel connect helper for UNIX stream sockets and
-> modifies unix_find_other() to be able to search from specified root.
-> It also replaces generic socket connect call for local transports by new
-> helper in SUNRPC layer.
+> On Aug 9, 2012, at 4:38 PM, J. Bruce Fields wrote:
 > 
-> The following series implements...
+>> On Thu, Aug 09, 2012 at 03:37:43PM -0400, J. Bruce Fields wrote:
+>>> On Thu, Aug 09, 2012 at 03:06:00PM -0400, Chuck Lever wrote:
+>>>> 
+>>>> On Aug 9, 2012, at 2:35 PM, J. Bruce Fields wrote:
+>>>> 
+>>>>> Sorry not to notice this before--the below causes a regression against
+>>>>> the Linux server; something like:
+>>>>> 
+>>>>> 	# mount -osec=krb5i pip1:/exports /mnt/
+>>>>> 	# echo "test" >/mnt/test
+>>>>> 	# umount /mnt/
+>>>>> 	# mount -osec=krb5 pip1:/exports /mnt/
+>>>>> 	# echo "test" >/mnt/test
+>>>>> 	bash: /mnt/test: Operation not permitted
+>>>>> 
+>>>>> This fails after the below commit on the client, but not before, thanks
+>>>>> to the server rejecting the second setclientid with CLID_INUSE due to a
+>>>>> different security flavor.
+>>>> 
+>>>> This was part of a series where the last few patches got dropped for other problems.  Testing with this patch by itself was never done since it was part of a series of patches that implement a particular feature.
+>>>> 
+>>>> One thought is to put the authentication flavor name back into nfs_client_id4.id string temporarily until we have worked through the issues with full UCS support.  That would prevent the regression, but we'd still have clients who use multiple authentication flavors maintaining multiple leases.
+>>> 
+>>> That should work.
+>> 
+>> Whoops, no, au_name is just "RPCSEC_GSS" in both cases.
+> 
+> Could you confirm that before that commit, the client had to send an additional SETCLIENTID with a new cl_id_uniquifier?
+> 
+> We'll need to distinguish the pseudoflavor as well for GSS, apparently.
 
-On that whole subject...
+The client should present the same principal on both SETCLIENTID requests, shouldn't it?  If the principal is the same, that's all that RFC 3530bis requires.  Maybe I don't understand how GSS principals work.
 
-Do we need a Unix domain socket equivalent to openat()?
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-	-hpa
+
+
 
