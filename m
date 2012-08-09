@@ -1,131 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:41176 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752680Ab2HSAwr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Aug 2012 20:52:47 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH v2 15/16] openvswitch: use new hashtable implementation
-Date: Sun, 19 Aug 2012 02:52:29 +0200
-Message-Id: <1345337550-24304-17-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1345337550-24304-1-git-send-email-levinsasha928@gmail.com>
-References: <1345337550-24304-1-git-send-email-levinsasha928@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:46879 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932196Ab2HIMSv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Aug 2012 08:18:51 -0400
+Date: Thu, 9 Aug 2012 08:18:32 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Namjae Jeon <linkinjeon@gmail.com>
+Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        michael.brantley@deshaw.com, hch@infradead.org, miklos@szeredi.hu,
+        pstaubach@exagrid.com
+Subject: Re: [PATCH v5 00/19] vfs: add the ability to retry on ESTALE to
+ several syscalls
+Message-ID: <20120809081832.022e6a7d@corrin.poochiereds.net>
+In-Reply-To: <CAKYAXd9QyKtH7ZvCJs=X2DxhDn9_THXUooWVCWkxuEhizWgmsA@mail.gmail.com>
+References: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
+	<CAKYAXd9QyKtH7ZvCJs=X2DxhDn9_THXUooWVCWkxuEhizWgmsA@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch openvswitch to use the new hashtable implementation. This reduces the amount of
-generic unrelated code in openvswitch.
+On Thu, 9 Aug 2012 20:57:14 +0900
+Namjae Jeon <linkinjeon@gmail.com> wrote:
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
- net/openvswitch/vport.c |   30 +++++++++++++-----------------
- 1 files changed, 13 insertions(+), 17 deletions(-)
+> Hi Jeff.
+> 
+> I still found ESTALE error although patching these patch-set.
+> Is test method correct that I try to run estale_test on each nfs
+> server and client at the same time ?
+> 
+> ./estale_test
+> chmod: Stale NFS[  281.720000] ##### send signal from USER, SIG : 2,
+> estale_test(107)->estale_test(102) sys_kill
+> [  281.728000] ##### send signal from USER, SIG : 15,
+> estale_test(102)->estale_test(103) sys_kill
+> [  281.736000] ##### send signal from USER, SIG : 15,
+> estale_test(102)->estale_test(104) sys_kill
+> [  281.744000] ##### send signal from USER, SIG : 15,
+> estale_test(102)->estale_test(105) sys_kill
+> [  281.752000] ##### send signal from USER, SIG : 15,
+> estale_test(102)->estale_test(106) sys_kill
+> [  281.760000] ##### send signal from USER, SIG : 15,
+> estale_test(102)->estale_test(107) sys_kill
+> [  281.768000] ##### send signal from USER, SIG : 15,
+> estale_test(102)->estale_test(108) sys_kill
+> [  281.780000] ##### send signal from USER, SIG : 15,
+> estale_test(102)->estale_test(109) sys_kill
+> [  281.788000] ##### send signal from USER, SIG : 15,
+> estale_test(102)->estale_test(110) sys_kill
+> [  281.796000] ##### send signal from USER, SIG : 15,
+> estale_test(102)->estale_test(111) sys_kill
+> [  281.804000] ##### send signal from USER, SIG : 15,
+> estale_test(102)->estale_test(112) sys_kill
+> [  281.812000] ##### send signal from USER, SIG : 15,
+> estale_test(102)->estale_test(113) sys_kill
+> [  281.820000] ##### send signal from USER, SIG : 15,
+> estale_test(102)->estale_test(114) sys_kill
+> [  281.828000] ##### send signal from USER, SIG : 15,
+> estale_test(102)->estale_test(115) sys_kill
+> [  281.840000] ##### send signal from USER, SIG : 15,
+> estale_test(102)->estale_test(116) sys_kill
+> [  281.848000] ##### send signal from USER, SIG : 15,
+> estale_test(102)->estale_test(117) sys_kill
+> [  281.856000] ##### send signal from USER, SIG : 15,
+> estale_test(102)->estale_test(118) sys_kill
+> [  281.864000] ##### send signal from USER, SIG : 15,
+> estale_test(102)->estale_test(119) sys_kill
+>  file handle
+> VDLinux#> chdir: Stale NFS[  282.664000] ##### send signal from USER,
+> SIG : 2, estale_test(120)->???(102) sys_kill
+>  file handle
+> 
+> Thanks.
+> 
 
-diff --git a/net/openvswitch/vport.c b/net/openvswitch/vport.c
-index 6140336..3484120 100644
---- a/net/openvswitch/vport.c
-+++ b/net/openvswitch/vport.c
-@@ -27,6 +27,7 @@
- #include <linux/rcupdate.h>
- #include <linux/rtnetlink.h>
- #include <linux/compat.h>
-+#include <linux/hashtable.h>
- 
- #include "vport.h"
- #include "vport-internal_dev.h"
-@@ -39,8 +40,8 @@ static const struct vport_ops *vport_ops_list[] = {
- };
- 
- /* Protected by RCU read lock for reading, RTNL lock for writing. */
--static struct hlist_head *dev_table;
--#define VPORT_HASH_BUCKETS 1024
-+#define VPORT_HASH_BITS 10
-+static DEFINE_HASHTABLE(dev_table, VPORT_HASH_BITS);
- 
- /**
-  *	ovs_vport_init - initialize vport subsystem
-@@ -49,10 +50,7 @@ static struct hlist_head *dev_table;
-  */
- int ovs_vport_init(void)
- {
--	dev_table = kzalloc(VPORT_HASH_BUCKETS * sizeof(struct hlist_head),
--			    GFP_KERNEL);
--	if (!dev_table)
--		return -ENOMEM;
-+	hash_init(dev_table);
- 
- 	return 0;
- }
-@@ -67,12 +65,6 @@ void ovs_vport_exit(void)
- 	kfree(dev_table);
- }
- 
--static struct hlist_head *hash_bucket(const char *name)
--{
--	unsigned int hash = full_name_hash(name, strlen(name));
--	return &dev_table[hash & (VPORT_HASH_BUCKETS - 1)];
--}
--
- /**
-  *	ovs_vport_locate - find a port that has already been created
-  *
-@@ -82,11 +74,11 @@ static struct hlist_head *hash_bucket(const char *name)
-  */
- struct vport *ovs_vport_locate(const char *name)
- {
--	struct hlist_head *bucket = hash_bucket(name);
- 	struct vport *vport;
- 	struct hlist_node *node;
-+	int key = full_name_hash(name, strlen(name));
- 
--	hlist_for_each_entry_rcu(vport, node, bucket, hash_node)
-+	hash_for_each_possible_rcu(dev_table, vport, node, hash_node, key)
- 		if (!strcmp(name, vport->ops->get_name(vport)))
- 			return vport;
- 
-@@ -170,14 +162,18 @@ struct vport *ovs_vport_add(const struct vport_parms *parms)
- 
- 	for (i = 0; i < ARRAY_SIZE(vport_ops_list); i++) {
- 		if (vport_ops_list[i]->type == parms->type) {
-+			int key;
-+			const char *name;
-+
- 			vport = vport_ops_list[i]->create(parms);
- 			if (IS_ERR(vport)) {
- 				err = PTR_ERR(vport);
- 				goto out;
- 			}
- 
--			hlist_add_head_rcu(&vport->hash_node,
--					   hash_bucket(vport->ops->get_name(vport)));
-+			name = vport->ops->get_name(vport);
-+			key = full_name_hash(name, strlen(name));
-+			hash_add_rcu(dev_table, &vport->hash_node, key);
- 			return vport;
- 		}
- 	}
-@@ -218,7 +214,7 @@ void ovs_vport_del(struct vport *vport)
- {
- 	ASSERT_RTNL();
- 
--	hlist_del_rcu(&vport->hash_node);
-+	hash_del_rcu(&vport->hash_node);
- 
- 	vport->ops->destroy(vport);
- }
+I guess you didn't read my response earlier? I'll re-post it here...
+
+> It's a bit labor intensive, I'm afraid...
+>
+> Attached is a cleaned-up copy of the test program that Peter wrote to
+> test his original patchset. The basic idea is to run this on both the
+> client and server at the same time so they race against each other. He
+> was able to run it overnight when testing with his patchset.
+>
+> With this patchset, that doesn't work since we're only retrying the
+> lookup and call once. So, what I've been doing is modifying the program
+> so that it just runs one test at a time, and sniffing traffic to see
+> whether the lookups and calls are retried after an ESTALE return from
+> the server. 
+
+
+So, ESTALE errors are still expected when running that test. This
+patchset only fixes a very specific set of circumstances where an entry
+goes stale once between the lookup and the actual operation(s).
+Anything outside of that, and it won't help.
+
+That test is very aggressive, and can cause it to race multiple times.
+You actually have to sniff traffic and look to see if the lookup and
+call were reattempted after the ESTALE error.
+
 -- 
-1.7.8.6
-
+Jeff Layton <jlayton@redhat.com>
