@@ -1,53 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:46126 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:48735 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1031239Ab2HIPxJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Aug 2012 11:53:09 -0400
+	id S932262Ab2HIOGP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2012 10:06:15 -0400
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Zdenek Salvet <salvet@ics.muni.cz>, Lukas Hejtmanek <xhejtman@ics.muni.cz>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4 backchannel authentication
-Date: Thu, 9 Aug 2012 15:53:01 +0000
-Message-ID: <1344527573.25447.17.camel@lade.trondhjem.org>
-References: <20120806135517.GS25979@ics.muni.cz>
-	 <20120807154114.GA21460@fieldses.org>
-	 <1344355148.5781.31.camel@lade.trondhjem.org>
-	 <20120808075813.GW604@horn.ics.muni.cz>
-	 <1344431887.3423.4.camel@lade.trondhjem.org>
-	 <20120809080642.GE604@horn.ics.muni.cz>
-	 <20120809144530.GB6592@fieldses.org>
-In-Reply-To: <20120809144530.GB6592@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+To: Idan Kedar <idank@tonian.com>, Boaz Harrosh <bharrosh@panasas.com>,
+        "NFS list" <linux-nfs@vger.kernel.org>
+CC: Benny Halevy <bhalevy@tonian.com>
+Subject: RE: return layout on error, BUG/deadlock
+Date: Thu, 9 Aug 2012 14:05:39 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9380987@SACEXCMBX04-PRD.hq.netapp.com>
+References: <CABpMAyL-B9Kqg8O4xxxtj0X8PF7fP4TM+NnLA_Ynhm-_3C6MUg@mail.gmail.com>
+In-Reply-To: <CABpMAyL-B9Kqg8O4xxxtj0X8PF7fP4TM+NnLA_Ynhm-_3C6MUg@mail.gmail.com>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA4LTA5IGF0IDEwOjQ1IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIFRodSwgQXVnIDA5LCAyMDEyIGF0IDEwOjA2OjQyQU0gKzAyMDAsIFpkZW5layBTYWx2
-ZXQgd3JvdGU6DQo+ID4gT24gV2VkLCBBdWcgMDgsIDIwMTIgYXQgMDE6MTg6MDlQTSArMDAwMCwg
-TXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4gPiA+ID4gV2UgZG9uJ3Qgc2VlIGFueSBoYXJkIGZh
-aWx1cmVzIGJlY2F1c2UgTkZTIHByb3RvY29sIGRvZXMNCj4gPiA+ID4gbm90IGRlcGVuZCBvbiB3
-b3JraW5nIGNhbGxiYWNrIFJQQ3MsIGJ1dCBubyBkZWxlZ2F0aW9ucyBhcmUgZ3JhbnRlZA0KPiA+
-ID4gPiAod2UgaGFkIG5mcy1rZXJuZWwtc2VydmVyIHBhY2thZ2UgaW5zdGFsbGVkIG9uIGNsaWVu
-dHMgYmVmb3JlIHdoaWNoIG1hc2tlZA0KPiA+ID4gPiB0aGUgYnVnKS4NCj4gPiA+IA0KPiA+ID4g
-U28geW91ciBncmlwZSB0aGF0IHlvdSBvYmplY3QgdG8gdXMgcmVxdWlyaW5nIHlvdSB0byBydW4g
-cnBjLnN2Y2dzc2QgaW4NCj4gPiA+IG9yZGVyIHRvIG9idGFpbiBzZXJ2ZXIgZmVhdHVyZXMgc3Vj
-aCBhcyBORlN2NCBjYWxsYmFja3M/DQo+ID4gDQo+ID4gQWJzb2x1dGVseSBub3QhIEp1c3QgdGhp
-bmtpbmcgd2h5IHdlIGRpZCBub3Qgbm90aWNlIHRoZSBwcm9ibGVtIGVhcmxpZXIgLi4uDQo+IA0K
-PiBJIHdvbmRlciBpZiB0aGVyZSdzIGFueXRoaW5nIHdlIGNvdWxkIGRvIHRvIG1ha2UgdGhpcyBt
-b3JlIGF1dG9tYXRpYywNCj4gdGhvdWdoOiBlLmcuLCBwZXJoYXBzIHdoaWNoZXZlciBzY3JpcHRz
-IGFyZSBsYXVuY2hpbmcgb25lIG9mIHRoZSBnc3MNCj4gZGFlbW9ucyBzaG91bGQgYmUgcmVwbGFj
-ZWQgYnkgb25lIHRoYXQgbGF1bmNoZXMgYm90aCwgc2luY2UgdGhhdCdzDQo+IGdlbmVyYWxseSB3
-aGF0IHlvdSdsbCB3YW50IGZvciBORlN2NC4wLiAgKE5vdCBuZWNlc3NhcnkgZm9yIG90aGVyDQo+
-IHZlcnNpb25zLCBidXQgaXQgZG9lc24ndCBodXJ0IG11Y2guKQ0KPiANCj4gT3IgcGVyaGFwcyB0
-aGV5IGNvdWxkIGJlIHN0YXJ0ZWQgb24gZGVtYW5kIHNvbWVob3cuDQoNCkhvdyBpcyB0aGlzIGFu
-eSBkaWZmZXJlbnQgdG8gcmVxdWlyaW5nIHRoYXQgdGhlIHVzZXIgc3RhcnQgcnBjLnN0YXRkDQpi
-ZWZvcmUgbGF1bmNoaW5nIGFuIE5GU3YzIG1vdW50PyBKdXN0IGRvY3VtZW50IHRoZSByZXF1aXJl
-bWVudCBpZiBpdA0KaXNuJ3QgYWxyZWFkeSBjbGVhciBlbm91Z2gsIGFuZCB3ZSBjYW4gbW92ZSBv
-bi4NCg0KVGhlIG90aGVyIHNvdXJjZSBvZiBjb25mdXNpb24gaGVyZSwgd2FzIHRoYXQgdGhlIHJw
-Yy5zdmNnc3NkIHdhcw0KZGVsaXZlcmVkIHRocm91Z2ggYSBuZnMta2VybmVsLXNlcnZlciBwYWNr
-YWdlLCB3aGljaCBpbmRpY2F0ZXMgdGhhdCB3ZQ0KZmlyc3QgYW5kIGZvcmVtb3N0IG5lZWQgdG8g
-ZWR1Y2F0ZSB0aGUgZGlzdHJvIHBhY2thZ2Vycy4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxp
-bnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRh
-cHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> owner@vger.kernel.org] On Behalf Of Idan Kedar
+> Sent: Thursday, August 09, 2012 9:03 AM
+> To: Boaz Harrosh; NFS list
+> Cc: Benny Halevy
+> Subject: return layout on error, BUG/deadlock
+> 
+> Hi,
+> 
+> As a result of some experiments, I wanted to see what happens when I
+> inject an error (hard coded) to the object layout driver. the patch is at the
+> bottom of this mail. the reason I did this is because when I inject errors in my
+> modified version of the object layout driver, I get the same BUG Tigran
+> reported about yesterday:
+> nfs4proc.c:6252 :   BUG_ON(!list_empty(&lo->plh_segs));
+> 
+> In my modified version (based on kernel 3.3), the bug seems to be that
+> pnfs_ld_write_done calls pnfs_return_layout in the error path, even if there
+> is in-flight I/O.
+
+That is not a bug. It is an intentional change in order to allow the MDS to fence off the outstanding writes (if it can do so) before we retransmit them as write-through-MDS. Otherwise, you risk races between the outstanding writes-to-DS and the new writes-through-MDS.
+
+See the changelog in the patch that I sent to the list yesterday.
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
+
