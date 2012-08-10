@@ -1,72 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:58821 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758962Ab2HXWCb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Aug 2012 18:02:31 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Sachin Prabhu <sprabhu@redhat.com>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Avoid array overflow in __nfs4_get_acl_uncached
-Date: Fri, 24 Aug 2012 22:02:01 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F5859F@SACEXCMBX01-PRD.hq.netapp.com>
-References: <1345817768-23511-1-git-send-email-sprabhu@redhat.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F4AF1E@SACEXCMBX01-PRD.hq.netapp.com>
-	 <1345843866.2279.6.camel@localhost>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F5842F@SACEXCMBX01-PRD.hq.netapp.com>
-	 <1345845062.32200.1.camel@localhost>
-In-Reply-To: <1345845062.32200.1.camel@localhost>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:63137 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758223Ab2HJJvi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Aug 2012 05:51:38 -0400
+Received: by pbbrr13 with SMTP id rr13so2458366pbb.19
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Aug 2012 02:51:37 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <20120810092016.177360@gmx.net>
+References: <20120808155829.177400@gmx.net> <20120808163916.GA24539@umich.edu>
+ <20120808182622.177380@gmx.net> <20120809084236.177380@gmx.net>
+ <5DFC6BE3BA248842867E85C73BF94B050B17B698CF@MX41A.corp.emc.com>
+ <20120809152744.149360@gmx.net> <CA+a=Yy7rH7kFKJvS3eOae+Mb0C1p+N01h+Zqz7jVzGE+HXHt9g@mail.gmail.com>
+ <20120810074818.119500@gmx.net> <CA+a=Yy6C-d82MR6Lun4sRcJ0euBBpf0Ra3cHDnQ8eKENi5eU2Q@mail.gmail.com>
+ <20120810092016.177360@gmx.net>
+From: Peng Tao <tao.peng@emc.com>
+Date: Fri, 10 Aug 2012 17:51:17 +0800
+Message-ID: <CA+a=Yy58ZgG1zoUP4633u6uuZ22hnpuqjS1xa4j3S8R=9=zEUA@mail.gmail.com>
+Subject: Re: RE: Blocklayout
+To: Johannes Schild <JSchild@gmx.de>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTA4LTI0IGF0IDIyOjUxICswMTAwLCBTYWNoaW4gUHJhYmh1IHdyb3RlOg0K
-PiBPbiBGcmksIDIwMTItMDgtMjQgYXQgMjE6MzggKzAwMDAsIE15a2xlYnVzdCwgVHJvbmQgd3Jv
-dGU6DQo+ID4gT24gRnJpLCAyMDEyLTA4LTI0IGF0IDIyOjMxICswMTAwLCBTYWNoaW4gUHJhYmh1
-IHdyb3RlOg0KPiA+ID4gT24gRnJpLCAyMDEyLTA4LTI0IGF0IDE1OjA3ICswMDAwLCBNeWtsZWJ1
-c3QsIFRyb25kIHdyb3RlOg0KPiA+ID4gPiBPbiBGcmksIDIwMTItMDgtMjQgYXQgMTU6MTYgKzAx
-MDAsIFNhY2hpbiBQcmFiaHUgd3JvdGU6DQo+ID4gPiA+ID4gVGhpcyBmaXhlcyBhIGJ1ZyBpbnRy
-b2R1Y2VkIGJ5IGNvbW1pdA0KPiA+ID4gPiA+IDVhMDA2ODk5MzBhYjk3NWZkZDFiMzdiMDM0NDc1
-MDE3ZTQ2MGNmMmENCj4gPiA+ID4gPiBUaGUgcGF0Y2ggYWRkcyBhbiBleHRyYSBwYWdlIHRvIG5w
-YWdlcyB0byBob2xkIHRoZSBiaXRtYXAgcmV0dXJuZWQgYnkNCj4gPiA+ID4gPiB0aGUgc2VydmVy
-Lg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IEJydWNlIEZpZWxkcyBwb2ludGVkIG91dCB0aGF0IHRo
-ZSBjaGFuZ2VzIGludHJvZHVjZWQgYnkgdGhlIHBhdGNoIHdpbGwNCj4gPiA+ID4gPiBjYXVzZSB0
-aGUgYXJyYXkgbnBhZ2VzIHRvIG92ZXJmbG93IGlmIGEgYnVmZmVyIG9mIHNpemUgZ3JlYXRlciB0
-aGFuIG9yDQo+ID4gPiA+ID4gZXF1YWwgdG8gWEFUVFJfU0laRV9NQVggaXMgcGFzc2VkIHRvIF9f
-bmZzNF9nZXRfYWNsX3VuY2FjaGVkKCkNCj4gPiA+ID4gDQo+ID4gPiA+IEknZCB0aGluayB0aGF0
-IHRoZSByaWdodCB0aGluZyB0byBkbyBoZXJlIGlzIHJhdGhlciB0byBhZGQgYXBwcm9wcmlhdGUN
-Cj4gPiA+ID4gYnVmZmVyIG92ZXJmbG93IGNoZWNrcy4gSG93IGFib3V0IHNvbWV0aGluZyBsaWtl
-IHRoZSBmb2xsb3dpbmc/DQo+ID4gPiA+IA0KPiA+ID4gPiA4PC0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+ID4gPiA+IEZyb20g
-N2MzNWNlMjIwOTI0MTgyMjg0YWVhOWY4YWVjMzliMGQ5OTE2MDBkZiBNb24gU2VwIDE3IDAwOjAw
-OjAwIDIwMDENCj4gPiA+ID4gRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RA
-bmV0YXBwLmNvbT4NCj4gPiA+ID4gRGF0ZTogRnJpLCAyNCBBdWcgMjAxMiAxMDo1OToyNSAtMDQw
-MA0KPiA+ID4gPiBTdWJqZWN0OiBbUEFUQ0hdIE5GU3Y0OiBGaXggcmFuZ2UgY2hlY2tpbmcgaW4g
-X19uZnM0X2dldF9hY2xfdW5jYWNoZWQgYW5kDQo+ID4gPiA+ICBfX25mczRfcHJvY19zZXRfYWNs
-DQo+ID4gPiA+IA0KPiA+ID4gPiBFbnN1cmUgdGhhdCB0aGUgdXNlciBzdXBwbGllZCBidWZmZXIg
-c2l6ZSBkb2Vzbid0IGNhdXNlIHVzIHRvIG92ZXJmbG93DQo+ID4gPiA+IHRoZSAncGFnZXMnIGFy
-cmF5Lg0KPiA+ID4gPiANCj4gPiA+ID4gQWxzbyBmaXggdXAgc29tZSBjb25mdXNpb24gYmV0d2Vl
-biB0aGUgdXNlIG9mIFBBR0VfU0laRSBhbmQNCj4gPiA+ID4gUEFHRV9DQUNIRV9TSVpFIHdoZW4g
-Y2FsY3VsYXRpbmcgYnVmZmVyIHNpemVzLiBXZSdyZSBub3QgdXNpbmcNCj4gPiA+ID4gdGhlIHBh
-Z2UgY2FjaGUgZm9yIGFueXRoaW5nIGhlcmUuDQo+ID4gPiA+IA0KPiA+ID4gPiBTaWduZWQtb2Zm
-LWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KPiA+ID4g
-DQo+ID4gPiBUaGlzIHBhdGNoIGlzIHN1c2NlcHRpYmxlIHRvIHRoZSBwcm9ibGVtIGRlc2NyaWJl
-ZCBpbiBjb21taXQNCj4gPiA+IDVhMDA2ODk5MzBhYjk3NWZkZDFiMzdiMDM0NDc1MDE3ZTQ2MGNm
-MmENCj4gPiA+IA0KPiA+ID4gVGhpcyBjYW4gYmUgZGVtb25zdHJhdGVkIGJ5IHRoZSBmb2xsb3dp
-bmcgcGF0Y2ggdG8gcHluZnMgd2hpY2ggcGFkcyB0aGUNCj4gPiA+IGJpdG1hcCB3aXRoIDEwMDAg
-ZXh0cmEgZWxlbWVudHMuDQo+ID4gPiANCj4gPiA+IFRvIHJlcHJvZHVjZSwgb24gdGhlIHNlcnZl
-cg0KPiA+ID4gY2QgbmV3cHluZnMvbmZzNC4wLw0KPiA+ID4gLi9zZXR1cC5weSBidWlsZF9leHQg
-LS1pbnBsYWNlDQo+ID4gPiAuL25mczRzZXJ2ZXIucHkNCj4gPiA+IA0KPiA+ID4gb24gdGhlIGNs
-aWVudCwgDQo+ID4gPiBtb3VudCAtbyB2ZXJzPTQgU0VSVkVSOi8gL21udA0KPiA+ID4gdG91Y2gg
-L21udC9hDQo+ID4gPiBuZnM0X2dldGZhY2wgL21udC9hDQo+ID4gPiANCj4gPiA+IFdpdGggdGhp
-cyBuZXcgcGF0Y2gsIHlvdSB3aWxsIGdldCBhIGdlbmVyYWwgcHJvdGVjdGlvbiBmYXVsdCBpbg0K
-PiA+ID4gX2NvcHlfZnJvbV9wYWdlcygpLg0KPiA+IA0KPiA+IElzIHRoaXMgb24gYSBrZXJuZWwg
-d2l0aCBjb21taXQgNTE5ZDM5NTllMzBhOThmOGUxMzVlN2ExNjY0N2MxMGFmNWFkNjNkNQ0KPiA+
-IChORlN2NDogRml4IHBvaW50ZXIgYXJpdGhtZXRpYyBpbiBkZWNvZGVfZ2V0YWNsKSBhcHBsaWVk
-Pw0KPiA+IA0KPiANCj4gWWVzLg0KDQpPSywgc28gY2FuIHlvdSBsb29rIGludG8gd2hpY2ggcGFy
-YW1ldGVycyBhcmUgaW5jb3JyZWN0IGFuZCB3aHk/IFRoZQ0KY2hlY2tzIGluIGRlY29kZV9nZXRh
-Y2wgYXJlIHN1cHBvc2VkIGVuc3VyZSB0aGF0IHdlIGRvbid0IG92ZXJmbG93IHRoZQ0KeGRyLT5i
-dWYtPnBhZ2VfbGVuLCBzbyBpZiB0aG9zZSBhcmUgaW5zdWZmaWNpZW50LCB0aGVuIEknZCBsaWtl
-IHRvDQp1bmRlcnN0YW5kIHdoeS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBj
-bGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3
-d3cubmV0YXBwLmNvbQ0KDQo=
+On Fri, Aug 10, 2012 at 5:20 PM, Johannes Schild <JSchild@gmx.de> wrote:
+> Hi Tao,
+>
+>> > [59260.324598] encoding getdevicelist!
+>> > [59260.324600] decode_getdevicelist: num_dev 1
+>> > [59260.324601] nfs41_sequence_done: Error 0 free the slot
+>> > [59260.324602] nfs4_free_slot: slotid 16 highest_used_slotid -1
+>> > [59260.324605] <-- _nfs4_getdevicelist status=0
+>> > [59260.324606] nfs4_proc_getdevicelist: err=0, num_devs=1
+>> > [59260.324607] bl_set_layoutdriver GETDEVICELIST numdevs=1, eof=1
+>> > [59260.324608] nfs4_blk_get_deviceinfo max_resp_sz 135168 max_pages 33
+>> > [59260.324629] nfs4_blk_get_deviceinfo: dev_id:
+>> The deviceid field returned by server is empty. That's why device
+>> discovery failed.
+>
+> Is the deviceid the field where the signature, created with parted, should be stored?
+For client, deviceid is just a symbol that client uses to ask server
+about disk structure information. It is server's implementation
+decision how to construct a deviceid.
+
+>
+>
+>> > [59260.324630] --> _nfs4_proc_getdeviceinfo
+>> > [59260.324632] --> nfs41_call_sync_prepare data->seq_server
+>> ffff88003c8d7800
+>> > [59260.324633] --> nfs4_setup_sequence clp ffff88003c733400 session
+>> ffff88003c733c00 sr_slot -1
+>> > [59260.324634] --> nfs41_setup_sequence
+>> > [59260.324635] --> nfs4_find_slot used_slots=0000
+>> highest_used=4294967295 max_slots=16
+>> > [59260.324636] <-- nfs4_find_slot used_slots=0001 highest_used=0
+>> slotid=0
+>> > [59260.324637] <-- nfs41_setup_sequence slotid=0 seqid=9
+>> > [59260.324638] <-- nfs4_setup_sequence status=0
+>> > [59260.324642] encode_sequence: sessionid=1344524732:4:4:0 seqid=9
+>> slotid=0 max_slotid=0 cache_this=0
+>> > [59260.333545] nfs41_sequence_done: Error 0 free the slot
+>> > [59260.333547] nfs4_free_slot: slotid 16 highest_used_slotid -1
+>> > [59260.333553] <-- _nfs4_proc_getdeviceinfo status=0
+>> > [59260.333555] nfs4_blk_get_deviceinfo getdevice info returns 0
+>> > [59260.333572] nfs4_blk_decode_device CREATING PIPEFS MESSAGE
+>> > [59260.333573] nfs4_blk_decode_device: deviceid: , mincount: 136
+>> Here shows the same error.
+>>
+>> You may check server code to see if there is something wrong with
+>> getdevicelist proc handling.
+>>
+>
+> I am not experienced enough to check this i think. Is there other server code than "ctl" (on the howto)?
+I'm not sure about current pnfs block server status, nor if the wiki
+howto is out of date...
+
+Cheers,
+Tao
