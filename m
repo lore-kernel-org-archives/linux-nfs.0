@@ -1,81 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:3539 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:47361 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753315Ab2HHTuF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Aug 2012 15:50:05 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Fred Isaman <faisaman4@gmail.com>
-CC: "Isaman, Fred" <Fred.Isaman@netapp.com>,
-        "tigran.mkrtchyan@desy.de" <tigran.mkrtchyan@desy.de>,
-        Boaz Harrosh <bharrosh@panasas.com>, Benny Halevy <bhalevy@tonian.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: client kernel panic on server restart
-Date: Wed, 8 Aug 2012 19:50:03 +0000
-Message-ID: <1344455402.8925.34.camel@lade.trondhjem.org>
-References: <CAGue13pvN_-wBqQVoNdkLO+pexF1hrs+d3exPCCSzOO8ZD4WRw@mail.gmail.com>
-	 <1344447279.8925.5.camel@lade.trondhjem.org>
-	 <CADnza47D=j2jh+AHR9vs36HqpCmcES02v4FkDNufepdS3c-CDQ@mail.gmail.com>
-	 <1344449028.8925.12.camel@lade.trondhjem.org>
-	 <CADnza471-DQ2C6U3pxw=Hj+WBBOFAJphC-gWGE7hQ=k3E3bn0Q@mail.gmail.com>
-	 <1344450818.8925.17.camel@lade.trondhjem.org>
-	 <CADnza45v28X0PohO66FXfxTJtUmRn+a7AkrrsSD5gPG3wUAi0Q@mail.gmail.com>
-	 <1344455362.8925.33.camel@lade.trondhjem.org>
-In-Reply-To: <1344455362.8925.33.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="utf-8"
+	id S1751976Ab2HJUxH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Aug 2012 16:53:07 -0400
+Date: Fri, 10 Aug 2012 16:53:05 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        David Noveck <david.noveck@emc.com>
+Subject: Re: NFS: Treat NFS4ERR_CLID_INUSE as a fatal error
+Message-ID: <20120810205305.GD17985@fieldses.org>
+References: <20120809203838.GA11538@fieldses.org>
+ <24601061-1606-4A0A-940E-FDAFD1A2A2BB@oracle.com>
+ <39FE3A39-4EB2-4F9F-908F-645C79B30E0F@oracle.com>
+ <20120809211340.GB11538@fieldses.org>
+ <6575B2FD-CCE4-40D5-9CBA-82681EC20E17@oracle.com>
+ <20120809213838.GC11538@fieldses.org>
+ <B28F4673-3650-4BA9-ADDA-F9A8E62A0499@oracle.com>
+ <20120810201348.GB17985@fieldses.org>
+ <12DB2C80-31EB-4317-B1E7-96620A8F7374@oracle.com>
+ <20120810203930.GC17985@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120810203930.GC17985@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTA4LTA4IGF0IDE1OjQ5IC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+IE9uIFdlZCwgMjAxMi0wOC0wOCBhdCAxNTo0NSAtMDQwMCwgRnJlZCBJc2FtYW4gd3JvdGU6
-DQo+ID4gT24gV2VkLCBBdWcgOCwgMjAxMiBhdCAyOjMzIFBNLCBNeWtsZWJ1c3QsIFRyb25kDQo+
-ID4gPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPiA+IE9uIFdlZCwgMjAx
-Mi0wOC0wOCBhdCAxNDoxNSAtMDQwMCwgRnJlZCBJc2FtYW4gd3JvdGU6DQo+ID4gPj4gT24gV2Vk
-LCBBdWcgOCwgMjAxMiBhdCAyOjAzIFBNLCBNeWtsZWJ1c3QsIFRyb25kDQo+ID4gPj4gPFRyb25k
-Lk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPiA+PiA+IE9uIFdlZCwgMjAxMi0wOC0w
-OCBhdCAxMzo1MSAtMDQwMCwgRnJlZCBJc2FtYW4gd3JvdGU6DQo+ID4gPj4gPj4gT24gV2VkLCBB
-dWcgOCwgMjAxMiBhdCAxOjM0IFBNLCBNeWtsZWJ1c3QsIFRyb25kDQo+ID4gPj4gPj4gPFRyb25k
-Lk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPiA+PiA+PiA+IE9uIFdlZCwgMjAxMi0w
-OC0wOCBhdCAxODo0OCArMDIwMCwgVGlncmFuIE1rcnRjaHlhbiB3cm90ZToNCj4gPiA+PiA+PiA+
-PiBIaSwNCj4gPiA+PiA+PiA+Pg0KPiA+ID4+ID4+ID4+IEl0J3MgcXVpdGUgc29tZSB0aW1lIHdp
-dGhvdXQga2VybmVsIHBhbmljIHJlcG9ydHMgZnJvbSBtZSAuLi4uDQo+ID4gPj4gPj4gPj4NCj4g
-PiA+PiA+PiA+PiBPYnNlcnZlciBvbiBNRFMgYW5kIERTIHNodXRkb3duIGR1cmluZyBJTy4NCj4g
-PiA+PiA+PiA+Pg0KPiA+ID4+ID4+ID4+IFRoaXMgaXMgd2l0aCAgMy41LjAtMi5mYzE3Lng4Nl82
-NCBrZXJuZWwuIExpbmUgaW4gY29kZToNCj4gPiA+PiA+PiA+Pg0KPiA+ID4+ID4+ID4+IG5mczRw
-cm9jLmM6NjI1MiA6ICAgQlVHX09OKCFsaXN0X2VtcHR5KCZsby0+cGxoX3NlZ3MpKTsNCj4gPiA+
-PiA+PiA+Pg0KPiA+ID4+ID4+ID4NCj4gPiA+PiA+PiA+IElmIHRoZSBzZXJ2ZXIgZG9lc24ndCBy
-ZXR1cm4gYSBzdGF0ZWlkLCB0aGVuIHRoYXQgaXMgc3VwcG9zZWQgdG8NCj4gPiA+PiA+PiA+IGlu
-ZGljYXRlIHRoYXQgaXQgdGhpbmtzIHRoYXQgaXQgZG9lc24ndCBob2xkIGFueSBtb3JlIGxheW91
-dCBzZWdtZW50cw0KPiA+ID4+ID4+ID4gZm9yIHRoaXMgZmlsZS4NCj4gPiA+PiA+PiA+IFRvIG1l
-LCB0aGF0IGluZGljYXRlcyB0aGF0IHdlIHNob3VsZCBiZSBjYWxsaW5nDQo+ID4gPj4gPj4gPiBt
-YXJrX21hdGNoaW5nX2xzZWdzX2ludmFsaWQoKSByYXRoZXIgdGhhbiBPb3BzaW5nLg0KPiA+ID4+
-ID4+ID4NCj4gPiA+PiA+PiA+IEFueSBkaXNzZW50aW5nIHZvaWNlcyBmcm9tIHRoZSBwTkZTIGNy
-b3dkPw0KPiA+ID4+ID4+ID4NCj4gPiA+PiA+Pg0KPiA+ID4+ID4+IEJ1dCB0aGlzIGltcGxpZXMg
-dGhhdCB0aGUgY2xpZW50IHRoaW5rcyBpdCBoYXMgYSBsYXlvdXQgd2hpY2ggdGhlDQo+ID4gPj4g
-Pj4gc2VydmVyIGRvZXMgbm90IGJlbGlldmUgaXQgaGFzLCB3aGljaCBzZWVtcyB0byBtZSB0byBp
-bXBseSBhbiBlYXJsaWVyDQo+ID4gPj4gPj4gYnVnLiAgSWYgeW91IGNoYW5nZSB0byBtYXJrX21h
-dGNoaW5nX2xzZWdzX2ludmFsaWQsIEkgd291bGQgc3VnZ2VzdA0KPiA+ID4+ID4+IGtlZXBpbmcg
-YSBXQVJOX09OLg0KPiA+ID4+ID4NCj4gPiA+PiA+IFdlIGNvdWxkIHBvc3NpYmx5IGFkZCBhIHBy
-aW50aywgYnV0IEkgZG9uJ3Qgc2VlIHdoYXQgdmFsdWUgYSBXQVJOX09ODQo+ID4gPj4gPiB3b3Vs
-ZCBoYXZlIGhlcmU6IGhvdyBpcyBhIHN0YWNrIGR1bXAgZ29pbmcgdG8gYmUgdXNlZnVsIGluIGRl
-YnVnZ2luZw0KPiA+ID4+ID4gdGhpcyBpc3N1ZT8NCj4gPiA+PiA+DQo+ID4gPj4gPiBBbHNvLCBk
-b24ndCB3ZSBzb21ldGltZXMgZXhwZWN0IHRoaXMgc29ydCBvZiB0aGluZyB0byBoYXBwZW4gb24N
-Cj4gPiA+PiA+IG9jY2FzaW9uPyBXaGF0IGlmIG91ciBsYXlvdXRyZXR1cm4gZW5kcyB1cCByYWNp
-bmcgd2l0aCB0aGUgbGF5b3V0IHJlY2FsbA0KPiA+ID4+ID4gZm9sbG93aW5nIGEgRFMgc2h1dGRv
-d24/DQo+ID4gPj4gPg0KPiA+ID4+DQo+ID4gPj4gQWN0dWFsbHksIEkgZm9yZ290IGFib3V0IHRo
-ZSB3aG9sZSBMQVlVVFJFVFVSTiBhcyBmZW5jaW5nIHBvc3NpYmlsaXR5Lg0KPiA+ID4+ICBJbiB0
-aGF0IGNhc2UsIHlvdSBjYW4gcHJldHR5IGVhc2lseSBoaXQgdGhlIEJVR19PTi4gIFRob3VnaCBJ
-IGNsYWltDQo+ID4gPj4gdGhhdCwgd2hpbGUgY2FsbGluZyBtYXJrX21hdGNoaW5nX2xzZWdzX2lu
-dmFsaWQgZG9lc24ndCBodXJ0LCBpdA0KPiA+ID4+IHNob3VsZCBiZSB1bm5lY2Vzc2FyeS4NCj4g
-PiA+DQo+ID4gPiBSaWdodC4uLiBTbyBtYXliZSBqdXN0IGEgZHByaW50aygpIGZvciBkZWJ1Z2dp
-bmcgcHVycG9zZXM/DQo+ID4gPg0KPiA+ID4gQlRXOiBXaHkgc2hvdWxkbid0IHdlIGRvIHRoZSBt
-YXJrX21hdGNoaW5nX2xzZWdzX2ludmFsaWQ/IElmIG5vdCwgdGhlbg0KPiA+ID4gd2Ugd2lsbCBu
-ZWVkIGVpdGhlciB0byBkbyBhbiBleHRyYSBsYXlvdXRyZXR1cm4gb3IgZmFpbCBhIHJlYWQvd3Jp
-dGUNCj4gPiA+IGF0dGVtcHQgdG8gdGhlIERTIGluIG9yZGVyIHRvIGZpZ3VyZSBvdXQgdGhhdCB0
-aGUgc3RhdGVpZCBpcyBub3cNCj4gPiA+IGludmFsaWQuDQo+ID4gPg0KPiA+IA0KPiA+IA0KPiA+
-IFRoZXkgc2hvdWxkIGhhdmUgYWxyZWFkeSBiZWVuIG1hcmtlZCBhcyBpbnZhbGlkLCBhbmQgYXJl
-IGp1c3Qgd2FpdGluZw0KPiA+IG9uIGlvIHRvIGZpbmlzaCBmb3IgcmVsZWFzZS4NCj4gDQo+IFNv
-IGZhbGxiYWNrIHRvIE1EUz8gV2h5IGFyZSB3ZSBpc3N1aW5nIGEgbGF5b3V0cmV0dXJuIGluIHRo
-YXQgY2FzZT8NCg0KRG9oLi4uIE5ldmVyIG1pbmQuLi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QN
-CkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBu
-ZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+On Fri, Aug 10, 2012 at 04:39:30PM -0400, J. Bruce Fields wrote:
+> On Fri, Aug 10, 2012 at 04:33:46PM -0400, Chuck Lever wrote:
+> > OK, I didn't notice that you were unmounting between the tests.  3.5 and before did update the boot verifier after the last mount of a server goes away, but that's also not desirable behavior.  So I guess 3.6 also has my patch which makes the NFS client use the same boot verifier until it reboots, as God and the authors of 3530 intended?
+> 
+> I don't know.  (Why is that the right thing to do?  Telling the server
+> when you're not using the client any more seems reasonable to me.)
+
+And anyway can't the trick described in
+
+	2c820d9a97f07b273b2c8a5960bd52b1b5864c68 "NFS: Force server to
+	drop NFSv4 state"
+
+be used to do that without changing the boot verifier?
+
+--b.
