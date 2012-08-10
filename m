@@ -1,230 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:41701 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752748Ab2HMVVo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Aug 2012 17:21:44 -0400
-Received: by yenl14 with SMTP id l14so2487139yen.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Aug 2012 14:21:43 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/5] SUNRPC: Use __func__ in dprintk() in auth_gss.c
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 13 Aug 2012 17:21:41 -0400
-Message-ID: <20120813212141.1680.32594.stgit@degas.1015granger.net>
-In-Reply-To: <20120813210739.1680.53741.stgit@degas.1015granger.net>
-References: <20120813210739.1680.53741.stgit@degas.1015granger.net>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:53633 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751060Ab2HJCrJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2012 22:47:09 -0400
+Received: by yhmm54 with SMTP id m54so1204390yhm.19
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Aug 2012 19:47:08 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <1344540702.25447.67.camel@lade.trondhjem.org>
+References: <CABpMAyL-B9Kqg8O4xxxtj0X8PF7fP4TM+NnLA_Ynhm-_3C6MUg@mail.gmail.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9380987@SACEXCMBX04-PRD.hq.netapp.com>
+ <CABpMAyKddCjhWe-LjFOJrikLnC+BJ7GsAMAvieh1rabDPiA=Ug@mail.gmail.com>
+ <1344528377.25447.29.camel@lade.trondhjem.org> <CA+a=Yy5cE1v=nG_epkaKE2W--M=HAbtrySc9_+f6dvJVbusPJw@mail.gmail.com>
+ <1344530243.25447.36.camel@lade.trondhjem.org> <CA+a=Yy5xZiegbQczkD1F2AaCKLO4cwHijQpNTTTRQzHj6JJ+WQ@mail.gmail.com>
+ <1344540702.25447.67.camel@lade.trondhjem.org>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Fri, 10 Aug 2012 10:46:47 +0800
+Message-ID: <CA+a=Yy4O-xKf9iKK2F1+sGV4b8OGUG7NA1MD2KMt0m2cvPyK4g@mail.gmail.com>
+Subject: Re: return layout on error, BUG/deadlock
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Idan Kedar <idank@tonian.com>, Boaz Harrosh <bharrosh@panasas.com>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        Benny Halevy <bhalevy@tonian.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Some function names have changed, but debugging messages
-were never updated.  Automate the construction of the function name
-in debugging messages.
+On Fri, Aug 10, 2012 at 3:31 AM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Fri, 2012-08-10 at 00:48 +0800, Peng Tao wrote:
+>> On Fri, Aug 10, 2012 at 12:37 AM, Myklebust, Trond
+>> <Trond.Myklebust@netapp.com> wrote:
+>> > On Fri, 2012-08-10 at 00:34 +0800, Peng Tao wrote:
+>> >> On Fri, Aug 10, 2012 at 12:06 AM, Myklebust, Trond
+>> >> <Trond.Myklebust@netapp.com> wrote:
+>> >> > On Thu, 2012-08-09 at 18:49 +0300, Idan Kedar wrote:
+>> >> >> On Thu, Aug 9, 2012 at 5:05 PM, Myklebust, Trond
+>> >> >> <Trond.Myklebust@netapp.com> wrote:
+>> >> >> >> -----Original Message-----
+>> >> >> >> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+>> >> >> >> owner@vger.kernel.org] On Behalf Of Idan Kedar
+>> >> >> >> Sent: Thursday, August 09, 2012 9:03 AM
+>> >> >> >> To: Boaz Harrosh; NFS list
+>> >> >> >> Cc: Benny Halevy
+>> >> >> >> Subject: return layout on error, BUG/deadlock
+>> >> >> >>
+>> >> >> >> Hi,
+>> >> >> >>
+>> >> >> >> As a result of some experiments, I wanted to see what happens when I
+>> >> >> >> inject an error (hard coded) to the object layout driver. the patch is at the
+>> >> >> >> bottom of this mail. the reason I did this is because when I inject errors in my
+>> >> >> >> modified version of the object layout driver, I get the same BUG Tigran
+>> >> >> >> reported about yesterday:
+>> >> >> >> nfs4proc.c:6252 :   BUG_ON(!list_empty(&lo->plh_segs));
+>> >> >> >>
+>> >> >> >> In my modified version (based on kernel 3.3), the bug seems to be that
+>> >> >> >> pnfs_ld_write_done calls pnfs_return_layout in the error path, even if there
+>> >> >> >> is in-flight I/O.
+>> >> >> >
+>> >> >> > That is not a bug. It is an intentional change in order to allow the MDS to fence off the outstanding writes (if it can do so) before we retransmit them as write-through-MDS. Otherwise, you risk races between the outstanding writes-to-DS and the new writes-through-MDS.
+>> >> >>
+>> >> >> to what change are you referring?
+>> >> >
+>> >> > As I stated in the changelog of the patch that I sent to the list
+>> >> > yesterday, the behaviour is due to commit 0a57cdac3f.
+>> >> >
+>> >> >> >
+>> >> >> > See the changelog in the patch that I sent to the list yesterday.
+>> >> >> >
+>> >> >>
+>> >> >> I saw that, and if I'm not mistaken these races apply to object layout
+>> >> >> as well, and in any case they apply in my case. However, it is not
+>> >> >> easy to mess around with LAYOUTRETURN in object layout, and there have
+>> >> >> been several discussions on the issue. In one of these discussions
+>> >> >> Benny clarified that the object layout client must wait for all
+>> >> >> in-flight I/O to end.
+>> >> >
+>> >> > If the problem is that the DS is failing to respond, how does the client
+>> >> > know that the in-flight I/O has ended?
+>> >> >
+>> >> >> So for file layout it probably makes sense, but object layout (and if
+>> >> >> I understand correctly, block layout as well) something else needs to
+>> >> >> be done. I thought about sync wait when returning the layout on error,
+>> >> >> but according to Boaz it will cause deadlocks (Boaz - can you please
+>> >> >> elaborate?).
+>> >> >
+>> >> > The object layoutreturn has the ability to pass a timeout error value to
+>> >> > the MDS precisely in order to allow the latter to deal with this kind of
+>> >> > issue. See the description of struct pnfs_osd_ioerr4 in rfc5664.
+>> >> >
+>> >> > The block layout is adding the same ability to layoutreturn in NFSv4.2
+>> >> > (see draft-ietf-nfsv4-minorversion2-13.txt) via the struct
+>> >> > layoutreturn_device_error4, so presumably they too have a plan for
+>> >> > dealing with this kind of issue.
+>> >> It is one thing to tell MDS that there is DS access error by sending
+>> >> layoutreturn, and it is another thing to return a layout even if there
+>> >> is overlapping in-flight DS IO...
+>> >>
+>> >> I certainly agree that client is entitled to return layout to inform
+>> >> MDS about DS errors and also avoid possible cb_layoutrecall. But it is
+>> >> just an optimization and should only be done when there is no
+>> >> in-flight IO (at least for block layout) IMHO.
+>> >
+>> > HOW DO YOU GUARANTEE NO IN-FLIGHT IO?
+>> >
+>> I don't. That's why I don't return layout in pnfs_ld_write_done(). And
+>> for layoutreturn upon cb_layoutreturn, block layout client needs to do
+>> timed-lease IO fencing per rfc5663, but it is not implemented in Linux
+>> client.
+>
+> The timed-lease IO fencing described in rfc5663 is about informing the
+> server about how long the client expects a command to succeed or fail.
+> It doesn't offer any advice for how the client is to deal with an
+> unresponsive DS.
+>
+> What you need here is help from the underlying transport protocol. As I
+> said in the email to Idan, when researching iSCSI and iFCP, I found what
+> appears to be mechanisms for reliably timing out.
+Just checked and found that the layoutreturn-on-error behavior only
+affects object and file layout. So block layout stays out and safe.
+That's all I would ask for. Thanks for your explanation.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- net/sunrpc/auth_gss/auth_gss.c |   58 ++++++++++++++++++++--------------------
- 1 files changed, 29 insertions(+), 29 deletions(-)
-
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 34c5220..909dc0c 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -239,7 +239,7 @@ gss_fill_context(const void *p, const void *end, struct gss_cl_ctx *ctx, struct
- 	}
- 	return q;
- err:
--	dprintk("RPC:       gss_fill_context returning %ld\n", -PTR_ERR(p));
-+	dprintk("RPC:       %s returning %ld\n", __func__, -PTR_ERR(p));
- 	return p;
- }
- 
-@@ -301,10 +301,10 @@ __gss_find_upcall(struct rpc_pipe *pipe, uid_t uid)
- 		if (pos->uid != uid)
- 			continue;
- 		atomic_inc(&pos->count);
--		dprintk("RPC:       gss_find_upcall found msg %p\n", pos);
-+		dprintk("RPC:       %s found msg %p\n", __func__, pos);
- 		return pos;
- 	}
--	dprintk("RPC:       gss_find_upcall found nothing\n");
-+	dprintk("RPC:       %s found nothing\n", __func__);
- 	return NULL;
- }
- 
-@@ -507,8 +507,8 @@ gss_refresh_upcall(struct rpc_task *task)
- 	struct rpc_pipe *pipe;
- 	int err = 0;
- 
--	dprintk("RPC: %5u gss_refresh_upcall for uid %u\n", task->tk_pid,
--								cred->cr_uid);
-+	dprintk("RPC: %5u %s for uid %u\n",
-+		task->tk_pid, __func__, cred->cr_uid);
- 	gss_msg = gss_setup_upcall(task->tk_client, gss_auth, cred);
- 	if (PTR_ERR(gss_msg) == -EAGAIN) {
- 		/* XXX: warning on the first, under the assumption we
-@@ -539,8 +539,8 @@ gss_refresh_upcall(struct rpc_task *task)
- 	spin_unlock(&pipe->lock);
- 	gss_release_msg(gss_msg);
- out:
--	dprintk("RPC: %5u gss_refresh_upcall for uid %u result %d\n",
--			task->tk_pid, cred->cr_uid, err);
-+	dprintk("RPC: %5u %s for uid %u result %d\n",
-+		task->tk_pid, __func__, cred->cr_uid, err);
- 	return err;
- }
- 
-@@ -553,7 +553,7 @@ gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
- 	DEFINE_WAIT(wait);
- 	int err = 0;
- 
--	dprintk("RPC:       gss_upcall for uid %u\n", cred->cr_uid);
-+	dprintk("RPC:       %s for uid %u\n", __func__, cred->cr_uid);
- retry:
- 	gss_msg = gss_setup_upcall(gss_auth->client, gss_auth, cred);
- 	if (PTR_ERR(gss_msg) == -EAGAIN) {
-@@ -594,8 +594,8 @@ out_intr:
- 	finish_wait(&gss_msg->waitqueue, &wait);
- 	gss_release_msg(gss_msg);
- out:
--	dprintk("RPC:       gss_create_upcall for uid %u result %d\n",
--			cred->cr_uid, err);
-+	dprintk("RPC:       %s for uid %u result %d\n",
-+		__func__, cred->cr_uid, err);
- 	return err;
- }
- 
-@@ -681,7 +681,7 @@ err_put_ctx:
- err:
- 	kfree(buf);
- out:
--	dprintk("RPC:       gss_pipe_downcall returning %Zd\n", err);
-+	dprintk("RPC:       %s returning %Zd\n", __func__, err);
- 	return err;
- }
- 
-@@ -747,8 +747,8 @@ gss_pipe_destroy_msg(struct rpc_pipe_msg *msg)
- 	struct gss_upcall_msg *gss_msg = container_of(msg, struct gss_upcall_msg, msg);
- 
- 	if (msg->errno < 0) {
--		dprintk("RPC:       gss_pipe_destroy_msg releasing msg %p\n",
--				gss_msg);
-+		dprintk("RPC:       %s releasing msg %p\n",
-+			__func__, gss_msg);
- 		atomic_inc(&gss_msg->count);
- 		gss_unhash_msg(gss_msg);
- 		if (msg->errno == -ETIMEDOUT)
-@@ -976,7 +976,7 @@ gss_destroying_context(struct rpc_cred *cred)
- static void
- gss_do_free_ctx(struct gss_cl_ctx *ctx)
- {
--	dprintk("RPC:       gss_free_ctx\n");
-+	dprintk("RPC:       %s\n", __func__);
- 
- 	gss_delete_sec_context(&ctx->gc_gss_ctx);
- 	kfree(ctx->gc_wire_ctx.data);
-@@ -999,7 +999,7 @@ gss_free_ctx(struct gss_cl_ctx *ctx)
- static void
- gss_free_cred(struct gss_cred *gss_cred)
- {
--	dprintk("RPC:       gss_free_cred %p\n", gss_cred);
-+	dprintk("RPC:       %s cred=%p\n", __func__, gss_cred);
- 	kfree(gss_cred);
- }
- 
-@@ -1049,8 +1049,8 @@ gss_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags)
- 	struct gss_cred	*cred = NULL;
- 	int err = -ENOMEM;
- 
--	dprintk("RPC:       gss_create_cred for uid %d, flavor %d\n",
--		acred->uid, auth->au_flavor);
-+	dprintk("RPC:       %s for uid %d, flavor %d\n",
-+		__func__, acred->uid, auth->au_flavor);
- 
- 	if (!(cred = kzalloc(sizeof(*cred), GFP_NOFS)))
- 		goto out_err;
-@@ -1069,7 +1069,7 @@ gss_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags)
- 	return &cred->gc_base;
- 
- out_err:
--	dprintk("RPC:       gss_create_cred failed with error %d\n", err);
-+	dprintk("RPC:       %s failed with error %d\n", __func__, err);
- 	return ERR_PTR(err);
- }
- 
-@@ -1127,7 +1127,7 @@ gss_marshal(struct rpc_task *task, __be32 *p)
- 	struct kvec	iov;
- 	struct xdr_buf	verf_buf;
- 
--	dprintk("RPC: %5u gss_marshal\n", task->tk_pid);
-+	dprintk("RPC: %5u %s\n", task->tk_pid, __func__);
- 
- 	*p++ = htonl(RPC_AUTH_GSS);
- 	cred_len = p++;
-@@ -1253,7 +1253,7 @@ gss_validate(struct rpc_task *task, __be32 *p)
- 	u32		flav,len;
- 	u32		maj_stat;
- 
--	dprintk("RPC: %5u gss_validate\n", task->tk_pid);
-+	dprintk("RPC: %5u %s\n", task->tk_pid, __func__);
- 
- 	flav = ntohl(*p++);
- 	if ((len = ntohl(*p++)) > RPC_MAX_AUTH_SIZE)
-@@ -1271,20 +1271,20 @@ gss_validate(struct rpc_task *task, __be32 *p)
- 	if (maj_stat == GSS_S_CONTEXT_EXPIRED)
- 		clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
- 	if (maj_stat) {
--		dprintk("RPC: %5u gss_validate: gss_verify_mic returned "
--				"error 0x%08x\n", task->tk_pid, maj_stat);
-+		dprintk("RPC: %5u %s: gss_verify_mic returned error 0x%08x\n",
-+			task->tk_pid, __func__, maj_stat);
- 		goto out_bad;
- 	}
- 	/* We leave it to unwrap to calculate au_rslack. For now we just
- 	 * calculate the length of the verifier: */
- 	cred->cr_auth->au_verfsize = XDR_QUADLEN(len) + 2;
- 	gss_put_ctx(ctx);
--	dprintk("RPC: %5u gss_validate: gss_verify_mic succeeded.\n",
--			task->tk_pid);
-+	dprintk("RPC: %5u %s: gss_verify_mic succeeded.\n",
-+			task->tk_pid, __func__);
- 	return p + XDR_QUADLEN(len);
- out_bad:
- 	gss_put_ctx(ctx);
--	dprintk("RPC: %5u gss_validate failed.\n", task->tk_pid);
-+	dprintk("RPC: %5u %s failed.\n", task->tk_pid, __func__);
- 	return NULL;
- }
- 
-@@ -1466,7 +1466,7 @@ gss_wrap_req(struct rpc_task *task,
- 	struct gss_cl_ctx *ctx = gss_cred_get_ctx(cred);
- 	int             status = -EIO;
- 
--	dprintk("RPC: %5u gss_wrap_req\n", task->tk_pid);
-+	dprintk("RPC: %5u %s\n", task->tk_pid, __func__);
- 	if (ctx->gc_proc != RPC_GSS_PROC_DATA) {
- 		/* The spec seems a little ambiguous here, but I think that not
- 		 * wrapping context destruction requests makes the most sense.
-@@ -1489,7 +1489,7 @@ gss_wrap_req(struct rpc_task *task,
- 	}
- out:
- 	gss_put_ctx(ctx);
--	dprintk("RPC: %5u gss_wrap_req returning %d\n", task->tk_pid, status);
-+	dprintk("RPC: %5u %s returning %d\n", task->tk_pid, __func__, status);
- 	return status;
- }
- 
-@@ -1604,8 +1604,8 @@ out_decode:
- 	status = gss_unwrap_req_decode(decode, rqstp, p, obj);
- out:
- 	gss_put_ctx(ctx);
--	dprintk("RPC: %5u gss_unwrap_resp returning %d\n", task->tk_pid,
--			status);
-+	dprintk("RPC: %5u %s returning %d\n",
-+		task->tk_pid, __func__, status);
- 	return status;
- }
- 
-
+Best,
+Tao
