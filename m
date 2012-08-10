@@ -1,112 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:39086 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752652Ab2HNQ0k (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 12:26:40 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH 16/16] tracing output: use new hashtable implementation
-Date: Tue, 14 Aug 2012 18:24:50 +0200
-Message-Id: <1344961490-4068-17-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
-References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:49793 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754388Ab2HJI3u (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Aug 2012 04:29:50 -0400
+Received: by ghrr11 with SMTP id r11so1353340ghr.19
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Aug 2012 01:29:49 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20120810074818.119500@gmx.net>
+References: <20120808155829.177400@gmx.net> <20120808163916.GA24539@umich.edu>
+ <20120808182622.177380@gmx.net> <20120809084236.177380@gmx.net>
+ <5DFC6BE3BA248842867E85C73BF94B050B17B698CF@MX41A.corp.emc.com>
+ <20120809152744.149360@gmx.net> <CA+a=Yy7rH7kFKJvS3eOae+Mb0C1p+N01h+Zqz7jVzGE+HXHt9g@mail.gmail.com>
+ <20120810074818.119500@gmx.net>
+From: Peng Tao <tao.peng@emc.com>
+Date: Fri, 10 Aug 2012 16:29:29 +0800
+Message-ID: <CA+a=Yy6C-d82MR6Lun4sRcJ0euBBpf0Ra3cHDnQ8eKENi5eU2Q@mail.gmail.com>
+Subject: Re: RE: Blocklayout
+To: Johannes Schild <JSchild@gmx.de>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch tracing to use the new hashtable implementation. This reduces the amount of
-generic unrelated code in the tracing module.
+> [59260.324598] encoding getdevicelist!
+> [59260.324600] decode_getdevicelist: num_dev 1
+> [59260.324601] nfs41_sequence_done: Error 0 free the slot
+> [59260.324602] nfs4_free_slot: slotid 16 highest_used_slotid -1
+> [59260.324605] <-- _nfs4_getdevicelist status=0
+> [59260.324606] nfs4_proc_getdevicelist: err=0, num_devs=1
+> [59260.324607] bl_set_layoutdriver GETDEVICELIST numdevs=1, eof=1
+> [59260.324608] nfs4_blk_get_deviceinfo max_resp_sz 135168 max_pages 33
+> [59260.324629] nfs4_blk_get_deviceinfo: dev_id:
+The deviceid field returned by server is empty. That's why device
+discovery failed.
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
- kernel/trace/trace_output.c |   20 ++++++++------------
- 1 files changed, 8 insertions(+), 12 deletions(-)
+> [59260.324630] --> _nfs4_proc_getdeviceinfo
+> [59260.324632] --> nfs41_call_sync_prepare data->seq_server ffff88003c8d7800
+> [59260.324633] --> nfs4_setup_sequence clp ffff88003c733400 session ffff88003c733c00 sr_slot -1
+> [59260.324634] --> nfs41_setup_sequence
+> [59260.324635] --> nfs4_find_slot used_slots=0000 highest_used=4294967295 max_slots=16
+> [59260.324636] <-- nfs4_find_slot used_slots=0001 highest_used=0 slotid=0
+> [59260.324637] <-- nfs41_setup_sequence slotid=0 seqid=9
+> [59260.324638] <-- nfs4_setup_sequence status=0
+> [59260.324642] encode_sequence: sessionid=1344524732:4:4:0 seqid=9 slotid=0 max_slotid=0 cache_this=0
+> [59260.333545] nfs41_sequence_done: Error 0 free the slot
+> [59260.333547] nfs4_free_slot: slotid 16 highest_used_slotid -1
+> [59260.333553] <-- _nfs4_proc_getdeviceinfo status=0
+> [59260.333555] nfs4_blk_get_deviceinfo getdevice info returns 0
+> [59260.333572] nfs4_blk_decode_device CREATING PIPEFS MESSAGE
+> [59260.333573] nfs4_blk_decode_device: deviceid: , mincount: 136
+Here shows the same error.
 
-diff --git a/kernel/trace/trace_output.c b/kernel/trace/trace_output.c
-index 123b189..1324c1a 100644
---- a/kernel/trace/trace_output.c
-+++ b/kernel/trace/trace_output.c
-@@ -8,15 +8,15 @@
- #include <linux/module.h>
- #include <linux/mutex.h>
- #include <linux/ftrace.h>
-+#include <linux/hashtable.h>
- 
- #include "trace_output.h"
- 
--/* must be a power of 2 */
--#define EVENT_HASHSIZE	128
-+#define EVENT_HASH_BITS	7
- 
- DECLARE_RWSEM(trace_event_mutex);
- 
--static struct hlist_head event_hash[EVENT_HASHSIZE] __read_mostly;
-+static DEFINE_HASHTABLE(event_hash, EVENT_HASH_BITS);
- 
- static int next_event_type = __TRACE_LAST_TYPE + 1;
- 
-@@ -712,11 +712,8 @@ struct trace_event *ftrace_find_event(int type)
- {
- 	struct trace_event *event;
- 	struct hlist_node *n;
--	unsigned key;
- 
--	key = type & (EVENT_HASHSIZE - 1);
--
--	hlist_for_each_entry(event, n, &event_hash[key], node) {
-+	hash_for_each_possible(event_hash, event, n, node, type) {
- 		if (event->type == type)
- 			return event;
- 	}
-@@ -781,7 +778,6 @@ void trace_event_read_unlock(void)
-  */
- int register_ftrace_event(struct trace_event *event)
- {
--	unsigned key;
- 	int ret = 0;
- 
- 	down_write(&trace_event_mutex);
-@@ -833,9 +829,7 @@ int register_ftrace_event(struct trace_event *event)
- 	if (event->funcs->binary == NULL)
- 		event->funcs->binary = trace_nop_print;
- 
--	key = event->type & (EVENT_HASHSIZE - 1);
--
--	hlist_add_head(&event->node, &event_hash[key]);
-+	hash_add(event_hash, &event->node, event->type);
- 
- 	ret = event->type;
-  out:
-@@ -850,7 +844,7 @@ EXPORT_SYMBOL_GPL(register_ftrace_event);
-  */
- int __unregister_ftrace_event(struct trace_event *event)
- {
--	hlist_del(&event->node);
-+	hash_del(&event->node);
- 	list_del(&event->list);
- 	return 0;
- }
-@@ -1323,6 +1317,8 @@ __init static int init_events(void)
- 		}
- 	}
- 
-+	hash_init(event_hash);
-+
- 	return 0;
- }
- early_initcall(init_events);
--- 
-1.7.8.6
+You may check server code to see if there is something wrong with
+getdevicelist proc handling.
 
+Cheers,
+Tao
