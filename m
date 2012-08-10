@@ -1,71 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:51139 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750861Ab2HMRj7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Aug 2012 13:39:59 -0400
-Message-ID: <50293BE9.3010408@parallels.com>
-Date: Mon, 13 Aug 2012 21:39:53 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from mailout-de.gmx.net ([213.165.64.22]:46496 "HELO
+	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753189Ab2HJNAh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Aug 2012 09:00:37 -0400
+Cc: linux-nfs@vger.kernel.org, tao.peng@emc.com
+Content-Type: text/plain; charset="utf-8"
+Date: Fri, 10 Aug 2012 15:00:34 +0200
+From: "Johannes Schild" <JSchild@gmx.de>
+In-Reply-To: <20120810121808.GA9817@umich.edu>
+Message-ID: <20120810130034.177360@gmx.net>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Pavel Emelianov <xemul@parallels.com>, "H. Peter Anvin" <hpa@zytor.com>,
-        Alan Cox <alan@lxorguk.ukuu.org.uk>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "eric.dumazet@gmail.com" <eric.dumazet@gmail.com>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-        "tim.c.chen@linux.intel.com" <tim.c.chen@linux.intel.com>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [RFC PATCH 0/2] net: connect to UNIX sockets from specified root
-References: <20120810125701.7115.71612.stgit@localhost.localdomain> <50254FA6.3060806@zytor.com> <20120810192628.79a34d28@pyramind.ukuu.org.uk> <20120810191149.GA17985@fieldses.org> <20120810202818.06236f46@pyramind.ukuu.org.uk> <50259494.8060304@zytor.com> <5025FA5A.4090403@parallels.com> <50263ECC.4060501@parallels.com> <20120813164730.GB2497@fieldses.org>
-In-Reply-To: <20120813164730.GB2497@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+References: <20120808182622.177380@gmx.net> <20120809084236.177380@gmx.net>
+ <5DFC6BE3BA248842867E85C73BF94B050B17B698CF@MX41A.corp.emc.com>
+ <20120809152744.149360@gmx.net>
+ <CA+a=Yy7rH7kFKJvS3eOae+Mb0C1p+N01h+Zqz7jVzGE+HXHt9g@mail.gmail.com>
+ <20120810074818.119500@gmx.net>
+ <CA+a=Yy6C-d82MR6Lun4sRcJ0euBBpf0Ra3cHDnQ8eKENi5eU2Q@mail.gmail.com>
+ <20120810092016.177360@gmx.net>
+ <CA+a=Yy58ZgG1zoUP4633u6uuZ22hnpuqjS1xa4j3S8R=9=zEUA@mail.gmail.com>
+ <20120810120635.268340@gmx.net> <20120810121808.GA9817@umich.edu>
+Subject: Re: RE: Blocklayout
+To: Jim Rees <rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-13.08.2012 20:47, J. Bruce Fields пишет:
-> On Sat, Aug 11, 2012 at 03:15:24PM +0400, Stanislav Kinsbursky wrote:
->> 11.08.2012 10:23, Pavel Emelyanov пишет:
->>> On 08/11/2012 03:09 AM, H. Peter Anvin wrote:
->>>> On 08/10/2012 12:28 PM, Alan Cox wrote:
->>>>> Explicitly for Linux yes - this is not generally true of the AF_UNIX
->>>>> socket domain and even the permissions aspect isn't guaranteed to be
->>>>> supported on some BSD environments !
->>>> Yes, but let's worry about what the Linux behavior should be.
->>>>
->>>>> The name is however just a proxy for the socket itself. You don't even
->>>>> get a device node in the usual sense or the same inode in the file system
->>>>> space.
->>>> No, but it is looked up the same way any other inode is (the difference
->>>> between FIFOs and sockets is that sockets have separate connections,
->>>> which is also why open() on sockets would be nice.)
->>>>
->>>> However, there is a fundamental difference between AF_UNIX sockets and
->>>> open(), and that is how the pathname is delivered.  It thus would make
->>>> more sense to provide the openat()-like information in struct
->>>> sockaddr_un, but that may be very hard to do in a sensible way.  In that
->>>> sense it perhaps would be cleaner to be able to do an open[at]() on the
->>>> socket node with O_PATH (perhaps there should be an O_SOCKET option,
->>>> even?) and pass the resulting file descriptor to bind() or connect().
->>> I vote for this (openat + O_WHATEVER on a unix socket) as well. It will
->>> help us in checkpoint-restore, making handling of overmounted/unlinked
->>> sockets much cleaner.
->> I have to notice, that it's not enough and doesn't solve the issue.
->> There should be some way how to connect/bind already existent unix
->> socket (from kernel, at least), because socket can be created in
->> user space.
->> And this way (sock operation or whatever) have to provide an ability
->> to lookup UNIX socket starting from specified root to support
->> containers.
-> I don't understand--the rpcbind sockets are created by the kernel.  What
-> am I missing?
+Hi Jim,
 
-Kernel preform connect to rpcbind socket (i.e. user-space binds it), 
-doesn't it?
+thanks for trying to help me:
 
->
-> --b.
 
+>   
+>   [root@fedorapnfs2 sbin]# /root/ctl/ctl -u
+>   [root@fedorapnfs2 sbin]# Processing: MSG_VERS    : Version: 8
+>   Processing: MSG_VERS    : Version: 8
+>   Processing: MSG_DMCHK   : DM Volume: True
+>   Processing: MSG_DMGET   : Vol info: 0 6291456 striped 2 128 8:17 2048
+> 8:33 2048
+>       major 8, minor 17
+>       major 8, minor 33
+>   Processing: MSG_GETSIG  : get_sig: 8:17: get_sig: Got sig at: 1, within
+> sector 56, len 16
+>       e9 91 e5 1c d7 cb 20 41   ad d1 61 f9 a7 30 5e fb   
+>   Processing: MSG_GETSLICE: get_slice: 8:17: Dev: 8:17, Start: 34, Length:
+> 4196285
+>   Processing: MSG_GETSIG  : get_sig: 8:33: get_sig: Got sig at: 1, within
+> sector 56, len 16
+>       9b 0d 30 b8 42 68 0a 4c   95 52 ed 5f d7 46 49 ed   
+>   Processing: MSG_GETSLICE: get_slice: 8:33: Dev: 8:33, Start: 34, Length:
+> 4196285
+> 
+> I'm not familiar with this server, but all I see here is slices from two
+> disks.  The blkmapd output shows the same thing.  Normally these would be
+> striped or catenated to form the file system device.  What device topology
+> do you think you're exporting?
+
+
+I use LVM and iSCSI to export my device:
+LVM for Striping (because ctl needs it), iSCSI for transport.
+
+i created a volume "testserver":
+
+[root@fedorapnfs2 server]# pvs
+  PV         VG              Fmt  Attr PSize  PFree  
+  /dev/sda3  vg_createfedora lvm2 a--  19.50g      0 
+  /dev/sdb1  testserver      lvm2 a--   2.00g 508.00m
+  /dev/sdc1  testserver      lvm2 a--   2.00g 508.00m
+
+[root@fedorapnfs2 server]# dmsetup ls --target striped
+testserver-share	(253, 2)
+
+[root@fedorapnfs2 server]# dmsetup table
+vg_createfedora-lv_swap: 0 4128768 linear 8:3 2048
+vg_createfedora-lv_root: 0 36765696 linear 8:3 4130816
+testserver-share: 0 6291456 striped 2 128 8:17 2048 8:33 2048
+
+
+The following output is from my iSCSI-targets which i export:
+
+[root@fedorapnfs2 server]# tgtadm --lld iscsi --mode target --op show
+Target 1: iqn.2012-04.fedorapnfs2:dev01
+    System information:
+        Driver: iscsi
+        State: ready
+    I_T nexus information:
+        I_T nexus: 2
+            Initiator: iqn.1994-05.com.redhat:f1b658ea7af8
+            Connection: 0
+                IP Address: 192.168.0.13
+    LUN information:
+        LUN: 0
+            Type: controller
+            SCSI ID: IET     00010000
+            SCSI SN: beaf10
+            Size: 0 MB, Block size: 1
+            Online: Yes
+            Removable media: No
+            Readonly: No
+            Backing store type: null
+            Backing store path: None
+            Backing store flags: 
+        LUN: 1
+            Type: disk
+            SCSI ID: IET     00010001
+            SCSI SN: beaf11
+            Size: 2149 MB, Block size: 512
+            Online: Yes
+            Removable media: No
+            Readonly: No
+            Backing store type: rdwr
+            Backing store path: /dev/sdb
+            Backing store flags: 
+        LUN: 2
+            Type: disk
+            SCSI ID: IET     00010002
+            SCSI SN: beaf12
+            Size: 2149 MB, Block size: 512
+            Online: Yes
+            Removable media: No
+            Readonly: No
+            Backing store type: rdwr
+            Backing store path: /dev/sdc
+            Backing store flags: 
+    Account information:
+    ACL information:
+        ALL
+
+
+
+Thanks for your help.
+
+
+Johannes
