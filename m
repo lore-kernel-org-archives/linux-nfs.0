@@ -1,115 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43988 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:57113 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751221Ab2H3Ub2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Aug 2012 16:31:28 -0400
-Date: Thu, 30 Aug 2012 16:31:26 -0400
+	id S1752759Ab2HJUNu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Aug 2012 16:13:50 -0400
+Date: Fri, 10 Aug 2012 16:13:49 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Namjae Jeon <linkinjeon@gmail.com>
-Cc: viro@zeniv.linux.org.uk, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Vivek Trivedi <vtrivedi018@gmail.com>
-Subject: Re: [PATCH] exportfs: add FILEID_INVALID to indicate invalid
- fid_type
-Message-ID: <20120830203125.GA23478@fieldses.org>
-References: <1346249410-3515-1-git-send-email-linkinjeon@gmail.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        David Noveck <david.noveck@emc.com>
+Subject: Re: NFS: Treat NFS4ERR_CLID_INUSE as a fatal error
+Message-ID: <20120810201348.GB17985@fieldses.org>
+References: <20120809183557.GA10591@fieldses.org>
+ <53272628-CC34-4279-AA69-CD31B86672D5@oracle.com>
+ <20120809193743.GD10591@fieldses.org>
+ <20120809203838.GA11538@fieldses.org>
+ <24601061-1606-4A0A-940E-FDAFD1A2A2BB@oracle.com>
+ <39FE3A39-4EB2-4F9F-908F-645C79B30E0F@oracle.com>
+ <20120809211340.GB11538@fieldses.org>
+ <6575B2FD-CCE4-40D5-9CBA-82681EC20E17@oracle.com>
+ <20120809213838.GC11538@fieldses.org>
+ <B28F4673-3650-4BA9-ADDA-F9A8E62A0499@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1346249410-3515-1-git-send-email-linkinjeon@gmail.com>
+In-Reply-To: <B28F4673-3650-4BA9-ADDA-F9A8E62A0499@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 29, 2012 at 10:10:10AM -0400, Namjae Jeon wrote:
-> This commit adds FILEID_INVALID = 0xff in fid_type to
-> indicate invalid fid_type
+On Fri, Aug 10, 2012 at 03:38:30PM -0400, Chuck Lever wrote:
+> 
+> On Aug 9, 2012, at 5:38 PM, J. Bruce Fields wrote:
+> 
+> > On Thu, Aug 09, 2012 at 05:29:47PM -0400, Chuck Lever wrote:
+> >> 
+> >> On Aug 9, 2012, at 5:13 PM, J. Bruce Fields wrote:
+> >>> The server could just compare principal strings (and ignore
+> >>> pseudoflavors) in the gss case.
+> >> 
+> >> Barring a correction about how GSS Kerberos principals work, I think that's the correct approach.
+> > 
+> > I also don't know if principals produced by other mechanisms are going
+> > to be comparable.  Of course that's a bit academic given that kerberos
+> > is the only mechanism for the forseeable future.
+> 
+> Agreed, I would expect this to work only for pseudoflavors that share the same type of principal.
+> 
+> Let me be sure I understand... I think the text of RFC 3530bis allows this implementation choice, but you are suggesting below that such an implementation may allow an attack.  Does this concern warrant a change to RFC 3530bis or 5661?  Should we bring this up on nfsv4@ietf.org?
 
-OK, applying for 3.7.
+This should be all completely settled in 4.1.  It's 4.0 that I'm
+confused by.
 
-Looks like this shows up in a lot of filesystems too as just "255".  Are
-you planning to patch up the filesystems afterwards?
+What do you need the client to be able to do?  Does it need to be able
+to perform setclientid's on the same client with different security
+flavors?
+
+In this particular case (mount/umount with one flavor, then mount/umount
+with another), maybe the client should destroy the client state (with an
+"I rebooted" setclientid) on the first umount?  (I thought you had
+patches that did that?)
 
 --b.
 
 > 
-> It avoids using magic number 255
+> > 
+> >>> If the intention is to ensure that a clientid can't be "hijacked" by
+> >>> someone malicious, then you don't want to allow a krb5 setclientid to
+> >>> blow away a clientid established with krb5i.  (If sending the
+> >>> setclientid with krb5i indicates the client wants protection against
+> >>> attacks which replace the body of the rpc, then a later krb5 setclientid
+> >>> should be rejected, since it could be the product of such an attack.)
+> >> 
+> >> If the client wants to avoid hijacking, it should start out with krb5i, as is recommended in the Security Considerations section of 3530(bis).
+> >> 
+> >> The intention of 3530(bis) is that one client instance uses just one nfs_client_id4.id string.  A client that attempts to change flavors on its SETCLIENTID/RENEW operations in mid-journey, on purpose, seems a little schizophrenic.  I can't think of a good reason it should do this.
+> > 
+> > You don't know it's the same client any more.  The attack is:
+> > 
+> > 	client sends setclientid with krb5i.
+> > 
+> > 	client later sends some other rpc with krb5.
+> > 
+> > 	attacker intercepts that operation, takes the rpc header, strips
+> > 	out the body, and replaces the body by a setclientid operation
+> > 	destroying the client's state.
+> > 
+> > Since krb5 only protects the header, the server can't tell that's what's
+> > happened.
 > 
-> Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
-> Signed-off-by: Vivek Trivedi <vtrivedi018@gmail.com>
-> ---
->  fs/exportfs/expfs.c      |    4 ++--
->  fs/fhandle.c             |    2 +-
->  fs/nfsd/nfsfh.c          |    4 ++--
->  include/linux/exportfs.h |    5 +++++
->  4 files changed, 10 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
-> index 29ab099..f1f1c59 100644
-> --- a/fs/exportfs/expfs.c
-> +++ b/fs/exportfs/expfs.c
-> @@ -322,10 +322,10 @@ static int export_encode_fh(struct inode *inode, struct fid *fid,
->  
->  	if (parent && (len < 4)) {
->  		*max_len = 4;
-> -		return 255;
-> +		return FILEID_INVALID;
->  	} else if (len < 2) {
->  		*max_len = 2;
-> -		return 255;
-> +		return FILEID_INVALID;
->  	}
->  
->  	len = 2;
-> diff --git a/fs/fhandle.c b/fs/fhandle.c
-> index a48e4a1..78a7879 100644
-> --- a/fs/fhandle.c
-> +++ b/fs/fhandle.c
-> @@ -52,7 +52,7 @@ static long do_sys_name_to_handle(struct path *path,
->  	handle_bytes = handle_dwords * sizeof(u32);
->  	handle->handle_bytes = handle_bytes;
->  	if ((handle->handle_bytes > f_handle.handle_bytes) ||
-> -	    (retval == 255) || (retval == -ENOSPC)) {
-> +	    (retval == FILEID_INVALID) || (retval == -ENOSPC)) {
->  		/* As per old exportfs_encode_fh documentation
->  		 * we could return ENOSPC to indicate overflow
->  		 * But file system returned 255 always. So handle
-> diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-> index 032af38..814afaa 100644
-> --- a/fs/nfsd/nfsfh.c
-> +++ b/fs/nfsd/nfsfh.c
-> @@ -572,7 +572,7 @@ fh_compose(struct svc_fh *fhp, struct svc_export *exp, struct dentry *dentry,
->  
->  		if (inode)
->  			_fh_update(fhp, exp, dentry);
-> -		if (fhp->fh_handle.fh_fileid_type == 255) {
-> +		if (fhp->fh_handle.fh_fileid_type == FILEID_INVALID) {
->  			fh_put(fhp);
->  			return nfserr_opnotsupp;
->  		}
-> @@ -603,7 +603,7 @@ fh_update(struct svc_fh *fhp)
->  			goto out;
->  
->  		_fh_update(fhp, fhp->fh_export, dentry);
-> -		if (fhp->fh_handle.fh_fileid_type == 255)
-> +		if (fhp->fh_handle.fh_fileid_type == FILEID_INVALID)
->  			return nfserr_opnotsupp;
->  	}
->  out:
-> diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
-> index 12291a7..0e14525 100644
-> --- a/include/linux/exportfs.h
-> +++ b/include/linux/exportfs.h
-> @@ -83,6 +83,11 @@ enum fid_type {
->  	 * 64 bit parent inode number.
->  	 */
->  	FILEID_NILFS_WITH_PARENT = 0x62,
-> +
-> +	/*
-> +	 * Filesystems must not use 0xff file ID.
-> +	 */
-> +	FILEID_INVALID = 0xff,
->  };
->  
->  struct fid {
 > -- 
-> 1.7.9.5
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
 > 
