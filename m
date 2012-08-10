@@ -1,86 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45293 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932885Ab2HHThE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Aug 2012 15:37:04 -0400
-Date: Wed, 8 Aug 2012 15:36:59 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Simo Sorce <simo@redhat.com>, "bfields@redhat.com" <bfields@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/4] Add support for new RPCSEC_GSS upcall mechanism
- for nfsd
-Message-ID: <20120808193659.GA942@fieldses.org>
-References: <20120710215618.GC6038@fieldses.org>
- <1341958332.17428.12.camel@lade.trondhjem.org>
- <1341959112.17428.19.camel@lade.trondhjem.org>
- <20120710223818.GA6720@fieldses.org>
- <1341961118.17428.29.camel@lade.trondhjem.org>
- <20120711170331.GE11432@fieldses.org>
- <20120711172714.GA13610@fieldses.org>
- <1342028948.25375.45.camel@lade.trondhjem.org>
- <20120712221058.GC24162@fieldses.org>
- <20120713154302.GA32660@fieldses.org>
+Received: from relay.parallels.com ([195.214.232.42]:52082 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755525Ab2HJSuu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Aug 2012 14:50:50 -0400
+Message-ID: <50255808.6080208@parallels.com>
+Date: Fri, 10 Aug 2012 22:50:48 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120713154302.GA32660@fieldses.org>
+To: "H. Peter Anvin" <hpa@zytor.com>
+CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "eric.dumazet@gmail.com" <eric.dumazet@gmail.com>,
+        Pavel Emelianov <xemul@parallels.com>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+        "tim.c.chen@linux.intel.com" <tim.c.chen@linux.intel.com>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [RFC PATCH 0/2] net: connect to UNIX sockets from specified root
+References: <20120810125701.7115.71612.stgit@localhost.localdomain> <50254FA6.3060806@zytor.com>
+In-Reply-To: <50254FA6.3060806@zytor.com>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 13, 2012 at 11:43:02AM -0400, J. Bruce Fields wrote:
-> On Thu, Jul 12, 2012 at 06:10:58PM -0400, J. Bruce Fields wrote:
-> > On Wed, Jul 11, 2012 at 05:49:09PM +0000, Myklebust, Trond wrote:
-> > > On Wed, 2012-07-11 at 13:27 -0400, J. Bruce Fields wrote:
-> > > > So, if the issue is: you want to be able to choose, in individual
-> > > > containers, which mechanism to use: whatever, we can probably make that
-> > > > work.
-> > > 
-> > > Please do then.
-> > > 
-> > > > If you're instead saying: it's not acceptable to use the gssproxy
-> > > > mechanism to authenticate v4.0 callbacks, the client must only ever use
-> > > > the existing mechanism: then I'd rather drop this entirely.  I don't
-> > > > want to merge an rpc server authentication upcall that's not acceptable
-> > > > for one of the rpc servers.
-> > > 
-> > > If it goes in, I want it to be optional so that it doesn't break working
-> > > setups. I also want upgrades/downgrades to be as painless as possible. 
-> > > 
-> > > See for instance the idmapper changes in 3.5 which are totally
-> > > transparent to the user: if the admin sets up /etc/request-key.conf to
-> > > use the new id_resolver, then that works, otherwise we just fall back to
-> > > using the old rpc.idmapd method. There are no module parameters etc
-> > > involved.
-> > 
-> > There's a module parameter here, but it's meant to be set by gssproxy to
-> > indicate it's listening for the new upcall.  In theory that should make
-> > the transition transparent.
-> > 
-> > However, if we need to make the choice per-namespace then we need to
-> > find some other mechanism (assuming there's no way to make module
-> > parameters per-namespace.)
-> 
-> So, perhaps something like: if the cache "channel" file for the
-> namespace associated with the current request isn't opened, then try the
-> new upcall.
+10.08.2012 22:15, H. Peter Anvin пишет:
+> On 08/10/2012 05:57 AM, Stanislav Kinsbursky wrote:
+>> Today, there is a problem in connecting of local SUNRPC thansports. These
+>> transports uses UNIX sockets and connection itself is done by rpciod
+>> workqueue.
+>> But UNIX sockets lookup is done in context of process file system root. I.e.
+>> all local thunsports are connecting in rpciod context.
+>> This works nice until we will try to mount NFS from process with other root -
+>> for example in container. This container can have it's own (nested) root and
+>> rcpbind process, listening on it's own unix sockets. But NFS mount attempt in
+>> this container will register new service (Lockd for example) in global rpcbind
+>> - not containers's one.
+>>
+>> This patch set introduces kernel connect helper for UNIX stream sockets and
+>> modifies unix_find_other() to be able to search from specified root.
+>> It also replaces generic socket connect call for local transports by new
+>> helper in SUNRPC layer.
+>>
+>> The following series implements...
+> On that whole subject...
+>
+> Do we need a Unix domain socket equivalent to openat()?
 
-Looking at that a little longer: the channel file could be temporarily
-without any opens.  (For example, svcgssd could be restarted--not
-normal, but it's always been possible before.)  We probably could
-temporarily switch to the new upcall and then back without losing
-anything, but it all sounds complicated.
+It looks like sys_connectat () and sys_bindat () could be an organic 
+part on openat () and friends family.
+But currently I don't have any usage example for them in hands.  And the 
+main problem here, that this syscalls can be used only for unix sockets.
 
-The module parameter won't work any more, and obviously module init
-isn't the right time to set everything up.
-
-So my current thought is to give gssproxy some other way it can signal
-its presence using a write to a special file.  (Maybe a new file under
-nfsd/, or maybe a write of a special value to one of the existing cache
-files.)
-
-However, one hangup: figuring out how to switch on gssproxy
-per-container isn't very interesting until gssproxy can actually work
-per-container.  I'd *really* like to get the unix socket stuff worked
-out first.
-
---b.
