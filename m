@@ -1,33 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:44220 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753019Ab2HBMcz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Aug 2012 08:32:55 -0400
-Message-ID: <501A7369.6090808@panasas.com>
-Date: Thu, 2 Aug 2012 15:32:41 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-CC: Peng Tao <tao.peng@emc.com>
-Subject: [PATCHSET 0/3] pnfs-obj: Fixes left-out from 3.5 for the 3.6 merge
- window
-Content-Type: text/plain; charset="UTF-8"
+Received: from lxorguk.ukuu.org.uk ([81.2.110.251]:41041 "EHLO
+	lxorguk.ukuu.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751843Ab2HJTYE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Aug 2012 15:24:04 -0400
+Date: Fri, 10 Aug 2012 20:28:18 +0100
+From: Alan Cox <alan@lxorguk.ukuu.org.uk>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "H. Peter Anvin" <hpa@zytor.com>,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        Trond.Myklebust@netapp.com, davem@davemloft.net,
+        linux-nfs@vger.kernel.org, eric.dumazet@gmail.com, xemul@parallels.com,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        viro@zeniv.linux.org.uk, tim.c.chen@linux.intel.com, devel@openvz.org
+Subject: Re: [RFC PATCH 0/2] net: connect to UNIX sockets from specified
+ root
+Message-ID: <20120810202818.06236f46@pyramind.ukuu.org.uk>
+In-Reply-To: <20120810191149.GA17985@fieldses.org>
+References: <20120810125701.7115.71612.stgit@localhost.localdomain>
+	<50254FA6.3060806@zytor.com>
+	<20120810192628.79a34d28@pyramind.ukuu.org.uk>
+	<20120810191149.GA17985@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond
+On Fri, 10 Aug 2012 15:11:50 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-These fixes where for the 3.5 Kernel, Sorry I forgot about them. In any
-way they should be pushed for 3.6 fixes.
-(Should we pursue Stable@ for them)
+> On Fri, Aug 10, 2012 at 07:26:28PM +0100, Alan Cox wrote:
+> > > On that whole subject...
+> > > 
+> > > Do we need a Unix domain socket equivalent to openat()?
+> > 
+> > I don't think so. The name is just a file system indexing trick, it's not
+> > really the socket proper. It's little more than "ascii string with
+> > permissions attached"
+> 
+> That's overstating the case.  As I understand it the address is resolved
+> by a pathname lookup like any other--it can follow symlinks, is relative
+> to the current working directory and filesystem namespace, etc. 
 
-This is a re-post, except the 3rd one which is a new BUG fix.
+Explicitly for Linux yes - this is not generally true of the AF_UNIX
+socket domain and even the permissions aspect isn't guaranteed to be
+supported on some BSD environments !
 
-list of patches:
-[PATCH 1/3] NFS41: add pg_layout_private to nfs_pageio_descriptor
-[PATCH 2/3] pnfs-obj: Better IO pattern in case of unaligned offset
-[PATCH 3/3] pnfs: Don't BUG on info received from Server
+The name is however just a proxy for the socket itself. You don't even
+get a device node in the usual sense or the same inode in the file system
+space.
 
-Thanks
-Boaz
+Alan
