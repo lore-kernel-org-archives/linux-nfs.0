@@ -1,62 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:43629 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751935Ab2HWQ2g (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Aug 2012 12:28:36 -0400
-Received: by dady13 with SMTP id y13so493174dad.19
-        for <linux-nfs@vger.kernel.org>; Thu, 23 Aug 2012 09:28:36 -0700 (PDT)
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH-resend 2/6] NFS41: fix error of setting blocklayoutdriver
-Date: Fri, 24 Aug 2012 00:27:49 +0800
-Message-Id: <1345739273-2241-3-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1345739273-2241-1-git-send-email-bergwolf@gmail.com>
-References: <1345739273-2241-1-git-send-email-bergwolf@gmail.com>
+Received: from lxorguk.ukuu.org.uk ([81.2.110.251]:40954 "EHLO
+	lxorguk.ukuu.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759779Ab2HJSWa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Aug 2012 14:22:30 -0400
+Date: Fri, 10 Aug 2012 19:26:28 +0100
+From: Alan Cox <alan@lxorguk.ukuu.org.uk>
+To: "H. Peter Anvin" <hpa@zytor.com>
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        Trond.Myklebust@netapp.com, davem@davemloft.net,
+        linux-nfs@vger.kernel.org, eric.dumazet@gmail.com, xemul@parallels.com,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, viro@zeniv.linux.org.uk,
+        tim.c.chen@linux.intel.com, devel@openvz.org
+Subject: Re: [RFC PATCH 0/2] net: connect to UNIX sockets from specified
+ root
+Message-ID: <20120810192628.79a34d28@pyramind.ukuu.org.uk>
+In-Reply-To: <50254FA6.3060806@zytor.com>
+References: <20120810125701.7115.71612.stgit@localhost.localdomain>
+	<50254FA6.3060806@zytor.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-After commit e38eb650 (NFS: set_pnfs_layoutdriver() from
-nfs4_proc_fsinfo()), set_pnfs_layoutdriver() is called inside
-nfs4_proc_fsinfo(), but pnfs_blksize is not set. It causes setting
-blocklayoutdriver failure and pnfsblock mount failure.
+> On that whole subject...
+> 
+> Do we need a Unix domain socket equivalent to openat()?
 
-Cc: stable <stable@vger.kernel.org> [since v3.5]
-Signed-off-by: Peng Tao <tao.peng@emc.com>
----
- fs/nfs/client.c   |    1 -
- fs/nfs/nfs4proc.c |    5 ++++-
- 2 files changed, 4 insertions(+), 2 deletions(-)
+I don't think so. The name is just a file system indexing trick, it's not
+really the socket proper. It's little more than "ascii string with
+permissions attached" - indeed we also support an abstract name space
+which for a lot of uses is actually more convenient.
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 9969444..0e7cd89 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -855,7 +855,6 @@ static void nfs_server_set_fsinfo(struct nfs_server *server,
- 	if (server->wsize > NFS_MAX_FILE_IO_SIZE)
- 		server->wsize = NFS_MAX_FILE_IO_SIZE;
- 	server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
--	server->pnfs_blksize = fsinfo->blksize;
- 
- 	server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
- 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6352741..1653091 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3362,8 +3362,11 @@ static int nfs4_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle, s
- 
- 	nfs_fattr_init(fsinfo->fattr);
- 	error = nfs4_do_fsinfo(server, fhandle, fsinfo);
--	if (error == 0)
-+	if (error == 0) {
-+		/* block layout checks this! */
-+		server->pnfs_blksize = fsinfo->blksize;
- 		set_pnfs_layoutdriver(server, fhandle, fsinfo->layouttype);
-+	}
- 
- 	return error;
- }
--- 
-1.7.1.262.g5ef3d
+AF_UNIX between roots raises some interesting semantic questions when you
+begin passing file descriptors down them as well.
 
+Alan
