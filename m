@@ -1,152 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:41176 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751983Ab2HSAwL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Aug 2012 20:52:11 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH 02/16] user_ns: use new hashtable implementation
-Date: Sun, 19 Aug 2012 02:52:15 +0200
-Message-Id: <1345337550-24304-3-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1345337550-24304-1-git-send-email-levinsasha928@gmail.com>
-References: <1345337550-24304-1-git-send-email-levinsasha928@gmail.com>
+Received: from mailout-de.gmx.net ([213.165.64.22]:42975 "HELO
+	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1757948Ab2HJJUT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Aug 2012 05:20:19 -0400
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Date: Fri, 10 Aug 2012 11:20:16 +0200
+From: "Johannes Schild" <JSchild@gmx.de>
+In-Reply-To: <CA+a=Yy6C-d82MR6Lun4sRcJ0euBBpf0Ra3cHDnQ8eKENi5eU2Q@mail.gmail.com>
+Message-ID: <20120810092016.177360@gmx.net>
+MIME-Version: 1.0
+References: <20120808155829.177400@gmx.net> <20120808163916.GA24539@umich.edu>
+ <20120808182622.177380@gmx.net> <20120809084236.177380@gmx.net>
+ <5DFC6BE3BA248842867E85C73BF94B050B17B698CF@MX41A.corp.emc.com>
+ <20120809152744.149360@gmx.net>
+ <CA+a=Yy7rH7kFKJvS3eOae+Mb0C1p+N01h+Zqz7jVzGE+HXHt9g@mail.gmail.com>
+ <20120810074818.119500@gmx.net>
+ <CA+a=Yy6C-d82MR6Lun4sRcJ0euBBpf0Ra3cHDnQ8eKENi5eU2Q@mail.gmail.com>
+Subject: Re: RE: Blocklayout
+To: Peng Tao <tao.peng@emc.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch user_ns to use the new hashtable implementation. This reduces the amount of
-generic unrelated code in user_ns.
+Hi Tao,
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
- kernel/user.c |   33 +++++++++++++--------------------
- 1 files changed, 13 insertions(+), 20 deletions(-)
+> > [59260.324598] encoding getdevicelist!
+> > [59260.324600] decode_getdevicelist: num_dev 1
+> > [59260.324601] nfs41_sequence_done: Error 0 free the slot
+> > [59260.324602] nfs4_free_slot: slotid 16 highest_used_slotid -1
+> > [59260.324605] <-- _nfs4_getdevicelist status=0
+> > [59260.324606] nfs4_proc_getdevicelist: err=0, num_devs=1
+> > [59260.324607] bl_set_layoutdriver GETDEVICELIST numdevs=1, eof=1
+> > [59260.324608] nfs4_blk_get_deviceinfo max_resp_sz 135168 max_pages 33
+> > [59260.324629] nfs4_blk_get_deviceinfo: dev_id:
+> The deviceid field returned by server is empty. That's why device
+> discovery failed.
 
-diff --git a/kernel/user.c b/kernel/user.c
-index b815fef..d10c484 100644
---- a/kernel/user.c
-+++ b/kernel/user.c
-@@ -16,6 +16,7 @@
- #include <linux/interrupt.h>
- #include <linux/export.h>
- #include <linux/user_namespace.h>
-+#include <linux/hashtable.h>
- 
- /*
-  * userns count is 1 for root user, 1 for init_uts_ns,
-@@ -52,13 +53,9 @@ EXPORT_SYMBOL_GPL(init_user_ns);
-  */
- 
- #define UIDHASH_BITS	(CONFIG_BASE_SMALL ? 3 : 7)
--#define UIDHASH_SZ	(1 << UIDHASH_BITS)
--#define UIDHASH_MASK		(UIDHASH_SZ - 1)
--#define __uidhashfn(uid)	(((uid >> UIDHASH_BITS) + uid) & UIDHASH_MASK)
--#define uidhashentry(uid)	(uidhash_table + __uidhashfn((__kuid_val(uid))))
- 
- static struct kmem_cache *uid_cachep;
--struct hlist_head uidhash_table[UIDHASH_SZ];
-+static DEFINE_HASHTABLE(uidhash_table, UIDHASH_BITS)
- 
- /*
-  * The uidhash_lock is mostly taken from process context, but it is
-@@ -84,22 +81,22 @@ struct user_struct root_user = {
- /*
-  * These routines must be called with the uidhash spinlock held!
-  */
--static void uid_hash_insert(struct user_struct *up, struct hlist_head *hashent)
-+static void uid_hash_insert(struct user_struct *up)
- {
--	hlist_add_head(&up->uidhash_node, hashent);
-+	hash_add(uidhash_table, &up->uidhash_node, __kuid_val(up->uid));
- }
- 
- static void uid_hash_remove(struct user_struct *up)
- {
--	hlist_del_init(&up->uidhash_node);
-+	hash_del(&up->uidhash_node);
- }
- 
--static struct user_struct *uid_hash_find(kuid_t uid, struct hlist_head *hashent)
-+static struct user_struct *uid_hash_find(kuid_t uid)
- {
- 	struct user_struct *user;
- 	struct hlist_node *h;
- 
--	hlist_for_each_entry(user, h, hashent, uidhash_node) {
-+	hash_for_each_possible(uidhash_table, user, h, uidhash_node, __kuid_val(uid)) {
- 		if (uid_eq(user->uid, uid)) {
- 			atomic_inc(&user->__count);
- 			return user;
-@@ -135,7 +132,7 @@ struct user_struct *find_user(kuid_t uid)
- 	unsigned long flags;
- 
- 	spin_lock_irqsave(&uidhash_lock, flags);
--	ret = uid_hash_find(uid, uidhashentry(uid));
-+	ret = uid_hash_find(uid);
- 	spin_unlock_irqrestore(&uidhash_lock, flags);
- 	return ret;
- }
-@@ -156,11 +153,10 @@ void free_uid(struct user_struct *up)
- 
- struct user_struct *alloc_uid(kuid_t uid)
- {
--	struct hlist_head *hashent = uidhashentry(uid);
- 	struct user_struct *up, *new;
- 
- 	spin_lock_irq(&uidhash_lock);
--	up = uid_hash_find(uid, hashent);
-+	up = uid_hash_find(uid);
- 	spin_unlock_irq(&uidhash_lock);
- 
- 	if (!up) {
-@@ -176,13 +172,13 @@ struct user_struct *alloc_uid(kuid_t uid)
- 		 * on adding the same user already..
- 		 */
- 		spin_lock_irq(&uidhash_lock);
--		up = uid_hash_find(uid, hashent);
-+		up = uid_hash_find(uid);
- 		if (up) {
- 			key_put(new->uid_keyring);
- 			key_put(new->session_keyring);
- 			kmem_cache_free(uid_cachep, new);
- 		} else {
--			uid_hash_insert(new, hashent);
-+			uid_hash_insert(new);
- 			up = new;
- 		}
- 		spin_unlock_irq(&uidhash_lock);
-@@ -196,17 +192,14 @@ out_unlock:
- 
- static int __init uid_cache_init(void)
- {
--	int n;
--
- 	uid_cachep = kmem_cache_create("uid_cache", sizeof(struct user_struct),
- 			0, SLAB_HWCACHE_ALIGN|SLAB_PANIC, NULL);
- 
--	for(n = 0; n < UIDHASH_SZ; ++n)
--		INIT_HLIST_HEAD(uidhash_table + n);
-+	hash_init(uidhash_table);
- 
- 	/* Insert the root user immediately (init already runs as root) */
- 	spin_lock_irq(&uidhash_lock);
--	uid_hash_insert(&root_user, uidhashentry(GLOBAL_ROOT_UID));
-+	uid_hash_insert(&root_user);
- 	spin_unlock_irq(&uidhash_lock);
- 
- 	return 0;
--- 
-1.7.8.6
+Is the deviceid the field where the signature, created with parted, should be stored?
 
+ 
+> > [59260.324630] --> _nfs4_proc_getdeviceinfo
+> > [59260.324632] --> nfs41_call_sync_prepare data->seq_server
+> ffff88003c8d7800
+> > [59260.324633] --> nfs4_setup_sequence clp ffff88003c733400 session
+> ffff88003c733c00 sr_slot -1
+> > [59260.324634] --> nfs41_setup_sequence
+> > [59260.324635] --> nfs4_find_slot used_slots=0000
+> highest_used=4294967295 max_slots=16
+> > [59260.324636] <-- nfs4_find_slot used_slots=0001 highest_used=0
+> slotid=0
+> > [59260.324637] <-- nfs41_setup_sequence slotid=0 seqid=9
+> > [59260.324638] <-- nfs4_setup_sequence status=0
+> > [59260.324642] encode_sequence: sessionid=1344524732:4:4:0 seqid=9
+> slotid=0 max_slotid=0 cache_this=0
+> > [59260.333545] nfs41_sequence_done: Error 0 free the slot
+> > [59260.333547] nfs4_free_slot: slotid 16 highest_used_slotid -1
+> > [59260.333553] <-- _nfs4_proc_getdeviceinfo status=0
+> > [59260.333555] nfs4_blk_get_deviceinfo getdevice info returns 0
+> > [59260.333572] nfs4_blk_decode_device CREATING PIPEFS MESSAGE
+> > [59260.333573] nfs4_blk_decode_device: deviceid: , mincount: 136
+> Here shows the same error.
+> 
+> You may check server code to see if there is something wrong with
+> getdevicelist proc handling.
+>
+
+I am not experienced enough to check this i think. Is there other server code than "ctl" (on the howto)?
+
+> Cheers,
+> Tao
+
+Thanks
+
+Johannes
