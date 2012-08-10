@@ -1,130 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:14027 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751311Ab2H1OJ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Aug 2012 10:09:29 -0400
-Message-ID: <1346162966.2554.3.camel@localhost>
-Subject: Re: [PATCH] Avoid array overflow in __nfs4_get_acl_uncached
-From: Sachin Prabhu <sprabhu@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Date: Tue, 28 Aug 2012 15:09:26 +0100
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA908F69340@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1345817768-23511-1-git-send-email-sprabhu@redhat.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F4AF1E@SACEXCMBX01-PRD.hq.netapp.com>
-	 <1345843866.2279.6.camel@localhost>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F5842F@SACEXCMBX01-PRD.hq.netapp.com>
-	 <1345845062.32200.1.camel@localhost>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F5859F@SACEXCMBX01-PRD.hq.netapp.com>
-	 <1345937503.4943.17.camel@localhost>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F69340@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from acsinet15.oracle.com ([141.146.126.227]:34881 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755661Ab2HJTim convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Aug 2012 15:38:42 -0400
+Subject: Re: NFS: Treat NFS4ERR_CLID_INUSE as a fatal error
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20120809213838.GC11538@fieldses.org>
+Date: Fri, 10 Aug 2012 15:38:30 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        David Noveck <david.noveck@emc.com>
+Message-Id: <B28F4673-3650-4BA9-ADDA-F9A8E62A0499@oracle.com>
+References: <20120809183557.GA10591@fieldses.org> <53272628-CC34-4279-AA69-CD31B86672D5@oracle.com> <20120809193743.GD10591@fieldses.org> <20120809203838.GA11538@fieldses.org> <24601061-1606-4A0A-940E-FDAFD1A2A2BB@oracle.com> <39FE3A39-4EB2-4F9F-908F-645C79B30E0F@oracle.com> <20120809211340.GB11538@fieldses.org> <6575B2FD-CCE4-40D5-9CBA-82681EC20E17@oracle.com> <20120809213838.GC11538@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> OK. How about this patch, which applies on top of the one I sent you?
-> 8<-----------------------------------------------------------------
-> From 22c9e2475560edda925f971a2a02bac58536414b Mon Sep 17 00:00:00 2001
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date: Sun, 26 Aug 2012 11:44:43 -0700
-> Subject: [PATCH] NFSv4: Add buffer overflow checking to nfs4_write_cached_acl
+
+On Aug 9, 2012, at 5:38 PM, J. Bruce Fields wrote:
+
+> On Thu, Aug 09, 2012 at 05:29:47PM -0400, Chuck Lever wrote:
+>> 
+>> On Aug 9, 2012, at 5:13 PM, J. Bruce Fields wrote:
+>>> The server could just compare principal strings (and ignore
+>>> pseudoflavors) in the gss case.
+>> 
+>> Barring a correction about how GSS Kerberos principals work, I think that's the correct approach.
 > 
-> Currently, the buffer overflow checking is done incorrectly by the
-> caller. Move the overflow checking into nfs4_write_cached_acl itself
-> for robustness, and fix the overflow calculation to take into account
-> the 'pgbase' argument to _copy_from_pages.
+> I also don't know if principals produced by other mechanisms are going
+> to be comparable.  Of course that's a bit academic given that kerberos
+> is the only mechanism for the forseeable future.
+
+Agreed, I would expect this to work only for pseudoflavors that share the same type of principal.
+
+Let me be sure I understand... I think the text of RFC 3530bis allows this implementation choice, but you are suggesting below that such an implementation may allow an attack.  Does this concern warrant a change to RFC 3530bis or 5661?  Should we bring this up on nfsv4@ietf.org?
+
 > 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
->  fs/nfs/nfs4proc.c | 12 +++++-------
->  1 file changed, 5 insertions(+), 7 deletions(-)
+>>> If the intention is to ensure that a clientid can't be "hijacked" by
+>>> someone malicious, then you don't want to allow a krb5 setclientid to
+>>> blow away a clientid established with krb5i.  (If sending the
+>>> setclientid with krb5i indicates the client wants protection against
+>>> attacks which replace the body of the rpc, then a later krb5 setclientid
+>>> should be rejected, since it could be the product of such an attack.)
+>> 
+>> If the client wants to avoid hijacking, it should start out with krb5i, as is recommended in the Security Considerations section of 3530(bis).
+>> 
+>> The intention of 3530(bis) is that one client instance uses just one nfs_client_id4.id string.  A client that attempts to change flavors on its SETCLIENTID/RENEW operations in mid-journey, on purpose, seems a little schizophrenic.  I can't think of a good reason it should do this.
 > 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 654dc38..af4ebc3 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -3734,12 +3734,13 @@ out:
->  	return ret;
->  }
->  
-> -static void nfs4_write_cached_acl(struct inode *inode, struct page **pages, size_t pgbase, size_t acl_len)
-> +static void nfs4_write_cached_acl(struct inode *inode, struct page **pages,
-> +		size_t srclen, size_t pgbase, size_t acl_len)
->  {
->  	struct nfs4_cached_acl *acl;
->  	size_t buflen = sizeof(*acl) + acl_len;
->  
-> -	if (pages && buflen <= PAGE_SIZE) {
-> +	if (buflen <= PAGE_SIZE && srclen <= pgbase + acl_len) {
->  		acl = kmalloc(buflen, GFP_KERNEL);
->  		if (acl == NULL)
->  			goto out;
-> @@ -3820,11 +3821,8 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
->  		goto out_free;
->  
->  	acl_len = res.acl_len;
-> -	if (acl_len > args.acl_len)
-> -		nfs4_write_cached_acl(inode, NULL, 0, acl_len);
-> -	else
-> -		nfs4_write_cached_acl(inode, pages, res.acl_data_offset,
-> -				      acl_len);
-> +	nfs4_write_cached_acl(inode, pages, args.acl_len,
-> +			res.acl_data_offset, res.acl_len);
->  	if (buf) {
->  		ret = -ERANGE;
->  		if (acl_len > buflen)
-> -- 
-> 1.7.11.4
+> You don't know it's the same client any more.  The attack is:
+> 
+> 	client sends setclientid with krb5i.
+> 
+> 	client later sends some other rpc with krb5.
+> 
+> 	attacker intercepts that operation, takes the rpc header, strips
+> 	out the body, and replaces the body by a setclientid operation
+> 	destroying the client's state.
+> 
+> Since krb5 only protects the header, the server can't tell that's what's
+> happened.
 
-I encountered 2 problems. 
-1) The if condition should be srclen >= pgbase + acl_len
-2) There is a second _copy_from_pages which copies to the the acl to the
-passed buffer in __nfs4_get_acl_uncached().
-
-I've attached a patch below.
------
-
->From ec84527625b3847a0623410d532253dd919e119a Mon Sep 17 00:00:00 2001
-From: Sachin Prabhu <sprabhu@redhat.com>
-Date: Tue, 28 Aug 2012 15:01:13 +0100
-Subject: [PATCH] NFSv4: Check for buffer overflow in __nfs4_get_acl_uncached
-
-Check for buffer overflow in __nfs4_get_acl_uncached when using
-_copy_from_pages to copy to the buffer passed in the argument.
-
-Also fix if condition in nfs4_write_cached_acl() from the previous post.
-
-Signed-off-by: Sachin Prabhu
----
- fs/nfs/nfs4proc.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 580b0b1..cb8748d 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3740,7 +3740,7 @@ static void nfs4_write_cached_acl(struct inode *inode, struct page **pages,
- 	struct nfs4_cached_acl *acl;
- 	size_t buflen = sizeof(*acl) + acl_len;
- 
--	if (buflen <= PAGE_SIZE && srclen <= pgbase + acl_len) {
-+	if (buflen <= PAGE_SIZE && srclen >= pgbase + acl_len) {
- 		acl = kmalloc(buflen, GFP_KERNEL);
- 		if (acl == NULL)
- 			goto out;
-@@ -3825,7 +3825,7 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
- 			res.acl_data_offset, res.acl_len);
- 	if (buf) {
- 		ret = -ERANGE;
--		if (acl_len > buflen)
-+		if (acl_len > buflen || args.acl_len < res.acl_data_offset + res.acl_len)
- 			goto out_free;
- 		_copy_from_pages(buf, pages, res.acl_data_offset,
- 				acl_len);
 -- 
-1.7.11.4
-
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
 
