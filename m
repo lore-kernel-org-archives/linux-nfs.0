@@ -1,57 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:16267 "EHLO mx2.netapp.com"
+Received: from terminus.zytor.com ([198.137.202.10]:52922 "EHLO mail.zytor.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753775Ab2HGP7L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Aug 2012 11:59:11 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Lukas Hejtmanek <xhejtman@ics.muni.cz>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4 backchannel authentication
-Date: Tue, 7 Aug 2012 15:59:09 +0000
-Message-ID: <1344355148.5781.31.camel@lade.trondhjem.org>
-References: <20120806135517.GS25979@ics.muni.cz>
-	 <20120807154114.GA21460@fieldses.org>
-In-Reply-To: <20120807154114.GA21460@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+	id S1754786Ab2HJSbq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Aug 2012 14:31:46 -0400
+Message-ID: <5025537D.9060300@zytor.com>
+Date: Fri, 10 Aug 2012 11:31:25 -0700
+From: "H. Peter Anvin" <hpa@zytor.com>
 MIME-Version: 1.0
+To: Alan Cox <alan@lxorguk.ukuu.org.uk>
+CC: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        Trond.Myklebust@netapp.com, davem@davemloft.net,
+        linux-nfs@vger.kernel.org, eric.dumazet@gmail.com, xemul@parallels.com,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, viro@zeniv.linux.org.uk,
+        tim.c.chen@linux.intel.com, devel@openvz.org
+Subject: Re: [RFC PATCH 0/2] net: connect to UNIX sockets from specified root
+References: <20120810125701.7115.71612.stgit@localhost.localdomain> <50254FA6.3060806@zytor.com> <20120810192628.79a34d28@pyramind.ukuu.org.uk>
+In-Reply-To: <20120810192628.79a34d28@pyramind.ukuu.org.uk>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA4LTA3IGF0IDExOjQxIC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIE1vbiwgQXVnIDA2LCAyMDEyIGF0IDAzOjU1OjE3UE0gKzAyMDAsIEx1a2FzIEhlanRt
-YW5layB3cm90ZToNCj4gPiBpdCBzZWVtcyB0aGF0IFJIRUwgTkZTdjQgc2VydmVycyB1c2UgR1NT
-IGF1dGhlbnRpY2F0aW9uIGZvciBiYWNrY2hhbm5lbHMgYXMNCj4gPiB3ZWxsIChpZiBtb3VudCBp
-dCB3aXRoIEdTUykuIFRoYXQgd291bGQgYmUgT0ssIGJ1dCBpdCByZXF1aXJlcyB0aGF0IHNlcnZl
-ciBpcw0KPiA+IHJ1bm5pbmcgcnBjLmdzc2QgYW5kIHRoZSBjbGllbnQgaXMgcnVubmluZyBycGMu
-c3ZjZ3NzZCwgd2hpY2ggaXMgbm90IHVzdWFsLg0KPiANCj4gVGhlIGluaXQgc2NyaXB0cyBwcm9i
-YWJseSBuZWVkIHRvIGJlIGZpeGVkIHRvIHN0YXJ0IGJvdGggaW4gYm90aCBjYXNlcy4NCj4gV29y
-dGggZmlsaW5nIGEgYnVnLCBJIHRoaW5rLg0KPiANCj4gPiBJcyB0aGVyZSBhIHdheSBob3cgdG8g
-bW91bnQgY2xpZW50cyB3aXRoIHNlYz1rcmI1L2kvcCBhbmQgdXNlIGJhY2tjaGFubmVscyBqdXN0
-DQo+ID4gd2l0aCBVTklYIGF1dGg/DQo+IA0KPiBOb3Qgd2l0aCBORlN2NDsgZnJvbSBodHRwOi8v
-d3d3LmlldGYub3JnL3JmYy9yZmMzNTMwLnR4dCBzZWN0aW9uIDMuNDoNCj4gDQo+IAkiRXhjZXB0
-IGFzIG5vdGVkIGVsc2V3aGVyZSBpbiB0aGlzIHNlY3Rpb24sIHRoZSBjYWxsYmFjayBSUEMNCj4g
-CShkZXNjcmliZWQgbGF0ZXIpIE1VU1QgbXV0dWFsbHkgYXV0aGVudGljYXRlIHRoZSBORlMgc2Vy
-dmVyIHRvDQo+IAl0aGUgcHJpbmNpcGFsIHRoYXQgYWNxdWlyZWQgdGhlIGNsaWVudGlkIChhbHNv
-IGRlc2NyaWJlZCBsYXRlciksDQo+IAl1c2luZyB0aGUgc2VjdXJpdHkgZmxhdm9yIHRoZSBvcmln
-aW5hbCBTRVRDTElFTlRJRCBvcGVyYXRpb24NCj4gCXVzZWQuIg0KPiANCj4gKEFjdHVhbGx5LCBw
-ZXJoYXBzIHRoZXJlJ3MgYSBsb29waG9sZSB0aGF0IHdvdWxkIGFsbG93IFNFVENMSUVOVElEIHRv
-IGJlDQo+IGRvbmUgd2l0aCBhdXRoX3N5cyB3aGlsZSBmaWxlIGFjY2VzcyBpcyBzdGlsbCBkb25l
-IHdpdGggZ3NzLiAgSSBkb24ndA0KPiB0aGluayBzbywgYnV0IEkgZm9yZ2V0IHRoZSBkZXRhaWxz
-LiAgSW4gcHJhY3RpY2UgdGhlIGNsaWVudHMgZG8gYWxsIHVzZQ0KPiBnc3MuKQ0KDQpZZXMsIHlv
-dSBjYW4gZG8gdGhpcywgaG93ZXZlciB0aGF0IHJlcXVpcmVzIHRoZSBzZXJ2ZXIgdG8gYmUgY29u
-ZmlndXJlZA0KdG8gYWNjZXB0IHJwY3NlY19nc3MgYW5kIGF1dGhfc3lzIGZyb20gdGhhdCBjbGll
-bnQuDQpJdCBhbHNvIGFsbG93cyBhbnlvbmUgdG8gc3Bvb2YgYSBjYWxsYmFjayB0byB5b3VyIGNs
-aWVudC4NCkZ1cnRoZXJtb3JlLCBpdCB3b3VsZCBhbGxvdyBhbnlib2R5IHRvIHNlbmQgU0VUQ0xJ
-RU5USUQgY2FsbHMgdXNpbmcgdGhlDQpzYW1lIGNsaWVudCBpZCB0byB0aGUgc2VydmVyIGFuZCBz
-byB0aGV5IGNhbiBkZWNsYXJlIHlvdXIgY2xpZW50IHRvIGhhdmUNCnJlYm9vdGVkIChzbyB0aGF0
-IGFsbCBzdGF0ZSBpcyBsb3N0KSwgdGhleSBjYW4gZGl2ZXJ0IGNhbGxiYWNrcyB0bw0KYW5vdGhl
-ciBtYWNoaW5lLCAuLi4uDQpJT1c6IGl0IGlzIG5vdCByZWFsbHkgc29tZXRoaW5nIHlvdSB3YW50
-IHRvIGFsbG93IG9uIGFuIHVudHJ1c3RlZA0KbmV0d29yay4NCg0KPiA0LjEgZG9lcyBhbGxvdyB0
-aGUgY2xpZW50IHRvIHJlcXVlc3QgYSBkaWZmZXJlbnQgc2VjdXJpdHkgZmxhdm9yIG9uIHRoZQ0K
-PiBiYWNrY2hhbm5lbCwgYW5kIHRoZSBsaW51eCBjbGllbnQgZG9lcyB1c2UgYXV0aF9zeXMgb24g
-dGhlIGJhY2tjaGFubmVsDQo+IGV2ZW4gd2hlbiB1c2luZyBnc3Mgb24gdGhlIGZvcmVjaGFubmVs
-Lg0KDQpZZXMsIGFuZCB0aGF0IGxlYXZlcyBhIGxlc3Mgcm9vbSBmb3Igc3Bvb2ZpbmcgYmVjYXVz
-ZSB0aGUgYmFjayBjaGFubmVsDQpjb25uZWN0aW9uIGlzIHNldCB1cCBieSB0aGUgY2xpZW50Lg0K
-DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5l
-dEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+On 08/10/2012 11:26 AM, Alan Cox wrote:
+>> On that whole subject...
+>>
+>> Do we need a Unix domain socket equivalent to openat()?
+> 
+> I don't think so. The name is just a file system indexing trick, it's not
+> really the socket proper. It's little more than "ascii string with
+> permissions attached" - indeed we also support an abstract name space
+> which for a lot of uses is actually more convenient.
+> 
+
+I don't really understand why Unix domain sockets is different than any
+other pathname users in this sense.  (Actually, I have never understood
+why open() on a Unix domain socket doesn't give the equivalent of a
+socket() + connect() -- it would make logical sense and would provide
+additional functionality).
+
+It would be different if the Unix domain sockets simply required an
+absolute pathname (it is not just about the root, it is also about the
+cwd, which is where the -at() functions come into play), but that is not
+the case.
+
+The abstract namespace is irrelevant for this, obviously.
+
+> AF_UNIX between roots raises some interesting semantic questions when
+> you begin passing file descriptors down them as well.
+
+Why is that?  A file descriptor carries all that information with it...
+
+	-hpa
