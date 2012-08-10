@@ -1,45 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:5108 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:45033 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752634Ab2HIQa4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Aug 2012 12:30:56 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Zdenek Salvet <salvet@ics.muni.cz>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4 backchannel authentication
-Date: Thu, 9 Aug 2012 16:30:53 +0000
-Message-ID: <1344529851.25447.33.camel@lade.trondhjem.org>
-References: <20120806135517.GS25979@ics.muni.cz>
-	 <20120807154114.GA21460@fieldses.org>
-	 <1344355148.5781.31.camel@lade.trondhjem.org>
-	 <20120808075813.GW604@horn.ics.muni.cz>
-	 <1344431887.3423.4.camel@lade.trondhjem.org>
-	 <20120809080642.GE604@horn.ics.muni.cz>
-	 <20120809144530.GB6592@fieldses.org>
-	 <1344527573.25447.17.camel@lade.trondhjem.org>
-	 <20120809162801.GM11089@ics.muni.cz>
-In-Reply-To: <20120809162801.GM11089@ics.muni.cz>
-Content-Type: text/plain; charset="utf-8"
+	id S1754489Ab2HJNAH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Aug 2012 09:00:07 -0400
+Subject: [RFC PATCH 0/2] net: connect to UNIX sockets from specified root
+To: Trond.Myklebust@netapp.com, davem@davemloft.net
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, eric.dumazet@gmail.com, xemul@parallels.com,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, viro@zeniv.linux.org.uk,
+        tim.c.chen@linux.intel.com, devel@openvz.org
+Date: Fri, 10 Aug 2012 16:57:23 +0400
+Message-ID: <20120810125701.7115.71612.stgit@localhost.localdomain>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA4LTA5IGF0IDE4OjI4ICswMjAwLCBMdWthcyBIZWp0bWFuZWsgd3JvdGU6
-DQo+IE9uIFRodSwgQXVnIDA5LCAyMDEyIGF0IDAzOjUzOjAxUE0gKzAwMDAsIE15a2xlYnVzdCwg
-VHJvbmQgd3JvdGU6DQo+ID4gSG93IGlzIHRoaXMgYW55IGRpZmZlcmVudCB0byByZXF1aXJpbmcg
-dGhhdCB0aGUgdXNlciBzdGFydCBycGMuc3RhdGQNCj4gPiBiZWZvcmUgbGF1bmNoaW5nIGFuIE5G
-U3YzIG1vdW50PyBKdXN0IGRvY3VtZW50IHRoZSByZXF1aXJlbWVudCBpZiBpdA0KPiA+IGlzbid0
-IGFscmVhZHkgY2xlYXIgZW5vdWdoLCBhbmQgd2UgY2FuIG1vdmUgb24uDQo+ID4gDQo+ID4gVGhl
-IG90aGVyIHNvdXJjZSBvZiBjb25mdXNpb24gaGVyZSwgd2FzIHRoYXQgdGhlIHJwYy5zdmNnc3Nk
-IHdhcw0KPiA+IGRlbGl2ZXJlZCB0aHJvdWdoIGEgbmZzLWtlcm5lbC1zZXJ2ZXIgcGFja2FnZSwg
-d2hpY2ggaW5kaWNhdGVzIHRoYXQgd2UNCj4gPiBmaXJzdCBhbmQgZm9yZW1vc3QgbmVlZCB0byBl
-ZHVjYXRlIHRoZSBkaXN0cm8gcGFja2FnZXJzLg0KPiANCj4gaG1tLCBpZiBib3RoIHJwYy5nc3Nk
-IGFuZCBycGMuc3ZjZ3NzZCBhcmUgbmVlZGVkIG9uIGNsaWVudHMgYW5kIHNlcnZlcnMsIGlzbid0
-DQo+IGl0IHdvcnRoIG9mIG1lcmdpbmcgdGhlbSBpbnRvIGEgc2luZ2xlIHByb2Nlc3M/DQoNCllv
-dSBkb24ndCBuZWVkIHJwYy5nc3NkIHRvIHVzZSBycGNzZWNfZ3NzIHdpdGggTkZTdjMsIG5vciBk
-byB5b3UgbmVlZCBpdA0KaWYgeW91J3JlIG5vdCBpbnRlbmRpbmcgb24gdXNpbmcgZGVsZWdhdGlv
-bnMgd2l0aCBORlN2NC4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQg
-bWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0
-YXBwLmNvbQ0KDQo=
+Today, there is a problem in connecting of local SUNRPC thansports. These
+transports uses UNIX sockets and connection itself is done by rpciod
+workqueue.
+But UNIX sockets lookup is done in context of process file system root. I.e.
+all local thunsports are connecting in rpciod context.
+This works nice until we will try to mount NFS from process with other root -
+for example in container. This container can have it's own (nested) root and
+rcpbind process, listening on it's own unix sockets. But NFS mount attempt in
+this container will register new service (Lockd for example) in global rpcbind
+- not containers's one.
+
+This patch set introduces kernel connect helper for UNIX stream sockets and
+modifies unix_find_other() to be able to search from specified root.
+It also replaces generic socket connect call for local transports by new
+helper in SUNRPC layer.
+
+The following series implements...
+
+---
+
+Stanislav Kinsbursky (2):
+      unix sockets: add ability for search for peer from passed root
+      SUNRPC: connect local transports with unix_stream_connect_root() helper
+
+
+ include/net/af_unix.h |    2 ++
+ net/sunrpc/xprtsock.c |   28 +++++++++++++++++++++++++---
+ net/unix/af_unix.c    |   25 ++++++++++++++++++-------
+ 3 files changed, 45 insertions(+), 10 deletions(-)
+
