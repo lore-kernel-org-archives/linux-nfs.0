@@ -1,50 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:40431 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756042Ab2HJLFT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Aug 2012 07:05:19 -0400
-Received: by ggdk6 with SMTP id k6so1435947ggd.19
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Aug 2012 04:05:18 -0700 (PDT)
+Received: from terminus.zytor.com ([198.137.202.10]:53039 "EHLO mail.zytor.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758239Ab2HJSoN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Aug 2012 14:44:13 -0400
+Message-ID: <50255618.9080708@zytor.com>
+Date: Fri, 10 Aug 2012 11:42:32 -0700
+From: "H. Peter Anvin" <hpa@zytor.com>
 MIME-Version: 1.0
-In-Reply-To: <1344535551-4412-2-git-send-email-bjschuma@netapp.com>
-References: <1344535551-4412-1-git-send-email-bjschuma@netapp.com> <1344535551-4412-2-git-send-email-bjschuma@netapp.com>
-From: William Dauchy <wdauchy@gmail.com>
-Date: Fri, 10 Aug 2012 13:04:57 +0200
-Message-ID: <CAJ75kXaWVOXxRgVBp6FR3DqVr1ZMbhPNzGQ9yNUkjddDa2-g8A@mail.gmail.com>
-Subject: Re: [PATCH 2/3] NFS: return -ENOKEY when the upcall fails to map the name
-To: bjschuma@netapp.com
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+To: Alan Cox <alan@lxorguk.ukuu.org.uk>
+CC: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        Trond.Myklebust@netapp.com, davem@davemloft.net,
+        linux-nfs@vger.kernel.org, eric.dumazet@gmail.com, xemul@parallels.com,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, viro@zeniv.linux.org.uk,
+        tim.c.chen@linux.intel.com, devel@openvz.org
+Subject: Re: [RFC PATCH 0/2] net: connect to UNIX sockets from specified root
+References: <20120810125701.7115.71612.stgit@localhost.localdomain> <50254FA6.3060806@zytor.com> <20120810192628.79a34d28@pyramind.ukuu.org.uk> <5025537D.9060300@zytor.com> <20120810194028.792f29f1@pyramind.ukuu.org.uk>
+In-Reply-To: <20120810194028.792f29f1@pyramind.ukuu.org.uk>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 9, 2012 at 8:05 PM,  <bjschuma@netapp.com> wrote:
-> From: Bryan Schumaker <bjschuma@netapp.com>
->
-> This allows the normal error-paths to handle the error, rather than
-> making a special call to complete_request_key() just for this instance.
->
-> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-> ---
->  fs/nfs/idmap.c | 6 ++----
->  1 file changed, 2 insertions(+), 4 deletions(-)
->
-> diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-> index c2b4004..9864b48 100644
-> --- a/fs/nfs/idmap.c
-> +++ b/fs/nfs/idmap.c
-> @@ -756,9 +756,8 @@ idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
->         }
->
->         if (!(im.im_status & IDMAP_STATUS_SUCCESS)) {
-> -               ret = mlen;
-> -               complete_request_key(cons, -ENOKEY);
-> -               goto out_incomplete;
-> +               ret = -ENOKEY;
-> +               goto out;
+On 08/10/2012 11:40 AM, Alan Cox wrote:
+> 
+> Agreed on open() for sockets.. the lack of open is a Berklix derived
+> pecularity of the interface. It would equally be useful to be able to
+> open "/dev/socket/ipv4/1.2.3.4/1135" and the like for scripts and stuff
+> 
+> That needs VFS changes however so you can pass the remainder of a path to
+> a device node. It also lets you do a lot of other sane stuff like
+> 
+> 	open /dev/ttyS0/9600/8n1
+> 
 
-and I think this patch could fix the "unable to handle kernel NULL
-pointer dereference on wait_for_key_construction" I reported earlier.
+Well, supporting device node subpaths would be nice, but I don't think
+that that is a requirement either for being able to open() a socket (as
+a Linux extension) nor for supporting something like your above
+/dev/socket/... since that could be done with a filesystem rather than
+just a device node.
 
--- 
-William
+	-hpa
