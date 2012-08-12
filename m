@@ -1,159 +1,244 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:34082 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754825Ab2HHLs2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Aug 2012 07:48:28 -0400
-Date: Wed, 8 Aug 2012 07:48:15 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "steved@redhat.com" <steved@redhat.com>
-Subject: Re: nfs4 mounts failing with 3.6.0-rc1
-Message-ID: <20120808074815.5e735293@tlielax.poochiereds.net>
-In-Reply-To: <1344378971.8845.13.camel@lade.trondhjem.org>
-References: <20120804000819.GB25558@fieldses.org>
-	<20120803220039.743fe1f0@corrin.poochiereds.net>
-	<20120804190104.GA2135@fieldses.org>
-	<20120807130932.79625d7e@tlielax.poochiereds.net>
-	<20120807194250.GB22532@fieldses.org>
-	<50217035.5010304@netapp.com>
-	<20120807195703.GC22532@fieldses.org>
-	<50217649.6010402@netapp.com>
-	<20120807202523.GD22532@fieldses.org>
-	<1344374613.8845.3.camel@lade.trondhjem.org>
-	<20120807182651.32448074@tlielax.poochiereds.net>
-	<1344378971.8845.13.camel@lade.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from natasha.panasas.com ([67.152.220.90]:54319 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752092Ab2HLSao (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Aug 2012 14:30:44 -0400
+Message-ID: <5027F63F.8070107@panasas.com>
+Date: Sun, 12 Aug 2012 21:30:23 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Peng Tao <bergwolf@gmail.com>
+CC: <linux-nfs@vger.kernel.org>, Peng Tao <tao.peng@emc.com>
+Subject: Re: [PATCH RFC 2/3] NFS41: send real write size in layoutget
+References: <1344391392-1948-1-git-send-email-bergwolf@gmail.com> <1344391392-1948-3-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1344391392-1948-3-git-send-email-bergwolf@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 7 Aug 2012 22:36:12 +0000
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+On 08/08/2012 05:03 AM, Peng Tao wrote:
 
-> On Tue, 2012-08-07 at 18:26 -0400, Jeff Layton wrote:
-> > On Tue, 7 Aug 2012 21:23:34 +0000
-> > "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-> > 
-> > > On Tue, 2012-08-07 at 16:25 -0400, J. Bruce Fields wrote:
-> > > > On Tue, Aug 07, 2012 at 04:10:49PM -0400, Bryan Schumaker wrote:
-> > > > > On 08/07/2012 03:57 PM, J. Bruce Fields wrote:
-> > > > > > On Tue, Aug 07, 2012 at 03:44:53PM -0400, Bryan Schumaker wrote:
-> > > > > >> On 08/07/2012 03:42 PM, J. Bruce Fields wrote:
-> > > > > >>> On Tue, Aug 07, 2012 at 01:09:32PM -0400, Jeff Layton wrote:
-> > > > > >>>> On Sat, 4 Aug 2012 15:01:04 -0400
-> > > > > >>>> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > > > >>>>
-> > > > > >>>>> On Fri, Aug 03, 2012 at 10:00:39PM -0400, Jeff Layton wrote:
-> > > > > >>>>>> On Fri, 3 Aug 2012 20:08:19 -0400
-> > > > > >>>>>> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > > > >>>>>>
-> > > > > >>>>>>> I'm getting
-> > > > > >>>>>>>
-> > > > > >>>>>>> 	# mount -tnfs -onfsvers=4 pip1:/exports /mnt/
-> > > > > >>>>>>>
-> > > > > >>>>>>> (OK, admittedly that's with 3.6.0-rc1 + a few experimental patches, but
-> > > > > >>>>>>> I doubt they're related.)
-> > > > > >>>>>>>
-> > > > > >>>>>>> Also:
-> > > > > >>>>>>>
-> > > > > >>>>>>> 	[root@pip2 ~]# modprobe nfs4
-> > > > > >>>>>>> 	[root@pip2 ~]# lsmod|grep nfs4
-> > > > > >>>>>>> 	[root@pip2 ~]# 
-> > > > > >>>>>>>
-> > > > > >>>>>>> --b.
-> > > > > >>>>>>
-> > > > > >>>>>> I hit the same problem...
-> > > > > >>>>>>
-> > > > > >>>>>> Try removing /usr/lib/modprobe.d/nfs.conf (assuming you're running
-> > > > > >>>>>> Fedora).
-> > > > > >>>>>
-> > > > > >>>>> Oog, right.
-> > > > > >>>>>
-> > > > > >>>>> But, without testing--won't that make v4 mounts fail on older kernels?
-> > > > > >>>>
-> > > > > >>>> Actually, now that I look, this does not seem to break on older kernels
-> > > > > >>>> as long as you use a syntax like:
-> > > > > >>>>
-> > > > > >>>>     # mount -t nfs server:/export /mnt/point -o vers=4
-> > > > > >>>>
-> > > > > >>>> ...if, however you use a syntax like:
-> > > > > >>>>
-> > > > > >>>>     # mount -t nfs4 server:/export /mnt/point
-> > > > > >>>>
-> > > > > >>>> ...then it fails without the above file in place. I guess the question
-> > > > > >>>> we have to answer is: Do we want to continue to support the "-t nfs4"
-> > > > > >>>> mount syntax?
-> > > > > >>>
-> > > > > >>> I think you're right that we want to deprecate it.
-> > > > > >>>
-> > > > > >>> Though this is a bit of a harsh way to do it--would have been nice to
-> > > > > >>> have some transition period with a warning or something.
-> > > > > >>
-> > > > > >> I didn't expect this to be broken, both ways of mounting still work on my VMs so I expected them to work for everybody else too.
-> > > > > > 
-> > > > > > Huh.  Just checked on an old kernel without an "alias nfs4 nfs" in
-> > > > > > modprobe configuration, and sure enough I get "No such device".
-> > > > > > 
-> > > > > > Maybe you have some initscripts or something else that's loading the
-> > > > > > nfs module for you before the mount?
-> > > > > 
-> > > > > My nfs-common daemon script loads sunrpc, nfs
-> > > > 
-> > > > Yep, that's why you're not seeing it.
-> > > > 
-> > > > > and nfsd but not nfs2, nfs3 or nfs4.
-> > > > > 
-> > > > > Could we rename the module to avoid the alias name collision?  Something like this (untested) maybe?
-> > > > 
-> > > > I don't think that will help.
-> > > 
-> > > It should if we also add back in
-> > > 
-> > > struct file_system_type nfs4_fs_type = {
-> > >         .owner          = THIS_MODULE,
-> > >         .name           = "nfs4",
-> > >         .mount          = nfs_fs_mount,
-> > >         .kill_sb        = nfs_kill_super,
-> > >         .fs_flags       = FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
-> > > };
-> > > 
-> > > and then add that to register_nfs_fs()/unregister_nfs_fs(). As far as I
-> > > can see, that will trigger all the right incantations in
-> > > nfs_validate_mount_data() to mount an NFSv4 filesystem.
-> > > 
-> > 
-> > So, move the nfs4 fstype definition back into nfs.ko? That would
-> > ensure that you could still do a "-t nfs4" mount with that modprobe
-> > alias in place.
+> From: Peng Tao <tao.peng@emc.com>
 > 
-> No. I mean to add a separate nfs4_fstype definition in nfs.ko, and
-> register it so that the VFS recognises the 'nfs4' filesystem name.
+> For bufferred write, scan dirty pages to find out longest continuous
+> dirty pages. In this case, also allow layout driver to specify a
+> maximum layoutget size which is useful to avoid busy scanning dirty pages
+> for block layout client.
 > 
-> > I think Bryan is correct though. We'll also need to rename nfs4.ko or
-> > you won't ever be able to call request_module for it in order to plug
-> > it in if you have that module alias in place.
+> For direct write, just use dreq->bytes_left.
 > 
-> You did note my use of the word "also" above?
+> Signed-off-by: Peng Tao <tao.peng@emc.com>
+> ---
+>  fs/nfs/direct.c   |    7 ++++++
+>  fs/nfs/internal.h |    1 +
+>  fs/nfs/pnfs.c     |   58 +++++++++++++++++++++++++++++++++++++++++++++++++++-
+>  3 files changed, 64 insertions(+), 2 deletions(-)
 > 
-> > Does this mean that we plan to support the "-t nfs4" mount syntax in
-> > perpetuity?
-> 
-> No, but I also agree with Bruce's point that we shouldn't pull the plug
-> without some prior notice. We should at least keep an entry in
-> Documentation/feature-removal-schedule.txt for a few kernel revisions.
-> 
+> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+> index c39f775..c1899dd 100644
+> --- a/fs/nfs/direct.c
+> +++ b/fs/nfs/direct.c
+> @@ -46,6 +46,7 @@
+>  #include <linux/kref.h>
+>  #include <linux/slab.h>
+>  #include <linux/task_io_accounting_ops.h>
+> +#include <linux/module.h>
+>  
+>  #include <linux/nfs_fs.h>
+>  #include <linux/nfs_page.h>
+> @@ -191,6 +192,12 @@ static void nfs_direct_req_release(struct nfs_direct_req *dreq)
+>  	kref_put(&dreq->kref, nfs_direct_req_free);
+>  }
+>  
+> +ssize_t nfs_dreq_bytes_left(struct nfs_direct_req *dreq)
+> +{
+> +	return dreq->bytes_left;
+> +}
+> +EXPORT_SYMBOL_GPL(nfs_dreq_bytes_left);
+> +
+>  /*
+>   * Collects and returns the final error value/byte-count.
+>   */
+> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+> index 31fdb03..e68d329 100644
+> --- a/fs/nfs/internal.h
+> +++ b/fs/nfs/internal.h
+> @@ -464,6 +464,7 @@ static inline void nfs_inode_dio_wait(struct inode *inode)
+>  {
+>  	inode_dio_wait(inode);
+>  }
+> +extern ssize_t nfs_dreq_bytes_left(struct nfs_direct_req *dreq);
+>  
 
-Ok, I follow you now...
 
-Fair warning is reasonable, perhaps we should shoot for removing
-support in 3.9 or 3.10?
+Why is this an EXPORT_SYMBOL_GPL at .c file. Why not just an inline
+here ?
 
-I think we'll also need to consider retiring the nfs4_fs_type
-altogether, or at least make them all show up as "nfs"
-in /proc/self/mounts. Otherwise remounts could be problematic...
+>  /* nfs4proc.c */
+>  extern void __nfs4_read_done_cb(struct nfs_read_data *);
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 2e00fea..e61a373 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -29,6 +29,7 @@
+>  
+>  #include <linux/nfs_fs.h>
+>  #include <linux/nfs_page.h>
+> +#include <linux/pagevec.h>
+>  #include <linux/module.h>
+>  #include "internal.h"
+>  #include "pnfs.h"
+> @@ -1172,19 +1173,72 @@ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *r
+>  }
+>  EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_read);
+>  
+> +/*
+> + * Return the number of contiguous bytes in dirty pages for a given inode
+> + * starting at page frame idx.
+> + */
+> +static u64 pnfs_num_dirty_bytes(struct inode *inode, pgoff_t idx)
+> +{
+> +	struct address_space *mapping = inode->i_mapping;
+> +	pgoff_t	index;
+> +	struct pagevec pvec;
+> +	pgoff_t num = 1; /* self */
+> +	int i, done = 0;
+> +
+> +	pagevec_init(&pvec, 0);
+> +	idx++; /* self */
+> +	while (!done) {
+> +		index = idx;
+> +		pagevec_lookup_tag(&pvec, mapping, &index,
+> +				   PAGECACHE_TAG_DIRTY, (pgoff_t)PAGEVEC_SIZE);
+> +		if (pagevec_count(&pvec) == 0)
+> +			break;
+> +
+> +		for (i = 0; i < pagevec_count(&pvec); i++) {
+> +			struct page *page = pvec.pages[i];
+> +
+> +			lock_page(page);
+> +			if (unlikely(page->mapping != mapping) ||
+> +			    !PageDirty(page) ||
+> +			    PageWriteback(page) ||
+> +			    page->index != idx) {
+> +				done = 1;
+> +				unlock_page(page);
+> +				break;
+> +			}
+> +			unlock_page(page);
+> +			if (done)
+> +				break;
+> +			idx++;
+> +			num++;
+> +		}
+> +		pagevec_release(&pvec);
+> +	}
+> +	return num << PAGE_CACHE_SHIFT;
+> +}
+> +
 
--- 
-Jeff Layton <jlayton@redhat.com>
+
+Same as what Trond said. radix_tree_next_hole() should be nicer. We need never
+do any locking this is just an hint, and not a transaction guaranty. Best first
+guess approximation is all we need.
+
+Also you might want to optimize for the most common case of a linear write from
+zero. This you can do by comparing i_size / PAGE_SIZE and the number of dirty
+pages, if they are the same you know there are no holes, and need not scan.
+
+>  void
+> -pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+> +pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
+> +			   struct nfs_page *req)
+
+
+Nothing changed here, please don't do this
+
+>  {
+> +	u64 wb_size;
+> +
+>  	BUG_ON(pgio->pg_lseg != NULL);
+>  
+>  	if (req->wb_offset != req->wb_pgbase) {
+>  		nfs_pageio_reset_write_mds(pgio);
+>  		return;
+>  	}
+> +
+> +	if (pgio->pg_dreq == NULL)
+> +		wb_size = pnfs_num_dirty_bytes(pgio->pg_inode, req->wb_index);
+> +	else
+> +		wb_size = nfs_dreq_bytes_left(pgio->pg_dreq);
+> +
+>  	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+>  					   req->wb_context,
+>  					   req_offset(req),
+> -					   req->wb_bytes,
+> +					   wb_size?:req->wb_bytes,
+
+
+wb_size is always set above in the if() or else. No need to check here.
+
+>  					   IOMODE_RW,
+>  					   GFP_NOFS);
+>  	/* If no lseg, fall back to write through mds */
+
+
+
+But No!
+
+much much better then last time, thank you for working on this
+but it is not optimum for objects and files
+(when "files" supports segments)
+
+For blocks, Yes radix_tree_next_hole() is the perfect fit. But for
+objects (and files) it is i_size_read(). The objects/files server usually
+determines it's topology according to file-size. And it does not have any
+bigger resources because of holes or no holes. (The files example I think of
+is CEPH)
+
+So for objects the wasting factor is the actual i_size extending as a cause
+of layout_get, and not the number of pages served. So for us the gain is if
+client, that has a much newer information about i_size, sends it on first
+layout_get. Though extending file size only once on first layout_get and
+not on every layout_get.
+
+So the small change I want is:
+
++enum pnfs_layout_get_strategy {
++	PLGS_USE_ISIZE,
++	PLGS_SEARCH_FIRST_HOLE,
++	PLGS_ALL_FILE,
++};
+
+-pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
++pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req,
++			    enum pnfs_layout_get_strategy plgs)
+
+
+ ...
+
++	if (pgio->pg_dreq == NULL) {
++		switch (plgs) {
++		case PLGS_SEARCH_FIRST_HOLE: 
++			wb_size = pnfs_num_dirty_bytes(pgio->pg_inode, req->wb_index);
++			break;
++		case PLGS_USE_ISIZE:
++			wb_size = i_size_read() - req_offset(req);
++			break;
++		case PLGS_ALL_FILE:
++			wb_size = NFS4_MAX_UINT64;
++			break;
++		default:
++			WARN_ON(1);
++			wb_size = PAGE_SIZE;
++	}
++	else
++		wb_size = nfs_dreq_bytes_left(pgio->pg_dreq);
+
+The call to pnfs_generic_pg_init_write is always made by the LD's .pg_init
+and each LD should pass the proper pnfs_layout_get_strategy flag.
+
+But yes, this is much more like it. Thanks again, nice progress.
+
+Thanks
+Boaz
