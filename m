@@ -1,234 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:55210 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751641Ab2HTLFw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Aug 2012 07:05:52 -0400
-Message-ID: <50321A0D.1020904@parallels.com>
-Date: Mon, 20 Aug 2012 15:05:49 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+Received: from fieldses.org ([174.143.236.118]:41117 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751938Ab2HMSYn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Aug 2012 14:24:43 -0400
+Date: Mon, 13 Aug 2012 14:24:31 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: Pavel Emelianov <xemul@parallels.com>, "H. Peter Anvin" <hpa@zytor.com>,
+        Alan Cox <alan@lxorguk.ukuu.org.uk>,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "eric.dumazet@gmail.com" <eric.dumazet@gmail.com>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
         "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>, "neilb@suse.de" <neilb@suse.de>
-Subject: Re: [PATCH v3] SUNRPC: protect service sockets lists during per-net
- shutdown
-References: <20120703125851.3850.86782.stgit@localhost.localdomain> <20120724194036.GK8570@fieldses.org> <20120816192902.GB4385@fieldses.org>
-In-Reply-To: <20120816192902.GB4385@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+        "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+        "tim.c.chen@linux.intel.com" <tim.c.chen@linux.intel.com>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [RFC PATCH 0/2] net: connect to UNIX sockets from specified
+ root
+Message-ID: <20120813182431.GA4234@fieldses.org>
+References: <20120810125701.7115.71612.stgit@localhost.localdomain>
+ <50254FA6.3060806@zytor.com>
+ <20120810192628.79a34d28@pyramind.ukuu.org.uk>
+ <20120810191149.GA17985@fieldses.org>
+ <20120810202818.06236f46@pyramind.ukuu.org.uk>
+ <50259494.8060304@zytor.com>
+ <5025FA5A.4090403@parallels.com>
+ <50263ECC.4060501@parallels.com>
+ <20120813164730.GB2497@fieldses.org>
+ <50293BE9.3010408@parallels.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <50293BE9.3010408@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-16.08.2012 23:29, J. Bruce Fields пишет:
-> On Tue, Jul 24, 2012 at 03:40:37PM -0400, J. Bruce Fields wrote:
->> On Tue, Jul 03, 2012 at 04:58:57PM +0400, Stanislav Kinsbursky wrote:
->>> v3:
->>> 1) rebased on 3.5-rc3 kernel.
->>>
->>> v2: destruction of currently processing transport added:
->>> 1) Added marking of currently processing transports with XPT_CLOSE on per-net
->>> shutdown. These transports will be destroyed in svc_xprt_enqueue() (instead of
->>> enqueueing).
->>
->> That worries me:
->>
->> 	- Why did we originally defer close until svc_recv?
+On Mon, Aug 13, 2012 at 09:39:53PM +0400, Stanislav Kinsbursky wrote:
+> 13.08.2012 20:47, J. Bruce Fields пишет:
+> >On Sat, Aug 11, 2012 at 03:15:24PM +0400, Stanislav Kinsbursky wrote:
+> >>11.08.2012 10:23, Pavel Emelyanov пишет:
+> >>>On 08/11/2012 03:09 AM, H. Peter Anvin wrote:
+> >>>>On 08/10/2012 12:28 PM, Alan Cox wrote:
+> >>>>>Explicitly for Linux yes - this is not generally true of the AF_UNIX
+> >>>>>socket domain and even the permissions aspect isn't guaranteed to be
+> >>>>>supported on some BSD environments !
+> >>>>Yes, but let's worry about what the Linux behavior should be.
+> >>>>
+> >>>>>The name is however just a proxy for the socket itself. You don't even
+> >>>>>get a device node in the usual sense or the same inode in the file system
+> >>>>>space.
+> >>>>No, but it is looked up the same way any other inode is (the difference
+> >>>>between FIFOs and sockets is that sockets have separate connections,
+> >>>>which is also why open() on sockets would be nice.)
+> >>>>
+> >>>>However, there is a fundamental difference between AF_UNIX sockets and
+> >>>>open(), and that is how the pathname is delivered.  It thus would make
+> >>>>more sense to provide the openat()-like information in struct
+> >>>>sockaddr_un, but that may be very hard to do in a sensible way.  In that
+> >>>>sense it perhaps would be cleaner to be able to do an open[at]() on the
+> >>>>socket node with O_PATH (perhaps there should be an O_SOCKET option,
+> >>>>even?) and pass the resulting file descriptor to bind() or connect().
+> >>>I vote for this (openat + O_WHATEVER on a unix socket) as well. It will
+> >>>help us in checkpoint-restore, making handling of overmounted/unlinked
+> >>>sockets much cleaner.
+> >>I have to notice, that it's not enough and doesn't solve the issue.
+> >>There should be some way how to connect/bind already existent unix
+> >>socket (from kernel, at least), because socket can be created in
+> >>user space.
+> >>And this way (sock operation or whatever) have to provide an ability
+> >>to lookup UNIX socket starting from specified root to support
+> >>containers.
+> >I don't understand--the rpcbind sockets are created by the kernel.  What
+> >am I missing?
+> 
+> Kernel preform connect to rpcbind socket (i.e. user-space binds it),
+> doesn't it?
 
-The problem I was trying to solve is shutting down of transports in use.
-I.e. some transport was dequeued from pool in svc_recv() and some process called 
-xpo_accept(), trying to create new socket, new transport and so on.
-How to shutdown such transports properly?
-The best idea I had was to check all such active transports (rqstp->rq_xprt) and 
-mark the with XPT_CLOSE. So then new transport will be destroyed without adding 
-to service lists.
-Probably, I've missed some points and would be glad to hear your opinion on this.
+I'm confused, possibly because there are three "sockets" here: the
+client-side socket that's connected, the server-side socket that's
+bound, and the common object that exists in the filesystem namespace.
 
->> 	- Are we sure there's no risk to performing it immediately in
->> 	  svc_enqueue?  Is it safe to call from the socket callbacks and
->> 	  wherever else we call svc_enqueue?
->>
->> And in the past I haven't been good at testing for problems
->> here--instead they tend to show up when a use somewhere tries shutting
->> down a server that's under load.
->>
->> I'll look more closely.  Meanwhile you could split out that change as a
->> separate patch and convince me why it's right....
->
-> Looking back at this:
->
-> 	- adding the sv_lock looks like the right thing to do anyway
-> 	  independent of containers, because svc_age_temp_xprts may
-> 	  still be running.
->
-> 	- I'm increasingly unhappy about sharing rpc servers between
-> 	  network namespaces.  Everything would be easier to understand
-> 	  if they were independent.  Can we figure out how to do that?
->
+Userland creates the server-side socket and binds to it.  All of that is
+done in the context of the rpcbind process, so is created in rpcbind's
+namespace.  That should be OK, right?
 
-Could you, please, elaborate on your your unhappiness?
-I.e. I don't like it too. But the problem here, is that rpc server is tied with 
-kernel threads creation and destruction. And these threads can be only a part of 
-initial pid namespace (because we have only one kthreadd). And we decided do not 
-create new kernel thread per container when were discussing the problem last time.
+The client side socket is created and connected in
+xs_local_setup_socket().
 
+Making sure they both end up with the same thing is a matter of making
+sure they lookup the same path in the same namespace.  The difficult
+part of that is the in-kernel client-side socket connect, where we don't
+have the right process context any more.
 
->>
->> --b.
->>
->>> 2) newly created temporary transport in svc_recv() will be destroyed, if it's
->>> "parent" was marked with XPT_CLOSE.
->>> 3) spin_lock(&serv->sv_lock) was replaced by spin_lock_bh() in
->>> svc_close_net(&serv->sv_lock).
->>>
->>> Service sv_tempsocks and sv_permsocks lists are accessible by tasks with
->>> different network namespaces, and thus per-net service destruction must be
->>> protected.
->>> These lists are protected by service sv_lock. So lets wrap list munipulations
->>> with this lock and move tranports destruction outside wrapped area to prevent
->>> deadlocks.
->>>
->>> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
->>> ---
->>>   net/sunrpc/svc_xprt.c |   56 ++++++++++++++++++++++++++++++++++++++++++++++---
->>>   1 files changed, 52 insertions(+), 4 deletions(-)
->>>
->>> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
->>> index 88f2bf6..4af2114 100644
->>> --- a/net/sunrpc/svc_xprt.c
->>> +++ b/net/sunrpc/svc_xprt.c
->>> @@ -320,6 +320,7 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
->>>   	struct svc_pool *pool;
->>>   	struct svc_rqst	*rqstp;
->>>   	int cpu;
->>> +	int destroy = 0;
->>>
->>>   	if (!svc_xprt_has_something_to_do(xprt))
->>>   		return;
->>> @@ -338,6 +339,17 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
->>>
->>>   	pool->sp_stats.packets++;
->>>
->>> +	/*
->>> +	 * Check transport close flag. It could be marked as closed on per-net
->>> +	 * service shutdown.
->>> +	 */
->>> +	if (test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
->>> +		/* Don't enqueue transport if it has to be destroyed. */
->>> +		dprintk("svc: transport %p have to be closed\n", xprt);
->>> +		destroy++;
->>> +		goto out_unlock;
->>> +	}
->>> +
->>>   	/* Mark transport as busy. It will remain in this state until
->>>   	 * the provider calls svc_xprt_received. We update XPT_BUSY
->>>   	 * atomically because it also guards against trying to enqueue
->>> @@ -374,6 +386,8 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
->>>
->>>   out_unlock:
->>>   	spin_unlock_bh(&pool->sp_lock);
->>> +	if (destroy)
->>> +		svc_delete_xprt(xprt);
->>>   }
->>>   EXPORT_SYMBOL_GPL(svc_xprt_enqueue);
->>>
->>> @@ -714,6 +728,13 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
->>>   			__module_get(newxpt->xpt_class->xcl_owner);
->>>   			svc_check_conn_limits(xprt->xpt_server);
->>>   			spin_lock_bh(&serv->sv_lock);
->>> +			if (test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
->>> +				dprintk("svc_recv: found XPT_CLOSE on listener\n");
->>> +				set_bit(XPT_DETACHED, &newxpt->xpt_flags);
->>> +				spin_unlock_bh(&pool->sp_lock);
->>> +				svc_delete_xprt(newxpt);
->>> +				goto out_closed;
->>> +			}
->>>   			set_bit(XPT_TEMP, &newxpt->xpt_flags);
->>>   			list_add(&newxpt->xpt_list, &serv->sv_tempsocks);
->>>   			serv->sv_tmpcnt++;
->>> @@ -739,6 +760,7 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
->>>   			len = xprt->xpt_ops->xpo_recvfrom(rqstp);
->>>   		dprintk("svc: got len=%d\n", len);
->>>   	}
->>> +out_closed:
->>>   	svc_xprt_received(xprt);
->>>
->>>   	/* No data, incomplete (TCP) read, or accept() */
->>> @@ -936,6 +958,7 @@ static void svc_clear_pools(struct svc_serv *serv, struct net *net)
->>>   	struct svc_pool *pool;
->>>   	struct svc_xprt *xprt;
->>>   	struct svc_xprt *tmp;
->>> +	struct svc_rqst *rqstp;
->>>   	int i;
->>>
->>>   	for (i = 0; i < serv->sv_nrpools; i++) {
->>> @@ -947,11 +970,16 @@ static void svc_clear_pools(struct svc_serv *serv, struct net *net)
->>>   				continue;
->>>   			list_del_init(&xprt->xpt_ready);
->>>   		}
->>> +		list_for_each_entry(rqstp, &pool->sp_all_threads, rq_all) {
->>> +			if (rqstp->rq_xprt && rqstp->rq_xprt->xpt_net == net)
->>> +				set_bit(XPT_CLOSE, &rqstp->rq_xprt->xpt_flags);
->>> +		}
->>>   		spin_unlock_bh(&pool->sp_lock);
->>>   	}
->>>   }
->>>
->>> -static void svc_clear_list(struct list_head *xprt_list, struct net *net)
->>> +static void svc_clear_list(struct list_head *xprt_list, struct net *net,
->>> +			   struct list_head *kill_list)
->>>   {
->>>   	struct svc_xprt *xprt;
->>>   	struct svc_xprt *tmp;
->>> @@ -959,7 +987,8 @@ static void svc_clear_list(struct list_head *xprt_list, struct net *net)
->>>   	list_for_each_entry_safe(xprt, tmp, xprt_list, xpt_list) {
->>>   		if (xprt->xpt_net != net)
->>>   			continue;
->>> -		svc_delete_xprt(xprt);
->>> +		list_move(&xprt->xpt_list, kill_list);
->>> +		set_bit(XPT_DETACHED, &xprt->xpt_flags);
->>>   	}
->>>   	list_for_each_entry(xprt, xprt_list, xpt_list)
->>>   		BUG_ON(xprt->xpt_net == net);
->>> @@ -967,6 +996,15 @@ static void svc_clear_list(struct list_head *xprt_list, struct net *net)
->>>
->>>   void svc_close_net(struct svc_serv *serv, struct net *net)
->>>   {
->>> +	struct svc_xprt *xprt, *tmp;
->>> +	LIST_HEAD(kill_list);
->>> +
->>> +	/*
->>> +	 * Protect the lists, since they can be by tasks with different network
->>> +	 * namespace contexts.
->>> +	 */
->>> +	spin_lock_bh(&serv->sv_lock);
->>> +
->>>   	svc_close_list(&serv->sv_tempsocks, net);
->>>   	svc_close_list(&serv->sv_permsocks, net);
->>>
->>> @@ -976,8 +1014,18 @@ void svc_close_net(struct svc_serv *serv, struct net *net)
->>>   	 * svc_xprt_enqueue will not add new entries without taking the
->>>   	 * sp_lock and checking XPT_BUSY.
->>>   	 */
->>> -	svc_clear_list(&serv->sv_tempsocks, net);
->>> -	svc_clear_list(&serv->sv_permsocks, net);
->>> +	svc_clear_list(&serv->sv_tempsocks, net, &kill_list);
->>> +	svc_clear_list(&serv->sv_permsocks, net, &kill_list);
->>> +
->>> +	spin_unlock_bh(&serv->sv_lock);
->>> +
->>> +	/*
->>> +	 * Destroy collected transports.
->>> +	 * Note: tranports has been marked as XPT_DETACHED on svc_clear_list(),
->>> +	 * so no need to protect againt list_del() in svc_delete_xprt().
->>> +	 */
->>> +	list_for_each_entry_safe(xprt, tmp, &kill_list, xpt_list)
->>> +		svc_delete_xprt(xprt);
->>>   }
->>>
->>>   /*
->>>
+We currently set that up with __sock_create followed by
+kernel_connect.
 
+The proposal seems to be to instead do an openat followed by a
+kernel_connect, and pass the path in the openat instead of the connect.
 
--- 
-Best regards,
-Stanislav Kinsbursky
+(Though in the kernel we won't be able to call openat, so we'll end up
+doing something like nfsd does (calling lookup_one_len() and
+dentry_open() by hand).)
+
+Have I got all that right?
+
+I don't know if that's better just calling into the unix socket code at
+connect time as your patch does.  Maybe the answer depends on whether
+it's a priority to make this functionality available to userspace.
+
+--b.
