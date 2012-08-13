@@ -1,106 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60443 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:20944 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755711Ab2HQNIn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Aug 2012 09:08:43 -0400
-Date: Fri, 17 Aug 2012 09:08:42 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: v3.5 nfsd4 regression; utime sometimes takes 40+ seconds to
- return
-Message-ID: <20120817130842.GA11172@fieldses.org>
-References: <20120815061115.GC32347@cucamonga.audible.transient.net>
- <20120815135854.GI32347@cucamonga.audible.transient.net>
- <20120815150251.GB16057@fieldses.org>
- <20120816201838.GA4282@cucamonga.audible.transient.net>
- <20120816204208.GE4385@fieldses.org>
- <20120816210916.GA6108@fieldses.org>
- <20120816213423.GB4282@cucamonga.audible.transient.net>
+	id S1751109Ab2HMLjy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Aug 2012 07:39:54 -0400
+Subject: [PATCH v2] SUNRPC: check current nsproxy before set of node name on
+	client creation
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Mon, 13 Aug 2012 15:37:31 +0400
+Message-ID: <20120813113731.9629.31906.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120816213423.GB4282@cucamonga.audible.transient.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 16, 2012 at 09:34:24PM +0000, Jamie Heilman wrote:
-> J. Bruce Fields wrote:
-> > On Thu, Aug 16, 2012 at 04:42:08PM -0400, J. Bruce Fields wrote:
-> > > Hm, weird.  In the good case the cb_recall's done with auth_unix, in the
-> > > bad case with auth_null.  OK, that should be enough to go on....
-> > > 
-> > > Thanks for digging into this!
-> > 
-> > This should fix it--could you confirm?
-> 
-> Yep, looks like that fixes it.
+v2:
+1) rpc_clnt_set_nodename() prototype updated.
+2) fixed errors in comment.
 
-Thanks!
+When child reaper exits, it can destroy mount namespace it belongs to, and if
+there are NFS mounts inside, then it will try to umount them. But in this
+point current->nsproxy is set to NULL and all namespaces will be destroyed one
+by one. I.e. we can't dereference current->nsproxy to obtain uts namespace.
 
-I'll queue this up for 3.6 and stable.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ net/sunrpc/clnt.c |   16 +++++++++++++---
+ 1 files changed, 13 insertions(+), 3 deletions(-)
 
---b.
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 9a9676e..8fbcbc8 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -277,8 +277,18 @@ void rpc_clients_notifier_unregister(void)
+ 	return rpc_pipefs_notifier_unregister(&rpc_clients_block);
+ }
+ 
+-static void rpc_clnt_set_nodename(struct rpc_clnt *clnt, const char *nodename)
++static void rpc_clnt_set_nodename(struct rpc_clnt *clnt)
+ {
++	const char *nodename;
++
++	/*
++	 * We have to protect against dying child reaper, which has released
++	 * its nsproxy already and is trying to destroy mount namespace.
++	 */
++	if (current->nsproxy == NULL)
++		return;
++
++	nodename = utsname()->nodename;
+ 	clnt->cl_nodelen = strlen(nodename);
+ 	if (clnt->cl_nodelen > UNX_MAXNODENAME)
+ 		clnt->cl_nodelen = UNX_MAXNODENAME;
+@@ -365,7 +375,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ 	}
+ 
+ 	/* save the nodename */
+-	rpc_clnt_set_nodename(clnt, utsname()->nodename);
++	rpc_clnt_set_nodename(clnt);
+ 	rpc_register_client(clnt);
+ 	return clnt;
+ 
+@@ -524,7 +534,7 @@ rpc_clone_client(struct rpc_clnt *clnt)
+ 	err = rpc_setup_pipedir(new, clnt->cl_program->pipe_dir_name);
+ 	if (err != 0)
+ 		goto out_no_path;
+-	rpc_clnt_set_nodename(new, utsname()->nodename);
++	rpc_clnt_set_nodename(new);
+ 	if (new->cl_auth)
+ 		atomic_inc(&new->cl_auth->au_count);
+ 	atomic_inc(&clnt->cl_count);
 
-> 
-> > commit e950bebdac1f17121f972728489cdba43734d56d
-> > Author: J. Bruce Fields <bfields@redhat.com>
-> > Date:   Thu Aug 16 17:01:21 2012 -0400
-> > 
-> >     nfsd4: fix security flavor of NFSv4.0 callback
-> >     
-> >     Commit d5497fc693a446ce9100fcf4117c3f795ddfd0d2 "nfsd4: move rq_flavor
-> >     into svc_cred" forgot to remove cl_flavor from the client, leaving two
-> >     places (cl_flavor and cl_cred.cr_flavor) for the flavor to be stored.
-> >     After that patch, the latter was the one that was updated, but the
-> >     former was the one that the callback used.
-> >     
-> >     Symptoms were a long delay on utime().  This is because the utime()
-> >     generated a setattr which recalled a delegation, but the cb_recall was
-> >     ignored by the client because it had the wrong security flavor.
-> >     
-> >     Cc: stable@vger.kernel.org
-> >     Reported-by: Jamie Heilman <jamie@audible.transient.net>
-> >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > 
-> > diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> > index cbaf4f8..4c7bd35 100644
-> > --- a/fs/nfsd/nfs4callback.c
-> > +++ b/fs/nfsd/nfs4callback.c
-> > @@ -651,12 +651,12 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
-> >  
-> >  	if (clp->cl_minorversion == 0) {
-> >  		if (!clp->cl_cred.cr_principal &&
-> > -				(clp->cl_flavor >= RPC_AUTH_GSS_KRB5))
-> > +				(clp->cl_cred.cr_flavor >= RPC_AUTH_GSS_KRB5))
-> >  			return -EINVAL;
-> >  		args.client_name = clp->cl_cred.cr_principal;
-> >  		args.prognumber	= conn->cb_prog,
-> >  		args.protocol = XPRT_TRANSPORT_TCP;
-> > -		args.authflavor = clp->cl_flavor;
-> > +		args.authflavor = clp->cl_cred.cr_flavor;
-> >  		clp->cl_cb_ident = conn->cb_ident;
-> >  	} else {
-> >  		if (!conn->cb_xprt)
-> > diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-> > index 167d7d8..9db0bb5 100644
-> > --- a/fs/nfsd/state.h
-> > +++ b/fs/nfsd/state.h
-> > @@ -231,7 +231,6 @@ struct nfs4_client {
-> >  	nfs4_verifier		cl_verifier; 	/* generated by client */
-> >  	time_t                  cl_time;        /* time of last lease renewal */
-> >  	struct sockaddr_storage	cl_addr; 	/* client ipaddress */
-> > -	u32			cl_flavor;	/* setclientid pseudoflavor */
-> >  	struct svc_cred		cl_cred; 	/* setclientid principal */
-> >  	clientid_t		cl_clientid;	/* generated by server */
-> >  	nfs4_verifier		cl_confirm;	/* generated by server */
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > Please read the FAQ at  http://www.tux.org/lkml/
-> 
-> -- 
-> Jamie Heilman                     http://audible.transient.net/~jamie/
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
