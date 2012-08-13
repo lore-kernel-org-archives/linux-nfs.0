@@ -1,76 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:53440 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755176Ab2HXW7D (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Aug 2012 18:59:03 -0400
-Message-ID: <5038074D.300@gmail.com>
-Date: Sat, 25 Aug 2012 00:59:25 +0200
-From: Sasha Levin <levinsasha928@gmail.com>
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:57888 "EHLO
+	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751758Ab2HMNy5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Aug 2012 09:54:57 -0400
+Received: by obbuo13 with SMTP id uo13so6889004obb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Aug 2012 06:54:56 -0700 (PDT)
 MIME-Version: 1.0
-To: Tejun Heo <tj@kernel.org>
-CC: torvalds@linux-foundation.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
-        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive hashtable
-References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com> <1345602432-27673-2-git-send-email-levinsasha928@gmail.com> <20120822180138.GA19212@google.com> <50357840.5020201@gmail.com> <20120823200456.GD14962@google.com> <5037DA47.9010306@gmail.com> <20120824195941.GC21325@google.com> <5037E00B.6090606@gmail.com> <20120824203332.GF21325@google.com> <5037E9D9.9000605@gmail.com> <20120824212348.GK21325@google.com>
-In-Reply-To: <20120824212348.GK21325@google.com>
+In-Reply-To: <20120809181233.GB9914@fieldses.org>
+References: <CAOn_VZbzhGMtYmOZJe-kGqhFLRsWpw6B3+uv+d4UAx9t1-Ew=A@mail.gmail.com>
+	<20120809181233.GB9914@fieldses.org>
+Date: Mon, 13 Aug 2012 19:24:56 +0530
+Message-ID: <CAOn_VZaNU1_WT+XsvHabi=4fhMnyJg5eKp_p=e=1ruWfHC76DQ@mail.gmail.com>
+Subject: Re: reconnect_path fails with EACCES
+From: Rajesh Ghanekar <rajeshsg@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->> Why do we need hash_head/hash_for_each_head()? I haven't stumbled on a place yet
->> that needed direct access to the bucket itself.
-> 
-> Because whole hash table walking is much less common and we can avoid
-> another full set of iterators.
+Its no_subtree_check exported.
 
-I don't agree. Out of 32 places which now use a hashtable iterator of some kind,
-12 of them (38%) walk the entire table.
+Underneath filesystem (->permission) doesn't support capabilities and
+hence EACCES is being returned. The filesystem is proprietary.
+I figured it out later that they don't support capabilities.
 
-The thing is that usually data structures are indexable by more than one key, so
-usually hashtables are fully walked in cold paths to look for different keys.
+Thanks,
+Rajesh
 
-Take kernel/workqueue.c for example: There are 4 places which do a key lookup
-(find_worker_executing_work()) and 3 places which fully walk the entire table
-(for_each_busy_worker()).
 
->> This basically means 11 macros/functions that would let us have full
->> encapsulation and will make it very easy for future implementations to work with
->> this API instead of making up a new one. It's also not significantly (+~2-3)
->> more than the ones you listed.
-> 
-> I'm not sure whether full encapsulation is a good idea for trivial
-> hashtable.  For higher level stuff, sure but at this level I think
-> benefits coming from known obvious implementation can be larger.
-> e.g. suppose the caller knows certain entries to be way colder than
-> others and wants to put them at the end of the chain.
-
-Thats the thing, the amount of things of things you can do with a given bucket
-is very limited. You can't add entries to any point besides the head (without
-walking the entire list).
-
-Basically you can do only two things with a bucket:
-
- - Add something to it at a very specific place.
- - Walk it
-
-So I don't understand whats the point in exposing the internal structure of the
-hashtable if there's nothing significant that can be gained from it by the user.
-
-> 
-> So, I think implmenting the minimal set of helpers which reflect the
-> underlying trivial implementation explicitly could actually be better
-> even when discounting the reduced number of wrappers.
-> 
-> Thanks.
-> 
-
+On Thu, Aug 9, 2012 at 11:42 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Thu, Aug 09, 2012 at 02:55:28AM +0530, Rajesh Ghanekar wrote:
+>> Hi,
+>> I am facing problem with reconnect_path failing with EACCES when doing
+>> lookup_one_len. I have 2 users goind to same directory, one with uid=0
+>> and another with uid=xxx. Sometime for uid=0 request, nfsd is still is using
+>> uid=xxx (as it was used previously), as uid=xxx doesn't have any permissions
+>> on the directory.
+>>
+>> Should this probably do nfsd_setuser_and_check_port before
+>> the below code in nfsd_set_fh_dentry()? As it carries older
+>> fsuid and fsgid, can it create issues. This always happens
+>> with disconnected dentries.
+>>
+>>         if (exp->ex_flags & NFSEXP_NOSUBTREECHECK) {
+>>                 /* Elevate privileges so that the lack of 'r' or 'x'
+>>                  * permission on some parent directory will
+>>                  * not stop exportfs_decode_fh from being able
+>>                  * to reconnect a directory into the dentry cache.
+>>                  * The same problem can affect "SUBTREECHECK" exports,
+>>                  * but as nfsd_acceptable depends on correct
+>>                  * access control settings being in effect, we cannot
+>>                  * fix that case easily.
+>
+> Are you exporting with subtree_check or no_subtree_check?  (What does
+> "exportfs -v" say?)
+>
+> In the no_subtree_check case, the cap_raise_nfsd_set() is intended to
+> override file permissions, so the uid and gid shouldn't matter.
+>
+> --b.
