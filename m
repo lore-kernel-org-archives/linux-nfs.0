@@ -1,41 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:7434 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:50286 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758723Ab2HHPZT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Aug 2012 11:25:19 -0400
-Message-ID: <502284DD.3030004@netapp.com>
-Date: Wed, 08 Aug 2012 11:25:17 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+	id S1752488Ab2HMQkk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Aug 2012 12:40:40 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jim Vanns <james.vanns@framestore.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Your comments, guidance, advice please :)
+Date: Mon, 13 Aug 2012 16:40:39 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA939D69C@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1344869728.8400.46.camel@sys367.ldn.framestore.com>
+In-Reply-To: <1344869728.8400.46.camel@sys367.ldn.framestore.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfs4 mounts failing with 3.6.0-rc1
-References: <20120804000819.GB25558@fieldses.org>    <20120803220039.743fe1f0@corrin.poochiereds.net>    <20120804190104.GA2135@fieldses.org>    <20120807130932.79625d7e@tlielax.poochiereds.net>    <20120807194250.GB22532@fieldses.org> <50217035.5010304@netapp.com>    <20120807195703.GC22532@fieldses.org> <50217649.6010402@netapp.com>    <20120807202523.GD22532@fieldses.org>   <1344374613.8845.3.camel@lade.trondhjem.org> <50227AE9.2020600@netapp.com>  <1344438488.3423.9.camel@lade.trondhjem.org> <5022829A.3040209@netapp.com> <1344439438.3423.11.camel@lade.trondhjem.org>
-In-Reply-To: <1344439438.3423.11.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/08/2012 11:24 AM, Myklebust, Trond wrote:
-> On Wed, 2012-08-08 at 11:15 -0400, Bryan Schumaker wrote:
->> On 08/08/2012 11:08 AM, Myklebust, Trond wrote:
->>> On Wed, 2012-08-08 at 10:42 -0400, Bryan Schumaker wrote:
->>>> So you're suggesting something like this?  I can split it into two patches for the final submission, one to rename the modules and one to move the nfs4_fs_type back to nfs.ko.
->>>
->>> One patch should suffice, since you can't split this up into something
->>> that fixes both issues.
->>>
->>> Then maybe we can add a separate patch with a MODULE_ALIAS("nfs4") so
->>> that distros can start removing the /etc/modprobe.conf alias entries.
->>
->> Sure.  That goes in the v4 module?
-> 
-> No. The nfs module, since that is what calls register_nfs4_fs()...
-> 
-
-Ok.  I'm testing patch 1 now, I'll add in the alias next.
-
-- Bryan
+T24gTW9uLCAyMDEyLTA4LTEzIGF0IDE1OjU1ICswMTAwLCBKaW0gVmFubnMgd3JvdGU6DQo+IEhl
+bGxvIE5GUyBoYWNrZXJzLiBGaXJzdCBvZmYsIGZlYXIgbm90IC0gdGhlIGF0dGFjaGVkIHBhdGNo
+IGlzIG5vdA0KPiBzb21ldGhpbmcgSSB3aXNoIHRvIHN1Ym1pdCB0byB0aGUgbWFpbmxpbmUga2Vy
+bmVsISBIb3dldmVyLCBpdCBpcw0KPiBpbXBvcnRhbnQgZm9yIG1lIHRoYXQgeW91IHBhc3MganVk
+Z2VtZW50IG9yIGNvbW1lbnQgb24gaXQuIEl0IGlzIHNtYWxsLg0KPiANCj4gQmFzaWNhbGx5LCBJ
+J3ZlIHdyaXR0ZW4gdGhlIHBhdGNoIHNvbGVseSB0byB3b3JrYXJvdW5kIGEgQmx1ZWFyYyBidWcN
+Cj4gd2hlcmUgaXQgZHVwbGljYXRlcyBmaWxlaWRzIHdpdGhpbiBhbiBmc2lkIGFuZCB0aGVyZWZv
+cmUgd2UncmUgbm90IGFibGUNCj4gdG8gcmVseSBvbiB0aGUgZnNpZCtmaWxlaWQgdG8gaWRlbnRp
+ZnkgZGlzdGluY3QgZmlsZXMgaW4gYW4gTkZTDQo+IGZpbGVzeXN0ZW0uIFNvbWUgb2Ygb3VyIHN0
+b3JhZ2UgaW5kZXhpbmcgYW5kIHJlcG9ydGluZyBzb2Z0d2FyZSByZWxpZXMNCj4gb24gdGhpcyBh
+bmQgd29ya3MgaGFwcGlseSB3aXRoIG90aGVyLCBtb3JlIFJGQy1hZGhlcmVudA0KPiBpbXBsZW1l
+bnRhdGlvbnMgOykNCj4gDQo+IFRoZSBmdW5jdGlvbmFsIGNoYW5nZSBpcyBvbmUgdGhhdCBtb2Rp
+ZmllZCB0aGUgcmVjZWl2ZWQgZmlsZWlkIHRvIGEgaGFzaA0KPiBvZiB0aGUgZmlsZSBoYW5kbGUg
+YXMgdGhhdCwgdGhhbmtmdWxseSwgaXMgc3RpbGwgdW5pcXVlLiBBcyB3aXRoIGENCj4gZmlsZWlk
+IEkgbmVlZCB0aGlzIGhhc2ggdG8gcmVtYWluIGNvbnNpc3RlbnQgZm9yIHRoZSBsaWZldGltZSBv
+ZiBhIGZpbGUuDQo+IEl0IGlzIHVzZWQgYXMgYSB1bmlxdWUgaWRlbnRpZmllciBpbiBhIGRhdGFi
+YXNlLg0KPiANCj4gSSdkIHJlYWxseSBhcHByZWNpYXRlIGl0IGlmIHlvdSBjb3VsZCBsZXQgbWUg
+a25vdyBvZiBhbnkgcHJvYmxlbXMgeW91DQo+IHNlZSB3aXRoIGl0IC0gd2hldGhlciBpdCdsbCBi
+cmVhayBzb21lIGNsaWVudC1zaWRlIGNvZGUsIGhhc2ggdGFibGUgdXNlDQo+IG9yIHdvcnNlIHN0
+aWxsIHNlbmQgYmFjayBiYWQgZGF0YSB0byB0aGUgc2VydmVyLg0KPiANCj4gSSd2ZSBtb2RpZmll
+ZCB3aGF0IEkgY2FuIHNlZSBhcyB0aGUgbGVhc3QgYW1vdW50IG9mIGNvZGUgcG9zc2libGUgLSBh
+bmQNCj4gbXkgdGVzdCBWTSBpcyB3b3JraW5nIGhhcHBpbHkgYXMgYSBjbGllbnQgd2l0aCB0aGlz
+IHBhdGNoLiBJdCBpcw0KPiBpbnRlbmRlZCB0aGF0IHRoZSBwYXRjaCBtb2RpZmllcyBvbmx5IGNs
+aWVudC1zaWRlIGNvZGUgb25jZSB0aGUgQmx1ZWFyYw0KPiBSUENzIGFyZSBwdWxsZWQgb2ZmIHRo
+ZSB3aXJlLiBJIG5ldmVyIHdhbnQgdG8gc2VuZCBiYWNrIHRoZXNlIG1vZGlmaWVkDQo+IGZpbGVp
+ZHMgdG8gdGhlIHNlcnZlci4NCg0KUkVBRERJUiBhbmQgUkVBRERJUlBMVVMgd2lsbCBjb250aW51
+ZSB0byByZXR1cm4gdGhlIGZpbGVpZCBmcm9tIHRoZQ0Kc2VydmVyLCBzbyB0aGUgZ2V0ZGVudHMo
+KSBhbmQgcmVhZGRpcigpIHN5c2NhbGxzIHdpbGwgYmUgYnJva2VuLiBTaW5jZQ0KUkVBRERJUlBM
+VVMgZG9lcyByZXR1cm4gdGhlIGZpbGVoYW5kbGUsIHlvdSBtaWdodCBiZSBhYmxlIHRvIGZpeCB0
+aGF0DQp1cCwgYnV0IHBsYWluIFJFQURESVIgd291bGQgYXBwZWFyIHRvIGJlIHVuZml4YWJsZS4N
+Cg0KT3RoZXJ3aXNlLCB5b3VyIHN0cmF0ZWd5IHNob3VsZCBpbiBwcmluY2lwbGUgYmUgT0ssIGJ1
+dCB3aXRoIHRoZSBjYXZlYXQNCnRoYXQgYSBoYXNoIGRvZXMgbm90IHN1ZmZpY2UgdG8gY29tcGxl
+dGVseSBwcmV2ZW50IGNvbGxpc2lvbnMgZXZlbiBpZiBpdA0KaXMgd2VsbCBjaG9zZW4uDQpJT1c6
+IEFsbCB5b3UgYXJlIGRvaW5nIGlzIHR3ZWFraW5nIHRoZSBwcm9iYWJpbGl0eSBvZiBhIGNvbGxp
+c2lvbi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5l
+cg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+DQo=
