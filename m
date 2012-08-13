@@ -1,71 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailservice.tudelft.nl ([130.161.131.5]:50575 "EHLO
-	mailservice.tudelft.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751392Ab2HQQOr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Aug 2012 12:14:47 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by amavis (Postfix) with ESMTP id BB75F2B8035
-	for <linux-nfs@vger.kernel.org>; Fri, 17 Aug 2012 17:55:08 +0200 (CEST)
-Received: from mailservice.tudelft.nl ([130.161.131.73])
-	by localhost (tudelft.nl [127.0.0.1]) (amavisd-new, port 10026)
-	with ESMTP id 9rRi1UeiVRED for <linux-nfs@vger.kernel.org>;
-	Fri, 17 Aug 2012 17:55:08 +0200 (CEST)
-Received: from smtp-a.tudelft.nl (smtp-a.tudelft.nl [130.161.180.7])
-	by mx2.tudelft.nl (Postfix) with ESMTP id 2341A2B8037
-	for <linux-nfs@vger.kernel.org>; Fri, 17 Aug 2012 17:55:08 +0200 (CEST)
-Received: from [172.19.3.32] (61-120.ipact.nl [82.210.120.61])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by smtp-a.tudelft.nl (Postfix) with ESMTP id 08F88B3A62
-	for <linux-nfs@vger.kernel.org>; Fri, 17 Aug 2012 17:55:07 +0200 (CEST)
-Message-ID: <502E694A.3020007@tudelft.nl>
-Date: Fri, 17 Aug 2012 17:54:50 +0200
-From: Richard Smits <R.Smits@tudelft.nl>
-MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: nfsv4 state id errors
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx5.framestore.com ([193.203.83.15]:37643 "EHLO
+	mx5.framestore.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753204Ab2HMQv7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Aug 2012 12:51:59 -0400
+Subject: Re: Your comments, guidance, advice please :)
+From: Jim Vanns <james.vanns@framestore.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Jim Vanns <james.vanns@framestore.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA939D69C@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1344869728.8400.46.camel@sys367.ldn.framestore.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA939D69C@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 13 Aug 2012 17:51:48 +0100
+Message-ID: <1344876708.8400.55.camel@sys367.ldn.framestore.com>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On Mon, 2012-08-13 at 16:40 +0000, Myklebust, Trond wrote:
+> On Mon, 2012-08-13 at 15:55 +0100, Jim Vanns wrote:
+> > Hello NFS hackers. First off, fear not - the attached patch is not
+> > something I wish to submit to the mainline kernel! However, it is
+> > important for me that you pass judgement or comment on it. It is small.
+> > 
+> > Basically, I've written the patch solely to workaround a Bluearc bug
+> > where it duplicates fileids within an fsid and therefore we're not able
+> > to rely on the fsid+fileid to identify distinct files in an NFS
+> > filesystem. Some of our storage indexing and reporting software relies
+> > on this and works happily with other, more RFC-adherent
+> > implementations ;)
+> > 
+> > The functional change is one that modified the received fileid to a hash
+> > of the file handle as that, thankfully, is still unique. As with a
+> > fileid I need this hash to remain consistent for the lifetime of a file.
+> > It is used as a unique identifier in a database.
+> > 
+> > I'd really appreciate it if you could let me know of any problems you
+> > see with it - whether it'll break some client-side code, hash table use
+> > or worse still send back bad data to the server.
+> > 
+> > I've modified what I can see as the least amount of code possible - and
+> > my test VM is working happily as a client with this patch. It is
+> > intended that the patch modifies only client-side code once the Bluearc
+> > RPCs are pulled off the wire. I never want to send back these modified
+> > fileids to the server.
+> 
+> READDIR and READDIRPLUS will continue to return the fileid from the
+> server, so the getdents() and readdir() syscalls will be broken. Since
+> READDIRPLUS does return the filehandle, you might be able to fix that
+> up, but plain READDIR would appear to be unfixable.
 
-A couple of weeks agoo we upgraded our Netapp filer to 8.1.1RC1. We have
-always had trouble with NFS and state id's. Resulting in hanging clients.
+Thanks, I'll take a look at that.
 
-Some bugs were fixed in 8.1.1 but still trouble.
+> Otherwise, your strategy should in principle be OK, but with the caveat
+> that a hash does not suffice to completely prevent collisions even if it
+> is well chosen.
+> IOW: All you are doing is tweaking the probability of a collision.
 
-Now we have the following errors in our client messages file, after a hang.
+Oh yes, I completely understand that. I've done very little testing but
+I'm confident that this at least reduces the number of collisions
+considerably.
 
-What does this : NFS: "v4 server srv returned a bad sequence-id error!"
-means ?
-----
-Aug 17 14:08:23 tudxxxxxx kernel: [622014.866818] NFS: v4 server srvxxx
- returned a bad sequence-id error!
-Aug 17 14:08:23 tudxxxxxx kernel: [622014.872143] NFS: v4 server
-returned a bad sequence-id error on an unconfirmed sequence
-ffff8801112dcc20!
-Aug 17 14:08:23 tudxxxxxx kernel: [622014.872871] NFS: v4 server
-returned a bad sequence-id error on an unconfirmed sequence
-ffff8801112dcc20!
-Aug 17 14:08:23 tudxxxxxx kernel: [622015.170658] NFS: v4 server
-returned a bad sequence-id error on an unconfirmed sequence
-ffff8801112e6820!
-Aug 17 14:08:23 tudxxxxxx kernel: [622015.278260] NFS: v4 server srvxxx
- returned a bad sequence-id error!
-Aug 17 14:08:23 tudxxxxxx kernel: [622015.651868] NFS: v4 server srvxxx
- returned a bad sequence-id error!
-Aug 17 14:08:24 tudxxxxxx kernel: [622016.051741] NFS: v4 server srvxxx
- returned a bad sequence-id error!
-Aug 17 14:08:25 tudxxxxxx kernel: [622017.155713] NFS: v4 server srvxxx
- returned a bad sequence-id error!
-Aug 17 14:08:25 tudxxxxxx kernel: [622017.346225] NFS: v4 server
-returned a bad sequence-id error on an unconfirmed sequence
-ffff8800bcf39620!
-Aug 17 14:08:25 tudxxxxxx kernel: [622017.349781] NFS: v4 server
-returned a bad sequence-id error on an unconfirmed sequence
-ffff8800bcf39620!
-Aug 17 14:08:25 tudxxxxxx kernel: [622017.350840] NFS: v4 server
-returned a bad sequence-id error on an unconfirmed sequence
-ffff8800bcf39620!
+Jim
+
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
+> NrybXǧv^)޺{.n+{"^nrzh&Gh(階ݢj"mzޖfh~m
+
+-- 
+Jim Vanns
+Systems Programmer
+Framestore
 
