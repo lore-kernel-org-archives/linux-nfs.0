@@ -1,204 +1,221 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx5.framestore.com ([193.203.83.15]:41468 "EHLO
-	mx5.framestore.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752469Ab2HMPbA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Aug 2012 11:31:00 -0400
-Received: from vm-zimbra.ldn.framestore.com ([172.16.73.68] helo=zimbra.framestore.com)
-	by mx5.framestore.com with esmtp (Exim 4.72)
-	(envelope-from <james.vanns@framestore.com>)
-	id 1T0w3J-00072x-Q9
-	for linux-nfs@vger.kernel.org; Mon, 13 Aug 2012 15:55:38 +0100
-Received: from [172.16.84.176] (sys367.ldn.framestore.com [172.16.84.176])
-	by zimbra.framestore.com (Postfix) with ESMTPA id 06DEC1EC0ACD
-	for <linux-nfs@vger.kernel.org>; Mon, 13 Aug 2012 15:55:24 +0100 (BST)
-Subject: Your comments, guidance, advice please :)
-From: Jim Vanns <james.vanns@framestore.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: multipart/mixed; boundary="=-mqFEVhwPpM2qxc8phaiS"
-Date: Mon, 13 Aug 2012 15:55:28 +0100
-Message-ID: <1344869728.8400.46.camel@sys367.ldn.framestore.com>
-Mime-Version: 1.0
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:52880 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751586Ab2HMOk1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Aug 2012 10:40:27 -0400
+Received: by ghrr11 with SMTP id r11so3057336ghr.19
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Aug 2012 07:40:27 -0700 (PDT)
+From: Peng Tao <bergwolf@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, bharrosh@panasas.com,
+        Peng Tao <tao.peng@emc.com>
+Subject: [PATCH-v2 2/3] NFS41: send real write size in layoutget
+Date: Mon, 13 Aug 2012 22:39:35 +0800
+Message-Id: <1344868776-1739-2-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1344868776-1739-1-git-send-email-bergwolf@gmail.com>
+References: <1344868776-1739-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+For buffer write, use policy based mechanism to determine layoutget size.
+Currently files use whole file layout, objects use offset-to-isize, and
+blocks search next hole in inode mapping and use offset-to-hole.
 
---=-mqFEVhwPpM2qxc8phaiS
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
+For direct write, just use dreq->bytes_left.
 
-Hello NFS hackers. First off, fear not - the attached patch is not
-something I wish to submit to the mainline kernel! However, it is
-important for me that you pass judgement or comment on it. It is small.
+Signed-off-by: Peng Tao <tao.peng@emc.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |    1 +
+ fs/nfs/direct.c                  |    7 +++++
+ fs/nfs/internal.h                |    1 +
+ fs/nfs/nfs4filelayout.c          |    1 +
+ fs/nfs/objlayout/objio_osd.c     |    3 +-
+ fs/nfs/pnfs.c                    |   51 +++++++++++++++++++++++++++++++++++++-
+ fs/nfs/pnfs.h                    |   13 +++++++++
+ 7 files changed, 75 insertions(+), 2 deletions(-)
 
-Basically, I've written the patch solely to workaround a Bluearc bug
-where it duplicates fileids within an fsid and therefore we're not able
-to rely on the fsid+fileid to identify distinct files in an NFS
-filesystem. Some of our storage indexing and reporting software relies
-on this and works happily with other, more RFC-adherent
-implementations ;)
-
-The functional change is one that modified the received fileid to a hash
-of the file handle as that, thankfully, is still unique. As with a
-fileid I need this hash to remain consistent for the lifetime of a file.
-It is used as a unique identifier in a database.
-
-I'd really appreciate it if you could let me know of any problems you
-see with it - whether it'll break some client-side code, hash table use
-or worse still send back bad data to the server.
-
-I've modified what I can see as the least amount of code possible - and
-my test VM is working happily as a client with this patch. It is
-intended that the patch modifies only client-side code once the Bluearc
-RPCs are pulled off the wire. I never want to send back these modified
-fileids to the server.
-
-Kind regards and thanks for your help, 
-
-Jim Vanns
-
-PS. Sorry, I should mention of course that this patch is a diff from the
-2.6.32 kernel as shipped with Fedora 12 - so not a recent kernel.
-
--- 
-Jim Vanns
-Systems Programmer
-Framestore
-
---=-mqFEVhwPpM2qxc8phaiS
-Content-Disposition: attachment; filename="fscfc-nfs-fileid-hash.patch"
-Content-Type: text/x-patch; name="fscfc-nfs-fileid-hash.patch"; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-
---- linux-2.6.32/fs/nfs/inode.c.orig	2012-08-13 11:24:41.902452726 +0100
-+++ linux-2.6.32/fs/nfs/inode.c	2012-08-13 12:41:38.871454124 +0100
-@@ -60,6 +60,52 @@ static int nfs_update_inode(struct inode
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 1093968..c4215cf 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -1240,6 +1240,7 @@ static const struct nfs_pageio_ops bl_pg_write_ops = {
+ static struct pnfs_layoutdriver_type blocklayout_type = {
+ 	.id				= LAYOUT_BLOCK_VOLUME,
+ 	.name				= "LAYOUT_BLOCK_VOLUME",
++	.flags				= PNFS_LAYOUTGET_SEARCH_HOLE,
+ 	.read_pagelist			= bl_read_pagelist,
+ 	.write_pagelist			= bl_write_pagelist,
+ 	.alloc_layout_hdr		= bl_alloc_layout_hdr,
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index c39f775..c1899dd 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -46,6 +46,7 @@
+ #include <linux/kref.h>
+ #include <linux/slab.h>
+ #include <linux/task_io_accounting_ops.h>
++#include <linux/module.h>
  
- static struct kmem_cache * nfs_inode_cachep;
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs_page.h>
+@@ -191,6 +192,12 @@ static void nfs_direct_req_release(struct nfs_direct_req *dreq)
+ 	kref_put(&dreq->kref, nfs_direct_req_free);
+ }
+ 
++ssize_t nfs_dreq_bytes_left(struct nfs_direct_req *dreq)
++{
++	return dreq->bytes_left;
++}
++EXPORT_SYMBOL_GPL(nfs_dreq_bytes_left);
++
+ /*
+  * Collects and returns the final error value/byte-count.
+  */
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 31fdb03..e68d329 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -464,6 +464,7 @@ static inline void nfs_inode_dio_wait(struct inode *inode)
+ {
+ 	inode_dio_wait(inode);
+ }
++extern ssize_t nfs_dreq_bytes_left(struct nfs_direct_req *dreq);
+ 
+ /* nfs4proc.c */
+ extern void __nfs4_read_done_cb(struct nfs_read_data *);
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 53f94d9..f81edd7 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -1289,6 +1289,7 @@ filelayout_get_ds_info(struct inode *inode)
+ static struct pnfs_layoutdriver_type filelayout_type = {
+ 	.id			= LAYOUT_NFSV4_1_FILES,
+ 	.name			= "LAYOUT_NFSV4_1_FILES",
++	.flags			= PNFS_LAYOUTGET_ALL_FILE,
+ 	.owner			= THIS_MODULE,
+ 	.alloc_layout_hdr	= filelayout_alloc_layout_hdr,
+ 	.free_layout_hdr	= filelayout_free_layout_hdr,
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index ea6d111..e487fb8 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -638,7 +638,8 @@ static struct pnfs_layoutdriver_type objlayout_type = {
+ 	.id = LAYOUT_OSD2_OBJECTS,
+ 	.name = "LAYOUT_OSD2_OBJECTS",
+ 	.flags                   = PNFS_LAYOUTRET_ON_SETATTR |
+-				   PNFS_LAYOUTRET_ON_ERROR,
++				   PNFS_LAYOUTRET_ON_ERROR |
++				   PNFS_LAYOUTGET_ISIZE,
+ 
+ 	.alloc_layout_hdr        = objlayout_alloc_layout_hdr,
+ 	.free_layout_hdr         = objlayout_free_layout_hdr,
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 2e00fea..d1da23a 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -29,6 +29,7 @@
+ 
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs_page.h>
++#include <linux/pagevec.h>
+ #include <linux/module.h>
+ #include "internal.h"
+ #include "pnfs.h"
+@@ -1172,19 +1173,67 @@ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *r
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_read);
  
 +/*
-+ * FSCFC:
-+ *
-+ * Implementations of FNV-1 hash function:
-+ * http://isthe.com/chongo/tech/comp/fnv
-+ * http://en.wikipedia.org/wiki/Fowler_Noll_Vo_hash#Notes
++ * Return the number of contiguous bytes for a given inode
++ * starting at page frame idx.
 + */
-+static inline uint32_t
-+nfs_fh_hash32(struct nfs_fh *fh)
++static u64 pnfs_num_cont_bytes(struct inode *inode, pgoff_t idx)
 +{
-+    static const uint32_t seed = 2166136261U,
-+                          prime = 16777619U;
-+    uint32_t hash = seed, i = 0;
++	struct address_space *mapping = inode->i_mapping;
++	pgoff_t end;
 +
-+    while (i < fh->size) {
-+        hash = (hash * prime) ^ fh->data[i];
-+        ++i;
-+    }
++	/* Optimize common case that writes from 0 to end of file */
++	end = DIV_ROUND_UP(i_size_read(inode), PAGE_CACHE_SIZE);
++	if (end != NFS_I(inode)->npages) {
++		rcu_read_lock();
++		end = radix_tree_next_hole(&mapping->page_tree, idx + 1, ULONG_MAX);
++		rcu_read_unlock();
++	}
 +
-+    return hash;
++	if (!end)
++		return i_size_read(inode) - (idx << PAGE_CACHE_SHIFT);
++	else
++		return (end - idx) << PAGE_CACHE_SHIFT;
 +}
 +
-+static inline uint64_t
-+nfs_fh_hash64(struct nfs_fh *fh)
-+{
-+    static const uint64_t seed = 14695981039346656037U,
-+                          prime = 1099511628211U;
-+    uint64_t hash = seed, i = 0;
-+
-+    while (i < fh->size) {
-+        hash = (hash * prime) ^ fh->data[i];
-+        ++i;
-+    }
-+
-+    return hash;
-+}
-+
-+static inline unsigned long
-+nfs_fh_hash(struct nfs_fh *fh)
-+{
-+    if (sizeof(unsigned long) == 4)
-+        return nfs_fh_hash32(fh);
-+
-+    return nfs_fh_hash64(fh);
-+}
-+
- static inline unsigned long
- nfs_fattr_to_ino_t(struct nfs_fattr *fattr)
+ void
+ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
  {
-@@ -268,7 +314,28 @@ nfs_fhget(struct super_block *sb, struct
- 	if ((fattr->valid & NFS_ATTR_FATTR_TYPE) == 0)
- 		goto out_no_inode;
++	u64 wb_size;
++	unsigned policy = NFS_SERVER(pgio->pg_inode)->pnfs_curr_ld->flags &
++						PNFS_LAYOUTGET_POLICY_MASK;
++
+ 	BUG_ON(pgio->pg_lseg != NULL);
  
--	hash = nfs_fattr_to_ino_t(fattr);
-+    /* 
-+     * FSCFC:
-+     *
-+     * This patch exists solely to work around the Bluearc duplicate inode/NFS
-+     * fileid bug. On Bluearc filesystems a distinct, non-hardlinked file or
-+     * directory appears to share the same fsid + fileid with other completely
-+     * unrelated files elsewhere in the hierarchy. This becomes a problem for
-+     * any system dependent on the commonly accpepted notion of the NFSv3 fsid
-+     * and fileid uniquely identifying a single file/directory within an NFS
-+     * filesystem. Thankfully, the NFS file handle for any duplications are
-+     * still unique :)
-+     *
-+     * We must update *both* the hash value (was the i_ino/fileid as returned
-+     * by nfs_fattr_to_ino_t() above) and fileid here as it is used as the key
-+     * in the inode cache maintained within iget5_locked() below.
-+     *
-+     * We set fattr->fileid to 'hash' to because NFS_FILEID and set_nfs_fileid()
-+     * just copy/return 'fileid' from this structure which the server has
-+     * already sent as the inode on it's filesystem as you'd expect. This is
-+     * what we overwrite - client side only.
-+     */
-+    fattr->fileid = hash = nfs_fh_hash(fh); // JV alternate code
- 
- 	inode = iget5_locked(sb, hash, nfs_find_actor, nfs_init_locked, &desc);
- 	if (inode == NULL) {
-@@ -736,6 +803,7 @@ __nfs_revalidate_inode(struct nfs_server
- 		goto out;
+ 	if (req->wb_offset != req->wb_pgbase) {
+ 		nfs_pageio_reset_write_mds(pgio);
+ 		return;
  	}
++
++	if (pgio->pg_dreq == NULL) {
++		switch(policy) {
++		case PNFS_LAYOUTGET_ISIZE:
++			wb_size = i_size_read(pgio->pg_inode) - req_offset(req);
++			break;
++		case PNFS_LAYOUTGET_SEARCH_HOLE:
++			wb_size = pnfs_num_cont_bytes(pgio->pg_inode, req->wb_index);
++			break;
++		case PNFS_LAYOUTGET_ALL_FILE:
++			wb_size = NFS4_MAX_UINT64;
++			break;
++		default:
++			WARN_ONCE(1, "invalid layoutget policy %u", policy);
++			wb_size = PAGE_CACHE_SIZE;
++			break;
++		}
++	} else {
++		wb_size = nfs_dreq_bytes_left(pgio->pg_dreq);
++	}
++
+ 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 					   req->wb_context,
+ 					   req_offset(req),
+-					   req->wb_bytes,
++					   wb_size,
+ 					   IOMODE_RW,
+ 					   GFP_NOFS);
+ 	/* If no lseg, fall back to write through mds */
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 745aa1b..ce86894 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -71,8 +71,21 @@ enum layoutdriver_policy_flags {
+ 	/* Should the pNFS client commit and return the layout upon a setattr */
+ 	PNFS_LAYOUTRET_ON_SETATTR	= 1 << 0,
+ 	PNFS_LAYOUTRET_ON_ERROR		= 1 << 1,
++
++	/* Layoutget(write) length policy:
++	 * PNFS_LAYOUTGET_ISIZE, use offset-to-isize
++	 * PNFS_LAYOUTGET_SEARCH_HOLE, use offset-to-hole
++	 * PNFS_LAYOUTGET_ALL_FILE, use NFS4_MAX_UINT64
++	 */
++	PNFS_LAYOUTGET_ISIZE		= 1 << 2,
++	PNFS_LAYOUTGET_SEARCH_HOLE	= 1 << 3,
++	PNFS_LAYOUTGET_ALL_FILE		= 1 << 4,
+ };
  
-+    fattr.fileid = nfs_fh_hash(NFS_FH(inode)); // JV alternate code
- 	status = nfs_refresh_inode(inode, &fattr);
- 	if (status) {
- 		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Ld) refresh failed, error=%d\n",
-@@ -903,13 +971,17 @@ static void nfs_wcc_update_inode(struct 
-  */
- static int nfs_check_inode_attributes(struct inode *inode, struct nfs_fattr *fattr)
- {
-+    unsigned long hash = nfs_fh_hash(NFS_FH(inode)); // JV alternate code
- 	struct nfs_inode *nfsi = NFS_I(inode);
- 	loff_t cur_size, new_isize;
- 	unsigned long invalid = 0;
++#define PNFS_LAYOUTGET_POLICY_MASK	(PNFS_LAYOUTGET_ISIZE |		\
++					 PNFS_LAYOUTGET_SEARCH_HOLE |	\
++					 PNFS_LAYOUTGET_ALL_FILE)
++
+ struct nfs4_deviceid_node;
  
-+    /*
-+     * FSCFC: Compare against the hashed file handle, not the fileid
-+     */
- 
- 	/* Has the inode gone and changed behind our back? */
--	if ((fattr->valid & NFS_ATTR_FATTR_FILEID) && nfsi->fileid != fattr->fileid)
-+	if ((fattr->valid & NFS_ATTR_FATTR_FILEID) && nfsi->fileid != hash)
- 		return -EIO;
- 	if ((fattr->valid & NFS_ATTR_FATTR_TYPE) && (inode->i_mode & S_IFMT) != (fattr->mode & S_IFMT))
- 		return -EIO;
-@@ -1150,12 +1222,16 @@ static int nfs_update_inode(struct inode
- 	unsigned long invalid = 0;
- 	unsigned long now = jiffies;
- 	unsigned long save_cache_validity;
-+    unsigned long hash = nfs_fh_hash(NFS_FH(inode)); // JV alternate code
- 
- 	dfprintk(VFS, "NFS: %s(%s/%ld ct=%d info=0x%x)\n",
- 			__func__, inode->i_sb->s_id, inode->i_ino,
- 			atomic_read(&inode->i_count), fattr->valid);
- 
--	if ((fattr->valid & NFS_ATTR_FATTR_FILEID) && nfsi->fileid != fattr->fileid)
-+    /*
-+     * FSCFC: Compare against the hashed file handle, not the fileid
-+     */
-+	if ((fattr->valid & NFS_ATTR_FATTR_FILEID) && nfsi->fileid != hash)
- 		goto out_fileid;
- 
- 	/*
-
---=-mqFEVhwPpM2qxc8phaiS--
+ /* Per-layout driver specific registration structure */
+-- 
+1.7.1.262.g5ef3d
 
