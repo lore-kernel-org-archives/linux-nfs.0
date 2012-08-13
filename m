@@ -1,96 +1,253 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:64293 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757926Ab2HIQha (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Aug 2012 12:37:30 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Peng Tao <bergwolf@gmail.com>
-CC: Idan Kedar <idank@tonian.com>, Boaz Harrosh <bharrosh@panasas.com>,
-        "NFS list" <linux-nfs@vger.kernel.org>,
-        Benny Halevy <bhalevy@tonian.com>
-Subject: Re: return layout on error, BUG/deadlock
-Date: Thu, 9 Aug 2012 16:37:27 +0000
-Message-ID: <1344530243.25447.36.camel@lade.trondhjem.org>
-References: <CABpMAyL-B9Kqg8O4xxxtj0X8PF7fP4TM+NnLA_Ynhm-_3C6MUg@mail.gmail.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9380987@SACEXCMBX04-PRD.hq.netapp.com>
-	 <CABpMAyKddCjhWe-LjFOJrikLnC+BJ7GsAMAvieh1rabDPiA=Ug@mail.gmail.com>
-	 <1344528377.25447.29.camel@lade.trondhjem.org>
-	 <CA+a=Yy5cE1v=nG_epkaKE2W--M=HAbtrySc9_+f6dvJVbusPJw@mail.gmail.com>
-In-Reply-To: <CA+a=Yy5cE1v=nG_epkaKE2W--M=HAbtrySc9_+f6dvJVbusPJw@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:49655 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751219Ab2HMGPt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Aug 2012 02:15:49 -0400
+Received: by pbbrr13 with SMTP id rr13so6727400pbb.19
+        for <linux-nfs@vger.kernel.org>; Sun, 12 Aug 2012 23:15:48 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <5027F63F.8070107@panasas.com>
+References: <1344391392-1948-1-git-send-email-bergwolf@gmail.com>
+ <1344391392-1948-3-git-send-email-bergwolf@gmail.com> <5027F63F.8070107@panasas.com>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Mon, 13 Aug 2012 14:15:27 +0800
+Message-ID: <CA+a=Yy6VfSfO4J+2qL0nS+HEfvQ+Y_8rxcpCsYoBiu8iBcoKjA@mail.gmail.com>
+Subject: Re: [PATCH RFC 2/3] NFS41: send real write size in layoutget
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTA4LTEwIGF0IDAwOjM0ICswODAwLCBQZW5nIFRhbyB3cm90ZToNCj4gT24g
-RnJpLCBBdWcgMTAsIDIwMTIgYXQgMTI6MDYgQU0sIE15a2xlYnVzdCwgVHJvbmQNCj4gPFRyb25k
-Lk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPiBPbiBUaHUsIDIwMTItMDgtMDkgYXQg
-MTg6NDkgKzAzMDAsIElkYW4gS2VkYXIgd3JvdGU6DQo+ID4+IE9uIFRodSwgQXVnIDksIDIwMTIg
-YXQgNTowNSBQTSwgTXlrbGVidXN0LCBUcm9uZA0KPiA+PiA8VHJvbmQuTXlrbGVidXN0QG5ldGFw
-cC5jb20+IHdyb3RlOg0KPiA+PiA+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiA+PiA+
-PiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZz
-LQ0KPiA+PiA+PiBvd25lckB2Z2VyLmtlcm5lbC5vcmddIE9uIEJlaGFsZiBPZiBJZGFuIEtlZGFy
-DQo+ID4+ID4+IFNlbnQ6IFRodXJzZGF5LCBBdWd1c3QgMDksIDIwMTIgOTowMyBBTQ0KPiA+PiA+
-PiBUbzogQm9heiBIYXJyb3NoOyBORlMgbGlzdA0KPiA+PiA+PiBDYzogQmVubnkgSGFsZXZ5DQo+
-ID4+ID4+IFN1YmplY3Q6IHJldHVybiBsYXlvdXQgb24gZXJyb3IsIEJVRy9kZWFkbG9jaw0KPiA+
-PiA+Pg0KPiA+PiA+PiBIaSwNCj4gPj4gPj4NCj4gPj4gPj4gQXMgYSByZXN1bHQgb2Ygc29tZSBl
-eHBlcmltZW50cywgSSB3YW50ZWQgdG8gc2VlIHdoYXQgaGFwcGVucyB3aGVuIEkNCj4gPj4gPj4g
-aW5qZWN0IGFuIGVycm9yIChoYXJkIGNvZGVkKSB0byB0aGUgb2JqZWN0IGxheW91dCBkcml2ZXIu
-IHRoZSBwYXRjaCBpcyBhdCB0aGUNCj4gPj4gPj4gYm90dG9tIG9mIHRoaXMgbWFpbC4gdGhlIHJl
-YXNvbiBJIGRpZCB0aGlzIGlzIGJlY2F1c2Ugd2hlbiBJIGluamVjdCBlcnJvcnMgaW4gbXkNCj4g
-Pj4gPj4gbW9kaWZpZWQgdmVyc2lvbiBvZiB0aGUgb2JqZWN0IGxheW91dCBkcml2ZXIsIEkgZ2V0
-IHRoZSBzYW1lIEJVRyBUaWdyYW4NCj4gPj4gPj4gcmVwb3J0ZWQgYWJvdXQgeWVzdGVyZGF5Og0K
-PiA+PiA+PiBuZnM0cHJvYy5jOjYyNTIgOiAgIEJVR19PTighbGlzdF9lbXB0eSgmbG8tPnBsaF9z
-ZWdzKSk7DQo+ID4+ID4+DQo+ID4+ID4+IEluIG15IG1vZGlmaWVkIHZlcnNpb24gKGJhc2VkIG9u
-IGtlcm5lbCAzLjMpLCB0aGUgYnVnIHNlZW1zIHRvIGJlIHRoYXQNCj4gPj4gPj4gcG5mc19sZF93
-cml0ZV9kb25lIGNhbGxzIHBuZnNfcmV0dXJuX2xheW91dCBpbiB0aGUgZXJyb3IgcGF0aCwgZXZl
-biBpZiB0aGVyZQ0KPiA+PiA+PiBpcyBpbi1mbGlnaHQgSS9PLg0KPiA+PiA+DQo+ID4+ID4gVGhh
-dCBpcyBub3QgYSBidWcuIEl0IGlzIGFuIGludGVudGlvbmFsIGNoYW5nZSBpbiBvcmRlciB0byBh
-bGxvdyB0aGUgTURTIHRvIGZlbmNlIG9mZiB0aGUgb3V0c3RhbmRpbmcgd3JpdGVzIChpZiBpdCBj
-YW4gZG8gc28pIGJlZm9yZSB3ZSByZXRyYW5zbWl0IHRoZW0gYXMgd3JpdGUtdGhyb3VnaC1NRFMu
-IE90aGVyd2lzZSwgeW91IHJpc2sgcmFjZXMgYmV0d2VlbiB0aGUgb3V0c3RhbmRpbmcgd3JpdGVz
-LXRvLURTIGFuZCB0aGUgbmV3IHdyaXRlcy10aHJvdWdoLU1EUy4NCj4gPj4NCj4gPj4gdG8gd2hh
-dCBjaGFuZ2UgYXJlIHlvdSByZWZlcnJpbmc/DQo+ID4NCj4gPiBBcyBJIHN0YXRlZCBpbiB0aGUg
-Y2hhbmdlbG9nIG9mIHRoZSBwYXRjaCB0aGF0IEkgc2VudCB0byB0aGUgbGlzdA0KPiA+IHllc3Rl
-cmRheSwgdGhlIGJlaGF2aW91ciBpcyBkdWUgdG8gY29tbWl0IDBhNTdjZGFjM2YuDQo+ID4NCj4g
-Pj4gPg0KPiA+PiA+IFNlZSB0aGUgY2hhbmdlbG9nIGluIHRoZSBwYXRjaCB0aGF0IEkgc2VudCB0
-byB0aGUgbGlzdCB5ZXN0ZXJkYXkuDQo+ID4+ID4NCj4gPj4NCj4gPj4gSSBzYXcgdGhhdCwgYW5k
-IGlmIEknbSBub3QgbWlzdGFrZW4gdGhlc2UgcmFjZXMgYXBwbHkgdG8gb2JqZWN0IGxheW91dA0K
-PiA+PiBhcyB3ZWxsLCBhbmQgaW4gYW55IGNhc2UgdGhleSBhcHBseSBpbiBteSBjYXNlLiBIb3dl
-dmVyLCBpdCBpcyBub3QNCj4gPj4gZWFzeSB0byBtZXNzIGFyb3VuZCB3aXRoIExBWU9VVFJFVFVS
-TiBpbiBvYmplY3QgbGF5b3V0LCBhbmQgdGhlcmUgaGF2ZQ0KPiA+PiBiZWVuIHNldmVyYWwgZGlz
-Y3Vzc2lvbnMgb24gdGhlIGlzc3VlLiBJbiBvbmUgb2YgdGhlc2UgZGlzY3Vzc2lvbnMNCj4gPj4g
-QmVubnkgY2xhcmlmaWVkIHRoYXQgdGhlIG9iamVjdCBsYXlvdXQgY2xpZW50IG11c3Qgd2FpdCBm
-b3IgYWxsDQo+ID4+IGluLWZsaWdodCBJL08gdG8gZW5kLg0KPiA+DQo+ID4gSWYgdGhlIHByb2Js
-ZW0gaXMgdGhhdCB0aGUgRFMgaXMgZmFpbGluZyB0byByZXNwb25kLCBob3cgZG9lcyB0aGUgY2xp
-ZW50DQo+ID4ga25vdyB0aGF0IHRoZSBpbi1mbGlnaHQgSS9PIGhhcyBlbmRlZD8NCj4gPg0KPiA+
-PiBTbyBmb3IgZmlsZSBsYXlvdXQgaXQgcHJvYmFibHkgbWFrZXMgc2Vuc2UsIGJ1dCBvYmplY3Qg
-bGF5b3V0IChhbmQgaWYNCj4gPj4gSSB1bmRlcnN0YW5kIGNvcnJlY3RseSwgYmxvY2sgbGF5b3V0
-IGFzIHdlbGwpIHNvbWV0aGluZyBlbHNlIG5lZWRzIHRvDQo+ID4+IGJlIGRvbmUuIEkgdGhvdWdo
-dCBhYm91dCBzeW5jIHdhaXQgd2hlbiByZXR1cm5pbmcgdGhlIGxheW91dCBvbiBlcnJvciwNCj4g
-Pj4gYnV0IGFjY29yZGluZyB0byBCb2F6IGl0IHdpbGwgY2F1c2UgZGVhZGxvY2tzIChCb2F6IC0g
-Y2FuIHlvdSBwbGVhc2UNCj4gPj4gZWxhYm9yYXRlPykuDQo+ID4NCj4gPiBUaGUgb2JqZWN0IGxh
-eW91dHJldHVybiBoYXMgdGhlIGFiaWxpdHkgdG8gcGFzcyBhIHRpbWVvdXQgZXJyb3IgdmFsdWUg
-dG8NCj4gPiB0aGUgTURTIHByZWNpc2VseSBpbiBvcmRlciB0byBhbGxvdyB0aGUgbGF0dGVyIHRv
-IGRlYWwgd2l0aCB0aGlzIGtpbmQgb2YNCj4gPiBpc3N1ZS4gU2VlIHRoZSBkZXNjcmlwdGlvbiBv
-ZiBzdHJ1Y3QgcG5mc19vc2RfaW9lcnI0IGluIHJmYzU2NjQuDQo+ID4NCj4gPiBUaGUgYmxvY2sg
-bGF5b3V0IGlzIGFkZGluZyB0aGUgc2FtZSBhYmlsaXR5IHRvIGxheW91dHJldHVybiBpbiBORlN2
-NC4yDQo+ID4gKHNlZSBkcmFmdC1pZXRmLW5mc3Y0LW1pbm9ydmVyc2lvbjItMTMudHh0KSB2aWEg
-dGhlIHN0cnVjdA0KPiA+IGxheW91dHJldHVybl9kZXZpY2VfZXJyb3I0LCBzbyBwcmVzdW1hYmx5
-IHRoZXkgdG9vIGhhdmUgYSBwbGFuIGZvcg0KPiA+IGRlYWxpbmcgd2l0aCB0aGlzIGtpbmQgb2Yg
-aXNzdWUuDQo+IEl0IGlzIG9uZSB0aGluZyB0byB0ZWxsIE1EUyB0aGF0IHRoZXJlIGlzIERTIGFj
-Y2VzcyBlcnJvciBieSBzZW5kaW5nDQo+IGxheW91dHJldHVybiwgYW5kIGl0IGlzIGFub3RoZXIg
-dGhpbmcgdG8gcmV0dXJuIGEgbGF5b3V0IGV2ZW4gaWYgdGhlcmUNCj4gaXMgb3ZlcmxhcHBpbmcg
-aW4tZmxpZ2h0IERTIElPLi4uDQo+IA0KPiBJIGNlcnRhaW5seSBhZ3JlZSB0aGF0IGNsaWVudCBp
-cyBlbnRpdGxlZCB0byByZXR1cm4gbGF5b3V0IHRvIGluZm9ybQ0KPiBNRFMgYWJvdXQgRFMgZXJy
-b3JzIGFuZCBhbHNvIGF2b2lkIHBvc3NpYmxlIGNiX2xheW91dHJlY2FsbC4gQnV0IGl0IGlzDQo+
-IGp1c3QgYW4gb3B0aW1pemF0aW9uIGFuZCBzaG91bGQgb25seSBiZSBkb25lIHdoZW4gdGhlcmUg
-aXMgbm8NCj4gaW4tZmxpZ2h0IElPIChhdCBsZWFzdCBmb3IgYmxvY2sgbGF5b3V0KSBJTUhPLg0K
-DQpIT1cgRE8gWU9VIEdVQVJBTlRFRSBOTyBJTi1GTElHSFQgSU8/DQoNClJlcGVhdGluZyB0aGUg
-c2FtZSBtYW50cmEgYWJvdXQgJ25vIGluLWZsaWdodCBJTycgdGhhdCBkb2Vzbid0IGFwcGx5IHRv
-DQp0aW1lb3V0IHNpdHVhdGlvbnMgaXNuJ3QgaGVscGZ1bC4NCg0KQSBUSU1FT1VUIG1lYW5zIHRo
-YXQgeW91IGhhdmUgTk8gSURFQSBpZiB0aGUgZGF0YSBpcyBzdGlsbCBpbiBmbGlnaHQgb3INCm5v
-dC4gVGhhdCdzIHdoZW4geW91IG5lZWQgZmVuY2luZywgYW5kIHRoZSBvbmx5IHRoaW5nIHRoYXQg
-Y2FuIHN1cHBseQ0KZmVuY2luZyBpbiB0aGF0IHNpdHVhdGlvbiBpcyB0aGUgTURTLg0KDQotLSAN
-ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0K
-VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+On Mon, Aug 13, 2012 at 2:30 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+> On 08/08/2012 05:03 AM, Peng Tao wrote:
+>
+>> From: Peng Tao <tao.peng@emc.com>
+>>
+>> For bufferred write, scan dirty pages to find out longest continuous
+>> dirty pages. In this case, also allow layout driver to specify a
+>> maximum layoutget size which is useful to avoid busy scanning dirty pages
+>> for block layout client.
+>>
+>> For direct write, just use dreq->bytes_left.
+>>
+>> Signed-off-by: Peng Tao <tao.peng@emc.com>
+>> ---
+>>  fs/nfs/direct.c   |    7 ++++++
+>>  fs/nfs/internal.h |    1 +
+>>  fs/nfs/pnfs.c     |   58 +++++++++++++++++++++++++++++++++++++++++++++++++++-
+>>  3 files changed, 64 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+>> index c39f775..c1899dd 100644
+>> --- a/fs/nfs/direct.c
+>> +++ b/fs/nfs/direct.c
+>> @@ -46,6 +46,7 @@
+>>  #include <linux/kref.h>
+>>  #include <linux/slab.h>
+>>  #include <linux/task_io_accounting_ops.h>
+>> +#include <linux/module.h>
+>>
+>>  #include <linux/nfs_fs.h>
+>>  #include <linux/nfs_page.h>
+>> @@ -191,6 +192,12 @@ static void nfs_direct_req_release(struct nfs_direct_req *dreq)
+>>       kref_put(&dreq->kref, nfs_direct_req_free);
+>>  }
+>>
+>> +ssize_t nfs_dreq_bytes_left(struct nfs_direct_req *dreq)
+>> +{
+>> +     return dreq->bytes_left;
+>> +}
+>> +EXPORT_SYMBOL_GPL(nfs_dreq_bytes_left);
+>> +
+>>  /*
+>>   * Collects and returns the final error value/byte-count.
+>>   */
+>> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+>> index 31fdb03..e68d329 100644
+>> --- a/fs/nfs/internal.h
+>> +++ b/fs/nfs/internal.h
+>> @@ -464,6 +464,7 @@ static inline void nfs_inode_dio_wait(struct inode *inode)
+>>  {
+>>       inode_dio_wait(inode);
+>>  }
+>> +extern ssize_t nfs_dreq_bytes_left(struct nfs_direct_req *dreq);
+>>
+>
+>
+> Why is this an EXPORT_SYMBOL_GPL at .c file. Why not just an inline
+> here ?
+>
+struct nfs_direct_req is internal in direct.c. Cannot access its
+member structure outside without exported APIs.
+
+>>  /* nfs4proc.c */
+>>  extern void __nfs4_read_done_cb(struct nfs_read_data *);
+>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>> index 2e00fea..e61a373 100644
+>> --- a/fs/nfs/pnfs.c
+>> +++ b/fs/nfs/pnfs.c
+>> @@ -29,6 +29,7 @@
+>>
+>>  #include <linux/nfs_fs.h>
+>>  #include <linux/nfs_page.h>
+>> +#include <linux/pagevec.h>
+>>  #include <linux/module.h>
+>>  #include "internal.h"
+>>  #include "pnfs.h"
+>> @@ -1172,19 +1173,72 @@ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *r
+>>  }
+>>  EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_read);
+>>
+>> +/*
+>> + * Return the number of contiguous bytes in dirty pages for a given inode
+>> + * starting at page frame idx.
+>> + */
+>> +static u64 pnfs_num_dirty_bytes(struct inode *inode, pgoff_t idx)
+>> +{
+>> +     struct address_space *mapping = inode->i_mapping;
+>> +     pgoff_t index;
+>> +     struct pagevec pvec;
+>> +     pgoff_t num = 1; /* self */
+>> +     int i, done = 0;
+>> +
+>> +     pagevec_init(&pvec, 0);
+>> +     idx++; /* self */
+>> +     while (!done) {
+>> +             index = idx;
+>> +             pagevec_lookup_tag(&pvec, mapping, &index,
+>> +                                PAGECACHE_TAG_DIRTY, (pgoff_t)PAGEVEC_SIZE);
+>> +             if (pagevec_count(&pvec) == 0)
+>> +                     break;
+>> +
+>> +             for (i = 0; i < pagevec_count(&pvec); i++) {
+>> +                     struct page *page = pvec.pages[i];
+>> +
+>> +                     lock_page(page);
+>> +                     if (unlikely(page->mapping != mapping) ||
+>> +                         !PageDirty(page) ||
+>> +                         PageWriteback(page) ||
+>> +                         page->index != idx) {
+>> +                             done = 1;
+>> +                             unlock_page(page);
+>> +                             break;
+>> +                     }
+>> +                     unlock_page(page);
+>> +                     if (done)
+>> +                             break;
+>> +                     idx++;
+>> +                     num++;
+>> +             }
+>> +             pagevec_release(&pvec);
+>> +     }
+>> +     return num << PAGE_CACHE_SHIFT;
+>> +}
+>> +
+>
+>
+> Same as what Trond said. radix_tree_next_hole() should be nicer. We need never
+> do any locking this is just an hint, and not a transaction guaranty. Best first
+> guess approximation is all we need.
+>
+> Also you might want to optimize for the most common case of a linear write from
+> zero. This you can do by comparing i_size / PAGE_SIZE and the number of dirty
+> pages, if they are the same you know there are no holes, and need not scan.
+>
+Sounds reasonable. Will do it in v2.
+
+>>  void
+>> -pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+>> +pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
+>> +                        struct nfs_page *req)
+>
+>
+> Nothing changed here, please don't do this
+>
+>>  {
+>> +     u64 wb_size;
+>> +
+>>       BUG_ON(pgio->pg_lseg != NULL);
+>>
+>>       if (req->wb_offset != req->wb_pgbase) {
+>>               nfs_pageio_reset_write_mds(pgio);
+>>               return;
+>>       }
+>> +
+>> +     if (pgio->pg_dreq == NULL)
+>> +             wb_size = pnfs_num_dirty_bytes(pgio->pg_inode, req->wb_index);
+>> +     else
+>> +             wb_size = nfs_dreq_bytes_left(pgio->pg_dreq);
+>> +
+>>       pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+>>                                          req->wb_context,
+>>                                          req_offset(req),
+>> -                                        req->wb_bytes,
+>> +                                        wb_size?:req->wb_bytes,
+>
+>
+> wb_size is always set above in the if() or else. No need to check here.
+>
+>>                                          IOMODE_RW,
+>>                                          GFP_NOFS);
+>>       /* If no lseg, fall back to write through mds */
+>
+>
+>
+> But No!
+>
+> much much better then last time, thank you for working on this
+> but it is not optimum for objects and files
+> (when "files" supports segments)
+>
+> For blocks, Yes radix_tree_next_hole() is the perfect fit. But for
+> objects (and files) it is i_size_read(). The objects/files server usually
+> determines it's topology according to file-size. And it does not have any
+> bigger resources because of holes or no holes. (The files example I think of
+> is CEPH)
+>
+> So for objects the wasting factor is the actual i_size extending as a cause
+> of layout_get, and not the number of pages served. So for us the gain is if
+> client, that has a much newer information about i_size, sends it on first
+> layout_get. Though extending file size only once on first layout_get and
+> not on every layout_get.
+>
+> So the small change I want is:
+>
+> +enum pnfs_layout_get_strategy {
+> +       PLGS_USE_ISIZE,
+> +       PLGS_SEARCH_FIRST_HOLE,
+> +       PLGS_ALL_FILE,
+> +};
+>
+> -pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+> +pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req,
+> +                           enum pnfs_layout_get_strategy plgs)
+>
+>
+>  ...
+>
+> +       if (pgio->pg_dreq == NULL) {
+> +               switch (plgs) {
+> +               case PLGS_SEARCH_FIRST_HOLE:
+> +                       wb_size = pnfs_num_dirty_bytes(pgio->pg_inode, req->wb_index);
+> +                       break;
+> +               case PLGS_USE_ISIZE:
+> +                       wb_size = i_size_read() - req_offset(req);
+> +                       break;
+> +               case PLGS_ALL_FILE:
+> +                       wb_size = NFS4_MAX_UINT64;
+> +                       break;
+> +               default:
+> +                       WARN_ON(1);
+> +                       wb_size = PAGE_SIZE;
+> +       }
+> +       else
+> +               wb_size = nfs_dreq_bytes_left(pgio->pg_dreq);
+>
+> The call to pnfs_generic_pg_init_write is always made by the LD's .pg_init
+> and each LD should pass the proper pnfs_layout_get_strategy flag.
+>
+Will add it in v2. Thanks for reviewing.
+
+Cheers,
+Tao
