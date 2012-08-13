@@ -1,104 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:46879 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:56684 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932196Ab2HIMSv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Aug 2012 08:18:51 -0400
-Date: Thu, 9 Aug 2012 08:18:32 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Namjae Jeon <linkinjeon@gmail.com>
-Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        michael.brantley@deshaw.com, hch@infradead.org, miklos@szeredi.hu,
-        pstaubach@exagrid.com
-Subject: Re: [PATCH v5 00/19] vfs: add the ability to retry on ESTALE to
- several syscalls
-Message-ID: <20120809081832.022e6a7d@corrin.poochiereds.net>
-In-Reply-To: <CAKYAXd9QyKtH7ZvCJs=X2DxhDn9_THXUooWVCWkxuEhizWgmsA@mail.gmail.com>
-References: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
-	<CAKYAXd9QyKtH7ZvCJs=X2DxhDn9_THXUooWVCWkxuEhizWgmsA@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1751250Ab2HMOaR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Aug 2012 10:30:17 -0400
+Date: Mon, 13 Aug 2012 10:30:16 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Rajesh Ghanekar <rajeshsg@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: reconnect_path fails with EACCES
+Message-ID: <20120813143016.GA2497@fieldses.org>
+References: <CAOn_VZbzhGMtYmOZJe-kGqhFLRsWpw6B3+uv+d4UAx9t1-Ew=A@mail.gmail.com>
+ <20120809181233.GB9914@fieldses.org>
+ <CAOn_VZaNU1_WT+XsvHabi=4fhMnyJg5eKp_p=e=1ruWfHC76DQ@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAOn_VZaNU1_WT+XsvHabi=4fhMnyJg5eKp_p=e=1ruWfHC76DQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 9 Aug 2012 20:57:14 +0900
-Namjae Jeon <linkinjeon@gmail.com> wrote:
-
-> Hi Jeff.
+On Mon, Aug 13, 2012 at 07:24:56PM +0530, Rajesh Ghanekar wrote:
+> Its no_subtree_check exported.
 > 
-> I still found ESTALE error although patching these patch-set.
-> Is test method correct that I try to run estale_test on each nfs
-> server and client at the same time ?
+> Underneath filesystem (->permission) doesn't support capabilities and
+> hence EACCES is being returned. The filesystem is proprietary.
+> I figured it out later that they don't support capabilities.
+
+That sounds like a bug in their permission method.  We won't be able to
+help with a proprietary filesystem here.
+
+--b.
+
 > 
-> ./estale_test
-> chmod: Stale NFS[  281.720000] ##### send signal from USER, SIG : 2,
-> estale_test(107)->estale_test(102) sys_kill
-> [  281.728000] ##### send signal from USER, SIG : 15,
-> estale_test(102)->estale_test(103) sys_kill
-> [  281.736000] ##### send signal from USER, SIG : 15,
-> estale_test(102)->estale_test(104) sys_kill
-> [  281.744000] ##### send signal from USER, SIG : 15,
-> estale_test(102)->estale_test(105) sys_kill
-> [  281.752000] ##### send signal from USER, SIG : 15,
-> estale_test(102)->estale_test(106) sys_kill
-> [  281.760000] ##### send signal from USER, SIG : 15,
-> estale_test(102)->estale_test(107) sys_kill
-> [  281.768000] ##### send signal from USER, SIG : 15,
-> estale_test(102)->estale_test(108) sys_kill
-> [  281.780000] ##### send signal from USER, SIG : 15,
-> estale_test(102)->estale_test(109) sys_kill
-> [  281.788000] ##### send signal from USER, SIG : 15,
-> estale_test(102)->estale_test(110) sys_kill
-> [  281.796000] ##### send signal from USER, SIG : 15,
-> estale_test(102)->estale_test(111) sys_kill
-> [  281.804000] ##### send signal from USER, SIG : 15,
-> estale_test(102)->estale_test(112) sys_kill
-> [  281.812000] ##### send signal from USER, SIG : 15,
-> estale_test(102)->estale_test(113) sys_kill
-> [  281.820000] ##### send signal from USER, SIG : 15,
-> estale_test(102)->estale_test(114) sys_kill
-> [  281.828000] ##### send signal from USER, SIG : 15,
-> estale_test(102)->estale_test(115) sys_kill
-> [  281.840000] ##### send signal from USER, SIG : 15,
-> estale_test(102)->estale_test(116) sys_kill
-> [  281.848000] ##### send signal from USER, SIG : 15,
-> estale_test(102)->estale_test(117) sys_kill
-> [  281.856000] ##### send signal from USER, SIG : 15,
-> estale_test(102)->estale_test(118) sys_kill
-> [  281.864000] ##### send signal from USER, SIG : 15,
-> estale_test(102)->estale_test(119) sys_kill
->  file handle
-> VDLinux#> chdir: Stale NFS[  282.664000] ##### send signal from USER,
-> SIG : 2, estale_test(120)->???(102) sys_kill
->  file handle
+> Thanks,
+> Rajesh
 > 
-> Thanks.
 > 
-
-I guess you didn't read my response earlier? I'll re-post it here...
-
-> It's a bit labor intensive, I'm afraid...
->
-> Attached is a cleaned-up copy of the test program that Peter wrote to
-> test his original patchset. The basic idea is to run this on both the
-> client and server at the same time so they race against each other. He
-> was able to run it overnight when testing with his patchset.
->
-> With this patchset, that doesn't work since we're only retrying the
-> lookup and call once. So, what I've been doing is modifying the program
-> so that it just runs one test at a time, and sniffing traffic to see
-> whether the lookups and calls are retried after an ESTALE return from
-> the server. 
-
-
-So, ESTALE errors are still expected when running that test. This
-patchset only fixes a very specific set of circumstances where an entry
-goes stale once between the lookup and the actual operation(s).
-Anything outside of that, and it won't help.
-
-That test is very aggressive, and can cause it to race multiple times.
-You actually have to sniff traffic and look to see if the lookup and
-call were reattempted after the ESTALE error.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+> On Thu, Aug 9, 2012 at 11:42 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > On Thu, Aug 09, 2012 at 02:55:28AM +0530, Rajesh Ghanekar wrote:
+> >> Hi,
+> >> I am facing problem with reconnect_path failing with EACCES when doing
+> >> lookup_one_len. I have 2 users goind to same directory, one with uid=0
+> >> and another with uid=xxx. Sometime for uid=0 request, nfsd is still is using
+> >> uid=xxx (as it was used previously), as uid=xxx doesn't have any permissions
+> >> on the directory.
+> >>
+> >> Should this probably do nfsd_setuser_and_check_port before
+> >> the below code in nfsd_set_fh_dentry()? As it carries older
+> >> fsuid and fsgid, can it create issues. This always happens
+> >> with disconnected dentries.
+> >>
+> >>         if (exp->ex_flags & NFSEXP_NOSUBTREECHECK) {
+> >>                 /* Elevate privileges so that the lack of 'r' or 'x'
+> >>                  * permission on some parent directory will
+> >>                  * not stop exportfs_decode_fh from being able
+> >>                  * to reconnect a directory into the dentry cache.
+> >>                  * The same problem can affect "SUBTREECHECK" exports,
+> >>                  * but as nfsd_acceptable depends on correct
+> >>                  * access control settings being in effect, we cannot
+> >>                  * fix that case easily.
+> >
+> > Are you exporting with subtree_check or no_subtree_check?  (What does
+> > "exportfs -v" say?)
+> >
+> > In the no_subtree_check case, the cap_raise_nfsd_set() is intended to
+> > override file permissions, so the uid and gid shouldn't matter.
+> >
+> > --b.
