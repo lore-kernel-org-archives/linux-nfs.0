@@ -1,85 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:12791 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754663Ab2HAR4V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Aug 2012 13:56:21 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Sachin Prabhu <sprabhu@redhat.com>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] Simplify check for size of ACL returned in
- __nfs4_get_acl_uncached
-Date: Wed, 1 Aug 2012 17:56:17 +0000
-Message-ID: <1343843776.9097.10.camel@lade.trondhjem.org>
-References: <1343827771-6258-1-git-send-email-sprabhu@redhat.com>
-	 <1343827771-6258-3-git-send-email-sprabhu@redhat.com>
-In-Reply-To: <1343827771-6258-3-git-send-email-sprabhu@redhat.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from relay.parallels.com ([195.214.232.42]:51139 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750861Ab2HMRj7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Aug 2012 13:39:59 -0400
+Message-ID: <50293BE9.3010408@parallels.com>
+Date: Mon, 13 Aug 2012 21:39:53 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Pavel Emelianov <xemul@parallels.com>, "H. Peter Anvin" <hpa@zytor.com>,
+        Alan Cox <alan@lxorguk.ukuu.org.uk>,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "eric.dumazet@gmail.com" <eric.dumazet@gmail.com>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+        "tim.c.chen@linux.intel.com" <tim.c.chen@linux.intel.com>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [RFC PATCH 0/2] net: connect to UNIX sockets from specified root
+References: <20120810125701.7115.71612.stgit@localhost.localdomain> <50254FA6.3060806@zytor.com> <20120810192628.79a34d28@pyramind.ukuu.org.uk> <20120810191149.GA17985@fieldses.org> <20120810202818.06236f46@pyramind.ukuu.org.uk> <50259494.8060304@zytor.com> <5025FA5A.4090403@parallels.com> <50263ECC.4060501@parallels.com> <20120813164730.GB2497@fieldses.org>
+In-Reply-To: <20120813164730.GB2497@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTA4LTAxIGF0IDE0OjI5ICswMTAwLCBTYWNoaW4gUHJhYmh1IHdyb3RlOg0K
-PiBSZW5hbWUgZmxhZyBBQ0xfTEVOX1JFUUVTVCB0byBORlM0X0FDTF9MRU5fT05MWS4gQXBhcnQg
-ZnJvbSB1c2luZyB0aGlzDQo+IGZsYWcgZHVyaW5nIGEgcmVxdWVzdCB0byBpbmRpY2F0ZSB0aGF0
-IHRoZSB1c2VyIGlzIG9ubHkgaW50ZXJlc3RlZCBpbg0KPiB0aGUgbGVuZ3RoIG9mIHRoZSBBQ0ws
-IHdlIG5vdyBhbHNvIHVzZSBpdCBpbiB0aGUgcmVzcG9uc2Ugc3RhZ2UgdG8NCj4gaW5kaWNhdGUg
-dGhhdCB0aGUgZGF0YSByZXR1cm5lZCBob2xkcyB0aGUgY29tcGxldGUgQUNMIG9yIGp1c3QgdGhl
-DQo+IGxlbmd0aC4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IFNhY2hpbiBQcmFiaHUgPHNwcmFiaHVA
-cmVkaGF0LmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvbmZzNHByb2MuYyAgICAgICB8IDQgKystLQ0K
-PiAgZnMvbmZzL25mczR4ZHIuYyAgICAgICAgfCA0ICsrKy0NCj4gIGluY2x1ZGUvbGludXgvbmZz
-X3hkci5oIHwgMiArLQ0KPiAgMyBmaWxlcyBjaGFuZ2VkLCA2IGluc2VydGlvbnMoKyksIDQgZGVs
-ZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMv
-bmZzNHByb2MuYw0KPiBpbmRleCBiZTAzYjk1Li5hYWE5OGYwIDEwMDY0NA0KPiAtLS0gYS9mcy9u
-ZnMvbmZzNHByb2MuYw0KPiArKysgYi9mcy9uZnMvbmZzNHByb2MuYw0KPiBAQCAtMzc2MCw3ICsz
-NzYwLDcgQEAgc3RhdGljIHNzaXplX3QgX19uZnM0X2dldF9hY2xfdW5jYWNoZWQoc3RydWN0IGlu
-b2RlICppbm9kZSwgdm9pZCAqYnVmLCBzaXplX3QgYnUNCj4gIAkvKiBMZXQgZGVjb2RlX2dldGZh
-Y2wga25vdyBub3QgdG8gZmFpbCBpZiB0aGUgQUNMIGRhdGEgaXMgbGFyZ2VyIHRoYW4NCj4gIAkg
-KiB0aGUgcGFnZSB3ZSBzZW5kIGFzIGEgZ3Vlc3MgKi8NCj4gIAlpZiAoYnVmID09IE5VTEwpDQo+
-IC0JCXJlcy5hY2xfZmxhZ3MgfD0gTkZTNF9BQ0xfTEVOX1JFUVVFU1Q7DQo+ICsJCXJlcy5hY2xf
-ZmxhZ3MgfD0gTkZTNF9BQ0xfTEVOX09OTFk7DQo+ICANCj4gIAlkcHJpbnRrKCIlcyAgYnVmICVw
-IGJ1ZmxlbiAlenUgbnBhZ2VzICVkIGFyZ3MuYWNsX2xlbiAlenVcbiIsDQo+ICAJCV9fZnVuY19f
-LCBidWYsIGJ1ZmxlbiwgbnBhZ2VzLCBhcmdzLmFjbF9sZW4pOw0KPiBAQCAtMzc3MCw3ICszNzcw
-LDcgQEAgc3RhdGljIHNzaXplX3QgX19uZnM0X2dldF9hY2xfdW5jYWNoZWQoc3RydWN0IGlub2Rl
-ICppbm9kZSwgdm9pZCAqYnVmLCBzaXplX3QgYnUNCj4gIAkJZ290byBvdXRfZnJlZTsNCj4gIA0K
-PiAgCWFjbF9sZW4gPSByZXMuYWNsX2xlbiAtIHJlcy5hY2xfZGF0YV9vZmZzZXQ7DQo+IC0JaWYg
-KHJlcy5hY2xfbGVuID4gYXJncy5hY2xfbGVuKQ0KPiArCWlmIChyZXMuYWNsX2ZsYWdzICYgTkZT
-NF9BQ0xfTEVOX09OTFkpDQoNCklzIHRoaXMgYSBidWdmaXggb3IgYSBjbGVhbnVwPyBJZiB0aGUg
-Zm9ybWVyLCB0aGVuIGl0IGJlbG9uZ3MgaW4gdGhlDQpmaXJzdCBwYXRjaC4NCg0KPiAgCQluZnM0
-X3dyaXRlX2NhY2hlZF9hY2woaW5vZGUsIE5VTEwsIDAsIGFjbF9sZW4pOw0KPiAgCWVsc2UNCj4g
-IAkJbmZzNF93cml0ZV9jYWNoZWRfYWNsKGlub2RlLCBwYWdlcywgcmVzLmFjbF9kYXRhX29mZnNl
-dCwNCg0KTm93IGlmIE5GUzRfQUNMX0xFTl9PTkxZIGlzIHNldCwgd2UgYXBwZWFyIHRvIHVuY29u
-ZGl0aW9uYWxseSB3cml0ZSB0aGUNCmFjbCwgZXZlbiBpZiB0aGUgYnVmZmVyIG92ZXJmbG93cy4u
-Lg0KDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHhkci5jIGIvZnMvbmZzL25mczR4ZHIuYw0K
-PiBpbmRleCAxOGZhZTI5Li5hODhmY2QwIDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvbmZzNHhkci5j
-DQo+ICsrKyBiL2ZzL25mcy9uZnM0eGRyLmMNCj4gQEAgLTUxMDEsNyArNTEwMSw3IEBAIHN0YXRp
-YyBpbnQgZGVjb2RlX2dldGFjbChzdHJ1Y3QgeGRyX3N0cmVhbSAqeGRyLCBzdHJ1Y3QgcnBjX3Jx
-c3QgKnJlcSwNCj4gIAkJaGRybGVuID0gKHU4ICopeGRyLT5wIC0gKHU4ICopaW92LT5pb3ZfYmFz
-ZTsNCj4gIAkJYXR0cmxlbiArPSByZXMtPmFjbF9kYXRhX29mZnNldDsNCj4gIAkJaWYgKGF0dHJs
-ZW4gPiBwYWdlX2xlbikgew0KPiAtCQkJaWYgKHJlcy0+YWNsX2ZsYWdzICYgTkZTNF9BQ0xfTEVO
-X1JFUVVFU1QpIHsNCj4gKwkJCWlmIChyZXMtPmFjbF9mbGFncyAmIE5GUzRfQUNMX0xFTl9PTkxZ
-KSB7DQoNClRoZSBsb2dpYyBoZXJlIHN0aWxsIGxvb2tzIGluY29ycmVjdC4gSWYgdGhlIHVzZXIg
-aXMgb25seSByZXF1ZXN0aW5nIHRoZQ0KYWNsIGxlbmd0aCwgdGhlbiB3ZSBzaG91bGRuJ3QgY2Fy
-ZSBhYm91dCB0aGUgJ2F0dHJsZW4gPiBwYWdlX2xlbicgdGVzdC4NCg0KVGhlcmUgYWxzbyBhcHBl
-YXJzIHRvIHJlbWFpbiBhIGxvdCBvZiBpbGxlZ2FsIGRlZmVyZW5jaW5nIG9mIHhkci0+cCBldmVu
-DQphZnRlciB0aGlzIHBhdGNoLiBXZSBzaG91bGQgYmUgYWJsZSB0byBmaXggdGhhdCBieSByZXBs
-YWNpbmcNCnhkcl9yZWFkX3BhZ2VzIHdpdGggYSBjYWxsIHRvIHhkcl9lbnRlcl9wYWdlKCkgYmVm
-b3JlIHdlIGNhbGwNCmRlY29kZV9hdHRyX2JpdG1hcCgpLi4uDQoNCj4gIAkJCQkvKiBnZXR4YXR0
-ciBpbnRlcmZhY2UgY2FsbGVkIHdpdGggYSBOVUxMIGJ1ZiAqLw0KPiAgCQkJCXJlcy0+YWNsX2xl
-biA9IGF0dHJsZW47DQo+ICAJCQkJZ290byBvdXQ7DQo+IEBAIC01MTEwLDYgKzUxMTAsOCBAQCBz
-dGF0aWMgaW50IGRlY29kZV9nZXRhY2woc3RydWN0IHhkcl9zdHJlYW0gKnhkciwgc3RydWN0IHJw
-Y19ycXN0ICpyZXEsDQo+ICAJCQkJCWF0dHJsZW4sIHBhZ2VfbGVuKTsNCj4gIAkJCXJldHVybiAt
-RUlOVkFMOw0KPiAgCQl9DQo+ICsJCS8qIEF0IHRoaXMgc3RhZ2Ugd2UgaGF2ZSB0aGUgY29tcGxl
-dGUgQUNMICovDQo+ICsJCXJlcy0+YWNsX2ZsYWdzICY9IH5ORlM0X0FDTF9MRU5fT05MWTsNCj4g
-IAkJeGRyX3JlYWRfcGFnZXMoeGRyLCBhdHRybGVuKTsNCg0KV2Ugc2hvdWxkIGp1c3QgcmVwbGFj
-ZSB0aGF0IGNoZWNrIG9mICdhdHRybGVuID4gcGFnZV9sZW4nIHdpdGggYSBjaGVjaw0Kb24gdGhl
-IHJldHVybiB2YWx1ZSBvZiB4ZHJfcmVhZF9wYWdlcygpLg0KDQo+ICAJCXJlcy0+YWNsX2xlbiA9
-IGF0dHJsZW47DQo+ICAJfSBlbHNlDQo+IGRpZmYgLS1naXQgYS9pbmNsdWRlL2xpbnV4L25mc194
-ZHIuaCBiL2luY2x1ZGUvbGludXgvbmZzX3hkci5oDQo+IGluZGV4IGQzYjdjMTguLmMyZDc3ZDUg
-MTAwNjQ0DQo+IC0tLSBhL2luY2x1ZGUvbGludXgvbmZzX3hkci5oDQo+ICsrKyBiL2luY2x1ZGUv
-bGludXgvbmZzX3hkci5oDQo+IEBAIC02NDgsNyArNjQ4LDcgQEAgc3RydWN0IG5mc19nZXRhY2xh
-cmdzIHsNCj4gIH07DQo+ICANCj4gIC8qIGdldHhhdHRyIEFDTCBpbnRlcmZhY2UgZmxhZ3MgKi8N
-Cj4gLSNkZWZpbmUgTkZTNF9BQ0xfTEVOX1JFUVVFU1QJMHgwMDAxCS8qIHplcm8gbGVuZ3RoIGdl
-dHhhdHRyIGJ1ZmZlciAqLw0KPiArI2RlZmluZSBORlM0X0FDTF9MRU5fT05MWQkweDAwMDEJLyog
-emVybyBsZW5ndGggZ2V0eGF0dHIgYnVmZmVyICovDQo+ICBzdHJ1Y3QgbmZzX2dldGFjbHJlcyB7
-DQo+ICAJc2l6ZV90CQkJCWFjbF9sZW47DQo+ICAJc2l6ZV90CQkJCWFjbF9kYXRhX29mZnNldDsN
-Cg0K
+13.08.2012 20:47, J. Bruce Fields пишет:
+> On Sat, Aug 11, 2012 at 03:15:24PM +0400, Stanislav Kinsbursky wrote:
+>> 11.08.2012 10:23, Pavel Emelyanov пишет:
+>>> On 08/11/2012 03:09 AM, H. Peter Anvin wrote:
+>>>> On 08/10/2012 12:28 PM, Alan Cox wrote:
+>>>>> Explicitly for Linux yes - this is not generally true of the AF_UNIX
+>>>>> socket domain and even the permissions aspect isn't guaranteed to be
+>>>>> supported on some BSD environments !
+>>>> Yes, but let's worry about what the Linux behavior should be.
+>>>>
+>>>>> The name is however just a proxy for the socket itself. You don't even
+>>>>> get a device node in the usual sense or the same inode in the file system
+>>>>> space.
+>>>> No, but it is looked up the same way any other inode is (the difference
+>>>> between FIFOs and sockets is that sockets have separate connections,
+>>>> which is also why open() on sockets would be nice.)
+>>>>
+>>>> However, there is a fundamental difference between AF_UNIX sockets and
+>>>> open(), and that is how the pathname is delivered.  It thus would make
+>>>> more sense to provide the openat()-like information in struct
+>>>> sockaddr_un, but that may be very hard to do in a sensible way.  In that
+>>>> sense it perhaps would be cleaner to be able to do an open[at]() on the
+>>>> socket node with O_PATH (perhaps there should be an O_SOCKET option,
+>>>> even?) and pass the resulting file descriptor to bind() or connect().
+>>> I vote for this (openat + O_WHATEVER on a unix socket) as well. It will
+>>> help us in checkpoint-restore, making handling of overmounted/unlinked
+>>> sockets much cleaner.
+>> I have to notice, that it's not enough and doesn't solve the issue.
+>> There should be some way how to connect/bind already existent unix
+>> socket (from kernel, at least), because socket can be created in
+>> user space.
+>> And this way (sock operation or whatever) have to provide an ability
+>> to lookup UNIX socket starting from specified root to support
+>> containers.
+> I don't understand--the rpcbind sockets are created by the kernel.  What
+> am I missing?
+
+Kernel preform connect to rpcbind socket (i.e. user-space binds it), 
+doesn't it?
+
+>
+> --b.
+
