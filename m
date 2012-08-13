@@ -1,148 +1,230 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:27584 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756850Ab2HNSFm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Aug 2012 14:05:42 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Richard Ems <richard.ems@cape-horn-eng.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfs_lookup_revalidate BUG ?
-Date: Tue, 14 Aug 2012 18:04:08 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA93A4848@SACEXCMBX04-PRD.hq.netapp.com>
-References: <502A21A1.7020206@cape-horn-eng.com>
-In-Reply-To: <502A21A1.7020206@cape-horn-eng.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from natasha.panasas.com ([67.152.220.90]:39317 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752435Ab2HMUOD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Aug 2012 16:14:03 -0400
+Message-ID: <50295FF9.3020604@panasas.com>
+Date: Mon, 13 Aug 2012 23:13:45 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
+To: Peng Tao <bergwolf@gmail.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH RFC 2/3] NFS41: send real write size in layoutget
+References: <1344391392-1948-1-git-send-email-bergwolf@gmail.com> <1344391392-1948-3-git-send-email-bergwolf@gmail.com> <5027F63F.8070107@panasas.com> <CA+a=Yy5cG74RhVUYVQTYOCrwOWfuz2OfsCGpuMXW-8hoOgfKLw@mail.gmail.com>
+In-Reply-To: <CA+a=Yy5cG74RhVUYVQTYOCrwOWfuz2OfsCGpuMXW-8hoOgfKLw@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA4LTE0IGF0IDEyOjAwICswMjAwLCBSaWNoYXJkIEVtcyB3cm90ZToNCj4g
-SGkgYWxsICENCj4gDQo+IFdlIGdvdCB0aGUgZm9sbG93aW5nIEJVRyBhbHJlYWR5IDkgdGltZXMg
-aW4gdGhlIGxhc3QgNiBkYXlzIG9uIDkgZGlmZmVyZW50IG5vZGVzIG9mIG91ciBIUEMgY2x1c3Rl
-ci4NCj4gSSBzZWFyY2hlZCBidXQgY291bGRuJ3QgZmluZCB0aGlzIHNhbWUgQlVHIGFueXdoZXJl
-LCBidXQgYSBzaW1pbGFyIG9uZSByZWxhdGVkIHRvIGVjcnlwdGZzIHdoaWNoIHdlIGFyZSBub3Qg
-dXNpbmcuDQo+IA0KPiBUaGUgc2VydmVycyBhcmUgcnVubmluZyBvcGVuU1VTRSAxMi4xIHdpdGgg
-a2VybmVsIDMuMy42Lg0KPiBUaGUgbm9kZXMgd2VyZSB1cGRhdGVkIGZyb20gb3BlblNVU0UgMTEu
-MyBhbmQga2VybmVsIDIuNi4zNC43LTAuNS1kZWZhdWx0IHRvIG9wZW5TVVNFIDEyLjEgYW5kIGtl
-cm5lbCAzLjUuMC4NCj4gU2VydmVycyBhbmQgbm9kZXMgYXJlIHJ1bm5pbmcgdXRpbC1saW51eC0y
-LjIwLjEgYW5kIGFyZSBhbGwgNjQgYml0IHN5c3RlbXMuDQo+IA0KPiBUaGUgZXJyb3IgYXBwZWFy
-ZWQgb25seSBhZnRlciB0aGlzIHVwZGF0ZS4gQWxzbyBhZnRlciB1cGRhdGluZyB0byBrZXJuZWwg
-My41LjEgd2UgYXJlIGdldHRpbmcgdGhlIHNhbWUgZXJyb3IuDQo+IA0KPiANCj4gVGhlIEJVRyBp
-cyB0cmlnZ2VyZWQgYnkgYSBqYXZhIGFwcGxpY2F0aW9uIHRoYXQgcnVucyBhcyBhIGJhdGNoIGpv
-YiBmb3IgaG91cnMgb24gdGhlIG5vZGVzLg0KPiBXZSBhcmUgdXNpbmcgYXV0b2ZzLTUuMC43IG9u
-IHRoZSBIUEMgbm9kZXMgYW5kIG1vdW50aW5nIG9ubHkgdXNpbmcgTkZTX1YzLCBub3QgdXNpbmcg
-TkZTX1Y0IGF0IGFsbC4NCj4gDQo+IE9uIG9uZSBvZiB0aGVzZSBub2RlcyB0aGUgbW91bnQgb3B0
-aW9ucyBhcmU6DQo+IA0KPiBjNW4xMjp+ICMgbW91bnQgfCBncmVwIG5mcw0KPiBuZnNkIG9uIC9w
-cm9jL2ZzL25mc2QgdHlwZSBuZnNkIChydyxyZWxhdGltZSkNCj4gZnMxOi9kYXRhXzQvIG9uIC9u
-ZXQvZnMxL2RhdGFfNCB0eXBlIG5mcyAocncsbm9zdWlkLG5vZGV2LHJlbGF0aW1lLHZlcnM9Myxy
-c2l6ZT0xMDQ4NTc2LHdzaXplPTEwNDg1NzYsbmFtbGVuPTI1NSxoYXJkLHByb3RvPXRjcCx0aW1l
-bz02MDAscmV0cmFucz0yLHNlYz1zeXMsbW91bnRhZGRyPTEwLjAuMy4yMDMsbW91bnR2ZXJzPTMs
-bW91bnRwb3J0PTU4NTIxLG1vdW50cHJvdG89dWRwLGxvY2FsX2xvY2s9bm9uZSxhZGRyPTEwLjAu
-My4yMDMpDQo+IGZzMTovZGF0YV8xLyBvbiAvbmV0L2ZzMS9kYXRhXzEgdHlwZSBuZnMgKHJ3LG5v
-c3VpZCxub2RldixyZWxhdGltZSx2ZXJzPTMscnNpemU9MTA0ODU3Nix3c2l6ZT0xMDQ4NTc2LG5h
-bWxlbj0yNTUsaGFyZCxwcm90bz10Y3AsdGltZW89NjAwLHJldHJhbnM9MixzZWM9c3lzLG1vdW50
-YWRkcj0xMC4wLjMuMjAzLG1vdW50dmVycz0zLG1vdW50cG9ydD01ODUyMSxtb3VudHByb3RvPXVk
-cCxsb2NhbF9sb2NrPW5vbmUsYWRkcj0xMC4wLjMuMjAzKQ0KPiBjM206L29wdC8gb24gL25ldC9j
-M20vb3B0IHR5cGUgbmZzIChydyxub3N1aWQsbm9kZXYscmVsYXRpbWUsdmVycz0zLHJzaXplPTEw
-NDg1NzYsd3NpemU9MTA0ODU3NixuYW1sZW49MjU1LGhhcmQscHJvdG89dGNwLHRpbWVvPTYwMCxy
-ZXRyYW5zPTIsc2VjPXN5cyxtb3VudGFkZHI9MTAuMC4zLjIwMSxtb3VudHZlcnM9Myxtb3VudHBv
-cnQ9MzUzNzQsbW91bnRwcm90bz11ZHAsbG9jYWxfbG9jaz1ub25lLGFkZHI9MTAuMC4zLjIwMSkN
-Cj4gDQo+IA0KPiBleHBvcnRmcyAtdiBvbiB0aGUgc2VydmVycyBzaG93IGFsbCBsaW5lcyBsaWtl
-Og0KPiAvZGF0YV8xICAgICAgICAgKi5jNS54eHguY29tKHJ3LHdkZWxheSxub19yb290X3NxdWFz
-aCxub19zdWJ0cmVlX2NoZWNrKQ0KPiANCj4gDQo+IEF1ZyAxNCAwNjoyNTowMCBjNW4xMiBrZXJu
-ZWw6IFs1MzA0My41OTkzODhdIEJVRzogdW5hYmxlIHRvIGhhbmRsZSBrZXJuZWwgTlVMTCBwb2lu
-dGVyIGRlcmVmZXJlbmNlIGF0IDAwMDAwMDAwMDAwMDAwMzgNCj4gQXVnIDE0IDA2OjI1OjAwIGM1
-bjEyIGtlcm5lbDogWzUzMDQzLjU5OTUyM10gSVA6IFs8ZmZmZmZmZmZhMDM3ODljZD5dIG5mc19s
-b29rdXBfcmV2YWxpZGF0ZSsweDJkLzB4NDgwIFtuZnNdDQo+IEF1ZyAxNCAwNjoyNTowMCBjNW4x
-MiBrZXJuZWw6IFs1MzA0My41OTk2MDRdIFBHRCAzMzdjNjMwNjcgUFVEIDAgDQo+IEF1ZyAxNCAw
-NjoyNTowMCBjNW4xMiBrZXJuZWw6IFs1MzA0My41OTk2NjhdIE9vcHM6IDAwMDAgWyMxXSBTTVAg
-DQo+IEF1ZyAxNCAwNjoyNTowMCBjNW4xMiBrZXJuZWw6IFs1MzA0My41OTk3MzJdIENQVSA1IA0K
-PiBBdWcgMTQgMDY6MjU6MDAgYzVuMTIga2VybmVsOiBbNTMwNDMuNTk5NzM3XSBNb2R1bGVzIGxp
-bmtlZCBpbjogbmZzIGZzY2FjaGUgbmZzZCBsb2NrZCBuZnNfYWNsIGF1dGhfcnBjZ3NzIHN1bnJw
-YyBhZl9wYWNrZXQgYmluZm10X21pc2MgY3B1ZnJlcV9jb25zZXJ2YXRpdmUgY3B1ZnJlcV91c2Vy
-c3BhY2UgY3B1ZnJlcV9wb3dlcnNhdmUgZG1fbW9kIGFjcGlfY3B1ZnJlcSBtcGVyZiBjb3JldGVt
-cCBncGlvX2ljaCBrdm1faW50ZWwgam95ZGV2IGt2bSBpb2F0ZG1hIGhpZF9nZW5lcmljIGlnYiBs
-cGNfaWNoIGk3Y29yZV9lZGFjIGVkYWNfY29yZSBwdHAgc2VyaW9fcmF3IGRjYSBwY3Nwa3IgaTJj
-X2k4MDEgbWZkX2NvcmUgc2cgcHBzX2NvcmUgdXNiaGlkIGNyYzMyY19pbnRlbCBtaWNyb2NvZGUg
-YnV0dG9uIGF1dG9mczQgdWhjaV9oY2QgdHRtIGRybV9rbXNfaGVscGVyIGRybSBpMmNfYWxnb19i
-aXQgc3lzaW1nYmx0IHN5c2ZpbGxyZWN0IHN5c2NvcHlhcmVhIGVoY2lfaGNkIHVzYmNvcmUgdXNi
-X2NvbW1vbiBzY3NpX2RoX3JkYWMgc2NzaV9kaF9lbWMgc2NzaV9kaF9ocF9zdyBzY3NpX2RoX2Fs
-dWEgc2NzaV9kaCBlZGQgZmFuIGF0YV9waWl4IHRoZXJtYWwgcHJvY2Vzc29yIHRoZXJtYWxfc3lz
-DQo+IEF1ZyAxNCAwNjoyNTowMCBjNW4xMiBrZXJuZWw6IFs1MzA0My42MDA0MTFdIA0KPiBBdWcg
-MTQgMDY6MjU6MDAgYzVuMTIga2VybmVsOiBbNTMwNDMuNjAwNDY2XSBQaWQ6IDMwNDMxLCBjb21t
-OiBqYXZhIE5vdCB0YWludGVkIDMuNS4xLTItZGVmYXVsdCAjMSBTdXBlcm1pY3JvIFg4RFRUL1g4
-RFRUDQo+IEF1ZyAxNCAwNjoyNTowMCBjNW4xMiBrZXJuZWw6IFs1MzA0My42MDA1OTRdIFJJUDog
-MDAxMDpbPGZmZmZmZmZmYTAzNzg5Y2Q+XSAgWzxmZmZmZmZmZmEwMzc4OWNkPl0gbmZzX2xvb2t1
-cF9yZXZhbGlkYXRlKzB4MmQvMHg0ODAgW25mc10NCj4gQXVnIDE0IDA2OjI1OjAwIGM1bjEyIGtl
-cm5lbDogWzUzMDQzLjYwMDcyM10gUlNQOiAwMDE4OmZmZmY4ODAxYjQxOGJkMzggIEVGTEFHUzog
-MDAwMTAyOTINCj4gQXVnIDE0IDA2OjI1OjAwIGM1bjEyIGtlcm5lbDogWzUzMDQzLjYwMDc4N10g
-UkFYOiAwMDAwMDAwMGZmZmZmZmY2IFJCWDogZmZmZjg4MDMyMDE2ZDgwMCBSQ1g6IDAwMDAwMDAw
-MDAwMDAwMjANCj4gQXVnIDE0IDA2OjI1OjAwIGM1bjEyIGtlcm5lbDogWzUzMDQzLjYwMDg1NF0g
-UkRYOiBmZmZmZmZmZjAwMDAwMDAwIFJTSTogMDAwMDAwMDAwMDAwMDAwMCBSREk6IGZmZmY4ODAx
-ODI0YTdiMDANCj4gQXVnIDE0IDA2OjI1OjAwIGM1bjEyIGtlcm5lbDogWzUzMDQzLjYwMDkyMV0g
-UkJQOiBmZmZmODgwMWI0MThiZGY4IFIwODogN2ZmZmZmMDAzNDMyMzAzMCBSMDk6IGZmZmZmZmZm
-ZjA0YzAzZWQNCj4gQXVnIDE0IDA2OjI1OjAwIGM1bjEyIGtlcm5lbDogWzUzMDQzLjYwMDk4OV0g
-UjEwOiBmZmZmODgwMTgyNGE3YjAwIFIxMTogMDAwMDAwMDAwMDAwMDAwMiBSMTI6IGZmZmY4ODAx
-ODI0YTdiMDANCj4gQXVnIDE0IDA2OjI1OjAwIGM1bjEyIGtlcm5lbDogWzUzMDQzLjYwMTA1NV0g
-UjEzOiBmZmZmODgwMTgyNGE3YjAwIFIxNDogMDAwMDAwMDAwMDAwMDAwMCBSMTU6IGZmZmY4ODAz
-MjAxNzI1ZDANCj4gQXVnIDE0IDA2OjI1OjAwIGM1bjEyIGtlcm5lbDogWzUzMDQzLjYwMTEyMl0g
-RlM6ICAwMDAwMmI1M2E0NmNiNzAwKDAwMDApIEdTOmZmZmY4ODAzM2ZjMjAwMDAoMDAwMCkga25s
-R1M6MDAwMDAwMDAwMDAwMDAwMA0KPiBBdWcgMTQgMDY6MjU6MDAgYzVuMTIga2VybmVsOiBbNTMw
-NDMuNjAxMjQxXSBDUzogIDAwMTAgRFM6IDAwMDAgRVM6IDAwMDAgQ1IwOiAwMDAwMDAwMDgwMDUw
-MDMzDQo+IEF1ZyAxNCAwNjoyNTowMCBjNW4xMiBrZXJuZWw6IFs1MzA0My42MDEzMzVdIENSMjog
-MDAwMDAwMDAwMDAwMDAzOCBDUjM6IDAwMDAwMDAyMGE0MjYwMDAgQ1I0OiAwMDAwMDAwMDAwMDAw
-N2UwDQo+IEF1ZyAxNCAwNjoyNTowMCBjNW4xMiBrZXJuZWw6IFs1MzA0My42MDE0MDFdIERSMDog
-MDAwMDAwMDAwMDAwMDAwMCBEUjE6IDAwMDAwMDAwMDAwMDAwMDAgRFIyOiAwMDAwMDAwMDAwMDAw
-MDAwDQo+IEF1ZyAxNCAwNjoyNTowMCBjNW4xMiBrZXJuZWw6IFs1MzA0My42MDE0NjZdIERSMzog
-MDAwMDAwMDAwMDAwMDAwMCBEUjY6IDAwMDAwMDAwZmZmZjBmZjAgRFI3OiAwMDAwMDAwMDAwMDAw
-NDAwDQo+IEF1ZyAxNCAwNjoyNTowMCBjNW4xMiBrZXJuZWw6IFs1MzA0My42MDE1MzJdIFByb2Nl
-c3MgamF2YSAocGlkOiAzMDQzMSwgdGhyZWFkaW5mbyBmZmZmODgwMWI0MThhMDAwLCB0YXNrIGZm
-ZmY4ODAxYjVkMjA2MDApDQo+IEF1ZyAxNCAwNjoyNTowMCBjNW4xMiBrZXJuZWw6IFs1MzA0My42
-MDE2NTBdIFN0YWNrOg0KPiBBdWcgMTQgMDY6MjU6MDAgYzVuMTIga2VybmVsOiBbNTMwNDMuNjAx
-NzA2XSAgZmZmZjg4MDFiNDE4YmU0NCBmZmZmODgwMzIwMTZkODAwIGZmZmY4ODAxYjQxOGJkZjgg
-MDAwMDAwMDAwMDAwMDAwMA0KPiBBdWcgMTQgMDY6MjU6MDAgYzVuMTIga2VybmVsOiBbNTMwNDMu
-NjAxODI5XSAgZmZmZjg4MDE4MjRhN2IwMCBmZmZmODgwMWI0MThiZGQ3IGZmZmY4ODAzMjAxNzI1
-ZDAgZmZmZmZmZmY4MTE2YTljMA0KPiBBdWcgMTQgMDY6MjU6MDAgYzVuMTIga2VybmVsOiBbNTMw
-NDMuNjAxOTUyXSAgZmZmZjg4MDFiNWMzOGRjMCAwMDAwMDAwMDAwMDAwMDA3IGZmZmY4ODAzMjAx
-NmQ4MDAgMDAwMDAwMDAwMDAwMDAwMA0KPiBBdWcgMTQgMDY6MjU6MDAgYzVuMTIga2VybmVsOiBb
-NTMwNDMuNjAyMDc2XSBDYWxsIFRyYWNlOg0KPiBBdWcgMTQgMDY6MjU6MDAgYzVuMTIga2VybmVs
-OiBbNTMwNDMuNjAyMTUzXSAgWzxmZmZmZmZmZjgxMTZhOWMwPl0gbG9va3VwX2RjYWNoZSsweDgw
-LzB4ZTANCj4gQXVnIDE0IDA2OjI1OjAwIGM1bjEyIGtlcm5lbDogWzUzMDQzLjYwMjIyMF0gIFs8
-ZmZmZmZmZmY4MTE2YWE0Mz5dIF9fbG9va3VwX2hhc2grMHgyMy8weDkwDQo+IEF1ZyAxNCAwNjoy
-NTowMCBjNW4xMiBrZXJuZWw6IFs1MzA0My42MDIyODRdICBbPGZmZmZmZmZmODExNmI0YTU+XSBs
-b29rdXBfb25lX2xlbisweGM1LzB4MTAwDQo+IEF1ZyAxNCAwNjoyNTowMCBjNW4xMiBrZXJuZWw6
-IFs1MzA0My42MDIzNTVdICBbPGZmZmZmZmZmYTAzODY5YTM+XSBuZnNfc2lsbHlyZW5hbWUrMHhl
-My8weDIxMCBbbmZzXQ0KPiBBdWcgMTQgMDY6MjU6MDAgYzVuMTIga2VybmVsOiBbNTMwNDMuNjAy
-NDM5XSAgWzxmZmZmZmZmZjgxMTZjYWRmPl0gdmZzX3VubGluay5wYXJ0LjI1KzB4N2YvMHhlMA0K
-PiBBdWcgMTQgMDY6MjU6MDAgYzVuMTIga2VybmVsOiBbNTMwNDMuNjAyNTA0XSAgWzxmZmZmZmZm
-ZjgxMTZmMjJjPl0gZG9fdW5saW5rYXQrMHgxYWMvMHgxZDANCj4gQXVnIDE0IDA2OjI1OjAwIGM1
-bjEyIGtlcm5lbDogWzUzMDQzLjYwMjU3MF0gIFs8ZmZmZmZmZmY4MTU3MTdiOT5dIHN5c3RlbV9j
-YWxsX2Zhc3RwYXRoKzB4MTYvMHgxYg0KPiBBdWcgMTQgMDY6MjU6MDAgYzVuMTIga2VybmVsOiBb
-NTMwNDMuNjAyNjM3XSAgWzwwMDAwMmI1MzQ4YjVmNTI3Pl0gMHgyYjUzNDhiNWY1MjYNCj4gQXVn
-IDE0IDA2OjI1OjAwIGM1bjEyIGtlcm5lbDogWzUzMDQzLjYwMjY5OV0gQ29kZTogZWMgMzggYjgg
-ZjYgZmYgZmYgZmYgNGMgODkgNjQgMjQgMTggNGMgODkgNzQgMjQgMjggNDkgODkgZmMgNDggODkg
-NWMgMjQgMDggNDggODkgNmMgMjQgMTAgNDkgODkgZjYgNGMgODkgNmMgMjQgMjAgNGMgODkgN2Mg
-MjQgMzAgPGY2PiA0NiAzOCA0MCAwZiA4NSBkMSAwMCAwMCAwMCBlOCBjNCBjNCBkZiBlMCA0OCA4
-YiA1OCAzMCA0OSA4OSANCj4gQXVnIDE0IDA2OjI1OjAwIGM1bjEyIGtlcm5lbDogWzUzMDQzLjYw
-MzAwOF0gUklQICBbPGZmZmZmZmZmYTAzNzg5Y2Q+XSBuZnNfbG9va3VwX3JldmFsaWRhdGUrMHgy
-ZC8weDQ4MCBbbmZzXQ0KPiBBdWcgMTQgMDY6MjU6MDAgYzVuMTIga2VybmVsOiBbNTMwNDMuNjAz
-MDgwXSAgUlNQIDxmZmZmODgwMWI0MThiZDM4Pg0KPiBBdWcgMTQgMDY6MjU6MDAgYzVuMTIga2Vy
-bmVsOiBbNTMwNDMuNjAzMTQwXSBDUjI6IDAwMDAwMDAwMDAwMDAwMzgNCj4gQXVnIDE0IDA2OjI1
-OjAwIGM1bjEyIGtlcm5lbDogWzUzMDQzLjYwMzUxN10gLS0tWyBlbmQgdHJhY2UgODQ1MTEzZWQx
-OTE5ODVkZCBdLS0tDQo+IA0KPiANCj4gSXMgdGhpcyBhIGtub3duIEJVRyA/DQo+IFdoaWNoIG90
-aGVyIGluZm9ybWF0aW9uIG9yIHRlc3QgY2FuIEkgZG8gdG8gY29udHJpYnV0ZSBzZWFyY2hpbmcv
-cmVzb2x2aW5nIHRoaXMgaXNzdWU/DQoNCkknbSBub3QgMTAwJSBjZXJ0YWluLCBidXQgaXQgbG9v
-a3MgdG8gbWUgYXMgaWYgdGhlIGNhbGwgdG8gZGdldF9wYXJlbnQoKQ0KaW4gbmZzX2xvb2t1cF9y
-ZXZhbGlkYXRlIGlzIHJldHVybmluZyBOVUxMLg0KDQpDb3VsZCB5b3UgcGxlYXNlIGFwcGx5IHRo
-ZSBmb2xsb3dpbmcgcGF0Y2gsIGFuZCBzZWUgaWYgdGhhdCB0cmlnZ2VycyB0aGUNCldBUk5fT04g
-aW5zdGVhZCBvZiB0aGUgYWJvdmUgT29wcz8NCg0KQ2hlZXJzDQogIFRyb25kDQotLS0NCmRpZmYg
-LS1naXQgYS9mcy9uZnMvZGlyLmMgYi9mcy9uZnMvZGlyLmMNCmluZGV4IGY0MzAwNTcuLjZkNjc4
-MmMgMTAwNjQ0DQotLS0gYS9mcy9uZnMvZGlyLmMNCisrKyBiL2ZzL25mcy9kaXIuYw0KQEAgLTEx
-MjcsNiArMTEyNywxMCBAQCBzdGF0aWMgaW50IG5mc19sb29rdXBfcmV2YWxpZGF0ZShzdHJ1Y3Qg
-ZGVudHJ5ICpkZW50cnksIHN0cnVjdCBuYW1laWRhdGEgKm5kKQ0KIAkJcmV0dXJuIC1FQ0hJTEQ7
-DQogDQogCXBhcmVudCA9IGRnZXRfcGFyZW50KGRlbnRyeSk7DQorCWlmIChwYXJlbnQgPT0gTlVM
-TCkgew0KKwkJV0FSTl9PTigxKTsNCisJCXJldHVybiAwOw0KKwl9DQogCWRpciA9IHBhcmVudC0+
-ZF9pbm9kZTsNCiAJbmZzX2luY19zdGF0cyhkaXIsIE5GU0lPU19ERU5UUllSRVZBTElEQVRFKTsN
-CiAJaW5vZGUgPSBkZW50cnktPmRfaW5vZGU7DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51
-eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBw
-LmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+On 08/13/2012 12:44 PM, Peng Tao wrote:
+
+> On Mon, Aug 13, 2012 at 2:30 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+>> On 08/08/2012 05:03 AM, Peng Tao wrote:
+>>
+>>> From: Peng Tao <tao.peng@emc.com>
+>>>
+>>> For bufferred write, scan dirty pages to find out longest continuous
+>>> dirty pages. In this case, also allow layout driver to specify a
+>>> maximum layoutget size which is useful to avoid busy scanning dirty pages
+>>> for block layout client.
+>>>
+>>> For direct write, just use dreq->bytes_left.
+>>>
+>>> Signed-off-by: Peng Tao <tao.peng@emc.com>
+>>> ---
+>>>  fs/nfs/direct.c   |    7 ++++++
+>>>  fs/nfs/internal.h |    1 +
+>>>  fs/nfs/pnfs.c     |   58 +++++++++++++++++++++++++++++++++++++++++++++++++++-
+>>>  3 files changed, 64 insertions(+), 2 deletions(-)
+>>>
+>>> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+>>> index c39f775..c1899dd 100644
+>>> --- a/fs/nfs/direct.c
+>>> +++ b/fs/nfs/direct.c
+>>> @@ -46,6 +46,7 @@
+>>>  #include <linux/kref.h>
+>>>  #include <linux/slab.h>
+>>>  #include <linux/task_io_accounting_ops.h>
+>>> +#include <linux/module.h>
+>>>
+>>>  #include <linux/nfs_fs.h>
+>>>  #include <linux/nfs_page.h>
+>>> @@ -191,6 +192,12 @@ static void nfs_direct_req_release(struct nfs_direct_req *dreq)
+>>>       kref_put(&dreq->kref, nfs_direct_req_free);
+>>>  }
+>>>
+>>> +ssize_t nfs_dreq_bytes_left(struct nfs_direct_req *dreq)
+>>> +{
+>>> +     return dreq->bytes_left;
+>>> +}
+>>> +EXPORT_SYMBOL_GPL(nfs_dreq_bytes_left);
+>>> +
+>>>  /*
+>>>   * Collects and returns the final error value/byte-count.
+>>>   */
+>>> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+>>> index 31fdb03..e68d329 100644
+>>> --- a/fs/nfs/internal.h
+>>> +++ b/fs/nfs/internal.h
+>>> @@ -464,6 +464,7 @@ static inline void nfs_inode_dio_wait(struct inode *inode)
+>>>  {
+>>>       inode_dio_wait(inode);
+>>>  }
+>>> +extern ssize_t nfs_dreq_bytes_left(struct nfs_direct_req *dreq);
+>>>
+>>
+>>
+>> Why is this an EXPORT_SYMBOL_GPL at .c file. Why not just an inline
+>> here ?
+>>
+>>>  /* nfs4proc.c */
+>>>  extern void __nfs4_read_done_cb(struct nfs_read_data *);
+>>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>>> index 2e00fea..e61a373 100644
+>>> --- a/fs/nfs/pnfs.c
+>>> +++ b/fs/nfs/pnfs.c
+>>> @@ -29,6 +29,7 @@
+>>>
+>>>  #include <linux/nfs_fs.h>
+>>>  #include <linux/nfs_page.h>
+>>> +#include <linux/pagevec.h>
+>>>  #include <linux/module.h>
+>>>  #include "internal.h"
+>>>  #include "pnfs.h"
+>>> @@ -1172,19 +1173,72 @@ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *r
+>>>  }
+>>>  EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_read);
+>>>
+>>> +/*
+>>> + * Return the number of contiguous bytes in dirty pages for a given inode
+>>> + * starting at page frame idx.
+>>> + */
+>>> +static u64 pnfs_num_dirty_bytes(struct inode *inode, pgoff_t idx)
+>>> +{
+>>> +     struct address_space *mapping = inode->i_mapping;
+>>> +     pgoff_t index;
+>>> +     struct pagevec pvec;
+>>> +     pgoff_t num = 1; /* self */
+>>> +     int i, done = 0;
+>>> +
+>>> +     pagevec_init(&pvec, 0);
+>>> +     idx++; /* self */
+>>> +     while (!done) {
+>>> +             index = idx;
+>>> +             pagevec_lookup_tag(&pvec, mapping, &index,
+>>> +                                PAGECACHE_TAG_DIRTY, (pgoff_t)PAGEVEC_SIZE);
+>>> +             if (pagevec_count(&pvec) == 0)
+>>> +                     break;
+>>> +
+>>> +             for (i = 0; i < pagevec_count(&pvec); i++) {
+>>> +                     struct page *page = pvec.pages[i];
+>>> +
+>>> +                     lock_page(page);
+>>> +                     if (unlikely(page->mapping != mapping) ||
+>>> +                         !PageDirty(page) ||
+>>> +                         PageWriteback(page) ||
+>>> +                         page->index != idx) {
+>>> +                             done = 1;
+>>> +                             unlock_page(page);
+>>> +                             break;
+>>> +                     }
+>>> +                     unlock_page(page);
+>>> +                     if (done)
+>>> +                             break;
+>>> +                     idx++;
+>>> +                     num++;
+>>> +             }
+>>> +             pagevec_release(&pvec);
+>>> +     }
+>>> +     return num << PAGE_CACHE_SHIFT;
+>>> +}
+>>> +
+>>
+>>
+>> Same as what Trond said. radix_tree_next_hole() should be nicer. We need never
+>> do any locking this is just an hint, and not a transaction guaranty. Best first
+>> guess approximation is all we need.
+>>
+>> Also you might want to optimize for the most common case of a linear write from
+>> zero. This you can do by comparing i_size / PAGE_SIZE and the number of dirty
+>> pages, if they are the same you know there are no holes, and need not scan.
+>>
+>>>  void
+>>> -pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+>>> +pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
+>>> +                        struct nfs_page *req)
+>>
+>>
+>> Nothing changed here, please don't do this
+>>
+>>>  {
+>>> +     u64 wb_size;
+>>> +
+>>>       BUG_ON(pgio->pg_lseg != NULL);
+>>>
+>>>       if (req->wb_offset != req->wb_pgbase) {
+>>>               nfs_pageio_reset_write_mds(pgio);
+>>>               return;
+>>>       }
+>>> +
+>>> +     if (pgio->pg_dreq == NULL)
+>>> +             wb_size = pnfs_num_dirty_bytes(pgio->pg_inode, req->wb_index);
+>>> +     else
+>>> +             wb_size = nfs_dreq_bytes_left(pgio->pg_dreq);
+>>> +
+>>>       pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+>>>                                          req->wb_context,
+>>>                                          req_offset(req),
+>>> -                                        req->wb_bytes,
+>>> +                                        wb_size?:req->wb_bytes,
+>>
+>>
+>> wb_size is always set above in the if() or else. No need to check here.
+>>
+>>>                                          IOMODE_RW,
+>>>                                          GFP_NOFS);
+>>>       /* If no lseg, fall back to write through mds */
+>>
+>>
+>>
+>> But No!
+>>
+>> much much better then last time, thank you for working on this
+>> but it is not optimum for objects and files
+>> (when "files" supports segments)
+>>
+>> For blocks, Yes radix_tree_next_hole() is the perfect fit. But for
+>> objects (and files) it is i_size_read(). The objects/files server usually
+>> determines it's topology according to file-size. And it does not have any
+>> bigger resources because of holes or no holes. (The files example I think of
+>> is CEPH)
+>>
+>> So for objects the wasting factor is the actual i_size extending as a cause
+>> of layout_get, and not the number of pages served. So for us the gain is if
+>> client, that has a much newer information about i_size, sends it on first
+>> layout_get. Though extending file size only once on first layout_get and
+>> not on every layout_get.
+>>
+>> So the small change I want is:
+>>
+>> +enum pnfs_layout_get_strategy {
+>> +       PLGS_USE_ISIZE,
+>> +       PLGS_SEARCH_FIRST_HOLE,
+>> +       PLGS_ALL_FILE,
+>> +};
+>>
+> Just a second thought, since each layout driver would use one
+> strategy, it is more reasonable to set the strategy in
+> pnfs_curr_ld->flags instead of changing pg_init API to pass it in. I
+> will do it this way.
+> 
+
+
+It's fine, as you see fit. I think it's more flexible this way but
+both ways will work for now.
+
+Please note that for files, once it will support segments, it would
+want to use i_size like objects.
+
+Thanks
+Boaz
