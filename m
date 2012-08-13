@@ -1,37 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lpp01m010-f46.google.com ([209.85.215.46]:39624 "EHLO
-	mail-lpp01m010-f46.google.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751110Ab2H1RJQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Aug 2012 13:09:16 -0400
-Received: by lagy9 with SMTP id y9so3444240lag.19
-        for <linux-nfs@vger.kernel.org>; Tue, 28 Aug 2012 10:09:15 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <CAHVgHyXBu5Ocb+MiAjbL_tn3CVx19+usbnDr1R-n4S9PCjK78A@mail.gmail.com>
-References: <CAFtxgO5if9qDf9Lex+=hPjrQBgy9ZOnQDr+CWvGY2U7dpC3dOQ@mail.gmail.com>
-	<CAHVgHyX9aDLjYH0QwUCjx8tXwjsdm=MqH2GPY_68P6XHkYGhVQ@mail.gmail.com>
-	<CAFtxgO6FNuqOcvXvu_Y_-NmojpyC2GHiX5rpMQuY4u4zYYbwWg@mail.gmail.com>
-	<CAHVgHyXBu5Ocb+MiAjbL_tn3CVx19+usbnDr1R-n4S9PCjK78A@mail.gmail.com>
-Date: Tue, 28 Aug 2012 13:09:14 -0400
-Message-ID: <CAFtxgO7qM+FDMEMUOVe1Z+LcYHmtQAPUdxd1zeGqtpidFo1wfQ@mail.gmail.com>
-Subject: Re: [NFS v4.1] State manager error 22?
-From: Jeff Garzik <jeff@garzik.org>
-To: Andy Adamson <androsadamson@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:25064 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751700Ab2HMMLF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Aug 2012 08:11:05 -0400
+Date: Mon, 13 Aug 2012 08:10:54 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        devel@openvz.org
+Subject: Re: [PATCH v2] SUNRPC: check current nsproxy before set of node
+ name on client creation
+Message-ID: <20120813081054.0ee39037@corrin.poochiereds.net>
+In-Reply-To: <20120813113731.9629.31906.stgit@localhost.localdomain>
+References: <20120813113731.9629.31906.stgit@localhost.localdomain>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 28, 2012 at 12:31 PM, Andy Adamson <androsadamson@gmail.com> wrote:
-> nfs4_verify_fore_channel_attrs and nfs4_verify_back_channel_attrs was
-> what I was looking at. I would also check the server responses (and
-> the client reaction!) against rfc5661.
->
-> Have you turned on client debugging to /var/log/messages?  This turns
-> it all on which for a mount failure is ok.
->
-> # rpcdebug -v -m nfs -s all
+On Mon, 13 Aug 2012 15:37:31 +0400
+Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
 
-Will give that a try.  But it looks like I need to rebuild with
-CONFIG_NFS_DEBUG...
+> v2:
+> 1) rpc_clnt_set_nodename() prototype updated.
+> 2) fixed errors in comment.
+> 
+> When child reaper exits, it can destroy mount namespace it belongs to, and if
+> there are NFS mounts inside, then it will try to umount them. But in this
+> point current->nsproxy is set to NULL and all namespaces will be destroyed one
+> by one. I.e. we can't dereference current->nsproxy to obtain uts namespace.
+> 
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> ---
+>  net/sunrpc/clnt.c |   16 +++++++++++++---
+>  1 files changed, 13 insertions(+), 3 deletions(-)
+> 
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index 9a9676e..8fbcbc8 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -277,8 +277,18 @@ void rpc_clients_notifier_unregister(void)
+>  	return rpc_pipefs_notifier_unregister(&rpc_clients_block);
+>  }
+>  
+> -static void rpc_clnt_set_nodename(struct rpc_clnt *clnt, const char *nodename)
+> +static void rpc_clnt_set_nodename(struct rpc_clnt *clnt)
+>  {
+> +	const char *nodename;
+> +
+> +	/*
+> +	 * We have to protect against dying child reaper, which has released
+> +	 * its nsproxy already and is trying to destroy mount namespace.
+> +	 */
+> +	if (current->nsproxy == NULL)
+> +		return;
+> +
+> +	nodename = utsname()->nodename;
+>  	clnt->cl_nodelen = strlen(nodename);
+>  	if (clnt->cl_nodelen > UNX_MAXNODENAME)
+>  		clnt->cl_nodelen = UNX_MAXNODENAME;
+> @@ -365,7 +375,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+>  	}
+>  
+>  	/* save the nodename */
+> -	rpc_clnt_set_nodename(clnt, utsname()->nodename);
+> +	rpc_clnt_set_nodename(clnt);
+>  	rpc_register_client(clnt);
+>  	return clnt;
+>  
+> @@ -524,7 +534,7 @@ rpc_clone_client(struct rpc_clnt *clnt)
+>  	err = rpc_setup_pipedir(new, clnt->cl_program->pipe_dir_name);
+>  	if (err != 0)
+>  		goto out_no_path;
+> -	rpc_clnt_set_nodename(new, utsname()->nodename);
+> +	rpc_clnt_set_nodename(new);
+>  	if (new->cl_auth)
+>  		atomic_inc(&new->cl_auth->au_count);
+>  	atomic_inc(&clnt->cl_count);
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-     Jeff
+Acked-by: Jeff Layton <jlayton@redhat.com>
