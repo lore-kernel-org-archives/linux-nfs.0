@@ -1,137 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailout-de.gmx.net ([213.165.64.23]:58827 "HELO
-	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1756562Ab2HIP1t (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2012 11:27:49 -0400
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:41701 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753314Ab2HMVWC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Aug 2012 17:22:02 -0400
+Received: by mail-yx0-f174.google.com with SMTP id l14so2487139yen.19
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Aug 2012 14:22:01 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 4/5] SUNRPC: Insert a shim under gss_create()
+To: trond.myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="utf-8"
-Date: Thu, 09 Aug 2012 17:27:44 +0200
-From: "Johannes Schild" <JSchild@gmx.de>
-In-Reply-To: <5DFC6BE3BA248842867E85C73BF94B050B17B698CF@MX41A.corp.emc.com>
-Message-ID: <20120809152744.149360@gmx.net>
+Date: Mon, 13 Aug 2012 17:21:59 -0400
+Message-ID: <20120813212159.1680.63492.stgit@degas.1015granger.net>
+In-Reply-To: <20120813210739.1680.53741.stgit@degas.1015granger.net>
+References: <20120813210739.1680.53741.stgit@degas.1015granger.net>
 MIME-Version: 1.0
-References: <20120808155829.177400@gmx.net> <20120808163916.GA24539@umich.edu>
- <20120808182622.177380@gmx.net> <20120809084236.177380@gmx.net>
- <5DFC6BE3BA248842867E85C73BF94B050B17B698CF@MX41A.corp.emc.com>
-Subject: Re: RE: Blocklayout
-To: "Peng, Tao" <tao.peng@emc.com>, rees@umich.edu
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+We want to share rpc_pipe data between GSS-flavored rpc_auth objects.
+To do this, create a shim in gss_create() and gss_free() where the
+pipe data will be looked up, created, and destroyed.  The unused
+arguments anticipate a per-RPC client cache of pipes.
 
--------- Original-Nachricht --------
-> Datum: Thu, 9 Aug 2012 04:56:07 -0400
-> Von: "Peng, Tao" <tao.peng@emc.com>
-> An: Johannes Schild <JSchild@gmx.de>, "rees@umich.edu" <rees@umich.edu>
-> CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-> Betreff: RE: Blocklayout
+This is a refactoring change which shouldn't have a functional
+effect.
 
-> 
-> > -----Original Message-----
-> > From: linux-nfs-owner@vger.kernel.org
-> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Johannes
-> > Schild
-> > Sent: Thursday, August 09, 2012 4:43 PM
-> > To: Johannes Schild; rees@umich.edu
-> > Cc: linux-nfs@vger.kernel.org
-> > Subject: Re: Blocklayout
-> > 
-> > Hi Guys,
-> > 
-> > some additional Information,
-> > 
-> > [ 1644.874549] FS-Cache: Loaded
-> > [ 1644.895122] NFS: Registering the id_resolver key type
-> > [ 1644.895158] FS-Cache: Netfs 'nfs' registered for caching
-> > [ 1644.920204] blkmapd: sending ioctl 2285 to a partition!
-> > [ 1644.920207] blkmapd: sending ioctl 2285 to a partition!
-> > [ 1644.920208] blkmapd: sending ioctl 2285 to a partition!
-> > [ 1644.920263] blkmapd: sending ioctl 2285 to a partition!
-> > [ 1644.920264] blkmapd: sending ioctl 2285 to a partition!
-> > [ 1644.920265] blkmapd: sending ioctl 2285 to a partition!
-> > [ 1653.129460] blkmapd: sending ioctl 2285 to a partition!
-> > [ 1653.129463] blkmapd: sending ioctl 2285 to a partition!
-> > [ 1653.129464] blkmapd: sending ioctl 2285 to a partition!
-> > [ 1653.129528] blkmapd: sending ioctl 2285 to a partition!
-> > [ 1653.129530] blkmapd: sending ioctl 2285 to a partition!
-> > [ 1653.129531] blkmapd: sending ioctl 2285 to a partition!
-> > [ 1653.136682] NFS: set_pnfs_layoutdriver: Error initializing pNFS
-> layout driver 3.
-> > 
-> > someone any ideas whats going wrong? The above output is from dmesg.
-> > Iam using 3.4.7-1.fc16.x86_64 Kernel from Fedora. The utils are from
-> > http://steved.fedorapeople.org/repos/pnfs.
-> > 
-> There is a regression about saving proper pnfs_blksize before setting
-> block layout driver by commit e38eb650 (NFS: set_pnfs_layoutdriver() from
-> nfs4_proc_fsinfo()).
-> If your client includes the specific commit (although I don't think the
-> commit is in 3.4 kernel), please retry after applying the fix at
-> http://www.spinics.net/lists/linux-nfs/msg31868.html	
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Acked-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
 
-The patch doesn't fit my kernel. My cliet.c looks a little bit different from the client.c in the patch:
+ net/sunrpc/auth_gss/auth_gss.c |   28 +++++++++++++++++++---------
+ 1 files changed, 19 insertions(+), 9 deletions(-)
 
-if (server->wsize > NFS_MAX_FILE_IO_SIZE)
-                server->wsize = NFS_MAX_FILE_IO_SIZE;
-        server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
-        server->pnfs_blksize = fsinfo->blksize;
-        set_pnfs_layoutdriver(server, mntfh, fsinfo->layouttype);
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 947ab01..82a3156 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -857,6 +857,18 @@ static int gss_pipes_dentries_create_net(struct rpc_clnt *clnt,
+ 	return err;
+ }
+ 
++static struct rpc_pipe *gss_mkpipe_data(struct rpc_clnt *clnt,
++					const struct rpc_pipe_ops *ops,
++					char *name)
++{
++	return rpc_mkpipe_data(ops, RPC_PIPE_WAIT_FOR_OPEN);
++}
++
++static void gss_destroy_pipe_data(struct rpc_clnt *clnt, struct rpc_pipe *pipe)
++{
++	rpc_destroy_pipe_data(pipe);
++}
++
+ /*
+  * NOTE: we have the opportunity to use different
+  * parameters based on the input flavor (which must be a pseudoflavor)
+@@ -899,15 +911,13 @@ gss_create(struct rpc_clnt *clnt, rpc_authflavor_t flavor)
+ 	 * that we supported only the old pipe.  So we instead create
+ 	 * the new pipe first.
+ 	 */
+-	gss_auth->pipe[1] = rpc_mkpipe_data(&gss_upcall_ops_v1,
+-					    RPC_PIPE_WAIT_FOR_OPEN);
++	gss_auth->pipe[1] = gss_mkpipe_data(clnt, &gss_upcall_ops_v1, "gssd");
+ 	if (IS_ERR(gss_auth->pipe[1])) {
+ 		err = PTR_ERR(gss_auth->pipe[1]);
+ 		goto err_put_mech;
+ 	}
+-
+-	gss_auth->pipe[0] = rpc_mkpipe_data(&gss_upcall_ops_v0,
+-					    RPC_PIPE_WAIT_FOR_OPEN);
++	gss_auth->pipe[0] = gss_mkpipe_data(clnt, &gss_upcall_ops_v0,
++						gss_auth->mech->gm_name);
+ 	if (IS_ERR(gss_auth->pipe[0])) {
+ 		err = PTR_ERR(gss_auth->pipe[0]);
+ 		goto err_destroy_pipe_1;
+@@ -923,9 +933,9 @@ gss_create(struct rpc_clnt *clnt, rpc_authflavor_t flavor)
+ err_unlink_pipes:
+ 	gss_pipes_dentries_destroy_net(clnt, auth);
+ err_destroy_pipe_0:
+-	rpc_destroy_pipe_data(gss_auth->pipe[0]);
++	gss_destroy_pipe_data(clnt, gss_auth->pipe[0]);
+ err_destroy_pipe_1:
+-	rpc_destroy_pipe_data(gss_auth->pipe[1]);
++	gss_destroy_pipe_data(clnt, gss_auth->pipe[1]);
+ err_put_mech:
+ 	gss_mech_put(gss_auth->mech);
+ err_free:
+@@ -939,8 +949,8 @@ static void
+ gss_free(struct gss_auth *gss_auth)
+ {
+ 	gss_pipes_dentries_destroy_net(gss_auth->client, &gss_auth->rpc_auth);
+-	rpc_destroy_pipe_data(gss_auth->pipe[0]);
+-	rpc_destroy_pipe_data(gss_auth->pipe[1]);
++	gss_destroy_pipe_data(gss_auth->client, gss_auth->pipe[0]);
++	gss_destroy_pipe_data(gss_auth->client, gss_auth->pipe[1]);
+ 	gss_mech_put(gss_auth->mech);
+ 
+ 	kfree(gss_auth);
 
-        server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
-
-The same thing on nfs4proc.c:
-{
-        nfs_fattr_init(fsinfo->fattr);
-        return nfs4_do_fsinfo(server, fhandle, fsinfo);
-}
-
-there is no error routine or if-statement like in the patch.
-that was a different kernel i tried, kernel-3.3.0-0.rc2.git1.1.pnfsd.fc17.src.rpm from http://steved.fedorapeople.org/repos/pnfs
-
-
-
-
-> If you still see same error, please enable client debug by
-> echo 65535 > /proc/sys/sunrpc/nfs_debug
-> 
-
-Thats the complete output from dmesg after mounting and try to create a file (i think thats only nfsv4):
-
-[    4.026472] iscsi: registered transport (bnx2i)
-[    4.029122] iscsi: registered transport (be2iscsi)
-[   81.340654] pcnet32 0000:02:05.0: eth1: link up
-[   92.600159] eth1: no IPv6 routers present
-[  107.568142] scsi3 : iSCSI Initiator over TCP/IP
-[  107.831688] scsi 3:0:0:0: RAID              IET      Controller       0001 PQ: 0 ANSI: 5
-[  107.833425] scsi 3:0:0:0: Attached scsi generic sg4 type 12
-[  107.836869] scsi 3:0:0:1: Direct-Access     IET      VIRTUAL-DISK     0001 PQ: 0 ANSI: 5
-[  107.837494] sd 3:0:0:1: Attached scsi generic sg5 type 0
-[  107.838664] sd 3:0:0:1: [sdd] 4196352 512-byte logical blocks: (2.14 GB/2.00 GiB)
-[  107.838750] scsi 3:0:0:2: Direct-Access     IET      VIRTUAL-DISK     0001 PQ: 0 ANSI: 5
-[  107.838843] sd 3:0:0:2: Attached scsi generic sg6 type 0
-[  107.843793] sd 3:0:0:1: [sdd] Write Protect is off
-[  107.843796] sd 3:0:0:1: [sdd] Mode Sense: 49 00 00 08
-[  107.844193] sd 3:0:0:2: [sde] 4196352 512-byte logical blocks: (2.14 GB/2.00 GiB)
-[  107.844814] sd 3:0:0:1: [sdd] Write cache: enabled, read cache: enabled, doesn't support DPO or FUA
-[  107.845943] sd 3:0:0:2: [sde] Write Protect is off
-[  107.845945] sd 3:0:0:2: [sde] Mode Sense: 49 00 00 08
-[  107.846699] sd 3:0:0:2: [sde] Write cache: enabled, read cache: enabled, doesn't support DPO or FUA
-[  107.856535]  sdd: sdd1
-[  107.859230]  sde: sde1
-[  107.859941] sd 3:0:0:1: [sdd] Attached SCSI disk
-[  107.861468] sd 3:0:0:2: [sde] Attached SCSI disk
-[  179.557893] FS-Cache: Loaded
-[  179.563310] NFS: Registering the id_resolver key type
-[  179.563339] FS-Cache: Netfs 'nfs' registered for caching
-[  207.222318] NFS: set_pnfs_layoutdriver: Error initializing pNFS layout driver 3.
-
-
-> And redo mount and send the log.
-> 
-> Thanks,
-> Tao
-> 
-
-Thanks
-
-Johannes
