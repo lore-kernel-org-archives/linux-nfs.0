@@ -1,68 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:47682 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755044Ab2HUVCU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 17:02:20 -0400
-Subject: Re: [PATCH 08/14] svcrpc: ignore unknown address type in udp receive
-Mime-Version: 1.0 (Apple Message framework v1278)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1345582652-18476-9-git-send-email-bfields@redhat.com>
-Date: Tue, 21 Aug 2012 17:02:14 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <05C6926C-B688-4A71-AA1C-26F251BBD635@oracle.com>
-References: <1345582652-18476-1-git-send-email-bfields@redhat.com> <1345582652-18476-9-git-send-email-bfields@redhat.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
+Received: from natasha.panasas.com ([67.152.220.90]:54125 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753148Ab2HNA2p (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Aug 2012 20:28:45 -0400
+Message-ID: <50299BAA.40909@panasas.com>
+Date: Tue, 14 Aug 2012 03:28:26 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Peng Tao <bergwolf@gmail.com>, Benny Halevy <bhalevy@tonian.com>,
+        "Adamson, Andy" <William.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
+        "Isaman, Fred" <Fred.Isaman@netapp.com>,
+        "Welch, Brent" <welch@panasas.com>,
+        Garth Gibson <garth.gibson@panasas.com>
+Subject: Re: [PATCH] NFSv4.1: Remove a bogus BUG_ON() in nfs4_layoutreturn_done
+References: <1344457310-26442-1-git-send-email-Trond.Myklebust@netapp.com>    <CA+a=Yy7SX+cPLFiNy552bU9ZMS_rSwvaSpV732_mDwpcPAH5Wg@mail.gmail.com>    <1344522979.23523.2.camel@lade.trondhjem.org>    <CA+a=Yy7tDi0kQGvjPeb=O_9XMnZDm-_31VTkNF7wEW7Pb0BZow@mail.gmail.com>   <1344526780.25447.6.camel@lade.trondhjem.org>   <5027E98B.7050603@panasas.com>  <4FA345DA4F4AE44899BD2B03EEEC2FA939C3E7@SACEXCMBX04-PRD.hq.netapp.com>  <50299041.2040302@panasas.com> <4FA345DA4F4AE44899BD2B03EEEC2FA93A064E@SACEXCMBX04-PRD.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA93A064E@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Aug 21, 2012, at 4:57 PM, J. Bruce Fields wrote:
-
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> How would this happen?
-
-If an unsupported address family is used in the rqstp.
-
-> In any case, it appears this would be returned all the way up to the
-> caller of svc_recv(), and it's obvious that none of them are equipped to
-> handle it, and not clear what they would want to do with it anyway.
-> Let's just drop this and return -EAGAIN.
-
-EAGAIN is incorrect; the correct error code is EAFNOSUPPORT.  If callers are not prepared for this error return, perhaps BUG_ON() would be more appropriate here.
+On 08/14/2012 03:16 AM, Myklebust, Trond wrote:
 
 > 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
-> net/sunrpc/svcsock.c |    2 +-
-> 1 file changed, 1 insertion(+), 1 deletion(-)
+> The client can't guarantee that. The protocol offers no way for it to do
+> so, no matter what the pNFS text may choose to say.
 > 
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index 06ae8a7..97ce23f 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -602,7 +602,7 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
-> 	}
-> 	len = svc_addr_len(svc_addr(rqstp));
-> 	if (len == 0)
-> -		return -EAFNOSUPPORT;
-> +		return -EAGAIN;
-> 	rqstp->rq_addrlen = len;
-> 	if (skb->tstamp.tv64 == 0) {
-> 		skb->tstamp = ktime_get_real();
-> -- 
-> 1.7.9.5
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
 
 
+What? why not? all the client needs to do is stop sending bytes.
+What is not guarantied? I completely do not understand what you
+say. How stopping any sends does not guaranty that?
 
+Please explain
 
+Thanks
+Boaz
+ 
