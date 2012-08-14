@@ -1,196 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46810 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:37597 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758511Ab2HUU5g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Aug 2012 16:57:36 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 12/14] svcrpc: break up svc_recv
-Date: Tue, 21 Aug 2012 16:57:30 -0400
-Message-Id: <1345582652-18476-13-git-send-email-bfields@redhat.com>
-In-Reply-To: <1345582652-18476-1-git-send-email-bfields@redhat.com>
-References: <1345582652-18476-1-git-send-email-bfields@redhat.com>
+	id S1751663Ab2HNNp6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Aug 2012 09:45:58 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@tonian.com>
+CC: Peng Tao <bergwolf@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
+        Boaz Harrosh <bharrosh@panasas.com>,
+        "Isaman, Fred" <Fred.Isaman@netapp.com>,
+        Idan Keidar <idank@tonian.com>, Lev Solomonov <solo@tonian.com>
+Subject: Re: [PATCH] NFSv4.1: Remove a bogus BUG_ON() in
+ nfs4_layoutreturn_done
+Date: Tue, 14 Aug 2012 13:45:08 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA93A372D@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1344457310-26442-1-git-send-email-Trond.Myklebust@netapp.com>
+	  <CA+a=Yy7SX+cPLFiNy552bU9ZMS_rSwvaSpV732_mDwpcPAH5Wg@mail.gmail.com>
+	  <1344522979.23523.2.camel@lade.trondhjem.org>
+	  <CA+a=Yy7tDi0kQGvjPeb=O_9XMnZDm-_31VTkNF7wEW7Pb0BZow@mail.gmail.com>
+	 <1344526780.25447.6.camel@lade.trondhjem.org> <502A02B2.2020700@tonian.com>
+In-Reply-To: <502A02B2.2020700@tonian.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
-
-Matter of taste, I suppose, but svc_recv breaks up naturally into:
-
-	allocate pages and setup arg
-	dequeue (wait for, if necessary) next socket
-	do something with that socket
-
-And I find it easier to read when it doesn't go on for pages and pages.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- net/sunrpc/svc_xprt.c |  103 ++++++++++++++++++++++++++++++++-----------------
- 1 file changed, 67 insertions(+), 36 deletions(-)
-
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 295e6ed..6ebc9a9 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -568,33 +568,12 @@ static void svc_check_conn_limits(struct svc_serv *serv)
- 	}
- }
- 
--/*
-- * Receive the next request on any transport.  This code is carefully
-- * organised not to touch any cachelines in the shared svc_serv
-- * structure, only cachelines in the local svc_pool.
-- */
--int svc_recv(struct svc_rqst *rqstp, long timeout)
-+int svc_alloc_arg(struct svc_rqst *rqstp)
- {
--	struct svc_xprt		*xprt = NULL;
--	struct svc_serv		*serv = rqstp->rq_server;
--	struct svc_pool		*pool = rqstp->rq_pool;
--	int			len, i;
--	int			pages;
--	struct xdr_buf		*arg;
--	DECLARE_WAITQUEUE(wait, current);
--	long			time_left;
--
--	dprintk("svc: server %p waiting for data (to = %ld)\n",
--		rqstp, timeout);
--
--	if (rqstp->rq_xprt)
--		printk(KERN_ERR
--			"svc_recv: service %p, transport not NULL!\n",
--			 rqstp);
--	if (waitqueue_active(&rqstp->rq_wait))
--		printk(KERN_ERR
--			"svc_recv: service %p, wait queue active!\n",
--			 rqstp);
-+	struct svc_serv *serv = rqstp->rq_server;
-+	struct xdr_buf *arg;
-+	int pages;
-+	int i;
- 
- 	/* now allocate needed pages.  If we get a failure, sleep briefly */
- 	pages = (serv->sv_max_mesg + PAGE_SIZE) / PAGE_SIZE;
-@@ -624,11 +603,15 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
- 	arg->page_len = (pages-2)*PAGE_SIZE;
- 	arg->len = (pages-1)*PAGE_SIZE;
- 	arg->tail[0].iov_len = 0;
-+	return 0;
-+}
- 
--	try_to_freeze();
--	cond_resched();
--	if (signalled() || kthread_should_stop())
--		return -EINTR;
-+struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
-+{
-+	struct svc_xprt *xprt;
-+	struct svc_pool		*pool = rqstp->rq_pool;
-+	DECLARE_WAITQUEUE(wait, current);
-+	long			time_left;
- 
- 	/* Normally we will wait up to 5 seconds for any required
- 	 * cache information to be provided.
-@@ -666,7 +649,7 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
- 		if (kthread_should_stop()) {
- 			set_current_state(TASK_RUNNING);
- 			spin_unlock_bh(&pool->sp_lock);
--			return -EINTR;
-+			return ERR_PTR(-EINTR);
- 		}
- 
- 		add_wait_queue(&rqstp->rq_wait, &wait);
-@@ -687,19 +670,25 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
- 			spin_unlock_bh(&pool->sp_lock);
- 			dprintk("svc: server %p, no data yet\n", rqstp);
- 			if (signalled() || kthread_should_stop())
--				return -EINTR;
-+				return ERR_PTR(-EINTR);
- 			else
--				return -EAGAIN;
-+				return ERR_PTR(-EAGAIN);
- 		}
- 	}
- 	spin_unlock_bh(&pool->sp_lock);
-+	return xprt;
-+}
-+
-+static int svc_handle_xprt(struct svc_rqst *rqstp, struct svc_xprt *xprt)
-+{
-+	struct svc_serv *serv = rqstp->rq_server;
-+	int len = 0;
- 
--	len = 0;
- 	if (test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
- 		dprintk("svc_recv: found XPT_CLOSE\n");
- 		svc_delete_xprt(xprt);
- 		/* Leave XPT_BUSY set on the dead xprt: */
--		goto out;
-+		return 0;
- 	}
- 	if (test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
- 		struct svc_xprt *newxpt;
-@@ -727,8 +716,9 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
- 			svc_xprt_received(newxpt);
- 		}
- 	} else if (xprt->xpt_ops->xpo_has_wspace(xprt)) {
-+		/* XPT_DATA|XPT_DEFERRED case: */
- 		dprintk("svc: server %p, pool %u, transport %p, inuse=%d\n",
--			rqstp, pool->sp_id, xprt,
-+			rqstp, rqstp->rq_pool->sp_id, xprt,
- 			atomic_read(&xprt->xpt_ref.refcount));
- 		rqstp->rq_deferred = svc_deferred_dequeue(xprt);
- 		if (rqstp->rq_deferred)
-@@ -739,7 +729,48 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
- 		rqstp->rq_reserved = serv->sv_max_mesg;
- 		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
- 	}
-+	/* clear XPT_BUSY: */
- 	svc_xprt_received(xprt);
-+	return len;
-+}
-+
-+/*
-+ * Receive the next request on any transport.  This code is carefully
-+ * organised not to touch any cachelines in the shared svc_serv
-+ * structure, only cachelines in the local svc_pool.
-+ */
-+int svc_recv(struct svc_rqst *rqstp, long timeout)
-+{
-+	struct svc_xprt		*xprt = NULL;
-+	struct svc_serv		*serv = rqstp->rq_server;
-+	int			len, err;
-+
-+	dprintk("svc: server %p waiting for data (to = %ld)\n",
-+		rqstp, timeout);
-+
-+	if (rqstp->rq_xprt)
-+		printk(KERN_ERR
-+			"svc_recv: service %p, transport not NULL!\n",
-+			 rqstp);
-+	if (waitqueue_active(&rqstp->rq_wait))
-+		printk(KERN_ERR
-+			"svc_recv: service %p, wait queue active!\n",
-+			 rqstp);
-+
-+	err = svc_alloc_arg(rqstp);
-+	if (err)
-+		return err;
-+
-+	try_to_freeze();
-+	cond_resched();
-+	if (signalled() || kthread_should_stop())
-+		return -EINTR;
-+
-+	xprt = svc_get_next_xprt(rqstp, timeout);
-+	if (IS_ERR(xprt))
-+		return PTR_ERR(xprt);
-+
-+	len = svc_handle_xprt(rqstp, xprt);
- 
- 	/* No data, incomplete (TCP) read, or accept() */
- 	if (len <= 0)
--- 
-1.7.9.5
-
+T24gVHVlLCAyMDEyLTA4LTE0IGF0IDEwOjQ4ICswMzAwLCBCZW5ueSBIYWxldnkgd3JvdGU6DQo+
+IE9uIDIwMTItMDgtMDkgMTg6MzksIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gT24gVGh1
+LCAyMDEyLTA4LTA5IGF0IDIzOjAxICswODAwLCBQZW5nIFRhbyB3cm90ZToNCj4gPj4gT24gVGh1
+LCBBdWcgOSwgMjAxMiBhdCAxMDozNiBQTSwgTXlrbGVidXN0LCBUcm9uZA0KPiA+PiA8VHJvbmQu
+TXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+Pj4gT24gVGh1LCAyMDEyLTA4LTA5IGF0
+IDIyOjMwICswODAwLCBQZW5nIFRhbyB3cm90ZToNCj4gPj4+PiBPbiBUaHUsIEF1ZyA5LCAyMDEy
+IGF0IDQ6MjEgQU0sIFRyb25kIE15a2xlYnVzdA0KPiA+Pj4+IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
+YXBwLmNvbT4gd3JvdGU6DQo+ID4+Pj4+IEV2ZXIgc2luY2UgY29tbWl0IDBhNTdjZGFjM2YgKE5G
+U3Y0LjEgc2VuZCBsYXlvdXRyZXR1cm4gdG8gZmVuY2UNCj4gPj4+Pj4gZGlzY29ubmVjdGVkIGRh
+dGEgc2VydmVyKSB3ZSd2ZSBiZWVuIHNlbmRpbmcgbGF5b3V0cmV0dXJuIGNhbGxzDQo+ID4+Pj4+
+IHdoaWxlIHRoZXJlIGlzIHBvdGVudGlhbGx5IHN0aWxsIG91dHN0YW5kaW5nIEkvTyB0byB0aGUg
+ZGF0YQ0KPiA+Pj4+PiBzZXJ2ZXJzLiBUaGUgcmVhc29uIHdlIGRvIHRoaXMgaXMgdG8gYXZvaWQg
+cmFjZXMgYmV0d2VlbiByZXBsYXllZA0KPiA+Pj4+PiB3cml0ZXMgdG8gdGhlIE1EUyBhbmQgdGhl
+IG9yaWdpbmFsIHdyaXRlcyB0byB0aGUgRFMuDQo+ID4+Pj4+DQo+ID4+Pj4+IFdoZW4gdGhpcyBo
+YXBwZW5zLCB0aGUgQlVHX09OKCkgaW4gbmZzNF9sYXlvdXRyZXR1cm5fZG9uZSBjYW4NCj4gPj4+
+Pj4gYmUgdHJpZ2dlcmVkIGJlY2F1c2UgaXQgYXNzdW1lcyB0aGF0IHdlIHdvdWxkIG5ldmVyIGNh
+bGwNCj4gPj4+Pj4gbGF5b3V0cmV0dXJuIHdpdGhvdXQga25vd2luZyB0aGF0IGFsbCBJL08gdG8g
+dGhlIERTIGlzDQo+ID4+Pj4+IGZpbmlzaGVkLiBUaGUgZml4IGlzIHRvIHJlbW92ZSB0aGUgQlVH
+X09OKCkgbm93IHRoYXQgdGhlDQo+ID4+Pj4+IGFzc3VtcHRpb25zIGJlaGluZCB0aGUgdGVzdCBh
+cmUgb2Jzb2xldGUuDQo+ID4+Pj4+DQo+ID4+Pj4gSXNuJ3QgTURTIHN1cHBvc2VkIHRvIHJlY2Fs
+bCB0aGUgbGF5b3V0IGlmIHJhY2VzIGFyZSBwb3NzaWJsZSBiZXR3ZWVuDQo+ID4+Pj4gb3V0c3Rh
+bmRpbmcgd3JpdGUtdG8tRFMgYW5kIHdyaXRlLXRocm91Z2gtTURTPw0KPiA+Pj4NCj4gPj4+IFdo
+ZXJlIGRvIHlvdSByZWFkIHRoYXQgaW4gUkZDNTY2MT8NCj4gPj4+DQo+ID4+IFRoYXQncyBteSAo
+bWF5YmUgbWlzLSl1bmRlcnN0YW5kaW5nIG9mIGhvdyBzZXJ2ZXIgd29ya3MuLi4gQnV0IGxvb2tp
+bmcNCj4gPj4gYXQgcmZjNTY2MSBzZWN0aW9uIDE4LjQ0LjMuIGxheW91dHJldHVybiBpbXBsZW1l
+bnRhdGlvbi4NCj4gPj4gIg0KPiA+PiBBZnRlciB0aGlzIGNhbGwsDQo+ID4+ICAgIHRoZSBjbGll
+bnQgTVVTVCBOT1QgdXNlIHRoZSByZXR1cm5lZCBsYXlvdXQocykgYW5kIHRoZSBhc3NvY2lhdGVk
+DQo+ID4+ICAgIHN0b3JhZ2UgcHJvdG9jb2wgdG8gYWNjZXNzIHRoZSBmaWxlIGRhdGEuDQo+ID4+
+ICINCj4gPj4gQW5kIGdpdmVuIGNvbW1pdCAwYTU3Y2RhYzNmLCBjbGllbnQgaXMgdXNpbmcgdGhl
+IGxheW91dCBldmVuIGFmdGVyDQo+ID4+IGxheW91dHJldHVybiwgd2hpY2ggSU1ITyBpcyBhIHZp
+b2xhdGlvbiBvZiByZmM1NjYxLg0KPiA+IA0KPiA+IE5vLiBJdCBpcyB1c2luZyB0aGUgbGF5b3V0
+cmV0dXJuIHRvIHRlbGwgdGhlIE1EUyB0byBmZW5jZSBvZmYgSS9PIHRvIGENCj4gPiBkYXRhIHNl
+cnZlciB0aGF0IGlzIG5vdCByZXNwb25kaW5nLiBJdCBpc24ndCBhdHRlbXB0aW5nIHRvIHVzZSB0
+aGUNCj4gPiBsYXlvdXQgYWZ0ZXIgdGhlIGxheW91dHJldHVybjogdGhlIHdob2xlIHBvaW50IGlz
+IHRoYXQgd2UgYXJlIGF0dGVtcHRpbmcNCj4gPiB3cml0ZS10aHJvdWdoLU1EUyBhZnRlciB0aGUg
+YXR0ZW1wdCB0byB3cml0ZSB0aHJvdWdoIHRoZSBEUyB0aW1lZCBvdXQuDQo+ID4gDQo+IA0KPiBJ
+IGhlYXIgeW91LCBidXQgdGhpcyB1c2UgY2FzZSBpcyB2YWxpZCBhZnRlciBhIHRpbWUgb3V0IC8g
+ZGlzY29ubmVjdA0KPiAod2hpY2ggd2lsbCB0cmFuc2xhdGUgdG8gUE5GU19PU0RfRVJSX1VOUkVB
+Q0hBQkxFIGZvciB0aGUgb2JqZWN0cyBsYXlvdXQpDQo+IEluIG90aGVyIGNhc2VzLCBJL09zIHRv
+IHRoZSBEUyBtaWdodCBvYnZpb3VzbHkgYmUgaW4gZmxpZ2h0IGFuZCB0aGUgQlVHX09ODQo+IGlu
+ZGljYXRlcyB0aGF0Lg0KPiANCj4gSU1PLCB0aGUgcmlnaHQgd2F5IHRvIGltcGxlbWVudCB0aGF0
+IGlzIHRvIGluaXRpYWxseSBtYXJrIHRoZSBsc2VncyBpbnZhbGlkDQo+IGFuZCBpbmNyZW1lbnQg
+cGxoX2Jsb2NrX2xnZXRzLCBhcyB3ZSBkbyB0b2RheSBpbiBfcG5mc19yZXR1cm5fbGF5b3V0DQo+
+IGJ1dCBhY3R1YWxseSBzZW5kIHRoZSBsYXlvdXQgcmV0dXJuIG9ubHkgd2hlbiB0aGUgbGFzdCBz
+ZWdtZW50IGlzIGRlcmVmZXJlbmNlZC4NCg0KVGhpcyBpcyB3aGF0IHdlIGRvIGZvciBvYmplY3Qg
+YW5kIGJsb2NrIGxheW91dCB0eXBlcywgc28geW91cg0Kb2JqZWN0cy1zcGVjaWZpYyBvYmplY3Rp
+b24gaXMgdW5mb3VuZGVkLg0KDQpBcyBJIHVuZGVyc3RhbmQgaXQsIGlTQ1NJIGhhcyBkaWZmZXJl
+bnQgc2VtYW50aWNzIHcuci50LiBkaXNjb25uZWN0IGFuZA0KdGltZW91dCwgd2hpY2ggbWVhbnMg
+dGhhdCB0aGUgY2xpZW50IGNhbiBpbiBwcmluY2lwbGUgcmVseSBvbiBhIHRpbWVvdXQNCmxlYXZp
+bmcgdGhlIERTIGluIGEga25vd24gc3RhdGUuIERpdHRvIGZvciBGQ1AuDQpJJ3ZlIG5vIGlkZWEg
+YWJvdXQgb3RoZXIgYmxvY2svb2JqZWN0IHRyYW5zcG9ydCB0eXBlcywgYnV0IEkgYXNzdW1lDQp0
+aG9zZSB0aGF0IHN1cHBvcnQgbXVsdGktcGF0aGluZyBpbXBsZW1lbnQgc2ltaWxhciBkZXZpY2Vz
+Lg0KDQpUaGUgcHJvYmxlbSBpcyB0aGF0IFJQQyBkb2VzIG5vdCwgc28gdGhlIGZpbGVzIGxheW91
+dCBuZWVkcyB0byBiZQ0KdHJlYXRlZCBkaWZmZXJlbnRseS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1
+c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVz
+dEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
