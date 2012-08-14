@@ -1,38 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from lxorguk.ukuu.org.uk ([81.2.110.251]:40954 "EHLO
-	lxorguk.ukuu.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759779Ab2HJSWa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Aug 2012 14:22:30 -0400
-Date: Fri, 10 Aug 2012 19:26:28 +0100
-From: Alan Cox <alan@lxorguk.ukuu.org.uk>
-To: "H. Peter Anvin" <hpa@zytor.com>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        Trond.Myklebust@netapp.com, davem@davemloft.net,
-        linux-nfs@vger.kernel.org, eric.dumazet@gmail.com, xemul@parallels.com,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, viro@zeniv.linux.org.uk,
-        tim.c.chen@linux.intel.com, devel@openvz.org
-Subject: Re: [RFC PATCH 0/2] net: connect to UNIX sockets from specified
- root
-Message-ID: <20120810192628.79a34d28@pyramind.ukuu.org.uk>
-In-Reply-To: <50254FA6.3060806@zytor.com>
-References: <20120810125701.7115.71612.stgit@localhost.localdomain>
-	<50254FA6.3060806@zytor.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:39086 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752652Ab2HNQ0e (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 12:26:34 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH 15/16] openvswitch: use new hashtable implementation
+Date: Tue, 14 Aug 2012 18:24:49 +0200
+Message-Id: <1344961490-4068-16-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
+References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> On that whole subject...
-> 
-> Do we need a Unix domain socket equivalent to openat()?
+Switch openvswitch to use the new hashtable implementation. This reduces the amount of
+generic unrelated code in openvswitch.
 
-I don't think so. The name is just a file system indexing trick, it's not
-really the socket proper. It's little more than "ascii string with
-permissions attached" - indeed we also support an abstract name space
-which for a lot of uses is actually more convenient.
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ net/openvswitch/vport.c |   30 +++++++++++++-----------------
+ 1 files changed, 13 insertions(+), 17 deletions(-)
 
-AF_UNIX between roots raises some interesting semantic questions when you
-begin passing file descriptors down them as well.
+diff --git a/net/openvswitch/vport.c b/net/openvswitch/vport.c
+index 6140336..3484120 100644
+--- a/net/openvswitch/vport.c
++++ b/net/openvswitch/vport.c
+@@ -27,6 +27,7 @@
+ #include <linux/rcupdate.h>
+ #include <linux/rtnetlink.h>
+ #include <linux/compat.h>
++#include <linux/hashtable.h>
+ 
+ #include "vport.h"
+ #include "vport-internal_dev.h"
+@@ -39,8 +40,8 @@ static const struct vport_ops *vport_ops_list[] = {
+ };
+ 
+ /* Protected by RCU read lock for reading, RTNL lock for writing. */
+-static struct hlist_head *dev_table;
+-#define VPORT_HASH_BUCKETS 1024
++#define VPORT_HASH_BITS 10
++static DEFINE_HASHTABLE(dev_table, VPORT_HASH_BITS);
+ 
+ /**
+  *	ovs_vport_init - initialize vport subsystem
+@@ -49,10 +50,7 @@ static struct hlist_head *dev_table;
+  */
+ int ovs_vport_init(void)
+ {
+-	dev_table = kzalloc(VPORT_HASH_BUCKETS * sizeof(struct hlist_head),
+-			    GFP_KERNEL);
+-	if (!dev_table)
+-		return -ENOMEM;
++	hash_init(dev_table);
+ 
+ 	return 0;
+ }
+@@ -67,12 +65,6 @@ void ovs_vport_exit(void)
+ 	kfree(dev_table);
+ }
+ 
+-static struct hlist_head *hash_bucket(const char *name)
+-{
+-	unsigned int hash = full_name_hash(name, strlen(name));
+-	return &dev_table[hash & (VPORT_HASH_BUCKETS - 1)];
+-}
+-
+ /**
+  *	ovs_vport_locate - find a port that has already been created
+  *
+@@ -82,11 +74,11 @@ static struct hlist_head *hash_bucket(const char *name)
+  */
+ struct vport *ovs_vport_locate(const char *name)
+ {
+-	struct hlist_head *bucket = hash_bucket(name);
+ 	struct vport *vport;
+ 	struct hlist_node *node;
++	int key = full_name_hash(name, strlen(name));
+ 
+-	hlist_for_each_entry_rcu(vport, node, bucket, hash_node)
++	hash_for_each_possible_rcu(dev_table, vport, node, hash_node, key)
+ 		if (!strcmp(name, vport->ops->get_name(vport)))
+ 			return vport;
+ 
+@@ -170,14 +162,18 @@ struct vport *ovs_vport_add(const struct vport_parms *parms)
+ 
+ 	for (i = 0; i < ARRAY_SIZE(vport_ops_list); i++) {
+ 		if (vport_ops_list[i]->type == parms->type) {
++			int key;
++			const char *name;
++
+ 			vport = vport_ops_list[i]->create(parms);
+ 			if (IS_ERR(vport)) {
+ 				err = PTR_ERR(vport);
+ 				goto out;
+ 			}
+ 
+-			hlist_add_head_rcu(&vport->hash_node,
+-					   hash_bucket(vport->ops->get_name(vport)));
++			name = vport->ops->get_name(vport);
++			key = full_name_hash(name, strlen(name));
++			hash_add_rcu(dev_table, &vport->hash_node, key);
+ 			return vport;
+ 		}
+ 	}
+@@ -218,7 +214,7 @@ void ovs_vport_del(struct vport *vport)
+ {
+ 	ASSERT_RTNL();
+ 
+-	hlist_del_rcu(&vport->hash_node);
++	hash_del_rcu(&vport->hash_node);
+ 
+ 	vport->ops->destroy(vport);
+ }
+-- 
+1.7.8.6
 
-Alan
