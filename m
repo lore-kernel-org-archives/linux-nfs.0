@@ -1,151 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:43131 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755664Ab2HVC2l (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 22:28:41 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH v3 17/17] SUNRPC: use new hashtable implementation in auth
-Date: Wed, 22 Aug 2012 04:27:12 +0200
-Message-Id: <1345602432-27673-18-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
-References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:57296 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755572Ab2HNObE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 10:31:04 -0400
+Received: by ghrr11 with SMTP id r11so495370ghr.19
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Aug 2012 07:31:03 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA93A372D@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1344457310-26442-1-git-send-email-Trond.Myklebust@netapp.com>
+ <CA+a=Yy7SX+cPLFiNy552bU9ZMS_rSwvaSpV732_mDwpcPAH5Wg@mail.gmail.com>
+ <1344522979.23523.2.camel@lade.trondhjem.org> <CA+a=Yy7tDi0kQGvjPeb=O_9XMnZDm-_31VTkNF7wEW7Pb0BZow@mail.gmail.com>
+ <1344526780.25447.6.camel@lade.trondhjem.org> <502A02B2.2020700@tonian.com> <4FA345DA4F4AE44899BD2B03EEEC2FA93A372D@SACEXCMBX04-PRD.hq.netapp.com>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Tue, 14 Aug 2012 22:30:43 +0800
+Message-ID: <CA+a=Yy7SgNGeVzM1VNvn+nGAVTpJT6uOLn=AfNsvQJsu6Au1Wg@mail.gmail.com>
+Subject: Re: [PATCH] NFSv4.1: Remove a bogus BUG_ON() in nfs4_layoutreturn_done
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Benny Halevy <bhalevy@tonian.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
+        Boaz Harrosh <bharrosh@panasas.com>,
+        "Isaman, Fred" <Fred.Isaman@netapp.com>,
+        Idan Keidar <idank@tonian.com>, Lev Solomonov <solo@tonian.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch sunrpc/auth.c  to use the new hashtable implementation. This reduces the amount of
-generic unrelated code in auth.c.
+On Tue, Aug 14, 2012 at 9:45 PM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Tue, 2012-08-14 at 10:48 +0300, Benny Halevy wrote:
+>> On 2012-08-09 18:39, Myklebust, Trond wrote:
+>> > On Thu, 2012-08-09 at 23:01 +0800, Peng Tao wrote:
+>> >> On Thu, Aug 9, 2012 at 10:36 PM, Myklebust, Trond
+>> >> <Trond.Myklebust@netapp.com> wrote:
+>> >>> On Thu, 2012-08-09 at 22:30 +0800, Peng Tao wrote:
+>> >>>> On Thu, Aug 9, 2012 at 4:21 AM, Trond Myklebust
+>> >>>> <Trond.Myklebust@netapp.com> wrote:
+>> >>>>> Ever since commit 0a57cdac3f (NFSv4.1 send layoutreturn to fence
+>> >>>>> disconnected data server) we've been sending layoutreturn calls
+>> >>>>> while there is potentially still outstanding I/O to the data
+>> >>>>> servers. The reason we do this is to avoid races between replayed
+>> >>>>> writes to the MDS and the original writes to the DS.
+>> >>>>>
+>> >>>>> When this happens, the BUG_ON() in nfs4_layoutreturn_done can
+>> >>>>> be triggered because it assumes that we would never call
+>> >>>>> layoutreturn without knowing that all I/O to the DS is
+>> >>>>> finished. The fix is to remove the BUG_ON() now that the
+>> >>>>> assumptions behind the test are obsolete.
+>> >>>>>
+>> >>>> Isn't MDS supposed to recall the layout if races are possible between
+>> >>>> outstanding write-to-DS and write-through-MDS?
+>> >>>
+>> >>> Where do you read that in RFC5661?
+>> >>>
+>> >> That's my (maybe mis-)understanding of how server works... But looking
+>> >> at rfc5661 section 18.44.3. layoutreturn implementation.
+>> >> "
+>> >> After this call,
+>> >>    the client MUST NOT use the returned layout(s) and the associated
+>> >>    storage protocol to access the file data.
+>> >> "
+>> >> And given commit 0a57cdac3f, client is using the layout even after
+>> >> layoutreturn, which IMHO is a violation of rfc5661.
+>> >
+>> > No. It is using the layoutreturn to tell the MDS to fence off I/O to a
+>> > data server that is not responding. It isn't attempting to use the
+>> > layout after the layoutreturn: the whole point is that we are attempting
+>> > write-through-MDS after the attempt to write through the DS timed out.
+>> >
+>>
+>> I hear you, but this use case is valid after a time out / disconnect
+>> (which will translate to PNFS_OSD_ERR_UNREACHABLE for the objects layout)
+>> In other cases, I/Os to the DS might obviously be in flight and the BUG_ON
+>> indicates that.
+>>
+>> IMO, the right way to implement that is to initially mark the lsegs invalid
+>> and increment plh_block_lgets, as we do today in _pnfs_return_layout
+>> but actually send the layout return only when the last segment is dereferenced.
+>
+> This is what we do for object and block layout types, so your
+> objects-specific objection is unfounded.
+>
+object layout is also doing layout return on IO error (commit
+fe0fe83585f8). And it doesn't take care of draining concurrent
+in-flight IO. I guess that's why Boaz saw the same BUG_ON.
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
- net/sunrpc/auth.c |   45 +++++++++++++++++++--------------------------
- 1 files changed, 19 insertions(+), 26 deletions(-)
-
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index b5c067b..5d50e2d 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -15,6 +15,7 @@
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/gss_api.h>
- #include <linux/spinlock.h>
-+#include <linux/hashtable.h>
- 
- #ifdef RPC_DEBUG
- # define RPCDBG_FACILITY	RPCDBG_AUTH
-@@ -222,7 +223,7 @@ static DEFINE_SPINLOCK(rpc_credcache_lock);
- static void
- rpcauth_unhash_cred_locked(struct rpc_cred *cred)
- {
--	hlist_del_rcu(&cred->cr_hash);
-+	hash_del_rcu(&cred->cr_hash);
- 	smp_mb__before_clear_bit();
- 	clear_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags);
- }
-@@ -249,16 +250,15 @@ int
- rpcauth_init_credcache(struct rpc_auth *auth)
- {
- 	struct rpc_cred_cache *new;
--	unsigned int hashsize;
- 
- 	new = kmalloc(sizeof(*new), GFP_KERNEL);
- 	if (!new)
- 		goto out_nocache;
- 	new->hashbits = auth_hashbits;
--	hashsize = 1U << new->hashbits;
--	new->hashtable = kcalloc(hashsize, sizeof(new->hashtable[0]), GFP_KERNEL);
-+	new->hashtable = kmalloc(HASH_REQUIRED_SIZE(new->hashbits), GFP_KERNEL);
- 	if (!new->hashtable)
- 		goto out_nohashtbl;
-+	hash_init_size(new->hashtable, new->hashbits);
- 	spin_lock_init(&new->lock);
- 	auth->au_credcache = new;
- 	return 0;
-@@ -292,25 +292,20 @@ void
- rpcauth_clear_credcache(struct rpc_cred_cache *cache)
- {
- 	LIST_HEAD(free);
--	struct hlist_head *head;
-+	struct hlist_node *n, *t;
- 	struct rpc_cred	*cred;
--	unsigned int hashsize = 1U << cache->hashbits;
--	int		i;
-+	int i;
- 
- 	spin_lock(&rpc_credcache_lock);
- 	spin_lock(&cache->lock);
--	for (i = 0; i < hashsize; i++) {
--		head = &cache->hashtable[i];
--		while (!hlist_empty(head)) {
--			cred = hlist_entry(head->first, struct rpc_cred, cr_hash);
--			get_rpccred(cred);
--			if (!list_empty(&cred->cr_lru)) {
--				list_del(&cred->cr_lru);
--				number_cred_unused--;
--			}
--			list_add_tail(&cred->cr_lru, &free);
--			rpcauth_unhash_cred_locked(cred);
-+	hash_for_each_safe_size(cache->hashtable, cache->hashbits, i, n, t, cred, cr_hash) {
-+		get_rpccred(cred);
-+		if (!list_empty(&cred->cr_lru)) {
-+			list_del(&cred->cr_lru);
-+			number_cred_unused--;
- 		}
-+		list_add_tail(&cred->cr_lru, &free);
-+		rpcauth_unhash_cred_locked(cred);
- 	}
- 	spin_unlock(&cache->lock);
- 	spin_unlock(&rpc_credcache_lock);
-@@ -408,14 +403,11 @@ rpcauth_lookup_credcache(struct rpc_auth *auth, struct auth_cred * acred,
- 	LIST_HEAD(free);
- 	struct rpc_cred_cache *cache = auth->au_credcache;
- 	struct hlist_node *pos;
--	struct rpc_cred	*cred = NULL,
--			*entry, *new;
--	unsigned int nr;
--
--	nr = hash_long(acred->uid, cache->hashbits);
-+	struct rpc_cred	*cred = NULL, *entry = NULL, *new;
- 
- 	rcu_read_lock();
--	hlist_for_each_entry_rcu(entry, pos, &cache->hashtable[nr], cr_hash) {
-+	hash_for_each_possible_rcu_size(cache->hashtable, cred, cache->hashbits,
-+					pos, cr_hash, acred->uid) {
- 		if (!entry->cr_ops->crmatch(acred, entry, flags))
- 			continue;
- 		spin_lock(&cache->lock);
-@@ -439,7 +431,8 @@ rpcauth_lookup_credcache(struct rpc_auth *auth, struct auth_cred * acred,
- 	}
- 
- 	spin_lock(&cache->lock);
--	hlist_for_each_entry(entry, pos, &cache->hashtable[nr], cr_hash) {
-+	hash_for_each_possible_size(cache->hashtable, entry, cache->hashbits, pos,
-+					cr_hash, acred->uid) {
- 		if (!entry->cr_ops->crmatch(acred, entry, flags))
- 			continue;
- 		cred = get_rpccred(entry);
-@@ -448,7 +441,7 @@ rpcauth_lookup_credcache(struct rpc_auth *auth, struct auth_cred * acred,
- 	if (cred == NULL) {
- 		cred = new;
- 		set_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags);
--		hlist_add_head_rcu(&cred->cr_hash, &cache->hashtable[nr]);
-+		hash_add_size(cache->hashtable, cache->hashbits, &cred->cr_hash, acred->uid);
- 	} else
- 		list_add_tail(&new->cr_lru, &free);
- 	spin_unlock(&cache->lock);
 -- 
-1.7.8.6
-
+Thanks,
+Tao
