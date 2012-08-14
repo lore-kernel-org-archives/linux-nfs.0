@@ -1,8 +1,8 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:41176 "EHLO
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:39086 "EHLO
 	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752322Ab2HSAwl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Aug 2012 20:52:41 -0400
+	with ESMTP id S1756617Ab2HNQYy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 12:24:54 -0400
 From: Sasha Levin <levinsasha928@gmail.com>
 To: torvalds@linux-foundation.org
 Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
@@ -18,153 +18,71 @@ Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
         linux-nfs@vger.kernel.org, dev@openvswitch.org,
         rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
         Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH v2 13/16] lockd: use new hashtable implementation
-Date: Sun, 19 Aug 2012 02:52:27 +0200
-Message-Id: <1345337550-24304-15-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1345337550-24304-1-git-send-email-levinsasha928@gmail.com>
-References: <1345337550-24304-1-git-send-email-levinsasha928@gmail.com>
+Subject: [PATCH 00/16] generic hashtable implementation
+Date: Tue, 14 Aug 2012 18:24:34 +0200
+Message-Id: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch lockd to use the new hashtable implementation. This reduces the amount of
-generic unrelated code in lockd.
+There are quite a few places in the kernel which implement a hashtable
+in a very similar way. Instead of having implementations of a hashtable
+all over the kernel, we can re-use the code.
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
- fs/lockd/svcsubs.c |   66 ++++++++++++++++++++++++++++-----------------------
- 1 files changed, 36 insertions(+), 30 deletions(-)
+New changes since the RFC:
 
-diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
-index 0deb5f6..d223a1f 100644
---- a/fs/lockd/svcsubs.c
-+++ b/fs/lockd/svcsubs.c
-@@ -20,6 +20,7 @@
- #include <linux/lockd/share.h>
- #include <linux/module.h>
- #include <linux/mount.h>
-+#include <linux/hashtable.h>
- 
- #define NLMDBG_FACILITY		NLMDBG_SVCSUBS
- 
-@@ -28,8 +29,7 @@
-  * Global file hash table
-  */
- #define FILE_HASH_BITS		7
--#define FILE_NRHASH		(1<<FILE_HASH_BITS)
--static struct hlist_head	nlm_files[FILE_NRHASH];
-+static DEFINE_HASHTABLE(nlm_files, FILE_HASH_BITS);
- static DEFINE_MUTEX(nlm_file_mutex);
- 
- #ifdef NFSD_DEBUG
-@@ -68,7 +68,7 @@ static inline unsigned int file_hash(struct nfs_fh *f)
- 	int i;
- 	for (i=0; i<NFS2_FHSIZE;i++)
- 		tmp += f->data[i];
--	return tmp & (FILE_NRHASH - 1);
-+	return tmp;
- }
- 
- /*
-@@ -86,17 +86,17 @@ nlm_lookup_file(struct svc_rqst *rqstp, struct nlm_file **result,
- {
- 	struct hlist_node *pos;
- 	struct nlm_file	*file;
--	unsigned int	hash;
-+	unsigned int	key;
- 	__be32		nfserr;
- 
- 	nlm_debug_print_fh("nlm_lookup_file", f);
- 
--	hash = file_hash(f);
-+	key = file_hash(f);
- 
- 	/* Lock file table */
- 	mutex_lock(&nlm_file_mutex);
- 
--	hlist_for_each_entry(file, pos, &nlm_files[hash], f_list)
-+	hash_for_each_possible(nlm_files, file, pos, f_list, file_hash(f))
- 		if (!nfs_compare_fh(&file->f_handle, f))
- 			goto found;
- 
-@@ -123,7 +123,7 @@ nlm_lookup_file(struct svc_rqst *rqstp, struct nlm_file **result,
- 		goto out_free;
- 	}
- 
--	hlist_add_head(&file->f_list, &nlm_files[hash]);
-+	hash_add(nlm_files, &file->f_list, key);
- 
- found:
- 	dprintk("lockd: found file %p (count %d)\n", file, file->f_count);
-@@ -147,8 +147,8 @@ static inline void
- nlm_delete_file(struct nlm_file *file)
- {
- 	nlm_debug_print_file("closing file", file);
--	if (!hlist_unhashed(&file->f_list)) {
--		hlist_del(&file->f_list);
-+	if (hash_hashed(&file->f_list)) {
-+		hash_del(&file->f_list);
- 		nlmsvc_ops->fclose(file->f_file);
- 		kfree(file);
- 	} else {
-@@ -253,27 +253,25 @@ nlm_traverse_files(void *data, nlm_host_match_fn_t match,
- 	int i, ret = 0;
- 
- 	mutex_lock(&nlm_file_mutex);
--	for (i = 0; i < FILE_NRHASH; i++) {
--		hlist_for_each_entry_safe(file, pos, next, &nlm_files[i], f_list) {
--			if (is_failover_file && !is_failover_file(data, file))
--				continue;
--			file->f_count++;
--			mutex_unlock(&nlm_file_mutex);
--
--			/* Traverse locks, blocks and shares of this file
--			 * and update file->f_locks count */
--			if (nlm_inspect_file(data, file, match))
--				ret = 1;
--
--			mutex_lock(&nlm_file_mutex);
--			file->f_count--;
--			/* No more references to this file. Let go of it. */
--			if (list_empty(&file->f_blocks) && !file->f_locks
--			 && !file->f_shares && !file->f_count) {
--				hlist_del(&file->f_list);
--				nlmsvc_ops->fclose(file->f_file);
--				kfree(file);
--			}
-+	hash_for_each_safe(nlm_files, i, pos, next, file, f_list) {
-+		if (is_failover_file && !is_failover_file(data, file))
-+			continue;
-+		file->f_count++;
-+		mutex_unlock(&nlm_file_mutex);
-+
-+		/* Traverse locks, blocks and shares of this file
-+		 * and update file->f_locks count */
-+		if (nlm_inspect_file(data, file, match))
-+			ret = 1;
-+
-+		mutex_lock(&nlm_file_mutex);
-+		file->f_count--;
-+		/* No more references to this file. Let go of it. */
-+		if (list_empty(&file->f_blocks) && !file->f_locks
-+		 && !file->f_shares && !file->f_count) {
-+			hash_del(&file->f_list);
-+			nlmsvc_ops->fclose(file->f_file);
-+			kfree(file);
- 		}
- 	}
- 	mutex_unlock(&nlm_file_mutex);
-@@ -451,3 +449,11 @@ nlmsvc_unlock_all_by_ip(struct sockaddr *server_addr)
- 	return ret ? -EIO : 0;
- }
- EXPORT_SYMBOL_GPL(nlmsvc_unlock_all_by_ip);
-+
-+static int __init nlm_init(void)
-+{
-+	hash_init(nlm_files);
-+	return 0;
-+}
-+
-+module_init(nlm_init);
+ - Addressed last comments about previous patches.
+ - RCU support.
+ - Simplified the case where the hashtable is allocated statically, which is
+ the common case.
+ - A lot more places converted to use the new hashtable.
+
+
+Sasha Levin (16):
+  hashtable: introduce a small and naive hashtable
+  user_ns: use new hashtable implementation
+  mm,ksm: use new hashtable implementation
+  workqueue: use new hashtable implementation
+  mm/huge_memory: use new hashtable implementation
+  tracepoint: use new hashtable implementation
+  net,9p: use new hashtable implementation
+  block,elevator: use new hashtable implementation
+  SUNRPC/cache: use new hashtable implementation
+  dlm: use new hashtable implementation
+  net,l2tp: use new hashtable implementation
+  dm: use new hashtable implementation
+  lockd: use new hashtable implementation
+  net,rds: use new hashtable implementation
+  openvswitch: use new hashtable implementation
+  tracing output: use new hashtable implementation
+
+ block/blk.h                                        |    2 +-
+ block/elevator.c                                   |   23 +--
+ drivers/md/dm-snap.c                               |   24 +--
+ drivers/md/persistent-data/dm-block-manager.c      |    1 -
+ .../persistent-data/dm-persistent-data-internal.h  |   19 --
+ .../md/persistent-data/dm-transaction-manager.c    |   30 +--
+ fs/dlm/lowcomms.c                                  |   47 +---
+ fs/lockd/svcsubs.c                                 |   58 ++--
+ include/linux/elevator.h                           |    5 +-
+ include/linux/hashtable.h                          |  284 ++++++++++++++++++++
+ kernel/trace/trace_output.c                        |   20 +-
+ kernel/tracepoint.c                                |   27 +--
+ kernel/user.c                                      |   33 +--
+ kernel/workqueue.c                                 |   86 +-----
+ mm/huge_memory.c                                   |   57 +---
+ mm/ksm.c                                           |   33 +--
+ net/9p/error.c                                     |   21 +-
+ net/l2tp/l2tp_core.c                               |  132 ++++------
+ net/l2tp/l2tp_core.h                               |    8 +-
+ net/l2tp/l2tp_debugfs.c                            |   19 +-
+ net/openvswitch/vport.c                            |   30 +--
+ net/rds/bind.c                                     |   20 +-
+ net/rds/connection.c                               |  102 +++----
+ net/sunrpc/cache.c                                 |   20 +-
+ 24 files changed, 573 insertions(+), 528 deletions(-)
+ delete mode 100644 drivers/md/persistent-data/dm-persistent-data-internal.h
+ create mode 100644 include/linux/hashtable.h
+
 -- 
 1.7.8.6
 
