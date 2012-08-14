@@ -1,45 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41803 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751093Ab2HUO3I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Aug 2012 10:29:08 -0400
-Date: Tue, 21 Aug 2012 10:29:05 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        Simo Sorce <simo@redhat.com>,
-        "bfields@redhat.com" <bfields@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/4] Add support for new RPCSEC_GSS upcall mechanism
- for nfsd
-Message-ID: <20120821142905.GG9483@fieldses.org>
-References: <20120711170331.GE11432@fieldses.org>
- <20120711172714.GA13610@fieldses.org>
- <1342028948.25375.45.camel@lade.trondhjem.org>
- <20120712221058.GC24162@fieldses.org>
- <20120713154302.GA32660@fieldses.org>
- <20120808193659.GA942@fieldses.org>
- <20120808194359.GB942@fieldses.org>
- <5022C824.504@parallels.com>
- <20120821141614.GF9483@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA93C1F09@SACEXCMBX04-PRD.hq.netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA93C1F09@SACEXCMBX04-PRD.hq.netapp.com>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:38437 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750861Ab2HNNyS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 09:54:18 -0400
+Received: by mail-yw0-f46.google.com with SMTP id m54so439745yhm.19
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Aug 2012 06:54:18 -0700 (PDT)
+From: Peng Tao <bergwolf@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: bharrosh@panasas.com, linux-nfs@vger.kernel.org,
+        Peng Tao <tao.peng@emc.com>
+Subject: [PATCH-v3 3/3] NFS41: send real read size in layoutget
+Date: Tue, 14 Aug 2012 21:52:24 +0800
+Message-Id: <1344952344-1435-3-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1344952344-1435-1-git-send-email-bergwolf@gmail.com>
+References: <1344952344-1435-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 21, 2012 at 02:25:56PM +0000, Myklebust, Trond wrote:
-> On Tue, 2012-08-21 at 10:16 -0400, J. Bruce Fields wrote:
-> > One other question for Stanislav: I assume module parameters are global,
-> > and that there's no plan to try to make them per-container?
-> 
-> Urgh... Per-container modules? That would be terrible...
+For buffer read, use offst-to-isize.
 
-Well, of course, but if module parameters can be modified
-post-module-install then in theory those modifications could be made to
-take effect only per namespace.  (But which namespace?)  I wouldn't be
-surprised if the whole idea makes no sense, though, I haven't thought
-about it.
+For direct read, use dreq->bytes_left.
 
---b.
+Signed-off-by: Peng Tao <tao.peng@emc.com>
+---
+ fs/nfs/pnfs.c |   10 +++++++++-
+ 1 files changed, 9 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 9ff45d1..4a250a4 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1153,16 +1153,24 @@ out_forget_reply:
+ void
+ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+ {
++	u64 rd_size = req->wb_bytes;
++
+ 	BUG_ON(pgio->pg_lseg != NULL);
+ 
+ 	if (req->wb_offset != req->wb_pgbase) {
+ 		nfs_pageio_reset_read_mds(pgio);
+ 		return;
+ 	}
++
++	if (pgio->pg_dreq == NULL)
++		rd_size = i_size_read(pgio->pg_inode) - req_offset(req);
++	else
++		rd_size = nfs_dreq_bytes_left(pgio->pg_dreq);
++
+ 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 					   req->wb_context,
+ 					   req_offset(req),
+-					   req->wb_bytes,
++					   rd_size,
+ 					   IOMODE_READ,
+ 					   GFP_KERNEL);
+ 	/* If no lseg, fall back to read through mds */
+-- 
+1.7.1.262.g5ef3d
+
