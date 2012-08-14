@@ -1,165 +1,167 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.openrapids.net ([64.15.138.104]:37549 "EHLO
-	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752171Ab2H1L4m (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Aug 2012 07:56:42 -0400
-Date: Tue, 28 Aug 2012 07:56:38 -0400
-From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: Tejun Heo <tj@kernel.org>, torvalds@linux-foundation.org,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:39086 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756733Ab2HNQZ7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 12:25:59 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
         linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
         rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
         aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com, axboe@kernel.dk,
-        agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive
-	hashtable
-Message-ID: <20120828115638.GC23818@Krystal>
-References: <5037E00B.6090606@gmail.com> <20120824203332.GF21325@google.com> <5037E9D9.9000605@gmail.com> <20120824212348.GK21325@google.com> <5038074D.300@gmail.com> <20120824230740.GN21325@google.com> <20120825042419.GA27240@Krystal> <503C95E4.3010000@gmail.com> <20120828101148.GA21683@Krystal> <503CAB1E.5010408@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <503CAB1E.5010408@gmail.com>
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH 10/16] dlm: use new hashtable implementation
+Date: Tue, 14 Aug 2012 18:24:44 +0200
+Message-Id: <1344961490-4068-11-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
+References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* Sasha Levin (levinsasha928@gmail.com) wrote:
-> On 08/28/2012 12:11 PM, Mathieu Desnoyers wrote:
-> > * Sasha Levin (levinsasha928@gmail.com) wrote:
-> >> On 08/25/2012 06:24 AM, Mathieu Desnoyers wrote:
-> >>> * Tejun Heo (tj@kernel.org) wrote:
-> >>>> Hello,
-> >>>>
-> >>>> On Sat, Aug 25, 2012 at 12:59:25AM +0200, Sasha Levin wrote:
-> >>>>> Thats the thing, the amount of things of things you can do with a given bucket
-> >>>>> is very limited. You can't add entries to any point besides the head (without
-> >>>>> walking the entire list).
-> >>>>
-> >>>> Kinda my point.  We already have all the hlist*() interface to deal
-> >>>> with such cases.  Having something which is evidently the trivial
-> >>>> hlist hashtable and advertises as such in the interface can be
-> >>>> helpful.  I think we need that more than we need anything fancy.
-> >>>>
-> >>>> Heh, this is a debate about which one is less insignificant.  I can
-> >>>> see your point.  I'd really like to hear what others think on this.
-> >>>>
-> >>>> Guys, do we want something which is evidently trivial hlist hashtable
-> >>>> which can use hlist_*() API directly or do we want something better
-> >>>> encapsulated?
-> >>>
-> >>> My 2 cents, FWIW: I think this specific effort should target a trivially
-> >>> understandable API and implementation, for use-cases where one would be
-> >>> tempted to reimplement his own trivial hash table anyway. So here
-> >>> exposing hlist internals, with which kernel developers are already
-> >>> familiar, seems like a good approach in my opinion, because hiding stuff
-> >>> behind new abstraction might make the target users go away.
-> >>>
-> >>> Then, as we see the need, we can eventually merge a more elaborate hash
-> >>> table with poneys and whatnot, but I would expect that the trivial hash
-> >>> table implementation would still be useful. There are of course very
-> >>> compelling reasons to use a more featureful hash table: automatic
-> >>> resize, RT-aware updates, scalable updates, etc... but I see a purpose
-> >>> for a trivial implementation. Its primary strong points being:
-> >>>
-> >>> - it's trivially understandable, so anyone how want to be really sure
-> >>>   they won't end up debugging the hash table instead of their
-> >>>   work-in-progress code can have a full understanding of it,
-> >>> - it has few dependencies, which makes it easier to understand and
-> >>>   easier to use in some contexts (e.g. early boot).
-> >>>
-> >>> So I'm in favor of not overdoing the abstraction for this trivial hash
-> >>> table, and honestly I would rather prefer that this trivial hash table
-> >>> stays trivial. A more elaborate hash table should probably come as a
-> >>> separate API.
-> >>>
-> >>> Thanks,
-> >>>
-> >>> Mathieu
-> >>>
-> >>
-> >> Alright, let's keep it simple then.
-> >>
-> >> I do want to keep the hash_for_each[rcu,safe] family though.
-> > 
-> > Just a thought: if the API offered by the simple hash table focus on
-> > providing a mechanism to find the hash bucket to which belongs the hash
-> > chain containing the key looked up, and then expects the user to use the
-> > hlist API to iterate on the chain (with or without the hlist _rcu
-> > variant), then it might seem consistent that a helper providing
-> > iteration over the entire table would actually just provide iteration on
-> > all buckets, and let the user call the hlist for each iterator for each
-> > node within the bucket, e.g.:
-> > 
-> > struct hlist_head *head;
-> > struct hlist_node *pos;
-> > 
-> > hash_for_each_bucket(ht, head) {
-> >         hlist_for_each(pos, head) {
-> >                 ...
-> >         }
-> > }
-> > 
-> > That way you only have to provide one single macro
-> > (hash_for_each_bucket), and rely on the already existing:
-> > 
-> > - hlist_for_each_entry
-> > - hlist_for_each_safe
-> > - hlist_for_each_entry_rcu
-> > - hlist_for_each_safe_rcu
-> >   .....
-> > 
-> > and various flavors that can appear in the future without duplicating
-> > this API. So you won't even have to create _rcu, _safe, nor _safe_rcu
-> > versions of the hash_for_each_bucket macro.
-> > 
-> > Thoughts ?
-> 
-> In my opinion, the downside here is that it'll require 2 function calls and 2
-> levels of nesting for a simple hash iteration.
+Switch dlm to use the new hashtable implementation. This reduces the amount of
+generic unrelated code in the dlm.
 
-Those are macros, not functions. No function call is required. But I see
-your point about nesting.
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ fs/dlm/lowcomms.c |   47 +++++++++++++----------------------------------
+ 1 files changed, 13 insertions(+), 34 deletions(-)
 
-> 
-> hash_for_each_bucket() will always be followed by an iteration of that
-> bucket, so splitting a hash_for_each() which does both into 2
-> different functions which will almost always must be called in that
-> given order sounds unintuitive to me.
-> 
-> It's also just 3 different possible iterators:
-> 
->  - hlist_for_each_entry
->  - hlist_for_each_entry_safe
->  - hlist_for_each_entry_rcu
-> 
-> So I think that it's a good price to pay - 2 extra macro definitions
-> in the header to save a macro call + nesting level in each place that
-> uses a hashtable.
-
-I must admin I don't care that much one way or another.
-
-Thanks,
-
-Mathieu
-
-> 
-> 
-> Thanks,
-> Sasha
-> 
-> > Thanks,
-> > 
-> > Mathieu
-> > 
-> 
-
+diff --git a/fs/dlm/lowcomms.c b/fs/dlm/lowcomms.c
+index 522a69f..e36dad2 100644
+--- a/fs/dlm/lowcomms.c
++++ b/fs/dlm/lowcomms.c
+@@ -55,6 +55,7 @@
+ #include <net/sctp/sctp.h>
+ #include <net/sctp/user.h>
+ #include <net/ipv6.h>
++#include <linux/hashtable.h>
+ 
+ #include "dlm_internal.h"
+ #include "lowcomms.h"
+@@ -62,7 +63,7 @@
+ #include "config.h"
+ 
+ #define NEEDED_RMEM (4*1024*1024)
+-#define CONN_HASH_SIZE 32
++#define CONN_HASH_BITS 5
+ 
+ /* Number of messages to send before rescheduling */
+ #define MAX_SEND_MSG_COUNT 25
+@@ -158,34 +159,21 @@ static int dlm_allow_conn;
+ static struct workqueue_struct *recv_workqueue;
+ static struct workqueue_struct *send_workqueue;
+ 
+-static struct hlist_head connection_hash[CONN_HASH_SIZE];
++static struct hlist_head connection_hash[CONN_HASH_BITS];
+ static DEFINE_MUTEX(connections_lock);
+ static struct kmem_cache *con_cache;
+ 
+ static void process_recv_sockets(struct work_struct *work);
+ static void process_send_sockets(struct work_struct *work);
+ 
+-
+-/* This is deliberately very simple because most clusters have simple
+-   sequential nodeids, so we should be able to go straight to a connection
+-   struct in the array */
+-static inline int nodeid_hash(int nodeid)
+-{
+-	return nodeid & (CONN_HASH_SIZE-1);
+-}
+-
+ static struct connection *__find_con(int nodeid)
+ {
+-	int r;
+ 	struct hlist_node *h;
+ 	struct connection *con;
+ 
+-	r = nodeid_hash(nodeid);
+-
+-	hlist_for_each_entry(con, h, &connection_hash[r], list) {
++	hash_for_each_possible(connection_hash, con, h, list, nodeid)
+ 		if (con->nodeid == nodeid)
+ 			return con;
+-	}
+ 	return NULL;
+ }
+ 
+@@ -196,7 +184,6 @@ static struct connection *__find_con(int nodeid)
+ static struct connection *__nodeid2con(int nodeid, gfp_t alloc)
+ {
+ 	struct connection *con = NULL;
+-	int r;
+ 
+ 	con = __find_con(nodeid);
+ 	if (con || !alloc)
+@@ -206,8 +193,7 @@ static struct connection *__nodeid2con(int nodeid, gfp_t alloc)
+ 	if (!con)
+ 		return NULL;
+ 
+-	r = nodeid_hash(nodeid);
+-	hlist_add_head(&con->list, &connection_hash[r]);
++	hash_add(connection_hash, &con->list, nodeid);
+ 
+ 	con->nodeid = nodeid;
+ 	mutex_init(&con->sock_mutex);
+@@ -235,11 +221,8 @@ static void foreach_conn(void (*conn_func)(struct connection *c))
+ 	struct hlist_node *h, *n;
+ 	struct connection *con;
+ 
+-	for (i = 0; i < CONN_HASH_SIZE; i++) {
+-		hlist_for_each_entry_safe(con, h, n, &connection_hash[i], list){
+-			conn_func(con);
+-		}
+-	}
++	hash_for_each_safe(connection_hash, i, h, n, con, list)
++		conn_func(con);
+ }
+ 
+ static struct connection *nodeid2con(int nodeid, gfp_t allocation)
+@@ -262,12 +245,10 @@ static struct connection *assoc2con(int assoc_id)
+ 
+ 	mutex_lock(&connections_lock);
+ 
+-	for (i = 0 ; i < CONN_HASH_SIZE; i++) {
+-		hlist_for_each_entry(con, h, &connection_hash[i], list) {
+-			if (con->sctp_assoc == assoc_id) {
+-				mutex_unlock(&connections_lock);
+-				return con;
+-			}
++	hash_for_each(connection_hash, i, h, con, list) {
++		if (con->sctp_assoc == assoc_id) {
++			mutex_unlock(&connections_lock);
++			return con;
+ 		}
+ 	}
+ 	mutex_unlock(&connections_lock);
+@@ -1644,7 +1625,7 @@ static void free_conn(struct connection *con)
+ 	close_connection(con, true);
+ 	if (con->othercon)
+ 		kmem_cache_free(con_cache, con->othercon);
+-	hlist_del(&con->list);
++	hash_del(&con->list);
+ 	kmem_cache_free(con_cache, con);
+ }
+ 
+@@ -1673,10 +1654,8 @@ int dlm_lowcomms_start(void)
+ {
+ 	int error = -EINVAL;
+ 	struct connection *con;
+-	int i;
+ 
+-	for (i = 0; i < CONN_HASH_SIZE; i++)
+-		INIT_HLIST_HEAD(&connection_hash[i]);
++	hash_init(connection_hash);
+ 
+ 	init_local();
+ 	if (!dlm_local_count) {
 -- 
-Mathieu Desnoyers
-Operating System Efficiency R&D Consultant
-EfficiOS Inc.
-http://www.efficios.com
+1.7.8.6
+
