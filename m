@@ -1,125 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:36554 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758433Ab2HHNV6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Aug 2012 09:21:58 -0400
-Received: by mail-yw0-f46.google.com with SMTP id m54so724654yhm.19
-        for <linux-nfs@vger.kernel.org>; Wed, 08 Aug 2012 06:21:57 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v5 07/19] vfs: add new "reval" argument to kern_path_create
-Date: Wed,  8 Aug 2012 09:21:30 -0400
-Message-Id: <1344432102-22312-8-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
-References: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
+Received: from cantor2.suse.de ([195.135.220.15]:44657 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751892Ab2HNXZ6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Aug 2012 19:25:58 -0400
+Date: Wed, 15 Aug 2012 09:25:23 +1000
+From: NeilBrown <neilb@suse.de>
+To: Sasha Levin <levinsasha928@gmail.com>
+Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
+        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH 01/16] hashtable: introduce a small and naive hashtable
+Message-ID: <20120815092523.00a909ef@notabene.brown>
+In-Reply-To: <1344961490-4068-2-git-send-email-levinsasha928@gmail.com>
+References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
+	<1344961490-4068-2-git-send-email-levinsasha928@gmail.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/WaPYDSkmDZTaSUO/RNup8tR"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...for now, all of the callers pass in "false". Eventually, we'll set
-that to "true" when we retry the lookup after getting back an ESTALE on
-a call.
+--Sig_/WaPYDSkmDZTaSUO/RNup8tR
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-While we're at it, change the is_dir arg to a bool since that's how it's
-used currently.
+On Tue, 14 Aug 2012 18:24:35 +0200 Sasha Levin <levinsasha928@gmail.com>
+wrote:
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- drivers/base/devtmpfs.c |  7 ++++---
- fs/namei.c              | 12 +++++++++---
- include/linux/namei.h   |  2 +-
- net/unix/af_unix.c      |  2 +-
- 4 files changed, 15 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/base/devtmpfs.c b/drivers/base/devtmpfs.c
-index deb4a45..2124437 100644
---- a/drivers/base/devtmpfs.c
-+++ b/drivers/base/devtmpfs.c
-@@ -148,7 +148,7 @@ static int dev_mkdir(const char *name, umode_t mode)
- 	struct path path;
- 	int err;
- 
--	dentry = kern_path_create(AT_FDCWD, name, &path, 1);
-+	dentry = kern_path_create(AT_FDCWD, name, &path, true, false);
- 	if (IS_ERR(dentry))
- 		return PTR_ERR(dentry);
- 
-@@ -193,10 +193,11 @@ static int handle_create(const char *nodename, umode_t mode, struct device *dev)
- 	struct path path;
- 	int err;
- 
--	dentry = kern_path_create(AT_FDCWD, nodename, &path, 0);
-+	dentry = kern_path_create(AT_FDCWD, nodename, &path, false, false);
- 	if (dentry == ERR_PTR(-ENOENT)) {
- 		create_path(nodename);
--		dentry = kern_path_create(AT_FDCWD, nodename, &path, 0);
-+		dentry = kern_path_create(AT_FDCWD, nodename, &path,
-+								false, false);
- 	}
- 	if (IS_ERR(dentry))
- 		return PTR_ERR(dentry);
-diff --git a/fs/namei.c b/fs/namei.c
-index f0463bc..f04ba14 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2972,12 +2972,18 @@ struct file *do_file_open_root(struct dentry *dentry, struct vfsmount *mnt,
- 	return file;
- }
- 
--struct dentry *kern_path_create(int dfd, const char *pathname, struct path *path, int is_dir)
-+struct dentry *kern_path_create(int dfd, const char *pathname, struct path *path, bool is_dir, bool reval)
- {
- 	struct dentry *dentry = ERR_PTR(-EEXIST);
- 	struct nameidata nd;
- 	int err2;
--	int error = do_path_lookup(dfd, pathname, LOOKUP_PARENT, &nd);
-+	int error;
-+	unsigned int lookup_flags = LOOKUP_PARENT;
-+
-+	if (reval)
-+		lookup_flags |= LOOKUP_REVAL;
-+
-+	error = do_path_lookup(dfd, pathname, lookup_flags, &nd);
- 	if (error)
- 		return ERR_PTR(error);
- 
-@@ -3047,7 +3053,7 @@ struct dentry *user_path_create(int dfd, const char __user *pathname, struct pat
- 	struct dentry *res;
- 	if (IS_ERR(tmp))
- 		return ERR_CAST(tmp);
--	res = kern_path_create(dfd, tmp, path, is_dir);
-+	res = kern_path_create(dfd, tmp, path, (bool)is_dir, false);
- 	putname(tmp);
- 	return res;
- }
-diff --git a/include/linux/namei.h b/include/linux/namei.h
-index 491fb48..24c4962 100644
---- a/include/linux/namei.h
-+++ b/include/linux/namei.h
-@@ -65,7 +65,7 @@ extern int user_path_at(int, const char __user *, unsigned, struct path *);
- 
- extern int kern_path(const char *, unsigned, struct path *);
- 
--extern struct dentry *kern_path_create(int, const char *, struct path *, int);
-+extern struct dentry *kern_path_create(int, const char *, struct path *, bool, bool);
- extern struct dentry *user_path_create(int, const char __user *, struct path *, int);
- extern void done_path_create(struct path *, struct dentry *);
- extern struct dentry *kern_path_locked(const char *, struct path *);
-diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c
-index e4768c1..3f61f4c 100644
---- a/net/unix/af_unix.c
-+++ b/net/unix/af_unix.c
-@@ -832,7 +832,7 @@ static int unix_mknod(const char *sun_path, umode_t mode, struct path *res)
- 	 * Get the parent directory, calculate the hash for last
- 	 * component.
- 	 */
--	dentry = kern_path_create(AT_FDCWD, sun_path, &path, 0);
-+	dentry = kern_path_create(AT_FDCWD, sun_path, &path, false, false);
- 	err = PTR_ERR(dentry);
- 	if (IS_ERR(dentry))
- 		return err;
--- 
-1.7.11.2
+> +static inline void hash_init_size(struct hlist_head *hashtable, int bits)
+> +{
+> +	int i;
+> +
+> +	for (i =3D 0; i < HASH_SIZE(bits); i++)
+> +		INIT_HLIST_HEAD(hashtable + i);
+> +}
 
+This seems like an inefficient way to do "memset(hashtable, 0, ...);".
+And in many cases it isn't needed as the hash table is static and initialis=
+ed
+to zero.
+I note that in the SUNRPC/cache patch you call hash_init(), but in the lockd
+patch you don't.  You don't actually need to in either case.
+
+I realise that any optimisation here is for code that is only executed once
+per boot, so no big deal, and even the presence of extra code making the
+kernel bigger is unlikely to be an issue.  But I'd at least like to see
+consistency: Either use hash_init everywhere, even when not needed, or only
+use it where absolutely needed which might be no-where because static tables
+are already initialised, and dynamic tables can use GFP_ZERO.
+
+And if you keep hash_init_size I would rather see a memset(0)....
+
+Thanks,
+NeilBrown
+
+--Sig_/WaPYDSkmDZTaSUO/RNup8tR
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
+
+iQIVAwUBUCreYznsnt1WYoG5AQJjuA//cxInQBsHXHRtWYyYJpxwOX9hqpSDNaZ2
+37aTlFSGjdhr1yn+RcwmtWh9nEj+oHEFlds46gW/woLpGFSXuCPD85CDtZDjPSpL
+7VNXdZ1i3+EEPR0K2vjMaUs1cpdz2KIx8KZjIXfQVnARaZNfts7EuaTCpGM+5bac
+G4CX6uoFtPc/A4LVEiYbowLzhUG+GmxcofMjd9ZJ4Ug0Xg4sl8xXtYg8YDkSn3LJ
+zef9ltlJ1WxLSTtBm6+jyH25Xlb31P7TT3BUgNcStSz9Jak2wdggbUE79iOb3GJL
+sP6/meXapGELz7IE8PVo/cdYdfBcskH6M8ai8pNNYTguSh/2VSRnjR1hPqXhgUYn
+FDKLL8galmS5OxQMwv4mb3zhUIHIiTT7tWBq6eYXo3xUzInU5VufAyLIcpRX3fXm
+VNLnnDOyaoWJCP/fUDrmHskSWPhLQA5/1YtiSI1NYwbY2C+OCybFHYixcWe5CT4w
+YvQ2TTweApDjk5JRndjiO0/j4++kAYvQ8KwC7oo7CUK13dH/9h8rxzV3H4zAhxkh
+4F6FzPEagR1CzKpSkJEA46DJQNIdAbbyCM0VkHORy7gTUa0MA3MsjW8dOKSnBnux
+xsx1GI08WW16NEf1TyGrkqdE/caa4WtDDoLNG3cpwLTZNlMACcZOHXQmgeQu3Ija
+TqL1y22gF/Q=
+=lYgD
+-----END PGP SIGNATURE-----
+
+--Sig_/WaPYDSkmDZTaSUO/RNup8tR--
