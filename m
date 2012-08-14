@@ -1,79 +1,330 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from pobox.sfu.ca ([142.58.101.28]:39157 "EHLO pobox.sfu.ca"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752034Ab2HZSHx convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 26 Aug 2012 14:07:53 -0400
-Received: from d142-058-174-021.wireless.sfu.ca (d142-058-174-021.wireless.sfu.ca [142.58.174.21])
-	(authenticated bits=0)
-	by pobox.sfu.ca (8.13.6/8.13.5/SFU-6.0G) with ESMTP id q7QGvDSO012041
-	(version=TLSv1/SSLv3 cipher=AES128-SHA bits=128 verify=NOT)
-	for <linux-nfs@vger.kernel.org>; Sun, 26 Aug 2012 09:57:13 -0700 (PDT)
-From: Derek Warren <warren@sfu.ca>
-Content-Type: text/plain; charset=us-ascii
-Subject: NFSv4 client failed to create krb5 context?
-Date: Sun, 26 Aug 2012 09:57:13 -0700
-Message-Id: <5F4FD3CC-EC7C-44E9-BC8F-2AF9A0650A41@sfu.ca>
-To: linux-nfs@vger.kernel.org
-Mime-Version: 1.0 (Apple Message framework v1278)
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:39086 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755319Ab2HNQY4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 12:24:56 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH 01/16] hashtable: introduce a small and naive hashtable
+Date: Tue, 14 Aug 2012 18:24:35 +0200
+Message-Id: <1344961490-4068-2-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
+References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Pardon me for barging in on a kernel-oriented list, but I'm hoping some
-of the NFS wizards here can shed some light on something...
+This hashtable implementation is using hlist buckets to provide a simple
+hashtable to prevent it from getting reimplemented all over the kernel.
 
-We have Active Directory-bound/ID mapping working and Kerberized NFSv4 
-shares on CentOS 6.3.
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ include/linux/hashtable.h |  284 +++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 284 insertions(+), 0 deletions(-)
+ create mode 100644 include/linux/hashtable.h
 
-World-readable and -executable directories are readily accessed, but 
-private directories fail:
-
-ID mapping works identically on the server and the client:
-	[joeuser@nfsclient ~]$ id joeuser
-	uid=56055(joeuser) gid=6502(domain users) groups=6502(domain users),1000001(BUILTIN\users)
-
-... and we can mount directories with -o sec=none/krb5/krb5i/krb5p:
-	[joeuser@nfsclient ~]$ sudo mount -t nfs4 -o proto=tcp,port=2049 -o sec=krb5p nfsserver.example.com:/testdir /mnt
-	
-	[joeuser@nfsclient ~]$ ls -l /mnt
-	drwx------ 2 user1    domain users 4096 Aug  3 11:43 user1
-	drwx------ 2 adbinder domain users 4096 Aug 17 15:20 adbinder
-	drwx------ 2 joeuser  domain users 4096 Aug  3 11:43 joeuser
-
-... but we hit the wall here:
-	[joeuser@nfsclient ~]$ cd /mnt/joeuser
-	bash: cd: joeuser: Permission denied
-
-At this point, we get a warning from rpc.gssd:
-
-nfsclient rpc.gssd[10256]: using FILE:/tmp/krb5cc_56055_od8D5s as credentials cache for client with uid 56055 for server nfsserver.example.com
-nfsclient rpc.gssd[10256]: using environment variable to select krb5 ccache FILE:/tmp/krb5cc_56055_od8D5s
-nfsclient rpc.gssd[10256]: creating context using fsuid 56055 (save_uid 0)
-nfsclient rpc.gssd[10256]: creating tcp client for server nfsserver.example.com
-nfsclient rpc.gssd[10256]: creating context with server nfs@nfsserver.example.com
-nfsclient rpc.gssd[10256]: WARNING: Failed to create krb5 context for user with uid 56055 for server nfsserver.example.com
-nfsclient rpc.gssd[10256]: WARNING: Failed to create krb5 context for user with uid 56055 for server nfsserver.example.com
-nfsclient rpc.gssd[10256]: doing error downcall
-
-Can anyone tell me why this mount succeeds but accessing
-non-world-readable/executable directories would fail?
-
-Kerberos appears to be working up to this point: we can kinit -k NFSCLIENT$
-and do a `net ads keytab nfs` without entering a password... and since 
-Kerberos appears to be fine, I'm turning to the linux-nfs list. :-)
-
-I've tried making the share user-mountable and calling `mount` as an
-ordinary user (i.e., without using machine credentials) but this fails
-with the same error.
-
-Details about our setup and more debug output is available in this post:
-http://mailman.mit.edu/pipermail/kerberos/2012-August/018351.html
-
-Random guesses and suggestions from those more experienced than me
-would be more than welcome at this point. :-)
-
-
-
-Many thanks,
---
-Derek Warren, IT Services, Research Computing Group, SFU
+diff --git a/include/linux/hashtable.h b/include/linux/hashtable.h
+new file mode 100644
+index 0000000..b18827a
+--- /dev/null
++++ b/include/linux/hashtable.h
+@@ -0,0 +1,284 @@
++/*
++ * Hash table implementation
++ * (C) 2012  Sasha Levin <levinsasha928@gmail.com>
++ */
++
++#ifndef _LINUX_HASHTABLE_H
++#define _LINUX_HASHTABLE_H
++
++#include <linux/list.h>
++#include <linux/types.h>
++#include <linux/kernel.h>
++#include <linux/hash.h>
++#include <linux/rculist.h>
++
++#define DEFINE_HASHTABLE(name, bits)					\
++	struct hlist_head name[HASH_SIZE(bits)];
++
++#define HASH_SIZE(bits) (1 << (bits))
++#define HASH_BITS(name) (ilog2(ARRAY_SIZE(name)))
++
++/* Use hash_32 when possible to allow for fast 32bit hashing in 64bit kernels. */
++#define hash_min(val, bits) ((sizeof(val)==4) ? hash_32((val), (bits)) : hash_long((val), (bits)))
++
++/**
++ * hash_init_size - initialize a hash table
++ * @hashtable: hashtable to be initialized
++ * @bits: bit count of hashing function
++ *
++ * Initializes a hash table with 2**bits buckets.
++ */
++static inline void hash_init_size(struct hlist_head *hashtable, int bits)
++{
++	int i;
++
++	for (i = 0; i < HASH_SIZE(bits); i++)
++		INIT_HLIST_HEAD(hashtable + i);
++}
++
++/**
++ * hash_init - initialize a hash table
++ * @hashtable: hashtable to be initialized
++ *
++ * Calculates the size of the hashtable from the given parameter, otherwise
++ * same as hash_init_size.
++ */
++#define hash_init(name) hash_init_size(name, HASH_BITS(name))
++
++/**
++ * hash_add_size - add an object to a hashtable
++ * @hashtable: hashtable to add to
++ * @bits: bit count used for hashing
++ * @node: the &struct hlist_node of the object to be added
++ * @key: the key of the object to be added
++ */
++#define hash_add_size(hashtable, bits, node, key)				\
++	hlist_add_head(node, &hashtable[hash_min(key, bits)]);
++
++/**
++ * hash_add - add an object to a hashtable
++ * @hashtable: hashtable to add to
++ * @node: the &struct hlist_node of the object to be added
++ * @key: the key of the object to be added
++ */
++#define hash_add(hashtable, node, key)						\
++	hash_add_size(hashtable, HASH_BITS(hashtable), node, key)
++
++/**
++ * hash_add_rcu_size - add an object to a rcu enabled hashtable
++ * @hashtable: hashtable to add to
++ * @bits: bit count used for hashing
++ * @node: the &struct hlist_node of the object to be added
++ * @key: the key of the object to be added
++ */
++#define hash_add_rcu_size(hashtable, bits, node, key)				\
++	hlist_add_head_rcu(node, &hashtable[hash_min(key, bits)]);
++
++/**
++ * hash_add_rcu - add an object to a rcu enabled hashtable
++ * @hashtable: hashtable to add to
++ * @node: the &struct hlist_node of the object to be added
++ * @key: the key of the object to be added
++ */
++#define hash_add_rcu(hashtable, node, key)					\
++	hash_add_rcu_size(hashtable, HASH_BITS(hashtable), node, key)
++
++/**
++ * hash_hashed - check whether an object is in any hashtable
++ * @node: the &struct hlist_node of the object to be checked
++ */
++#define hash_hashed(node) (!hlist_unhashed(node))
++
++/**
++ * hash_empty_size - check whether a hashtable is empty
++ * @hashtable: hashtable to check
++ * @bits: bit count used for hashing
++ */
++static inline bool hash_empty_size(struct hlist_head *hashtable, int bits)
++{
++	int i;
++
++	for (i = 0; i < HASH_SIZE(bits); i++)
++		if (!hlist_empty(&hashtable[i]))
++			return false;
++
++	return true;
++}
++
++/**
++ * hash_empty - check whether a hashtable is empty
++ * @hashtable: hashtable to check
++ */
++#define hash_empty(name) hash_empty_size(name, HASH_BITS(name))
++
++/**
++ * hash_del - remove an object from a hashtable
++ * @node: &struct hlist_node of the object to remove
++ */
++static inline void hash_del(struct hlist_node *node)
++{
++	hlist_del_init(node);
++}
++
++/**
++ * hash_del_rcu - remove an object from a rcu enabled hashtable
++ * @node: &struct hlist_node of the object to remove
++ */
++static inline void hash_del_rcu(struct hlist_node *node)
++{
++	hlist_del_init_rcu(node);
++}
++
++/**
++ * hash_for_each_size - iterate over a hashtable
++ * @name: hashtable to iterate
++ * @bits: bit count of hashing function of the hashtable
++ * @bkt: integer to use as bucket loop cursor
++ * @node: the &struct list_head to use as a loop cursor for each bucket
++ * @obj: the type * to use as a loop cursor for each bucket
++ * @member: the name of the hlist_node within the struct
++ */
++#define hash_for_each_size(name, bits, bkt, node, obj, member)			\
++	for (bkt = 0; bkt < HASH_SIZE(bits); bkt++)				\
++		hlist_for_each_entry(obj, node, &name[bkt], member)
++
++/**
++ * hash_for_each - iterate over a hashtable
++ * @name: hashtable to iterate
++ * @bkt: integer to use as bucket loop cursor
++ * @node: the &struct list_head to use as a loop cursor for each bucket
++ * @obj: the type * to use as a loop cursor for each bucket
++ * @member: the name of the hlist_node within the struct
++ */
++#define hash_for_each(name, bkt, node, obj, member)				\
++	hash_for_each_size(name, HASH_BITS(name), bkt, node, obj, member)
++
++/**
++ * hash_for_each_rcu_size - iterate over a rcu enabled hashtable
++ * @name: hashtable to iterate
++ * @bits: bit count of hashing function of the hashtable
++ * @bkt: integer to use as bucket loop cursor
++ * @node: the &struct list_head to use as a loop cursor for each bucket
++ * @obj: the type * to use as a loop cursor for each bucket
++ * @member: the name of the hlist_node within the struct
++ */
++#define hash_for_each_rcu_size(name, bits, bkt, node, obj, member)		\
++	for (bkt = 0; bkt < HASH_SIZE(bits); bkt++)				\
++		hlist_for_each_entry_rcu(obj, node, &name[bkt], member)
++
++/**
++ * hash_for_each_rcu - iterate over a rcu enabled hashtable
++ * @name: hashtable to iterate
++ * @bkt: integer to use as bucket loop cursor
++ * @node: the &struct list_head to use as a loop cursor for each bucket
++ * @obj: the type * to use as a loop cursor for each bucket
++ * @member: the name of the hlist_node within the struct
++ */
++#define hash_for_each_rcu(name, bkt, node, obj, member)				\
++	hash_for_each_rcu_size(name, HASH_BITS(name), bkt, node, obj, member)
++
++/**
++ * hash_for_each_safe_size - iterate over a hashtable safe against removal of
++ * hash entry
++ * @name: hashtable to iterate
++ * @bkt: integer to use as bucket loop cursor
++ * @node: the &struct list_head to use as a loop cursor for each bucket
++ * @tmp: another &struct hlist_node to use as temporary storage
++ * @obj: the type * to use as a loop cursor for each bucket
++ * @member: the name of the hlist_node within the struct
++ */
++#define hash_for_each_safe_size(name, bits, bkt, node, tmp, obj, member)	\
++	for (bkt = 0; bkt < HASH_SIZE(bits); bkt++)                     	\
++		hlist_for_each_entry_safe(obj, node, tmp, &name[bkt], member)
++
++/**
++ * hash_for_each_safe_size - iterate over a hashtable safe against removal of
++ * hash entry
++ * @name: hashtable to iterate
++ * @bkt: integer to use as bucket loop cursor
++ * @node: the &struct list_head to use as a loop cursor for each bucket
++ * @obj: the type * to use as a loop cursor for each bucket
++ * @member: the name of the hlist_node within the struct
++ */
++#define hash_for_each_safe(name, bkt, node, tmp, obj, member)			\
++	hash_for_each_safe_size(name, HASH_BITS(name), bkt, node,		\
++				tmp, obj, member)
++
++/**
++ * hash_for_each_possible - iterate over all possible objects for a given key
++ * @name: hashtable to iterate
++ * @obj: the type * to use as a loop cursor for each bucket
++ * @bits: bit count of hashing function of the hashtable
++ * @node: the &struct list_head to use as a loop cursor for each bucket
++ * @member: the name of the hlist_node within the struct
++ * @key: the key of the objects to iterate over
++ */
++#define hash_for_each_possible_size(name, obj, bits, node, member, key)		\
++	hlist_for_each_entry(obj, node,	&name[hash_min(key, bits)], member)
++
++/**
++ * hash_for_each_possible - iterate over all possible objects for a given key
++ * @name: hashtable to iterate
++ * @obj: the type * to use as a loop cursor for each bucket
++ * @bits: bit count of hashing function of the hashtable
++ * @node: the &struct list_head to use as a loop cursor for each bucket
++ * @member: the name of the hlist_node within the struct
++ * @key: the key of the objects to iterate over
++ */
++#define hash_for_each_possible(name, obj, node, member, key)			\
++	hash_for_each_possible_size(name, obj, HASH_BITS(name), node, member, key)
++
++/**
++ * hash_for_each_possible - iterate over all possible objects for a given key
++ * in a rcu enabled hashtable
++ * @name: hashtable to iterate
++ * @obj: the type * to use as a loop cursor for each bucket
++ * @bits: bit count of hashing function of the hashtable
++ * @node: the &struct list_head to use as a loop cursor for each bucket
++ * @member: the name of the hlist_node within the struct
++ * @key: the key of the objects to iterate over
++ */
++#define hash_for_each_possible_rcu_size(name, obj, bits, node, member, key)	\
++	hlist_for_each_entry_rcu(obj, node, &name[hash_min(key, bits)], member)
++
++/**
++ * hash_for_each_possible - iterate over all possible objects for a given key
++ * in a rcu enabled hashtable
++ * @name: hashtable to iterate
++ * @obj: the type * to use as a loop cursor for each bucket
++ * @node: the &struct list_head to use as a loop cursor for each bucket
++ * @member: the name of the hlist_node within the struct
++ * @key: the key of the objects to iterate over
++ */
++#define hash_for_each_possible_rcu(name, obj, node, member, key)		\
++	hash_for_each_possible_rcu_size(name, obj, HASH_BITS(name),		\
++					node, member, key)
++
++/**
++ * hash_for_each_possible - iterate over all possible objects for a given key
++ * safe against removal of hash entry
++ * @name: hashtable to iterate
++ * @obj: the type * to use as a loop cursor for each bucket
++ * @bits: bit count of hashing function of the hashtable
++ * @node: the &struct list_head to use as a loop cursor for each bucket
++ * @member: the name of the hlist_node within the struct
++ * @key: the key of the objects to iterate over
++ */
++#define hash_for_each_possible_safe_size(name, obj, bits, node, tmp, member, key)\
++	hlist_for_each_entry_safe(obj, node, tmp,				\
++		&name[hash_min(key, bits)], member)
++
++/**
++ * hash_for_each_possible - iterate over all possible objects for a given key
++ * safe against removal of hash entry
++ * @name: hashtable to iterate
++ * @obj: the type * to use as a loop cursor for each bucket
++ * @node: the &struct list_head to use as a loop cursor for each bucket
++ * @member: the name of the hlist_node within the struct
++ * @key: the key of the objects to iterate over
++ */
++#define hash_for_each_possible_safe(name, obj, node, tmp, member, key)		\
++	hash_for_each_possible_safe_size(name, obj, HASH_BITS(name),		\
++						node, tmp, member, key)
++
++#endif
+-- 
+1.7.8.6
 
