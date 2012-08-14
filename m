@@ -1,48 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:50443 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750964Ab2HICYj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Aug 2012 22:24:39 -0400
-Received: by pbbrr13 with SMTP id rr13so83450pbb.19
-        for <linux-nfs@vger.kernel.org>; Wed, 08 Aug 2012 19:24:39 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1344451818.8925.27.camel@lade.trondhjem.org>
-References: <1344391392-1948-1-git-send-email-bergwolf@gmail.com>
- <1344391392-1948-3-git-send-email-bergwolf@gmail.com> <1344451818.8925.27.camel@lade.trondhjem.org>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Thu, 9 Aug 2012 10:24:19 +0800
-Message-ID: <CA+a=Yy5FkO93xjA2VFa7eGP=CEb3QuM+6frL5cTLnwhQHdr5Ag@mail.gmail.com>
-Subject: Re: [PATCH RFC 2/3] NFS41: send real write size in layoutget
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "bharrosh@panasas.com" <bharrosh@panasas.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:39086 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756743Ab2HNQZd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 12:25:33 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH 06/16] tracepoint: use new hashtable implementation
+Date: Tue, 14 Aug 2012 18:24:40 +0200
+Message-Id: <1344961490-4068-7-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
+References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 9, 2012 at 2:50 AM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Wed, 2012-08-08 at 10:03 +0800, Peng Tao wrote:
->> From: Peng Tao <tao.peng@emc.com>
->>
->> For bufferred write, scan dirty pages to find out longest continuous
->> dirty pages. In this case, also allow layout driver to specify a
->> maximum layoutget size which is useful to avoid busy scanning dirty pages
->> for block layout client.
->
-> This is _really_ ugly, and is a source of potential deadlocks if
-> multiple threads are scanning+locking pages at the same time.
-Multiple threads won't be able to scan into the same region as borders
-are protected by page writeback bit.
+Switch tracepoints to use the new hashtable implementation. This reduces the amount of
+generic unrelated code in the tracepoints.
 
->
-> Why not simplify this by dropping the complicated tests for whether or
-> not the pages are dirty? That gets rid of the deadlock-prone lock_page()
-> calls, and would enable you to just use radix_tree_next_hole().
->
-OK. I will cook a patch to drop the complicated page dirty/writeback
-checks and just use radix_tree_next_hole.
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ kernel/tracepoint.c |   27 +++++++++++----------------
+ 1 files changed, 11 insertions(+), 16 deletions(-)
 
+diff --git a/kernel/tracepoint.c b/kernel/tracepoint.c
+index d96ba22..854df92 100644
+--- a/kernel/tracepoint.c
++++ b/kernel/tracepoint.c
+@@ -26,6 +26,7 @@
+ #include <linux/slab.h>
+ #include <linux/sched.h>
+ #include <linux/static_key.h>
++#include <linux/hashtable.h>
+ 
+ extern struct tracepoint * const __start___tracepoints_ptrs[];
+ extern struct tracepoint * const __stop___tracepoints_ptrs[];
+@@ -49,8 +50,7 @@ static LIST_HEAD(tracepoint_module_list);
+  * Protected by tracepoints_mutex.
+  */
+ #define TRACEPOINT_HASH_BITS 6
+-#define TRACEPOINT_TABLE_SIZE (1 << TRACEPOINT_HASH_BITS)
+-static struct hlist_head tracepoint_table[TRACEPOINT_TABLE_SIZE];
++static DEFINE_HASHTABLE(tracepoint_table, TRACEPOINT_HASH_BITS);
+ 
+ /*
+  * Note about RCU :
+@@ -191,16 +191,15 @@ tracepoint_entry_remove_probe(struct tracepoint_entry *entry,
+  */
+ static struct tracepoint_entry *get_tracepoint(const char *name)
+ {
+-	struct hlist_head *head;
+ 	struct hlist_node *node;
+ 	struct tracepoint_entry *e;
+ 	u32 hash = jhash(name, strlen(name), 0);
+ 
+-	head = &tracepoint_table[hash & (TRACEPOINT_TABLE_SIZE - 1)];
+-	hlist_for_each_entry(e, node, head, hlist) {
++	hash_for_each_possible(tracepoint_table, e, node, hlist, hash) {
+ 		if (!strcmp(name, e->name))
+ 			return e;
+ 	}
++
+ 	return NULL;
+ }
+ 
+@@ -210,19 +209,13 @@ static struct tracepoint_entry *get_tracepoint(const char *name)
+  */
+ static struct tracepoint_entry *add_tracepoint(const char *name)
+ {
+-	struct hlist_head *head;
+-	struct hlist_node *node;
+ 	struct tracepoint_entry *e;
+ 	size_t name_len = strlen(name) + 1;
+ 	u32 hash = jhash(name, name_len-1, 0);
+ 
+-	head = &tracepoint_table[hash & (TRACEPOINT_TABLE_SIZE - 1)];
+-	hlist_for_each_entry(e, node, head, hlist) {
+-		if (!strcmp(name, e->name)) {
+-			printk(KERN_NOTICE
+-				"tracepoint %s busy\n", name);
+-			return ERR_PTR(-EEXIST);	/* Already there */
+-		}
++	if (get_tracepoint(name)) {
++		printk(KERN_NOTICE "tracepoint %s busy\n", name);
++		return ERR_PTR(-EEXIST);	/* Already there */
+ 	}
+ 	/*
+ 	 * Using kmalloc here to allocate a variable length element. Could
+@@ -234,7 +227,7 @@ static struct tracepoint_entry *add_tracepoint(const char *name)
+ 	memcpy(&e->name[0], name, name_len);
+ 	e->funcs = NULL;
+ 	e->refcount = 0;
+-	hlist_add_head(&e->hlist, head);
++	hash_add(tracepoint_table, &e->hlist, hash);
+ 	return e;
+ }
+ 
+@@ -244,7 +237,7 @@ static struct tracepoint_entry *add_tracepoint(const char *name)
+  */
+ static inline void remove_tracepoint(struct tracepoint_entry *e)
+ {
+-	hlist_del(&e->hlist);
++	hash_del(&e->hlist);
+ 	kfree(e);
+ }
+ 
+@@ -722,6 +715,8 @@ struct notifier_block tracepoint_module_nb = {
+ 
+ static int init_tracepoints(void)
+ {
++	hash_init(tracepoint_table);
++
+ 	return register_module_notifier(&tracepoint_module_nb);
+ }
+ __initcall(init_tracepoints);
 -- 
-Thanks,
-Tao
+1.7.8.6
+
