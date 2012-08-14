@@ -1,124 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.openrapids.net ([64.15.138.104]:56763 "EHLO
-	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751448Ab2HODk2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 23:40:28 -0400
-Date: Tue, 14 Aug 2012 23:31:55 -0400
-From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-To: "Eric W. Biederman" <ebiederm@xmission.com>
-Cc: Sasha Levin <levinsasha928@gmail.com>, torvalds@linux-foundation.org,
-        tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH 02/16] user_ns: use new hashtable implementation
-Message-ID: <20120815033155.GA32653@Krystal>
-References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com> <1344961490-4068-3-git-send-email-levinsasha928@gmail.com> <87txw5hw0s.fsf@xmission.com> <502AF184.4010907@gmail.com> <87393phshy.fsf@xmission.com> <502AFCD5.6070104@gmail.com> <87obmchmpu.fsf@xmission.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87obmchmpu.fsf@xmission.com>
+Received: from mx1.redhat.com ([209.132.183.28]:22042 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753156Ab2HNTLs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Aug 2012 15:11:48 -0400
+Date: Tue, 14 Aug 2012 15:11:43 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Al Viro <viro@ZenIV.linux.org.uk>,
+        Richard Ems <richard.ems@cape-horn-eng.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nfs_lookup_revalidate BUG ?
+Message-ID: <20120814151143.30fb9ca9@tlielax.poochiereds.net>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA93A4DFC@SACEXCMBX04-PRD.hq.netapp.com>
+References: <502A21A1.7020206@cape-horn-eng.com>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA93A4848@SACEXCMBX04-PRD.hq.netapp.com>
+	<20120814183512.GI23464@ZenIV.linux.org.uk>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA93A4DFC@SACEXCMBX04-PRD.hq.netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* Eric W. Biederman (ebiederm@xmission.com) wrote:
-> Sasha Levin <levinsasha928@gmail.com> writes:
+On Tue, 14 Aug 2012 18:48:35 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+
+> On Tue, 2012-08-14 at 19:35 +0100, Al Viro wrote:
+> > On Tue, Aug 14, 2012 at 06:04:08PM +0000, Myklebust, Trond wrote:
+> > > > Is this a known BUG ?
+> > > > Which other information or test can I do to contribute searching/resolving this issue?
+> > > 
+> > > I'm not 100% certain, but it looks to me as if the call to dget_parent()
+> > > in nfs_lookup_revalidate is returning NULL.
+> > > 
+> > > Could you please apply the following patch, and see if that triggers the
+> > > WARN_ON instead of the above Oops?
+> > 
+> > Unlikely as hell.  dget_parent() has only one return in it, and it's
+> >         BUG_ON(!ret->d_count);
+> >         ret->d_count++;
+> >         spin_unlock(&ret->d_lock);
+> >         return ret;
+> > so it's extremely unlikely that it would managed to return NULL.  Not
+> > without oopsing...
 > 
-> > On 08/15/2012 03:08 AM, Eric W. Biederman wrote:
-> >>> I can offer the following: I'll write a small module that will hash 1...10000
-> >>> > into a hashtable which uses 7 bits (just like user_ns) and post the distribution
-> >>> > we'll get.
-> >> That won't hurt.  I think 1-100 then 1000-1100 may actually be more
-> >> representative.  Not that I would mind seeing the larger range.
-> >> Especially since I am in the process of encouraging the use of more
-> >> uids.
-> >> 
-> >
-> > Alrighty, the results are in (numbers are objects in bucket):
-> >
-> > For the 0...10000 range:
-> >
-> > Average: 78.125
-> > Std dev: 1.4197704151
-> > Min: 75
-> > Max: 80
-> >
-> >
-> > For the 1...100 range:
-> >
-> > Average: 0.78125
-> > Std dev: 0.5164613088
-> > Min: 0
-> > Max: 2
-> >
-> >
-> > For the 1000...1100 range:
-> >
-> > Average: 0.7890625
-> > Std dev: 0.4964812206
-> > Min: 0
-> > Max: 2
-> >
-> >
-> > Looks like hash_32 is pretty good with small numbers.
+> Agreed, but the Oops is a NULL pointer dereference of offset 00038,
+> which looks suspiciously like a deference of (struct dentry)->d_inode.
+> There are only 2 of those in the vicinity of nfs_lookup_revalidate+0x2d:
+> one is a dereference of parent->d_inode, the other is dentry->d_inode...
 > 
-> Yes hash_32 seems reasonable for the uid hash.   With those long hash
-> chains I wouldn't like to be on a machine with 10,000 processes with
-> each with a different uid, and a processes calling setuid in the fast
-> path.
-> 
-> The uid hash that we are playing with is one that I sort of wish that
-> the hash table could grow in size, so that we could scale up better.
 
-Hi Eric,
+One way to determine this would be to follow the instructions here,
+substituting nfs.ko for cifs.ko:
 
-If you want to try out something that has more features than a basic
-hash table, already exists and is available for you to play with, you
-might want to have a look at the RCU lock-free resizable hash table.
-It's initially done in userspace, but shares the same RCU semantic as
-the kernel, and has chunk-based kernel-friendly index backends (thanks
-to Lai Jiangshan), very useful to integrate with the kernel page
-allocator.
+    http://wiki.samba.org/index.php/LinuxCIFS_troubleshooting#Oopses
 
-It has the following properties that might make this container a good
-fit for uid hashing:
+...and see if you can get a listing of the spot where it oopsed. You
+may need kernel debuginfo installed if you're using a distro kernel
+though.
 
-- Real-time friendly lookups: Lookups are RCU and wait-free.
-- Fast and real-time friendly updates: Use cmpxchg for update, and RCU
-  to deal with ABA.
-- Resize (expand/shrink) for each power of two size, performed
-  concurrently with ongoing updates and lookups.
-- Has add_unique (uniquify), add_replace, and also duplicate semantics.
-- Provide uniqueness guarantees for RCU traversals of the hash table
-  with respect to add_unique and add_replace.
-
-So if you are looking for a fast, RT-friendly, resizable hash table to
-play with, you might want to have a look at the userspace RCU
-implementation, which now features this hash table:
-
-https://lttng.org/urcu
-
-See urcu/rculfhash.h for the API.
-
-Best regards,
-
-Mathieu
-
-> 
-> Aw well.  Most of the time we only have a very small number of uids
-> in play, so it doesn't matter at this point.
-> 
-> Eric
-> 
+[1]: yes, I know that page is about CIFS troubleshooting, but that
+method should work for nfs.ko too.
 
 -- 
-Mathieu Desnoyers
-Operating System Efficiency R&D Consultant
-EfficiOS Inc.
-http://www.efficios.com
+Jeff Layton <jlayton@redhat.com>
