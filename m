@@ -1,115 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:16531 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:22705 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751621Ab2HBSeB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Aug 2012 14:34:01 -0400
-Date: Thu, 2 Aug 2012 14:33:33 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Bryan Schumaker <bjschuma@netapp.com>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 00/10] Create NFS modules
-Message-ID: <20120802143333.0d28bab5@tlielax.poochiereds.net>
-In-Reply-To: <501A9C33.5010805@netapp.com>
-References: <1343678725-8659-1-git-send-email-bjschuma@netapp.com>
-	<20120802112059.57e7bb82@corrin.poochiereds.net>
-	<501A9C33.5010805@netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1752446Ab2HNOxv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Aug 2012 10:53:51 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Peng Tao <bergwolf@gmail.com>
+CC: Benny Halevy <bhalevy@tonian.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
+        Boaz Harrosh <bharrosh@panasas.com>,
+        "Isaman, Fred" <Fred.Isaman@netapp.com>,
+        Idan Keidar <idank@tonian.com>, Lev Solomonov <solo@tonian.com>
+Subject: Re: [PATCH] NFSv4.1: Remove a bogus BUG_ON() in
+ nfs4_layoutreturn_done
+Date: Tue, 14 Aug 2012 14:53:19 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA93A3B3C@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1344457310-26442-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <CA+a=Yy7SX+cPLFiNy552bU9ZMS_rSwvaSpV732_mDwpcPAH5Wg@mail.gmail.com>
+	 <1344522979.23523.2.camel@lade.trondhjem.org>
+	 <CA+a=Yy7tDi0kQGvjPeb=O_9XMnZDm-_31VTkNF7wEW7Pb0BZow@mail.gmail.com>
+	 <1344526780.25447.6.camel@lade.trondhjem.org> <502A02B2.2020700@tonian.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA93A372D@SACEXCMBX04-PRD.hq.netapp.com>
+	 <CA+a=Yy7SgNGeVzM1VNvn+nGAVTpJT6uOLn=AfNsvQJsu6Au1Wg@mail.gmail.com>
+In-Reply-To: <CA+a=Yy7SgNGeVzM1VNvn+nGAVTpJT6uOLn=AfNsvQJsu6Au1Wg@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 02 Aug 2012 11:26:43 -0400
-Bryan Schumaker <bjschuma@netapp.com> wrote:
-
-> On 08/02/2012 11:20 AM, Jeff Layton wrote:
-> > On Mon, 30 Jul 2012 16:05:15 -0400
-> > bjschuma@netapp.com wrote:
-> > 
-> >> From: Bryan Schumaker <bjschuma@netapp.com>
-> >>
-> >> This is the final set of patches to turn NFS into modules.  The first patch
-> >> creates an "nfs_subversion" structure that will represent a single NFS
-> >> version.  The next 6 patches are cleanups that the nfs_subversion structure
-> >> allows us to put in.  Finally, the last 3 patches convert v2, v3 and v4 into
-> >> kernel modules.
-> >>
-> >> Changes in version 2:
-> >> - Add a patch to keep nfs4 module parameters in the generic client.  Without
-> >>   this we break backwards compatibility with older kernels.
-> >>
-> >> - Bryan
-> >>
-> >> Bryan Schumaker (10):
-> >>   NFS: Add version registering framework
-> >>   NFS: Remove the NFS v4 xdev mount function
-> >>   NFS: Create a try_mount rpc op
-> >>   NFS: Only initialize the ACL client in the v3 case
-> >>   NFS: Pass super operations and xattr handlers in the nfs_subversion
-> >>   NFS: Split out remaining NFS v4 inode functions
-> >>   NFS: Keep module parameters in the generic NFS client
-> >>   NFS: Convert v2 into a module
-> >>   NFS: Convert v3 into a module
-> >>   NFS: Convert v4 into a module
-> >>
-> >>  fs/nfs/Kconfig            |   6 +-
-> >>  fs/nfs/Makefile           |  27 +++----
-> >>  fs/nfs/callback.c         |  24 ------
-> >>  fs/nfs/callback.h         |   2 +-
-> >>  fs/nfs/client.c           | 191 +++++++++++++++++++++++++---------------------
-> >>  fs/nfs/delegation.h       |   2 +-
-> >>  fs/nfs/dir.c              |  20 ++++-
-> >>  fs/nfs/direct.c           |   2 +-
-> >>  fs/nfs/dns_resolve.c      |   4 +
-> >>  fs/nfs/file.c             |  15 ++++
-> >>  fs/nfs/idmap.c            |   3 -
-> >>  fs/nfs/inode.c            | 105 ++++++++++++-------------
-> >>  fs/nfs/internal.h         |  38 +++++----
-> >>  fs/nfs/namespace.c        |  17 +----
-> >>  fs/nfs/netns.h            |   2 +-
-> >>  fs/nfs/nfs.h              |  29 +++++++
-> >>  fs/nfs/nfs2super.c        |  31 ++++++++
-> >>  fs/nfs/nfs3client.c       |  65 ++++++++++++++++
-> >>  fs/nfs/nfs3proc.c         |   3 +
-> >>  fs/nfs/nfs3super.c        |  31 ++++++++
-> >>  fs/nfs/nfs4_fs.h          |  13 ++--
-> >>  fs/nfs/nfs4client.c       |  23 ++----
-> >>  fs/nfs/nfs4proc.c         |   9 +--
-> >>  fs/nfs/nfs4super.c        | 106 +++++++++++++------------
-> >>  fs/nfs/nfs4xdr.c          |   6 --
-> >>  fs/nfs/pagelist.c         |   4 +
-> >>  fs/nfs/pnfs.c             |   2 +
-> >>  fs/nfs/proc.c             |   3 +
-> >>  fs/nfs/read.c             |   5 ++
-> >>  fs/nfs/super.c            | 172 ++++++++++++++++++++++++++++-------------
-> >>  fs/nfs/write.c            |  35 +++------
-> >>  include/linux/nfs_fs.h    |   6 +-
-> >>  include/linux/nfs_fs_sb.h |   7 +-
-> >>  include/linux/nfs_idmap.h |   2 +-
-> >>  include/linux/nfs_xdr.h   |   9 ++-
-> >>  35 files changed, 632 insertions(+), 387 deletions(-)
-> >>  create mode 100644 fs/nfs/nfs.h
-> >>  create mode 100644 fs/nfs/nfs2super.c
-> >>  create mode 100644 fs/nfs/nfs3client.c
-> >>  create mode 100644 fs/nfs/nfs3super.c
-> >>
-> > 
-> > I'm seeing a (minor?) regression that I think is probably due to these
-> > patches. If I plug in nfs.ko, and then unplug it, I'm unable to plug it
-> > back in again:
-> 
-> Thanks for letting me know, I'll look into it today.
-> 
-> - Bryan
-> 
-
-It was blocking some other testing so I went ahead and fixed it. It
-looks like this was not introduced by these patches, but was a
-long-standing bug. That patch should probably go to stable too, but I
-haven't vetted it to make sure it'll apply cleanly to earlier kernels
-yet.
-
-For the life of me though, I don't understand why it wasn't biting us
-before the above set went in however...
-
--- 
-Jeff Layton <jlayton@redhat.com>
+T24gVHVlLCAyMDEyLTA4LTE0IGF0IDIyOjMwICswODAwLCBQZW5nIFRhbyB3cm90ZToNCj4gT24g
+VHVlLCBBdWcgMTQsIDIwMTIgYXQgOTo0NSBQTSwgTXlrbGVidXN0LCBUcm9uZA0KPiA8VHJvbmQu
+TXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+IE9uIFR1ZSwgMjAxMi0wOC0xNCBhdCAx
+MDo0OCArMDMwMCwgQmVubnkgSGFsZXZ5IHdyb3RlOg0KPiA+PiBPbiAyMDEyLTA4LTA5IDE4OjM5
+LCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+PiA+IE9uIFRodSwgMjAxMi0wOC0wOSBhdCAy
+MzowMSArMDgwMCwgUGVuZyBUYW8gd3JvdGU6DQo+ID4+ID4+IE9uIFRodSwgQXVnIDksIDIwMTIg
+YXQgMTA6MzYgUE0sIE15a2xlYnVzdCwgVHJvbmQNCj4gPj4gPj4gPFRyb25kLk15a2xlYnVzdEBu
+ZXRhcHAuY29tPiB3cm90ZToNCj4gPj4gPj4+IE9uIFRodSwgMjAxMi0wOC0wOSBhdCAyMjozMCAr
+MDgwMCwgUGVuZyBUYW8gd3JvdGU6DQo+ID4+ID4+Pj4gT24gVGh1LCBBdWcgOSwgMjAxMiBhdCA0
+OjIxIEFNLCBUcm9uZCBNeWtsZWJ1c3QNCj4gPj4gPj4+PiA8VHJvbmQuTXlrbGVidXN0QG5ldGFw
+cC5jb20+IHdyb3RlOg0KPiA+PiA+Pj4+PiBFdmVyIHNpbmNlIGNvbW1pdCAwYTU3Y2RhYzNmIChO
+RlN2NC4xIHNlbmQgbGF5b3V0cmV0dXJuIHRvIGZlbmNlDQo+ID4+ID4+Pj4+IGRpc2Nvbm5lY3Rl
+ZCBkYXRhIHNlcnZlcikgd2UndmUgYmVlbiBzZW5kaW5nIGxheW91dHJldHVybiBjYWxscw0KPiA+
+PiA+Pj4+PiB3aGlsZSB0aGVyZSBpcyBwb3RlbnRpYWxseSBzdGlsbCBvdXRzdGFuZGluZyBJL08g
+dG8gdGhlIGRhdGENCj4gPj4gPj4+Pj4gc2VydmVycy4gVGhlIHJlYXNvbiB3ZSBkbyB0aGlzIGlz
+IHRvIGF2b2lkIHJhY2VzIGJldHdlZW4gcmVwbGF5ZWQNCj4gPj4gPj4+Pj4gd3JpdGVzIHRvIHRo
+ZSBNRFMgYW5kIHRoZSBvcmlnaW5hbCB3cml0ZXMgdG8gdGhlIERTLg0KPiA+PiA+Pj4+Pg0KPiA+
+PiA+Pj4+PiBXaGVuIHRoaXMgaGFwcGVucywgdGhlIEJVR19PTigpIGluIG5mczRfbGF5b3V0cmV0
+dXJuX2RvbmUgY2FuDQo+ID4+ID4+Pj4+IGJlIHRyaWdnZXJlZCBiZWNhdXNlIGl0IGFzc3VtZXMg
+dGhhdCB3ZSB3b3VsZCBuZXZlciBjYWxsDQo+ID4+ID4+Pj4+IGxheW91dHJldHVybiB3aXRob3V0
+IGtub3dpbmcgdGhhdCBhbGwgSS9PIHRvIHRoZSBEUyBpcw0KPiA+PiA+Pj4+PiBmaW5pc2hlZC4g
+VGhlIGZpeCBpcyB0byByZW1vdmUgdGhlIEJVR19PTigpIG5vdyB0aGF0IHRoZQ0KPiA+PiA+Pj4+
+PiBhc3N1bXB0aW9ucyBiZWhpbmQgdGhlIHRlc3QgYXJlIG9ic29sZXRlLg0KPiA+PiA+Pj4+Pg0K
+PiA+PiA+Pj4+IElzbid0IE1EUyBzdXBwb3NlZCB0byByZWNhbGwgdGhlIGxheW91dCBpZiByYWNl
+cyBhcmUgcG9zc2libGUgYmV0d2Vlbg0KPiA+PiA+Pj4+IG91dHN0YW5kaW5nIHdyaXRlLXRvLURT
+IGFuZCB3cml0ZS10aHJvdWdoLU1EUz8NCj4gPj4gPj4+DQo+ID4+ID4+PiBXaGVyZSBkbyB5b3Ug
+cmVhZCB0aGF0IGluIFJGQzU2NjE/DQo+ID4+ID4+Pg0KPiA+PiA+PiBUaGF0J3MgbXkgKG1heWJl
+IG1pcy0pdW5kZXJzdGFuZGluZyBvZiBob3cgc2VydmVyIHdvcmtzLi4uIEJ1dCBsb29raW5nDQo+
+ID4+ID4+IGF0IHJmYzU2NjEgc2VjdGlvbiAxOC40NC4zLiBsYXlvdXRyZXR1cm4gaW1wbGVtZW50
+YXRpb24uDQo+ID4+ID4+ICINCj4gPj4gPj4gQWZ0ZXIgdGhpcyBjYWxsLA0KPiA+PiA+PiAgICB0
+aGUgY2xpZW50IE1VU1QgTk9UIHVzZSB0aGUgcmV0dXJuZWQgbGF5b3V0KHMpIGFuZCB0aGUgYXNz
+b2NpYXRlZA0KPiA+PiA+PiAgICBzdG9yYWdlIHByb3RvY29sIHRvIGFjY2VzcyB0aGUgZmlsZSBk
+YXRhLg0KPiA+PiA+PiAiDQo+ID4+ID4+IEFuZCBnaXZlbiBjb21taXQgMGE1N2NkYWMzZiwgY2xp
+ZW50IGlzIHVzaW5nIHRoZSBsYXlvdXQgZXZlbiBhZnRlcg0KPiA+PiA+PiBsYXlvdXRyZXR1cm4s
+IHdoaWNoIElNSE8gaXMgYSB2aW9sYXRpb24gb2YgcmZjNTY2MS4NCj4gPj4gPg0KPiA+PiA+IE5v
+LiBJdCBpcyB1c2luZyB0aGUgbGF5b3V0cmV0dXJuIHRvIHRlbGwgdGhlIE1EUyB0byBmZW5jZSBv
+ZmYgSS9PIHRvIGENCj4gPj4gPiBkYXRhIHNlcnZlciB0aGF0IGlzIG5vdCByZXNwb25kaW5nLiBJ
+dCBpc24ndCBhdHRlbXB0aW5nIHRvIHVzZSB0aGUNCj4gPj4gPiBsYXlvdXQgYWZ0ZXIgdGhlIGxh
+eW91dHJldHVybjogdGhlIHdob2xlIHBvaW50IGlzIHRoYXQgd2UgYXJlIGF0dGVtcHRpbmcNCj4g
+Pj4gPiB3cml0ZS10aHJvdWdoLU1EUyBhZnRlciB0aGUgYXR0ZW1wdCB0byB3cml0ZSB0aHJvdWdo
+IHRoZSBEUyB0aW1lZCBvdXQuDQo+ID4+ID4NCj4gPj4NCj4gPj4gSSBoZWFyIHlvdSwgYnV0IHRo
+aXMgdXNlIGNhc2UgaXMgdmFsaWQgYWZ0ZXIgYSB0aW1lIG91dCAvIGRpc2Nvbm5lY3QNCj4gPj4g
+KHdoaWNoIHdpbGwgdHJhbnNsYXRlIHRvIFBORlNfT1NEX0VSUl9VTlJFQUNIQUJMRSBmb3IgdGhl
+IG9iamVjdHMgbGF5b3V0KQ0KPiA+PiBJbiBvdGhlciBjYXNlcywgSS9PcyB0byB0aGUgRFMgbWln
+aHQgb2J2aW91c2x5IGJlIGluIGZsaWdodCBhbmQgdGhlIEJVR19PTg0KPiA+PiBpbmRpY2F0ZXMg
+dGhhdC4NCj4gPj4NCj4gPj4gSU1PLCB0aGUgcmlnaHQgd2F5IHRvIGltcGxlbWVudCB0aGF0IGlz
+IHRvIGluaXRpYWxseSBtYXJrIHRoZSBsc2VncyBpbnZhbGlkDQo+ID4+IGFuZCBpbmNyZW1lbnQg
+cGxoX2Jsb2NrX2xnZXRzLCBhcyB3ZSBkbyB0b2RheSBpbiBfcG5mc19yZXR1cm5fbGF5b3V0DQo+
+ID4+IGJ1dCBhY3R1YWxseSBzZW5kIHRoZSBsYXlvdXQgcmV0dXJuIG9ubHkgd2hlbiB0aGUgbGFz
+dCBzZWdtZW50IGlzIGRlcmVmZXJlbmNlZC4NCj4gPg0KPiA+IFRoaXMgaXMgd2hhdCB3ZSBkbyBm
+b3Igb2JqZWN0IGFuZCBibG9jayBsYXlvdXQgdHlwZXMsIHNvIHlvdXINCj4gPiBvYmplY3RzLXNw
+ZWNpZmljIG9iamVjdGlvbiBpcyB1bmZvdW5kZWQuDQo+ID4NCj4gb2JqZWN0IGxheW91dCBpcyBh
+bHNvIGRvaW5nIGxheW91dCByZXR1cm4gb24gSU8gZXJyb3IgKGNvbW1pdA0KPiBmZTBmZTgzNTg1
+ZjgpLiBBbmQgaXQgZG9lc24ndCB0YWtlIGNhcmUgb2YgZHJhaW5pbmcgY29uY3VycmVudA0KPiBp
+bi1mbGlnaHQgSU8uIEkgZ3Vlc3MgdGhhdCdzIHdoeSBCb2F6IHNhdyB0aGUgc2FtZSBCVUdfT04u
+DQoNClllcy4gSSBkaWQgbm90aWNlIHRoYXQgY29kZSB3aGVuIEkgd2FzIGxvb2tpbmcgaW50byB0
+aGlzLiBIb3dldmVyIHRoYXQncw0KQm9heidzIG93biBwYXRjaCwgYW5kIGl0IF9vbmx5XyBhcHBs
+aWVzIHRvIHRoZSBvYmplY3RzIGxheW91dCB0eXBlLiBJDQphc3N1bWVkIHRoYXQgaGUgaGFkIHRl
+c3RlZCBpdCB3aGVuIEkgYXBwbGllZCBpdC4uLg0KDQpPbmUgd2F5IHRvIGZpeCB0aGF0IHdvdWxk
+IGJlIHRvIGtlZXAgYSBjb3VudCBvZiAib3V0c3RhbmRpbmcNCnJlYWQvd3JpdGVzIiBpbiB0aGUg
+bGF5b3V0LCBzbyB0aGF0IHdoZW4gdGhlIGVycm9yIG9jY3VycywgYW5kIHdlIHdhbnQNCnRvIGZh
+bGwgYmFjayB0byBNRFMsIHdlIGp1c3QgaW5jcmVtZW50IHBsaF9ibG9ja19sZ2V0cywgaW52YWxp
+ZGF0ZSB0aGUNCmxheW91dCwgYW5kIHRoZW4gbGV0IHRoZSBvdXRzdGFuZGluZyByZWFkL3dyaXRl
+cyBmYWxsIHRvIHplcm8gYmVmb3JlDQpzZW5kaW5nIHRoZSBsYXlvdXRyZXR1cm4uDQpJZiB0aGUg
+b2JqZWN0cyBsYXlvdXQgd2FudHMgdG8gZG8gdGhhdCwgdGhlbiBJIGhhdmUgbm8gb2JqZWN0aW9u
+LiBBcw0KSSd2ZSBzYWlkIG11bHRpcGxlIHRpbWVzLCB0aG91Z2gsIEknbSBub3QgY29udmluY2Vk
+IHdlIHdhbnQgdG8gZG8gdGhhdA0KZm9yIHRoZSBmaWxlcyBsYXlvdXQuDQoNCi0tIA0KVHJvbmQg
+TXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5N
+eWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
