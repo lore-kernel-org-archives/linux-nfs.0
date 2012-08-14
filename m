@@ -1,95 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33988 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757430Ab2HUVdx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Aug 2012 17:33:53 -0400
-Date: Tue, 21 Aug 2012 17:33:52 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 08/14] svcrpc: ignore unknown address type in udp
- receive
-Message-ID: <20120821213352.GE18637@fieldses.org>
-References: <1345582652-18476-1-git-send-email-bfields@redhat.com>
- <1345582652-18476-9-git-send-email-bfields@redhat.com>
- <05C6926C-B688-4A71-AA1C-26F251BBD635@oracle.com>
- <20120821212431.GC18637@fieldses.org>
- <822DBA73-7B4C-43CC-B096-9D8B4A219390@oracle.com>
+Received: from natasha.panasas.com ([67.152.220.90]:55811 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751485Ab2HNK5X (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 06:57:23 -0400
+Message-ID: <502A2F06.7070409@panasas.com>
+Date: Tue, 14 Aug 2012 13:57:10 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <822DBA73-7B4C-43CC-B096-9D8B4A219390@oracle.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Peng Tao <bergwolf@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Peng Tao <tao.peng@emc.com>
+Subject: Re: [PATCH-v2 2/3] NFS41: send real write size in layoutget
+References: <1344868776-1739-1-git-send-email-bergwolf@gmail.com>  <1344868776-1739-2-git-send-email-bergwolf@gmail.com> <4FA345DA4F4AE44899BD2B03EEEC2FA93A0828@SACEXCMBX04-PRD.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA93A0828@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 21, 2012 at 05:29:16PM -0400, Chuck Lever wrote:
-> 
-> On Aug 21, 2012, at 5:24 PM, J. Bruce Fields wrote:
-> 
-> > On Tue, Aug 21, 2012 at 05:02:14PM -0400, Chuck Lever wrote:
-> >> 
-> >> On Aug 21, 2012, at 4:57 PM, J. Bruce Fields wrote:
-> >> 
-> >>> From: "J. Bruce Fields" <bfields@redhat.com>
-> >>> 
-> >>> How would this happen?
-> >> 
-> >> If an unsupported address family is used in the rqstp.
-> > 
-> > Right, but that's impossible, isn't it?
-> 
-> The point is to catch this case when someone adds support for new address families.  It won't happen in current code.
-> 
-> >>> In any case, it appears this would be returned all the way up to the
-> >>> caller of svc_recv(), and it's obvious that none of them are equipped to
-> >>> handle it, and not clear what they would want to do with it anyway.
-> >>> Let's just drop this and return -EAGAIN.
-> >> 
-> >> EAGAIN is incorrect; the correct error code is EAFNOSUPPORT.  If callers are not prepared for this error return, perhaps BUG_ON() would be more appropriate here.
-> > 
-> > Yeah.  Actually on a quick check this is the only caller that even
-> > checks for this case.  So probably the check should go in svc_addr_len.
-> > Maybe we should be nice and make it a warning.
-> 
-> I normally find BUG pretty harsh, but in this case it's true a software error, and as you say, should be "impossible": thus it should be a BUG.  The code should stop before the zero length is used.
+On 08/14/2012 03:42 AM, Myklebust, Trond wrote:
+<>
 
-Eh, OK, I guess I can live with that.
+>>  void
+>>  pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+>>  {
+>> +	u64 wb_size;
+>> +	unsigned policy = NFS_SERVER(pgio->pg_inode)->pnfs_curr_ld->flags &
+>> +						PNFS_LAYOUTGET_POLICY_MASK;
+>> +
+>>  	BUG_ON(pgio->pg_lseg != NULL);
+>>  
+>>  	if (req->wb_offset != req->wb_pgbase) {
+>>  		nfs_pageio_reset_write_mds(pgio);
+>>  		return;
+>>  	}
+>> +
+>> +	if (pgio->pg_dreq == NULL) {
+>> +		switch(policy) {
+>> +		case PNFS_LAYOUTGET_ISIZE:
+>> +			wb_size = i_size_read(pgio->pg_inode) - req_offset(req);
+>> +			break;
+>> +		case PNFS_LAYOUTGET_SEARCH_HOLE:
+>> +			wb_size = pnfs_num_cont_bytes(pgio->pg_inode, req->wb_index);
+>> +			break;
+>> +		case PNFS_LAYOUTGET_ALL_FILE:
+>> +			wb_size = NFS4_MAX_UINT64;
+>> +			break;
+>> +		default:
+>> +			WARN_ONCE(1, "invalid layoutget policy %u", policy);
+>> +			wb_size = PAGE_CACHE_SIZE;
+>> +			break;
+>> +		}
+>> +	} else {
+>> +		wb_size = nfs_dreq_bytes_left(pgio->pg_dreq);
+>> +	}
+>> +
+> 
+> Please just calculate the correct value for wb_size inside
+> bl_pg_init_write(), and pass it as an extra parameter to
+> pnfs_generic_pg_init_write().
+> 
+> Then add pnfs_pg_init_object_write for objects, that calls the modified
+> pnfs_generic_pg_init_write() with the PNFS_LAYOUTGET_ISIZE value.
+> 
 
-commit 751f877b10f8ce0d12b40d2a102f3b42b26dc08d
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Tue Aug 21 17:22:11 2012 -0400
 
-    svcrpc: don't bother checking bad svc_addr_len result
-    
-    None of the callers should see an unsupported address family (only one
-    of them even bothers to check for that case), so just check for the
-    buggy case in svc_addr_len and don't bother elsewhere.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Lets please completely kill pnfs_generic_pg_init_write() just like 
+files did. It gives us nothing and specialty now it is more compact
+code to just inline it, like nfs4filelayout.c did.
 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index b3f64b1..4f3a6ab 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -166,8 +166,7 @@ static inline size_t svc_addr_len(const struct sockaddr *sa)
- 	case AF_INET6:
- 		return sizeof(struct sockaddr_in6);
- 	}
--
--	return 0;
-+	BUG();
- }
- 
- static inline unsigned short svc_xprt_local_port(const struct svc_xprt *xprt)
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 998aa8c..13b005c 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -601,8 +601,6 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
- 		return -EAGAIN;
- 	}
- 	len = svc_addr_len(svc_addr(rqstp));
--	if (len == 0)
--		return -EAFNOSUPPORT;
- 	rqstp->rq_addrlen = len;
- 	if (skb->tstamp.tv64 == 0) {
- 		skb->tstamp = ktime_get_real();
+But please do this on top of my pending patches for 3.6-rcX. They touch
+exactly this code in objects.
+
+> Files don't call this function, so adding the PNFS_LAYOUTGET_ALL_FILE
+> isn't needed.
+
+
+BTW:
+	filelayout_pg_init_read()
+	and 
+	pnfs_generic_pg_init_read()
+  Is char-by-char Identical, except the very good added comment in
+  filelayout_pg_init_read(). Can be merged.
+
+Thanks
+Boaz
