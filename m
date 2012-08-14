@@ -1,169 +1,213 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39771 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755359Ab2HQO41 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Aug 2012 10:56:27 -0400
-Date: Fri, 17 Aug 2012 10:56:16 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Michael Tokarev <mjt@tls.msk.ru>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Linux-kernel <linux-kernel@vger.kernel.org>,
-        Eric Dumazet <eric.dumazet@gmail.com>
-Subject: Re: 3.0+ NFS issues (bisected)
-Message-ID: <20120817145616.GC11172@fieldses.org>
-References: <4FC5C82E.4020806@msgid.tls.msk.ru>
- <20120530132518.GA13794@fieldses.org>
- <4FC713ED.5040807@msgid.tls.msk.ru>
- <1338469169.2420.7.camel@lade.trondhjem.org>
- <4FC77128.9090206@msgid.tls.msk.ru>
- <1338471975.7732.5.camel@lade.trondhjem.org>
- <4FC77755.5060606@msgid.tls.msk.ru>
- <4FFC2573.8040804@msgid.tls.msk.ru>
- <20120712125303.GC16822@fieldses.org>
- <502DA4E8.9050800@msgid.tls.msk.ru>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <502DA4E8.9050800@msgid.tls.msk.ru>
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:39086 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752301Ab2HNQZX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 12:25:23 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH 04/16] workqueue: use new hashtable implementation
+Date: Tue, 14 Aug 2012 18:24:38 +0200
+Message-Id: <1344961490-4068-5-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
+References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 17, 2012 at 05:56:56AM +0400, Michael Tokarev wrote:
-> On 12.07.2012 16:53, J. Bruce Fields wrote:
-> > On Tue, Jul 10, 2012 at 04:52:03PM +0400, Michael Tokarev wrote:
-> >> I tried to debug this again, maybe to reproduce in a virtual machine,
-> >> and found out that it is only 32bit server code shows this issue:
-> >> after updating the kernel on the server to 64bit (the same version)
-> >> I can't reproduce this issue anymore.  Rebooting back to 32bit,
-> >> and voila, it is here again.
-> >>
-> >> Something apparenlty isn't right on 32bits... ;)
-> >>
-> >> (And yes, the prob is still present and is very annoying :)
-> > 
-> > OK, that's very useful, thanks.  So probably a bug got introduced in the
-> > 32-bit case between 2.6.32 and 3.0.
-> > 
-> > My personal upstream testing is normally all x86_64 only.  I'll kick off
-> > a 32-bit install and see if I can reproduce this quickly.
-> 
-> Actually it has nothing to do with 32 vs 64 bits as I
-> initially thought.  It happens on 64bits too, but takes
-> more time (or data to transfer) to trigger.
+Switch workqueues to use the new hashtable implementation. This reduces the amount of
+generic unrelated code in the workqueues.
 
-That makes it sound like some kind of leak: you're hitting this case
-eventually either way, but it takes longer in the case where you have
-more (low) memory.
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ kernel/workqueue.c |   86 +++++++++-------------------------------------------
+ 1 files changed, 15 insertions(+), 71 deletions(-)
 
-I wish I was more familiar with the tcp code.... What number exactly is
-being compared against those limits, and how could we watch it from
-userspace?
+diff --git a/kernel/workqueue.c b/kernel/workqueue.c
+index 692d976..1db6328 100644
+--- a/kernel/workqueue.c
++++ b/kernel/workqueue.c
+@@ -41,6 +41,7 @@
+ #include <linux/debug_locks.h>
+ #include <linux/lockdep.h>
+ #include <linux/idr.h>
++#include <linux/hashtable.h>
+ 
+ #include "workqueue_sched.h"
+ 
+@@ -82,8 +83,6 @@ enum {
+ 	NR_WORKER_POOLS		= 2,		/* # worker pools per gcwq */
+ 
+ 	BUSY_WORKER_HASH_ORDER	= 6,		/* 64 pointers */
+-	BUSY_WORKER_HASH_SIZE	= 1 << BUSY_WORKER_HASH_ORDER,
+-	BUSY_WORKER_HASH_MASK	= BUSY_WORKER_HASH_SIZE - 1,
+ 
+ 	MAX_IDLE_WORKERS_RATIO	= 4,		/* 1/4 of busy can be idle */
+ 	IDLE_WORKER_TIMEOUT	= 300 * HZ,	/* keep idle ones for 5 mins */
+@@ -180,7 +179,7 @@ struct global_cwq {
+ 	unsigned int		flags;		/* L: GCWQ_* flags */
+ 
+ 	/* workers are chained either in busy_hash or pool idle_list */
+-	struct hlist_head	busy_hash[BUSY_WORKER_HASH_SIZE];
++	DEFINE_HASHTABLE(busy_hash, BUSY_WORKER_HASH_ORDER);
+ 						/* L: hash of busy workers */
+ 
+ 	struct worker_pool	pools[2];	/* normal and highpri pools */
+@@ -288,8 +287,7 @@ EXPORT_SYMBOL_GPL(system_nrt_freezable_wq);
+ 	     (pool) < &(gcwq)->pools[NR_WORKER_POOLS]; (pool)++)
+ 
+ #define for_each_busy_worker(worker, i, pos, gcwq)			\
+-	for (i = 0; i < BUSY_WORKER_HASH_SIZE; i++)			\
+-		hlist_for_each_entry(worker, pos, &gcwq->busy_hash[i], hentry)
++	hash_for_each(gcwq->busy_hash, i, pos, worker, hentry)
+ 
+ static inline int __next_gcwq_cpu(int cpu, const struct cpumask *mask,
+ 				  unsigned int sw)
+@@ -822,63 +820,6 @@ static inline void worker_clr_flags(struct worker *worker, unsigned int flags)
+ }
+ 
+ /**
+- * busy_worker_head - return the busy hash head for a work
+- * @gcwq: gcwq of interest
+- * @work: work to be hashed
+- *
+- * Return hash head of @gcwq for @work.
+- *
+- * CONTEXT:
+- * spin_lock_irq(gcwq->lock).
+- *
+- * RETURNS:
+- * Pointer to the hash head.
+- */
+-static struct hlist_head *busy_worker_head(struct global_cwq *gcwq,
+-					   struct work_struct *work)
+-{
+-	const int base_shift = ilog2(sizeof(struct work_struct));
+-	unsigned long v = (unsigned long)work;
+-
+-	/* simple shift and fold hash, do we need something better? */
+-	v >>= base_shift;
+-	v += v >> BUSY_WORKER_HASH_ORDER;
+-	v &= BUSY_WORKER_HASH_MASK;
+-
+-	return &gcwq->busy_hash[v];
+-}
+-
+-/**
+- * __find_worker_executing_work - find worker which is executing a work
+- * @gcwq: gcwq of interest
+- * @bwh: hash head as returned by busy_worker_head()
+- * @work: work to find worker for
+- *
+- * Find a worker which is executing @work on @gcwq.  @bwh should be
+- * the hash head obtained by calling busy_worker_head() with the same
+- * work.
+- *
+- * CONTEXT:
+- * spin_lock_irq(gcwq->lock).
+- *
+- * RETURNS:
+- * Pointer to worker which is executing @work if found, NULL
+- * otherwise.
+- */
+-static struct worker *__find_worker_executing_work(struct global_cwq *gcwq,
+-						   struct hlist_head *bwh,
+-						   struct work_struct *work)
+-{
+-	struct worker *worker;
+-	struct hlist_node *tmp;
+-
+-	hlist_for_each_entry(worker, tmp, bwh, hentry)
+-		if (worker->current_work == work)
+-			return worker;
+-	return NULL;
+-}
+-
+-/**
+  * find_worker_executing_work - find worker which is executing a work
+  * @gcwq: gcwq of interest
+  * @work: work to find worker for
+@@ -897,8 +838,14 @@ static struct worker *__find_worker_executing_work(struct global_cwq *gcwq,
+ static struct worker *find_worker_executing_work(struct global_cwq *gcwq,
+ 						 struct work_struct *work)
+ {
+-	return __find_worker_executing_work(gcwq, busy_worker_head(gcwq, work),
+-					    work);
++	struct worker *worker;
++	struct hlist_node *tmp;
++
++	hash_for_each_possible(gcwq->busy_hash, worker, tmp, hentry, (unsigned long)work)
++		if (worker->current_work == work)
++			return worker;
++
++	return NULL;
+ }
+ 
+ /**
+@@ -1932,7 +1879,6 @@ __acquires(&gcwq->lock)
+ 	struct cpu_workqueue_struct *cwq = get_work_cwq(work);
+ 	struct worker_pool *pool = worker->pool;
+ 	struct global_cwq *gcwq = pool->gcwq;
+-	struct hlist_head *bwh = busy_worker_head(gcwq, work);
+ 	bool cpu_intensive = cwq->wq->flags & WQ_CPU_INTENSIVE;
+ 	work_func_t f = work->func;
+ 	int work_color;
+@@ -1964,7 +1910,7 @@ __acquires(&gcwq->lock)
+ 	 * already processing the work.  If so, defer the work to the
+ 	 * currently executing one.
+ 	 */
+-	collision = __find_worker_executing_work(gcwq, bwh, work);
++	collision = find_worker_executing_work(gcwq, work);
+ 	if (unlikely(collision)) {
+ 		move_linked_works(work, &collision->scheduled, NULL);
+ 		return;
+@@ -1972,7 +1918,7 @@ __acquires(&gcwq->lock)
+ 
+ 	/* claim and process */
+ 	debug_work_deactivate(work);
+-	hlist_add_head(&worker->hentry, bwh);
++	hash_add(gcwq->busy_hash, &worker->hentry, (unsigned long)worker);
+ 	worker->current_work = work;
+ 	worker->current_cwq = cwq;
+ 	work_color = get_work_color(work);
+@@ -2027,7 +1973,7 @@ __acquires(&gcwq->lock)
+ 		worker_clr_flags(worker, WORKER_CPU_INTENSIVE);
+ 
+ 	/* we're done with it, release */
+-	hlist_del_init(&worker->hentry);
++	hash_del(&worker->hentry);
+ 	worker->current_work = NULL;
+ 	worker->current_cwq = NULL;
+ 	cwq_dec_nr_in_flight(cwq, work_color, false);
+@@ -3690,7 +3636,6 @@ out_unlock:
+ static int __init init_workqueues(void)
+ {
+ 	unsigned int cpu;
+-	int i;
+ 
+ 	cpu_notifier(workqueue_cpu_up_callback, CPU_PRI_WORKQUEUE_UP);
+ 	cpu_notifier(workqueue_cpu_down_callback, CPU_PRI_WORKQUEUE_DOWN);
+@@ -3704,8 +3649,7 @@ static int __init init_workqueues(void)
+ 		gcwq->cpu = cpu;
+ 		gcwq->flags |= GCWQ_DISASSOCIATED;
+ 
+-		for (i = 0; i < BUSY_WORKER_HASH_SIZE; i++)
+-			INIT_HLIST_HEAD(&gcwq->busy_hash[i]);
++		hash_init(gcwq->busy_hash);
+ 
+ 		for_each_worker_pool(pool, gcwq) {
+ 			pool->gcwq = gcwq;
+-- 
+1.7.8.6
 
---b.
-
-> 
-> 
-> > Let me know if you're able to narrow this down any more.
-> 
-> I bisected this issue to the following commit:
-> 
-> commit f03d78db65085609938fdb686238867e65003181
-> Author: Eric Dumazet <eric.dumazet@gmail.com>
-> Date:   Thu Jul 7 00:27:05 2011 -0700
-> 
->     net: refine {udp|tcp|sctp}_mem limits
-> 
->     Current tcp/udp/sctp global memory limits are not taking into account
->     hugepages allocations, and allow 50% of ram to be used by buffers of a
->     single protocol [ not counting space used by sockets / inodes ...]
-> 
->     Lets use nr_free_buffer_pages() and allow a default of 1/8 of kernel ram
->     per protocol, and a minimum of 128 pages.
->     Heavy duty machines sysadmins probably need to tweak limits anyway.
-> 
-> 
-> Reverting this commit on top of 3.0 (or any later 3.x kernel) fixes
-> the behavour here.
-> 
-> This machine has 4Gb of memory.  On 3.0, with this patch applied
-> (as it is part of 3.0), tcp_mem is like this:
-> 
->   21228     28306   42456
-> 
-> with this patch reverted, tcp_mem shows:
-> 
->   81216     108288  162432
-> 
-> and with these values, it works fine.
-> 
-> So it looks like something else goes wrong there,
-> which lead to all nfsds fighting with each other
-> for something and eating 100% of available CPU
-> instead of servicing clients.
-> 
-> For added fun, when setting tcp_mem to the "good" value
-> from "bad" value (after booting into kernel with that
-> patch applied), the problem is _not_ fixed.
-> 
-> Any further hints?
-> 
-> Thanks,
-> 
-> /mjt
-> 
-> >> On 31.05.2012 17:51, Michael Tokarev wrote:
-> >>> On 31.05.2012 17:46, Myklebust, Trond wrote:
-> >>>> On Thu, 2012-05-31 at 17:24 +0400, Michael Tokarev wrote:
-> >>> []
-> >>>>> I started tcpdump:
-> >>>>>
-> >>>>>  tcpdump -npvi br0 -s 0 host 192.168.88.4 and \( proto ICMP or port 2049 \) -w nfsdump
-> >>>>>
-> >>>>> on the client (192.168.88.2).  Next I mounted a directory on the client,
-> >>>>> and started reading (tar'ing) a directory into /dev/null.  It captured a
-> >>>>> few stalls.  Tcpdump shows number of packets it got, the stalls are at
-> >>>>> packet counts 58090, 97069 and 97071.  I cancelled the capture after that.
-> >>>>>
-> >>>>> The resulting file is available at http://www.corpit.ru/mjt/tmp/nfsdump.xz ,
-> >>>>> it is 220Mb uncompressed and 1.3Mb compressed.  The source files are
-> >>>>> 10 files of 1Gb each, all made by using `truncate' utility, so does not
-> >>>>> take place on disk at all.  This also makes it obvious that the issue
-> >>>>> does not depend on the speed of disk on the server (since in this case,
-> >>>>> the server disk isn't even in use).
-> >>>>
-> >>>> OK. So from the above file it looks as if the traffic is mainly READ
-> >>>> requests.
-> >>>
-> >>> The issue here happens only with reads.
-> >>>
-> >>>> In 2 places the server stops responding. In both cases, the client seems
-> >>>> to be sending a single TCP frame containing several COMPOUNDS containing
-> >>>> READ requests (which should be legal) just prior to the hang. When the
-> >>>> server doesn't respond, the client pings it with a RENEW, before it ends
-> >>>> up severing the TCP connection and then retransmitting.
-> >>>
-> >>> And sometimes -- speaking only from the behavour I've seen, not from the
-> >>> actual frames sent -- server does not respond to the RENEW too, in which
-> >>> case the client reports "nfs server no responding", and on the next
-> >>> renew it may actually respond.  This happens too, but much more rare.
-> >>>
-> >>> During these stalls, ie, when there's no network activity at all,
-> >>> the server NFSD threads are busy eating all available CPU.
-> >>>
-> >>> What does it all tell us? :)
-> >>>
-> >>> Thank you!
-> >>>
-> >>> /mjt
-> >>> --
-> >>> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> >>> the body of a message to majordomo@vger.kernel.org
-> >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >>> Please read the FAQ at  http://www.tux.org/lkml/
-> >>
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > Please read the FAQ at  http://www.tux.org/lkml/
-> 
