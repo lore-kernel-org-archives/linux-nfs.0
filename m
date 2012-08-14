@@ -1,99 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:39798 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751109Ab2HMLhU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Aug 2012 07:37:20 -0400
-Message-ID: <5028E6E2.2070608@parallels.com>
-Date: Mon, 13 Aug 2012 15:37:06 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@poochiereds.net>
-CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH] SUNRPC: check current nsproxy before set of node name
- on client creation
-References: <20120813112156.8459.54793.stgit@localhost.localdomain> <20120813073505.7870ef21@corrin.poochiereds.net>
-In-Reply-To: <20120813073505.7870ef21@corrin.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:39086 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756743Ab2HNQZk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 12:25:40 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH 07/16] net,9p: use new hashtable implementation
+Date: Tue, 14 Aug 2012 18:24:41 +0200
+Message-Id: <1344961490-4068-8-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
+References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, Jeff. Will fix.
+Switch 9p error table to use the new hashtable implementation. This reduces the amount of
+generic unrelated code in 9p.
 
-13.08.2012 15:35, Jeff Layton пишет:
-> On Mon, 13 Aug 2012 15:21:56 +0400
-> Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
->
->> When child reaper exits, it can destroy mount namespace it belong to, and if
->> there are NFS mounts inside, then it will try to umount them. But in this
->> point current->nsproxy is set to NULL and all namespaces will be destroyed one
->> by one. I.e. we can't dereference current->nsproxy to obtain uts namespace.
->>
->> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
->> ---
->>   net/sunrpc/clnt.c |   14 ++++++++++++--
->>   1 files changed, 12 insertions(+), 2 deletions(-)
->>
->> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
->> index 9a9676e..28ac940 100644
->> --- a/net/sunrpc/clnt.c
->> +++ b/net/sunrpc/clnt.c
->> @@ -279,6 +279,16 @@ void rpc_clients_notifier_unregister(void)
->>
->>   static void rpc_clnt_set_nodename(struct rpc_clnt *clnt, const char *nodename)
->
-> Don't you need to change the prototype of the function here too?
->
->>   {
->> +	const char *nodename;
->> +
->> +	/*
->> +	 * We have to protect against dying chilp reaper, which has released
->
-> 	nit: "dying child reaper" ?
->
->> +	 * it's nsproxy already and is trying to destroy mount namespace.
->
-> 	nit: "its"
->
->> +	 */
->> +	if (current->nsproxy == NULL)
->> +		return;
->> +
->> +	nodename = utsname()->nodename;
->>   	clnt->cl_nodelen = strlen(nodename);
->>   	if (clnt->cl_nodelen > UNX_MAXNODENAME)
->>   		clnt->cl_nodelen = UNX_MAXNODENAME;
->> @@ -365,7 +375,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
->>   	}
->>
->>   	/* save the nodename */
->> -	rpc_clnt_set_nodename(clnt, utsname()->nodename);
->> +	rpc_clnt_set_nodename(clnt);
->>   	rpc_register_client(clnt);
->>   	return clnt;
->>
->> @@ -524,7 +534,7 @@ rpc_clone_client(struct rpc_clnt *clnt)
->>   	err = rpc_setup_pipedir(new, clnt->cl_program->pipe_dir_name);
->>   	if (err != 0)
->>   		goto out_no_path;
->> -	rpc_clnt_set_nodename(new, utsname()->nodename);
->> +	rpc_clnt_set_nodename(new);
->>   	if (new->cl_auth)
->>   		atomic_inc(&new->cl_auth->au_count);
->>   	atomic_inc(&clnt->cl_count);
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ net/9p/error.c |   21 ++++++++++-----------
+ 1 files changed, 10 insertions(+), 11 deletions(-)
 
-
+diff --git a/net/9p/error.c b/net/9p/error.c
+index 2ab2de7..a5cc7dd 100644
+--- a/net/9p/error.c
++++ b/net/9p/error.c
+@@ -34,7 +34,7 @@
+ #include <linux/jhash.h>
+ #include <linux/errno.h>
+ #include <net/9p/9p.h>
+-
++#include <linux/hashtable.h>
+ /**
+  * struct errormap - map string errors from Plan 9 to Linux numeric ids
+  * @name: string sent over 9P
+@@ -50,8 +50,8 @@ struct errormap {
+ 	struct hlist_node list;
+ };
+ 
+-#define ERRHASHSZ		32
+-static struct hlist_head hash_errmap[ERRHASHSZ];
++#define ERR_HASH_BITS 5
++static DEFINE_HASHTABLE(hash_errmap, ERR_HASH_BITS);
+ 
+ /* FixMe - reduce to a reasonable size */
+ static struct errormap errmap[] = {
+@@ -193,18 +193,17 @@ static struct errormap errmap[] = {
+ int p9_error_init(void)
+ {
+ 	struct errormap *c;
+-	int bucket;
++	u32 hash;
+ 
+ 	/* initialize hash table */
+-	for (bucket = 0; bucket < ERRHASHSZ; bucket++)
+-		INIT_HLIST_HEAD(&hash_errmap[bucket]);
++	hash_init(hash_errmap);
+ 
+ 	/* load initial error map into hash table */
+ 	for (c = errmap; c->name != NULL; c++) {
+ 		c->namelen = strlen(c->name);
+-		bucket = jhash(c->name, c->namelen, 0) % ERRHASHSZ;
++		hash = jhash(c->name, c->namelen, 0);
+ 		INIT_HLIST_NODE(&c->list);
+-		hlist_add_head(&c->list, &hash_errmap[bucket]);
++		hash_add(hash_errmap, &c->list, hash);
+ 	}
+ 
+ 	return 1;
+@@ -223,13 +222,13 @@ int p9_errstr2errno(char *errstr, int len)
+ 	int errno;
+ 	struct hlist_node *p;
+ 	struct errormap *c;
+-	int bucket;
++	u32 hash;
+ 
+ 	errno = 0;
+ 	p = NULL;
+ 	c = NULL;
+-	bucket = jhash(errstr, len, 0) % ERRHASHSZ;
+-	hlist_for_each_entry(c, p, &hash_errmap[bucket], list) {
++	hash = jhash(errstr, len, 0);
++	hash_for_each_possible(hash_errmap, c, p, list, hash) {
+ 		if (c->namelen == len && !memcmp(c->name, errstr, len)) {
+ 			errno = c->val;
+ 			break;
 -- 
-Best regards,
-Stanislav Kinsbursky
+1.7.8.6
+
