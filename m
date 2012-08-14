@@ -1,103 +1,167 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57191 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752243Ab2HTQ6x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Aug 2012 12:58:53 -0400
-Date: Mon, 20 Aug 2012 12:58:52 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>, "neilb@suse.de" <neilb@suse.de>
-Subject: Re: [PATCH v3] SUNRPC: protect service sockets lists during
- per-net shutdown
-Message-ID: <20120820165852.GF1411@fieldses.org>
-References: <20120703125851.3850.86782.stgit@localhost.localdomain>
- <20120724194036.GK8570@fieldses.org>
- <20120816192902.GB4385@fieldses.org>
- <50321A0D.1020904@parallels.com>
- <20120820145656.GB1411@fieldses.org>
- <50325384.9070506@parallels.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <50325384.9070506@parallels.com>
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:39086 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756743Ab2HNQZq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 12:25:46 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH 08/16] block,elevator: use new hashtable implementation
+Date: Tue, 14 Aug 2012 18:24:42 +0200
+Message-Id: <1344961490-4068-9-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
+References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 20, 2012 at 07:11:00PM +0400, Stanislav Kinsbursky wrote:
-> 20.08.2012 18:56, J. Bruce Fields пишет:
-> >On Mon, Aug 20, 2012 at 03:05:49PM +0400, Stanislav Kinsbursky wrote:
-> >>16.08.2012 23:29, J. Bruce Fields пишет:
-> >>>Looking back at this:
-> >>>
-> >>>	- adding the sv_lock looks like the right thing to do anyway
-> >>>	  independent of containers, because svc_age_temp_xprts may
-> >>>	  still be running.
-> >>>
-> >>>	- I'm increasingly unhappy about sharing rpc servers between
-> >>>	  network namespaces.  Everything would be easier to understand
-> >>>	  if they were independent.  Can we figure out how to do that?
-> >>>
-> >>
-> >>Could you, please, elaborate on your your unhappiness?
-> >
-> >It seems like you're having to do a lot of work on each individual rpc
-> >server (callback server, lockd, etc.) to make per-net startup/shutdown
-> >work.  And then we still don't have it quite right (see the shutdown
-> >races).)
-> >
-> >In general whenever we have the opportunity to have entirely separate
-> >data structures, I'd expect that to simplify things: it should eliminate
-> >some locking and reference-counting issues.
-> >
-> 
-> Agreed. But current solution still looks like the easies way to me
-> to implement desired functionality.
-> 
-> >>I.e. I don't like it too. But the problem here, is that rpc server
-> >>is tied with kernel threads creation and destruction. And these
-> >>threads can be only a part of initial pid namespace (because we have
-> >>only one kthreadd). And we decided do not create new kernel thread
-> >>per container when were discussing the problem last time.
-> >
-> >There really should be some way to create a kernel thread in a specific
-> >namespace, shouldn't there?
-> >
-> 
-> 
-> Kthreads support in a container is rather a "political" problem,
-> than an implementation problem.
+Switch elevator to use the new hashtable implementation. This reduces the amount of
+generic unrelated code in the elevator.
 
-Is there a mail thread somewhere with a summary of the objections?
+This also removes the dymanic allocation of the hash table. The size of the table is
+constant so there's no point in paying the price of an extra dereference when accessing
+it.
 
-> Currently, when you call kthread_create(), you add new job to
-> kthreadd queue. Kthreadd is unique, starts right after init and
-> lives in global initial environment. So, any kthread inherits
-> namespaces from it.
-> Of course, we can start one kthread per environment and change it's
-> root or even network namespace in kthread function. But pid
-> namespace of this kthread will remain global.
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ block/blk.h              |    2 +-
+ block/elevator.c         |   23 ++++-------------------
+ include/linux/elevator.h |    5 ++++-
+ 3 files changed, 9 insertions(+), 21 deletions(-)
 
-OK.  But the current implementation will leave all the server threads in
-the initial pid namespace, too.
+diff --git a/block/blk.h b/block/blk.h
+index 2a0ea32..5650d48 100644
+--- a/block/blk.h
++++ b/block/blk.h
+@@ -61,7 +61,7 @@ static inline void blk_clear_rq_complete(struct request *rq)
+ /*
+  * Internal elevator interface
+  */
+-#define ELV_ON_HASH(rq)		(!hlist_unhashed(&(rq)->hash))
++#define ELV_ON_HASH(rq) hash_hashed(&(rq)->hash)
+ 
+ void blk_insert_flush(struct request *rq);
+ void blk_abort_flushes(struct request_queue *q);
+diff --git a/block/elevator.c b/block/elevator.c
+index 6a55d41..f462a83 100644
+--- a/block/elevator.c
++++ b/block/elevator.c
+@@ -46,11 +46,6 @@ static LIST_HEAD(elv_list);
+ /*
+  * Merge hash stuff.
+  */
+-static const int elv_hash_shift = 6;
+-#define ELV_HASH_BLOCK(sec)	((sec) >> 3)
+-#define ELV_HASH_FN(sec)	\
+-		(hash_long(ELV_HASH_BLOCK((sec)), elv_hash_shift))
+-#define ELV_HASH_ENTRIES	(1 << elv_hash_shift)
+ #define rq_hash_key(rq)		(blk_rq_pos(rq) + blk_rq_sectors(rq))
+ 
+ /*
+@@ -142,7 +137,6 @@ static struct elevator_queue *elevator_alloc(struct request_queue *q,
+ 				  struct elevator_type *e)
+ {
+ 	struct elevator_queue *eq;
+-	int i;
+ 
+ 	eq = kmalloc_node(sizeof(*eq), GFP_KERNEL | __GFP_ZERO, q->node);
+ 	if (unlikely(!eq))
+@@ -151,14 +145,7 @@ static struct elevator_queue *elevator_alloc(struct request_queue *q,
+ 	eq->type = e;
+ 	kobject_init(&eq->kobj, &elv_ktype);
+ 	mutex_init(&eq->sysfs_lock);
+-
+-	eq->hash = kmalloc_node(sizeof(struct hlist_head) * ELV_HASH_ENTRIES,
+-					GFP_KERNEL, q->node);
+-	if (!eq->hash)
+-		goto err;
+-
+-	for (i = 0; i < ELV_HASH_ENTRIES; i++)
+-		INIT_HLIST_HEAD(&eq->hash[i]);
++	hash_init(eq->hash);
+ 
+ 	return eq;
+ err:
+@@ -173,7 +160,6 @@ static void elevator_release(struct kobject *kobj)
+ 
+ 	e = container_of(kobj, struct elevator_queue, kobj);
+ 	elevator_put(e->type);
+-	kfree(e->hash);
+ 	kfree(e);
+ }
+ 
+@@ -240,7 +226,7 @@ EXPORT_SYMBOL(elevator_exit);
+ 
+ static inline void __elv_rqhash_del(struct request *rq)
+ {
+-	hlist_del_init(&rq->hash);
++	hash_del(&rq->hash);
+ }
+ 
+ static void elv_rqhash_del(struct request_queue *q, struct request *rq)
+@@ -254,7 +240,7 @@ static void elv_rqhash_add(struct request_queue *q, struct request *rq)
+ 	struct elevator_queue *e = q->elevator;
+ 
+ 	BUG_ON(ELV_ON_HASH(rq));
+-	hlist_add_head(&rq->hash, &e->hash[ELV_HASH_FN(rq_hash_key(rq))]);
++	hash_add(e->hash, &rq->hash, rq_hash_key(rq));
+ }
+ 
+ static void elv_rqhash_reposition(struct request_queue *q, struct request *rq)
+@@ -266,11 +252,10 @@ static void elv_rqhash_reposition(struct request_queue *q, struct request *rq)
+ static struct request *elv_rqhash_find(struct request_queue *q, sector_t offset)
+ {
+ 	struct elevator_queue *e = q->elevator;
+-	struct hlist_head *hash_list = &e->hash[ELV_HASH_FN(offset)];
+ 	struct hlist_node *entry, *next;
+ 	struct request *rq;
+ 
+-	hlist_for_each_entry_safe(rq, entry, next, hash_list, hash) {
++	hash_for_each_possible_safe(e->hash, rq, entry, next, hash, offset) {
+ 		BUG_ON(!ELV_ON_HASH(rq));
+ 
+ 		if (unlikely(!rq_mergeable(rq))) {
+diff --git a/include/linux/elevator.h b/include/linux/elevator.h
+index c03af76..20b539c 100644
+--- a/include/linux/elevator.h
++++ b/include/linux/elevator.h
+@@ -2,6 +2,7 @@
+ #define _LINUX_ELEVATOR_H
+ 
+ #include <linux/percpu.h>
++#include <linux/hashtable.h>
+ 
+ #ifdef CONFIG_BLOCK
+ 
+@@ -96,6 +97,8 @@ struct elevator_type
+ 	struct list_head list;
+ };
+ 
++#define ELV_HASH_BITS 6
++
+ /*
+  * each queue has an elevator_queue associated with it
+  */
+@@ -105,7 +108,7 @@ struct elevator_queue
+ 	void *elevator_data;
+ 	struct kobject kobj;
+ 	struct mutex sysfs_lock;
+-	struct hlist_head *hash;
++	DEFINE_HASHTABLE(hash, ELV_HASH_BITS);
+ 	unsigned int registered:1;
+ };
+ 
+-- 
+1.7.8.6
 
-> It looks like not a big problem, when we shutdown kthread by some
-> variable. But what about killable nfsd kthreads?
-
-And we're stuck with that problem either way too, aren't we?
-
-> 1) We can't kill them from nested pid namespace.
-> 2) How we will differ nfsd kthreads in initial pid namespace?
-
-I have to admit for my purposes I don't care too much about pid
-namespaces or about signalling server threads.  It'd be nice to get
-those things right but it wouldn't bother me that much not to.
-
-Another stupid idea: can we do our own implementation of something like
-kthreadd just for the purpose of starting rpc server threads?  It
-doesn't seem that complicated.
-
---b.
-
-> In OpenVZ we have kthreadd per pid hamespace and it allows us to
-> create kthreads (and thus services) per pid namespace.
