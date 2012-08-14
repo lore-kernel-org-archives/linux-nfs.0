@@ -1,60 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from isrv.corpit.ru ([86.62.121.231]:36133 "EHLO isrv.corpit.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:20483 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751709Ab2HRM6d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 18 Aug 2012 08:58:33 -0400
-Message-ID: <502F9177.5060100@msgid.tls.msk.ru>
-Date: Sat, 18 Aug 2012 16:58:31 +0400
-From: Michael Tokarev <mjt@tls.msk.ru>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Linux-kernel <linux-kernel@vger.kernel.org>,
-        Eric Dumazet <eric.dumazet@gmail.com>
-Subject: Re: 3.0+ NFS issues (bisected)
-References: <20120817145616.GC11172@fieldses.org> <20120817160057.GE11172@fieldses.org> <502E7B86.3060702@msgid.tls.msk.ru> <20120817171854.GA14015@fieldses.org> <502E7EC3.5030006@msgid.tls.msk.ru> <502E7F84.3060003@msgid.tls.msk.ru> <20120817191800.GA14620@fieldses.org> <20120817200807.GB14620@fieldses.org> <20120817223253.GA15659@fieldses.org> <502F3AFB.4080401@msgid.tls.msk.ru> <20120818111354.GA16611@fieldses.org>
-In-Reply-To: <20120818111354.GA16611@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1751863Ab2HNWru (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Aug 2012 18:47:50 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Dros Adamson <Weston.Adamson@netapp.com>
+Cc: Sachin Prabhu <sprabhu@redhat.com>,
+        Andy Adamson <William.Adamson@netapp.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH 3/3] NFSv4: Don't use private xdr_stream fields in decode_getacl
+Date: Tue, 14 Aug 2012 18:47:27 -0400
+Message-Id: <1344984447-17804-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1344984447-17804-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1344984447-17804-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1344984447-17804-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 18.08.2012 15:13, J. Bruce Fields wrote:
-> On Sat, Aug 18, 2012 at 10:49:31AM +0400, Michael Tokarev wrote:
-[]
->> Well.  What can I say?  With the change below applied (to 3.2 kernel
->> at least), I don't see any stalls or high CPU usage on the server
->> anymore.  It survived several multi-gigabyte transfers, for several
->> hours, without any problem.  So it is a good step forward ;)
->>
->> But the whole thing seems to be quite a bit fragile.  I tried to follow
->> the logic in there, and the thing is quite a bit, well, "twisted", and
->> somewhat difficult to follow.  So I don't know if this is the right
->> fix or not.  At least it works! :)
-> 
-> Suggestions welcomed.
+Instead of using the private field xdr->p from struct xdr_stream,
+use the public xdr_stream_pos().
 
-Ok...
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4xdr.c | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
 
-Meanwhile, you can add my
-Tested-By: Michael Tokarev <mjt@tls.msk.ru>
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 54d3f5a..1bfbd67 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -5045,10 +5045,10 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
+ 			 struct nfs_getaclres *res)
+ {
+ 	unsigned int savep;
+-	__be32 *bm_p;
+ 	uint32_t attrlen,
+ 		 bitmap[3] = {0};
+ 	int status;
++	unsigned int pg_offset;
+ 
+ 	res->acl_len = 0;
+ 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
+@@ -5056,7 +5056,8 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
+ 
+ 	xdr_enter_page(xdr, xdr->buf->page_len);
+ 
+-	bm_p = xdr->p;
++	/* Calculate the offset of the page data */
++	pg_offset = xdr->buf->head[0].iov_len;
+ 
+ 	if ((status = decode_attr_bitmap(xdr, bitmap)) != 0)
+ 		goto out;
+@@ -5070,18 +5071,18 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
+ 		/* The bitmap (xdr len + bitmaps) and the attr xdr len words
+ 		 * are stored with the acl data to handle the problem of
+ 		 * variable length bitmaps.*/
+-		res->acl_data_offset = (xdr->p - bm_p) << 2;
++		res->acl_data_offset = xdr_stream_pos(xdr) - pg_offset;
+ 
+ 		/* We ignore &savep and don't do consistency checks on
+ 		 * the attr length.  Let userspace figure it out.... */
+ 		res->acl_len = attrlen;
+-		if (attrlen + res->acl_data_offset > xdr->buf->page_len) {
++		if (attrlen > (xdr->nwords << 2)) {
+ 			if (res->acl_flags & NFS4_ACL_LEN_REQUEST) {
+ 				/* getxattr interface called with a NULL buf */
+ 				goto out;
+ 			}
+ 			dprintk("NFS: acl reply: attrlen %u > page_len %u\n",
+-					attrlen, xdr->buf->page_len);
++					attrlen, xdr->nwords << 2);
+ 			return -EINVAL;
+ 		}
+ 	} else
+-- 
+1.7.11.2
 
-to the patch.
-
->> And I really wonder why no one else reported this problem before.
->> Is me the only one in this world who uses linux nfsd? :)
-> 
-> This, for example:
-> 
-> 	http://marc.info/?l=linux-nfs&m=134131915612287&w=2
-> 
-> may well describe the same problem....  It just needed some debugging
-> persistence, thanks!
-
-Ah.  I tried to find something when I initially
-sent this report, but weren't able to.  Apparently
-I'm not alone with this problem indeed!
-
-Thank you for all the work!
-
-/mjt
