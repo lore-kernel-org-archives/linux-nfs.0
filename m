@@ -1,72 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37430 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:13172 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751184Ab2HGTmx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Aug 2012 15:42:53 -0400
-Date: Tue, 7 Aug 2012 15:42:50 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: nfs4 mounts failing with 3.6.0-rc1
-Message-ID: <20120807194250.GB22532@fieldses.org>
-References: <20120804000819.GB25558@fieldses.org>
- <20120803220039.743fe1f0@corrin.poochiereds.net>
- <20120804190104.GA2135@fieldses.org>
- <20120807130932.79625d7e@tlielax.poochiereds.net>
+	id S1754894Ab2HNSsz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Aug 2012 14:48:55 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+CC: Richard Ems <richard.ems@cape-horn-eng.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nfs_lookup_revalidate BUG ?
+Date: Tue, 14 Aug 2012 18:48:35 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA93A4DFC@SACEXCMBX04-PRD.hq.netapp.com>
+References: <502A21A1.7020206@cape-horn-eng.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA93A4848@SACEXCMBX04-PRD.hq.netapp.com>
+	 <20120814183512.GI23464@ZenIV.linux.org.uk>
+In-Reply-To: <20120814183512.GI23464@ZenIV.linux.org.uk>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120807130932.79625d7e@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 07, 2012 at 01:09:32PM -0400, Jeff Layton wrote:
-> On Sat, 4 Aug 2012 15:01:04 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Fri, Aug 03, 2012 at 10:00:39PM -0400, Jeff Layton wrote:
-> > > On Fri, 3 Aug 2012 20:08:19 -0400
-> > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > 
-> > > > I'm getting
-> > > > 
-> > > > 	# mount -tnfs -onfsvers=4 pip1:/exports /mnt/
-> > > > 
-> > > > (OK, admittedly that's with 3.6.0-rc1 + a few experimental patches, but
-> > > > I doubt they're related.)
-> > > > 
-> > > > Also:
-> > > > 
-> > > > 	[root@pip2 ~]# modprobe nfs4
-> > > > 	[root@pip2 ~]# lsmod|grep nfs4
-> > > > 	[root@pip2 ~]# 
-> > > > 
-> > > > --b.
-> > > 
-> > > I hit the same problem...
-> > > 
-> > > Try removing /usr/lib/modprobe.d/nfs.conf (assuming you're running
-> > > Fedora).
-> > 
-> > Oog, right.
-> > 
-> > But, without testing--won't that make v4 mounts fail on older kernels?
-> 
-> Actually, now that I look, this does not seem to break on older kernels
-> as long as you use a syntax like:
-> 
->     # mount -t nfs server:/export /mnt/point -o vers=4
-> 
-> ...if, however you use a syntax like:
-> 
->     # mount -t nfs4 server:/export /mnt/point
-> 
-> ...then it fails without the above file in place. I guess the question
-> we have to answer is: Do we want to continue to support the "-t nfs4"
-> mount syntax?
-
-I think you're right that we want to deprecate it.
-
-Though this is a bit of a harsh way to do it--would have been nice to
-have some transition period with a warning or something.
-
---b.
+T24gVHVlLCAyMDEyLTA4LTE0IGF0IDE5OjM1ICswMTAwLCBBbCBWaXJvIHdyb3RlOg0KPiBPbiBU
+dWUsIEF1ZyAxNCwgMjAxMiBhdCAwNjowNDowOFBNICswMDAwLCBNeWtsZWJ1c3QsIFRyb25kIHdy
+b3RlOg0KPiA+ID4gSXMgdGhpcyBhIGtub3duIEJVRyA/DQo+ID4gPiBXaGljaCBvdGhlciBpbmZv
+cm1hdGlvbiBvciB0ZXN0IGNhbiBJIGRvIHRvIGNvbnRyaWJ1dGUgc2VhcmNoaW5nL3Jlc29sdmlu
+ZyB0aGlzIGlzc3VlPw0KPiA+IA0KPiA+IEknbSBub3QgMTAwJSBjZXJ0YWluLCBidXQgaXQgbG9v
+a3MgdG8gbWUgYXMgaWYgdGhlIGNhbGwgdG8gZGdldF9wYXJlbnQoKQ0KPiA+IGluIG5mc19sb29r
+dXBfcmV2YWxpZGF0ZSBpcyByZXR1cm5pbmcgTlVMTC4NCj4gPiANCj4gPiBDb3VsZCB5b3UgcGxl
+YXNlIGFwcGx5IHRoZSBmb2xsb3dpbmcgcGF0Y2gsIGFuZCBzZWUgaWYgdGhhdCB0cmlnZ2VycyB0
+aGUNCj4gPiBXQVJOX09OIGluc3RlYWQgb2YgdGhlIGFib3ZlIE9vcHM/DQo+IA0KPiBVbmxpa2Vs
+eSBhcyBoZWxsLiAgZGdldF9wYXJlbnQoKSBoYXMgb25seSBvbmUgcmV0dXJuIGluIGl0LCBhbmQg
+aXQncw0KPiAgICAgICAgIEJVR19PTighcmV0LT5kX2NvdW50KTsNCj4gICAgICAgICByZXQtPmRf
+Y291bnQrKzsNCj4gICAgICAgICBzcGluX3VubG9jaygmcmV0LT5kX2xvY2spOw0KPiAgICAgICAg
+IHJldHVybiByZXQ7DQo+IHNvIGl0J3MgZXh0cmVtZWx5IHVubGlrZWx5IHRoYXQgaXQgd291bGQg
+bWFuYWdlZCB0byByZXR1cm4gTlVMTC4gIE5vdA0KPiB3aXRob3V0IG9vcHNpbmcuLi4NCg0KQWdy
+ZWVkLCBidXQgdGhlIE9vcHMgaXMgYSBOVUxMIHBvaW50ZXIgZGVyZWZlcmVuY2Ugb2Ygb2Zmc2V0
+IDAwMDM4LA0Kd2hpY2ggbG9va3Mgc3VzcGljaW91c2x5IGxpa2UgYSBkZWZlcmVuY2Ugb2YgKHN0
+cnVjdCBkZW50cnkpLT5kX2lub2RlLg0KVGhlcmUgYXJlIG9ubHkgMiBvZiB0aG9zZSBpbiB0aGUg
+dmljaW5pdHkgb2YgbmZzX2xvb2t1cF9yZXZhbGlkYXRlKzB4MmQ6DQpvbmUgaXMgYSBkZXJlZmVy
+ZW5jZSBvZiBwYXJlbnQtPmRfaW5vZGUsIHRoZSBvdGhlciBpcyBkZW50cnktPmRfaW5vZGUuLi4N
+Cg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpO
+ZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
