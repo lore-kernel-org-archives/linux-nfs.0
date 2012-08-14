@@ -1,8 +1,8 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:33310 "EHLO
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:39086 "EHLO
 	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751211Ab2HSAwN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Aug 2012 20:52:13 -0400
+	with ESMTP id S1752685Ab2HNQ0N (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 12:26:13 -0400
 From: Sasha Levin <levinsasha928@gmail.com>
 To: torvalds@linux-foundation.org
 Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
@@ -18,135 +18,261 @@ Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
         linux-nfs@vger.kernel.org, dev@openvswitch.org,
         rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
         Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH v2 02/16] userns: use new hashtable implementation
-Date: Sun, 19 Aug 2012 02:52:16 +0200
-Message-Id: <1345337550-24304-4-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1345337550-24304-1-git-send-email-levinsasha928@gmail.com>
-References: <1345337550-24304-1-git-send-email-levinsasha928@gmail.com>
+Subject: [PATCH 12/16] dm: use new hashtable implementation
+Date: Tue, 14 Aug 2012 18:24:46 +0200
+Message-Id: <1344961490-4068-13-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
+References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch to using the new hashtable implementation to store user structs.
-This reduces the amount of generic unrelated code in kernel/user.c.
+Switch dm to use the new hashtable implementation. This reduces the amount of
+generic unrelated code in the dm.
 
 Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
 ---
- kernel/user.c |   33 +++++++++++++--------------------
- 1 files changed, 13 insertions(+), 20 deletions(-)
+ drivers/md/dm-snap.c                               |   24 ++++-----------
+ drivers/md/persistent-data/dm-block-manager.c      |    1 -
+ .../persistent-data/dm-persistent-data-internal.h  |   19 ------------
+ .../md/persistent-data/dm-transaction-manager.c    |   30 ++++++--------------
+ 4 files changed, 16 insertions(+), 58 deletions(-)
+ delete mode 100644 drivers/md/persistent-data/dm-persistent-data-internal.h
 
-diff --git a/kernel/user.c b/kernel/user.c
-index b815fef..d10c484 100644
---- a/kernel/user.c
-+++ b/kernel/user.c
-@@ -16,6 +16,7 @@
- #include <linux/interrupt.h>
- #include <linux/export.h>
- #include <linux/user_namespace.h>
-+#include <linux/hashtable.h>
- 
- /*
-  * userns count is 1 for root user, 1 for init_uts_ns,
-@@ -52,13 +53,9 @@ EXPORT_SYMBOL_GPL(init_user_ns);
+diff --git a/drivers/md/dm-snap.c b/drivers/md/dm-snap.c
+index a143921..7ac121f 100644
+--- a/drivers/md/dm-snap.c
++++ b/drivers/md/dm-snap.c
+@@ -34,9 +34,7 @@ static const char dm_snapshot_merge_target_name[] = "snapshot-merge";
   */
+ #define MIN_IOS 256
  
- #define UIDHASH_BITS	(CONFIG_BASE_SMALL ? 3 : 7)
--#define UIDHASH_SZ	(1 << UIDHASH_BITS)
--#define UIDHASH_MASK		(UIDHASH_SZ - 1)
--#define __uidhashfn(uid)	(((uid >> UIDHASH_BITS) + uid) & UIDHASH_MASK)
--#define uidhashentry(uid)	(uidhash_table + __uidhashfn((__kuid_val(uid))))
+-#define DM_TRACKED_CHUNK_HASH_SIZE	16
+-#define DM_TRACKED_CHUNK_HASH(x)	((unsigned long)(x) & \
+-					 (DM_TRACKED_CHUNK_HASH_SIZE - 1))
++#define DM_TRACKED_CHUNK_HASH_BITS	4
  
- static struct kmem_cache *uid_cachep;
--struct hlist_head uidhash_table[UIDHASH_SZ];
-+static DEFINE_HASHTABLE(uidhash_table, UIDHASH_BITS)
+ struct dm_exception_table {
+ 	uint32_t hash_mask;
+@@ -80,7 +78,7 @@ struct dm_snapshot {
+ 	/* Chunks with outstanding reads */
+ 	spinlock_t tracked_chunk_lock;
+ 	mempool_t *tracked_chunk_pool;
+-	struct hlist_head tracked_chunk_hash[DM_TRACKED_CHUNK_HASH_SIZE];
++	DEFINE_HASHTABLE(tracked_chunk_hash, DM_TRACKED_CHUNK_HASH_BITS);
  
- /*
-  * The uidhash_lock is mostly taken from process context, but it is
-@@ -84,22 +81,22 @@ struct user_struct root_user = {
- /*
-  * These routines must be called with the uidhash spinlock held!
-  */
--static void uid_hash_insert(struct user_struct *up, struct hlist_head *hashent)
-+static void uid_hash_insert(struct user_struct *up)
- {
--	hlist_add_head(&up->uidhash_node, hashent);
-+	hash_add(uidhash_table, &up->uidhash_node, __kuid_val(up->uid));
- }
+ 	/* The on disk metadata handler */
+ 	struct dm_exception_store *store;
+@@ -203,8 +201,7 @@ static struct dm_snap_tracked_chunk *track_chunk(struct dm_snapshot *s,
+ 	c->chunk = chunk;
  
- static void uid_hash_remove(struct user_struct *up)
- {
--	hlist_del_init(&up->uidhash_node);
-+	hash_del(&up->uidhash_node);
- }
+ 	spin_lock_irqsave(&s->tracked_chunk_lock, flags);
+-	hlist_add_head(&c->node,
+-		       &s->tracked_chunk_hash[DM_TRACKED_CHUNK_HASH(chunk)]);
++	hash_add(s->tracked_chunk_hash, &c->node, chunk);
+ 	spin_unlock_irqrestore(&s->tracked_chunk_lock, flags);
  
--static struct user_struct *uid_hash_find(kuid_t uid, struct hlist_head *hashent)
-+static struct user_struct *uid_hash_find(kuid_t uid)
- {
- 	struct user_struct *user;
- 	struct hlist_node *h;
- 
--	hlist_for_each_entry(user, h, hashent, uidhash_node) {
-+	hash_for_each_possible(uidhash_table, user, h, uidhash_node, __kuid_val(uid)) {
- 		if (uid_eq(user->uid, uid)) {
- 			atomic_inc(&user->__count);
- 			return user;
-@@ -135,7 +132,7 @@ struct user_struct *find_user(kuid_t uid)
+ 	return c;
+@@ -216,7 +213,7 @@ static void stop_tracking_chunk(struct dm_snapshot *s,
  	unsigned long flags;
  
- 	spin_lock_irqsave(&uidhash_lock, flags);
--	ret = uid_hash_find(uid, uidhashentry(uid));
-+	ret = uid_hash_find(uid);
- 	spin_unlock_irqrestore(&uidhash_lock, flags);
- 	return ret;
- }
-@@ -156,11 +153,10 @@ void free_uid(struct user_struct *up)
+ 	spin_lock_irqsave(&s->tracked_chunk_lock, flags);
+-	hlist_del(&c->node);
++	hash_del(&c->node);
+ 	spin_unlock_irqrestore(&s->tracked_chunk_lock, flags);
  
- struct user_struct *alloc_uid(kuid_t uid)
+ 	mempool_free(c, s->tracked_chunk_pool);
+@@ -230,8 +227,7 @@ static int __chunk_is_tracked(struct dm_snapshot *s, chunk_t chunk)
+ 
+ 	spin_lock_irq(&s->tracked_chunk_lock);
+ 
+-	hlist_for_each_entry(c, hn,
+-	    &s->tracked_chunk_hash[DM_TRACKED_CHUNK_HASH(chunk)], node) {
++	hash_for_each_possible(s->tracked_chunk_hash, c, hn, node, chunk) {
+ 		if (c->chunk == chunk) {
+ 			found = 1;
+ 			break;
+@@ -1033,7 +1029,6 @@ static void stop_merge(struct dm_snapshot *s)
+ static int snapshot_ctr(struct dm_target *ti, unsigned int argc, char **argv)
  {
--	struct hlist_head *hashent = uidhashentry(uid);
- 	struct user_struct *up, *new;
+ 	struct dm_snapshot *s;
+-	int i;
+ 	int r = -EINVAL;
+ 	char *origin_path, *cow_path;
+ 	unsigned args_used, num_flush_requests = 1;
+@@ -1128,8 +1123,7 @@ static int snapshot_ctr(struct dm_target *ti, unsigned int argc, char **argv)
+ 		goto bad_tracked_chunk_pool;
+ 	}
  
- 	spin_lock_irq(&uidhash_lock);
--	up = uid_hash_find(uid, hashent);
-+	up = uid_hash_find(uid);
- 	spin_unlock_irq(&uidhash_lock);
+-	for (i = 0; i < DM_TRACKED_CHUNK_HASH_SIZE; i++)
+-		INIT_HLIST_HEAD(&s->tracked_chunk_hash[i]);
++	hash_init(s->tracked_chunk_hash);
  
- 	if (!up) {
-@@ -176,13 +172,13 @@ struct user_struct *alloc_uid(kuid_t uid)
- 		 * on adding the same user already..
- 		 */
- 		spin_lock_irq(&uidhash_lock);
--		up = uid_hash_find(uid, hashent);
-+		up = uid_hash_find(uid);
- 		if (up) {
- 			key_put(new->uid_keyring);
- 			key_put(new->session_keyring);
- 			kmem_cache_free(uid_cachep, new);
- 		} else {
--			uid_hash_insert(new, hashent);
-+			uid_hash_insert(new);
- 			up = new;
- 		}
- 		spin_unlock_irq(&uidhash_lock);
-@@ -196,17 +192,14 @@ out_unlock:
+ 	spin_lock_init(&s->tracked_chunk_lock);
  
- static int __init uid_cache_init(void)
+@@ -1253,9 +1247,6 @@ static void __handover_exceptions(struct dm_snapshot *snap_src,
+ 
+ static void snapshot_dtr(struct dm_target *ti)
  {
--	int n;
+-#ifdef CONFIG_DM_DEBUG
+-	int i;
+-#endif
+ 	struct dm_snapshot *s = ti->private;
+ 	struct dm_snapshot *snap_src = NULL, *snap_dest = NULL;
+ 
+@@ -1286,8 +1277,7 @@ static void snapshot_dtr(struct dm_target *ti)
+ 	smp_mb();
+ 
+ #ifdef CONFIG_DM_DEBUG
+-	for (i = 0; i < DM_TRACKED_CHUNK_HASH_SIZE; i++)
+-		BUG_ON(!hlist_empty(&s->tracked_chunk_hash[i]));
++	BUG_ON(!hash_empty(s->tracked_chunk_hash));
+ #endif
+ 
+ 	mempool_destroy(s->tracked_chunk_pool);
+diff --git a/drivers/md/persistent-data/dm-block-manager.c b/drivers/md/persistent-data/dm-block-manager.c
+index 5ba2777..31edaf13 100644
+--- a/drivers/md/persistent-data/dm-block-manager.c
++++ b/drivers/md/persistent-data/dm-block-manager.c
+@@ -4,7 +4,6 @@
+  * This file is released under the GPL.
+  */
+ #include "dm-block-manager.h"
+-#include "dm-persistent-data-internal.h"
+ #include "../dm-bufio.h"
+ 
+ #include <linux/crc32c.h>
+diff --git a/drivers/md/persistent-data/dm-persistent-data-internal.h b/drivers/md/persistent-data/dm-persistent-data-internal.h
+deleted file mode 100644
+index c49e26f..0000000
+--- a/drivers/md/persistent-data/dm-persistent-data-internal.h
++++ /dev/null
+@@ -1,19 +0,0 @@
+-/*
+- * Copyright (C) 2011 Red Hat, Inc.
+- *
+- * This file is released under the GPL.
+- */
 -
- 	uid_cachep = kmem_cache_create("uid_cache", sizeof(struct user_struct),
- 			0, SLAB_HWCACHE_ALIGN|SLAB_PANIC, NULL);
+-#ifndef _DM_PERSISTENT_DATA_INTERNAL_H
+-#define _DM_PERSISTENT_DATA_INTERNAL_H
+-
+-#include "dm-block-manager.h"
+-
+-static inline unsigned dm_hash_block(dm_block_t b, unsigned hash_mask)
+-{
+-	const unsigned BIG_PRIME = 4294967291UL;
+-
+-	return (((unsigned) b) * BIG_PRIME) & hash_mask;
+-}
+-
+-#endif	/* _PERSISTENT_DATA_INTERNAL_H */
+diff --git a/drivers/md/persistent-data/dm-transaction-manager.c b/drivers/md/persistent-data/dm-transaction-manager.c
+index d247a35..a57c4ed 100644
+--- a/drivers/md/persistent-data/dm-transaction-manager.c
++++ b/drivers/md/persistent-data/dm-transaction-manager.c
+@@ -7,11 +7,11 @@
+ #include "dm-space-map.h"
+ #include "dm-space-map-disk.h"
+ #include "dm-space-map-metadata.h"
+-#include "dm-persistent-data-internal.h"
  
--	for(n = 0; n < UIDHASH_SZ; ++n)
--		INIT_HLIST_HEAD(uidhash_table + n);
-+	hash_init(uidhash_table);
+ #include <linux/export.h>
+ #include <linux/slab.h>
+ #include <linux/device-mapper.h>
++#include <linux/hashtable.h>
  
- 	/* Insert the root user immediately (init already runs as root) */
- 	spin_lock_irq(&uidhash_lock);
--	uid_hash_insert(&root_user, uidhashentry(GLOBAL_ROOT_UID));
-+	uid_hash_insert(&root_user);
- 	spin_unlock_irq(&uidhash_lock);
+ #define DM_MSG_PREFIX "transaction manager"
  
- 	return 0;
+@@ -25,8 +25,7 @@ struct shadow_info {
+ /*
+  * It would be nice if we scaled with the size of transaction.
+  */
+-#define HASH_SIZE 256
+-#define HASH_MASK (HASH_SIZE - 1)
++#define DM_HASH_BITS 8
+ 
+ struct dm_transaction_manager {
+ 	int is_clone;
+@@ -36,7 +35,7 @@ struct dm_transaction_manager {
+ 	struct dm_space_map *sm;
+ 
+ 	spinlock_t lock;
+-	struct hlist_head buckets[HASH_SIZE];
++	DEFINE_HASHTABLE(hash, DM_HASH_BITS);
+ };
+ 
+ /*----------------------------------------------------------------*/
+@@ -44,12 +43,11 @@ struct dm_transaction_manager {
+ static int is_shadow(struct dm_transaction_manager *tm, dm_block_t b)
+ {
+ 	int r = 0;
+-	unsigned bucket = dm_hash_block(b, HASH_MASK);
+ 	struct shadow_info *si;
+ 	struct hlist_node *n;
+ 
+ 	spin_lock(&tm->lock);
+-	hlist_for_each_entry(si, n, tm->buckets + bucket, hlist)
++	hash_for_each_possible(tm->hash, si, n, hlist, b)
+ 		if (si->where == b) {
+ 			r = 1;
+ 			break;
+@@ -65,15 +63,13 @@ static int is_shadow(struct dm_transaction_manager *tm, dm_block_t b)
+  */
+ static void insert_shadow(struct dm_transaction_manager *tm, dm_block_t b)
+ {
+-	unsigned bucket;
+ 	struct shadow_info *si;
+ 
+ 	si = kmalloc(sizeof(*si), GFP_NOIO);
+ 	if (si) {
+ 		si->where = b;
+-		bucket = dm_hash_block(b, HASH_MASK);
+ 		spin_lock(&tm->lock);
+-		hlist_add_head(&si->hlist, tm->buckets + bucket);
++		hash_add(tm->hash, &si->hlist, b);
+ 		spin_unlock(&tm->lock);
+ 	}
+ }
+@@ -82,18 +78,12 @@ static void wipe_shadow_table(struct dm_transaction_manager *tm)
+ {
+ 	struct shadow_info *si;
+ 	struct hlist_node *n, *tmp;
+-	struct hlist_head *bucket;
+ 	int i;
+ 
+ 	spin_lock(&tm->lock);
+-	for (i = 0; i < HASH_SIZE; i++) {
+-		bucket = tm->buckets + i;
+-		hlist_for_each_entry_safe(si, n, tmp, bucket, hlist)
+-			kfree(si);
+-
+-		INIT_HLIST_HEAD(bucket);
+-	}
+-
++	hash_for_each_safe(tm->hash, i, n, tmp, si, hlist)
++		kfree(si);
++	hash_init(tm->hash);
+ 	spin_unlock(&tm->lock);
+ }
+ 
+@@ -102,7 +92,6 @@ static void wipe_shadow_table(struct dm_transaction_manager *tm)
+ static struct dm_transaction_manager *dm_tm_create(struct dm_block_manager *bm,
+ 						   struct dm_space_map *sm)
+ {
+-	int i;
+ 	struct dm_transaction_manager *tm;
+ 
+ 	tm = kmalloc(sizeof(*tm), GFP_KERNEL);
+@@ -115,8 +104,7 @@ static struct dm_transaction_manager *dm_tm_create(struct dm_block_manager *bm,
+ 	tm->sm = sm;
+ 
+ 	spin_lock_init(&tm->lock);
+-	for (i = 0; i < HASH_SIZE; i++)
+-		INIT_HLIST_HEAD(tm->buckets + i);
++	hash_init(tm->hash);
+ 
+ 	return tm;
+ }
 -- 
 1.7.8.6
 
