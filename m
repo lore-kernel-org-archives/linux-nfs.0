@@ -1,59 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:63302 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750852Ab2HGPOY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Aug 2012 11:14:24 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: Joerg Roedel <joro@8bytes.org>, Joerg Roedel <joerg.roedel@amd.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "wdauchy@gmail.com" <wdauchy@gmail.com>
-Subject: Re: kernel BUG at /data/lemmy/linux.trees.git/fs/nfs/idmap.c:681!
-Date: Tue, 7 Aug 2012 15:14:22 +0000
-Message-ID: <1344352458.5781.8.camel@lade.trondhjem.org>
-References: <20120807134156.GP1996@amd.com> <50211E42.6040808@netapp.com>
-	 <20120807141548.GG1917@8bytes.org> <5021237D.1010107@netapp.com>
-	 <20120807142707.GH1917@8bytes.org> <502127EF.3030209@netapp.com>
-In-Reply-To: <502127EF.3030209@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:53592 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752762Ab2HOA2l (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 20:28:41 -0400
+Date: Tue, 14 Aug 2012 17:28:34 -0700
+From: Tejun Heo <tj@kernel.org>
+To: Sasha Levin <levinsasha928@gmail.com>
+Cc: NeilBrown <neilb@suse.de>, torvalds@linux-foundation.org,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, ccaulfie@redhat.com, teigland@redhat.com,
+        Trond.Myklebust@netapp.com, bfields@fieldses.org, fweisbec@gmail.com,
+        jesse@nicira.com, venkat.x.venkatsubra@oracle.com, ejt@redhat.com,
+        snitzer@redhat.com, edumazet@google.com, linux-nfs@vger.kernel.org,
+        dev@openvswitch.org, rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH 01/16] hashtable: introduce a small and naive hashtable
+Message-ID: <20120815002834.GI25632@google.com>
+References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
+ <1344961490-4068-2-git-send-email-levinsasha928@gmail.com>
+ <20120815092523.00a909ef@notabene.brown>
+ <502AEC51.2010305@gmail.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <502AEC51.2010305@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA4LTA3IGF0IDEwOjM2IC0wNDAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6
-DQo+IE9uIDA4LzA3LzIwMTIgMTA6MjcgQU0sIEpvZXJnIFJvZWRlbCB3cm90ZToNCj4gPiBPbiBU
-dWUsIEF1ZyAwNywgMjAxMiBhdCAxMDoxNzozM0FNIC0wNDAwLCBCcnlhbiBTY2h1bWFrZXIgd3Jv
-dGU6DQo+ID4+IE9uIDA4LzA3LzIwMTIgMTA6MTUgQU0sIEpvZXJnIFJvZWRlbCB3cm90ZToNCj4g
-Pj4+IFllcywgaXQgcmVwcm9kdWNlcyBwcmV0dHkgcmVsaWFibGUgaGVyZSB3aXRoIFVidW50dSAx
-MS4xMCBTZXJ2ZXIgb24gYW4NCj4gPj4+IEludGVsIGJveCB3aXRoIGFuIE5GU3YzIGRpcmVjdG9y
-eSBtb3VudGVkIGF0IGJvb3QuIFRoaXMgaXMgdGhlIG9ubHkgYm94DQo+ID4+PiBJIGhhdmUgc2Vl
-biB0aGlzIHNvIGZhciwgcHJvYmFibHkgaXQgZGVwZW5kcyBvbiB0aGUgY29uZmlnLiBJIGF0dGFj
-aCB0aGUNCj4gPj4+IGNvbmZpZyBvZiB0aGUgZmFpbGluZyBib3guDQo+ID4+DQo+ID4+IEludGVy
-ZXN0aW5nLiAgQXJlIHlvdSBtb3VudGluZyB2NCwgdG9vPyAgVGhpcyBjb2RlIHNob3VsZG4ndCBi
-ZQ0KPiA+PiBydW5uaW5nIGZvciB2My4uLiBtYXliZSB0aGF0J3Mgd2h5IEkgaGF2ZW4ndCBiZWVu
-IGFibGUgdG8gaGl0IGl0Lg0KPiA+IA0KPiA+IE5vLCBJIGFtIG5vdCB1c2luZyBORlN2NCBvbiB0
-aGUgYm94IHdoZXJlIHRoZSBCVUcgaGFwcGVucy4gSSBoYXZlDQo+ID4gYW5vdGhlciBib3ggbW91
-bnRpbmcgdGhlIHNhbWUgZGlyZWN0b3J5IHdoZXJlIHRoZSBCVUcgZG9lcyBub3QgdHJpZ2dlcg0K
-PiA+IHdpdGggdjMuNi1yYzEuIEEgZGlmZmVyZW5jZSBJIHNwb3R0ZWQgYmV0d2VlbiB0aGUga2Vy
-bmVscyBpcywgdGhhdCBvbg0KPiA+IHRoZSBmYWlsaW5nIGJveCBORlMgaXMgY29tcGlsZWQgYXMg
-YSBtb2R1bGUgd2hlcmVhcyBpdCBpcyBjb21waWxlZCBpbnRvDQo+ID4gdGhlIGtlcm5lbCBvbiB0
-aGUgYm94IHRoYXQgd29ya3MgZmluZS4gTm90IHN1cmUgaWYgdGhhdCBoYXMgYW55dGhpbmcgdG8N
-Cj4gPiBkbyB3aXRoIHRoZSBwcm9ibGVtLi4uDQo+ID4gDQo+IA0KPiBZb3VyIHN0YWNrIHRyYWNl
-IGlzIHNob3dpbmcgdjQgY2FsbHMgb24gdGhlIGZhaWxpbmcgYm94LCB0aG9zZSBkZWZpbml0ZWx5
-IHNob3VsZG4ndCBiZSBoYXBwZW5pbmcgaWYgeW91J3JlIHVzaW5nIHYzLiAgQ2FuIHlvdSBkb3Vi
-bGUgY2hlY2sgL2V0Yy9mc3RhYiBhbmQgL3Byb2MvbW91bnRzIG9uIGEgd29ya2luZyBrZXJuZWwg
-dG8gYmUgc3VyZT8NCj4gDQo+IE15IFZNIGhhcyBuZnMgYXMgYSBtb2R1bGUsIHNvIEkgZG9uJ3Qg
-dGhpbmsgdGhhdCdzIHRoZSBpc3N1ZS4uLiBJIGp1c3Qgc3RhcnRlZCBjb21waWxpbmcgeW91ciBj
-b25maWcgdG8gdGVzdCBvbiBteSBvd24uDQoNCkpvZXJnLA0KDQpUaGUgc3RhY2sgdHJhY2UgZGVm
-aW5pdGVseSBzaG93cyB0aGF0IHRoZSBORlMgY2xpZW50IGlzIGF0dGVtcHRpbmcgYW4NCk5GU3Y0
-IG1vdW50LiBBcmUgeW91IHN1cHBseWluZyBhICd2ZXJzPTMnIG1vdW50IG9wdGlvbj8gSWYgbm90
-LCB0aGVuDQpub3RlIHRoYXQgcmVjZW50IHZlcnNpb25zIG9mIG5mcy11dGlscyBjYW4gYmUgY29u
-ZmlndXJlZCB0byB0cnkgTkZTdjQgYXMNCnRoZSBkZWZhdWx0IG1vdW50IG9wdGlvbiwgc28gSSdk
-IGd1ZXNzIHRoaXMgaXMgd2h5IHlvdSBhcmUgaGl0dGluZyBhbg0KTkZTdjQgcGF0aC4NCg0KQnJ5
-YW4sDQoNClRoYXQgc2FpZCwgd2hlbiBsb29raW5nIGF0IHRoZSBsZWdhY3kgdXBjYWxsLCBpdCBz
-ZWVtcyB0aGF0IGlmDQpycGNfcXVldWVfdXBjYWxsIGZhaWxzLCB0aGVuIHdlIGRvbid0IGRvIGFu
-eXRoaW5nIHRvIGNsZWFyDQppZG1hcC0+aWRtYXBfa2V5X2NvbnMuIERpdHRvIGlmIHRoZSBjYWxs
-IHRpbWVzIG91dCwgb3IgaWYgdGhlIHBpcGUgaXMNCmNsb3NlZCBiZWZvcmUgdGhlIGRvd25jYWxs
-Lg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoN
-Ck5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+Hello,
+
+(Sasha, would it be possible to change your MUA so that it breaks long
+ lines.  It's pretty difficult to reply to.)
+
+On Wed, Aug 15, 2012 at 02:24:49AM +0200, Sasha Levin wrote:
+> The hashtable uses hlist. hlist provides us with an entire family of
+> init functions which I'm supposed to use to initialize hlist heads.
+> 
+> So while a memset(0) will work perfectly here, I consider that
+> cheating - it results in an uglier code that assumes to know about
+> hlist internals, and will probably break as soon as someone tries to
+> do something to hlist.
+
+I think we should stick with INIT_HLIST_HEAD().  It's not a hot path
+and we might add, say, debug fields or initialization magics added
+later.  If this really matters, the right thing to do would be adding
+something like INIT_HLIST_HEAD_ARRAY().
+
+Thanks.
+
+-- 
+tejun
