@@ -1,130 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:39086 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756743Ab2HNQZd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 12:25:33 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH 06/16] tracepoint: use new hashtable implementation
-Date: Tue, 14 Aug 2012 18:24:40 +0200
-Message-Id: <1344961490-4068-7-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
-References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
+Received: from smtprelay02.ispgateway.de ([80.67.31.40]:44966 "EHLO
+	smtprelay02.ispgateway.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754482Ab2HONkM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Aug 2012 09:40:12 -0400
+Message-ID: <502BA6B8.3090209@cape-horn-eng.com>
+Date: Wed, 15 Aug 2012 15:40:08 +0200
+From: Richard Ems <richard.ems@cape-horn-eng.com>
+MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Jeff Layton <jlayton@redhat.com>, Al Viro <viro@ZenIV.linux.org.uk>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nfs_lookup_revalidate BUG ?
+References: <502A21A1.7020206@cape-horn-eng.com>   <4FA345DA4F4AE44899BD2B03EEEC2FA93A4848@SACEXCMBX04-PRD.hq.netapp.com>   <20120814183512.GI23464@ZenIV.linux.org.uk>   <4FA345DA4F4AE44899BD2B03EEEC2FA93A4DFC@SACEXCMBX04-PRD.hq.netapp.com>   <20120814151143.30fb9ca9@tlielax.poochiereds.net>   <502B8E9A.9010601@cape-horn-eng.com>  <4FA345DA4F4AE44899BD2B03EEEC2FA93AB5CB@SACEXCMBX04-PRD.hq.netapp.com>  <502BA2A0.6000208@cape-horn-eng.com> <4FA345DA4F4AE44899BD2B03EEEC2FA93AB714@SACEXCMBX04-PRD.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA93AB714@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch tracepoints to use the new hashtable implementation. This reduces the amount of
-generic unrelated code in the tracepoints.
+On 08/15/2012 03:38 PM, Myklebust, Trond wrote:
+> On Wed, 2012-08-15 at 15:22 +0200, Richard Ems wrote:
+>> On 08/15/2012 03:20 PM, Myklebust, Trond wrote:
+>>>> (gdb) list *(nfs_lookup_revalidate+0x2d)
+>>>> 0x59cd is in nfs_lookup_revalidate (/usr/src/debug/kernel-default-3.5.1/linux-3.5/fs/nfs/dir.c:1129).
+>>>> 1124            struct dentry *parent;
+>>>> 1125            struct nfs_fh *fhandle = NULL;
+>>>> 1126            struct nfs_fattr *fattr = NULL;
+>>>> 1127            int error;
+>>>> 1128
+>>>> 1129            if (nd->flags & LOOKUP_RCU)
+>>>
+>>> Bummer... We check if 'nd' is NULL everywhere except here...
+>>>
+>>> OK. Changing the above line to
+>>>
+>>> 	if (nd && (nd->flags & LOOKUP_RCU))
+>>>
+>>> will fix the problem.
+>>
+>> Ok, great !
+>> Do you think this fix will go into 3.5.2 ?
+> 
+> I'll try to get it into stable. 3.6-rcX is unaffected by the bug due to
+> recent VFS changes that have removed the "struct nameidata *" argument
+> to nfs_lookup_revalidate.
+> 
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
- kernel/tracepoint.c |   27 +++++++++++----------------
- 1 files changed, 11 insertions(+), 16 deletions(-)
+Ok, many thanks. I have found a couple of other accesses to nd with no
+check for NULL at *nfs_atomic_lookup and nfs4_lookup_revalidate, but
+don't know if those are relevant.
 
-diff --git a/kernel/tracepoint.c b/kernel/tracepoint.c
-index d96ba22..854df92 100644
---- a/kernel/tracepoint.c
-+++ b/kernel/tracepoint.c
-@@ -26,6 +26,7 @@
- #include <linux/slab.h>
- #include <linux/sched.h>
- #include <linux/static_key.h>
-+#include <linux/hashtable.h>
- 
- extern struct tracepoint * const __start___tracepoints_ptrs[];
- extern struct tracepoint * const __stop___tracepoints_ptrs[];
-@@ -49,8 +50,7 @@ static LIST_HEAD(tracepoint_module_list);
-  * Protected by tracepoints_mutex.
-  */
- #define TRACEPOINT_HASH_BITS 6
--#define TRACEPOINT_TABLE_SIZE (1 << TRACEPOINT_HASH_BITS)
--static struct hlist_head tracepoint_table[TRACEPOINT_TABLE_SIZE];
-+static DEFINE_HASHTABLE(tracepoint_table, TRACEPOINT_HASH_BITS);
- 
- /*
-  * Note about RCU :
-@@ -191,16 +191,15 @@ tracepoint_entry_remove_probe(struct tracepoint_entry *entry,
-  */
- static struct tracepoint_entry *get_tracepoint(const char *name)
- {
--	struct hlist_head *head;
- 	struct hlist_node *node;
- 	struct tracepoint_entry *e;
- 	u32 hash = jhash(name, strlen(name), 0);
- 
--	head = &tracepoint_table[hash & (TRACEPOINT_TABLE_SIZE - 1)];
--	hlist_for_each_entry(e, node, head, hlist) {
-+	hash_for_each_possible(tracepoint_table, e, node, hlist, hash) {
- 		if (!strcmp(name, e->name))
- 			return e;
- 	}
-+
- 	return NULL;
- }
- 
-@@ -210,19 +209,13 @@ static struct tracepoint_entry *get_tracepoint(const char *name)
-  */
- static struct tracepoint_entry *add_tracepoint(const char *name)
- {
--	struct hlist_head *head;
--	struct hlist_node *node;
- 	struct tracepoint_entry *e;
- 	size_t name_len = strlen(name) + 1;
- 	u32 hash = jhash(name, name_len-1, 0);
- 
--	head = &tracepoint_table[hash & (TRACEPOINT_TABLE_SIZE - 1)];
--	hlist_for_each_entry(e, node, head, hlist) {
--		if (!strcmp(name, e->name)) {
--			printk(KERN_NOTICE
--				"tracepoint %s busy\n", name);
--			return ERR_PTR(-EEXIST);	/* Already there */
--		}
-+	if (get_tracepoint(name)) {
-+		printk(KERN_NOTICE "tracepoint %s busy\n", name);
-+		return ERR_PTR(-EEXIST);	/* Already there */
- 	}
- 	/*
- 	 * Using kmalloc here to allocate a variable length element. Could
-@@ -234,7 +227,7 @@ static struct tracepoint_entry *add_tracepoint(const char *name)
- 	memcpy(&e->name[0], name, name_len);
- 	e->funcs = NULL;
- 	e->refcount = 0;
--	hlist_add_head(&e->hlist, head);
-+	hash_add(tracepoint_table, &e->hlist, hash);
- 	return e;
- }
- 
-@@ -244,7 +237,7 @@ static struct tracepoint_entry *add_tracepoint(const char *name)
-  */
- static inline void remove_tracepoint(struct tracepoint_entry *e)
- {
--	hlist_del(&e->hlist);
-+	hash_del(&e->hlist);
- 	kfree(e);
- }
- 
-@@ -722,6 +715,8 @@ struct notifier_block tracepoint_module_nb = {
- 
- static int init_tracepoints(void)
- {
-+	hash_init(tracepoint_table);
-+
- 	return register_module_notifier(&tracepoint_module_nb);
- }
- __initcall(init_tracepoints);
+Thanks again,
+Richard
+
 -- 
-1.7.8.6
+Richard Ems       mail: Richard.Ems@Cape-Horn-Eng.com
 
+Cape Horn Engineering S.L.
+C/ Dr. J.J. Dómine 1, 5º piso
+46011 Valencia
+Tel : +34 96 3242923 / Fax 924
+http://www.cape-horn-eng.com
