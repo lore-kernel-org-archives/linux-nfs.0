@@ -1,246 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50047 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:60012 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753008Ab2HOXnC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Aug 2012 19:43:02 -0400
-Received: from bfields by fieldses.org with local (Exim 4.72)
-	(envelope-from <bfields@fieldses.org>)
-	id 1T1nEq-0007kK-IX
-	for linux-nfs@vger.kernel.org; Wed, 15 Aug 2012 19:43:00 -0400
-Date: Wed, 15 Aug 2012 19:43:00 -0400
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: remove unused listener-removal interfaces
-Message-ID: <20120815234259.GB28054@fieldses.org>
+	id S1754979Ab2HOPCw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Aug 2012 11:02:52 -0400
+Date: Wed, 15 Aug 2012 11:02:51 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: v3.5 nfsd4 regression; utime sometimes takes 40+ seconds to
+ return
+Message-ID: <20120815150251.GB16057@fieldses.org>
+References: <20120815061115.GC32347@cucamonga.audible.transient.net>
+ <20120815135854.GI32347@cucamonga.audible.transient.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20120815135854.GI32347@cucamonga.audible.transient.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Wed, Aug 15, 2012 at 01:58:54PM +0000, Jamie Heilman wrote:
+> Jamie Heilman wrote:
+> > I'll try to get full rcpdebug traces on client and server as the delay
+> > is occuring in the hopes that helps pin things down, and post them
+> > separately.
+> 
+> OK, here are the logs from client and server, where a run of my test program
+> under strace -T resulted in:
+> 
+> utime("utime-test.c", [2012/08/15-13:35:20, 2012/08/15-13:22:04]) = 0 <0.150815>
+> open("utime-test.c", O_RDONLY)          = 3 <0.242635>
+> close(3)                                = 0 <0.147768>
+> stat("utime-test.c", {st_mode=S_IFREG|0644, st_size=696, ...}) = 0 <0.002772>
+> utime("utime-test.c", [2012/08/15-13:35:20, 2012/08/15-13:22:04]) = 0 <71.878058>
+> 
+> The client is a 64-bit v3.4.8 kernel, the server is 32-bit, v3.5.1 +
+> the two sunprc patches that will be in v3.5.2.
+> 
+> (The client's system clock is a touch faster than the server's, but
+> these logs start at the same instant.)
 
-You can use nfsd/portlist to give nfsd additional sockets to listen on.
-In theory you can also remove listening sockets this way.  But nobody's
-ever done that as far as I can tell.
+Thanks for all the details.
 
-Also this was partially broken in 2.6.25, by
-a217813f9067b785241cb7f31956e51d2071703a "knfsd: Support adding
-transports by writing portlist file".
+What's probably happening is that the client is returning a delegation
+with the open.  The setattr then breaks that delegation; you can see it
+getting 10008 (NFS4ERR_DELAY) replies while the server waits for the
+delegation to be returned.  But for some reason the callback to break
+the delegation isn't working.  ("NFSD: warning: no callback path to
+client 192.168.2.42/192.168.2.4 tcp UNIX 0: error -110" (110 is
+ETIMEDOUT).)  So instead you wait for the delegation to time out and get
+forcibly revoked.
 
-(Note that we decide whether to take the "delfd" case by checking for a
-digit--but what's actually expected in that case is something made by
-svc_one_sock_name(), which won't begin with a digit.)
+The reproducer might be more reliable if you did two opens.
 
-So, let's just rip out this stuff.
+It'd be worth looking at the traffic in wireshark.  You should see
+setattr, open, close, setattr, a DELAY reply to the setattr, a
+CB_RECALL, and then a DELEGRETURN that gets a succesful reply.  But for
+some reason the DELEGRETURN isn't getting through in your case, I'm not
+sure why.  I can't reproduce that.  You'll need to start wireshark
+before you mount to make sure it knows how to parse the callbacks.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfsctl.c               |   78 ----------------------------------------
- include/linux/sunrpc/svcsock.h |    3 --
- net/sunrpc/svcsock.c           |   51 --------------------------
- 3 files changed, 132 deletions(-)
-
-OK, maybe this is somewhat of a troll patch--but I don't actually know
-how to fix this interface, so: do we really have a use for it?
+I don't see anything in that range of git commits that looks suspicious,
+but I may well have overlooked something.
 
 --b.
-
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index e41a08ff..dab350d 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -683,25 +683,6 @@ static ssize_t __write_ports_addfd(char *buf)
- }
- 
- /*
-- * A '-' followed by the 'name' of a socket means we close the socket.
-- */
--static ssize_t __write_ports_delfd(char *buf)
--{
--	char *toclose;
--	int len = 0;
--
--	toclose = kstrdup(buf + 1, GFP_KERNEL);
--	if (toclose == NULL)
--		return -ENOMEM;
--
--	if (nfsd_serv != NULL)
--		len = svc_sock_names(nfsd_serv, buf,
--					SIMPLE_TRANSACTION_LIMIT, toclose);
--	kfree(toclose);
--	return len;
--}
--
--/*
-  * A transport listener is added by writing it's transport name and
-  * a port number.
-  */
-@@ -746,31 +727,6 @@ out_err:
- 	return err;
- }
- 
--/*
-- * A transport listener is removed by writing a "-", it's transport
-- * name, and it's port number.
-- */
--static ssize_t __write_ports_delxprt(char *buf)
--{
--	struct svc_xprt *xprt;
--	char transport[16];
--	int port;
--
--	if (sscanf(&buf[1], "%15s %4u", transport, &port) != 2)
--		return -EINVAL;
--
--	if (port < 1 || port > USHRT_MAX || nfsd_serv == NULL)
--		return -EINVAL;
--
--	xprt = svc_find_xprt(nfsd_serv, transport, &init_net, AF_UNSPEC, port);
--	if (xprt == NULL)
--		return -ENOTCONN;
--
--	svc_close_xprt(xprt);
--	svc_xprt_put(xprt);
--	return 0;
--}
--
- static ssize_t __write_ports(struct file *file, char *buf, size_t size)
- {
- 	if (size == 0)
-@@ -779,15 +735,9 @@ static ssize_t __write_ports(struct file *file, char *buf, size_t size)
- 	if (isdigit(buf[0]))
- 		return __write_ports_addfd(buf);
- 
--	if (buf[0] == '-' && isdigit(buf[1]))
--		return __write_ports_delfd(buf);
--
- 	if (isalpha(buf[0]))
- 		return __write_ports_addxprt(buf);
- 
--	if (buf[0] == '-' && isalpha(buf[1]))
--		return __write_ports_delxprt(buf);
--
- 	return -EINVAL;
- }
- 
-@@ -825,21 +775,6 @@ static ssize_t __write_ports(struct file *file, char *buf, size_t size)
-  * OR
-  *
-  * Input:
-- *			buf:		C string containing a "-" followed
-- *					by an integer value representing a
-- *					previously passed in socket file
-- *					descriptor
-- *			size:		non-zero length of C string in @buf
-- * Output:
-- *	On success:	NFS service no longer listens on that socket;
-- *			passed-in buffer filled with a '\n'-terminated C
-- *			string containing a unique name of the listener;
-- *			return code is the size in bytes of the string
-- *	On error:	return code is a negative errno value
-- *
-- * OR
-- *
-- * Input:
-  *			buf:		C string containing a transport
-  *					name and an unsigned integer value
-  *					representing the port to listen on,
-@@ -848,19 +783,6 @@ static ssize_t __write_ports(struct file *file, char *buf, size_t size)
-  * Output:
-  *	On success:	returns zero; NFS service is started
-  *	On error:	return code is a negative errno value
-- *
-- * OR
-- *
-- * Input:
-- *			buf:		C string containing a "-" followed
-- *					by a transport name and an unsigned
-- *					integer value representing the port
-- *					to listen on, separated by whitespace
-- *			size:		non-zero length of C string in @buf
-- * Output:
-- *	On success:	returns zero; NFS service no longer listens
-- *			on that transport
-- *	On error:	return code is a negative errno value
-  */
- static ssize_t write_ports(struct file *file, char *buf, size_t size)
- {
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index cb4ac69..92ad02f 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -39,9 +39,6 @@ int		svc_recv(struct svc_rqst *, long);
- int		svc_send(struct svc_rqst *);
- void		svc_drop(struct svc_rqst *);
- void		svc_sock_update_bufs(struct svc_serv *serv);
--int		svc_sock_names(struct svc_serv *serv, char *buf,
--					const size_t buflen,
--					const char *toclose);
- int		svc_addsock(struct svc_serv *serv, const int fd,
- 					char *name_return, const size_t len);
- void		svc_init_xprt_sock(void);
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index c7a7b14..42fedbd 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -305,57 +305,6 @@ static int svc_one_sock_name(struct svc_sock *svsk, char *buf, int remaining)
- 	return len;
- }
- 
--/**
-- * svc_sock_names - construct a list of listener names in a string
-- * @serv: pointer to RPC service
-- * @buf: pointer to a buffer to fill in with socket names
-- * @buflen: size of the buffer to be filled
-- * @toclose: pointer to '\0'-terminated C string containing the name
-- *		of a listener to be closed
-- *
-- * Fills in @buf with a '\n'-separated list of names of listener
-- * sockets.  If @toclose is not NULL, the socket named by @toclose
-- * is closed, and is not included in the output list.
-- *
-- * Returns positive length of the socket name string, or a negative
-- * errno value on error.
-- */
--int svc_sock_names(struct svc_serv *serv, char *buf, const size_t buflen,
--		   const char *toclose)
--{
--	struct svc_sock *svsk, *closesk = NULL;
--	int len = 0;
--
--	if (!serv)
--		return 0;
--
--	spin_lock_bh(&serv->sv_lock);
--	list_for_each_entry(svsk, &serv->sv_permsocks, sk_xprt.xpt_list) {
--		int onelen = svc_one_sock_name(svsk, buf + len, buflen - len);
--		if (onelen < 0) {
--			len = onelen;
--			break;
--		}
--		if (toclose && strcmp(toclose, buf + len) == 0) {
--			closesk = svsk;
--			svc_xprt_get(&closesk->sk_xprt);
--		} else
--			len += onelen;
--	}
--	spin_unlock_bh(&serv->sv_lock);
--
--	if (closesk) {
--		/* Should unregister with portmap, but you cannot
--		 * unregister just one protocol...
--		 */
--		svc_close_xprt(&closesk->sk_xprt);
--		svc_xprt_put(&closesk->sk_xprt);
--	} else if (toclose)
--		return -ENOENT;
--	return len;
--}
--EXPORT_SYMBOL_GPL(svc_sock_names);
--
- /*
-  * Check input queue length
-  */
--- 
-1.7.9.5
-
