@@ -1,150 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from esa-jnhn.mail.uoguelph.ca ([131.104.91.44]:61559 "EHLO
-	esa-jnhn.mail.uoguelph.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752873Ab2HXAfS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Aug 2012 20:35:18 -0400
-Date: Thu, 23 Aug 2012 20:25:36 -0400 (EDT)
-From: Rick Macklem <rmacklem@uoguelph.ca>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org,
-        Norbert Aschendorff <norbert.aschendorff@yahoo.de>
-Message-ID: <900847353.1046192.1345767936102.JavaMail.root@erie.cs.uoguelph.ca>
-In-Reply-To: <20120823144605.GA6923@fieldses.org>
-Subject: Re: NFSv4, Name (string) mapping vs. raw UID, idmapd and Kernels >=
- 3.3
+Received: from mail.openrapids.net ([64.15.138.104]:56763 "EHLO
+	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751448Ab2HODk2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 23:40:28 -0400
+Date: Tue, 14 Aug 2012 23:31:55 -0400
+From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+To: "Eric W. Biederman" <ebiederm@xmission.com>
+Cc: Sasha Levin <levinsasha928@gmail.com>, torvalds@linux-foundation.org,
+        tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH 02/16] user_ns: use new hashtable implementation
+Message-ID: <20120815033155.GA32653@Krystal>
+References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com> <1344961490-4068-3-git-send-email-levinsasha928@gmail.com> <87txw5hw0s.fsf@xmission.com> <502AF184.4010907@gmail.com> <87393phshy.fsf@xmission.com> <502AFCD5.6070104@gmail.com> <87obmchmpu.fsf@xmission.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <87obmchmpu.fsf@xmission.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> Adding Rick to the cc:
+* Eric W. Biederman (ebiederm@xmission.com) wrote:
+> Sasha Levin <levinsasha928@gmail.com> writes:
 > 
-> On Thu, Aug 23, 2012 at 11:21:29AM +0200, Norbert Aschendorff wrote:
-> > I recently opened a thread on freebsd-stable about problems with the
-> > mapping of UIDs to user strings (user@domain form) in NFSv4 packets
-> > running newer kernels:
-> > [http://www.mail-archive.com/freebsd-stable@freebsd.org/index.html#122549]
-> > In
-> > [http://www.mail-archive.com/freebsd-stable@freebsd.org/msg122571.html],
-> > Rick says that the described issue may be related to the
-> > NFSv4/NFSv4.1
-> > RFCs which deny/allow sending "raw" numeric UIDs (1000 instead of
-> > "user@domain").
-> > The problem is that Linux kernels newer than 3.2 (the last working
-> > kernel, on both Debian and Fedora; I've tested 3.3, 3.4 and 3.5)
-> > send
-> > these numeric UIDs/GIDs [1] which, as it's described in the
-> > mentioned
-> > email, may be convenient when mounting NFSv4 filesystems as root
-> > filesystem (at a point where an idmapd/nfsuserd (on FreeBSD) isn't
-> > already running) and numeric UIDs/GIDs are required (because of the
-> > early stage)
-> > Now it could be that Kernels newer than 3.2 (>= 3.3) support this
-> > feature (which is said to appear in NFSv4.1) already - and FreeBSD
-> > 9.0
-> > does not (it shows 32767 as UID - due to that I discovered this
-> > issue; a
-> > Fedora 17/k3.5 system supports the numeric UIDs/GIDs without any
-> > problems).
+> > On 08/15/2012 03:08 AM, Eric W. Biederman wrote:
+> >>> I can offer the following: I'll write a small module that will hash 1...10000
+> >>> > into a hashtable which uses 7 bits (just like user_ns) and post the distribution
+> >>> > we'll get.
+> >> That won't hurt.  I think 1-100 then 1000-1100 may actually be more
+> >> representative.  Not that I would mind seeing the larger range.
+> >> Especially since I am in the process of encouraging the use of more
+> >> uids.
+> >> 
+> >
+> > Alrighty, the results are in (numbers are objects in bucket):
+> >
+> > For the 0...10000 range:
+> >
+> > Average: 78.125
+> > Std dev: 1.4197704151
+> > Min: 75
+> > Max: 80
+> >
+> >
+> > For the 1...100 range:
+> >
+> > Average: 0.78125
+> > Std dev: 0.5164613088
+> > Min: 0
+> > Max: 2
+> >
+> >
+> > For the 1000...1100 range:
+> >
+> > Average: 0.7890625
+> > Std dev: 0.4964812206
+> > Min: 0
+> > Max: 2
+> >
+> >
+> > Looks like hash_32 is pretty good with small numbers.
 > 
-> Yes, newer linux servers by default do return numeric ID's (unless
-> kerberos is used).
+> Yes hash_32 seems reasonable for the uid hash.   With those long hash
+> chains I wouldn't like to be on a machine with 10,000 processes with
+> each with a different uid, and a processes calling setuid in the fast
+> path.
 > 
-> > --> 1. Is this assumption correct? Or is it a bug as filed here:
-> > [https://bugzilla.novell.com/show_bug.cgi?id=756897]
-> 
-> That's slightly different, as it concerns a *client* sending numeric
-> id's to a server. The client should in that case be falling back on
-> the
-> old behavior, and if that's not working there's some other bug.
-> 
-> > --> 2. As Rick says finally in
-> > [http://www.mail-archive.com/freebsd-stable@freebsd.org/msg122572.html],
-> > it would be cool if this behavior was tunable. Is it tunable via
-> > options
-> > in /etc/exports? Or in idmapd.conf? (The man pages don't describe
-> > such
-> > directives (at least at the first look)).
-> 
-> It's tunable via the nfsd module's "nfs4_disable_idmapping" parameter.
-> So, for example,
-> 
-> echo "N" > /sys/module/nfsd/parameters/nfs4_disable_idmapping
-> 
-> should return the server to its old behavior.
-> 
-> "Y" was made the default because even the old rfc 3530 language
-> allowed
-> servers to return numeric ID's, so we assumed correct clients would
-> need
-> to be prepared for them.
-> 
-Well, way back when, I did have support for the numeric uid/gid strings
-and I disabled that code because I thought (based on some discussion in
-the working group), that it wasn't supposed to be allowed.
+> The uid hash that we are playing with is one that I sort of wish that
+> the hash table could grow in size, so that we could scale up better.
 
-Reading RFC3530, I see that it is typically ambiguous, although it
-seems to say that numeric uid/gids should only be allowed when no
-name<->uid/gid# exists. Here's a couple of snippets from RFC3530 around
-page 47:
+Hi Eric,
 
-   provides additional rationale.  It is expected that the client and
-   server will have their own local representation of owner and
-   owner_group that is used for local storage or presentation to the end
-   user.  
-   >> Therefore, it is expected that when these attributes are
-   transferred between the client and server that the local
-   representation is translated to a syntax of the form
-   "user@dns_domain".  This will allow for a client and server that do
-   not use the same local representation the ability to translate to a
-   common syntax that can be interpreted by both.
+If you want to try out something that has more features than a basic
+hash table, already exists and is available for you to play with, you
+might want to have a look at the RCU lock-free resizable hash table.
+It's initially done in userspace, but shares the same RCU semantic as
+the kernel, and has chunk-based kernel-friendly index backends (thanks
+to Lai Jiangshan), very useful to integrate with the kernel page
+allocator.
 
-The ">>" sentence seems to lean towards using the user@domain form whenever possible?
+It has the following properties that might make this container a good
+fit for uid hashing:
 
-Then on the next page:
+- Real-time friendly lookups: Lookups are RCU and wait-free.
+- Fast and real-time friendly updates: Use cmpxchg for update, and RCU
+  to deal with ABA.
+- Resize (expand/shrink) for each power of two size, performed
+  concurrently with ongoing updates and lookups.
+- Has add_unique (uniquify), add_replace, and also duplicate semantics.
+- Provide uniqueness guarantees for RCU traversals of the hash table
+  with respect to add_unique and add_replace.
 
-   To provide a greater degree of compatibility with previous versions
-   of NFS (i.e., v2 and v3), which identified users and groups by 32-bit
-   unsigned uid's and gid's, owner and group strings that consist of
-   decimal numeric values with no leading zeros can be given a special
-   interpretation by clients and servers which choose to provide such
-   support.  
-   ** The receiver may treat such a user or group string as
-   representing the same user as would be represented by a v2/v3 uid or
-   gid having the corresponding numeric value.  A server is not
-   obligated to accept such a string, but may return an NFS4ERR_BADOWNER
-   instead.  
-   --> To avoid this mechanism being used to subvert user and
-   group translation, so that a client might pass all of the owners and
-   groups in numeric form, a server SHOULD return an NFS4ERR_BADOWNER
-   error when there is a valid translation for the user or owner
-   designated in this way.  In that case, the client must use the
-   appropriate name@domain string and not the special form for
-   compatibility.
+So if you are looking for a fast, RT-friendly, resizable hash table to
+play with, you might want to have a look at the userspace RCU
+implementation, which now features this hash table:
 
-The sentence at "**" says a receiver "may" recognize the numeric uid/gid#
-string. This would suggest that a client isn't expected/required to do so,
-as I read it. (This page seems to be very confusing w.r.t. what clients/servers
-are expected/required to support.)
-The sentence at "-->" is a SHOULD (not a MUST, I admit) that seems to
-say a server should only allow numeric uid/gid# strings when there isn't
-a name<->uid/gid# translation and should avoid allowing clients to just
-use uid/gid# strings?
+https://lttng.org/urcu
 
-Anyhow, I do plan to re-enable support for numeric uid/gid# strings in
-the FreeBSD NFSv4 client, but it won't be released until 9.2 at the
-earliest. (I, personally, have no problem with numeric uid/gid# strings.
-I disabled support for them because I had thought the working group
-didn't want them supported.)
+See urcu/rculfhash.h for the API.
 
-> It may be the server-side default was too aggressive and needs to be
-> changed, but we'd also like to make sure that clients are fixed.
+Best regards,
+
+Mathieu
+
+> 
+> Aw well.  Most of the time we only have a very small number of uids
+> in play, so it doesn't matter at this point.
+> 
+> Eric
 > 
 
-I have no strong opinion on this. I am glad to see that there is a way
-to switch the server to use user@dns_domain so that it will work with
-the currently released FreeBSD NFSv4.0 client.
-
-rick
-> --b.
+-- 
+Mathieu Desnoyers
+Operating System Efficiency R&D Consultant
+EfficiOS Inc.
+http://www.efficios.com
