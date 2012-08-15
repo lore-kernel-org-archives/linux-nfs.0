@@ -1,33 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from hop-nat-141.emc.com ([168.159.213.141]:29316 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757188Ab2HIJBI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2012 05:01:08 -0400
-From: "Peng, Tao" <tao.peng@emc.com>
-To: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Bryan Schumaker <bjschuma@netapp.com>
-Date: Thu, 9 Aug 2012 05:00:50 -0400
-Subject: RE: [PATCH-v2] NFS41: fix error of setting blocklayoutdriver
-Message-ID: <5DFC6BE3BA248842867E85C73BF94B050B17B698D0@MX41A.corp.emc.com>
-References: <1344437845-2356-1-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1344437845-2356-1-git-send-email-bergwolf@gmail.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:45277 "EHLO
+	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752800Ab2HOAYR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 20:24:17 -0400
+Message-ID: <502AEC51.2010305@gmail.com>
+Date: Wed, 15 Aug 2012 02:24:49 +0200
+From: Sasha Levin <levinsasha928@gmail.com>
 MIME-Version: 1.0
+To: NeilBrown <neilb@suse.de>
+CC: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
+        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH 01/16] hashtable: introduce a small and naive hashtable
+References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com> <1344961490-4068-2-git-send-email-levinsasha928@gmail.com> <20120815092523.00a909ef@notabene.brown>
+In-Reply-To: <20120815092523.00a909ef@notabene.brown>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBQZW5nIFRhbyBbbWFpbHRvOmJl
-cmd3b2xmQGdtYWlsLmNvbV0NCj4gU2VudDogV2VkbmVzZGF5LCBBdWd1c3QgMDgsIDIwMTIgMTA6
-NTcgUE0NCj4gVG86IFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQo+IENjOiBsaW51eC1uZnNA
-dmdlci5rZXJuZWwub3JnOyBCcnlhbiBTY2h1bWFrZXI7IFBlbmcsIFRhbw0KPiBTdWJqZWN0OiBb
-UEFUQ0gtdjJdIE5GUzQxOiBmaXggZXJyb3Igb2Ygc2V0dGluZyBibG9ja2xheW91dGRyaXZlcg0K
-PiANCj4gQWZ0ZXIgY29tbWl0IGUzOGViNjUwIChORlM6IHNldF9wbmZzX2xheW91dGRyaXZlcigp
-IGZyb20NCj4gbmZzNF9wcm9jX2ZzaW5mbygpKSwgc2V0X3BuZnNfbGF5b3V0ZHJpdmVyKCkgaXMg
-Y2FsbGVkIGluc2lkZQ0KPiBuZnM0X3Byb2NfZnNpbmZvKCksIGJ1dCBwbmZzX2Jsa3NpemUgaXMg
-bm90IHNldC4gSXQgY2F1c2VzIHNldHRpbmcNCj4gYmxvY2tsYXlvdXRkcml2ZXIgZmFpbHVyZSBh
-bmQgcG5mc2Jsb2NrIG1vdW50IGZhaWx1cmUuDQo+IA0KSnVzdCBub3RpY2VkIHRoYXQgdGhlIGNv
-bW1pdCBlMzhlYjY1MCBoYXMgYmVlbiBtZXJnZWQgaW4gMy41IHJlbGVhc2UuIFRyb25kLCBwbGVh
-c2UgYWRkIGEgbGluZSB0byBzdGFibGUgd2hlbiB5b3UgbWVyZ2UgdGhlIHBhdGNoLiBUaGFua3Mg
-dmVyeSBtdWNoIQ0KQ2M6IHN0YWJsZUB2Z2VyLmtlcm5lbC5vcmcgW3YzLjVdDQoNCkNoZWVycywN
-ClRhbyANCg0K
+On 08/15/2012 01:25 AM, NeilBrown wrote:
+> On Tue, 14 Aug 2012 18:24:35 +0200 Sasha Levin <levinsasha928@gmail.com>
+> wrote:
+> 
+> 
+>> +static inline void hash_init_size(struct hlist_head *hashtable, int bits)
+>> +{
+>> +	int i;
+>> +
+>> +	for (i = 0; i < HASH_SIZE(bits); i++)
+>> +		INIT_HLIST_HEAD(hashtable + i);
+>> +}
+> 
+> This seems like an inefficient way to do "memset(hashtable, 0, ...);".
+> And in many cases it isn't needed as the hash table is static and initialised
+> to zero.
+> I note that in the SUNRPC/cache patch you call hash_init(), but in the lockd
+> patch you don't.  You don't actually need to in either case.
+
+Agreed that the code will run just fine if we wouldn't use hash_init().
+
+> I realise that any optimisation here is for code that is only executed once
+> per boot, so no big deal, and even the presence of extra code making the
+> kernel bigger is unlikely to be an issue.  But I'd at least like to see
+> consistency: Either use hash_init everywhere, even when not needed, or only
+> use it where absolutely needed which might be no-where because static tables
+> are already initialised, and dynamic tables can use GFP_ZERO.
+
+This is a consistency problem. I didn't want to add a module_init() to modules that didn't have it just to get hash_init() in there.
+
+I'll get it fixed.
+
+> And if you keep hash_init_size I would rather see a memset(0)....
+
+My concern with using a memset(0) is that I'm going to break layering.
+
+The hashtable uses hlist. hlist provides us with an entire family of init functions which I'm supposed to use to initialize hlist heads.
+
+So while a memset(0) will work perfectly here, I consider that cheating - it results in an uglier code that assumes to know about hlist internals, and will probably break as soon as someone tries to do something to hlist.
+
+I can think of several alternatives here, and all of them involve changes to hlist instead of the hashtable:
+
+ - Remove INIT_HLIST_HEAD()/HLIST_HEAD()/HLIST_HEAD_INIT() and introduce a CLEAR_HLIST instead, documenting that it's enough to memset(0) the hlist to initialize it properly.
+ - Add a block initializer INIT_HLIST_HEADS() or something similar that would initialize an array of heads.
