@@ -1,65 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36575 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751064Ab2HIQum (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Aug 2012 12:50:42 -0400
-Date: Thu, 9 Aug 2012 12:50:35 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Zdenek Salvet <salvet@ics.muni.cz>, Lukas Hejtmanek <xhejtman@ics.muni.cz>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4 backchannel authentication
-Message-ID: <20120809165035.GB8230@fieldses.org>
-References: <20120806135517.GS25979@ics.muni.cz>
- <20120807154114.GA21460@fieldses.org>
- <1344355148.5781.31.camel@lade.trondhjem.org>
- <20120808075813.GW604@horn.ics.muni.cz>
- <1344431887.3423.4.camel@lade.trondhjem.org>
- <20120809080642.GE604@horn.ics.muni.cz>
- <20120809144530.GB6592@fieldses.org>
- <1344527573.25447.17.camel@lade.trondhjem.org>
+Received: from audible.transient.net ([216.254.12.79]:52599 "HELO
+	audible.transient.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751197Ab2HOGR6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Aug 2012 02:17:58 -0400
+Date: Wed, 15 Aug 2012 06:11:15 +0000
+From: Jamie Heilman <jamie@audible.transient.net>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: v3.5 nfsd4 regression; utime sometimes takes 40+ seconds to return
+Message-ID: <20120815061115.GC32347@cucamonga.audible.transient.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1344527573.25447.17.camel@lade.trondhjem.org>
+Content-Type: multipart/mixed; boundary="sdtB3X0nJg68CQEu"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 09, 2012 at 03:53:01PM +0000, Myklebust, Trond wrote:
-> On Thu, 2012-08-09 at 10:45 -0400, J. Bruce Fields wrote:
-> > On Thu, Aug 09, 2012 at 10:06:42AM +0200, Zdenek Salvet wrote:
-> > > On Wed, Aug 08, 2012 at 01:18:09PM +0000, Myklebust, Trond wrote:
-> > > > > We don't see any hard failures because NFS protocol does
-> > > > > not depend on working callback RPCs, but no delegations are granted
-> > > > > (we had nfs-kernel-server package installed on clients before which masked
-> > > > > the bug).
-> > > > 
-> > > > So your gripe that you object to us requiring you to run rpc.svcgssd in
-> > > > order to obtain server features such as NFSv4 callbacks?
-> > > 
-> > > Absolutely not! Just thinking why we did not notice the problem earlier ...
-> > 
-> > I wonder if there's anything we could do to make this more automatic,
-> > though: e.g., perhaps whichever scripts are launching one of the gss
-> > daemons should be replaced by one that launches both, since that's
-> > generally what you'll want for NFSv4.0.  (Not necessary for other
-> > versions, but it doesn't hurt much.)
-> > 
-> > Or perhaps they could be started on demand somehow.
-> 
-> How is this any different to requiring that the user start rpc.statd
-> before launching an NFSv3 mount? Just document the requirement if it
-> isn't already clear enough, and we can move on.
 
-That's good enough, but it's always nice if there's some configuration
-we can skip.  (Not that I'm volunteering.)
+--sdtB3X0nJg68CQEu
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-> The other source of confusion here, was that the rpc.svcgssd was
-> delivered through a nfs-kernel-server package, which indicates that we
-> first and foremost need to educate the distro packagers.
+I really wish I could have nailed this down better, but I've had a
+hard time reliably reproducing the problem during bisection, and I
+haven't seen anyone report a similar sounding problem.  Here's what
+I've seen: since 3.5 I've been having spurious delays on my nfs
+clients, noticable particularly when I open an mbox file in mutt over
+an nfs v4 mount from a v3.5 or later server.  The servers I've
+reproduced this on are all uni-proc 32-bit systems... but then I
+haven't tried SMP or 64-bit systems yet, it may or may not exist
+there.  When the delay occurs, it's quite noticable.  I've never seen
+one that takes less than 40 seconds to "unstick."  I wrote a quick and
+dirty reproduction tool, based on the syscalls mutt was doing that
+triggered the problem, attached to this message.  To use it, compile
+the file as utime-test on an exported volume, then execute with (cd
+/some/mount/point && strace -T ./utime-test) from a nfs4 client.
 
-Yes, that's a mistake.  The nfs-utils README is where we've been
-documenting daemon startup--I'll work on a patch.  (And see if the man
-pages could use something too.)  And somebody should ping Debian
-(nfs-kernel-server sounds like a Debian thing.)
+For whatever, reason I frequently find the second call to utime takes
+an irritatingly long time to return and I see something like:
+utime("utime-test.c", [2012/08/14-22:47:21, 2012/08/14-17:25:21]) = 0 <70.510913>
+in the strace output.
 
---b.
+I've reproduced this on Debian Squeeze / nfs-utils 1.2.2 based servers
+(legacy idmapper, no user-space nfsidmap), as well as Debian Wheezy /
+nfs-utils 1.2.6 (uses keyutils upcalls) servers, so I doubt it's a
+user-space related issue...  Attempts to bisect have been muddled,
+I'll keep trying in the interim, but the best I've been able to pin
+things down is that issue was probably introduced in the
+419f4319495043a9507ac3e616be9ca60af09744 merge.  I can't repo on a
+kernel based on fb21affa49204acd409328415b49bfe90136653c.  (I say
+based on, because I have to apply the patch from
+http://marc.info/?l=linux-nfs&m=133950479803025 or face additional
+problems.)
+
+I'll try to get full rcpdebug traces on client and server as the delay
+is occuring in the hopes that helps pin things down, and post them
+separately.
+
+-- 
+Jamie Heilman                     http://audible.transient.net/~jamie/
+
+--sdtB3X0nJg68CQEu
+Content-Type: text/x-csrc; charset=us-ascii
+Content-Disposition: attachment; filename="utime-test.c"
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <time.h>
+#include <utime.h>
+#include <stdio.h>
+
+#define F_PATH "utime-test.c"
+
+int main()
+{
+	struct stat sb;
+	struct utimbuf ub;
+	int fd;
+
+	if (stat(F_PATH, &sb) == -1) {
+		perror(NULL);
+		return -1;
+	}
+	ub.modtime = sb.st_mtime;
+	ub.actime = time(NULL);
+	if (utime(F_PATH, &ub) == -1) {
+		perror(NULL);
+		return -2;
+	}
+	if ((fd = open(F_PATH, O_RDONLY)) == -1) {
+		perror(NULL);
+		return -3;
+	}
+	close(fd);
+	if (stat(F_PATH, &sb) == -1) {
+		perror(NULL);
+		return -1;
+	}
+	ub.modtime = sb.st_mtime;
+	ub.actime = time(NULL);
+	if (utime(F_PATH, &ub) == -1) {
+		perror(NULL);
+		return -2;
+	}
+
+	return 0;
+}
+
+--sdtB3X0nJg68CQEu--
