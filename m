@@ -1,85 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:43640 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751777Ab2HSQRO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Aug 2012 12:17:14 -0400
-Message-ID: <503111A8.5030703@gmail.com>
-Date: Sun, 19 Aug 2012 18:17:44 +0200
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:57177 "EHLO
+	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752843Ab2HOAq1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 20:46:27 -0400
+Message-ID: <502AF184.4010907@gmail.com>
+Date: Wed, 15 Aug 2012 02:47:00 +0200
 From: Sasha Levin <levinsasha928@gmail.com>
 MIME-Version: 1.0
-To: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+To: "Eric W. Biederman" <ebiederm@xmission.com>
 CC: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
         linux-kernel@vger.kernel.org, linux-mm@kvack.org,
         paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
+        mingo@elte.hu, aarcange@redhat.com, ericvh@gmail.com,
+        netdev@vger.kernel.org, josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
         dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
         teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
         fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
         ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
         linux-nfs@vger.kernel.org, dev@openvswitch.org,
         rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v2 01/16] hashtable: introduce a small and naive hashtable
-References: <1345337550-24304-1-git-send-email-levinsasha928@gmail.com> <1345337550-24304-2-git-send-email-levinsasha928@gmail.com> <20120819131637.GA8272@Krystal> <20120819141641.GA9082@Krystal>
-In-Reply-To: <20120819141641.GA9082@Krystal>
+Subject: Re: [PATCH 02/16] user_ns: use new hashtable implementation
+References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com> <1344961490-4068-3-git-send-email-levinsasha928@gmail.com> <87txw5hw0s.fsf@xmission.com>
+In-Reply-To: <87txw5hw0s.fsf@xmission.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/19/2012 04:16 PM, Mathieu Desnoyers wrote:
-> * Mathieu Desnoyers (mathieu.desnoyers@efficios.com) wrote:
->> * Sasha Levin (levinsasha928@gmail.com) wrote:
-> [...]
->>> +/**
->>> + * hash_for_each_possible - iterate over all possible objects for a given key
->>> + * @name: hashtable to iterate
->>> + * @obj: the type * to use as a loop cursor for each bucket
->>> + * @bits: bit count of hashing function of the hashtable
->>> + * @node: the &struct list_head to use as a loop cursor for each bucket
->>> + * @member: the name of the hlist_node within the struct
->>> + * @key: the key of the objects to iterate over
->>> + */
->>> +#define hash_for_each_possible_size(name, obj, bits, node, member, key)		\
->>> +	hlist_for_each_entry(obj, node,	&name[hash_min(key, bits)], member)
->>
->> Second point: "for_each_possible" does not express the iteration scope.
->> Citing WordNet: "possible adj 1: capable of happening or existing;" --
->> which has nothing to do with iteration on duplicate keys within a hash
->> table.
->>
->> I would recommend to rename "possible" to "duplicate", e.g.:
->>
->>   hash_for_each_duplicate()
->>
->> which clearly says what is the scope of this iteration: duplicate keys.
+On 08/15/2012 01:52 AM, Eric W. Biederman wrote:
+> Sasha Levin <levinsasha928@gmail.com> writes:
 > 
-> OK, about this part: I now see that you iterate over all objects within
-> the same hash chain. I guess the description "iterate over all possible
-> objects for a given key" is misleading: it's not all objects with a
-> given key, but rather all objects hashing to the same bucket.
+>> Switch user_ns to use the new hashtable implementation. This reduces the amount of
+>> generic unrelated code in user_ns.
 > 
-> I understand that you don't want to build knowledge of the key
-> comparison function in the iterator (which makes sense for a simple hash
-> table).
-> 
-> By the way, the comment "@obj: the type * to use as a loop cursor for
-> each bucket" is also misleading: it's a loop cursor for each entry,
-> since you iterate on all nodes within single bucket. Same for "@node:
-> the &struct list_head to use as a loop cursor for each bucket".
-> 
-> So with these documentation changes applied, hash_for_each_possible
-> starts to make more sense, because it refers to entries that can
-> _possibly_ be a match (or not). Other options would be
-> hash_chain_for_each() or hash_bucket_for_each().
+> Two concerns here.
+> 1) When adding a new entry you recompute the hash where previously that
+>    was not done.  I believe that will slow down adding of new entries.
 
-I'd rather avoid starting to use chain/bucket since they're not used anywhere
-else (I've tried keeping internal hashing/bucketing opaque to the user).
+I figured that the price for the extra hashing isn't significant since hash_32
+is just a multiplication and a shift.
 
-Otherwise makes sense, I'll improve the documentation as suggested. Thanks!
+I'll modify the code to calculate the key just once.
 
-> Thanks,
+> 2) Using hash_32 for uids is an interesting choice.  hash_32 discards
+>    the low bits.  Last I checked for uids the low bits were the bits
+>    that were most likely to be different and had the most entropy.
 > 
-> Mathieu
-> 
+>    I'm not certain how multiplying by the GOLDEN_RATION_PRIME_32 will
+>    affect things but I would be surprised if it shifted all of the
+>    randomness from the low bits to the high bits.
+
+"Is hash_* good enough for our purpose?" - I was actually surprised that no one
+raised that question during the RFC and assumed it was because everybody agreed
+that it's indeed good enough.
+
+I can offer the following: I'll write a small module that will hash 1...10000
+into a hashtable which uses 7 bits (just like user_ns) and post the distribution
+we'll get.
+
+If the results of the above will be satisfactory we can avoid the discussion
+about which hash function we should really be using. If not, I guess now is a
+good time for that :)
 
