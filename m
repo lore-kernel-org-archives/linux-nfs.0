@@ -1,55 +1,31 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:50286 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752488Ab2HMQkk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Aug 2012 12:40:40 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jim Vanns <james.vanns@framestore.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Your comments, guidance, advice please :)
-Date: Mon, 13 Aug 2012 16:40:39 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA939D69C@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1344869728.8400.46.camel@sys367.ldn.framestore.com>
-In-Reply-To: <1344869728.8400.46.camel@sys367.ldn.framestore.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:58027 "EHLO
+	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752975Ab2HOHx3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Aug 2012 03:53:29 -0400
+Received: by lbbgj3 with SMTP id gj3so712638lbb.19
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Aug 2012 00:53:26 -0700 (PDT)
+Message-ID: <502B55A3.3030007@compcenter.org>
+Date: Wed, 15 Aug 2012 11:54:11 +0400
+From: "Denis V. Nagorny" <dvnagorny@compcenter.org>
 MIME-Version: 1.0
+To: linux-nfs@vger.kernel.org
+Subject: Randomly inaccessible files through NFS
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA4LTEzIGF0IDE1OjU1ICswMTAwLCBKaW0gVmFubnMgd3JvdGU6DQo+IEhl
-bGxvIE5GUyBoYWNrZXJzLiBGaXJzdCBvZmYsIGZlYXIgbm90IC0gdGhlIGF0dGFjaGVkIHBhdGNo
-IGlzIG5vdA0KPiBzb21ldGhpbmcgSSB3aXNoIHRvIHN1Ym1pdCB0byB0aGUgbWFpbmxpbmUga2Vy
-bmVsISBIb3dldmVyLCBpdCBpcw0KPiBpbXBvcnRhbnQgZm9yIG1lIHRoYXQgeW91IHBhc3MganVk
-Z2VtZW50IG9yIGNvbW1lbnQgb24gaXQuIEl0IGlzIHNtYWxsLg0KPiANCj4gQmFzaWNhbGx5LCBJ
-J3ZlIHdyaXR0ZW4gdGhlIHBhdGNoIHNvbGVseSB0byB3b3JrYXJvdW5kIGEgQmx1ZWFyYyBidWcN
-Cj4gd2hlcmUgaXQgZHVwbGljYXRlcyBmaWxlaWRzIHdpdGhpbiBhbiBmc2lkIGFuZCB0aGVyZWZv
-cmUgd2UncmUgbm90IGFibGUNCj4gdG8gcmVseSBvbiB0aGUgZnNpZCtmaWxlaWQgdG8gaWRlbnRp
-ZnkgZGlzdGluY3QgZmlsZXMgaW4gYW4gTkZTDQo+IGZpbGVzeXN0ZW0uIFNvbWUgb2Ygb3VyIHN0
-b3JhZ2UgaW5kZXhpbmcgYW5kIHJlcG9ydGluZyBzb2Z0d2FyZSByZWxpZXMNCj4gb24gdGhpcyBh
-bmQgd29ya3MgaGFwcGlseSB3aXRoIG90aGVyLCBtb3JlIFJGQy1hZGhlcmVudA0KPiBpbXBsZW1l
-bnRhdGlvbnMgOykNCj4gDQo+IFRoZSBmdW5jdGlvbmFsIGNoYW5nZSBpcyBvbmUgdGhhdCBtb2Rp
-ZmllZCB0aGUgcmVjZWl2ZWQgZmlsZWlkIHRvIGEgaGFzaA0KPiBvZiB0aGUgZmlsZSBoYW5kbGUg
-YXMgdGhhdCwgdGhhbmtmdWxseSwgaXMgc3RpbGwgdW5pcXVlLiBBcyB3aXRoIGENCj4gZmlsZWlk
-IEkgbmVlZCB0aGlzIGhhc2ggdG8gcmVtYWluIGNvbnNpc3RlbnQgZm9yIHRoZSBsaWZldGltZSBv
-ZiBhIGZpbGUuDQo+IEl0IGlzIHVzZWQgYXMgYSB1bmlxdWUgaWRlbnRpZmllciBpbiBhIGRhdGFi
-YXNlLg0KPiANCj4gSSdkIHJlYWxseSBhcHByZWNpYXRlIGl0IGlmIHlvdSBjb3VsZCBsZXQgbWUg
-a25vdyBvZiBhbnkgcHJvYmxlbXMgeW91DQo+IHNlZSB3aXRoIGl0IC0gd2hldGhlciBpdCdsbCBi
-cmVhayBzb21lIGNsaWVudC1zaWRlIGNvZGUsIGhhc2ggdGFibGUgdXNlDQo+IG9yIHdvcnNlIHN0
-aWxsIHNlbmQgYmFjayBiYWQgZGF0YSB0byB0aGUgc2VydmVyLg0KPiANCj4gSSd2ZSBtb2RpZmll
-ZCB3aGF0IEkgY2FuIHNlZSBhcyB0aGUgbGVhc3QgYW1vdW50IG9mIGNvZGUgcG9zc2libGUgLSBh
-bmQNCj4gbXkgdGVzdCBWTSBpcyB3b3JraW5nIGhhcHBpbHkgYXMgYSBjbGllbnQgd2l0aCB0aGlz
-IHBhdGNoLiBJdCBpcw0KPiBpbnRlbmRlZCB0aGF0IHRoZSBwYXRjaCBtb2RpZmllcyBvbmx5IGNs
-aWVudC1zaWRlIGNvZGUgb25jZSB0aGUgQmx1ZWFyYw0KPiBSUENzIGFyZSBwdWxsZWQgb2ZmIHRo
-ZSB3aXJlLiBJIG5ldmVyIHdhbnQgdG8gc2VuZCBiYWNrIHRoZXNlIG1vZGlmaWVkDQo+IGZpbGVp
-ZHMgdG8gdGhlIHNlcnZlci4NCg0KUkVBRERJUiBhbmQgUkVBRERJUlBMVVMgd2lsbCBjb250aW51
-ZSB0byByZXR1cm4gdGhlIGZpbGVpZCBmcm9tIHRoZQ0Kc2VydmVyLCBzbyB0aGUgZ2V0ZGVudHMo
-KSBhbmQgcmVhZGRpcigpIHN5c2NhbGxzIHdpbGwgYmUgYnJva2VuLiBTaW5jZQ0KUkVBRERJUlBM
-VVMgZG9lcyByZXR1cm4gdGhlIGZpbGVoYW5kbGUsIHlvdSBtaWdodCBiZSBhYmxlIHRvIGZpeCB0
-aGF0DQp1cCwgYnV0IHBsYWluIFJFQURESVIgd291bGQgYXBwZWFyIHRvIGJlIHVuZml4YWJsZS4N
-Cg0KT3RoZXJ3aXNlLCB5b3VyIHN0cmF0ZWd5IHNob3VsZCBpbiBwcmluY2lwbGUgYmUgT0ssIGJ1
-dCB3aXRoIHRoZSBjYXZlYXQNCnRoYXQgYSBoYXNoIGRvZXMgbm90IHN1ZmZpY2UgdG8gY29tcGxl
-dGVseSBwcmV2ZW50IGNvbGxpc2lvbnMgZXZlbiBpZiBpdA0KaXMgd2VsbCBjaG9zZW4uDQpJT1c6
-IEFsbCB5b3UgYXJlIGRvaW5nIGlzIHR3ZWFraW5nIHRoZSBwcm9iYWJpbGl0eSBvZiBhIGNvbGxp
-c2lvbi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5l
-cg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
-DQo=
+Hello,
+
+Using Scientific Linux 6.1 (I think it's equal to RH EL 6.1) we met the 
+strange issue.  Several last months we have problem. After one or two 
+days of successful work, files on nfs server begins to be randomly 
+unacessible.
+I doesn't mean that files becames hidden or something like this. It 
+means that attempts to open some random files may be unsuccessful. 
+Usually restart of nfs server makes situation better but for several 
+days only. There are no any messages about errors in logs on server and 
+clients machines. Can anybody point me how can I try to understand what 
+happens at least. Sorry for my english.
+
+Denis.
