@@ -1,54 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:43433 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:22422 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753652Ab2HHMtf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Aug 2012 08:49:35 -0400
-Message-ID: <5022605D.6060901@netapp.com>
-Date: Wed, 08 Aug 2012 08:49:33 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+	id S1751913Ab2HON4E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Aug 2012 09:56:04 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Richard Ems <richard.ems@cape-horn-eng.com>
+CC: Jeff Layton <jlayton@redhat.com>, Al Viro <viro@ZenIV.linux.org.uk>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nfs_lookup_revalidate BUG ?
+Date: Wed, 15 Aug 2012 13:55:00 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA93AB81E@SACEXCMBX04-PRD.hq.netapp.com>
+References: <502A21A1.7020206@cape-horn-eng.com>
+	   <4FA345DA4F4AE44899BD2B03EEEC2FA93A4848@SACEXCMBX04-PRD.hq.netapp.com>
+	   <20120814183512.GI23464@ZenIV.linux.org.uk>
+	   <4FA345DA4F4AE44899BD2B03EEEC2FA93A4DFC@SACEXCMBX04-PRD.hq.netapp.com>
+	   <20120814151143.30fb9ca9@tlielax.poochiereds.net>
+	   <502B8E9A.9010601@cape-horn-eng.com>
+	  <4FA345DA4F4AE44899BD2B03EEEC2FA93AB5CB@SACEXCMBX04-PRD.hq.netapp.com>
+	  <502BA2A0.6000208@cape-horn-eng.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA93AB714@SACEXCMBX04-PRD.hq.netapp.com>
+	 <502BA6B8.3090209@cape-horn-eng.com>
+In-Reply-To: <502BA6B8.3090209@cape-horn-eng.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Peng Tao <bergwolf@gmail.com>
-CC: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] NFS41: fix error of setting blocklayoutdriver
-References: <1344390577-1602-1-git-send-email-bergwolf@gmail.com> <1344390577-1602-2-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1344390577-1602-2-git-send-email-bergwolf@gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/07/2012 09:49 PM, Peng Tao wrote:
-> After commit e38eb650 (NFS: set_pnfs_layoutdriver() from
-> nfs4_proc_fsinfo()), set_pnfs_layoutdriver() is called inside
-> nfs4_proc_fsinfo(), but pnfs_blksize is not set. It causes setting
-> blocklayoutdriver failure and pnfsblock mount failure.
-> 
-> Cc: Bryan Schumaker <bjschuma@netapp.com>
-> Signed-off-by: Peng Tao <bergwolf@gmail.com>
-> ---
->  fs/nfs/nfs4proc.c |    5 ++++-
->  1 files changed, 4 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 78b2163..299c311 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -3362,8 +3362,11 @@ static int nfs4_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle, s
->  
->  	nfs_fattr_init(fsinfo->fattr);
->  	error = nfs4_do_fsinfo(server, fhandle, fsinfo);
-> -	if (error == 0)
-> +	if (error == 0) {
-> +		/* block layout checks this! */
-> +		server->pnfs_blksize = fsinfo->blksize;
-
-fs/nfs/client.c:nfs_server_set_fsinfo() also sets this field, so I'm surprised there was a problem.  You should remove the same line from nfs_server_set_fsinfo() if you're going to set it here.
-
-- Bryan
-
->  		set_pnfs_layoutdriver(server, fhandle, fsinfo->layouttype);
-> +	}
->  
->  	return error;
->  }
-> 
-
+T24gV2VkLCAyMDEyLTA4LTE1IGF0IDE1OjQwICswMjAwLCBSaWNoYXJkIEVtcyB3cm90ZToNCj4g
+T24gMDgvMTUvMjAxMiAwMzozOCBQTSwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4gPiBPbiBX
+ZWQsIDIwMTItMDgtMTUgYXQgMTU6MjIgKzAyMDAsIFJpY2hhcmQgRW1zIHdyb3RlOg0KPiA+PiBP
+biAwOC8xNS8yMDEyIDAzOjIwIFBNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+Pj4+IChn
+ZGIpIGxpc3QgKihuZnNfbG9va3VwX3JldmFsaWRhdGUrMHgyZCkNCj4gPj4+PiAweDU5Y2QgaXMg
+aW4gbmZzX2xvb2t1cF9yZXZhbGlkYXRlICgvdXNyL3NyYy9kZWJ1Zy9rZXJuZWwtZGVmYXVsdC0z
+LjUuMS9saW51eC0zLjUvZnMvbmZzL2Rpci5jOjExMjkpLg0KPiA+Pj4+IDExMjQgICAgICAgICAg
+ICBzdHJ1Y3QgZGVudHJ5ICpwYXJlbnQ7DQo+ID4+Pj4gMTEyNSAgICAgICAgICAgIHN0cnVjdCBu
+ZnNfZmggKmZoYW5kbGUgPSBOVUxMOw0KPiA+Pj4+IDExMjYgICAgICAgICAgICBzdHJ1Y3QgbmZz
+X2ZhdHRyICpmYXR0ciA9IE5VTEw7DQo+ID4+Pj4gMTEyNyAgICAgICAgICAgIGludCBlcnJvcjsN
+Cj4gPj4+PiAxMTI4DQo+ID4+Pj4gMTEyOSAgICAgICAgICAgIGlmIChuZC0+ZmxhZ3MgJiBMT09L
+VVBfUkNVKQ0KPiA+Pj4NCj4gPj4+IEJ1bW1lci4uLiBXZSBjaGVjayBpZiAnbmQnIGlzIE5VTEwg
+ZXZlcnl3aGVyZSBleGNlcHQgaGVyZS4uLg0KPiA+Pj4NCj4gPj4+IE9LLiBDaGFuZ2luZyB0aGUg
+YWJvdmUgbGluZSB0bw0KPiA+Pj4NCj4gPj4+IAlpZiAobmQgJiYgKG5kLT5mbGFncyAmIExPT0tV
+UF9SQ1UpKQ0KPiA+Pj4NCj4gPj4+IHdpbGwgZml4IHRoZSBwcm9ibGVtLg0KPiA+Pg0KPiA+PiBP
+aywgZ3JlYXQgIQ0KPiA+PiBEbyB5b3UgdGhpbmsgdGhpcyBmaXggd2lsbCBnbyBpbnRvIDMuNS4y
+ID8NCj4gPiANCj4gPiBJJ2xsIHRyeSB0byBnZXQgaXQgaW50byBzdGFibGUuIDMuNi1yY1ggaXMg
+dW5hZmZlY3RlZCBieSB0aGUgYnVnIGR1ZSB0bw0KPiA+IHJlY2VudCBWRlMgY2hhbmdlcyB0aGF0
+IGhhdmUgcmVtb3ZlZCB0aGUgInN0cnVjdCBuYW1laWRhdGEgKiIgYXJndW1lbnQNCj4gPiB0byBu
+ZnNfbG9va3VwX3JldmFsaWRhdGUuDQo+ID4gDQo+IA0KPiBPaywgbWFueSB0aGFua3MuIEkgaGF2
+ZSBmb3VuZCBhIGNvdXBsZSBvZiBvdGhlciBhY2Nlc3NlcyB0byBuZCB3aXRoIG5vDQo+IGNoZWNr
+IGZvciBOVUxMIGF0ICpuZnNfYXRvbWljX2xvb2t1cCBhbmQgbmZzNF9sb29rdXBfcmV2YWxpZGF0
+ZSwgYnV0DQo+IGRvbid0IGtub3cgaWYgdGhvc2UgYXJlIHJlbGV2YW50Lg0KDQpJdCBpcyByZWxl
+dmFudCBmb3IgbmZzX29wZW5fcmV2YWxpZGF0ZSg8PTMuNCkgYW5kDQpuZnM0X2xvb2t1cF9yZXZh
+bGlkYXRlKDMuNSksIGJ1dCBub3QgZm9yIG5mc19hdG9taWNfbG9va3VwLg0KDQpDaGVlcnMNCiAg
+VHJvbmQNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIN
+Cg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
