@@ -1,170 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:43131 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755149Ab2HVC2R (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 22:28:17 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH v3 13/17] lockd: use new hashtable implementation
-Date: Wed, 22 Aug 2012 04:27:08 +0200
-Message-Id: <1345602432-27673-14-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
-References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:43512 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932636Ab2HPUmL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Aug 2012 16:42:11 -0400
+Date: Thu, 16 Aug 2012 16:42:08 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: v3.5 nfsd4 regression; utime sometimes takes 40+ seconds to
+ return
+Message-ID: <20120816204208.GE4385@fieldses.org>
+References: <20120815061115.GC32347@cucamonga.audible.transient.net>
+ <20120815135854.GI32347@cucamonga.audible.transient.net>
+ <20120815150251.GB16057@fieldses.org>
+ <20120816201838.GA4282@cucamonga.audible.transient.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120816201838.GA4282@cucamonga.audible.transient.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch lockd to use the new hashtable implementation. This reduces the amount of
-generic unrelated code in lockd.
+On Thu, Aug 16, 2012 at 08:18:38PM +0000, Jamie Heilman wrote:
+> J. Bruce Fields wrote:
+> > On Wed, Aug 15, 2012 at 01:58:54PM +0000, Jamie Heilman wrote:
+> > > Jamie Heilman wrote:
+> > > > I'll try to get full rcpdebug traces on client and server as the delay
+> > > > is occuring in the hopes that helps pin things down, and post them
+> > > > separately.
+> > > 
+> > > OK, here are the logs from client and server, where a run of my test program
+> > > under strace -T resulted in:
+> > > 
+> > > utime("utime-test.c", [2012/08/15-13:35:20, 2012/08/15-13:22:04]) = 0 <0.150815>
+> > > open("utime-test.c", O_RDONLY)          = 3 <0.242635>
+> > > close(3)                                = 0 <0.147768>
+> > > stat("utime-test.c", {st_mode=S_IFREG|0644, st_size=696, ...}) = 0 <0.002772>
+> > > utime("utime-test.c", [2012/08/15-13:35:20, 2012/08/15-13:22:04]) = 0 <71.878058>
+> > > 
+> > > The client is a 64-bit v3.4.8 kernel, the server is 32-bit, v3.5.1 +
+> > > the two sunprc patches that will be in v3.5.2.
+> > > 
+> > > (The client's system clock is a touch faster than the server's, but
+> > > these logs start at the same instant.)
+> > 
+> > Thanks for all the details.
+> > 
+> > What's probably happening is that the client is returning a delegation
+> > with the open.  The setattr then breaks that delegation; you can see it
+> > getting 10008 (NFS4ERR_DELAY) replies while the server waits for the
+> > delegation to be returned.  But for some reason the callback to break
+> > the delegation isn't working.  ("NFSD: warning: no callback path to
+> > client 192.168.2.42/192.168.2.4 tcp UNIX 0: error -110" (110 is
+> > ETIMEDOUT).)  So instead you wait for the delegation to time out and get
+> > forcibly revoked.
+> > 
+> > The reproducer might be more reliable if you did two opens.
+> 
+> I made the change... not entirely sure it helped, but I think I've
+> bisected this reliably anyway.  It came down to:
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
- fs/lockd/svcsubs.c |   66 ++++++++++++++++++++++++++++-----------------------
- 1 files changed, 36 insertions(+), 30 deletions(-)
+Hm, weird.  In the good case the cb_recall's done with auth_unix, in the
+bad case with auth_null.  OK, that should be enough to go on....
 
-diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
-index 0deb5f6..d223a1f 100644
---- a/fs/lockd/svcsubs.c
-+++ b/fs/lockd/svcsubs.c
-@@ -20,6 +20,7 @@
- #include <linux/lockd/share.h>
- #include <linux/module.h>
- #include <linux/mount.h>
-+#include <linux/hashtable.h>
- 
- #define NLMDBG_FACILITY		NLMDBG_SVCSUBS
- 
-@@ -28,8 +29,7 @@
-  * Global file hash table
-  */
- #define FILE_HASH_BITS		7
--#define FILE_NRHASH		(1<<FILE_HASH_BITS)
--static struct hlist_head	nlm_files[FILE_NRHASH];
-+static DEFINE_HASHTABLE(nlm_files, FILE_HASH_BITS);
- static DEFINE_MUTEX(nlm_file_mutex);
- 
- #ifdef NFSD_DEBUG
-@@ -68,7 +68,7 @@ static inline unsigned int file_hash(struct nfs_fh *f)
- 	int i;
- 	for (i=0; i<NFS2_FHSIZE;i++)
- 		tmp += f->data[i];
--	return tmp & (FILE_NRHASH - 1);
-+	return tmp;
- }
- 
- /*
-@@ -86,17 +86,17 @@ nlm_lookup_file(struct svc_rqst *rqstp, struct nlm_file **result,
- {
- 	struct hlist_node *pos;
- 	struct nlm_file	*file;
--	unsigned int	hash;
-+	unsigned int	key;
- 	__be32		nfserr;
- 
- 	nlm_debug_print_fh("nlm_lookup_file", f);
- 
--	hash = file_hash(f);
-+	key = file_hash(f);
- 
- 	/* Lock file table */
- 	mutex_lock(&nlm_file_mutex);
- 
--	hlist_for_each_entry(file, pos, &nlm_files[hash], f_list)
-+	hash_for_each_possible(nlm_files, file, pos, f_list, file_hash(f))
- 		if (!nfs_compare_fh(&file->f_handle, f))
- 			goto found;
- 
-@@ -123,7 +123,7 @@ nlm_lookup_file(struct svc_rqst *rqstp, struct nlm_file **result,
- 		goto out_free;
- 	}
- 
--	hlist_add_head(&file->f_list, &nlm_files[hash]);
-+	hash_add(nlm_files, &file->f_list, key);
- 
- found:
- 	dprintk("lockd: found file %p (count %d)\n", file, file->f_count);
-@@ -147,8 +147,8 @@ static inline void
- nlm_delete_file(struct nlm_file *file)
- {
- 	nlm_debug_print_file("closing file", file);
--	if (!hlist_unhashed(&file->f_list)) {
--		hlist_del(&file->f_list);
-+	if (hash_hashed(&file->f_list)) {
-+		hash_del(&file->f_list);
- 		nlmsvc_ops->fclose(file->f_file);
- 		kfree(file);
- 	} else {
-@@ -253,27 +253,25 @@ nlm_traverse_files(void *data, nlm_host_match_fn_t match,
- 	int i, ret = 0;
- 
- 	mutex_lock(&nlm_file_mutex);
--	for (i = 0; i < FILE_NRHASH; i++) {
--		hlist_for_each_entry_safe(file, pos, next, &nlm_files[i], f_list) {
--			if (is_failover_file && !is_failover_file(data, file))
--				continue;
--			file->f_count++;
--			mutex_unlock(&nlm_file_mutex);
--
--			/* Traverse locks, blocks and shares of this file
--			 * and update file->f_locks count */
--			if (nlm_inspect_file(data, file, match))
--				ret = 1;
--
--			mutex_lock(&nlm_file_mutex);
--			file->f_count--;
--			/* No more references to this file. Let go of it. */
--			if (list_empty(&file->f_blocks) && !file->f_locks
--			 && !file->f_shares && !file->f_count) {
--				hlist_del(&file->f_list);
--				nlmsvc_ops->fclose(file->f_file);
--				kfree(file);
--			}
-+	hash_for_each_safe(nlm_files, i, pos, next, file, f_list) {
-+		if (is_failover_file && !is_failover_file(data, file))
-+			continue;
-+		file->f_count++;
-+		mutex_unlock(&nlm_file_mutex);
-+
-+		/* Traverse locks, blocks and shares of this file
-+		 * and update file->f_locks count */
-+		if (nlm_inspect_file(data, file, match))
-+			ret = 1;
-+
-+		mutex_lock(&nlm_file_mutex);
-+		file->f_count--;
-+		/* No more references to this file. Let go of it. */
-+		if (list_empty(&file->f_blocks) && !file->f_locks
-+		 && !file->f_shares && !file->f_count) {
-+			hash_del(&file->f_list);
-+			nlmsvc_ops->fclose(file->f_file);
-+			kfree(file);
- 		}
- 	}
- 	mutex_unlock(&nlm_file_mutex);
-@@ -451,3 +449,11 @@ nlmsvc_unlock_all_by_ip(struct sockaddr *server_addr)
- 	return ret ? -EIO : 0;
- }
- EXPORT_SYMBOL_GPL(nlmsvc_unlock_all_by_ip);
-+
-+static int __init nlm_init(void)
-+{
-+	hash_init(nlm_files);
-+	return 0;
-+}
-+
-+module_init(nlm_init);
--- 
-1.7.8.6
+Thanks for digging into this!
+
+--b.
+
+> 
+> d5497fc693a446ce9100fcf4117c3f795ddfd0d2 is the first bad commit
+> commit d5497fc693a446ce9100fcf4117c3f795ddfd0d2
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Mon May 14 22:06:49 2012 -0400
+> 
+>     nfsd4: move rq_flavor into svc_cred
+>     
+>     Move the rq_flavor into struct svc_cred, and use it in setclientid and
+>     exchange_id comparisons as well.
+>     
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> 
+> :040000 040000 165568aae0fc47067863ea8ca911494033cbf2ce 54244f0084f58df4844b09d56e8e6bad0e19d913 M      fs
+> :040000 040000 bae5a74a85bda2aa2b155b0bdca1ea0028502164 207751ce30c8f49c68fb0a85d0772cb0fa426ae1 M      include
+> :040000 040000 ef940cf0c558fe65a21a710e6c95b2cefb2996fd 459ac143acf5cb2b3b7f59df29c417cedbb23c4b M      net
+> 
+> FWIW reverting this commit does seem to fix the problem.
+> 
+> > It'd be worth looking at the traffic in wireshark.  You should see
+> > setattr, open, close, setattr, a DELAY reply to the setattr, a
+> > CB_RECALL, and then a DELEGRETURN that gets a succesful reply.  But for
+> > some reason the DELEGRETURN isn't getting through in your case, I'm not
+> > sure why.  I can't reproduce that.  You'll need to start wireshark
+> > before you mount to make sure it knows how to parse the callbacks.
+> 
+> Captures from the server showing the delay (running 3.5.2) and the
+> previous behavior (running 3.4.9) are attached.
+> 
+> -- 
+> Jamie Heilman                     http://audible.transient.net/~jamie/
+
+
 
