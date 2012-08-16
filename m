@@ -1,77 +1,142 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:41160 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753539Ab2HXUdk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Aug 2012 16:33:40 -0400
-Date: Fri, 24 Aug 2012 13:33:32 -0700
-From: Tejun Heo <tj@kernel.org>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: torvalds@linux-foundation.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
-        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive
- hashtable
-Message-ID: <20120824203332.GF21325@google.com>
-References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
- <1345602432-27673-2-git-send-email-levinsasha928@gmail.com>
- <20120822180138.GA19212@google.com>
- <50357840.5020201@gmail.com>
- <20120823200456.GD14962@google.com>
- <5037DA47.9010306@gmail.com>
- <20120824195941.GC21325@google.com>
- <5037E00B.6090606@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:12740 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754464Ab2HPXuM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Aug 2012 19:50:12 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Shai Lazmi <shai.lazmi@qlogic.com>
+CC: William Dauchy <wdauchy@gmail.com>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFS: Clear key construction data if the idmap
+ upcall fails
+Date: Thu, 16 Aug 2012 23:49:54 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA93B542B@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1345148622-10845-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <21641D3714F5AF449DC483E699E1124E86E640957F@AVEXMB2.qlogic.org>
+In-Reply-To: <21641D3714F5AF449DC483E699E1124E86E640957F@AVEXMB2.qlogic.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5037E00B.6090606@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello, Sasha.
-
-On Fri, Aug 24, 2012 at 10:11:55PM +0200, Sasha Levin wrote:
-> > If this implementation is about the common trivial case, why not just
-> > have the usual DECLARE/DEFINE_HASHTABLE() combination?
-> 
-> When we add the dynamic non-resizable support, how would DEFINE_HASHTABLE() look?
-
-Hmmm?  DECLARE/DEFINE are usually for static ones.
-
-> > I don't know.  If we stick to the static (or even !resize dymaic)
-> > straight-forward hash - and we need something like that - I don't see
-> > what the full encapsulation buys us other than a lot of trivial
-> > wrappers.
-> 
-> Which macros do you consider as trivial within the current API?
-> 
-> Basically this entire thing could be reduced to DEFINE/DECLARE_HASHTABLE and
-> get_bucket(), but it would make the life of anyone who wants a slightly
-> different hashtable a hell.
-
-Wouldn't the following be enough to get most of the benefits?
-
-* DECLARE/DEFINE
-* hash_head()
-* hash_for_each_head()
-* hash_add*()
-* hash_for_each_possible*()
-
-> I think that right now the only real trivial wrapper is hash_hashed(), and I
-> think it's a price worth paying to have a single hashtable API instead of
-> fragmenting it when more implementations come along.
-
-I'm not objecting strongly against full encapsulation but having this
-many thin wrappers makes me scratch my head.
-
-Thanks.
-
--- 
-tejun
+T24gVGh1LCAyMDEyLTA4LTE2IGF0IDE2OjQ0IC0wNzAwLCBTaGFpIExhem1pIHdyb3RlOg0KPiBQ
+YXRjaCBmYWlscyB3aXRoICINCj4gZ2l0IGFwcGx5IC0tY2hlY2sNCj4gZmF0YWw6IHBhdGNoIGZy
+YWdtZW50IHdpdGhvdXQgaGVhZGVyIGF0IGxpbmUgMzE6IEBAIC0zODAsMTEgKzM4NywxMyBAQCBz
+dGF0aWMgY29uc3QgbWF0Y2hfdGFibGVfdCBuZnNfaWRtYXBfdG9rZW5zID0geyAgc3RhdGljIGlu
+dCBuZnNfaWRtYXBfbGVnYWN5X3VwY2FsbChzdHJ1Y3Qga2V5X2NvbnN0cnVjdGlvbiAqLCBjb25z
+dCBjaGFyICosIHZvaWQgKik7ICBzdGF0aWMgc3NpemVfdCBpZG1hcF9waXBlX2Rvd25jYWxsKHN0
+cnVjdCBmaWxlICosIGNvbnN0IGNoYXIgX191c2VyICosDQo+ICINCg0KV2hhdCBlbWFpbCBhcHBs
+aWNhdGlvbiBhcmUgeW91IHVzaW5nIHRvIGV4dHJhY3QgdGhlIHBhdGNoPyBPbg0KImV2b2x1dGlv
+biIsIEkgc2VlIHRoZSBhYm92ZSB0ZXh0IGFzIGJlaW5nIHNwbGl0IG92ZXIgc2V2ZXJhbCBsaW5l
+cy4NCg0KDQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogVHJvbmQgTXlr
+bGVidXN0IFttYWlsdG86VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb21dDQo+IFNlbnQ6IFRodXJz
+ZGF5LCBBdWd1c3QgMTYsIDIwMTIgMToyNCBQTQ0KPiBUbzogV2lsbGlhbSBEYXVjaHkNCj4gQ2M6
+IFNoYWkgTGF6bWk7IEJyeWFuIFNjaHVtYWtlcjsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0K
+PiBTdWJqZWN0OiBbUEFUQ0ggMS8yXSBORlM6IENsZWFyIGtleSBjb25zdHJ1Y3Rpb24gZGF0YSBp
+ZiB0aGUgaWRtYXAgdXBjYWxsIGZhaWxzDQo+IA0KPiBGcm9tOiBCcnlhbiBTY2h1bWFrZXIgPGJq
+c2NodW1hQG5ldGFwcC5jb20+DQo+IA0KPiBpZG1hcF9waXBlX2Rvd25jYWxsIGFscmVhZHkgY2xl
+YXJzIHRoaXMgZmllbGQgaWYgdGhlIHVwY2FsbCBzdWNjZWVkcywNCj4gYnV0IGlmIGl0IGZhaWxz
+IChycGMuaWRtYXBkIGlzbid0IHJ1bm5pbmcpIHRoZSBmaWVsZCB3aWxsIHN0aWxsIGJlIHNldA0K
+PiBvbiB0aGUgbmV4dCBjYWxsIHRyaWdnZXJpbmcgYSBCVUdfT04oKS4gIFRoaXMgcGF0Y2ggdHJp
+ZXMgdG8gaGFuZGxlIGFsbA0KPiBwb3NzaWJsZSB3YXlzIHRoYXQgdGhlIHVwY2FsbCBjb3VsZCBm
+YWlsIGFuZCBjbGVhciB0aGUgaWRtYXAga2V5IGRhdGENCj4gZm9yIGVhY2ggb25lLg0KPiANCj4g
+U2lnbmVkLW9mZi1ieTogQnJ5YW4gU2NodW1ha2VyIDxianNjaHVtYUBuZXRhcHAuY29tPg0KPiBD
+Yzogc3RhYmxlQHZnZXIua2VybmVsLm9yZyBbPj0gMy40XQ0KPiBTaWduZWQtb2ZmLWJ5OiBUcm9u
+ZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KPiAtLS0NCj4gIGZzL25m
+cy9pZG1hcC5jIHwgNTYgKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
+LS0tLS0tLS0tLS0tLS0NCj4gIDEgZmlsZSBjaGFuZ2VkLCA0MiBpbnNlcnRpb25zKCspLCAxNCBk
+ZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvaWRtYXAuYyBiL2ZzL25mcy9p
+ZG1hcC5jDQo+IGluZGV4IGI3MDEzNTguLjY3MDNjNzMgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9p
+ZG1hcC5jDQo+ICsrKyBiL2ZzL25mcy9pZG1hcC5jDQo+IEBAIC02MSw2ICs2MSwxMiBAQCBzdHJ1
+Y3QgaWRtYXAgew0KPiAgICAgICAgIHN0cnVjdCBtdXRleCAgICAgICAgICAgIGlkbWFwX211dGV4
+Ow0KPiAgfTsNCj4gDQo+ICtzdHJ1Y3QgaWRtYXBfbGVnYWN5X3VwY2FsbGRhdGEgew0KPiArICAg
+ICAgIHN0cnVjdCBycGNfcGlwZV9tc2cgcGlwZV9tc2c7DQo+ICsgICAgICAgc3RydWN0IGlkbWFw
+X21zZyBpZG1hcF9tc2c7DQo+ICsgICAgICAgc3RydWN0IGlkbWFwICppZG1hcDsNCj4gK307DQo+
+ICsNCj4gIC8qKg0KPiAgICogbmZzX2ZhdHRyX2luaXRfbmFtZXMgLSBpbml0aWFsaXNlIHRoZSBu
+ZnNfZmF0dHIgb3duZXJfbmFtZS9ncm91cF9uYW1lIGZpZWxkcw0KPiAgICogQGZhdHRyOiBmdWxs
+eSBpbml0aWFsaXNlZCBzdHJ1Y3QgbmZzX2ZhdHRyDQo+IEBAIC0zMjQsNiArMzMwLDcgQEAgc3Rh
+dGljIHNzaXplX3QgbmZzX2lkbWFwX2dldF9rZXkoY29uc3QgY2hhciAqbmFtZSwgc2l6ZV90IG5h
+bWVsZW4sDQo+ICAgICAgICAgICAgICAgICByZXQgPSBuZnNfaWRtYXBfcmVxdWVzdF9rZXkoJmtl
+eV90eXBlX2lkX3Jlc29sdmVyX2xlZ2FjeSwNCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICBuYW1lLCBuYW1lbGVuLCB0eXBlLCBkYXRhLA0KPiAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGRhdGFfc2l6ZSwgaWRtYXApOw0KPiAr
+ICAgICAgICAgICAgICAgaWRtYXAtPmlkbWFwX2tleV9jb25zID0gTlVMTDsNCj4gICAgICAgICAg
+ICAgICAgIG11dGV4X3VubG9jaygmaWRtYXAtPmlkbWFwX211dGV4KTsNCj4gICAgICAgICB9DQo+
+ICAgICAgICAgcmV0dXJuIHJldDsNCj4gQEAgLTM4MCwxMSArMzg3LDEzIEBAIHN0YXRpYyBjb25z
+dCBtYXRjaF90YWJsZV90IG5mc19pZG1hcF90b2tlbnMgPSB7DQo+ICBzdGF0aWMgaW50IG5mc19p
+ZG1hcF9sZWdhY3lfdXBjYWxsKHN0cnVjdCBrZXlfY29uc3RydWN0aW9uICosIGNvbnN0IGNoYXIg
+Kiwgdm9pZCAqKTsNCj4gIHN0YXRpYyBzc2l6ZV90IGlkbWFwX3BpcGVfZG93bmNhbGwoc3RydWN0
+IGZpbGUgKiwgY29uc3QgY2hhciBfX3VzZXIgKiwNCj4gICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICBzaXplX3QpOw0KPiArc3RhdGljIHZvaWQgaWRtYXBfcmVsZWFzZV9waXBlKHN0
+cnVjdCBpbm9kZSAqKTsNCj4gIHN0YXRpYyB2b2lkIGlkbWFwX3BpcGVfZGVzdHJveV9tc2coc3Ry
+dWN0IHJwY19waXBlX21zZyAqKTsNCj4gDQo+ICBzdGF0aWMgY29uc3Qgc3RydWN0IHJwY19waXBl
+X29wcyBpZG1hcF91cGNhbGxfb3BzID0gew0KPiAgICAgICAgIC51cGNhbGwgICAgICAgICA9IHJw
+Y19waXBlX2dlbmVyaWNfdXBjYWxsLA0KPiAgICAgICAgIC5kb3duY2FsbCAgICAgICA9IGlkbWFw
+X3BpcGVfZG93bmNhbGwsDQo+ICsgICAgICAgLnJlbGVhc2VfcGlwZSAgID0gaWRtYXBfcmVsZWFz
+ZV9waXBlLA0KPiAgICAgICAgIC5kZXN0cm95X21zZyAgICA9IGlkbWFwX3BpcGVfZGVzdHJveV9t
+c2csDQo+ICB9Ow0KPiANCj4gQEAgLTYxNiw3ICs2MjUsOCBAQCB2b2lkIG5mc19pZG1hcF9xdWl0
+KHZvaWQpDQo+ICAgICAgICAgbmZzX2lkbWFwX3F1aXRfa2V5cmluZygpOw0KPiAgfQ0KPiANCj4g
+LXN0YXRpYyBpbnQgbmZzX2lkbWFwX3ByZXBhcmVfbWVzc2FnZShjaGFyICpkZXNjLCBzdHJ1Y3Qg
+aWRtYXBfbXNnICppbSwNCj4gK3N0YXRpYyBpbnQgbmZzX2lkbWFwX3ByZXBhcmVfbWVzc2FnZShj
+aGFyICpkZXNjLCBzdHJ1Y3QgaWRtYXAgKmlkbWFwLA0KPiArICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgc3RydWN0IGlkbWFwX21zZyAqaW0sDQo+ICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICBzdHJ1Y3QgcnBjX3BpcGVfbXNnICptc2cpDQo+ICB7DQo+ICAg
+ICAgICAgc3Vic3RyaW5nX3Qgc3Vic3RyOw0KPiBAQCAtNjU5LDYgKzY2OSw3IEBAIHN0YXRpYyBp
+bnQgbmZzX2lkbWFwX2xlZ2FjeV91cGNhbGwoc3RydWN0IGtleV9jb25zdHJ1Y3Rpb24gKmNvbnMs
+DQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgY29uc3QgY2hhciAqb3AsDQo+
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgdm9pZCAqYXV4KQ0KPiAgew0KPiAr
+ICAgICAgIHN0cnVjdCBpZG1hcF9sZWdhY3lfdXBjYWxsZGF0YSAqZGF0YTsNCj4gICAgICAgICBz
+dHJ1Y3QgcnBjX3BpcGVfbXNnICptc2c7DQo+ICAgICAgICAgc3RydWN0IGlkbWFwX21zZyAqaW07
+DQo+ICAgICAgICAgc3RydWN0IGlkbWFwICppZG1hcCA9IChzdHJ1Y3QgaWRtYXAgKilhdXg7DQo+
+IEBAIC02NjYsMTUgKzY3NywxNSBAQCBzdGF0aWMgaW50IG5mc19pZG1hcF9sZWdhY3lfdXBjYWxs
+KHN0cnVjdCBrZXlfY29uc3RydWN0aW9uICpjb25zLA0KPiAgICAgICAgIGludCByZXQgPSAtRU5P
+TUVNOw0KPiANCj4gICAgICAgICAvKiBtc2cgYW5kIGltIGFyZSBmcmVlZCBpbiBpZG1hcF9waXBl
+X2Rlc3Ryb3lfbXNnICovDQo+IC0gICAgICAgbXNnID0ga21hbGxvYyhzaXplb2YoKm1zZyksIEdG
+UF9LRVJORUwpOw0KPiAtICAgICAgIGlmICghbXNnKQ0KPiAtICAgICAgICAgICAgICAgZ290byBv
+dXQwOw0KPiAtDQo+IC0gICAgICAgaW0gPSBrbWFsbG9jKHNpemVvZigqaW0pLCBHRlBfS0VSTkVM
+KTsNCj4gLSAgICAgICBpZiAoIWltKQ0KPiArICAgICAgIGRhdGEgPSBrbWFsbG9jKHNpemVvZigq
+ZGF0YSksIEdGUF9LRVJORUwpOw0KPiArICAgICAgIGlmICghZGF0YSkNCj4gICAgICAgICAgICAg
+ICAgIGdvdG8gb3V0MTsNCj4gDQo+IC0gICAgICAgcmV0ID0gbmZzX2lkbWFwX3ByZXBhcmVfbWVz
+c2FnZShrZXktPmRlc2NyaXB0aW9uLCBpbSwgbXNnKTsNCj4gKyAgICAgICBtc2cgPSAmZGF0YS0+
+cGlwZV9tc2c7DQo+ICsgICAgICAgaW0gPSAmZGF0YS0+aWRtYXBfbXNnOw0KPiArICAgICAgIGRh
+dGEtPmlkbWFwID0gaWRtYXA7DQo+ICsNCj4gKyAgICAgICByZXQgPSBuZnNfaWRtYXBfcHJlcGFy
+ZV9tZXNzYWdlKGtleS0+ZGVzY3JpcHRpb24sIGlkbWFwLCBpbSwgbXNnKTsNCj4gICAgICAgICBp
+ZiAocmV0IDwgMCkNCj4gICAgICAgICAgICAgICAgIGdvdG8gb3V0MjsNCj4gDQo+IEBAIC02ODMs
+MTUgKzY5NCwxNSBAQCBzdGF0aWMgaW50IG5mc19pZG1hcF9sZWdhY3lfdXBjYWxsKHN0cnVjdCBr
+ZXlfY29uc3RydWN0aW9uICpjb25zLA0KPiANCj4gICAgICAgICByZXQgPSBycGNfcXVldWVfdXBj
+YWxsKGlkbWFwLT5pZG1hcF9waXBlLCBtc2cpOw0KPiAgICAgICAgIGlmIChyZXQgPCAwKQ0KPiAt
+ICAgICAgICAgICAgICAgZ290byBvdXQyOw0KPiArICAgICAgICAgICAgICAgZ290byBvdXQzOw0K
+PiANCj4gICAgICAgICByZXR1cm4gcmV0Ow0KPiANCj4gK291dDM6DQo+ICsgICAgICAgaWRtYXAt
+PmlkbWFwX2tleV9jb25zID0gTlVMTDsNCj4gIG91dDI6DQo+IC0gICAgICAga2ZyZWUoaW0pOw0K
+PiArICAgICAgIGtmcmVlKGRhdGEpOw0KPiAgb3V0MToNCj4gLSAgICAgICBrZnJlZShtc2cpOw0K
+PiAtb3V0MDoNCj4gICAgICAgICBjb21wbGV0ZV9yZXF1ZXN0X2tleShjb25zLCByZXQpOw0KPiAg
+ICAgICAgIHJldHVybiByZXQ7DQo+ICB9DQo+IEBAIC03NzUsOSArNzg2LDI2IEBAIG91dF9pbmNv
+bXBsZXRlOg0KPiAgc3RhdGljIHZvaWQNCj4gIGlkbWFwX3BpcGVfZGVzdHJveV9tc2coc3RydWN0
+IHJwY19waXBlX21zZyAqbXNnKQ0KPiAgew0KPiArICAgICAgIHN0cnVjdCBpZG1hcF9sZWdhY3lf
+dXBjYWxsZGF0YSAqZGF0YSA9IGNvbnRhaW5lcl9vZihtc2csDQo+ICsgICAgICAgICAgICAgICAg
+ICAgICAgIHN0cnVjdCBpZG1hcF9sZWdhY3lfdXBjYWxsZGF0YSwNCj4gKyAgICAgICAgICAgICAg
+ICAgICAgICAgcGlwZV9tc2cpOw0KPiArICAgICAgIHN0cnVjdCBpZG1hcCAqaWRtYXAgPSBkYXRh
+LT5pZG1hcDsNCj4gKyAgICAgICBzdHJ1Y3Qga2V5X2NvbnN0cnVjdGlvbiAqY29uczsNCj4gKyAg
+ICAgICBpZiAobXNnLT5lcnJubykgew0KPiArICAgICAgICAgICAgICAgY29ucyA9IEFDQ0VTU19P
+TkNFKGlkbWFwLT5pZG1hcF9rZXlfY29ucyk7DQo+ICsgICAgICAgICAgICAgICBpZG1hcC0+aWRt
+YXBfa2V5X2NvbnMgPSBOVUxMOw0KPiArICAgICAgICAgICAgICAgY29tcGxldGVfcmVxdWVzdF9r
+ZXkoY29ucywgbXNnLT5lcnJubyk7DQo+ICsgICAgICAgfQ0KPiAgICAgICAgIC8qIEZyZWUgbWVt
+b3J5IGFsbG9jYXRlZCBpbiBuZnNfaWRtYXBfbGVnYWN5X3VwY2FsbCgpICovDQo+IC0gICAgICAg
+a2ZyZWUobXNnLT5kYXRhKTsNCj4gLSAgICAgICBrZnJlZShtc2cpOw0KPiArICAgICAgIGtmcmVl
+KGRhdGEpOw0KPiArfQ0KPiArDQo+ICtzdGF0aWMgdm9pZA0KPiAraWRtYXBfcmVsZWFzZV9waXBl
+KHN0cnVjdCBpbm9kZSAqaW5vZGUpDQo+ICt7DQo+ICsgICAgICAgc3RydWN0IHJwY19pbm9kZSAq
+cnBjaSA9IFJQQ19JKGlub2RlKTsNCj4gKyAgICAgICBzdHJ1Y3QgaWRtYXAgKmlkbWFwID0gKHN0
+cnVjdCBpZG1hcCAqKXJwY2ktPnByaXZhdGU7DQo+ICsgICAgICAgaWRtYXAtPmlkbWFwX2tleV9j
+b25zID0gTlVMTDsNCj4gIH0NCj4gDQo+ICBpbnQgbmZzX21hcF9uYW1lX3RvX3VpZChjb25zdCBz
+dHJ1Y3QgbmZzX3NlcnZlciAqc2VydmVyLCBjb25zdCBjaGFyICpuYW1lLCBzaXplX3QgbmFtZWxl
+biwgX191MzIgKnVpZCkNCj4gLS0NCj4gMS43LjExLjINCj4gDQo+IA0KPiANCj4gVGhpcyBtZXNz
+YWdlIGFuZCBhbnkgYXR0YWNoZWQgZG9jdW1lbnRzIGNvbnRhaW4gaW5mb3JtYXRpb24gZnJvbSBR
+TG9naWMgQ29ycG9yYXRpb24gb3IgaXRzIHdob2xseS1vd25lZCBzdWJzaWRpYXJpZXMgdGhhdCBt
+YXkgYmUgY29uZmlkZW50aWFsLiBJZiB5b3UgYXJlIG5vdCB0aGUgaW50ZW5kZWQgcmVjaXBpZW50
+LCB5b3UgbWF5IG5vdCByZWFkLCBjb3B5LCBkaXN0cmlidXRlLCBvciB1c2UgdGhpcyBpbmZvcm1h
+dGlvbi4gSWYgeW91IGhhdmUgcmVjZWl2ZWQgdGhpcyB0cmFuc21pc3Npb24gaW4gZXJyb3IsIHBs
+ZWFzZSBub3RpZnkgdGhlIHNlbmRlciBpbW1lZGlhdGVseSBieSByZXBseSBlLW1haWwgYW5kIHRo
+ZW4gZGVsZXRlIHRoaXMgbWVzc2FnZS4NCj4gDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51
+eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBw
+LmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
