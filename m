@@ -1,110 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:61865 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758468Ab2HHNWD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Aug 2012 09:22:03 -0400
-Received: by yenl2 with SMTP id l2so730912yen.19
-        for <linux-nfs@vger.kernel.org>; Wed, 08 Aug 2012 06:22:03 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v5 11/19] vfs: fix linkat to retry on ESTALE errors
-Date: Wed,  8 Aug 2012 09:21:34 -0400
-Message-Id: <1344432102-22312-12-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
-References: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:38626 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751194Ab2HPNh7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Aug 2012 09:37:59 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Sachin Prabhu <sprabhu@redhat.com>
+CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
+        "Adamson, Andy" <William.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/3] NFSv4: Fix pointer arithmetic in decode_getacl
+Date: Thu, 16 Aug 2012 13:37:12 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA93B2004@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1344984447-17804-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1345123774.23681.10.camel@localhost>
+In-Reply-To: <1345123774.23681.10.camel@localhost>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c | 60 ++++++++++++++++++++++++++++++++++++++++--------------------
- 1 file changed, 40 insertions(+), 20 deletions(-)
-
-diff --git a/fs/namei.c b/fs/namei.c
-index 9986117..d6e9754 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3565,6 +3565,8 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
- 	struct path old_path, new_path;
- 	int how = 0;
- 	int error;
-+	char *old, *new;
-+	unsigned int try = 0;
- 
- 	if ((flags & ~(AT_SYMLINK_FOLLOW | AT_EMPTY_PATH)) != 0)
- 		return -EINVAL;
-@@ -3582,30 +3584,48 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
- 	if (flags & AT_SYMLINK_FOLLOW)
- 		how |= LOOKUP_FOLLOW;
- 
--	error = user_path_at(olddfd, oldname, how, &old_path);
--	if (error)
--		return error;
-+	old = getname_flags(oldname, how, NULL);
-+	if (IS_ERR(old))
-+		return PTR_ERR(old);
- 
--	new_dentry = user_path_create(newdfd, newname, &new_path, 0);
--	error = PTR_ERR(new_dentry);
--	if (IS_ERR(new_dentry))
--		goto out;
-+	new = getname(newname);
-+	if (IS_ERR(new)) {
-+		putname(old);
-+		return PTR_ERR(new);
-+	}
- 
--	error = -EXDEV;
--	if (old_path.mnt != new_path.mnt)
--		goto out_dput;
--	error = may_linkat(&old_path);
--	if (unlikely(error))
--		goto out_dput;
--	error = security_path_link(old_path.dentry, &new_path, new_dentry);
--	if (error)
--		goto out_dput;
--	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry);
-+	do {
-+		error = kern_path_at(olddfd, old, how, &old_path);
-+		if (error)
-+			break;
-+
-+		new_dentry = kern_path_create(newdfd, new, &new_path, 0, try);
-+		error = PTR_ERR(new_dentry);
-+		if (IS_ERR(new_dentry)) {
-+			path_put(&old_path);
-+			break;
-+		}
-+
-+		error = -EXDEV;
-+		if (old_path.mnt != new_path.mnt)
-+			goto out_dput;
-+		error = may_linkat(&old_path);
-+		if (unlikely(error))
-+			goto out_dput;
-+		error = security_path_link(old_path.dentry, &new_path,
-+						new_dentry);
-+		if (error)
-+			goto out_dput;
-+		error = vfs_link(old_path.dentry, new_path.dentry->d_inode,
-+						new_dentry);
- out_dput:
--	done_path_create(&new_path, new_dentry);
-+		done_path_create(&new_path, new_dentry);
- out:
--	path_put(&old_path);
--
-+		path_put(&old_path);
-+		how |= LOOKUP_REVAL;
-+	} while (retry_estale(error, try++));
-+	putname(new);
-+	putname(old);
- 	return error;
- }
- 
--- 
-1.7.11.2
-
+T24gVGh1LCAyMDEyLTA4LTE2IGF0IDE0OjI5ICswMTAwLCBTYWNoaW4gUHJhYmh1IHdyb3RlOg0K
+PiBPbiBUdWUsIDIwMTItMDgtMTQgYXQgMTg6NDcgLTA0MDAsIFRyb25kIE15a2xlYnVzdCB3cm90
+ZToNCj4gPiBSZXNldHRpbmcgdGhlIGN1cnNvciB4ZHItPnAgdG8gYSBwcmV2aW91cyB2YWx1ZSBp
+cyBub3QgYSBzYWZlDQo+ID4gcHJhY3RpY2U6IGlmIHRoZSB4ZHJfc3RyZWFtIGhhcyBjcm9zc2Vk
+IG91dCBvZiB0aGUgaW5pdGlhbCBpb3ZlYywNCj4gPiB0aGVuIGEgYnVuY2ggb2Ygb3RoZXIgZmll
+bGRzIHdvdWxkIG5lZWQgdG8gYmUgcmVzZXQgdG9vLg0KPiA+IA0KPiA+IEZpeCB0aGlzIGlzc3Vl
+IGJ5IHVzaW5nIHhkcl9lbnRlcl9wYWdlKCkgc28gdGhhdCB0aGUgYnVmZmVyIGdldHMNCj4gPiBw
+YWdlIGFsaWduZWQgYXQgdGhlIGJpdG1hcCBfYmVmb3JlXyB3ZSBkZWNvZGUgaXQuDQo+ID4gDQo+
+ID4gQWxzbyBmaXggdGhlIGNvbmZ1c2lvbiBvZiB0aGUgQUNMIGxlbmd0aCB3aXRoIHRoZSBwYWdl
+IGJ1ZmZlciBsZW5ndGgNCj4gPiBieSBub3QgYWRkaW5nIHRoZSBiYXNlIG9mZnNldCB0byB0aGUg
+QUNMIGxlbmd0aC4uLg0KPiA+IA0KPiA+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8
+VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQo+ID4gQ2M6IHN0YWJsZUB2Z2VyLmtlcm5lbC5v
+cmcNCj4gPiAtLS0NCj4gPiAgZnMvbmZzL25mczRwcm9jLmMgfCAgMiArLQ0KPiA+ICBmcy9uZnMv
+bmZzNHhkci5jICB8IDIxICsrKysrKystLS0tLS0tLS0tLS0tLQ0KPiA+ICAyIGZpbGVzIGNoYW5n
+ZWQsIDggaW5zZXJ0aW9ucygrKSwgMTUgZGVsZXRpb25zKC0pDQo+ID4gDQo+ID4gZGlmZiAtLWdp
+dCBhL2ZzL25mcy9uZnM0cHJvYy5jIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gPiBpbmRleCBjNzdk
+Mjk2Li4yODZhYjcwIDEwMDY0NA0KPiA+IC0tLSBhL2ZzL25mcy9uZnM0cHJvYy5jDQo+ID4gKysr
+IGIvZnMvbmZzL25mczRwcm9jLmMNCj4gPiBAQCAtMzgxOSw3ICszODE5LDcgQEAgc3RhdGljIHNz
+aXplX3QgX19uZnM0X2dldF9hY2xfdW5jYWNoZWQoc3RydWN0IGlub2RlICppbm9kZSwgdm9pZCAq
+YnVmLCBzaXplX3QgYnUNCj4gPiAgCWlmIChyZXQpDQo+ID4gIAkJZ290byBvdXRfZnJlZTsNCj4g
+PiAgDQo+ID4gLQlhY2xfbGVuID0gcmVzLmFjbF9sZW4gLSByZXMuYWNsX2RhdGFfb2Zmc2V0Ow0K
+PiA+ICsJYWNsX2xlbiA9IHJlcy5hY2xfbGVuOw0KPiA+ICAJaWYgKGFjbF9sZW4gPiBhcmdzLmFj
+bF9sZW4pDQo+ID4gIAkJbmZzNF93cml0ZV9jYWNoZWRfYWNsKGlub2RlLCBOVUxMLCAwLCBhY2xf
+bGVuKTsNCj4gPiAgCWVsc2UNCj4gPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczR4ZHIuYyBiL2Zz
+L25mcy9uZnM0eGRyLmMNCj4gPiBpbmRleCBjYTEzNDgzLi41NGQzZjVhIDEwMDY0NA0KPiA+IC0t
+LSBhL2ZzL25mcy9uZnM0eGRyLmMNCj4gPiArKysgYi9mcy9uZnMvbmZzNHhkci5jDQo+ID4gQEAg
+LTUwNDksMTggKzUwNDksMTQgQEAgc3RhdGljIGludCBkZWNvZGVfZ2V0YWNsKHN0cnVjdCB4ZHJf
+c3RyZWFtICp4ZHIsIHN0cnVjdCBycGNfcnFzdCAqcmVxLA0KPiA+ICAJdWludDMyX3QgYXR0cmxl
+biwNCj4gPiAgCQkgYml0bWFwWzNdID0gezB9Ow0KPiA+ICAJaW50IHN0YXR1czsNCj4gPiAtCXNp
+emVfdCBwYWdlX2xlbiA9IHhkci0+YnVmLT5wYWdlX2xlbjsNCj4gPiAgDQo+ID4gIAlyZXMtPmFj
+bF9sZW4gPSAwOw0KPiA+ICAJaWYgKChzdGF0dXMgPSBkZWNvZGVfb3BfaGRyKHhkciwgT1BfR0VU
+QVRUUikpICE9IDApDQo+ID4gIAkJZ290byBvdXQ7DQo+ID4gIA0KPiA+ICsJeGRyX2VudGVyX3Bh
+Z2UoeGRyLCB4ZHItPmJ1Zi0+cGFnZV9sZW4pOw0KPiA+ICsNCj4gPiAgCWJtX3AgPSB4ZHItPnA7
+DQo+ID4gLQlyZXMtPmFjbF9kYXRhX29mZnNldCA9IGJlMzJfdG9fY3B1cChibV9wKSArIDI7DQo+
+ID4gLQlyZXMtPmFjbF9kYXRhX29mZnNldCA8PD0gMjsNCj4gPiAtCS8qIENoZWNrIGlmIHRoZSBh
+Y2wgZGF0YSBzdGFydHMgYmV5b25kIHRoZSBhbGxvY2F0ZWQgYnVmZmVyICovDQo+ID4gLQlpZiAo
+cmVzLT5hY2xfZGF0YV9vZmZzZXQgPiBwYWdlX2xlbikNCj4gPiAtCQlyZXR1cm4gLUVSQU5HRTsN
+Cj4gPiAgDQo+ID4gIAlpZiAoKHN0YXR1cyA9IGRlY29kZV9hdHRyX2JpdG1hcCh4ZHIsIGJpdG1h
+cCkpICE9IDApDQo+ID4gIAkJZ290byBvdXQ7DQo+ID4gQEAgLTUwNzQsMjMgKzUwNzAsMjAgQEAg
+c3RhdGljIGludCBkZWNvZGVfZ2V0YWNsKHN0cnVjdCB4ZHJfc3RyZWFtICp4ZHIsIHN0cnVjdCBy
+cGNfcnFzdCAqcmVxLA0KPiA+ICAJCS8qIFRoZSBiaXRtYXAgKHhkciBsZW4gKyBiaXRtYXBzKSBh
+bmQgdGhlIGF0dHIgeGRyIGxlbiB3b3Jkcw0KPiA+ICAJCSAqIGFyZSBzdG9yZWQgd2l0aCB0aGUg
+YWNsIGRhdGEgdG8gaGFuZGxlIHRoZSBwcm9ibGVtIG9mDQo+ID4gIAkJICogdmFyaWFibGUgbGVu
+Z3RoIGJpdG1hcHMuKi8NCj4gPiAtCQl4ZHItPnAgPSBibV9wOw0KPiA+ICsJCXJlcy0+YWNsX2Rh
+dGFfb2Zmc2V0ID0gKHhkci0+cCAtIGJtX3ApIDw8IDI7DQo+IA0KPiBUaGUgcHJvYmxlbSBoZXJl
+IGlzIHdpdGggYW4gdW5ib3VuZGVkIGJpdG1hcC4gSW4gdGhlIGNhc2Ugd2hlcmUgdGhlDQo+IHNl
+cnZlciBkZWNpZGVzIHRvIHNlbmQgYSBsYXJnZSBiaXRtYXAgYW5kIHRoZSB2YWx1ZSBvZiBiaXRt
+YXAgYXJyYXkgKyAyDQo+IChmb3IgdGhlIGFjbCBsZW5ndGggYXR0cmlidXRlKSBpcyBncmVhdGVy
+IHRoYW4gdGhlIGJ1ZmZlciBhbGxvY2F0ZWQsIHdlDQo+IHdpbGwgbW92ZSB0byB0aGUgdGFpbCBz
+ZWN0aW9uIG9mIHRoZSB4ZHIgYW5kIHRoZSBwb2ludGVyIGFyaXRobWV0aWMgaGVyZQ0KPiB3aWxs
+IGJlIHdyb25nLiANCg0KPiBNYXliZSB3ZSBhcmUgYmV0dGVyIG9mZiBzZXR0aW5nIHJlcy0+YWNs
+X2RhdGFfb2Zmc2V0IGFzIGluIHRoZSBlYXJsaWVyDQo+IGJsb2NrLiBXZSB3aWxsIG5vdCBuZWVk
+IHRoZSB2YXJpYWJsZSBibV9wIGluIHRoYXQgY2FzZS4NCg0KDQpJZiB3ZSBvdmVyZmxvdyB0aGUg
+cGFnZSB3aGlsZSByZWFkaW5nIHRoZSBiaXRtYXAsIHRoZW4gd2UgYXJlIHNjcmV3ZWQNCmFueXdh
+eSwgc2luY2UgeGRyX2lubGluZV9kZWNvZGUoKSB3aWxsIGZhaWwuIENoYW5naW5nIHRoZSB3YXkg
+dGhhdCB0aGUNCmRhdGEgb2Zmc2V0IGlzIGNhbGN1bGF0ZWQgd29uJ3QgZml4IHRoYXQuDQoNCi0t
+IA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBw
+DQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
