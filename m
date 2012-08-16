@@ -1,75 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:25616 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754518Ab2HTOCR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Aug 2012 10:02:17 -0400
-Subject: [PATCH v4 01/10] NFS: pass net to nfs_callback_down()
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Mon, 20 Aug 2012 18:00:06 +0400
-Message-ID: <20120820140006.17404.54487.stgit@localhost.localdomain>
-In-Reply-To: <20120820134734.17404.53946.stgit@localhost.localdomain>
-References: <20120820134734.17404.53946.stgit@localhost.localdomain>
+Received: from audible.transient.net ([216.254.12.79]:52630 "HELO
+	audible.transient.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S933362Ab2HPVeZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Aug 2012 17:34:25 -0400
+Date: Thu, 16 Aug 2012 21:34:24 +0000
+From: Jamie Heilman <jamie@audible.transient.net>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: v3.5 nfsd4 regression; utime sometimes takes 40+ seconds to
+ return
+Message-ID: <20120816213423.GB4282@cucamonga.audible.transient.net>
+References: <20120815061115.GC32347@cucamonga.audible.transient.net>
+ <20120815135854.GI32347@cucamonga.audible.transient.net>
+ <20120815150251.GB16057@fieldses.org>
+ <20120816201838.GA4282@cucamonga.audible.transient.net>
+ <20120816204208.GE4385@fieldses.org>
+ <20120816210916.GA6108@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120816210916.GA6108@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfs/callback.c   |    4 ++--
- fs/nfs/callback.h   |    2 +-
- fs/nfs/nfs4client.c |    2 +-
- 3 files changed, 4 insertions(+), 4 deletions(-)
+J. Bruce Fields wrote:
+> On Thu, Aug 16, 2012 at 04:42:08PM -0400, J. Bruce Fields wrote:
+> > Hm, weird.  In the good case the cb_recall's done with auth_unix, in the
+> > bad case with auth_null.  OK, that should be enough to go on....
+> > 
+> > Thanks for digging into this!
+> 
+> This should fix it--could you confirm?
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 4c8459e..51297b2 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -301,7 +301,7 @@ out_err:
- /*
-  * Kill the callback thread if it's no longer being used.
-  */
--void nfs_callback_down(int minorversion)
-+void nfs_callback_down(int minorversion, struct net *net)
- {
- 	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
- 
-@@ -309,7 +309,7 @@ void nfs_callback_down(int minorversion)
- 	cb_info->users--;
- 	if (cb_info->users == 0 && cb_info->task != NULL) {
- 		kthread_stop(cb_info->task);
--		svc_shutdown_net(cb_info->serv, &init_net);
-+		svc_shutdown_net(cb_info->serv, net);
- 		svc_exit_thread(cb_info->rqst);
- 		cb_info->serv = NULL;
- 		cb_info->rqst = NULL;
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index b44d7b1..3094044 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -194,7 +194,7 @@ extern __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy,
- 				   struct cb_process_state *cps);
- #if IS_ENABLED(CONFIG_NFS_V4)
- extern int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt);
--extern void nfs_callback_down(int minorversion);
-+extern void nfs_callback_down(int minorversion, struct net *net);
- extern int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation,
- 					    const nfs4_stateid *stateid);
- extern int nfs4_set_callback_sessionid(struct nfs_client *clp);
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index b895629..1dfaa13 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -85,7 +85,7 @@ error:
- static void nfs4_destroy_callback(struct nfs_client *clp)
- {
- 	if (__test_and_clear_bit(NFS_CS_CALLBACK, &clp->cl_res_state))
--		nfs_callback_down(clp->cl_mvops->minor_version);
-+		nfs_callback_down(clp->cl_mvops->minor_version, &init_net);
- }
- 
- static void nfs4_shutdown_client(struct nfs_client *clp)
+Yep, looks like that fixes it.
 
+> commit e950bebdac1f17121f972728489cdba43734d56d
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Thu Aug 16 17:01:21 2012 -0400
+> 
+>     nfsd4: fix security flavor of NFSv4.0 callback
+>     
+>     Commit d5497fc693a446ce9100fcf4117c3f795ddfd0d2 "nfsd4: move rq_flavor
+>     into svc_cred" forgot to remove cl_flavor from the client, leaving two
+>     places (cl_flavor and cl_cred.cr_flavor) for the flavor to be stored.
+>     After that patch, the latter was the one that was updated, but the
+>     former was the one that the callback used.
+>     
+>     Symptoms were a long delay on utime().  This is because the utime()
+>     generated a setattr which recalled a delegation, but the cb_recall was
+>     ignored by the client because it had the wrong security flavor.
+>     
+>     Cc: stable@vger.kernel.org
+>     Reported-by: Jamie Heilman <jamie@audible.transient.net>
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> 
+> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> index cbaf4f8..4c7bd35 100644
+> --- a/fs/nfsd/nfs4callback.c
+> +++ b/fs/nfsd/nfs4callback.c
+> @@ -651,12 +651,12 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+>  
+>  	if (clp->cl_minorversion == 0) {
+>  		if (!clp->cl_cred.cr_principal &&
+> -				(clp->cl_flavor >= RPC_AUTH_GSS_KRB5))
+> +				(clp->cl_cred.cr_flavor >= RPC_AUTH_GSS_KRB5))
+>  			return -EINVAL;
+>  		args.client_name = clp->cl_cred.cr_principal;
+>  		args.prognumber	= conn->cb_prog,
+>  		args.protocol = XPRT_TRANSPORT_TCP;
+> -		args.authflavor = clp->cl_flavor;
+> +		args.authflavor = clp->cl_cred.cr_flavor;
+>  		clp->cl_cb_ident = conn->cb_ident;
+>  	} else {
+>  		if (!conn->cb_xprt)
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index 167d7d8..9db0bb5 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -231,7 +231,6 @@ struct nfs4_client {
+>  	nfs4_verifier		cl_verifier; 	/* generated by client */
+>  	time_t                  cl_time;        /* time of last lease renewal */
+>  	struct sockaddr_storage	cl_addr; 	/* client ipaddress */
+> -	u32			cl_flavor;	/* setclientid pseudoflavor */
+>  	struct svc_cred		cl_cred; 	/* setclientid principal */
+>  	clientid_t		cl_clientid;	/* generated by server */
+>  	nfs4_verifier		cl_confirm;	/* generated by server */
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
+
+-- 
+Jamie Heilman                     http://audible.transient.net/~jamie/
