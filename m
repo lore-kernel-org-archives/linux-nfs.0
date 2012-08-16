@@ -1,58 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.gnuher.de ([78.47.12.54]:42735 "EHLO mail.gnuher.de"
+Received: from mx2.netapp.com ([216.240.18.37]:23347 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751013Ab2HUMwU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Aug 2012 08:52:20 -0400
-Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
-	by mail.gnuher.de (envelope-from
-	<news@geggus.net>)
-	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.72)
-	id 1T3nwQ-0005AV-PF
-	for linux-nfs@vger.kernel.org; Tue, 21 Aug 2012 14:52:18 +0200
-Received: from news  by ultimate100.geggus.net (envelope-from
-	<news@geggus.net>)
-	with local (Exim 4.72)
-	id 1T3nwO-0007go-OC
-	for linux-nfs@vger.kernel.org; Tue, 21 Aug 2012 14:52:16 +0200
-To: linux-nfs@vger.kernel.org
-From: Sven Geggus <lists@fuchsschwanzdomain.de>
-Subject: Re: NFS4ERR_DELAY
-Date: Tue, 21 Aug 2012 12:52:16 +0000 (UTC)
-Message-ID: <k100a0$sm1$1@ultimate100.geggus.net>
-References: <k0vgkt$mm0$1@ultimate100.geggus.net> <k0vjq7$o7l$1@ultimate100.geggus.net> <20120821064100.701ec6e9@corrin.poochiereds.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+	id S1752652Ab2HPUYW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Aug 2012 16:24:22 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: William Dauchy <wdauchy@gmail.com>
+Cc: Shai Lazmi <shai.lazmi@qlogic.com>, Bryan Schumaker <bjschuma@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH 2/2] NFS: return -ENOKEY when the upcall fails to map the name
+Date: Thu, 16 Aug 2012 16:23:42 -0400
+Message-Id: <1345148622-10845-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1345148622-10845-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1345148622-10845-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jeff Layton <jlayton@redhat.com> wrote:
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-> It's often the case that this indicates a problem communicating over
-> the callback channel. For instance, the server is trying to recall a
-> delegation but the client isn't responding, so the server has to wait
-> until the recall attempt times out before proceeding.
+This allows the normal error-paths to handle the error, rather than
+making a special call to complete_request_key() just for this instance.
 
-Hm I'm not shure if I understand this correctly.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Tested-by: William Dauchy <wdauchy@gmail.com>
+Cc: stable@vger.kernel.org [>= 3.4]
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/idmap.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-I am talking about exactly 3 machines (and one single user for now) here:
-clientA, clientB and the NFS-server.
-
-"user" is logged in on clientA any now opens a shell to ssh to clientB.
-
-The NFS-server is providing the home for the user on both machines.
-
-The ssh is now getting delayed for up to 1 minute because the NFS server
-does not allow for the .Xauthority file to be deleted immediately.
-
-It is probably worth to mention, that I'm currently experimenting with
-btrfs on the server. Is there a chance that this bug will disapper when I
-change the underlaying filesystem of the server to ext4?
-
-Sven
-
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index 6703c73..a850079 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -760,9 +760,8 @@ idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+ 	}
+ 
+ 	if (!(im.im_status & IDMAP_STATUS_SUCCESS)) {
+-		ret = mlen;
+-		complete_request_key(cons, -ENOKEY);
+-		goto out_incomplete;
++		ret = -ENOKEY;
++		goto out;
+ 	}
+ 
+ 	namelen_in = strnlen(im.im_name, IDMAP_NAMESZ);
+@@ -779,7 +778,6 @@ idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+ 
+ out:
+ 	complete_request_key(cons, ret);
+-out_incomplete:
+ 	return ret;
+ }
+ 
 -- 
-Trotz der zunehmenden Verbreitung von Linux erfreut sich der Bär,
-und - dank Knut - insbesondere der Eisbär, deutlich größerer
-Beliebtheit als der Pinguin. (Gefunden bei http://telepolis.de/)
-/me is giggls@ircnet, http://sven.gegg.us/ on the Web
+1.7.11.2
+
