@@ -1,43 +1,31 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46793 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752382Ab2HUU5f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Aug 2012 16:57:35 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 03/14] svcrpc: make svc_create_xprt enqueue on clearing XPT_BUSY
-Date: Tue, 21 Aug 2012 16:57:21 -0400
-Message-Id: <1345582652-18476-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1345582652-18476-1-git-send-email-bfields@redhat.com>
-References: <1345582652-18476-1-git-send-email-bfields@redhat.com>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:43368 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754874Ab2HPNqH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Aug 2012 09:46:07 -0400
+Received: by pbbrr13 with SMTP id rr13so1612668pbb.19
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Aug 2012 06:46:06 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <CAJ75kXYtPjQ2zhL+Kw6+duT-fMDh9f-oHviHGjSwvYT=wtStzw@mail.gmail.com>
+References: <1344535551-4412-1-git-send-email-bjschuma@netapp.com> <CAJ75kXYtPjQ2zhL+Kw6+duT-fMDh9f-oHviHGjSwvYT=wtStzw@mail.gmail.com>
+From: William Dauchy <wdauchy@gmail.com>
+Date: Thu, 16 Aug 2012 15:45:46 +0200
+Message-ID: <CAJ75kXZSV=gCX1CYFocLHiHf_7D13ysk35cA-y0pyCiDzpnT3w@mail.gmail.com>
+Subject: Re: [PATCH 1/3] NFS: Clear key construction data if the idmap upcall fails
+To: bjschuma@netapp.com
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Hi Bryan,
 
-The rule is that whever we clear XPT_BUSY we should call
-svc_xprt_enqueue().  Without that we may fail to notice any events (such
-as new connections) that arrived while XPT_BUSY was set.
+On Fri, Aug 10, 2012 at 12:09 PM, William Dauchy <wdauchy@gmail.com> wrote:
+> strange, I was also getting the BUG_ON even with an idmap running.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- net/sunrpc/svc_xprt.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+On another setup, this patch is breaking the legacy mapping.
+rpc.idmapd is running but it can't map any user. I'm trying to see the
+difference with the previous test I made.
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index e1810b9..4801fda 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -238,7 +238,7 @@ int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
- 		list_add(&newxprt->xpt_list, &serv->sv_permsocks);
- 		spin_unlock_bh(&serv->sv_lock);
- 		newport = svc_xprt_local_port(newxprt);
--		clear_bit(XPT_BUSY, &newxprt->xpt_flags);
-+		svc_xprt_received(newxprt);
- 		return newport;
- 	}
-  err:
 -- 
-1.7.9.5
-
+William
