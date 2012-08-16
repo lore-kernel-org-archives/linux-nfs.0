@@ -1,37 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:17808 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752651Ab2HHSuW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Aug 2012 14:50:22 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Peng Tao <bergwolf@gmail.com>
-CC: "bharrosh@panasas.com" <bharrosh@panasas.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Peng Tao <tao.peng@emc.com>
-Subject: Re: [PATCH RFC 2/3] NFS41: send real write size in layoutget
-Date: Wed, 8 Aug 2012 18:50:20 +0000
-Message-ID: <1344451818.8925.27.camel@lade.trondhjem.org>
-References: <1344391392-1948-1-git-send-email-bergwolf@gmail.com>
-	 <1344391392-1948-3-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1344391392-1948-3-git-send-email-bergwolf@gmail.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:39377 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753596Ab2HPPHl convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Aug 2012 11:07:41 -0400
+Received: by yhmm54 with SMTP id m54so2986734yhm.19
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Aug 2012 08:07:41 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <CAJ75kXZSV=gCX1CYFocLHiHf_7D13ysk35cA-y0pyCiDzpnT3w@mail.gmail.com>
+References: <1344535551-4412-1-git-send-email-bjschuma@netapp.com>
+ <CAJ75kXYtPjQ2zhL+Kw6+duT-fMDh9f-oHviHGjSwvYT=wtStzw@mail.gmail.com> <CAJ75kXZSV=gCX1CYFocLHiHf_7D13ysk35cA-y0pyCiDzpnT3w@mail.gmail.com>
+From: William Dauchy <wdauchy@gmail.com>
+Date: Thu, 16 Aug 2012 17:07:20 +0200
+Message-ID: <CAJ75kXbdvKiGt9bYvD1Wu-b6ZkVS0yG2YdkkuS7O+r_-+ynPWQ@mail.gmail.com>
+Subject: Re: [PATCH 1/3] NFS: Clear key construction data if the idmap upcall fails
+To: bjschuma@netapp.com
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTA4LTA4IGF0IDEwOjAzICswODAwLCBQZW5nIFRhbyB3cm90ZToNCj4gRnJv
-bTogUGVuZyBUYW8gPHRhby5wZW5nQGVtYy5jb20+DQo+IA0KPiBGb3IgYnVmZmVycmVkIHdyaXRl
-LCBzY2FuIGRpcnR5IHBhZ2VzIHRvIGZpbmQgb3V0IGxvbmdlc3QgY29udGludW91cw0KPiBkaXJ0
-eSBwYWdlcy4gSW4gdGhpcyBjYXNlLCBhbHNvIGFsbG93IGxheW91dCBkcml2ZXIgdG8gc3BlY2lm
-eSBhDQo+IG1heGltdW0gbGF5b3V0Z2V0IHNpemUgd2hpY2ggaXMgdXNlZnVsIHRvIGF2b2lkIGJ1
-c3kgc2Nhbm5pbmcgZGlydHkgcGFnZXMNCj4gZm9yIGJsb2NrIGxheW91dCBjbGllbnQuDQoNClRo
-aXMgaXMgX3JlYWxseV8gdWdseSwgYW5kIGlzIGEgc291cmNlIG9mIHBvdGVudGlhbCBkZWFkbG9j
-a3MgaWYNCm11bHRpcGxlIHRocmVhZHMgYXJlIHNjYW5uaW5nK2xvY2tpbmcgcGFnZXMgYXQgdGhl
-IHNhbWUgdGltZS4NCg0KV2h5IG5vdCBzaW1wbGlmeSB0aGlzIGJ5IGRyb3BwaW5nIHRoZSBjb21w
-bGljYXRlZCB0ZXN0cyBmb3Igd2hldGhlciBvcg0Kbm90IHRoZSBwYWdlcyBhcmUgZGlydHk/IFRo
-YXQgZ2V0cyByaWQgb2YgdGhlIGRlYWRsb2NrLXByb25lIGxvY2tfcGFnZSgpDQpjYWxscywgYW5k
-IHdvdWxkIGVuYWJsZSB5b3UgdG8ganVzdCB1c2UgcmFkaXhfdHJlZV9uZXh0X2hvbGUoKS4NCg0K
-PiBGb3IgZGlyZWN0IHdyaXRlLCBqdXN0IHVzZSBkcmVxLT5ieXRlc19sZWZ0Lg0KDQpUaGlzIG1h
-a2VzIHNlbnNlLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWlu
-dGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAu
-Y29tDQoNCg==
+On Thu, Aug 16, 2012 at 3:45 PM, William Dauchy <wdauchy@gmail.com> wrote:
+> On another setup, this patch is breaking the legacy mapping.
+> rpc.idmapd is running but it can't map any user. I'm trying to see the
+> difference with the previous test I made.
+
+my second test is on 64 bits (the previous was on 32 bits).
+I'm also getting many errors from the userland:
+rpc.idmapd: nfscb: write(/var/lib/nfs/rpc_pipefs/nfs/clnt4/idmap): No
+space left on device
+
+I assume this is because of adding `im_private` in `struct idmap_msg`
+since removing the field resolves the issue.
+I tried to find a wrong sizeof regarding `struct idmap_msg` but didn’t
+found any thing at the moment.
+
+-- 
+William
