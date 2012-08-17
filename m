@@ -1,61 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:35495 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751662Ab2HMOkc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Aug 2012 10:40:32 -0400
-Received: by mail-yx0-f174.google.com with SMTP id l14so1982967yen.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Aug 2012 07:40:32 -0700 (PDT)
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, bharrosh@panasas.com,
-        Peng Tao <tao.peng@emc.com>
-Subject: [PATCH-v2 3/3] NFS41: send real read size in layoutget
-Date: Mon, 13 Aug 2012 22:39:36 +0800
-Message-Id: <1344868776-1739-3-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1344868776-1739-1-git-send-email-bergwolf@gmail.com>
-References: <1344868776-1739-1-git-send-email-bergwolf@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:29194 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757598Ab2HQSkd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Aug 2012 14:40:33 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Richard <rsmits-l@tudelft.nl>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nfsv4 state id errors
+Date: Fri, 17 Aug 2012 18:40:31 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA93B7DC9@SACEXCMBX04-PRD.hq.netapp.com>
+References: <502E69FC.7080608@tudelft.nl>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B7B79@SACEXCMBX04-PRD.hq.netapp.com>
+	 <502E8EBD.6040702@tudelft.nl>
+In-Reply-To: <502E8EBD.6040702@tudelft.nl>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For buffer read, use offst-to-isize.
-
-For direct read, use dreq->bytes_left.
-
-Signed-off-by: Peng Tao <tao.peng@emc.com>
----
- fs/nfs/pnfs.c |   10 +++++++++-
- 1 files changed, 9 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index d1da23a..49d2f2d 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1154,16 +1154,24 @@ out_forget_reply:
- void
- pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
- {
-+	u64 rd_size = req->wb_bytes;
-+
- 	BUG_ON(pgio->pg_lseg != NULL);
- 
- 	if (req->wb_offset != req->wb_pgbase) {
- 		nfs_pageio_reset_read_mds(pgio);
- 		return;
- 	}
-+
-+	if (pgio->pg_dreq == NULL)
-+		rd_size = i_size_read(pgio->pg_inode) - req_offset(req);
-+	else
-+		rd_size = nfs_dreq_bytes_left(pgio->pg_dreq);
-+
- 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
- 					   req->wb_context,
- 					   req_offset(req),
--					   req->wb_bytes,
-+					   rd_size,
- 					   IOMODE_READ,
- 					   GFP_KERNEL);
- 	/* If no lseg, fall back to read through mds */
--- 
-1.7.1.262.g5ef3d
-
+SGksDQoNCk9LLCBidXQgd2hpY2ggTGludXgga2VybmVsIHZlcnNpb24gaXMgdGhlIHBlcnNvbiB1
+c2luZz8gSWYgeW91IGhhdmUNCmFjY2VzcyB0byB0aGUgbWFjaGluZSBpbiBxdWVzdGlvbiwgeW91
+IGNhbiBjaGVjayB1c2luZyB0aGUgY29tbWFuZA0KJ3VuYW1lIC1hJy4NCg0KVGhhbmtzLA0KICBU
+cm9uZA0KDQpPbiBGcmksIDIwMTItMDgtMTcgYXQgMjA6MzQgKzAyMDAsIFJpY2hhcmQgd3JvdGU6
+DQo+IFRoZSBwZXJzb24gd2hvIHJlcG9ydGVkIHRoaXMgdXNlcyA6DQo+IA0KPiBuZnMtY2xpZW50
+LTEuMi4zLTE4LjE3LjINCj4ga3JiNS0xLjYuMy0xMzMuNDguNDguMQ0KPiANCj4gSSB3aWxsIGNo
+ZWNrIG5leHQgbW9uZGF5IHdpdGggaGltIGlmIHRoaXMgaXMgc3RpbGwgdGhlIHZlcnNpb24gaGUg
+dXNlcy4NCj4gSGUgdXNlcyBTdXNlIExpbnV4IEVudGVycHJpc2UgRGVza3RvcCAxMS4yLg0KPiAN
+Cj4gV2UgdXNlIG5mczQva3JiNSB3aXRoIFdpbmRvd3MgQUQgYXMgS0RDIG9uIGEgRmFzMzE3MC4N
+Cj4gDQo+IEdyZWV0aW5ncy4NCj4gDQo+IE9uIDE3LTgtMjAxMiAyMDoxOCwgTXlrbGVidXN0LCBU
+cm9uZCB3cm90ZToNCj4gPiBPbiBGcmksIDIwMTItMDgtMTcgYXQgMTc6NTcgKzAyMDAsIFJpY2hh
+cmQgd3JvdGU6DQo+ID4+IEhlbGxvLA0KPiA+Pg0KPiA+PiBBIGNvdXBsZSBvZiB3ZWVrcyBhZ29v
+IHdlIHVwZ3JhZGVkIG91ciBOZXRhcHAgZmlsZXIgdG8gOC4xLjFSQzEuIFdlIGhhdmUNCj4gPj4g
+YWx3YXlzIGhhZCB0cm91YmxlIHdpdGggTkZTIGFuZCBzdGF0ZSBpZCdzLiBSZXN1bHRpbmcgaW4g
+aGFuZ2luZyBjbGllbnRzLg0KPiA+Pg0KPiA+PiBTb21lIGJ1Z3Mgd2VyZSBmaXhlZCBpbiA4LjEu
+MSBidXQgc3RpbGwgdHJvdWJsZS4NCj4gPj4NCj4gPj4gTm93IHdlIGhhdmUgdGhlIGZvbGxvd2lu
+ZyBlcnJvcnMgaW4gb3VyIGNsaWVudCBtZXNzYWdlcyBmaWxlLCBhZnRlciBhIGhhbmcuDQo+ID4+
+DQo+ID4+IFdoYXQgZG9lcyB0aGlzIDogTkZTOiAidjQgc2VydmVyIHNydiByZXR1cm5lZCBhIGJh
+ZCBzZXF1ZW5jZS1pZCBlcnJvciEiDQo+ID4+IG1lYW5zID8NCj4gPiANCj4gPiBDYW4geW91IHJl
+bWluZCB1cyB3aGljaCBORlN2NCBjbGllbnRzIHlvdSBhcmUgdXNpbmc/DQo+ID4gDQo+ID4gQXQg
+b25lIHBvaW50IHRoZSBORlN2NCBjbGllbnQgd2FzIHJldXNpbmcgb3BlbiBvd25lcnMgYWZ0ZXIg
+dGhleSBmZWxsDQo+ID4gb3V0IG9mIHRoZSBjbGllbnQgY2FjaGUsIGFuZCB0aGF0IHdvdWxkIGNy
+ZWF0ZSBzeW1wdG9tcyBzdWNoIGFzIHRoZQ0KPiA+IGFib3ZlLiBUaGF0IGJ1ZyBoYXMgc2luY2Ug
+YmVlbiBmaXhlZCBpbiB0aGUgdXBzdHJlYW0ga2VybmVsLg0KPiA+IA0KPiANCg0KLS0gDQpUcm9u
+ZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25k
+Lk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
