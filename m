@@ -1,109 +1,140 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:15590 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:56427 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751265Ab2HBLN4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Aug 2012 07:13:56 -0400
-Message-ID: <1343906031.2118.22.camel@localhost>
-Subject: Re: [PATCH 2/2] Simplify check for size of ACL returned in
- __nfs4_get_acl_uncached
-From: Sachin Prabhu <sprabhu@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Date: Thu, 02 Aug 2012 12:13:51 +0100
-In-Reply-To: <1343843776.9097.10.camel@lade.trondhjem.org>
-References: <1343827771-6258-1-git-send-email-sprabhu@redhat.com>
-	 <1343827771-6258-3-git-send-email-sprabhu@redhat.com>
-	 <1343843776.9097.10.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1752262Ab2HQRS4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Aug 2012 13:18:56 -0400
+Date: Fri, 17 Aug 2012 13:18:54 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Michael Tokarev <mjt@tls.msk.ru>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Linux-kernel <linux-kernel@vger.kernel.org>,
+        Eric Dumazet <eric.dumazet@gmail.com>
+Subject: Re: 3.0+ NFS issues (bisected)
+Message-ID: <20120817171854.GA14015@fieldses.org>
+References: <1338469169.2420.7.camel@lade.trondhjem.org>
+ <4FC77128.9090206@msgid.tls.msk.ru>
+ <1338471975.7732.5.camel@lade.trondhjem.org>
+ <4FC77755.5060606@msgid.tls.msk.ru>
+ <4FFC2573.8040804@msgid.tls.msk.ru>
+ <20120712125303.GC16822@fieldses.org>
+ <502DA4E8.9050800@msgid.tls.msk.ru>
+ <20120817145616.GC11172@fieldses.org>
+ <20120817160057.GE11172@fieldses.org>
+ <502E7B86.3060702@msgid.tls.msk.ru>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <502E7B86.3060702@msgid.tls.msk.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Wed, 2012-08-01 at 17:56 +0000, Myklebust, Trond wrote:
->  
-> >  	acl_len = res.acl_len - res.acl_data_offset;
-> > -	if (res.acl_len > args.acl_len)
-> > +	if (res.acl_flags & NFS4_ACL_LEN_ONLY)
+On Fri, Aug 17, 2012 at 09:12:38PM +0400, Michael Tokarev wrote:
+> On 17.08.2012 20:00, J. Bruce Fields wrote:
+> []> Uh, if I grepped my way through this right: it looks like it's the
+> > "memory" column of the "TCP" row of /proc/net/protocols; might be
+> > interesting to see how that's changing over time.
 > 
-> Is this a bugfix or a cleanup? If the former, then it belongs in the
-> first patch.
-
-The earlier patch fixes this bug with the the if condition. This patch
-introduces the NFS4_ACL_LEN_ONLY flag which is set when the buffer we
-have set aside for the ACLs was not enough for the ACLs returned by the
-server.
-
+> This file does not look interesting.  Memory usage does not jump,
+> there's no high increase either.
 > 
-> >  		nfs4_write_cached_acl(inode, NULL, 0, acl_len);
-> >  	else
-> >  		nfs4_write_cached_acl(inode, pages, res.acl_data_offset,
+> But there's something else which is interesting here.
 > 
-> Now if NFS4_ACL_LEN_ONLY is set, we appear to unconditionally write the
-> acl, even if the buffer overflows...
-
-If NFS4_ACL_LEN_ONLY is set, we call nfs4_write_cached_acl with the
-second argument set to NULL. This results in only the acl length being
-cached.
-
-
-> > diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> > index 18fae29..a88fcd0 100644
-> > --- a/fs/nfs/nfs4xdr.c
-> > +++ b/fs/nfs/nfs4xdr.c
-> > @@ -5101,7 +5101,7 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
-> >  		hdrlen = (u8 *)xdr->p - (u8 *)iov->iov_base;
-> >  		attrlen += res->acl_data_offset;
-> >  		if (attrlen > page_len) {
-> > -			if (res->acl_flags & NFS4_ACL_LEN_REQUEST) {
-> > +			if (res->acl_flags & NFS4_ACL_LEN_ONLY) {
+> I noticed that in perf top, the top consumer of CPU is svc_recv()
+> (I mentioned this in the start of this thread).  So I looked how
+> this routine is called from nfsd.  And here we go.
 > 
-> The logic here still looks incorrect. If the user is only requesting the
-> acl length, then we shouldn't care about the 'attrlen > page_len' test.
+> fs/nfsd/nfssvc.c:
+> 
+> /*
+>  * This is the NFS server kernel thread
+>  */
+> static int
+> nfsd(void *vrqstp)
+> {
+> ...
+>         /*
+>          * The main request loop
+>          */
+>         for (;;) {
+>                 /*
+>                  * Find a socket with data available and call its
+>                  * recvfrom routine.
+>                  */
+> int i = 0;
+>                 while ((err = svc_recv(rqstp, 60*60*HZ)) == -EAGAIN)
+>                         ++i;
+> printk(KERN_ERR "calling svc_recv: %d times (err=%d)\n", i, err);
+>                 if (err == -EINTR)
+>                         break;
+> ...
+> 
+> (I added the "i" counter and the printk).  And here's the output:
+> 
+> [19626.401136] calling svc_recv: 0 times (err=212)
+> [19626.405059] calling svc_recv: 1478 times (err=212)
+> [19626.409512] calling svc_recv: 1106 times (err=212)
+> [19626.543020] calling svc_recv: 0 times (err=212)
+> [19626.543059] calling svc_recv: 0 times (err=212)
+> [19626.548074] calling svc_recv: 0 times (err=212)
+> [19626.549515] calling svc_recv: 0 times (err=212)
+> [19626.552320] calling svc_recv: 0 times (err=212)
+> [19626.553503] calling svc_recv: 0 times (err=212)
+> [19626.556007] calling svc_recv: 0 times (err=212)
+> [19626.557152] calling svc_recv: 0 times (err=212)
+> [19626.560109] calling svc_recv: 0 times (err=212)
+> [19626.560943] calling svc_recv: 0 times (err=212)
+> [19626.565315] calling svc_recv: 1067 times (err=212)
+> [19626.569735] calling svc_recv: 2571 times (err=212)
+> [19626.574150] calling svc_recv: 3842 times (err=212)
+> [19626.581914] calling svc_recv: 2891 times (err=212)
+> [19626.583072] calling svc_recv: 1247 times (err=212)
+> [19626.616885] calling svc_recv: 0 times (err=212)
+> [19626.616952] calling svc_recv: 0 times (err=212)
+> [19626.622889] calling svc_recv: 0 times (err=212)
+> [19626.624518] calling svc_recv: 0 times (err=212)
+> [19626.627118] calling svc_recv: 0 times (err=212)
+> [19626.629735] calling svc_recv: 0 times (err=212)
+> [19626.631777] calling svc_recv: 0 times (err=212)
+> [19626.633986] calling svc_recv: 0 times (err=212)
+> [19626.636746] calling svc_recv: 0 times (err=212)
+> [19626.637692] calling svc_recv: 0 times (err=212)
+> [19626.640769] calling svc_recv: 0 times (err=212)
+> [19626.657852] calling svc_recv: 0 times (err=212)
+> [19626.661602] calling svc_recv: 0 times (err=212)
+> [19626.670160] calling svc_recv: 0 times (err=212)
+> [19626.671917] calling svc_recv: 0 times (err=212)
+> [19626.684643] calling svc_recv: 0 times (err=212)
+> [19626.684680] calling svc_recv: 0 times (err=212)
+> [19626.812820] calling svc_recv: 0 times (err=212)
+> [19626.814697] calling svc_recv: 0 times (err=212)
+> [19626.817195] calling svc_recv: 0 times (err=212)
+> [19626.820324] calling svc_recv: 0 times (err=212)
+> [19626.822855] calling svc_recv: 0 times (err=212)
+> [19626.824823] calling svc_recv: 0 times (err=212)
+> [19626.828016] calling svc_recv: 0 times (err=212)
+> [19626.829021] calling svc_recv: 0 times (err=212)
+> [19626.831970] calling svc_recv: 0 times (err=212)
+> 
+> > the stall begin:
+> [19686.823135] calling svc_recv: 3670352 times (err=212)
+> [19686.823524] calling svc_recv: 3659205 times (err=212)
+> 
+> > transfer continues
+> [19686.854734] calling svc_recv: 0 times (err=212)
+> [19686.860023] calling svc_recv: 0 times (err=212)
+> [19686.887124] calling svc_recv: 0 times (err=212)
+> [19686.895532] calling svc_recv: 0 times (err=212)
+> [19686.903667] calling svc_recv: 0 times (err=212)
+> [19686.922780] calling svc_recv: 0 times (err=212)
+> 
+> So we're calling svc_recv in a tight loop, eating
+> all available CPU.  (The above is with just 2 nfsd
+> threads).
+> 
+> Something is definitely wrong here.  And it happens mure more
+> often after the mentioned commit (f03d78db65085).
 
-This is a result of a feature introduced with an earlier
-patch(bf118a342f10dafe44b14451a1392c3254629a1f) and the behaviour is
-described in the comment above __nfs4_get_acl_uncached().
+Oh, neat.  Hm.  That commit doesn't really sound like the cause, then.
+Is that busy-looping reproduceable on kernels before that commit?
 
-***
-The getxattr API returns the required buffer length when called with a
-NULL buf. The NFSv4 acl tool then calls getxattr again after allocating
-the required buf.  On a NULL buf, we send a page of data to the server
-guessing that the ACL request can be serviced by a page. If so, we cache
-up to the page of ACL data, and the 2nd call to getxattr is serviced by
-the cache. If not so, we throw away the page, and cache the required
-length. The next getxattr call will then produce another round trip to
-the server, this time with the input buf of the required size.
-***
-
-Check to see if the ACL attribute length returned by the server is
-larger than the buffer allocated for it.
-if (attrlen > page_len) {
-	If the length returned is smaller than buffer allocated. 
-	Check flags to see if the user had only requested for length.
-	if (res->acl_flags & NFS4_ACL_LEN_ONLY) {
-		/* getxattr interface called with a NULL buf */
-		If yes, just save length and return
-		res->acl_len = attrlen;
-		goto out;
-	}
-	Else return -EINVAL.
-	dprintk("NFS: acl reply: attrlen %u > page_len %zu\n",
-		attrlen, page_len);
-	return -EINVAL;
-}
-At the end of this if condition, we have determined that the buffer
-length we allocated is large enough for the length of ACL returned.
-So clear NFS4_ACL_LEN_ONLY if set.
-/* At this stage we have the complete ACL */
-res->acl_flags &= ~NFS4_ACL_LEN_ONLY;
-
-
-> There also appears to remain a lot of illegal deferencing of xdr->p even
-> after this patch. We should be able to fix that by replacing
-> xdr_read_pages with a call to xdr_enter_page() before we call
-> decode_attr_bitmap()...
-
-
-Sachin Prabhu
-
+--b.
