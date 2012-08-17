@@ -1,57 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54361 "EHLO fieldses.org"
+Received: from isrv.corpit.ru ([86.62.121.231]:53279 "EHLO isrv.corpit.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755525Ab2HTVwM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Aug 2012 17:52:12 -0400
-Date: Mon, 20 Aug 2012 17:52:10 -0400
-To: linux-nfs@vger.kernel.org
-Cc: NeilBrown <neilb@suse.de>, Malahal Naineni <malahal@us.ibm.com>
-Subject: [PATCH] svcrpc: sends on closed socket should stop immediately
-Message-ID: <20120820215210.GJ5779@fieldses.org>
+	id S1758134Ab2HQR3m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Aug 2012 13:29:42 -0400
+Message-ID: <502E7F84.3060003@msgid.tls.msk.ru>
+Date: Fri, 17 Aug 2012 21:29:40 +0400
+From: Michael Tokarev <mjt@tls.msk.ru>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Linux-kernel <linux-kernel@vger.kernel.org>,
+        Eric Dumazet <eric.dumazet@gmail.com>
+Subject: Re: 3.0+ NFS issues (bisected)
+References: <1338469169.2420.7.camel@lade.trondhjem.org> <4FC77128.9090206@msgid.tls.msk.ru> <1338471975.7732.5.camel@lade.trondhjem.org> <4FC77755.5060606@msgid.tls.msk.ru> <4FFC2573.8040804@msgid.tls.msk.ru> <20120712125303.GC16822@fieldses.org> <502DA4E8.9050800@msgid.tls.msk.ru> <20120817145616.GC11172@fieldses.org> <20120817160057.GE11172@fieldses.org> <502E7B86.3060702@msgid.tls.msk.ru> <20120817171854.GA14015@fieldses.org> <502E7EC3.5030006@msgid.tls.msk.ru>
+In-Reply-To: <502E7EC3.5030006@msgid.tls.msk.ru>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On 17.08.2012 21:26, Michael Tokarev wrote:
+> On 17.08.2012 21:18, J. Bruce Fields wrote:
+>> On Fri, Aug 17, 2012 at 09:12:38PM +0400, Michael Tokarev wrote:
+> []
+>>> So we're calling svc_recv in a tight loop, eating
+>>> all available CPU.  (The above is with just 2 nfsd
+>>> threads).
+>>>
+>>> Something is definitely wrong here.  And it happens mure more
+>>> often after the mentioned commit (f03d78db65085).
+>>
+>> Oh, neat.  Hm.  That commit doesn't really sound like the cause, then.
+>> Is that busy-looping reproduceable on kernels before that commit?
+> 
+> Note I bisected this issue to this commit.  I haven't seen it
+> happening before this commit, and reverting it from 3.0 or 3.2
+> kernel makes the problem to go away.
+> 
+> I guess it is looping there:
+> 
+> 
+> net/sunrpc/svc_xprt.c:svc_recv()
+> ...
+>         len = 0;
+> ...
+>         if (test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
+> ...
+>         } else if (xprt->xpt_ops->xpo_has_wspace(xprt)) {  <=== here -- has no wspace due to memory...
+> ...  len = <something>
+>         }
+> 
+>         /* No data, incomplete (TCP) read, or accept() */
+>         if (len == 0 || len == -EAGAIN)
+>                 goto out;
+> ...
+> out:
+>         rqstp->rq_res.len = 0;
+>         svc_xprt_release(rqstp);
+>         return -EAGAIN;
+> }
+> 
+> I'm trying to verify this theory...
 
-svc_tcp_sendto sets XPT_CLOSE if we fail to transmit the entire reply.
-However, the XPT_CLOSE won't be acted on immediately.  Meanwhile other
-threads could send further replies before the socket is really shut
-down.  This can manifest as data corruption: for example, if a truncated
-read reply is followed by another rpc reply, that second reply will look
-to the client like further read data.
+Yes.  I inserted a printk there, and all these million times while
+we're waiting in this EAGAIN loop, this printk is triggering:
 
-Symptoms were data corruption preceded by svc_tcp_sendto logging
-something like
+....
+[21052.533053]  svc_recv: !has_wspace
+[21052.533070]  svc_recv: !has_wspace
+[21052.533087]  svc_recv: !has_wspace
+[21052.533105]  svc_recv: !has_wspace
+[21052.533122]  svc_recv: !has_wspace
+[21052.533139]  svc_recv: !has_wspace
+[21052.533156]  svc_recv: !has_wspace
+[21052.533174]  svc_recv: !has_wspace
+[21052.533191]  svc_recv: !has_wspace
+[21052.533208]  svc_recv: !has_wspace
+[21052.533226]  svc_recv: !has_wspace
+[21052.533244]  svc_recv: !has_wspace
+[21052.533265] calling svc_recv: 1228163 times (err=-4)
+[21052.533403] calling svc_recv: 1226616 times (err=-4)
+[21052.534520] nfsd: last server has exited, flushing export cache
 
-	kernel: rpc-srv/tcp: nfsd: sent only 963696 when sending 1048708 bytes - shutting down socket
+(I stopped nfsd since it was flooding the log).
 
-Cc: stable@vger.kernel.org
-Reported-by: Malahal Naineni <malahal@us.ibm.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- net/sunrpc/svc_xprt.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+I can only guess that before that commit, we always had space,
+now we don't anymore, and are looping like crazy.
 
-Can anyone see a reason *not* to fail the send on a socket marked with
-XPT_CLOSE?
+Thanks,
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 88f2bf6..0d693a8 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -794,7 +794,8 @@ int svc_send(struct svc_rqst *rqstp)
- 
- 	/* Grab mutex to serialize outgoing data. */
- 	mutex_lock(&xprt->xpt_mutex);
--	if (test_bit(XPT_DEAD, &xprt->xpt_flags))
-+	if (test_bit(XPT_DEAD, &xprt->xpt_flags)
-+			|| test_bit(XPT_CLOSE, &xprt->xpt_flags))
- 		len = -ENOTCONN;
- 	else
- 		len = xprt->xpt_ops->xpo_sendto(rqstp);
--- 
-1.7.9.5
-
+/mjt
