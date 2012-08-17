@@ -1,107 +1,175 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:47855 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751735Ab2HBIrU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Aug 2012 04:47:20 -0400
-Received: by bkwj10 with SMTP id j10so4129902bkw.19
-        for <linux-nfs@vger.kernel.org>; Thu, 02 Aug 2012 01:47:19 -0700 (PDT)
-From: Idan Kedar <idank@tonian.com>
-To: coredev@tonian.com, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@tonian.com>
-Subject: [PATCH v2 0/2] pnfs: fix a crash when hitting Ctrl+C during LAYOUTGET
-Date: Thu,  2 Aug 2012 11:47:09 +0300
-Message-Id: <1343897231-30205-1-git-send-email-idank@tonian.com>
+Received: from fieldses.org ([174.143.236.118]:60301 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751682Ab2HQQBB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Aug 2012 12:01:01 -0400
+Date: Fri, 17 Aug 2012 12:00:57 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Michael Tokarev <mjt@tls.msk.ru>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Linux-kernel <linux-kernel@vger.kernel.org>,
+        Eric Dumazet <eric.dumazet@gmail.com>
+Subject: Re: 3.0+ NFS issues (bisected)
+Message-ID: <20120817160057.GE11172@fieldses.org>
+References: <20120530132518.GA13794@fieldses.org>
+ <4FC713ED.5040807@msgid.tls.msk.ru>
+ <1338469169.2420.7.camel@lade.trondhjem.org>
+ <4FC77128.9090206@msgid.tls.msk.ru>
+ <1338471975.7732.5.camel@lade.trondhjem.org>
+ <4FC77755.5060606@msgid.tls.msk.ru>
+ <4FFC2573.8040804@msgid.tls.msk.ru>
+ <20120712125303.GC16822@fieldses.org>
+ <502DA4E8.9050800@msgid.tls.msk.ru>
+ <20120817145616.GC11172@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120817145616.GC11172@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-While working on object layout, we have encountered a general protection fault
-in xdr_shrink_bufhead when killing a process performing a lot of reads.
+On Fri, Aug 17, 2012 at 10:56:16AM -0400, J. Bruce Fields wrote:
+> On Fri, Aug 17, 2012 at 05:56:56AM +0400, Michael Tokarev wrote:
+> > On 12.07.2012 16:53, J. Bruce Fields wrote:
+> > > On Tue, Jul 10, 2012 at 04:52:03PM +0400, Michael Tokarev wrote:
+> > >> I tried to debug this again, maybe to reproduce in a virtual machine,
+> > >> and found out that it is only 32bit server code shows this issue:
+> > >> after updating the kernel on the server to 64bit (the same version)
+> > >> I can't reproduce this issue anymore.  Rebooting back to 32bit,
+> > >> and voila, it is here again.
+> > >>
+> > >> Something apparenlty isn't right on 32bits... ;)
+> > >>
+> > >> (And yes, the prob is still present and is very annoying :)
+> > > 
+> > > OK, that's very useful, thanks.  So probably a bug got introduced in the
+> > > 32-bit case between 2.6.32 and 3.0.
+> > > 
+> > > My personal upstream testing is normally all x86_64 only.  I'll kick off
+> > > a 32-bit install and see if I can reproduce this quickly.
+> > 
+> > Actually it has nothing to do with 32 vs 64 bits as I
+> > initially thought.  It happens on 64bits too, but takes
+> > more time (or data to transfer) to trigger.
+> 
+> That makes it sound like some kind of leak: you're hitting this case
+> eventually either way, but it takes longer in the case where you have
+> more (low) memory.
+> 
+> I wish I was more familiar with the tcp code.... What number exactly is
+> being compared against those limits, and how could we watch it from
+> userspace?
 
-full trace:
+Uh, if I grepped my way through this right: it looks like it's the
+"memory" column of the "TCP" row of /proc/net/protocols; might be
+interesting to see how that's changing over time.
 
-[ 1353.258729] general protection fault: 0000 [#1] SMP DEBUG_PAGEALLOC
-[ 1353.259109] CPU 0 
-[ 1353.259109] Modules linked in:[ 1353.259109]  objlayoutdriver exofs libore osd libosd iscsi_tcp netconsole nfs nfsd lockd fscache auth_rpcgss nfs_acl sunrpc e1000 rtc_cmos serio_raw microcode [last unloaded: scsi_wait_scan]
-
-[ 1353.259109] Pid: 4, comm: kworker/0:0 Not tainted 3.5.0-nfsobj #147 innotek GmbH VirtualBox
-[ 1353.259109] RIP: 0010:[<ffffffff8132cf2d>]  [<ffffffff8132cf2d>] memcpy+0xd/0x110
-[ 1353.259109] RSP: 0018:ffff88003d6cdab8  EFLAGS: 00010202
-[ 1353.259109] RAX: ffff88003b51928c RBX: ffff88003b51928c RCX: 000000000000000d
-[ 1353.259109] RDX: 0000000000000004 RSI: 0005080000000004 RDI: ffff88003b51928c
-[ 1353.259109] RBP: ffff88003d6cdb00 R08: ffff88003a9d0748 R09: 0000000000000001
-[ 1353.259109] R10: 0000000000000000 R11: 0000000000000001 R12: 000000000000006c
-[ 1353.259109] R13: 0000000000000004 R14: 000000000000006c R15: ffff88003d6cc000
-[ 1353.259109] FS:  0000000000000000(0000) GS:ffff88003e200000(0000) knlGS:0000000000000000
-[ 1353.259109] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-[ 1353.259109] CR2: 0000003ce4076770 CR3: 000000003772c000 CR4: 00000000000006f0
-[ 1353.259109] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-[ 1353.259109] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-[ 1353.259109] Process kworker/0:0 (pid: 4, threadinfo ffff88003d6cc000, task ffff88003d6d0000)
-[ 1353.259109] Stack:
-[ 1353.259109]  ffffffffa0056e17 ffff88003d6cdfd8 ffff88003bebf8c8 ffff88003d6cdae0
-[ 1353.259109]  ffff88003bebc390 0000000000000ffc 0000000000021000 0000000000021000
-[ 1353.259109]  ffff88003b518284 ffff88003d6cdb70 ffffffffa005779f ffff88003e3d4a80
-[ 1353.259109] Call Trace:
-[ 1353.259109]  [<ffffffffa0056e17>] ? _copy_from_pages+0xa7/0xe0 [sunrpc]
-[ 1353.259109]  [<ffffffffa005779f>] xdr_shrink_bufhead+0x7f/0x270 [sunrpc]
-[ 1353.259109]  [<ffffffffa00579e2>] xdr_read_pages+0x42/0x150 [sunrpc]
-[ 1353.259109]  [<ffffffffa01668a4>] nfs4_xdr_dec_layoutget+0x174/0x180 [nfs]
-[ 1353.259109]  [<ffffffffa0166730>] ? decode_getfh+0x120/0x120 [nfs]
-[ 1353.259109]  [<ffffffffa0166730>] ? decode_getfh+0x120/0x120 [nfs]
-[ 1353.259109]  [<ffffffffa004de05>] rpcauth_unwrap_resp+0x65/0x70 [sunrpc]
-[ 1353.259109]  [<ffffffffa0043f47>] call_decode+0x377/0x470 [sunrpc]
-[ 1353.259109]  [<ffffffff810c216d>] ? trace_hardirqs_off+0xd/0x10
-[ 1353.259109]  [<ffffffffa0043bd0>] ? call_status+0x210/0x210 [sunrpc]
-[ 1353.259109]  [<ffffffffa0043bd0>] ? call_status+0x210/0x210 [sunrpc]
-[ 1353.259109]  [<ffffffffa004bb14>] __rpc_execute+0x64/0x2b0 [sunrpc]
-[ 1353.259109]  [<ffffffffa004bd60>] ? __rpc_execute+0x2b0/0x2b0 [sunrpc]
-[ 1353.259109]  [<ffffffffa004bd75>] rpc_async_schedule+0x15/0x20 [sunrpc]
-[ 1353.259109]  [<ffffffff81084294>] process_one_work+0x1a4/0x4f0
-[ 1353.259109]  [<ffffffff81084231>] ? process_one_work+0x141/0x4f0
-[ 1353.259109]  [<ffffffff81085fc2>] worker_thread+0x162/0x350
-[ 1353.259109]  [<ffffffff81085e60>] ? manage_workers.clone.19+0x240/0x240
-[ 1353.259109]  [<ffffffff8108b5c6>] kthread+0xc6/0xd0
-[ 1353.259109]  [<ffffffff81097426>] ? finish_task_switch+0x46/0xf0
-[ 1353.259109]  [<ffffffff817a91b4>] kernel_thread_helper+0x4/0x10
-[ 1353.259109]  [<ffffffff8179f9f0>] ? retint_restore_args+0x13/0x13
-[ 1353.259109]  [<ffffffff8108b500>] ? __init_kthread_worker+0x70/0x70
-[ 1353.259109]  [<ffffffff817a91b0>] ? gs_change+0x13/0x13
-[ 1353.259109] Code: 43 50 88 43 4e 48 83 c4 08 5b c9 c3 66 90 e8 eb fb ff ff eb e6 90 90 90 90 90 90 90 90 90 48 89 f8 48 89 d1 48 c1 e9 03 83 e2 07 <f3> 48 a5 89 d1 f3 a4 c3 20 4c 8b 06 4c 8b 4e 08 4c 8b 56 10 4c 
-[ 1353.259109] RIP  [<ffffffff8132cf2d>] memcpy+0xd/0x110
-[ 1353.259109]  RSP <ffff88003d6cdab8>
-[ 1353.328569] ---[ end trace a48bf911452c4212 ]---
-
-to reproduce:
-mount an object-based pNFS file system. we used exofs as the MDS. assume the
-mount point is /mnt/pnfs, run:
-
-cp -r /bin /mnt/pnfs
-cd /mnt/pnfs
-while true; do
-        rm -rf bin2
-        echo 3 > /proc/sys/vm/drop_caches
-        cp -r bin bin2 &
-        sleep 1
-        kill -s int $!
-done
-
-on my setup it crashed after a couple of minutes, sometimes a couple of seconds.
-your mileage may vary.
-
-differences from v1:
-* fold 3rd patch into first one.
-* use kcalloc() instead of kzalloc().
-* functions renamed to better fit the convention.
-
-Idan Kedar (2):
-  pnfs: defer release of pages in layoutget
-  pnfs: nfs4_proc_layoutget returns void
-
- fs/nfs/nfs4proc.c |   61 ++++++++++++++++++++++++++++++++++++++++++++++++++--
- fs/nfs/pnfs.c     |   39 +---------------------------------
- fs/nfs/pnfs.h     |    2 +-
- 3 files changed, 60 insertions(+), 42 deletions(-)
-
--- 
-1.7.6.5
-
+> 
+> --b.
+> 
+> > 
+> > 
+> > > Let me know if you're able to narrow this down any more.
+> > 
+> > I bisected this issue to the following commit:
+> > 
+> > commit f03d78db65085609938fdb686238867e65003181
+> > Author: Eric Dumazet <eric.dumazet@gmail.com>
+> > Date:   Thu Jul 7 00:27:05 2011 -0700
+> > 
+> >     net: refine {udp|tcp|sctp}_mem limits
+> > 
+> >     Current tcp/udp/sctp global memory limits are not taking into account
+> >     hugepages allocations, and allow 50% of ram to be used by buffers of a
+> >     single protocol [ not counting space used by sockets / inodes ...]
+> > 
+> >     Lets use nr_free_buffer_pages() and allow a default of 1/8 of kernel ram
+> >     per protocol, and a minimum of 128 pages.
+> >     Heavy duty machines sysadmins probably need to tweak limits anyway.
+> > 
+> > 
+> > Reverting this commit on top of 3.0 (or any later 3.x kernel) fixes
+> > the behavour here.
+> > 
+> > This machine has 4Gb of memory.  On 3.0, with this patch applied
+> > (as it is part of 3.0), tcp_mem is like this:
+> > 
+> >   21228     28306   42456
+> > 
+> > with this patch reverted, tcp_mem shows:
+> > 
+> >   81216     108288  162432
+> > 
+> > and with these values, it works fine.
+> > 
+> > So it looks like something else goes wrong there,
+> > which lead to all nfsds fighting with each other
+> > for something and eating 100% of available CPU
+> > instead of servicing clients.
+> > 
+> > For added fun, when setting tcp_mem to the "good" value
+> > from "bad" value (after booting into kernel with that
+> > patch applied), the problem is _not_ fixed.
+> > 
+> > Any further hints?
+> > 
+> > Thanks,
+> > 
+> > /mjt
+> > 
+> > >> On 31.05.2012 17:51, Michael Tokarev wrote:
+> > >>> On 31.05.2012 17:46, Myklebust, Trond wrote:
+> > >>>> On Thu, 2012-05-31 at 17:24 +0400, Michael Tokarev wrote:
+> > >>> []
+> > >>>>> I started tcpdump:
+> > >>>>>
+> > >>>>>  tcpdump -npvi br0 -s 0 host 192.168.88.4 and \( proto ICMP or port 2049 \) -w nfsdump
+> > >>>>>
+> > >>>>> on the client (192.168.88.2).  Next I mounted a directory on the client,
+> > >>>>> and started reading (tar'ing) a directory into /dev/null.  It captured a
+> > >>>>> few stalls.  Tcpdump shows number of packets it got, the stalls are at
+> > >>>>> packet counts 58090, 97069 and 97071.  I cancelled the capture after that.
+> > >>>>>
+> > >>>>> The resulting file is available at http://www.corpit.ru/mjt/tmp/nfsdump.xz ,
+> > >>>>> it is 220Mb uncompressed and 1.3Mb compressed.  The source files are
+> > >>>>> 10 files of 1Gb each, all made by using `truncate' utility, so does not
+> > >>>>> take place on disk at all.  This also makes it obvious that the issue
+> > >>>>> does not depend on the speed of disk on the server (since in this case,
+> > >>>>> the server disk isn't even in use).
+> > >>>>
+> > >>>> OK. So from the above file it looks as if the traffic is mainly READ
+> > >>>> requests.
+> > >>>
+> > >>> The issue here happens only with reads.
+> > >>>
+> > >>>> In 2 places the server stops responding. In both cases, the client seems
+> > >>>> to be sending a single TCP frame containing several COMPOUNDS containing
+> > >>>> READ requests (which should be legal) just prior to the hang. When the
+> > >>>> server doesn't respond, the client pings it with a RENEW, before it ends
+> > >>>> up severing the TCP connection and then retransmitting.
+> > >>>
+> > >>> And sometimes -- speaking only from the behavour I've seen, not from the
+> > >>> actual frames sent -- server does not respond to the RENEW too, in which
+> > >>> case the client reports "nfs server no responding", and on the next
+> > >>> renew it may actually respond.  This happens too, but much more rare.
+> > >>>
+> > >>> During these stalls, ie, when there's no network activity at all,
+> > >>> the server NFSD threads are busy eating all available CPU.
+> > >>>
+> > >>> What does it all tell us? :)
+> > >>>
+> > >>> Thank you!
+> > >>>
+> > >>> /mjt
+> > >>> --
+> > >>> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> > >>> the body of a message to majordomo@vger.kernel.org
+> > >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > >>> Please read the FAQ at  http://www.tux.org/lkml/
+> > >>
+> > > --
+> > > To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> > > the body of a message to majordomo@vger.kernel.org
+> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > > Please read the FAQ at  http://www.tux.org/lkml/
+> > 
