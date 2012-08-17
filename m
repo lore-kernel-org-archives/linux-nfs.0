@@ -1,147 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ch1ehsobe001.messaging.microsoft.com ([216.32.181.181]:51948
-	"EHLO ch1outboundpool.messaging.microsoft.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932802Ab2HQBTa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Aug 2012 21:19:30 -0400
-From: Shai Lazmi <shai.lazmi@qlogic.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: William Dauchy <wdauchy@gmail.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Thu, 16 Aug 2012 18:19:24 -0700
-Subject: RE: [PATCH 1/2] NFS: Clear key construction data if the idmap
- upcall fails
-Message-ID: <21641D3714F5AF449DC483E699E1124E86E64095AA@AVEXMB2.qlogic.org>
-References: <1345148622-10845-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E640957F@AVEXMB2.qlogic.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B542B@SACEXCMBX04-PRD.hq.netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E6409585@AVEXMB2.qlogic.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B54EC@SACEXCMBX04-PRD.hq.netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E640958D@AVEXMB2.qlogic.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B5646@SACEXCMBX04-PRD.hq.netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E6409593@AVEXMB2.qlogic.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B56F2@SACEXCMBX04-PRD.hq.netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E64095A8@AVEXMB2.qlogic.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA93B5D38@SACEXCMBX04-PRD.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA93B5D38@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from isrv.corpit.ru ([86.62.121.231]:46657 "EHLO isrv.corpit.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757994Ab2HQR03 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Aug 2012 13:26:29 -0400
+Message-ID: <502E7EC3.5030006@msgid.tls.msk.ru>
+Date: Fri, 17 Aug 2012 21:26:27 +0400
+From: Michael Tokarev <mjt@tls.msk.ru>
 MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Linux-kernel <linux-kernel@vger.kernel.org>,
+        Eric Dumazet <eric.dumazet@gmail.com>
+Subject: Re: 3.0+ NFS issues (bisected)
+References: <1338469169.2420.7.camel@lade.trondhjem.org> <4FC77128.9090206@msgid.tls.msk.ru> <1338471975.7732.5.camel@lade.trondhjem.org> <4FC77755.5060606@msgid.tls.msk.ru> <4FFC2573.8040804@msgid.tls.msk.ru> <20120712125303.GC16822@fieldses.org> <502DA4E8.9050800@msgid.tls.msk.ru> <20120817145616.GC11172@fieldses.org> <20120817160057.GE11172@fieldses.org> <502E7B86.3060702@msgid.tls.msk.ru> <20120817171854.GA14015@fieldses.org>
+In-Reply-To: <20120817171854.GA14015@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-WXVwIC0gYWxyZWFkeSBzYXcgdGhhdCA7LSkNCg0KLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0N
-CkZyb206IE15a2xlYnVzdCwgVHJvbmQgW21haWx0bzpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
-bV0NClNlbnQ6IFRodXJzZGF5LCBBdWd1c3QgMTYsIDIwMTIgNjoxNSBQTQ0KVG86IFNoYWkgTGF6
-bWkNCkNjOiBXaWxsaWFtIERhdWNoeTsgU2NodW1ha2VyLCBCcnlhbjsgbGludXgtbmZzQHZnZXIu
-a2VybmVsLm9yZw0KU3ViamVjdDogUmU6IFtQQVRDSCAxLzJdIE5GUzogQ2xlYXIga2V5IGNvbnN0
-cnVjdGlvbiBkYXRhIGlmIHRoZSBpZG1hcCB1cGNhbGwgZmFpbHMNCg0KT24gVGh1LCAyMDEyLTA4
-LTE2IGF0IDE4OjA5IC0wNzAwLCBTaGFpIExhem1pIHdyb3RlOg0KPiBJJ3ZlIGxvb2tlZCBhdCB0
-aGUgcmVwbyAoaHR0cDovL2dpdC5rZXJuZWwub3JnLz9wPWxpbnV4L2tlcm5lbC9naXQvdG9ydmFs
-ZHMvbGludXguZ2l0O2E9YmxvYjtmPWZzL25mcy9pZG1hcC5jO2g9YjcwMTM1OGMzOWMzNTFkMDYx
-M2QxZGIyOWViY2YzODJjYThjYjBhNjtoYj1kZGYzNDNmNjM1ZmU0NDQwY2FkNTI4ZTEyZjk2ZjI4
-YmQ1MGFhMDk5KSwgc2VlbXMganVzdCBsaWtlIHdoYXQgSSBoYXZlDQo+IENhbiBpdCBiZSBhbHJl
-YWR5IGNoYW5nZWQgb24gdGhlIHRyZWU/DQoNCk5vLiBJdCBoYXNuJ3QgYmVlbiBtZXJnZWQgdXBz
-dHJlYW0geWV0Lg0KDQpIb3dldmVyLCBJJ3ZlIG5vdyBwdXNoZWQgdGhlIHBhdGNoZXMgdXBzdHJl
-YW0gdG8gdGhlIE5GUyBidWdmaXhlcw0KYnJhbmNoLiBJbnN0ZWFkIG9mIGFwcGx5aW5nIHRoZSBw
-YXRjaGVzLCBwZXJoYXBzIHlvdSBjb3VsZCBqdXN0IHB1bGwgdGhlDQpmdWxsIHNldCBvZiBORlMg
-Y2xpZW50IGJ1Z2ZpeGVzIGJ5IGRvaW5nDQoNCmdpdCBwdWxsIGdpdDovL2dpdC5saW51eC1uZnMu
-b3JnL3Byb2plY3RzL3Ryb25kbXkvbGludXgtbmZzLmdpdCBidWdmaXhlcw0KDQpDaGVlcnMNCiAg
-VHJvbmQNCg0KPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBNeWtsZWJ1c3Qs
-IFRyb25kIFttYWlsdG86VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb21dDQo+IFNlbnQ6IFRodXJz
-ZGF5LCBBdWd1c3QgMTYsIDIwMTIgNToyMiBQTQ0KPiBUbzogU2hhaSBMYXptaQ0KPiBDYzogV2ls
-bGlhbSBEYXVjaHk7IFNjaHVtYWtlciwgQnJ5YW47IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcN
-Cj4gU3ViamVjdDogUmU6IFtQQVRDSCAxLzJdIE5GUzogQ2xlYXIga2V5IGNvbnN0cnVjdGlvbiBk
-YXRhIGlmIHRoZSBpZG1hcCB1cGNhbGwgZmFpbHMNCj4NCj4gT24gVGh1LCAyMDEyLTA4LTE2IGF0
-IDE3OjE1IC0wNzAwLCBTaGFpIExhem1pIHdyb3RlOg0KPiA+IGdpdCBhcHBseSAtLWNoZWNrIDAw
-MDEtTkZTLUNsZWFyLWtleS1jb25zdHJ1Y3Rpb24tZGF0YS1pZi10aGUtaWRtYXAtdXBjYWxsLS5w
-YXRjaA0KPiA+IGVycm9yOiBwYXRjaCBmYWlsZWQ6IGZzL25mcy9pZG1hcC5jOjYxDQo+ID4gZXJy
-b3I6IGZzL25mcy9pZG1hcC5jOiBwYXRjaCBkb2VzIG5vdCBhcHBseQ0KPiA+DQo+ID4NCj4gPiBp
-ZG1hcC5jDQo+ID4gZGVmaW5lIE5GU19VSU5UX01BWExFTiAxMQ0KPiA+DQo+ID4gc3RhdGljIGNv
-bnN0IHN0cnVjdCBjcmVkICppZF9yZXNvbHZlcl9jYWNoZTsNCj4gPiBzdGF0aWMgc3RydWN0IGtl
-eV90eXBlIGtleV90eXBlX2lkX3Jlc29sdmVyX2xlZ2FjeTsNCj4gPg0KPiA+IHN0cnVjdCBpZG1h
-cCB7DQo+ID4gICAgICAgICBzdHJ1Y3QgcnBjX3BpcGUgICAgICAgICAqaWRtYXBfcGlwZTsNCj4g
-PiAgICAgICAgIHN0cnVjdCBrZXlfY29uc3RydWN0aW9uICppZG1hcF9rZXlfY29uczsNCj4gPiAg
-ICAgICAgIHN0cnVjdCBtdXRleCAgICAgICAgICAgIGlkbWFwX211dGV4Ow0KPiA+IH07DQo+DQo+
-IFRoYXQncyBob3cgaXQgc2hvdWxkIG1vcmUgb3IgbGVzcyBsb29rIGFmdGVyIGFwcGx5aW5nIHRo
-ZSBwYXRjaC4gSSdtDQo+IGd1ZXNzaW5nIHRoYXQgb25lIG9mIHlvdXIgcHJldmlvdXMgYXR0ZW1w
-dHMgaGFzIHBhcnRpYWxseSB3b3JrZWQsIGFuZA0KPiBoYXMgbGVmdCB5b3VyIGNoZWNrZWQgb3V0
-IGdpdCB0cmVlIGluIGEgImRpcnR5IiBzdGF0ZS4NCj4NCj4gUGxlYXNlIHRyeSB0aGUgZm9sbG93
-aW5nOg0KPg0KPiAkIGdpdCByZXNldCAtLWhhcmQgSEVBRA0KPiAkIGdpdCBhcHBseSAtLWNoZWNr
-IDAwMDEtTkZTLUNsZWFyLWtleS1jb25zdHJ1Y3Rpb24tZGF0YS1pZi10aGUtaWRtYXAtdXBjYWxs
-LS5wYXRjaA0KPiAkIGdpdCBhcHBseSAtLWNoZWNrIDAwMDItTkZTLXJldHVybi1FTk9LRVktd2hl
-bi10aGUtdXBjYWxsLWZhaWxzLXRvLW1hcC10aGUtbi5wYXRjaA0KPg0KPg0KPiA+DQo+ID4gLS0t
-LS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gPiBGcm9tOiBNeWtsZWJ1c3QsIFRyb25kIFttYWls
-dG86VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb21dDQo+ID4gU2VudDogVGh1cnNkYXksIEF1Z3Vz
-dCAxNiwgMjAxMiA1OjE0IFBNDQo+ID4gVG86IFNoYWkgTGF6bWkNCj4gPiBDYzogV2lsbGlhbSBE
-YXVjaHk7IFNjaHVtYWtlciwgQnJ5YW47IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4gPiBT
-dWJqZWN0OiBSZTogW1BBVENIIDEvMl0gTkZTOiBDbGVhciBrZXkgY29uc3RydWN0aW9uIGRhdGEg
-aWYgdGhlIGlkbWFwIHVwY2FsbCBmYWlscw0KPiA+DQo+ID4gT24gVGh1LCAyMDEyLTA4LTE2IGF0
-IDE3OjA3IC0wNzAwLCBTaGFpIExhem1pIHdyb3RlOg0KPiA+ID4gU29ycnkgLSBjb21wYW55J3Mg
-cG9saWN5IC4uLg0KPiA+ID4gV2hhdCBpZG1hcCB2ZXJzaW9uIHdhcyB0aGlzIHBhdGNoIHVzZWQg
-YWdhaW5zdD8gVGhlIG9uZSBJIGhhdmUgKGI3MDEzNThjKSBzZWVtcyB0byBiZSBhIGJpdCBkaWZm
-ZXJlbnQgKEkgdXNlZCBsYXRlc3QgcHVsbCBjb21taXQgZGRmMzQzZjYzNWZlNDQ0MGNhZDUyOGUx
-MmY5NmYyOGJkNTBhYTA5OSksIGhlbmNlIHRoZSBwYXRjaCBmYWlscyBhZ2Fpbg0KPiA+DQo+ID4g
-SXQgd29ya3MgZmluZSBmb3IgbWUgYWdhaW5zdCBjb21taXQgZGRmMzQzZjYzNWZlNDQ0MGNhZDUy
-OGUxMmY5NmYyOGJkNTBhYTA5OToNCj4gPg0KPiA+IFt0cm9uZG15QGxhZGUgbGludXgtbmZzXSQg
-Z2l0IGJyYW5jaCB0ZXN0LWFwcGx5IGRkZjM0M2Y2MzVmZTQ0NDBjYWQ1MjhlMTJmOTZmMjhiZDUw
-YWEwOTkNCj4gPiBbdHJvbmRteUBsYWRlIGxpbnV4LW5mc10kIGdpdCBjaGVja291dCB0ZXN0LWFw
-cGx5DQo+ID4gU3dpdGNoZWQgdG8gYnJhbmNoICd0ZXN0LWFwcGx5Jw0KPiA+IFt0cm9uZG15QGxh
-ZGUgbGludXgtbmZzXSQgZ2l0IGFtIH4vRGVza3RvcC9mb3Jfc2hhaS8wMDAxLU5GUy1DbGVhci1r
-ZXktY29uc3RydWN0aW9uLWRhdGEtaWYtdGhlLWlkbWFwLXVwY2FsbC0ucGF0Y2gNCj4gPiBBcHBs
-eWluZzogTkZTOiBDbGVhciBrZXkgY29uc3RydWN0aW9uIGRhdGEgaWYgdGhlIGlkbWFwIHVwY2Fs
-bCBmYWlscw0KPiA+IFt0cm9uZG15QGxhZGUgbGludXgtbmZzXSQgZ2l0IGFtIH4vRGVza3RvcC9m
-b3Jfc2hhaS8wMDAyLU5GUy1yZXR1cm4tRU5PS0VZLXdoZW4tdGhlLXVwY2FsbC1mYWlscy10by1t
-YXAtdGhlLW4ucGF0Y2gNCj4gPiBBcHBseWluZzogTkZTOiByZXR1cm4gLUVOT0tFWSB3aGVuIHRo
-ZSB1cGNhbGwgZmFpbHMgdG8gbWFwIHRoZSBuYW1lDQo+ID4NCj4gPiBXaGF0IGVycm9yIG1lc3Nh
-Z2VzIGFyZSB5b3Ugc2VlaW5nPw0KPiA+DQo+ID4gQ2hlZXJzDQo+ID4gICBUcm9uZA0KPiA+DQo+
-ID4gPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiA+ID4gRnJvbTogTXlrbGVidXN0LCBU
-cm9uZCBbbWFpbHRvOlRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tXQ0KPiA+ID4gU2VudDogVGh1
-cnNkYXksIEF1Z3VzdCAxNiwgMjAxMiA0OjU3IFBNDQo+ID4gPiBUbzogU2hhaSBMYXptaQ0KPiA+
-ID4gQ2M6IFdpbGxpYW0gRGF1Y2h5OyBTY2h1bWFrZXIsIEJyeWFuOyBsaW51eC1uZnNAdmdlci5r
-ZXJuZWwub3JnDQo+ID4gPiBTdWJqZWN0OiBSZTogW1BBVENIIDEvMl0gTkZTOiBDbGVhciBrZXkg
-Y29uc3RydWN0aW9uIGRhdGEgaWYgdGhlIGlkbWFwIHVwY2FsbCBmYWlscw0KPiA+ID4NCj4gPiA+
-IE9uIFRodSwgMjAxMi0wOC0xNiBhdCAxNjo1MCAtMDcwMCwgU2hhaSBMYXptaSB3cm90ZToNCj4g
-PiA+ID4gTVMgb3V0bG9vaw0KPiA+ID4NCj4gPiA+IERvbid0IGV2ZXIgdXNlIExvb2tPdXQgZm9y
-IHBhdGNoZXMuIEl0cyAiSSBqdXN0IHJlZm9ybWF0dGVkIHlvdXIgZW1haWwiDQo+ID4gPiB3b25k
-ZXIgZmVhdHVyZSBicmVha3MgYWxsIHRoZSB3aGl0ZXNwYWNlLg0KPiA+ID4NCj4gPiA+ID4gQmVz
-dCB0aGluZyBpcyB0byBhdHRhY2hlZCB0aGUgcGF0Y2gNCj4gPiA+DQo+ID4gPiBXZSBkbyBub3Qg
-bm9ybWFsbHkgdXNlIGF0dGFjaG1lbnRzIG9uIHRoZSBtYWlsaW5nIGxpc3QgYmVjYXVzZSBpdCBt
-YWtlcyBpdCBpbXBvc3NpYmxlIHRvIGNvbW1lbnQgdGhlIHBhdGNoZXMgaW5saW5lLiBBaCB3ZWxs
-LCBoZXJlIGdvZXMuLi4NCj4gPiA+DQo+ID4gPiAtLQ0KPiA+ID4gVHJvbmQgTXlrbGVidXN0DQo+
-ID4gPiBMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCj4gPiA+DQo+ID4gPiBOZXRBcHANCj4g
-PiA+IFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQo+ID4gPiB3d3cubmV0YXBwLmNvbQ0KPiA+
-ID4NCj4gPiA+DQo+ID4gPiBUaGlzIG1lc3NhZ2UgYW5kIGFueSBhdHRhY2hlZCBkb2N1bWVudHMg
-Y29udGFpbiBpbmZvcm1hdGlvbiBmcm9tIFFMb2dpYyBDb3Jwb3JhdGlvbiBvciBpdHMgd2hvbGx5
-LW93bmVkIHN1YnNpZGlhcmllcyB0aGF0IG1heSBiZSBjb25maWRlbnRpYWwuIElmIHlvdSBhcmUg
-bm90IHRoZSBpbnRlbmRlZCByZWNpcGllbnQsIHlvdSBtYXkgbm90IHJlYWQsIGNvcHksIGRpc3Ry
-aWJ1dGUsIG9yIHVzZSB0aGlzIGluZm9ybWF0aW9uLiBJZiB5b3UgaGF2ZSByZWNlaXZlZCB0aGlz
-IHRyYW5zbWlzc2lvbiBpbiBlcnJvciwgcGxlYXNlIG5vdGlmeSB0aGUgc2VuZGVyIGltbWVkaWF0
-ZWx5IGJ5IHJlcGx5IGUtbWFpbCBhbmQgdGhlbiBkZWxldGUgdGhpcyBtZXNzYWdlLg0KPiA+DQo+
-ID4gLS0NCj4gPiBUcm9uZCBNeWtsZWJ1c3QNCj4gPiBMaW51eCBORlMgY2xpZW50IG1haW50YWlu
-ZXINCj4gPg0KPiA+IE5ldEFwcA0KPiA+IFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQo+ID4g
-d3d3Lm5ldGFwcC5jb20NCj4gPg0KPiA+DQo+ID4gVGhpcyBtZXNzYWdlIGFuZCBhbnkgYXR0YWNo
-ZWQgZG9jdW1lbnRzIGNvbnRhaW4gaW5mb3JtYXRpb24gZnJvbSBRTG9naWMgQ29ycG9yYXRpb24g
-b3IgaXRzIHdob2xseS1vd25lZCBzdWJzaWRpYXJpZXMgdGhhdCBtYXkgYmUgY29uZmlkZW50aWFs
-LiBJZiB5b3UgYXJlIG5vdCB0aGUgaW50ZW5kZWQgcmVjaXBpZW50LCB5b3UgbWF5IG5vdCByZWFk
-LCBjb3B5LCBkaXN0cmlidXRlLCBvciB1c2UgdGhpcyBpbmZvcm1hdGlvbi4gSWYgeW91IGhhdmUg
-cmVjZWl2ZWQgdGhpcyB0cmFuc21pc3Npb24gaW4gZXJyb3IsIHBsZWFzZSBub3RpZnkgdGhlIHNl
-bmRlciBpbW1lZGlhdGVseSBieSByZXBseSBlLW1haWwgYW5kIHRoZW4gZGVsZXRlIHRoaXMgbWVz
-c2FnZS4NCj4NCj4gLS0NCj4gVHJvbmQgTXlrbGVidXN0DQo+IExpbnV4IE5GUyBjbGllbnQgbWFp
-bnRhaW5lcg0KPg0KPiBOZXRBcHANCj4gVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCj4gd3d3
-Lm5ldGFwcC5jb20NCj4NCj4NCj4gVGhpcyBtZXNzYWdlIGFuZCBhbnkgYXR0YWNoZWQgZG9jdW1l
-bnRzIGNvbnRhaW4gaW5mb3JtYXRpb24gZnJvbSBRTG9naWMgQ29ycG9yYXRpb24gb3IgaXRzIHdo
-b2xseS1vd25lZCBzdWJzaWRpYXJpZXMgdGhhdCBtYXkgYmUgY29uZmlkZW50aWFsLiBJZiB5b3Ug
-YXJlIG5vdCB0aGUgaW50ZW5kZWQgcmVjaXBpZW50LCB5b3UgbWF5IG5vdCByZWFkLCBjb3B5LCBk
-aXN0cmlidXRlLCBvciB1c2UgdGhpcyBpbmZvcm1hdGlvbi4gSWYgeW91IGhhdmUgcmVjZWl2ZWQg
-dGhpcyB0cmFuc21pc3Npb24gaW4gZXJyb3IsIHBsZWFzZSBub3RpZnkgdGhlIHNlbmRlciBpbW1l
-ZGlhdGVseSBieSByZXBseSBlLW1haWwgYW5kIHRoZW4gZGVsZXRlIHRoaXMgbWVzc2FnZS4NCg0K
-LS0NClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFw
-cA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg0KVGhpcyBt
-ZXNzYWdlIGFuZCBhbnkgYXR0YWNoZWQgZG9jdW1lbnRzIGNvbnRhaW4gaW5mb3JtYXRpb24gZnJv
-bSBRTG9naWMgQ29ycG9yYXRpb24gb3IgaXRzIHdob2xseS1vd25lZCBzdWJzaWRpYXJpZXMgdGhh
-dCBtYXkgYmUgY29uZmlkZW50aWFsLiBJZiB5b3UgYXJlIG5vdCB0aGUgaW50ZW5kZWQgcmVjaXBp
-ZW50LCB5b3UgbWF5IG5vdCByZWFkLCBjb3B5LCBkaXN0cmlidXRlLCBvciB1c2UgdGhpcyBpbmZv
-cm1hdGlvbi4gSWYgeW91IGhhdmUgcmVjZWl2ZWQgdGhpcyB0cmFuc21pc3Npb24gaW4gZXJyb3Is
-IHBsZWFzZSBub3RpZnkgdGhlIHNlbmRlciBpbW1lZGlhdGVseSBieSByZXBseSBlLW1haWwgYW5k
-IHRoZW4gZGVsZXRlIHRoaXMgbWVzc2FnZS4NCg==
+On 17.08.2012 21:18, J. Bruce Fields wrote:
+> On Fri, Aug 17, 2012 at 09:12:38PM +0400, Michael Tokarev wrote:
+[]
+>> So we're calling svc_recv in a tight loop, eating
+>> all available CPU.  (The above is with just 2 nfsd
+>> threads).
+>>
+>> Something is definitely wrong here.  And it happens mure more
+>> often after the mentioned commit (f03d78db65085).
+> 
+> Oh, neat.  Hm.  That commit doesn't really sound like the cause, then.
+> Is that busy-looping reproduceable on kernels before that commit?
 
+Note I bisected this issue to this commit.  I haven't seen it
+happening before this commit, and reverting it from 3.0 or 3.2
+kernel makes the problem to go away.
+
+I guess it is looping there:
+
+
+net/sunrpc/svc_xprt.c:svc_recv()
+...
+        len = 0;
+...
+        if (test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
+...
+        } else if (xprt->xpt_ops->xpo_has_wspace(xprt)) {  <=== here -- has no wspace due to memory...
+...  len = <something>
+        }
+
+        /* No data, incomplete (TCP) read, or accept() */
+        if (len == 0 || len == -EAGAIN)
+                goto out;
+...
+out:
+        rqstp->rq_res.len = 0;
+        svc_xprt_release(rqstp);
+        return -EAGAIN;
+}
+
+I'm trying to verify this theory...
+
+/mjt
