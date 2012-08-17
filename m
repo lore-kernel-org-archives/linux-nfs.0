@@ -1,76 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36174 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760143Ab2HXWCV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Aug 2012 18:02:21 -0400
-Date: Fri, 24 Aug 2012 18:02:19 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Rick Macklem <rmacklem@uoguelph.ca>
-Cc: linux-nfs@vger.kernel.org,
-        Norbert Aschendorff <norbert.aschendorff@yahoo.de>,
-        Trond Myklebust <trond@netapp.com>
-Subject: Re: NFSv4, Name (string) mapping vs. raw UID, idmapd and Kernels
- >= 3.3
-Message-ID: <20120824220219.GB21832@fieldses.org>
-References: <20120823144605.GA6923@fieldses.org>
- <900847353.1046192.1345767936102.JavaMail.root@erie.cs.uoguelph.ca>
+Received: from mailservice.tudelft.nl ([130.161.131.5]:38190 "EHLO
+	mailservice.tudelft.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758793Ab2HQSow (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Aug 2012 14:44:52 -0400
+Message-ID: <502E90F7.5050500@tudelft.nl>
+Date: Fri, 17 Aug 2012 20:44:07 +0200
+From: Richard Smits <R.Smits@tudelft.nl>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <900847353.1046192.1345767936102.JavaMail.root@erie.cs.uoguelph.ca>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nfsv4 state id errors
+References: <502E69FC.7080608@tudelft.nl>  <4FA345DA4F4AE44899BD2B03EEEC2FA93B7B79@SACEXCMBX04-PRD.hq.netapp.com>  <502E8EBD.6040702@tudelft.nl> <4FA345DA4F4AE44899BD2B03EEEC2FA93B7DC9@SACEXCMBX04-PRD.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA93B7DC9@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 23, 2012 at 08:25:36PM -0400, Rick Macklem wrote:
-> Then on the next page:
+Ok,
+
+He uses 3.0.34-0.7
+
+Linux 3.0.34-0.7-default #1 SMP Tue Jun 19 09:56:30 UTC 2012 (fbfc70c)
+x86_64 x86_64 x86_64 GNU/Linux
+
+Greetings.
+
+On 17-8-2012 20:40, Myklebust, Trond wrote:
+> Hi,
 > 
->    To provide a greater degree of compatibility with previous versions
->    of NFS (i.e., v2 and v3), which identified users and groups by 32-bit
->    unsigned uid's and gid's, owner and group strings that consist of
->    decimal numeric values with no leading zeros can be given a special
->    interpretation by clients and servers which choose to provide such
->    support.  
->    ** The receiver may treat such a user or group string as
->    representing the same user as would be represented by a v2/v3 uid or
->    gid having the corresponding numeric value.  A server is not
->    obligated to accept such a string, but may return an NFS4ERR_BADOWNER
->    instead.  
->    --> To avoid this mechanism being used to subvert user and
->    group translation, so that a client might pass all of the owners and
->    groups in numeric form, a server SHOULD return an NFS4ERR_BADOWNER
->    error when there is a valid translation for the user or owner
->    designated in this way.  In that case, the client must use the
->    appropriate name@domain string and not the special form for
->    compatibility.
+> OK, but which Linux kernel version is the person using? If you have
+> access to the machine in question, you can check using the command
+> 'uname -a'.
 > 
-> The sentence at "**" says a receiver "may" recognize the numeric uid/gid#
-> string. This would suggest that a client isn't expected/required to do so,
-> as I read it. (This page seems to be very confusing w.r.t. what clients/servers
-> are expected/required to support.)
-> The sentence at "-->" is a SHOULD (not a MUST, I admit) that seems to
-> say a server should only allow numeric uid/gid# strings when there isn't
-> a name<->uid/gid# translation and should avoid allowing clients to just
-> use uid/gid# strings?
+> Thanks,
+>   Trond
+> 
+> On Fri, 2012-08-17 at 20:34 +0200, Richard wrote:
+>> The person who reported this uses :
+>>
+>> nfs-client-1.2.3-18.17.2
+>> krb5-1.6.3-133.48.48.1
+>>
+>> I will check next monday with him if this is still the version he uses.
+>> He uses Suse Linux Enterprise Desktop 11.2.
+>>
+>> We use nfs4/krb5 with Windows AD as KDC on a Fas3170.
+>>
+>> Greetings.
+>>
+>> On 17-8-2012 20:18, Myklebust, Trond wrote:
+>>> On Fri, 2012-08-17 at 17:57 +0200, Richard wrote:
+>>>> Hello,
+>>>>
+>>>> A couple of weeks agoo we upgraded our Netapp filer to 8.1.1RC1. We have
+>>>> always had trouble with NFS and state id's. Resulting in hanging clients.
+>>>>
+>>>> Some bugs were fixed in 8.1.1 but still trouble.
+>>>>
+>>>> Now we have the following errors in our client messages file, after a hang.
+>>>>
+>>>> What does this : NFS: "v4 server srv returned a bad sequence-id error!"
+>>>> means ?
+>>>
+>>> Can you remind us which NFSv4 clients you are using?
+>>>
+>>> At one point the NFSv4 client was reusing open owners after they fell
+>>> out of the client cache, and that would create symptoms such as the
+>>> above. That bug has since been fixed in the upstream kernel.
+>>>
+>>
+> 
 
-Yeah, I thought I remembered some stronger requirement on the client,
-but the strongest I can get out of this is: "well, it says the server
-MAY return numeric id's, so that effectively means the client MUST
-handle them"... but that doesn't really require the client to do
-anything in particular with them.
-
-Cc'ing Trond in case he remember some language we overlooked.  Of course
-3530bis is different:
-
-	http://tools.ietf.org/html/draft-ietf-nfsv4-rfc3530bis-18#section-5.9
-
-	"The client MUST always accept numeric values if the security
-	mechanism is not RPCSEC_GSS."
-
-> Anyhow, I do plan to re-enable support for numeric uid/gid# strings in
-> the FreeBSD NFSv4 client, but it won't be released until 9.2 at the
-> earliest. (I, personally, have no problem with numeric uid/gid# strings.
-> I disabled support for them because I had thought the working group
-> didn't want them supported.)
-
-OK.  Yes it's been confusing!
-
---b.
