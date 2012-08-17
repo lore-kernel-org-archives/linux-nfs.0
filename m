@@ -1,101 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:41701 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753314Ab2HMVWC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Aug 2012 17:22:02 -0400
-Received: by mail-yx0-f174.google.com with SMTP id l14so2487139yen.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Aug 2012 14:22:01 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 4/5] SUNRPC: Insert a shim under gss_create()
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 13 Aug 2012 17:21:59 -0400
-Message-ID: <20120813212159.1680.63492.stgit@degas.1015granger.net>
-In-Reply-To: <20120813210739.1680.53741.stgit@degas.1015granger.net>
-References: <20120813210739.1680.53741.stgit@degas.1015granger.net>
+Received: from mailservice.tudelft.nl ([130.161.131.5]:55525 "EHLO
+	mailservice.tudelft.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932237Ab2HQQSI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Aug 2012 12:18:08 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by amavis (Postfix) with ESMTP id 725262B802A
+	for <linux-nfs@vger.kernel.org>; Fri, 17 Aug 2012 17:58:07 +0200 (CEST)
+Received: from mailservice.tudelft.nl ([130.161.131.73])
+	by localhost (tudelft.nl [127.0.0.1]) (amavisd-new, port 10026)
+	with ESMTP id dovDh8weLjDn for <linux-nfs@vger.kernel.org>;
+	Fri, 17 Aug 2012 17:58:06 +0200 (CEST)
+Received: from smtp-a.tudelft.nl (smtp-a.tudelft.nl [130.161.180.7])
+	by mx2.tudelft.nl (Postfix) with ESMTP id DAD9E2B802B
+	for <linux-nfs@vger.kernel.org>; Fri, 17 Aug 2012 17:58:06 +0200 (CEST)
+Received: from [172.19.3.32] (61-120.ipact.nl [82.210.120.61])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by smtp-a.tudelft.nl (Postfix) with ESMTP id BF991B3A62
+	for <linux-nfs@vger.kernel.org>; Fri, 17 Aug 2012 17:58:06 +0200 (CEST)
+Message-ID: <502E69FC.7080608@tudelft.nl>
+Date: Fri, 17 Aug 2012 17:57:48 +0200
+From: Richard <rsmits-l@tudelft.nl>
+Reply-To: Richard Smits <R.Smits@tudelft.nl>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: linux-nfs@vger.kernel.org
+Subject: nfsv4 state id errors
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We want to share rpc_pipe data between GSS-flavored rpc_auth objects.
-To do this, create a shim in gss_create() and gss_free() where the
-pipe data will be looked up, created, and destroyed.  The unused
-arguments anticipate a per-RPC client cache of pipes.
+Hello,
 
-This is a refactoring change which shouldn't have a functional
-effect.
+A couple of weeks agoo we upgraded our Netapp filer to 8.1.1RC1. We have
+always had trouble with NFS and state id's. Resulting in hanging clients.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Acked-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
+Some bugs were fixed in 8.1.1 but still trouble.
 
- net/sunrpc/auth_gss/auth_gss.c |   28 +++++++++++++++++++---------
- 1 files changed, 19 insertions(+), 9 deletions(-)
+Now we have the following errors in our client messages file, after a hang.
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 947ab01..82a3156 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -857,6 +857,18 @@ static int gss_pipes_dentries_create_net(struct rpc_clnt *clnt,
- 	return err;
- }
- 
-+static struct rpc_pipe *gss_mkpipe_data(struct rpc_clnt *clnt,
-+					const struct rpc_pipe_ops *ops,
-+					char *name)
-+{
-+	return rpc_mkpipe_data(ops, RPC_PIPE_WAIT_FOR_OPEN);
-+}
-+
-+static void gss_destroy_pipe_data(struct rpc_clnt *clnt, struct rpc_pipe *pipe)
-+{
-+	rpc_destroy_pipe_data(pipe);
-+}
-+
- /*
-  * NOTE: we have the opportunity to use different
-  * parameters based on the input flavor (which must be a pseudoflavor)
-@@ -899,15 +911,13 @@ gss_create(struct rpc_clnt *clnt, rpc_authflavor_t flavor)
- 	 * that we supported only the old pipe.  So we instead create
- 	 * the new pipe first.
- 	 */
--	gss_auth->pipe[1] = rpc_mkpipe_data(&gss_upcall_ops_v1,
--					    RPC_PIPE_WAIT_FOR_OPEN);
-+	gss_auth->pipe[1] = gss_mkpipe_data(clnt, &gss_upcall_ops_v1, "gssd");
- 	if (IS_ERR(gss_auth->pipe[1])) {
- 		err = PTR_ERR(gss_auth->pipe[1]);
- 		goto err_put_mech;
- 	}
--
--	gss_auth->pipe[0] = rpc_mkpipe_data(&gss_upcall_ops_v0,
--					    RPC_PIPE_WAIT_FOR_OPEN);
-+	gss_auth->pipe[0] = gss_mkpipe_data(clnt, &gss_upcall_ops_v0,
-+						gss_auth->mech->gm_name);
- 	if (IS_ERR(gss_auth->pipe[0])) {
- 		err = PTR_ERR(gss_auth->pipe[0]);
- 		goto err_destroy_pipe_1;
-@@ -923,9 +933,9 @@ gss_create(struct rpc_clnt *clnt, rpc_authflavor_t flavor)
- err_unlink_pipes:
- 	gss_pipes_dentries_destroy_net(clnt, auth);
- err_destroy_pipe_0:
--	rpc_destroy_pipe_data(gss_auth->pipe[0]);
-+	gss_destroy_pipe_data(clnt, gss_auth->pipe[0]);
- err_destroy_pipe_1:
--	rpc_destroy_pipe_data(gss_auth->pipe[1]);
-+	gss_destroy_pipe_data(clnt, gss_auth->pipe[1]);
- err_put_mech:
- 	gss_mech_put(gss_auth->mech);
- err_free:
-@@ -939,8 +949,8 @@ static void
- gss_free(struct gss_auth *gss_auth)
- {
- 	gss_pipes_dentries_destroy_net(gss_auth->client, &gss_auth->rpc_auth);
--	rpc_destroy_pipe_data(gss_auth->pipe[0]);
--	rpc_destroy_pipe_data(gss_auth->pipe[1]);
-+	gss_destroy_pipe_data(gss_auth->client, gss_auth->pipe[0]);
-+	gss_destroy_pipe_data(gss_auth->client, gss_auth->pipe[1]);
- 	gss_mech_put(gss_auth->mech);
- 
- 	kfree(gss_auth);
+What does this : NFS: "v4 server srv returned a bad sequence-id error!"
+means ?
+----
+Aug 17 14:08:23 tudxxxxxx kernel: [622014.866818] NFS: v4 server srvxxx
+ returned a bad sequence-id error!
+Aug 17 14:08:23 tudxxxxxx kernel: [622014.872143] NFS: v4 server
+returned a bad sequence-id error on an unconfirmed sequence
+ffff8801112dcc20!
+Aug 17 14:08:23 tudxxxxxx kernel: [622014.872871] NFS: v4 server
+returned a bad sequence-id error on an unconfirmed sequence
+ffff8801112dcc20!
+Aug 17 14:08:23 tudxxxxxx kernel: [622015.170658] NFS: v4 server
+returned a bad sequence-id error on an unconfirmed sequence
+ffff8801112e6820!
+Aug 17 14:08:23 tudxxxxxx kernel: [622015.278260] NFS: v4 server srvxxx
+ returned a bad sequence-id error!
+Aug 17 14:08:23 tudxxxxxx kernel: [622015.651868] NFS: v4 server srvxxx
+ returned a bad sequence-id error!
+Aug 17 14:08:24 tudxxxxxx kernel: [622016.051741] NFS: v4 server srvxxx
+ returned a bad sequence-id error!
+Aug 17 14:08:25 tudxxxxxx kernel: [622017.155713] NFS: v4 server srvxxx
+ returned a bad sequence-id error!
+Aug 17 14:08:25 tudxxxxxx kernel: [622017.346225] NFS: v4 server
+returned a bad sequence-id error on an unconfirmed sequence
+ffff8800bcf39620!
+Aug 17 14:08:25 tudxxxxxx kernel: [622017.349781] NFS: v4 server
+returned a bad sequence-id error on an unconfirmed sequence
+ffff8800bcf39620!
+Aug 17 14:08:25 tudxxxxxx kernel: [622017.350840] NFS: v4 server
+returned a bad sequence-id error on an unconfirmed sequence
+ffff8800bcf39620!
 
