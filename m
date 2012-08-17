@@ -1,270 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59642 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758259Ab2HUSIe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Aug 2012 14:08:34 -0400
-Date: Tue, 21 Aug 2012 14:08:32 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: viro@ZenIV.linux.org.uk, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] knfsd: don't allocate file_locks on the stack
-Message-ID: <20120821180832.GB16497@fieldses.org>
-References: <1345550612-9744-1-git-send-email-jlayton@redhat.com>
+Received: from [213.199.154.208] ([213.199.154.208]:28164 "EHLO
+	am1outboundpool.messaging.microsoft.com" rhost-flags-FAIL-FAIL-OK-OK)
+	by vger.kernel.org with ESMTP id S1752095Ab2HQSMM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Aug 2012 14:12:12 -0400
+From: Shai Lazmi <shai.lazmi@qlogic.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: William Dauchy <wdauchy@gmail.com>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Fri, 17 Aug 2012 11:10:53 -0700
+Subject: RE: [PATCH 1/2] NFS: Clear key construction data if the idmap
+ upcall fails
+Message-ID: <21641D3714F5AF449DC483E699E1124E86E64096A5@AVEXMB2.qlogic.org>
+References: <1345148622-10845-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <21641D3714F5AF449DC483E699E1124E86E640957F@AVEXMB2.qlogic.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B542B@SACEXCMBX04-PRD.hq.netapp.com>
+	 <21641D3714F5AF449DC483E699E1124E86E6409585@AVEXMB2.qlogic.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B54EC@SACEXCMBX04-PRD.hq.netapp.com>
+	 <21641D3714F5AF449DC483E699E1124E86E640958D@AVEXMB2.qlogic.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B5646@SACEXCMBX04-PRD.hq.netapp.com>
+	 <21641D3714F5AF449DC483E699E1124E86E6409593@AVEXMB2.qlogic.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B56F2@SACEXCMBX04-PRD.hq.netapp.com>
+	 <21641D3714F5AF449DC483E699E1124E86E6409621@AVEXMB2.qlogic.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA93B79FD@SACEXCMBX04-PRD.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA93B79FD@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1345550612-9744-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Applying for 3.6, thanks.--b.
+Q29vbCAtIFdvcmtzICEhIQ0KDQotLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogTXlr
+bGVidXN0LCBUcm9uZCBbbWFpbHRvOlRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tXQ0KU2VudDog
+RnJpZGF5LCBBdWd1c3QgMTcsIDIwMTIgMTA6NDYgQU0NClRvOiBTaGFpIExhem1pDQpDYzogV2ls
+bGlhbSBEYXVjaHk7IFNjaHVtYWtlciwgQnJ5YW47IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcN
+ClN1YmplY3Q6IFJlOiBbUEFUQ0ggMS8yXSBORlM6IENsZWFyIGtleSBjb25zdHJ1Y3Rpb24gZGF0
+YSBpZiB0aGUgaWRtYXAgdXBjYWxsIGZhaWxzDQoNCk9uIEZyaSwgMjAxMi0wOC0xNyBhdCAwOToy
+MCAtMDcwMCwgU2hhaSBMYXptaSB3cm90ZToNCj4gTm8gbHVjayAuLi4NCj4gLS0tLS0tLS0tLS0t
+WyBjdXQgaGVyZSBdLS0tLS0tLS0tLS0tDQo+IGtlcm5lbCBCVUcgYXQgZnMvbmZzL2lkbWFwLmM6
+NjgxIQ0KDQpUaGF0IHN1Z2dlc3RzIHRoYXQgeW91IGhhdmVuJ3QgYmVlbiB0ZXN0aW5nIHRoZSBy
+aWdodCBicmFuY2guIFRoZSBCVUdfT04NCnNob3VsZCBoYXZlIGJlZW4gbW92ZWQgdG8gbGluZSA2
+OTIgYWZ0ZXIgdGhlIHBhdGNoZXMgd2VyZSBhcHBsaWVkLg0KDQpEaWQgeW91IGNvcHkgdGhlIGV4
+YWN0IHB1bGwgcmVxdWVzdCBmcm9tIG15IGVtYWlsIChpLmUuICJnaXQgcHVsbA0KZ2l0Oi8vZ2l0
+LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9saW51eC1uZnMuZ2l0IGJ1Z2ZpeGVzIj8g
+SWYgc28sDQp5b3Ugc2hvdWxkIGhhdmUgZ290dGVuIGEgdmltIHBhZ2Ugd2l0aCBhIHRleHQgb2Yg
+dGhlIGZvcm06DQoNCiAgICAgICAgTWVyZ2UgYnJhbmNoICdidWdmaXhlcycgb2YgZ2l0Oi8vZ2l0
+LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9saW51eC1uZnMgaW4NCg0KICAgICAgICAj
+IFBsZWFzZSBlbnRlciBhIGNvbW1pdCBtZXNzYWdlIHRvIGV4cGxhaW4gd2h5IHRoaXMgbWVyZ2Ug
+aXMgbmVjZXNzYXJ5LA0KICAgICAgICAjIGVzcGVjaWFsbHkgaWYgaXQgbWVyZ2VzIGFuIHVwZGF0
+ZWQgdXBzdHJlYW0gaW50byBhIHRvcGljIGJyYW5jaC4NCiAgICAgICAgIw0KICAgICAgICAjIExp
+bmVzIHN0YXJ0aW5nIHdpdGggJyMnIHdpbGwgYmUgaWdub3JlZCwgYW5kIGFuIGVtcHR5IG1lc3Nh
+Z2UgYWJvcnRzDQogICAgICAgICMgdGhlIGNvbW1pdC4NCg0KDQood2hpY2ggeW91IHRoZW4gZm9s
+bG93IHVwIHdpdGggYSAnOndxJyB0byBjb25maXJtKQ0KDQpBICdnaXQgbG9nJyBzaG91bGQgdGhl
+biBzaG93IHlvdXIgZmlyc3QgY29tbWl0IGFzIGJlaW5nIHNvbWV0aGluZyBhbG9uZw0KdGhlIGxp
+bmVzIG9mOg0KDQogICAgICAgIE1lcmdlOiBkOTg3NTY5IDEyZGZkMDgNCiAgICAgICAgQXV0aG9y
+OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KICAgICAgICBE
+YXRlOiAgIEZyaSBBdWcgMTcgMTM6NDE6MDIgMjAxMiAtMDQwMA0KDQogICAgICAgICAgICBNZXJn
+ZSBicmFuY2ggJ2J1Z2ZpeGVzJyBvZiBnaXQ6Ly9naXQubGludXgtbmZzLm9yZy9wcm9qZWN0cy90
+cm9uZG15L2xpbnV4LW5mDQoNCg0KSXMgdGhhdCBpbmRlZWQgdGhlIGNhc2U/DQoNCg0KDQotLQ0K
+VHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpU
+cm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0KDQpUaGlzIG1lc3Nh
+Z2UgYW5kIGFueSBhdHRhY2hlZCBkb2N1bWVudHMgY29udGFpbiBpbmZvcm1hdGlvbiBmcm9tIFFM
+b2dpYyBDb3Jwb3JhdGlvbiBvciBpdHMgd2hvbGx5LW93bmVkIHN1YnNpZGlhcmllcyB0aGF0IG1h
+eSBiZSBjb25maWRlbnRpYWwuIElmIHlvdSBhcmUgbm90IHRoZSBpbnRlbmRlZCByZWNpcGllbnQs
+IHlvdSBtYXkgbm90IHJlYWQsIGNvcHksIGRpc3RyaWJ1dGUsIG9yIHVzZSB0aGlzIGluZm9ybWF0
+aW9uLiBJZiB5b3UgaGF2ZSByZWNlaXZlZCB0aGlzIHRyYW5zbWlzc2lvbiBpbiBlcnJvciwgcGxl
+YXNlIG5vdGlmeSB0aGUgc2VuZGVyIGltbWVkaWF0ZWx5IGJ5IHJlcGx5IGUtbWFpbCBhbmQgdGhl
+biBkZWxldGUgdGhpcyBtZXNzYWdlLg0K
 
-On Tue, Aug 21, 2012 at 08:03:32AM -0400, Jeff Layton wrote:
-> struct file_lock is pretty large and really ought not live on the stack.
-> On my x86_64 machine, they're almost 200 bytes each.
-> 
->     (gdb) p sizeof(struct file_lock)
->     $1 = 192
-> 
-> ...allocate them dynamically instead.
-> 
-> Reported-by: Al Viro <viro@ZenIV.linux.org.uk>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfsd/nfs4state.c | 118 +++++++++++++++++++++++++++++++++-------------------
->  1 file changed, 76 insertions(+), 42 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 6e12fd5..07ded6d 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -4046,8 +4046,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	struct nfs4_lockowner *lock_sop = NULL;
->  	struct nfs4_ol_stateid *lock_stp;
->  	struct file *filp = NULL;
-> -	struct file_lock file_lock;
-> -	struct file_lock conflock;
-> +	struct file_lock *file_lock = NULL;
-> +	struct file_lock *conflock = NULL;
->  	__be32 status = 0;
->  	bool new_state = false;
->  	int lkflg;
-> @@ -4117,21 +4117,28 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	if (!locks_in_grace(SVC_NET(rqstp)) && lock->lk_reclaim)
->  		goto out;
->  
-> -	locks_init_lock(&file_lock);
-> +	file_lock = locks_alloc_lock();
-> +	if (!file_lock) {
-> +		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
-> +		status = nfserr_jukebox;
-> +		goto out;
-> +	}
-> +
-> +	locks_init_lock(file_lock);
->  	switch (lock->lk_type) {
->  		case NFS4_READ_LT:
->  		case NFS4_READW_LT:
->  			filp = find_readable_file(lock_stp->st_file);
->  			if (filp)
->  				get_lock_access(lock_stp, NFS4_SHARE_ACCESS_READ);
-> -			file_lock.fl_type = F_RDLCK;
-> +			file_lock->fl_type = F_RDLCK;
->  			break;
->  		case NFS4_WRITE_LT:
->  		case NFS4_WRITEW_LT:
->  			filp = find_writeable_file(lock_stp->st_file);
->  			if (filp)
->  				get_lock_access(lock_stp, NFS4_SHARE_ACCESS_WRITE);
-> -			file_lock.fl_type = F_WRLCK;
-> +			file_lock->fl_type = F_WRLCK;
->  			break;
->  		default:
->  			status = nfserr_inval;
-> @@ -4141,17 +4148,23 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  		status = nfserr_openmode;
->  		goto out;
->  	}
-> -	file_lock.fl_owner = (fl_owner_t)lock_sop;
-> -	file_lock.fl_pid = current->tgid;
-> -	file_lock.fl_file = filp;
-> -	file_lock.fl_flags = FL_POSIX;
-> -	file_lock.fl_lmops = &nfsd_posix_mng_ops;
-> -
-> -	file_lock.fl_start = lock->lk_offset;
-> -	file_lock.fl_end = last_byte_offset(lock->lk_offset, lock->lk_length);
-> -	nfs4_transform_lock_offset(&file_lock);
-> +	file_lock->fl_owner = (fl_owner_t)lock_sop;
-> +	file_lock->fl_pid = current->tgid;
-> +	file_lock->fl_file = filp;
-> +	file_lock->fl_flags = FL_POSIX;
-> +	file_lock->fl_lmops = &nfsd_posix_mng_ops;
-> +	file_lock->fl_start = lock->lk_offset;
-> +	file_lock->fl_end = last_byte_offset(lock->lk_offset, lock->lk_length);
-> +	nfs4_transform_lock_offset(file_lock);
-> +
-> +	conflock = locks_alloc_lock();
-> +	if (!conflock) {
-> +		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
-> +		status = nfserr_jukebox;
-> +		goto out;
-> +	}
->  
-> -	err = vfs_lock_file(filp, F_SETLK, &file_lock, &conflock);
-> +	err = vfs_lock_file(filp, F_SETLK, file_lock, conflock);
->  	switch (-err) {
->  	case 0: /* success! */
->  		update_stateid(&lock_stp->st_stid.sc_stateid);
-> @@ -4162,7 +4175,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	case (EAGAIN):		/* conflock holds conflicting lock */
->  		status = nfserr_denied;
->  		dprintk("NFSD: nfsd4_lock: conflicting lock found!\n");
-> -		nfs4_set_lock_denied(&conflock, &lock->lk_denied);
-> +		nfs4_set_lock_denied(conflock, &lock->lk_denied);
->  		break;
->  	case (EDEADLK):
->  		status = nfserr_deadlock;
-> @@ -4177,6 +4190,10 @@ out:
->  		release_lockowner(lock_sop);
->  	if (!cstate->replay_owner)
->  		nfs4_unlock_state();
-> +	if (file_lock)
-> +		locks_free_lock(file_lock);
-> +	if (conflock)
-> +		locks_free_lock(conflock);
->  	return status;
->  }
->  
-> @@ -4205,7 +4222,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	    struct nfsd4_lockt *lockt)
->  {
->  	struct inode *inode;
-> -	struct file_lock file_lock;
-> +	struct file_lock *file_lock = NULL;
->  	struct nfs4_lockowner *lo;
->  	__be32 status;
->  	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
-> @@ -4226,15 +4243,21 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  		goto out;
->  
->  	inode = cstate->current_fh.fh_dentry->d_inode;
-> -	locks_init_lock(&file_lock);
-> +	file_lock = locks_alloc_lock();
-> +	if (!file_lock) {
-> +		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
-> +		status = nfserr_jukebox;
-> +		goto out;
-> +	}
-> +	locks_init_lock(file_lock);
->  	switch (lockt->lt_type) {
->  		case NFS4_READ_LT:
->  		case NFS4_READW_LT:
-> -			file_lock.fl_type = F_RDLCK;
-> +			file_lock->fl_type = F_RDLCK;
->  		break;
->  		case NFS4_WRITE_LT:
->  		case NFS4_WRITEW_LT:
-> -			file_lock.fl_type = F_WRLCK;
-> +			file_lock->fl_type = F_WRLCK;
->  		break;
->  		default:
->  			dprintk("NFSD: nfs4_lockt: bad lock type!\n");
-> @@ -4244,25 +4267,27 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  
->  	lo = find_lockowner_str(inode, &lockt->lt_clientid, &lockt->lt_owner);
->  	if (lo)
-> -		file_lock.fl_owner = (fl_owner_t)lo;
-> -	file_lock.fl_pid = current->tgid;
-> -	file_lock.fl_flags = FL_POSIX;
-> +		file_lock->fl_owner = (fl_owner_t)lo;
-> +	file_lock->fl_pid = current->tgid;
-> +	file_lock->fl_flags = FL_POSIX;
->  
-> -	file_lock.fl_start = lockt->lt_offset;
-> -	file_lock.fl_end = last_byte_offset(lockt->lt_offset, lockt->lt_length);
-> +	file_lock->fl_start = lockt->lt_offset;
-> +	file_lock->fl_end = last_byte_offset(lockt->lt_offset, lockt->lt_length);
->  
-> -	nfs4_transform_lock_offset(&file_lock);
-> +	nfs4_transform_lock_offset(file_lock);
->  
-> -	status = nfsd_test_lock(rqstp, &cstate->current_fh, &file_lock);
-> +	status = nfsd_test_lock(rqstp, &cstate->current_fh, file_lock);
->  	if (status)
->  		goto out;
->  
-> -	if (file_lock.fl_type != F_UNLCK) {
-> +	if (file_lock->fl_type != F_UNLCK) {
->  		status = nfserr_denied;
-> -		nfs4_set_lock_denied(&file_lock, &lockt->lt_denied);
-> +		nfs4_set_lock_denied(file_lock, &lockt->lt_denied);
->  	}
->  out:
->  	nfs4_unlock_state();
-> +	if (file_lock)
-> +		locks_free_lock(file_lock);
->  	return status;
->  }
->  
-> @@ -4272,7 +4297,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  {
->  	struct nfs4_ol_stateid *stp;
->  	struct file *filp = NULL;
-> -	struct file_lock file_lock;
-> +	struct file_lock *file_lock = NULL;
->  	__be32 status;
->  	int err;
->  						        
-> @@ -4294,22 +4319,29 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  		status = nfserr_lock_range;
->  		goto out;
->  	}
-> -	locks_init_lock(&file_lock);
-> -	file_lock.fl_type = F_UNLCK;
-> -	file_lock.fl_owner = (fl_owner_t)lockowner(stp->st_stateowner);
-> -	file_lock.fl_pid = current->tgid;
-> -	file_lock.fl_file = filp;
-> -	file_lock.fl_flags = FL_POSIX; 
-> -	file_lock.fl_lmops = &nfsd_posix_mng_ops;
-> -	file_lock.fl_start = locku->lu_offset;
-> -
-> -	file_lock.fl_end = last_byte_offset(locku->lu_offset, locku->lu_length);
-> -	nfs4_transform_lock_offset(&file_lock);
-> +	file_lock = locks_alloc_lock();
-> +	if (!file_lock) {
-> +		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
-> +		status = nfserr_jukebox;
-> +		goto out;
-> +	}
-> +	locks_init_lock(file_lock);
-> +	file_lock->fl_type = F_UNLCK;
-> +	file_lock->fl_owner = (fl_owner_t)lockowner(stp->st_stateowner);
-> +	file_lock->fl_pid = current->tgid;
-> +	file_lock->fl_file = filp;
-> +	file_lock->fl_flags = FL_POSIX;
-> +	file_lock->fl_lmops = &nfsd_posix_mng_ops;
-> +	file_lock->fl_start = locku->lu_offset;
-> +
-> +	file_lock->fl_end = last_byte_offset(locku->lu_offset,
-> +						locku->lu_length);
-> +	nfs4_transform_lock_offset(file_lock);
->  
->  	/*
->  	*  Try to unlock the file in the VFS.
->  	*/
-> -	err = vfs_lock_file(filp, F_SETLK, &file_lock, NULL);
-> +	err = vfs_lock_file(filp, F_SETLK, file_lock, NULL);
->  	if (err) {
->  		dprintk("NFSD: nfs4_locku: vfs_lock_file failed!\n");
->  		goto out_nfserr;
-> @@ -4323,6 +4355,8 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  out:
->  	if (!cstate->replay_owner)
->  		nfs4_unlock_state();
-> +	if (file_lock)
-> +		locks_free_lock(file_lock);
->  	return status;
->  
->  out_nfserr:
-> -- 
-> 1.7.11.4
-> 
