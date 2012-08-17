@@ -1,152 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:39086 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751773Ab2HNQZC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 12:25:02 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH 02/16] user_ns: use new hashtable implementation
-Date: Tue, 14 Aug 2012 18:24:36 +0200
-Message-Id: <1344961490-4068-3-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
-References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:45694 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751800Ab2HQTSE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Aug 2012 15:18:04 -0400
+Date: Fri, 17 Aug 2012 15:18:00 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Michael Tokarev <mjt@tls.msk.ru>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Linux-kernel <linux-kernel@vger.kernel.org>,
+        Eric Dumazet <eric.dumazet@gmail.com>
+Subject: Re: 3.0+ NFS issues (bisected)
+Message-ID: <20120817191800.GA14620@fieldses.org>
+References: <4FC77755.5060606@msgid.tls.msk.ru>
+ <4FFC2573.8040804@msgid.tls.msk.ru>
+ <20120712125303.GC16822@fieldses.org>
+ <502DA4E8.9050800@msgid.tls.msk.ru>
+ <20120817145616.GC11172@fieldses.org>
+ <20120817160057.GE11172@fieldses.org>
+ <502E7B86.3060702@msgid.tls.msk.ru>
+ <20120817171854.GA14015@fieldses.org>
+ <502E7EC3.5030006@msgid.tls.msk.ru>
+ <502E7F84.3060003@msgid.tls.msk.ru>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <502E7F84.3060003@msgid.tls.msk.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch user_ns to use the new hashtable implementation. This reduces the amount of
-generic unrelated code in user_ns.
+On Fri, Aug 17, 2012 at 09:29:40PM +0400, Michael Tokarev wrote:
+> On 17.08.2012 21:26, Michael Tokarev wrote:
+> > On 17.08.2012 21:18, J. Bruce Fields wrote:
+> >> On Fri, Aug 17, 2012 at 09:12:38PM +0400, Michael Tokarev wrote:
+> > []
+> >>> So we're calling svc_recv in a tight loop, eating
+> >>> all available CPU.  (The above is with just 2 nfsd
+> >>> threads).
+> >>>
+> >>> Something is definitely wrong here.  And it happens mure more
+> >>> often after the mentioned commit (f03d78db65085).
+> >>
+> >> Oh, neat.  Hm.  That commit doesn't really sound like the cause, then.
+> >> Is that busy-looping reproduceable on kernels before that commit?
+> > 
+> > Note I bisected this issue to this commit.  I haven't seen it
+> > happening before this commit, and reverting it from 3.0 or 3.2
+> > kernel makes the problem to go away.
+> > 
+> > I guess it is looping there:
+> > 
+> > 
+> > net/sunrpc/svc_xprt.c:svc_recv()
+> > ...
+> >         len = 0;
+> > ...
+> >         if (test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
+> > ...
+> >         } else if (xprt->xpt_ops->xpo_has_wspace(xprt)) {  <=== here -- has no wspace due to memory...
+> > ...  len = <something>
+> >         }
+> > 
+> >         /* No data, incomplete (TCP) read, or accept() */
+> >         if (len == 0 || len == -EAGAIN)
+> >                 goto out;
+> > ...
+> > out:
+> >         rqstp->rq_res.len = 0;
+> >         svc_xprt_release(rqstp);
+> >         return -EAGAIN;
+> > }
+> > 
+> > I'm trying to verify this theory...
+> 
+> Yes.  I inserted a printk there, and all these million times while
+> we're waiting in this EAGAIN loop, this printk is triggering:
+> 
+> ....
+> [21052.533053]  svc_recv: !has_wspace
+> [21052.533070]  svc_recv: !has_wspace
+> [21052.533087]  svc_recv: !has_wspace
+> [21052.533105]  svc_recv: !has_wspace
+> [21052.533122]  svc_recv: !has_wspace
+> [21052.533139]  svc_recv: !has_wspace
+> [21052.533156]  svc_recv: !has_wspace
+> [21052.533174]  svc_recv: !has_wspace
+> [21052.533191]  svc_recv: !has_wspace
+> [21052.533208]  svc_recv: !has_wspace
+> [21052.533226]  svc_recv: !has_wspace
+> [21052.533244]  svc_recv: !has_wspace
+> [21052.533265] calling svc_recv: 1228163 times (err=-4)
+> [21052.533403] calling svc_recv: 1226616 times (err=-4)
+> [21052.534520] nfsd: last server has exited, flushing export cache
+> 
+> (I stopped nfsd since it was flooding the log).
+> 
+> I can only guess that before that commit, we always had space,
+> now we don't anymore, and are looping like crazy.
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
- kernel/user.c |   33 +++++++++++++--------------------
- 1 files changed, 13 insertions(+), 20 deletions(-)
+Thanks!  But, arrgh--that should be enough to go on at this point, but
+I'm not seeing it.  If has_wspace is returning false then it's likely
+also returning false to the call at the start of svc_xprt_enqueue() (see
+svc_xprt_has_something_to_do), which means the xprt shouldn't be getting
+requeued and the next svc_recv call should find no socket ready (so
+svc_xprt_dequeue() returns NULL), and goes to sleep.
 
-diff --git a/kernel/user.c b/kernel/user.c
-index b815fef..d10c484 100644
---- a/kernel/user.c
-+++ b/kernel/user.c
-@@ -16,6 +16,7 @@
- #include <linux/interrupt.h>
- #include <linux/export.h>
- #include <linux/user_namespace.h>
-+#include <linux/hashtable.h>
- 
- /*
-  * userns count is 1 for root user, 1 for init_uts_ns,
-@@ -52,13 +53,9 @@ EXPORT_SYMBOL_GPL(init_user_ns);
-  */
- 
- #define UIDHASH_BITS	(CONFIG_BASE_SMALL ? 3 : 7)
--#define UIDHASH_SZ	(1 << UIDHASH_BITS)
--#define UIDHASH_MASK		(UIDHASH_SZ - 1)
--#define __uidhashfn(uid)	(((uid >> UIDHASH_BITS) + uid) & UIDHASH_MASK)
--#define uidhashentry(uid)	(uidhash_table + __uidhashfn((__kuid_val(uid))))
- 
- static struct kmem_cache *uid_cachep;
--struct hlist_head uidhash_table[UIDHASH_SZ];
-+static DEFINE_HASHTABLE(uidhash_table, UIDHASH_BITS)
- 
- /*
-  * The uidhash_lock is mostly taken from process context, but it is
-@@ -84,22 +81,22 @@ struct user_struct root_user = {
- /*
-  * These routines must be called with the uidhash spinlock held!
-  */
--static void uid_hash_insert(struct user_struct *up, struct hlist_head *hashent)
-+static void uid_hash_insert(struct user_struct *up)
- {
--	hlist_add_head(&up->uidhash_node, hashent);
-+	hash_add(uidhash_table, &up->uidhash_node, __kuid_val(up->uid));
- }
- 
- static void uid_hash_remove(struct user_struct *up)
- {
--	hlist_del_init(&up->uidhash_node);
-+	hash_del(&up->uidhash_node);
- }
- 
--static struct user_struct *uid_hash_find(kuid_t uid, struct hlist_head *hashent)
-+static struct user_struct *uid_hash_find(kuid_t uid)
- {
- 	struct user_struct *user;
- 	struct hlist_node *h;
- 
--	hlist_for_each_entry(user, h, hashent, uidhash_node) {
-+	hash_for_each_possible(uidhash_table, user, h, uidhash_node, __kuid_val(uid)) {
- 		if (uid_eq(user->uid, uid)) {
- 			atomic_inc(&user->__count);
- 			return user;
-@@ -135,7 +132,7 @@ struct user_struct *find_user(kuid_t uid)
- 	unsigned long flags;
- 
- 	spin_lock_irqsave(&uidhash_lock, flags);
--	ret = uid_hash_find(uid, uidhashentry(uid));
-+	ret = uid_hash_find(uid);
- 	spin_unlock_irqrestore(&uidhash_lock, flags);
- 	return ret;
- }
-@@ -156,11 +153,10 @@ void free_uid(struct user_struct *up)
- 
- struct user_struct *alloc_uid(kuid_t uid)
- {
--	struct hlist_head *hashent = uidhashentry(uid);
- 	struct user_struct *up, *new;
- 
- 	spin_lock_irq(&uidhash_lock);
--	up = uid_hash_find(uid, hashent);
-+	up = uid_hash_find(uid);
- 	spin_unlock_irq(&uidhash_lock);
- 
- 	if (!up) {
-@@ -176,13 +172,13 @@ struct user_struct *alloc_uid(kuid_t uid)
- 		 * on adding the same user already..
- 		 */
- 		spin_lock_irq(&uidhash_lock);
--		up = uid_hash_find(uid, hashent);
-+		up = uid_hash_find(uid);
- 		if (up) {
- 			key_put(new->uid_keyring);
- 			key_put(new->session_keyring);
- 			kmem_cache_free(uid_cachep, new);
- 		} else {
--			uid_hash_insert(new, hashent);
-+			uid_hash_insert(new);
- 			up = new;
- 		}
- 		spin_unlock_irq(&uidhash_lock);
-@@ -196,17 +192,14 @@ out_unlock:
- 
- static int __init uid_cache_init(void)
- {
--	int n;
--
- 	uid_cachep = kmem_cache_create("uid_cache", sizeof(struct user_struct),
- 			0, SLAB_HWCACHE_ALIGN|SLAB_PANIC, NULL);
- 
--	for(n = 0; n < UIDHASH_SZ; ++n)
--		INIT_HLIST_HEAD(uidhash_table + n);
-+	hash_init(uidhash_table);
- 
- 	/* Insert the root user immediately (init already runs as root) */
- 	spin_lock_irq(&uidhash_lock);
--	uid_hash_insert(&root_user, uidhashentry(GLOBAL_ROOT_UID));
-+	uid_hash_insert(&root_user);
- 	spin_unlock_irq(&uidhash_lock);
- 
- 	return 0;
--- 
-1.7.8.6
+But clearly it's not working that way....
 
+--b.
