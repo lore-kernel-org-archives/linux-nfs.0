@@ -1,67 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:28564 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:64571 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751184Ab2HGPS0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Aug 2012 11:18:26 -0400
-Message-ID: <502131BF.1040704@netapp.com>
-Date: Tue, 07 Aug 2012 11:18:23 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+	id S1751531Ab2HQAOC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Aug 2012 20:14:02 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Shai Lazmi <shai.lazmi@qlogic.com>
+CC: William Dauchy <wdauchy@gmail.com>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFS: Clear key construction data if the idmap
+ upcall fails
+Date: Fri, 17 Aug 2012 00:13:59 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA93B5646@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1345148622-10845-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <21641D3714F5AF449DC483E699E1124E86E640957F@AVEXMB2.qlogic.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B542B@SACEXCMBX04-PRD.hq.netapp.com>
+	 <21641D3714F5AF449DC483E699E1124E86E6409585@AVEXMB2.qlogic.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B54EC@SACEXCMBX04-PRD.hq.netapp.com>
+	 <21641D3714F5AF449DC483E699E1124E86E640958D@AVEXMB2.qlogic.org>
+In-Reply-To: <21641D3714F5AF449DC483E699E1124E86E640958D@AVEXMB2.qlogic.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        Joerg Roedel <joro@8bytes.org>, Joerg Roedel <joerg.roedel@amd.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "wdauchy@gmail.com" <wdauchy@gmail.com>
-Subject: Re: kernel BUG at /data/lemmy/linux.trees.git/fs/nfs/idmap.c:681!
-References: <20120807134156.GP1996@amd.com> <50211E42.6040808@netapp.com>  <20120807141548.GG1917@8bytes.org> <5021237D.1010107@netapp.com>  <20120807142707.GH1917@8bytes.org> <502127EF.3030209@netapp.com> <1344352458.5781.8.camel@lade.trondhjem.org>
-In-Reply-To: <1344352458.5781.8.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/07/2012 11:14 AM, Myklebust, Trond wrote:
-> On Tue, 2012-08-07 at 10:36 -0400, Bryan Schumaker wrote:
->> On 08/07/2012 10:27 AM, Joerg Roedel wrote:
->>> On Tue, Aug 07, 2012 at 10:17:33AM -0400, Bryan Schumaker wrote:
->>>> On 08/07/2012 10:15 AM, Joerg Roedel wrote:
->>>>> Yes, it reproduces pretty reliable here with Ubuntu 11.10 Server on an
->>>>> Intel box with an NFSv3 directory mounted at boot. This is the only box
->>>>> I have seen this so far, probably it depends on the config. I attach the
->>>>> config of the failing box.
->>>>
->>>> Interesting.  Are you mounting v4, too?  This code shouldn't be
->>>> running for v3... maybe that's why I haven't been able to hit it.
->>>
->>> No, I am not using NFSv4 on the box where the BUG happens. I have
->>> another box mounting the same directory where the BUG does not trigger
->>> with v3.6-rc1. A difference I spotted between the kernels is, that on
->>> the failing box NFS is compiled as a module whereas it is compiled into
->>> the kernel on the box that works fine. Not sure if that has anything to
->>> do with the problem...
->>>
->>
->> Your stack trace is showing v4 calls on the failing box, those definitely shouldn't be happening if you're using v3.  Can you double check /etc/fstab and /proc/mounts on a working kernel to be sure?
->>
->> My VM has nfs as a module, so I don't think that's the issue... I just started compiling your config to test on my own.
-> 
-> Joerg,
-> 
-> The stack trace definitely shows that the NFS client is attempting an
-> NFSv4 mount. Are you supplying a 'vers=3' mount option? If not, then
-> note that recent versions of nfs-utils can be configured to try NFSv4 as
-> the default mount option, so I'd guess this is why you are hitting an
-> NFSv4 path.
-> 
-> Bryan,
-> 
-> That said, when looking at the legacy upcall, it seems that if
-> rpc_queue_upcall fails, then we don't do anything to clear
-> idmap->idmap_key_cons. Ditto if the call times out, or if the pipe is
-> closed before the downcall.
-> 
-
-Ah!  I didn't think about the upcall failing, thanks Trond!  I'll work on a patch.
-
-- Bryan
-
+T24gVGh1LCAyMDEyLTA4LTE2IGF0IDE3OjA3IC0wNzAwLCBTaGFpIExhem1pIHdyb3RlOg0KPiBT
+b3JyeSAtIGNvbXBhbnkncyBwb2xpY3kgLi4uDQo+IFdoYXQgaWRtYXAgdmVyc2lvbiB3YXMgdGhp
+cyBwYXRjaCB1c2VkIGFnYWluc3Q/IFRoZSBvbmUgSSBoYXZlIChiNzAxMzU4Yykgc2VlbXMgdG8g
+YmUgYSBiaXQgZGlmZmVyZW50IChJIHVzZWQgbGF0ZXN0IHB1bGwgY29tbWl0IGRkZjM0M2Y2MzVm
+ZTQ0NDBjYWQ1MjhlMTJmOTZmMjhiZDUwYWEwOTkpLCBoZW5jZSB0aGUgcGF0Y2ggZmFpbHMgYWdh
+aW4NCg0KSXQgd29ya3MgZmluZSBmb3IgbWUgYWdhaW5zdCBjb21taXQgZGRmMzQzZjYzNWZlNDQ0
+MGNhZDUyOGUxMmY5NmYyOGJkNTBhYTA5OToNCg0KW3Ryb25kbXlAbGFkZSBsaW51eC1uZnNdJCBn
+aXQgYnJhbmNoIHRlc3QtYXBwbHkgZGRmMzQzZjYzNWZlNDQ0MGNhZDUyOGUxMmY5NmYyOGJkNTBh
+YTA5OQ0KW3Ryb25kbXlAbGFkZSBsaW51eC1uZnNdJCBnaXQgY2hlY2tvdXQgdGVzdC1hcHBseSAN
+ClN3aXRjaGVkIHRvIGJyYW5jaCAndGVzdC1hcHBseScNClt0cm9uZG15QGxhZGUgbGludXgtbmZz
+XSQgZ2l0IGFtIH4vRGVza3RvcC9mb3Jfc2hhaS8wMDAxLU5GUy1DbGVhci1rZXktY29uc3RydWN0
+aW9uLWRhdGEtaWYtdGhlLWlkbWFwLXVwY2FsbC0ucGF0Y2gNCkFwcGx5aW5nOiBORlM6IENsZWFy
+IGtleSBjb25zdHJ1Y3Rpb24gZGF0YSBpZiB0aGUgaWRtYXAgdXBjYWxsIGZhaWxzDQpbdHJvbmRt
+eUBsYWRlIGxpbnV4LW5mc10kIGdpdCBhbSB+L0Rlc2t0b3AvZm9yX3NoYWkvMDAwMi1ORlMtcmV0
+dXJuLUVOT0tFWS13aGVuLXRoZS11cGNhbGwtZmFpbHMtdG8tbWFwLXRoZS1uLnBhdGNoDQpBcHBs
+eWluZzogTkZTOiByZXR1cm4gLUVOT0tFWSB3aGVuIHRoZSB1cGNhbGwgZmFpbHMgdG8gbWFwIHRo
+ZSBuYW1lDQoNCldoYXQgZXJyb3IgbWVzc2FnZXMgYXJlIHlvdSBzZWVpbmc/DQoNCkNoZWVycw0K
+ICBUcm9uZA0KDQo+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+IEZyb206IE15a2xlYnVz
+dCwgVHJvbmQgW21haWx0bzpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbV0NCj4gU2VudDogVGh1
+cnNkYXksIEF1Z3VzdCAxNiwgMjAxMiA0OjU3IFBNDQo+IFRvOiBTaGFpIExhem1pDQo+IENjOiBX
+aWxsaWFtIERhdWNoeTsgU2NodW1ha2VyLCBCcnlhbjsgbGludXgtbmZzQHZnZXIua2VybmVsLm9y
+Zw0KPiBTdWJqZWN0OiBSZTogW1BBVENIIDEvMl0gTkZTOiBDbGVhciBrZXkgY29uc3RydWN0aW9u
+IGRhdGEgaWYgdGhlIGlkbWFwIHVwY2FsbCBmYWlscw0KPiANCj4gT24gVGh1LCAyMDEyLTA4LTE2
+IGF0IDE2OjUwIC0wNzAwLCBTaGFpIExhem1pIHdyb3RlOg0KPiA+IE1TIG91dGxvb2sNCj4gDQo+
+IERvbid0IGV2ZXIgdXNlIExvb2tPdXQgZm9yIHBhdGNoZXMuIEl0cyAiSSBqdXN0IHJlZm9ybWF0
+dGVkIHlvdXIgZW1haWwiDQo+IHdvbmRlciBmZWF0dXJlIGJyZWFrcyBhbGwgdGhlIHdoaXRlc3Bh
+Y2UuDQo+IA0KPiA+IEJlc3QgdGhpbmcgaXMgdG8gYXR0YWNoZWQgdGhlIHBhdGNoDQo+IA0KPiBX
+ZSBkbyBub3Qgbm9ybWFsbHkgdXNlIGF0dGFjaG1lbnRzIG9uIHRoZSBtYWlsaW5nIGxpc3QgYmVj
+YXVzZSBpdCBtYWtlcyBpdCBpbXBvc3NpYmxlIHRvIGNvbW1lbnQgdGhlIHBhdGNoZXMgaW5saW5l
+LiBBaCB3ZWxsLCBoZXJlIGdvZXMuLi4NCj4gDQo+IC0tDQo+IFRyb25kIE15a2xlYnVzdA0KPiBM
+aW51eCBORlMgY2xpZW50IG1haW50YWluZXINCj4gDQo+IE5ldEFwcA0KPiBUcm9uZC5NeWtsZWJ1
+c3RAbmV0YXBwLmNvbQ0KPiB3d3cubmV0YXBwLmNvbQ0KPiANCj4gDQo+IFRoaXMgbWVzc2FnZSBh
+bmQgYW55IGF0dGFjaGVkIGRvY3VtZW50cyBjb250YWluIGluZm9ybWF0aW9uIGZyb20gUUxvZ2lj
+IENvcnBvcmF0aW9uIG9yIGl0cyB3aG9sbHktb3duZWQgc3Vic2lkaWFyaWVzIHRoYXQgbWF5IGJl
+IGNvbmZpZGVudGlhbC4gSWYgeW91IGFyZSBub3QgdGhlIGludGVuZGVkIHJlY2lwaWVudCwgeW91
+IG1heSBub3QgcmVhZCwgY29weSwgZGlzdHJpYnV0ZSwgb3IgdXNlIHRoaXMgaW5mb3JtYXRpb24u
+IElmIHlvdSBoYXZlIHJlY2VpdmVkIHRoaXMgdHJhbnNtaXNzaW9uIGluIGVycm9yLCBwbGVhc2Ug
+bm90aWZ5IHRoZSBzZW5kZXIgaW1tZWRpYXRlbHkgYnkgcmVwbHkgZS1tYWlsIGFuZCB0aGVuIGRl
+bGV0ZSB0aGlzIG1lc3NhZ2UuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xp
+ZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3
+Lm5ldGFwcC5jb20NCg0K
