@@ -1,50 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:32202 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755195Ab2HTOBw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Aug 2012 10:01:52 -0400
-Subject: [PATCH v4 00/10] NFS: callback threads containerization
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Mon, 20 Aug 2012 17:59:59 +0400
-Message-ID: <20120820134734.17404.53946.stgit@localhost.localdomain>
-MIME-Version: 1.0
+Received: from ch1ehsobe005.messaging.microsoft.com ([216.32.181.185]:21820
+	"EHLO ch1outboundpool.messaging.microsoft.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754938Ab2HQAPh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Aug 2012 20:15:37 -0400
+From: Shai Lazmi <shai.lazmi@qlogic.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: William Dauchy <wdauchy@gmail.com>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Thu, 16 Aug 2012 17:15:31 -0700
+Subject: RE: [PATCH 1/2] NFS: Clear key construction data if the idmap
+ upcall fails
+Message-ID: <21641D3714F5AF449DC483E699E1124E86E6409593@AVEXMB2.qlogic.org>
+References: <1345148622-10845-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <21641D3714F5AF449DC483E699E1124E86E640957F@AVEXMB2.qlogic.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B542B@SACEXCMBX04-PRD.hq.netapp.com>
+	 <21641D3714F5AF449DC483E699E1124E86E6409585@AVEXMB2.qlogic.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B54EC@SACEXCMBX04-PRD.hq.netapp.com>
+	 <21641D3714F5AF449DC483E699E1124E86E640958D@AVEXMB2.qlogic.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA93B5646@SACEXCMBX04-PRD.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA93B5646@SACEXCMBX04-PRD.hq.netapp.com>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v4: rebased on trondmy/linux-next
-
-Hi, Trond.
-This patch set is the last significant part of client containerization.
-It's pending for a long time already. And I really feel, that it's ready for
-inclusion.
-Without this patch set per-net callback resources management is broken.
-Hoping you can take it for next kernel.
-
-The following series implements...
-
----
-
-Stanislav Kinsbursky (10):
-      NFS: pass net to nfs_callback_down()
-      NFS: callback service creation function introduced
-      NFS: move per-net callback thread initialization to nfs_callback_up_net()
-      NFS: callback up - transport backchannel cleanup
-      NFS: callback service start function introduced
-      NFS: callback up - users counting cleanup
-      NFS: make nfs_callback_tcpport per network context
-      NFS: make nfs_callback_tcpport6 per network context
-      NFS: callback per-net usage counting introduced
-      NFS: add debug messages to callback down function
-
-
- fs/nfs/callback.c   |  302 ++++++++++++++++++++++++++++++++++-----------------
- fs/nfs/callback.h   |    4 -
- fs/nfs/netns.h      |    3 +
- fs/nfs/nfs4client.c |    2 
- fs/nfs/nfs4state.c  |    6 +
- 5 files changed, 211 insertions(+), 106 deletions(-)
+Z2l0IGFwcGx5IC0tY2hlY2sgMDAwMS1ORlMtQ2xlYXIta2V5LWNvbnN0cnVjdGlvbi1kYXRhLWlm
+LXRoZS1pZG1hcC11cGNhbGwtLnBhdGNoDQplcnJvcjogcGF0Y2ggZmFpbGVkOiBmcy9uZnMvaWRt
+YXAuYzo2MQ0KZXJyb3I6IGZzL25mcy9pZG1hcC5jOiBwYXRjaCBkb2VzIG5vdCBhcHBseQ0KDQoN
+CmlkbWFwLmMNCmRlZmluZSBORlNfVUlOVF9NQVhMRU4gMTENCg0Kc3RhdGljIGNvbnN0IHN0cnVj
+dCBjcmVkICppZF9yZXNvbHZlcl9jYWNoZTsNCnN0YXRpYyBzdHJ1Y3Qga2V5X3R5cGUga2V5X3R5
+cGVfaWRfcmVzb2x2ZXJfbGVnYWN5Ow0KDQpzdHJ1Y3QgaWRtYXAgew0KICAgICAgICBzdHJ1Y3Qg
+cnBjX3BpcGUgICAgICAgICAqaWRtYXBfcGlwZTsNCiAgICAgICAgc3RydWN0IGtleV9jb25zdHJ1
+Y3Rpb24gKmlkbWFwX2tleV9jb25zOw0KICAgICAgICBzdHJ1Y3QgbXV0ZXggICAgICAgICAgICBp
+ZG1hcF9tdXRleDsNCn07DQoNCg0KLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCkZyb206IE15
+a2xlYnVzdCwgVHJvbmQgW21haWx0bzpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbV0NClNlbnQ6
+IFRodXJzZGF5LCBBdWd1c3QgMTYsIDIwMTIgNToxNCBQTQ0KVG86IFNoYWkgTGF6bWkNCkNjOiBX
+aWxsaWFtIERhdWNoeTsgU2NodW1ha2VyLCBCcnlhbjsgbGludXgtbmZzQHZnZXIua2VybmVsLm9y
+Zw0KU3ViamVjdDogUmU6IFtQQVRDSCAxLzJdIE5GUzogQ2xlYXIga2V5IGNvbnN0cnVjdGlvbiBk
+YXRhIGlmIHRoZSBpZG1hcCB1cGNhbGwgZmFpbHMNCg0KT24gVGh1LCAyMDEyLTA4LTE2IGF0IDE3
+OjA3IC0wNzAwLCBTaGFpIExhem1pIHdyb3RlOg0KPiBTb3JyeSAtIGNvbXBhbnkncyBwb2xpY3kg
+Li4uDQo+IFdoYXQgaWRtYXAgdmVyc2lvbiB3YXMgdGhpcyBwYXRjaCB1c2VkIGFnYWluc3Q/IFRo
+ZSBvbmUgSSBoYXZlIChiNzAxMzU4Yykgc2VlbXMgdG8gYmUgYSBiaXQgZGlmZmVyZW50IChJIHVz
+ZWQgbGF0ZXN0IHB1bGwgY29tbWl0IGRkZjM0M2Y2MzVmZTQ0NDBjYWQ1MjhlMTJmOTZmMjhiZDUw
+YWEwOTkpLCBoZW5jZSB0aGUgcGF0Y2ggZmFpbHMgYWdhaW4NCg0KSXQgd29ya3MgZmluZSBmb3Ig
+bWUgYWdhaW5zdCBjb21taXQgZGRmMzQzZjYzNWZlNDQ0MGNhZDUyOGUxMmY5NmYyOGJkNTBhYTA5
+OToNCg0KW3Ryb25kbXlAbGFkZSBsaW51eC1uZnNdJCBnaXQgYnJhbmNoIHRlc3QtYXBwbHkgZGRm
+MzQzZjYzNWZlNDQ0MGNhZDUyOGUxMmY5NmYyOGJkNTBhYTA5OQ0KW3Ryb25kbXlAbGFkZSBsaW51
+eC1uZnNdJCBnaXQgY2hlY2tvdXQgdGVzdC1hcHBseQ0KU3dpdGNoZWQgdG8gYnJhbmNoICd0ZXN0
+LWFwcGx5Jw0KW3Ryb25kbXlAbGFkZSBsaW51eC1uZnNdJCBnaXQgYW0gfi9EZXNrdG9wL2Zvcl9z
+aGFpLzAwMDEtTkZTLUNsZWFyLWtleS1jb25zdHJ1Y3Rpb24tZGF0YS1pZi10aGUtaWRtYXAtdXBj
+YWxsLS5wYXRjaA0KQXBwbHlpbmc6IE5GUzogQ2xlYXIga2V5IGNvbnN0cnVjdGlvbiBkYXRhIGlm
+IHRoZSBpZG1hcCB1cGNhbGwgZmFpbHMNClt0cm9uZG15QGxhZGUgbGludXgtbmZzXSQgZ2l0IGFt
+IH4vRGVza3RvcC9mb3Jfc2hhaS8wMDAyLU5GUy1yZXR1cm4tRU5PS0VZLXdoZW4tdGhlLXVwY2Fs
+bC1mYWlscy10by1tYXAtdGhlLW4ucGF0Y2gNCkFwcGx5aW5nOiBORlM6IHJldHVybiAtRU5PS0VZ
+IHdoZW4gdGhlIHVwY2FsbCBmYWlscyB0byBtYXAgdGhlIG5hbWUNCg0KV2hhdCBlcnJvciBtZXNz
+YWdlcyBhcmUgeW91IHNlZWluZz8NCg0KQ2hlZXJzDQogIFRyb25kDQoNCj4gLS0tLS1PcmlnaW5h
+bCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogTXlrbGVidXN0LCBUcm9uZCBbbWFpbHRvOlRyb25kLk15
+a2xlYnVzdEBuZXRhcHAuY29tXQ0KPiBTZW50OiBUaHVyc2RheSwgQXVndXN0IDE2LCAyMDEyIDQ6
+NTcgUE0NCj4gVG86IFNoYWkgTGF6bWkNCj4gQ2M6IFdpbGxpYW0gRGF1Y2h5OyBTY2h1bWFrZXIs
+IEJyeWFuOyBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnDQo+IFN1YmplY3Q6IFJlOiBbUEFUQ0gg
+MS8yXSBORlM6IENsZWFyIGtleSBjb25zdHJ1Y3Rpb24gZGF0YSBpZiB0aGUgaWRtYXAgdXBjYWxs
+IGZhaWxzDQo+DQo+IE9uIFRodSwgMjAxMi0wOC0xNiBhdCAxNjo1MCAtMDcwMCwgU2hhaSBMYXpt
+aSB3cm90ZToNCj4gPiBNUyBvdXRsb29rDQo+DQo+IERvbid0IGV2ZXIgdXNlIExvb2tPdXQgZm9y
+IHBhdGNoZXMuIEl0cyAiSSBqdXN0IHJlZm9ybWF0dGVkIHlvdXIgZW1haWwiDQo+IHdvbmRlciBm
+ZWF0dXJlIGJyZWFrcyBhbGwgdGhlIHdoaXRlc3BhY2UuDQo+DQo+ID4gQmVzdCB0aGluZyBpcyB0
+byBhdHRhY2hlZCB0aGUgcGF0Y2gNCj4NCj4gV2UgZG8gbm90IG5vcm1hbGx5IHVzZSBhdHRhY2ht
+ZW50cyBvbiB0aGUgbWFpbGluZyBsaXN0IGJlY2F1c2UgaXQgbWFrZXMgaXQgaW1wb3NzaWJsZSB0
+byBjb21tZW50IHRoZSBwYXRjaGVzIGlubGluZS4gQWggd2VsbCwgaGVyZSBnb2VzLi4uDQo+DQo+
+IC0tDQo+IFRyb25kIE15a2xlYnVzdA0KPiBMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCj4N
+Cj4gTmV0QXBwDQo+IFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQo+IHd3dy5uZXRhcHAuY29t
+DQo+DQo+DQo+IFRoaXMgbWVzc2FnZSBhbmQgYW55IGF0dGFjaGVkIGRvY3VtZW50cyBjb250YWlu
+IGluZm9ybWF0aW9uIGZyb20gUUxvZ2ljIENvcnBvcmF0aW9uIG9yIGl0cyB3aG9sbHktb3duZWQg
+c3Vic2lkaWFyaWVzIHRoYXQgbWF5IGJlIGNvbmZpZGVudGlhbC4gSWYgeW91IGFyZSBub3QgdGhl
+IGludGVuZGVkIHJlY2lwaWVudCwgeW91IG1heSBub3QgcmVhZCwgY29weSwgZGlzdHJpYnV0ZSwg
+b3IgdXNlIHRoaXMgaW5mb3JtYXRpb24uIElmIHlvdSBoYXZlIHJlY2VpdmVkIHRoaXMgdHJhbnNt
+aXNzaW9uIGluIGVycm9yLCBwbGVhc2Ugbm90aWZ5IHRoZSBzZW5kZXIgaW1tZWRpYXRlbHkgYnkg
+cmVwbHkgZS1tYWlsIGFuZCB0aGVuIGRlbGV0ZSB0aGlzIG1lc3NhZ2UuDQoNCi0tDQpUcm9uZCBN
+eWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15
+a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQoNClRoaXMgbWVzc2FnZSBhbmQg
+YW55IGF0dGFjaGVkIGRvY3VtZW50cyBjb250YWluIGluZm9ybWF0aW9uIGZyb20gUUxvZ2ljIENv
+cnBvcmF0aW9uIG9yIGl0cyB3aG9sbHktb3duZWQgc3Vic2lkaWFyaWVzIHRoYXQgbWF5IGJlIGNv
+bmZpZGVudGlhbC4gSWYgeW91IGFyZSBub3QgdGhlIGludGVuZGVkIHJlY2lwaWVudCwgeW91IG1h
+eSBub3QgcmVhZCwgY29weSwgZGlzdHJpYnV0ZSwgb3IgdXNlIHRoaXMgaW5mb3JtYXRpb24uIElm
+IHlvdSBoYXZlIHJlY2VpdmVkIHRoaXMgdHJhbnNtaXNzaW9uIGluIGVycm9yLCBwbGVhc2Ugbm90
+aWZ5IHRoZSBzZW5kZXIgaW1tZWRpYXRlbHkgYnkgcmVwbHkgZS1tYWlsIGFuZCB0aGVuIGRlbGV0
+ZSB0aGlzIG1lc3NhZ2UuDQo=
 
