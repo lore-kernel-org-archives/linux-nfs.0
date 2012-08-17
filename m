@@ -1,80 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:39908 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752667Ab2HWUFB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Aug 2012 16:05:01 -0400
-Date: Thu, 23 Aug 2012 13:04:56 -0700
-From: Tejun Heo <tj@kernel.org>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: torvalds@linux-foundation.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
-        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive
- hashtable
-Message-ID: <20120823200456.GD14962@google.com>
-References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
- <1345602432-27673-2-git-send-email-levinsasha928@gmail.com>
- <20120822180138.GA19212@google.com>
- <50357840.5020201@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:23532 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753195Ab2HQRqM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Aug 2012 13:46:12 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Shai Lazmi <shai.lazmi@qlogic.com>
+CC: William Dauchy <wdauchy@gmail.com>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFS: Clear key construction data if the idmap
+ upcall fails
+Date: Fri, 17 Aug 2012 17:46:08 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA93B79FD@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1345148622-10845-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <21641D3714F5AF449DC483E699E1124E86E640957F@AVEXMB2.qlogic.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B542B@SACEXCMBX04-PRD.hq.netapp.com>
+	 <21641D3714F5AF449DC483E699E1124E86E6409585@AVEXMB2.qlogic.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B54EC@SACEXCMBX04-PRD.hq.netapp.com>
+	 <21641D3714F5AF449DC483E699E1124E86E640958D@AVEXMB2.qlogic.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B5646@SACEXCMBX04-PRD.hq.netapp.com>
+	 <21641D3714F5AF449DC483E699E1124E86E6409593@AVEXMB2.qlogic.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B56F2@SACEXCMBX04-PRD.hq.netapp.com>
+	 <21641D3714F5AF449DC483E699E1124E86E6409621@AVEXMB2.qlogic.org>
+In-Reply-To: <21641D3714F5AF449DC483E699E1124E86E6409621@AVEXMB2.qlogic.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <50357840.5020201@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello, Sasha.
-
-On Thu, Aug 23, 2012 at 02:24:32AM +0200, Sasha Levin wrote:
-> > I think the almost trivial nature of hlist hashtables makes this a bit
-> > tricky and I'm not very sure but having this combinatory explosion is
-> > a bit dazzling when the same functionality can be achieved by simply
-> > combining operations which are already defined and named considering
-> > hashtable.  I'm not feeling too strong about this tho.  What do others
-> > think?
-> 
-> I'm thinking that this hashtable API will have 2 purposes: First, it would
-> prevent the excessive duplication of hashtable implementations all around the code.
-> 
-> Second, it will allow more easily interchangeable hashtable implementations to
-> find their way into the kernel. There are several maintainers who would be happy
-> to see dynamically sized RCU hashtable, and I'm guessing that several more
-> variants could be added based on needs in specific modules.
-> 
-> The second reason is why several things you've mentioned look the way they are:
-> 
->  - No DEFINE_HASHTABLE(): I wanted to force the use of hash_init() since
-> initialization for other hashtables may be more complicated than the static
-> initialization for this implementation, which means that any place that used
-> DEFINE_HASHTABLE() and didn't do hash_init() will be buggy.
-
-I think this is problematic.  It looks exactly like other existing
-DEFINE macros yet what its semantics is different.  I don't think
-that's a good idea.
-
-> I'm actually tempted in hiding hlist completely from hashtable users, probably
-> by simply defining a hash_head/hash_node on top of the hlist_ counterparts.
-
-I think that it would be best to keep this one simple & obvious, which
-already has enough in-kernel users to justify its existence.  There
-are significant benefits in being trivially understandable and
-expectable.  If we want more advanced ones - say resizing, hybrid or
-what not, let's make that a separate one.  No need to complicate the
-common straight-forward case for that.
-
-So, I think it would be best to keep this one as straight-forward and
-trivial as possible.  Helper macros to help its users are fine but
-let's please not go for full encapsulation.
-
-Thanks.
-
--- 
-tejun
+T24gRnJpLCAyMDEyLTA4LTE3IGF0IDA5OjIwIC0wNzAwLCBTaGFpIExhem1pIHdyb3RlOg0KPiBO
+byBsdWNrIC4uLg0KPiAtLS0tLS0tLS0tLS1bIGN1dCBoZXJlIF0tLS0tLS0tLS0tLS0NCj4ga2Vy
+bmVsIEJVRyBhdCBmcy9uZnMvaWRtYXAuYzo2ODEhDQoNClRoYXQgc3VnZ2VzdHMgdGhhdCB5b3Ug
+aGF2ZW4ndCBiZWVuIHRlc3RpbmcgdGhlIHJpZ2h0IGJyYW5jaC4gVGhlIEJVR19PTg0Kc2hvdWxk
+IGhhdmUgYmVlbiBtb3ZlZCB0byBsaW5lIDY5MiBhZnRlciB0aGUgcGF0Y2hlcyB3ZXJlIGFwcGxp
+ZWQuDQoNCkRpZCB5b3UgY29weSB0aGUgZXhhY3QgcHVsbCByZXF1ZXN0IGZyb20gbXkgZW1haWwg
+KGkuZS4gImdpdCBwdWxsDQpnaXQ6Ly9naXQubGludXgtbmZzLm9yZy9wcm9qZWN0cy90cm9uZG15
+L2xpbnV4LW5mcy5naXQgYnVnZml4ZXMiPyBJZiBzbywNCnlvdSBzaG91bGQgaGF2ZSBnb3R0ZW4g
+YSB2aW0gcGFnZSB3aXRoIGEgdGV4dCBvZiB0aGUgZm9ybToNCg0KICAgICAgICBNZXJnZSBicmFu
+Y2ggJ2J1Z2ZpeGVzJyBvZiBnaXQ6Ly9naXQubGludXgtbmZzLm9yZy9wcm9qZWN0cy90cm9uZG15
+L2xpbnV4LW5mcyBpbg0KICAgICAgICANCiAgICAgICAgIyBQbGVhc2UgZW50ZXIgYSBjb21taXQg
+bWVzc2FnZSB0byBleHBsYWluIHdoeSB0aGlzIG1lcmdlIGlzIG5lY2Vzc2FyeSwNCiAgICAgICAg
+IyBlc3BlY2lhbGx5IGlmIGl0IG1lcmdlcyBhbiB1cGRhdGVkIHVwc3RyZWFtIGludG8gYSB0b3Bp
+YyBicmFuY2guDQogICAgICAgICMNCiAgICAgICAgIyBMaW5lcyBzdGFydGluZyB3aXRoICcjJyB3
+aWxsIGJlIGlnbm9yZWQsIGFuZCBhbiBlbXB0eSBtZXNzYWdlIGFib3J0cw0KICAgICAgICAjIHRo
+ZSBjb21taXQuDQogICAgICAgIA0KDQood2hpY2ggeW91IHRoZW4gZm9sbG93IHVwIHdpdGggYSAn
+OndxJyB0byBjb25maXJtKQ0KDQpBICdnaXQgbG9nJyBzaG91bGQgdGhlbiBzaG93IHlvdXIgZmly
+c3QgY29tbWl0IGFzIGJlaW5nIHNvbWV0aGluZyBhbG9uZw0KdGhlIGxpbmVzIG9mOg0KDQogICAg
+ICAgIE1lcmdlOiBkOTg3NTY5IDEyZGZkMDgNCiAgICAgICAgQXV0aG9yOiBUcm9uZCBNeWtsZWJ1
+c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KICAgICAgICBEYXRlOiAgIEZyaSBBdWcg
+MTcgMTM6NDE6MDIgMjAxMiAtMDQwMA0KICAgICAgICANCiAgICAgICAgICAgIE1lcmdlIGJyYW5j
+aCAnYnVnZml4ZXMnIG9mIGdpdDovL2dpdC5saW51eC1uZnMub3JnL3Byb2plY3RzL3Ryb25kbXkv
+bGludXgtbmYNCiAgICAgICAgDQoNCklzIHRoYXQgaW5kZWVkIHRoZSBjYXNlPw0KDQoNCg0KLS0g
+DQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHAN
+ClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
