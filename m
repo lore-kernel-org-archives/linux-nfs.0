@@ -1,38 +1,25 @@
-From: Tai Bei <info-puGfsi27rH1aa/9Udqfwiw@public.gmane.org>
-Subject: Proposal.
-Date: Thu, 23 Aug 2012 23:55:22 +0100
-Message-ID: <077134233b42efbd44ed2f63961b7a2b__1008.21227902106$1345771903$gmane$org@fce.uncu.edu.ar>
-Reply-To: <tai02@9.cn>
+From: sonia <sonialife2@yahoo.com>
+Subject: hii
+Date: Sat, 18 Aug 2012 15:33:22 +0200 (CEST)
+Message-ID: <11103526.7711651345296802125.JavaMail.defaultUser__41532.0319043987$1345296845$gmane$org@defaultHost>
+Reply-To: sonia <sonialife2@yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-To: undisclosed-recipients:;
+Content-Type: text/plain;charset="UTF-8"
+To: sonialife2@yahoo.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fce.uncu.edu.ar ([190.220.130.146]:42142 "EHLO
-	mail.fce.uncu.edu.ar" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753064Ab2HXBb2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Aug 2012 21:31:28 -0400
+Received: from outrelay02.libero.it ([212.52.84.102]:52112 "EHLO
+	outrelay02.libero.it" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755406Ab2HRNdY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Aug 2012 09:33:24 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Good-day To You,
+Hello my dear
+ How was your living life today i hope all is well, am Sonia by name i just
+went into your profile at this site  linux-archive.org  and saw how you have 
+pest
+your explanation over it i feel to know who your are so that we can shear one
+thing or the
+other from there i can send you my photo you can know who am ok . i am waiting
+for your reply yours Sonia
 
-
-It is understandable that you might be a little bit apprehensive 
-because you do not know me but I have a lucrative business proposal of 
-mutual interest to share with you. I got your reference in my search for 
-someone who suits my proposed business relationship. I am Mr. Tai Bei, 
-officer with the International bank of Taipei (Bank SinoPac). I will 
-need you to assist me in executing a business project from Taiwan to 
-your country. It involves the transfer of money, Everything concerning 
-this transaction shall be legally done without hitch.
-
-
-Once the funds have been successfully transferred into your account, we 
-shall share in the ratio to be agreed by both of us. I shall furnish you 
-with more information about this operation immediately I receive a 
-positive response from you.
-
-
-Kind Regards,
-Tai Bei
