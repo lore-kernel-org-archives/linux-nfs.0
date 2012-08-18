@@ -1,69 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from [213.199.154.208] ([213.199.154.208]:28164 "EHLO
-	am1outboundpool.messaging.microsoft.com" rhost-flags-FAIL-FAIL-OK-OK)
-	by vger.kernel.org with ESMTP id S1752095Ab2HQSMM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Aug 2012 14:12:12 -0400
-From: Shai Lazmi <shai.lazmi@qlogic.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: William Dauchy <wdauchy@gmail.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Fri, 17 Aug 2012 11:10:53 -0700
-Subject: RE: [PATCH 1/2] NFS: Clear key construction data if the idmap
- upcall fails
-Message-ID: <21641D3714F5AF449DC483E699E1124E86E64096A5@AVEXMB2.qlogic.org>
-References: <1345148622-10845-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E640957F@AVEXMB2.qlogic.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B542B@SACEXCMBX04-PRD.hq.netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E6409585@AVEXMB2.qlogic.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B54EC@SACEXCMBX04-PRD.hq.netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E640958D@AVEXMB2.qlogic.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B5646@SACEXCMBX04-PRD.hq.netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E6409593@AVEXMB2.qlogic.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B56F2@SACEXCMBX04-PRD.hq.netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E6409621@AVEXMB2.qlogic.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA93B79FD@SACEXCMBX04-PRD.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA93B79FD@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx.scalarmail.ca ([98.158.95.75]:30920 "EHLO
+	ironport-01.sms.scalar.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750903Ab2HRR5x (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Aug 2012 13:57:53 -0400
+Date: Sat, 18 Aug 2012 13:57:50 -0400
+From: Nick Bowler <nbowler@elliptictech.com>
+To: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: NFSv4 WARNING: at linux/fs/inode.c:280 drop_nlink+0x23/0x44()
+Message-ID: <20120818175750.GA12736@elliptictech.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Q29vbCAtIFdvcmtzICEhIQ0KDQotLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogTXlr
-bGVidXN0LCBUcm9uZCBbbWFpbHRvOlRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tXQ0KU2VudDog
-RnJpZGF5LCBBdWd1c3QgMTcsIDIwMTIgMTA6NDYgQU0NClRvOiBTaGFpIExhem1pDQpDYzogV2ls
-bGlhbSBEYXVjaHk7IFNjaHVtYWtlciwgQnJ5YW47IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcN
-ClN1YmplY3Q6IFJlOiBbUEFUQ0ggMS8yXSBORlM6IENsZWFyIGtleSBjb25zdHJ1Y3Rpb24gZGF0
-YSBpZiB0aGUgaWRtYXAgdXBjYWxsIGZhaWxzDQoNCk9uIEZyaSwgMjAxMi0wOC0xNyBhdCAwOToy
-MCAtMDcwMCwgU2hhaSBMYXptaSB3cm90ZToNCj4gTm8gbHVjayAuLi4NCj4gLS0tLS0tLS0tLS0t
-WyBjdXQgaGVyZSBdLS0tLS0tLS0tLS0tDQo+IGtlcm5lbCBCVUcgYXQgZnMvbmZzL2lkbWFwLmM6
-NjgxIQ0KDQpUaGF0IHN1Z2dlc3RzIHRoYXQgeW91IGhhdmVuJ3QgYmVlbiB0ZXN0aW5nIHRoZSBy
-aWdodCBicmFuY2guIFRoZSBCVUdfT04NCnNob3VsZCBoYXZlIGJlZW4gbW92ZWQgdG8gbGluZSA2
-OTIgYWZ0ZXIgdGhlIHBhdGNoZXMgd2VyZSBhcHBsaWVkLg0KDQpEaWQgeW91IGNvcHkgdGhlIGV4
-YWN0IHB1bGwgcmVxdWVzdCBmcm9tIG15IGVtYWlsIChpLmUuICJnaXQgcHVsbA0KZ2l0Oi8vZ2l0
-LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9saW51eC1uZnMuZ2l0IGJ1Z2ZpeGVzIj8g
-SWYgc28sDQp5b3Ugc2hvdWxkIGhhdmUgZ290dGVuIGEgdmltIHBhZ2Ugd2l0aCBhIHRleHQgb2Yg
-dGhlIGZvcm06DQoNCiAgICAgICAgTWVyZ2UgYnJhbmNoICdidWdmaXhlcycgb2YgZ2l0Oi8vZ2l0
-LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9saW51eC1uZnMgaW4NCg0KICAgICAgICAj
-IFBsZWFzZSBlbnRlciBhIGNvbW1pdCBtZXNzYWdlIHRvIGV4cGxhaW4gd2h5IHRoaXMgbWVyZ2Ug
-aXMgbmVjZXNzYXJ5LA0KICAgICAgICAjIGVzcGVjaWFsbHkgaWYgaXQgbWVyZ2VzIGFuIHVwZGF0
-ZWQgdXBzdHJlYW0gaW50byBhIHRvcGljIGJyYW5jaC4NCiAgICAgICAgIw0KICAgICAgICAjIExp
-bmVzIHN0YXJ0aW5nIHdpdGggJyMnIHdpbGwgYmUgaWdub3JlZCwgYW5kIGFuIGVtcHR5IG1lc3Nh
-Z2UgYWJvcnRzDQogICAgICAgICMgdGhlIGNvbW1pdC4NCg0KDQood2hpY2ggeW91IHRoZW4gZm9s
-bG93IHVwIHdpdGggYSAnOndxJyB0byBjb25maXJtKQ0KDQpBICdnaXQgbG9nJyBzaG91bGQgdGhl
-biBzaG93IHlvdXIgZmlyc3QgY29tbWl0IGFzIGJlaW5nIHNvbWV0aGluZyBhbG9uZw0KdGhlIGxp
-bmVzIG9mOg0KDQogICAgICAgIE1lcmdlOiBkOTg3NTY5IDEyZGZkMDgNCiAgICAgICAgQXV0aG9y
-OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KICAgICAgICBE
-YXRlOiAgIEZyaSBBdWcgMTcgMTM6NDE6MDIgMjAxMiAtMDQwMA0KDQogICAgICAgICAgICBNZXJn
-ZSBicmFuY2ggJ2J1Z2ZpeGVzJyBvZiBnaXQ6Ly9naXQubGludXgtbmZzLm9yZy9wcm9qZWN0cy90
-cm9uZG15L2xpbnV4LW5mDQoNCg0KSXMgdGhhdCBpbmRlZWQgdGhlIGNhc2U/DQoNCg0KDQotLQ0K
-VHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpU
-cm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0KDQpUaGlzIG1lc3Nh
-Z2UgYW5kIGFueSBhdHRhY2hlZCBkb2N1bWVudHMgY29udGFpbiBpbmZvcm1hdGlvbiBmcm9tIFFM
-b2dpYyBDb3Jwb3JhdGlvbiBvciBpdHMgd2hvbGx5LW93bmVkIHN1YnNpZGlhcmllcyB0aGF0IG1h
-eSBiZSBjb25maWRlbnRpYWwuIElmIHlvdSBhcmUgbm90IHRoZSBpbnRlbmRlZCByZWNpcGllbnQs
-IHlvdSBtYXkgbm90IHJlYWQsIGNvcHksIGRpc3RyaWJ1dGUsIG9yIHVzZSB0aGlzIGluZm9ybWF0
-aW9uLiBJZiB5b3UgaGF2ZSByZWNlaXZlZCB0aGlzIHRyYW5zbWlzc2lvbiBpbiBlcnJvciwgcGxl
-YXNlIG5vdGlmeSB0aGUgc2VuZGVyIGltbWVkaWF0ZWx5IGJ5IHJlcGx5IGUtbWFpbCBhbmQgdGhl
-biBkZWxldGUgdGhpcyBtZXNzYWdlLg0K
+Hi folks,
+
+I just noticed the following WARNING in my logs.  Looking through the
+older logs, I see quite a few of these going (at least) all the way back
+to 3.3.x days.  The process which triggers the warning always seems to
+be the same (icecat).
+
+This is on a Linux 3.5.2 NFSv4 client machine using sec=krb5.  Other
+than the log noise, there seems to be no adverse effects.
+
+------------[ cut here ]------------
+WARNING: at /home/nbowler/misc/linux/fs/inode.c:280 drop_nlink+0x23/0x44()
+Hardware name: System Product Name
+Modules linked in: sha1_ssse3 sha1_generic hmac aes_x86_64 aes_generic cbc cts rpcsec_gss_krb5 nfs lockd auth_rpcgss nfs_acl sunrpc ipv6 nls_iso8859_1 nls_cp437 vfat fat w83627ehf hwmon_vid snd_pcm_oss snd_mixer_oss acpi_cpufreq mperf i915 drm_kms_helper drm snd_hda_codec_hdmi snd_hda_codec_realtek arc4 ath9k mac80211 ath9k_common ath9k_hw intel_agp i2c_algo_bit intel_gtt snd_hda_intel snd_hda_codec snd_pcm snd_timer coretemp agpgart hwmon kvm_intel snd ath cfg80211 soundcore snd_page_alloc i2c_i801 r8169 mii psmouse kvm evdev video sg
+Pid: 1995, comm: icecat Not tainted 3.5.2 #46
+Call Trace:
+ [<ffffffff8102b8b3>] warn_slowpath_common+0x80/0x98
+ [<ffffffff8102b8e0>] warn_slowpath_null+0x15/0x17
+ [<ffffffff810c5195>] drop_nlink+0x23/0x44
+ [<ffffffffa03aa2a1>] nfs_dentry_iput+0x35/0x4d [nfs]
+ [<ffffffff810c25d0>] dentry_kill+0x149/0x171
+ [<ffffffff810c2850>] dput+0xed/0xfe
+ [<ffffffff810b2ff4>] fput+0x1a5/0x1bd
+ [<ffffffff810b0454>] filp_close+0x6b/0x76
+ [<ffffffff810b04f1>] sys_close+0x92/0xd4
+ [<ffffffff8131efa2>] system_call_fastpath+0x16/0x1b
+---[ end trace b160c7dc08b4910c ]---
+
+Please let me know if you need any more info,
+-- 
+Nick Bowler, Elliptic Technologies (http://www.elliptictech.com/)
 
