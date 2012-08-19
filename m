@@ -1,156 +1,408 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from co1ehsobe004.messaging.microsoft.com ([216.32.180.187]:54189
-	"EHLO co1outboundpool.messaging.microsoft.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754464Ab2HPXut (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Aug 2012 19:50:49 -0400
-From: Shai Lazmi <shai.lazmi@qlogic.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: William Dauchy <wdauchy@gmail.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Thu, 16 Aug 2012 16:50:43 -0700
-Subject: RE: [PATCH 1/2] NFS: Clear key construction data if the idmap
- upcall fails
-Message-ID: <21641D3714F5AF449DC483E699E1124E86E6409585@AVEXMB2.qlogic.org>
-References: <1345148622-10845-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E640957F@AVEXMB2.qlogic.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA93B542B@SACEXCMBX04-PRD.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA93B542B@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:41176 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752222Ab2HSAwg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Aug 2012 20:52:36 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH v2 11/16] net,l2tp: use new hashtable implementation
+Date: Sun, 19 Aug 2012 02:52:25 +0200
+Message-Id: <1345337550-24304-13-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1345337550-24304-1-git-send-email-levinsasha928@gmail.com>
+References: <1345337550-24304-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-TVMgb3V0bG9vaw0KQmVzdCB0aGluZyBpcyB0byBhdHRhY2hlZCB0aGUgcGF0Y2gNCg0KLS0tLS1P
-cmlnaW5hbCBNZXNzYWdlLS0tLS0NCkZyb206IE15a2xlYnVzdCwgVHJvbmQgW21haWx0bzpUcm9u
-ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbV0NClNlbnQ6IFRodXJzZGF5LCBBdWd1c3QgMTYsIDIwMTIg
-NDo1MCBQTQ0KVG86IFNoYWkgTGF6bWkNCkNjOiBXaWxsaWFtIERhdWNoeTsgU2NodW1ha2VyLCBC
-cnlhbjsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KU3ViamVjdDogUmU6IFtQQVRDSCAxLzJd
-IE5GUzogQ2xlYXIga2V5IGNvbnN0cnVjdGlvbiBkYXRhIGlmIHRoZSBpZG1hcCB1cGNhbGwgZmFp
-bHMNCg0KT24gVGh1LCAyMDEyLTA4LTE2IGF0IDE2OjQ0IC0wNzAwLCBTaGFpIExhem1pIHdyb3Rl
-Og0KPiBQYXRjaCBmYWlscyB3aXRoICINCj4gZ2l0IGFwcGx5IC0tY2hlY2sNCj4gZmF0YWw6IHBh
-dGNoIGZyYWdtZW50IHdpdGhvdXQgaGVhZGVyIGF0IGxpbmUgMzE6IEBAIC0zODAsMTEgKzM4Nywx
-MyBAQCBzdGF0aWMgY29uc3QgbWF0Y2hfdGFibGVfdCBuZnNfaWRtYXBfdG9rZW5zID0geyAgc3Rh
-dGljIGludCBuZnNfaWRtYXBfbGVnYWN5X3VwY2FsbChzdHJ1Y3Qga2V5X2NvbnN0cnVjdGlvbiAq
-LCBjb25zdCBjaGFyICosIHZvaWQgKik7ICBzdGF0aWMgc3NpemVfdCBpZG1hcF9waXBlX2Rvd25j
-YWxsKHN0cnVjdCBmaWxlICosIGNvbnN0IGNoYXIgX191c2VyICosDQo+ICINCg0KV2hhdCBlbWFp
-bCBhcHBsaWNhdGlvbiBhcmUgeW91IHVzaW5nIHRvIGV4dHJhY3QgdGhlIHBhdGNoPyBPbg0KImV2
-b2x1dGlvbiIsIEkgc2VlIHRoZSBhYm92ZSB0ZXh0IGFzIGJlaW5nIHNwbGl0IG92ZXIgc2V2ZXJh
-bCBsaW5lcy4NCg0KDQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogVHJv
-bmQgTXlrbGVidXN0IFttYWlsdG86VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb21dDQo+IFNlbnQ6
-IFRodXJzZGF5LCBBdWd1c3QgMTYsIDIwMTIgMToyNCBQTQ0KPiBUbzogV2lsbGlhbSBEYXVjaHkN
-Cj4gQ2M6IFNoYWkgTGF6bWk7IEJyeWFuIFNjaHVtYWtlcjsgbGludXgtbmZzQHZnZXIua2VybmVs
-Lm9yZw0KPiBTdWJqZWN0OiBbUEFUQ0ggMS8yXSBORlM6IENsZWFyIGtleSBjb25zdHJ1Y3Rpb24g
-ZGF0YSBpZiB0aGUgaWRtYXAgdXBjYWxsIGZhaWxzDQo+DQo+IEZyb206IEJyeWFuIFNjaHVtYWtl
-ciA8YmpzY2h1bWFAbmV0YXBwLmNvbT4NCj4NCj4gaWRtYXBfcGlwZV9kb3duY2FsbCBhbHJlYWR5
-IGNsZWFycyB0aGlzIGZpZWxkIGlmIHRoZSB1cGNhbGwgc3VjY2VlZHMsDQo+IGJ1dCBpZiBpdCBm
-YWlscyAocnBjLmlkbWFwZCBpc24ndCBydW5uaW5nKSB0aGUgZmllbGQgd2lsbCBzdGlsbCBiZSBz
-ZXQNCj4gb24gdGhlIG5leHQgY2FsbCB0cmlnZ2VyaW5nIGEgQlVHX09OKCkuICBUaGlzIHBhdGNo
-IHRyaWVzIHRvIGhhbmRsZSBhbGwNCj4gcG9zc2libGUgd2F5cyB0aGF0IHRoZSB1cGNhbGwgY291
-bGQgZmFpbCBhbmQgY2xlYXIgdGhlIGlkbWFwIGtleSBkYXRhDQo+IGZvciBlYWNoIG9uZS4NCj4N
-Cj4gU2lnbmVkLW9mZi1ieTogQnJ5YW4gU2NodW1ha2VyIDxianNjaHVtYUBuZXRhcHAuY29tPg0K
-PiBDYzogc3RhYmxlQHZnZXIua2VybmVsLm9yZyBbPj0gMy40XQ0KPiBTaWduZWQtb2ZmLWJ5OiBU
-cm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KPiAtLS0NCj4gIGZz
-L25mcy9pZG1hcC5jIHwgNTYgKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
-KysrLS0tLS0tLS0tLS0tLS0NCj4gIDEgZmlsZSBjaGFuZ2VkLCA0MiBpbnNlcnRpb25zKCspLCAx
-NCBkZWxldGlvbnMoLSkNCj4NCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9pZG1hcC5jIGIvZnMvbmZz
-L2lkbWFwLmMNCj4gaW5kZXggYjcwMTM1OC4uNjcwM2M3MyAxMDA2NDQNCj4gLS0tIGEvZnMvbmZz
-L2lkbWFwLmMNCj4gKysrIGIvZnMvbmZzL2lkbWFwLmMNCj4gQEAgLTYxLDYgKzYxLDEyIEBAIHN0
-cnVjdCBpZG1hcCB7DQo+ICAgICAgICAgc3RydWN0IG11dGV4ICAgICAgICAgICAgaWRtYXBfbXV0
-ZXg7DQo+ICB9Ow0KPg0KPiArc3RydWN0IGlkbWFwX2xlZ2FjeV91cGNhbGxkYXRhIHsNCj4gKyAg
-ICAgICBzdHJ1Y3QgcnBjX3BpcGVfbXNnIHBpcGVfbXNnOw0KPiArICAgICAgIHN0cnVjdCBpZG1h
-cF9tc2cgaWRtYXBfbXNnOw0KPiArICAgICAgIHN0cnVjdCBpZG1hcCAqaWRtYXA7DQo+ICt9Ow0K
-PiArDQo+ICAvKioNCj4gICAqIG5mc19mYXR0cl9pbml0X25hbWVzIC0gaW5pdGlhbGlzZSB0aGUg
-bmZzX2ZhdHRyIG93bmVyX25hbWUvZ3JvdXBfbmFtZSBmaWVsZHMNCj4gICAqIEBmYXR0cjogZnVs
-bHkgaW5pdGlhbGlzZWQgc3RydWN0IG5mc19mYXR0cg0KPiBAQCAtMzI0LDYgKzMzMCw3IEBAIHN0
-YXRpYyBzc2l6ZV90IG5mc19pZG1hcF9nZXRfa2V5KGNvbnN0IGNoYXIgKm5hbWUsIHNpemVfdCBu
-YW1lbGVuLA0KPiAgICAgICAgICAgICAgICAgcmV0ID0gbmZzX2lkbWFwX3JlcXVlc3Rfa2V5KCZr
-ZXlfdHlwZV9pZF9yZXNvbHZlcl9sZWdhY3ksDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgbmFtZSwgbmFtZWxlbiwgdHlwZSwgZGF0YSwNCj4gICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBkYXRhX3NpemUsIGlkbWFwKTsNCj4g
-KyAgICAgICAgICAgICAgIGlkbWFwLT5pZG1hcF9rZXlfY29ucyA9IE5VTEw7DQo+ICAgICAgICAg
-ICAgICAgICBtdXRleF91bmxvY2soJmlkbWFwLT5pZG1hcF9tdXRleCk7DQo+ICAgICAgICAgfQ0K
-PiAgICAgICAgIHJldHVybiByZXQ7DQo+IEBAIC0zODAsMTEgKzM4NywxMyBAQCBzdGF0aWMgY29u
-c3QgbWF0Y2hfdGFibGVfdCBuZnNfaWRtYXBfdG9rZW5zID0gew0KPiAgc3RhdGljIGludCBuZnNf
-aWRtYXBfbGVnYWN5X3VwY2FsbChzdHJ1Y3Qga2V5X2NvbnN0cnVjdGlvbiAqLCBjb25zdCBjaGFy
-ICosIHZvaWQgKik7DQo+ICBzdGF0aWMgc3NpemVfdCBpZG1hcF9waXBlX2Rvd25jYWxsKHN0cnVj
-dCBmaWxlICosIGNvbnN0IGNoYXIgX191c2VyICosDQo+ICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgc2l6ZV90KTsNCj4gK3N0YXRpYyB2b2lkIGlkbWFwX3JlbGVhc2VfcGlwZShz
-dHJ1Y3QgaW5vZGUgKik7DQo+ICBzdGF0aWMgdm9pZCBpZG1hcF9waXBlX2Rlc3Ryb3lfbXNnKHN0
-cnVjdCBycGNfcGlwZV9tc2cgKik7DQo+DQo+ICBzdGF0aWMgY29uc3Qgc3RydWN0IHJwY19waXBl
-X29wcyBpZG1hcF91cGNhbGxfb3BzID0gew0KPiAgICAgICAgIC51cGNhbGwgICAgICAgICA9IHJw
-Y19waXBlX2dlbmVyaWNfdXBjYWxsLA0KPiAgICAgICAgIC5kb3duY2FsbCAgICAgICA9IGlkbWFw
-X3BpcGVfZG93bmNhbGwsDQo+ICsgICAgICAgLnJlbGVhc2VfcGlwZSAgID0gaWRtYXBfcmVsZWFz
-ZV9waXBlLA0KPiAgICAgICAgIC5kZXN0cm95X21zZyAgICA9IGlkbWFwX3BpcGVfZGVzdHJveV9t
-c2csDQo+ICB9Ow0KPg0KPiBAQCAtNjE2LDcgKzYyNSw4IEBAIHZvaWQgbmZzX2lkbWFwX3F1aXQo
-dm9pZCkNCj4gICAgICAgICBuZnNfaWRtYXBfcXVpdF9rZXlyaW5nKCk7DQo+ICB9DQo+DQo+IC1z
-dGF0aWMgaW50IG5mc19pZG1hcF9wcmVwYXJlX21lc3NhZ2UoY2hhciAqZGVzYywgc3RydWN0IGlk
-bWFwX21zZyAqaW0sDQo+ICtzdGF0aWMgaW50IG5mc19pZG1hcF9wcmVwYXJlX21lc3NhZ2UoY2hh
-ciAqZGVzYywgc3RydWN0IGlkbWFwICppZG1hcCwNCj4gKyAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgIHN0cnVjdCBpZG1hcF9tc2cgKmltLA0KPiAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgc3RydWN0IHJwY19waXBlX21zZyAqbXNnKQ0KPiAgew0KPiAgICAg
-ICAgIHN1YnN0cmluZ190IHN1YnN0cjsNCj4gQEAgLTY1OSw2ICs2NjksNyBAQCBzdGF0aWMgaW50
-IG5mc19pZG1hcF9sZWdhY3lfdXBjYWxsKHN0cnVjdCBrZXlfY29uc3RydWN0aW9uICpjb25zLA0K
-PiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGNvbnN0IGNoYXIgKm9wLA0KPiAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHZvaWQgKmF1eCkNCj4gIHsNCj4gKyAg
-ICAgICBzdHJ1Y3QgaWRtYXBfbGVnYWN5X3VwY2FsbGRhdGEgKmRhdGE7DQo+ICAgICAgICAgc3Ry
-dWN0IHJwY19waXBlX21zZyAqbXNnOw0KPiAgICAgICAgIHN0cnVjdCBpZG1hcF9tc2cgKmltOw0K
-PiAgICAgICAgIHN0cnVjdCBpZG1hcCAqaWRtYXAgPSAoc3RydWN0IGlkbWFwICopYXV4Ow0KPiBA
-QCAtNjY2LDE1ICs2NzcsMTUgQEAgc3RhdGljIGludCBuZnNfaWRtYXBfbGVnYWN5X3VwY2FsbChz
-dHJ1Y3Qga2V5X2NvbnN0cnVjdGlvbiAqY29ucywNCj4gICAgICAgICBpbnQgcmV0ID0gLUVOT01F
-TTsNCj4NCj4gICAgICAgICAvKiBtc2cgYW5kIGltIGFyZSBmcmVlZCBpbiBpZG1hcF9waXBlX2Rl
-c3Ryb3lfbXNnICovDQo+IC0gICAgICAgbXNnID0ga21hbGxvYyhzaXplb2YoKm1zZyksIEdGUF9L
-RVJORUwpOw0KPiAtICAgICAgIGlmICghbXNnKQ0KPiAtICAgICAgICAgICAgICAgZ290byBvdXQw
-Ow0KPiAtDQo+IC0gICAgICAgaW0gPSBrbWFsbG9jKHNpemVvZigqaW0pLCBHRlBfS0VSTkVMKTsN
-Cj4gLSAgICAgICBpZiAoIWltKQ0KPiArICAgICAgIGRhdGEgPSBrbWFsbG9jKHNpemVvZigqZGF0
-YSksIEdGUF9LRVJORUwpOw0KPiArICAgICAgIGlmICghZGF0YSkNCj4gICAgICAgICAgICAgICAg
-IGdvdG8gb3V0MTsNCj4NCj4gLSAgICAgICByZXQgPSBuZnNfaWRtYXBfcHJlcGFyZV9tZXNzYWdl
-KGtleS0+ZGVzY3JpcHRpb24sIGltLCBtc2cpOw0KPiArICAgICAgIG1zZyA9ICZkYXRhLT5waXBl
-X21zZzsNCj4gKyAgICAgICBpbSA9ICZkYXRhLT5pZG1hcF9tc2c7DQo+ICsgICAgICAgZGF0YS0+
-aWRtYXAgPSBpZG1hcDsNCj4gKw0KPiArICAgICAgIHJldCA9IG5mc19pZG1hcF9wcmVwYXJlX21l
-c3NhZ2Uoa2V5LT5kZXNjcmlwdGlvbiwgaWRtYXAsIGltLCBtc2cpOw0KPiAgICAgICAgIGlmIChy
-ZXQgPCAwKQ0KPiAgICAgICAgICAgICAgICAgZ290byBvdXQyOw0KPg0KPiBAQCAtNjgzLDE1ICs2
-OTQsMTUgQEAgc3RhdGljIGludCBuZnNfaWRtYXBfbGVnYWN5X3VwY2FsbChzdHJ1Y3Qga2V5X2Nv
-bnN0cnVjdGlvbiAqY29ucywNCj4NCj4gICAgICAgICByZXQgPSBycGNfcXVldWVfdXBjYWxsKGlk
-bWFwLT5pZG1hcF9waXBlLCBtc2cpOw0KPiAgICAgICAgIGlmIChyZXQgPCAwKQ0KPiAtICAgICAg
-ICAgICAgICAgZ290byBvdXQyOw0KPiArICAgICAgICAgICAgICAgZ290byBvdXQzOw0KPg0KPiAg
-ICAgICAgIHJldHVybiByZXQ7DQo+DQo+ICtvdXQzOg0KPiArICAgICAgIGlkbWFwLT5pZG1hcF9r
-ZXlfY29ucyA9IE5VTEw7DQo+ICBvdXQyOg0KPiAtICAgICAgIGtmcmVlKGltKTsNCj4gKyAgICAg
-ICBrZnJlZShkYXRhKTsNCj4gIG91dDE6DQo+IC0gICAgICAga2ZyZWUobXNnKTsNCj4gLW91dDA6
-DQo+ICAgICAgICAgY29tcGxldGVfcmVxdWVzdF9rZXkoY29ucywgcmV0KTsNCj4gICAgICAgICBy
-ZXR1cm4gcmV0Ow0KPiAgfQ0KPiBAQCAtNzc1LDkgKzc4NiwyNiBAQCBvdXRfaW5jb21wbGV0ZToN
-Cj4gIHN0YXRpYyB2b2lkDQo+ICBpZG1hcF9waXBlX2Rlc3Ryb3lfbXNnKHN0cnVjdCBycGNfcGlw
-ZV9tc2cgKm1zZykNCj4gIHsNCj4gKyAgICAgICBzdHJ1Y3QgaWRtYXBfbGVnYWN5X3VwY2FsbGRh
-dGEgKmRhdGEgPSBjb250YWluZXJfb2YobXNnLA0KPiArICAgICAgICAgICAgICAgICAgICAgICBz
-dHJ1Y3QgaWRtYXBfbGVnYWN5X3VwY2FsbGRhdGEsDQo+ICsgICAgICAgICAgICAgICAgICAgICAg
-IHBpcGVfbXNnKTsNCj4gKyAgICAgICBzdHJ1Y3QgaWRtYXAgKmlkbWFwID0gZGF0YS0+aWRtYXA7
-DQo+ICsgICAgICAgc3RydWN0IGtleV9jb25zdHJ1Y3Rpb24gKmNvbnM7DQo+ICsgICAgICAgaWYg
-KG1zZy0+ZXJybm8pIHsNCj4gKyAgICAgICAgICAgICAgIGNvbnMgPSBBQ0NFU1NfT05DRShpZG1h
-cC0+aWRtYXBfa2V5X2NvbnMpOw0KPiArICAgICAgICAgICAgICAgaWRtYXAtPmlkbWFwX2tleV9j
-b25zID0gTlVMTDsNCj4gKyAgICAgICAgICAgICAgIGNvbXBsZXRlX3JlcXVlc3Rfa2V5KGNvbnMs
-IG1zZy0+ZXJybm8pOw0KPiArICAgICAgIH0NCj4gICAgICAgICAvKiBGcmVlIG1lbW9yeSBhbGxv
-Y2F0ZWQgaW4gbmZzX2lkbWFwX2xlZ2FjeV91cGNhbGwoKSAqLw0KPiAtICAgICAgIGtmcmVlKG1z
-Zy0+ZGF0YSk7DQo+IC0gICAgICAga2ZyZWUobXNnKTsNCj4gKyAgICAgICBrZnJlZShkYXRhKTsN
-Cj4gK30NCj4gKw0KPiArc3RhdGljIHZvaWQNCj4gK2lkbWFwX3JlbGVhc2VfcGlwZShzdHJ1Y3Qg
-aW5vZGUgKmlub2RlKQ0KPiArew0KPiArICAgICAgIHN0cnVjdCBycGNfaW5vZGUgKnJwY2kgPSBS
-UENfSShpbm9kZSk7DQo+ICsgICAgICAgc3RydWN0IGlkbWFwICppZG1hcCA9IChzdHJ1Y3QgaWRt
-YXAgKilycGNpLT5wcml2YXRlOw0KPiArICAgICAgIGlkbWFwLT5pZG1hcF9rZXlfY29ucyA9IE5V
-TEw7DQo+ICB9DQo+DQo+ICBpbnQgbmZzX21hcF9uYW1lX3RvX3VpZChjb25zdCBzdHJ1Y3QgbmZz
-X3NlcnZlciAqc2VydmVyLCBjb25zdCBjaGFyICpuYW1lLCBzaXplX3QgbmFtZWxlbiwgX191MzIg
-KnVpZCkNCj4gLS0NCj4gMS43LjExLjINCj4NCj4NCj4NCj4gVGhpcyBtZXNzYWdlIGFuZCBhbnkg
-YXR0YWNoZWQgZG9jdW1lbnRzIGNvbnRhaW4gaW5mb3JtYXRpb24gZnJvbSBRTG9naWMgQ29ycG9y
-YXRpb24gb3IgaXRzIHdob2xseS1vd25lZCBzdWJzaWRpYXJpZXMgdGhhdCBtYXkgYmUgY29uZmlk
-ZW50aWFsLiBJZiB5b3UgYXJlIG5vdCB0aGUgaW50ZW5kZWQgcmVjaXBpZW50LCB5b3UgbWF5IG5v
-dCByZWFkLCBjb3B5LCBkaXN0cmlidXRlLCBvciB1c2UgdGhpcyBpbmZvcm1hdGlvbi4gSWYgeW91
-IGhhdmUgcmVjZWl2ZWQgdGhpcyB0cmFuc21pc3Npb24gaW4gZXJyb3IsIHBsZWFzZSBub3RpZnkg
-dGhlIHNlbmRlciBpbW1lZGlhdGVseSBieSByZXBseSBlLW1haWwgYW5kIHRoZW4gZGVsZXRlIHRo
-aXMgbWVzc2FnZS4NCj4NCg0KLS0NClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBt
-YWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRh
-cHAuY29tDQoNCg0KVGhpcyBtZXNzYWdlIGFuZCBhbnkgYXR0YWNoZWQgZG9jdW1lbnRzIGNvbnRh
-aW4gaW5mb3JtYXRpb24gZnJvbSBRTG9naWMgQ29ycG9yYXRpb24gb3IgaXRzIHdob2xseS1vd25l
-ZCBzdWJzaWRpYXJpZXMgdGhhdCBtYXkgYmUgY29uZmlkZW50aWFsLiBJZiB5b3UgYXJlIG5vdCB0
-aGUgaW50ZW5kZWQgcmVjaXBpZW50LCB5b3UgbWF5IG5vdCByZWFkLCBjb3B5LCBkaXN0cmlidXRl
-LCBvciB1c2UgdGhpcyBpbmZvcm1hdGlvbi4gSWYgeW91IGhhdmUgcmVjZWl2ZWQgdGhpcyB0cmFu
-c21pc3Npb24gaW4gZXJyb3IsIHBsZWFzZSBub3RpZnkgdGhlIHNlbmRlciBpbW1lZGlhdGVseSBi
-eSByZXBseSBlLW1haWwgYW5kIHRoZW4gZGVsZXRlIHRoaXMgbWVzc2FnZS4NCg==
+Switch l2tp to use the new hashtable implementation. This reduces the amount of
+generic unrelated code in l2tp.
+
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ net/l2tp/l2tp_core.c    |  134 +++++++++++++++++-----------------------------
+ net/l2tp/l2tp_core.h    |    8 ++--
+ net/l2tp/l2tp_debugfs.c |   19 +++----
+ 3 files changed, 61 insertions(+), 100 deletions(-)
+
+diff --git a/net/l2tp/l2tp_core.c b/net/l2tp/l2tp_core.c
+index 393355d..1d395ce 100644
+--- a/net/l2tp/l2tp_core.c
++++ b/net/l2tp/l2tp_core.c
+@@ -44,6 +44,7 @@
+ #include <linux/udp.h>
+ #include <linux/l2tp.h>
+ #include <linux/hash.h>
++#include <linux/hashtable.h>
+ #include <linux/sort.h>
+ #include <linux/file.h>
+ #include <linux/nsproxy.h>
+@@ -107,8 +108,8 @@ static unsigned int l2tp_net_id;
+ struct l2tp_net {
+ 	struct list_head l2tp_tunnel_list;
+ 	spinlock_t l2tp_tunnel_list_lock;
+-	struct hlist_head l2tp_session_hlist[L2TP_HASH_SIZE_2];
+-	spinlock_t l2tp_session_hlist_lock;
++	DEFINE_HASHTABLE(l2tp_session_hash, L2TP_HASH_BITS_2)
++	spinlock_t l2tp_session_hash_lock;
+ };
+ 
+ static void l2tp_session_set_header_len(struct l2tp_session *session, int version);
+@@ -156,30 +157,17 @@ do {									\
+ #define l2tp_tunnel_dec_refcount(t) l2tp_tunnel_dec_refcount_1(t)
+ #endif
+ 
+-/* Session hash global list for L2TPv3.
+- * The session_id SHOULD be random according to RFC3931, but several
+- * L2TP implementations use incrementing session_ids.  So we do a real
+- * hash on the session_id, rather than a simple bitmask.
+- */
+-static inline struct hlist_head *
+-l2tp_session_id_hash_2(struct l2tp_net *pn, u32 session_id)
+-{
+-	return &pn->l2tp_session_hlist[hash_32(session_id, L2TP_HASH_BITS_2)];
+-
+-}
+-
+ /* Lookup a session by id in the global session list
+  */
+ static struct l2tp_session *l2tp_session_find_2(struct net *net, u32 session_id)
+ {
+ 	struct l2tp_net *pn = l2tp_pernet(net);
+-	struct hlist_head *session_list =
+-		l2tp_session_id_hash_2(pn, session_id);
+ 	struct l2tp_session *session;
+ 	struct hlist_node *walk;
+ 
+ 	rcu_read_lock_bh();
+-	hlist_for_each_entry_rcu(session, walk, session_list, global_hlist) {
++	hash_for_each_possible_rcu(pn->l2tp_session_hash, session, walk,
++					global_hlist, session_id) {
+ 		if (session->session_id == session_id) {
+ 			rcu_read_unlock_bh();
+ 			return session;
+@@ -190,23 +178,10 @@ static struct l2tp_session *l2tp_session_find_2(struct net *net, u32 session_id)
+ 	return NULL;
+ }
+ 
+-/* Session hash list.
+- * The session_id SHOULD be random according to RFC2661, but several
+- * L2TP implementations (Cisco and Microsoft) use incrementing
+- * session_ids.  So we do a real hash on the session_id, rather than a
+- * simple bitmask.
+- */
+-static inline struct hlist_head *
+-l2tp_session_id_hash(struct l2tp_tunnel *tunnel, u32 session_id)
+-{
+-	return &tunnel->session_hlist[hash_32(session_id, L2TP_HASH_BITS)];
+-}
+-
+ /* Lookup a session by id
+  */
+ struct l2tp_session *l2tp_session_find(struct net *net, struct l2tp_tunnel *tunnel, u32 session_id)
+ {
+-	struct hlist_head *session_list;
+ 	struct l2tp_session *session;
+ 	struct hlist_node *walk;
+ 
+@@ -217,15 +192,14 @@ struct l2tp_session *l2tp_session_find(struct net *net, struct l2tp_tunnel *tunn
+ 	if (tunnel == NULL)
+ 		return l2tp_session_find_2(net, session_id);
+ 
+-	session_list = l2tp_session_id_hash(tunnel, session_id);
+-	read_lock_bh(&tunnel->hlist_lock);
+-	hlist_for_each_entry(session, walk, session_list, hlist) {
++	read_lock_bh(&tunnel->hash_lock);
++	hash_for_each_possible(tunnel->session_hash, session, walk, hlist, session_id) {
+ 		if (session->session_id == session_id) {
+-			read_unlock_bh(&tunnel->hlist_lock);
++			read_unlock_bh(&tunnel->hash_lock);
+ 			return session;
+ 		}
+ 	}
+-	read_unlock_bh(&tunnel->hlist_lock);
++	read_unlock_bh(&tunnel->hash_lock);
+ 
+ 	return NULL;
+ }
+@@ -238,17 +212,15 @@ struct l2tp_session *l2tp_session_find_nth(struct l2tp_tunnel *tunnel, int nth)
+ 	struct l2tp_session *session;
+ 	int count = 0;
+ 
+-	read_lock_bh(&tunnel->hlist_lock);
+-	for (hash = 0; hash < L2TP_HASH_SIZE; hash++) {
+-		hlist_for_each_entry(session, walk, &tunnel->session_hlist[hash], hlist) {
+-			if (++count > nth) {
+-				read_unlock_bh(&tunnel->hlist_lock);
+-				return session;
+-			}
++	read_lock_bh(&tunnel->hash_lock);
++	hash_for_each(tunnel->session_hash, hash, walk, session, hlist) {
++		if (++count > nth) {
++			read_unlock_bh(&tunnel->hash_lock);
++			return session;
+ 		}
+ 	}
+ 
+-	read_unlock_bh(&tunnel->hlist_lock);
++	read_unlock_bh(&tunnel->hash_lock);
+ 
+ 	return NULL;
+ }
+@@ -265,12 +237,10 @@ struct l2tp_session *l2tp_session_find_by_ifname(struct net *net, char *ifname)
+ 	struct l2tp_session *session;
+ 
+ 	rcu_read_lock_bh();
+-	for (hash = 0; hash < L2TP_HASH_SIZE_2; hash++) {
+-		hlist_for_each_entry_rcu(session, walk, &pn->l2tp_session_hlist[hash], global_hlist) {
+-			if (!strcmp(session->ifname, ifname)) {
+-				rcu_read_unlock_bh();
+-				return session;
+-			}
++	hash_for_each_rcu(pn->l2tp_session_hash, hash, walk, session, global_hlist) {
++		if (!strcmp(session->ifname, ifname)) {
++			rcu_read_unlock_bh();
++			return session;
+ 		}
+ 	}
+ 
+@@ -1272,7 +1242,7 @@ end:
+  */
+ static void l2tp_tunnel_closeall(struct l2tp_tunnel *tunnel)
+ {
+-	int hash;
++	int hash, found = 0;
+ 	struct hlist_node *walk;
+ 	struct hlist_node *tmp;
+ 	struct l2tp_session *session;
+@@ -1282,16 +1252,14 @@ static void l2tp_tunnel_closeall(struct l2tp_tunnel *tunnel)
+ 	l2tp_info(tunnel, L2TP_MSG_CONTROL, "%s: closing all sessions...\n",
+ 		  tunnel->name);
+ 
+-	write_lock_bh(&tunnel->hlist_lock);
+-	for (hash = 0; hash < L2TP_HASH_SIZE; hash++) {
+-again:
+-		hlist_for_each_safe(walk, tmp, &tunnel->session_hlist[hash]) {
+-			session = hlist_entry(walk, struct l2tp_session, hlist);
+-
++	write_lock_bh(&tunnel->hash_lock);
++	do {
++		found = 0;
++		hash_for_each_safe(tunnel->session_hash, hash, walk, tmp, session, hlist) {
+ 			l2tp_info(session, L2TP_MSG_CONTROL,
+ 				  "%s: closing session\n", session->name);
+ 
+-			hlist_del_init(&session->hlist);
++			hash_del(&session->hlist);
+ 
+ 			/* Since we should hold the sock lock while
+ 			 * doing any unbinding, we need to release the
+@@ -1302,14 +1270,14 @@ again:
+ 			if (session->ref != NULL)
+ 				(*session->ref)(session);
+ 
+-			write_unlock_bh(&tunnel->hlist_lock);
++			write_unlock_bh(&tunnel->hash_lock);
+ 
+ 			if (tunnel->version != L2TP_HDR_VER_2) {
+ 				struct l2tp_net *pn = l2tp_pernet(tunnel->l2tp_net);
+ 
+-				spin_lock_bh(&pn->l2tp_session_hlist_lock);
+-				hlist_del_init_rcu(&session->global_hlist);
+-				spin_unlock_bh(&pn->l2tp_session_hlist_lock);
++				spin_lock_bh(&pn->l2tp_session_hash_lock);
++				hash_del_rcu(&session->global_hlist);
++				spin_unlock_bh(&pn->l2tp_session_hash_lock);
+ 				synchronize_rcu();
+ 			}
+ 
+@@ -1319,17 +1287,17 @@ again:
+ 			if (session->deref != NULL)
+ 				(*session->deref)(session);
+ 
+-			write_lock_bh(&tunnel->hlist_lock);
++			write_lock_bh(&tunnel->hash_lock);
+ 
+ 			/* Now restart from the beginning of this hash
+ 			 * chain.  We always remove a session from the
+ 			 * list so we are guaranteed to make forward
+ 			 * progress.
+ 			 */
+-			goto again;
++			found = 1;
+ 		}
+-	}
+-	write_unlock_bh(&tunnel->hlist_lock);
++	} while (found);
++	write_unlock_bh(&tunnel->hash_lock);
+ }
+ 
+ /* Really kill the tunnel.
+@@ -1575,7 +1543,7 @@ int l2tp_tunnel_create(struct net *net, int fd, int version, u32 tunnel_id, u32
+ 
+ 	tunnel->magic = L2TP_TUNNEL_MAGIC;
+ 	sprintf(&tunnel->name[0], "tunl %u", tunnel_id);
+-	rwlock_init(&tunnel->hlist_lock);
++	rwlock_init(&tunnel->hash_lock);
+ 
+ 	/* The net we belong to */
+ 	tunnel->l2tp_net = net;
+@@ -1610,6 +1578,8 @@ int l2tp_tunnel_create(struct net *net, int fd, int version, u32 tunnel_id, u32
+ 
+ 	/* Add tunnel to our list */
+ 	INIT_LIST_HEAD(&tunnel->list);
++
++	hash_init(tunnel->session_hash);
+ 	atomic_inc(&l2tp_tunnel_count);
+ 
+ 	/* Bump the reference count. The tunnel context is deleted
+@@ -1674,17 +1644,17 @@ void l2tp_session_free(struct l2tp_session *session)
+ 		BUG_ON(tunnel->magic != L2TP_TUNNEL_MAGIC);
+ 
+ 		/* Delete the session from the hash */
+-		write_lock_bh(&tunnel->hlist_lock);
+-		hlist_del_init(&session->hlist);
+-		write_unlock_bh(&tunnel->hlist_lock);
++		write_lock_bh(&tunnel->hash_lock);
++		hash_del(&session->hlist);
++		write_unlock_bh(&tunnel->hash_lock);
+ 
+ 		/* Unlink from the global hash if not L2TPv2 */
+ 		if (tunnel->version != L2TP_HDR_VER_2) {
+ 			struct l2tp_net *pn = l2tp_pernet(tunnel->l2tp_net);
+ 
+-			spin_lock_bh(&pn->l2tp_session_hlist_lock);
+-			hlist_del_init_rcu(&session->global_hlist);
+-			spin_unlock_bh(&pn->l2tp_session_hlist_lock);
++			spin_lock_bh(&pn->l2tp_session_hash_lock);
++			hash_del_rcu(&session->global_hlist);
++			spin_unlock_bh(&pn->l2tp_session_hash_lock);
+ 			synchronize_rcu();
+ 		}
+ 
+@@ -1797,19 +1767,17 @@ struct l2tp_session *l2tp_session_create(int priv_size, struct l2tp_tunnel *tunn
+ 		sock_hold(tunnel->sock);
+ 
+ 		/* Add session to the tunnel's hash list */
+-		write_lock_bh(&tunnel->hlist_lock);
+-		hlist_add_head(&session->hlist,
+-			       l2tp_session_id_hash(tunnel, session_id));
+-		write_unlock_bh(&tunnel->hlist_lock);
++		write_lock_bh(&tunnel->hash_lock);
++		hash_add(tunnel->session_hash, &session->hlist, session_id);
++		write_unlock_bh(&tunnel->hash_lock);
+ 
+ 		/* And to the global session list if L2TPv3 */
+ 		if (tunnel->version != L2TP_HDR_VER_2) {
+ 			struct l2tp_net *pn = l2tp_pernet(tunnel->l2tp_net);
+ 
+-			spin_lock_bh(&pn->l2tp_session_hlist_lock);
+-			hlist_add_head_rcu(&session->global_hlist,
+-					   l2tp_session_id_hash_2(pn, session_id));
+-			spin_unlock_bh(&pn->l2tp_session_hlist_lock);
++			spin_lock_bh(&pn->l2tp_session_hash_lock);
++			hash_add(pn->l2tp_session_hash, &session->global_hlist, session_id);
++			spin_unlock_bh(&pn->l2tp_session_hash_lock);
+ 		}
+ 
+ 		/* Ignore management session in session count value */
+@@ -1828,15 +1796,13 @@ EXPORT_SYMBOL_GPL(l2tp_session_create);
+ static __net_init int l2tp_init_net(struct net *net)
+ {
+ 	struct l2tp_net *pn = net_generic(net, l2tp_net_id);
+-	int hash;
+ 
+ 	INIT_LIST_HEAD(&pn->l2tp_tunnel_list);
+ 	spin_lock_init(&pn->l2tp_tunnel_list_lock);
+ 
+-	for (hash = 0; hash < L2TP_HASH_SIZE_2; hash++)
+-		INIT_HLIST_HEAD(&pn->l2tp_session_hlist[hash]);
++	hash_init(pn->l2tp_session_hash);
+ 
+-	spin_lock_init(&pn->l2tp_session_hlist_lock);
++	spin_lock_init(&pn->l2tp_session_hash_lock);
+ 
+ 	return 0;
+ }
+diff --git a/net/l2tp/l2tp_core.h b/net/l2tp/l2tp_core.h
+index a38ec6c..23bf320 100644
+--- a/net/l2tp/l2tp_core.h
++++ b/net/l2tp/l2tp_core.h
+@@ -11,17 +11,17 @@
+ #ifndef _L2TP_CORE_H_
+ #define _L2TP_CORE_H_
+ 
++#include <linux/hashtable.h>
++
+ /* Just some random numbers */
+ #define L2TP_TUNNEL_MAGIC	0x42114DDA
+ #define L2TP_SESSION_MAGIC	0x0C04EB7D
+ 
+ /* Per tunnel, session hash table size */
+ #define L2TP_HASH_BITS	4
+-#define L2TP_HASH_SIZE	(1 << L2TP_HASH_BITS)
+ 
+ /* System-wide, session hash table size */
+ #define L2TP_HASH_BITS_2	8
+-#define L2TP_HASH_SIZE_2	(1 << L2TP_HASH_BITS_2)
+ 
+ /* Debug message categories for the DEBUG socket option */
+ enum {
+@@ -163,8 +163,8 @@ struct l2tp_tunnel_cfg {
+ 
+ struct l2tp_tunnel {
+ 	int			magic;		/* Should be L2TP_TUNNEL_MAGIC */
+-	rwlock_t		hlist_lock;	/* protect session_hlist */
+-	struct hlist_head	session_hlist[L2TP_HASH_SIZE];
++	rwlock_t		hash_lock;	/* protect session_hash */
++	DEFINE_HASHTABLE(session_hash, L2TP_HASH_BITS);
+ 						/* hashed list of sessions,
+ 						 * hashed by id */
+ 	u32			tunnel_id;
+diff --git a/net/l2tp/l2tp_debugfs.c b/net/l2tp/l2tp_debugfs.c
+index c3813bc..655f1fa 100644
+--- a/net/l2tp/l2tp_debugfs.c
++++ b/net/l2tp/l2tp_debugfs.c
+@@ -105,21 +105,16 @@ static void l2tp_dfs_seq_tunnel_show(struct seq_file *m, void *v)
+ 	int session_count = 0;
+ 	int hash;
+ 	struct hlist_node *walk;
+-	struct hlist_node *tmp;
++	struct l2tp_session *session;
+ 
+-	read_lock_bh(&tunnel->hlist_lock);
+-	for (hash = 0; hash < L2TP_HASH_SIZE; hash++) {
+-		hlist_for_each_safe(walk, tmp, &tunnel->session_hlist[hash]) {
+-			struct l2tp_session *session;
++	read_lock_bh(&tunnel->hash_lock);
++	hash_for_each(tunnel->session_hash, hash, walk, session, hlist) {
++		if (session->session_id == 0)
++			continue;
+ 
+-			session = hlist_entry(walk, struct l2tp_session, hlist);
+-			if (session->session_id == 0)
+-				continue;
+-
+-			session_count++;
+-		}
++		session_count++;
+ 	}
+-	read_unlock_bh(&tunnel->hlist_lock);
++	read_unlock_bh(&tunnel->hash_lock);
+ 
+ 	seq_printf(m, "\nTUNNEL %u peer %u", tunnel->tunnel_id, tunnel->peer_tunnel_id);
+ 	if (tunnel->sock) {
+-- 
+1.7.8.6
 
