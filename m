@@ -1,89 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ch1ehsobe005.messaging.microsoft.com ([216.32.181.185]:21820
-	"EHLO ch1outboundpool.messaging.microsoft.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754938Ab2HQAPh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Aug 2012 20:15:37 -0400
-From: Shai Lazmi <shai.lazmi@qlogic.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: William Dauchy <wdauchy@gmail.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Thu, 16 Aug 2012 17:15:31 -0700
-Subject: RE: [PATCH 1/2] NFS: Clear key construction data if the idmap
- upcall fails
-Message-ID: <21641D3714F5AF449DC483E699E1124E86E6409593@AVEXMB2.qlogic.org>
-References: <1345148622-10845-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E640957F@AVEXMB2.qlogic.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B542B@SACEXCMBX04-PRD.hq.netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E6409585@AVEXMB2.qlogic.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B54EC@SACEXCMBX04-PRD.hq.netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E640958D@AVEXMB2.qlogic.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA93B5646@SACEXCMBX04-PRD.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA93B5646@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:43640 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751777Ab2HSQRO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Aug 2012 12:17:14 -0400
+Message-ID: <503111A8.5030703@gmail.com>
+Date: Sun, 19 Aug 2012 18:17:44 +0200
+From: Sasha Levin <levinsasha928@gmail.com>
 MIME-Version: 1.0
+To: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+CC: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v2 01/16] hashtable: introduce a small and naive hashtable
+References: <1345337550-24304-1-git-send-email-levinsasha928@gmail.com> <1345337550-24304-2-git-send-email-levinsasha928@gmail.com> <20120819131637.GA8272@Krystal> <20120819141641.GA9082@Krystal>
+In-Reply-To: <20120819141641.GA9082@Krystal>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Z2l0IGFwcGx5IC0tY2hlY2sgMDAwMS1ORlMtQ2xlYXIta2V5LWNvbnN0cnVjdGlvbi1kYXRhLWlm
-LXRoZS1pZG1hcC11cGNhbGwtLnBhdGNoDQplcnJvcjogcGF0Y2ggZmFpbGVkOiBmcy9uZnMvaWRt
-YXAuYzo2MQ0KZXJyb3I6IGZzL25mcy9pZG1hcC5jOiBwYXRjaCBkb2VzIG5vdCBhcHBseQ0KDQoN
-CmlkbWFwLmMNCmRlZmluZSBORlNfVUlOVF9NQVhMRU4gMTENCg0Kc3RhdGljIGNvbnN0IHN0cnVj
-dCBjcmVkICppZF9yZXNvbHZlcl9jYWNoZTsNCnN0YXRpYyBzdHJ1Y3Qga2V5X3R5cGUga2V5X3R5
-cGVfaWRfcmVzb2x2ZXJfbGVnYWN5Ow0KDQpzdHJ1Y3QgaWRtYXAgew0KICAgICAgICBzdHJ1Y3Qg
-cnBjX3BpcGUgICAgICAgICAqaWRtYXBfcGlwZTsNCiAgICAgICAgc3RydWN0IGtleV9jb25zdHJ1
-Y3Rpb24gKmlkbWFwX2tleV9jb25zOw0KICAgICAgICBzdHJ1Y3QgbXV0ZXggICAgICAgICAgICBp
-ZG1hcF9tdXRleDsNCn07DQoNCg0KLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCkZyb206IE15
-a2xlYnVzdCwgVHJvbmQgW21haWx0bzpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbV0NClNlbnQ6
-IFRodXJzZGF5LCBBdWd1c3QgMTYsIDIwMTIgNToxNCBQTQ0KVG86IFNoYWkgTGF6bWkNCkNjOiBX
-aWxsaWFtIERhdWNoeTsgU2NodW1ha2VyLCBCcnlhbjsgbGludXgtbmZzQHZnZXIua2VybmVsLm9y
-Zw0KU3ViamVjdDogUmU6IFtQQVRDSCAxLzJdIE5GUzogQ2xlYXIga2V5IGNvbnN0cnVjdGlvbiBk
-YXRhIGlmIHRoZSBpZG1hcCB1cGNhbGwgZmFpbHMNCg0KT24gVGh1LCAyMDEyLTA4LTE2IGF0IDE3
-OjA3IC0wNzAwLCBTaGFpIExhem1pIHdyb3RlOg0KPiBTb3JyeSAtIGNvbXBhbnkncyBwb2xpY3kg
-Li4uDQo+IFdoYXQgaWRtYXAgdmVyc2lvbiB3YXMgdGhpcyBwYXRjaCB1c2VkIGFnYWluc3Q/IFRo
-ZSBvbmUgSSBoYXZlIChiNzAxMzU4Yykgc2VlbXMgdG8gYmUgYSBiaXQgZGlmZmVyZW50IChJIHVz
-ZWQgbGF0ZXN0IHB1bGwgY29tbWl0IGRkZjM0M2Y2MzVmZTQ0NDBjYWQ1MjhlMTJmOTZmMjhiZDUw
-YWEwOTkpLCBoZW5jZSB0aGUgcGF0Y2ggZmFpbHMgYWdhaW4NCg0KSXQgd29ya3MgZmluZSBmb3Ig
-bWUgYWdhaW5zdCBjb21taXQgZGRmMzQzZjYzNWZlNDQ0MGNhZDUyOGUxMmY5NmYyOGJkNTBhYTA5
-OToNCg0KW3Ryb25kbXlAbGFkZSBsaW51eC1uZnNdJCBnaXQgYnJhbmNoIHRlc3QtYXBwbHkgZGRm
-MzQzZjYzNWZlNDQ0MGNhZDUyOGUxMmY5NmYyOGJkNTBhYTA5OQ0KW3Ryb25kbXlAbGFkZSBsaW51
-eC1uZnNdJCBnaXQgY2hlY2tvdXQgdGVzdC1hcHBseQ0KU3dpdGNoZWQgdG8gYnJhbmNoICd0ZXN0
-LWFwcGx5Jw0KW3Ryb25kbXlAbGFkZSBsaW51eC1uZnNdJCBnaXQgYW0gfi9EZXNrdG9wL2Zvcl9z
-aGFpLzAwMDEtTkZTLUNsZWFyLWtleS1jb25zdHJ1Y3Rpb24tZGF0YS1pZi10aGUtaWRtYXAtdXBj
-YWxsLS5wYXRjaA0KQXBwbHlpbmc6IE5GUzogQ2xlYXIga2V5IGNvbnN0cnVjdGlvbiBkYXRhIGlm
-IHRoZSBpZG1hcCB1cGNhbGwgZmFpbHMNClt0cm9uZG15QGxhZGUgbGludXgtbmZzXSQgZ2l0IGFt
-IH4vRGVza3RvcC9mb3Jfc2hhaS8wMDAyLU5GUy1yZXR1cm4tRU5PS0VZLXdoZW4tdGhlLXVwY2Fs
-bC1mYWlscy10by1tYXAtdGhlLW4ucGF0Y2gNCkFwcGx5aW5nOiBORlM6IHJldHVybiAtRU5PS0VZ
-IHdoZW4gdGhlIHVwY2FsbCBmYWlscyB0byBtYXAgdGhlIG5hbWUNCg0KV2hhdCBlcnJvciBtZXNz
-YWdlcyBhcmUgeW91IHNlZWluZz8NCg0KQ2hlZXJzDQogIFRyb25kDQoNCj4gLS0tLS1PcmlnaW5h
-bCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogTXlrbGVidXN0LCBUcm9uZCBbbWFpbHRvOlRyb25kLk15
-a2xlYnVzdEBuZXRhcHAuY29tXQ0KPiBTZW50OiBUaHVyc2RheSwgQXVndXN0IDE2LCAyMDEyIDQ6
-NTcgUE0NCj4gVG86IFNoYWkgTGF6bWkNCj4gQ2M6IFdpbGxpYW0gRGF1Y2h5OyBTY2h1bWFrZXIs
-IEJyeWFuOyBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnDQo+IFN1YmplY3Q6IFJlOiBbUEFUQ0gg
-MS8yXSBORlM6IENsZWFyIGtleSBjb25zdHJ1Y3Rpb24gZGF0YSBpZiB0aGUgaWRtYXAgdXBjYWxs
-IGZhaWxzDQo+DQo+IE9uIFRodSwgMjAxMi0wOC0xNiBhdCAxNjo1MCAtMDcwMCwgU2hhaSBMYXpt
-aSB3cm90ZToNCj4gPiBNUyBvdXRsb29rDQo+DQo+IERvbid0IGV2ZXIgdXNlIExvb2tPdXQgZm9y
-IHBhdGNoZXMuIEl0cyAiSSBqdXN0IHJlZm9ybWF0dGVkIHlvdXIgZW1haWwiDQo+IHdvbmRlciBm
-ZWF0dXJlIGJyZWFrcyBhbGwgdGhlIHdoaXRlc3BhY2UuDQo+DQo+ID4gQmVzdCB0aGluZyBpcyB0
-byBhdHRhY2hlZCB0aGUgcGF0Y2gNCj4NCj4gV2UgZG8gbm90IG5vcm1hbGx5IHVzZSBhdHRhY2ht
-ZW50cyBvbiB0aGUgbWFpbGluZyBsaXN0IGJlY2F1c2UgaXQgbWFrZXMgaXQgaW1wb3NzaWJsZSB0
-byBjb21tZW50IHRoZSBwYXRjaGVzIGlubGluZS4gQWggd2VsbCwgaGVyZSBnb2VzLi4uDQo+DQo+
-IC0tDQo+IFRyb25kIE15a2xlYnVzdA0KPiBMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCj4N
-Cj4gTmV0QXBwDQo+IFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQo+IHd3dy5uZXRhcHAuY29t
-DQo+DQo+DQo+IFRoaXMgbWVzc2FnZSBhbmQgYW55IGF0dGFjaGVkIGRvY3VtZW50cyBjb250YWlu
-IGluZm9ybWF0aW9uIGZyb20gUUxvZ2ljIENvcnBvcmF0aW9uIG9yIGl0cyB3aG9sbHktb3duZWQg
-c3Vic2lkaWFyaWVzIHRoYXQgbWF5IGJlIGNvbmZpZGVudGlhbC4gSWYgeW91IGFyZSBub3QgdGhl
-IGludGVuZGVkIHJlY2lwaWVudCwgeW91IG1heSBub3QgcmVhZCwgY29weSwgZGlzdHJpYnV0ZSwg
-b3IgdXNlIHRoaXMgaW5mb3JtYXRpb24uIElmIHlvdSBoYXZlIHJlY2VpdmVkIHRoaXMgdHJhbnNt
-aXNzaW9uIGluIGVycm9yLCBwbGVhc2Ugbm90aWZ5IHRoZSBzZW5kZXIgaW1tZWRpYXRlbHkgYnkg
-cmVwbHkgZS1tYWlsIGFuZCB0aGVuIGRlbGV0ZSB0aGlzIG1lc3NhZ2UuDQoNCi0tDQpUcm9uZCBN
-eWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15
-a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQoNClRoaXMgbWVzc2FnZSBhbmQg
-YW55IGF0dGFjaGVkIGRvY3VtZW50cyBjb250YWluIGluZm9ybWF0aW9uIGZyb20gUUxvZ2ljIENv
-cnBvcmF0aW9uIG9yIGl0cyB3aG9sbHktb3duZWQgc3Vic2lkaWFyaWVzIHRoYXQgbWF5IGJlIGNv
-bmZpZGVudGlhbC4gSWYgeW91IGFyZSBub3QgdGhlIGludGVuZGVkIHJlY2lwaWVudCwgeW91IG1h
-eSBub3QgcmVhZCwgY29weSwgZGlzdHJpYnV0ZSwgb3IgdXNlIHRoaXMgaW5mb3JtYXRpb24uIElm
-IHlvdSBoYXZlIHJlY2VpdmVkIHRoaXMgdHJhbnNtaXNzaW9uIGluIGVycm9yLCBwbGVhc2Ugbm90
-aWZ5IHRoZSBzZW5kZXIgaW1tZWRpYXRlbHkgYnkgcmVwbHkgZS1tYWlsIGFuZCB0aGVuIGRlbGV0
-ZSB0aGlzIG1lc3NhZ2UuDQo=
+On 08/19/2012 04:16 PM, Mathieu Desnoyers wrote:
+> * Mathieu Desnoyers (mathieu.desnoyers@efficios.com) wrote:
+>> * Sasha Levin (levinsasha928@gmail.com) wrote:
+> [...]
+>>> +/**
+>>> + * hash_for_each_possible - iterate over all possible objects for a given key
+>>> + * @name: hashtable to iterate
+>>> + * @obj: the type * to use as a loop cursor for each bucket
+>>> + * @bits: bit count of hashing function of the hashtable
+>>> + * @node: the &struct list_head to use as a loop cursor for each bucket
+>>> + * @member: the name of the hlist_node within the struct
+>>> + * @key: the key of the objects to iterate over
+>>> + */
+>>> +#define hash_for_each_possible_size(name, obj, bits, node, member, key)		\
+>>> +	hlist_for_each_entry(obj, node,	&name[hash_min(key, bits)], member)
+>>
+>> Second point: "for_each_possible" does not express the iteration scope.
+>> Citing WordNet: "possible adj 1: capable of happening or existing;" --
+>> which has nothing to do with iteration on duplicate keys within a hash
+>> table.
+>>
+>> I would recommend to rename "possible" to "duplicate", e.g.:
+>>
+>>   hash_for_each_duplicate()
+>>
+>> which clearly says what is the scope of this iteration: duplicate keys.
+> 
+> OK, about this part: I now see that you iterate over all objects within
+> the same hash chain. I guess the description "iterate over all possible
+> objects for a given key" is misleading: it's not all objects with a
+> given key, but rather all objects hashing to the same bucket.
+> 
+> I understand that you don't want to build knowledge of the key
+> comparison function in the iterator (which makes sense for a simple hash
+> table).
+> 
+> By the way, the comment "@obj: the type * to use as a loop cursor for
+> each bucket" is also misleading: it's a loop cursor for each entry,
+> since you iterate on all nodes within single bucket. Same for "@node:
+> the &struct list_head to use as a loop cursor for each bucket".
+> 
+> So with these documentation changes applied, hash_for_each_possible
+> starts to make more sense, because it refers to entries that can
+> _possibly_ be a match (or not). Other options would be
+> hash_chain_for_each() or hash_bucket_for_each().
+
+I'd rather avoid starting to use chain/bucket since they're not used anywhere
+else (I've tried keeping internal hashing/bucketing opaque to the user).
+
+Otherwise makes sense, I'll improve the documentation as suggested. Thanks!
+
+> Thanks,
+> 
+> Mathieu
+> 
 
