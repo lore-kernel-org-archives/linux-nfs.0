@@ -1,224 +1,170 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:41876 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751256Ab2HMJpF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Aug 2012 05:45:05 -0400
-Received: by pbbrr13 with SMTP id rr13so6991747pbb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Aug 2012 02:45:05 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <5027F63F.8070107@panasas.com>
-References: <1344391392-1948-1-git-send-email-bergwolf@gmail.com>
- <1344391392-1948-3-git-send-email-bergwolf@gmail.com> <5027F63F.8070107@panasas.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Mon, 13 Aug 2012 17:44:45 +0800
-Message-ID: <CA+a=Yy5cG74RhVUYVQTYOCrwOWfuz2OfsCGpuMXW-8hoOgfKLw@mail.gmail.com>
-Subject: Re: [PATCH RFC 2/3] NFS41: send real write size in layoutget
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:41176 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752322Ab2HSAwl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Aug 2012 20:52:41 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH v2 13/16] lockd: use new hashtable implementation
+Date: Sun, 19 Aug 2012 02:52:27 +0200
+Message-Id: <1345337550-24304-15-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1345337550-24304-1-git-send-email-levinsasha928@gmail.com>
+References: <1345337550-24304-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 13, 2012 at 2:30 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> On 08/08/2012 05:03 AM, Peng Tao wrote:
->
->> From: Peng Tao <tao.peng@emc.com>
->>
->> For bufferred write, scan dirty pages to find out longest continuous
->> dirty pages. In this case, also allow layout driver to specify a
->> maximum layoutget size which is useful to avoid busy scanning dirty pages
->> for block layout client.
->>
->> For direct write, just use dreq->bytes_left.
->>
->> Signed-off-by: Peng Tao <tao.peng@emc.com>
->> ---
->>  fs/nfs/direct.c   |    7 ++++++
->>  fs/nfs/internal.h |    1 +
->>  fs/nfs/pnfs.c     |   58 +++++++++++++++++++++++++++++++++++++++++++++++++++-
->>  3 files changed, 64 insertions(+), 2 deletions(-)
->>
->> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
->> index c39f775..c1899dd 100644
->> --- a/fs/nfs/direct.c
->> +++ b/fs/nfs/direct.c
->> @@ -46,6 +46,7 @@
->>  #include <linux/kref.h>
->>  #include <linux/slab.h>
->>  #include <linux/task_io_accounting_ops.h>
->> +#include <linux/module.h>
->>
->>  #include <linux/nfs_fs.h>
->>  #include <linux/nfs_page.h>
->> @@ -191,6 +192,12 @@ static void nfs_direct_req_release(struct nfs_direct_req *dreq)
->>       kref_put(&dreq->kref, nfs_direct_req_free);
->>  }
->>
->> +ssize_t nfs_dreq_bytes_left(struct nfs_direct_req *dreq)
->> +{
->> +     return dreq->bytes_left;
->> +}
->> +EXPORT_SYMBOL_GPL(nfs_dreq_bytes_left);
->> +
->>  /*
->>   * Collects and returns the final error value/byte-count.
->>   */
->> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
->> index 31fdb03..e68d329 100644
->> --- a/fs/nfs/internal.h
->> +++ b/fs/nfs/internal.h
->> @@ -464,6 +464,7 @@ static inline void nfs_inode_dio_wait(struct inode *inode)
->>  {
->>       inode_dio_wait(inode);
->>  }
->> +extern ssize_t nfs_dreq_bytes_left(struct nfs_direct_req *dreq);
->>
->
->
-> Why is this an EXPORT_SYMBOL_GPL at .c file. Why not just an inline
-> here ?
->
->>  /* nfs4proc.c */
->>  extern void __nfs4_read_done_cb(struct nfs_read_data *);
->> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->> index 2e00fea..e61a373 100644
->> --- a/fs/nfs/pnfs.c
->> +++ b/fs/nfs/pnfs.c
->> @@ -29,6 +29,7 @@
->>
->>  #include <linux/nfs_fs.h>
->>  #include <linux/nfs_page.h>
->> +#include <linux/pagevec.h>
->>  #include <linux/module.h>
->>  #include "internal.h"
->>  #include "pnfs.h"
->> @@ -1172,19 +1173,72 @@ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *r
->>  }
->>  EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_read);
->>
->> +/*
->> + * Return the number of contiguous bytes in dirty pages for a given inode
->> + * starting at page frame idx.
->> + */
->> +static u64 pnfs_num_dirty_bytes(struct inode *inode, pgoff_t idx)
->> +{
->> +     struct address_space *mapping = inode->i_mapping;
->> +     pgoff_t index;
->> +     struct pagevec pvec;
->> +     pgoff_t num = 1; /* self */
->> +     int i, done = 0;
->> +
->> +     pagevec_init(&pvec, 0);
->> +     idx++; /* self */
->> +     while (!done) {
->> +             index = idx;
->> +             pagevec_lookup_tag(&pvec, mapping, &index,
->> +                                PAGECACHE_TAG_DIRTY, (pgoff_t)PAGEVEC_SIZE);
->> +             if (pagevec_count(&pvec) == 0)
->> +                     break;
->> +
->> +             for (i = 0; i < pagevec_count(&pvec); i++) {
->> +                     struct page *page = pvec.pages[i];
->> +
->> +                     lock_page(page);
->> +                     if (unlikely(page->mapping != mapping) ||
->> +                         !PageDirty(page) ||
->> +                         PageWriteback(page) ||
->> +                         page->index != idx) {
->> +                             done = 1;
->> +                             unlock_page(page);
->> +                             break;
->> +                     }
->> +                     unlock_page(page);
->> +                     if (done)
->> +                             break;
->> +                     idx++;
->> +                     num++;
->> +             }
->> +             pagevec_release(&pvec);
->> +     }
->> +     return num << PAGE_CACHE_SHIFT;
->> +}
->> +
->
->
-> Same as what Trond said. radix_tree_next_hole() should be nicer. We need never
-> do any locking this is just an hint, and not a transaction guaranty. Best first
-> guess approximation is all we need.
->
-> Also you might want to optimize for the most common case of a linear write from
-> zero. This you can do by comparing i_size / PAGE_SIZE and the number of dirty
-> pages, if they are the same you know there are no holes, and need not scan.
->
->>  void
->> -pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
->> +pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
->> +                        struct nfs_page *req)
->
->
-> Nothing changed here, please don't do this
->
->>  {
->> +     u64 wb_size;
->> +
->>       BUG_ON(pgio->pg_lseg != NULL);
->>
->>       if (req->wb_offset != req->wb_pgbase) {
->>               nfs_pageio_reset_write_mds(pgio);
->>               return;
->>       }
->> +
->> +     if (pgio->pg_dreq == NULL)
->> +             wb_size = pnfs_num_dirty_bytes(pgio->pg_inode, req->wb_index);
->> +     else
->> +             wb_size = nfs_dreq_bytes_left(pgio->pg_dreq);
->> +
->>       pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
->>                                          req->wb_context,
->>                                          req_offset(req),
->> -                                        req->wb_bytes,
->> +                                        wb_size?:req->wb_bytes,
->
->
-> wb_size is always set above in the if() or else. No need to check here.
->
->>                                          IOMODE_RW,
->>                                          GFP_NOFS);
->>       /* If no lseg, fall back to write through mds */
->
->
->
-> But No!
->
-> much much better then last time, thank you for working on this
-> but it is not optimum for objects and files
-> (when "files" supports segments)
->
-> For blocks, Yes radix_tree_next_hole() is the perfect fit. But for
-> objects (and files) it is i_size_read(). The objects/files server usually
-> determines it's topology according to file-size. And it does not have any
-> bigger resources because of holes or no holes. (The files example I think of
-> is CEPH)
->
-> So for objects the wasting factor is the actual i_size extending as a cause
-> of layout_get, and not the number of pages served. So for us the gain is if
-> client, that has a much newer information about i_size, sends it on first
-> layout_get. Though extending file size only once on first layout_get and
-> not on every layout_get.
->
-> So the small change I want is:
->
-> +enum pnfs_layout_get_strategy {
-> +       PLGS_USE_ISIZE,
-> +       PLGS_SEARCH_FIRST_HOLE,
-> +       PLGS_ALL_FILE,
-> +};
->
-Just a second thought, since each layout driver would use one
-strategy, it is more reasonable to set the strategy in
-pnfs_curr_ld->flags instead of changing pg_init API to pass it in. I
-will do it this way.
+Switch lockd to use the new hashtable implementation. This reduces the amount of
+generic unrelated code in lockd.
 
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ fs/lockd/svcsubs.c |   66 ++++++++++++++++++++++++++++-----------------------
+ 1 files changed, 36 insertions(+), 30 deletions(-)
+
+diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
+index 0deb5f6..d223a1f 100644
+--- a/fs/lockd/svcsubs.c
++++ b/fs/lockd/svcsubs.c
+@@ -20,6 +20,7 @@
+ #include <linux/lockd/share.h>
+ #include <linux/module.h>
+ #include <linux/mount.h>
++#include <linux/hashtable.h>
+ 
+ #define NLMDBG_FACILITY		NLMDBG_SVCSUBS
+ 
+@@ -28,8 +29,7 @@
+  * Global file hash table
+  */
+ #define FILE_HASH_BITS		7
+-#define FILE_NRHASH		(1<<FILE_HASH_BITS)
+-static struct hlist_head	nlm_files[FILE_NRHASH];
++static DEFINE_HASHTABLE(nlm_files, FILE_HASH_BITS);
+ static DEFINE_MUTEX(nlm_file_mutex);
+ 
+ #ifdef NFSD_DEBUG
+@@ -68,7 +68,7 @@ static inline unsigned int file_hash(struct nfs_fh *f)
+ 	int i;
+ 	for (i=0; i<NFS2_FHSIZE;i++)
+ 		tmp += f->data[i];
+-	return tmp & (FILE_NRHASH - 1);
++	return tmp;
+ }
+ 
+ /*
+@@ -86,17 +86,17 @@ nlm_lookup_file(struct svc_rqst *rqstp, struct nlm_file **result,
+ {
+ 	struct hlist_node *pos;
+ 	struct nlm_file	*file;
+-	unsigned int	hash;
++	unsigned int	key;
+ 	__be32		nfserr;
+ 
+ 	nlm_debug_print_fh("nlm_lookup_file", f);
+ 
+-	hash = file_hash(f);
++	key = file_hash(f);
+ 
+ 	/* Lock file table */
+ 	mutex_lock(&nlm_file_mutex);
+ 
+-	hlist_for_each_entry(file, pos, &nlm_files[hash], f_list)
++	hash_for_each_possible(nlm_files, file, pos, f_list, file_hash(f))
+ 		if (!nfs_compare_fh(&file->f_handle, f))
+ 			goto found;
+ 
+@@ -123,7 +123,7 @@ nlm_lookup_file(struct svc_rqst *rqstp, struct nlm_file **result,
+ 		goto out_free;
+ 	}
+ 
+-	hlist_add_head(&file->f_list, &nlm_files[hash]);
++	hash_add(nlm_files, &file->f_list, key);
+ 
+ found:
+ 	dprintk("lockd: found file %p (count %d)\n", file, file->f_count);
+@@ -147,8 +147,8 @@ static inline void
+ nlm_delete_file(struct nlm_file *file)
+ {
+ 	nlm_debug_print_file("closing file", file);
+-	if (!hlist_unhashed(&file->f_list)) {
+-		hlist_del(&file->f_list);
++	if (hash_hashed(&file->f_list)) {
++		hash_del(&file->f_list);
+ 		nlmsvc_ops->fclose(file->f_file);
+ 		kfree(file);
+ 	} else {
+@@ -253,27 +253,25 @@ nlm_traverse_files(void *data, nlm_host_match_fn_t match,
+ 	int i, ret = 0;
+ 
+ 	mutex_lock(&nlm_file_mutex);
+-	for (i = 0; i < FILE_NRHASH; i++) {
+-		hlist_for_each_entry_safe(file, pos, next, &nlm_files[i], f_list) {
+-			if (is_failover_file && !is_failover_file(data, file))
+-				continue;
+-			file->f_count++;
+-			mutex_unlock(&nlm_file_mutex);
+-
+-			/* Traverse locks, blocks and shares of this file
+-			 * and update file->f_locks count */
+-			if (nlm_inspect_file(data, file, match))
+-				ret = 1;
+-
+-			mutex_lock(&nlm_file_mutex);
+-			file->f_count--;
+-			/* No more references to this file. Let go of it. */
+-			if (list_empty(&file->f_blocks) && !file->f_locks
+-			 && !file->f_shares && !file->f_count) {
+-				hlist_del(&file->f_list);
+-				nlmsvc_ops->fclose(file->f_file);
+-				kfree(file);
+-			}
++	hash_for_each_safe(nlm_files, i, pos, next, file, f_list) {
++		if (is_failover_file && !is_failover_file(data, file))
++			continue;
++		file->f_count++;
++		mutex_unlock(&nlm_file_mutex);
++
++		/* Traverse locks, blocks and shares of this file
++		 * and update file->f_locks count */
++		if (nlm_inspect_file(data, file, match))
++			ret = 1;
++
++		mutex_lock(&nlm_file_mutex);
++		file->f_count--;
++		/* No more references to this file. Let go of it. */
++		if (list_empty(&file->f_blocks) && !file->f_locks
++		 && !file->f_shares && !file->f_count) {
++			hash_del(&file->f_list);
++			nlmsvc_ops->fclose(file->f_file);
++			kfree(file);
+ 		}
+ 	}
+ 	mutex_unlock(&nlm_file_mutex);
+@@ -451,3 +449,11 @@ nlmsvc_unlock_all_by_ip(struct sockaddr *server_addr)
+ 	return ret ? -EIO : 0;
+ }
+ EXPORT_SYMBOL_GPL(nlmsvc_unlock_all_by_ip);
++
++static int __init nlm_init(void)
++{
++	hash_init(nlm_files);
++	return 0;
++}
++
++module_init(nlm_init);
 -- 
-Thanks,
-Tao
+1.7.8.6
+
