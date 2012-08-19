@@ -1,103 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from parafin.static.corbina.ru ([85.21.246.206]:46710 "EHLO
-	spobs.paraf.in" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751016Ab2HYVLx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 25 Aug 2012 17:11:53 -0400
-Date: Sun, 26 Aug 2012 01:11:41 +0400
-From: parafin <parafin@paraf.in>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFS server misbehaving (nfsd eats CPU and returns no data)
-Message-ID: <20120826011141.3d8077c7@darkhorse.paraf.in>
-In-Reply-To: <20120821210116.GB18637@fieldses.org>
-References: <20120508024419.03e585f2@darkhorse.paraf.in>
- <20120821174355.GB15958@fieldses.org>
- <20120821225423.7465a987@darkhorse.paraf.in>
- <20120821210116.GB18637@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:41176 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751211Ab2HSAwH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Aug 2012 20:52:07 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH v2 00/16] generic hashtable implementation
+Date: Sun, 19 Aug 2012 02:52:13 +0200
+Message-Id: <1345337550-24304-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I've applied linked patch and rebooted (I'm still running kernel
-version 3.3.3). So far so good, everything looks fine, so I guess my
-issue is fixed by that patch, big thanx.
+There are quite a few places in the kernel which implement a hashtable
+in a very similar way. Instead of having implementations of a hashtable
+all over the kernel, we can re-use the code.
 
-On Tue, 21 Aug 2012 17:01:16 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+Since it looks like all the major issues we're addressed in the RFC phase
+and no major issues were raised with this patch set, I'd be happy to see
+this getting merged so that work could continue on different aspects of
+the hashtable. Some interesting directions include:
 
-> On Tue, Aug 21, 2012 at 10:54:23PM +0400, parafin wrote:
-> > I somewhat mitigated the problem by mount option timeo=10, but this
-> > issue still heavily affects NFS throughput. So yes, I'm willing to test,
-> > just have to find some free time to do it. I will report as soon as I
-> > get results.
-> 
-> OK, thanks.
-> 
-> > Thanks for reply, I thought my message was lost forever :)
-> 
-> In general feel free to retry every now and then (like after a week or
-> so, not every day please!) if you get ignored.  We all get overloaded an
-> drop things occasionally.
-> 
-> --b.
-> 
-> > 
-> > On Tue, 21 Aug 2012 13:43:55 -0400
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > Are you still willing to test patches?  If so, this would be worth a
-> > > try:
-> > > 
-> > > 	http://marc.info/?l=linux-nfs&m=134550227125610&w=2
-> > > 
-> > > >From a quick look at your logs it looks likely to address the same
-> > > problem.
-> > > 
-> > > Apologies for the delayed response, we finally just happened to get the
-> > > clue necessary to make the problem obvious....
-> > > 
-> > > --b.
-> > > 
-> > > On Tue, May 08, 2012 at 02:44:19AM +0400, parafin wrote:
-> > > > Hello.
-> > > > I'm having a problem with my NFS share. It's been present for some time
-> > > > now, kernel versions got upgraded, setup has been changed, but since I
-> > > > can't remember for sure when it started, I'll just describe my current
-> > > > configuration. But first the problem itself.
-> > > > Periodically (I would say every GB of data or so) reads from NFS share
-> > > > hang during which nfsd kernel thread on server eats CPU but no data
-> > > > gets sent to the client. After a minute everything comes to norm again
-> > > > (no action on my part is required). First thing I did to debug this is
-> > > > I enabled verbose output in all userspace daemons both on client and
-> > > > server - it produced no output whatsoever during the problematic period
-> > > > of time. Next I dumped network traffic on TCP port 2049 both on client
-> > > > and server - there was no packet drops or any other strange stuff,
-> > > > except that client restarted the TCP connection to 2049 port after a
-> > > > minute of silence from server (which resulted in data flowing again).
-> > > > This was confirmed by kernel debug output from client (echo 65535 | tee
-> > > > nfs_debug nfsd_debug nlm_debug rpc_debug) - NFS client sent a server
-> > > > READ request with 60 seconds timeout, timeout was reached and resulted
-> > > > in dropping and restarting of NFS TCP connection. So this points to NFS
-> > > > server kernel code. Kernel debug output on server is quite large and
-> > > > spikes during the hangs - I've attached deduplicated (by hand) version
-> > > > of it to this email. I couldn't find anything strange in there, but I
-> > > > don't understand most of it anyway.
-> > > > My current setup - both server and client are Linux 3.3.3, NFSv4 with
-> > > > sec=krb5, it runs through local network 192.168.0.0/24 with no
-> > > > firewalls (client has iptables disabled in kernel, server ACCEPTs
-> > > > everything from internal interface). Client uses Wi-Fi, server -
-> > > > Ethernet with VLANs, so traffic goes through AP. But since network dumps
-> > > > on server and client are the same, network configuration IMHO is
-> > > > irrelevant, I just added it for fullness of description. Most common
-> > > > usage (and test case) of this NFS share is watching some videos using
-> > > > mplayer. Underlying filesystem is XFS (though ext4 is used for other
-> > > > shares on the same server).
-> > > > I'm ready to provide additional information or test some patches, since
-> > > > this problem is quite annoying (and IMHO got worse with time).
-> > > 
-> > > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ - Introducing a dynamic RCU hashtable such as the one Mathieu Desnoyers
+ wrote about out in the userspace RCU.
+
+ - Replacing the rest of the the kernel structures which use the same basec
+ hashtable construct to use this new interface.
+
+ - Same as above, but for non-obvious places (for example, I'm looking into
+ using the hashtable to store KVM vcpus instead of the linked list being used
+ there now - this should help performance with a large amount of vcpus).
+
+
+Changes since v1:
+
+ - Added missing hash_init in rds and lockd.
+ - Addressed the userns comments by Eric Biederman.
+ - Ran a small test to confirm hash_32 does a good job for low key
+ values (1-10000), which showed it did - this resulted in no changes to the
+ code.
+
+
+Sasha Levin (16):
+  hashtable: introduce a small and naive hashtable
+  userns: use new hashtable implementation
+  mm,ksm: use new hashtable implementation
+  workqueue: use new hashtable implementation
+  mm/huge_memory: use new hashtable implementation
+  tracepoint: use new hashtable implementation
+  net,9p: use new hashtable implementation
+  block,elevator: use new hashtable implementation
+  SUNRPC/cache: use new hashtable implementation
+  dlm: use new hashtable implementation
+  net,l2tp: use new hashtable implementation
+  dm: use new hashtable implementation
+  lockd: use new hashtable implementation
+  net,rds: use new hashtable implementation
+  openvswitch: use new hashtable implementation
+  tracing output: use new hashtable implementation
+
+ block/blk.h                                        |    2 +-
+ block/elevator.c                                   |   23 +--
+ drivers/md/dm-snap.c                               |   24 +--
+ drivers/md/persistent-data/dm-block-manager.c      |    1 -
+ .../persistent-data/dm-persistent-data-internal.h  |   19 --
+ .../md/persistent-data/dm-transaction-manager.c    |   30 +--
+ fs/dlm/lowcomms.c                                  |   47 +---
+ fs/lockd/svcsubs.c                                 |   66 +++--
+ include/linux/elevator.h                           |    5 +-
+ include/linux/hashtable.h                          |  284 ++++++++++++++++++++
+ kernel/trace/trace_output.c                        |   20 +-
+ kernel/tracepoint.c                                |   27 +--
+ kernel/user.c                                      |   33 +--
+ kernel/workqueue.c                                 |   86 +-----
+ mm/huge_memory.c                                   |   57 +---
+ mm/ksm.c                                           |   33 +--
+ net/9p/error.c                                     |   21 +-
+ net/l2tp/l2tp_core.c                               |  134 ++++------
+ net/l2tp/l2tp_core.h                               |    8 +-
+ net/l2tp/l2tp_debugfs.c                            |   19 +-
+ net/openvswitch/vport.c                            |   30 +--
+ net/rds/bind.c                                     |   28 ++-
+ net/rds/connection.c                               |  102 +++----
+ net/sunrpc/cache.c                                 |   20 +-
+ 24 files changed, 591 insertions(+), 528 deletions(-)
+ delete mode 100644 drivers/md/persistent-data/dm-persistent-data-internal.h
+ create mode 100644 include/linux/hashtable.h
+
+-- 
+1.7.8.6
+
