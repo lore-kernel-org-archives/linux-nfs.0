@@ -1,132 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:9763 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752155Ab2HZS5d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 26 Aug 2012 14:57:33 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Sachin Prabhu <sprabhu@redhat.com>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Avoid array overflow in __nfs4_get_acl_uncached
-Date: Sun, 26 Aug 2012 18:57:16 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F69340@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1345817768-23511-1-git-send-email-sprabhu@redhat.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F4AF1E@SACEXCMBX01-PRD.hq.netapp.com>
-	 <1345843866.2279.6.camel@localhost>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F5842F@SACEXCMBX01-PRD.hq.netapp.com>
-	 <1345845062.32200.1.camel@localhost>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F5859F@SACEXCMBX01-PRD.hq.netapp.com>
-	 <1345937503.4943.17.camel@localhost>
-In-Reply-To: <1345937503.4943.17.camel@localhost>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:41176 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752193Ab2HSAwb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Aug 2012 20:52:31 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH v2 09/16] SUNRPC/cache: use new hashtable implementation
+Date: Sun, 19 Aug 2012 02:52:23 +0200
+Message-Id: <1345337550-24304-11-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1345337550-24304-1-git-send-email-levinsasha928@gmail.com>
+References: <1345337550-24304-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU3VuLCAyMDEyLTA4LTI2IGF0IDAwOjMxICswMTAwLCBTYWNoaW4gUHJhYmh1IHdyb3RlOg0K
-PiBPbiBGcmksIDIwMTItMDgtMjQgYXQgMjI6MDIgKzAwMDAsIE15a2xlYnVzdCwgVHJvbmQgd3Jv
-dGU6DQo+ID4gT24gRnJpLCAyMDEyLTA4LTI0IGF0IDIyOjUxICswMTAwLCBTYWNoaW4gUHJhYmh1
-IHdyb3RlOg0KPiA+ID4gT24gRnJpLCAyMDEyLTA4LTI0IGF0IDIxOjM4ICswMDAwLCBNeWtsZWJ1
-c3QsIFRyb25kIHdyb3RlOg0KPiA+ID4gPiBPbiBGcmksIDIwMTItMDgtMjQgYXQgMjI6MzEgKzAx
-MDAsIFNhY2hpbiBQcmFiaHUgd3JvdGU6DQo+ID4gPiA+ID4gT24gRnJpLCAyMDEyLTA4LTI0IGF0
-IDE1OjA3ICswMDAwLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+ID4gPiA+ID4gT24gRnJp
-LCAyMDEyLTA4LTI0IGF0IDE1OjE2ICswMTAwLCBTYWNoaW4gUHJhYmh1IHdyb3RlOg0KPiA+ID4g
-PiA+ID4gPiBUaGlzIGZpeGVzIGEgYnVnIGludHJvZHVjZWQgYnkgY29tbWl0DQo+ID4gPiA+ID4g
-PiA+IDVhMDA2ODk5MzBhYjk3NWZkZDFiMzdiMDM0NDc1MDE3ZTQ2MGNmMmENCj4gPiA+ID4gPiA+
-ID4gVGhlIHBhdGNoIGFkZHMgYW4gZXh0cmEgcGFnZSB0byBucGFnZXMgdG8gaG9sZCB0aGUgYml0
-bWFwIHJldHVybmVkIGJ5DQo+ID4gPiA+ID4gPiA+IHRoZSBzZXJ2ZXIuDQo+ID4gPiA+ID4gPiA+
-IA0KPiA+ID4gPiA+ID4gPiBCcnVjZSBGaWVsZHMgcG9pbnRlZCBvdXQgdGhhdCB0aGUgY2hhbmdl
-cyBpbnRyb2R1Y2VkIGJ5IHRoZSBwYXRjaCB3aWxsDQo+ID4gPiA+ID4gPiA+IGNhdXNlIHRoZSBh
-cnJheSBucGFnZXMgdG8gb3ZlcmZsb3cgaWYgYSBidWZmZXIgb2Ygc2l6ZSBncmVhdGVyIHRoYW4g
-b3INCj4gPiA+ID4gPiA+ID4gZXF1YWwgdG8gWEFUVFJfU0laRV9NQVggaXMgcGFzc2VkIHRvIF9f
-bmZzNF9nZXRfYWNsX3VuY2FjaGVkKCkNCj4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gSSdkIHRo
-aW5rIHRoYXQgdGhlIHJpZ2h0IHRoaW5nIHRvIGRvIGhlcmUgaXMgcmF0aGVyIHRvIGFkZCBhcHBy
-b3ByaWF0ZQ0KPiA+ID4gPiA+ID4gYnVmZmVyIG92ZXJmbG93IGNoZWNrcy4gSG93IGFib3V0IHNv
-bWV0aGluZyBsaWtlIHRoZSBmb2xsb3dpbmc/DQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IDg8
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0NCj4gPiA+ID4gPiA+IEZyb20gN2MzNWNlMjIwOTI0MTgyMjg0YWVhOWY4YWVjMzliMGQ5
-OTE2MDBkZiBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCj4gPiA+ID4gPiA+IEZyb206IFRyb25k
-IE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQo+ID4gPiA+ID4gPiBEYXRl
-OiBGcmksIDI0IEF1ZyAyMDEyIDEwOjU5OjI1IC0wNDAwDQo+ID4gPiA+ID4gPiBTdWJqZWN0OiBb
-UEFUQ0hdIE5GU3Y0OiBGaXggcmFuZ2UgY2hlY2tpbmcgaW4gX19uZnM0X2dldF9hY2xfdW5jYWNo
-ZWQgYW5kDQo+ID4gPiA+ID4gPiAgX19uZnM0X3Byb2Nfc2V0X2FjbA0KPiA+ID4gPiA+ID4gDQo+
-ID4gPiA+ID4gPiBFbnN1cmUgdGhhdCB0aGUgdXNlciBzdXBwbGllZCBidWZmZXIgc2l6ZSBkb2Vz
-bid0IGNhdXNlIHVzIHRvIG92ZXJmbG93DQo+ID4gPiA+ID4gPiB0aGUgJ3BhZ2VzJyBhcnJheS4N
-Cj4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gQWxzbyBmaXggdXAgc29tZSBjb25mdXNpb24gYmV0
-d2VlbiB0aGUgdXNlIG9mIFBBR0VfU0laRSBhbmQNCj4gPiA+ID4gPiA+IFBBR0VfQ0FDSEVfU0la
-RSB3aGVuIGNhbGN1bGF0aW5nIGJ1ZmZlciBzaXplcy4gV2UncmUgbm90IHVzaW5nDQo+ID4gPiA+
-ID4gPiB0aGUgcGFnZSBjYWNoZSBmb3IgYW55dGhpbmcgaGVyZS4NCj4gPiA+ID4gPiA+IA0KPiA+
-ID4gPiA+ID4gU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RA
-bmV0YXBwLmNvbT4NCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBUaGlzIHBhdGNoIGlzIHN1c2NlcHRp
-YmxlIHRvIHRoZSBwcm9ibGVtIGRlc2NyaWJlZCBpbiBjb21taXQNCj4gPiA+ID4gPiA1YTAwNjg5
-OTMwYWI5NzVmZGQxYjM3YjAzNDQ3NTAxN2U0NjBjZjJhDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4g
-VGhpcyBjYW4gYmUgZGVtb25zdHJhdGVkIGJ5IHRoZSBmb2xsb3dpbmcgcGF0Y2ggdG8gcHluZnMg
-d2hpY2ggcGFkcyB0aGUNCj4gPiA+ID4gPiBiaXRtYXAgd2l0aCAxMDAwIGV4dHJhIGVsZW1lbnRz
-Lg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IFRvIHJlcHJvZHVjZSwgb24gdGhlIHNlcnZlcg0KPiA+
-ID4gPiA+IGNkIG5ld3B5bmZzL25mczQuMC8NCj4gPiA+ID4gPiAuL3NldHVwLnB5IGJ1aWxkX2V4
-dCAtLWlucGxhY2UNCj4gPiA+ID4gPiAuL25mczRzZXJ2ZXIucHkNCj4gPiA+ID4gPiANCj4gPiA+
-ID4gPiBvbiB0aGUgY2xpZW50LCANCj4gPiA+ID4gPiBtb3VudCAtbyB2ZXJzPTQgU0VSVkVSOi8g
-L21udA0KPiA+ID4gPiA+IHRvdWNoIC9tbnQvYQ0KPiA+ID4gPiA+IG5mczRfZ2V0ZmFjbCAvbW50
-L2ENCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBXaXRoIHRoaXMgbmV3IHBhdGNoLCB5b3Ugd2lsbCBn
-ZXQgYSBnZW5lcmFsIHByb3RlY3Rpb24gZmF1bHQgaW4NCj4gPiA+ID4gPiBfY29weV9mcm9tX3Bh
-Z2VzKCkuDQo+ID4gPiA+IA0KPiA+ID4gPiBJcyB0aGlzIG9uIGEga2VybmVsIHdpdGggY29tbWl0
-IDUxOWQzOTU5ZTMwYTk4ZjhlMTM1ZTdhMTY2NDdjMTBhZjVhZDYzZDUNCj4gPiA+ID4gKE5GU3Y0
-OiBGaXggcG9pbnRlciBhcml0aG1ldGljIGluIGRlY29kZV9nZXRhY2wpIGFwcGxpZWQ/DQo+ID4g
-PiA+IA0KPiA+ID4gDQo+ID4gPiBZZXMuDQo+ID4gDQo+ID4gT0ssIHNvIGNhbiB5b3UgbG9vayBp
-bnRvIHdoaWNoIHBhcmFtZXRlcnMgYXJlIGluY29ycmVjdCBhbmQgd2h5PyBUaGUNCj4gPiBjaGVj
-a3MgaW4gZGVjb2RlX2dldGFjbCBhcmUgc3VwcG9zZWQgZW5zdXJlIHRoYXQgd2UgZG9uJ3Qgb3Zl
-cmZsb3cgdGhlDQo+ID4geGRyLT5idWYtPnBhZ2VfbGVuLCBzbyBpZiB0aG9zZSBhcmUgaW5zdWZm
-aWNpZW50LCB0aGVuIEknZCBsaWtlIHRvDQo+ID4gdW5kZXJzdGFuZCB3aHkuDQo+ID4gDQo+IA0K
-PiBUaGUgcHJvYmxlbSBpcyBzZWVuIGJlY2F1c2Ugd2UgZG8gbm90IGNoZWNrIHRvIHNlZSBpZiB0
-aGUgYWNsX2xlbiArDQo+IGJpdG1hcCBzaXplIGlzIGNvbnRhaW5lZCB3aXRoaW4gdGhlIHBhZ2Ug
-YnVmZmVyIHdlIGFsbG9jYXRlIGZvciBpdC4gDQo+IA0KPiBJdCB3aWxsIGZhaWwgaWYNCj4gYml0
-bWFwIGFycmF5IHNpemUgKyBhY2wgbGVuZ3RoIGF0dHJpYnV0ZSBzaXplICsgQUNMcyA+IHBhZ2Vz
-IGFsbG9jYXRlZA0KPiBmb3IgaXQuICANCj4gDQo+IEluIHRoaXMgY2FzZSwgd2hlbiB3ZSBjYWxs
-IG5mczRfd3JpdGVfY2FjaGVkX2FjbCgpIHRvIHdyaXRlIHRoZSByZXR1cm5lZA0KPiBBQ0xzIGlu
-dG8gY2FjaGUsIHdlIGNhbGwgX2NvcHlfZnJvbV9wYWdlcygpIHRvIHJlYWQgZnJvbSANCj4gaWUu
-IFdlIGNhbGwgbmZzNF93cml0ZV9jYWNoZWRfYWNsDQo+ICAgICAgICAgICAgICAgICBuZnM0X3dy
-aXRlX2NhY2hlZF9hY2woaW5vZGUsIHBhZ2VzLCByZXMuYWNsX2RhdGFfb2Zmc2V0LA0KPiAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGFjbF9sZW4pOw0KPiB3aGljaCBpbiB0
-dXJuIGNhbGxzDQo+IHN0YXRpYyB2b2lkIG5mczRfd3JpdGVfY2FjaGVkX2FjbChzdHJ1Y3QgaW5v
-ZGUgKmlub2RlLCBzdHJ1Y3QgcGFnZQ0KPiAqKnBhZ2VzLCBzaXplX3QgcGdiYXNlLCBzaXplX3Qg
-YWNsX2xlbikNCj4gew0KPiAuLg0KPiAgICAgICAgICAgICAgICAgX2NvcHlfZnJvbV9wYWdlcyhh
-Y2wtPmRhdGEsIHBhZ2VzLCBwZ2Jhc2UsIGFjbF9sZW4pOw0KPiAuLg0KPiB9DQoNClJpZ2h0LiBU
-aGF0IGlzIGJhc2ljYWxseSBkdWUgdG8gaW5jb21wbGV0ZSBidWZmZXIgY2hlY2tpbmcgaW4NCm5m
-czRfd3JpdGVfY2FjaGVkX2FjbCgpIGl0c2VsZi4gV2UgY2FuJ3QgY2F0Y2ggdGhhdCBjYXNlIHdo
-ZW4NCk5GUzRfQUNMX0xFTl9SRVFVRVNUIGlzIHNldCwgYmVjYXVzZSBkZWNvZGVfYWNsIGlnbm9y
-ZXMgdGhlIGNoZWNrLg0KDQpPSy4gSG93IGFib3V0IHRoaXMgcGF0Y2gsIHdoaWNoIGFwcGxpZXMg
-b24gdG9wIG9mIHRoZSBvbmUgSSBzZW50IHlvdT8NCjg8LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCkZyb20gMjJjOWUyNDc1
-NTYwZWRkYTkyNWY5NzFhMmEwMmJhYzU4NTM2NDE0YiBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDEN
-CkZyb206IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQpEYXRl
-OiBTdW4sIDI2IEF1ZyAyMDEyIDExOjQ0OjQzIC0wNzAwDQpTdWJqZWN0OiBbUEFUQ0hdIE5GU3Y0
-OiBBZGQgYnVmZmVyIG92ZXJmbG93IGNoZWNraW5nIHRvIG5mczRfd3JpdGVfY2FjaGVkX2FjbA0K
-DQpDdXJyZW50bHksIHRoZSBidWZmZXIgb3ZlcmZsb3cgY2hlY2tpbmcgaXMgZG9uZSBpbmNvcnJl
-Y3RseSBieSB0aGUNCmNhbGxlci4gTW92ZSB0aGUgb3ZlcmZsb3cgY2hlY2tpbmcgaW50byBuZnM0
-X3dyaXRlX2NhY2hlZF9hY2wgaXRzZWxmDQpmb3Igcm9idXN0bmVzcywgYW5kIGZpeCB0aGUgb3Zl
-cmZsb3cgY2FsY3VsYXRpb24gdG8gdGFrZSBpbnRvIGFjY291bnQNCnRoZSAncGdiYXNlJyBhcmd1
-bWVudCB0byBfY29weV9mcm9tX3BhZ2VzLg0KDQpTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1
-c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KLS0tDQogZnMvbmZzL25mczRwcm9jLmMg
-fCAxMiArKysrKy0tLS0tLS0NCiAxIGZpbGUgY2hhbmdlZCwgNSBpbnNlcnRpb25zKCspLCA3IGRl
-bGV0aW9ucygtKQ0KDQpkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMvbmZz
-NHByb2MuYw0KaW5kZXggNjU0ZGMzOC4uYWY0ZWJjMyAxMDA2NDQNCi0tLSBhL2ZzL25mcy9uZnM0
-cHJvYy5jDQorKysgYi9mcy9uZnMvbmZzNHByb2MuYw0KQEAgLTM3MzQsMTIgKzM3MzQsMTMgQEAg
-b3V0Og0KIAlyZXR1cm4gcmV0Ow0KIH0NCiANCi1zdGF0aWMgdm9pZCBuZnM0X3dyaXRlX2NhY2hl
-ZF9hY2woc3RydWN0IGlub2RlICppbm9kZSwgc3RydWN0IHBhZ2UgKipwYWdlcywgc2l6ZV90IHBn
-YmFzZSwgc2l6ZV90IGFjbF9sZW4pDQorc3RhdGljIHZvaWQgbmZzNF93cml0ZV9jYWNoZWRfYWNs
-KHN0cnVjdCBpbm9kZSAqaW5vZGUsIHN0cnVjdCBwYWdlICoqcGFnZXMsDQorCQlzaXplX3Qgc3Jj
-bGVuLCBzaXplX3QgcGdiYXNlLCBzaXplX3QgYWNsX2xlbikNCiB7DQogCXN0cnVjdCBuZnM0X2Nh
-Y2hlZF9hY2wgKmFjbDsNCiAJc2l6ZV90IGJ1ZmxlbiA9IHNpemVvZigqYWNsKSArIGFjbF9sZW47
-DQogDQotCWlmIChwYWdlcyAmJiBidWZsZW4gPD0gUEFHRV9TSVpFKSB7DQorCWlmIChidWZsZW4g
-PD0gUEFHRV9TSVpFICYmIHNyY2xlbiA8PSBwZ2Jhc2UgKyBhY2xfbGVuKSB7DQogCQlhY2wgPSBr
-bWFsbG9jKGJ1ZmxlbiwgR0ZQX0tFUk5FTCk7DQogCQlpZiAoYWNsID09IE5VTEwpDQogCQkJZ290
-byBvdXQ7DQpAQCAtMzgyMCwxMSArMzgyMSw4IEBAIHN0YXRpYyBzc2l6ZV90IF9fbmZzNF9nZXRf
-YWNsX3VuY2FjaGVkKHN0cnVjdCBpbm9kZSAqaW5vZGUsIHZvaWQgKmJ1Ziwgc2l6ZV90IGJ1DQog
-CQlnb3RvIG91dF9mcmVlOw0KIA0KIAlhY2xfbGVuID0gcmVzLmFjbF9sZW47DQotCWlmIChhY2xf
-bGVuID4gYXJncy5hY2xfbGVuKQ0KLQkJbmZzNF93cml0ZV9jYWNoZWRfYWNsKGlub2RlLCBOVUxM
-LCAwLCBhY2xfbGVuKTsNCi0JZWxzZQ0KLQkJbmZzNF93cml0ZV9jYWNoZWRfYWNsKGlub2RlLCBw
-YWdlcywgcmVzLmFjbF9kYXRhX29mZnNldCwNCi0JCQkJICAgICAgYWNsX2xlbik7DQorCW5mczRf
-d3JpdGVfY2FjaGVkX2FjbChpbm9kZSwgcGFnZXMsIGFyZ3MuYWNsX2xlbiwNCisJCQlyZXMuYWNs
-X2RhdGFfb2Zmc2V0LCByZXMuYWNsX2xlbik7DQogCWlmIChidWYpIHsNCiAJCXJldCA9IC1FUkFO
-R0U7DQogCQlpZiAoYWNsX2xlbiA+IGJ1ZmxlbikNCi0tIA0KMS43LjExLjQNCg0KDQotLSANClRy
-b25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJv
-bmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+Switch cache to use the new hashtable implementation. This reduces the amount of
+generic unrelated code in the cache implementation.
+
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ net/sunrpc/cache.c |   20 +++++++++-----------
+ 1 files changed, 9 insertions(+), 11 deletions(-)
+
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 2afd2a8..8a8ef6d 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -28,6 +28,7 @@
+ #include <linux/workqueue.h>
+ #include <linux/mutex.h>
+ #include <linux/pagemap.h>
++#include <linux/hashtable.h>
+ #include <asm/ioctls.h>
+ #include <linux/sunrpc/types.h>
+ #include <linux/sunrpc/cache.h>
+@@ -524,19 +525,18 @@ EXPORT_SYMBOL_GPL(cache_purge);
+  * it to be revisited when cache info is available
+  */
+ 
+-#define	DFR_HASHSIZE	(PAGE_SIZE/sizeof(struct list_head))
+-#define	DFR_HASH(item)	((((long)item)>>4 ^ (((long)item)>>13)) % DFR_HASHSIZE)
++#define	DFR_HASH_BITS	9
+ 
+ #define	DFR_MAX	300	/* ??? */
+ 
+ static DEFINE_SPINLOCK(cache_defer_lock);
+ static LIST_HEAD(cache_defer_list);
+-static struct hlist_head cache_defer_hash[DFR_HASHSIZE];
++static DEFINE_HASHTABLE(cache_defer_hash, DFR_HASH_BITS)
+ static int cache_defer_cnt;
+ 
+ static void __unhash_deferred_req(struct cache_deferred_req *dreq)
+ {
+-	hlist_del_init(&dreq->hash);
++	hash_del(&dreq->hash);
+ 	if (!list_empty(&dreq->recent)) {
+ 		list_del_init(&dreq->recent);
+ 		cache_defer_cnt--;
+@@ -545,10 +545,7 @@ static void __unhash_deferred_req(struct cache_deferred_req *dreq)
+ 
+ static void __hash_deferred_req(struct cache_deferred_req *dreq, struct cache_head *item)
+ {
+-	int hash = DFR_HASH(item);
+-
+-	INIT_LIST_HEAD(&dreq->recent);
+-	hlist_add_head(&dreq->hash, &cache_defer_hash[hash]);
++	hash_add(cache_defer_hash, &dreq->hash, (unsigned long)item);
+ }
+ 
+ static void setup_deferral(struct cache_deferred_req *dreq,
+@@ -600,7 +597,7 @@ static void cache_wait_req(struct cache_req *req, struct cache_head *item)
+ 		 * to clean up
+ 		 */
+ 		spin_lock(&cache_defer_lock);
+-		if (!hlist_unhashed(&sleeper.handle.hash)) {
++		if (hash_hashed(&sleeper.handle.hash)) {
+ 			__unhash_deferred_req(&sleeper.handle);
+ 			spin_unlock(&cache_defer_lock);
+ 		} else {
+@@ -671,12 +668,11 @@ static void cache_revisit_request(struct cache_head *item)
+ 	struct cache_deferred_req *dreq;
+ 	struct list_head pending;
+ 	struct hlist_node *lp, *tmp;
+-	int hash = DFR_HASH(item);
+ 
+ 	INIT_LIST_HEAD(&pending);
+ 	spin_lock(&cache_defer_lock);
+ 
+-	hlist_for_each_entry_safe(dreq, lp, tmp, &cache_defer_hash[hash], hash)
++	hash_for_each_possible_safe(cache_defer_hash, dreq, lp, tmp, hash, (unsigned long)item)
+ 		if (dreq->item == item) {
+ 			__unhash_deferred_req(dreq);
+ 			list_add(&dreq->recent, &pending);
+@@ -1636,6 +1632,8 @@ static int create_cache_proc_entries(struct cache_detail *cd, struct net *net)
+ void __init cache_initialize(void)
+ {
+ 	INIT_DELAYED_WORK_DEFERRABLE(&cache_cleaner, do_cache_clean);
++
++	hash_init(cache_defer_hash);
+ }
+ 
+ int cache_register_net(struct cache_detail *cd, struct net *net)
+-- 
+1.7.8.6
+
