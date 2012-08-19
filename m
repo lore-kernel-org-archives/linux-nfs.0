@@ -1,49 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lb0-f174.google.com ([209.85.217.174]:42455 "EHLO
-	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757535Ab2HQKZQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Aug 2012 06:25:16 -0400
-Received: by lbbgj3 with SMTP id gj3so2025916lbb.19
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Aug 2012 03:25:13 -0700 (PDT)
-Message-ID: <502E1C38.2060104@compcenter.org>
-Date: Fri, 17 Aug 2012 14:26:00 +0400
-From: "Denis V. Nagorny" <dvnagorny@compcenter.org>
-MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: Re: Randomly inaccessible files through NFS
-References: <502B55A3.3030007@compcenter.org>
-In-Reply-To: <502B55A3.3030007@compcenter.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:33310 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752700Ab2HSAwt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Aug 2012 20:52:49 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH v2 16/16] tracing output: use new hashtable implementation
+Date: Sun, 19 Aug 2012 02:52:30 +0200
+Message-Id: <1345337550-24304-18-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1345337550-24304-1-git-send-email-levinsasha928@gmail.com>
+References: <1345337550-24304-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-15.08.2012 11:54, Denis V. Nagorny пишет:
-> Hello,
->
-> Using Scientific Linux 6.1 (I think it's equal to RH EL 6.1) we met 
-> the strange issue.  Several last months we have problem. After one or 
-> two days of successful work, files on nfs server begins to be randomly 
-> unacessible.
-> I doesn't mean that files becames hidden or something like this. It 
-> means that attempts to open some random files may be unsuccessful. 
-> Usually restart of nfs server makes situation better but for several 
-> days only. There are no any messages about errors in logs on server 
-> and clients machines. Can anybody point me how can I try to understand 
-> what happens at least. Sorry for my english.
->
-> Denis.
+Switch tracing to use the new hashtable implementation. This reduces the amount of
+generic unrelated code in the tracing module.
 
-Hello again,
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ kernel/trace/trace_output.c |   20 ++++++++------------
+ 1 files changed, 8 insertions(+), 12 deletions(-)
 
-I've made some additional experiments. It looks like nfs clients can be 
-in one of two states: "quite stable" and "quite unstable". Clients are 
-usually stable but after some heavy job with a lot of I/O with NFS 
-server clients become "quite unstable" and fails even with single file 
-operations with NFS server. In this state I can't unmount NFS shares and 
-so on.  I've tried to analyse with wireshark and found that in unstable 
-state there are a lot of NFS4ERR_EXPIRED answers from NFS server.  In 
-one of experiments I've changed NICs in both machines involved - result 
-the same. So I'm still looking for the ways to understand the problem.
-Can anybody give me any advices?
+diff --git a/kernel/trace/trace_output.c b/kernel/trace/trace_output.c
+index 123b189..1324c1a 100644
+--- a/kernel/trace/trace_output.c
++++ b/kernel/trace/trace_output.c
+@@ -8,15 +8,15 @@
+ #include <linux/module.h>
+ #include <linux/mutex.h>
+ #include <linux/ftrace.h>
++#include <linux/hashtable.h>
+ 
+ #include "trace_output.h"
+ 
+-/* must be a power of 2 */
+-#define EVENT_HASHSIZE	128
++#define EVENT_HASH_BITS	7
+ 
+ DECLARE_RWSEM(trace_event_mutex);
+ 
+-static struct hlist_head event_hash[EVENT_HASHSIZE] __read_mostly;
++static DEFINE_HASHTABLE(event_hash, EVENT_HASH_BITS);
+ 
+ static int next_event_type = __TRACE_LAST_TYPE + 1;
+ 
+@@ -712,11 +712,8 @@ struct trace_event *ftrace_find_event(int type)
+ {
+ 	struct trace_event *event;
+ 	struct hlist_node *n;
+-	unsigned key;
+ 
+-	key = type & (EVENT_HASHSIZE - 1);
+-
+-	hlist_for_each_entry(event, n, &event_hash[key], node) {
++	hash_for_each_possible(event_hash, event, n, node, type) {
+ 		if (event->type == type)
+ 			return event;
+ 	}
+@@ -781,7 +778,6 @@ void trace_event_read_unlock(void)
+  */
+ int register_ftrace_event(struct trace_event *event)
+ {
+-	unsigned key;
+ 	int ret = 0;
+ 
+ 	down_write(&trace_event_mutex);
+@@ -833,9 +829,7 @@ int register_ftrace_event(struct trace_event *event)
+ 	if (event->funcs->binary == NULL)
+ 		event->funcs->binary = trace_nop_print;
+ 
+-	key = event->type & (EVENT_HASHSIZE - 1);
+-
+-	hlist_add_head(&event->node, &event_hash[key]);
++	hash_add(event_hash, &event->node, event->type);
+ 
+ 	ret = event->type;
+  out:
+@@ -850,7 +844,7 @@ EXPORT_SYMBOL_GPL(register_ftrace_event);
+  */
+ int __unregister_ftrace_event(struct trace_event *event)
+ {
+-	hlist_del(&event->node);
++	hash_del(&event->node);
+ 	list_del(&event->list);
+ 	return 0;
+ }
+@@ -1323,6 +1317,8 @@ __init static int init_events(void)
+ 		}
+ 	}
+ 
++	hash_init(event_hash);
++
+ 	return 0;
+ }
+ early_initcall(init_events);
+-- 
+1.7.8.6
 
-Denis
