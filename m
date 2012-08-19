@@ -1,124 +1,174 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:36202 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758514Ab2HHNWL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Aug 2012 09:22:11 -0400
-Received: by mail-yw0-f46.google.com with SMTP id m54so724688yhm.19
-        for <linux-nfs@vger.kernel.org>; Wed, 08 Aug 2012 06:22:11 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v5 17/19] vfs: have faccessat retry once on an ESTALE error
-Date: Wed,  8 Aug 2012 09:21:40 -0400
-Message-Id: <1344432102-22312-18-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
-References: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:41176 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752104Ab2HSAwV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Aug 2012 20:52:21 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH v2 05/16] mm/huge_memory: use new hashtable implementation
+Date: Sun, 19 Aug 2012 02:52:19 +0200
+Message-Id: <1345337550-24304-7-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1345337550-24304-1-git-send-email-levinsasha928@gmail.com>
+References: <1345337550-24304-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/open.c | 70 ++++++++++++++++++++++++++++++++++++---------------------------
- 1 file changed, 40 insertions(+), 30 deletions(-)
+Switch hugemem to use the new hashtable implementation. This reduces the amount of
+generic unrelated code in the hugemem.
 
-diff --git a/fs/open.c b/fs/open.c
-index 0df0c5d..147b232 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -318,6 +318,9 @@ SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
- 	struct path path;
- 	struct inode *inode;
- 	int res;
-+	unsigned int lookup_flags = LOOKUP_FOLLOW;
-+	unsigned int try = 0;
-+	char *name;
+This also removes the dymanic allocation of the hash table. The size of the table is
+constant so there's no point in paying the price of an extra dereference when accessing
+it.
+
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ mm/huge_memory.c |   57 ++++++++++++++---------------------------------------
+ 1 files changed, 15 insertions(+), 42 deletions(-)
+
+diff --git a/mm/huge_memory.c b/mm/huge_memory.c
+index 8b3c55a..cebe345 100644
+--- a/mm/huge_memory.c
++++ b/mm/huge_memory.c
+@@ -17,6 +17,7 @@
+ #include <linux/khugepaged.h>
+ #include <linux/freezer.h>
+ #include <linux/mman.h>
++#include <linux/hashtable.h>
+ #include <asm/tlb.h>
+ #include <asm/pgalloc.h>
+ #include "internal.h"
+@@ -57,12 +58,12 @@ static DECLARE_WAIT_QUEUE_HEAD(khugepaged_wait);
+ static unsigned int khugepaged_max_ptes_none __read_mostly = HPAGE_PMD_NR-1;
  
- 	if (mode & ~S_IRWXO)	/* where's F_OK, X_OK, W_OK, R_OK? */
- 		return -EINVAL;
-@@ -339,44 +342,51 @@ SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
- 				override_cred->cap_permitted;
- 	}
+ static int khugepaged(void *none);
+-static int mm_slots_hash_init(void);
+ static int khugepaged_slab_init(void);
+ static void khugepaged_slab_free(void);
  
-+	name = getname_flags(filename, lookup_flags, NULL);
-+	if (IS_ERR(name))
-+		return PTR_ERR(name);
+-#define MM_SLOTS_HASH_HEADS 1024
+-static struct hlist_head *mm_slots_hash __read_mostly;
++#define MM_SLOTS_HASH_BITS 10
++static DEFINE_HASHTABLE(mm_slots_hash, MM_SLOTS_HASH_BITS);
 +
- 	old_cred = override_creds(override_cred);
+ static struct kmem_cache *mm_slot_cache __read_mostly;
  
--	res = user_path_at(dfd, filename, LOOKUP_FOLLOW, &path);
--	if (res)
+ /**
+@@ -140,7 +141,7 @@ static int start_khugepaged(void)
+ 	int err = 0;
+ 	if (khugepaged_enabled()) {
+ 		int wakeup;
+-		if (unlikely(!mm_slot_cache || !mm_slots_hash)) {
++		if (unlikely(!mm_slot_cache)) {
+ 			err = -ENOMEM;
+ 			goto out;
+ 		}
+@@ -554,12 +555,6 @@ static int __init hugepage_init(void)
+ 	if (err)
+ 		goto out;
+ 
+-	err = mm_slots_hash_init();
+-	if (err) {
+-		khugepaged_slab_free();
 -		goto out;
-+	do {
-+		res = kern_path_at(dfd, name, lookup_flags, &path);
-+		if (res)
-+			break;
- 
--	inode = path.dentry->d_inode;
-+		inode = path.dentry->d_inode;
- 
--	if ((mode & MAY_EXEC) && S_ISREG(inode->i_mode)) {
-+		if ((mode & MAY_EXEC) && S_ISREG(inode->i_mode)) {
-+			/*
-+			 * MAY_EXEC on regular files is denied if the fs is
-+			 * mounted with the "noexec" flag.
-+			 */
-+			res = -EACCES;
-+			if (path.mnt->mnt_flags & MNT_NOEXEC)
-+				goto out_path_release;
-+		}
-+
-+		res = inode_permission(inode, mode | MAY_ACCESS);
-+		/* SuS v2 requires we report a read only fs too */
-+		if (res || !(mode & S_IWOTH) || special_file(inode->i_mode))
-+			goto out_path_release;
- 		/*
--		 * MAY_EXEC on regular files is denied if the fs is mounted
--		 * with the "noexec" flag.
-+		 * This is a rare case where using __mnt_is_readonly()
-+		 * is OK without a mnt_want/drop_write() pair.  Since
-+		 * no actual write to the fs is performed here, we do
-+		 * not need to telegraph to that to anyone.
-+		 *
-+		 * By doing this, we accept that this access is
-+		 * inherently racy and know that the fs may change
-+		 * state before we even see this result.
- 		 */
--		res = -EACCES;
--		if (path.mnt->mnt_flags & MNT_NOEXEC)
--			goto out_path_release;
 -	}
 -
--	res = inode_permission(inode, mode | MAY_ACCESS);
--	/* SuS v2 requires we report a read only fs too */
--	if (res || !(mode & S_IWOTH) || special_file(inode->i_mode))
--		goto out_path_release;
--	/*
--	 * This is a rare case where using __mnt_is_readonly()
--	 * is OK without a mnt_want/drop_write() pair.  Since
--	 * no actual write to the fs is performed here, we do
--	 * not need to telegraph to that to anyone.
--	 *
--	 * By doing this, we accept that this access is
--	 * inherently racy and know that the fs may change
--	 * state before we even see this result.
--	 */
--	if (__mnt_is_readonly(path.mnt))
--		res = -EROFS;
-+		if (__mnt_is_readonly(path.mnt))
-+			res = -EROFS;
+ 	/*
+ 	 * By default disable transparent hugepages on smaller systems,
+ 	 * where the extra memory used could hurt more than TLB overhead
+@@ -1540,6 +1535,8 @@ static int __init khugepaged_slab_init(void)
+ 	if (!mm_slot_cache)
+ 		return -ENOMEM;
  
- out_path_release:
--	path_put(&path);
--out:
-+		path_put(&path);
-+		lookup_flags |= LOOKUP_REVAL;
-+	} while (retry_estale(res, try++));
-+	putname(name);
- 	revert_creds(old_cred);
- 	put_cred(override_cred);
- 	return res;
++	hash_init(mm_slots_hash);
++
+ 	return 0;
+ }
+ 
+@@ -1561,47 +1558,23 @@ static inline void free_mm_slot(struct mm_slot *mm_slot)
+ 	kmem_cache_free(mm_slot_cache, mm_slot);
+ }
+ 
+-static int __init mm_slots_hash_init(void)
+-{
+-	mm_slots_hash = kzalloc(MM_SLOTS_HASH_HEADS * sizeof(struct hlist_head),
+-				GFP_KERNEL);
+-	if (!mm_slots_hash)
+-		return -ENOMEM;
+-	return 0;
+-}
+-
+-#if 0
+-static void __init mm_slots_hash_free(void)
+-{
+-	kfree(mm_slots_hash);
+-	mm_slots_hash = NULL;
+-}
+-#endif
+-
+ static struct mm_slot *get_mm_slot(struct mm_struct *mm)
+ {
+-	struct mm_slot *mm_slot;
+-	struct hlist_head *bucket;
++	struct mm_slot *slot;
+ 	struct hlist_node *node;
+ 
+-	bucket = &mm_slots_hash[((unsigned long)mm / sizeof(struct mm_struct))
+-				% MM_SLOTS_HASH_HEADS];
+-	hlist_for_each_entry(mm_slot, node, bucket, hash) {
+-		if (mm == mm_slot->mm)
+-			return mm_slot;
+-	}
++	hash_for_each_possible(mm_slots_hash, slot, node, hash, (unsigned long) mm)
++		if (slot->mm == mm)
++			return slot;
++
+ 	return NULL;
+ }
+ 
+ static void insert_to_mm_slots_hash(struct mm_struct *mm,
+ 				    struct mm_slot *mm_slot)
+ {
+-	struct hlist_head *bucket;
+-
+-	bucket = &mm_slots_hash[((unsigned long)mm / sizeof(struct mm_struct))
+-				% MM_SLOTS_HASH_HEADS];
+ 	mm_slot->mm = mm;
+-	hlist_add_head(&mm_slot->hash, bucket);
++	hash_add(mm_slots_hash, &mm_slot->hash, (long)mm);
+ }
+ 
+ static inline int khugepaged_test_exit(struct mm_struct *mm)
+@@ -1670,7 +1643,7 @@ void __khugepaged_exit(struct mm_struct *mm)
+ 	spin_lock(&khugepaged_mm_lock);
+ 	mm_slot = get_mm_slot(mm);
+ 	if (mm_slot && khugepaged_scan.mm_slot != mm_slot) {
+-		hlist_del(&mm_slot->hash);
++		hash_del(&mm_slot->hash);
+ 		list_del(&mm_slot->mm_node);
+ 		free = 1;
+ 	}
+@@ -2080,7 +2053,7 @@ static void collect_mm_slot(struct mm_slot *mm_slot)
+ 
+ 	if (khugepaged_test_exit(mm)) {
+ 		/* free mm_slot */
+-		hlist_del(&mm_slot->hash);
++		hash_del(&mm_slot->hash);
+ 		list_del(&mm_slot->mm_node);
+ 
+ 		/*
 -- 
-1.7.11.2
+1.7.8.6
 
