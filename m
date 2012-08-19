@@ -1,8 +1,8 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:43131 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752744Ab2HVC1P (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 22:27:15 -0400
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:33310 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751373Ab2HSAwJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Aug 2012 20:52:09 -0400
 From: Sasha Levin <levinsasha928@gmail.com>
 To: torvalds@linux-foundation.org
 Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
@@ -18,196 +18,313 @@ Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
         linux-nfs@vger.kernel.org, dev@openvswitch.org,
         rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
         Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH v3 04/17] workqueue: use new hashtable implementation
-Date: Wed, 22 Aug 2012 04:26:59 +0200
-Message-Id: <1345602432-27673-5-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
-References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
+Subject: [PATCH v2 01/16] hashtable: introduce a small and naive hashtable
+Date: Sun, 19 Aug 2012 02:52:14 +0200
+Message-Id: <1345337550-24304-2-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1345337550-24304-1-git-send-email-levinsasha928@gmail.com>
+References: <1345337550-24304-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch workqueues to use the new hashtable implementation. This reduces the amount of
-generic unrelated code in the workqueues.
+This hashtable implementation is using hlist buckets to provide a simple
+hashtable to prevent it from getting reimplemented all over the kernel.
 
 Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
 ---
- kernel/workqueue.c |   86 +++++++++-------------------------------------------
- 1 files changed, 15 insertions(+), 71 deletions(-)
+ include/linux/hashtable.h |  284 +++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 284 insertions(+), 0 deletions(-)
+ create mode 100644 include/linux/hashtable.h
 
-diff --git a/kernel/workqueue.c b/kernel/workqueue.c
-index 11723c5..fca751e 100644
---- a/kernel/workqueue.c
-+++ b/kernel/workqueue.c
-@@ -41,6 +41,7 @@
- #include <linux/debug_locks.h>
- #include <linux/lockdep.h>
- #include <linux/idr.h>
-+#include <linux/hashtable.h>
- 
- #include "workqueue_sched.h"
- 
-@@ -82,8 +83,6 @@ enum {
- 	NR_WORKER_POOLS		= 2,		/* # worker pools per gcwq */
- 
- 	BUSY_WORKER_HASH_ORDER	= 6,		/* 64 pointers */
--	BUSY_WORKER_HASH_SIZE	= 1 << BUSY_WORKER_HASH_ORDER,
--	BUSY_WORKER_HASH_MASK	= BUSY_WORKER_HASH_SIZE - 1,
- 
- 	MAX_IDLE_WORKERS_RATIO	= 4,		/* 1/4 of busy can be idle */
- 	IDLE_WORKER_TIMEOUT	= 300 * HZ,	/* keep idle ones for 5 mins */
-@@ -180,7 +179,7 @@ struct global_cwq {
- 	unsigned int		flags;		/* L: GCWQ_* flags */
- 
- 	/* workers are chained either in busy_hash or pool idle_list */
--	struct hlist_head	busy_hash[BUSY_WORKER_HASH_SIZE];
-+	DEFINE_HASHTABLE(busy_hash, BUSY_WORKER_HASH_ORDER);
- 						/* L: hash of busy workers */
- 
- 	struct worker_pool	pools[2];	/* normal and highpri pools */
-@@ -288,8 +287,7 @@ EXPORT_SYMBOL_GPL(system_nrt_freezable_wq);
- 	     (pool) < &(gcwq)->pools[NR_WORKER_POOLS]; (pool)++)
- 
- #define for_each_busy_worker(worker, i, pos, gcwq)			\
--	for (i = 0; i < BUSY_WORKER_HASH_SIZE; i++)			\
--		hlist_for_each_entry(worker, pos, &gcwq->busy_hash[i], hentry)
-+	hash_for_each(gcwq->busy_hash, i, pos, worker, hentry)
- 
- static inline int __next_gcwq_cpu(int cpu, const struct cpumask *mask,
- 				  unsigned int sw)
-@@ -845,63 +843,6 @@ static inline void worker_clr_flags(struct worker *worker, unsigned int flags)
- }
- 
- /**
-- * busy_worker_head - return the busy hash head for a work
-- * @gcwq: gcwq of interest
-- * @work: work to be hashed
-- *
-- * Return hash head of @gcwq for @work.
-- *
-- * CONTEXT:
-- * spin_lock_irq(gcwq->lock).
-- *
-- * RETURNS:
-- * Pointer to the hash head.
-- */
--static struct hlist_head *busy_worker_head(struct global_cwq *gcwq,
--					   struct work_struct *work)
--{
--	const int base_shift = ilog2(sizeof(struct work_struct));
--	unsigned long v = (unsigned long)work;
--
--	/* simple shift and fold hash, do we need something better? */
--	v >>= base_shift;
--	v += v >> BUSY_WORKER_HASH_ORDER;
--	v &= BUSY_WORKER_HASH_MASK;
--
--	return &gcwq->busy_hash[v];
--}
--
--/**
-- * __find_worker_executing_work - find worker which is executing a work
-- * @gcwq: gcwq of interest
-- * @bwh: hash head as returned by busy_worker_head()
-- * @work: work to find worker for
-- *
-- * Find a worker which is executing @work on @gcwq.  @bwh should be
-- * the hash head obtained by calling busy_worker_head() with the same
-- * work.
-- *
-- * CONTEXT:
-- * spin_lock_irq(gcwq->lock).
-- *
-- * RETURNS:
-- * Pointer to worker which is executing @work if found, NULL
-- * otherwise.
-- */
--static struct worker *__find_worker_executing_work(struct global_cwq *gcwq,
--						   struct hlist_head *bwh,
--						   struct work_struct *work)
--{
--	struct worker *worker;
--	struct hlist_node *tmp;
--
--	hlist_for_each_entry(worker, tmp, bwh, hentry)
--		if (worker->current_work == work)
--			return worker;
--	return NULL;
--}
--
--/**
-  * find_worker_executing_work - find worker which is executing a work
-  * @gcwq: gcwq of interest
-  * @work: work to find worker for
-@@ -920,8 +861,14 @@ static struct worker *__find_worker_executing_work(struct global_cwq *gcwq,
- static struct worker *find_worker_executing_work(struct global_cwq *gcwq,
- 						 struct work_struct *work)
- {
--	return __find_worker_executing_work(gcwq, busy_worker_head(gcwq, work),
--					    work);
-+	struct worker *worker;
-+	struct hlist_node *tmp;
+diff --git a/include/linux/hashtable.h b/include/linux/hashtable.h
+new file mode 100644
+index 0000000..b18827a
+--- /dev/null
++++ b/include/linux/hashtable.h
+@@ -0,0 +1,284 @@
++/*
++ * Hash table implementation
++ * (C) 2012  Sasha Levin <levinsasha928@gmail.com>
++ */
 +
-+	hash_for_each_possible(gcwq->busy_hash, worker, tmp, hentry, (unsigned long)work)
-+		if (worker->current_work == work)
-+			return worker;
++#ifndef _LINUX_HASHTABLE_H
++#define _LINUX_HASHTABLE_H
 +
-+	return NULL;
- }
- 
- /**
-@@ -2120,7 +2067,6 @@ __acquires(&gcwq->lock)
- 	struct cpu_workqueue_struct *cwq = get_work_cwq(work);
- 	struct worker_pool *pool = worker->pool;
- 	struct global_cwq *gcwq = pool->gcwq;
--	struct hlist_head *bwh = busy_worker_head(gcwq, work);
- 	bool cpu_intensive = cwq->wq->flags & WQ_CPU_INTENSIVE;
- 	work_func_t f = work->func;
- 	int work_color;
-@@ -2152,7 +2098,7 @@ __acquires(&gcwq->lock)
- 	 * already processing the work.  If so, defer the work to the
- 	 * currently executing one.
- 	 */
--	collision = __find_worker_executing_work(gcwq, bwh, work);
-+	collision = find_worker_executing_work(gcwq, work);
- 	if (unlikely(collision)) {
- 		move_linked_works(work, &collision->scheduled, NULL);
- 		return;
-@@ -2160,7 +2106,7 @@ __acquires(&gcwq->lock)
- 
- 	/* claim and dequeue */
- 	debug_work_deactivate(work);
--	hlist_add_head(&worker->hentry, bwh);
-+	hash_add(gcwq->busy_hash, &worker->hentry, (unsigned long)worker);
- 	worker->current_work = work;
- 	worker->current_cwq = cwq;
- 	work_color = get_work_color(work);
-@@ -2223,7 +2169,7 @@ __acquires(&gcwq->lock)
- 		worker_clr_flags(worker, WORKER_CPU_INTENSIVE);
- 
- 	/* we're done with it, release */
--	hlist_del_init(&worker->hentry);
-+	hash_del(&worker->hentry);
- 	worker->current_work = NULL;
- 	worker->current_cwq = NULL;
- 	cwq_dec_nr_in_flight(cwq, work_color, false);
-@@ -3855,7 +3801,6 @@ out_unlock:
- static int __init init_workqueues(void)
- {
- 	unsigned int cpu;
--	int i;
- 
- 	/* make sure we have enough bits for OFFQ CPU number */
- 	BUILD_BUG_ON((1LU << (BITS_PER_LONG - WORK_OFFQ_CPU_SHIFT)) <
-@@ -3873,8 +3818,7 @@ static int __init init_workqueues(void)
- 		gcwq->cpu = cpu;
- 		gcwq->flags |= GCWQ_DISASSOCIATED;
- 
--		for (i = 0; i < BUSY_WORKER_HASH_SIZE; i++)
--			INIT_HLIST_HEAD(&gcwq->busy_hash[i]);
-+		hash_init(gcwq->busy_hash);
- 
- 		for_each_worker_pool(pool, gcwq) {
- 			pool->gcwq = gcwq;
++#include <linux/list.h>
++#include <linux/types.h>
++#include <linux/kernel.h>
++#include <linux/hash.h>
++#include <linux/rculist.h>
++
++#define DEFINE_HASHTABLE(name, bits)					\
++	struct hlist_head name[HASH_SIZE(bits)];
++
++#define HASH_SIZE(bits) (1 << (bits))
++#define HASH_BITS(name) (ilog2(ARRAY_SIZE(name)))
++
++/* Use hash_32 when possible to allow for fast 32bit hashing in 64bit kernels. */
++#define hash_min(val, bits) ((sizeof(val)==4) ? hash_32((val), (bits)) : hash_long((val), (bits)))
++
++/**
++ * hash_init_size - initialize a hash table
++ * @hashtable: hashtable to be initialized
++ * @bits: bit count of hashing function
++ *
++ * Initializes a hash table with 2**bits buckets.
++ */
++static inline void hash_init_size(struct hlist_head *hashtable, int bits)
++{
++	int i;
++
++	for (i = 0; i < HASH_SIZE(bits); i++)
++		INIT_HLIST_HEAD(hashtable + i);
++}
++
++/**
++ * hash_init - initialize a hash table
++ * @hashtable: hashtable to be initialized
++ *
++ * Calculates the size of the hashtable from the given parameter, otherwise
++ * same as hash_init_size.
++ */
++#define hash_init(name) hash_init_size(name, HASH_BITS(name))
++
++/**
++ * hash_add_size - add an object to a hashtable
++ * @hashtable: hashtable to add to
++ * @bits: bit count used for hashing
++ * @node: the &struct hlist_node of the object to be added
++ * @key: the key of the object to be added
++ */
++#define hash_add_size(hashtable, bits, node, key)				\
++	hlist_add_head(node, &hashtable[hash_min(key, bits)]);
++
++/**
++ * hash_add - add an object to a hashtable
++ * @hashtable: hashtable to add to
++ * @node: the &struct hlist_node of the object to be added
++ * @key: the key of the object to be added
++ */
++#define hash_add(hashtable, node, key)						\
++	hash_add_size(hashtable, HASH_BITS(hashtable), node, key)
++
++/**
++ * hash_add_rcu_size - add an object to a rcu enabled hashtable
++ * @hashtable: hashtable to add to
++ * @bits: bit count used for hashing
++ * @node: the &struct hlist_node of the object to be added
++ * @key: the key of the object to be added
++ */
++#define hash_add_rcu_size(hashtable, bits, node, key)				\
++	hlist_add_head_rcu(node, &hashtable[hash_min(key, bits)]);
++
++/**
++ * hash_add_rcu - add an object to a rcu enabled hashtable
++ * @hashtable: hashtable to add to
++ * @node: the &struct hlist_node of the object to be added
++ * @key: the key of the object to be added
++ */
++#define hash_add_rcu(hashtable, node, key)					\
++	hash_add_rcu_size(hashtable, HASH_BITS(hashtable), node, key)
++
++/**
++ * hash_hashed - check whether an object is in any hashtable
++ * @node: the &struct hlist_node of the object to be checked
++ */
++#define hash_hashed(node) (!hlist_unhashed(node))
++
++/**
++ * hash_empty_size - check whether a hashtable is empty
++ * @hashtable: hashtable to check
++ * @bits: bit count used for hashing
++ */
++static inline bool hash_empty_size(struct hlist_head *hashtable, int bits)
++{
++	int i;
++
++	for (i = 0; i < HASH_SIZE(bits); i++)
++		if (!hlist_empty(&hashtable[i]))
++			return false;
++
++	return true;
++}
++
++/**
++ * hash_empty - check whether a hashtable is empty
++ * @hashtable: hashtable to check
++ */
++#define hash_empty(name) hash_empty_size(name, HASH_BITS(name))
++
++/**
++ * hash_del - remove an object from a hashtable
++ * @node: &struct hlist_node of the object to remove
++ */
++static inline void hash_del(struct hlist_node *node)
++{
++	hlist_del_init(node);
++}
++
++/**
++ * hash_del_rcu - remove an object from a rcu enabled hashtable
++ * @node: &struct hlist_node of the object to remove
++ */
++static inline void hash_del_rcu(struct hlist_node *node)
++{
++	hlist_del_init_rcu(node);
++}
++
++/**
++ * hash_for_each_size - iterate over a hashtable
++ * @name: hashtable to iterate
++ * @bits: bit count of hashing function of the hashtable
++ * @bkt: integer to use as bucket loop cursor
++ * @node: the &struct list_head to use as a loop cursor for each bucket
++ * @obj: the type * to use as a loop cursor for each bucket
++ * @member: the name of the hlist_node within the struct
++ */
++#define hash_for_each_size(name, bits, bkt, node, obj, member)			\
++	for (bkt = 0; bkt < HASH_SIZE(bits); bkt++)				\
++		hlist_for_each_entry(obj, node, &name[bkt], member)
++
++/**
++ * hash_for_each - iterate over a hashtable
++ * @name: hashtable to iterate
++ * @bkt: integer to use as bucket loop cursor
++ * @node: the &struct list_head to use as a loop cursor for each bucket
++ * @obj: the type * to use as a loop cursor for each bucket
++ * @member: the name of the hlist_node within the struct
++ */
++#define hash_for_each(name, bkt, node, obj, member)				\
++	hash_for_each_size(name, HASH_BITS(name), bkt, node, obj, member)
++
++/**
++ * hash_for_each_rcu_size - iterate over a rcu enabled hashtable
++ * @name: hashtable to iterate
++ * @bits: bit count of hashing function of the hashtable
++ * @bkt: integer to use as bucket loop cursor
++ * @node: the &struct list_head to use as a loop cursor for each bucket
++ * @obj: the type * to use as a loop cursor for each bucket
++ * @member: the name of the hlist_node within the struct
++ */
++#define hash_for_each_rcu_size(name, bits, bkt, node, obj, member)		\
++	for (bkt = 0; bkt < HASH_SIZE(bits); bkt++)				\
++		hlist_for_each_entry_rcu(obj, node, &name[bkt], member)
++
++/**
++ * hash_for_each_rcu - iterate over a rcu enabled hashtable
++ * @name: hashtable to iterate
++ * @bkt: integer to use as bucket loop cursor
++ * @node: the &struct list_head to use as a loop cursor for each bucket
++ * @obj: the type * to use as a loop cursor for each bucket
++ * @member: the name of the hlist_node within the struct
++ */
++#define hash_for_each_rcu(name, bkt, node, obj, member)				\
++	hash_for_each_rcu_size(name, HASH_BITS(name), bkt, node, obj, member)
++
++/**
++ * hash_for_each_safe_size - iterate over a hashtable safe against removal of
++ * hash entry
++ * @name: hashtable to iterate
++ * @bkt: integer to use as bucket loop cursor
++ * @node: the &struct list_head to use as a loop cursor for each bucket
++ * @tmp: another &struct hlist_node to use as temporary storage
++ * @obj: the type * to use as a loop cursor for each bucket
++ * @member: the name of the hlist_node within the struct
++ */
++#define hash_for_each_safe_size(name, bits, bkt, node, tmp, obj, member)	\
++	for (bkt = 0; bkt < HASH_SIZE(bits); bkt++)                     	\
++		hlist_for_each_entry_safe(obj, node, tmp, &name[bkt], member)
++
++/**
++ * hash_for_each_safe_size - iterate over a hashtable safe against removal of
++ * hash entry
++ * @name: hashtable to iterate
++ * @bkt: integer to use as bucket loop cursor
++ * @node: the &struct list_head to use as a loop cursor for each bucket
++ * @obj: the type * to use as a loop cursor for each bucket
++ * @member: the name of the hlist_node within the struct
++ */
++#define hash_for_each_safe(name, bkt, node, tmp, obj, member)			\
++	hash_for_each_safe_size(name, HASH_BITS(name), bkt, node,		\
++				tmp, obj, member)
++
++/**
++ * hash_for_each_possible - iterate over all possible objects for a given key
++ * @name: hashtable to iterate
++ * @obj: the type * to use as a loop cursor for each bucket
++ * @bits: bit count of hashing function of the hashtable
++ * @node: the &struct list_head to use as a loop cursor for each bucket
++ * @member: the name of the hlist_node within the struct
++ * @key: the key of the objects to iterate over
++ */
++#define hash_for_each_possible_size(name, obj, bits, node, member, key)		\
++	hlist_for_each_entry(obj, node,	&name[hash_min(key, bits)], member)
++
++/**
++ * hash_for_each_possible - iterate over all possible objects for a given key
++ * @name: hashtable to iterate
++ * @obj: the type * to use as a loop cursor for each bucket
++ * @bits: bit count of hashing function of the hashtable
++ * @node: the &struct list_head to use as a loop cursor for each bucket
++ * @member: the name of the hlist_node within the struct
++ * @key: the key of the objects to iterate over
++ */
++#define hash_for_each_possible(name, obj, node, member, key)			\
++	hash_for_each_possible_size(name, obj, HASH_BITS(name), node, member, key)
++
++/**
++ * hash_for_each_possible - iterate over all possible objects for a given key
++ * in a rcu enabled hashtable
++ * @name: hashtable to iterate
++ * @obj: the type * to use as a loop cursor for each bucket
++ * @bits: bit count of hashing function of the hashtable
++ * @node: the &struct list_head to use as a loop cursor for each bucket
++ * @member: the name of the hlist_node within the struct
++ * @key: the key of the objects to iterate over
++ */
++#define hash_for_each_possible_rcu_size(name, obj, bits, node, member, key)	\
++	hlist_for_each_entry_rcu(obj, node, &name[hash_min(key, bits)], member)
++
++/**
++ * hash_for_each_possible - iterate over all possible objects for a given key
++ * in a rcu enabled hashtable
++ * @name: hashtable to iterate
++ * @obj: the type * to use as a loop cursor for each bucket
++ * @node: the &struct list_head to use as a loop cursor for each bucket
++ * @member: the name of the hlist_node within the struct
++ * @key: the key of the objects to iterate over
++ */
++#define hash_for_each_possible_rcu(name, obj, node, member, key)		\
++	hash_for_each_possible_rcu_size(name, obj, HASH_BITS(name),		\
++					node, member, key)
++
++/**
++ * hash_for_each_possible - iterate over all possible objects for a given key
++ * safe against removal of hash entry
++ * @name: hashtable to iterate
++ * @obj: the type * to use as a loop cursor for each bucket
++ * @bits: bit count of hashing function of the hashtable
++ * @node: the &struct list_head to use as a loop cursor for each bucket
++ * @member: the name of the hlist_node within the struct
++ * @key: the key of the objects to iterate over
++ */
++#define hash_for_each_possible_safe_size(name, obj, bits, node, tmp, member, key)\
++	hlist_for_each_entry_safe(obj, node, tmp,				\
++		&name[hash_min(key, bits)], member)
++
++/**
++ * hash_for_each_possible - iterate over all possible objects for a given key
++ * safe against removal of hash entry
++ * @name: hashtable to iterate
++ * @obj: the type * to use as a loop cursor for each bucket
++ * @node: the &struct list_head to use as a loop cursor for each bucket
++ * @member: the name of the hlist_node within the struct
++ * @key: the key of the objects to iterate over
++ */
++#define hash_for_each_possible_safe(name, obj, node, tmp, member, key)		\
++	hash_for_each_possible_safe_size(name, obj, HASH_BITS(name),		\
++						node, tmp, member, key)
++
++#endif
 -- 
 1.7.8.6
 
