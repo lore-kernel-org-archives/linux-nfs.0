@@ -1,95 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:51389 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757692Ab2HXTqw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Aug 2012 15:46:52 -0400
-Message-ID: <5037DA47.9010306@gmail.com>
-Date: Fri, 24 Aug 2012 21:47:19 +0200
-From: Sasha Levin <levinsasha928@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:47764 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755548Ab2HTQLj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Aug 2012 12:11:39 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH] NFS: put net in case of idr allocation failure
+Date: Mon, 20 Aug 2012 16:11:37 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA93BF311@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20120820134350.27917.55176.stgit@localhost.localdomain>
+In-Reply-To: <20120820134350.27917.55176.stgit@localhost.localdomain>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Tejun Heo <tj@kernel.org>
-CC: torvalds@linux-foundation.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
-        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive hashtable
-References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com> <1345602432-27673-2-git-send-email-levinsasha928@gmail.com> <20120822180138.GA19212@google.com> <50357840.5020201@gmail.com> <20120823200456.GD14962@google.com>
-In-Reply-To: <20120823200456.GD14962@google.com>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/23/2012 10:04 PM, Tejun Heo wrote:
-> Hello, Sasha.
-> 
-> On Thu, Aug 23, 2012 at 02:24:32AM +0200, Sasha Levin wrote:
->>> I think the almost trivial nature of hlist hashtables makes this a bit
->>> tricky and I'm not very sure but having this combinatory explosion is
->>> a bit dazzling when the same functionality can be achieved by simply
->>> combining operations which are already defined and named considering
->>> hashtable.  I'm not feeling too strong about this tho.  What do others
->>> think?
->>
->> I'm thinking that this hashtable API will have 2 purposes: First, it would
->> prevent the excessive duplication of hashtable implementations all around the code.
->>
->> Second, it will allow more easily interchangeable hashtable implementations to
->> find their way into the kernel. There are several maintainers who would be happy
->> to see dynamically sized RCU hashtable, and I'm guessing that several more
->> variants could be added based on needs in specific modules.
->>
->> The second reason is why several things you've mentioned look the way they are:
->>
->>  - No DEFINE_HASHTABLE(): I wanted to force the use of hash_init() since
->> initialization for other hashtables may be more complicated than the static
->> initialization for this implementation, which means that any place that used
->> DEFINE_HASHTABLE() and didn't do hash_init() will be buggy.
-> 
-> I think this is problematic.  It looks exactly like other existing
-> DEFINE macros yet what its semantics is different.  I don't think
-> that's a good idea.
-
-I can switch that to be DECLARE_HASHTABLE() if the issue is semantics.
-
->> I'm actually tempted in hiding hlist completely from hashtable users, probably
->> by simply defining a hash_head/hash_node on top of the hlist_ counterparts.
-> 
-> I think that it would be best to keep this one simple & obvious, which
-> already has enough in-kernel users to justify its existence.  There
-> are significant benefits in being trivially understandable and
-> expectable.  If we want more advanced ones - say resizing, hybrid or
-> what not, let's make that a separate one.  No need to complicate the
-> common straight-forward case for that.
-> 
-> So, I think it would be best to keep this one as straight-forward and
-> trivial as possible.  Helper macros to help its users are fine but
-> let's please not go for full encapsulation.
-
-What if we cut off the dynamic allocated (but not resizable) hashtable out for
-the moment, and focus on the most common statically allocated hashtable case?
-
-The benefits would be:
-
- - Getting rid of all the _size() macros, which will make the amount of helpers
-here reasonable.
- - Dynamically allocated hashtable can be easily added as a separate
-implementation using the same API. We already have some of those in the kernel...
- - When that's ready, I feel it's a shame to lose full encapsulation just due to
-hash_hashed().
-
-
-Thanks,
-Sasha
-
-> 
-> Thanks.
-> 
-
+T24gTW9uLCAyMDEyLTA4LTIwIGF0IDE3OjQzICswNDAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3
+cm90ZToNCj4gUHV0IG5ldCByZWZlcmVuY2Ugd2UgZ290IGluIG5mc19hbGxvY19jbGllbnQoKSBv
+biBlcnJvciBwYXRoLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogU3RhbmlzbGF2IEtpbnNidXJza3kg
+PHNraW5zYnVyc2t5QHBhcmFsbGVscy5jb20+DQo+IC0tLQ0KPiAgZnMvbmZzL25mczRjbGllbnQu
+YyB8ICAgIDEgKw0KPiAgMSBmaWxlcyBjaGFuZ2VkLCAxIGluc2VydGlvbnMoKyksIDAgZGVsZXRp
+b25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRjbGllbnQuYyBiL2ZzL25mcy9u
+ZnM0Y2xpZW50LmMNCj4gaW5kZXggY2JjZGZhZi4uYjg5NTYyOSAxMDA2NDQNCj4gLS0tIGEvZnMv
+bmZzL25mczRjbGllbnQuYw0KPiArKysgYi9mcy9uZnMvbmZzNGNsaWVudC5jDQo+IEBAIC03NCw2
+ICs3NCw3IEBAIHN0cnVjdCBuZnNfY2xpZW50ICpuZnM0X2FsbG9jX2NsaWVudChjb25zdCBzdHJ1
+Y3QgbmZzX2NsaWVudF9pbml0ZGF0YSAqY2xfaW5pdCkNCj4gIAlyZXR1cm4gY2xwOw0KPiAgDQo+
+ICBlcnJvcjoNCj4gKwlwdXRfbmV0KGNscC0+Y2xfbmV0KTsNCj4gIAlrZnJlZShjbHApOw0KPiAg
+CXJldHVybiBFUlJfUFRSKGVycik7DQo+ICB9DQoNCg0KTm8sIHRoYXQgaXNuJ3QgYW55d2hlcmUg
+bmVhciBzdWZmaWNpZW50Lg0KDQpUaGUgY29ycmVjdCB0aGluZyB0byBkbyBoZXJlIGlzIHRvIHJl
+cGxhY2UgdGhlIGtmcmVlIHdpdGggYSBjYWxsIHRvDQpuZnNfZnJlZV9jbGllbnQoKSwgd2hpY2gg
+d2lsbCBhbHNvIGNsZWFuIHVwIHRoZSBhbGxvY2F0aW9uIG9mDQpjbF9ob3N0bmFtZSwgcHV0IHRo
+ZSBtb2R1bGUsIGV0Yy4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQg
+bWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0
+YXBwLmNvbQ0KDQo=
