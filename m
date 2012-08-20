@@ -1,48 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.195]:54027 "EHLO mout.perfora.net"
+Received: from mx2.netapp.com ([216.240.18.37]:22783 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757240Ab2HUM7O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Aug 2012 08:59:14 -0400
-Date: Tue, 21 Aug 2012 08:59:05 -0400
-From: Jim Rees <rees@umich.edu>
-To: Sven Geggus <lists@fuchsschwanzdomain.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFS4: ssh + unlink(~/.Xauthority) delays
-Message-ID: <20120821125905.GA16550@umich.edu>
-References: <k0vgkt$mm0$1@ultimate100.geggus.net>
+	id S1755514Ab2HTQsl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Aug 2012 12:48:41 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Yuanming Chen <hikvision_linux@163.com>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: PROBLEM: in function nfs3_proc_get_root(), fsinfo reply
+ error,but not return.
+Date: Mon, 20 Aug 2012 16:48:25 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA93BF4E2@SACEXCMBX04-PRD.hq.netapp.com>
+References: <4032dd5c.1641a.139441b4602.Coremail.hikvision_linux@163.com>
+In-Reply-To: <4032dd5c.1641a.139441b4602.Coremail.hikvision_linux@163.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <k0vgkt$mm0$1@ultimate100.geggus.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sven Geggus wrote:
-
-  Hello,
-  
-  I'm about to setup a Linux based fileserver for home directories and a
-  couple of Linux clients with kerberos and NFS4 (no NFS3 for security
-  reasons).
-  
-  The whole stuff is currently based on debian stable (with a backported
-  current NFS userland 1.2.5) and a recent vanilla kernel (3.5.2).
-  
-  So far I have the NFS4 Server up and running as well as a couple of clients
-  with NFS4+autofs mounted home directories.
-  
-  All this stuff mostly works now, but unfortunately I ran into some strange
-  bahaviour now.
-  
-  When I ssh from one machine to another the system hangs (a delay of up to 60
-  seconds) while running xauth.
-  
-  Replacing xauth by a wrapper script I have been able to trace this behaviour
-  to a hang of an unlink("/home/<user>/.Xauthority") system call.
-  
-  So the question is what cases hangs in NFS4 based Linux systems in general
-  an in this particular case?
-
-No, the question is why did X put that file in your home directory.  That's
-not where it belongs.  I've got this in my .xinitrc:
-
-setenv XAUTHORITY /tmp/Xauthority`id -u`
+T24gTW9uLCAyMDEyLTA4LTIwIGF0IDIwOjU2ICswODAwLCBZdWFubWluZyBDaGVuIHdyb3RlOg0K
+PiANCj4gDQo+IA0KPiANCj4gDQo+IA0KPiANCj4gWzEuXSBJbiBmdW5jdGlvbiBuZnMzX3Byb2Nf
+Z2V0X3Jvb3QoKSwgZnNpbmZvIHJlcGx5IGVycm9yLGJ1dCBub3QNCj4gcmV0dXJuLiBBbmQgbmV4
+dCwgcmVwbHkgZ2V0YXR0ciBzdWNjZXNzLCBsZWFkIHRvIHRoZSBmdW5jdGlvbiByZXR1cm4NCj4g
+dmFsdWUgaXMgc3VjY2Vzcy4gYnV0IGluIGZhY3QgLHNvbWUgaWZvcm1hdGlvbiBnb3QgaW4gdGhp
+cyBmdW5jdGlvbiBpcw0KPiBlcnJvci4gDQo+IA0KPiANCj4gWzIuXSBTbyBmc2luZm8tPm1heGZp
+bGVzaXplID0gMCwgd2hlbiB0aGUgYXBwbGljYXRpb24gcHJvZ3JhbSBjYWxsDQo+IHdyaXRlKCks
+ICB0aGUgZnVuY3Rpb24gZ2VuZXJpY193cml0ZV9jaGVja3MoKSBpbiB0aGUga2VybmVsIHdpbGwg
+YmUNCj4gY2FsbGVkLiBUaGlzIGZ1bmN0aW9uIHdpbGwgY2hlY2sgdGhlIGZzaW5mby0+bWF4Zmls
+ZXNpemUgYW5kICByYWlzZQ0KPiBTSUdYRlNaIHNpbmdhbCwgbGVhZCB0byB0aGUgd2hvbGUgcHJv
+Y2VzcyBleGl0Lg0KDQooQ2M6IHRoZSBMaW51eCBORlMgbWFpbGluZyBsaXN0IGZvciByZXZpZXcu
+KQ0KDQoNCkhpLA0KDQpEb2VzIHRoZSBmb2xsb3dpbmcgcGF0Y2ggZml4IHRoZSBwcm9ibGU/DQoN
+CkNoZWVycw0KICBUcm9uZA0KDQo4PC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLQ0KRnJvbSAxM2Y0NmJiZTY4OWNhZGU4NjBhYTMwMjFiZjYzNWU3ZTZlYTBlYzRk
+IE1vbiBTZXAgMTcgMDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5N
+eWtsZWJ1c3RAbmV0YXBwLmNvbT4NCkRhdGU6IE1vbiwgMjAgQXVnIDIwMTIgMTI6NDI6MTUgLTA0
+MDANClN1YmplY3Q6IFtQQVRDSF0gTkZTdjM6IEVuc3VyZSB0aGF0IGRvX3Byb2NfZ2V0X3Jvb3Qo
+KSByZXBvcnRzIGVycm9ycw0KIGNvcnJlY3RseQ0KDQpJZiB0aGUgcnBjIGNhbGwgdG8gTkZTM1BS
+T0NfRlNJTkZPIGZhaWxzLCB0aGVuIHdlIG5lZWQgdG8gcmVwb3J0IHRoYXQNCmVycm9yIHNvIHRo
+YXQgdGhlIG1vdW50IGZhaWxzLiBPdGhlcndpc2Ugd2UgY2FuIGVuZCB1cCB3aXRoIGENCnN1cGVy
+YmxvY2sgd2l0aCBjb21wbGV0ZWx5IHVudXNhYmxlIHZhbHVlcyBmb3IgYmxvY2sgc2l6ZXMsIG1h
+eGZpbGVzaXplLA0KZXRjLg0KDQpSZXBvcnRlZC1ieTogWXVhbm1pbmcgQ2hlbiA8aGlrdmlzaW9u
+X2xpbnV4QDE2My5jb20+DQpDYzogc3RhYmxlQHZnZXIua2VybmVsLm9yZw0KU2lnbmVkLW9mZi1i
+eTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCi0tLQ0KIGZz
+L25mcy9uZnMzcHJvYy5jIHwgMiArLQ0KIDEgZmlsZSBjaGFuZ2VkLCAxIGluc2VydGlvbigrKSwg
+MSBkZWxldGlvbigtKQ0KDQpkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczNwcm9jLmMgYi9mcy9uZnMv
+bmZzM3Byb2MuYw0KaW5kZXggMDk1MmM3OS4uZDZiM2I1ZiAxMDA2NDQNCi0tLSBhL2ZzL25mcy9u
+ZnMzcHJvYy5jDQorKysgYi9mcy9uZnMvbmZzM3Byb2MuYw0KQEAgLTY5LDcgKzY5LDcgQEAgZG9f
+cHJvY19nZXRfcm9vdChzdHJ1Y3QgcnBjX2NsbnQgKmNsaWVudCwgc3RydWN0IG5mc19maCAqZmhh
+bmRsZSwNCiAJbmZzX2ZhdHRyX2luaXQoaW5mby0+ZmF0dHIpOw0KIAlzdGF0dXMgPSBycGNfY2Fs
+bF9zeW5jKGNsaWVudCwgJm1zZywgMCk7DQogCWRwcmludGsoIiVzOiByZXBseSBmc2luZm86ICVk
+XG4iLCBfX2Z1bmNfXywgc3RhdHVzKTsNCi0JaWYgKCEoaW5mby0+ZmF0dHItPnZhbGlkICYgTkZT
+X0FUVFJfRkFUVFIpKSB7DQorCWlmIChzdGF0dXMgPT0gMCAmJiAhKGluZm8tPmZhdHRyLT52YWxp
+ZCAmIE5GU19BVFRSX0ZBVFRSKSkgew0KIAkJbXNnLnJwY19wcm9jID0gJm5mczNfcHJvY2VkdXJl
+c1tORlMzUFJPQ19HRVRBVFRSXTsNCiAJCW1zZy5ycGNfcmVzcCA9IGluZm8tPmZhdHRyOw0KIAkJ
+c3RhdHVzID0gcnBjX2NhbGxfc3luYyhjbGllbnQsICZtc2csIDApOw0KLS0gDQoxLjcuMTEuNA0K
+DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0K
+TmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
