@@ -1,39 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:54629 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750733Ab2HLSkX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Aug 2012 14:40:23 -0400
-Message-ID: <5027F889.6090700@panasas.com>
-Date: Sun, 12 Aug 2012 21:40:09 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from fieldses.org ([174.143.236.118]:54358 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755702Ab2HTVta (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Aug 2012 17:49:30 -0400
+Received: from bfields by fieldses.org with local (Exim 4.72)
+	(envelope-from <bfields@fieldses.org>)
+	id 1T3Zqk-00026k-6r
+	for linux-nfs@vger.kernel.org; Mon, 20 Aug 2012 17:49:30 -0400
+Date: Mon, 20 Aug 2012 17:49:30 -0400
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] svcrpc: fix BUG() in svc_tcp_clear_pages
+Message-ID: <20120820214930.GI5779@fieldses.org>
 MIME-Version: 1.0
-To: Peng Tao <bergwolf@gmail.com>
-CC: <linux-nfs@vger.kernel.org>, Peng Tao <tao.peng@emc.com>
-Subject: Re: [PATCH RFC 2/3] NFS41: send real write size in layoutget
-References: <1344391392-1948-1-git-send-email-bergwolf@gmail.com> <1344391392-1948-3-git-send-email-bergwolf@gmail.com> <5027F63F.8070107@panasas.com>
-In-Reply-To: <5027F63F.8070107@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/12/2012 09:30 PM, Boaz Harrosh wrote:
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-> So for objects the wasting factor is the actual i_size extending as a cause
-> of layout_get, and not the number of pages served. So for us the gain is if
-> client, that has a much newer information about i_size, sends it on first
-> layout_get. Though extending file size only once on first layout_get and
-> not on every layout_get.
-> 
+Examination of svc_tcp_clear_pages shows that it assumes sk_tcplen is
+consistent with sk_pages[] (in particular, sk_pages[n] can't be NULL if
+sk_tcplen would lead us to expect n pages of data).
 
+svc_tcp_restore_pages zeroes out sk_pages[] while leaving sk_tcplen.
+This is OK, since both functions are serialized by XPT_BUSY.  However,
+that means the inconsistency must be repaired before dropping XPT_BUSY.
 
-I want to clarify here. The i_size does not and must not grow as part of
-a layout_get. Only a layout_commit might extend i_size.
+Therefore we should be ensuring that svc_tcp_save_pages repairs the
+problem before exiting svc_tcp_recv_record on error.
 
-the "file-size" I meant above is the current maximum size that can be
-described by the inode's layout device-map. The device map does grow on
-layout_get both for objects, as well as for example  a CEPH cluster. If we
-send i_size from client then we only need extend device-map once during the
-complete writeout. (If need extending)
+Symptoms were a BUG() in svc_tcp_clear_pages.
 
-Thanks
-Boaz
+Cc: stable@vger.kernel.org
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/svcsock.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+Sending in for 3.6 soon absent objections.--b.
+
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 18bc130..998aa8c 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1129,9 +1129,9 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 	if (len >= 0)
+ 		svsk->sk_tcplen += len;
+ 	if (len != want) {
++		svc_tcp_save_pages(svsk, rqstp);
+ 		if (len < 0 && len != -EAGAIN)
+ 			goto err_other;
+-		svc_tcp_save_pages(svsk, rqstp);
+ 		dprintk("svc: incomplete TCP record (%d of %d)\n",
+ 			svsk->sk_tcplen, svsk->sk_reclen);
+ 		goto err_noclose;
+-- 
+1.7.9.5
+
