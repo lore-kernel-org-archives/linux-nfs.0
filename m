@@ -1,136 +1,143 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46790 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752126Ab2HUU5e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Aug 2012 16:57:34 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 02/14] svcrpc: clean up control flow
-Date: Tue, 21 Aug 2012 16:57:20 -0400
-Message-Id: <1345582652-18476-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1345582652-18476-1-git-send-email-bfields@redhat.com>
-References: <1345582652-18476-1-git-send-email-bfields@redhat.com>
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:35114 "EHLO
+	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752110Ab2HTCAK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Aug 2012 22:00:10 -0400
+Date: Mon, 20 Aug 2012 12:00:04 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: Fengguang Wu <fengguang.wu@intel.com>
+Cc: Namjae Jeon <linkinjeon@gmail.com>, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, Namjae Jeon <namjae.jeon@samsung.com>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] writeback: add dirty_ratio_time per bdi variable
+ (NFS write performance)
+Message-ID: <20120820020004.GB19235@dastard>
+References: <1345283402-7889-1-git-send-email-linkinjeon@gmail.com>
+ <20120819025724.GC16796@localhost>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120819025724.GC16796@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Sun, Aug 19, 2012 at 10:57:24AM +0800, Fengguang Wu wrote:
+> On Sat, Aug 18, 2012 at 05:50:02AM -0400, Namjae Jeon wrote:
+> > From: Namjae Jeon <namjae.jeon@samsung.com>
+> > 
+> > This patch is based on suggestion by Wu Fengguang:
+> > https://lkml.org/lkml/2011/8/19/19
+> > 
+> > kernel has mechanism to do writeback as per dirty_ratio and dirty_background
+> > ratio. It also maintains per task dirty rate limit to keep balance of
+> > dirty pages at any given instance by doing bdi bandwidth estimation.
+> > 
+> > Kernel also has max_ratio/min_ratio tunables to specify percentage of writecache
+> > to control per bdi dirty limits and task throtelling.
+> > 
+> > However, there might be a usecase where user wants a writeback tuning
+> > parameter to flush dirty data at desired/tuned time interval.
+> > 
+> > dirty_background_time provides an interface where user can tune background
+> > writeback start time using /sys/block/sda/bdi/dirty_background_time
+> > 
+> > dirty_background_time is used alongwith average bdi write bandwidth estimation
+> > to start background writeback.
+> 
+> Here lies my major concern about dirty_background_time: the write
+> bandwidth estimation is an _estimation_ and will sure become wildly
+> wrong in some cases. So the dirty_background_time implementation based
+> on it will not always work to the user expectations.
+> 
+> One important case is, some users (eg. Dave Chinner) explicitly take
+> advantage of the existing behavior to quickly create & delete a big
+> 1GB temp file without worrying about triggering unnecessary IOs.
 
-Mainly, use the kernel standard
+It's a fairly common use case - short term temp files are used by
+lots of applications and avoiding writing them - especially on NFS -
+is a big performance win. Forcing immediate writeback will
+definitely cause unprdictable changes in performance for many
+people...
 
-	err = -ERROR;
-	if (something_bad)
-		goto out;
-	normal case;
+> > Results are:-
+> > ==========================================================
+> > Case:1 - Normal setup without any changes
+> > ./performancetest_arm ./100MB write
+> > 
+> >  RecSize  WriteSpeed   RanWriteSpeed
+> > 
+> >  10485760  7.93MB/sec   8.11MB/sec
+> >   1048576  8.21MB/sec   7.80MB/sec
+> >    524288  8.71MB/sec   8.39MB/sec
+> >    262144  8.91MB/sec   7.83MB/sec
+> >    131072  8.91MB/sec   8.95MB/sec
+> >     65536  8.95MB/sec   8.90MB/sec
+> >     32768  8.76MB/sec   8.93MB/sec
+> >     16384  8.78MB/sec   8.67MB/sec
+> >      8192  8.90MB/sec   8.52MB/sec
+> >      4096  8.89MB/sec   8.28MB/sec
+> > 
+> > Average speed is near 8MB/seconds.
+> > 
+> > Case:2 - Modified the dirty_background_time
+> > ./performancetest_arm ./100MB write
+> > 
+> >  RecSize  WriteSpeed   RanWriteSpeed
+> > 
+> >  10485760  10.56MB/sec  10.37MB/sec
+> >   1048576  10.43MB/sec  10.33MB/sec
+> >    524288  10.32MB/sec  10.02MB/sec
+> >    262144  10.52MB/sec  10.19MB/sec
+> >    131072  10.34MB/sec  10.07MB/sec
+> >     65536  10.31MB/sec  10.06MB/sec
+> >     32768  10.27MB/sec  10.24MB/sec
+> >     16384  10.54MB/sec  10.03MB/sec
+> >      8192  10.41MB/sec  10.38MB/sec
+> >      4096  10.34MB/sec  10.12MB/sec
+> > 
+> > we can see, average write speed is increased to ~10-11MB/sec.
+> > ============================================================
+> 
+> The numbers are impressive!
 
-rather than
+All it shows is that avoiding the writeback delay writes a file a
+bit faster. i.e. 5s delay + 10s @ 10MB/s vs no delay and 10s
+@10MB/s. That's pretty obvious, really, and people have been trying
+to make this "optimisation" for NFS clients for years in the
+misguided belief that short-cutting writeback caching is beneficial
+to application performance.
 
-	if (something_bad)
-		err = -ERROR
-	else {
-		normal case;
-	}
+What these numbers don't show that is whether over-the-wire
+writeback speed has improved at all. Or what happens when you have a
+network that is faster than the server disk, or even faster than the
+client can write into memory? What about when there are multiple
+threads, or the network is congested, or the server overloaded? In
+those cases the performance differential will disappear and
+there's a good chance that the existing code will be significantly
+faster because it places less imediate load on the server and
+network.D...
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- net/sunrpc/svcsock.c |   69 +++++++++++++++++++++++++-------------------------
- 1 file changed, 34 insertions(+), 35 deletions(-)
+If you need immediate dispatch of your data for single threaded
+performance then sync_file_range() is your friend.
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index d028b51..bf10b72 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1451,44 +1451,42 @@ int svc_addsock(struct svc_serv *serv, const int fd, char *name_return,
- 	int err = 0;
- 	struct socket *so = sockfd_lookup(fd, &err);
- 	struct svc_sock *svsk = NULL;
-+	struct sockaddr_storage addr;
-+	struct sockaddr *sin = (struct sockaddr *)&addr;
-+	int salen;
- 
- 	if (!so)
- 		return err;
-+	err = -EAFNOSUPPORT;
- 	if ((so->sk->sk_family != PF_INET) && (so->sk->sk_family != PF_INET6))
--		err =  -EAFNOSUPPORT;
--	else if (so->sk->sk_protocol != IPPROTO_TCP &&
-+		goto out;
-+	err =  -EPROTONOSUPPORT;
-+	if (so->sk->sk_protocol != IPPROTO_TCP &&
- 	    so->sk->sk_protocol != IPPROTO_UDP)
--		err =  -EPROTONOSUPPORT;
--	else if (so->state > SS_UNCONNECTED)
--		err = -EISCONN;
--	else {
--		if (!try_module_get(THIS_MODULE))
--			err = -ENOENT;
--		else {
--			svsk = svc_setup_socket(serv, so, SVC_SOCK_DEFAULTS);
--			if (IS_ERR(svsk))
--				err = PTR_ERR(svsk);
--		}
--		if (err == 0) {
--			struct sockaddr_storage addr;
--			struct sockaddr *sin = (struct sockaddr *)&addr;
--			int salen;
--			if (kernel_getsockname(svsk->sk_sock, sin, &salen) == 0)
--				svc_xprt_set_local(&svsk->sk_xprt, sin, salen);
--			clear_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags);
--			spin_lock_bh(&serv->sv_lock);
--			list_add(&svsk->sk_xprt.xpt_list, &serv->sv_permsocks);
--			spin_unlock_bh(&serv->sv_lock);
--			svc_xprt_received(&svsk->sk_xprt);
--			err = 0;
--		} else
--			module_put(THIS_MODULE);
--	}
--	if (err) {
--		sockfd_put(so);
--		return err;
-+		goto out;
-+	err = -EISCONN;
-+	if (so->state > SS_UNCONNECTED)
-+		goto out;
-+	err = -ENOENT;
-+	if (!try_module_get(THIS_MODULE))
-+		goto out;
-+	svsk = svc_setup_socket(serv, so, SVC_SOCK_DEFAULTS);
-+	if (IS_ERR(svsk)) {
-+		module_put(THIS_MODULE);
-+		err = PTR_ERR(svsk);
-+		goto out;
- 	}
-+	if (kernel_getsockname(svsk->sk_sock, sin, &salen) == 0)
-+		svc_xprt_set_local(&svsk->sk_xprt, sin, salen);
-+	clear_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags);
-+	spin_lock_bh(&serv->sv_lock);
-+	list_add(&svsk->sk_xprt.xpt_list, &serv->sv_permsocks);
-+	spin_unlock_bh(&serv->sv_lock);
-+	svc_xprt_received(&svsk->sk_xprt);
- 	return svc_one_sock_name(svsk, name_return, len);
-+out:
-+	sockfd_put(so);
-+	return err;
- }
- EXPORT_SYMBOL_GPL(svc_addsock);
- 
-@@ -1567,11 +1565,12 @@ static struct svc_xprt *svc_create_socket(struct svc_serv *serv,
- 	}
- 
- 	svsk = svc_setup_socket(serv, sock, flags);
--	if (!IS_ERR(svsk)) {
--		svc_xprt_set_local(&svsk->sk_xprt, newsin, newlen);
--		return (struct svc_xprt *)svsk;
-+	if (IS_ERR(svsk)) {
-+		error = PTR_ERR(svsk);
-+		goto bummer;
- 	}
--	error = PTR_ERR(svsk);
-+	svc_xprt_set_local(&svsk->sk_xprt, newsin, newlen);
-+	return (struct svc_xprt *)svsk;
- bummer:
- 	dprintk("svc: svc_create_socket error = %d\n", -error);
- 	sock_release(sock);
+> FYI, I tried another NFS specific approach
+> to avoid big NFS COMMITs, which achieved similar performance gains:
+> 
+> nfs: writeback pages wait queue
+> https://lkml.org/lkml/2011/10/20/235
+
+Which is basically controlling the server IO latency when commits
+occur - smaller ranges mean the commit (fsync) is faster, and more
+frequent commits mean the data goes to disk sooner. This is
+something that will have a positive impact on writeback speeds
+because it modifies the NFs client writeback behaviour to be more
+server friendly and not stall over the wire. i.e. improving NFS
+writeback performance is all about keeping the wire full and the
+server happy, not about reducing the writeback delay before we start
+writing over the wire.
+
+Cheers,
+
+Dave.
 -- 
-1.7.9.5
-
+Dave Chinner
+david@fromorbit.com
