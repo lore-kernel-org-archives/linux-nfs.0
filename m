@@ -1,89 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:49077 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755523Ab2HIRMl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2012 13:12:41 -0400
-Received: by ghrr11 with SMTP id r11so690282ghr.19
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Aug 2012 10:12:40 -0700 (PDT)
+Received: from mailhub.sw.ru ([195.214.232.25]:27143 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754384Ab2HTOCS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Aug 2012 10:02:18 -0400
+Subject: [PATCH v4 05/10] NFS: callback service start function introduced
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Mon, 20 Aug 2012 18:00:26 +0400
+Message-ID: <20120820140026.17404.26127.stgit@localhost.localdomain>
+In-Reply-To: <20120820134734.17404.53946.stgit@localhost.localdomain>
+References: <20120820134734.17404.53946.stgit@localhost.localdomain>
 MIME-Version: 1.0
-In-Reply-To: <20120809152744.149360@gmx.net>
-References: <20120808155829.177400@gmx.net> <20120808163916.GA24539@umich.edu>
- <20120808182622.177380@gmx.net> <20120809084236.177380@gmx.net>
- <5DFC6BE3BA248842867E85C73BF94B050B17B698CF@MX41A.corp.emc.com> <20120809152744.149360@gmx.net>
-From: Peng Tao <tao.peng@emc.com>
-Date: Fri, 10 Aug 2012 01:12:19 +0800
-Message-ID: <CA+a=Yy7rH7kFKJvS3eOae+Mb0C1p+N01h+Zqz7jVzGE+HXHt9g@mail.gmail.com>
-Subject: Re: RE: Blocklayout
-To: Johannes Schild <JSchild@gmx.de>
-Cc: rees@umich.edu, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 9, 2012 at 11:27 PM, Johannes Schild <JSchild@gmx.de> wrote:
->
-> -------- Original-Nachricht --------
->> Datum: Thu, 9 Aug 2012 04:56:07 -0400
->> Von: "Peng, Tao" <tao.peng@emc.com>
->> An: Johannes Schild <JSchild@gmx.de>, "rees@umich.edu" <rees@umich.edu>
->> CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
->> Betreff: RE: Blocklayout
->
->>
->> > -----Original Message-----
->> > From: linux-nfs-owner@vger.kernel.org
->> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Johannes
->> > Schild
->> > Sent: Thursday, August 09, 2012 4:43 PM
->> > To: Johannes Schild; rees@umich.edu
->> > Cc: linux-nfs@vger.kernel.org
->> > Subject: Re: Blocklayout
->> >
->> > Hi Guys,
->> >
->> > some additional Information,
->> >
->> > [ 1644.874549] FS-Cache: Loaded
->> > [ 1644.895122] NFS: Registering the id_resolver key type
->> > [ 1644.895158] FS-Cache: Netfs 'nfs' registered for caching
->> > [ 1644.920204] blkmapd: sending ioctl 2285 to a partition!
->> > [ 1644.920207] blkmapd: sending ioctl 2285 to a partition!
->> > [ 1644.920208] blkmapd: sending ioctl 2285 to a partition!
->> > [ 1644.920263] blkmapd: sending ioctl 2285 to a partition!
->> > [ 1644.920264] blkmapd: sending ioctl 2285 to a partition!
->> > [ 1644.920265] blkmapd: sending ioctl 2285 to a partition!
->> > [ 1653.129460] blkmapd: sending ioctl 2285 to a partition!
->> > [ 1653.129463] blkmapd: sending ioctl 2285 to a partition!
->> > [ 1653.129464] blkmapd: sending ioctl 2285 to a partition!
->> > [ 1653.129528] blkmapd: sending ioctl 2285 to a partition!
->> > [ 1653.129530] blkmapd: sending ioctl 2285 to a partition!
->> > [ 1653.129531] blkmapd: sending ioctl 2285 to a partition!
->> > [ 1653.136682] NFS: set_pnfs_layoutdriver: Error initializing pNFS
->> layout driver 3.
->> >
->> > someone any ideas whats going wrong? The above output is from dmesg.
->> > Iam using 3.4.7-1.fc16.x86_64 Kernel from Fedora. The utils are from
->> > http://steved.fedorapeople.org/repos/pnfs.
->> >
->> There is a regression about saving proper pnfs_blksize before setting
->> block layout driver by commit e38eb650 (NFS: set_pnfs_layoutdriver() from
->> nfs4_proc_fsinfo()).
->> If your client includes the specific commit (although I don't think the
->> commit is in 3.4 kernel), please retry after applying the fix at
->> http://www.spinics.net/lists/linux-nfs/msg31868.html
->
-> The patch doesn't fit my kernel. My cliet.c looks a little bit different from the client.c in the patch:
->
-Then you don't have the buggy commit.
+This is just a code move, which from my POW makes code looks better.
+I.e. now on start we have 3 different stages:
+1) Service creation.
+2) Service per-net data allocation.
+3) Service start.
 
-<snip...>
-> [  179.557893] FS-Cache: Loaded
-> [  179.563310] NFS: Registering the id_resolver key type
-> [  179.563339] FS-Cache: Netfs 'nfs' registered for caching
-> [  207.222318] NFS: set_pnfs_layoutdriver: Error initializing pNFS layout driver 3.
-This is the same log without nfs_debug. Please run
-"echo 65535 > /proc/sys/sunrpc/nfs_debug"
-and then mount, to get a verbose log output.
+Patch also renames goto label "out_err:" into "err_start:" to reflect new
+changes.
 
-Thanks,
-Tao
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfs/callback.c |   77 +++++++++++++++++++++++++++++++----------------------
+ 1 files changed, 45 insertions(+), 32 deletions(-)
+
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index a528cb7..5d5f9d1 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -217,6 +217,46 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
+ }
+ #endif /* CONFIG_NFS_V4_1 */
+ 
++static int nfs_callback_start_svc(int minorversion, struct rpc_xprt *xprt,
++				  struct svc_serv *serv)
++{
++	struct svc_rqst *rqstp;
++	int (*callback_svc)(void *vrqstp);
++	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
++	char svc_name[12];
++	int ret;
++	int minorversion_setup;
++
++	nfs_callback_bc_serv(minorversion, xprt, serv);
++
++	minorversion_setup =  nfs_minorversion_callback_svc_setup(minorversion,
++					serv, &rqstp, &callback_svc);
++	if (!minorversion_setup) {
++		/* v4.0 callback setup */
++		rqstp = nfs4_callback_up(serv);
++		callback_svc = nfs4_callback_svc;
++	}
++
++	if (IS_ERR(rqstp))
++		return PTR_ERR(rqstp);
++
++	svc_sock_update_bufs(serv);
++
++	sprintf(svc_name, "nfsv4.%u-svc", minorversion);
++	cb_info->serv = serv;
++	cb_info->rqst = rqstp;
++	cb_info->task = kthread_run(callback_svc, cb_info->rqst, svc_name);
++	if (IS_ERR(cb_info->task)) {
++		ret = PTR_ERR(cb_info->task);
++		svc_exit_thread(cb_info->rqst);
++		cb_info->rqst = NULL;
++		cb_info->task = NULL;
++		return PTR_ERR(cb_info->task);
++	}
++	dprintk("nfs_callback_up: service started\n");
++	return 0;
++}
++
+ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct net *net)
+ {
+ 	int ret;
+@@ -299,12 +339,8 @@ static struct svc_serv *nfs_callback_create_svc(int minorversion)
+ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ {
+ 	struct svc_serv *serv;
+-	struct svc_rqst *rqstp;
+-	int (*callback_svc)(void *vrqstp);
+ 	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
+-	char svc_name[12];
+ 	int ret = 0;
+-	int minorversion_setup;
+ 	struct net *net = xprt->xprt_net;
+ 
+ 	mutex_lock(&nfs_callback_mutex);
+@@ -324,34 +360,10 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ 	if (ret < 0)
+ 		goto err_net;
+ 
+-	nfs_callback_bc_serv(minorversion, xprt, serv);
+-
+-	minorversion_setup =  nfs_minorversion_callback_svc_setup(minorversion,
+-					serv, &rqstp, &callback_svc);
+-	if (!minorversion_setup) {
+-		/* v4.0 callback setup */
+-		rqstp = nfs4_callback_up(serv);
+-		callback_svc = nfs4_callback_svc;
+-	}
+-
+-	if (IS_ERR(rqstp)) {
+-		ret = PTR_ERR(rqstp);
+-		goto out_err;
+-	}
+-
+-	svc_sock_update_bufs(serv);
++	ret = nfs_callback_start_svc(minorversion, xprt, serv);
++	if (ret < 0)
++		goto err_start;
+ 
+-	sprintf(svc_name, "nfsv4.%u-svc", minorversion);
+-	cb_info->serv = serv;
+-	cb_info->rqst = rqstp;
+-	cb_info->task = kthread_run(callback_svc, cb_info->rqst, svc_name);
+-	if (IS_ERR(cb_info->task)) {
+-		ret = PTR_ERR(cb_info->task);
+-		svc_exit_thread(cb_info->rqst);
+-		cb_info->rqst = NULL;
+-		cb_info->task = NULL;
+-		goto out_err;
+-	}
+ out:
+ 	/*
+ 	 * svc_create creates the svc_serv with sv_nrthreads == 1, and then
+@@ -363,7 +375,8 @@ out:
+ err_create:
+ 	mutex_unlock(&nfs_callback_mutex);
+ 	return ret;
+-out_err:
++
++err_start:
+ 	svc_shutdown_net(serv, net);
+ err_net:
+ 	dprintk("NFS: Couldn't create callback socket or server thread; "
+
