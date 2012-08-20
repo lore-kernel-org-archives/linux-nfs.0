@@ -1,29 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.194]:54936 "EHLO mout.perfora.net"
+Received: from fieldses.org ([174.143.236.118]:32885 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751692Ab2HUS4y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Aug 2012 14:56:54 -0400
-Date: Tue, 21 Aug 2012 14:42:30 -0400
-From: Jim Rees <rees@umich.edu>
-To: Sven Geggus <lists@fuchsschwanzdomain.de>, linux-nfs@vger.kernel.org
-Subject: Re: NFS4: ssh + unlink(~/.Xauthority) delays
-Message-ID: <20120821184230.GA13357@umich.edu>
-References: <k0vgkt$mm0$1@ultimate100.geggus.net>
- <20120821125905.GA16550@umich.edu>
- <k10bib$1fi$1@ultimate100.geggus.net>
- <20120821170759.GA13076@umich.edu>
- <20120821180353.GB4561@us.ibm.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120821180353.GB4561@us.ibm.com>
+	id S1756728Ab2HTWvE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Aug 2012 18:51:04 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 3/3] nfsd: do_nfsd_create verf argument is a u32
+Date: Mon, 20 Aug 2012 18:51:00 -0400
+Message-Id: <1345503060-8892-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1345503060-8892-1-git-send-email-bfields@redhat.com>
+References: <1345503060-8892-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Malahal Naineni wrote:
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-  NFS3 doesn't have delegations and this file placement should not be an
-  issue in NFSv4 either if it is working correctly!
+The types here are actually a bit of a mess.  For now cast as we do in
+the v4 case.
 
-Xauthority doesn't belong in $HOME, it belongs on the local disk.  That has
-nothing to do with NFS v3/v4.  It has to do with limiting distribution and
-exposure of sensitive information.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs3proc.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+index 9095f3c..97d90d1 100644
+--- a/fs/nfsd/nfs3proc.c
++++ b/fs/nfsd/nfs3proc.c
+@@ -247,7 +247,7 @@ nfsd3_proc_create(struct svc_rqst *rqstp, struct nfsd3_createargs *argp,
+ 	/* Now create the file and set attributes */
+ 	nfserr = do_nfsd_create(rqstp, dirfhp, argp->name, argp->len,
+ 				attr, newfhp,
+-				argp->createmode, argp->verf, NULL, NULL);
++				argp->createmode, (u32 *)argp->verf, NULL, NULL);
+ 
+ 	RETURN_STATUS(nfserr);
+ }
+-- 
+1.7.9.5
+
