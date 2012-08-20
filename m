@@ -1,72 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from hop-nat-141.emc.com ([168.159.213.141]:38236 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755814Ab2HNLWR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 07:22:17 -0400
-From: "Peng, Tao" <tao.peng@emc.com>
-To: Boaz Harrosh <bharrosh@panasas.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Peng Tao <bergwolf@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Tue, 14 Aug 2012 07:21:43 -0400
-Subject: RE: [PATCH-v2 2/3] NFS41: send real write size in layoutget
-Message-ID: <5DFC6BE3BA248842867E85C73BF94B050B18B54895@MX41A.corp.emc.com>
-References: <1344868776-1739-1-git-send-email-bergwolf@gmail.com>
-  <1344868776-1739-2-git-send-email-bergwolf@gmail.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA93A0828@SACEXCMBX04-PRD.hq.netapp.com>
- <502A2F06.7070409@panasas.com>
-In-Reply-To: <502A2F06.7070409@panasas.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:45648 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756102Ab2HTW4u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Aug 2012 18:56:50 -0400
+Date: Mon, 20 Aug 2012 18:56:43 -0400
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: minor nfsd cleanups
+Message-ID: <20120820225643.GA8960@fieldses.org>
+References: <1345503060-8892-1-git-send-email-bfields@redhat.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1345503060-8892-1-git-send-email-bfields@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogQm9heiBIYXJyb3NoIFtt
-YWlsdG86YmhhcnJvc2hAcGFuYXNhcy5jb21dDQo+IFNlbnQ6IFR1ZXNkYXksIEF1Z3VzdCAxNCwg
-MjAxMiA2OjU3IFBNDQo+IFRvOiBNeWtsZWJ1c3QsIFRyb25kDQo+IENjOiBQZW5nIFRhbzsgbGlu
-dXgtbmZzQHZnZXIua2VybmVsLm9yZzsgUGVuZywgVGFvDQo+IFN1YmplY3Q6IFJlOiBbUEFUQ0gt
-djIgMi8zXSBORlM0MTogc2VuZCByZWFsIHdyaXRlIHNpemUgaW4gbGF5b3V0Z2V0DQo+IA0KPiBP
-biAwOC8xNC8yMDEyIDAzOjQyIEFNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA8Pg0KPiAN
-Cj4gPj4gIHZvaWQNCj4gPj4gIHBuZnNfZ2VuZXJpY19wZ19pbml0X3dyaXRlKHN0cnVjdCBuZnNf
-cGFnZWlvX2Rlc2NyaXB0b3IgKnBnaW8sIHN0cnVjdCBuZnNfcGFnZSAqcmVxKQ0KPiA+PiAgew0K
-PiA+PiArCXU2NCB3Yl9zaXplOw0KPiA+PiArCXVuc2lnbmVkIHBvbGljeSA9IE5GU19TRVJWRVIo
-cGdpby0+cGdfaW5vZGUpLT5wbmZzX2N1cnJfbGQtPmZsYWdzICYNCj4gPj4gKwkJCQkJCVBORlNf
-TEFZT1VUR0VUX1BPTElDWV9NQVNLOw0KPiA+PiArDQo+ID4+ICAJQlVHX09OKHBnaW8tPnBnX2xz
-ZWcgIT0gTlVMTCk7DQo+ID4+DQo+ID4+ICAJaWYgKHJlcS0+d2Jfb2Zmc2V0ICE9IHJlcS0+d2Jf
-cGdiYXNlKSB7DQo+ID4+ICAJCW5mc19wYWdlaW9fcmVzZXRfd3JpdGVfbWRzKHBnaW8pOw0KPiA+
-PiAgCQlyZXR1cm47DQo+ID4+ICAJfQ0KPiA+PiArDQo+ID4+ICsJaWYgKHBnaW8tPnBnX2RyZXEg
-PT0gTlVMTCkgew0KPiA+PiArCQlzd2l0Y2gocG9saWN5KSB7DQo+ID4+ICsJCWNhc2UgUE5GU19M
-QVlPVVRHRVRfSVNJWkU6DQo+ID4+ICsJCQl3Yl9zaXplID0gaV9zaXplX3JlYWQocGdpby0+cGdf
-aW5vZGUpIC0gcmVxX29mZnNldChyZXEpOw0KPiA+PiArCQkJYnJlYWs7DQo+ID4+ICsJCWNhc2Ug
-UE5GU19MQVlPVVRHRVRfU0VBUkNIX0hPTEU6DQo+ID4+ICsJCQl3Yl9zaXplID0gcG5mc19udW1f
-Y29udF9ieXRlcyhwZ2lvLT5wZ19pbm9kZSwgcmVxLT53Yl9pbmRleCk7DQo+ID4+ICsJCQlicmVh
-azsNCj4gPj4gKwkJY2FzZSBQTkZTX0xBWU9VVEdFVF9BTExfRklMRToNCj4gPj4gKwkJCXdiX3Np
-emUgPSBORlM0X01BWF9VSU5UNjQ7DQo+ID4+ICsJCQlicmVhazsNCj4gPj4gKwkJZGVmYXVsdDoN
-Cj4gPj4gKwkJCVdBUk5fT05DRSgxLCAiaW52YWxpZCBsYXlvdXRnZXQgcG9saWN5ICV1IiwgcG9s
-aWN5KTsNCj4gPj4gKwkJCXdiX3NpemUgPSBQQUdFX0NBQ0hFX1NJWkU7DQo+ID4+ICsJCQlicmVh
-azsNCj4gPj4gKwkJfQ0KPiA+PiArCX0gZWxzZSB7DQo+ID4+ICsJCXdiX3NpemUgPSBuZnNfZHJl
-cV9ieXRlc19sZWZ0KHBnaW8tPnBnX2RyZXEpOw0KPiA+PiArCX0NCj4gPj4gKw0KPiA+DQo+ID4g
-UGxlYXNlIGp1c3QgY2FsY3VsYXRlIHRoZSBjb3JyZWN0IHZhbHVlIGZvciB3Yl9zaXplIGluc2lk
-ZQ0KPiA+IGJsX3BnX2luaXRfd3JpdGUoKSwgYW5kIHBhc3MgaXQgYXMgYW4gZXh0cmEgcGFyYW1l
-dGVyIHRvDQo+ID4gcG5mc19nZW5lcmljX3BnX2luaXRfd3JpdGUoKS4NCj4gPg0KPiA+IFRoZW4g
-YWRkIHBuZnNfcGdfaW5pdF9vYmplY3Rfd3JpdGUgZm9yIG9iamVjdHMsIHRoYXQgY2FsbHMgdGhl
-IG1vZGlmaWVkDQo+ID4gcG5mc19nZW5lcmljX3BnX2luaXRfd3JpdGUoKSB3aXRoIHRoZSBQTkZT
-X0xBWU9VVEdFVF9JU0laRSB2YWx1ZS4NCj4gPg0KPiANCj4gDQo+IExldHMgcGxlYXNlIGNvbXBs
-ZXRlbHkga2lsbCBwbmZzX2dlbmVyaWNfcGdfaW5pdF93cml0ZSgpIGp1c3QgbGlrZQ0KPiBmaWxl
-cyBkaWQuIEl0IGdpdmVzIHVzIG5vdGhpbmcgYW5kIHNwZWNpYWx0eSBub3cgaXQgaXMgbW9yZSBj
-b21wYWN0DQo+IGNvZGUgdG8ganVzdCBpbmxpbmUgaXQsIGxpa2UgbmZzNGZpbGVsYXlvdXQuYyBk
-aWQuDQo+IA0KPiBCdXQgcGxlYXNlIGRvIHRoaXMgb24gdG9wIG9mIG15IHBlbmRpbmcgcGF0Y2hl
-cyBmb3IgMy42LXJjWC4gVGhleSB0b3VjaA0KPiBleGFjdGx5IHRoaXMgY29kZSBpbiBvYmplY3Rz
-Lg0KPiANCkkgaGF2ZSBzZXZlcmFsIGJ1Z2ZpeGVzIHBhdGNoZXMgZm9yIGJsb2NrIGxheW91dCBh
-bGlnbm1lbnQgdGhhdCB0b3VjaGVzIHRoZSBzYW1lIGNvZGUgaW4gYmxvY2tzIGFzIHdlbGwuDQoN
-ClRyb25kLCB3b3VsZCB5b3UgcGxlYXNlIG1lcmdlIHRoZW0gZm9yIG9uZSBvZiAzLjYtUkNzLCBh
-bHNvIHRoZSBwbmZzX2Jsa19zaXplIGZpeCBhbmQgRElPIGZpeD8gVGhleSBhcmUgYWxsIGJ1Z2Zp
-eCBhbmQgbmVlZCB0byBiZSBwdXNoZWQgdG8gc3RhYmxlLg0KSWYgeW91IHdhbnQsIEkgY2FuIHJl
-c2VuZCB0aGVtIHRvIHlvdS4gVGhhbmtzIGEgbG90Lg0KDQo+ID4gRmlsZXMgZG9uJ3QgY2FsbCB0
-aGlzIGZ1bmN0aW9uLCBzbyBhZGRpbmcgdGhlIFBORlNfTEFZT1VUR0VUX0FMTF9GSUxFDQo+ID4g
-aXNuJ3QgbmVlZGVkLg0KPiANCj4gDQo+IEJUVzoNCj4gCWZpbGVsYXlvdXRfcGdfaW5pdF9yZWFk
-KCkNCj4gCWFuZA0KPiAJcG5mc19nZW5lcmljX3BnX2luaXRfcmVhZCgpDQo+ICAgSXMgY2hhci1i
-eS1jaGFyIElkZW50aWNhbCwgZXhjZXB0IHRoZSB2ZXJ5IGdvb2QgYWRkZWQgY29tbWVudCBpbg0K
-PiAgIGZpbGVsYXlvdXRfcGdfaW5pdF9yZWFkKCkuIENhbiBiZSBtZXJnZWQuDQpOb3QgZXhhY3Rs
-eS4gRm9yIGxheW91dCBvZmZzZXQsIGZpbGVsYXlvdXRfcGdfaW5pdF9yZWFkKCkgdXNlcyAwLCB3
-aGlsZSBnZW5lcmljIGNvZGUgdXNlcyByZXFfb2Zmc2V0Lg0KDQpDaGVlcnMsDQpUYW8NCg==
+On Mon, Aug 20, 2012 at 06:50:57PM -0400, J. Bruce Fields wrote:
+> Three patches for 3.7, mainly just shutting up sparse.--b.
+
+Plus one more I forgot....--b.
+
+commit 3a6d5cded2bcb69e259e18e23474ae0c1767fc04
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Tue Aug 14 16:09:31 2012 -0400
+
+    nfsd4: nfsd_process_n_delegations should be static
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 566a9b7..f393da8 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4578,7 +4578,7 @@ void nfsd_forget_openowners(u64 num)
+ 	printk(KERN_INFO "NFSD: Forgot %d open owners", count);
+ }
+ 
+-int nfsd_process_n_delegations(u64 num, struct list_head *list)
++static int nfsd_process_n_delegations(u64 num, struct list_head *list)
+ {
+ 	int i, count = 0;
+ 	struct nfs4_file *fp, *fnext;
