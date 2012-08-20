@@ -1,27 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:53629 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754641Ab2HHByk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Aug 2012 21:54:40 -0400
-Received: by pbbrr13 with SMTP id rr13so606214pbb.19
-        for <linux-nfs@vger.kernel.org>; Tue, 07 Aug 2012 18:54:40 -0700 (PDT)
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/4] pnfsblock: fix IO alignment bug
-Date: Wed,  8 Aug 2012 09:54:10 +0800
-Message-Id: <1344390854-1771-1-git-send-email-bergwolf@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:32887 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756727Ab2HTWvE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Aug 2012 18:51:04 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 1/3] nfsd4: nfsaclsvc_encode_voidres static
+Date: Mon, 20 Aug 2012 18:50:58 -0400
+Message-Id: <1345503060-8892-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1345503060-8892-1-git-send-email-bfields@redhat.com>
+References: <1345503060-8892-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Peng Tao (4):
-  Revert "pnfsblock: bail out partial page IO"
-  pnfsblock: fix partial page buffer wirte
-  pnfsblock: fix non-aligned DIO read
-  pnfsblock: fix non-aligned DIO write
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs2acl.c |    3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
- fs/nfs/blocklayout/blocklayout.c |  270 ++++++++++++++++++++++++++++++++-----
- fs/nfs/blocklayout/blocklayout.h |    1 +
- 2 files changed, 234 insertions(+), 37 deletions(-)
+diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
+index 6aa5590..b314888 100644
+--- a/fs/nfsd/nfs2acl.c
++++ b/fs/nfsd/nfs2acl.c
+@@ -218,8 +218,7 @@ static int nfsaclsvc_decode_accessargs(struct svc_rqst *rqstp, __be32 *p,
+  * There must be an encoding function for void results so svc_process
+  * will work properly.
+  */
+-int
+-nfsaclsvc_encode_voidres(struct svc_rqst *rqstp, __be32 *p, void *dummy)
++static int nfsaclsvc_encode_voidres(struct svc_rqst *rqstp, __be32 *p, void *dummy)
+ {
+ 	return xdr_ressize_check(rqstp, p);
+ }
+-- 
+1.7.9.5
 
