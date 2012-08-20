@@ -1,205 +1,157 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:38384 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750861Ab2HNNyN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 09:54:13 -0400
-Received: by ghrr11 with SMTP id r11so450057ghr.19
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Aug 2012 06:54:13 -0700 (PDT)
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond.Myklebust@netapp.com
-Cc: bharrosh@panasas.com, linux-nfs@vger.kernel.org,
-        Peng Tao <tao.peng@emc.com>
-Subject: [PATCH-v3 2/3] NFS41: send real write size in layoutget
-Date: Tue, 14 Aug 2012 21:52:23 +0800
-Message-Id: <1344952344-1435-2-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1344952344-1435-1-git-send-email-bergwolf@gmail.com>
-References: <1344952344-1435-1-git-send-email-bergwolf@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:33761 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750791Ab2HTSBr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Aug 2012 14:01:47 -0400
+Date: Mon, 20 Aug 2012 14:01:43 -0400
+To: Dave Chinner <david@fromorbit.com>
+Cc: Fengguang Wu <fengguang.wu@intel.com>, Namjae Jeon <linkinjeon@gmail.com>,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        Namjae Jeon <namjae.jeon@samsung.com>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] writeback: add dirty_ratio_time per bdi variable
+ (NFS write performance)
+Message-ID: <20120820180143.GA4911@fieldses.org>
+References: <1345283402-7889-1-git-send-email-linkinjeon@gmail.com>
+ <20120819025724.GC16796@localhost>
+ <20120820020004.GB19235@dastard>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120820020004.GB19235@dastard>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For buffer write, block layout client scan inode mapping to find
-next hole and use offset-to-hole as layoutget length. Object
-layout client uses offset-to-isize as layoutget length.
+On Mon, Aug 20, 2012 at 12:00:04PM +1000, Dave Chinner wrote:
+> On Sun, Aug 19, 2012 at 10:57:24AM +0800, Fengguang Wu wrote:
+> > On Sat, Aug 18, 2012 at 05:50:02AM -0400, Namjae Jeon wrote:
+> > > From: Namjae Jeon <namjae.jeon@samsung.com>
+> > > 
+> > > This patch is based on suggestion by Wu Fengguang:
+> > > https://lkml.org/lkml/2011/8/19/19
+> > > 
+> > > kernel has mechanism to do writeback as per dirty_ratio and dirty_background
+> > > ratio. It also maintains per task dirty rate limit to keep balance of
+> > > dirty pages at any given instance by doing bdi bandwidth estimation.
+> > > 
+> > > Kernel also has max_ratio/min_ratio tunables to specify percentage of writecache
+> > > to control per bdi dirty limits and task throtelling.
+> > > 
+> > > However, there might be a usecase where user wants a writeback tuning
+> > > parameter to flush dirty data at desired/tuned time interval.
+> > > 
+> > > dirty_background_time provides an interface where user can tune background
+> > > writeback start time using /sys/block/sda/bdi/dirty_background_time
+> > > 
+> > > dirty_background_time is used alongwith average bdi write bandwidth estimation
+> > > to start background writeback.
+> > 
+> > Here lies my major concern about dirty_background_time: the write
+> > bandwidth estimation is an _estimation_ and will sure become wildly
+> > wrong in some cases. So the dirty_background_time implementation based
+> > on it will not always work to the user expectations.
+> > 
+> > One important case is, some users (eg. Dave Chinner) explicitly take
+> > advantage of the existing behavior to quickly create & delete a big
+> > 1GB temp file without worrying about triggering unnecessary IOs.
+> 
+> It's a fairly common use case - short term temp files are used by
+> lots of applications and avoiding writing them - especially on NFS -
+> is a big performance win. Forcing immediate writeback will
+> definitely cause unprdictable changes in performance for many
+> people...
+> 
+> > > Results are:-
+> > > ==========================================================
+> > > Case:1 - Normal setup without any changes
+> > > ./performancetest_arm ./100MB write
+> > > 
+> > >  RecSize  WriteSpeed   RanWriteSpeed
+> > > 
+> > >  10485760  7.93MB/sec   8.11MB/sec
+> > >   1048576  8.21MB/sec   7.80MB/sec
+> > >    524288  8.71MB/sec   8.39MB/sec
+> > >    262144  8.91MB/sec   7.83MB/sec
+> > >    131072  8.91MB/sec   8.95MB/sec
+> > >     65536  8.95MB/sec   8.90MB/sec
+> > >     32768  8.76MB/sec   8.93MB/sec
+> > >     16384  8.78MB/sec   8.67MB/sec
+> > >      8192  8.90MB/sec   8.52MB/sec
+> > >      4096  8.89MB/sec   8.28MB/sec
+> > > 
+> > > Average speed is near 8MB/seconds.
+> > > 
+> > > Case:2 - Modified the dirty_background_time
+> > > ./performancetest_arm ./100MB write
+> > > 
+> > >  RecSize  WriteSpeed   RanWriteSpeed
+> > > 
+> > >  10485760  10.56MB/sec  10.37MB/sec
+> > >   1048576  10.43MB/sec  10.33MB/sec
+> > >    524288  10.32MB/sec  10.02MB/sec
+> > >    262144  10.52MB/sec  10.19MB/sec
+> > >    131072  10.34MB/sec  10.07MB/sec
+> > >     65536  10.31MB/sec  10.06MB/sec
+> > >     32768  10.27MB/sec  10.24MB/sec
+> > >     16384  10.54MB/sec  10.03MB/sec
+> > >      8192  10.41MB/sec  10.38MB/sec
+> > >      4096  10.34MB/sec  10.12MB/sec
+> > > 
+> > > we can see, average write speed is increased to ~10-11MB/sec.
+> > > ============================================================
+> > 
+> > The numbers are impressive!
+> 
+> All it shows is that avoiding the writeback delay writes a file a
+> bit faster. i.e. 5s delay + 10s @ 10MB/s vs no delay and 10s
+> @10MB/s. That's pretty obvious, really, and people have been trying
+> to make this "optimisation" for NFS clients for years in the
+> misguided belief that short-cutting writeback caching is beneficial
+> to application performance.
+> 
+> What these numbers don't show that is whether over-the-wire
+> writeback speed has improved at all. Or what happens when you have a
+> network that is faster than the server disk, or even faster than the
+> client can write into memory? What about when there are multiple
+> threads, or the network is congested, or the server overloaded? In
+> those cases the performance differential will disappear and
+> there's a good chance that the existing code will be significantly
+> faster because it places less imediate load on the server and
+> network.D...
+> 
+> If you need immediate dispatch of your data for single threaded
+> performance then sync_file_range() is your friend.
+> 
+> > FYI, I tried another NFS specific approach
+> > to avoid big NFS COMMITs, which achieved similar performance gains:
+> > 
+> > nfs: writeback pages wait queue
+> > https://lkml.org/lkml/2011/10/20/235
+> 
+> Which is basically controlling the server IO latency when commits
+> occur - smaller ranges mean the commit (fsync) is faster, and more
+> frequent commits mean the data goes to disk sooner. This is
+> something that will have a positive impact on writeback speeds
+> because it modifies the NFs client writeback behaviour to be more
+> server friendly and not stall over the wire. i.e. improving NFS
+> writeback performance is all about keeping the wire full and the
+> server happy, not about reducing the writeback delay before we start
+> writing over the wire.
 
-For direct write, both block layout and object layout use dreq->bytes_left.
+Wait, aren't we confusing client and server side here?
 
-Signed-off-by: Peng Tao <tao.peng@emc.com>
----
- fs/nfs/blocklayout/blocklayout.c |   38 +++++++++++++++++++++++++++++++++++---
- fs/nfs/direct.c                  |    7 +++++++
- fs/nfs/internal.h                |    1 +
- fs/nfs/objlayout/objio_osd.c     |    9 ++++++++-
- fs/nfs/pnfs.c                    |    6 ++++--
- fs/nfs/pnfs.h                    |    3 ++-
- 6 files changed, 57 insertions(+), 7 deletions(-)
+If I read Namjae Jeon's post correctly, I understood that it was the
+*server* side he was modifying to start writeout sooner, to improve
+response time to eventual expected commits from the client.  The
+responses above all seem to be about the client.
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 1093968..2023651 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -37,6 +37,7 @@
- #include <linux/bio.h>		/* struct bio */
- #include <linux/buffer_head.h>	/* various write calls */
- #include <linux/prefetch.h>
-+#include <linux/pagevec.h>
- 
- #include "../pnfs.h"
- #include "../internal.h"
-@@ -1204,14 +1205,45 @@ bl_pg_test_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 	return pnfs_generic_pg_test(pgio, prev, req);
- }
- 
-+/*
-+ * Return the number of contiguous bytes for a given inode
-+ * starting at page frame idx.
-+ */
-+static u64 pnfs_num_cont_bytes(struct inode *inode, pgoff_t idx)
-+{
-+	struct address_space *mapping = inode->i_mapping;
-+	pgoff_t end;
-+
-+	/* Optimize common case that writes from 0 to end of file */
-+	end = DIV_ROUND_UP(i_size_read(inode), PAGE_CACHE_SIZE);
-+	if (end != NFS_I(inode)->npages) {
-+		rcu_read_lock();
-+		end = radix_tree_next_hole(&mapping->page_tree, idx + 1, ULONG_MAX);
-+		rcu_read_unlock();
-+	}
-+
-+	if (!end)
-+		return i_size_read(inode) - (idx << PAGE_CACHE_SHIFT);
-+	else
-+		return (end - idx) << PAGE_CACHE_SHIFT;
-+}
-+
- void
- bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
- {
- 	if (pgio->pg_dreq != NULL &&
--	    !is_aligned_req(req, PAGE_CACHE_SIZE))
-+	    !is_aligned_req(req, PAGE_CACHE_SIZE)) {
- 		nfs_pageio_reset_write_mds(pgio);
--	else
--		pnfs_generic_pg_init_write(pgio, req);
-+	} else {
-+		u64 wb_size;
-+		if (pgio->pg_dreq == NULL)
-+			wb_size = pnfs_num_cont_bytes(pgio->pg_inode,
-+						      req->wb_index);
-+		else
-+			wb_size = nfs_dreq_bytes_left(pgio->pg_dreq);
-+
-+		pnfs_generic_pg_init_write(pgio, req, wb_size);
-+	}
- }
- 
- static bool
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index c39f775..c1899dd 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -46,6 +46,7 @@
- #include <linux/kref.h>
- #include <linux/slab.h>
- #include <linux/task_io_accounting_ops.h>
-+#include <linux/module.h>
- 
- #include <linux/nfs_fs.h>
- #include <linux/nfs_page.h>
-@@ -191,6 +192,12 @@ static void nfs_direct_req_release(struct nfs_direct_req *dreq)
- 	kref_put(&dreq->kref, nfs_direct_req_free);
- }
- 
-+ssize_t nfs_dreq_bytes_left(struct nfs_direct_req *dreq)
-+{
-+	return dreq->bytes_left;
-+}
-+EXPORT_SYMBOL_GPL(nfs_dreq_bytes_left);
-+
- /*
-  * Collects and returns the final error value/byte-count.
-  */
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 31fdb03..e68d329 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -464,6 +464,7 @@ static inline void nfs_inode_dio_wait(struct inode *inode)
- {
- 	inode_dio_wait(inode);
- }
-+extern ssize_t nfs_dreq_bytes_left(struct nfs_direct_req *dreq);
- 
- /* nfs4proc.c */
- extern void __nfs4_read_done_cb(struct nfs_read_data *);
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index ea6d111..be731e6 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -41,6 +41,7 @@
- #include <scsi/osd_ore.h>
- 
- #include "objlayout.h"
-+#include "../internal.h"
- 
- #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
- 
-@@ -606,8 +607,14 @@ static bool aligned_on_raid_stripe(u64 offset, struct ore_layout *layout,
- void objio_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
- {
- 	unsigned long stripe_end = 0;
-+	u64 wb_size;
- 
--	pnfs_generic_pg_init_write(pgio, req);
-+	if (pgio->pg_dreq == NULL)
-+		wb_size = i_size_read(pgio->pg_inode) - req_offset(req);
-+	else
-+		wb_size = nfs_dreq_bytes_left(pgio->pg_dreq);
-+
-+	pnfs_generic_pg_init_write(pgio, req, wb_size);
- 	if (unlikely(pgio->pg_lseg == NULL))
- 		return; /* Not pNFS */
- 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 2e00fea..9ff45d1 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1173,7 +1173,8 @@ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *r
- EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_read);
- 
- void
--pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
-+pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
-+			   struct nfs_page *req, u64 wb_size)
- {
- 	BUG_ON(pgio->pg_lseg != NULL);
- 
-@@ -1181,10 +1182,11 @@ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *
- 		nfs_pageio_reset_write_mds(pgio);
- 		return;
- 	}
-+
- 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
- 					   req->wb_context,
- 					   req_offset(req),
--					   req->wb_bytes,
-+					   wb_size,
- 					   IOMODE_RW,
- 					   GFP_NOFS);
- 	/* If no lseg, fall back to write through mds */
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 745aa1b..5994d48 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -188,7 +188,8 @@ void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32);
- void unset_pnfs_layoutdriver(struct nfs_server *);
- void pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *, struct nfs_page *);
- int pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc);
--void pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *, struct nfs_page *);
-+void pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
-+			        struct nfs_page *req, u64 wb_size);
- int pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc);
- bool pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev, struct nfs_page *req);
- void pnfs_set_lo_fail(struct pnfs_layout_segment *lseg);
--- 
-1.7.1.262.g5ef3d
+Maybe it's all the same at some level, but: naively, starting writeout
+early would seem a better bet on the server side.  By the time we get
+writes, the client has already decided they're worth sending to disk.
 
+And changes to make clients and applications friendlier to the server
+are great, but we don't always have that option--there are more clients
+out there than servers and the latter may be easier to upgrade than the
+former.
+
+--b.
