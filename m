@@ -1,15 +1,15 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:27646 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:45389 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756461Ab2HTOCL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Aug 2012 10:02:11 -0400
-Subject: [PATCH v4 04/10] NFS: callback up - transport backchannel cleanup
+	id S1756556Ab2HTOCg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Aug 2012 10:02:36 -0400
+Subject: [PATCH v4 09/10] NFS: callback per-net usage counting introduced
 To: Trond.Myklebust@netapp.com
 From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
         linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Mon, 20 Aug 2012 18:00:21 +0400
-Message-ID: <20120820140021.17404.53651.stgit@localhost.localdomain>
+Date: Mon, 20 Aug 2012 18:00:46 +0400
+Message-ID: <20120820140046.17404.26919.stgit@localhost.localdomain>
 In-Reply-To: <20120820134734.17404.53946.stgit@localhost.localdomain>
 References: <20120820134734.17404.53946.stgit@localhost.localdomain>
 MIME-Version: 1.0
@@ -17,120 +17,76 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-No need to assign transports backchannel server explicitly in
-nfs41_callback_up() -  there is nfs_callback_bc_serv() function for this.
-By using it, nfs4_callback_up() and nfs41_callback_up() can be called without
-transport argument.
-
-Note: service have to be passed to nfs_callback_bc_serv() instead of callback,
-since callback link can be uninitialized.
+This patch also introduces refcount-aware nfs_callback_down_net() wrapper for
+svc_shutdown_net().
 
 Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 ---
- fs/nfs/callback.c |   34 +++++++++++++++++-----------------
- 1 files changed, 17 insertions(+), 17 deletions(-)
+ fs/nfs/callback.c |   19 +++++++++++++++++--
+ fs/nfs/netns.h    |    1 +
+ 2 files changed, 18 insertions(+), 2 deletions(-)
 
 diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index a53b4e5..a528cb7 100644
+index baafa0f..6dfdc83 100644
 --- a/fs/nfs/callback.c
 +++ b/fs/nfs/callback.c
-@@ -104,7 +104,7 @@ nfs4_callback_svc(void *vrqstp)
-  * Prepare to bring up the NFSv4 callback service
-  */
- static struct svc_rqst *
--nfs4_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
-+nfs4_callback_up(struct svc_serv *serv)
- {
- 	return svc_prepare_thread(serv, &serv->sv_pools[0], NUMA_NO_NODE);
- }
-@@ -160,16 +160,10 @@ nfs41_callback_svc(void *vrqstp)
-  * Bring up the NFSv4.1 callback service
-  */
- static struct svc_rqst *
--nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
-+nfs41_callback_up(struct svc_serv *serv)
- {
- 	struct svc_rqst *rqstp;
- 
--	/*
--	 * Save the svc_serv in the transport so that it can
--	 * be referenced when the session backchannel is initialized
--	 */
--	xprt->bc_serv = serv;
--
- 	INIT_LIST_HEAD(&serv->sv_cb_list);
- 	spin_lock_init(&serv->sv_cb_lock);
- 	init_waitqueue_head(&serv->sv_cb_waitq);
-@@ -184,21 +178,25 @@ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
- }
- 
- static inline int nfs_minorversion_callback_svc_setup(u32 minorversion,
--		struct svc_serv *serv, struct rpc_xprt *xprt,
-+		struct svc_serv *serv,
- 		struct svc_rqst **rqstpp, int (**callback_svc)(void *vrqstp))
- {
- 	if (minorversion) {
--		*rqstpp = nfs41_callback_up(serv, xprt);
-+		*rqstpp = nfs41_callback_up(serv);
- 		*callback_svc = nfs41_callback_svc;
- 	}
- 	return minorversion;
- }
- 
- static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
--		struct nfs_callback_data *cb_info)
-+		struct svc_serv *serv)
- {
- 	if (minorversion)
--		xprt->bc_serv = cb_info->serv;
-+		/*
-+		 * Save the svc_serv in the transport so that it can
-+		 * be referenced when the session backchannel is initialized
-+		 */
-+		xprt->bc_serv = serv;
- }
- #else
- static int nfs41_callback_up_net(struct svc_serv *serv, struct net *net)
-@@ -207,14 +205,14 @@ static int nfs41_callback_up_net(struct svc_serv *serv, struct net *net)
- }
- 
- static inline int nfs_minorversion_callback_svc_setup(u32 minorversion,
--		struct svc_serv *serv, struct rpc_xprt *xprt,
-+		struct svc_serv *serv,
- 		struct svc_rqst **rqstpp, int (**callback_svc)(void *vrqstp))
- {
+@@ -260,10 +260,25 @@ static int nfs_callback_start_svc(int minorversion, struct rpc_xprt *xprt,
  	return 0;
  }
  
- static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
--		struct nfs_callback_data *cb_info)
-+		struct svc_serv *serv)
- {
- }
- #endif /* CONFIG_NFS_V4_1 */
-@@ -318,7 +316,7 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
- 	}
- 
- 	if (cb_info->users++ || cb_info->task != NULL) {
--		nfs_callback_bc_serv(minorversion, xprt, cb_info);
-+		nfs_callback_bc_serv(minorversion, xprt, serv);
- 		goto out;
- 	}
- 
-@@ -326,11 +324,13 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
- 	if (ret < 0)
- 		goto err_net;
- 
-+	nfs_callback_bc_serv(minorversion, xprt, serv);
++static void nfs_callback_down_net(u32 minorversion, struct svc_serv *serv, struct net *net)
++{
++	struct nfs_net *nn = net_generic(net, nfs_net_id);
 +
- 	minorversion_setup =  nfs_minorversion_callback_svc_setup(minorversion,
--					serv, xprt, &rqstp, &callback_svc);
-+					serv, &rqstp, &callback_svc);
- 	if (!minorversion_setup) {
- 		/* v4.0 callback setup */
--		rqstp = nfs4_callback_up(serv, xprt);
-+		rqstp = nfs4_callback_up(serv);
- 		callback_svc = nfs4_callback_svc;
- 	}
++	if (--nn->cb_users[minorversion])
++		return;
++
++	dprintk("NFS: destroy per-net callback data; net=%p\n", net);
++	svc_shutdown_net(serv, net);
++}
++
+ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct net *net)
+ {
++	struct nfs_net *nn = net_generic(net, nfs_net_id);
+ 	int ret;
  
++	if (nn->cb_users[minorversion]++)
++		return 0;
++
+ 	dprintk("NFS: create per-net callback data; net=%p\n", net);
+ 
+ 	ret = svc_bind(serv, net);
+@@ -378,7 +393,7 @@ err_create:
+ 	return ret;
+ 
+ err_start:
+-	svc_shutdown_net(serv, net);
++	nfs_callback_down_net(minorversion, serv, net);
+ 	dprintk("NFS: Couldn't create server thread; err = %d\n", ret);
+ 	goto err_net;
+ }
+@@ -391,10 +406,10 @@ void nfs_callback_down(int minorversion, struct net *net)
+ 	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
+ 
+ 	mutex_lock(&nfs_callback_mutex);
++	nfs_callback_down_net(minorversion, cb_info->serv, net);
+ 	cb_info->users--;
+ 	if (cb_info->users == 0 && cb_info->task != NULL) {
+ 		kthread_stop(cb_info->task);
+-		svc_shutdown_net(cb_info->serv, net);
+ 		svc_exit_thread(cb_info->rqst);
+ 		cb_info->serv = NULL;
+ 		cb_info->rqst = NULL;
+diff --git a/fs/nfs/netns.h b/fs/nfs/netns.h
+index 137238b..b9c7f9b 100644
+--- a/fs/nfs/netns.h
++++ b/fs/nfs/netns.h
+@@ -24,6 +24,7 @@ struct nfs_net {
+ 	struct idr cb_ident_idr; /* Protected by nfs_client_lock */
+ 	unsigned short nfs_callback_tcpport;
+ 	unsigned short nfs_callback_tcpport6;
++	int cb_users[NFS4_MAX_MINOR_VERSION + 1];
+ #endif
+ 	spinlock_t nfs_client_lock;
+ 	struct timespec boot_time;
 
