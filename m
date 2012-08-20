@@ -1,120 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46809 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:57191 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751725Ab2HUU5g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Aug 2012 16:57:36 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 11/14] svcrpc: make svc_xprt_received static
-Date: Tue, 21 Aug 2012 16:57:29 -0400
-Message-Id: <1345582652-18476-12-git-send-email-bfields@redhat.com>
-In-Reply-To: <1345582652-18476-1-git-send-email-bfields@redhat.com>
-References: <1345582652-18476-1-git-send-email-bfields@redhat.com>
+	id S1752243Ab2HTQ6x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Aug 2012 12:58:53 -0400
+Date: Mon, 20 Aug 2012 12:58:52 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>, "neilb@suse.de" <neilb@suse.de>
+Subject: Re: [PATCH v3] SUNRPC: protect service sockets lists during
+ per-net shutdown
+Message-ID: <20120820165852.GF1411@fieldses.org>
+References: <20120703125851.3850.86782.stgit@localhost.localdomain>
+ <20120724194036.GK8570@fieldses.org>
+ <20120816192902.GB4385@fieldses.org>
+ <50321A0D.1020904@parallels.com>
+ <20120820145656.GB1411@fieldses.org>
+ <50325384.9070506@parallels.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <50325384.9070506@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Mon, Aug 20, 2012 at 07:11:00PM +0400, Stanislav Kinsbursky wrote:
+> 20.08.2012 18:56, J. Bruce Fields пишет:
+> >On Mon, Aug 20, 2012 at 03:05:49PM +0400, Stanislav Kinsbursky wrote:
+> >>16.08.2012 23:29, J. Bruce Fields пишет:
+> >>>Looking back at this:
+> >>>
+> >>>	- adding the sv_lock looks like the right thing to do anyway
+> >>>	  independent of containers, because svc_age_temp_xprts may
+> >>>	  still be running.
+> >>>
+> >>>	- I'm increasingly unhappy about sharing rpc servers between
+> >>>	  network namespaces.  Everything would be easier to understand
+> >>>	  if they were independent.  Can we figure out how to do that?
+> >>>
+> >>
+> >>Could you, please, elaborate on your your unhappiness?
+> >
+> >It seems like you're having to do a lot of work on each individual rpc
+> >server (callback server, lockd, etc.) to make per-net startup/shutdown
+> >work.  And then we still don't have it quite right (see the shutdown
+> >races).)
+> >
+> >In general whenever we have the opportunity to have entirely separate
+> >data structures, I'd expect that to simplify things: it should eliminate
+> >some locking and reference-counting issues.
+> >
+> 
+> Agreed. But current solution still looks like the easies way to me
+> to implement desired functionality.
+> 
+> >>I.e. I don't like it too. But the problem here, is that rpc server
+> >>is tied with kernel threads creation and destruction. And these
+> >>threads can be only a part of initial pid namespace (because we have
+> >>only one kthreadd). And we decided do not create new kernel thread
+> >>per container when were discussing the problem last time.
+> >
+> >There really should be some way to create a kernel thread in a specific
+> >namespace, shouldn't there?
+> >
+> 
+> 
+> Kthreads support in a container is rather a "political" problem,
+> than an implementation problem.
 
-Note this isn't used outside svc_xprt.c.
+Is there a mail thread somewhere with a summary of the objections?
 
-May as well move it so we don't need a declaration while we're here.
+> Currently, when you call kthread_create(), you add new job to
+> kthreadd queue. Kthreadd is unique, starts right after init and
+> lives in global initial environment. So, any kthread inherits
+> namespaces from it.
+> Of course, we can start one kthread per environment and change it's
+> root or even network namespace in kthread function. But pid
+> namespace of this kthread will remain global.
 
-Also remove an outdated comment.
+OK.  But the current implementation will leave all the server threads in
+the initial pid namespace, too.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- include/linux/sunrpc/svc_xprt.h          |    1 -
- net/sunrpc/svc_xprt.c                    |   41 +++++++++++++++---------------
- net/sunrpc/xprtrdma/svc_rdma_transport.c |    4 ---
- 3 files changed, 20 insertions(+), 26 deletions(-)
+> It looks like not a big problem, when we shutdown kthread by some
+> variable. But what about killable nfsd kthreads?
 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 73c7a68..e630d63 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -114,7 +114,6 @@ void	svc_xprt_init(struct net *, struct svc_xprt_class *, struct svc_xprt *,
- int	svc_create_xprt(struct svc_serv *, const char *, struct net *,
- 			const int, const unsigned short, int);
- void	svc_xprt_enqueue(struct svc_xprt *xprt);
--void	svc_xprt_received(struct svc_xprt *);
- void	svc_xprt_put(struct svc_xprt *xprt);
- void	svc_xprt_copy_addrs(struct svc_rqst *rqstp, struct svc_xprt *xprt);
- void	svc_close_xprt(struct svc_xprt *xprt);
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 3e31730..295e6ed 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -208,6 +208,26 @@ static struct svc_xprt *__svc_xpo_create(struct svc_xprt_class *xcl,
- 	return xcl->xcl_ops->xpo_create(serv, net, sap, len, flags);
- }
- 
-+/*
-+ * svc_xprt_received conditionally queues the transport for processing
-+ * by another thread. The caller must hold the XPT_BUSY bit and must
-+ * not thereafter touch transport data.
-+ *
-+ * Note: XPT_DATA only gets cleared when a read-attempt finds no (or
-+ * insufficient) data.
-+ */
-+static void svc_xprt_received(struct svc_xprt *xprt)
-+{
-+	BUG_ON(!test_bit(XPT_BUSY, &xprt->xpt_flags));
-+	/* As soon as we clear busy, the xprt could be closed and
-+	 * 'put', so we need a reference to call svc_xprt_enqueue with:
-+	 */
-+	svc_xprt_get(xprt);
-+	clear_bit(XPT_BUSY, &xprt->xpt_flags);
-+	svc_xprt_enqueue(xprt);
-+	svc_xprt_put(xprt);
-+}
-+
- void svc_add_new_perm_xprt(struct svc_serv *serv, struct svc_xprt *new)
- {
- 	clear_bit(XPT_TEMP, &new->xpt_flags);
-@@ -398,27 +418,6 @@ static struct svc_xprt *svc_xprt_dequeue(struct svc_pool *pool)
- 	return xprt;
- }
- 
--/*
-- * svc_xprt_received conditionally queues the transport for processing
-- * by another thread. The caller must hold the XPT_BUSY bit and must
-- * not thereafter touch transport data.
-- *
-- * Note: XPT_DATA only gets cleared when a read-attempt finds no (or
-- * insufficient) data.
-- */
--void svc_xprt_received(struct svc_xprt *xprt)
--{
--	BUG_ON(!test_bit(XPT_BUSY, &xprt->xpt_flags));
--	/* As soon as we clear busy, the xprt could be closed and
--	 * 'put', so we need a reference to call svc_xprt_enqueue with:
--	 */
--	svc_xprt_get(xprt);
--	clear_bit(XPT_BUSY, &xprt->xpt_flags);
--	svc_xprt_enqueue(xprt);
--	svc_xprt_put(xprt);
--}
--EXPORT_SYMBOL_GPL(svc_xprt_received);
--
- /**
-  * svc_reserve - change the space reserved for the reply to a request.
-  * @rqstp:  The request in question
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 73b428b..62e4f9b 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -578,10 +578,6 @@ static void handle_connect_req(struct rdma_cm_id *new_cma_id, size_t client_ird)
- 	list_add_tail(&newxprt->sc_accept_q, &listen_xprt->sc_accept_q);
- 	spin_unlock_bh(&listen_xprt->sc_lock);
- 
--	/*
--	 * Can't use svc_xprt_received here because we are not on a
--	 * rqstp thread
--	*/
- 	set_bit(XPT_CONN, &listen_xprt->sc_xprt.xpt_flags);
- 	svc_xprt_enqueue(&listen_xprt->sc_xprt);
- }
--- 
-1.7.9.5
+And we're stuck with that problem either way too, aren't we?
 
+> 1) We can't kill them from nested pid namespace.
+> 2) How we will differ nfsd kthreads in initial pid namespace?
+
+I have to admit for my purposes I don't care too much about pid
+namespaces or about signalling server threads.  It'd be nice to get
+those things right but it wouldn't bother me that much not to.
+
+Another stupid idea: can we do our own implementation of something like
+kthreadd just for the purpose of starting rpc server threads?  It
+doesn't seem that complicated.
+
+--b.
+
+> In OpenVZ we have kthreadd per pid hamespace and it allows us to
+> create kthreads (and thus services) per pid namespace.
