@@ -1,83 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:43013 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:32883 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1031196Ab2HIQGU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Aug 2012 12:06:20 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Idan Kedar <idank@tonian.com>
-CC: Boaz Harrosh <bharrosh@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
-        Benny Halevy <bhalevy@tonian.com>, Peng Tao <bergwolf@gmail.com>
-Subject: Re: return layout on error, BUG/deadlock
-Date: Thu, 9 Aug 2012 16:06:19 +0000
-Message-ID: <1344528377.25447.29.camel@lade.trondhjem.org>
-References: <CABpMAyL-B9Kqg8O4xxxtj0X8PF7fP4TM+NnLA_Ynhm-_3C6MUg@mail.gmail.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9380987@SACEXCMBX04-PRD.hq.netapp.com>
-	 <CABpMAyKddCjhWe-LjFOJrikLnC+BJ7GsAMAvieh1rabDPiA=Ug@mail.gmail.com>
-In-Reply-To: <CABpMAyKddCjhWe-LjFOJrikLnC+BJ7GsAMAvieh1rabDPiA=Ug@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1756713Ab2HTWvE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Aug 2012 18:51:04 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/3] nfsd4: declare nfs4_recoverydir properly
+Date: Mon, 20 Aug 2012 18:50:59 -0400
+Message-Id: <1345503060-8892-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1345503060-8892-1-git-send-email-bfields@redhat.com>
+References: <1345503060-8892-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA4LTA5IGF0IDE4OjQ5ICswMzAwLCBJZGFuIEtlZGFyIHdyb3RlOg0KPiBP
-biBUaHUsIEF1ZyA5LCAyMDEyIGF0IDU6MDUgUE0sIE15a2xlYnVzdCwgVHJvbmQNCj4gPFRyb25k
-Lk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdl
-LS0tLS0NCj4gPj4gRnJvbTogbGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZyBbbWFpbHRv
-OmxpbnV4LW5mcy0NCj4gPj4gb3duZXJAdmdlci5rZXJuZWwub3JnXSBPbiBCZWhhbGYgT2YgSWRh
-biBLZWRhcg0KPiA+PiBTZW50OiBUaHVyc2RheSwgQXVndXN0IDA5LCAyMDEyIDk6MDMgQU0NCj4g
-Pj4gVG86IEJvYXogSGFycm9zaDsgTkZTIGxpc3QNCj4gPj4gQ2M6IEJlbm55IEhhbGV2eQ0KPiA+
-PiBTdWJqZWN0OiByZXR1cm4gbGF5b3V0IG9uIGVycm9yLCBCVUcvZGVhZGxvY2sNCj4gPj4NCj4g
-Pj4gSGksDQo+ID4+DQo+ID4+IEFzIGEgcmVzdWx0IG9mIHNvbWUgZXhwZXJpbWVudHMsIEkgd2Fu
-dGVkIHRvIHNlZSB3aGF0IGhhcHBlbnMgd2hlbiBJDQo+ID4+IGluamVjdCBhbiBlcnJvciAoaGFy
-ZCBjb2RlZCkgdG8gdGhlIG9iamVjdCBsYXlvdXQgZHJpdmVyLiB0aGUgcGF0Y2ggaXMgYXQgdGhl
-DQo+ID4+IGJvdHRvbSBvZiB0aGlzIG1haWwuIHRoZSByZWFzb24gSSBkaWQgdGhpcyBpcyBiZWNh
-dXNlIHdoZW4gSSBpbmplY3QgZXJyb3JzIGluIG15DQo+ID4+IG1vZGlmaWVkIHZlcnNpb24gb2Yg
-dGhlIG9iamVjdCBsYXlvdXQgZHJpdmVyLCBJIGdldCB0aGUgc2FtZSBCVUcgVGlncmFuDQo+ID4+
-IHJlcG9ydGVkIGFib3V0IHllc3RlcmRheToNCj4gPj4gbmZzNHByb2MuYzo2MjUyIDogICBCVUdf
-T04oIWxpc3RfZW1wdHkoJmxvLT5wbGhfc2VncykpOw0KPiA+Pg0KPiA+PiBJbiBteSBtb2RpZmll
-ZCB2ZXJzaW9uIChiYXNlZCBvbiBrZXJuZWwgMy4zKSwgdGhlIGJ1ZyBzZWVtcyB0byBiZSB0aGF0
-DQo+ID4+IHBuZnNfbGRfd3JpdGVfZG9uZSBjYWxscyBwbmZzX3JldHVybl9sYXlvdXQgaW4gdGhl
-IGVycm9yIHBhdGgsIGV2ZW4gaWYgdGhlcmUNCj4gPj4gaXMgaW4tZmxpZ2h0IEkvTy4NCj4gPg0K
-PiA+IFRoYXQgaXMgbm90IGEgYnVnLiBJdCBpcyBhbiBpbnRlbnRpb25hbCBjaGFuZ2UgaW4gb3Jk
-ZXIgdG8gYWxsb3cgdGhlIE1EUyB0byBmZW5jZSBvZmYgdGhlIG91dHN0YW5kaW5nIHdyaXRlcyAo
-aWYgaXQgY2FuIGRvIHNvKSBiZWZvcmUgd2UgcmV0cmFuc21pdCB0aGVtIGFzIHdyaXRlLXRocm91
-Z2gtTURTLiBPdGhlcndpc2UsIHlvdSByaXNrIHJhY2VzIGJldHdlZW4gdGhlIG91dHN0YW5kaW5n
-IHdyaXRlcy10by1EUyBhbmQgdGhlIG5ldyB3cml0ZXMtdGhyb3VnaC1NRFMuDQo+IA0KPiB0byB3
-aGF0IGNoYW5nZSBhcmUgeW91IHJlZmVycmluZz8NCg0KQXMgSSBzdGF0ZWQgaW4gdGhlIGNoYW5n
-ZWxvZyBvZiB0aGUgcGF0Y2ggdGhhdCBJIHNlbnQgdG8gdGhlIGxpc3QNCnllc3RlcmRheSwgdGhl
-IGJlaGF2aW91ciBpcyBkdWUgdG8gY29tbWl0IDBhNTdjZGFjM2YuDQoNCj4gPg0KPiA+IFNlZSB0
-aGUgY2hhbmdlbG9nIGluIHRoZSBwYXRjaCB0aGF0IEkgc2VudCB0byB0aGUgbGlzdCB5ZXN0ZXJk
-YXkuDQo+ID4NCj4gDQo+IEkgc2F3IHRoYXQsIGFuZCBpZiBJJ20gbm90IG1pc3Rha2VuIHRoZXNl
-IHJhY2VzIGFwcGx5IHRvIG9iamVjdCBsYXlvdXQNCj4gYXMgd2VsbCwgYW5kIGluIGFueSBjYXNl
-IHRoZXkgYXBwbHkgaW4gbXkgY2FzZS4gSG93ZXZlciwgaXQgaXMgbm90DQo+IGVhc3kgdG8gbWVz
-cyBhcm91bmQgd2l0aCBMQVlPVVRSRVRVUk4gaW4gb2JqZWN0IGxheW91dCwgYW5kIHRoZXJlIGhh
-dmUNCj4gYmVlbiBzZXZlcmFsIGRpc2N1c3Npb25zIG9uIHRoZSBpc3N1ZS4gSW4gb25lIG9mIHRo
-ZXNlIGRpc2N1c3Npb25zDQo+IEJlbm55IGNsYXJpZmllZCB0aGF0IHRoZSBvYmplY3QgbGF5b3V0
-IGNsaWVudCBtdXN0IHdhaXQgZm9yIGFsbA0KPiBpbi1mbGlnaHQgSS9PIHRvIGVuZC4NCg0KSWYg
-dGhlIHByb2JsZW0gaXMgdGhhdCB0aGUgRFMgaXMgZmFpbGluZyB0byByZXNwb25kLCBob3cgZG9l
-cyB0aGUgY2xpZW50DQprbm93IHRoYXQgdGhlIGluLWZsaWdodCBJL08gaGFzIGVuZGVkPw0KDQo+
-IFNvIGZvciBmaWxlIGxheW91dCBpdCBwcm9iYWJseSBtYWtlcyBzZW5zZSwgYnV0IG9iamVjdCBs
-YXlvdXQgKGFuZCBpZg0KPiBJIHVuZGVyc3RhbmQgY29ycmVjdGx5LCBibG9jayBsYXlvdXQgYXMg
-d2VsbCkgc29tZXRoaW5nIGVsc2UgbmVlZHMgdG8NCj4gYmUgZG9uZS4gSSB0aG91Z2h0IGFib3V0
-IHN5bmMgd2FpdCB3aGVuIHJldHVybmluZyB0aGUgbGF5b3V0IG9uIGVycm9yLA0KPiBidXQgYWNj
-b3JkaW5nIHRvIEJvYXogaXQgd2lsbCBjYXVzZSBkZWFkbG9ja3MgKEJvYXogLSBjYW4geW91IHBs
-ZWFzZQ0KPiBlbGFib3JhdGU/KS4NCg0KVGhlIG9iamVjdCBsYXlvdXRyZXR1cm4gaGFzIHRoZSBh
-YmlsaXR5IHRvIHBhc3MgYSB0aW1lb3V0IGVycm9yIHZhbHVlIHRvDQp0aGUgTURTIHByZWNpc2Vs
-eSBpbiBvcmRlciB0byBhbGxvdyB0aGUgbGF0dGVyIHRvIGRlYWwgd2l0aCB0aGlzIGtpbmQgb2YN
-Cmlzc3VlLiBTZWUgdGhlIGRlc2NyaXB0aW9uIG9mIHN0cnVjdCBwbmZzX29zZF9pb2VycjQgaW4g
-cmZjNTY2NC4NCg0KVGhlIGJsb2NrIGxheW91dCBpcyBhZGRpbmcgdGhlIHNhbWUgYWJpbGl0eSB0
-byBsYXlvdXRyZXR1cm4gaW4gTkZTdjQuMg0KKHNlZSBkcmFmdC1pZXRmLW5mc3Y0LW1pbm9ydmVy
-c2lvbjItMTMudHh0KSB2aWEgdGhlIHN0cnVjdA0KbGF5b3V0cmV0dXJuX2RldmljZV9lcnJvcjQs
-IHNvIHByZXN1bWFibHkgdGhleSB0b28gaGF2ZSBhIHBsYW4gZm9yDQpkZWFsaW5nIHdpdGggdGhp
-cyBraW5kIG9mIGlzc3VlLg0KDQo+IEFuZCBjb21lIHRvIHRoaW5rIG9mIGl0LCBuZnM0X3Byb2Nf
-c2V0YXR0ciBhbHNvIHJldHVybnMgdGhlIGxheW91dA0KPiB3aGVuIHRoZXJlIG1heSBiZSBJL08g
-aW4tZmxpZ2h0IChjb3JyZWN0IG1lIGlmIGknbSB3cm9uZykuIFNvIEkgZ3Vlc3MNCj4gcG5mc19y
-ZXR1cm5fbGF5b3V0IHNob3VsZCBzb21laG93IHNvbHZlIHRoaXMgYnkgaXRzZWxmIGJ5IHNheWlu
-ZyAiaWYNCj4gdGhpcyBpcyBmZW5jaW5nIChhIGZsYWcgd2hpY2ggd2lsbCBiZSBzZXQgZm9yIGZp
-bGUgbGF5b3V0IG9ubHkpLCBnbw0KPiBhaGVhZCwgb3RoZXJ3aXNlIG1ha2UgdGhlIGxheW91dCBh
-cyAnbmVlZHMgdG8gYmUgcmV0dXJuZWQnIGFuZCB3aGVuDQo+IHRoZSBsc2VnIGxpc3RzIGdldHMg
-ZW1wdHkgcmV0dXJuIHRoZSBsYXlvdXQiLg0KDQpUaGUgb25seSBsYXlvdXQgdHlwZSB0aGF0IHNl
-dHMgdGhlIFBORlNfTEFZT1VUUkVUX09OX1NFVEFUVFIgZmxhZyBpcw0Kb2JqZWN0cywgc28gdGhh
-dCBxdWVzdGlvbiBuZWVkcyB0byBiZSBkaXJlY3RlZCB0byBCb2F6Lg0KDQotLSANClRyb25kIE15
-a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlr
-bGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfsctl.c |    2 --
+ fs/nfsd/nfsd.h   |    2 ++
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index fa49cff..009632a 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -1008,8 +1008,6 @@ static ssize_t write_gracetime(struct file *file, char *buf, size_t size)
+ 	return nfsd4_write_time(file, buf, size, &nfsd4_grace);
+ }
+ 
+-extern char *nfs4_recoverydir(void);
+-
+ static ssize_t __write_recoverydir(struct file *file, char *buf, size_t size)
+ {
+ 	char *mesg = buf;
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 2244222..36243a3 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -124,6 +124,7 @@ int nfs4_state_start(void);
+ void nfs4_state_shutdown(void);
+ void nfs4_reset_lease(time_t leasetime);
+ int nfs4_reset_recoverydir(char *recdir);
++char * nfs4_recoverydir(void);
+ #else
+ static inline void nfs4_state_init(void) { }
+ static inline int nfsd4_init_slabs(void) { return 0; }
+@@ -132,6 +133,7 @@ static inline int nfs4_state_start(void) { return 0; }
+ static inline void nfs4_state_shutdown(void) { }
+ static inline void nfs4_reset_lease(time_t leasetime) { }
+ static inline int nfs4_reset_recoverydir(char *recdir) { return 0; }
++static inline char * nfs4_recoverydir(void) {return NULL; }
+ #endif
+ 
+ /*
+-- 
+1.7.9.5
+
