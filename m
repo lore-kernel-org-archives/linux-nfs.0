@@ -1,131 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:39086 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752652Ab2HNQ0e (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 12:26:34 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH 15/16] openvswitch: use new hashtable implementation
-Date: Tue, 14 Aug 2012 18:24:49 +0200
-Message-Id: <1344961490-4068-16-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
-References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:55216 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756583Ab2HTWht (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Aug 2012 18:37:49 -0400
+Date: Mon, 20 Aug 2012 18:37:47 -0400
+To: linux-nfs@vger.kernel.org
+Cc: Michael Tokarev <mjt@tls.msk.ru>, Neil Brown <neilb@suse.de>
+Subject: [PATCH] svcrpc: fix svc_xprt_enqueue/svc_recv busy-looping
+Message-ID: <20120820223746.GL5779@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch openvswitch to use the new hashtable implementation. This reduces the amount of
-generic unrelated code in openvswitch.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+The rpc server tries to ensure that there will be room to send a reply
+before it receives a request.
+
+It does this by tracking, in xpt_reserved, an upper bound on the total
+size of the replies that is has already committed to for the socket.
+
+Currently it is adding in the estimate for a new reply *before* it
+checks whether there is space available.  If it finds that there is not
+space, it then subtracts the estimate back out.
+
+This may lead the subsequent svc_xprt_enqueue to decide that there is
+space after all.
+
+The results is a svc_recv() that will repeatedly return -EAGAIN, causing
+server threads to loop without doing any actual work.
+
+Cc: stable@vger.kernel.org
+Reported-by: Michael Tokarev <mjt@tls.msk.ru>
+Tested-by: Michael Tokarev <mjt@tls.msk.ru>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- net/openvswitch/vport.c |   30 +++++++++++++-----------------
- 1 files changed, 13 insertions(+), 17 deletions(-)
+ net/sunrpc/svc_xprt.c |    7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
 
-diff --git a/net/openvswitch/vport.c b/net/openvswitch/vport.c
-index 6140336..3484120 100644
---- a/net/openvswitch/vport.c
-+++ b/net/openvswitch/vport.c
-@@ -27,6 +27,7 @@
- #include <linux/rcupdate.h>
- #include <linux/rtnetlink.h>
- #include <linux/compat.h>
-+#include <linux/hashtable.h>
- 
- #include "vport.h"
- #include "vport-internal_dev.h"
-@@ -39,8 +40,8 @@ static const struct vport_ops *vport_ops_list[] = {
- };
- 
- /* Protected by RCU read lock for reading, RTNL lock for writing. */
--static struct hlist_head *dev_table;
--#define VPORT_HASH_BUCKETS 1024
-+#define VPORT_HASH_BITS 10
-+static DEFINE_HASHTABLE(dev_table, VPORT_HASH_BITS);
- 
- /**
-  *	ovs_vport_init - initialize vport subsystem
-@@ -49,10 +50,7 @@ static struct hlist_head *dev_table;
+Queuing up for 3.6 absent any objections.--b.
+
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 0d693a8..bac973a 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -316,7 +316,6 @@ static bool svc_xprt_has_something_to_do(struct svc_xprt *xprt)
   */
- int ovs_vport_init(void)
+ void svc_xprt_enqueue(struct svc_xprt *xprt)
  {
--	dev_table = kzalloc(VPORT_HASH_BUCKETS * sizeof(struct hlist_head),
--			    GFP_KERNEL);
--	if (!dev_table)
--		return -ENOMEM;
-+	hash_init(dev_table);
+-	struct svc_serv	*serv = xprt->xpt_server;
+ 	struct svc_pool *pool;
+ 	struct svc_rqst	*rqstp;
+ 	int cpu;
+@@ -362,8 +361,6 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
+ 				rqstp, rqstp->rq_xprt);
+ 		rqstp->rq_xprt = xprt;
+ 		svc_xprt_get(xprt);
+-		rqstp->rq_reserved = serv->sv_max_mesg;
+-		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
+ 		pool->sp_stats.threads_woken++;
+ 		wake_up(&rqstp->rq_wait);
+ 	} else {
+@@ -640,8 +637,6 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+ 	if (xprt) {
+ 		rqstp->rq_xprt = xprt;
+ 		svc_xprt_get(xprt);
+-		rqstp->rq_reserved = serv->sv_max_mesg;
+-		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
  
- 	return 0;
- }
-@@ -67,12 +65,6 @@ void ovs_vport_exit(void)
- 	kfree(dev_table);
- }
- 
--static struct hlist_head *hash_bucket(const char *name)
--{
--	unsigned int hash = full_name_hash(name, strlen(name));
--	return &dev_table[hash & (VPORT_HASH_BUCKETS - 1)];
--}
--
- /**
-  *	ovs_vport_locate - find a port that has already been created
-  *
-@@ -82,11 +74,11 @@ static struct hlist_head *hash_bucket(const char *name)
-  */
- struct vport *ovs_vport_locate(const char *name)
- {
--	struct hlist_head *bucket = hash_bucket(name);
- 	struct vport *vport;
- 	struct hlist_node *node;
-+	int key = full_name_hash(name, strlen(name));
- 
--	hlist_for_each_entry_rcu(vport, node, bucket, hash_node)
-+	hash_for_each_possible_rcu(dev_table, vport, node, hash_node, key)
- 		if (!strcmp(name, vport->ops->get_name(vport)))
- 			return vport;
- 
-@@ -170,14 +162,18 @@ struct vport *ovs_vport_add(const struct vport_parms *parms)
- 
- 	for (i = 0; i < ARRAY_SIZE(vport_ops_list); i++) {
- 		if (vport_ops_list[i]->type == parms->type) {
-+			int key;
-+			const char *name;
-+
- 			vport = vport_ops_list[i]->create(parms);
- 			if (IS_ERR(vport)) {
- 				err = PTR_ERR(vport);
- 				goto out;
- 			}
- 
--			hlist_add_head_rcu(&vport->hash_node,
--					   hash_bucket(vport->ops->get_name(vport)));
-+			name = vport->ops->get_name(vport);
-+			key = full_name_hash(name, strlen(name));
-+			hash_add_rcu(dev_table, &vport->hash_node, key);
- 			return vport;
- 		}
+ 		/* As there is a shortage of threads and this request
+ 		 * had to be queued, don't allow the thread to wait so
+@@ -738,6 +733,8 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+ 		else
+ 			len = xprt->xpt_ops->xpo_recvfrom(rqstp);
+ 		dprintk("svc: got len=%d\n", len);
++		rqstp->rq_reserved = serv->sv_max_mesg;
++		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
  	}
-@@ -218,7 +214,7 @@ void ovs_vport_del(struct vport *vport)
- {
- 	ASSERT_RTNL();
+ 	svc_xprt_received(xprt);
  
--	hlist_del_rcu(&vport->hash_node);
-+	hash_del_rcu(&vport->hash_node);
- 
- 	vport->ops->destroy(vport);
- }
 -- 
-1.7.8.6
+1.7.9.5
 
