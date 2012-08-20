@@ -1,189 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:11771 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752335Ab2HMQ1b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Aug 2012 12:27:31 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: Peng Tao <bergwolf@gmail.com>, Benny Halevy <bhalevy@tonian.com>,
-        "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        "Isaman, Fred" <Fred.Isaman@netapp.com>,
-        "Welch, Brent" <welch@panasas.com>,
-        Garth Gibson <garth.gibson@panasas.com>
-Subject: Re: [PATCH] NFSv4.1: Remove a bogus BUG_ON() in
- nfs4_layoutreturn_done
-Date: Mon, 13 Aug 2012 16:26:08 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA939C3E7@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1344457310-26442-1-git-send-email-Trond.Myklebust@netapp.com>
-	  <CA+a=Yy7SX+cPLFiNy552bU9ZMS_rSwvaSpV732_mDwpcPAH5Wg@mail.gmail.com>
-	  <1344522979.23523.2.camel@lade.trondhjem.org>
-	  <CA+a=Yy7tDi0kQGvjPeb=O_9XMnZDm-_31VTkNF7wEW7Pb0BZow@mail.gmail.com>
-	 <1344526780.25447.6.camel@lade.trondhjem.org>
-	 <5027E98B.7050603@panasas.com>
-In-Reply-To: <5027E98B.7050603@panasas.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from relay.parallels.com ([195.214.232.42]:49819 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756822Ab2HTPLE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Aug 2012 11:11:04 -0400
+Message-ID: <50325384.9070506@parallels.com>
+Date: Mon, 20 Aug 2012 19:11:00 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>, "neilb@suse.de" <neilb@suse.de>
+Subject: Re: [PATCH v3] SUNRPC: protect service sockets lists during per-net
+ shutdown
+References: <20120703125851.3850.86782.stgit@localhost.localdomain> <20120724194036.GK8570@fieldses.org> <20120816192902.GB4385@fieldses.org> <50321A0D.1020904@parallels.com> <20120820145656.GB1411@fieldses.org>
+In-Reply-To: <20120820145656.GB1411@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU3VuLCAyMDEyLTA4LTEyIGF0IDIwOjM2ICswMzAwLCBCb2F6IEhhcnJvc2ggd3JvdGU6DQo+
-IE9uIDA4LzA5LzIwMTIgMDY6MzkgUE0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gSWYg
-dGhlIHByb2JsZW0gaXMgdGhhdCB0aGUgRFMgaXMgZmFpbGluZyB0byByZXNwb25kLCBob3cgZG9l
-cyB0aGUgY2xpZW50DQo+ID4ga25vdyB0aGF0IHRoZSBpbi1mbGlnaHQgSS9PIGhhcyBlbmRlZD8N
-Cj4gDQo+IEZvciB0aGUgY2xpZW50LCB0aGUgYWJvdmUgRFMgaW4gcXVlc3Rpb24sIGhhcyB0aW1l
-ZC1vdXQsIHdlIGhhdmUgcmVzZXQNCj4gaXQncyBzZXNzaW9uIGFuZCBjbG9zZWQgaXQncyBzb2Nr
-ZXRzLiBBbmQgYWxsIGl0J3MgUlBDIHJlcXVlc3RzIGhhdmUNCj4gYmVlbiwgb3IgYXJlIGJlaW5n
-LCBlbmRlZCB3aXRoIGEgdGltZW91dC1lcnJvci4gU28gdGhlIHRpbWVkLW91dA0KPiBEUyBpcyBh
-IG5vLW9wLiBBbGwgaXQncyBJTyByZXF1ZXN0IHdpbGwgZW5kIHZlcnkgc29vbiwgaWYgbm90IGFs
-cmVhZHkuDQo+IA0KPiBBIERTIHRpbWUtb3V0IGlzIGp1c3QgYSB2ZXJ5IHZhbGlkLCBhbmQgbWVh
-bmluZ2Z1bCByZXNwb25zZSwganVzdCBsaWtlDQo+IGFuIG9wLWRvbmUtd2l0aC1lcnJvci4gVGhp
-cyB3YXMgd2hhdCBBbmR5IGFkZGVkIHRvIHRoZSBSRkMncyBlcnJhdGENCj4gd2hpY2ggSSBhZ3Jl
-ZSB3aXRoLg0KPiANCj4gPiANCj4gPiBOby4gSXQgaXMgdXNpbmcgdGhlIGxheW91dHJldHVybiB0
-byB0ZWxsIHRoZSBNRFMgdG8gZmVuY2Ugb2ZmIEkvTyB0byBhDQo+ID4gZGF0YSBzZXJ2ZXIgdGhh
-dCBpcyBub3QgcmVzcG9uZGluZy4gSXQgaXNuJ3QgYXR0ZW1wdGluZyB0byB1c2UgdGhlDQo+ID4g
-bGF5b3V0IGFmdGVyIHRoZSBsYXlvdXRyZXR1cm46IA0KPiANCj4gPiB0aGUgd2hvbGUgcG9pbnQg
-aXMgdGhhdCB3ZSBhcmUgYXR0ZW1wdGluZw0KPiA+IHdyaXRlLXRocm91Z2gtTURTIGFmdGVyIHRo
-ZSBhdHRlbXB0IHRvIHdyaXRlIHRocm91Z2ggdGhlIERTIHRpbWVkIG91dC4NCj4gPiANCj4gDQo+
-IFRyb25kIFNUT1AhISEgdGhpcyBpcyBwdXJlIGJ1bGxzaGl0LiBZb3UgZ3V5cyB0b29rIHRoZSBv
-cHBvcnR1bml0eSBvZg0KPiBtZSBiZWluZyBpbiBIb3NwaXRhbCwgYW5kIHRoZSByZXN0IG9mIHRo
-ZSBidW5jaCBub3QgaGF2aW5nIGEgY2x1ZS4gQW5kDQo+IHNudWNrIGluIGEgcGF0Y2ggdGhhdCBp
-cyB0b3RhbGx5IHdyb25nIGZvciBldmVyeW9uZSwgbm90IHRha2luZyBjYXJlIG9mDQo+IGFueSBv
-dGhlciBMRCAqY3Jhc2hlcyogLiBBbmQgZXNwZWNpYWxseSB3aGVuIHRoaXMgcGF0Y2ggaXMgd3Jv
-bmcgZXZlbiBmb3INCj4gZmlsZXMgbGF5b3V0Lg0KPiANCj4gVGhpcyBhYm92ZSBoZXJlIGlzIHdo
-ZXJlIHlvdSBhcmUgd3JvbmchISBZb3UgZG9uJ3QgdW5kZXJzdGFuZCBteSBwb2ludCwNCj4gYW5k
-IGlnbm9yZSBteSBjb21tZW50cy4gU28gbGV0IG1lIHN0YXRlIGl0IGFzIGNsZWFyIGFzIEkgY2Fu
-Lg0KDQpZT1UgYXJlIGlnbm9yaW5nIHRoZSByZWFsaXR5IG9mIFN1blJQQy4gVGhlcmUgaXMgbm8g
-YWJvcnQvY2FuY2VsL3RpbWVvdXQNCmZvciBhbiBSUEMgY2FsbCBvbmNlIGl0IGhhcyBzdGFydGVk
-LiBUaGlzIGlzIHdoeSB3ZSBuZWVkIGZlbmNpbmcNCl9zcGVjaWZpY2FsbHlfIGZvciB0aGUgcE5G
-UyBmaWxlcyBjbGllbnQuDQoNCj4gKExldHMgYXNzdW1lIGZpbGVzIGxheW91dCwgZm9yIGJsb2Nr
-cyBhbmQgb2JqZWN0cyBpdCdzIGEgYml0IGRpZmZlcmVudA0KPiAgYnV0IG1vc3RseSB0aGUgc2Ft
-ZS4pDQoNClRoYXQsIGFuZCB0aGUgZmFjdCB0aGF0IGZlbmNpbmcgaGFzbid0IGJlZW4gaW1wbGVt
-ZW50ZWQgZm9yIGJsb2NrcyBhbmQNCm9iamVjdHMuIFRoZSBjb21taXQgaW4gcXVlc3Rpb24gaXMg
-ODJjN2M3YTVhIChORlN2NC4xIHJldHVybiB0aGUgTEFZT1VUDQpmb3IgZWFjaCBmaWxlIHdpdGgg
-ZmFpbGVkIERTIGNvbm5lY3Rpb24gSS9PKSBhbmQgdG91Y2hlcyBvbmx5DQpmcy9uZnMvbmZzNGZp
-bGVsYXlvdXQuYy4gSXQgY2Fubm90IGJlIGFmZmVjdGluZyBibG9ja3MgYW5kIG9iamVjdHMuDQoN
-Cj4gLSBIZWF2eSBJTyBpcyBnb2luZyBvbiwgdGhlIGRldmljZV9pZCBpbiBxdWVzdGlvbiBoYXMg
-KjMqIERTcyBpbiBpdCdzDQo+ICAgZGV2aWNlIHRvcG9ncmFwaHkuIFNheSBEUzEsIERTMiwgRFMz
-DQo+IA0KPiAtIFdlIGhhdmUgYmVlbiBxdWV1aW5nIElPLCBhbmQgYWxsIHF1ZXVlcyBhcmUgZnVs
-bC4gKHdlIGhhdmUgMyBxdWV1ZXMgaW4NCj4gICBpbiBxdWVzdGlvbiwgcmlnaHQ/IFdoYXQgaXMg
-dGhlIG1heGltdW0gUSBkZXB0aCBwZXIgZmlsZXMtRFM/IEkga25vdw0KPiAgIHRoYXQgaW4gYmxv
-Y2tzIGFuZCBvYmplY3RzIHdlIHVzdWFsbHkgaGF2ZSwgSSB0aGluaywgc29tZXRoaW5nIGxpa2Ug
-MTI4Lg0KPiAgIFRoaXMgaXMgYSAqdHVuYWJsZSogaW4gdGhlIGJsb2NrLWxheWVyJ3MgcmVxdWVz
-dC1xdWV1ZS4gSXMgaXQgbm90IHNvbWUNCj4gICBuZWdvdGlhdGVkIHBhcmFtZXRlciB3aXRoIHRo
-ZSBORlMgc2VydmVycz8pDQo+IA0KPiAtIE5vdywgYm9vbSBEUzIgaGFzIHRpbWVkLW91dC4gVGhl
-IExpbnV4LWNsaWVudCByZXNldHMgdGhlIHNlc3Npb24gYW5kDQo+ICAgaW50ZXJuYWxseSBjbG9z
-ZXMgYWxsIHNvY2tldHMgb2YgdGhhdCBzZXNzaW9uLiBBbGwgdGhlIFJQQ3MgdGhhdA0KPiAgIGJl
-bG9uZyB0byBEUzIgYXJlIGJlaW5nIHJldHVybmVkIHVwIHdpdGggYSB0aW1lb3V0IGVycm9yLiBU
-aGlzIG9uZQ0KPiAgIGlzIGp1c3QgdGhlIGZpcnN0IG9mIGFsbCB0aG9zZSBiZWxvbmdpbmcgdG8g
-dGhpcyBEUzIuIFRoZXkgd2lsbA0KPiAgIGJlIGRlY3JlbWVudGluZyB0aGUgcmVmZXJlbmNlIGZv
-ciB0aGlzIGxheW91dCB2ZXJ5LCB2ZXJ5IHNvb24uDQo+IA0KPiAtIEJ1dCB3aGF0IGFib3V0IERT
-MSwgYW5kIERTMyBSUENzLiBXaGF0IHNob3VsZCB3ZSBkbyB3aXRoIHRob3NlPw0KPiAgIFRoaXMg
-aXMgd2hlcmUgeW91IGd1eXMgKFRyb25kIGFuZCBBbmR5KSBhcmUgd3JvbmcuIFdlIG11c3QgYWxz
-bw0KPiAgIHdhaXQgZm9yIHRoZXNlIFJQQydzIGFzIHdlbGwuIEFuZCBvcHBvc2l0ZSB0byB3aGF0
-IHlvdSB0aGluaywgdGhpcw0KPiAgIHNob3VsZCBub3QgdGFrZSBsb25nLiBMZXQgbWUgZXhwbGFp
-bjoNCj4gDQo+ICAgV2UgZG9uJ3Qga25vdyBhbnl0aGluZyBhYm91dCBEUzEgYW5kIERTMywgZWFj
-aCBtaWdodCBiZSwgZWl0aGVyLA0KPiAgICJIYXZpbmcgdGhlIHNhbWUgY29tbXVuaWNhdGlvbiBw
-cm9ibGVtLCBsaWtlIERTMiIuIE9yICJpcyBqdXN0IHdvcmtpbmcNCj4gICBmaW5lIi4gU28gbGV0
-cyBzYXkgZm9yIGV4YW1wbGUgdGhhdCBEUzMgd2lsbCBhbHNvIHRpbWUtb3V0IGluIHRoZQ0KPiAg
-IGZ1dHVyZSwgYW5kIHRoYXQgRFMxIGlzIGp1c3QgZmluZSBhbmQgaXMgd3JpdGluZyBhcyB1c3Vh
-bC4NCj4gDQo+ICAgKiBEUzEgLSBTaW5jZSBpdCdzIHdvcmtpbmcsIGl0IGhhcyBtb3N0IHByb2Jh
-Ymx5IGFscmVhZHkgZG9uZQ0KPiAgICAgd2l0aCBhbGwgaXQncyBJTywgYmVjYXVzZSB0aGUgTkZT
-IHRpbWVvdXQgaXMgdXN1YWxseSBtdWNoIGxvbmdlcg0KPiAgICAgdGhlbiB0aGUgbm9ybWFsIFJQ
-QyB0aW1lLCBhbmQgc2luY2Ugd2UgYXJlIHF1ZXVpbmcgZXZlbmx5IG9uDQo+ICAgICBhbGwgMyBE
-U3MsIGF0IHRoaXMgcG9pbnQgbXVzdCBwcm9iYWJseSwgYWxsIG9mIERTMSBSUENzIGFyZQ0KPiAg
-ICAgYWxyZWFkeSBkb25lLiAoQW5kIGxheW91dCBoYXMgYmVlbiBkZS1yZWZlcmVuY2VkKS4NCj4g
-DQo+ICAgKiBEUzMgLSBXaWxsIHRpbWVvdXQgaW4gdGhlIGZ1dHVyZSwgd2hlbiB3aWxsIHRoYXQg
-YmU/DQo+ICAgICBTbyBsZXQgbWUgc3RhcnQgd2l0aCwgc2F5aW5nOg0KPiAgICAgKDEpLiBXZSBj
-b3VsZCBlbmhhbmNlIG91ciBjb2RlIGFuZCBwcm9hY3RpdmVseSwgDQo+ICAgICAgICAgImNhbmNl
-bC9hYm9ydCIgYWxsIFJQQ3MgdGhhdCBiZWxvbmcgdG8gRFMzIChtb3JlIG9uIHRoaXMNCj4gICAg
-ICAgICAgYmVsb3cpDQoNCldoaWNoIG1ha2VzIHRoZSByYWNlIF9XT1JTRV8uIEFzIEkgc2FpZCBh
-Ym92ZSwgdGhlcmUgaXMgbm8gJ2NhbmNlbCBSUEMnDQpvcGVyYXRpb24gaW4gU1VOUlBDLiBPbmNl
-IHlvdXIgUlBDIGNhbGwgaXMgbGF1bmNoZWQsIGl0IGNhbm5vdCBiZQ0KcmVjYWxsZWQuIEFsbCB5
-b3VyIGRpc2N1c3Npb24gYWJvdmUgaXMgYWJvdXQgdGhlIGNsaWVudCBzaWRlLCBhbmQNCmlnbm9y
-ZXMgd2hhdCBtYXkgYmUgaGFwcGVuaW5nIG9uIHRoZSBkYXRhIHNlcnZlciBzaWRlLiBUaGUgZmVu
-Y2luZyBpcw0Kd2hhdCBpcyBuZWVkZWQgdG8gZGVhbCB3aXRoIHRoZSBkYXRhIHNlcnZlciBwaWN0
-dXJlLg0KDQo+ICAgICAoMikuIE9yIFdlIGNhbiBwcm92ZSB0aGF0IERTMydzIFJQQ3Mgd2lsbCB0
-aW1lb3V0IGF0IHdvcnN0DQo+ICAgICAgICAgIGNhc2UgMSB4IE5GUy10aW1lb3V0IGFmdGVyIGFi
-b3ZlIERTMiB0aW1lb3V0IGV2ZW50LCBvcg0KPiAgICAgICAgICAyIHggTkZTLXRpbWVvdXQgYWZ0
-ZXIgdGhlIHF1ZXVpbmcgb2YgdGhlIGZpcnN0IHRpbWVkLW91dA0KPiAgICAgICAgICBSUEMuIEFu
-ZCBzdGF0aXN0aWNhbGx5IGluIHRoZSBhdmVyYWdlIGNhc2UgRFMzIHdpbGwgdGltZW91dA0KPiAg
-ICAgICAgICB2ZXJ5IG5lYXIgdGhlIHRpbWUgRFMyIHRpbWVkLW91dC4NCj4gDQo+ICAgICAgICAg
-IFRoaXMgaXMgZWFzeSBzaW5jZSB0aGUgbGFzdCBJTyB3ZSBxdWV1ZWQgd2FzIHRoZSBvbmUgdGhh
-dA0KPiAgICAgICAgICBtYWRlIERTMidzIHF1ZXVlIHRvIGJlIGZ1bGwsIGFuZCBpdCB3YXMga2Vw
-dCBmdWxsIGJlY2F1c2UNCj4gICAgICAgICAgRFMyIHN0b3BwZWQgcmVzcG9uZGluZyBhbmQgbm90
-aGluZyBlbXB0aWVkIHRoZSBxdWV1ZS4NCj4gDQo+ICAgICAgU28gdGhlIGVhc2llc3Qgd2UgY2Fu
-IGRvIGlzIHdhaXQgZm9yIERTMyB0byB0aW1lb3V0LCBzb29uDQo+ICAgICAgZW5vdWdoLCBhbmQg
-b25jZSB0aGF0IHdpbGwgaGFwcGVuLCBzZXNzaW9uIHdpbGwgYmUgcmVzZXQgYW5kIGFsbA0KPiAg
-ICAgIFJQQ3Mgd2lsbCBlbmQgd2l0aCBhbiBlcnJvci4NCg0KDQpZb3UgYXJlIHN0aWxsIG9ubHkg
-ZGlzY3Vzc2luZyB0aGUgY2xpZW50IHNpZGUuDQoNClJlYWQgbXkgbGlwczogU3VuIFJQQyBPUEVS
-QVRJT05TIERPIE5PVCBUSU1FT1VUIEFORCBDQU5OT1QgQkUgQUJPUlRFRCBPUg0KQ0FOQ0VMRUQu
-IEZlbmNpbmcgaXMgdGhlIGNsb3Nlc3Qgd2UgY2FuIGNvbWUgdG8gYW4gYWJvcnQgb3BlcmF0aW9u
-Lg0KDQo+IFNvIGluIHRoZSB3b3JzdCBjYXNlIHNjZW5hcmlvIHdlIGNhbiByZWNvdmVyIDIgeCBO
-RlMtdGltZW91dCBhZnRlcg0KPiBhIG5ldHdvcmsgcGFydGl0aW9uLCB3aGljaCBpcyBqdXN0IDEg
-eCBORlMtdGltZW91dCwgYWZ0ZXIgeW91cg0KPiBzY2hpem9waHJlbmljIEZFTkNFX01FX09GRiwg
-bmV3bHkgaW52ZW50ZWQgb3BlcmF0aW9uLg0KPiANCj4gV2hhdCB3ZSBjYW4gZG8gdG8gZW5oYW5j
-ZSBvdXIgY29kZSB0byByZWR1Y2UgZXJyb3IgcmVjb3ZlcnkgdG8NCj4gMSB4IE5GUy10aW1lb3V0
-Og0KPiANCj4gLSBEUzMgYWJvdmU6DQo+ICAgKEFzIEkgc2FpZCBEUzEncyBxdWV1ZXMgYXJlIG5v
-dyBlbXB0eSwgYmVjYXVzZSBpdCB3YXMgd29ya2luZyBmaW5lLA0KPiAgICBTbyBEUzMgaXMgYSBy
-ZXByZXNlbnRhdGlvbiBvZiBhbGwgRFMncyB0aGF0IGhhdmUgUlBDcyBhdCB0aGUNCj4gICAgdGlt
-ZSBEUzIgdGltZWQtb3V0LCB3aGljaCBiZWxvbmcgdG8gdGhpcyBsYXlvdXQpDQo+IA0KPiAgIFdl
-IGNhbiBwcm9hY3RpdmVseSBhYm9ydCBhbGwgUlBDcyBiZWxvbmdpbmcgdG8gRFMzLiBJZiB0aGVy
-ZSBpcw0KPiAgIGEgd2F5IHRvIGludGVybmFsbHkgYWJvcnQgUlBDJ3MgdXNlIHRoYXQuIEVsc2Ug
-anVzdCByZXNldCBpdCdzDQo+ICAgc2Vzc2lvbiBhbmQgYWxsIHNvY2tldHMgd2lsbCBjbG9zZSAo
-YW5kIHJlb3BlbiksIGFuZCBhbGwgUlBDJ3MNCj4gICB3aWxsIGVuZCB3aXRoIGEgZGlzY29ubmVj
-dCBlcnJvci4NCg0KTm90IG9uIG1vc3Qgc2VydmVycyB0aGF0IEknbSBhd2FyZSBvZi4gSWYgeW91
-IGNsb3NlIG9yIHJlc2V0IHRoZSBzb2NrZXQNCm9uIHRoZSBjbGllbnQsIHRoZW4gdGhlIExpbnV4
-IHNlcnZlciB3aWxsIGhhcHBpbHkgY29udGludWUgdG8gcHJvY2Vzcw0KdGhvc2UgUlBDIGNhbGxz
-OyBpdCBqdXN0IHdvbid0IGJlIGFibGUgdG8gc2VuZCBhIHJlcGx5Lg0KRnVydGhlcm1vcmUsIGlm
-IHRoZSBwcm9ibGVtIGlzIHRoYXQgdGhlIGRhdGEgc2VydmVyIGlzbid0IHJlc3BvbmRpbmcsDQp0
-aGVuIGEgc29ja2V0IGNsb3NlL3Jlc2V0IHRlbGxzIHlvdSBub3RoaW5nIGVpdGhlci4NCg0KPiAt
-IEJvdGggRFMyIHRoYXQgdGltZWQtb3V0LCBhbmQgRFMzIHRoYXQgd2FzIGFib3J0ZWQuIFNob3Vs
-ZCBiZQ0KPiAgIG1hcmtlZCB3aXRoIGEgZmxhZy4gV2hlbiBuZXcgSU8gdGhhdCBiZWxvbmcgdG8g
-c29tZSBvdGhlcg0KPiAgIGlub2RlIHRocm91Z2ggc29tZSBvdGhlciBsYXlvdXQrZGV2aWNlX2lk
-IGVuY291bnRlcnMgYSBmbGFnZ2VkDQo+ICAgZGV2aWNlLCBpdCBzaG91bGQgYWJvcnQgYW5kIHR1
-cm4gdG8gTURTIElPLCB3aXRoIGFsc28gaW52YWxpZGF0aW5nDQo+ICAgaXQncyBsYXlvdXQsIGFu
-ZCBoZW5zLCBzb29uIGVub3VnaCB0aGUgZGV2aWNlX2lkIGZvciBEUzImMyB3aWxsIGJlDQo+ICAg
-ZGUtcmVmZXJlbmNlZCBhbmQgYmUgcmVtb3ZlZCBmcm9tIGRldmljZSBjYWNoZS4gKEFuZCBhbGwg
-cmVmZXJlbmNpbmcNCj4gICBsYXlvdXRzIGFyZSBub3cgZ29uZSkNCg0KVGhlcmUgaXMgbm8gUlBD
-IGFib3J0IGZ1bmN0aW9uYWxpdHkgU3VuIFJQQy4gQWdhaW4sIHRoaXMgYXJndW1lbnQgcmVsaWVz
-DQpvbiBmdW5jdGlvbmFsaXR5IHRoYXQgX2RvZXNuJ3RfIGV4aXN0Lg0KDQo+ICAgU28gd2UgZG8g
-bm90IGNvbnRpbnVlIHF1ZXVpbmcgbmV3IElPIHRvIGRlYWQgZGV2aWNlcy4gQW5kIHNpbmNlIG1v
-c3QNCj4gICBwcm9iYWJseSBNRFMgd2lsbCBub3QgZ2l2ZSB1cyBkZWFkIHNlcnZlcnMgaW4gbmV3
-IGxheW91dCwgd2Ugc2hvdWxkIGJlDQo+ICAgZ29vZC4NCj4gSW4gc3VtbWVyeS4NCj4gLSBGRU5D
-RV9NRV9PRkYgaXMgYSBuZXcgb3BlcmF0aW9uLCBhbmQgaXMgbm90ID09PSBMQVlPVVRfUkVUVVJO
-LiBDbGllbnQNCj4gICAqbXVzdCBub3QqIHNrYi1zZW5kIGEgc2luZ2xlIGJ5dGUgYmVsb25naW5n
-IHRvIGEgbGF5b3V0LCBhZnRlciB0aGUgc2VuZA0KPiAgIG9mIExBWU9VVF9SRVRVUk4uDQo+ICAg
-KEl0IG5lZWQgbm90IHdhaXQgZm9yIE9QVF9ET05FIGZyb20gRFMgdG8gZG8gdGhhdCwgaXQganVz
-dCBtdXN0IG1ha2UNCj4gICAgc3VyZSwgdGhhdCBhbGwgaXQncyBpbnRlcm5hbCwgb3Igb24tdGhl
-LXdpcmUgcmVxdWVzdCwgYXJlIGFib3J0ZWQNCj4gICAgYnkgZWFzaWx5IGNsb3NpbmcgdGhlIHNv
-Y2tldHMgdGhleSBiZWxvbmcgdG9vLCBhbmQvb3Igd2FpdGluZyBmb3INCj4gICAgaGVhbHRoeSBE
-UydzIElPIHRvIGJlIE9QVF9ET05FIC4gU28gdGhlIGNsaWVudCBpcyBub3QgZGVwZW5kZW50IG9u
-DQo+ICAgIGFueSBEUyByZXNwb25zZSwgaXQgaXMgb25seSBkZXBlbmRlbnQgb24gaXQncyBpbnRl
-cm5hbCBzdGF0ZSBiZWluZw0KPiAgICAqY2xlYW4qIGZyb20gYW55IG1vcmUgc2tiLXNlbmQocykp
-DQoNCkRpdHRvDQoNCj4gLSBUaGUgcHJvcGVyIGltcGxlbWVudGF0aW9uIG9mIExBWU9VVF9SRVRV
-Uk4gb24gZXJyb3IgZm9yIGZhc3QgdHVybm92ZXINCj4gICBpcyBub3QgaGFyZCwgYW5kIGRvZXMg
-bm90IGludm9sdmUgYSBuZXcgaW52ZW50ZWQgTkZTIG9wZXJhdGlvbiBzdWNoDQo+ICAgYXMgRkVO
-Q0VfTUVfT0ZGLiBQcm9wZXIgY29kZGVkIGNsaWVudCwgaW5kZXBlbmRlbnRseSwgd2l0aG91dA0K
-PiAgIHRoZSBhaWQgb2YgYW55IEZFTkNFX01FX09GRiBvcGVyYXRpb24sIGNhbiBhY2hpZXZlIGEg
-ZmFzdGVyIHR1cm5hcm91bmQNCj4gICBieSBhY3RpdmVseSByZXR1cm5pbmcgYWxsIGxheW91dHMg
-dGhhdCBiZWxvbmcgdG8gYSBiYWQgRFMsIGFuZCBub3QNCj4gICB3YWl0aW5nIGZvciBhIGZlbmNl
-LW9mZiBvZiBhIHNpbmdsZSBsYXlvdXQsIHRoZW4gZW5jb3VudGVyaW5nIGp1c3QNCj4gICB0aGUg
-c2FtZSBlcnJvciB3aXRoIGFsbCBvdGhlciBsYXlvdXRzIHRoYXQgaGF2ZSB0aGUgc2FtZSBEUyAg
-ICAgDQoNCldoYXQgZG8geW91IG1lYW4gYnkgImFsbCBsYXlvdXRzIHRoYXQgYmVsb25nIHRvIGEg
-YmFkIERTIj8gTGF5b3V0cyBkb24ndA0KYmVsb25nIHRvIGEgRFMsIGFuZCBzbyB0aGVyZSBpcyBu
-byB3YXkgdG8gZ2V0IGZyb20gYSBEUyB0byBhIGxheW91dC4NCg0KPiAtIEFuZCBJIGtub3cgdGhh
-dCBqdXN0IGFzIHlvdSBkaWQgbm90IHJlYWQgbXkgZW1haWxzIGZyb20gYmVmb3JlDQo+ICAgbWUg
-Z29pbmcgdG8gSG9zcGl0YWwsIHlvdSB3aWxsIGNvbnRpbnVlIHRvIG5vdCB1bmRlcnN0YW5kIHRo
-aXMNCj4gICBvbmUsIG9yIHdoYXQgSSdtIHRyeWluZyB0byBleHBsYWluLCBhbmQgd2lsbCBtb3N0
-IHByb2JhYmx5IGlnbm9yZQ0KPiAgIGFsbCBvZiBpdC4gQnV0IHBsZWFzZSBub3RlIG9uZSB0aGlu
-ZzoNCg0KSSByZWFkIHRoZW0sIGJ1dCBqdXN0IGFzIG5vdywgdGhleSBjb250aW51ZSB0byBpZ25v
-cmUgdGhlIHJlYWxpdHkgYWJvdXQNCnRpbWVvdXRzOiB0aW1lb3V0cyBtZWFuIF9ub3RoaW5nXyBp
-biBhbiBSUEMgZmFpbG92ZXIgc2l0dWF0aW9uLiBUaGVyZSBpcw0Kbm8gUlBDIGFib3J0IGZ1bmN0
-aW9uYWxpdHkgdGhhdCB5b3UgY2FuIHJlbHkgb24gb3RoZXIgdGhhbiBmZW5jaW5nLg0KDQo+ICAg
-ICBZT1UgaGF2ZSBzYWJvdGFnZWQgdGhlIE5GUyA0LjEgTGludXggY2xpZW50LCB3aGljaCBpcyBu
-b3cgdG90YWxseQ0KPiAgICAgbm90IFNURCBjb21wbGFpbnQsIGFuZCBoYXZlIGludHJvZHVjZWQg
-Q1JBU0hzLiBBbmQgZm9yIG5vIGdvb2QNCj4gICAgIHJlYXNvbi4NCg0KU2VlIGFib3ZlLg0KDQot
-LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFw
-cA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+20.08.2012 18:56, J. Bruce Fields пишет:
+> On Mon, Aug 20, 2012 at 03:05:49PM +0400, Stanislav Kinsbursky wrote:
+>> 16.08.2012 23:29, J. Bruce Fields пишет:
+>>> Looking back at this:
+>>>
+>>> 	- adding the sv_lock looks like the right thing to do anyway
+>>> 	  independent of containers, because svc_age_temp_xprts may
+>>> 	  still be running.
+>>>
+>>> 	- I'm increasingly unhappy about sharing rpc servers between
+>>> 	  network namespaces.  Everything would be easier to understand
+>>> 	  if they were independent.  Can we figure out how to do that?
+>>>
+>>
+>> Could you, please, elaborate on your your unhappiness?
+>
+> It seems like you're having to do a lot of work on each individual rpc
+> server (callback server, lockd, etc.) to make per-net startup/shutdown
+> work.  And then we still don't have it quite right (see the shutdown
+> races).)
+>
+> In general whenever we have the opportunity to have entirely separate
+> data structures, I'd expect that to simplify things: it should eliminate
+> some locking and reference-counting issues.
+>
+
+Agreed. But current solution still looks like the easies way to me to implement 
+desired functionality.
+
+>> I.e. I don't like it too. But the problem here, is that rpc server
+>> is tied with kernel threads creation and destruction. And these
+>> threads can be only a part of initial pid namespace (because we have
+>> only one kthreadd). And we decided do not create new kernel thread
+>> per container when were discussing the problem last time.
+>
+> There really should be some way to create a kernel thread in a specific
+> namespace, shouldn't there?
+>
+
+
+Kthreads support in a container is rather a "political" problem, than an 
+implementation problem.
+
+Currently, when you call kthread_create(), you add new job to kthreadd queue. 
+Kthreadd is unique, starts right after init and lives in global initial 
+environment. So, any kthread inherits namespaces from it.
+Of course, we can start one kthread per environment and change it's root or even 
+network namespace in kthread function. But pid namespace of this kthread will 
+remain global.
+It looks like not a big problem, when we shutdown kthread by some variable. But 
+what about killable nfsd kthreads?
+1) We can't kill them from nested pid namespace.
+2) How we will differ nfsd kthreads in initial pid namespace?
+
+In OpenVZ we have kthreadd per pid hamespace and it allows us to create kthreads 
+(and thus services) per pid namespace.
+
+> Until we have that, could the threads be taught to fix their namespace
+> on startup?
+>
+
+Unfortunately, changing of pid namespace for kthreads doesn't look like an easy 
+trick.
+
+> --b.
+>
+
+
+-- 
+Best regards,
+Stanislav Kinsbursky
