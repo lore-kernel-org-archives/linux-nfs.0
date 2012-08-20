@@ -1,68 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49682 "EHLO fieldses.org"
+Received: from e8.ny.us.ibm.com ([32.97.182.138]:45873 "EHLO e8.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758644Ab2HUVhT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Aug 2012 17:37:19 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Nick Piggin <npiggin@kernel.dk>
-Subject: [PATCH 2/2] dcache: Don't set DISCONNECTED on "pseudo filesystem" dentries
-Date: Tue, 21 Aug 2012 17:37:12 -0400
-Message-Id: <1345585032-19119-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1345585032-19119-1-git-send-email-bfields@redhat.com>
-References: <1345585032-19119-1-git-send-email-bfields@redhat.com>
+	id S1756583Ab2HTWgq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Aug 2012 18:36:46 -0400
+Received: from /spool/local
+	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Mon, 20 Aug 2012 18:36:43 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 36DAE38C8045
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Aug 2012 18:36:24 -0400 (EDT)
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q7KMZ7fZ153468
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Aug 2012 18:35:07 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q7KMZ7ep018348
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Aug 2012 18:35:07 -0400
+Date: Mon, 20 Aug 2012 17:35:06 -0500
+From: Malahal Naineni <malahal@us.ibm.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, NeilBrown <neilb@suse.de>
+Subject: Re: [PATCH] svcrpc: sends on closed socket should stop immediately
+Message-ID: <20120820223506.GB30155@us.ibm.com>
+References: <20120820215210.GJ5779@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120820215210.GJ5779@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+J. Bruce Fields [bfields@fieldses.org] wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> svc_tcp_sendto sets XPT_CLOSE if we fail to transmit the entire reply.
+> However, the XPT_CLOSE won't be acted on immediately.  Meanwhile other
+> threads could send further replies before the socket is really shut
+> down.  This can manifest as data corruption: for example, if a truncated
+> read reply is followed by another rpc reply, that second reply will look
+> to the client like further read data.
+> 
+> Symptoms were data corruption preceded by svc_tcp_sendto logging
+> something like
+> 
+> 	kernel: rpc-srv/tcp: nfsd: sent only 963696 when sending 1048708 bytes - shutting down socket
+> 
+> Cc: stable@vger.kernel.org
+> Reported-by: Malahal Naineni <malahal@us.ibm.com>
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  net/sunrpc/svc_xprt.c |    3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+> 
+> Can anyone see a reason *not* to fail the send on a socket marked with
+> XPT_CLOSE?
+> 
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index 88f2bf6..0d693a8 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -794,7 +794,8 @@ int svc_send(struct svc_rqst *rqstp)
+> 
+>  	/* Grab mutex to serialize outgoing data. */
+>  	mutex_lock(&xprt->xpt_mutex);
+> -	if (test_bit(XPT_DEAD, &xprt->xpt_flags))
+> +	if (test_bit(XPT_DEAD, &xprt->xpt_flags)
+> +			|| test_bit(XPT_CLOSE, &xprt->xpt_flags))
+>  		len = -ENOTCONN;
+>  	else
+>  		len = xprt->xpt_ops->xpo_sendto(rqstp);
+> -- 
+> 1.7.9.5
 
-I can't for the life of me see any reason why anyone would care whether
-a dentry that is never hooked into the dentry cache would need
-DCACHE_DISCONNECTED set.
+Instrumented svc_send_common() to send partial read replies, was able
+reproduce the corruption easily. After applying this patch, I wasn't
+able to reproduce the corruption. The patch looks good.
 
-This originates from 4b936885ab04dc6e0bb0ef35e0e23c1a7364d9e5 "fs:
-improve scalability of pseudo filesystems", which probably just made the
-false assumption the DCACHE_DISCONNECTED was meant to be set on anything
-not connected to a parent somehow.
-
-So this is just confusing.  Ideally the only use DCACHE_DISCONNECTED
-would be in the filehandle-lookup code, which needs it to ensure
-dentries are connected into the dentry tree before use.
-
-I left d_alloc_pseudo there even though it's now equivalent to
-__d_alloc(), just on the theory the name is better documentation of its
-intended use outside dcache.c.
-
-Cc: Nick Piggin <npiggin@kernel.dk>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/dcache.c | 9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
-
-diff --git a/fs/dcache.c b/fs/dcache.c
-index ea2fcfa..c4b9d4f2c 100644
---- a/fs/dcache.c
-+++ b/fs/dcache.c
-@@ -1352,12 +1352,13 @@ struct dentry *d_alloc(struct dentry * parent, const struct qstr *name)
- }
- EXPORT_SYMBOL(d_alloc);
- 
-+/*
-+ * For filesystems that do not actually use the dentry cache at all, and
-+ * only ever deal in IS_ROOT() dentries:
-+ */
- struct dentry *d_alloc_pseudo(struct super_block *sb, const struct qstr *name)
- {
--	struct dentry *dentry = __d_alloc(sb, name);
--	if (dentry)
--		dentry->d_flags |= DCACHE_DISCONNECTED;
--	return dentry;
-+	return __d_alloc(sb, name);
- }
- EXPORT_SYMBOL(d_alloc_pseudo);
- 
--- 
-1.7.11.4
+Reviewed-by: Malahal Naineni <malahal@us.ibm.com>
+Tested-by: Malahal Naineni <malahal@us.ibm.com>
 
