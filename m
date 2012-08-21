@@ -1,103 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:39086 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756743Ab2HNQZk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 12:25:40 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH 07/16] net,9p: use new hashtable implementation
-Date: Tue, 14 Aug 2012 18:24:41 +0200
-Message-Id: <1344961490-4068-8-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
-References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:46796 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758423Ab2HUU5f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Aug 2012 16:57:35 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 05/14] nfsd: remove redundant "port" argument
+Date: Tue, 21 Aug 2012 16:57:23 -0400
+Message-Id: <1345582652-18476-6-git-send-email-bfields@redhat.com>
+In-Reply-To: <1345582652-18476-1-git-send-email-bfields@redhat.com>
+References: <1345582652-18476-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch 9p error table to use the new hashtable implementation. This reduces the amount of
-generic unrelated code in 9p.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+"port" in all these functions is always NFS_PORT.
+
+nfsd can already be run on a nonstandard port using the "nfsd/portlist"
+interface.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- net/9p/error.c |   21 ++++++++++-----------
- 1 files changed, 10 insertions(+), 11 deletions(-)
+ fs/nfsd/nfsctl.c |    2 +-
+ fs/nfsd/nfsd.h   |    2 +-
+ fs/nfsd/nfssvc.c |   14 +++++++-------
+ 3 files changed, 9 insertions(+), 9 deletions(-)
 
-diff --git a/net/9p/error.c b/net/9p/error.c
-index 2ab2de7..a5cc7dd 100644
---- a/net/9p/error.c
-+++ b/net/9p/error.c
-@@ -34,7 +34,7 @@
- #include <linux/jhash.h>
- #include <linux/errno.h>
- #include <net/9p/9p.h>
--
-+#include <linux/hashtable.h>
- /**
-  * struct errormap - map string errors from Plan 9 to Linux numeric ids
-  * @name: string sent over 9P
-@@ -50,8 +50,8 @@ struct errormap {
- 	struct hlist_node list;
- };
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 009632a..89be13c 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -406,7 +406,7 @@ static ssize_t write_threads(struct file *file, char *buf, size_t size)
+ 			return rv;
+ 		if (newthreads < 0)
+ 			return -EINVAL;
+-		rv = nfsd_svc(NFS_PORT, newthreads);
++		rv = nfsd_svc(newthreads);
+ 		if (rv < 0)
+ 			return rv;
+ 	} else
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 36243a3..80d5ce4 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -65,7 +65,7 @@ extern const struct seq_operations nfs_exports_op;
+ /*
+  * Function prototypes.
+  */
+-int		nfsd_svc(unsigned short port, int nrservs);
++int		nfsd_svc(int nrservs);
+ int		nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp);
  
--#define ERRHASHSZ		32
--static struct hlist_head hash_errmap[ERRHASHSZ];
-+#define ERR_HASH_BITS 5
-+static DEFINE_HASHTABLE(hash_errmap, ERR_HASH_BITS);
+ int		nfsd_nrthreads(void);
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 240473c..dd2b734 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -183,18 +183,18 @@ int nfsd_nrthreads(void)
+ 	return rv;
+ }
  
- /* FixMe - reduce to a reasonable size */
- static struct errormap errmap[] = {
-@@ -193,18 +193,17 @@ static struct errormap errmap[] = {
- int p9_error_init(void)
+-static int nfsd_init_socks(int port)
++static int nfsd_init_socks(void)
  {
- 	struct errormap *c;
--	int bucket;
-+	u32 hash;
+ 	int error;
+ 	if (!list_empty(&nfsd_serv->sv_permsocks))
+ 		return 0;
  
- 	/* initialize hash table */
--	for (bucket = 0; bucket < ERRHASHSZ; bucket++)
--		INIT_HLIST_HEAD(&hash_errmap[bucket]);
-+	hash_init(hash_errmap);
+-	error = svc_create_xprt(nfsd_serv, "udp", &init_net, PF_INET, port,
++	error = svc_create_xprt(nfsd_serv, "udp", &init_net, PF_INET, NFS_PORT,
+ 					SVC_SOCK_DEFAULTS);
+ 	if (error < 0)
+ 		return error;
  
- 	/* load initial error map into hash table */
- 	for (c = errmap; c->name != NULL; c++) {
- 		c->namelen = strlen(c->name);
--		bucket = jhash(c->name, c->namelen, 0) % ERRHASHSZ;
-+		hash = jhash(c->name, c->namelen, 0);
- 		INIT_HLIST_NODE(&c->list);
--		hlist_add_head(&c->list, &hash_errmap[bucket]);
-+		hash_add(hash_errmap, &c->list, hash);
- 	}
+-	error = svc_create_xprt(nfsd_serv, "tcp", &init_net, PF_INET, port,
++	error = svc_create_xprt(nfsd_serv, "tcp", &init_net, PF_INET, NFS_PORT,
+ 					SVC_SOCK_DEFAULTS);
+ 	if (error < 0)
+ 		return error;
+@@ -204,7 +204,7 @@ static int nfsd_init_socks(int port)
  
- 	return 1;
-@@ -223,13 +222,13 @@ int p9_errstr2errno(char *errstr, int len)
- 	int errno;
- 	struct hlist_node *p;
- 	struct errormap *c;
--	int bucket;
-+	u32 hash;
+ static bool nfsd_up = false;
  
- 	errno = 0;
- 	p = NULL;
- 	c = NULL;
--	bucket = jhash(errstr, len, 0) % ERRHASHSZ;
--	hlist_for_each_entry(c, p, &hash_errmap[bucket], list) {
-+	hash = jhash(errstr, len, 0);
-+	hash_for_each_possible(hash_errmap, c, p, list, hash) {
- 		if (c->namelen == len && !memcmp(c->name, errstr, len)) {
- 			errno = c->val;
- 			break;
+-static int nfsd_startup(unsigned short port, int nrservs)
++static int nfsd_startup(int nrservs)
+ {
+ 	int ret;
+ 
+@@ -218,7 +218,7 @@ static int nfsd_startup(unsigned short port, int nrservs)
+ 	ret = nfsd_racache_init(2*nrservs);
+ 	if (ret)
+ 		return ret;
+-	ret = nfsd_init_socks(port);
++	ret = nfsd_init_socks();
+ 	if (ret)
+ 		goto out_racache;
+ 	ret = lockd_up(&init_net);
+@@ -436,7 +436,7 @@ int nfsd_set_nrthreads(int n, int *nthreads)
+  * this is the first time nrservs is nonzero.
+  */
+ int
+-nfsd_svc(unsigned short port, int nrservs)
++nfsd_svc(int nrservs)
+ {
+ 	int	error;
+ 	bool	nfsd_up_before;
+@@ -458,7 +458,7 @@ nfsd_svc(unsigned short port, int nrservs)
+ 
+ 	nfsd_up_before = nfsd_up;
+ 
+-	error = nfsd_startup(port, nrservs);
++	error = nfsd_startup(nrservs);
+ 	if (error)
+ 		goto out_destroy;
+ 	error = svc_set_num_threads(nfsd_serv, NULL, nrservs);
 -- 
-1.7.8.6
+1.7.9.5
 
