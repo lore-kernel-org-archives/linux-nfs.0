@@ -1,115 +1,185 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:64929 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757557Ab2HIQe0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2012 12:34:26 -0400
-Received: by yenl2 with SMTP id l2so643390yen.19
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Aug 2012 09:34:26 -0700 (PDT)
+Received: from mga11.intel.com ([192.55.52.93]:61276 "EHLO mga11.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755721Ab2HUM5s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Aug 2012 08:57:48 -0400
+Date: Tue, 21 Aug 2012 20:57:36 +0800
+From: Fengguang Wu <fengguang.wu@intel.com>
+To: Namjae Jeon <linkinjeon@gmail.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Dave Chinner <david@fromorbit.com>, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, Namjae Jeon <namjae.jeon@samsung.com>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] writeback: add dirty_ratio_time per bdi variable
+ (NFS write performance)
+Message-ID: <20120821125736.GC22321@localhost>
+References: <1345283402-7889-1-git-send-email-linkinjeon@gmail.com>
+ <20120819025724.GC16796@localhost>
+ <20120820020004.GB19235@dastard>
+ <20120820180143.GA4911@fieldses.org>
+ <CAKYAXd_AhA6E+KDsSLr2RtyTjSezMY6WH4SOcTc45L9KoEwYoQ@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <1344528377.25447.29.camel@lade.trondhjem.org>
-References: <CABpMAyL-B9Kqg8O4xxxtj0X8PF7fP4TM+NnLA_Ynhm-_3C6MUg@mail.gmail.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9380987@SACEXCMBX04-PRD.hq.netapp.com>
- <CABpMAyKddCjhWe-LjFOJrikLnC+BJ7GsAMAvieh1rabDPiA=Ug@mail.gmail.com> <1344528377.25447.29.camel@lade.trondhjem.org>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Fri, 10 Aug 2012 00:34:05 +0800
-Message-ID: <CA+a=Yy5cE1v=nG_epkaKE2W--M=HAbtrySc9_+f6dvJVbusPJw@mail.gmail.com>
-Subject: Re: return layout on error, BUG/deadlock
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Idan Kedar <idank@tonian.com>, Boaz Harrosh <bharrosh@panasas.com>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        Benny Halevy <bhalevy@tonian.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAKYAXd_AhA6E+KDsSLr2RtyTjSezMY6WH4SOcTc45L9KoEwYoQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 10, 2012 at 12:06 AM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Thu, 2012-08-09 at 18:49 +0300, Idan Kedar wrote:
->> On Thu, Aug 9, 2012 at 5:05 PM, Myklebust, Trond
->> <Trond.Myklebust@netapp.com> wrote:
->> >> -----Original Message-----
->> >> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
->> >> owner@vger.kernel.org] On Behalf Of Idan Kedar
->> >> Sent: Thursday, August 09, 2012 9:03 AM
->> >> To: Boaz Harrosh; NFS list
->> >> Cc: Benny Halevy
->> >> Subject: return layout on error, BUG/deadlock
->> >>
->> >> Hi,
->> >>
->> >> As a result of some experiments, I wanted to see what happens when I
->> >> inject an error (hard coded) to the object layout driver. the patch is at the
->> >> bottom of this mail. the reason I did this is because when I inject errors in my
->> >> modified version of the object layout driver, I get the same BUG Tigran
->> >> reported about yesterday:
->> >> nfs4proc.c:6252 :   BUG_ON(!list_empty(&lo->plh_segs));
->> >>
->> >> In my modified version (based on kernel 3.3), the bug seems to be that
->> >> pnfs_ld_write_done calls pnfs_return_layout in the error path, even if there
->> >> is in-flight I/O.
->> >
->> > That is not a bug. It is an intentional change in order to allow the MDS to fence off the outstanding writes (if it can do so) before we retransmit them as write-through-MDS. Otherwise, you risk races between the outstanding writes-to-DS and the new writes-through-MDS.
->>
->> to what change are you referring?
->
-> As I stated in the changelog of the patch that I sent to the list
-> yesterday, the behaviour is due to commit 0a57cdac3f.
->
->> >
->> > See the changelog in the patch that I sent to the list yesterday.
->> >
->>
->> I saw that, and if I'm not mistaken these races apply to object layout
->> as well, and in any case they apply in my case. However, it is not
->> easy to mess around with LAYOUTRETURN in object layout, and there have
->> been several discussions on the issue. In one of these discussions
->> Benny clarified that the object layout client must wait for all
->> in-flight I/O to end.
->
-> If the problem is that the DS is failing to respond, how does the client
-> know that the in-flight I/O has ended?
->
->> So for file layout it probably makes sense, but object layout (and if
->> I understand correctly, block layout as well) something else needs to
->> be done. I thought about sync wait when returning the layout on error,
->> but according to Boaz it will cause deadlocks (Boaz - can you please
->> elaborate?).
->
-> The object layoutreturn has the ability to pass a timeout error value to
-> the MDS precisely in order to allow the latter to deal with this kind of
-> issue. See the description of struct pnfs_osd_ioerr4 in rfc5664.
->
-> The block layout is adding the same ability to layoutreturn in NFSv4.2
-> (see draft-ietf-nfsv4-minorversion2-13.txt) via the struct
-> layoutreturn_device_error4, so presumably they too have a plan for
-> dealing with this kind of issue.
-It is one thing to tell MDS that there is DS access error by sending
-layoutreturn, and it is another thing to return a layout even if there
-is overlapping in-flight DS IO...
+On Tue, Aug 21, 2012 at 02:48:35PM +0900, Namjae Jeon wrote:
+> 2012/8/21, J. Bruce Fields <bfields@fieldses.org>:
+> > On Mon, Aug 20, 2012 at 12:00:04PM +1000, Dave Chinner wrote:
+> >> On Sun, Aug 19, 2012 at 10:57:24AM +0800, Fengguang Wu wrote:
+> >> > On Sat, Aug 18, 2012 at 05:50:02AM -0400, Namjae Jeon wrote:
+> >> > > From: Namjae Jeon <namjae.jeon@samsung.com>
+> >> > >
+> >> > > This patch is based on suggestion by Wu Fengguang:
+> >> > > https://lkml.org/lkml/2011/8/19/19
+> >> > >
+> >> > > kernel has mechanism to do writeback as per dirty_ratio and
+> >> > > dirty_background
+> >> > > ratio. It also maintains per task dirty rate limit to keep balance of
+> >> > > dirty pages at any given instance by doing bdi bandwidth estimation.
+> >> > >
+> >> > > Kernel also has max_ratio/min_ratio tunables to specify percentage of
+> >> > > writecache
+> >> > > to control per bdi dirty limits and task throtelling.
+> >> > >
+> >> > > However, there might be a usecase where user wants a writeback tuning
+> >> > > parameter to flush dirty data at desired/tuned time interval.
+> >> > >
+> >> > > dirty_background_time provides an interface where user can tune
+> >> > > background
+> >> > > writeback start time using /sys/block/sda/bdi/dirty_background_time
+> >> > >
+> >> > > dirty_background_time is used alongwith average bdi write bandwidth
+> >> > > estimation
+> >> > > to start background writeback.
+> >> >
+> >> > Here lies my major concern about dirty_background_time: the write
+> >> > bandwidth estimation is an _estimation_ and will sure become wildly
+> >> > wrong in some cases. So the dirty_background_time implementation based
+> >> > on it will not always work to the user expectations.
+> >> >
+> >> > One important case is, some users (eg. Dave Chinner) explicitly take
+> >> > advantage of the existing behavior to quickly create & delete a big
+> >> > 1GB temp file without worrying about triggering unnecessary IOs.
+> >>
+> >> It's a fairly common use case - short term temp files are used by
+> >> lots of applications and avoiding writing them - especially on NFS -
+> >> is a big performance win. Forcing immediate writeback will
+> >> definitely cause unprdictable changes in performance for many
+> >> people...
+> >>
+> >> > > Results are:-
+> >> > > ==========================================================
+> >> > > Case:1 - Normal setup without any changes
+> >> > > ./performancetest_arm ./100MB write
+> >> > >
+> >> > >  RecSize  WriteSpeed   RanWriteSpeed
+> >> > >
+> >> > >  10485760  7.93MB/sec   8.11MB/sec
+> >> > >   1048576  8.21MB/sec   7.80MB/sec
+> >> > >    524288  8.71MB/sec   8.39MB/sec
+> >> > >    262144  8.91MB/sec   7.83MB/sec
+> >> > >    131072  8.91MB/sec   8.95MB/sec
+> >> > >     65536  8.95MB/sec   8.90MB/sec
+> >> > >     32768  8.76MB/sec   8.93MB/sec
+> >> > >     16384  8.78MB/sec   8.67MB/sec
+> >> > >      8192  8.90MB/sec   8.52MB/sec
+> >> > >      4096  8.89MB/sec   8.28MB/sec
+> >> > >
+> >> > > Average speed is near 8MB/seconds.
+> >> > >
+> >> > > Case:2 - Modified the dirty_background_time
+> >> > > ./performancetest_arm ./100MB write
+> >> > >
+> >> > >  RecSize  WriteSpeed   RanWriteSpeed
+> >> > >
+> >> > >  10485760  10.56MB/sec  10.37MB/sec
+> >> > >   1048576  10.43MB/sec  10.33MB/sec
+> >> > >    524288  10.32MB/sec  10.02MB/sec
+> >> > >    262144  10.52MB/sec  10.19MB/sec
+> >> > >    131072  10.34MB/sec  10.07MB/sec
+> >> > >     65536  10.31MB/sec  10.06MB/sec
+> >> > >     32768  10.27MB/sec  10.24MB/sec
+> >> > >     16384  10.54MB/sec  10.03MB/sec
+> >> > >      8192  10.41MB/sec  10.38MB/sec
+> >> > >      4096  10.34MB/sec  10.12MB/sec
+> >> > >
+> >> > > we can see, average write speed is increased to ~10-11MB/sec.
+> >> > > ============================================================
+> >> >
+> >> > The numbers are impressive!
+> >>
+> >> All it shows is that avoiding the writeback delay writes a file a
+> >> bit faster. i.e. 5s delay + 10s @ 10MB/s vs no delay and 10s
+> >> @10MB/s. That's pretty obvious, really, and people have been trying
+> >> to make this "optimisation" for NFS clients for years in the
+> >> misguided belief that short-cutting writeback caching is beneficial
+> >> to application performance.
+> >>
+> >> What these numbers don't show that is whether over-the-wire
+> >> writeback speed has improved at all. Or what happens when you have a
+> >> network that is faster than the server disk, or even faster than the
+> >> client can write into memory? What about when there are multiple
+> >> threads, or the network is congested, or the server overloaded? In
+> >> those cases the performance differential will disappear and
+> >> there's a good chance that the existing code will be significantly
+> >> faster because it places less imediate load on the server and
+> >> network.D...
+> >>
+> >> If you need immediate dispatch of your data for single threaded
+> >> performance then sync_file_range() is your friend.
+> >>
+> >> > FYI, I tried another NFS specific approach
+> >> > to avoid big NFS COMMITs, which achieved similar performance gains:
+> >> >
+> >> > nfs: writeback pages wait queue
+> >> > https://lkml.org/lkml/2011/10/20/235
+> >>
+> >> Which is basically controlling the server IO latency when commits
+> >> occur - smaller ranges mean the commit (fsync) is faster, and more
+> >> frequent commits mean the data goes to disk sooner. This is
+> >> something that will have a positive impact on writeback speeds
+> >> because it modifies the NFs client writeback behaviour to be more
+> >> server friendly and not stall over the wire. i.e. improving NFS
+> >> writeback performance is all about keeping the wire full and the
+> >> server happy, not about reducing the writeback delay before we start
+> >> writing over the wire.
+> >
+> > Wait, aren't we confusing client and server side here?
+> >
+> > If I read Namjae Jeon's post correctly, I understood that it was the
+> > *server* side he was modifying to start writeout sooner, to improve
+> > response time to eventual expected commits from the client.  The
+> > responses above all seem to be about the client.
+> >
+> > Maybe it's all the same at some level, but: naively, starting writeout
+> > early would seem a better bet on the server side.  By the time we get
+> > writes, the client has already decided they're worth sending to disk.
+> Hi Bruce.
+> 
+> Yes, right, I have not changed writeback setting on NFS client, It was
+> changed on NFS Server.
 
-I certainly agree that client is entitled to return layout to inform
-MDS about DS errors and also avoid possible cb_layoutrecall. But it is
-just an optimization and should only be done when there is no
-in-flight IO (at least for block layout) IMHO.
+Ah OK, I'm very supportive to lower the NFS server's background
+writeback threshold. This will obviously help reduce disk idle time as
+well as turning a good amount of SYNC writes to ASYNC ones.
+
+> So writeback behaviour on NFS client will work at default. So There
+> will be no change in data caching behaviour
+> at NFS client. It will reduce server side wait time for NFS COMMIT by
+> starting early writeback.
+
+Agreed.
+
+> >
+> > And changes to make clients and applications friendlier to the server
+> > are great, but we don't always have that option--there are more clients
+> > out there than servers and the latter may be easier to upgrade than the
+> > former.
+> I agree about your opinion..
+
+Agreed.
 
 Thanks,
-Tao
->
->> And come to think of it, nfs4_proc_setattr also returns the layout
->> when there may be I/O in-flight (correct me if i'm wrong). So I guess
->> pnfs_return_layout should somehow solve this by itself by saying "if
->> this is fencing (a flag which will be set for file layout only), go
->> ahead, otherwise make the layout as 'needs to be returned' and when
->> the lseg lists gets empty return the layout".
->
-> The only layout type that sets the PNFS_LAYOUTRET_ON_SETATTR flag is
-> objects, so that question needs to be directed to Boaz.
->
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
->
+Fengguang
