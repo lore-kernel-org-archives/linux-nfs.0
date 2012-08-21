@@ -1,98 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:53416 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758410Ab2HHNVw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Aug 2012 09:21:52 -0400
-Received: by mail-gh0-f174.google.com with SMTP id r11so730335ghr.19
-        for <linux-nfs@vger.kernel.org>; Wed, 08 Aug 2012 06:21:52 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v5 03/19] vfs: make fstatat retry on ESTALE errors from getattr call
-Date: Wed,  8 Aug 2012 09:21:26 -0400
-Message-Id: <1344432102-22312-4-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
-References: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:46814 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758564Ab2HUU5g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Aug 2012 16:57:36 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 14/14] nfsd: document kernel interfaces for nfsd configuration
+Date: Tue, 21 Aug 2012 16:57:32 -0400
+Message-Id: <1345582652-18476-15-git-send-email-bfields@redhat.com>
+In-Reply-To: <1345582652-18476-1-git-send-email-bfields@redhat.com>
+References: <1345582652-18476-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c         |  2 +-
- fs/stat.c          | 21 ++++++++++++++++-----
- include/linux/fs.h |  1 +
- 3 files changed, 18 insertions(+), 6 deletions(-)
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 83a6f46..e66161f 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -117,7 +117,7 @@
-  * POSIX.1 2.4: an empty pathname is invalid (ENOENT).
-  * PATH_MAX includes the nul terminator --RR.
-  */
--static char *getname_flags(const char __user *filename, int flags, int *empty)
-+char *getname_flags(const char __user *filename, int flags, int *empty)
- {
- 	char *result = __getname(), *err;
- 	int len;
-diff --git a/fs/stat.c b/fs/stat.c
-index b6ff118..5afeb37 100644
---- a/fs/stat.c
-+++ b/fs/stat.c
-@@ -72,9 +72,11 @@ EXPORT_SYMBOL(vfs_fstat);
- int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
- 		int flag)
- {
-+	char *name;
- 	struct path path;
- 	int error = -EINVAL;
--	int lookup_flags = 0;
-+	unsigned int try = 0;
-+	unsigned int lookup_flags = 0;
- 
- 	if ((flag & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
- 		      AT_EMPTY_PATH)) != 0)
-@@ -85,12 +87,21 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
- 	if (flag & AT_EMPTY_PATH)
- 		lookup_flags |= LOOKUP_EMPTY;
- 
--	error = user_path_at(dfd, filename, lookup_flags, &path);
--	if (error)
-+	name = getname_flags(filename, lookup_flags, NULL);
-+	if (IS_ERR(name)) {
-+		error = PTR_ERR(name);
- 		goto out;
-+	}
-+	do {
-+		error = kern_path_at(dfd, name, lookup_flags, &path);
-+		if (error)
-+			break;
- 
--	error = vfs_getattr(path.mnt, path.dentry, stat);
--	path_put(&path);
-+		error = vfs_getattr(path.mnt, path.dentry, stat);
-+		path_put(&path);
-+		lookup_flags |= LOOKUP_REVAL;
-+	} while (retry_estale(error, try++));
-+	putname(name);
- out:
- 	return error;
- }
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index b776a97..f2e7371 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2201,6 +2201,7 @@ extern struct file *file_open_root(struct dentry *, struct vfsmount *,
- 				   const char *, int);
- extern struct file * dentry_open(const struct path *, int, const struct cred *);
- extern int filp_close(struct file *, fl_owner_t id);
-+extern char *getname_flags(const char __user *, int, int *);
- extern char * getname(const char __user *);
- enum {
- 	FILE_CREATED = 1,
+These are only needed by nfs-utils.  But I needed to remind myself how
+they worked recently and thought this might be helpful.  It's short and
+incomplete for now as I was only interested in startup, shutdown, and
+configuration of listening sockets.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ .../filesystems/nfs/nfsd-admin-interfaces.txt      |   41 ++++++++++++++++++++
+ 1 file changed, 41 insertions(+)
+ create mode 100644 Documentation/filesystems/nfs/nfsd-admin-interfaces.txt
+
+diff --git a/Documentation/filesystems/nfs/nfsd-admin-interfaces.txt b/Documentation/filesystems/nfs/nfsd-admin-interfaces.txt
+new file mode 100644
+index 0000000..56a96fb
+--- /dev/null
++++ b/Documentation/filesystems/nfs/nfsd-admin-interfaces.txt
+@@ -0,0 +1,41 @@
++Administrative interfaces for nfsd
++^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++
++Note that normally these interfaces are used only by the utilities in
++nfs-utils.
++
++nfsd is controlled mainly by pseudofiles under the "nfsd" filesystem,
++which is normally mounted at /proc/fs/nfsd/.
++
++The server is always started by the first write of a nonzero value to
++nfsd/threads.
++
++Before doing that, NFSD can be told which sockets to listen on by
++writing to nfsd/portlist; that write may be:
++
++	- an ascii-encoded file descriptor, which should refer to a
++	  bound (and listening, for tcp) socket, or
++	- "transportname port", where transportname is currently either
++	  "udp", "tcp", or "rdma".
++
++If nfsd is started without doing any of these, then it will create one
++udp and one tcp listener at port 2049 (see nfsd_init_socks).
++
++On startup, nfsd and lockd grace periods start.
++
++nfsd is shut down by a write of 0 to nfsd/threads.  All locks and state
++are thrown away at that point.
++
++Between startup and shutdown, the number of threads may be adjusted up
++or down by additional writes to nfsd/threads or by writes to
++nfsd/pool_threads.
++
++For more detail about files under nfsd/ and what they control, see
++fs/nfsd/nfsctl.c; most of them have detailed comments.
++
++Implementation notes
++^^^^^^^^^^^^^^^^^^^^
++
++Note that the rpc server requires the caller to serialize addition and
++removal of listening sockets, and startup and shutdown of the server.
++For nfsd this is done using nfsd_mutex.
 -- 
-1.7.11.2
+1.7.9.5
 
