@@ -1,60 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:60660 "EHLO mx2.netapp.com"
+Received: from mail.gnuher.de ([78.47.12.54]:41443 "EHLO mail.gnuher.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751704Ab2HXVjX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Aug 2012 17:39:23 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Sachin Prabhu <sprabhu@redhat.com>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Avoid array overflow in __nfs4_get_acl_uncached
-Date: Fri, 24 Aug 2012 21:38:52 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F5842F@SACEXCMBX01-PRD.hq.netapp.com>
-References: <1345817768-23511-1-git-send-email-sprabhu@redhat.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F4AF1E@SACEXCMBX01-PRD.hq.netapp.com>
-	 <1345843866.2279.6.camel@localhost>
-In-Reply-To: <1345843866.2279.6.camel@localhost>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1751542Ab2HUIsx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Aug 2012 04:48:53 -0400
+Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
+	by mail.gnuher.de (envelope-from
+	<news@geggus.net>)
+	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
+	(Exim 4.72)
+	id 1T3jlm-0007P0-LB
+	for linux-nfs@vger.kernel.org; Tue, 21 Aug 2012 10:25:02 +0200
+Received: from news  by ultimate100.geggus.net (envelope-from
+	<news@geggus.net>)
+	with local (Exim 4.72)
+	id 1T3jll-0006BL-W1
+	for linux-nfs@vger.kernel.org; Tue, 21 Aug 2012 10:25:02 +0200
+To: linux-nfs@vger.kernel.org
+From: Sven Geggus <lists@fuchsschwanzdomain.de>
+Subject: NFS4: ssh + unlink(~/.Xauthority) delays
+Date: Tue, 21 Aug 2012 08:25:01 +0000 (UTC)
+Message-ID: <k0vgkt$mm0$1@ultimate100.geggus.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTA4LTI0IGF0IDIyOjMxICswMTAwLCBTYWNoaW4gUHJhYmh1IHdyb3RlOg0K
-PiBPbiBGcmksIDIwMTItMDgtMjQgYXQgMTU6MDcgKzAwMDAsIE15a2xlYnVzdCwgVHJvbmQgd3Jv
-dGU6DQo+ID4gT24gRnJpLCAyMDEyLTA4LTI0IGF0IDE1OjE2ICswMTAwLCBTYWNoaW4gUHJhYmh1
-IHdyb3RlOg0KPiA+ID4gVGhpcyBmaXhlcyBhIGJ1ZyBpbnRyb2R1Y2VkIGJ5IGNvbW1pdA0KPiA+
-ID4gNWEwMDY4OTkzMGFiOTc1ZmRkMWIzN2IwMzQ0NzUwMTdlNDYwY2YyYQ0KPiA+ID4gVGhlIHBh
-dGNoIGFkZHMgYW4gZXh0cmEgcGFnZSB0byBucGFnZXMgdG8gaG9sZCB0aGUgYml0bWFwIHJldHVy
-bmVkIGJ5DQo+ID4gPiB0aGUgc2VydmVyLg0KPiA+ID4gDQo+ID4gPiBCcnVjZSBGaWVsZHMgcG9p
-bnRlZCBvdXQgdGhhdCB0aGUgY2hhbmdlcyBpbnRyb2R1Y2VkIGJ5IHRoZSBwYXRjaCB3aWxsDQo+
-ID4gPiBjYXVzZSB0aGUgYXJyYXkgbnBhZ2VzIHRvIG92ZXJmbG93IGlmIGEgYnVmZmVyIG9mIHNp
-emUgZ3JlYXRlciB0aGFuIG9yDQo+ID4gPiBlcXVhbCB0byBYQVRUUl9TSVpFX01BWCBpcyBwYXNz
-ZWQgdG8gX19uZnM0X2dldF9hY2xfdW5jYWNoZWQoKQ0KPiA+IA0KPiA+IEknZCB0aGluayB0aGF0
-IHRoZSByaWdodCB0aGluZyB0byBkbyBoZXJlIGlzIHJhdGhlciB0byBhZGQgYXBwcm9wcmlhdGUN
-Cj4gPiBidWZmZXIgb3ZlcmZsb3cgY2hlY2tzLiBIb3cgYWJvdXQgc29tZXRoaW5nIGxpa2UgdGhl
-IGZvbGxvd2luZz8NCj4gPiANCj4gPiA4PC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+ID4gRnJvbSA3YzM1Y2UyMjA5MjQxODIy
-ODRhZWE5ZjhhZWMzOWIwZDk5MTYwMGRmIE1vbiBTZXAgMTcgMDA6MDA6MDAgMjAwMQ0KPiA+IEZy
-b206IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQo+ID4gRGF0
-ZTogRnJpLCAyNCBBdWcgMjAxMiAxMDo1OToyNSAtMDQwMA0KPiA+IFN1YmplY3Q6IFtQQVRDSF0g
-TkZTdjQ6IEZpeCByYW5nZSBjaGVja2luZyBpbiBfX25mczRfZ2V0X2FjbF91bmNhY2hlZCBhbmQN
-Cj4gPiAgX19uZnM0X3Byb2Nfc2V0X2FjbA0KPiA+IA0KPiA+IEVuc3VyZSB0aGF0IHRoZSB1c2Vy
-IHN1cHBsaWVkIGJ1ZmZlciBzaXplIGRvZXNuJ3QgY2F1c2UgdXMgdG8gb3ZlcmZsb3cNCj4gPiB0
-aGUgJ3BhZ2VzJyBhcnJheS4NCj4gPiANCj4gPiBBbHNvIGZpeCB1cCBzb21lIGNvbmZ1c2lvbiBi
-ZXR3ZWVuIHRoZSB1c2Ugb2YgUEFHRV9TSVpFIGFuZA0KPiA+IFBBR0VfQ0FDSEVfU0laRSB3aGVu
-IGNhbGN1bGF0aW5nIGJ1ZmZlciBzaXplcy4gV2UncmUgbm90IHVzaW5nDQo+ID4gdGhlIHBhZ2Ug
-Y2FjaGUgZm9yIGFueXRoaW5nIGhlcmUuDQo+ID4gDQo+ID4gU2lnbmVkLW9mZi1ieTogVHJvbmQg
-TXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4gDQo+IFRoaXMgcGF0Y2gg
-aXMgc3VzY2VwdGlibGUgdG8gdGhlIHByb2JsZW0gZGVzY3JpYmVkIGluIGNvbW1pdA0KPiA1YTAw
-Njg5OTMwYWI5NzVmZGQxYjM3YjAzNDQ3NTAxN2U0NjBjZjJhDQo+IA0KPiBUaGlzIGNhbiBiZSBk
-ZW1vbnN0cmF0ZWQgYnkgdGhlIGZvbGxvd2luZyBwYXRjaCB0byBweW5mcyB3aGljaCBwYWRzIHRo
-ZQ0KPiBiaXRtYXAgd2l0aCAxMDAwIGV4dHJhIGVsZW1lbnRzLg0KPiANCj4gVG8gcmVwcm9kdWNl
-LCBvbiB0aGUgc2VydmVyDQo+IGNkIG5ld3B5bmZzL25mczQuMC8NCj4gLi9zZXR1cC5weSBidWls
-ZF9leHQgLS1pbnBsYWNlDQo+IC4vbmZzNHNlcnZlci5weQ0KPiANCj4gb24gdGhlIGNsaWVudCwg
-DQo+IG1vdW50IC1vIHZlcnM9NCBTRVJWRVI6LyAvbW50DQo+IHRvdWNoIC9tbnQvYQ0KPiBuZnM0
-X2dldGZhY2wgL21udC9hDQo+IA0KPiBXaXRoIHRoaXMgbmV3IHBhdGNoLCB5b3Ugd2lsbCBnZXQg
-YSBnZW5lcmFsIHByb3RlY3Rpb24gZmF1bHQgaW4NCj4gX2NvcHlfZnJvbV9wYWdlcygpLg0KDQpJ
-cyB0aGlzIG9uIGEga2VybmVsIHdpdGggY29tbWl0IDUxOWQzOTU5ZTMwYTk4ZjhlMTM1ZTdhMTY2
-NDdjMTBhZjVhZDYzZDUNCihORlN2NDogRml4IHBvaW50ZXIgYXJpdGhtZXRpYyBpbiBkZWNvZGVf
-Z2V0YWNsKSBhcHBsaWVkPw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVu
-dCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5u
-ZXRhcHAuY29tDQoNCg==
+Hello,
+
+I'm about to setup a Linux based fileserver for home directories and a
+couple of Linux clients with kerberos and NFS4 (no NFS3 for security
+reasons).
+
+The whole stuff is currently based on debian stable (with a backported
+current NFS userland 1.2.5) and a recent vanilla kernel (3.5.2).
+
+So far I have the NFS4 Server up and running as well as a couple of clients
+with NFS4+autofs mounted home directories.
+
+All this stuff mostly works now, but unfortunately I ran into some strange
+bahaviour now.
+
+When I ssh from one machine to another the system hangs (a delay of up to 60
+seconds) while running xauth.
+
+Replacing xauth by a wrapper script I have been able to trace this behaviour
+to a hang of an unlink("/home/<user>/.Xauthority") system call.
+
+So the question is what cases hangs in NFS4 based Linux systems in general
+an in this particular case?
+
+Any hint on how to debug this?
+
+Sven
+
+-- 
+"C Is Quirky, Flawed, And An Enormous Success."
+(Dennis M. Ritchie)
+
+/me is giggls@ircnet, http://sven.gegg.us/ on the Web
