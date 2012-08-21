@@ -1,55 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:40134 "EHLO e5.ny.us.ibm.com"
+Received: from mga11.intel.com ([192.55.52.93]:48898 "EHLO mga11.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758328Ab2HUSEM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Aug 2012 14:04:12 -0400
-Received: from /spool/local
-	by e5.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Tue, 21 Aug 2012 14:04:07 -0400
-Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
-	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id 14D7C6E805D
-	for <linux-nfs@vger.kernel.org>; Tue, 21 Aug 2012 14:03:57 -0400 (EDT)
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q7LI3uSx057316
-	for <linux-nfs@vger.kernel.org>; Tue, 21 Aug 2012 14:03:56 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q7LI3tvk019269
-	for <linux-nfs@vger.kernel.org>; Tue, 21 Aug 2012 15:03:56 -0300
-Date: Tue, 21 Aug 2012 13:03:53 -0500
-From: Malahal Naineni <malahal@us.ibm.com>
-To: Jim Rees <rees@umich.edu>
-Cc: Sven Geggus <lists@fuchsschwanzdomain.de>, linux-nfs@vger.kernel.org
-Subject: Re: NFS4: ssh + unlink(~/.Xauthority) delays
-Message-ID: <20120821180353.GB4561@us.ibm.com>
-References: <k0vgkt$mm0$1@ultimate100.geggus.net>
- <20120821125905.GA16550@umich.edu>
- <k10bib$1fi$1@ultimate100.geggus.net>
- <20120821170759.GA13076@umich.edu>
+	id S1757314Ab2HUNFH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Aug 2012 09:05:07 -0400
+Date: Tue, 21 Aug 2012 21:04:58 +0800
+From: Fengguang Wu <fengguang.wu@intel.com>
+To: Namjae Jeon <linkinjeon@gmail.com>
+Cc: akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        Namjae Jeon <namjae.jeon@samsung.com>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 3/3] writeback: add dirty_ratio_time per bdi variable
+ (NFS write performance)
+Message-ID: <20120821130458.GD22321@localhost>
+References: <1345283402-7889-1-git-send-email-linkinjeon@gmail.com>
+ <20120819025724.GC16796@localhost>
+ <CAKYAXd83r3RNi3Rn5s3DAEE=34YYbk_hUWcG6R3Zu3JwUw74aA@mail.gmail.com>
+ <20120820145032.GA7469@localhost>
+ <CAKYAXd9L5Kwj3SEHO=a60c65OXRt73q+-w-Uux6OJ=6Q-3jvYQ@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120821170759.GA13076@umich.edu>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <CAKYAXd9L5Kwj3SEHO=a60c65OXRt73q+-w-Uux6OJ=6Q-3jvYQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> Sven Geggus wrote:
+On Tue, Aug 21, 2012 at 03:00:13PM +0900, Namjae Jeon wrote:
+> 2012/8/20, Fengguang Wu <fengguang.wu@intel.com>:
+> > On Mon, Aug 20, 2012 at 09:48:42AM +0900, Namjae Jeon wrote:
+> >> 2012/8/19, Fengguang Wu <fengguang.wu@intel.com>:
+> >> > On Sat, Aug 18, 2012 at 05:50:02AM -0400, Namjae Jeon wrote:
+> >> >> From: Namjae Jeon <namjae.jeon@samsung.com>
+> >> >>
+> >> >> This patch is based on suggestion by Wu Fengguang:
+> >> >> https://lkml.org/lkml/2011/8/19/19
+> >> >>
+> >> >> kernel has mechanism to do writeback as per dirty_ratio and
+> >> >> dirty_background
+> >> >> ratio. It also maintains per task dirty rate limit to keep balance of
+> >> >> dirty pages at any given instance by doing bdi bandwidth estimation.
+> >> >>
+> >> >> Kernel also has max_ratio/min_ratio tunables to specify percentage of
+> >> >> writecache
+> >> >> to control per bdi dirty limits and task throtelling.
+> >> >>
+> >> >> However, there might be a usecase where user wants a writeback tuning
+> >> >> parameter to flush dirty data at desired/tuned time interval.
+> >> >>
+> >> >> dirty_background_time provides an interface where user can tune
+> >> >> background
+> >> >> writeback start time using /sys/block/sda/bdi/dirty_background_time
+> >> >>
+> >> >> dirty_background_time is used alongwith average bdi write bandwidth
+> >> >> estimation
+> >> >> to start background writeback.
+> >> >
+> >> > Here lies my major concern about dirty_background_time: the write
+> >> > bandwidth estimation is an _estimation_ and will sure become wildly
+> >> > wrong in some cases. So the dirty_background_time implementation based
+> >> > on it will not always work to the user expectations.
+> >> >
+> >> > One important case is, some users (eg. Dave Chinner) explicitly take
+> >> > advantage of the existing behavior to quickly create & delete a big
+> >> > 1GB temp file without worrying about triggering unnecessary IOs.
+> >> >
+> >> Hi. Wu.
+> >> Okay, I have a question.
+> >>
+> >> If making dirty_writeback_interval per bdi to tune short interval
+> >> instead of background_time, We can get similar performance
+> >> improvement.
+> >> /sys/block/<device>/bdi/dirty_writeback_interval
+> >> /sys/block/<device>/bdi/dirty_expire_interval
+> >>
+> >> NFS write performance improvement is just one usecase.
+> >>
+> >> If we can set interval/time per bdi,  other usecases will be created
+> >> by applying.
+> >
+> > Per-bdi interval/time tunables, if there comes such a need, will in
+> > essential be for data caching and safety. If turning them into some
+> > requirement for better performance, the users will potential be
+> > stretched on choosing the "right" value for balanced data cache,
+> > safety and performance.  Hmm, not a comfortable prospection.
+> Hi Wu.
+> First, Thanks for shared information.
 > 
->   Jim Rees <rees@umich.edu> wrote:
->   
->   > No, the question is why did X put that file in your home directory.  That's
->   > not where it belongs.  I've got this in my .xinitrc:
->   > 
->   > setenv XAUTHORITY /tmp/Xauthority`id -u`
->   
->   I agree, that ~/.Xauthority is probably not the best place for this file,
->   but it is the default (at least in Debian).
->   
->   If it is expected behaviour that this will not work correctly with shared
->   Homedirectories, I wonder why this did not cause me any trouble with NFS3
->   for many years.
+> I change writeback interval on NFS server only.
 
-NFS3 doesn't have delegations and this file placement should not be an
-issue in NFSv4 either if it is working correctly!
+OK..sorry for missing that part!
 
-Regards, Malahal.
+> I think that this does not affect data cache/page behaviour(caching)
+> change on NFS client. NFS client will start sending write requests as
+> per default NFS/writeback logic. So, no change in NFS client data
+> caching behaviour.
+> 
+> Also, on NFS server it does not make change in system-wide caching
+> behaviour. It only modifies caching/writeback behaviour of a
+> particular “bdi” on NFS server so that NFS client could see better
+> WRITE speed.
 
+But would you default to dirty_background_time=0, where the special
+value 0 means no change of the original behavior? That will address
+David's very reasonable concern. Otherwise quite a few users are going
+to be surprised by the new behavior after upgrading kernel.
+
+> I will share several performancetest results as Dave's opinion.
+> 
+> >
+> >> >The numbers are impressive! FYI, I tried another NFS specific approach
+> >> >to avoid big NFS COMMITs, which achieved similar performance gains:
+> >>
+> >> >nfs: writeback pages wait queue
+> >> >https://lkml.org/lkml/2011/10/20/235
+> This patch looks client side optimization to me.(need to check more)
+
+Yes.
+
+> Do we need the optimization of server side as Bruce's opinion ?
+
+Sure.
+
+Thanks,
+Fengguang
