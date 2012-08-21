@@ -1,33 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:47728 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:43012 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756326Ab2HHRe5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Aug 2012 13:34:57 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "tigran.mkrtchyan@desy.de" <tigran.mkrtchyan@desy.de>,
-        Boaz Harrosh <bharrosh@panasas.com>, Benny Halevy <bhalevy@tonian.com>,
-        "Isaman, Fred" <Fred.Isaman@netapp.com>
-CC: linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: client kernel panic on server restart
-Date: Wed, 8 Aug 2012 17:34:40 +0000
-Message-ID: <1344447279.8925.5.camel@lade.trondhjem.org>
-References: <CAGue13pvN_-wBqQVoNdkLO+pexF1hrs+d3exPCCSzOO8ZD4WRw@mail.gmail.com>
-In-Reply-To: <CAGue13pvN_-wBqQVoNdkLO+pexF1hrs+d3exPCCSzOO8ZD4WRw@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1755277Ab2HUMZp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Aug 2012 08:25:45 -0400
+Date: Tue, 21 Aug 2012 08:25:44 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>, "neilb@suse.de" <neilb@suse.de>
+Subject: Re: [PATCH v3] SUNRPC: protect service sockets lists during
+ per-net shutdown
+Message-ID: <20120821122544.GD9483@fieldses.org>
+References: <20120703125851.3850.86782.stgit@localhost.localdomain>
+ <20120724194036.GK8570@fieldses.org>
+ <20120816192902.GB4385@fieldses.org>
+ <50321A0D.1020904@parallels.com>
+ <20120820145656.GB1411@fieldses.org>
+ <50325384.9070506@parallels.com>
+ <20120820165852.GF1411@fieldses.org>
+ <503354A0.5010707@parallels.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <503354A0.5010707@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTA4LTA4IGF0IDE4OjQ4ICswMjAwLCBUaWdyYW4gTWtydGNoeWFuIHdyb3Rl
-Og0KPiBIaSwNCj4gDQo+IEl0J3MgcXVpdGUgc29tZSB0aW1lIHdpdGhvdXQga2VybmVsIHBhbmlj
-IHJlcG9ydHMgZnJvbSBtZSAuLi4uDQo+IA0KPiBPYnNlcnZlciBvbiBNRFMgYW5kIERTIHNodXRk
-b3duIGR1cmluZyBJTy4NCj4gDQo+IFRoaXMgaXMgd2l0aCAgMy41LjAtMi5mYzE3Lng4Nl82NCBr
-ZXJuZWwuIExpbmUgaW4gY29kZToNCj4gDQo+IG5mczRwcm9jLmM6NjI1MiA6ICAgQlVHX09OKCFs
-aXN0X2VtcHR5KCZsby0+cGxoX3NlZ3MpKTsNCj4gDQoNCklmIHRoZSBzZXJ2ZXIgZG9lc24ndCBy
-ZXR1cm4gYSBzdGF0ZWlkLCB0aGVuIHRoYXQgaXMgc3VwcG9zZWQgdG8NCmluZGljYXRlIHRoYXQg
-aXQgdGhpbmtzIHRoYXQgaXQgZG9lc24ndCBob2xkIGFueSBtb3JlIGxheW91dCBzZWdtZW50cw0K
-Zm9yIHRoaXMgZmlsZS4NClRvIG1lLCB0aGF0IGluZGljYXRlcyB0aGF0IHdlIHNob3VsZCBiZSBj
-YWxsaW5nDQptYXJrX21hdGNoaW5nX2xzZWdzX2ludmFsaWQoKSByYXRoZXIgdGhhbiBPb3BzaW5n
-Lg0KDQpBbnkgZGlzc2VudGluZyB2b2ljZXMgZnJvbSB0aGUgcE5GUyBjcm93ZD8NCg0KLS0gDQpU
-cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRy
-b25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+On Tue, Aug 21, 2012 at 01:28:00PM +0400, Stanislav Kinsbursky wrote:
+> 20.08.2012 20:58, J. Bruce Fields пишет:
+> >On Mon, Aug 20, 2012 at 07:11:00PM +0400, Stanislav Kinsbursky wrote:
+> >>Currently, when you call kthread_create(), you add new job to
+> >>kthreadd queue. Kthreadd is unique, starts right after init and
+> >>lives in global initial environment. So, any kthread inherits
+> >>namespaces from it.
+> >>Of course, we can start one kthread per environment and change it's
+> >>root or even network namespace in kthread function. But pid
+> >>namespace of this kthread will remain global.
+> >
+> >OK.  But the current implementation will leave all the server threads in
+> >the initial pid namespace, too.
+> >
+> >>It looks like not a big problem, when we shutdown kthread by some
+> >>variable. But what about killable nfsd kthreads?
+> >
+> >And we're stuck with that problem either way too, aren't we?
+> >
+> 
+> Yes, we are. But at least we are avoiding patching of task subsystem.
+> 
+> >>1) We can't kill them from nested pid namespace.
+> >>2) How we will differ nfsd kthreads in initial pid namespace?
+> >
+> >I have to admit for my purposes I don't care too much about pid
+> >namespaces or about signalling server threads.  It'd be nice to get
+> >those things right but it wouldn't bother me that much not to.
+> >
+> >Another stupid idea: can we do our own implementation of something like
+> >kthreadd just for the purpose of starting rpc server threads?  It
+> >doesn't seem that complicated.
+> >
+> 
+> Gm...
+> This idea is not stupid. If I understand you right, you suggest to
+> implement a service per network namespace (i.e. not only data, but
+> also threads)?
+
+Some way or another, yes, entirely separate threads for the different
+namespaces would be clearer, I think.
+
+And if we can't get them in the right pid namespaces, I'm not sure I
+care.
+
+--b.
